@@ -1,0 +1,336 @@
+[
+  {
+    "id": "e_blade",
+    "name": "海藻短刃",
+    "icon": "equip/dungeon-blade.png",
+    "category": "normal",
+    "desc": "提供 +20 攻击力。\n流血:\n携带者普通攻击命中敌人后, 对其施加 (0.075×ATK) 的流血层数。"
+  },
+  {
+    "id": "e_carapace",
+    "name": "珊瑚硬壳",
+    "icon": "equip/dungeon-armor.png",
+    "category": "normal",
+    "desc": "提供 +60 最大生命值。\n硬化:\n携带者每次受到伤害时, 获得一层硬化层数, 每层为其提供 +1 护甲和 +1 魔抗, 至多提供 +20 护甲和 +20 魔抗。\n达到最大层数时, 携带者立即获得 40 点永久护盾值。"
+  },
+  {
+    "id": "e_pearl",
+    "name": "生命珍珠",
+    "icon": "equip/dungeon-pearl.png",
+    "category": "unique",
+    "desc": "提供 +20 最大生命值, +4 护甲, +4 魔抗。\n珍珠:\n携带者生命值首次降至 50% 以下时触发。\n使携带者立即回复 20% 最大生命值, 并向 1 名随机敌人发射一颗火球, 造成 (8% 目标最大生命值) 魔法伤害, 并对目标施加 30 灼烧层数。\n触发完成后装备销毁。"
+  },
+  {
+    "id": "e_tooth",
+    "name": "锋利鲨齿",
+    "icon": "equip/dungeon-tooth.png",
+    "category": "normal",
+    "desc": "提供 +8 攻击力, +5 护甲穿透, +25% 暴击率。"
+  },
+  {
+    "id": "e_hammer",
+    "name": "重击锤",
+    "icon": "equip/dungeon-hammer.png",
+    "category": "normal",
+    "desc": "提供 +100 最大生命值。\n压力:\n携带者获得相当于 4% 携带者最大生命值的攻击力。",
+    "unique": false
+  },
+  {
+    "id": "e_piercer",
+    "name": "双穿珊瑚刺",
+    "icon": "equip/dungeon-spike.png",
+    "category": "normal",
+    "desc": "提供 +8 攻击力, +6 护甲穿透, +6 魔法穿透。"
+  },
+  {
+    "id": "e_star",
+    "name": "生命偷取海星",
+    "icon": "equip/dungeon-starfish.png",
+    "category": "unique",
+    "desc": "提供 +12% 生命偷取。\n汲取:\n携带者受到的溢出治疗部分会以 50% 比例转化为护盾值。\n※ 任何来源的治疗"
+  },
+  {
+    "id": "e_urchin",
+    "name": "荆棘海胆",
+    "icon": "equip/dungeon-urchin.png",
+    "category": "normal",
+    "desc": "提供 +50 最大生命值, +10% 反伤。"
+  },
+  {
+    "id": "e_fire",
+    "name": "灼热火珊瑚",
+    "icon": "equip/dungeon-fire-coral.png",
+    "category": "unique",
+    "desc": "提供 +50 最大生命值。\n火珊瑚:\n携带者施法结束时, 对本次施法造成过伤害的每个敌人施加 20 层灼烧。"
+  },
+  {
+    "id": "e_jelly",
+    "name": "冰封水母",
+    "icon": "equip/dungeon-jelly.png",
+    "category": "unique",
+    "desc": "提供 +20 最大生命值, +5 护甲。\n冰冻:\n携带者攻击命中敌人时, 有 25% 概率使该目标眩晕 1 回合。"
+  },
+  {
+    "id": "e_anemone",
+    "name": "治愈海葵",
+    "icon": "equip/dungeon-anemone.png",
+    "category": "normal",
+    "desc": "提供 +5 护甲, +10 魔抗。\n治愈:\n携带者每回合开始时回复 8% 最大生命值。"
+  },
+  {
+    "id": "e_ghost",
+    "name": "幽灵墨鱼",
+    "icon": "equip/dungeon-ghost.png",
+    "category": "unique",
+    "desc": "提供 +20 最大生命值, +15% 闪避率。\n幽灵:\n携带者每次成功闪避一次攻击时, 立即获得 20 点永久护盾值。"
+  },
+  {
+    "id": "e_octo",
+    "name": "暗袭章鱼爪",
+    "icon": "equip/dungeon-octo.png",
+    "category": "normal",
+    "desc": "提供 +15 攻击力。\n长爪:\n携带者对后排敌人造成的伤害额外 +20%。"
+  },
+  {
+    "id": "e_conch",
+    "name": "复活海螺",
+    "icon": "equip/dungeon-conch.png",
+    "category": "unique",
+    "desc": "提供 +100 最大生命值。\n小虫形态:\n携带者彻底阵亡 (所有复活机会用尽) 时触发。\n在原位置变形为一只小虫 (150 HP, 20 攻击力, 无护甲魔抗, 等级每级 +5% 属性), 每回合自动攻击当前生命值最低的敌人, 造成 1×ATK 物理伤害。"
+  },
+  {
+    "id": "e_ripple",
+    "name": "潮汐涟漪",
+    "icon": "equip/dungeon-shell.png",
+    "category": "normal",
+    "desc": "提供 +100 最大生命值, +30% 护盾和治疗强度。\n涟漪:\n每回合开始时, 为全体己方友军 (含携带者) 回复其当前已损失生命值的 3%。"
+  },
+  {
+    "id": "e_dragon_egg",
+    "name": "龙蛋",
+    "icon": "equip/dungeon-dragon-egg.png",
+    "category": "unique",
+    "desc": "提供 +8 攻击力, +5 魔法穿透。\n吐息:\n携带者每回合开始时获得 1 层吐息层数。达到 3 层时, 立即召唤一条喷火龙沿一排 (随机选有敌人的列) 飞过 — 火焰会对接触的己方单位回复 40 生命值, 对接触的敌方单位造成 50 魔法伤害并施加 25 灼烧层数, 随后重置吐息层数。\n装备时立即获得 3 层吐息。"
+  },
+  {
+    "id": "e_mini_crystal",
+    "name": "迷你水晶球 A",
+    "icon": "equip/dungeon-mini-crystal.png",
+    "category": "unique",
+    "desc": "提供 +7 攻击力, +20 最大生命值, +5 魔法穿透。\n魔法光线:\n回合末从携带者位置朝随机敌人方向发射一道魔法光线, 沿同一列穿过造成两段伤害。每段为 30 魔法伤害并施加 1 层迷你水晶。\n迷你水晶层数:\n拥有 3 层迷你水晶层数的敌人会被立即引爆, 受到 (14% 目标最大生命值) 魔法伤害, 并重置该敌人的迷你水晶层数。"
+  },
+  {
+    "id": "e_mini_crystal_b",
+    "name": "迷你水晶球 B",
+    "icon": "equip/dungeon-mini-crystal-b.png",
+    "category": "unique",
+    "desc": "提供 +7 攻击力, +3 魔法穿透, +20 最大生命值。\n激光:\n回合末以携带者为中心, 射出一道红光朝全体敌方扫过。红光触碰到每个存活敌人时, 对其造成 20 魔法伤害并施加 1 层迷你水晶。\n迷你水晶层数:\n拥有 3 层迷你水晶层数的敌人会被立即引爆, 受到 (14% 目标最大生命值) 魔法伤害, 并重置该敌人的迷你水晶层数。"
+  },
+  {
+    "id": "e_thunder_shell",
+    "name": "雷鸣贝壳",
+    "icon": "equip/dungeon-crystal.png",
+    "category": "normal",
+    "desc": "提供 +15 攻击力。\n电击:\n携带者自己回合结束时, 电击 1 名随机敌人, 造成 1×ATK 真实伤害。"
+  },
+  {
+    "id": "e_hourglass",
+    "name": "沙漏",
+    "icon": "equip/dungeon-hourglass.png",
+    "category": "unique",
+    "desc": "时间:\n携带者所有技能的基础冷却时间永久 -1 回合。\n※ 最低 0 cd, 只有携带时这件装备才生效"
+  },
+  {
+    "id": "e_dumbbell",
+    "name": "哑铃",
+    "icon": "equip/dungeon-dumbbell.png",
+    "category": "unique",
+    "desc": "提供 +100 最大生命值, +3 护甲, +3 魔抗。\n锻炼:\n携带者每回合开始时进行锻炼, 获得 +25 最大生命值。\n※ 深海闯关模式下: 锻炼累计仅本场战斗有效, 跨关重置归零。\n投掷:\n携带者在回合末向随机敌人扔出哑铃, 造成 (5% × 携带者当前最大生命值) 物理伤害。"
+  },
+  {
+    "id": "e_fpga",
+    "name": "FPGA 板",
+    "icon": "equip/dungeon-fpga.png",
+    "category": "unique",
+    "desc": "提供 +50 最大生命值。\n携带者每回合开始时随机抽取一个 2-bit 状态 (00 / 01 / 10 / 11), 当回合生效。\n状态 00:\n立即回复 5% 最大生命值, 并永久 +2 护甲 / +2 魔抗。\n状态 01:\n永久 +5 攻击力, 永久 +4% 生命偷取。\n状态 10:\n当回合获得 +15% 增伤。\n状态 11:\n当回合受到的所有伤害 -25% (持续 1 回合)。\n伤害减免不包括真实伤害"
+  },
+  {
+    "id": "e_amplifier",
+    "name": "信号放大器",
+    "icon": "equip/dungeon-amplifier.png",
+    "category": "unique",
+    "desc": "提供 +50 最大生命值。\n放大器:\n携带者每回合开始时获得 16%~24% 临时增伤。"
+  },
+  {
+    "id": "e_candle",
+    "name": "蜡烛",
+    "icon": "equip/dungeon-candle-off.png",
+    "category": "unique",
+    "desc": "提供 +10 攻击力, +50 最大生命值。\n蜡烛在 3 个阶段间循环, 每回合末触发效果并切换阶段。\n熄灭阶段:\n无效果。\n微弱阶段:\n回合末携带者回复 20 生命值, 并治疗同一队邻格友军 10 生命值。\n燃烧阶段:\n回合末随机选 1 名敌人, 对其所在横排各单位造成 30 魔法伤害, 并施加 20 灼烧层数。"
+  },
+  {
+    "id": "e_revolver",
+    "name": "左轮手枪",
+    "icon": "equip/dungeon-revolver.png",
+    "category": "unique",
+    "desc": "提供 +10 攻击力, +5 护甲穿透。\n弹药:\n装备时获得 6 发子弹。\n任何敌人阵亡时, 左轮手枪获得 1 发子弹 (上限 6 发)。\n射击:\n携带者每回合末向 1 名随机敌人射出 1 颗子弹, 命中后造成 40 物理伤害。\n子弹为 0 时停止射击。\n※ 子弹为 0 时装备不会消失"
+  },
+  {
+    "id": "e_laser_blade",
+    "name": "激光长刃",
+    "icon": "equip/dungeon-laser-blade.png",
+    "category": "unique",
+    "desc": "提供 +15 攻击力。\n携带者获得 \"横扫\" 技能。\n\"横扫\":\n选择敌方一列, 对该列每名敌人造成 0.7×ATK 物理伤害; 若该列仅 1 名存活敌人, 伤害提升至 1.4×ATK。\n携带者回复相当于横扫伤害的 80% 生命值。\n※ 冷却 0 回合"
+  },
+  {
+    "id": "e_doll",
+    "name": "玩偶小熊",
+    "icon": "equip/dungeon-doll.png",
+    "category": "unique",
+    "desc": "提供 +5 攻击力, +30 最大生命值。\n小熊攻击:\n携带者每回合末, 一只玩偶小熊从其位置走向随机敌人 (前排优先), 造成 30 物理伤害。携带者获得 1 层大熊层数。\n大熊:\n大熊层数达到或超过 5 后, 该装备销毁, 并在空位召唤一只大熊登场加入战斗。大熊拥有 250 生命值和 50 攻击力。\n※ 若己方阵营没有空位, 则继续小熊攻击, 直到有空位可以放置召唤物"
+  },
+  {
+    "id": "e_dart",
+    "name": "飞镖",
+    "icon": "equip/dungeon-dart.png",
+    "category": "unique",
+    "desc": "提供 +15 攻击力。\n靶子标记:\n任何敌人本回合被己方\"击飞\"过 (击飞标签来自龟派气波 / 玩偶熊强化锤击 等技能) 即获得\"靶子\"状态。\n飞镖:\n携带者回合末向所有带靶子状态的敌人各射 1 枚飞镖, 命中造成 50 物理伤害并施加 20 流血层数, 命中后移除该敌人的靶子状态。"
+  },
+  {
+    "id": "e_wave",
+    "name": "海浪",
+    "icon": "equip/dungeon-wave.png",
+    "category": "unique",
+    "desc": "提供 +50 最大生命值, +10% 护盾和治疗强度。\n巨浪:\n携带者每回合末获得 1 层巨浪层数。达到 3 层时, 随机选定一条横排(同一高度的前后位置), 一道巨浪横扫该横排上的敌我双方单位, 随后重置巨浪层数。\n巨浪使接触的己方单位立即 +20 护盾, 并永久 +2 护甲 / +2 魔抗。\n巨浪使接触的敌方单位受到 20 魔法伤害, 并永久 -2 护甲 / -2 魔抗。"
+  },
+  {
+    "id": "c_heal",
+    "name": "治疗药水",
+    "icon": "equip/equip-heal-potion.png",
+    "category": "consumable",
+    "target": "ally",
+    "desc": "一次性消耗品。\n拖到友方单位上使用, 立即为该目标回复 (50 + 10% 目标最大生命值) 生命值。使用后装备销毁。"
+  },
+  {
+    "id": "c_speed",
+    "name": "加速药水",
+    "icon": "equip/equip-speed-potion.png",
+    "category": "consumable",
+    "target": "ally",
+    "desc": "一次性消耗品。\n拖到友方单位上使用, 该目标所有技能的当前剩余冷却时间 -1 回合 (最低 0)。使用后装备销毁。"
+  },
+  {
+    "id": "c_bomb",
+    "name": "炸弹",
+    "icon": "equip/consumable-bomb.png",
+    "category": "consumable",
+    "target": "enemy",
+    "desc": "一次性消耗品。\n拖到敌方单位上使用, 对该目标造成 60 物理伤害 (不归属任何龟, 不触发生命偷取与 on-hit 链, 仅按目标护甲减免)。使用后装备销毁。"
+  },
+  {
+    "id": "c_rage",
+    "name": "🔥 怒火药水",
+    "icon": "equip/consumable-rage.png",
+    "category": "consumable",
+    "target": "ally",
+    "desc": "一次性消耗品。\n拖到友方单位上使用, 该目标获得攻击力 +25% buff, 持续 3 回合。使用后装备销毁。"
+  },
+  {
+    "id": "c_emergency",
+    "name": "⛑ 应急护盾",
+    "icon": "equip/consumable-shield.png",
+    "category": "consumable",
+    "target": "ally",
+    "desc": "一次性消耗品。\n拖到友方单位上使用, 立即为该目标添加 +80 护盾。使用后装备销毁。"
+  },
+  {
+    "id": "c_firstaid",
+    "name": "🌿 急救包",
+    "icon": "equip/consumable-firstaid.png",
+    "category": "consumable",
+    "target": "ally",
+    "desc": "一次性消耗品。\n拖到友方单位上使用, 立即为该目标回复 15% 目标最大生命值。使用后装备销毁。"
+  },
+  {
+    "id": "c_cleanse",
+    "name": "✨ 净化",
+    "icon": "equip/consumable-cleanse.png",
+    "category": "consumable",
+    "target": "ally",
+    "desc": "一次性消耗品。\n拖到友方单位上使用, 立即清除该目标身上所有负面状态。使用后装备销毁。\n※ 负面效果包括: 灼烧 / 中毒 / 流血 / 诅咒 DoT / 冰寒 / 攻防魔抗削减 / 治疗削减 / 易伤标记 / 泡泡束缚"
+  },
+  {
+    "id": "c_mark",
+    "name": "🎯 必中标记",
+    "icon": "equip/consumable-mark.png",
+    "category": "consumable",
+    "target": "enemy",
+    "desc": "一次性消耗品。\n拖到敌方单位上使用, 标记该目标 2 回合, 期间该目标受到的所有伤害 +20% (任何来源)。使用后装备销毁。"
+  },
+  {
+    "id": "e_master_whistle",
+    "name": "训龟大师的口哨",
+    "icon": "📯",
+    "category": "special",
+    "actionable": "blow",
+    "desc": "特殊物品。\n吹响口哨后, 一名训龟大师登场 4 回合, 其无法被选中、不会受到伤害、也不会造成伤害。期间每回合训龟大师会释放一种能力:\n1. 召唤灵体小龟对随机一行敌人释放龟派气波, 沿途造成三段共 90 物理伤害 (会击飞目标)\n2. 提供一件消耗品与 2 深海币\n3. 提供一件装备\n4. 为一只友方乌龟 (优先最大生命最高) +50 最大生命 / +5 护甲 / +5 魔抗\n5. 为一只友方乌龟 (优先本场输出最高) +15 攻击 / +5 护甲穿透 / +5 魔法穿透\n6. 为友方全场单位提供共 150 永久护盾 (均分)\n7. 为一只友方乌龟 +1 临时等级\n<span style=\"color:#888;font-size:0.9em\">能力 4/5/7 召唤物不算; 仅在己方场上有空位时可吹响; 4 回合后训龟大师消失。特殊物品, 无法在目标上使用。</span>"
+  },
+  {
+    "id": "c_candy_jar",
+    "name": "糖果罐",
+    "icon": "equip/equip-candy-jar.png",
+    "category": "special",
+    "actionable": "break",
+    "desc": "糖果龟的特殊装备, 任何商店或宝箱都无法获得。\n装备席中点击 \"打碎\" 按钮即可消耗糖果罐, 并按当前回合数获得一件随机稀有度的装备奖励。\n※ 回合 1~2: 治疗药水或加速药水 (各 50% 概率) 任一种 1 瓶\n※ 回合 3~4: 治疗药水或加速药水 (各 50% 概率) 任一种 1 瓶 + 1 个炸弹\n※ 回合 5~6: 1 个随机消耗品 + 1 件随机装备\n※ 回合 7~9: 2 个随机消耗品 + 1 件随机装备\n※ 回合 10+: 2 个随机消耗品 + 2 件随机装备"
+  },
+  {
+    "id": "e_incubator",
+    "name": "孵化器",
+    "icon": "equip/equip-incubator.png",
+    "category": "normal",
+    "desc": "提供 +20 最大生命值。\n每回合获得孵化进度, 进度满 100 后获得 +1 临时等级 (上限 +3)。\n进度来源: 回合+5, 敌死+10, 我死+15, 造伤×0.1, 承伤×0.1\n<span style=\"color:#888;font-size:0.9em\">每一级提升 5% 基础属性, 临时等级只在这个对局生效</span>"
+  },
+  {
+    "id": "e_stun_baton",
+    "name": "电棍",
+    "icon": "equip/equip-stun-baton.png",
+    "category": "normal",
+    "desc": "提供 +20 最大生命值, +5 护甲, +5 魔抗。\n装备时拥有 3 层电击层数。\n携带者施法后, 若是单体技能则电击该目标, 非单体则随机电击一名敌人, 造成 30 魔法伤害并使其眩晕 1 回合。\n每次电击消耗 1 层电击层数。\n<span style=\"color:#888;font-size:0.9em\">层数为 0 这个装备不会消失</span>"
+  },
+  {
+    "id": "e_bamboo_leaf",
+    "name": "竹叶",
+    "icon": "equip/equip-bamboo-leaf.png",
+    "category": "normal",
+    "desc": "提供 +50 最大生命值。\n装备时获得一次生长充能。\n施法后附带一发强化攻击, 对随机敌人造成 (35 + 携带者 20% 最大生命值) 魔法伤害, 回复携带者 20% 最大生命值, 并永久增加自身 100 最大生命值。\n<span style=\"color:#888;font-size:0.9em\">消耗这个充能后不会摧毁这件装备</span>"
+  },
+  {
+    "id": "e_lightning_staff",
+    "name": "雷电法杖",
+    "icon": "equip/equip-lightning-staff.png",
+    "category": "normal",
+    "unique": false,
+    "desc": "提供 +8 魔法穿透。\n连锁闪电:\n携带者每段单体伤害为这件装备充能 25 闪电值。闪电值满 100 时, 朝随机目标发射连锁闪电, 造成 20 魔法伤害, 闪电在不同目标间跳跃, 最多命中 4 个目标。\n<span style=\"color:#888;font-size:0.9em\">AOE 技能的充能效果为 50%; 满 100 发射后保留溢出充能; 可叠装多件, 每件独立充能</span>"
+  },
+  {
+    "id": "e_turtle_helmet",
+    "name": "小龟帽",
+    "icon": "equip/equip-turtle-helmet.png",
+    "category": "initial",
+    "desc": "提供 +70 最大生命值。\n复苏: 每回合携带者恢复 25 生命值。\n<span style=\"color:#888;font-size:0.9em\">受治疗减益和治疗强度影响</span>"
+  },
+  {
+    "id": "e_turtle_sword",
+    "name": "小龟剑",
+    "icon": "equip/equip-turtle-sword.png",
+    "category": "initial",
+    "desc": "提供 +10 攻击力。\n劈砍: 携带者施法结束后劈砍目标, 造成 30 物理伤害并治疗携带者相当于实际造成伤害的 50%。\n<span style=\"color:#888;font-size:0.9em\">若是群体技能则优先选择前排</span>"
+  },
+  {
+    "id": "e_turtle_shell",
+    "name": "小龟壳",
+    "icon": "equip/equip-turtle-shell.png",
+    "category": "initial",
+    "desc": "提供 +5 护甲, +5 魔抗。\n格挡: 携带者每次受到的攻击伤害减少 2。\n<span style=\"color:#888;font-size:0.9em\">不包括真实伤害</span>"
+  }
+]

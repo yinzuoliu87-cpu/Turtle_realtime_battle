@@ -1,0 +1,53 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
+
+[application]
+
+config/name="斗龟场 实时版"
+config/description="斗龟场 实时自走棋版 (Botworld 式实时战斗) — 从回合制版 fork, 复用美术+龟/装备名, 战斗与效果全部重写为实时.
+
+2026-05-30 从 Phaser 3 PoC 迁移而来,
+为了上 App Store / Steam / 工业级编辑体验。"
+run/main_scene="res://scenes/MainMenu.tscn"
+config/features=PackedStringArray("4.6", "GL Compatibility")
+boot_splash/bg_color=Color(0.0392, 0.0549, 0.0941, 1)
+config/icon="res://icon.svg"
+
+[autoload]
+
+PersistentBg="*res://autoload/persistent_bg.gd"
+DataRegistry="*res://autoload/DataRegistry.gd"
+GameState="*res://autoload/GameState.gd"
+Audio="*res://autoload/Audio.gd"
+PreloadCache="*res://autoload/preload_cache.gd"
+ShotDiff="*res://autoload/shot_diff.gd"
+CursorTheme="*res://autoload/CursorTheme.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[gui]
+
+theme/custom="res://assets/themes/default_theme.tres"
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.0235, 0.0353, 0.051, 1)

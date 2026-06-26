@@ -1,0 +1,32 @@
+{
+  "A": {
+    "buff": 40,
+    "consumable": 25,
+    "normal": 20,
+    "unique": 15
+  },
+  "B": {
+    "buff": 30,
+    "consumable": 30,
+    "normal": 25,
+    "unique": 15
+  },
+  "C": {
+    "buff": 30,
+    "consumable": 25,
+    "normal": 30,
+    "unique": 15
+  },
+  "D": {
+    "buff": 25,
+    "consumable": 20,
+    "normal": 35,
+    "unique": 20
+  },
+  "E": {
+    "buff": 15,
+    "consumable": 15,
+    "normal": 30,
+    "unique": 40
+  }
+}

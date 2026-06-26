@@ -1,0 +1,46 @@
+# Godot 4+ specific ignores
+.godot/
+.import/
+
+# Imported translations (automatically generated from CSV files)
+*.translation
+
+# Mono-specific ignores (we use GDScript, but just in case)
+.mono/
+data_*/
+mono_crash.*.json
+
+# Build / export artifacts
+/build/
+/export/
+*.pck
+*.zip
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# 像素diff/截图临时文件
+_poc*.png
+_g_*.png
+_g.png
+_diff*.png
+_v_*.png
+
+# dev 截图探针输出 (SHOT_DETAIL / SHOT_VFX / SHOT_ANIM 等; 无扩展名→同时盖 _gvfx_0.png 与 _gvfx_0.png.import)
+_gvfx*
+_ganim*
+_gbattle*
+_eggcrop*
+_beam*
+_cball*
+_proj*
+_vfx_*
+_panel*
+_minibeam*
+_detail_shot*
+_status_crop*
+_hdr_crop*
+build/

@@ -1,0 +1,97 @@
+[
+  {
+    "id": "burn",
+    "name": "灼烧",
+    "iconKey": "status-burn",
+    "category": "dot",
+    "desc": "每回合开始受到火焰魔法伤害; 层数随每 tick 衰减 1/3。",
+    "formula": "伤害 = 层数 + 0.1% × 最大生命 × 层数 (魔法)"
+  },
+  {
+    "id": "poison",
+    "name": "中毒",
+    "iconKey": "status-poison",
+    "category": "dot",
+    "desc": "每回合开始受到法术伤害; 层数随每 tick 衰减 1/4。",
+    "formula": "伤害 = 层数"
+  },
+  {
+    "id": "bleed",
+    "name": "流血",
+    "iconKey": "status-bleed",
+    "category": "dot",
+    "desc": "每回合开始受到物理伤害; 层数随每 tick 衰减 1/4。",
+    "formula": "伤害 = 层数 (物理 DoT, 过护盾但不经护甲减免)"
+  },
+  {
+    "id": "curse",
+    "name": "诅咒",
+    "iconKey": "status-curse-debuff",
+    "category": "dot",
+    "desc": "每回合开始受到真实伤害; 不衰减, 按回合数走完。",
+    "formula": "伤害 = 层数 (穿透所有防御)"
+  },
+  {
+    "id": "stun",
+    "name": "眩晕",
+    "iconKey": "status-stun",
+    "category": "cc",
+    "desc": "跳过下一次行动回合。"
+  },
+  {
+    "id": "fear",
+    "name": "恐惧",
+    "iconKey": "status-fear",
+    "category": "cc",
+    "desc": "被恐惧者对恐惧来源（双头龟）造成的伤害降低相应百分比。"
+  },
+  {
+    "id": "taunt",
+    "name": "嘲讽",
+    "iconKey": "status-taunt",
+    "category": "cc",
+    "desc": "强制目标只能攻击嘲讽源。"
+  },
+  {
+    "id": "shield",
+    "name": "护盾",
+    "iconKey": "status-shield",
+    "category": "buff",
+    "desc": "吸收伤害, 优先于生命值消耗; 多层叠加。"
+  },
+  {
+    "id": "dodge",
+    "name": "闪避",
+    "iconKey": "status-dodge",
+    "category": "buff",
+    "desc": "受击时按几率完全闪避该次伤害（几率 = 闪避值%）。"
+  },
+  {
+    "id": "stealth",
+    "name": "虚化",
+    "iconKey": "status-stealth",
+    "category": "buff",
+    "desc": "受到的物理伤害大幅减免（幽灵龟虚化 -90%）; 真实伤害无视此减免。"
+  },
+  {
+    "id": "reflect",
+    "name": "反伤",
+    "iconKey": "status-reflect",
+    "category": "buff",
+    "desc": "受击时反弹一定比例伤害给攻击者。"
+  },
+  {
+    "id": "chilled",
+    "name": "冰寒",
+    "iconKey": "status-chilled",
+    "category": "debuff",
+    "desc": "攻击力降低 20%。"
+  },
+  {
+    "id": "heal-reduce",
+    "name": "治疗削减",
+    "iconKey": "status-heal-reduce",
+    "category": "debuff",
+    "desc": "受到的治疗量按比例降低（削减幅度由来源决定，常见 -50%）。"
+  }
+]

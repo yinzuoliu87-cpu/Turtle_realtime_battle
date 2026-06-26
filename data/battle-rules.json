@@ -1,0 +1,58 @@
+[
+  {
+    "id": "fire",
+    "name": "烈焰之日",
+    "emoji": "🔥",
+    "icon": "rules/fire.png",
+    "desc": "所有伤害附带灼烧 (4 回合)。",
+    "color": 16737843
+  },
+  {
+    "id": "thunder",
+    "name": "雷暴之日",
+    "emoji": "⚡",
+    "icon": "rules/thunder.png",
+    "desc": "全体暴击率 +20%。",
+    "color": 16498468
+  },
+  {
+    "id": "shield",
+    "name": "铁壁之日",
+    "emoji": "🛡️",
+    "icon": "rules/shield.png",
+    "desc": "所有护盾效果 +30%。",
+    "color": 5032432
+  },
+  {
+    "id": "rage",
+    "name": "狂暴之日",
+    "emoji": "⚔️",
+    "icon": "rules/rage.png",
+    "desc": "全体攻击力 +20%, 护甲和魔抗 -15%。",
+    "color": 15680580
+  },
+  {
+    "id": "equip",
+    "name": "装备之日",
+    "emoji": "🎁",
+    "icon": "rules/equip.png",
+    "desc": "每 3 回合双方各选 1 件装备。",
+    "color": 13073919
+  },
+  {
+    "id": "rain",
+    "name": "下雨天",
+    "emoji": "🌧",
+    "icon": "rules/rain.png",
+    "desc": "每回合对所有单位 5×N 魔法伤害 + 永久 -N 甲/抗 (N = 当前回合数)。",
+    "color": 440020
+  },
+  {
+    "id": "normal",
+    "name": "正常对局",
+    "emoji": "🎲",
+    "icon": "rules/normal.png",
+    "desc": "无额外规则。",
+    "color": 8947848
+  }
+]
