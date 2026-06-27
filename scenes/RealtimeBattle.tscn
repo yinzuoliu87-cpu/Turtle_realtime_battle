@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/scenes/RealtimeBattleScene.gd" id="1_rtb"]
+
+[node name="RealtimeBattle" type="Node2D"]
+script = ExtResource("1_rtb")
