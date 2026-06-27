@@ -56,9 +56,30 @@ const DEFAULT_BASIC := [1.0, 1]
 # ============================================================================
 #  2.5D 坐标 / 渲染常量
 # ============================================================================
-const AVATAR_DIR := "res://assets/sprites/avatars/"
+const AVATAR_DIR := "res://assets/sprites/avatars/"   # 头像兜底 (全身图缺失才退回)
+const SPRITE_DIR := "res://assets/sprites/"           # pets.json img 相对此根
+const TARGET_BODY_H := 2.3                 # 立绘目标世界高度 (米) — 全身图按帧高归一到此, 龟 ≈ 2.3m
 const WS := 0.024                         # 像素 → 米 比例 (ARENA 1140×520 px → ≈27×12.5 米地面)
-const PIXEL_SIZE := 0.012                 # 立绘 像素→米 (龟约 1.5~2 米高)
+const PIXEL_SIZE := 0.012                 # (旧) 头像兜底像素→米; 全身图改按帧高归一到 TARGET_BODY_H
+
+# 动作动画表 (1:1 复用回合制 BattleScene _ACTION_ATTACK/_ACTION_HURT/_ACTION_DEATH).
+#   只有 basic/ghost/ninja/treasure_golem 有真动作帧 (其余龟靠 idle + juice 形变).
+#   值 = [相对路径, 每秒帧率] (帧尺寸 = 图高=方帧; hframes = 宽/帧高). 播一次后回 idle.
+const ACTION_ATTACK := {
+	"basic":  ["pets/animations/basic/attack.png", 14.0],
+	"ghost":  ["pets/animations/ghost/attack.png", 14.0],
+	"ninja":  ["pets/animations/ninja/throw.png", 16.0],
+}
+const ACTION_HURT := {
+	"basic":  ["pets/animations/basic/hurt.png", 16.0],
+	"ghost":  ["pets/animations/ghost/hurt.png", 16.0],
+	"ninja":  ["pets/animations/ninja/hurt.png", 16.0],
+}
+const ACTION_DEATH := {
+	"basic":  ["pets/animations/basic/death.png", 12.0],
+	"ghost":  ["pets/animations/ghost/death.png", 12.0],
+	"ninja":  ["pets/animations/ninja/death.png", 11.0],
+}
 # GROUND_LIFT: 立绘落地基线 — 现在配合"底部 alpha 软渐隐 shader"故意略低(让软淡的脚部轻插进地面盖住交界),
 #   不再靠抬高去躲硬切. 见 §GROUNDING.
 const GROUND_LIFT := 0.06                  # 略沉 → 软淡脚部融进地面 (原 0.35 是为躲硬切的权宜, 已被 shader 根治)
@@ -495,6 +516,22 @@ func _season_leaders() -> Array:
 			break
 	return out
 
+# 单位等级 (血条左侧牌): 玩家队(left)读 GameState.season_level; bot 队随机 1-5 (展示用). 0=不显牌.
+func _unit_level(side: String) -> int:
+	if side == "left":
+		var gs = get_node_or_null("/root/GameState")
+		if gs != null:
+			var lv = gs.get("season_level")
+			if lv != null:
+				return maxi(1, int(lv))
+		return 1
+	# 右队 bot: 给个合理等级 (与玩家相近), 演示血条牌不空
+	var gs2 = get_node_or_null("/root/GameState")
+	var base := 1
+	if gs2 != null and gs2.get("season_level") != null:
+		base = maxi(1, int(gs2.get("season_level")))
+	return base
+
 func _random_bot(n: int) -> Array:
 	var pool: Array = STATS.keys()
 	var rng := RandomNumberGenerator.new()
@@ -517,18 +554,29 @@ func _make_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 	var st: Array = STATS.get(id, DEFAULT_STAT)
 	var hp := float(d.get("hp", 450)) * HP_MULT
 
-	# --- 立绘 billboard sprite (§GROUNDING: material_override = 底部软渐隐 shader → 脚融进地面) ---
-	var tex: Texture2D = _avatar_tex(id)
+	# --- 立绘 billboard sprite: 全身图 + idle sprite-sheet 动画 ---
+	#   sprite-sheet 切帧用 Sprite3D 原生 hframes/vframes/frame (mesh 自动裁到单帧+正确 UV);
+	#   material_override = 接地软渐隐 shader (在单帧 UV 上做底淡, 不重映射 UV).
+	var sd: Dictionary = _resolve_pet_sprite(id)
+	var tex: Texture2D = sd["tex"]
+	var frame_h: int = int(sd.get("frame_h", 64))
+	# pixel_size: 让单帧高度 = TARGET_BODY_H 米 (全身图归一, 不论 64px 还是 500px 都同样大小)
+	var px: float = (TARGET_BODY_H / float(maxi(1, frame_h))) if tex != null else PIXEL_SIZE
 	var spr := Sprite3D.new()
 	spr.name = "Unit_" + id
 	spr.texture = tex
 	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	spr.pixel_size = PIXEL_SIZE
+	spr.pixel_size = px
 	spr.shaded = false
 	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	var grounded_mat: ShaderMaterial = null
 	if tex != null:
-		spr.offset = Vector2(0.0, tex.get_height() * 0.5)  # 脚底贴地: 图整体上抬半高
-		spr.material_override = _make_grounded_material(tex)  # 接地软渐隐 (shader 接管: billboard+底淡+闪白)
+		spr.hframes = int(sd.get("hframes", 1))
+		spr.vframes = int(sd.get("vframes", 1))
+		spr.frame = 0
+		spr.offset = Vector2(0.0, frame_h * 0.5)             # 脚底贴地: 单帧上抬半帧高
+		grounded_mat = _make_grounded_material(tex, sd)      # 接地软渐隐 (单帧 UV 上做底淡)
+		spr.material_override = grounded_mat
 	spr.position = _world_pos(pos, GROUND_LIFT)
 	_world.add_child(spr)
 
@@ -575,7 +623,7 @@ func _make_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 	_world.add_child(ring)
 
 	# --- HP / 龟能 overlay (CanvasLayer 上, 每帧 unproject 定位) ---
-	var bar := _make_status_bar(side)
+	var bar := _make_status_bar(side, _unit_level(side))
 	_ui_layer.add_child(bar["root"])
 
 	return {
@@ -605,8 +653,16 @@ func _make_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 		# 节点引用
 		"sprite": spr, "shadow": shadow, "ring": ring, "shadow_base_scale": SHADOW_BASE,
 		"contact": contact, "contact_base_scale": CONTACT_BASE,
-		"bar_root": bar["root"], "hp_fill": bar["hp"], "shield_fill": bar["shield"], "en_fill": bar["en"],
+		"bar_root": bar["root"], "hp_bar": bar["hp_bar"], "en_fill": bar["en"],
 		"spr_base_offy": spr.offset.y,
+		# 立绘动画态 (idle sprite-sheet 循环 + attack/hurt/death 动作覆盖一次) ----
+		"grounded_mat": grounded_mat,       # 接地 shader 材质 (设 frame uniform 切帧)
+		"idle_sd": sd,                      # idle 帧字典 {tex,frames,fps,frame_h,hframes,vframes}
+		"idle_px": px,                      # idle 全身图 pixel_size (动作切回时复原)
+		"idle_offy": (frame_h * 0.5) if tex != null else 0.0,
+		"anim_t": 0.0,                      # 当前动画累计时间 (驱动帧)
+		"anim_sd": sd,                      # 当前正播的帧字典 (idle 或动作)
+		"anim_action": "",                  # 非空=正在播动作 (attack/hurt/death), 播完回 idle
 		# Phase4 juice 态 (每帧从这些字段重建 scale/modulate/bob, 不叠 tween → 精确复原) ----
 		"spr_base_scale": spr.scale,        # billboard 基准 scale (复原锚点; Sprite3D 默认 (1,1,1))
 		"flash_t": 0.0,                     # 受击闪白剩余秒 (>0 提白, 线性淡回)
@@ -617,12 +673,163 @@ func _make_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 		"bob_phase": randf() * TAU,        # idle bob 起始相位 (错峰, 不齐刷)
 	}
 
-func _avatar_tex(id: String) -> Texture2D:
-	var path := AVATAR_DIR + id + ".png"
-	if ResourceLoader.exists(path):
-		return load(path)
-	push_warning("RealtimeBattle3D: 立绘缺失 %s (占位)" % path)
-	return null
+# ----------------------------------------------------------------------------
+#  立绘解析 (id → 全身图 + sprite-sheet 元数据). 数据来源: pets.json `img`(相对 res://assets/sprites/)
+#  + `sprite`{frames,frameW,frameH,duration}. 1:1 复用回合制 BattleScene 取图口径.
+#  返回 {tex, frames, fps, frame_h, hframes, vframes, loop}. 缺 sprite → 静态全身图 (frames=1).
+#  全身图缺 → 退回 avatars/<id>.png 头像 (占位). 都缺 → tex=null (上层报 warning).
+# ----------------------------------------------------------------------------
+func _resolve_pet_sprite(id: String) -> Dictionary:
+	var d: Dictionary = _data_by_id.get(id, {})
+	var img := str(d.get("img", ""))
+	var meta = d.get("sprite", null)
+	# ① pets.json img 全身图 (优先, 全 28 龟都有)
+	if img != "":
+		var full := SPRITE_DIR + img
+		if ResourceLoader.exists(full):
+			var tex: Texture2D = load(full)
+			if tex != null:
+				return _sprite_dict_from(tex, meta, true)
+	# ② 退回头像 (占位)
+	var av := AVATAR_DIR + id + ".png"
+	if ResourceLoader.exists(av):
+		push_warning("RealtimeBattle3D: %s 无全身图, 退回头像 (占位)" % id)
+		return _sprite_dict_from(load(av), null, true)
+	push_warning("RealtimeBattle3D: 立绘缺失 %s (占位空)" % id)
+	return {"tex": null, "frames": 1, "fps": 8.0, "frame_h": 64, "hframes": 1, "vframes": 1, "loop": true}
+
+# 由 texture + sprite 元数据算帧布局/帧率 (1:1 回合制: declared 帧丢最后一帧, fps=max(4,round(frames*1000/max(200,dur)))).
+#   meta 缺 → 整图当单帧静态. drop_last=注册龟丢末帧 (与回合制 BootScene 一致).
+func _sprite_dict_from(tex: Texture2D, meta, drop_last: bool) -> Dictionary:
+	var tw := tex.get_width()
+	var th := tex.get_height()
+	if meta is Dictionary and (meta as Dictionary).has("frameW"):
+		var m: Dictionary = meta
+		var fw: int = maxi(1, int(m.get("frameW", tw)))
+		var fh: int = maxi(1, int(m.get("frameH", th)))
+		var hframes: int = maxi(1, int(floor(float(tw) / float(fw))))
+		var vframes: int = maxi(1, int(floor(float(th) / float(fh))))
+		var frame_total: int = hframes * vframes
+		var declared: int = int(m.get("frames", frame_total))
+		var frames: int = maxi(1, mini(declared, frame_total - 1)) if drop_last else maxi(1, mini(declared, frame_total))
+		var dur_ms: float = float(m.get("duration", 800))
+		var fps: float = maxf(4.0, roundf(float(frames) * 1000.0 / maxf(200.0, dur_ms)))
+		return {"tex": tex, "frames": frames, "fps": fps, "frame_h": fh, "hframes": hframes, "vframes": vframes, "loop": true}
+	# 单帧静态全身图
+	return {"tex": tex, "frames": 1, "fps": 8.0, "frame_h": th, "hframes": 1, "vframes": 1, "loop": true}
+
+# 动作动画表项 (attack/hurt/death) → 帧字典. frame_size = 图高 (方帧); hframes = 宽/帧高. 播一次不循环.
+func _resolve_action(rel: String, fps: float) -> Dictionary:
+	var full := SPRITE_DIR + rel
+	if not ResourceLoader.exists(full):
+		return {}
+	var tex: Texture2D = load(full)
+	if tex == null:
+		return {}
+	var tw := tex.get_width()
+	var th := tex.get_height()
+	var fh := th
+	var hframes: int = maxi(1, int(floor(float(tw) / float(fh))))
+	return {"tex": tex, "frames": hframes, "fps": fps, "frame_h": fh, "hframes": hframes, "vframes": 1, "loop": false}
+
+# 召唤体立绘解析: spr_id (如 candy-bomb/conch-worm/doll-bear/mech/minion/treasure-golem) → pets/<spr_id>.png.
+#   treasure_golem 有 idle 动画帧 → 用 sheet; 其余多为静态全身图. 缺 → tex=null (上层退色块).
+func _resolve_summon_sprite(spr_id: String) -> Dictionary:
+	if spr_id == "":
+		return {"tex": null}
+	# treasure_golem idle 动画 (宝箱怪有专属帧, frameW/H=74/73, 7帧)
+	if spr_id == "treasure-golem" or spr_id == "treasure_golem":
+		var anim := SPRITE_DIR + "pets/animations/treasure_golem/idle.png"
+		if ResourceLoader.exists(anim):
+			var t: Texture2D = load(anim)
+			if t != null:
+				return _sprite_dict_from(t, {"frames": 8, "frameW": 74, "frameH": 73, "duration": 800}, true)
+	# 通用: pets/<spr_id>.png 静态全身图
+	var full := SPRITE_DIR + "pets/" + spr_id + ".png"
+	if ResourceLoader.exists(full):
+		var tex: Texture2D = load(full)
+		if tex != null:
+			return _sprite_dict_from(tex, null, false)
+	return {"tex": null}
+
+# ----------------------------------------------------------------------------
+#  立绘动画驱动: 每帧推进 idle 循环 / 动作一次. 设 Sprite3D.frame 切帧 (原生裁帧).
+#  idle: frame = int(t*fps) % frames (循环). 动作: 播到末帧后回 idle (清 anim_action).
+# ----------------------------------------------------------------------------
+func _advance_anim(u: Dictionary, delta: float) -> void:
+	var spr = u.get("sprite", null)
+	if not is_instance_valid(spr):
+		return
+	var sd: Dictionary = u.get("anim_sd", {})
+	var frames: int = int(sd.get("frames", 1))
+	var fps: float = float(sd.get("fps", 8.0))
+	if frames <= 1 or fps <= 0.0:
+		spr.frame = 0
+		return
+	u["anim_t"] = float(u.get("anim_t", 0.0)) + delta
+	var idx := int(u["anim_t"] * fps)
+	if u.get("anim_action", "") != "":
+		# 动作播一次: 到末帧 → 回 idle
+		if idx >= frames:
+			_set_anim_sheet(u, u.get("idle_sd", {}), "", true)
+			return
+	else:
+		idx = idx % frames   # idle 循环
+	spr.frame = clampi(idx, 0, frames - 1)
+
+# 切换当前播放的帧表 (idle 或动作): 换 texture + Sprite3D.hframes/vframes/frame + 复位计时/pixel_size/offset.
+#   is_idle=true 时复原 idle 的 px/offy; 动作图帧高可能不同, 按其帧高重算归一.
+func _set_anim_sheet(u: Dictionary, sd: Dictionary, action: String, is_idle: bool) -> void:
+	var spr = u.get("sprite", null)
+	var mat = u.get("grounded_mat", null)
+	if not is_instance_valid(spr) or sd.is_empty() or sd.get("tex", null) == null:
+		return
+	var tex: Texture2D = sd["tex"]
+	spr.texture = tex
+	spr.hframes = int(sd.get("hframes", 1))
+	spr.vframes = int(sd.get("vframes", 1))
+	spr.frame = 0
+	if mat != null and mat is ShaderMaterial:
+		(mat as ShaderMaterial).set_shader_parameter("tex", tex)
+	var frame_h: int = int(sd.get("frame_h", 64))
+	if is_idle:
+		spr.pixel_size = float(u.get("idle_px", PIXEL_SIZE))
+		spr.offset = Vector2(0.0, float(u.get("idle_offy", frame_h * 0.5)))
+	else:
+		# 动作帧高可能 != idle (basic idle 64 / attack 120): 按动作帧高归一到同样世界高度, 脚底对齐
+		spr.pixel_size = TARGET_BODY_H / float(maxi(1, frame_h))
+		spr.offset = Vector2(0.0, frame_h * 0.5)
+	u["anim_sd"] = sd
+	u["anim_action"] = action
+	u["anim_t"] = 0.0
+
+# 触发动作动画 (attack/hurt/death). 无对应帧表的龟静默忽略 (靠 idle+juice 形变). death 播完不回 idle.
+func _play_action(u: Dictionary, kind: String) -> void:
+	if u == null or not is_instance_valid(u.get("sprite", null)):
+		return
+	# death 优先级最高; 已在播 death 不打断
+	if u.get("anim_action", "") == "death":
+		return
+	var id := str(u.get("id", ""))
+	var table: Dictionary
+	match kind:
+		"attack": table = ACTION_ATTACK
+		"hurt":   table = ACTION_HURT
+		"death":  table = ACTION_DEATH
+		_:        return
+	if not table.has(id):
+		return
+	# hurt 不打断正在播的 attack (避免普攻动作被打断闪烁); attack 不打断 hurt 中
+	if kind != "death" and u.get("anim_action", "") in ["attack", "hurt"]:
+		if kind == "hurt" and u.get("anim_action", "") == "hurt":
+			pass   # 刷新 hurt
+		elif kind != u.get("anim_action", ""):
+			return
+	var entry: Array = table[id]
+	var asd := _resolve_action(str(entry[0]), float(entry[1]))
+	if asd.is_empty():
+		return
+	_set_anim_sheet(u, asd, kind, false)
 
 # ----------------------------------------------------------------------------
 #  §GROUNDING — 立绘底部软渐隐 ShaderMaterial (根治"纸板硬切地面").
@@ -643,6 +850,8 @@ render_mode unshaded, cull_disabled, depth_prepass_alpha, shadows_disabled;
 uniform sampler2D tex : source_color, filter_nearest;
 uniform float fade_frac = 0.16;   // 从底起算渐隐区占图高比例
 uniform float fade_floor = 0.04;  // 接地处残留 alpha 下限
+// 注: sprite-sheet 切帧用 Sprite3D 原生 hframes/vframes/frame (mesh+UV 已裁到单帧),
+//     UV 到此已是单帧内 0..1, shader 只在其上做底部软渐隐, 不再重映射 (重映射会与原生裁切叠加成横向拉花).
 
 void vertex() {
 	// upright billboard: 取相机右/上/前向量重建朝向, 保留 MODEL 缩放 (squash/stretch 仍生效).
@@ -655,8 +864,8 @@ void vertex() {
 }
 
 void fragment() {
-	vec4 c = texture(tex, UV);
-	// UV.y: 0=图顶, 1=图底. 底部这段线性渐隐.
+	vec4 c = texture(tex, UV);       // UV = 当前帧内 0..1 (Sprite3D hframes 已裁)
+	// UV.y: 0=帧顶, 1=帧底. 底部这段线性渐隐.
 	float fade = 1.0;
 	if (UV.y > 1.0 - fade_frac) {
 		float k = (1.0 - UV.y) / max(fade_frac, 0.0001);  // 渐隐线处=1, 最底=0
@@ -669,8 +878,8 @@ void fragment() {
 	_ground_fade_shader = sh
 	return sh
 
-# 给一张立绘 texture 造接地 shader 材质 (每龟独立: texture/参数不同)
-func _make_grounded_material(tex: Texture2D) -> ShaderMaterial:
+# 给一张立绘 texture 造接地 shader 材质. 切帧由 Sprite3D 原生 hframes 负责, shader 只做底淡 (无帧 uniform).
+func _make_grounded_material(tex: Texture2D, _sd: Dictionary = {}) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	mat.shader = _get_ground_fade_shader()
 	mat.set_shader_parameter("tex", tex)
@@ -722,27 +931,56 @@ func _make_ring_texture(col: Color) -> GradientTexture2D:
 	gt.width = 96; gt.height = 96
 	return gt
 
-# 状态条: HP(绿) + 护盾(金, 盖在HP上) + 龟能(蓝, 下一行). 返回各 fill 引用.
-func _make_status_bar(side: String) -> Dictionary:
+# 状态条: 复用回合制版 HpBar 组件 (自定义 _draw: 黑边/暗红槽/玻璃高光/逐行渐变填充/护盾段/受击红trail+白闪/刻度).
+#   + 左侧等级牌 (棕底金字 Panel, 回合制 turtle-hud 同款) + 下方龟能条 (实时资源, HpBar 不画).
+#   level: 玩家龟读 GameState.season_level; 召唤体无牌. 返回各组件引用供 _update_overlay 刷新.
+const BAR_W := 88.0      # HpBar 宽 (turtle-hud BAR_W)
+const BAR_H := 5.0       # HpBar 高
+func _make_status_bar(side: String, level: int = 0) -> Dictionary:
 	var root := Control.new()
-	root.custom_minimum_size = Vector2(60, 14)
-	root.size = Vector2(60, 14)
-	var hp_bg := ColorRect.new()
-	hp_bg.color = Color("#3a0d0d"); hp_bg.position = Vector2(0, 0); hp_bg.size = Vector2(60, 7)
-	root.add_child(hp_bg)
-	var hp_fill := ColorRect.new()
-	hp_fill.color = Color("#39d353"); hp_fill.position = Vector2(0, 0); hp_fill.size = Vector2(60, 7)
-	root.add_child(hp_fill)
-	var shield_fill := ColorRect.new()
-	shield_fill.color = Color("#ffd93d"); shield_fill.position = Vector2(0, 0); shield_fill.size = Vector2(0, 7)
-	root.add_child(shield_fill)
+	root.custom_minimum_size = Vector2(BAR_W, 22)
+	root.size = Vector2(BAR_W, 22)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# --- 等级牌 (棕底金字, 在血条左侧) ---
+	var lv_badge: Panel = null
+	if level > 0:
+		var badge_fs := 10
+		lv_badge = Panel.new()
+		var lv_sb := StyleBoxFlat.new()
+		lv_sb.bg_color = Color("#2a1d12")           # 棕色 (turtle-hud)
+		lv_sb.set_border_width_all(1)
+		lv_sb.border_color = Color(0, 0, 0, 0.55)
+		lv_sb.set_corner_radius_all(0)
+		lv_badge.add_theme_stylebox_override("panel", lv_sb)
+		lv_badge.custom_minimum_size = Vector2(badge_fs + 12, BAR_H + 6)
+		lv_badge.size = Vector2(badge_fs + 12, BAR_H + 6)
+		lv_badge.position = Vector2(-(badge_fs + 14), 6.0)
+		lv_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var lv_lbl := Label.new()
+		lv_lbl.text = "%d" % level
+		lv_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lv_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lv_lbl.set_anchors_preset(Control.PRESET_FULL_RECT)
+		lv_lbl.add_theme_font_size_override("font_size", badge_fs)
+		lv_lbl.add_theme_color_override("font_color", Color("#ffd93d"))   # 金字
+		lv_badge.add_child(lv_lbl)
+		root.add_child(lv_badge)
+	# --- HpBar 组件 (Node2D, 自定义 _draw) ---
+	var hp_bar: HpBar = HpBarScene.new()
+	hp_bar.setup(side == "left", false)
+	hp_bar.position = Vector2(0, 8)   # 在 root 内下移, 给上方留头 (shadow/border 在 -border)
+	root.add_child(hp_bar)
+	# --- 龟能条 (实时资源, 在 HP 条下方; HpBar 不画) ---
+	var en_y := 8.0 + BAR_H + 3.0
 	var en_bg := ColorRect.new()
-	en_bg.color = Color(0, 0, 0, 0.5); en_bg.position = Vector2(0, 8); en_bg.size = Vector2(60, 4)
+	en_bg.color = Color(0, 0, 0, 0.55); en_bg.position = Vector2(0, en_y); en_bg.size = Vector2(BAR_W, 3)
+	en_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(en_bg)
 	var en_fill := ColorRect.new()
-	en_fill.color = Color("#48c9ff"); en_fill.position = Vector2(0, 8); en_fill.size = Vector2(0, 4)
+	en_fill.color = Color("#48c9ff"); en_fill.position = Vector2(0, en_y); en_fill.size = Vector2(0, 3)
+	en_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(en_fill)
-	return {"root": root, "hp": hp_fill, "shield": shield_fill, "en": en_fill}
+	return {"root": root, "hp_bar": hp_bar, "en": en_fill, "level_badge": lv_badge}
 
 # ============================================================================
 #  主循环 (移动 / 索敌 / 普攻 / 龟能 / 击飞物理 — 复用 2D 口径)
@@ -764,6 +1002,9 @@ func _process(delta: float) -> void:
 			_step_projectiles(delta)
 			_check_end()
 		_juice_decay(delta)        # squash/闪白/挥击 等计时衰减 (冻结期间不衰 → 冲击姿势保持)
+		for u in _units:           # 立绘帧动画推进 (idle 循环 / 动作一次), 冻结期不推进保持冲击姿势
+			if u["alive"] or u.get("anim_action", "") == "death":
+				_advance_anim(u, delta)
 	_update_camera_shake(delta)    # 震屏始终推进 (含冻结期)
 	_update_world_transforms()
 	_update_overlay()
@@ -928,6 +1169,7 @@ func _separation(u: Dictionary) -> Vector2:
 # ============================================================================
 func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	_anticipate(u)                  # Phase4: 普攻预备(缩)+挥出(伸) 前后摇形变
+	_play_action(u, "attack")       # 有动作帧的龟(basic/ghost/ninja)播普攻动画, 其余靠 juice 形变
 	var spec: Array = BASIC_ATK.get(u["id"], DEFAULT_BASIC)
 	var scale: float = spec[0]
 	var hits: int = spec[1]
@@ -1171,13 +1413,23 @@ func _kill(u: Dictionary, killer = null) -> void:
 		_eq_on_kill(killer, u)             # on-kill: 击杀者装备 (暴君之牙处决回血 等)
 	_eq_on_death(u, killer)                # on-death: 阵亡者装备 (复活海螺变虫 / 齿轮折币 / 玩偶熊)
 	_on_unit_death(u, killer)
-	# 立绘+影+环+接触影 淡出 (contact 仅玩家龟有, 用 .get 兜召唤体)
-	for key in ["sprite", "shadow", "ring", "contact"]:
+	# 有死亡帧的龟(basic/ghost/ninja)播 death 动画 → 影/环/血条立即淡, 立绘延后淡(让动画演完)
+	_play_action(u, "death")
+	var has_death_anim: bool = (u.get("anim_action", "") == "death")
+	# 影+环+接触影 淡出 (立绘单独处理, 让 death 动画演完再淡)
+	for key in ["shadow", "ring", "contact"]:
 		var n = u.get(key, null)
 		if is_instance_valid(n):
 			var tw := create_tween()
 			tw.tween_property(n, "modulate:a", 0.0, 0.4)
 			tw.tween_callback(n.hide)
+	var spr_n = u.get("sprite", null)
+	if is_instance_valid(spr_n):
+		var stw := create_tween()
+		if has_death_anim:
+			stw.tween_interval(0.55)        # 等 death 帧演完 (~7-13帧 @11-12fps) 再淡出
+		stw.tween_property(spr_n, "modulate:a", 0.0, 0.4)
+		stw.tween_callback(spr_n.hide)
 	if is_instance_valid(u["bar_root"]):
 		u["bar_root"].visible = false
 
@@ -1997,14 +2249,21 @@ func _spawn_summon(owner: Dictionary, kind: String, hp: float, atk: float, behav
 	spr.shaded = false
 	spr.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
 	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	var tex: Texture2D = null
-	if spr_id != "":
-		tex = _avatar_tex(spr_id)
+	var su_sd: Dictionary = _resolve_summon_sprite(spr_id)
+	var tex: Texture2D = su_sd.get("tex", null)
+	var su_grounded: ShaderMaterial = null
 	if tex != null:
+		var fh: int = int(su_sd.get("frame_h", tex.get_height()))
+		# 召唤体按 col_size 缩放 (相对全身龟略小): 帧高归一到 ~col_size*WS 的世界高
 		spr.texture = tex
-		spr.pixel_size = PIXEL_SIZE * (col_size / 56.0)
-		spr.offset = Vector2(0.0, tex.get_height() * 0.5)
-		spr.material_override = _make_grounded_material(tex)   # §GROUNDING: 召唤体立绘也底部软渐隐
+		spr.hframes = int(su_sd.get("hframes", 1))
+		spr.vframes = int(su_sd.get("vframes", 1))
+		spr.frame = 0
+		spr.alpha_cut = SpriteBase3D.ALPHA_CUT_DISABLED    # 接地 shader 自管 alpha (软渐隐), 不硬切
+		spr.pixel_size = (TARGET_BODY_H * (col_size / 56.0)) / float(maxi(1, fh))
+		spr.offset = Vector2(0.0, fh * 0.5)
+		su_grounded = _make_grounded_material(tex, su_sd)   # §GROUNDING 软渐隐 (动画召唤体)
+		spr.material_override = su_grounded
 	else:
 		spr.texture = _make_block_texture(Color(col.r, col.g, col.b, 0.9))
 		spr.pixel_size = (col_size * WS) / 64.0
@@ -2025,9 +2284,8 @@ func _spawn_summon(owner: Dictionary, kind: String, hp: float, atk: float, behav
 	shadow.position = _world_pos(pos, 0.02)
 	_world.add_child(shadow)
 
-	# --- HP overlay (召唤体只有血条) ---
-	var bar := _make_status_bar(owner["side"])
-	bar["shield"].visible = false
+	# --- HP overlay (召唤体只有血条, 无等级牌) ---
+	var bar := _make_status_bar(owner["side"], 0)
 	bar["en"].visible = false
 	_ui_layer.add_child(bar["root"])
 
@@ -2063,8 +2321,12 @@ func _spawn_summon(owner: Dictionary, kind: String, hp: float, atk: float, behav
 		"equips": [], "eq_state": {}, "hp50_fired": false,
 		# 节点引用
 		"sprite": spr, "shadow": shadow, "ring": null, "shadow_base_scale": SHADOW_BASE * 0.6,
-		"bar_root": bar["root"], "hp_fill": bar["hp"], "shield_fill": bar["shield"], "en_fill": bar["en"],
+		"bar_root": bar["root"], "hp_bar": bar["hp_bar"], "en_fill": bar["en"],
 		"spr_base_offy": spr.offset.y,
+		# 立绘动画态 (召唤体若有 sheet 也循环 idle) ----
+		"grounded_mat": su_grounded,
+		"idle_sd": su_sd, "idle_px": spr.pixel_size, "idle_offy": spr.offset.y,
+		"anim_t": 0.0, "anim_sd": su_sd, "anim_action": "",
 		# Phase4 juice 态 (召唤体同享 squash/闪白/bob) ----
 		"spr_base_scale": spr.scale,
 		"flash_t": 0.0, "hitsq_t": 0.0, "land_t": 0.0, "swing_t": 0.0, "windup_t": 0.0,
@@ -2290,6 +2552,7 @@ func _flash(u: Dictionary) -> void:
 		return
 	u["flash_t"] = JUICE_FLASH_SEC
 	u["hitsq_t"] = JUICE_HIT_SQUASH_SEC
+	_play_action(u, "hurt")         # 有受击帧的龟播 hurt 动画 (不打断 death/attack)
 
 # 命中重量分级: 单段伤害(或暴击/大招标志)决定 闪白/顿帧/震屏/粒子 强度.
 # heavy=技能/暴击命中级; big=大招/击飞级. light(普攻小段)只闪白不顿帧不抖.
@@ -2368,13 +2631,15 @@ func _update_overlay() -> void:
 		if not u["alive"]:
 			root.visible = false
 			continue
-		# 更新 fill 宽度 (召唤体只有血条, 宽度按 hp_w 占满 60 槽)
-		if u.get("is_summon", false):
-			u["hp_fill"].size.x = 60.0 * clampf(u["hp"] / u["maxHp"], 0.0, 1.0)
-		else:
-			u["hp_fill"].size.x = 60.0 * clampf(u["hp"] / u["maxHp"], 0.0, 1.0)
-			u["shield_fill"].size.x = 60.0 * clampf(u["shield"] / u["maxHp"], 0.0, 1.0)
-			u["en_fill"].size.x = 60.0 * clampf(u["energy"] / MAX_ENERGY, 0.0, 1.0)
+		# HpBar 组件刷新 (HP/护盾/受击红trail+白闪/刻度全自带, 1:1 回合制血条).
+		#   update_state 读 u 的 maxHp/hp/shield 字段; 召唤体也是同 HpBar (无护盾段则自然不画).
+		var hb = u.get("hp_bar", null)
+		if hb != null and is_instance_valid(hb):
+			hb.update_state(u)
+		# 龟能条 (实时资源; 召唤体的 en_fill 已 hide)
+		var enf = u.get("en_fill", null)
+		if enf != null and is_instance_valid(enf) and enf.visible:
+			enf.size.x = BAR_W * clampf(u["energy"] / MAX_ENERGY, 0.0, 1.0)
 		# 头顶世界坐标 → 屏幕
 		var head := _world_pos(u["pos"], u["height"] + 2.4)
 		if _cam.is_position_behind(head):
@@ -2382,7 +2647,7 @@ func _update_overlay() -> void:
 			continue
 		root.visible = true
 		var screen: Vector2 = _cam.unproject_position(head)
-		root.position = screen - Vector2(30, 8)   # 居中 (条宽 60)
+		root.position = screen - Vector2(BAR_W * 0.5, 8)   # 居中 (条宽 BAR_W)
 
 # ============================================================================
 #  灭队判定 + 结算横幅 (复用 2D _check_end; 赛季结算 Phase 3 接 GameState)
