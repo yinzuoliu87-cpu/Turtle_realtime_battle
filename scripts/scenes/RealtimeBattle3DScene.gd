@@ -1,4 +1,5 @@
 extends Node3D
+const HpBarScene := preload("res://scripts/scenes/hp_bar.gd")   # 回合制版好看血条 (自定义 _draw, 复用)
 ## RealtimeBattle3DScene — 2.5D 战斗核心 (Phase 2, 见 docs/design/2.5D战斗架构方案.md §四.2-4)
 ## 真阵容在 2.5D 里能打: 读 GameState 配队 / demo 兜底 → Sprite3D billboard + blob影 + HP/龟能 overlay.
 ## 移动·索敌·普攻·分离·龟能·灭队判定 全复用 2D 版 RealtimeBattleScene 的逻辑口径(数值/公式/STATS),
@@ -453,10 +454,31 @@ func _resolve_left() -> Array:
 	return ldr if ldr.size() >= 1 else LEFT_DEMO.duplicate()
 
 func _resolve_right() -> Array:
-	# 有赛季阵容 → 随机 bot 3 龟; demo 时固定对位 (后续 Phase 3 接 ghost 快照)
+	# 无赛季阵容(直接进战斗调试) → demo 固定对位.
 	if _season_leaders().is_empty():
 		return RIGHT_DEMO.duplicate()
-	return _random_bot(3)
+	# 有赛季阵容 → 优先用匹配抽到的对手 ghost.leaders (Matchmaking 写 dual_ghost); 没有则随机 bot 兜底.
+	var ghost_leaders := _ghost_leaders()
+	return ghost_leaders if not ghost_leaders.is_empty() else _random_bot(3)
+
+## 匹配对手快照的首领 id (Matchmaking 写 GameState.dual_ghost). 过滤到 STATS 已知龟, 上限 3.
+func _ghost_leaders() -> Array:
+	var gs = get_node_or_null("/root/GameState")
+	if gs == null:
+		return []
+	var dg = gs.get("dual_ghost")
+	if not (dg is Dictionary):
+		return []
+	var ldr = (dg as Dictionary).get("leaders", [])
+	if not (ldr is Array):
+		return []
+	var out: Array = []
+	for x in ldr:
+		if STATS.has(str(x)):
+			out.append(str(x))
+		if out.size() >= 3:
+			break
+	return out
 
 func _season_leaders() -> Array:
 	var gs = get_node_or_null("/root/GameState")

@@ -156,10 +156,10 @@ func _show_page(page: String) -> void:
 
 ## 建主菜单按钮 (实时版: 单页, 各按钮从左滑入入场). _on_first_load 仅保留以兼容调用签名.
 func _build_page_buttons(_page: String, _on_first_load: bool) -> void:
-	# 干净的商业级实时版主菜单: 5 入口 (开始战斗/背包/商店/排行榜/设置). 战斗 → 2.5D 版 RealtimeBattle3D.
+	# 干净的商业级实时版主菜单: 5 入口 (开始战斗/背包/商店/排行榜/设置). 战斗 → 选龟 → 匹配 → 2.5D 战斗.
 	#   去掉回合制残留的 online/local 子页 (快速匹配/野生对局/房间对战/测试模式/推塔) — 用户嫌乱看不懂.
 	var items: Array = [
-		["⚔ 开始战斗", func(): _go("RealtimeBattle3D"), false],
+		["⚔ 开始战斗", func(): _start_battle_flow(), false],
 		["🎒 背包", func(): _go("Inventory"), false],
 		["🛒 商店", func(): _go("Shop"), false],
 		["🏆 排行榜", func(): _go("Leaderboard"), false],
@@ -533,6 +533,16 @@ func _tile_press(holder: Control, cb: Callable) -> void:
 # ─── 路由 ───
 func _go(scene: String) -> void:
 	get_tree().change_scene_to_file("res://scenes/%s.tscn" % scene)
+
+
+## 开始战斗 → 选龟流程 (实时版): 选龟(TeamSelect) → 匹配(Matchmaking) → 2.5D 战斗(RealtimeBattle3D).
+##   非教程的常规入口. mode 置 single (含经济, 非教程标记). 进选龟前清掉上局对手快照, 让 Matchmaking 重抽.
+func _start_battle_flow() -> void:
+	GameState.mode = "single"
+	GameState.tutorial = false
+	GameState.dual_ghost = {}
+	GameState.dual_opponent = {}
+	_go("TeamSelect")
 
 
 ## 教程: 确认弹窗 → 固定阵容教程战斗 (1:1 PoC confirmStartTutorial → startTutorialBattle, 直进 Battle 不经选龟)
