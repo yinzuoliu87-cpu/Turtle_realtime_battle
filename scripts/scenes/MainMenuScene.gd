@@ -659,9 +659,8 @@ func _go(scene: String) -> void:
 	get_tree().change_scene_to_file("res://scenes/%s.tscn" % scene)
 
 func _on_test() -> void:
-	# 测试模式(仅debug build): 改为快速进双路推塔(=正式玩法). 旧深海闯关/老单局3v3已废 → 不再走 (用户 2026-06-23)
-	GameState.mode = "duallane"; GameState.clear_team(); GameState.reset_dual_lane()
-	get_tree().change_scene_to_file("res://scenes/Matchmaking.tscn")
+	# 测试模式(仅debug build): 实时版直接进实时战斗 (旧双路推塔Matchmaking已弃, 见死代码清理计划.md Phase1)
+	get_tree().change_scene_to_file("res://scenes/RealtimeBattle.tscn")
 
 
 ## 教程: 确认弹窗 → 固定阵容教程战斗 (1:1 PoC confirmStartTutorial → startTutorialBattle, 直进 Battle 不经选龟)
