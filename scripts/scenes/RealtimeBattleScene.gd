@@ -248,7 +248,7 @@ func _physics_process(delta: float) -> void:
 				intent = to_t.normalized()
 			elif not u["melee"] and dist < rng * 0.7:
 				intent = -to_t.normalized()
-			intent += _separation(u)
+			intent += _separation(u) * (0.25 if dist <= rng else 1.0)   # 到攻击射程→减弱软分离,站稳原地打不抖(Botworld"停下来打"); 接近中才全力分离防重叠
 			if intent.length() > 0.01:
 				u["vel"] = intent.normalized() * spd
 				u["pos"] += u["vel"] * delta
