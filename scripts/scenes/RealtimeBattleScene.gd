@@ -274,8 +274,21 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	if u["melee"]:
 		_apply_damage(tgt, dmg, Color("#ffe08a"))
 		_flash(tgt)
+		_melee_lunge(u, tgt)
 	else:
 		_fire_bolt(u["pos"], tgt, dmg, Color("#ffe08a"))   # 远程: 投射物飞到目标再落伤
+
+func _melee_lunge(u: Dictionary, tgt: Dictionary) -> void:
+	var s = u["spr"]
+	if not is_instance_valid(s):
+		return
+	var dir: Vector2 = tgt["pos"] - u["pos"]
+	if dir.length() <= 1.0:
+		return
+	var base: Vector2 = s.position
+	var tw := create_tween()
+	tw.tween_property(s, "position", base + dir.normalized() * 12.0, 0.06)
+	tw.tween_property(s, "position", base, 0.1)
 
 func _fire_bolt(from: Vector2, tgt: Dictionary, dmg: int, col: Color) -> void:
 	var to: Vector2 = tgt["pos"]
