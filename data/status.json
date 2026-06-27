@@ -4,7 +4,7 @@
     "name": "灼烧",
     "iconKey": "status-burn",
     "category": "dot",
-    "desc": "每回合开始受到火焰魔法伤害; 层数随每 tick 衰减 1/3。",
+    "desc": "每秒受到火焰魔法伤害; 层数随每 tick 衰减 1/3。",
     "formula": "伤害 = 层数 + 0.1% × 最大生命 × 层数 (魔法)"
   },
   {
@@ -12,7 +12,7 @@
     "name": "中毒",
     "iconKey": "status-poison",
     "category": "dot",
-    "desc": "每回合开始受到法术伤害; 层数随每 tick 衰减 1/4。",
+    "desc": "每秒受到法术伤害; 层数随每 tick 衰减 1/4。",
     "formula": "伤害 = 层数"
   },
   {
@@ -20,7 +20,7 @@
     "name": "流血",
     "iconKey": "status-bleed",
     "category": "dot",
-    "desc": "每回合开始受到物理伤害; 层数随每 tick 衰减 1/4。",
+    "desc": "每秒受到物理伤害; 层数随每 tick 衰减 1/4。",
     "formula": "伤害 = 层数 (物理 DoT, 过护盾但不经护甲减免)"
   },
   {
@@ -28,7 +28,7 @@
     "name": "诅咒",
     "iconKey": "status-curse-debuff",
     "category": "dot",
-    "desc": "每回合开始受到真实伤害; 不衰减, 按回合数走完。",
+    "desc": "每秒受到真实伤害; 不衰减, 按持续时间走完。",
     "formula": "伤害 = 层数 (穿透所有防御)"
   },
   {
@@ -36,7 +36,7 @@
     "name": "眩晕",
     "iconKey": "status-stun",
     "category": "cc",
-    "desc": "跳过下一次行动回合。"
+    "desc": "短暂无法行动。"
   },
   {
     "id": "fear",

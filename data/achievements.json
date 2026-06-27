@@ -90,7 +90,7 @@
   {
     "id": "one_turn_ko",
     "name": "速战速决",
-    "desc": "一回合内击杀 ≥ 3",
+    "desc": "短时间内击杀 ≥ 3",
     "category": "battle",
     "emoji": "⚡",
     "rewardCoins": 100
@@ -362,7 +362,7 @@
   {
     "id": "turn_50",
     "name": "持久战",
-    "desc": "战斗持续 50 回合",
+    "desc": "战斗持续 125 秒",
     "category": "special",
     "emoji": "⏰",
     "rewardCoins": 80
