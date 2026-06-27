@@ -65,6 +65,43 @@ const GRAVITY := -22.0                     # 击飞重力 (m/s^2)
 const KNOCK_VY := 6.0                      # 击飞竖直初速 (m/s) — 真抛物抬起再砸地
 const KNOCK_PUSH := 5.5                    # 击飞横向初速 (米/s, 远离施法者)
 
+# ============================================================================
+#  Phase 4: 商业级打击感 juice 参数 (全 F5 可调) — 见本文件 §JUICE
+#  设计: 所有单位视觉态(squash/stretch scale · 受击闪白 modulate · idle bob)统一由
+#  _update_world_transforms() 每帧从 per-unit juice 字段重建 → 从 base 精确复原, 不用重叠
+#  tween, 杜绝累积漂移/视觉残留 (回归高发区铁律: 共享视觉态别叠 tween, restore 到 base).
+# ============================================================================
+# ① squash & stretch (billboard scale; base=(1,1,1), 各相位叠乘后归一)
+const JUICE_STRETCH_UP := Vector2(0.78, 1.32)     # 击飞起跳: x 收 y 拉 (拉长)
+const JUICE_SQUASH_LAND := Vector2(1.30, 0.70)    # 落地: x 张 y 压 (压扁)
+const JUICE_LAND_SEC := 0.20                       # 落地压扁回弹时长
+const JUICE_HIT_SQUASH := Vector2(1.14, 0.86)     # 受击瞬间轻压扁
+const JUICE_HIT_SQUASH_SEC := 0.16                 # 受击压扁回弹时长
+const JUICE_WINDUP_SCALE := 0.88                   # 出招预备: 整体微缩 (anticipation)
+const JUICE_WINDUP_SEC := 0.10                     # 预备时长
+const JUICE_SWING_SCALE := 1.16                    # 出招挥出: 整体微伸 (follow-through)
+const JUICE_SWING_SEC := 0.14                      # 挥出回弹时长
+# ② 受击闪白 hit-flash (Sprite3D modulate 瞬白 → 淡回)
+const JUICE_FLASH_COLOR := Color(2.4, 2.4, 2.4)    # 过曝白 (>1 提亮; shaded=false 下生效)
+const JUICE_FLASH_SEC := 0.11                      # 闪白淡回时长
+# ③ 顿帧 hit-stop (极短跳过 _tick 推进, 不碰 Engine.time_scale — 用计时恢复)
+const JUICE_HITSTOP_HEAVY := 0.055                 # 大招/暴击命中卡顿
+const JUICE_HITSTOP_KNOCK := 0.060                 # 击飞卡顿
+const JUICE_HITSTOP_LIGHT := 0.0                   # 轻击不卡 (留旋钮; >0 才触发)
+const JUICE_HITSTOP_DMG_GATE := 60.0               # 单段伤害 ≥ 此值才算"重击"触发顿帧/闪白增强
+# ④ 震屏 screen shake (Camera3D 衰减随机偏移; 强度分级)
+const JUICE_SHAKE_DECAY := 9.0                     # 衰减速率 (越大越快归位)
+const JUICE_SHAKE_FREQ := 32.0                     # 抖动频率 (Hz 近似)
+const JUICE_SHAKE_LIGHT := 0.0                     # 普通命中 = 不抖
+const JUICE_SHAKE_HEAVY := 0.10                    # 暴击/技能重击
+const JUICE_SHAKE_BIG := 0.22                      # 大招/击飞 (米, 镜头偏移幅度)
+const JUICE_SHAKE_MAX := 0.30                      # 幅度上限 (多事件叠加封顶)
+# ⑤ idle 呼吸 bob (待机立绘极轻上下浮; 移动/击飞不 bob)
+const JUICE_BOB_AMP := 0.035                       # 浮动幅度 (米)
+const JUICE_BOB_SPEED := 2.2                       # 浮动角速度
+# ⑥ 冲击粒子 (命中点 GPUParticles3D 火花, 一次性自销)
+const JUICE_PARTICLE_MIN_DMG := 60.0               # 仅重击/暴击/大招命中迸火花 (省开销)
+
 # 世界中心: ARENA 像素中心映射到原点 → 单位世界坐标 = (pos - center) * WS
 var _arena_center := ARENA.position + ARENA.size * 0.5
 
@@ -82,6 +119,13 @@ var _ui_layer: CanvasLayer                # 血条/龟能 overlay + 标题 + 结
 var _world: Node3D                        # 3D 内容挂载点 (SubViewport 内)
 var _sub: SubViewport
 var _projectiles: Array = []              # 飞行中的 3D 投射物 {node, from, to, tgt, dmg, magic, src, t, dur}
+
+# --- Phase 4 juice 全局态 ---
+var _hitstop := 0.0                       # 剩余顿帧秒 (>0 时 _process 跳过逻辑推进, 每帧自减 → 精确恢复)
+var _shake_amp := 0.0                     # 当前震屏幅度 (米); 每帧指数衰减归 0
+var _shake_t := 0.0                       # 震屏相位 (驱动伪随机偏移)
+var _cam_base := Vector3.ZERO             # 镜头基准位 (shake 围绕它偏移, 衰减后精确归位)
+var _juice_rng := RandomNumberGenerator.new()   # 震屏/粒子专用 rng
 
 func _ready() -> void:
 	_load_pets()
@@ -147,6 +191,8 @@ func _build_camera() -> void:
 	_cam.position = Vector3(0.0, 15.0, 17.0)
 	_world.add_child(_cam)
 	_cam.look_at(Vector3(0.0, 0.6, 0.0), Vector3.UP)
+	_cam_base = _cam.position               # Phase4: 震屏围绕此基准偏移, 衰减后精确归位
+	_juice_rng.randomize()
 
 func _build_environment() -> void:
 	var light := DirectionalLight3D.new()
@@ -332,6 +378,14 @@ func _make_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 		"sprite": spr, "shadow": shadow, "ring": ring, "shadow_base_scale": SHADOW_BASE,
 		"bar_root": bar["root"], "hp_fill": bar["hp"], "shield_fill": bar["shield"], "en_fill": bar["en"],
 		"spr_base_offy": spr.offset.y,
+		# Phase4 juice 态 (每帧从这些字段重建 scale/modulate/bob, 不叠 tween → 精确复原) ----
+		"spr_base_scale": spr.scale,        # billboard 基准 scale (复原锚点; Sprite3D 默认 (1,1,1))
+		"flash_t": 0.0,                     # 受击闪白剩余秒 (>0 提白, 线性淡回)
+		"hitsq_t": 0.0,                    # 受击压扁剩余秒
+		"land_t": 0.0,                     # 落地压扁剩余秒
+		"swing_t": 0.0,                    # 出招挥出(伸)剩余秒
+		"windup_t": 0.0,                   # 出招预备(缩)剩余秒
+		"bob_phase": randf() * TAU,        # idle bob 起始相位 (错峰, 不齐刷)
 	}
 
 func _avatar_tex(id: String) -> Texture2D:
@@ -394,14 +448,23 @@ func _make_status_bar(side: String) -> Dictionary:
 #  主循环 (移动 / 索敌 / 普攻 / 龟能 / 击飞物理 — 复用 2D 口径)
 # ============================================================================
 func _process(delta: float) -> void:
-	if not _over:
-		_t += delta
-		for u in _units.duplicate():
-			if not u["alive"]:
-				continue
-			_tick_unit(u, delta)
-		_step_projectiles(delta)
-		_check_end()
+	# Phase4 顿帧 hit-stop: 计时 >0 时冻结"模拟"(逻辑推进 + juice 视觉态衰减)给重量感,
+	# 但镜头震屏照常推进(冻结期间的抖动正是冲击力来源). 不碰 Engine.time_scale → 计时归零即恢复,
+	# 永不卡死 (即使触发函数早退, 下一帧 delta 也会把 _hitstop 减到 0).
+	var frozen := _hitstop > 0.0
+	if frozen:
+		_hitstop = maxf(0.0, _hitstop - delta)
+	else:
+		if not _over:
+			_t += delta
+			for u in _units.duplicate():
+				if not u["alive"]:
+					continue
+				_tick_unit(u, delta)
+			_step_projectiles(delta)
+			_check_end()
+		_juice_decay(delta)        # squash/闪白/挥击 等计时衰减 (冻结期间不衰 → 冲击姿势保持)
+	_update_camera_shake(delta)    # 震屏始终推进 (含冻结期)
 	_update_world_transforms()
 	_update_overlay()
 
@@ -425,6 +488,10 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 		if u["height"] <= 0.0:
 			u["height"] = 0.0; u["vy"] = 0.0; u["vx"] = 0.0; u["vz"] = 0.0
 			u["airborne"] = false
+			# Phase4: 落地 → 压扁回弹 + 小尘 + 轻震屏 (重量感)
+			u["land_t"] = JUICE_LAND_SEC
+			_shake(JUICE_SHAKE_HEAVY)
+			_impact_particles(u["pos"], 0.0)
 		return   # 击飞中不移动/不攻击 (覆盖正常行为)
 
 	var tgt = _acquire_target(u)
@@ -560,6 +627,7 @@ func _separation(u: Dictionary) -> Vector2:
 #  普攻 (复用 2D BASIC_ATK 表 + 伤害公式; 远程发 3D 投射物) + 复杂普攻特判 + on-hit 被动
 # ============================================================================
 func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
+	_anticipate(u)                  # Phase4: 普攻预备(缩)+挥出(伸) 前后摇形变
 	var spec: Array = BASIC_ATK.get(u["id"], DEFAULT_BASIC)
 	var scale: float = spec[0]
 	var hits: int = spec[1]
@@ -698,6 +766,9 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		u["shield"] -= ab; d -= ab
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	_float_text(u["pos"] + Vector2(0, -40), str(dmg), col)
+	# Phase4 打击感: 受击闪白+轻压扁(每段直接命中); 顿帧/震屏/火花按伤害分级(auto: ≥gate=重击).
+	_flash(u)
+	_impact(u, dmg, "auto")
 	# 来源累积 ----
 	src["dmg_dealt"] += float(dmg)
 	# 吸血 (lifesteal 基础 + buff + 技能 extra)
@@ -758,6 +829,10 @@ func _knockback(by: Dictionary, tgt: Dictionary, _dist: float) -> void:
 	tgt["vy"] = KNOCK_VY
 	tgt["vx"] = dir.x * KNOCK_PUSH
 	tgt["vz"] = dir.y * KNOCK_PUSH
+	# Phase4: 击飞 = 大事件 → 大震屏 + 顿帧 + 起跳火花 (起跳拉长由 _juice_scale_for 读 airborne/vy 自动)
+	_shake(JUICE_SHAKE_BIG)
+	_add_hitstop(JUICE_HITSTOP_KNOCK)
+	_impact_particles(tgt["pos"], tgt.get("height", 0.0))
 	# 飞镖056: 任意敌被己方击飞 → 标"靶子", 携带者周期 tick 射镖
 	if tgt["side"] != by["side"] and _side_has_equip(by["side"], "p2eq_056"):
 		tgt["eq_target_until"] = _t + 99999.0
@@ -806,13 +881,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 	if is_instance_valid(u["bar_root"]):
 		u["bar_root"].visible = false
 
-func _flash(u: Dictionary) -> void:
-	var spr: Sprite3D = u["sprite"]
-	if not is_instance_valid(spr):
-		return
-	spr.modulate = Color(2, 2, 2)
-	var tw := create_tween()
-	tw.tween_property(spr, "modulate", Color.WHITE, 0.15)
+# (Phase4: 旧 tween 版 _flash 已移除, 改为状态驱动 _flash → 见 §JUICE; 与 squash/bob 统一从 base 重建)
 
 # 飘字 (2D 接口对齐): 传像素 XZ 坐标 → 升到头顶世界点 → unproject 到屏幕 → UI overlay 上飘.
 #   2D 版传 pos2d=u["pos"]+偏移(px); 这里把 y 偏移(px·往上)换算成 3D 高度抬升, 让"-64"这种头顶字落在头顶.
@@ -882,6 +951,8 @@ func _bolt_line(a2d: Vector2, b2d: Vector2, col: Color) -> void:
 #  完整实装 = ✅ / 简化 = ⚠, 见每条注释. (装备 on-cast 钩子 Phase 3b, 这里不调)
 # ============================================================================
 func _cast_active(u: Dictionary, tgt: Dictionary) -> void:
+	_anticipate(u)                  # Phase4: 放大招前预备(缩)→挥出(伸) 形变, 给"蓄力释放"感
+	_shake(JUICE_SHAKE_HEAVY)       # 大招释放 = 重事件 → 轻震屏 (命中的更强抖由 _impact 叠上)
 	match u["id"]:
 		"basic":     _sk_basic_shield(u, tgt)
 		"stone":     _sk_stone_armor(u)
@@ -1693,6 +1764,10 @@ func _spawn_summon(owner: Dictionary, kind: String, hp: float, atk: float, behav
 		"sprite": spr, "shadow": shadow, "ring": null, "shadow_base_scale": SHADOW_BASE * 0.6,
 		"bar_root": bar["root"], "hp_fill": bar["hp"], "shield_fill": bar["shield"], "en_fill": bar["en"],
 		"spr_base_offy": spr.offset.y,
+		# Phase4 juice 态 (召唤体同享 squash/闪白/bob) ----
+		"spr_base_scale": spr.scale,
+		"flash_t": 0.0, "hitsq_t": 0.0, "land_t": 0.0, "swing_t": 0.0, "windup_t": 0.0,
+		"bob_phase": randf() * TAU,
 	}
 	_units.append(su)
 	return su
@@ -1766,7 +1841,7 @@ func _make_block_texture(col: Color) -> GradientTexture2D:
 	return gt
 
 # ============================================================================
-#  每帧: 3D 节点世界坐标更新 (XZ + 高度) + 影/环随高缩放淡
+#  每帧: 3D 节点世界坐标更新 (XZ + 高度) + 影/环随高缩放淡 + Phase4 squash/闪白/bob
 # ============================================================================
 func _update_world_transforms() -> void:
 	for u in _units:
@@ -1777,17 +1852,201 @@ func _update_world_transforms() -> void:
 		var ring: Sprite3D = u["ring"]
 		if not is_instance_valid(spr):
 			continue
-		# 立绘: XZ + Y(高度 + 落地基线抬升). billboard 自动朝镜头, 不翻 facing.
-		spr.position = _world_pos(u["pos"], u["height"] + GROUND_LIFT)
+		# --- Phase4: squash/stretch 形变 + idle bob 高度微浮 (全从 base 起算, 不累积) ---
+		var sq := _juice_scale_for(u)              # (sx, sy) 形变系数 (base=1,1)
+		var bob := _juice_bob_for(u)               # idle 呼吸 Y 偏移 (米)
+		# 立绘: XZ + Y(高度 + 落地基线抬升 + bob). billboard 自动朝镜头, 不翻 facing.
+		spr.position = _world_pos(u["pos"], u["height"] + GROUND_LIFT + bob)
+		var bs: Vector3 = u.get("spr_base_scale", Vector3.ONE)
+		spr.scale = Vector3(bs.x * sq.x, bs.y * sq.y, bs.z)
+		# 受击闪白: modulate 由 base 白 → 过曝白线性插值 (flash_t/JUICE_FLASH_SEC); 死亡淡出走 alpha 不冲突
+		var fl: float = clampf(u.get("flash_t", 0.0) / JUICE_FLASH_SEC, 0.0, 1.0)
+		spr.modulate = Color.WHITE.lerp(JUICE_FLASH_COLOR, fl)
 		# 影/环: 跟 XZ 不跟 Y (贴地), 随高度缩小变淡 (从各自基准 scale 起算, 召唤体影更小)
 		var s: float = 1.0 - clampf(u["height"] / 3.0, 0.0, 0.7)
 		if is_instance_valid(shadow):
 			var base_sc: Vector3 = u.get("shadow_base_scale", SHADOW_BASE)
 			shadow.position = _world_pos(u["pos"], 0.02)
-			shadow.scale = base_sc * s
+			# 影也随 squash 横向张缩 (压扁→影变宽, 拉长→影变窄) 加重量感
+			shadow.scale = Vector3(base_sc.x * s * sq.x, base_sc.y * s, base_sc.z * s)
 			shadow.modulate.a = SHADOW_BASE_A * s
 		if is_instance_valid(ring):
 			ring.position = _world_pos(u["pos"], 0.015)
+
+# ============================================================================
+#  §JUICE — Phase4 商业级打击感 (squash&stretch / 闪白 / 顿帧 / 震屏 / idle bob / 粒子)
+#  统一态机: 触发函数只置"剩余秒"字段, 每帧 _juice_decay 自减, 视觉由 _juice_scale_for/
+#  _juice_bob_for + _update_world_transforms 重建 → 复原干净(scale/modulate 都回 base, 无漂移).
+# ============================================================================
+
+# 每帧衰减各单位 juice 计时 (hit-stop 冻结期不调 → 冲击姿势保持)
+func _juice_decay(delta: float) -> void:
+	for u in _units:
+		if not u["alive"]:
+			continue
+		if u.get("flash_t", 0.0) > 0.0:  u["flash_t"]  = maxf(0.0, u["flash_t"]  - delta)
+		if u.get("hitsq_t", 0.0) > 0.0:  u["hitsq_t"]  = maxf(0.0, u["hitsq_t"]  - delta)
+		if u.get("land_t", 0.0) > 0.0:   u["land_t"]   = maxf(0.0, u["land_t"]   - delta)
+		if u.get("swing_t", 0.0) > 0.0:  u["swing_t"]  = maxf(0.0, u["swing_t"]  - delta)
+		if u.get("windup_t", 0.0) > 0.0: u["windup_t"] = maxf(0.0, u["windup_t"] - delta)
+
+# 合成形变系数 (x,y): 优先级 起跳拉长 > 落地压扁 > 受击压扁 > 出招预备(缩)/挥出(伸).
+# 各相位用 ease 衰减到 (1,1), 互不累积 — 取主导相位 + 出招缩放叠乘.
+func _juice_scale_for(u: Dictionary) -> Vector2:
+	var sx := 1.0
+	var sy := 1.0
+	# 击飞中: 起跳上行拉长, 下落渐回 (随竖速 vy 符号/大小)
+	if u.get("airborne", false):
+		var vy: float = u.get("vy", 0.0)
+		var k: float = clampf(absf(vy) / KNOCK_VY, 0.0, 1.0)
+		if vy > 0.0:    # 上升: 拉长
+			sx = lerpf(1.0, JUICE_STRETCH_UP.x, k)
+			sy = lerpf(1.0, JUICE_STRETCH_UP.y, k)
+		else:           # 下落: 轻微拉长(惯性), 落地瞬间由 land_t 接管压扁
+			sx = lerpf(1.0, lerpf(1.0, JUICE_STRETCH_UP.x, 0.5), k)
+			sy = lerpf(1.0, lerpf(1.0, JUICE_STRETCH_UP.y, 0.5), k)
+		return Vector2(sx, sy)
+	# 落地压扁 (ease-out 回弹)
+	var lt: float = u.get("land_t", 0.0)
+	if lt > 0.0:
+		var f: float = lt / JUICE_LAND_SEC          # 1→0
+		var e: float = f * f                          # ease (回弹快)
+		sx = lerpf(1.0, JUICE_SQUASH_LAND.x, e)
+		sy = lerpf(1.0, JUICE_SQUASH_LAND.y, e)
+		return Vector2(sx, sy)
+	# 受击压扁
+	var ht: float = u.get("hitsq_t", 0.0)
+	if ht > 0.0:
+		var f2: float = ht / JUICE_HIT_SQUASH_SEC
+		var e2: float = f2 * f2
+		sx = lerpf(1.0, JUICE_HIT_SQUASH.x, e2)
+		sy = lerpf(1.0, JUICE_HIT_SQUASH.y, e2)
+	# 出招: 预备(整体缩) → 挥出(整体伸), 顺序非叠加 (windup 在前, 结束后 swing 接管)
+	var wt: float = u.get("windup_t", 0.0)
+	var st: float = u.get("swing_t", 0.0)
+	if wt > 0.0:
+		var fw: float = wt / JUICE_WINDUP_SEC        # 1→0
+		var m: float = lerpf(1.0, JUICE_WINDUP_SCALE, fw)
+		sx *= m; sy *= m
+	elif st > 0.0:
+		var fs: float = clampf(st / JUICE_SWING_SEC, 0.0, 1.0)   # swing 段 (windup 已耗尽)
+		var m2: float = lerpf(1.0, JUICE_SWING_SCALE, fs)
+		sx *= m2; sy *= m2
+	return Vector2(sx, sy)
+
+# idle 呼吸 bob: 仅待机时(不击飞/不快移/无 juice 相位) 立绘极轻上下浮
+func _juice_bob_for(u: Dictionary) -> float:
+	if u.get("airborne", false):
+		return 0.0
+	# 移动中不 bob (vel 速度阈值: 像素/s)
+	var v: Vector2 = u.get("vel", Vector2.ZERO)
+	if v.length() > 6.0:
+		return 0.0
+	# 出招/受击/落地相位中不 bob (避免叠加抖)
+	if u.get("land_t", 0.0) > 0.0 or u.get("hitsq_t", 0.0) > 0.0 or u.get("swing_t", 0.0) > 0.0 or u.get("windup_t", 0.0) > 0.0:
+		return 0.0
+	var ph: float = u.get("bob_phase", 0.0) + _t * JUICE_BOB_SPEED
+	return sin(ph) * JUICE_BOB_AMP
+
+# 震屏每帧推进: 衰减幅度 + 伪随机偏移镜头, 归零时精确复位到 _cam_base
+func _update_camera_shake(delta: float) -> void:
+	if _cam == null or not is_instance_valid(_cam):
+		return
+	if _shake_amp <= 0.0001:
+		_shake_amp = 0.0
+		_cam.position = _cam_base
+		return
+	_shake_t += delta
+	_shake_amp = _shake_amp * exp(-JUICE_SHAKE_DECAY * delta)   # 指数衰减
+	# 伪随机偏移 (sin/cos 不同频 → 不规则); 横/竖各一份, 不动深度 z
+	var ox: float = sin(_shake_t * JUICE_SHAKE_FREQ * TAU) * _shake_amp
+	var oy: float = cos(_shake_t * JUICE_SHAKE_FREQ * 0.81 * TAU + 1.3) * _shake_amp
+	_cam.position = _cam_base + Vector3(ox, oy, 0.0)
+
+# 触发震屏: 取较大幅度叠加(封顶), 重置相位让新事件抖得明显
+func _shake(amp: float) -> void:
+	if amp <= 0.0:
+		return
+	_shake_amp = minf(JUICE_SHAKE_MAX, maxf(_shake_amp, amp))
+	_shake_t = 0.0
+
+# 触发顿帧: 取较大值 (短事件不覆盖更长的卡顿)
+func _add_hitstop(sec: float) -> void:
+	if sec > _hitstop:
+		_hitstop = sec
+
+# 受击闪白 + 轻压扁 (Phase4 替代旧 _flash; 状态驱动, 不叠 tween)
+func _flash(u: Dictionary) -> void:
+	if u == null or not u.get("alive", false):
+		return
+	u["flash_t"] = JUICE_FLASH_SEC
+	u["hitsq_t"] = JUICE_HIT_SQUASH_SEC
+
+# 命中重量分级: 单段伤害(或暴击/大招标志)决定 闪白/顿帧/震屏/粒子 强度.
+# heavy=技能/暴击命中级; big=大招/击飞级. light(普攻小段)只闪白不顿帧不抖.
+func _impact(tgt: Dictionary, dmg: int, level: String = "auto", at_pos = null) -> void:
+	if tgt == null:
+		return
+	var lvl := level
+	if lvl == "auto":
+		lvl = "heavy" if float(dmg) >= JUICE_HITSTOP_DMG_GATE else "light"
+	match lvl:
+		"big":
+			_add_hitstop(JUICE_HITSTOP_HEAVY)
+			_shake(JUICE_SHAKE_BIG)
+		"heavy":
+			_add_hitstop(JUICE_HITSTOP_HEAVY)
+			_shake(JUICE_SHAKE_HEAVY)
+		_:   # light
+			if JUICE_HITSTOP_LIGHT > 0.0: _add_hitstop(JUICE_HITSTOP_LIGHT)
+			if JUICE_SHAKE_LIGHT > 0.0:   _shake(JUICE_SHAKE_LIGHT)
+	# 冲击粒子: 只在重击/大招迸火花
+	if (lvl == "heavy" or lvl == "big") and float(dmg) >= JUICE_PARTICLE_MIN_DMG:
+		var p2d: Vector2 = at_pos if at_pos != null else tgt.get("pos", Vector2.ZERO)
+		_impact_particles(p2d, tgt.get("height", 0.0))
+
+# 出招预备(缩)+挥出(伸): 主动技/普攻前摇后摇 (anticipation + follow-through)
+func _anticipate(u: Dictionary) -> void:
+	if u == null or not u.get("alive", false):
+		return
+	u["windup_t"] = JUICE_WINDUP_SEC
+	u["swing_t"] = JUICE_WINDUP_SEC + JUICE_SWING_SEC   # 预备结束后挥出仍有效 (decay 先过 windup 段再进 swing 段)
+
+# 冲击火花粒子: 命中点一撮 3D 火花, GPUParticles3D 一次性 emit → 计时自销 (占位红橙火花)
+func _impact_particles(pos2d: Vector2, height: float) -> void:
+	var ps := GPUParticles3D.new()
+	ps.amount = 10
+	ps.lifetime = 0.35
+	ps.one_shot = true
+	ps.explosiveness = 1.0
+	ps.local_coords = false
+	var mat := ParticleProcessMaterial.new()
+	mat.direction = Vector3(0, 1, 0)
+	mat.spread = 80.0
+	mat.initial_velocity_min = 2.5
+	mat.initial_velocity_max = 5.0
+	mat.gravity = Vector3(0, -9.0, 0)
+	mat.scale_min = 0.5
+	mat.scale_max = 1.2
+	mat.color = Color(1.0, 0.8, 0.35, 1.0)
+	ps.process_material = mat
+	var dm := StandardMaterial3D.new()
+	dm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	dm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	dm.vertex_color_use_as_albedo = true
+	dm.albedo_color = Color(1.0, 0.85, 0.4, 1.0)
+	dm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	var qm := QuadMesh.new()
+	qm.size = Vector2(0.16, 0.16)
+	qm.material = dm
+	ps.draw_pass_1 = qm
+	ps.position = _world_pos(pos2d, height + 1.0)
+	_world.add_child(ps)
+	ps.emitting = true
+	# 一次性: lifetime + 余量后自销 (不靠 one_shot finished 信号, 计时更稳)
+	var tw := create_tween()
+	tw.tween_interval(ps.lifetime + 0.15)
+	tw.tween_callback(ps.queue_free)
 
 # 血条/龟能 overlay: 每帧 unproject 单位头顶 → 屏幕像素 (跟随)
 func _update_overlay() -> void:
