@@ -12,17 +12,23 @@ const REGEN_PER_SEC := 14.0                # 龟能每秒回 (≈7s 满)
 const SEP_RADIUS := 48.0                   # 单位软分离半径
 const SHIELD_CAP_MULT := 1.5               # 护盾上限 = maxHp ×
 
-# 阵容档位: [id, melee, move_spd, atk_interval(s), atk_range] —— 按 28龟角色映射草案 #7 档位
-const LEFT_TEAM := [
-	["stone",     true,   70.0, 1.5,  70.0],   # 石头 坦克 慢/慢攻/近 → 全队护盾
-	["basic",     true,  105.0, 1.0,  70.0],   # 小龟 近战dps 中 → 重击
-	["lightning", false, 145.0, 0.65, 340.0],  # 闪电 远程 快/快攻/远 → 范围闪电+麻痹
-]
-const RIGHT_TEAM := [
-	["diamond",   true,   70.0, 1.5,  70.0],   # 钻石 坦克 → 大护盾
-	["ninja",     true,  145.0, 0.65, 70.0],   # 忍者 近战刺杀 快 → 突进三连
-	["ghost",     false, 145.0, 0.65, 340.0],  # 幽灵 远程狙击 快/远 → 诅咒DoT
-]
+# 全 28 龟战斗属性 (28龟角色映射草案 #7 档位): id → [melee, move_spd, atk_interval(s), atk_range]
+const STATS := {
+	"basic": [true, 105.0, 1.0, 70.0], "stone": [true, 70.0, 1.5, 70.0], "bamboo": [true, 105.0, 1.0, 70.0],
+	"angel": [false, 105.0, 1.0, 230.0], "ice": [false, 105.0, 1.0, 230.0], "ninja": [true, 145.0, 0.65, 70.0],
+	"two_head": [true, 145.0, 1.0, 70.0], "ghost": [false, 145.0, 0.65, 340.0], "diamond": [true, 70.0, 1.5, 70.0],
+	"fortune": [true, 105.0, 1.0, 70.0], "dice": [false, 145.0, 0.65, 230.0], "rainbow": [true, 105.0, 1.0, 70.0],
+	"gambler": [false, 145.0, 1.0, 230.0], "hunter": [false, 145.0, 0.65, 340.0], "pirate": [false, 105.0, 1.0, 230.0],
+	"candy": [false, 105.0, 1.0, 230.0], "bubble": [false, 70.0, 1.5, 230.0], "line": [false, 145.0, 0.65, 340.0],
+	"lightning": [false, 145.0, 0.65, 340.0], "phoenix": [false, 105.0, 1.0, 230.0], "lava": [true, 145.0, 1.0, 70.0],
+	"cyber": [false, 105.0, 1.0, 230.0], "crystal": [true, 70.0, 1.5, 70.0], "chest": [true, 105.0, 1.5, 70.0],
+	"space": [false, 145.0, 1.0, 340.0], "hiding": [true, 70.0, 1.5, 70.0], "headless": [true, 145.0, 1.0, 70.0],
+	"shell": [true, 105.0, 1.5, 70.0],
+}
+const DEFAULT_STAT := [true, 105.0, 1.0, 70.0]
+# demo 阵容 (id 列表, 属性查 STATS) — 局外 meta 接入后由 GameState 配队替换
+const LEFT_TEAM := ["stone", "basic", "lightning"]
+const RIGHT_TEAM := ["diamond", "ninja", "ghost"]
 
 var _units: Array = []
 var _data_by_id: Dictionary = {}
@@ -73,14 +79,14 @@ func _build_arena() -> void:
 func _spawn_teams() -> void:
 	for i in range(LEFT_TEAM.size()):
 		var pos := Vector2(ARENA.position.x + 130, ARENA.position.y + 110 + i * 150)
-		_units.append(_make_unit(LEFT_TEAM[i], "left", pos))
+		_units.append(_make_unit(str(LEFT_TEAM[i]), "left", pos))
 	for i in range(RIGHT_TEAM.size()):
 		var pos := Vector2(ARENA.end.x - 130, ARENA.position.y + 110 + i * 150)
-		_units.append(_make_unit(RIGHT_TEAM[i], "right", pos))
+		_units.append(_make_unit(str(RIGHT_TEAM[i]), "right", pos))
 
-func _make_unit(spec: Array, side: String, pos: Vector2) -> Dictionary:
-	var id := str(spec[0])
+func _make_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 	var d: Dictionary = _data_by_id.get(id, {})
+	var st: Array = STATS.get(id, DEFAULT_STAT)
 	var hp := float(d.get("hp", 450))
 	var team_col := Color("#3fa9ff") if side == "left" else Color("#ff5a5a")
 
@@ -122,8 +128,8 @@ func _make_unit(spec: Array, side: String, pos: Vector2) -> Dictionary:
 		"side": side, "pos": pos, "vel": Vector2.ZERO,
 		"hp": hp, "maxHp": hp,
 		"atk": float(d.get("atk", 40)), "def": float(d.get("def", 12)), "mr": float(d.get("mr", 12)),
-		"melee": bool(spec[1]), "move_spd": float(spec[2]),
-		"atk_interval": float(spec[3]), "atk_range": float(spec[4]),
+		"melee": bool(st[0]), "move_spd": float(st[1]),
+		"atk_interval": float(st[2]), "atk_range": float(st[3]),
 		"atk_cd": 0.0, "energy": 0.0, "alive": true,
 		"shield": 0.0, "burn_until": 0.0, "burn_dps": 0.0, "stun_until": 0.0,
 		"node": node, "spr": spr, "hp_fill": hp_fill, "shield_fill": shield_fill, "en_fill": en_fill, "dot": dot,
