@@ -14,6 +14,8 @@ const SEP_RADIUS := 48.0                   # 单位软分离半径
 const SHIELD_CAP_MULT := 1.5               # 护盾上限 = maxHp ×
 const RAGE_MAX := 100.0                    # 怒气满 (熔岩变身)
 const STACK_DOT_TICK := 1.0                # 各类 DoT 每秒结算一次
+const KNOCK_DUR := 0.22                     # 击飞滑行时长(秒) — 2D伪3D: 不瞬移而是滑行
+const KNOCK_HOP := 14.0                     # 击飞假抬升高度(px) — 立绘视觉抬起再落回(俯视假"飞起来")
 const HP_MULT := 3.0                       # 战斗节奏旋钮: 攻速校准后整体DPS↑~20%, 提到3.0维持一局~20-22s(贴Botworld实测20-30s); 待F5微调
 
 # 全 28 龟战斗属性 (28龟角色映射草案 #7 档位): id → [melee, move_spd, atk_interval(s), atk_range]
@@ -247,7 +249,20 @@ func _physics_process(delta: float) -> void:
 		var to_t: Vector2 = tgt["pos"] - u["pos"]
 		var dist := to_t.length()
 		var rng: float = u["atk_range"]
-		if not stunned:
+		# 2D击飞滑行中: 水平滑开 + 立绘抬升(伪3D俯视假"飞起来"), 覆盖正常移动/攻击
+		var knocked: bool = u.get("knock_t", 0.0) > 0.0
+		if knocked:
+			u["knock_t"] -= delta
+			u["pos"] += u["knock_vel"] * delta
+			u["knock_vel"] *= 0.85
+			u["pos"].x = clampf(u["pos"].x, ARENA.position.x, ARENA.end.x)
+			u["pos"].y = clampf(u["pos"].y, ARENA.position.y, ARENA.end.y)
+			u["node"].position = u["pos"]
+			var kp: float = clampf(1.0 - u["knock_t"] / KNOCK_DUR, 0.0, 1.0)
+			u["spr"].position.y = u.get("spr_base_y", 0.0) - KNOCK_HOP * sin(kp * PI)
+			if u["knock_t"] <= 0.0:
+				u["spr"].position.y = u.get("spr_base_y", 0.0)
+		if not stunned and not knocked:
 			var spd: float = u["move_spd"] * (0.6 if _t < u["slow_until"] else 1.0)
 			# 移动: 近战追到射程 / 远程维持射程并风筝
 			var intent := Vector2.ZERO
@@ -876,10 +891,11 @@ func _knockback(by: Dictionary, tgt: Dictionary, dist: float) -> void:
 	if tgt.get("_knock_immune", false): return
 	var dir: Vector2 = (tgt["pos"] - by["pos"]).normalized()
 	if dir.length() < 0.1: dir = Vector2.RIGHT
-	tgt["pos"] += dir * dist
-	tgt["pos"].x = clampf(tgt["pos"].x, ARENA.position.x, ARENA.end.x)
-	tgt["pos"].y = clampf(tgt["pos"].y, ARENA.position.y, ARENA.end.y)
-	tgt["node"].position = tgt["pos"]
+	# 2D伪3D击飞: 不再瞬移, 给击飞速度 → tick里水平滑行 + 立绘抬升再落回(俯视假"飞起来", 地面标记/血条不动作参照)
+	if tgt.get("knock_t", 0.0) <= 0.0:
+		tgt["spr_base_y"] = tgt["spr"].position.y   # 捕获立绘基准y (防hop重复偏移)
+	tgt["knock_vel"] = dir * (dist * 2.0 / KNOCK_DUR)   # 线性衰减下总滑距≈dist
+	tgt["knock_t"] = KNOCK_DUR
 	# 飞镖056: 任意敌被己方击飞 → 标"靶子", 携带者周期 tick 射镖
 	if tgt["side"] != by["side"] and _side_has_equip(by["side"], "p2eq_056"):
 		tgt["eq_target_until"] = _t + 99999.0
