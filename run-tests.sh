@@ -14,5 +14,6 @@ if [ ! -f "$GODOT" ]; then
 fi
 
 # 跑测试场景 (--quit-after 给足帧数让 await 完成)
-"$GODOT" --headless --path "$DIR" res://tests/test_damage.tscn --quit-after 300 2>&1 \
-  | grep -E "✓|✗|PASS|FAIL|ALL|SCRIPT ERROR|Parse Error|Cannot|inferred|Failed to"
+# 回合制 test_damage 已随死引擎删除 (死代码清理 Chunk C); 实时版专项测=verify_dot_stacks。
+"$GODOT" --headless --path "$DIR" res://tests/verify_dot_stacks.tscn --quit-after 300 2>&1 \
+  | grep -E "✓|✗|PASS|FAIL|ALL|期望|SCRIPT ERROR|Parse Error|Cannot|inferred|Failed to"
