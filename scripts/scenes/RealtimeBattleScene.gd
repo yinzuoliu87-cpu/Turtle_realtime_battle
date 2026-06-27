@@ -270,8 +270,28 @@ func _separation(u: Dictionary) -> Vector2:
 
 # ---------- 普攻 ----------
 func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
-	_apply_damage(tgt, _hit_dmg(u["atk"], tgt), Color("#ffe08a"))
-	_flash(tgt)
+	var dmg := _hit_dmg(u["atk"], tgt)
+	if u["melee"]:
+		_apply_damage(tgt, dmg, Color("#ffe08a"))
+		_flash(tgt)
+	else:
+		_fire_bolt(u["pos"], tgt, dmg, Color("#ffe08a"))   # 远程: 投射物飞到目标再落伤
+
+func _fire_bolt(from: Vector2, tgt: Dictionary, dmg: int, col: Color) -> void:
+	var to: Vector2 = tgt["pos"]
+	var p := ColorRect.new()
+	p.color = col; p.size = Vector2(10, 10); p.position = from - Vector2(5, 5); p.z_index = 8
+	add_child(p)
+	var tw := create_tween()
+	tw.tween_property(p, "position", to - Vector2(5, 5), 0.14)
+	tw.tween_callback(_on_bolt_hit.bind(p, tgt, dmg, col))
+
+func _on_bolt_hit(p: ColorRect, tgt: Dictionary, dmg: int, col: Color) -> void:
+	if is_instance_valid(p):
+		p.queue_free()
+	if tgt["alive"]:
+		_apply_damage(tgt, dmg, col)
+		_flash(tgt)
 
 # ---------- 主动技 (按龟 distinct) ----------
 func _cast_active(u: Dictionary, tgt: Dictionary) -> void:
