@@ -158,6 +158,7 @@ var _arena_center := ARENA.position + ARENA.size * 0.5
 # ============================================================================
 var _units: Array = []
 var _data_by_id: Dictionary = {}
+var _skill_meta: Dictionary = {}   # 技能 type → skillPool 条目 {atkScale,hits,pierce,name,icon} (选3 多技能 数据驱动放招)
 var _over := false
 var _t := 0.0
 var _settled := false
@@ -265,6 +266,9 @@ func _load_pets() -> void:
 		for p in arr:
 			if p is Dictionary and p.has("id"):
 				_data_by_id[str(p["id"])] = p
+				for sk in p.get("skillPool", []):
+					if sk is Dictionary and sk.has("type") and not _skill_meta.has(str(sk["type"])):
+						_skill_meta[str(sk["type"])] = sk
 
 # ----------------------------------------------------------------------------
 #  SubViewport 合成: 3D 渲进它 → SubViewportContainer 贴满屏; 2D UI 叠上面.
@@ -702,6 +706,8 @@ func _make_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 		"melee": bool(st[0]), "move_spd": float(st[1]),
 		"atk_interval": float(st[2]), "atk_range": float(st[3]),
 		"atk_cd": 0.0, "energy": 0.0, "alive": true,
+		# 选3 多技能: loadout 的非基础技(physical/magic 是普攻=自动) → 主动技轮转, 龟能满放下一个
+		"active_skills": _resolve_active_skills(id, side == "left"), "skill_idx": 0,
 		# 永久护盾 / 控制 / 旧式灼烧(保留兼容) ----
 		"shield": 0.0, "burn_until": 0.0, "burn_dps": 0.0, "stun_until": 0.0, "slow_until": 0.0,
 		# 层数式 DoT (灼烧/中毒/流血, 1:1 dot.gd 层数衰减模型) ----
@@ -1682,43 +1688,135 @@ const _SKILL_VFX_ON_TARGET := {
 	"lightning": true, "two_head": true, "cyber": true,
 }
 
+# ═══ 选3 多技能轮转 (用户2026-06-28拍板: 保留选3, 让3技在战斗真生效) ═══
+# loadout(选3) → 该龟"主动技轮转表": physical/magic 是普攻(自动)排除, 其余按选中顺序进轮转.
+func _resolve_active_skills(id: String, use_loadout: bool) -> Array:
+	var d: Dictionary = _data_by_id.get(id, {})
+	var pool: Array = d.get("skillPool", [])
+	var ds: Array = (GameState.loadouts.get(id, d.get("defaultSkills", [0, 1, 2])) if use_loadout else d.get("defaultSkills", [0, 1, 2]))
+	var out: Array = []
+	for i in ds:
+		var ii := int(i)
+		if ii < 0 or ii >= pool.size():
+			continue
+		var t := str((pool[ii] as Dictionary).get("type", ""))
+		if t == "" or t == "physical" or t == "magic":
+			continue
+		out.append(t)
+	return out
+
+# 实装了的技能 type 集 (与 _do_skill 的 match 保持同步; 用于轮转跳过未实装的, 不浪费龟能/不空放 juice)
+const _IMPL_SKILLS := {
+	# 签名招 (既有 _sk_* 实装, 按技能 type 分派)
+	"turtleShieldBash": true, "bambooHeal": true, "angelBless": true, "iceFrost": true,
+	"ninjaImpact": true, "ghostStorm": true, "diamondFortify": true, "diceAllIn": true,
+	"gamblerBet": true, "hunterStealth": true, "pirateCannonBarrage": true, "bubbleShield": true,
+	"lineLink": true, "lightningSurgeBuff": true, "phoenixShield": true, "twoHeadFear": true,
+	"fortuneDice": true, "crystalBarrier": true, "chestCount": true, "starMeteor": true,
+	"twoHeadSwitch": true, "lavaSurge": true, "cyberBeam": true, "hidingDefend": true, "shellAbsorb": true,
+	# 通用 (多龟共享 type)
+	"shield": true, "heal": true,
+	# 数据驱动伤害技 (系数取自 pets.json detail 公式 {N/M/T:...})
+	"basicBarrage": true, "bambooLeaf": true, "bambooSmack": true, "angelEquality": true,
+	"iceSpike": true, "ninjaShuriken": true, "ninjaBomb": true, "twoHeadMagicWave": true,
+	"ghostTouch": true, "ghostPhantom": true, "diamondCollide": true, "fortuneStrike": true,
+	"diceAttack": true, "rainbowStorm": true, "gamblerCards": true, "gamblerDraw": true,
+	"hunterShot": true, "hunterBarrage": true, "candyBarrage": true, "lineSketch": true,
+	"lightningStrike": true, "lightningBarrage": true, "phoenixBurn": true, "phoenixScald": true,
+	"lavaBolt": true, "lavaQuake": true, "crystalSpike": true, "crystalBurst": true,
+	"chestStorm": true, "starBeam": true, "soulReap": true, "shellStrike": true,
+}
+
+# 龟能满 → 放当前轮转技 (从 skill_idx 起找下一个实装的放, 跳过未实装的不浪费龟能).
 func _cast_active(u: Dictionary, tgt: Dictionary) -> void:
-	_anticipate(u)                  # Phase4: 放大招前预备(缩)→挥出(伸) 形变, 给"蓄力释放"感
-	_shake(JUICE_SHAKE_HEAVY)       # 大招释放 = 重事件 → 轻震屏 (命中的更强抖由 _impact 叠上)
-	# §SKILLVFX: 该龟主动技有匹配真贴图 → 在 cast/命中点放一遍 (无图静默回退程序圈/飘字)
+	var skills: Array = u.get("active_skills", [])
+	if skills.is_empty():
+		return                                        # 全普攻/被动 → 无主动可放
+	var n := skills.size()
+	for k in range(n):
+		var idx := (int(u["skill_idx"]) + k) % n
+		if _cast_skill(u, tgt, str(skills[idx])):
+			u["skill_idx"] = (idx + 1) % n            # 轮转推进 → 下次放下一个
+			_eq_on_cast(u, tgt)                       # on-cast 装备钩子 (千刃风暴/火炮连射等)
+			return
+	u["skill_idx"] = (int(u["skill_idx"]) + 1) % n    # 全未实装(罕见, 自选了冷门技) → 推进避免卡
+
+# 放单个技 (按 type): 实装→juice+VFX+效果 返 true; 未实装→返 false (轮转跳过, 不空放).
+func _cast_skill(u: Dictionary, tgt: Dictionary, stype: String) -> bool:
+	if not _IMPL_SKILLS.has(stype):
+		return false
+	_anticipate(u)                  # 放大招前预备(缩)→挥出(伸) 形变
+	_shake(JUICE_SHAKE_HEAVY)       # 大招释放 = 轻震屏
+	# §SKILLVFX: 暂用该龟签名 VFX (按 id); 逐技 type→icon 真贴图留 batch2
 	var vfx_at: Vector2 = tgt["pos"] if (_SKILL_VFX_ON_TARGET.get(u["id"], false) and tgt != null and tgt != u) else u["pos"]
 	_play_skill_vfx(str(u["id"]), vfx_at, 1.3)
-	match u["id"]:
-		"basic":     _sk_basic_shield(u, tgt)
-		"stone":     _sk_stone_armor(u)
-		"bamboo":    _sk_bamboo_heal(u)
-		"angel":     _sk_angel_bless(u)
-		"ice":       _sk_ice_frost(u)
-		"ninja":     _sk_ninja_impact(u, tgt)
-		"ghost":     _sk_ghost_soulstorm(u, tgt)
-		"diamond":   _sk_diamond_unbreak(u)
-		"dice":      _sk_dice_allin(u)
-		"rainbow":   _sk_rainbow_shield(u)
-		"gambler":   _sk_gambler_wild(u, tgt)
-		"hunter":    _sk_hunter_hide(u)
-		"pirate":    _sk_pirate_volley(u)
-		"bubble":    _sk_bubble_shield(u, tgt)
-		"line":      _sk_line_link(u)
-		"lightning": _sk_lightning_surge(u, tgt)
-		"phoenix":   _sk_phoenix_lavashield(u)
-		"headless":  _sk_headless_fear(u, tgt)
-		"fortune":   _sk_fortune_dice(u)
-		"crystal":   _sk_crystal_bulwark(u)
-		"chest":     _sk_chest_inventory(u)
-		"space":     _sk_space_meteor(u)
-		"two_head":  _sk_two_head(u, tgt)
-		"lava":      _sk_lava_cast(u, tgt)
-		"cyber":     _sk_cyber_cannon(u, tgt)
-		"candy":     _sk_candy_armor(u)
-		"hiding":    _sk_hiding_defend(u)
-		"shell":     _sk_shell_absorb(u, tgt)
-		_:           _sk_burst(u, tgt)
-	_eq_on_cast(u, tgt)                              # on-cast: 放主动技后装备 (千刃风暴/火炮连射/水晶光束/灼热主动 等)
+	_do_skill(u, tgt, stype)
+	return true
+
+func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
+	match stype:
+		# ── 各龟签名招 (既有实装, 按 type 分派) ──
+		"turtleShieldBash":     _sk_basic_shield(u, tgt)
+		"bambooHeal":           _sk_bamboo_heal(u)
+		"angelBless":           _sk_angel_bless(u)
+		"iceFrost":             _sk_ice_frost(u)
+		"ninjaImpact":          _sk_ninja_impact(u, tgt)
+		"ghostStorm":           _sk_ghost_soulstorm(u, tgt)
+		"diamondFortify":       _sk_diamond_unbreak(u)
+		"diceAllIn":            _sk_dice_allin(u)
+		"gamblerBet":           _sk_gambler_wild(u, tgt)
+		"hunterStealth":        _sk_hunter_hide(u)
+		"pirateCannonBarrage":  _sk_pirate_volley(u)
+		"bubbleShield":         _sk_bubble_shield(u, tgt)
+		"lineLink":             _sk_line_link(u)
+		"lightningSurgeBuff":   _sk_lightning_surge(u, tgt)
+		"phoenixShield":        _sk_phoenix_lavashield(u)
+		"twoHeadFear":          _sk_headless_fear(u, tgt)
+		"fortuneDice":          _sk_fortune_dice(u)
+		"crystalBarrier":       _sk_crystal_bulwark(u)
+		"chestCount":           _sk_chest_inventory(u)
+		"starMeteor":           _sk_space_meteor(u)
+		"twoHeadSwitch":        _sk_two_head(u, tgt)
+		"lavaSurge":            _sk_lava_cast(u, tgt)
+		"cyberBeam":            _sk_cyber_cannon(u, tgt)
+		"hidingDefend":         _sk_hiding_defend(u)
+		"shellAbsorb":          _sk_shell_absorb(u, tgt)
+		# ── 通用 (多龟共享 type) ──
+		"shield":               _sk_gen_shield(u)
+		"heal":                 _sk_gen_heal(u)
+		# ── 数据驱动伤害技 (系数取自 detail 公式; N=物理 M=魔法 T=真实) ──
+		"basicBarrage":         _sk_dmg(u, tgt, {"phys": 3.1, "hits": 10, "name": "弹幕!", "color": Color("#ffe08a")})
+		"bambooLeaf":           _sk_dmg(u, tgt, {"phys": 0.63, "hp": 0.18, "hits": 3, "name": "竹叶斩!", "color": Color("#39d353")})
+		"bambooSmack":          _sk_dmg(u, tgt, {"phys": 1.0, "hits": 1, "rider": "atkdn", "name": "竹击!", "color": Color("#39d353")})
+		"angelEquality":        _sk_dmg(u, tgt, {"phys": 2.0, "true": 0.5, "hits": 2, "name": "平等审判!", "color": Color("#ffe9a8")})
+		"iceSpike":             _sk_dmg(u, tgt, {"phys": 0.7, "magic": 0.7, "hits": 6, "rider": "slow", "name": "冰锥!", "color": Color("#9be7ff")})
+		"ninjaShuriken":        _sk_dmg(u, tgt, {"phys": 0.96, "true": 0.64, "hits": 1, "name": "飞镖!", "color": Color("#cfd8e8")})
+		"ninjaBomb":            _sk_dmg(u, tgt, {"phys": 1.1, "hits": 1, "aoe": true, "name": "烟雾弹!", "color": Color("#b0b0c0")})
+		"twoHeadMagicWave":     _sk_dmg(u, tgt, {"phys": 0.8, "true": 0.8, "hits": 4, "name": "魔法波!", "color": Color("#c0a0ff")})
+		"ghostTouch":           _sk_dmg(u, tgt, {"phys": 0.4, "true": 0.9, "hits": 1, "rider": "curse", "name": "幽灵之触!", "color": Color("#c77dff")})
+		"ghostPhantom":         _sk_dmg(u, tgt, {"magic": 1.5, "hits": 1, "name": "幻影!", "color": Color("#c77dff")})
+		"diamondCollide":       _sk_dmg(u, tgt, {"phys": 0.8, "mr": 0.9, "hits": 1, "rider": "stun", "name": "撞击!", "color": Color("#9bdcff")})
+		"fortuneStrike":        _sk_dmg(u, tgt, {"phys": 1.0, "hits": 2, "name": "财运一击!", "color": Color("#ffd93d")})
+		"diceAttack":           _sk_dmg(u, tgt, {"phys": 0.9, "hits": 3, "name": "骰子攻击!", "color": Color("#ffe08a")})
+		"rainbowStorm":         _sk_dmg(u, tgt, {"magic": 0.8, "true": 0.4, "hits": 4, "aoe": true, "name": "棱镜风暴!", "color": Color("#ff8ad8")})
+		"gamblerCards":         _sk_dmg(u, tgt, {"phys": 1.35, "hits": 3, "name": "发牌!", "color": Color("#ffd93d")})
+		"gamblerDraw":          _sk_dmg(u, tgt, {"phys": 1.0, "hits": 2, "name": "抽牌!", "color": Color("#ffd93d")})
+		"hunterShot":           _sk_dmg(u, tgt, {"phys": 1.65, "hits": 3, "name": "精准射击!", "color": Color("#a8ffb0")})
+		"hunterBarrage":        _sk_dmg(u, tgt, {"true": 2.4, "hits": 10, "name": "狩猎弹幕!", "color": Color("#a8ffb0")})
+		"candyBarrage":         _sk_dmg(u, tgt, {"phys": 1.0, "hits": 4, "aoe": true, "name": "糖果弹幕!", "color": Color("#ff9ed6")})
+		"lineSketch":           _sk_dmg(u, tgt, {"phys": 1.5, "hits": 3, "name": "速写!", "color": Color("#dddddd")})
+		"lightningStrike":      _sk_dmg(u, tgt, {"magic": 1.15, "hits": 5, "name": "闪电打击!", "color": Color("#7ee8ff")})
+		"lightningBarrage":     _sk_dmg(u, tgt, {"magic": 2.2, "hits": 20, "name": "雷暴!", "color": Color("#7ee8ff")})
+		"phoenixBurn":          _sk_dmg(u, tgt, {"magic": 0.9, "hits": 1, "rider": "burn", "name": "灼焰!", "color": Color("#ff7a3c")})
+		"phoenixScald":         _sk_dmg(u, tgt, {"magic": 0.7, "hits": 1, "rider": "burn", "name": "灼烧!", "color": Color("#ff7a3c")})
+		"lavaBolt":             _sk_dmg(u, tgt, {"magic": 0.9, "hits": 1, "rider": "burn", "name": "熔岩弹!", "color": Color("#ff7a3c")})
+		"lavaQuake":            _sk_dmg(u, tgt, {"magic": 0.6, "hits": 1, "aoe": true, "rider": "slow", "name": "地震!", "color": Color("#ff9d5c")})
+		"crystalSpike":         _sk_dmg(u, tgt, {"magic": 1.0, "hits": 2, "name": "水晶刺!", "color": Color("#9bdcff")})
+		"crystalBurst":         _sk_dmg(u, tgt, {"magic": 0.7, "true": 0.1, "hits": 3, "aoe": true, "name": "水晶爆!", "color": Color("#9bdcff")})
+		"chestStorm":           _sk_dmg(u, tgt, {"phys": 1.0, "hits": 5, "aoe": true, "name": "宝箱风暴!", "color": Color("#ffd93d")})
+		"starBeam":             _sk_dmg(u, tgt, {"magic": 0.4, "hits": 3, "name": "星光束!", "color": Color("#c0a0ff")})
+		"soulReap":             _sk_dmg(u, tgt, {"phys": 1.1, "hits": 1, "aoe": true, "name": "灵魂收割!", "color": Color("#c77dff")})
+		"shellStrike":          _sk_dmg(u, tgt, {"phys": 0.9, "hits": 2, "name": "龟壳猛击!", "color": Color("#cfd8e8")})
 
 func _sk_basic_shield(u: Dictionary, tgt: Dictionary) -> void:   # 小龟·龟盾 ✅
 	_float_text(u["pos"] + Vector2(0, -64), "龟盾!", Color("#ffd93d"))
@@ -2003,6 +2101,61 @@ func _sk_burst(u: Dictionary, tgt: Dictionary) -> void:          # 兜底重击
 		if o != tgt and (o["pos"] - tgt["pos"]).length() <= 110.0:
 			_apply_damage_from(u, o, _atk_dmg(u, 1.25, o), Color("#ff9d5c"))
 	_skill_ring(tgt["pos"], Color(1.0, 0.6, 0.3, 0.5), 110.0)
+
+# ── 选3 多技能: 数据驱动伤害技 + 通用盾/治 (系数取自 pets.json detail 公式) ──
+# opts: {phys,magic,true: ×casterATK 的 物理/魔法/真实系数; hp,mr: ×caster maxHp/MR 附加;
+#        hits: 视觉段数(伤害总量不变); aoe: 全体敌; rider: 附带(burn/stun/slow/curse/atkdn/mrdn); name,color}
+func _sk_dmg(u: Dictionary, tgt, opts: Dictionary) -> void:
+	var col: Color = opts.get("color", Color("#ffd07a"))
+	_float_text(u["pos"] + Vector2(0, -64), str(opts.get("name", "技能!")), col)
+	var targets: Array = _enemies_of(u) if opts.get("aoe", false) else ([tgt] if tgt != null else [])
+	var vh: int = clampi(int(opts.get("hits", 1)), 1, 8)     # 视觉段数封顶(防 20 连击刷屏); 总伤=系数×ATK 不变
+	var phys: float = float(opts.get("phys", 0.0))
+	var magic: float = float(opts.get("magic", 0.0))
+	var tru: float = float(opts.get("true", 0.0))
+	var hp_flat: float = float(opts.get("hp", 0.0)) * u["maxHp"]
+	var mr_flat: float = float(opts.get("mr", 0.0)) * u["mr"]
+	for e in targets:
+		if e == null or not e.get("alive", false):
+			continue
+		for i in range(vh):
+			var dmg := 0
+			if phys > 0.0:
+				dmg += _atk_dmg(u, phys / vh, e, false)
+			if magic > 0.0:
+				dmg += _atk_dmg(u, magic / vh, e, true)
+			dmg += int((hp_flat + mr_flat) / vh)
+			if dmg > 0:
+				_apply_damage_from(u, e, dmg, col)
+			if tru > 0.0:
+				_apply_damage_from(u, e, int(u["atk"] * tru / vh), col, 0.0, true)   # raw=真实(无视防/魔抗)
+		_apply_rider(u, e, str(opts.get("rider", "")))
+		_skill_ring(e["pos"], Color(col.r, col.g, col.b, 0.4), 46.0)
+
+func _apply_rider(u: Dictionary, e: Dictionary, rider: String) -> void:
+	if rider == "" or e == null or not e.get("alive", false):
+		return
+	match rider:
+		"burn":  _apply_dot_stacks(e, "burn", maxi(1, roundi(u["atk"] * 0.5)), u)
+		"stun":  e["stun_until"] = maxf(float(e.get("stun_until", 0.0)), _t + CTRL_SEC)
+		"slow":  e["slow_until"] = maxf(float(e.get("slow_until", 0.0)), _t + BUFF_SEC)
+		"curse": _add_dot(e, "curse", e["maxHp"] * 0.05, BUFF_SEC)
+		"atkdn": _buff(e, "atk", -0.15, true)
+		"mrdn":  _buff(e, "mr", -0.20, true)
+
+# 通用护盾 (stone/rainbow/candy 的 shield 技): 全队上盾
+func _sk_gen_shield(u: Dictionary) -> void:
+	_float_text(u["pos"] + Vector2(0, -64), "护盾!", Color("#9bdcff"))
+	for o in _allies_of(u):
+		_grant_shield(o, u["atk"] * 0.3 + o["maxHp"] * 0.06)
+
+# 通用治疗 (stone/pirate 的 heal 技): 奶最低血友军
+func _sk_gen_heal(u: Dictionary) -> void:
+	var ally = _lowest_hp_ally(u)
+	if ally == null:
+		ally = u
+	_heal(ally, ally["maxHp"] * 0.16 + u["atk"] * 0.5)
+	_float_text(ally["pos"] + Vector2(0, -64), "治疗!", Color("#39d353"))
 
 # ============================================================================
 #  效果积木 (可复用) — 治疗/护盾/控制/buff/DoT/吸血/累积/净化/叠层 (1:1 搬自 2D 版).
