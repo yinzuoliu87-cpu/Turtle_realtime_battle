@@ -178,6 +178,67 @@ var _juice_rng := RandomNumberGenerator.new()   # 震屏/粒子专用 rng
 # --- §GROUNDING: 立绘底部软渐隐 shader (一份 Shader 共享, 每龟一份 ShaderMaterial 因 texture 不同) ---
 var _ground_fade_shader: Shader = null
 
+# ============================================================================
+#  §AUDIO — 战斗音效接入 (autoload Audio.gd; SFX/BGM 白捡, 见任务 §1)
+#  防刷屏: 高频命中音 (普攻多段/AOE 全体) 极易塞爆混音器 → 同名 SFX 设最小间隔节流,
+#  到时才放 (pitch/volume 抖动由 Audio.play_sfx 自带, 听感仍有差). 治疗/护盾/暴击同理。
+# ============================================================================
+const SFX_HIT_MIN_GAP := 0.045            # 命中音最小间隔 (s) — <45ms 内的连段只响一次, 防多段平A/AOE刷屏
+const SFX_AUX_MIN_GAP := 0.06             # 治疗/护盾音最小间隔
+var _last_hit_sfx_t := -1.0               # 上次命中音时刻 (节流基准)
+var _last_crit_sfx_t := -1.0
+var _last_heal_sfx_t := -1.0
+var _last_shieldgain_sfx_t := -1.0
+var _last_shieldbreak_sfx_t := -1.0
+var _last_atk_crit := false               # _atk_dmg 最近一次是否暴击 (供 _apply_damage_from 选暴击音)
+
+# ============================================================================
+#  §SKILLVFX — 技能特效真贴图框架 (替程序圈; 见任务 §2)
+#  assets/sprites/skills/<turtle>-<skill>.png = 逐技能特效图 (实测 133 张全是近方形单帧,
+#  非 spritesheet) → 框架 = 在 cast/命中点放一个 3D billboard, 一次性"放大→保持→淡出"动画后自销,
+#  无需逐帧步进. 有匹配贴图的技能用真 VFX; 没有的保留现有 _skill_ring/飘字 (不强行换).
+#  映射 = pets.json skillPool[].icon 的「候选1」(各龟 _cast_active 实际放的那招), 逐龟人工核对语义.
+# ============================================================================
+const SKILL_VFX_DIR := "res://assets/sprites/skills/"
+const SKILL_VFX_WORLD_H := 2.2            # VFX billboard 目标世界高度 (米) — 单帧图按此归一, 不论原图多大
+const SKILL_VFX_GROW_SEC := 0.10          # 放大入场时长
+const SKILL_VFX_HOLD_SEC := 0.10          # 满尺寸保持时长
+const SKILL_VFX_FADE_SEC := 0.26          # 淡出时长
+const SKILL_VFX_START_SCALE := 0.45       # 入场起始相对尺寸 (放大到 1.0)
+# 龟 id → 该龟主动技(候选1) 对应贴图名. 来源: pets.json skillPool[0..] icon, 按 _sk_* 语义对到具体那张.
+#   注: 程序圈/飘字保留的龟不在此表 (或留空) → _play_skill_vfx 找不到就静默回退.
+const SKILL_VFX_MAP := {
+	"basic":     "basic-shield",          # 龟盾
+	"stone":     "stone-rockarmor",       # 岩石护甲
+	"bamboo":    "bamboo-heal",           # 自然恢复
+	"angel":     "angel-bless",           # 祝福
+	"ice":       "ice-frost",             # 冰霜
+	"ninja":     "ninja-impact",          # 冲击
+	"ghost":     "ghost-storm",           # 灵魂风暴
+	"diamond":   "diamond-fortify",       # 坚不可摧 (强化/护盾系)
+	"dice":      "dice-allin",            # 孤注一掷
+	"rainbow":   "rainbow-prismshield",   # 棱镜护盾
+	"gambler":   "gambler-wildcard",      # 万能牌
+	"hunter":    "hunter-stealth",        # 隐蔽
+	"pirate":    "pirate-cannon",         # 火炮齐射
+	"bubble":    "bubble-1",              # 泡泡盾 (bubble-1=泡泡盾贴图)
+	"line":      "line-1",                # 连笔 (候选1)
+	"lightning": "lightning-0",           # 涌动 (候选1)
+	"phoenix":   "phoenix-0",             # 熔岩盾 (候选1)
+	"headless":  "headless-0",            # 恐吓 (候选1)
+	"fortune":   "fortune-dice",          # 骰子+金币
+	"crystal":   "crystal-0",             # 水晶壁垒 (候选1)
+	"chest":     "chest-0",               # 清点财宝 (候选1)
+	"space":     "space-0",               # 流星暴击 (候选1)
+	"two_head":  "twohead-magicwave",     # 双头 (候选1)
+	"lava":      "lava-0",                # 熔岩 (候选1)
+	"cyber":     "cyber-0",               # 能量大炮 (候选1)
+	"candy":     "candy-hammer",          # 焦糖铠/锤 (候选1)
+	"hiding":    "hiding-0",              # 防御 (候选1)
+	"shell":     "shell-0",               # 吸收 (候选1)
+}
+var _skill_vfx_cache: Dictionary = {}     # 贴图名 → Texture2D (避免重复 load)
+
 func _ready() -> void:
 	_load_pets()
 	_build_viewport()
@@ -186,6 +247,10 @@ func _ready() -> void:
 	_build_ground()
 	_build_ui_layer()
 	_spawn_teams()
+	# §AUDIO: 战斗 BGM (淡入, autoload Audio 单例处理循环/音量)
+	var _audio := get_node_or_null("/root/Audio")
+	if _audio != null:
+		_audio.play_bgm("battle")
 	# DEV 自截图 (SELFSHOT=<秒>): 等若干帧让战斗跑起来再从主视口存盘
 	if OS.has_environment("SELFSHOT"):
 		_self_screenshot()
@@ -1198,7 +1263,8 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 # 伤害公式 (1:1 复用 2D _atk_dmg): base×scale ×暴击 ×(100/(100+resist-pierce))
 func _atk_dmg(u: Dictionary, scale: float, tgt: Dictionary, magic: bool = false) -> int:
 	var base: float = u["atk"] * scale
-	if randf() < u["crit"]:
+	_last_atk_crit = randf() < u["crit"]      # §AUDIO: 记最近一次是否暴击 (供 _apply_damage_from 选暴击音)
+	if _last_atk_crit:
 		base *= u["crit_dmg"]
 	var resist: float = float(tgt["mr"]) if magic else float(tgt["def"])
 	resist = maxf(0.0, resist - u["pierce"])
@@ -1284,11 +1350,17 @@ func _make_bolt_texture(col: Color) -> GradientTexture2D:
 # 无来源伤害 (DoT 层数结算等)
 func _apply_damage(u: Dictionary, dmg: int, col: Color) -> void:
 	var d := float(dmg)
+	var shield_before: float = u["shield"]
 	if u["shield"] > 0.0:
 		var ab := minf(u["shield"], d)
 		u["shield"] -= ab; d -= ab
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	_float_text(u["pos"] + Vector2(0, -40), str(dmg), col)
+	# §AUDIO: 无来源伤害也出命中音 (非暴击); 护盾破→shield-break
+	if shield_before > 0.0 and u["shield"] <= 0.0:
+		_sfx_shield_break()
+	else:
+		_sfx_hit(false)
 	if u["hp"] <= 0.0 and u["alive"]:
 		_kill(u)
 
@@ -1302,21 +1374,28 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	# 靶向器055: 被标记目标受伤 +20%
 	if _t < u.get("eq_marked_until", 0.0):
 		dmg = int(dmg * 1.2)
+	var was_crit := _last_atk_crit          # §AUDIO: 先抓暴击态 (下方 hook 里嵌套 _atk_dmg 会改写它)
 	var d := float(dmg)
+	var shield_before: float = u["shield"]
 	if not raw and u["shield"] > 0.0:
 		var ab := minf(u["shield"], d)
 		u["shield"] -= ab; d -= ab
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	_float_text(u["pos"] + Vector2(0, -40), str(dmg), col)
+	# §AUDIO: 命中音 (暴击→hit-crit / 否则→hit-physical, 节流防多段刷屏); 护盾刚被打没→shield-break.
+	if shield_before > 0.0 and u["shield"] <= 0.0 and not raw:
+		_sfx_shield_break()
+	else:
+		_sfx_hit(was_crit)
 	# Phase4 打击感: 受击闪白+轻压扁(每段直接命中); 顿帧/震屏/火花按伤害分级(auto: ≥gate=重击).
 	_flash(u)
 	_impact(u, dmg, "auto")
 	# 来源累积 ----
 	src["dmg_dealt"] += float(dmg)
-	# 吸血 (lifesteal 基础 + buff + 技能 extra)
+	# 吸血 (lifesteal 基础 + buff + 技能 extra) — silent: 高频回血不刷治疗音
 	var ls: float = src.get("lifesteal", 0.0) + src.get("ls_bonus", 0.0) + extra_ls
 	if ls > 0.0 and src["alive"]:
-		_heal(src, float(dmg) * ls)
+		_heal(src, float(dmg) * ls, true)
 	# 怒气 (熔岩造伤25% / 受伤20%)
 	if src["id"] == "lava":
 		src["rage"] = minf(RAGE_MAX, src["rage"] + float(dmg) * 0.25)
@@ -1403,6 +1482,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 		u["hp"] = u["maxHp"] * pct
 		u["dots"] = []
 		u["dot_stacks"] = {}
+		_sfx_simple("rebirth")              # §AUDIO: 首死复活音 (天使圣光/凤凰涅槃, 低频不节流)
 		_float_text(u["pos"] + Vector2(0, -64), "复活!", Color("#ffd93d"))
 		if u["id"] == "phoenix":                          # 涅槃: 对全体敌灼烧
 			for o in _enemies_of(u):
@@ -1499,12 +1579,115 @@ func _bolt_line(a2d: Vector2, b2d: Vector2, col: Color) -> void:
 	tw.tween_callback(im.queue_free)
 
 # ============================================================================
+#  §AUDIO 辅助 — 节流封装 (防高频命中音刷屏). 拿不到 Audio autoload 时静默 no-op.
+# ============================================================================
+func _audio() -> Node:
+	return get_node_or_null("/root/Audio")
+
+# 命中音 (普攻/技能/装备直接伤害): 暴击→hit-crit, 否则→hit-physical. 同名音 SFX_HIT_MIN_GAP 内只响一次.
+func _sfx_hit(crit: bool) -> void:
+	var a := _audio()
+	if a == null:
+		return
+	if crit:
+		if _t - _last_crit_sfx_t < SFX_HIT_MIN_GAP:
+			return
+		_last_crit_sfx_t = _t
+		a.play_sfx("hit-crit", 1.0, 1.0, 0.03)
+	else:
+		if _t - _last_hit_sfx_t < SFX_HIT_MIN_GAP:
+			return
+		_last_hit_sfx_t = _t
+		a.play_sfx("hit-physical", 0.85, 1.0, 0.08)   # pitch/vol 抖动由 Audio 自带 → 连段听感有差
+
+func _sfx_heal() -> void:
+	var a := _audio()
+	if a == null: return
+	if _t - _last_heal_sfx_t < SFX_AUX_MIN_GAP: return
+	_last_heal_sfx_t = _t
+	a.play_sfx("heal", 1.0, 1.0, 0.04)
+
+func _sfx_shield_gain() -> void:
+	var a := _audio()
+	if a == null: return
+	if _t - _last_shieldgain_sfx_t < SFX_AUX_MIN_GAP: return
+	_last_shieldgain_sfx_t = _t
+	a.play_sfx("shield-gain", 0.9, 1.0, 0.05)
+
+func _sfx_shield_break() -> void:
+	var a := _audio()
+	if a == null: return
+	if _t - _last_shieldbreak_sfx_t < SFX_AUX_MIN_GAP: return
+	_last_shieldbreak_sfx_t = _t
+	a.play_sfx("shield-break", 1.0, 1.0, 0.06)
+
+func _sfx_simple(name: String) -> void:    # 复活/失败 等低频事件, 不节流
+	var a := _audio()
+	if a != null:
+		a.play_sfx(name)
+
+# ============================================================================
+#  §SKILLVFX 框架 — 技能特效真贴图 (替程序圈). 有匹配贴图才放, 没有静默回退现有程序圈/飘字.
+#  _play_skill_vfx(skill_key, pos2d, [height]) → 在该点放一个朝镜头的 billboard:
+#    单帧贴图按 SKILL_VFX_WORLD_H 归一 → 一次性 "放大入场 → 保持 → 淡出" tween 后 queue_free.
+#  (133 张技能图实测全单帧近方形, 非 spritesheet → 不需逐帧步进; 真要逐帧也能扩 hframes.)
+# ============================================================================
+func _skill_vfx_tex(name: String) -> Texture2D:
+	if name == "":
+		return null
+	if _skill_vfx_cache.has(name):
+		return _skill_vfx_cache[name]
+	var path := SKILL_VFX_DIR + name + ".png"
+	var tex: Texture2D = null
+	if ResourceLoader.exists(path):
+		tex = load(path)
+	_skill_vfx_cache[name] = tex          # 缓存 null 也存 (避免反复 exists 探测)
+	return tex
+
+# skill_key: 优先按龟 id 查 SKILL_VFX_MAP; 也可直接传贴图名 (装备/特殊技直指定). 找不到 → no-op (保留程序圈).
+func _play_skill_vfx(skill_key: String, pos2d: Vector2, height: float = 1.2) -> void:
+	if _cam == null:
+		return
+	var name: String = SKILL_VFX_MAP.get(skill_key, skill_key)
+	var tex := _skill_vfx_tex(name)
+	if tex == null:
+		return                            # 无匹配贴图: 静默回退 (调用点已有 _skill_ring/飘字)
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.shaded = false
+	spr.transparent = true
+	spr.alpha_cut = SpriteBase3D.ALPHA_CUT_DISABLED
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+	# 单帧图按 SKILL_VFX_WORLD_H 归一: pixel_size = 目标世界高 / 图高 px
+	var th: int = maxi(1, tex.get_height())
+	spr.pixel_size = SKILL_VFX_WORLD_H / float(th)
+	spr.position = _world_pos(pos2d, height)
+	spr.scale = Vector3.ONE * SKILL_VFX_START_SCALE
+	_world.add_child(spr)
+	# 一次性: 放大入场 → 保持 → 淡出 → 自销 (播一遍消失)
+	var tw := create_tween()
+	tw.tween_property(spr, "scale", Vector3.ONE, SKILL_VFX_GROW_SEC).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(SKILL_VFX_HOLD_SEC)
+	tw.tween_property(spr, "modulate:a", 0.0, SKILL_VFX_FADE_SEC)
+	tw.tween_callback(spr.queue_free)
+
+# ============================================================================
 #  主动技注册表 (28 龟 · 各取规格里的「候选1」) — 逐函数 1:1 搬自 2D 版.
 #  完整实装 = ✅ / 简化 = ⚠, 见每条注释. (装备 on-cast 钩子 Phase 3b, 这里不调)
 # ============================================================================
+# 单体进攻型大招: VFX 落在目标身上 (命中点); 其余(自/队增益·全体)落在施法者身上.
+const _SKILL_VFX_ON_TARGET := {
+	"ninja": true, "ghost": true, "gambler": true, "headless": true,
+	"lightning": true, "two_head": true, "cyber": true,
+}
+
 func _cast_active(u: Dictionary, tgt: Dictionary) -> void:
 	_anticipate(u)                  # Phase4: 放大招前预备(缩)→挥出(伸) 形变, 给"蓄力释放"感
 	_shake(JUICE_SHAKE_HEAVY)       # 大招释放 = 重事件 → 轻震屏 (命中的更强抖由 _impact 叠上)
+	# §SKILLVFX: 该龟主动技有匹配真贴图 → 在 cast/命中点放一遍 (无图静默回退程序圈/飘字)
+	var vfx_at: Vector2 = tgt["pos"] if (_SKILL_VFX_ON_TARGET.get(u["id"], false) and tgt != null and tgt != u) else u["pos"]
+	_play_skill_vfx(str(u["id"]), vfx_at, 1.3)
 	match u["id"]:
 		"basic":     _sk_basic_shield(u, tgt)
 		"stone":     _sk_stone_armor(u)
@@ -1826,13 +2009,18 @@ func _sk_burst(u: Dictionary, tgt: Dictionary) -> void:          # 兜底重击
 #  注: 3D 版血条 overlay 每帧统一刷新, 故去掉 2D 版各处的 _update_bars(u) 调用.
 # ============================================================================
 func _grant_shield(u: Dictionary, amt: float) -> void:
+	if amt <= 0.0: return
 	u["shield"] = minf(u["shield"] + amt, u["maxHp"] * SHIELD_CAP_MULT)
 	_skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.4), 44.0)
+	_sfx_shield_gain()                       # §AUDIO: 得盾音 (节流; 群体上盾不刷屏)
 
-func _heal(u: Dictionary, amt: float) -> void:
+# silent=true: 吸血等高频被动回血不出治疗音 (防刷屏), 主动治疗/技能回血出音
+func _heal(u: Dictionary, amt: float, silent: bool = false) -> void:
 	if amt <= 0.0: return
 	u["hp"] = minf(u["maxHp"], u["hp"] + amt)
 	_float_text(u["pos"] + Vector2(0, -40), "+" + str(int(amt)), Color("#39d353"))
+	if not silent:
+		_sfx_heal()                          # §AUDIO: 治疗音 (节流)
 
 func _freeze(u: Dictionary, sec: float = CTRL_SEC) -> void:
 	u["stun_until"] = maxf(u["stun_until"], _t + sec)
@@ -2668,6 +2856,12 @@ func _show_banner(won: bool) -> void:
 	if _settled:
 		return
 	_settled = true
+	# §AUDIO: 结算 — 败方放 defeat 音 (灭队/失败); 胜方留给后续胜利音(暂无). BGM 淡出收尾.
+	if not won:
+		_sfx_simple("defeat")
+	var a := _audio()
+	if a != null:
+		a.stop_bgm()
 	var accent := Color("#ffd93d") if won else Color("#ff6b6b")
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.55); dim.size = Vector2(1280, 720)
