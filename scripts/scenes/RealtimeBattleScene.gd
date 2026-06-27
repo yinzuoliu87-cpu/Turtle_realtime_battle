@@ -13,6 +13,7 @@ const SEP_RADIUS := 48.0                   # 单位软分离半径
 const SHIELD_CAP_MULT := 1.5               # 护盾上限 = maxHp ×
 const RAGE_MAX := 100.0                    # 怒气满 (熔岩变身)
 const STACK_DOT_TICK := 1.0                # 各类 DoT 每秒结算一次
+const HP_MULT := 2.5                       # 战斗节奏旋钮: HP放大让战斗更耐看(~20s,技能多放几轮), 待F5调
 
 # 全 28 龟战斗属性 (28龟角色映射草案 #7 档位): id → [melee, move_spd, atk_interval(s), atk_range]
 const STATS := {
@@ -129,7 +130,7 @@ func _random_bot(n: int) -> Array:
 func _make_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 	var d: Dictionary = _data_by_id.get(id, {})
 	var st: Array = STATS.get(id, DEFAULT_STAT)
-	var hp := float(d.get("hp", 450))
+	var hp := float(d.get("hp", 450)) * HP_MULT
 	var team_col := Color("#3fa9ff") if side == "left" else Color("#ff5a5a")
 
 	var node := Node2D.new()
