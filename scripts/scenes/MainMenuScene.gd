@@ -235,7 +235,7 @@ func _build_page_buttons(page: String, is_transition: bool) -> void:
 	var centered := page != "main"   # 主菜单在左栏, 子菜单居中
 	match page:
 		"main":
-			items = [["在线模式", func(): _show_page("online"), false], ["本地模式", func(): _show_page("local"), false], ["⚔ 实时战斗", func(): _go("RealtimeBattle"), false], ["🛒 商店", func(): _go("Shop"), false], ["🎒 背包", func(): _go("Inventory"), false], ["设置", func(): _go("Settings"), false]]
+			items = [["在线模式", func(): _show_page("online"), false], ["⚔ 实时战斗", func(): _go("RealtimeBattle"), false], ["🛒 商店", func(): _go("Shop"), false], ["🎒 背包", func(): _go("Inventory"), false], ["设置", func(): _go("Settings"), false]]
 		"online":
 			# 1:1 PoC: 联机未实装 → 按钮可点, 点击弹「敬请期待」toast (非禁用灰)
 			items = [["快速匹配 (推塔)", func(): GameState.mode = "duallane"; GameState.clear_team(); GameState.reset_dual_lane(); get_tree().change_scene_to_file("res://scenes/Matchmaking.tscn"), false], ["🏆 排行榜", func(): _go("Leaderboard"), false], ["房间对战", func(): _show_coming_soon_toast(), false], ["← 返回", func(): _show_page("main"), false]]
