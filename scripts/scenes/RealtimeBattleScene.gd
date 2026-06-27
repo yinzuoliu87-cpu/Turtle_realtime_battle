@@ -14,22 +14,24 @@ const SEP_RADIUS := 48.0                   # 单位软分离半径
 const SHIELD_CAP_MULT := 1.5               # 护盾上限 = maxHp ×
 const RAGE_MAX := 100.0                    # 怒气满 (熔岩变身)
 const STACK_DOT_TICK := 1.0                # 各类 DoT 每秒结算一次
-const HP_MULT := 2.5                       # 战斗节奏旋钮: HP放大让战斗更耐看(~20s,技能多放几轮), 待F5调
+const HP_MULT := 3.0                       # 战斗节奏旋钮: 攻速校准后整体DPS↑~20%, 提到3.0维持一局~20-22s(贴Botworld实测20-30s); 待F5微调
 
 # 全 28 龟战斗属性 (28龟角色映射草案 #7 档位): id → [melee, move_spd, atk_interval(s), atk_range]
+# 攻速档按 Botworld 真数据校准(2026-06-27): 旧 0.65/1.0/1.5 → 0.6/0.85/1.1
+# Botworld 实测攻速 0.5(追击)~1.08(闪避), 多数0.8-0.9, 坦克仅0.8 → 旧1.5s慢攻速严重超标已修
 const STATS := {
-	"basic": [true, 105.0, 1.0, 70.0], "stone": [true, 70.0, 1.5, 70.0], "bamboo": [true, 105.0, 1.0, 70.0],
-	"angel": [false, 105.0, 1.0, 230.0], "ice": [false, 105.0, 1.0, 230.0], "ninja": [true, 145.0, 0.65, 70.0],
-	"two_head": [true, 145.0, 1.0, 70.0], "ghost": [false, 145.0, 0.65, 340.0], "diamond": [true, 70.0, 1.5, 70.0],
-	"fortune": [true, 105.0, 1.0, 70.0], "dice": [false, 145.0, 0.65, 230.0], "rainbow": [true, 105.0, 1.0, 70.0],
-	"gambler": [false, 145.0, 1.0, 230.0], "hunter": [false, 145.0, 0.65, 340.0], "pirate": [false, 105.0, 1.0, 230.0],
-	"candy": [false, 105.0, 1.0, 230.0], "bubble": [false, 70.0, 1.5, 230.0], "line": [false, 145.0, 0.65, 340.0],
-	"lightning": [false, 145.0, 0.65, 340.0], "phoenix": [false, 105.0, 1.0, 230.0], "lava": [true, 145.0, 1.0, 70.0],
-	"cyber": [false, 105.0, 1.0, 230.0], "crystal": [true, 70.0, 1.5, 70.0], "chest": [true, 105.0, 1.5, 70.0],
-	"space": [false, 145.0, 1.0, 340.0], "hiding": [true, 70.0, 1.5, 70.0], "headless": [true, 145.0, 1.0, 70.0],
-	"shell": [true, 105.0, 1.5, 70.0],
+	"basic": [true, 105.0, 0.85, 70.0], "stone": [true, 70.0, 1.1, 70.0], "bamboo": [true, 105.0, 0.85, 70.0],
+	"angel": [false, 105.0, 0.85, 230.0], "ice": [false, 105.0, 0.85, 230.0], "ninja": [true, 145.0, 0.6, 70.0],
+	"two_head": [true, 145.0, 0.85, 70.0], "ghost": [false, 145.0, 0.6, 340.0], "diamond": [true, 70.0, 1.1, 70.0],
+	"fortune": [true, 105.0, 0.85, 70.0], "dice": [false, 145.0, 0.6, 230.0], "rainbow": [true, 105.0, 0.85, 70.0],
+	"gambler": [false, 145.0, 0.85, 230.0], "hunter": [false, 145.0, 0.6, 340.0], "pirate": [false, 105.0, 0.85, 230.0],
+	"candy": [false, 105.0, 0.85, 230.0], "bubble": [false, 70.0, 1.1, 230.0], "line": [false, 145.0, 0.6, 340.0],
+	"lightning": [false, 145.0, 0.6, 340.0], "phoenix": [false, 105.0, 0.85, 230.0], "lava": [true, 145.0, 0.85, 70.0],
+	"cyber": [false, 105.0, 0.85, 230.0], "crystal": [true, 70.0, 1.1, 70.0], "chest": [true, 105.0, 1.1, 70.0],
+	"space": [false, 145.0, 0.85, 340.0], "hiding": [true, 70.0, 1.1, 70.0], "headless": [true, 145.0, 0.85, 70.0],
+	"shell": [true, 105.0, 1.1, 70.0],
 }
-const DEFAULT_STAT := [true, 105.0, 1.0, 70.0]
+const DEFAULT_STAT := [true, 105.0, 0.85, 70.0]
 # demo 兜底阵容 (id 列表, 属性查 STATS) — 没配队时用
 const LEFT_DEMO := ["stone", "basic", "lightning"]
 const RIGHT_DEMO := ["diamond", "ninja", "ghost"]
