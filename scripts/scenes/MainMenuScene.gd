@@ -238,10 +238,11 @@ func _build_page_buttons(page: String, is_transition: bool) -> void:
 			items = [["在线模式", func(): _show_page("online"), false], ["⚔ 实时战斗", func(): _go("RealtimeBattle"), false], ["🛒 商店", func(): _go("Shop"), false], ["🎒 背包", func(): _go("Inventory"), false], ["设置", func(): _go("Settings"), false]]
 		"online":
 			# 1:1 PoC: 联机未实装 → 按钮可点, 点击弹「敬请期待」toast (非禁用灰)
-			items = [["快速匹配 (推塔)", func(): GameState.mode = "duallane"; GameState.clear_team(); GameState.reset_dual_lane(); get_tree().change_scene_to_file("res://scenes/Matchmaking.tscn"), false], ["🏆 排行榜", func(): _go("Leaderboard"), false], ["房间对战", func(): _show_coming_soon_toast(), false], ["← 返回", func(): _show_page("main"), false]]
+			# 实时版: 快速匹配=实时3v3对战(读配队+赛季ghost对手), 不再是回合制双路推塔
+			items = [["快速匹配", func(): _go("RealtimeBattle"), false], ["🏆 排行榜", func(): _go("Leaderboard"), false], ["房间对战", func(): _show_coming_soon_toast(), false], ["← 返回", func(): _show_page("main"), false]]
 		"local":
-			# 上线版只有 推塔玩法 (双路龟蛋): 在线=PvP, 野生=PvE. 深海闯关/指定Boss/老单局3v3 已移除(用户 2026-06-12).
-			items = [["野生对局 (推塔)", func(): GameState.mode = "duallane"; GameState.clear_team(); GameState.reset_dual_lane(); get_tree().change_scene_to_file("res://scenes/Matchmaking.tscn"), false]]
+			# 实时版: 野生对局=实时3v3 PvE(读配队). 老回合制双路推塔已弃(用户2026-06-27 fork实时版).
+			items = [["野生对局", func(): _go("RealtimeBattle"), false]]
 			if OS.is_debug_build():
 				items.append(["测试模式", _on_test, false])
 			items.append(["← 返回", func(): _show_page("main"), false])
@@ -712,6 +713,6 @@ func _on_tutorial() -> void:
 		GameState.mode = "single"; GameState.tutorial = true; GameState.dungeon_stage = 1
 		GameState.dungeon_carry_hp = {}; GameState.dungeon_dead_ids = []
 		GameState.clear_team()
-		get_tree().change_scene_to_file("res://scenes/Battle.tscn"))
+		get_tree().change_scene_to_file("res://scenes/RealtimeBattle.tscn"))   # 实时版: 教程入口改道实时战斗(老回合制Battle.tscn已弃)
 	cancel_btn.pressed.connect(func() -> void: ov.queue_free())
 	add_child(ov)
