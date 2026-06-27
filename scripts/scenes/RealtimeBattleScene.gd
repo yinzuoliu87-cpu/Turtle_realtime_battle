@@ -70,7 +70,7 @@ func _build_arena() -> void:
 	title.position = Vector2(70, 60)
 	add_child(title)
 	var hint := Label.new()
-	hint.text = "近战追·远程风筝·攒满龟能放各自技能(护盾/突进/闪电/诅咒)·灭队=胜   [R 重开]"
+	hint.text = "近战追·远程风筝·攒满龟能放各自技能(护盾/突进/闪电/诅咒)·灭队=胜   [R 重开 · ESC 返回菜单]"
 	hint.add_theme_font_size_override("font_size", 14)
 	hint.add_theme_color_override("font_color", Color("#7f97ad"))
 	hint.position = Vector2(70, 86)
@@ -416,5 +416,8 @@ func _show_banner(text: String) -> void:
 	add_child(_banner)
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_R:
-		get_tree().reload_current_scene()
+	if event is InputEventKey and event.pressed:
+		if event.keycode == KEY_R:
+			get_tree().reload_current_scene()
+		elif event.keycode == KEY_ESCAPE:
+			get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
