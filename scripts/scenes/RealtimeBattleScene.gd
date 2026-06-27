@@ -6,6 +6,7 @@ extends Node2D
 ## 全新自含, 不碰回合制 BattleScene. 复用 data/pets.json 数据 + avatars 精灵.
 ## ⚠ 所有数值是 #7 草案起步值 + 简化伤害公式, 全待 F5 调手感.
 
+const Backend := preload("res://scripts/engine/backend.gd")
 const ARENA := Rect2(70, 110, 1140, 520)   # 战场边界 x,y,w,h
 const MAX_ENERGY := 100.0
 const REGEN_PER_SEC := 14.0                # 龟能每秒回 (≈7s 满)
@@ -36,8 +37,11 @@ const RIGHT_DEMO := ["diamond", "ninja", "ghost"]
 var _units: Array = []
 var _data_by_id: Dictionary = {}
 var _over := false
-var _banner: Label = null
 var _t := 0.0   # 战斗经过秒数 (时间制基准, 取代回合计数)
+var _settled := false                       # 结果只喂赛季一次的守卫 (防 _check_end 重复触发)
+var _last_reward := 0                        # 本局给的深海币 (结算浮层显示用)
+var _last_was_exhibition := false            # 本局是否表演赛 (进场前已0命; 不喂命/计战/上榜)
+var _had_season := false                     # 本局是否有赛季态 (玩家配了 season_leaders); demo 跑时 false → 不喂只显横幅
 
 func _ready() -> void:
 	_load_pets()
@@ -1496,15 +1500,137 @@ func _check_end() -> void:
 			else: right_alive += 1
 	if left_alive == 0 or right_alive == 0:
 		_over = true
-		_show_banner("左队 胜利!" if right_alive == 0 else "右队 胜利!")
+		var won: bool = right_alive == 0            # 左队(玩家)全灭对方 = 胜
+		_settle_season(won)                          # 结果喂赛季 (一次性守卫)
+		_show_settlement(won)
 
-func _show_banner(text: String) -> void:
-	_banner = Label.new()
-	_banner.text = text + "   按 R 重开"
-	_banner.add_theme_font_size_override("font_size", 40)
-	_banner.add_theme_color_override("font_color", Color("#ffd93d"))
-	_banner.position = Vector2(420, 320); _banner.z_index = 50
-	add_child(_banner)
+## 实时战斗结果喂局外赛季 (复用 DualLaneMapScene._grant_settlement_reward 那套 V2 公式).
+## 玩家=左队. 赢: season_wins+1 / 给币(含+15) / +1总战斗 / +2经验 / upload_ghost.
+##                输: lose_heart / 给币(无+15) / +1总战斗 / +2经验.
+## 0命表演赛兜底: 不掉命/不计战/不上榜, 只少量练手币 (沿用 V2, 防送命换币).
+## 守卫: _settled 防重复. demo 跑(无 season_leaders)→ 不喂只显横幅.
+func _settle_season(won: bool) -> void:
+	if _settled:
+		return
+	_settled = true
+	var gs = get_node_or_null("/root/GameState")
+	# demo / 无赛季态: 玩家没配 season_leaders → 不喂赛季 (只显结算横幅, 别崩)
+	_had_season = gs != null and (gs.get("season_leaders") is Array) and (gs.get("season_leaders") as Array).size() >= 1
+	if not _had_season:
+		return
+	if gs.has_method("ensure_season"):
+		gs.ensure_season()                           # 兜底初始化/滚赛季
+	_last_was_exhibition = gs.is_eliminated()        # 进场前已0命 = 表演赛 (无 stake)
+	if _last_was_exhibition:
+		_last_reward = 5                             # 表演赛: 少量练手币, 不掉命/不计战/不上榜 (V2 §十五#2)
+	else:
+		if not won:
+			gs.lose_heart()                          # V2 输→失一颗心 (0命=is_eliminated 淘汰)
+		var lost_hearts: int = maxi(0, 8 - int(gs.hearts))   # 8 = 赛季初始命数
+		_last_reward = 25 + 2 * int(gs.hearts) + 5 * lost_hearts + (15 if won else 0)
+		gs.season_total_battles += 1
+		gs.add_season_xp(2)                          # V2: 每场 +2 大轮经验
+		if won:
+			gs.season_wins += 1                      # 实时胜场 +1 (排行指标)
+			gs.season_eggs_killed += 1               # 灭敌全队 ≈ 击碎龟蛋 → 排行榜口径 +1
+			# 上传自己阵容快照进 ghost 池 (供别人异步匹配; 非表演赛才传)
+			# build_ghost_snapshot 读 GameState.left_team → 用 season_leaders 同步, 否则空快照.
+			if gs.get("left_team") is Array and (gs.left_team as Array).is_empty():
+				var _ldr: Array = gs.get("season_leaders")
+				gs.left_team.assign(_ldr.slice(0, 3))
+			var _gid := "g_%d_%d" % [int(gs.season_id), int(Time.get_unix_time_from_system())]
+			var _av := str(gs.season_leaders[0]) if (gs.season_leaders as Array).size() > 0 else "basic"
+			Backend.upload_ghost(Backend.build_ghost_snapshot(_gid, {"name": "玩家阵容", "avatar": _av, "id": _gid}))
+	gs.meta_deepsea_coins += _last_reward
+	gs.save()
+
+## 结算浮层: 胜/败 + 本局奖励(币/命) + 返回菜单 / 再战 按钮. demo 无赛季态也显(只少奖励行).
+func _show_settlement(won: bool) -> void:
+	var gs = get_node_or_null("/root/GameState")
+	var accent := Color("#ffd93d") if won else Color("#ff6b6b")
+	# 半透明遮罩
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.6); dim.position = Vector2.ZERO; dim.size = Vector2(1280, 720)
+	dim.z_index = 49
+	add_child(dim)
+	var panel := ColorRect.new()
+	panel.color = Color("#0c1a26"); panel.size = Vector2(520, 360)
+	panel.position = Vector2(640 - 260, 360 - 180); panel.z_index = 50
+	add_child(panel)
+	var border := ColorRect.new()
+	border.color = Color(accent.r, accent.g, accent.b, 0.18)
+	border.size = Vector2(520, 6); border.position = Vector2(0, 0); border.z_index = 51
+	panel.add_child(border)
+	var y := 26
+	var big := Label.new()
+	big.text = ("🏆 胜利!" if won else "💀 失败!")
+	big.add_theme_font_size_override("font_size", 52)
+	big.add_theme_color_override("font_color", accent)
+	big.position = Vector2(0, y); big.size = Vector2(520, 64)
+	big.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; big.z_index = 51
+	panel.add_child(big)
+	y += 96
+	if _had_season and gs != null:
+		# 奖励行: 深海币
+		var rwd := Label.new()
+		rwd.text = "💠 深海币 +%d   (累计 %d)" % [_last_reward, int(gs.meta_deepsea_coins)]
+		rwd.add_theme_font_size_override("font_size", 22)
+		rwd.add_theme_color_override("font_color", Color("#ffd93d"))
+		rwd.position = Vector2(0, y); rwd.size = Vector2(520, 28)
+		rwd.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; rwd.z_index = 51
+		panel.add_child(rwd)
+		y += 40
+		# 命数变化行
+		var hp_txt: String
+		var hp_col: Color
+		if _last_was_exhibition:
+			hp_txt = "🎯 表演赛 (已淘汰 · 0 命 · 无 stake)"; hp_col = Color("#9fb6c9")
+		elif gs.is_eliminated():
+			hp_txt = "💀 0 命 — 本赛季淘汰 (下局起表演赛)"; hp_col = Color("#ff9aa2")
+		elif won:
+			hp_txt = "❤ 命 %d/8 (保住)" % int(gs.hearts); hp_col = Color("#9fe6b0")
+		else:
+			hp_txt = "💔 失去 1 命 → 剩 %d/8" % int(gs.hearts); hp_col = Color("#ff9aa2")
+		var hp_l := Label.new()
+		hp_l.text = hp_txt
+		hp_l.add_theme_font_size_override("font_size", 18)
+		hp_l.add_theme_color_override("font_color", hp_col)
+		hp_l.position = Vector2(0, y); hp_l.size = Vector2(520, 26)
+		hp_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; hp_l.z_index = 51
+		panel.add_child(hp_l)
+		y += 38
+		# 赛季胜场行
+		var wl := Label.new()
+		wl.text = "🐢 赛季胜场 %d   ·   总战斗 %d" % [int(gs.season_wins), int(gs.season_total_battles)]
+		wl.add_theme_font_size_override("font_size", 16)
+		wl.add_theme_color_override("font_color", Color("#9fb6c9"))
+		wl.position = Vector2(0, y); wl.size = Vector2(520, 24)
+		wl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; wl.z_index = 51
+		panel.add_child(wl)
+		y += 36
+	else:
+		# demo / 无赛季态: 不喂赛季, 只提示
+		var demo_l := Label.new()
+		demo_l.text = "(demo 对局 · 无赛季结算)"
+		demo_l.add_theme_font_size_override("font_size", 16)
+		demo_l.add_theme_color_override("font_color", Color("#7f97ad"))
+		demo_l.position = Vector2(0, y); demo_l.size = Vector2(520, 24)
+		demo_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; demo_l.z_index = 51
+		panel.add_child(demo_l)
+		y += 40
+	# 按钮行: 返回菜单 / 再战
+	var back := Button.new()
+	back.text = "返回菜单"
+	back.add_theme_font_size_override("font_size", 20)
+	back.position = Vector2(70, 296); back.size = Vector2(170, 44); back.z_index = 51
+	back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
+	panel.add_child(back)
+	var again := Button.new()
+	again.text = "再战"
+	again.add_theme_font_size_override("font_size", 20)
+	again.position = Vector2(280, 296); again.size = Vector2(170, 44); again.z_index = 51
+	again.pressed.connect(func(): get_tree().reload_current_scene())
+	panel.add_child(again)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
