@@ -26,9 +26,9 @@ const STATS := {
 	"shell": [true, 105.0, 1.5, 70.0],
 }
 const DEFAULT_STAT := [true, 105.0, 1.0, 70.0]
-# demo 阵容 (id 列表, 属性查 STATS) — 局外 meta 接入后由 GameState 配队替换
-const LEFT_TEAM := ["stone", "basic", "lightning"]
-const RIGHT_TEAM := ["diamond", "ninja", "ghost"]
+# demo 兜底阵容 (id 列表, 属性查 STATS) — 没配队时用
+const LEFT_DEMO := ["stone", "basic", "lightning"]
+const RIGHT_DEMO := ["diamond", "ninja", "ghost"]
 
 var _units: Array = []
 var _data_by_id: Dictionary = {}
@@ -77,12 +77,51 @@ func _build_arena() -> void:
 	add_child(hint)
 
 func _spawn_teams() -> void:
-	for i in range(LEFT_TEAM.size()):
+	var left := _resolve_left()
+	var right := _resolve_right(left)
+	for i in range(left.size()):
 		var pos := Vector2(ARENA.position.x + 130, ARENA.position.y + 110 + i * 150)
-		_units.append(_make_unit(str(LEFT_TEAM[i]), "left", pos))
-	for i in range(RIGHT_TEAM.size()):
+		_units.append(_make_unit(str(left[i]), "left", pos))
+	for i in range(right.size()):
 		var pos := Vector2(ARENA.end.x - 130, ARENA.position.y + 110 + i * 150)
-		_units.append(_make_unit(str(RIGHT_TEAM[i]), "right", pos))
+		_units.append(_make_unit(str(right[i]), "right", pos))
+
+func _resolve_left() -> Array:
+	# 玩家赛季阵容优先 (GameState.season_leaders), 否则 demo
+	var ldr := _season_leaders()
+	return ldr if ldr.size() >= 1 else LEFT_DEMO.duplicate()
+
+func _resolve_right(left: Array) -> Array:
+	# 敌队 = 随机 bot 3 龟 (后续接 ghost 快照); demo 时固定对位
+	if _season_leaders().is_empty():
+		return RIGHT_DEMO.duplicate()
+	return _random_bot(3)
+
+func _season_leaders() -> Array:
+	var gs = get_node_or_null("/root/GameState")
+	if gs == null:
+		return []
+	var ldr = gs.get("season_leaders")
+	if not (ldr is Array):
+		return []
+	var out: Array = []
+	for x in ldr:
+		if STATS.has(str(x)):
+			out.append(str(x))
+		if out.size() >= 3:
+			break
+	return out
+
+func _random_bot(n: int) -> Array:
+	var pool: Array = STATS.keys()
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var out: Array = []
+	for i in range(mini(n, pool.size())):
+		var idx := rng.randi_range(0, pool.size() - 1)
+		out.append(pool[idx])
+		pool.remove_at(idx)
+	return out
 
 func _make_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 	var d: Dictionary = _data_by_id.get(id, {})
