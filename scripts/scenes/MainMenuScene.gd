@@ -10,12 +10,11 @@ const LEFT_CX := 240        # LEFT_PAD60 + BTN_W360/2
 const BTN_W := 360
 const BTN_H := 87           # 360×161/666
 const BTN_GAP := 12
-const GROUP_TOP := 280      # RIGHT_COL_TOP_Y
+const GROUP_TOP := 234      # 左栏按钮组起始 y — 5 入口(开始战斗/背包/商店/排行榜/设置)垂直排满刚好不溢出 (234→717<720)
 const WALL := 16
 const TILE := 104
 const TSTEP := 120
 const TILE_TOP := 190
-const FLY := 160.0          # 1:1 PoC MainMenuScene.FLY — 过场飞出/飞入竖直位移
 
 var page_box: Control       # 当前页按钮容器
 var _active_page: String = ""   # 当前页 (空=未加载); 过场用
@@ -147,129 +146,43 @@ func _title() -> void:
 		_title_node = l; l.set_meta("home_y", 90.0)
 
 
-# ─── 左栏按钮页 (main / online / local / custom) ───
-var _transitioning := false
-
+# ─── 左栏按钮页 (实时版: 单一干净主菜单, 无子页过场) ───
+## 实时版重做: 去掉回合制残留的多页(online/local)+过场飞出/飞入逻辑.
+##   主菜单就一组清晰按钮(各自从左滑入入场), 点击直接 _go 切场景, 不再有页间过场.
 func _show_page(page: String) -> void:
-	# 首次加载: 各自入场 (按钮滑入; 标题/磁贴在 _title/_right_column 自带入场), 无过场
-	if _active_page == "":
-		_active_page = page
-		_build_page_buttons(page, false)
-		return
-	if page == _active_page or _transitioning:
-		return
-	# 过场 (1:1 PoC goToScreen): 当前页全部飞出 → 目标页飞入。
-	#   ★主菜单专属的 标题 + 右列磁贴 也一起飞 (PoC main 行 = [title, buttons, cards]) — 修"周围按钮圈没动"。
-	_transitioning = true
-	var leaving_main := _active_page == "main"
-	var entering_main := page == "main"
-	var out_objs: Array = []
-	if leaving_main and is_instance_valid(_title_node):
-		out_objs.append(_title_node)
-	for c in page_box.get_children():
-		if c is Control:
-			c.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		out_objs.append(c)
-	if leaving_main:
-		for cd in _card_nodes:
-			if is_instance_valid(cd):
-				out_objs.append(cd)
 	_active_page = page
-	await _fly_out(out_objs)
-	for c in page_box.get_children():
-		c.queue_free()
-	_build_page_buttons(page, true)
-	var in_objs: Array = []
-	if entering_main and is_instance_valid(_title_node):
-		in_objs.append(_title_node)
-	for c in page_box.get_children():
-		in_objs.append(c)
-	if entering_main:
-		for cd in _card_nodes:
-			if is_instance_valid(cd):
-				in_objs.append(cd)
-	await _fly_in(in_objs)
-	_transitioning = false
+	_build_page_buttons(page, false)
 
 
-## 飞出: 各对象上移 FLY + 淡出, 错峰 (1:1 PoC flyOut OUT=230ms STAG=45ms cubic.in)
-func _fly_out(objs: Array) -> void:
-	var last := 0.0
-	for i in range(objs.size()):
-		var o: Control = objs[i]
-		if not is_instance_valid(o):
-			continue
-		var home_y: float = float(o.get_meta("home_y", o.position.y))
-		var delay := i * 0.045
-		last = maxf(last, delay + 0.23)
-		var tw := create_tween()
-		tw.tween_interval(delay)
-		tw.tween_property(o, "position:y", home_y - FLY, 0.23).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-		tw.parallel().tween_property(o, "modulate:a", 0.0, 0.23)
-	await get_tree().create_timer(last + 0.02).timeout
-
-
-## 飞入: 从下方 FLY 上移归位 + 淡入, 错峰回弹 (1:1 PoC flyIn IN=320ms STAG=55ms back.out)
-func _fly_in(objs: Array) -> void:
-	var last := 0.0
-	for i in range(objs.size()):
-		var o: Control = objs[i]
-		if not is_instance_valid(o):
-			continue
-		var home_y: float = float(o.get_meta("home_y", o.position.y))
-		o.visible = true
-		o.position.y = home_y + FLY
-		o.modulate.a = 0.0
-		var delay := i * 0.055
-		last = maxf(last, delay + 0.32)
-		var tw := create_tween()
-		tw.tween_interval(delay)
-		tw.tween_property(o, "position:y", home_y, 0.32).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tw.parallel().tween_property(o, "modulate:a", 1.0, 0.32)
-	await get_tree().create_timer(last + 0.02).timeout
-
-
-## 建某页按钮. is_transition: true=过场(只建+定位+home_y meta, alpha0, 由 flyIn 接管); false=首次加载各自入场
-func _build_page_buttons(page: String, is_transition: bool) -> void:
-	var items: Array = []
-	var centered := page != "main"   # 主菜单在左栏, 子菜单居中
-	match page:
-		"main":
-			items = [["在线模式", func(): _show_page("online"), false], ["⚔ 实时战斗", func(): _go("RealtimeBattle"), false], ["🛒 商店", func(): _go("Shop"), false], ["🎒 背包", func(): _go("Inventory"), false], ["设置", func(): _go("Settings"), false]]
-		"online":
-			# 1:1 PoC: 联机未实装 → 按钮可点, 点击弹「敬请期待」toast (非禁用灰)
-			# 实时版: 快速匹配=实时3v3对战(读配队+赛季ghost对手), 不再是回合制双路推塔
-			items = [["快速匹配", func(): _go("RealtimeBattle"), false], ["🏆 排行榜", func(): _go("Leaderboard"), false], ["房间对战", func(): _show_coming_soon_toast(), false], ["← 返回", func(): _show_page("main"), false]]
-		"local":
-			# 实时版: 野生对局=实时3v3 PvE(读配队). 老回合制双路推塔已弃(用户2026-06-27 fork实时版).
-			items = [["野生对局", func(): _go("RealtimeBattle"), false]]
-			if OS.is_debug_build():
-				items.append(["测试模式", _on_test, false])
-			items.append(["← 返回", func(): _show_page("main"), false])
+## 建主菜单按钮 (实时版: 单页, 各按钮从左滑入入场). _on_first_load 仅保留以兼容调用签名.
+func _build_page_buttons(_page: String, _on_first_load: bool) -> void:
+	# 干净的商业级实时版主菜单: 5 入口 (开始战斗/背包/商店/排行榜/设置). 战斗 → 2.5D 版 RealtimeBattle3D.
+	#   去掉回合制残留的 online/local 子页 (快速匹配/野生对局/房间对战/测试模式/推塔) — 用户嫌乱看不懂.
+	var items: Array = [
+		["⚔ 开始战斗", func(): _go("RealtimeBattle3D"), false],
+		["🎒 背包", func(): _go("Inventory"), false],
+		["🛒 商店", func(): _go("Shop"), false],
+		["🏆 排行榜", func(): _go("Leaderboard"), false],
+		["⚙ 设置", func(): _go("Settings"), false],
+	]
 	var n := items.size()
 	var btn_spacing := BTN_H + BTN_GAP
-	var cx := W / 2 if centered else LEFT_CX
-	var cy0 := (H / 2 - (n - 1) * btn_spacing / 2.0) if centered else (GROUP_TOP + BTN_H / 2.0)
+	var cx := LEFT_CX                       # 主菜单按钮全在左栏
+	var cy0 := GROUP_TOP + BTN_H / 2.0
 	for i in range(n):
 		var it: Array = items[i]
 		var b := _frame_button(it[0], it[1], it[2])
 		var center := Vector2(cx, cy0 + i * btn_spacing)
 		b.position = center - Vector2(BTN_W / 2.0, BTN_H / 2.0)
-		b.set_meta("home_y", b.position.y)   # 过场归位 y
+		b.set_meta("home_y", b.position.y)
 		page_box.add_child(b)
 		b.modulate.a = 0.0
-		if is_transition:
-			continue   # flyIn 统一接管位置/alpha
+		# 入场: 从左滑入 + 淡入, 错峰 (1:1 PoC duration420 delay550+80i) — 保留的好动画
 		var tw := create_tween()
-		if not centered:
-			# 首次加载主菜单: 从左滑入 (PoC duration420 delay550+80i)
-			b.position.x = -560.0
-			tw.tween_interval(0.55 + 0.08 * i)
-			tw.tween_property(b, "position:x", center.x - BTN_W / 2.0, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-			tw.parallel().tween_property(b, "modulate:a", 1.0, 0.42)
-		else:
-			tw.tween_interval(0.06 * i)
-			tw.tween_property(b, "modulate:a", 1.0, 0.28)
+		b.position.x = -560.0
+		tw.tween_interval(0.55 + 0.08 * i)
+		tw.tween_property(b, "position:x", center.x - BTN_W / 2.0, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(b, "modulate:a", 1.0, 0.42)
 
 
 ## btn-frame.png 金色边框按钮 (NinePatchRect 9宫格保证渲染 + 透明Button点击 + 文字)
@@ -366,43 +279,6 @@ func layer_modulate_fade(veil: ColorRect, center: CenterContainer) -> void:
 	var tw := create_tween()
 	tw.tween_property(veil, "modulate:a", 1.0, 0.2)
 	tw.parallel().tween_property(center, "modulate:a", 1.0, 0.2)
-
-
-## 「敬请期待」toast (1:1 PoC showComingSoonToast MainMenuScene.ts:873): 底中14% fade-in.18s→1.8s→fade-out
-func _show_coming_soon_toast(msg: String = "联机功能开发中, 敬请期待") -> void:
-	var old := get_node_or_null("ComingSoonToast")
-	if old:
-		old.queue_free()
-	var toast := PanelContainer.new()
-	toast.name = "ComingSoonToast"
-	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(10.0 / 255.0, 14.0 / 255.0, 24.0 / 255.0, 0.92)
-	sb.border_color = Color("#ffd166")
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(8)
-	sb.content_margin_left = 22; sb.content_margin_right = 22
-	sb.content_margin_top = 10; sb.content_margin_bottom = 10
-	sb.shadow_color = Color(0, 0, 0, 0.5); sb.shadow_size = 10
-	toast.add_theme_stylebox_override("panel", sb)
-	var lbl := Label.new()
-	lbl.text = msg
-	lbl.add_theme_font_size_override("font_size", 16)
-	lbl.add_theme_color_override("font_color", Color("#ffe9a8"))
-	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	toast.add_child(lbl)
-	add_child(toast)
-	await get_tree().process_frame   # 等 PanelContainer 量好尺寸再居中
-	if not is_instance_valid(toast):
-		return
-	var vp := get_viewport_rect().size
-	toast.position = Vector2(vp.x / 2.0 - toast.size.x / 2.0, vp.y * 0.86 - toast.size.y)
-	toast.modulate.a = 0.0
-	var tw := create_tween()
-	tw.tween_property(toast, "modulate:a", 1.0, 0.18)
-	tw.tween_interval(1.8)
-	tw.tween_property(toast, "modulate:a", 0.0, 0.18)
-	tw.tween_callback(toast.queue_free)
 
 
 func _frame_button(label: String, cb: Callable, disabled: bool) -> Control:
@@ -658,10 +534,6 @@ func _tile_press(holder: Control, cb: Callable) -> void:
 func _go(scene: String) -> void:
 	get_tree().change_scene_to_file("res://scenes/%s.tscn" % scene)
 
-func _on_test() -> void:
-	# 测试模式(仅debug build): 实时版直接进实时战斗 (旧双路推塔Matchmaking已弃, 见死代码清理计划.md Phase1)
-	get_tree().change_scene_to_file("res://scenes/RealtimeBattle.tscn")
-
 
 ## 教程: 确认弹窗 → 固定阵容教程战斗 (1:1 PoC confirmStartTutorial → startTutorialBattle, 直进 Battle 不经选龟)
 func _on_tutorial() -> void:
@@ -712,6 +584,6 @@ func _on_tutorial() -> void:
 		GameState.mode = "single"; GameState.tutorial = true; GameState.dungeon_stage = 1
 		GameState.dungeon_carry_hp = {}; GameState.dungeon_dead_ids = []
 		GameState.clear_team()
-		get_tree().change_scene_to_file("res://scenes/RealtimeBattle.tscn"))   # 实时版: 教程入口改道实时战斗(老回合制Battle.tscn已弃)
+		get_tree().change_scene_to_file("res://scenes/RealtimeBattle3D.tscn"))   # 实时版: 教程入口 → 2.5D 战斗 (统一所有战斗入口走 RealtimeBattle3D)
 	cancel_btn.pressed.connect(func() -> void: ov.queue_free())
 	add_child(ov)
