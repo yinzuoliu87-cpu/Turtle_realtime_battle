@@ -1,9 +1,9 @@
 extends Node
 ## verify_dot_stacks.gd — 自证: 层数式 DoT (灼烧/中毒/流血) 1:1 回合制 dot.gd 衰减模型.
 ## 跑法: godot --headless --path . res://tests/verify_dot_stacks.tscn --quit-after 120
-## 实例化真实 RealtimeBattleScene → 抓一个真实单位 → 直接驱动 _tick_dot_stacks, 打印每秒层数+出伤.
+## 实例化真实 RealtimeBattle3DScene → 抓一个真实单位 → 直接驱动 _tick_dot_stacks, 打印每秒层数+出伤.
 
-const RTScene := preload("res://scripts/scenes/RealtimeBattleScene.gd")
+const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 
 func _ready() -> void:
 	await get_tree().process_frame   # 让被实例化场景的 _ready 跑完 (spawn 整队)
