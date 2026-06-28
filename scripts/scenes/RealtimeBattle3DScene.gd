@@ -1543,6 +1543,7 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color) -> void:
 		var ab := minf(u["shield"], d)
 		u["shield"] -= ab; d -= ab
 	u["hp"] = maxf(0.0, u["hp"] - d)
+	u["_st_taken"] = int(u.get("_st_taken", 0)) + dmg   # §STATS: 无来源伤害(DoT等)只计承受
 	_float_text(u["pos"] + Vector2(randf_range(-26.0, 26.0), -40.0 + randf_range(-10.0, 6.0)), str(dmg), col)   # 抖开: 多段/AOE 出伤飘字不重叠成糊团
 	# §AUDIO: 无来源伤害也出命中音 (非暴击); 护盾破→shield-break
 	if shield_before > 0.0 and u["shield"] <= 0.0:
@@ -1575,6 +1576,10 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		var ab := minf(u["shield"], d)
 		u["shield"] -= ab; d -= ab
 	u["hp"] = maxf(0.0, u["hp"] - d)
+	# §STATS: 战斗统计 — 输出归攻击者/承受归目标 (用显示数 dmg)
+	if src is Dictionary and src.has("side") and src != u:
+		src["_st_dealt"] = int(src.get("_st_dealt", 0)) + dmg
+	u["_st_taken"] = int(u.get("_st_taken", 0)) + dmg
 	_float_text(u["pos"] + Vector2(randf_range(-26.0, 26.0), -40.0 + randf_range(-10.0, 6.0)), str(dmg), col)   # 抖开: 多段/AOE 出伤飘字不重叠成糊团
 	# 泡泡束缚(bubbleBind): 束缚期间每受一段伤害 → 永久 -X 护甲/魔抗 (单次累计上限各30)
 	if _t < u.get("bind_until", 0.0):
@@ -2606,14 +2611,18 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:
 # ============================================================================
 func _grant_shield(u: Dictionary, amt: float) -> void:
 	if amt <= 0.0: return
+	var sb: float = u["shield"]
 	u["shield"] = minf(u["shield"] + amt, u["maxHp"] * SHIELD_CAP_MULT)
+	u["_st_shield"] = int(u.get("_st_shield", 0)) + int(u["shield"] - sb)   # §STATS: 实际获盾
 	_skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.4), 44.0)
 	_sfx_shield_gain()                       # §AUDIO: 得盾音 (节流; 群体上盾不刷屏)
 
 # silent=true: 吸血等高频被动回血不出治疗音 (防刷屏), 主动治疗/技能回血出音
 func _heal(u: Dictionary, amt: float, silent: bool = false) -> void:
 	if amt <= 0.0: return
+	var hb: float = u["hp"]
 	u["hp"] = minf(u["maxHp"], u["hp"] + amt)
+	u["_st_heal"] = int(u.get("_st_heal", 0)) + int(u["hp"] - hb)   # §STATS: 实际回复(超过满血不计)
 	_float_text(u["pos"] + Vector2(0, -40), "+" + str(int(amt)), Color("#39d353"))
 	if not silent:
 		_sfx_heal()                          # §AUDIO: 治疗音 (节流)
@@ -3650,6 +3659,86 @@ func _show_banner(won: bool) -> void:
 	sub.size = Vector2(1280, 26); sub.position = Vector2(0, 396)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_ui_layer.add_child(sub)
+	_build_stats_panel()             # #2 战斗统计面板
+
+# #2 伤害统计面板: 结算时显双方各龟 输出/承受/回复/护盾 (统计在 _apply_damage* / _heal / _grant_shield 累计)
+func _build_stats_panel() -> void:
+	var lefts: Array = []
+	var rights: Array = []
+	for u in _units:
+		if u.get("is_summon", false):
+			continue                 # 只统计上场龟, 不含召唤体/中立
+		if u.get("side") == "left":
+			lefts.append(u)
+		elif u.get("side") == "right":
+			rights.append(u)
+	var panel := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.05, 0.08, 0.12, 0.92)
+	sb.border_color = Color(0.3, 0.5, 0.7, 0.55)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(8)
+	sb.content_margin_left = 18; sb.content_margin_right = 18
+	sb.content_margin_top = 12; sb.content_margin_bottom = 14
+	panel.add_theme_stylebox_override("panel", sb)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 8)
+	panel.add_child(vb)
+	var title := Label.new()
+	title.text = "⚔ 战斗统计"
+	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_color_override("font_color", Color("#cfe6ff"))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(title)
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 34)
+	vb.add_child(cols)
+	cols.add_child(_stats_column("🔵 我方", lefts, Color("#7ec8ff")))
+	cols.add_child(_stats_column("🔴 敌方", rights, Color("#ff9a9a")))
+	_ui_layer.add_child(panel)
+	# 自动居中(下半屏): 等一帧布局算出尺寸后摆位
+	panel.position = Vector2(316, 438)
+	_center_panel_deferred(panel)
+
+func _center_panel_deferred(panel: Control) -> void:
+	await get_tree().process_frame
+	if is_instance_valid(panel):
+		panel.position = Vector2(640.0 - panel.size.x * 0.5, 438.0)
+
+func _stats_column(header: String, units: Array, hc: Color) -> Control:
+	var grid := GridContainer.new()
+	grid.columns = 5
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 5)
+	var hdrs := [header, "输出", "承受", "回复", "护盾"]
+	for i in range(5):
+		var l := Label.new()
+		l.text = hdrs[i]
+		l.add_theme_font_size_override("font_size", 14)
+		l.add_theme_color_override("font_color", hc if i == 0 else Color("#8aa0b4"))
+		if i == 0:
+			l.custom_minimum_size = Vector2(96, 0)
+		else:
+			l.custom_minimum_size = Vector2(52, 0)
+			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		grid.add_child(l)
+	for u in units:
+		var dead: bool = not u.get("alive", true)
+		var nm := str(u.get("name", u.get("id", "")))
+		var cells := [("💀 " if dead else "") + nm, str(int(u.get("_st_dealt", 0))), str(int(u.get("_st_taken", 0))), str(int(u.get("_st_heal", 0))), str(int(u.get("_st_shield", 0)))]
+		var rcol := [Color("#e8f0f6"), Color("#ffcf6b"), Color("#ff8f8f"), Color("#7fe39a"), Color("#9fd0ff")]
+		for i in range(5):
+			var l := Label.new()
+			l.text = cells[i]
+			l.add_theme_font_size_override("font_size", 14)
+			l.add_theme_color_override("font_color", Color("#7a8a96") if dead else rcol[i])
+			if i == 0:
+				l.custom_minimum_size = Vector2(96, 0)
+			else:
+				l.custom_minimum_size = Vector2(52, 0)
+				l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			grid.add_child(l)
+	return grid
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
