@@ -38,7 +38,7 @@ const CTRL_SEC := 1.5                      # 眩晕/冻结/嘲讽 默认秒数
 # 28 龟战斗属性 (1:1 复用): id → [melee, move_spd(px/s), atk_interval(s), atk_range(px)]
 const STATS := {
 	"basic": [true, 105.0, 0.85, 70.0], "stone": [true, 70.0, 1.1, 70.0], "bamboo": [true, 105.0, 0.85, 70.0],
-	"angel": [false, 105.0, 0.85, 230.0], "ice": [false, 105.0, 0.85, 230.0], "ninja": [true, 145.0, 0.6, 70.0],
+	"angel": [false, 105.0, 0.85, 230.0], "ice": [false, 105.0, 0.85, 230.0], "ninja": [false, 145.0, 0.6, 280.0],
 	"two_head": [true, 145.0, 0.85, 70.0], "ghost": [false, 145.0, 0.6, 340.0], "diamond": [true, 70.0, 1.1, 70.0],
 	"fortune": [true, 105.0, 0.85, 70.0], "dice": [false, 145.0, 0.6, 230.0], "rainbow": [true, 105.0, 0.85, 70.0],
 	"gambler": [false, 145.0, 0.85, 230.0], "hunter": [false, 145.0, 0.6, 340.0], "pirate": [false, 105.0, 0.85, 230.0],
@@ -60,13 +60,13 @@ const BASIC_ATK := {
 	"basic":    {"phys": 1.4, "hits": 2},
 	"stone":    {"phys": 0.7, "def": 1.5, "mr": 0.8, "hits": 2},                    # +护甲魔抗(坦克)
 	"bamboo":   {"phys": 0.63, "selfhp": 0.18, "hits": 3},                          # 3片叶+自身HP
-	"angel":    {"phys": 1.4, "hits": 3},                                          # (原4.2 错→1.4)
-	"ice":      {"phys": 0.7, "magic": 0.7, "hits": 6},                            # 半物半魔 (原3.0全物 错)
-	"ninja":    {"phys": 1.3, "hits": 1, "mech": "ninja"},                          # 主1.3+背后0.8+击飞
+	"angel":    {"phys": 1.4, "hits": 1},                                          # 远程平A一段(用户:1段+审判被动)
+	"ice":      {"phys": 0.7, "magic": 0.7, "hits": 6, "alt": true},               # 交替物/魔(用户)
+	"ninja":    {"phys": 0.96, "true": 0.64, "hits": 1},                            # 改远程! 普攻=扔飞镖(1.6含40%真); 冲击转主动技
 	"two_head": {"phys": 0.8, "true": 0.8, "hits": 4},                             # 物+真 (原1.0全物 错)
 	"ghost":    {"phys": 0.4, "true": 0.9, "hits": 1},                             # 物+真 (原0.65 错)
 	"diamond":  {"phys": 0.7, "def": 0.6, "mr": 0.6, "hits": 1},                    # +护甲魔抗
-	"fortune":  {"phys": 1.0, "gold": 0.06, "hits": 2},                            # 100%+6%×金币
+	"fortune":  {"phys": 1.0, "gold": 0.06, "hits": 1},                            # 1下(用户; 回合制原2下)
 	"dice":     {"phys": 0.9, "critflat": 55.0, "hits": 3},                         # 90%+5500%暴击率flat
 	"rainbow":  {"magic": 1.4, "hits": 2},                                         # 魔法 (原物 错)
 	"gambler":  {"phys": 1.35, "hits": 3},                                         # 0.9~1.8随机取中
@@ -83,7 +83,7 @@ const BASIC_ATK := {
 	"space":    {"magic": 1.2, "tcurhp": 0.18, "hits": 3},                          # 魔法+18%目标当前HP (原物 错)
 	"hiding":   {"phys": 1.0, "hits": 1, "rider": "selfdef"},                       # +自护甲buff
 	"headless": {"phys": 1.3, "hp": 0.08, "hits": 2},                              # +8%目标HP
-	"shell":    {"phys": 0.6, "true": 0.6, "hits": 2, "mech": "splash"},            # 物+真+相邻溅射
+	"shell":    {"phys": 0.6, "true": 0.6, "hits": 2, "alt": true, "mech": "splash", "splash": 0.5},  # 交替真/物+50%溅射(用户)
 }
 const DEFAULT_BASIC := {"phys": 1.0, "hits": 1}
 
@@ -1328,26 +1328,33 @@ func _do_basic(u: Dictionary, tgt: Dictionary, spec: Dictionary) -> void:
 		raw_p += bonus
 	else:
 		raw_m += bonus
-	var is_magic_main: bool = raw_m > raw_p
-	var col: Color = Color("#bff0ff") if is_magic_main else Color("#ffe08a")
+	var col: Color = Color("#bff0ff") if (raw_m > raw_p) else Color("#ffe08a")
 	var vh: int = clampi(int(spec.get("hits", 1)), 1, 6)
-	for i in range(vh):
-		if not tgt["alive"]:
-			break
-		var dmg := 0
-		if raw_p > 0.0:
-			dmg += _mitigate(u, raw_p / vh, tgt, false)
-		if raw_m > 0.0:
-			dmg += _mitigate(u, raw_m / vh, tgt, true)
-		if dmg > 0:
-			if u["melee"]:
-				_apply_damage_from(u, tgt, dmg, col)
-				if i == 0:
-					_flash(tgt); _melee_lunge(u, tgt)
+	if spec.get("alt", false) and raw_p > 0.0 and (raw_m > 0.0 or raw_t > 0.0):
+		# 交替: 偶段物理, 奇段(魔法或真实) — 各类型在各自半数段摊 (寒冰物/魔, 龟壳物/真)
+		var half: int = maxi(1, vh / 2)
+		var alt_magic: bool = raw_m > 0.0
+		for i in range(vh):
+			if not tgt["alive"]:
+				break
+			if i % 2 == 0:
+				_emit_basic(u, tgt, _mitigate(u, raw_p / half, tgt, false), Color("#ffe08a"), i)
+			elif alt_magic:
+				_emit_basic(u, tgt, _mitigate(u, raw_m / half, tgt, true), Color("#bff0ff"), i)
 			else:
-				_fire_bolt_from(u, tgt, dmg, col)
-		if raw_t > 0.0:
-			_apply_damage_from(u, tgt, int(raw_t / vh), Color("#c0a0ff"), 0.0, true)   # 真实伤害(穿减伤)
+				_apply_damage_from(u, tgt, int(raw_t / half), Color("#c0a0ff"), 0.0, true)
+	else:
+		for i in range(vh):
+			if not tgt["alive"]:
+				break
+			var dmg := 0
+			if raw_p > 0.0:
+				dmg += _mitigate(u, raw_p / vh, tgt, false)
+			if raw_m > 0.0:
+				dmg += _mitigate(u, raw_m / vh, tgt, true)
+			_emit_basic(u, tgt, dmg, col, i)
+			if raw_t > 0.0:
+				_apply_damage_from(u, tgt, int(raw_t / vh), Color("#c0a0ff"), 0.0, true)   # 真实(穿减伤)
 	# 附带效果
 	match str(spec.get("rider", "")):
 		"burn":    _apply_dot_stacks(tgt, "burn", _default_burn_stacks(u), u)
@@ -1355,8 +1362,19 @@ func _do_basic(u: Dictionary, tgt: Dictionary, spec: Dictionary) -> void:
 		"selfdef": _buff(u, "def", 0.20, true)
 	# 特殊机制
 	match str(spec.get("mech", "")):
-		"ninja":   _ninja_basic_extra(u, tgt)        # 背后单位 0.8×ATK + 击飞主目标
-		"splash":  _splash_adjacent(u, tgt, 0.25)    # 相邻敌 25% 溅射
+		"ninja":   _ninja_basic_extra(u, tgt)                            # 背后单位 0.8×ATK + 击飞
+		"splash":  _splash_adjacent(u, tgt, float(spec.get("splash", 0.25)))   # 相邻敌溅射
+
+# 一段普攻伤害落地 (近战直击+前冲 / 远程发弹)
+func _emit_basic(u: Dictionary, tgt: Dictionary, dmg: int, col: Color, i: int) -> void:
+	if dmg <= 0:
+		return
+	if u["melee"]:
+		_apply_damage_from(u, tgt, dmg, col)
+		if i == 0:
+			_flash(tgt); _melee_lunge(u, tgt)
+	else:
+		_fire_bolt_from(u, tgt, dmg, col)
 
 # 伤害减免+暴击 (与 _atk_dmg 同口径, 但吃"已算好的原始伤害"而非 scale)
 func _mitigate(u: Dictionary, raw: float, tgt: Dictionary, magic: bool) -> int:
@@ -1897,8 +1915,11 @@ func _chosen_skill_types(id: String, use_loadout: bool) -> Array:
 func _resolve_active_skills(id: String, use_loadout: bool) -> Array:
 	var out: Array = []
 	for t in _chosen_skill_types(id, use_loadout):
-		if not PASSIVE_SKILL_TYPES.has(t):
-			out.append(t)
+		var st := str(t)
+		if id == "ninja" and st == "ninjaShuriken":
+			st = "ninjaImpact"        # 忍者改造: 飞镖变普攻 → 主动技改成冲击(冲刺+击飞)
+		if not PASSIVE_SKILL_TYPES.has(st):
+			out.append(st)
 	return out
 
 # 实装了的技能 type 集 (与 _do_skill 的 match 保持同步; 用于轮转跳过未实装的, 不浪费龟能/不空放 juice)
@@ -2824,6 +2845,19 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 			while randf() < _gch and tgt["alive"]:
 				_apply_damage_from(u, tgt, _atk_dmg(u, 0.5, tgt), Color("#ffe08a"))
 				_gch -= 0.20
+		"bamboo":                                         # 生长(改造): 蓄力时下一发普攻强化(追加魔法+回血+永久成长)
+			if u.get("bamboo_charge", false):
+				u["bamboo_charge"] = false
+				_apply_damage_from(u, tgt, int(u["atk"] * 0.75 + u["maxHp"] * 0.06), Color("#9be7ff"), 0.0, false)
+				_heal(u, u["maxHp"] * 0.06)
+				u["base_atk"] *= 1.06; u["maxHp"] *= 1.03; _recalc_stats(u)
+				_float_text(u["pos"] + Vector2(0, -58), "强化!", Color("#39d353"))
+				_skill_ring(tgt["pos"], Color(0.4, 0.9, 0.3, 0.5), 44.0)
+		"rainbow":                                        # 棱镜(改造): 普攻附当前颜色效果(红真伤/蓝小盾/绿回血)
+			match int(u.get("prism_color", -1)):
+				0: _apply_damage_from(u, tgt, int(u["atk"] * 0.25), Color("#ff6b6b"), 0.0, true)   # 红: 额外真伤
+				1: _grant_shield(u, u["atk"] * 0.2)                                                # 蓝: 每普攻获小盾
+				2: _heal(u, u["maxHp"] * 0.02, true)                                               # 绿: 回2%最大HP
 	# 猎人猎杀: 攻击后斩杀<14%HP敌
 	if u["id"] == "hunter" and tgt["alive"] and tgt["hp"] < tgt["maxHp"] * 0.14:
 		_float_text(tgt["pos"] + Vector2(0, -56), "斩杀!", Color("#ff6b6b"))
@@ -2876,10 +2910,10 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 				u["base_def"] += u["base_def"] * 0.02; _recalc_stats(u)
 	# --- 竹叶生长: 每N秒充能 → 永久+ATK/HP ---
 	elif u["id"] == "bamboo":
-		if u["_ptimer"] >= 4.0:
+		if u["_ptimer"] >= 6.0 and not u.get("bamboo_charge", false):
 			u["_ptimer"] = 0.0
-			u["base_atk"] *= 1.06; u["maxHp"] *= 1.04; u["hp"] += u["maxHp"] * 0.08
-			_recalc_stats(u)
+			u["bamboo_charge"] = true
+			_float_text(u["pos"] + Vector2(0, -64), "蓄力!", Color("#39d353"))
 	# --- 龟壳气场觉醒 + 储能消耗周期 ---
 	elif u["id"] == "shell":
 		if not u.get("awakened", false) and _t >= 10.0:
@@ -2910,17 +2944,10 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	# --- 彩虹棱镜: 每2.5s 全队随机增益5s (红攻/蓝防/绿回血) ---
 	if u["id"] == "rainbow":
 		u["_rbtimer"] = u.get("_rbtimer", 0.0) + delta
-		if u["_rbtimer"] >= 2.5:
+		if u["_rbtimer"] >= 6.0:
 			u["_rbtimer"] = 0.0
-			var roll := randi() % 3
-			for o in _allies_of(u):
-				if roll == 0:
-					_buff(o, "atk", 0.12, true, 5.0)
-				elif roll == 1:
-					_buff(o, "def", 0.12, true, 5.0); _buff(o, "mr", 0.12, true, 5.0)
-				else:
-					_heal(o, o["maxHp"] * 0.05, true)
-			_float_text(u["pos"] + Vector2(0, -64), ["红光!", "蓝光!", "绿光!"][roll], Color("#ff8ad8"))
+			u["prism_color"] = randi() % 3   # 棱镜(改造): 自身获颜色6秒, 普攻附色(见 _on_basic_hit)
+			_float_text(u["pos"] + Vector2(0, -64), ["获得红光!", "获得蓝光!", "获得绿光!"][int(u["prism_color"])], Color("#ff8ad8"))
 	# --- 泡泡·泡沫: 每2.5s 消耗15%泡泡回血 + 35%泡泡打随机敌 ---
 	if u["id"] == "bubble":
 		u["_bbtimer"] = u.get("_bbtimer", 0.0) + delta
