@@ -1345,7 +1345,7 @@ func _do_basic(u: Dictionary, tgt: Dictionary, spec: Dictionary) -> void:
 		raw_p += bonus
 	else:
 		raw_m += bonus
-	var col: Color = Color("#bff0ff") if (raw_m > raw_p) else Color("#ffe08a")
+	var col: Color = Color("#4dabf7") if (raw_m > raw_p) else Color("#ff4444")
 	var vh: int = clampi(int(spec.get("hits", 1)), 1, 6)
 	if spec.get("alt", false) and raw_p > 0.0 and (raw_m > 0.0 or raw_t > 0.0):
 		# 交替: 偶段物理, 奇段(魔法或真实) — 各类型在各自半数段摊 (寒冰物/魔, 龟壳物/真)
@@ -1355,11 +1355,11 @@ func _do_basic(u: Dictionary, tgt: Dictionary, spec: Dictionary) -> void:
 			if not tgt["alive"]:
 				break
 			if i % 2 == 0:
-				_emit_basic(u, tgt, _mitigate(u, raw_p / half, tgt, false), Color("#ffe08a"), i)
+				_emit_basic(u, tgt, _mitigate(u, raw_p / half, tgt, false), Color("#ff4444"), i)
 			elif alt_magic:
-				_emit_basic(u, tgt, _mitigate(u, raw_m / half, tgt, true), Color("#bff0ff"), i)
+				_emit_basic(u, tgt, _mitigate(u, raw_m / half, tgt, true), Color("#4dabf7"), i)
 			else:
-				_apply_damage_from(u, tgt, int(raw_t / half), Color("#c0a0ff"), 0.0, true)
+				_apply_damage_from(u, tgt, int(raw_t / half), Color("#ffffff"), 0.0, true)
 	else:
 		for i in range(vh):
 			if not tgt["alive"]:
@@ -1371,7 +1371,7 @@ func _do_basic(u: Dictionary, tgt: Dictionary, spec: Dictionary) -> void:
 				dmg += _mitigate(u, raw_m / vh, tgt, true)
 			_emit_basic(u, tgt, dmg, col, i)
 			if raw_t > 0.0:
-				_apply_damage_from(u, tgt, int(raw_t / vh), Color("#c0a0ff"), 0.0, true)   # 真实(穿减伤)
+				_apply_damage_from(u, tgt, int(raw_t / vh), Color("#ffffff"), 0.0, true)   # 真实(穿减伤)
 	# 附带效果
 	match str(spec.get("rider", "")):
 		"burn":    _apply_dot_stacks(tgt, "burn", _default_burn_stacks(u), u)
@@ -1409,7 +1409,7 @@ func _ninja_basic_extra(u: Dictionary, tgt: Dictionary) -> void:
 		if o == tgt or not o["alive"]:
 			continue
 		if _on_line(tgt["pos"], dir, o["pos"], 70.0):
-			_apply_damage_from(u, o, _mitigate(u, u["atk"] * 0.8, o, false), Color("#ffe08a"))
+			_apply_damage_from(u, o, _mitigate(u, u["atk"] * 0.8, o, false), Color("#ff4444"))
 	_knockback(u, tgt, 45.0)
 
 # 相邻溅射 (龟壳): 主目标附近敌受 frac 溅射; 若无相邻, 不额外 (主伤已结算)
@@ -1425,7 +1425,7 @@ func _splash_adjacent(u: Dictionary, tgt: Dictionary, frac: float) -> void:
 # 闪电龟·改造普攻(用户2026-06-28): 一道闪电(魔法 1.15×ATK)命中主目标 → 连锁弧跳最近2敌(每跳×0.6递减);
 #   叠层在 _basic_attack 里走 _on_basic_hit(每攻击+1电击层, 满8引爆雷暴). 原始设计=魔法+跳敌+8层雷暴.
 func _lightning_basic(u: Dictionary, tgt: Dictionary) -> void:
-	_fire_bolt_from(u, tgt, _atk_dmg(u, 1.15, tgt, true), Color("#bff0ff"))   # 主弹: 魔法
+	_fire_bolt_from(u, tgt, _atk_dmg(u, 1.15, tgt, true), Color("#4dabf7"))   # 主弹: 魔法
 	var chained: Array = [tgt]
 	var prev: Dictionary = tgt
 	var frac := 0.6
@@ -1440,8 +1440,8 @@ func _lightning_basic(u: Dictionary, tgt: Dictionary) -> void:
 				bestd = dd; nxt = o
 		if nxt == null:
 			break
-		_bolt_line(prev["pos"], nxt["pos"], Color("#bff0ff"))                 # 连锁弧光
-		_apply_damage_from(u, nxt, _atk_dmg(u, 1.15 * frac, nxt, true), Color("#bff0ff"))
+		_bolt_line(prev["pos"], nxt["pos"], Color("#4dabf7"))                 # 连锁弧光
+		_apply_damage_from(u, nxt, _atk_dmg(u, 1.15 * frac, nxt, true), Color("#4dabf7"))
 		chained.append(nxt); prev = nxt; frac *= 0.6
 
 # 伤害公式 (1:1 复用 2D _atk_dmg): base×scale ×暴击 ×(100/(100+resist-pierce))
@@ -1557,7 +1557,7 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color) -> void:
 func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, extra_ls: float = 0.0, raw: bool = false, from_equip: bool = false) -> void:
 	# 闪避 (目标 dodge_bonus); 瞄准镜054: 攻击者伤害无视闪避 (必中)
 	if u.get("dodge_bonus", 0.0) > 0.0 and not src.get("eq_cannot_be_dodged", false) and randf() < u["dodge_bonus"]:
-		_float_text(u["pos"] + Vector2(0, -40), "闪避", Color("#cfe6ff"))
+		_float_text(u["pos"] + Vector2(0, -40), "闪避", Color("#a0e8ff"))
 		_eq_on_dodge(u)          # on-dodge 钩子 (幽灵墨鱼046: 闪避→永久护盾)
 		return
 	# 靶向器055: 被标记目标受伤 +20%
@@ -1580,7 +1580,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	if src is Dictionary and src.has("side") and src != u:
 		src["_st_dealt"] = int(src.get("_st_dealt", 0)) + dmg
 	u["_st_taken"] = int(u.get("_st_taken", 0)) + dmg
-	_float_text(u["pos"] + Vector2(randf_range(-26.0, 26.0), -40.0 + randf_range(-10.0, 6.0)), str(dmg), col)   # 抖开: 多段/AOE 出伤飘字不重叠成糊团
+	_float_text(u["pos"] + Vector2(randf_range(-26.0, 26.0), -40.0 + randf_range(-10.0, 6.0)), str(dmg), col, was_crit)   # 抖开: 多段/AOE 出伤飘字不重叠成糊团; 暴击放大+图标
 	# 泡泡束缚(bubbleBind): 束缚期间每受一段伤害 → 永久 -X 护甲/魔抗 (单次累计上限各30)
 	if _t < u.get("bind_until", 0.0):
 		var _sx: float = float(u.get("bind_shred", 0.0))
@@ -1734,7 +1734,39 @@ func _kill(u: Dictionary, killer = null) -> void:
 
 # 飘字 (2D 接口对齐): 传像素 XZ 坐标 → 升到头顶世界点 → unproject 到屏幕 → UI overlay 上飘.
 #   2D 版传 pos2d=u["pos"]+偏移(px); 这里把 y 偏移(px·往上)换算成 3D 高度抬升, 让"-64"这种头顶字落在头顶.
-func _float_text(pos2d: Vector2, text: String, col: Color) -> void:
+var _num_font: Font = null                  # #1 飘字像素数字字体 (m6x11, 跟回合制同款厚重描边)
+func _float_num_font() -> Font:
+	if _num_font == null:
+		_num_font = load("res://assets/fonts/m6x11.ttf")
+	return _num_font
+
+# #1 字号按伤害量级缩放 (暴击×1.2) — 1:1 回合制 VisualConstants.size_by_amount
+func _float_size(amount: int, is_crit: bool) -> int:
+	var s: float
+	if amount < 20:
+		s = 20.0
+	elif amount < 60:
+		s = 20.0 + (float(amount - 20) / 40.0) * 4.0
+	elif amount < 400:
+		s = 24.0 + (float(amount - 60) / 340.0) * 11.0
+	else:
+		s = 35.0
+	if is_crit:
+		s *= 1.2
+	return roundi(s)
+
+func _make_num_label(text: String, col: Color, fsize: int) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_override("font", _float_num_font())       # 像素厚字
+	l.add_theme_font_size_override("font_size", fsize)
+	l.add_theme_color_override("font_color", col)
+	l.add_theme_constant_override("outline_size", 4)           # 8向描边 (回合制同款, 深底浮字更清晰)
+	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	return l
+
+# 飘字 (#1 对齐回合制: 像素字+描边+量级字号+暴击放大&图标+pop). is_crit 仅伤害数字用.
+func _float_text(pos2d: Vector2, text: String, col: Color, is_crit: bool = false) -> void:
 	if _cam == null:
 		return
 	# 2D 版 pos2d 含头顶像素偏移; 3D 里统一抬到 ~2.2 米头顶 (billboard 头顶居中, x 偏移忽略)
@@ -1742,17 +1774,33 @@ func _float_text(pos2d: Vector2, text: String, col: Color) -> void:
 	if _cam.is_position_behind(head):
 		return
 	var screen: Vector2 = _cam.unproject_position(head)
-	var l := Label.new()
-	l.text = text
-	l.add_theme_font_size_override("font_size", 18)
-	l.add_theme_color_override("font_color", col)
-	l.position = screen
-	_ui_layer.add_child(l)
+	var amount := absi(text.to_int()) if text.is_valid_int() else 0
+	var fsize := _float_size(amount, is_crit) if amount > 0 else (22 if is_crit else 18)
+	var fly: Control
+	if is_crit and amount > 0:
+		# 暴击伤害: 数字前嵌 crit 图标 (1:1 回合制 .floating-num crit 内嵌图标)
+		var box := HBoxContainer.new()
+		box.add_theme_constant_override("separation", 1)
+		var icon := TextureRect.new()
+		icon.texture = load("res://assets/sprites/stats/crit-dmg-icon.png")
+		icon.custom_minimum_size = Vector2(18, 18)
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		box.add_child(icon)
+		box.add_child(_make_num_label(text, col, fsize))
+		fly = box
+	else:
+		fly = _make_num_label(text, col, fsize)
+	fly.position = screen
+	_ui_layer.add_child(fly)
+	fly.pivot_offset = Vector2(10, 12)
+	fly.scale = Vector2(0.6, 0.6)
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(l, "position:y", screen.y - 28.0, 0.6)
-	tw.tween_property(l, "modulate:a", 0.0, 0.6)
-	tw.chain().tween_callback(l.queue_free)
+	tw.tween_property(fly, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)   # pop 起爆
+	tw.tween_property(fly, "position:y", screen.y - 30.0, 0.6)
+	tw.tween_property(fly, "modulate:a", 0.0, 0.55).set_delay(0.18)
+	tw.chain().tween_callback(fly.queue_free)
 
 # 技能光圈: 地面上一个躺平的环, 扩散淡出 (2D 接口对齐 _skill_ring(pos, col, radius))
 func _skill_ring(pos2d: Vector2, col: Color, radius: float) -> void:
@@ -2106,19 +2154,19 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"shield":               _sk_gen_shield(u)
 		"heal":                 _sk_gen_heal(u)
 		# ── 数据驱动伤害技 (系数取自 detail 公式; N=物理 M=魔法 T=真实) ──
-		"basicBarrage":         _sk_dmg(u, tgt, {"phys": 3.1, "hits": 10, "name": "弹幕!", "color": Color("#ffe08a")})
+		"basicBarrage":         _sk_dmg(u, tgt, {"phys": 3.1, "hits": 10, "name": "弹幕!", "color": Color("#ff4444")})
 		"bambooLeaf":           _sk_dmg(u, tgt, {"phys": 0.63, "hp": 0.18, "hits": 3, "name": "竹叶斩!", "color": Color("#39d353")})
 		"bambooSmack":          _sk_dmg(u, tgt, {"phys": 1.0, "hits": 1, "rider": "atkdn", "name": "竹击!", "color": Color("#39d353")})
 		"angelEquality":        _sk_dmg(u, tgt, {"phys": 2.0, "true": 0.5, "hits": 2, "name": "平等审判!", "color": Color("#ffe9a8")})
 		"iceSpike":             _sk_dmg(u, tgt, {"phys": 0.7, "magic": 0.7, "hits": 6, "rider": "slow", "name": "冰锥!", "color": Color("#9be7ff")})
 		"ninjaShuriken":        _sk_dmg(u, tgt, {"phys": 0.96, "true": 0.64, "hits": 1, "name": "飞镖!", "color": Color("#cfd8e8")})
 		"ninjaBomb":            _sk_dmg(u, tgt, {"phys": 1.1, "hits": 1, "aoe": true, "name": "烟雾弹!", "color": Color("#b0b0c0")})
-		"twoHeadMagicWave":     _sk_dmg(u, tgt, {"phys": 0.8, "true": 0.8, "hits": 4, "name": "魔法波!", "color": Color("#c0a0ff")})
+		"twoHeadMagicWave":     _sk_dmg(u, tgt, {"phys": 0.8, "true": 0.8, "hits": 4, "name": "魔法波!", "color": Color("#ffffff")})
 		"ghostTouch":           _sk_dmg(u, tgt, {"phys": 0.4, "true": 0.9, "hits": 1, "rider": "curse", "name": "幽灵之触!", "color": Color("#c77dff")})
 		"ghostPhantom":         _sk_dmg(u, tgt, {"magic": 1.5, "hits": 1, "name": "幻影!", "color": Color("#c77dff")})
 		"diamondCollide":       _sk_dmg(u, tgt, {"phys": 0.8, "mr": 0.9, "hits": 1, "rider": "stun", "name": "撞击!", "color": Color("#9bdcff")})
 		"fortuneStrike":        _sk_dmg(u, tgt, {"phys": 1.0, "hits": 2, "name": "财运一击!", "color": Color("#ffd93d")})
-		"diceAttack":           _sk_dmg(u, tgt, {"phys": 0.9, "hits": 3, "name": "骰子攻击!", "color": Color("#ffe08a")})
+		"diceAttack":           _sk_dmg(u, tgt, {"phys": 0.9, "hits": 3, "name": "骰子攻击!", "color": Color("#ff4444")})
 		"rainbowStorm":         _sk_dmg(u, tgt, {"magic": 0.8, "true": 0.4, "hits": 4, "aoe": true, "name": "棱镜风暴!", "color": Color("#ff8ad8")})
 		"gamblerCards":         _sk_dmg(u, tgt, {"phys": 1.35, "hits": 3, "name": "发牌!", "color": Color("#ffd93d")})
 		"gamblerDraw":          _sk_dmg(u, tgt, {"phys": 1.0, "hits": 2, "name": "抽牌!", "color": Color("#ffd93d")})
@@ -2135,7 +2183,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"crystalSpike":         _sk_dmg(u, tgt, {"magic": 1.0, "hits": 2, "name": "水晶刺!", "color": Color("#9bdcff")})
 		"crystalBurst":         _sk_dmg(u, tgt, {"magic": 0.7, "true": 0.1, "hits": 3, "aoe": true, "name": "水晶爆!", "color": Color("#9bdcff")})
 		"chestStorm":           _sk_dmg(u, tgt, {"phys": 1.0, "hits": 5, "aoe": true, "name": "宝箱风暴!", "color": Color("#ffd93d")})
-		"starBeam":             _sk_dmg(u, tgt, {"magic": 0.4, "hits": 3, "name": "星光束!", "color": Color("#c0a0ff")})
+		"starBeam":             _sk_dmg(u, tgt, {"magic": 0.4, "hits": 3, "name": "星光束!", "color": Color("#ffffff")})
 		"soulReap":             _sk_dmg(u, tgt, {"phys": 1.1, "hits": 1, "aoe": true, "name": "灵魂收割!", "color": Color("#c77dff")})
 		"shellStrike":          _sk_dmg(u, tgt, {"phys": 0.9, "hits": 2, "name": "龟壳猛击!", "color": Color("#cfd8e8")})
 		"chestSmash":           _sk_dmg(u, tgt, {"phys": 1.5, "hits": 3, "name": "宝箱猛击!", "color": Color("#ffd93d")})
@@ -2154,7 +2202,7 @@ func _sk_basic_shield(u: Dictionary, tgt: Dictionary) -> void:   # 小龟·龟�
 	var lost: float = (tgt["maxHp"] - tgt["hp"]) * 0.20
 	var raw: float = u["atk"] * 0.7
 	var dmg := _atk_dmg(u, 0.7, tgt) + int(lost)
-	_apply_damage_from(u, tgt, dmg, Color("#ffe08a"))
+	_apply_damage_from(u, tgt, dmg, Color("#ff4444"))
 	_grant_shield(u, (raw + lost) * 0.80)
 	_knockback(u, tgt, 60.0)
 
@@ -2220,7 +2268,7 @@ func _sk_diamond_unbreak(u: Dictionary) -> void:                 # 钻石龟·�
 func _sk_dice_allin(u: Dictionary) -> void:                      # 骰子龟·孤注一掷 ✅
 	_float_text(u["pos"] + Vector2(0, -64), "孤注一掷!", Color("#ffd93d"))
 	for o in _enemies_of(u):
-		_apply_damage_from(u, o, _atk_dmg(u, 1.2, o), Color("#ffe08a"), 0.30)
+		_apply_damage_from(u, o, _atk_dmg(u, 1.2, o), Color("#ff4444"), 0.30)
 
 func _sk_rainbow_shield(u: Dictionary) -> void:                  # 彩虹龟·棱镜护盾 ✅
 	_float_text(u["pos"] + Vector2(0, -64), "棱镜护盾!", Color("#ff8ad8"))
@@ -2230,7 +2278,7 @@ func _sk_rainbow_shield(u: Dictionary) -> void:                  # 彩虹龟·�
 func _sk_gambler_wild(u: Dictionary, tgt: Dictionary) -> void:   # 赌神龟·万能牌 ✅
 	_float_text(u["pos"] + Vector2(0, -64), "万能牌!", Color("#ffd93d"))
 	for i in range(2):
-		_apply_damage_from(u, tgt, _atk_dmg(u, 1.0, tgt), Color("#ffe08a"))
+		_apply_damage_from(u, tgt, _atk_dmg(u, 1.0, tgt), Color("#ff4444"))
 	_grant_shield(u, u["atk"] * 0.25)
 	_heal(u, u["maxHp"] * 0.05)
 	_buff(tgt, "atk", -0.15, true)
@@ -2239,7 +2287,7 @@ func _sk_hunter_hide(u: Dictionary) -> void:                     # 猎人龟·�
 	_float_text(u["pos"] + Vector2(0, -64), "隐蔽!", Color("#a8ffb0"))
 	var tgt = _nearest_enemy(u)
 	if tgt != null:
-		_apply_damage_from(u, tgt, _atk_dmg(u, 0.9, tgt), Color("#ffe08a"))
+		_apply_damage_from(u, tgt, _atk_dmg(u, 0.9, tgt), Color("#ff4444"))
 	_buff(u, "dodge", 0.25, true)
 	_grant_shield(u, u["atk"] * 0.6)
 
@@ -2268,7 +2316,7 @@ func _sk_line_link(u: Dictionary) -> void:                       # 线条龟·�
 
 func _sk_lightning_surge(u: Dictionary, tgt: Dictionary) -> void: # 闪电龟·涌动 ✅
 	_float_text(u["pos"] + Vector2(0, -64), "涌动!", Color("#7ee8ff"))
-	_apply_damage_from(u, tgt, _atk_dmg(u, 1.23, tgt, true), Color("#bff0ff"))
+	_apply_damage_from(u, tgt, _atk_dmg(u, 1.23, tgt, true), Color("#4dabf7"))
 	_add_stack(tgt, "electric", 2, 6)
 	_buff(u, "atk", 0.5, true)
 
@@ -2278,7 +2326,7 @@ func _sk_phoenix_lavashield(u: Dictionary) -> void:              # 凤凰龟·�
 
 func _sk_headless_fear(u: Dictionary, tgt: Dictionary) -> void:  # 无头龟·恐吓 ✅
 	_float_text(u["pos"] + Vector2(0, -64), "恐吓!", Color("#a0a0ff"))
-	_apply_damage_from(u, tgt, _atk_dmg(u, 0.9, tgt), Color("#ffe08a"))
+	_apply_damage_from(u, tgt, _atk_dmg(u, 0.9, tgt), Color("#ff4444"))
 	_buff(tgt, "atk", -0.20, true)
 
 func _sk_fortune_dice(u: Dictionary) -> void:                    # 财神龟·骰子 ✅
@@ -2500,7 +2548,7 @@ func _sk_fortune_allin(u: Dictionary, tgt) -> void:
 	_float_text(u["pos"] + Vector2(0, -64), "梭哈! %d币" % coins, Color("#ffd93d"))
 	if coins <= 0:
 		return
-	_apply_damage_from(u, tgt, int(u["atk"] * 0.18 * coins), Color("#ffe08a"))
+	_apply_damage_from(u, tgt, int(u["atk"] * 0.18 * coins), Color("#ff4444"))
 	_apply_damage_from(u, tgt, int(u["atk"] * 0.18 * coins), Color("#fff0a0"), 0.0, true)   # 真实
 	_skill_ring(tgt["pos"], Color(1.0, 0.85, 0.2, 0.6), 70.0)
 
@@ -2509,7 +2557,7 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:
 	if tgt == null:
 		return
 	u["pierce"] += 8.0                              # 永久魔穿 (规格 6+0.5×lv, 局内无等级→取≈8)
-	_float_text(u["pos"] + Vector2(0, -64), "虫洞!", Color("#c0a0ff"))
+	_float_text(u["pos"] + Vector2(0, -64), "虫洞!", Color("#ffffff"))
 	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
 	var mult: float = 1.5 * (1.0 + 0.1 * _t)        # 随战斗时间变强
 	for o in _enemies_of(u):
@@ -2517,7 +2565,7 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:
 			for i in range(4):
 				if not o["alive"]:
 					break
-				_apply_damage_from(u, o, _atk_dmg(u, mult / 4.0, o, true), Color("#c0a0ff"))
+				_apply_damage_from(u, o, _atk_dmg(u, mult / 4.0, o, true), Color("#ffffff"))
 			_knockback(u, o, 55.0)
 			_skill_ring(o["pos"], Color(0.75, 0.6, 1.0, 0.5), 50.0)
 
@@ -2613,7 +2661,10 @@ func _grant_shield(u: Dictionary, amt: float) -> void:
 	if amt <= 0.0: return
 	var sb: float = u["shield"]
 	u["shield"] = minf(u["shield"] + amt, u["maxHp"] * SHIELD_CAP_MULT)
-	u["_st_shield"] = int(u.get("_st_shield", 0)) + int(u["shield"] - sb)   # §STATS: 实际获盾
+	var got := int(u["shield"] - sb)
+	u["_st_shield"] = int(u.get("_st_shield", 0)) + got   # §STATS: 实际获盾
+	if got >= 8:                             # #1 护盾飘字 "+N 盾" (浅蓝); 门槛过滤每帧微盾被动防刷屏
+		_float_text(u["pos"] + Vector2(0, -52), "+%d 盾" % got, Color("#ffffff"))
 	_skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.4), 44.0)
 	_sfx_shield_gain()                       # §AUDIO: 得盾音 (节流; 群体上盾不刷屏)
 
@@ -2623,7 +2674,7 @@ func _heal(u: Dictionary, amt: float, silent: bool = false) -> void:
 	var hb: float = u["hp"]
 	u["hp"] = minf(u["maxHp"], u["hp"] + amt)
 	u["_st_heal"] = int(u.get("_st_heal", 0)) + int(u["hp"] - hb)   # §STATS: 实际回复(超过满血不计)
-	_float_text(u["pos"] + Vector2(0, -40), "+" + str(int(amt)), Color("#39d353"))
+	_float_text(u["pos"] + Vector2(0, -40), "+" + str(int(amt)), Color("#06d6a0"))
 	if not silent:
 		_sfx_heal()                          # §AUDIO: 治疗音 (节流)
 
@@ -2851,7 +2902,7 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 			var lv := _add_stack(tgt, "electric", 1, 8)
 			if lv >= 8:
 				_consume_stacks(tgt, "electric")
-				_apply_damage_from(u, tgt, int(u["atk"] * 0.82), Color("#bff0ff"), 0.0, true)
+				_apply_damage_from(u, tgt, int(u["atk"] * 0.82), Color("#4dabf7"), 0.0, true)
 				# 雷暴爆发 VFX: 真贴图 + 亮环 + 弧光 + 字 + 轻震屏
 				_play_skill_vfx("lightning-2", tgt["pos"], 1.3)
 				_skill_ring(tgt["pos"], Color(0.72, 0.95, 1.0, 0.75), 76.0)
@@ -2869,7 +2920,7 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 		"gambler":                                        # 多重打击: 40%追加一击(递减20%可连锁)
 			var _gch := 0.40
 			while randf() < _gch and tgt["alive"]:
-				_apply_damage_from(u, tgt, _atk_dmg(u, 0.5, tgt), Color("#ffe08a"))
+				_apply_damage_from(u, tgt, _atk_dmg(u, 0.5, tgt), Color("#ff4444"))
 				_gch -= 0.20
 		"bamboo":                                         # 生长(改造): 蓄力时下一发普攻强化(追加魔法+回血+永久成长)
 			if u.get("bamboo_charge", false):
@@ -2995,7 +3046,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			var le := _enemies_of(u)
 			if not le.is_empty():
 				var lv2 = le[randi() % le.size()]
-				_apply_damage_from(u, lv2, int(u["atk"] * 0.82), Color("#bff0ff"), 0.0, true)
+				_apply_damage_from(u, lv2, int(u["atk"] * 0.82), Color("#4dabf7"), 0.0, true)
 				_skill_ring(lv2["pos"], Color(0.5, 0.9, 1.0, 0.5), 40.0)
 
 # ============================================================================
@@ -3957,7 +4008,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 						_apply_damage_from(src, o, maxi(1, int(dmg * frac)), Color("#ffd07a"), 0.0, false, true)
 			"p2eq_005":   # 双生匕首: 概率追击
 				if randf() < [0.5, 0.75, 1.0][si]:
-					_apply_damage_from(src, tgt, _atk_dmg(src, [0.7, 0.8, 1.0][si], tgt), Color("#ffe08a"), 0.0, false, true)
+					_apply_damage_from(src, tgt, _atk_dmg(src, [0.7, 0.8, 1.0][si], tgt), Color("#ff4444"), 0.0, false, true)
 			"p2eq_023":   # 灼热火珊瑚(被动): 每段额外灼烧 + 充能
 				var burn: int = maxi(1, roundi([5.0, 7.0, 10.0][si] + [0.07, 0.11, 0.15][si] * src["atk"]))
 				_apply_dot_stacks(tgt, "burn", burn, src)
@@ -3994,8 +4045,8 @@ func _eq_chain_lightning(src: Dictionary, si: int) -> void:
 		if cur == null:
 			break
 		hit.append(cur)
-		_bolt_line(prev, cur["pos"], Color("#bff0ff"))
-		_apply_damage_from(src, cur, dmg, Color("#bff0ff"), 0.0, true, true)
+		_bolt_line(prev, cur["pos"], Color("#4dabf7"))
+		_apply_damage_from(src, cur, dmg, Color("#4dabf7"), 0.0, true, true)
 		prev = cur["pos"]
 		var nx = null; var bd := INF
 		for o in _enemies_of(src):
@@ -4084,7 +4135,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 				for o in _enemies_of(u):
 					if _on_line(u["pos"], dir, o["pos"], 55.0):
 						var dd: int = _atk_dmg(u, [0.5, 0.8, 1.1][si], o) + [20, 35, 60][si]
-						_apply_damage_from(u, o, dd, Color("#ffe08a"), 0.0, false, true); tot += dd
+						_apply_damage_from(u, o, dd, Color("#ff4444"), 0.0, false, true); tot += dd
 				_grant_shield(u, tot * [0.5, 0.75, 1.0][si])
 			"p2eq_008":   # 双穿珊瑚刺: 对最远敌
 				var far = null; var fd := -1.0
@@ -4092,7 +4143,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 					var dd2: float = (o["pos"] - u["pos"]).length_squared()
 					if dd2 > fd: fd = dd2; far = o
 				if far != null:
-					_apply_damage_from(u, far, _atk_dmg(u, [1.0, 1.2, 1.5][si], far), Color("#ffe08a"), 0.0, false, true)
+					_apply_damage_from(u, far, _atk_dmg(u, [1.0, 1.2, 1.5][si], far), Color("#ff4444"), 0.0, false, true)
 					_apply_damage_from(u, far, int(far["maxHp"] * [0.08, 0.12, 0.18][si]), Color("#bfe9ff"), 0.0, true, true)
 			"p2eq_011":   # 饮血护符坠: 连斩随机敌 (衰减)
 				var n: int = [5, 6, 8][si]
@@ -4215,12 +4266,12 @@ func _eq_sniper(u: Dictionary, si: int, depth: int) -> void:
 	if low == null:
 		return
 	var dir: Vector2 = (low["pos"] - u["pos"]).normalized()
-	_bolt_line(u["pos"], low["pos"], Color("#ffe08a"))
+	_bolt_line(u["pos"], low["pos"], Color("#ff4444"))
 	var killed := false
 	for o in _enemies_of(u):
 		if _on_line(u["pos"], dir, o["pos"], 36.0):
 			var before: bool = o["alive"]
-			_apply_damage_from(u, o, _atk_dmg(u, [2.0, 3.0, 7.0][si], o), Color("#ffe08a"), 0.0, false, true)
+			_apply_damage_from(u, o, _atk_dmg(u, [2.0, 3.0, 7.0][si], o), Color("#ff4444"), 0.0, false, true)
 			if before and not o["alive"]:
 				killed = true
 	if killed:
@@ -4303,7 +4354,7 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 			"p2eq_001":   # 锈蚀短剑: 每周期劈砍最近敌
 				var t = _nearest_enemy(u)
 				if t != null:
-					_apply_damage_from(u, t, _atk_dmg(u, [0.6, 0.75, 1.0][si], t) + int([40, 60, 100][si] * u["crit"]), Color("#ffe08a"), 0.0, false, true)
+					_apply_damage_from(u, t, _atk_dmg(u, [0.6, 0.75, 1.0][si], t) + int([40, 60, 100][si] * u["crit"]), Color("#ff4444"), 0.0, false, true)
 			"p2eq_012":   # 龟苓膏块: 每周期自护盾
 				_grant_shield(u, [30.0, 40.0, 55.0][si])
 			"p2eq_016":   # 铁壁盾: 每周期全队(含自己)护盾
@@ -4321,7 +4372,7 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 				u["maxHp"] += gain; u["hp"] += gain
 				var t2 = _nearest_enemy(u)
 				if t2 != null:
-					_apply_damage_from(u, t2, int(u["maxHp"] / HP_MULT * [0.05, 0.07, 0.10][si]), Color("#ffe08a"), 0.0, false, true)
+					_apply_damage_from(u, t2, int(u["maxHp"] / HP_MULT * [0.05, 0.07, 0.10][si]), Color("#ff4444"), 0.0, false, true)
 			"p2eq_021":   # 守护贝母: 每周期连接攻击最高友军→给护盾+净化
 				var best = null; var ba := -1.0
 				for o in _allies_of(u):
@@ -4339,15 +4390,15 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 					var es := _enemies_of(u)
 					if es.is_empty(): break
 					var o = es[randi() % es.size()]
-					_bolt_line(Vector2(o["pos"].x, ARENA.position.y), o["pos"], Color("#bff0ff"))
-					_apply_damage_from(u, o, int(u["atk"]), Color("#bff0ff"), 0.0, true, true)
+					_bolt_line(Vector2(o["pos"].x, ARENA.position.y), o["pos"], Color("#4dabf7"))
+					_apply_damage_from(u, o, int(u["atk"]), Color("#4dabf7"), 0.0, true, true)
 			"p2eq_027":   # 电棍: 每周期电击随机敌+眩晕, 消耗1层
 				if int(stt.get("baton_charges", 0)) > 0:
 					var es2 := _enemies_of(u)
 					if not es2.is_empty():
 						stt["baton_charges"] = int(stt["baton_charges"]) - 1
 						var o = es2[randi() % es2.size()]
-						_apply_damage_from(u, o, [30, 40, 50][si], Color("#bff0ff"), 0.0, true, true)
+						_apply_damage_from(u, o, [30, 40, 50][si], Color("#4dabf7"), 0.0, true, true)
 						_freeze(o, EQ_TICK)
 			"p2eq_035":   # 黄铜齿轮: 每周期+N层
 				stt["gears"] = int(stt.get("gears", 0)) + [1, 2, 3][si]
