@@ -1723,20 +1723,34 @@ const _SKILL_VFX_ON_TARGET := {
 const PASSIVE_SKILL_TYPES := {"iceBurnImmune": true}
 
 # loadout(选3) 里所有"非普攻"技 type (physical/magic 是普攻=自动, 排除)
+# 4选1: 每龟从 skillPool[1..4] 选【1个】(主动或被动); GameState.loadouts[id]=选中索引(默认1=签名候选).
+func _resolve_chosen_index(id: String, use_loadout: bool) -> int:
+	var d: Dictionary = _data_by_id.get(id, {})
+	var pool: Array = d.get("skillPool", [])
+	var idx := 1                                          # 默认 skillPool[1] (各龟签名候选)
+	if use_loadout and GameState.loadouts.has(id):
+		var lo = GameState.loadouts[id]
+		if lo is int or lo is float:
+			idx = int(lo)
+		elif lo is Array and not (lo as Array).is_empty():   # 兼容旧"选3"数组: 取首个非普攻索引
+			for v in lo:
+				if int(v) >= 1:
+					idx = int(v); break
+	if idx < 1 or idx >= pool.size():
+		idx = 1 if pool.size() > 1 else 0
+	return idx
+
+# 选中的那1个技 type (排除普攻; 供主动/被动判定). 返空 = 没选到有效技.
 func _chosen_skill_types(id: String, use_loadout: bool) -> Array:
 	var d: Dictionary = _data_by_id.get(id, {})
 	var pool: Array = d.get("skillPool", [])
-	var ds: Array = (GameState.loadouts.get(id, d.get("defaultSkills", [0, 1, 2])) if use_loadout else d.get("defaultSkills", [0, 1, 2]))
-	var out: Array = []
-	for i in ds:
-		var ii := int(i)
-		if ii < 0 or ii >= pool.size():
-			continue
-		var t := str((pool[ii] as Dictionary).get("type", ""))
-		if t == "" or t == "physical" or t == "magic":
-			continue
-		out.append(t)
-	return out
+	var idx := _resolve_chosen_index(id, use_loadout)
+	if idx < 0 or idx >= pool.size():
+		return []
+	var t := str((pool[idx] as Dictionary).get("type", ""))
+	if t == "" or t == "physical" or t == "magic":
+		return []
+	return [t]
 
 # 进主动轮转的技 (= 选中非普攻技 减去 被动型)
 func _resolve_active_skills(id: String, use_loadout: bool) -> Array:

@@ -1205,7 +1205,7 @@ func _build_skill_picker(pet: Dictionary) -> void:
 	title.add_theme_color_override("font_color", Color("#ffd86b"))
 	title_row.add_child(title)
 	var count_lbl := Label.new()
-	count_lbl.text = "选 3 (%d/3)" % selected.size()
+	count_lbl.text = "4 选 1 (主动/被动)"   # 普攻+固定被动外, 从4候选选1个
 	count_lbl.add_theme_font_size_override("font_size", _sf(11))   # PoC .dp-skill-count 11px
 	count_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.5))   # rgba(255,255,255,.5)
 	count_lbl.size_flags_vertical = Control.SIZE_SHRINK_END   # 底对齐近 baseline
@@ -1423,21 +1423,31 @@ func _available_skill_indices(pet: Dictionary) -> Array:
 	return idxs
 
 
+# 4选1: 当前选中的那个候选索引 (1..4); skillPool[0]=普攻不参与选.
+func _chosen_candidate(pid: String, pet: Dictionary) -> int:
+	var unlocked: Array = _available_skill_indices(pet)
+	var lo = GameState.loadouts.get(pid, null)
+	var idx := -1
+	if lo is int or lo is float:
+		idx = int(lo)
+	elif lo is Array and not (lo as Array).is_empty():   # 兼容旧"选3"数组: 取首个非普攻
+		for v in lo:
+			if int(v) >= 1:
+				idx = int(v); break
+	if idx < 1 or not (idx in unlocked):                 # 无效/未解锁 → 默认首个解锁的候选
+		idx = -1
+		for u in unlocked:
+			if int(u) >= 1:
+				idx = int(u); break
+		if idx < 0:
+			idx = 1
+	return idx
+
 func _get_panel_loadout(pid: String) -> Array:
 	var pet: Dictionary = DataRegistry.pet_by_id.get(pid, {})
 	if pet.is_empty():
 		return []
-	var unlocked: Array = _available_skill_indices(pet)
-	var base: Array = GameState.loadouts.get(pid, pet.get("defaultSkills", [0, 1, 2]))
-	var sel: Array = []
-	for i in base:
-		if i in unlocked and sel.size() < 3:
-			sel.append(i)
-	if not (0 in sel):
-		sel.insert(0, 0)
-		while sel.size() > 3:
-			sel.pop_back()
-	return sel
+	return [_chosen_candidate(pid, pet)]   # 单选 → [选中候选] (供图标高亮)
 
 
 func _toggle_skill(pid: String, idx: int) -> void:
@@ -1445,30 +1455,13 @@ func _toggle_skill(pid: String, idx: int) -> void:
 	if pet.is_empty():
 		return
 	if idx == 0:
-		_flash_status("基础技能必选")
+		_flash_status("普攻自动施放, 无需选择")        # skillPool[0]=普攻
 		return
 	var unlocked: Array = _available_skill_indices(pet)
 	if not (idx in unlocked):
 		_flash_status("需 Lv.4 解锁" if idx == 3 else "需 Lv.7 解锁")
 		return
-	var sel: Array = _get_panel_loadout(pid)
-	var pool: Array = pet.get("skillPool", [])
-	var sk: Dictionary = pool[idx] if idx < pool.size() else {}
-	if idx in sel:
-		sel.erase(idx)
-	else:
-		if sel.size() >= 3:
-			_flash_status("最多选 3 个技能")
-			return
-		var conflict = sk.get("conflictsWith", null)
-		if conflict != null and (int(conflict) in sel):
-			sel.erase(int(conflict))
-		sel.append(idx)
-	if not (0 in sel):
-		sel.insert(0, 0)
-	sel.sort()
-	GameState.loadouts[pid] = sel
-	_sync_special_slots()   # crystal/candy 占位依赖 loadout 是否含对应被动 → 重算
+	GameState.loadouts[pid] = idx                       # 4选1: 单选, 点哪个就替换成哪个
 	_refresh_slots()
 	_refresh_confirm()
 	_refresh_detail()
