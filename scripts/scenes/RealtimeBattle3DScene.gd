@@ -1787,11 +1787,18 @@ func _cast_skill(u: Dictionary, tgt: Dictionary, stype: String) -> bool:
 		return false                                  # 梭哈一场限一次, 用过则轮转跳过不空放
 	_anticipate(u)                  # 放大招前预备(缩)→挥出(伸) 形变
 	_shake(JUICE_SHAKE_HEAVY)       # 大招释放 = 轻震屏
-	# §SKILLVFX: 暂用该龟签名 VFX (按 id); 逐技 type→icon 真贴图留 batch2
-	var vfx_at: Vector2 = tgt["pos"] if (_SKILL_VFX_ON_TARGET.get(u["id"], false) and tgt != null and tgt != u) else u["pos"]
-	_play_skill_vfx(str(u["id"]), vfx_at, 1.3)
+	# §SKILLVFX: 逐技 type→icon 真贴图(pets.json skillPool[].icon); 无图回退龟签名 VFX, 再无则静默(留 _skill_ring/飘字)
+	var on_tgt: bool = _COPYABLE_SKILLS.has(stype) or _SKILL_VFX_ON_TARGET.get(u["id"], false)
+	var vfx_at: Vector2 = tgt["pos"] if (on_tgt and tgt != null and tgt != u) else u["pos"]
+	var vfx_name: String = _skill_vfx_name(stype)
+	_play_skill_vfx(vfx_name if vfx_name != "" else str(u["id"]), vfx_at, 1.3)
 	_do_skill(u, tgt, stype)
 	return true
+
+# 技能 type → VFX 贴图名 (pets.json skillPool[].icon "skills/x.png" → "x"); 无则空串(回退签名)
+func _skill_vfx_name(stype: String) -> String:
+	var icon: String = str((_skill_meta.get(stype, {}) as Dictionary).get("icon", ""))
+	return icon.get_file().get_basename() if icon != "" else ""
 
 func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 	match stype:
