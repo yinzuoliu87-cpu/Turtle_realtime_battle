@@ -2815,7 +2815,7 @@ func _apply_spawn_passives() -> void:
 					var steal: float = minf(v["maxHp"] * 0.25, v["hp"] - 1.0)
 					if steal > 0: _raw_lose(v, steal); _heal(u, steal)
 				_spawn_summon(u, "candybomb", u["maxHp"] * 0.40, 0.0, {
-					"label": "糖果炸弹", "col_size": 20.0, "hp_w": 24.0,
+					"label": "糖果炸弹", "spr_id": "candy-bomb", "col_size": 20.0, "hp_w": 24.0,
 					"no_basic": true, "no_move": true, "self_decay": 0.08,
 					"death_aoe": 1.5,
 				})
@@ -2823,7 +2823,7 @@ func _apply_spawn_passives() -> void:
 				_spawn_hiding_minion(u)
 			"crystal":
 				_spawn_summon(u, "crystalball", u["maxHp"] * 0.50, u["atk"], {
-					"label": "水晶球", "col_size": 20.0, "hp_w": 26.0, "melee": false,
+					"label": "水晶球", "spr_id": "crystal-ball", "col_size": 20.0, "hp_w": 26.0, "melee": false,
 					"move_spd": 90.0, "atk_range": 320.0, "no_basic": true,
 					"special": "ray", "special_cd": 2.5, "special_scale": 1.0,
 				})
@@ -3086,7 +3086,7 @@ func _cyber_assemble_mech(u: Dictionary) -> void:
 		d["alive"] = false
 		_hide_summon_nodes(d)
 	var mech = _spawn_summon(u, "mech", mech_hp, mech_atk, {
-		"label": "机甲", "col_size": 40.0, "hp_w": 46.0, "melee": false,
+		"label": "机甲", "spr_id": "mech", "col_size": 40.0, "hp_w": 46.0, "melee": false,
 		"move_spd": 130.0, "atk_interval": 1.0, "atk_range": 320.0,
 		"special": "mech_blast", "special_cd": 2.5, "special_scale": 1.5,
 	})
@@ -3127,9 +3127,10 @@ func _spawn_summon(owner: Dictionary, kind: String, hp: float, atk: float, behav
 		su_grounded = _make_grounded_material(tex, su_sd)   # §GROUNDING 软渐隐 (动画召唤体)
 		spr.material_override = su_grounded
 	else:
-		spr.texture = _make_block_texture(Color(col.r, col.g, col.b, 0.9))
-		spr.pixel_size = (col_size * WS) / 64.0
-		spr.offset = Vector2(0.0, 32.0)
+		spr.texture = _make_glow_texture()                  # 无专属立绘: 软发光球(队色)替硬色块 — 不留 ColorRect 占位感
+		spr.modulate = Color(col.r, col.g, col.b, 0.95)
+		spr.pixel_size = (col_size * 1.4 * WS) / 96.0
+		spr.offset = Vector2(0.0, 30.0)
 	spr.position = _world_pos(pos, GROUND_LIFT)
 	_world.add_child(spr)
 
@@ -4243,7 +4244,7 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 		var stt: Dictionary = u["eq_state"].get(iid, {})
 		match iid:
 			"p2eq_033":   # 复活海螺: 阵亡→原位变小虫 (复用 _spawn_summon, 3D 用色块 block)
-				var worm = _spawn_summon(u, "worm", [150.0, 200.0, 300.0][si] * HP_MULT, [20.0, 30.0, 40.0][si], {"label": "海螺虫", "col_size": 30.0, "hp_w": 22.0})
+				var worm = _spawn_summon(u, "worm", [150.0, 200.0, 300.0][si] * HP_MULT, [20.0, 30.0, 40.0][si], {"label": "海螺虫", "spr_id": "conch-worm", "col_size": 30.0, "hp_w": 22.0})
 				if worm != null:
 					worm["pos"] = u["pos"]
 					if is_instance_valid(worm["sprite"]): worm["sprite"].position = _world_pos(u["pos"], GROUND_LIFT)
@@ -4258,7 +4259,7 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 					if gs != null and gs.get("meta_deepsea_coins") != null:
 						gs.set("meta_deepsea_coins", int(gs.get("meta_deepsea_coins")) + gears * 2)
 			"p2eq_034":   # 玩偶小熊: 🚧 简化 — 阵亡时召唤大熊 (250生命/50攻击)
-				var bear = _spawn_summon(u, "bear", 250.0 * HP_MULT, 50.0, {"label": "大熊", "col_size": 40.0, "hp_w": 30.0})
+				var bear = _spawn_summon(u, "bear", 250.0 * HP_MULT, 50.0, {"label": "大熊", "spr_id": "doll-bear", "col_size": 40.0, "hp_w": 30.0})
 				if bear != null:
 					bear["eq_state"] = {}; bear["equips"] = []
 
@@ -4416,7 +4417,7 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 		u["eq_state"][iid] = stt
 	# 复活海螺3★ 小虫分裂 (简化: worm 单位每周期空位分裂一只)
 	if u.get("worm_split", false) and _count_summons(u["side"], "worm") < 4:
-		var nw = _spawn_summon(u, "worm", u["maxHp"], u["atk"], {"label": "海螺虫", "col_size": 30.0, "hp_w": 22.0})
+		var nw = _spawn_summon(u, "worm", u["maxHp"], u["atk"], {"label": "海螺虫", "spr_id": "conch-worm", "col_size": 30.0, "hp_w": 22.0})
 		if nw != null:
 			nw["eq_state"] = {}; nw["equips"] = []; nw["worm_split"] = true
 
