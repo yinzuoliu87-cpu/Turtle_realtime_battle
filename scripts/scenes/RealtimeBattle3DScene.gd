@@ -3408,10 +3408,51 @@ func _impact(tgt: Dictionary, dmg: int, level: String = "auto", at_pos = null) -
 		_:   # light
 			if JUICE_HITSTOP_LIGHT > 0.0: _add_hitstop(JUICE_HITSTOP_LIGHT)
 			if JUICE_SHAKE_LIGHT > 0.0:   _shake(JUICE_SHAKE_LIGHT)
+	# 命中特效 (Botworld式: 普攻不打断敌人, 反馈全靠特效) — 每次命中迸 Hit Spark + Impact Ring
+	_hit_spark(tgt, at_pos)
 	# 冲击粒子: 只在重击/大招迸火花
 	if (lvl == "heavy" or lvl == "big") and float(dmg) >= JUICE_PARTICLE_MIN_DMG:
 		var p2d: Vector2 = at_pos if at_pos != null else tgt.get("pos", Vector2.ZERO)
 		_impact_particles(p2d, tgt.get("height", 0.0))
+
+# Hit Spark(亮星) + Impact Ring(快环): 朝镜头 billboard, ~0.14s pop→淡; 同目标50ms节流防多段刷爆
+var _hitring_tex: GradientTexture2D = null
+var _spark_tex: GradientTexture2D = null
+func _hit_spark(tgt, at_pos = null) -> void:
+	if tgt == null or _t < float(tgt.get("_spark_t", 0.0)):
+		return
+	tgt["_spark_t"] = _t + 0.05
+	var pos2d: Vector2 = at_pos if at_pos != null else tgt.get("pos", Vector2.ZERO)
+	var h: float = float(tgt.get("height", 0.0)) + 0.6
+	if _hitring_tex == null:
+		_hitring_tex = _make_ring_texture(Color(1, 1, 1, 1))
+	var r := Sprite3D.new()
+	r.texture = _hitring_tex
+	r.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	r.shaded = false; r.transparent = true
+	r.modulate = Color(1.0, 0.96, 0.8, 0.95)
+	r.position = _world_pos(pos2d, h)
+	r.pixel_size = 0.006
+	_world.add_child(r)
+	var tw := create_tween(); tw.set_parallel(true)
+	tw.tween_property(r, "pixel_size", 0.018, 0.14).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(r, "modulate:a", 0.0, 0.14)
+	tw.chain().tween_callback(r.queue_free)
+	if _spark_tex == null:
+		_spark_tex = _make_blob_texture()
+	var sp := Sprite3D.new()
+	sp.texture = _spark_tex
+	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sp.shaded = false; sp.transparent = true
+	sp.modulate = Color(1.0, 1.0, 0.85, 0.9)
+	sp.position = _world_pos(pos2d, h)
+	sp.pixel_size = 0.012
+	sp.scale = Vector3.ONE * 0.5
+	_world.add_child(sp)
+	var tw2 := create_tween(); tw2.set_parallel(true)
+	tw2.tween_property(sp, "scale", Vector3.ONE * 1.1, 0.07).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw2.tween_property(sp, "modulate:a", 0.0, 0.12)
+	tw2.chain().tween_callback(sp.queue_free)
 
 # 出招预备(缩)+挥出(伸): 主动技/普攻前摇后摇 (anticipation + follow-through)
 func _anticipate(u: Dictionary) -> void:
