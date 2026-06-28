@@ -2805,6 +2805,12 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 			if lv >= 8:
 				_consume_stacks(tgt, "electric")
 				_apply_damage_from(u, tgt, int(u["atk"] * 0.82), Color("#bff0ff"), 0.0, true)
+				# 雷暴爆发 VFX: 真贴图 + 亮环 + 弧光 + 字 + 轻震屏
+				_play_skill_vfx("lightning-2", tgt["pos"], 1.3)
+				_skill_ring(tgt["pos"], Color(0.72, 0.95, 1.0, 0.75), 76.0)
+				_bolt_line(u["pos"], tgt["pos"], Color("#dffaff"))
+				_float_text(tgt["pos"] + Vector2(0, -58), "雷暴!", Color("#7ee8ff"))
+				_shake(JUICE_SHAKE_LIGHT)
 		"crystal":
 			var cv := _add_stack(tgt, "crystal", 1, 4)
 			if cv >= 4:
