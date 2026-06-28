@@ -21,6 +21,11 @@ const ARENA := Rect2(70, 110, 1140, 520)   # 战场边界 (像素口径, 与 2D 
 const SKILL_COST_DEFAULT := 95.0           # 技能强度档 (→换算冷却秒数; 见 SKILL_COST)
 const SKILL_CD_FACTOR := 0.075             # cost→冷却秒数 (70≈5.3s·95≈7s·140≈10.5s·170≈12.8s; 对齐Botworld沙蝎)
 const SKILL_GCD := 0.4                      # 同龟两次放技最小间隔 (防多技同帧连爆)
+# AI 状态机节拍 (Botworld式: 移动/攻击互斥 + 施法锁 + 前摇/后摇; 用户2026-06-28 #5最高优先级)
+const ATK_WINDUP := 0.12                    # 普攻前摇(站定蓄力)
+const ATK_RECOVER := 0.10                   # 普攻后摇(出手后定身)
+const CAST_WINDUP := 0.34                   # 技能前摇(蓄力, 比普攻久 → 有重量感)
+const CAST_RECOVER := 0.24                  # 技能后摇
 const _BASIC_RARITY_BONUS := {"C": 0.20, "B": 0.23, "A": 0.26, "S": 0.29, "SS": 0.32, "SSS": 0.34}   # 小龟不屈: 按目标稀有度
 const SEP_RADIUS := 56.0                    # 单位软分离半径 (像素口径; 防扎堆, 调大点更散)
 const HP_MULT := 3.0                       # HP 倍率 (节奏旋钮, 同 2D)
@@ -1139,45 +1144,60 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 			_impact_particles(u["pos"], 0.0)
 		return   # 击飞中不移动/不攻击 (覆盖正常行为)
 
+	_tick_skill_cd(u, delta)        # 冷却始终走时间 (含麻痹/移动/施法中)
 	var tgt = _acquire_target(u)
 	if tgt == null:
-		# 无敌 → 龟能照回 (但没目标不放技)
-		_regen_energy(u, delta, stunned, null)
+		u["state"] = "move"
+		return
+	if stunned:                     # 麻痹: 不移动/不出手 (但冷却已走)
 		return
 	var to_t: Vector2 = tgt["pos"] - u["pos"]
 	var dist := to_t.length()
 	var rng: float = u["atk_range"]
+	var spd: float = u["move_spd"] * (0.6 if _t < u["slow_until"] else 1.0)
 
-	if not stunned:
-		var spd: float = u["move_spd"] * (0.6 if _t < u["slow_until"] else 1.0)
-		# 移动: 近战追到射程 / 远程维持射程并风筝 (1:1 复用 2D 逻辑); no_move 召唤体(糖果炸弹/海盗船)定点
-		if not u.get("no_move", false):
-			var intent := Vector2.ZERO
-			if dist > rng:
-				intent = to_t.normalized()
-			elif not u["melee"] and dist < rng * 0.7:
-				intent = -to_t.normalized()
-			elif u["melee"] and dist > rng * 0.6:
-				intent = to_t.normalized() * 0.45   # 近战射程内留点向心拉力, 分离把队伍摊成弧(非推飞)
-			intent += _separation(u)   # 分离力始终全开(不再到射程砍0.25) → 近战散开成弧, 不扎堆叠一起
-			if intent.length() > 0.01:
-				# 用合力大小调速(封顶满速): 力相互抵消时缓停, 不再永远满速冲 → 摊稳不抖
-				u["vel"] = intent.limit_length(1.0) * spd
-				u["pos"] += u["vel"] * delta
-				u["pos"].x = clampf(u["pos"].x, ARENA.position.x, ARENA.end.x)
-				u["pos"].y = clampf(u["pos"].y, ARENA.position.y, ARENA.end.y)
-		# 普攻 (按攻速计时; no_basic 召唤体只靠周期特殊技/掉血)
-		if dist <= rng and not u.get("no_basic", false):
-			u["atk_cd"] -= delta
-			if u["atk_cd"] <= 0.0:
-				_basic_attack(u, tgt)
-				u["atk_cd"] = u["atk_interval"]
-
-	_regen_energy(u, delta, stunned, tgt)
+	# ═══ AI 状态机: 移动 ↔ 前摇 → 出手 → 后摇 (移动与攻击/施法互斥 = 施法锁; 根治"边走边放") ═══
+	match str(u.get("state", "move")):
+		"move":
+			if dist <= rng and not u.get("no_basic", false):
+				# 进入射程 → 站定, 决定出手: 就绪技优先(进施法前摇), 否则普攻就绪(进普攻前摇), 都没好就原地待命观察
+				var rs := _pick_ready_skill(u)
+				if rs != "":
+					u["pending"] = "K:" + rs
+					u["state"] = "windup"; u["state_t"] = CAST_WINDUP
+					_anticipate(u)                       # 蓄力形变(前摇)
+				elif u["atk_cd"] <= 0.0:
+					u["pending"] = "B"
+					u["state"] = "windup"; u["state_t"] = ATK_WINDUP
+				# else: 站定待命 (不动), 冷却继续走 → 自然有"停顿观察"
+			else:
+				_do_move(u, tgt, dist, rng, spd, delta)  # 不在射程 → 移动(唯一会移动的态)
+		"windup":
+			u["state_t"] = float(u["state_t"]) - delta   # 前摇: 站定不动(施法锁)
+			if u["state_t"] <= 0.0:
+				var p := str(u.get("pending", "B"))
+				if p == "B":
+					if dist <= rng:
+						_basic_attack(u, tgt)
+					u["atk_cd"] = u["atk_interval"]
+					u["state"] = "recover"; u["state_t"] = ATK_RECOVER
+				else:
+					var stype := p.substr(2)
+					if _cast_skill(u, tgt, stype):
+						u["skill_cd"][stype] = _skill_cd(stype)
+						u["skill_gcd_until"] = _t + SKILL_GCD
+						_eq_on_cast(u, tgt)
+					else:
+						u["skill_cd"][stype] = _skill_cd(stype)
+					u["state"] = "recover"; u["state_t"] = CAST_RECOVER
+		"recover":
+			u["state_t"] = float(u["state_t"]) - delta   # 后摇: 站定不动一小会 → 动作自然
+			if u["state_t"] <= 0.0:
+				u["state"] = "move"
 
 # 龟能回满 → 放主动 (麻痹时不回, 体现控制价值; 召唤体/被动选项 永不放主动)
-func _regen_energy(u: Dictionary, delta: float, stunned: bool, tgt) -> void:
-	# Botworld式: 逐技各自固定时间冷却(走时间, 与打没打中无关); 冷却好且有目标→放
+# 逐技冷却走时间 (与放招解耦: 放招由状态机在前摇结束时触发, 见 _tick_unit)
+func _tick_skill_cd(u: Dictionary, delta: float) -> void:
 	if _is_passive_pick(u):
 		return
 	var cds: Dictionary = u["skill_cd"]
@@ -1185,10 +1205,7 @@ func _regen_energy(u: Dictionary, delta: float, stunned: bool, tgt) -> void:
 		for s in u.get("active_skills", []):
 			cds[str(s)] = _skill_cd(str(s)) * randf_range(0.25, 0.7)
 	for k in cds:
-		cds[k] = maxf(0.0, float(cds[k]) - delta)        # 冷却走时间 (麻痹也走, 只是放不出→下面gate)
-	if stunned or tgt == null:
-		return
-	_cast_active(u, tgt)
+		cds[k] = maxf(0.0, float(cds[k]) - delta)        # 麻痹也走, 只是放不出
 
 # --- 索敌: 被嘲讽则强制打嘲讽来源, 否则最近敌 (跳过 untargetable / 缩头护身随从) ---
 func _acquire_target(u: Dictionary):
@@ -1956,34 +1973,42 @@ const _COPYABLE_SKILLS := {
 }
 
 # 逐技独立冷却: 放【冷却好了的、可放的、强度最高的】那个 (大招好了优先放, 小技填空档) — 各技各自节奏.
-func _cast_active(u: Dictionary, tgt: Dictionary) -> void:
-	if _t < float(u.get("skill_gcd_until", 0.0)):     # 连放最小间隔(防多技同帧爆)
-		return
-	var skills: Array = u.get("active_skills", [])
-	if skills.is_empty():
-		return
+# 挑一个【冷却好了的、可放的、强度最高的】技 type, 没有则返 "" (状态机用: 决定要不要进施法前摇).
+func _pick_ready_skill(u: Dictionary) -> String:
+	if _t < float(u.get("skill_gcd_until", 0.0)):
+		return ""
 	var cds: Dictionary = u["skill_cd"]
 	var best := ""
 	var best_cost := -1.0
-	for s in skills:
+	for s in u.get("active_skills", []):
 		var st := str(s)
 		if not _IMPL_SKILLS.has(st):
 			continue
 		if st == "fortuneAllIn" and u.get("allin_used", false):
 			continue
-		if float(cds.get(st, 0.0)) > 0.0:             # 还在冷却
+		if float(cds.get(st, 0.0)) > 0.0:
 			continue
 		var c := _skill_cost(st)
-		if c > best_cost:                             # 取强度最高的就绪技 (大招优先)
+		if c > best_cost:
 			best_cost = c; best = st
-	if best == "":
-		return                                        # 没有就绪的技 → 继续普攻等冷却
-	if _cast_skill(u, tgt, best):
-		cds[best] = _skill_cd(best)                   # 重置该技冷却
-		u["skill_gcd_until"] = _t + SKILL_GCD
-		_eq_on_cast(u, tgt)
-	else:
-		cds[best] = _skill_cd(best)                   # 放失败(如梭哈已用)→也置冷却避免每帧重试
+	return best
+
+# 移动(+分离); no_move 召唤体定点不动. (从 _tick_unit 抽出, 状态机仅"move"态调)
+func _do_move(u: Dictionary, tgt: Dictionary, dist: float, rng: float, spd: float, delta: float) -> void:
+	if u.get("no_move", false):
+		return
+	var to_t: Vector2 = tgt["pos"] - u["pos"]
+	var intent := Vector2.ZERO
+	if dist > rng:
+		intent = to_t.normalized()                           # 追到射程
+	elif not u["melee"] and dist < rng * 0.7:
+		intent = -to_t.normalized()                          # 远程太近→风筝后撤
+	intent += _separation(u)                                 # 分离力(防扎堆, 接近时摊开)
+	if intent.length() > 0.01:
+		u["vel"] = intent.limit_length(1.0) * spd            # 合力调速, 力抵消缓停
+		u["pos"] += u["vel"] * delta
+		u["pos"].x = clampf(u["pos"].x, ARENA.position.x, ARENA.end.x)
+		u["pos"].y = clampf(u["pos"].y, ARENA.position.y, ARENA.end.y)
 
 # 放单个技 (按 type): 实装→juice+VFX+效果 返 true; 未实装→返 false (轮转跳过, 不空放).
 func _cast_skill(u: Dictionary, tgt: Dictionary, stype: String) -> bool:
