@@ -1,5 +1,6 @@
 extends Node3D
 const HpBarScene := preload("res://scripts/scenes/hp_bar.gd")   # 回合制版好看血条 (自定义 _draw, 复用)
+const Backend := preload("res://scripts/engine/backend.gd")    # 赛季结算上传 ghost (异步PvP池)
 ## RealtimeBattle3DScene — 2.5D 战斗核心 (Phase 2, 见 docs/design/2.5D战斗架构方案.md §四.2-4)
 ## 真阵容在 2.5D 里能打: 读 GameState 配队 / demo 兜底 → Sprite3D billboard + blob影 + HP/龟能 overlay.
 ## 移动·索敌·普攻·分离·龟能·灭队判定 全复用 2D 版 RealtimeBattleScene 的逻辑口径(数值/公式/STATS),
@@ -166,7 +167,10 @@ var _data_by_id: Dictionary = {}
 var _skill_meta: Dictionary = {}   # 技能 type → skillPool 条目 {atkScale,hits,pierce,name,icon} (选3 多技能 数据驱动放招)
 var _over := false
 var _t := 0.0
-var _settled := false
+var _settled := false                       # 结果只喂赛季一次的守卫
+var _had_season := false                     # 本局有赛季态(玩家配了season_leaders); demo=false→不喂只显横幅
+var _last_reward := 0                         # 本局给的深海币 (结算显示)
+var _last_was_exhibition := false             # 进场已0命=表演赛(无stake)
 
 var _cam: Camera3D
 var _ui_layer: CanvasLayer                # 血条/龟能 overlay + 标题 + 结算 (贴在 3D 之上)
@@ -3344,34 +3348,87 @@ func _check_end() -> void:
 	if left_alive == 0 or right_alive == 0:
 		_over = true
 		var won: bool = right_alive == 0
+		_settle_season(won)        # 结果喂赛季 (命/币/胜场/XP/ghost), 守卫一次性
 		_show_banner(won)
+
+# 赛季结算 (1:1 搬自 2D RealtimeBattleScene._settle_season): 闭环把胜负喂回 GameState 养成
+func _settle_season(won: bool) -> void:
+	var gs = get_node_or_null("/root/GameState")
+	# demo / 无赛季态: 玩家没配 season_leaders → 不喂赛季 (只显横幅)
+	_had_season = gs != null and (gs.get("season_leaders") is Array) and (gs.get("season_leaders") as Array).size() >= 1
+	if not _had_season:
+		return
+	if gs.has_method("ensure_season"):
+		gs.ensure_season()
+	_last_was_exhibition = gs.is_eliminated()        # 进场前已0命 = 表演赛 (无 stake)
+	if _last_was_exhibition:
+		_last_reward = 5                             # 表演赛: 少量练手币, 不掉命/不计战/不上榜
+	else:
+		if not won:
+			gs.lose_heart()                          # 输 → 失一颗心 (0命=淘汰)
+		var lost_hearts: int = maxi(0, 8 - int(gs.hearts))
+		_last_reward = 25 + 2 * int(gs.hearts) + 5 * lost_hearts + (15 if won else 0)
+		gs.season_total_battles += 1
+		gs.add_season_xp(2)                          # 每场 +2 大轮经验
+		if won:
+			gs.season_wins += 1
+			gs.season_eggs_killed += 1
+			if gs.get("left_team") is Array and (gs.left_team as Array).is_empty():
+				var _ldr: Array = gs.get("season_leaders")
+				gs.left_team.assign(_ldr.slice(0, 3))
+			var _gid := "g_%d_%d" % [int(gs.season_id), int(_t * 1000.0)]
+			var _av := str(gs.season_leaders[0]) if (gs.season_leaders as Array).size() > 0 else "basic"
+			Backend.upload_ghost(Backend.build_ghost_snapshot(_gid, {"name": "玩家阵容", "avatar": _av, "id": _gid}))
+	gs.meta_deepsea_coins += _last_reward
+	gs.save()
 
 func _show_banner(won: bool) -> void:
 	if _settled:
 		return
 	_settled = true
-	# §AUDIO: 结算 — 败方放 defeat 音 (灭队/失败); 胜方留给后续胜利音(暂无). BGM 淡出收尾.
+	# §AUDIO: 结算 — 败方放 defeat 音; BGM 淡出收尾.
 	if not won:
 		_sfx_simple("defeat")
 	var a := _audio()
 	if a != null:
 		a.stop_bgm()
+	var gs = get_node_or_null("/root/GameState")
 	var accent := Color("#ffd93d") if won else Color("#ff6b6b")
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.55); dim.size = Vector2(1280, 720)
+	dim.color = Color(0, 0, 0, 0.6); dim.size = Vector2(1280, 720)
 	_ui_layer.add_child(dim)
 	var big := Label.new()
 	big.text = ("🏆 胜利!" if won else "💀 失败!")
 	big.add_theme_font_size_override("font_size", 56)
 	big.add_theme_color_override("font_color", accent)
-	big.size = Vector2(1280, 80); big.position = Vector2(0, 300)
+	big.size = Vector2(1280, 80); big.position = Vector2(0, 250)
 	big.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_ui_layer.add_child(big)
+	# 奖励/赛季行 (有赛季态才显)
+	var info := ""
+	if _had_season and gs != null:
+		if _last_was_exhibition:
+			info = "表演赛 · +%d 深海币 (已淘汰, 无生命消耗)" % _last_reward
+		else:
+			info = "+%d 深海币    命 %d/8    胜场 %d    Lv.%d" % [_last_reward, int(gs.hearts), int(gs.season_wins), int(gs.get("season_level") if gs.get("season_level") != null else 1)]
+			if not won:
+				info += "    (失一命)"
+			if gs.is_eliminated():
+				info += "  ·  赛季淘汰!"
+	else:
+		info = "(练习赛 · 无赛季奖励)"
+	var rew := Label.new()
+	rew.text = info
+	rew.add_theme_font_size_override("font_size", 22)
+	rew.add_theme_color_override("font_color", Color("#ffe9a8"))
+	rew.size = Vector2(1280, 30); rew.position = Vector2(0, 350)
+	rew.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_ui_layer.add_child(rew)
 	var sub := Label.new()
-	sub.text = "[R 再战 · ESC 返回菜单]   (Phase 3 接赛季结算/奖励)"
+	sub.text = "[R 再战 · ESC 返回菜单]"
 	sub.add_theme_font_size_override("font_size", 18)
 	sub.add_theme_color_override("font_color", Color("#9fb6c9"))
-	sub.size = Vector2(1280, 26); sub.position = Vector2(0, 392)
+	sub.size = Vector2(1280, 26); sub.position = Vector2(0, 396)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_ui_layer.add_child(sub)
 
