@@ -1206,6 +1206,11 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 	if changed:
 		u["buffs"] = kept_buffs
 		_recalc_stats(u)
+	# 命运骰子(diceFate): 临时暴击/暴伤增益到期 → 还原 (crit 不走 _recalc_stats, 单独计时)
+	if u.get("crit_fate_until", 0.0) > 0.0 and _t >= u["crit_fate_until"]:
+		u["crit"] -= u.get("crit_fate_amt", 0.0)
+		u["crit_dmg"] -= u.get("crit_dmg_fate_amt", 0.0)
+		u["crit_fate_until"] = 0.0; u["crit_fate_amt"] = 0.0; u["crit_dmg_fate_amt"] = 0.0
 	# 召唤体周期特殊技 + 自损
 	if u.get("is_summon", false):
 		_tick_summon_special(u, delta)
@@ -1751,6 +1756,7 @@ const _IMPL_SKILLS := {
 	# Batch2 特殊技 (召唤/控制/处决/复制/梭哈/虫洞 — bespoke)
 	"chestSmash": true, "fortuneAllIn": true, "starWormhole": true, "lineFinish": true,
 	"cyberDeploy": true, "bubbleBind": true, "hidingCommand": true, "shellCopy": true,
+	"diceFate": true,
 }
 
 # shellCopy 可复制的技 = 纯敌方向伤害技 (数据驱动那批; 排除变身/召唤/自增益, 否则从龟壳放会污染自身状态)
@@ -1873,6 +1879,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"bubbleBind":           _sk_bubble_bind(u, tgt)
 		"hidingCommand":        _sk_hiding_command(u)
 		"shellCopy":            _sk_shell_copy(u, tgt)
+		"diceFate":             _sk_dice_fate(u)
 
 func _sk_basic_shield(u: Dictionary, tgt: Dictionary) -> void:   # 小龟·龟盾 ✅
 	_float_text(u["pos"] + Vector2(0, -64), "龟盾!", Color("#ffd93d"))
@@ -2300,6 +2307,22 @@ func _sk_hiding_command(u: Dictionary) -> void:
 			if mt != null:
 				_melee_lunge(o, mt)
 				_apply_damage_from(o, mt, _atk_dmg(o, 1.2, mt), Color("#a8ffb0"))
+
+# 骰子·命运骰子: 随机 +40%~130% 暴击5秒; 超100%部分每1%→1.5%暴伤 (crit 单独计时还原)
+func _sk_dice_fate(u: Dictionary) -> void:
+	if u.get("crit_fate_until", 0.0) > _t:           # 撤销未到期旧增益, 防叠加
+		u["crit"] -= u.get("crit_fate_amt", 0.0)
+		u["crit_dmg"] -= u.get("crit_dmg_fate_amt", 0.0)
+	var roll: float = randf_range(0.4, 1.3)
+	var over: float = maxf(0.0, (u["crit"] + roll) - 1.0)   # 暴击封顶100%, 超出转暴伤
+	var add_crit: float = roll - over
+	var add_cd: float = over * 1.5
+	u["crit"] += add_crit
+	u["crit_dmg"] += add_cd
+	u["crit_fate_until"] = _t + 5.0
+	u["crit_fate_amt"] = add_crit
+	u["crit_dmg_fate_amt"] = add_cd
+	_float_text(u["pos"] + Vector2(0, -64), "命运骰子! +%d%%暴击" % int(roll * 100), Color("#ffd93d"))
 
 # 龟壳·复制: 随机复制 2 个敌方可用技立即释放 (60%效果简化为全效, 留 batch3)
 func _sk_shell_copy(u: Dictionary, tgt) -> void:
