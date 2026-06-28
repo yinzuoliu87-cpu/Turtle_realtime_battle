@@ -1269,6 +1269,8 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 # 伤害公式 (1:1 复用 2D _atk_dmg): base×scale ×暴击 ×(100/(100+resist-pierce))
 func _atk_dmg(u: Dictionary, scale: float, tgt: Dictionary, magic: bool = false) -> int:
 	var base: float = u["atk"] * scale
+	if u.get("_vs_fire_bonus", 0.0) > 0.0 and (str(tgt["id"]) == "lava" or str(tgt["id"]) == "phoenix"):
+		base *= 1.0 + float(u["_vs_fire_bonus"])   # 寒冰免疫(iceBurnImmune): 对熔岩/凤凰 +40%
 	_last_atk_crit = randf() < u["crit"]      # §AUDIO: 记最近一次是否暴击 (供 _apply_damage_from 选暴击音)
 	if _last_atk_crit:
 		base *= u["crit_dmg"]
@@ -1388,6 +1390,16 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		u["shield"] -= ab; d -= ab
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	_float_text(u["pos"] + Vector2(0, -40), str(dmg), col)
+	# 泡泡束缚(bubbleBind): 束缚期间每受一段伤害 → 永久 -X 护甲/魔抗 (单次累计上限各30)
+	if _t < u.get("bind_until", 0.0):
+		var _sx: float = float(u.get("bind_shred", 0.0))
+		var _bacc: float = float(u.get("bind_acc", 0.0))
+		if _sx > 0.0 and _bacc < 30.0:
+			var _dec: float = minf(_sx, 30.0 - _bacc)
+			u["base_def"] = maxf(0.0, u["base_def"] - _dec)
+			u["base_mr"] = maxf(0.0, u["base_mr"] - _dec)
+			u["bind_acc"] = _bacc + _dec
+			_recalc_stats(u)
 	# §AUDIO: 命中音 (暴击→hit-crit / 否则→hit-physical, 节流防多段刷屏); 护盾刚被打没→shield-break.
 	if shield_before > 0.0 and u["shield"] <= 0.0 and not raw:
 		_sfx_shield_break()
@@ -1689,8 +1701,11 @@ const _SKILL_VFX_ON_TARGET := {
 }
 
 # ═══ 选3 多技能轮转 (用户2026-06-28拍板: 保留选3, 让3技在战斗真生效) ═══
-# loadout(选3) → 该龟"主动技轮转表": physical/magic 是普攻(自动)排除, 其余按选中顺序进轮转.
-func _resolve_active_skills(id: String, use_loadout: bool) -> Array:
+# 被动型技 (开局生效, 不进主动轮转; 在 _apply_spawn_passives 里按是否被选施加)
+const PASSIVE_SKILL_TYPES := {"iceBurnImmune": true}
+
+# loadout(选3) 里所有"非普攻"技 type (physical/magic 是普攻=自动, 排除)
+func _chosen_skill_types(id: String, use_loadout: bool) -> Array:
 	var d: Dictionary = _data_by_id.get(id, {})
 	var pool: Array = d.get("skillPool", [])
 	var ds: Array = (GameState.loadouts.get(id, d.get("defaultSkills", [0, 1, 2])) if use_loadout else d.get("defaultSkills", [0, 1, 2]))
@@ -1703,6 +1718,14 @@ func _resolve_active_skills(id: String, use_loadout: bool) -> Array:
 		if t == "" or t == "physical" or t == "magic":
 			continue
 		out.append(t)
+	return out
+
+# 进主动轮转的技 (= 选中非普攻技 减去 被动型)
+func _resolve_active_skills(id: String, use_loadout: bool) -> Array:
+	var out: Array = []
+	for t in _chosen_skill_types(id, use_loadout):
+		if not PASSIVE_SKILL_TYPES.has(t):
+			out.append(t)
 	return out
 
 # 实装了的技能 type 集 (与 _do_skill 的 match 保持同步; 用于轮转跳过未实装的, 不浪费龟能/不空放 juice)
@@ -1725,6 +1748,21 @@ const _IMPL_SKILLS := {
 	"lightningStrike": true, "lightningBarrage": true, "phoenixBurn": true, "phoenixScald": true,
 	"lavaBolt": true, "lavaQuake": true, "crystalSpike": true, "crystalBurst": true,
 	"chestStorm": true, "starBeam": true, "soulReap": true, "shellStrike": true,
+	# Batch2 特殊技 (召唤/控制/处决/复制/梭哈/虫洞 — bespoke)
+	"chestSmash": true, "fortuneAllIn": true, "starWormhole": true, "lineFinish": true,
+	"cyberDeploy": true, "bubbleBind": true, "hidingCommand": true, "shellCopy": true,
+}
+
+# shellCopy 可复制的技 = 纯敌方向伤害技 (数据驱动那批; 排除变身/召唤/自增益, 否则从龟壳放会污染自身状态)
+const _COPYABLE_SKILLS := {
+	"basicBarrage": true, "bambooLeaf": true, "bambooSmack": true, "angelEquality": true,
+	"iceSpike": true, "ninjaShuriken": true, "ninjaBomb": true, "twoHeadMagicWave": true,
+	"ghostTouch": true, "ghostPhantom": true, "diamondCollide": true, "fortuneStrike": true,
+	"diceAttack": true, "rainbowStorm": true, "gamblerCards": true, "gamblerDraw": true,
+	"hunterShot": true, "hunterBarrage": true, "candyBarrage": true, "lineSketch": true,
+	"lightningStrike": true, "lightningBarrage": true, "phoenixBurn": true, "phoenixScald": true,
+	"lavaBolt": true, "lavaQuake": true, "crystalSpike": true, "crystalBurst": true,
+	"chestStorm": true, "starBeam": true, "soulReap": true, "shellStrike": true, "chestSmash": true,
 }
 
 # 龟能满 → 放当前轮转技 (从 skill_idx 起找下一个实装的放, 跳过未实装的不浪费龟能).
@@ -1745,6 +1783,8 @@ func _cast_active(u: Dictionary, tgt: Dictionary) -> void:
 func _cast_skill(u: Dictionary, tgt: Dictionary, stype: String) -> bool:
 	if not _IMPL_SKILLS.has(stype):
 		return false
+	if stype == "fortuneAllIn" and u.get("allin_used", false):
+		return false                                  # 梭哈一场限一次, 用过则轮转跳过不空放
 	_anticipate(u)                  # 放大招前预备(缩)→挥出(伸) 形变
 	_shake(JUICE_SHAKE_HEAVY)       # 大招释放 = 轻震屏
 	# §SKILLVFX: 暂用该龟签名 VFX (按 id); 逐技 type→icon 真贴图留 batch2
@@ -1817,6 +1857,15 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"starBeam":             _sk_dmg(u, tgt, {"magic": 0.4, "hits": 3, "name": "星光束!", "color": Color("#c0a0ff")})
 		"soulReap":             _sk_dmg(u, tgt, {"phys": 1.1, "hits": 1, "aoe": true, "name": "灵魂收割!", "color": Color("#c77dff")})
 		"shellStrike":          _sk_dmg(u, tgt, {"phys": 0.9, "hits": 2, "name": "龟壳猛击!", "color": Color("#cfd8e8")})
+		"chestSmash":           _sk_dmg(u, tgt, {"phys": 1.5, "hits": 3, "name": "宝箱猛击!", "color": Color("#ffd93d")})
+		# ── Batch2 特殊技 (bespoke) ──
+		"fortuneAllIn":         _sk_fortune_allin(u, tgt)
+		"starWormhole":         _sk_star_wormhole(u, tgt)
+		"lineFinish":           _sk_line_finish(u)
+		"cyberDeploy":          _sk_cyber_deploy(u)
+		"bubbleBind":           _sk_bubble_bind(u, tgt)
+		"hidingCommand":        _sk_hiding_command(u)
+		"shellCopy":            _sk_shell_copy(u, tgt)
 
 func _sk_basic_shield(u: Dictionary, tgt: Dictionary) -> void:   # 小龟·龟盾 ✅
 	_float_text(u["pos"] + Vector2(0, -64), "龟盾!", Color("#ffd93d"))
@@ -2157,6 +2206,107 @@ func _sk_gen_heal(u: Dictionary) -> void:
 	_heal(ally, ally["maxHp"] * 0.16 + u["atk"] * 0.5)
 	_float_text(ally["pos"] + Vector2(0, -64), "治疗!", Color("#39d353"))
 
+# ── Batch2 特殊技 (bespoke; 按 pets.json brief/detail 实装) ──
+
+# 财神·梭哈: 一场限一次, 消耗全部金币, 每枚 0.18×ATK物理 + 0.18×ATK真实 (cd999)
+func _sk_fortune_allin(u: Dictionary, tgt) -> void:
+	if tgt == null or u.get("allin_used", false):
+		return
+	u["allin_used"] = true
+	var coins: int = int(u["gold"])
+	u["gold"] = 0.0
+	_float_text(u["pos"] + Vector2(0, -64), "梭哈! %d币" % coins, Color("#ffd93d"))
+	if coins <= 0:
+		return
+	_apply_damage_from(u, tgt, int(u["atk"] * 0.18 * coins), Color("#ffe08a"))
+	_apply_damage_from(u, tgt, int(u["atk"] * 0.18 * coins), Color("#fff0a0"), 0.0, true)   # 真实
+	_skill_ring(tgt["pos"], Color(1.0, 0.85, 0.2, 0.6), 70.0)
+
+# 星际·虫洞: 永久+魔法穿透; 沿目标方向直线四段 1.5×ATK×(1+10%×已过秒) 魔法 + 击飞
+func _sk_star_wormhole(u: Dictionary, tgt) -> void:
+	if tgt == null:
+		return
+	u["pierce"] += 8.0                              # 永久魔穿 (规格 6+0.5×lv, 局内无等级→取≈8)
+	_float_text(u["pos"] + Vector2(0, -64), "虫洞!", Color("#c0a0ff"))
+	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
+	var mult: float = 1.5 * (1.0 + 0.1 * _t)        # 随战斗时间变强
+	for o in _enemies_of(u):
+		if o == tgt or _on_line(u["pos"], dir, o["pos"], 70.0):
+			for i in range(4):
+				if not o["alive"]:
+					break
+				_apply_damage_from(u, o, _atk_dmg(u, mult / 4.0, o, true), Color("#c0a0ff"))
+			_knockback(u, o, 55.0)
+			_skill_ring(o["pos"], Color(0.75, 0.6, 1.0, 0.5), 50.0)
+
+# 线条·收尾: 引爆敌身墨迹(每层额外伤害)然后清空 (lineLink/普攻叠的 ink)
+func _sk_line_finish(u: Dictionary) -> void:
+	_float_text(u["pos"] + Vector2(0, -64), "收尾!", Color("#dddddd"))
+	var best = null
+	var best_ink := -1
+	for o in _enemies_of(u):
+		var ink := int((o.get("stacks", {}) as Dictionary).get("ink", 0))
+		if ink > best_ink:
+			best_ink = ink
+			best = o
+	if best == null:
+		best = _nearest_enemy(u)
+		best_ink = 0
+	if best == null:
+		return
+	var scale: float = 0.8 + 0.35 * maxi(0, best_ink)   # 每层墨迹 +0.35×ATK
+	_apply_damage_from(u, best, _atk_dmg(u, scale, best), Color("#eeeeee"))
+	if best_ink > 0:
+		_consume_stacks(best, "ink")
+	_skill_ring(best["pos"], Color(0.9, 0.9, 0.9, 0.5), 48.0)
+
+# 赛博·部署: 立即放3个浮游炮 (与被动「浮游炮」同型, 上限10)
+func _sk_cyber_deploy(u: Dictionary) -> void:
+	_float_text(u["pos"] + Vector2(0, -64), "部署浮游炮!", Color("#7ee8ff"))
+	for i in range(3):
+		if u["summons"].size() >= 10:
+			break
+		var dr = _spawn_summon(u, "drone", u["maxHp"] * 0.12, u["atk"] * 0.25, {
+			"label": "浮游炮", "col_size": 16.0, "hp_w": 22.0, "melee": false,
+			"no_basic": true, "special": "random_hit", "special_cd": 1.6, "special_scale": 0.25,
+		})
+		if dr != null:
+			u["summons"].append(dr)
+
+# 泡泡·束缚: 定身目标 1.5s + 束缚期间每受一段伤害 永久-X护甲/魔抗 (见 _apply_damage_from 钩子)
+func _sk_bubble_bind(u: Dictionary, tgt) -> void:
+	if tgt == null:
+		return
+	_float_text(tgt["pos"] + Vector2(0, -64), "束缚!", Color("#aef1ff"))
+	tgt["stun_until"] = maxf(float(tgt.get("stun_until", 0.0)), _t + CTRL_SEC)
+	tgt["bind_until"] = _t + CTRL_SEC
+	tgt["bind_shred"] = 2.0
+	tgt["bind_acc"] = 0.0
+	_skill_ring(tgt["pos"], Color(0.5, 0.9, 1.0, 0.5), 50.0)
+
+# 缩头·出击令: 命令本体随从立即额外出手一次
+func _sk_hiding_command(u: Dictionary) -> void:
+	_float_text(u["pos"] + Vector2(0, -64), "出击!", Color("#a8ffb0"))
+	for o in _units:
+		if o.get("summon_owner", null) == u and o.get("alive", false):
+			var mt = _nearest_enemy(o)
+			if mt != null:
+				_melee_lunge(o, mt)
+				_apply_damage_from(o, mt, _atk_dmg(o, 1.2, mt), Color("#a8ffb0"))
+
+# 龟壳·复制: 随机复制 2 个敌方可用技立即释放 (60%效果简化为全效, 留 batch3)
+func _sk_shell_copy(u: Dictionary, tgt) -> void:
+	_float_text(u["pos"] + Vector2(0, -64), "复制!", Color("#cfd8e8"))
+	var pool: Array = []
+	for o in _enemies_of(u):
+		for st in o.get("active_skills", []):
+			var s := str(st)
+			if _COPYABLE_SKILLS.has(s) and not pool.has(s):
+				pool.append(s)
+	pool.shuffle()
+	for i in range(mini(2, pool.size())):
+		_do_skill(u, tgt, str(pool[i]))
+
 # ============================================================================
 #  效果积木 (可复用) — 治疗/护盾/控制/buff/DoT/吸血/累积/净化/叠层 (1:1 搬自 2D 版).
 #  注: 3D 版血条 overlay 每帧统一刷新, 故去掉 2D 版各处的 _update_bars(u) 调用.
@@ -2379,6 +2529,11 @@ func _apply_spawn_passives() -> void:
 				u["lava_set"] = "A"
 			"two_head":
 				u["two_set"] = "1"; u["two_form"] = "melee"
+	# 选3 被动技 (开局生效, 不进主动轮转): 寒冰免疫灼烧 + 对熔岩/凤凰 +40%
+	for u in _units:
+		if "iceBurnImmune" in _chosen_skill_types(u["id"], u["side"] == "left"):
+			u["_burnImmune"] = true
+			u["_vs_fire_bonus"] = 0.4
 
 func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 	if not tgt["alive"]:
