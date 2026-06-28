@@ -48,16 +48,39 @@ const LEFT_DEMO := ["stone", "basic", "lightning"]
 const RIGHT_DEMO := ["diamond", "ninja", "ghost"]
 
 # 普攻表 (1:1 复用): id → [scale, hits]
+# 基础技能 (28龟 1:1 照原始 skillPool[0] 公式/类型/机制重对, 2026-06-28).
+#   字段: phys/magic/true=×ATK 总倍率(物/魔/真); hits=视觉段; def/mr/hp/selfhp/tcurhp=加成项(进主类型);
+#   gold=×ATK×金币(财神); critflat=×暴击率flat(骰子); rider=burn/atkdn/selfdef(附带); mech=ninja/splash(特殊); lightning 走专用函数.
 const BASIC_ATK := {
-	"basic": [0.7, 2], "stone": [0.7, 2], "bamboo": [0.21, 3], "angel": [1.4, 3],
-	"ice": [0.5, 6], "ninja": [1.0, 1], "two_head": [1.0, 1], "ghost": [0.65, 1],
-	"diamond": [0.7, 1], "fortune": [0.5, 2], "dice": [0.9, 1], "rainbow": [0.7, 2],
-	"gambler": [0.45, 3], "hunter": [0.55, 3], "pirate": [0.35, 4], "candy": [1.1, 1],
-	"bubble": [0.5, 3], "line": [0.5, 3], "lightning": [1.15, 1], "phoenix": [0.9, 1],   # 闪电=一道(改造走 _lightning_basic 连锁+魔法)
-	"lava": [1.0, 1], "cyber": [0.15, 5], "crystal": [0.5, 2], "chest": [1.5, 3],
-	"space": [0.4, 3], "hiding": [1.0, 1], "headless": [0.65, 2], "shell": [0.6, 2],
+	"basic":    {"phys": 1.4, "hits": 2},
+	"stone":    {"phys": 0.7, "def": 1.5, "mr": 0.8, "hits": 2},                    # +护甲魔抗(坦克)
+	"bamboo":   {"phys": 0.63, "selfhp": 0.18, "hits": 3},                          # 3片叶+自身HP
+	"angel":    {"phys": 1.4, "hits": 3},                                          # (原4.2 错→1.4)
+	"ice":      {"phys": 0.7, "magic": 0.7, "hits": 6},                            # 半物半魔 (原3.0全物 错)
+	"ninja":    {"phys": 1.3, "hits": 1, "mech": "ninja"},                          # 主1.3+背后0.8+击飞
+	"two_head": {"phys": 0.8, "true": 0.8, "hits": 4},                             # 物+真 (原1.0全物 错)
+	"ghost":    {"phys": 0.4, "true": 0.9, "hits": 1},                             # 物+真 (原0.65 错)
+	"diamond":  {"phys": 0.7, "def": 0.6, "mr": 0.6, "hits": 1},                    # +护甲魔抗
+	"fortune":  {"phys": 1.0, "gold": 0.06, "hits": 2},                            # 100%+6%×金币
+	"dice":     {"phys": 0.9, "critflat": 55.0, "hits": 3},                         # 90%+5500%暴击率flat
+	"rainbow":  {"magic": 1.4, "hits": 2},                                         # 魔法 (原物 错)
+	"gambler":  {"phys": 1.35, "hits": 3},                                         # 0.9~1.8随机取中
+	"hunter":   {"phys": 1.65, "hits": 3},
+	"pirate":   {"phys": 1.4, "hits": 4},
+	"candy":    {"phys": 1.1, "selfhp": 0.05, "hits": 1, "rider": "atkdn"},         # +自HP+减攻debuff
+	"bubble":   {"phys": 1.5, "hits": 3},
+	"line":     {"phys": 1.5, "hits": 3},                                          # 墨迹走被动
+	"phoenix":  {"magic": 0.9, "hits": 1, "rider": "burn"},                         # 魔法+灼烧 (原物 错)
+	"lava":     {"magic": 0.9, "hp": 0.08, "hits": 1, "rider": "burn"},             # 魔法+8%目标HP+灼烧 (原物 错)
+	"cyber":    {"phys": 0.75, "hp": 0.12, "hits": 5},                             # +12%目标HP
+	"crystal":  {"magic": 1.0, "hp": 0.06, "hits": 2},                             # 魔法+6%目标HP (原物 错); 结晶走被动
+	"chest":    {"phys": 1.5, "hits": 3},                                          # (原4.5 错→1.5; 原始无公式)
+	"space":    {"magic": 1.2, "tcurhp": 0.18, "hits": 3},                          # 魔法+18%目标当前HP (原物 错)
+	"hiding":   {"phys": 1.0, "hits": 1, "rider": "selfdef"},                       # +自护甲buff
+	"headless": {"phys": 1.3, "hp": 0.08, "hits": 2},                              # +8%目标HP
+	"shell":    {"phys": 0.6, "true": 0.6, "hits": 2, "mech": "splash"},            # 物+真+相邻溅射
 }
-const DEFAULT_BASIC := [1.0, 1]
+const DEFAULT_BASIC := {"phys": 1.0, "hits": 1}
 
 # ============================================================================
 #  2.5D 坐标 / 渲染常量
@@ -1268,28 +1291,82 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		_lightning_basic(u, tgt)
 		_on_basic_hit(u, tgt)
 		return
-	var spec: Array = BASIC_ATK.get(u["id"], DEFAULT_BASIC)
-	var scale: float = spec[0]
-	var hits: int = spec[1]
-	# 复杂普攻特判 (基于当前金币/暴击/HP)
-	match u["id"]:
-		"fortune":  scale = 0.5 + 0.06 * u["gold"]                       # 币越多越疼
-		"dice":     scale = 0.9 + u["crit"] * 0.55                       # 暴击率加成
-		"space":    scale = 0.4 + 0.06 * (u["hp"] / 100.0)              # 随当前HP (近似)
-		"lava":
-			if u.get("volcano", false):                                  # 火山形态: 烈焰重击式平A (更重·单段)
-				scale = 1.6; hits = 1
-		"crystal":  pass
-	var per := _atk_dmg(u, scale, tgt)
-	for i in range(hits):
+	var spec: Dictionary = BASIC_ATK.get(u["id"], DEFAULT_BASIC)
+	if u["id"] == "lava" and u.get("volcano", false):                  # 火山形态: 烈焰重击式平A (单段重击)
+		spec = {"magic": 1.6, "hits": 1, "rider": "burn"}
+	_do_basic(u, tgt, spec)
+
+# 数据驱动基础技能: 按 spec 算物/魔/真伤(含加成项)分段打出 + 附带/特殊机制 (1:1 原始 skillPool[0])
+func _do_basic(u: Dictionary, tgt: Dictionary, spec: Dictionary) -> void:
+	var atk: float = u["atk"]
+	# 三类原始伤害(未减) = ×ATK 总倍率
+	var raw_p: float = float(spec.get("phys", 0.0)) * atk
+	var raw_m: float = float(spec.get("magic", 0.0)) * atk
+	var raw_t: float = float(spec.get("true", 0.0)) * atk
+	# 加成项 (进主类型): 护甲/魔抗/目标HP/自HP/目标当前HP/金币/暴击flat
+	var bonus: float = float(spec.get("def", 0.0)) * u["def"] + float(spec.get("mr", 0.0)) * u["mr"]
+	bonus += float(spec.get("hp", 0.0)) * tgt["maxHp"] + float(spec.get("selfhp", 0.0)) * u["maxHp"] + float(spec.get("tcurhp", 0.0)) * tgt["hp"]
+	bonus += float(spec.get("gold", 0.0)) * atk * u.get("gold", 0.0) + float(spec.get("critflat", 0.0)) * u["crit"]
+	if raw_p > 0.0:
+		raw_p += bonus
+	else:
+		raw_m += bonus
+	var is_magic_main: bool = raw_m > raw_p
+	var col: Color = Color("#bff0ff") if is_magic_main else Color("#ffe08a")
+	var vh: int = clampi(int(spec.get("hits", 1)), 1, 6)
+	for i in range(vh):
 		if not tgt["alive"]:
 			break
-		if u["melee"]:
-			_apply_damage_from(u, tgt, per, Color("#ffe08a"))
-			if i == 0:
-				_flash(tgt); _melee_lunge(u, tgt)
-		else:
-			_fire_bolt_from(u, tgt, per, Color("#ffe08a"))
+		var dmg := 0
+		if raw_p > 0.0:
+			dmg += _mitigate(u, raw_p / vh, tgt, false)
+		if raw_m > 0.0:
+			dmg += _mitigate(u, raw_m / vh, tgt, true)
+		if dmg > 0:
+			if u["melee"]:
+				_apply_damage_from(u, tgt, dmg, col)
+				if i == 0:
+					_flash(tgt); _melee_lunge(u, tgt)
+			else:
+				_fire_bolt_from(u, tgt, dmg, col)
+		if raw_t > 0.0:
+			_apply_damage_from(u, tgt, int(raw_t / vh), Color("#c0a0ff"), 0.0, true)   # 真实伤害(穿减伤)
+	# 附带效果
+	match str(spec.get("rider", "")):
+		"burn":    _apply_dot_stacks(tgt, "burn", _default_burn_stacks(u), u)
+		"atkdn":   _buff(tgt, "atk", -0.15, true)
+		"selfdef": _buff(u, "def", 0.20, true)
+	# 特殊机制
+	match str(spec.get("mech", "")):
+		"ninja":   _ninja_basic_extra(u, tgt)        # 背后单位 0.8×ATK + 击飞主目标
+		"splash":  _splash_adjacent(u, tgt, 0.25)    # 相邻敌 25% 溅射
+
+# 伤害减免+暴击 (与 _atk_dmg 同口径, 但吃"已算好的原始伤害"而非 scale)
+func _mitigate(u: Dictionary, raw: float, tgt: Dictionary, magic: bool) -> int:
+	_last_atk_crit = randf() < u["crit"]
+	if _last_atk_crit:
+		raw *= u["crit_dmg"]
+	var resist: float = float(tgt["mr"]) if magic else float(tgt["def"])
+	resist = maxf(0.0, resist - u["pierce"])
+	return maxi(1, int(round(raw * (100.0 / (100.0 + resist)))))
+
+# 忍者冲击: 主目标正后方单位受 0.8×ATK + 主目标击飞
+func _ninja_basic_extra(u: Dictionary, tgt: Dictionary) -> void:
+	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
+	for o in _enemies_of(u):
+		if o == tgt or not o["alive"]:
+			continue
+		if _on_line(tgt["pos"], dir, o["pos"], 70.0):
+			_apply_damage_from(u, o, _mitigate(u, u["atk"] * 0.8, o, false), Color("#ffe08a"))
+	_knockback(u, tgt, 45.0)
+
+# 相邻溅射 (龟壳): 主目标附近敌受 frac 溅射; 若无相邻, 不额外 (主伤已结算)
+func _splash_adjacent(u: Dictionary, tgt: Dictionary, frac: float) -> void:
+	for o in _enemies_of(u):
+		if o == tgt or not o["alive"]:
+			continue
+		if (o["pos"] - tgt["pos"]).length() <= 90.0:
+			_apply_damage_from(u, o, _mitigate(u, u["atk"] * 0.6 * frac, o, false), Color("#cfd8e8"))
 	# 普攻 on-hit 被动钩子 (墨迹/电击/结晶叠层 + 猎杀斩杀 等)
 	_on_basic_hit(u, tgt)
 
