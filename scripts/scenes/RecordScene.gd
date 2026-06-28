@@ -158,7 +158,7 @@ func _match_row(m: Dictionary) -> Control:
 
 	# 回合 11px #778 宽46 右对齐
 	var turn_l := Label.new()
-	turn_l.text = "%d回合" % int(m.get("turn", 0))
+	turn_l.text = ("%d秒" if m.get("mode", "") == "实时" else "%d回合") % int(m.get("turn", 0))   # 实时无回合→显时长
 	turn_l.add_theme_font_size_override("font_size", 11)
 	turn_l.add_theme_color_override("font_color", Color("#777788"))
 	turn_l.custom_minimum_size = Vector2(46, 0)

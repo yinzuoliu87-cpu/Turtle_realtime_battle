@@ -3664,6 +3664,13 @@ func _settle_season(won: bool) -> void:
 			var _av := str(gs.season_leaders[0]) if (gs.season_leaders as Array).size() > 0 else "basic"
 			Backend.upload_ghost(Backend.build_ghost_snapshot(_gid, {"name": "玩家阵容", "avatar": _av, "id": _gid}))
 	gs.meta_deepsea_coins += _last_reward
+	# #7 战绩同步: 实时战斗原来不写战绩 → RecordScene 永远空。这里补记本场(总场/胜计数 + match_history 一条)。
+	gs.battles_total += 1
+	if won:
+		gs.battles_won += 1
+	gs.record_match("win" if won else "lose", _resolve_left(), "实时", int(_t))
+	if not gs.match_history.is_empty():
+		gs.match_history[0]["ts"] = int(Time.get_unix_time_from_system())   # 相对时间戳 (RecordScene _rel_time 用)
 	gs.save()
 
 func _show_banner(won: bool) -> void:
