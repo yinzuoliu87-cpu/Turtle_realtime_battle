@@ -53,7 +53,7 @@ const BASIC_ATK := {
 	"ice": [0.5, 6], "ninja": [1.0, 1], "two_head": [1.0, 1], "ghost": [0.65, 1],
 	"diamond": [0.7, 1], "fortune": [0.5, 2], "dice": [0.9, 1], "rainbow": [0.7, 2],
 	"gambler": [0.45, 3], "hunter": [0.55, 3], "pirate": [0.35, 4], "candy": [1.1, 1],
-	"bubble": [0.5, 3], "line": [0.5, 3], "lightning": [1.15, 5], "phoenix": [0.9, 1],
+	"bubble": [0.5, 3], "line": [0.5, 3], "lightning": [1.15, 1], "phoenix": [0.9, 1],   # 闪电=一道(改造走 _lightning_basic 连锁+魔法)
 	"lava": [1.0, 1], "cyber": [0.15, 5], "crystal": [0.5, 2], "chest": [1.5, 3],
 	"space": [0.4, 3], "hiding": [1.0, 1], "headless": [0.65, 2], "shell": [0.6, 2],
 }
@@ -1264,6 +1264,10 @@ func _separation(u: Dictionary) -> Vector2:
 func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	_anticipate(u)                  # Phase4: 普攻预备(缩)+挥出(伸) 前后摇形变
 	_play_action(u, "attack")       # 有动作帧的龟(basic/ghost/ninja)播普攻动画, 其余靠 juice 形变
+	if u["id"] == "lightning":      # 闪电改造: 一道闪电(魔法)+连锁, 叠层走 _on_basic_hit(满8→雷暴)
+		_lightning_basic(u, tgt)
+		_on_basic_hit(u, tgt)
+		return
 	var spec: Array = BASIC_ATK.get(u["id"], DEFAULT_BASIC)
 	var scale: float = spec[0]
 	var hits: int = spec[1]
@@ -1288,6 +1292,28 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 			_fire_bolt_from(u, tgt, per, Color("#ffe08a"))
 	# 普攻 on-hit 被动钩子 (墨迹/电击/结晶叠层 + 猎杀斩杀 等)
 	_on_basic_hit(u, tgt)
+
+# 闪电龟·改造普攻(用户2026-06-28): 一道闪电(魔法 1.15×ATK)命中主目标 → 连锁弧跳最近2敌(每跳×0.6递减);
+#   叠层在 _basic_attack 里走 _on_basic_hit(每攻击+1电击层, 满8引爆雷暴). 原始设计=魔法+跳敌+8层雷暴.
+func _lightning_basic(u: Dictionary, tgt: Dictionary) -> void:
+	_fire_bolt_from(u, tgt, _atk_dmg(u, 1.15, tgt, true), Color("#bff0ff"))   # 主弹: 魔法
+	var chained: Array = [tgt]
+	var prev: Dictionary = tgt
+	var frac := 0.6
+	for _i in range(2):                          # 最多连锁 2 跳
+		var nxt = null
+		var bestd := 260.0                       # 连锁射程上限(像素)
+		for o in _enemies_of(u):
+			if (o in chained) or not o["alive"]:
+				continue
+			var dd: float = (o["pos"] - prev["pos"]).length()
+			if dd < bestd:
+				bestd = dd; nxt = o
+		if nxt == null:
+			break
+		_bolt_line(prev["pos"], nxt["pos"], Color("#bff0ff"))                 # 连锁弧光
+		_apply_damage_from(u, nxt, _atk_dmg(u, 1.15 * frac, nxt, true), Color("#bff0ff"))
+		chained.append(nxt); prev = nxt; frac *= 0.6
 
 # 伤害公式 (1:1 复用 2D _atk_dmg): base×scale ×暴击 ×(100/(100+resist-pierce))
 func _atk_dmg(u: Dictionary, scale: float, tgt: Dictionary, magic: bool = false) -> int:
