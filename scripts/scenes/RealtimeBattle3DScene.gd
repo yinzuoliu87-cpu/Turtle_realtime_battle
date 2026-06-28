@@ -1368,7 +1368,7 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color) -> void:
 		var ab := minf(u["shield"], d)
 		u["shield"] -= ab; d -= ab
 	u["hp"] = maxf(0.0, u["hp"] - d)
-	_float_text(u["pos"] + Vector2(0, -40), str(dmg), col)
+	_float_text(u["pos"] + Vector2(randf_range(-26.0, 26.0), -40.0 + randf_range(-10.0, 6.0)), str(dmg), col)   # 抖开: 多段/AOE 出伤飘字不重叠成糊团
 	# §AUDIO: 无来源伤害也出命中音 (非暴击); 护盾破→shield-break
 	if shield_before > 0.0 and u["shield"] <= 0.0:
 		_sfx_shield_break()
@@ -1394,7 +1394,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		var ab := minf(u["shield"], d)
 		u["shield"] -= ab; d -= ab
 	u["hp"] = maxf(0.0, u["hp"] - d)
-	_float_text(u["pos"] + Vector2(0, -40), str(dmg), col)
+	_float_text(u["pos"] + Vector2(randf_range(-26.0, 26.0), -40.0 + randf_range(-10.0, 6.0)), str(dmg), col)   # 抖开: 多段/AOE 出伤飘字不重叠成糊团
 	# 泡泡束缚(bubbleBind): 束缚期间每受一段伤害 → 永久 -X 护甲/魔抗 (单次累计上限各30)
 	if _t < u.get("bind_until", 0.0):
 		var _sx: float = float(u.get("bind_shred", 0.0))
