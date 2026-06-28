@@ -1144,7 +1144,8 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 			_impact_particles(u["pos"], 0.0)
 		return   # 击飞中不移动/不攻击 (覆盖正常行为)
 
-	_tick_skill_cd(u, delta)        # 冷却始终走时间 (含麻痹/移动/施法中)
+	_tick_skill_cd(u, delta)        # 技能冷却始终走时间 (含麻痹/移动/施法中)
+	u["atk_cd"] = maxf(0.0, float(u["atk_cd"]) - delta)   # 普攻冷却也始终走 (漏了它→打一下就再不普攻=用户报的"整个没普攻")
 	var tgt = _acquire_target(u)
 	if tgt == null:
 		u["state"] = "move"
