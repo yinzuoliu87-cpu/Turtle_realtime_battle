@@ -15,6 +15,10 @@ const Backend := preload("res://scripts/engine/backend.gd")    # 赛季结算上
 #  逻辑常量 (1:1 复用 RealtimeBattleScene 口径)
 # ============================================================================
 const ARENA := Rect2(70, 110, 1140, 520)   # 战场边界 (像素口径, 与 2D 版一致 → 同比例映射到 3D 地面)
+# #12 出生站位参数化 (编辑器 Inspector 可调, 别写死): 默认=原值→不改行为; 调它即可挪出生点/拉开间距 不动代码
+@export var spawn_edge_margin: float = 150.0    # 龟距战场左右边缘 (越大越靠中)
+@export var spawn_front_margin: float = 100.0   # 首龟距战场上边
+@export var spawn_row_spacing: float = 160.0    # 三龟纵向间距 (越大越散开)
 # 技能放招 = Botworld 真相(用户2026-06-28实测沙蝎: 充能条不断走→满放大招→再走; 躲避CD5s/大招CD13s/普攻0.5s):
 #   【逐技各自固定时间冷却】(按秒, 与打没打中无关); "大招"=冷却很长的技, 充能条=该技冷却进度.
 #   各技 cost(∝强度) 换算冷却秒数 → 龟盾CD短常放, 气波/弹幕/大招CD长少放. (非"靠伤害攒龟能"=我之前错的)
@@ -566,11 +570,11 @@ func _spawn_teams() -> void:
 	var left := _resolve_left()
 	var right := _resolve_right()
 	for i in range(left.size()):
-		# XZ 落点: 左队靠左 (ARENA 内), 三龟纵向分布. 与 2D _spawn_teams 同口径像素坐标.
-		var pos := Vector2(ARENA.position.x + 150, ARENA.position.y + 100 + i * 160)
+		# XZ 落点: 左队靠左 (ARENA 内), 三龟纵向分布. 与 2D _spawn_teams 同口径像素坐标. 偏移走 @export 参数(#12)
+		var pos := Vector2(ARENA.position.x + spawn_edge_margin, ARENA.position.y + spawn_front_margin + i * spawn_row_spacing)
 		_units.append(_make_unit(str(left[i]), "left", pos))
 	for i in range(right.size()):
-		var pos := Vector2(ARENA.end.x - 150, ARENA.position.y + 100 + i * 160)
+		var pos := Vector2(ARENA.end.x - spawn_edge_margin, ARENA.position.y + spawn_front_margin + i * spawn_row_spacing)
 		_units.append(_make_unit(str(right[i]), "right", pos))
 	_inject_equipment()       # 装备注入 (玩家队读 persistent_equipped; demo队塞测试装备) — 须在被动之前
 	_apply_spawn_passives()   # 登场被动 (开战即生效: 忍术暴击/怨灵诅咒/冰寒减攻/召唤等)
