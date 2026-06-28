@@ -1312,6 +1312,7 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	if u["id"] == "lava" and u.get("volcano", false):                  # 火山形态: 烈焰重击式平A (单段重击)
 		spec = {"magic": 1.6, "hits": 1, "rider": "burn"}
 	_do_basic(u, tgt, spec)
+	_on_basic_hit(u, tgt)           # 普攻 on-hit 被动钩子 (竹叶强化/墨迹/结晶/斩杀/审判/多重/彩虹附色 等) — 改 _do_basic 时漏调, 已补
 
 # 数据驱动基础技能: 按 spec 算物/魔/真伤(含加成项)分段打出 + 附带/特殊机制 (1:1 原始 skillPool[0])
 func _do_basic(u: Dictionary, tgt: Dictionary, spec: Dictionary) -> void:
