@@ -19,11 +19,10 @@ const ARENA := Rect2(70, 110, 1140, 520)   # 战场边界 (像素口径, 与 2D 
 @export var spawn_edge_margin: float = 150.0    # 龟距战场左右边缘 (越大越靠中)
 @export var spawn_front_margin: float = 100.0   # 首龟距战场上边
 @export var spawn_row_spacing: float = 160.0    # 三龟纵向间距 (越大越散开)
-# 技能放招 = Botworld 真相(用户2026-06-28实测沙蝎: 充能条不断走→满放大招→再走; 躲避CD5s/大招CD13s/普攻0.5s):
-#   【逐技各自固定时间冷却】(按秒, 与打没打中无关); "大招"=冷却很长的技, 充能条=该技冷却进度.
-#   各技 cost(∝强度) 换算冷却秒数 → 龟盾CD短常放, 气波/弹幕/大招CD长少放. (非"靠伤害攒龟能"=我之前错的)
-const SKILL_COST_DEFAULT := 95.0           # 技能强度档 (→换算冷却秒数; 见 SKILL_COST)
-const SKILL_CD_FACTOR := 0.075             # cost→冷却秒数 (70≈5.3s·95≈7s·140≈10.5s·170≈12.8s; 对齐Botworld沙蝎)
+# 技能放招 = 龟能充能 (用户实测沙蝎): 龟能按固定速率充, 每技有龟能花费, 攒够才放。
+#   "冷却"不是独立计时器 = 龟能充满该技花费的时间(花费×0.075秒)。冷却 与 龟能充能 是同一回事。
+#   花费/换算/is_active 全在单一事实源 SkillEnergy (战斗/图鉴/选龟共用, 防口径分叉)。
+const SkillEnergy := preload("res://scripts/systems/skill_energy.gd")
 const SKILL_GCD := 0.4                      # 同龟两次放技最小间隔 (防多技同帧连爆)
 # AI 状态机节拍 (Botworld式: 移动/攻击互斥 + 施法锁 + 前摇/后摇; 用户2026-06-28 #5最高优先级)
 const ATK_WINDUP := 0.12                    # 普攻前摇(站定蓄力)
@@ -2022,38 +2021,13 @@ const _IMPL_SKILLS := {
 	"diceFate": true,
 }
 
-# 各技 龟能 cost (∝ 技能强度; 便宜→放得勤, 贵→攒久才放). 解决"龟盾≠气波 不能同冷却".
-#   档位: 轻盾/治/buff~70 · 普通伤害/控~95 · 全体/多段/强~120-140 · 变身/梭哈/大招~150-170. 缺省 95. (F5调)
-const SKILL_COST := {
-	# 签名招
-	"turtleShieldBash": 70.0, "bambooHeal": 90.0, "angelBless": 75.0, "iceFrost": 120.0,
-	"ninjaImpact": 95.0, "ghostStorm": 95.0, "diamondFortify": 70.0, "diceAllIn": 120.0,
-	"gamblerBet": 100.0, "hunterStealth": 90.0, "pirateCannonBarrage": 130.0, "bubbleShield": 120.0,
-	"lineLink": 70.0, "lightningSurgeBuff": 90.0, "phoenixShield": 75.0, "twoHeadFear": 95.0,
-	"fortuneDice": 70.0, "crystalBarrier": 75.0, "chestCount": 90.0, "starMeteor": 130.0,
-	"twoHeadSwitch": 150.0, "lavaSurge": 150.0, "cyberBeam": 100.0, "hidingDefend": 70.0, "shellAbsorb": 100.0,
-	# 通用
-	"shield": 70.0, "heal": 70.0,
-	# 数据驱动伤害
-	"basicBarrage": 140.0, "bambooLeaf": 90.0, "bambooSmack": 75.0, "angelEquality": 125.0,
-	"iceSpike": 120.0, "ninjaShuriken": 95.0, "ninjaBomb": 100.0, "twoHeadMagicWave": 100.0,
-	"ghostTouch": 95.0, "ghostPhantom": 95.0, "diamondCollide": 95.0, "fortuneStrike": 90.0,
-	"diceAttack": 95.0, "rainbowStorm": 125.0, "gamblerCards": 100.0, "gamblerDraw": 80.0,
-	"hunterShot": 100.0, "hunterBarrage": 135.0, "candyBarrage": 115.0, "lineSketch": 90.0,
-	"lightningStrike": 95.0, "lightningBarrage": 140.0, "phoenixBurn": 90.0, "phoenixScald": 80.0,
-	"lavaBolt": 90.0, "lavaQuake": 115.0, "crystalSpike": 90.0, "crystalBurst": 115.0,
-	"chestStorm": 115.0, "starBeam": 70.0, "soulReap": 120.0, "shellStrike": 80.0,
-	# Batch2 特殊
-	"chestSmash": 120.0, "fortuneAllIn": 170.0, "starWormhole": 150.0, "lineFinish": 95.0,
-	"cyberDeploy": 135.0, "bubbleBind": 100.0, "hidingCommand": 85.0, "shellCopy": 140.0, "diceFate": 90.0,
-}
-
+# 龟能花费表 已移到单一事实源 SkillEnergy (scripts/systems/skill_energy.gd) — 战斗/图鉴/选龟共用
 func _skill_cost(stype: String) -> float:
-	return float(SKILL_COST.get(stype, SKILL_COST_DEFAULT))
+	return SkillEnergy.cost_of(stype)
 
-# 该技冷却秒数 = 强度档 × 系数 (龟盾~5s · 普通~7s · 弹幕~10s · 大招~13s, 对齐 Botworld)
+# 该技充满龟能要多少秒 (= 龟能花费 × 0.075; 即所谓"冷却") — 龟盾~5s · 普通~7s · 弹幕~10s · 大招~13s
 func _skill_cd(stype: String) -> float:
-	return _skill_cost(stype) * SKILL_CD_FACTOR
+	return SkillEnergy.charge_secs(stype)
 
 # shellCopy 可复制的技 = 纯敌方向伤害技 (数据驱动那批; 排除变身/召唤/自增益, 否则从龟壳放会污染自身状态)
 const _COPYABLE_SKILLS := {

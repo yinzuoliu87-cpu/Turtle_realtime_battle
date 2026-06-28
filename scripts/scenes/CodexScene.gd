@@ -39,6 +39,21 @@ const LIST_W := 280.0
 # ── 二阶段双路「装备学派」羁绊 (替代旧的 10 龟羁绊; 上线版野生=duallane 用此 11 学派) ──
 # 学派定义(名/tag/tiers)取自 Phase2Schools.SCHOOLS; 成员装备由 p2eq-schools.json 反查; 效果文案=学派效果-实装规格.md 逐字转录。
 const Phase2Schools := preload("res://scripts/engine/phase2_schools.gd")
+const SkillEnergy := preload("res://scripts/systems/skill_energy.gd")   # 龟能花费 单一事实源 (跟战斗同口径)
+
+# 技能在实时版里的角色: passive(被动) / basic(普攻,不花龟能) / active(主动,花龟能). 跟战斗 BASIC_ATK+改造一致.
+#   普攻=skillPool[0]; 忍者改造特例: 飞镖=普攻、冲击转主动.
+func _skill_role(pet_id: String, sk: Dictionary, i: int) -> String:
+	if sk.get("passiveSkill", false):
+		return "passive"
+	var st := str(sk.get("type", ""))
+	if pet_id == "ninja":
+		if st == "ninjaShuriken":
+			return "basic"
+		if st == "ninjaImpact":
+			return "active"
+	return "basic" if i == 0 else "active"
+
 # 各学派强调色 + emoji 图标 (无 tag PNG → 用 emoji 占位; 颜色用于列表描边/标题). 11 学派.
 const SCHOOL_STYLE := {
 	"血牙帮":     {"color": "#ff6b6b", "emoji": "🩸"},
@@ -913,12 +928,12 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary) -> void:
 		var chip_color := "#58d3ff"
 		if is_locked:
 			chip_text = "🔒 Lv.4 解锁" if i == 3 else "🔒 Lv.7 解锁"; chip_color = "#ff8888"
-		elif sk.get("passiveSkill", false):
-			chip_text = "被动"; chip_color = "#c77dff"
-		elif int(sk.get("cd", 0)) == 0:
-			chip_text = "基础"; chip_color = "#58d3ff"
 		else:
-			chip_text = "主动 CD%d" % int(sk.get("cd", 0)); chip_color = "#06d6a0"
+			# 龟能口径 (无"冷却/CD"): 普攻=不花龟能 / 主动=显龟能花费 / 被动
+			match _skill_role(str(pet.get("id", "")), sk, i):
+				"passive": chip_text = "被动"; chip_color = "#c77dff"
+				"basic": chip_text = "基础 · 普攻"; chip_color = "#58d3ff"
+				_: chip_text = "主动 · 龟能%d" % int(round(SkillEnergy.cost_of(str(sk.get("type", ""))))); chip_color = "#06d6a0"
 		_add_text(cx + 8, start_y + 60, chip_text, 13, chip_color, 0.0, 0.0)
 		# 简述 — 富文本 BBCode, 多行 clamp
 		var brief := SkillText.render_bbcode(str(sk.get("brief", "")), ctx, sk)
@@ -1007,15 +1022,16 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 		var pic: String = DataRegistry.passive_icons.get(pet.get("passive", {}).get("type", ""), "")
 		if pic.ends_with(".png"):
 			icon_src = pic
-	var cd_i: int = int(sk.get("cd", 0))
+	var sp_role: Array = pet.get("skillPool", []) if pet.get("skillPool") is Array else []
+	var role_d: String = _skill_role(str(pet.get("id", "")), sk, sp_role.find(sk))
 	var bb := ""
 	if icon_src != "":
 		bb += "[img=40x40]res://assets/sprites/%s[/img] " % icon_src
 	if is_default:
 		bb += "[color=#06d6a0][font_size=28]★[/font_size][/color] "
 	bb += "[color=#ffd93d][font_size=32]%s[/font_size][/color]" % str(sk.get("name", "?"))
-	if cd_i > 0:
-		bb += "　[color=#06d6a0][font_size=20]CD%d[/font_size][/color]" % cd_i
+	if role_d == "active":   # 龟能口径: 主动技显龟能花费 (无"CD"); 攒满龟能才放
+		bb += "　[color=#06d6a0][font_size=20]龟能%d[/font_size][/color]" % int(round(SkillEnergy.cost_of(str(sk.get("type", "")))))
 	var title := RichTextLabel.new()
 	title.bbcode_enabled = true
 	title.fit_content = true
