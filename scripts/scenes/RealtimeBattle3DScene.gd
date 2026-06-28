@@ -20,6 +20,7 @@ const ARENA := Rect2(70, 110, 1140, 520)   # 战场边界 (像素口径, 与 2D 
 const SKILL_COST_DEFAULT := 95.0           # 技能强度档 (→换算冷却秒数; 见 SKILL_COST)
 const SKILL_CD_FACTOR := 0.075             # cost→冷却秒数 (70≈5.3s·95≈7s·140≈10.5s·170≈12.8s; 对齐Botworld沙蝎)
 const SKILL_GCD := 0.4                      # 同龟两次放技最小间隔 (防多技同帧连爆)
+const _BASIC_RARITY_BONUS := {"C": 0.20, "B": 0.23, "A": 0.26, "S": 0.29, "SS": 0.32, "SSS": 0.34}   # 小龟不屈: 按目标稀有度
 const SEP_RADIUS := 56.0                    # 单位软分离半径 (像素口径; 防扎堆, 调大点更散)
 const HP_MULT := 3.0                       # HP 倍率 (节奏旋钮, 同 2D)
 const SHIELD_CAP_MULT := 1.5
@@ -1289,6 +1290,8 @@ func _atk_dmg(u: Dictionary, scale: float, tgt: Dictionary, magic: bool = false)
 	var base: float = u["atk"] * scale
 	if u.get("_vs_fire_bonus", 0.0) > 0.0 and (str(tgt["id"]) == "lava" or str(tgt["id"]) == "phoenix"):
 		base *= 1.0 + float(u["_vs_fire_bonus"])   # 寒冰免疫(iceBurnImmune): 对熔岩/凤凰 +40%
+	if u["id"] == "basic":                         # 不屈: 按目标稀有度增伤 (愈战愈勇)
+		base *= 1.0 + _BASIC_RARITY_BONUS.get(str(tgt.get("rarity", "C")), 0.20)
 	_last_atk_crit = randf() < u["crit"]      # §AUDIO: 记最近一次是否暴击 (供 _apply_damage_from 选暴击音)
 	if _last_atk_crit:
 		base *= u["crit_dmg"]
@@ -1401,6 +1404,12 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	if _t < u.get("eq_marked_until", 0.0):
 		dmg = int(dmg * 1.2)
 	var was_crit := _last_atk_crit          # §AUDIO: 先抓暴击态 (下方 hook 里嵌套 _atk_dmg 会改写它)
+	# 受伤被动(结算前改 dmg): 线条·墨迹(每层+5%受伤) / 钻石·结构(受伤减免)
+	var _ink := int((u.get("stacks", {}) as Dictionary).get("ink", 0))
+	if _ink > 0:
+		dmg = int(dmg * (1.0 + 0.05 * _ink))
+	if u["id"] == "diamond":
+		dmg = int(dmg * 0.82)
 	var d := float(dmg)
 	var shield_before: float = u["shield"]
 	if not raw and u["shield"] > 0.0:
@@ -1418,6 +1427,14 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 			u["base_mr"] = maxf(0.0, u["base_mr"] - _dec)
 			u["bind_acc"] = _bacc + _dec
 			_recalc_stats(u)
+	# 泡泡·泡沫: 受伤的100%存为泡泡值(上限maxHp) → 周期消耗(见 _tick_periodic_passive)
+	if u["id"] == "bubble":
+		u["bubble_store"] = minf(u["maxHp"], float(u.get("bubble_store", 0.0)) + d)
+	# 石头·坚壁反伤: 反弹给攻击者 (from_equip=true 标记反弹伤, 防反伤循环)
+	if u["id"] == "stone" and src != u and src.get("alive", false) and not from_equip and d > 0.0:
+		var _refl := int(d * (0.05 + (u["def"] + u["mr"] * 0.5) * 0.01))
+		if _refl > 0:
+			_apply_damage_from(u, src, _refl, Color("#c9a36b"), 0.0, false, true)
 	# §AUDIO: 命中音 (暴击→hit-crit / 否则→hit-physical, 节流防多段刷屏); 护盾刚被打没→shield-break.
 	if shield_before > 0.0 and u["shield"] <= 0.0 and not raw:
 		_sfx_shield_break()
@@ -2635,7 +2652,11 @@ func _apply_spawn_passives() -> void:
 				u["lava_set"] = "A"
 			"two_head":
 				u["two_set"] = "1"; u["two_form"] = "melee"
-	# 选3 被动技 (开局生效, 不进主动轮转): 寒冰免疫灼烧 + 对熔岩/凤凰 +40%
+			"diamond":                                    # 钻石结构: 全队护甲/魔抗加成(简化为开局给队伍+防)
+				for o in _allies_of(u):
+					_buff(o, "def", 0.25, true, 9999.0)
+					_buff(o, "mr", 0.25, true, 9999.0)
+	# 4选1 被动技 (选了被动则开局生效, 不进主动轮转): 寒冰免疫灼烧 + 对熔岩/凤凰 +40%
 	for u in _units:
 		if "iceBurnImmune" in _chosen_skill_types(u["id"], u["side"] == "left"):
 			u["_burnImmune"] = true
@@ -2658,6 +2679,13 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 				_consume_stacks(tgt, "crystal")
 				_apply_damage_from(u, tgt, int(tgt["maxHp"] * 0.19), Color("#c9b0ff"), 0.0, true)
 				_buff(tgt, "mr", -0.2, true)
+		"angel":                                          # 审判: 每段攻击额外 +目标当前HP 11% 魔法
+			_apply_damage_from(u, tgt, int(tgt["hp"] * 0.11), Color("#ffe9a8"))
+		"gambler":                                        # 多重打击: 40%追加一击(递减20%可连锁)
+			var _gch := 0.40
+			while randf() < _gch and tgt["alive"]:
+				_apply_damage_from(u, tgt, _atk_dmg(u, 0.5, tgt), Color("#ffe08a"))
+				_gch -= 0.20
 	# 猎人猎杀: 攻击后斩杀<14%HP敌
 	if u["id"] == "hunter" and tgt["alive"] and tgt["hp"] < tgt["maxHp"] * 0.14:
 		_float_text(tgt["pos"] + Vector2(0, -56), "斩杀!", Color("#ff6b6b"))
@@ -2741,11 +2769,52 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		u["_goldtimer"] = u.get("_goldtimer", 0.0) + delta
 		if u["_goldtimer"] >= 1.0:
 			u["_goldtimer"] = 0.0; u["gold"] += 2
+	# --- 彩虹棱镜: 每2.5s 全队随机增益5s (红攻/蓝防/绿回血) ---
+	if u["id"] == "rainbow":
+		u["_rbtimer"] = u.get("_rbtimer", 0.0) + delta
+		if u["_rbtimer"] >= 2.5:
+			u["_rbtimer"] = 0.0
+			var roll := randi() % 3
+			for o in _allies_of(u):
+				if roll == 0:
+					_buff(o, "atk", 0.12, true, 5.0)
+				elif roll == 1:
+					_buff(o, "def", 0.12, true, 5.0); _buff(o, "mr", 0.12, true, 5.0)
+				else:
+					_heal(o, o["maxHp"] * 0.05, true)
+			_float_text(u["pos"] + Vector2(0, -64), ["红光!", "蓝光!", "绿光!"][roll], Color("#ff8ad8"))
+	# --- 泡泡·泡沫: 每2.5s 消耗15%泡泡回血 + 35%泡泡打随机敌 ---
+	if u["id"] == "bubble":
+		u["_bbtimer"] = u.get("_bbtimer", 0.0) + delta
+		if u["_bbtimer"] >= 2.5:
+			u["_bbtimer"] = 0.0
+			var bs: float = float(u.get("bubble_store", 0.0))
+			if bs >= 1.0:
+				_heal(u, bs * 0.15, true)
+				var bes := _enemies_of(u)
+				if not bes.is_empty():
+					var bv = bes[randi() % bes.size()]
+					_apply_damage_from(u, bv, int(bs * 0.35), Color("#aef1ff"), 0.0, true)
+				u["bubble_store"] = bs * 0.50
+	# --- 闪电·雷电: 每2.5s 自动电击随机敌 (真伤) ---
+	if u["id"] == "lightning":
+		u["_ltimer"] = u.get("_ltimer", 0.0) + delta
+		if u["_ltimer"] >= 2.5:
+			u["_ltimer"] = 0.0
+			var le := _enemies_of(u)
+			if not le.is_empty():
+				var lv2 = le[randi() % le.size()]
+				_apply_damage_from(u, lv2, int(u["atk"] * 0.82), Color("#bff0ff"), 0.0, true)
+				_skill_ring(lv2["pos"], Color(0.5, 0.9, 1.0, 0.5), 40.0)
 
 # ============================================================================
 #  死亡钩子 (1:1 搬自 2D 版 _on_unit_death; 装备 on-kill/on-death Phase 3b 不调)
 # ============================================================================
 func _on_unit_death(u: Dictionary, killer) -> void:
+	# 财神聚宝盆: 任意单位阵亡 → 全场存活的财神龟 +9 金币
+	for f in _units:
+		if f.get("alive", false) and f.get("id") == "fortune" and f != u:
+			f["gold"] += 9
 	# 召唤体死亡爆炸 (糖果炸弹: 全体敌均摊魔伤)
 	if u.get("death_aoe", 0.0) > 0.0:
 		var es := _enemies_of(u)
