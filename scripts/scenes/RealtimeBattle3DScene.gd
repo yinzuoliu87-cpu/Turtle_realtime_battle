@@ -49,7 +49,7 @@ const STATS := {
 	"shell": [true, 105.0, 1.1, 70.0],
 }
 const DEFAULT_STAT := [true, 105.0, 0.85, 70.0]
-const LEFT_DEMO := ["stone", "basic", "lightning"]
+const LEFT_DEMO := ["basic", "stone", "lightning"]
 const RIGHT_DEMO := ["diamond", "ninja", "ghost"]
 
 # 普攻表 (1:1 复用): id → [scale, hits]
@@ -997,6 +997,21 @@ func _make_grounded_material(tex: Texture2D, _sd: Dictionary = {}) -> ShaderMate
 	return mat
 
 # blob 影贴图: radial 渐变 中心黑→边缘透明 (优化: 中段加点过渡, 边缘更柔不硬切)
+# 亮光晕贴图 (命中火花用): 白心→透明 (modulate 上色才会亮; blob 是黑的不能拿来当火花)
+func _make_glow_texture() -> GradientTexture2D:
+	var grad := Gradient.new()
+	grad.set_color(0, Color(1, 1, 1, 1.0))
+	grad.add_point(0.4, Color(1, 1, 1, 0.7))
+	grad.add_point(0.75, Color(1, 1, 1, 0.18))
+	grad.set_color(1, Color(1, 1, 1, 0.0))
+	var gt := GradientTexture2D.new()
+	gt.gradient = grad
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.5)
+	gt.fill_to = Vector2(1.0, 0.5)
+	gt.width = 96; gt.height = 96
+	return gt
+
 func _make_blob_texture() -> GradientTexture2D:
 	var grad := Gradient.new()
 	grad.set_color(0, Color(0, 0, 0, 0.58))
@@ -1145,7 +1160,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 		return   # 击飞中不移动/不攻击 (覆盖正常行为)
 
 	_tick_skill_cd(u, delta)        # 技能冷却始终走时间 (含麻痹/移动/施法中)
-	u["atk_cd"] = maxf(0.0, float(u["atk_cd"]) - delta)   # 普攻冷却也始终走 (漏了它→打一下就再不普攻=用户报的"整个没普攻")
+	u["atk_cd"] = maxf(0.0, float(u.get("atk_cd", 0.0)) - delta)   # 普攻冷却也始终走 (漏了它→打一下就再不普攻=用户报的"整个没普攻"; 召唤体也安全)
 	var tgt = _acquire_target(u)
 	if tgt == null:
 		u["state"] = "move"
@@ -2000,7 +2015,7 @@ const _COPYABLE_SKILLS := {
 func _pick_ready_skill(u: Dictionary) -> String:
 	if _t < float(u.get("skill_gcd_until", 0.0)):
 		return ""
-	var cds: Dictionary = u["skill_cd"]
+	var cds: Dictionary = u.get("skill_cd", {})   # 召唤体无 skill_cd → 空, 无主动技返 ""(防崩)
 	var best := ""
 	var best_cost := -1.0
 	for s in u.get("active_skills", []):
@@ -3441,7 +3456,7 @@ func _hit_spark(tgt, at_pos = null) -> void:
 	tw.tween_property(r, "modulate:a", 0.0, 0.14)
 	tw.chain().tween_callback(r.queue_free)
 	if _spark_tex == null:
-		_spark_tex = _make_blob_texture()
+		_spark_tex = _make_glow_texture()
 	var sp := Sprite3D.new()
 	sp.texture = _spark_tex
 	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
