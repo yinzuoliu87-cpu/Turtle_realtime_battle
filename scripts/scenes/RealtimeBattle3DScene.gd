@@ -53,8 +53,8 @@ const STATS := {
 }
 const DEFAULT_STAT := [true, 105.0, 0.85, 70.0]
 const REVIEW_DEMO := true                  # 评审期: 战斗=1受审龟 vs 1假人(右不动/不打/不放技/高血沙包); 上线前置 false
-const REVIEW_TURTLE := "basic"             # 受审龟 id (评审换龟只改这里)
-const REVIEW_DUMMY := "stone"              # 假人 id (右队沙包)
+const REVIEW_TURTLE := "stone"             # 受审龟 id (评审换龟只改这里)
+const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const LEFT_DEMO := ["basic", "stone", "lightning"]   # 非评审 demo (REVIEW_DEMO=false 时用)
 const RIGHT_DEMO := ["diamond", "ninja", "ghost"]
 
@@ -64,7 +64,7 @@ const RIGHT_DEMO := ["diamond", "ninja", "ghost"]
 #   gold=×ATK×金币(财神); critflat=×暴击率flat(骰子); rider=burn/atkdn/selfdef(附带); mech=ninja/splash(特殊); lightning 走专用函数.
 const BASIC_ATK := {
 	"basic":    {"phys": 1.0, "hits": 1},
-	"stone":    {"phys": 0.7, "def": 1.5, "mr": 0.8, "hits": 2},                    # +护甲魔抗(坦克)
+	"stone":    {"phys": 0.7, "def": 1.5, "mr": 0.8, "hits": 1},                    # +护甲魔抗(坦克)
 	"bamboo":   {"phys": 0.63, "selfhp": 0.18, "hits": 3},                          # 3片叶+自身HP
 	"angel":    {"phys": 1.4, "hits": 1},                                          # 远程平A一段(用户:1段+审判被动)
 	"ice":      {"phys": 0.7, "magic": 0.7, "hits": 6, "alt": true},               # 交替物/魔(用户)
