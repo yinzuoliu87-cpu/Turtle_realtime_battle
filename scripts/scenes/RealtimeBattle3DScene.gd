@@ -1206,6 +1206,8 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 						u["skill_cd"][stype] = _skill_cd(stype)
 						u["skill_gcd_until"] = _t + SKILL_GCD
 						_eq_on_cast(u, tgt)
+						if u["id"] == "space" and float(u.get("star_energy", 0.0)) > 0.0:   # 星能: 施法后追加30%储存星能真伤
+							_apply_damage_from(u, tgt, int(u["star_energy"] * 0.30), Color("#ffffff"), 0.0, true)
 					else:
 						u["skill_cd"][stype] = _skill_cd(stype)
 					u["state"] = "recover"; u["state_t"] = CAST_RECOVER
@@ -1403,7 +1405,7 @@ func _mitigate(u: Dictionary, raw: float, tgt: Dictionary, magic: bool) -> int:
 		raw *= u["crit_dmg"]
 	var resist: float = float(tgt["mr"]) if magic else float(tgt["def"])
 	resist = maxf(0.0, resist - u["pierce"])
-	return maxi(1, int(round(raw * (100.0 / (100.0 + resist)))))
+	return maxi(1, int(round(raw * (100.0 / (100.0 + resist)) * (0.8 if (magic and str(tgt.get("id", "")) == "crystal") else 1.0))))
 
 # 忍者冲击: 主目标正后方单位受 0.8×ATK + 主目标击飞
 func _ninja_basic_extra(u: Dictionary, tgt: Dictionary) -> void:
@@ -1459,7 +1461,7 @@ func _atk_dmg(u: Dictionary, scale: float, tgt: Dictionary, magic: bool = false)
 		base *= u["crit_dmg"]
 	var resist: float = float(tgt["mr"]) if magic else float(tgt["def"])
 	resist = maxf(0.0, resist - u["pierce"])
-	return maxi(1, int(round(base * (100.0 / (100.0 + resist)))))
+	return maxi(1, int(round(base * (100.0 / (100.0 + resist)) * (0.8 if (magic and str(tgt.get("id", "")) == "crystal") else 1.0))))
 
 # 立绘前冲 (近战命中视觉) — billboard offset 微推再回 (朝镜头, 不用翻 facing)
 func _melee_lunge(u: Dictionary, tgt: Dictionary) -> void:
@@ -1583,6 +1585,12 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	if src is Dictionary and src.has("side") and src != u:
 		src["_st_dealt"] = int(src.get("_st_dealt", 0)) + dmg
 	u["_st_taken"] = int(u.get("_st_taken", 0)) + dmg
+	# headless 亡灵: 首次濒死→5秒内HP不降到1以下(免死), 5秒后正常死
+	if u["id"] == "headless" and u["hp"] <= 0.0 and not u.get("undead_used", false):
+		u["undead_used"] = true; u["deathfloor_until"] = _t + 5.0
+		_float_text(u["pos"] + Vector2(0, -64), "亡灵!", Color("#9b6bff"))
+	if _t < float(u.get("deathfloor_until", 0.0)):
+		u["hp"] = maxf(1.0, u["hp"])
 	_float_text(u["pos"] + Vector2(randf_range(-26.0, 26.0), -40.0 + randf_range(-10.0, 6.0)), str(dmg), col, was_crit)   # 抖开: 多段/AOE 出伤飘字不重叠成糊团; 暴击放大+图标
 	# 泡泡束缚(bubbleBind): 束缚期间每受一段伤害 → 永久 -X 护甲/魔抗 (单次累计上限各30)
 	if _t < u.get("bind_until", 0.0):
@@ -2124,7 +2132,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"chestCount":           _sk_chest_inventory(u)
 		"starMeteor":           _sk_space_meteor(u)
 		"twoHeadSwitch":        _sk_two_head(u, tgt)
-		"lavaSurge":            _sk_lava_cast(u, tgt)
+		"lavaSurge":            _sk_lava_cast(u, tgt, "B")   # 岩浆涌动 (修: 原走set A=地裂)
 		"cyberBeam":            _sk_cyber_cannon(u, tgt)
 		"hidingDefend":         _sk_hiding_defend(u)
 		"shellAbsorb":          _sk_shell_absorb(u, tgt)
@@ -2157,7 +2165,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"phoenixBurn":          _sk_dmg(u, tgt, {"magic": 0.9, "hits": 1, "rider": "burn", "name": "灼焰!", "color": Color("#ff7a3c")})
 		"phoenixScald":         _sk_dmg(u, tgt, {"magic": 0.7, "hits": 1, "rider": "burn", "name": "灼烧!", "color": Color("#ff7a3c")})
 		"lavaBolt":             _sk_dmg(u, tgt, {"magic": 0.9, "hits": 1, "rider": "burn", "name": "熔岩弹!", "color": Color("#ff7a3c")})
-		"lavaQuake":            _sk_dmg(u, tgt, {"magic": 0.6, "hits": 1, "aoe": true, "rider": "slow", "name": "地震!", "color": Color("#ff9d5c")})
+		"lavaQuake":            _sk_lava_cast(u, tgt, "A")   # 地裂(默认): 修-原派_sk_dmg带slow→应_lava_quake(全体魔+削魔抗20%)
 		"crystalSpike":         _sk_dmg(u, tgt, {"magic": 1.0, "hits": 2, "name": "水晶刺!", "color": Color("#9bdcff")})
 		"crystalBurst":         _sk_dmg(u, tgt, {"magic": 0.7, "true": 0.1, "hits": 3, "aoe": true, "name": "水晶爆!", "color": Color("#9bdcff")})
 		"chestStorm":           _sk_dmg(u, tgt, {"phys": 1.0, "hits": 5, "aoe": true, "name": "宝箱风暴!", "color": Color("#ffd93d")})
@@ -2376,8 +2384,7 @@ func _sk_two_head(u: Dictionary, tgt: Dictionary) -> void:       # 双头龟 ✅
 					_apply_damage_from(u, o, _atk_dmg(u, 0.5, o, true) + int(o["maxHp"] * 0.15), Color("#c0d0ff"))
 
 # 熔岩龟·选一套 (demo 默认套A). 龟能满→放【当前形态】(小/火山)这套对应招. 攒怒变身在 _tick_periodic_passive.
-func _sk_lava_cast(u: Dictionary, tgt: Dictionary) -> void:      # 熔岩龟·选一套各自触发 ✅
-	var set_id: String = u.get("lava_set", "A")
+func _sk_lava_cast(u: Dictionary, tgt: Dictionary, set_id: String = "A") -> void:   # 熔岩龟·按选中技分派(A地裂/B岩浆涌动/C喷射)×形态变体
 	var volcano: bool = u.get("volcano", false)
 	match set_id:
 		"A":
