@@ -67,7 +67,7 @@ const BASIC_ATK := {
 	"basic":    {"phys": 1.0, "hits": 1},
 	"stone":    {"phys": 0.7, "def": 1.5, "mr": 0.8, "hits": 1},                    # +护甲魔抗(坦克)
 	"bamboo":   {"phys": 0.4, "selfhp": 0.03, "hits": 1},                           # 单段 0.4ATK+3%自身HP(用户2026-06-29)
-	"angel":    {"phys": 1.4, "hits": 1},                                          # 远程平A一段(用户:1段+审判被动)
+	"angel":    {"phys": 1.0, "hits": 1},                                          # 远程平A 1.0ATK单段(用户)+审判被动
 	"ice":      {"phys": 0.7, "magic": 0.7, "hits": 6, "alt": true},               # 交替物/魔(用户)
 	"ninja":    {"phys": 0.96, "true": 0.64, "hits": 1},                            # 改远程! 普攻=扔飞镖(1.6含40%真); 冲击转主动技
 	"two_head": {"phys": 0.8, "true": 0.8, "hits": 4},                             # 物+真 (原1.0全物 错)
@@ -3212,7 +3212,7 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 				_apply_damage_from(u, tgt, int(tgt["maxHp"] * 0.19), Color("#c9b0ff"), 0.0, true)
 				_buff(tgt, "mr", -0.2, true)
 		"angel":                                          # 审判: 每段攻击额外 +目标当前HP 11% 魔法
-			_apply_damage_from(u, tgt, int(tgt["hp"] * 0.11), Color("#ffe9a8"))
+			_apply_damage_from(u, tgt, _mitigate(u, tgt["hp"] * 0.11, tgt, true), Color("#9be7ff"), 0.0, false)   # 魔法(吃魔抗+蓝字), 原flat固定值绕魔抗+错色=bug
 		# gambler 多重打击改云顶剑士式连击(见状态机 _gambler_multi_cd), 不在这里追加
 		"bamboo":                                         # 生长(改造): 蓄力时下一发普攻强化(追加魔法+回血+永久成长)
 			if u.get("bamboo_charge", false):
