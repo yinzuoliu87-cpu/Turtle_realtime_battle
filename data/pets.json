@@ -1136,8 +1136,8 @@
       "name": "钻石结构",
       "defBuffAmp": 50,
       "flatReductionPct": 20,
-      "brief": "钻石龟的结构强化全队防御体系。全队护甲和魔抗加成效果额外放大 <span class=\"val-atk\">+50%</span>。钻石龟使受到的每段伤害减少（<span class=\"val-def\">20%护甲</span>）。",
-      "desc": "钻石龟的结构强化全队防御体系。全队所有护甲和魔抗加成效果额外放大 <span class=\"val-atk\">+50%</span>。钻石龟使受到的每段伤害减少（20%×护甲({DEF}) = {D:DEF*0.2}）<span style=\"color:#888\">真实伤害不受此减免影响。</span>"
+      "brief": "钻石龟的结构强化全队防御体系。全队护甲和魔抗加成效果额外放大 <span class=\"val-atk\">+50%</span>。钻石龟使受到的每段伤害固定减少 <span class=\"val-atk\">18%</span>（真实伤害除外）。",
+      "desc": "钻石龟的结构强化全队防御体系。全队所有护甲和魔抗加成效果额外放大 <span class=\"val-atk\">+50%</span>。钻石龟使受到的每段伤害固定减少 <span class=\"val-atk\">18%</span><span style=\"color:#888\">真实伤害不受此减免影响。</span>"
     },
     "skillPool": [
       {
