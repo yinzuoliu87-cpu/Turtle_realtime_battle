@@ -41,7 +41,7 @@ const CTRL_SEC := 1.5                      # 眩晕/冻结/嘲讽 默认秒数
 # 28 龟战斗属性 (1:1 复用): id → [melee, move_spd(px/s), atk_interval(s), atk_range(px)]
 const STATS := {
 	"basic": [true, 105.0, 0.85, 70.0], "stone": [true, 70.0, 1.1, 70.0], "bamboo": [true, 105.0, 0.85, 70.0],
-	"angel": [false, 105.0, 0.85, 230.0], "ice": [false, 105.0, 0.85, 230.0], "ninja": [false, 145.0, 0.6, 280.0],
+	"angel": [false, 105.0, 0.85, 400.0], "ice": [false, 105.0, 0.85, 230.0], "ninja": [false, 145.0, 0.6, 280.0],
 	"two_head": [true, 145.0, 0.85, 70.0], "ghost": [false, 145.0, 0.6, 340.0], "diamond": [true, 70.0, 1.1, 70.0],
 	"fortune": [true, 105.0, 0.85, 70.0], "dice": [false, 145.0, 0.6, 230.0], "rainbow": [true, 105.0, 0.85, 70.0],
 	"gambler": [false, 145.0, 0.85, 230.0], "hunter": [false, 145.0, 0.6, 340.0], "pirate": [false, 105.0, 0.85, 230.0],
@@ -53,7 +53,7 @@ const STATS := {
 }
 const DEFAULT_STAT := [true, 105.0, 0.85, 70.0]
 const REVIEW_DEMO := true                  # 评审期: 战斗=1受审龟 vs 1假人(右不动/不打/不放技/高血沙包); 上线前置 false
-const REVIEW_TURTLE := "ice"             # 受审龟 id (评审换龟只改这里)
+const REVIEW_TURTLE := "angel"             # 受审龟 id (评审换龟只改这里)
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 800.0            # 假人固定血量
 const LEFT_DEMO := ["basic", "stone", "lightning"]   # 非评审 demo (REVIEW_DEMO=false 时用)
@@ -1401,7 +1401,9 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	if u["id"] == "lava" and u.get("volcano", false):                  # 火山形态: 烈焰重击式平A (单段重击)
 		spec = {"magic": 1.6, "hits": 1, "rider": "burn"}
 	_do_basic(u, tgt, spec)
-	_on_basic_hit(u, tgt)           # 普攻 on-hit 被动钩子 (竹叶强化/墨迹/结晶/斩杀/审判/多重/彩虹附色 等) — 改 _do_basic 时漏调, 已补
+	if u["melee"]:
+		_on_basic_hit(u, tgt)   # 近战命中即时; 远程→弹道命中时触发(审判等与裁决同帧, 数字按规矩同时跳)
+	# (原: 无条件 _on_basic_hit 被动钩子 (竹叶强化/墨迹/结晶/斩杀/审判/多重/彩虹附色 等) — 改 _do_basic 时漏调, 已补
 
 # 数据驱动基础技能: 按 spec 算物/魔/真伤(含加成项)分段打出 + 附带/特殊机制 (1:1 原始 skillPool[0])
 func _do_basic(u: Dictionary, tgt: Dictionary, spec: Dictionary) -> void:
@@ -1464,7 +1466,7 @@ func _emit_basic(u: Dictionary, tgt: Dictionary, dmg: int, col: Color, i: int) -
 		if i == 0:
 			_flash(tgt); _melee_lunge(u, tgt)
 	else:
-		_fire_bolt_from(u, tgt, dmg, col)
+		_fire_bolt_from(u, tgt, dmg, col, null, true)   # 普攻弹道: 命中时触发on_basic_hit
 
 # 伤害减免+暴击 (与 _atk_dmg 同口径, 但吃"已算好的原始伤害"而非 scale)
 func _mitigate(u: Dictionary, raw: float, tgt: Dictionary, magic: bool) -> int:
@@ -1561,12 +1563,18 @@ func _melee_lunge(u: Dictionary, tgt: Dictionary) -> void:
 func _fire_bolt(from: Vector2, tgt: Dictionary, dmg: int, col: Color) -> void:
 	_fire_bolt_from(null, tgt, dmg, col, from)
 
-func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null) -> void:
+const _PROJ_WAVE := {"angel": true}   # 这些龟普攻弹道用尖尖能量波(程序画), 缺则默认bolt
+func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, basic_onhit: bool = false) -> void:
 	var start2d: Vector2 = from if from != null else (src["pos"] if src != null else tgt["pos"])
 	var p := Sprite3D.new()
-	p.texture = _make_bolt_texture(col)
+	if src is Dictionary and _PROJ_WAVE.get(str(src.get("id", "")), false):
+		p.texture = _make_wave_texture(col)
+		p.pixel_size = 0.045   # 尖尖波 52×20 → ~2.3×0.9m
+		p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+	else:
+		p.texture = _make_bolt_texture(col)
+		p.pixel_size = 0.014
 	p.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	p.pixel_size = 0.014
 	p.shaded = false
 	p.transparent = true
 	var world_from := _world_pos(start2d, 1.0)   # 从胸口高度出
@@ -1574,7 +1582,7 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null) ->
 	_world.add_child(p)
 	_projectiles.append({
 		"node": p, "from": world_from, "tgt": tgt, "dmg": dmg, "col": col,
-		"src": src, "t": 0.0, "dur": 0.16,
+		"src": src, "t": 0.0, "dur": 0.16, "basic_onhit": basic_onhit,
 	})
 
 func _step_projectiles(delta: float) -> void:
@@ -1596,9 +1604,32 @@ func _step_projectiles(delta: float) -> void:
 				else:
 					_apply_damage(tgt, pr["dmg"], pr["col"])
 				_flash(tgt)
+				if pr.get("basic_onhit", false) and pr["src"] != null:
+					_on_basic_hit(pr["src"], tgt)   # 远程普攻附带(审判等)弹道命中时触发→与裁决同帧跳数字
 			continue
 		keep.append(pr)
 	_projectiles = keep
+
+# 尖尖能量波弹道贴图 (程序画: 透镜状两端尖, 白核+col边, 按伤害色上色)
+func _make_wave_texture(col: Color) -> ImageTexture:
+	var W := 52
+	var H := 20
+	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var cy := float(H - 1) / 2.0
+	for x in range(W):
+		var fx := float(x) / float(W - 1)
+		var half := (float(H) / 2.0 - 0.5) * sin(PI * fx)   # 透镜: 两端尖中间宽
+		if half < 0.4:
+			continue
+		for y in range(H):
+			var dy := absf(float(y) - cy)
+			if dy <= half:
+				var edge := 1.0 - dy / half
+				var c := col.lerp(Color(1, 1, 1), clampf(edge * 1.4, 0.0, 1.0) * 0.75)   # 核心偏白
+				c.a = edge * edge   # 软边
+				img.set_pixel(x, y, c)
+	return ImageTexture.create_from_image(img)
 
 func _make_bolt_texture(col: Color) -> GradientTexture2D:
 	var grad := Gradient.new()
