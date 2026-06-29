@@ -1629,11 +1629,13 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	# 泡泡·泡沫: 受伤的100%存为泡泡值(上限maxHp) → 周期消耗(见 _tick_periodic_passive)
 	if u["id"] == "bubble":
 		u["bubble_store"] = minf(u["maxHp"], float(u.get("bubble_store", 0.0)) + d)
-	# 石头·坚壁反伤: 反弹给攻击者 (from_equip=true 标记反弹伤, 防反伤循环)
-	if u["id"] == "stone" and src != u and src.get("alive", false) and not from_equip and d > 0.0:
-		var _refl := int(d * (0.05 + (u["def"] + u["mr"] * 0.5) * 0.01))
+	# 反伤(通用): 受击反弹 reflect% × 受到伤害 给攻击者(真实伤害); from_equip守卫防循环; stone坚壁随防御涨(被动)
+	var _refl_pct: float = float(u.get("reflect", 0.0))
+	if u["id"] == "stone": _refl_pct += 0.05 + (u["def"] + u["mr"] * 0.5) * 0.01
+	if _refl_pct > 0.0 and src != u and src.get("alive", false) and not from_equip and dmg > 0:
+		var _refl := int(dmg * _refl_pct)
 		if _refl > 0:
-			_apply_damage_from(u, src, _refl, Color("#c9a36b"), 0.0, false, true)
+			_apply_damage_from(u, src, _refl, Color("#c9a36b"), 0.0, true, true)
 	# §AUDIO: 命中音 (暴击→hit-crit / 否则→hit-physical, 节流防多段刷屏); 护盾刚被打没→shield-break.
 	if shield_before > 0.0 and u["shield"] <= 0.0 and not raw:
 		_sfx_shield_break()
@@ -1665,11 +1667,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		if th < 20:
 			th += 1; u["two_tough"] = th
 			u["base_def"] += 1.0; u["base_mr"] += 1.0; _recalc_stats(u)
-	# 石头龟坚壁: 受伤反弹 (5%+1%DEF+0.5%MR)
-	if u["id"] == "stone" and src["alive"] and src["side"] != u["side"]:
-		var reflect: float = float(dmg) * 0.05 + u["def"] * 0.01 + u["mr"] * 0.005
-		if reflect >= 1.0:
-			_raw_lose(src, reflect)
+	# (反伤已合并到上方通用块, 删除重复的第二处石头反伤)
 	# 装备事件钩子 (on-hit 攻击方 / on-target 防守方 / HP阈值) — 装备自身造的段不再回钩
 	if not from_equip:
 		if src["alive"] and u["alive"]:
@@ -2584,8 +2582,8 @@ func _apply_rider(u: Dictionary, e: Dictionary, rider: String) -> void:
 		return
 	match rider:
 		"burn":  _apply_dot_stacks(e, "burn", maxi(1, roundi(u["atk"] * 0.5)), u)
-		"stun":  e["stun_until"] = maxf(float(e.get("stun_until", 0.0)), _t + CTRL_SEC)
-		"slow":  e["slow_until"] = maxf(float(e.get("slow_until", 0.0)), _t + BUFF_SEC)
+		"stun":  e["stun_until"] = maxf(float(e.get("stun_until", 0.0)), _t + _cc_dur(e, CTRL_SEC))
+		"slow":  e["slow_until"] = maxf(float(e.get("slow_until", 0.0)), _t + _cc_dur(e, BUFF_SEC))
 		"curse": _add_dot(e, "curse", e["maxHp"] * 0.05, BUFF_SEC)
 		"atkdn": _buff(e, "atk", -0.15, true)
 		"mrdn":  _buff(e, "mr", -0.20, true)
@@ -2676,7 +2674,7 @@ func _sk_bubble_bind(u: Dictionary, tgt) -> void:
 	if tgt == null:
 		return
 	_float_text(tgt["pos"] + Vector2(0, -64), "束缚!", Color("#aef1ff"))
-	tgt["stun_until"] = maxf(float(tgt.get("stun_until", 0.0)), _t + CTRL_SEC)
+	tgt["stun_until"] = maxf(float(tgt.get("stun_until", 0.0)), _t + _cc_dur(tgt, CTRL_SEC))
 	tgt["bind_until"] = _t + CTRL_SEC
 	tgt["bind_shred"] = 2.0
 	tgt["bind_acc"] = 0.0
@@ -2727,6 +2725,7 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:
 # ============================================================================
 func _grant_shield(u: Dictionary, amt: float) -> void:
 	if amt <= 0.0: return
+	amt *= 1.0 + float(u.get("shield_amp", 0.0))   # 护盾加成(受到方,所有来源)
 	var sb: float = u["shield"]
 	u["shield"] = minf(u["shield"] + amt, u["maxHp"] * SHIELD_CAP_MULT)
 	var got := int(u["shield"] - sb)
@@ -2739,6 +2738,7 @@ func _grant_shield(u: Dictionary, amt: float) -> void:
 # silent=true: 吸血等高频被动回血不出治疗音 (防刷屏), 主动治疗/技能回血出音
 func _heal(u: Dictionary, amt: float, silent: bool = false) -> void:
 	if amt <= 0.0: return
+	amt *= 1.0 + float(u.get("heal_amp", 0.0))   # 治疗加成(受到方,所有来源)
 	var hb: float = u["hp"]
 	u["hp"] = minf(u["maxHp"], u["hp"] + amt)
 	u["_st_heal"] = int(u.get("_st_heal", 0)) + int(u["hp"] - hb)   # §STATS: 实际回复(超过满血不计)
@@ -2746,8 +2746,12 @@ func _heal(u: Dictionary, amt: float, silent: bool = false) -> void:
 	if not silent:
 		_sfx_heal()                          # §AUDIO: 治疗音 (节流)
 
+# 韧性: CC实际时长 = 基础 ×(1-韧性), 最多减90%
+func _cc_dur(u: Dictionary, sec: float) -> float:
+	return sec * (1.0 - clampf(float(u.get("tenacity", 0.0)), 0.0, 0.9))
+
 func _freeze(u: Dictionary, sec: float = CTRL_SEC) -> void:
-	u["stun_until"] = maxf(u["stun_until"], _t + sec)
+	u["stun_until"] = maxf(u["stun_until"], _t + _cc_dur(u, sec))
 	_skill_ring(u["pos"], Color(0.6, 0.9, 1.0, 0.6), 48.0)
 
 func _taunt(by: Dictionary, targets: Array, sec: float = BUFF_SEC) -> void:
