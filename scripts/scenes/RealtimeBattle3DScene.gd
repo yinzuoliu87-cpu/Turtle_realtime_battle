@@ -1978,6 +1978,12 @@ func _resolve_chosen_index(id: String, use_loadout: bool) -> int:
 					idx = int(v); break
 	if idx < 1 or idx >= pool.size():
 		idx = 1 if pool.size() > 1 else 0
+	# 锁默认(Q2): 选中候选若未实装(放不出)→回落默认签名技 idx1, 防选了没主动技. (4选1候选大实装前)
+	if idx >= 1 and idx < pool.size():
+		var ty := str((pool[idx] as Dictionary).get("type", ""))
+		if id == "ninja" and ty == "ninjaShuriken": ty = "ninjaImpact"
+		if ty != "" and ty != "physical" and ty != "magic" and not _IMPL_SKILLS.has(ty) and not PASSIVE_SKILL_TYPES.has(ty):
+			idx = 1
 	return idx
 
 # 选中的那1个技 type (排除普攻; 供主动/被动判定). 返空 = 没选到有效技.

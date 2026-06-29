@@ -1247,6 +1247,7 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 	var pid: String = pet["id"]
 	var unlocked: Array = _available_skill_indices(pet)
 	var is_locked: bool = not (idx in unlocked)
+	var dev_locked: bool = (not is_fixed) and idx != 1   # 锁默认(Q2): 非默认候选暂"开发中"不可选
 
 	var btn: Button = SkillTipButton.new()   # styled tooltip (PoC .dp-skill-tip 悬浮显名+CD+描述)
 	btn.custom_minimum_size = Vector2(_sp(64), _sp(64))   # PoC .dp-skill-ico 64px (index.html:606)
@@ -1305,10 +1306,15 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 	if is_locked:
 		btn.modulate = Color(1, 1, 1, 0.45)   # PoC .dp-skill-ico.locked opacity .45 (index.html:633)
 		btn.tooltip_text = ("需 Lv.4 解锁" if idx == 3 else "需 Lv.7 解锁")
+	elif dev_locked:
+		btn.modulate = Color(1, 1, 1, 0.5)
+		btn.tooltip_text = "候选技开发中, 当前锁定默认签名技"
 
 	# 角标 (PoC .ico-corner bottom-right, index.html:634-641): lock=Lv4/Lv7 / fixed=基础 / selected=✓
 	if is_locked:
 		btn.add_child(_make_skill_corner("Lv4" if idx == 3 else "Lv7", Color("#2a2f3a"), Color("#ccdddd")))
+	elif dev_locked:
+		btn.add_child(_make_skill_corner("开发中", Color("#3a2f2a"), Color("#ddc9a0")))
 	elif is_fixed:
 		btn.add_child(_make_skill_corner("基础", Color("#7dffb3"), Color("#0a2417")))
 	elif is_sel:
@@ -1317,7 +1323,7 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 	if sk.get("enhancesPassive", false) or sk.get("iconPlus", false):
 		btn.add_child(_make_ico_plus())
 
-	var clickable: bool = not is_locked and not is_fixed
+	var clickable: bool = not is_locked and not is_fixed and not dev_locked
 	if clickable:
 		var ix := idx
 		var pi := pid
@@ -1328,6 +1334,9 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 			btn.disabled = false
 			var pi2 := pid
 			btn.pressed.connect(func() -> void: _flash_status("基础技能必选"))
+		elif dev_locked:
+			btn.disabled = false
+			btn.pressed.connect(func() -> void: _flash_status("该候选技开发中, 暂锁默认签名技"))
 	return btn
 
 
@@ -1460,6 +1469,9 @@ func _toggle_skill(pid: String, idx: int) -> void:
 	var unlocked: Array = _available_skill_indices(pet)
 	if not (idx in unlocked):
 		_flash_status("需 Lv.4 解锁" if idx == 3 else "需 Lv.7 解锁")
+		return
+	if idx != 1:                                        # 锁默认(Q2): 候选技未实装, 暂只能选默认签名技
+		_flash_status("候选技开发中, 当前锁定默认签名技")
 		return
 	GameState.loadouts[pid] = idx                       # 4选1: 单选, 点哪个就替换成哪个
 	_refresh_slots()
