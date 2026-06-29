@@ -1255,7 +1255,8 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 					if dist <= rng:
 						_basic_attack(u, tgt)
 					# gambler 多重打击(云顶剑士式): 命中后掷概率, 中→快攻速再打, 没中→正常冷却
-					u["atk_cd"] = (_gambler_multi_cd(u) if (u["id"] == "gambler" and dist <= rng) else u["atk_interval"])
+					var _hf: float = maxf(1.0, float(u.get("haste_mult", 1.0))) if _t < float(u.get("haste_until", 0.0)) else 1.0   # 临时攻速buff(祝福等)
+					u["atk_cd"] = (_gambler_multi_cd(u) if (u["id"] == "gambler" and dist <= rng) else u["atk_interval"]) / _hf
 					u["state"] = "recover"; u["state_t"] = ATK_RECOVER
 				else:
 					var stype := p.substr(2)
@@ -1282,8 +1283,9 @@ func _tick_skill_cd(u: Dictionary, delta: float) -> void:
 	if cds.is_empty():                                   # 懒初始化: 各技起始冷却错峰(别一开局全放)
 		for s in u.get("active_skills", []):
 			cds[str(s)] = _skill_cd(u, str(s)) * randf_range(0.25, 0.7)
+	var _ecm: float = maxf(1.0, float(u.get("echarge_mult", 1.0))) if _t < float(u.get("echarge_until", 0.0)) else 1.0   # 龟能充能加速buff(祝福等)
 	for k in cds:
-		cds[k] = maxf(0.0, float(cds[k]) - delta)        # 麻痹也走, 只是放不出
+		cds[k] = maxf(0.0, float(cds[k]) - delta * _ecm)   # 麻痹也走, 只是放不出; ×充能加速
 
 # --- 索敌: 被嘲讽则强制打嘲讽来源, 否则最近敌 (跳过 untargetable / 缩头护身随从) ---
 func _acquire_target(u: Dictionary):
@@ -2479,8 +2481,8 @@ func _sk_angel_bless(u: Dictionary) -> void:                     # 天使龟·�
 	if ally == null:
 		ally = u
 	_grant_shield(ally, u["atk"] * 1.2)
-	_buff(ally, "def", u["atk"] * 0.15, false, 5.0)   # 数据: +0.15×ATK 固定护甲5秒(原+20%百分比=错)
-	_buff(ally, "mr", u["atk"] * 0.15, false, 5.0)    # +0.15×ATK 固定魔抗5秒
+	ally["haste_until"] = _t + 5.0; ally["haste_mult"] = 1.3       # +30% 攻速 5秒
+	ally["echarge_until"] = _t + 5.0; ally["echarge_mult"] = 1.3   # +30% 龟能充能速度 5秒 (用户: 取消双抗改这个)
 	_skill_ring(ally["pos"], Color(1.0, 0.9, 0.5, 0.5), 48.0)   # 祝福: 金色圣光环
 
 func _sk_ice_frost(u: Dictionary) -> void:                       # 寒冰龟·冰霜 ✅
