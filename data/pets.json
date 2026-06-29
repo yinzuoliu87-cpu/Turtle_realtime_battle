@@ -538,7 +538,7 @@
     "img": "pets/ice.png",
     "passive": {
       "type": "frostAura",
-      "name": "冰寒",
+      "name": "寒域",
       "atkDownPct": 20,
       "atkDownTurns": 6,
       "bonusTargets": [
@@ -546,7 +546,7 @@
         "phoenix"
       ],
       "bonusDmgPct": 20,
-      "brief": "寒冰龟登场时，对所有敌方单位施加冰寒，持续5秒。对熔岩龟和凤凰龟造成额外 <span class=\"val-atk\">+20%</span> 伤害。<span style=\"color:#888\">冰寒：使目标降低20%攻击力</span>",
+      "brief": "寒冰龟登场时，使所有敌方单位的攻击速度、龟能充能速度、移动速度各降低30%（全场）；并对熔岩龟、凤凰龟造成额外+20%伤害。",
       "desc": "寒冰龟登场时，对所有敌方单位施加冰寒，持续5秒。对熔岩龟和凤凰龟造成额外 <span class=\"val-atk\">+20%</span> 伤害。<span style=\"color:#888\">冰寒：使目标降低20%攻击力</span>"
     },
     "skillPool": [

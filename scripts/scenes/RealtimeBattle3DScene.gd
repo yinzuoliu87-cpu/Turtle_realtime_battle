@@ -1223,7 +1223,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	var to_t: Vector2 = tgt["pos"] - u["pos"]
 	var dist := to_t.length()
 	var rng: float = u["atk_range"]
-	var spd: float = u["move_spd"] * (0.6 if _t < u["slow_until"] else 1.0)
+	var spd: float = u["move_spd"] * (0.6 if _t < u["slow_until"] else 1.0) * (float(u.get("spd_move_mult", 1.0)) if _t < float(u.get("spd_dbf_until", 0.0)) else 1.0)
 
 	# ═══ AI 状态机: 移动 ↔ 前摇 → 出手 → 后摇 (移动与攻击/施法互斥 = 施法锁; 根治"边走边放") ═══
 	match str(u.get("state", "move")):
@@ -1256,7 +1256,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 						_basic_attack(u, tgt)
 					# gambler 多重打击(云顶剑士式): 命中后掷概率, 中→快攻速再打, 没中→正常冷却
 					var _hf: float = maxf(1.0, float(u.get("haste_mult", 1.0))) if _t < float(u.get("haste_until", 0.0)) else 1.0   # 临时攻速buff(祝福等)
-					u["atk_cd"] = (_gambler_multi_cd(u) if (u["id"] == "gambler" and dist <= rng) else u["atk_interval"]) / _hf
+					u["atk_cd"] = (_gambler_multi_cd(u) if (u["id"] == "gambler" and dist <= rng) else u["atk_interval"]) / maxf(0.1, _hf * (float(u.get("spd_aspd_mult", 1.0)) if _t < float(u.get("spd_dbf_until", 0.0)) else 1.0))
 					u["state"] = "recover"; u["state_t"] = ATK_RECOVER
 				else:
 					var stype := p.substr(2)
@@ -1284,8 +1284,11 @@ func _tick_skill_cd(u: Dictionary, delta: float) -> void:
 		for s in u.get("active_skills", []):
 			cds[str(s)] = _skill_cd(u, str(s)) * randf_range(0.25, 0.7)
 	var _ecm: float = maxf(1.0, float(u.get("echarge_mult", 1.0))) if _t < float(u.get("echarge_until", 0.0)) else 1.0   # 龟能充能加速buff(祝福等)
+	if _t < float(u.get("spd_dbf_until", 0.0)):
+		_ecm *= float(u.get("spd_echarge_mult", 1.0))   # 充能减速debuff(寒冰登场等)
+	_ecm = maxf(0.05, _ecm)
 	for k in cds:
-		cds[k] = maxf(0.0, float(cds[k]) - delta * _ecm)   # 麻痹也走, 只是放不出; ×充能加速
+		cds[k] = maxf(0.0, float(cds[k]) - delta * _ecm)   # 麻痹也走, 只是放不出; ×充能速率
 
 # --- 索敌: 被嘲讽则强制打嘲讽来源, 否则最近敌 (跳过 untargetable / 缩头护身随从) ---
 func _acquire_target(u: Dictionary):
@@ -1546,7 +1549,7 @@ func _resolve_dmg(u: Dictionary, base: float, tgt: Dictionary, magic: bool) -> i
 func _atk_dmg(u: Dictionary, scale: float, tgt: Dictionary, magic: bool = false) -> int:
 	var base: float = u["atk"] * scale
 	if u.get("_vs_fire_bonus", 0.0) > 0.0 and (str(tgt["id"]) == "lava" or str(tgt["id"]) == "phoenix"):
-		base *= 1.0 + float(u["_vs_fire_bonus"])   # 寒冰免疫(iceBurnImmune): 对熔岩/凤凰 +40%
+		base *= 1.0 + float(u["_vs_fire_bonus"])   # 寒冰: 对熔岩/凤凰增伤(天生+20%, 选极寒技覆盖+40%)
 	return _resolve_dmg(u, base, tgt, magic)
 
 # 立绘前冲 (近战命中视觉) — billboard offset 微推再回 (朝镜头, 不用翻 facing)
@@ -3176,6 +3179,37 @@ func _allies_of(u: Dictionary, include_self: bool = true) -> Array:
 func _is_passive_pick(u: Dictionary) -> bool:
 	return u.get("is_summon", false)
 
+# 寒冰登场寒气特效: 蓝霜地环×2 + 上升冰晶 (敌人小, 寒冰自身big)
+func _ice_chill_vfx(pos2d: Vector2, big: bool = false) -> void:
+	var r: float = 84.0 if big else 52.0
+	_skill_ring(pos2d, Color(0.55, 0.85, 1.0, 0.95), r)         # 外层寒环
+	_skill_ring(pos2d, Color(0.85, 0.96, 1.0, 0.55), r * 0.5)  # 内层亮霜
+	var n: int = 8 if big else 5
+	var tex := "res://assets/sprites/skills/ice-spike.png"
+	var has_tex := ResourceLoader.exists(tex)
+	for i in range(n):
+		var sh := Sprite3D.new()
+		if has_tex:
+			sh.texture = load(tex)
+			sh.pixel_size = 0.02 if big else 0.013
+			sh.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		else:
+			sh.texture = _make_bolt_texture(Color(0.6, 0.85, 1.0))
+			sh.pixel_size = 0.01
+		sh.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sh.shaded = false
+		sh.transparent = true
+		sh.modulate = Color(0.62, 0.86, 1.0, 0.95)
+		var ang := TAU * float(i) / float(n)
+		var off := Vector2(cos(ang), sin(ang)) * (r * 0.45)
+		sh.position = _world_pos(pos2d + off, 0.35)
+		_world.add_child(sh)
+		var tw := create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(sh, "position:y", sh.position.y + (0.9 if big else 0.6), 0.55)
+		tw.tween_property(sh, "modulate:a", 0.0, 0.55)
+		tw.chain().tween_callback(sh.queue_free)
+
 func _apply_spawn_passives() -> void:
 	for u in _units.duplicate():
 		match u["id"]:
@@ -3186,9 +3220,16 @@ func _apply_spawn_passives() -> void:
 				for o in _enemies_of(u):
 					_add_dot(o, "curse", o["maxHp"] * 0.05, BUFF_SEC)
 			"ice":
+				u["_vs_fire_bonus"] = 0.2          # 天生: 对熔岩/凤凰 +20%伤害(极寒技选了覆盖成0.4)
+				_ice_chill_vfx(u["pos"], true)     # 寒冰自身登场寒爆(大)
+				_flash(u, Color(0.6, 0.86, 1.0))   # 自身蓝闪
 				for o in _enemies_of(u):
-					_buff(o, "atk", -0.20, true, BUFF_SEC * 1.5)
-					o["slow_until"] = _t + BUFF_SEC * 1.5
+					o["spd_aspd_mult"] = 0.7        # -30% 攻速
+					o["spd_echarge_mult"] = 0.7     # -30% 龟能充能速度
+					o["spd_move_mult"] = 0.7        # -30% 移速
+					o["spd_dbf_until"] = _t + 99999.0   # 登场全场(用户未定时长→默认永久)
+					_ice_chill_vfx(o["pos"])        # 敌人寒气蓝环
+					_flash(o, Color(0.6, 0.86, 1.0))   # 敌蓝闪
 			"headless":
 				u["lifesteal"] += 0.22
 			"dice":
