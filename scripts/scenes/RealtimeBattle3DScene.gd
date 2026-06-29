@@ -627,6 +627,11 @@ func _season_leaders() -> Array:
 
 # 单位等级 (血条左侧牌): 玩家队(left)读 GameState.season_level; bot 队随机 1-5 (展示用). 0=不显牌.
 func _unit_level(side: String) -> int:
+	var _gsd = get_node_or_null("/root/GameState")
+	if _gsd != null:
+		var _dl = _gsd.get("debug_level")
+		if _dl != null and int(_dl) > 0:
+			return int(_dl)                  # 调试器: 强制全体等级(两队同档)
 	if side == "left":
 		var gs = get_node_or_null("/root/GameState")
 		if gs != null:
@@ -735,7 +740,7 @@ func _make_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 	var bar := _make_status_bar(side, _unit_level(side))
 	_ui_layer.add_child(bar["root"])
 
-	return {
+	var u := {
 		"id": id, "name": str(d.get("name", id)), "rarity": str(d.get("rarity", "C")), "side": side,
 		"pos": pos, "vel": Vector2.ZERO,
 		"height": 0.0, "vy": 0.0, "vx": 0.0, "vz": 0.0, "airborne": false,
@@ -786,6 +791,17 @@ func _make_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 		"windup_t": 0.0,                   # 出招预备(缩)剩余秒
 		"bob_phase": randf() * TAU,        # idle bob 起始相位 (错峰, 不齐刷)
 	}
+	# 等级缩放: 主属性 +5%/级, 攻速 +2%/级 (吃等级表见 战斗基础-策划焊死.md §三)
+	var _lvl: int = maxi(1, _unit_level(side))
+	if _lvl > 1:
+		var _m: float = 1.0 + 0.05 * float(_lvl - 1)
+		u["maxHp"] *= _m; u["hp"] = u["maxHp"]
+		u["atk"] *= _m; u["base_atk"] *= _m
+		u["def"] *= _m; u["base_def"] *= _m
+		u["mr"] *= _m; u["base_mr"] *= _m
+		u["atk_interval"] /= (1.0 + 0.02 * float(_lvl - 1))   # 攻速+2%/级 → 间隔变短
+	u["level"] = _lvl
+	return u
 
 # ----------------------------------------------------------------------------
 #  立绘解析 (id → 全身图 + sprite-sheet 元数据). 数据来源: pets.json `img`(相对 res://assets/sprites/)
