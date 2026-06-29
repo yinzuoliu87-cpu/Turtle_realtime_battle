@@ -742,7 +742,9 @@ func _make_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 		"hp": hp, "maxHp": hp,
 		"atk": float(d.get("atk", 40)), "def": float(d.get("def", 12)), "mr": float(d.get("mr", 12)),
 		"base_atk": float(d.get("atk", 40)), "base_def": float(d.get("def", 12)), "base_mr": float(d.get("mr", 12)),
-		"crit": float(d.get("crit", 0.25)), "crit_dmg": 1.5, "pierce": 0.0, "lifesteal": 0.0,
+		"crit": float(d.get("crit", 0.25)), "crit_dmg": 1.5, "lifesteal": 0.0,
+		"armor_pen": 0.0, "armor_pen_pct": 0.0, "magic_pen": 0.0, "magic_pen_pct": 0.0,
+		"heal_amp": 0.0, "shield_amp": 0.0, "damage_reduction": 0.0, "damage_amp": 0.0, "reflect": 0.0, "tenacity": 0.0,
 		"melee": bool(st[0]), "move_spd": float(st[1]),
 		"atk_interval": float(st[2]), "atk_range": float(st[3]),
 		"atk_cd": 0.0, "energy": 0.0, "alive": true,
@@ -1413,12 +1415,7 @@ func _emit_basic(u: Dictionary, tgt: Dictionary, dmg: int, col: Color, i: int) -
 
 # 伤害减免+暴击 (与 _atk_dmg 同口径, 但吃"已算好的原始伤害"而非 scale)
 func _mitigate(u: Dictionary, raw: float, tgt: Dictionary, magic: bool) -> int:
-	_last_atk_crit = randf() < u["crit"]
-	if _last_atk_crit:
-		raw *= u["crit_dmg"]
-	var resist: float = float(tgt["mr"]) if magic else float(tgt["def"])
-	resist = maxf(0.0, resist - u["pierce"])
-	return maxi(1, int(round(raw * (100.0 / (100.0 + resist)) * (0.8 if (magic and str(tgt.get("id", "")) == "crystal") else 1.0))))
+	return _resolve_dmg(u, raw, tgt, magic)
 
 # 忍者冲击: 主目标正后方单位受 0.8×ATK + 主目标击飞
 func _ninja_basic_extra(u: Dictionary, tgt: Dictionary) -> void:
@@ -1463,18 +1460,32 @@ func _lightning_basic(u: Dictionary, tgt: Dictionary) -> void:
 		chained.append(nxt); prev = nxt; frac *= 0.6
 
 # 伤害公式 (1:1 复用 2D _atk_dmg): base×scale ×暴击 ×(100/(100+resist-pierce))
+# 伤害核心: 暴击(封顶100%溢出转暴伤×1.5) → 有效护甲/魔抗(先%后flat,可负) → 减伤倍率(K=40,负防增伤) → 增伤/减伤
+func _resolve_dmg(u: Dictionary, base: float, tgt: Dictionary, magic: bool) -> int:
+	var eff_crit: float = minf(float(u["crit"]), 1.0)
+	_last_atk_crit = randf() < eff_crit
+	if _last_atk_crit:
+		base *= float(u["crit_dmg"]) + maxf(0.0, float(u["crit"]) - 1.0) * 1.5   # 暴击率溢出100%每1%→1.5%暴伤
+	var resist: float
+	if magic:
+		resist = float(tgt["mr"]) * (1.0 - float(u.get("magic_pen_pct", 0.0))) - float(u.get("magic_pen", 0.0))
+	else:
+		resist = float(tgt["def"]) * (1.0 - float(u.get("armor_pen_pct", 0.0))) - float(u.get("armor_pen", 0.0))
+	var mult: float = (1.0 - resist / (resist + 40.0)) if resist >= 0.0 else (1.0 + absf(resist) / (absf(resist) + 40.0))
+	base *= mult
+	base *= 1.0 + float(u.get("damage_amp", 0.0))          # 攻击者增伤%
+	base *= 1.0 - float(tgt.get("damage_reduction", 0.0))  # 受害者减伤%(真伤不走此函数)
+	if magic and str(tgt.get("id", "")) == "crystal":
+		base *= 0.8                                          # 水晶共鸣: 受魔法额外-20%
+	return maxi(1, int(round(base)))
+
 func _atk_dmg(u: Dictionary, scale: float, tgt: Dictionary, magic: bool = false) -> int:
 	var base: float = u["atk"] * scale
 	if u.get("_vs_fire_bonus", 0.0) > 0.0 and (str(tgt["id"]) == "lava" or str(tgt["id"]) == "phoenix"):
 		base *= 1.0 + float(u["_vs_fire_bonus"])   # 寒冰免疫(iceBurnImmune): 对熔岩/凤凰 +40%
 	if u["id"] == "basic":                         # 不屈: 按目标稀有度增伤 (愈战愈勇)
 		base *= 1.0 + _BASIC_RARITY_BONUS.get(str(tgt.get("rarity", "C")), 0.20)
-	_last_atk_crit = randf() < u["crit"]      # §AUDIO: 记最近一次是否暴击 (供 _apply_damage_from 选暴击音)
-	if _last_atk_crit:
-		base *= u["crit_dmg"]
-	var resist: float = float(tgt["mr"]) if magic else float(tgt["def"])
-	resist = maxf(0.0, resist - u["pierce"])
-	return maxi(1, int(round(base * (100.0 / (100.0 + resist)) * (0.8 if (magic and str(tgt.get("id", "")) == "crystal") else 1.0))))
+	return _resolve_dmg(u, base, tgt, magic)
 
 # 立绘前冲 (近战命中视觉) — billboard offset 微推再回 (朝镜头, 不用翻 facing)
 func _melee_lunge(u: Dictionary, tgt: Dictionary) -> void:
@@ -2613,7 +2624,7 @@ func _sk_fortune_allin(u: Dictionary, tgt) -> void:
 func _sk_star_wormhole(u: Dictionary, tgt) -> void:
 	if tgt == null:
 		return
-	u["pierce"] += 8.0                              # 永久魔穿 (规格 6+0.5×lv, 局内无等级→取≈8)
+	u["magic_pen"] += 8.0                           # 永久魔穿
 	_float_text(u["pos"] + Vector2(0, -64), "虫洞!", Color("#ffffff"))
 	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
 	var mult: float = 1.5 * (1.0 + 0.1 * _t)        # 随战斗时间变强
@@ -2897,7 +2908,7 @@ func _apply_spawn_passives() -> void:
 	for u in _units.duplicate():
 		match u["id"]:
 			"ninja":
-				u["crit"] += 0.30; u["crit_dmg"] += 0.20; u["pierce"] += 8.0
+				u["crit"] += 0.30; u["crit_dmg"] += 0.20; u["armor_pen"] += 8.0
 				_buff(u, "dodge", 0.25, false, 9999.0)
 			"ghost":
 				for o in _enemies_of(u):
@@ -3024,8 +3035,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	if u["id"] == "dice":   # 赌徒之血: 按已损血加暴击(损30%满+50%); 暴击率>100%部分每1%→1.5%暴伤
 		var _lost: float = clampf(1.0 - u["hp"] / u["maxHp"], 0.0, 1.0)
 		u["crit"] = float(u.get("dice_base_crit", u["crit"])) + minf(_lost / 0.30, 1.0) * 0.50
-		if u["crit"] > 1.0:
-			u["crit_dmg"] = float(u.get("dice_base_critdmg", u["crit_dmg"])) + (u["crit"] - 1.0) * 1.5
+		# (暴击率>100%转暴伤由 _resolve_dmg 全局处理, 这里只设暴击率)
 	# --- 赛博浮游炮: 每周期生成1 (上限10) ---
 	if u["id"] == "cyber":
 		if u["_ptimer"] >= 3.0:
@@ -3278,7 +3288,9 @@ func _spawn_summon(owner: Dictionary, kind: String, hp: float, atk: float, behav
 		"height": 0.0, "vy": 0.0, "vx": 0.0, "vz": 0.0, "airborne": false,
 		"hp": hp, "maxHp": hp,
 		"atk": atk, "def": 0.0, "mr": 0.0, "base_atk": atk, "base_def": 0.0, "base_mr": 0.0,
-		"crit": float(behavior.get("crit", 0.0)), "crit_dmg": 1.5, "pierce": 0.0, "lifesteal": 0.0,
+		"crit": float(behavior.get("crit", 0.0)), "crit_dmg": 1.5, "lifesteal": 0.0,
+		"armor_pen": 0.0, "armor_pen_pct": 0.0, "magic_pen": 0.0, "magic_pen_pct": 0.0,
+		"heal_amp": 0.0, "shield_amp": 0.0, "damage_reduction": 0.0, "damage_amp": 0.0, "reflect": 0.0, "tenacity": 0.0,
 		"melee": bool(behavior.get("melee", kind != "drone")),
 		"move_spd": float(behavior.get("move_spd", 0.0 if behavior.get("no_move", false) else 120.0)),
 		"atk_interval": float(behavior.get("atk_interval", 1.2)),
@@ -3957,9 +3969,9 @@ func _eq_apply_one_stats(u: Dictionary, item_id: String, star: int) -> void:
 	if st.has("crit"):
 		u["crit"] += float(st["crit"])
 	if st.has("armorPen"):
-		u["pierce"] += float(st["armorPen"])
+		u["armor_pen"] += float(st["armorPen"])
 	if st.has("magicPen"):
-		u["pierce"] += float(st["magicPen"])
+		u["magic_pen"] += float(st["magicPen"])
 	if st.has("_lifestealPct"):
 		u["lifesteal"] += float(st["_lifestealPct"]) / 100.0
 	if st.has("def"):
