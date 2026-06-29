@@ -55,6 +55,7 @@ const DEFAULT_STAT := [true, 105.0, 0.85, 70.0]
 const REVIEW_DEMO := true                  # 评审期: 战斗=1受审龟 vs 1假人(右不动/不打/不放技/高血沙包); 上线前置 false
 const REVIEW_TURTLE := "ice"             # 受审龟 id (评审换龟只改这里)
 const REVIEW_SKILL_IDX := 3   # 评审时受审龟放哪个技(skillPool索引, 验主动技: 2冰霜/3冰封); -1=默认
+const REVIEW_SHOWCASE := ["basic", "stone", "bamboo", "angel"]   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 800.0            # 假人固定血量
 const LEFT_DEMO := ["basic", "stone", "lightning"]   # 非评审 demo (REVIEW_DEMO=false 时用)
@@ -580,13 +581,17 @@ func _spawn_teams() -> void:
 	for i in range(left.size()):
 		# XZ 落点: 左队靠左 (ARENA 内), 三龟纵向分布. 与 2D _spawn_teams 同口径像素坐标. 偏移走 @export 参数(#12)
 		var pos := Vector2(ARENA.position.x + spawn_edge_margin, ARENA.position.y + spawn_front_margin + i * spawn_row_spacing)
-		if REVIEW_DEMO:
+		if REVIEW_DEMO and REVIEW_SHOWCASE.is_empty():
 			pos = Vector2(_cx - 150.0, _cy)
+		elif REVIEW_DEMO:
+			pos = Vector2(_cx - 200.0, _cy + (float(i) - float(left.size() - 1) / 2.0) * 95.0)
 		_units.append(_make_unit(str(left[i]), "left", pos))
 	for i in range(right.size()):
 		var pos := Vector2(ARENA.end.x - spawn_edge_margin, ARENA.position.y + spawn_front_margin + i * spawn_row_spacing)
-		if REVIEW_DEMO:
+		if REVIEW_DEMO and REVIEW_SHOWCASE.is_empty():
 			pos = Vector2(_cx + 150.0, _cy)
+		elif REVIEW_DEMO:
+			pos = Vector2(_cx + 200.0, _cy + (float(i) - float(right.size() - 1) / 2.0) * 95.0)
 		var ru := _make_unit(str(right[i]), "right", pos)
 		if REVIEW_DEMO:                          # 假人: 不动/不打/不放技/永不死训练靶 (受击照显伤害但即刻回满)
 			ru["no_basic"] = true
@@ -602,12 +607,19 @@ func _spawn_teams() -> void:
 
 func _resolve_left() -> Array:
 	if REVIEW_DEMO:
+		if not REVIEW_SHOWCASE.is_empty():
+			return REVIEW_SHOWCASE.duplicate()   # 展示模式: 多只一队
 		return [REVIEW_TURTLE]                 # 评审: 只 1 只受审龟
 	var ldr := _season_leaders()
 	return ldr if ldr.size() >= 1 else LEFT_DEMO.duplicate()
 
 func _resolve_right() -> Array:
 	if REVIEW_DEMO:
+		if not REVIEW_SHOWCASE.is_empty():
+			var arr: Array = []
+			for _i in range(REVIEW_SHOWCASE.size()):
+				arr.append(REVIEW_DUMMY)
+			return arr   # 展示模式: 等量假人
 		return [REVIEW_DUMMY]                  # 评审: 只 1 个假人
 	# 无赛季阵容(直接进战斗调试) → demo 固定对位.
 	if _season_leaders().is_empty():
