@@ -46,7 +46,7 @@ const STATS := {
 	"fortune": [true, 105.0, 0.85, 70.0], "dice": [false, 145.0, 0.6, 230.0], "rainbow": [true, 105.0, 0.85, 70.0],
 	"gambler": [false, 145.0, 0.85, 230.0], "hunter": [false, 145.0, 0.6, 340.0], "pirate": [false, 105.0, 0.85, 230.0],
 	"candy": [false, 105.0, 0.85, 230.0], "bubble": [false, 70.0, 1.1, 230.0], "line": [false, 145.0, 0.6, 340.0],
-	"lightning": [false, 145.0, 0.6, 340.0], "phoenix": [false, 105.0, 0.85, 230.0], "lava": [true, 145.0, 0.85, 70.0],
+	"lightning": [false, 145.0, 0.6, 340.0], "phoenix": [false, 105.0, 0.85, 230.0], "lava": [false, 145.0, 0.85, 230.0],
 	"cyber": [false, 105.0, 0.85, 230.0], "crystal": [true, 70.0, 1.1, 70.0], "chest": [true, 105.0, 1.1, 70.0],
 	"space": [false, 145.0, 0.85, 340.0], "hiding": [true, 70.0, 1.1, 70.0], "headless": [true, 145.0, 0.85, 70.0],
 	"shell": [true, 105.0, 1.1, 70.0],
@@ -1188,6 +1188,8 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 				elif u["atk_cd"] <= 0.0:
 					u["pending"] = "B"
 					u["state"] = "windup"; u["state_t"] = ATK_WINDUP
+				elif not u["melee"] and dist < rng * 0.7:
+					_do_move(u, tgt, dist, rng, spd, delta)   # 远程+敌逼近+冷却中 → 风筝后撤到安全距离(再开打)
 				# else: 站定待命 (不动), 冷却继续走 → 自然有"停顿观察"
 			else:
 				_do_move(u, tgt, dist, rng, spd, delta)  # 不在射程 → 移动(唯一会移动的态)
@@ -3005,6 +3007,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		u["rage"] = 0.0
 		u["volcano"] = true
 		u["volcano_until"] = _t + 6.0
+		u["melee"] = true; u["atk_range"] = 70.0; u["move_spd"] = 175.0   # 火山形态=近战冲脸
 		_buff(u, "atk", 0.6, true, 6.0); _buff(u, "def", 0.4, true, 6.0); _buff(u, "mr", 0.4, true, 6.0)
 		u["maxHp"] *= 1.3; u["hp"] *= 1.3
 		_float_text(u["pos"] + Vector2(0, -70), "变身·火山龟!", Color("#ff5a2a"))
@@ -3014,6 +3017,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			_heal(u, (o["maxHp"] - o["hp"]) * 0.08)
 	if u.get("volcano", false) and _t >= u["volcano_until"]:
 		u["volcano"] = false
+		u["melee"] = false; u["atk_range"] = 230.0; u["move_spd"] = 145.0   # 变回远程
 		u["maxHp"] /= 1.3; u["hp"] = minf(u["hp"], u["maxHp"])
 	if u["id"] == "chest":
 		_chest_treasure_tick(u)
