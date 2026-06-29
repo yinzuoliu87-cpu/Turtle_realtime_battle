@@ -313,14 +313,14 @@
         "icon": "skills/bamboo-leaf.png",
         "type": "bambooLeaf",
         "hitStaggerMs": 400,
-        "hits": 3,
+        "hits": 1,
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "atkScale": 0.21,
+        "atkScale": 0.4,
         "selfHpPct": 6,
-        "brief": "竹叶龟对目标甩出3片叶刃，造成共（{N:0.21*ATK*3+HP*0.06*3}）物理伤害",
-        "detail": "竹叶龟对目标甩出3片叶刃。\n每段造成（21%×攻击力({ATK}) = {N:0.21*ATK}）+（6%×最大生命值({HP}) = {N:HP*0.06}）物理伤害。\n共（{N:0.21*ATK*3+HP*0.06*3}）物理伤害。",
+        "brief": "竹叶龟甩出叶刃，造成（{N:0.4*ATK+HP*0.03}）物理伤害",
+        "detail": "竹叶龟甩出叶刃，造成（40%×攻击力({ATK}) + 3%×最大生命值({HP}) = {N:0.4*ATK+HP*0.03}）物理伤害",
         "energyCost": 0
       },
       {

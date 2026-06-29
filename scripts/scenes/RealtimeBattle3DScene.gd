@@ -66,7 +66,7 @@ const RIGHT_DEMO := ["diamond", "ninja", "ghost"]
 const BASIC_ATK := {
 	"basic":    {"phys": 1.0, "hits": 1},
 	"stone":    {"phys": 0.7, "def": 1.5, "mr": 0.8, "hits": 1},                    # +护甲魔抗(坦克)
-	"bamboo":   {"phys": 0.63, "selfhp": 0.18, "hits": 3},                          # 3片叶+自身HP
+	"bamboo":   {"phys": 0.4, "selfhp": 0.03, "hits": 1},                           # 单段 0.4ATK+3%自身HP(用户2026-06-29)
 	"angel":    {"phys": 1.4, "hits": 1},                                          # 远程平A一段(用户:1段+审判被动)
 	"ice":      {"phys": 0.7, "magic": 0.7, "hits": 6, "alt": true},               # 交替物/魔(用户)
 	"ninja":    {"phys": 0.96, "true": 0.64, "hits": 1},                            # 改远程! 普攻=扔飞镖(1.6含40%真); 冲击转主动技
