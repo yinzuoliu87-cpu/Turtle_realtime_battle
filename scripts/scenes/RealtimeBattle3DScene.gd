@@ -1672,7 +1672,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		u["hp"] = maxf(1.0, u["hp"])
 	var _dt: String = "true" if raw else _last_dmg_type
 	var _ncol: Color = _VC.color_of(_VC.cls_for("damage", _dt, was_crit))   # 飘字按伤害类型统一取色 (物红/魔蓝/真白, 1:1 回合制)
-	_float_text(u["pos"], str(dmg), _ncol, was_crit, "damage")   # 伤害: 爆大pop+抛物弹射(跳的方向/距离随机自带散开)
+	_float_text(u["pos"], str(dmg), _ncol, was_crit, "damage", _dt)   # 伤害: 爆大pop+抛物弹射(跳的方向/距离随机自带散开)
 	# 泡泡束缚(bubbleBind): 束缚期间每受一段伤害 → 永久 -X 护甲/魔抗 (单次累计上限各30)
 	if _t < u.get("bind_until", 0.0):
 		var _sx: float = float(u.get("bind_shred", 0.0))
@@ -1855,8 +1855,32 @@ func _make_num_label(text: String, col: Color, fsize: int) -> Label:
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 	return l
 
+var _float_dmg_window: Dictionary = {}    # 伤害飘字按类型排行错开 (1:1 回合制 _float_row_offset)
+var _float_nd_window: Dictionary = {}     # 非伤害(治疗/盾)紧凑堆叠
+# 同时跳出的飘字按规矩错开行: 伤害红0/蓝1/白2 紧凑×22(缺色不留空, 220ms窗口); 非伤害到达序堆叠(100ms)
+func _float_row_offset(key: String, kind: String, dmg_type: String) -> float:
+	if kind == "damage":
+		var rank: int = 1 if dmg_type == "magic" else (2 if dmg_type == "true" else 0)
+		var w: Dictionary = _float_dmg_window.get(key, {"ranks": [], "t": -9.0})
+		if _t - float(w["t"]) > 0.22:
+			w = {"ranks": [], "t": -9.0}
+		var ranks: Array = w["ranks"]
+		if not ranks.has(rank):
+			ranks.append(rank)
+		w["ranks"] = ranks; w["t"] = _t
+		_float_dmg_window[key] = w
+		var sr: Array = ranks.duplicate(); sr.sort()
+		return float(maxi(0, sr.find(rank))) * 22.0
+	var rec: Dictionary = _float_nd_window.get(key, {"t": -9.0, "n": 0})
+	if _t - float(rec["t"]) > 0.10:
+		rec["n"] = 0
+	rec["t"] = _t
+	var extra: int = int(rec["n"]); rec["n"] = extra + 1
+	_float_nd_window[key] = rec
+	return float(extra) * 22.0
+
 # 飘字 (1:1 回合制 _spawn_float_text): kind=damage → 爆大pop(1.6~2.5)+抛物弹射(重力200,朝屏边跳); 否则(heal/shield/label) → pop1.2+缓升50px(sine)1.5s淡出
-func _float_text(pos2d: Vector2, text: String, col: Color, is_crit: bool = false, kind: String = "label") -> void:
+func _float_text(pos2d: Vector2, text: String, col: Color, is_crit: bool = false, kind: String = "label", dmg_type: String = "physical") -> void:
 	if _cam == null:
 		return
 	var head := _world_pos(pos2d, 2.2)
@@ -1888,6 +1912,7 @@ func _float_text(pos2d: Vector2, text: String, col: Color, is_crit: bool = false
 	var unit_sz := Vector2(20.0 + 1.0 + tsz.x, maxf(20.0, tsz.y)) if is_dmg_crit else tsz
 	fly.pivot_offset = unit_sz / 2.0
 	var base_pos := screen - unit_sz / 2.0
+	base_pos.y -= _float_row_offset("%d_%d" % [roundi(pos2d.x), roundi(pos2d.y)], kind, dmg_type)   # 按类型排行错开(同时跳不糊)
 	if kind == "damage":
 		# 伤害: 爆大pop(1.6~2.5按量级)→hold→抛物弹射(jump_x朝屏边, 重力200先上后下)→淡出 (1:1 PoC runFloatAnim)
 		fly.position = base_pos
