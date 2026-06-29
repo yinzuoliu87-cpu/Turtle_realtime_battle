@@ -55,14 +55,14 @@
       {
         "name": "攻击",
         "type": "physical",
-        "hits": 2,
+        "hits": 1,
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "atkScale": 0.7,
+        "atkScale": 1.0,
         "icon": "skills/basic-attack.png",
-        "brief": "小龟对目标进行两段攻击，共造成（{N:0.7*ATK*2}）物理伤害。",
-        "detail": "小龟对目标进行两段攻击，共造成（140%×攻击力({ATK}) = {N:0.7*ATK*2}）物理伤害。",
+        "brief": "小龟对目标攻击，造成（{N:1.0*ATK}）物理伤害。",
+        "detail": "小龟对目标攻击，造成（100%×攻击力({ATK}) = {N:1.0*ATK}）物理伤害。",
         "energyCost": 0
       },
       {
