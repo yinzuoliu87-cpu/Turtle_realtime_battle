@@ -1862,6 +1862,7 @@ func _float_text(pos2d: Vector2, text: String, col: Color, is_crit: bool = false
 		var icon := TextureRect.new()
 		icon.texture = load("res://assets/sprites/stats/crit-dmg-icon.png")
 		icon.custom_minimum_size = Vector2(20, 20)   # 1:1 回合制 20×20
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE   # 忽略贴图原尺寸→缩到20 (缺它则700px原图撑爆=暴击异常!)
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		box.add_child(icon)
@@ -2172,12 +2173,8 @@ func _cast_skill(u: Dictionary, tgt: Dictionary, stype: String) -> bool:
 		return false                                  # 梭哈一场限一次, 用过则轮转跳过不空放
 	_anticipate(u)                  # 放大招前预备(缩)→挥出(伸) 形变
 	_shake(JUICE_SHAKE_HEAVY)       # 大招释放 = 轻震屏
-	# §SKILLVFX: 逐技 type→icon 真贴图(pets.json skillPool[].icon); 无图回退龟签名 VFX, 再无则静默(留 _skill_ring/飘字)
-	var on_tgt: bool = _COPYABLE_SKILLS.has(stype) or _SKILL_VFX_ON_TARGET.get(u["id"], false)
-	var vfx_at: Vector2 = tgt["pos"] if (on_tgt and tgt != null and tgt != u) else u["pos"]
-	var vfx_name: String = _skill_vfx_name(stype)
-	if not _SKILL_SELF_VFX.has(stype):                       # 自带VFX的技跳过通用飘空贴图
-		_play_skill_vfx(vfx_name if vfx_name != "" else str(u["id"]), vfx_at, 1.3)
+	# 施法技能不用飘空图标 (用户定): 技能视觉靠各自 _skill_ring/投射物/形变, 不浮贴图 billboard
+	# (原通用 _play_skill_vfx 飘空贴图已禁用 — 一张图标浮半空不贴 2.5D)
 	_do_skill(u, tgt, stype)
 	return true
 
