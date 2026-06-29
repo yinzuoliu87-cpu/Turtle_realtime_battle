@@ -2043,6 +2043,25 @@ func _bamboo_burst_step(t: float, b: Sprite3D, nframes: int) -> void:
 		b.frame = mini(nframes - 1, int(t * float(nframes)))
 	b.modulate.a = 1.0 - maxf(0.0, (t - 0.6) / 0.4)
 
+# 治疗绿光 (港回合制 _play_heal_glow): 绿光球从身体升起淡出 + 绿脉冲贴地环
+func _play_heal_glow(pos2d: Vector2) -> void:
+	_skill_ring(pos2d, Color(0.36, 0.92, 0.5, 0.5), 48.0)   # 绿脉冲环
+	for i in range(6):
+		var g := Sprite3D.new()
+		g.texture = _make_glow_texture()
+		g.modulate = Color(0.36, 0.92, 0.5, 0.85)   # #5cea80 治疗绿
+		g.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		g.shaded = false
+		g.transparent = true
+		g.pixel_size = 0.009
+		g.position = _world_pos(pos2d, 0.2) + Vector3(randf_range(-0.45, 0.45), 0.0, randf_range(-0.2, 0.2))
+		_world.add_child(g)
+		var tw := create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(g, "position:y", g.position.y + 1.6, 0.7).set_ease(Tween.EASE_OUT)
+		tw.tween_property(g, "modulate:a", 0.0, 0.7).set_delay(0.1)
+		tw.chain().tween_callback(g.queue_free)
+
 # 技能光圈: 地面上一个躺平的环, 扩散淡出 (2D 接口对齐 _skill_ring(pos, col, radius))
 func _skill_ring(pos2d: Vector2, col: Color, radius: float) -> void:
 	var r := Sprite3D.new()
@@ -2446,12 +2465,14 @@ func _sk_stone_armor(u: Dictionary) -> void:                     # 石头龟·�
 
 func _sk_bamboo_heal(u: Dictionary) -> void:                     # 竹叶龟·自然恢复 ✅
 	var allies := _allies_of(u, false)
+	_play_heal_glow(u["pos"])
 	if allies.is_empty():
 		_heal(u, u["maxHp"] * 0.15)
 	else:
 		_heal(u, u["maxHp"] * 0.10)
 		for o in allies:
 			_grant_shield(o, o["maxHp"] * 0.12)
+			_play_heal_glow(o["pos"])
 
 func _sk_angel_bless(u: Dictionary) -> void:                     # 天使龟·祝福 ✅
 	var ally = _lowest_hp_ally(u)
