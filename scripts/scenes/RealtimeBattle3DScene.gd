@@ -99,7 +99,7 @@ const DEFAULT_BASIC := {"phys": 1.0, "hits": 1}
 # ============================================================================
 const AVATAR_DIR := "res://assets/sprites/avatars/"   # 头像兜底 (全身图缺失才退回)
 const SPRITE_DIR := "res://assets/sprites/"           # pets.json img 相对此根
-const TARGET_BODY_H := 2.3                 # 立绘目标世界高度 (米) — 全身图按帧高归一到此, 龟 ≈ 2.3m
+const TARGET_BODY_H := 2.0                 # 立绘目标世界高度 (米) — 龟 ≈ 2.0m (用户2026-06-29: 原2.3大了点)
 const WS := 0.024                         # 像素 → 米 比例 (ARENA 1140×520 px → ≈27×12.5 米地面)
 const PIXEL_SIZE := 0.012                 # (旧) 头像兜底像素→米; 全身图改按帧高归一到 TARGET_BODY_H
 
@@ -1934,6 +1934,89 @@ func _dmg_float_step(el: float, node_fl: Control, base: Vector2, jump_x: float, 
 	node_fl.position = base + Vector2(px, py)
 	node_fl.modulate.a = 1.0 if el < fade_start else maxf(0.0, 1.0 - (el - fade_start) / (total_dur - fade_start))
 
+# ── 竹叶生命球 (1:1 回合制 _spawn_bamboo_orb 港到2.5D): 绿球从目标抛物线(3D高度弧)飞回竹叶龟 + 绿拖尾 + 落点爆 ──
+func _spawn_bamboo_orb(from_pos: Vector2, to_pos: Vector2) -> void:
+	var orb_path := "res://assets/sprites/vfx/bamboo-charge-orb.png"
+	if not ResourceLoader.exists(orb_path):
+		return
+	var tex: Texture2D = load(orb_path)
+	var fh: int = maxi(1, tex.get_height())
+	var nframes: int = maxi(1, int(tex.get_width() / fh))
+	var orb := Sprite3D.new()
+	orb.texture = tex
+	orb.hframes = nframes
+	orb.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	orb.shaded = false
+	orb.transparent = true
+	orb.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	orb.pixel_size = 0.85 / float(fh)
+	orb.position = _world_pos(from_pos, 1.0)
+	_world.add_child(orb)
+	var tw := create_tween()
+	tw.tween_method(_bamboo_orb_step.bind(orb, from_pos, to_pos, nframes, [0]), 0.0, 1.0, 0.65)
+	tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_callback(func() -> void:
+		if is_instance_valid(orb): orb.queue_free()
+		_spawn_bamboo_burst(to_pos))
+
+func _bamboo_orb_step(t: float, orb: Sprite3D, from_pos: Vector2, to_pos: Vector2, nframes: int, trail: Array) -> void:
+	if not is_instance_valid(orb):
+		return
+	var base: Vector2 = from_pos.lerp(to_pos, t)
+	var h: float = 1.0 + 1.5 * 4.0 * t * (1.0 - t)   # 抛物高度弧 (峰+1.5m)
+	orb.position = _world_pos(base, h)
+	if nframes > 1:
+		orb.frame = int(t * float(nframes) * 2.0) % nframes
+	if t > 0.05 and t < 0.93:
+		var seg: int = int(t / 0.046)
+		if seg > int(trail[0]):
+			trail[0] = seg
+			_bamboo_trail_dot(base, h)
+
+func _bamboo_trail_dot(pos2d: Vector2, h: float) -> void:
+	var dot := Sprite3D.new()
+	dot.texture = _make_glow_texture()
+	dot.modulate = Color(0.49, 1.0, 0.7, 0.7)   # #7dffb3 绿
+	dot.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	dot.shaded = false
+	dot.transparent = true
+	dot.pixel_size = 0.006
+	dot.position = _world_pos(pos2d, h)
+	_world.add_child(dot)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(dot, "modulate:a", 0.0, 0.42)
+	tw.tween_property(dot, "scale", Vector3.ONE * 0.3, 0.42)
+	tw.chain().tween_callback(dot.queue_free)
+
+func _spawn_bamboo_burst(pos2d: Vector2) -> void:
+	var bpath := "res://assets/sprites/vfx/bamboo-charge-burst.png"
+	if not ResourceLoader.exists(bpath):
+		return
+	var tex: Texture2D = load(bpath)
+	var fh: int = maxi(1, tex.get_height())
+	var nframes: int = maxi(1, int(tex.get_width() / fh))
+	var b := Sprite3D.new()
+	b.texture = tex
+	b.hframes = nframes
+	b.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	b.shaded = false
+	b.transparent = true
+	b.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	b.pixel_size = 1.3 / float(fh)
+	b.position = _world_pos(pos2d, 1.0)
+	_world.add_child(b)
+	var tw := create_tween()
+	tw.tween_method(_bamboo_burst_step.bind(b, nframes), 0.0, 1.0, 0.35)
+	tw.tween_callback(b.queue_free)
+
+func _bamboo_burst_step(t: float, b: Sprite3D, nframes: int) -> void:
+	if not is_instance_valid(b):
+		return
+	if nframes > 1:
+		b.frame = mini(nframes - 1, int(t * float(nframes)))
+	b.modulate.a = 1.0 - maxf(0.0, (t - 0.6) / 0.4)
+
 # 技能光圈: 地面上一个躺平的环, 扩散淡出 (2D 接口对齐 _skill_ring(pos, col, radius))
 func _skill_ring(pos2d: Vector2, col: Color, radius: float) -> void:
 	var r := Sprite3D.new()
@@ -3090,7 +3173,7 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 				_apply_damage_from(u, tgt, _mitigate(u, u["atk"] * 0.75 + u["maxHp"] * 0.06, tgt, true), Color("#9be7ff"), 0.0, false)   # 魔法(吃魔抗+蓝字), 原flat固定值=bug
 				_heal(u, u["maxHp"] * 0.06)
 				u["base_atk"] *= 1.06; u["maxHp"] *= 1.03; _recalc_stats(u)
-				_skill_ring(tgt["pos"], Color(0.4, 0.9, 0.3, 0.5), 44.0)
+				_spawn_bamboo_orb(tgt["pos"], u["pos"])   # 生命球抛物飞回(港回合制)
 		"rainbow":                                        # 棱镜(改造): 普攻附当前颜色效果(红真伤/蓝小盾/绿回血)
 			match int(u.get("prism_color", -1)):
 				0: _apply_damage_from(u, tgt, int(u["atk"] * 0.25), Color("#ff6b6b"), 0.0, true)   # 红: 额外真伤
@@ -3502,6 +3585,13 @@ func _update_world_transforms() -> void:
 		var ring: Sprite3D = u["ring"]
 		if not is_instance_valid(spr):
 			continue
+		# 朝向跟移动方向 (立绘默认朝左→flip_h=true朝右); 不动则保持上次朝向; 初始左队朝右/右队朝左
+		var _px: float = u["pos"].x
+		var _dx: float = _px - float(u.get("last_x", _px))
+		if absf(_dx) > 0.3:
+			u["face_right"] = _dx > 0.0
+		u["last_x"] = _px
+		spr.flip_h = bool(u.get("face_right", str(u["side"]) == "left"))
 		# --- Phase4: squash/stretch 形变 + idle bob 高度微浮 (全从 base 起算, 不累积) ---
 		var sq := _juice_scale_for(u)              # (sx, sy) 形变系数 (base=1,1)
 		var bob := _juice_bob_for(u)               # idle 呼吸 Y 偏移 (米)
