@@ -2483,17 +2483,17 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"diamondCollide":       _sk_dmg(u, tgt, {"phys": 0.8, "mr": 0.9, "hits": 1, "rider": "stun", "name": "撞击!", "color": Color("#9bdcff")})
 		"fortuneStrike":        _sk_dmg(u, tgt, {"phys": 1.0, "hits": 2, "name": "财运一击!", "color": Color("#ffd93d")})
 		"diceAttack":           _sk_dmg(u, tgt, {"phys": 0.9, "hits": 3, "name": "骰子攻击!", "color": Color("#ff4444")})
-		"rainbowStorm":         _sk_dmg(u, tgt, {"magic": 0.8, "true": 0.4, "hits": 4, "aoe": true, "name": "棱镜风暴!", "color": Color("#ff8ad8")})
+		"rainbowStorm":         _sk_dmg(u, tgt, {"magic": 0.8, "true": 0.4, "hits": 4, "aoe": true, "stagger": 0.1, "defDown": 0.15, "name": "棱镜风暴!", "color": Color("#ff8ad8")})
 		"gamblerCards":         _sk_dmg(u, tgt, {"phys": 1.35, "hits": 3, "name": "发牌!", "color": Color("#ffd93d")})
 		"gamblerDraw":          _sk_gambler_wild(u, tgt)   # 万能牌(默认签名技): 原来错派纯伤害, 改回 _sk_gambler_wild(2段+盾+治疗+减益)
 		"hunterShot":           _sk_dmg(u, tgt, {"phys": 1.65, "hits": 3, "name": "精准射击!", "color": Color("#a8ffb0")})
 		"hunterBarrage":        _sk_dmg(u, tgt, {"true": 2.4, "hits": 10, "name": "狩猎弹幕!", "color": Color("#a8ffb0")})
 		"candyBarrage":         _sk_dmg(u, tgt, {"phys": 1.0, "hits": 4, "aoe": true, "name": "糖果弹幕!", "color": Color("#ff9ed6")})
 		"lineSketch":           _sk_dmg(u, tgt, {"phys": 1.5, "hits": 3, "name": "速写!", "color": Color("#dddddd")})
-		"lightningStrike":      _sk_dmg(u, tgt, {"magic": 1.15, "hits": 5, "name": "闪电打击!", "color": Color("#7ee8ff")})
-		"lightningBarrage":     _sk_dmg(u, tgt, {"magic": 2.2, "hits": 20, "name": "雷暴!", "color": Color("#7ee8ff")})
+		"lightningStrike":      _sk_dmg(u, tgt, {"magic": 1.15, "hits": 5, "stagger": 0.08, "electric": 1, "splash": 0.25, "name": "闪电打击!", "color": Color("#7ee8ff")})
+		"lightningBarrage":     _sk_dmg(u, tgt, {"magic": 2.2, "hits": 20, "randomAoe": true, "stagger": 0.06, "electric": 1, "name": "雷暴!", "color": Color("#7ee8ff")})
 		"phoenixBurn":          _sk_dmg(u, tgt, {"magic": 0.9, "hits": 1, "rider": "burn", "name": "灼焰!", "color": Color("#ff7a3c")})
-		"phoenixScald":         _sk_dmg(u, tgt, {"magic": 0.7, "hits": 1, "rider": "burn", "name": "灼烧!", "color": Color("#ff7a3c")})
+		"phoenixScald":         _sk_dmg(u, tgt, {"magic": 0.7, "hits": 1, "rider": "burn", "shieldBreak": 0.5, "atkDown": 0.15, "defDown": 0.15, "mrDown": 0.15, "healCut": 0.5, "name": "灼烧!", "color": Color("#ff7a3c")})
 		"lavaBolt":             _sk_dmg(u, tgt, {"magic": 0.9, "hits": 1, "rider": "burn", "name": "熔岩弹!", "color": Color("#ff7a3c")})
 		"lavaQuake":            _sk_lava_cast(u, tgt, "A")   # 地裂(默认): 修-原派_sk_dmg带slow→应_lava_quake(全体魔+削魔抗20%)
 		"crystalSpike":         _sk_dmg(u, tgt, {"magic": 1.0, "hits": 2, "name": "水晶刺!", "color": Color("#9bdcff")})
@@ -2911,29 +2911,85 @@ func _sk_burst(u: Dictionary, tgt: Dictionary) -> void:          # 兜底重击
 #        hits: 视觉段数(伤害总量不变); aoe: 全体敌; rider: 附带(burn/stun/slow/curse/atkdn/mrdn); name,color}
 func _sk_dmg(u: Dictionary, tgt, opts: Dictionary) -> void:
 	var col: Color = opts.get("color", Color("#ffd07a"))
-	var targets: Array = _enemies_of(u) if opts.get("aoe", false) else ([tgt] if tgt != null else [])
-	var vh: int = clampi(int(opts.get("hits", 1)), 1, 8)     # 视觉段数封顶(防 20 连击刷屏); 总伤=系数×ATK 不变
+	var aoe: bool = opts.get("aoe", false)
+	var random_aoe: bool = opts.get("randomAoe", false)            # 每段随机1敌(雷暴式)
+	var stagger: float = float(opts.get("stagger", 0.0))          # >0=逐段错峰(秒), 不糊
+	var cap: int = 24 if stagger > 0.0 else 8
+	var vh: int = clampi(int(opts.get("hits", 1)), 1, cap)
+	# 段前一次性: 减益(破盾/各down/治疗削减) + rider + 贴地环
+	var deb_targets: Array = _enemies_of(u) if (aoe or random_aoe) else ([tgt] if tgt != null else [])
+	for e in deb_targets:
+		if e == null or not e.get("alive", false):
+			continue
+		_apply_skill_extras(u, e, opts)
+		_apply_rider(u, e, str(opts.get("rider", "")))
+		_skill_ring(e["pos"], Color(col.r, col.g, col.b, 0.4), 46.0)
+	var fixed: Array = _enemies_of(u) if aoe else ([tgt] if tgt != null else [])
+	if stagger > 0.0:
+		var tw := create_tween()
+		for i in range(vh):
+			tw.tween_callback(_sk_dmg_wave.bind(u, opts, vh, col, random_aoe, fixed))
+			tw.tween_interval(stagger)
+	else:
+		for i in range(vh):
+			_sk_dmg_wave(u, opts, vh, col, random_aoe, fixed)
+
+# 一段伤害(供 _sk_dmg 即时/错峰共用): random_aoe→1随机敌, 否则打 fixed 列表
+func _sk_dmg_wave(u: Dictionary, opts: Dictionary, vh: int, col: Color, random_aoe: bool, fixed: Array) -> void:
+	var ws: Array
+	if random_aoe:
+		var es := _enemies_of(u)
+		if es.is_empty():
+			return
+		ws = [es[_juice_rng.randi() % es.size()]]
+	else:
+		ws = fixed
 	var phys: float = float(opts.get("phys", 0.0))
 	var magic: float = float(opts.get("magic", 0.0))
 	var tru: float = float(opts.get("true", 0.0))
 	var hp_flat: float = float(opts.get("hp", 0.0)) * u["maxHp"]
 	var mr_flat: float = float(opts.get("mr", 0.0)) * u["mr"]
-	for e in targets:
+	var elec: int = int(opts.get("electric", 0))
+	for e in ws:
 		if e == null or not e.get("alive", false):
 			continue
-		for i in range(vh):
-			var dmg := 0
-			if phys > 0.0:
-				dmg += _atk_dmg(u, phys / vh, e, false)
-			if magic > 0.0:
-				dmg += _atk_dmg(u, magic / vh, e, true)
-			dmg += int((hp_flat + mr_flat) / vh)
-			if dmg > 0:
-				_apply_damage_from(u, e, dmg, col)
-			if tru > 0.0:
-				_apply_damage_from(u, e, int(u["atk"] * tru / vh), col, 0.0, true)   # raw=真实(无视防/魔抗)
-		_apply_rider(u, e, str(opts.get("rider", "")))
-		_skill_ring(e["pos"], Color(col.r, col.g, col.b, 0.4), 46.0)
+		var dmg := 0
+		if phys > 0.0:
+			dmg += _atk_dmg(u, phys / vh, e, false)
+		if magic > 0.0:
+			dmg += _atk_dmg(u, magic / vh, e, true)
+		dmg += int((hp_flat + mr_flat) / vh)
+		if dmg > 0:
+			_apply_damage_from(u, e, dmg, col)
+			var spl: float = float(opts.get("splash", 0.0))   # 溅射到次要目标(闪电打击25%)
+			if spl > 0.0:
+				for o in _enemies_of(u):
+					if o != e and o.get("alive", false):
+						_apply_damage_from(u, o, int(dmg * spl), col)
+						break
+		if tru > 0.0:
+			_apply_damage_from(u, e, int(u["atk"] * tru / vh), col, 0.0, true)
+		if elec > 0:
+			_add_stack(e, "electric", elec, 8)
+
+# 技能附带减益(数据化 opts): 破盾%/攻防魔抗down%/治疗削减%
+func _apply_skill_extras(u: Dictionary, e: Dictionary, opts: Dictionary) -> void:
+	var sb: float = float(opts.get("shieldBreak", 0.0))
+	if sb > 0.0 and float(e.get("shield", 0.0)) > 0.0:
+		e["shield"] = float(e["shield"]) * (1.0 - sb)
+	var ad: float = float(opts.get("atkDown", 0.0))
+	if ad > 0.0:
+		_buff(e, "atk", -ad, true)
+	var dd: float = float(opts.get("defDown", 0.0))
+	if dd > 0.0:
+		_buff(e, "def", -dd, true)
+	var md: float = float(opts.get("mrDown", 0.0))
+	if md > 0.0:
+		_buff(e, "mr", -md, true)
+	var hc: float = float(opts.get("healCut", 0.0))
+	if hc > 0.0:
+		e["heal_reduce_until"] = _t + float(opts.get("healCutDur", BUFF_SEC))
+		e["heal_reduce_pct"] = maxf(float(e.get("heal_reduce_pct", 0.0)), hc)
 
 func _apply_rider(u: Dictionary, e: Dictionary, rider: String) -> void:
 	if rider == "" or e == null or not e.get("alive", false):
@@ -3119,6 +3175,8 @@ func _grant_shield(u: Dictionary, amt: float) -> void:
 func _heal(u: Dictionary, amt: float, silent: bool = false) -> void:
 	if amt <= 0.0: return
 	amt *= 1.0 + float(u.get("heal_amp", 0.0))   # 治疗加成(受到方,所有来源)
+	if _t < float(u.get("heal_reduce_until", 0.0)):
+		amt *= maxf(0.0, 1.0 - float(u.get("heal_reduce_pct", 0.0)))   # 治疗削减(凤凰涅槃/烫伤等)
 	var hb: float = u["hp"]
 	u["hp"] = minf(u["maxHp"], u["hp"] + amt)
 	u["_st_heal"] = int(u.get("_st_heal", 0)) + int(u["hp"] - hb)   # §STATS: 实际回复(超过满血不计)
