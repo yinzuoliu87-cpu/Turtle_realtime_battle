@@ -3171,6 +3171,7 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 			if u.get("bamboo_charge", false):
 				u["bamboo_charge"] = false
 				_apply_damage_from(u, tgt, _mitigate(u, u["atk"] * 0.75 + u["maxHp"] * 0.06, tgt, true), Color("#9be7ff"), 0.0, false)   # 魔法(吃魔抗+蓝字), 原flat固定值=bug
+				_flash(tgt, Color(0.5, 1.7, 0.65))   # 充能追击: 敌受击改绿色闪光(生长主题, 用户)
 				_heal(u, u["maxHp"] * 0.06)
 				u["base_atk"] *= 1.06; u["maxHp"] *= 1.03; _recalc_stats(u)
 				_spawn_bamboo_orb(tgt["pos"], u["pos"])   # 生命球抛物飞回(港回合制)
@@ -3601,7 +3602,7 @@ func _update_world_transforms() -> void:
 		spr.scale = Vector3(bs.x * sq.x, bs.y * sq.y, bs.z)
 		# 受击闪白: modulate 由 base 白 → 过曝白线性插值 (flash_t/JUICE_FLASH_SEC); 死亡淡出走 alpha 不冲突
 		var fl: float = clampf(u.get("flash_t", 0.0) / JUICE_FLASH_SEC, 0.0, 1.0)
-		spr.modulate = Color.WHITE.lerp(JUICE_FLASH_COLOR, fl)
+		spr.modulate = Color.WHITE.lerp(u.get("flash_col", JUICE_FLASH_COLOR), fl)
 		# 影/环: 跟 XZ 不跟 Y (贴地), 随高度缩小变淡 (从各自基准 scale 起算, 召唤体影更小)
 		var s: float = 1.0 - clampf(u["height"] / 3.0, 0.0, 0.7)
 		if is_instance_valid(shadow):
@@ -3724,10 +3725,11 @@ func _add_hitstop(sec: float) -> void:
 		_hitstop = sec
 
 # 受击闪白 + 轻压扁 (Phase4 替代旧 _flash; 状态驱动, 不叠 tween)
-func _flash(u: Dictionary) -> void:
+func _flash(u: Dictionary, col: Color = JUICE_FLASH_COLOR) -> void:
 	if u == null or not u.get("alive", false):
 		return
 	u["flash_t"] = JUICE_FLASH_SEC
+	u["flash_col"] = col            # 受击闪光色 (默认过曝白; 可传绿等特殊色)
 	u["hitsq_t"] = JUICE_HIT_SQUASH_SEC
 	_play_action(u, "hurt")         # 有受击帧的龟播 hurt 动画 (不打断 death/attack)
 
