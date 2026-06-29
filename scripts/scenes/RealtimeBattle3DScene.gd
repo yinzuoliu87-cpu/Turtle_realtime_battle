@@ -1666,7 +1666,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		u["hp"] = maxf(1.0, u["hp"])
 	var _dt: String = "true" if raw else _last_dmg_type
 	var _ncol: Color = _VC.color_of(_VC.cls_for("damage", _dt, was_crit))   # 飘字按伤害类型统一取色 (物红/魔蓝/真白, 1:1 回合制)
-	_float_text(u["pos"] + Vector2(randf_range(-26.0, 26.0), -40.0 + randf_range(-10.0, 6.0)), str(dmg), _ncol, was_crit)   # 抖开: 多段/AOE 出伤飘字不重叠成糊团; 暴击放大+图标
+	_float_text(u["pos"], str(dmg), _ncol, was_crit, "damage")   # 伤害: 爆大pop+抛物弹射(跳的方向/距离随机自带散开)
 	# 泡泡束缚(bubbleBind): 束缚期间每受一段伤害 → 永久 -X 护甲/魔抗 (单次累计上限各30)
 	if _t < u.get("bind_until", 0.0):
 		var _sx: float = float(u.get("bind_shred", 0.0))
@@ -1849,26 +1849,26 @@ func _make_num_label(text: String, col: Color, fsize: int) -> Label:
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 	return l
 
-# 飘字 (#1 对齐回合制: 像素字+描边+量级字号+暴击放大&图标+pop). is_crit 仅伤害数字用.
-func _float_text(pos2d: Vector2, text: String, col: Color, is_crit: bool = false) -> void:
+# 飘字 (1:1 回合制 _spawn_float_text): kind=damage → 爆大pop(1.6~2.5)+抛物弹射(重力200,朝屏边跳); 否则(heal/shield/label) → pop1.2+缓升50px(sine)1.5s淡出
+func _float_text(pos2d: Vector2, text: String, col: Color, is_crit: bool = false, kind: String = "label") -> void:
 	if _cam == null:
 		return
-	# 2D 版 pos2d 含头顶像素偏移; 3D 里统一抬到 ~2.2 米头顶 (billboard 头顶居中, x 偏移忽略)
 	var head := _world_pos(pos2d, 2.2)
 	if _cam.is_position_behind(head):
 		return
 	var screen: Vector2 = _cam.unproject_position(head)
 	var amount := absi(text.to_int()) if text.is_valid_int() else 0
 	var fsize := _float_size(amount, is_crit) if amount > 0 else (22 if is_crit else 18)
+	var is_dmg_crit := is_crit and amount > 0 and kind == "damage"
 	var fly: Control
-	if is_crit and amount > 0:
-		# 暴击伤害: 数字前嵌 crit 图标 (1:1 回合制 .floating-num crit 内嵌图标)
+	if is_dmg_crit:
+		# 暴击伤害: 数字前嵌 crit 图标 (1:1 回合制 .floating-num crit 内嵌 20×20)
 		var box := HBoxContainer.new()
 		box.add_theme_constant_override("separation", 1)
 		var icon := TextureRect.new()
 		icon.texture = load("res://assets/sprites/stats/crit-dmg-icon.png")
-		icon.custom_minimum_size = Vector2(20, 20)   # 1:1 回合制 20×20
-		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE   # 忽略贴图原尺寸→缩到20 (缺它则700px原图撑爆=暴击异常!)
+		icon.custom_minimum_size = Vector2(20, 20)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE   # 忽略贴图原尺寸→缩到20 (缺它则700px原图撑爆)
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		box.add_child(icon)
@@ -1876,16 +1876,57 @@ func _float_text(pos2d: Vector2, text: String, col: Color, is_crit: bool = false
 		fly = box
 	else:
 		fly = _make_num_label(text, col, fsize)
-	fly.position = screen
 	_ui_layer.add_child(fly)
-	fly.pivot_offset = Vector2(10, 12)
-	fly.scale = Vector2(0.6, 0.6)
-	var tw := create_tween()
-	tw.set_parallel(true)
-	tw.tween_property(fly, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)   # pop 起爆
-	tw.tween_property(fly, "position:y", screen.y - 30.0, 0.6)
-	tw.tween_property(fly, "modulate:a", 0.0, 0.55).set_delay(0.18)
-	tw.chain().tween_callback(fly.queue_free)
+	# 居中起跳 + pivot 居中 (pop 绕中心, 1:1 PoC origin 0.5)
+	var tsz := _float_num_font().get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fsize)
+	var unit_sz := Vector2(20.0 + 1.0 + tsz.x, maxf(20.0, tsz.y)) if is_dmg_crit else tsz
+	fly.pivot_offset = unit_sz / 2.0
+	var base_pos := screen - unit_sz / 2.0
+	if kind == "damage":
+		# 伤害: 爆大pop(1.6~2.5按量级)→hold→抛物弹射(jump_x朝屏边, 重力200先上后下)→淡出 (1:1 PoC runFloatAnim)
+		fly.position = base_pos
+		fly.scale = Vector2(0.01, 0.01)
+		var hold_scale := 1.0 if is_crit else 0.7
+		var pop_size := 1.6 if amount < 20 else (1.8 if amount < 60 else (2.2 if amount < 150 else 2.5))
+		var dir := -1.0 if base_pos.x < 640.0 else 1.0
+		var jump_x := dir * (12.0 + randf() * 14.0)
+		var jump_y := (-(10.0 + randf() * 8.0)) if is_crit else (-(22.0 + randf() * 10.0))
+		var hold_end := 0.4 if is_crit else 0.15
+		var total_dur := hold_end + 0.65
+		var fade_start := hold_end + 0.3
+		var tw := create_tween()
+		tw.tween_method(_dmg_float_step.bind(fly, base_pos, jump_x, jump_y, hold_end, hold_scale, pop_size, total_dur, fade_start), 0.0, total_dur, total_dur)
+		tw.tween_callback(fly.queue_free)
+	else:
+		# 治疗/护盾/名: pop1.2 → 缓升50px(sine) → 1.5s淡出 (1:1 PoC label路径)
+		var lsy := base_pos.y - 15.0
+		fly.position = Vector2(base_pos.x, lsy)
+		fly.scale = Vector2.ONE
+		var pop := create_tween()
+		pop.tween_property(fly, "scale", Vector2(1.2, 1.2), 0.1)
+		var tw := create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(fly, "position:y", lsy - 50.0, 1.5).set_delay(0.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw.tween_property(fly, "modulate:a", 0.0, 1.5).set_delay(0.1)
+		tw.chain().tween_callback(fly.queue_free)
+
+# 伤害飘字每帧: pop→hold→抛物弹射 (1:1 PoC ticker). el=已过秒数; node_fl=飞行单元(label或含图标HBox)
+func _dmg_float_step(el: float, node_fl: Control, base: Vector2, jump_x: float, jump_y: float, hold_end: float, hold_scale: float, pop_size: float, total_dur: float, fade_start: float) -> void:
+	if not is_instance_valid(node_fl):
+		return
+	var sc: float
+	if el < 0.05:
+		sc = (el / 0.05) * pop_size
+	elif el < 0.15:
+		sc = pop_size - (pop_size - hold_scale) * ((el - 0.05) / 0.10)
+	else:
+		sc = hold_scale
+	var flight: float = maxf(0.0, el - hold_end)
+	var px: float = jump_x * flight * 2.0
+	var py: float = jump_y * flight * 2.0 + 0.5 * 200.0 * flight * flight   # 重力 200
+	node_fl.scale = Vector2(sc, sc)
+	node_fl.position = base + Vector2(px, py)
+	node_fl.modulate.a = 1.0 if el < fade_start else maxf(0.0, 1.0 - (el - fade_start) / (total_dur - fade_start))
 
 # 技能光圈: 地面上一个躺平的环, 扩散淡出 (2D 接口对齐 _skill_ring(pos, col, radius))
 func _skill_ring(pos2d: Vector2, col: Color, radius: float) -> void:
@@ -2817,7 +2858,7 @@ func _grant_shield(u: Dictionary, amt: float) -> void:
 	var got := int(u["shield"] - sb)
 	u["_st_shield"] = int(u.get("_st_shield", 0)) + got   # §STATS: 实际获盾
 	if got >= 8:                             # #1 护盾飘字 "+N 盾" (浅蓝); 门槛过滤每帧微盾被动防刷屏
-		_float_text(u["pos"] + Vector2(0, -52), "+%d 盾" % got, Color("#ffffff"))
+		_float_text(u["pos"] + Vector2(0, -52), "+%d 盾" % got, Color("#ffffff"), false, "shield")
 	_skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.4), 44.0)
 	_sfx_shield_gain()                       # §AUDIO: 得盾音 (节流; 群体上盾不刷屏)
 
@@ -2828,7 +2869,7 @@ func _heal(u: Dictionary, amt: float, silent: bool = false) -> void:
 	var hb: float = u["hp"]
 	u["hp"] = minf(u["maxHp"], u["hp"] + amt)
 	u["_st_heal"] = int(u.get("_st_heal", 0)) + int(u["hp"] - hb)   # §STATS: 实际回复(超过满血不计)
-	_float_text(u["pos"] + Vector2(0, -40), "+" + str(int(amt)), Color("#06d6a0"))
+	_float_text(u["pos"] + Vector2(0, -40), "+" + str(int(amt)), Color("#06d6a0"), false, "heal")
 	if not silent:
 		_sfx_heal()                          # §AUDIO: 治疗音 (节流)
 
