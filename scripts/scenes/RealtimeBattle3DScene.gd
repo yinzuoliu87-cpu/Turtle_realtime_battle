@@ -53,9 +53,9 @@ const STATS := {
 }
 const DEFAULT_STAT := [true, 105.0, 0.85, 70.0]
 const REVIEW_DEMO := true                  # 评审期: 战斗=1受审龟 vs 1假人(右不动/不打/不放技/高血沙包); 上线前置 false
-const REVIEW_TURTLE := "ice"             # 受审龟 id (评审换龟只改这里)
-const REVIEW_SKILL_IDX := 3   # 评审时受审龟放哪个技(skillPool索引, 验主动技: 2冰霜/3冰封); -1=默认
-const REVIEW_SHOWCASE := ["basic", "stone", "bamboo", "angel"]   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
+const REVIEW_TURTLE := "fortune"             # 受审龟 id (评审换龟只改这里)
+const REVIEW_SKILL_IDX := 2   # 评审时受审龟放哪个技(skillPool索引, 验主动技: 2冰霜/3冰封); -1=默认
+const REVIEW_SHOWCASE := ["fortune", "rainbow", "lightning", "phoenix"]   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 800.0            # 假人固定血量
 const LEFT_DEMO := ["basic", "stone", "lightning"]   # 非评审 demo (REVIEW_DEMO=false 时用)
