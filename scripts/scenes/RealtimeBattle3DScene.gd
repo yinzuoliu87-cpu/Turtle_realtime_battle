@@ -2896,8 +2896,7 @@ func _apply_spawn_passives() -> void:
 			"headless":
 				u["lifesteal"] += 0.22
 			"dice":
-				u["pierce"] += u["def"] + u["mr"]
-				u["base_def"] = 0.0; u["base_mr"] = 0.0; _recalc_stats(u)
+				u["dice_base_crit"] = u["crit"]; u["dice_base_critdmg"] = u["crit_dmg"]   # 基准(供损血暴击算); 原无条件转护穿=候选强化已锁,去掉
 			"pirate":
 				var es := _enemies_of(u)
 				if not es.is_empty():
@@ -3011,6 +3010,11 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		u["maxHp"] /= 1.3; u["hp"] = minf(u["hp"], u["maxHp"])
 	if u["id"] == "chest":
 		_chest_treasure_tick(u)
+	if u["id"] == "dice":   # 赌徒之血: 按已损血加暴击(损30%满+50%); 暴击率>100%部分每1%→1.5%暴伤
+		var _lost: float = clampf(1.0 - u["hp"] / u["maxHp"], 0.0, 1.0)
+		u["crit"] = float(u.get("dice_base_crit", u["crit"])) + minf(_lost / 0.30, 1.0) * 0.50
+		if u["crit"] > 1.0:
+			u["crit_dmg"] = float(u.get("dice_base_critdmg", u["crit_dmg"])) + (u["crit"] - 1.0) * 1.5
 	# --- 赛博浮游炮: 每周期生成1 (上限10) ---
 	if u["id"] == "cyber":
 		if u["_ptimer"] >= 3.0:
