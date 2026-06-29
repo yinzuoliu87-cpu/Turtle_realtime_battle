@@ -41,14 +41,14 @@ const CTRL_SEC := 1.5                      # 眩晕/冻结/嘲讽 默认秒数
 # 28 龟战斗属性 (1:1 复用): id → [melee, move_spd(px/s), atk_interval(s), atk_range(px)]
 const STATS := {
 	"basic": [true, 105.0, 0.85, 70.0], "stone": [true, 70.0, 1.1, 70.0], "bamboo": [true, 105.0, 0.85, 70.0],
-	"angel": [false, 105.0, 0.85, 400.0], "ice": [false, 105.0, 0.85, 230.0], "ninja": [false, 145.0, 0.6, 280.0],
-	"two_head": [true, 145.0, 0.85, 70.0], "ghost": [false, 145.0, 0.6, 340.0], "diamond": [true, 70.0, 1.1, 70.0],
-	"fortune": [true, 105.0, 0.85, 70.0], "dice": [false, 145.0, 0.6, 230.0], "rainbow": [true, 105.0, 0.85, 70.0],
-	"gambler": [false, 145.0, 0.85, 230.0], "hunter": [false, 145.0, 0.6, 340.0], "pirate": [false, 105.0, 0.85, 230.0],
-	"candy": [false, 105.0, 0.85, 230.0], "bubble": [false, 70.0, 1.1, 230.0], "line": [false, 145.0, 0.6, 340.0],
-	"lightning": [false, 145.0, 0.6, 340.0], "phoenix": [false, 105.0, 0.85, 230.0], "lava": [false, 145.0, 0.85, 230.0],
-	"cyber": [false, 105.0, 0.85, 230.0], "crystal": [true, 70.0, 1.1, 70.0], "chest": [true, 105.0, 1.1, 70.0],
-	"space": [false, 145.0, 0.85, 340.0], "hiding": [true, 70.0, 1.1, 70.0], "headless": [true, 145.0, 0.85, 70.0],
+	"angel": [false, 105.0, 0.85, 400.0], "ice": [false, 105.0, 0.85, 400.0], "ninja": [false, 145.0, 0.6, 400.0],
+	"two_head": [true, 145.0, 0.85, 70.0], "ghost": [false, 145.0, 0.6, 400.0], "diamond": [true, 70.0, 1.1, 70.0],
+	"fortune": [true, 105.0, 0.85, 70.0], "dice": [false, 145.0, 0.6, 400.0], "rainbow": [true, 105.0, 0.85, 70.0],
+	"gambler": [false, 145.0, 0.85, 400.0], "hunter": [false, 145.0, 0.6, 400.0], "pirate": [false, 105.0, 0.85, 400.0],
+	"candy": [false, 105.0, 0.85, 400.0], "bubble": [false, 70.0, 1.1, 400.0], "line": [false, 145.0, 0.6, 400.0],
+	"lightning": [false, 145.0, 0.6, 400.0], "phoenix": [false, 105.0, 0.85, 400.0], "lava": [false, 145.0, 0.85, 400.0],
+	"cyber": [false, 105.0, 0.85, 400.0], "crystal": [true, 70.0, 1.1, 70.0], "chest": [true, 105.0, 1.1, 70.0],
+	"space": [false, 145.0, 0.85, 400.0], "hiding": [true, 70.0, 1.1, 70.0], "headless": [true, 145.0, 0.85, 70.0],
 	"shell": [true, 105.0, 1.1, 70.0],
 }
 const DEFAULT_STAT := [true, 105.0, 0.85, 70.0]
@@ -68,7 +68,7 @@ const BASIC_ATK := {
 	"stone":    {"phys": 0.7, "def": 1.5, "mr": 0.8, "hits": 1},                    # +护甲魔抗(坦克)
 	"bamboo":   {"phys": 0.4, "selfhp": 0.03, "hits": 1},                           # 单段 0.4ATK+3%自身HP(用户2026-06-29)
 	"angel":    {"phys": 1.0, "hits": 1},                                          # 远程平A 1.0ATK单段(用户)+审判被动
-	"ice":      {"phys": 0.7, "magic": 0.7, "hits": 6, "alt": true},               # 交替物/魔(用户)
+	"ice":      {"phys": 0.8, "magic": 0.8, "hits": 1, "alt_each": true},           # 单段逐次交替物/魔 0.8ATK(用户2026-06-29)
 	"ninja":    {"phys": 0.96, "true": 0.64, "hits": 1},                            # 改远程! 普攻=扔飞镖(1.6含40%真); 冲击转主动技
 	"two_head": {"phys": 0.8, "true": 0.8, "hits": 4},                             # 物+真 (原1.0全物 错)
 	"ghost":    {"phys": 0.4, "true": 0.9, "hits": 1},                             # 物+真 (原0.65 错)
@@ -1422,7 +1422,15 @@ func _do_basic(u: Dictionary, tgt: Dictionary, spec: Dictionary) -> void:
 		raw_m += bonus
 	var col: Color = Color("#4dabf7") if (raw_m > raw_p) else Color("#ff4444")
 	var vh: int = clampi(int(spec.get("hits", 1)), 1, 6)
-	if spec.get("alt", false) and raw_p > 0.0 and (raw_m > 0.0 or raw_t > 0.0):
+	if spec.get("alt_each", false) and raw_p > 0.0 and raw_m > 0.0:
+		# 逐次攻击交替类型(单段): 本次物理→下次魔法→… (寒冰冰锥, 用户)
+		var use_magic: bool = bool(u.get("basic_alt", false))
+		u["basic_alt"] = not use_magic
+		if use_magic:
+			_emit_basic(u, tgt, _mitigate(u, raw_m, tgt, true), Color("#4dabf7"), 0)
+		else:
+			_emit_basic(u, tgt, _mitigate(u, raw_p, tgt, false), Color("#ff4444"), 0)
+	elif spec.get("alt", false) and raw_p > 0.0 and (raw_m > 0.0 or raw_t > 0.0):
 		# 交替: 偶段物理, 奇段(魔法或真实) — 各类型在各自半数段摊 (寒冰物/魔, 龟壳物/真)
 		var half: int = maxi(1, vh / 2)
 		var alt_magic: bool = raw_m > 0.0

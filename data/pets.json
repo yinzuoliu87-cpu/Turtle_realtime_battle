@@ -554,14 +554,15 @@
         "name": "冰锥",
         "type": "iceSpike",
         "icon": "skills/ice-spike.png",
-        "hits": 6,
+        "hits": 1,
         "power": 0,
         "pierce": 0,
         "cd": 0,
         "totalScale": 1.4,
-        "brief": "寒冰龟对目标发射六段冰锥，造成共（{N:1.4*ATK*0.5}）物理伤害和（{M:1.4*ATK*0.5}）魔法伤害",
+        "brief": "寒冰龟普攻交替造成（{P:0.8*ATK}）物理与魔法伤害（本次物理、下次魔法，单段）。",
         "detail": "寒冰龟对目标发射六段冰锥，造成共（70%×攻击力({ATK}) = {N:1.4*ATK*0.5}）物理伤害和（70%×攻击力({ATK}) = {M:1.4*ATK*0.5}）魔法伤害。",
-        "energyCost": 0
+        "energyCost": 0,
+        "atkScale": 0.8
       },
       {
         "name": "极寒",
