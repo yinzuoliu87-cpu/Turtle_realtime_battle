@@ -652,6 +652,8 @@ func _unit_level(side: String) -> int:
 		var _dl = _gsd.get("debug_level")
 		if _dl != null and int(_dl) > 0:
 			return int(_dl)                  # 调试器: 强制全体等级(两队同档)
+	if REVIEW_DEMO:
+		return 1                             # 评审默认 Lv1(看 base 数值); 调试器设 debug_level 可 override
 	if side == "left":
 		var gs = get_node_or_null("/root/GameState")
 		if gs != null:
@@ -3100,12 +3102,18 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 					"no_basic": true, "special": "random_hit", "special_cd": 1.6, "special_scale": 0.25,
 				})
 				if dr != null: u["summons"].append(dr)
-	# --- 石头坚壁: 每秒+护甲 (上限100%开局护甲) ---
+	# --- 石头坚壁: 每2.5秒永久+开局护甲/6, 上限=开局护甲×2(+100%); 反伤随护甲涨 ---
 	elif u["id"] == "stone":
-		if u["_ptimer"] >= STACK_DOT_TICK:
+		if not u.has("stone_init_def"):
+			u["stone_init_def"] = u["base_def"]            # 记开局护甲(含等级缩放)
+		if u["_ptimer"] >= 2.5:
 			u["_ptimer"] = 0.0
-			if u["def"] < u["base_def"] * 2.0:
-				u["base_def"] += u["base_def"] * 0.02; _recalc_stats(u)
+			var _cap: float = u["stone_init_def"] * 2.0
+			if u["base_def"] < _cap:
+				u["base_def"] = minf(_cap, u["base_def"] + u["stone_init_def"] / 6.0)
+				_recalc_stats(u)
+				_skill_ring(u["pos"], Color(0.79, 0.64, 0.42, 0.4), 42.0)   # 视觉: 硬化贴地褐环
+				_float_text(u["pos"] + Vector2(0, -60), "坚壁", Color("#c9a36b"))
 	# --- 竹叶生长: 每N秒充能 → 永久+ATK/HP ---
 	elif u["id"] == "bamboo":
 		if u["_ptimer"] >= 6.0 and not u.get("bamboo_charge", false):
@@ -3975,6 +3983,8 @@ const DEMO_EQUIP := {
 
 # 装备注入: 玩家队(left)读 persistent_equipped; demo 阵容兜底塞测试装备.
 func _inject_equipment() -> void:
+	if REVIEW_DEMO:
+		return                          # 评审: 受审龟裸装, 看纯内在数值(装备另行评审)
 	var gs = get_node_or_null("/root/GameState")
 	var pe: Dictionary = {}
 	if gs != null and gs.get("persistent_equipped") is Dictionary:
