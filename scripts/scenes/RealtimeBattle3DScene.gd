@@ -1499,8 +1499,6 @@ func _atk_dmg(u: Dictionary, scale: float, tgt: Dictionary, magic: bool = false)
 	var base: float = u["atk"] * scale
 	if u.get("_vs_fire_bonus", 0.0) > 0.0 and (str(tgt["id"]) == "lava" or str(tgt["id"]) == "phoenix"):
 		base *= 1.0 + float(u["_vs_fire_bonus"])   # 寒冰免疫(iceBurnImmune): 对熔岩/凤凰 +40%
-	if u["id"] == "basic":                         # 不屈: 按目标稀有度增伤 (愈战愈勇)
-		base *= 1.0 + _BASIC_RARITY_BONUS.get(str(tgt.get("rarity", "C")), 0.20)
 	return _resolve_dmg(u, base, tgt, magic)
 
 # 立绘前冲 (近战命中视觉) — billboard offset 微推再回 (朝镜头, 不用翻 facing)
@@ -1605,6 +1603,9 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		_float_text(u["pos"] + Vector2(0, -40), "闪避", Color("#a0e8ff"))
 		_eq_on_dodge(u)          # on-dodge 钩子 (幽灵墨鱼046: 闪避→永久护盾)
 		return
+	# 小龟·不屈: 造成的任何伤害按目标稀有度增伤 (总闸→普攻/技能/真伤/固定伤全覆盖, 只算一次)
+	if src.get("id", "") == "basic" and src != u:
+		dmg = int(round(float(dmg) * (1.0 + _BASIC_RARITY_BONUS.get(str(u.get("rarity", "C")), 0.20))))
 	# 靶向器055: 被标记目标受伤 +20%
 	if _t < u.get("eq_marked_until", 0.0):
 		dmg = int(dmg * 1.2)
