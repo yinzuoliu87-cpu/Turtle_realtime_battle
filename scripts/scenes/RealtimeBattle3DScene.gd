@@ -1198,7 +1198,8 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 				if p == "B":
 					if dist <= rng:
 						_basic_attack(u, tgt)
-					u["atk_cd"] = u["atk_interval"]
+					# gambler 多重打击(云顶剑士式): 命中后掷概率, 中→快攻速再打, 没中→正常冷却
+					u["atk_cd"] = (_gambler_multi_cd(u) if (u["id"] == "gambler" and dist <= rng) else u["atk_interval"])
 					u["state"] = "recover"; u["state_t"] = ATK_RECOVER
 				else:
 					var stype := p.substr(2)
@@ -1322,6 +1323,16 @@ func _separation(u: Dictionary) -> Vector2:
 # ============================================================================
 #  普攻 (复用 2D BASIC_ATK 表 + 伤害公式; 远程发 3D 投射物) + 复杂普攻特判 + on-hit 被动
 # ============================================================================
+# gambler 多重打击(云顶剑士式连击): 普攻命中后掷概率→中则快攻速再打一发(连锁每次概率×0.8递减), 没中→回正常普攻冷却+重置
+func _gambler_multi_cd(u: Dictionary) -> float:
+	var ch: float = float(u.get("multi_chance", 0.40))
+	if randf() < ch:
+		u["multi_chance"] = ch * 0.8                  # 递减: 40→32→25.6→…
+		_float_text(u["pos"] + Vector2(0, -50), "多重!", Color("#ffd93d"))
+		return maxf(0.12, u["atk_interval"] * 0.30)   # 快攻速再打 (~3.3×攻速; F5可调)
+	u["multi_chance"] = 0.40                          # 没中→重置, 等下一次普攻
+	return u["atk_interval"]
+
 func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	_anticipate(u)                  # Phase4: 普攻预备(缩)+挥出(伸) 前后摇形变
 	_play_action(u, "attack")       # 有动作帧的龟(basic/ghost/ninja)播普攻动画, 其余靠 juice 形变
@@ -2961,11 +2972,7 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 				_buff(tgt, "mr", -0.2, true)
 		"angel":                                          # 审判: 每段攻击额外 +目标当前HP 11% 魔法
 			_apply_damage_from(u, tgt, int(tgt["hp"] * 0.11), Color("#ffe9a8"))
-		"gambler":                                        # 多重打击: 40%追加一击(递减20%可连锁)
-			var _gch := 0.40
-			while randf() < _gch and tgt["alive"]:
-				_apply_damage_from(u, tgt, _atk_dmg(u, 0.5, tgt), Color("#ff4444"))
-				_gch -= 0.20
+		# gambler 多重打击改云顶剑士式连击(见状态机 _gambler_multi_cd), 不在这里追加
 		"bamboo":                                         # 生长(改造): 蓄力时下一发普攻强化(追加魔法+回血+永久成长)
 			if u.get("bamboo_charge", false):
 				u["bamboo_charge"] = false
