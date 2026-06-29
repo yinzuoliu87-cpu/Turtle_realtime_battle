@@ -60,7 +60,7 @@ const RIGHT_DEMO := ["diamond", "ninja", "ghost"]
 #   字段: phys/magic/true=×ATK 总倍率(物/魔/真); hits=视觉段; def/mr/hp/selfhp/tcurhp=加成项(进主类型);
 #   gold=×ATK×金币(财神); critflat=×暴击率flat(骰子); rider=burn/atkdn/selfdef(附带); mech=ninja/splash(特殊); lightning 走专用函数.
 const BASIC_ATK := {
-	"basic":    {"phys": 1.4, "hits": 2},
+	"basic":    {"phys": 1.0, "hits": 1},
 	"stone":    {"phys": 0.7, "def": 1.5, "mr": 0.8, "hits": 2},                    # +护甲魔抗(坦克)
 	"bamboo":   {"phys": 0.63, "selfhp": 0.18, "hits": 3},                          # 3片叶+自身HP
 	"angel":    {"phys": 1.4, "hits": 1},                                          # 远程平A一段(用户:1段+审判被动)
