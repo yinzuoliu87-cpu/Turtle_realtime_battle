@@ -55,6 +55,7 @@ const DEFAULT_STAT := [true, 105.0, 0.85, 70.0]
 const REVIEW_DEMO := true                  # 评审期: 战斗=1受审龟 vs 1假人(右不动/不打/不放技/高血沙包); 上线前置 false
 const REVIEW_TURTLE := "stone"             # 受审龟 id (评审换龟只改这里)
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
+const REVIEW_DUMMY_HP := 5000.0            # 假人固定血量
 const LEFT_DEMO := ["basic", "stone", "lightning"]   # 非评审 demo (REVIEW_DEMO=false 时用)
 const RIGHT_DEMO := ["diamond", "ninja", "ghost"]
 
@@ -235,6 +236,8 @@ var _last_heal_sfx_t := -1.0
 var _last_shieldgain_sfx_t := -1.0
 var _last_shieldbreak_sfx_t := -1.0
 var _last_atk_crit := false               # _atk_dmg 最近一次是否暴击 (供 _apply_damage_from 选暴击音)
+var _last_dmg_type := "physical"          # _resolve_dmg 最近一次伤害类型 (physical/magic; 飘字按类型统一取色)
+const _VC := preload("res://scripts/systems/visual_constants.gd")   # 飘字配色单一事实源 (1:1 回合制 VisualConstants)
 
 # ============================================================================
 #  §SKILLVFX — 技能特效真贴图框架 (替程序圈; 见任务 §2)
@@ -588,7 +591,7 @@ func _spawn_teams() -> void:
 			ru["no_basic"] = true
 			ru["no_move"] = true
 			ru["active_skills"] = []
-			ru["maxHp"] = ru["maxHp"] * 5.0
+			ru["maxHp"] = REVIEW_DUMMY_HP
 			ru["hp"] = ru["maxHp"]
 		_units.append(ru)
 	_inject_equipment()       # 装备注入 (玩家队读 persistent_equipped; demo队塞测试装备) — 须在被动之前
@@ -1500,6 +1503,7 @@ func _lightning_basic(u: Dictionary, tgt: Dictionary) -> void:
 # 伤害公式 (1:1 复用 2D _atk_dmg): base×scale ×暴击 ×(100/(100+resist-pierce))
 # 伤害核心: 暴击(封顶100%溢出转暴伤×1.5) → 有效护甲/魔抗(先%后flat,可负) → 减伤倍率(K=40,负防增伤) → 增伤/减伤
 func _resolve_dmg(u: Dictionary, base: float, tgt: Dictionary, magic: bool) -> int:
+	_last_dmg_type = "magic" if magic else "physical"   # 记类型供飘字取色
 	var eff_crit: float = minf(float(u["crit"]), 1.0)
 	_last_atk_crit = randf() < eff_crit
 	if _last_atk_crit:
@@ -1654,7 +1658,9 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		_float_text(u["pos"] + Vector2(0, -64), "亡灵!", Color("#9b6bff"))
 	if _t < float(u.get("deathfloor_until", 0.0)):
 		u["hp"] = maxf(1.0, u["hp"])
-	_float_text(u["pos"] + Vector2(randf_range(-26.0, 26.0), -40.0 + randf_range(-10.0, 6.0)), str(dmg), col, was_crit)   # 抖开: 多段/AOE 出伤飘字不重叠成糊团; 暴击放大+图标
+	var _dt: String = "true" if raw else _last_dmg_type
+	var _ncol: Color = _VC.color_of(_VC.cls_for("damage", _dt, was_crit))   # 飘字按伤害类型统一取色 (物红/魔蓝/真白, 1:1 回合制)
+	_float_text(u["pos"] + Vector2(randf_range(-26.0, 26.0), -40.0 + randf_range(-10.0, 6.0)), str(dmg), _ncol, was_crit)   # 抖开: 多段/AOE 出伤飘字不重叠成糊团; 暴击放大+图标
 	# 泡泡束缚(bubbleBind): 束缚期间每受一段伤害 → 永久 -X 护甲/魔抗 (单次累计上限各30)
 	if _t < u.get("bind_until", 0.0):
 		var _sx: float = float(u.get("bind_shred", 0.0))
@@ -1855,7 +1861,7 @@ func _float_text(pos2d: Vector2, text: String, col: Color, is_crit: bool = false
 		box.add_theme_constant_override("separation", 1)
 		var icon := TextureRect.new()
 		icon.texture = load("res://assets/sprites/stats/crit-dmg-icon.png")
-		icon.custom_minimum_size = Vector2(18, 18)
+		icon.custom_minimum_size = Vector2(20, 20)   # 1:1 回合制 20×20
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		box.add_child(icon)
