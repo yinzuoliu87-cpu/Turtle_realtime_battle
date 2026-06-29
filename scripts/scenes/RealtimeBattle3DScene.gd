@@ -53,7 +53,7 @@ const STATS := {
 }
 const DEFAULT_STAT := [true, 105.0, 0.85, 70.0]
 const REVIEW_DEMO := true                  # 评审期: 战斗=1受审龟 vs 1假人(右不动/不打/不放技/高血沙包); 上线前置 false
-const REVIEW_TURTLE := "angel"             # 受审龟 id (评审换龟只改这里)
+const REVIEW_TURTLE := "ice"             # 受审龟 id (评审换龟只改这里)
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 800.0            # 假人固定血量
 const LEFT_DEMO := ["basic", "stone", "lightning"]   # 非评审 demo (REVIEW_DEMO=false 时用)
@@ -1891,6 +1891,7 @@ func _make_num_label(text: String, col: Color, fsize: int) -> Label:
 var _float_dmg_window: Dictionary = {}    # 伤害飘字按类型排行错开 (1:1 回合制 _float_row_offset)
 var _float_nd_window: Dictionary = {}     # 非伤害(治疗/盾)紧凑堆叠
 # 同时跳出的飘字按规矩错开行: 伤害红0/蓝1/白2 紧凑×22(缺色不留空, 220ms窗口); 非伤害到达序堆叠(100ms)
+const FLOAT_ROW_GAP := 15.0   # 同帧多数字每排间距(屏幕px); 实时版定值(比回合制22更贴近), 改这里=全局生效
 func _float_row_offset(key: String, kind: String, dmg_type: String) -> float:
 	if kind == "damage":
 		var rank: int = 1 if dmg_type == "magic" else (2 if dmg_type == "true" else 0)
@@ -1903,7 +1904,7 @@ func _float_row_offset(key: String, kind: String, dmg_type: String) -> float:
 		w["ranks"] = ranks; w["t"] = _t
 		_float_dmg_window[key] = w
 		var sr: Array = ranks.duplicate(); sr.sort()
-		return float(maxi(0, sr.find(rank))) * 22.0
+		return float(maxi(0, sr.find(rank))) * FLOAT_ROW_GAP
 	var rec: Dictionary = _float_nd_window.get(key, {"t": -9.0, "n": 0})
 	if _t - float(rec["t"]) > 0.10:
 		rec["n"] = 0
