@@ -3043,6 +3043,8 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		if not u.get("awakened", false) and _t >= 10.0:
 			u["awakened"] = true
 			_buff(u, "atk", 0.12, true, 9999.0); _buff(u, "def", 0.12, true, 9999.0); _buff(u, "mr", 0.12, true, 9999.0)
+			_buff(u, "lifesteal", 0.12, true, 9999.0)   # 觉醒(补): +12%吸血
+			var _ah: float = u["maxHp"] * 0.12; u["maxHp"] += _ah; u["hp"] += _ah   # 觉醒(补): +12%最大生命 (反伤无独立stat字段, 略)
 			u["crit"] += 0.25; _recalc_stats(u)
 			_float_text(u["pos"] + Vector2(0, -70), "气场觉醒!", Color("#b0ffe0"))
 		u["_shelltimer"] = u.get("_shelltimer", 0.0) + delta
@@ -3129,6 +3131,10 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 	# 猎人猎杀: 击杀者是猎人 → 窃取属性+叠吸血
 	if killer != null and killer["alive"] and killer["id"] == "hunter":
 		killer["base_atk"] += u["base_atk"] * 0.14
+		killer["base_def"] += u["base_def"] * 0.14   # 窃取(补): 护甲/魔抗/最大生命也偷14%
+		killer["base_mr"] += u["base_mr"] * 0.14
+		var _hs: float = u["maxHp"] * 0.14
+		killer["maxHp"] += _hs; killer["hp"] += _hs
 		killer["lifesteal"] += 0.08
 		_recalc_stats(killer)
 		_float_text(killer["pos"] + Vector2(0, -64), "猎杀!", Color("#a8ffb0"))
