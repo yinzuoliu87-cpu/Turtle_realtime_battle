@@ -53,7 +53,7 @@ const STATS := {
 }
 const DEFAULT_STAT := [true, 105.0, 0.85, 70.0]
 const REVIEW_DEMO := true                  # 评审期: 战斗=1受审龟 vs 1假人(右不动/不打/不放技/高血沙包); 上线前置 false
-const REVIEW_TURTLE := "bamboo"             # 受审龟 id (评审换龟只改这里)
+const REVIEW_TURTLE := "angel"             # 受审龟 id (评审换龟只改这里)
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 800.0            # 假人固定血量
 const LEFT_DEMO := ["basic", "stone", "lightning"]   # 非评审 demo (REVIEW_DEMO=false 时用)
