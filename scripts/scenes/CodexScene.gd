@@ -205,15 +205,17 @@ func _toggle_debug_overlay() -> void:
 		var summ := ""
 		for k in lv_count:
 			summ += "Lv%d×%d  " % [k, lv_count[k]]
-		info.text = "龟币: %d   龟种: %d\n等级分布: %s" % [GameState.coins, DataRegistry.all_pets.size(), summ]
+		var force := ("强制全体 Lv.%d (含对手)" % GameState.debug_level) if GameState.debug_level > 0 else "强制等级: 关"
+		info.text = "龟币: %d   龟种: %d\n等级分布: %s\n战斗: %s" % [GameState.coins, DataRegistry.all_pets.size(), summ, force]
 	refresh_info.call()
-	vb.add_child(_dbg_label("全体等级"))
+	vb.add_child(_dbg_label("全体等级 (战斗内强制两队同档)"))
 	var lv_row := HBoxContainer.new(); lv_row.add_theme_constant_override("separation", 8)
-	for lvv in [1, 5, 10]:
+	for lvv in [1, 2, 5, 10]:
 		var b := _dbg_btn("全员 Lv.%d" % lvv)
 		b.pressed.connect(func() -> void:
+			GameState.debug_level = lvv                          # 战斗: 强制全体单位等级(两队同档, 见战斗基础-策划焊死.md §三)
 			for p in DataRegistry.all_pets:
-				GameState.set_pet_level(str(p.get("id", "")), lvv)
+				GameState.set_pet_level(str(p.get("id", "")), lvv)   # 图鉴显示: 各龟等级
 			if _sel_idx >= 0:
 				_select(_sel_idx)
 			refresh_info.call())
@@ -229,7 +231,7 @@ func _toggle_debug_overlay() -> void:
 	vb.add_child(coin_row)
 	var reset := _dbg_btn("重置 (等级+龟币)")
 	reset.pressed.connect(func() -> void:
-		GameState.pet_levels = {}; GameState.coins = 0; GameState.save()
+		GameState.pet_levels = {}; GameState.coins = 0; GameState.debug_level = 0; GameState.save()
 		if _sel_idx >= 0:
 			_select(_sel_idx)
 		refresh_info.call())
