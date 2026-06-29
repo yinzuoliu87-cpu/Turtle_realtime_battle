@@ -3087,7 +3087,7 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 		"bamboo":                                         # 生长(改造): 蓄力时下一发普攻强化(追加魔法+回血+永久成长)
 			if u.get("bamboo_charge", false):
 				u["bamboo_charge"] = false
-				_apply_damage_from(u, tgt, int(u["atk"] * 0.75 + u["maxHp"] * 0.06), Color("#9be7ff"), 0.0, false)
+				_apply_damage_from(u, tgt, _mitigate(u, u["atk"] * 0.75 + u["maxHp"] * 0.06, tgt, true), Color("#9be7ff"), 0.0, false)   # 魔法(吃魔抗+蓝字), 原flat固定值=bug
 				_heal(u, u["maxHp"] * 0.06)
 				u["base_atk"] *= 1.06; u["maxHp"] *= 1.03; _recalc_stats(u)
 				_skill_ring(tgt["pos"], Color(0.4, 0.9, 0.3, 0.5), 44.0)
