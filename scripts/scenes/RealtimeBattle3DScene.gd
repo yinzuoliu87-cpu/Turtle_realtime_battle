@@ -55,7 +55,7 @@ const DEFAULT_STAT := [true, 105.0, 0.85, 70.0]
 const REVIEW_DEMO := true                  # 评审期: 战斗=1受审龟 vs 1假人(右不动/不打/不放技/高血沙包); 上线前置 false
 const REVIEW_TURTLE := "stone"             # 受审龟 id (评审换龟只改这里)
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
-const REVIEW_DUMMY_HP := 5000.0            # 假人固定血量
+const REVIEW_DUMMY_HP := 800.0            # 假人固定血量
 const LEFT_DEMO := ["basic", "stone", "lightning"]   # 非评审 demo (REVIEW_DEMO=false 时用)
 const RIGHT_DEMO := ["diamond", "ninja", "ghost"]
 
@@ -825,6 +825,12 @@ func _make_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 		u["def"] *= _m; u["base_def"] *= _m
 		u["mr"] *= _m; u["base_mr"] *= _m
 		u["atk_interval"] /= (1.0 + 0.02 * float(_lvl - 1))   # 攻速+2%/级 → 间隔变短
+	var _ec := {}                                    # 数据驱动龟能: 该龟各技 type→energyCost
+	for _sk in d.get("skillPool", []):
+		var _e = _sk.get("energyCost", null)
+		if _e != null:
+			_ec[str(_sk.get("type", ""))] = float(_e)
+	u["energy_cost"] = _ec
 	u["level"] = _lvl
 	return u
 
@@ -1249,13 +1255,13 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 				else:
 					var stype := p.substr(2)
 					if _cast_skill(u, tgt, stype):
-						u["skill_cd"][stype] = _skill_cd(stype)
+						u["skill_cd"][stype] = _skill_cd(u, stype)
 						u["skill_gcd_until"] = _t + SKILL_GCD
 						_eq_on_cast(u, tgt)
 						if u["id"] == "space" and float(u.get("star_energy", 0.0)) > 0.0:   # 星能: 施法后追加30%储存星能真伤
 							_apply_damage_from(u, tgt, int(u["star_energy"] * 0.30), Color("#ffffff"), 0.0, true)
 					else:
-						u["skill_cd"][stype] = _skill_cd(stype)
+						u["skill_cd"][stype] = _skill_cd(u, stype)
 					u["state"] = "recover"; u["state_t"] = CAST_RECOVER
 		"recover":
 			u["state_t"] = float(u["state_t"]) - delta   # 后摇: 站定不动一小会 → 动作自然
@@ -1270,7 +1276,7 @@ func _tick_skill_cd(u: Dictionary, delta: float) -> void:
 	var cds: Dictionary = u["skill_cd"]
 	if cds.is_empty():                                   # 懒初始化: 各技起始冷却错峰(别一开局全放)
 		for s in u.get("active_skills", []):
-			cds[str(s)] = _skill_cd(str(s)) * randf_range(0.25, 0.7)
+			cds[str(s)] = _skill_cd(u, str(s)) * randf_range(0.25, 0.7)
 	for k in cds:
 		cds[k] = maxf(0.0, float(cds[k]) - delta)        # 麻痹也走, 只是放不出
 
@@ -2108,12 +2114,12 @@ const _IMPL_SKILLS := {
 }
 
 # 龟能花费表 已移到单一事实源 SkillEnergy (scripts/systems/skill_energy.gd) — 战斗/图鉴/选龟共用
-func _skill_cost(stype: String) -> float:
-	return SkillEnergy.cost_of(stype)
+func _skill_cost(u: Dictionary, stype: String) -> float:
+	return float(u.get("energy_cost", {}).get(stype, SkillEnergy.cost_of(stype)))   # 数据驱动: 优先该龟该技energyCost, 缺则类型兜底
 
 # 该技充满龟能要多少秒 (= 龟能花费 × 0.075; 即所谓"冷却") — 龟盾~5s · 普通~7s · 弹幕~10s · 大招~13s
-func _skill_cd(stype: String) -> float:
-	return SkillEnergy.charge_secs(stype)
+func _skill_cd(u: Dictionary, stype: String) -> float:
+	return _skill_cost(u, stype) * 0.075   # 充满龟能秒数 = 花费×0.075
 
 # shellCopy 可复制的技 = 纯敌方向伤害技 (数据驱动那批; 排除变身/召唤/自增益, 否则从龟壳放会污染自身状态)
 const _COPYABLE_SKILLS := {
@@ -2143,7 +2149,7 @@ func _pick_ready_skill(u: Dictionary) -> String:
 			continue
 		if float(cds.get(st, 0.0)) > 0.0:
 			continue
-		var c := _skill_cost(st)
+		var c := _skill_cost(u, st)
 		if c > best_cost:
 			best_cost = c; best = st
 	return best
@@ -2639,18 +2645,48 @@ func _apply_rider(u: Dictionary, e: Dictionary, rider: String) -> void:
 		"mrdn":  _buff(e, "mr", -0.20, true)
 
 # 通用护盾 (stone/rainbow/candy 的 shield 技): 全队上盾
-func _sk_gen_shield(u: Dictionary) -> void:
-	_float_text(u["pos"] + Vector2(0, -64), "护盾!", Color("#9bdcff"))
-	for o in _allies_of(u):
-		_grant_shield(o, u["atk"] * 0.3 + o["maxHp"] * 0.06)
+# 当前技能数据条目 (按 type 在该龟 skillPool 找; 数据驱动读 fx/name/energyCost)
+func _cur_skill_data(u: Dictionary, stype: String) -> Dictionary:
+	var d: Dictionary = _data_by_id.get(str(u["id"]), {})
+	for sk in d.get("skillPool", []):
+		if str(sk.get("type", "")) == stype:
+			return sk
+	return {}
 
-# 通用治疗 (stone/pirate 的 heal 技): 奶最低血友军
+# 数据驱动护盾: 每龟读自己 fx (shieldAtk/shieldHp/healHp) + 技能名 (不再跑通用硬编码)
+func _sk_gen_shield(u: Dictionary) -> void:
+	var sk := _cur_skill_data(u, "shield")
+	var fx: Dictionary = sk.get("fx", {})
+	var nm := str(sk.get("name", "护盾"))
+	var sa := float(fx.get("shieldAtk", 0.3))
+	var sh := float(fx.get("shieldHp", 0.0))
+	var heal_hp := float(fx.get("healHp", 0.0))
+	_float_text(u["pos"] + Vector2(0, -64), nm + "!", Color("#9bdcff"))
+	for o in _allies_of(u):
+		_grant_shield(o, u["atk"] * sa + o["maxHp"] * sh)
+		if heal_hp > 0.0:
+			_heal(o, o["maxHp"] * heal_hp)
+		_skill_ring(o["pos"], Color(0.6, 0.86, 1.0, 0.45), 46.0)   # 护盾贴地环 (替代飘空图标)
+
+# 数据驱动治疗/加固: 每龟读自己 fx (healHp/buffDef/buffMr) + 技能名
 func _sk_gen_heal(u: Dictionary) -> void:
+	var sk := _cur_skill_data(u, "heal")
+	var fx: Dictionary = sk.get("fx", {})
+	var nm := str(sk.get("name", "治疗"))
+	var heal_hp := float(fx.get("healHp", 0.16))
+	var bdef := float(fx.get("buffDef", 0.0))
+	var bmr := float(fx.get("buffMr", 0.0))
+	var bdur := float(fx.get("buffDur", 5.0))
 	var ally = _lowest_hp_ally(u)
 	if ally == null:
 		ally = u
-	_heal(ally, ally["maxHp"] * 0.16 + u["atk"] * 0.5)
-	_float_text(ally["pos"] + Vector2(0, -64), "治疗!", Color("#39d353"))
+	if heal_hp > 0.0:
+		_heal(ally, ally["maxHp"] * heal_hp)
+	if bdef > 0.0:
+		_buff(ally, "def", bdef, true, bdur)
+	if bmr > 0.0:
+		_buff(ally, "mr", bmr, true, bdur)
+	_float_text(ally["pos"] + Vector2(0, -64), nm + "!", Color("#39d353"))
 
 # ── Batch2 特殊技 (bespoke; 按 pets.json brief/detail 实装) ──
 
@@ -3741,7 +3777,7 @@ func _update_overlay() -> void:
 				var st := str(s)
 				if not _IMPL_SKILLS.has(st):
 					continue
-				var base := _skill_cd(st)
+				var base := _skill_cd(u, st)
 				var p := 1.0 - clampf(float(cds3.get(st, base)) / maxf(0.1, base), 0.0, 1.0)
 				if p > prog:
 					prog = p
