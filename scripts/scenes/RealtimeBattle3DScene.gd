@@ -1960,7 +1960,7 @@ func _dmg_float_step(el: float, node_fl: Control, base: Vector2, jump_x: float, 
 	node_fl.modulate.a = 1.0 if el < fade_start else maxf(0.0, 1.0 - (el - fade_start) / (total_dur - fade_start))
 
 # ── 竹叶生命球 (1:1 回合制 _spawn_bamboo_orb 港到2.5D): 绿球从目标抛物线(3D高度弧)飞回竹叶龟 + 绿拖尾 + 落点爆 ──
-func _spawn_bamboo_orb(from_pos: Vector2, to_pos: Vector2) -> void:
+func _spawn_bamboo_orb(from_pos: Vector2, to_pos: Vector2, on_land: Callable = Callable()) -> void:
 	var orb_path := "res://assets/sprites/vfx/bamboo-charge-orb.png"
 	if not ResourceLoader.exists(orb_path):
 		return
@@ -1982,7 +1982,8 @@ func _spawn_bamboo_orb(from_pos: Vector2, to_pos: Vector2) -> void:
 	tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tw.tween_callback(func() -> void:
 		if is_instance_valid(orb): orb.queue_free()
-		_spawn_bamboo_burst(to_pos))
+		_spawn_bamboo_burst(to_pos)
+		if on_land.is_valid(): on_land.call())   # 绿球落到身上 → 回血+成长(用户: 到自己身上才吸收)
 
 func _bamboo_orb_step(t: float, orb: Sprite3D, from_pos: Vector2, to_pos: Vector2, nframes: int, trail: Array) -> void:
 	if not is_instance_valid(orb):
@@ -3197,9 +3198,12 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 				u["bamboo_charge"] = false
 				_apply_damage_from(u, tgt, _mitigate(u, u["atk"] * 0.75 + u["maxHp"] * 0.06, tgt, true), Color("#9be7ff"), 0.0, false)   # 魔法(吃魔抗+蓝字), 原flat固定值=bug
 				_flash(tgt, Color(0.5, 1.7, 0.65))   # 充能追击: 敌受击改绿色闪光(生长主题, 用户)
-				_heal(u, u["maxHp"] * 0.06)
-				u["base_atk"] *= 1.06; u["maxHp"] *= 1.03; _recalc_stats(u)
-				_spawn_bamboo_orb(tgt["pos"], u["pos"])   # 生命球抛物飞回(港回合制)
+				# 回血+永久成长 延到绿球落到竹叶龟身上才生效 (用户: 到自己身上才吸收)
+				_spawn_bamboo_orb(tgt["pos"], u["pos"], func() -> void:
+					if not u.get("alive", false):
+						return
+					_heal(u, u["maxHp"] * 0.06)
+					u["base_atk"] *= 1.06; u["maxHp"] *= 1.03; _recalc_stats(u))
 		"rainbow":                                        # 棱镜(改造): 普攻附当前颜色效果(红真伤/蓝小盾/绿回血)
 			match int(u.get("prism_color", -1)):
 				0: _apply_damage_from(u, tgt, int(u["atk"] * 0.25), Color("#ff6b6b"), 0.0, true)   # 红: 额外真伤
