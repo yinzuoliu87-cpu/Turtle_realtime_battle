@@ -587,12 +587,13 @@ func _spawn_teams() -> void:
 		if REVIEW_DEMO:
 			pos = Vector2(_cx + 150.0, _cy)
 		var ru := _make_unit(str(right[i]), "right", pos)
-		if REVIEW_DEMO:                          # 假人: 不动/不打/不放技/中高血沙包 (纯演示靶)
+		if REVIEW_DEMO:                          # 假人: 不动/不打/不放技/永不死训练靶 (受击照显伤害但即刻回满)
 			ru["no_basic"] = true
 			ru["no_move"] = true
 			ru["active_skills"] = []
 			ru["maxHp"] = REVIEW_DUMMY_HP
 			ru["hp"] = ru["maxHp"]
+			ru["_review_dummy"] = true           # 训练靶标记: _apply_damage_from 受击后回满, 打不死不结算 (看完整)
 		_units.append(ru)
 	_inject_equipment()       # 装备注入 (玩家队读 persistent_equipped; demo队塞测试装备) — 须在被动之前
 	_apply_spawn_passives()   # 登场被动 (开战即生效: 忍术暴击/怨灵诅咒/冰寒减攻/召唤等)
@@ -1618,6 +1619,7 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color) -> void:
 		var ab := minf(u["shield"], d)
 		u["shield"] -= ab; d -= ab
 	u["hp"] = maxf(0.0, u["hp"] - d)
+	if u.get("_review_dummy", false): u["hp"] = u["maxHp"]   # 训练靶: 受击即回满, 打不死不结算(看完整)
 	u["_st_taken"] = int(u.get("_st_taken", 0)) + dmg   # §STATS: 无来源伤害(DoT等)只计承受
 	_float_text(u["pos"] + Vector2(randf_range(-26.0, 26.0), -40.0 + randf_range(-10.0, 6.0)), str(dmg), col)   # 抖开: 多段/AOE 出伤飘字不重叠成糊团
 	# §AUDIO: 无来源伤害也出命中音 (非暴击); 护盾破→shield-break
@@ -1654,6 +1656,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		var ab := minf(u["shield"], d)
 		u["shield"] -= ab; d -= ab
 	u["hp"] = maxf(0.0, u["hp"] - d)
+	if u.get("_review_dummy", false): u["hp"] = u["maxHp"]   # 训练靶: 受击即回满, 打不死不结算(看完整)
 	# §STATS: 战斗统计 — 输出归攻击者/承受归目标 (用显示数 dmg)
 	if src is Dictionary and src.has("side") and src != u:
 		src["_st_dealt"] = int(src.get("_st_dealt", 0)) + dmg
@@ -2698,11 +2701,9 @@ func _cur_skill_data(u: Dictionary, stype: String) -> Dictionary:
 func _sk_gen_shield(u: Dictionary) -> void:
 	var sk := _cur_skill_data(u, "shield")
 	var fx: Dictionary = sk.get("fx", {})
-	var nm := str(sk.get("name", "护盾"))
 	var sa := float(fx.get("shieldAtk", 0.3))
 	var sh := float(fx.get("shieldHp", 0.0))
 	var heal_hp := float(fx.get("healHp", 0.0))
-	_float_text(u["pos"] + Vector2(0, -64), nm + "!", Color("#9bdcff"))
 	for o in _allies_of(u):
 		_grant_shield(o, u["atk"] * sa + o["maxHp"] * sh)
 		if heal_hp > 0.0:
@@ -3192,8 +3193,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			if u["base_def"] < _cap:
 				u["base_def"] = minf(_cap, u["base_def"] + u["stone_init_def"] / 6.0)
 				_recalc_stats(u)
-				_skill_ring(u["pos"], Color(0.79, 0.64, 0.42, 0.4), 42.0)   # 视觉: 硬化贴地褐环
-				_float_text(u["pos"] + Vector2(0, -60), "坚壁", Color("#c9a36b"))
+				_skill_ring(u["pos"], Color(0.79, 0.64, 0.42, 0.4), 42.0)   # 视觉: 硬化贴地褐环 (不飘名字文字)
 	# --- 竹叶生长: 每N秒充能 → 永久+ATK/HP ---
 	elif u["id"] == "bamboo":
 		if u["_ptimer"] >= 6.0 and not u.get("bamboo_charge", false):
