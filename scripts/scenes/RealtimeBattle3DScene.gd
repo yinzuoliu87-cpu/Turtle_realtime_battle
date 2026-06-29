@@ -53,7 +53,7 @@ const STATS := {
 }
 const DEFAULT_STAT := [true, 105.0, 0.85, 70.0]
 const REVIEW_DEMO := true                  # 评审期: 战斗=1受审龟 vs 1假人(右不动/不打/不放技/高血沙包); 上线前置 false
-const REVIEW_TURTLE := "basic"             # 受审龟 id (评审换龟只改这里)
+const REVIEW_TURTLE := "bamboo"             # 受审龟 id (评审换龟只改这里)
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 800.0            # 假人固定血量
 const LEFT_DEMO := ["basic", "stone", "lightning"]   # 非评审 demo (REVIEW_DEMO=false 时用)
@@ -1228,9 +1228,14 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	# ═══ AI 状态机: 移动 ↔ 前摇 → 出手 → 后摇 (移动与攻击/施法互斥 = 施法锁; 根治"边走边放") ═══
 	match str(u.get("state", "move")):
 		"move":
-			if dist <= rng and not u.get("no_basic", false):
-				# 进入射程 → 站定, 决定出手: 就绪技优先(进施法前摇), 否则普攻就绪(进普攻前摇), 都没好就原地待命观察
-				var rs := _pick_ready_skill(u)
+			var rs := _pick_ready_skill(u)
+			if rs != "" and _SELF_CAST_SKILLS.has(rs):
+				# 自/友向技: 任意距离即放, 不用靠近敌人 (修: 原所有技都要进射程=护盾贴脸才放的bug)
+				u["pending"] = "K:" + rs
+				u["state"] = "windup"; u["state_t"] = CAST_WINDUP
+				_anticipate(u)
+			elif dist <= rng and not u.get("no_basic", false):
+				# 进入射程 → 敌向就绪技优先, 否则普攻, 都没好原地待命
 				if rs != "":
 					u["pending"] = "K:" + rs
 					u["state"] = "windup"; u["state_t"] = CAST_WINDUP
@@ -1239,10 +1244,9 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 					u["pending"] = "B"
 					u["state"] = "windup"; u["state_t"] = ATK_WINDUP
 				elif not u["melee"] and dist < rng * 0.7:
-					_do_move(u, tgt, dist, rng, spd, delta)   # 远程+敌逼近+冷却中 → 风筝后撤到安全距离(再开打)
-				# else: 站定待命 (不动), 冷却继续走 → 自然有"停顿观察"
+					_do_move(u, tgt, dist, rng, spd, delta)   # 远程风筝
 			else:
-				_do_move(u, tgt, dist, rng, spd, delta)  # 不在射程 → 移动(唯一会移动的态)
+				_do_move(u, tgt, dist, rng, spd, delta)  # 不在射程 → 移动
 		"windup":
 			u["state_t"] = float(u["state_t"]) - delta   # 前摇: 站定不动(施法锁)
 			if u["state_t"] <= 0.0:
@@ -2077,6 +2081,15 @@ const _SKILL_VFX_ON_TARGET := {
 # 自带程序化 VFX 的技能: 跳过通用飘空 billboard (该技在自己函数里画贴地环/击飞等, 更贴 2.5D)
 const _SKILL_SELF_VFX := {
 	"turtleShieldBash": true,
+}
+# 自/友向技(护盾/治疗/增益/变身): 不针对敌人, 任意距离即放(不用靠近敌人); 其余(敌向/普攻)要进射程
+const _SELF_CAST_SKILLS := {
+	"shield": true, "heal": true, "bambooHeal": true, "angelBless": true,
+	"diamondFortify": true, "crystalBarrier": true, "phoenixShield": true,
+	"hidingDefend": true, "hunterStealth": true, "twoHeadSwitch": true,
+	"lavaSurge": true, "bubbleShield": true, "shellAbsorb": true,
+	"fortuneDice": true, "lightningSurgeBuff": true, "chestCount": true,
+	"gamblerBet": true, "diceAllIn": true, "stoneTaunt": true,
 }
 
 # ═══ 选3 多技能轮转 (用户2026-06-28拍板: 保留选3, 让3技在战斗真生效) ═══
