@@ -31,7 +31,7 @@ const CAST_WINDUP := 0.34                   # 技能前摇(蓄力, 比普攻久 
 const CAST_RECOVER := 0.24                  # 技能后摇
 const _BASIC_RARITY_BONUS := {"C": 0.20, "B": 0.23, "A": 0.26, "S": 0.29, "SS": 0.32, "SSS": 0.34}   # 小龟不屈: 按目标稀有度
 const SEP_RADIUS := 56.0                    # 单位软分离半径 (像素口径; 防扎堆, 调大点更散)
-const HP_MULT := 3.0                       # HP 倍率 (节奏旋钮, 同 2D)
+const HP_MULT := 3.0                       # base↔final比率: 龟/装备hp已写最终值; 仅召唤raw值(×)与装备%回收(maxHp/)用它
 const SHIELD_CAP_MULT := 1.5
 const RAGE_MAX := 100.0                    # 怒气满 (熔岩变身)
 const STACK_DOT_TICK := 1.0                # 各类层数 DoT 每秒结算一次
@@ -661,7 +661,7 @@ func _world_pos(pos: Vector2, height: float) -> Vector3:
 func _make_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 	var d: Dictionary = _data_by_id.get(id, {})
 	var st: Array = STATS.get(id, DEFAULT_STAT)
-	var hp := float(d.get("hp", 450)) * HP_MULT
+	var hp := float(d.get("hp", 1350))  # hp已是最终值
 
 	# --- 立绘 billboard sprite: 全身图 + idle sprite-sheet 动画 ---
 	#   sprite-sheet 切帧用 Sprite3D 原生 hframes/vframes/frame (mesh 自动裁到单帧+正确 UV);
@@ -3184,7 +3184,7 @@ func _spawn_hiding_minion(u: Dictionary) -> void:
 	var pick: String = HIDING_POOL[randi() % HIDING_POOL.size()]
 	var d: Dictionary = _data_by_id.get(pick, {})
 	var st: Array = STATS.get(pick, DEFAULT_STAT)
-	var hp: float = float(d.get("hp", 450)) * HP_MULT * 0.40
+	var hp: float = float(d.get("hp", 1350)) * 0.40  # 召唤=主人最终hp×40%
 	var minion = _spawn_summon(u, "minion", hp, float(d.get("atk", 40)) * 0.8, {
 		"label": "随从", "spr_id": pick, "col_size": 36.0, "hp_w": 30.0,
 		"melee": bool(st[0]), "move_spd": float(st[1]), "atk_interval": float(st[2]), "atk_range": float(st[3]),
@@ -3968,7 +3968,7 @@ func _eq_apply_one_stats(u: Dictionary, item_id: String, star: int) -> void:
 	if st.has("atk"):
 		u["base_atk"] += float(st["atk"])
 	if st.has("hp"):
-		var add: float = float(st["hp"]) * HP_MULT
+		var add: float = float(st["hp"])  # 装备hp已是最终值
 		u["maxHp"] += add; u["hp"] += add
 	if st.has("crit"):
 		u["crit"] += float(st["crit"])
