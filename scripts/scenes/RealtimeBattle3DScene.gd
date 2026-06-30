@@ -55,7 +55,7 @@ const DEFAULT_STAT := [true, 105.0, 0.85, 70.0]
 const REVIEW_DEMO := true                  # 评审期: 战斗=1受审龟 vs 1假人(右不动/不打/不放技/高血沙包); 上线前置 false
 const REVIEW_TURTLE := "fortune"             # 受审龟 id (评审换龟只改这里)
 const REVIEW_SKILL_IDX := 2   # 评审时受审龟放哪个技(skillPool索引, 验主动技: 2冰霜/3冰封); -1=默认
-const REVIEW_SHOWCASE := ["fortune", "rainbow", "lightning", "phoenix"]   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
+const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 800.0            # 假人固定血量
 const LEFT_DEMO := ["basic", "stone", "lightning"]   # 非评审 demo (REVIEW_DEMO=false 时用)
@@ -1227,6 +1227,9 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 
 	_tick_skill_cd(u, delta)        # 技能冷却始终走时间 (含麻痹/移动/施法中)
 	u["atk_cd"] = maxf(0.0, float(u.get("atk_cd", 0.0)) - delta)   # 普攻冷却也始终走 (漏了它→打一下就再不普攻=用户报的"整个没普攻"; 召唤体也安全)
+	if int(u.get("allin_coins", 0)) > 0:
+		_fortune_allin_channel(u, delta)
+		return   # 财神梭哈投币channel: 锁住(不移动/不普攻)
 	var tgt = _acquire_target(u)
 	if tgt == null:
 		u["state"] = "move"
@@ -1634,6 +1637,8 @@ func _step_projectiles(delta: float) -> void:
 					_on_basic_hit(pr["src"], tgt)   # 远程普攻附带(审判等)弹道命中时触发→与裁决同帧跳数字
 				if pr.get("freeze_on_hit", 0.0) > 0.0:
 					_freeze(tgt, pr["freeze_on_hit"])   # 冰封: 弹道命中→冻结
+				if pr.get("coin_true", 0) > 0:
+					_apply_damage_from(pr["src"], tgt, int(pr["coin_true"]), Color("#fff0a0"), 0.0, true)   # 金币真实那半
 			continue
 		keep.append(pr)
 	_projectiles = keep
@@ -3118,18 +3123,64 @@ func _sk_gen_heal(u: Dictionary) -> void:
 # ── Batch2 特殊技 (bespoke; 按 pets.json brief/detail 实装) ──
 
 # 财神·梭哈: 一场限一次, 消耗全部金币, 每枚 0.18×ATK物理 + 0.18×ATK真实 (cd999)
-func _sk_fortune_allin(u: Dictionary, tgt) -> void:
+func _sk_fortune_allin(u: Dictionary, tgt) -> void:                 # 财神龟·梭哈 ✅ (蓄力→持续投金币, 目标死换下个)
 	if tgt == null or u.get("allin_used", false):
 		return
 	u["allin_used"] = true
 	var coins: int = int(u["gold"])
 	u["gold"] = 0.0
-	_float_text(u["pos"] + Vector2(0, -64), "梭哈! %d币" % coins, Color("#ffd93d"))
 	if coins <= 0:
 		return
-	_apply_damage_from(u, tgt, int(u["atk"] * 0.18 * coins), Color("#ff4444"))
-	_apply_damage_from(u, tgt, int(u["atk"] * 0.18 * coins), Color("#fff0a0"), 0.0, true)   # 真实
-	_skill_ring(tgt["pos"], Color(1.0, 0.85, 0.2, 0.6), 70.0)
+	u["allin_coins"] = coins              # 待投金币数 = 全部金币
+	u["allin_throw_t"] = 0.6              # 蓄力(首投前)
+	u["allin_target"] = tgt
+	_skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.65), 66.0)   # 蓄力金环
+	_flash(u, Color(1.5, 1.3, 0.6))
+
+# 梭哈 channel: 蓄力后每隔投币间隔朝目标投1金币(0.18ATK物+0.18ATK真), 目标死换最近敌; 投完结束; 眩晕/击飞期暂停
+func _fortune_allin_channel(u: Dictionary, delta: float) -> void:
+	if _t < float(u.get("stun_until", 0.0)):
+		return
+	u["allin_throw_t"] = float(u.get("allin_throw_t", 0.0)) - delta
+	if u["allin_throw_t"] > 0.0:
+		return
+	var tgt = u.get("allin_target", null)
+	if tgt == null or not tgt.get("alive", false):
+		tgt = _nearest_enemy(u)
+		u["allin_target"] = tgt
+	if tgt == null:
+		u["allin_coins"] = 0
+		return
+	_throw_gold_coin(u, tgt)
+	u["allin_coins"] = int(u["allin_coins"]) - 1
+	u["allin_throw_t"] = 0.11
+	if int(u["allin_coins"]) <= 0:
+		u["allin_target"] = null
+
+# 投1枚金币弹道 (命中→0.18ATK物理+0.18ATK真实)
+func _throw_gold_coin(src: Dictionary, tgt: Dictionary) -> void:
+	var start2d: Vector2 = src["pos"]
+	var p := Sprite3D.new()
+	var tex := "res://assets/sprites/ui/coin.png"
+	if ResourceLoader.exists(tex):
+		p.texture = load(tex)
+		p.pixel_size = 0.05
+		p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	else:
+		p.texture = _make_bolt_texture(Color(1.0, 0.84, 0.2))
+		p.pixel_size = 0.014
+	p.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	p.shaded = false
+	p.transparent = true
+	var world_from := _world_pos(start2d, 1.0)
+	p.position = world_from
+	_world.add_child(p)
+	var dur := clampf(start2d.distance_to(tgt["pos"]) / 650.0, 0.18, 0.6)
+	_projectiles.append({
+		"node": p, "from": world_from, "tgt": tgt, "dmg": _atk_dmg(src, 0.18, tgt, false),
+		"col": Color("#ff4444"), "src": src, "t": 0.0, "dur": dur, "basic_onhit": false,
+		"coin_true": int(src["atk"] * 0.18),
+	})
 
 # 星际·虫洞: 永久+魔法穿透; 沿目标方向直线四段 1.5×ATK×(1+10%×已过秒) 魔法 + 击飞
 func _sk_star_wormhole(u: Dictionary, tgt) -> void:

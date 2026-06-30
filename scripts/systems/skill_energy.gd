@@ -33,7 +33,7 @@ const SKILL_COST := {
 	"lavaBolt": 90.0, "lavaQuake": 115.0, "crystalSpike": 90.0, "crystalBurst": 115.0,
 	"chestStorm": 115.0, "starBeam": 70.0, "soulReap": 120.0, "shellStrike": 80.0,
 	# Batch2 特殊
-	"chestSmash": 120.0, "fortuneAllIn": 170.0, "starWormhole": 150.0, "lineFinish": 95.0,
+	"chestSmash": 120.0, "fortuneAllIn": 340.0, "starWormhole": 150.0, "lineFinish": 95.0,
 	"cyberDeploy": 135.0, "bubbleBind": 100.0, "hidingCommand": 85.0, "shellCopy": 140.0, "diceFate": 90.0,
 }
 
