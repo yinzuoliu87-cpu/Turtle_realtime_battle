@@ -46,7 +46,7 @@ const STATS := {
 	"fortune": [true, 105.0, 0.75, 70.0], "dice": [false, 145.0, 0.6, 400.0], "rainbow": [true, 105.0, 0.7, 70.0],
 	"gambler": [false, 145.0, 0.85, 400.0], "hunter": [false, 145.0, 0.6, 400.0], "pirate": [false, 105.0, 0.85, 400.0],
 	"candy": [false, 105.0, 0.85, 400.0], "bubble": [false, 70.0, 1.1, 400.0], "line": [false, 145.0, 0.6, 400.0],
-	"lightning": [false, 145.0, 0.6, 400.0], "phoenix": [false, 105.0, 0.5, 400.0], "lava": [false, 145.0, 0.85, 400.0],
+	"lightning": [false, 145.0, 0.6, 400.0], "phoenix": [false, 105.0, 0.5, 400.0], "lava": [false, 145.0, 0.7, 400.0],
 	"cyber": [false, 105.0, 0.85, 400.0], "crystal": [true, 70.0, 1.1, 70.0], "chest": [true, 105.0, 1.1, 70.0],
 	"space": [false, 145.0, 0.85, 400.0], "hiding": [true, 70.0, 1.1, 70.0], "headless": [true, 145.0, 0.85, 70.0],
 	"shell": [true, 105.0, 1.1, 70.0],
@@ -54,7 +54,7 @@ const STATS := {
 const DEFAULT_STAT := [true, 105.0, 0.85, 70.0]
 const REVIEW_DEMO := true                  # 评审期: 战斗=1受审龟 vs 1假人(右不动/不打/不放技/高血沙包); 上线前置 false
 const REVIEW_TURTLE := "lava"              # 受审龟 id (评审换龟只改这里)
-const REVIEW_SKILL_IDX := 2   # 评审时受审龟放哪个技(skillPool索引: 1=地裂 2=岩浆涌动 3=强化熔岩之心); -1=默认
+const REVIEW_SKILL_IDX := 1   # 评审时受审龟放哪个技(skillPool索引: 1=地裂 2=岩浆涌动 3=强化熔岩之心); -1=默认
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 500.0            # 假人固定血量
@@ -88,7 +88,7 @@ const BASIC_ATK := {
 	"bubble":   {"phys": 1.5, "hits": 3},
 	"line":     {"phys": 1.5, "hits": 3},                                          # 墨迹走被动
 	"phoenix":  {"magic": 0.9, "hits": 1, "rider": "burn"},                         # 魔法+灼烧 (原物 错)
-	"lava":     {"magic": 0.6, "hp": 0.04, "hits": 1, "rider": "burn", "burnScale": 0.125},   # 熔岩弹: 0.6魔+4%目标HP+0.125ATK灼烧层 (用户2026-06-30)
+	"lava":     {"magic": 0.6, "hp": 0.04, "hits": 1, "rider": "burn", "burnScale": 0.07},   # 熔岩弹: 0.6魔+4%目标HP+0.125ATK灼烧层 (用户2026-06-30)
 	"cyber":    {"phys": 0.75, "hp": 0.12, "hits": 5},                             # +12%目标HP
 	"crystal":  {"magic": 1.0, "hp": 0.06, "hits": 2},                             # 魔法+6%目标HP (原物 错); 结晶走被动
 	"chest":    {"phys": 1.5, "hits": 3},                                          # (原4.5 错→1.5; 原始无公式)
@@ -223,6 +223,7 @@ var _ui_layer: CanvasLayer                # 血条/龟能 overlay + 标题 + 结
 var _world: Node3D                        # 3D 内容挂载点 (SubViewport 内)
 var _sub: SubViewport
 var _projectiles: Array = []              # 飞行中的 3D 投射物 {node, from, to, tgt, dmg, magic, src, t, dur}
+var _lava_zones: Array = []               # 持续地面区域 (熔岩龟·岩浆池等) {center, radius, until, next_tick, src, disc}
 
 # --- 🛠 调试场 (DEBUG ARENA): 自由摆位编辑模式 (从主菜单进; 默认关, 不影响正常战斗) ---
 #   DEBUG_EDIT=true 时 _spawn_teams 跳过自动出生(空场), 进编辑模式: 点空地摆兵/拖拽挪位/右键删,
@@ -1249,6 +1250,7 @@ func _process(delta: float) -> void:
 					continue
 				_tick_unit(u, delta)
 			_apply_separation_pass(delta)   # 每帧全单位软分离(攻击/待机也摊开, 根治扎堆遮血条)
+			_tick_lava_zones(delta)         # 持续地面区域 (熔岩龟·岩浆池) 周期结算
 			_step_projectiles(delta)
 			_check_end()
 		_juice_decay(delta)        # squash/闪白/挥击 等计时衰减 (冻结期间不衰 → 冲击姿势保持)
@@ -2249,9 +2251,9 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		_heal(src, float(dmg) * ls, true)
 	# 怒气 (熔岩造伤25% / 受伤20%)
 	if src["id"] == "lava":
-		src["rage"] = minf(RAGE_MAX, src["rage"] + float(dmg) * 0.25)
+		src["rage"] = minf(RAGE_MAX, src["rage"] + float(dmg) * 0.10)
 	if u["id"] == "lava":
-		u["rage"] = minf(RAGE_MAX, u["rage"] + float(dmg) * 0.20)
+		u["rage"] = minf(RAGE_MAX, u["rage"] + float(dmg) * 0.10)
 	# 星能 (星际造伤62%)
 	if src["id"] == "space":
 		src["star_energy"] = minf(src["maxHp"] * 0.40, src["star_energy"] + float(dmg) * 0.62)
@@ -3530,36 +3532,220 @@ func _lava_bolt(u: Dictionary, tgt: Dictionary) -> void:         # 熔岩弹: 0.
 		return
 	var dmg := _atk_dmg(u, 0.6, tgt, true) + int(tgt["maxHp"] * 0.04)
 	_apply_damage_from(u, tgt, dmg, Color("#ff7a3c"))
-	_apply_dot_stacks(tgt, "burn", maxi(1, int(round(float(u["atk"]) * 0.125))), u)   # 0.125×ATK 灼烧层(层数DoT)
+	_apply_dot_stacks(tgt, "burn", maxi(1, int(round(float(u["atk"]) * 0.07))), u)   # 0.125×ATK 灼烧层(层数DoT)
 	_skill_ring(tgt["pos"], Color(1.0, 0.48, 0.24, 0.4), 46.0)
 
-func _lava_quake(u: Dictionary) -> void:                         # 小·地裂: 全体 0.6×ATK魔 + 削魔抗-20% 持续5秒
-	for o in _enemies_of(u):
-		_apply_damage_from(u, o, _atk_dmg(u, 0.6, o, true), Color("#ff9d5c"))
-		_buff(o, "mr", -0.2, true)                                # BUFF_SEC=5秒
-		_skill_ring(o["pos"], Color(1.0, 0.62, 0.36, 0.4), 46.0)
+# 通用·击飞: 把 o 从 center 上抛+外推 (1:1 _lava_slam_impact 的击飞段, 抽公共)
+func _knock_up(o: Dictionary, center: Vector2, vy: float) -> void:
+	if o == null or not o.get("alive", false) or o.get("airborne", false):
+		return
+	var dir: Vector2 = (o["pos"] - center)
+	dir = dir.normalized() if dir.length() > 0.1 else Vector2.RIGHT
+	o["airborne"] = true
+	o["vy"] = vy
+	o["vx"] = dir.x * KNOCK_PUSH * 0.7
+	o["vz"] = dir.y * KNOCK_PUSH * 0.7
 
-func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火山爆发: 全体五段+灼烧+回血
+# ───────── 熔岩龟·持续地面区域系统 (岩浆池) ─────────
+func _tick_lava_zones(_delta: float) -> void:   # 每帧: 周期结算池内敌 + 到期清理 (_process 内调)
+	if _lava_zones.is_empty():
+		return
+	var keep: Array = []
+	for z in _lava_zones:
+		if _t >= float(z["next_tick"]):
+			z["next_tick"] = float(z["next_tick"]) + 0.5
+			var src: Dictionary = z["src"]
+			if src != null and src.get("alive", false):
+				var c: Vector2 = z["center"]
+				var r: float = float(z["radius"])
+				for o in _enemies_of(src):
+					if not o.get("alive", false):
+						continue
+					if o["pos"].distance_to(c) > r:
+						continue
+					_apply_damage_from(src, o, _atk_dmg(src, 0.06, o, true), Color("#ff7a33"))   # 0.06×ATK魔/0.5s
+					o["slow_until"] = maxf(float(o.get("slow_until", 0.0)), _t + 0.6)             # 减速(move ×0.6=减40%, ≥0.6s续)
+					_buff(o, "mr", -0.30, true, 0.6)                                              # 魔抗-30% (每跳刷新)
+		if _t >= float(z["until"]):
+			var disc = z.get("disc", null)
+			if disc != null and is_instance_valid(disc):
+				var tw := create_tween()
+				tw.tween_property(disc, "modulate:a", 0.0, 0.35)
+				tw.chain().tween_callback(disc.queue_free)
+		else:
+			keep.append(z)
+	_lava_zones = keep
+
+func _lava_quake(u: Dictionary) -> void:                         # 小·岩浆池: 敌最密处生成5秒岩浆池, 每0.5s池内敌 0.06ATK魔+减速35%+魔抗-30%
+	var center: Vector2 = _densest_enemy_point(u, 180.0)
+	var radius := 180.0
+	var disc := Sprite3D.new()                                   # 持续贴地橙红岩浆盘
+	disc.texture = _sheet("res://assets/sprites/vfx/fx_lava_pool.png")   # AI生成熔岩池贴图
+	disc.billboard = BaseMaterial3D.BILLBOARD_DISABLED; disc.axis = Vector3.AXIS_Y   # 躺平贴地
+	disc.shaded = false; disc.transparent = true
+	disc.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	disc.pixel_size = (radius * 2.0 * WS) / 768.0
+	disc.position = _world_pos(center, 0.035)
+	_world.add_child(disc)
+	var rot := create_tween().set_loops()                        # 缓旋=熔岩流动(静态图+代码动)
+	rot.tween_property(disc, "rotation:y", TAU, 7.0).from(0.0)
+	var pt := create_tween()                                     # 淡入 + 5秒缓脉动
+	pt.tween_property(disc, "modulate:a", 0.92, 0.25)
+	for i in range(10):                                          # 5s / 0.5s = 10 次脉动
+		pt.tween_property(disc, "modulate:a", 0.7, 0.25)
+		pt.tween_property(disc, "modulate:a", 0.92, 0.25)
+	_lava_zones.append({
+		"center": center, "radius": radius, "until": _t + 5.0,
+		"next_tick": _t + 0.5, "src": u, "disc": disc,
+	})
+	_skill_ring(center, Color(1.0, 0.45, 0.15, 0.5), radius)
+
+func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火山爆发: 朝敌最密方向 超长矩形横扫 (5段×0.5ATK魔+灼烧+回血12%, 击退命中敌)
+	var dir: Vector2 = _densest_enemy_point(u, 400.0) - u["pos"]
+	dir = dir.normalized() if dir.length() > 0.1 else Vector2.RIGHT
+	var length := 750.0
+	var half_w := 75.0
+	var origin: Vector2 = u["pos"]
+	_anticipate(u); _shake(JUICE_SHAKE_HEAVY)
+	# 1) 超长红矩形预警 (拉长 blob 沿 dir, ~0.6s)
+	var tel := Sprite3D.new()
+	tel.texture = _make_blob_texture()
+	tel.billboard = BaseMaterial3D.BILLBOARD_DISABLED; tel.axis = Vector3.AXIS_Y
+	tel.shaded = false; tel.transparent = true
+	tel.modulate = Color(1.0, 0.15, 0.05, 0.0)
+	var mid: Vector2 = origin + dir * (length * 0.5)
+	tel.position = _world_pos(mid, 0.03)
+	tel.pixel_size = (length * WS) / 128.0
+	tel.scale = Vector3(1.0, 1.0, (half_w * 2.0) / length)        # 沿 dir 长, 横向窄
+	tel.rotation = Vector3(0.0, -atan2(dir.y, dir.x), 0.0)        # 朝向 dir (世界Y轴, 屏y→世界z 反号)
+	_world.add_child(tel)
+	var tt := create_tween()
+	tt.tween_property(tel, "modulate:a", 0.42, 0.18)
+	tt.tween_interval(0.42)
+	await tt.finished
+	# 2) 岩浆流从远端沿 dir 扫回 (~0.4s) — 亮橙 blob 移动
+	var flow := Sprite3D.new()
+	flow.texture = _make_fire_glow_tex()
+	flow.billboard = BaseMaterial3D.BILLBOARD_DISABLED; flow.axis = Vector3.AXIS_Y
+	flow.shaded = false; flow.transparent = true
+	flow.modulate = Color(1.0, 0.6, 0.2, 0.9)
+	flow.pixel_size = (half_w * 2.2 * WS) / 128.0
+	var far: Vector2 = origin + dir * length
+	flow.position = _world_pos(far, 0.05)
+	_world.add_child(flow)
+	var ft := create_tween()
+	ft.tween_property(flow, "position", _world_pos(origin, 0.05), 0.4).set_trans(Tween.TRANS_SINE)
+	ft.parallel().tween_property(tel, "modulate:a", 0.0, 0.4)
+	ft.chain().tween_callback(flow.queue_free)
+	ft.parallel().tween_callback(tel.queue_free)
+	_shake(JUICE_SHAKE_BIG)
+	# 3) 矩形命中判定: 沿线 0<along<length 且 |perp|<half_w → 击退+5段+灼烧+回血
+	var perp_axis := Vector2(-dir.y, dir.x)
 	for o in _enemies_of(u):
+		if not o.get("alive", false):
+			continue
+		var rel: Vector2 = o["pos"] - origin
+		var along: float = rel.dot(dir)
+		var perp: float = absf(rel.dot(perp_axis))
+		if along <= 0.0 or along >= length or perp >= half_w:
+			continue
+		if not o.get("airborne", false):                          # 横向击退 (沿 dir 推, 小竖速)
+			o["airborne"] = true
+			o["vy"] = 4.0
+			o["vx"] = dir.x * KNOCK_PUSH
+			o["vz"] = dir.y * KNOCK_PUSH
 		for i in range(5):
 			if not o["alive"]: break
 			_apply_damage_from(u, o, _atk_dmg(u, 0.5, o, true), Color("#ff7a33"))
 		_apply_dot_stacks(o, "burn", _default_burn_stacks(u), u)
-	_heal(u, u["maxHp"] * 0.12)
-	_skill_ring(u["pos"], Color(1.0, 0.4, 0.1, 0.5), 130.0)
+		_heal(u, u["maxHp"] * 0.12)
 
-func _lava_magma_surge(u: Dictionary, tgt: Dictionary) -> void:  # 小·岩浆涌动: 单体 1.5×ATK魔 + 0.8×ATK永久护盾
+func _lava_magma_surge(u: Dictionary, tgt: Dictionary) -> void:  # 小·岩浆涌动: 蓄力 → 目标脚下岩浆柱击飞 (1.5ATK魔 + 0.8ATK永久护盾)
 	if tgt == null or not tgt.get("alive", false):
 		return
-	_apply_damage_from(u, tgt, _atk_dmg(u, 1.5, tgt, true), Color("#ff9d5c"))
+	u["_slam"] = true
+	_anticipate(u)
+	var center: Vector2 = tgt["pos"]
+	# 1) 蓄力 ~0.5s: 熔岩身上聚火光
+	var glow := Sprite3D.new()
+	glow.texture = _make_fire_glow_tex()
+	glow.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	glow.shaded = false; glow.transparent = true
+	glow.pixel_size = 0.012
+	glow.modulate = Color(1.0, 0.5, 0.15, 0.0)
+	glow.scale = Vector3(0.5, 0.5, 0.5)
+	glow.position = _world_pos(u["pos"], 0.4)
+	_world.add_child(glow)
+	var cg := create_tween()
+	cg.tween_property(glow, "modulate:a", 0.9, 0.4).set_trans(Tween.TRANS_QUAD)
+	cg.parallel().tween_property(glow, "scale", Vector3(1.6, 1.6, 1.6), 0.5)
+	cg.tween_property(glow, "modulate:a", 0.0, 0.15)
+	cg.chain().tween_callback(glow.queue_free)
+	var charge := create_tween(); charge.tween_interval(0.5)
+	await charge.finished
+	# 目标可能中途死亡 → 在原落点继续演出/给盾, 不强求命中
+	if tgt != null and tgt.get("alive", false):
+		center = tgt["pos"]
+	# 2) 目标脚下岩浆柱拔起 (~0.3s) — 细高橙柱
+	var pillar := Sprite3D.new()
+	pillar.texture = _make_fire_glow_tex()
+	pillar.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	pillar.shaded = false; pillar.transparent = true
+	pillar.modulate = Color(1.0, 0.55, 0.18, 0.95)
+	pillar.pixel_size = 0.014
+	pillar.scale = Vector3(0.6, 0.3, 0.6)
+	pillar.position = _world_pos(center, 0.1)
+	_world.add_child(pillar)
+	var pt := create_tween()
+	pt.tween_property(pillar, "scale", Vector3(1.0, 3.2, 1.0), 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	pt.parallel().tween_property(pillar, "position", _world_pos(center, 1.4), 0.18)
+	pt.tween_property(pillar, "modulate:a", 0.0, 0.18)
+	pt.chain().tween_callback(pillar.queue_free)
+	# 3) 击飞 目标 + 120px 内敌, 给目标伤害, 给自身护盾
+	_shake(JUICE_SHAKE_BIG); _add_hitstop(JUICE_HITSTOP_KNOCK)
+	_skill_ring(center, Color(1.0, 0.5, 0.18, 0.7), 120.0)
+	for o in _enemies_of(u):
+		if not o.get("alive", false): continue
+		if o["pos"].distance_to(center) > 120.0: continue
+		_knock_up(o, center, 9.0)
+	if tgt != null and tgt.get("alive", false):
+		_apply_damage_from(u, tgt, _atk_dmg(u, 1.5, tgt, true), Color("#ff9d5c"))
 	_grant_shield(u, u["atk"] * 0.8)
-	_skill_ring(tgt["pos"], Color(1.0, 0.62, 0.36, 0.45), 56.0)
-	_skill_ring(u["pos"], Color(1.0, 0.5, 0.2, 0.4), 48.0)        # 自身获盾 身下橙环
+	u["_slam"] = false
 
-func _lava_flame_strike(u: Dictionary, tgt: Dictionary) -> void: # 火山·重击: 蓄力猛砸 1.3ATK+8%自身maxHP物理 + 20%吸血 (回合制版; 蓄力击飞另接)
+func _lava_flame_strike(u: Dictionary, tgt: Dictionary) -> void: # 火山·重击: 蓄力猛砸击飞 1.3ATK+8%自身maxHP物理 + 20%吸血
 	if tgt == null or not tgt.get("alive", false):
 		return
-	_apply_damage_from(u, tgt, _atk_dmg(u, 1.3, tgt) + int(u["maxHp"] * 0.08), Color("#ff7a33"), 0.20)
+	u["_slam"] = true
+	_anticipate(u)
+	var dir: Vector2 = (tgt["pos"] - u["pos"])
+	dir = dir.normalized() if dir.length() > 0.1 else Vector2.RIGHT
+	# 1) 蓄力 ~0.5s: 身上聚火光
+	var glow := Sprite3D.new()
+	glow.texture = _make_fire_glow_tex()
+	glow.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	glow.shaded = false; glow.transparent = true
+	glow.pixel_size = 0.013
+	glow.modulate = Color(1.0, 0.45, 0.12, 0.0)
+	glow.scale = Vector3(0.5, 0.5, 0.5)
+	glow.position = _world_pos(u["pos"], 0.4)
+	_world.add_child(glow)
+	var cg := create_tween()
+	cg.tween_property(glow, "modulate:a", 0.92, 0.4).set_trans(Tween.TRANS_QUAD)
+	cg.parallel().tween_property(glow, "scale", Vector3(1.8, 1.8, 1.8), 0.5)
+	cg.tween_property(glow, "modulate:a", 0.0, 0.15)
+	cg.chain().tween_callback(glow.queue_free)
+	var charge := create_tween(); charge.tween_interval(0.5)
+	await charge.finished
+	# 2) 猛砸: 击飞目标 + 震屏顿帧 + (已正确的)伤害
+	_shake(JUICE_SHAKE_BIG); _add_hitstop(JUICE_HITSTOP_KNOCK)
+	if tgt != null and tgt.get("alive", false):
+		_flash(u, Color(1.6, 0.7, 0.3))
+		_skill_ring(tgt["pos"], Color(1.0, 0.4, 0.1, 0.7), 90.0)
+		_impact_particles(tgt["pos"], 0.0)
+		_knock_up(tgt, tgt["pos"] - dir * 10.0, 9.0)
+		_apply_damage_from(u, tgt, _atk_dmg(u, 1.3, tgt) + int(u["maxHp"] * 0.08), Color("#ff7a33"), 0.20)
+	u["_slam"] = false
 
 
 # 熔岩之心·变身火山龟: 全属性提升(数据驱动 passive transform*) + 持续N秒 + 变身瞬间全体爆发灼烧吸血. 怒气清空.
@@ -5482,6 +5668,11 @@ func _edit_clear() -> void:
 		_edit_free_unit_nodes(u)
 	_units.clear()
 	_projectiles.clear()
+	for z in _lava_zones:                       # 清岩浆池(避免编辑重开残留)
+		var d = z.get("disc", null)
+		if d != null and is_instance_valid(d):
+			d.queue_free()
+	_lava_zones.clear()
 	_edit_set_status("已清空")
 
 # ▶开始: 把当前摆位生效为战斗. 为干净起见 (避免重复 _inject/_apply 叠加), 先快照摆位, 再做开战准备.
