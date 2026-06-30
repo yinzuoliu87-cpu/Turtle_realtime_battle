@@ -217,6 +217,25 @@ var _world: Node3D                        # 3D 内容挂载点 (SubViewport 内)
 var _sub: SubViewport
 var _projectiles: Array = []              # 飞行中的 3D 投射物 {node, from, to, tgt, dmg, magic, src, t, dur}
 
+# --- 🛠 调试场 (DEBUG ARENA): 自由摆位编辑模式 (从主菜单进; 默认关, 不影响正常战斗) ---
+#   DEBUG_EDIT=true 时 _spawn_teams 跳过自动出生(空场), 进编辑模式: 点空地摆兵/拖拽挪位/右键删,
+#   假人可设血量+不死开关. ▶开始 起战斗(模拟跑), ⏸编辑 回编辑(按摆位重新生成), 清空 全删.
+static var DEBUG_EDIT := false            # ← MainMenu 设 true 后 change_scene 进入; 离场重置 false
+var _edit_mode := false                   # 当前是否在编辑(暂停模拟)态
+var _edit_paused_setup: Array = []        # ⏸编辑 重生用的摆位快照 [{id,side,pos,hp,killable}]
+var _edit_pick_id := "basic"              # 当前选中要摆的龟 id (◀▶ 循环 STATS keys)
+var _edit_pick_side := "left"             # 摆放阵营 left(友军) / right(假人)
+var _edit_dummy_hp := 500.0               # 右队假人血量 (−/+ 步进 100)
+var _edit_dummy_killable := false         # 右队假人是否会死 (false=不死回满沙包)
+var _edit_drag_unit = null                # 正在拖拽的单位 (Dictionary 或 null)
+var _edit_drag_moved := false             # 本次按下是否真的拖动过 (区分点击放置 vs 拖拽挪位)
+var _edit_palette: Control = null         # 编辑面板根 (Control 子控件 mouse_filter=STOP 吃掉自身点击)
+var _edit_lbl_pick: Label = null
+var _edit_lbl_hp: Label = null
+var _edit_lbl_status: Label = null
+var _edit_btn_start: Button = null
+var _edit_btn_edit: Button = null
+
 # --- Phase 4 juice 全局态 ---
 var _hitstop := 0.0                       # 剩余顿帧秒 (>0 时 _process 跳过逻辑推进, 每帧自减 → 精确恢复)
 var _shake_amp := 0.0                     # 当前震屏幅度 (米); 每帧指数衰减归 0
@@ -576,6 +595,12 @@ func _build_ui_layer() -> void:
 #  阵容 spawn — 读 GameState.season_leaders, 没有就 demo (1:1 复用 2D 解析)
 # ============================================================================
 func _spawn_teams() -> void:
+	# 🛠 调试场: 空场进编辑模式 (不自动出生; 用户点击摆位). 默认关 → 走正常 spawn.
+	if DEBUG_EDIT:
+		_edit_mode = true
+		_build_edit_palette()
+		_edit_set_status("编辑模式: 点空地摆兵 · 拖拽挪位 · 右键删")
+		return
 	var left := _resolve_left()
 	var right := _resolve_right()
 	var _cx := ARENA.position.x + ARENA.size.x * 0.5    # 评审演示: 龟居中拉近(相机框得到)
@@ -1203,7 +1228,8 @@ func _process(delta: float) -> void:
 	if frozen:
 		_hitstop = maxf(0.0, _hitstop - delta)
 	else:
-		if not _over:
+		# 🛠 调试场编辑态: 跳过模拟推进 (单位摆着不打不动), 但下方 transforms/overlay 照常 → 立绘渲染+血条仍刷新.
+		if not _over and not _edit_mode:
 			_t += delta
 			for u in _units.duplicate():
 				if not u["alive"]:
@@ -4974,7 +5000,327 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.keycode == KEY_R:
 			get_tree().reload_current_scene()
 		elif event.keycode == KEY_ESCAPE:
+			DEBUG_EDIT = false   # 离场重置, 不影响下次正常战斗
 			get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+		return
+	# 🛠 调试场: 鼠标在战场(非面板)上 → 摆位/拖拽/删除. 面板按钮 mouse_filter=STOP 已在 GUI 层吃掉,
+	#   故到 _unhandled_input 的鼠标事件 = 点在战场空白处 (安全当作摆位操作).
+	if not DEBUG_EDIT or not _edit_mode:
+		return
+	if event is InputEventMouseButton:
+		_edit_handle_mouse_button(event)
+	elif event is InputEventMouseMotion:
+		_edit_handle_mouse_motion(event)
+
+# ============================================================================
+#  🛠 调试场 (DEBUG ARENA) — 自由摆位编辑器 (默认关; DEBUG_EDIT 开)
+# ============================================================================
+# 屏幕坐标 → 战场像素坐标 (反投影到 y=0 地面). _world_pos 的逆: 命中地面后换算回 ARENA 像素口径.
+func _screen_to_field(screen: Vector2) -> Vector2:
+	if _cam == null:
+		return _arena_center
+	var o := _cam.project_ray_origin(screen)
+	var n := _cam.project_ray_normal(screen)
+	if absf(n.y) < 0.00001:
+		return _arena_center
+	var t := -o.y / n.y
+	var g := o + n * t
+	return Vector2(g.x / WS + _arena_center.x, g.z / WS + _arena_center.y)
+
+# 屏幕点命中哪个单位 (按头顶世界坐标 unproject 后的屏幕距离, <半径 px 算命中; 取最近).
+func _edit_unit_at_screen(screen: Vector2):
+	var best = null
+	var best_d := 64.0   # 命中半径 (px)
+	for u in _units:
+		if not u.get("alive", true):
+			continue
+		var head := _world_pos(u["pos"], u["height"] + 1.0)   # 取身体中段
+		if _cam.is_position_behind(head):
+			continue
+		var sp := _cam.unproject_position(head)
+		var d := sp.distance_to(screen)
+		if d < best_d:
+			best_d = d
+			best = u
+	return best
+
+func _edit_handle_mouse_button(ev: InputEventMouseButton) -> void:
+	var screen := ev.position
+	if ev.button_index == MOUSE_BUTTON_RIGHT and ev.pressed:
+		# 右键删除最近单位
+		var hit = _edit_unit_at_screen(screen)
+		if hit != null:
+			_edit_delete_unit(hit)
+			_edit_set_status("删除了 1 个单位 (剩 %d)" % _units.size())
+		return
+	if ev.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if ev.pressed:
+		# 按下: 若命中已有单位 → 准备拖拽; 否则记录, 松手时摆放.
+		_edit_drag_moved = false
+		_edit_drag_unit = _edit_unit_at_screen(screen)
+	else:
+		# 松手: 拖拽了 → 已实时挪好, 不再摆放; 否则点空地 → 摆放新单位.
+		if _edit_drag_unit != null:
+			if not _edit_drag_moved:
+				pass   # 单击已有单位(没拖动): 不操作 (避免误删/误叠)
+		else:
+			var fp := _screen_to_field(screen)
+			fp.x = clampf(fp.x, ARENA.position.x, ARENA.end.x)
+			fp.y = clampf(fp.y, ARENA.position.y, ARENA.end.y)
+			_edit_place_unit(_edit_pick_id, _edit_pick_side, fp)
+		_edit_drag_unit = null
+		_edit_drag_moved = false
+
+func _edit_handle_mouse_motion(ev: InputEventMouseMotion) -> void:
+	if _edit_drag_unit == null:
+		return
+	if not (Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)):
+		_edit_drag_unit = null
+		return
+	_edit_drag_moved = true
+	var fp := _screen_to_field(ev.position)
+	fp.x = clampf(fp.x, ARENA.position.x, ARENA.end.x)
+	fp.y = clampf(fp.y, ARENA.position.y, ARENA.end.y)
+	_edit_drag_unit["pos"] = fp   # transforms/overlay 下一帧自动跟到新位置
+
+# 摆放一个单位: 复用 _make_unit, 右队按调试场设置改成假人 (不动/不打/可设血/可不死).
+func _edit_place_unit(id: String, side: String, pos: Vector2) -> Dictionary:
+	var u := _make_unit(id, side, pos)
+	if side == "right":
+		u["no_basic"] = true
+		u["no_move"] = true
+		u["active_skills"] = []
+		u["maxHp"] = _edit_dummy_hp
+		u["hp"] = u["maxHp"]
+		if not _edit_dummy_killable:
+			u["_review_dummy"] = true   # 不死沙包(受击回满)
+	_units.append(u)
+	_edit_set_status("摆放 %s (%s) · 共 %d 单位" % [id, ("友军" if side == "left" else "假人"), _units.size()])
+	return u
+
+# 释放一个单位的全部 3D 节点 + 血条 overlay, 并从 _units 移除.
+func _edit_free_unit_nodes(u: Dictionary) -> void:
+	for k in ["sprite", "shadow", "ring", "contact"]:
+		var n = u.get(k, null)
+		if is_instance_valid(n):
+			n.queue_free()
+	var br = u.get("bar_root", null)
+	if is_instance_valid(br):
+		br.queue_free()
+	# 召唤体/投射物 这里不处理 (编辑态不会产生)
+
+func _edit_delete_unit(u: Dictionary) -> void:
+	_edit_free_unit_nodes(u)
+	_units.erase(u)
+
+func _edit_clear() -> void:
+	for u in _units.duplicate():
+		_edit_free_unit_nodes(u)
+	_units.clear()
+	_projectiles.clear()
+	_edit_set_status("已清空")
+
+# ▶开始: 把当前摆位生效为战斗. 为干净起见 (避免重复 _inject/_apply 叠加), 先快照摆位, 再做开战准备.
+#   注: 编辑态摆放时已逐个 _make_unit, 但还没跑过 _inject_equipment/_apply_spawn_passives/_eq_apply_all_stats,
+#   所以这里补跑一次即可 (开战准备), 之后退出编辑态 → 模拟开始推进.
+func _edit_start_battle() -> void:
+	if _units.is_empty():
+		_edit_set_status("场上没有单位, 先摆几个再开始")
+		return
+	# 快照当前摆位 (⏸编辑 用它重新生成一份干净的)
+	_edit_snapshot_setup()
+	_inject_equipment()
+	_apply_spawn_passives()
+	_eq_apply_all_stats()
+	_edit_mode = false
+	_over = false
+	if _edit_btn_start != null: _edit_btn_start.disabled = true
+	if _edit_btn_edit != null: _edit_btn_edit.disabled = false
+	_edit_set_status("战斗中 ... (点 ⏸编辑 暂停回摆位)")
+
+# ⏸编辑: 暂停回编辑态. 按开战前的摆位快照重新生成一份干净单位 (避免战斗中状态/护盾/DoT 残留).
+func _edit_back_to_edit() -> void:
+	_edit_clear()
+	for s in _edit_paused_setup:
+		var u := _make_unit(str(s["id"]), str(s["side"]), s["pos"])
+		if str(s["side"]) == "right":
+			u["no_basic"] = true
+			u["no_move"] = true
+			u["active_skills"] = []
+			u["maxHp"] = float(s.get("hp", _edit_dummy_hp))
+			u["hp"] = u["maxHp"]
+			if not bool(s.get("killable", false)):
+				u["_review_dummy"] = true
+		_units.append(u)
+	_edit_mode = true
+	_over = false
+	if _edit_btn_start != null: _edit_btn_start.disabled = false
+	if _edit_btn_edit != null: _edit_btn_edit.disabled = true
+	_edit_set_status("已回编辑模式 (按摆位重新生成)")
+
+func _edit_snapshot_setup() -> void:
+	_edit_paused_setup.clear()
+	for u in _units:
+		_edit_paused_setup.append({
+			"id": str(u["id"]),
+			"side": str(u["side"]),
+			"pos": Vector2(u["pos"]),
+			"hp": float(u.get("maxHp", 500.0)),
+			"killable": not bool(u.get("_review_dummy", false)) if str(u["side"]) == "right" else true,
+		})
+
+# ----------------------------------------------------------------------------
+#  编辑面板 (代码构建, 无 .tscn). 子控件 mouse_filter=STOP → GUI 层吃掉点击, 不误摆到 UI 上.
+# ----------------------------------------------------------------------------
+func _build_edit_palette() -> void:
+	var ids: Array = STATS.keys()
+	if not ids.is_empty() and not ids.has(_edit_pick_id):
+		_edit_pick_id = str(ids[0])
+	var panel := PanelContainer.new()
+	panel.name = "DebugEditPalette"
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.04, 0.08, 0.13, 0.92)
+	sb.border_color = Color("#ffd93d")
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(10)
+	sb.content_margin_left = 12; sb.content_margin_right = 12
+	sb.content_margin_top = 10; sb.content_margin_bottom = 10
+	panel.add_theme_stylebox_override("panel", sb)
+	panel.position = Vector2(16, 60)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP   # 面板区域吃掉点击, 不穿透到战场摆位
+	_ui_layer.add_child(panel)
+	_edit_palette = panel
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 8)
+	panel.add_child(vb)
+
+	var title := Label.new()
+	title.text = "🛠 调试场 · 编辑"
+	title.add_theme_font_size_override("font_size", 18)
+	title.add_theme_color_override("font_color", Color("#ffd93d"))
+	vb.add_child(title)
+
+	# --- 龟选择 (◀ id ▶) ---
+	var row_pick := HBoxContainer.new()
+	row_pick.add_theme_constant_override("separation", 6)
+	vb.add_child(row_pick)
+	row_pick.add_child(_edit_mk_btn("◀", func(): _edit_cycle_pick(-1), 34))
+	_edit_lbl_pick = Label.new()
+	_edit_lbl_pick.custom_minimum_size = Vector2(120, 0)
+	_edit_lbl_pick.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_edit_lbl_pick.add_theme_font_size_override("font_size", 15)
+	_edit_lbl_pick.add_theme_color_override("font_color", Color("#cfe6ff"))
+	row_pick.add_child(_edit_lbl_pick)
+	row_pick.add_child(_edit_mk_btn("▶", func(): _edit_cycle_pick(1), 34))
+
+	# --- 阵营 (左队/右队) ---
+	var row_side := HBoxContainer.new()
+	row_side.add_theme_constant_override("separation", 6)
+	vb.add_child(row_side)
+	var lbl_side := Label.new(); lbl_side.text = "阵营:"
+	lbl_side.add_theme_font_size_override("font_size", 14)
+	lbl_side.add_theme_color_override("font_color", Color("#9fb6c8"))
+	row_side.add_child(lbl_side)
+	row_side.add_child(_edit_mk_btn("切换 (左队/右队)", func(): _edit_toggle_side(), 150))
+
+	# --- 假人血量 (−/+) + 不死开关 ---
+	var row_hp := HBoxContainer.new()
+	row_hp.add_theme_constant_override("separation", 6)
+	vb.add_child(row_hp)
+	var lbl_hp_t := Label.new(); lbl_hp_t.text = "假人HP:"
+	lbl_hp_t.add_theme_font_size_override("font_size", 14)
+	lbl_hp_t.add_theme_color_override("font_color", Color("#9fb6c8"))
+	row_hp.add_child(lbl_hp_t)
+	row_hp.add_child(_edit_mk_btn("−", func(): _edit_adjust_hp(-100.0), 34))
+	_edit_lbl_hp = Label.new()
+	_edit_lbl_hp.custom_minimum_size = Vector2(60, 0)
+	_edit_lbl_hp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_edit_lbl_hp.add_theme_font_size_override("font_size", 14)
+	_edit_lbl_hp.add_theme_color_override("font_color", Color("#cfe6ff"))
+	row_hp.add_child(_edit_lbl_hp)
+	row_hp.add_child(_edit_mk_btn("+", func(): _edit_adjust_hp(100.0), 34))
+	row_hp.add_child(_edit_mk_btn("掉血/不死", func(): _edit_toggle_killable(), 96))
+
+	# --- 控制 (开始 / 编辑 / 清空 / 返回) ---
+	var row_ctl := HBoxContainer.new()
+	row_ctl.add_theme_constant_override("separation", 6)
+	vb.add_child(row_ctl)
+	_edit_btn_start = _edit_mk_btn("▶ 开始", func(): _edit_start_battle(), 80)
+	row_ctl.add_child(_edit_btn_start)
+	_edit_btn_edit = _edit_mk_btn("⏸ 编辑", func(): _edit_back_to_edit(), 80)
+	_edit_btn_edit.disabled = true
+	row_ctl.add_child(_edit_btn_edit)
+	row_ctl.add_child(_edit_mk_btn("清空", func(): _edit_clear(), 64))
+	row_ctl.add_child(_edit_mk_btn("返回菜单", func(): _edit_exit_to_menu(), 90))
+
+	# --- 状态行 + 操作提示 ---
+	_edit_lbl_status = Label.new()
+	_edit_lbl_status.add_theme_font_size_override("font_size", 13)
+	_edit_lbl_status.add_theme_color_override("font_color", Color("#ffe9a8"))
+	vb.add_child(_edit_lbl_status)
+	var help := Label.new()
+	help.text = "左键空地=摆放 · 拖拽单位=挪位 · 右键=删除"
+	help.add_theme_font_size_override("font_size", 12)
+	help.add_theme_color_override("font_color", Color("#7a8a96"))
+	vb.add_child(help)
+
+	_edit_refresh_labels()
+
+func _edit_mk_btn(label: String, cb: Callable, min_w: float = 0.0) -> Button:
+	var b := Button.new()
+	b.text = label
+	b.add_theme_font_size_override("font_size", 14)
+	b.mouse_filter = Control.MOUSE_FILTER_STOP   # 按钮吃掉自身点击 (不穿透摆位)
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	if min_w > 0.0:
+		b.custom_minimum_size = Vector2(min_w, 0)
+	if cb.is_valid():
+		b.pressed.connect(cb)
+	return b
+
+func _edit_cycle_pick(dir: int) -> void:
+	var ids: Array = STATS.keys()
+	if ids.is_empty():
+		return
+	var idx := ids.find(_edit_pick_id)
+	if idx < 0:
+		idx = 0
+	idx = (idx + dir + ids.size()) % ids.size()
+	_edit_pick_id = str(ids[idx])
+	_edit_refresh_labels()
+
+func _edit_toggle_side() -> void:
+	_edit_pick_side = "right" if _edit_pick_side == "left" else "left"
+	_edit_refresh_labels()
+
+func _edit_adjust_hp(d: float) -> void:
+	_edit_dummy_hp = maxf(100.0, _edit_dummy_hp + d)
+	_edit_refresh_labels()
+
+func _edit_toggle_killable() -> void:
+	_edit_dummy_killable = not _edit_dummy_killable
+	_edit_refresh_labels()
+
+func _edit_refresh_labels() -> void:
+	var ids: Array = STATS.keys()
+	var idx := maxi(0, ids.find(_edit_pick_id))
+	if _edit_lbl_pick != null:
+		var nm := str(_data_by_id.get(_edit_pick_id, {}).get("name", _edit_pick_id))
+		var side_t := "友军" if _edit_pick_side == "left" else "假人"
+		_edit_lbl_pick.text = "%s (%d/%d) · %s" % [nm, idx + 1, ids.size(), side_t]
+	if _edit_lbl_hp != null:
+		var kt := "会死" if _edit_dummy_killable else "不死"
+		_edit_lbl_hp.text = "%d (%s)" % [int(_edit_dummy_hp), kt]
+
+func _edit_set_status(s: String) -> void:
+	if _edit_lbl_status != null:
+		_edit_lbl_status.text = s
+
+func _edit_exit_to_menu() -> void:
+	DEBUG_EDIT = false
+	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
 # ============================================================================
 #  DEV 自截图 (SELFSHOT=<秒>): 等战斗跑起来 + frame_post_draw 保证入帧缓冲

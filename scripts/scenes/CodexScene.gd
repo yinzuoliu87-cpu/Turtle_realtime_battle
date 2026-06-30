@@ -257,8 +257,6 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _ready() -> void:
-	# 成就: 首次打开图鉴 (1:1 PoC CodexScene.ts:58 tracker.onCodexOpen()).
-	AchievementTracker.on_codex_open()
 	if DataRegistry.all_pets.is_empty():
 		status_bar.text = "❌ DataRegistry 未加载"
 		return

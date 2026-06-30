@@ -24,8 +24,6 @@ var equipment_by_id: Dictionary = {}
 var phase2_equipment: Array = []
 var phase2_equipment_by_id: Dictionary = {}
 var synergies: Dictionary = {}
-var achievements: Array = []
-var achievements_by_id: Dictionary = {}   # id → 成就 def (1:1 PoC ACHIEVEMENT_BY_ID)
 var status_defs: Array = []
 var battle_rules: Array = []
 var shop_buffs: Array = []
@@ -56,9 +54,6 @@ func _ready() -> void:
 		phase2_equipment_by_id[eq["id"]] = eq
 
 	synergies = _load_json_dict("res://data/synergies.json")
-	achievements = _load_json_array("res://data/achievements.json")
-	for ach in achievements:
-		achievements_by_id[ach["id"]] = ach
 	status_defs = _load_json_array("res://data/status.json")
 	battle_rules = _load_json_array("res://data/battle-rules.json")
 	shop_buffs = _load_json_array("res://data/shop-buffs.json")
@@ -70,8 +65,8 @@ func _ready() -> void:
 	var def_obj := _load_json_dict("res://data/def-constant.json")
 	def_constant = def_obj.get("value", 40)
 
-	print("[DataRegistry] ✓ loaded: %d pets, %d equipment, %d achievements, %d status, %d rules, %d buffs, %d synergies"
-		% [all_pets.size(), all_equipment.size(), achievements.size(), status_defs.size(),
+	print("[DataRegistry] ✓ loaded: %d pets, %d equipment, %d status, %d rules, %d buffs, %d synergies"
+		% [all_pets.size(), all_equipment.size(), status_defs.size(),
 		   battle_rules.size(), shop_buffs.size(), synergies.size()])
 
 

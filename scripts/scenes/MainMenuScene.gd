@@ -2,7 +2,7 @@ extends Control
 
 ## MainMenuScene — 主菜单, 1:1 PoC MainMenuScene.ts 布局.
 ## 设计台 1280×720. 标题menu-title图@(240,130) / 左栏btn-frame按钮(360×87)中心x=240 /
-## 右墙 frame-coin龟币框 + 4个frame-square磁贴(图鉴/教程/成就/战绩, 仅图标).
+## 右墙 frame-coin龟币框 + 4个frame-square磁贴(图鉴/教程/排行榜/战绩, 仅图标).
 
 const W := 1280
 const H := 720
@@ -42,6 +42,7 @@ func _ready() -> void:
 	page_box = Control.new()
 	content_root.add_child(page_box)
 	_show_page("main")
+	_debug_arena_entry()             # 🛠 调试场入口 (右下角小钮; 开发自由摆位测试)
 	get_viewport().size_changed.connect(_on_menu_resize)
 	_maybe_ask_fullscreen()   # 1:1 PoC maybeAskFullscreen: 每会话一次问是否全屏
 
@@ -162,7 +163,6 @@ func _build_page_buttons(_page: String, _on_first_load: bool) -> void:
 		["⚔ 开始战斗", func(): _start_battle_flow(), false],
 		["🎒 背包", func(): _go("Inventory"), false],
 		["🛒 商店", func(): _go("Shop"), false],
-		["🏆 排行榜", func(): _go("Leaderboard"), false],
 		["⚙ 设置", func(): _go("Settings"), false],
 	]
 	var n := items.size()
@@ -422,11 +422,11 @@ func _right_column() -> void:
 	cl.add_theme_font_size_override("font_size", 22); cl.add_theme_color_override("font_color", Color("#2c4a1e")); coin.add_child(cl)
 	# 入场: 龟币框为 cards[0], 4 磁贴 cards[1..4]; PoC ts:199-201 slide x→home + alpha, dur420 delay 850+60i
 	_slide_in(coin, 0)
-	# 4 磁贴 (图鉴/教程/成就/战绩) — PoC BootScene key→file: codex-icon, ui/help-button, menu/icon-achievements, menu/icon-record
+	# 4 磁贴 (图鉴/教程/排行榜/战绩) — PoC BootScene key→file: codex-icon, ui/help-button, menu/icon-achievements, menu/icon-record
 	var defs := [
 		["menu/codex-icon", "图鉴", func(): _go("Codex")],
 		["ui/help-button", "教程", func(): _on_tutorial()],
-		["menu/icon-achievements", "成就", func(): _go("Achievements")],
+		["menu/icon-achievements", "排行榜", func(): _go("Leaderboard")],
 		["menu/icon-record", "战绩", func(): _go("Record")],
 	]
 	# 战绩磁贴显示 "X胜 Y负" (1:1 PoC makeSquareTile subValue, recordValue = total>0 ? `${w}胜 ${l}负` : '')
@@ -528,6 +528,35 @@ func _tile_press(holder: Control, cb: Callable) -> void:
 		holder.scale = Vector2(1, 1)
 	if cb.is_valid():
 		cb.call()
+
+
+# ─── 🛠 调试场入口 (右下角; 开发用自由摆位测试场) ───
+const _RB_DEBUG := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
+
+func _debug_arena_entry() -> void:
+	var b := Button.new()
+	b.text = "🛠 调试场"
+	b.add_theme_font_size_override("font_size", 15)
+	b.add_theme_color_override("font_color", Color("#ffe9a8"))
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.04, 0.10, 0.16, 0.82)
+	sb.border_color = Color("#ffd93d")
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(8)
+	sb.content_margin_left = 14; sb.content_margin_right = 14
+	sb.content_margin_top = 7; sb.content_margin_bottom = 7
+	b.add_theme_stylebox_override("normal", sb)
+	b.add_theme_stylebox_override("hover", sb)
+	b.add_theme_stylebox_override("pressed", sb)
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	b.size = Vector2(120, 38)
+	b.position = Vector2(16, H - 38 - 16)   # 左下角 (不挤左栏 5 按钮)
+	content_root.add_child(b)
+	b.pressed.connect(_open_debug_arena)
+
+func _open_debug_arena() -> void:
+	_RB_DEBUG.DEBUG_EDIT = true
+	get_tree().change_scene_to_file("res://scenes/RealtimeBattle3D.tscn")
 
 
 # ─── 路由 ───

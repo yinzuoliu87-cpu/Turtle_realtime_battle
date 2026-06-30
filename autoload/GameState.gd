@@ -617,11 +617,6 @@ var battles_total: int = 0
 var inventory: Array[String] = []                     # 收集到的装备 id 列表 (跨场景持久)
 var match_history: Array = []                          # 对局记录 [{result,lineup,mode,turn}], 最新在前封顶 50
 var pet_levels: Dictionary = {}                        # 宠物等级 {petId: 1-10} (1:1 PoC petState.levels; 只调试面板改, 默认1)
-var achievements_unlocked: Array = []                 # 已解锁成就 id
-## 成就累计统计 (1:1 PoC achievement-tracker.ts AchStats). 持久化, AchievementTracker 读写.
-## 字段: battles/wins/crits/totalDmg/totalEquipsBought/totalCoinsEarned(int)
-##       petsUsed/rulesSeen ({id→true} set 模拟), bestDungeon(int).
-var ach_stats: Dictionary = {}
 var bgm_volume: float = 0.45                           # 设置: BGM 音量
 var sfx_volume: float = 0.8                            # 设置: SFX 音量
 
@@ -853,8 +848,6 @@ func save() -> void:
 		"inventory": inventory,
 		"match_history": match_history,
 		"pet_levels": pet_levels,
-		"achievements_unlocked": achievements_unlocked,
-		"ach_stats": ach_stats,
 		"bgm_volume": bgm_volume,
 		"sfx_volume": sfx_volume,
 		"meta_deepsea_coins": meta_deepsea_coins,
@@ -897,8 +890,6 @@ func _load() -> void:
 	battles_total = data.get("battles_total", 0)
 	match_history = data.get("match_history", [])
 	pet_levels = data.get("pet_levels", {})
-	achievements_unlocked = data.get("achievements_unlocked", [])
-	ach_stats = data.get("ach_stats", {})
 	bgm_volume = data.get("bgm_volume", 0.45)
 	sfx_volume = data.get("sfx_volume", 0.8)
 	# V2 赛季持久字段
@@ -929,9 +920,6 @@ func reset_save() -> void:
 	battles_won = 0
 	battles_total = 0
 	inventory = []
-	# 1:1 PoC resetAchievements(): 清空解锁 + 累计统计
-	achievements_unlocked = []
-	ach_stats = {}
 	match_history = []
 	# V2 赛季持久字段重置 (注: pet_levels 龟自身等级来自养龟站, 不在此清)
 	meta_deepsea_coins = 0
