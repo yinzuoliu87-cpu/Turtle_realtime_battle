@@ -2474,7 +2474,7 @@
       "transformDefScale": 0.2,
       "transformMrScale": 0.2,
       "transformAoeDmgScale": 1.2,
-      "transformDuration": 6,
+      "transformDuration": 15,
       "brief": "熔岩龟将造成伤害的 25% 与承受伤害的 20% 转化为怒气；怒气满100时变身为火山龟，全属性提升并获得火山技能组，持续15秒。",
       "desc": "熔岩龟将造成伤害的 25% 与承受伤害的 20% 转化为怒气。\n怒气满100时变身为火山龟，持续15秒，变身时获得加成：最大生命值 +（250%×攻击力({ATK}) = {H:ATK*2.5}），攻击力 +（20%×攻击力({ATK}) = {N:ATK*0.2}），护甲 +（20%×攻击力({ATK}) = {D:ATK*0.2}），魔抗 +（20%×攻击力({ATK}) = {M:ATK*0.2}）。\n变身瞬间对全体敌人造成（{M:ATK*1.2+ATK*0.2*1.2}）魔法伤害并施加 <span style=\"color:#ff6600\">{0.67*ATK*1.2} 灼烧值</span>，每令一名敌人灼烧便回复 8% 已损生命值；火山形态结束后变回原形态。",
       "descVolcano": "熔岩龟已变身为火山龟！\n\n已获得加成：\n最大生命值 <span class=\"val-heal\">+{H:ATK*2.5}</span>\n攻击力 <span class=\"val-atk\">+{N:ATK*0.2}</span>\n护甲 <span class=\"val-atk\">+{D:ATK*0.2}</span>\n魔抗 <span class=\"val-atk\">+{M:ATK*0.2}</span>\n\n拥有更强大的火山技能组。\n剩余 <span class=\"val-atk\">{lavaTransformTurns}</span> 秒后恢复小形态。"
