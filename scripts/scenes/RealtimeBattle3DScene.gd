@@ -43,7 +43,7 @@ const STATS := {
 	"basic": [true, 105.0, 0.85, 70.0], "stone": [true, 70.0, 1.1, 70.0], "bamboo": [true, 105.0, 0.85, 70.0],
 	"angel": [false, 105.0, 0.85, 400.0], "ice": [false, 105.0, 0.85, 400.0], "ninja": [false, 145.0, 0.6, 400.0],
 	"two_head": [true, 145.0, 0.85, 70.0], "ghost": [false, 145.0, 0.6, 400.0], "diamond": [true, 70.0, 1.1, 70.0],
-	"fortune": [true, 105.0, 0.75, 70.0], "dice": [false, 145.0, 0.6, 400.0], "rainbow": [true, 105.0, 0.85, 70.0],
+	"fortune": [true, 105.0, 0.75, 70.0], "dice": [false, 145.0, 0.6, 400.0], "rainbow": [true, 105.0, 0.7, 70.0],
 	"gambler": [false, 145.0, 0.85, 400.0], "hunter": [false, 145.0, 0.6, 400.0], "pirate": [false, 105.0, 0.85, 400.0],
 	"candy": [false, 105.0, 0.85, 400.0], "bubble": [false, 70.0, 1.1, 400.0], "line": [false, 145.0, 0.6, 400.0],
 	"lightning": [false, 145.0, 0.6, 400.0], "phoenix": [false, 105.0, 0.85, 400.0], "lava": [false, 145.0, 0.85, 400.0],
@@ -53,13 +53,13 @@ const STATS := {
 }
 const DEFAULT_STAT := [true, 105.0, 0.85, 70.0]
 const REVIEW_DEMO := true                  # 评审期: 战斗=1受审龟 vs 1假人(右不动/不打/不放技/高血沙包); 上线前置 false
-const REVIEW_TURTLE := "fortune"             # 受审龟 id (评审换龟只改这里)
+const REVIEW_TURTLE := "rainbow"             # 受审龟 id (评审换龟只改这里)
 const REVIEW_SKILL_IDX := 2   # 评审时受审龟放哪个技(skillPool索引, 验主动技: 2冰霜/3冰封); -1=默认
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 500.0            # 假人固定血量
-const REVIEW_DUMMY_COUNT := 6   # 假人数量(单龟评审时); >1=排开
-const REVIEW_DUMMY_KILLABLE := true   # true=假人会死(看换目标); false=不死回满沙包(看完整动画)
+const REVIEW_DUMMY_COUNT := 3   # 假人数量(单龟评审时); >1=排开
+const REVIEW_DUMMY_KILLABLE := false   # true=假人会死(看换目标); false=不死回满沙包(看完整动画)
 const LEFT_DEMO := ["basic", "stone", "lightning"]   # 非评审 demo (REVIEW_DEMO=false 时用)
 const RIGHT_DEMO := ["diamond", "ninja", "ghost"]
 
@@ -1117,18 +1117,22 @@ func _make_contact_texture() -> GradientTexture2D:
 	return gt
 
 # 队伍环贴图: 队色 radial 软环 (占位; 商业版换贴图)
-func _make_ring_texture(col: Color) -> GradientTexture2D:
-	var grad := Gradient.new()
-	grad.set_color(0, Color(col.r, col.g, col.b, 0.0))
-	grad.add_point(0.7, Color(col.r, col.g, col.b, 0.0))
-	grad.set_color(1, Color(col.r, col.g, col.b, 0.5))
-	var gt := GradientTexture2D.new()
-	gt.gradient = grad
-	gt.fill = GradientTexture2D.FILL_RADIAL
-	gt.fill_from = Vector2(0.5, 0.5)
-	gt.fill_to = Vector2(1.0, 0.5)
-	gt.width = 96; gt.height = 96
-	return gt
+var _ring_tex_cache: ImageTexture = null
+func _make_ring_texture(_col: Color) -> ImageTexture:   # Image逐像素真圆环(角alpha=0不显方块); 白底,_skill_ring用modulate上色; 缓存(每次画太费)
+	if _ring_tex_cache != null:
+		return _ring_tex_cache
+	var N := 96
+	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
+	var c := float(N - 1) / 2.0
+	for y in range(N):
+		for x in range(N):
+			var d := Vector2(float(x) - c, float(y) - c).length() / c
+			var a := 0.0
+			if d < 1.0:
+				a = clampf(1.0 - absf(d - 0.82) / 0.18, 0.0, 1.0) * 0.6
+			img.set_pixel(x, y, Color(1, 1, 1, a))
+	_ring_tex_cache = ImageTexture.create_from_image(img)
+	return _ring_tex_cache
 
 # 状态条: 复用回合制版 HpBar 组件 (自定义 _draw: 黑边/暗红槽/玻璃高光/逐行渐变填充/护盾段/受击红trail+白闪/刻度).
 #   + 左侧等级牌 (棕底金字 Panel, 回合制 turtle-hud 同款) + 下方龟能条 (实时资源, HpBar 不画).
@@ -1308,8 +1312,8 @@ func _tick_skill_cd(u: Dictionary, delta: float) -> void:
 	if cds.is_empty():                                   # 懒初始化: 各技起始冷却错峰(别一开局全放)
 		for s in u.get("active_skills", []):
 			cds[str(s)] = _skill_cd(u, str(s))   # 初始龟能0: 满冷却从0充(用户; 原错峰head-start去掉)
-	if _t < float(u.get("stun_until", 0.0)) or u.get("airborne", false):
-		return   # 眩晕/击飞 → 龟能充能暂停(用户2026-06-29)
+	if _t < float(u.get("stun_until", 0.0)) or u.get("airborne", false) or _t < float(u.get("storm_until", 0.0)):
+		return   # 眩晕/击飞/风暴期 → 龟能锁定不充(用户)
 	var _ecm: float = maxf(1.0, float(u.get("echarge_mult", 1.0))) if _t < float(u.get("echarge_until", 0.0)) else 1.0   # 龟能充能加速buff(祝福等)
 	if _t < float(u.get("spd_dbf_until", 0.0)):
 		_ecm *= float(u.get("spd_echarge_mult", 1.0))   # 充能减速debuff(寒冰登场等)
@@ -2305,6 +2309,7 @@ const _SELF_CAST_SKILLS := {
 	"lavaSurge": true, "bubbleShield": true, "shellAbsorb": true,
 	"fortuneDice": true, "lightningSurgeBuff": true, "chestCount": true,
 	"fortuneGainCoins": true, "phoenixPurify": true, "lightningSurge": true, "lightningShield": true, "rainbowReflect": true,
+	"rainbowStorm": true,
 	"gamblerBet": true, "diceAllIn": true, "stoneTaunt": true,
 }
 
@@ -2516,7 +2521,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"diamondCollide":       _sk_dmg(u, tgt, {"phys": 0.8, "mr": 0.9, "hits": 1, "rider": "stun", "name": "撞击!", "color": Color("#9bdcff")})
 		"fortuneStrike":        _sk_dmg(u, tgt, {"phys": 1.0, "hits": 2, "name": "财运一击!", "color": Color("#ffd93d")})
 		"diceAttack":           _sk_dmg(u, tgt, {"phys": 0.9, "hits": 3, "name": "骰子攻击!", "color": Color("#ff4444")})
-		"rainbowStorm":         _sk_dmg(u, tgt, {"magic": 0.8, "true": 0.4, "hits": 4, "aoe": true, "stagger": 0.1, "defDown": 0.15, "name": "棱镜风暴!", "color": Color("#ff8ad8")})
+		"rainbowStorm":         _sk_rainbow_storm(u)
 		"gamblerCards":         _sk_dmg(u, tgt, {"phys": 1.35, "hits": 3, "name": "发牌!", "color": Color("#ffd93d")})
 		"gamblerDraw":          _sk_gambler_wild(u, tgt)   # 万能牌(默认签名技): 原来错派纯伤害, 改回 _sk_gambler_wild(2段+盾+治疗+减益)
 		"hunterShot":           _sk_dmg(u, tgt, {"phys": 1.65, "hits": 3, "name": "精准射击!", "color": Color("#a8ffb0")})
@@ -2742,6 +2747,88 @@ func _sk_line_link(u: Dictionary) -> void:                       # 线条龟·�
 		_apply_damage_from(u, o, _atk_dmg(u, 0.8, o), Color("#dddddd"))
 		_add_stack(o, "ink", 1, 5)
 		picked += 1
+
+var _disc_tex_cache: ImageTexture = null
+func _make_disc_texture() -> ImageTexture:   # Image真圆(角alpha=0); 白底modulate上色; 缓存
+	if _disc_tex_cache != null:
+		return _disc_tex_cache
+	var N := 128
+	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
+	var c := float(N - 1) / 2.0
+	for y in range(N):
+		for x in range(N):
+			var d := Vector2(float(x) - c, float(y) - c).length() / c   # 0=心 1=边
+			var a := 0.0
+			if d < 1.0:
+				a = (1.0 - d) * 0.55                              # 软径向衰减, 边=0
+			img.set_pixel(x, y, Color(1, 1, 1, a))
+	_disc_tex_cache = ImageTexture.create_from_image(img)
+	return _disc_tex_cache
+
+func _sk_rainbow_storm(u: Dictionary) -> void:                  # 彩虹龟·全色风暴 ✅ (自身处圆形风暴区4秒/每0.5秒/圈内-20%护甲魔抗; 期间锁龟能/不被控打断)
+	u["storm_until"] = _t + 4.0                 # 风暴4秒期间龟能锁定(用户)
+	var center: Vector2 = u["pos"]              # 固定施法点
+	var radius := 140.0
+	var disc := Sprite3D.new()                  # 贴地圆形风暴区(软圆盘)
+	disc.texture = _make_disc_texture()
+	disc.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	disc.axis = Vector3.AXIS_Y                  # 躺平贴地
+	disc.shaded = false
+	disc.transparent = true
+	disc.modulate = Color(1.0, 0.5, 0.8, 0.4)
+	disc.position = _world_pos(center, 0.04)
+	disc.pixel_size = (radius * 2.0 * WS) / 128.0
+	_world.add_child(disc)
+	u["storm_disc"] = disc
+	var tw := create_tween()
+	for i in range(8):   # 4秒 / 每0.5秒 = 8跳
+		tw.tween_callback(_rainbow_storm_tick.bind(u, center, radius, i))
+		tw.tween_interval(0.5)
+	tw.tween_callback(_rainbow_storm_end.bind(u))
+
+func _rainbow_storm_tick(u: Dictionary, center: Vector2, radius: float, ti: int) -> void:
+	if not u.get("alive", false):
+		return
+	var cols := [Color(1, 0.35, 0.4), Color(1, 0.65, 0.3), Color(1, 0.95, 0.4), Color(0.45, 1, 0.5), Color(0.4, 0.7, 1), Color(0.75, 0.5, 1)]
+	var disc = u.get("storm_disc", null)
+	if disc != null and is_instance_valid(disc):
+		var c: Color = cols[ti % cols.size()]
+		disc.modulate = Color(c.r, c.g, c.b, 0.42)   # 七彩色循环
+	for k in range(6):   # 旋转七彩粒子(沿圆弧切向→风暴swirl), 基角每跳推进
+		var ang := TAU * float(k) / 6.0 + float(ti) * 0.55
+		var off := Vector2(cos(ang), sin(ang)) * (radius * 0.82)
+		var sh := Sprite3D.new()
+		sh.texture = _make_disc_texture()   # 用缓存Image圆(不显方块), modulate上色
+		sh.modulate = cols[(ti + k) % cols.size()]
+		sh.pixel_size = 0.004
+		sh.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sh.shaded = false
+		sh.transparent = true
+		sh.position = _world_pos(center + off, 0.45)
+		_world.add_child(sh)
+		var ang2 := ang + 0.9
+		var off2 := Vector2(cos(ang2), sin(ang2)) * (radius * 0.82)
+		var twr := create_tween()
+		twr.set_parallel(true)
+		twr.tween_property(sh, "position", _world_pos(center + off2, 0.78), 0.5)
+		twr.tween_property(sh, "modulate:a", 0.0, 0.5)
+		twr.chain().tween_callback(sh.queue_free)
+	for o in _enemies_of(u):
+		if not o.get("alive", false):
+			continue
+		if o["pos"].distance_to(center) <= radius:
+			_buff(o, "def", -0.20, true, 0.65)   # 圈内-20%护甲
+			_buff(o, "mr", -0.20, true, 0.65)    # 圈内-20%魔抗
+			_apply_damage_from(u, o, _atk_dmg(u, 0.1, o, true), Color("#ff8ad8"))
+			_apply_damage_from(u, o, int(u["atk"] * 0.05), Color("#fff0a0"), 0.0, true)   # 8跳共0.8魔+0.4真=原值
+
+func _rainbow_storm_end(u: Dictionary) -> void:
+	var disc = u.get("storm_disc", null)
+	if disc != null and is_instance_valid(disc):
+		var tw := create_tween()
+		tw.tween_property(disc, "modulate:a", 0.0, 0.4)
+		tw.chain().tween_callback(disc.queue_free)
+	u["storm_disc"] = null
 
 func _sk_fortune_coins(u: Dictionary) -> void:                  # 财神龟·聚财 ✅ (立即+10金币)
 	u["gold"] += 10
@@ -3614,7 +3701,7 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 			match int(u.get("prism_color", -1)):
 				0: _apply_damage_from(u, tgt, int(u["atk"] * 0.25), Color("#ff6b6b"), 0.0, true)   # 红: 额外真伤
 				1: _grant_shield(u, u["atk"] * 0.2)                                                # 蓝: 每普攻获小盾
-				2: _heal(u, u["maxHp"] * 0.02, true)                                               # 绿: 回2%最大HP
+				2: _heal(u, (u["maxHp"] - u["hp"]) * 0.025, true)                                               # 绿: 回2%最大HP
 	# 猎人猎杀: 攻击后斩杀<14%HP敌
 	if u["id"] == "hunter" and tgt["alive"] and tgt["hp"] < tgt["maxHp"] * 0.14:
 		var was_alive: bool = tgt["alive"]
@@ -4191,7 +4278,7 @@ func _impact(tgt: Dictionary, dmg: int, level: String = "auto", at_pos = null) -
 		_impact_particles(p2d, tgt.get("height", 0.0))
 
 # Hit Spark(亮星) + Impact Ring(快环): 朝镜头 billboard, ~0.14s pop→淡; 同目标50ms节流防多段刷爆
-var _hitring_tex: GradientTexture2D = null
+var _hitring_tex: ImageTexture = null
 var _spark_tex: GradientTexture2D = null
 func _hit_spark(tgt, at_pos = null) -> void:
 	if tgt == null or _t < float(tgt.get("_spark_t", 0.0)):
