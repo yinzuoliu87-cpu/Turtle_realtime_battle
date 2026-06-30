@@ -53,13 +53,14 @@ const STATS := {
 }
 const DEFAULT_STAT := [true, 105.0, 0.85, 70.0]
 const REVIEW_DEMO := true                  # 评审期: 战斗=1受审龟 vs 1假人(右不动/不打/不放技/高血沙包); 上线前置 false
-const REVIEW_TURTLE := "phoenix"              # 受审龟 id (评审换龟只改这里)
-const REVIEW_SKILL_IDX := 2   # 评审时受审龟放哪个技(skillPool索引, 验主动技: 2冰霜/3冰封); -1=默认
+const REVIEW_TURTLE := "shell"              # 受审龟 id (评审换龟只改这里)
+const REVIEW_SKILL_IDX := 3   # 评审时受审龟放哪个技(skillPool索引); -1=默认
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 500.0            # 假人固定血量
 const REVIEW_DUMMY_COUNT := 3   # 假人数量(单龟评审时); >1=排开
 const REVIEW_DUMMY_KILLABLE := false   # true=假人会死(看换目标); false=不死回满沙包(看完整动画)
+const REVIEW_DUMMY_ATTACKS := true     # true=假人会还手(看挨打类被动如龟壳储能); 同时受审龟免死看完整循环
 const LEFT_DEMO := ["basic", "stone", "lightning"]   # 非评审 demo (REVIEW_DEMO=false 时用)
 const RIGHT_DEMO := ["diamond", "ninja", "ghost"]
 
@@ -94,7 +95,7 @@ const BASIC_ATK := {
 	"space":    {"magic": 1.2, "tcurhp": 0.18, "hits": 3},                          # 魔法+18%目标当前HP (原物 错)
 	"hiding":   {"phys": 1.0, "hits": 1, "rider": "selfdef"},                       # +自护甲buff
 	"headless": {"phys": 1.3, "hp": 0.08, "hits": 2},                              # +8%目标HP
-	"shell":    {"phys": 0.6, "true": 0.6, "hits": 2, "alt": true, "mech": "splash", "splash": 0.5},  # 交替真/物+50%溅射(用户)
+	# shell 走 _basic_attack 特判 _shell_basic (1ATK单段·物/真逐攻交替 + 120px范围溅射50%); 不进 _do_basic
 }
 const DEFAULT_BASIC := {"phys": 1.0, "hits": 1}
 
@@ -615,6 +616,8 @@ func _spawn_teams() -> void:
 		var _lu := _make_unit(str(left[i]), "left", pos)
 		if REVIEW_DEMO and str(left[i]) == "fortune":
 			_lu["gold"] = 0.0   # demo: 财神起手金币(0=看自然攒金币)
+		if REVIEW_DEMO and REVIEW_DUMMY_ATTACKS:
+			_lu["_review_dummy"] = true   # 假人会还手时受审龟免死(看完整被动循环)
 		_units.append(_lu)
 	for i in range(right.size()):
 		var pos := Vector2(ARENA.end.x - spawn_edge_margin, ARENA.position.y + spawn_front_margin + i * spawn_row_spacing)
@@ -623,9 +626,10 @@ func _spawn_teams() -> void:
 		elif REVIEW_DEMO:
 			pos = Vector2(_cx + 100.0 + (float(i) - float(right.size() - 1) / 2.0) * 150.0, _cy + 40.0)   # 横排(用户)
 		var ru := _make_unit(str(right[i]), "right", pos)
-		if REVIEW_DEMO:                          # 假人: 不动/不打/不放技/永不死训练靶 (受击照显伤害但即刻回满)
-			ru["no_basic"] = true
-			ru["no_move"] = true
+		if REVIEW_DEMO:                          # 假人: 不放技/永不死训练靶; ATTACKS时会还手(动+普攻)
+			if not REVIEW_DUMMY_ATTACKS:
+				ru["no_basic"] = true
+				ru["no_move"] = true
 			ru["active_skills"] = []
 			ru["maxHp"] = REVIEW_DUMMY_HP
 			ru["hp"] = ru["maxHp"]
@@ -792,7 +796,7 @@ func _make_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 	contact.shaded = false
 	contact.transparent = true
 	contact.alpha_cut = SpriteBase3D.ALPHA_CUT_DISABLED
-	contact.modulate = Color(1, 1, 1, CONTACT_BASE_A)
+	contact.modulate = Color(1, 1, 1, 0.0)   # 隐藏接触波纹(用户"只留影子")
 	contact.scale = CONTACT_BASE
 	contact.position = _world_pos(pos, 0.028)
 	_world.add_child(contact)
@@ -805,7 +809,7 @@ func _make_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 	ring.pixel_size = 0.011
 	ring.shaded = false
 	ring.transparent = true
-	ring.modulate = Color(1, 1, 1, 0.7)
+	ring.modulate = Color(1, 1, 1, 0.0)   # 隐藏队色环(_make_ring_texture忽略色=白; 用户"只留影子")
 	ring.position = _world_pos(pos, 0.015)
 	_world.add_child(ring)
 
@@ -814,7 +818,7 @@ func _make_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 	_ui_layer.add_child(bar["root"])
 
 	var u := {
-		"id": id, "name": str(d.get("name", id)), "rarity": str(d.get("rarity", "C")), "side": side,
+		"id": id, "name": str(d.get("name", id)), "rarity": str(d.get("rarity", "C")), "side": side, "passive": d.get("passive", {}),
 		"pos": pos, "vel": Vector2.ZERO,
 		"height": 0.0, "vy": 0.0, "vx": 0.0, "vz": 0.0, "airborne": false,
 		"hp": hp, "maxHp": hp,
@@ -1112,19 +1116,22 @@ func _make_glow_texture() -> GradientTexture2D:
 	gt.width = 96; gt.height = 96
 	return gt
 
-func _make_blob_texture() -> GradientTexture2D:
-	var grad := Gradient.new()
-	grad.set_color(0, Color(0, 0, 0, 0.58))
-	grad.add_point(0.45, Color(0, 0, 0, 0.42))
-	grad.add_point(0.78, Color(0, 0, 0, 0.12))
-	grad.set_color(1, Color(0, 0, 0, 0.0))
-	var gt := GradientTexture2D.new()
-	gt.gradient = grad
-	gt.fill = GradientTexture2D.FILL_RADIAL
-	gt.fill_from = Vector2(0.5, 0.5)
-	gt.fill_to = Vector2(1.0, 0.5)
-	gt.width = 128; gt.height = 128
-	return gt
+var _blob_tex_cache: ImageTexture = null
+func _make_blob_texture() -> ImageTexture:   # Image真圆软影(角alpha=0不显方块, 替FILL_RADIAL方角bug); 黑底,modulate控浓度,缓存
+	if _blob_tex_cache != null:
+		return _blob_tex_cache
+	var N := 128
+	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
+	var c := float(N - 1) / 2.0
+	for y in range(N):
+		for x in range(N):
+			var d := Vector2(float(x) - c, float(y) - c).length() / c
+			var a := 0.0
+			if d < 1.0:
+				a = 0.58 * pow(1.0 - d, 1.25)
+			img.set_pixel(x, y, Color(0, 0, 0, a))
+	_blob_tex_cache = ImageTexture.create_from_image(img)
+	return _blob_tex_cache
 
 # 接触核影贴图: 比 blob 更小更实的深核 (紧贴脚下盖立绘/地面交界 → 强化接地)
 func _make_contact_texture() -> GradientTexture2D:
@@ -1476,6 +1483,10 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		_lightning_basic(u, tgt)
 		_on_basic_hit(u, tgt)
 		return
+	if u["id"] == "shell":          # 龟壳改造: 1ATK单段·物/真逐攻交替 + 主目标120px内其他敌溅射50%(同类型)
+		_shell_basic(u, tgt)
+		_on_basic_hit(u, tgt)
+		return
 	var spec: Dictionary = BASIC_ATK.get(u["id"], DEFAULT_BASIC)
 	if u["id"] == "lava" and u.get("volcano", false):                  # 火山形态: 烈焰重击式平A (单段重击)
 		spec = {"magic": 1.6, "hits": 1, "rider": "burn"}
@@ -1578,6 +1589,28 @@ func _splash_adjacent(u: Dictionary, tgt: Dictionary, frac: float) -> void:
 			_apply_damage_from(u, o, _mitigate(u, u["atk"] * 0.6 * frac, o, false), Color("#cfd8e8"))
 	# 普攻 on-hit 被动钩子 (墨迹/电击/结晶叠层 + 猎杀斩杀 等)
 	_on_basic_hit(u, tgt)
+
+# 龟壳·龟壳打击(用户改造): 1ATK单段, 物理↔真实逐攻交替(本次真→下次物→…), 主目标120px内其他敌溅射50%(同类型)
+const SHELL_SPLASH_RADIUS := 120.0
+func _shell_basic(u: Dictionary, tgt: Dictionary) -> void:
+	u["basic_alt"] = not u.get("basic_alt", false)
+	var is_true: bool = bool(u["basic_alt"])
+	# 主目标命中
+	if is_true:
+		_apply_damage_from(u, tgt, int(u["atk"] * 1.0), Color("#ffffff"), 0.0, true)   # 真实(穿减伤)
+	else:
+		_apply_damage_from(u, tgt, _resolve_dmg(u, u["atk"] * 1.0, tgt, false), Color("#ff4444"))
+	# 近战打击感: 闪白 + 前冲 (同 _emit_basic 近战分支)
+	_flash(tgt); _melee_lunge(u, tgt)
+	# 范围溅射: 主目标120px内其他敌 50%(同类型)
+	for e in _enemies_of(u):
+		if e == tgt or not e.get("alive", false):
+			continue
+		if (e["pos"] - tgt["pos"]).length() <= SHELL_SPLASH_RADIUS:
+			if is_true:
+				_apply_damage_from(u, e, int(u["atk"] * 0.5), Color("#ffffff"), 0.0, true)
+			else:
+				_apply_damage_from(u, e, _resolve_dmg(u, u["atk"] * 0.5, e, false), Color("#ff4444"))
 
 # 闪电龟·改造普攻(用户2026-06-28): 一道闪电(魔法 1.15×ATK)命中主目标 → 连锁弧跳最近2敌(每跳×0.6递减);
 #   叠层在 _basic_attack 里走 _on_basic_hit(每攻击+1电击层, 满8引爆雷暴). 原始设计=魔法+跳敌+8层雷暴.
@@ -2128,6 +2161,12 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	# 靶向器055: 被标记目标受伤 +20%
 	if _t < u.get("eq_marked_until", 0.0):
 		dmg = int(dmg * 1.2)
+	# 真伤暴击 (全局: "暴击全龟通用"; 真伤照旧无视护甲/减伤, 只加暴击判定) (用户)
+	if raw and src is Dictionary and src.has("crit") and src != u:
+		var _trc: float = minf(float(src.get("crit", 0.0)), 1.0)
+		_last_atk_crit = randf() < _trc
+		if _last_atk_crit:
+			dmg = int(round(float(dmg) * (float(src.get("crit_dmg", 1.5)) + maxf(0.0, float(src.get("crit", 0.0)) - 1.0) * 1.5)))
 	var was_crit := _last_atk_crit          # §AUDIO: 先抓暴击态 (下方 hook 里嵌套 _atk_dmg 会改写它)
 	# 受伤被动(结算前改 dmg): 线条·墨迹(每层+5%受伤) / 钻石·结构(受伤减免)
 	var _ink := int((u.get("stacks", {}) as Dictionary).get("ink", 0))
@@ -2140,6 +2179,9 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	if not raw and u["shield"] > 0.0:
 		var ab := minf(u["shield"], d)
 		u["shield"] -= ab; d -= ab
+	if not raw and d > 0.0 and float(u.get("_auraShieldVal", 0.0)) > 0.0:   # aura储能盾(金)单独吸收
+		var ab_a := minf(float(u["_auraShieldVal"]), d)
+		u["_auraShieldVal"] = float(u["_auraShieldVal"]) - ab_a; d -= ab_a
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	if u.get("_review_dummy", false): u["hp"] = u["maxHp"]   # 训练靶: 受击即回满, 打不死不结算(看完整)
 	# §STATS: 战斗统计 — 输出归攻击者/承受归目标 (用显示数 dmg)
@@ -2204,9 +2246,10 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	# 星能 (星际造伤62%)
 	if src["id"] == "space":
 		src["star_energy"] = minf(src["maxHp"] * 0.40, src["star_energy"] + float(dmg) * 0.62)
-	# 储能 (龟壳受伤转储能, 上限50%最大HP)
-	if u["id"] == "shell":
+	# 储能 (龟壳受伤转储能, 上限50%最大HP) — 仅"store"相位累积 ("cd"相位不储)
+	if u["id"] == "shell" and u.get("shell_phase", "store") == "store":
 		u["store_energy"] = minf(u["maxHp"] * 0.50, u["store_energy"] + float(dmg))
+		u["_auraEnergy"] = u["store_energy"]   # 镜像给Hp条储能条显示(1:1回合制字段)
 	# 双头坚韧 (常驻被动): 每受一段攻击 +1护甲+1魔抗 (各上限20)
 	if u["id"] == "two_head":
 		var th: int = int(u.get("two_tough", 0))
@@ -4188,16 +4231,8 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			_buff(u, "lifesteal", 0.12, true, 9999.0)   # 觉醒(补): +12%吸血
 			var _ah: float = u["maxHp"] * 0.12; u["maxHp"] += _ah; u["hp"] += _ah   # 觉醒(补): +12%最大生命 (反伤无独立stat字段, 略)
 			u["crit"] += 0.25; _recalc_stats(u)
-		u["_shelltimer"] = u.get("_shelltimer", 0.0) + delta
-		if u["_shelltimer"] >= 10.0:
-			u["_shelltimer"] = 0.0
-			var se: float = u["store_energy"]
-			if se >= 1.0:
-				u["store_energy"] = 0.0
-				for o in _enemies_of(u):
-					_apply_damage_from(u, o, int(se * 0.40), Color("#b0ffe0"))
-				_grant_shield(u, se * 0.80)
-				_skill_ring(u["pos"], Color(0.7, 1.0, 0.88, 0.5), 120.0)
+		# 储能相位机: store(6s 受伤转储能) → 释放(冲击波+护盾) → cd(15s 不储) → store…
+		_shell_phase_tick(u, delta)
 	# --- 海盗船召唤: 开战~4秒后召唤一次 ---
 	if u["id"] == "pirate" and not u.get("ship_summoned", false) and _t >= 4.0:
 		u["ship_summoned"] = true
@@ -4236,6 +4271,106 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 				var lv2 = le[randi() % le.size()]
 				_apply_damage_from(u, lv2, _shock_dmg(u), Color("#4dabf7"), 0.0, true)
 				_lightning_strike(lv2["pos"], Color("#aef0ff"))   # 天降闪电(自动电击)
+
+# ============================================================================
+#  龟壳·气场觉醒 储能相位机 (用户改造): store 6s → 释放(缓慢冲击波+衰减护盾) → cd 15s → 循环
+# ============================================================================
+const SHELL_STORE_SEC := 6.0          # 储能相位时长 (受伤转储能)
+const SHELL_CD_SEC := 15.0            # 冷却相位时长 (不储能)
+const SHELL_SW_RADIUS := 520.0        # 冲击波最大半径 (px)
+const SHELL_SW_SEC := 1.8             # 冲击波扩张时长
+const SHELL_SHIELD_SEC := 5.0         # 护盾流失时长
+
+func _shell_phase_tick(u: Dictionary, delta: float) -> void:
+	# 护盾线性流失 (每帧扣, 不低于0) — 与相位独立, 始终推进
+	if float(u.get("shell_shield_decay_rate", 0.0)) > 0.0 and float(u.get("_auraShieldVal", 0.0)) > 0.0:
+		u["_auraShieldVal"] = maxf(0.0, float(u["_auraShieldVal"]) - float(u["shell_shield_decay_rate"]) * delta)
+		if u["_auraShieldVal"] <= 0.0:
+			u["shell_shield_decay_rate"] = 0.0
+	# 冲击波扩张 + 逐敌一次性命中 (始终推进, 与相位独立)
+	if u.get("shell_sw", null) != null:
+		_shell_shockwave_tick(u, delta)
+	# 相位推进
+	var phase: String = u.get("shell_phase", "store")
+	u["shell_timer"] = float(u.get("shell_timer", 0.0)) + delta
+	if phase == "store":
+		if u["shell_timer"] >= SHELL_STORE_SEC:
+			u["shell_timer"] = 0.0
+			u["shell_phase"] = "cd"
+			_shell_release(u)
+	else:  # "cd"
+		if u["shell_timer"] >= SHELL_CD_SEC:
+			u["shell_timer"] = 0.0
+			u["shell_phase"] = "store"
+
+# 释放: 捕获储能→清零→发缓慢冲击波(逐敌×40%物理)+ 获80%储能护盾(5秒流失)
+func _shell_release(u: Dictionary) -> void:
+	var se: float = float(u.get("store_energy", 0.0))
+	u["store_energy"] = 0.0
+	u["_auraEnergy"] = 0.0
+	if se < 1.0:
+		return
+	# 1) 缓慢移动冲击波 (Image环贴图, 半径0→520px / 1.8s; 每敌只命中一次)
+	_shell_spawn_shockwave(u, int(se * 0.40))
+	# 2) 衰减护盾 = 80%储能, 5秒线性流失到0
+	var amt: float = se * 0.80
+	u["_auraShieldVal"] = float(u.get("_auraShieldVal", 0.0)) + amt   # 金色储能护盾(特殊色, 1:1回合制aura盾)
+	u["shell_shield_decay_rate"] = amt / SHELL_SHIELD_SEC   # 每秒扣量 (按授予值算, 5秒清)
+
+# 冲击波节点 (Image环贴图躺平贴地; 绝不用 GradientTexture2D FILL_RADIAL → 会画方角)
+func _shell_spawn_shockwave(u: Dictionary, dmg: int) -> void:
+	var spr := Sprite3D.new()
+	spr.texture = _make_ring_texture(Color(1.0, 0.84, 0.22, 1.0))
+	spr.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	spr.axis = Vector3.AXIS_Y                       # 躺平贴地
+	spr.shaded = false
+	spr.transparent = true
+	spr.modulate = Color(1.0, 0.84, 0.22, 1.0)       # 黄色能量波(用户); alpha 起始满, 扩张中淡出
+	spr.pixel_size = 0.0001                          # 起始 ~0 (扩张到 520px 直径)
+	spr.position = _world_pos(u["pos"], 0.05)
+	_world.add_child(spr)
+	# 状态: 中心/当前半径/已命中集合(逐敌一次)/伤害/节点
+	u["shell_sw"] = {
+		"node": spr,
+		"center": u["pos"],
+		"t": 0.0,
+		"radius": 0.0,
+		"hit": {},          # 用 get_instance_id() 当键, 每敌只算一次
+		"dmg": dmg,
+	}
+
+# 冲击波每帧推进: 半径 0→520 / 1.8s; ring 直径=2×radius; 距中心被环刚扫过的敌人吃一次伤害
+func _shell_shockwave_tick(u: Dictionary, delta: float) -> void:
+	var sw: Dictionary = u["shell_sw"]
+	var spr = sw.get("node", null)
+	sw["t"] = float(sw["t"]) + delta
+	var frac: float = clampf(float(sw["t"]) / SHELL_SW_SEC, 0.0, 1.0)
+	var r: float = SHELL_SW_RADIUS * frac
+	sw["radius"] = r
+	# 视觉: ring 贴图 96px 宽 → pixel_size 让直径 = 2r(px)×WS(米/px)
+	if spr != null and is_instance_valid(spr):
+		spr.pixel_size = maxf(0.0001, (r * 2.0 * WS) / 96.0)
+		spr.modulate.a = 1.0 - frac * 0.55           # 边扩边淡 (终态 ~0.45, 保持可见到末尾)
+	# 命中: 距中心 <= 当前半径 且未命中过的敌人 (环刚扫过) 各吃一次
+	var center: Vector2 = sw["center"]
+	var hit: Dictionary = sw["hit"]
+	var dmg: int = int(sw["dmg"])
+	if dmg > 0:
+		for e in _enemies_of(u):
+			var spr_e = e.get("sprite", null)        # 用立绘节点实例id当唯一键(每单位唯一; dict不能取instance_id)
+			if spr_e == null or not is_instance_valid(spr_e):
+				continue
+			var eid: int = spr_e.get_instance_id()
+			if hit.has(eid):
+				continue
+			if (e["pos"] - center).length() <= r:
+				hit[eid] = true
+				_apply_damage_from(u, e, dmg, Color("#b0ffe0"))
+	# 结束: 清理节点+状态
+	if frac >= 1.0:
+		if spr != null and is_instance_valid(spr):
+			spr.queue_free()
+		u["shell_sw"] = null
 
 # ============================================================================
 #  死亡钩子 (1:1 搬自 2D 版 _on_unit_death; 装备 on-kill/on-death Phase 3b 不调)
@@ -4549,7 +4684,7 @@ func _update_world_transforms() -> void:
 			var cs: float = 1.0 - clampf(u["height"] / 1.2, 0.0, 1.0)   # 比外影更快随高度收
 			contact.position = _world_pos(u["pos"], 0.028)
 			contact.scale = Vector3(cbase.x * cs * sq.x, cbase.y * cs, cbase.z * cs)
-			contact.modulate.a = CONTACT_BASE_A * cs
+			contact.modulate.a = 0.0   # 隐藏接触核影(用户"只留影子")
 		if is_instance_valid(ring):
 			ring.position = _world_pos(u["pos"], 0.015)
 
@@ -4786,6 +4921,12 @@ func _update_overlay() -> void:
 		#   update_state 读 u 的 maxHp/hp/shield 字段; 召唤体也是同 HpBar (无护盾段则自然不画).
 		var hb = u.get("hp_bar", null)
 		if hb != null and is_instance_valid(hb):
+			u["_auraEnergy"] = u.get("store_energy", 0.0)   # 镜像→Hp条资源条(储能/怒气/星能/泡泡, 字段对齐回合制端口)
+			u["_lavaRage"] = u.get("rage", 0.0)
+			u["_starEnergy"] = u.get("star_energy", 0.0)
+			u["bubbleStore"] = u.get("bubble_store", 0.0)
+			u["_stoneDefGained"] = float(u.get("base_def", 0.0)) - float(u.get("stone_init_def", u.get("base_def", 0.0)))
+			u["_initDef"] = float(u.get("stone_init_def", u.get("base_def", 0.0)))
 			hb.update_state(u)
 		# 龟能条 (实时资源; 召唤体的 en_fill 已 hide)
 		var enf = u.get("en_fill", null)

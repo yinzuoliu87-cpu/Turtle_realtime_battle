@@ -3454,7 +3454,7 @@
       "perLevelPct": 0.01,
       "energyMaxStorePct": 0.5,
       "enhancedAwakenTurn": 8,
-      "brief": "龟壳蕴含远古气场之力，开战10秒后触发气场觉醒：攻击力 / 护甲 / 魔抗 / 最大生命值 / 生命偷取 / 反伤 各 <span class=\"val-atk\">+12%</span>，暴击率 <span class=\"val-atk\">+25%</span>。此外将受到的伤害转化为储能（上限 50% 最大生命值），每10秒消耗全部储能：对全体敌方造成 储能×(40%+每级1%) 物理伤害，并获得 储能×(80%+每级1%) 的<span class=\"val-shield\">气场护盾</span>（5秒内逐渐流失）。",
+      "brief": "登场10秒觉醒(六属性+12%/暴击+25%); 储能6秒(受伤转储能,上限50%最大生命)后发出缓慢移动冲击波(触碰敌人造成储能×40%物理)并获得储能×80%护盾(5秒流失), 随后15秒冷却循环",
       "desc": "龟壳蕴含远古气场之力，开战10秒后触发气场觉醒，提升属性：攻击力 <span class=\"val-atk\">+12%</span>（+{N:ATK*0.12}），护甲 <span class=\"val-atk\">+12%</span>（+{D:DEF*0.12}），魔抗 <span class=\"val-magic\">+12%</span>（+{M:MR*0.12}），最大生命值 <span class=\"val-heal\">+12%</span>（+{H:HP*0.12}），生命偷取 <span class=\"val-heal\">+12%</span>，反伤 <span class=\"val-atk\">+12%</span>，暴击率 <span class=\"val-atk\">+25%</span>。\n此外龟壳将受到的伤害转化为储能值（上限为最大生命值的 <span class=\"val-atk\">50%</span>），每10秒消耗全部储能：对全体敌方造成 储能×(40%+每级1%) 物理伤害，并获得 储能×(80%+每级1%) 的<span class=\"val-shield\">气场护盾</span>（5秒内逐渐流失）。"
     },
     "skillPool": [
@@ -3469,7 +3469,7 @@
         "totalScale": 1.2,
         "splashAdjacent": 25,
         "isolatedBonus": 1.5,
-        "brief": "龟壳打击两段（第一段物理、第二段真实），共造成（{N:1.2*ATK}）混合伤害，每段对相邻（上下/前后）目标溅射 <span class=\"val-atk\">50%</span>；无相邻目标时该段主伤害提升至 <span class=\"val-atk\">1.5×</span>",
+        "brief": "龟壳打击造成1ATK伤害(物理/真实交替), 对主目标120px内其他敌人溅射50%",
         "detail": "龟壳打击两段，第一段造成物理伤害、第二段造成真实伤害，每段（60%×攻击力({ATK}) = {N:0.6*ATK}），共（120%×攻击力({ATK}) = {N:1.2*ATK}）混合伤害。每段对与主目标相邻（上下/前后）的单位溅射 <span class=\"val-atk\">50%</span> 伤害（类型跟随主段，独立结算暴击）；若主目标无可溅射的相邻单位，当前段主伤害提升至 <span class=\"val-atk\">1.5×</span>。",
         "energyCost": 0
       },
