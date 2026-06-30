@@ -2530,22 +2530,6 @@
         "rageCost": 35
       },
       {
-        "name": "熔岩喷射",
-        "icon": "skills/lava-3.png",
-        "type": "lavaSplash",
-        "dmgType": "magic",
-        "hits": 3,
-        "power": 0,
-        "pierce": 0,
-        "cd": 0,
-        "aoe": true,
-        "atkScale": 0.2,
-        "burn": true,
-        "brief": "熔岩龟对全体敌方喷射三段，共造成（{M:0.2*ATK*3}）魔法伤害，并施加 <span style=\"color:#ff6600\">{0.67*ATK} 灼烧值</span>",
-        "detail": "熔岩龟对全体敌方喷射三段，共造成（60%×攻击力({ATK}) = {M:0.2*ATK*3}）魔法伤害，并施加 <span style=\"color:#ff6600\">{0.67*ATK} 灼烧值</span>。",
-        "rageCost": 40
-      },
-      {
         "name": "强化熔岩之心",
         "enhancesPassive": true,
         "type": "lavaEnhancedRage",
