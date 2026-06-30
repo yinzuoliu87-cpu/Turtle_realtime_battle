@@ -100,8 +100,8 @@ func _compute_special_bars(f: Dictionary) -> Array:
 		var rmax := float(passive.get("rageMax", 100)) if passive is Dictionary else 100.0
 		out.append({"frac": rage / maxf(1.0, rmax), "bg": Color8(0xff, 0x64, 0x00), "fill": Color8(0xff, 0x33, 0x00), "bga": 0.15, "fa": 0.6})
 	elif pt == "starEnergy" or (pt == "auraAwaken" and passive is Dictionary and passive.has("energyStore")):
-		# 龟壳(auraAwaken)引擎写 _auraEnergy(damage.gd:313), 星能龟写 _starEnergy; 三级回退避免龟壳恒空条
-		var en := float(f.get("_starEnergy", f.get("_auraEnergy", f.get("_storedEnergy", 0))))
+		# 按type读对应字段: 龟壳(auraAwaken)读_auraEnergy, 星能龟(starEnergy)读_starEnergy. (原回退链被全局镜像_starEnergy=0破坏→龟壳恒读0=黄条不动)
+		var en := float(f.get("_auraEnergy", 0.0)) if pt == "auraAwaken" else float(f.get("_starEnergy", 0.0))
 		var maxe: float
 		if passive is Dictionary and passive.has("maxChargePct"):
 			maxe = roundf(_max_hp * float(passive.get("maxChargePct", 0)) / 100.0)

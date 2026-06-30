@@ -30,7 +30,7 @@ const ATK_RECOVER := 0.10                   # 普攻后摇(出手后定身)
 const CAST_WINDUP := 0.34                   # 技能前摇(蓄力, 比普攻久 → 有重量感)
 const CAST_RECOVER := 0.24                  # 技能后摇
 const _BASIC_RARITY_BONUS := {"C": 0.20, "B": 0.23, "A": 0.26, "S": 0.29, "SS": 0.32, "SSS": 0.34}   # 小龟不屈: 按目标稀有度
-const SEP_RADIUS := 56.0                    # 单位软分离半径 (像素口径; 防扎堆, 调大点更散)
+const SEP_RADIUS := 68.0                    # 单位软分离半径 (像素口径; 防扎堆, 调大点更散)
 const HP_MULT := 3.0                       # base↔final比率: 龟/装备hp已写最终值; 仅召唤raw值(×)与装备%回收(maxHp/)用它
 const SHIELD_CAP_MULT := 1.5
 const RAGE_MAX := 100.0                    # 怒气满 (熔岩变身)
@@ -53,8 +53,8 @@ const STATS := {
 }
 const DEFAULT_STAT := [true, 105.0, 0.85, 70.0]
 const REVIEW_DEMO := true                  # 评审期: 战斗=1受审龟 vs 1假人(右不动/不打/不放技/高血沙包); 上线前置 false
-const REVIEW_TURTLE := "lava"              # 受审龟 id (评审换龟只改这里)
-const REVIEW_SKILL_IDX := 2   # 评审时受审龟放哪个技(skillPool索引: 2=岩浆涌动 单体魔+永久护盾); -1=默认
+const REVIEW_TURTLE := "shell"              # 受审龟 id (评审换龟只改这里)
+const REVIEW_SKILL_IDX := 3   # 评审时受审龟放哪个技(skillPool索引: 2=岩浆涌动 单体魔+永久护盾); -1=默认
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 500.0            # 假人固定血量
@@ -1242,6 +1242,7 @@ func _process(delta: float) -> void:
 				if not u["alive"]:
 					continue
 				_tick_unit(u, delta)
+			_apply_separation_pass(delta)   # 每帧全单位软分离(攻击/待机也摊开, 根治扎堆遮血条)
 			_step_projectiles(delta)
 			_check_end()
 		_juice_decay(delta)        # squash/闪白/挥击 等计时衰减 (冻结期间不衰 → 冲击姿势保持)
@@ -2761,7 +2762,7 @@ const _SELF_CAST_SKILLS := {
 
 # ═══ 选3 多技能轮转 (用户2026-06-28拍板: 保留选3, 让3技在战斗真生效) ═══
 # 被动型技 (开局生效, 不进主动轮转; 在 _apply_spawn_passives 里按是否被选施加)
-const PASSIVE_SKILL_TYPES := {"iceBurnImmune": true, "phoenixEnhancedRebirth": true, "lavaEnhancedRage": true}
+const PASSIVE_SKILL_TYPES := {"iceBurnImmune": true, "phoenixEnhancedRebirth": true, "lavaEnhancedRage": true, "shellEnhanceAwaken": true}
 
 # loadout(选3) 里所有"非普攻"技 type (physical/magic 是普攻=自动, 排除)
 # 4选1: 每龟从 skillPool[1..4] 选【1个】(主动或被动); GameState.loadouts[id]=选中索引(默认1=签名候选).
@@ -2881,7 +2882,18 @@ func _pick_ready_skill(u: Dictionary) -> String:
 			best_cost = c; best = st
 	return best
 
-# 移动(+分离); no_move 召唤体定点不动. (从 _tick_unit 抽出, 状态机仅"move"态调)
+const SEP_PUSH_SPD := 140.0                  # 软分离推开速度 (px/s; 每帧全单位)
+func _apply_separation_pass(delta: float) -> void:   # 每帧全单位软分离: 攻击/待机也摊开(不再只move态), 根治扎堆遮血条
+	for u in _units:
+		if not u["alive"] or u.get("no_move", false) or u.get("airborne", false):
+			continue
+		var push: Vector2 = _separation(u)
+		if push.length() > 0.001:
+			u["pos"] += push.limit_length(1.0) * SEP_PUSH_SPD * delta
+			u["pos"].x = clampf(u["pos"].x, ARENA.position.x, ARENA.end.x)
+			u["pos"].y = clampf(u["pos"].y, ARENA.position.y, ARENA.end.y)
+
+# 移动; no_move 召唤体定点不动. 分离已移到 _apply_separation_pass. (状态机仅"move"态调)
 func _do_move(u: Dictionary, tgt: Dictionary, dist: float, rng: float, spd: float, delta: float) -> void:
 	if u.get("no_move", false):
 		return
@@ -2891,7 +2903,7 @@ func _do_move(u: Dictionary, tgt: Dictionary, dist: float, rng: float, spd: floa
 		intent = to_t.normalized()                           # 追到射程
 	elif not u["melee"] and dist < rng * 0.7:
 		intent = -to_t.normalized()                          # 远程太近→风筝后撤
-	intent += _separation(u)                                 # 分离力(防扎堆, 接近时摊开)
+	# 分离已移到 _apply_separation_pass (每帧全单位, 不只move态) → 根治攻击/待机扎堆
 	if intent.length() > 0.01:
 		u["vel"] = intent.limit_length(1.0) * spd            # 合力调速, 力抵消缓停
 		u["pos"] += u["vel"] * delta
@@ -4281,10 +4293,10 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	elif u["id"] == "shell":
 		if not u.get("awakened", false) and _t >= 10.0:
 			u["awakened"] = true
-			_buff(u, "atk", 0.12, true, 9999.0); _buff(u, "def", 0.12, true, 9999.0); _buff(u, "mr", 0.12, true, 9999.0)
-			_buff(u, "lifesteal", 0.12, true, 9999.0)   # 觉醒(补): +12%吸血
-			var _ah: float = u["maxHp"] * 0.12; u["maxHp"] += _ah; u["hp"] += _ah   # 觉醒(补): +12%最大生命 (反伤无独立stat字段, 略)
-			u["crit"] += 0.25; _recalc_stats(u)
+			_shell_apply_awaken(u)   # 开战10秒觉醒 (+金光爆发特效)
+		if not u.get("awakened2", false) and _t >= 20.0 and "shellEnhanceAwaken" in _chosen_skill_types(u["id"], u["side"] == "left"):
+			u["awakened2"] = true
+			_shell_apply_awaken(u)   # 强化觉醒(idx4): 开战20秒第二次觉醒(再叠同款)
 		# 储能相位机: store(6s 受伤转储能) → 释放(冲击波+护盾) → cd(15s 不储) → store…
 		_shell_phase_tick(u, delta)
 	# --- 海盗船召唤: 开战~4秒后召唤一次 ---
@@ -4334,6 +4346,57 @@ const SHELL_CD_SEC := 15.0            # 冷却相位时长 (不储能)
 const SHELL_SW_RADIUS := 520.0        # 冲击波最大半径 (px)
 const SHELL_SW_SEC := 1.8             # 冲击波扩张时长
 const SHELL_SHIELD_SEC := 5.0         # 护盾流失时长
+
+func _shell_apply_awaken(u: Dictionary) -> void:   # 气场觉醒一次(六属性+12%/暴击+25%) + 金光爆发特效
+	_buff(u, "atk", 0.12, true, 9999.0); _buff(u, "def", 0.12, true, 9999.0); _buff(u, "mr", 0.12, true, 9999.0)
+	_buff(u, "lifesteal", 0.12, true, 9999.0)   # +12%吸血
+	var ah: float = u["maxHp"] * 0.12; u["maxHp"] += ah; u["hp"] += ah   # +12%最大生命 (反伤无独立stat字段, 略)
+	u["crit"] += 0.25; _recalc_stats(u)
+	_shell_awaken_vfx(u)
+
+func _shell_awaken_vfx(u: Dictionary) -> void:   # 觉醒金光爆发: 震屏+微顿帧 + 强金闪 + 双金环 + 金光柱 + 金光上腾 + "觉醒"飘字
+	_shake(JUICE_SHAKE_HEAVY)
+	_hitstop = maxf(_hitstop, 0.06)
+	_flash(u, Color(1.0, 0.92, 0.55))
+	_skill_ring(u["pos"], Color(1.0, 0.84, 0.28, 0.9), 132.0)   # 外金环
+	_skill_ring(u["pos"], Color(1.0, 0.95, 0.6, 0.9), 76.0)     # 内亮环
+	_float_text(u["pos"] + Vector2(0, -88), "觉醒", Color(1.0, 0.86, 0.25))
+	# 金光柱: 竖直上冲一束 (醒目, 不怕被伤害数字盖)
+	var pil := Sprite3D.new()
+	pil.texture = _make_fire_glow_tex()
+	pil.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	pil.shaded = false; pil.transparent = true
+	pil.pixel_size = 0.013
+	pil.modulate = Color(1.0, 0.9, 0.45, 0.0)
+	pil.scale = Vector3(0.55, 2.6, 1.0)
+	pil.position = _world_pos(u["pos"], 0.7)
+	_world.add_child(pil)
+	var tp := create_tween(); tp.set_parallel(true)
+	tp.tween_property(pil, "modulate:a", 0.9, 0.1)
+	tp.tween_property(pil, "position", _world_pos(u["pos"], 1.6), 0.55)
+	tp.chain().tween_property(pil, "modulate:a", 0.0, 0.28)
+	tp.chain().tween_callback(pil.queue_free)
+	# 金光上腾粒子 (更多更大)
+	for i in range(14):
+		var ang: float = TAU * float(i) / 14.0 + _juice_rng.randf_range(-0.2, 0.2)
+		var dd: float = _juice_rng.randf_range(10.0, 50.0)
+		var p: Vector2 = u["pos"] + Vector2(cos(ang), sin(ang)) * dd
+		var spr := Sprite3D.new()
+		spr.texture = _make_fire_glow_tex()
+		spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		spr.shaded = false
+		spr.transparent = true
+		spr.pixel_size = 0.008
+		spr.modulate = Color(1.0, 0.9, 0.45, 0.95)
+		spr.scale = Vector3(0.6, 0.6, 0.6)
+		spr.position = _world_pos(p, 0.5)
+		_world.add_child(spr)
+		var tw := create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(spr, "position", _world_pos(p, 1.95 + _juice_rng.randf_range(0.0, 0.6)), 0.6)
+		tw.tween_property(spr, "scale", Vector3(1.3, 1.3, 1.3), 0.6)
+		tw.tween_property(spr, "modulate", Color(1.0, 0.72, 0.2, 0.0), 0.6)
+		tw.chain().tween_callback(spr.queue_free)
 
 func _shell_phase_tick(u: Dictionary, delta: float) -> void:
 	# 护盾线性流失 (每帧扣, 不低于0) — 与相位独立, 始终推进
