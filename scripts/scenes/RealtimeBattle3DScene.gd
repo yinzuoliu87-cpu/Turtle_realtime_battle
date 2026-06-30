@@ -53,7 +53,7 @@ const STATS := {
 }
 const DEFAULT_STAT := [true, 105.0, 0.85, 70.0]
 const REVIEW_DEMO := true                  # 评审期: 战斗=1受审龟 vs 1假人(右不动/不打/不放技/高血沙包); 上线前置 false
-const REVIEW_TURTLE := "rainbow"             # 受审龟 id (评审换龟只改这里)
+const REVIEW_TURTLE := "lightning"             # 受审龟 id (评审换龟只改这里)
 const REVIEW_SKILL_IDX := 2   # 评审时受审龟放哪个技(skillPool索引, 验主动技: 2冰霜/3冰封); -1=默认
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
@@ -586,7 +586,7 @@ func _spawn_teams() -> void:
 		if REVIEW_DEMO and left.size() == 1:
 			pos = Vector2(_cx - 150.0, _cy)
 		elif REVIEW_DEMO:
-			pos = Vector2(_cx - 200.0, _cy + (float(i) - float(left.size() - 1) / 2.0) * minf(95.0, 360.0 / float(maxi(1, left.size()))))
+			pos = Vector2(_cx - 200.0, _cy + (float(i) - float(left.size() - 1) / 2.0) * minf(150.0, 520.0 / float(maxi(1, left.size()))))
 		var _lu := _make_unit(str(left[i]), "left", pos)
 		if REVIEW_DEMO and str(left[i]) == "fortune":
 			_lu["gold"] = 0.0   # demo: 财神起手金币(0=看自然攒金币)
@@ -596,7 +596,7 @@ func _spawn_teams() -> void:
 		if REVIEW_DEMO and right.size() == 1:
 			pos = Vector2(_cx + 150.0, _cy)
 		elif REVIEW_DEMO:
-			pos = Vector2(_cx + 200.0, _cy + (float(i) - float(right.size() - 1) / 2.0) * minf(95.0, 360.0 / float(maxi(1, right.size()))))
+			pos = Vector2(_cx + 100.0 + (float(i) - float(right.size() - 1) / 2.0) * 150.0, _cy + 40.0)   # 横排(用户)
 		var ru := _make_unit(str(right[i]), "right", pos)
 		if REVIEW_DEMO:                          # 假人: 不动/不打/不放技/永不死训练靶 (受击照显伤害但即刻回满)
 			ru["no_basic"] = true
@@ -1537,24 +1537,148 @@ func _splash_adjacent(u: Dictionary, tgt: Dictionary, frac: float) -> void:
 # 闪电龟·改造普攻(用户2026-06-28): 一道闪电(魔法 1.15×ATK)命中主目标 → 连锁弧跳最近2敌(每跳×0.6递减);
 #   叠层在 _basic_attack 里走 _on_basic_hit(每攻击+1电击层, 满8引爆雷暴). 原始设计=魔法+跳敌+8层雷暴.
 func _lightning_basic(u: Dictionary, tgt: Dictionary) -> void:
-	_fire_bolt_from(u, tgt, _atk_dmg(u, 1.15, tgt, true), Color("#4dabf7"))   # 主弹: 魔法
-	var chained: Array = [tgt]
+	# 建链(顺序最近未连): 打1 → 1找最近2 → 2找最近3, 最多连锁2跳
+	var chain: Array = [tgt]
 	var prev: Dictionary = tgt
-	var frac := 0.6
-	for _i in range(2):                          # 最多连锁 2 跳
+	for _i in range(2):
 		var nxt = null
 		var bestd := 260.0                       # 连锁射程上限(像素)
 		for o in _enemies_of(u):
-			if (o in chained) or not o["alive"]:
+			if (o in chain) or not o["alive"]:
 				continue
 			var dd: float = (o["pos"] - prev["pos"]).length()
 			if dd < bestd:
 				bestd = dd; nxt = o
 		if nxt == null:
 			break
-		_bolt_line(prev["pos"], nxt["pos"], Color("#4dabf7"))                 # 连锁弧光
-		_apply_damage_from(u, nxt, _atk_dmg(u, 1.15 * frac, nxt, true), Color("#4dabf7"))
-		chained.append(nxt); prev = nxt; frac *= 0.6
+		chain.append(nxt); prev = nxt
+	# 顺序错峰劈: 彩虹→1, 1→2, 2→3, 每跳隔0.07s(看得见跳跃) + 锯齿电弧
+	var tw := create_tween()
+	var from_pos: Vector2 = u["pos"]
+	var fr := 1.0
+	for i in range(chain.size()):
+		tw.tween_callback(_lightning_hop.bind(u, from_pos, chain[i], fr, i))
+		tw.tween_interval(0.07)
+		from_pos = chain[i]["pos"]
+		fr *= 0.6
+
+func _lightning_electric(u: Dictionary, target: Dictionary) -> void:   # 叠1层电击; 满8引爆(天降+清零)
+	var lv := _add_stack(target, "electric", 1, 8)
+	if lv >= 8:
+		_consume_stacks(target, "electric")
+		_apply_damage_from(u, target, _shock_dmg(u), Color("#4dabf7"), 0.0, true)
+		_lightning_strike(target["pos"], Color("#cdfaff"))
+		_skill_ring(target["pos"], Color(0.72, 0.95, 1.0, 0.75), 76.0)
+		_bolt_line(u["pos"], target["pos"], Color("#dffaff"))
+		_shake(JUICE_SHAKE_LIGHT)
+
+func _lightning_hop(u: Dictionary, from_pos: Vector2, target: Dictionary, fr: float, hop_i: int) -> void:
+	if not target.get("alive", false):
+		return
+	_lightning_arc(from_pos, target["pos"], Color("#aef0ff"))   # 锯齿电弧
+	_apply_damage_from(u, target, _atk_dmg(u, 0.6 * fr, target, true), Color("#4dabf7"))
+	_hit_spark(target)
+	if hop_i > 0:
+		_lightning_electric(u, target)   # 连锁每跳也叠电击层(主目标由_on_basic_hit叠, 避免重复)
+
+func _sk_lightning_barrage(u: Dictionary) -> void:             # 闪电龟·雷暴 ✅ (头顶生风暴云→20道极快锯齿电弧劈随机敌, 用户自画)
+	var cloud_h := 2.9
+	var cloud := Sprite3D.new()
+	var ctex := load("res://assets/sprites/skills/lightning-2.png")
+	if ctex != null:
+		cloud.texture = ctex
+		cloud.pixel_size = 2.2 / float(maxi(1, ctex.get_height()))
+	cloud.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	cloud.shaded = false
+	cloud.transparent = true
+	cloud.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	cloud.position = _world_pos(u["pos"], cloud_h)
+	_world.add_child(cloud)
+	var tw := create_tween()
+	for i in range(20):                            # 20道极快电(每0.06s)
+		tw.tween_callback(_barrage_bolt.bind(u, cloud_h))
+		tw.tween_interval(0.06)
+	tw.tween_callback(_barrage_cloud_fade.bind(cloud))
+
+func _barrage_bolt(u: Dictionary, cloud_h: float) -> void:
+	var es := _enemies_of(u)
+	if es.is_empty():
+		return
+	var e = es[_juice_rng.randi() % es.size()]
+	if not e.get("alive", false):
+		return
+	_lightning_bolt_3d(u["pos"], cloud_h, e["pos"], 0.6, Color("#aef0ff"))
+	_apply_damage_from(u, e, _atk_dmg(u, 2.2 / 20.0, e, true), Color("#7ee8ff"))
+	_add_stack(e, "electric", 1, 8)
+
+func _barrage_cloud_fade(cloud: Sprite3D) -> void:
+	if not is_instance_valid(cloud):
+		return
+	var tw := create_tween()
+	tw.tween_property(cloud, "modulate:a", 0.0, 0.3)
+	tw.tween_callback(cloud.queue_free)
+
+func _lightning_bolt_3d(from2d: Vector2, from_h: float, to2d: Vector2, to_h: float, col: Color) -> void:   # 锯齿3D电弧(从云劈向敌)
+	var im := MeshInstance3D.new()
+	var imesh := ImmediateMesh.new()
+	im.mesh = imesh
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.vertex_color_use_as_albedo = true
+	mat.albedo_color = col
+	imesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP, mat)
+	var n := 7
+	for i in range(n + 1):
+		var t := float(i) / float(n)
+		var p2 := from2d.lerp(to2d, t)
+		var hh: float = lerpf(from_h, to_h, t)
+		if i > 0 and i < n:
+			p2 += Vector2(_juice_rng.randf_range(-12.0, 12.0), _juice_rng.randf_range(-12.0, 12.0))
+		imesh.surface_set_color(col)
+		imesh.surface_add_vertex(_world_pos(p2, hh))
+	imesh.surface_end()
+	_world.add_child(im)
+	var tw := create_tween()
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.18)
+	tw.tween_callback(im.queue_free)
+
+func _lightning_strike(pos2d: Vector2, _col: Color) -> void:   # 天降闪电: 1:1 港回合制 common-lightning-strike 5帧动画(9fps)
+	var tex := load("res://assets/sprites/vfx/common-lightning-strike.png")
+	if tex == null:
+		return
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.hframes = 5
+	spr.frame = 0
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.shaded = false
+	spr.transparent = true
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	spr.pixel_size = 2.6 / float(maxi(1, tex.get_height()))   # 帧高归一到~2.6m
+	spr.position = _world_pos(pos2d, 1.25)
+	_world.add_child(spr)
+	var tw := create_tween()
+	for f in range(5):                              # 5帧 9fps(~0.06s/帧)
+		tw.tween_callback(_lstrike_frame.bind(spr, f))
+		tw.tween_interval(1.0 / 9.0)   # 9fps = 回合制 common-lightning-strike 同播放时长(5帧0.556s)
+	tw.tween_callback(spr.queue_free)
+
+func _lstrike_frame(spr: Sprite3D, f: int) -> void:
+	if is_instance_valid(spr):
+		spr.frame = f
+
+func _lightning_arc(a2d: Vector2, b2d: Vector2, col: Color) -> void:   # 锯齿状电弧(zigzag折线, 像真闪电劈过去)
+	var n := 6
+	var perp := (b2d - a2d).orthogonal().normalized()
+	var prev := a2d
+	for i in range(1, n + 1):
+		var t := float(i) / float(n)
+		var mid := a2d.lerp(b2d, t)
+		if i < n:
+			mid += perp * _juice_rng.randf_range(-16.0, 16.0)
+		_bolt_line(prev, mid, col)
+		prev = mid
 
 # 伤害公式 (1:1 复用 2D _atk_dmg): base×scale ×暴击 ×(100/(100+resist-pierce))
 # 伤害核心: 暴击(封顶100%溢出转暴伤×1.5) → 有效护甲/魔抗(先%后flat,可负) → 减伤倍率(K=40,负防增伤) → 增伤/减伤
@@ -2529,7 +2653,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"candyBarrage":         _sk_dmg(u, tgt, {"phys": 1.0, "hits": 4, "aoe": true, "name": "糖果弹幕!", "color": Color("#ff9ed6")})
 		"lineSketch":           _sk_dmg(u, tgt, {"phys": 1.5, "hits": 3, "name": "速写!", "color": Color("#dddddd")})
 		"lightningStrike":      _sk_dmg(u, tgt, {"magic": 1.15, "hits": 5, "stagger": 0.08, "electric": 1, "splash": 0.25, "name": "闪电打击!", "color": Color("#7ee8ff")})
-		"lightningBarrage":     _sk_dmg(u, tgt, {"magic": 2.2, "hits": 20, "randomAoe": true, "stagger": 0.06, "electric": 1, "name": "雷暴!", "color": Color("#7ee8ff")})
+		"lightningBarrage":     _sk_lightning_barrage(u)
 		"phoenixBurn":          _sk_dmg(u, tgt, {"magic": 0.9, "hits": 1, "rider": "burn", "name": "灼焰!", "color": Color("#ff7a3c")})
 		"phoenixScald":         _sk_dmg(u, tgt, {"magic": 0.7, "hits": 1, "rider": "burn", "shieldBreak": 0.5, "atkDown": 0.15, "defDown": 0.15, "mrDown": 0.15, "healCut": 0.5, "name": "灼烧!", "color": Color("#ff7a3c")})
 		"lavaBolt":             _sk_dmg(u, tgt, {"magic": 0.9, "hits": 1, "rider": "burn", "name": "熔岩弹!", "color": Color("#ff7a3c")})
@@ -3668,15 +3792,7 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 		"line":
 			_add_stack(tgt, "ink", 1, 5)
 		"lightning":
-			var lv := _add_stack(tgt, "electric", 1, 8)
-			if lv >= 8:
-				_consume_stacks(tgt, "electric")
-				_apply_damage_from(u, tgt, _shock_dmg(u), Color("#4dabf7"), 0.0, true)
-				# 雷暴爆发 VFX: 真贴图 + 亮环 + 弧光 + 字 + 轻震屏
-				_play_skill_vfx("lightning-2", tgt["pos"], 1.3)
-				_skill_ring(tgt["pos"], Color(0.72, 0.95, 1.0, 0.75), 76.0)
-				_bolt_line(u["pos"], tgt["pos"], Color("#dffaff"))
-				_shake(JUICE_SHAKE_LIGHT)
+			_lightning_electric(u, tgt)   # 普攻主目标叠电击+可引爆(连锁跳由_lightning_hop叠)
 		"crystal":
 			var cv := _add_stack(tgt, "crystal", 1, 4)
 			if cv >= 4:
@@ -3814,16 +3930,16 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 					var bv = bes[randi() % bes.size()]
 					_apply_damage_from(u, bv, int(bs * 0.35), Color("#aef1ff"), 0.0, true)
 				u["bubble_store"] = bs * 0.50
-	# --- 闪电·雷电: 每2.5s 自动电击随机敌 (真伤) ---
+	# --- 闪电·雷电: 每4s 自动电击随机敌 (真伤) (用户) ---
 	if u["id"] == "lightning":
 		u["_ltimer"] = u.get("_ltimer", 0.0) + delta
-		if u["_ltimer"] >= 2.5:
+		if u["_ltimer"] >= 4.0:
 			u["_ltimer"] = 0.0
 			var le := _enemies_of(u)
 			if not le.is_empty():
 				var lv2 = le[randi() % le.size()]
 				_apply_damage_from(u, lv2, _shock_dmg(u), Color("#4dabf7"), 0.0, true)
-				_skill_ring(lv2["pos"], Color(0.5, 0.9, 1.0, 0.5), 40.0)
+				_lightning_strike(lv2["pos"], Color("#aef0ff"))   # 天降闪电(自动电击)
 
 # ============================================================================
 #  死亡钩子 (1:1 搬自 2D 版 _on_unit_death; 装备 on-kill/on-death Phase 3b 不调)
