@@ -2600,6 +2600,31 @@ func _play_heal_glow(pos2d: Vector2) -> void:
 		tw.tween_property(g, "modulate:a", 0.0, 0.7).set_delay(0.1)
 		tw.chain().tween_callback(g.queue_free)
 
+# ── 通用: 2D序列帧特效 贴 billboard 在2.5D场景逐帧播 (AI产出的序列帧丢进来即可, 零3D建模) ──
+var _sheet_cache := {}
+func _sheet(path: String) -> Texture2D:
+	if not _sheet_cache.has(path):
+		_sheet_cache[path] = load(path) if ResourceLoader.exists(path) else null
+	return _sheet_cache[path]
+
+func play_sheet_vfx(pos2d: Vector2, sheet: Texture2D, frames: int, world_px: float = 150.0, dur: float = 0.45, h: float = 0.7) -> void:
+	if sheet == null:
+		return
+	var spr := Sprite3D.new()
+	spr.texture = sheet
+	spr.hframes = frames                              # 横排N帧
+	spr.frame = 0
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED  # 永远朝相机 → 2D图"立"在3D场景里
+	spr.shaded = false
+	spr.transparent = true
+	var fw: float = float(sheet.get_width()) / float(maxi(1, frames))   # 单帧宽
+	spr.pixel_size = (world_px * WS) / fw             # 让特效在场地约 world_px 像素宽
+	spr.position = _world_pos(pos2d, h)
+	_world.add_child(spr)
+	var t := create_tween()
+	t.tween_method(func(fr): spr.frame = clampi(int(fr), 0, frames - 1), 0.0, float(frames), dur)   # 逐帧推进
+	t.tween_callback(spr.queue_free)
+
 # 技能光圈: 地面上一个躺平的环, 扩散淡出 (2D 接口对齐 _skill_ring(pos, col, radius))
 func _skill_ring(pos2d: Vector2, col: Color, radius: float) -> void:
 	var r := Sprite3D.new()
