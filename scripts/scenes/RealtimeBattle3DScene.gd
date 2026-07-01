@@ -6567,13 +6567,18 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 					var sc2: float = lerpf(0.8, 1.3, lost)
 					for _r in range([1, 2, 3][si]):
 						_apply_damage_from(u, o, _atk_dmg(u, sc2, o), Color("#ffd07a"), 0.0, false, true)
-			"p2eq_050":   # 幽灵加特林: N发随机分布+永久减甲
+			"p2eq_050":   # 幽灵加特林: N发随机分布+减甲(每目标累计上限, 防实时高频放技削到0; 用户2026-07-01 on-cast节流, 保守可F5调)
+				var g_shred: float = [1.0, 2.0, 3.0][si]
+				var g_cap: float = [15.0, 25.0, 40.0][si]   # 该效果对单个目标累计减甲上限
 				for _g in range([20, 30, 60][si]):
 					var es2 := _enemies_of(u)
 					if es2.is_empty(): break
 					var o = es2[randi() % es2.size()]
 					_apply_damage_from(u, o, _atk_dmg(u, [0.1, 0.12, 0.14][si], o), Color("#d0ffff"), 0.0, false, true)
-					o["base_def"] = maxf(0.0, o["base_def"] - [1.0, 2.0, 3.0][si]); _recalc_stats(o)
+					var g_acc: float = float(o.get("gatling_shred_acc", 0.0))
+					if g_acc < g_cap:
+						var g_dec: float = minf(g_shred, g_cap - g_acc)
+						o["base_def"] = maxf(0.0, o["base_def"] - g_dec); o["gatling_shred_acc"] = g_acc + g_dec; _recalc_stats(o)
 			"p2eq_051":   # 激光手枪: 直线首敌+流血, 身后敌受50%伤害+50%流血
 				var dir4: Vector2 = (_nearest_enemy(u)["pos"] - u["pos"]).normalized() if _nearest_enemy(u) != null else Vector2.RIGHT
 				var first = _eq_first_in_line(u, dir4, 50.0)
