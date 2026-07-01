@@ -737,6 +737,12 @@ func _unit_level(side: String) -> int:
 		base = maxi(1, int(gs2.get("season_level")))
 	return base
 
+# 等级乘数: 该单位/召唤体所属侧的等级 → 主属性 +5%/级 (与 _make_unit spawn 缩放同公式).
+#   装备 flat 加值 + 固定值召唤体(随从/海螺虫/大熊) 用它"吃等级"; owner 派生召唤体已间接吃, 不用.
+func _lvl_mult_for(u: Dictionary) -> float:
+	var lvl: int = maxi(1, _unit_level(str(u.get("side", "left"))))
+	return 1.0 + 0.05 * float(lvl - 1)
+
 func _random_bot(n: int) -> Array:
 	var pool: Array = STATS.keys()
 	var rng := RandomNumberGenerator.new()
@@ -4915,8 +4921,9 @@ func _spawn_hiding_minion(u: Dictionary) -> void:
 	var pick: String = HIDING_POOL[randi() % HIDING_POOL.size()]
 	var d: Dictionary = _data_by_id.get(pick, {})
 	var st: Array = STATS.get(pick, DEFAULT_STAT)
-	var hp: float = float(d.get("hp", 1350)) * 0.40  # 召唤=主人最终hp×40%
-	var minion = _spawn_summon(u, "minion", hp, float(d.get("atk", 40)) * 0.8, {
+	var _lm: float = _lvl_mult_for(u)                # 固定值召唤吃等级
+	var hp: float = float(d.get("hp", 1350)) * 0.40 * _lm  # 召唤=主人最终hp×40% (×等级)
+	var minion = _spawn_summon(u, "minion", hp, float(d.get("atk", 40)) * 0.8 * _lm, {
 		"label": "随从", "spr_id": pick, "col_size": 36.0, "hp_w": 30.0,
 		"melee": bool(st[0]), "move_spd": float(st[1]), "atk_interval": float(st[2]), "atk_range": float(st[3]),
 		"crit": float(d.get("crit", 0.2)),
@@ -6142,10 +6149,11 @@ func _eq_apply_one_stats(u: Dictionary, item_id: String, star: int) -> void:
 		_eq_apply_flags(u, item_id, star)
 		return
 	var st: Dictionary = arr[i]
+	var _lm: float = _lvl_mult_for(u)     # 装备flat吃等级(仅hp/atk/def/mr; %/穿透不缩)
 	if st.has("atk"):
-		u["base_atk"] += float(st["atk"])
+		u["base_atk"] += float(st["atk"]) * _lm
 	if st.has("hp"):
-		var add: float = float(st["hp"])  # 装备hp已是最终值
+		var add: float = float(st["hp"]) * _lm  # 装备hp已是最终值(×等级)
 		u["maxHp"] += add; u["hp"] += add
 	if st.has("crit"):
 		u["crit"] += float(st["crit"])
@@ -6156,9 +6164,9 @@ func _eq_apply_one_stats(u: Dictionary, item_id: String, star: int) -> void:
 	if st.has("_lifestealPct"):
 		u["lifesteal"] += float(st["_lifestealPct"]) / 100.0
 	if st.has("def"):
-		u["base_def"] += float(st["def"])
+		u["base_def"] += float(st["def"]) * _lm
 	if st.has("mr"):
-		u["base_mr"] += float(st["mr"])
+		u["base_mr"] += float(st["mr"]) * _lm
 	if st.has("critDmg"):
 		u["crit_dmg"] += float(st["critDmg"])
 	# (装备 _maxEnergy 原给初始龟能; 龟能模型已换逐技固定冷却 → 装备暂未激活, 先跳过此项)
@@ -6560,7 +6568,7 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 		var stt: Dictionary = u["eq_state"].get(iid, {})
 		match iid:
 			"p2eq_033":   # 复活海螺: 阵亡→原位变小虫 (复用 _spawn_summon, 3D 用色块 block)
-				var worm = _spawn_summon(u, "worm", [150.0, 200.0, 300.0][si] * HP_MULT, [20.0, 30.0, 40.0][si], {"label": "海螺虫", "spr_id": "conch-worm", "col_size": 30.0, "hp_w": 22.0})
+				var worm = _spawn_summon(u, "worm", [150.0, 200.0, 300.0][si] * HP_MULT * _lvl_mult_for(u), [20.0, 30.0, 40.0][si] * _lvl_mult_for(u), {"label": "海螺虫", "spr_id": "conch-worm", "col_size": 30.0, "hp_w": 22.0})
 				if worm != null:
 					worm["pos"] = u["pos"]
 					if is_instance_valid(worm["sprite"]): worm["sprite"].position = _world_pos(u["pos"], GROUND_LIFT)
@@ -6574,7 +6582,7 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 					if gs != null and gs.get("meta_deepsea_coins") != null:
 						gs.set("meta_deepsea_coins", int(gs.get("meta_deepsea_coins")) + gears * 2)
 			"p2eq_034":   # 玩偶小熊: 🚧 简化 — 阵亡时召唤大熊 (250生命/50攻击)
-				var bear = _spawn_summon(u, "bear", 250.0 * HP_MULT, 50.0, {"label": "大熊", "spr_id": "doll-bear", "col_size": 40.0, "hp_w": 30.0})
+				var bear = _spawn_summon(u, "bear", 250.0 * HP_MULT * _lvl_mult_for(u), 50.0 * _lvl_mult_for(u), {"label": "大熊", "spr_id": "doll-bear", "col_size": 40.0, "hp_w": 30.0})
 				if bear != null:
 					bear["eq_state"] = {}; bear["equips"] = []
 
