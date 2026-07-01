@@ -2087,24 +2087,42 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 		"src": src, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 700.0, 0.22, 0.7), "basic_onhit": basic_onhit,
 	})
 
-func _fire_doll_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   # 玩偶小熊: 用装备图(doll)做可见小熊飞向目标(替代看不见的bolt); 落点伤害走 _step_projectiles
+func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   # 玩偶小熊: 携带者身上召出小熊(装备图), 中速走向敌人, 进攻击范围踢飞, 随后消失
 	if tgt == null:
 		return
-	var start2d: Vector2 = u["pos"]
-	var p := Sprite3D.new()
-	p.texture = _sheet("res://assets/sprites/equip/dungeon-doll.png")
-	p.pixel_size = 0.0016   # ~1m 高小熊 (609px 图)
-	p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	p.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	p.shaded = false
-	p.transparent = true
-	var world_from := _world_pos(start2d, 1.0)
-	p.position = world_from
-	_world.add_child(p)
-	_projectiles.append({
-		"node": p, "from": world_from, "tgt": tgt, "dmg": dmg, "col": Color("#ffb0c8"),
-		"src": u, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 500.0, 0.28, 0.6), "basic_onhit": false,
-	})
+	var bear := Sprite3D.new()
+	bear.texture = _sheet("res://assets/sprites/equip/dungeon-doll.png")
+	bear.pixel_size = 0.0018   # ~1.1m 高小熊 (609px 图)
+	bear.offset = Vector2(0.0, 300.0)   # 底部对齐地面 (609图半高)
+	bear.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	bear.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	bear.shaded = false
+	bear.transparent = true
+	var pos: Vector2 = u["pos"]
+	bear.position = _world_pos(pos, GROUND_LIFT)
+	_world.add_child(bear)
+	var spd := 160.0   # 中等步速 px/s (龟约105~145)
+	var guard := 0.0
+	while is_instance_valid(bear) and tgt != null and tgt.get("alive", false):
+		await get_tree().process_frame
+		var dt := get_process_delta_time()
+		guard += dt
+		if guard > 4.0:   # 兜底: 走太久放弃
+			break
+		var to: Vector2 = tgt["pos"]
+		if pos.distance_to(to) <= 60.0:   # 进攻击范围
+			break
+		pos = pos.move_toward(to, spd * dt)
+		bear.position = _world_pos(pos, GROUND_LIFT)
+	# 到位: 踢一脚 → 伤害 + 击飞
+	if tgt != null and tgt.get("alive", false):
+		_apply_damage_from(u, tgt, dmg, Color("#ffb0c8"), 0.0, false, true)
+		_knockback(u, tgt, 60.0)
+	# 小熊消失 (淡出)
+	if is_instance_valid(bear):
+		var tw := create_tween()
+		tw.tween_property(bear, "modulate:a", 0.0, 0.2)
+		tw.tween_callback(bear.queue_free)
 
 func _step_projectiles(delta: float) -> void:
 	var keep: Array = []
@@ -6812,8 +6830,7 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 					var mt = _nearest_enemy(u)   # 优先前排(最近)
 					if mt != null:
 						var bdm: int = _atk_dmg(u, [1.0, 2.0, 5.0][si], mt) + [100, 210, 1000][si]
-						_fire_doll_bear(u, mt, bdm)
-						_knockback(u, mt, 60.0)
+						_summon_walking_bear(u, mt, bdm)
 						stt["bear_layers"] = int(stt.get("bear_layers", 0)) + 1
 						if int(stt["bear_layers"]) >= [5, 3, 1][si]:
 							stt["bear_done"] = true
