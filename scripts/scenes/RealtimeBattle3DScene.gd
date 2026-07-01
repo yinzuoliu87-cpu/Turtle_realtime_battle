@@ -2101,8 +2101,8 @@ func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   #
 		return
 	var bear := Sprite3D.new()
 	bear.texture = _sheet("res://assets/sprites/equip/dungeon-doll.png")
-	bear.pixel_size = 0.0018   # ~1.1m 高小熊 (609px 图)
-	bear.offset = Vector2(0.0, 300.0)   # 底部对齐地面 (609图半高)
+	bear.pixel_size = 0.0026   # ~1.6m 高小熊 (609px 图; 放大看得清, 仍小于2m龟)
+	bear.offset = Vector2(0.0, 304.5)   # 底部对齐地面 (609图半高)
 	bear.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	bear.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	bear.shaded = false
@@ -6207,8 +6207,8 @@ const DEMO_EQUIP := {
 
 # 装备注入: 玩家队(left)读 persistent_equipped; demo 阵容兜底塞测试装备.
 func _inject_equipment() -> void:
-	if REVIEW_DEMO:
-		return                          # 评审: 受审龟裸装, 看纯内在数值(装备另行评审)
+	if REVIEW_DEMO and not OS.has_environment("EQDEMO_EQUIP"):
+		return                          # 评审: 受审龟裸装, 看纯内在数值 (装备演示 EQDEMO 例外, 要装上)
 	var gs = get_node_or_null("/root/GameState")
 	var pe: Dictionary = {}
 	if gs != null and gs.get("persistent_equipped") is Dictionary:
