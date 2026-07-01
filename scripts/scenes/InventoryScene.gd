@@ -351,6 +351,7 @@ func _equip_to(pet_id: String, bench_idx: int) -> void:
 	eqs.append(item)
 	GameState.persistent_equipped[pet_id] = eqs
 	_sel_bench = -1
+	GameState.auto_merge_all()   # 装上后若凑够3件(背包+龟身)自动合星
 	GameState.save()
 	_rebuild()
 
@@ -361,7 +362,7 @@ func _unequip_last(pet_id: String) -> void:
 		return
 	GameState.persistent_bench.append(eqs.pop_back())
 	GameState.persistent_equipped[pet_id] = eqs
-	GameState.auto_merge_bench()   # 卸回背包后自动 3 合 1
+	GameState.auto_merge_all()   # 卸回背包后自动 3 合 1 (背包+龟身一起算)
 	GameState.save()
 	_rebuild()
 

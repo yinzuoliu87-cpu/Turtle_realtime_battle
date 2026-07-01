@@ -175,7 +175,7 @@ func _on_buy(idx: int) -> void:
 		return   # 买不起
 	GameState.meta_deepsea_coins -= price
 	GameState.persistent_bench.append({"id": str(edef.get("id", "")), "star": 1})
-	GameState.auto_merge_bench()   # 买后自动 3 合 1 (跟以前一样)
+	GameState.auto_merge_all()   # 买后自动 3 合 1 (背包+龟身一起算)
 	_offer[idx] = null
 	GameState.save()
 	_rebuild()

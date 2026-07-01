@@ -979,8 +979,9 @@ func buy_season_xp() -> bool:
 	save()
 	return true
 
-## 自动 3 合 1 (持久背包内): 同 id+star 满 3 → 升 1 星, 反复到无可合 (满3星止). 不自存. 买/卸后自动调.
-func auto_merge_bench() -> void:
+## 自动 3 合 1 (背包 + 龟身装备一起算, 用户 2026-07-01): 同 id+star 满 3 → 升 1 星, 反复到无可合 (满3星止). 不自存. 买/装/卸后自动调.
+## 合出的高星: 若被合的3件里有装在龟身 → 放回那只龟(保持装备; 先移后加故槽位天然安全); 否则回背包. 纯背包合成(优先从背包移)行为与旧版一致.
+func auto_merge_all() -> void:
 	var changed := true
 	while changed:
 		changed = false
@@ -988,6 +989,10 @@ func auto_merge_bench() -> void:
 		for it in persistent_bench:
 			var k := "%s|%d" % [str(it.get("id", "")), int(it.get("star", 1))]
 			counts[k] = int(counts.get(k, 0)) + 1
+		for pet in persistent_equipped.keys():
+			for eit in persistent_equipped[pet]:
+				var ke := "%s|%d" % [str(eit.get("id", "")), int(eit.get("star", 1))]
+				counts[ke] = int(counts.get(ke, 0)) + 1
 		for k in counts.keys():
 			if int(counts[k]) < 3:
 				continue
@@ -997,14 +1002,32 @@ func auto_merge_bench() -> void:
 			if star >= 3:
 				continue
 			var removed := 0
-			var i := 0
-			while i < persistent_bench.size() and removed < 3:
-				var it: Dictionary = persistent_bench[i]
-				if str(it.get("id", "")) == iid and int(it.get("star", 1)) == star:
-					persistent_bench.remove_at(i); removed += 1
+			var host_pet := ""                            # 有龟身件被合 → 记第一只龟(升星件放回它)
+			var bi := 0                                     # 先从背包移(纯背包合成行为不变)
+			while bi < persistent_bench.size() and removed < 3:
+				var bit: Dictionary = persistent_bench[bi]
+				if str(bit.get("id", "")) == iid and int(bit.get("star", 1)) == star:
+					persistent_bench.remove_at(bi); removed += 1
 				else:
-					i += 1
-			persistent_bench.append({"id": iid, "star": star + 1})
+					bi += 1
+			if removed < 3:                                 # 不够再从龟身移
+				for pet2 in persistent_equipped.keys():
+					var eqs: Array = persistent_equipped[pet2]
+					var ei := 0
+					while ei < eqs.size() and removed < 3:
+						var eit2: Dictionary = eqs[ei]
+						if str(eit2.get("id", "")) == iid and int(eit2.get("star", 1)) == star:
+							eqs.remove_at(ei); removed += 1
+							if host_pet == "": host_pet = str(pet2)
+						else:
+							ei += 1
+					persistent_equipped[pet2] = eqs
+					if removed >= 3:
+						break
+			if host_pet != "":
+				persistent_equipped[host_pet].append({"id": iid, "star": star + 1})
+			else:
+				persistent_bench.append({"id": iid, "star": star + 1})
 			changed = true
 			break
 
