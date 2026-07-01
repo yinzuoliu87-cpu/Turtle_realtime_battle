@@ -677,13 +677,17 @@ func _spawn_teams() -> void:
 	_eq_apply_all_stats()     # 开战: 全装备纯属性 / 永久 flag 加到携带者 (spawn 被动之后, 不被覆盖)
 	_build_team_panels()      # 局内 UI: 左右队头像框栏 (主龟; 召唤体不进) — 须在 equips 注入之后
 
+func _review_turtle() -> String:   # 受审龟: env REVIEW_TURTLE 覆盖 const (评审任意龟)
+	return OS.get_environment("REVIEW_TURTLE") if OS.has_environment("REVIEW_TURTLE") else REVIEW_TURTLE
+func _review_skill_idx() -> int:   # 受审技idx: env REVIEW_SKILL 覆盖 const (-1=默认轮转)
+	return int(OS.get_environment("REVIEW_SKILL")) if OS.has_environment("REVIEW_SKILL") else REVIEW_SKILL_IDX
 func _resolve_left() -> Array:
 	if OS.has_environment("EQDEMO_EQUIP"):   # 装备演示: 远程携带者(默认hunter)
 		return [OS.get_environment("EQDEMO_CARRIER")] if OS.has_environment("EQDEMO_CARRIER") else ["basic"]
 	if REVIEW_DEMO:
 		if not REVIEW_SHOWCASE.is_empty():
 			return REVIEW_SHOWCASE.duplicate()   # 展示模式: 多只一队
-		return [REVIEW_TURTLE]                 # 评审: 只 1 只受审龟
+		return [_review_turtle()]                 # 评审: 只 1 只受审龟(env可覆盖)
 	var ldr := _season_leaders()
 	return ldr if ldr.size() >= 1 else LEFT_DEMO.duplicate()
 
@@ -3358,8 +3362,8 @@ const PASSIVE_SKILL_TYPES := {"iceBurnImmune": true, "phoenixEnhancedRebirth": t
 # loadout(选3) 里所有"非普攻"技 type (physical/magic 是普攻=自动, 排除)
 # 4选1: 每龟从 skillPool[1..4] 选【1个】(主动或被动); GameState.loadouts[id]=选中索引(默认1=签名候选).
 func _resolve_chosen_index(id: String, use_loadout: bool) -> int:
-	if REVIEW_DEMO and id == REVIEW_TURTLE and REVIEW_SKILL_IDX >= 0:
-		return REVIEW_SKILL_IDX   # 评审指定技
+	if REVIEW_DEMO and id == _review_turtle() and _review_skill_idx() >= 0:
+		return _review_skill_idx()   # 评审指定技(env可覆盖)
 	var d: Dictionary = _data_by_id.get(id, {})
 	var pool: Array = d.get("skillPool", [])
 	var idx := 1                                          # 默认 skillPool[1] (各龟签名候选)
@@ -3576,10 +3580,10 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"angelEquality":        _sk_dmg(u, tgt, {"phys": 2.0, "true": 0.5, "hits": 2, "name": "平等审判!", "color": Color("#ffe9a8")})
 		"iceSpike":             _sk_dmg(u, tgt, {"phys": 0.7, "magic": 0.7, "hits": 6, "rider": "slow", "name": "冰锥!", "color": Color("#9be7ff")})
 		"ninjaShuriken":        _sk_dmg(u, tgt, {"phys": 0.96, "true": 0.64, "hits": 1, "name": "飞镖!", "color": Color("#cfd8e8")})
-		"ninjaBomb":            _sk_dmg(u, tgt, {"phys": 1.1, "hits": 1, "aoe": true, "name": "烟雾弹!", "color": Color("#b0b0c0")})
+		"ninjaBomb":            _sk_dmg(u, tgt, {"phys": 1.1, "hits": 1, "aoe": true, "defDown": 0.25, "name": "烟雾弹!", "color": Color("#b0b0c0")})
 		"twoHeadMagicWave":     _sk_dmg(u, tgt, {"phys": 0.8, "true": 0.8, "hits": 4, "name": "魔法波!", "color": Color("#ffffff")})
 		"ghostTouch":           _sk_dmg(u, tgt, {"phys": 0.4, "true": 0.9, "hits": 1, "rider": "curse", "name": "幽灵之触!", "color": Color("#c77dff")})
-		"ghostPhantom":         _sk_dmg(u, tgt, {"magic": 1.5, "hits": 1, "name": "幻影!", "color": Color("#c77dff")})
+		"ghostPhantom":         _sk_dmg(u, tgt, {"magic": 1.5, "hits": 1, "lifesteal": 0.8, "selfDodge": 0.25, "name": "幻影!", "color": Color("#c77dff")})
 		"diamondCollide":       _sk_dmg(u, tgt, {"phys": 0.8, "mr": 0.9, "hits": 1, "rider": "stun", "name": "撞击!", "color": Color("#9bdcff")})
 		"fortuneStrike":        _sk_dmg(u, tgt, {"phys": 1.0, "hits": 2, "name": "财运一击!", "color": Color("#ffd93d")})
 		"diceAttack":           _sk_dmg(u, tgt, {"phys": 0.9, "hits": 3, "name": "骰子攻击!", "color": Color("#ff4444")})
@@ -4569,6 +4573,8 @@ func _sk_dmg(u: Dictionary, tgt, opts: Dictionary) -> void:
 		_apply_skill_extras(u, e, opts)
 		_apply_rider(u, e, str(opts.get("rider", "")))
 		_skill_ring(e["pos"], Color(col.r, col.g, col.b, 0.4), 46.0)
+	if float(opts.get("selfDodge", 0.0)) > 0.0:   # 技能给施法者闪避buff(如ghost幽冥突袭25%)
+		_buff(u, "dodge", float(opts["selfDodge"]), true, BUFF_SEC)
 	var fixed: Array = _enemies_of(u) if aoe else ([tgt] if tgt != null else [])
 	if stagger > 0.0:
 		var tw := create_tween()
@@ -4595,6 +4601,7 @@ func _sk_dmg_wave(u: Dictionary, opts: Dictionary, vh: int, col: Color, random_a
 	var hp_flat: float = float(opts.get("hp", 0.0)) * u["maxHp"]
 	var mr_flat: float = float(opts.get("mr", 0.0)) * u["mr"]
 	var elec: int = int(opts.get("electric", 0))
+	var ls: float = float(opts.get("lifesteal", 0.0))   # 技能吸血(如ghost幽冥突袭80%)
 	for e in ws:
 		if e == null or not e.get("alive", false):
 			continue
@@ -4605,7 +4612,7 @@ func _sk_dmg_wave(u: Dictionary, opts: Dictionary, vh: int, col: Color, random_a
 			dmg += _atk_dmg(u, magic / vh, e, true)
 		dmg += int((hp_flat + mr_flat) / vh)
 		if dmg > 0:
-			_apply_damage_from(u, e, dmg, col)
+			_apply_damage_from(u, e, dmg, col, ls)
 			var spl: float = float(opts.get("splash", 0.0))   # 溅射到次要目标(闪电打击25%)
 			if spl > 0.0:
 				for o in _enemies_of(u):
@@ -4805,7 +4812,7 @@ func _sk_bubble_bind(u: Dictionary, tgt) -> void:
 		return
 	tgt["stun_until"] = maxf(float(tgt.get("stun_until", 0.0)), _t + _cc_dur(tgt, CTRL_SEC))
 	tgt["bind_until"] = _t + CTRL_SEC
-	tgt["bind_shred"] = 2.0
+	tgt["bind_shred"] = 1.0 if int(u.get("level", 1)) <= 5 else 2.0   # 减甲量按等级(detail: 1-5级=1/6-10级=2)
 	tgt["bind_acc"] = 0.0
 	_skill_ring(tgt["pos"], Color(0.5, 0.9, 1.0, 0.5), 50.0)
 
