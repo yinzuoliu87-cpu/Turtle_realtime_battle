@@ -642,7 +642,8 @@ func _spawn_teams() -> void:
 		elif REVIEW_DEMO:
 			pos = Vector2(_cx + 100.0 + (float(i) - float(right.size() - 1) / 2.0) * 150.0, _cy + 40.0)   # 横排(用户)
 		if OS.has_environment("EQDEMO_EQUIP"):
-			pos = Vector2(_cx + 60.0 + float(i) * 500.0, _cy)   # 装备演示: 2假人相距500码
+			var _d1: float = float(OS.get_environment("EQDEMO_ENEMY1")) if OS.has_environment("EQDEMO_ENEMY1") else 210.0
+			pos = Vector2(_cx - 150.0 + _d1 + float(i) * 500.0, _cy)   # 装备演示: 敌1距携带者_d1码(默认210), 两敌相距500
 		var ru := _make_unit(str(right[i]), "right", pos)
 		if REVIEW_DEMO:                          # 假人: 不放技/永不死训练靶; ATTACKS时会还手(动+普攻)
 			if not REVIEW_DUMMY_ATTACKS:
@@ -1485,6 +1486,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 	if not u.get("equips", []).is_empty():
 		_eq_tick(u, delta)
 		_tick_doll(u, delta)
+		_tick_rustblade(u, delta)
 
 func _enemies_of(u: Dictionary) -> Array:
 	var out: Array = []
@@ -1595,6 +1597,61 @@ func _big_bear_attack(u: Dictionary, tgt: Dictionary) -> void:   # 大熊: <2层
 		u["bear_stacks"] = int(u.get("bear_stacks", 0)) + 1
 		if int(u["bear_stacks"]) >= 2:
 			u["atk_range"] = 600.0                   # 下次冲击波: 射程600码(进程即放,不贴脸)
+
+func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 锈蚀短剑p2eq_001: 每3s就绪, 100码射程内有敌即劈砍(用户改造)
+	var es: Dictionary = u.get("eq_state", {})
+	if not es.has("p2eq_001"): return
+	var si: int = -1
+	for e in u["equips"]:
+		if str(e["id"]) == "p2eq_001":
+			si = _eq_si(int(e.get("star", 1))); break
+	if si < 0: return
+	var stt: Dictionary = es["p2eq_001"]
+	stt["rust_t"] = float(stt.get("rust_t", 0.0)) + delta
+	if float(stt["rust_t"]) < 3.0: return          # 未就绪(每3s就绪一次)
+	var t = _nearest_enemy(u)
+	var rng: float = float(u.get("atk_range", 70.0))   # 射程=携带者射程(近战短/远程长, 自适应; 用户)
+	if t == null or (t["pos"] - u["pos"]).length() > rng: return   # 射程内无敌→保持就绪等待
+	stt["rust_t"] = 0.0
+	_weapon_slash(u["pos"], t["pos"], Color("#ffd27a"))
+	_apply_damage_from(u, t, _atk_dmg(u, [0.6, 0.75, 1.0][si], t) + int([40, 60, 100][si] * u["crit"]), Color("#ff4444"), 0.0, false, true)
+
+func _make_slash_texture(col: Color) -> ImageTexture:   # 斜劈斩弧: 一段新月弧(左上→右下), 亮核软边
+	var S := 64
+	var img := Image.create(S, S, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var cx := float(S) * 0.5; var cy := float(S) * 0.5
+	var R := float(S) * 0.42; var thick := float(S) * 0.1
+	for y in range(S):
+		for x in range(S):
+			var dx := float(x) - cx; var dy := float(y) - cy
+			var d := sqrt(dx * dx + dy * dy)
+			if absf(d - R) > thick: continue
+			var a := atan2(dy, dx)                       # 只画一段弧 (斜劈: -150°→30°, 左上→右下)
+			if a < deg_to_rad(-150.0) or a > deg_to_rad(30.0): continue
+			var edge := 1.0 - absf(d - R) / thick
+			var taper := sin(PI * clampf((a - deg_to_rad(-150.0)) / deg_to_rad(180.0), 0.0, 1.0))   # 两端尖
+			var c := col.lerp(Color(1, 1, 1), clampf(edge * 1.4, 0.0, 1.0) * 0.75)
+			c.a = edge * edge * taper
+			img.set_pixel(x, y, c)
+	return ImageTexture.create_from_image(img)
+
+func _weapon_slash(from2d: Vector2, to2d: Vector2, col: Color) -> void:   # 面向镜头的斜砍斩弧(用户选)+命中环
+	var arc := Sprite3D.new()
+	arc.texture = _make_slash_texture(col)
+	arc.billboard = BaseMaterial3D.BILLBOARD_ENABLED; arc.shaded = false; arc.transparent = true
+	arc.pixel_size = 0.05
+	arc.flip_h = (to2d.x < from2d.x)                     # 敌在左→翻转斜向(朝敌人那侧劈)
+	arc.position = _world_pos(to2d, 1.0)                 # 落在敌身上, 略抬高
+	arc.modulate = Color(col.r, col.g, col.b, 0.0)
+	arc.scale = Vector3(0.5, 0.5, 0.5)
+	_world.add_child(arc)
+	var tw := create_tween(); tw.set_parallel(true)
+	tw.tween_property(arc, "modulate:a", 0.95, 0.05)
+	tw.tween_property(arc, "scale", Vector3(1.25, 1.25, 1.25), 0.14)   # 快速挥出(扫)
+	tw.chain().tween_property(arc, "modulate:a", 0.0, 0.13)
+	tw.chain().tween_callback(arc.queue_free)
+	_skill_ring(to2d, Color(col.r, col.g, col.b, 0.6), 42.0)
 
 func _pull_airborne(o: Dictionary, origin: Vector2, dist: float, dur: float) -> void:   # 击飞态平滑拉向origin(拉dist码, 留24px不重叠); vx/vz须为0(靠此改pos, 非物理横滑)
 	if not o.get("alive", false): return
@@ -6524,9 +6581,14 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 				for o in _enemies_of(src):
 					if o != tgt and (o["pos"] - tgt["pos"]).length() <= 70.0:
 						_apply_damage_from(src, o, maxi(1, int(dmg * frac)), Color("#ffd07a"), 0.0, false, true)
-			"p2eq_005":   # 双生匕首: 概率追击
+			"p2eq_005":   # 双生匕首: 概率追击 (3★必定暴击)
 				if randf() < [0.5, 0.75, 1.0][si]:
-					_apply_damage_from(src, tgt, _atk_dmg(src, [0.7, 0.8, 1.0][si], tgt), Color("#ff4444"), 0.0, false, true)
+					if si == 2:
+						var _oc: float = src["crit"]; src["crit"] = 1.0   # 3★: 追击必定暴击100% (_resolve_dmg读crit roll)
+						_apply_damage_from(src, tgt, _atk_dmg(src, 1.0, tgt), Color("#ff4444"), 0.0, false, true)
+						src["crit"] = _oc
+					else:
+						_apply_damage_from(src, tgt, _atk_dmg(src, [0.7, 0.8, 1.0][si], tgt), Color("#ff4444"), 0.0, false, true)
 			"p2eq_023":   # 灼热火珊瑚(被动): 每段额外灼烧 + 充能
 				var burn: int = maxi(1, roundi([5.0, 7.0, 10.0][si] + [0.07, 0.11, 0.15][si] * src["atk"]))
 				_apply_dot_stacks(tgt, "burn", burn, src)
@@ -6914,10 +6976,8 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
 		var stt: Dictionary = u["eq_state"].get(iid, {})
 		match iid:
-			"p2eq_001":   # 锈蚀短剑: 每周期劈砍最近敌
-				var t = _nearest_enemy(u)
-				if t != null:
-					_apply_damage_from(u, t, _atk_dmg(u, [0.6, 0.75, 1.0][si], t) + int([40, 60, 100][si] * u["crit"]), Color("#ff4444"), 0.0, false, true)
+			"p2eq_001":   # 锈蚀短剑: 移到每帧 _tick_rustblade (每3s就绪 + 100码射程内有敌即劈); 周期tick不处理
+				pass
 			"p2eq_012":   # 龟苓膏块: 每周期自护盾
 				_grant_shield(u, [30.0, 40.0, 55.0][si])
 			"p2eq_016":   # 铁壁盾: 每周期全队(含自己)护盾
