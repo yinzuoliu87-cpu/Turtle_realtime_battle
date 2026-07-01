@@ -1308,6 +1308,7 @@ func _process(delta: float) -> void:
 func _tick_unit(u: Dictionary, delta: float) -> void:
 	# DoT/buff到期/累积条/周期被动 (1:1 2D _tick_effects)
 	_tick_effects(u, delta)
+	_heal_flush(u)   # LoL式治疗累加器: 攒一波回血合并成一个绿字(满血=0)
 	if not u["alive"]:
 		return
 	if u.get("_slam", false):   # 火山砸地演出中: 锁AI/移动 (height/pos由slam tween驱动)
@@ -4904,9 +4905,24 @@ func _heal(u: Dictionary, amt: float, silent: bool = false) -> void:
 		var _ovf: float = amt - float(u["hp"] - hb)   # 请求治疗量 - 实际回复 = 溢出
 		if _ovf > 0.0 and u["shield"] < _osc:
 			u["shield"] = minf(_osc, u["shield"] + _ovf)   # 静默累积(吸血高频不刷飘字), 由携带者护盾条显示
-	_float_text(u["pos"] + Vector2(0, -40), "+" + str(int(amt)), Color("#06d6a0"), false, "heal")
+	var _act: float = float(u["hp"] - hb)   # 实际回血(满血=0, 超出满血/转盾部分不计入绿字)
+	if _act > 0.0:                          # LoL式治疗累加器: 高频/多段/多源回血攒进累加, 短窗后合并成一个绿字(见_heal_flush)
+		u["_heal_acc"] = float(u.get("_heal_acc", 0.0)) + _act
+		u["_heal_acc_t"] = _t
+		if float(u.get("_heal_acc_start", 0.0)) <= 0.0:
+			u["_heal_acc_start"] = _t
 	if not silent:
 		_sfx_heal()                          # §AUDIO: 治疗音 (节流)
+
+func _heal_flush(u: Dictionary) -> void:   # LoL式: 治疗累加器→静默0.15s(一波打完)或攒够0.6s→合并弹一个绿字(=实际回血)
+	var acc: float = float(u.get("_heal_acc", 0.0))
+	if acc <= 0.0:
+		return
+	if _t - float(u.get("_heal_acc_t", 0.0)) >= 0.15 or _t - float(u.get("_heal_acc_start", 0.0)) >= 0.6:
+		if int(round(acc)) >= 1:
+			_float_text(u["pos"] + Vector2(0, -40), "+" + str(int(round(acc))), Color("#06d6a0"), false, "heal")
+		u["_heal_acc"] = 0.0
+		u["_heal_acc_start"] = 0.0
 
 # 韧性: CC实际时长 = 基础 ×(1-韧性), 最多减90%
 func _cc_dur(u: Dictionary, sec: float) -> float:
