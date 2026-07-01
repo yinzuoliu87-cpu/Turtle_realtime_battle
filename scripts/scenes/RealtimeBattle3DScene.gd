@@ -44,7 +44,7 @@ const STATS := {
 	"angel": [false, 105.0, 0.85, 400.0], "ice": [false, 105.0, 0.85, 400.0], "ninja": [false, 145.0, 0.6, 400.0],
 	"two_head": [true, 145.0, 0.85, 70.0], "ghost": [false, 145.0, 0.6, 400.0], "diamond": [true, 70.0, 1.1, 70.0],
 	"fortune": [true, 105.0, 0.75, 70.0], "dice": [false, 145.0, 0.6, 400.0], "rainbow": [true, 105.0, 0.7, 70.0],
-	"gambler": [false, 145.0, 0.85, 400.0], "hunter": [false, 145.0, 0.6, 400.0], "pirate": [false, 105.0, 0.85, 400.0],
+	"gambler": [false, 145.0, 0.85, 400.0], "hunter": [false, 145.0, 0.7, 400.0], "pirate": [false, 105.0, 0.85, 400.0],
 	"candy": [false, 105.0, 0.85, 400.0], "bubble": [false, 70.0, 1.1, 400.0], "line": [false, 145.0, 0.6, 400.0],
 	"lightning": [false, 145.0, 0.6, 400.0], "phoenix": [false, 105.0, 0.5, 400.0], "lava": [false, 145.0, 0.7, 400.0],
 	"cyber": [false, 105.0, 0.85, 400.0], "crystal": [true, 70.0, 1.1, 70.0], "chest": [true, 105.0, 1.1, 70.0],
@@ -341,6 +341,8 @@ func _ready() -> void:
 	if _audio != null:
 		_audio.play_bgm("battle")
 	# DEV 自截图 (SELFSHOT=<秒>): 等若干帧让战斗跑起来再从主视口存盘
+	if OS.has_environment("VFXPREVIEW"):
+		_vfx_preview_start()
 	if OS.has_environment("SELFSHOT"):
 		_self_screenshot()
 
@@ -1498,6 +1500,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 		_tick_rustblade(u, delta)
 		_tick_sword_storm(u, delta)
 		_tick_broadsword(u, delta)
+		_tick_laser(u, delta)
 
 func _enemies_of(u: Dictionary) -> Array:
 	var out: Array = []
@@ -6104,6 +6107,7 @@ func _update_overlay() -> void:
 #  灭队判定 + 结算横幅 (复用 2D _check_end; 赛季结算 Phase 3 接 GameState)
 # ============================================================================
 func _check_end() -> void:
+	if OS.has_environment("VFXPREVIEW"): return   # 预览模式不判胜负
 	var left_alive := 0
 	var right_alive := 0
 	for u in _units:
@@ -6626,6 +6630,31 @@ func _edit_exit_to_menu() -> void:
 
 # ============================================================================
 #  DEV 自截图 (SELFSHOT=<秒>): 等战斗跑起来 + frame_post_draw 保证入帧缓冲
+func _vfx_preview_start() -> void:   # VFX预览: 清单位/放大相机/场地中心反复放特效 (自截图迭代用)
+	for u in _units:
+		var sp = u.get("sprite", null)
+		if sp != null and is_instance_valid(sp): sp.queue_free()
+	_units = []
+	if _team_panel_left != null and is_instance_valid(_team_panel_left): _team_panel_left.queue_free()
+	if _team_panel_right != null and is_instance_valid(_team_panel_right): _team_panel_right.queue_free()
+	_cam.fov = float(OS.get_environment("VFXPREVIEW_FOV")) if OS.has_environment("VFXPREVIEW_FOV") else 26.0
+	_vfx_preview_loop()
+
+func _vfx_preview_loop() -> void:
+	var eff: String = OS.get_environment("VFXPREVIEW")
+	var si: int = (int(OS.get_environment("VFXPREVIEW_STAR")) - 1) if OS.has_environment("VFXPREVIEW_STAR") else 1
+	var period: float = float(OS.get_environment("VFXPREVIEW_PERIOD")) if OS.has_environment("VFXPREVIEW_PERIOD") else 1.2
+	await get_tree().create_timer(0.4).timeout
+	while is_instance_valid(self):
+		var origin: Vector2 = _arena_center
+		var dir: Vector2 = Vector2.RIGHT
+		var fu: Dictionary = {"pos": origin, "alive": true, "atk_range": 350.0, "equips": [], "def": 30.0, "mr": 30.0, "atk": 100.0}
+		match eff:
+			"laser_sweep": _laser_blade_sweep(fu, origin, dir, 350.0, 60.0)
+			"laser_chop": _eq_laser_chop(fu, {"pos": origin + dir * 300.0, "alive": true}, si, 180.0)
+			"moon": _eq_wide_blade(fu, {"pos": origin + dir * 650.0, "alive": true}, si)
+			_: _laser_blade_sweep(fu, origin, dir, 350.0, 60.0)
+		await get_tree().create_timer(period).timeout
 func _self_screenshot() -> void:
 	var delay := 3.0
 	var s := OS.get_environment("SELFSHOT")
@@ -6977,6 +7006,242 @@ func _make_moon_tex(col: Color) -> ImageTexture:   # 弯月刃(凸面朝+X): 大
 			c.a = clampf(e + 0.25, 0.0, 1.0)
 			img.set_pixel(x, y, c)
 	return ImageTexture.create_from_image(img)
+func _make_fan_tex(col: Color, half_deg: float) -> ImageTexture:   # 扇形(顶点左中/满半径/±half_deg): 激光长刃扇形斩
+	var S := 128
+	var img := Image.create(S, S, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var cy := float(S) * 0.5; var half := deg_to_rad(half_deg)
+	for y in range(S):
+		for x in range(S):
+			var dx := float(x); var dy := float(y) - cy
+			var dist := sqrt(dx * dx + dy * dy) / float(S - 1)
+			if dist > 1.0: continue
+			var a := atan2(dy, dx)
+			if absf(a) > half: continue
+			var e := clampf(minf(minf((1.0 - dist) / 0.16, (half - absf(a)) / deg_to_rad(12.0)), 1.0), 0.0, 1.0)
+			var c := col; c.a = col.a * (0.22 + 0.78 * e)
+			img.set_pixel(x, y, c)
+	return ImageTexture.create_from_image(img)
+
+func _laser_blade_sweep(u: Dictionary, origin: Vector2, dir: Vector2, rng: float, half_deg: float) -> void:   # 红激光长刃: 扇区红光晕 + 厚白热刃平滑扫过
+	var base_ang: float = atan2(dir.y, dir.x)
+	var glow := Sprite3D.new()   # 扫过区域红光晕(整片扇形发光)
+	glow.texture = _make_fan_tex(Color(1.0, 0.14, 0.18, 1.0), half_deg)
+	glow.billboard = BaseMaterial3D.BILLBOARD_DISABLED; glow.axis = Vector3.AXIS_Y
+	glow.shaded = false; glow.transparent = true
+	glow.pixel_size = rng * WS / 128.0
+	glow.rotation = Vector3(0.0, -base_ang, 0.0)
+	glow.position = _world_pos(origin + dir * (rng * 0.5), 0.09)
+	glow.modulate = Color(1.0, 0.3, 0.3, 0.0)
+	_world.add_child(glow)
+	var gt := create_tween()
+	gt.tween_property(glow, "modulate:a", 0.5, 0.09)
+	gt.tween_property(glow, "modulate:a", 0.0, 0.2)
+	gt.tween_callback(glow.queue_free)
+	var blade := Sprite3D.new()   # 厚白热激光长刃(扫过)
+	blade.texture = _make_laser_beam_tex(Color(1.0, 0.16, 0.2))
+	blade.billboard = BaseMaterial3D.BILLBOARD_DISABLED; blade.axis = Vector3.AXIS_Y
+	blade.shaded = false; blade.transparent = true
+	blade.pixel_size = rng * WS / 100.0
+	blade.scale = Vector3(1.0, 3.6, 1.0)
+	_world.add_child(blade)
+	var swp := create_tween()
+	swp.tween_method(_laser_blade_step.bind(blade, origin, base_ang, rng, half_deg), 0.0, 1.0, 0.16).set_trans(Tween.TRANS_SINE)
+	swp.tween_callback(blade.queue_free)
+
+func _laser_blade_step(fr: float, blade: Sprite3D, origin: Vector2, base_ang: float, rng: float, half_deg: float) -> void:
+	if not is_instance_valid(blade): return
+	var a: float = base_ang + deg_to_rad(lerpf(-half_deg, half_deg, fr))
+	var bd := Vector2(cos(a), sin(a))
+	blade.rotation = Vector3(0.0, -a, 0.0)
+	blade.position = _world_pos(origin + bd * (rng * 0.5), 0.16)
+	var tr := Sprite3D.new()   # 淡拖尾
+	tr.texture = blade.texture
+	tr.billboard = BaseMaterial3D.BILLBOARD_DISABLED; tr.axis = Vector3.AXIS_Y
+	tr.shaded = false; tr.transparent = true
+	tr.pixel_size = blade.pixel_size; tr.scale = blade.scale
+	tr.rotation = blade.rotation; tr.position = blade.position
+	tr.modulate = Color(1.0, 0.35, 0.38, 0.26)
+	_world.add_child(tr)
+	var tt := create_tween(); tt.tween_property(tr, "modulate:a", 0.0, 0.12); tt.tween_callback(tr.queue_free)
+
+func _make_laser_slash_sheet(col: Color) -> ImageTexture:   # 激光斩弧6帧(尼拉式: 前缘白热扫过+后方拖尾smear; 生成→扫→峰→碎→散)
+	var FW := 128; var FN := 6
+	var img := Image.create(FW * FN, FW, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var cx := float(FW) * 0.5; var cy := float(FW) * 0.5; var R := float(FW) * 0.4
+	for f in range(FN):
+		var t := float(f) / float(FN - 1)
+		var lead := deg_to_rad(lerpf(-80.0, 80.0, clampf(t * 1.35, 0.0, 1.0)))   # 前缘角扫过去
+		var span := deg_to_rad(lerpf(35.0, 100.0, clampf(t * 1.25, 0.0, 1.0)))   # 拖尾角长
+		var bright: float = (minf(t / 0.28, 1.0)) if t <= 0.55 else (maxf(0.0, 1.0 - (t - 0.55) / 0.45))
+		var thick := float(FW) * (0.018 + 0.06 * sin(PI * clampf(t, 0.0, 1.0)))
+		var ox := f * FW
+		for y in range(FW):
+			for x in range(FW):
+				var dx := float(x) - cx; var dy := float(y) - cy
+				var d := sqrt(dx * dx + dy * dy)
+				var a := atan2(dy, dx)
+				var behind := lead - a
+				if behind < 0.0 or behind > span: continue
+				var jag := sin(a * 13.0 + t * 5.0) * 2.2
+				var dd := absf(d - (R + jag))
+				if dd > thick: continue
+				if t > 0.6 and sin(a * 17.0 + float(f) * 2.1) > lerpf(1.15, -0.2, (t - 0.6) / 0.4): continue
+				var lead_b := 1.0 - clampf(behind / span, 0.0, 1.0)
+				var edge := 1.0 - dd / thick
+				var inten := edge * bright * (0.3 + 0.7 * lead_b)
+				if inten <= 0.02: continue
+				var whiteness := clampf(edge * 1.6, 0.0, 1.0) * (0.45 + 0.55 * lead_b)
+				var c := col.lerp(Color(1, 1, 1), whiteness)
+				c.a = clampf(inten * 1.05, 0.0, 1.0)
+				img.set_pixel(ox + x, y, c)
+	return ImageTexture.create_from_image(img)
+func _make_laser_vblade_tex(col: Color) -> ImageTexture:   # 竖激光刃(白热芯+红光晕/尖顶): 尖朝上
+	var W := 22; var H := 92
+	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var cx := float(W - 1) / 2.0
+	for y in range(H):
+		var fy := float(y) / float(H - 1)
+		var tap := (fy / 0.14) if fy < 0.14 else (1.0 if fy < 0.9 else (1.0 - fy) / 0.1)   # 尖顶+底收
+		tap = clampf(tap, 0.0, 1.0)
+		if tap <= 0.02: continue
+		for x in range(W):
+			var dx := absf(float(x) - cx) / (float(W) * 0.5)
+			var core := clampf(1.0 - dx * 3.0, 0.0, 1.0)
+			var glow := clampf(1.0 - dx, 0.0, 1.0)
+			var c := Color(1, 1, 1).lerp(col, 1.0 - core)
+			c.a = clampf((core + glow * 0.55) * tap, 0.0, 1.0)
+			img.set_pixel(x, y, c)
+	return ImageTexture.create_from_image(img)
+func _make_laser_beam_tex(col: Color) -> ImageTexture:   # 激光束(白热核+色光晕/两端尖), 沿+X
+	var W := 100; var H := 16
+	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var cy := float(H - 1) / 2.0
+	for x in range(W):
+		var fx := float(x) / float(W - 1)
+		var taper := sin(PI * fx)
+		if taper <= 0.02: continue
+		for y in range(H):
+			var dy := absf(float(y) - cy) / (float(H) * 0.5)
+			var core := clampf(1.0 - dy * 3.2, 0.0, 1.0)
+			var glow := clampf(1.0 - dy, 0.0, 1.0)
+			var c := Color(1, 1, 1).lerp(col, 1.0 - core)
+			c.a = clampf((core + glow * 0.55) * taper, 0.0, 1.0)
+			img.set_pixel(x, y, c)
+	return ImageTexture.create_from_image(img)
+
+func _laser_fan_sweep(origin: Vector2, dir: Vector2, rng: float, half_deg: float) -> void:   # 红激光扇形斩: 一排白热激光束错峰扫过弧
+	var base_ang: float = atan2(dir.y, dir.x)
+	var n := 9
+	for i in range(n):
+		var frac: float = float(i) / float(n - 1)
+		var a: float = base_ang + deg_to_rad(lerpf(-half_deg, half_deg, frac))
+		var bdir := Vector2(cos(a), sin(a))
+		var beam := Sprite3D.new()
+		beam.texture = _make_laser_beam_tex(Color(1.0, 0.2, 0.24))
+		beam.billboard = BaseMaterial3D.BILLBOARD_DISABLED; beam.axis = Vector3.AXIS_Y
+		beam.shaded = false; beam.transparent = true
+		beam.pixel_size = rng * WS / 100.0
+		beam.rotation = Vector3(0.0, -a, 0.0)
+		beam.position = _world_pos(origin + bdir * (rng * 0.5), 0.14)
+		beam.modulate = Color(1.0, 0.35, 0.35, 0.0)
+		_world.add_child(beam)
+		var bt := create_tween()
+		bt.tween_interval(frac * 0.12)
+		bt.tween_property(beam, "modulate:a", 0.98, 0.03)
+		bt.tween_property(beam, "modulate:a", 0.0, 0.15)
+		bt.tween_callback(beam.queue_free)
+func _tick_laser(u: Dictionary, delta: float) -> void:   # 激光长刃p2eq_010: 独立计时器(按携带者攻速)每次扇形斩(用户)
+	if u.get("equips", []).is_empty(): return
+	for e in u["equips"]:
+		if str(e["id"]) != "p2eq_010": continue
+		e["laser_t"] = float(e.get("laser_t", 0.0)) + delta
+		if float(e["laser_t"]) < maxf(0.3, float(u.get("atk_interval", 1.0))): continue
+		var t = _nearest_enemy(u)
+		if t == null: continue
+		e["laser_t"] = 0.0
+		_eq_laser_sweep(u, t, _eq_si(int(e.get("star", 1))))
+
+func _eq_laser_sweep(u: Dictionary, tgt: Dictionary, si: int) -> void:   # 扇形斩(120度/半径=射程,3★2×/朝目标)+回血; 只命中1→蓄力→竖劈冲击波
+	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
+	if dir.length() < 0.1: dir = Vector2.RIGHT
+	var ang: float = -atan2(dir.y, dir.x)
+	var base_rng: float = float(u.get("atk_range", 70.0))
+	var rng: float = base_rng * (2.0 if si == 2 else 1.0)
+	_anticipate(u)   # 预备
+	_laser_blade_sweep(u, u["pos"], dir, rng, 60.0)   # 笔直红激光长刃平滑扫过扇形(带拖尾)
+	_shake(JUICE_SHAKE_HEAVY)
+	var cos60: float = cos(deg_to_rad(60.0))
+	var hits: Array = []
+	for o in _enemies_of(u):
+		if not o.get("alive", false): continue
+		var rel: Vector2 = o["pos"] - u["pos"]
+		var d: float = rel.length()
+		if d > rng: continue
+		if dir.dot(rel / maxf(1.0, d)) < cos60: continue
+		hits.append(o)
+	var tot: int = 0
+	for o in hits:
+		var dd: int = _atk_dmg(u, [0.6, 1.0, 8.0][si], o) + [15, 32, 200][si]
+		_apply_damage_from(u, o, dd, Color("#9bf0ff"), 0.0, false, true)
+		tot += dd
+	if tot > 0: _heal(u, tot * [0.35, 0.8, 1.0][si])
+	if hits.size() == 1:
+		var glow := Sprite3D.new()
+		glow.texture = _make_fire_glow_tex()
+		glow.billboard = BaseMaterial3D.BILLBOARD_ENABLED; glow.shaded = false; glow.transparent = true
+		glow.modulate = Color(1.0, 0.28, 0.3, 0.0); glow.pixel_size = 0.02
+		glow.position = _world_pos(u["pos"], 1.0)
+		_world.add_child(glow)
+		var gt := create_tween(); gt.tween_property(glow, "modulate:a", 0.9, 0.2); gt.parallel().tween_property(glow, "scale", Vector3(2.2, 2.2, 2.2), 0.2)
+		var tele := Sprite3D.new()   # 蓄力预警线(细红激光, 指示竖劈路径)
+		tele.texture = _make_laser_beam_tex(Color(1.0, 0.25, 0.28))
+		tele.billboard = BaseMaterial3D.BILLBOARD_DISABLED; tele.axis = Vector3.AXIS_Y
+		tele.shaded = false; tele.transparent = true
+		tele.pixel_size = (base_rng * 2.0) * WS / 100.0
+		tele.rotation = Vector3(0.0, ang, 0.0)
+		tele.position = _world_pos(u["pos"] + dir * base_rng, 0.1)
+		tele.scale = Vector3(1.0, 0.35, 1.0); tele.modulate = Color(1.0, 0.3, 0.3, 0.0)
+		create_tween().tween_property(tele, "modulate:a", 0.5, 0.18)
+		await get_tree().create_timer(0.2).timeout
+		if is_instance_valid(tele):
+			var telf := create_tween()
+			telf.tween_property(tele, "modulate:a", 0.0, 0.1)
+			telf.tween_callback(tele.queue_free)
+		if is_instance_valid(glow): glow.queue_free()
+		if not u.get("alive", false): return
+		_eq_laser_chop(u, hits[0], si, base_rng)
+
+func _eq_laser_chop(u: Dictionary, tgt: Dictionary, si: int, base_range: float) -> void:   # 竖劈冲击波(同斩击伤害/宽80/移动2×射程/短暂击飞0.1s)
+	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
+	if dir.length() < 0.1: dir = Vector2.RIGHT
+	var origin: Vector2 = u["pos"]
+	var reach: float = base_range * 2.0
+	_shake(JUICE_SHAKE_BIG)
+	var wave := Sprite3D.new()
+	wave.texture = _make_laser_vblade_tex(Color(1.0, 0.18, 0.22))   # 白热芯竖激光刃
+	wave.billboard = BaseMaterial3D.BILLBOARD_ENABLED; wave.shaded = false; wave.transparent = true
+	wave.pixel_size = 0.06; wave.scale = Vector3(1.5, 2.4, 1.0)
+	wave.modulate = Color(1.0, 0.28, 0.3, 0.95)
+	_world.add_child(wave)
+	var traveled: float = 0.0
+	var hit: Array = []
+	while traveled < reach and is_instance_valid(wave) and is_instance_valid(self):
+		await get_tree().process_frame
+		traveled += 550.0 * get_process_delta_time()
+		wave.position = _world_pos(origin + dir * traveled, 0.9)
+		for o in _enemies_of(u):
+			if o in hit or not o.get("alive", false): continue
+			if (o["pos"] - origin).dot(dir) <= traveled and _on_line(origin, dir, o["pos"], 80.0):
+				hit.append(o)
+				_apply_damage_from(u, o, _atk_dmg(u, [0.6, 1.0, 8.0][si], o) + [15, 32, 200][si], Color("#9bf0ff"), 0.0, false, true)
+				_knockback(u, o, 0.0, 0.2, 0.0)
+	if is_instance_valid(wave):
+		var wf := create_tween(); wf.tween_property(wave, "modulate:a", 0.0, 0.15); wf.tween_callback(wave.queue_free)
+
 func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽刃弯刀(用户改造·剑魔Q式): 预警环形扇区(500~800码60度)→黄色月光斩→伤害
 	var cen := Vector2.ZERO; var ec := 0   # 方向朝敌方整体(质心), 角度对携带者稳定(用户)
 	for _o in _enemies_of(src):
@@ -7231,27 +7496,8 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 					if int(hitc[o]) >= 8: _freeze(o, CTRL_SEC)
 			"p2eq_057":   # 狙击长管: 对最低血%敌沿途敌, 击杀则再开
 				_eq_sniper(u, si, 0)
-			"p2eq_010":   # 激光长刃: 横扫一列, 命中1则竖斩; 回血
-				var t6 = _nearest_enemy(u)
-				if t6 != null:
-					var dir5: Vector2 = (t6["pos"] - u["pos"]).normalized()
-					var tot2 := 0; var cnt := 0
-					for o in _enemies_of(u):
-						if si == 2 or _on_line(u["pos"], dir5, o["pos"], 55.0):
-							var dd3: int = _atk_dmg(u, [1.2, 2.5, 5.0][si], o) + [100, 200, 2000][si]
-							_apply_damage_from(u, o, dd3, Color("#9bf0ff"), 0.0, false, true); tot2 += dd3; cnt += 1
-					if cnt >= 1: _bolt_line(u["pos"], u["pos"] + dir5 * 520.0, Color("#9bf0ff"))   # 横扫光束
-					if cnt == 1:
-						var ex10: int = _atk_dmg(u, [1.2, 2.5, 5.0][si], t6)
-						_apply_damage_from(u, t6, ex10, Color("#9bf0ff"), 0.0, false, true)   # 竖斩再中
-						var bh10 = null; var bhd10 := 1000000.0
-						for o10 in _enemies_of(u):   # 其正身后单位受50%
-							if o10 == t6 or not o10.get("alive", false): continue
-							var rl10: Vector2 = o10["pos"] - t6["pos"]
-							if rl10.dot(dir5) > 0.0 and _on_line(t6["pos"], dir5, o10["pos"], 60.0) and rl10.length() < bhd10:
-								bhd10 = rl10.length(); bh10 = o10
-						if bh10 != null: _apply_damage_from(u, bh10, int(ex10 * 0.5), Color("#9bf0ff"), 0.0, false, true)
-					_heal(u, tot2 * [0.35, 0.8, 1.0][si])
+			"p2eq_010":   # 激光长刃: 移到独立计时器 _tick_laser(第二普攻扇形斩); on_cast不处理
+				pass
 
 # 水晶叠层 (A/B共用); splash=true(B 3★): 引爆范围扩大50%波及邻格敌
 func _eq_crystal_stack(src: Dictionary, o: Dictionary, si: int, splash: bool = false) -> void:
