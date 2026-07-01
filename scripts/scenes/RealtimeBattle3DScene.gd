@@ -398,7 +398,7 @@ func _build_camera() -> void:
 	_cam.projection = Camera3D.PROJECTION_PERSPECTIVE
 	_cam.fov = 50.0
 	# 场地上方偏后俯视下来 (3/4). 抬高+拉远以容纳 ~27×12.5 米全场.
-	_cam.position = Vector3(0.0, 15.0, 17.0)
+	_cam.position = Vector3(0.0, 13.5, 18.2)   # 视角抬高5°(绕目标旋转保取景, 用户)
 	_world.add_child(_cam)
 	_cam.look_at(Vector3(0.0, 0.6, 0.0), Vector3.UP)
 	_cam_base = _cam.position               # Phase4: 震屏围绕此基准偏移, 衰减后精确归位
@@ -7228,11 +7228,21 @@ func _eq_laser_chop(u: Dictionary, tgt: Dictionary, si: int, base_range: float) 
 	wave.modulate = Color(1.0, 0.28, 0.3, 0.95)
 	_world.add_child(wave)
 	var traveled: float = 0.0
+	var last_tr: float = -100.0
 	var hit: Array = []
 	while traveled < reach and is_instance_valid(wave) and is_instance_valid(self):
 		await get_tree().process_frame
 		traveled += 550.0 * get_process_delta_time()
 		wave.position = _world_pos(origin + dir * traveled, 0.9)
+		if traveled - last_tr >= 45.0:   # 剑气拖尾: 每隔45码留一道淡残影(在刃后, 不糊白热芯)
+			last_tr = traveled
+			var tr := Sprite3D.new()
+			tr.texture = wave.texture
+			tr.billboard = BaseMaterial3D.BILLBOARD_ENABLED; tr.shaded = false; tr.transparent = true
+			tr.pixel_size = wave.pixel_size; tr.scale = wave.scale * 0.9
+			tr.position = wave.position; tr.modulate = Color(1.0, 0.35, 0.4, 0.3)
+			_world.add_child(tr)
+			var tt := create_tween(); tt.tween_property(tr, "modulate:a", 0.0, 0.22); tt.tween_callback(tr.queue_free)
 		for o in _enemies_of(u):
 			if o in hit or not o.get("alive", false): continue
 			if (o["pos"] - origin).dot(dir) <= traveled and _on_line(origin, dir, o["pos"], 80.0):
