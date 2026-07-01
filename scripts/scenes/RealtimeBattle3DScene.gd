@@ -1671,6 +1671,93 @@ func _pull_airborne(o: Dictionary, origin: Vector2, dist: float, dur: float) -> 
 		k = 1.0 - (1.0 - k) * (1.0 - k)   # ease-out(先快后缓)
 		o["pos"] = start.lerp(target, k)
 
+func _make_sword_texture(col: Color) -> ImageTexture:   # 剑刃(尖指+X): 柄→刃身→尖
+	var W := 56; var H := 14
+	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var cy := float(H - 1) / 2.0
+	for x in range(W):
+		var fx := float(x) / float(W - 1)
+		var halfw: float = (1.0 - fx) / 0.15 * 4.0 if fx > 0.85 else (4.0 if fx > 0.2 else 2.0)
+		for y in range(H):
+			var dy := absf(float(y) - cy)
+			if dy <= halfw:
+				var edge := 1.0 - dy / maxf(0.6, halfw)
+				var c := col.lerp(Color(1, 1, 1), clampf(edge * 1.5, 0.0, 1.0) * 0.85)
+				c.a = clampf(edge + 0.35, 0.0, 1.0)
+				img.set_pixel(x, y, c)
+	return ImageTexture.create_from_image(img)
+
+func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改造): 蓄力→身后召一排剑→剑阵前移穿过全体敌
+	var flat: int = [70, 100, 400][si]
+	var sc: float = [0.8, 1.3, 4.0][si]
+	var t = _nearest_enemy(u)
+	var dir: Vector2 = ((t["pos"] - u["pos"]).normalized() if t != null else Vector2.RIGHT)
+	if dir.length() < 0.1: dir = Vector2.RIGHT
+	var perp: Vector2 = Vector2(-dir.y, dir.x)
+	var ang: float = -atan2(dir.y, dir.x)
+	_anticipate(u); _shake(JUICE_SHAKE_HEAVY)
+	var glow := Sprite3D.new()
+	glow.texture = _make_fire_glow_tex()
+	glow.billboard = BaseMaterial3D.BILLBOARD_ENABLED; glow.shaded = false; glow.transparent = true
+	glow.modulate = Color(0.7, 0.82, 1.0, 0.0); glow.pixel_size = 0.02
+	glow.position = _world_pos(u["pos"] - dir * 100.0, 1.0)
+	_world.add_child(glow)
+	var gt := create_tween()
+	gt.tween_property(glow, "modulate:a", 0.85, 0.4)
+	gt.parallel().tween_property(glow, "scale", Vector3(2.8, 2.8, 2.8), 0.45)
+	await get_tree().create_timer(0.45).timeout
+	if is_instance_valid(glow): glow.queue_free()
+	if not u.get("alive", false): return
+	var n := 7
+	var swords: Array = []
+	for k in range(n):   # 生成剑: 身后错峰淡入+放大(先横排, 垂直行进)
+		var off: float = (float(k) - float(n - 1) / 2.0) * 85.0
+		var sp := Sprite3D.new()
+		sp.texture = _make_sword_texture(Color(0.85, 0.9, 1.0))
+		sp.billboard = BaseMaterial3D.BILLBOARD_DISABLED; sp.axis = Vector3.AXIS_Y
+		sp.shaded = false; sp.transparent = true; sp.pixel_size = 0.07
+		sp.rotation = Vector3(0.0, ang + PI / 2.0, 0.0)
+		sp.position = _world_pos(u["pos"] - dir * 130.0 + perp * off, 0.4)
+		sp.modulate = Color(0.85, 0.9, 1.0, 0.0)
+		sp.scale = Vector3(0.3, 0.3, 0.3)
+		_world.add_child(sp)
+		var st := create_tween(); st.set_parallel(true)
+		st.tween_property(sp, "modulate:a", 0.95, 0.2).set_delay(float(k) * 0.03)
+		st.tween_property(sp, "scale", Vector3.ONE, 0.25).set_delay(float(k) * 0.03)
+		swords.append(sp)
+	await get_tree().create_timer(0.42).timeout   # 等一排剑生成完
+	if not u.get("alive", false): return
+	for spr in swords:   # 调转方向: 一排剑同时旋转对准行进方向(带回弹)
+		if is_instance_valid(spr):
+			create_tween().tween_property(spr, "rotation:y", ang, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await get_tree().create_timer(0.34).timeout
+	if not u.get("alive", false): return
+	_shake(JUICE_SHAKE_HEAVY)
+	var reach := 1050.0
+	var traveled := 0.0
+	var hit: Array = []
+	while traveled < reach and is_instance_valid(self):
+		await get_tree().process_frame
+		traveled += 650.0 * get_process_delta_time()   # 剑速(用户:慢点)
+		var front_along: float = -130.0 + traveled
+		for i in range(swords.size()):
+			var sp = swords[i]
+			if is_instance_valid(sp):
+				var off2: float = (float(i) - float(n - 1) / 2.0) * 85.0
+				sp.position = _world_pos(u["pos"] + dir * front_along + perp * off2, 0.4)
+		for o in _enemies_of(u):
+			if o in hit or not o.get("alive", false): continue
+			if (o["pos"] - u["pos"]).dot(dir) <= front_along:
+				hit.append(o)
+				_apply_damage_from(u, o, _atk_dmg(u, sc, o) + flat, Color("#dfe8ff"), 0.0, false, true)
+				_skill_ring(o["pos"], Color(0.82, 0.9, 1.0, 0.5), 44.0)
+	for sp2 in swords:
+		if is_instance_valid(sp2):
+			var ft := create_tween()
+			ft.tween_property(sp2, "modulate:a", 0.0, 0.14)
+			ft.tween_callback(sp2.queue_free)
+
 func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大熊冲击波(小菊式): 蓄力→直线移动波, 1.5ATK物理+击飞0.8s+拉回70码
 	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
 	if dir.length() < 0.1:
@@ -6743,11 +6830,8 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 						_apply_damage_from(u, at, adm, Color("#9be7ff"), 0.0, false, true)
 						_knockback(u, at, 60.0); _freeze(at, CTRL_SEC)
 						u["eq_state"]["p2eq_017"] = ast
-			"p2eq_006":   # 千刃风暴: 一排剑穿过全体敌
-				var flat: int = [70, 100, 400][si]; var sc: float = [0.8, 1.3, 4.0][si]
-				for o in _enemies_of(u):
-					_apply_damage_from(u, o, _atk_dmg(u, sc, o) + flat, Color("#dfe8ff"), 0.0, false, true)
-				_skill_ring(u["pos"], Color(0.8, 0.9, 1.0, 0.5), 120.0)
+			"p2eq_006":   # 千刃风暴(用户改造): 蓄力→身后召一排剑→剑阵前移穿过全体敌
+				_eq_sword_storm(u, si)
 			"p2eq_007":   # 锈蚀阔剑: 斩最近敌一横排+自护盾
 				var dir: Vector2 = (_nearest_enemy(u)["pos"] - u["pos"]).normalized() if _nearest_enemy(u) != null else Vector2.RIGHT
 				var tot := 0
