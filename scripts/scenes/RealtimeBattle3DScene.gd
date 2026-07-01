@@ -1573,7 +1573,7 @@ func _big_bear_charge_and_spawn(u: Dictionary, si: int) -> void:   # 满层: 携
 	if is_instance_valid(glow): glow.queue_free()
 	var stt: Dictionary = u.get("eq_state", {}).get("p2eq_034", {})
 	stt["bear_done"] = true
-	var bear = _spawn_summon(u, "bear", [650.0, 1100.0, 10000.0][si], [70.0, 120.0, 2000.0][si], {"label": "大熊", "spr_id": "doll-bear", "col_size": 48.0, "hp_w": 36.0, "melee": true, "atk_interval": 0.65, "atk_range": 70.0})
+	var bear = _spawn_summon(u, "bear", [650.0, 1100.0, 10000.0][si], [70.0, 120.0, 2000.0][si], {"label": "大熊", "spr_id": "doll-bear", "col_size": 48.0, "hp_w": 36.0, "melee": true, "atk_interval": 2.0, "atk_range": 70.0})
 	if bear != null:
 		bear["eq_state"] = {}; bear["equips"] = []
 		bear["base_def"] = 20.0; bear["def"] = 20.0; bear["base_mr"] = 20.0; bear["mr"] = 20.0
@@ -1634,9 +1634,11 @@ func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大�
 				hit_arr.append(o)
 				_apply_damage_from(u, o, dmg, Color("#ffd27a"), 0.0, false, true)
 				_knockback(u, o, 0.0, 1.5, 0.0)          # 击飞 ~0.8s (vy×1.5), 无横推
-				o["pos"] = o["pos"].move_toward(origin, 70.0)   # 拉回一小段(朝大熊)
-				o["pos"].x = clampf(o["pos"].x, ARENA.position.x, ARENA.end.x)
-				o["pos"].y = clampf(o["pos"].y, ARENA.position.y, ARENA.end.y)
+				var pdir: Vector2 = origin - o["pos"]    # 拉回: 滞空期朝大熊平滑滑行(非瞬移硬拽)
+				var pd: float = pdir.length()
+				if pd > 100.0:                           # 近战贴脸的不拽(防拉进熊身重叠); 远处拉回一小段
+					o["vx"] = (pdir.x / pd) * KNOCK_PUSH * 1.2
+					o["vz"] = (pdir.y / pd) * KNOCK_PUSH * 1.2
 	if is_instance_valid(wave):
 		var ft := create_tween()
 		ft.tween_property(wave, "modulate:a", 0.0, 0.15)
