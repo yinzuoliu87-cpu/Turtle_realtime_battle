@@ -635,6 +635,8 @@ func _spawn_teams() -> void:
 			_lu["maxHp"] = 500000.0; _lu["hp"] = 500000.0; _lu.erase("_review_dummy")
 			if not OS.has_environment("EQDEMO_ATTACKER"):   # 默认: 友方假人 移速0/不攻击(召唤/自发件); ATTACKER=正常移动+普攻+技能(on-hit/on-cast件)
 				_lu["no_move"] = true; _lu["no_basic"] = true; _lu["active_skills"] = []; _lu["move_spd"] = 0.0
+			elif OS.has_environment("EQDEMO_SKILL"):   # 强制携带者只放指定技(演示特定AoE技×装备交互)
+				_lu["active_skills"] = [OS.get_environment("EQDEMO_SKILL")]
 		_units.append(_lu)
 	for i in range(right.size()):
 		var pos := Vector2(ARENA.end.x - spawn_edge_margin, ARENA.position.y + spawn_front_margin + i * spawn_row_spacing)
@@ -644,7 +646,8 @@ func _spawn_teams() -> void:
 			pos = Vector2(_cx + 100.0 + (float(i) - float(right.size() - 1) / 2.0) * 150.0, _cy + 40.0)   # 横排(用户)
 		if OS.has_environment("EQDEMO_EQUIP"):
 			var _d1: float = float(OS.get_environment("EQDEMO_ENEMY1")) if OS.has_environment("EQDEMO_ENEMY1") else 210.0
-			pos = Vector2(_cx - 150.0 + _d1 + float(i) * 500.0, _cy)   # 装备演示: 敌1距携带者_d1码(默认210), 两敌相距500
+			var _gap: float = float(OS.get_environment("EQDEMO_GAP")) if OS.has_environment("EQDEMO_GAP") else 500.0
+			pos = Vector2(_cx - 150.0 + _d1 + float(i) * _gap, _cy)   # 装备演示: 敌1距携带者_d1码(默认210), 两敌相距_gap(默认500)
 		var ru := _make_unit(str(right[i]), "right", pos)
 		if REVIEW_DEMO:                          # 假人: 不放技/永不死训练靶; ATTACKS时会还手(动+普攻)
 			if not REVIEW_DUMMY_ATTACKS:
@@ -6585,10 +6588,11 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 			"p2eq_002":   # 海带卷刀: 命中→施加流血层 (范围技能触发减半; 3★流血层数天然可叠)
 				var bs: int = maxi(1, roundi([0.075, 0.1, 0.15][si] * src["atk"] * (0.5 if is_aoe else 1.0)))
 				_apply_dot_stacks(tgt, "bleed", bs, src)
-			"p2eq_003":   # 锋利鲨齿: 溅射相邻格
+			"p2eq_003":   # 锋利鲨齿: 溅射150码内相邻敌 + 圈圈扩散(用户)
 				var frac: float = [0.15, 0.28, 0.50][si]
+				_skill_ring(tgt["pos"], Color(1.0, 0.82, 0.42, 0.75), 150.0)   # 溅射圈扩散(贴地环从命中点扩到150码)
 				for o in _enemies_of(src):
-					if o != tgt and (o["pos"] - tgt["pos"]).length() <= 70.0:
+					if o != tgt and (o["pos"] - tgt["pos"]).length() <= 150.0:
 						_apply_damage_from(src, o, maxi(1, int(dmg * frac)), Color("#ffd07a"), 0.0, false, true)
 			"p2eq_005":   # 双生匕首: 概率追击 (3★必定暴击)
 				if randf() < [0.5, 0.75, 1.0][si]:
