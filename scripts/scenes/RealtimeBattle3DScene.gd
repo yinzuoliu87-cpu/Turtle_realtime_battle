@@ -6595,14 +6595,9 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 				for o in _enemies_of(src):
 					if o != tgt and (o["pos"] - tgt["pos"]).length() <= 150.0:
 						_apply_damage_from(src, o, maxi(1, int(dmg * frac)), Color("#ffd07a"), 0.0, false, true)
-			"p2eq_005":   # 双生匕首: 概率追击 (3★必定暴击)
+			"p2eq_005":   # 双生匕首: 命中概率追加一刀双生刺击
 				if randf() < [0.5, 0.75, 1.0][si]:
-					if si == 2:
-						var _oc: float = src["crit"]; src["crit"] = 1.0   # 3★: 追击必定暴击100% (_resolve_dmg读crit roll)
-						_apply_damage_from(src, tgt, _atk_dmg(src, 1.0, tgt), Color("#ff4444"), 0.0, false, true)
-						src["crit"] = _oc
-					else:
-						_apply_damage_from(src, tgt, _atk_dmg(src, [0.7, 0.8, 1.0][si], tgt), Color("#ff4444"), 0.0, false, true)
+					_apply_damage_from(src, tgt, _atk_dmg(src, [0.7, 0.8, 1.0][si], tgt), Color("#ff4444"), 0.0, false, true)
 			"p2eq_023":   # 灼热火珊瑚(被动): 每段额外灼烧 + 充能
 				var burn: int = maxi(1, roundi([5.0, 7.0, 10.0][si] + [0.07, 0.11, 0.15][si] * src["atk"]))
 				_apply_dot_stacks(tgt, "burn", burn, src)
