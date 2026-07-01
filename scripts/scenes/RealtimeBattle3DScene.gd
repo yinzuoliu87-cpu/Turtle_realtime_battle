@@ -6149,11 +6149,10 @@ func _eq_apply_one_stats(u: Dictionary, item_id: String, star: int) -> void:
 		_eq_apply_flags(u, item_id, star)
 		return
 	var st: Dictionary = arr[i]
-	var _lm: float = _lvl_mult_for(u)     # 装备flat吃等级(仅hp/atk/def/mr; %/穿透不缩)
 	if st.has("atk"):
-		u["base_atk"] += float(st["atk"]) * _lm
+		u["base_atk"] += float(st["atk"])
 	if st.has("hp"):
-		var add: float = float(st["hp"]) * _lm  # 装备hp已是最终值(×等级)
+		var add: float = float(st["hp"])  # 装备hp已是最终值
 		u["maxHp"] += add; u["hp"] += add
 	if st.has("crit"):
 		u["crit"] += float(st["crit"])
@@ -6164,9 +6163,9 @@ func _eq_apply_one_stats(u: Dictionary, item_id: String, star: int) -> void:
 	if st.has("_lifestealPct"):
 		u["lifesteal"] += float(st["_lifestealPct"]) / 100.0
 	if st.has("def"):
-		u["base_def"] += float(st["def"]) * _lm
+		u["base_def"] += float(st["def"])
 	if st.has("mr"):
-		u["base_mr"] += float(st["mr"]) * _lm
+		u["base_mr"] += float(st["mr"])
 	if st.has("critDmg"):
 		u["crit_dmg"] += float(st["critDmg"])
 	# (装备 _maxEnergy 原给初始龟能; 龟能模型已换逐技固定冷却 → 装备暂未激活, 先跳过此项)
