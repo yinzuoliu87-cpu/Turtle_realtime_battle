@@ -650,7 +650,8 @@ func _spawn_teams() -> void:
 				ru["_review_dummy"] = true       # 不死沙包(受击回满); KILLABLE=会死(看换目标)
 		if OS.has_environment("EQDEMO_EQUIP"):   # 装备演示假人: 固定不动/5000血/30双抗/会掉血
 			ru["no_basic"] = true; ru["no_move"] = true; ru["active_skills"] = []
-			ru["maxHp"] = 5000.0; ru["hp"] = 5000.0
+			var _dhp: float = float(OS.get_environment("EQDEMO_DUMMYHP")) if OS.has_environment("EQDEMO_DUMMYHP") else 5000.0
+			ru["maxHp"] = _dhp; ru["hp"] = _dhp
 			ru["base_def"] = 30.0; ru["base_mr"] = 30.0; _recalc_stats(ru)
 			ru.erase("_review_dummy")
 		_units.append(ru)
@@ -1512,6 +1513,9 @@ func _gambler_multi_cd(u: Dictionary) -> float:
 func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	_anticipate(u)                  # Phase4: 普攻预备(缩)+挥出(伸) 前后摇形变
 	_play_action(u, "attack")       # 有动作帧的龟(basic/ghost/ninja)播普攻动画, 其余靠 juice 形变
+	if u.get("is_big_bear", false):  # 大熊: 熊掌攒层, 满2层→放冲击波(小菊式)
+		_big_bear_attack(u, tgt)
+		return
 	if u["id"] == "lightning":      # 闪电改造: 一道闪电(魔法)+连锁, 叠层走 _on_basic_hit(满8→雷暴)
 		_lightning_basic(u, tgt)
 		_on_basic_hit(u, tgt)
@@ -1529,6 +1533,68 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	# (原: 无条件 _on_basic_hit 被动钩子 (竹叶强化/墨迹/结晶/斩杀/审判/多重/彩虹附色 等) — 改 _do_basic 时漏调, 已补
 
 # 数据驱动基础技能: 按 spec 算物/魔/真伤(含加成项)分段打出 + 附带/特殊机制 (1:1 原始 skillPool[0])
+func _big_bear_attack(u: Dictionary, tgt: Dictionary) -> void:   # 大熊: <2层→熊掌(1×ATK物理近战)+1层; 满2层→放冲击波(消耗)
+	var si: int = int(u.get("bear_star", 0))
+	if int(u.get("bear_stacks", 0)) >= 2:
+		_bear_shockwave(u, tgt, si)
+		u["bear_stacks"] = 0
+		u["atk_range"] = 70.0                       # 冲击波后回近战射程
+	else:
+		_do_basic(u, tgt, {"phys": 1.0, "hits": 1})  # 熊掌: 1×ATK 物理
+		if u["melee"]: _on_basic_hit(u, tgt)
+		u["bear_stacks"] = int(u.get("bear_stacks", 0)) + 1
+		if int(u["bear_stacks"]) >= 2:
+			u["atk_range"] = 340.0                   # 下次冲击波: 扩射程(进程即放,不贴脸)
+
+func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大熊冲击波(小菊式): 蓄力→直线移动波, 1.5ATK物理+击飞0.8s+拉回
+	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
+	if dir.length() < 0.1:
+		dir = Vector2.RIGHT
+	var origin: Vector2 = u["pos"]
+	# 蓄力 (0.35s: 前摇 + 熊身聚金光)
+	_anticipate(u); _shake(JUICE_SHAKE_HEAVY)
+	var glow := Sprite3D.new()
+	glow.texture = _make_fire_glow_tex()
+	glow.billboard = BaseMaterial3D.BILLBOARD_ENABLED; glow.shaded = false; glow.transparent = true
+	glow.modulate = Color(1.0, 0.82, 0.4, 0.0); glow.pixel_size = 0.02
+	glow.position = _world_pos(origin, 1.0)
+	_world.add_child(glow)
+	var gt := create_tween()
+	gt.tween_property(glow, "modulate:a", 0.9, 0.3)
+	gt.parallel().tween_property(glow, "scale", Vector3(2.2, 2.2, 2.2), 0.35)
+	await get_tree().create_timer(0.35).timeout
+	if is_instance_valid(glow): glow.queue_free()
+	if not u.get("alive", false): return
+	# 释放: 波沿 dir 前进, 沿途首经过即命中
+	var dmg: int = _atk_dmg(u, 1.5, tgt)
+	var wave := Sprite3D.new()
+	wave.texture = _make_wave_texture(Color("#ffd27a"))
+	wave.billboard = BaseMaterial3D.BILLBOARD_ENABLED; wave.shaded = false; wave.transparent = true
+	wave.pixel_size = 0.07
+	_world.add_child(wave)
+	var reach := 460.0
+	var traveled := 0.0
+	var hit_arr: Array = []
+	while traveled < reach and is_instance_valid(wave) and is_instance_valid(self):
+		await get_tree().process_frame
+		traveled += 950.0 * get_process_delta_time()   # 波速 950px/s
+		var wp: Vector2 = origin + dir * traveled
+		wave.position = _world_pos(wp, 0.6)
+		for o in _enemies_of(u):
+			if o in hit_arr or not o.get("alive", false): continue
+			var proj: float = (o["pos"] - origin).dot(dir)
+			if proj >= -40.0 and proj <= traveled + 30.0 and _on_line(origin, dir, o["pos"], 85.0):
+				hit_arr.append(o)
+				_apply_damage_from(u, o, dmg, Color("#ffd27a"), 0.0, false, true)
+				_knockback(u, o, 0.0, 1.5, 0.0)          # 击飞 ~0.8s (vy×1.5), 无横推
+				o["pos"] = o["pos"].move_toward(origin, 70.0)   # 拉回一小段(朝大熊)
+				o["pos"].x = clampf(o["pos"].x, ARENA.position.x, ARENA.end.x)
+				o["pos"].y = clampf(o["pos"].y, ARENA.position.y, ARENA.end.y)
+	if is_instance_valid(wave):
+		var ft := create_tween()
+		ft.tween_property(wave, "modulate:a", 0.0, 0.15)
+		ft.tween_callback(wave.queue_free)
+
 func _do_basic(u: Dictionary, tgt: Dictionary, spec: Dictionary) -> void:
 	var atk: float = u["atk"]
 	# 三类原始伤害(未减) = ×ATK 总倍率
@@ -6846,9 +6912,12 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 						stt["bear_layers"] = int(stt.get("bear_layers", 0)) + 1
 						if int(stt["bear_layers"]) >= [5, 3, 1][si]:
 							stt["bear_done"] = true
-							var bear = _spawn_summon(u, "bear", 250.0 * HP_MULT * _lvl_mult_for(u), 50.0 * _lvl_mult_for(u), {"label": "大熊", "spr_id": "doll-bear", "col_size": 40.0, "hp_w": 30.0})
+							# 大熊(5费传说): 按星级HP650/1100/10000·ATK70/120/2000·双抗20, 只吃星不吃等级; 攻速0.65; 熊掌攒层→冲击波(小菊式)
+							var bear = _spawn_summon(u, "bear", [650.0, 1100.0, 10000.0][si], [70.0, 120.0, 2000.0][si], {"label": "大熊", "spr_id": "doll-bear", "col_size": 48.0, "hp_w": 36.0, "melee": true, "atk_interval": 0.65, "atk_range": 70.0})
 							if bear != null:
 								bear["eq_state"] = {}; bear["equips"] = []
+								bear["base_def"] = 20.0; bear["def"] = 20.0; bear["base_mr"] = 20.0; bear["mr"] = 20.0
+								bear["is_big_bear"] = true; bear["bear_stacks"] = 0; bear["bear_star"] = si
 			"p2eq_036":   # 温泉蛋: 孵化进度, 满100→全队均摊护盾(一次)
 				stt["incub"] = float(stt.get("incub", 0.0)) + 5.0
 				if float(stt["incub"]) >= 100.0 and not bool(stt.get("incub_given", false)):
