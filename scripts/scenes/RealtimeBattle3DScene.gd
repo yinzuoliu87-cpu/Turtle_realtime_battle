@@ -6963,6 +6963,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 					var dd2: float = (o["pos"] - u["pos"]).length_squared()
 					if dd2 > fd: fd = dd2; far = o
 				if far != null:
+					_bolt_line(u["pos"], far["pos"], Color("#ff8f66"))   # 珊瑚刺光束
 					_apply_damage_from(u, far, _atk_dmg(u, [1.0, 1.2, 1.5][si], far), Color("#ff4444"), 0.0, false, true)
 					_apply_damage_from(u, far, int(far["maxHp"] * [0.08, 0.12, 0.18][si]), Color("#bfe9ff"), 0.0, true, true)
 			"p2eq_011":   # 饮血护符坠: 连斩随机敌 (衰减)
@@ -6984,6 +6985,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 					var tf: int = maxi(1, roundi([20, 35, 60][si] + [0.10, 0.15, 0.20][si] * u["atk"]))
 					_apply_dot_stacks(t2, "burn", tf, u)
 					t2["true_fire_until"] = _t + 5.0
+					_skill_ring(t2["pos"], Color(1.0, 0.5, 0.15, 0.6), 56.0)   # 点燃火环
 			"p2eq_028":   # 冰霜冻露瓶: 对最近敌魔伤+冰寒(减速)
 				var t3 = _nearest_enemy(u)
 				if t3 != null:
@@ -7002,6 +7004,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 					_bolt_line(u["pos"], t4["pos"] + dir2 * 200.0, Color("#c9b0ff"))
 			"p2eq_031":   # 迷你水晶球B: 对全体敌魔伤+叠层引爆 (3★引爆波及邻格)
 				for o in _enemies_of(u):
+					_skill_ring(o["pos"], Color(0.79, 0.69, 1.0, 0.5), 40.0)   # 水晶魔环
 					_apply_damage_from(u, o, [20, 25, 30][si], Color("#c9b0ff"), 0.0, true, true)
 					_eq_crystal_stack(u, o, si, si == 2)
 			"p2eq_039":   # 竹制弓箭: 充能内→强化攻击+自回血+永久+maxHP
@@ -7205,11 +7208,21 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 					_grant_shield(o, [15.0, 20.0, 25.0][si])
 			"p2eq_018":   # 守护贝壳: 每周期自回血
 				_heal(u, [30, 45, 60][si] + u["maxHp"] * [0.05, 0.09, 0.15][si])
-			"p2eq_019":   # 海葵药膏: 每周期奶自己+最低血友军
-				_heal(u, [30, 45, 60][si] + (u["maxHp"] - u["hp"]) * [0.12, 0.14, 0.18][si])
+			"p2eq_019":   # 海葵药膏: 奶自己+最低血友军 + 海葵层(累计治疗→治疗强度+8/9/10%/层, 用户)
+				var amp19: float = 1.0 + float(int(stt.get("anemone_layers", 0))) * [0.08, 0.09, 0.10][si]
+				var h1: float = ([30, 45, 60][si] + (u["maxHp"] - u["hp"]) * [0.12, 0.14, 0.18][si]) * amp19
+				_heal(u, h1)
+				var prov19: float = h1
 				var low = _lowest_hp_ally(u)
 				if low != null and low != u:
-					_heal(low, [30, 45, 60][si] + (low["maxHp"] - low["hp"]) * [0.12, 0.14, 0.18][si])
+					var h2: float = ([30, 45, 60][si] + (low["maxHp"] - low["hp"]) * [0.12, 0.14, 0.18][si]) * amp19
+					_heal(low, h2); prov19 += h2
+				stt["anemone_heal"] = float(stt.get("anemone_heal", 0.0)) + prov19
+				var thr19: float = [200.0, 180.0, 150.0][si]
+				while float(stt["anemone_heal"]) >= thr19:
+					stt["anemone_heal"] = float(stt["anemone_heal"]) - thr19
+					stt["anemone_layers"] = int(stt.get("anemone_layers", 0)) + 1
+					_skill_ring(u["pos"], Color(0.55, 0.9, 0.7, 0.5), 44.0)
 			"p2eq_020":   # 哑铃: 每周期+锻炼层 + 向最近敌扔哑铃
 				var gain: float = [20.0, 25.0, 30.0][si] * HP_MULT
 				u["maxHp"] += gain; u["hp"] += gain
