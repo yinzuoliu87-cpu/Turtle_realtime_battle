@@ -2087,6 +2087,25 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 		"src": src, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 700.0, 0.22, 0.7), "basic_onhit": basic_onhit,
 	})
 
+func _fire_doll_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   # 玩偶小熊: 用装备图(doll)做可见小熊飞向目标(替代看不见的bolt); 落点伤害走 _step_projectiles
+	if tgt == null:
+		return
+	var start2d: Vector2 = u["pos"]
+	var p := Sprite3D.new()
+	p.texture = _sheet("res://assets/sprites/equip/dungeon-doll.png")
+	p.pixel_size = 0.0016   # ~1m 高小熊 (609px 图)
+	p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	p.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	p.shaded = false
+	p.transparent = true
+	var world_from := _world_pos(start2d, 1.0)
+	p.position = world_from
+	_world.add_child(p)
+	_projectiles.append({
+		"node": p, "from": world_from, "tgt": tgt, "dmg": dmg, "col": Color("#ffb0c8"),
+		"src": u, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 500.0, 0.28, 0.6), "basic_onhit": false,
+	})
+
 func _step_projectiles(delta: float) -> void:
 	var keep: Array = []
 	for pr in _projectiles:
@@ -6793,7 +6812,7 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 					var mt = _nearest_enemy(u)   # 优先前排(最近)
 					if mt != null:
 						var bdm: int = _atk_dmg(u, [1.0, 2.0, 5.0][si], mt) + [100, 210, 1000][si]
-						_fire_bolt_from(u, mt, bdm, Color("#ffb0c8"))
+						_fire_doll_bear(u, mt, bdm)
 						_knockback(u, mt, 60.0)
 						stt["bear_layers"] = int(stt.get("bear_layers", 0)) + 1
 						if int(stt["bear_layers"]) >= [5, 3, 1][si]:
