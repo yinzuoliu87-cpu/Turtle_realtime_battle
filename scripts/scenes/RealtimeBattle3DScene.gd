@@ -631,9 +631,10 @@ func _spawn_teams() -> void:
 			_lu["gold"] = 0.0   # demo: 财神起手金币(0=看自然攒金币)
 		if REVIEW_DEMO and REVIEW_DUMMY_ATTACKS:
 			_lu["_review_dummy"] = true   # 假人会还手时受审龟免死(看完整被动循环)
-		if OS.has_environment("EQDEMO_EQUIP"):   # 装备演示携带者: 友方假人 移速0/不攻击/高血(只管持装备召唤)
-			_lu["no_move"] = true; _lu["no_basic"] = true; _lu["active_skills"] = []; _lu["move_spd"] = 0.0
+		if OS.has_environment("EQDEMO_EQUIP"):   # 装备演示携带者
 			_lu["maxHp"] = 500000.0; _lu["hp"] = 500000.0; _lu.erase("_review_dummy")
+			if not OS.has_environment("EQDEMO_ATTACKER"):   # 默认: 友方假人 移速0/不攻击(召唤/自发件); ATTACKER=正常移动+普攻+技能(on-hit/on-cast件)
+				_lu["no_move"] = true; _lu["no_basic"] = true; _lu["active_skills"] = []; _lu["move_spd"] = 0.0
 		_units.append(_lu)
 	for i in range(right.size()):
 		var pos := Vector2(ARENA.end.x - spawn_edge_margin, ARENA.position.y + spawn_front_margin + i * spawn_row_spacing)
@@ -1598,23 +1599,20 @@ func _big_bear_attack(u: Dictionary, tgt: Dictionary) -> void:   # 大熊: <2层
 		if int(u["bear_stacks"]) >= 2:
 			u["atk_range"] = 600.0                   # 下次冲击波: 射程600码(进程即放,不贴脸)
 
-func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 锈蚀短剑p2eq_001: 每3s就绪, 100码射程内有敌即劈砍(用户改造)
-	var es: Dictionary = u.get("eq_state", {})
-	if not es.has("p2eq_001"): return
-	var si: int = -1
+func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 锈蚀短剑p2eq_001: 每3s就绪, 射程(=携带者射程)内有敌即斜砍; 每件独立(多件各自触发)
+	if u.get("equips", []).is_empty(): return
+	var t = null; var got := false; var rng: float = float(u.get("atk_range", 70.0))
 	for e in u["equips"]:
-		if str(e["id"]) == "p2eq_001":
-			si = _eq_si(int(e.get("star", 1))); break
-	if si < 0: return
-	var stt: Dictionary = es["p2eq_001"]
-	stt["rust_t"] = float(stt.get("rust_t", 0.0)) + delta
-	if float(stt["rust_t"]) < 3.0: return          # 未就绪(每3s就绪一次)
-	var t = _nearest_enemy(u)
-	var rng: float = float(u.get("atk_range", 70.0))   # 射程=携带者射程(近战短/远程长, 自适应; 用户)
-	if t == null or (t["pos"] - u["pos"]).length() > rng: return   # 射程内无敌→保持就绪等待
-	stt["rust_t"] = 0.0
-	_weapon_slash(u["pos"], t["pos"], Color("#ffd27a"))
-	_apply_damage_from(u, t, _atk_dmg(u, [0.6, 0.75, 1.0][si], t) + int([40, 60, 100][si] * u["crit"]), Color("#ff4444"), 0.0, false, true)
+		if str(e["id"]) != "p2eq_001": continue
+		e["rust_t"] = float(e.get("rust_t", 0.0)) + delta   # 计时存装备条目→每副本独立就绪
+		if float(e["rust_t"]) < 3.0: continue               # 该件未就绪(每3s就绪一次)
+		if not got:                                          # 目标懒求(多件共用同一最近敌)
+			t = _nearest_enemy(u); got = true
+		if t == null or (t["pos"] - u["pos"]).length() > rng: continue   # 射程内无敌→保持就绪等待
+		e["rust_t"] = 0.0
+		var si: int = _eq_si(int(e.get("star", 1)))
+		_weapon_slash(u["pos"], t["pos"], Color("#ffd27a"))
+		_apply_damage_from(u, t, _atk_dmg(u, [0.6, 0.75, 1.0][si], t) + int([40, 60, 100][si] * u["crit"]), Color("#ff4444"), 0.0, false, true)
 
 func _make_slash_texture(col: Color) -> ImageTexture:   # 斜劈斩弧: 一段新月弧(左上→右下), 亮核软边
 	var S := 64
@@ -6420,7 +6418,11 @@ func _inject_equipment() -> void:
 			list = (DEMO_EQUIP[key] as Array).duplicate(true)
 		u["equips"] = list
 		if OS.has_environment("EQDEMO_EQUIP") and u["side"] == "left":   # 装备演示: 携带者强制装该件
-			list = [{"id": OS.get_environment("EQDEMO_EQUIP"), "star": (int(OS.get_environment("EQDEMO_STAR")) if OS.has_environment("EQDEMO_STAR") else 2)}]
+			var _est: int = (int(OS.get_environment("EQDEMO_STAR")) if OS.has_environment("EQDEMO_STAR") else 2)
+			var _ecnt: int = maxi(1, int(OS.get_environment("EQDEMO_COUNT"))) if OS.has_environment("EQDEMO_COUNT") else 1   # 多件同款演示
+			list = []
+			for _ci in range(_ecnt):
+				list.append({"id": OS.get_environment("EQDEMO_EQUIP"), "star": _est})
 			u["equips"] = list
 		for e in list:
 			u["eq_state"][str(e["id"])] = {}
@@ -6563,6 +6565,13 @@ func _eq_charge(stt: Dictionary, key: String, amt: float, cap: float, on_full: C
 func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 	if src.get("equips", []).is_empty():
 		return
+	# AoE 判定(启发式): 同帧内 src 命中≥2个不同目标 → 范围技能 (供 002 等"范围减半"用; 首个目标算单体)
+	var _fr: int = Engine.get_process_frames()
+	if int(src.get("_onhit_fr", -1)) != _fr:
+		src["_onhit_fr"] = _fr; src["_onhit_tgts"] = []
+	var _otl: Array = src["_onhit_tgts"]
+	if not (tgt in _otl): _otl.append(tgt)
+	var is_aoe: bool = _otl.size() >= 2
 	for e in src["equips"]:
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
 		var stt: Dictionary = src["eq_state"].get(iid, {})
@@ -6573,8 +6582,8 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 					var was: bool = tgt["alive"]
 					tgt["hp"] = 0.0
 					if was: _kill(tgt, src)
-			"p2eq_002":   # 海带卷刀: 命中→施加流血层 (3★=0.15×atk; 流血本就层数累加=可叠加, DoT模型无需额外上限)
-				var bs: int = maxi(1, roundi([0.075, 0.1, 0.15][si] * src["atk"]))
+			"p2eq_002":   # 海带卷刀: 命中→施加流血层 (范围技能触发减半; 3★流血层数天然可叠)
+				var bs: int = maxi(1, roundi([0.075, 0.1, 0.15][si] * src["atk"] * (0.5 if is_aoe else 1.0)))
 				_apply_dot_stacks(tgt, "bleed", bs, src)
 			"p2eq_003":   # 锋利鲨齿: 溅射相邻格
 				var frac: float = [0.15, 0.28, 0.50][si]
