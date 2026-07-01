@@ -648,6 +648,11 @@ func _spawn_teams() -> void:
 			ru["hp"] = ru["maxHp"]
 			if not REVIEW_DUMMY_KILLABLE:
 				ru["_review_dummy"] = true       # 不死沙包(受击回满); KILLABLE=会死(看换目标)
+		if OS.has_environment("EQDEMO_EQUIP"):   # 装备演示假人: 固定不动/5000血/30双抗/会掉血
+			ru["no_basic"] = true; ru["no_move"] = true; ru["active_skills"] = []
+			ru["maxHp"] = 5000.0; ru["hp"] = 5000.0
+			ru["base_def"] = 30.0; ru["base_mr"] = 30.0; _recalc_stats(ru)
+			ru.erase("_review_dummy")
 		_units.append(ru)
 	_inject_equipment()       # 装备注入 (玩家队读 persistent_equipped; demo队塞测试装备) — 须在被动之前
 	_apply_spawn_passives()   # 登场被动 (开战即生效: 忍术暴击/怨灵诅咒/冰寒减攻/召唤等)
@@ -655,6 +660,8 @@ func _spawn_teams() -> void:
 	_build_team_panels()      # 局内 UI: 左右队头像框栏 (主龟; 召唤体不进) — 须在 equips 注入之后
 
 func _resolve_left() -> Array:
+	if OS.has_environment("EQDEMO_EQUIP"):   # 装备演示: 远程携带者(默认hunter)
+		return [OS.get_environment("EQDEMO_CARRIER")] if OS.has_environment("EQDEMO_CARRIER") else ["hunter"]
 	if REVIEW_DEMO:
 		if not REVIEW_SHOWCASE.is_empty():
 			return REVIEW_SHOWCASE.duplicate()   # 展示模式: 多只一队
@@ -663,6 +670,8 @@ func _resolve_left() -> Array:
 	return ldr if ldr.size() >= 1 else LEFT_DEMO.duplicate()
 
 func _resolve_right() -> Array:
+	if OS.has_environment("EQDEMO_EQUIP"):   # 装备演示: 1个固定假人
+		return ["basic"]
 	if REVIEW_DEMO:
 		if not REVIEW_SHOWCASE.is_empty():
 			var arr: Array = []
@@ -6218,6 +6227,9 @@ func _inject_equipment() -> void:
 		if use_demo and DEMO_EQUIP.has(key):
 			list = (DEMO_EQUIP[key] as Array).duplicate(true)
 		u["equips"] = list
+		if OS.has_environment("EQDEMO_EQUIP") and u["side"] == "left":   # 装备演示: 携带者强制装该件
+			list = [{"id": OS.get_environment("EQDEMO_EQUIP"), "star": (int(OS.get_environment("EQDEMO_STAR")) if OS.has_environment("EQDEMO_STAR") else 1)}]
+			u["equips"] = list
 		for e in list:
 			u["eq_state"][str(e["id"])] = {}
 
