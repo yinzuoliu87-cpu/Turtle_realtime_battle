@@ -2126,7 +2126,7 @@ func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   #
 	# 到位: 踢一脚 → 伤害 + 击飞
 	if tgt != null and tgt.get("alive", false):
 		_apply_damage_from(u, tgt, dmg, Color("#ffb0c8"), 0.0, false, true)
-		_knockback(u, tgt, 60.0)
+		_knockback(u, tgt, 60.0, 1.6, 1.9)   # 小熊踢一脚: 比标准击飞更夸张(上抛×1.6/横推×1.9)
 	# 小熊消失 (淡出)
 	if is_instance_valid(bear):
 		var tw := create_tween()
@@ -2360,7 +2360,7 @@ func _raw_lose(u: Dictionary, amt: float) -> void:
 		_kill(u)
 
 # 击飞 (真物理): 给 vy 初速 + 横向远离施法者 → tick 重力抛物 (3D 真抛物, 替代 2D 滑行+假抬升)
-func _knockback(by: Dictionary, tgt: Dictionary, _dist: float) -> void:
+func _knockback(by: Dictionary, tgt: Dictionary, _dist: float, vy_mult: float = 1.0, push_mult: float = 1.0) -> void:
 	if tgt["airborne"]:
 		return
 	var dir: Vector2 = (tgt["pos"] - by["pos"])
@@ -2368,9 +2368,9 @@ func _knockback(by: Dictionary, tgt: Dictionary, _dist: float) -> void:
 		dir = Vector2.RIGHT
 	dir = dir.normalized()
 	tgt["airborne"] = true
-	tgt["vy"] = KNOCK_VY
-	tgt["vx"] = dir.x * KNOCK_PUSH
-	tgt["vz"] = dir.y * KNOCK_PUSH
+	tgt["vy"] = KNOCK_VY * vy_mult
+	tgt["vx"] = dir.x * KNOCK_PUSH * push_mult
+	tgt["vz"] = dir.y * KNOCK_PUSH * push_mult
 	# Phase4: 击飞 = 大事件 → 大震屏 + 顿帧 + 起跳火花 (起跳拉长由 _juice_scale_for 读 airborne/vy 自动)
 	_shake(JUICE_SHAKE_BIG)
 	_add_hitstop(JUICE_HITSTOP_KNOCK)
