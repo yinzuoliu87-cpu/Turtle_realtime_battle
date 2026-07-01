@@ -1,13 +1,13 @@
 extends Control
 
 ## ShopScene — V2 局外商店 (阶段2, 设计§五/§十一). 10 卡货架, 用 meta_deepsea_coins 买装备入持久背包.
-## 刷新固定 2 币; 买价 = 装备 cost × 3 (占位待调); 出货档随赛季总战斗数. 复用 Phase2Equip.roll_shop 出货算法.
+## 刷新固定 2 币; 买价 = 装备 cost (几费卖几深海币, 1:1, 用户 2026-07-01); 出货档随赛季总战斗数. 复用 Phase2Equip.roll_shop 出货算法.
 
 const W := 1280.0
 const SLOT_W := 108.0
 const SLOT_H := 132.0
 const REFRESH_COST := 2
-const PRICE_MULT := 3
+const PRICE_MULT := 1        # 售价 = 装备 cost (费) × 1 = 几费卖几深海币 (用户 2026-07-01; 原 ×3 占位已改)
 const Phase2Equip = preload("res://scripts/engine/phase2_equip.gd")
 const P2 = preload("res://scripts/engine/phase2_config.gd")
 
