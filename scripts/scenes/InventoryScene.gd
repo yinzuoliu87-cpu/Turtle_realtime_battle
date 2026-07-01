@@ -122,9 +122,7 @@ func _grid_slot(lane: String, slot_key: String, pid: String, pos: Vector2) -> Co
 			a.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; a.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED; a.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			a.position = Vector2(GS / 2.0 - 22, 4); a.size = Vector2(44, 38); box.add_child(a)
 		var eqs: Array = GameState.persistent_equipped.get(pid, [])
-		var en := Label.new(); en.text = "装%d/%d" % [eqs.size(), P2.equip_slots_for_level(int(GameState.season_level))]
-		en.add_theme_font_size_override("font_size", 10); en.add_theme_color_override("font_color", Color("#7fd0a0"))
-		en.position = Vector2(0, 44); en.size = Vector2(GS, 14); en.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; box.add_child(en)
+		_draw_equip_cells(box, eqs, P2.equip_slots_for_level(int(GameState.season_level)), 45.0)   # 装备槽 → 可视小格 (替代"装N/M"文字)
 		var nm := Label.new(); nm.text = str(pet.get("name", pid))
 		nm.add_theme_font_size_override("font_size", 11); nm.add_theme_color_override("font_color", Color("#e8f2ff"))
 		nm.position = Vector2(0, GS - 16); nm.size = Vector2(GS, 14); nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; box.add_child(nm)
@@ -141,6 +139,28 @@ func _slot_center_label(box: Control, txt: String, col: Color) -> void:
 	l.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	box.add_child(l)
+## 龟身装备槽可视化: 画 slots 个小格 (满格=该件稀有度色, 空格=暗轮廓), 居中一行. 替代"装N/M"文字.
+func _draw_equip_cells(box: Control, eqs: Array, slots: int, y: float) -> void:
+	var cw := 10.0
+	var gap := 3.0
+	var total := slots * cw + maxf(0.0, float(slots - 1)) * gap
+	var x0 := box.size.x / 2.0 - total / 2.0
+	for idx in range(slots):
+		var cell := Panel.new()
+		var csb := StyleBoxFlat.new()
+		if idx < eqs.size():
+			var eid := str((eqs[idx] as Dictionary).get("id", ""))
+			var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
+			csb.bg_color = _rarity_color(str(edef.get("rarity", "普通")))
+			csb.border_color = Color(1, 1, 1, 0.45)
+		else:
+			csb.bg_color = Color(0, 0, 0, 0.35)
+			csb.border_color = Color("#3a4452")
+		csb.set_border_width_all(1); csb.set_corner_radius_all(2)
+		cell.add_theme_stylebox_override("panel", csb)
+		cell.position = Vector2(x0 + idx * (cw + gap), y)
+		cell.size = Vector2(cw, cw)
+		box.add_child(cell)
 
 ## 点格子: 选了装备+点龟=装备; 否则=单位摆位(无选中→选中, 已选中→移到该格, 占用则交换).
 func _on_grid_click(lane: String, slot_key: String, pid: String) -> void:
@@ -265,14 +285,6 @@ func _build_bench() -> void:
 	hdr.position = Vector2(60, 352); hdr.size = Vector2(1000, 26)
 	add_child(hdr)
 	var bench: Array = GameState.persistent_bench if GameState.persistent_bench is Array else []
-	if bench.is_empty():
-		var empty := Label.new()
-		empty.text = "（背包空 — 去主菜单商店买装备）"
-		empty.add_theme_font_size_override("font_size", 16)
-		empty.add_theme_color_override("font_color", Color("#5a6675"))
-		empty.position = Vector2(64, 392); empty.size = Vector2(600, 24)
-		add_child(empty)
-		return
 	var gx := 64.0
 	var gy := 392.0
 	var per_row := 11
@@ -282,6 +294,18 @@ func _build_bench() -> void:
 		var row := i / per_row
 		add_child(_equip_cell(it, i, Vector2(gx + col * (SLOT + 8), gy + row * (SLOT + 28))))
 		i += 1
+	# 补空格子 → 背包始终呈完整网格 (整行对齐, 空槽=暗格显·, 至少一行)
+	var total_cells := maxi(per_row, int(ceil(float(bench.size()) / float(per_row))) * per_row)
+	while i < total_cells:
+		var col2 := i % per_row
+		var row2 := i / per_row
+		add_child(_empty_bench_cell(Vector2(gx + col2 * (SLOT + 8), gy + row2 * (SLOT + 28))))
+		i += 1
+	if bench.is_empty():
+		var hint := Label.new()
+		hint.text = "（背包空 — 去商店买装备）"
+		hint.add_theme_font_size_override("font_size", 14); hint.add_theme_color_override("font_color", Color("#5a6675"))
+		hint.position = Vector2(64, 392 + SLOT + 34); hint.size = Vector2(600, 22); add_child(hint)
 
 func _rarity_color(rarity: String) -> Color:
 	match rarity:
@@ -290,6 +314,13 @@ func _rarity_color(rarity: String) -> Color:
 		"史诗": return Color("#c084fc")
 		"传说": return Color("#fbbf24")
 		_: return Color("#8a96a3")
+
+func _empty_bench_cell(pos: Vector2) -> Control:
+	var box := _slot_panel(pos, Color(0, 0, 0, 0.22), Color("#28323e"))
+	_slot_center_label(box, "·", Color("#39434f"))
+	for ch in box.get_children():
+		ch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return box
 
 func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	var sel := idx == _sel_bench
