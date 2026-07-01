@@ -2802,6 +2802,10 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		src["rage"] = minf(RAGE_MAX, src["rage"] + float(dmg) * 0.10)
 	if u["id"] == "lava":
 		u["rage"] = minf(RAGE_MAX, u["rage"] + float(dmg) * 0.10)
+	if src is Dictionary and src.get("has_egg", false) and src.get("alive", false):   # 温泉蛋(036): 造成伤害×0.1进度
+		_egg_add_progress(src, float(dmg) * 0.1)
+	if u.get("has_egg", false):   # 温泉蛋(036): 承受伤害×0.1进度
+		_egg_add_progress(u, float(dmg) * 0.1)
 	# 星能 (星际造伤62%)
 	if src["id"] == "space":
 		src["star_energy"] = minf(src["maxHp"] * 0.40, src["star_energy"] + float(dmg) * 0.62)
@@ -2895,6 +2899,9 @@ func _kill(u: Dictionary, killer = null) -> void:
 		_eq_on_kill(killer, u)             # on-kill: 击杀者装备 (暴君之牙处决回血 等)
 	_eq_on_death(u, killer)                # on-death: 阵亡者装备 (复活海螺变虫 / 齿轮折币 / 玩偶熊)
 	_on_unit_death(u, killer)
+	for _egc in _units:   # 温泉蛋(036): 任意单位阵亡→持蛋者加进度(己方死+15/敌死+10)
+		if _egc.get("has_egg", false) and _egc.get("alive", false):
+			_egg_add_progress(_egc, 15.0 if str(_egc.get("side", "")) == str(u.get("side", "")) else 10.0)
 	# 有死亡帧的龟(basic/ghost/ninja)播 death 动画 → 影/环/血条立即淡, 立绘延后淡(让动画演完)
 	_play_action(u, "death")
 	var has_death_anim: bool = (u.get("anim_action", "") == "death")
@@ -4854,6 +4861,27 @@ func _grant_shield(u: Dictionary, amt: float) -> void:
 		_float_text(u["pos"] + Vector2(0, -52), "+%d 盾" % got, Color("#ffffff"), false, "shield")
 	_skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.4), 44.0)
 	_sfx_shield_gain()                       # §AUDIO: 得盾音 (节流; 群体上盾不刷屏)
+
+func _egg_add_progress(u: Dictionary, amt: float) -> void:   # 温泉蛋(036): 累积孵化进度→每100+1临时等级(+5%基础属性复利,上限+3,局内临时)→孵满(+3)全队均摊护盾一次
+	if amt <= 0.0 or not u.get("has_egg", false) or not u.get("alive", false): return
+	var stt: Dictionary = u["eq_state"].get("p2eq_036", {})
+	stt["incub"] = float(stt.get("incub", 0.0)) + amt
+	while float(stt["incub"]) >= 100.0 and int(stt.get("egg_levels", 0)) < 3:
+		stt["incub"] = float(stt["incub"]) - 100.0
+		stt["egg_levels"] = int(stt.get("egg_levels", 0)) + 1
+		u["base_atk"] *= 1.05; u["base_def"] *= 1.05; u["base_mr"] *= 1.05
+		var hpg: float = u["maxHp"] * 0.05; u["maxHp"] += hpg; u["hp"] += hpg
+		_recalc_stats(u)
+		_float_text(u["pos"] + Vector2(0, -70), "孵化 Lv+%d" % int(stt["egg_levels"]), Color("#ffe08a"))
+		_skill_ring(u["pos"], Color(1.0, 0.85, 0.4, 0.5), 54.0)
+		if int(stt["egg_levels"]) >= 3 and not bool(stt.get("incub_given", false)):
+			stt["incub_given"] = true
+			var allies := _allies_of(u)
+			var per: float = float(stt.get("incub_shield", 300.0)) / maxf(1.0, float(allies.size()))
+			for o in allies: _grant_shield(o, per)
+			_particle_burst(u["pos"])
+	if int(stt.get("egg_levels", 0)) >= 3: stt["incub"] = minf(float(stt["incub"]), 100.0)
+	u["eq_state"]["p2eq_036"] = stt
 
 # silent=true: 吸血等高频被动回血不出治疗音 (防刷屏), 主动治疗/技能回血出音
 func _heal(u: Dictionary, amt: float, silent: bool = false) -> void:
@@ -6834,7 +6862,9 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 		"p2eq_036":   # 温泉蛋: 孵化进度 → 满级全队护盾(一次)
 			stt["incub"] = 0.0
 			stt["incub_given"] = false
+			stt["egg_levels"] = 0
 			stt["incub_shield"] = [300.0, 400.0, 600.0][si]
+			u["has_egg"] = true
 	u["eq_state"][item_id] = stt
 
 # ── 工具 ──
@@ -7428,6 +7458,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 						var adm: int = int([0.4, 0.6, 3.0][si] * (u["def"] + u["mr"]) + at["maxHp"] * [0.15, 0.25, 0.70][si])
 						_apply_damage_from(u, at, adm, Color("#9be7ff"), 0.0, false, true)
 						_knockback(u, at, 60.0); _freeze(at, CTRL_SEC)
+						_skill_ring(at["pos"], Color(0.6, 0.85, 1.0, 0.6), 60.0)   # 沉锚砸落冲击环
 						u["eq_state"]["p2eq_017"] = ast
 			"p2eq_006":   # 千刃风暴: 移到每7秒 _tick_sword_storm(用户); on_cast不处理
 				pass
@@ -7450,6 +7481,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 			"p2eq_014":   # 深海堡垒甲(主动): 汲取全敌+回血
 				var k2: float = [0.8, 1.0, 1.5][si]
 				for o in _enemies_of(u):
+					_bolt_line(o["pos"], u["pos"], Color("#bfe9ff"))   # 汲取引流光束
 					_apply_damage_from(u, o, int(k2 * (u["def"] + u["mr"])), Color("#bfe9ff"), 0.0, true, true)
 					_heal(u, [40, 65, 130][si])
 			"p2eq_022":   # 余烬燃油瓶: 对最近敌灼烧(真火)
@@ -7702,6 +7734,7 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 					if o["atk"] > ba: ba = o["atk"]; best = o
 				if best != null:
 					_grant_shield(best, [40.0, 60.0, 90.0][si])
+					if best != u: _bolt_line(u["pos"], best["pos"], Color("#8affc8"))   # 贝母连接光束
 					_cleanse_n(best, [1, 1, 2][si])   # 净化1/1/2个负面
 					if _has_energy_system(best):
 						_eq_grant_energy(best, 20.0)   # +20龟能 (实时版=扣冷却)
@@ -7728,13 +7761,7 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 			"p2eq_034":   # 玩偶小熊: 移到每帧 _tick_doll(4s派小熊 + 满层蓄力召大熊); 周期tick不处理
 				pass
 			"p2eq_036":   # 温泉蛋: 孵化进度, 满100→全队均摊护盾(一次)
-				stt["incub"] = float(stt.get("incub", 0.0)) + 5.0
-				if float(stt["incub"]) >= 100.0 and not bool(stt.get("incub_given", false)):
-					stt["incub_given"] = true
-					var allies := _allies_of(u)
-					var per: float = float(stt.get("incub_shield", 300.0)) / maxf(1.0, float(allies.size()))
-					for o in allies:
-						_grant_shield(o, per)
+				_egg_add_progress(u, 5.0)   # 每周期+5 (其余源: 敌死+10/己死+15/造成×0.1/承受×0.1)
 			"p2eq_042":   # 涟漪药剂: 每周期全队回已损血 3/6/10%; 3★生命最低友军双倍
 				var low042 = null; var lv042 := INF
 				if si == 2:
