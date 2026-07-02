@@ -1562,9 +1562,21 @@ func _gambler_multi_cd(u: Dictionary) -> float:
 	u["multi_chance"] = 0.40                          # 没中→重置, 等下一次普攻
 	return u["atk_interval"]
 
-func _eq_on_basic_attack(u: Dictionary) -> void:   # 每普攻(不算多段)计数装备: 008双穿珊瑚刺每5次射一发
+func _eq_on_basic_attack(u: Dictionary) -> void:   # 每普攻(不算多段): 008珊瑚刺计数 / 017不沉之锚普攻消耗充能锚击
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
+		if str(e["id"]) == "p2eq_017":   # 不沉之锚: 每次普攻消耗1沉锚充能→击飞最前敌+眩晕(用户2026-07-02)
+			var ast: Dictionary = u["eq_state"].get("p2eq_017", {})
+			if int(ast.get("anchor_charges", 0)) > 0:
+				var at = _nearest_enemy(u)
+				if at != null:
+					var si17: int = _eq_si(int(e.get("star", 1)))
+					ast["anchor_charges"] = int(ast["anchor_charges"]) - 1
+					var adm: int = int([0.4, 0.6, 3.0][si17] * (u["def"] + u["mr"]) + at["maxHp"] * [0.15, 0.25, 0.70][si17])
+					_apply_damage_from(u, at, adm, Color("#9be7ff"), 0.0, false, true)
+					_knockback(u, at, 60.0); _freeze(at, CTRL_SEC)
+					_skill_ring(at["pos"], Color(0.6, 0.85, 1.0, 0.6), 60.0)
+					u["eq_state"]["p2eq_017"] = ast
 		if str(e["id"]) != "p2eq_008": continue
 		e["coral_cnt"] = int(e.get("coral_cnt", 0)) + 1
 		if int(e["coral_cnt"]) >= 5:
@@ -7606,17 +7618,8 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 						_apply_damage_from(u, o27, [30, 40, 50][si], Color("#4dabf7"), 0.0, true, true)
 						_freeze(o27, CTRL_SEC)
 						_bolt_line(u["pos"], o27["pos"], Color("#7ec8ff"))
-			"p2eq_017":   # 不沉之锚: 施法消耗1充能→击飞最前敌+((0.4/0.6/3.0×(def+mr))+15/25/70%目标maxHp)物理+眩晕1.5s
-				var ast: Dictionary = u["eq_state"].get("p2eq_017", {})
-				if int(ast.get("anchor_charges", 0)) > 0:
-					var at = _nearest_enemy(u)
-					if at != null:
-						ast["anchor_charges"] = int(ast["anchor_charges"]) - 1
-						var adm: int = int([0.4, 0.6, 3.0][si] * (u["def"] + u["mr"]) + at["maxHp"] * [0.15, 0.25, 0.70][si])
-						_apply_damage_from(u, at, adm, Color("#9be7ff"), 0.0, false, true)
-						_knockback(u, at, 60.0); _freeze(at, CTRL_SEC)
-						_skill_ring(at["pos"], Color(0.6, 0.85, 1.0, 0.6), 60.0)   # 沉锚砸落冲击环
-						u["eq_state"]["p2eq_017"] = ast
+			"p2eq_017":   # 不沉之锚: 锚击移到_eq_on_basic_attack(普攻消耗1充能, 用户2026-07-02); on_cast不处理
+				pass
 			"p2eq_006":   # 千刃风暴: 移到每7秒 _tick_sword_storm(用户); on_cast不处理
 				pass
 			"p2eq_007":   # 锈蚀阔剑: 移到每6秒 _tick_broadsword(用户); on_cast不处理
