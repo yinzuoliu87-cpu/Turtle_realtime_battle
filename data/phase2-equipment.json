@@ -260,7 +260,7 @@
     "poolPhase": 2,
     "emoji": "🛡️",
     "effectImpl": true,
-    "effectDesc1": "携带者每段受到的非真实伤害减少2/4/6点(固定值);每2.5秒为全队(含自己)提供15/20/25点护盾。",
+    "effectDesc1": "携带者每段受到的非真实伤害减少2/4/6点(固定值);每5秒为全队(含自己)提供15/20/25点护盾。",
     "effectDesc3": "",
     "img": "equip/equip-shield-icon.png"
   },

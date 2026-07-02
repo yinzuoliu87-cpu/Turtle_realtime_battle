@@ -1530,6 +1530,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 		_tick_laser(u, delta)
 		_tick_jelly(u, delta)
 		_tick_fortress(u, delta)
+		_tick_ironwall(u, delta)
 
 func _enemies_of(u: Dictionary) -> Array:
 	var out: Array = []
@@ -1672,6 +1673,17 @@ func _tick_fortress(u: Dictionary, delta: float) -> void:   # 深海堡垒甲p2e
 			_bolt_line(o["pos"], u["pos"], Color("#bfe9ff"))
 			_apply_damage_from(u, o, int(k2 * (u["def"] + u["mr"])), Color("#bfe9ff"), 0.0, true, true)
 			_heal(u, [40, 65, 130][si])
+
+func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016: 每5秒为全队(含自己)护盾15/20/25(用户2026-07-02, 原走2.5s周期); 每件独立
+	if u.get("equips", []).is_empty(): return
+	for e in u["equips"]:
+		if str(e["id"]) != "p2eq_016": continue
+		e["ironwall_t"] = float(e.get("ironwall_t", 0.0)) + delta
+		if float(e["ironwall_t"]) < 5.0: continue
+		e["ironwall_t"] = 0.0
+		var si: int = _eq_si(int(e.get("star", 1)))
+		for o in _allies_of(u):
+			_grant_shield(o, [15.0, 20.0, 25.0][si])
 
 func _tick_jelly(u: Dictionary, delta: float) -> void:   # 龟苓膏块p2eq_012: 每4s自护盾(用户2026-07-02, 原走2.5s周期); 每件独立计时
 	if u.get("equips", []).is_empty(): return
@@ -2844,7 +2856,10 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		u["hp"] = maxf(1.0, u["hp"])
 	var _dt: String = "true" if raw else _last_dmg_type
 	var _ncol: Color = _VC.color_of(_VC.cls_for("damage", _dt, was_crit))   # 飘字按伤害类型统一取色 (物红/魔蓝/真白, 1:1 回合制)
-	_float_text(u["pos"], str(dmg), _ncol, was_crit, "damage", _dt)   # 伤害: 爆大pop+抛物弹射(跳的方向/距离随机自带散开)
+	var _jdir: float = 0.0
+	if src is Dictionary and src != u and src.has("pos"):
+		_jdir = 1.0 if float(src["pos"].x) < float(u["pos"].x) else -1.0   # 来源在左→数字往右跳, 反之往左(用户规则)
+	_float_text(u["pos"], str(dmg), _ncol, was_crit, "damage", _dt, _jdir)   # 伤害: 朝远离来源方向弹射
 	# 泡泡束缚(bubbleBind): 束缚期间每受一段伤害 → 永久 -X 护甲/魔抗 (单次累计上限各30)
 	if _t < u.get("bind_until", 0.0):
 		var _sx: float = float(u.get("bind_shred", 0.0))
@@ -3073,7 +3088,7 @@ func _float_row_offset(key: String, kind: String, dmg_type: String, fsize: float
 	return float(extra) * 22.0
 
 # 飘字 (1:1 回合制 _spawn_float_text): kind=damage → 爆大pop(1.6~2.5)+抛物弹射(重力200,朝屏边跳); 否则(heal/shield/label) → pop1.2+缓升50px(sine)1.5s淡出
-func _float_text(pos2d: Vector2, text: String, col: Color, is_crit: bool = false, kind: String = "label", dmg_type: String = "physical") -> void:
+func _float_text(pos2d: Vector2, text: String, col: Color, is_crit: bool = false, kind: String = "label", dmg_type: String = "physical", jump_dir: float = 0.0) -> void:
 	if _cam == null:
 		return
 	var head := _world_pos(pos2d, 2.2)
@@ -3112,7 +3127,7 @@ func _float_text(pos2d: Vector2, text: String, col: Color, is_crit: bool = false
 		fly.scale = Vector2(0.01, 0.01)
 		var hold_scale := 1.0 if is_crit else 0.7
 		var pop_size := 1.6 if amount < 20 else (1.8 if amount < 60 else (2.2 if amount < 150 else 2.5))
-		var dir := -1.0 if base_pos.x < 640.0 else 1.0
+		var dir := (jump_dir if absf(jump_dir) > 0.5 else (-1.0 if base_pos.x < 640.0 else 1.0))   # 用户规则: 数字朝远离来源方向跳(来源左→往右/来源右→往左); 无来源朝屏边
 		var jump_x := dir * (12.0 + randf() * 14.0)
 		var jump_y := (-(10.0 + randf() * 8.0)) if is_crit else (-(22.0 + randf() * 10.0))
 		var hold_end := 0.4 if is_crit else 0.15
@@ -7823,9 +7838,8 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 				pass
 			"p2eq_012":   # 龟苓膏块: 移到 _tick_jelly (每4s, 用户2026-07-02); 周期tick不处理
 				pass
-			"p2eq_016":   # 铁壁盾: 每周期全队(含自己)护盾
-				for o in _allies_of(u):
-					_grant_shield(o, [15.0, 20.0, 25.0][si])
+			"p2eq_016":   # 铁壁盾: 全队盾移到 _tick_ironwall(每5秒, 用户2026-07-02); 周期tick不处理
+				pass
 			"p2eq_018":   # 守护贝壳: 每周期自回血
 				_heal(u, [30, 45, 60][si] + u["maxHp"] * [0.05, 0.09, 0.15][si])
 			"p2eq_019":   # 海葵药膏: 奶自己+最低血友军 + 海葵层(累计治疗→治疗强度+8/9/10%/层, 用户)
