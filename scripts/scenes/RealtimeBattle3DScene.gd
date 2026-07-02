@@ -235,6 +235,7 @@ const PANEL_COUNT := {   # 头像下装备格右下角层数徽章: id → eq_st
 	"p2eq_035": "gears",           # 齿轮层
 	"p2eq_052": "revolver_bullets", "p2eq_027": "baton_charges", "p2eq_039": "bamboo_charges",   # 子弹/电击/生长充能
 	"p2eq_019": "anemone_layers",  # 海葵层
+	"p2eq_020": "exercise",       # 哑铃锻炼层(局内, 每场重置)
 	"p2eq_043": "wave",            # 巨浪层(0-3)
 	"p2eq_017": "anchor_charges",  # 沉锚就绪充能数(另有anchor_accum攒治疗条)
 	"p2eq_036": "egg_levels",      # 温泉蛋临时等级(0-3; 另有incub充能条)
@@ -1446,7 +1447,7 @@ func _tick_skill_cd(u: Dictionary, delta: float) -> void:
 		_ecm *= float(u.get("spd_echarge_mult", 1.0))   # 充能减速debuff(寒冰登场等)
 	_ecm = maxf(0.05, _ecm)
 	for k in cds:
-		cds[k] = maxf(0.0, float(cds[k]) - delta * _ecm)   # 麻痹也走, 只是放不出; ×充能速率
+		cds[k] = maxf(0.0, float(cds[k]) - delta * _ecm * float(u.get("echarge_perm", 1.0)))   # 麻痹也走, 只是放不出; ×充能速率(含装备永久充能速率echarge_perm)
 
 # --- 索敌: 被嘲讽则强制打嘲讽来源, 否则最近敌 (跳过 untargetable / 缩头护身随从) ---
 func _acquire_target(u: Dictionary):
@@ -1538,6 +1539,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 		_tick_ironwall(u, delta)
 		_tick_shell(u, delta)
 		_tick_anemone(u, delta)
+		_tick_dumbbell(u, delta)
 
 func _enemies_of(u: Dictionary) -> Array:
 	var out: Array = []
@@ -1738,6 +1740,57 @@ func _tick_anemone(u: Dictionary, delta: float) -> void:   # 海葵药膏p2eq_01
 			stt["anemone_layers"] = int(stt.get("anemone_layers", 0)) + 1
 			_skill_ring(u["pos"], Color(0.55, 0.9, 0.7, 0.5), 44.0)
 		u["eq_state"]["p2eq_019"] = stt
+
+func _tick_dumbbell(u: Dictionary, delta: float) -> void:   # 哑铃p2eq_020: 每10秒一套(原地锻炼锁攻锁充能→+锻炼层→蓄力掷哑铃击退); 每件独立
+	if u.get("equips", []).is_empty(): return
+	for e in u["equips"]:
+		if str(e["id"]) != "p2eq_020": continue
+		e["dumbbell_t"] = float(e.get("dumbbell_t", 0.0)) + delta
+		if float(e["dumbbell_t"]) < 10.0: continue
+		e["dumbbell_t"] = 0.0
+		if u.get("_slam", false): continue   # 正在别的channel中→跳过本次
+		_eq_dumbbell_routine(u, _eq_si(int(e.get("star", 1))))
+
+func _eq_dumbbell_routine(u: Dictionary, si: int) -> void:   # 原地锻炼(锁攻+锁充能)→+锻炼层(maxHp,局内每场重置)→蓄力→掷哑铃击退
+	if not u.get("alive", false): return
+	u["_slam"] = true   # 锁AI/普攻/移动/龟能充能(都在_tick_unit早返回前)
+	for _b in range(3):   # 锻炼动作: 3下蹲起形变
+		if not u.get("alive", false): u["_slam"] = false; return
+		_anticipate(u)
+		await get_tree().create_timer(0.3).timeout
+	if not is_instance_valid(self): return
+	var stt: Dictionary = u["eq_state"].get("p2eq_020", {})   # 锻炼层(eq_state局内计数, 每场战斗重置)
+	stt["exercise"] = int(stt.get("exercise", 0)) + 1
+	u["eq_state"]["p2eq_020"] = stt
+	var gain: float = [20.0, 25.0, 30.0][si] * HP_MULT
+	u["maxHp"] += gain; u["hp"] += gain
+	_skill_ring(u["pos"], Color(0.8, 0.9, 1.0, 0.42), 48.0)   # 锻炼强化光
+	_anticipate(u); _shake(JUICE_SHAKE_HEAVY)   # 蓄力
+	await get_tree().create_timer(0.35).timeout
+	u["_slam"] = false
+	if not u.get("alive", false): return
+	var t = _nearest_enemy(u)
+	if t == null: return
+	var dmg: int = maxi(1, int(u["maxHp"] / HP_MULT * [0.05, 0.07, 0.10][si]))
+	_throw_dumbbell(u, t, dmg)
+
+func _throw_dumbbell(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   # 钢灰哑铃飞向目标→砸中伤害+击退
+	var spr := Sprite3D.new()
+	spr.texture = _make_disc_texture()
+	spr.modulate = Color(0.72, 0.75, 0.82); spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED; spr.shaded = false; spr.transparent = true
+	spr.pixel_size = 0.013
+	spr.position = _world_pos(u["pos"], 1.1)
+	_world.add_child(spr)
+	var tw := create_tween()
+	tw.tween_property(spr, "position", _world_pos(tgt["pos"], 1.0), 0.3)
+	tw.tween_callback(_dumbbell_hit.bind(spr, u, tgt, dmg))
+
+func _dumbbell_hit(spr: Sprite3D, u: Dictionary, tgt: Dictionary, dmg: int) -> void:
+	if is_instance_valid(spr): spr.queue_free()
+	if not tgt.get("alive", false): return
+	_apply_damage_from(u, tgt, dmg, Color("#c8ccd6"), 0.0, false, true)
+	_knockback(u, tgt, 0.0, 1.0, 2.0)   # 砸中击退
+	_skill_ring(tgt["pos"], Color(0.8, 0.82, 0.9, 0.6), 50.0); _shake(JUICE_SHAKE_HEAVY)
 
 func _tick_jelly(u: Dictionary, delta: float) -> void:   # 龟苓膏块p2eq_012: 每4s自护盾(用户2026-07-02, 原走2.5s周期); 每件独立计时
 	if u.get("equips", []).is_empty(): return
@@ -7004,7 +7057,9 @@ func _eq_apply_one_stats(u: Dictionary, item_id: String, star: int) -> void:
 		u["base_mr"] += float(st["mr"])
 	if st.has("critDmg"):
 		u["crit_dmg"] += float(st["critDmg"])
-	# (装备 _maxEnergy 原给初始龟能; 龟能模型已换逐技固定冷却 → 装备暂未激活, 先跳过此项)
+	# (装备 _maxEnergy 原给初始龟能; 龟能模型已换逐技固定冷却 → 跳过)
+	if st.has("_echargePct"):   # 龟能充能速率% → echarge_perm 永久倍率(多件叠加)
+		u["echarge_perm"] = float(u.get("echarge_perm", 1.0)) + float(st["_echargePct"]) / 100.0
 	_recalc_stats(u)
 	_eq_apply_flags(u, item_id, star)
 
@@ -7889,15 +7944,8 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 				pass
 			"p2eq_019":   # 海葵药膏: 移到 _tick_anemone(每7秒, 用户2026-07-02); 周期tick不处理
 				pass
-			"p2eq_020":   # 哑铃: 每周期+锻炼层 + 向最近敌扔哑铃
-				var gain: float = [20.0, 25.0, 30.0][si] * HP_MULT
-				u["maxHp"] += gain; u["hp"] += gain
-				_skill_ring(u["pos"], Color(0.8, 0.85, 0.95, 0.32), 40.0)   # 锻炼层微光
-				var t2 = _nearest_enemy(u)
-				if t2 != null:
-					_bolt_line(u["pos"], t2["pos"], Color("#c8ccd6"))   # 掷出哑铃: 钢灰曳光
-					_skill_ring(t2["pos"], Color(0.75, 0.78, 0.85, 0.5), 44.0)   # 砸中冲击环
-					_apply_damage_from(u, t2, int(u["maxHp"] / HP_MULT * [0.05, 0.07, 0.10][si]), Color("#c8ccd6"), 0.0, false, true)
+			"p2eq_020":   # 哑铃: 移到 _tick_dumbbell(每10秒编排:锻炼锁攻锁充能→掷哑铃击退, 用户2026-07-02); 周期tick不处理
+				pass
 			"p2eq_021":   # 守护贝母: 每周期连接攻击最高友军→护盾+20龟能+净化1/1/2+伤害转移25/40/60%给携带者
 				# 先清掉上周期连接对象的转移标记 (每2.5秒重新连接)
 				var prev_link = stt.get("link_target", null)

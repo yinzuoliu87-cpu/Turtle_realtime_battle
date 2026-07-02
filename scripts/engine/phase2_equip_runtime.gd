@@ -43,7 +43,7 @@ const STATS := {
 	# ── 盾系 018-021 (批3) ──
 	"p2eq_018": [{"hp": 150, "mr": 8, "healAmp": 5, "shieldAmp": 5}, {"hp": 210, "mr": 13, "healAmp": 13, "shieldAmp": 13}, {"hp": 300, "mr": 18, "healAmp": 20, "shieldAmp": 20}],
 	"p2eq_019": [{"def": 5, "mr": 10}, {"def": 10, "mr": 15}, {"def": 16, "mr": 21}],
-	"p2eq_020": [{"hp": 300, "def": 3, "mr": 3, "_maxEnergy": 20}, {"hp": 420, "def": 4, "mr": 4, "_maxEnergy": 20}, {"hp": 630, "def": 6, "mr": 6, "_maxEnergy": 20}],
+	"p2eq_020": [{"hp": 300, "def": 3, "mr": 3, "_echargePct": 10}, {"hp": 420, "def": 4, "mr": 4, "_echargePct": 10}, {"hp": 630, "def": 6, "mr": 6, "_echargePct": 10}],
 	"p2eq_021": [{"hp": 180, "_maxEnergy": 20}, {"hp": 300, "_maxEnergy": 20}, {"hp": 540, "_maxEnergy": 20}],
 	# ── 杖系/元素 022-025,028,029 (批4) ──
 	"p2eq_022": [{"atk": 8, "_maxEnergy": 20}, {"atk": 15, "_maxEnergy": 20}, {"atk": 25, "_maxEnergy": 20}],
