@@ -1506,6 +1506,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 		_tick_sword_storm(u, delta)
 		_tick_broadsword(u, delta)
 		_tick_laser(u, delta)
+		_tick_jelly(u, delta)
 
 func _enemies_of(u: Dictionary) -> Array:
 	var out: Array = []
@@ -1630,6 +1631,16 @@ func _big_bear_attack(u: Dictionary, tgt: Dictionary) -> void:   # 大熊: <2层
 		u["bear_stacks"] = int(u.get("bear_stacks", 0)) + 1
 		if int(u["bear_stacks"]) >= 2:
 			u["atk_range"] = 600.0                   # 下次冲击波: 射程600码(进程即放,不贴脸)
+
+func _tick_jelly(u: Dictionary, delta: float) -> void:   # 龟苓膏块p2eq_012: 每4s自护盾(用户2026-07-02, 原走2.5s周期); 每件独立计时
+	if u.get("equips", []).is_empty(): return
+	for e in u["equips"]:
+		if str(e["id"]) != "p2eq_012": continue
+		e["jelly_t"] = float(e.get("jelly_t", 0.0)) + delta
+		if float(e["jelly_t"]) < 4.0: continue
+		e["jelly_t"] = 0.0
+		var si: int = _eq_si(int(e.get("star", 1)))
+		_grant_shield(u, [30.0, 40.0, 55.0][si])
 
 func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 锈蚀短剑p2eq_001: 每3s就绪, 射程(=携带者射程)内有敌即斜砍; 每件独立(多件各自触发)
 	if u.get("equips", []).is_empty(): return
@@ -7755,8 +7766,8 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 		match iid:
 			"p2eq_001":   # 锈蚀短剑: 移到每帧 _tick_rustblade (每3s就绪 + 100码射程内有敌即劈); 周期tick不处理
 				pass
-			"p2eq_012":   # 龟苓膏块: 每周期自护盾
-				_grant_shield(u, [30.0, 40.0, 55.0][si])
+			"p2eq_012":   # 龟苓膏块: 移到 _tick_jelly (每4s, 用户2026-07-02); 周期tick不处理
+				pass
 			"p2eq_016":   # 铁壁盾: 每周期全队(含自己)护盾
 				for o in _allies_of(u):
 					_grant_shield(o, [15.0, 20.0, 25.0][si])
