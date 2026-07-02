@@ -1543,6 +1543,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 		_tick_fortress(u, delta)
 		_tick_ironwall(u, delta)
 		_tick_shell(u, delta)
+		_tick_thunder(u, delta)
 		_tick_anemone(u, delta)
 		_tick_dumbbell(u, delta)
 		_tick_barnacle(u, delta)
@@ -1711,6 +1712,33 @@ func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016:
 		var si: int = _eq_si(int(e.get("star", 1)))
 		for o in _allies_of(u):
 			_grant_shield(o, [15.0, 20.0, 25.0][si])
+
+func _tick_thunder(u: Dictionary, delta: float) -> void:   # 雷鸣贝壳p2eq_025: 每4秒降N道大雷(道间错峰0.3s), 各劈随机敌1×ATK真伤(伤害在闪电中段跳); 每件独立(用户2026-07-02: 原2.5s)
+	if u.get("equips", []).is_empty(): return
+	for e in u["equips"]:
+		if str(e["id"]) != "p2eq_025": continue
+		e["thunder_t"] = float(e.get("thunder_t", 0.0)) + delta
+		if float(e["thunder_t"]) < 4.0: continue
+		e["thunder_t"] = 0.0
+		var si: int = _eq_si(int(e.get("star", 1)))
+		for d in range([1, 2, 3][si]):                # 道间错峰
+			var tw := create_tween()
+			tw.tween_interval(float(d) * 0.3)
+			tw.tween_callback(_thunder_bolt.bind(u))
+
+func _thunder_bolt(u: Dictionary) -> void:
+	if not u.get("alive", false): return
+	var es := _enemies_of(u)
+	if es.is_empty(): return
+	var o = es[randi() % es.size()]
+	_lightning_strike(o["pos"], Color("#8fd4ff"), 4.6)   # 大雷(中心≈2.2=飘字高度)
+	var tw := create_tween()                             # 伤害在闪电动画中段(~0.25s)跳=落在雷中间
+	tw.tween_interval(0.25)
+	tw.tween_callback(_thunder_hit.bind(u, o))
+
+func _thunder_hit(u: Dictionary, o: Dictionary) -> void:
+	if not (u.get("alive", false) and o.get("alive", false)): return
+	_apply_damage_from(u, o, int(u["atk"]), Color("#cfefff"), 0.0, true, true)   # 1×ATK真实伤害(白字,飘在2.2=雷中间)
 
 func _tick_shell(u: Dictionary, delta: float) -> void:   # 守护贝壳p2eq_018: 每8秒自回(30/45/60+5/9/15%maxHP)生命(受治疗增幅); 每件独立(用户2026-07-02, 原2.5s)
 	if u.get("equips", []).is_empty(): return
@@ -2769,7 +2797,7 @@ func _lightning_bolt_3d(from2d: Vector2, from_h: float, to2d: Vector2, to_h: flo
 	tw.tween_property(mat, "albedo_color:a", 0.0, 0.18)
 	tw.tween_callback(im.queue_free)
 
-func _lightning_strike(pos2d: Vector2, _col: Color) -> void:   # 天降闪电: 1:1 港回合制 common-lightning-strike 5帧动画(9fps)
+func _lightning_strike(pos2d: Vector2, _col: Color, world_h: float = 2.6) -> void:   # 天降闪电 common-lightning-strike 5帧(9fps); world_h=雷高度(越大雷越大, 中心≈world_h*0.478); 4.6时中心≈2.2=飘字高度→伤害跳在雷中间
 	var tex := load("res://assets/sprites/vfx/common-lightning-strike.png")
 	if tex == null:
 		return
@@ -2781,8 +2809,8 @@ func _lightning_strike(pos2d: Vector2, _col: Color) -> void:   # 天降闪电: 1
 	spr.shaded = false
 	spr.transparent = true
 	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	spr.pixel_size = 2.6 / float(maxi(1, tex.get_height()))   # 帧高归一到~2.6m
-	spr.position = _world_pos(pos2d, 1.25)
+	spr.pixel_size = world_h / float(maxi(1, tex.get_height()))
+	spr.position = _world_pos(pos2d, world_h * 0.478)
 	_world.add_child(spr)
 	var tw := create_tween()
 	for f in range(5):                              # 5帧 9fps(~0.06s/帧)
@@ -8256,13 +8284,8 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 				if int(stt["dragon_stacks"]) >= 3:
 					stt["dragon_stacks"] = 0
 					_eq_dragon_breath(u, si)
-			"p2eq_025":   # 雷鸣贝壳: 每周期降N道雷各电击随机敌
-				for _d in range([1, 2, 3][si]):
-					var es := _enemies_of(u)
-					if es.is_empty(): break
-					var o = es[randi() % es.size()]
-					_lightning_strike(o["pos"], Color("#4dabf7"))   # 真·5帧闪电序列帧(非平线)
-					_apply_damage_from(u, o, int(u["atk"]), Color("#4dabf7"), 0.0, true, true)
+			"p2eq_025":   # 雷鸣贝壳: 移到每帧 _tick_thunder(每4秒/道间错峰/大雷/伤害在雷中段跳, 用户2026-07-02); 周期tick不处理
+				pass
 			"p2eq_027":   # 电棍: 移到on_cast(施法后电击, 用户描述); 周期tick不处理
 				pass
 			"p2eq_035":   # 黄铜齿轮: 每周期+N层
