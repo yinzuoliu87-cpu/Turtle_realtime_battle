@@ -7069,11 +7069,23 @@ func _self_screenshot() -> void:
 	if s.is_valid_float() and s.to_float() > 0.1:
 		delay = s.to_float()
 	await get_tree().create_timer(delay).timeout
-	await RenderingServer.frame_post_draw
-	var img: Image = get_viewport().get_texture().get_image()
 	var out := "res://_p2_battle.png"
 	if OS.has_environment("SHOT_OUT"):
 		out = OS.get_environment("SHOT_OUT")
+	# 连拍模式(SHOT_BURST=N + SHOT_STEP=秒): 抓瞬时特效(火龙飞行/闪电劈), 存 out_0.png.._N.png
+	if OS.has_environment("SHOT_BURST"):
+		var n: int = maxi(1, int(OS.get_environment("SHOT_BURST")))
+		var step: float = float(OS.get_environment("SHOT_STEP")) if OS.has_environment("SHOT_STEP") else 0.09
+		var base := out.trim_suffix(".png")
+		for i in range(n):
+			await RenderingServer.frame_post_draw
+			var im: Image = get_viewport().get_texture().get_image()
+			im.save_png("%s_%d.png" % [base, i])
+			await get_tree().create_timer(step).timeout
+		get_tree().quit()
+		return
+	await RenderingServer.frame_post_draw
+	var img: Image = get_viewport().get_texture().get_image()
 	img.save_png(out)
 	get_tree().quit()
 
@@ -8095,7 +8107,7 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 					var es := _enemies_of(u)
 					if es.is_empty(): break
 					var o = es[randi() % es.size()]
-					_bolt_line(Vector2(o["pos"].x, ARENA.position.y), o["pos"], Color("#4dabf7"))
+					_lightning_strike(o["pos"], Color("#4dabf7"))   # 真·5帧闪电序列帧(非平线)
 					_apply_damage_from(u, o, int(u["atk"]), Color("#4dabf7"), 0.0, true, true)
 			"p2eq_027":   # 电棍: 移到on_cast(施法后电击, 用户描述); 周期tick不处理
 				pass
@@ -8197,14 +8209,98 @@ func _eq_dragon_breath(u: Dictionary, si: int) -> void:
 		return
 	var anchor = es[randi() % es.size()]
 	var dir: Vector2 = (anchor["pos"] - u["pos"]).normalized()
-	_bolt_line(u["pos"], anchor["pos"] + dir * 200.0, Color("#ff7a33"))
+	var start: Vector2 = u["pos"]
+	var end: Vector2 = anchor["pos"] + dir * 260.0
+	var total: float = maxf(1.0, start.distance_to(end))
+	var dur: float = 0.6
+	_spawn_fire_dragon(start, end, dur)              # 飞行喷火龙(phoenix火焰帧, 起伏弧线)
+	var expl: Texture2D = load("res://assets/sprites/vfx/fx_explosion.png")
 	for o in _enemies_of(u):
-		if _on_line(u["pos"], dir, o["pos"], 60.0):
+		if _on_line(start, dir, o["pos"], 60.0):
 			_apply_damage_from(u, o, _atk_dmg(u, [0.7, 1.0, 2.0][si], o) + [50, 120, 1500][si], Color("#ff7a33"), 0.0, true, true)
 			_apply_dot_stacks(o, "burn", _default_burn_stacks(u), u)
+			var along_e: float = (o["pos"] - start).dot(dir)
+			_delayed_sheet_vfx(o["pos"], expl, 8, clampf(along_e / total, 0.0, 1.0) * dur)   # 火龙飞到才炸
 	for o in _allies_of(u):
-		if _on_line(u["pos"], dir, o["pos"], 60.0):
+		if _on_line(start, dir, o["pos"], 60.0):
 			_heal(o, _atk_dmg(u, [0.7, 1.0, 2.0][si], o) + [70, 150, 1000][si])
+			var along_a: float = (o["pos"] - start).dot(dir)
+			_delayed_heal_glint(o["pos"], clampf(along_a / total, 0.0, 1.0) * dur)
+
+# 喷火龙 = LoL小火龙大招"火焰喷涌": 一束重叠火团(热白核+橙红外焰)沿列高飞扫过 + 密集火尾 + 命中 fx_explosion 金爆. 全 _make_fire_glow_tex 程序上色(免青光染色/可靠)
+func _spawn_fire_dragon(start2d: Vector2, end2d: Vector2, dur: float) -> void:
+	var tex := _make_fire_glow_tex()
+	var tw_w: float = float(maxi(1, int(tex.get_width())))
+	var perp: Vector2 = (end2d - start2d).orthogonal().normalized()
+	var gout := [
+		{"off": Vector2.ZERO,   "sz": 185.0, "col": Color(1.0, 0.92, 0.55, 1.0)},   # 热白核
+		{"off": perp * 30.0,    "sz": 150.0, "col": Color(1.0, 0.55, 0.16, 0.95)},  # 上翼橙
+		{"off": perp * -30.0,   "sz": 150.0, "col": Color(1.0, 0.48, 0.12, 0.95)},  # 下翼橙红
+		{"off": perp * 6.0,     "sz": 130.0, "col": Color(1.0, 0.32, 0.07, 0.9)},   # 外焰暗红
+	]
+	for seg in gout:
+		var spr := Sprite3D.new()
+		spr.texture = tex
+		spr.modulate = seg["col"]
+		spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		spr.shaded = false
+		spr.transparent = true
+		spr.pixel_size = (float(seg["sz"]) * WS) / tw_w
+		spr.position = _world_pos(start2d + (seg["off"] as Vector2), 1.9)
+		_world.add_child(spr)
+		var tw := create_tween()
+		tw.tween_method(_dragon_fly_step.bind(spr, start2d + (seg["off"] as Vector2), end2d + (seg["off"] as Vector2)), 0.0, 1.0, dur)
+		tw.tween_callback(spr.queue_free)
+	for i in range(1, 13):                           # 密集火尾: 火舌扫过留一串橙焰逐个淡出
+		var f: float = float(i) / 13.0
+		var jitter: Vector2 = perp * randf_range(-20.0, 20.0)
+		_dragon_trail_puff(start2d.lerp(end2d, f) + jitter, 1.9 + sin(f * PI) * 0.55, 135.0 * (1.0 - f * 0.4), f * dur * 0.82)
+
+func _dragon_fly_step(p: float, spr: Sprite3D, start2d: Vector2, end2d: Vector2) -> void:
+	if is_instance_valid(spr):
+		spr.position = _world_pos(start2d.lerp(end2d, p), 1.9 + sin(p * PI) * 0.55)
+
+func _dragon_trail_puff(pos2d: Vector2, height: float, size_px: float, delay: float) -> void:
+	var tw := create_tween()
+	if delay > 0.0:
+		tw.tween_interval(delay)
+	tw.tween_callback(_spawn_dragon_puff.bind(pos2d, height, size_px))
+
+func _spawn_dragon_puff(pos2d: Vector2, height: float, size_px: float) -> void:
+	var tex := _make_fire_glow_tex()
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.modulate = Color(1.0, 0.5, 0.12, 0.92)
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.shaded = false
+	spr.transparent = true
+	spr.pixel_size = (size_px * WS) / float(maxi(1, int(tex.get_width())))
+	spr.position = _world_pos(pos2d, height)
+	_world.add_child(spr)
+	var t := create_tween()
+	t.set_parallel(true)
+	t.tween_property(spr, "modulate:a", 0.0, 0.42)
+	t.tween_property(spr, "pixel_size", spr.pixel_size * 0.5, 0.42)
+	t.chain().tween_callback(spr.queue_free)
+
+# 延时播序列帧特效(火龙飞到目标那刻才炸)
+func _delayed_sheet_vfx(pos2d: Vector2, sheet: Texture2D, frames: int, delay: float) -> void:
+	if sheet == null:
+		return
+	if delay <= 0.0:
+		play_sheet_vfx(pos2d, sheet, frames, 150.0, 0.5, 0.7)
+		return
+	var tw := create_tween()
+	tw.tween_interval(delay)
+	tw.tween_callback(play_sheet_vfx.bind(pos2d, sheet, frames, 120.0, 0.45, 0.7))
+
+func _delayed_heal_glint(pos2d: Vector2, delay: float) -> void:
+	if delay <= 0.0:
+		_skill_ring(pos2d, Color(0.45, 1.0, 0.55, 0.55), 46.0)
+		return
+	var tw := create_tween()
+	tw.tween_interval(delay)
+	tw.tween_callback(_skill_ring.bind(pos2d, Color(0.45, 1.0, 0.55, 0.55), 46.0))
 
 # ============================================================================
 #  局内信息 UI — 左右队头像框栏 + 点单位看详情面板 (纯 UI, 不动玩法)
