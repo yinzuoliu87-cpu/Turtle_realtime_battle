@@ -652,7 +652,7 @@ func _spawn_teams() -> void:
 			if i == 0:   # === 携带者(持受审装备) ===
 				_lu["_eqdemo_carrier"] = true
 				if OS.has_environment("EQDEMO_ENEMY_ATTACKS"):
-					_lu["_review_dummy"] = true   # 挨打类: 保留真实血量(%maxHP效果不失真)+不死沙包(受击回满)
+					_lu["deathfloor_until"] = 999999.0   # 挨打类: 真实血量(%maxHP不失真)+血锁1不死(不回满→回血/护盾/叠层都看得见)
 				else:
 					_lu["maxHp"] = 500000.0; _lu["hp"] = 500000.0; _lu.erase("_review_dummy")   # 非挨打: 高血站桩观察
 				if not OS.has_environment("EQDEMO_ATTACKER"):   # 默认: 站桩不攻击(召唤/自发/周期件); ATTACKER=普攻+技能
@@ -1575,7 +1575,7 @@ func _eq_on_basic_attack(u: Dictionary) -> void:   # 每普攻(不算多段): 00
 				if at != null:
 					var si17: int = _eq_si(int(e.get("star", 1)))
 					ast["anchor_charges"] = int(ast["anchor_charges"]) - 1
-					var adm: int = int([0.4, 0.6, 3.0][si17] * (u["def"] + u["mr"]) + at["maxHp"] * [0.15, 0.25, 0.70][si17])
+					var adm: int = int([0.4, 0.6, 3.0][si17] * (u["def"] + u["mr"]) + at["maxHp"] * [0.06, 0.15, 0.70][si17])
 					_apply_damage_from(u, at, adm, Color("#9be7ff"), 0.0, false, true)
 					_knockback(u, at, 60.0); _freeze(at, CTRL_SEC)
 					_skill_ring(at["pos"], Color(0.6, 0.85, 1.0, 0.6), 60.0)
