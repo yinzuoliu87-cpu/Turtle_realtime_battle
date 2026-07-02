@@ -1782,7 +1782,7 @@ func _ice_fissure_go(u: Dictionary, si: int, start: Vector2, dir: Vector2) -> vo
 	_ice_burst(start)                              # 砸地冰爆
 	var reach: float = 500.0
 	var width: float = 90.0
-	var fdur: float = 0.45
+	var fdur: float = 0.9
 	_ice_fissure_vfx(start, dir, reach, fdur)      # 冰道: 一排冰刺racing forward
 	for o in _enemies_of(u):
 		var along: float = (o["pos"] - start).dot(dir)
