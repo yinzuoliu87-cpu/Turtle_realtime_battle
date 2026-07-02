@@ -1705,8 +1705,8 @@ func _make_slash_sheet(col: Color) -> ImageTexture:   # Undertale式红色像素
 				if tt > 0.5 and sin(along * 33.0 + float(f) * 3.1) > lerpf(1.2, -0.15, (tt - 0.5) / 0.5): continue   # 后段断裂缺口
 				var bow := 0.17 * sin(PI * along)   # sabre弧弯
 				var d := (nx + ny - 1.0) * 0.70710678 - bow   # 到斩弧带状距离
-				var taper := sin(PI * along)   # 两端细中间粗
-				var th := 0.072 * (0.5 + 0.5 * taper)   # 加粗(原0.05偏细)
+				var taper := pow(sin(PI * along), 0.55)   # 中间段更饱满(非单点尖峰)
+				var th := 0.075 * (0.42 + 0.95 * taper)   # 中间粗两端渐细(叶形斩弧)
 				var ad := absf(d)
 				if ad > th: continue
 				var e := (1.0 - ad / th) * br
