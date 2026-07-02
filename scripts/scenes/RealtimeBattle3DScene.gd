@@ -236,11 +236,12 @@ const PANEL_COUNT := {   # 头像下装备格右下角层数徽章: id → eq_st
 	"p2eq_052": "revolver_bullets", "p2eq_027": "baton_charges", "p2eq_039": "bamboo_charges",   # 子弹/电击/生长充能
 	"p2eq_019": "anemone_layers",  # 海葵层
 	"p2eq_043": "wave",            # 巨浪层(0-3)
+	"p2eq_017": "anchor_charges",  # 沉锚就绪充能数(另有anchor_accum攒治疗条)
 	"p2eq_036": "egg_levels",      # 温泉蛋临时等级(0-3; 另有incub充能条)
 }
 const PANEL_CHARGE := {   # 局内头像下装备格的充能进度条: id → [充能字段, 满值]
 	"p2eq_009": ["blade_energy", 100.0], "p2eq_026": ["thunder", 100.0],
-	"p2eq_023": ["fire_mana", 8.0], "p2eq_017": ["anchor_charges", 100.0], "p2eq_036": ["incub", 100.0],
+	"p2eq_023": ["fire_mana", 8.0], "p2eq_017": ["anchor_accum", 100.0], "p2eq_036": ["incub", 100.0],
 }
 var _selected_unit = null                     # 当前选中(点击)的单位 Dictionary, 高亮其框
 var _info_panel: PanelContainer = null        # 详情面板 (居中, 显等级/属性/被动/技能/装备); 重开覆盖
@@ -650,10 +651,12 @@ func _spawn_teams() -> void:
 		if OS.has_environment("EQDEMO_EQUIP"):   # 装备演示
 			if i == 0:   # === 携带者(持受审装备) ===
 				_lu["_eqdemo_carrier"] = true
-				_lu["maxHp"] = 500000.0; _lu["hp"] = 500000.0; _lu.erase("_review_dummy")
-				if not OS.has_environment("EQDEMO_ATTACKER"):   # 默认: 站桩不攻击(召唤/自发/周期件); ATTACKER=普攻+技能(on-hit/on-cast件)
+				if OS.has_environment("EQDEMO_ENEMY_ATTACKS"):
+					_lu["_review_dummy"] = true   # 挨打类: 保留真实血量(%maxHP效果不失真)+不死沙包(受击回满)
+				else:
+					_lu["maxHp"] = 500000.0; _lu["hp"] = 500000.0; _lu.erase("_review_dummy")   # 非挨打: 高血站桩观察
+				if not OS.has_environment("EQDEMO_ATTACKER"):   # 默认: 站桩不攻击(召唤/自发/周期件); ATTACKER=普攻+技能
 					_lu["no_move"] = true; _lu["no_basic"] = true; _lu["active_skills"] = []; _lu["move_spd"] = 0.0
-					if OS.has_environment("EQDEMO_ENEMY_ATTACKS"): _lu["_review_dummy"] = true   # 敌打携带者→不死沙包(看挨打叠层类件)
 				elif OS.has_environment("EQDEMO_SKILL"):
 					_lu["active_skills"] = [OS.get_environment("EQDEMO_SKILL")]
 			else:   # === 友方假人(EQDEMO_ALLIES; 团队增益/治疗类看队友受益) ===
