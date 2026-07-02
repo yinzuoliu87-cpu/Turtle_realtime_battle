@@ -7507,7 +7507,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 			"p2eq_009":   # 宽刃弯刀: 充刃能, 满100→直线伤害
 				_eq_charge(stt, "blade_energy", [20.0, 20.0, 25.0][si], 100.0, func(): _eq_wide_blade(src, tgt, si))
 			"p2eq_026":   # 雷电法杖: 充能25, 满100→连锁闪电
-				_eq_charge(stt, "thunder", 25.0, 100.0, func(): _eq_chain_lightning(src, si))
+				_eq_charge(stt, "thunder", 25.0, 100.0, func(): _chain_windup(src, si))
 			"p2eq_029":   # 冰封水母: 概率额外魔伤+冻结, 冻结→自护盾
 				if randf() < [0.20, 0.25, 0.30][si]:
 					_apply_damage_from(src, tgt, [10, 15, 25][si], Color("#bfe9ff"), 0.0, false, true)
@@ -7524,27 +7524,135 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 		src["eq_state"][iid] = stt
 
 # 雷电法杖 026: 连锁闪电
-func _eq_chain_lightning(src: Dictionary, si: int) -> void:
-	var hops: int = [4, 5, 6][si]; var dmg: int = [20, 25, 30][si]
-	var hit: Array = []
-	var pool := _enemies_of(src)
-	if pool.is_empty():
+func _eq_chain_lightning(u: Dictionary, si: int) -> void:
+	var enemies := _enemies_of(u)
+	if enemies.is_empty():
 		return
-	var cur = pool[randi() % pool.size()]
-	var prev: Vector2 = src["pos"]
-	for h in range(hops):
-		if cur == null:
+	var hops: int = [4, 5, 6][si]
+	var dmg: int = [40, 60, 90][si]
+	# 目标序列: 首个随机, 之后每跳=离当前最近(优先未命中; 无未命中则跳已命中, 排除刚打的→两目标间来回弹)
+	var seq: Array = []
+	var hit: Dictionary = {}
+	var first = enemies[randi() % enemies.size()]
+	seq.append(first); hit[first] = true
+	var cur = first
+	for h in range(hops - 1):
+		var cpos: Vector2 = cur["pos"]
+		var best_new = null; var bd_new := INF
+		var best_any = null; var bd_any := INF
+		for o in enemies:
+			if o == cur:
+				continue
+			var d: float = o["pos"].distance_squared_to(cpos)
+			if d < bd_any: bd_any = d; best_any = o
+			if not hit.has(o) and d < bd_new: bd_new = d; best_new = o
+		var nxt = best_new if best_new != null else best_any
+		if nxt == null:
 			break
-		hit.append(cur)
-		_bolt_line(prev, cur["pos"], Color("#4dabf7"))
-		_apply_damage_from(src, cur, dmg, Color("#4dabf7"), 0.0, true, true)
-		prev = cur["pos"]
-		var nx = null; var bd := INF
-		for o in _enemies_of(src):
-			if o in hit: continue
-			var dd: float = (o["pos"] - cur["pos"]).length_squared()
-			if dd < bd: bd = dd; nx = o
-		cur = nx
+		seq.append(nxt); hit[nxt] = true; cur = nxt
+	# 逐跳错峰(0.12s): 画锯齿弧+命中爆闪+魔法伤害
+	var prev_pos: Vector2 = u["pos"]
+	for i in range(seq.size()):
+		var tgt = seq[i]
+		var tw := create_tween()
+		tw.tween_interval(float(i) * 0.12)
+		tw.tween_callback(_chain_segment.bind(u, prev_pos, tgt, dmg))
+		prev_pos = tgt["pos"]
+
+func _chain_segment(u: Dictionary, from2d: Vector2, tgt: Dictionary, dmg: int) -> void:
+	if not tgt.get("alive", false):
+		return
+	_chain_arc(from2d, tgt["pos"])
+	_chain_zap(tgt["pos"])
+	_apply_damage_from(u, tgt, _resolve_dmg(u, float(dmg), tgt, true), Color("#7ecbff"), 0.0, false, true)   # 魔法伤害(过魔抗+吃魔穿)
+
+# 蓄电前摇: 携带者身上聚一颗青电球(加速涨大变亮)+电环, ~0.4s 后射出连锁
+func _chain_windup(u: Dictionary, si: int) -> void:
+	var tex := _make_fire_glow_tex()
+	var tw_w: float = float(maxi(1, int(tex.get_width())))
+	var orb := Sprite3D.new()
+	orb.texture = tex
+	orb.modulate = Color(0.5, 0.85, 1.0, 0.0)
+	orb.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	orb.shaded = false
+	orb.transparent = true
+	orb.pixel_size = (18.0 * WS) / tw_w
+	orb.position = _world_pos(u["pos"], 1.15)
+	_world.add_child(orb)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(orb, "pixel_size", (95.0 * WS) / tw_w, 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tw.tween_property(orb, "modulate:a", 1.0, 0.36)
+	tw.chain().tween_callback(orb.queue_free)
+	_skill_ring(u["pos"], Color(0.4, 0.8, 1.0, 0.5), 60.0)
+	var tf := create_tween()
+	tf.tween_interval(0.4)
+	tf.tween_callback(_eq_chain_lightning.bind(u, si))
+
+# 锯齿闪电弧: PixelLab chain-bolt 贴图, 定向拉伸连 a→b(面朝相机), 闪一下淡出
+func _chain_arc(a2d: Vector2, b2d: Vector2) -> void:
+	if _cam == null:
+		return
+	var tex: Texture2D = load("res://assets/sprites/vfx/chain-bolt.png")
+	if tex == null:
+		return
+	var a3: Vector3 = _world_pos(a2d, 0.95)
+	var b3: Vector3 = _world_pos(b2d, 0.95)
+	var mid: Vector3 = (a3 + b3) * 0.5
+	var seg: Vector3 = b3 - a3
+	var dist: float = seg.length()
+	if dist < 0.05:
+		return
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	spr.shaded = false
+	spr.transparent = true
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	spr.no_depth_test = true
+	var thickness: float = 0.46                       # 固定厚度(不随长度变粗)
+	spr.pixel_size = thickness / float(maxi(1, int(tex.get_height())))
+	var base_w: float = float(maxi(1, int(tex.get_width()))) * spr.pixel_size
+	var xn: Vector3 = seg.normalized()
+	var zn: Vector3 = (_cam.global_position - mid).normalized()
+	var yn: Vector3 = zn.cross(xn).normalized()
+	zn = xn.cross(yn).normalized()
+	var basis := Basis.IDENTITY
+	basis.x = xn * (dist / maxf(0.01, base_w))        # X拉伸=宽度到dist, 厚度固定→细锯齿
+	basis.y = yn
+	basis.z = zn
+	_world.add_child(spr)
+	spr.global_transform = Transform3D(basis, mid)
+	var t := create_tween()
+	t.tween_interval(0.07)
+	t.tween_property(spr, "modulate:a", 0.0, 0.14)
+	t.tween_callback(spr.queue_free)
+
+# 电击命中爆闪: PixelLab electric-zap 贴图, 放大淡出
+func _chain_zap(pos2d: Vector2) -> void:
+	var tex: Texture2D = load("res://assets/sprites/vfx/electric-zap.png")
+	if tex == null:
+		return
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.hframes = 5
+	spr.frame = 0
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.shaded = false
+	spr.transparent = true
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	spr.no_depth_test = true
+	var fw: float = float(maxi(1, int(tex.get_width()))) / 5.0
+	spr.pixel_size = (125.0 * WS) / fw
+	spr.position = _world_pos(pos2d, 0.95)
+	_world.add_child(spr)
+	var t := create_tween()
+	t.tween_method(_zap_frame.bind(spr), 0.0, 5.0, 0.3)
+	t.tween_callback(spr.queue_free)
+
+func _zap_frame(fr: float, spr: Sprite3D) -> void:
+	if is_instance_valid(spr):
+		spr.frame = clampi(int(fr), 0, 4)
 
 # 宽刃弯刀 009
 func _set_sprite_frame(spr: Sprite3D, f: int) -> void:
