@@ -1413,7 +1413,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 						_basic_attack(u, tgt)
 					# gambler 多重打击(云顶剑士式): 命中后掷概率, 中→快攻速再打, 没中→正常冷却
 					var _hf: float = maxf(1.0, float(u.get("haste_mult", 1.0))) if _t < float(u.get("haste_until", 0.0)) else 1.0   # 临时攻速buff(祝福等)
-					u["atk_cd"] = (_gambler_multi_cd(u) if (u["id"] == "gambler" and dist <= rng) else u["atk_interval"]) / maxf(0.1, _hf * (float(u.get("spd_aspd_mult", 1.0)) if _t < float(u.get("spd_dbf_until", 0.0)) else 1.0))
+					u["atk_cd"] = (_gambler_multi_cd(u) if (u["id"] == "gambler" and dist <= rng) else u["atk_interval"]) / maxf(0.1, _hf * (float(u.get("spd_aspd_mult", 1.0)) if _t < float(u.get("spd_dbf_until", 0.0)) else 1.0) * float(u.get("aspd_perm", 1.0)))   # ×永久攻速(贝母021等,本场)
 					u["state"] = "recover"; u["state_t"] = ATK_RECOVER
 				else:
 					var stype := p.substr(2)
@@ -1540,6 +1540,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 		_tick_shell(u, delta)
 		_tick_anemone(u, delta)
 		_tick_dumbbell(u, delta)
+		_tick_barnacle(u, delta)
 
 func _enemies_of(u: Dictionary) -> Array:
 	var out: Array = []
@@ -1792,6 +1793,25 @@ func _dumbbell_hit(spr: Sprite3D, u: Dictionary, tgt: Dictionary, dmg: int) -> v
 	_apply_damage_from(u, tgt, dmg, Color("#c8ccd6"), 0.0, false, true)
 	_knockback(u, tgt, 0.0, 1.0, 2.0)   # 砸中击退
 	_skill_ring(tgt["pos"], Color(0.8, 0.82, 0.9, 0.6), 50.0); _shake(JUICE_SHAKE_HEAVY)
+
+func _tick_barnacle(u: Dictionary, delta: float) -> void:   # 守护贝母p2eq_021: 每5秒连接光束→为自己+全队最高攻友军 +10龟能 +10%攻速(叠加,持续到本场战斗结束,局内每场重置); 每件独立
+	if u.get("equips", []).is_empty(): return
+	for e in u["equips"]:
+		if str(e["id"]) != "p2eq_021": continue
+		e["barnacle_t"] = float(e.get("barnacle_t", 0.0)) + delta
+		if float(e["barnacle_t"]) < 5.0: continue
+		e["barnacle_t"] = 0.0
+		var best = null; var ba := -1.0
+		for o in _allies_of(u):
+			if o == u: continue
+			if float(o["atk"]) > ba: ba = float(o["atk"]); best = o
+		var benef: Array = [u]
+		if best != null: benef.append(best)
+		for o in benef:
+			if _has_energy_system(o): _eq_grant_energy(o, 10.0)   # +10龟能(减冷却)
+			o["aspd_perm"] = float(o.get("aspd_perm", 1.0)) + 0.10   # +10%攻速(永久本场,叠加)
+			_skill_ring(o["pos"], Color(0.55, 1.0, 0.78, 0.5), 44.0)
+		if best != null: _bolt_line(u["pos"], best["pos"], Color("#8affc8"))   # 连接光束
 
 func _tick_jelly(u: Dictionary, delta: float) -> void:   # 龟苓膏块p2eq_012: 每4s自护盾(用户2026-07-02, 原走2.5s周期); 每件独立计时
 	if u.get("equips", []).is_empty(): return
@@ -7947,24 +7967,8 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 				pass
 			"p2eq_020":   # 哑铃: 移到 _tick_dumbbell(每10秒编排:锻炼锁攻锁充能→掷哑铃击退, 用户2026-07-02); 周期tick不处理
 				pass
-			"p2eq_021":   # 守护贝母: 每周期连接攻击最高友军→护盾+20龟能+净化1/1/2+伤害转移25/40/60%给携带者
-				# 先清掉上周期连接对象的转移标记 (每2.5秒重新连接)
-				var prev_link = stt.get("link_target", null)
-				if prev_link is Dictionary:
-					prev_link.erase("dmg_redirect_to")
-				var best = null; var ba := -1.0
-				for o in _allies_of(u):
-					if o["atk"] > ba: ba = o["atk"]; best = o
-				if best != null:
-					_grant_shield(best, [40.0, 60.0, 90.0][si])
-					if best != u: _bolt_line(u["pos"], best["pos"], Color("#8affc8"))   # 贝母连接光束
-					_cleanse_n(best, [1, 1, 2][si])   # 净化1/1/2个负面
-					if _has_energy_system(best):
-						_eq_grant_energy(best, 20.0)   # +20龟能 (实时版=扣冷却)
-					# 伤害转移: best 受到的 25/40/60% 入伤转给携带者 u 承担 (维持到下次连接前)
-					if best != u:
-						best["dmg_redirect_to"] = {"carrier": u, "pct": [0.25, 0.40, 0.60][si], "until": _t + EQ_TICK + 0.1}
-					stt["link_target"] = best
+			"p2eq_021":   # 守护贝母: 移到 _tick_barnacle(每5秒连接→自己+最高攻友军 +10龟能+10%攻速本场, 用户2026-07-02); 周期tick不处理
+				pass
 			"p2eq_024":   # 龙蛋: 每周期+1吐息, 满3→喷火龙直线扫射
 				stt["dragon_stacks"] = int(stt.get("dragon_stacks", 0)) + 1
 				if int(stt["dragon_stacks"]) >= 3:
