@@ -7555,7 +7555,7 @@ func _eq_chain_lightning(u: Dictionary, si: int) -> void:
 	for i in range(seq.size()):
 		var tgt = seq[i]
 		var tw := create_tween()
-		tw.tween_interval(float(i) * 0.12)
+		tw.tween_interval(float(i) * 0.2)
 		tw.tween_callback(_chain_segment.bind(u, prev_pos, tgt, dmg))
 		prev_pos = tgt["pos"]
 
