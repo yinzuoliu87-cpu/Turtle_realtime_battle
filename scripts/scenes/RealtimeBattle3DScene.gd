@@ -8392,21 +8392,25 @@ func _eq_dragon_breath(u: Dictionary, si: int) -> void:
 
 # 龙贴图(dragon-fire.png)低空沿线掠射 + burn-loop 真像素火燃烧带(龙飞到才点燃, 各烧一会再灭)
 func _spawn_fire_dragon(start2d: Vector2, end2d: Vector2, dur: float) -> void:
-	var dragon_tex: Texture2D = load("res://assets/sprites/vfx/dragon-fire.png")
+	var dragon_tex: Texture2D = load("res://assets/sprites/vfx/dragon-fly.png")   # PixelLab 5帧振翅
 	if dragon_tex != null:
 		var d := Sprite3D.new()
 		d.texture = dragon_tex
+		d.hframes = 5
+		d.frame = 0
 		d.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		d.shaded = false
 		d.transparent = true
 		d.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		d.flip_h = (end2d.x < start2d.x)               # 素材朝右; 往左飞则翻转
-		d.pixel_size = (215.0 * WS) / float(maxi(1, int(dragon_tex.get_width())))
+		d.pixel_size = (215.0 * WS) / (float(maxi(1, int(dragon_tex.get_width()))) / 5.0)
 		d.position = _world_pos(start2d, 1.15)
 		_world.add_child(d)
 		var tw := create_tween()
 		tw.tween_method(_dragon_fly_step.bind(d, start2d, end2d), 0.0, 1.0, dur)
 		tw.tween_callback(d.queue_free)
+		var tf := create_tween()                       # 振翅: 乒乓循环5帧(~4次/秒)
+		tf.tween_method(_dragon_flap_frame.bind(d), 0.0, 24.0, dur)
 	var burn: Texture2D = load("res://assets/sprites/vfx/burn-loop.png")
 	var perp: Vector2 = (end2d - start2d).orthogonal().normalized()
 	for i in range(1, 19):                           # 燃烧带: 沿线真像素火, 大小/横向随机=有机火带(非机械等距), 龙飞到才点燃
@@ -8417,6 +8421,11 @@ func _spawn_fire_dragon(start2d: Vector2, end2d: Vector2, dur: float) -> void:
 func _dragon_fly_step(p: float, spr: Sprite3D, start2d: Vector2, end2d: Vector2) -> void:
 	if is_instance_valid(spr):
 		spr.position = _world_pos(start2d.lerp(end2d, p), 1.15 + sin(p * PI) * 0.35)
+
+func _dragon_flap_frame(v: float, spr: Sprite3D) -> void:
+	if is_instance_valid(spr):
+		var seq := [0, 1, 2, 3, 4, 3, 2, 1]           # 乒乓: 翅上→下→上
+		spr.frame = seq[int(v) % 8]
 
 # 真像素火(burn-loop 8帧)在地面点燃, 循环烧一会再淡灭 (敌着火/燃烧带共用)
 func _delayed_ground_fire(pos2d: Vector2, burn: Texture2D, size_px: float, delay: float) -> void:
