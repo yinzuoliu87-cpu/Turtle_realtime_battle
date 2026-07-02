@@ -293,7 +293,7 @@
     "poolPhase": 1,
     "emoji": "🐚",
     "effectImpl": true,
-    "effectDesc1": "携带者每2.5秒自回(30/45/60+5/9/15%最大生命值)生命(受治疗增幅影响)。",
+    "effectDesc1": "携带者每8秒自回(30/45/60+5/9/15%最大生命值)生命(受治疗增幅影响)。",
     "effectDesc3": "",
     "img": "equip/dungeon-shell.png"
   },

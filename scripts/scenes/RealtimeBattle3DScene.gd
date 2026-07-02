@@ -1534,6 +1534,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 		_tick_jelly(u, delta)
 		_tick_fortress(u, delta)
 		_tick_ironwall(u, delta)
+		_tick_shell(u, delta)
 
 func _enemies_of(u: Dictionary) -> Array:
 	var out: Array = []
@@ -1699,6 +1700,16 @@ func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016:
 		var si: int = _eq_si(int(e.get("star", 1)))
 		for o in _allies_of(u):
 			_grant_shield(o, [15.0, 20.0, 25.0][si])
+
+func _tick_shell(u: Dictionary, delta: float) -> void:   # 守护贝壳p2eq_018: 每8秒自回(30/45/60+5/9/15%maxHP)生命(受治疗增幅); 每件独立(用户2026-07-02, 原2.5s)
+	if u.get("equips", []).is_empty(): return
+	for e in u["equips"]:
+		if str(e["id"]) != "p2eq_018": continue
+		e["shell_t"] = float(e.get("shell_t", 0.0)) + delta
+		if float(e["shell_t"]) < 8.0: continue
+		e["shell_t"] = 0.0
+		var si: int = _eq_si(int(e.get("star", 1)))
+		_heal(u, [30, 45, 60][si] + u["maxHp"] * [0.05, 0.09, 0.15][si])
 
 func _tick_jelly(u: Dictionary, delta: float) -> void:   # 龟苓膏块p2eq_012: 每4s自护盾(用户2026-07-02, 原走2.5s周期); 每件独立计时
 	if u.get("equips", []).is_empty(): return
@@ -7846,8 +7857,8 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 				pass
 			"p2eq_016":   # 铁壁盾: 全队盾移到 _tick_ironwall(每5秒, 用户2026-07-02); 周期tick不处理
 				pass
-			"p2eq_018":   # 守护贝壳: 每周期自回血
-				_heal(u, [30, 45, 60][si] + u["maxHp"] * [0.05, 0.09, 0.15][si])
+			"p2eq_018":   # 守护贝壳: 自回血移到 _tick_shell(每8秒, 用户2026-07-02); 周期tick不处理
+				pass
 			"p2eq_019":   # 海葵药膏: 奶自己+最低血友军 + 海葵层(累计治疗→治疗强度+8/9/10%/层, 用户)
 				var amp19: float = 1.0 + float(int(stt.get("anemone_layers", 0))) * [0.08, 0.09, 0.10][si]
 				var h1: float = ([30, 45, 60][si] + (u["maxHp"] - u["hp"]) * [0.12, 0.14, 0.18][si]) * amp19
