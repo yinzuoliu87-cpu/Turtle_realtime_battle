@@ -644,6 +644,8 @@ func _spawn_teams() -> void:
 			pos = Vector2(_cx - 150.0, _cy)
 		elif REVIEW_DEMO:
 			pos = Vector2(_cx - 200.0, _cy + (float(i) - float(left.size() - 1) / 2.0) * minf(150.0, 520.0 / float(maxi(1, left.size()))))
+		if OS.has_environment("EQDEMO_EQUIP") and left.size() > 1:
+			pos = Vector2(_cx - 250.0 + float(i) * 175.0, _cy)   # 携带者+友方假人 排在水平掠射线上(看火柱扫到友军回血)
 		var _lu := _make_unit(str(left[i]), "left", pos)
 		if REVIEW_DEMO and str(left[i]) == "fortune":
 			_lu["gold"] = 0.0   # demo: 财神起手金币(0=看自然攒金币)
@@ -8393,19 +8395,37 @@ func _dragon_unleash(u: Dictionary, si: int, start: Vector2, end: Vector2, dir: 
 	_spawn_fire_dragon(start, end, dur)
 	var expl: Texture2D = load("res://assets/sprites/vfx/fx_explosion.png")
 	var burn_tex: Texture2D = load("res://assets/sprites/vfx/dragon-flame.png")
+	# 火柱扫到谁那一刻才对谁结算(非召唤即一次性算完): 延时=火柱沿线到达该单位的时间
 	for o in _enemies_of(u):
 		if _on_line(start, dir, o["pos"], 88.0):
-			var base_e: float = u["atk"] * [0.7, 1.0, 2.0][si] + float([50, 120, 1500][si])
-			_apply_damage_from(u, o, _resolve_dmg(u, base_e, o, true), Color("#c86bff"), 0.0, false, true)   # 魔法伤害
-			_apply_dot_stacks(o, "burn", _default_burn_stacks(u), u)
 			var d_e: float = clampf((o["pos"] - start).dot(dir) / total, 0.0, 1.0) * dur
-			_delayed_sheet_vfx(o["pos"], expl, 8, d_e)
-			_delayed_ground_fire(o["pos"], burn_tex, 82.0, d_e)
+			var twe := create_tween()
+			twe.tween_interval(d_e)
+			twe.tween_callback(_dragon_hit_enemy.bind(u, o, si, expl, burn_tex))
 	for o in _allies_of(u):
 		if _on_line(start, dir, o["pos"], 88.0):
-			_heal(o, u["atk"] * [0.7, 1.0, 2.0][si] + float([70, 150, 1000][si]))
 			var d_a: float = clampf((o["pos"] - start).dot(dir) / total, 0.0, 1.0) * dur
-			_delayed_heal_glint(o["pos"], d_a)
+			var twa := create_tween()
+			twa.tween_interval(d_a)
+			twa.tween_callback(_dragon_heal_ally.bind(u, o, si))
+
+# 火柱扫到敌人那一刻: 魔法伤害+灼烧+金爆+着火 (同步, 数字跟火柱一起)
+func _dragon_hit_enemy(u: Dictionary, o: Dictionary, si: int, expl: Texture2D, burn: Texture2D) -> void:
+	if not o.get("alive", false):
+		return
+	var base_e: float = u["atk"] * [0.7, 1.0, 2.0][si] + float([50, 120, 1500][si])
+	_apply_damage_from(u, o, _resolve_dmg(u, base_e, o, true), Color("#c86bff"), 0.0, false, true)   # 魔法伤害
+	_apply_dot_stacks(o, "burn", _default_burn_stacks(u), u)
+	if expl != null:
+		play_sheet_vfx(o["pos"], expl, 8, 150.0, 0.5, 0.7)
+	_ground_fire(o["pos"], burn, 82.0)
+
+# 火柱扫到友军那一刻: 回血+绿治疗环
+func _dragon_heal_ally(u: Dictionary, o: Dictionary, si: int) -> void:
+	if not o.get("alive", false):
+		return
+	_heal(o, u["atk"] * [0.7, 1.0, 2.0][si] + float([70, 150, 1000][si]))
+	_skill_ring(o["pos"], Color(0.45, 1.0, 0.55, 0.55), 46.0)
 
 # 前摇: 召唤点火球聚大变亮 + 火花从外向内收束 + 脉动环 (蓄力感)
 func _dragon_windup(pos2d: Vector2) -> void:
