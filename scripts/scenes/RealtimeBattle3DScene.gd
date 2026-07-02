@@ -6855,8 +6855,8 @@ func _inject_equipment() -> void:
 		if use_demo and DEMO_EQUIP.has(key):
 			list = (DEMO_EQUIP[key] as Array).duplicate(true)
 		u["equips"] = list
-		if OS.has_environment("EQDEMO_EQUIP") and u["side"] == "left" and not u.get("_eqdemo_carrier", false):
-			u["equips"] = []   # EQDEMO 友方假人裸装(不干扰观察)
+		if OS.has_environment("EQDEMO_EQUIP") and not u.get("_eqdemo_carrier", false):
+			u["equips"] = []   # EQDEMO 非携带者(友方假人+敌方假人)一律裸装, 中立不干扰观察
 		if OS.has_environment("EQDEMO_EQUIP") and u.get("_eqdemo_carrier", false):   # 装备演示: 只携带者强制装该件(友方假人不装)
 			var _est: int = (int(OS.get_environment("EQDEMO_STAR")) if OS.has_environment("EQDEMO_STAR") else 2)
 			var _ecnt: int = maxi(1, int(OS.get_environment("EQDEMO_COUNT"))) if OS.has_environment("EQDEMO_COUNT") else 1   # 多件同款演示
