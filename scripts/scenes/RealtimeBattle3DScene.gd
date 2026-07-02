@@ -80,7 +80,7 @@ const BASIC_ATK := {
 	"diamond":  {"phys": 0.7, "def": 0.6, "mr": 0.6, "hits": 1},                    # +护甲魔抗
 	"fortune":  {"phys": 1.0, "gold": 0.02, "hits": 1},                            # 1下(用户; 回合制原2下)
 	"dice":     {"phys": 0.9, "critflat": 55.0, "hits": 3},                         # 90%+5500%暴击率flat
-	"rainbow":  {"magic": 1.4, "hits": 2},                                         # 魔法 (原物 错)
+	"rainbow":  {"phys": 0.9, "hits": 1},                                          # 单段0.9物理(用户2026-07-02, 原魔法1.4×2)
 	"gambler":  {"phys": 1.35, "hits": 3},                                         # 0.9~1.8随机取中
 	"hunter":   {"phys": 1.65, "hits": 1},   # 用户: 普攻一段(总伤不变)
 	"pirate":   {"phys": 1.4, "hits": 4},
