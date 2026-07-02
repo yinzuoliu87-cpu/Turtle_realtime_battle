@@ -652,9 +652,11 @@ func _spawn_teams() -> void:
 			if i == 0:   # === 携带者(持受审装备) ===
 				_lu["_eqdemo_carrier"] = true
 				if OS.has_environment("EQDEMO_ENEMY_ATTACKS"):
-					_lu["deathfloor_until"] = 999999.0   # 挨打类: 真实血量(%maxHP不失真)+血锁1不死(不回满→回血/护盾/叠层都看得见)
+					_lu["deathfloor_until"] = 999999.0   # 挨打/叠层/反伤类: 真实血量+血锁不死(看层数/反伤/充能, HP非重点)
+				elif OS.has_environment("EQDEMO_HURT"):
+					_lu["hp"] = _lu["maxHp"] * clampf(float(OS.get_environment("EQDEMO_HURT")), 0.05, 1.0)   # 回血/自愈类: 真实血量起手受伤(静养看自回填血, 无敌人不锁血)
 				else:
-					_lu["maxHp"] = 500000.0; _lu["hp"] = 500000.0; _lu.erase("_review_dummy")   # 非挨打: 高血站桩观察
+					_lu["maxHp"] = 500000.0; _lu["hp"] = 500000.0; _lu.erase("_review_dummy")   # 观察/召唤/周期buff类: 高血站桩
 				if not OS.has_environment("EQDEMO_ATTACKER"):   # 默认: 站桩不攻击(召唤/自发/周期件); ATTACKER=普攻+技能
 					_lu["no_move"] = true; _lu["no_basic"] = true; _lu["active_skills"] = []; _lu["move_spd"] = 0.0
 				elif OS.has_environment("EQDEMO_SKILL"):
