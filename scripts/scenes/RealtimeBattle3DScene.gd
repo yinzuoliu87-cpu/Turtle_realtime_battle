@@ -1437,9 +1437,10 @@ func _tick_skill_cd(u: Dictionary, delta: float) -> void:
 	if _is_passive_pick(u):
 		return
 	var cds: Dictionary = u["skill_cd"]
-	if cds.is_empty():                                   # 懒初始化: 各技起始冷却错峰(别一开局全放)
+	if cds.is_empty():                                   # 懒初始化: 各技起始冷却
+		var _ie: float = float(u.get("init_energy_bonus", 0.0)) * 0.075   # 装备初始龟能→开局减冷却
 		for s in u.get("active_skills", []):
-			cds[str(s)] = _skill_cd(u, str(s))   # 初始龟能0: 满冷却从0充(用户; 原错峰head-start去掉)
+			cds[str(s)] = maxf(0.0, _skill_cd(u, str(s)) - _ie)   # 初始龟能: 满冷却 - 初始龟能折算
 	if _t < float(u.get("stun_until", 0.0)) or u.get("airborne", false) or _t < float(u.get("storm_until", 0.0)):
 		return   # 眩晕/击飞/风暴期 → 龟能锁定不充(用户)
 	var _ecm: float = maxf(1.0, float(u.get("echarge_mult", 1.0))) if _t < float(u.get("echarge_until", 0.0)) else 1.0   # 龟能充能加速buff(祝福等)
@@ -1794,24 +1795,57 @@ func _dumbbell_hit(spr: Sprite3D, u: Dictionary, tgt: Dictionary, dmg: int) -> v
 	_knockback(u, tgt, 0.0, 1.0, 2.0)   # 砸中击退
 	_skill_ring(tgt["pos"], Color(0.8, 0.82, 0.9, 0.6), 50.0); _shake(JUICE_SHAKE_HEAVY)
 
-func _tick_barnacle(u: Dictionary, delta: float) -> void:   # 守护贝母p2eq_021: 每5秒连接光束→为自己+全队最高攻友军 +10龟能 +10%攻速(叠加,持续到本场战斗结束,局内每场重置); 每件独立
+func _tick_barnacle(u: Dictionary, delta: float) -> void:   # 守护贝母p2eq_021: 持续绿色绑定线连全队最高攻友军; 每5秒重连并为自己+该友军 +10龟能+10%攻速(叠加/本场/每场重置); 每件独立
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_021": continue
+		var stt: Dictionary = u["eq_state"].get("p2eq_021", {})
 		e["barnacle_t"] = float(e.get("barnacle_t", 0.0)) + delta
-		if float(e["barnacle_t"]) < 5.0: continue
-		e["barnacle_t"] = 0.0
-		var best = null; var ba := -1.0
-		for o in _allies_of(u):
-			if o == u: continue
-			if float(o["atk"]) > ba: ba = float(o["atk"]); best = o
-		var benef: Array = [u]
-		if best != null: benef.append(best)
-		for o in benef:
-			if _has_energy_system(o): _eq_grant_energy(o, 10.0)   # +10龟能(减冷却)
-			o["aspd_perm"] = float(o.get("aspd_perm", 1.0)) + 0.10   # +10%攻速(永久本场,叠加)
-			_skill_ring(o["pos"], Color(0.55, 1.0, 0.78, 0.5), 44.0)
-		if best != null: _bolt_line(u["pos"], best["pos"], Color("#8affc8"))   # 连接光束
+		if stt.get("link_target", null) == null or float(e["barnacle_t"]) >= 5.0:   # 首次立即连 + 每5秒重连+给buff
+			if float(e["barnacle_t"]) >= 5.0: e["barnacle_t"] = 0.0
+			var si: int = _eq_si(int(e.get("star", 1)))
+			var prev = stt.get("link_target", null)   # 重连前清上个连接对象的伤害转移标记
+			if prev is Dictionary: prev.erase("dmg_redirect_to")
+			var best = null; var ba := -1.0
+			for o in _allies_of(u):
+				if o == u: continue
+				if float(o["atk"]) > ba: ba = float(o["atk"]); best = o
+			stt["link_target"] = best
+			u["eq_state"]["p2eq_021"] = stt
+			var benef: Array = [u]
+			if best != null: benef.append(best)
+			for o in benef:
+				if _has_energy_system(o): _eq_grant_energy(o, 10.0)   # +10龟能(减冷却)
+				o["aspd_perm"] = float(o.get("aspd_perm", 1.0)) + 0.10   # +10%攻速(永久本场,叠加)
+				_skill_ring(o["pos"], Color(0.55, 1.0, 0.78, 0.5), 44.0)
+			if best != null:   # 连接友军: 盾 + 伤害转移(25/40/60%受伤转给携带者); 不净化(用户)
+				_grant_shield(best, [40.0, 60.0, 90.0][si])
+				best["dmg_redirect_to"] = {"carrier": u, "pct": [0.25, 0.40, 0.60][si], "until": _t + 5.5}
+		_update_barnacle_line(u, stt.get("link_target", null))   # 每帧: 持续绿色绑定线(跟随移动/能量脉动)
+		break   # 只处理一件(共享绑定线)
+
+func _update_barnacle_line(u: Dictionary, target) -> void:   # 守护贝母021: 携带者↔连接友军的持续绿色绑定线(每帧重绘跟随, 能量脉动α)
+	var im = u.get("barnacle_line", null)
+	if not (target is Dictionary) or not target.get("alive", false) or target == u or not u.get("alive", false):
+		if is_instance_valid(im): im.visible = false
+		return
+	if not is_instance_valid(im):
+		im = MeshInstance3D.new()
+		im.mesh = ImmediateMesh.new()
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		im.material_override = mat
+		_world.add_child(im)
+		u["barnacle_line"] = im
+	im.visible = true
+	im.material_override.albedo_color = Color(0.5, 1.0, 0.75, 0.5 + 0.3 * sin(_t * 6.0))   # 能量脉动
+	var imesh: ImmediateMesh = im.mesh
+	imesh.clear_surfaces()
+	imesh.surface_begin(Mesh.PRIMITIVE_LINES)
+	imesh.surface_add_vertex(_world_pos(u["pos"], 1.0))
+	imesh.surface_add_vertex(_world_pos(target["pos"], 1.0))
+	imesh.surface_end()
 
 func _tick_jelly(u: Dictionary, delta: float) -> void:   # 龟苓膏块p2eq_012: 每4s自护盾(用户2026-07-02, 原走2.5s周期); 每件独立计时
 	if u.get("equips", []).is_empty(): return
@@ -7078,7 +7112,8 @@ func _eq_apply_one_stats(u: Dictionary, item_id: String, star: int) -> void:
 		u["base_mr"] += float(st["mr"])
 	if st.has("critDmg"):
 		u["crit_dmg"] += float(st["critDmg"])
-	# (装备 _maxEnergy 原给初始龟能; 龟能模型已换逐技固定冷却 → 跳过)
+	if st.has("_maxEnergy"):   # 初始龟能: 开局减该技冷却(init_energy_bonus懒初始化时折算, 多件叠加)
+		u["init_energy_bonus"] = float(u.get("init_energy_bonus", 0.0)) + float(st["_maxEnergy"])
 	if st.has("_echargePct"):   # 龟能充能速率% → echarge_perm 永久倍率(多件叠加)
 		u["echarge_perm"] = float(u.get("echarge_perm", 1.0)) + float(st["_echargePct"]) / 100.0
 	_recalc_stats(u)
