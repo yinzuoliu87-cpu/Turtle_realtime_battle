@@ -1705,8 +1705,8 @@ func _make_slash_sheet(col: Color) -> ImageTexture:   # Undertale式红色像素
 				if tt > 0.5 and sin(along * 33.0 + float(f) * 3.1) > lerpf(1.2, -0.15, (tt - 0.5) / 0.5): continue   # 后段断裂缺口
 				var bow := 0.17 * sin(PI * along)   # sabre弧弯
 				var d := (nx + ny - 1.0) * 0.70710678 - bow   # 到斩弧带状距离
-				var taper := pow(sin(PI * along), 0.55)   # 中间段更饱满(非单点尖峰)
-				var th := 0.075 * (0.42 + 0.95 * taper)   # 中间粗两端渐细(叶形斩弧)
+				var taper := pow(sin(PI * along), 0.5)   # 中间段更饱满(broader plateau)
+				var th := 0.092 * (0.34 + 1.05 * taper)   # 中间更粗两端尖(叶形斩弧)
 				var ad := absf(d)
 				if ad > th: continue
 				var e := (1.0 - ad / th) * br
@@ -7500,7 +7500,7 @@ func _eq_bloodletting(u: Dictionary, si: int) -> void:   # 饮血护符坠(011):
 		var decay: float = pow(0.85, k)
 		_blood_slash(u["pos"], o["pos"], 0.0)   # 这一刀立即砍
 		_apply_damage_from(u, o, int((_atk_dmg(u, [0.5, 0.7, 1.0][si], o) + [40, 50, 70][si]) * decay), Color("#ff8aa0"), 0.33, false, true)
-		await get_tree().create_timer(0.11).timeout   # 一段一段: 下一刀间隔
+		await get_tree().create_timer(0.3).timeout   # 一段一段: 每0.3s一刀
 	if not is_instance_valid(self): return
 	var shg: int = int(u["shield"] - sh0)   # 连斩吸血溢出转的盾, 结尾汇总一次
 	if shg > 0: _float_text(u["pos"] + Vector2(28, -46), "护盾+" + str(shg), Color("#8ad7ff"), false, "shield")
