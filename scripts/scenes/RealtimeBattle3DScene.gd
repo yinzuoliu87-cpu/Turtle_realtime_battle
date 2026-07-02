@@ -1449,6 +1449,8 @@ func _tick_skill_cd(u: Dictionary, delta: float) -> void:
 	_ecm = maxf(0.05, _ecm)
 	for k in cds:
 		cds[k] = maxf(0.0, float(cds[k]) - delta * _ecm * float(u.get("echarge_perm", 1.0)))   # 麻痹也走, 只是放不出; ×充能速率(含装备永久充能速率echarge_perm)
+	if float(u.get("energy_bank", 0.0)) > 0.0:   # 龟能银行(贝母021溢出): 冷却能吸就吸(如刚重置), 吸不下继续留着
+		_apply_energy_bank(u)
 
 # --- 索敌: 被嘲讽则强制打嘲讽来源, 否则最近敌 (跳过 untargetable / 缩头护身随从) ---
 func _acquire_target(u: Dictionary):
@@ -1816,6 +1818,7 @@ func _eq_fuel_throw(u: Dictionary, si: int) -> void:   # 余烬燃油瓶022: 施
 func _fuel_bottle_hit(spr: Sprite3D, u: Dictionary, t: Dictionary, si: int) -> void:
 	if is_instance_valid(spr): spr.queue_free()
 	if not t.get("alive", false): return
+	_apply_damage_from(u, t, [40, 60, 100][si], Color("#ff7a3c"), 0.0, true, true)   # 火瓶直接火伤(命中即出伤+同帧跳数字, 照028同费档)
 	var tf: int = maxi(1, roundi([20, 35, 60][si] + [0.10, 0.15, 0.20][si] * u["atk"]))
 	_apply_dot_stacks(t, "burn", tf, u)
 	t["true_fire_until"] = _t + 5.0
@@ -3747,13 +3750,27 @@ func _has_energy_system(u: Dictionary) -> bool:
 	return not u.get("active_skills", []).is_empty()
 
 # 给单位"+N点龟能": 实时版龟能=冷却充能同一事实, 折算 N×0.075 秒扣掉所有技能剩余冷却.
-func _eq_grant_energy(u: Dictionary, amount: float) -> void:
+func _eq_grant_energy(u: Dictionary, amount: float) -> void:   # 给龟能=存"龟能银行"(溢出留到下次不浪费, 用户: 贝母021)
 	if amount <= 0.0:
 		return
+	u["energy_bank"] = float(u.get("energy_bank", 0.0)) + amount
+	_apply_energy_bank(u)
+
+func _apply_energy_bank(u: Dictionary) -> void:   # 龟能银行用于减冷却(优先最快就绪技); 冷却吸不下的溢出留在银行(不浪费/放到下次冷却重置后再充)
 	var cds: Dictionary = u.get("skill_cd", {})
-	var sec: float = amount * 0.075
-	for k in cds:
-		cds[k] = maxf(0.0, float(cds[k]) - sec)
+	if cds.is_empty():
+		return
+	var bank_sec: float = float(u.get("energy_bank", 0.0)) * 0.075
+	if bank_sec <= 0.0:
+		return
+	var keys: Array = cds.keys()
+	keys.sort_custom(func(a, b): return float(cds[a]) < float(cds[b]))
+	for k in keys:
+		if bank_sec <= 0.0: break
+		var reduce: float = minf(float(cds[k]), bank_sec)
+		cds[k] = float(cds[k]) - reduce
+		bank_sec -= reduce
+	u["energy_bank"] = bank_sec / 0.075   # 剩余溢出留着
 
 # shellCopy 可复制的技 = 纯敌方向伤害技 (数据驱动那批; 排除变身/召唤/自增益, 否则从龟壳放会污染自身状态)
 const _COPYABLE_SKILLS := {
