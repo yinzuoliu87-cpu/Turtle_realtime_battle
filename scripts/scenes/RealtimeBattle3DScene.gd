@@ -8370,7 +8370,7 @@ func _eq_dragon_breath(u: Dictionary, si: int) -> void:
 	var start: Vector2 = u["pos"]
 	var end: Vector2 = start + dir * 760.0
 	var total: float = maxf(1.0, start.distance_to(end))
-	var dur: float = 0.75
+	var dur: float = 1.25   # 放慢(用户: 龙太快)
 	_anticipate(u)                                   # 携带者蓄力后仰(召龙)
 	_bolt_line(start, end, Color(1.0, 0.62, 0.26))   # 预警: 龙将扫过的线(橙, 快速淡出)
 	_shake(0.09)                                     # 出招 whoosh 震屏
@@ -8404,28 +8404,70 @@ func _spawn_fire_dragon(start2d: Vector2, end2d: Vector2, dur: float) -> void:
 		d.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		d.flip_h = (end2d.x < start2d.x)               # 素材朝右; 往左飞则翻转
 		d.pixel_size = (215.0 * WS) / (float(maxi(1, int(dragon_tex.get_width()))) / 5.0)
-		d.position = _world_pos(start2d, 1.15)
+		d.position = _world_pos(start2d, 2.3)         # 高处入场→俯冲
 		_world.add_child(d)
 		var tw := create_tween()
 		tw.tween_method(_dragon_fly_step.bind(d, start2d, end2d), 0.0, 1.0, dur)
 		tw.tween_callback(d.queue_free)
 		var tf := create_tween()                       # 振翅: 乒乓循环5帧(~4次/秒)
-		tf.tween_method(_dragon_flap_frame.bind(d), 0.0, 24.0, dur)
+		tf.tween_method(_dragon_flap_frame.bind(d), 0.0, 32.0 * dur, dur)
 	var burn: Texture2D = load("res://assets/sprites/vfx/burn-loop.png")
 	var perp: Vector2 = (end2d - start2d).orthogonal().normalized()
 	for i in range(1, 19):                           # 燃烧带: 沿线真像素火, 大小/横向随机=有机火带(非机械等距), 龙飞到才点燃
 		var f: float = float(i) / 19.0
 		var jit: Vector2 = perp * randf_range(-28.0, 28.0)
 		_delayed_ground_fire(start2d.lerp(end2d, f) + jit, burn, randf_range(74.0, 128.0), f * dur * 0.9)
+	_dragon_mouth_jet(start2d, end2d, dur)           # 龙嘴喷火(从嘴喷向地面)
 
 func _dragon_fly_step(p: float, spr: Sprite3D, start2d: Vector2, end2d: Vector2) -> void:
 	if is_instance_valid(spr):
-		spr.position = _world_pos(start2d.lerp(end2d, p), 1.15 + sin(p * PI) * 0.35)
+		spr.position = _world_pos(start2d.lerp(end2d, p), lerpf(2.3, 1.15, clampf(p * 3.2, 0.0, 1.0)) + sin(p * PI) * 0.12)
 
 func _dragon_flap_frame(v: float, spr: Sprite3D) -> void:
 	if is_instance_valid(spr):
 		var seq := [0, 1, 2, 3, 4, 3, 2, 1]           # 乒乓: 翅上→下→上
 		spr.frame = seq[int(v) % 8]
+
+# 龙嘴喷火: 沿飞行线, 从龙嘴(前方)持续喷真像素火落向地面 = "喷火"读感
+func _dragon_mouth_jet(start2d: Vector2, end2d: Vector2, dur: float) -> void:
+	var burn: Texture2D = load("res://assets/sprites/vfx/burn-loop.png")
+	if burn == null:
+		return
+	var dir: Vector2 = (end2d - start2d).normalized()
+	var n := 30
+	for i in range(n):
+		var p: float = float(i) / float(n)
+		var mouth: Vector2 = start2d.lerp(end2d, p) + dir * 72.0     # 龙嘴在龙身前方
+		var mh: float = lerpf(2.3, 1.15, clampf(p * 3.2, 0.0, 1.0)) + 0.35
+		var tw := create_tween()
+		tw.tween_interval(p * dur * 0.92)
+		tw.tween_callback(_spawn_mouth_flame.bind(burn, mouth, dir, mh))
+
+func _spawn_mouth_flame(burn: Texture2D, mouth2d: Vector2, dir: Vector2, mheight: float) -> void:
+	if burn == null:
+		return
+	var spr := Sprite3D.new()
+	spr.texture = burn
+	spr.hframes = 8
+	spr.frame = randi() % 8
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.shaded = false
+	spr.transparent = true
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	var fw: float = float(burn.get_width()) / 8.0
+	spr.pixel_size = (randf_range(52.0, 80.0) * WS) / fw
+	spr.position = _world_pos(mouth2d, mheight)
+	_world.add_child(spr)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_method(_mouth_flame_fly.bind(spr, mouth2d, dir, mheight), 0.0, 1.0, 0.34)
+	tw.tween_property(spr, "modulate:a", 0.0, 0.34)
+	tw.chain().tween_callback(spr.queue_free)
+
+func _mouth_flame_fly(t: float, spr: Sprite3D, mouth2d: Vector2, dir: Vector2, mheight: float) -> void:
+	if is_instance_valid(spr):
+		var gp: Vector2 = mouth2d + dir * (34.0 * t)               # 向前喷
+		spr.position = _world_pos(gp, lerpf(mheight, 0.55, t))     # 从嘴落到地
 
 # 真像素火(burn-loop 8帧)在地面点燃, 循环烧一会再淡灭 (敌着火/燃烧带共用)
 func _delayed_ground_fire(pos2d: Vector2, burn: Texture2D, size_px: float, delay: float) -> void:
