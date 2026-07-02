@@ -1529,6 +1529,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 		_tick_broadsword(u, delta)
 		_tick_laser(u, delta)
 		_tick_jelly(u, delta)
+		_tick_fortress(u, delta)
 
 func _enemies_of(u: Dictionary) -> Array:
 	var out: Array = []
@@ -1653,6 +1654,24 @@ func _big_bear_attack(u: Dictionary, tgt: Dictionary) -> void:   # 大熊: <2层
 		u["bear_stacks"] = int(u.get("bear_stacks", 0)) + 1
 		if int(u["bear_stacks"]) >= 2:
 			u["atk_range"] = 600.0                   # 下次冲击波: 射程600码(进程即放,不贴脸)
+
+func _tick_fortress(u: Dictionary, delta: float) -> void:   # 深海堡垒甲p2eq_014: 硬化满20层后每8秒汲取全体敌(魔伤0.8/1.0/1.5×(护甲+魔抗))+每敌回血; 满层瞬间立即首次; 每件独立
+	if u.get("equips", []).is_empty(): return
+	for e in u["equips"]:
+		if str(e["id"]) != "p2eq_014": continue
+		var stt: Dictionary = u["eq_state"].get("p2eq_014", {})
+		if int(stt.get("harden_stacks", 0)) < 20:
+			e["fortress_t"] = 8.0   # 未叠满→预置8(叠满瞬间立即首次汲取)
+			continue
+		e["fortress_t"] = float(e.get("fortress_t", 0.0)) + delta
+		if float(e["fortress_t"]) < 8.0: continue
+		e["fortress_t"] = 0.0
+		var si: int = _eq_si(int(e.get("star", 1)))
+		var k2: float = [0.8, 1.0, 1.5][si]
+		for o in _enemies_of(u):
+			_bolt_line(o["pos"], u["pos"], Color("#bfe9ff"))
+			_apply_damage_from(u, o, int(k2 * (u["def"] + u["mr"])), Color("#bfe9ff"), 0.0, true, true)
+			_heal(u, [40, 65, 130][si])
 
 func _tick_jelly(u: Dictionary, delta: float) -> void:   # 龟苓膏块p2eq_012: 每4s自护盾(用户2026-07-02, 原走2.5s周期); 每件独立计时
 	if u.get("equips", []).is_empty(): return
@@ -7591,12 +7610,8 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 				pass
 			"p2eq_011":   # 饮血护符坠: 一段一段顺序连斩(async, 每刀~0.11s), 见 _eq_bloodletting
 				_eq_bloodletting(u, si)
-			"p2eq_014":   # 深海堡垒甲(主动): 汲取全敌+回血
-				var k2: float = [0.8, 1.0, 1.5][si]
-				for o in _enemies_of(u):
-					_bolt_line(o["pos"], u["pos"], Color("#bfe9ff"))   # 汲取引流光束
-					_apply_damage_from(u, o, int(k2 * (u["def"] + u["mr"])), Color("#bfe9ff"), 0.0, true, true)
-					_heal(u, [40, 65, 130][si])
+			"p2eq_014":   # 深海堡垒甲: 汲取移到 _tick_fortress(硬化满20层后每8秒汲取, 用户2026-07-02); on_cast不处理
+				pass
 			"p2eq_022":   # 余烬燃油瓶: 对最近敌灼烧(真火)
 				var t2 = _nearest_enemy(u)
 				if t2 != null:
