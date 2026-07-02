@@ -6388,7 +6388,7 @@ func _particle_burst(pos2d: Vector2) -> void:
 	ps.position = _world_pos(pos2d, 0.4)
 	_world.add_child(ps)
 	ps.emitting = true
-	create_tween().tween_interval(1.0).tween_callback(ps.queue_free)
+	var _pt := create_tween(); _pt.tween_interval(1.0); _pt.tween_callback(ps.queue_free)   # 拆开(tween_interval返回IntervalTweener不能再链)
 
 # 能量冲击波: 环形发射 100 颗, 径向向外飞 (radial_velocity 从中心向外) + 微上抬, 短命 → 一圈外扩光环.
 func _particle_wave(pos2d: Vector2) -> void:
@@ -6429,7 +6429,7 @@ func _particle_wave(pos2d: Vector2) -> void:
 	ps.position = _world_pos(pos2d, 0.25)
 	_world.add_child(ps)
 	ps.emitting = true
-	create_tween().tween_interval(1.0).tween_callback(ps.queue_free)
+	var _pt := create_tween(); _pt.tween_interval(1.0); _pt.tween_callback(ps.queue_free)   # 拆开(tween_interval返回IntervalTweener不能再链)
 
 # 共用: 加色发光 billboard quad (软圆 glow 贴图 + 颜色按 color_ramp 着色); size 为米.
 func _make_glow_quad(size_m: float) -> QuadMesh:
