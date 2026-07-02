@@ -1545,6 +1545,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 		_tick_shell(u, delta)
 		_tick_thunder(u, delta)
 		_tick_baton(u, delta)
+		_tick_ice_fissure(u, delta)
 		_tick_anemone(u, delta)
 		_tick_dumbbell(u, delta)
 		_tick_barnacle(u, delta)
@@ -1750,6 +1751,94 @@ func _thunder_bolt(u: Dictionary) -> void:
 func _thunder_hit(u: Dictionary, o: Dictionary) -> void:
 	if not (u.get("alive", false) and o.get("alive", false)): return
 	_apply_damage_from(u, o, int(u["atk"]), Color("#cfefff"), 0.0, true, true)   # 1×ATK真实伤害(白字,飘在2.2=雷中间)
+
+# 029 冰封水母(布隆大招式): 每12秒→自身上盾→砸地→朝最近敌生成冰道(500x90)→命中魔法伤+击飞0.6s+冰封2.5s
+func _tick_ice_fissure(u: Dictionary, delta: float) -> void:
+	if u.get("equips", []).is_empty(): return
+	for e in u["equips"]:
+		if str(e["id"]) != "p2eq_029": continue
+		e["fissure_t"] = float(e.get("fissure_t", 0.0)) + delta
+		if float(e["fissure_t"]) < 12.0: continue
+		e["fissure_t"] = 0.0
+		_eq_ice_fissure(u, _eq_si(int(e.get("star", 1))))
+
+func _eq_ice_fissure(u: Dictionary, si: int) -> void:
+	if not u.get("alive", false): return
+	_grant_shield(u, [100.0, 160.0, 250.0][si])   # 释放即上盾一次
+	_shield_bubble(u)
+	var t = _nearest_enemy(u)
+	if t == null:
+		return
+	var dir: Vector2 = (t["pos"] - u["pos"]).normalized()
+	if dir == Vector2.ZERO:
+		dir = Vector2.RIGHT
+	_anticipate(u)                                 # 蓄力砸地
+	var tw := create_tween()
+	tw.tween_interval(0.3)
+	tw.tween_callback(_ice_fissure_go.bind(u, si, u["pos"], dir))
+
+func _ice_fissure_go(u: Dictionary, si: int, start: Vector2, dir: Vector2) -> void:
+	_shake(0.14)
+	_ice_burst(start)                              # 砸地冰爆
+	var reach: float = 500.0
+	var width: float = 90.0
+	var fdur: float = 0.45
+	_ice_fissure_vfx(start, dir, reach, fdur)      # 冰道: 一排冰刺racing forward
+	for o in _enemies_of(u):
+		var along: float = (o["pos"] - start).dot(dir)
+		if along < 0.0 or along > reach:
+			continue
+		if not _on_line(start, dir, o["pos"], width):
+			continue
+		var d: float = clampf(along / reach, 0.0, 1.0) * fdur
+		var tw := create_tween()
+		tw.tween_interval(d)                       # 冰道推进到该敌才结算
+		tw.tween_callback(_ice_fissure_hit.bind(u, o, si))
+
+func _ice_fissure_hit(u: Dictionary, o: Dictionary, si: int) -> void:
+	if not o.get("alive", false):
+		return
+	_apply_damage_from(u, o, _resolve_dmg(u, float([25, 40, 60][si]), o, true), Color("#bfe9ff"), 0.0, false, true)   # 魔法伤
+	if not o.get("airborne", false):
+		o["airborne"] = true; o["vy"] = 6.6; o["vx"] = 0.0; o["vz"] = 0.0   # 竖直击飞~0.6s(2*6.6/22)
+	_freeze(o, 2.5)                                # 冰封2.5s(与击飞同时起)
+	_frozen_encase(o, 2.5)                         # 冰封特效持续2.5s
+	_ice_burst(o["pos"])
+
+func _ice_fissure_vfx(start: Vector2, dir: Vector2, reach: float, fdur: float) -> void:
+	var perp: Vector2 = dir.orthogonal()
+	var n: int = 11
+	for i in range(1, n + 1):
+		var f: float = float(i) / float(n)
+		var pos: Vector2 = start + dir * (reach * f) + perp * randf_range(-32.0, 32.0)
+		var tw := create_tween()
+		tw.tween_interval(f * fdur)
+		tw.tween_callback(_spawn_ice_spike.bind(pos))
+
+func _spawn_ice_spike(pos2d: Vector2) -> void:
+	var tex: Texture2D = load("res://assets/sprites/vfx/ice-spike-vfx.png")
+	if tex == null:
+		return
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.shaded = false
+	spr.transparent = true
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	spr.modulate = Color(1, 1, 1, 0)
+	spr.pixel_size = 1.7 / float(maxi(1, int(tex.get_height())))
+	var world_h: float = float(tex.get_height()) * spr.pixel_size
+	var base_pos: Vector3 = _world_pos(pos2d, world_h * 0.42)
+	spr.position = base_pos - Vector3(0.0, 0.5, 0.0)
+	_world.add_child(spr)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(spr, "position", base_pos, 0.13).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(spr, "modulate:a", 0.92, 0.1)
+	tw.chain().tween_interval(0.35)
+	tw.chain().tween_property(spr, "modulate:a", 0.0, 0.3)
+	tw.chain().tween_callback(spr.queue_free)
+
 
 func _tick_shell(u: Dictionary, delta: float) -> void:   # 守护贝壳p2eq_018: 每8秒自回(30/45/60+5/9/15%maxHP)生命(受治疗增幅); 每件独立(用户2026-07-02, 原2.5s)
 	if u.get("equips", []).is_empty(): return
@@ -1989,7 +2078,7 @@ func _frost_puff(pos2d: Vector2) -> void:
 	t.tween_callback(spr.queue_free)
 
 # 029 冰封水母: 冰封目标 + 护盾泡
-func _frozen_encase(o: Dictionary) -> void:
+func _frozen_encase(o: Dictionary, dur: float = 1.5) -> void:
 	var tex: Texture2D = load("res://assets/sprites/vfx/frozen-encase.png")
 	if tex == null: return
 	var spr := Sprite3D.new()
@@ -2004,7 +2093,7 @@ func _frozen_encase(o: Dictionary) -> void:
 	_world.add_child(spr)
 	var t := create_tween()
 	t.tween_property(spr, "modulate:a", 0.96, 0.1)
-	t.tween_interval(1.15)
+	t.tween_interval(maxf(0.1, dur - 0.35))
 	t.tween_property(spr, "modulate:a", 0.0, 0.25)
 	t.tween_callback(spr.queue_free)
 
@@ -7705,12 +7794,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 			"p2eq_026":   # 雷电法杖: 充能25, 满100→连锁闪电
 				_eq_charge(stt, "thunder", 25.0, 100.0, func(): _chain_windup(src, si))
 			"p2eq_029":   # 冰封水母: 概率额外魔伤+冻结, 冻结→自护盾
-				if randf() < [0.20, 0.25, 0.30][si]:
-					_apply_damage_from(src, tgt, _resolve_dmg(src, float([10, 15, 25][si]), tgt, true), Color("#bfe9ff"), 0.0, false, true)
-					_freeze(tgt)
-					_frozen_encase(tgt)
-					_grant_shield(src, [20.0, 30.0, 50.0][si])
-					_shield_bubble(src)
+					pass
 			"p2eq_055":   # 靶向器: 命中标记目标 (+20% 受伤) 2回合
 				tgt["eq_marked_until"] = _t + EQ_TICK * 2.0
 			"p2eq_058":   # 穿甲遗弹: 贯穿→身后同列敌
