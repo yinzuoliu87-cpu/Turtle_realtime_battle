@@ -8379,7 +8379,7 @@ func _eq_dragon_breath(u: Dictionary, si: int) -> void:
 		reach = maxf(reach, (o["pos"] - start).dot(dir) + 260.0)
 	var end: Vector2 = start + dir * reach
 	var total: float = maxf(1.0, start.distance_to(end))
-	var dur: float = clampf(reach / 720.0, 1.0, 1.75) # 按距离定时长=恒定速度(不因飞更远变快)
+	var dur: float = clampf(reach / 480.0, 1.6, 2.6)  # 更慢(用户"龙还要再慢"); 按距离定=恒定速度
 	_anticipate(u)
 	_dragon_summon_burst(start)                      # 召唤火爆环(龙从火里现身, 不再凭空出现)
 	_bolt_line(start, end, Color(1.0, 0.62, 0.26))
@@ -8389,14 +8389,15 @@ func _eq_dragon_breath(u: Dictionary, si: int) -> void:
 	var burn_tex: Texture2D = load("res://assets/sprites/vfx/dragon-flame.png")
 	for o in _enemies_of(u):
 		if _on_line(start, dir, o["pos"], 88.0):     # 判定带加宽到88码=龙真扫到敌人
-			_apply_damage_from(u, o, _atk_dmg(u, [0.7, 1.0, 2.0][si], o) + [50, 120, 1500][si], Color("#ff7a33"), 0.0, true, true)
+			var base_e: float = u["atk"] * [0.7, 1.0, 2.0][si] + float([50, 120, 1500][si])
+			_apply_damage_from(u, o, _resolve_dmg(u, base_e, o, true), Color("#c86bff"), 0.0, false, true)   # 魔法伤害(过魔抗+吃本件魔穿)
 			_apply_dot_stacks(o, "burn", _default_burn_stacks(u), u)
 			var d_e: float = clampf((o["pos"] - start).dot(dir) / total, 0.0, 1.0) * dur
 			_delayed_sheet_vfx(o["pos"], expl, 8, d_e)
 			_delayed_ground_fire(o["pos"], burn_tex, 82.0, d_e)
 	for o in _allies_of(u):
 		if _on_line(start, dir, o["pos"], 88.0):
-			_heal(o, _atk_dmg(u, [0.7, 1.0, 2.0][si], o) + [70, 150, 1000][si])
+			_heal(o, u["atk"] * [0.7, 1.0, 2.0][si] + float([70, 150, 1000][si]))   # 治疗=值+攻(不过魔抗)
 			var d_a: float = clampf((o["pos"] - start).dot(dir) / total, 0.0, 1.0) * dur
 			_delayed_heal_glint(o["pos"], d_a)
 
