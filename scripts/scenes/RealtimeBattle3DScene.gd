@@ -7529,7 +7529,7 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 				if src.get("alive", false) and src["side"] != u["side"]:
 					var refl: float = float(dmg) * float(stt.get("reflect_pct", 0.10))
 					if refl >= 1.0:
-						_raw_lose(src, refl)
+						_apply_damage_from(u, src, int(refl), Color("#c9a36b"), 0.0, true, true)   # 反伤=真实伤害跳白字(原_raw_lose静默不跳数字=bug); from_equip防循环
 					_apply_dot_stacks(src, "bleed", maxi(1, roundi(float(stt.get("reflect_bleed", 2.0)))), u)
 			"p2eq_017":   # 不沉之锚: 每次受伤→治疗生命%最低友军 (1/2/15%自身maxHp), 累积满100→+1沉锚充能
 				var heal_amt: float = u["maxHp"] * [0.01, 0.02, 0.15][si]
