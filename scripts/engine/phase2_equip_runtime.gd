@@ -46,7 +46,7 @@ const STATS := {
 	"p2eq_020": [{"hp": 300, "def": 3, "mr": 3, "_echargePct": 10}, {"hp": 420, "def": 4, "mr": 4, "_echargePct": 10}, {"hp": 630, "def": 6, "mr": 6, "_echargePct": 10}],
 	"p2eq_021": [{"hp": 180, "_maxEnergy": 20}, {"hp": 300, "_maxEnergy": 20}, {"hp": 540, "_maxEnergy": 20}],
 	# ── 杖系/元素 022-025,028,029 (批4) ──
-	"p2eq_022": [{"atk": 8, "_maxEnergy": 20}, {"atk": 15, "_maxEnergy": 20}, {"atk": 25, "_maxEnergy": 20}],
+	"p2eq_022": [{"atk": 8, "_echargePct": 10}, {"atk": 15, "_echargePct": 10}, {"atk": 25, "_echargePct": 10}],
 	"p2eq_023": [{"hp": 120, "atk": 10, "magicPen": 5}, {"hp": 180, "atk": 25, "magicPen": 8}, {"hp": 240, "atk": 40, "magicPen": 13}],
 	"p2eq_024": [{"atk": 30, "magicPen": 15, "_maxEnergy": 20}, {"atk": 55, "magicPen": 25, "_maxEnergy": 20}, {"atk": 300, "magicPen": 50, "_maxEnergy": 20}],
 	"p2eq_025": [{"atk": 25}, {"atk": 35}, {"atk": 55}],
