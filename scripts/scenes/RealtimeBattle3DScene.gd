@@ -1807,16 +1807,31 @@ func _ice_fissure_hit(u: Dictionary, o: Dictionary, si: int) -> void:
 	_ice_burst(o["pos"])
 
 func _ice_fissure_vfx(start: Vector2, dir: Vector2, reach: float, fdur: float) -> void:
+	# 布隆式: 地面裂开→冰脊/冰墙密排erupt(中脊高两侧矮)+平铺冰原+寒雾; 留存~2.8s后按生成序从头到尾消退
 	var perp: Vector2 = dir.orthogonal()
-	var n: int = 11
+	var field_life: float = 2.8
+	var field := load("res://assets/sprites/vfx/ice-field.png")
+	var n: int = 26                                          # 密排冰刺=连成冰墙(非稀疏一排)
 	for i in range(1, n + 1):
 		var f: float = float(i) / float(n)
-		var pos: Vector2 = start + dir * (reach * f) + perp * randf_range(-32.0, 32.0)
+		var lat: float = randf_range(-46.0, 46.0)
+		var hs: float = lerpf(1.4, 0.68, absf(lat) / 46.0) * randf_range(0.82, 1.15)   # 中脊高两侧矮
+		var pos: Vector2 = start + dir * (reach * f) + perp * lat
 		var tw := create_tween()
 		tw.tween_interval(f * fdur)
-		tw.tween_callback(_spawn_ice_spike.bind(pos))
+		tw.tween_callback(_spawn_ice_spike.bind(pos, hs, field_life))
+	var m: int = 13
+	for i in range(1, m + 1):
+		var f: float = float(i) / float(m)
+		var pos: Vector2 = start + dir * (reach * f)
+		var tf := create_tween()
+		tf.tween_interval(f * fdur)
+		tf.tween_callback(_ice_field_patch.bind(field, pos, dir, field_life))
+		var tm := create_tween()
+		tm.tween_interval(f * fdur)
+		tm.tween_callback(_frost_mist.bind(pos + perp * randf_range(-42.0, 42.0)))
 
-func _spawn_ice_spike(pos2d: Vector2) -> void:
+func _spawn_ice_spike(pos2d: Vector2, hscale: float, linger: float) -> void:
 	var tex: Texture2D = load("res://assets/sprites/vfx/ice-spike-vfx.png")
 	if tex == null:
 		return
@@ -1827,17 +1842,55 @@ func _spawn_ice_spike(pos2d: Vector2) -> void:
 	spr.transparent = true
 	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	spr.modulate = Color(1, 1, 1, 0)
-	spr.pixel_size = 1.7 / float(maxi(1, int(tex.get_height())))
+	spr.pixel_size = (1.7 * hscale) / float(maxi(1, int(tex.get_height())))
 	var world_h: float = float(tex.get_height()) * spr.pixel_size
 	var base_pos: Vector3 = _world_pos(pos2d, world_h * 0.42)
-	spr.position = base_pos - Vector3(0.0, 0.5, 0.0)
+	spr.position = base_pos - Vector3(0.0, 0.6, 0.0)
 	_world.add_child(spr)
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(spr, "position", base_pos, 0.13).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(spr, "modulate:a", 0.92, 0.1)
-	tw.chain().tween_interval(0.35)
-	tw.chain().tween_property(spr, "modulate:a", 0.0, 0.3)
+	tw.tween_property(spr, "position", base_pos, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)   # 破土弹出
+	tw.tween_property(spr, "modulate:a", 0.95, 0.1)
+	tw.chain().tween_interval(linger)                        # 冰墙留存
+	tw.chain().tween_property(spr, "modulate:a", 0.0, 0.35)  # 按生成序消退(前面先erupt→先消退)
+	tw.chain().tween_callback(spr.queue_free)
+
+func _ice_field_patch(tex: Texture2D, pos2d: Vector2, dir: Vector2, life: float) -> void:
+	if tex == null:
+		return
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	spr.axis = Vector3.AXIS_Y                                # 躺平贴地=冰原
+	spr.shaded = false
+	spr.transparent = true
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	spr.modulate = Color(0.72, 0.88, 1.0, 0.0)
+	spr.rotation.y = -atan2(dir.y, dir.x)
+	spr.pixel_size = (155.0 * WS) / float(maxi(1, int(tex.get_width())))
+	spr.position = _world_pos(pos2d, 0.04)
+	_world.add_child(spr)
+	var tw := create_tween()
+	tw.tween_property(spr, "modulate:a", 0.55, 0.12)
+	tw.tween_interval(life)
+	tw.tween_property(spr, "modulate:a", 0.0, 0.4)
+	tw.tween_callback(spr.queue_free)
+
+func _frost_mist(pos2d: Vector2) -> void:
+	var tex := _make_fire_glow_tex()
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.modulate = Color(0.72, 0.9, 1.0, 0.5)
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.shaded = false
+	spr.transparent = true
+	spr.pixel_size = (randf_range(55.0, 92.0) * WS) / float(maxi(1, int(tex.get_width())))
+	spr.position = _world_pos(pos2d, 0.5)
+	_world.add_child(spr)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(spr, "position", _world_pos(pos2d, 1.15), 0.7)
+	tw.tween_property(spr, "modulate:a", 0.0, 0.7)
 	tw.chain().tween_callback(spr.queue_free)
 
 
