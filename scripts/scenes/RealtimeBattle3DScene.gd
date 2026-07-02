@@ -642,6 +642,7 @@ func _spawn_teams() -> void:
 			_lu["maxHp"] = 500000.0; _lu["hp"] = 500000.0; _lu.erase("_review_dummy")
 			if not OS.has_environment("EQDEMO_ATTACKER"):   # 默认: 友方假人 移速0/不攻击(召唤/自发件); ATTACKER=正常移动+普攻+技能(on-hit/on-cast件)
 				_lu["no_move"] = true; _lu["no_basic"] = true; _lu["active_skills"] = []; _lu["move_spd"] = 0.0
+				if OS.has_environment("EQDEMO_ENEMY_ATTACKS"): _lu["_review_dummy"] = true   # 敌打携带者→不死沙包(看挨打叠层类件)
 			elif OS.has_environment("EQDEMO_SKILL"):   # 强制携带者只放指定技(演示特定AoE技×装备交互)
 				_lu["active_skills"] = [OS.get_environment("EQDEMO_SKILL")]
 		_units.append(_lu)
@@ -666,7 +667,11 @@ func _spawn_teams() -> void:
 			if not REVIEW_DUMMY_KILLABLE:
 				ru["_review_dummy"] = true       # 不死沙包(受击回满); KILLABLE=会死(看换目标)
 		if OS.has_environment("EQDEMO_EQUIP"):   # 装备演示假人: 固定不动/5000血/30双抗/会掉血
-			ru["no_basic"] = true; ru["no_move"] = true; ru["active_skills"] = []
+			if OS.has_environment("EQDEMO_ENEMY_ATTACKS"):
+				ru["no_basic"] = false; ru["no_move"] = false   # 敌逼近+普攻打携带者(演受伤/挨打类件)
+			else:
+				ru["no_basic"] = true; ru["no_move"] = true
+			ru["active_skills"] = []
 			var _dhp: float = float(OS.get_environment("EQDEMO_DUMMYHP")) if OS.has_environment("EQDEMO_DUMMYHP") else 5000.0
 			ru["maxHp"] = _dhp; ru["hp"] = _dhp
 			ru["base_def"] = 30.0; ru["base_mr"] = 30.0; _recalc_stats(ru)
