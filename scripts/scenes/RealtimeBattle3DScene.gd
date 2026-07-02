@@ -7175,7 +7175,7 @@ func _smolder_spawn_core(origin: Vector2, dir: Vector2, reach: float) -> void:
 	tw.chain().tween_callback(spr.queue_free)
 
 func _smolder_ground_embers(origin: Vector2, dir: Vector2, reach: float) -> void:
-	var burn: Texture2D = load("res://assets/sprites/vfx/burn-loop.png")
+	var burn: Texture2D = load("res://assets/sprites/vfx/dragon-flame.png")
 	for i in range(1, 9):
 		var f: float = float(i) / 9.0
 		var pos: Vector2 = origin + dir * (reach * f)
@@ -8360,32 +8360,42 @@ func _eq_dragon_breath(u: Dictionary, si: int) -> void:
 	var es := _enemies_of(u)
 	if es.is_empty():
 		return
-	var cen := Vector2.ZERO                          # 瞄敌方质心 = 尽量穿过最多敌人
+	var cen := Vector2.ZERO
 	for o in es:
 		cen += o["pos"]
 	cen /= float(es.size())
-	var dir: Vector2 = (cen - u["pos"]).normalized()
+	var anchor = es[0]                               # 瞄最靠质心的敌人=保证龙穿过它(不是瞄质心从两敌之间缝里穿)
+	var abest := INF
+	for o in es:
+		var dd: float = o["pos"].distance_squared_to(cen)
+		if dd < abest:
+			abest = dd; anchor = o
+	var dir: Vector2 = (anchor["pos"] - u["pos"]).normalized()
 	if dir == Vector2.ZERO:
 		dir = Vector2.RIGHT
 	var start: Vector2 = u["pos"]
-	var end: Vector2 = start + dir * 760.0
+	var reach: float = 340.0                         # 飞到最远敌人身后(真穿过去), 不再固定760码够不着
+	for o in es:
+		reach = maxf(reach, (o["pos"] - start).dot(dir) + 260.0)
+	var end: Vector2 = start + dir * reach
 	var total: float = maxf(1.0, start.distance_to(end))
-	var dur: float = 1.25   # 放慢(用户: 龙太快)
-	_anticipate(u)                                   # 携带者蓄力后仰(召龙)
-	_bolt_line(start, end, Color(1.0, 0.62, 0.26))   # 预警: 龙将扫过的线(橙, 快速淡出)
-	_shake(0.09)                                     # 出招 whoosh 震屏
+	var dur: float = clampf(reach / 720.0, 1.0, 1.75) # 按距离定时长=恒定速度(不因飞更远变快)
+	_anticipate(u)
+	_dragon_summon_burst(start)                      # 召唤火爆环(龙从火里现身, 不再凭空出现)
+	_bolt_line(start, end, Color(1.0, 0.62, 0.26))
+	_shake(0.1)
 	_spawn_fire_dragon(start, end, dur)
 	var expl: Texture2D = load("res://assets/sprites/vfx/fx_explosion.png")
-	var burn_tex: Texture2D = load("res://assets/sprites/vfx/burn-loop.png")
+	var burn_tex: Texture2D = load("res://assets/sprites/vfx/dragon-flame.png")
 	for o in _enemies_of(u):
-		if _on_line(start, dir, o["pos"], 62.0):
+		if _on_line(start, dir, o["pos"], 88.0):     # 判定带加宽到88码=龙真扫到敌人
 			_apply_damage_from(u, o, _atk_dmg(u, [0.7, 1.0, 2.0][si], o) + [50, 120, 1500][si], Color("#ff7a33"), 0.0, true, true)
 			_apply_dot_stacks(o, "burn", _default_burn_stacks(u), u)
 			var d_e: float = clampf((o["pos"] - start).dot(dir) / total, 0.0, 1.0) * dur
-			_delayed_sheet_vfx(o["pos"], expl, 8, d_e)          # 龙飞到才金爆
-			_delayed_ground_fire(o["pos"], burn_tex, 82.0, d_e) # 敌身着火(真像素火)
+			_delayed_sheet_vfx(o["pos"], expl, 8, d_e)
+			_delayed_ground_fire(o["pos"], burn_tex, 82.0, d_e)
 	for o in _allies_of(u):
-		if _on_line(start, dir, o["pos"], 62.0):
+		if _on_line(start, dir, o["pos"], 88.0):
 			_heal(o, _atk_dmg(u, [0.7, 1.0, 2.0][si], o) + [70, 150, 1000][si])
 			var d_a: float = clampf((o["pos"] - start).dot(dir) / total, 0.0, 1.0) * dur
 			_delayed_heal_glint(o["pos"], d_a)
@@ -8404,14 +8414,17 @@ func _spawn_fire_dragon(start2d: Vector2, end2d: Vector2, dur: float) -> void:
 		d.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		d.flip_h = (end2d.x < start2d.x)               # 素材朝右; 往左飞则翻转
 		d.pixel_size = (215.0 * WS) / (float(maxi(1, int(dragon_tex.get_width()))) / 5.0)
-		d.position = _world_pos(start2d, 2.3)         # 高处入场→俯冲
+		d.position = _world_pos(start2d, 2.9)          # 龙在天上(高空)
 		_world.add_child(d)
+		d.modulate = Color(1, 1, 1, 0)                 # 从召唤火里淡入现身
+		var tfade := create_tween()
+		tfade.tween_property(d, "modulate:a", 1.0, 0.22)
 		var tw := create_tween()
 		tw.tween_method(_dragon_fly_step.bind(d, start2d, end2d), 0.0, 1.0, dur)
 		tw.tween_callback(d.queue_free)
 		var tf := create_tween()                       # 振翅: 乒乓循环5帧(~4次/秒)
 		tf.tween_method(_dragon_flap_frame.bind(d), 0.0, 32.0 * dur, dur)
-	var burn: Texture2D = load("res://assets/sprites/vfx/burn-loop.png")
+	var burn: Texture2D = load("res://assets/sprites/vfx/dragon-flame.png")
 	var perp: Vector2 = (end2d - start2d).orthogonal().normalized()
 	for i in range(1, 19):                           # 燃烧带: 沿线真像素火, 大小/横向随机=有机火带(非机械等距), 龙飞到才点燃
 		var f: float = float(i) / 19.0
@@ -8421,24 +8434,46 @@ func _spawn_fire_dragon(start2d: Vector2, end2d: Vector2, dur: float) -> void:
 
 func _dragon_fly_step(p: float, spr: Sprite3D, start2d: Vector2, end2d: Vector2) -> void:
 	if is_instance_valid(spr):
-		spr.position = _world_pos(start2d.lerp(end2d, p), lerpf(2.3, 1.15, clampf(p * 3.2, 0.0, 1.0)) + sin(p * PI) * 0.12)
+		spr.position = _world_pos(start2d.lerp(end2d, p), lerpf(2.9, 3.5, clampf(p * 2.5, 0.0, 1.0)) + sin(p * PI) * 0.18)
 
 func _dragon_flap_frame(v: float, spr: Sprite3D) -> void:
 	if is_instance_valid(spr):
 		var seq := [0, 1, 2, 3, 4, 3, 2, 1]           # 乒乓: 翅上→下→上
 		spr.frame = seq[int(v) % 8]
 
+# 召唤火爆: 携带者处火环扩散+火焰爆闪+火花, 龙从中现身(修"凭空出现啥也没有")
+func _dragon_summon_burst(pos2d: Vector2) -> void:
+	_skill_ring(pos2d, Color(1.0, 0.55, 0.2, 0.75), 105.0)
+	_skill_ring(pos2d, Color(1.0, 0.85, 0.45, 0.6), 64.0)
+	var tex := _make_fire_glow_tex()
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.modulate = Color(1.0, 0.8, 0.45, 1.0)
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.shaded = false
+	spr.transparent = true
+	var tw_w: float = float(maxi(1, int(tex.get_width())))
+	spr.pixel_size = (80.0 * WS) / tw_w
+	spr.position = _world_pos(pos2d, 1.1)
+	_world.add_child(spr)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(spr, "pixel_size", (255.0 * WS) / tw_w, 0.32)
+	tw.tween_property(spr, "modulate:a", 0.0, 0.32)
+	tw.chain().tween_callback(spr.queue_free)
+	_impact_particles(pos2d, 1.0)
+
 # 龙嘴喷火: 沿飞行线, 从龙嘴(前方)持续喷真像素火落向地面 = "喷火"读感
 func _dragon_mouth_jet(start2d: Vector2, end2d: Vector2, dur: float) -> void:
-	var burn: Texture2D = load("res://assets/sprites/vfx/burn-loop.png")
+	var burn: Texture2D = load("res://assets/sprites/vfx/dragon-flame.png")
 	if burn == null:
 		return
 	var dir: Vector2 = (end2d - start2d).normalized()
-	var n := 30
+	var n := 48
 	for i in range(n):
 		var p: float = float(i) / float(n)
 		var mouth: Vector2 = start2d.lerp(end2d, p) + dir * 72.0     # 龙嘴在龙身前方
-		var mh: float = lerpf(2.3, 1.15, clampf(p * 3.2, 0.0, 1.0)) + 0.35
+		var mh: float = lerpf(2.9, 3.5, clampf(p * 2.5, 0.0, 1.0)) + 0.3
 		var tw := create_tween()
 		tw.tween_interval(p * dur * 0.92)
 		tw.tween_callback(_spawn_mouth_flame.bind(burn, mouth, dir, mh))
