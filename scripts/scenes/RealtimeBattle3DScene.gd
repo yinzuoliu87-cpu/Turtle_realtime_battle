@@ -8227,38 +8227,32 @@ func _eq_dragon_breath(u: Dictionary, si: int) -> void:
 			var along_a: float = (o["pos"] - start).dot(dir)
 			_delayed_heal_glint(o["pos"], clampf(along_a / total, 0.0, 1.0) * dur)
 
-# 喷火龙 = LoL小火龙大招"火焰喷涌": 一束重叠火团(热白核+橙红外焰)沿列高飞扫过 + 密集火尾 + 命中 fx_explosion 金爆. 全 _make_fire_glow_tex 程序上色(免青光染色/可靠)
+# 喷火龙 = PixelLab生成的真·喷火龙贴图(dragon-fire.png)沿列高飞掠过 + 橙焰吐息火尾 + 命中 fx_explosion 金爆
 func _spawn_fire_dragon(start2d: Vector2, end2d: Vector2, dur: float) -> void:
-	var tex := _make_fire_glow_tex()
-	var tw_w: float = float(maxi(1, int(tex.get_width())))
 	var perp: Vector2 = (end2d - start2d).orthogonal().normalized()
-	var gout := [
-		{"off": Vector2.ZERO,   "sz": 185.0, "col": Color(1.0, 0.92, 0.55, 1.0)},   # 热白核
-		{"off": perp * 30.0,    "sz": 150.0, "col": Color(1.0, 0.55, 0.16, 0.95)},  # 上翼橙
-		{"off": perp * -30.0,   "sz": 150.0, "col": Color(1.0, 0.48, 0.12, 0.95)},  # 下翼橙红
-		{"off": perp * 6.0,     "sz": 130.0, "col": Color(1.0, 0.32, 0.07, 0.9)},   # 外焰暗红
-	]
-	for seg in gout:
-		var spr := Sprite3D.new()
-		spr.texture = tex
-		spr.modulate = seg["col"]
-		spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		spr.shaded = false
-		spr.transparent = true
-		spr.pixel_size = (float(seg["sz"]) * WS) / tw_w
-		spr.position = _world_pos(start2d + (seg["off"] as Vector2), 1.9)
-		_world.add_child(spr)
+	var dragon_tex: Texture2D = load("res://assets/sprites/vfx/dragon-fire.png")
+	if dragon_tex != null:
+		var d := Sprite3D.new()
+		d.texture = dragon_tex
+		d.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		d.shaded = false
+		d.transparent = true
+		d.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		d.flip_h = (end2d.x < start2d.x)               # 素材朝右; 往左飞则翻转
+		d.pixel_size = (205.0 * WS) / float(maxi(1, int(dragon_tex.get_width())))
+		d.position = _world_pos(start2d, 1.9)
+		_world.add_child(d)
 		var tw := create_tween()
-		tw.tween_method(_dragon_fly_step.bind(spr, start2d + (seg["off"] as Vector2), end2d + (seg["off"] as Vector2)), 0.0, 1.0, dur)
-		tw.tween_callback(spr.queue_free)
-	for i in range(1, 13):                           # 密集火尾: 火舌扫过留一串橙焰逐个淡出
-		var f: float = float(i) / 13.0
-		var jitter: Vector2 = perp * randf_range(-20.0, 20.0)
-		_dragon_trail_puff(start2d.lerp(end2d, f) + jitter, 1.9 + sin(f * PI) * 0.55, 135.0 * (1.0 - f * 0.4), f * dur * 0.82)
+		tw.tween_method(_dragon_fly_step.bind(d, start2d, end2d), 0.0, 1.0, dur)
+		tw.tween_callback(d.queue_free)
+	for i in range(1, 11):                           # 吐息火尾: 龙身后一串橙焰逐个淡出(程序色控)
+		var f: float = float(i) / 11.0
+		var jitter: Vector2 = perp * randf_range(-16.0, 16.0)
+		_dragon_trail_puff(start2d.lerp(end2d, f) + jitter, 1.78 + sin(f * PI) * 0.5, 115.0 * (1.0 - f * 0.4), f * dur * 0.82)
 
 func _dragon_fly_step(p: float, spr: Sprite3D, start2d: Vector2, end2d: Vector2) -> void:
 	if is_instance_valid(spr):
-		spr.position = _world_pos(start2d.lerp(end2d, p), 1.9 + sin(p * PI) * 0.55)
+		spr.position = _world_pos(start2d.lerp(end2d, p), 1.9 + sin(p * PI) * 0.5)
 
 func _dragon_trail_puff(pos2d: Vector2, height: float, size_px: float, delay: float) -> void:
 	var tw := create_tween()
