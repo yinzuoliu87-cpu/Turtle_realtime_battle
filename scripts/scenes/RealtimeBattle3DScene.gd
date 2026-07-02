@@ -656,7 +656,7 @@ func _spawn_teams() -> void:
 				elif OS.has_environment("EQDEMO_HURT"):
 					_lu["hp"] = _lu["maxHp"] * clampf(float(OS.get_environment("EQDEMO_HURT")), 0.05, 1.0)   # 回血/自愈类: 真实血量起手受伤(静养看自回填血, 无敌人不锁血)
 				else:
-					_lu["maxHp"] = 500000.0; _lu["hp"] = 500000.0; _lu.erase("_review_dummy")   # 观察/召唤/周期buff类: 高血站桩
+					_lu["deathfloor_until"] = 999999.0; _lu.erase("_review_dummy")   # 观察/召唤/自发/周期buff类: 真实血量(%maxHP伤害/回血不失真)+血锁不死站桩(观察模式无敌人打它)
 				if not OS.has_environment("EQDEMO_ATTACKER"):   # 默认: 站桩不攻击(召唤/自发/周期件); ATTACKER=普攻+技能
 					_lu["no_move"] = true; _lu["no_basic"] = true; _lu["active_skills"] = []; _lu["move_spd"] = 0.0
 				elif OS.has_environment("EQDEMO_SKILL"):
@@ -1537,6 +1537,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 		_tick_fortress(u, delta)
 		_tick_ironwall(u, delta)
 		_tick_shell(u, delta)
+		_tick_anemone(u, delta)
 
 func _enemies_of(u: Dictionary) -> Array:
 	var out: Array = []
@@ -1712,6 +1713,31 @@ func _tick_shell(u: Dictionary, delta: float) -> void:   # 守护贝壳p2eq_018:
 		e["shell_t"] = 0.0
 		var si: int = _eq_si(int(e.get("star", 1)))
 		_heal(u, [30, 45, 60][si] + u["maxHp"] * [0.05, 0.09, 0.15][si])
+
+func _tick_anemone(u: Dictionary, delta: float) -> void:   # 海葵药膏p2eq_019: 每7秒奶自己+最低血友军(30/45/60+12/14/18%目标已损血)×海葵增幅; 累计200/180/150治疗+1海葵层(治疗&盾强度+8/9/10%/层); 每件独立(用户2026-07-02,原2.5s)
+	if u.get("equips", []).is_empty(): return
+	for e in u["equips"]:
+		if str(e["id"]) != "p2eq_019": continue
+		e["anemone_t"] = float(e.get("anemone_t", 0.0)) + delta
+		if float(e["anemone_t"]) < 7.0: continue
+		e["anemone_t"] = 0.0
+		var si: int = _eq_si(int(e.get("star", 1)))
+		var stt: Dictionary = u["eq_state"].get("p2eq_019", {})
+		var amp19: float = 1.0 + float(int(stt.get("anemone_layers", 0))) * [0.08, 0.09, 0.10][si]
+		var h1: float = ([30, 45, 60][si] + (u["maxHp"] - u["hp"]) * [0.12, 0.14, 0.18][si]) * amp19
+		_heal(u, h1)
+		var prov19: float = h1
+		var low = _lowest_hp_ally(u)
+		if low != null and low != u:
+			var h2: float = ([30, 45, 60][si] + (low["maxHp"] - low["hp"]) * [0.12, 0.14, 0.18][si]) * amp19
+			_heal(low, h2); prov19 += h2
+		stt["anemone_heal"] = float(stt.get("anemone_heal", 0.0)) + prov19
+		var thr19: float = [200.0, 180.0, 150.0][si]
+		while float(stt["anemone_heal"]) >= thr19:
+			stt["anemone_heal"] = float(stt["anemone_heal"]) - thr19
+			stt["anemone_layers"] = int(stt.get("anemone_layers", 0)) + 1
+			_skill_ring(u["pos"], Color(0.55, 0.9, 0.7, 0.5), 44.0)
+		u["eq_state"]["p2eq_019"] = stt
 
 func _tick_jelly(u: Dictionary, delta: float) -> void:   # 龟苓膏块p2eq_012: 每4s自护盾(用户2026-07-02, 原走2.5s周期); 每件独立计时
 	if u.get("equips", []).is_empty(): return
@@ -7861,21 +7887,8 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 				pass
 			"p2eq_018":   # 守护贝壳: 自回血移到 _tick_shell(每8秒, 用户2026-07-02); 周期tick不处理
 				pass
-			"p2eq_019":   # 海葵药膏: 奶自己+最低血友军 + 海葵层(累计治疗→治疗强度+8/9/10%/层, 用户)
-				var amp19: float = 1.0 + float(int(stt.get("anemone_layers", 0))) * [0.08, 0.09, 0.10][si]
-				var h1: float = ([30, 45, 60][si] + (u["maxHp"] - u["hp"]) * [0.12, 0.14, 0.18][si]) * amp19
-				_heal(u, h1)
-				var prov19: float = h1
-				var low = _lowest_hp_ally(u)
-				if low != null and low != u:
-					var h2: float = ([30, 45, 60][si] + (low["maxHp"] - low["hp"]) * [0.12, 0.14, 0.18][si]) * amp19
-					_heal(low, h2); prov19 += h2
-				stt["anemone_heal"] = float(stt.get("anemone_heal", 0.0)) + prov19
-				var thr19: float = [200.0, 180.0, 150.0][si]
-				while float(stt["anemone_heal"]) >= thr19:
-					stt["anemone_heal"] = float(stt["anemone_heal"]) - thr19
-					stt["anemone_layers"] = int(stt.get("anemone_layers", 0)) + 1
-					_skill_ring(u["pos"], Color(0.55, 0.9, 0.7, 0.5), 44.0)
+			"p2eq_019":   # 海葵药膏: 移到 _tick_anemone(每7秒, 用户2026-07-02); 周期tick不处理
+				pass
 			"p2eq_020":   # 哑铃: 每周期+锻炼层 + 向最近敌扔哑铃
 				var gain: float = [20.0, 25.0, 30.0][si] * HP_MULT
 				u["maxHp"] += gain; u["hp"] += gain
