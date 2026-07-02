@@ -194,7 +194,7 @@
     "poolPhase": 1,
     "emoji": "🐢",
     "effectImpl": true,
-    "effectDesc1": "携带者每2.5秒为自身获得30/40/55点护盾。",
+    "effectDesc1": "携带者每4秒为自身获得30/40/55点护盾。",
     "effectDesc3": "",
     "img": "equip/dungeon-armor.png"
   },
