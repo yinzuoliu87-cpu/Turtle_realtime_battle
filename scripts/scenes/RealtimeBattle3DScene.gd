@@ -8390,7 +8390,6 @@ func _eq_dragon_breath(u: Dictionary, si: int) -> void:
 func _dragon_unleash(u: Dictionary, si: int, start: Vector2, end: Vector2, dir: Vector2, total: float, dur: float) -> void:
 	_dragon_summon_burst(start)
 	_shake(0.12)
-	_bolt_line(start, end, Color(1.0, 0.62, 0.26))
 	_spawn_fire_dragon(start, end, dur)
 	var expl: Texture2D = load("res://assets/sprites/vfx/fx_explosion.png")
 	var burn_tex: Texture2D = load("res://assets/sprites/vfx/dragon-flame.png")
