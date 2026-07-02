@@ -1544,6 +1544,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 		_tick_ironwall(u, delta)
 		_tick_shell(u, delta)
 		_tick_thunder(u, delta)
+		_tick_baton(u, delta)
 		_tick_anemone(u, delta)
 		_tick_dumbbell(u, delta)
 		_tick_barnacle(u, delta)
@@ -1578,7 +1579,7 @@ func _gambler_multi_cd(u: Dictionary) -> float:
 	u["multi_chance"] = 0.40                          # 没中→重置, 等下一次普攻
 	return u["atk_interval"]
 
-func _eq_on_basic_attack(u: Dictionary) -> void:   # 每普攻(不算多段): 008珊瑚刺计数 / 017不沉之锚普攻消耗充能锚击
+func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不算多段): 008珊瑚刺计数 / 017不沉之锚普攻消耗充能锚击
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
 		if str(e["id"]) == "p2eq_017":   # 不沉之锚: 每次普攻消耗1沉锚充能→击飞最前敌+眩晕(用户2026-07-02)
@@ -1593,6 +1594,16 @@ func _eq_on_basic_attack(u: Dictionary) -> void:   # 每普攻(不算多段): 00
 					_knockback(u, at, 60.0); _freeze(at, CTRL_SEC)
 					_skill_ring(at["pos"], Color(0.6, 0.85, 1.0, 0.6), 60.0)
 					u["eq_state"]["p2eq_017"] = ast
+		if str(e["id"]) == "p2eq_027" and tgt != null and tgt is Dictionary and tgt.get("alive", false):   # 电棍: 就绪→本次普攻消耗1层附魔法伤+眩晕(用户2026-07-03)
+			var bst: Dictionary = u["eq_state"].get("p2eq_027", {})
+			if bst.get("baton_ready", false) and int(bst.get("baton_charges", 0)) > 0:
+				var si27: int = _eq_si(int(e.get("star", 1)))
+				bst["baton_charges"] = int(bst["baton_charges"]) - 1
+				bst["baton_ready"] = false; bst["baton_cd"] = 0.0
+				u["eq_state"]["p2eq_027"] = bst
+				_apply_damage_from(u, tgt, _resolve_dmg(u, float([30, 40, 50][si27]), tgt, true), Color("#7ecbff"), 0.0, false, true)
+				_freeze(tgt)
+				_chain_zap(tgt["pos"])
 		if str(e["id"]) != "p2eq_008": continue
 		e["coral_cnt"] = int(e.get("coral_cnt", 0)) + 1
 		if int(e["coral_cnt"]) >= 5:
@@ -1606,7 +1617,7 @@ func _eq_on_basic_attack(u: Dictionary) -> void:   # 每普攻(不算多段): 00
 func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	_anticipate(u)                  # Phase4: 普攻预备(缩)+挥出(伸) 前后摇形变
 	_play_action(u, "attack")       # 有动作帧的龟(basic/ghost/ninja)播普攻动画, 其余靠 juice 形变
-	_eq_on_basic_attack(u)   # 普攻计数装备(008每5次普攻射珊瑚刺, 不算多段)
+	_eq_on_basic_attack(u, tgt)   # 普攻计数装备(008每5次普攻射珊瑚刺, 不算多段)
 	if u.get("is_big_bear", false):  # 大熊: 熊掌攒层, 满2层→放冲击波(小菊式)
 		_big_bear_attack(u, tgt)
 		return
@@ -1853,6 +1864,185 @@ func _fuel_bottle_hit(spr: Sprite3D, u: Dictionary, t: Dictionary, si: int) -> v
 	_apply_dot_stacks(t, "burn", tf, u)
 	t["true_fire_until"] = _t + 5.0
 	_skill_ring(t["pos"], Color(1.0, 0.5, 0.15, 0.6), 56.0); _particle_burst(t["pos"])   # 火瓶碎裂+点燃火环
+
+# 027 电棍: 每3s就绪→下次普攻消耗1层(附魔法伤+眩晕); 就绪时身上冒电光
+func _tick_baton(u: Dictionary, delta: float) -> void:
+	if u.get("equips", []).is_empty(): return
+	for e in u["equips"]:
+		if str(e["id"]) != "p2eq_027": continue
+		var bst: Dictionary = u["eq_state"].get("p2eq_027", {})
+		if int(bst.get("baton_charges", 0)) <= 0:
+			bst["baton_ready"] = false; u["eq_state"]["p2eq_027"] = bst; continue
+		if not bst.get("baton_ready", false):
+			bst["baton_cd"] = float(bst.get("baton_cd", 0.0)) + delta
+			if float(bst["baton_cd"]) >= 3.0:
+				bst["baton_ready"] = true
+		else:
+			bst["baton_spark_t"] = float(bst.get("baton_spark_t", 0.0)) + delta
+			if float(bst["baton_spark_t"]) >= 0.16:
+				bst["baton_spark_t"] = 0.0
+				_baton_spark(u)
+		u["eq_state"]["p2eq_027"] = bst
+
+func _baton_spark(u: Dictionary) -> void:
+	var tex: Texture2D = load("res://assets/sprites/vfx/electric-zap.png")
+	if tex == null: return
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.hframes = 5
+	spr.frame = randi() % 5
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.shaded = false
+	spr.transparent = true
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	spr.modulate = Color(0.6, 0.9, 1.0, 0.85)
+	var fw: float = float(maxi(1, int(tex.get_width()))) / 5.0
+	spr.pixel_size = (42.0 * WS) / fw
+	spr.position = _world_pos(u["pos"] + Vector2(randf_range(-14.0, 14.0), randf_range(-12.0, 12.0)), randf_range(0.45, 1.1))
+	_world.add_child(spr)
+	var t := create_tween()
+	t.tween_property(spr, "modulate:a", 0.0, 0.2)
+	t.tween_callback(spr.queue_free)
+
+# 028 冰霜冻露瓶: 蓄力→抛物线缓慢扔冰瓶→砸敌魔法伤+冰寒+冰爆
+func _eq_ice_throw(u: Dictionary, si: int) -> void:
+	if not u.get("alive", false): return
+	if _nearest_enemy(u) == null: return
+	_anticipate(u)
+	var tw := create_tween()
+	tw.tween_interval(0.32)
+	tw.tween_callback(_ice_throw_go.bind(u, si))
+
+func _ice_throw_go(u: Dictionary, si: int) -> void:
+	if not u.get("alive", false): return
+	var t = _nearest_enemy(u)
+	if t == null: return
+	var tex: Texture2D = load("res://assets/sprites/vfx/ice-bottle.png")
+	var spr := Sprite3D.new()
+	if tex != null:
+		spr.texture = tex
+		spr.pixel_size = (46.0 * WS) / float(maxi(1, int(tex.get_width())))
+	else:
+		spr.texture = _make_fire_glow_tex()
+		spr.modulate = Color(0.6, 0.85, 1.0)
+		spr.pixel_size = 0.02
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.shaded = false
+	spr.transparent = true
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	var from2d: Vector2 = u["pos"]
+	spr.position = _world_pos(from2d, 1.1)
+	_world.add_child(spr)
+	var tw := create_tween()
+	tw.tween_method(_ice_bottle_arc.bind(spr, from2d, t["pos"]), 0.0, 1.0, 0.6)
+	tw.tween_callback(_ice_bottle_hit.bind(spr, u, t, si))
+
+func _ice_bottle_arc(pf: float, spr: Sprite3D, from2d: Vector2, to2d: Vector2) -> void:
+	if is_instance_valid(spr):
+		spr.position = _world_pos(from2d.lerp(to2d, pf), 1.0 + sin(pf * PI) * 2.4)
+
+func _ice_bottle_hit(spr: Sprite3D, u: Dictionary, t: Dictionary, si: int) -> void:
+	if is_instance_valid(spr): spr.queue_free()
+	if not t.get("alive", false): return
+	_apply_damage_from(u, t, _resolve_dmg(u, float([40, 60, 100][si]), t, true), Color("#bfe9ff"), 0.0, false, true)
+	t["spd_move_mult"] = 0.8; t["spd_aspd_mult"] = 0.9; t["spd_dbf_until"] = _t + 5.0
+	_ice_burst(t["pos"])
+	_frost_puff(t["pos"])
+	_shake(0.06)
+	_knockback(u, t, 16.0)
+	_skill_ring(t["pos"], Color(0.7, 0.9, 1.0, 0.55), 62.0)
+
+func _ice_burst(pos2d: Vector2) -> void:
+	var tex: Texture2D = load("res://assets/sprites/vfx/ice-shatter.png")
+	if tex == null: return
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.hframes = 5
+	spr.frame = 0
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.shaded = false
+	spr.transparent = true
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	spr.no_depth_test = true
+	var fw: float = float(maxi(1, int(tex.get_width()))) / 5.0
+	spr.pixel_size = (115.0 * WS) / fw
+	spr.position = _world_pos(pos2d, 0.95)
+	_world.add_child(spr)
+	var t := create_tween()
+	t.tween_method(_zap_frame.bind(spr), 0.0, 5.0, 0.34)
+	t.tween_callback(spr.queue_free)
+
+func _frost_puff(pos2d: Vector2) -> void:
+	var tex := _make_fire_glow_tex()
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.modulate = Color(0.62, 0.82, 1.0, 0.5)
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.shaded = false
+	spr.transparent = true
+	spr.pixel_size = (78.0 * WS) / float(maxi(1, int(tex.get_width())))
+	spr.position = _world_pos(pos2d, 0.72)
+	_world.add_child(spr)
+	var t := create_tween()
+	t.tween_interval(0.35)
+	t.tween_property(spr, "modulate:a", 0.0, 0.5)
+	t.tween_callback(spr.queue_free)
+
+# 029 冰封水母: 冰封目标 + 护盾泡
+func _frozen_encase(o: Dictionary) -> void:
+	var tex: Texture2D = load("res://assets/sprites/vfx/frozen-encase.png")
+	if tex == null: return
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.shaded = false
+	spr.transparent = true
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	spr.pixel_size = (112.0 * WS) / float(maxi(1, int(tex.get_width())))
+	spr.position = _world_pos(o["pos"], 0.78)
+	spr.modulate = Color(1, 1, 1, 0)
+	_world.add_child(spr)
+	var t := create_tween()
+	t.tween_property(spr, "modulate:a", 0.96, 0.1)
+	t.tween_interval(1.15)
+	t.tween_property(spr, "modulate:a", 0.0, 0.25)
+	t.tween_callback(spr.queue_free)
+
+func _shield_bubble(u: Dictionary) -> void:
+	var tex := _make_fire_glow_tex()
+	var tw_w: float = float(maxi(1, int(tex.get_width())))
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.modulate = Color(0.55, 0.82, 1.0, 0.55)
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.shaded = false
+	spr.transparent = true
+	spr.pixel_size = (55.0 * WS) / tw_w
+	spr.position = _world_pos(u["pos"], 0.7)
+	_world.add_child(spr)
+	var t := create_tween()
+	t.set_parallel(true)
+	t.tween_property(spr, "pixel_size", (105.0 * WS) / tw_w, 0.35)
+	t.tween_property(spr, "modulate:a", 0.0, 0.35)
+	t.chain().tween_callback(spr.queue_free)
+
+# 全局: 被减速单位行走留短暂泥印(棕色泥渍, 贴地)
+func _mud_mark(pos2d: Vector2) -> void:
+	var spr := Sprite3D.new()
+	spr.texture = _make_disc_texture()
+	spr.modulate = Color(0.28, 0.2, 0.11, 0.62)
+	spr.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	spr.axis = Vector3.AXIS_Y
+	spr.shaded = false
+	spr.transparent = true
+	spr.pixel_size = (randf_range(42.0, 58.0) * WS) / 96.0
+	spr.position = _world_pos(pos2d + Vector2(randf_range(-5.0, 5.0), randf_range(-4.0, 8.0)), 0.03)
+	_world.add_child(spr)
+	var t := create_tween()
+	t.tween_interval(0.6)
+	t.tween_property(spr, "modulate:a", 0.0, 0.5)
+	t.tween_callback(spr.queue_free)
+
 
 func _tick_barnacle(u: Dictionary, delta: float) -> void:   # 守护贝母p2eq_021: 持续绿色绑定线连全队最高攻友军; 每5秒重连并为自己+该友军 +10龟能+10%攻速(叠加/本场/每场重置); 每件独立
 	if u.get("equips", []).is_empty(): return
@@ -3878,6 +4068,12 @@ func _do_move(u: Dictionary, tgt: Dictionary, dist: float, rng: float, spd: floa
 		u["pos"] += u["vel"] * delta
 		u["pos"].x = clampf(u["pos"].x, ARENA.position.x, ARENA.end.x)
 		u["pos"].y = clampf(u["pos"].y, ARENA.position.y, ARENA.end.y)
+		var _slowed: bool = _t < float(u.get("slow_until", 0.0)) or (_t < float(u.get("spd_dbf_until", 0.0)) and float(u.get("spd_move_mult", 1.0)) < 0.99)
+		if _slowed:   # 全局: 被减速单位行走留短暂泥印(非脚印, 节流)
+			u["_mud_t"] = float(u.get("_mud_t", 0.0)) + delta
+			if float(u["_mud_t"]) >= 0.16:
+				u["_mud_t"] = 0.0
+				_mud_mark(u["pos"])
 
 # 放单个技 (按 type): 实装→juice+VFX+效果 返 true; 未实装→返 false (轮转跳过, 不空放).
 func _cast_skill(u: Dictionary, tgt: Dictionary, stype: String) -> bool:
@@ -7393,7 +7589,7 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 		"p2eq_052":   # 左轮: 6发子弹
 			stt["revolver_bullets"] = 6
 		"p2eq_027":   # 电棍: 3层电击
-			stt["baton_charges"] = 3
+			stt["baton_charges"] = [3, 4, 5][si]
 		"p2eq_047":   # 重击锤: ATK += maxHp×pct (一次性按当前maxHp折算)
 			u["hammer_pct"] = float(u.get("hammer_pct", 0.0)) + [0.04, 0.06, 0.15][si]   # 重击锤: 随maxHp动态(在_recalc_stats累加), 多件叠加
 			_recalc_stats(u)
@@ -7510,9 +7706,11 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 				_eq_charge(stt, "thunder", 25.0, 100.0, func(): _chain_windup(src, si))
 			"p2eq_029":   # 冰封水母: 概率额外魔伤+冻结, 冻结→自护盾
 				if randf() < [0.20, 0.25, 0.30][si]:
-					_apply_damage_from(src, tgt, [10, 15, 25][si], Color("#bfe9ff"), 0.0, false, true)
-					_freeze(tgt, CTRL_SEC)
+					_apply_damage_from(src, tgt, _resolve_dmg(src, float([10, 15, 25][si]), tgt, true), Color("#bfe9ff"), 0.0, false, true)
+					_freeze(tgt)
+					_frozen_encase(tgt)
 					_grant_shield(src, [20.0, 30.0, 50.0][si])
+					_shield_bubble(src)
 			"p2eq_055":   # 靶向器: 命中标记目标 (+20% 受伤) 2回合
 				tgt["eq_marked_until"] = _t + EQ_TICK * 2.0
 			"p2eq_058":   # 穿甲遗弹: 贯穿→身后同列敌
@@ -8150,15 +8348,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
 		match iid:
 			"p2eq_027":   # 电棍: 施法后电击随机敌+眩晕, 消耗1层电荷(用户描述)
-				var st27: Dictionary = u["eq_state"].get("p2eq_027", {})
-				if int(st27.get("baton_charges", 0)) > 0:
-					var es27 := _enemies_of(u)
-					if not es27.is_empty():
-						st27["baton_charges"] = int(st27["baton_charges"]) - 1
-						var o27 = es27[randi() % es27.size()]
-						_apply_damage_from(u, o27, [30, 40, 50][si], Color("#4dabf7"), 0.0, true, true)
-						_freeze(o27, CTRL_SEC)
-						_bolt_line(u["pos"], o27["pos"], Color("#7ec8ff"))
+				pass
 			"p2eq_017":   # 不沉之锚: 锚击移到_eq_on_basic_attack(普攻消耗1充能, 用户2026-07-02); on_cast不处理
 				pass
 			"p2eq_006":   # 千刃风暴: 移到每7秒 _tick_sword_storm(用户); on_cast不处理
@@ -8174,11 +8364,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 			"p2eq_022":   # 余烬燃油瓶: 蓄力→投掷火瓶→命中灼烧+真火 (_eq_fuel_throw)
 				_eq_fuel_throw(u, si)
 			"p2eq_028":   # 冰霜冻露瓶: 对最近敌魔伤+冰寒(减速)
-				var t3 = _nearest_enemy(u)
-				if t3 != null:
-					_apply_damage_from(u, t3, [40, 60, 100][si], Color("#bfe9ff"), 0.0, true, true)
-					t3["slow_until"] = _t + 5.0   # 冰寒5秒(用户描述, 原7.5s)
-					_skill_ring(t3["pos"], Color(0.75, 0.92, 1.0, 0.6), 62.0)
+				_eq_ice_throw(u, si)
 			"p2eq_030":   # 迷你水晶球A: 沿一列水晶光束+叠层引爆
 				var t4 = _nearest_enemy(u)
 				if t4 != null:
