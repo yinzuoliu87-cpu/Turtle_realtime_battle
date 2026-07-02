@@ -3574,7 +3574,23 @@ func _do_move(u: Dictionary, tgt: Dictionary, dist: float, rng: float, spd: floa
 	var to_t: Vector2 = tgt["pos"] - u["pos"]
 	var intent := Vector2.ZERO
 	if dist > rng:
-		intent = to_t.normalized()                           # 追到射程
+		var dir: Vector2 = to_t / maxf(0.001, dist)
+		intent = dir                                          # 追到射程
+		for o in _units:   # 绕行避挤: 正前方窄道有同队友军挡路→切向绕开(不再直挤成一团/根治"第二个挤第一个不绕路")
+			if o == u or not o.get("alive", false) or str(o.get("side", "")) != str(u.get("side", "")):
+				continue
+			var rel: Vector2 = o["pos"] - u["pos"]
+			var ahead: float = rel.dot(dir)                       # 在我前方(朝目标)多远
+			if ahead <= 5.0 or ahead > 95.0:
+				continue
+			var side: float = rel.dot(Vector2(-dir.y, dir.x))     # 横向偏移(是否在正前窄道)
+			if absf(side) > 52.0:
+				continue
+			var tang: Vector2 = Vector2(-dir.y, dir.x)
+			if side > 0.0:
+				tang = -tang                                      # 往挡路友军的反侧绕
+			intent = (dir + tang * 1.5).normalized()
+			break
 	elif not u["melee"] and dist < rng * 0.7:
 		intent = -to_t.normalized()                          # 远程太近→风筝后撤
 	# 分离已移到 _apply_separation_pass (每帧全单位, 不只move态) → 根治攻击/待机扎堆
