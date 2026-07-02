@@ -57,3 +57,9 @@ _fx*
 build/
 vfx_preview.png
 vfx_slash*.png
+
+# debug scratch captures
+_*.gif
+_*.png
+_*.png.import
+_dragon_*
