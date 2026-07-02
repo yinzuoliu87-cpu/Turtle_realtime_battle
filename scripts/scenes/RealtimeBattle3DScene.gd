@@ -7489,6 +7489,22 @@ func _eq_on_dodge(u: Dictionary) -> void:
 # ============================================================================
 #  on-cast (放主动技后)
 # ============================================================================
+func _eq_bloodletting(u: Dictionary, si: int) -> void:   # 饮血护符坠(011): 一段一段连斩(每刀~0.11s顺序打出,各命中随机敌,衰减0.85^k); 吸血溢出转盾结尾汇总
+	var n: int = [5, 6, 8][si]
+	var sh0: float = u["shield"]
+	for k in range(n):
+		if not u.get("alive", false): break
+		var es := _enemies_of(u)
+		if es.is_empty(): break
+		var o = es[randi() % es.size()]
+		var decay: float = pow(0.85, k)
+		_blood_slash(u["pos"], o["pos"], 0.0)   # 这一刀立即砍
+		_apply_damage_from(u, o, int((_atk_dmg(u, [0.5, 0.7, 1.0][si], o) + [40, 50, 70][si]) * decay), Color("#ff8aa0"), 0.33, false, true)
+		await get_tree().create_timer(0.11).timeout   # 一段一段: 下一刀间隔
+	if not is_instance_valid(self): return
+	var shg: int = int(u["shield"] - sh0)   # 连斩吸血溢出转的盾, 结尾汇总一次
+	if shg > 0: _float_text(u["pos"] + Vector2(28, -46), "护盾+" + str(shg), Color("#8ad7ff"), false, "shield")
+
 func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 	if u.get("equips", []).is_empty():
 		return
@@ -7522,18 +7538,8 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 				pass
 			"p2eq_008":   # 双穿珊瑚刺: 移到每6秒 _tick_coral(用户); on_cast不处理
 				pass
-			"p2eq_011":   # 饮血护符坠: 连斩随机敌(衰减) + 吸血溢出转盾(一次性汇总飘字)
-				var n: int = [5, 6, 8][si]
-				var es := _enemies_of(u)
-				var _sh0: float = u["shield"]
-				for k in range(n):
-					if es.is_empty(): break
-					var o = es[randi() % es.size()]
-					var decay: float = pow(0.85, k)
-					_apply_damage_from(u, o, int((_atk_dmg(u, [0.5, 0.7, 1.0][si], o) + [40, 50, 70][si]) * decay), Color("#ff8aa0"), 0.33, false, true)
-					_blood_slash(u["pos"], o["pos"], float(k) * 0.04)   # 连斩血刃(错峰0.04s快速飞舞, 仅视觉)
-				var _shg: int = int(u["shield"] - _sh0)   # 本次连斩吸血溢出转的盾, 一次性汇总飘字
-				if _shg > 0: _float_text(u["pos"] + Vector2(28, -46), "护盾+" + str(_shg), Color("#8ad7ff"), false, "shield")
+			"p2eq_011":   # 饮血护符坠: 一段一段顺序连斩(async, 每刀~0.11s), 见 _eq_bloodletting
+				_eq_bloodletting(u, si)
 			"p2eq_014":   # 深海堡垒甲(主动): 汲取全敌+回血
 				var k2: float = [0.8, 1.0, 1.5][si]
 				for o in _enemies_of(u):
