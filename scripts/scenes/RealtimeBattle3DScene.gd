@@ -2036,11 +2036,12 @@ func _eq_crystal_sweep(u: Dictionary, si: int) -> void:
 	var state: Dictionary = {"prev": start_a}
 	_crystal_spark(center, 1.1)
 	var tw := create_tween()
-	tw.tween_method(_crystal_sweep_step.bind(u, si, center, reach, state, im, imesh, mat), start_a, start_a + TAU, 1.5)
+	tw.tween_method(_crystal_sweep_step.bind(u, si, reach, state, im, imesh, mat), start_a, start_a + TAU, 1.5)
 	tw.tween_callback(im.queue_free)
 
-func _crystal_sweep_step(ang: float, u: Dictionary, si: int, center: Vector2, reach: float, state: Dictionary, im: MeshInstance3D, imesh: ImmediateMesh, mat: StandardMaterial3D) -> void:
+func _crystal_sweep_step(ang: float, u: Dictionary, si: int, reach: float, state: Dictionary, im: MeshInstance3D, imesh: ImmediateMesh, mat: StandardMaterial3D) -> void:
 	if not is_instance_valid(im): return
+	var center: Vector2 = u["pos"]   # 跟随携带者当前位置(非施法点定死)
 	var col := Color("#c9b0ff")
 	var tip: Vector2 = center + Vector2(cos(ang), sin(ang)) * reach
 	imesh.clear_surfaces()
@@ -2050,14 +2051,15 @@ func _crystal_sweep_step(ang: float, u: Dictionary, si: int, center: Vector2, re
 	imesh.surface_set_color(Color(col.r, col.g, col.b, 0.14))
 	imesh.surface_add_vertex(_world_pos(tip, 1.0))
 	imesh.surface_end()
-	var prev: float = float(state["prev"])
-	for o in _enemies_of(u):
-		if not o.get("alive", false): continue
-		var ea: float = atan2(float(o["pos"].y) - center.y, float(o["pos"].x) - center.x)
-		if _ang_in(prev, ang, ea):
-			_apply_damage_from(u, o, _resolve_dmg(u, float([20, 25, 30][si]), o, true), Color("#bfa8ff"), 0.0, false, true)
-			_eq_crystal_stack(u, o, si, si == 2)
-			_crystal_spark(o["pos"])
+	if u.get("alive", false):        # 携带者死亡后仅转完视觉, 不再从尸体结算伤害
+		var prev: float = float(state["prev"])
+		for o in _enemies_of(u):
+			if not o.get("alive", false): continue
+			var ea: float = atan2(float(o["pos"].y) - center.y, float(o["pos"].x) - center.x)
+			if _ang_in(prev, ang, ea):
+				_apply_damage_from(u, o, _resolve_dmg(u, float([20, 25, 30][si]), o, true), Color("#bfa8ff"), 0.0, false, true)
+				_eq_crystal_stack(u, o, si, si == 2)
+				_crystal_spark(o["pos"])
 	state["prev"] = ang
 
 func _ang_in(prev: float, cur: float, t: float) -> bool:
@@ -6678,6 +6680,17 @@ func _tick_summon_special(u: Dictionary, delta: float) -> void:
 			u["summon_life"] = 0.0
 			_kill(u, null)
 			return
+	if u.get("worm_split", false):                        # 033复活海螺3★: 小虫每2.5s在空位分裂一只(自身周期, 非携带者eq_tick)
+		u["worm_split_t"] = float(u.get("worm_split_t", 0.0)) + delta
+		if u["worm_split_t"] >= 2.5:
+			if _count_summons(u["side"], "worm") < 4:
+				u["worm_split_t"] = 0.0
+				var nw = _spawn_summon(u, "worm", u["maxHp"], u["atk"], {"label": "海螺虫", "spr_id": "conch-worm", "col_size": 30.0, "hp_w": 22.0})
+				if nw != null:
+					nw["eq_state"] = {}; nw["equips"] = []; nw["worm_split"] = true; nw["atk_interval"] = 1.0 / 0.65
+					_conch_transform(nw["pos"])
+			else:
+				u["worm_split_t"] = 2.5                    # 满4只: 等空位再分裂
 	var special: String = u.get("summon_special", "")
 	if special == "" or u.get("special_cd", 0.0) <= 0.0:
 		return
@@ -9080,11 +9093,6 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 						_fire_bolt_from(u, o, _atk_dmg(u, [1.5, 3.0, 9.0][si], o) + [130, 190, 600][si], Color("#ffd07a"))
 						_apply_dot_stacks(o, "bleed", maxi(1, roundi(u["atk"] * 0.1)), u)
 		u["eq_state"][iid] = stt
-	# 复活海螺3★ 小虫分裂 (简化: worm 单位每周期空位分裂一只)
-	if u.get("worm_split", false) and _count_summons(u["side"], "worm") < 4:
-		var nw = _spawn_summon(u, "worm", u["maxHp"], u["atk"], {"label": "海螺虫", "spr_id": "conch-worm", "col_size": 30.0, "hp_w": 22.0})
-		if nw != null:
-			nw["eq_state"] = {}; nw["equips"] = []; nw["worm_split"] = true; nw["atk_interval"] = 1.0 / 0.65
 
 # 龙蛋喷火龙: 沿随机有敌的朝向直线扫射 (同列友回血/敌魔伤+灼烧)
 # 024 喷火龙(定稿场景): 龙低空沿"敌方质心方向的线"掠射, 边飞边点燃 burn-loop 真像素火燃烧带, 命中敌=fx_explosion金爆+着火+魔伤, 掠过友=绿治疗环
