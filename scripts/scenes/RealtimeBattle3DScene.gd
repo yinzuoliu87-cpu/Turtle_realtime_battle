@@ -2045,41 +2045,42 @@ func _crystal_sweep_step(ang: float, u: Dictionary, si: int, reach: float, state
 	if not is_instance_valid(im): return
 	var center: Vector2 = u["pos"]   # 跟随携带者当前位置(非施法点定死)
 	var col := Color("#c9b0ff")
-	var c3: Vector3 = _world_pos(center, 1.0)
+	var dir2: Vector2 = Vector2(cos(ang), sin(ang))
+	var perp: Vector2 = dir2.orthogonal()
+	var tip2: Vector2 = center + dir2 * reach
 	imesh.clear_surfaces()
-	# 拖尾扇面: 从当前角向后0.9rad填一片渐隐水晶辉光楔形(加色发光)
+	# 水晶射线本体: 根部宽→尖端细的发光光束(加色), 是"一道会转的射线"非扇面
 	imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat)
-	var span: float = 0.9
-	var nseg: int = 16
-	for k in range(nseg):
-		var t0: float = float(k) / float(nseg)
-		var t1: float = float(k + 1) / float(nseg)
-		var a0: float = ang - span * (1.0 - t0)
-		var a1: float = ang - span * (1.0 - t1)
-		var r0: Vector3 = _world_pos(center + Vector2(cos(a0), sin(a0)) * reach, 1.0)
-		var r1: Vector3 = _world_pos(center + Vector2(cos(a1), sin(a1)) * reach, 1.0)
-		imesh.surface_set_color(Color(col.r, col.g, col.b, 0.22)); imesh.surface_add_vertex(c3)
-		imesh.surface_set_color(Color(col.r, col.g, col.b, t0 * t0 * 0.5)); imesh.surface_add_vertex(r0)
-		imesh.surface_set_color(Color(col.r, col.g, col.b, t1 * t1 * 0.5)); imesh.surface_add_vertex(r1)
+	var cb := Color(col.r, col.g, col.b, 0.5)    # 根部亮
+	var ct := Color(col.r, col.g, col.b, 0.06)   # 尖端淡
+	var vA: Vector3 = _world_pos(center + perp * 8.0, 1.0)
+	var vB: Vector3 = _world_pos(center - perp * 8.0, 1.0)
+	var vD: Vector3 = _world_pos(tip2 + perp * 2.5, 1.0)
+	var vE: Vector3 = _world_pos(tip2 - perp * 2.5, 1.0)
+	imesh.surface_set_color(cb); imesh.surface_add_vertex(vA)
+	imesh.surface_set_color(cb); imesh.surface_add_vertex(vB)
+	imesh.surface_set_color(ct); imesh.surface_add_vertex(vD)
+	imesh.surface_set_color(cb); imesh.surface_add_vertex(vB)
+	imesh.surface_set_color(ct); imesh.surface_add_vertex(vE)
+	imesh.surface_set_color(ct); imesh.surface_add_vertex(vD)
 	imesh.surface_end()
-	# 前沿亮核射线
-	var tip: Vector2 = center + Vector2(cos(ang), sin(ang)) * reach
+	# 亮白核线(脆生生一道射线中轴)
 	imesh.surface_begin(Mesh.PRIMITIVE_LINES, mat)
-	imesh.surface_set_color(Color(1, 0.96, 1, 1.0)); imesh.surface_add_vertex(c3)
-	imesh.surface_set_color(Color(col.r, col.g, col.b, 0.3)); imesh.surface_add_vertex(_world_pos(tip, 1.0))
+	imesh.surface_set_color(Color(1, 0.97, 1, 1.0)); imesh.surface_add_vertex(_world_pos(center, 1.0))
+	imesh.surface_set_color(Color(col.r, col.g, col.b, 0.22)); imesh.surface_add_vertex(_world_pos(tip2, 1.0))
 	imesh.surface_end()
-	# 前沿水晶碎片(节流每3步一颗, 沿扫射拖出碎晶)
+	# 沿射线拖水晶碎片(节流每3步)
 	state["spk"] = int(state.get("spk", 0)) + 1
 	if int(state["spk"]) % 3 == 0:
-		_crystal_spark(center + Vector2(cos(ang), sin(ang)) * (reach * 0.42))
+		_crystal_spark(center + dir2 * (reach * 0.4))
 	if u.get("alive", false):        # 携带者死亡后仅转完视觉, 不再从尸体结算伤害
 		var prev: float = float(state["prev"])
 		for o in _enemies_of(u):
 			if not o.get("alive", false): continue
 			var ea: float = atan2(float(o["pos"].y) - center.y, float(o["pos"].x) - center.x)
 			if _ang_in(prev, ang, ea):
-				_apply_damage_from(u, o, _resolve_dmg(u, float([40, 70, 150][si]), o, true), Color("#bfa8ff"), 0.0, false, true)
-				var steal: float = maxf(0.0, float(o["mr"])) * 0.10   # 偷取目标10%当前魔抗(真偷取:目标-X携带者+X, 永久到战场结束)
+				_apply_damage_from(u, o, _resolve_dmg(u, float([60, 130, 700][si]), o, true), Color("#bfa8ff"), 0.0, false, true)
+				var steal: float = maxf(0.0, float(o["mr"])) * [0.10, 0.15, 0.50][si]   # 偷取目标10/15/50%当前魔抗(真偷取:目标-X携带者+X, 永久到战场结束)
 				if steal > 0.01:
 					o["base_mr"] = float(o["base_mr"]) - steal; o["mr"] = float(o["mr"]) - steal
 					u["base_mr"] = float(u["base_mr"]) + steal; u["mr"] = float(u["mr"]) + steal
