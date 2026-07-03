@@ -5935,18 +5935,46 @@ func _grant_shield(u: Dictionary, amt: float) -> void:
 	_skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.4), 44.0)
 	_sfx_shield_gain()                       # §AUDIO: 得盾音 (节流; 群体上盾不刷屏)
 
-func _egg_add_progress(u: Dictionary, amt: float) -> void:   # 温泉蛋(036): 累积孵化进度→每100+1临时等级(+5%基础属性复利,上限+3,局内临时)→孵满(+3)全队均摊护盾一次
+func _egg_level_up_vfx(u: Dictionary, total_lvl: int) -> void:   # 温泉蛋升级: 金光柱升腾 + 脚下金块 + "LV UP LvN"
+	_skill_ring(u["pos"], Color(1.0, 0.85, 0.4, 0.65), 56.0)
+	_float_text(u["pos"] + Vector2(0, -74), "LV UP  Lv%d" % total_lvl, Color("#ffe08a"))
+	_shake(0.05)
+	var glow := _make_fire_glow_tex()
+	var col := Sprite3D.new()
+	col.texture = glow
+	col.modulate = Color(1.0, 0.86, 0.42, 0.9)
+	col.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	col.shaded = false; col.transparent = true
+	col.pixel_size = (50.0 * WS) / float(maxi(1, glow.get_width()))
+	col.position = _world_pos(u["pos"], 0.4)
+	_world.add_child(col)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(col, "position", _world_pos(u["pos"], 1.7), 0.5)
+	tw.tween_property(col, "modulate:a", 0.0, 0.5)
+	tw.chain().tween_callback(col.queue_free)
+	for k in range(5):   # 脚下金块环绕冒起
+		var a: float = float(k) * TAU / 5.0
+		_gold_chunk_erupt(u["pos"] + Vector2(cos(a), sin(a)) * randf_range(34.0, 50.0))
+
+func _egg_add_progress(u: Dictionary, amt: float) -> void:   # 温泉蛋(036): 累积孵化进度→每100+1临时等级(线性+5%基础+攻速2%/级,同统领,上限+3)→孵满(+3)全队均摊护盾一次
 	if amt <= 0.0 or not u.get("has_egg", false) or not u.get("alive", false): return
 	var stt: Dictionary = u["eq_state"].get("p2eq_036", {})
 	stt["incub"] = float(stt.get("incub", 0.0)) + amt
 	while float(stt["incub"]) >= 100.0 and int(stt.get("egg_levels", 0)) < 3:
 		stt["incub"] = float(stt["incub"]) - 100.0
+		if not stt.has("ref_atk"):   # 首次升级锁基准 → 线性+5%/级(同统领 1+0.05×级, 非复利)
+			stt["ref_atk"] = u["base_atk"]; stt["ref_def"] = u["base_def"]; stt["ref_mr"] = u["base_mr"]
+			stt["ref_hp"] = u["maxHp"]; stt["ref_iv"] = float(u.get("atk_interval", 1.0))
 		stt["egg_levels"] = int(stt.get("egg_levels", 0)) + 1
-		u["base_atk"] *= 1.05; u["base_def"] *= 1.05; u["base_mr"] *= 1.05
-		var hpg: float = u["maxHp"] * 0.05; u["maxHp"] += hpg; u["hp"] += hpg
+		var el: int = int(stt["egg_levels"])
+		u["base_atk"] += float(stt["ref_atk"]) * 0.05          # 线性+5%基础属性/级
+		u["base_def"] += float(stt["ref_def"]) * 0.05
+		u["base_mr"] += float(stt["ref_mr"]) * 0.05
+		var hpg: float = float(stt["ref_hp"]) * 0.05; u["maxHp"] += hpg; u["hp"] += hpg
+		u["atk_interval"] = maxf(0.1, float(stt["ref_iv"]) / (1.0 + 0.02 * float(el)))   # 攻速+2%/级(同统领)
 		_recalc_stats(u)
-		_float_text(u["pos"] + Vector2(0, -70), "孵化 Lv+%d" % int(stt["egg_levels"]), Color("#ffe08a"))
-		_skill_ring(u["pos"], Color(1.0, 0.85, 0.4, 0.5), 54.0)
+		_egg_level_up_vfx(u, int(u.get("level", 1)) + el)      # 升级特效(金光柱+LV UP)
 		if int(stt["egg_levels"]) >= 3 and not bool(stt.get("incub_given", false)):
 			stt["incub_given"] = true
 			var allies := _allies_of(u)
