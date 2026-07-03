@@ -2318,7 +2318,10 @@ func _eq_ripple_tick(u: Dictionary, si: int) -> void:
 	for o in _allies_of(u):
 		var pct042: float = [0.03, 0.06, 0.10][si]
 		if si == 2 and o == low042: pct042 *= 2.0
-		_heal(o, (o["maxHp"] - o["hp"]) * pct042)
+		var amt42: float = (o["maxHp"] - o["hp"]) * pct042
+		if amt42 >= 1.0:
+			_heal(o, amt42)
+			_skill_ring(o["pos"], Color(0.4, 0.92, 0.82, 0.5), 44.0)
 
 func _eq_revolver_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 	if int(stt.get("revolver_bullets", 0)) > 0:
@@ -3841,10 +3844,21 @@ func _step_projectiles(delta: float) -> void:
 		var to := _world_pos(tgt["pos"], 1.0)
 		var frac: float = clampf(pr["t"] / pr["dur"], 0.0, 1.0)
 		node.position = pr["from"].lerp(to, frac)
+		if pr.has("arc"):
+			node.position.y += float(pr["arc"]) * sin(PI * frac)   # 抛物线拱起(火球等)
 		if frac >= 1.0:
 			node.queue_free()
 			if tgt["alive"]:
-				if pr.get("eq_bolt", false):   # 装备弹道(弩矢/飞镖等): 记为装备物理伤, 命中溅火花
+				if pr.get("fireball", false):   # 抛物线火球045: 落点火爆+真伤(橙)+灼烧
+					_apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], 0.0, true, true)
+					if pr.get("fire_burst", 0) > 0:
+						_apply_dot_stacks(tgt, "burn", int(pr["fire_burst"]), pr["src"])
+					_fire_explosion(tgt["pos"])
+				elif pr.get("bamboo", false):   # 竹枝箭039: 命中真伤(绿)+冒绿生命球飞回携带者
+					_apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], 0.0, true, true)
+					_spawn_bamboo_orb(tgt["pos"], pr["src"]["pos"])
+					_hit_spark(tgt)
+				elif pr.get("eq_bolt", false):   # 装备弹道(弩矢/飞镖等): 记为装备物理伤, 命中溅火花
 					_apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], float(pr.get("eq_ls", 0.0)), false, true)
 					if pr.get("eq_bleed", 0) > 0:
 						_apply_dot_stacks(tgt, "bleed", int(pr["eq_bleed"]), pr["src"])
@@ -7469,6 +7483,82 @@ func _mark_vfx(tgt: Dictionary, dur: float, col: Color) -> void:
 	pt.tween_property(r, "modulate:a", 0.35, 0.5).from(0.85)
 	pt.tween_property(r, "modulate:a", 0.85, 0.5)
 
+# 治疗迸发: 绿治疗环扩散 + 几粒上升绿光 (救命回血044/045/竹弓039/大回复用). scale 越大越盛
+func _heal_burst(u: Dictionary, scale: float = 1.0) -> void:
+	if u == null: return
+	_skill_ring(u["pos"], Color(0.45, 1.0, 0.55, 0.6), 58.0 * scale)
+	if _spark_tex == null: _spark_tex = _make_glow_texture()
+	for k in range(int(4 * scale) + 2):
+		var sp := Sprite3D.new()
+		sp.texture = _spark_tex
+		sp.modulate = Color(0.5, 1.0, 0.62, 0.9)
+		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sp.shaded = false; sp.transparent = true
+		sp.pixel_size = 0.009
+		var off := Vector2(randf_range(-28.0, 28.0), 0.0)
+		sp.position = _world_pos(u["pos"] + off, 0.2)
+		_world.add_child(sp)
+		var tw := create_tween(); tw.set_parallel(true)
+		tw.tween_property(sp, "position", _world_pos(u["pos"] + off, 1.5 + randf_range(0.0, 0.5)), 0.6)
+		tw.tween_property(sp, "modulate:a", 0.0, 0.6)
+		tw.chain().tween_callback(sp.queue_free)
+
+# 火爆: 落点火色环 + 膨胀火球辉光(火球落地/灼烧爆点)
+func _fire_explosion(pos2d: Vector2) -> void:
+	_skill_ring(pos2d, Color(1.0, 0.5, 0.15, 0.7), 55.0)
+	var g := _make_fire_glow_tex()
+	var sp := Sprite3D.new()
+	sp.texture = g
+	sp.modulate = Color(1.0, 0.72, 0.32, 0.95)
+	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sp.shaded = false; sp.transparent = true
+	sp.pixel_size = (28.0 * WS) / float(maxi(1, g.get_width()))
+	sp.position = _world_pos(pos2d, 0.6)
+	_world.add_child(sp)
+	var tw := create_tween(); tw.set_parallel(true)
+	tw.tween_property(sp, "pixel_size", sp.pixel_size * 2.2, 0.3).set_ease(Tween.EASE_OUT)
+	tw.tween_property(sp, "modulate:a", 0.0, 0.3)
+	tw.chain().tween_callback(sp.queue_free)
+
+# 抛物线火球(珍珠耳环045): 火辉光从 src 抛向 tgt, 落点火爆+灼烧+真伤(橙). burn=灼烧层
+func _spawn_fireball(src: Dictionary, tgt: Dictionary, dmg: int, burn: int) -> void:
+	if tgt == null: return
+	var g := _make_fire_glow_tex()
+	var p := Sprite3D.new()
+	p.texture = g
+	p.modulate = Color(1.0, 0.66, 0.26, 0.96)
+	p.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	p.shaded = false; p.transparent = true
+	p.pixel_size = (24.0 * WS) / float(maxi(1, g.get_width()))
+	var from := _world_pos(src["pos"], 1.0)
+	p.position = from
+	_world.add_child(p)
+	_projectiles.append({
+		"node": p, "from": from, "tgt": tgt, "dmg": dmg, "col": Color("#ff7a33"),
+		"src": src, "t": 0.0, "dur": clampf(src["pos"].distance_to(tgt["pos"]) / 600.0, 0.35, 0.7),
+		"arc": 2.2, "fireball": true, "fire_burst": burn,
+	})
+
+# 竹枝箭(竹弓039): bamboo-arrow 飞向敌, 命中真伤(绿)+冒绿生命球飞回携带者(竹叶龟式)
+func _spawn_bamboo_arrow(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
+	if tgt == null: return
+	var p := Sprite3D.new()
+	p.texture = load("res://assets/sprites/vfx/bamboo-arrow.png")
+	p.pixel_size = 0.03
+	p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	p.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	p.shaded = false; p.transparent = true
+	var dir2d: Vector2 = tgt["pos"] - src["pos"]
+	p.rotation.z = atan2(-dir2d.y * 0.55, dir2d.x)
+	var from := _world_pos(src["pos"], 1.0)
+	p.position = from
+	_world.add_child(p)
+	_projectiles.append({
+		"node": p, "from": from, "tgt": tgt, "dmg": dmg, "col": Color("#a8ffb0"),
+		"src": src, "t": 0.0, "dur": clampf(src["pos"].distance_to(tgt["pos"]) / 850.0, 0.14, 0.5),
+		"bamboo": true,
+	})
+
 # 出招预备(缩)+挥出(伸): 主动技/普攻前摇后摇 (anticipation + follow-through)
 func _anticipate(u: Dictionary) -> void:
 	if u == null or not u.get("alive", false):
@@ -9256,6 +9346,7 @@ func _eq_on_dodge(u: Dictionary) -> void:
 		if str(e["id"]) == "p2eq_046":   # 幽灵墨鱼: 闪避→永久护盾
 			var stt: Dictionary = u["eq_state"].get("p2eq_046", {})
 			_grant_shield(u, float(stt.get("ghost_shield", 30.0)))
+			_shield_bubble(u)
 
 # ============================================================================
 #  on-cast (放主动技后)
@@ -9317,8 +9408,9 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 					stt2["bamboo_charges"] = int(stt2["bamboo_charges"]) - 1
 					var t5 = _nearest_enemy(u)
 					if t5 != null:
-						_apply_damage_from(u, t5, [25, 30, 35][si] + int(u["maxHp"] / HP_MULT * 0.20), Color("#a8ffb0"), 0.0, true, true)
+						_spawn_bamboo_arrow(u, t5, [25, 30, 35][si] + int(u["maxHp"] / HP_MULT * 0.20))
 					_heal(u, u["maxHp"] * 0.20)
+					_heal_burst(u, 1.0)
 					var grow: float = [90.0, 95.0, 100.0][si] * HP_MULT
 					u["maxHp"] += grow; u["hp"] += grow
 					u["eq_state"]["p2eq_039"] = stt2
@@ -9491,16 +9583,16 @@ func _eq_check_hp_threshold(u: Dictionary) -> void:
 		match iid:
 			"p2eq_044":   # 深海项链: 首次<50%回血
 				_heal(u, u["maxHp"] * [0.12, 0.27, 0.40][si]); fired = true
+				_heal_burst(u, 1.4)
 			"p2eq_045":   # 珍珠耳环: 首次<50%回血+发火球
 				_heal(u, u["maxHp"] * [0.15, 0.29, 0.65][si])
+				_heal_burst(u, 1.4)
 				var balls: int = [1, 1, 2][si]
 				var es := _enemies_of(u)
 				for b in range(balls):
 					if es.is_empty(): break
 					var o = es[randi() % es.size()]
-					_bolt_line(u["pos"], o["pos"], Color("#ff7a33"))   # 火球曳光
-					_apply_damage_from(u, o, int(o["maxHp"] * [0.08, 0.17, 0.30][si]), Color("#ff7a33"), 0.0, true, true)
-					_apply_dot_stacks(o, "burn", [30, 70, 150][si], u)   # 固定灼烧层(用户描述, 原误用_default_burn_stacks)
+					_spawn_fireball(u, o, int(o["maxHp"] * [0.08, 0.17, 0.30][si]), [30, 70, 150][si])
 					_skill_ring(o["pos"], Color(1.0, 0.45, 0.12, 0.6), 50.0)   # 火球爆裂环
 				fired = true
 	if fired:
