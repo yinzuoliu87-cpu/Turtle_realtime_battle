@@ -1346,7 +1346,15 @@ func _tick_follow_vfx() -> void:
 			_follow_vfx.remove_at(i)
 			continue
 		var u: Dictionary = f["unit"]
-		spr.position = _world_pos(u["pos"], float(u.get("height", 0.0)) + float(f["h"]))
+		if not u.get("alive", true):                # 目标已死 → 跟随特效随之消失
+			spr.queue_free()
+			_follow_vfx.remove_at(i)
+			continue
+		var base: Vector3 = _world_pos(u["pos"], float(u.get("height", 0.0)) + float(f["h"]))
+		if f.has("orbit_r"):                         # 绕身环绕(水晶叠层)
+			var ang: float = float(f["orbit_a"]) + _t * float(f["orbit_spd"])
+			base += Vector3(cos(ang) * float(f["orbit_r"]), 0.0, sin(ang) * float(f["orbit_r"]))
+		spr.position = base
 
 func _tick_unit(u: Dictionary, delta: float) -> void:
 	# DoT/buff到期/累积条/周期被动 (1:1 2D _tick_effects)
@@ -1354,6 +1362,9 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	_heal_flush(u)   # LoL式治疗累加器: 攒一波回血合并成一个绿字(满血=0)
 	if not u["alive"]:
 		return
+	if u.get("_skele_pending", false):                    # 032: 登场召唤亡灵骷髅(首帧)
+		u["_skele_pending"] = false
+		_eq_summon_skeleton(u, int(u.get("_skele_si", 0)))
 	if u.get("_slam", false):   # 火山砸地演出中: 锁AI/移动 (height/pos由slam tween驱动)
 		return
 	var stunned: bool = _t < u["stun_until"]
@@ -1906,6 +1917,233 @@ func _frost_mist(pos2d: Vector2) -> void:
 	tw.tween_property(spr, "modulate:a", 0.0, 0.7)
 	tw.chain().tween_callback(spr.queue_free)
 
+
+# ============================================================================
+#  迷你水晶球 030/031 (可视叠层+引爆) + 亡灵骷髅 032 + 复活海螺变形 033
+# ============================================================================
+
+# 水晶碎片火花: 弹出+缓旋+淡出 (光束/引爆/扫射点缀)
+# 030 单段水晶光束结算: 从携带者当前位置沿 dir 无限直线, 全线敌魔法伤+1层水晶
+func _crystal_line_seg(u: Dictionary, si: int, dir: Vector2) -> void:
+	if not u.get("alive", false): return
+	var origin: Vector2 = u["pos"]
+	_crystal_beam(origin, origin + dir * 1500.0, Color("#c9b0ff"))
+	for o in _enemies_of(u):
+		if not o.get("alive", false): continue
+		if _on_line(origin, dir, o["pos"], 55.0):
+			_apply_damage_from(u, o, _resolve_dmg(u, float([30, 35, 40][si]), o, true), Color("#bfa8ff"), 0.0, false, true)
+			_eq_crystal_stack(u, o, si)
+
+func _crystal_spark(pos2d: Vector2, h: float = 0.9) -> void:
+	var tex: Texture2D = load("res://assets/sprites/vfx/crystal-shard.png")
+	if tex == null: return
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.shaded = false
+	spr.transparent = true
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	spr.pixel_size = (26.0 * WS) / float(maxi(1, int(tex.get_height())))
+	spr.position = _world_pos(pos2d, h)
+	spr.modulate = Color(1, 1, 1, 0)
+	spr.rotation.z = randf_range(-0.4, 0.4)
+	_world.add_child(spr)
+	var tw := create_tween()
+	tw.tween_property(spr, "modulate:a", 1.0, 0.07)
+	tw.tween_interval(0.1)
+	tw.tween_property(spr, "modulate:a", 0.0, 0.28)
+	tw.tween_callback(spr.queue_free)
+	var tw2 := create_tween()
+	tw2.tween_property(spr, "rotation:z", spr.rotation.z + 0.8, 0.45)
+
+# 水晶光束: 亮白核 + 紫辉 + 沿线水晶碎片 (030 直线用)
+func _crystal_beam(a2d: Vector2, b2d: Vector2, col: Color) -> void:
+	_bolt_line(a2d, b2d, Color(1.0, 0.95, 1.0, 0.95))
+	_bolt_line(a2d, b2d, col)
+	var n: int = clampi(int((b2d - a2d).length() / 60.0), 1, 20)
+	for i in range(1, n + 1):
+		_crystal_spark(a2d.lerp(b2d, float(i) / float(n + 1)))
+
+# 可视水晶叠层: 敌身周围绕 n 颗水晶碎片 (n=当前层数, 0=清除)
+func _crystal_stack_set(o: Dictionary, n: int) -> void:
+	var arr: Array = o.get("_xtal_shards", [])
+	while arr.size() > n:
+		var s = arr.pop_back()
+		if is_instance_valid(s):
+			_unfollow_vfx(s)
+			s.queue_free()
+	var tex: Texture2D = load("res://assets/sprites/vfx/crystal-shard.png")
+	while arr.size() < n and tex != null:
+		var idx: int = arr.size()
+		var spr := Sprite3D.new()
+		spr.texture = tex
+		spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		spr.shaded = false
+		spr.transparent = true
+		spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		spr.pixel_size = (22.0 * WS) / float(maxi(1, int(tex.get_height())))
+		spr.modulate = Color(1, 1, 1, 0)
+		_world.add_child(spr)
+		_follow_vfx.append({"spr": spr, "unit": o, "h": 1.5, "orbit_r": 0.34, "orbit_a": float(idx) * TAU / 3.0, "orbit_spd": 2.6})
+		var tw := create_tween()
+		tw.tween_property(spr, "modulate:a", 0.95, 0.15)
+		arr.append(spr)
+	o["_xtal_shards"] = arr
+
+func _unfollow_vfx(spr) -> void:
+	for i in range(_follow_vfx.size() - 1, -1, -1):
+		if _follow_vfx[i].get("spr", null) == spr:
+			_follow_vfx.remove_at(i)
+
+# 水晶引爆: 紫辉爆闪 + 环 + 碎片四射
+func _crystal_detonate(pos2d: Vector2) -> void:
+	_skill_ring(pos2d, Color(0.79, 0.6, 1.0, 0.7), 34.0)
+	_shake(0.05)
+	var glow := _make_fire_glow_tex()
+	var fl := Sprite3D.new()
+	fl.texture = glow
+	fl.modulate = Color(0.82, 0.6, 1.0, 0.85)
+	fl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	fl.shaded = false
+	fl.transparent = true
+	fl.pixel_size = (40.0 * WS) / float(maxi(1, glow.get_width()))
+	fl.position = _world_pos(pos2d, 0.9)
+	_world.add_child(fl)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(fl, "pixel_size", (95.0 * WS) / float(maxi(1, glow.get_width())), 0.3)
+	tw.tween_property(fl, "modulate:a", 0.0, 0.3)
+	tw.chain().tween_callback(fl.queue_free)
+	for k in range(6):
+		_crystal_spark(pos2d + Vector2(cos(k * PI / 3.0), sin(k * PI / 3.0)) * randf_range(20.0, 45.0))
+
+# 031: 水晶射线360度扫一圈(1.5s), 射线扫到敌人即结算魔法伤+叠层
+func _eq_crystal_sweep(u: Dictionary, si: int) -> void:
+	if not u.get("alive", false): return
+	var center: Vector2 = u["pos"]
+	var reach: float = 1500.0
+	var im := MeshInstance3D.new()
+	var imesh := ImmediateMesh.new()
+	im.mesh = imesh
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.vertex_color_use_as_albedo = true
+	mat.no_depth_test = true
+	im.set_meta("mat", mat)
+	_world.add_child(im)
+	var start_a: float = randf() * TAU
+	var state: Dictionary = {"prev": start_a}
+	_crystal_spark(center, 1.1)
+	var tw := create_tween()
+	tw.tween_method(_crystal_sweep_step.bind(u, si, center, reach, state, im, imesh, mat), start_a, start_a + TAU, 1.5)
+	tw.tween_callback(im.queue_free)
+
+func _crystal_sweep_step(ang: float, u: Dictionary, si: int, center: Vector2, reach: float, state: Dictionary, im: MeshInstance3D, imesh: ImmediateMesh, mat: StandardMaterial3D) -> void:
+	if not is_instance_valid(im): return
+	var col := Color("#c9b0ff")
+	var tip: Vector2 = center + Vector2(cos(ang), sin(ang)) * reach
+	imesh.clear_surfaces()
+	imesh.surface_begin(Mesh.PRIMITIVE_LINES, mat)
+	imesh.surface_set_color(Color(1, 0.95, 1, 0.95))
+	imesh.surface_add_vertex(_world_pos(center, 1.0))
+	imesh.surface_set_color(Color(col.r, col.g, col.b, 0.14))
+	imesh.surface_add_vertex(_world_pos(tip, 1.0))
+	imesh.surface_end()
+	var prev: float = float(state["prev"])
+	for o in _enemies_of(u):
+		if not o.get("alive", false): continue
+		var ea: float = atan2(float(o["pos"].y) - center.y, float(o["pos"].x) - center.x)
+		if _ang_in(prev, ang, ea):
+			_apply_damage_from(u, o, _resolve_dmg(u, float([20, 25, 30][si]), o, true), Color("#bfa8ff"), 0.0, false, true)
+			_eq_crystal_stack(u, o, si, si == 2)
+			_crystal_spark(o["pos"])
+	state["prev"] = ang
+
+func _ang_in(prev: float, cur: float, t: float) -> bool:
+	while t < prev:
+		t += TAU
+	return t > prev and t <= cur
+
+# 032: 登场召唤亡灵骷髅 (双抗20000近乎免疫, 存活15s自灭, 死亡200码内%最大生命真伤)
+func _eq_summon_skeleton(u: Dictionary, si: int) -> void:
+	if not u.get("alive", false): return
+	var sk = _spawn_summon(u, "skeleton", [19.0, 21.0, 25.0][si] * HP_MULT, [3.0, 5.0, 8.0][si], {"label": "亡灵骷髅", "spr_id": "skeleton", "col_size": 32.0, "hp_w": 22.0, "atk_interval": 1.0 / 1.2, "atk_range": 70.0, "melee": true, "move_spd": 130.0})
+	if sk == null: return
+	sk["base_def"] = 20000.0; sk["base_mr"] = 20000.0; sk["def"] = 20000.0; sk["mr"] = 20000.0
+	sk["summon_life"] = 15.0
+	sk["boom_pct_true"] = [0.08, 0.13, 0.20][si]
+	sk["boom_radius"] = 200.0
+	_skill_ring(sk["pos"], Color(0.4, 1.0, 0.55, 0.6), 40.0)
+	for k in range(5):
+		_bone_speck(sk["pos"] + Vector2(randf_range(-24, 24), randf_range(-24, 24)))
+	if is_instance_valid(sk["sprite"]):
+		var base_sc: Vector3 = sk["sprite"].scale
+		sk["sprite"].scale = Vector3(base_sc.x, 0.05, base_sc.z)
+		var tw := create_tween()
+		tw.tween_property(sk["sprite"], "scale", base_sc, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+# 亡灵爆: 绿冲击环 + 绿辉爆闪 + 骨渣四射 (骷髅自灭/被杀 + 海螺变形共用基元)
+func _necro_burst(pos2d: Vector2, radius: float) -> void:
+	_skill_ring(pos2d, Color(0.4, 1.0, 0.55, 0.7), radius * 0.55)
+	_shake(0.08)
+	var glow := _make_fire_glow_tex()
+	var fl := Sprite3D.new()
+	fl.texture = glow
+	fl.modulate = Color(0.45, 1.0, 0.55, 0.8)
+	fl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	fl.shaded = false
+	fl.transparent = true
+	fl.pixel_size = (50.0 * WS) / float(maxi(1, glow.get_width()))
+	fl.position = _world_pos(pos2d, 0.8)
+	_world.add_child(fl)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(fl, "pixel_size", (radius * 1.3 * WS) / float(maxi(1, glow.get_width())), 0.32)
+	tw.tween_property(fl, "modulate:a", 0.0, 0.32)
+	tw.chain().tween_callback(fl.queue_free)
+	for k in range(7):
+		var a := k * TAU / 7.0
+		_bone_speck(pos2d + Vector2(cos(a), sin(a)) * randf_range(25.0, radius * 0.5))
+
+func _bone_speck(pos2d: Vector2) -> void:
+	var tex := _make_fire_glow_tex()
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.modulate = Color(0.85, 1.0, 0.8, 0.9)
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.shaded = false
+	spr.transparent = true
+	spr.pixel_size = (randf_range(10.0, 18.0) * WS) / float(maxi(1, tex.get_width()))
+	spr.position = _world_pos(pos2d, 0.4)
+	_world.add_child(spr)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(spr, "position", _world_pos(pos2d, 1.0), 0.42)
+	tw.tween_property(spr, "modulate:a", 0.0, 0.42)
+	tw.chain().tween_callback(spr.queue_free)
+
+# 033: 海螺阵亡→变小虫 变形演出 (青绿亡灵光爆 + 骨渣)
+func _conch_transform(pos2d: Vector2) -> void:
+	_skill_ring(pos2d, Color(0.4, 1.0, 0.7, 0.7), 46.0)
+	_shake(0.06)
+	var glow := _make_fire_glow_tex()
+	var col := Sprite3D.new()
+	col.texture = glow
+	col.modulate = Color(0.4, 1.0, 0.7, 0.85)
+	col.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	col.shaded = false
+	col.transparent = true
+	col.pixel_size = (55.0 * WS) / float(maxi(1, glow.get_width()))
+	col.position = _world_pos(pos2d, 0.7)
+	_world.add_child(col)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(col, "position", _world_pos(pos2d, 1.5), 0.45)
+	tw.tween_property(col, "modulate:a", 0.0, 0.5)
+	tw.chain().tween_callback(col.queue_free)
+	for k in range(6):
+		_bone_speck(pos2d + Vector2(randf_range(-30, 30), randf_range(-30, 30)))
 
 func _tick_shell(u: Dictionary, delta: float) -> void:   # 守护贝壳p2eq_018: 每8秒自回(30/45/60+5/9/15%maxHP)生命(受治疗增幅); 每件独立(用户2026-07-02, 原2.5s)
 	if u.get("equips", []).is_empty(): return
@@ -6229,6 +6467,12 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 			for o in es:
 				_apply_damage_from(u, o, int(per), Color("#ff8ad8"), 0.0, true, true)
 			_skill_ring(u["pos"], Color(1.0, 0.5, 0.8, 0.6), 120.0)
+	if u.get("boom_pct_true", 0.0) > 0.0:                 # 032骷髅死亡: 200码内敌各受其%最大生命真伤
+		var _br: float = float(u.get("boom_radius", 200.0))
+		for _bo in _enemies_of(u):
+			if _bo.get("alive", false) and (_bo["pos"] - u["pos"]).length() <= _br:
+				_apply_damage_from(u, _bo, int(float(_bo["maxHp"]) * float(u["boom_pct_true"])), Color("#8affa0"), 0.0, true, true)
+		_necro_burst(u["pos"], _br)
 	# 缩头本体死亡 → 同步杀掉其随从
 	if u["id"] == "hiding":
 		for o in _units:
@@ -6427,6 +6671,12 @@ func _tick_summon_special(u: Dictionary, delta: float) -> void:
 	if u.get("self_decay", 0.0) > 0.0:
 		_raw_lose(u, u["maxHp"] * u["self_decay"] * delta)
 		if not u["alive"]:
+			return
+	if u.get("summon_life", 0.0) > 0.0:                   # 032骷髅: 存活到期→自灭(触发死亡爆炸)
+		u["summon_life"] = float(u["summon_life"]) - delta
+		if u["summon_life"] <= 0.0:
+			u["summon_life"] = 0.0
+			_kill(u, null)
 			return
 	var special: String = u.get("summon_special", "")
 	if special == "" or u.get("special_cd", 0.0) <= 0.0:
@@ -7747,6 +7997,9 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 			stt["revolver_bullets"] = 6
 		"p2eq_027":   # 电棍: 3层电击
 			stt["baton_charges"] = [3, 4, 5][si]
+		"p2eq_032":   # 唤灵骨符: 登场召唤亡灵骷髅 (延到首帧spawn, 避免开战setup中append _units)
+			u["_skele_pending"] = true
+			u["_skele_si"] = si
 		"p2eq_047":   # 重击锤: ATK += maxHp×pct (一次性按当前maxHp折算)
 			u["hammer_pct"] = float(u.get("hammer_pct", 0.0)) + [0.04, 0.06, 0.15][si]   # 重击锤: 随maxHp动态(在_recalc_stats累加), 多件叠加
 			_recalc_stats(u)
@@ -8517,21 +8770,17 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 				_eq_fuel_throw(u, si)
 			"p2eq_028":   # 冰霜冻露瓶: 对最近敌魔伤+冰寒(减速)
 				_eq_ice_throw(u, si)
-			"p2eq_030":   # 迷你水晶球A: 沿一列水晶光束+叠层引爆
+			"p2eq_030":   # 迷你水晶球A: 朝目标无限直线连发2/2/3段水晶光束(错峰), 每段全线敌魔法伤+1层水晶
 				var t4 = _nearest_enemy(u)
 				if t4 != null:
 					var dir2: Vector2 = (t4["pos"] - u["pos"]).normalized()
+					if dir2 == Vector2.ZERO: dir2 = Vector2.RIGHT
 					for _seg in range([2, 2, 3][si]):
-						for o in _enemies_of(u):
-							if _on_line(u["pos"], dir2, o["pos"], 50.0):
-								_apply_damage_from(u, o, [30, 35, 40][si], Color("#c9b0ff"), 0.0, true, true)
-								_eq_crystal_stack(u, o, si)
-					_bolt_line(u["pos"], t4["pos"] + dir2 * 200.0, Color("#c9b0ff"))
-			"p2eq_031":   # 迷你水晶球B: 对全体敌魔伤+叠层引爆 (3★引爆波及邻格)
-				for o in _enemies_of(u):
-					_skill_ring(o["pos"], Color(0.79, 0.69, 1.0, 0.5), 40.0)   # 水晶魔环
-					_apply_damage_from(u, o, [20, 25, 30][si], Color("#c9b0ff"), 0.0, true, true)
-					_eq_crystal_stack(u, o, si, si == 2)
+						var twc := create_tween()
+						twc.tween_interval(float(_seg) * 0.16)
+						twc.tween_callback(_crystal_line_seg.bind(u, si, dir2))
+			"p2eq_031":   # 迷你水晶球B: 施法→水晶射线360度扫一圈(1.5s), 扫到即魔法伤+1层水晶(3★引爆波及邻格)
+				_eq_crystal_sweep(u, si)
 			"p2eq_039":   # 竹制弓箭: 充能内→强化攻击+自回血+永久+maxHP
 				var stt2: Dictionary = u["eq_state"].get("p2eq_039", {})
 				if int(stt2.get("bamboo_charges", 0)) > 0:
@@ -8601,12 +8850,16 @@ func _eq_crystal_stack(src: Dictionary, o: Dictionary, si: int, splash: bool = f
 	var lv := _add_stack(o, "p2crystal", 1, 3)
 	if lv >= 3:
 		_consume_stacks(o, "p2crystal")
-		var det: int = int(o["maxHp"] * [0.14, 0.17, 0.20][si])
-		_apply_damage_from(src, o, det, Color("#c9b0ff"), 0.0, true, true)
-		if splash:   # B 3★: 引爆波及邻格敌 (基础邻格~60px, 扩大50%→90px)
+		_crystal_stack_set(o, 0)
+		_crystal_detonate(o["pos"])
+		_apply_damage_from(src, o, _resolve_dmg(src, float(o["maxHp"]) * [0.14, 0.17, 0.20][si], o, true), Color("#bfa8ff"), 0.0, false, true)
+		if splash:   # B 3★: 引爆波及邻格敌 (90码)
 			for adj in _enemies_of(src):
-				if adj != o and (adj["pos"] - o["pos"]).length() <= 90.0:
-					_apply_damage_from(src, adj, int(adj["maxHp"] * [0.14, 0.17, 0.20][si]), Color("#c9b0ff"), 0.0, true, true)
+				if adj != o and adj.get("alive", false) and (adj["pos"] - o["pos"]).length() <= 90.0:
+					_apply_damage_from(src, adj, _resolve_dmg(src, float(adj["maxHp"]) * [0.14, 0.17, 0.20][si], adj, true), Color("#bfa8ff"), 0.0, false, true)
+					_crystal_detonate(adj["pos"])
+	else:
+		_crystal_stack_set(o, lv)   # 更新可视层数
 
 # 狙击长管 057: 递归开枪
 func _eq_sniper(u: Dictionary, si: int, depth: int) -> void:
@@ -8649,11 +8902,19 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
 		var stt: Dictionary = u["eq_state"].get(iid, {})
 		match iid:
-			"p2eq_033":   # 复活海螺: 阵亡→原位变小虫 (复用 _spawn_summon, 3D 用色块 block)
+			"p2eq_033":   # 复活海螺: 彻底阵亡→原位变形成小虫(通用打法/攻速0.65) + 亡灵变形演出
+				_conch_transform(u["pos"])
 				var worm = _spawn_summon(u, "worm", [150.0, 200.0, 300.0][si] * HP_MULT * _lvl_mult_for(u), [20.0, 30.0, 40.0][si] * _lvl_mult_for(u), {"label": "海螺虫", "spr_id": "conch-worm", "col_size": 30.0, "hp_w": 22.0})
 				if worm != null:
 					worm["pos"] = u["pos"]
-					if is_instance_valid(worm["sprite"]): worm["sprite"].position = _world_pos(u["pos"], GROUND_LIFT)
+					worm["atk_interval"] = 1.0 / 0.65
+					if is_instance_valid(worm["sprite"]):
+						worm["sprite"].position = _world_pos(u["pos"], GROUND_LIFT)
+						var wsc: Vector3 = worm["sprite"].scale
+						worm["sprite"].scale = Vector3.ZERO
+						var wtw := create_tween()
+						wtw.tween_interval(0.12)
+						wtw.tween_property(worm["sprite"], "scale", wsc, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 					worm["eq_state"] = {}; worm["equips"] = []
 					if si == 2:   # 3★: 标记每周期分裂
 						worm["worm_split"] = true
@@ -8823,7 +9084,7 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 	if u.get("worm_split", false) and _count_summons(u["side"], "worm") < 4:
 		var nw = _spawn_summon(u, "worm", u["maxHp"], u["atk"], {"label": "海螺虫", "spr_id": "conch-worm", "col_size": 30.0, "hp_w": 22.0})
 		if nw != null:
-			nw["eq_state"] = {}; nw["equips"] = []; nw["worm_split"] = true
+			nw["eq_state"] = {}; nw["equips"] = []; nw["worm_split"] = true; nw["atk_interval"] = 1.0 / 0.65
 
 # 龙蛋喷火龙: 沿随机有敌的朝向直线扫射 (同列友回血/敌魔伤+灼烧)
 # 024 喷火龙(定稿场景): 龙低空沿"敌方质心方向的线"掠射, 边飞边点燃 burn-loop 真像素火燃烧带, 命中敌=fx_explosion金爆+着火+魔伤, 掠过友=绿治疗环
