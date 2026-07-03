@@ -268,6 +268,7 @@ var _edit_btn_edit: Button = null
 
 # --- Phase 4 juice 全局态 ---
 var _hitstop := 0.0                       # 剩余顿帧秒 (>0 时 _process 跳过逻辑推进, 每帧自减 → 精确恢复)
+var _follow_vfx: Array = []               # 跟随单位的特效sprite [{spr,unit,h}] — 每帧贴 _world_pos(unit.pos, unit.height+h); sprite被free则自动剔除
 var _shake_amp := 0.0                     # 当前震屏幅度 (米); 每帧指数衰减归 0
 var _shake_t := 0.0                       # 震屏相位 (驱动伪随机偏移)
 var _cam_base := Vector3.ZERO             # 镜头基准位 (shake 围绕它偏移, 衰减后精确归位)
@@ -1333,7 +1334,19 @@ func _process(delta: float) -> void:
 				_advance_anim(u, delta)
 	_update_camera_shake(delta)    # 震屏始终推进 (含冻结期)
 	_update_world_transforms()
+	_tick_follow_vfx()             # 跟随特效(冰块等)贴目标最新世界坐标(含击飞height)
 	_update_overlay()
+
+# 跟随单位的特效: 每帧把 sprite 贴到目标最新世界坐标(含击飞抬升). sprite 被 queue_free 后自动从列表剔除.
+func _tick_follow_vfx() -> void:
+	for i in range(_follow_vfx.size() - 1, -1, -1):
+		var f: Dictionary = _follow_vfx[i]
+		var spr = f["spr"]
+		if not is_instance_valid(spr):
+			_follow_vfx.remove_at(i)
+			continue
+		var u: Dictionary = f["unit"]
+		spr.position = _world_pos(u["pos"], float(u.get("height", 0.0)) + float(f["h"]))
 
 func _tick_unit(u: Dictionary, delta: float) -> void:
 	# DoT/buff到期/累积条/周期被动 (1:1 2D _tick_effects)
@@ -2142,9 +2155,10 @@ func _frozen_encase(o: Dictionary, dur: float = 1.5) -> void:
 	spr.transparent = true
 	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	spr.pixel_size = (112.0 * WS) / float(maxi(1, int(tex.get_width())))
-	spr.position = _world_pos(o["pos"], 0.78)
+	spr.position = _world_pos(o["pos"], float(o.get("height", 0.0)) + 0.78)
 	spr.modulate = Color(1, 1, 1, 0)
 	_world.add_child(spr)
+	_follow_vfx.append({"spr": spr, "unit": o, "h": 0.78})   # 冰块跟着目标走(含击飞抬升)
 	var t := create_tween()
 	t.tween_property(spr, "modulate:a", 0.96, 0.1)
 	t.tween_interval(maxf(0.1, dur - 0.35))
