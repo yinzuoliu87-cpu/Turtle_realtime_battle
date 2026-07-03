@@ -269,6 +269,7 @@ var _edit_btn_edit: Button = null
 # --- Phase 4 juice 全局态 ---
 var _hitstop := 0.0                       # 剩余顿帧秒 (>0 时 _process 跳过逻辑推进, 每帧自减 → 精确恢复)
 var _follow_vfx: Array = []               # 跟随单位的特效sprite [{spr,unit,h}] — 每帧贴 _world_pos(unit.pos, unit.height+h); sprite被free则自动剔除
+var _pending_shots: Array = []            # 依次射出的子弹队列 [{delay, fn:Callable}] — 每帧减delay, 到点call(错峰射击: 手铳/加特林/狙击链)
 var _shake_amp := 0.0                     # 当前震屏幅度 (米); 每帧指数衰减归 0
 var _shake_t := 0.0                       # 震屏相位 (驱动伪随机偏移)
 var _cam_base := Vector3.ZERO             # 镜头基准位 (shake 围绕它偏移, 衰减后精确归位)
@@ -1334,6 +1335,7 @@ func _process(delta: float) -> void:
 			_apply_separation_pass(delta)   # 每帧全单位软分离(攻击/待机也摊开, 根治扎堆遮血条)
 			_tick_lava_zones(delta)         # 持续地面区域 (熔岩龟·岩浆池) 周期结算
 			_step_projectiles(delta)
+			_step_pending_shots(delta)
 			_check_end()
 		_juice_decay(delta)        # squash/闪白/挥击 等计时衰减 (冻结期间不衰 → 冲击姿势保持)
 		for u in _units:           # 立绘帧动画推进 (idle 循环 / 动作一次), 冻结期不推进保持冲击姿势
@@ -1359,6 +1361,12 @@ func _tick_follow_vfx() -> void:
 		if not u.get("alive", true):                # 目标已死 → 跟随特效随之消失
 			spr.queue_free()
 			_follow_vfx.remove_at(i)
+			if f.get("mark", false): u["_mark_spr"] = null
+			continue
+		if f.get("mark", false) and _t > float(u.get("_mark_until", 0.0)):   # 锁定标记到期 → 移除
+			spr.queue_free()
+			_follow_vfx.remove_at(i)
+			u["_mark_spr"] = null
 			continue
 		var base: Vector3 = _world_pos(u["pos"], float(u.get("height", 0.0)) + float(f["h"]))
 		if f.has("orbit_r"):                         # 绕身环绕(水晶叠层)
@@ -3836,7 +3844,12 @@ func _step_projectiles(delta: float) -> void:
 		if frac >= 1.0:
 			node.queue_free()
 			if tgt["alive"]:
-				if pr["src"] != null:
+				if pr.get("eq_bolt", false):   # 装备弹道(弩矢/飞镖等): 记为装备物理伤, 命中溅火花
+					_apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], float(pr.get("eq_ls", 0.0)), false, true)
+					if pr.get("eq_bleed", 0) > 0:
+						_apply_dot_stacks(tgt, "bleed", int(pr["eq_bleed"]), pr["src"])
+					_hit_spark(tgt)
+				elif pr["src"] != null:
 					_apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"])
 				else:
 					_apply_damage(tgt, pr["dmg"], pr["col"])
@@ -3850,6 +3863,89 @@ func _step_projectiles(delta: float) -> void:
 			continue
 		keep.append(pr)
 	_projectiles = keep
+
+# 依次射出的子弹: 每帧减 delay, 到点 call 回调(回调内部再选目标+射线+伤害, 死亡守卫在回调里判)
+func _step_pending_shots(delta: float) -> void:
+	for i in range(_pending_shots.size() - 1, -1, -1):
+		var s: Dictionary = _pending_shots[i]
+		s["delay"] = float(s["delay"]) - delta
+		if float(s["delay"]) <= 0.0:
+			_pending_shots.remove_at(i)
+			var fn = s["fn"]
+			if fn is Callable and fn.is_valid():
+				fn.call()
+
+# 排队 count 发子弹, 每发间隔 interval 秒, 逐发 call fn (fn 内部自选目标, 支持死亡守卫)
+func _queue_shots(count: int, interval: float, fn: Callable) -> void:
+	for k in range(count):
+		_pending_shots.append({"delay": float(k) * interval, "fn": fn})
+
+# 枪口闪: 在 pos2d 沿 dir 前方一点爆一小簇火光(胸口高度), 表现开火
+func _muzzle_flash(pos2d: Vector2, dir: Vector2, col: Color) -> void:
+	var mp: Vector2 = pos2d + dir.normalized() * 26.0
+	var sp := Sprite3D.new()
+	if _spark_tex == null:
+		_spark_tex = _make_glow_texture()
+	sp.texture = _spark_tex
+	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sp.shaded = false; sp.transparent = true
+	sp.modulate = Color(col.r, col.g, col.b, 0.95)
+	sp.position = _world_pos(mp, 1.0)
+	sp.pixel_size = 0.016
+	sp.scale = Vector3.ONE * 0.4
+	_world.add_child(sp)
+	var tw := create_tween(); tw.set_parallel(true)
+	tw.tween_property(sp, "scale", Vector3.ONE * 1.05, 0.05).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(sp, "modulate:a", 0.0, 0.09)
+	tw.chain().tween_callback(sp.queue_free)
+
+# 装备弹道(弩矢/飞镖等真实贴图投射物): 朝向随飞行方向(2.5D近似 z-roll), 命中记装备物理伤. eq_bleed=命中附加流血层
+func _spawn_eq_bolt(src: Dictionary, tgt: Dictionary, dmg: int, tex_path: String, col: Color, spin: bool = false, bleed: int = 0) -> void:
+	if tgt == null: return
+	var start2d: Vector2 = src["pos"]
+	var p := Sprite3D.new()
+	p.texture = load(tex_path)
+	p.pixel_size = 0.032
+	p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	p.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	p.shaded = false; p.transparent = true
+	p.modulate = col
+	var dir2d: Vector2 = (tgt["pos"] - start2d)
+	if not spin:
+		p.rotation.z = atan2(-dir2d.y * 0.55, dir2d.x)   # 朝向随方向(俯视前缩近似)
+	p.position = _world_pos(start2d, 1.0)
+	_world.add_child(p)
+	if spin:   # 飞镖: 旋转飞行
+		var sw := create_tween().set_loops()
+		sw.tween_property(p, "rotation:z", TAU, 0.18).from(0.0)
+	_projectiles.append({
+		"node": p, "from": _world_pos(start2d, 1.0), "tgt": tgt, "dmg": dmg, "col": col,
+		"src": src, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 950.0, 0.12, 0.5),
+		"eq_bolt": true, "eq_bleed": bleed,
+	})
+
+# 激光束: a→b 一道立起来的发光带(叠加混合), 快速淡出. 用于激光手枪/狙击曳光
+func _laser_beam(a2d: Vector2, b2d: Vector2, col: Color, half_w: float = 0.16, dur: float = 0.2, h: float = 1.0) -> void:
+	var wa := _world_pos(a2d, h)
+	var wb := _world_pos(b2d, h)
+	var up := Vector3(0.0, half_w, 0.0)
+	var im := MeshInstance3D.new()
+	var imesh := ImmediateMesh.new()
+	im.mesh = imesh
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.albedo_color = col
+	imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat)
+	for v in [wa - up, wa + up, wb + up, wa - up, wb + up, wb - up]:
+		imesh.surface_add_vertex(v)
+	imesh.surface_end()
+	_world.add_child(im)
+	var tw := create_tween()
+	tw.tween_property(mat, "albedo_color:a", 0.0, dur)
+	tw.tween_callback(im.queue_free)
 
 # 尖尖能量波弹道贴图 (程序画: 透镜状两端尖, 白核+col边, 按伤害色上色)
 func _make_wave_texture(col: Color) -> ImageTexture:
@@ -4074,6 +4170,7 @@ func _knockback(by: Dictionary, tgt: Dictionary, _dist: float, vy_mult: float = 
 	# 飞镖056: 任意敌被己方击飞 → 标"靶子", 携带者周期 tick 射镖
 	if tgt["side"] != by["side"] and _side_has_equip(by["side"], "p2eq_056"):
 		tgt["eq_target_until"] = _t + 99999.0
+		_mark_vfx(tgt, 99999.0, Color("#ffa040"))
 
 # 拉近: 把 tgt 拉到 by 面前 to_dist 处 (XZ 平面改 pos)
 func _pull(by: Dictionary, tgt: Dictionary, to_dist: float) -> void:
@@ -7272,6 +7369,7 @@ func _impact(tgt: Dictionary, dmg: int, level: String = "auto", at_pos = null) -
 # Hit Spark(亮星) + Impact Ring(快环): 朝镜头 billboard, ~0.14s pop→淡; 同目标50ms节流防多段刷爆
 var _hitring_tex: ImageTexture = null
 var _spark_tex: GradientTexture2D = null
+var _reticle_tex: ImageTexture = null     # 瞄准/锁定框(圆环+四刻线) — 瞄准镜/靶向器/飞镖靶子
 func _hit_spark(tgt, at_pos = null) -> void:
 	if tgt == null or _t < float(tgt.get("_spark_t", 0.0)):
 		return
@@ -7307,6 +7405,69 @@ func _hit_spark(tgt, at_pos = null) -> void:
 	tw2.tween_property(sp, "scale", Vector3.ONE * 1.1, 0.07).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw2.tween_property(sp, "modulate:a", 0.0, 0.12)
 	tw2.chain().tween_callback(sp.queue_free)
+
+# 瞄准/锁定框贴图: 圆环 + 上下左右四刻线(跨圈), 中心留空(不挡脸)
+func _make_reticle_texture(col: Color) -> ImageTexture:
+	var S := 64
+	var img := Image.create(S, S, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var c := float(S - 1) / 2.0
+	var R := c - 5.0
+	for y in range(S):
+		for x in range(S):
+			var dx := float(x) - c
+			var dy := float(y) - c
+			var d := sqrt(dx * dx + dy * dy)
+			var a := 0.0
+			if absf(d - R) < 1.8:
+				a = 1.0                                                      # 外圈
+			if absf(dx) < 1.6 and absf(absf(dy) - R) < 6.0:
+				a = maxf(a, 1.0)                                             # 上下竖刻线
+			if absf(dy) < 1.6 and absf(absf(dx) - R) < 6.0:
+				a = maxf(a, 1.0)                                             # 左右横刻线
+			if a > 0.0:
+				img.set_pixel(x, y, Color(col.r, col.g, col.b, a))
+	return ImageTexture.create_from_image(img)
+
+# 一瞬锁定框: 从大缩到目标身上再淡出(瞄准镜"必中"命中反馈)
+func _reticle_flash(tgt: Dictionary, col: Color) -> void:
+	if tgt == null: return
+	if _reticle_tex == null: _reticle_tex = _make_reticle_texture(Color(1, 1, 1, 1))
+	var r := Sprite3D.new()
+	r.texture = _reticle_tex
+	r.modulate = Color(col.r, col.g, col.b, 0.0)
+	r.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	r.shaded = false; r.transparent = true
+	r.pixel_size = 0.032
+	r.position = _world_pos(tgt["pos"], float(tgt.get("height", 0.0)) + 0.9)
+	_world.add_child(r)
+	var tw := create_tween(); tw.set_parallel(true)
+	tw.tween_property(r, "modulate:a", 0.95, 0.05)
+	tw.tween_property(r, "pixel_size", 0.016, 0.13).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_property(r, "modulate:a", 0.0, 0.12)
+	tw.chain().tween_callback(r.queue_free)
+
+# 持续锁定标记: 贴在目标身上脉动的锁定框, 到 _mark_until 自动消失(靶向器5s/飞镖靶子). 去重: 已有则延长
+func _mark_vfx(tgt: Dictionary, dur: float, col: Color) -> void:
+	if tgt == null: return
+	tgt["_mark_until"] = _t + dur
+	var ex = tgt.get("_mark_spr", null)
+	if ex != null and is_instance_valid(ex):
+		return
+	if _reticle_tex == null: _reticle_tex = _make_reticle_texture(Color(1, 1, 1, 1))
+	var r := Sprite3D.new()
+	r.texture = _reticle_tex
+	r.modulate = Color(col.r, col.g, col.b, 0.85)
+	r.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	r.shaded = false; r.transparent = true
+	r.pixel_size = 0.02
+	r.position = _world_pos(tgt["pos"], float(tgt.get("height", 0.0)) + 0.9)
+	_world.add_child(r)
+	tgt["_mark_spr"] = r
+	_follow_vfx.append({"spr": r, "unit": tgt, "h": 0.9, "mark": true})
+	var pt := create_tween().set_loops()
+	pt.tween_property(r, "modulate:a", 0.35, 0.5).from(0.85)
+	pt.tween_property(r, "modulate:a", 0.85, 0.5)
 
 # 出招预备(缩)+挥出(伸): 主动技/普攻前摇后摇 (anticipation + follow-through)
 func _anticipate(u: Dictionary) -> void:
@@ -8480,14 +8641,19 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 				_eq_charge(stt, "thunder", 25.0, 100.0, func(): _chain_windup(src, si))
 			"p2eq_029":   # 冰封水母: 概率额外魔伤+冻结, 冻结→自护盾
 					pass
+			"p2eq_054":   # 瞄准镜: 必中→命中时目标身上一瞬锁定框(表现无视闪避)
+				_reticle_flash(tgt, Color("#ff6a5a"))
 			"p2eq_055":   # 靶向器: 命中标记目标 (+20% 受伤) 2回合
-				tgt["eq_marked_until"] = _t + EQ_TICK * 2.0
+				tgt["eq_marked_until"] = _t + 5.0
+				_mark_vfx(tgt, 5.0, Color("#ff4d4d"))
 			"p2eq_058":   # 穿甲遗弹: 贯穿→身后同列敌
 				var frac2: float = [0.25, 0.40, 0.60][si]
 				var dir: Vector2 = (tgt["pos"] - src["pos"]).normalized()
 				for o in _enemies_of(src):
 					if o != tgt and _on_line(tgt["pos"], dir, o["pos"], 40.0):
+						_laser_beam(tgt["pos"], o["pos"], Color(1.0, 0.86, 0.42, 0.8), 0.05, 0.16)   # 穿透曳光
 						_apply_damage_from(src, o, maxi(1, int(dmg * frac2)), Color("#ffd07a"), 0.0, false, true)
+						_hit_spark(o)
 		src["eq_state"][iid] = stt
 
 # 雷电法杖 026: 连锁闪电
@@ -9156,50 +9322,73 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 					var grow: float = [90.0, 95.0, 100.0][si] * HP_MULT
 					u["maxHp"] += grow; u["hp"] += grow
 					u["eq_state"]["p2eq_039"] = stt2
-			"p2eq_048":   # 黄铜手铳: 射N发, 每发命中直线首敌
-				var dir3: Vector2 = (_nearest_enemy(u)["pos"] - u["pos"]).normalized() if _nearest_enemy(u) != null else Vector2.RIGHT
-				for _b in range([4, 5, 6][si]):
-					var ft = _eq_first_in_line(u, dir3, 36.0)
-					if ft != null:
-						_bolt_line(u["pos"], ft["pos"], Color("#ffe08a"))
-						_apply_damage_from(u, ft, _atk_dmg(u, [0.5, 0.54, 0.6][si], ft), Color("#ffd07a"), 0.0, false, true)
-			"p2eq_049":   # 连发弩: 对较远半数敌连射, 按已损血加伤
-				for o in _eq_farthest_enemies(u, true):
-					_bolt_line(u["pos"], o["pos"], Color("#c8f0a0"))
-					var lost: float = clampf((1.0 - o["hp"] / o["maxHp"]) / 0.3, 0.0, 1.0)
-					var sc2: float = lerpf(0.8, 1.3, lost)
-					for _r in range([1, 2, 3][si]):
-						_apply_damage_from(u, o, _atk_dmg(u, sc2, o), Color("#ffd07a"), 0.0, false, true)
-			"p2eq_050":   # 幽灵加特林: N发随机分布+减甲(每目标累计上限, 防实时高频放技削到0; 用户2026-07-01 on-cast节流, 保守可F5调)
+			"p2eq_048":   # 黄铜手铳: 依次射N发, 每发命中直线首敌(错峰: 枪口闪+曳光+火花)
+				var dir48: Vector2 = (_nearest_enemy(u)["pos"] - u["pos"]).normalized() if _nearest_enemy(u) != null else Vector2.RIGHT
+				var mul48: float = [0.5, 0.54, 0.6][si]
+				var fire48 := func():
+					if not u.get("alive", false): return
+					var ft48 = _eq_first_in_line(u, dir48, 36.0)
+					if ft48 == null: return
+					_muzzle_flash(u["pos"], dir48, Color("#ffe08a"))
+					_bolt_line(u["pos"], ft48["pos"], Color("#ffe08a"))
+					_apply_damage_from(u, ft48, _atk_dmg(u, mul48, ft48), Color("#ffd07a"), 0.0, false, true)
+					_hit_spark(ft48)
+				_queue_shots([4, 5, 6][si], 0.08, fire48)
+			"p2eq_049":   # 连发弩: 朝最远敌方向依次射N发, 首敌命中(可被前排挡), 按已损血加伤; 弩矢弹道
+				var far49 := _eq_farthest_enemies(u, false)
+				if not far49.is_empty():
+					var dir49: Vector2 = (far49[0]["pos"] - u["pos"]).normalized()
+					var fire49 := func():
+						if not u.get("alive", false): return
+						var ft49 = _eq_first_in_line(u, dir49, 42.0)
+						if ft49 == null: return
+						var lost49: float = clampf((1.0 - ft49["hp"] / ft49["maxHp"]) / 0.3, 0.0, 1.0)
+						_muzzle_flash(u["pos"], dir49, Color("#d8f0a8"))
+						_spawn_eq_bolt(u, ft49, _atk_dmg(u, lerpf(0.8, 1.3, lost49), ft49), "res://assets/sprites/vfx/crossbow-bolt.png", Color("#eaffd0"))
+					_queue_shots([1, 2, 3][si], 0.12, fire49)
+			"p2eq_050":   # 幽灵加特林: 依次快射N发随机分布+减甲(累计上限; 枪口连闪+曳光雨)
 				var g_shred: float = [1.0, 2.0, 3.0][si]
 				var g_cap: float = [15.0, 25.0, 40.0][si]   # 该效果对单个目标累计减甲上限
-				for _g in range([20, 30, 60][si]):
-					var es2 := _enemies_of(u)
-					if es2.is_empty(): break
-					var o = es2[randi() % es2.size()]
-					_apply_damage_from(u, o, _atk_dmg(u, [0.1, 0.12, 0.14][si], o), Color("#d0ffff"), 0.0, false, true)
-					if _g % 5 == 0: _bolt_line(u["pos"], o["pos"], Color("#d0ffff"))
-					var g_acc: float = float(o.get("gatling_shred_acc", 0.0))
+				var g_mul: float = [0.1, 0.12, 0.14][si]
+				var fire50 := func():
+					if not u.get("alive", false): return
+					var es50 := _enemies_of(u)
+					if es50.is_empty(): return
+					var o50 = es50[randi() % es50.size()]
+					_muzzle_flash(u["pos"], (o50["pos"] - u["pos"]), Color("#d0ffff"))
+					_bolt_line(u["pos"], o50["pos"], Color("#d0ffff"))
+					_apply_damage_from(u, o50, _atk_dmg(u, g_mul, o50), Color("#d0ffff"), 0.0, false, true)
+					var g_acc: float = float(o50.get("gatling_shred_acc", 0.0))
 					if g_acc < g_cap:
 						var g_dec: float = minf(g_shred, g_cap - g_acc)
-						o["base_def"] = maxf(0.0, o["base_def"] - g_dec); o["gatling_shred_acc"] = g_acc + g_dec; _recalc_stats(o)
-			"p2eq_051":   # 激光手枪: 直线首敌+流血, 身后敌受50%伤害+50%流血
+						o50["base_def"] = maxf(0.0, o50["base_def"] - g_dec); o50["gatling_shred_acc"] = g_acc + g_dec; _recalc_stats(o50)
+				_queue_shots([20, 30, 60][si], 0.03, fire50)
+			"p2eq_051":   # 激光手枪: 穿透红激光(白核+红辉)一横排首敌满伤+流血, 身后敌半伤半流血
 				var dir4: Vector2 = (_nearest_enemy(u)["pos"] - u["pos"]).normalized() if _nearest_enemy(u) != null else Vector2.RIGHT
 				var first = _eq_first_in_line(u, dir4, 50.0)
 				if first != null:
-					_bolt_line(u["pos"], first["pos"] + dir4 * 260.0, Color("#ff3d5c"))   # 红激光束穿过首敌延伸
+					var endp51: Vector2 = first["pos"] + dir4 * 340.0
+					_muzzle_flash(u["pos"], dir4, Color("#ff5a72"))
+					_laser_beam(u["pos"], endp51, Color(1.0, 0.24, 0.36, 0.85), 0.22, 0.22)   # 红辉(宽)
+					_laser_beam(u["pos"], endp51, Color(1.0, 0.92, 0.94, 0.95), 0.07, 0.14)   # 白核(细)
 					_apply_damage_from(u, first, _atk_dmg(u, [1.5, 2.0, 2.8][si], first), Color("#ff8aa0"), 0.0, false, true)
 					_apply_dot_stacks(first, "bleed", maxi(1, roundi(u["atk"] * [0.5, 0.5, 0.6][si])), u)
+					_hit_spark(first)
 					for o in _enemies_of(u):
 						if o != first and _on_line(first["pos"], dir4, o["pos"], 50.0):
 							_apply_damage_from(u, o, _atk_dmg(u, [0.75, 1.0, 1.4][si], o), Color("#ff8aa0"), 0.0, false, true)
 							_apply_dot_stacks(o, "bleed", maxi(1, roundi(u["atk"] * [0.5, 0.5, 0.6][si] * 0.5)), u)   # 身后50%流血
-			"p2eq_053":   # 霰弹贝古: 扇形N发, 被8+发命中→眩晕
+			"p2eq_053":   # 霰弹贝古: 枪口大闪→40°扇形弹珠齐射, 被8+发命中→眩晕
+				var dir53: Vector2 = (_nearest_enemy(u)["pos"] - u["pos"]).normalized() if _nearest_enemy(u) != null else Vector2.RIGHT
+				_muzzle_flash(u["pos"], dir53, Color("#ffe0a0"))
+				_skill_ring(u["pos"] + dir53 * 22.0, Color(1.0, 0.85, 0.4, 0.7), 26.0)
 				var hitc: Dictionary = {}
 				for _s in range([12, 14, 18][si]):
 					var es3 := _enemies_of(u)
 					if es3.is_empty(): break
 					var o = es3[randi() % es3.size()]
+					var spr53: Vector2 = dir53.rotated(randf_range(-0.35, 0.35)) * 170.0
+					_bolt_line(u["pos"], u["pos"] + spr53, Color("#ffd27a"))
 					_apply_damage_from(u, o, _atk_dmg(u, 0.22, o), Color("#ffd07a"), 0.0, false, true)
 					hitc[o] = int(hitc.get(o, 0)) + 1
 				for o in hitc:
@@ -9231,7 +9420,9 @@ func _eq_sniper(u: Dictionary, si: int, depth: int) -> void:
 	if low == null:
 		return
 	var dir: Vector2 = (low["pos"] - u["pos"]).normalized()
-	_bolt_line(u["pos"], low["pos"], Color("#ff4444"))
+	_muzzle_flash(u["pos"], dir, Color("#ff5a5a"))
+	_laser_beam(u["pos"], low["pos"] + dir * 110.0, Color(1.0, 0.2, 0.26, 0.92), 0.05, 0.18)   # 细亮狙击曳光
+	_hit_spark(low)
 	var killed := false
 	for o in _enemies_of(u):
 		if _on_line(u["pos"], dir, o["pos"], 36.0):
@@ -9384,8 +9575,8 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 				for o in _enemies_of(u):
 					if _t < o.get("eq_target_until", 0.0):
 						o["eq_target_until"] = 0.0
-						_fire_bolt_from(u, o, _atk_dmg(u, [1.5, 3.0, 9.0][si], o) + [130, 190, 600][si], Color("#ffd07a"))
-						_apply_dot_stacks(o, "bleed", maxi(1, roundi(u["atk"] * 0.1)), u)
+						o["_mark_until"] = _t   # 靶子锁定框消失
+						_spawn_eq_bolt(u, o, _atk_dmg(u, [1.5, 3.0, 9.0][si], o) + [130, 190, 600][si], "res://assets/sprites/vfx/dart.png", Color("#ffe0b0"), true, maxi(1, roundi(u["atk"] * 0.1)))
 		u["eq_state"][iid] = stt
 
 # 龙蛋喷火龙: 沿随机有敌的朝向直线扫射 (同列友回血/敌魔伤+灼烧)
