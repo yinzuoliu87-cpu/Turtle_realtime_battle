@@ -2021,13 +2021,14 @@ func _crystal_detonate(pos2d: Vector2) -> void:
 func _eq_crystal_sweep(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false): return
 	var center: Vector2 = u["pos"]
-	var reach: float = 1500.0
+	var reach: float = 1000.0
 	var im := MeshInstance3D.new()
 	var imesh := ImmediateMesh.new()
 	im.mesh = imesh
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD   # 加色发光(水晶能量)
 	mat.vertex_color_use_as_albedo = true
 	mat.no_depth_test = true
 	im.set_meta("mat", mat)
@@ -2036,29 +2037,56 @@ func _eq_crystal_sweep(u: Dictionary, si: int) -> void:
 	var state: Dictionary = {"prev": start_a}
 	_crystal_spark(center, 1.1)
 	var tw := create_tween()
-	tw.tween_method(_crystal_sweep_step.bind(u, si, reach, state, im, imesh, mat), start_a, start_a + TAU, 1.5)
+	# 先慢后快再慢(ease-in-out): 匀速被否, 甩动有加速度
+	tw.tween_method(_crystal_sweep_step.bind(u, si, reach, state, im, imesh, mat), start_a, start_a + TAU, 1.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 	tw.tween_callback(im.queue_free)
 
 func _crystal_sweep_step(ang: float, u: Dictionary, si: int, reach: float, state: Dictionary, im: MeshInstance3D, imesh: ImmediateMesh, mat: StandardMaterial3D) -> void:
 	if not is_instance_valid(im): return
 	var center: Vector2 = u["pos"]   # 跟随携带者当前位置(非施法点定死)
 	var col := Color("#c9b0ff")
-	var tip: Vector2 = center + Vector2(cos(ang), sin(ang)) * reach
+	var c3: Vector3 = _world_pos(center, 1.0)
 	imesh.clear_surfaces()
-	imesh.surface_begin(Mesh.PRIMITIVE_LINES, mat)
-	imesh.surface_set_color(Color(1, 0.95, 1, 0.95))
-	imesh.surface_add_vertex(_world_pos(center, 1.0))
-	imesh.surface_set_color(Color(col.r, col.g, col.b, 0.14))
-	imesh.surface_add_vertex(_world_pos(tip, 1.0))
+	# 拖尾扇面: 从当前角向后0.9rad填一片渐隐水晶辉光楔形(加色发光)
+	imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat)
+	var span: float = 0.9
+	var nseg: int = 16
+	for k in range(nseg):
+		var t0: float = float(k) / float(nseg)
+		var t1: float = float(k + 1) / float(nseg)
+		var a0: float = ang - span * (1.0 - t0)
+		var a1: float = ang - span * (1.0 - t1)
+		var r0: Vector3 = _world_pos(center + Vector2(cos(a0), sin(a0)) * reach, 1.0)
+		var r1: Vector3 = _world_pos(center + Vector2(cos(a1), sin(a1)) * reach, 1.0)
+		imesh.surface_set_color(Color(col.r, col.g, col.b, 0.22)); imesh.surface_add_vertex(c3)
+		imesh.surface_set_color(Color(col.r, col.g, col.b, t0 * t0 * 0.5)); imesh.surface_add_vertex(r0)
+		imesh.surface_set_color(Color(col.r, col.g, col.b, t1 * t1 * 0.5)); imesh.surface_add_vertex(r1)
 	imesh.surface_end()
+	# 前沿亮核射线
+	var tip: Vector2 = center + Vector2(cos(ang), sin(ang)) * reach
+	imesh.surface_begin(Mesh.PRIMITIVE_LINES, mat)
+	imesh.surface_set_color(Color(1, 0.96, 1, 1.0)); imesh.surface_add_vertex(c3)
+	imesh.surface_set_color(Color(col.r, col.g, col.b, 0.3)); imesh.surface_add_vertex(_world_pos(tip, 1.0))
+	imesh.surface_end()
+	# 前沿水晶碎片(节流每3步一颗, 沿扫射拖出碎晶)
+	state["spk"] = int(state.get("spk", 0)) + 1
+	if int(state["spk"]) % 3 == 0:
+		_crystal_spark(center + Vector2(cos(ang), sin(ang)) * (reach * 0.42))
 	if u.get("alive", false):        # 携带者死亡后仅转完视觉, 不再从尸体结算伤害
 		var prev: float = float(state["prev"])
 		for o in _enemies_of(u):
 			if not o.get("alive", false): continue
 			var ea: float = atan2(float(o["pos"].y) - center.y, float(o["pos"].x) - center.x)
 			if _ang_in(prev, ang, ea):
-				_apply_damage_from(u, o, _resolve_dmg(u, float([20, 25, 30][si]), o, true), Color("#bfa8ff"), 0.0, false, true)
-				_eq_crystal_stack(u, o, si, si == 2)
+				_apply_damage_from(u, o, _resolve_dmg(u, float([40, 70, 150][si]), o, true), Color("#bfa8ff"), 0.0, false, true)
+				var steal: float = maxf(0.0, float(o["mr"])) * 0.10   # 偷取目标10%当前魔抗(真偷取:目标-X携带者+X, 永久到战场结束)
+				if steal > 0.01:
+					o["base_mr"] = float(o["base_mr"]) - steal; o["mr"] = float(o["mr"]) - steal
+					u["base_mr"] = float(u["base_mr"]) + steal; u["mr"] = float(u["mr"]) + steal
+					var samt: int = int(round(steal))
+					if samt >= 1:
+						_float_text(o["pos"] + Vector2(randf_range(-10.0, 10.0), -46.0), "魔抗-%d" % samt, Color("#c9b0ff"))
+				_eq_crystal_stack(u, o, si)
 				_crystal_spark(o["pos"])
 	state["prev"] = ang
 
@@ -8859,18 +8887,13 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 				pass
 
 # 水晶叠层 (A/B共用); splash=true(B 3★): 引爆范围扩大50%波及邻格敌
-func _eq_crystal_stack(src: Dictionary, o: Dictionary, si: int, splash: bool = false) -> void:
+func _eq_crystal_stack(src: Dictionary, o: Dictionary, si: int) -> void:
 	var lv := _add_stack(o, "p2crystal", 1, 3)
 	if lv >= 3:
 		_consume_stacks(o, "p2crystal")
 		_crystal_stack_set(o, 0)
 		_crystal_detonate(o["pos"])
 		_apply_damage_from(src, o, _resolve_dmg(src, float(o["maxHp"]) * [0.14, 0.17, 0.20][si], o, true), Color("#bfa8ff"), 0.0, false, true)
-		if splash:   # B 3★: 引爆波及邻格敌 (90码)
-			for adj in _enemies_of(src):
-				if adj != o and adj.get("alive", false) and (adj["pos"] - o["pos"]).length() <= 90.0:
-					_apply_damage_from(src, adj, _resolve_dmg(src, float(adj["maxHp"]) * [0.14, 0.17, 0.20][si], adj, true), Color("#bfa8ff"), 0.0, false, true)
-					_crystal_detonate(adj["pos"])
 	else:
 		_crystal_stack_set(o, lv)   # 更新可视层数
 
