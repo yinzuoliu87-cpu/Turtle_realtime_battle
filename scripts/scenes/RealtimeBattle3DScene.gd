@@ -1581,6 +1581,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 		_tick_baton(u, delta)
 		_tick_ice_fissure(u, delta)
 		_tick_gear(u, delta)
+		_tick_eq_intervals(u, delta)
 		_tick_anemone(u, delta)
 		_tick_dumbbell(u, delta)
 		_tick_barnacle(u, delta)
@@ -2279,6 +2280,88 @@ func _conch_transform(pos2d: Vector2) -> void:
 	tw.chain().tween_callback(col.queue_free)
 	for k in range(6):
 		_bone_speck(pos2d + Vector2(randf_range(-30, 30), randf_range(-30, 30)))
+
+const _EQ_CUSTOM_IV := {"p2eq_037": 5.0, "p2eq_038": 6.0, "p2eq_040": 6.0, "p2eq_042": 8.0, "p2eq_052": 4.0}
+func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
+	if u.get("equips", []).is_empty(): return
+	for e in u["equips"]:
+		var iid: String = str(e["id"])
+		var iv: float = float(_EQ_CUSTOM_IV.get(iid, 0.0))
+		if iv <= 0.0: continue
+		var si: int = _eq_si(int(e.get("star", 1)))
+		var stt: Dictionary = u["eq_state"].get(iid, {})
+		stt["iv_t"] = float(stt.get("iv_t", 0.0)) + delta
+		if float(stt["iv_t"]) >= iv:
+			stt["iv_t"] = float(stt["iv_t"]) - iv
+			match iid:
+				"p2eq_037": _eq_candle_tick(u, si, stt)
+				"p2eq_038": _eq_signal_tick(u, si)
+				"p2eq_040": _eq_fpga_tick(u, si)
+				"p2eq_042": _eq_ripple_tick(u, si)
+				"p2eq_052": _eq_revolver_tick(u, si, stt)
+		u["eq_state"][iid] = stt
+
+func _eq_ripple_tick(u: Dictionary, si: int) -> void:
+	var low042 = null; var lv042 := INF
+	if si == 2:
+		for o in _allies_of(u):
+			var p042: float = o["hp"] / maxf(1.0, o["maxHp"])
+			if p042 < lv042: lv042 = p042; low042 = o
+	for o in _allies_of(u):
+		var pct042: float = [0.03, 0.06, 0.10][si]
+		if si == 2 and o == low042: pct042 *= 2.0
+		_heal(o, (o["maxHp"] - o["hp"]) * pct042)
+
+func _eq_revolver_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
+	if int(stt.get("revolver_bullets", 0)) > 0:
+		var es3 := _enemies_of(u)
+		if not es3.is_empty():
+			stt["revolver_bullets"] = int(stt["revolver_bullets"]) - 1
+			var o = es3[randi() % es3.size()]
+			_fire_bolt_from(u, o, _atk_dmg(u, [3.0, 5.0, 9.0][si], o) + [150, 310, 1200][si], Color("#ffd07a"))
+
+func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
+	var ph: int = int(stt.get("candle", 0))
+	stt["candle"] = (ph + 1) % 3
+	if ph == 1:
+		var hv37: float = [20, 30, 44][si] + u["atk"] * [0.5, 0.7, 1.0][si]
+		_heal(u, hv37)
+		for a37 in _allies_of(u, false):
+			if a37["pos"].distance_to(u["pos"]) <= 120.0: _heal(a37, hv37 * 0.5)
+		_skill_ring(u["pos"], Color(1.0, 0.82, 0.45, 0.45), 52.0)
+	elif ph == 2:
+		var es37 := _enemies_of(u)
+		if not es37.is_empty():
+			var ay37: float = es37[randi() % es37.size()]["pos"].y
+			_bolt_line(Vector2(_arena_center.x - 700.0, ay37), Vector2(_arena_center.x + 700.0, ay37), Color("#ff7a33"))
+			for o in es37:
+				if absf(o["pos"].y - ay37) <= 62.0:
+					_apply_damage_from(u, o, [20, 30, 44][si] + int(u["atk"] * [0.5, 0.7, 1.0][si]), Color("#ff7a33"), 0.0, true, true)
+					_apply_dot_stacks(o, "burn", [20, 30, 40][si], u)
+					_skill_ring(o["pos"], Color(1.0, 0.5, 0.15, 0.55), 46.0)
+
+func _eq_signal_tick(u: Dictionary, si: int) -> void:
+	var lo: Array = [0.10, 0.25, 0.70]; var hi: Array = [0.16, 0.40, 0.80]
+	var amp: float = randf_range(lo[si], hi[si])
+	var found38 := false
+	for b in u["buffs"]:
+		if str(b.get("tag", "")) == "signal":
+			b["amount"] = maxf(float(b["amount"]), amp); b["until"] = _t + 3.5; found38 = true; amp = float(b["amount"]); break
+	if not found38:
+		u["buffs"].append({"stat": "atk", "amount": amp, "pct": true, "until": _t + 3.5, "tag": "signal"})
+	_recalc_stats(u)
+	_skill_ring(u["pos"], Color(1.0, 0.78, 0.28, 0.5), 48.0)
+	_float_text(u["pos"] + Vector2(0, -58), "增伤+%d%%" % int(amp * 100.0), Color("#ffcf5a"))
+
+func _eq_fpga_tick(u: Dictionary, si: int) -> void:
+	_skill_ring(u["pos"], Color(0.4, 0.9, 1.0, 0.42), 46.0)
+	for _k in range([1, 2, 4][si]):
+		match randi() % 4:
+			0: _heal(u, u["maxHp"] * 0.05); u["base_def"] += 2; u["base_mr"] += 2; _recalc_stats(u)
+			1: u["base_atk"] += 5; u["lifesteal"] += 0.04; _recalc_stats(u)
+			2: _buff(u, "atk", 0.15, true, 3.5)
+			3: _buff(u, "def", 0.25, true, 3.5)
+
 
 func _tick_gear(u: Dictionary, delta: float) -> void:   # 黄铜齿轮035: 每6秒+1/2/3齿轮层(战斗结束结算折币, 死亡不销毁)
 	if u.get("equips", []).is_empty(): return
@@ -9273,17 +9356,8 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 				pass
 			"p2eq_036":   # 温泉蛋: 孵化进度, 满100→全队均摊护盾(一次)
 				_egg_add_progress(u, 5.0)   # 每周期+5 (其余源: 敌死+10/己死+15/造成×0.1/承受×0.1)
-			"p2eq_042":   # 涟漪药剂: 每周期全队回已损血 3/6/10%; 3★生命最低友军双倍
-				var low042 = null; var lv042 := INF
-				if si == 2:
-					for o in _allies_of(u):
-						var p042: float = o["hp"] / maxf(1.0, o["maxHp"])
-						if p042 < lv042: lv042 = p042; low042 = o
-				for o in _allies_of(u):
-					var pct042: float = [0.03, 0.06, 0.10][si]
-					if si == 2 and o == low042:
-						pct042 *= 2.0
-					_heal(o, (o["maxHp"] - o["hp"]) * pct042)
+			"p2eq_042":   # 移到 _tick_eq_intervals(自定义间隔)
+				pass
 			"p2eq_043":   # 海浪护符: 每周期+1巨浪层, 满→横排扫敌我
 				stt["wave"] = int(stt.get("wave", 0)) + 1
 				if int(stt["wave"]) >= [3, 2, 2][si]:
@@ -9298,53 +9372,14 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 						if absf(o["pos"].y - ay43) > 70.0: continue
 						_apply_damage_from(u, o, [60, 110, 200][si], Color("#9be7ff"), 0.0, true, true)
 						o["base_def"] = maxf(0.0, o["base_def"] - [2, 3, 5][si]); o["base_mr"] = maxf(0.0, o["base_mr"] - [2, 3, 5][si]); _recalc_stats(o)
-			"p2eq_052":   # 左轮: 每周期向随机敌射1发, 子弹0停
-				if int(stt.get("revolver_bullets", 0)) > 0:
-					var es3 := _enemies_of(u)
-					if not es3.is_empty():
-						stt["revolver_bullets"] = int(stt["revolver_bullets"]) - 1
-						var o = es3[randi() % es3.size()]
-						_fire_bolt_from(u, o, _atk_dmg(u, [3.0, 5.0, 9.0][si], o) + [150, 310, 1200][si], Color("#ffd07a"))
-			"p2eq_037":   # 蛋糕蜡烛: 3阶段循环
-				var ph: int = int(stt.get("candle", 0))
-				stt["candle"] = (ph + 1) % 3
-				if ph == 1:   # 微弱: 回血
-					var hv37: float = [20, 30, 44][si] + u["atk"] * [0.5, 0.7, 1.0][si]
-					_heal(u, hv37)
-					for a37 in _allies_of(u, false):
-						if a37["pos"].distance_to(u["pos"]) <= 120.0:
-							_heal(a37, hv37 * 0.5)
-					_skill_ring(u["pos"], Color(1.0, 0.82, 0.45, 0.45), 52.0)
-				elif ph == 2:   # 燃烧: 随机敌横排魔伤+灼烧
-					var es37 := _enemies_of(u)
-					if not es37.is_empty():
-						var ay37: float = es37[randi() % es37.size()]["pos"].y
-						_bolt_line(Vector2(_arena_center.x - 700.0, ay37), Vector2(_arena_center.x + 700.0, ay37), Color("#ff7a33"))
-						for o in es37:
-							if absf(o["pos"].y - ay37) <= 62.0:
-								_apply_damage_from(u, o, [20, 30, 44][si] + int(u["atk"] * [0.5, 0.7, 1.0][si]), Color("#ff7a33"), 0.0, true, true)
-								_apply_dot_stacks(o, "burn", [20, 30, 40][si], u)
-								_skill_ring(o["pos"], Color(1.0, 0.5, 0.15, 0.55), 46.0)
-			"p2eq_038":   # 信号放大器: 每周期刷新本回合增伤buff
-				var lo: Array = [0.10, 0.25, 0.70]; var hi: Array = [0.16, 0.40, 0.80]
-				var amp: float = randf_range(lo[si], hi[si])
-				var found38 := false
-				for b in u["buffs"]:
-					if str(b.get("tag", "")) == "signal":
-						b["amount"] = maxf(float(b["amount"]), amp); b["until"] = _t + EQ_TICK + 0.1; found38 = true; amp = float(b["amount"]); break
-				if not found38:
-					u["buffs"].append({"stat": "atk", "amount": amp, "pct": true, "until": _t + EQ_TICK + 0.1, "tag": "signal"})
-				_recalc_stats(u)
-				_skill_ring(u["pos"], Color(1.0, 0.78, 0.28, 0.5), 48.0)
-				_float_text(u["pos"] + Vector2(0, -58), "增伤+%d%%" % int(amp * 100.0), Color("#ffcf5a"))
-			"p2eq_040":   # FPGA板: 每周期抽N个状态当回合生效
-				_skill_ring(u["pos"], Color(0.4, 0.9, 1.0, 0.42), 46.0)
-				for _k in range([1, 2, 4][si]):
-					match randi() % 4:
-						0: _heal(u, u["maxHp"] * 0.05); u["base_def"] += 2; u["base_mr"] += 2; _recalc_stats(u)
-						1: u["base_atk"] += 5; u["lifesteal"] += 0.04; _recalc_stats(u)
-						2: _buff(u, "atk", 0.15, true, EQ_TICK + 0.1)
-						3: _buff(u, "def", 0.25, true, EQ_TICK + 0.1)
+			"p2eq_052":   # 移到 _tick_eq_intervals(自定义间隔)
+				pass
+			"p2eq_037":   # 移到 _tick_eq_intervals(自定义间隔)
+				pass
+			"p2eq_038":   # 移到 _tick_eq_intervals(自定义间隔)
+				pass
+			"p2eq_040":   # 移到 _tick_eq_intervals(自定义间隔)
+				pass
 			"p2eq_056":   # 飞镖: 每周期向所有带"靶子"(被击飞)的敌各射1镖+流血
 				for o in _enemies_of(u):
 					if _t < o.get("eq_target_until", 0.0):
