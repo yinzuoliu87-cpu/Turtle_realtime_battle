@@ -8964,7 +8964,7 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 		match iid:
 			"p2eq_033":   # 复活海螺: 彻底阵亡→原位变形成小虫(通用打法/攻速0.65) + 亡灵变形演出
 				_conch_transform(u["pos"])
-				var worm = _spawn_summon(u, "worm", [150.0, 200.0, 300.0][si] * HP_MULT * _lvl_mult_for(u), [20.0, 30.0, 40.0][si] * _lvl_mult_for(u), {"label": "海螺虫", "spr_id": "conch-worm", "col_size": 30.0, "hp_w": 22.0})
+				var worm = _spawn_summon(u, "worm", [400.0, 900.0, 5000.0][si], [30.0, 55.0, 200.0][si], {"label": "海螺虫", "spr_id": "conch-worm", "col_size": 30.0, "hp_w": 22.0})   # 小虫只有星级无等级(去_lvl_mult), 数值即实际
 				if worm != null:
 					worm["pos"] = u["pos"]
 					worm["atk_interval"] = 1.0 / 0.65
