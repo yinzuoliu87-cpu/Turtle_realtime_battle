@@ -1997,25 +1997,29 @@ func _unfollow_vfx(spr) -> void:
 
 # 水晶引爆: 紫辉爆闪 + 环 + 碎片四射
 func _crystal_detonate(pos2d: Vector2) -> void:
-	_skill_ring(pos2d, Color(0.79, 0.6, 1.0, 0.7), 34.0)
-	_shake(0.05)
+	_shake(0.1)                                              # 引爆=大事件, 加大震屏
+	_skill_ring(pos2d, Color(0.9, 0.72, 1.0, 0.88), 26.0)   # 内爆环
+	_skill_ring(pos2d, Color(0.68, 0.5, 1.0, 0.45), 74.0)   # 冲击波外环
 	var glow := _make_fire_glow_tex()
+	# 中心白紫爆闪(更亮更大)
 	var fl := Sprite3D.new()
 	fl.texture = glow
-	fl.modulate = Color(0.82, 0.6, 1.0, 0.85)
+	fl.modulate = Color(0.96, 0.86, 1.0, 0.98)
 	fl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	fl.shaded = false
 	fl.transparent = true
-	fl.pixel_size = (40.0 * WS) / float(maxi(1, glow.get_width()))
+	fl.pixel_size = (34.0 * WS) / float(maxi(1, glow.get_width()))
 	fl.position = _world_pos(pos2d, 0.9)
 	_world.add_child(fl)
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(fl, "pixel_size", (95.0 * WS) / float(maxi(1, glow.get_width())), 0.3)
-	tw.tween_property(fl, "modulate:a", 0.0, 0.3)
+	tw.tween_property(fl, "pixel_size", (130.0 * WS) / float(maxi(1, glow.get_width())), 0.28)
+	tw.tween_property(fl, "modulate:a", 0.0, 0.28)
 	tw.chain().tween_callback(fl.queue_free)
-	for k in range(6):
-		_crystal_spark(pos2d + Vector2(cos(k * PI / 3.0), sin(k * PI / 3.0)) * randf_range(20.0, 45.0))
+	# 碎晶四射(11片环形爆开)
+	for k in range(11):
+		var a: float = k * TAU / 11.0 + randf_range(-0.2, 0.2)
+		_crystal_spark(pos2d + Vector2(cos(a), sin(a)) * randf_range(22.0, 58.0))
 
 # 031: 水晶射线360度扫一圈(1.5s), 射线扫到敌人即结算魔法伤+叠层
 func _eq_crystal_sweep(u: Dictionary, si: int) -> void:
@@ -3910,6 +3914,7 @@ func _make_num_label(text: String, col: Color, fsize: int) -> Label:
 
 var _float_dmg_window: Dictionary = {}    # 伤害飘字按类型排行错开 (1:1 回合制 _float_row_offset)
 var _float_nd_window: Dictionary = {}     # 非伤害(治疗/盾)紧凑堆叠
+var _float_merge: Dictionary = {}         # 同目标+同类型+同帧伤害合并成一个数(奥恩式: 跳两者之和) key=posx_posy_type→{lbl,amount,t,crit}
 # 同时跳出的飘字按规矩错开行: 伤害红0/蓝1/白2 紧凑×22(缺色不留空, 220ms窗口); 非伤害到达序堆叠(100ms)
 const FLOAT_ROW_GAP := 15.0   # 同帧多数字每排间距(屏幕px); 实时版定值(比回合制22更贴近), 改这里=全局生效
 func _float_row_offset(key: String, kind: String, dmg_type: String, fsize: float = 18.0) -> float:
@@ -3945,7 +3950,21 @@ func _float_text(pos2d: Vector2, text: String, col: Color, is_crit: bool = false
 	var amount := absi(text.to_int()) if text.is_valid_int() else 0
 	var fsize := _float_size(amount, is_crit) if amount > 0 else (22 if is_crit else 18)
 	var is_dmg_crit := is_crit and amount > 0 and kind == "damage"
+	# 奥恩式合并: 同目标+同类型+同帧的伤害 → 累加到已在跳的那个数字(跳两者之和), 不新建
+	var _mk := ""
+	if kind == "damage" and amount > 0:
+		_mk = "%d_%d_%s" % [roundi(pos2d.x), roundi(pos2d.y), dmg_type]
+		var _m: Dictionary = _float_merge.get(_mk, {})
+		if not _m.is_empty() and _t - float(_m.get("t", -9.0)) < 0.04 and is_instance_valid(_m.get("lbl", null)):
+			var _na: int = int(_m["amount"]) + amount
+			_m["amount"] = _na; _m["t"] = _t
+			var _l: Label = _m["lbl"]
+			_l.text = str(_na)
+			_l.add_theme_font_size_override("font_size", _float_size(_na, bool(_m.get("crit", false))))
+			_float_merge[_mk] = _m
+			return
 	var fly: Control
+	var num_lbl: Label = null
 	if is_dmg_crit:
 		# 暴击伤害: 数字前嵌 crit 图标 (1:1 回合制 .floating-num crit 内嵌 20×20)
 		var box := HBoxContainer.new()
@@ -3957,11 +3976,15 @@ func _float_text(pos2d: Vector2, text: String, col: Color, is_crit: bool = false
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		box.add_child(icon)
-		box.add_child(_make_num_label(text, col, fsize))
+		num_lbl = _make_num_label(text, col, fsize)
+		box.add_child(num_lbl)
 		fly = box
 	else:
-		fly = _make_num_label(text, col, fsize)
+		num_lbl = _make_num_label(text, col, fsize)
+		fly = num_lbl
 	_ui_layer.add_child(fly)
+	if _mk != "" and num_lbl != null:   # 注册本帧该目标该类型的数字, 供同帧后续伤害合并
+		_float_merge[_mk] = {"lbl": num_lbl, "amount": amount, "t": _t, "crit": is_dmg_crit}
 	# 居中起跳 + pivot 居中 (pop 绕中心, 1:1 PoC origin 0.5)
 	var tsz := _float_num_font().get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fsize)
 	var unit_sz := Vector2(20.0 + 1.0 + tsz.x, maxf(20.0, tsz.y)) if is_dmg_crit else tsz
