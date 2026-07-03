@@ -8790,7 +8790,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 					if dir2 == Vector2.ZERO: dir2 = Vector2.RIGHT
 					for _seg in range([2, 2, 3][si]):
 						var twc := create_tween()
-						twc.tween_interval(float(_seg) * 0.16)
+						twc.tween_interval(float(_seg) * 0.2)   # 施加水晶间隔0.2s(用户)
 						twc.tween_callback(_crystal_line_seg.bind(u, si, dir2))
 			"p2eq_031":   # 迷你水晶球B: 施法→水晶射线360度扫一圈(1.5s), 扫到即魔法伤+1层水晶(3★引爆波及邻格)
 				_eq_crystal_sweep(u, si)
