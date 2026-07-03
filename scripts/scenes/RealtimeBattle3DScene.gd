@@ -1378,6 +1378,8 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	# DoT/buff到期/累积条/周期被动 (1:1 2D _tick_effects)
 	_tick_effects(u, delta)
 	_heal_flush(u)   # LoL式治疗累加器: 攒一波回血合并成一个绿字(满血=0)
+	if _t < float(u.get("candle_hot_until", 0.0)):   # 蜡烛光圈037: 圈内逐渐回血(HoT)
+		_heal(u, float(u.get("candle_hot_rate", 0.0)) * delta, true)
 	if not u["alive"]:
 		return
 	if u.get("_skele_pending", false):                    # 032: 登场召唤亡灵骷髅(首帧)
@@ -2334,22 +2336,42 @@ func _eq_revolver_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 	var ph: int = int(stt.get("candle", 0))
 	stt["candle"] = (ph + 1) % 3
-	if ph == 1:
+	if ph == 1:   # 微弱: 250码蜡烛光圈, 圈内友军5s逐渐回血(携带者总量X, 圈内其他各X/2)
 		var hv37: float = [20, 30, 44][si] + u["atk"] * [0.5, 0.7, 1.0][si]
-		_heal(u, hv37)
+		_candle_circle(u["pos"], 250.0, 5.0)
+		u["candle_hot_rate"] = hv37 / 5.0
+		u["candle_hot_until"] = _t + 5.0
 		for a37 in _allies_of(u, false):
-			if a37["pos"].distance_to(u["pos"]) <= 120.0: _heal(a37, hv37 * 0.5)
-		_skill_ring(u["pos"], Color(1.0, 0.82, 0.45, 0.45), 52.0)
-	elif ph == 2:
-		var es37 := _enemies_of(u)
-		if not es37.is_empty():
-			var ay37: float = es37[randi() % es37.size()]["pos"].y
-			_bolt_line(Vector2(_arena_center.x - 700.0, ay37), Vector2(_arena_center.x + 700.0, ay37), Color("#ff7a33"))
-			for o in es37:
-				if absf(o["pos"].y - ay37) <= 62.0:
-					_apply_damage_from(u, o, [20, 30, 44][si] + int(u["atk"] * [0.5, 0.7, 1.0][si]), Color("#ff7a33"), 0.0, true, true)
-					_apply_dot_stacks(o, "burn", [20, 30, 40][si], u)
-					_skill_ring(o["pos"], Color(1.0, 0.5, 0.15, 0.55), 46.0)
+			if a37["pos"].distance_to(u["pos"]) <= 250.0:
+				a37["candle_hot_rate"] = (hv37 * 0.5) / 5.0
+				a37["candle_hot_until"] = _t + 5.0
+	elif ph == 2:   # 燃烧: 原地爆炸一次, 499码内敌各受魔法伤+灼烧
+		_fire_explosion(u["pos"])
+		_skill_ring(u["pos"], Color(1.0, 0.46, 0.13, 0.7), 300.0)
+		_shake(0.05)
+		var dmg37: int = [20, 30, 44][si] + int(u["atk"] * [0.5, 0.7, 1.0][si])
+		for o in _enemies_of(u):
+			if o["pos"].distance_to(u["pos"]) <= 499.0:
+				_apply_damage_from(u, o, dmg37, Color("#ff7a33"), 0.0, true, true)
+				_apply_dot_stacks(o, "burn", [20, 30, 40][si], u)
+				_skill_ring(o["pos"], Color(1.0, 0.5, 0.15, 0.55), 42.0)
+
+# 蜡烛光圈(037微弱): 250码暖金贴地光环, 缓慢淡出标示回血区
+func _candle_circle(pos2d: Vector2, radius_px: float, dur: float) -> void:
+	var r := Sprite3D.new()
+	r.texture = _make_ring_texture(Color(1.0, 0.85, 0.5, 1.0))
+	r.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	r.axis = Vector3.AXIS_Y
+	r.shaded = false; r.transparent = true
+	r.modulate = Color(1.0, 0.82, 0.45, 0.0)
+	r.position = _world_pos(pos2d, 0.05)
+	r.pixel_size = (radius_px * 2.0 * WS) / 96.0
+	_world.add_child(r)
+	var tw := create_tween()
+	tw.tween_property(r, "modulate:a", 0.55, 0.4)
+	tw.tween_property(r, "modulate:a", 0.12, dur * 0.6)
+	tw.tween_property(r, "modulate:a", 0.0, dur * 0.4)
+	tw.tween_callback(r.queue_free)
 
 func _eq_signal_tick(u: Dictionary, si: int) -> void:
 	var lo: Array = [0.10, 0.25, 0.70]; var hi: Array = [0.16, 0.40, 0.80]
@@ -2361,13 +2383,35 @@ func _eq_signal_tick(u: Dictionary, si: int) -> void:
 	if not found38:
 		u["buffs"].append({"stat": "atk", "amount": amp, "pct": true, "until": _t + 3.5, "tag": "signal"})
 	_recalc_stats(u)
-	_skill_ring(u["pos"], Color(1.0, 0.78, 0.28, 0.5), 48.0)
+	_signal_pulse(u["pos"])
 	_float_text(u["pos"] + Vector2(0, -58), "增伤+%d%%" % int(amp * 100.0), Color("#ffcf5a"))
+
+# 信号脉冲(038): 携带者身上3圈向外扩张的青蓝同心波环(信号发射感)
+func _signal_pulse(pos2d: Vector2) -> void:
+	for k in range(3):
+		var r := Sprite3D.new()
+		r.texture = _make_ring_texture(Color(0.35, 0.85, 1.0, 1.0))
+		r.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		r.shaded = false; r.transparent = true
+		r.modulate = Color(0.35, 0.85, 1.0, 0.85 - float(k) * 0.18)
+		r.position = _world_pos(pos2d, 0.95)
+		r.pixel_size = 0.004 + float(k) * 0.008
+		_world.add_child(r)
+		var tw := create_tween(); tw.set_parallel(true)
+		tw.tween_property(r, "pixel_size", 0.032 + float(k) * 0.008, 0.5).set_ease(Tween.EASE_OUT)
+		tw.tween_property(r, "modulate:a", 0.0, 0.5)
+		tw.chain().tween_callback(r.queue_free)
 
 func _eq_fpga_tick(u: Dictionary, si: int) -> void:
 	_skill_ring(u["pos"], Color(0.4, 0.9, 1.0, 0.42), 46.0)
-	for _k in range([1, 2, 4][si]):
-		match randi() % 4:
+	var codes := ["00", "01", "10", "11"]
+	var ccols := [Color("#7ad0ff"), Color("#a0ff8a"), Color("#ffd05a"), Color("#ff8ad0")]
+	var n: int = [1, 2, 4][si]
+	for k in range(n):
+		var pick: int = randi() % 4
+		var xoff: float = (float(k) - float(n - 1) / 2.0) * 34.0
+		_float_text(u["pos"] + Vector2(xoff, -72.0), codes[pick], ccols[pick])   # 二进制码头顶跳
+		match pick:
 			0: _heal(u, u["maxHp"] * 0.05); u["base_def"] += 2; u["base_mr"] += 2; _recalc_stats(u)
 			1: u["base_atk"] += 5; u["lifesteal"] += 0.04; _recalc_stats(u)
 			2: _buff(u, "atk", 0.15, true, 3.5)
