@@ -1570,6 +1570,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 		_tick_thunder(u, delta)
 		_tick_baton(u, delta)
 		_tick_ice_fissure(u, delta)
+		_tick_gear(u, delta)
 		_tick_anemone(u, delta)
 		_tick_dumbbell(u, delta)
 		_tick_barnacle(u, delta)
@@ -2179,6 +2180,18 @@ func _conch_transform(pos2d: Vector2) -> void:
 	tw.chain().tween_callback(col.queue_free)
 	for k in range(6):
 		_bone_speck(pos2d + Vector2(randf_range(-30, 30), randf_range(-30, 30)))
+
+func _tick_gear(u: Dictionary, delta: float) -> void:   # 黄铜齿轮035: 每6秒+1/2/3齿轮层(战斗结束结算折币, 死亡不销毁)
+	if u.get("equips", []).is_empty(): return
+	for e in u["equips"]:
+		if str(e["id"]) != "p2eq_035": continue
+		var si: int = _eq_si(int(e.get("star", 1)))
+		var stt: Dictionary = u["eq_state"].get("p2eq_035", {})
+		stt["gear_t"] = float(stt.get("gear_t", 0.0)) + delta
+		if float(stt["gear_t"]) >= 6.0:
+			stt["gear_t"] = float(stt["gear_t"]) - 6.0
+			stt["gears"] = int(stt.get("gears", 0)) + [1, 2, 3][si]
+		u["eq_state"]["p2eq_035"] = stt
 
 func _tick_shell(u: Dictionary, delta: float) -> void:   # 守护贝壳p2eq_018: 每8秒自回(30/45/60+5/9/15%maxHP)生命(受治疗增幅); 每件独立(用户2026-07-02, 原2.5s)
 	if u.get("equips", []).is_empty(): return
@@ -7222,8 +7235,19 @@ func _check_end() -> void:
 	if left_alive == 0 or right_alive == 0:
 		_over = true
 		var won: bool = right_alive == 0
+		_settle_gears()            # 黄铜齿轮035: 战斗结束→左队每层齿轮折2深海币(死不销毁)
 		_settle_season(won)        # 结果喂赛季 (命/币/胜场/XP/ghost), 守卫一次性
 		_show_banner(won)
+
+func _settle_gears() -> void:   # 黄铜齿轮035: 战斗结束结算, 左队所有单位齿轮层×2深海币
+	var gs = get_node_or_null("/root/GameState")
+	if gs == null or gs.get("meta_deepsea_coins") == null: return
+	var total := 0
+	for u in _units:
+		if str(u.get("side", "")) == "left":
+			total += int((u.get("eq_state", {}) as Dictionary).get("p2eq_035", {}).get("gears", 0))
+	if total > 0:
+		gs.set("meta_deepsea_coins", int(gs.get("meta_deepsea_coins")) + total * 2)
 
 # 赛季结算 (1:1 搬自 2D RealtimeBattleScene._settle_season): 闭环把胜负喂回 GameState 养成
 func _settle_season(won: bool) -> void:
@@ -8978,12 +9002,8 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 					worm["eq_state"] = {}; worm["equips"] = []
 					if si == 2:   # 3★: 标记每周期分裂
 						worm["worm_split"] = true
-			"p2eq_035":   # 黄铜齿轮: 死亡→每层折2深海币 (仅玩家左队计入)
-				var gears: int = int(stt.get("gears", 0))
-				if gears > 0 and u["side"] == "left":
-					var gs = get_node_or_null("/root/GameState")
-					if gs != null and gs.get("meta_deepsea_coins") != null:
-						gs.set("meta_deepsea_coins", int(gs.get("meta_deepsea_coins")) + gears * 2)
+			"p2eq_035":   # 黄铜齿轮: 死亡不销毁不结算(改战斗结束 _settle_gears 统一折币)
+				pass
 	# 左轮052: 任何敌人阵亡 → 对方(u的敌方)持左轮的存活单位 +1发子弹 (上限6)
 	for o in _units:
 		if o["alive"] and o["side"] != u["side"]:
@@ -9055,8 +9075,8 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 				pass
 			"p2eq_027":   # 电棍: 移到on_cast(施法后电击, 用户描述); 周期tick不处理
 				pass
-			"p2eq_035":   # 黄铜齿轮: 每周期+N层
-				stt["gears"] = int(stt.get("gears", 0)) + [1, 2, 3][si]
+			"p2eq_035":   # 黄铜齿轮: 齿轮层改每6s(_tick_gear), 周期tick不处理
+				pass
 			"p2eq_034":   # 玩偶小熊: 移到每帧 _tick_doll(4s派小熊 + 满层蓄力召大熊); 周期tick不处理
 				pass
 			"p2eq_036":   # 温泉蛋: 孵化进度, 满100→全队均摊护盾(一次)
