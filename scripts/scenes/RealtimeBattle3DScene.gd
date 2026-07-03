@@ -3984,6 +3984,7 @@ func _spawn_eq_bolt(src: Dictionary, tgt: Dictionary, dmg: int, tex_path: String
 
 # 激光束: a→b 一道立起来的发光带(叠加混合), 快速淡出. 用于激光手枪/狙击曳光
 func _laser_beam(a2d: Vector2, b2d: Vector2, col: Color, half_w: float = 0.16, dur: float = 0.2, h: float = 1.0) -> void:
+	# 立起的加法混合三角带(a→b), 顶点色驱动 albedo + 淡出(与 _bolt_line 同一顶点色渲染路径)
 	var wa := _world_pos(a2d, h)
 	var wb := _world_pos(b2d, h)
 	var up := Vector3(0.0, half_w, 0.0)
@@ -3995,10 +3996,10 @@ func _laser_beam(a2d: Vector2, b2d: Vector2, col: Color, half_w: float = 0.16, d
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	mat.albedo_color = col
+	mat.vertex_color_use_as_albedo = true
 	imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat)
 	for v in [wa - up, wa + up, wb + up, wa - up, wb + up, wb - up]:
-		imesh.surface_add_vertex(v)
+		imesh.surface_set_color(col); imesh.surface_add_vertex(v)
 	imesh.surface_end()
 	_world.add_child(im)
 	var tw := create_tween()
