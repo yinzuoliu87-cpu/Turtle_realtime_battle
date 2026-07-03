@@ -932,7 +932,7 @@ func _make_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 		# 节点引用
 		"sprite": spr, "shadow": shadow, "ring": ring, "shadow_base_scale": SHADOW_BASE,
 		"contact": contact, "contact_base_scale": CONTACT_BASE,
-		"bar_root": bar["root"], "hp_bar": bar["hp_bar"], "en_fill": bar["en"],
+		"bar_root": bar["root"], "hp_bar": bar["hp_bar"], "en_fill": bar["en"], "level_badge": bar.get("level_badge", null),
 		"spr_base_offy": spr.offset.y,
 		# 立绘动画态 (idle sprite-sheet 循环 + attack/hurt/death 动作覆盖一次) ----
 		"grounded_mat": grounded_mat,       # 接地 shader 材质 (设 frame uniform 切帧)
@@ -6312,6 +6312,12 @@ func _egg_level_up_vfx(u: Dictionary, total_lvl: int) -> void:   # 温泉蛋升�
 		var a: float = float(k) * TAU / 5.0
 		_gold_chunk_erupt(u["pos"] + Vector2(cos(a), sin(a)) * randf_range(34.0, 50.0))
 
+# 统领显示等级 = 基础等级 + 温泉蛋036临时孵化等级(egg_levels), 用于等级框实时跳字
+func _effective_level(u: Dictionary) -> int:
+	var lv: int = int(u.get("level", 1))
+	var st = u.get("eq_state", {}).get("p2eq_036", {})
+	return lv + int(st.get("egg_levels", 0))
+
 func _egg_add_progress(u: Dictionary, amt: float) -> void:   # 温泉蛋(036): 累积孵化进度→每100+1临时等级(线性+5%基础+攻速2%/级,同统领,上限+3)→孵满(+3)全队均摊护盾一次
 	if amt <= 0.0 or not u.get("has_egg", false) or not u.get("alive", false): return
 	var stt: Dictionary = u["eq_state"].get("p2eq_036", {})
@@ -7141,7 +7147,7 @@ func _spawn_summon(owner: Dictionary, kind: String, hp: float, atk: float, behav
 		"equips": [], "eq_state": {}, "hp50_fired": false,
 		# 节点引用
 		"sprite": spr, "shadow": shadow, "ring": null, "shadow_base_scale": SHADOW_BASE * 0.6,
-		"bar_root": bar["root"], "hp_bar": bar["hp_bar"], "en_fill": bar["en"],
+		"bar_root": bar["root"], "hp_bar": bar["hp_bar"], "en_fill": bar["en"], "level_badge": bar.get("level_badge", null),
 		"spr_base_offy": spr.offset.y,
 		# 立绘动画态 (召唤体若有 sheet 也循环 idle) ----
 		"grounded_mat": su_grounded,
@@ -7822,6 +7828,9 @@ func _update_overlay() -> void:
 			u["_stoneDefGained"] = float(u.get("base_def", 0.0)) - float(u.get("stone_init_def", u.get("base_def", 0.0)))
 			u["_initDef"] = float(u.get("stone_init_def", u.get("base_def", 0.0)))
 			hb.update_state(u)
+			var lvb = u.get("level_badge", null)   # 036温泉蛋临时升级→等级框数字实时跳
+			if lvb != null and is_instance_valid(lvb) and lvb.get_child_count() > 0:
+				(lvb.get_child(0) as Label).text = str(_effective_level(u))
 		# 龟能条 (实时资源; 召唤体的 en_fill 已 hide)
 		var enf = u.get("en_fill", null)
 		if enf != null and is_instance_valid(enf) and enf.visible:
@@ -10216,6 +10225,7 @@ func _make_team_frame(u: Dictionary) -> Control:
 	var lv_badge := _make_mini_lv_badge(int(u.get("level", 1)))
 	if lv_badge != null:
 		top.add_child(lv_badge)
+	u["panel_lv_badge"] = lv_badge
 	var nm := Label.new()
 	nm.text = str(u.get("name", u.get("id", "")))
 	nm.add_theme_font_size_override("font_size", 12)
@@ -10356,6 +10366,9 @@ func _update_team_panels() -> void:
 		var fr = u.get("panel_frame", null)
 		if fr == null or not is_instance_valid(fr):
 			continue
+		var plb = u.get("panel_lv_badge", null)   # 面板等级框也随036临时等级跳
+		if plb != null and is_instance_valid(plb) and plb.get_child_count() > 0:
+			(plb.get_child(0) as Label).text = str(_effective_level(u))
 		var fill = u.get("panel_hp_fill", null)
 		if fill != null and is_instance_valid(fill):
 			var maxhp: float = maxf(1.0, float(u.get("maxHp", 1.0)))
