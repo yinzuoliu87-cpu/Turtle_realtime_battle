@@ -7603,6 +7603,61 @@ func _spawn_bamboo_arrow(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 		"bamboo": true,
 	})
 
+# 娜美式水浪(海浪护符043): 前摇蓄浪 → 巨大水墙沿一横排推过去横扫敌我, 逐单位在浪到达其x时触发反馈
+func _eq_water_wave(u: Dictionary, si: int) -> void:
+	var poolw: Array = _allies_of(u) + _enemies_of(u)
+	if poolw.is_empty(): return
+	var ayw: float = poolw[randi() % poolw.size()]["pos"].y
+	var leftx: float = _arena_center.x - 760.0
+	var rightx: float = _arena_center.x + 760.0
+	var to_right: bool = u["pos"].x <= _arena_center.x
+	var startx: float = leftx if to_right else rightx
+	var endx: float = rightx if to_right else leftx
+	var windup: float = 0.34
+	var travel: float = 0.6
+	_anticipate(u)
+	_skill_ring(u["pos"], Color(0.4, 0.85, 1.0, 0.6), 62.0)
+	_spawn_water_wall(Vector2(startx, ayw), Vector2(endx, ayw), windup, travel)
+	var span: float = maxf(1.0, absf(endx - startx))
+	for o in _allies_of(u):
+		if absf(o["pos"].y - ayw) > 70.0: continue
+		var oo: Dictionary = o
+		var d: float = windup + absf(o["pos"].x - startx) / span * travel
+		var fn := func():
+			if not oo.get("alive", false): return
+			_grant_shield(oo, [40.0, 95.0, 120.0][si])
+			oo["base_def"] += [2, 3, 5][si]; oo["base_mr"] += [2, 3, 5][si]; _recalc_stats(oo)
+			_skill_ring(oo["pos"], Color(0.5, 0.92, 1.0, 0.6), 40.0)
+		_pending_shots.append({"delay": d, "fn": fn})
+	for o in _enemies_of(u):
+		if absf(o["pos"].y - ayw) > 70.0: continue
+		var oo2: Dictionary = o
+		var d2: float = windup + absf(o["pos"].x - startx) / span * travel
+		var fn2 := func():
+			if not oo2.get("alive", false): return
+			_apply_damage_from(u, oo2, [60, 110, 200][si], Color("#9be7ff"), 0.0, true, true)
+			oo2["base_def"] = maxf(0.0, oo2["base_def"] - [2, 3, 5][si]); oo2["base_mr"] = maxf(0.0, oo2["base_mr"] - [2, 3, 5][si]); _recalc_stats(oo2)
+			_skill_ring(oo2["pos"], Color(0.4, 0.8, 1.0, 0.7), 46.0)
+			_hit_spark(oo2)
+		_pending_shots.append({"delay": d2, "fn": fn2})
+
+func _spawn_water_wall(from2d: Vector2, to2d: Vector2, windup: float, travel: float) -> void:
+	var p := Sprite3D.new()
+	p.texture = load("res://assets/sprites/vfx/water-wave.png")
+	p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	p.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+	p.shaded = false; p.transparent = true
+	p.pixel_size = 1.0 / 34.0
+	p.flip_h = from2d.x > to2d.x
+	p.modulate = Color(1, 1, 1, 0)
+	p.position = _world_pos(from2d, 1.3)
+	_world.add_child(p)
+	var tw := create_tween()
+	tw.tween_property(p, "modulate:a", 0.95, windup)
+	tw.tween_property(p, "position", _world_pos(to2d, 1.3), travel)
+	tw.tween_property(p, "modulate:a", 0.0, 0.18)
+	tw.tween_callback(p.queue_free)
+
 # 出招预备(缩)+挥出(伸): 主动技/普攻前摇后摇 (anticipation + follow-through)
 func _anticipate(u: Dictionary) -> void:
 	if u == null or not u.get("alive", false):
@@ -9689,16 +9744,7 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 				stt["wave"] = int(stt.get("wave", 0)) + 1
 				if int(stt["wave"]) >= [3, 2, 2][si]:
 					stt["wave"] = 0
-					var pool43: Array = _allies_of(u) + _enemies_of(u)
-					var ay43: float = pool43[randi() % pool43.size()]["pos"].y
-					_bolt_line(Vector2(_arena_center.x - 700.0, ay43), Vector2(_arena_center.x + 700.0, ay43), Color("#9be7ff"))
-					for o in _allies_of(u):
-						if absf(o["pos"].y - ay43) > 70.0: continue
-						_grant_shield(o, [40.0, 95.0, 120.0][si]); o["base_def"] += [2, 3, 5][si]; o["base_mr"] += [2, 3, 5][si]; _recalc_stats(o)
-					for o in _enemies_of(u):
-						if absf(o["pos"].y - ay43) > 70.0: continue
-						_apply_damage_from(u, o, [60, 110, 200][si], Color("#9be7ff"), 0.0, true, true)
-						o["base_def"] = maxf(0.0, o["base_def"] - [2, 3, 5][si]); o["base_mr"] = maxf(0.0, o["base_mr"] - [2, 3, 5][si]); _recalc_stats(o)
+					_eq_water_wave(u, si)
 			"p2eq_052":   # 移到 _tick_eq_intervals(自定义间隔)
 				pass
 			"p2eq_037":   # 移到 _tick_eq_intervals(自定义间隔)
