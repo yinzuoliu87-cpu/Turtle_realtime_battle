@@ -7743,11 +7743,11 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 		ecx /= float(enemies.size())
 	var to_right: bool = ecx >= u["pos"].x         # 浪朝敌人方向推
 	var dirsign: float = 1.0 if to_right else -1.0
-	var startx: float = u["pos"].x - dirsign * 40.0   # 从携带者身后涌起
+	var startx: float = u["pos"].x - dirsign * 400.0   # 从携带者身后400码涌起(用户)
 	var endx: float = (_arena_center.x + 940.0) if to_right else (_arena_center.x - 940.0)
 	var span: float = maxf(1.0, absf(endx - startx))
 	var windup: float = 0.5
-	var travel: float = 1.35                        # 慢速有重量(非飞快)
+	var travel: float = 2.0                         # 更慢(用户: 移速慢点)
 	_anticipate(u)
 	_water_charge_windup(u, windup)
 	_spawn_tidal_wave(startx, endx, windup, travel)
@@ -7782,24 +7782,24 @@ func _spawn_tidal_wave(startx: float, endx: float, windup: float, travel: float)
 	var nf: int = maxi(1, int(tex.get_width() / fh)) if use_anim else 1
 	var yc: float = _arena_center.y
 	var flip: bool = startx > endx
-	for yoff in [-260.0, -175.0, -88.0, 0.0, 88.0, 175.0, 260.0]:   # 7道大浪重叠拼成连续宽墙(覆盖全场深度)
+	for yoff in [-150.0, -100.0, -50.0, 0.0, 50.0, 100.0, 150.0]:   # 宽度300(±150), 7道重叠成连续墙(用户)
 		var p := Sprite3D.new()
 		p.texture = tex
 		if use_anim: p.hframes = nf
 		p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		p.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
 		p.shaded = false; p.transparent = true
-		p.pixel_size = 5.2 / float(fh)   # ~5.2m高大浪
+		p.pixel_size = 3.4 / float(fh)   # ~3.4m浪(用户: 大小小点)
 		p.flip_h = flip
 		p.modulate = Color(1, 1, 1, 0)
-		p.position = _world_pos(Vector2(startx, yc + yoff), 2.2)
+		p.position = _world_pos(Vector2(startx, yc + yoff), 1.45)
 		_world.add_child(p)
 		if use_anim and nf > 1:
 			var at := create_tween().set_loops()
 			at.tween_property(p, "frame", nf - 1, 0.45).from(0)
 		var tw := create_tween()
 		tw.tween_property(p, "modulate:a", 0.95, windup * 0.8)
-		tw.tween_property(p, "position", _world_pos(Vector2(endx, yc + yoff), 2.2), travel).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		tw.tween_property(p, "position", _world_pos(Vector2(endx, yc + yoff), 1.45), travel).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 		tw.tween_property(p, "modulate:a", 0.0, 0.25)
 		tw.tween_callback(p.queue_free)
 
