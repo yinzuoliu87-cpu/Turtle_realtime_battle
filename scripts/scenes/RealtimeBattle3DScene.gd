@@ -1508,13 +1508,15 @@ func _ts_ensure_overlay() -> void:
 	var rect := ColorRect.new()
 	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var sh := Shader.new()   # 压暗褪色从center按radius向外扩散 → 昏暗冷灰(非纯白灰)
-	sh.code = "shader_type canvas_item;\nuniform sampler2D screen_tex : hint_screen_texture, filter_linear;\nuniform float amount : hint_range(0.0,1.0) = 0.0;\nuniform vec2 center = vec2(0.5,0.5);\nuniform float radius = 0.0;\nuniform float aspect = 1.778;\nvoid fragment(){\n\tvec3 c = texture(screen_tex, SCREEN_UV).rgb;\n\tvec2 d = SCREEN_UV - center; d.x *= aspect;\n\tfloat mask = 1.0 - smoothstep(radius-0.12, radius, length(d));\n\tfloat a = amount * mask;\n\tfloat g = dot(c, vec3(0.299,0.587,0.114));\n\tvec3 dim = vec3(g*0.56, g*0.56, g*0.64);\n\tCOLOR = vec4(mix(c, dim, a), 1.0);\n}"
+	var sh := Shader.new()   # 压暗褪色从center按radius扩散→昏暗冷灰; 但携带者(casters)周围留彩色泡(时之主保持彩色)
+	sh.code = "shader_type canvas_item;\nuniform sampler2D screen_tex : hint_screen_texture, filter_linear;\nuniform float amount : hint_range(0.0,1.0) = 0.0;\nuniform vec2 center = vec2(0.5,0.5);\nuniform float radius = 0.0;\nuniform float aspect = 1.778;\nuniform vec2 casters[4];\nuniform int caster_n = 0;\nuniform float caster_r = 0.115;\nvoid fragment(){\n\tvec3 c = texture(screen_tex, SCREEN_UV).rgb;\n\tvec2 d = SCREEN_UV - center; d.x *= aspect;\n\tfloat mask = 1.0 - smoothstep(radius-0.12, radius, length(d));\n\tfloat a = amount * mask;\n\tfloat keep = 0.0;\n\tfor(int i=0;i<4;i++){\n\t\tif(i>=caster_n){break;}\n\t\tvec2 cd = SCREEN_UV - casters[i]; cd.x *= aspect;\n\t\tkeep = max(keep, 1.0 - smoothstep(caster_r*0.55, caster_r, length(cd)));\n\t}\n\ta *= (1.0 - keep);\n\tfloat g = dot(c, vec3(0.299,0.587,0.114));\n\tvec3 dim = vec3(g*0.56, g*0.56, g*0.64);\n\tCOLOR = vec4(mix(c, dim, a), 1.0);\n}"
 	var mat := ShaderMaterial.new()
 	mat.shader = sh
 	mat.set_shader_parameter("amount", 0.0)
 	mat.set_shader_parameter("radius", 0.0)
 	mat.set_shader_parameter("aspect", vp.x / maxf(1.0, vp.y))
+	mat.set_shader_parameter("casters", PackedVector2Array())
+	mat.set_shader_parameter("caster_n", 0)
 	rect.material = mat
 	_ts_overlay.add_child(rect)
 	_ts_rect = rect
@@ -1579,8 +1581,21 @@ func _ts_visual_end() -> void:   # 解除: 反色再闪 + 回色(时间恢复流
 	var tw := create_tween()
 	tw.tween_method(func(v: float): mat.set_shader_parameter("amount", v), 1.0, 0.0, 0.35)
 
-func _ts_tick_visual(_delta: float) -> void:   # 维持期(钟脉动由tween驱动, 这里留空)
-	pass
+func _ts_tick_visual(_delta: float) -> void:   # 每帧喂携带者屏幕位置给灰shader → 彩色泡跟随移动的时之主
+	if _ts_rect == null or not is_instance_valid(_ts_rect) or _cam == null:
+		return
+	var vp := get_viewport().get_visible_rect().size
+	var arr := PackedVector2Array()
+	for c in _ts_active:
+		if arr.size() >= 4:
+			break
+		var head: Vector3 = _world_pos(c["pos"], 1.0)
+		if not _cam.is_position_behind(head):
+			var sp := _cam.unproject_position(head)
+			arr.append(Vector2(sp.x / maxf(1.0, vp.x), sp.y / maxf(1.0, vp.y)))
+	var mat: ShaderMaterial = _ts_rect.material
+	mat.set_shader_parameter("casters", arr)
+	mat.set_shader_parameter("caster_n", arr.size())
 
 # 中心能量涟漪: 一圈青白波从pos扩散(时停释放冲击波)
 func _ts_shock_ring(pos2d: Vector2) -> void:
