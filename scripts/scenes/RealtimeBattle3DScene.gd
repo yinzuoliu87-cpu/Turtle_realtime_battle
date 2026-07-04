@@ -25,8 +25,13 @@ const ARENA := Rect2(70, 110, 1140, 520)   # 战场边界 (像素口径, 与 2D 
 const SkillEnergy := preload("res://scripts/systems/skill_energy.gd")
 const SKILL_GCD := 0.4                      # 同龟两次放技最小间隔 (防多技同帧连爆)
 # AI 状态机节拍 (Botworld式: 移动/攻击互斥 + 施法锁 + 前摇/后摇; 用户2026-06-28 #5最高优先级)
-const ATK_WINDUP := 0.12                    # 普攻前摇(站定蓄力)
-const ATK_RECOVER := 0.10                   # 普攻后摇(出手后定身)
+# LoL式普攻前摇: 前摇=攻击周期的百分比(windup percent), 随攻速缩放(官方Attack_speed wiki: "windup time scales proportionally to attack speed", 默认~0.3). 攻速快→前摇短.
+const ATK_WINDUP_PCT := 0.30                # 前摇占攻击周期比例 (LoL默认windup percent≈30%)
+const ATK_WINDUP_MIN := 0.12               # 前摇下限(极快攻速也留可读蓄力)
+const ATK_WINDUP_MAX := 0.40               # 前摇上限(极慢攻速不呆太久)
+const ATK_RECOVER := 0.12                   # 普攻后摇(命中后短收招定身; LoL伤害点后其实可动, 这里保守留一点做视觉收招)
+const ATK_LUNGE_SEC := 0.16                # 近战命中踏步(前冲再回)时长
+const ATK_LUNGE_AMP := 0.30                # 近战踏步幅度(米)
 const CAST_WINDUP := 0.34                   # 技能前摇(蓄力, 比普攻久 → 有重量感)
 const CAST_RECOVER := 0.24                  # 技能后摇
 const _BASIC_RARITY_BONUS := {"C": 0.20, "B": 0.23, "A": 0.26, "S": 0.29, "SS": 0.32, "SSS": 0.34}   # 小龟不屈: 按目标稀有度
@@ -1453,7 +1458,8 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 						_do_move(u, tgt, dist, rng, spd * 0.5, delta)   # 边喷边走位(kite); 喷火时移速×0.5(寻敌时正常速)(用户)
 				elif u["atk_cd"] <= 0.0:
 					u["pending"] = "B"
-					u["state"] = "windup"; u["state_t"] = ATK_WINDUP
+					u["state"] = "windup"
+					u["state_t"] = clampf(float(u["atk_interval"]) * ATK_WINDUP_PCT, ATK_WINDUP_MIN, ATK_WINDUP_MAX)   # 前摇=攻击周期30%(随攻速缩放); 出手juice由_basic_attack触发
 				elif not u["melee"] and dist < rng * 0.7:
 					_do_move(u, tgt, dist, rng, spd, delta)   # 远程风筝
 			else:
@@ -3912,18 +3918,16 @@ func _atk_dmg(u: Dictionary, scale: float, tgt: Dictionary, magic: bool = false)
 	return _resolve_dmg(u, base, tgt, magic)
 
 # 立绘前冲 (近战命中视觉) — billboard offset 微推再回 (朝镜头, 不用翻 facing)
+# 近战命中踏步: 朝目标前冲再回. 走渲染追加偏移 _atk_voff(每帧render叠加, 见 _juice_decay), 不tween spr.position(会被逐帧render覆盖)
 func _melee_lunge(u: Dictionary, tgt: Dictionary) -> void:
-	var spr: Sprite3D = u["sprite"]
-	if not is_instance_valid(spr):
+	if tgt == null:
 		return
-	var base := spr.position
-	var dir3 := _world_pos(tgt["pos"], 0.0) - _world_pos(u["pos"], 0.0)
-	if dir3.length() < 0.01:
+	var d: Vector2 = tgt["pos"] - u["pos"]
+	if d.length() < 0.01:
 		return
-	dir3 = dir3.normalized() * 0.25
-	var tw := create_tween()
-	tw.tween_property(spr, "position", base + dir3, 0.06)
-	tw.tween_property(spr, "position", base, 0.1)
+	var dn := d.normalized()
+	u["_lunge_dir"] = Vector3(dn.x, 0.0, dn.y)   # 2D方向→世界XZ(2D-x→世界x, 2D-y→世界z)
+	u["_lunge_t"] = ATK_LUNGE_SEC
 
 # ============================================================================
 #  3D 投射物 (远程普攻/技能): 小 billboard 球从攻击者飞向目标, 到达落伤.
@@ -5060,6 +5064,9 @@ func _apply_separation_pass(delta: float) -> void:   # 每帧全单位软分离:
 	for u in _units:
 		if not u["alive"] or u.get("no_move", false) or u.get("airborne", false) or u.get("_slam", false):
 			continue
+		var _st := str(u.get("state", "move"))
+		if _st == "windup" or _st == "recover":
+			continue   # 攻击/施法前摇后摇=脚钉死, 不被分离力推走(根治"攻击时还挤着冲"; 凤凰喷火在move态故不受影响)
 		var push: Vector2 = _separation(u)
 		if push.length() > 0.001:
 			u["pos"] += push.limit_length(1.0) * SEP_PUSH_SPD * delta
@@ -7435,7 +7442,7 @@ func _update_world_transforms() -> void:
 		var sq := _juice_scale_for(u)              # (sx, sy) 形变系数 (base=1,1)
 		var bob := _juice_bob_for(u)               # idle 呼吸 Y 偏移 (米)
 		# 立绘: XZ + Y(高度 + 落地基线抬升 + bob). billboard 自动朝镜头, 不翻 facing.
-		spr.position = _world_pos(u["pos"], u["height"] + GROUND_LIFT + bob) + u.get("_bear_voff", Vector3.ZERO)   # 大熊扑击/砸地程序化位移(非大熊为0)
+		spr.position = _world_pos(u["pos"], u["height"] + GROUND_LIFT + bob) + u.get("_bear_voff", Vector3.ZERO) + u.get("_atk_voff", Vector3.ZERO)   # 大熊扑击/砸地位移 + 近战命中踏步lunge(非该态为0)
 		var bs: Vector3 = u.get("spr_base_scale", Vector3.ONE)
 		spr.scale = Vector3(bs.x * sq.x, bs.y * sq.y, bs.z)
 		# 受击闪白: modulate 由 base 白 → 过曝白线性插值 (flash_t/JUICE_FLASH_SEC); 死亡淡出走 alpha 不冲突
@@ -7476,6 +7483,13 @@ func _juice_decay(delta: float) -> void:
 		if u.get("land_t", 0.0) > 0.0:   u["land_t"]   = maxf(0.0, u["land_t"]   - delta)
 		if u.get("swing_t", 0.0) > 0.0:  u["swing_t"]  = maxf(0.0, u["swing_t"]  - delta)
 		if u.get("windup_t", 0.0) > 0.0: u["windup_t"] = maxf(0.0, u["windup_t"] - delta)
+		# 近战踏步: _lunge_t 递减 → _atk_voff = 方向×sin(0→π)幅度(前冲再回), render叠加
+		if u.get("_lunge_t", 0.0) > 0.0:
+			u["_lunge_t"] = maxf(0.0, u["_lunge_t"] - delta)
+			var _lp: float = 1.0 - float(u["_lunge_t"]) / ATK_LUNGE_SEC   # 0→1
+			u["_atk_voff"] = u.get("_lunge_dir", Vector3.ZERO) * (sin(_lp * PI) * ATK_LUNGE_AMP)
+		elif u.get("_atk_voff", Vector3.ZERO) != Vector3.ZERO:
+			u["_atk_voff"] = Vector3.ZERO
 
 # 合成形变系数 (x,y): 优先级 起跳拉长 > 落地压扁 > 受击压扁 > 出招预备(缩)/挥出(伸).
 # 各相位用 ease 衰减到 (1,1), 互不累积 — 取主导相位 + 出招缩放叠乘.
