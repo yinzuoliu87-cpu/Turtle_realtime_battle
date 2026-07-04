@@ -10138,6 +10138,10 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 			"p2eq_040":   # 移到 _tick_eq_intervals(自定义间隔)
 				pass
 			"p2eq_056":   # 飞镖: 每周期向所有带"靶子"(被击飞)的敌各射1镖+流血
+				if OS.has_environment("EQDEMO_EQUIP") and str(OS.get_environment("EQDEMO_EQUIP")) == "p2eq_056":   # demo: 无击飞源→强制标靶看飞镖volley
+					for _e in _enemies_of(u):
+						if _e.get("alive", false):
+							_mark_vfx(_e, 5.0, Color("#ffa040")); _e["eq_target_until"] = _t + 5.0
 				for o in _enemies_of(u):
 					if _t < o.get("eq_target_until", 0.0):
 						o["eq_target_until"] = 0.0
