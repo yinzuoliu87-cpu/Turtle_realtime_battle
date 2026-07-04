@@ -2385,10 +2385,10 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 			ct.chain().tween_property(c, "scale", Vector3.ONE, 0.25)
 		_boom_wave(u["pos"], 260.0)   # AI生成爆炸波动画(原地大爆炸)
 		_shake(0.06)
-		var dmg37: int = [20, 30, 44][si] + int(u["atk"] * [0.5, 0.7, 1.0][si])
+		var dmg37: float = float([20, 30, 44][si]) + u["atk"] * [0.5, 0.7, 1.0][si]
 		for o in _enemies_of(u):
 			if o["pos"].distance_to(u["pos"]) <= 499.0:
-				_apply_damage_from(u, o, dmg37, Color("#ff7a33"), 0.0, true, true)
+				_apply_damage_from(u, o, _resolve_dmg(u, dmg37, o, true), Color("#ffb066"), 0.0, false, true)   # 魔法伤(蓝字), 非真伤
 				_apply_dot_stacks(o, "burn", [20, 30, 40][si], u)
 				_boom_wave(o["pos"], 110.0)   # 每个被波及敌小爆
 
@@ -3993,13 +3993,13 @@ func _step_projectiles(delta: float) -> void:
 		if frac >= 1.0:
 			node.queue_free()
 			if tgt["alive"]:
-				if pr.get("fireball", false):   # 抛物线火球045: 落点火爆+真伤(橙)+灼烧
-					_apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], 0.0, true, true)
+				if pr.get("fireball", false):   # 抛物线火球045: 落点火爆+魔法伤(蓝字)+灼烧
+					_apply_damage_from(pr["src"], tgt, _resolve_dmg(pr["src"], float(pr["dmg"]), tgt, true), pr["col"], 0.0, false, true)
 					if pr.get("fire_burst", 0) > 0:
 						_apply_dot_stacks(tgt, "burn", int(pr["fire_burst"]), pr["src"])
 					_fire_explosion(tgt["pos"])
-				elif pr.get("bamboo", false):   # 竹枝箭039: 命中真伤(绿)+冒绿生命球飞回携带者
-					_apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], 0.0, true, true)
+				elif pr.get("bamboo", false):   # 竹枝箭039: 命中魔法伤(蓝字)+冒绿生命球飞回携带者
+					_apply_damage_from(pr["src"], tgt, _resolve_dmg(pr["src"], float(pr["dmg"]), tgt, true), pr["col"], 0.0, false, true)
 					_spawn_bamboo_orb(tgt["pos"], pr["src"]["pos"])
 					_hit_spark(tgt)
 				elif pr.get("eq_bolt", false):   # 装备弹道(弩矢/飞镖等): 记为装备物理伤, 命中溅火花
@@ -7742,7 +7742,7 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 		var d2: float = windup + absf(o["pos"].x - startx) / span * travel
 		var fn2 := func():
 			if not oo2.get("alive", false): return
-			_apply_damage_from(u, oo2, [60, 110, 200][si], Color("#9be7ff"), 0.0, true, true)
+			_apply_damage_from(u, oo2, _resolve_dmg(u, float([60, 110, 200][si]), oo2, true), Color("#9be7ff"), 0.0, false, true)   # 魔法伤(蓝字)
 			oo2["base_def"] = maxf(0.0, oo2["base_def"] - [2, 3, 5][si]); oo2["base_mr"] = maxf(0.0, oo2["base_mr"] - [2, 3, 5][si]); _recalc_stats(oo2)
 			_skill_ring(oo2["pos"], Color(0.4, 0.8, 1.0, 0.7), 46.0)
 			_hit_spark(oo2)
