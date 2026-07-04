@@ -7761,6 +7761,26 @@ func _heal_ascend(u: Dictionary) -> void:
 		tw2.tween_property(sp, "modulate:a", 0.0, 0.8)
 		tw2.chain().tween_callback(sp.queue_free)
 
+# 能量护盾罩(幽灵墨鱼046闪避得盾, 用户: 做一个护盾特效): 青蓝护盾罩snap形成罩住龟身+微闪+淡出, 跟龟走
+func _shield_dome(u: Dictionary) -> void:
+	if u == null: return
+	var sd := Sprite3D.new()
+	sd.texture = load("res://assets/sprites/vfx/shield-dome.png")
+	sd.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sd.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sd.shaded = false; sd.transparent = true
+	sd.modulate = Color(1, 1, 1, 0)
+	sd.pixel_size = 2.7 / 96.0   # ~2.7m罩住龟
+	sd.position = _world_pos(u["pos"], 1.0)
+	_world.add_child(sd)
+	_follow_vfx.append({"spr": sd, "unit": u, "h": 1.0})
+	var tw := create_tween(); tw.set_parallel(true)
+	tw.tween_property(sd, "modulate:a", 0.72, 0.08)
+	tw.tween_property(sd, "scale", Vector3.ONE, 0.14).from(Vector3.ONE * 1.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_property(sd, "modulate:a", 0.42, 0.16)
+	tw.chain().tween_property(sd, "modulate:a", 0.0, 0.36)
+	tw.chain().tween_callback(sd.queue_free)
+
 # 火爆: 落点火色环 + 膨胀火球辉光(火球落地/灼烧爆点)
 func _fire_explosion(pos2d: Vector2) -> void:
 	_skill_ring(pos2d, Color(1.0, 0.5, 0.15, 0.7), 55.0)
@@ -9723,7 +9743,7 @@ func _eq_on_dodge(u: Dictionary) -> void:
 		if str(e["id"]) == "p2eq_046":   # 幽灵墨鱼: 闪避→永久护盾
 			var stt: Dictionary = u["eq_state"].get("p2eq_046", {})
 			_grant_shield(u, float(stt.get("ghost_shield", 30.0)))
-			_shield_bubble(u)
+			_shield_dome(u)   # 专属护盾罩(不复用faint _shield_bubble)
 
 # ============================================================================
 #  on-cast (放主动技后)
