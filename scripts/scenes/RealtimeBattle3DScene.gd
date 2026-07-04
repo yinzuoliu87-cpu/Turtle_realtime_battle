@@ -704,6 +704,11 @@ func _spawn_teams() -> void:
 	_inject_equipment()       # 装备注入 (玩家队读 persistent_equipped; demo队塞测试装备) — 须在被动之前
 	_apply_spawn_passives()   # 登场被动 (开战即生效: 忍术暴击/怨灵诅咒/冰寒减攻/召唤等)
 	_eq_apply_all_stats()     # 开战: 全装备纯属性 / 永久 flag 加到携带者 (spawn 被动之后, 不被覆盖)
+	if OS.has_environment("EQDEMO_FORCE_HP50"):   # demo: 强制携带者<50%触发救命类(044/045), 便于验证特效
+		for _fu in _units:
+			if _fu["side"] == "left" and not _fu.get("equips", []).is_empty():
+				_fu["hp"] = _fu["maxHp"] * 0.4
+				_eq_check_hp_threshold(_fu)
 	_build_team_panels()      # 局内 UI: 左右队头像框栏 (主龟; 召唤体不进) — 须在 equips 注入之后
 
 func _review_turtle() -> String:   # 受审龟: env REVIEW_TURTLE 覆盖 const (评审任意龟)
@@ -9874,9 +9879,10 @@ func _eq_check_hp_threshold(u: Dictionary) -> void:
 	for e in u.get("equips", []):
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
 		match iid:
-			"p2eq_044":   # 深海项链: 首次<50%回血
+			"p2eq_044":   # 深海项链: 首次<50%救命回血(醒目回血阵+迸发)
 				_heal(u, u["maxHp"] * [0.12, 0.27, 0.40][si]); fired = true
-				_heal_burst(u, 1.4)
+				_heal_circle_vfx(u["pos"], 200.0, 2.2)   # AI回血阵动画(救命够醒目)
+				_heal_burst(u, 1.6)
 			"p2eq_045":   # 珍珠耳环: 首次<50%回血+发火球
 				_heal(u, u["maxHp"] * [0.15, 0.29, 0.65][si])
 				_heal_burst(u, 1.4)
