@@ -7733,78 +7733,83 @@ func _spawn_bamboo_arrow(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 		"bamboo": true,
 	})
 
-# 娜美式潮浪(海浪护符043): 参照LoL娜美大招真实形态 — 从携带者身后涌起→慢速朝敌人方向推过全场→连续宽浪墙翻涌→命中击飞(用户2026-07-04定:全场横扫+对齐娜美)
+# 娜美式潮浪(海浪护符043): 朝敌人2D方向的对角潮浪 — 从敌人反方向(身后)400码涌起 → 沿"朝敌人"方向慢速推过全场 → 连续宽浪墙(垂直于行进方向铺开)翻涌 → 命中击飞(用户2026-07-04: 全场横扫+2D对角朝敌)
 func _eq_water_wave(u: Dictionary, si: int) -> void:
 	var enemies := _enemies_of(u)
-	var ecx: float = _arena_center.x + 500.0
+	var allies := _allies_of(u)
+	var ec: Vector2 = u["pos"] + Vector2(500.0, 0.0)   # 敌人质心(默认右)
 	if not enemies.is_empty():
-		ecx = 0.0
-		for e in enemies: ecx += e["pos"].x
-		ecx /= float(enemies.size())
-	var to_right: bool = ecx >= u["pos"].x         # 浪朝敌人方向推
-	var dirsign: float = 1.0 if to_right else -1.0
-	var startx: float = u["pos"].x - dirsign * 400.0   # 从携带者身后400码涌起(用户)
-	var endx: float = (_arena_center.x + 940.0) if to_right else (_arena_center.x - 940.0)
-	var span: float = maxf(1.0, absf(endx - startx))
+		ec = Vector2.ZERO
+		for e in enemies: ec += e["pos"]
+		ec /= float(enemies.size())
+	var dvec: Vector2 = ec - u["pos"]
+	var dir: Vector2 = Vector2.RIGHT if dvec.length() < 1.0 else dvec.normalized()   # 浪行进方向=朝敌人(2D可对角)
+	var perp: Vector2 = Vector2(-dir.y, dir.x)          # 浪墙铺开方向(垂直于行进)
+	var startc: Vector2 = u["pos"] - dir * 400.0        # 敌人反方向(身后)400码涌起
+	var maxfwd: float = 0.0; var pmin: float = INF; var pmax: float = -INF
+	for o in allies + enemies:
+		maxfwd = maxf(maxfwd, (o["pos"] - startc).dot(dir))       # 沿行进方向最远单位
+		var pp: float = (o["pos"] - u["pos"]).dot(perp)           # 沿浪墙方向的跨度
+		pmin = minf(pmin, pp); pmax = maxf(pmax, pp)
+	if pmin > pmax: pmin = -150.0; pmax = 150.0
+	var tdist: float = maxfwd + 320.0                   # 推过最远单位再多320
 	var windup: float = 0.5
-	var travel: float = 2.0                         # 更慢(用户: 移速慢点)
+	var travel: float = 2.0                             # 慢速(用户)
 	_anticipate(u)
 	_water_charge_windup(u, windup)
-	var ymn: float = INF; var ymx: float = -INF        # 单位实际占据的深度范围
-	for _wo in _allies_of(u) + _enemies_of(u):
-		ymn = minf(ymn, _wo["pos"].y); ymx = maxf(ymx, _wo["pos"].y)
-	if ymn > ymx: ymn = _arena_center.y; ymx = _arena_center.y
-	_spawn_tidal_wave(startx, endx, ymn - 75.0, ymx + 75.0, windup, travel)
-	for o in _allies_of(u):
+	_spawn_tidal_wave(startc, dir, perp, pmin - 75.0, pmax + 75.0, tdist, windup, travel)
+	for o in allies:
 		var oo: Dictionary = o
-		var fwd: float = (o["pos"].x - startx) * dirsign
-		var d: float = windup + clampf(fwd, 0.0, span) / span * travel
+		var fwd: float = clampf((o["pos"] - startc).dot(dir), 0.0, tdist)
+		var d: float = windup + fwd / tdist * travel
 		var fn := func():
 			if not oo.get("alive", false): return
 			_grant_shield(oo, [40.0, 95.0, 120.0][si])
 			oo["base_def"] += [2, 3, 5][si]; oo["base_mr"] += [2, 3, 5][si]; _recalc_stats(oo)
 			_water_splash(oo["pos"], true)
 		_pending_shots.append({"delay": d, "fn": fn})
-	for o in _enemies_of(u):
+	for o in enemies:
 		var oo2: Dictionary = o
-		var fwd2: float = (o["pos"].x - startx) * dirsign
-		var d2: float = windup + clampf(fwd2, 0.0, span) / span * travel
+		var fwd2: float = clampf((o["pos"] - startc).dot(dir), 0.0, tdist)
+		var d2: float = windup + fwd2 / tdist * travel
 		var fn2 := func():
 			if not oo2.get("alive", false): return
 			_apply_damage_from(u, oo2, _resolve_dmg(u, float([60, 110, 200][si]), oo2, true), Color("#9be7ff"), 0.0, false, true)   # 魔法伤(蓝字)
 			oo2["base_def"] = maxf(0.0, oo2["base_def"] - [2, 3, 5][si]); oo2["base_mr"] = maxf(0.0, oo2["base_mr"] - [2, 3, 5][si]); _recalc_stats(oo2)
 			_water_splash(oo2["pos"], false)
-			_knock_up(oo2, oo2["pos"], 6.5)   # 娜美式击飞(短促上抛)
+			_knock_up(oo2, oo2["pos"] - dir * 60.0, 6.5)   # 娜美式击飞: 顺浪方向往前推(非直上)
 			_hit_spark(oo2)
 		_pending_shots.append({"delay": d2, "fn": fn2})
 
-# 潮浪墙: 沿深度铺一排大浪crest拼成连续宽墙(横跨全场深度), 整墙从startx慢速推到endx; 翻涌帧循环
-func _spawn_tidal_wave(startx: float, endx: float, y0: float, y1: float, windup: float, travel: float) -> void:
+# 潮浪墙: 沿perp(垂直行进)铺一排大浪crest拼成连续宽墙, 整墙从startc沿dir推进tdist; 翻涌帧循环
+func _spawn_tidal_wave(startc: Vector2, dir: Vector2, perp: Vector2, p0: float, p1: float, tdist: float, windup: float, travel: float) -> void:
 	var use_anim: bool = ResourceLoader.exists("res://assets/sprites/vfx/tidal-wave-anim.png")
 	var tex: Texture2D = load("res://assets/sprites/vfx/tidal-wave-anim.png") if use_anim else load("res://assets/sprites/vfx/tidal-wave.png")
 	var fh: int = maxi(1, tex.get_height())
 	var nf: int = maxi(1, int(tex.get_width() / fh)) if use_anim else 1
-	var flip: bool = startx < endx   # 浪头朝行进方向卷
-	var ncrest: int = clampi(int((y1 - y0) / 72.0) + 1, 4, 16)   # 沿单位占据深度铺满(贴地覆盖,不再固定场中悬空)
+	var flip: bool = dir.x > 0.0   # 浪头朝行进方向(水平分量)卷
+	var ncrest: int = clampi(int((p1 - p0) / 72.0) + 1, 4, 16)
 	for k in range(ncrest):
-		var yy: float = lerpf(y0, y1, float(k) / float(maxi(1, ncrest - 1)))
+		var pp: float = lerpf(p0, p1, float(k) / float(maxi(1, ncrest - 1)))
+		var cstart: Vector2 = startc + perp * pp        # 该crest沿perp铺开
+		var cend: Vector2 = cstart + dir * tdist        # 沿dir推进终点
 		var p := Sprite3D.new()
 		p.texture = tex
 		if use_anim: p.hframes = nf
 		p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		p.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
 		p.shaded = false; p.transparent = true
-		p.pixel_size = 3.4 / float(fh)   # ~3.4m浪(用户: 大小小点)
+		p.pixel_size = 3.4 / float(fh)
 		p.flip_h = flip
 		p.modulate = Color(1, 1, 1, 0)
-		p.position = _world_pos(Vector2(startx, yy), 1.45)
+		p.position = _world_pos(cstart, 1.45)
 		_world.add_child(p)
 		if use_anim and nf > 1:
 			var at := create_tween().set_loops()
 			at.tween_property(p, "frame", nf - 1, 0.45).from(0)
 		var tw := create_tween()
 		tw.tween_property(p, "modulate:a", 0.95, windup * 0.8)
-		tw.tween_property(p, "position", _world_pos(Vector2(endx, yy), 1.45), travel).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		tw.tween_property(p, "position", _world_pos(cend, 1.45), travel).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 		tw.tween_property(p, "modulate:a", 0.0, 0.25)
 		tw.tween_callback(p.queue_free)
 
