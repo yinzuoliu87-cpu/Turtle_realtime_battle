@@ -7726,6 +7726,41 @@ func _heal_body_glow(u: Dictionary) -> void:
 		tw2.tween_property(sp, "modulate:a", 0.0, 0.75)
 		tw2.chain().tween_callback(sp.queue_free)
 
+# 绿光上浮(珍珠耳环045救命回血, 用户: 另做一个绿光不复用): 绿光环从脚下升起穿过龟身上浮 + 绿光粒上升 + 脚下绿环(区别于044龟身染绿)
+func _heal_ascend(u: Dictionary) -> void:
+	if u == null: return
+	_skill_ring(u["pos"], Color(0.4, 1.0, 0.5, 0.6), 56.0)   # 脚下绿光环
+	for k in range(3):   # 3道绿光环从脚下升到头顶上方(错峰)
+		var r := Sprite3D.new()
+		r.texture = _make_ring_texture(Color(0.45, 1.0, 0.55, 1.0))
+		r.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		r.shaded = false; r.transparent = true
+		r.modulate = Color(0.45, 1.0, 0.55, 0.9)
+		r.pixel_size = 0.011
+		r.position = _world_pos(u["pos"], 0.2)
+		_world.add_child(r)
+		var d: float = float(k) * 0.13
+		var tw := create_tween(); tw.set_parallel(true)
+		tw.tween_property(r, "position", _world_pos(u["pos"], 2.9), 0.7).set_delay(d).set_ease(Tween.EASE_OUT)
+		tw.tween_property(r, "pixel_size", 0.03, 0.7).set_delay(d)
+		tw.tween_property(r, "modulate:a", 0.0, 0.7).set_delay(d)
+		tw.chain().tween_callback(r.queue_free)
+	if _spark_tex == null: _spark_tex = _make_glow_texture()
+	for k in range(7):   # 绿光粒上升
+		var sp := Sprite3D.new()
+		sp.texture = _spark_tex
+		sp.modulate = Color(0.55, 1.0, 0.6, 0.95)
+		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sp.shaded = false; sp.transparent = true
+		sp.pixel_size = 0.009
+		var off := Vector2(randf_range(-30.0, 30.0), 0.0)
+		sp.position = _world_pos(u["pos"] + off, 0.3)
+		_world.add_child(sp)
+		var tw2 := create_tween(); tw2.set_parallel(true)
+		tw2.tween_property(sp, "position", _world_pos(u["pos"] + off, 2.6 + randf_range(0.0, 0.5)), 0.8)
+		tw2.tween_property(sp, "modulate:a", 0.0, 0.8)
+		tw2.chain().tween_callback(sp.queue_free)
+
 # 火爆: 落点火色环 + 膨胀火球辉光(火球落地/灼烧爆点)
 func _fire_explosion(pos2d: Vector2) -> void:
 	_skill_ring(pos2d, Color(1.0, 0.5, 0.15, 0.7), 55.0)
@@ -9926,9 +9961,9 @@ func _eq_check_hp_threshold(u: Dictionary) -> void:
 			"p2eq_044":   # 深海项链: 首次<50%救命回血(龟上半身绿光脉动, 用户: 简单绿光即可, 不复用037魔法阵)
 				_heal(u, u["maxHp"] * [0.12, 0.27, 0.40][si]); fired = true
 				_heal_body_glow(u)
-			"p2eq_045":   # 珍珠耳环: 首次<50%回血+发火球
+			"p2eq_045":   # 珍珠耳环: 首次<50%救命回血(龟身绿光)+抛物线火球
 				_heal(u, u["maxHp"] * [0.15, 0.29, 0.65][si])
-				_heal_burst(u, 1.4)
+				_heal_ascend(u)   # 绿光环上浮(045专属, 不复用044)
 				var balls: int = [1, 1, 2][si]
 				var es := _enemies_of(u)
 				for b in range(balls):
