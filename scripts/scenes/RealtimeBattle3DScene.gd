@@ -2364,7 +2364,7 @@ func _eq_revolver_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 			stt["revolver_bullets"] = int(stt["revolver_bullets"]) - 1
 			var o = es3[randi() % es3.size()]
 			_muzzle_flash(u["pos"], (o["pos"] - u["pos"]), Color("#ffe08a"))
-			_spawn_eq_bolt(u, o, _atk_dmg(u, [3.0, 5.0, 9.0][si], o) + [150, 310, 1200][si], "res://assets/sprites/vfx/bullet.png", Color("#ffe6a8"), false, 0, 0.019)   # 左轮重弹(真子弹, 大一号)
+			_spawn_eq_bolt(u, o, _atk_dmg(u, [3.0, 5.0, 9.0][si], o) + [150, 310, 1200][si], "res://assets/sprites/vfx/bullet.png", Color("#ffe6a8"), false, 0, 0.034)   # 左轮重弹(真子弹, 大一号)
 
 # 蛋糕蜡烛037: 头顶悬浮真蜡烛精灵(带火苗辉光), 随相位 熄灭/微弱/燃烧 亮暗变化; 持续存在直到携带者死
 func _ensure_candle(u: Dictionary) -> void:
@@ -4089,6 +4089,22 @@ func _muzzle_flash(pos2d: Vector2, dir: Vector2, col: Color) -> void:
 	tw.tween_property(sp, "modulate:a", 0.0, 0.09)
 	tw.chain().tween_callback(sp.queue_free)
 
+# 霰弹弹珠: 一颗小铅丸从muzzle沿扇形方向喷出+淡出(霰弹散射, 一次喷一片)
+func _shotgun_pellet(from2d: Vector2, to2d: Vector2, col: Color) -> void:
+	if _spark_tex == null: _spark_tex = _make_glow_texture()
+	var sp := Sprite3D.new()
+	sp.texture = _spark_tex
+	sp.modulate = col
+	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sp.shaded = false; sp.transparent = true
+	sp.pixel_size = 0.015
+	sp.position = _world_pos(from2d, 1.0)
+	_world.add_child(sp)
+	var tw := create_tween(); tw.set_parallel(true)
+	tw.tween_property(sp, "position", _world_pos(to2d, 1.0), 0.42).set_ease(Tween.EASE_OUT)
+	tw.tween_property(sp, "modulate:a", 0.0, 0.46)
+	tw.chain().tween_callback(sp.queue_free)
+
 # 装备弹道(弩矢/飞镖等真实贴图投射物): 朝向随飞行方向(2.5D近似 z-roll), 命中记装备物理伤. eq_bleed=命中附加流血层
 func _spawn_eq_bolt(src: Dictionary, tgt: Dictionary, dmg: int, tex_path: String, col: Color, spin: bool = false, bleed: int = 0, psize: float = 0.032) -> void:
 	if tgt == null: return
@@ -4110,7 +4126,7 @@ func _spawn_eq_bolt(src: Dictionary, tgt: Dictionary, dmg: int, tex_path: String
 		sw.tween_property(p, "rotation:z", TAU, 0.18).from(0.0)
 	_projectiles.append({
 		"node": p, "from": _world_pos(start2d, 1.0), "tgt": tgt, "dmg": dmg, "col": col,
-		"src": src, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 950.0, 0.12, 0.5),
+		"src": src, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 520.0, 0.22, 1.1),   # 慢一半(用户"完全看不清")
 		"eq_bolt": true, "eq_bleed": bleed,
 	})
 
@@ -9823,7 +9839,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 					var ft48 = _eq_first_in_line(u, dir48, 36.0)
 					if ft48 == null: return
 					_muzzle_flash(u["pos"], dir48, Color("#ffe08a"))
-					_spawn_eq_bolt(u, ft48, _atk_dmg(u, mul48, ft48), "res://assets/sprites/vfx/bullet.png", Color("#fff0b0"), false, 0, 0.014)   # 真子弹依次飞出(命中结算伤+火花)
+					_spawn_eq_bolt(u, ft48, _atk_dmg(u, mul48, ft48), "res://assets/sprites/vfx/bullet.png", Color("#fff0b0"), false, 0, 0.026)   # 真子弹依次飞出(命中结算伤+火花)
 				_queue_shots([4, 5, 6][si], 0.08, fire48)
 			"p2eq_049":   # 连发弩: 朝最远敌方向依次射N发, 首敌命中(可被前排挡), 按已损血加伤; 弩矢弹道
 				var far49 := _eq_farthest_enemies(u, false)
@@ -9847,7 +9863,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 					if es50.is_empty(): return
 					var o50 = es50[randi() % es50.size()]
 					_muzzle_flash(u["pos"], (o50["pos"] - u["pos"]), Color("#d0ffff"))
-					_spawn_eq_bolt(u, o50, _atk_dmg(u, g_mul, o50), "res://assets/sprites/vfx/bullet.png", Color("#d0ffff"), false, 0, 0.011)   # 真青幽灵弹依次快射(命中结算伤+火花)
+					_spawn_eq_bolt(u, o50, _atk_dmg(u, g_mul, o50), "res://assets/sprites/vfx/bullet.png", Color("#d0ffff"), false, 0, 0.02)   # 真青幽灵弹依次快射(命中结算伤+火花)
 					var g_acc: float = float(o50.get("gatling_shred_acc", 0.0))
 					if g_acc < g_cap:
 						var g_dec: float = minf(g_shred, g_cap - g_acc)
@@ -9877,8 +9893,8 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 					var es3 := _enemies_of(u)
 					if es3.is_empty(): break
 					var o = es3[randi() % es3.size()]
-					var spr53: Vector2 = dir53.rotated(randf_range(-0.35, 0.35)) * 170.0
-					_bolt_line(u["pos"], u["pos"] + spr53, Color("#ffd27a"))
+					var spr53: Vector2 = dir53.rotated(randf_range(-0.35, 0.35)) * 260.0
+					_shotgun_pellet(u["pos"], u["pos"] + spr53, Color(1.0, 0.86, 0.5, 0.95))   # 小铅丸喷出
 					_apply_damage_from(u, o, _atk_dmg(u, 0.22, o), Color("#ffd07a"), 0.0, false, true)
 					hitc[o] = int(hitc.get(o, 0)) + 1
 				for o in hitc:
