@@ -222,6 +222,10 @@ var _units: Array = []
 var _data_by_id: Dictionary = {}
 var _skill_meta: Dictionary = {}   # 技能 type → skillPool 条目 {atkScale,hits,pierce,name,icon} (选3 多技能 数据驱动放招)
 var _over := false
+# 双路流程态 (P4/P5): fight=混战 / eggwindow=团灭后破蛋窗口 / done=整场结束
+var _dl_state := ""
+var _dl_window_until := 0.0
+var _dl_wiped_side := ""    # 被团灭方(其蛋暴露): "left"/"right"
 var _t := 0.0
 var _settled := false                       # 结果只喂赛季一次的守卫
 var _had_season := false                     # 本局有赛季态(玩家配了season_leaders); demo=false→不喂只显横幅
@@ -798,6 +802,25 @@ func _spawn_dual_lane() -> void:
 	var _cy := ARENA.position.y + ARENA.size.y * 0.5
 	_spawn_lane_side(GameState.get_dual_lineup().get(lane, []), "left", lvl, Vector2(_cx - 300.0, _cy))
 	_spawn_lane_side(_dual_foe_lane(lane), "right", lvl, Vector2(_cx + 300.0, _cy))
+	# 两端基地各 spawn 一颗蛋(围栏罩住). egg_hp 跨路累积(缺则按平均等级初始化).
+	_dl_ensure_egg_hp(lvl)
+	_units.append(_make_unit("__egg__", "left", Vector2(ARENA.position.x + 70.0, _cy), {"egg": true, "egg_side": "left", "hp": _dl_egg_hp("left")}))
+	_units.append(_make_unit("__egg__", "right", Vector2(ARENA.end.x - 70.0, _cy), {"egg": true, "egg_side": "right", "hp": _dl_egg_hp("right")}))
+	_dl_state = "fight"
+
+func _dl_ensure_egg_hp(lvl: int) -> void:   # egg_hp 缺则按 2000+100×平均等级 初始化(两侧)
+	if GameState == null:
+		return
+	if not (GameState.egg_hp is Dictionary):
+		return
+	for s in ["left", "right"]:
+		if float(GameState.egg_hp.get(s, 0.0)) <= 0.0:
+			GameState.egg_hp[s] = 2000.0 + 100.0 * float(lvl)
+
+func _dl_egg_hp(side_lr: String) -> float:
+	if GameState != null and GameState.egg_hp is Dictionary:
+		return maxf(1.0, float(GameState.egg_hp.get(side_lr, 2100.0)))
+	return 2100.0
 
 # spawn 一路一侧: leaders 用 _make_unit(id); 小将用 minion spec; 0统领路首个小将=精英. 纵向排开.
 func _spawn_lane_side(units: Array, side: String, lvl: int, base: Vector2) -> void:
@@ -830,6 +853,57 @@ func _dual_foe_lane(lane: String) -> Array:
 		{"kind": "leader", "id": pool[(off + 1) % pool.size()]},
 		{"kind": "minion", "role": "front"},
 	]
+
+# ── 双路流程控制 (P4: 团灭→破蛋10s窗口→结束; P5 升级为 top→bottom→final 分路推进) ──
+func _dl_side_alive(side: String) -> int:   # 一侧存活非蛋非召唤单位数
+	var n := 0
+	for u in _units:
+		if u.get("alive", false) and str(u.get("side", "")) == side and not u.get("_isEgg", false) and not u.get("is_summon", false):
+			n += 1
+	return n
+
+func _dl_drop_fence(side_lr: String) -> void:   # 该方蛋围栏消失(可被自由索敌)
+	for u in _units:
+		if u.get("_isEgg", false) and str(u.get("egg_side_lr", "")) == side_lr:
+			u["_egg_fence"] = false
+
+func _dl_flow_check() -> void:
+	if _over or _dl_state == "done":
+		return
+	# 蛋血同步回 GameState + 蛋破判负(谁蛋先破谁输)
+	for u in _units:
+		if u.get("_isEgg", false):
+			var es := str(u.get("egg_side_lr", "left"))
+			if GameState != null and GameState.egg_hp is Dictionary:
+				GameState.egg_hp[es] = maxf(0.0, float(u["hp"]))
+			if not u.get("alive", true):
+				_dl_finish(es == "right")   # 右蛋破→我方(左)赢
+				return
+	var la := _dl_side_alive("left")
+	var ra := _dl_side_alive("right")
+	if _dl_state == "fight":
+		if la == 0 or ra == 0:
+			_dl_wiped_side = "left" if la == 0 else "right"
+			_dl_drop_fence(_dl_wiped_side)
+			var is_final: bool = GameState != null and str(GameState.current_lane) == "final"
+			_dl_window_until = (1.0e18 if is_final else _t + 10.0)   # 终极无时限(打爆蛋为止), 非终极10s
+			_dl_state = "eggwindow"
+			if OS.has_environment("XDBG"): print("XDBG_DL wiped=", _dl_wiped_side, " t=", _t, " → eggwindow(10s)")
+	elif _dl_state == "eggwindow":
+		if _t >= _dl_window_until:
+			_dl_lane_over(_dl_wiped_side)   # 窗口到期: 被团灭方输本路
+
+# P4 临时: 本路结束=整场结束(横幅). P5 覆盖为 record_lane_result + 幸存snapshot + 下一路/终极.
+func _dl_lane_over(loser_side: String) -> void:
+	_dl_finish(loser_side == "right")
+
+func _dl_finish(won: bool) -> void:
+	if _over:
+		return
+	if OS.has_environment("XDBG"): print("XDBG_DL finish won=", won, " t=", _t, " egg_hp=", (GameState.egg_hp if GameState != null else {}))
+	_over = true
+	_dl_state = "done"
+	_show_banner(won)
 
 ## 匹配对手快照的首领 id (Matchmaking 写 GameState.dual_ghost). 过滤到 STATS 已知龟, 上限 3.
 func _ghost_leaders() -> Array:
@@ -913,6 +987,7 @@ func _world_pos(pos: Vector2, height: float) -> Vector3:
 
 func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -> Dictionary:
 	var is_minion: bool = bool(spec.get("minion", false))
+	var is_egg: bool = bool(spec.get("egg", false))
 	var d: Dictionary
 	var st: Array
 	var sd: Dictionary
@@ -924,6 +999,10 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 			"hp": 250.0 * _mm * 3.0, "atk": 30.0 * _mm * (1.4 if _mf else 1.5), "def": 7.0, "mr": 7.0}
 		st = [_mf, 105.0, 0.85, (70.0 if _mf else 400.0)]
 		sd = _minion_sprite_dict(_me, not _mf)
+	elif is_egg:   # 龟蛋: 纯血包 fighter(atk/def/mr=0), 不动不攻击, 免控/斩/嘲讽, 走完整伤害管线; 围栏未破不可主动索敌(AoE穿栏)
+		d = {"name": "龟蛋", "rarity": "SSS", "crit": 0.0, "hp": maxf(1.0, float(spec.get("hp", 2100))), "atk": 0.0, "def": 0.0, "mr": 0.0}
+		st = [true, 0.0, 99.0, 0.0]
+		sd = _egg_sprite_dict()
 	else:
 		d = _data_by_id.get(id, {})
 		st = STATS.get(id, DEFAULT_STAT)
@@ -1012,7 +1091,7 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		"atk_interval": float(st[2]), "atk_range": float(st[3]),
 		"atk_cd": 0.0, "energy": 0.0, "alive": true,
 		# 选3 多技能: loadout 的非基础技(physical/magic 是普攻=自动) → 主动技轮转, 龟能满放下一个
-		"active_skills": ([] if is_minion else _resolve_active_skills(id, side == "left")), "skill_idx": 0,
+		"active_skills": ([] if (is_minion or is_egg) else _resolve_active_skills(id, side == "left")), "skill_idx": 0,
 		"skill_cd": {}, "skill_gcd_until": 0.0,   # 逐技各自冷却剩余秒(懒填) + 同龟连放最小间隔
 		# 永久护盾 / 控制 / 旧式灼烧(保留兼容) ----
 		"shield": 0.0, "burn_until": 0.0, "burn_dps": 0.0, "stun_until": 0.0, "slow_until": 0.0,
@@ -1051,7 +1130,7 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 	}
 	# 等级缩放: 主属性 +5%/级, 攻速 +2%/级 (吃等级表见 战斗基础-策划焊死.md §三). 小将自带×1.05缩放, 跳过龟式缩放.
 	var _lvl: int = maxi(1, _unit_level(side))
-	if _lvl > 1 and not is_minion:
+	if _lvl > 1 and not is_minion and not is_egg:
 		var _m: float = 1.0 + 0.05 * float(_lvl - 1)
 		u["maxHp"] *= _m; u["hp"] = u["maxHp"]
 		u["atk"] *= _m; u["base_atk"] *= _m
@@ -1069,12 +1148,25 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		u["_isMinion"] = true
 		u["minion_role"] = str(spec.get("role", "front"))
 		u["is_elite"] = bool(spec.get("elite", false))
+	if is_egg:
+		u["_isEgg"] = true
+		u["_eggImmune"] = true          # 免控/斩/嘲讽
+		u["_egg_fence"] = true           # 围栏未破: 不可主动索敌(AoE穿栏)
+		u["egg_side_lr"] = str(spec.get("egg_side", "left"))   # 该蛋归属方(left/right), 写回 GameState.egg_hp
+		u["no_move"] = true; u["no_basic"] = true
 	return u
 
 # 小将立绘字典 (静态单帧: minion.png 前排 / minion-back.png 后排 / minion-elite.png 精英)
 func _minion_sprite_dict(is_elite: bool, is_back: bool) -> Dictionary:
 	var img: String = "pets/minion-elite.png" if is_elite else ("pets/minion-back.png" if is_back else "pets/minion.png")
 	var path: String = SPRITE_DIR + img
+	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
+	var th: int = tex.get_height() if tex != null else 64
+	return {"tex": tex, "frames": 1, "fps": 1.0, "frame_h": th, "hframes": 1, "vframes": 1, "loop": false}
+
+# 龟蛋立绘字典 (pets/egg.png 静态)
+func _egg_sprite_dict() -> Dictionary:
+	var path: String = SPRITE_DIR + "pets/egg.png"
 	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
 	var th: int = tex.get_height() if tex != null else 64
 	return {"tex": tex, "frames": 1, "fps": 1.0, "frame_h": th, "hframes": 1, "vframes": 1, "loop": false}
@@ -1945,6 +2037,8 @@ func _nearest_enemy(u: Dictionary):
 		if o["side"] == u["side"] or not o["alive"]:
 			continue
 		if _t < o["untargetable_until"]:   # 黑洞 → 不可被选
+			continue
+		if o.get("_egg_fence", false):   # 龟蛋围栏未破 → 不可被主动索敌(但AoE/增益穿栏, 走_enemies_of不受此限)
 			continue
 		if o.get("hiding_protected", false):   # 缩头随从: 本体存活时不可被敌单体选中
 			var ow = o.get("summon_owner", null)
@@ -8662,6 +8756,9 @@ func _update_overlay() -> void:
 # ============================================================================
 func _check_end() -> void:
 	if OS.has_environment("VFXPREVIEW"): return   # 预览模式不判胜负
+	if _is_dual_lane_mode():
+		_dl_flow_check()
+		return
 	var left_alive := 0
 	var right_alive := 0
 	for u in _units:
