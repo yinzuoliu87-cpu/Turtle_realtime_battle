@@ -291,8 +291,12 @@ var _ts_maxstar := 0                      # 生效沙漏星级(定时长4/10/30)
 var _sim_tweens: Array = []               # VFX tween注册表(时停暂停非active用; 见 _reg_tween)
 var _ts_frozen_tweens: Array = []         # 时停期间被暂停的tween(结束resume)
 var _ts_frozen_particles: Array = []      # 时停期间被暂停的GPUParticles3D(speed_scale归零, 结束还原)
-var _ts_overlay: CanvasLayer = null       # 时停灰世界全屏叠加层(去饱和shader)
+var _ts_overlay: CanvasLayer = null       # 时停灰世界叠加层(压暗褪色从携带者扩散; layer5=在UI下→只灰3D世界, 数字/血条保彩)
 var _ts_rect: ColorRect = null
+var _ts_flash_overlay: CanvasLayer = null # 反色闪叠加层(layer60=在UI上→含全屏UI一起反色)
+var _ts_flash_rect: ColorRect = null
+var _ts_clock: TextureRect = null         # 时停停摆钟(叠加层顶, 不被褪色)
+var _ts_glow_sprs: Array = []             # 携带者"时之主"金辉光sprite(结束移除)
 var _shake_amp := 0.0                     # 当前震屏幅度 (米); 每帧指数衰减归 0
 var _shake_t := 0.0                       # 震屏相位 (驱动伪随机偏移)
 var _cam_base := Vector3.ZERO             # 镜头基准位 (shake 围绕它偏移, 衰减后精确归位)
@@ -1448,7 +1452,6 @@ func _ts_fire() -> void:
 		return
 	_ts_active = casters
 	_ts_remaining = [4.0, 10.0, 30.0][clampi(_ts_maxstar, 1, 3) - 1]
-	if OS.has_environment("XDBG"): print("XDBG_TS_FIRE t=", _t, " active=", casters.size(), " star=", _ts_maxstar, " dur=", _ts_remaining)
 	_ts_begin_freeze()
 	_ts_visual_start()
 
@@ -1497,39 +1500,191 @@ func _ts_resume_freeze() -> void:
 func _ts_ensure_overlay() -> void:
 	if _ts_overlay != null and is_instance_valid(_ts_overlay):
 		return
+	var vp := get_viewport().get_visible_rect().size
+	# --- 灰世界层(layer5, 在UI层10之下 → 只灰3D世界, 数字/血条保彩上浮) ---
 	_ts_overlay = CanvasLayer.new()
-	_ts_overlay.layer = 50
+	_ts_overlay.layer = 5
 	add_child(_ts_overlay)
 	var rect := ColorRect.new()
 	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var sh := Shader.new()
-	sh.code = "shader_type canvas_item;\nuniform sampler2D screen_tex : hint_screen_texture, filter_linear;\nuniform float amount : hint_range(0.0, 1.0) = 0.0;\nvoid fragment() {\n\tvec3 c = texture(screen_tex, SCREEN_UV).rgb;\n\tfloat g = dot(c, vec3(0.299, 0.587, 0.114));\n\tvec3 grayd = vec3(g) * 0.66;\n\tCOLOR = vec4(mix(c, grayd, amount), 1.0);\n}"
+	var sh := Shader.new()   # 压暗褪色从center按radius向外扩散 → 昏暗冷灰(非纯白灰)
+	sh.code = "shader_type canvas_item;\nuniform sampler2D screen_tex : hint_screen_texture, filter_linear;\nuniform float amount : hint_range(0.0,1.0) = 0.0;\nuniform vec2 center = vec2(0.5,0.5);\nuniform float radius = 0.0;\nuniform float aspect = 1.778;\nvoid fragment(){\n\tvec3 c = texture(screen_tex, SCREEN_UV).rgb;\n\tvec2 d = SCREEN_UV - center; d.x *= aspect;\n\tfloat mask = 1.0 - smoothstep(radius-0.12, radius, length(d));\n\tfloat a = amount * mask;\n\tfloat g = dot(c, vec3(0.299,0.587,0.114));\n\tvec3 dim = vec3(g*0.56, g*0.56, g*0.64);\n\tCOLOR = vec4(mix(c, dim, a), 1.0);\n}"
 	var mat := ShaderMaterial.new()
 	mat.shader = sh
 	mat.set_shader_parameter("amount", 0.0)
+	mat.set_shader_parameter("radius", 0.0)
+	mat.set_shader_parameter("aspect", vp.x / maxf(1.0, vp.y))
 	rect.material = mat
 	_ts_overlay.add_child(rect)
 	_ts_rect = rect
+	# --- 反色闪层(layer60, 在UI层之上 → 反色含全屏UI) ---
+	_ts_flash_overlay = CanvasLayer.new()
+	_ts_flash_overlay.layer = 60
+	add_child(_ts_flash_overlay)
+	var frect := ColorRect.new()
+	frect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	frect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var fsh := Shader.new()
+	fsh.code = "shader_type canvas_item;\nuniform sampler2D screen_tex : hint_screen_texture, filter_linear;\nuniform float invert : hint_range(0.0,1.0) = 0.0;\nvoid fragment(){\n\tvec3 c = texture(screen_tex, SCREEN_UV).rgb;\n\tCOLOR = vec4(mix(c, vec3(1.0)-c, invert), 1.0);\n}"
+	var fmat := ShaderMaterial.new()
+	fmat.shader = fsh
+	fmat.set_shader_parameter("invert", 0.0)
+	frect.material = fmat
+	_ts_flash_overlay.add_child(frect)
+	_ts_flash_rect = frect
 
-func _ts_visual_start() -> void:   # 灰暗世界渐入(step6再加反色闪+中心暗波+钟表+携带者辉光)
+func _ts_casters_screen_uv() -> Vector2:   # active携带者质心的屏幕UV(扩散中心)
+	if _cam == null or _ts_active.is_empty():
+		return Vector2(0.5, 0.5)
+	var acc := Vector2.ZERO; var n := 0
+	for c in _ts_active:
+		var head: Vector3 = _world_pos(c["pos"], 1.0)
+		if not _cam.is_position_behind(head):
+			acc += _cam.unproject_position(head); n += 1
+	if n == 0:
+		return Vector2(0.5, 0.5)
+	var vp := get_viewport().get_visible_rect().size
+	return (acc / float(n)) / Vector2(maxf(1.0, vp.x), maxf(1.0, vp.y))
+
+# 释放: ①反色闪 ②压暗褪色从携带者扩散(昏暗冷灰) ③钟+携带者金辉光 (忠实DIO "時よ止まれ")
+func _ts_visual_start() -> void:
 	_ts_ensure_overlay()
 	var mat: ShaderMaterial = _ts_rect.material
-	var tw := create_tween()   # 注意:视觉驱动tween不走_reg_tween(不能被自己冻结)
-	tw.tween_method(func(v: float): mat.set_shader_parameter("amount", v), 0.0, 1.0, 0.35)
+	var fmat: ShaderMaterial = _ts_flash_rect.material
+	mat.set_shader_parameter("center", _ts_casters_screen_uv())
+	mat.set_shader_parameter("radius", 0.0)
+	mat.set_shader_parameter("amount", 0.0)
+	fmat.set_shader_parameter("invert", 0.0)
+	var fl := create_tween()   # ①反色闪(负片一下, 含全屏UI)
+	fl.tween_method(func(v: float): fmat.set_shader_parameter("invert", v), 0.0, 0.92, 0.05)
+	fl.tween_method(func(v: float): fmat.set_shader_parameter("invert", v), 0.92, 0.0, 0.13)
+	var sp := create_tween(); sp.set_parallel(true)   # ②压暗褪色从携带者铺开
+	sp.tween_method(func(v: float): mat.set_shader_parameter("radius", v), 0.0, 2.1, 0.5).set_ease(Tween.EASE_OUT)
+	sp.tween_method(func(v: float): mat.set_shader_parameter("amount", v), 0.0, 1.0, 0.5)
+	for c in _ts_active:
+		_ts_shock_ring(c["pos"])       # 中心能量涟漪波
+		_ts_caster_glow(c)             # ③携带者"时之主"金辉光
+	_ts_spawn_clock()                  # 停摆钟浮现
 
-func _ts_visual_end() -> void:
+func _ts_visual_end() -> void:   # 解除: 反色再闪 + 回色(时间恢复流动)
+	_ts_clear_visual_nodes()
 	if _ts_rect == null or not is_instance_valid(_ts_rect):
 		return
 	var mat: ShaderMaterial = _ts_rect.material
+	var fmat: ShaderMaterial = _ts_flash_rect.material
+	var fl := create_tween()
+	fl.tween_method(func(v: float): fmat.set_shader_parameter("invert", v), 0.0, 0.7, 0.04)
+	fl.tween_method(func(v: float): fmat.set_shader_parameter("invert", v), 0.7, 0.0, 0.1)
 	var tw := create_tween()
-	tw.tween_method(func(v: float): mat.set_shader_parameter("amount", v), 1.0, 0.0, 0.3)
+	tw.tween_method(func(v: float): mat.set_shader_parameter("amount", v), 1.0, 0.0, 0.35)
 
-func _ts_tick_visual(_delta: float) -> void:   # 时停维持期视觉(step6: 钟表脉动/暗角); 核心先空
+func _ts_tick_visual(_delta: float) -> void:   # 维持期(钟脉动由tween驱动, 这里留空)
 	pass
 
-func _ts_charge_vfx(c: Dictionary) -> void:   # 蓄力表现(step6: 金沙流+沙漏虚影); 核心先金脉冲环
-	_skill_ring(c["pos"], Color(1.0, 0.85, 0.35, 0.8), 90.0)
+# 中心能量涟漪: 一圈青白波从pos扩散(时停释放冲击波)
+func _ts_shock_ring(pos2d: Vector2) -> void:
+	var r := Sprite3D.new()
+	var tex := _make_fire_glow_tex()
+	r.texture = tex
+	r.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	r.shaded = false; r.transparent = true
+	r.modulate = Color(0.7, 0.92, 1.0, 0.0)
+	r.pixel_size = (60.0 * WS) / float(maxi(1, tex.get_width()))
+	r.position = _world_pos(pos2d, 1.0)
+	_world.add_child(r)
+	var tw := create_tween(); tw.set_parallel(true)   # 视觉波不冻结
+	tw.tween_property(r, "modulate:a", 0.85, 0.12)
+	tw.tween_property(r, "pixel_size", (900.0 * WS) / float(maxi(1, tex.get_width())), 0.55).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_property(r, "modulate:a", 0.0, 0.2)
+	tw.chain().tween_callback(r.queue_free)
+
+# 携带者金辉光: 身后金色发光球, 跟随+脉动 (时之主)
+func _ts_caster_glow(c: Dictionary) -> void:
+	var g := Sprite3D.new()
+	var tex := _make_fire_glow_tex()
+	g.texture = tex
+	g.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	g.shaded = false; g.transparent = true
+	g.render_priority = -1
+	g.modulate = Color(1.0, 0.82, 0.32, 0.0)
+	g.pixel_size = (150.0 * WS) / float(maxi(1, tex.get_width()))
+	g.position = _world_pos(c["pos"], 1.0)
+	_world.add_child(g)
+	_follow_vfx.append({"spr": g, "unit": c, "h": 1.0})
+	_ts_glow_sprs.append(g)
+	var tw := create_tween().set_loops()   # 脉动(不冻结→时之主持续发光)
+	tw.tween_property(g, "modulate:a", 0.7, 0.6).from(0.35)
+	tw.tween_property(g, "modulate:a", 0.35, 0.6)
+
+# 停摆钟: 叠加层顶(不被褪色), 半透明浮于屏幕中心, 缓慢脉动
+func _ts_spawn_clock() -> void:
+	if _ts_overlay == null or not is_instance_valid(_ts_overlay):
+		return
+	var clk := TextureRect.new()
+	clk.texture = load("res://assets/sprites/vfx/ts-clock.png")
+	clk.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	clk.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	clk.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var vp := get_viewport().get_visible_rect().size
+	var sz := 230.0
+	clk.size = Vector2(sz, sz)
+	clk.position = Vector2(vp.x * 0.5 - sz * 0.5, vp.y * 0.05)   # 屏幕中心偏上
+	clk.pivot_offset = Vector2(sz * 0.5, sz * 0.5)
+	clk.modulate = Color(1, 1, 1, 0.0)
+	_ts_overlay.add_child(clk)
+	_ts_clock = clk
+	var tw := create_tween().set_loops()
+	tw.tween_property(clk, "modulate:a", 0.30, 0.9).from(0.10)
+	tw.tween_property(clk, "modulate:a", 0.15, 0.9)
+
+func _ts_clear_visual_nodes() -> void:
+	for g in _ts_glow_sprs:
+		if is_instance_valid(g):
+			g.queue_free()
+	_ts_glow_sprs = []
+	if _ts_clock != null and is_instance_valid(_ts_clock):
+		var clk := _ts_clock
+		var tw := create_tween()
+		tw.tween_property(clk, "modulate:a", 0.0, 0.25)
+		tw.tween_callback(clk.queue_free)
+	_ts_clock = null
+
+# 蓄力(1s): 携带者头顶沙漏虚影浮现+微升 + 金沙粒从四周螺旋汇入 + 脚下金环
+func _ts_charge_vfx(c: Dictionary) -> void:
+	_skill_ring(c["pos"], Color(1.0, 0.85, 0.35, 0.85), 100.0)
+	# 沙漏虚影
+	var hg := Sprite3D.new()
+	hg.texture = load("res://assets/sprites/vfx/ts-hourglass.png")
+	hg.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	hg.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	hg.shaded = false; hg.transparent = true
+	hg.modulate = Color(1.0, 0.92, 0.6, 0.0)
+	hg.pixel_size = (54.0 * WS) / float(maxi(1, hg.texture.get_height()))
+	hg.position = _world_pos(c["pos"], 2.4)
+	_world.add_child(hg)
+	var tw := create_tween(); tw.set_parallel(true)
+	tw.tween_property(hg, "modulate:a", 0.95, 0.4)
+	tw.tween_property(hg, "position", _world_pos(c["pos"], 3.0), 1.0).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_property(hg, "modulate:a", 0.0, 0.2)
+	tw.chain().tween_callback(hg.queue_free)
+	# 金沙粒螺旋汇入
+	for k in range(10):
+		var sp := Sprite3D.new()
+		if _spark_tex == null: _spark_tex = _make_glow_texture()
+		sp.texture = _spark_tex
+		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sp.shaded = false; sp.transparent = true
+		sp.modulate = Color(1.0, 0.82, 0.32, 0.9)
+		sp.pixel_size = 0.01
+		var ang := TAU * float(k) / 10.0
+		var off := Vector2(cos(ang), sin(ang)) * 130.0
+		sp.position = _world_pos(c["pos"] + off, 1.4)
+		_world.add_child(sp)
+		var stw := create_tween(); stw.set_parallel(true)
+		stw.tween_property(sp, "position", _world_pos(c["pos"], 1.6), 0.9).set_ease(Tween.EASE_IN)
+		stw.tween_property(sp, "modulate:a", 0.0, 0.9)
+		stw.chain().tween_callback(sp.queue_free)
 
 # 跟随单位的特效: 每帧把 sprite 贴到目标最新世界坐标(含击飞抬升). sprite 被 queue_free 后自动从列表剔除.
 func _tick_follow_vfx() -> void:
@@ -1898,10 +2053,10 @@ func _big_bear_charge_and_spawn(u: Dictionary, si: int) -> void:   # 满层: 携
 	_float_text(u["pos"] + Vector2(0, -70), "大熊蓄力...", Color("#ffd166"))
 	for k in range(7):   # 蓄力: 金块从脚下环绕依次破土冒起(聚土成熊)
 		var ca: float = float(k) * TAU / 7.0
-		var ctw := create_tween()
+		var ctw := _reg_tween()
 		ctw.tween_interval(float(k) * 0.14)
 		ctw.tween_callback(_gold_chunk_erupt.bind(u["pos"] + Vector2(cos(ca), sin(ca)) * randf_range(40.0, 62.0)))
-	var gt := create_tween()
+	var gt := _reg_tween()
 	gt.tween_property(glow, "modulate:a", 0.95, 1.0)
 	gt.parallel().tween_property(glow, "scale", Vector3(3.2, 3.2, 3.2), 1.2)
 	await get_tree().create_timer(1.2).timeout
@@ -1935,7 +2090,7 @@ func _bear_claw_fx(pos2d: Vector2) -> void:   # 熊爪拍击命中: 三道金爪
 		imesh.surface_set_color(Color(1.0, 0.8, 0.35, 0.2)); imesh.surface_add_vertex(_world_pos(b, 1.0))
 		imesh.surface_end()
 		_world.add_child(im)
-		var tw := create_tween()
+		var tw := _reg_tween()
 		tw.tween_property(mat, "albedo_color:a", 0.0, 0.18)
 		tw.tween_callback(im.queue_free)
 
@@ -2001,7 +2156,7 @@ func _big_bear_attack(u: Dictionary, tgt: Dictionary) -> void:   # 大熊: <2层
 	else:
 		u["bear_anim"] = "attack"; u["bear_anim_t"] = 0.0   # 前摇抬爪→挥击→后摇收手(voff驱动)
 		var total: float = 0.07 * 7.0
-		var tw := create_tween()
+		var tw := _reg_tween()
 		tw.tween_interval(total * 0.45)             # 命中延到挥击接触帧(非攻击一开始)
 		tw.tween_callback(_bear_paw_hit.bind(u, tgt))
 		u["bear_stacks"] = int(u.get("bear_stacks", 0)) + 1
@@ -2052,7 +2207,7 @@ func _tick_thunder(u: Dictionary, delta: float) -> void:   # 雷鸣贝壳p2eq_02
 		e["thunder_t"] = 0.0
 		var si: int = _eq_si(int(e.get("star", 1)))
 		for d in range([1, 2, 3][si]):                # 道间错峰
-			var tw := create_tween()
+			var tw := _reg_tween()
 			tw.tween_interval(float(d) * 0.3)
 			tw.tween_callback(_thunder_bolt.bind(u))
 
@@ -2062,7 +2217,7 @@ func _thunder_bolt(u: Dictionary) -> void:
 	if es.is_empty(): return
 	var o = es[randi() % es.size()]
 	_lightning_strike(o["pos"], Color("#8fd4ff"), 4.6)   # 大雷(中心≈2.2=飘字高度)
-	var tw := create_tween()                             # 伤害在闪电动画中段(~0.25s)跳=落在雷中间
+	var tw := _reg_tween()                             # 伤害在闪电动画中段(~0.25s)跳=落在雷中间
 	tw.tween_interval(0.25)
 	tw.tween_callback(_thunder_hit.bind(u, o))
 
@@ -2091,7 +2246,7 @@ func _eq_ice_fissure(u: Dictionary, si: int) -> void:
 	if dir == Vector2.ZERO:
 		dir = Vector2.RIGHT
 	_anticipate(u)                                 # 蓄力砸地
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_interval(0.3)
 	tw.tween_callback(_ice_fissure_go.bind(u, si, u["pos"], dir))
 
@@ -2109,7 +2264,7 @@ func _ice_fissure_go(u: Dictionary, si: int, start: Vector2, dir: Vector2) -> vo
 		if not _on_line(start, dir, o["pos"], width):
 			continue
 		var d: float = clampf(along / reach, 0.0, 1.0) * fdur
-		var tw := create_tween()
+		var tw := _reg_tween()
 		tw.tween_interval(d)                       # 冰道推进到该敌才结算
 		tw.tween_callback(_ice_fissure_hit.bind(u, o, si))
 
@@ -2135,17 +2290,17 @@ func _ice_fissure_vfx(start: Vector2, dir: Vector2, reach: float, fdur: float) -
 		var lat: float = randf_range(-46.0, 46.0)
 		var hs: float = lerpf(1.4, 0.68, absf(lat) / 46.0) * randf_range(0.82, 1.15)   # 中脊高两侧矮
 		var pos: Vector2 = start + dir * (reach * f) + perp * lat
-		var tw := create_tween()
+		var tw := _reg_tween()
 		tw.tween_interval(f * fdur)
 		tw.tween_callback(_spawn_ice_spike.bind(pos, hs, field_life))
 	var m: int = 13
 	for i in range(1, m + 1):
 		var f: float = float(i) / float(m)
 		var pos: Vector2 = start + dir * (reach * f)
-		var tf := create_tween()
+		var tf := _reg_tween()
 		tf.tween_interval(f * fdur)
 		tf.tween_callback(_ice_field_patch.bind(field, pos, dir, field_life))
-		var tm := create_tween()
+		var tm := _reg_tween()
 		tm.tween_interval(f * fdur)
 		tm.tween_callback(_frost_mist.bind(pos + perp * randf_range(-42.0, 42.0)))
 
@@ -2165,7 +2320,7 @@ func _spawn_ice_spike(pos2d: Vector2, hscale: float, linger: float) -> void:
 	var base_pos: Vector3 = _world_pos(pos2d, world_h * 0.42)
 	spr.position = base_pos - Vector3(0.0, 0.6, 0.0)
 	_world.add_child(spr)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.set_parallel(true)
 	tw.tween_property(spr, "position", base_pos, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)   # 破土弹出
 	tw.tween_property(spr, "modulate:a", 0.95, 0.1)
@@ -2188,7 +2343,7 @@ func _ice_field_patch(tex: Texture2D, pos2d: Vector2, dir: Vector2, life: float)
 	spr.pixel_size = (155.0 * WS) / float(maxi(1, int(tex.get_width())))
 	spr.position = _world_pos(pos2d, 0.04)
 	_world.add_child(spr)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_property(spr, "modulate:a", 0.55, 0.12)
 	tw.tween_interval(life)
 	tw.tween_property(spr, "modulate:a", 0.0, 0.4)
@@ -2205,7 +2360,7 @@ func _frost_mist(pos2d: Vector2) -> void:
 	spr.pixel_size = (randf_range(55.0, 92.0) * WS) / float(maxi(1, int(tex.get_width())))
 	spr.position = _world_pos(pos2d, 0.5)
 	_world.add_child(spr)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.set_parallel(true)
 	tw.tween_property(spr, "position", _world_pos(pos2d, 1.15), 0.7)
 	tw.tween_property(spr, "modulate:a", 0.0, 0.7)
@@ -2242,12 +2397,12 @@ func _crystal_spark(pos2d: Vector2, h: float = 0.9) -> void:
 	spr.modulate = Color(1, 1, 1, 0)
 	spr.rotation.z = randf_range(-0.4, 0.4)
 	_world.add_child(spr)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_property(spr, "modulate:a", 1.0, 0.07)
 	tw.tween_interval(0.1)
 	tw.tween_property(spr, "modulate:a", 0.0, 0.28)
 	tw.tween_callback(spr.queue_free)
-	var tw2 := create_tween()
+	var tw2 := _reg_tween()
 	tw2.tween_property(spr, "rotation:z", spr.rotation.z + 0.8, 0.45)
 
 # 水晶光束: 亮白核 + 紫辉 + 沿线水晶碎片 (030 直线用)
@@ -2279,7 +2434,7 @@ func _crystal_stack_set(o: Dictionary, n: int) -> void:
 		spr.modulate = Color(1, 1, 1, 0)
 		_world.add_child(spr)
 		_follow_vfx.append({"spr": spr, "unit": o, "h": 1.5, "orbit_r": 0.34, "orbit_a": float(idx) * TAU / 3.0, "orbit_spd": 2.6})
-		var tw := create_tween()
+		var tw := _reg_tween()
 		tw.tween_property(spr, "modulate:a", 0.95, 0.15)
 		arr.append(spr)
 	o["_xtal_shards"] = arr
@@ -2305,7 +2460,7 @@ func _crystal_detonate(pos2d: Vector2) -> void:
 	fl.pixel_size = (34.0 * WS) / float(maxi(1, glow.get_width()))
 	fl.position = _world_pos(pos2d, 0.9)
 	_world.add_child(fl)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.set_parallel(true)
 	tw.tween_property(fl, "pixel_size", (130.0 * WS) / float(maxi(1, glow.get_width())), 0.28)
 	tw.tween_property(fl, "modulate:a", 0.0, 0.28)
@@ -2334,7 +2489,7 @@ func _eq_crystal_sweep(u: Dictionary, si: int) -> void:
 	var start_a: float = randf() * TAU
 	var state: Dictionary = {"prev": start_a}
 	_crystal_spark(center, 1.1)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	# 先慢后快再慢(ease-in-out): 匀速被否, 甩动有加速度
 	tw.tween_method(_crystal_sweep_step.bind(u, si, reach, state, im, imesh, mat), start_a, start_a + TAU, 1.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 	tw.tween_callback(im.queue_free)
@@ -2409,7 +2564,7 @@ func _eq_summon_skeleton(u: Dictionary, si: int) -> void:
 	if is_instance_valid(sk["sprite"]):
 		var base_sc: Vector3 = sk["sprite"].scale
 		sk["sprite"].scale = Vector3(base_sc.x, 0.05, base_sc.z)
-		var tw := create_tween()
+		var tw := _reg_tween()
 		tw.tween_property(sk["sprite"], "scale", base_sc, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 # 亡灵爆: 绿冲击环 + 绿辉爆闪 + 骨渣四射 (骷髅自灭/被杀 + 海螺变形共用基元)
@@ -2426,7 +2581,7 @@ func _necro_burst(pos2d: Vector2, radius: float) -> void:
 	fl.pixel_size = (50.0 * WS) / float(maxi(1, glow.get_width()))
 	fl.position = _world_pos(pos2d, 0.8)
 	_world.add_child(fl)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.set_parallel(true)
 	tw.tween_property(fl, "pixel_size", (radius * 1.3 * WS) / float(maxi(1, glow.get_width())), 0.32)
 	tw.tween_property(fl, "modulate:a", 0.0, 0.32)
@@ -2446,7 +2601,7 @@ func _bone_speck(pos2d: Vector2) -> void:
 	spr.pixel_size = (randf_range(10.0, 18.0) * WS) / float(maxi(1, tex.get_width()))
 	spr.position = _world_pos(pos2d, 0.4)
 	_world.add_child(spr)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.set_parallel(true)
 	tw.tween_property(spr, "position", _world_pos(pos2d, 1.0), 0.42)
 	tw.tween_property(spr, "modulate:a", 0.0, 0.42)
@@ -2466,7 +2621,7 @@ func _conch_transform(pos2d: Vector2) -> void:
 	col.pixel_size = (55.0 * WS) / float(maxi(1, glow.get_width()))
 	col.position = _world_pos(pos2d, 0.7)
 	_world.add_child(col)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.set_parallel(true)
 	tw.tween_property(col, "position", _world_pos(pos2d, 1.5), 0.45)
 	tw.tween_property(col, "modulate:a", 0.0, 0.5)
@@ -2512,7 +2667,7 @@ func _ripple_heal_vfx(pos2d: Vector2, size_px: float) -> void:
 	r.position = _world_pos(pos2d, 0.06)
 	r.pixel_size = (size_px * 2.0 * WS) / float(fh)
 	_world.add_child(r)
-	var tw := create_tween(); tw.set_parallel(true)
+	var tw := _reg_tween(); tw.set_parallel(true)
 	if nf > 1:
 		tw.tween_property(r, "frame", nf - 1, 0.55)
 	tw.tween_property(r, "modulate:a", 0.0, 0.6).set_ease(Tween.EASE_IN)
@@ -2562,7 +2717,7 @@ func _ensure_candle(u: Dictionary) -> void:
 	u["_candle_spr"] = c
 	_follow_vfx.append({"spr": c, "unit": u, "h": 3.05})
 	if int(u["_candle_frames"]) > 1:   # 火苗帧表: 循环播放(蜡烛自带跳动火苗)
-		var at := create_tween().set_loops()
+		var at := _reg_tween().set_loops()
 		at.tween_property(c, "frame", int(u["_candle_frames"]) - 1, 0.45).from(0)
 
 func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
@@ -2572,10 +2727,10 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 	stt["candle"] = (ph + 1) % 3
 	if ph == 0:   # 熄灭: 蜡烛变暗(火苗弱下去, 无效果)
 		if c != null and is_instance_valid(c):
-			create_tween().tween_property(c, "modulate", Color(0.5, 0.5, 0.58, 1.0), 0.35)
+			_reg_tween().tween_property(c, "modulate", Color(0.5, 0.5, 0.58, 1.0), 0.35)
 	elif ph == 1:   # 微弱: 蜡烛点亮 + 250码光圈 + 圈内友军5s逐渐回血
 		if c != null and is_instance_valid(c):
-			create_tween().tween_property(c, "modulate", Color(1, 1, 1, 1), 0.35)
+			_reg_tween().tween_property(c, "modulate", Color(1, 1, 1, 1), 0.35)
 		var hv37: float = [20, 30, 44][si] + u["atk"] * [0.5, 0.7, 1.0][si]
 		_heal_circle_vfx(u["pos"], 250.0, 5.0)   # AI生成回血阵动画
 		u["candle_hot_rate"] = hv37 / 5.0
@@ -2586,7 +2741,7 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 				a37["candle_hot_until"] = _t + 5.0
 	elif ph == 2:   # 燃烧: 火苗爆燃(蜡烛过亮+弹一下) + 原地爆炸, 499码内敌各受魔法伤+灼烧
 		if c != null and is_instance_valid(c):
-			var ct := create_tween(); ct.set_parallel(true)
+			var ct := _reg_tween(); ct.set_parallel(true)
 			ct.tween_property(c, "modulate", Color(1.4, 1.15, 0.85, 1.0), 0.12)
 			ct.tween_property(c, "scale", Vector3.ONE * 1.3, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 			ct.chain().tween_property(c, "scale", Vector3.ONE, 0.25)
@@ -2610,7 +2765,7 @@ func _candle_circle(pos2d: Vector2, radius_px: float, dur: float) -> void:
 	r.position = _world_pos(pos2d, 0.05)
 	r.pixel_size = (radius_px * 2.0 * WS) / 96.0
 	_world.add_child(r)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_property(r, "modulate:a", 0.55, 0.4)
 	tw.tween_property(r, "modulate:a", 0.12, dur * 0.6)
 	tw.tween_property(r, "modulate:a", 0.0, dur * 0.4)
@@ -2633,9 +2788,9 @@ func _heal_circle_vfx(pos2d: Vector2, radius_px: float, dur: float) -> void:
 	r.pixel_size = (radius_px * 2.0 * WS) / float(fh)
 	_world.add_child(r)
 	if nf > 1:
-		var at := create_tween().set_loops()
+		var at := _reg_tween().set_loops()
 		at.tween_property(r, "frame", nf - 1, 0.5).from(0)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_property(r, "modulate:a", 0.95, 0.4)
 	tw.tween_property(r, "modulate:a", 0.55, dur * 0.6)
 	tw.tween_property(r, "modulate:a", 0.0, dur * 0.4)
@@ -2656,7 +2811,7 @@ func _boom_wave(pos2d: Vector2, size_px: float, h: float = 0.8) -> void:
 	b.pixel_size = (size_px * WS) / float(fh)
 	b.position = _world_pos(pos2d, h)
 	_world.add_child(b)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	if nf > 1:
 		tw.tween_property(b, "frame", nf - 1, 0.36)
 	else:
@@ -2690,7 +2845,7 @@ func _signal_pulse(pos2d: Vector2) -> void:
 		sw.position = _world_pos(pos2d, 2.45)
 		_world.add_child(sw)
 		var d: float = float(k) * 0.16
-		var tw := create_tween(); tw.set_parallel(true)
+		var tw := _reg_tween(); tw.set_parallel(true)
 		tw.tween_property(sw, "position", _world_pos(pos2d, 3.35), 0.6).set_delay(d).set_ease(Tween.EASE_OUT)
 		tw.tween_property(sw, "pixel_size", 1.7 / 96.0, 0.6).set_delay(d).set_ease(Tween.EASE_OUT)
 		tw.tween_property(sw, "modulate:a", 0.0, 0.6).set_delay(d).set_ease(Tween.EASE_IN)
@@ -2704,7 +2859,7 @@ func _signal_pulse(pos2d: Vector2) -> void:
 	rg.position = _world_pos(pos2d, 0.06)
 	rg.pixel_size = 0.01
 	_world.add_child(rg)
-	var tw2 := create_tween(); tw2.set_parallel(true)
+	var tw2 := _reg_tween(); tw2.set_parallel(true)
 	tw2.tween_property(rg, "pixel_size", 0.055, 0.5).set_ease(Tween.EASE_OUT)
 	tw2.tween_property(rg, "modulate:a", 0.0, 0.5)
 	tw2.chain().tween_callback(rg.queue_free)
@@ -2813,7 +2968,7 @@ func _throw_dumbbell(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   # 钢�
 	spr.pixel_size = (48.0 * WS) / float(maxi(1, spr.texture.get_width()))   # 场地约48px宽
 	spr.position = _world_pos(u["pos"], 1.1)
 	_world.add_child(spr)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_property(spr, "position", _world_pos(tgt["pos"], 1.0), 0.3)
 	tw.tween_callback(_dumbbell_hit.bind(spr, u, tgt, dmg))
 
@@ -2838,7 +2993,7 @@ func _eq_fuel_throw(u: Dictionary, si: int) -> void:   # 余烬燃油瓶022: 施
 	spr.pixel_size = 0.02
 	spr.position = _world_pos(u["pos"], 1.15)
 	_world.add_child(spr)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_property(spr, "position", _world_pos(t["pos"], 1.0), 0.32)
 	tw.tween_callback(_fuel_bottle_hit.bind(spr, u, t, si))
 
@@ -2886,7 +3041,7 @@ func _baton_spark(u: Dictionary) -> void:
 	spr.pixel_size = (42.0 * WS) / fw
 	spr.position = _world_pos(u["pos"] + Vector2(randf_range(-14.0, 14.0), randf_range(-12.0, 12.0)), randf_range(0.45, 1.1))
 	_world.add_child(spr)
-	var t := create_tween()
+	var t := _reg_tween()
 	t.tween_property(spr, "modulate:a", 0.0, 0.2)
 	t.tween_callback(spr.queue_free)
 
@@ -2895,7 +3050,7 @@ func _eq_ice_throw(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false): return
 	if _nearest_enemy(u) == null: return
 	_anticipate(u)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_interval(0.32)
 	tw.tween_callback(_ice_throw_go.bind(u, si))
 
@@ -2919,7 +3074,7 @@ func _ice_throw_go(u: Dictionary, si: int) -> void:
 	var from2d: Vector2 = u["pos"]
 	spr.position = _world_pos(from2d, 1.1)
 	_world.add_child(spr)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_method(_ice_bottle_arc.bind(spr, from2d, t["pos"]), 0.0, 1.0, 0.6)
 	tw.tween_callback(_ice_bottle_hit.bind(spr, u, t, si))
 
@@ -2954,7 +3109,7 @@ func _ice_burst(pos2d: Vector2) -> void:
 	spr.pixel_size = (115.0 * WS) / fw
 	spr.position = _world_pos(pos2d, 0.95)
 	_world.add_child(spr)
-	var t := create_tween()
+	var t := _reg_tween()
 	t.tween_method(_zap_frame.bind(spr), 0.0, 5.0, 0.34)
 	t.tween_callback(spr.queue_free)
 
@@ -2969,7 +3124,7 @@ func _frost_puff(pos2d: Vector2) -> void:
 	spr.pixel_size = (78.0 * WS) / float(maxi(1, int(tex.get_width())))
 	spr.position = _world_pos(pos2d, 0.72)
 	_world.add_child(spr)
-	var t := create_tween()
+	var t := _reg_tween()
 	t.tween_interval(0.35)
 	t.tween_property(spr, "modulate:a", 0.0, 0.5)
 	t.tween_callback(spr.queue_free)
@@ -2989,7 +3144,7 @@ func _frozen_encase(o: Dictionary, dur: float = 1.5) -> void:
 	spr.modulate = Color(1, 1, 1, 0)
 	_world.add_child(spr)
 	_follow_vfx.append({"spr": spr, "unit": o, "h": 0.78})   # 冰块跟着目标走(含击飞抬升)
-	var t := create_tween()
+	var t := _reg_tween()
 	t.tween_property(spr, "modulate:a", 0.96, 0.1)
 	t.tween_interval(maxf(0.1, dur - 0.35))
 	t.tween_property(spr, "modulate:a", 0.0, 0.25)
@@ -3007,7 +3162,7 @@ func _shield_bubble(u: Dictionary) -> void:
 	spr.pixel_size = (55.0 * WS) / tw_w
 	spr.position = _world_pos(u["pos"], 0.7)
 	_world.add_child(spr)
-	var t := create_tween()
+	var t := _reg_tween()
 	t.set_parallel(true)
 	t.tween_property(spr, "pixel_size", (105.0 * WS) / tw_w, 0.35)
 	t.tween_property(spr, "modulate:a", 0.0, 0.35)
@@ -3025,7 +3180,7 @@ func _mud_mark(pos2d: Vector2) -> void:
 	spr.pixel_size = (randf_range(42.0, 58.0) * WS) / 96.0
 	spr.position = _world_pos(pos2d + Vector2(randf_range(-5.0, 5.0), randf_range(-4.0, 8.0)), 0.03)
 	_world.add_child(spr)
-	var t := create_tween()
+	var t := _reg_tween()
 	t.tween_interval(0.6)
 	t.tween_property(spr, "modulate:a", 0.0, 0.5)
 	t.tween_callback(spr.queue_free)
@@ -3148,7 +3303,7 @@ func _weapon_slash(from2d: Vector2, to2d: Vector2, col: Color) -> void:   # 面�
 	arc.modulate = Color(col.r, col.g, col.b, 0.0)
 	arc.scale = Vector3(0.5, 0.5, 0.5)
 	_world.add_child(arc)
-	var tw := create_tween(); tw.set_parallel(true)
+	var tw := _reg_tween(); tw.set_parallel(true)
 	tw.tween_property(arc, "modulate:a", 0.95, 0.05)
 	tw.tween_property(arc, "scale", Vector3(1.25, 1.25, 1.25), 0.14)   # 快速挥出(扫)
 	tw.chain().tween_property(arc, "modulate:a", 0.0, 0.13)
@@ -3200,7 +3355,7 @@ func _blood_slash(from2d: Vector2, to2d: Vector2, delay: float) -> void:   # 饮
 	spr.position = _world_pos(to2d + off, 1.0)
 	spr.modulate = Color(1, 1, 1, 0)   # delay前隐藏
 	_world.add_child(spr)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	if delay > 0.0: tw.tween_interval(delay)
 	tw.tween_callback(spr.set_modulate.bind(Color(1, 1, 1, 1)))
 	tw.tween_method(func(fr): spr.frame = clampi(int(fr), 0, 4), 0.0, 5.0, 0.5)   # 5帧×100ms=0.5s
@@ -3294,19 +3449,19 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑(用户改�
 	sword.rotation = Vector3(-0.6, 0.0, 1.15)   # x=面镜头, z=上扬蓄势
 	sword.scale = Vector3(0.5, 0.5, 0.5)
 	_world.add_child(sword)
-	var gt := create_tween(); gt.set_parallel(true)
+	var gt := _reg_tween(); gt.set_parallel(true)
 	gt.tween_property(sword, "modulate:a", 1.0, 0.28)
 	gt.tween_property(sword, "scale", Vector3(1.5, 1.5, 1.5), 0.4)
 	await get_tree().create_timer(0.6).timeout
 	if not u.get("alive", false):
 		if is_instance_valid(sword): sword.queue_free()
 		return
-	var dt := create_tween()   # 向下斩击: z从上扬1.15挥到下劈-1.35 (快, 回弹)
+	var dt := _reg_tween()   # 向下斩击: z从上扬1.15挥到下劈-1.35 (快, 回弹)
 	dt.tween_property(sword, "rotation:z", -1.35, 0.2).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
 	await dt.finished
 	_shake(JUICE_SHAKE_HEAVY); _skill_ring(front, Color(0.7, 0.85, 1.0, 0.6), 82.0)
 	if is_instance_valid(sword):
-		var sf := create_tween(); sf.tween_property(sword, "modulate:a", 0.0, 0.16); sf.tween_callback(sword.queue_free)
+		var sf := _reg_tween(); sf.tween_property(sword, "modulate:a", 0.0, 0.16); sf.tween_callback(sword.queue_free)
 	var qi := Sprite3D.new()   # 竖剑气(弯月能量刃, 短, 坐地)
 	qi.texture = _make_qi_texture(Color(0.7, 0.86, 1.0))
 	qi.billboard = BaseMaterial3D.BILLBOARD_ENABLED; qi.shaded = false; qi.transparent = true
@@ -3329,7 +3484,7 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑(用户改�
 				_apply_damage_from(u, o, dd, Color("#dfe8ff"), 0.0, false, true)
 				_grant_shield(u, dd * shp)   # 造成伤害即给盾(用户: 每命中一个就给)
 	if is_instance_valid(qi):
-		var ft := create_tween(); ft.tween_property(qi, "modulate:a", 0.0, 0.2); ft.tween_callback(qi.queue_free)
+		var ft := _reg_tween(); ft.tween_property(qi, "modulate:a", 0.0, 0.2); ft.tween_callback(qi.queue_free)
 
 func _eq_coral_spike(u: Dictionary, far: Dictionary, si: int) -> void:   # 珊瑚刺弹体→最远敌, 到达: 物理+%maxHP魔法(错峰显示)
 	var start: Vector2 = u["pos"]
@@ -3409,7 +3564,7 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 	glow.modulate = Color(0.7, 0.82, 1.0, 0.0); glow.pixel_size = 0.02
 	glow.position = _world_pos(u["pos"] - dir * 100.0, 1.0)
 	_world.add_child(glow)
-	var gt := create_tween()
+	var gt := _reg_tween()
 	gt.tween_property(glow, "modulate:a", 0.85, 0.4)
 	gt.parallel().tween_property(glow, "scale", Vector3(2.8, 2.8, 2.8), 0.45)
 	await get_tree().create_timer(0.45).timeout
@@ -3428,7 +3583,7 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 		sp.modulate = Color(0.85, 0.9, 1.0, 0.0)
 		sp.scale = Vector3(0.3, 0.3, 0.3)
 		_world.add_child(sp)
-		var st := create_tween(); st.set_parallel(true)
+		var st := _reg_tween(); st.set_parallel(true)
 		st.tween_property(sp, "modulate:a", 0.95, 0.2).set_delay(float(k) * 0.03)
 		st.tween_property(sp, "scale", Vector3.ONE, 0.25).set_delay(float(k) * 0.03)
 		swords.append(sp)
@@ -3436,7 +3591,7 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 	if not u.get("alive", false): return
 	for spr in swords:   # 调转方向: 一排剑同时旋转对准行进方向(带回弹)
 		if is_instance_valid(spr):
-			create_tween().tween_property(spr, "rotation:y", ang, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			_reg_tween().tween_property(spr, "rotation:y", ang, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	await get_tree().create_timer(0.34).timeout
 	if not u.get("alive", false): return
 	_shake(JUICE_SHAKE_HEAVY)
@@ -3460,7 +3615,7 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 				_skill_ring(o["pos"], Color(0.82, 0.9, 1.0, 0.5), 44.0)
 	for sp2 in swords:
 		if is_instance_valid(sp2):
-			var ft := create_tween()
+			var ft := _reg_tween()
 			ft.tween_property(sp2, "modulate:a", 0.0, 0.14)
 			ft.tween_callback(sp2.queue_free)
 
@@ -3481,7 +3636,7 @@ func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大�
 	glow.modulate = Color(1.0, 0.82, 0.4, 0.0); glow.pixel_size = 0.012
 	glow.position = _world_pos(origin, 0.35)
 	_world.add_child(glow)
-	var gt := create_tween()
+	var gt := _reg_tween()
 	gt.tween_property(glow, "modulate:a", 0.5, 0.4)
 	gt.parallel().tween_property(glow, "scale", Vector3(1.4, 1.4, 1.4), 0.4)
 	# 前摇: 起身高高举起(加速t²)+后仰 (0.4s)
@@ -3555,7 +3710,7 @@ func _gold_chunk_erupt(pos2d: Vector2) -> void:   # 金块破土冒起(暖金)�
 	var base_pos: Vector3 = _world_pos(pos2d, wh * 0.42)
 	spr.position = base_pos - Vector3(0.0, 0.55, 0.0)
 	_world.add_child(spr)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.set_parallel(true)
 	tw.tween_property(spr, "position", base_pos, 0.13).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)   # 破土弹出
 	tw.tween_property(spr, "modulate:a", 1.0, 0.1)
@@ -3750,7 +3905,7 @@ func _phoenix_flame_puff(u: Dictionary, tgt: Dictionary) -> void:
 	_world.add_child(spr)
 	var life: float = _juice_rng.randf_range(0.28, 0.42)
 	var hend: float = 1.0 + _juice_rng.randf_range(0.0, 0.45)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.set_parallel(true)
 	tw.tween_property(spr, "position", _world_pos(endp, hend), life)
 	tw.tween_property(spr, "scale", Vector3(2.3, 2.3, 2.3), life)
@@ -3771,7 +3926,7 @@ func _spawn_burn_ember(u: Dictionary) -> void:
 	var h0: float = 0.3
 	spr.position = _world_pos(pos2d, h0)
 	_world.add_child(spr)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.set_parallel(true)
 	tw.tween_property(spr, "position", _world_pos(pos2d, h0 + 0.75), 0.46)
 	tw.tween_property(spr, "scale", Vector3(0.3, 0.3, 0.3), 0.46)
@@ -3847,7 +4002,7 @@ func _sk_phoenix_scald(u: Dictionary, tgt) -> void:
 	fb.position = _world_pos(mouth, 1.05)
 	_world.add_child(fb)
 	var tgt_pos: Vector2 = tgt["pos"]
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_property(fb, "scale", Vector3(1.9, 1.9, 1.9), 0.30)             # 蓄力(火球长大)
 	tw.parallel().tween_property(fb, "modulate", Color(1.0, 0.40, 0.12, 1.0), 0.30)
 	tw.tween_method(_scald_arc.bind(fb, mouth, tgt_pos), 0.0, 1.0, 0.42)        # 投掷
@@ -3881,7 +4036,7 @@ func _phoenix_flame_burst(pos2d: Vector2) -> void:
 		spr.scale = Vector3(0.5, 0.5, 0.5)
 		spr.position = _world_pos(pos2d, 0.7)
 		_world.add_child(spr)
-		var tw := create_tween()
+		var tw := _reg_tween()
 		tw.set_parallel(true)
 		tw.tween_property(spr, "position", _world_pos(p, 0.9 + _juice_rng.randf_range(0.0, 0.4)), 0.34)
 		tw.tween_property(spr, "scale", Vector3(1.3, 1.3, 1.3), 0.34)
@@ -3909,7 +4064,7 @@ func _scald_trail(pos2d: Vector2, h: float) -> void:
 	spr.scale = Vector3(0.85, 0.85, 0.85)
 	spr.position = _world_pos(pos2d, h)
 	_world.add_child(spr)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.set_parallel(true)
 	tw.tween_property(spr, "scale", Vector3(0.3, 0.3, 0.3), 0.26)
 	tw.tween_property(spr, "modulate:a", 0.0, 0.26)
@@ -3932,7 +4087,7 @@ func _lightning_basic(u: Dictionary, tgt: Dictionary) -> void:
 			break
 		chain.append(nxt); prev = nxt
 	# 顺序错峰劈: 彩虹→1, 1→2, 2→3, 每跳隔0.07s(看得见跳跃) + 锯齿电弧
-	var tw := create_tween()
+	var tw := _reg_tween()
 	var from_pos: Vector2 = u["pos"]
 	var fr := 1.0
 	for i in range(chain.size()):
@@ -3973,7 +4128,7 @@ func _sk_lightning_barrage(u: Dictionary) -> void:             # 闪电龟·雷�
 	cloud.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	cloud.position = _world_pos(u["pos"], cloud_h)
 	_world.add_child(cloud)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	for i in range(20):                            # 20道极快电(每0.06s)
 		tw.tween_callback(_barrage_bolt.bind(u, cloud_h))
 		tw.tween_interval(0.06)
@@ -3993,7 +4148,7 @@ func _barrage_bolt(u: Dictionary, cloud_h: float) -> void:
 func _barrage_cloud_fade(cloud: Sprite3D) -> void:
 	if not is_instance_valid(cloud):
 		return
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_property(cloud, "modulate:a", 0.0, 0.3)
 	tw.tween_callback(cloud.queue_free)
 
@@ -4018,7 +4173,7 @@ func _lightning_bolt_3d(from2d: Vector2, from_h: float, to2d: Vector2, to_h: flo
 		imesh.surface_add_vertex(_world_pos(p2, hh))
 	imesh.surface_end()
 	_world.add_child(im)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_property(mat, "albedo_color:a", 0.0, 0.18)
 	tw.tween_callback(im.queue_free)
 
@@ -4037,7 +4192,7 @@ func _lightning_strike(pos2d: Vector2, _col: Color, world_h: float = 2.6) -> voi
 	spr.pixel_size = world_h / float(maxi(1, tex.get_height()))
 	spr.position = _world_pos(pos2d, world_h * 0.478)
 	_world.add_child(spr)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	for f in range(5):                              # 5帧 9fps(~0.06s/帧)
 		tw.tween_callback(_lstrike_frame.bind(spr, f))
 		tw.tween_interval(1.0 / 9.0)   # 9fps = 回合制 common-lightning-strike 同播放时长(5帧0.556s)
@@ -4180,7 +4335,7 @@ func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   #
 					_knockback(u, tgt, 60.0, 1.6, 1.9)   # 踢一脚: 上抛×1.6/横推×1.9
 	# 小熊消失 (淡出)
 	if is_instance_valid(bear):
-		var tw := create_tween()
+		var tw := _reg_tween()
 		tw.tween_property(bear, "modulate:a", 0.0, 0.2)
 		tw.tween_callback(bear.queue_free)
 
@@ -4265,7 +4420,7 @@ func _muzzle_flash(pos2d: Vector2, dir: Vector2, col: Color) -> void:
 	sp.pixel_size = 0.016
 	sp.scale = Vector3.ONE * 0.4
 	_world.add_child(sp)
-	var tw := create_tween(); tw.set_parallel(true)
+	var tw := _reg_tween(); tw.set_parallel(true)
 	tw.tween_property(sp, "scale", Vector3.ONE * 1.05, 0.05).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_property(sp, "modulate:a", 0.0, 0.09)
 	tw.chain().tween_callback(sp.queue_free)
@@ -4298,7 +4453,7 @@ func _shotgun_pellet(from2d: Vector2, to2d: Vector2, col: Color) -> void:
 	var perp := (to2d - from2d).orthogonal().normalized() if (to2d - from2d).length() > 1.0 else Vector2.UP
 	sp.position = _world_pos(from2d + perp * randf_range(-18.0, 18.0), 1.0)
 	_world.add_child(sp)
-	var tw := create_tween()   # 顺序: 全程满alpha飞行 → 命中处才快速淡出(修"路中间淡化"用户2026-07-04)
+	var tw := _reg_tween()   # 顺序: 全程满alpha飞行 → 命中处才快速淡出(修"路中间淡化"用户2026-07-04)
 	tw.tween_property(sp, "position", _world_pos(to2d, 1.0), 0.42).set_ease(Tween.EASE_OUT)
 	tw.tween_property(sp, "modulate:a", 0.0, 0.1)
 	tw.tween_callback(sp.queue_free)
@@ -4320,7 +4475,7 @@ func _spawn_eq_bolt(src: Dictionary, tgt: Dictionary, dmg: int, tex_path: String
 	p.position = _world_pos(start2d, 1.0)
 	_world.add_child(p)
 	if spin:   # 飞镖: 旋转飞行
-		var sw := create_tween().set_loops()
+		var sw := _reg_tween().set_loops()
 		sw.tween_property(p, "rotation:z", TAU, 0.18).from(0.0)
 	_projectiles.append({
 		"node": p, "from": _world_pos(start2d, 1.0), "tgt": tgt, "dmg": dmg, "col": col,
@@ -4348,7 +4503,7 @@ func _laser_beam(a2d: Vector2, b2d: Vector2, col: Color, half_w: float = 0.16, d
 		imesh.surface_set_color(col); imesh.surface_add_vertex(v)
 	imesh.surface_end()
 	_world.add_child(im)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_property(mat, "albedo_color:a", 0.0, dur)
 	tw.tween_callback(im.queue_free)
 
@@ -4626,12 +4781,12 @@ func _kill(u: Dictionary, killer = null) -> void:
 	for key in ["shadow", "ring", "contact"]:
 		var n = u.get(key, null)
 		if is_instance_valid(n):
-			var tw := create_tween()
+			var tw := _reg_tween()
 			tw.tween_property(n, "modulate:a", 0.0, 0.4)
 			tw.tween_callback(n.hide)
 	var spr_n = u.get("sprite", null)
 	if is_instance_valid(spr_n):
-		var stw := create_tween()
+		var stw := _reg_tween()
 		if has_death_anim:
 			stw.tween_interval(0.55)        # 等 death 帧演完 (~7-13帧 @11-12fps) 再淡出
 		stw.tween_property(spr_n, "modulate:a", 0.0, 0.4)
@@ -4849,7 +5004,7 @@ func _bamboo_trail_dot(pos2d: Vector2, h: float) -> void:
 	dot.pixel_size = 0.006
 	dot.position = _world_pos(pos2d, h)
 	_world.add_child(dot)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.set_parallel(true)
 	tw.tween_property(dot, "modulate:a", 0.0, 0.42)
 	tw.tween_property(dot, "scale", Vector3.ONE * 0.3, 0.42)
@@ -4872,7 +5027,7 @@ func _spawn_bamboo_burst(pos2d: Vector2) -> void:
 	b.pixel_size = 1.3 / float(fh)
 	b.position = _world_pos(pos2d, 1.0)
 	_world.add_child(b)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_method(_bamboo_burst_step.bind(b, nframes), 0.0, 1.0, 0.35)
 	tw.tween_callback(b.queue_free)
 
@@ -4896,7 +5051,7 @@ func _play_heal_glow(pos2d: Vector2) -> void:
 		g.pixel_size = 0.009
 		g.position = _world_pos(pos2d, 0.2) + Vector3(randf_range(-0.45, 0.45), 0.0, randf_range(-0.2, 0.2))
 		_world.add_child(g)
-		var tw := create_tween()
+		var tw := _reg_tween()
 		tw.set_parallel(true)
 		tw.tween_property(g, "position:y", g.position.y + 1.6, 0.7).set_ease(Tween.EASE_OUT)
 		tw.tween_property(g, "modulate:a", 0.0, 0.7).set_delay(0.1)
@@ -4923,7 +5078,7 @@ func play_sheet_vfx(pos2d: Vector2, sheet: Texture2D, frames: int, world_px: flo
 	spr.pixel_size = (world_px * WS) / fw             # 让特效在场地约 world_px 像素宽
 	spr.position = _world_pos(pos2d, h)
 	_world.add_child(spr)
-	var t := create_tween()
+	var t := _reg_tween()
 	t.tween_method(func(fr): spr.frame = clampi(int(fr), 0, frames - 1), 0.0, float(frames), dur)   # 逐帧推进
 	t.tween_callback(spr.queue_free)
 
@@ -4941,7 +5096,7 @@ func _skill_ring(pos2d: Vector2, col: Color, radius: float) -> void:
 	var target_ps: float = (radius * 2.0 * WS) / 96.0
 	r.pixel_size = target_ps * 0.4
 	_world.add_child(r)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.set_parallel(true)
 	tw.tween_property(r, "pixel_size", target_ps, 0.35)
 	tw.tween_property(r, "modulate:a", 0.0, 0.35)
@@ -4964,7 +5119,7 @@ func _bolt_line(a2d: Vector2, b2d: Vector2, col: Color) -> void:
 	imesh.surface_add_vertex(_world_pos(b2d, 1.0))
 	imesh.surface_end()
 	_world.add_child(im)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_property(mat, "albedo_color:a", 0.0, 0.25)
 	tw.tween_callback(im.queue_free)
 
@@ -5056,7 +5211,7 @@ func _play_skill_vfx(skill_key: String, pos2d: Vector2, height: float = 1.2) -> 
 	spr.scale = Vector3.ONE * SKILL_VFX_START_SCALE
 	_world.add_child(spr)
 	# 一次性: 放大入场 → 保持 → 淡出 → 自销 (播一遍消失)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_property(spr, "scale", Vector3.ONE, SKILL_VFX_GROW_SEC).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_interval(SKILL_VFX_HOLD_SEC)
 	tw.tween_property(spr, "modulate:a", 0.0, SKILL_VFX_FADE_SEC)
@@ -5431,7 +5586,7 @@ func _sk_ice_frost(u: Dictionary, tgt: Dictionary) -> void:      # 寒冰龟·�
 		var es := _enemies_of(u)
 		if not es.is_empty(): center = es[0]["pos"]
 	var radius := 150.0
-	var tw := create_tween()
+	var tw := _reg_tween()
 	for i in range(10):   # 5秒 / 每0.5秒 = 10跳
 		tw.tween_callback(_ice_frost_tick.bind(u, center, radius))
 		tw.tween_interval(0.5)
@@ -5468,7 +5623,7 @@ func _ice_frost_rain(center: Vector2, radius: float) -> void:    # 冰霜场视�
 		var ground := _world_pos(center + off, 0.05)
 		sh.position = ground + Vector3(0.0, 2.2, 0.0)
 		_world.add_child(sh)
-		var twr := create_tween()
+		var twr := _reg_tween()
 		twr.set_parallel(true)
 		twr.tween_property(sh, "position", ground, 0.35)
 		twr.tween_property(sh, "modulate:a", 0.0, 0.3).set_delay(0.18)
@@ -5634,7 +5789,7 @@ func _sk_rainbow_storm(u: Dictionary) -> void:                  # 彩虹龟·全
 	disc.pixel_size = (radius * 2.0 * WS) / 128.0
 	_world.add_child(disc)
 	u["storm_disc"] = disc
-	var tw := create_tween()
+	var tw := _reg_tween()
 	for i in range(8):   # 4秒 / 每0.5秒 = 8跳
 		tw.tween_callback(_rainbow_storm_tick.bind(u, center, radius, i))
 		tw.tween_interval(0.5)
@@ -5662,7 +5817,7 @@ func _rainbow_storm_tick(u: Dictionary, center: Vector2, radius: float, ti: int)
 		_world.add_child(sh)
 		var ang2 := ang + 0.9
 		var off2 := Vector2(cos(ang2), sin(ang2)) * (radius * 0.82)
-		var twr := create_tween()
+		var twr := _reg_tween()
 		twr.set_parallel(true)
 		twr.tween_property(sh, "position", _world_pos(center + off2, 0.78), 0.5)
 		twr.tween_property(sh, "modulate:a", 0.0, 0.5)
@@ -5679,7 +5834,7 @@ func _rainbow_storm_tick(u: Dictionary, center: Vector2, radius: float, ti: int)
 func _rainbow_storm_end(u: Dictionary) -> void:
 	var disc = u.get("storm_disc", null)
 	if disc != null and is_instance_valid(disc):
-		var tw := create_tween()
+		var tw := _reg_tween()
 		tw.tween_property(disc, "modulate:a", 0.0, 0.4)
 		tw.chain().tween_callback(disc.queue_free)
 	u["storm_disc"] = null
@@ -5913,7 +6068,7 @@ func _tick_lava_zones(_delta: float) -> void:   # 每帧: 周期结算池内敌 
 		if _t >= float(z["until"]):
 			var disc = z.get("disc", null)
 			if disc != null and is_instance_valid(disc):
-				var tw := create_tween()
+				var tw := _reg_tween()
 				tw.tween_property(disc, "modulate:a", 0.0, 0.35)
 				tw.chain().tween_callback(disc.queue_free)
 		else:
@@ -5931,9 +6086,9 @@ func _lava_quake(u: Dictionary) -> void:                         # 小·岩浆�
 	disc.pixel_size = (radius * 2.0 * WS) / 768.0
 	disc.position = _world_pos(center, 0.035)
 	_world.add_child(disc)
-	var rot := create_tween().set_loops()                        # 缓旋=熔岩流动(静态图+代码动)
+	var rot := _reg_tween().set_loops()                        # 缓旋=熔岩流动(静态图+代码动)
 	rot.tween_property(disc, "rotation:y", TAU, 7.0).from(0.0)
-	var pt := create_tween()                                     # 淡入 + 5秒缓脉动
+	var pt := _reg_tween()                                     # 淡入 + 5秒缓脉动
 	pt.tween_property(disc, "modulate:a", 0.92, 0.25)
 	for i in range(10):                                          # 5s / 0.5s = 10 次脉动
 		pt.tween_property(disc, "modulate:a", 0.7, 0.25)
@@ -5965,7 +6120,7 @@ func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火�
 	tel.scale = Vector3(1.0, 1.0, (half_w * 2.0) / full_len)      # 沿 dir 长, 横向窄
 	tel.rotation = Vector3(0.0, ang, 0.0)                        # 朝向 dir
 	_world.add_child(tel)
-	var tt := create_tween()
+	var tt := _reg_tween()
 	tt.tween_property(tel, "modulate:a", 0.42, 0.18)
 	tt.tween_interval(0.42)
 	await tt.finished
@@ -6040,7 +6195,7 @@ func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火�
 			_heal(u, u["maxHp"] * 0.12)
 	_shake(JUICE_SHAKE_BIG)
 	var travel := 0.7
-	var wt := create_tween()
+	var wt := _reg_tween()
 	wt.tween_method(step, 0.0, full_len, travel).set_trans(Tween.TRANS_SINE)
 	wt.parallel().tween_property(tel, "modulate:a", 0.0, travel)   # 预警随浪推进淡出
 	# 浪到端 → 停发射, 等拖尾消散, 清理 (用计时器避免 IntervalTweener 链式坑)
@@ -6069,12 +6224,12 @@ func _lava_magma_surge(u: Dictionary, tgt: Dictionary) -> void:  # 小·岩浆�
 	glow.scale = Vector3(0.5, 0.5, 0.5)
 	glow.position = _world_pos(u["pos"], 0.4)
 	_world.add_child(glow)
-	var cg := create_tween()
+	var cg := _reg_tween()
 	cg.tween_property(glow, "modulate:a", 0.9, 0.4).set_trans(Tween.TRANS_QUAD)
 	cg.parallel().tween_property(glow, "scale", Vector3(1.6, 1.6, 1.6), 0.5)
 	cg.tween_property(glow, "modulate:a", 0.0, 0.15)
 	cg.chain().tween_callback(glow.queue_free)
-	var charge := create_tween(); charge.tween_interval(0.5)
+	var charge := _reg_tween(); charge.tween_interval(0.5)
 	await charge.finished
 	# 目标可能中途死亡 → 在原落点继续演出/给盾, 不强求命中
 	if tgt != null and tgt.get("alive", false):
@@ -6092,7 +6247,7 @@ func _lava_magma_surge(u: Dictionary, tgt: Dictionary) -> void:  # 小·岩浆�
 	pillar.scale = Vector3(0.3, 0.3, 0.3)
 	pillar.position = _world_pos(center, 0.05)            # 起步低位 (略埋地)
 	_world.add_child(pillar)
-	var pt := create_tween()
+	var pt := _reg_tween()
 	pt.set_parallel(true)                                  # 升起 + 放大 + 渐显
 	pt.tween_property(pillar, "scale", Vector3(1.0, 1.0, 1.0), 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	pt.tween_property(pillar, "position", _world_pos(center, 0.9), 0.22)
@@ -6129,12 +6284,12 @@ func _lava_flame_strike(u: Dictionary, tgt: Dictionary) -> void: # 火山·重�
 	glow.scale = Vector3(0.5, 0.5, 0.5)
 	glow.position = _world_pos(u["pos"], 0.4)
 	_world.add_child(glow)
-	var cg := create_tween()
+	var cg := _reg_tween()
 	cg.tween_property(glow, "modulate:a", 0.92, 0.4).set_trans(Tween.TRANS_QUAD)
 	cg.parallel().tween_property(glow, "scale", Vector3(1.8, 1.8, 1.8), 0.5)
 	cg.tween_property(glow, "modulate:a", 0.0, 0.15)
 	cg.chain().tween_callback(glow.queue_free)
-	var charge := create_tween(); charge.tween_interval(0.5)
+	var charge := _reg_tween(); charge.tween_interval(0.5)
 	await charge.finished
 	# 2) 猛砸: 击飞目标 + 震屏顿帧 + (已正确的)伤害
 	_shake(JUICE_SHAKE_BIG); _add_hitstop(JUICE_HITSTOP_KNOCK)
@@ -6213,7 +6368,7 @@ func _lava_slam_telegraph(pos2d: Vector2, radius: float, dur: float) -> void:   
 	ring.pixel_size = (radius * 2.0 * WS) / 96.0
 	ring.position = _world_pos(pos2d, 0.045)
 	_world.add_child(ring)
-	var td := create_tween()
+	var td := _reg_tween()
 	td.tween_property(ring, "modulate:a", 0.75, 0.15)
 	td.parallel().tween_property(disc, "modulate:a", 0.3, 0.15)
 	td.tween_interval(maxf(0.1, dur - 0.4))
@@ -6232,7 +6387,7 @@ func _lava_charge_vfx(u: Dictionary) -> void:   # 滞空蓄力: 火山龟身上�
 	g.scale = Vector3(0.5, 0.5, 0.5)
 	g.position = _world_pos(u["pos"], LAVA_LEAP_H + 0.3)
 	_world.add_child(g)
-	var t := create_tween()
+	var t := _reg_tween()
 	t.tween_property(g, "modulate:a", 0.92, LAVA_CHARGE_T * 0.8).set_trans(Tween.TRANS_QUAD)
 	t.parallel().tween_property(g, "scale", Vector3(1.9, 1.9, 1.9), LAVA_CHARGE_T)
 	t.tween_property(g, "modulate:a", 0.0, LAVA_SLAM_T + 0.05)
@@ -6245,17 +6400,17 @@ func _lava_volcano_slam(u: Dictionary) -> void:   # 加里奥R式: 高跃升+飞
 	_anticipate(u); _shake(JUICE_SHAKE_HEAVY)
 	_lava_slam_telegraph(target, LAVA_SLAM_RADIUS, LAVA_LEAP_UP_T + LAVA_CHARGE_T + LAVA_SLAM_T)
 	# 1) 高跃升 + 同时飞向落点
-	var up := create_tween(); up.set_parallel(true)
+	var up := _reg_tween(); up.set_parallel(true)
 	up.tween_method(func(h): u["height"] = h, 0.0, LAVA_LEAP_H, LAVA_LEAP_UP_T).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	up.tween_method(func(p): u["pos"] = p, start, target, LAVA_LEAP_UP_T).set_trans(Tween.TRANS_SINE)
 	await up.finished
 	# 2) 滞空蓄力 (悬停高处, 火光渐聚, 不直接砸)
 	_lava_charge_vfx(u)
-	var hover := create_tween()
+	var hover := _reg_tween()
 	hover.tween_interval(LAVA_CHARGE_T)
 	await hover.finished
 	# 3) 砸地
-	var down := create_tween()
+	var down := _reg_tween()
 	down.tween_method(func(h): u["height"] = h, LAVA_LEAP_H, 0.0, LAVA_SLAM_T).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	await down.finished
 	u["pos"] = target; u["height"] = 0.0
@@ -6275,7 +6430,7 @@ func _lava_burst_vfx(pos2d: Vector2) -> void:
 	burst.scale = Vector3(0.4, 0.4, 0.4)
 	burst.position = _world_pos(pos2d, 0.7)
 	_world.add_child(burst)
-	var bt := create_tween()
+	var bt := _reg_tween()
 	bt.set_parallel(true)
 	bt.tween_property(burst, "scale", Vector3(1.5, 1.5, 1.5), 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	bt.tween_property(burst, "modulate:a", 0.0, 0.4)
@@ -6348,7 +6503,7 @@ func _sk_dmg(u: Dictionary, tgt, opts: Dictionary) -> void:
 		_buff(u, "dodge", float(opts["selfDodge"]), true, BUFF_SEC)
 	var fixed: Array = _enemies_of(u) if aoe else ([tgt] if tgt != null else [])
 	if stagger > 0.0:
-		var tw := create_tween()
+		var tw := _reg_tween()
 		for i in range(vh):
 			tw.tween_callback(_sk_dmg_wave.bind(u, opts, vh, col, random_aoe, fixed))
 			tw.tween_interval(stagger)
@@ -6653,7 +6808,7 @@ func _egg_level_up_vfx(u: Dictionary, total_lvl: int) -> void:   # 温泉蛋升�
 	col.pixel_size = (50.0 * WS) / float(maxi(1, glow.get_width()))
 	col.position = _world_pos(u["pos"], 0.4)
 	_world.add_child(col)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.set_parallel(true)
 	tw.tween_property(col, "position", _world_pos(u["pos"], 1.7), 0.5)
 	tw.tween_property(col, "modulate:a", 0.0, 0.5)
@@ -6941,7 +7096,7 @@ func _ice_chill_vfx(pos2d: Vector2, big: bool = false) -> void:
 		var off := Vector2(cos(ang), sin(ang)) * (r * 0.45)
 		sh.position = _world_pos(pos2d + off, 0.35)
 		_world.add_child(sh)
-		var tw := create_tween()
+		var tw := _reg_tween()
 		tw.set_parallel(true)
 		tw.tween_property(sh, "position:y", sh.position.y + (0.9 if big else 0.6), 0.55)
 		tw.tween_property(sh, "modulate:a", 0.0, 0.55)
@@ -7186,7 +7341,7 @@ func _shell_awaken_vfx(u: Dictionary) -> void:   # 觉醒金光爆发: 震屏+�
 	pil.scale = Vector3(0.55, 2.6, 1.0)
 	pil.position = _world_pos(u["pos"], 0.7)
 	_world.add_child(pil)
-	var tp := create_tween(); tp.set_parallel(true)
+	var tp := _reg_tween(); tp.set_parallel(true)
 	tp.tween_property(pil, "modulate:a", 0.9, 0.1)
 	tp.tween_property(pil, "position", _world_pos(u["pos"], 1.6), 0.55)
 	tp.chain().tween_property(pil, "modulate:a", 0.0, 0.28)
@@ -7206,7 +7361,7 @@ func _shell_awaken_vfx(u: Dictionary) -> void:   # 觉醒金光爆发: 震屏+�
 		spr.scale = Vector3(0.6, 0.6, 0.6)
 		spr.position = _world_pos(p, 0.5)
 		_world.add_child(spr)
-		var tw := create_tween()
+		var tw := _reg_tween()
 		tw.set_parallel(true)
 		tw.tween_property(spr, "position", _world_pos(p, 1.95 + _juice_rng.randf_range(0.0, 0.6)), 0.6)
 		tw.tween_property(spr, "scale", Vector3(1.3, 1.3, 1.3), 0.6)
@@ -7813,7 +7968,7 @@ func _hit_spark(tgt, at_pos = null) -> void:
 	r.position = _world_pos(pos2d, h)
 	r.pixel_size = 0.006
 	_world.add_child(r)
-	var tw := create_tween(); tw.set_parallel(true)
+	var tw := _reg_tween(); tw.set_parallel(true)
 	tw.tween_property(r, "pixel_size", 0.018, 0.14).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tw.tween_property(r, "modulate:a", 0.0, 0.14)
 	tw.chain().tween_callback(r.queue_free)
@@ -7828,7 +7983,7 @@ func _hit_spark(tgt, at_pos = null) -> void:
 	sp.pixel_size = 0.012
 	sp.scale = Vector3.ONE * 0.5
 	_world.add_child(sp)
-	var tw2 := create_tween(); tw2.set_parallel(true)
+	var tw2 := _reg_tween(); tw2.set_parallel(true)
 	tw2.tween_property(sp, "scale", Vector3.ONE * 1.1, 0.07).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw2.tween_property(sp, "modulate:a", 0.0, 0.12)
 	tw2.chain().tween_callback(sp.queue_free)
@@ -7895,7 +8050,7 @@ func _reticle_flash(tgt: Dictionary, col: Color) -> void:
 	r.pixel_size = 0.032
 	r.position = _world_pos(tgt["pos"], float(tgt.get("height", 0.0)) + 0.9)
 	_world.add_child(r)
-	var tw := create_tween(); tw.set_parallel(true)   # 淡入+缩到目标(并行0.14) → 停留0.24锁定感 → 淡出0.14, 共~0.52s(用户2026-07-04要0.5s)
+	var tw := _reg_tween(); tw.set_parallel(true)   # 淡入+缩到目标(并行0.14) → 停留0.24锁定感 → 淡出0.14, 共~0.52s(用户2026-07-04要0.5s)
 	tw.tween_property(r, "modulate:a", 0.95, 0.06)
 	tw.tween_property(r, "pixel_size", 0.016, 0.14).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tw.chain().tween_interval(0.24)
@@ -7920,7 +8075,7 @@ func _mark_vfx(tgt: Dictionary, dur: float, col: Color) -> void:
 	_world.add_child(r)
 	tgt["_mark_spr"] = r
 	_follow_vfx.append({"spr": r, "unit": tgt, "h": 0.9, "mark": true})
-	var pt := create_tween().set_loops()
+	var pt := _reg_tween().set_loops()
 	pt.tween_property(r, "modulate:a", 0.35, 0.5).from(0.85)
 	pt.tween_property(r, "modulate:a", 0.85, 0.5)
 
@@ -7939,7 +8094,7 @@ func _heal_burst(u: Dictionary, scale: float = 1.0) -> void:
 		var off := Vector2(randf_range(-28.0, 28.0), 0.0)
 		sp.position = _world_pos(u["pos"] + off, 0.2)
 		_world.add_child(sp)
-		var tw := create_tween(); tw.set_parallel(true)
+		var tw := _reg_tween(); tw.set_parallel(true)
 		tw.tween_property(sp, "position", _world_pos(u["pos"] + off, 1.5 + randf_range(0.0, 0.5)), 0.6)
 		tw.tween_property(sp, "modulate:a", 0.0, 0.6)
 		tw.chain().tween_callback(sp.queue_free)
@@ -7950,7 +8105,7 @@ func _heal_body_glow(u: Dictionary) -> void:
 	var spr = u.get("sprite", null)   # ① 龟精灵本体染绿脉动2下(最直接的"龟身绿光")
 	if spr != null and is_instance_valid(spr):
 		var basem: Color = spr.modulate
-		var mt := create_tween()
+		var mt := _reg_tween()
 		mt.tween_property(spr, "modulate", Color(0.5, 1.55, 0.65, basem.a), 0.14)
 		mt.tween_property(spr, "modulate", basem, 0.2)
 		mt.tween_property(spr, "modulate", Color(0.5, 1.55, 0.65, basem.a), 0.14)
@@ -7966,7 +8121,7 @@ func _heal_body_glow(u: Dictionary) -> void:
 	g.position = _world_pos(u["pos"], 1.2)
 	_world.add_child(g)
 	_follow_vfx.append({"spr": g, "unit": u, "h": 1.2})
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_property(g, "modulate:a", 0.95, 0.15)
 	tw.tween_property(g, "modulate:a", 0.5, 0.22)
 	tw.tween_property(g, "modulate:a", 0.95, 0.22)
@@ -7983,7 +8138,7 @@ func _heal_body_glow(u: Dictionary) -> void:
 		var off := Vector2(randf_range(-26.0, 26.0), 0.0)
 		sp.position = _world_pos(u["pos"] + off, 0.5)
 		_world.add_child(sp)
-		var tw2 := create_tween(); tw2.set_parallel(true)
+		var tw2 := _reg_tween(); tw2.set_parallel(true)
 		tw2.tween_property(sp, "position", _world_pos(u["pos"] + off, 1.9 + randf_range(0.0, 0.4)), 0.75)
 		tw2.tween_property(sp, "modulate:a", 0.0, 0.75)
 		tw2.chain().tween_callback(sp.queue_free)
@@ -8002,7 +8157,7 @@ func _heal_ascend(u: Dictionary) -> void:
 		r.position = _world_pos(u["pos"], 0.2)
 		_world.add_child(r)
 		var d: float = float(k) * 0.13
-		var tw := create_tween(); tw.set_parallel(true)
+		var tw := _reg_tween(); tw.set_parallel(true)
 		tw.tween_property(r, "position", _world_pos(u["pos"], 2.9), 0.7).set_delay(d).set_ease(Tween.EASE_OUT)
 		tw.tween_property(r, "pixel_size", 0.03, 0.7).set_delay(d)
 		tw.tween_property(r, "modulate:a", 0.0, 0.7).set_delay(d)
@@ -8018,7 +8173,7 @@ func _heal_ascend(u: Dictionary) -> void:
 		var off := Vector2(randf_range(-30.0, 30.0), 0.0)
 		sp.position = _world_pos(u["pos"] + off, 0.3)
 		_world.add_child(sp)
-		var tw2 := create_tween(); tw2.set_parallel(true)
+		var tw2 := _reg_tween(); tw2.set_parallel(true)
 		tw2.tween_property(sp, "position", _world_pos(u["pos"] + off, 2.6 + randf_range(0.0, 0.5)), 0.8)
 		tw2.tween_property(sp, "modulate:a", 0.0, 0.8)
 		tw2.chain().tween_callback(sp.queue_free)
@@ -8036,7 +8191,7 @@ func _shield_dome(u: Dictionary) -> void:
 	sd.position = _world_pos(u["pos"], 1.0)
 	_world.add_child(sd)
 	_follow_vfx.append({"spr": sd, "unit": u, "h": 1.0})
-	var tw := create_tween(); tw.set_parallel(true)
+	var tw := _reg_tween(); tw.set_parallel(true)
 	tw.tween_property(sd, "modulate:a", 0.72, 0.08)
 	tw.tween_property(sd, "scale", Vector3.ONE, 0.14).from(Vector3.ONE * 1.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.chain().tween_property(sd, "modulate:a", 0.42, 0.16)
@@ -8055,7 +8210,7 @@ func _fire_explosion(pos2d: Vector2) -> void:
 	sp.pixel_size = (28.0 * WS) / float(maxi(1, g.get_width()))
 	sp.position = _world_pos(pos2d, 0.6)
 	_world.add_child(sp)
-	var tw := create_tween(); tw.set_parallel(true)
+	var tw := _reg_tween(); tw.set_parallel(true)
 	tw.tween_property(sp, "pixel_size", sp.pixel_size * 2.2, 0.3).set_ease(Tween.EASE_OUT)
 	tw.tween_property(sp, "modulate:a", 0.0, 0.3)
 	tw.chain().tween_callback(sp.queue_free)
@@ -8171,9 +8326,9 @@ func _spawn_tidal_wave(startc: Vector2, dir: Vector2, perp: Vector2, p0: float, 
 		p.position = _world_pos(cstart, 1.45)
 		_world.add_child(p)
 		if use_anim and nf > 1:
-			var at := create_tween().set_loops()
+			var at := _reg_tween().set_loops()
 			at.tween_property(p, "frame", nf - 1, 0.45).from(0)
-		var tw := create_tween()
+		var tw := _reg_tween()
 		tw.tween_property(p, "modulate:a", 0.95, windup * 0.8)
 		tw.tween_property(p, "position", _world_pos(cend, 1.45), travel).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 		tw.tween_property(p, "modulate:a", 0.0, 0.25)
@@ -8190,7 +8345,7 @@ func _water_charge_windup(u: Dictionary, dur: float) -> void:
 	g.pixel_size = (34.0 * WS) / float(maxi(1, tex.get_width()))
 	g.position = _world_pos(u["pos"], 1.0)
 	_world.add_child(g)
-	var tw := create_tween(); tw.set_parallel(true)
+	var tw := _reg_tween(); tw.set_parallel(true)
 	tw.tween_property(g, "modulate:a", 0.9, dur * 0.7)
 	tw.tween_property(g, "pixel_size", (78.0 * WS) / float(maxi(1, tex.get_width())), dur)
 	tw.chain().tween_property(g, "modulate:a", 0.0, 0.15)
@@ -8210,7 +8365,7 @@ func _water_splash(pos2d: Vector2, ally: bool) -> void:
 		dp.position = _world_pos(pos2d, 0.4)
 		_world.add_child(dp)
 		var off := Vector2(randf_range(-26.0, 26.0), 0.0)
-		var tw := create_tween(); tw.set_parallel(true)
+		var tw := _reg_tween(); tw.set_parallel(true)
 		tw.tween_property(dp, "position", _world_pos(pos2d + off, 1.3 + randf_range(0.0, 0.4)), 0.4)
 		tw.tween_property(dp, "modulate:a", 0.0, 0.4)
 		tw.chain().tween_callback(dp.queue_free)
@@ -8254,7 +8409,7 @@ func _impact_particles(pos2d: Vector2, height: float) -> void:
 	_world.add_child(ps)
 	ps.emitting = true
 	# 一次性: lifetime + 余量后自销 (不靠 one_shot finished 信号, 计时更稳)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_interval(ps.lifetime + 0.15)
 	tw.tween_callback(ps.queue_free)
 
@@ -8298,7 +8453,7 @@ func _particle_burst(pos2d: Vector2) -> void:
 	ps.position = _world_pos(pos2d, 0.4)
 	_world.add_child(ps)
 	ps.emitting = true
-	var _pt := create_tween(); _pt.tween_interval(1.0); _pt.tween_callback(ps.queue_free)   # 拆开(tween_interval返回IntervalTweener不能再链)
+	var _pt := _reg_tween(); _pt.tween_interval(1.0); _pt.tween_callback(ps.queue_free)   # 拆开(tween_interval返回IntervalTweener不能再链)
 
 # 能量冲击波: 环形发射 100 颗, 径向向外飞 (radial_velocity 从中心向外) + 微上抬, 短命 → 一圈外扩光环.
 func _particle_wave(pos2d: Vector2) -> void:
@@ -8339,7 +8494,7 @@ func _particle_wave(pos2d: Vector2) -> void:
 	ps.position = _world_pos(pos2d, 0.25)
 	_world.add_child(ps)
 	ps.emitting = true
-	var _pt := create_tween(); _pt.tween_interval(1.0); _pt.tween_callback(ps.queue_free)   # 拆开(tween_interval返回IntervalTweener不能再链)
+	var _pt := _reg_tween(); _pt.tween_interval(1.0); _pt.tween_callback(ps.queue_free)   # 拆开(tween_interval返回IntervalTweener不能再链)
 
 # 共用: 加色发光 billboard quad (软圆 glow 贴图 + 颜色按 color_ramp 着色); size 为米.
 func _make_glow_quad(size_m: float) -> QuadMesh:
@@ -8951,7 +9106,7 @@ func _vfx_smolder(origin: Vector2, dir: Vector2, si: int = 1) -> void:
 	dir = dir.normalized()
 	var reach: float = 620.0
 	_smolder_mother(origin, dir)
-	var t := create_tween()
+	var t := _reg_tween()
 	t.tween_interval(0.5)
 	t.tween_callback(_smolder_erupt.bind(origin, dir, reach, si))
 
@@ -8972,7 +9127,7 @@ func _smolder_mother(origin: Vector2, dir: Vector2) -> void:
 	d.position = _world_pos(far, 3.0)
 	d.modulate = Color(1, 1, 1, 0)
 	_world.add_child(d)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_property(d, "modulate:a", 1.0, 0.22)
 	tw.parallel().tween_method(_smolder_mom_fly.bind(d, far, behind), 0.0, 1.0, 0.5)
 	tw.tween_interval(0.7)
@@ -9002,7 +9157,7 @@ func _smolder_burst(origin: Vector2, dir: Vector2) -> void:   # 喷发瞬间嘴�
 	spr.pixel_size = (90.0 * WS) / tw_w
 	spr.position = _world_pos(origin + dir * 45.0, 1.45)
 	_world.add_child(spr)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.set_parallel(true)
 	tw.tween_property(spr, "pixel_size", (260.0 * WS) / tw_w, 0.32)
 	tw.tween_property(spr, "modulate:a", 0.0, 0.32)
@@ -9016,7 +9171,7 @@ func _smolder_flash() -> void:
 	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ui_layer.add_child(rect)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_property(rect, "color:a", 0.3, 0.05)
 	tw.tween_property(rect, "color:a", 0.0, 0.28)
 	tw.tween_callback(rect.queue_free)
@@ -9030,11 +9185,11 @@ func _smolder_fire_wave(origin: Vector2, dir: Vector2, reach: float, si: int) ->
 		for k in range(5):                              # 每波5团=更密实的火墙
 			var lateral: float = randf_range(-1.0, 1.0)
 			var voff: float = randf_range(-0.1, 1.25)   # 垂直体积: 火焰堆成一堵墙(非一条线)
-			var tw := create_tween()
+			var tw := _reg_tween()
 			tw.tween_interval(wt)
 			tw.tween_callback(_smolder_spawn_blob.bind(origin, dir, perp, lateral, voff, reach))
 	for c in range(3):                                  # 亮脊: 3个白热核错峰沿中线冲(中心最烫)
-		var tc := create_tween()
+		var tc := _reg_tween()
 		tc.tween_interval(float(c) * 0.12)
 		tc.tween_callback(_smolder_spawn_core.bind(origin, dir, reach))
 
@@ -9053,7 +9208,7 @@ func _smolder_spawn_blob(origin: Vector2, dir: Vector2, perp: Vector2, lateral: 
 	var h: float = 1.05 + voff
 	spr.position = _world_pos(origin, h)
 	_world.add_child(spr)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.set_parallel(true)
 	tw.tween_method(_smolder_blob_fly.bind(spr, origin, endp, h), 0.0, 1.0, travel)
 	tw.tween_property(spr, "modulate:a", 0.0, travel)
@@ -9075,7 +9230,7 @@ func _smolder_spawn_core(origin: Vector2, dir: Vector2, reach: float) -> void:
 	spr.position = _world_pos(origin, 1.25)
 	_world.add_child(spr)
 	var endp: Vector2 = origin + dir * (reach * 0.92)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.set_parallel(true)
 	tw.tween_method(_smolder_blob_fly.bind(spr, origin, endp, 1.3), 0.0, 1.0, 0.6)
 	tw.tween_property(spr, "modulate:a", 0.0, 0.6)
@@ -9086,7 +9241,7 @@ func _smolder_ground_embers(origin: Vector2, dir: Vector2, reach: float) -> void
 	for i in range(1, 9):
 		var f: float = float(i) / 9.0
 		var pos: Vector2 = origin + dir * (reach * f)
-		var tw := create_tween()
+		var tw := _reg_tween()
 		tw.tween_interval(f * 0.5)
 		tw.tween_callback(_smolder_ember_at.bind(pos, burn))
 
@@ -9439,7 +9594,7 @@ func _eq_chain_lightning(u: Dictionary, si: int) -> void:
 	var prev_pos: Vector2 = u["pos"]
 	for i in range(seq.size()):
 		var tgt = seq[i]
-		var tw := create_tween()
+		var tw := _reg_tween()
 		tw.tween_interval(float(i) * 0.2)
 		tw.tween_callback(_chain_segment.bind(u, prev_pos, tgt, dmg))
 		prev_pos = tgt["pos"]
@@ -9464,13 +9619,13 @@ func _chain_windup(u: Dictionary, si: int) -> void:
 	orb.pixel_size = (18.0 * WS) / tw_w
 	orb.position = _world_pos(u["pos"], 1.15)
 	_world.add_child(orb)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.set_parallel(true)
 	tw.tween_property(orb, "pixel_size", (95.0 * WS) / tw_w, 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	tw.tween_property(orb, "modulate:a", 1.0, 0.36)
 	tw.chain().tween_callback(orb.queue_free)
 	_skill_ring(u["pos"], Color(0.4, 0.8, 1.0, 0.5), 60.0)
-	var tf := create_tween()
+	var tf := _reg_tween()
 	tf.tween_interval(0.4)
 	tf.tween_callback(_eq_chain_lightning.bind(u, si))
 
@@ -9508,7 +9663,7 @@ func _chain_arc(a2d: Vector2, b2d: Vector2) -> void:
 	basis.z = zn
 	_world.add_child(spr)
 	spr.global_transform = Transform3D(basis, mid)
-	var t := create_tween()
+	var t := _reg_tween()
 	t.tween_interval(0.07)
 	t.tween_property(spr, "modulate:a", 0.0, 0.14)
 	t.tween_callback(spr.queue_free)
@@ -9531,7 +9686,7 @@ func _chain_zap(pos2d: Vector2) -> void:
 	spr.pixel_size = (125.0 * WS) / fw
 	spr.position = _world_pos(pos2d, 0.95)
 	_world.add_child(spr)
-	var t := create_tween()
+	var t := _reg_tween()
 	t.tween_method(_zap_frame.bind(spr), 0.0, 5.0, 0.3)
 	t.tween_callback(spr.queue_free)
 
@@ -9637,7 +9792,7 @@ func _laser_blade_sweep(u: Dictionary, origin: Vector2, dir: Vector2, rng: float
 	glow.position = _world_pos(origin + dir * (rng * 0.5), 0.09)
 	glow.modulate = Color(1.0, 0.3, 0.3, 0.0)
 	_world.add_child(glow)
-	var gt := create_tween()
+	var gt := _reg_tween()
 	gt.tween_property(glow, "modulate:a", 0.5, 0.09)
 	gt.tween_property(glow, "modulate:a", 0.0, 0.2)
 	gt.tween_callback(glow.queue_free)
@@ -9648,7 +9803,7 @@ func _laser_blade_sweep(u: Dictionary, origin: Vector2, dir: Vector2, rng: float
 	blade.pixel_size = rng * WS / 100.0
 	blade.scale = Vector3(1.0, 3.6, 1.0)
 	_world.add_child(blade)
-	var swp := create_tween()
+	var swp := _reg_tween()
 	swp.tween_method(_laser_blade_step.bind(blade, origin, base_ang, rng, half_deg), 0.0, 1.0, 0.16).set_trans(Tween.TRANS_SINE)
 	swp.tween_callback(blade.queue_free)
 
@@ -9666,7 +9821,7 @@ func _laser_blade_step(fr: float, blade: Sprite3D, origin: Vector2, base_ang: fl
 	tr.rotation = blade.rotation; tr.position = blade.position
 	tr.modulate = Color(1.0, 0.35, 0.38, 0.26)
 	_world.add_child(tr)
-	var tt := create_tween(); tt.tween_property(tr, "modulate:a", 0.0, 0.12); tt.tween_callback(tr.queue_free)
+	var tt := _reg_tween(); tt.tween_property(tr, "modulate:a", 0.0, 0.12); tt.tween_callback(tr.queue_free)
 
 func _make_laser_slash_sheet(col: Color) -> ImageTexture:   # 激光斩弧6帧(尼拉式: 前缘白热扫过+后方拖尾smear; 生成→扫→峰→碎→散)
 	var FW := 128; var FN := 6
@@ -9752,7 +9907,7 @@ func _laser_fan_sweep(origin: Vector2, dir: Vector2, rng: float, half_deg: float
 		beam.position = _world_pos(origin + bdir * (rng * 0.5), 0.14)
 		beam.modulate = Color(1.0, 0.35, 0.35, 0.0)
 		_world.add_child(beam)
-		var bt := create_tween()
+		var bt := _reg_tween()
 		bt.tween_interval(frac * 0.12)
 		bt.tween_property(beam, "modulate:a", 0.98, 0.03)
 		bt.tween_property(beam, "modulate:a", 0.0, 0.15)
@@ -9799,7 +9954,7 @@ func _eq_laser_sweep(u: Dictionary, tgt: Dictionary, si: int) -> void:   # 扇�
 		glow.modulate = Color(1.0, 0.28, 0.3, 0.0); glow.pixel_size = 0.02
 		glow.position = _world_pos(u["pos"], 1.0)
 		_world.add_child(glow)
-		var gt := create_tween(); gt.tween_property(glow, "modulate:a", 0.9, 0.2); gt.parallel().tween_property(glow, "scale", Vector3(2.2, 2.2, 2.2), 0.2)
+		var gt := _reg_tween(); gt.tween_property(glow, "modulate:a", 0.9, 0.2); gt.parallel().tween_property(glow, "scale", Vector3(2.2, 2.2, 2.2), 0.2)
 		var tele := Sprite3D.new()   # 蓄力预警线(细红激光, 指示竖劈路径)
 		tele.texture = _make_laser_beam_tex(Color(1.0, 0.25, 0.28))
 		tele.billboard = BaseMaterial3D.BILLBOARD_DISABLED; tele.axis = Vector3.AXIS_Y
@@ -9808,10 +9963,10 @@ func _eq_laser_sweep(u: Dictionary, tgt: Dictionary, si: int) -> void:   # 扇�
 		tele.rotation = Vector3(0.0, ang, 0.0)
 		tele.position = _world_pos(u["pos"] + dir * base_rng, 0.1)
 		tele.scale = Vector3(1.0, 0.35, 1.0); tele.modulate = Color(1.0, 0.3, 0.3, 0.0)
-		create_tween().tween_property(tele, "modulate:a", 0.5, 0.18)
+		_reg_tween().tween_property(tele, "modulate:a", 0.5, 0.18)
 		await get_tree().create_timer(0.2).timeout
 		if is_instance_valid(tele):
-			var telf := create_tween()
+			var telf := _reg_tween()
 			telf.tween_property(tele, "modulate:a", 0.0, 0.1)
 			telf.tween_callback(tele.queue_free)
 		if is_instance_valid(glow): glow.queue_free()
@@ -9845,7 +10000,7 @@ func _eq_laser_chop(u: Dictionary, tgt: Dictionary, si: int, base_range: float) 
 			tr.pixel_size = wave.pixel_size; tr.scale = wave.scale * 0.9
 			tr.position = wave.position; tr.modulate = Color(1.0, 0.35, 0.4, 0.3)
 			_world.add_child(tr)
-			var tt := create_tween(); tt.tween_property(tr, "modulate:a", 0.0, 0.22); tt.tween_callback(tr.queue_free)
+			var tt := _reg_tween(); tt.tween_property(tr, "modulate:a", 0.0, 0.22); tt.tween_callback(tr.queue_free)
 		for o in _enemies_of(u):
 			if o in hit or not o.get("alive", false): continue
 			if (o["pos"] - origin).dot(dir) <= traveled and _on_line(origin, dir, o["pos"], 80.0):
@@ -9853,7 +10008,7 @@ func _eq_laser_chop(u: Dictionary, tgt: Dictionary, si: int, base_range: float) 
 				_apply_damage_from(u, o, _atk_dmg(u, [0.6, 1.0, 8.0][si], o) + [15, 32, 200][si], Color("#9bf0ff"), 0.0, false, true)
 				_knockback(u, o, 0.0, 0.2, 0.0)
 	if is_instance_valid(wave):
-		var wf := create_tween(); wf.tween_property(wave, "modulate:a", 0.0, 0.15); wf.tween_callback(wave.queue_free)
+		var wf := _reg_tween(); wf.tween_property(wave, "modulate:a", 0.0, 0.15); wf.tween_callback(wave.queue_free)
 
 func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽刃弯刀(用户改造·剑魔Q式): 预警环形扇区(500~800码60度)→黄色月光斩→伤害
 	var cen := Vector2.ZERO; var ec := 0   # 方向朝敌方整体(质心), 角度对携带者稳定(用户)
@@ -9872,7 +10027,7 @@ func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽�
 	tel.position = _world_pos(src["pos"] + dir * 400.0, 0.08)
 	tel.modulate = Color(1.0, 0.78, 0.2, 0.0)
 	_world.add_child(tel)
-	var tt := create_tween()
+	var tt := _reg_tween()
 	tt.tween_property(tel, "modulate:a", 0.5, 0.12)
 	for _p in range(2):
 		tt.tween_property(tel, "modulate:a", 0.28, 0.14)
@@ -9882,7 +10037,7 @@ func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽�
 		if is_instance_valid(tel): tel.queue_free()
 		return
 	if is_instance_valid(tel):
-		var tf := create_tween(); tf.tween_property(tel, "modulate:a", 0.0, 0.12); tf.tween_callback(tel.queue_free)
+		var tf := _reg_tween(); tf.tween_property(tel, "modulate:a", 0.0, 0.12); tf.tween_callback(tel.queue_free)
 	_shake(JUICE_SHAKE_HEAVY)   # 2) 黄色月光斩(弯月闪电 5帧逐帧, 放大, 用户)
 	var moon := Sprite3D.new()
 	moon.texture = _make_moon_sheet(Color(1.0, 0.88, 0.25))
@@ -9893,7 +10048,7 @@ func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽�
 	moon.rotation = Vector3(0.0, ang, 0.0)
 	moon.position = _world_pos(src["pos"] + dir * 400.0, 0.12)   # apex在携带者, 与预警扇区同位置→斩击必在区内
 	_world.add_child(moon)
-	var mf := create_tween()   # 逐帧播 5帧
+	var mf := _reg_tween()   # 逐帧播 5帧
 	for _fi in range(5):
 		mf.tween_callback(_set_sprite_frame.bind(moon, _fi))
 		mf.tween_interval(0.11)   # 放慢帧速(用户)
@@ -9948,7 +10103,7 @@ func _eq_fire_coral_active(src: Dictionary, si: int) -> void:   # 灼热火珊�
 			_apply_dot_stacks(o, "burn", 60, src)
 			_skill_ring(o["pos"], Color(1.0, 0.5, 0.2, 0.6), 46.0)
 	if is_instance_valid(wave):
-		var tw := create_tween(); tw.tween_property(wave, "modulate:a", 0.0, 0.2); tw.tween_callback(wave.queue_free)
+		var tw := _reg_tween(); tw.tween_property(wave, "modulate:a", 0.0, 0.2); tw.tween_callback(wave.queue_free)
 
 # ============================================================================
 #  on-target (受伤时, 防守者视角)
@@ -10059,7 +10214,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 					var dir2: Vector2 = (t4["pos"] - u["pos"]).normalized()
 					if dir2 == Vector2.ZERO: dir2 = Vector2.RIGHT
 					for _seg in range([2, 2, 3][si]):
-						var twc := create_tween()
+						var twc := _reg_tween()
 						twc.tween_interval(float(_seg) * 0.2)   # 施加水晶间隔0.2s(用户)
 						twc.tween_callback(_crystal_line_seg.bind(u, si, dir2))
 			"p2eq_031":   # 迷你水晶球B: 施法→水晶射线360度扫一圈(1.5s), 扫到即魔法伤+1层水晶(3★引爆波及邻格)
@@ -10216,7 +10371,7 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 						worm["sprite"].position = _world_pos(u["pos"], GROUND_LIFT)
 						var wsc: Vector3 = worm["sprite"].scale
 						worm["sprite"].scale = Vector3.ZERO
-						var wtw := create_tween()
+						var wtw := _reg_tween()
 						wtw.tween_interval(0.12)
 						wtw.tween_property(worm["sprite"], "scale", wsc, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 					worm["eq_state"] = {}; worm["equips"] = []
@@ -10356,7 +10511,7 @@ func _eq_dragon_breath(u: Dictionary, si: int) -> void:
 	var dur: float = clampf(reach / 480.0, 1.6, 2.6)  # 按距离定时长=恒定速度
 	_anticipate(u)
 	_dragon_windup(start)                            # 前摇: 召唤点聚火蓄能(~0.55s)再爆发出龙(修"一下冒出来")
-	var twd := create_tween()
+	var twd := _reg_tween()
 	twd.tween_interval(0.55)
 	twd.tween_callback(_dragon_unleash.bind(u, si, start, end, dir, total, dur))
 
@@ -10371,13 +10526,13 @@ func _dragon_unleash(u: Dictionary, si: int, start: Vector2, end: Vector2, dir: 
 	for o in _enemies_of(u):
 		if _on_line(start, dir, o["pos"], 88.0):
 			var d_e: float = clampf((o["pos"] - start).dot(dir) / total, 0.0, 1.0) * dur
-			var twe := create_tween()
+			var twe := _reg_tween()
 			twe.tween_interval(d_e)
 			twe.tween_callback(_dragon_hit_enemy.bind(u, o, si, expl, burn_tex))
 	for o in _allies_of(u):
 		if _on_line(start, dir, o["pos"], 88.0):
 			var d_a: float = clampf((o["pos"] - start).dot(dir) / total, 0.0, 1.0) * dur
-			var twa := create_tween()
+			var twa := _reg_tween()
 			twa.tween_interval(d_a)
 			twa.tween_callback(_dragon_heal_ally.bind(u, o, si))
 
@@ -10412,7 +10567,7 @@ func _dragon_windup(pos2d: Vector2) -> void:
 	orb.pixel_size = (26.0 * WS) / tw_w
 	orb.position = _world_pos(pos2d, 1.3)
 	_world.add_child(orb)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.set_parallel(true)
 	tw.tween_property(orb, "pixel_size", (155.0 * WS) / tw_w, 0.55).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	tw.tween_property(orb, "modulate:a", 1.0, 0.5)
@@ -10434,7 +10589,7 @@ func _windup_spark(pos2d: Vector2, ang: float) -> void:
 	var from: Vector2 = pos2d + Vector2(cos(ang), sin(ang)) * 135.0
 	spr.position = _world_pos(from, 1.3)
 	_world.add_child(spr)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.set_parallel(true)
 	tw.tween_method(_spark_converge.bind(spr, from, pos2d), 0.0, 1.0, 0.5).set_ease(Tween.EASE_IN)
 	tw.tween_property(spr, "modulate:a", 0.0, 0.5)
@@ -10461,12 +10616,12 @@ func _spawn_fire_dragon(start2d: Vector2, end2d: Vector2, dur: float) -> void:
 		d.position = _world_pos(start2d, 2.9)          # 龙在天上(高空)
 		_world.add_child(d)
 		d.modulate = Color(1, 1, 1, 0)                 # 从召唤火里淡入现身
-		var tfade := create_tween()
+		var tfade := _reg_tween()
 		tfade.tween_property(d, "modulate:a", 1.0, 0.22)
-		var tw := create_tween()
+		var tw := _reg_tween()
 		tw.tween_method(_dragon_fly_step.bind(d, start2d, end2d), 0.0, 1.0, dur)
 		tw.tween_callback(d.queue_free)
-		var tf := create_tween()                       # 振翅: 乒乓循环5帧(~4次/秒)
+		var tf := _reg_tween()                       # 振翅: 乒乓循环5帧(~4次/秒)
 		tf.tween_method(_dragon_flap_frame.bind(d), 0.0, 32.0 * dur, dur)
 	var burn: Texture2D = load("res://assets/sprites/vfx/dragon-flame.png")
 	var perp: Vector2 = (end2d - start2d).orthogonal().normalized()
@@ -10500,7 +10655,7 @@ func _dragon_summon_burst(pos2d: Vector2) -> void:
 	spr.pixel_size = (80.0 * WS) / tw_w
 	spr.position = _world_pos(pos2d, 1.1)
 	_world.add_child(spr)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.set_parallel(true)
 	tw.tween_property(spr, "pixel_size", (255.0 * WS) / tw_w, 0.32)
 	tw.tween_property(spr, "modulate:a", 0.0, 0.32)
@@ -10517,7 +10672,7 @@ func _dragon_mouth_jet(start2d: Vector2, end2d: Vector2, dur: float) -> void:
 		var p: float = float(i) / float(n)
 		var col_pos: Vector2 = start2d.lerp(end2d, p)               # 火柱落点=龙嘴正下方(在掠射线上)
 		var top_h: float = lerpf(2.9, 3.5, clampf(p * 2.5, 0.0, 1.0)) + 0.25   # 火柱顶=龙嘴高度
-		var tw := create_tween()
+		var tw := _reg_tween()
 		tw.tween_interval(p * dur * 0.95)
 		tw.tween_callback(_spawn_fire_pillar.bind(burn, col_pos, top_h))
 
@@ -10543,7 +10698,7 @@ func _spawn_pillar_flame(burn: Texture2D, pos2d: Vector2, h: float, frac: float)
 	spr.pixel_size = (lerpf(98.0, 56.0, frac) * WS) / fw          # 底大顶小=火柱形
 	spr.position = _world_pos(pos2d, h)
 	_world.add_child(spr)
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.set_parallel(true)
 	tw.tween_method(_burn_frame.bind(spr), 0.0, 16.0, 0.32)
 	tw.tween_property(spr, "modulate:a", 0.0, 0.34)
@@ -10556,7 +10711,7 @@ func _delayed_ground_fire(pos2d: Vector2, burn: Texture2D, size_px: float, delay
 	if delay <= 0.0:
 		_ground_fire(pos2d, burn, size_px)
 		return
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_interval(delay)
 	tw.tween_callback(_ground_fire.bind(pos2d, burn, size_px))
 
@@ -10577,9 +10732,9 @@ func _ground_fire(pos2d: Vector2, burn: Texture2D, size_px: float) -> void:
 	spr.position = _world_pos(pos2d, size_px * WS * 0.4)
 	_world.add_child(spr)
 	var loops: int = maxi(2, int(life / 0.42))
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_method(_burn_frame.bind(spr), 0.0, float(8 * loops), life)
-	var tf := create_tween()
+	var tf := _reg_tween()
 	tf.tween_interval(life * 0.55)
 	tf.tween_property(spr, "modulate:a", 0.0, life * 0.45)
 	tf.tween_callback(spr.queue_free)
@@ -10589,7 +10744,7 @@ func _burn_frame(fr: float, spr: Sprite3D) -> void:
 		spr.frame = int(fr) % 8
 
 func _dragon_trail_puff(pos2d: Vector2, height: float, size_px: float, delay: float) -> void:
-	var tw := create_tween()
+	var tw := _reg_tween()
 	if delay > 0.0:
 		tw.tween_interval(delay)
 	tw.tween_callback(_spawn_dragon_puff.bind(pos2d, height, size_px))
@@ -10605,7 +10760,7 @@ func _spawn_dragon_puff(pos2d: Vector2, height: float, size_px: float) -> void:
 	spr.pixel_size = (size_px * WS) / float(maxi(1, int(tex.get_width())))
 	spr.position = _world_pos(pos2d, height)
 	_world.add_child(spr)
-	var t := create_tween()
+	var t := _reg_tween()
 	t.set_parallel(true)
 	t.tween_property(spr, "modulate:a", 0.0, 0.42)
 	t.tween_property(spr, "pixel_size", spr.pixel_size * 0.5, 0.42)
@@ -10618,7 +10773,7 @@ func _delayed_sheet_vfx(pos2d: Vector2, sheet: Texture2D, frames: int, delay: fl
 	if delay <= 0.0:
 		play_sheet_vfx(pos2d, sheet, frames, 150.0, 0.5, 0.7)
 		return
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_interval(delay)
 	tw.tween_callback(play_sheet_vfx.bind(pos2d, sheet, frames, 120.0, 0.45, 0.7))
 
@@ -10626,7 +10781,7 @@ func _delayed_heal_glint(pos2d: Vector2, delay: float) -> void:
 	if delay <= 0.0:
 		_skill_ring(pos2d, Color(0.45, 1.0, 0.55, 0.55), 46.0)
 		return
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_interval(delay)
 	tw.tween_callback(_skill_ring.bind(pos2d, Color(0.45, 1.0, 0.55, 0.55), 46.0))
 
