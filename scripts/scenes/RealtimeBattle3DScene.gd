@@ -1768,8 +1768,13 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 		return   # 财神梭哈投币channel: 锁住(不移动/不普攻)
 	var tgt = _acquire_target(u)
 	if tgt == null:
+		u["_has_target"] = false
 		u["state"] = "move"
 		return
+	u["_has_target"] = true
+	var _fdx: float = tgt["pos"].x - u["pos"].x   # 朝向跟战斗目标(非移动方向): 交战/风筝/走位都稳定朝敌, 根治近战分离回推"转身"
+	if absf(_fdx) > 8.0:                            # 死区: 目标明显在某侧才转向(贴脸x≈时保持上次朝向不抖翻)
+		u["face_right"] = _fdx > 0.0
 	if stunned:                     # 麻痹: 不移动/不出手 (但冷却已走)
 		return
 	var to_t: Vector2 = tgt["pos"] - u["pos"]
@@ -7779,10 +7784,10 @@ func _update_world_transforms() -> void:
 		var ring: Sprite3D = u["ring"]
 		if not is_instance_valid(spr):
 			continue
-		# 朝向跟移动方向 (立绘默认朝左→flip_h=true朝右); 不动则保持上次朝向; 初始左队朝右/右队朝左
+		# 朝向: 有战斗目标→由_tick_unit锁定朝敌(死区防抖); 无目标→才随移动方向(立绘默认朝左→flip_h=true朝右); 初始左队朝右/右队朝左
 		var _px: float = u["pos"].x
 		var _dx: float = _px - float(u.get("last_x", _px))
-		if absf(_dx) > 0.3:
+		if not bool(u.get("_has_target", false)) and absf(_dx) > 0.3:
 			u["face_right"] = _dx > 0.0
 		u["last_x"] = _px
 		spr.flip_h = bool(u.get("face_right", str(u["side"]) == "left"))
