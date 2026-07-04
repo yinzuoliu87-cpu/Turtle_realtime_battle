@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dq12p36n2ec06"
-path="res://.godot/imported/water-wave.png-a9f830d638161dd55e7cba3efb44051f.ctex"
+uid="uid://b0feps1okld0o"
+path="res://.godot/imported/tidal-wave.png-d2f804a81de31385c233309166fe5262.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/water-wave.png"
-dest_files=["res://.godot/imported/water-wave.png-a9f830d638161dd55e7cba3efb44051f.ctex"]
+source_file="res://assets/sprites/vfx/tidal-wave.png"
+dest_files=["res://.godot/imported/tidal-wave.png-d2f804a81de31385c233309166fe5262.ctex"]
 
 [params]
 

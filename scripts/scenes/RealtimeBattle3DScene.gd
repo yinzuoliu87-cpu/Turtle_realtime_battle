@@ -7733,60 +7733,102 @@ func _spawn_bamboo_arrow(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 		"bamboo": true,
 	})
 
-# 娜美式水浪(海浪护符043): 前摇蓄浪 → 巨大水墙沿一横排推过去横扫敌我, 逐单位在浪到达其x时触发反馈
+# 娜美式潮浪(海浪护符043): 前摇蓄浪 → 宽潮浪墙横跨全场深度推过去 → 全场敌我逐单位在浪到达其x时触发(用户2026-07-04定:全场横扫)
 func _eq_water_wave(u: Dictionary, si: int) -> void:
-	var poolw: Array = _allies_of(u) + _enemies_of(u)
-	if poolw.is_empty(): return
-	var ayw: float = poolw[randi() % poolw.size()]["pos"].y
-	var leftx: float = _arena_center.x - 760.0
-	var rightx: float = _arena_center.x + 760.0
+	var leftx: float = _arena_center.x - 820.0
+	var rightx: float = _arena_center.x + 820.0
 	var to_right: bool = u["pos"].x <= _arena_center.x
 	var startx: float = leftx if to_right else rightx
 	var endx: float = rightx if to_right else leftx
-	var windup: float = 0.34
-	var travel: float = 0.6
+	var windup: float = 0.5
+	var travel: float = 0.9
 	_anticipate(u)
-	_skill_ring(u["pos"], Color(0.4, 0.85, 1.0, 0.6), 62.0)
-	_spawn_water_wall(Vector2(startx, ayw), Vector2(endx, ayw), windup, travel)
+	_water_charge_windup(u, windup)
+	_spawn_tidal_wave(startx, endx, windup, travel)
 	var span: float = maxf(1.0, absf(endx - startx))
 	for o in _allies_of(u):
-		if absf(o["pos"].y - ayw) > 70.0: continue
 		var oo: Dictionary = o
 		var d: float = windup + absf(o["pos"].x - startx) / span * travel
 		var fn := func():
 			if not oo.get("alive", false): return
 			_grant_shield(oo, [40.0, 95.0, 120.0][si])
 			oo["base_def"] += [2, 3, 5][si]; oo["base_mr"] += [2, 3, 5][si]; _recalc_stats(oo)
-			_skill_ring(oo["pos"], Color(0.5, 0.92, 1.0, 0.6), 40.0)
+			_water_splash(oo["pos"], true)
 		_pending_shots.append({"delay": d, "fn": fn})
 	for o in _enemies_of(u):
-		if absf(o["pos"].y - ayw) > 70.0: continue
 		var oo2: Dictionary = o
 		var d2: float = windup + absf(o["pos"].x - startx) / span * travel
 		var fn2 := func():
 			if not oo2.get("alive", false): return
 			_apply_damage_from(u, oo2, _resolve_dmg(u, float([60, 110, 200][si]), oo2, true), Color("#9be7ff"), 0.0, false, true)   # 魔法伤(蓝字)
 			oo2["base_def"] = maxf(0.0, oo2["base_def"] - [2, 3, 5][si]); oo2["base_mr"] = maxf(0.0, oo2["base_mr"] - [2, 3, 5][si]); _recalc_stats(oo2)
-			_skill_ring(oo2["pos"], Color(0.4, 0.8, 1.0, 0.7), 46.0)
+			_water_splash(oo2["pos"], false)
 			_hit_spark(oo2)
 		_pending_shots.append({"delay": d2, "fn": fn2})
 
-func _spawn_water_wall(from2d: Vector2, to2d: Vector2, windup: float, travel: float) -> void:
-	var p := Sprite3D.new()
-	p.texture = load("res://assets/sprites/vfx/water-wave.png")
-	p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	p.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
-	p.shaded = false; p.transparent = true
-	p.pixel_size = 1.0 / 34.0
-	p.flip_h = from2d.x > to2d.x
-	p.modulate = Color(1, 1, 1, 0)
-	p.position = _world_pos(from2d, 1.3)
-	_world.add_child(p)
-	var tw := create_tween()
-	tw.tween_property(p, "modulate:a", 0.95, windup)
-	tw.tween_property(p, "position", _world_pos(to2d, 1.3), travel)
-	tw.tween_property(p, "modulate:a", 0.0, 0.18)
-	tw.tween_callback(p.queue_free)
+# 潮浪墙: 3道大浪crest拼成宽墙(横跨深度), 从startx扫到endx; 蓄浪淡入→推进→溅散
+func _spawn_tidal_wave(startx: float, endx: float, windup: float, travel: float) -> void:
+	var use_anim: bool = ResourceLoader.exists("res://assets/sprites/vfx/tidal-wave-anim.png")
+	var tex: Texture2D = load("res://assets/sprites/vfx/tidal-wave-anim.png") if use_anim else load("res://assets/sprites/vfx/tidal-wave.png")
+	var fh: int = maxi(1, tex.get_height())
+	var nf: int = maxi(1, int(tex.get_width() / fh)) if use_anim else 1
+	var yc: float = _arena_center.y
+	for yoff in [-190.0, 0.0, 190.0]:
+		var p := Sprite3D.new()
+		p.texture = tex
+		if use_anim: p.hframes = nf
+		p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		p.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+		p.shaded = false; p.transparent = true
+		p.pixel_size = 4.7 / float(fh)
+		p.flip_h = startx > endx
+		p.modulate = Color(1, 1, 1, 0)
+		p.position = _world_pos(Vector2(startx, yc + yoff), 1.95)
+		_world.add_child(p)
+		if use_anim and nf > 1:
+			var at := create_tween().set_loops()
+			at.tween_property(p, "frame", nf - 1, 0.4).from(0)
+		var tw := create_tween()
+		tw.tween_property(p, "modulate:a", 0.96, windup)
+		tw.tween_property(p, "position", _world_pos(Vector2(endx, yc + yoff), 1.95), travel).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_property(p, "modulate:a", 0.0, 0.2)
+		tw.tween_callback(p.queue_free)
+
+# 蓄浪前摇: 携带者身前蓝光汇聚膨胀(施法预备)
+func _water_charge_windup(u: Dictionary, dur: float) -> void:
+	var g := Sprite3D.new()
+	var tex := _make_fire_glow_tex()
+	g.texture = tex
+	g.modulate = Color(0.4, 0.75, 1.0, 0.0)
+	g.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	g.shaded = false; g.transparent = true
+	g.pixel_size = (34.0 * WS) / float(maxi(1, tex.get_width()))
+	g.position = _world_pos(u["pos"], 1.0)
+	_world.add_child(g)
+	var tw := create_tween(); tw.set_parallel(true)
+	tw.tween_property(g, "modulate:a", 0.9, dur * 0.7)
+	tw.tween_property(g, "pixel_size", (78.0 * WS) / float(maxi(1, tex.get_width())), dur)
+	tw.chain().tween_property(g, "modulate:a", 0.0, 0.15)
+	tw.chain().tween_callback(g.queue_free)
+
+# 浪打中单位的水花: 蓝水环 + 上溅几滴
+func _water_splash(pos2d: Vector2, ally: bool) -> void:
+	_skill_ring(pos2d, Color(0.5, 0.92, 1.0, 0.7) if ally else Color(0.4, 0.8, 1.0, 0.75), 48.0)
+	if _spark_tex == null: _spark_tex = _make_glow_texture()
+	for k in range(4):
+		var dp := Sprite3D.new()
+		dp.texture = _spark_tex
+		dp.modulate = Color(0.6, 0.9, 1.0, 0.9)
+		dp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		dp.shaded = false; dp.transparent = true
+		dp.pixel_size = 0.006
+		dp.position = _world_pos(pos2d, 0.4)
+		_world.add_child(dp)
+		var off := Vector2(randf_range(-26.0, 26.0), 0.0)
+		var tw := create_tween(); tw.set_parallel(true)
+		tw.tween_property(dp, "position", _world_pos(pos2d + off, 1.3 + randf_range(0.0, 0.4)), 0.4)
+		tw.tween_property(dp, "modulate:a", 0.0, 0.4)
+		tw.chain().tween_callback(dp.queue_free)
 
 # 出招预备(缩)+挥出(伸): 主动技/普攻前摇后摇 (anticipation + follow-through)
 func _anticipate(u: Dictionary) -> void:
