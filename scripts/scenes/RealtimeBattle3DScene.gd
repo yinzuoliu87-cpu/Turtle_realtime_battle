@@ -4090,20 +4090,37 @@ func _muzzle_flash(pos2d: Vector2, dir: Vector2, col: Color) -> void:
 	tw.chain().tween_callback(sp.queue_free)
 
 # 霰弹弹珠: 一颗小铅丸从muzzle沿扇形方向喷出+淡出(霰弹散射, 一次喷一片)
+func _make_pellet_texture() -> ImageTexture:   # 小圆金属铅丸: 亮心+硬边圆
+	var S := 16
+	var img := Image.create(S, S, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var c := float(S - 1) / 2.0
+	for y in range(S):
+		for x in range(S):
+			var d := Vector2(float(x) - c, float(y) - c).length()
+			if d <= c - 0.5:
+				var t := d / c
+				var a := 1.0 if t < 0.82 else clampf((1.0 - t) / 0.18, 0.0, 1.0)
+				var br := clampf(1.25 - t * 0.85, 0.45, 1.0)
+				img.set_pixel(x, y, Color(1.0 * br, 0.9 * br, 0.5 * br, a))
+	return ImageTexture.create_from_image(img)
+
 func _shotgun_pellet(from2d: Vector2, to2d: Vector2, col: Color) -> void:
-	if _spark_tex == null: _spark_tex = _make_glow_texture()
+	if _pellet_tex == null: _pellet_tex = _make_pellet_texture()
 	var sp := Sprite3D.new()
-	sp.texture = _spark_tex
+	sp.texture = _pellet_tex
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	sp.modulate = col
 	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	sp.shaded = false; sp.transparent = true
-	sp.pixel_size = 0.015
-	sp.position = _world_pos(from2d, 1.0)
+	sp.pixel_size = 0.02
+	var perp := (to2d - from2d).orthogonal().normalized() if (to2d - from2d).length() > 1.0 else Vector2.UP
+	sp.position = _world_pos(from2d + perp * randf_range(-18.0, 18.0), 1.0)
 	_world.add_child(sp)
-	var tw := create_tween(); tw.set_parallel(true)
+	var tw := create_tween()   # 顺序: 全程满alpha飞行 → 命中处才快速淡出(修"路中间淡化"用户2026-07-04)
 	tw.tween_property(sp, "position", _world_pos(to2d, 1.0), 0.42).set_ease(Tween.EASE_OUT)
-	tw.tween_property(sp, "modulate:a", 0.0, 0.46)
-	tw.chain().tween_callback(sp.queue_free)
+	tw.tween_property(sp, "modulate:a", 0.0, 0.1)
+	tw.tween_callback(sp.queue_free)
 
 # 装备弹道(弩矢/飞镖等真实贴图投射物): 朝向随飞行方向(2.5D近似 z-roll), 命中记装备物理伤. eq_bleed=命中附加流血层
 func _spawn_eq_bolt(src: Dictionary, tgt: Dictionary, dmg: int, tex_path: String, col: Color, spin: bool = false, bleed: int = 0, psize: float = 0.032) -> void:
@@ -7583,6 +7600,7 @@ func _impact(tgt: Dictionary, dmg: int, level: String = "auto", at_pos = null) -
 var _hitring_tex: ImageTexture = null
 var _spark_tex: GradientTexture2D = null
 var _reticle_tex: ImageTexture = null     # 瞄准/锁定框(圆环+四刻线) — 瞄准镜/靶向器/飞镖靶子
+var _pellet_tex: ImageTexture = null       # 小圆铅丸(霰弹弹珠) — 真圆非方角
 func _hit_spark(tgt, at_pos = null) -> void:
 	if tgt == null or _t < float(tgt.get("_spark_t", 0.0)):
 		return
