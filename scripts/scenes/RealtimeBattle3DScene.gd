@@ -9996,7 +9996,10 @@ func _eq_sniper(u: Dictionary, si: int, depth: int) -> void:
 		return
 	var dir: Vector2 = (low["pos"] - u["pos"]).normalized()
 	_muzzle_flash(u["pos"], dir, Color("#ff5a5a"))
-	_laser_beam(u["pos"], low["pos"] + dir * 110.0, Color(1.0, 0.2, 0.26, 0.92), 0.05, 0.18)   # 细亮狙击曳光
+	var _snd: float = 1.5 if OS.has_environment("XDBG") else 0.28
+	var _tip: Vector2 = low["pos"] + dir * 150.0
+	_laser_beam(u["pos"], _tip, Color(1.0, 0.24, 0.28, 0.82), 0.17, _snd, 1.0)          # 粗红外辉(醒目狙击曳光)
+	_laser_beam(u["pos"], _tip, Color(1.0, 0.92, 0.86, 0.96), 0.06, _snd * 0.85, 1.02)   # 白热细核(高速弹道感)
 	_hit_spark(low)
 	var killed := false
 	for o in _enemies_of(u):
