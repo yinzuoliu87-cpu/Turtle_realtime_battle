@@ -679,7 +679,7 @@ func _spawn_teams() -> void:
 		if OS.has_environment("EQDEMO_EQUIP"):
 			var _d1: float = float(OS.get_environment("EQDEMO_ENEMY1")) if OS.has_environment("EQDEMO_ENEMY1") else 210.0
 			var _gap: float = float(OS.get_environment("EQDEMO_GAP")) if OS.has_environment("EQDEMO_GAP") else 500.0
-			pos = Vector2(_cx - 150.0 + _d1 + float(i) * _gap, _cy)   # 装备演示: 敌1距携带者_d1码(默认210), 两敌相距_gap(默认500)
+			pos = Vector2(_cx - 150.0 + _d1 + float(i) * _gap, _cy + (float(OS.get_environment("EQDEMO_ENEMY_Y")) if OS.has_environment("EQDEMO_ENEMY_Y") else 0.0))   # 装备演示: 敌1距携带者_d1码, 两敌相距_gap; ENEMY_Y=深度偏移(测浪覆盖)
 		var ru := _make_unit(str(right[i]), "right", pos)
 		if REVIEW_DEMO:                          # 假人: 不放技/永不死训练靶; ATTACKS时会还手(动+普攻)
 			if not REVIEW_DUMMY_ATTACKS:
@@ -7750,7 +7750,11 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 	var travel: float = 2.0                         # 更慢(用户: 移速慢点)
 	_anticipate(u)
 	_water_charge_windup(u, windup)
-	_spawn_tidal_wave(startx, endx, windup, travel)
+	var ymn: float = INF; var ymx: float = -INF        # 单位实际占据的深度范围
+	for _wo in _allies_of(u) + _enemies_of(u):
+		ymn = minf(ymn, _wo["pos"].y); ymx = maxf(ymx, _wo["pos"].y)
+	if ymn > ymx: ymn = _arena_center.y; ymx = _arena_center.y
+	_spawn_tidal_wave(startx, endx, ymn - 75.0, ymx + 75.0, windup, travel)
 	for o in _allies_of(u):
 		var oo: Dictionary = o
 		var fwd: float = (o["pos"].x - startx) * dirsign
@@ -7775,14 +7779,15 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 		_pending_shots.append({"delay": d2, "fn": fn2})
 
 # 潮浪墙: 沿深度铺一排大浪crest拼成连续宽墙(横跨全场深度), 整墙从startx慢速推到endx; 翻涌帧循环
-func _spawn_tidal_wave(startx: float, endx: float, windup: float, travel: float) -> void:
+func _spawn_tidal_wave(startx: float, endx: float, y0: float, y1: float, windup: float, travel: float) -> void:
 	var use_anim: bool = ResourceLoader.exists("res://assets/sprites/vfx/tidal-wave-anim.png")
 	var tex: Texture2D = load("res://assets/sprites/vfx/tidal-wave-anim.png") if use_anim else load("res://assets/sprites/vfx/tidal-wave.png")
 	var fh: int = maxi(1, tex.get_height())
 	var nf: int = maxi(1, int(tex.get_width() / fh)) if use_anim else 1
-	var yc: float = _arena_center.y
-	var flip: bool = startx < endx   # 浪头朝行进方向卷(素材自然朝左,向右推需翻转;修正原来反了)
-	for yoff in [-150.0, -100.0, -50.0, 0.0, 50.0, 100.0, 150.0]:   # 宽度300(±150), 7道重叠成连续墙(用户)
+	var flip: bool = startx < endx   # 浪头朝行进方向卷
+	var ncrest: int = clampi(int((y1 - y0) / 72.0) + 1, 4, 16)   # 沿单位占据深度铺满(贴地覆盖,不再固定场中悬空)
+	for k in range(ncrest):
+		var yy: float = lerpf(y0, y1, float(k) / float(maxi(1, ncrest - 1)))
 		var p := Sprite3D.new()
 		p.texture = tex
 		if use_anim: p.hframes = nf
@@ -7792,14 +7797,14 @@ func _spawn_tidal_wave(startx: float, endx: float, windup: float, travel: float)
 		p.pixel_size = 3.4 / float(fh)   # ~3.4m浪(用户: 大小小点)
 		p.flip_h = flip
 		p.modulate = Color(1, 1, 1, 0)
-		p.position = _world_pos(Vector2(startx, yc + yoff), 1.45)
+		p.position = _world_pos(Vector2(startx, yy), 1.45)
 		_world.add_child(p)
 		if use_anim and nf > 1:
 			var at := create_tween().set_loops()
 			at.tween_property(p, "frame", nf - 1, 0.45).from(0)
 		var tw := create_tween()
 		tw.tween_property(p, "modulate:a", 0.95, windup * 0.8)
-		tw.tween_property(p, "position", _world_pos(Vector2(endx, yc + yoff), 1.45), travel).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		tw.tween_property(p, "position", _world_pos(Vector2(endx, yy), 1.45), travel).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 		tw.tween_property(p, "modulate:a", 0.0, 0.25)
 		tw.tween_callback(p.queue_free)
 
