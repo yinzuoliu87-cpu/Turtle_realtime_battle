@@ -9225,9 +9225,12 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 			"p2eq_058":   # 穿甲遗弹: 贯穿→身后同列敌
 				var frac2: float = [0.25, 0.40, 0.60][si]
 				var dir: Vector2 = (tgt["pos"] - src["pos"]).normalized()
+				var _pd: float = 1.5 if OS.has_environment("XDBG") else 0.22
 				for o in _enemies_of(src):
 					if o != tgt and _on_line(tgt["pos"], dir, o["pos"], 40.0):
-						_laser_beam(tgt["pos"], o["pos"], Color(1.0, 0.86, 0.42, 0.8), 0.05, 0.16)   # 穿透曳光
+						var _pt: Vector2 = o["pos"] + dir * 45.0
+						_laser_beam(tgt["pos"], _pt, Color(1.0, 0.78, 0.34, 0.82), 0.13, _pd, 1.0)          # 粗金穿透辉
+						_laser_beam(tgt["pos"], _pt, Color(1.0, 0.96, 0.8, 0.95), 0.05, _pd * 0.85, 1.02)     # 白热贯穿核
 						_apply_damage_from(src, o, maxi(1, int(dmg * frac2)), Color("#ffd07a"), 0.0, false, true)
 						_hit_spark(o)
 		src["eq_state"][iid] = stt
