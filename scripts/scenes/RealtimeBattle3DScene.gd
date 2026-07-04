@@ -2363,7 +2363,8 @@ func _eq_revolver_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 		if not es3.is_empty():
 			stt["revolver_bullets"] = int(stt["revolver_bullets"]) - 1
 			var o = es3[randi() % es3.size()]
-			_fire_bolt_from(u, o, _atk_dmg(u, [3.0, 5.0, 9.0][si], o) + [150, 310, 1200][si], Color("#ffd07a"))
+			_muzzle_flash(u["pos"], (o["pos"] - u["pos"]), Color("#ffe08a"))
+			_spawn_eq_bolt(u, o, _atk_dmg(u, [3.0, 5.0, 9.0][si], o) + [150, 310, 1200][si], "res://assets/sprites/vfx/bullet.png", Color("#ffe6a8"), false, 0, 0.019)   # 左轮重弹(真子弹, 大一号)
 
 # 蛋糕蜡烛037: 头顶悬浮真蜡烛精灵(带火苗辉光), 随相位 熄灭/微弱/燃烧 亮暗变化; 持续存在直到携带者死
 func _ensure_candle(u: Dictionary) -> void:
