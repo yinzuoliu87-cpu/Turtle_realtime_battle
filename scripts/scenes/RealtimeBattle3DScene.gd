@@ -2312,6 +2312,29 @@ func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 				"p2eq_052": _eq_revolver_tick(u, si, stt)
 		u["eq_state"][iid] = stt
 
+# 涟漪回血特效(AI生成动画): 青绿涟漪水波躺平贴地, 帧播一次扩散淡出. 用于涟漪药剂042每个受益友军
+func _ripple_heal_vfx(pos2d: Vector2, size_px: float) -> void:
+	var tex: Texture2D = load("res://assets/sprites/vfx/ripple-heal-anim.png")
+	var fh: int = maxi(1, tex.get_height())
+	var nf: int = maxi(1, int(tex.get_width() / fh))
+	var r := Sprite3D.new()
+	r.texture = tex
+	r.hframes = nf
+	r.frame = 0
+	r.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	r.axis = Vector3.AXIS_Y
+	r.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	r.shaded = false; r.transparent = true
+	r.modulate = Color(1, 1, 1, 0.95)
+	r.position = _world_pos(pos2d, 0.06)
+	r.pixel_size = (size_px * 2.0 * WS) / float(fh)
+	_world.add_child(r)
+	var tw := create_tween(); tw.set_parallel(true)
+	if nf > 1:
+		tw.tween_property(r, "frame", nf - 1, 0.55)
+	tw.tween_property(r, "modulate:a", 0.0, 0.6).set_ease(Tween.EASE_IN)
+	tw.chain().tween_callback(r.queue_free)
+
 func _eq_ripple_tick(u: Dictionary, si: int) -> void:
 	var low042 = null; var lv042 := INF
 	if si == 2:
@@ -2324,7 +2347,7 @@ func _eq_ripple_tick(u: Dictionary, si: int) -> void:
 		var amt42: float = (o["maxHp"] - o["hp"]) * pct042
 		if amt42 >= 1.0:
 			_heal(o, amt42)
-			_skill_ring(o["pos"], Color(0.4, 0.92, 0.82, 0.5), 44.0)
+			_ripple_heal_vfx(o["pos"], 105.0)   # AI生成涟漪回血动画
 
 func _eq_revolver_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 	if int(stt.get("revolver_bullets", 0)) > 0:
