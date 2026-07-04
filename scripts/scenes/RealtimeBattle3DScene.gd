@@ -24,13 +24,18 @@ const ARENA := Rect2(70, 110, 1140, 520)   # 战场边界 (像素口径, 与 2D 
 #   花费/换算/is_active 全在单一事实源 SkillEnergy (战斗/图鉴/选龟共用, 防口径分叉)。
 const SkillEnergy := preload("res://scripts/systems/skill_energy.gd")
 const SKILL_GCD := 0.4                      # 同龟两次放技最小间隔 (防多技同帧连爆)
-# AI 状态机节拍 (Botworld式: 移动/攻击互斥 + 施法锁 + 前摇/后摇; 用户2026-06-28 #5最高优先级)
-# LoL式普攻前摇: 前摇=攻击周期的百分比(windup percent), 随攻速缩放(官方Attack_speed wiki: "windup time scales proportionally to attack speed", 默认~0.3). 攻速快→前摇短.
-const ATK_WINDUP_PCT := 0.30                # 前摇占攻击周期比例 (LoL默认windup percent≈30%)
+# AI 状态机节拍 (Botworld式: 移动/攻击互斥 + 施法锁 + 前摇; 用户2026-06-28 #5最高优先级)
+# LoL式普攻(官方Attack_speed/Basic_attack wiki, 完整模型):
+#  总攻击时间=1/攻速; 前摇windup=总时间×windupPercent(默认~0.3), 随攻速缩放, 前摇内定身承诺;
+#  伤害点后"commands may be freely input without penalty"=立即自由可动(orb walk), 无定身后摇锁!
+#  剩余时间(总−前摇≈70%,也随攻速)=后摇动画+冷却, 期间能动; 下次普攻等atk_cd=1/攻速.
+const ATK_WINDUP_PCT := 0.30                # 前摇占攻击周期比例 (LoL默认windup percent≈30%, 随攻速缩放)
 const ATK_WINDUP_MIN := 0.12               # 前摇下限(极快攻速也留可读蓄力)
 const ATK_WINDUP_MAX := 0.40               # 前摇上限(极慢攻速不呆太久)
-const ATK_RECOVER := 0.12                   # 普攻后摇(命中后短收招定身; LoL伤害点后其实可动, 这里保守留一点做视觉收招)
-const ATK_LUNGE_SEC := 0.16                # 近战命中踏步(前冲再回)时长
+# 后摇: 忠实LoL=伤害点后立即自由(可动/被分离), 无rooted后摇态; 后摇=视觉lunge回收+squash(不锁移动). 故普攻出手后直接回move.
+const ATK_LUNGE_PCT := 0.22                # 近战命中踏步(前冲再回)时长=攻击周期比例(随攻速缩放, 同前摇思路)
+const ATK_LUNGE_MIN := 0.10
+const ATK_LUNGE_MAX := 0.30
 const ATK_LUNGE_AMP := 0.30                # 近战踏步幅度(米)
 const CAST_WINDUP := 0.34                   # 技能前摇(蓄力, 比普攻久 → 有重量感)
 const CAST_RECOVER := 0.24                  # 技能后摇
@@ -1474,7 +1479,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 					# gambler 多重打击(云顶剑士式): 命中后掷概率, 中→快攻速再打, 没中→正常冷却
 					var _hf: float = maxf(1.0, float(u.get("haste_mult", 1.0))) if _t < float(u.get("haste_until", 0.0)) else 1.0   # 临时攻速buff(祝福等)
 					u["atk_cd"] = (_gambler_multi_cd(u) if (u["id"] == "gambler" and dist <= rng) else u["atk_interval"]) / maxf(0.1, _hf * (float(u.get("spd_aspd_mult", 1.0)) if _t < float(u.get("spd_dbf_until", 0.0)) else 1.0) * float(u.get("aspd_perm", 1.0)))   # ×永久攻速(贝母021等,本场)
-					u["state"] = "recover"; u["state_t"] = ATK_RECOVER
+					u["state"] = "move"   # LoL忠实: 伤害点后立即自由(可动/被分离=orb walk), 无rooted后摇; 后摇=视觉lunge回收+squash不锁移动; 下次普攻等atk_cd(=1/攻速)
 				else:
 					var stype := p.substr(2)
 					if _cast_skill(u, tgt, stype):
@@ -3927,7 +3932,9 @@ func _melee_lunge(u: Dictionary, tgt: Dictionary) -> void:
 		return
 	var dn := d.normalized()
 	u["_lunge_dir"] = Vector3(dn.x, 0.0, dn.y)   # 2D方向→世界XZ(2D-x→世界x, 2D-y→世界z)
-	u["_lunge_t"] = ATK_LUNGE_SEC
+	var _ldur: float = clampf(float(u.get("atk_interval", 0.5)) * ATK_LUNGE_PCT, ATK_LUNGE_MIN, ATK_LUNGE_MAX)   # 踏步时长随攻速(快攻速踏步短, 同前摇)
+	u["_lunge_t"] = _ldur
+	u["_lunge_dur"] = _ldur
 
 # ============================================================================
 #  3D 投射物 (远程普攻/技能): 小 billboard 球从攻击者飞向目标, 到达落伤.
@@ -7486,7 +7493,8 @@ func _juice_decay(delta: float) -> void:
 		# 近战踏步: _lunge_t 递减 → _atk_voff = 方向×sin(0→π)幅度(前冲再回), render叠加
 		if u.get("_lunge_t", 0.0) > 0.0:
 			u["_lunge_t"] = maxf(0.0, u["_lunge_t"] - delta)
-			var _lp: float = 1.0 - float(u["_lunge_t"]) / ATK_LUNGE_SEC   # 0→1
+			var _ld: float = maxf(0.001, float(u.get("_lunge_dur", ATK_LUNGE_MIN)))
+			var _lp: float = 1.0 - float(u["_lunge_t"]) / _ld   # 0→1
 			u["_atk_voff"] = u.get("_lunge_dir", Vector3.ZERO) * (sin(_lp * PI) * ATK_LUNGE_AMP)
 		elif u.get("_atk_voff", Vector3.ZERO) != Vector3.ZERO:
 			u["_atk_voff"] = Vector3.ZERO
