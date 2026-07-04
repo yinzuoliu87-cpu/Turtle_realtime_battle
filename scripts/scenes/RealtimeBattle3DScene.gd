@@ -7672,10 +7672,11 @@ func _reticle_flash(tgt: Dictionary, col: Color) -> void:
 	r.pixel_size = 0.032
 	r.position = _world_pos(tgt["pos"], float(tgt.get("height", 0.0)) + 0.9)
 	_world.add_child(r)
-	var tw := create_tween(); tw.set_parallel(true)
-	tw.tween_property(r, "modulate:a", 0.95, 0.05)
-	tw.tween_property(r, "pixel_size", 0.016, 0.13).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.chain().tween_property(r, "modulate:a", 0.0, 0.12)
+	var tw := create_tween(); tw.set_parallel(true)   # 淡入+缩到目标(并行0.14) → 停留0.24锁定感 → 淡出0.14, 共~0.52s(用户2026-07-04要0.5s)
+	tw.tween_property(r, "modulate:a", 0.95, 0.06)
+	tw.tween_property(r, "pixel_size", 0.016, 0.14).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_interval(0.24)
+	tw.chain().tween_property(r, "modulate:a", 0.0, 0.14)
 	tw.chain().tween_callback(r.queue_free)
 
 # 持续锁定标记: 贴在目标身上脉动的锁定框, 到 _mark_until 自动消失(靶向器5s/飞镖靶子). 去重: 已有则延长
