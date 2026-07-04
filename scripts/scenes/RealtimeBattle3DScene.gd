@@ -7781,7 +7781,7 @@ func _spawn_tidal_wave(startx: float, endx: float, windup: float, travel: float)
 	var fh: int = maxi(1, tex.get_height())
 	var nf: int = maxi(1, int(tex.get_width() / fh)) if use_anim else 1
 	var yc: float = _arena_center.y
-	var flip: bool = startx > endx
+	var flip: bool = startx < endx   # 浪头朝行进方向卷(素材自然朝左,向右推需翻转;修正原来反了)
 	for yoff in [-150.0, -100.0, -50.0, 0.0, 50.0, 100.0, 150.0]:   # 宽度300(±150), 7道重叠成连续墙(用户)
 		var p := Sprite3D.new()
 		p.texture = tex
