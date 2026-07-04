@@ -7682,6 +7682,50 @@ func _heal_burst(u: Dictionary, scale: float = 1.0) -> void:
 		tw.tween_property(sp, "modulate:a", 0.0, 0.6)
 		tw.chain().tween_callback(sp.queue_free)
 
+# 上半身绿光脉动(深海项链044救命回血, 用户: 就龟上半身一个绿光动画): 龟身染绿脉动2下 + 绿辉裹上半身 + 几缕上升绿光
+func _heal_body_glow(u: Dictionary) -> void:
+	if u == null: return
+	var spr = u.get("sprite", null)   # ① 龟精灵本体染绿脉动2下(最直接的"龟身绿光")
+	if spr != null and is_instance_valid(spr):
+		var basem: Color = spr.modulate
+		var mt := create_tween()
+		mt.tween_property(spr, "modulate", Color(0.5, 1.55, 0.65, basem.a), 0.14)
+		mt.tween_property(spr, "modulate", basem, 0.2)
+		mt.tween_property(spr, "modulate", Color(0.5, 1.55, 0.65, basem.a), 0.14)
+		mt.tween_property(spr, "modulate", basem, 0.34)
+	var tex := _make_fire_glow_tex()   # ② 上半身绿辉光overlay(裹住脉动)
+	var g := Sprite3D.new()
+	g.texture = tex
+	g.modulate = Color(0.45, 1.0, 0.55, 0.0)
+	g.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	g.shaded = false; g.transparent = true
+	g.render_priority = 8
+	g.pixel_size = 2.0 / float(maxi(1, tex.get_width()))   # ~2m裹上半身
+	g.position = _world_pos(u["pos"], 1.2)
+	_world.add_child(g)
+	_follow_vfx.append({"spr": g, "unit": u, "h": 1.2})
+	var tw := create_tween()
+	tw.tween_property(g, "modulate:a", 0.95, 0.15)
+	tw.tween_property(g, "modulate:a", 0.5, 0.22)
+	tw.tween_property(g, "modulate:a", 0.95, 0.22)
+	tw.tween_property(g, "modulate:a", 0.0, 0.4)
+	tw.tween_callback(g.queue_free)
+	if _spark_tex == null: _spark_tex = _make_glow_texture()
+	for k in range(4):
+		var sp := Sprite3D.new()
+		sp.texture = _spark_tex
+		sp.modulate = Color(0.55, 1.0, 0.6, 0.9)
+		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sp.shaded = false; sp.transparent = true
+		sp.pixel_size = 0.008
+		var off := Vector2(randf_range(-26.0, 26.0), 0.0)
+		sp.position = _world_pos(u["pos"] + off, 0.5)
+		_world.add_child(sp)
+		var tw2 := create_tween(); tw2.set_parallel(true)
+		tw2.tween_property(sp, "position", _world_pos(u["pos"] + off, 1.9 + randf_range(0.0, 0.4)), 0.75)
+		tw2.tween_property(sp, "modulate:a", 0.0, 0.75)
+		tw2.chain().tween_callback(sp.queue_free)
+
 # 火爆: 落点火色环 + 膨胀火球辉光(火球落地/灼烧爆点)
 func _fire_explosion(pos2d: Vector2) -> void:
 	_skill_ring(pos2d, Color(1.0, 0.5, 0.15, 0.7), 55.0)
@@ -9879,10 +9923,9 @@ func _eq_check_hp_threshold(u: Dictionary) -> void:
 	for e in u.get("equips", []):
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
 		match iid:
-			"p2eq_044":   # 深海项链: 首次<50%救命回血(醒目回血阵+迸发)
+			"p2eq_044":   # 深海项链: 首次<50%救命回血(龟上半身绿光脉动, 用户: 简单绿光即可, 不复用037魔法阵)
 				_heal(u, u["maxHp"] * [0.12, 0.27, 0.40][si]); fired = true
-				_heal_circle_vfx(u["pos"], 200.0, 2.2)   # AI回血阵动画(救命够醒目)
-				_heal_burst(u, 1.6)
+				_heal_body_glow(u)
 			"p2eq_045":   # 珍珠耳环: 首次<50%回血+发火球
 				_heal(u, u["maxHp"] * [0.15, 0.29, 0.65][si])
 				_heal_burst(u, 1.4)
