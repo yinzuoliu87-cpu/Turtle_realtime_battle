@@ -7733,22 +7733,28 @@ func _spawn_bamboo_arrow(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 		"bamboo": true,
 	})
 
-# 娜美式潮浪(海浪护符043): 前摇蓄浪 → 宽潮浪墙横跨全场深度推过去 → 全场敌我逐单位在浪到达其x时触发(用户2026-07-04定:全场横扫)
+# 娜美式潮浪(海浪护符043): 参照LoL娜美大招真实形态 — 从携带者身后涌起→慢速朝敌人方向推过全场→连续宽浪墙翻涌→命中击飞(用户2026-07-04定:全场横扫+对齐娜美)
 func _eq_water_wave(u: Dictionary, si: int) -> void:
-	var leftx: float = _arena_center.x - 820.0
-	var rightx: float = _arena_center.x + 820.0
-	var to_right: bool = u["pos"].x <= _arena_center.x
-	var startx: float = leftx if to_right else rightx
-	var endx: float = rightx if to_right else leftx
+	var enemies := _enemies_of(u)
+	var ecx: float = _arena_center.x + 500.0
+	if not enemies.is_empty():
+		ecx = 0.0
+		for e in enemies: ecx += e["pos"].x
+		ecx /= float(enemies.size())
+	var to_right: bool = ecx >= u["pos"].x         # 浪朝敌人方向推
+	var dirsign: float = 1.0 if to_right else -1.0
+	var startx: float = u["pos"].x - dirsign * 40.0   # 从携带者身后涌起
+	var endx: float = (_arena_center.x + 940.0) if to_right else (_arena_center.x - 940.0)
+	var span: float = maxf(1.0, absf(endx - startx))
 	var windup: float = 0.5
-	var travel: float = 0.9
+	var travel: float = 1.35                        # 慢速有重量(非飞快)
 	_anticipate(u)
 	_water_charge_windup(u, windup)
 	_spawn_tidal_wave(startx, endx, windup, travel)
-	var span: float = maxf(1.0, absf(endx - startx))
 	for o in _allies_of(u):
 		var oo: Dictionary = o
-		var d: float = windup + absf(o["pos"].x - startx) / span * travel
+		var fwd: float = (o["pos"].x - startx) * dirsign
+		var d: float = windup + clampf(fwd, 0.0, span) / span * travel
 		var fn := func():
 			if not oo.get("alive", false): return
 			_grant_shield(oo, [40.0, 95.0, 120.0][si])
@@ -7757,41 +7763,44 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 		_pending_shots.append({"delay": d, "fn": fn})
 	for o in _enemies_of(u):
 		var oo2: Dictionary = o
-		var d2: float = windup + absf(o["pos"].x - startx) / span * travel
+		var fwd2: float = (o["pos"].x - startx) * dirsign
+		var d2: float = windup + clampf(fwd2, 0.0, span) / span * travel
 		var fn2 := func():
 			if not oo2.get("alive", false): return
 			_apply_damage_from(u, oo2, _resolve_dmg(u, float([60, 110, 200][si]), oo2, true), Color("#9be7ff"), 0.0, false, true)   # 魔法伤(蓝字)
 			oo2["base_def"] = maxf(0.0, oo2["base_def"] - [2, 3, 5][si]); oo2["base_mr"] = maxf(0.0, oo2["base_mr"] - [2, 3, 5][si]); _recalc_stats(oo2)
 			_water_splash(oo2["pos"], false)
+			_knock_up(oo2, oo2["pos"], 6.5)   # 娜美式击飞(短促上抛)
 			_hit_spark(oo2)
 		_pending_shots.append({"delay": d2, "fn": fn2})
 
-# 潮浪墙: 3道大浪crest拼成宽墙(横跨深度), 从startx扫到endx; 蓄浪淡入→推进→溅散
+# 潮浪墙: 沿深度铺一排大浪crest拼成连续宽墙(横跨全场深度), 整墙从startx慢速推到endx; 翻涌帧循环
 func _spawn_tidal_wave(startx: float, endx: float, windup: float, travel: float) -> void:
 	var use_anim: bool = ResourceLoader.exists("res://assets/sprites/vfx/tidal-wave-anim.png")
 	var tex: Texture2D = load("res://assets/sprites/vfx/tidal-wave-anim.png") if use_anim else load("res://assets/sprites/vfx/tidal-wave.png")
 	var fh: int = maxi(1, tex.get_height())
 	var nf: int = maxi(1, int(tex.get_width() / fh)) if use_anim else 1
 	var yc: float = _arena_center.y
-	for yoff in [-190.0, 0.0, 190.0]:
+	var flip: bool = startx > endx
+	for yoff in [-260.0, -175.0, -88.0, 0.0, 88.0, 175.0, 260.0]:   # 7道大浪重叠拼成连续宽墙(覆盖全场深度)
 		var p := Sprite3D.new()
 		p.texture = tex
 		if use_anim: p.hframes = nf
 		p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		p.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
 		p.shaded = false; p.transparent = true
-		p.pixel_size = 4.7 / float(fh)
-		p.flip_h = startx > endx
+		p.pixel_size = 5.2 / float(fh)   # ~5.2m高大浪
+		p.flip_h = flip
 		p.modulate = Color(1, 1, 1, 0)
-		p.position = _world_pos(Vector2(startx, yc + yoff), 1.95)
+		p.position = _world_pos(Vector2(startx, yc + yoff), 2.2)
 		_world.add_child(p)
 		if use_anim and nf > 1:
 			var at := create_tween().set_loops()
-			at.tween_property(p, "frame", nf - 1, 0.4).from(0)
+			at.tween_property(p, "frame", nf - 1, 0.45).from(0)
 		var tw := create_tween()
-		tw.tween_property(p, "modulate:a", 0.96, windup)
-		tw.tween_property(p, "position", _world_pos(Vector2(endx, yc + yoff), 1.95), travel).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		tw.tween_property(p, "modulate:a", 0.0, 0.2)
+		tw.tween_property(p, "modulate:a", 0.95, windup * 0.8)
+		tw.tween_property(p, "position", _world_pos(Vector2(endx, yc + yoff), 2.2), travel).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		tw.tween_property(p, "modulate:a", 0.0, 0.25)
 		tw.tween_callback(p.queue_free)
 
 # 蓄浪前摇: 携带者身前蓝光汇聚膨胀(施法预备)
