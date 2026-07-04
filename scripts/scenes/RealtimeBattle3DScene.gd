@@ -7599,7 +7599,8 @@ func _impact(tgt: Dictionary, dmg: int, level: String = "auto", at_pos = null) -
 # Hit Spark(亮星) + Impact Ring(快环): 朝镜头 billboard, ~0.14s pop→淡; 同目标50ms节流防多段刷爆
 var _hitring_tex: ImageTexture = null
 var _spark_tex: GradientTexture2D = null
-var _reticle_tex: ImageTexture = null     # 瞄准/锁定框(圆环+四刻线) — 瞄准镜/靶向器/飞镖靶子
+var _reticle_tex: ImageTexture = null     # 瞄准准星(圆环+四刻线) — 瞄准镜054一瞬瞄准闪专用
+var _bracket_tex: ImageTexture = null      # 目标锁定角标([ ]四角方括号) — 持续标记专用(靶向器055/飞镖056), 跟054准星区分
 var _pellet_tex: ImageTexture = null       # 小圆铅丸(霰弹弹珠) — 真圆非方角
 func _hit_spark(tgt, at_pos = null) -> void:
 	if tgt == null or _t < float(tgt.get("_spark_t", 0.0)):
@@ -7660,6 +7661,33 @@ func _make_reticle_texture(col: Color) -> ImageTexture:
 				img.set_pixel(x, y, Color(col.r, col.g, col.b, a))
 	return ImageTexture.create_from_image(img)
 
+# 目标锁定角标([ ]四角方括号) — 持续标记(靶向器055/飞镖056)专用, 视觉区别于054十字准星圆环
+func _make_target_bracket_texture(col: Color) -> ImageTexture:
+	var S := 64
+	var img := Image.create(S, S, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var lo := 9.0
+	var hi := float(S) - 9.0
+	var arm := 16.0     # 每角短臂长
+	var th := 2.4       # 半线宽
+	for y in range(S):
+		for x in range(S):
+			var fx := float(x); var fy := float(y)
+			var on := false
+			for cx in [lo, hi]:
+				for cy in [lo, hi]:
+					var hx0: float = cx if cx == lo else cx - arm
+					var hx1: float = cx + arm if cx == lo else cx
+					if absf(fy - cy) < th and fx >= hx0 - th and fx <= hx1 + th:
+						on = true              # 横臂
+					var vy0: float = cy if cy == lo else cy - arm
+					var vy1: float = cy + arm if cy == lo else cy
+					if absf(fx - cx) < th and fy >= vy0 - th and fy <= vy1 + th:
+						on = true              # 竖臂
+			if on:
+				img.set_pixel(x, y, Color(col.r, col.g, col.b, 1.0))
+	return ImageTexture.create_from_image(img)
+
 # 一瞬锁定框: 从大缩到目标身上再淡出(瞄准镜"必中"命中反馈)
 func _reticle_flash(tgt: Dictionary, col: Color) -> void:
 	if tgt == null: return
@@ -7686,9 +7714,9 @@ func _mark_vfx(tgt: Dictionary, dur: float, col: Color) -> void:
 	var ex = tgt.get("_mark_spr", null)
 	if ex != null and is_instance_valid(ex):
 		return
-	if _reticle_tex == null: _reticle_tex = _make_reticle_texture(Color(1, 1, 1, 1))
+	if _bracket_tex == null: _bracket_tex = _make_target_bracket_texture(Color(1, 1, 1, 1))
 	var r := Sprite3D.new()
-	r.texture = _reticle_tex
+	r.texture = _bracket_tex
 	r.modulate = Color(col.r, col.g, col.b, 0.85)
 	r.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	r.shaded = false; r.transparent = true
