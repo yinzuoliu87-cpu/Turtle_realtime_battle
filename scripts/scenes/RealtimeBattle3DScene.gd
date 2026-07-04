@@ -2299,6 +2299,7 @@ func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 		var iv: float = float(_EQ_CUSTOM_IV.get(iid, 0.0))
 		if iv <= 0.0: continue
 		var si: int = _eq_si(int(e.get("star", 1)))
+		if iid == "p2eq_037": _ensure_candle(u)   # 蜡烛从开局就悬在头顶(不等首次tick)
 		var stt: Dictionary = u["eq_state"].get(iid, {})
 		stt["iv_t"] = float(stt.get("iv_t", 0.0)) + delta
 		if float(stt["iv_t"]) >= iv:
@@ -2333,10 +2334,41 @@ func _eq_revolver_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 			var o = es3[randi() % es3.size()]
 			_fire_bolt_from(u, o, _atk_dmg(u, [3.0, 5.0, 9.0][si], o) + [150, 310, 1200][si], Color("#ffd07a"))
 
+# 蛋糕蜡烛037: 头顶悬浮真蜡烛精灵(带火苗辉光), 随相位 熄灭/微弱/燃烧 亮暗变化; 持续存在直到携带者死
+func _ensure_candle(u: Dictionary) -> void:
+	var ex = u.get("_candle_spr", null)
+	if ex != null and is_instance_valid(ex): return
+	var c := Sprite3D.new()
+	if ResourceLoader.exists("res://assets/sprites/vfx/candle-flame.png"):
+		var tx: Texture2D = load("res://assets/sprites/vfx/candle-flame.png")
+		c.texture = tx
+		c.hframes = maxi(1, int(round(float(tx.get_width()) / 64.0)))
+		u["_candle_frames"] = c.hframes
+	else:
+		c.texture = load("res://assets/sprites/vfx/candle-lit.png")
+		u["_candle_frames"] = 1
+	c.pixel_size = 1.25 / 96.0
+	c.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	c.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	c.shaded = false; c.transparent = true
+	_world.add_child(c)
+	u["_candle_spr"] = c
+	_follow_vfx.append({"spr": c, "unit": u, "h": 3.05})
+	if int(u["_candle_frames"]) > 1:   # 火苗帧表: 循环播放(蜡烛自带跳动火苗)
+		var at := create_tween().set_loops()
+		at.tween_property(c, "frame", int(u["_candle_frames"]) - 1, 0.45).from(0)
+
 func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
+	_ensure_candle(u)
+	var c = u.get("_candle_spr", null)
 	var ph: int = int(stt.get("candle", 0))
 	stt["candle"] = (ph + 1) % 3
-	if ph == 1:   # 微弱: 250码蜡烛光圈, 圈内友军5s逐渐回血(携带者总量X, 圈内其他各X/2)
+	if ph == 0:   # 熄灭: 蜡烛变暗(火苗弱下去, 无效果)
+		if c != null and is_instance_valid(c):
+			create_tween().tween_property(c, "modulate", Color(0.5, 0.5, 0.58, 1.0), 0.35)
+	elif ph == 1:   # 微弱: 蜡烛点亮 + 250码光圈 + 圈内友军5s逐渐回血
+		if c != null and is_instance_valid(c):
+			create_tween().tween_property(c, "modulate", Color(1, 1, 1, 1), 0.35)
 		var hv37: float = [20, 30, 44][si] + u["atk"] * [0.5, 0.7, 1.0][si]
 		_candle_circle(u["pos"], 250.0, 5.0)
 		u["candle_hot_rate"] = hv37 / 5.0
@@ -2345,7 +2377,12 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 			if a37["pos"].distance_to(u["pos"]) <= 250.0:
 				a37["candle_hot_rate"] = (hv37 * 0.5) / 5.0
 				a37["candle_hot_until"] = _t + 5.0
-	elif ph == 2:   # 燃烧: 原地爆炸一次, 499码内敌各受魔法伤+灼烧
+	elif ph == 2:   # 燃烧: 火苗爆燃(蜡烛过亮+弹一下) + 原地爆炸, 499码内敌各受魔法伤+灼烧
+		if c != null and is_instance_valid(c):
+			var ct := create_tween(); ct.set_parallel(true)
+			ct.tween_property(c, "modulate", Color(1.4, 1.15, 0.85, 1.0), 0.12)
+			ct.tween_property(c, "scale", Vector3.ONE * 1.3, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			ct.chain().tween_property(c, "scale", Vector3.ONE, 0.25)
 		_fire_explosion(u["pos"])
 		_skill_ring(u["pos"], Color(1.0, 0.46, 0.13, 0.7), 300.0)
 		_shake(0.05)
