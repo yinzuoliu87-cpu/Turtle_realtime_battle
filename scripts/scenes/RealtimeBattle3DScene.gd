@@ -2370,7 +2370,7 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 		if c != null and is_instance_valid(c):
 			create_tween().tween_property(c, "modulate", Color(1, 1, 1, 1), 0.35)
 		var hv37: float = [20, 30, 44][si] + u["atk"] * [0.5, 0.7, 1.0][si]
-		_candle_circle(u["pos"], 250.0, 5.0)
+		_heal_circle_vfx(u["pos"], 250.0, 5.0)   # AI生成回血阵动画
 		u["candle_hot_rate"] = hv37 / 5.0
 		u["candle_hot_until"] = _t + 5.0
 		for a37 in _allies_of(u, false):
@@ -2383,15 +2383,14 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 			ct.tween_property(c, "modulate", Color(1.4, 1.15, 0.85, 1.0), 0.12)
 			ct.tween_property(c, "scale", Vector3.ONE * 1.3, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 			ct.chain().tween_property(c, "scale", Vector3.ONE, 0.25)
-		_fire_explosion(u["pos"])
-		_skill_ring(u["pos"], Color(1.0, 0.46, 0.13, 0.7), 300.0)
-		_shake(0.05)
+		_boom_wave(u["pos"], 260.0)   # AI生成爆炸波动画(原地大爆炸)
+		_shake(0.06)
 		var dmg37: int = [20, 30, 44][si] + int(u["atk"] * [0.5, 0.7, 1.0][si])
 		for o in _enemies_of(u):
 			if o["pos"].distance_to(u["pos"]) <= 499.0:
 				_apply_damage_from(u, o, dmg37, Color("#ff7a33"), 0.0, true, true)
 				_apply_dot_stacks(o, "burn", [20, 30, 40][si], u)
-				_skill_ring(o["pos"], Color(1.0, 0.5, 0.15, 0.55), 42.0)
+				_boom_wave(o["pos"], 110.0)   # 每个被波及敌小爆
 
 # 蜡烛光圈(037微弱): 250码暖金贴地光环, 缓慢淡出标示回血区
 func _candle_circle(pos2d: Vector2, radius_px: float, dur: float) -> void:
@@ -2409,6 +2408,53 @@ func _candle_circle(pos2d: Vector2, radius_px: float, dur: float) -> void:
 	tw.tween_property(r, "modulate:a", 0.12, dur * 0.6)
 	tw.tween_property(r, "modulate:a", 0.0, dur * 0.4)
 	tw.tween_callback(r.queue_free)
+
+# 回血阵(AI生成动画): 绿金魔法治疗阵躺平贴地, 帧循环脉动, 淡入维持淡出. 用于蜡烛微弱/大回复
+func _heal_circle_vfx(pos2d: Vector2, radius_px: float, dur: float) -> void:
+	var tex: Texture2D = load("res://assets/sprites/vfx/heal-circle-anim.png")
+	var fh: int = maxi(1, tex.get_height())
+	var nf: int = maxi(1, int(tex.get_width() / fh))
+	var r := Sprite3D.new()
+	r.texture = tex
+	r.hframes = nf
+	r.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	r.axis = Vector3.AXIS_Y
+	r.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	r.shaded = false; r.transparent = true
+	r.modulate = Color(1, 1, 1, 0)
+	r.position = _world_pos(pos2d, 0.06)
+	r.pixel_size = (radius_px * 2.0 * WS) / float(fh)
+	_world.add_child(r)
+	if nf > 1:
+		var at := create_tween().set_loops()
+		at.tween_property(r, "frame", nf - 1, 0.5).from(0)
+	var tw := create_tween()
+	tw.tween_property(r, "modulate:a", 0.95, 0.4)
+	tw.tween_property(r, "modulate:a", 0.55, dur * 0.6)
+	tw.tween_property(r, "modulate:a", 0.0, dur * 0.4)
+	tw.tween_callback(r.queue_free)
+
+# 爆炸波(AI生成动画): 卡通爆炸帧表播一次, billboard, 抖屏. size_px=爆炸直径
+func _boom_wave(pos2d: Vector2, size_px: float, h: float = 0.8) -> void:
+	var tex: Texture2D = load("res://assets/sprites/vfx/boom-wave-anim.png")
+	var fh: int = maxi(1, tex.get_height())
+	var nf: int = maxi(1, int(tex.get_width() / fh))
+	var b := Sprite3D.new()
+	b.texture = tex
+	b.hframes = nf
+	b.frame = 0
+	b.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	b.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	b.shaded = false; b.transparent = true
+	b.pixel_size = (size_px * WS) / float(fh)
+	b.position = _world_pos(pos2d, h)
+	_world.add_child(b)
+	var tw := create_tween()
+	if nf > 1:
+		tw.tween_property(b, "frame", nf - 1, 0.36)
+	else:
+		tw.tween_interval(0.36)
+	tw.tween_callback(b.queue_free)
 
 func _eq_signal_tick(u: Dictionary, si: int) -> void:
 	var lo: Array = [0.10, 0.25, 0.70]; var hi: Array = [0.16, 0.40, 0.80]
