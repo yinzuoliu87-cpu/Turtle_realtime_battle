@@ -11,9 +11,11 @@ const SLOT := 96.0
 const GS := 74.0   # 阵容 6 格定位网格的格子尺寸
 const P2 = preload("res://scripts/engine/phase2_config.gd")
 const Phase2Types = preload("res://scripts/engine/phase2_types.gd")
+const Phase2Minion = preload("res://scripts/engine/phase2_minion.gd")
 
 var _sel_bench: int = -1   # 当前选中的背包装备索引 (-1=无)
-var _sel_unit: Dictionary = {}   # 当前选中的阵容单位 {lane, slot} (摆位用)
+var _sel_unit: Dictionary = {}   # (旧) 阵容格子选中
+var _dl_sel: Dictionary = {}   # 双路布阵选中框 {lane, idx} (点两个互换分路)
 
 func _ready() -> void:
 	_rebuild()
@@ -71,67 +73,105 @@ func _lineup_ids() -> Array:
 				return (parsed["ids"] as Array).duplicate()
 	return []
 
-# ─── 上部: 出战阵容 (上路 / 下路) ───
-func _build_lineup(leaders: Array) -> void:
+# ─── 上部: 双路布阵 (上战场/下战场, 3统领+3小将分3+3; 点头像互换分路, 点小将切前/后排) ───
+func _build_lineup(_leaders: Array) -> void:
 	var hdr := Label.new()
-	hdr.text = "出战阵容 — 每路 6 格定位 (前3后3) · 点单位→点格子摆位; 选装备时点龟=装上"
-	hdr.add_theme_font_size_override("font_size", 15); hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
-	hdr.position = Vector2(60, 84); hdr.size = Vector2(630, 22); add_child(hdr)
-	var assign := _lane_assign(leaders)
-	GameState.lane_loadout = assign
-	for lane in [["上路", "top", 60.0], ["下路", "bottom", 372.0]]:
-		var lname := str(lane[0]); var lkey := str(lane[1]); var lx := float(lane[2])
-		var ll := Label.new(); ll.text = lname
-		ll.add_theme_font_size_override("font_size", 16); ll.add_theme_color_override("font_color", Color("#ffd93d"))
-		ll.position = Vector2(lx, 112); ll.size = Vector2(120, 22); add_child(ll)
-		for ri in range(2):
-			var rkey := "front" if ri == 0 else "back"
-			var rl := Label.new(); rl.text = "前排" if ri == 0 else "后排"
-			rl.add_theme_font_size_override("font_size", 11); rl.add_theme_color_override("font_color", Color("#6a7585"))
-			rl.position = Vector2(lx, 140 + ri * int(GS + 8) + int(GS / 2.0) - 8); rl.size = Vector2(32, 16); add_child(rl)
-			for col in range(3):
-				var sk := "%s-%d" % [rkey, col]
-				add_child(_grid_slot(lkey, sk, str(assign.get(lkey, {}).get(sk, "")), Vector2(lx + 36 + col * (GS + 6), 140 + ri * (GS + 8))))
+	hdr.text = "双路布阵 — 点两个头像互换分路 · 点小将[前/后]切类型 (某路0统领→首小将自动精英)"
+	hdr.add_theme_font_size_override("font_size", 13); hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
+	hdr.position = Vector2(60, 84); hdr.size = Vector2(620, 20); add_child(hdr)
+	var lineup := GameState.get_dual_lineup()
+	for lane_info in [["上战场", "top", 116.0, Color("#ffd93d")], ["下战场", "bottom", 238.0, Color("#7fd0ff")]]:
+		var lname := str(lane_info[0]); var lkey := str(lane_info[1]); var ly := float(lane_info[2]); var lcol: Color = lane_info[3]
+		var arr: Array = lineup.get(lkey, [])
+		var lead_n := 0
+		for u in arr:
+			if u is Dictionary and str(u.get("kind", "")) == "leader": lead_n += 1
+		var ll := Label.new(); ll.text = "%s  (统领%d / 小将%d)" % [lname, lead_n, arr.size() - lead_n]
+		ll.add_theme_font_size_override("font_size", 15); ll.add_theme_color_override("font_color", lcol)
+		ll.position = Vector2(60, ly); ll.size = Vector2(240, 20); add_child(ll)
+		for i in range(arr.size()):
+			add_child(_dl_unit_box(lkey, i, arr[i], lead_n, Vector2(60 + i * 122, ly + 22)))
 
-## 分路+定位: lane_loadout 优先, 缺则默认(前2龟上路前排, 3龟下路前排, 各路1小将后排中).
-func _lane_assign(leaders: Array) -> Dictionary:
-	var ll = GameState.lane_loadout
-	if ll is Dictionary and (ll.has("top") or ll.has("bottom")):
-		return (ll as Dictionary).duplicate(true)
-	var a := {"top": {}, "bottom": {}}
-	if leaders.size() >= 1: a["top"]["front-0"] = str(leaders[0])
-	if leaders.size() >= 2: a["top"]["front-1"] = str(leaders[1])
-	if leaders.size() >= 3: a["bottom"]["front-1"] = str(leaders[2])
-	a["top"]["back-1"] = "__minion__"
-	a["bottom"]["back-1"] = "__minion__"
-	return a
-
-func _grid_slot(lane: String, slot_key: String, pid: String, pos: Vector2) -> Control:
-	var sel := str(_sel_unit.get("lane", "")) == lane and str(_sel_unit.get("slot", "")) == slot_key
-	var is_min := pid == "__minion__"
-	var occupied := pid != "" and not is_min
-	var box := _slot_panel(pos, (Color("#13314a") if occupied else (Color("#1a1f28") if is_min else Color("#0e1923"))), (Color("#ffd93d") if sel else (Color("#2e5a7e") if occupied else Color("#2a3340"))))
-	box.size = Vector2(GS, GS)
-	if is_min:
-		_slot_center_label(box, "小将", Color("#7a8595"))
-	elif occupied:
-		var pet: Dictionary = DataRegistry.pet_by_id.get(pid, {})
-		var av := "res://assets/sprites/avatars/%s.png" % pid
-		if ResourceLoader.exists(av):
-			var a := TextureRect.new(); a.texture = load(av)
-			a.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; a.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED; a.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			a.position = Vector2(GS / 2.0 - 22, 4); a.size = Vector2(44, 38); box.add_child(a)
-		var eqs: Array = GameState.persistent_equipped.get(pid, [])
-		_draw_equip_cells(box, eqs, P2.equip_slots_for_level(int(GameState.season_level)), 45.0)   # 装备槽 → 可视小格 (替代"装N/M"文字)
-		var nm := Label.new(); nm.text = str(pet.get("name", pid))
-		nm.add_theme_font_size_override("font_size", 11); nm.add_theme_color_override("font_color", Color("#e8f2ff"))
-		nm.position = Vector2(0, GS - 16); nm.size = Vector2(GS, 14); nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; box.add_child(nm)
+## 布阵单位框: 统领(立绘+名) / 小将(立绘+[前后排]toggle+精英标). 点框body=选中↔互换分路.
+func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Vector2) -> Control:
+	var kind := str(unit.get("kind", "minion"))
+	var sel := str(_dl_sel.get("lane", "")) == lane and int(_dl_sel.get("idx", -1)) == idx
+	var is_elite := kind == "minion" and lead_n == 0 and _dl_first_minion_idx(lane) == idx
+	var bg := Color("#13314a") if kind == "leader" else (Color("#4a3410") if is_elite else Color("#1a2230"))
+	var bd := Color("#ffd93d") if sel else (Color("#2e5a7e") if kind == "leader" else (Color("#c79a3a") if is_elite else Color("#3a4658")))
+	var box := _slot_panel(pos, bg, bd)
+	box.size = Vector2(112, 96)
+	var img_path := ""
+	if kind == "leader":
+		img_path = "res://assets/sprites/avatars/%s.png" % str(unit.get("id", ""))
 	else:
-		_slot_center_label(box, "·", Color("#3a4452"))
+		img_path = "res://assets/sprites/%s" % Phase2Minion.minion_img(is_elite, str(unit.get("role", "front")) == "back")
+	if ResourceLoader.exists(img_path):
+		var a := TextureRect.new(); a.texture = load(img_path)
+		a.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; a.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED; a.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		a.position = Vector2(34, 4); a.size = Vector2(44, 44); box.add_child(a)
+	var nm := Label.new()
+	if kind == "leader":
+		var pet: Dictionary = DataRegistry.pet_by_id.get(str(unit.get("id", "")), {})
+		nm.text = str(pet.get("name", unit.get("id", "")))
+	else:
+		nm.text = "精英小将" if is_elite else "小将"
+	nm.add_theme_font_size_override("font_size", 11); nm.add_theme_color_override("font_color", Color("#e8f2ff"))
+	nm.position = Vector2(0, 50); nm.size = Vector2(112, 14); nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; box.add_child(nm)
+	if kind == "minion":
+		var role := str(unit.get("role", "front"))
+		var tgl := Button.new()
+		tgl.text = "前排·近战" if role == "front" else "后排·射击"
+		tgl.add_theme_font_size_override("font_size", 11)
+		tgl.position = Vector2(6, 70); tgl.size = Vector2(100, 20)
+		tgl.pressed.connect(func(): _dl_toggle_role(lane, idx))
+		box.add_child(tgl)
 	for ch in box.get_children():
-		ch.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _on_grid_click(lane, slot_key, pid))
+		if not (ch is Button):
+			ch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _dl_click(lane, idx))
 	return box
+
+## 该路首个小将 idx (0统领路首小将=精英)
+func _dl_first_minion_idx(lane: String) -> int:
+	var arr: Array = GameState.get_dual_lineup().get(lane, [])
+	for i in range(arr.size()):
+		if arr[i] is Dictionary and str(arr[i].get("kind", "")) == "minion":
+			return i
+	return -1
+
+## 点布阵框: 选了装备+点统领=装备; 否则 无选中→选中, 已选中→与该框互换分路(跨/同路都行), 再点自己=取消.
+func _dl_click(lane: String, idx: int) -> void:
+	var arr: Array = GameState.get_dual_lineup().get(lane, [])
+	var unit: Dictionary = arr[idx] if idx < arr.size() and arr[idx] is Dictionary else {}
+	if _sel_bench >= 0 and str(unit.get("kind", "")) == "leader":
+		_equip_to(str(unit.get("id", "")), _sel_bench)
+		return
+	if _dl_sel.is_empty():
+		_dl_sel = {"lane": lane, "idx": idx}
+		_rebuild(); return
+	var sl := str(_dl_sel.get("lane", "")); var si := int(_dl_sel.get("idx", -1))
+	_dl_sel = {}
+	if sl == lane and si == idx:
+		_rebuild(); return
+	var a: Dictionary = GameState.get_dual_lineup().duplicate(true)
+	var tmp = a[sl][si]
+	a[sl][si] = a[lane][idx]
+	a[lane][idx] = tmp
+	GameState.dual_lineup = a
+	GameState.save()
+	_rebuild()
+
+## 点小将[前/后]: 切前排(近战挥砍×1.4) ↔ 后排(远程射击×1.5)
+func _dl_toggle_role(lane: String, idx: int) -> void:
+	var a: Dictionary = GameState.get_dual_lineup().duplicate(true)
+	var u = a[lane][idx]
+	if u is Dictionary and str(u.get("kind", "")) == "minion":
+		u["role"] = "back" if str(u.get("role", "front")) == "front" else "front"
+		a[lane][idx] = u
+		GameState.dual_lineup = a
+		GameState.save()
+		_rebuild()
 
 func _slot_center_label(box: Control, txt: String, col: Color) -> void:
 	var l := Label.new(); l.text = txt
@@ -163,30 +203,7 @@ func _draw_equip_cells(box: Control, eqs: Array, slots: int, y: float) -> void:
 		box.add_child(cell)
 
 ## 点格子: 选了装备+点龟=装备; 否则=单位摆位(无选中→选中, 已选中→移到该格, 占用则交换).
-func _on_grid_click(lane: String, slot_key: String, pid: String) -> void:
-	if _sel_bench >= 0 and pid != "" and pid != "__minion__":
-		_equip_to(pid, _sel_bench)
-		return
-	var a: Dictionary = GameState.lane_loadout.duplicate(true) if GameState.lane_loadout is Dictionary else {"top": {}, "bottom": {}}
-	if _sel_unit.is_empty():
-		if pid != "":
-			_sel_unit = {"lane": lane, "slot": slot_key}
-		_rebuild()
-		return
-	var sl := str(_sel_unit.get("lane", "")); var sk := str(_sel_unit.get("slot", ""))
-	if not a.has(lane): a[lane] = {}
-	if not a.has(sl): a[sl] = {}
-	var moving := str((a[sl] as Dictionary).get(sk, ""))
-	var target := str((a[lane] as Dictionary).get(slot_key, ""))
-	a[lane][slot_key] = moving
-	if target != "":
-		a[sl][sk] = target
-	else:
-		(a[sl] as Dictionary).erase(sk)
-	GameState.lane_loadout = a
-	_sel_unit = {}
-	GameState.save()
-	_rebuild()
+# (旧 _on_grid_click 阵容格子已删, 双路布阵改用 _dl_click / _dl_toggle_role)
 
 ## 龟统领格子: 立绘 + 名 + 装备数/槽.
 func _turtle_slot(pet_id: String, pos: Vector2) -> Control:
