@@ -1683,15 +1683,16 @@ func _ts_charge_vfx(c: Dictionary) -> void:
 	tw.tween_property(hg, "position", _world_pos(c["pos"], 3.0), 1.0).set_ease(Tween.EASE_OUT)
 	tw.chain().tween_property(hg, "modulate:a", 0.0, 0.2)
 	tw.chain().tween_callback(hg.queue_free)
-	# 金沙粒螺旋汇入
+	# 金沙粒螺旋汇入(圆粒: 用_make_fire_glow_tex真圆, 非_make_glow_texture方角GradientTexture2D)
+	var ptex := _make_fire_glow_tex()
 	for k in range(10):
 		var sp := Sprite3D.new()
-		if _spark_tex == null: _spark_tex = _make_glow_texture()
-		sp.texture = _spark_tex
+		sp.texture = ptex
+		sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
 		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		sp.shaded = false; sp.transparent = true
 		sp.modulate = Color(1.0, 0.82, 0.32, 0.9)
-		sp.pixel_size = 0.01
+		sp.pixel_size = 0.42 / float(maxi(1, ptex.get_width()))
 		var ang := TAU * float(k) / 10.0
 		var off := Vector2(cos(ang), sin(ang)) * 130.0
 		sp.position = _world_pos(c["pos"] + off, 1.4)
