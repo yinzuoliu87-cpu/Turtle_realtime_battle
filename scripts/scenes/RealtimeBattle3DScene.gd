@@ -9846,8 +9846,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 					if es50.is_empty(): return
 					var o50 = es50[randi() % es50.size()]
 					_muzzle_flash(u["pos"], (o50["pos"] - u["pos"]), Color("#d0ffff"))
-					_bolt_line(u["pos"], o50["pos"], Color("#d0ffff"))
-					_apply_damage_from(u, o50, _atk_dmg(u, g_mul, o50), Color("#d0ffff"), 0.0, false, true)
+					_spawn_eq_bolt(u, o50, _atk_dmg(u, g_mul, o50), "res://assets/sprites/vfx/bullet.png", Color("#d0ffff"), false, 0, 0.011)   # 真青幽灵弹依次快射(命中结算伤+火花)
 					var g_acc: float = float(o50.get("gatling_shred_acc", 0.0))
 					if g_acc < g_cap:
 						var g_dec: float = minf(g_shred, g_cap - g_acc)
