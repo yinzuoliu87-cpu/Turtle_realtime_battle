@@ -662,6 +662,9 @@ func _spawn_teams() -> void:
 		_build_edit_palette()
 		_edit_set_status("编辑模式: 点空地摆兵 · 拖拽挪位 · 右键删")
 		return
+	if _is_dual_lane_mode():   # 双路: 读 dual_lineup 当前路 spawn 我方 leaders+小将 + 对手, 绕过评审/EQDEMO
+		_spawn_dual_lane()
+		return
 	var left := _resolve_left()
 	var right := _resolve_right()
 	var _cx := ARENA.position.x + ARENA.size.x * 0.5    # 评审演示: 龟居中拉近(相机框得到)
@@ -778,6 +781,56 @@ func _resolve_right() -> Array:
 	var ghost_leaders := _ghost_leaders()
 	return ghost_leaders if not ghost_leaders.is_empty() else _random_bot(3)
 
+# ============================================================================
+#  双路战斗 (P3): 读 dual_lineup 当前路 spawn 我方 leaders+小将 + 对手(ghost/bot). 场内放置(P2)/蛋+围栏(P4)/半场流程(P5) 后续.
+# ============================================================================
+func _is_dual_lane_mode() -> bool:
+	return OS.has_environment("DUALLANE") or bool(GameState.get("dual_active") if GameState != null else false)
+
+func _spawn_dual_lane() -> void:
+	var lane: String = str(GameState.current_lane) if GameState != null and GameState.current_lane != null else "top"
+	if lane == "" or lane == "done":
+		lane = "top"
+	var lvl: int = 1
+	if GameState != null and GameState.dual_avg_level is Dictionary:
+		lvl = maxi(1, int(GameState.dual_avg_level.get("left", 1)))
+	var _cx := ARENA.position.x + ARENA.size.x * 0.5
+	var _cy := ARENA.position.y + ARENA.size.y * 0.5
+	_spawn_lane_side(GameState.get_dual_lineup().get(lane, []), "left", lvl, Vector2(_cx - 300.0, _cy))
+	_spawn_lane_side(_dual_foe_lane(lane), "right", lvl, Vector2(_cx + 300.0, _cy))
+
+# spawn 一路一侧: leaders 用 _make_unit(id); 小将用 minion spec; 0统领路首个小将=精英. 纵向排开.
+func _spawn_lane_side(units: Array, side: String, lvl: int, base: Vector2) -> void:
+	var lead_n := 0
+	for u in units:
+		if u is Dictionary and str(u.get("kind", "")) == "leader":
+			lead_n += 1
+	var minion_seen := 0
+	var n: int = units.size()
+	for i in range(n):
+		var u: Dictionary = units[i] if units[i] is Dictionary else {}
+		var pos := base + Vector2(0.0, (float(i) - float(n - 1) / 2.0) * 130.0)
+		if str(u.get("kind", "")) == "leader":
+			_units.append(_make_unit(str(u.get("id", "basic")), side, pos))
+		else:
+			var elite: bool = (lead_n == 0 and minion_seen == 0)
+			minion_seen += 1
+			_units.append(_make_unit("__minion__", side, pos, {"minion": true, "role": str(u.get("role", "front")), "elite": elite, "level": lvl}))
+
+# 对手当前路阵容: ghost 快照优先(dual_ghost[lane]), 否则 bot(2龟+1前排小将). P5 接真匹配.
+func _dual_foe_lane(lane: String) -> Array:
+	if GameState != null and GameState.dual_ghost is Dictionary:
+		var dg: Dictionary = GameState.dual_ghost
+		if dg.has(lane) and dg[lane] is Array and not (dg[lane] as Array).is_empty():
+			return dg[lane]
+	var pool := ["stone", "ninja", "ghost", "ice", "diamond", "fortune", "bamboo", "angel"]
+	var off: int = 0 if lane == "top" else 3
+	return [
+		{"kind": "leader", "id": pool[off % pool.size()]},
+		{"kind": "leader", "id": pool[(off + 1) % pool.size()]},
+		{"kind": "minion", "role": "front"},
+	]
+
 ## 匹配对手快照的首领 id (Matchmaking 写 GameState.dual_ghost). 过滤到 STATS 已知龟, 上限 3.
 func _ghost_leaders() -> Array:
 	var gs = get_node_or_null("/root/GameState")
@@ -858,15 +911,25 @@ func _random_bot(n: int) -> Array:
 func _world_pos(pos: Vector2, height: float) -> Vector3:
 	return Vector3((pos.x - _arena_center.x) * WS, height, (pos.y - _arena_center.y) * WS)
 
-func _make_unit(id: String, side: String, pos: Vector2) -> Dictionary:
-	var d: Dictionary = _data_by_id.get(id, {})
-	var st: Array = STATS.get(id, DEFAULT_STAT)
+func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -> Dictionary:
+	var is_minion: bool = bool(spec.get("minion", false))
+	var d: Dictionary
+	var st: Array
+	var sd: Dictionary
+	if is_minion:   # 深海小将: 非龟, 自带立绘/数值(750血·45攻·双抗7 ×1.05^级; 前排挥砍范围70/后排射击400), 无技能被动
+		var _mf: bool = str(spec.get("role", "front")) == "front"
+		var _me: bool = bool(spec.get("elite", false))
+		var _mm: float = pow(1.05, maxf(0.0, float(int(spec.get("level", 1)) - 1)))
+		d = {"name": ("精英小将" if _me else "小将"), "rarity": "C", "crit": 0.0,
+			"hp": 250.0 * _mm * 3.0, "atk": 30.0 * _mm * (1.4 if _mf else 1.5), "def": 7.0, "mr": 7.0}
+		st = [_mf, 105.0, 0.85, (70.0 if _mf else 400.0)]
+		sd = _minion_sprite_dict(_me, not _mf)
+	else:
+		d = _data_by_id.get(id, {})
+		st = STATS.get(id, DEFAULT_STAT)
+		sd = _resolve_pet_sprite(id)
 	var hp := float(d.get("hp", 1350))  # hp已是最终值
-
-	# --- 立绘 billboard sprite: 全身图 + idle sprite-sheet 动画 ---
-	#   sprite-sheet 切帧用 Sprite3D 原生 hframes/vframes/frame (mesh 自动裁到单帧+正确 UV);
-	#   material_override = 接地软渐隐 shader (在单帧 UV 上做底淡, 不重映射 UV).
-	var sd: Dictionary = _resolve_pet_sprite(id)
+	# --- 立绘 billboard sprite: 全身图 + idle sprite-sheet 动画 (接地软渐隐 shader 在单帧 UV 上做底淡) ---
 	var tex: Texture2D = sd["tex"]
 	var frame_h: int = int(sd.get("frame_h", 64))
 	# pixel_size: 让单帧高度 = TARGET_BODY_H 米 (全身图归一, 不论 64px 还是 500px 都同样大小)
@@ -949,7 +1012,7 @@ func _make_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 		"atk_interval": float(st[2]), "atk_range": float(st[3]),
 		"atk_cd": 0.0, "energy": 0.0, "alive": true,
 		# 选3 多技能: loadout 的非基础技(physical/magic 是普攻=自动) → 主动技轮转, 龟能满放下一个
-		"active_skills": _resolve_active_skills(id, side == "left"), "skill_idx": 0,
+		"active_skills": ([] if is_minion else _resolve_active_skills(id, side == "left")), "skill_idx": 0,
 		"skill_cd": {}, "skill_gcd_until": 0.0,   # 逐技各自冷却剩余秒(懒填) + 同龟连放最小间隔
 		# 永久护盾 / 控制 / 旧式灼烧(保留兼容) ----
 		"shield": 0.0, "burn_until": 0.0, "burn_dps": 0.0, "stun_until": 0.0, "slow_until": 0.0,
@@ -986,9 +1049,9 @@ func _make_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 		"windup_t": 0.0,                   # 出招预备(缩)剩余秒
 		"bob_phase": randf() * TAU,        # idle bob 起始相位 (错峰, 不齐刷)
 	}
-	# 等级缩放: 主属性 +5%/级, 攻速 +2%/级 (吃等级表见 战斗基础-策划焊死.md §三)
+	# 等级缩放: 主属性 +5%/级, 攻速 +2%/级 (吃等级表见 战斗基础-策划焊死.md §三). 小将自带×1.05缩放, 跳过龟式缩放.
 	var _lvl: int = maxi(1, _unit_level(side))
-	if _lvl > 1:
+	if _lvl > 1 and not is_minion:
 		var _m: float = 1.0 + 0.05 * float(_lvl - 1)
 		u["maxHp"] *= _m; u["hp"] = u["maxHp"]
 		u["atk"] *= _m; u["base_atk"] *= _m
@@ -1002,7 +1065,19 @@ func _make_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 			_ec[str(_sk.get("type", ""))] = float(_e)
 	u["energy_cost"] = _ec
 	u["level"] = _lvl
+	if is_minion:
+		u["_isMinion"] = true
+		u["minion_role"] = str(spec.get("role", "front"))
+		u["is_elite"] = bool(spec.get("elite", false))
 	return u
+
+# 小将立绘字典 (静态单帧: minion.png 前排 / minion-back.png 后排 / minion-elite.png 精英)
+func _minion_sprite_dict(is_elite: bool, is_back: bool) -> Dictionary:
+	var img: String = "pets/minion-elite.png" if is_elite else ("pets/minion-back.png" if is_back else "pets/minion.png")
+	var path: String = SPRITE_DIR + img
+	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
+	var th: int = tex.get_height() if tex != null else 64
+	return {"tex": tex, "frames": 1, "fps": 1.0, "frame_h": th, "hframes": 1, "vframes": 1, "loop": false}
 
 # ----------------------------------------------------------------------------
 #  立绘解析 (id → 全身图 + sprite-sheet 元数据). 数据来源: pets.json `img`(相对 res://assets/sprites/)
