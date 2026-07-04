@@ -226,6 +226,7 @@ var _over := false
 var _dl_state := ""
 var _dl_window_until := 0.0
 var _dl_wiped_side := ""    # 被团灭方(其蛋暴露): "left"/"right"
+var _dl_hud: Label = null   # 双路 HUD: 当前路 + 双方蛋血
 var _t := 0.0
 var _settled := false                       # 结果只喂赛季一次的守卫
 var _had_season := false                     # 本局有赛季态(玩家配了season_leaders); demo=false→不喂只显横幅
@@ -655,6 +656,13 @@ func _build_ui_layer() -> void:
 	title.add_theme_color_override("font_color", Color("#cfe6ff"))
 	title.position = Vector2(24, 16)
 	_ui_layer.add_child(title)
+	if _is_dual_lane_mode():   # 双路 HUD: 当前路 + 双方蛋血
+		_dl_hud = Label.new()
+		_dl_hud.add_theme_font_size_override("font_size", 17)
+		_dl_hud.add_theme_color_override("font_color", Color("#ffe08a"))
+		_dl_hud.position = Vector2(340, 44); _dl_hud.size = Vector2(700, 24)
+		_dl_hud.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_ui_layer.add_child(_dl_hud)
 
 # ============================================================================
 #  阵容 spawn — 读 GameState.season_leaders, 没有就 demo (1:1 复用 2D 解析)
@@ -1008,6 +1016,23 @@ func _dl_finish(won: bool) -> void:
 	_over = true
 	_dl_state = "done"
 	_show_banner(won)
+
+func _dl_update_hud() -> void:   # 双路 HUD: 当前路 + 双方蛋血 + 破蛋窗口计时
+	var lane := str(GameState.current_lane) if GameState != null else "top"
+	var lane_cn: String = {"top": "上半场", "bottom": "下半场", "final": "终极战场", "done": "结算"}.get(lane, lane)
+	var lhp := 0
+	var rhp := 0
+	for u in _units:
+		if u.get("_isEgg", false):
+			if str(u.get("egg_side_lr", "")) == "left":
+				lhp = int(u["hp"])
+			else:
+				rhp = int(u["hp"])
+	var st := ""
+	if _dl_state == "eggwindow":
+		var rem := _dl_window_until - _t
+		st = ("  ·  破蛋窗口 %.0fs" % maxf(0.0, rem)) if rem < 1.0e17 else "  ·  破蛋(决胜)"
+	_dl_hud.text = "【%s】   我方蛋 %d   vs   敌方蛋 %d%s" % [lane_cn, lhp, rhp, st]
 
 ## 匹配对手快照的首领 id (Matchmaking 写 GameState.dual_ghost). 过滤到 STATS 已知龟, 上限 3.
 func _ghost_leaders() -> Array:
@@ -8811,6 +8836,8 @@ func _make_glow_quad(size_m: float) -> QuadMesh:
 func _update_overlay() -> void:
 	if _cam == null:
 		return
+	if _dl_hud != null and is_instance_valid(_dl_hud):
+		_dl_update_hud()
 	_update_team_panels()   # 头像框栏: 每帧刷 HP 条 / 死亡变暗 / 选中高亮
 	for u in _units:
 		var root: Control = u["bar_root"]
