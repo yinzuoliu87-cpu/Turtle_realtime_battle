@@ -73,7 +73,7 @@ const STATS := {
 	"p2eq_049": [{"atk": 15, "crit": 0.15}, {"atk": 32, "crit": 0.25}, {"atk": 50, "crit": 0.40}],
 	"p2eq_053": [{"atk": 14, "crit": 0.10}, {"atk": 25, "crit": 0.15}, {"atk": 41, "crit": 0.25}],
 	"p2eq_054": [{"atk": 10, "crit": 0.15, "critDmg": 0.10}, {"atk": 15, "crit": 0.25, "critDmg": 0.15}, {"atk": 20, "crit": 0.40, "critDmg": 0.20}],
-	"p2eq_059": [{"_maxEnergy": 110, "hp": 100}, {"_maxEnergy": 250, "hp": 210}, {"_maxEnergy": 1000, "hp": 1000}],
+	"p2eq_059": [{"hp": 100, "_echargePct": 10}, {"hp": 210, "_echargePct": 10}, {"hp": 1000, "_echargePct": 10}],   # 沙漏: +生命 + 龟能充能+10%(echarge_perm×1.1); 主动=JoJo时停(登场10s触发, _eq_hourglass_timestop)
 	# ── 杖系026雷电/027电棍/030·031水晶球 + 潮汐043海浪护符 (批10) ──
 	"p2eq_026": [{"magicPen": 8}, {"magicPen": 13}, {"magicPen": 20}],
 	"p2eq_027": [{"hp": 20, "def": 5, "mr": 5}, {"hp": 40, "def": 8, "mr": 8}, {"hp": 80, "def": 13, "mr": 13}],

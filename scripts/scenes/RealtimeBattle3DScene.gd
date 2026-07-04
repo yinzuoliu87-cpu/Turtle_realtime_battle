@@ -279,7 +279,20 @@ var _edit_btn_edit: Button = null
 # --- Phase 4 juice 全局态 ---
 var _hitstop := 0.0                       # 剩余顿帧秒 (>0 时 _process 跳过逻辑推进, 每帧自减 → 精确恢复)
 var _follow_vfx: Array = []               # 跟随单位的特效sprite [{spr,unit,h}] — 每帧贴 _world_pos(unit.pos, unit.height+h); sprite被free则自动剔除
-var _pending_shots: Array = []            # 依次射出的子弹队列 [{delay, fn:Callable}] — 每帧减delay, 到点call(错峰射击: 手铳/加特林/狙击链)
+var _pending_shots: Array = []            # 依次射出的子弹队列 [{delay, fn:Callable, src}] — 每帧减delay, 到点call(错峰射击: 手铳/加特林/狙击链); src=归属(时停只推进active携带者)
+# ═══ 沙漏059 JoJo时停 ═══ 冻结全局_t + 只tick active携带者; 其他单位/弹道/依次射击/tween/粒子 全定格
+var _ts_active: Array = []                # 当前能自由行动的active携带者(空=无时停; 可多个=全场最高星沙漏者敌我并存)
+var _ts_remaining := 0.0                  # 时停剩余真实秒
+var _ts_charging := false                 # 蓄力中(1s, 世界仍正常)
+var _ts_charge_t := 0.0
+var _ts_charge_casters: Array = []
+var _ts_fired := false                    # 一场一次
+var _ts_maxstar := 0                      # 生效沙漏星级(定时长4/10/30)
+var _sim_tweens: Array = []               # VFX tween注册表(时停暂停非active用; 见 _reg_tween)
+var _ts_frozen_tweens: Array = []         # 时停期间被暂停的tween(结束resume)
+var _ts_frozen_particles: Array = []      # 时停期间被暂停的GPUParticles3D(speed_scale归零, 结束还原)
+var _ts_overlay: CanvasLayer = null       # 时停灰世界全屏叠加层(去饱和shader)
+var _ts_rect: ColorRect = null
 var _shake_amp := 0.0                     # 当前震屏幅度 (米); 每帧指数衰减归 0
 var _shake_t := 0.0                       # 震屏相位 (驱动伪随机偏移)
 var _cam_base := Vector3.ZERO             # 镜头基准位 (shake 围绕它偏移, 衰减后精确归位)
@@ -1342,10 +1355,32 @@ func _process(delta: float) -> void:
 	var frozen := _hitstop > 0.0
 	if frozen:
 		_hitstop = maxf(0.0, _hitstop - delta)
+	elif not _ts_active.is_empty():
+		# ═══ 沙漏JoJo时停: 冻结全局_t → 全场非active的所有_t计时器暂停(金风暴/海浪/DoT无缝续); 只tick active携带者(冷却/龟能delta制照走) ═══
+		_ts_remaining -= delta
+		_ts_active = _ts_active.filter(func(x): return x is Dictionary and x.get("alive", false))
+		if _ts_remaining <= 0.0 or _ts_active.is_empty():
+			_end_timestop()
+		else:
+			if not _over:
+				for u in _ts_active:
+					_tick_unit(u, delta)        # active携带者自由行动(移动/普攻/放技/命中即时结算)
+				_step_projectiles(delta)        # 内部gate: 只推进active的弹道; 其余悬空
+				_step_pending_shots(delta)      # 内部gate: 只active的依次射击
+				_check_end()
+		_juice_decay(delta)                    # 内部gate: 只衰减active的juice(非active冲击姿势定格)
+		for u in _ts_active:                    # 只推进active立绘帧动画(非active定格)
+			if u.get("alive", false):
+				if u.get("is_big_bear", false):
+					_tick_bear_anim(u, delta)
+				else:
+					_advance_anim(u, delta)
+		_ts_tick_visual(delta)                 # 时停视觉维持(钟表脉动/暗角等)
 	else:
 		# 🛠 调试场编辑态: 跳过模拟推进 (单位摆着不打不动), 但下方 transforms/overlay 照常 → 立绘渲染+血条仍刷新.
 		if not _over and not _edit_mode:
 			_t += delta
+			_ts_update_trigger(delta)   # 沙漏: 第10秒触发时停蓄力 → 蓄力满释放
 			for u in _units.duplicate():
 				if not u["alive"]:
 					continue
@@ -1366,6 +1401,135 @@ func _process(delta: float) -> void:
 	_update_world_transforms()
 	_tick_follow_vfx()             # 跟随特效(冰块等)贴目标最新世界坐标(含击飞height)
 	_update_overlay()
+
+# ═══════════════════════════════════════════════════════════════════
+#  沙漏059 JoJo时停 — 触发/蓄力/冻结/恢复/视觉 (登场10s → 蓄力1s → 时停4/10/30s, 一场一次)
+# ═══════════════════════════════════════════════════════════════════
+func _unit_hourglass_star(u: Dictionary) -> int:   # 该单位所装沙漏最高星(0=无)
+	var best := 0
+	for e in u.get("equips", []):
+		if str(e.get("id", "")) == "p2eq_059":
+			best = maxi(best, int(e.get("star", 1)))
+	return best
+
+func _ts_update_trigger(delta: float) -> void:   # (仅正常态调)第10秒触发蓄力 → 蓄力满释放
+	if _ts_charging:
+		_ts_charge_t -= delta
+		if _ts_charge_t <= 0.0:
+			_ts_charging = false
+			_ts_fire()
+		return
+	if _ts_fired or not _ts_active.is_empty() or _t < 10.0:
+		return
+	var maxstar := 0
+	for u in _units:
+		if u.get("alive", false):
+			maxstar = maxi(maxstar, _unit_hourglass_star(u))
+	if maxstar <= 0:
+		return
+	var casters: Array = []
+	for u in _units:
+		if u.get("alive", false) and _unit_hourglass_star(u) == maxstar:
+			casters.append(u)   # 最高星沙漏者(敌我皆算, 低星作废)
+	if casters.is_empty():
+		return
+	_ts_fired = true
+	_ts_maxstar = maxstar
+	_ts_charging = true
+	_ts_charge_t = 1.0
+	_ts_charge_casters = casters
+	for c in casters:
+		_ts_charge_vfx(c)
+
+func _ts_fire() -> void:
+	var casters: Array = _ts_charge_casters.filter(func(x): return x is Dictionary and x.get("alive", false))
+	_ts_charge_casters = []
+	if casters.is_empty():
+		return
+	_ts_active = casters
+	_ts_remaining = [4.0, 10.0, 30.0][clampi(_ts_maxstar, 1, 3) - 1]
+	if OS.has_environment("XDBG"): print("XDBG_TS_FIRE t=", _t, " active=", casters.size(), " star=", _ts_maxstar, " dur=", _ts_remaining)
+	_ts_begin_freeze()
+	_ts_visual_start()
+
+func _end_timestop() -> void:
+	_ts_resume_freeze()
+	_ts_visual_end()
+	_ts_active = []
+	_ts_remaining = 0.0
+
+# VFX tween 注册(时停暂停非active产生的用). 见 create_tween→_reg_tween 替换.
+func _reg_tween() -> Tween:
+	var t := create_tween()
+	_sim_tweens.append(t)
+	if _sim_tweens.size() > 512:
+		_sim_tweens = _sim_tweens.filter(func(x): return x != null and x.is_valid())
+	return t
+
+func _ts_begin_freeze() -> void:   # 暂停时停开始时在跑的所有VFX tween + 粒子(active之后新建的不在此列→照跑)
+	_ts_frozen_tweens = []
+	for t in _sim_tweens:
+		if t != null and t.is_valid() and t.is_running():
+			t.pause()
+			_ts_frozen_tweens.append(t)
+	_ts_frozen_particles = []
+	_ts_freeze_particles_in(_world)
+
+func _ts_freeze_particles_in(n: Node) -> void:
+	for c in n.get_children():
+		if c is GPUParticles3D and c.speed_scale > 0.0:
+			c.set_meta("_ts_spd", c.speed_scale)
+			c.speed_scale = 0.0
+			_ts_frozen_particles.append(c)
+		if c.get_child_count() > 0:
+			_ts_freeze_particles_in(c)
+
+func _ts_resume_freeze() -> void:
+	for t in _ts_frozen_tweens:
+		if t != null and t.is_valid():
+			t.play()
+	_ts_frozen_tweens = []
+	for p in _ts_frozen_particles:
+		if is_instance_valid(p):
+			p.speed_scale = float(p.get_meta("_ts_spd", 1.0))
+	_ts_frozen_particles = []
+
+func _ts_ensure_overlay() -> void:
+	if _ts_overlay != null and is_instance_valid(_ts_overlay):
+		return
+	_ts_overlay = CanvasLayer.new()
+	_ts_overlay.layer = 50
+	add_child(_ts_overlay)
+	var rect := ColorRect.new()
+	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sh := Shader.new()
+	sh.code = "shader_type canvas_item;\nuniform sampler2D screen_tex : hint_screen_texture, filter_linear;\nuniform float amount : hint_range(0.0, 1.0) = 0.0;\nvoid fragment() {\n\tvec3 c = texture(screen_tex, SCREEN_UV).rgb;\n\tfloat g = dot(c, vec3(0.299, 0.587, 0.114));\n\tvec3 grayd = vec3(g) * 0.66;\n\tCOLOR = vec4(mix(c, grayd, amount), 1.0);\n}"
+	var mat := ShaderMaterial.new()
+	mat.shader = sh
+	mat.set_shader_parameter("amount", 0.0)
+	rect.material = mat
+	_ts_overlay.add_child(rect)
+	_ts_rect = rect
+
+func _ts_visual_start() -> void:   # 灰暗世界渐入(step6再加反色闪+中心暗波+钟表+携带者辉光)
+	_ts_ensure_overlay()
+	var mat: ShaderMaterial = _ts_rect.material
+	var tw := create_tween()   # 注意:视觉驱动tween不走_reg_tween(不能被自己冻结)
+	tw.tween_method(func(v: float): mat.set_shader_parameter("amount", v), 0.0, 1.0, 0.35)
+
+func _ts_visual_end() -> void:
+	if _ts_rect == null or not is_instance_valid(_ts_rect):
+		return
+	var mat: ShaderMaterial = _ts_rect.material
+	var tw := create_tween()
+	tw.tween_method(func(v: float): mat.set_shader_parameter("amount", v), 1.0, 0.0, 0.3)
+
+func _ts_tick_visual(_delta: float) -> void:   # 时停维持期视觉(step6: 钟表脉动/暗角); 核心先空
+	pass
+
+func _ts_charge_vfx(c: Dictionary) -> void:   # 蓄力表现(step6: 金沙流+沙漏虚影); 核心先金脉冲环
+	_skill_ring(c["pos"], Color(1.0, 0.85, 0.35, 0.8), 90.0)
 
 # 跟随单位的特效: 每帧把 sprite 贴到目标最新世界坐标(含击飞抬升). sprite 被 queue_free 后自动从列表剔除.
 func _tick_follow_vfx() -> void:
@@ -4021,11 +4185,14 @@ func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   #
 		tw.tween_callback(bear.queue_free)
 
 func _step_projectiles(delta: float) -> void:
+	var ts_on: bool = not _ts_active.is_empty()
 	var keep: Array = []
 	for pr in _projectiles:
 		var node: Sprite3D = pr["node"]
 		if not is_instance_valid(node):
 			continue
+		if ts_on and not _ts_active.has(pr.get("src")):
+			keep.append(pr); continue   # 时停: 非active携带者的弹道悬空定格(不推进)
 		pr["t"] += delta
 		var tgt: Dictionary = pr["tgt"]
 		var to := _world_pos(tgt["pos"], 1.0)
@@ -4067,8 +4234,11 @@ func _step_projectiles(delta: float) -> void:
 
 # 依次射出的子弹: 每帧减 delay, 到点 call 回调(回调内部再选目标+射线+伤害, 死亡守卫在回调里判)
 func _step_pending_shots(delta: float) -> void:
+	var ts_on: bool = not _ts_active.is_empty()
 	for i in range(_pending_shots.size() - 1, -1, -1):
 		var s: Dictionary = _pending_shots[i]
+		if ts_on and not _ts_active.has(s.get("src")):
+			continue   # 时停: 非active携带者的依次射击冻结
 		s["delay"] = float(s["delay"]) - delta
 		if float(s["delay"]) <= 0.0:
 			_pending_shots.remove_at(i)
@@ -4077,9 +4247,9 @@ func _step_pending_shots(delta: float) -> void:
 				fn.call()
 
 # 排队 count 发子弹, 每发间隔 interval 秒, 逐发 call fn (fn 内部自选目标, 支持死亡守卫)
-func _queue_shots(count: int, interval: float, fn: Callable) -> void:
+func _queue_shots(count: int, interval: float, fn: Callable, src = null) -> void:
 	for k in range(count):
-		_pending_shots.append({"delay": float(k) * interval, "fn": fn})
+		_pending_shots.append({"delay": float(k) * interval, "fn": fn, "src": src})
 
 # 枪口闪: 在 pos2d 沿 dir 前方一点爆一小簇火光(胸口高度), 表现开火
 func _muzzle_flash(pos2d: Vector2, dir: Vector2, col: Color) -> void:
@@ -7482,9 +7652,12 @@ func _update_world_transforms() -> void:
 
 # 每帧衰减各单位 juice 计时 (hit-stop 冻结期不调 → 冲击姿势保持)
 func _juice_decay(delta: float) -> void:
+	var ts_on: bool = not _ts_active.is_empty()
 	for u in _units:
 		if not u["alive"]:
 			continue
+		if ts_on and not _ts_active.has(u):
+			continue   # 时停: 非active的juice计时不衰 → 冲击/挥击姿势定格
 		if u.get("flash_t", 0.0) > 0.0:  u["flash_t"]  = maxf(0.0, u["flash_t"]  - delta)
 		if u.get("hitsq_t", 0.0) > 0.0:  u["hitsq_t"]  = maxf(0.0, u["hitsq_t"]  - delta)
 		if u.get("land_t", 0.0) > 0.0:   u["land_t"]   = maxf(0.0, u["land_t"]   - delta)
@@ -7960,7 +8133,7 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 			_grant_shield(oo, [40.0, 95.0, 120.0][si])
 			oo["base_def"] += [2, 3, 5][si]; oo["base_mr"] += [2, 3, 5][si]; _recalc_stats(oo)
 			_water_splash(oo["pos"], true)
-		_pending_shots.append({"delay": d, "fn": fn})
+		_pending_shots.append({"delay": d, "fn": fn, "src": u})
 	for o in enemies:
 		var oo2: Dictionary = o
 		var fwd2: float = clampf((o["pos"] - startc).dot(dir), 0.0, tdist)
@@ -7972,7 +8145,7 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 			_water_splash(oo2["pos"], false)
 			_knock_up(oo2, oo2["pos"] - dir * 60.0, 6.5)   # 娜美式击飞: 顺浪方向往前推(非直上)
 			_hit_spark(oo2)
-		_pending_shots.append({"delay": d2, "fn": fn2})
+		_pending_shots.append({"delay": d2, "fn": fn2, "src": u})
 
 # 潮浪墙: 沿perp(垂直行进)铺一排大浪crest拼成连续宽墙, 整墙从startc沿dir推进tdist; 翻涌帧循环
 func _spawn_tidal_wave(startc: Vector2, dir: Vector2, perp: Vector2, p0: float, p1: float, tdist: float, windup: float, travel: float) -> void:
@@ -9912,7 +10085,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 					if ft48 == null: return
 					_muzzle_flash(u["pos"], dir48, Color("#ffe08a"))
 					_spawn_eq_bolt(u, ft48, _atk_dmg(u, mul48, ft48), "res://assets/sprites/vfx/bullet.png", Color("#fff0b0"), false, 0, 0.026)   # 真子弹依次飞出(命中结算伤+火花)
-				_queue_shots([4, 5, 6][si], 0.08, fire48)
+				_queue_shots([4, 5, 6][si], 0.08, fire48, u)
 			"p2eq_049":   # 连发弩: 朝最远敌方向依次射N发, 首敌命中(可被前排挡), 按已损血加伤; 弩矢弹道
 				var far49 := _eq_farthest_enemies(u, false)
 				if not far49.is_empty():
@@ -9924,7 +10097,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 						var lost49: float = clampf((1.0 - ft49["hp"] / ft49["maxHp"]) / 0.3, 0.0, 1.0)
 						_muzzle_flash(u["pos"], dir49, Color("#d8f0a8"))
 						_spawn_eq_bolt(u, ft49, _atk_dmg(u, lerpf(0.8, 1.3, lost49), ft49), "res://assets/sprites/vfx/crossbow-bolt.png", Color("#eaffd0"))
-					_queue_shots([1, 2, 3][si], 0.12, fire49)
+					_queue_shots([1, 2, 3][si], 0.12, fire49, u)
 			"p2eq_050":   # 幽灵加特林: 依次快射N发随机分布+减甲(累计上限; 枪口连闪+曳光雨)
 				var g_shred: float = [1.0, 2.0, 3.0][si]
 				var g_cap: float = [15.0, 25.0, 40.0][si]   # 该效果对单个目标累计减甲上限
@@ -9940,7 +10113,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 					if g_acc < g_cap:
 						var g_dec: float = minf(g_shred, g_cap - g_acc)
 						o50["base_def"] = maxf(0.0, o50["base_def"] - g_dec); o50["gatling_shred_acc"] = g_acc + g_dec; _recalc_stats(o50)
-				_queue_shots([20, 30, 60][si], 0.03, fire50)
+				_queue_shots([20, 30, 60][si], 0.03, fire50, u)
 			"p2eq_051":   # 激光手枪: 穿透红激光(白核+红辉)一横排首敌满伤+流血, 身后敌半伤半流血
 				var dir4: Vector2 = (_nearest_enemy(u)["pos"] - u["pos"]).normalized() if _nearest_enemy(u) != null else Vector2.RIGHT
 				var first = _eq_first_in_line(u, dir4, 50.0)

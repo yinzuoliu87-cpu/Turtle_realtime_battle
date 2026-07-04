@@ -968,12 +968,12 @@
     "name": "沙漏",
     "rarity": "传说",
     "cost": 5,
-    "baseStats1": "+龟能110/250/1000·生命100/210/1000",
+    "baseStats1": "+生命100/210/1000·龟能充能+10%",
     "shopAvailable": 1,
     "poolPhase": 4,
     "emoji": "⏳",
     "effectImpl": true,
-    "effectDesc1": "纯属性件——大幅提供龟能与生命值,无主动效果。",
+    "effectDesc1": "登场第10秒蓄力1秒后释放「时间停止」:全场其他单位/弹道/特效全部定格,持续4/10/30秒;此期间全场最高星级沙漏的携带者(敌我皆可,同星并存)可自由攻击/施法/移动,伤害即时结算。一场一次。",
     "effectDesc3": "",
     "img": "equip/dungeon-hourglass.png"
   }
