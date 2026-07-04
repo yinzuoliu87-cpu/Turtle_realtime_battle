@@ -662,7 +662,10 @@ func _spawn_teams() -> void:
 					_lu["hp"] = _lu["maxHp"] * clampf(float(OS.get_environment("EQDEMO_HURT")), 0.05, 1.0)   # 回血/自愈类: 真实血量起手受伤(静养看自回填血, 无敌人不锁血)
 				else:
 					_lu["deathfloor_until"] = 999999.0; _lu.erase("_review_dummy")   # 观察/召唤/自发/周期buff类: 真实血量(%maxHP伤害/回血不失真)+血锁不死站桩(观察模式无敌人打它)
-				if not OS.has_environment("EQDEMO_ATTACKER"):   # 默认: 站桩不攻击(召唤/自发/周期件); ATTACKER=普攻+技能
+				if OS.has_environment("EQDEMO_CAST_ONLY"):   # demo: 站桩只放技(看远程on_cast弹道从原地飞出, 不近身)
+					_lu["no_move"] = true; _lu["no_basic"] = true; _lu["move_spd"] = 0.0
+					_lu["active_skills"] = [OS.get_environment("EQDEMO_SKILL")] if OS.has_environment("EQDEMO_SKILL") else _lu["active_skills"]
+				elif not OS.has_environment("EQDEMO_ATTACKER"):   # 默认: 站桩不攻击(召唤/自发/周期件); ATTACKER=普攻+技能
 					_lu["no_move"] = true; _lu["no_basic"] = true; _lu["active_skills"] = []; _lu["move_spd"] = 0.0
 				elif OS.has_environment("EQDEMO_SKILL"):
 					_lu["active_skills"] = [OS.get_environment("EQDEMO_SKILL")]
@@ -4086,12 +4089,12 @@ func _muzzle_flash(pos2d: Vector2, dir: Vector2, col: Color) -> void:
 	tw.chain().tween_callback(sp.queue_free)
 
 # 装备弹道(弩矢/飞镖等真实贴图投射物): 朝向随飞行方向(2.5D近似 z-roll), 命中记装备物理伤. eq_bleed=命中附加流血层
-func _spawn_eq_bolt(src: Dictionary, tgt: Dictionary, dmg: int, tex_path: String, col: Color, spin: bool = false, bleed: int = 0) -> void:
+func _spawn_eq_bolt(src: Dictionary, tgt: Dictionary, dmg: int, tex_path: String, col: Color, spin: bool = false, bleed: int = 0, psize: float = 0.032) -> void:
 	if tgt == null: return
 	var start2d: Vector2 = src["pos"]
 	var p := Sprite3D.new()
 	p.texture = load(tex_path)
-	p.pixel_size = 0.032
+	p.pixel_size = psize
 	p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	p.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	p.shaded = false; p.transparent = true
@@ -9819,9 +9822,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 					var ft48 = _eq_first_in_line(u, dir48, 36.0)
 					if ft48 == null: return
 					_muzzle_flash(u["pos"], dir48, Color("#ffe08a"))
-					_bolt_line(u["pos"], ft48["pos"], Color("#ffe08a"))
-					_apply_damage_from(u, ft48, _atk_dmg(u, mul48, ft48), Color("#ffd07a"), 0.0, false, true)
-					_hit_spark(ft48)
+					_spawn_eq_bolt(u, ft48, _atk_dmg(u, mul48, ft48), "res://assets/sprites/vfx/bullet.png", Color("#fff0b0"), false, 0, 0.014)   # 真子弹依次飞出(命中结算伤+火花)
 				_queue_shots([4, 5, 6][si], 0.08, fire48)
 			"p2eq_049":   # 连发弩: 朝最远敌方向依次射N发, 首敌命中(可被前排挡), 按已损血加伤; 弩矢弹道
 				var far49 := _eq_farthest_enemies(u, false)
