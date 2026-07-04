@@ -2423,21 +2423,38 @@ func _eq_signal_tick(u: Dictionary, si: int) -> void:
 	_signal_pulse(u["pos"])
 	_float_text(u["pos"] + Vector2(0, -58), "增伤+%d%%" % int(amp * 100.0), Color("#ffcf5a"))
 
-# 信号脉冲(038): 携带者身上3圈向外扩张的青蓝同心波环(信号发射感)
+# 信号脉冲(038): 头顶弹出青蓝 signal-wave 广播图标(升起放大淡出, 2个错峰=脉冲广播) + 脚下青光环
 func _signal_pulse(pos2d: Vector2) -> void:
-	for k in range(3):
-		var r := Sprite3D.new()
-		r.texture = _make_ring_texture(Color(0.35, 0.85, 1.0, 1.0))
-		r.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		r.shaded = false; r.transparent = true
-		r.modulate = Color(0.35, 0.85, 1.0, 0.85 - float(k) * 0.18)
-		r.position = _world_pos(pos2d, 0.95)
-		r.pixel_size = 0.004 + float(k) * 0.008
-		_world.add_child(r)
+	var sw_tex: Texture2D = load("res://assets/sprites/vfx/signal-wave.png")
+	for k in range(2):
+		var sw := Sprite3D.new()
+		sw.texture = sw_tex
+		sw.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		sw.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sw.shaded = false; sw.transparent = true
+		sw.modulate = Color(1, 1, 1, 0.95)
+		sw.pixel_size = 0.8 / 96.0
+		sw.position = _world_pos(pos2d, 2.45)
+		_world.add_child(sw)
+		var d: float = float(k) * 0.16
 		var tw := create_tween(); tw.set_parallel(true)
-		tw.tween_property(r, "pixel_size", 0.032 + float(k) * 0.008, 0.5).set_ease(Tween.EASE_OUT)
-		tw.tween_property(r, "modulate:a", 0.0, 0.5)
-		tw.chain().tween_callback(r.queue_free)
+		tw.tween_property(sw, "position", _world_pos(pos2d, 3.35), 0.6).set_delay(d).set_ease(Tween.EASE_OUT)
+		tw.tween_property(sw, "pixel_size", 1.7 / 96.0, 0.6).set_delay(d).set_ease(Tween.EASE_OUT)
+		tw.tween_property(sw, "modulate:a", 0.0, 0.6).set_delay(d).set_ease(Tween.EASE_IN)
+		tw.chain().tween_callback(sw.queue_free)
+	# 脚下青蓝广播环(与图标呼应)
+	var rg := Sprite3D.new()
+	rg.texture = _make_ring_texture(Color(0.35, 0.85, 1.0, 1.0))
+	rg.billboard = BaseMaterial3D.BILLBOARD_DISABLED; rg.axis = Vector3.AXIS_Y
+	rg.shaded = false; rg.transparent = true
+	rg.modulate = Color(0.4, 0.88, 1.0, 0.85)
+	rg.position = _world_pos(pos2d, 0.06)
+	rg.pixel_size = 0.01
+	_world.add_child(rg)
+	var tw2 := create_tween(); tw2.set_parallel(true)
+	tw2.tween_property(rg, "pixel_size", 0.055, 0.5).set_ease(Tween.EASE_OUT)
+	tw2.tween_property(rg, "modulate:a", 0.0, 0.5)
+	tw2.chain().tween_callback(rg.queue_free)
 
 func _eq_fpga_tick(u: Dictionary, si: int) -> void:
 	_skill_ring(u["pos"], Color(0.4, 0.9, 1.0, 0.42), 46.0)
