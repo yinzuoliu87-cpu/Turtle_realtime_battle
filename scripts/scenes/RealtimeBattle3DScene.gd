@@ -829,6 +829,10 @@ func _spawn_dual_lane() -> void:
 	_dl_ensure_egg_hp(lvl)
 	_units.append(_make_unit("__egg__", "left", Vector2(ARENA.position.x + 70.0, _cy), {"egg": true, "egg_side": "left", "hp": _dl_egg_hp("left")}))
 	_units.append(_make_unit("__egg__", "right", Vector2(ARENA.end.x - 70.0, _cy), {"egg": true, "egg_side": "right", "hp": _dl_egg_hp("right")}))
+	# 装备+登场被动管线(评审流程走的 756-758, 双路早退绕过了→这里补上): leader读persistent_equipped+dual_lineup, 小将读dual_lineup._dl_equips, 双方leader上登场被动
+	_inject_equipment()
+	_apply_spawn_passives()
+	_eq_apply_all_stats()
 	_dl_state = "fight"
 
 func _dl_ensure_egg_hp(lvl: int) -> void:   # egg_hp 缺则按 2000+100×平均等级 初始化(两侧)
@@ -865,6 +869,8 @@ func _spawn_lane_side(units: Array, side: String, lvl: int, base: Vector2) -> vo
 			made = _make_unit("__minion__", side, pos, {"minion": true, "role": str(u.get("role", "front")), "elite": elite, "level": lvl})
 		if u.has("hp_frac"):   # 幸存带血进终极
 			made["hp"] = maxf(1.0, made["maxHp"] * clampf(float(u["hp_frac"]), 0.05, 1.0))
+		if u.has("equips") and u["equips"] is Array and not (u["equips"] as Array).is_empty():
+			made["_dl_equips"] = (u["equips"] as Array).duplicate(true)   # 局外dual_lineup配的装(leader/小将), _inject_equipment 优先用
 		_units.append(made)
 
 # 终极战场我方/敌方阵容 = 上下路累加的幸存(含小将+30%回血). 缺则兜底.
@@ -9655,19 +9661,23 @@ const DEMO_EQUIP := {
 
 # 装备注入: 玩家队(left)读 persistent_equipped; demo 阵容兜底塞测试装备.
 func _inject_equipment() -> void:
-	if REVIEW_DEMO and not OS.has_environment("EQDEMO_EQUIP"):
-		return                          # 评审: 受审龟裸装, 看纯内在数值 (装备演示 EQDEMO 例外, 要装上)
+	if REVIEW_DEMO and not OS.has_environment("EQDEMO_EQUIP") and not _is_dual_lane_mode():
+		return                          # 评审: 受审龟裸装, 看纯内在数值 (装备演示 EQDEMO / 双路对局 例外, 要装上)
 	var gs = get_node_or_null("/root/GameState")
 	var pe: Dictionary = {}
 	if gs != null and gs.get("persistent_equipped") is Dictionary:
 		pe = gs.get("persistent_equipped")
-	var use_demo: bool = pe.is_empty()
+	var use_demo: bool = pe.is_empty() and not _is_dual_lane_mode()   # 双路: 玩家没配装就裸装, 不塞测试装备
 	for u in _units:
 		if u.get("is_summon", false):
 			continue
 		var key: String = str(u["id"])
 		var list: Array = []
-		if not use_demo and pe.has(key):
+		if u.has("_dl_equips") and u["_dl_equips"] is Array and not (u["_dl_equips"] as Array).is_empty():
+			for it in (u["_dl_equips"] as Array):   # 双路: leader/小将局外配的装(dual_lineup)优先 — 小将id共享__minion__, 只能走这里
+				if it is Dictionary and it.has("id"):
+					list.append({"id": str(it["id"]), "star": int(it.get("star", 1))})
+		elif not use_demo and pe.has(key):
 			if u["side"] == "left":
 				for it in (pe[key] as Array):
 					if it is Dictionary and it.has("id"):
