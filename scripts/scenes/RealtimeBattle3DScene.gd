@@ -234,6 +234,8 @@ var _dl_state := ""
 var _dl_window_until := 0.0
 var _dl_wiped_side := ""    # 被团灭方(其蛋暴露): "left"/"right"
 var _dl_hud: Label = null   # 双路 HUD: 当前路 + 双方蛋血
+var _dl_go_btn: Button = null      # 场内放置阶段「开打」钮
+var _dl_place_hint: Label = null   # 放置阶段提示(拖我方单位到位→开打)
 var _t := 0.0
 var _settled := false                       # 结果只喂赛季一次的守卫
 var _had_season := false                     # 本局有赛季态(玩家配了season_leaders); demo=false→不喂只显横幅
@@ -952,6 +954,67 @@ func _nav_dir(u: Dictionary, tgt_pos: Vector2, straight: Vector2) -> Vector2:
 		return straight
 	return to_wp.normalized()
 
+# ── 场内放置阶段 (每战场开打前: 拖我方单位到你半场任意位置) ──
+func _dl_enter_place() -> void:
+	_edit_drag_unit = null
+	if not is_instance_valid(_dl_go_btn):
+		_dl_go_btn = Button.new()
+		_dl_go_btn.text = "▶  开  打"
+		_dl_go_btn.add_theme_font_size_override("font_size", 28)
+		_dl_go_btn.custom_minimum_size = Vector2(220, 62)
+		_dl_go_btn.pressed.connect(_dl_start_fight)
+		if _ui_layer != null:
+			_ui_layer.add_child(_dl_go_btn)
+	if not is_instance_valid(_dl_place_hint):
+		_dl_place_hint = Label.new()
+		_dl_place_hint.add_theme_font_size_override("font_size", 16)
+		_dl_place_hint.add_theme_color_override("font_color", Color("#ffd93d"))
+		_dl_place_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		if _ui_layer != null:
+			_ui_layer.add_child(_dl_place_hint)
+	var vp: Vector2 = get_viewport().get_visible_rect().size
+	_dl_go_btn.position = Vector2(vp.x * 0.5 - 110.0, vp.y - 100.0)
+	_dl_place_hint.position = Vector2(vp.x * 0.5 - 230.0, vp.y - 136.0)
+	_dl_place_hint.size = Vector2(460, 24)
+	_dl_place_hint.text = "【放置】拖我方单位到你半场(左侧)任意位置 → 点「开打」"
+	_dl_go_btn.visible = true
+	_dl_place_hint.visible = true
+
+func _dl_start_fight() -> void:
+	_edit_drag_unit = null
+	_dl_state = "fight"
+	if is_instance_valid(_dl_go_btn): _dl_go_btn.visible = false
+	if is_instance_valid(_dl_place_hint): _dl_place_hint.visible = false
+
+func _dl_handle_place_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			var hit = _edit_unit_at_screen(event.position)   # 只拖我方(left)非蛋非召唤
+			if hit != null and str(hit.get("side", "")) == "left" and not hit.get("_isEgg", false) and not hit.get("is_summon", false):
+				_edit_drag_unit = hit
+			else:
+				_edit_drag_unit = null
+		else:
+			_edit_drag_unit = null
+	elif event is InputEventMouseMotion and _edit_drag_unit != null:
+		if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+			_edit_drag_unit = null
+			return
+		_edit_drag_unit["pos"] = _dl_clamp_place(_screen_to_field(event.position))
+
+func _dl_clamp_place(fp: Vector2) -> Vector2:
+	fp.x = clampf(fp.x, ARENA.position.x + 60.0, _arena_center.x - 120.0)   # 只在我方半场(不越中线)
+	fp.y = clampf(fp.y, ARENA.position.y + 60.0, ARENA.end.y - 60.0)
+	for ob in _obstacles:   # 避开障碍footprint(椭圆内→推到边)
+		var c: Vector2 = ob["c"]
+		var rx: float = float(ob["rx"]) + 26.0
+		var ry: float = float(ob["ry"]) + 26.0
+		var d: Vector2 = fp - c
+		var e: float = Vector2(d.x / rx, d.y / ry).length()
+		if e < 1.0 and e > 0.01:
+			fp = c + d / e
+	return fp
+
 func _spawn_dual_lane() -> void:
 	var lane: String = str(GameState.current_lane) if GameState != null and GameState.current_lane != null else "top"
 	if lane == "" or lane == "done":
@@ -981,7 +1044,8 @@ func _spawn_dual_lane() -> void:
 	_inject_equipment()
 	_apply_spawn_passives()
 	_eq_apply_all_stats()
-	_dl_state = "fight"
+	_dl_state = "place"   # 先进场内放置阶段(拖我方单位到位)→点「开打」才 fight
+	_dl_enter_place()
 
 func _dl_ensure_egg_hp(lvl: int) -> void:   # egg_hp 缺则按 2000+100×平均等级 初始化(两侧)
 	if GameState == null:
@@ -1837,8 +1901,8 @@ func _process(delta: float) -> void:
 					_advance_anim(u, delta)
 		_ts_tick_visual(delta)                 # 时停视觉维持(钟表脉动/暗角等)
 	else:
-		# 🛠 调试场编辑态: 跳过模拟推进 (单位摆着不打不动), 但下方 transforms/overlay 照常 → 立绘渲染+血条仍刷新.
-		if not _over and not _edit_mode:
+		# 🛠 调试场编辑态 / 双路场内放置态: 跳过模拟推进 (单位摆着不打不动), 但下方 transforms/overlay 照常 → 立绘渲染+血条仍刷新.
+		if not _over and not _edit_mode and _dl_state != "place":
 			_t += delta
 			_ts_update_trigger(delta)   # 沙漏: 第10秒触发时停蓄力 → 蓄力满释放
 			for u in _units.duplicate():
@@ -9288,6 +9352,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				return
 			DEBUG_EDIT = false   # 离场重置, 不影响下次正常战斗
 			get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+		return
+	# 双路场内放置阶段: 拖我方(left)非蛋单位到位 (clamp 我方半场+避障); 「开打」钮在 GUI 层.
+	if _dl_state == "place" and _is_dual_lane_mode():
+		_dl_handle_place_input(event)
 		return
 	# 普通战斗模式: 点战场单位 (立绘头顶 unproject 命中) → 弹详情面板; 框上的点击由框自己的 gui_input 接.
 	if not DEBUG_EDIT or not _edit_mode:
