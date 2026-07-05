@@ -565,17 +565,17 @@ void fragment() {
 	// 离场地中心的归一化距离 (椭圆: 按竞技场宽高各自归一)
 	vec2 n = wp / max(half_arena, vec2(0.001));
 	float d = length(n);                        // 0=中心, 1=竞技场边
-	float depth_t = smoothstep(0.0, 1.4, d);    // 超出竞技场继续沉暗
+	float depth_t = smoothstep(0.35, 1.85, d);  // 场内保持亮(能看清海床), 出场才渐沉暗
 	// 海床贴图整块拉伸(竞技场归一坐标 n∈[-1,1] → uv[0,1]); 边缘 clamp, 场外靠 sink 沉黑
 	vec2 uv = clamp(n * 0.5 + 0.5, 0.0, 1.0);
-	vec3 seabed = texture(seabed_tex, uv).rgb;
+	vec3 seabed = texture(seabed_tex, uv).rgb * 1.75;   // 提亮海床(原太暗看不清)
 	vec3 near_base = mix(near_col, seabed, seabed_amt);
 	vec3 base = mix(near_base, far_col, depth_t);
-	// 焦散 (仅场内明显, 远处随景深淡出)
+	// 焦散 (仅场内明显, 远处随景深淡出) — 加强水面光纹
 	float c = caustic(wp * 0.5, TIME * caustic_speed);
-	base += c * caustic_strength * (1.0 - smoothstep(0.4, 1.2, d));
+	base += c * caustic_strength * (1.0 - smoothstep(0.4, 1.3, d));
 	// 边界暗角: 越靠边/越远 → 压暗 (柔和无硬线)
-	float vig = 1.0 - vignette * smoothstep(0.5, 1.3, d);
+	float vig = 1.0 - vignette * smoothstep(0.62, 1.4, d);
 	// 远场强沉黑: 竞技场外 (d>1) 二次压暗到近黑, 防远地/边角被光/雾刷亮成灰带
 	float sink = 1.0 - 0.92 * smoothstep(1.0, 2.2, d);
 	ALBEDO = base * vig * sink;
@@ -596,8 +596,8 @@ void fragment() {
 	else:
 		mat.set_shader_parameter("seabed_amt", 0.0)
 	mat.set_shader_parameter("half_arena", half_arena)
-	mat.set_shader_parameter("vignette", GROUND_VIGNETTE)
-	mat.set_shader_parameter("caustic_strength", CAUSTIC_STRENGTH)
+	mat.set_shader_parameter("vignette", 0.42)          # 原GROUND_VIGNETTE太重压黑边→调亮(能看清海床)
+	mat.set_shader_parameter("caustic_strength", 0.17)  # 加强水面焦散光纹(原CAUSTIC_STRENGTH)
 	mat.set_shader_parameter("caustic_speed", CAUSTIC_SPEED)
 	return mat
 
@@ -877,6 +877,89 @@ func _build_map_props() -> void:
 		dome.scale = Vector3(1.9, 1.9, 1.9)   # 罩大盖住蛋
 		root.add_child(dome)
 		_base_domes[str(pair[0])] = dome
+	_build_decorations(root)   # 珊瑚/海草/礁石 铺边框住战场+填空地(纯装饰无footprint)
+	_build_lightshafts(root)   # 水面光柱(加性发光, 深海氛围)
+	_build_bubbles(root)       # 漂浮气泡颗粒
+
+# 装饰景物: 珊瑚/海草/礁石 沿上下边框+四角+基地周围铺 (纯装饰, 无导航footprint, 不挡移动). 固定布局(可复现).
+func _build_decorations(root: Node3D) -> void:
+	var A := ARENA
+	var top: float = A.position.y + 46.0
+	var bot: float = A.end.y - 40.0
+	var cx: float = _arena_center.x
+	var decos := [
+		[A.position.x+190, top+8, "deco_kelp", 2.4, 1.0], [A.position.x+430, top+34, "deco_coral_pink", 1.9, 1.1],
+		[cx-300, top, "deco_rocks", 1.2, 1.0], [cx-40, top+22, "deco_coral_orange", 1.7, 1.0],
+		[cx+300, top, "deco_kelp", 2.2, 0.9], [A.end.x-430, top+30, "deco_coral_pink", 1.8, 1.0], [A.end.x-190, top+6, "deco_rocks", 1.3, 1.1],
+		[A.position.x+320, bot, "deco_coral_orange", 1.8, 1.15], [cx-380, bot-12, "deco_rocks", 1.2, 1.0],
+		[cx-70, bot, "deco_kelp", 2.3, 1.0], [cx+300, bot-16, "deco_coral_pink", 1.9, 1.0], [A.end.x-350, bot, "deco_kelp", 2.2, 0.95],
+		[A.position.x+165, _arena_center.y-165, "deco_coral_orange", 1.5, 0.9], [A.position.x+165, _arena_center.y+165, "deco_coral_pink", 1.6, 0.9],
+		[A.end.x-165, _arena_center.y-165, "deco_coral_pink", 1.6, 0.9], [A.end.x-165, _arena_center.y+165, "deco_coral_orange", 1.5, 0.9],
+	]
+	for de in decos:
+		var spr := _map_billboard("res://assets/sprites/map/%s.png" % str(de[2]), Vector2(float(de[0]), float(de[1])), float(de[3]))
+		spr.scale = Vector3(float(de[4]), float(de[4]), float(de[4]))
+		root.add_child(spr)
+
+# 水面光柱: 几道加性发光的柔和光束(billboard竖条), 打进深海竞技场 → 氛围/纵深.
+func _build_lightshafts(root: Node3D) -> void:
+	var tex := _make_lightshaft_texture()
+	var cx: float = _arena_center.x
+	var shafts := [[cx-520.0, 0.42], [cx-140.0, 0.55], [cx+240.0, 0.4], [cx+560.0, 0.5]]
+	for sh in shafts:
+		var spr := Sprite3D.new()
+		spr.texture = tex
+		spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		spr.shaded = false
+		spr.transparent = true
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+		m.albedo_texture = tex
+		spr.material_override = m
+		spr.pixel_size = 9.0 / float(tex.get_height())   # 光柱高 ≈9米
+		spr.modulate = Color(1, 1, 1, float(sh[1]))
+		spr.position = _world_pos(Vector2(float(sh[0]), _arena_center.y), 4.2)
+		root.add_child(spr)
+
+func _make_lightshaft_texture() -> ImageTexture:
+	var w := 40; var h := 200
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	for y in range(h):
+		var vy: float = float(y) / float(h)                 # 0=顶(亮) 1=底(淡)
+		var vfall: float = (1.0 - vy) * (1.0 - vy)
+		for x in range(w):
+			var hx: float = absf(float(x) / float(w - 1) * 2.0 - 1.0)
+			var hfall: float = 1.0 - smoothstep(0.15, 1.0, hx)
+			img.set_pixel(x, y, Color(0.62, 0.86, 1.0, vfall * hfall))
+	return ImageTexture.create_from_image(img)
+
+# 漂浮气泡颗粒: CPUParticles3D 缓缓上升的小圆点, 满场飘 → 深海有生气.
+func _build_bubbles(root: Node3D) -> void:
+	var p := CPUParticles3D.new()
+	p.amount = 34
+	p.lifetime = 8.0
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	p.emission_box_extents = Vector3(ARENA.size.x * WS * 0.5, 0.3, ARENA.size.y * WS * 0.5)
+	p.direction = Vector3(0, 1, 0)
+	p.gravity = Vector3(0, 0.28, 0)
+	p.initial_velocity_min = 0.2
+	p.initial_velocity_max = 0.55
+	p.scale_amount_min = 0.018
+	p.scale_amount_max = 0.05
+	var bm := StandardMaterial3D.new()
+	bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	bm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	bm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	bm.albedo_color = Color(0.55, 0.82, 1.0, 0.32)
+	bm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	var sph := SphereMesh.new(); sph.radius = 0.5; sph.height = 1.0; sph.radial_segments = 12; sph.rings = 6
+	p.mesh = sph
+	p.material_override = bm
+	p.position = _world_pos(_arena_center, 0.2)
+	root.add_child(p)
 
 # 每路重置基地围栏(恢复显示+满尺寸) — 障碍复用但围栏每路重新罩住.
 func _reset_domes() -> void:
@@ -1507,6 +1590,8 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		u["_egg_fence"] = true           # 围栏未破: 不可主动索敌(AoE穿栏)
 		u["egg_side_lr"] = str(spec.get("egg_side", "left"))   # 该蛋归属方(left/right), 写回 GameState.egg_hp
 		u["no_move"] = true; u["no_basic"] = true
+		if is_instance_valid(u.get("level_badge", null)):
+			u["level_badge"].visible = false   # 蛋是基地不需等级牌; 牌本在血条左侧突出→在小蛋上看着像"血条偏移", 去掉即居中
 	return u
 
 # 小将立绘字典 (静态单帧: minion.png 前排 / minion-back.png 后排 / minion-elite.png 精英)
