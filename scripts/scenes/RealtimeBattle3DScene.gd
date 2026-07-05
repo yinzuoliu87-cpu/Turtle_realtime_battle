@@ -899,13 +899,14 @@ func _build_decorations(root: Node3D) -> void:
 	for de in decos:
 		var spr := _map_billboard("res://assets/sprites/map/%s.png" % str(de[2]), Vector2(float(de[0]), float(de[1])), float(de[3]))
 		spr.scale = Vector3(float(de[4]), float(de[4]), float(de[4]))
+		spr.modulate = Color(0.5, 0.63, 0.82)   # 压暗+偏冷: 装饰退到背景, 别跟单位抢视觉焦点(商业级视觉层次: 单位>障碍>装饰)
 		root.add_child(spr)
 
 # 水面光柱: 几道加性发光的柔和光束(billboard竖条), 打进深海竞技场 → 氛围/纵深.
 func _build_lightshafts(root: Node3D) -> void:
 	var tex := _make_lightshaft_texture()
 	var cx: float = _arena_center.x
-	var shafts := [[cx-520.0, 0.42], [cx-140.0, 0.55], [cx+240.0, 0.4], [cx+560.0, 0.5]]
+	var shafts := [[cx-520.0, 0.26], [cx-150.0, 0.34], [cx+250.0, 0.24], [cx+560.0, 0.3]]
 	for sh in shafts:
 		var spr := Sprite3D.new()
 		spr.texture = tex
@@ -939,8 +940,8 @@ func _make_lightshaft_texture() -> ImageTexture:
 # 漂浮气泡颗粒: CPUParticles3D 缓缓上升的小圆点, 满场飘 → 深海有生气.
 func _build_bubbles(root: Node3D) -> void:
 	var p := CPUParticles3D.new()
-	p.amount = 34
-	p.lifetime = 8.0
+	p.amount = 20
+	p.lifetime = 9.0
 	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
 	p.emission_box_extents = Vector3(ARENA.size.x * WS * 0.5, 0.3, ARENA.size.y * WS * 0.5)
 	p.direction = Vector3(0, 1, 0)
@@ -953,7 +954,7 @@ func _build_bubbles(root: Node3D) -> void:
 	bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	bm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	bm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	bm.albedo_color = Color(0.55, 0.82, 1.0, 0.32)
+	bm.albedo_color = Color(0.55, 0.82, 1.0, 0.2)
 	bm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	var sph := SphereMesh.new(); sph.radius = 0.5; sph.height = 1.0; sph.radial_segments = 12; sph.rings = 6
 	p.mesh = sph
@@ -1590,8 +1591,6 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		u["_egg_fence"] = true           # 围栏未破: 不可主动索敌(AoE穿栏)
 		u["egg_side_lr"] = str(spec.get("egg_side", "left"))   # 该蛋归属方(left/right), 写回 GameState.egg_hp
 		u["no_move"] = true; u["no_basic"] = true
-		if is_instance_valid(u.get("level_badge", null)):
-			u["level_badge"].visible = false   # 蛋是基地不需等级牌; 牌本在血条左侧突出→在小蛋上看着像"血条偏移", 去掉即居中
 	return u
 
 # 小将立绘字典 (静态单帧: minion.png 前排 / minion-back.png 后排 / minion-elite.png 精英)
@@ -9226,7 +9225,10 @@ func _update_overlay() -> void:
 			continue
 		root.visible = true
 		var screen: Vector2 = _cam.unproject_position(head)
-		root.position = screen - Vector2(BAR_W * 0.5, 8)   # 居中 (条宽 BAR_W)
+		var _bx: float = BAR_W * 0.5
+		if u.get("_isEgg", false):
+			_bx -= 8.0   # 蛋: 补偿等级牌左突(bw13+3的一半), 让"牌+血条"整体居中在蛋上(条本身仍对准蛋心)
+		root.position = screen - Vector2(_bx, 8)   # 居中 (条宽 BAR_W)
 
 # ============================================================================
 #  灭队判定 + 结算横幅 (复用 2D _check_end; 赛季结算 Phase 3 接 GameState)
