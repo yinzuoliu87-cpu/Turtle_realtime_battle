@@ -76,7 +76,7 @@ func _lineup_ids() -> Array:
 # ─── 上部: 双路布阵 (上战场/下战场, 3统领+3小将分3+3; 点头像互换分路, 点小将切前/后排) ───
 func _build_lineup(_leaders: Array) -> void:
 	var hdr := Label.new()
-	hdr.text = "双路布阵 — 点两个头像互换分路 · 点小将[前/后]切类型 (某路0统领→首小将自动精英)"
+	hdr.text = "双路布阵 — 点两像互换分路 · 小将[前/后]切类型 · 选背包装备点单位装备格=装(统领/小将都能装,点空格卸)"
 	hdr.add_theme_font_size_override("font_size", 13); hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
 	hdr.position = Vector2(60, 84); hdr.size = Vector2(620, 20); add_child(hdr)
 	var lineup := GameState.get_dual_lineup()
@@ -109,7 +109,7 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 	if ResourceLoader.exists(img_path):
 		var a := TextureRect.new(); a.texture = load(img_path)
 		a.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; a.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED; a.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		a.position = Vector2(34, 4); a.size = Vector2(44, 44); box.add_child(a)
+		a.position = Vector2(34, 2); a.size = Vector2(44, 38); box.add_child(a)
 	var nm := Label.new()
 	if kind == "leader":
 		var pet: Dictionary = DataRegistry.pet_by_id.get(str(unit.get("id", "")), {})
@@ -117,13 +117,34 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 	else:
 		nm.text = "精英小将" if is_elite else "小将"
 	nm.add_theme_font_size_override("font_size", 11); nm.add_theme_color_override("font_color", Color("#e8f2ff"))
-	nm.position = Vector2(0, 50); nm.size = Vector2(112, 14); nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; box.add_child(nm)
+	nm.position = Vector2(0, 42); nm.size = Vector2(112, 14); nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; box.add_child(nm)
+	# 装备格 + 装/卸按钮: leader读 persistent_equipped / 小将读 dual_lineup 条目.equips (战斗端都注入)
+	var eqs: Array = []
+	if kind == "leader":
+		if GameState.persistent_equipped is Dictionary:
+			eqs = GameState.persistent_equipped.get(str(unit.get("id", "")), [])
+	elif unit.get("equips", null) is Array:
+		eqs = unit.get("equips", [])
+	var slots := P2.equip_slots_for_level(int(GameState.season_level))
+	_draw_equip_cells(box, eqs, slots, 60.0)
+	var eqbtn := Button.new()
+	eqbtn.flat = true; eqbtn.focus_mode = Control.FOCUS_NONE
+	eqbtn.tooltip_text = "选中背包装备→点这装上; 无选中→点这卸最后一件"
+	eqbtn.position = Vector2(2, 57); eqbtn.size = Vector2(108, 15)
+	eqbtn.pressed.connect(func():
+		if _sel_bench >= 0:
+			if kind == "leader": _equip_to(str(unit.get("id", "")), _sel_bench)
+			else: _equip_minion(lane, idx, _sel_bench)
+		else:
+			if kind == "leader": _unequip_last(str(unit.get("id", "")))
+			else: _unequip_minion_last(lane, idx))
+	box.add_child(eqbtn)
 	if kind == "minion":
 		var role := str(unit.get("role", "front"))
 		var tgl := Button.new()
 		tgl.text = "前排·近战" if role == "front" else "后排·射击"
 		tgl.add_theme_font_size_override("font_size", 11)
-		tgl.position = Vector2(6, 70); tgl.size = Vector2(100, 20)
+		tgl.position = Vector2(6, 74); tgl.size = Vector2(100, 18)
 		tgl.pressed.connect(func(): _dl_toggle_role(lane, idx))
 		box.add_child(tgl)
 	for ch in box.get_children():
@@ -146,6 +167,9 @@ func _dl_click(lane: String, idx: int) -> void:
 	var unit: Dictionary = arr[idx] if idx < arr.size() and arr[idx] is Dictionary else {}
 	if _sel_bench >= 0 and str(unit.get("kind", "")) == "leader":
 		_equip_to(str(unit.get("id", "")), _sel_bench)
+		return
+	if _sel_bench >= 0 and str(unit.get("kind", "")) == "minion":
+		_equip_minion(lane, idx, _sel_bench)
 		return
 	if _dl_sel.is_empty():
 		_dl_sel = {"lane": lane, "idx": idx}
@@ -411,6 +435,47 @@ func _unequip_last(pet_id: String) -> void:
 	GameState.persistent_bench.append(eqs.pop_back())
 	GameState.persistent_equipped[pet_id] = eqs
 	GameState.auto_merge_all()   # 卸回背包后自动 3 合 1 (背包+龟身一起算)
+	GameState.save()
+	_rebuild()
+
+## 小将装备(实时新增): 存 dual_lineup[lane][idx].equips (id共享__minion__进不了persistent_equipped). 战斗端 _spawn_lane_side 读 .equips→_dl_equips 注入.
+func _equip_minion(lane: String, idx: int, bench_idx: int) -> void:
+	var bench: Array = GameState.persistent_bench
+	if bench_idx < 0 or bench_idx >= bench.size():
+		_sel_bench = -1; _rebuild(); return
+	var a: Dictionary = GameState.get_dual_lineup().duplicate(true)
+	if not a.has(lane) or idx < 0 or idx >= (a[lane] as Array).size():
+		_sel_bench = -1; _rebuild(); return
+	var u: Dictionary = a[lane][idx]
+	if str(u.get("kind", "")) != "minion":
+		_sel_bench = -1; _rebuild(); return
+	var eqs: Array = u.get("equips", []) if u.get("equips", null) is Array else []
+	if eqs.size() >= P2.equip_slots_for_level(int(GameState.season_level)):
+		_sel_bench = -1; _rebuild(); return   # 槽满(跟 leader 同 equip_slots_for_level)
+	eqs.append(bench[bench_idx])
+	bench.remove_at(bench_idx)
+	u["equips"] = eqs
+	a[lane][idx] = u
+	GameState.dual_lineup = a
+	_sel_bench = -1
+	GameState.auto_merge_all()   # 整理背包(小将装的不进合成池, 但背包其余照常3合1)
+	GameState.save()
+	_rebuild()
+
+## 卸下小将最后一件装备 → 回背包.
+func _unequip_minion_last(lane: String, idx: int) -> void:
+	var a: Dictionary = GameState.get_dual_lineup().duplicate(true)
+	if not a.has(lane) or idx < 0 or idx >= (a[lane] as Array).size():
+		return
+	var u: Dictionary = a[lane][idx]
+	var eqs: Array = u.get("equips", []) if u.get("equips", null) is Array else []
+	if eqs.is_empty():
+		return
+	GameState.persistent_bench.append(eqs.pop_back())
+	u["equips"] = eqs
+	a[lane][idx] = u
+	GameState.dual_lineup = a
+	GameState.auto_merge_all()
 	GameState.save()
 	_rebuild()
 
