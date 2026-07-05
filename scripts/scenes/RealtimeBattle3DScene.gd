@@ -217,6 +217,10 @@ var _arena_center := ARENA.position + ARENA.size * 0.5
 # 地图障碍物 (布局B: 中央大礁+两侧错位墙) — footprint 椭圆 {c,rx,ry} 给 navmesh 挖洞+放置避让; 只挡移动
 var _obstacles: Array = []
 var _base_domes: Dictionary = {}   # {side_lr: Sprite3D} 基地穹顶围栏(加性发光罩蛋), 团灭掉栏时淡出
+# navmesh 2D 避障 (NavigationServer2D, ARENA像素空间同坐标; 障碍挖洞→单位沿路点绕行; 兜底无路径直奔)
+var _nav_map: RID
+var _nav_region: RID
+var _nav_ready := false
 
 # ============================================================================
 #  运行时状态
@@ -880,6 +884,74 @@ func _reset_domes() -> void:
 			d.visible = true
 			d.scale = Vector3(1.9, 1.9, 1.9)
 
+# 椭圆近似成多边形点串 (footprint 挖洞用).
+func _ellipse_pts(c: Vector2, rx: float, ry: float, n: int) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in range(n):
+		var a: float = TAU * float(i) / float(n)
+		pts.append(c + Vector2(cos(a) * rx, sin(a) * ry))
+	return pts
+
+# 建 2D navmesh: 外边界=ARENA内缩(单位半径), 挖洞=障碍footprint+margin. 幂等. 只挡移动.
+func _build_navmesh() -> void:
+	if _nav_ready:
+		return
+	if _obstacles.is_empty():
+		return
+	_nav_map = NavigationServer2D.map_create()
+	NavigationServer2D.map_set_cell_size(_nav_map, 1.0)
+	NavigationServer2D.map_set_active(_nav_map, true)
+	_nav_region = NavigationServer2D.region_create()
+	NavigationServer2D.region_set_map(_nav_region, _nav_map)
+	NavigationServer2D.region_set_enabled(_nav_region, true)
+	var poly := NavigationPolygon.new()
+	poly.cell_size = 1.0
+	var src := NavigationMeshSourceGeometryData2D.new()
+	var m: float = 24.0   # 边界内缩(单位半径), 别贴墙
+	src.add_traversable_outline(PackedVector2Array([
+		ARENA.position + Vector2(m, m),
+		Vector2(ARENA.end.x - m, ARENA.position.y + m),
+		ARENA.end - Vector2(m, m),
+		Vector2(ARENA.position.x + m, ARENA.end.y - m),
+	]))
+	for ob in _obstacles:   # 障碍挖洞: footprint椭圆 + 单位半径margin(留出绕行间隙)
+		src.add_obstruction_outline(_ellipse_pts(ob["c"], float(ob["rx"]) + 28.0, float(ob["ry"]) + 28.0, 14))
+	NavigationServer2D.bake_from_source_geometry_data(poly, src)
+	NavigationServer2D.region_set_navigation_polygon(_nav_region, poly)
+	NavigationServer2D.map_force_update(_nav_map)
+	_nav_ready = true
+
+# 返回单位朝目标该走的方向: 有navmesh→沿路点绕障; 否则/无路径→直奔(straight). 路径每单位缓存~0.4s.
+func _nav_dir(u: Dictionary, tgt_pos: Vector2, straight: Vector2) -> Vector2:
+	if not _nav_ready:
+		return straight
+	var now: float = _t
+	var need := false
+	var cached: PackedVector2Array = u.get("_nav_path", PackedVector2Array())
+	if cached.size() < 2:
+		need = true
+	elif now >= float(u.get("_nav_repath_t", 0.0)):
+		need = true
+	elif (Vector2(u.get("_nav_tgt", tgt_pos)) - tgt_pos).length() > 70.0:
+		need = true
+	if need:
+		cached = NavigationServer2D.map_get_path(_nav_map, u["pos"], tgt_pos, true)
+		u["_nav_path"] = cached
+		u["_nav_tgt"] = tgt_pos
+		u["_nav_repath_t"] = now + 0.4
+		u["_nav_wp"] = 1
+	if cached.size() < 2:
+		return straight
+	var wp: int = int(u.get("_nav_wp", 1))
+	while wp < cached.size() - 1 and (cached[wp] - u["pos"]).length() < 42.0:
+		wp += 1
+	u["_nav_wp"] = wp
+	wp = clampi(wp, 1, cached.size() - 1)
+	var to_wp: Vector2 = cached[wp] - u["pos"]
+	if to_wp.length() < 1.0:
+		return straight
+	return to_wp.normalized()
+
 func _spawn_dual_lane() -> void:
 	var lane: String = str(GameState.current_lane) if GameState != null and GameState.current_lane != null else "top"
 	if lane == "" or lane == "done":
@@ -904,6 +976,7 @@ func _spawn_dual_lane() -> void:
 	_units.append(_make_unit("__egg__", "left", Vector2(ARENA.position.x + 70.0, _cy), {"egg": true, "egg_side": "left", "hp": _dl_egg_hp("left")}))
 	_units.append(_make_unit("__egg__", "right", Vector2(ARENA.end.x - 70.0, _cy), {"egg": true, "egg_side": "right", "hp": _dl_egg_hp("right")}))
 	_build_map_props()   # 地图障碍(中央大礁+两侧墙)+基地穹顶围栏(幂等, 跨路复用)
+	_build_navmesh()     # 2D navmesh 避障(幂等; 障碍挖洞→单位绕行)
 	# 装备+登场被动管线(评审流程走的 756-758, 双路早退绕过了→这里补上): leader读persistent_equipped+dual_lineup, 小将读dual_lineup._dl_equips, 双方leader上登场被动
 	_inject_equipment()
 	_apply_spawn_passives()
@@ -5820,7 +5893,8 @@ func _do_move(u: Dictionary, tgt: Dictionary, dist: float, rng: float, spd: floa
 	var to_t: Vector2 = tgt["pos"] - u["pos"]
 	var intent := Vector2.ZERO
 	if dist > rng:
-		var dir: Vector2 = to_t / maxf(0.001, dist)
+		var straight: Vector2 = to_t / maxf(0.001, dist)
+		var dir: Vector2 = _nav_dir(u, tgt["pos"], straight)  # navmesh 绕障(无路径退回直奔)
 		intent = dir                                          # 追到射程
 		for o in _units:   # 绕行避挤: 正前方窄道有同队友军挡路→切向绕开(不再直挤成一团/根治"第二个挤第一个不绕路")
 			if o == u or not o.get("alive", false) or str(o.get("side", "")) != str(u.get("side", "")):
