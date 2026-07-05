@@ -13,6 +13,8 @@ mono_crash.*.json
 # Build / export artifacts
 /build/
 /export/
+/android/          # Android gradle build template (200MB+, install from Godot 编辑器: 项目→安装Android构建模板)
+*.apk
 *.pck
 *.zip
 
