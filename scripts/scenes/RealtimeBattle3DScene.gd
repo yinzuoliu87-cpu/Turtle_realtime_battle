@@ -528,6 +528,8 @@ shader_type spatial;
 render_mode cull_back, diffuse_lambert;
 uniform vec3 near_col : source_color;
 uniform vec3 far_col : source_color;
+uniform sampler2D seabed_tex : source_color, filter_linear, repeat_disable;  // 深海礁盘海床贴图(整块拉伸: 亮心贴合竞技场, 边缘礁石融进暗场)
+uniform float seabed_amt = 0.85; // 海床贴图占比 (剩余为程序近色底)
 uniform vec2 half_arena;          // 竞技场半尺寸 (米)
 uniform float vignette = 0.62;    // 边界暗角强度
 uniform float caustic_strength = 0.10;
@@ -555,7 +557,11 @@ void fragment() {
 	vec2 n = wp / max(half_arena, vec2(0.001));
 	float d = length(n);                        // 0=中心, 1=竞技场边
 	float depth_t = smoothstep(0.0, 1.4, d);    // 超出竞技场继续沉暗
-	vec3 base = mix(near_col, far_col, depth_t);
+	// 海床贴图整块拉伸(竞技场归一坐标 n∈[-1,1] → uv[0,1]); 边缘 clamp, 场外靠 sink 沉黑
+	vec2 uv = clamp(n * 0.5 + 0.5, 0.0, 1.0);
+	vec3 seabed = texture(seabed_tex, uv).rgb;
+	vec3 near_base = mix(near_col, seabed, seabed_amt);
+	vec3 base = mix(near_base, far_col, depth_t);
 	// 焦散 (仅场内明显, 远处随景深淡出)
 	float c = caustic(wp * 0.5, TIME * caustic_speed);
 	base += c * caustic_strength * (1.0 - smoothstep(0.4, 1.2, d));
@@ -574,6 +580,12 @@ void fragment() {
 	mat.shader = sh
 	mat.set_shader_parameter("near_col", GROUND_NEAR)
 	mat.set_shader_parameter("far_col", GROUND_FAR)
+	var _seabed: Texture2D = load("res://assets/sprites/map/seabed_reef.png") if ResourceLoader.exists("res://assets/sprites/map/seabed_reef.png") else null
+	if _seabed != null:
+		mat.set_shader_parameter("seabed_tex", _seabed)
+		mat.set_shader_parameter("seabed_amt", 0.85)
+	else:
+		mat.set_shader_parameter("seabed_amt", 0.0)
 	mat.set_shader_parameter("half_arena", half_arena)
 	mat.set_shader_parameter("vignette", GROUND_VIGNETTE)
 	mat.set_shader_parameter("caustic_strength", CAUSTIC_STRENGTH)
