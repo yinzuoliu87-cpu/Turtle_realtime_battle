@@ -87,6 +87,7 @@ var _dual_shop_rng := RandomNumberGenerator.new()
 
 ## 双路状态重置 (开新局调).
 var dual_ghost: Dictionary = {}   # 本局对手快照 (后端 find_opponent 给; 局内临时, reset_dual_lane 清). 空 = 现场随机老路 (兜底)
+var dual_active: bool = false   # 双路对局激活: 开始战斗置true → 战斗场走双路spawn(分路/小将/蛋/半场流程), 非教程/调试
 func reset_dual_lane() -> void:
 	lane_assign = {"top": [], "bottom": []}
 	enemy_lane_assign = {"top": [], "bottom": []}

@@ -571,6 +571,7 @@ func _start_battle_flow() -> void:
 	GameState.tutorial = false
 	GameState.dual_ghost = {}
 	GameState.dual_opponent = {}
+	GameState.dual_active = true   # 常规开始战斗 = 双路对局(分路/小将/蛋/半场流程)
 	_go("TeamSelect")
 
 

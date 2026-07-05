@@ -675,10 +675,13 @@ func _spawn_teams() -> void:
 		_edit_set_status("编辑模式: 点空地摆兵 · 拖拽挪位 · 右键删")
 		return
 	if _is_dual_lane_mode():   # 双路: 读 dual_lineup 当前路 spawn 我方 leaders+小将 + 对手, 绕过评审/EQDEMO
-		if OS.has_environment("DUALLANE") and GameState != null:   # 测试模式: 每次进场重置一局
-			if GameState.has_method("reset_dual_lane"):
-				GameState.reset_dual_lane()
+		if GameState != null:   # 新一局(进场): 重置分路/蛋/幸存/结果 (dual_lineup/season_leaders 保留)
 			GameState.current_lane = "top"
+			if GameState.egg_hp is Dictionary:
+				GameState.egg_hp = {"left": 0.0, "right": 0.0}
+			if GameState.dual_survivors is Dictionary:
+				GameState.dual_survivors = {"left": [], "right": []}
+			GameState.lane_results = {}
 		_spawn_dual_lane()
 		return
 	var left := _resolve_left()
