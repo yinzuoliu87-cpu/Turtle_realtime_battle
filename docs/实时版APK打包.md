@@ -1,6 +1,8 @@
 # 实时龟战 V1 · Android APK 打包（2026-07-05）
 
-> 目标：打包能装进安卓手机测试的 APK V1。**工具链已全部装好并配好**，但命令行(headless)导出被 Godot 一个「不显示具体内容的配置错误」挡住；**用 Godot 编辑器 GUI 一键导出即可**（GUI 会显示真正的错误或直接成功）。
+> ✅ **APK 已成功产出**：`桌面\turtle-realtime-v1.apk`（181MB，包名 com.turtlebattle.realtime，应用名「斗龟场 实时版」，arm64-v8a，minSdk24/targetSdk36，debug 签名 verifies）。传手机允许「未知来源」直接装。
+>
+> **真因（曾卡很久）**：Android 导出一直报「配置错误」但**正文空白**——因为 Godot 只在**导出对话框 UI**里显示错误正文，headless 命令行不打印。用截图+点击驱动编辑器 GUI 打开导出对话框，才看到真提示：**「目标平台需要 ETC2/ASTC 纹理压缩，请在项目设置启用 导入 ETC2 ASTC」**。启用 `rendering/textures/vram_compression/import_etc2_astc=true`(已入库) 后，headless 一条命令就能出 APK。
 
 ## 一、已安装 / 已配置（都在 `C:\Users\Louis\tools\`，不在仓库里）
 | 组件 | 位置 | 说明 |
@@ -14,19 +16,23 @@
 | Android 导出预设 | `export_presets.cfg` [preset.1] | 包名 `com.turtlebattle.realtime`，应用名「斗龟场 实时版」，arm64-v8a，预置模板(非gradle)，沉浸式 |
 | Android 导出模板 | `AppData\Roaming\Godot\export_templates\4.6.3.stable\android_*.apk` | 用户 6-22 已下载 |
 
-## 二、一键出 APK（在你的电脑上，Godot 编辑器里）
-1. 用 **Godot 4.6.3** 打开 `turtle-realtime-godot`。
-2. 顶部菜单 **项目 → 导出…**。
-3. 选左侧 **Android**（预设已建好，若显示红字错误——那就是 headless 看不到的那条，按提示点一下缺的东西，通常是自动补全 SDK/JDK 路径，我已填好应能直接绿）。
-4. 点 **导出项目** → 存成 `turtle-realtime-v1.apk`（**取消勾选**「以调试模式导出」不影响，debug 版可直接装）。
-5. 传到安卓手机，允许「未知来源」安装即可。
+## 二、重新出 APK（一条命令，headless 就行）
+设置修好后不再需要 GUI。改了代码后重新打包：
+```bash
+export JAVA_HOME="C:\\Users\\Louis\\tools\\jdk17"
+export PATH="/c/Users/Louis/tools/jdk17/bin:$PATH"
+cd ~/Documents/GitHub/turtle-realtime-godot
+Godot_v4.6.3-stable_win64.exe --headless --import                                      # 首次/纹理设置变了才需要
+Godot_v4.6.3-stable_win64.exe --headless --export-debug "Android" "桌面路径\turtle-realtime-v1.apk"
+```
+产出 debug APK（debug 签名，直接可装）。传手机允许「未知来源」安装。
+> 编辑器 GUI 也行：项目 → 导出 → Android → 导出项目。SDK/JDK 路径已写进 editor_settings，正常直接绿。
 
-> 若 Android 预设里 SDK/JDK 路径为空：编辑器 **编辑器 → 编辑器设置 → 导出 → Android**，SDK 填 `C:\Users\Louis\tools\android-sdk`，JDK 填 `C:\Users\Louis\tools\jdk17`（已写入配置，正常无需再填）。
-
-## 三、为什么命令行没直接出成
-- `godot --headless --export-debug "Android" out.apk` 一直报 `Cannot export project ... due to configuration errors:` **但错误正文是空的**。
-- 已逐一排除：预设选项（最小预设同样失败）、build-tools 版本（补了 36）、keystore 格式（PKCS12/JKS 都试）、模板缺失（Web 同目录模板能导出，证明模板在）、图标、SDK 工具齐全。
-- **实测：把 keystore 删掉，报错正文依旧是空** → 证实 **4.6.3 的 headless 模式把 Android 配置错误正文全吞了**，只有编辑器 GUI 的导出对话框能显示。所以命令行这条路在这台环境（无显示器、跑 headless）走不通，**GUI 一键即可**。
+## 三、坑记录：那条「空白配置错误」怎么破的
+- `--headless --export-debug "Android"` 一直报 `Cannot export ... due to configuration errors:` **正文空白**；排除了预设选项/build-tools/keystore/模板/图标/SDK，删 keystore 报错仍空 → **headless 不打印 Android 配置错误正文，只在导出对话框 UI 显示**。
+- **破法**：这台机器其实有显示器（跑非 headless 时初始化了 RTX4070）。用 PowerShell 截屏 + 按坐标点击**驱动编辑器 GUI**打开导出对话框，一眼看到真提示：**目标平台需要 ETC2/ASTC 纹理压缩**。
+- **真因 = `rendering/textures/vram_compression/import_etc2_astc` 未启用**（移动端导出必须）。启用(已入库 project.godot) → headless 一条命令成功出 APK。
+- 教训：Godot 导出报「配置错误」正文空白时，别在 headless 里瞎猜，直接开编辑器导出对话框看红字。
 
 ## 四、备选：Web 版（手机浏览器直接玩，不用装）
 - 已成功导出：`build/web/`（index.html + index.pck 161MB，单线程，iOS/安卓 Safari/Chrome 都能跑）。
