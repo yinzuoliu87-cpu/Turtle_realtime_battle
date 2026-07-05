@@ -1453,12 +1453,12 @@ func _minion_sprite_dict(is_elite: bool, is_back: bool) -> Dictionary:
 	var th: int = tex.get_height() if tex != null else 64
 	return {"tex": tex, "frames": 1, "fps": 1.0, "frame_h": th, "hframes": 1, "vframes": 1, "loop": false}
 
-# 龟蛋立绘字典 (pets/egg.png 静态)
+# 龟蛋立绘字典 (pets/egg.png = 单蛋 3帧 idle 动画横排 79×80, 修: 原当 frames:1 显成"3蛋并排")
 func _egg_sprite_dict() -> Dictionary:
 	var path: String = SPRITE_DIR + "pets/egg.png"
 	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
-	var th: int = tex.get_height() if tex != null else 64
-	return {"tex": tex, "frames": 1, "fps": 1.0, "frame_h": th, "hframes": 1, "vframes": 1, "loop": false}
+	var th: int = tex.get_height() if tex != null else 80
+	return {"tex": tex, "frames": 3, "fps": 4.0, "frame_h": th, "hframes": 3, "vframes": 1, "loop": true}
 
 # ----------------------------------------------------------------------------
 #  立绘解析 (id → 全身图 + sprite-sheet 元数据). 数据来源: pets.json `img`(相对 res://assets/sprites/)
@@ -5229,6 +5229,32 @@ func _dash_to(u: Dictionary, tgt: Dictionary, gap: float) -> void:
 	u["pos"].x = clampf(u["pos"].x, ARENA.position.x, ARENA.end.x)
 	u["pos"].y = clampf(u["pos"].y, ARENA.position.y, ARENA.end.y)
 
+# 龟蛋碎裂死亡: 裂纹帧(瞬)→碎壳爆开(放大+淡出)+白闪+震屏. 帧缺→只淡出.
+func _play_egg_shatter(u: Dictionary) -> void:
+	var spr = u.get("sprite", null)
+	if not is_instance_valid(spr):
+		return
+	var crack: Texture2D = load("res://assets/sprites/map/egg_crack.png") if ResourceLoader.exists("res://assets/sprites/map/egg_crack.png") else null
+	var shards: Texture2D = load("res://assets/sprites/map/egg_shards.png") if ResourceLoader.exists("res://assets/sprites/map/egg_shards.png") else null
+	_flash(u, Color(1, 1, 1))
+	_shake(JUICE_SHAKE_BIG)
+	if crack != null:
+		spr.texture = crack; spr.hframes = 1; spr.vframes = 1; spr.frame = 0
+		spr.material_override = null
+		spr.pixel_size = TARGET_BODY_H / float(maxi(1, crack.get_height()))
+		spr.offset = Vector2(0.0, crack.get_height() * 0.5)
+	var tw := _reg_tween()
+	tw.tween_interval(0.12)
+	if shards != null:
+		tw.tween_callback(func():
+			if is_instance_valid(spr):
+				spr.texture = shards
+				spr.pixel_size = (TARGET_BODY_H * 1.25) / float(maxi(1, shards.get_height()))
+				spr.offset = Vector2(0.0, shards.get_height() * 0.5))
+	tw.tween_property(spr, "scale", spr.scale * 1.7, 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(spr, "modulate:a", 0.0, 0.55)
+	tw.tween_callback(spr.hide)
+
 func _kill(u: Dictionary, killer = null) -> void:
 	# 首死复活钩子 (天使圣光 / 凤凰涅槃) — 仅作为常驻一次, 1:1 2D
 	if not u["reborn_used"] and (u["id"] == "angel" or u["id"] == "phoenix"):
@@ -5248,6 +5274,14 @@ func _kill(u: Dictionary, killer = null) -> void:
 				o["heal_reduce_pct"] = maxf(float(o.get("heal_reduce_pct", 0.0)), 0.5)
 		return
 	u["alive"] = false
+	if u.get("_isEgg", false):   # 龟蛋: 碎裂动画(替代普通死亡淡出), 胜负记账走 _dl_flow_check
+		_on_unit_death(u, killer)
+		_play_egg_shatter(u)
+		for _ek in ["shadow", "ring", "contact"]:
+			var _en = u.get(_ek, null)
+			if is_instance_valid(_en):
+				var _etw := _reg_tween(); _etw.tween_property(_en, "modulate:a", 0.0, 0.4); _etw.tween_callback(_en.hide)
+		return
 	if killer != null and killer.get("alive", false):
 		_eq_on_kill(killer, u)             # on-kill: 击杀者装备 (暴君之牙处决回血 等)
 	_eq_on_death(u, killer)                # on-death: 阵亡者装备 (复活海螺变虫 / 齿轮折币 / 玩偶熊)
