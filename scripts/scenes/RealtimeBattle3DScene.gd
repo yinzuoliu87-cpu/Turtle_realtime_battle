@@ -40,7 +40,7 @@ const ATK_LUNGE_AMP := 0.30                # 近战踏步幅度(米)
 const CAST_WINDUP := 0.34                   # 技能前摇(蓄力, 比普攻久 → 有重量感)
 const CAST_RECOVER := 0.24                  # 技能后摇
 const _BASIC_RARITY_BONUS := {"C": 0.20, "B": 0.23, "A": 0.26, "S": 0.29, "SS": 0.32, "SSS": 0.34}   # 小龟不屈: 按目标稀有度
-const SEP_RADIUS := 68.0                    # 单位软分离半径 (像素口径; 防扎堆, 调大点更散)
+const SEP_RADIUS := 92.0                    # 单位软分离半径 (像素口径; 防扎堆, 调大点更散) — 调宽让近战围目标散开成环不叠成一坨(>血条宽66→血条留出间隙)
 const HP_MULT := 3.0                       # base↔final比率: 龟/装备hp已写最终值; 仅召唤raw值(×)与装备%回收(maxHp/)用它
 const SHIELD_CAP_MULT := 1.5
 const RAGE_MAX := 100.0                    # 怒气满 (熔岩变身)
@@ -6054,17 +6054,16 @@ func _pick_ready_skill(u: Dictionary) -> String:
 			best_cost = c; best = st
 	return best
 
-const SEP_PUSH_SPD := 140.0                  # 软分离推开速度 (px/s; 每帧全单位)
+const SEP_PUSH_SPD := 168.0                  # 软分离推开速度 (px/s; 每帧全单位) — 调快点更快散开不糊一起
 func _apply_separation_pass(delta: float) -> void:   # 每帧全单位软分离: 攻击/待机也摊开(不再只move态), 根治扎堆遮血条
 	for u in _units:
 		if not u["alive"] or u.get("no_move", false) or u.get("airborne", false) or u.get("_slam", false):
 			continue
 		var _st := str(u.get("state", "move"))
-		if _st == "windup" or _st == "recover":
-			continue   # 攻击/施法前摇后摇=脚钉死, 不被分离力推走(根治"攻击时还挤着冲"; 凤凰喷火在move态故不受影响)
+		var _sepmul: float = 0.4 if _st == "windup" else 1.0   # 前摇大体钉住(不挤着冲)但给40%分离→防完全叠一起; 后摇(orb-walk自由)/移动=全分离
 		var push: Vector2 = _separation(u)
 		if push.length() > 0.001:
-			u["pos"] += push.limit_length(1.0) * SEP_PUSH_SPD * delta
+			u["pos"] += push.limit_length(1.0) * SEP_PUSH_SPD * _sepmul * delta
 			u["pos"].x = clampf(u["pos"].x, ARENA.position.x, ARENA.end.x)
 			u["pos"].y = clampf(u["pos"].y, ARENA.position.y, ARENA.end.y)
 
