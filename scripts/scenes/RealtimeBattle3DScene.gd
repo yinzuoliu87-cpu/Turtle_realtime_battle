@@ -14,7 +14,7 @@ const Backend := preload("res://scripts/engine/backend.gd")    # 赛季结算上
 # ============================================================================
 #  逻辑常量 (1:1 复用 RealtimeBattleScene 口径)
 # ============================================================================
-const ARENA := Rect2(70, 110, 1140, 520)   # 战场边界 (像素口径, 与 2D 版一致 → 同比例映射到 3D 地面)
+const ARENA := Rect2(70, 110, 1596, 728)   # 战场边界 (像素口径). 双路放大版 1.4×(1140×520→1596×728, 用户2026-07-05): 给障碍/绕行留空间, 相机同比拉远. _arena_center/地面/环/clamp 全按 ARENA 自适应.
 # #12 出生站位参数化 (编辑器 Inspector 可调, 别写死): 默认=原值→不改行为; 调它即可挪出生点/拉开间距 不动代码
 @export var spawn_edge_margin: float = 150.0    # 龟距战场左右边缘 (越大越靠中)
 @export var spawn_front_margin: float = 100.0   # 首龟距战场上边
@@ -443,7 +443,7 @@ func _build_camera() -> void:
 	_cam.projection = Camera3D.PROJECTION_PERSPECTIVE
 	_cam.fov = 50.0
 	# 场地上方偏后俯视下来 (3/4). 抬高+拉远以容纳 ~27×12.5 米全场.
-	_cam.position = Vector3(0.0, 13.5, 18.2)   # 视角抬高5°(绕目标旋转保取景, 用户)
+	_cam.position = Vector3(0.0, 18.9, 25.5)   # 放大1.4×后同比拉远(0,13.5,18.2→×1.4), 角度不变框住更大场地
 	_world.add_child(_cam)
 	_cam.look_at(Vector3(0.0, 0.6, 0.0), Vector3.UP)
 	_cam_base = _cam.position               # Phase4: 震屏围绕此基准偏移, 衰减后精确归位
@@ -823,8 +823,8 @@ func _spawn_dual_lane() -> void:
 	else:
 		mine = GameState.get_dual_lineup().get(lane, [])
 		foe = _dual_foe_lane(lane)
-	_spawn_lane_side(mine, "left", lvl, Vector2(_cx - 300.0, _cy))
-	_spawn_lane_side(foe, "right", lvl, Vector2(_cx + 300.0, _cy))
+	_spawn_lane_side(mine, "left", lvl, Vector2(_cx - 420.0, _cy))
+	_spawn_lane_side(foe, "right", lvl, Vector2(_cx + 420.0, _cy))
 	# 两端基地各 spawn 一颗蛋(围栏罩住). egg_hp 跨路累积(缺则按平均等级初始化).
 	_dl_ensure_egg_hp(lvl)
 	_units.append(_make_unit("__egg__", "left", Vector2(ARENA.position.x + 70.0, _cy), {"egg": true, "egg_side": "left", "hp": _dl_egg_hp("left")}))
@@ -859,7 +859,7 @@ func _spawn_lane_side(units: Array, side: String, lvl: int, base: Vector2) -> vo
 	var n: int = units.size()
 	for i in range(n):
 		var u: Dictionary = units[i] if units[i] is Dictionary else {}
-		var pos := base + Vector2(0.0, (float(i) - float(n - 1) / 2.0) * 110.0)
+		var pos := base + Vector2(0.0, (float(i) - float(n - 1) / 2.0) * 154.0)
 		var made: Dictionary
 		if str(u.get("kind", "")) == "leader":
 			made = _make_unit(str(u.get("id", "basic")), side, pos)
