@@ -2048,6 +2048,7 @@
         "name": "连笔",
         "icon": "skills/line-1.png",
         "type": "lineLink",
+        "impl": true,
         "hits": 1,
         "power": 0,
         "pierce": 0,
@@ -2062,6 +2063,7 @@
         "name": "画龙点睛",
         "icon": "skills/line-2.png",
         "type": "lineFinish",
+        "impl": true,
         "hits": 1,
         "power": 0,
         "pierce": 0,
@@ -2072,21 +2074,10 @@
         "detail": "_lineFinishDetail_"
       },
       {
-        "name": "速写",
-        "enhancesPassive": true,
-        "type": "lineRapid",
-        "passiveSkill": true,
-        "hits": 0,
-        "power": 0,
-        "pierce": 0,
-        "cd": 0,
-        "brief": "墨迹被动获得强化：\n线条龟的技能会为目标叠加墨迹（上限7层）。目标受伤将额外承受来自墨迹的伤害，每拥有一层墨迹，将会额外承受 <span class=\"val-true\">5% 真实伤害</span>。\n连笔传导、画龙点睛全部转为<span class=\"val-true\">真实伤害</span>",
-        "detail": "墨迹被动获得强化：\n线条龟的技能会为目标叠加墨迹（上限7层）。目标受伤将额外承受来自墨迹的伤害，每拥有一层墨迹，将会额外承受 <span class=\"val-true\">5% 真实伤害</span>。\n连笔传导、画龙点睛全部转为<span class=\"val-true\">真实伤害</span>"
-      },
-      {
         "name": "墨水炸弹",
         "icon": "skills/line-4.png",
         "type": "lineInkBomb",
+        "impl": true,
         "hitStaggerMs": 0,
         "hits": 4,
         "power": 0,
