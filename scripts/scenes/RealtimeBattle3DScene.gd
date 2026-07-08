@@ -7806,7 +7806,8 @@ func _apply_spawn_passives() -> void:
 				for o in _enemies_of(u):
 					_add_dot(o, "curse", o["maxHp"] * 0.05, BUFF_SEC)
 			"ice":
-				u["_vs_fire_bonus"] = 0.2          # 天生: 对熔岩/凤凰 +20%伤害(极寒技选了覆盖成0.4)
+				u["_vs_fire_bonus"] = 0.2          # 寒域: 对熔岩/凤凰 +20%伤害
+				u["_burnImmune"] = true            # 极寒(用户设计L162: 改常驻被动): 免疫灼烧
 				_ice_chill_vfx(u["pos"], true)     # 寒冰自身登场寒爆(大)
 				_flash(u, Color(0.6, 0.86, 1.0))   # 自身蓝闪
 				for o in _enemies_of(u):
@@ -7855,11 +7856,8 @@ func _apply_spawn_passives() -> void:
 				for o in _allies_of(u):
 					_buff(o, "def", 0.25, true, 9999.0)
 					_buff(o, "mr", 0.25, true, 9999.0)
-	# 4选1 被动技 (选了被动则开局生效, 不进主动轮转): 寒冰免疫灼烧 + 对熔岩/凤凰 +40%
+	# 选中被动技开局生效 (不进主动轮转): 凤凰强化涅槃 等 (寒冰极寒已改常驻被动, 见上ice分支)
 	for u in _units:
-		if "iceBurnImmune" in _chosen_skill_types(u["id"], u["side"] == "left"):
-			u["_burnImmune"] = true
-			u["_vs_fire_bonus"] = 0.4
 		if "phoenixEnhancedRebirth" in _chosen_skill_types(u["id"], u["side"] == "left"):
 			u["_enh_rebirth"] = true   # 强化涅槃: 复活100%血+永久+20%攻击(见_kill)
 
