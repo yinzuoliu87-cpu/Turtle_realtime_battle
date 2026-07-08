@@ -24,7 +24,7 @@ const SKILL_COST := {
 	# 通用
 	"shield": 70.0, "heal": 70.0,
 	# 数据驱动伤害
-	"basicBarrage": 140.0, "bambooLeaf": 90.0, "bambooSmack": 75.0, "angelEquality": 125.0,
+	"basicBarrage": 140.0, "bambooLeaf": 90.0, "bambooSmack": 120.0, "bambooSpikes": 130.0, "angelEquality": 125.0,
 	"iceSpike": 120.0, "ninjaShuriken": 95.0, "ninjaBomb": 100.0, "twoHeadMagicWave": 100.0,
 	"ghostTouch": 95.0, "ghostPhantom": 95.0, "diamondCollide": 95.0, "fortuneStrike": 90.0,
 	"diceAttack": 95.0, "rainbowStorm": 125.0, "gamblerCards": 100.0, "gamblerDraw": 80.0, "gamblerFateWheel": 80.0,

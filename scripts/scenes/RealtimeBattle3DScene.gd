@@ -5998,7 +5998,7 @@ const _IMPL_SKILLS := {
 	# 通用 (多龟共享 type)
 	"shield": true, "heal": true,
 	# 数据驱动伤害技 (系数取自 pets.json detail 公式 {N/M/T:...})
-	"basicBarrage": true, "bambooLeaf": true, "bambooSmack": true, "angelEquality": true,
+	"basicBarrage": true, "bambooLeaf": true, "bambooSmack": true, "bambooSpikes": true, "angelEquality": true,
 	"iceSpike": true, "ninjaShuriken": true, "ninjaBomb": true, "twoHeadMagicWave": true,
 	"ghostTouch": true, "ghostPhantom": true, "diamondCollide": true, "fortuneStrike": true,
 	"diceAttack": true, "rainbowStorm": true, "gamblerCards": true, "gamblerDraw": true, "gamblerFateWheel": true,
@@ -6051,7 +6051,7 @@ func _apply_energy_bank(u: Dictionary) -> void:   # 龟能银行用于减冷却(
 
 # shellCopy 可复制的技 = 纯敌方向伤害技 (数据驱动那批; 排除变身/召唤/自增益, 否则从龟壳放会污染自身状态)
 const _COPYABLE_SKILLS := {
-	"basicBarrage": true, "bambooLeaf": true, "bambooSmack": true, "angelEquality": true,
+	"basicBarrage": true, "bambooLeaf": true, "bambooSmack": true, "bambooSpikes": true, "angelEquality": true,
 	"iceSpike": true, "ninjaShuriken": true, "ninjaBomb": true, "twoHeadMagicWave": true,
 	"ghostTouch": true, "ghostPhantom": true, "diamondCollide": true, "fortuneStrike": true,
 	"diceAttack": true, "rainbowStorm": true, "gamblerCards": true, "gamblerDraw": true, "gamblerFateWheel": true,
@@ -6202,7 +6202,8 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		# ── 数据驱动伤害技 (系数取自 detail 公式; N=物理 M=魔法 T=真实) ──
 		"basicBarrage":         _sk_dmg(u, tgt, {"phys": 3.1, "hits": 10, "name": "弹幕!", "color": Color("#ff4444")})
 		"bambooLeaf":           _sk_dmg(u, tgt, {"phys": 0.63, "hp": 0.18, "hits": 3, "name": "竹叶斩!", "color": Color("#39d353")})
-		"bambooSmack":          _sk_dmg(u, tgt, {"phys": 1.0, "hits": 1, "rider": "atkdn", "name": "竹击!", "color": Color("#39d353")})
+		"bambooSmack":          _sk_bamboo_smack(u, tgt)
+		"bambooSpikes":         _sk_bamboo_spikes(u, tgt)
 		"angelEquality":        _sk_dmg(u, tgt, {"phys": 2.0, "true": 0.5, "hits": 2, "name": "平等审判!", "color": Color("#ffe9a8")})
 		"iceSpike":             _sk_dmg(u, tgt, {"phys": 0.7, "magic": 0.7, "hits": 6, "rider": "slow", "name": "冰锥!", "color": Color("#9be7ff")})
 		"ninjaShuriken":        _sk_dmg(u, tgt, {"phys": 0.96, "true": 0.64, "hits": 1, "name": "飞镖!", "color": Color("#cfd8e8")})
@@ -6299,6 +6300,40 @@ func _sk_stone_taunt(u: Dictionary) -> void:                    # 石头龟·嘲
 				_knockback(uu, o, 80.0, 2.0)   # 击飞~2秒(vy_mult=2·F5校准)
 		_shake(0.06)
 	_pending_shots.append({"delay": 3.5, "fn": slam, "src": u})
+
+func _sk_bamboo_smack(u: Dictionary, tgt) -> void:              # 竹叶龟·竹击(用户封板·120龟能): 钩全场最远敌·1.0A物理·眩晕0.5s·拉贴身·冰寒4秒(-20%攻/-20%移速); 蛋免控只吃伤
+	var far = null
+	var far_d := -1.0
+	for o in _enemies_of(u):
+		if not o.get("alive", false): continue
+		var d: float = o["pos"].distance_to(u["pos"])
+		if d > far_d:
+			far_d = d; far = o
+	if far == null: return
+	_apply_damage_from(u, far, _atk_dmg(u, 1.0, far), Color("#39d353"))
+	if not far.get("_eggImmune", false):                        # 蛋/免控只吃伤
+		far["stun_until"] = maxf(float(far.get("stun_until", 0.0)), _t + _cc_dur(far, 0.5))
+		var dir: Vector2 = (far["pos"] - u["pos"])
+		if dir.length() > 1.0:
+			far["pos"] = u["pos"] + dir.normalized() * 60.0    # 竹藤拉到贴身
+		_buff(far, "atk", -0.20, true, 4.0)                     # 冰寒-20%攻4秒
+		far["spd_move_mult"] = 0.8; far["spd_dbf_until"] = _t + 4.0   # 冰寒-20%移速4秒
+	_skill_ring(u["pos"], Color(0.22, 0.83, 0.33, 0.55), 54.0)  # 竹藤钩VFX占位
+
+func _sk_bamboo_spikes(u: Dictionary, tgt) -> void:            # 竹叶龟·竹刺阵(用户封板·130龟能·科加斯Q式): 当前目标为心300码·蓄力0.6s→竹刺·90%A+15%maxHp物理·击飞1.5s
+	if tgt == null: return
+	var c: Vector2 = tgt["pos"]
+	var uu := u
+	var spikes := func() -> void:
+		if not uu.get("alive", false): return
+		for o in _enemies_of(uu):
+			if o.get("alive", false) and o["pos"].distance_to(c) <= 300.0:
+				_apply_damage_from(uu, o, _atk_dmg(uu, 0.9, o) + int(uu["maxHp"] * 0.15), Color("#39d353"))
+				if not o.get("_eggImmune", false):
+					_knockback(uu, o, 70.0, 1.5)                 # 击飞1.5s
+		_shake(0.04)
+	_skill_ring(c, Color(0.22, 0.83, 0.33, 0.4), 300.0)         # 蓄力预警圈
+	_pending_shots.append({"delay": 0.6, "fn": spikes, "src": u})
 
 func _sk_bamboo_heal(u: Dictionary) -> void:                     # 竹叶龟·自然恢复 ✅
 	var allies := _allies_of(u, false)
