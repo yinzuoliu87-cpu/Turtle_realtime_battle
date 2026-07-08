@@ -3045,7 +3045,7 @@
       "perLevelPct": 0.01,
       "energyMaxStorePct": 0.5,
       "enhancedAwakenTurn": 8,
-      "brief": "登场10秒觉醒(六属性+12%/暴击+25%); 储能6秒(受伤转储能,上限50%最大生命)后发出缓慢移动冲击波(触碰敌人造成储能×40%物理)并获得储能×80%护盾(5秒流失), 随后15秒冷却循环",
+      "brief": "登场10秒+20秒两次自动觉醒(各六属性+12%/暴击+25%·强化觉醒已并入被动); 储能6秒(受伤转储能,上限50%最大生命)后发出缓慢移动冲击波(触碰敌人造成储能×40%物理)并获得储能×80%护盾(5秒流失), 随后15秒冷却循环",
       "desc": "龟壳蕴含远古气场之力，开战10秒后触发气场觉醒，提升属性：攻击力 <span class=\"val-atk\">+12%</span>（+{N:ATK*0.12}），护甲 <span class=\"val-atk\">+12%</span>（+{D:DEF*0.12}），魔抗 <span class=\"val-magic\">+12%</span>（+{M:MR*0.12}），最大生命值 <span class=\"val-heal\">+12%</span>（+{H:HP*0.12}），生命偷取 <span class=\"val-heal\">+12%</span>，反伤 <span class=\"val-atk\">+12%</span>，暴击率 <span class=\"val-atk\">+25%</span>。\n此外龟壳将受到的伤害转化为储能值（上限为最大生命值的 <span class=\"val-atk\">50%</span>），每10秒消耗全部储能：对全体敌方造成 储能×(40%+每级1%) 物理伤害，并获得 储能×(80%+每级1%) 的<span class=\"val-shield\">气场护盾</span>（5秒内逐渐流失）。"
     },
     "skillPool": [
@@ -3068,18 +3068,20 @@
         "name": "复制",
         "icon": "skills/shell-1.png",
         "type": "shellCopy",
+        "impl": true,
         "hits": 0,
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "龟壳随机复制敌方两个可用技能，以 <span class=\"val-atk\">60%</span> 效果立即释放",
-        "detail": "龟壳随机复制敌方的两个可用技能，并以 <span class=\"val-atk\">60%</span> 效果立即释放。",
-        "energyCost": 70
+        "brief": "龟壳随机复制敌方两个可用技能，轮流(依次)释放，各以 <span class=\"val-atk\">60%</span> 效果",
+        "detail": "龟壳随机复制敌方的两个可用技能（走可复制白名单·排除变身/召唤/自增益），轮流（依次·不同帧糊）释放，各以 <span class=\"val-atk\">60%</span> 效果。",
+        "energyCost": 130
       },
       {
         "name": "吸收",
         "icon": "skills/shell-2.png",
         "type": "shellAbsorb",
+        "impl": true,
         "hits": 0,
         "power": 0,
         "pierce": 0,
@@ -3090,32 +3092,17 @@
         "energyCost": 90
       },
       {
-        "name": "侵蚀",
+        "name": "暗影",
         "icon": "skills/shell-3.png",
-        "type": "shellErode",
-        "dmgType": "magic",
+        "type": "shellShadow",
+        "impl": true,
         "hits": 1,
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "mainScale": 0.25,
-        "behindScale": 0.1,
-        "brief": "龟壳放出数道弯波（数量 = 3 + 暴击率每 20% 加 1），每道弯波打击整列：主目标（{M:0.25*ATK}）魔法 + 同列另一目标（{M:0.10*ATK}）魔法",
-        "detail": "龟壳对目标释放数道弯波（数量 = 3 + 当前暴击率每 20% 加 1，实时计算并含等级与增益；如暴击 0%→3道、25%→4道、50%→5道、100%→8道）。每道弯波打击整列：主目标（25%×攻击力({ATK}) = {M:0.25*ATK}）魔法，同列另一目标（10%×攻击力({ATK}) = {M:0.10*ATK}）魔法。\n\n<span style=\"color:#8a93a0\">每道波独立结算，每段命中触发被动（含装备）。</span>",
-        "energyCost": 50
-      },
-      {
-        "name": "强化觉醒",
-        "enhancesPassive": true,
-        "type": "shellEnhanceAwaken",
-        "passiveSkill": true,
-        "hits": 0,
-        "power": 0,
-        "pierce": 0,
-        "cd": 0,
-        "brief": "气场觉醒被动获得强化：\n开战20秒后再次触发气场觉醒（与开战10秒首次觉醒同款效果）：攻击力 / 护甲 / 魔抗 / 最大生命值 / 生命偷取 / 反伤 各再叠 <span class=\"val-atk\">+12%</span>，暴击率再 <span class=\"val-atk\">+25%</span>。",
-        "detail": "气场觉醒被动获得强化：\n开战20秒后再次触发气场觉醒（与开战10秒首次觉醒同款效果）：攻击力 / 护甲 / 魔抗 / 最大生命值 / 生命偷取 / 反伤 各再叠 <span class=\"val-atk\">+12%</span>，暴击率再 <span class=\"val-atk\">+25%</span>。\n\n<span style=\"color:#8a93a0\">不改变储能波击的释放周期。</span>",
-        "energyCost": 0
+        "brief": "主被动·潜影(6秒未受伤→隐身·不可被选·AOE吃伤不破隐·自己放技能/普攻破隐·破隐首发普攻+1A魔法+0.5A毒+50%治削3秒)；主动·暗影俯冲(130龟能): 俯冲600码落地2.5A魔法+击退+路径敌→暗影燃烧区150码5秒(每0.5s 0.1A灼烧层+减速20%)→进入隐身",
+        "detail": "龟壳的主被动技能（参考英雄联盟库奇 The Package）。\n\n<b>被动·潜影</b>：6秒内未受到伤害→进入隐身（不可被敌人选中、敌方看不见；能吃AOE伤害但AOE不破隐；只有龟壳自己放技能/普攻才破隐）。破隐后第一发普攻额外附加：+100%攻击力魔法伤害 + 0.5×攻击力层中毒 + 3秒50%治疗削减。\n\n<b>主动·暗影俯冲（130龟能）</b>：朝目标俯冲600码，落地对目标及路径敌人造成（250%×攻击力({ATK}) = {M:2.5*ATK}）魔法伤害并击退，随后留下暗影燃烧区（半径150码·5秒·每0.5秒对区内敌施加0.1×攻击力灼烧层+减速20%），并进入隐身。",
+        "energyCost": 130
       }
     ],
     "defaultSkills": [
