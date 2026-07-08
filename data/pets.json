@@ -1653,7 +1653,7 @@
     },
     "skillPool": [
       {
-        "name": "糖果锤",
+        "name": "糖果拳",
         "icon": "skills/candy-hammer.png",
         "type": "physical",
         "hits": 1,
@@ -1666,63 +1666,45 @@
           "pct": 15,
           "turns": 2
         },
-        "brief": "糖果龟挥锤砸向目标，造成（{N:1.1*ATK}）+（{N:HP*0.05}）物理伤害，并施加攻击力 <span class=\"val-atk\">-15%</span>，持续5秒",
-        "detail": "糖果龟挥锤砸向目标，造成（110%×攻击力({ATK}) = {N:1.1*ATK}）+（5%×自身最大生命值({HP}) = {N:HP*0.05}）物理伤害，并施加攻击力 <span class=\"val-atk\">-15%</span>，持续5秒。"
+        "brief": "糖果龟的普攻。挥拳砸向目标，造成（{N:1.1*ATK}）+（{N:HP*0.05}）物理伤害，施加攻击力 <span class=\"val-atk\">-15%</span>(5秒)，并自愈(生命偷取)",
+        "detail": "糖果龟的普攻。挥拳砸向目标，造成（110%×攻击力({ATK}) = {N:1.1*ATK}）+（5%×自身最大生命值({HP}) = {N:HP*0.05}）物理伤害，施加攻击力 <span class=\"val-atk\">-15%</span>(持续5秒)。糖果龟自带自愈（生命偷取），普攻回复部分造成的伤害。"
       },
       {
-        "name": "焦糖铠",
-        "icon": "skills/candy-armor.png",
-        "type": "shield",
+        "name": "糖果锤",
+        "icon": "skills/candy-hammer.png",
+        "type": "candyHammer",
+        "impl": true,
         "hits": 1,
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "shieldAtkScale": 0.8,
-        "healHpPct": 10,
-        "selfCast": true,
-        "brief": "糖果龟为自身凝结焦糖铠，获得（{S:0.8*ATK}）护盾并回复（{H:HP*0.1}）生命值",
-        "detail": "糖果龟为自身凝结焦糖铠，获得（80%×攻击力({ATK}) = {S:0.8*ATK}）护盾并回复（10%×最大生命值({HP}) = {H:HP*0.1}）生命值。",
-        "fx": {
-          "shieldAtk": 0.8,
-          "healHp": 0.1
-        }
+        "brief": "糖果龟蓄力猛砸前方直线200码内敌人，总（1.8A+12%自身最大生命）物理由命中敌均分，并回复造成伤害的40%生命",
+        "detail": "糖果龟举起大糖果锤蓄力，猛砸前方一条直线200码内的敌人：总伤害（180%×攻击力({ATK}) = {N:1.8*ATK}）+（12%×自身最大生命值({HP}) = {N:HP*0.12}）物理，由所有被命中的敌人均分；随后回复造成伤害的40%生命。"
       },
       {
         "name": "糖衣炮弹",
         "icon": "skills/candy-shell.png",
         "type": "candyBarrage",
-        "noDodge": true,
-        "hitStaggerMs": 280,
-        "hits": 4,
+        "impl": true,
+        "aoe": true,
+        "hits": 8,
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "aoe": true,
-        "atkScale": 0.25,
-        "hpPct": 4,
-        "armorPenAtkPct": 15,
-        "armorPenTurns": 3,
-        "brief": "糖果龟先获得（{N:ATK*0.15}）护甲穿透，持续5秒，再对全体敌方轰出四发糖衣炮弹，共造成（{N:0.25*ATK*4}）+ 16%目标最大生命值 物理伤害",
-        "detail": "糖果龟先获得（15%×攻击力({ATK}) = {N:ATK*0.15}）护甲穿透，持续5秒，再对全体敌方轰出四发糖衣炮弹，共造成（100%×攻击力({ATK}) = {N:0.25*ATK*4}）+ 16%目标最大生命值 物理伤害。\n\n<span style=\"color:#8a93a0\">每发造成 25%×攻击力 + 4%目标最大生命值。</span>"
-      },
-      {
-        "name": "糖果罐",
-        "icon": "equip/equip-candy-jar.png",
-        "type": "sweetTrap",
-        "passiveSkill": true,
-        "brief": "糖果龟开局在己方装备席放置一个糖果罐，点击查看并「打碎」即可领取奖励，奖励会随着战斗时间变得愈加稀有。",
-        "detail": "糖果龟开局在己方装备席放置一个糖果罐，点击查看并「打碎」即可领取奖励，奖励会随着战斗时间变得愈加稀有。\n\n<span style=\"color:#8a93a0\">奖励分布：\n· 0-5 秒：50% 治疗药水 / 50% 加速药水\n· 5-10 秒：50%（治疗+炸弹）/ 50%（加速+炸弹）\n· 10-15 秒：1 件随机消耗品 + 1 件随机装备\n· 15-22 秒：2 件随机消耗品 + 1 件随机装备\n· 22 秒以上：2 件随机消耗品 + 2 件随机装备\n打碎后糖果罐消失；装备席满时按现有溢出规则全员回 10% 最大生命值。</span>"
+        "brief": "糖果龟在敌方最密集区域降下糖衣炮弹雨(半径600码·持续4秒每0.5秒一跳共8跳)：每跳友军获2%自身最大生命护盾；敌军受(0.2A+2%自身最大生命)魔法+减速20%(刷新0.5秒)",
+        "detail": "糖果龟指挥在敌方最密集区域降下糖衣炮弹雨（参考英雄联盟船长R Cannon Barrage）：半径600码，持续4秒，每0.5秒一跳（共8跳）。每跳：范围内友军获得糖果龟2%最大生命值的护盾；范围内敌军受到（20%×攻击力({ATK}) = {N:0.2*ATK}）+ 2%糖果龟最大生命值 魔法伤害，并被减速20%（每次受击刷新0.5秒）。"
       },
       {
         "name": "糖果炸弹",
         "icon": "skills/candy-bomb-skill.png",
-        "type": "candyBombPassive",
-        "passiveSkill": true,
-        "hpPct": 40,
-        "decayPct": 20,
-        "explodePct": 150,
-        "brief": "糖果龟携带一只糖果炸弹一同登场（生命值=糖果龟 <span class=\"val-atk\">40%</span> 最大生命值，<span class=\"val-atk\">0</span> 攻击/护甲/魔抗），每2.5秒 <span class=\"val-pierce\">损失20%最大生命值</span>，死亡时爆炸对全体敌方造成共 <span class=\"val-magic\">150% 自身最大生命值</span> 魔法伤害（由存活敌人均摊）",
-        "detail": "糖果龟登场时召唤一只糖果炸弹：最大生命值 = 糖果龟登场时最大生命值 × <span class=\"val-atk\">40%</span>，<span class=\"val-atk\">0</span> 攻击力 / <span class=\"val-atk\">0</span> 护甲 / <span class=\"val-atk\">0</span> 魔抗，不会主动攻击。每2.5秒 <span class=\"val-pierce\">损失20%自身最大生命值</span>，死亡（自损或被击杀均算）时爆炸：对全体敌方造成总计 <span class=\"val-magic\">150% 自身最大生命值</span> 的魔法伤害，由所有存活敌人均摊（每只受 总伤害 ÷ 存活敌人数）。\n\n<span style=\"color:#8a93a0\">召唤格子可在选龟界面拖动调整；糖果龟阵亡时糖果炸弹立即引爆。</span>"
+        "type": "candyBomb",
+        "impl": true,
+        "hits": 1,
+        "power": 0,
+        "pierce": 0,
+        "cd": 0,
+        "brief": "召唤实体：战斗开始召唤糖果炸弹(HP=50%糖果龟最大生命·每秒衰减8%·不攻不动)；每次本技龟能满→炸弹活着则上限+25%糖果龟maxHp+治疗10%(喂续命)，炸弹阵亡则召新(HP=20%)；炸弹死亡爆炸对全体敌均摊150%炸弹最大生命魔法",
+        "detail": "糖果炸弹（召唤实体·技能三）：选择本技能后战斗开始即召唤一只糖果炸弹（最大生命值=糖果龟登场最大生命值×50%，0攻击/护甲/魔抗，不主动攻击，每秒自衰减8%最大生命）。每次本技能龟能充满：若炸弹存活→其最大生命上限 +25%糖果龟最大生命 并 治疗10%糖果龟最大生命（喂续命）；若炸弹已阵亡→召唤新炸弹（HP=20%糖果龟最大生命）。\n\n<span style=\"color:#8a93a0\">炸弹死亡（自损或被击杀）时爆炸：对全体敌方造成总计150%炸弹最大生命值的魔法伤害，由存活敌人均摊。</span>"
       }
     ],
     "defaultSkills": [

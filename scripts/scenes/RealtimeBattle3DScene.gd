@@ -5949,7 +5949,7 @@ const _SKILL_SELF_VFX := {
 const _SELF_CAST_SKILLS := {
 	"shield": true, "heal": true, "bambooHeal": true, "angelBless": true,
 	"diamondFortify": true, "crystalBarrier": true, "phoenixShield": true,
-	"hidingDefend": true, "hunterStealth": true, "headlessSoulStrike": true,
+	"hidingDefend": true, "hunterStealth": true, "headlessSoulStrike": true, "candyBomb": true,
 	"lavaSurge": true, "bubbleShield": true, "shellAbsorb": true,
 	"fortuneDice": true, "lightningSurgeBuff": true, "chestCount": true,
 	"fortuneBuyEquip": true, "phoenixPurify": true, "lightningSurge": true, "lightningShield": true, "rainbowReflect": true,
@@ -6023,7 +6023,7 @@ const _IMPL_SKILLS := {
 	"iceSpike": true, "ninjaShuriken": true, "ninjaBomb": true, "twoHeadMagicWave": true,
 	"ghostTouch": true, "ghostPhantom": true, "diamondPowerball": true, "diamondSmash": true, "fortuneStrike": true,
 	"diceAttack": true, "rainbowStorm": true, "gamblerCards": true, "gamblerDraw": true, "gamblerFateWheel": true,
-	"hunterShot": true, "hunterBarrage": true, "candyBarrage": true, "lineSketch": true,
+	"hunterShot": true, "hunterBarrage": true, "candyBarrage": true, "candyHammer": true, "candyBomb": true, "lineSketch": true,
 	"lightningStrike": true, "lightningBarrage": true, "phoenixBurn": true, "phoenixScald": true,
 	"lavaBolt": true, "lavaQuake": true, "lavaErupt": true, "crystalSpike": true, "crystalBurst": true,
 	"chestStorm": true, "starBeam": true, "headlessTendrils": true, "headlessSoulStrike": true, "shellStrike": true,
@@ -6076,7 +6076,7 @@ const _COPYABLE_SKILLS := {
 	"iceSpike": true, "ninjaShuriken": true, "ninjaBomb": true, "twoHeadMagicWave": true,
 	"ghostTouch": true, "ghostPhantom": true, "diamondPowerball": true, "diamondSmash": true, "fortuneStrike": true,
 	"diceAttack": true, "rainbowStorm": true, "gamblerCards": true, "gamblerDraw": true, "gamblerFateWheel": true,
-	"hunterShot": true, "hunterBarrage": true, "candyBarrage": true, "lineSketch": true,
+	"hunterShot": true, "hunterBarrage": true, "candyBarrage": true, "candyHammer": true, "candyBomb": true, "lineSketch": true,
 	"lightningStrike": true, "lightningBarrage": true, "phoenixBurn": true, "phoenixScald": true,
 	"lavaBolt": true, "lavaQuake": true, "lavaErupt": true, "crystalSpike": true, "crystalBurst": true,
 	"chestStorm": true, "starBeam": true, "headlessTendrils": true, "headlessSoulStrike": true, "shellStrike": true, "chestCannon": true,
@@ -6244,7 +6244,9 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"gamblerDraw":          _sk_gambler_wild(u, tgt)   # 万能牌(默认签名技): 原来错派纯伤害, 改回 _sk_gambler_wild(2段+盾+治疗+减益)
 		"hunterShot":           _sk_hunter_shot(u, tgt)
 		"hunterBarrage":        _sk_hunter_barrage(u, tgt)
-		"candyBarrage":         _sk_dmg(u, tgt, {"phys": 1.0, "hits": 4, "aoe": true, "name": "糖果弹幕!", "color": Color("#ff9ed6")})
+		"candyBarrage":         _sk_candy_barrage(u, tgt)
+		"candyHammer":          _sk_candy_hammer(u, tgt)
+		"candyBomb":            _sk_candy_bomb_feed(u)
 		"lineSketch":           _sk_dmg(u, tgt, {"phys": 1.5, "hits": 3, "name": "速写!", "color": Color("#dddddd")})
 		"lightningStrike":      _sk_dmg(u, tgt, {"magic": 1.15, "hits": 5, "stagger": 0.08, "electric": 1, "splash": 0.25, "name": "闪电打击!", "color": Color("#7ee8ff")})
 		"lightningBarrage":     _sk_lightning_barrage(u)
@@ -7114,9 +7116,64 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 		_skill_ring(center, Color(1.0, 0.85, 1.0, 0.6), 400.0)   # 彗星冲击波VFX占位
 		u["star_energy"] = 0.0                                   # 星能满强化→消耗全部星能
 
-func _sk_candy_armor(u: Dictionary) -> void:                     # 糖果龟·焦糖铠 ✅
-	_grant_shield(u, u["atk"] * 0.8)
-	_heal(u, u["maxHp"] * 0.10)
+func _sk_candy_hammer(u: Dictionary, tgt) -> void:              # 糖果龟·技能一糖果锤(封板·80龟能): 猛砸直线200码·总(1.8A+12%自maxHp)物理由命中敌均分·回血造成伤害40%
+	if tgt == null: tgt = _nearest_enemy(u)
+	if tgt == null: return
+	var dir: Vector2 = tgt["pos"] - u["pos"]
+	if dir.length() < 1.0: dir = Vector2.RIGHT
+	dir = dir.normalized()
+	var hits: Array = []
+	for o in _enemies_of(u):
+		if o.get("alive", false) and _on_line(u["pos"], dir, o["pos"], 70.0) and o["pos"].distance_to(u["pos"]) <= 200.0:
+			hits.append(o)
+	if hits.is_empty(): hits.append(tgt)
+	var total_raw: float = u["atk"] * 1.8 + u["maxHp"] * 0.12
+	var per_raw: float = total_raw / float(hits.size())          # 命中敌均分总量
+	var dealt: int = 0
+	for o in hits:
+		var d: int = _mitigate(u, per_raw, o, false)             # 物理减伤
+		_apply_damage_from(u, o, d, Color("#ff9ed6"))
+		dealt += d
+	_heal(u, float(dealt) * 0.40)                                # 回血造成伤害40%
+	_bolt_line(u["pos"], u["pos"] + dir * 200.0, Color(1.0, 0.62, 0.84))   # 直线糖爆冲击波占位
+
+func _sk_candy_barrage(u: Dictionary, tgt) -> void:            # 糖果龟·技能二糖衣炮弹(封板·120龟能·船长R式): 敌最密集600码降炮弹雨2.5→4秒每0.5s一跳共8跳·友2%maxHp盾/敌0.2A+2%maxHp魔法+减速20%
+	var es: Array = []
+	for o in _enemies_of(u):
+		if o.get("alive", false): es.append(o)
+	var center: Vector2 = tgt["pos"] if tgt != null else u["pos"]
+	if not es.is_empty():
+		var c := Vector2.ZERO
+		for o in es: c += o["pos"]
+		center = c / float(es.size())                            # 单位最密集区域(简化=敌质心)
+	for i in range(8):
+		var fn := func():
+			for o in _units:
+				if not o.get("alive", false): continue
+				if o["pos"].distance_to(center) > 600.0: continue
+				if o["side"] == u["side"]:
+					_grant_shield(o, u["maxHp"] * 0.02, 2.0)     # 友军每跳2%maxHp护盾(限时盾)
+				else:
+					_apply_damage_from(u, o, int(u["atk"] * 0.2 + u["maxHp"] * 0.02), Color("#ff9ed6"))   # 敌0.2A+2%maxHp魔法
+					o["spd_move_mult"] = 0.8
+					o["spd_dbf_until"] = _t + 0.5                # 减速20%(每次受击刷新0.5s)
+			_skill_ring(center, Color(1.0, 0.62, 0.84, 0.4), 600.0)
+		_pending_shots.append({"delay": float(i) * 0.5, "fn": fn, "src": u})
+
+func _sk_candy_bomb_feed(u: Dictionary) -> void:               # 糖果龟·技能三糖果炸弹(封板·喂续命): 炸弹活→上限+25%糖果龟maxHp+治疗10%(喂); 炸弹亡→召新HP=20%糖果龟maxHp (登场召唤+死亡爆炸在spawn/summon)
+	var bomb = null
+	for o in _units:
+		if o.get("is_summon", false) and o.get("summon_owner", null) == u and o.get("summon_kind", "") == "candybomb" and o.get("alive", false):
+			bomb = o; break
+	if bomb != null:
+		bomb["maxHp"] = float(bomb["maxHp"]) + u["maxHp"] * 0.25   # 上限+25%糖果龟maxHp
+		bomb["hp"] = minf(float(bomb["maxHp"]), float(bomb["hp"]) + u["maxHp"] * 0.10)   # 治疗10%(喂续命)
+		_float_text(bomb["pos"] + Vector2(0, -40), "喂!", Color("#ff9ed6"))
+	else:
+		_spawn_summon(u, "candybomb", u["maxHp"] * 0.20, 0.0, {   # 炸弹阵亡→召新(HP=20%糖果龟maxHp)
+			"label": "糖果炸弹", "spr_id": "candy-bomb", "col_size": 20.0, "hp_w": 24.0,
+			"no_basic": true, "no_move": true, "self_decay": 0.08, "death_aoe": 1.5,
+		})
 
 # 双头龟·选一套 (demo 默认套1). 每次攒满龟能 → 切形态 + 放新形态这套招.
 # 双头·双生(改造): 切近战形态加成(maxHp+150%ATK·护甲+25%ATK·魔抗+25%ATK·攻-30%ATK·+110%ATK盾), 切远程撤销
@@ -8381,14 +8438,18 @@ func _apply_spawn_passives() -> void:
 			"candy":
 				var ce := _enemies_of(u)
 				if not ce.is_empty():
-					var v = ce[randi() % ce.size()]
-					var steal: float = minf(v["maxHp"] * 0.25, v["hp"] - 1.0)
-					if steal > 0: _raw_lose(v, steal); _heal(u, steal)
-				_spawn_summon(u, "candybomb", u["maxHp"] * 0.40, 0.0, {
-					"label": "糖果炸弹", "spr_id": "candy-bomb", "col_size": 20.0, "hp_w": 24.0,
-					"no_basic": true, "no_move": true, "self_decay": 0.08,
-					"death_aoe": 1.5,
-				})
+					var fat = ce[0]                              # 甜蜜吸取(封板): 对最肥敌(最大生命最高)吸取25%maxHp→全回复(不杀·留1)
+					for e in ce:
+						if float(e["maxHp"]) > float(fat["maxHp"]): fat = e
+					var steal: float = minf(fat["maxHp"] * 0.25, fat["hp"] - 1.0)
+					if steal > 0: _raw_lose(fat, steal); _heal(u, steal)
+				u["lifesteal"] += 0.15                           # 糖果拳自愈(封板未定数值·15%吸血近似·F5调)
+				if "candyBomb" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 糖果炸弹(技三·选中才召): HP=50%糖果龟maxHp·每秒衰减8%·死亡爆炸150%
+					_spawn_summon(u, "candybomb", u["maxHp"] * 0.50, 0.0, {
+						"label": "糖果炸弹", "spr_id": "candy-bomb", "col_size": 20.0, "hp_w": 24.0,
+						"no_basic": true, "no_move": true, "self_decay": 0.08,
+						"death_aoe": 1.5,
+					})
 			"chest":
 				if "chestCannon" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 贪婪(技三打包被动)选中才有
 					u["chest_greed"] = true

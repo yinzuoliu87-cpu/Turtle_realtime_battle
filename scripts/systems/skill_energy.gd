@@ -28,7 +28,7 @@ const SKILL_COST := {
 	"iceSpike": 120.0, "ninjaShuriken": 95.0, "ninjaBomb": 100.0, "twoHeadMagicWave": 100.0,
 	"ghostTouch": 95.0, "ghostPhantom": 95.0, "diamondPowerball": 100.0, "diamondSmash": 80.0, "fortuneStrike": 90.0,
 	"diceAttack": 95.0, "rainbowStorm": 125.0, "gamblerCards": 100.0, "gamblerDraw": 80.0, "gamblerFateWheel": 80.0,
-	"hunterShot": 90.0, "hunterBarrage": 100.0, "candyBarrage": 115.0, "lineSketch": 90.0,
+	"hunterShot": 90.0, "hunterBarrage": 100.0, "candyBarrage": 120.0, "candyHammer": 80.0, "candyBomb": 100.0, "lineSketch": 90.0,
 	"lightningStrike": 95.0, "lightningBarrage": 140.0, "phoenixBurn": 90.0, "phoenixScald": 100.0,
 	"lavaBolt": 90.0, "lavaQuake": 115.0, "lavaErupt": 80.0, "crystalSpike": 90.0, "crystalBurst": 115.0,
 	"chestStorm": 100.0, "starBeam": 70.0, "headlessTendrils": 160.0, "headlessSoulStrike": 80.0, "shellStrike": 80.0,
