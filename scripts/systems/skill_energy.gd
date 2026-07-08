@@ -15,7 +15,7 @@ const CD_FACTOR := 0.075    # 龟能花费 → 充满秒数 (=1/充能速率); 7
 # 各技龟能花费 (∝ 技能强度): 轻盾/治/buff~70 · 普通伤害/控~95 · 全体/多段/强~120-140 · 变身/梭哈/大招~150-170
 const SKILL_COST := {
 	# 签名招
-	"turtleShieldBash": 70.0, "bambooHeal": 90.0, "angelBless": 75.0, "angelAscend": 80.0, "iceFrost": 120.0,
+	"turtleShieldBash": 70.0, "bambooHeal": 90.0, "angelBless": 75.0, "angelAscend": 80.0, "stoneRockShield": 100.0, "iceFrost": 120.0,
 	"ninjaImpact": 95.0, "ghostStorm": 95.0, "ghostPhase": 80.0, "diamondFortify": 70.0, "diceAllIn": 120.0,
 	"gamblerBet": 100.0, "hunterStealth": 90.0, "pirateCannonBarrage": 130.0, "bubbleShield": 120.0,
 	"lineLink": 70.0, "lightningSurgeBuff": 90.0, "phoenixShield": 90.0, "phoenixEnhancedRebirth": 120.0, "twoHeadFear": 95.0,

@@ -184,51 +184,16 @@
         "energyCost": 0
       },
       {
-        "name": "岩石护甲",
+        "name": "岩石护盾",
         "icon": "skills/stone-rockarmor.png",
-        "type": "shield",
+        "type": "stoneRockShield",
+        "impl": true,
         "hits": 1,
         "power": 0,
-        "shield": 0,
         "cd": 0,
-        "aoeAlly": true,
-        "shieldFlat": 0,
-        "shieldAtkScale": 0.24,
-        "shieldHpPct": 5,
-        "shieldDuration": 3,
-        "brief": "石头龟为全体友军施加（{S:0.24*ATK+HP*0.05}）护盾",
-        "detail": "石头龟为全体友军施加（24%×攻击力({ATK}) + 5%×最大生命值({HP}) = {S:0.24*ATK+HP*0.05}）护盾。",
-        "energyCost": 60,
-        "fx": {
-          "shieldAtk": 0.24,
-          "shieldHp": 0.05
-        }
-      },
-      {
-        "name": "磐石",
-        "icon": "skills/stone-bedrock.png",
-        "type": "heal",
-        "hits": 1,
-        "power": 0,
-        "heal": 0,
-        "cd": 0,
-        "isAlly": true,
-        "defUpPct": {
-          "pct": 20,
-          "turns": 3
-        },
-        "mrUpPct": {
-          "pct": 20,
-          "turns": 3
-        },
-        "brief": "石头龟选择一名友方单位，以自身的防御属性为其加固，提升 {D:DEF*0.2}护甲和 {M:MR*0.2}魔抗，持续5秒",
-        "detail": "石头龟选择一名友方单位，以自身的防御属性为其加固，提升（20%×护甲({DEF}) = {D:DEF*0.2}）护甲和（20%×魔抗({MR}) = {M:MR*0.2}）魔抗，持续5秒",
-        "energyCost": 40,
-        "fx": {
-          "buffDef": 0.2,
-          "buffMr": 0.2,
-          "buffDur": 5.0
-        }
+        "brief": "石头龟为全体友军施加（{S:0.2*ATK+HP*0.05}）护盾（4秒），并使自身护甲、魔抗各 +20%，持续5秒",
+        "detail": "石头龟岩甲护体：为全体友军施加（20%×攻击力({ATK}) + 5%×最大生命值({HP}) = {S:0.2*ATK+HP*0.05}）护盾，持续4秒；并使自身护甲、魔抗各提升 20%，持续5秒。",
+        "energyCost": 100
       },
       {
         "name": "磐石之躯",
