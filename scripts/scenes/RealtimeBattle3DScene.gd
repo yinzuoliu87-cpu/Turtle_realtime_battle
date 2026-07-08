@@ -5928,7 +5928,7 @@ const _SELF_CAST_SKILLS := {
 	"hidingDefend": true, "hunterStealth": true, "twoHeadSwitch": true,
 	"lavaSurge": true, "bubbleShield": true, "shellAbsorb": true,
 	"fortuneDice": true, "lightningSurgeBuff": true, "chestCount": true,
-	"fortuneGainCoins": true, "phoenixPurify": true, "lightningSurge": true, "lightningShield": true, "rainbowReflect": true,
+	"fortuneBuyEquip": true, "phoenixPurify": true, "lightningSurge": true, "lightningShield": true, "rainbowReflect": true,
 	"rainbowStorm": true,
 	"gamblerBet": true, "stoneTaunt": true, "stoneRockShield": true,
 }
@@ -6011,7 +6011,7 @@ const _IMPL_SKILLS := {
 	"cyberDeploy": true, "bubbleBind": true, "hidingCommand": true, "shellCopy": true,
 	"diceFate": true,
 	# 后4龟补实装的 4选1
-	"fortuneGainCoins": true, "phoenixPurify": true, "lightningSurge": true, "lightningShield": true, "rainbowReflect": true,
+	"fortuneBuyEquip": true, "phoenixPurify": true, "lightningSurge": true, "lightningShield": true, "rainbowReflect": true,
 }
 
 # 龟能花费表 已移到单一事实源 SkillEnergy (scripts/systems/skill_energy.gd) — 战斗/图鉴/选龟共用
@@ -6162,7 +6162,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"angelAscend":          _sk_angel_ascend(u)
 		"iceFrost":             _sk_ice_frost(u, tgt)
 		"iceFreeze":            _sk_ice_freeze(u, tgt)
-		"fortuneGainCoins":     _sk_fortune_coins(u)
+		"fortuneBuyEquip":      _sk_fortune_buyequip(u)
 		"phoenixPurify":        _sk_phoenix_purify(u)
 		"lightningSurge":       _sk_lightning_shock(u)
 		"lightningShield":      _sk_lightning_shield(u)
@@ -6616,9 +6616,30 @@ func _rainbow_storm_end(u: Dictionary) -> void:
 		tw.chain().tween_callback(disc.queue_free)
 	u["storm_disc"] = null
 
-func _sk_fortune_coins(u: Dictionary) -> void:                  # 财神龟·聚财 ✅ (立即+10金币)
+func _sk_fortune_coins(u: Dictionary) -> void:                  # 财神龟·聚财 (旧·已从3选1移除·留死函数无害)
 	u["gold"] += 10
 	_skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.5), 46.0)
+
+func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招财进宝(用户设计·60龟能起): 首抽1件1/2/3费临时装备(1★·战后消失不占槽)→消耗变160/240/460; 3★后回复1×ATK生命 (升星精确delta=TODO)
+	var star: int = int(u.get("buyequip_star", 0))
+	if star == 0:                                               # 首抽临时装备
+		var iid: String = _chest_pick_equip([1, 2, 3])
+		if iid == "": return
+		if not u.has("equips"): u["equips"] = []
+		u["equips"].append({"id": iid, "star": 1})
+		_eq_apply_one_stats(u, iid, 1)
+		u["buyequip_id"] = iid; u["buyequip_star"] = 1
+		var tier: int = int(DataRegistry.phase2_equipment_by_id.get(iid, {}).get("cost", 1))
+		u["energy_cost"]["fortuneBuyEquip"] = 60.0 + [100.0, 180.0, 400.0][clampi(tier - 1, 0, 2)]   # 消耗随抽到费拉长
+		_float_text(u["pos"] + Vector2(0, -72), "招财! " + str(DataRegistry.phase2_equipment_by_id.get(iid, {}).get("name", iid)), Color("#ffd93d"))
+	elif star >= 3:                                             # 3★满: 回复1×ATK生命
+		_heal(u, u["atk"])
+		_float_text(u["pos"] + Vector2(0, -72), "招财·满! 回血", Color("#ffd93d"))
+	else:                                                       # 升星(简化: 只涨星标记·精确属性delta留TODO见批A)
+		u["buyequip_star"] = star + 1
+		if star + 1 >= 3: u["energy_cost"]["fortuneBuyEquip"] = 60.0   # 满星→价回60
+		_float_text(u["pos"] + Vector2(0, -72), "招财·升星 %d★" % (star + 1), Color("#ffd93d"))
+	_skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.6), 56.0)
 
 func _sk_phoenix_purify(u: Dictionary) -> void:                 # 凤凰龟·火焰净化 ✅ (净化友方+按减益数回血)
 	var ally = _lowest_hp_ally(u)

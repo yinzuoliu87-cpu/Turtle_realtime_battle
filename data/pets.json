@@ -1212,6 +1212,7 @@
         "name": "骰子",
         "icon": "skills/fortune-dice.png",
         "type": "fortuneDice",
+        "impl": true,
         "hits": 1,
         "power": 0,
         "pierce": 0,
@@ -1225,6 +1226,7 @@
         "name": "梭哈",
         "icon": "skills/fortune-allin.png",
         "type": "fortuneAllIn",
+        "impl": true,
         "hits": 1,
         "power": 0,
         "pierce": 0,
@@ -1239,6 +1241,7 @@
         "name": "招财进宝",
         "icon": "skills/fortune-fetchequip.png",
         "type": "fortuneBuyEquip",
+        "impl": true,
         "hits": 0,
         "power": 0,
         "pierce": 0,
@@ -1247,19 +1250,6 @@
         "coinCost": 20,
         "brief": "财神龟消耗20枚金币，随机抽取 1 件普通或独特的装备放入我方装备席。每次释放这个技能会使金币消耗提升25%",
         "detail": "财神龟消耗20枚金币，随机抽取 1 件普通或独特的装备放入我方装备席。每次释放这个技能会使金币消耗提升25%。\n\n<span style=\"color:#8a93a0\">一只龟最多拥有10件装备。\n如果装备席已满，则转而为所有友方范围回复10%最大生命值；</span>"
-      },
-      {
-        "name": "聚财",
-        "icon": "skills/fortune-gather.png",
-        "type": "fortuneGainCoins",
-        "hits": 0,
-        "power": 0,
-        "pierce": 0,
-        "cd": 0,
-        "selfCast": true,
-        "coinGain": 10,
-        "brief": "财神龟立即获得10枚金币",
-        "detail": "财神龟立即获得10枚金币。"
       }
     ],
     "defaultSkills": [

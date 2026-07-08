@@ -19,7 +19,7 @@ const SKILL_COST := {
 	"ninjaImpact": 95.0, "ghostStorm": 95.0, "ghostPhase": 80.0, "diamondFortify": 70.0, "diceAllIn": 120.0, "diceFlashStrike": 120.0,
 	"gamblerBet": 100.0, "hunterStealth": 90.0, "pirateCannonBarrage": 130.0, "bubbleShield": 120.0,
 	"lineLink": 70.0, "lightningSurgeBuff": 90.0, "phoenixShield": 90.0, "phoenixEnhancedRebirth": 120.0, "twoHeadFear": 95.0,
-	"fortuneDice": 70.0, "crystalBarrier": 75.0, "chestCount": 90.0, "starMeteor": 130.0,
+	"fortuneDice": 70.0, "fortuneBuyEquip": 60.0, "crystalBarrier": 75.0, "chestCount": 90.0, "starMeteor": 130.0,
 	"twoHeadSwitch": 150.0, "lavaSurge": 150.0, "cyberBeam": 100.0, "hidingDefend": 70.0, "shellAbsorb": 100.0,
 	# 通用
 	"shield": 70.0, "heal": 70.0,
