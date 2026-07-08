@@ -6553,8 +6553,8 @@ func _sk_lightning_shock(u: Dictionary) -> void:               # 闪电龟·感�
 			_apply_damage_from(u, o, int(u["atk"] * 0.10 * st), Color("#4dabf7"), 0.0, true)
 			_skill_ring(o["pos"], Color(0.45, 0.85, 1.0, 0.5), 46.0)
 
-func _sk_lightning_shield(u: Dictionary) -> void:              # 闪电龟·雷盾 ✅ (0.9ATK护盾, 盾在时反击=见_apply_damage_from)
-	_grant_shield(u, u["atk"] * 0.9)
+func _sk_lightning_shield(u: Dictionary) -> void:              # 闪电龟·雷盾 (用户2026-07-07: 3ATK护盾5秒, 盾在时反击0.1A魔法叠电击=见_apply_damage_from)
+	_grant_shield(u, u["atk"] * 3.0)
 	u["thunder_shield_until"] = _t + 5.0
 	_skill_ring(u["pos"], Color(0.45, 0.85, 1.0, 0.5), 50.0)
 
