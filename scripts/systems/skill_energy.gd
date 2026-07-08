@@ -26,7 +26,7 @@ const SKILL_COST := {
 	# 数据驱动伤害
 	"basicBarrage": 140.0, "bambooLeaf": 90.0, "bambooSmack": 120.0, "bambooSpikes": 130.0, "angelEquality": 125.0,
 	"iceSpike": 120.0, "ninjaShuriken": 95.0, "ninjaBomb": 100.0, "twoHeadMagicWave": 100.0,
-	"ghostTouch": 95.0, "ghostPhantom": 95.0, "diamondCollide": 95.0, "fortuneStrike": 90.0,
+	"ghostTouch": 95.0, "ghostPhantom": 95.0, "diamondPowerball": 100.0, "diamondSmash": 80.0, "fortuneStrike": 90.0,
 	"diceAttack": 95.0, "rainbowStorm": 125.0, "gamblerCards": 100.0, "gamblerDraw": 80.0, "gamblerFateWheel": 80.0,
 	"hunterShot": 90.0, "hunterBarrage": 100.0, "candyBarrage": 115.0, "lineSketch": 90.0,
 	"lightningStrike": 95.0, "lightningBarrage": 140.0, "phoenixBurn": 90.0, "phoenixScald": 100.0,
