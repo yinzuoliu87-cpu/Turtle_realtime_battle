@@ -52,7 +52,7 @@ const CTRL_SEC := 1.5                      # 眩晕/冻结/嘲讽 默认秒数
 const STATS := {
 	"basic": [true, 105.0, 0.85, 70.0], "stone": [true, 70.0, 1.1, 70.0], "bamboo": [true, 105.0, 0.85, 70.0],
 	"angel": [false, 105.0, 0.85, 400.0], "ice": [false, 105.0, 0.85, 400.0], "ninja": [true, 145.0, 0.6, 70.0],
-	"two_head": [true, 145.0, 0.85, 70.0], "ghost": [false, 145.0, 0.6, 400.0], "diamond": [true, 70.0, 1.1, 70.0],
+	"two_head": [false, 145.0, 0.85, 400.0], "ghost": [false, 145.0, 0.6, 400.0], "diamond": [true, 70.0, 1.1, 70.0],
 	"fortune": [true, 105.0, 0.75, 70.0], "dice": [true, 145.0, 0.6, 70.0], "rainbow": [true, 105.0, 0.7, 70.0],
 	"gambler": [false, 145.0, 0.85, 400.0], "hunter": [false, 145.0, 0.7, 400.0], "pirate": [true, 105.0, 0.85, 70.0],
 	"candy": [false, 105.0, 0.85, 400.0], "bubble": [false, 70.0, 1.1, 400.0], "line": [false, 145.0, 0.6, 400.0],
@@ -85,7 +85,7 @@ const BASIC_ATK := {
 	"angel":    {"phys": 1.0, "hits": 1},                                          # 远程平A 1.0ATK单段(用户)+审判被动
 	"ice":      {"phys": 0.8, "magic": 0.8, "hits": 1, "alt_each": true},           # 单段逐次交替物/魔 0.8ATK(用户2026-06-29)
 	"ninja":    {"phys": 1.0, "hits": 1, "rider": "bleed"},                         # 斩击(封板): 近战1A物理+2层流血; 冲击已转被动auto-dash
-	"two_head": {"phys": 0.8, "true": 0.8, "hits": 4},                             # 物+真 (原1.0全物 错)
+	"two_head": {"phys": 1.2, "hits": 1},                                          # 兜底; 实由 _two_head_basic 接管(远程1.2A/近战0.9A随形态)
 	"ghost":    {"phys": 0.4, "true": 0.9, "hits": 1},                             # 物+真 (原0.65 错)
 	"diamond":  {"phys": 0.7, "def": 0.6, "mr": 0.6, "hits": 1},                    # +护甲魔抗
 	"fortune":  {"phys": 1.0, "gold": 0.02, "hits": 1},                            # 1下(用户; 回合制原2下)
@@ -2456,6 +2456,8 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 						_eq_on_cast(u, tgt)
 						if u["id"] == "space" and float(u.get("star_energy", 0.0)) > 0.0:   # 星能: 施法后追加30%储存星能真伤
 							_apply_damage_from(u, tgt, int(u["star_energy"] * 0.30), Color("#ffffff"), 0.0, true)
+						if u["id"] == "two_head" and stype != "twoHeadFusion":   # 双生: 放完技能一/二→自动切形态+切换攻击+位移
+							_two_head_after_cast(u, tgt)
 					else:
 						u["skill_cd"][stype] = _skill_cd(u, stype)
 					u["state"] = "recover"; u["state_t"] = CAST_RECOVER
@@ -2667,6 +2669,11 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		return
 	if u["id"] == "chest":          # 宝箱砸击(封板): K'Sante一段Q式·前方短直线AOE·1A物理(近战扫一小片非单体)
 		_chest_basic(u, tgt)
+		_on_basic_hit(u, tgt)
+		return
+	if u["id"] == "two_head":       # 双头(封板): 普攻随形态 — 远程1.2A物理(灵能弹)/近战0.9A物理(挥砍)
+		var _thsc: float = 0.9 if u["melee"] else 1.2
+		_emit_basic(u, tgt, _atk_dmg(u, _thsc, tgt), Color("#c0a0ff"), 0)
 		_on_basic_hit(u, tgt)
 		return
 	var spec: Dictionary = BASIC_ATK.get(u["id"], DEFAULT_BASIC)
@@ -5347,8 +5354,8 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	if u["id"] == "shell" and u.get("shell_phase", "store") == "store":
 		u["store_energy"] = minf(u["maxHp"] * 0.50, u["store_energy"] + float(dmg))
 		u["_auraEnergy"] = u["store_energy"]   # 镜像给Hp条储能条显示(1:1回合制字段)
-	# 双头坚韧 (常驻被动): 每受一段攻击 +1护甲+1魔抗 (各上限20)
-	if u["id"] == "two_head":
+	# 双头坚韧 (融合打包被动·选中融合才有): 每受一段攻击 +1护甲+1魔抗 (各上限20)
+	if u["id"] == "two_head" and u.get("two_fused", false):
 		var th: int = int(u.get("two_tough", 0))
 		if th < 20:
 			th += 1; u["two_tough"] = th
@@ -5931,7 +5938,7 @@ const _SKILL_SELF_VFX := {
 const _SELF_CAST_SKILLS := {
 	"shield": true, "heal": true, "bambooHeal": true, "angelBless": true,
 	"diamondFortify": true, "crystalBarrier": true, "phoenixShield": true,
-	"hidingDefend": true, "hunterStealth": true, "twoHeadSwitch": true,
+	"hidingDefend": true, "hunterStealth": true,
 	"lavaSurge": true, "bubbleShield": true, "shellAbsorb": true,
 	"fortuneDice": true, "lightningSurgeBuff": true, "chestCount": true,
 	"fortuneBuyEquip": true, "phoenixPurify": true, "lightningSurge": true, "lightningShield": true, "rainbowReflect": true,
@@ -5997,7 +6004,7 @@ const _IMPL_SKILLS := {
 	"gamblerBet": true, "hunterStealth": true, "pirateCannonBarrage": true, "pirateRum": true, "bubbleShield": true,
 	"lineLink": true, "lightningSurgeBuff": true, "phoenixShield": true, "phoenixEnhancedRebirth": true, "twoHeadFear": true,
 	"fortuneDice": true, "crystalBarrier": true, "chestCount": true, "starWave": true,
-	"twoHeadSwitch": true, "lavaSurge": true, "cyberBeam": true, "hidingDefend": true, "shellAbsorb": true,
+	"twoHeadStrike": true, "twoHeadDisrupt": true, "twoHeadFusion": true, "lavaSurge": true, "cyberBeam": true, "hidingDefend": true, "shellAbsorb": true,
 	# 通用 (多龟共享 type)
 	"shield": true, "heal": true,
 	# 数据驱动伤害技 (系数取自 pets.json detail 公式 {N/M/T:...})
@@ -6191,7 +6198,9 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"crystalBarrier":       _sk_crystal_bulwark(u)
 		"chestCount":           _sk_chest_inventory(u)
 		"starWave":             _sk_star_wave(u)
-		"twoHeadSwitch":        _sk_two_head(u, tgt)
+		"twoHeadStrike":        _sk_two_head_strike(u, tgt)
+		"twoHeadDisrupt":       _sk_two_head_disrupt(u, tgt)
+		"twoHeadFusion":        _sk_two_head_fusion(u, tgt)
 		"lavaSurge":            _sk_lava_cast(u, tgt, "B")   # 岩浆涌动 (修: 原走set A=地裂)
 		"lavaErupt":            _sk_lava_erupt(u, tgt)       # 技三: 智能冲刺+穿透普攻 / 火山暴走
 		"cyberBeam":            _sk_cyber_cannon(u, tgt)
@@ -7083,34 +7092,62 @@ func _two_head_apply_melee(u: Dictionary, on: bool) -> void:
 		u["base_atk"] += float(u.get("_th_atk", 0.0))
 		_recalc_stats(u)
 
-func _sk_two_head(u: Dictionary, tgt: Dictionary) -> void:       # 双头龟 ✅ 选一套+切换形态
-	var set_id: String = u.get("two_set", "1")
-	u["two_form"] = "ranged" if u.get("two_form", "melee") == "melee" else "melee"
-	var to_ranged: bool = u["two_form"] == "ranged"
-	_two_head_apply_melee(u, not to_ranged)   # 形态属性增减
-	u["melee"] = not to_ranged
-	u["atk_range"] = 300.0 if to_ranged else 70.0
-	u["atk_interval"] = 1.1 if not to_ranged else 0.8
-	if not to_ranged:
-		match set_id:
-			"1", "3":
-				_apply_damage_from(u, tgt, _atk_dmg(u, 1.4, tgt), Color("#ffb05c"))
-				_grant_shield(u, u["atk"] * 0.5)
-			"2":
-				_apply_damage_from(u, tgt, _atk_dmg(u, 1.3, tgt), Color("#ffb05c"), 0.35)
+func _sk_two_head_strike(u: Dictionary, tgt) -> void:            # 双头·技能一 form-variant(封板): 远程=灵能冲击(全体0.85A+15%maxHp物理) / 近战=锤击(1.4A物理+获造成伤害50%护盾4秒)
+	if u["melee"]:
+		if tgt == null: tgt = _nearest_enemy(u)
+		if tgt == null: return
+		var dmg: int = _atk_dmg(u, 1.4, tgt)
+		_apply_damage_from(u, tgt, dmg, Color("#ffb05c"))
+		_grant_shield(u, dmg * 0.5, 4.0)                        # 获造成伤害50%护盾(4秒·限时盾)
 	else:
-		match set_id:
-			"1":
-				tgt["shield"] *= 0.5
-				_apply_damage_from(u, tgt, _atk_dmg(u, 1.0, tgt, true), Color("#c0d0ff"))
-				_buff(tgt, "atk", -0.20, true)
-			"2":
-				for i in range(4):
-					if not tgt["alive"]: break
-					_apply_damage_from(u, tgt, _atk_dmg(u, 0.6, tgt, i % 2 == 0), Color("#c0d0ff"))
-			"3":
-				for o in _enemies_of(u):
-					_apply_damage_from(u, o, _atk_dmg(u, 0.5, o, true) + int(o["maxHp"] * 0.15), Color("#c0d0ff"))
+		for o in _enemies_of(u):
+			if not o.get("alive", false): continue
+			_apply_damage_from(u, o, _atk_dmg(u, 0.85, o) + int(o["maxHp"] * 0.15), Color("#c0d0ff"))
+
+func _sk_two_head_disrupt(u: Dictionary, tgt) -> void:           # 双头·技能二 form-variant(封板): 远程=精神干扰(1.0A魔法+治疗削减50%5s+破盾50%) / 近战=吸收(0.6A+8%maxHp物理+回血40%A+18%已损)
+	if tgt == null: tgt = _nearest_enemy(u)
+	if tgt == null: return
+	if u["melee"]:
+		var dmg: int = _atk_dmg(u, 0.6, tgt) + int(tgt["maxHp"] * 0.08)
+		_apply_damage_from(u, tgt, dmg, Color("#c0d0ff"))
+		_heal(u, u["atk"] * 0.4 + (u["maxHp"] - u["hp"]) * 0.18)   # 回血40%攻击力+18%已损生命
+	else:
+		if float(tgt.get("shield", 0.0)) > 0.0: tgt["shield"] = float(tgt["shield"]) * 0.5   # 破盾50%
+		_apply_damage_from(u, tgt, _atk_dmg(u, 1.0, tgt, true), Color("#c0d0ff"))
+		tgt["heal_reduce_until"] = _t + 5.0
+		tgt["heal_reduce_pct"] = maxf(float(tgt.get("heal_reduce_pct", 0.0)), 0.5)             # 治疗削减50%5秒
+
+func _sk_two_head_fusion(u: Dictionary, tgt) -> void:            # 双头·技能三融合(封板): 主动魔法波(4段·物理80%+真实80%共1.6A); 锁形态/坚韧/合体近战属性在登场gate
+	if tgt == null: tgt = _nearest_enemy(u)
+	if tgt == null: return
+	for i in range(4):
+		if not tgt.get("alive", false): break
+		if i % 2 == 0: _apply_damage_from(u, tgt, _atk_dmg(u, 0.4, tgt), Color("#ffffff"))          # 物理
+		else:          _apply_damage_from(u, tgt, int(u["atk"] * 0.4), Color("#ffffff"), 0.0, true) # 真实
+	_skill_ring(tgt["pos"], Color(0.75, 0.6, 1.0, 0.5), 48.0)
+
+func _two_head_after_cast(u: Dictionary, tgt) -> void:          # 被动·双生(封板): 放完技能一/二→自动切形态+属性互换+切换攻击+位移 (融合不调用)
+	var to_ranged: bool = u["melee"]                            # 当前近战→切远程; 当前远程→切近战
+	u["two_form"] = "ranged" if to_ranged else "melee"
+	_two_head_apply_melee(u, not to_ranged)                     # 近战属性delta on/off(既有函数·存_th_*可逆)
+	u["melee"] = not to_ranged
+	u["atk_range"] = 400.0 if to_ranged else 70.0
+	var et = _nearest_enemy(u)
+	if to_ranged:                                               # 切远程: 位移350远离+目标1.4A物理+破甲-25%4秒
+		if et != null:
+			var away: Vector2 = (u["pos"] - et["pos"]).normalized()
+			if away.length() < 0.1: away = Vector2.RIGHT
+			var dest: Vector2 = u["pos"] + away * 350.0
+			dest.x = clampf(dest.x, ARENA.position.x, ARENA.end.x)
+			dest.y = clampf(dest.y, ARENA.position.y, ARENA.end.y)
+			u["pos"] = dest
+			_apply_damage_from(u, et, _atk_dmg(u, 1.4, et), Color("#c0d0ff"))
+			_buff(et, "def", -0.25, true, 4.0)                 # 破甲-25%护甲4秒
+	else:                                                      # 切近战: 跃扑目标+落地0.6A魔法+获通用护盾1.1A(4秒)
+		if et != null:
+			_dash_to(u, et, 50.0)
+			_apply_damage_from(u, et, _atk_dmg(u, 0.6, et, true), Color("#ffb05c"))
+		_grant_shield(u, u["atk"] * 1.1, 4.0)
 
 # 熔岩龟·选一套 (demo 默认套A). 龟能满→放【当前形态】(小/火山)这套对应招. 攒怒变身在 _tick_periodic_passive.
 func _sk_lava_cast(u: Dictionary, tgt: Dictionary, set_id: String = "A") -> void:   # 熔岩龟·按选中技分派(A地裂/B岩浆涌动/C喷射)×形态变体
@@ -8324,8 +8361,10 @@ func _apply_spawn_passives() -> void:
 				if "lavaEnhancedRage" in _chosen_skill_types(u["id"], u["side"] == "left"):
 					u["rage"] = RAGE_MAX
 			"two_head":
-				u["two_set"] = "1"; u["two_form"] = "melee"
-				_two_head_apply_melee(u, true)   # 登场=近战形态, 上加成
+				u["two_form"] = "ranged"; u["melee"] = false; u["atk_range"] = 400.0   # 双生: 远程起手
+				if "twoHeadFusion" in _chosen_skill_types(u["id"], u["side"] == "left"):
+					u["two_fused"] = true                          # 融合: 锁形态(保持远程)+坚韧+合体近战属性
+					_two_head_apply_melee(u, true)
 			"diamond":                                    # 钻石结构(封板): 全队护甲/魔抗加成+50%(简化=开局全队+50%pct); 选钻石冲撞→强化结构(自身额外+100%·"受击再减20甲10抗"近似折进护甲留F5)
 				for o in _allies_of(u):
 					_buff(o, "def", 0.5, true, 9999.0)

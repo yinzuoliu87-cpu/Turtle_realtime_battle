@@ -20,7 +20,7 @@ const SKILL_COST := {
 	"gamblerBet": 100.0, "hunterStealth": 80.0, "pirateCannonBarrage": 130.0, "pirateRum": 120.0, "bubbleShield": 80.0, "bubbleBurst": 100.0,
 	"lineLink": 90.0, "lineInkBomb": 120.0, "lightningSurgeBuff": 90.0, "phoenixShield": 90.0, "phoenixEnhancedRebirth": 120.0, "twoHeadFear": 95.0,
 	"fortuneDice": 70.0, "fortuneBuyEquip": 60.0, "crystalBarrier": 75.0, "chestCount": 90.0, "starWave": 100.0, "starGravityWarp": 120.0,
-	"twoHeadSwitch": 150.0, "lavaSurge": 150.0, "cyberBeam": 100.0, "hidingDefend": 70.0, "shellAbsorb": 100.0,
+	"twoHeadStrike": 100.0, "twoHeadDisrupt": 95.0, "twoHeadFusion": 110.0, "lavaSurge": 150.0, "cyberBeam": 100.0, "hidingDefend": 70.0, "shellAbsorb": 100.0,
 	# 通用
 	"shield": 70.0, "heal": 70.0,
 	# 数据驱动伤害

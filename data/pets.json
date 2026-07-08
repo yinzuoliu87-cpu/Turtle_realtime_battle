@@ -745,73 +745,55 @@
     },
     "skillPool": [
       {
-        "name": "魔法波",
-        "type": "twoHeadMagicWave",
+        "name": "双头攻击",
+        "type": "twoHeadBasic",
         "icon": "skills/twohead-magicwave.png",
-        "hits": 4,
+        "hits": 1,
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "atkScale": 0.4,
-        "brief": "双头龟发射四段魔法波，交替造成共（{N:0.4*ATK*2}）物理伤害和（{T:0.4*ATK*2}）真实伤害",
-        "detail": "双头龟发射四段魔法波，交替造成共（80%×攻击力 = {N:0.4*ATK*2}）物理伤害和（80%×攻击力 = {T:0.4*ATK*2}）真实伤害。"
+        "atkScale": 1.2,
+        "brief": "双头龟的普攻(随形态变体)：远程形态=1.2×攻击力物理(灵能弹)；近战形态=0.9×攻击力物理(挥砍)",
+        "detail": "双头龟普攻随形态变化：远程形态发射灵能弹造成（120%×攻击力({ATK}) = {N:1.2*ATK}）物理伤害；近战形态挥砍造成（90%×攻击力 = {N:0.9*ATK}）物理伤害。"
       },
       {
-        "name": "灵能冲击",
-        "type": "physical",
+        "name": "灵能冲击/锤击",
+        "type": "twoHeadStrike",
         "icon": "skills/twohead-psi.png",
+        "impl": true,
         "hits": 1,
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "aoe": true,
         "atkScale": 0.85,
-        "hpPct": 15,
-        "brief": "双头龟对每个敌方单位造成（{N:0.85*ATK}）+ 15%目标最大生命值 物理伤害",
-        "detail": "双头龟对每个敌方单位造成（85%×攻击力 = {N:0.85*ATK}）+ 15%目标最大生命值 物理伤害。"
+        "brief": "形态变体·技能一：远程=灵能冲击(全体敌{N:0.85*ATK}+15%目标最大生命物理)；近战=锤击({N:1.4*ATK}物理+获造成伤害50%护盾4秒)",
+        "detail": "双头龟技能一，随形态变体：\n· 远程形态【灵能冲击】：对全体敌方造成（85%×攻击力 = {N:0.85*ATK}）+ 15%目标最大生命值 物理伤害。\n· 近战形态【锤击】：对目标造成（140%×攻击力 = {N:1.4*ATK}）物理伤害，并获得相当于造成伤害50%的护盾（4秒）。\n\n<span style=\"color:#8a93a0\">释放后自动切换形态（被动·双生），并附带切换攻击+位移。</span>"
       },
       {
-        "name": "切换近战",
-        "type": "twoHeadSwitch",
-        "icon": "skills/twohead-switch-melee.png",
-        "hits": 1,
-        "power": 0,
-        "pierce": 0,
-        "cd": 0,
-        "switchTo": "melee",
-        "switchAtkScale": 1.2,
-        "conflictsWith": 4,
-        "brief": "双头龟切换为近战形态，并对目标造成（{N:ATK*1.2}）物理伤害",
-        "detail": "双头龟切换为近战形态，并对目标造成（120%×攻击力 = {N:ATK*1.2}）物理伤害。"
-      },
-      {
-        "name": "精神干扰",
-        "type": "twoHeadMindBlast",
+        "name": "精神干扰/吸收",
+        "type": "twoHeadDisrupt",
         "icon": "skills/twohead-mindblast.png",
+        "impl": true,
         "hits": 1,
         "power": 0,
         "pierce": 0,
         "cd": 0,
         "atkScale": 1,
-        "dmgType": "magic",
-        "healReducePct": 50,
-        "healReduceTurns": 3,
-        "shieldBreakPct": 50,
-        "brief": "双头龟释放精神干扰，对目标造成（{M:1.0*ATK}）魔法伤害，施加治疗削减50%持续5秒，并破坏50%护盾",
-        "detail": "双头龟释放精神干扰，对目标造成（100%×攻击力 = {M:1.0*ATK}）魔法伤害；施加治疗削减50%持续5秒，并破坏50%护盾。"
+        "brief": "形态变体·技能二：远程=精神干扰({M:1.0*ATK}魔法+治疗削减50%5秒+破盾50%)；近战=吸收({N:0.6*ATK}+8%目标最大生命物理+回血40%攻击力+18%已损生命)",
+        "detail": "双头龟技能二，随形态变体：\n· 远程形态【精神干扰】：对目标造成（100%×攻击力 = {M:1.0*ATK}）魔法伤害，施加治疗削减50%（5秒），并破坏其50%护盾。\n· 近战形态【吸收】：对目标造成（60%×攻击力 = {N:0.6*ATK}）+ 8%目标最大生命值 物理伤害，回复（40%×攻击力 = {H:ATK*0.4}）+ 18%已损生命值。\n\n<span style=\"color:#8a93a0\">释放后自动切换形态（被动·双生），并附带切换攻击+位移。</span>"
       },
       {
         "name": "融合",
         "type": "twoHeadFusion",
         "icon": "skills/twohead-fusion.png",
-        "passiveSkill": true,
-        "hits": 0,
+        "impl": true,
+        "hits": 4,
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "conflictsWith": 2,
-        "brief": "双头龟进行融合，不可切换形态，但获得近战形态的 {H:ATK*1.5}最大生命值，{D:ATK*0.25}护甲，{M:ATK*0.25}魔抗和{S:ATK*1.1}护盾\n<span style=\"color:#8a93a0\">与「切换近战」互斥。</span>",
-        "detail": "双头龟进行融合，不可切换形态，但获得近战形态的（150%×攻击力 = {H:ATK*1.5}）最大生命值，（25%×攻击力 = {D:ATK*0.25}）护甲，（25%×攻击力 = {M:ATK*0.25}）魔抗和（110%×攻击力 = {S:ATK*1.1}）护盾。\n<span style=\"color:#8a93a0\">与「切换近战」互斥。</span>"
+        "atkScale": 0.4,
+        "brief": "技能三·融合：锁定形态不再切换+获近战合体属性(血/双抗/护盾)+双头坚韧(每受一段永久+1甲+1抗上限20)；主动=魔法波(4段共80%物理+80%真实=1.6A)",
+        "detail": "双头龟技能三【融合】：双头合体，登场即锁定形态不再自动切换，获得近战形态的额外（150%×攻击力 = {H:ATK*1.5}）最大生命值、（25%×攻击力 = {D:ATK*0.25}）护甲、（25%×攻击力 = {M:ATK*0.25}）魔抗与（110%×攻击力 = {S:ATK*1.1}）护盾，并获得【双头坚韧】被动：每受到一段攻击永久+1护甲+1魔抗（各上限20）。\n\n主动·魔法波：发射四段魔法波，交替造成共（80%×攻击力 = {N:0.4*ATK*2}）物理 +（80%×攻击力 = {T:0.4*ATK*2}）真实伤害。"
       }
     ],
     "defaultSkills": [
@@ -820,75 +802,6 @@
       2
     ],
     "skills": [],
-    "meleeSkills": [
-      {
-        "name": "锤击",
-        "type": "twoHeadHammer",
-        "icon": "skills/twohead-hammer.png",
-        "hits": 1,
-        "power": 0,
-        "pierce": 0,
-        "cd": 0,
-        "atkScale": 1.4,
-        "shieldFromDmgPct": 50,
-        "brief": "双头龟锤击目标造成（{N:1.4*ATK}）物理伤害，获得相当于造成伤害 50% 的永久护盾",
-        "detail": "双头龟锤击目标造成（140%×攻击力 = {N:1.4*ATK}）物理伤害；获得相当于造成伤害 50% 的永久护盾。"
-      },
-      {
-        "name": "吸收",
-        "type": "twoHeadAbsorb",
-        "icon": "skills/twohead-absorb.png",
-        "hits": 1,
-        "power": 0,
-        "pierce": 0,
-        "cd": 2,
-        "atkScale": 0.6,
-        "hpPct": 8,
-        "healAtkPct": 40,
-        "healLostPct": 18,
-        "brief": "双头龟吸收目标造成（{N:0.6*ATK}）+ 8%目标最大生命值 物理伤害，回复（{H:ATK*0.4}）+ 18%已损生命值",
-        "detail": "双头龟吸收目标造成（60%×攻击力 = {N:0.6*ATK}）+ 8%目标最大生命值 物理伤害；回复（40%×攻击力 = {H:ATK*0.4}）+ 18%已损生命值。"
-      },
-      {
-        "name": "切换远程",
-        "type": "twoHeadSwitch",
-        "icon": "skills/twohead-switch-ranged.png",
-        "hits": 1,
-        "power": 0,
-        "pierce": 0,
-        "cd": 4,
-        "switchTo": "ranged",
-        "atkScale": 1.4,
-        "defReductionPct": 25,
-        "defReductionTurns": 4,
-        "brief": "双头龟切换远程形态并对目标造成（{N:ATK*1.4}）物理伤害，削减目标 <span class=\"val-atk\">-25%</span> 护甲5秒",
-        "detail": "双头龟切换远程形态并对目标造成（140%×攻击力 = {N:ATK*1.4}）物理伤害；削减目标 <span class=\"val-atk\">-25%</span> 护甲，持续5秒。"
-      },
-      {
-        "name": "双头坚韧",
-        "type": "twoHeadResilience",
-        "icon": "skills/twohead-resilience.png",
-        "passiveSkill": true,
-        "hits": 0,
-        "power": 0,
-        "pierce": 0,
-        "cd": 0,
-        "brief": "双头龟每受到一段攻击，永久获得+1护甲和+1魔抗（上限各为20）",
-        "detail": "双头龟每受到一段攻击，永久获得+1护甲和+1魔抗；（上限各为20，已获得 {resilienceDef} 护甲和 {resilienceMr} 魔抗）"
-      },
-      {
-        "name": "融合",
-        "type": "twoHeadFusion",
-        "icon": "skills/twohead-fusion.png",
-        "passiveSkill": true,
-        "hits": 0,
-        "power": 0,
-        "pierce": 0,
-        "cd": 0,
-        "brief": "不可切换形态，但获得近战形态的额外属性加成",
-        "detail": "不可切换形态，但获得近战形态的额外（150%×攻击力 = {H:ATK*1.5}）最大生命值，（25%×攻击力 = {D:ATK*0.25}）护甲，（25%×攻击力 = {M:ATK*0.25}）魔抗和（110%×攻击力 = {S:ATK*1.1}）护盾。"
-      }
-    ],
     "tags": [
       "物理",
       "换形"
