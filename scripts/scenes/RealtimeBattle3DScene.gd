@@ -53,7 +53,7 @@ const STATS := {
 	"basic": [true, 105.0, 0.85, 70.0], "stone": [true, 70.0, 1.1, 70.0], "bamboo": [true, 105.0, 0.85, 70.0],
 	"angel": [false, 105.0, 0.85, 400.0], "ice": [false, 105.0, 0.85, 400.0], "ninja": [false, 145.0, 0.6, 400.0],
 	"two_head": [true, 145.0, 0.85, 70.0], "ghost": [false, 145.0, 0.6, 400.0], "diamond": [true, 70.0, 1.1, 70.0],
-	"fortune": [true, 105.0, 0.75, 70.0], "dice": [false, 145.0, 0.6, 400.0], "rainbow": [true, 105.0, 0.7, 70.0],
+	"fortune": [true, 105.0, 0.75, 70.0], "dice": [true, 145.0, 0.6, 70.0], "rainbow": [true, 105.0, 0.7, 70.0],
 	"gambler": [false, 145.0, 0.85, 400.0], "hunter": [false, 145.0, 0.7, 400.0], "pirate": [false, 105.0, 0.85, 400.0],
 	"candy": [false, 105.0, 0.85, 400.0], "bubble": [false, 70.0, 1.1, 400.0], "line": [false, 145.0, 0.6, 400.0],
 	"lightning": [false, 145.0, 0.6, 400.0], "phoenix": [false, 105.0, 0.5, 400.0], "lava": [false, 145.0, 0.7, 400.0],
@@ -89,7 +89,7 @@ const BASIC_ATK := {
 	"ghost":    {"phys": 0.4, "true": 0.9, "hits": 1},                             # 物+真 (原0.65 错)
 	"diamond":  {"phys": 0.7, "def": 0.6, "mr": 0.6, "hits": 1},                    # +护甲魔抗
 	"fortune":  {"phys": 1.0, "gold": 0.02, "hits": 1},                            # 1下(用户; 回合制原2下)
-	"dice":     {"phys": 0.9, "critflat": 55.0, "hits": 3},                         # 90%+5500%暴击率flat
+	"dice":     {"phys": 0.9, "critflat": 60.0, "hits": 1},                         # 90%物理+6000%暴击率flat·单段近战(用户设计)
 	"rainbow":  {"phys": 0.9, "hits": 1},                                          # 单段0.9物理(用户2026-07-02, 原魔法1.4×2)
 	"gambler":  {"phys": 1.35, "hits": 3},                                         # 0.9~1.8随机取中
 	"hunter":   {"phys": 1.65, "hits": 1},   # 用户: 普攻一段(总伤不变)
@@ -5926,7 +5926,7 @@ const _SELF_CAST_SKILLS := {
 	"fortuneDice": true, "lightningSurgeBuff": true, "chestCount": true,
 	"fortuneGainCoins": true, "phoenixPurify": true, "lightningSurge": true, "lightningShield": true, "rainbowReflect": true,
 	"rainbowStorm": true,
-	"gamblerBet": true, "diceAllIn": true, "stoneTaunt": true, "stoneRockShield": true,
+	"gamblerBet": true, "stoneTaunt": true, "stoneRockShield": true,
 }
 
 # ═══ 选3 多技能轮转 (用户2026-06-28拍板: 保留选3, 让3技在战斗真生效) ═══
@@ -5986,7 +5986,7 @@ func _resolve_active_skills(id: String, use_loadout: bool) -> Array:
 const _IMPL_SKILLS := {
 	# 签名招 (既有 _sk_* 实装, 按技能 type 分派)
 	"turtleShieldBash": true, "bambooHeal": true, "angelBless": true, "angelAscend": true, "stoneRockShield": true, "rockShockwave": true, "stoneTaunt": true, "iceFrost": true, "iceFreeze": true,
-	"ninjaImpact": true, "ghostStorm": true, "ghostPhase": true, "diamondFortify": true, "diceAllIn": true,
+	"ninjaImpact": true, "ghostStorm": true, "ghostPhase": true, "diamondFortify": true, "diceAllIn": true, "diceFlashStrike": true,
 	"gamblerBet": true, "hunterStealth": true, "pirateCannonBarrage": true, "bubbleShield": true,
 	"lineLink": true, "lightningSurgeBuff": true, "phoenixShield": true, "phoenixEnhancedRebirth": true, "twoHeadFear": true,
 	"fortuneDice": true, "crystalBarrier": true, "chestCount": true, "starMeteor": true,
@@ -6168,6 +6168,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"ghostPhase":           _sk_ghost_phase(u, tgt)
 		"diamondFortify":       _sk_diamond_unbreak(u)
 		"diceAllIn":            _sk_dice_allin(u)
+		"diceFlashStrike":      _sk_dice_flash_strike(u)
 		"gamblerBet":           _sk_gambler_wild(u, tgt)
 		"hunterStealth":        _sk_hunter_hide(u)
 		"pirateCannonBarrage":  _sk_pirate_volley(u)
@@ -6437,9 +6438,41 @@ func _sk_diamond_unbreak(u: Dictionary) -> void:                 # 钻石龟·�
 	_grant_shield(u, u["maxHp"] * 0.20)
 	_buff(u, "def", 0.2, true); _buff(u, "mr", 0.2, true)
 
-func _sk_dice_allin(u: Dictionary) -> void:                      # 骰子龟·孤注一掷 ✅
+func _sk_dice_allin(u: Dictionary) -> void:                      # 骰子龟·孤注一掷(用户设计: 前方120°/300码镰刀扇形斩·1.2A物理+30%吸血)
+	var tgt = _nearest_enemy(u)
+	var dir: Vector2 = (Vector2.RIGHT if tgt == null else (tgt["pos"] - u["pos"]))
+	if dir.length() < 1.0: dir = Vector2.RIGHT
+	dir = dir.normalized()
+	var half_cos: float = cos(deg_to_rad(60.0))                  # 半角60°=全120°
 	for o in _enemies_of(u):
+		if not o.get("alive", false): continue
+		var to_o: Vector2 = o["pos"] - u["pos"]
+		var d: float = to_o.length()
+		if d > 300.0 or d < 1.0: continue
+		if dir.dot(to_o / d) < half_cos: continue
 		_apply_damage_from(u, o, _atk_dmg(u, 1.2, o), Color("#ff4444"), 0.30)
+	_skill_ring(u["pos"], Color(1.0, 0.3, 0.3, 0.45), 60.0)
+
+func _sk_dice_flash_strike(u: Dictionary) -> void:              # 骰子龟·稳定骰子(用户设计·刀妹Q式): 掷骰1-6→(4+点数)次短冲刺·每次朝最近/残血敌0.9A物理(吃暴击)·全灭提前结束
+	var pips: int = randi_range(1, 6)
+	var count: int = 4 + pips
+	_float_text(u["pos"] + Vector2(0, -64), "稳定骰子! %d点→%d刺" % [pips, count], Color("#ffd93d"))
+	for i in range(count):
+		var tgt = _dice_pick_strike_target(u)
+		if tgt == null: break                                   # 全灭提前结束
+		_dash_to(u, tgt, 60.0)                                  # 短冲贴身
+		_apply_damage_from(u, tgt, _atk_dmg(u, 0.9, tgt), Color("#ff4444"))
+		_melee_lunge(u, tgt)
+
+func _dice_pick_strike_target(u: Dictionary):                   # 最近·残血优先
+	var best = null
+	var best_score := INF
+	for o in _enemies_of(u):
+		if not o.get("alive", false): continue
+		var score: float = o["pos"].distance_to(u["pos"]) + float(o["hp"]) * 0.1
+		if score < best_score:
+			best_score = score; best = o
+	return best
 
 func _sk_rainbow_shield(u: Dictionary) -> void:                  # 彩虹龟·棱镜护盾 ✅
 	for o in _allies_of(u):
@@ -7512,7 +7545,7 @@ func _sk_dice_fate(u: Dictionary) -> void:
 	var add_cd: float = over * 1.5
 	u["crit"] += add_crit
 	u["crit_dmg"] += add_cd
-	u["crit_fate_until"] = _t + 5.0
+	u["crit_fate_until"] = _t + 999.0   # 持续到下次放技能(开头撤旧增益自然重掷·用户设计)
 	u["crit_fate_amt"] = add_crit
 	u["crit_dmg_fate_amt"] = add_cd
 	_float_text(u["pos"] + Vector2(0, -64), "命运骰子! +%d%%暴击" % int(roll * 100), Color("#ffd93d"))
@@ -7878,7 +7911,10 @@ func _apply_spawn_passives() -> void:
 			"headless":
 				u["lifesteal"] += 0.22
 			"dice":
-				u["dice_base_crit"] = u["crit"]; u["dice_base_critdmg"] = u["crit_dmg"]   # 基准(供损血暴击算); 原无条件转护穿=候选强化已锁,去掉
+				u["dice_base_crit"] = u["crit"]; u["dice_base_critdmg"] = u["crit_dmg"]   # 基准(供损血暴击算)
+				if "diceFlashStrike" in _chosen_skill_types(u["id"], u["side"] == "left"):
+					u["armor_pen"] += u["base_def"] + u["base_mr"]   # 真正的赌徒(打包稳定骰子): 登场双抗全转等量护穿(纯物理)
+					u["base_def"] = 0.0; u["base_mr"] = 0.0; _recalc_stats(u)
 			"pirate":
 				var es := _enemies_of(u)
 				if not es.is_empty():

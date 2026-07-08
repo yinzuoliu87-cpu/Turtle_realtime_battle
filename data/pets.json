@@ -1312,6 +1312,7 @@
         "name": "孤注一掷",
         "icon": "skills/dice-allin.png",
         "type": "diceAllIn",
+        "impl": true,
         "dmgType": "physical",
         "hits": 1,
         "power": 0,
@@ -1326,6 +1327,7 @@
         "name": "命运骰子",
         "icon": "skills/dice-fate.png",
         "type": "diceFate",
+        "impl": true,
         "hits": 0,
         "power": 0,
         "pierce": 0,
@@ -1337,21 +1339,10 @@
         "detail": "骰子龟掷出命运骰子，获得随机 <span class=\"val-atk\">40%~130%</span> 暴击机率提升，持续5秒。\n\n<span style=\"color:#8a93a0\">暴击机率超过100%的部分，每1%转化为 1.5% 暴击伤害。</span>"
       },
       {
-        "name": "真正的赌徒",
-        "enhancesPassive": true,
-        "type": "diceGamblerConvert",
-        "passiveSkill": true,
-        "hits": 0,
-        "power": 0,
-        "pierce": 0,
-        "cd": 0,
-        "brief": "骰子龟登场时将全部护甲与魔抗转化为护甲穿透",
-        "detail": "骰子龟登场时将全部（{DEF}）护甲与（{MR}）魔抗转化为 +（{P:DEF+MR}）护甲穿透。\n\n<span style=\"color:#8a93a0\">自身护甲与魔抗均变为 0。</span>"
-      },
-      {
         "name": "稳定骰子",
         "icon": "skills/dice-steady.png",
         "type": "diceFlashStrike",
+        "impl": true,
         "hits": 0,
         "power": 0,
         "pierce": 0,
