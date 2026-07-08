@@ -54,7 +54,7 @@ const STATS := {
 	"angel": [false, 105.0, 0.85, 400.0], "ice": [false, 105.0, 0.85, 400.0], "ninja": [false, 145.0, 0.6, 400.0],
 	"two_head": [true, 145.0, 0.85, 70.0], "ghost": [false, 145.0, 0.6, 400.0], "diamond": [true, 70.0, 1.1, 70.0],
 	"fortune": [true, 105.0, 0.75, 70.0], "dice": [true, 145.0, 0.6, 70.0], "rainbow": [true, 105.0, 0.7, 70.0],
-	"gambler": [false, 145.0, 0.85, 400.0], "hunter": [false, 145.0, 0.7, 400.0], "pirate": [false, 105.0, 0.85, 400.0],
+	"gambler": [false, 145.0, 0.85, 400.0], "hunter": [false, 145.0, 0.7, 400.0], "pirate": [true, 105.0, 0.85, 70.0],
 	"candy": [false, 105.0, 0.85, 400.0], "bubble": [false, 70.0, 1.1, 400.0], "line": [false, 145.0, 0.6, 400.0],
 	"lightning": [false, 145.0, 0.6, 400.0], "phoenix": [false, 105.0, 0.5, 400.0], "lava": [false, 145.0, 0.7, 400.0],
 	"cyber": [false, 105.0, 0.85, 400.0], "crystal": [true, 70.0, 1.1, 70.0], "chest": [true, 105.0, 1.1, 70.0],
@@ -5991,7 +5991,7 @@ const _IMPL_SKILLS := {
 	# 签名招 (既有 _sk_* 实装, 按技能 type 分派)
 	"turtleShieldBash": true, "bambooHeal": true, "angelBless": true, "angelAscend": true, "stoneRockShield": true, "rockShockwave": true, "stoneTaunt": true, "iceFrost": true, "iceFreeze": true,
 	"ninjaImpact": true, "ghostStorm": true, "ghostPhase": true, "diamondFortify": true, "diceAllIn": true, "diceFlashStrike": true,
-	"gamblerBet": true, "hunterStealth": true, "pirateCannonBarrage": true, "bubbleShield": true,
+	"gamblerBet": true, "hunterStealth": true, "pirateCannonBarrage": true, "pirateRum": true, "bubbleShield": true,
 	"lineLink": true, "lightningSurgeBuff": true, "phoenixShield": true, "phoenixEnhancedRebirth": true, "twoHeadFear": true,
 	"fortuneDice": true, "crystalBarrier": true, "chestCount": true, "starMeteor": true,
 	"twoHeadSwitch": true, "lavaSurge": true, "cyberBeam": true, "hidingDefend": true, "shellAbsorb": true,
@@ -6177,6 +6177,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"gamblerFateWheel":     _sk_gambler_fate_wheel(u)
 		"hunterStealth":        _sk_hunter_hide(u)
 		"pirateCannonBarrage":  _sk_pirate_volley(u)
+		"pirateRum":            _sk_pirate_rum(u)
 		"bubbleShield":         _sk_bubble_shield(u, tgt)
 		"lineLink":             _sk_line_link(u)
 		"lightningSurgeBuff":   _sk_lightning_surge(u, tgt)
@@ -6584,6 +6585,12 @@ func _sk_hunter_hide(u: Dictionary) -> void:                     # 猎人龟·�
 		_apply_damage_from(u, tgt, _atk_dmg(u, 0.9, tgt), Color("#ff4444"))
 	_buff(u, "dodge", 0.25, true)
 	_grant_shield(u, u["atk"] * 0.7)   # 0.6→0.7 (恢复文本设计值)
+
+func _sk_pirate_rum(u: Dictionary) -> void:                     # 海盗龟·朗姆酒(用户封板·120龟能): 每秒回4%maxHP×6秒 + 0.5A护甲6秒
+	u["rum_until"] = _t + 6.0; u["rum_dps"] = u["maxHp"] * 0.04   # HoT标记(每秒4%·见_tick_periodic·分秒回补TODO; 现即时给总量近似)
+	_heal(u, u["maxHp"] * 0.24)                                  # 简化: 4%×6秒=24%maxHp即时(精确分秒HoT留回补)
+	_buff(u, "def", u["atk"] * 0.5, false, 6.0)                  # +0.5×攻击力护甲(flat·6秒)
+	_skill_ring(u["pos"], Color(0.82, 0.5, 0.2, 0.5), 48.0)
 
 func _sk_pirate_volley(u: Dictionary) -> void:                   # 海盗龟·火炮齐射 ✅
 	for o in _enemies_of(u):
