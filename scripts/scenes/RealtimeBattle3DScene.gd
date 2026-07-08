@@ -6001,7 +6001,7 @@ const _IMPL_SKILLS := {
 	"basicBarrage": true, "bambooLeaf": true, "bambooSmack": true, "angelEquality": true,
 	"iceSpike": true, "ninjaShuriken": true, "ninjaBomb": true, "twoHeadMagicWave": true,
 	"ghostTouch": true, "ghostPhantom": true, "diamondCollide": true, "fortuneStrike": true,
-	"diceAttack": true, "rainbowStorm": true, "gamblerCards": true, "gamblerDraw": true,
+	"diceAttack": true, "rainbowStorm": true, "gamblerCards": true, "gamblerDraw": true, "gamblerFateWheel": true,
 	"hunterShot": true, "hunterBarrage": true, "candyBarrage": true, "lineSketch": true,
 	"lightningStrike": true, "lightningBarrage": true, "phoenixBurn": true, "phoenixScald": true,
 	"lavaBolt": true, "lavaQuake": true, "lavaErupt": true, "crystalSpike": true, "crystalBurst": true,
@@ -6054,7 +6054,7 @@ const _COPYABLE_SKILLS := {
 	"basicBarrage": true, "bambooLeaf": true, "bambooSmack": true, "angelEquality": true,
 	"iceSpike": true, "ninjaShuriken": true, "ninjaBomb": true, "twoHeadMagicWave": true,
 	"ghostTouch": true, "ghostPhantom": true, "diamondCollide": true, "fortuneStrike": true,
-	"diceAttack": true, "rainbowStorm": true, "gamblerCards": true, "gamblerDraw": true,
+	"diceAttack": true, "rainbowStorm": true, "gamblerCards": true, "gamblerDraw": true, "gamblerFateWheel": true,
 	"hunterShot": true, "hunterBarrage": true, "candyBarrage": true, "lineSketch": true,
 	"lightningStrike": true, "lightningBarrage": true, "phoenixBurn": true, "phoenixScald": true,
 	"lavaBolt": true, "lavaQuake": true, "lavaErupt": true, "crystalSpike": true, "crystalBurst": true,
@@ -6173,7 +6173,8 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"diamondFortify":       _sk_diamond_unbreak(u)
 		"diceAllIn":            _sk_dice_allin(u)
 		"diceFlashStrike":      _sk_dice_flash_strike(u)
-		"gamblerBet":           _sk_gambler_wild(u, tgt)
+		"gamblerBet":           _sk_gambler_bet(u, tgt)
+		"gamblerFateWheel":     _sk_gambler_fate_wheel(u)
 		"hunterStealth":        _sk_hunter_hide(u)
 		"pirateCannonBarrage":  _sk_pirate_volley(u)
 		"bubbleShield":         _sk_bubble_shield(u, tgt)
@@ -6506,6 +6507,34 @@ func _rainbow_enh_prism_proc(u: Dictionary) -> void:            # 强化棱镜4�
 func _sk_rainbow_shield(u: Dictionary) -> void:                  # 彩虹龟·棱镜护盾 ✅
 	for o in _allies_of(u):
 		_grant_shield(o, u["atk"] * 0.65)
+
+func _sk_gambler_bet(u: Dictionary, tgt: Dictionary) -> void:    # 赌神龟·赌注(用户封板·100龟能): 需当前生命>40%; 消耗当前生命40%→7段物理砸目标(共≈0.4×当前生命); 施放3秒多重概率+20%
+	if tgt == null or not tgt.get("alive", false): return
+	if u["hp"] <= u["maxHp"] * 0.40: return                      # 需当前生命>40%才放
+	var cost: float = u["hp"] * 0.40
+	u["hp"] = maxf(1.0, u["hp"] - cost)
+	var per: int = maxi(1, int(cost / 7.0))
+	for i in range(7):
+		_apply_damage_from(u, tgt, per, Color("#ffd93d"), 0.0, true)   # 7段物理(总≈消耗生命·穿减伤)
+	u["gambler_bet_until"] = _t + 3.0                           # 3秒多重概率+20%(见_gambler_multi_cd·回补钩)
+	_skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.55), 54.0)
+
+func _sk_gambler_fate_wheel(u: Dictionary) -> void:             # 赌神龟·命运之轮(用户封板·80龟能): 抽1花色永久加属性(♠攻+5&血+30/♥护甲魔抗+2/♦暴击+8%&护穿+2/♣吸血+4%)·跨场累积=赛季持久化TODO(现本场永久)
+	match randi() % 4:
+		0:
+			u["base_atk"] = float(u["base_atk"]) + 5.0; u["maxHp"] += 30.0; u["hp"] += 30.0
+			_float_text(u["pos"] + Vector2(0, -64), "♠ 攻+5 血+30", Color("#ffd93d"))
+		1:
+			u["base_def"] = float(u["base_def"]) + 2.0; u["base_mr"] = float(u["base_mr"]) + 2.0
+			_float_text(u["pos"] + Vector2(0, -64), "♥ 护甲+2 魔抗+2", Color("#ffd93d"))
+		2:
+			u["crit"] = float(u["crit"]) + 0.08; u["armor_pen"] = float(u.get("armor_pen", 0.0)) + 2.0
+			_float_text(u["pos"] + Vector2(0, -64), "♦ 暴击+8% 护穿+2", Color("#ffd93d"))
+		_:
+			_buff(u, "lifesteal", 0.04, false, 9999.0)
+			_float_text(u["pos"] + Vector2(0, -64), "♣ 吸血+4%", Color("#ffd93d"))
+	_recalc_stats(u)
+	_skill_ring(u["pos"], Color(1.0, 0.84, 0.3, 0.6), 58.0)
 
 func _sk_gambler_wild(u: Dictionary, tgt: Dictionary) -> void:   # 赌神龟·万能牌 ✅
 	for i in range(2):
