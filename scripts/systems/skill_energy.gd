@@ -17,7 +17,7 @@ const SKILL_COST := {
 	# 签名招
 	"turtleShieldBash": 70.0, "bambooHeal": 90.0, "angelBless": 75.0, "angelAscend": 80.0, "stoneRockShield": 100.0, "rockShockwave": 80.0, "stoneTaunt": 120.0, "iceFrost": 120.0,
 	"ninjaBackstab": 95.0, "ghostStorm": 95.0, "ghostPhase": 80.0, "diamondFortify": 70.0, "diceAllIn": 120.0, "diceFlashStrike": 120.0,
-	"gamblerBet": 100.0, "hunterStealth": 90.0, "pirateCannonBarrage": 130.0, "pirateRum": 120.0, "bubbleShield": 80.0, "bubbleBurst": 100.0,
+	"gamblerBet": 100.0, "hunterStealth": 80.0, "pirateCannonBarrage": 130.0, "pirateRum": 120.0, "bubbleShield": 80.0, "bubbleBurst": 100.0,
 	"lineLink": 90.0, "lineInkBomb": 120.0, "lightningSurgeBuff": 90.0, "phoenixShield": 90.0, "phoenixEnhancedRebirth": 120.0, "twoHeadFear": 95.0,
 	"fortuneDice": 70.0, "fortuneBuyEquip": 60.0, "crystalBarrier": 75.0, "chestCount": 90.0, "starWave": 100.0, "starGravityWarp": 120.0,
 	"twoHeadSwitch": 150.0, "lavaSurge": 150.0, "cyberBeam": 100.0, "hidingDefend": 70.0, "shellAbsorb": 100.0,
@@ -28,7 +28,7 @@ const SKILL_COST := {
 	"iceSpike": 120.0, "ninjaShuriken": 95.0, "ninjaBomb": 100.0, "twoHeadMagicWave": 100.0,
 	"ghostTouch": 95.0, "ghostPhantom": 95.0, "diamondCollide": 95.0, "fortuneStrike": 90.0,
 	"diceAttack": 95.0, "rainbowStorm": 125.0, "gamblerCards": 100.0, "gamblerDraw": 80.0, "gamblerFateWheel": 80.0,
-	"hunterShot": 100.0, "hunterBarrage": 135.0, "candyBarrage": 115.0, "lineSketch": 90.0,
+	"hunterShot": 90.0, "hunterBarrage": 100.0, "candyBarrage": 115.0, "lineSketch": 90.0,
 	"lightningStrike": 95.0, "lightningBarrage": 140.0, "phoenixBurn": 90.0, "phoenixScald": 100.0,
 	"lavaBolt": 90.0, "lavaQuake": 115.0, "lavaErupt": 80.0, "crystalSpike": 90.0, "crystalBurst": 115.0,
 	"chestStorm": 100.0, "starBeam": 70.0, "soulReap": 120.0, "shellStrike": 80.0,

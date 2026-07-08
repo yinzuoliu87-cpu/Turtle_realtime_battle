@@ -1561,86 +1561,64 @@
       "hpThresh": 14,
       "stealPct": 14,
       "lifesteal": 8,
-      "brief": "猎人龟每次行动后斩杀生命值低于 <span class=\"val-atk\">14%</span> 的敌人；击杀敌人时窃取对方 <span class=\"val-atk\">14%</span> 基础属性，并叠加 <span class=\"val-heal\">8%</span> 生命偷取。",
-      "desc": "猎人龟每次行动后斩杀生命值低于 <span class=\"val-atk\">14%</span> 的敌人；击杀敌人时窃取对方 <span class=\"val-atk\">14%</span> 基础属性，并叠加 <span class=\"val-heal\">8%</span> 生命偷取。\n已猎杀 {B:hunterKills} 只 — 累计 攻击 +{N:hunterStolenAtk} / 护甲 +{D:hunterStolenDef} / 魔抗 +{M:hunterStolenMr} / 最大生命值 +{H:hunterStolenHp} / 生命偷取 {B:lifesteal}%"
+      "brief": "猎人龟的普攻/技能/装备 任一伤害都会处决生命值低于 <span class=\"val-atk\">14%</span> 的敌人；处决/击杀时窃取对方 <span class=\"val-atk\">14%</span> 基础属性并叠加 <span class=\"val-heal\">8%</span> 生命偷取，永久累积到战斗结束。",
+      "desc": "猎人龟的普攻/技能/装备 任一伤害都会处决生命值低于 <span class=\"val-atk\">14%</span> 的敌人（被【精准射击】猎杀印记标记时抬到24%）；处决/击杀时窃取对方 <span class=\"val-atk\">14%</span> 基础属性并叠加 <span class=\"val-heal\">8%</span> 生命偷取，永久累积到战斗结束。\n已猎杀 {B:hunterKills} 只 — 累计 攻击 +{N:hunterStolenAtk} / 护甲 +{D:hunterStolenDef} / 魔抗 +{M:hunterStolenMr} / 最大生命值 +{H:hunterStolenHp} / 生命偷取 {B:lifesteal}%"
     },
     "skillPool": [
       {
         "name": "射箭",
-        "icon": "skills/hunter-shot.png",
-        "type": "hunterShot",
-        "hitStaggerMs": 140,
-        "hits": 3,
+        "icon": "skills/hunter-basic.png",
+        "type": "hunterBasic",
+        "hits": 1,
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "atkScale": 0.55,
-        "execThresh": 50,
-        "execCrit": 40,
-        "execCritDmg": 20,
-        "brief": "猎人龟射击目标三段，共造成（{N:0.55*ATK*3}）物理伤害",
-        "detail": "猎人龟射击目标三段，共造成（165%×攻击力({ATK}) = {N:0.55*ATK*3}）物理伤害。\n\n<span style=\"color:#8a93a0\">目标生命值低于 50% 时，本技能额外获得 +40% 暴击率与 +20% 暴击伤害。</span>"
+        "atkScale": 1,
+        "brief": "猎人龟射出一箭，造成（{N:ATK}）物理伤害；目标生命<50%时猎人+50%攻击速度（残血追猎）",
+        "detail": "猎人龟的普攻。远程射出一箭，造成（100%×攻击力({ATK}) = {N:ATK}）物理伤害。\n\n<span style=\"color:#8a93a0\">残血追猎：当前目标生命值低于50%时，猎人龟攻击速度+50%。被动猎杀会处决生命低于14%的目标（见被动）。</span>"
+      },
+      {
+        "name": "精准射击",
+        "icon": "skills/hunter-shot.png",
+        "type": "hunterShot",
+        "impl": true,
+        "hits": 1,
+        "power": 0,
+        "pierce": 0,
+        "cd": 0,
+        "atkScale": 2,
+        "brief": "猎人龟蓄力狙击一发（{N:2*ATK}）物理伤害，附加中毒5秒、治疗削减50%（5秒）与猎杀印记（5秒内目标生命<24%即处决）",
+        "detail": "猎人龟眯眼瞄准，蓄力狙击一发造成（200%×攻击力({ATK}) = {N:2*ATK}）物理伤害；同时附加：中毒（5秒每秒魔法伤害）、治疗削减50%（5秒）、猎杀印记（5秒内目标生命值低于24%即被处决，斩杀线临时从14%抬到24%）。\n\n<span style=\"color:#8a93a0\">射箭+毒箭+猎杀印记 三合一。冲刺追猎靠残血追猎普攻+被动处决。</span>"
       },
       {
         "name": "隐蔽",
         "icon": "skills/hunter-stealth.png",
         "type": "hunterStealth",
+        "impl": true,
         "hits": 1,
         "power": 0,
         "pierce": 0,
         "cd": 0,
         "dmgScale": 0.9,
         "dodgePct": 25,
-        "dodgeTurns": 3,
+        "dodgeTurns": 5,
         "shieldScale": 0.7,
-        "shieldTurns": 3,
-        "brief": "猎人龟射出一箭，造成（{N:0.9*ATK}）物理伤害，并获得 <span class=\"val-atk\">25%</span> 闪避（持续5秒）与（{S:0.7*ATK}）护盾",
-        "detail": "猎人龟射出一箭，造成（90%×攻击力({ATK}) = {N:0.9*ATK}）物理伤害，并获得 <span class=\"val-atk\">25%</span> 闪避（持续5秒）与（70%×攻击力({ATK}) = {S:0.7*ATK}）护盾。"
+        "brief": "猎人龟智能翻滚约250码（按威胁选方向），下次普攻附带（{N:0.9*ATK}）物理伤害，并获得 <span class=\"val-atk\">25%</span> 闪避（5秒）与（{S:0.7*ATK}）护盾",
+        "detail": "猎人龟灵巧翻滚约250码（参考英雄联盟薇恩Q：近战威胁贴近→拉距、残血→撤退、安全→调整到当前目标最佳射程），下次普攻附带（90%×攻击力({ATK}) = {N:0.9*ATK}）物理伤害（吃吸血），并获得 <span class=\"val-atk\">25%</span> 闪避（持续5秒）与（70%×攻击力({ATK}) = {S:0.7*ATK}）护盾。"
       },
       {
-        "name": "连珠箭",
+        "name": "狩猎弹幕",
         "icon": "skills/hunter-barrage.png",
         "type": "hunterBarrage",
-        "hitStaggerMs": 120,
+        "impl": true,
         "dmgType": "true",
         "hits": 10,
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "arrowScale": 0.24,
-        "brief": "猎人龟发射十根箭随机射向敌方，共造成（{T:0.24*ATK*10}）真实伤害",
-        "detail": "猎人龟发射十根箭随机射向敌方，共造成（240%×攻击力({ATK}) = {T:0.24*ATK*10}）真实伤害。"
-      },
-      {
-        "name": "毒箭",
-        "icon": "skills/hunter-poison.png",
-        "type": "hunterPoison",
-        "hits": 1,
-        "power": 0,
-        "pierce": 0,
-        "cd": 0,
-        "atkScale": 0.8,
-        "dot": {
-          "dmg": 15,
-          "turns": 3
-        },
-        "healReduce": true,
-        "brief": "猎人龟射出毒箭，造成（{N:0.8*ATK}）物理伤害，并施加 <span style=\"color:#9b59b6\">11 中毒值</span> 与治疗削减",
-        "detail": "猎人龟射出毒箭，造成（80%×攻击力({ATK}) = {N:0.8*ATK}）物理伤害，并施加 <span style=\"color:#9b59b6\">11 中毒值</span> 与治疗削减。\n\n<span style=\"color:#8a93a0\">中毒：使目标每秒持续受到魔法伤害。治疗削减：使目标受到的治疗效果降低50%。</span>"
-      },
-      {
-        "name": "猎杀印记",
-        "icon": "skills/hunter-mark.png",
-        "type": "hunterMark",
-        "hits": 1,
-        "power": 0,
-        "pierce": 0,
-        "cd": 0,
-        "atkScale": 1.6,
-        "markTurns": 3,
-        "markExecPct": 24,
-        "brief": "猎人龟标记猎物，造成（{N:1.6*ATK}）物理伤害，并施加猎杀印记5秒",
-        "detail": "猎人龟标记猎物，造成（160%×攻击力({ATK}) = {N:1.6*ATK}）物理伤害，并施加猎杀印记，持续5秒。\n\n<span style=\"color:#8a93a0\">猎杀印记：印记期间目标生命值低于 24% 时立即被斩杀。</span>"
+        "arrowScale": 0.3,
+        "brief": "猎人龟发射10根箭优先锁残血，每根（{T:0.3*ATK}）真实伤害（共{T:0.3*ATK*10}），每根命中生命<14%的敌即处决",
+        "detail": "猎人龟连珠速射10根绿箭优先锁残血目标，每根造成（30%×攻击力({ATK}) = {T:0.3*ATK}）真实伤害，10根共（300%×攻击力({ATK}) = {T:0.3*ATK*10}）；每根命中生命值低于14%的敌人即处决。\n\n<span style=\"color:#8a93a0\">封板设计：每根箭直线飞行可被挡(命中路径第一个敌/障碍即停),复用小龟「打击」可挡弹道 — 待小龟弹道系统建成接入,当前直击近似。</span>"
       }
     ],
     "defaultSkills": [
