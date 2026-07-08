@@ -102,7 +102,7 @@ const BASIC_ATK := {
 	"cyber":    {"phys": 0.75, "hp": 0.12, "hits": 5},                             # +12%目标HP
 	"crystal":  {"phys": 0.6, "hp": 0.015, "hits": 1},                             # 水晶刺:0.6A物理+1.5%目标maxHp+叠1结晶(用户封板·结晶走_on_basic_hit)
 	"chest":    {"phys": 1.5, "hits": 3},                                          # (原4.5 错→1.5; 原始无公式)
-	"space":    {"magic": 1.2, "tcurhp": 0.18, "hits": 3},                          # 魔法+18%目标当前HP (原物 错)
+	"space":    {"magic": 0.9, "tcurhp": 0.05, "hits": 1},                          # 星光弹: 单段0.9A魔法+5%目标当前HP (封板2026-07-07)
 	"hiding":   {"phys": 1.0, "hits": 1, "rider": "selfdef"},                       # +自护甲buff
 	"headless": {"phys": 1.3, "hp": 0.08, "hits": 2},                              # +8%目标HP
 	# shell 走 _basic_attack 特判 _shell_basic (1ATK单段·物/真逐攻交替 + 120px范围溅射50%); 不进 _do_basic
@@ -372,7 +372,7 @@ const SKILL_VFX_MAP := {
 	"fortune":   "fortune-dice",          # 骰子+金币
 	"crystal":   "crystal-0",             # 水晶壁垒 (候选1)
 	"chest":     "chest-0",               # 清点财宝 (候选1)
-	"space":     "space-0",               # 流星暴击 (候选1)
+	"space":     "space-0",               # 星光弹 普攻图标
 	"two_head":  "twohead-magicwave",     # 双头 (候选1)
 	"lava":      "lava-0",                # 熔岩 (候选1)
 	"cyber":     "cyber-0",               # 能量大炮 (候选1)
@@ -2440,6 +2440,8 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 				if p == "B":
 					if dist <= rng:
 						_basic_attack(u, tgt)
+						if u["id"] == "space" and tgt.get("alive", false) and float(u.get("star_energy", 0.0)) > 0.0:   # 星能: 普攻也算施法·附带追加30%储存星能真伤(封板)
+							_apply_damage_from(u, tgt, int(u["star_energy"] * 0.30), Color("#ffffff"), 0.0, true)
 					# gambler 多重打击(云顶剑士式): 命中后掷概率, 中→快攻速再打, 没中→正常冷却
 					var _hf: float = maxf(1.0, float(u.get("haste_mult", 1.0))) if _t < float(u.get("haste_until", 0.0)) else 1.0   # 临时攻速buff(祝福等)
 					u["atk_cd"] = (_gambler_multi_cd(u) if (u["id"] == "gambler" and dist <= rng) else u["atk_interval"]) / maxf(0.1, _hf * (float(u.get("spd_aspd_mult", 1.0)) if _t < float(u.get("spd_dbf_until", 0.0)) else 1.0) * float(u.get("aspd_perm", 1.0)))   # ×永久攻速(贝母021等,本场)
@@ -5993,7 +5995,7 @@ const _IMPL_SKILLS := {
 	"ninjaImpact": true, "ghostStorm": true, "ghostPhase": true, "diamondFortify": true, "diceAllIn": true, "diceFlashStrike": true,
 	"gamblerBet": true, "hunterStealth": true, "pirateCannonBarrage": true, "pirateRum": true, "bubbleShield": true,
 	"lineLink": true, "lightningSurgeBuff": true, "phoenixShield": true, "phoenixEnhancedRebirth": true, "twoHeadFear": true,
-	"fortuneDice": true, "crystalBarrier": true, "chestCount": true, "starMeteor": true,
+	"fortuneDice": true, "crystalBarrier": true, "chestCount": true, "starWave": true,
 	"twoHeadSwitch": true, "lavaSurge": true, "cyberBeam": true, "hidingDefend": true, "shellAbsorb": true,
 	# 通用 (多龟共享 type)
 	"shield": true, "heal": true,
@@ -6007,7 +6009,7 @@ const _IMPL_SKILLS := {
 	"lavaBolt": true, "lavaQuake": true, "lavaErupt": true, "crystalSpike": true, "crystalBurst": true,
 	"chestStorm": true, "starBeam": true, "soulReap": true, "shellStrike": true,
 	# Batch2 特殊技 (召唤/控制/处决/复制/梭哈/虫洞 — bespoke)
-	"chestSmash": true, "fortuneAllIn": true, "starWormhole": true, "lineFinish": true, "lineInkBomb": true,
+	"chestSmash": true, "fortuneAllIn": true, "starWormhole": true, "starGravityWarp": true, "lineFinish": true, "lineInkBomb": true,
 	"cyberDeploy": true, "bubbleBind": true, "bubbleBurst": true, "hidingCommand": true, "shellCopy": true,
 	"diceFate": true,
 	# 后4龟补实装的 4选1
@@ -6187,7 +6189,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"fortuneDice":          _sk_fortune_dice(u)
 		"crystalBarrier":       _sk_crystal_bulwark(u)
 		"chestCount":           _sk_chest_inventory(u)
-		"starMeteor":           _sk_space_meteor(u)
+		"starWave":             _sk_star_wave(u)
 		"twoHeadSwitch":        _sk_two_head(u, tgt)
 		"lavaSurge":            _sk_lava_cast(u, tgt, "B")   # 岩浆涌动 (修: 原走set A=地裂)
 		"lavaErupt":            _sk_lava_erupt(u, tgt)       # 技三: 智能冲刺+穿透普攻 / 火山暴走
@@ -6238,6 +6240,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		# ── Batch2 特殊技 (bespoke) ──
 		"fortuneAllIn":         _sk_fortune_allin(u, tgt)
 		"starWormhole":         _sk_star_wormhole(u, tgt)
+		"starGravityWarp":      _sk_star_gravity_warp(u)
 		"lineFinish":           _sk_line_finish(u)
 		"lineInkBomb":          _sk_line_ink_bomb(u)
 		"cyberDeploy":          _sk_cyber_deploy(u)
@@ -6862,16 +6865,43 @@ func _sk_chest_inventory(u: Dictionary) -> void:                 # 宝箱龟·�
 	_heal(u, u["maxHp"] * 0.05 * bonus)
 	_grant_shield(u, u["atk"] * 0.6 * bonus)
 
-func _sk_space_meteor(u: Dictionary) -> void:                    # 星际龟·流星暴击 ✅
+func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭曲空间(用户封板·120龟能·吃星能): 普通=敌阵中心500码全体0.8A魔法; 星能满=同上+把500码内敌拖拽拉向中心(发条R集火)+消耗全部星能
+	var es: Array = []
 	for o in _enemies_of(u):
+		if o.get("alive", false): es.append(o)
+	if es.is_empty(): return
+	var center := Vector2.ZERO
+	for o in es: center += o["pos"]
+	center /= float(es.size())
+	var charged: bool = float(u.get("star_energy", 0.0)) >= u["maxHp"] * 0.40   # 星能满
+	for o in es:
+		if o["pos"].distance_to(center) <= 500.0:
+			_apply_damage_from(u, o, _atk_dmg(u, 0.8, o, true), Color("#b09bff"))
+			if charged and not o.get("_eggImmune", false):                      # 强化: 拖拽拉向中心集火
+				var dir: Vector2 = (center - o["pos"])
+				if dir.length() > 1.0:
+					o["pos"] += dir.normalized() * minf(dir.length() * 0.6, 200.0)
+	if charged:
+		u["star_energy"] = 0.0                                                  # 星能满强化→消耗全部
+	_skill_ring(center, Color(0.7, 0.6, 1.0, 0.5), 500.0)   # 引力点VFX占位
+
+func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·星波(封板2026-07-07·100龟能·吃星能): 普通=自身为心环形星波扩散·经过敌1.0A魔法; 星能满强化=环形波+召唤巨彗星砸敌阵中心额外1.5A魔法(龙王R天崩地裂式)+消耗全部星能; 不减速不击飞
+	var charged: bool = float(u.get("star_energy", 0.0)) >= u["maxHp"] * 0.40
+	var es: Array = []
+	for o in _enemies_of(u):
+		if o.get("alive", false): es.append(o)
+	for o in es:                                                 # 环形星波·扩散经过全体敌
 		_apply_damage_from(u, o, _atk_dmg(u, 1.0, o, true), Color("#c9b0ff"))
-		_buff(o, "mr", -0.2, true)
-	if u["star_energy"] >= u["maxHp"] * 0.40:
-		var burst: float = u["star_energy"]
-		u["star_energy"] = 0.0
-		for o in _enemies_of(u):
-			_raw_lose(o, burst)
-			_float_text(o["pos"] + Vector2(0, -48), str(int(burst)), Color("#ffd0ff"))
+	_skill_ring(u["pos"], Color(0.65, 0.55, 1.0, 0.5), 520.0)    # 星波扩散VFX占位
+	if charged and not es.is_empty():                            # 强化: 巨彗星砸敌阵中心+大冲击波额外1.5A
+		var center := Vector2.ZERO
+		for o in es: center += o["pos"]
+		center /= float(es.size())
+		for o in es:
+			if o.get("alive", false) and o["pos"].distance_to(center) <= 400.0:
+				_apply_damage_from(u, o, _atk_dmg(u, 1.5, o, true), Color("#ffd0ff"))
+		_skill_ring(center, Color(1.0, 0.85, 1.0, 0.6), 400.0)   # 彗星冲击波VFX占位
+		u["star_energy"] = 0.0                                   # 星能满强化→消耗全部星能
 
 func _sk_candy_armor(u: Dictionary) -> void:                     # 糖果龟·焦糖铠 ✅
 	_grant_shield(u, u["atk"] * 0.8)
@@ -7650,16 +7680,17 @@ func _throw_gold_coin(src: Dictionary, tgt: Dictionary) -> void:
 func _sk_star_wormhole(u: Dictionary, tgt) -> void:
 	if tgt == null:
 		return
-	u["magic_pen"] += 8.0                           # 永久魔穿
+	u["magic_pen"] += 6.0 + 0.5 * float(u.get("level", 1))   # 永久魔穿(叠加·6+0.5×等级·封板)
 	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
-	var mult: float = 1.5 * (1.0 + 0.1 * _t)        # 随战斗时间变强
+	var mult: float = 1.5 * (1.0 + 0.05 * _t)        # 随战斗时间变强(5%/秒·封板)
 	for o in _enemies_of(u):
 		if o == tgt or _on_line(u["pos"], dir, o["pos"], 70.0):
 			for i in range(4):
 				if not o["alive"]:
 					break
 				_apply_damage_from(u, o, _atk_dmg(u, mult / 4.0, o, true), Color("#ffffff"))
-			_knockback(u, o, 55.0)
+			if o["alive"] and not o.get("_eggImmune", false):   # 吸拽被扫敌朝虫洞推进方向(替代原击飞·封板)
+				o["pos"] += dir * 90.0
 			_skill_ring(o["pos"], Color(0.75, 0.6, 1.0, 0.5), 50.0)
 
 func _sk_line_ink_bomb(u: Dictionary) -> void:                  # 线条龟·墨水炸弹(用户设计·120龟能): 全体敌4段共1A魔法+各叠4墨迹(打包被动=墨迹上限提到10·叠满10层+50%真实受伤)
