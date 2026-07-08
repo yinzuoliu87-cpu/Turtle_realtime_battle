@@ -104,7 +104,7 @@ const BASIC_ATK := {
 	"chest":    {"phys": 1.0, "hits": 1},                                          # (已被 _chest_basic 短直线AOE 接管·此为兜底)
 	"space":    {"magic": 0.9, "tcurhp": 0.05, "hits": 1},                          # 星光弹: 单段0.9A魔法+5%目标当前HP (封板2026-07-07)
 	"hiding":   {"phys": 1.0, "hits": 1, "rider": "selfdef"},                       # +自护甲buff
-	"headless": {"phys": 1.3, "hp": 0.08, "hits": 2},                              # +8%目标HP
+	"headless": {"phys": 1.0, "hits": 1},                                          # 兜底; 实由 _basic_attack 撕咬分支接管(1A物理+3%maxHp魔法)
 	# shell 走 _basic_attack 特判 _shell_basic (1ATK单段·物/真逐攻交替 + 120px范围溅射50%); 不进 _do_basic
 }
 const DEFAULT_BASIC := {"phys": 1.0, "hits": 1}
@@ -2674,6 +2674,17 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	if u["id"] == "two_head":       # 双头(封板): 普攻随形态 — 远程1.2A物理(灵能弹)/近战0.9A物理(挥砍)
 		var _thsc: float = 0.9 if u["melee"] else 1.2
 		_emit_basic(u, tgt, _atk_dmg(u, _thsc, tgt), Color("#c0a0ff"), 0)
+		_on_basic_hit(u, tgt)
+		return
+	if u["id"] == "headless":       # 撕咬(封板): 1A物理 + 3%目标最大生命魔法; 灵魂打击充能满→附0.9A物理+20%当前生命魔法
+		_apply_damage_from(u, tgt, _atk_dmg(u, 1.0, tgt), Color("#c77dff"))
+		if tgt.get("alive", false): _apply_damage_from(u, tgt, int(tgt["maxHp"] * 0.03), Color("#c77dff"))   # 3%maxHp魔法
+		if u.get("headless_soul_buff", false):                     # 灵魂打击: 满能→下次普攻附加(单体)
+			u["headless_soul_buff"] = false
+			if tgt.get("alive", false):
+				_apply_damage_from(u, tgt, _atk_dmg(u, 0.9, tgt), Color("#9b3bff"))
+				_apply_damage_from(u, tgt, int(tgt["hp"] * 0.20), Color("#9b3bff"))   # 20%目标当前生命魔法
+				_float_text(u["pos"] + Vector2(0, -60), "灵魂打击!", Color("#9b3bff"))
 		_on_basic_hit(u, tgt)
 		return
 	var spec: Dictionary = BASIC_ATK.get(u["id"], DEFAULT_BASIC)
@@ -5938,7 +5949,7 @@ const _SKILL_SELF_VFX := {
 const _SELF_CAST_SKILLS := {
 	"shield": true, "heal": true, "bambooHeal": true, "angelBless": true,
 	"diamondFortify": true, "crystalBarrier": true, "phoenixShield": true,
-	"hidingDefend": true, "hunterStealth": true,
+	"hidingDefend": true, "hunterStealth": true, "headlessSoulStrike": true,
 	"lavaSurge": true, "bubbleShield": true, "shellAbsorb": true,
 	"fortuneDice": true, "lightningSurgeBuff": true, "chestCount": true,
 	"fortuneBuyEquip": true, "phoenixPurify": true, "lightningSurge": true, "lightningShield": true, "rainbowReflect": true,
@@ -6002,7 +6013,7 @@ const _IMPL_SKILLS := {
 	"turtleShieldBash": true, "bambooHeal": true, "angelBless": true, "angelAscend": true, "stoneRockShield": true, "rockShockwave": true, "stoneTaunt": true, "iceFrost": true, "iceFreeze": true,
 	"ninjaBackstab": true, "ghostStorm": true, "ghostPhase": true, "diamondFortify": true, "diceAllIn": true, "diceFlashStrike": true,
 	"gamblerBet": true, "hunterStealth": true, "pirateCannonBarrage": true, "pirateRum": true, "bubbleShield": true,
-	"lineLink": true, "lightningSurgeBuff": true, "phoenixShield": true, "phoenixEnhancedRebirth": true, "twoHeadFear": true,
+	"lineLink": true, "lightningSurgeBuff": true, "phoenixShield": true, "phoenixEnhancedRebirth": true, "headlessFear": true,
 	"fortuneDice": true, "crystalBarrier": true, "chestCount": true, "starWave": true,
 	"twoHeadStrike": true, "twoHeadDisrupt": true, "twoHeadFusion": true, "lavaSurge": true, "cyberBeam": true, "hidingDefend": true, "shellAbsorb": true,
 	# 通用 (多龟共享 type)
@@ -6015,7 +6026,7 @@ const _IMPL_SKILLS := {
 	"hunterShot": true, "hunterBarrage": true, "candyBarrage": true, "lineSketch": true,
 	"lightningStrike": true, "lightningBarrage": true, "phoenixBurn": true, "phoenixScald": true,
 	"lavaBolt": true, "lavaQuake": true, "lavaErupt": true, "crystalSpike": true, "crystalBurst": true,
-	"chestStorm": true, "starBeam": true, "soulReap": true, "shellStrike": true,
+	"chestStorm": true, "starBeam": true, "headlessTendrils": true, "headlessSoulStrike": true, "shellStrike": true,
 	# Batch2 特殊技 (召唤/控制/处决/复制/梭哈/虫洞 — bespoke)
 	"chestCannon": true, "fortuneAllIn": true, "starWormhole": true, "starGravityWarp": true, "lineFinish": true, "lineInkBomb": true,
 	"cyberDeploy": true, "bubbleBind": true, "bubbleBurst": true, "hidingCommand": true, "shellCopy": true,
@@ -6068,7 +6079,7 @@ const _COPYABLE_SKILLS := {
 	"hunterShot": true, "hunterBarrage": true, "candyBarrage": true, "lineSketch": true,
 	"lightningStrike": true, "lightningBarrage": true, "phoenixBurn": true, "phoenixScald": true,
 	"lavaBolt": true, "lavaQuake": true, "lavaErupt": true, "crystalSpike": true, "crystalBurst": true,
-	"chestStorm": true, "starBeam": true, "soulReap": true, "shellStrike": true, "chestCannon": true,
+	"chestStorm": true, "starBeam": true, "headlessTendrils": true, "headlessSoulStrike": true, "shellStrike": true, "chestCannon": true,
 }
 
 # 逐技独立冷却: 放【冷却好了的、可放的、强度最高的】那个 (大招好了优先放, 小技填空档) — 各技各自节奏.
@@ -6193,7 +6204,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"lightningSurgeBuff":   _sk_lightning_surge(u, tgt)
 		"phoenixShield":        _sk_phoenix_lavashield(u)
 		"phoenixEnhancedRebirth": _sk_phoenix_haste(u)
-		"twoHeadFear":          _sk_headless_fear(u, tgt)
+		"headlessFear":         _sk_headless_fear(u, tgt)
 		"fortuneDice":          _sk_fortune_dice(u)
 		"crystalBarrier":       _sk_crystal_bulwark(u)
 		"chestCount":           _sk_chest_inventory(u)
@@ -6245,7 +6256,8 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"crystalBurst":         _sk_dmg(u, tgt, {"magic": 0.7, "true": 0.1, "hits": 3, "aoe": true, "name": "水晶爆!", "color": Color("#9bdcff")})
 		"chestStorm":           _sk_chest_storm(u, tgt)
 		"starBeam":             _sk_dmg(u, tgt, {"magic": 0.4, "hits": 3, "name": "星光束!", "color": Color("#ffffff")})
-		"soulReap":             _sk_dmg(u, tgt, {"phys": 1.1, "hits": 1, "aoe": true, "name": "灵魂收割!", "color": Color("#c77dff")})
+		"headlessTendrils":     _sk_headless_tendrils(u, tgt)
+		"headlessSoulStrike":   _sk_headless_soul_charge(u)
 		"shellStrike":          _sk_dmg(u, tgt, {"phys": 0.9, "hits": 2, "name": "龟壳猛击!", "color": Color("#cfd8e8")})
 		"chestCannon":          _sk_chest_cannon(u, tgt)
 		# ── Batch2 特殊技 (bespoke) ──
@@ -6925,9 +6937,44 @@ func _sk_angel_ascend(u: Dictionary) -> void:                   # 天使龟·飞
 	u["atk_range"] = float(u["atk_range"]) + 25.0              # +25码射程(永久·叠加)
 	_skill_ring(u["pos"], Color(1.0, 0.92, 0.55, 0.65), 58.0)  # 金光飞升VFX占位(美术: 离地悬浮+光翼+圣环渐亮越飞越盛)
 
-func _sk_headless_fear(u: Dictionary, tgt: Dictionary) -> void:  # 无头龟·恐吓 ✅
-	_apply_damage_from(u, tgt, _atk_dmg(u, 0.9, tgt), Color("#ff4444"))
-	_buff(tgt, "atk", -0.20, true)
+func _sk_headless_fear(u: Dictionary, _tgt = null) -> void:      # 无头·恐吓(封板·110龟能): 半径200码内所有敌 定身+缴械+锁技3秒(stun_until·龟能照充满也不放·蛋免控·无伤害)
+	var cx: Vector2 = u["pos"]
+	for o in _enemies_of(u):
+		if not o.get("alive", false): continue
+		if o["pos"].distance_to(cx) > 200.0: continue
+		if o.get("_eggImmune", false): continue
+		o["stun_until"] = maxf(float(o.get("stun_until", 0.0)), _t + _cc_dur(o, 3.0))
+		_float_text(o["pos"] + Vector2(0, -48), "恐吓", Color("#9b3bff"))
+	_skill_ring(cx, Color(0.6, 0.2, 0.7, 0.5), 200.0)
+
+func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万千触须(封板·160龟能·虐杀原形): 全场无差别触须·伸(穿过)→停→收(脱离)约4s·自身也硬控·本次+22%吸血
+	u["stun_until"] = maxf(float(u.get("stun_until", 0.0)), _t + 4.0)   # 自身硬控全程(施法动作·亡灵拉全场自己也搭进去)
+	var center: Vector2 = u["pos"]
+	var pass_fn := func():                                      # 伸/穿过(≈0.3s铺满): 无差别 敌1A+眩晕 / 友0.5A+眩晕(刷新不叠)
+		for o in _units:
+			if not o.get("alive", false) or o == u: continue
+			var sc: float = 1.0 if o["side"] != u["side"] else 0.5
+			_apply_damage_from(u, o, _atk_dmg(u, sc, o), Color("#9b3bff"), 0.22)
+			if not o.get("_eggImmune", false):
+				o["stun_until"] = maxf(float(o.get("stun_until", 0.0)), _t + 2.7)   # 眩晕持续到脱离
+				o["_tendril_stun"] = true
+		_skill_ring(center, Color(0.42, 0.16, 0.62, 0.5), 720.0)
+	_pending_shots.append({"delay": 0.3, "fn": pass_fn, "src": u})
+	var detach_fn := func():                                    # 收/脱离(≈3.0s): 无差别 敌1.5A / 友0.5A + 回复行动(解眩晕)
+		for o in _units:
+			if not o.get("alive", false) or o == u: continue
+			var sc: float = 1.5 if o["side"] != u["side"] else 0.5
+			_apply_damage_from(u, o, _atk_dmg(u, sc, o), Color("#ff3b6b"), 0.22)
+			if o.get("_tendril_stun", false):
+				o["_tendril_stun"] = false
+				o["stun_until"] = _t   # 解眩晕→回复行动
+		_skill_ring(center, Color(1.0, 0.24, 0.42, 0.5), 720.0)
+	_pending_shots.append({"delay": 3.0, "fn": detach_fn, "src": u})
+
+func _sk_headless_soul_charge(u: Dictionary) -> void:           # 无头·灵魂打击(封板·80龟能·充能强化普攻): 满能→下次普攻附0.9A物理+20%当前生命魔法(在_basic_attack消费)·触发后龟能清零重充
+	u["headless_soul_buff"] = true
+	_float_text(u["pos"] + Vector2(0, -56), "灵魂蓄力", Color("#9b3bff"))
+	_skill_ring(u["pos"], Color(0.6, 0.23, 0.7, 0.5), 44.0)
 
 func _sk_fortune_dice(u: Dictionary) -> void:                    # 财神龟·骰子 ✅
 	u["gold"] += randi_range(3, 8)   # 2~6→3~8 (恢复文本设计值)
