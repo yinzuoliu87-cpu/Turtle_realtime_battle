@@ -6480,6 +6480,28 @@ func _dice_pick_strike_target(u: Dictionary):                   # 最近·残血
 			best_score = score; best = o
 	return best
 
+func _rainbow_enh_prism_proc(u: Dictionary) -> void:            # 强化棱镜4色(用户设计·每5秒抽1): 橙全体友军+10%吸血5s / 黄随机敌灼烧0.67A / 青随机敌冰寒5s / 紫随机敌诅咒5s
+	var c: int = randi() % 4
+	var es: Array = _enemies_of(u)
+	match c:
+		0:
+			for o in _allies_of(u):
+				_buff(o, "lifesteal", 0.1, false, 5.0)
+			_float_text(u["pos"] + Vector2(0, -60), "橙·全体吸血", Color("#ff9d3c"))
+		1:
+			if not es.is_empty():
+				var t = es[randi() % es.size()]
+				_apply_dot_stacks(t, "burn", maxi(1, int(round(float(u["atk"]) * 0.67))), u)
+		2:
+			if not es.is_empty():
+				var t2 = es[randi() % es.size()]
+				t2["spd_aspd_mult"] = 0.7; t2["spd_dbf_until"] = _t + 5.0   # 冰寒-30%攻速5秒
+		3:
+			if not es.is_empty():
+				var t3 = es[randi() % es.size()]
+				_add_dot(t3, "curse", t3["maxHp"] * 0.05, 5.0)             # 诅咒每秒5%maxHp真伤5秒
+	_skill_ring(u["pos"], Color(0.8, 0.6, 1.0, 0.4), 48.0)
+
 func _sk_rainbow_shield(u: Dictionary) -> void:                  # 彩虹龟·棱镜护盾 ✅
 	for o in _allies_of(u):
 		_grant_shield(o, u["atk"] * 0.65)
@@ -8041,6 +8063,8 @@ func _apply_spawn_passives() -> void:
 			u["_enh_rebirth"] = true   # 强化涅槃: 复活100%血+永久+20%攻击(见_kill)
 		if "angelBless" in _chosen_skill_types(u["id"], u["side"] == "left"):
 			u["_angel_revive"] = true  # 天使祝福绑定: 选祝福→自身首死25%复活(见_kill)
+		if "rainbowReflect" in _chosen_skill_types(u["id"], u["side"] == "left"):
+			u["_enh_prism"] = true      # 彩虹反射打包强化棱镜4色(每5s抽色·见_tick_periodic)
 
 func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 	if not tgt["alive"]:
@@ -8155,6 +8179,11 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		if u["_rbtimer"] >= 6.0:
 			u["_rbtimer"] = 0.0
 			u["prism_color"] = randi() % 3   # 棱镜(改造): 自身获颜色6秒, 普攻附色(见 _on_basic_hit)
+		if u["id"] == "rainbow" and u.get("_enh_prism", false):   # 强化棱镜(选反射打包): 每5秒抽1色(橙吸血/黄灼烧/青冰寒/紫诅咒)
+			u["_epTimer"] = float(u.get("_epTimer", 0.0)) + delta
+			if u["_epTimer"] >= 5.0:
+				u["_epTimer"] = 0.0
+				_rainbow_enh_prism_proc(u)
 	# --- 泡泡·泡沫: 每2.5s 消耗15%泡泡回血 + 35%泡泡打随机敌 ---
 	if u["id"] == "bubble":
 		u["_bbtimer"] = u.get("_bbtimer", 0.0) + delta

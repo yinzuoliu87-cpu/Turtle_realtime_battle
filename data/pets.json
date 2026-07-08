@@ -1413,6 +1413,7 @@
         "name": "全色风暴",
         "icon": "skills/rainbow-storm.png",
         "type": "rainbowStorm",
+        "impl": true,
         "dmgType": "magic",
         "hits": 4,
         "power": 0,
@@ -1430,22 +1431,10 @@
         "energyCost": 80
       },
       {
-        "name": "强化棱镜",
-        "enhancesPassive": true,
-        "type": "rainbowEnhancedPrism",
-        "passiveSkill": true,
-        "hits": 0,
-        "power": 0,
-        "pierce": 0,
-        "cd": 0,
-        "brief": "棱镜新增4种光谱（🟠🟡🩵🟣），每2.5秒额外从🟠🟡🩵🟣抽取一个效果。",
-        "detail": "棱镜新增4种光谱（🟠🟡🩵🟣），每2.5秒额外从🟠🟡🩵🟣抽取一个效果：\n🟠橙光使全体友方获得10%生命偷取持续5秒；\n🟡黄光对随机敌人施加 <span style=\"color:#ff6600\">{0.67*ATK} 灼烧值</span>；\n🩵青光对随机敌人施加冰寒持续5秒；\n🟣紫光对随机敌人施加诅咒持续5秒(每秒结算)。",
-        "energyCost": 0
-      },
-      {
         "name": "反射",
         "icon": "skills/rainbow-reflect.png",
         "type": "rainbowReflect",
+        "impl": true,
         "dmgType": "magic",
         "hits": 0,
         "power": 0,
