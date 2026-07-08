@@ -649,34 +649,35 @@
     },
     "skillPool": [
       {
-        "name": "冲击",
-        "type": "ninjaImpact",
-        "icon": "skills/ninja-impact.png",
+        "name": "斩击",
+        "type": "ninjaSlash",
+        "icon": "skills/ninja-slash.png",
         "hits": 1,
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "atkScale": 1.3,
-        "behindScale": 0.8,
-        "brief": "忍者龟对目标发动冲击，对触碰的首个目标造成（{N:1.3*ATK}）物理伤害，并对其正后方单位造成（{N:0.8*ATK}）物理伤害",
-        "detail": "忍者龟对目标发动冲击，对触碰的首个目标造成（130%×攻击力({ATK}) = {N:1.3*ATK}）物理伤害，并对其正后方单位造成（80%×攻击力({ATK}) = {N:0.8*ATK}）物理伤害。\n\n<span style=\"color:#8a93a0\">冲击会将命中的目标击飞。</span>"
+        "atkScale": 1,
+        "brief": "忍者龟近战斩击，造成（{N:ATK}）物理伤害，并施加固定2层流血（暴击时3层）",
+        "detail": "忍者龟的普攻。近战挥刀斩击，造成（100%×攻击力({ATK}) = {N:ATK}）物理伤害，并对目标施加固定2层流血（暴击时3层）。\n\n<span style=\"color:#8a93a0\">流血：身上每层每秒造成等于层数的物理伤害，层数每秒衰减×0.8，可叠加；靠高频斩击与被动冲击叠满形成压力。冲击已改为被动（亚索E式自动冲刺斩），不再占技能位。</span>"
       },
       {
         "name": "手里剑",
         "type": "ninjaShuriken",
         "icon": "skills/ninja-shuriken.png",
+        "impl": true,
         "hits": 1,
         "power": 0,
         "pierce": 0,
         "cd": 0,
         "atkScale": 1.6,
-        "brief": "忍者龟向目标投掷手里剑，造成（{N:1.6*ATK}）物理伤害，其中 <span class=\"val-true\">40%</span> 为真实伤害",
-        "detail": "忍者龟向目标投掷手里剑，造成（160%×攻击力({ATK}) = {N:1.6*ATK}）物理伤害，其中 <span class=\"val-true\">40%</span> 为真实伤害。"
+        "brief": "忍者龟向当前目标投掷手里剑，造成（{N:1.6*ATK}）物理伤害；暴击时（40%+2%/级）整发转为真实伤害。打包被动·忍者足：登场+25%闪避+40%暴击率",
+        "detail": "忍者龟向当前目标投掷手里剑，造成（160%×攻击力({ATK}) = {N:1.6*ATK}）物理伤害；本次暴击时（暴击率40%+每级2%）整发伤害转为 <span class=\"val-true\">真实伤害</span>。\n\n<span style=\"color:#8a93a0\">打包被动·忍者足：选择本技能后，忍者龟登场额外获得 25% 闪避几率与 40% 暴击率。</span>"
       },
       {
         "name": "炸弹",
         "type": "ninjaBomb",
         "icon": "skills/ninja-bomb.png",
+        "impl": true,
         "aoe": true,
         "hits": 1,
         "power": 0,
@@ -694,6 +695,7 @@
         "name": "背刺",
         "type": "ninjaBackstab",
         "icon": "skills/ninja-backstab.png",
+        "impl": true,
         "hitStaggerMs": 300,
         "hits": 3,
         "power": 0,
@@ -704,19 +706,7 @@
         "armorPenTurns": 1,
         "ignoreRow": true,
         "brief": "忍者龟准备偷袭，获得+5护甲穿透持续5秒，随后闪现到目标身后背刺三段，造成共（{N:0.6667*ATK*3}）物理伤害，此技能可越过前排选择后排目标",
-        "detail": "忍者龟准备偷袭，获得+5护甲穿透持续5秒，随后闪现到目标身后背刺三段，造成共（200%×攻击力 = {N:0.6667*ATK*3}）物理伤害。此技能可越过前排选择后排目标"
-      },
-      {
-        "name": "忍者足",
-        "type": "ninjaFeet",
-        "icon": "skills/ninja-feet.png",
-        "passiveSkill": true,
-        "hits": 0,
-        "power": 0,
-        "pierce": 0,
-        "cd": 0,
-        "brief": "忍者龟登场时额外获得25%闪避几率，40%暴击率",
-        "detail": "忍者龟登场时额外获得 <span class=\"val-atk\">25%</span> 闪避几率，<span class=\"val-atk\">40%</span> 暴击率。"
+        "detail": "忍者龟准备偷袭，获得+5护甲穿透持续5秒，随后闪现到最远敌（后排C）身后背刺三段，造成共（200%×攻击力 = {N:0.6667*ATK*3}）物理伤害，之后留在原地继续追砍该敌。此技能可越过前排选择后排目标"
       }
     ],
     "defaultSkills": [

@@ -42,16 +42,10 @@ const Phase2Schools := preload("res://scripts/engine/phase2_schools.gd")
 const SkillEnergy := preload("res://scripts/systems/skill_energy.gd")   # 龟能花费 单一事实源 (跟战斗同口径)
 
 # 技能在实时版里的角色: passive(被动) / basic(普攻,不花龟能) / active(主动,花龟能). 跟战斗 BASIC_ATK+改造一致.
-#   普攻=skillPool[0]; 忍者改造特例: 飞镖=普攻、冲击转主动.
+#   普攻=skillPool[0] (忍者已改回近战刺客: 斩击=普攻idx0, 冲击转被动auto-dash不占技位).
 func _skill_role(pet_id: String, sk: Dictionary, i: int) -> String:
 	if sk.get("passiveSkill", false):
 		return "passive"
-	var st := str(sk.get("type", ""))
-	if pet_id == "ninja":
-		if st == "ninjaShuriken":
-			return "basic"
-		if st == "ninjaImpact":
-			return "active"
 	return "basic" if i == 0 else "active"
 
 # 各学派强调色 + emoji 图标 (无 tag PNG → 用 emoji 占位; 颜色用于列表描边/标题). 11 学派.
