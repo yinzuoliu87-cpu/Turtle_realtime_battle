@@ -2631,6 +2631,7 @@
         "name": "水晶壁垒",
         "icon": "skills/crystal-1.png",
         "type": "crystalBarrier",
+        "impl": true,
         "hits": 1,
         "power": 0,
         "pierce": 0,
@@ -2645,6 +2646,7 @@
         "name": "碎晶爆破",
         "icon": "skills/crystal-2.png",
         "type": "crystalBurst",
+        "impl": true,
         "dmgType": "magic",
         "hits": 3,
         "power": 0,
@@ -2660,6 +2662,7 @@
         "name": "水晶球",
         "icon": "skills/crystal-3.png",
         "type": "crystalBall",
+        "impl": true,
         "passiveSkill": true,
         "hits": 0,
         "power": 0,
@@ -2667,18 +2670,6 @@
         "cd": 0,
         "brief": "水晶龟登场时召唤一颗水晶球（生命值 = 本体最大生命值的50%，攻击力 = 本体攻击力），友方全部行动后射出魔法光线，对沿途敌人造成两段共（{M:ATK}）魔法伤害并叠加结晶印记",
         "detail": "水晶龟登场时在阵型空位召唤一颗水晶球：生命值 = 本体最大生命值的50%，攻击力 = 本体攻击力，并与水晶龟共享结晶层数（满4层引爆）。友方所有龟行动结束后，水晶球射出一道魔法光线，对沿途敌人造成两段共（100%×攻击力({ATK}) = {M:ATK}）魔法伤害，每段命中叠加1层结晶印记。\n\n<span style=\"color:#8a93a0\">水晶龟阵亡时水晶球一同消失。</span>"
-      },
-      {
-        "name": "不朽",
-        "icon": "skills/crystal-4.png",
-        "type": "crystalImmortal",
-        "passiveSkill": true,
-        "hits": 0,
-        "power": 0,
-        "pierce": 0,
-        "cd": 0,
-        "brief": "水晶龟若存活到第10秒，立即获得最大生命值 <span class=\"val-atk\">+5000</span> 与攻击力 <span class=\"val-atk\">+400</span>",
-        "detail": "水晶龟若存活到第10秒，立即获得最大生命值 <span class=\"val-atk\">+5000</span> 与攻击力 <span class=\"val-atk\">+400</span>。\n\n<span style=\"color:#8a93a0\">奖励极限生存的终极被动。</span>"
       }
     ],
     "defaultSkills": [
