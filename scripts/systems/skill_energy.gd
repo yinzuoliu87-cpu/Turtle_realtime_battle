@@ -16,7 +16,7 @@ const CD_FACTOR := 0.075    # 龟能花费 → 充满秒数 (=1/充能速率); 7
 const SKILL_COST := {
 	# 签名招
 	"turtleShieldBash": 70.0, "bambooHeal": 90.0, "angelBless": 75.0, "iceFrost": 120.0,
-	"ninjaImpact": 95.0, "ghostStorm": 95.0, "diamondFortify": 70.0, "diceAllIn": 120.0,
+	"ninjaImpact": 95.0, "ghostStorm": 95.0, "ghostPhase": 80.0, "diamondFortify": 70.0, "diceAllIn": 120.0,
 	"gamblerBet": 100.0, "hunterStealth": 90.0, "pirateCannonBarrage": 130.0, "bubbleShield": 120.0,
 	"lineLink": 70.0, "lightningSurgeBuff": 90.0, "phoenixShield": 75.0, "twoHeadFear": 95.0,
 	"fortuneDice": 70.0, "crystalBarrier": 75.0, "chestCount": 90.0, "starMeteor": 130.0,

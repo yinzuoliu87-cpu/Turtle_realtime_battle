@@ -1092,19 +1092,6 @@
         "detail": "幽灵龟对目标释放灵魂风暴，造成两段共（250%×攻击力 = {M:2.5*ATK}）魔法伤害，并施加诅咒持续5秒(每秒结算)。如果目标身上已有诅咒效果，则改为造成（250%×攻击力 = {T:2.5*ATK}）真实伤害，且不重复施加/刷新诅咒。\n<span style=\"color:#8a93a0\">诅咒：每秒目标受到 5% 最大生命值真实伤害</span>"
       },
       {
-        "name": "强化怨灵",
-        "type": "ghostEnhancedCurse",
-        "icon": "passive/ghost-curse-icon.png",
-        "iconPlus": true,
-        "passiveSkill": true,
-        "hits": 0,
-        "power": 0,
-        "pierce": 0,
-        "cd": 0,
-        "brief": "在基础被动之上，幽灵龟死亡时会再次诅咒全体敌人持续5秒(每秒结算)",
-        "detail": "在基础被动之上，幽灵龟死亡时会再次诅咒全体敌人持续5秒(每秒结算)\n<span style=\"color:#8a93a0\">诅咒：每秒目标受到 5% 最大生命值真实伤害</span>"
-      },
-      {
         "name": "虚化",
         "type": "ghostPhase",
         "icon": "skills/ghost-phase.png",
@@ -1112,11 +1099,10 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "phantomTurns": 2,
         "physReducePct": 90,
         "atkScale": 0.6,
-        "brief": "幽灵龟进入虚化状态5秒，并对目标攻击两段，造成共（{T:1.2*ATK}）真实伤害。",
-        "detail": "幽灵龟进入虚化状态5秒，并对目标攻击两段，造成共（120%×攻击力 = {T:1.2*ATK}）真实伤害。\n<span style=\"color:#8a93a0\">虚化：使受到的物理伤害减少 90%</span>"
+        "brief": "幽灵龟进入虚化状态4秒，并对目标攻击两段，造成共（{T:1.2*ATK}）真实伤害。",
+        "detail": "幽灵龟进入虚化状态4秒，并对目标攻击两段，造成共（120%×攻击力 = {T:1.2*ATK}）真实伤害。\n<span style=\"color:#8a93a0\">虚化：使受到的物理伤害减少 90%</span>"
       }
     ],
     "defaultSkills": [
