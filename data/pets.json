@@ -2391,6 +2391,7 @@
         "name": "地裂",
         "icon": "skills/lava-1.png",
         "type": "lavaQuake",
+        "impl": true,
         "dmgType": "magic",
         "hits": 1,
         "power": 0,
@@ -2410,6 +2411,7 @@
         "name": "岩浆涌动",
         "icon": "skills/lava-2.png",
         "type": "lavaSurge",
+        "impl": true,
         "dmgType": "magic",
         "hits": 1,
         "power": 0,
@@ -2422,16 +2424,15 @@
         "rageCost": 35
       },
       {
-        "name": "强化熔岩之心",
-        "enhancesPassive": true,
-        "type": "lavaEnhancedRage",
-        "passiveSkill": true,
+        "name": "熔岩爆发",
+        "type": "lavaErupt",
+        "impl": true,
         "hits": 0,
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "熔岩之心被动获得强化：\n熔岩龟在战斗开始时直接拥有100怒气，立即变身为火山龟。",
-        "detail": "熔岩之心被动获得强化：\n熔岩龟在战斗开始时直接拥有100怒气，立即变身为火山龟。\n\n<span style=\"color:#8a93a0\">火山形态少一个技能槽。</span>"
+        "brief": "普通形态：智能冲刺（残血保命撤 / 追击贴身），并使下一发熔岩弹贯穿全场（沿途0.6A真伤+4%最大生命+灼烧）。火山形态：暴走——+20%最大生命(5秒)/+30%攻速/+30%移速。",
+        "detail": "熔岩龟·技能三（双形态）：普通形态智能冲刺（残血或近身威胁时背离撤退保命，否则冲贴目标追击）+下一发熔岩弹变贯穿全场岩浆光矢（每敌0.6×攻击力真实+4%最大生命+灼烧）；火山形态烈焰暴走（自身+20%最大生命5秒、+30%攻速、+30%移速）。"
       }
     ],
     "defaultSkills": [
