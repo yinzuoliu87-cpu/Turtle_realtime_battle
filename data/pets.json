@@ -2838,61 +2838,50 @@
         "pierce": 0,
         "cd": 0,
         "atkScale": 1,
-        "selfDefUpPct": {
-          "pct": 20,
-          "turns": 2
-        },
-        "brief": "缩头乌龟出击造成（{N:ATK}）物理伤害，并使自身护甲提升 <span class=\"val-atk\">+20%</span>（{D:DEF*0.2}）持续5秒",
-        "detail": "缩头乌龟对目标造成（100%×攻击力({ATK}) = {N:ATK}）物理伤害，并使自身护甲提升 <span class=\"val-atk\">+20%</span>（20%×护甲({DEF}) = {D:DEF*0.2}），持续5秒。"
+        "brief": "缩头乌龟的普攻·缩壳：造成（{N:ATK}）物理伤害，每次普攻自身+1护甲+1魔抗(永久累积)并获得（{N:ATK*0.1}）护盾(越打越硬)",
+        "detail": "缩头乌龟的普攻·缩壳：对目标造成（100%×攻击力({ATK}) = {N:ATK}）物理伤害；每次普攻自身永久累积 +1护甲 +1魔抗，并获得（10%×攻击力 = {N:ATK*0.1}）护盾（缩壳越打越硬）。"
+      },
+      {
+        "name": "缩头",
+        "icon": "skills/hiding-1.png",
+        "type": "hidingShrink",
+        "impl": true,
+        "hits": 0,
+        "power": 0,
+        "pierce": 0,
+        "cd": 0,
+        "selfCast": true,
+        "brief": "缩头乌龟立即给随从 +50%技能龟能(加速随从放技)，随后自身进入缩头状态3秒：<span class=\"val-atk\">80%减伤</span>、不能攻击/移动",
+        "detail": "缩头乌龟立即给随从 +50%技能龟能（加速随从释放技能），随后自身缩入壳中3秒：受到伤害减少 <span class=\"val-atk\">80%</span>，期间不能攻击或移动。\n\n<span style=\"color:#8a93a0\">龟能条锁定nuance留F5。</span>"
       },
       {
         "name": "防御",
-        "icon": "skills/hiding-1.png",
+        "icon": "skills/hiding-2.png",
         "type": "hidingDefend",
-        "hits": 1,
+        "impl": true,
+        "hits": 0,
         "power": 0,
         "pierce": 0,
         "cd": 0,
+        "selfCast": true,
         "shieldHpPct": 20,
         "shieldDuration": 4,
         "shieldHealPct": 20,
-        "brief": "缩头乌龟缩入壳中，获得（{S:HP*0.2}）护盾，持续5秒，到期时将剩余护盾的 <span class=\"val-heal\">20%</span> 转化为生命值",
-        "detail": "缩头乌龟缩入壳中，获得（20%×最大生命值({HP}) = {S:HP*0.2}）护盾，持续5秒，到期时将剩余护盾值的 <span class=\"val-heal\">20%</span> 转化为生命值回复。"
-      },
-      {
-        "name": "指挥",
-        "icon": "skills/hiding-2.png",
-        "type": "hidingCommand",
-        "hits": 1,
-        "power": 0,
-        "pierce": 0,
-        "cd": 0,
-        "brief": "缩头乌龟命令随从立即额外释放一个技能（短时间内随从共出手2次）",
-        "detail": "缩头乌龟命令随从立即额外释放一个技能（短时间内随从共出手2次）。\n\n<span style=\"color:#8a93a0\">随从已阵亡则技能无效。</span>"
+        "brief": "缩头乌龟缩入壳中，获得（{S:HP*0.2}）护盾(4秒)+护甲+20%(5秒)，护盾到期时将剩余护盾的 <span class=\"val-heal\">20%</span> 转化为生命值",
+        "detail": "缩头乌龟缩入壳中，获得（20%×最大生命值({HP}) = {S:HP*0.2}）护盾（持续4秒）并提升护甲 <span class=\"val-atk\">+20%</span>（持续5秒）；护盾到期时将剩余护盾值的 <span class=\"val-heal\">20%</span> 转化为生命值回复。"
       },
       {
         "name": "强化随从",
         "icon": "skills/hiding-3.png",
         "type": "hidingBuffSummon",
+        "impl": true,
         "hits": 0,
         "power": 0,
         "pierce": 0,
         "cd": 0,
         "selfCast": true,
         "brief": "缩头乌龟为随从注入力量，持续5秒：攻击力 <span class=\"val-atk\">+10%</span>、护甲与魔抗 <span class=\"val-atk\">+10%</span>、生命偷取 <span class=\"val-heal\">+10%</span>、暴击率 <span class=\"val-atk\">+20%</span>",
-        "detail": "缩头乌龟为随从注入力量，持续5秒：攻击力 <span class=\"val-atk\">+10%</span>、护甲与魔抗 <span class=\"val-atk\">+10%</span>、生命偷取 <span class=\"val-heal\">+10%</span>、暴击率 <span class=\"val-atk\">+20%</span>。\n\n<span style=\"color:#8a93a0\">随从已阵亡则无效。</span>"
-      },
-      {
-        "name": "强化喊龟",
-        "enhancesPassive": true,
-        "type": "hidingEnhancedSummon",
-        "passiveSkill": true,
-        "hits": 0,
-        "power": 0,
-        "pierce": 0,
-        "cd": 0,
-        "brief": "喊龟被动获得强化：\n缩头乌龟登场时自身损失 <span class=\"val-atk\">50%</span> 最大生命值（当前生命同步降低），但召唤的随从改以 <span class=\"val-atk\">110%</span> 常规最大生命值登场。",
-        "detail": "喊龟被动获得强化：\n缩头乌龟登场时自身损失 <span class=\"val-atk\">50%</span> 最大生命值（当前生命同步降低），但召唤的随从改以 <span class=\"val-atk\">110%</span> 常规最大生命值登场（原40%→110%）。"
+        "detail": "缩头乌龟为随从注入力量，持续5秒：攻击力 <span class=\"val-atk\">+10%</span>、护甲与魔抗 <span class=\"val-atk\">+10%</span>、生命偷取 <span class=\"val-heal\">+10%</span>、暴击率 <span class=\"val-atk\">+20%</span>。\n\n<span style=\"color:#8a93a0\">随从阵亡则无效；随从先死则缩头龟永久继承这套增益(可多次累积)。</span>"
       }
     ],
     "defaultSkills": [
