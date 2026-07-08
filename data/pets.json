@@ -1066,6 +1066,7 @@
       {
         "name": "幽冥突袭",
         "type": "ghostPhantom",
+        "impl": true,
         "icon": "skills/ghost-phantom.png",
         "hits": 1,
         "power": 0,
@@ -1081,6 +1082,7 @@
       {
         "name": "灵魂风暴",
         "type": "ghostStorm",
+        "impl": true,
         "icon": "skills/ghost-storm.png",
         "hits": 2,
         "power": 0,
@@ -1094,6 +1096,7 @@
       {
         "name": "虚化",
         "type": "ghostPhase",
+        "impl": true,
         "icon": "skills/ghost-phase.png",
         "hits": 2,
         "power": 0,

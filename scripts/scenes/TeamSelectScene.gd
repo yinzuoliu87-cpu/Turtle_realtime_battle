@@ -1206,7 +1206,7 @@ func _build_skill_picker(pet: Dictionary) -> void:
 	title.add_theme_color_override("font_color", Color("#ffd86b"))
 	title_row.add_child(title)
 	var count_lbl := Label.new()
-	count_lbl.text = "4 选 1 (主动/被动)"   # 普攻+固定被动外, 从4候选选1个
+	count_lbl.text = "%d 选 1 (主动/被动)" % maxi(1, pool.size() - 1)   # 普攻(idx0)外的候选数; 收敛成[普攻+3技]后=3选1
 	count_lbl.add_theme_font_size_override("font_size", _sf(11))   # PoC .dp-skill-count 11px
 	count_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.5))   # rgba(255,255,255,.5)
 	count_lbl.size_flags_vertical = Control.SIZE_SHRINK_END   # 底对齐近 baseline
@@ -1247,7 +1247,7 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 	var pid: String = pet["id"]
 	var unlocked: Array = _available_skill_indices(pet)
 	var is_locked: bool = not (idx in unlocked)
-	var dev_locked: bool = (not is_fixed) and idx != 1   # 锁默认(Q2): 非默认候选暂"开发中"不可选
+	var dev_locked: bool = (not is_fixed) and idx != 1 and not sk.get("impl", false)   # 非默认候选: 未标impl:true(未实装)才"开发中"锁; 实装好的技解锁3选1
 
 	var btn: Button = SkillTipButton.new()   # styled tooltip (PoC .dp-skill-tip 悬浮显名+CD+描述)
 	btn.custom_minimum_size = Vector2(_sp(64), _sp(64))   # PoC .dp-skill-ico 64px (index.html:606)
