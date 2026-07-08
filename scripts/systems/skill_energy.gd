@@ -31,9 +31,9 @@ const SKILL_COST := {
 	"hunterShot": 100.0, "hunterBarrage": 135.0, "candyBarrage": 115.0, "lineSketch": 90.0,
 	"lightningStrike": 95.0, "lightningBarrage": 140.0, "phoenixBurn": 90.0, "phoenixScald": 100.0,
 	"lavaBolt": 90.0, "lavaQuake": 115.0, "lavaErupt": 80.0, "crystalSpike": 90.0, "crystalBurst": 115.0,
-	"chestStorm": 115.0, "starBeam": 70.0, "soulReap": 120.0, "shellStrike": 80.0,
+	"chestStorm": 100.0, "starBeam": 70.0, "soulReap": 120.0, "shellStrike": 80.0,
 	# Batch2 特殊
-	"chestSmash": 120.0, "fortuneAllIn": 340.0, "starWormhole": 150.0, "lineFinish": 95.0,
+	"chestCannon": 120.0, "fortuneAllIn": 340.0, "starWormhole": 150.0, "lineFinish": 95.0,
 	"cyberDeploy": 135.0, "bubbleBind": 70.0, "hidingCommand": 85.0, "shellCopy": 140.0, "diceFate": 90.0,
 }
 
