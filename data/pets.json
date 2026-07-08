@@ -1963,6 +1963,7 @@
         "name": "泡泡盾",
         "icon": "skills/bubble-1.png",
         "type": "bubbleShield",
+        "impl": true,
         "hits": 1,
         "power": 0,
         "pierce": 0,
@@ -1977,6 +1978,7 @@
         "name": "泡泡束缚",
         "icon": "skills/bubble-bind.png",
         "type": "bubbleBind",
+        "impl": true,
         "hits": 1,
         "power": 0,
         "pierce": 0,
@@ -1990,6 +1992,7 @@
         "name": "泡泡爆破",
         "icon": "skills/bubble-burst.png",
         "type": "bubbleBurst",
+        "impl": true,
         "dmgType": "magic",
         "hits": 1,
         "power": 0,
@@ -2000,21 +2003,6 @@
         "atkScale": 0.8,
         "brief": "泡泡龟消耗全部泡泡值，在目标所在竖排两侧夹击，对该竖排每个敌人造成（40%×消耗泡泡值）魔法 +（{N:0.8*ATK}）物理伤害",
         "detail": "泡泡龟消耗全部泡泡值，在目标所在竖排两侧夹击，对该竖排每个敌人造成（40%×消耗泡泡值）<span class=\"val-magic\">魔法</span> +（80%×攻击力({ATK}) = {N:0.8*ATK}）物理伤害。\n\n<span style=\"color:#8a93a0\">竖排 = 同前/同后的3个位置（最多3个目标）；魔法蓝 + 物理红两个数字独立跳出。</span>"
-      },
-      {
-        "name": "治愈泡泡",
-        "icon": "skills/bubble-heal.png",
-        "type": "bubbleHeal",
-        "hits": 1,
-        "power": 0,
-        "pierce": 0,
-        "cd": 0,
-        "isAlly": true,
-        "healAtkPct": 120,
-        "healHpPct": 10,
-        "splashPct": 25,
-        "brief": "泡泡龟以治愈泡泡包裹友方单体，回复（{H:1.2*ATK+HP*0.1}）生命值，其他友军额外回复主治疗量的 <span class=\"val-heal\">25%</span>",
-        "detail": "泡泡龟以治愈泡泡包裹友方单体，回复（120%×攻击力({ATK}) + 10%×最大生命值({HP}) = {H:1.2*ATK+HP*0.1}）生命值，其他友军额外回复主治疗量的 <span class=\"val-heal\">25%</span>。"
       }
     ],
     "defaultSkills": [
