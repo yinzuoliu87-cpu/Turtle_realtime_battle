@@ -8416,12 +8416,12 @@ func _throw_gold_coin(src: Dictionary, tgt: Dictionary) -> void:
 	_world.add_child(p)
 	var dur := clampf(start2d.distance_to(tgt["pos"]) / 650.0, 0.18, 0.6)
 	_projectiles.append({
-		"node": p, "from": world_from, "tgt": tgt, "dmg": _atk_dmg(src, 0.22, tgt, false),
+		"node": p, "from": world_from, "tgt": tgt, "dmg": _atk_dmg(src, 0.18, tgt, false),
 		"col": Color("#ff4444"), "src": src, "t": 0.0, "dur": dur, "basic_onhit": false,
-		"coin_true": int(src["atk"] * 0.22),
+		"coin_true": int(src["atk"] * 0.18),
 	})
 
-# 星际·虫洞: 永久+魔法穿透; 沿目标方向直线四段 1.5×ATK×(1+10%×已过秒) 魔法 + 击飞
+# 星际·虫洞(用户2026-07-09重做): 短暂蓄力→发射缓慢移动虫洞沿目标方向直线→吸经过敌90码+1段1.5A×(1+5%秒)魔法(每敌一次)
 func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·虫洞(用户2026-07-09重设计): 短暂蓄力→发射1个缓慢移动的虫洞沿目标方向直线飞→吸经过敌90码(拉向虫洞)+造成1段=1.5A×(1+5%每秒)魔法(每敌一次)
 	if tgt == null: tgt = _nearest_enemy(u)
 	if tgt == null: return
