@@ -4707,9 +4707,10 @@ func _phoenix_scald_hit(u: Dictionary, tgt, fb) -> void:
 		fb.queue_free()
 	if tgt == null or not tgt.get("alive", false):
 		return
-	_apply_damage_from(u, tgt, _atk_dmg(u, 1.5, tgt, true), Color("#4dabf7"))   # 1.5ATK魔法
-	_apply_dot_stacks(tgt, "burn", maxi(1, roundi(float(u["atk"]) * 1.0)), u)   # 1ATK灼烧层
+	# 封板: 火球命中先破50%护盾(破盾碎裂)→再落1.5A魔法穿透→灼烧+攻防抗各-15%+治疗削减
 	_apply_skill_extras(u, tgt, {"shieldBreak": 0.5, "atkDown": 0.15, "defDown": 0.15, "mrDown": 0.15, "healCut": 0.5})
+	_apply_damage_from(u, tgt, _atk_dmg(u, 1.5, tgt, true), Color("#4dabf7"))   # 1.5ATK魔法(打已破的盾, 更多穿透到血)
+	_apply_dot_stacks(tgt, "burn", maxi(1, roundi(float(u["atk"]) * 1.0)), u)   # 1ATK灼烧层
 	_flash(tgt, Color("#ff8a3a"))
 	_phoenix_flame_burst(tgt["pos"])
 
