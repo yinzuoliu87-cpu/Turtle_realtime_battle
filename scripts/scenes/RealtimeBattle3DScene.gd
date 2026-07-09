@@ -5288,6 +5288,8 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		dmg = int(dmg * (1.0 + 0.05 * _ink))
 	if u["id"] == "diamond" and not raw:        # 钻石·结构减伤18%; 真实/穿透(raw)伤害不减 (修: 原来连真伤一起减=bug)
 		dmg = int(dmg * 0.82)
+	if u["id"] == "stone" and u.get("stone_rockbody", false) and not raw:   # 岩石之躯被动: 每岩层-1%受伤(上限30层=30%·真伤/穿透不减·封板)
+		dmg = int(dmg * (1.0 - 0.01 * float(mini(30, int(u.get("rock_layers", 0))))))
 	var d := float(dmg)
 	# 铁壁盾016: 每段非真实伤害固定减 X 点 (flat, 护盾前)
 	if not raw and float(u.get("flat_dr", 0.0)) > 0.0:
@@ -5342,8 +5344,8 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	# 反伤(通用): 受击反弹 reflect% × 受到伤害 给攻击者(真实伤害); from_equip守卫防循环; stone坚壁随防御涨(被动)
 	var _refl_pct: float = float(u.get("reflect", 0.0))
 	if u["id"] == "stone": _refl_pct += 0.05 + (u["def"] + u["mr"] * 0.5) * 0.01
-	if u["id"] == "stone" and not from_equip and dmg > 0 and int(u.get("rock_layers", 0)) < 30:
-		u["rock_layers"] = int(u.get("rock_layers", 0)) + 1   # 岩层(岩石之躯被动): 每受伤+1层上限30 (减伤/体型放大TODO)
+	if u["id"] == "stone" and u.get("stone_rockbody", false) and not from_equip and dmg > 0 and int(u.get("rock_layers", 0)) < 30:
+		u["rock_layers"] = int(u.get("rock_layers", 0)) + 1   # 岩层(岩石之躯被动·选此才有): 每受伤+1层上限30·减伤已接(体型放大留美术)
 	if _refl_pct > 0.0 and src != u and src.get("alive", false) and not from_equip and dmg > 0:
 		var _refl := int(dmg * _refl_pct)
 		if _refl > 0:
@@ -8651,6 +8653,9 @@ func _apply_spawn_passives() -> void:
 		match u["id"]:
 			"rainbow":
 				u["prism_color"] = _juice_rng.randi() % 3   # 开局即给棱镜色(修: 原-1致前6秒普攻无附色)
+			"stone":
+				if "rockShockwave" in _chosen_skill_types(u["id"], u["side"] == "left"):
+					u["stone_rockbody"] = true   # 岩石之躯(选此才有): 每受伤+1岩层(上限30)每层-1%受伤
 			"ninja":
 				u["crit"] += 0.30; u["crit_dmg"] += 0.20; u["armor_pen"] += 8.0   # 忍术(基础被动)
 				if "ninjaShuriken" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 忍者足(技三打包·选中才有): +25%闪避+40%暴击
