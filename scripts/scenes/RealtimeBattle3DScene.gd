@@ -6048,7 +6048,7 @@ const _IMPL_SKILLS := {
 	# 签名招 (既有 _sk_* 实装, 按技能 type 分派)
 	"turtleShieldBash": true, "bambooHeal": true, "angelBless": true, "angelAscend": true, "stoneRockShield": true, "rockShockwave": true, "stoneTaunt": true, "iceFrost": true, "iceFreeze": true,
 	"ninjaBackstab": true, "ghostStorm": true, "ghostPhase": true, "diamondFortify": true, "diceAllIn": true, "diceFlashStrike": true,
-	"gamblerBet": true, "hunterStealth": true, "pirateCannonBarrage": true, "pirateRum": true, "bubbleShield": true,
+	"gamblerBet": true, "hunterStealth": true, "pirateCannonBarrage": true, "pirateRum": true, "pirateShipPassive": true, "bubbleShield": true,
 	"lineLink": true, "lightningSurgeBuff": true, "phoenixShield": true, "phoenixEnhancedRebirth": true, "headlessFear": true,
 	"fortuneDice": true, "crystalBarrier": true, "chestCount": true, "starWave": true,
 	"twoHeadStrike": true, "twoHeadDisrupt": true, "twoHeadFusion": true, "lavaSurge": true, "cyberBeam": true, "hidingDefend": true, "shellAbsorb": true,
@@ -6235,6 +6235,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"hunterStealth":        _sk_hunter_hide(u)
 		"pirateCannonBarrage":  _sk_pirate_volley(u)
 		"pirateRum":            _sk_pirate_rum(u)
+		"pirateShipPassive":    _sk_pirate_ship(u, tgt)
 		"bubbleShield":         _sk_bubble_shield(u, tgt)
 		"lineLink":             _sk_line_link(u)
 		"lightningSurgeBuff":   _sk_lightning_surge(u, tgt)
@@ -8949,10 +8950,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			_shell_apply_awaken(u)   # 开战20秒第二次觉醒(封板: 强化觉醒已并入被动·自动触发·不再gate选中)
 		# 储能相位机: store(6s 受伤转储能) → 释放(冲击波+护盾) → cd(15s 不储) → store…
 		_shell_phase_tick(u, delta)
-	# --- 海盗船召唤: 开战~4秒后召唤一次 ---
-	if u["id"] == "pirate" and not u.get("ship_summoned", false) and _t >= 4.0:
-		u["ship_summoned"] = true
-		_spawn_pirate_ship(u)
+	# 海盗船(实体)已改为 技能三 pirateShipPassive 首次充能满召唤(_sk_pirate_ship·选中才召·封板L378"火炮/朗姆的船=纯装饰演出"); 原无条件4s自动召唤删除
 	# --- 财神聚宝盆: 每3秒 +4~7金币 (用户) ---
 	if u["id"] == "fortune":
 		u["_goldtimer"] = u.get("_goldtimer", 0.0) + delta
@@ -9229,14 +9227,61 @@ func _spawn_hiding_minion(u: Dictionary) -> void:
 		minion["skill_gcd_until"] = 0.0
 		_recalc_stats(minion)
 
-func _spawn_pirate_ship(u: Dictionary) -> void:
+# 海盗船·技能三(封板L379): 首次充能满召唤实体船→冲锋撞目标(第一敌200码1.0A魔法+击飞2秒)→留场; 船=HP1.5×/ATK1.0×/无双抗/攻速0.8射程300/普攻射最近敌0.4A
+func _sk_pirate_ship(u: Dictionary, tgt) -> void:
+	if not u.get("ship_summoned", false):
+		u["ship_summoned"] = true
+		_spawn_pirate_ship(u, tgt)                          # 首次: 召唤船+冲锋撞
+	else:
+		_pirate_shotgun(u, tgt)                             # 后续: 海盗龟放霰弹
+
+# 海盗龟·霰弹(封板L361·选海盗船后续充能满): 朝目标60度扇面喷8颗弹丸·每颗命中方向第一敌0.5A物理+40码击退·射程400
+func _pirate_shotgun(u: Dictionary, tgt) -> void:
+	var aim = tgt if (tgt != null and tgt.get("alive", false)) else _nearest_enemy(u)
+	if aim == null:
+		return
+	var base_dir: Vector2 = aim["pos"] - u["pos"]
+	if base_dir.length() < 1.0:
+		base_dir = Vector2.RIGHT
+	base_dir = base_dir.normalized()
+	_muzzle_flash(u["pos"], base_dir, Color("#ffd9a0"))
+	_skill_ring(u["pos"] + base_dir * 22.0, Color(1.0, 0.82, 0.4, 0.7), 26.0)
+	var half: float = deg_to_rad(30.0)                      # 60度扇面=±30度
+	for i in range(8):
+		var frac: float = (float(i) / 7.0) * 2.0 - 1.0      # -1..1 均分
+		var d: Vector2 = base_dir.rotated(half * frac)
+		_shotgun_pellet(u["pos"], u["pos"] + d * 400.0, Color(1.0, 0.86, 0.5, 0.95))   # 弹丸VFX(射程400)
+		var hit = _basic_first_blocker(u, d)                # 该方向路径第一敌(含蛋·障碍穿我方不挡)
+		if hit != null and hit["pos"].distance_to(u["pos"]) <= 400.0:
+			_apply_damage_from(u, hit, _atk_dmg(u, 0.5, hit), Color("#ffd07a"))   # 0.5A物理
+			var pd: Vector2 = (hit["pos"] - u["pos"]).normalized()               # 40码轻击退(不用_knockback避免8连击飞震屏)
+			hit["pos"] += pd * 40.0
+			hit["pos"].x = clampf(hit["pos"].x, ARENA.position.x, ARENA.end.x)
+			hit["pos"].y = clampf(hit["pos"].y, ARENA.position.y, ARENA.end.y)
+			_hit_spark(hit)
+
+func _spawn_pirate_ship(u: Dictionary, tgt = null) -> void:
 	var ship = _spawn_summon(u, "ship", u["maxHp"] * 1.5, u["atk"], {
 		"label": "海盗船", "col_size": 38.0, "hp_w": 44.0, "melee": false,
-		"move_spd": 70.0, "atk_range": 360.0, "no_basic": true,
-		"special": "cannon", "special_cd": 2.0, "special_scale": 0.2,
+		"move_spd": 120.0, "atk_range": 300.0, "no_basic": true,                # 射程300(封板)
+		"special": "ship_shot", "special_cd": 1.25, "special_scale": 0.4,       # 攻速0.8≈1.25s/发·普攻射最近敌0.4A(封板L379)
 	})
-	if ship != null:
-		pass
+	if ship == null:
+		return
+	# 登场冲锋直撞目标: 冲到目标→第一个敌200码1.0A魔法+击飞2秒(封板)
+	var aim = tgt if (tgt != null and tgt.get("alive", false)) else _nearest_enemy(u)
+	if aim == null:
+		return
+	ship["pos"] = u["pos"]
+	_dash_to(ship, aim, 40.0)                               # 冲锋切入
+	for e in _enemies_of(ship):
+		if not e.get("alive", false): continue
+		if e["pos"].distance_to(aim["pos"]) > 200.0: continue
+		_apply_damage_from(ship, e, _atk_dmg(ship, 1.0, e, true), Color("#e8c07a"), 0.0, true)   # 1.0A魔法
+		_knockback(ship, e, 40.0, 1.0, 1.0)                                     # 击飞
+		e["stun_until"] = maxf(float(e.get("stun_until", 0.0)), _t + _cc_dur(e, 2.0))            # 击飞2秒
+	_skill_ring(aim["pos"], Color(0.9, 0.7, 0.4, 0.6), 200.0)
+	_shake(JUICE_SHAKE_HEAVY)
 
 # 赛博龟阵亡 → 浮游炮全部组装成机甲 (独立单位)
 func _cyber_assemble_mech(u: Dictionary) -> void:
@@ -9415,6 +9460,11 @@ func _tick_summon_special(u: Dictionary, delta: float) -> void:
 			var o = es[randi() % es.size()]
 			_fire_bolt_from(u, o, _atk_dmg(u, u.get("special_scale", 0.2), o), Color("#ffb05c"))
 			_skill_ring(o["pos"], Color(1.0, 0.6, 0.2, 0.45), 40.0)
+		"ship_shot":                                          # 海盗船普攻: 射最近敌0.4A(封板L379·攻速0.8由special_cd驱动)
+			var st = _nearest_enemy(u)
+			if st == null: return
+			_muzzle_flash(u["pos"], (st["pos"] - u["pos"]).normalized(), Color("#ffd9a0"))
+			_fire_bolt_from(u, st, _atk_dmg(u, u.get("special_scale", 0.4), st), Color("#e8c07a"))
 		"ray":
 			var t = _nearest_enemy(u)
 			if t == null: return
