@@ -6266,7 +6266,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"bambooLeaf":           _sk_dmg(u, tgt, {"phys": 0.63, "hp": 0.18, "hits": 3, "name": "竹叶斩!", "color": Color("#39d353")})
 		"bambooSmack":          _sk_bamboo_smack(u, tgt)
 		"bambooSpikes":         _sk_bamboo_spikes(u, tgt)
-		"angelEquality":        _sk_dmg(u, tgt, {"phys": 2.0, "true": 0.5, "hits": 2, "name": "平等审判!", "color": Color("#ffe9a8")})
+		"angelEquality":        _sk_angel_equality(u, tgt)
 		"iceSpike":             _sk_dmg(u, tgt, {"phys": 0.7, "magic": 0.7, "hits": 6, "rider": "slow", "name": "冰锥!", "color": Color("#9be7ff")})
 		"ninjaShuriken":        _sk_ninja_shuriken(u, tgt)
 		"ninjaBomb":            _sk_dmg(u, tgt, {"phys": 1.1, "hits": 1, "aoe": true, "defDown": 0.25, "name": "烟雾弹!", "color": Color("#b0b0c0")})
@@ -7059,6 +7059,49 @@ func _sk_angel_ascend(u: Dictionary) -> void:                   # 天使龟·飞
 	u["move_spd"] = float(u["move_spd"]) * 1.1                  # +10%移速(永久·叠加)
 	u["atk_range"] = float(u["atk_range"]) + 25.0              # +25码射程(永久·叠加)
 	_skill_ring(u["pos"], Color(1.0, 0.92, 0.55, 0.65), 58.0)  # 金光飞升VFX占位(美术: 离地悬浮+光翼+圣环渐亮越飞越盛)
+
+# 天使龟·平等 ✅ (封板2026-07-06 选A远程投射·60龟能): 站原地射2道圣光斩弧共200%物理·带10%施法吸血; 目标A级及以上追加从天而降审判光柱=(50%ATK+目标已损生命10%)真伤·无视双抗·同10%吸血
+func _sk_angel_equality(u: Dictionary, tgt) -> void:
+	if tgt == null or not tgt.get("alive", false):
+		return
+	_flash(u, Color(1.0, 0.92, 0.6))                            # 举裁蓄力·自身泛淡金吸血光
+	var order := {"C": 0, "B": 1, "A": 2, "S": 3, "SS": 4, "SSS": 5}
+	# 2道圣光斩弧(远程投射·站原地不突进): 各100%ATK物理·共200%·带10%施法吸血
+	for i in range(2):
+		_pending_shots.append({"delay": 0.10 * float(i), "src": u, "fn": func():
+			if tgt == null or not tgt.get("alive", false): return
+			_bolt_line(u["pos"], tgt["pos"], Color(1.0, 0.92, 0.66))      # 金白斩弧曳光
+			_skill_ring(tgt["pos"], Color(1.0, 0.9, 0.6, 0.5), 44.0)
+			_apply_damage_from(u, tgt, _atk_dmg(u, 1.0, tgt, false), Color("#ffe9a8"), 0.10)   # 100%物理·10%吸血
+		})
+	# A级及以上→第3段从天而降审判光柱: (50%ATK + 目标已损生命10%)真伤·无视双抗·同10%吸血
+	if int(order.get(str(tgt.get("rarity", "C")), 0)) >= 2:
+		_pending_shots.append({"delay": 0.28, "src": u, "fn": func():
+			if tgt == null or not tgt.get("alive", false): return
+			_angel_judgment_pillar(tgt["pos"])
+			var lost: float = maxf(0.0, float(tgt["maxHp"]) - float(tgt["hp"]))
+			var tru: int = maxi(1, int(float(u["atk"]) * 0.5 + lost * 0.10))
+			_apply_damage_from(u, tgt, tru, Color(1.0, 0.96, 0.76), 0.10, true)   # 真伤无视双抗·10%吸血
+			_flash(tgt, Color(1.0, 0.96, 0.76))
+		})
+
+# 天使审判光柱: 从天而降金白光束(强闪骤降) + 命中金环 (平等第3段·A级以上)
+func _angel_judgment_pillar(pos2d: Vector2) -> void:
+	_skill_ring(pos2d, Color(1.0, 0.9, 0.5, 0.85), 70.0)
+	var pil := Sprite3D.new()
+	pil.texture = _make_fire_glow_tex()
+	pil.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	pil.shaded = false; pil.transparent = true
+	pil.pixel_size = 0.013
+	pil.modulate = Color(1.0, 0.96, 0.7, 0.0)
+	pil.scale = Vector3(0.5, 3.0, 1.0)
+	pil.position = _world_pos(pos2d, 2.4)                       # 高空起
+	_world.add_child(pil)
+	var tp := _reg_tween(); tp.set_parallel(true)
+	tp.tween_property(pil, "modulate:a", 0.95, 0.08)           # 骤降强闪
+	tp.tween_property(pil, "position", _world_pos(pos2d, 0.7), 0.14)
+	tp.chain().tween_property(pil, "modulate:a", 0.0, 0.22)
+	tp.chain().tween_callback(pil.queue_free)
 
 func _sk_headless_fear(u: Dictionary, _tgt = null) -> void:      # 无头·恐吓(封板·110龟能): 半径200码内所有敌 定身+缴械+锁技3秒(stun_until·龟能照充满也不放·蛋免控·无伤害)
 	var cx: Vector2 = u["pos"]
