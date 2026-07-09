@@ -19,7 +19,7 @@ const SKILL_COST := {
 	"ninjaBackstab": 95.0, "ghostStorm": 95.0, "ghostPhase": 80.0, "diamondFortify": 70.0, "diceAllIn": 120.0, "diceFlashStrike": 120.0,
 	"gamblerBet": 100.0, "hunterStealth": 80.0, "pirateCannonBarrage": 130.0, "pirateRum": 120.0, "bubbleShield": 80.0, "bubbleBurst": 100.0,
 	"lineLink": 90.0, "lineInkBomb": 120.0, "lightningSurgeBuff": 90.0, "phoenixShield": 90.0, "phoenixEnhancedRebirth": 120.0, "headlessFear": 110.0,
-	"fortuneDice": 70.0, "fortuneBuyEquip": 60.0, "crystalBarrier": 75.0, "chestCount": 90.0, "starWave": 100.0, "starGravityWarp": 120.0,
+	"fortuneDice": 70.0, "fortuneBuyEquip": 60.0, "crystalBarrier": 80.0, "chestCount": 90.0, "starWave": 100.0, "starGravityWarp": 120.0,
 	"twoHeadStrike": 100.0, "twoHeadDisrupt": 95.0, "twoHeadFusion": 110.0, "lavaSurge": 150.0, "cyberBeam": 100.0, "hidingDefend": 70.0, "shellAbsorb": 100.0,
 	# 通用
 	"shield": 70.0, "heal": 70.0,
@@ -30,7 +30,7 @@ const SKILL_COST := {
 	"diceAttack": 95.0, "rainbowStorm": 125.0, "gamblerCards": 100.0, "gamblerDraw": 80.0, "gamblerFateWheel": 80.0,
 	"hunterShot": 90.0, "hunterBarrage": 100.0, "candyBarrage": 120.0, "candyHammer": 80.0, "candyBomb": 100.0, "lineSketch": 90.0,
 	"lightningStrike": 95.0, "lightningBarrage": 140.0, "phoenixBurn": 90.0, "phoenixScald": 100.0,
-	"lavaBolt": 90.0, "lavaQuake": 115.0, "lavaErupt": 80.0, "crystalSpike": 90.0, "crystalBurst": 115.0,
+	"lavaBolt": 90.0, "lavaQuake": 115.0, "lavaErupt": 80.0, "crystalSpike": 90.0, "crystalBurst": 100.0, "crystalBall": 70.0,
 	"chestStorm": 100.0, "starBeam": 70.0, "headlessTendrils": 160.0, "headlessSoulStrike": 80.0, "shellStrike": 80.0,
 	# Batch2 特殊
 	"chestCannon": 120.0, "fortuneAllIn": 340.0, "starWormhole": 150.0, "lineFinish": 95.0,
