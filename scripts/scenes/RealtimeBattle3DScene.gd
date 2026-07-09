@@ -5281,6 +5281,9 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	# 伤害输出乘数 (龟壳复制60%等; 默认1.0=不变): 缩放src本次造成的即时伤害
 	if src.get("dmg_out_mult", 1.0) != 1.0:
 		dmg = int(round(float(dmg) * float(src.get("dmg_out_mult", 1.0))))
+	# 星辉战利品(宝箱传说): 所有伤害转真实=跳过减伤(钻石18%/岩层/铁壁flat) — 完整"绕护甲"局限留F5(伤害多已由_atk_dmg预减)
+	if src.get("chest_starlight", false):
+		raw = true
 	# 靶向器055: 被标记目标受伤 +20%
 	if _t < u.get("eq_marked_until", 0.0):
 		dmg = int(dmg * 1.2)
@@ -5421,6 +5424,20 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 			_eq_on_hit(src, u, dmg)        # on-hit: 攻击者装备 (流血/灼烧/连锁/追击/穿透/标记 等)
 		if u["alive"]:
 			_eq_on_target(u, src, dmg)     # on-target: 防守者装备 (硬化层/冰封反制 等)
+		# 宝箱藏宝图 on-hit 战利品 (火石灼烧/毒箭治疗削减/雷刃金闪电引爆·此块已在not from_equip内→天然防循环)
+		var _cht = src.get("chest_treasures", null)
+		if _cht is Dictionary and src != u and u.get("alive", false):
+			if _cht.has("flint"):    # 火石: 命中→灼烧层=round(0.67×ATK)
+				_apply_dot_stacks(u, "burn", maxi(1, roundi(float(src["atk"]) * 0.67)), src)
+			if _cht.has("poison"):   # 毒箭: 命中→治疗削减-50%·5秒
+				u["heal_reduce_until"] = maxf(float(u.get("heal_reduce_until", 0.0)), _t + 5.0)
+				u["heal_reduce_pct"] = maxf(float(u.get("heal_reduce_pct", 0.0)), 0.5)
+			if _cht.has("thunder"):  # 雷刃: 命中叠金闪电·满5→引爆1.0A真伤(from_equip=true防循环)
+				var _tl := _add_stack(u, "chest_thunder", 1, 5)
+				if _tl >= 5:
+					_consume_stacks(u, "chest_thunder")
+					_apply_damage_from(src, u, maxi(1, int(float(src["atk"]))), Color("#ffe94d"), 0.0, true, true)
+					_skill_ring(u["pos"], Color(1.0, 0.92, 0.3, 0.6), 40.0)
 	if u["alive"]:
 		_eq_check_hp_threshold(u)          # HP阈值: 首次<50% (深海项链/珍珠耳环)
 	if u["hp"] <= 0.0 and u["alive"]:
@@ -5500,9 +5517,9 @@ func _play_egg_shatter(u: Dictionary) -> void:
 
 func _kill(u: Dictionary, killer = null) -> void:
 	# 首死复活钩子 (天使圣光 / 凤凰涅槃) — 仅作为常驻一次, 1:1 2D
-	if not u["reborn_used"] and ((u["id"] == "angel" and u.get("_angel_revive", false)) or u["id"] == "phoenix"):
+	if not u["reborn_used"] and ((u["id"] == "angel" and u.get("_angel_revive", false)) or u["id"] == "phoenix" or u.get("_chest_revive", false)):
 		u["reborn_used"] = true
-		var pct: float = (1.0 if u.get("_enh_rebirth", false) else 0.30) if u["id"] == "phoenix" else 0.25
+		var pct: float = (1.0 if u.get("_enh_rebirth", false) else 0.30) if u["id"] == "phoenix" else 0.25   # 凤凰100/30% · 天使圣光/宝箱凤凰雕像 25%
 		u["hp"] = u["maxHp"] * pct
 		u["dots"] = []
 		u["dot_stacks"] = {}
@@ -7221,29 +7238,69 @@ func _sk_crystal_orb(u: Dictionary, tgt) -> void:
 		_apply_damage_from(u, tgt, _atk_dmg(u, 0.5, tgt, true), Color("#c9b0ff"), 0.0, true)
 	_crystal_stack(u, tgt, 2)                                   # 叠2层结晶(封板)
 
-# 宝箱·藏宝图(完整实装): 造成伤害积累财宝值(=dmg_dealt), 过阈值开装备(分层池)+回血, 一场最多5件
+# 宝箱藏宝图·15件专属战利品池 (封板L592-594·效果取自Phaser chest.js实时适配): 基础/进阶/传说三档
+const _CHEST_TREASURE_POOL := {
+	"basic":  ["dagger", "wood_shield", "rum", "blood_dice", "chain", "stone"],
+	"adv":    ["long_sword", "bloodblade", "flint", "gem_armor", "poison", "phoenix_statue"],
+	"legend": ["crown", "thunder", "starlight"],
+}
+const _CHEST_TREASURE_NAME := {
+	"dagger": "短刃", "wood_shield": "木盾", "rum": "朗姆酒", "blood_dice": "血筛子", "chain": "锁链", "stone": "石头",
+	"long_sword": "长剑", "bloodblade": "嗜血之刃", "flint": "火石", "gem_armor": "宝石甲", "poison": "毒箭", "phoenix_statue": "凤凰雕像",
+	"crown": "王冠", "thunder": "雷刃", "starlight": "星辉",
+}
+
+# 宝箱·藏宝图(封板L590-594·完整15件专属池): 造成伤害积累财宝值(=dmg_dealt), 过阈值开专属战利品(分档池·不重复)+回血, 一场最多5件
 func _chest_treasure_tick(u: Dictionary) -> void:
 	var opened: int = int(u.get("chest_opened", 0))
 	if opened >= 5:
 		return
+	var lvl_mult: float = 1.0 + 0.03 * float(maxi(0, int(u.get("level", 1)) - 1))   # 阈值随等级+3%/级(封板)
 	var thresh: Array = [80.0, 130.0, 240.0, 360.0, 590.0]
-	if float(u.get("dmg_dealt", 0.0)) < float(thresh[opened]):
+	if float(u.get("dmg_dealt", 0.0)) < float(thresh[opened]) * lvl_mult:
 		return
 	u["chest_opened"] = opened + 1
-	var tier: Array = [[1, 2], [1, 2], [3, 4], [3, 4], [5]][opened]   # 1-2基础/3-4进阶/5传说
+	var group: String = ["basic", "basic", "adv", "adv", "legend"][opened]   # 第1-2箱基础/3-4进阶/5传说
 	var heal_pct: float = [0.08, 0.08, 0.11, 0.11, 0.15][opened]
-	var iid: String = _chest_pick_equip(tier)
-	if iid != "":
-		if not u.has("equips"): u["equips"] = []
-		u["equips"].append({"id": iid, "star": 1})
-		if not u.has("eq_state"): u["eq_state"] = {}
-		u["eq_state"][iid] = {}
-		_eq_apply_one_stats(u, iid, 1)
-		if u.get("chest_greed", false): _chest_greed_apply(u, 1)   # 贪婪: 新开1件装备→+4%攻+7%最大生命
-		var nm: String = str(DataRegistry.phase2_equipment_by_id.get(iid, {}).get("name", iid))
-		_float_text(u["pos"] + Vector2(0, -72), "开箱! " + nm, Color("#ffd93d"))
+	var tid: String = _chest_pick_treasure(u, group)
+	if tid != "":
+		_chest_apply_treasure(u, tid)
+		if u.get("chest_greed", false): _chest_greed_apply(u, 1)   # 贪婪: 新开1件→+4%攻+7%最大生命
+		_float_text(u["pos"] + Vector2(0, -72), "开箱! " + str(_CHEST_TREASURE_NAME.get(tid, tid)), Color("#ffd93d"))
 	_heal(u, u["maxHp"] * heal_pct)
 	_skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.5), 52.0)
+
+func _chest_pick_treasure(u: Dictionary, group: String) -> String:   # 该档随机1件(不重复)·档抽光→退回全池任意未拥有
+	var owned: Dictionary = u.get("chest_treasures", {})
+	var avail: Array = []
+	for tid in _CHEST_TREASURE_POOL.get(group, []):
+		if not owned.has(tid): avail.append(tid)
+	if avail.is_empty():
+		for g in ["basic", "adv", "legend"]:
+			for tid in _CHEST_TREASURE_POOL[g]:
+				if not owned.has(tid): avail.append(tid)
+	if avail.is_empty(): return ""
+	return str(avail[randi() % avail.size()])
+
+func _chest_apply_treasure(u: Dictionary, tid: String) -> void:   # 逐件bespoke效果(属性即时应用·机制类置flag由钩子读)
+	if not u.has("chest_treasures"): u["chest_treasures"] = {}
+	u["chest_treasures"][tid] = true
+	match tid:
+		"dagger":         _buff(u, "atk", 0.25, true, 99999.0)                                              # 短刃: +25%攻
+		"wood_shield":    _buff(u, "def", 0.20, true, 99999.0); _buff(u, "mr", 0.20, true, 99999.0)          # 木盾: +20%双抗
+		"rum":            u["chest_rum_t"] = 0.0                                                             # 朗姆酒: 每10秒回8%maxHp(周期tick读flag)
+		"blood_dice":     u["crit"] = float(u.get("crit", 0.0)) + 0.35                                       # 血筛子: +35%暴击
+		"chain":          u["chest_aoe_mult"] = 2.0                                                          # 锁链: 砸击AOE距离/射程翻倍(_chest_basic钩子)
+		"stone":          u["chest_rock_bonus"] = float(u.get("chest_rock_bonus", 0.0)) + 1.0                # 石头: 砸击额外+100%护甲+100%魔抗(_chest_basic钩子)
+		"long_sword":     _buff(u, "atk", 0.45, true, 99999.0)                                               # 长剑: +45%攻
+		"bloodblade":     u["lifesteal"] = float(u.get("lifesteal", 0.0)) + 0.25                             # 嗜血之刃: +25%吸血
+		"flint":          pass                                                                               # 火石: 命中→灼烧(_apply_damage_from钩子·防循环)
+		"gem_armor":      _buff(u, "def", 0.25, true, 99999.0); _buff(u, "mr", 0.25, true, 99999.0); u["maxHp"] += 60.0; u["hp"] += 60.0   # 宝石甲: +25%双抗+60血
+		"poison":         pass                                                                               # 毒箭: 命中→治疗削减-50%5秒(_apply_damage_from钩子·防循环)
+		"phoenix_statue": u["_chest_revive"] = true                                                          # 凤凰雕像: 首死25%最大生命复活(_kill钩子)
+		"crown":          _buff(u, "atk", 0.40, true, 99999.0); u["crit"] = float(u.get("crit", 0.0)) + 0.40; u["crit_dmg"] = float(u.get("crit_dmg", 1.5)) + 0.25; u["lifesteal"] = float(u.get("lifesteal", 0.0)) + 0.15   # 王冠: +40攻/+40暴/+25爆伤/+15吸血
+		"thunder":        pass                                                                               # 雷刃: 命中叠金闪电满5引爆1.0A真伤(_apply_damage_from钩子·防循环)
+		"starlight":      u["chest_starlight"] = true                                                        # 星辉: 所有伤害转真实(_apply_damage_from raw钩子·armor全绕层过局限留F5)
 
 func _chest_pick_equip(costs: Array) -> String:
 	var pool: Array = []
@@ -8990,6 +9047,11 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		# 储能相位机: store(6s 受伤转储能) → 释放(冲击波+护盾) → cd(15s 不储) → store…
 		_shell_phase_tick(u, delta)
 	# 海盗船(实体)已改为 技能三 pirateShipPassive 首次充能满召唤(_sk_pirate_ship·选中才召·封板L378"火炮/朗姆的船=纯装饰演出"); 原无条件4s自动召唤删除
+	# --- 宝箱藏宝图·朗姆酒战利品: 每10秒回8%最大生命(封板L592·flag由开箱设) ---
+	if u["id"] == "chest" and (u.get("chest_treasures", {}) as Dictionary).has("rum"):
+		u["chest_rum_t"] = float(u.get("chest_rum_t", 0.0)) + delta
+		if u["chest_rum_t"] >= 10.0:
+			u["chest_rum_t"] = 0.0; _heal(u, u["maxHp"] * 0.08)
 	# --- 钻石滚球被动(封板): 选滚球 且 100码内无敌 → 免费自动滚(不耗龟能不充能)撞向最近·0.8s防抖内CD ---
 	if u["id"] == "diamond" and not u.get("roll_active", false) and _t > float(u.get("roll_free_cd", 0.0)) and "diamondPowerball" in _chosen_skill_types(u["id"], u["side"] == "left"):
 		var _dne = _nearest_enemy(u)
