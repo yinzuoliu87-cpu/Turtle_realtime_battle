@@ -2624,11 +2624,14 @@ func _separation(u: Dictionary) -> Vector2:
 # ============================================================================
 # gambler 多重打击(云顶剑士式连击): 普攻命中后掷概率→中则快攻速再打一发(连锁每次概率×0.8递减), 没中→回正常普攻冷却+重置
 func _gambler_multi_cd(u: Dictionary) -> float:
-	var ch: float = float(u.get("multi_chance", 0.40))
+	var base_ch: float = float(u.get("multi_base", 0.40))     # 命运之轮选中→0.60; 否则0.40
+	if _t < float(u.get("gambler_bet_until", 0.0)):
+		base_ch += 0.20                                       # 赌注放技→3秒内临时+20%(封顶示例0.80)
+	var ch: float = float(u.get("multi_chance", base_ch))
 	if randf() < ch:
-		u["multi_chance"] = ch * 0.8                  # 递减: 40→32→25.6→…
+		u["multi_chance"] = ch * 0.8                  # 递减: 每次连锁×0.8
 		return maxf(0.12, u["atk_interval"] * 0.30)   # 快攻速再打 (~3.3×攻速; F5可调)
-	u["multi_chance"] = 0.40                          # 没中→重置, 等下一次普攻
+	u["multi_chance"] = base_ch                       # 没中→重置回基础(含命运之轮0.60/赌注+0.20), 等下一次普攻
 	return u["atk_interval"]
 
 func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不算多段): 008珊瑚刺计数 / 017不沉之锚普攻消耗充能锚击
@@ -6835,9 +6838,8 @@ func _sk_gambler_fate_wheel(u: Dictionary) -> void:             # 赌神龟·命
 	_recalc_stats(u)
 	_skill_ring(u["pos"], Color(1.0, 0.84, 0.3, 0.6), 58.0)
 
-func _sk_gambler_wild(u: Dictionary, tgt: Dictionary) -> void:   # 赌神龟·万能牌 ✅
-	for i in range(2):
-		_apply_damage_from(u, tgt, _atk_dmg(u, 1.0, tgt), Color("#ff4444"))
+func _sk_gambler_wild(u: Dictionary, tgt: Dictionary) -> void:   # 赌神龟·万能牌: 丢1张牌=1段1.0A物理(用户2026-07-09"只造成1段伤害")+自身0.25A护盾+回5%maxHp+目标攻-15%
+	_apply_damage_from(u, tgt, _atk_dmg(u, 1.0, tgt), Color("#ff4444"))
 	_grant_shield(u, u["atk"] * 0.25)
 	_heal(u, u["maxHp"] * 0.05)
 	_buff(tgt, "atk", -0.15, true)
@@ -8891,6 +8893,11 @@ func _apply_spawn_passives() -> void:
 				if "diceFlashStrike" in _chosen_skill_types(u["id"], u["side"] == "left"):
 					u["armor_pen"] += u["base_def"] + u["base_mr"]   # 真正的赌徒(打包稳定骰子): 登场双抗全转等量护穿(纯物理)
 					u["base_def"] = 0.0; u["base_mr"] = 0.0; _recalc_stats(u)
+			"gambler":
+				if "gamblerFateWheel" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 命运之轮(技三打包被动·选中才有)·用户2026-07-09重设计
+					u["hp"] = maxf(1.0, u["hp"] - u["maxHp"] * 0.30)   # 登场损30%当前血(=30%maxHp·上限不变)
+					u["multi_base"] = 0.60                              # 永久基础多重概率40%→60%(与赌注+20%叠加可到80%)
+					_float_text(u["pos"] + Vector2(0, -64), "命运之轮 -30%HP", Color("#ff5566"))
 			"pirate":
 				var es := _enemies_of(u)
 				if not es.is_empty():
