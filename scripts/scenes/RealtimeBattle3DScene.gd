@@ -55,7 +55,7 @@ const STATS := {
 	"two_head": [false, 145.0, 0.85, 400.0], "ghost": [false, 145.0, 0.6, 400.0], "diamond": [true, 70.0, 1.1, 70.0],
 	"fortune": [true, 105.0, 0.75, 70.0], "dice": [true, 145.0, 0.6, 70.0], "rainbow": [true, 105.0, 0.7, 70.0],
 	"gambler": [false, 145.0, 0.85, 400.0], "hunter": [false, 145.0, 0.7, 400.0], "pirate": [true, 105.0, 0.85, 70.0],
-	"candy": [false, 105.0, 0.85, 400.0], "bubble": [false, 70.0, 1.1, 400.0], "line": [false, 145.0, 0.6, 400.0],
+	"candy": [true, 105.0, 0.85, 70.0], "bubble": [false, 70.0, 1.1, 400.0], "line": [false, 145.0, 0.6, 400.0],
 	"lightning": [false, 145.0, 0.6, 400.0], "phoenix": [false, 105.0, 0.5, 400.0], "lava": [false, 145.0, 0.7, 400.0],
 	"cyber": [false, 105.0, 0.85, 450.0], "crystal": [true, 70.0, 1.1, 70.0], "chest": [true, 105.0, 1.1, 70.0],
 	"space": [false, 145.0, 0.85, 400.0], "hiding": [true, 70.0, 1.1, 70.0], "headless": [true, 145.0, 0.85, 70.0],
@@ -8890,7 +8890,7 @@ func _apply_spawn_passives() -> void:
 						if float(e["maxHp"]) > float(fat["maxHp"]): fat = e
 					var steal: float = minf(fat["maxHp"] * 0.25, fat["hp"] - 1.0)
 					if steal > 0: _raw_lose(fat, steal); _heal(u, steal)
-				u["lifesteal"] += 0.15                           # 糖果拳自愈(封板未定数值·15%吸血近似·F5调)
+				# 【用户2026纠错】普攻自愈=我自造的(原话普攻只有1.1A+5%maxHp+攻击-15%·无自愈)→删除; 自我回血在焦糖铠/甜蜜吸取
 				if "candyBomb" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 糖果炸弹(技三·选中才召): HP=50%糖果龟maxHp·每秒衰减8%·死亡爆炸150%
 					_spawn_summon(u, "candybomb", u["maxHp"] * 0.50, 0.0, {
 						"label": "糖果炸弹", "spr_id": "candy-bomb", "col_size": 20.0, "hp_w": 24.0,
