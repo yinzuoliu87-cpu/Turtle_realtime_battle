@@ -6322,7 +6322,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"lavaBolt":             _lava_bolt(u, tgt)           # 熔岩弹: 0.9魔+8%目标HP+0.67ATK灼烧 (普攻型, 走专用以保灼烧=0.67非通用rider0.5)
 		"lavaQuake":            _sk_lava_cast(u, tgt, "A")   # 地裂(默认): 修-原派_sk_dmg带slow→应_lava_quake(全体魔+削魔抗20%)
 		"crystalSpike":         _sk_dmg(u, tgt, {"magic": 1.0, "hits": 2, "name": "水晶刺!", "color": Color("#9bdcff")})
-		"crystalBurst":         _sk_dmg(u, tgt, {"magic": 0.7, "true": 0.1, "hits": 3, "aoe": true, "name": "水晶爆!", "color": Color("#9bdcff")})
+		"crystalBurst":         _sk_crystal_burst(u, tgt)
 		"crystalBall":          _sk_crystal_orb(u, tgt)
 		"chestStorm":           _sk_chest_storm(u, tgt)
 		"starBeam":             _sk_dmg(u, tgt, {"magic": 0.4, "hits": 3, "name": "星光束!", "color": Color("#ffffff")})
@@ -7243,6 +7243,13 @@ func _crystal_stack(src: Dictionary, tgt: Dictionary, n: int) -> void:
 		_apply_damage_from(src, tgt, _mitigate(src, tgt["maxHp"] * 0.19, tgt, true), Color("#c9b0ff"), 0.0, false)   # 引爆19%最大生命魔法(吃魔抗·封板·原flat绕魔抗=bug)
 		_buff(tgt, "mr", -0.2, true)
 		_crystal_detonate(tgt["pos"])
+
+# 水晶龟·碎晶爆破(封板L566·100龟能): 对全体敌3段共0.7A魔法+0.1A真实 + 每段叠1层结晶=全体各叠3层(满5引爆·与普攻/水晶球共享层数)
+func _sk_crystal_burst(u: Dictionary, tgt) -> void:
+	_sk_dmg(u, tgt, {"magic": 0.7, "true": 0.1, "hits": 3, "aoe": true, "name": "水晶爆!", "color": Color("#9bdcff")})
+	for o in _enemies_of(u):
+		if o.get("alive", false):
+			_crystal_stack(u, o, 3)   # 每段叠1层×3段=各叠3层(封板L566·原_sk_dmg漏叠结晶)
 
 # 水晶龟·水晶球 本体主动(封板L571·70龟能): 朝目标射一道水晶光线=2段共1.0A魔法 + 叠2层结晶(与水晶球随从共享满5引爆)·水晶球随从在spawn gate召唤
 func _sk_crystal_orb(u: Dictionary, tgt) -> void:
