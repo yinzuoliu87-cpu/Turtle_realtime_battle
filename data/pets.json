@@ -218,7 +218,7 @@
         "selfShieldAtkScale": 1,
         "brief": "石头龟嘲讽5秒，嘲讽期间敌方对我方任意友军释放的单体伤害技能，伤害与附带效果全部转移到石头龟身上。同时为自己提供（{S:ATK}）永久护盾",
         "detail": "石头龟嘲讽5秒。嘲讽期间敌方对我方任意友军释放的单体伤害技能，伤害与附带效果全部转移到石头龟身上。同时为自己提供（100%×攻击力({ATK}) = {S:ATK}）永久护盾。\n\n<span style=\"color:#8a93a0\">AoE 技能不受影响</span>",
-        "energyCost": 70
+        "energyCost": 120
       }
     ],
     "defaultSkills": [
