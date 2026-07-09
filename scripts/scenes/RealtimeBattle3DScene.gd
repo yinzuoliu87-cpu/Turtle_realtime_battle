@@ -4467,7 +4467,7 @@ func _do_basic(u: Dictionary, tgt: Dictionary, spec: Dictionary) -> void:
 		"burn":    _apply_dot_stacks(tgt, "burn", (maxi(1, int(round(float(u["atk"]) * float(spec.get("burnScale", 0.0))))) if spec.has("burnScale") else _default_burn_stacks(u)), u)
 		"atkdn":   _buff(tgt, "atk", -0.15, true)
 		"selfdef": _buff(u, "def", 0.20, true)
-		"bleed":   _apply_dot_stacks(tgt, "bleed", 2, u)                # 忍者斩击: 固定2层流血(暴击3层留F5精修)
+		"bleed":   _apply_dot_stacks(tgt, "bleed", (3 if _last_atk_crit else 2), u)   # 忍者斩击: 2层流血(本次暴击→3层·封板·读_resolve_dmg设的_last_atk_crit)
 		"shrink":  _hiding_shell_harden(u)                             # 缩头缩壳: 每击+1甲+1抗(永久)+0.1A盾
 	# 特殊机制
 	match str(spec.get("mech", "")):
