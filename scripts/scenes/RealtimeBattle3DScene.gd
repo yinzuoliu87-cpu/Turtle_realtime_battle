@@ -10491,6 +10491,7 @@ func _settle_season(won: bool) -> void:
 		_last_reward = 25 + 2 * int(gs.hearts) + 5 * lost_hearts + (15 if won else 0)
 		gs.season_total_battles += 1
 		gs.add_season_xp(2)                          # 每场 +2 大轮经验
+		gs.candy_jar_add(1 if won else 4)            # 糖果罐(选糖果龟当统领才有): 赢+1输+4封顶30(封板L392·逆风快攒)
 		if won:
 			gs.season_wins += 1
 			gs.season_eggs_killed += 1
