@@ -2416,7 +2416,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	var to_t: Vector2 = tgt["pos"] - u["pos"]
 	var dist := to_t.length()
 	var rng: float = u["atk_range"]
-	var spd: float = u["move_spd"] * (0.6 if _t < u["slow_until"] else 1.0) * (float(u.get("spd_move_mult", 1.0)) if _t < float(u.get("spd_dbf_until", 0.0)) else 1.0)
+	var spd: float = u["move_spd"] * (float(u.get("slow_mag", 0.6)) if _t < u["slow_until"] else 1.0) * (float(u.get("spd_move_mult", 1.0)) if _t < float(u.get("spd_dbf_until", 0.0)) else 1.0)
 
 	# ═══ AI 状态机: 移动 ↔ 前摇 → 出手 → 后摇 (移动与攻击/施法互斥 = 施法锁; 根治"边走边放") ═══
 	match str(u.get("state", "move")):
@@ -6105,6 +6105,8 @@ const _IMPL_SKILLS := {
 
 # 龟能花费表 已移到单一事实源 SkillEnergy (scripts/systems/skill_energy.gd) — 战斗/图鉴/选龟共用
 func _skill_cost(u: Dictionary, stype: String) -> float:
+	if stype == "lavaErupt" and u.get("volcano", false):
+		return 120.0   # 熔岩技三·火山形态版=暴走·龟能单独120(用户2026-07-09"要单独"·熔岩形态智能冲刺仍80)
 	return float(u.get("energy_cost", {}).get(stype, SkillEnergy.cost_of(stype)))   # 数据驱动: 优先该龟该技energyCost, 缺则类型兜底
 
 # 该技充满龟能要多少秒 (= 龟能花费 × 0.075; 即所谓"冷却") — 龟盾~5s · 普通~7s · 弹幕~10s · 大招~13s
@@ -7638,7 +7640,7 @@ func _tick_lava_zones(_delta: float) -> void:   # 每帧: 周期结算池内敌 
 					if o["pos"].distance_to(c) > r:
 						continue
 					_apply_damage_from(src, o, _atk_dmg(src, 0.06, o, true), Color("#ff7a33"))   # 0.06×ATK魔/0.5s
-					o["slow_until"] = maxf(float(o.get("slow_until", 0.0)), _t + 0.6)             # 减速(move ×0.6=减40%, ≥0.6s续)
+					o["slow_until"] = maxf(float(o.get("slow_until", 0.0)), _t + 0.6); o["slow_mag"] = 0.65   # 地裂减速35%(move×0.65·用户2026-07-09"35"·≥0.6s续)
 					_buff(o, "mr", -0.30, true, 0.6)                                              # 魔抗-30% (每跳刷新)
 		if _t >= float(z["until"]):
 			var disc = z.get("disc", null)
@@ -8310,7 +8312,7 @@ func _apply_rider(u: Dictionary, e: Dictionary, rider: String) -> void:
 	match rider:
 		"burn":  _apply_dot_stacks(e, "burn", maxi(1, roundi(u["atk"] * 0.5)), u)
 		"stun":  e["stun_until"] = maxf(float(e.get("stun_until", 0.0)), _t + _cc_dur(e, CTRL_SEC))
-		"slow":  e["slow_until"] = maxf(float(e.get("slow_until", 0.0)), _t + _cc_dur(e, BUFF_SEC))
+		"slow":  e["slow_until"] = maxf(float(e.get("slow_until", 0.0)), _t + _cc_dur(e, BUFF_SEC)); e["slow_mag"] = 0.6
 		"curse": _add_dot(e, "curse", e["maxHp"] * 0.05, BUFF_SEC)
 		"atkdn": _buff(e, "atk", -0.15, true)
 		"mrdn":  _buff(e, "mr", -0.20, true)
@@ -8420,22 +8422,43 @@ func _throw_gold_coin(src: Dictionary, tgt: Dictionary) -> void:
 	})
 
 # 星际·虫洞: 永久+魔法穿透; 沿目标方向直线四段 1.5×ATK×(1+10%×已过秒) 魔法 + 击飞
-func _sk_star_wormhole(u: Dictionary, tgt) -> void:
-	if tgt == null:
-		return
-	u["magic_pen"] += 6.0 + 0.5 * float(u.get("level", 1))   # 永久魔穿(叠加·6+0.5×等级·封板)
+func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·虫洞(用户2026-07-09重设计): 短暂蓄力→发射1个缓慢移动的虫洞沿目标方向直线飞→吸经过敌90码(拉向虫洞)+造成1段=1.5A×(1+5%每秒)魔法(每敌一次)
+	if tgt == null: tgt = _nearest_enemy(u)
+	if tgt == null: return
 	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
-	var mult: float = 1.5 * (1.0 + 0.05 * _t)        # 随战斗时间变强(5%/秒·封板)
-	for o in _enemies_of(u):
-		if o == tgt or _on_line(u["pos"], dir, o["pos"], 70.0):
-			for i in range(4):
-				if not o["alive"]:
-					break
-				_apply_damage_from(u, o, _atk_dmg(u, mult / 4.0, o, true), Color("#ffffff"))
-			if o["alive"] and not o.get("_eggImmune", false):   # 吸拽被扫敌朝虫洞推进方向(替代原击飞·封板)
-				o["pos"] += dir * 90.0
-			_skill_ring(o["pos"], Color(0.75, 0.6, 1.0, 0.5), 50.0)
-
+	if dir.length() < 0.1: dir = Vector2.RIGHT
+	var start: Vector2 = u["pos"]
+	var mult: float = 1.5 * (1.0 + 0.05 * _t)                       # 1段伤害=1.5A×(1+5%每秒)·发射时刻定格
+	var uu := u
+	_anticipate(u)                                                  # 短暂蓄力前摇
+	var fire := func() -> void:                                     # 蓄力后发射缓慢移动虫洞
+		if not uu.get("alive", false): return
+		var hole := Sprite3D.new()                                  # 虫洞视觉(紫旋涡占位·待美术真旋涡)
+		hole.texture = _make_blob_texture()
+		hole.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		hole.shaded = false; hole.transparent = true
+		hole.modulate = Color(0.62, 0.42, 1.0, 0.9)
+		hole.pixel_size = 0.02
+		hole.position = _world_pos(start, 0.4)
+		_world.add_child(hole)
+		var hit: Dictionary = {}
+		var radius := 120.0                                         # 虫洞影响半径(F5可调)
+		var step := func(d: float) -> void:
+			var c: Vector2 = start + dir * d                        # 虫洞当前位置
+			if is_instance_valid(hole): hole.position = _world_pos(c, 0.4)
+			for o in _enemies_of(uu):
+				if not o.get("alive", false) or hit.has(o): continue
+				if o["pos"].distance_to(c) > radius: continue
+				hit[o] = true
+				if not o.get("_eggImmune", false):                  # 吸敌90码(拉向虫洞·不是推开)
+					var pull: Vector2 = c - o["pos"]
+					if pull.length() > 1.0: o["pos"] += pull.normalized() * 90.0
+				_apply_damage_from(uu, o, _atk_dmg(uu, mult, o, true), Color("#c9a0ff"))   # 1段魔法
+				_skill_ring(o["pos"], Color(0.75, 0.6, 1.0, 0.6), 50.0)
+		var tw := _reg_tween()
+		tw.tween_method(step, 0.0, 1400.0, 1.6).set_trans(Tween.TRANS_LINEAR)   # 缓慢移动~1.6s跨1400码
+		tw.chain().tween_callback(hole.queue_free)
+	_pending_shots.append({"delay": 0.3, "fn": fire, "src": u})     # 蓄力0.3s→发射
 func _sk_line_ink_bomb(u: Dictionary) -> void:                  # 线条龟·墨水炸弹(用户设计·120龟能): 全体敌4段共1A魔法+各叠4墨迹(打包被动=墨迹上限提到10·叠满10层+50%真实受伤)
 	for o in _enemies_of(u):
 		if not o.get("alive", false): continue
