@@ -5267,6 +5267,9 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	# 小龟·不屈: 造成的任何伤害按目标稀有度增伤 (总闸→普攻/技能/真伤/固定伤全覆盖, 只算一次)
 	if src.get("id", "") == "basic" and src != u:
 		dmg = int(round(float(dmg) * (1.0 + _BASIC_RARITY_BONUS.get(str(u.get("rarity", "C")), 0.20))))
+	# 伤害输出乘数 (龟壳复制60%等; 默认1.0=不变): 缩放src本次造成的即时伤害
+	if src.get("dmg_out_mult", 1.0) != 1.0:
+		dmg = int(round(float(dmg) * float(src.get("dmg_out_mult", 1.0))))
 	# 靶向器055: 被标记目标受伤 +20%
 	if _t < u.get("eq_marked_until", 0.0):
 		dmg = int(dmg * 1.2)
@@ -8306,11 +8309,16 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:               # 龟壳·复制(
 				pool.append(s)
 	pool.shuffle()
 	if pool.size() >= 1:
+		u["dmg_out_mult"] = 0.6                                # 60%效果(封板)·即时伤害经_apply_damage_from乘数
 		_do_skill(u, tgt, str(pool[0]))                        # 第1个立即
+		u["dmg_out_mult"] = 1.0
 	if pool.size() >= 2:                                       # 第2个错峰0.6s(轮流依次·不同时糊帧)
 		var p1: String = str(pool[1])
 		var uu: Dictionary = u
-		var fn := func(): _do_skill(uu, _nearest_enemy(uu), p1)
+		var fn := func():
+			uu["dmg_out_mult"] = 0.6
+			_do_skill(uu, _nearest_enemy(uu), p1)
+			uu["dmg_out_mult"] = 1.0
 		_pending_shots.append({"delay": 0.6, "fn": fn, "src": u})
 
 # ============================================================================
