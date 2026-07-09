@@ -1591,6 +1591,8 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 	}
 	# 等级缩放: 主属性 +5%/级, 攻速 +2%/级 (吃等级表见 战斗基础-策划焊死.md §三). 小将自带×1.05缩放, 跳过龟式缩放.
 	var _lvl: int = maxi(1, _unit_level(side))
+	if side == "left" and not is_minion and not is_egg and GameState != null:   # 临时等级器(糖果罐战利品·封板L402): 玩家方该龟本大轮永久+N级(切轮重置)
+		_lvl += GameState.temp_level_bonus(id)
 	if _lvl > 1 and not is_minion and not is_egg:
 		var _m: float = 1.0 + 0.05 * float(_lvl - 1)
 		u["maxHp"] *= _m; u["hp"] = u["maxHp"]
