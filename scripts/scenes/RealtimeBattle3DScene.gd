@@ -6308,7 +6308,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"ninjaBomb":            _sk_dmg(u, tgt, {"phys": 1.1, "hits": 1, "aoe": true, "defDown": 0.25, "name": "烟雾弹!", "color": Color("#b0b0c0")})
 		"twoHeadMagicWave":     _sk_dmg(u, tgt, {"phys": 0.8, "true": 0.8, "hits": 4, "name": "魔法波!", "color": Color("#ffffff")})
 		"ghostTouch":           _sk_dmg(u, tgt, {"phys": 0.4, "true": 0.9, "hits": 1, "name": "幽灵之触!", "color": Color("#c77dff")})   # 死技(未进轮转)·curse rider=我自造幻影已删(用户2026-07-09)
-		"ghostPhantom":         _sk_dmg(u, tgt, {"magic": 1.5, "hits": 1, "lifesteal": 0.8, "selfDodge": 0.25, "name": "幻影!", "color": Color("#c77dff")})
+		"ghostPhantom":         _sk_dmg(u, tgt, {"magic": 1.5, "hits": 1, "lifesteal": 0.8, "selfDodge": 0.25, "selfDodgeDur": 4.0, "name": "幻影!", "color": Color("#c77dff")})   # 闪避4秒(用户2026-07-09·回合制"2回合")
 		"diamondPowerball":     _sk_diamond_powerball(u, tgt)
 		"diamondSmash":         _sk_diamond_smash(u, tgt)
 		"fortuneStrike":        _sk_dmg(u, tgt, {"phys": 1.0, "hits": 2, "name": "财运一击!", "color": Color("#ffd93d")})
@@ -6684,10 +6684,10 @@ func _sk_ninja_shuriken(u: Dictionary, tgt) -> void:           # 技三·手里�
 func _sk_ghost_soulstorm(u: Dictionary, tgt: Dictionary) -> void: # 幽灵龟·灵魂风暴 ✅
 	var cursed: bool = _has_dot(tgt, "curse")
 	if cursed:
-		_apply_damage_from(u, tgt, _atk_dmg(u, 2.5, tgt, true), Color("#e0b0ff"))
+		_apply_damage_from(u, tgt, int(u["atk"] * 2.5), Color("#e0b0ff"), 0.0, true)   # 有诅咒→2.5A真伤(处决感·用户2026-07-09"打有诅咒是真伤")
 	else:
 		for i in range(2):
-			_apply_damage_from(u, tgt, _atk_dmg(u, 1.25, tgt, true), Color("#c77dff"))
+			_apply_damage_from(u, tgt, _atk_dmg(u, 1.25, tgt, true), Color("#c77dff"))   # 无诅咒→2段共2.5A魔法(用户2026-07-09"打无诅咒目标是魔法")
 		_add_dot(tgt, "curse", tgt["maxHp"] * 0.05, BUFF_SEC)
 
 func _sk_ghost_phase(u: Dictionary, tgt: Dictionary) -> void:    # 幽灵龟·虚化 (用户2026-07-08): 虚化4秒受物理伤害-90% + 对目标2段共1.2A真伤
@@ -8237,7 +8237,7 @@ func _sk_dmg(u: Dictionary, tgt, opts: Dictionary) -> void:
 		_apply_rider(u, e, str(opts.get("rider", "")))
 		_skill_ring(e["pos"], Color(col.r, col.g, col.b, 0.4), 46.0)
 	if float(opts.get("selfDodge", 0.0)) > 0.0:   # 技能给施法者闪避buff(如ghost幽冥突袭25%)
-		_buff(u, "dodge", float(opts["selfDodge"]), true, BUFF_SEC)
+		_buff(u, "dodge", float(opts["selfDodge"]), true, float(opts.get("selfDodgeDur", BUFF_SEC)))
 	var fixed: Array = _enemies_of(u) if aoe else ([tgt] if tgt != null else [])
 	if stagger > 0.0:
 		var tw := _reg_tween()
