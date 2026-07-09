@@ -6930,12 +6930,12 @@ func _bubble_shield_burst(ally: Dictionary) -> void:
 
 func _sk_bubble_burst(u: Dictionary, tgt) -> void:              # 泡泡龟·泡泡爆破(马尔扎哈Q式·用户设计): 消耗当前泡泡值40%→目标两侧泡沫门·门间敌每个受=消耗泡泡值魔法+0.8A物理(无沉默)
 	if tgt == null or not tgt.get("alive", false): return
-	var consumed: float = float(u.get("bubble", 0.0)) * 0.40
-	u["bubble"] = maxf(0.0, float(u.get("bubble", 0.0)) - consumed)
+	var consumed: float = float(u.get("bubble_store", 0.0)) * 0.40   # 修: 原读"bubble"(从不设=恒0→爆破无泡泡伤害bug)→"bubble_store"(受伤累积的真泡泡值·同被动/累积口径)
+	u["bubble_store"] = maxf(0.0, float(u.get("bubble_store", 0.0)) - consumed)
 	var c: Vector2 = tgt["pos"]
 	for o in _enemies_of(u):
-		if o.get("alive", false) and o["pos"].distance_to(c) <= 200.0:   # 门间~200码带(两侧传送门美术TODO·魔法精确resolve TODO)
-			_apply_damage_from(u, o, int(consumed) + _atk_dmg(u, 0.8, o), Color("#cdebff"))
+		if o.get("alive", false) and o["pos"].distance_to(c) <= 200.0:   # 门间~200码带(两侧传送门美术TODO)
+			_apply_damage_from(u, o, int(_mitigate(u, consumed, o, true)) + _atk_dmg(u, 0.8, o), Color("#cdebff"))   # 消耗泡泡值魔法(吃魔抗)+0.8A物理(封板L437)
 	_skill_ring(c, Color(0.5, 0.9, 1.0, 0.55), 200.0)
 
 func _sk_line_link(u: Dictionary) -> void:                       # 线条龟·连笔 ✅
@@ -9091,7 +9091,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		u["_goldtimer"] = u.get("_goldtimer", 0.0) + delta
 		if u["_goldtimer"] >= 3.0:
 			u["_goldtimer"] = 0.0; u["gold"] += _juice_rng.randi_range(4, 7)
-	# --- 彩虹棱镜: 每2.5s 全队随机增益5s (红攻/蓝防/绿回血) ---
+	# --- 彩虹棱镜(封板L267): 每6秒随机红/蓝/绿·普攻附对应效果(红+0.25A真伤/蓝+0.2A盾4s/绿回2.5%已损·见_on_basic_hit) ---
 	if u["id"] == "rainbow":
 		u["_rbtimer"] = u.get("_rbtimer", 0.0) + delta
 		if u["_rbtimer"] >= 6.0:
@@ -9102,19 +9102,18 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			if u["_epTimer"] >= 5.0:
 				u["_epTimer"] = 0.0
 				_rainbow_enh_prism_proc(u)
-	# --- 泡泡·泡沫: 每2.5s 消耗15%泡泡回血 + 35%泡泡打随机敌 ---
+	# --- 泡泡·泡沫(封板L428): 每3秒→泡泡值10%化魔法打最近敌 + 治疗自己10%泡泡值 (共消耗20%泡泡值) ---
 	if u["id"] == "bubble":
 		u["_bbtimer"] = u.get("_bbtimer", 0.0) + delta
-		if u["_bbtimer"] >= 2.5:
+		if u["_bbtimer"] >= 3.0:                       # 修: 2.5→3秒(封板)
 			u["_bbtimer"] = 0.0
 			var bs: float = float(u.get("bubble_store", 0.0))
 			if bs >= 1.0:
-				_heal(u, bs * 0.15, true)
-				var bes := _enemies_of(u)
-				if not bes.is_empty():
-					var bv = bes[randi() % bes.size()]
-					_apply_damage_from(u, bv, int(bs * 0.35), Color("#aef1ff"), 0.0, true)
-				u["bubble_store"] = bs * 0.50
+				_heal(u, bs * 0.10, true)              # 修: 15%→10%(封板)
+				var bt = _nearest_enemy(u)             # 修: 随机敌→最近敌(封板)
+				if bt != null:
+					_apply_damage_from(u, bt, int(_mitigate(u, bs * 0.10, bt, true)), Color("#aef1ff"))   # 修: 35%真伤→10%化魔法(吃魔抗·封板)
+				u["bubble_store"] = bs * 0.80          # 修: 消耗50%→共消耗20%(10%伤+10%治·封板)
 	# --- 闪电·雷电: 每4s 自动电击随机敌 (真伤) (用户) ---
 	if u["id"] == "lightning":
 		u["_ltimer"] = u.get("_ltimer", 0.0) + delta
@@ -9330,9 +9329,7 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 	if u["id"] == "ghost":
 		for o in _enemies_of(u):
 			_add_dot(o, "curse", o["maxHp"] * 0.05, BUFF_SEC)
-	# 海盗掠夺: 死亡钩锁击杀者 25% 最大HP 真伤
-	if u["id"] == "pirate" and killer != null and killer["alive"]:
-		_raw_lose(killer, killer["maxHp"] * 0.25)
+	# 海盗掠夺被动已按封板L354/382删除(掠夺去掉→海盗龟无被动·场外船是共用演出载体·待用户确认是否补新被动)
 
 # ============================================================================
 #  召唤系统 (3D 化: billboard 立绘/色块 + blob影, 走同一 _tick_unit) — 逻辑 1:1 搬自 2D 版
