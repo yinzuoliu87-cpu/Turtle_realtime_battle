@@ -6307,7 +6307,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"ninjaShuriken":        _sk_ninja_shuriken(u, tgt)
 		"ninjaBomb":            _sk_dmg(u, tgt, {"phys": 1.1, "hits": 1, "aoe": true, "defDown": 0.25, "name": "烟雾弹!", "color": Color("#b0b0c0")})
 		"twoHeadMagicWave":     _sk_dmg(u, tgt, {"phys": 0.8, "true": 0.8, "hits": 4, "name": "魔法波!", "color": Color("#ffffff")})
-		"ghostTouch":           _sk_dmg(u, tgt, {"phys": 0.4, "true": 0.9, "hits": 1, "rider": "curse", "name": "幽灵之触!", "color": Color("#c77dff")})
+		"ghostTouch":           _sk_dmg(u, tgt, {"phys": 0.4, "true": 0.9, "hits": 1, "name": "幽灵之触!", "color": Color("#c77dff")})   # 死技(未进轮转)·curse rider=我自造幻影已删(用户2026-07-09)
 		"ghostPhantom":         _sk_dmg(u, tgt, {"magic": 1.5, "hits": 1, "lifesteal": 0.8, "selfDodge": 0.25, "name": "幻影!", "color": Color("#c77dff")})
 		"diamondPowerball":     _sk_diamond_powerball(u, tgt)
 		"diamondSmash":         _sk_diamond_smash(u, tgt)
