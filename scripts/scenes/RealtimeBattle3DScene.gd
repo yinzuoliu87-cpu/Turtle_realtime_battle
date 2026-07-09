@@ -77,7 +77,7 @@ const RIGHT_DEMO := ["diamond", "ninja", "ghost"]
 # 普攻表 (1:1 复用): id → [scale, hits]
 # 基础技能 (28龟 1:1 照原始 skillPool[0] 公式/类型/机制重对, 2026-06-28).
 #   字段: phys/magic/true=×ATK 总倍率(物/魔/真); hits=视觉段; def/mr/hp/selfhp/tcurhp=加成项(进主类型);
-#   gold=×ATK×金币(财神); critflat=×暴击率flat(骰子); rider=burn/atkdn/selfdef(附带); mech=ninja/splash(特殊); lightning 走专用函数.
+#   gold=×ATK×金币(财神); critflat=×暴击率flat(骰子); selfheal=×ATK每击自愈(海盗弯刀); rider=burn/atkdn/selfdef/bleed/shrink(附带); mech=ninja/splash(特殊); lightning 走专用函数.
 const BASIC_ATK := {
 	"basic":    {"phys": 1.0, "hits": 1},
 	"stone":    {"phys": 0.7, "def": 1.5, "mr": 0.8, "hits": 1},                    # +护甲魔抗(坦克)
@@ -93,7 +93,7 @@ const BASIC_ATK := {
 	"rainbow":  {"phys": 0.9, "hits": 1},                                          # 单段0.9物理(用户2026-07-02, 原魔法1.4×2)
 	"gambler":  {"phys": 1.35, "hits": 3},                                         # 0.9~1.8随机取中
 	"hunter":   {"phys": 1.0, "hits": 1},   # 封板: 普攻1.0A物理(残血追猎+50%攻速在atk_cd处)
-	"pirate":   {"phys": 1.4, "hits": 4},
+	"pirate":   {"phys": 1.0, "hits": 1, "selfheal": 0.2},                          # 弯刀(封板L382·近战): 1.0A物理+自愈0.2A(每击回0.2×ATK生命)·[段数1=单弯刀斩·手感留F5]
 	"candy":    {"phys": 1.1, "selfhp": 0.05, "hits": 1, "rider": "atkdn"},         # +自HP+减攻debuff
 	"bubble":   {"phys": 1.5, "hits": 3},
 	"line":     {"magic": 1.0, "hits": 1},                                          # 素描:1A魔法单段(叠1墨迹走_on_basic_hit·用户设计)
@@ -4462,6 +4462,10 @@ func _do_basic(u: Dictionary, tgt: Dictionary, spec: Dictionary) -> void:
 			_emit_basic(u, tgt, dmg, col, i)
 			if raw_t > 0.0:
 				_apply_damage_from(u, tgt, int(raw_t / vh), Color("#ffffff"), 0.0, true)   # 真实(穿减伤)
+	# 普攻自愈 (×ATK·每次普攻一次·海盗弯刀0.2A·silent防高频刷绿字)
+	var sh: float = float(spec.get("selfheal", 0.0))
+	if sh > 0.0 and u.get("alive", false):
+		_heal(u, atk * sh, true)
 	# 附带效果
 	match str(spec.get("rider", "")):
 		"burn":    _apply_dot_stacks(tgt, "burn", (maxi(1, int(round(float(u["atk"]) * float(spec.get("burnScale", 0.0))))) if spec.has("burnScale") else _default_burn_stacks(u)), u)
