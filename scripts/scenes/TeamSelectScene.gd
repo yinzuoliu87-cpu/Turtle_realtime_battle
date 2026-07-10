@@ -1400,7 +1400,7 @@ func _skill_tooltip(pet: Dictionary, sk: Dictionary, idx: int = -1) -> String:
 	var brief: String = SkillText.render_plain(str(sk.get("brief", "")), fake_f, sk)
 	var head: String = str(sk.get("name", "?"))
 	if SkillEnergy.is_active(str(sk.get("type", ""))):   # 龟能口径(无"CD"): 主动技显龟能花费, 攒满才放
-		head += " (龟能%d)" % int(round(SkillEnergy.cost_of(str(sk.get("type", "")))))
+		head += " (龟能%d)" % _skill_energy(sk)
 	var body := brief
 	# 双形态配对技能 (PoC TeamSelectScene.ts:860-874): 换形龟显近战/火山对应技能
 	if idx >= 0:
@@ -1820,3 +1820,14 @@ func _flash_status(msg: String) -> void:
 	tween.tween_property(status_bar, "modulate:a", 1.0, 0.2)
 	tween.tween_interval(1.8)
 	tween.tween_property(status_bar, "modulate:a", 0.0, 0.2)
+
+
+## 该技的龟能花费: 【pets.json 的 energyCost 优先】, 缺了才退回 SkillEnergy 类型兜底。
+## ★2026-07-10: 与战斗 `_skill_cost`(RealtimeBattle3DScene.gd) 和图鉴 CodexScene 同口径。
+##   此前这里只读 SkillEnergy.cost_of() → 彩虹·棱镜护盾 界面显 70 而实战花 50;
+##   彩虹·反射 SkillEnergy 表里根本没有 → 显的是兜底值。两处都在骗玩家。
+func _skill_energy(sk: Dictionary) -> int:
+	var ec = sk.get("energyCost", null)
+	if ec != null:
+		return int(round(float(ec)))
+	return int(round(SkillEnergy.cost_of(str(sk.get("type", "")))))

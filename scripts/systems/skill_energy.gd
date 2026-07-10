@@ -14,24 +14,27 @@ const CD_FACTOR := 0.075    # 龟能花费 → 充满秒数 (=1/充能速率); 7
 
 # 各技龟能花费 (∝ 技能强度): 轻盾/治/buff~70 · 普通伤害/控~95 · 全体/多段/强~120-140 · 变身/梭哈/大招~150-170
 const SKILL_COST := {
+	# ★2026-07-10 补齐: 这些主动技此前不在表里 → is_active() 返回 false → 选龟界面根本不给它们显龟能(如彩虹·反射)。
+	#   值一律取自 pets.json 的 energyCost, 未自造。
+	"rainbowReflect": 110.0,
 	# 签名招
-	"turtleShieldBash": 70.0, "bambooHeal": 110.0, "angelBless": 53.0, "angelAscend": 80.0, "stoneRockShield": 100.0, "rockShockwave": 80.0, "stoneTaunt": 120.0, "iceFrost": 100.0, "iceFreeze": 80.0, "commonTeamShield": 80.0,
+	"bambooHeal": 110.0, "angelBless": 53.0, "angelAscend": 80.0, "stoneRockShield": 100.0, "rockShockwave": 80.0, "stoneTaunt": 120.0, "iceFrost": 100.0, "iceFreeze": 80.0, "commonTeamShield": 80.0,
 	"ninjaBackstab": 95.0, "ghostStorm": 95.0, "ghostPhase": 80.0, "diamondFortify": 50.0, "diceAllIn": 120.0, "diceFlashStrike": 120.0,
 	"gamblerBet": 100.0, "hunterStealth": 80.0, "pirateCannonBarrage": 80.0, "pirateRum": 120.0, "pirateShipPassive": 120.0, "bubbleShield": 80.0, "bubbleBurst": 100.0,
 	"lineLink": 90.0, "lineInkBomb": 120.0, "lightningSurgeBuff": 120.0, "phoenixShield": 90.0, "phoenixEnhancedRebirth": 120.0, "headlessFear": 110.0,
 	"fortuneDice": 70.0, "fortuneBuyEquip": 60.0, "crystalBarrier": 80.0, "chestCount": 100.0, "starWave": 100.0, "starGravityWarp": 120.0,
 	"twoHeadStrike": 100.0, "twoHeadDisrupt": 95.0, "twoHeadFusion": 110.0, "lavaSurge": 150.0, "cyberBeam": 100.0, "hidingDefend": 100.0, "shellAbsorb": 90.0,
 	# 通用
-	"shield": 70.0, "heal": 70.0,
+	"shield": 50.0, 
 	# 数据驱动伤害
-	"basicBarrage": 80.0, "basicChiWave": 100.0, "basicSlam": 120.0, "bambooLeaf": 90.0, "bambooSmack": 120.0, "bambooSpikes": 130.0, "angelEquality": 60.0,
-	"iceSpike": 120.0, "ninjaShuriken": 95.0, "ninjaBomb": 100.0, "twoHeadMagicWave": 100.0,
-	"ghostTouch": 95.0, "ghostPhantom": 95.0, "diamondPowerball": 100.0, "diamondSmash": 80.0, "fortuneStrike": 90.0,
-	"diceAttack": 95.0, "rainbowStorm": 80.0, "gamblerCards": 100.0, "gamblerDraw": 80.0, "gamblerFateWheel": 80.0,
-	"hunterShot": 90.0, "hunterBarrage": 100.0, "candyBarrage": 120.0, "candyHammer": 80.0, "candyBomb": 100.0, "lineSketch": 90.0,
-	"lightningStrike": 95.0, "lightningBarrage": 120.0, "lightningShield": 120.0, "phoenixBurn": 90.0, "phoenixScald": 100.0,
-	"lavaBolt": 90.0, "lavaQuake": 115.0, "lavaErupt": 80.0, "crystalSpike": 90.0, "crystalBurst": 100.0, "crystalBall": 70.0,
-	"chestStorm": 100.0, "starBeam": 70.0, "headlessTendrils": 160.0, "headlessSoulStrike": 80.0, "shellStrike": 80.0,
+	"basicBarrage": 80.0, "basicChiWave": 100.0, "basicSlam": 120.0, "bambooSmack": 120.0, "bambooSpikes": 130.0, "angelEquality": 60.0,
+	"ninjaShuriken": 95.0, "ninjaBomb": 100.0, 
+	"ghostPhantom": 95.0, "diamondPowerball": 100.0, "diamondSmash": 80.0, 
+	"rainbowStorm": 80.0, "gamblerDraw": 80.0, "gamblerFateWheel": 80.0,
+	"hunterShot": 90.0, "hunterBarrage": 100.0, "candyBarrage": 120.0, "candyHammer": 80.0, "candyBomb": 100.0, 
+	"lightningBarrage": 120.0, "lightningShield": 120.0, "phoenixScald": 100.0,
+	"lavaQuake": 115.0, "lavaErupt": 80.0, "crystalBurst": 100.0, "crystalBall": 70.0,
+	"chestStorm": 100.0, "headlessTendrils": 160.0, "headlessSoulStrike": 80.0, 
 	# Batch2 特殊
 	"chestCannon": 120.0, "fortuneAllIn": 340.0, "starWormhole": 100.0, "lineFinish": 120.0,
 	"cyberHijack": 120.0, "cyberSmartAI": 40.0, "bubbleBind": 70.0, "hidingShrink": 100.0, "hidingBuffSummon": 80.0, "shellCopy": 130.0, "shellShadow": 130.0, "diceFate": 90.0,
