@@ -10,7 +10,9 @@ const LEFT_CX := 240        # LEFT_PAD60 + BTN_W360/2
 const BTN_W := 360
 const BTN_H := 87           # 360×161/666
 const BTN_GAP := 12
-const GROUP_TOP := 234      # 左栏按钮组起始 y — 5 入口(开始战斗/背包/商店/排行榜/设置)垂直排满刚好不溢出 (234→717<720)
+const GROUP_TOP := 234      # 左栏按钮组起始 y — 左栏实为 4 入口(开始战斗/背包/商店/设置);
+                            # 排行榜/图鉴/教程/战绩 走右侧 4 磁贴。4×(87+12)=396 → 234..630 < 720, 不溢出。
+                            # 〔原注释写"5 入口…排行榜"= 陈旧, 排行榜早就挪到右侧磁贴了〕
 const WALL := 16
 const TILE := 104
 const TSTEP := 120
@@ -42,7 +44,10 @@ func _ready() -> void:
 	page_box = Control.new()
 	content_root.add_child(page_box)
 	_show_page("main")
-	_debug_arena_entry()             # 🛠 调试场入口 (右下角小钮; 开发自由摆位测试)
+	# 🛠 调试场入口: 【只在开发构建/显式 DEVTOOLS 下出现】。
+	#   原来无条件建 → 正式包里玩家能点进自由摆位调试场。OS.is_debug_build() 在导出 release 模板下为 false。
+	if OS.is_debug_build() or OS.has_environment("DEVTOOLS"):
+		_debug_arena_entry()
 	get_viewport().size_changed.connect(_on_menu_resize)
 	_maybe_ask_fullscreen()   # 1:1 PoC maybeAskFullscreen: 每会话一次问是否全屏
 
@@ -567,8 +572,13 @@ func _open_debug_arena() -> void:
 
 
 # ─── 路由 ───
+## 切场景。找不到目标 → 不切、打印错误 (原来直接 change_scene_to_file, 打错名字就静默黑屏)
 func _go(scene: String) -> void:
-	get_tree().change_scene_to_file("res://scenes/%s.tscn" % scene)
+	var path := "res://scenes/%s.tscn" % scene
+	if not ResourceLoader.exists(path):
+		push_error("[MainMenu] 目标场景不存在: " + path)
+		return
+	get_tree().change_scene_to_file(path)
 
 
 ## 开始战斗 → 选龟流程 (实时版): 选龟(TeamSelect) → 匹配(Matchmaking) → 2.5D 战斗(RealtimeBattle3D).

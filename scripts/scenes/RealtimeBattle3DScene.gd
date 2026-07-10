@@ -62,7 +62,17 @@ const STATS := {
 	"shell": [true, 105.0, 1.1, 70.0],
 }
 const DEFAULT_STAT := [true, 105.0, 0.85, 70.0]
-const REVIEW_DEMO := true                  # 评审期: 战斗=1受审龟 vs 1假人(右不动/不打/不放技/高血沙包); 上线前置 false
+## 评审期开关: 战斗 = 1受审龟 vs 假人沙包 (看单龟完整循环)。
+## ⚠ 它【不只影响评审场】——`_unit_level()` 里 `if REVIEW_DEMO: return 1`,
+##    所以它为 true 时【真实双路对局里全体单位也被强制 Lv1, 赛季等级完全不生效】。
+## ★上线必须为 false。当前仍为 true(评审期), 但已可用环境变量 SHIP=1 就地关掉, 不必改代码:
+##      SHIP=1 godot ...   → REVIEW_DEMO 视为 false (真实对局/真实等级)
+## 见 `docs/design/交付前收尾-轮次账本.md` 轮7 交付清单。
+const REVIEW_DEMO_DEFAULT := true
+
+## _review_demo() 的真值: 默认常量, 但 SHIP=1 环境变量可就地关掉(上线/真实对局验证用)
+static func _review_demo() -> bool:
+	return REVIEW_DEMO_DEFAULT and not OS.has_environment("SHIP")
 const REVIEW_TURTLE := "lava"              # 受审龟 id (评审换龟只改这里)
 const REVIEW_SKILL_IDX := -1  # 评审时受审龟放哪个技(skillPool索引); -1=默认
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -71,7 +81,7 @@ const REVIEW_DUMMY_HP := 500.0            # 假人固定血量
 const REVIEW_DUMMY_COUNT := 3   # 假人数量(单龟评审时); >1=排开
 const REVIEW_DUMMY_KILLABLE := false   # true=假人会死(看换目标); false=不死回满沙包(看完整动画)
 const REVIEW_DUMMY_ATTACKS := true     # true=假人会还手(看挨打类被动如龟壳储能); 同时受审龟免死看完整循环
-const LEFT_DEMO := ["basic", "stone", "lightning"]   # 非评审 demo (REVIEW_DEMO=false 时用)
+const LEFT_DEMO := ["basic", "stone", "lightning"]   # 非评审 demo (_review_demo()=false 时用)
 const RIGHT_DEMO := ["diamond", "ninja", "ghost"]
 
 # 普攻表 (1:1 复用): id → [scale, hits]
@@ -716,16 +726,16 @@ func _spawn_teams() -> void:
 	for i in range(left.size()):
 		# XZ 落点: 左队靠左 (ARENA 内), 三龟纵向分布. 与 2D _spawn_teams 同口径像素坐标. 偏移走 @export 参数(#12)
 		var pos := Vector2(ARENA.position.x + spawn_edge_margin, ARENA.position.y + spawn_front_margin + i * spawn_row_spacing)
-		if REVIEW_DEMO and left.size() == 1:
+		if _review_demo() and left.size() == 1:
 			pos = Vector2(_cx - 150.0, _cy)
-		elif REVIEW_DEMO:
+		elif _review_demo():
 			pos = Vector2(_cx - 200.0, _cy + (float(i) - float(left.size() - 1) / 2.0) * minf(150.0, 520.0 / float(maxi(1, left.size()))))
 		if OS.has_environment("EQDEMO_EQUIP") and left.size() > 1:
 			pos = Vector2(_cx - 250.0 + float(i) * 175.0, _cy)   # 携带者+友方假人 排在水平掠射线上(看火柱扫到友军回血)
 		var _lu := _make_unit(str(left[i]), "left", pos)
-		if REVIEW_DEMO and str(left[i]) == "fortune":
+		if _review_demo() and str(left[i]) == "fortune":
 			_lu["gold"] = 0.0   # demo: 财神起手金币(0=看自然攒金币)
-		if REVIEW_DEMO and REVIEW_DUMMY_ATTACKS:
+		if _review_demo() and REVIEW_DUMMY_ATTACKS:
 			_lu["_review_dummy"] = true   # 假人会还手时受审龟免死(看完整被动循环)
 		if OS.has_environment("EQDEMO_EQUIP"):   # 装备演示
 			if i == 0:   # === 携带者(持受审装备) ===
@@ -749,16 +759,16 @@ func _spawn_teams() -> void:
 		_units.append(_lu)
 	for i in range(right.size()):
 		var pos := Vector2(ARENA.end.x - spawn_edge_margin, ARENA.position.y + spawn_front_margin + i * spawn_row_spacing)
-		if REVIEW_DEMO and right.size() == 1:
+		if _review_demo() and right.size() == 1:
 			pos = Vector2(_cx + 150.0, _cy)
-		elif REVIEW_DEMO:
+		elif _review_demo():
 			pos = Vector2(_cx + 100.0 + (float(i) - float(right.size() - 1) / 2.0) * 150.0, _cy + 40.0)   # 横排(用户)
 		if OS.has_environment("EQDEMO_EQUIP"):
 			var _d1: float = float(OS.get_environment("EQDEMO_ENEMY1")) if OS.has_environment("EQDEMO_ENEMY1") else 210.0
 			var _gap: float = float(OS.get_environment("EQDEMO_GAP")) if OS.has_environment("EQDEMO_GAP") else 500.0
 			pos = Vector2(_cx - 150.0 + _d1 + float(i) * _gap, _cy + (float(OS.get_environment("EQDEMO_ENEMY_Y")) if OS.has_environment("EQDEMO_ENEMY_Y") else 0.0))   # 装备演示: 敌1距携带者_d1码, 两敌相距_gap; ENEMY_Y=深度偏移(测浪覆盖)
 		var ru := _make_unit(str(right[i]), "right", pos)
-		if REVIEW_DEMO:                          # 假人: 不放技/永不死训练靶; ATTACKS时会还手(动+普攻)
+		if _review_demo():                          # 假人: 不放技/永不死训练靶; ATTACKS时会还手(动+普攻)
 			if not REVIEW_DUMMY_ATTACKS:
 				ru["no_basic"] = true
 				ru["no_move"] = true
@@ -798,7 +808,7 @@ func _resolve_left() -> Array:
 		var na: int = int(OS.get_environment("EQDEMO_ALLIES")) if OS.has_environment("EQDEMO_ALLIES") else 0
 		for _a in range(na): lst.append("basic")   # 友方假人(团队增益类演示用)
 		return lst
-	if REVIEW_DEMO:
+	if _review_demo():
 		if not REVIEW_SHOWCASE.is_empty():
 			return REVIEW_SHOWCASE.duplicate()   # 展示模式: 多只一队
 		return [_review_turtle()]                 # 评审: 只 1 只受审龟(env可覆盖)
@@ -808,7 +818,7 @@ func _resolve_left() -> Array:
 func _resolve_right() -> Array:
 	if OS.has_environment("EQDEMO_EQUIP"):   # 装备演示: 2个固定假人(相距500码)
 		return ["basic", "basic"]
-	if REVIEW_DEMO:
+	if _review_demo():
 		if not REVIEW_SHOWCASE.is_empty():
 			var arr: Array = []
 			for _i in range(REVIEW_SHOWCASE.size()):
@@ -1413,7 +1423,7 @@ func _unit_level(side: String) -> int:
 		var _dl = _gsd.get("debug_level")
 		if _dl != null and int(_dl) > 0:
 			return int(_dl)                  # 调试器: 强制全体等级(两队同档)
-	if REVIEW_DEMO:
+	if _review_demo():
 		return 1                             # 评审默认 Lv1(看 base 数值); 调试器设 debug_level 可 override
 	if side == "left":
 		var gs = get_node_or_null("/root/GameState")
@@ -6139,7 +6149,7 @@ const PASSIVE_SKILL_TYPES := {"iceBurnImmune": true, "shellEnhanceAwaken": true}
 # loadout(选3) 里所有"非普攻"技 type (physical/magic 是普攻=自动, 排除)
 # 4选1: 每龟从 skillPool[1..4] 选【1个】(主动或被动); GameState.loadouts[id]=选中索引(默认1=签名候选).
 func _resolve_chosen_index(id: String, use_loadout: bool) -> int:
-	if REVIEW_DEMO and id == _review_turtle() and _review_skill_idx() >= 0:
+	if _review_demo() and id == _review_turtle() and _review_skill_idx() >= 0:
 		return _review_skill_idx()   # 评审指定技(env可覆盖)
 	var d: Dictionary = _data_by_id.get(id, {})
 	var pool: Array = d.get("skillPool", [])
@@ -11623,7 +11633,7 @@ const DEMO_EQUIP := {
 
 # 装备注入: 玩家队(left)读 persistent_equipped; demo 阵容兜底塞测试装备.
 func _inject_equipment() -> void:
-	if REVIEW_DEMO and not OS.has_environment("EQDEMO_EQUIP") and not _is_dual_lane_mode():
+	if _review_demo() and not OS.has_environment("EQDEMO_EQUIP") and not _is_dual_lane_mode():
 		return                          # 评审: 受审龟裸装, 看纯内在数值 (装备演示 EQDEMO / 双路对局 例外, 要装上)
 	var gs = get_node_or_null("/root/GameState")
 	var pe: Dictionary = {}
