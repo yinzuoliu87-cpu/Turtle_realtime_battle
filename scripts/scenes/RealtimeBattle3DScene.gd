@@ -4565,7 +4565,7 @@ func _shell_basic(u: Dictionary, tgt: Dictionary) -> void:
 #   叠层在 _basic_attack 里走 _on_basic_hit(每攻击+1电击层, 满8引爆雷暴). 原始设计=魔法+跳敌+8层雷暴.
 const PHX_CONE_HALF_DEG := 35.0     # 凤凰喷火扇形半角(全70°)
 const PHX_FLAME_MAG_COEF := 0.2      # 每0.5s tick 魔法系数 ×ATK
-const PHX_FLAME_BURN_COEF := 0.07     # 每0.5s tick 灼烧层系数 ×ATK (用户2026-06-30"每次普攻加灼烧层0.07ATK")
+const PHX_FLAME_BURN_COEF := 0.07     # 每0.5s tick 灼烧层系数 ×ATK ★T3实装默认(从熔岩龟抄来). 用户2026-06-30那句"每次普攻加灼烧层0.07ATK"是【对熔岩龟说的】(上文在谈熔岩攻速0.85), 凤凰这里用户原话写的是"每0.5秒造成？魔法伤害并施加？灼烧层"=没给数 → 见附录A
 
 # 凤凰持续喷火 channel (Botworld Flamer式: 一直喷不脉冲; 每0.5s结算伤害; 边喷边kite; 放技能由状态机打断)
 func _phoenix_flame_channel(u: Dictionary, tgt: Dictionary, delta: float) -> void:
@@ -7908,12 +7908,12 @@ func _sk_lava_cast(u: Dictionary, tgt: Dictionary, set_id: String = "A") -> void
 		_:
 			_lava_quake(u)
 
-func _lava_bolt(u: Dictionary, tgt: Dictionary) -> void:         # 熔岩弹: 0.6×ATK魔 + 4%目标最大HP + 0.125×ATK灼烧层 (用户2026-06-30)
+func _lava_bolt(u: Dictionary, tgt: Dictionary) -> void:         # 熔岩弹: 0.6×ATK魔 + 4%目标最大HP + 0.07×ATK灼烧层 (用户2026-06-30逐字"攻速改为0.7，每次普攻加灼烧层0.07ATK")
 	if tgt == null or not tgt.get("alive", false):
 		return
 	var dmg := _atk_dmg(u, 0.6, tgt, true) + int(tgt["maxHp"] * 0.04)
 	_apply_damage_from(u, tgt, dmg, Color("#ff7a3c"))
-	_apply_dot_stacks(tgt, "burn", maxi(1, int(round(float(u["atk"]) * 0.07))), u)   # 0.125×ATK 灼烧层(层数DoT)
+	_apply_dot_stacks(tgt, "burn", maxi(1, int(round(float(u["atk"]) * 0.07))), u)   # 0.07×ATK 灼烧层(层数DoT) ★2026-07-10订正: 旧注释写0.125=我编的, 用户原话与代码都是0.07
 	_skill_ring(tgt["pos"], Color(1.0, 0.48, 0.24, 0.4), 46.0)
 
 # 通用·击飞: 把 o 从 center 上抛+外推 (1:1 _lava_slam_impact 的击飞段, 抽公共)
@@ -8257,7 +8257,7 @@ func _sk_lava_erupt(u: Dictionary, tgt) -> void:                # 熔岩龟·技
 	u["lava_pierce_next"] = true                                # 下一发熔岩弹变穿透
 	_skill_ring(u["pos"], Color(1.0, 0.45, 0.15, 0.6), 54.0); _flash(u, Color(1.6, 0.9, 0.4))
 
-func _lava_pierce_bolt(u: Dictionary, tgt) -> void:             # 熔岩·穿透普攻: 贯穿全场岩浆光矢+沿途0.6A真伤+4%maxHp+灼烧
+func _lava_pierce_bolt(u: Dictionary, tgt) -> void:             # 熔岩·穿透普攻: 贯穿全场岩浆光矢+沿途0.6A【魔法】+4%目标maxHp+0.07A灼烧层 (★旧注释写"真伤"与代码不符, 2026-07-10订正)
 	var dir: Vector2 = ((tgt["pos"] - u["pos"]).normalized() if (tgt != null) else Vector2.RIGHT)
 	if dir.length() < 0.1: dir = Vector2.RIGHT
 	_bolt_line(u["pos"], u["pos"] + dir * 2000.0, Color(1.0, 0.5, 0.2, 0.95))
@@ -9295,6 +9295,8 @@ func _apply_spawn_passives() -> void:
 			"cyber":
 				if "cyberSmartAI" in _chosen_skill_types(u["id"], u["side"] == "left"):
 					u["move_spd"] = float(u.get("move_spd", 105.0)) * 1.2   # 智能AI(技三·选中): 登场+20%移速(常驻走位)
+					u["cyber_ai_charge"] = 3   # 用户2026-07-07逐字"赛博龟登场时拥有3层充能" (此前漏做, 从0起算)
+					# ⚠ 充能的【消耗方式与收益】用户从未定义 → 现仅作计数(_sk_cyber_smart 每次释放+1), 不猜、不自造。
 			"crystal":
 				if "crystalBall" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 水晶球(技三·选中才召): 登场召唤实体水晶球
 					_spawn_summon(u, "crystalball", u["maxHp"] * 0.50, u["atk"], {
