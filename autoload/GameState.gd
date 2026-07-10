@@ -675,6 +675,8 @@ func get_dual_lineup() -> Dictionary:
 
 
 func _ready() -> void:
+	if DisplayServer.get_name() == "headless":
+		test_mode = true   # headless(测试/仿真/导出) → 绝不写盘, 保护玩家存档
 	_load()
 	ensure_season()   # V2: 初始化/滚动赛季 (阶段4)
 	# 把存档音量同步给 Audio autoload
@@ -876,7 +878,15 @@ func set_pet_level(pet_id: String, level: int) -> void:
 	save()
 
 
+## ★存档保护: 置 true 后 save() 空转。
+## 【headless 下自动开启】—— 自动化测试/仿真会大量改 GameState 状态并触发 save(),
+## 曾把玩家的 user://savegame.json 整个覆盖(2026-07-10 实际发生过: 币/背包/统领/糖果罐全被测试值写入)。
+## 真实玩家永远不会以 headless 跑游戏, 所以这个判定是安全的; tests/ 也会显式再设一次。
+var test_mode: bool = false
+
 func save() -> void:
+	if test_mode:
+		return
 	var data := {
 		"best_dungeon_stage": best_dungeon_stage,
 		"coins": coins,

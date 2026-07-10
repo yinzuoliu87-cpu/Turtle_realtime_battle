@@ -26,6 +26,7 @@ func _ready() -> void:
 	var gs = get_node("/root/GameState")
 	if gs == null:
 		print("✗ GameState autoload 缺失"); get_tree().quit(1); return
+	gs.test_mode = true   # ★不写盘: 否则本测试会把玩家的 user://savegame.json 覆盖掉
 
 	print("=== 1. has_candy_jar 门槛 ===")
 	gs.season_leaders = ["basic", "stone", "ninja"]
@@ -112,9 +113,10 @@ func _ready() -> void:
 	if midx < 0:
 		print("  – 默认阵容无小将格, 跳过 (非失败)")
 	else:
+		var lv0: int = int(gs.get_dual_lineup()[mlane][midx].get("temp_lv", 0))   # 存档里可能已有值 → 断言用 delta
 		var ok1: bool = gs.apply_temp_leveler_minion(mlane, midx)
 		var lv: int = int(gs.get_dual_lineup()[mlane][midx].get("temp_lv", 0))
-		_ok("小将 +1 级写入阵容格子", ok1 and lv == 1, "lane=%s idx=%d temp_lv=%d" % [mlane, midx, lv])
+		_ok("小将 +1 级写入阵容格子", ok1 and lv == lv0 + 1, "lane=%s idx=%d temp_lv %d→%d" % [mlane, midx, lv0, lv])
 		_ok("对统领格调用返回 false", not gs.apply_temp_leveler_minion(mlane, _first_leader_idx(gs, mlane)))
 
 	print("=== 8. 老存档迁移: 裸 String → Dictionary ===")
