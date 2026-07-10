@@ -441,6 +441,10 @@ func _build_viewport() -> void:
 	_sub.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_sub.handle_input_locally = false
 	_sub.msaa_3d = Viewport.MSAA_2X
+	# 低画质模式(设置里的开关·持久化): 关抗锯齿 + 3D 渲染分辨率 ×0.75 (UI 层不受影响, 仍是原生分辨率)
+	if GameState != null and GameState.perf_lite:
+		_sub.msaa_3d = Viewport.MSAA_DISABLED
+		_sub.scaling_3d_scale = 0.75
 	container.add_child(_sub)
 	_world = Node3D.new()
 	_world.name = "World"

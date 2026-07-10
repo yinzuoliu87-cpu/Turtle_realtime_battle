@@ -83,8 +83,9 @@ func _bg() -> void:
 		tile.position = Vector2(-512, -512)
 		add_child(tile)
 		_bg_tile = tile
-		var drift := tile.create_tween().set_loops()
-		drift.tween_property(tile, "position", Vector2(0, 0), 25.0).from(Vector2(-512, -512)).set_trans(Tween.TRANS_LINEAR)
+		if not (GameState != null and GameState.perf_lite):   # 低画质: 不跑常驻背景漂移 tween
+			var drift := tile.create_tween().set_loops()
+			drift.tween_property(tile, "position", Vector2(0, 0), 25.0).from(Vector2(-512, -512)).set_trans(Tween.TRANS_LINEAR)
 	# ::after 暗渐变遮罩 (顶 alpha.15 → 底 .40), 压暗背景
 	# 显式设 offsets+colors (别用 set_color/add_point — Gradient 默认 offset1 是白点, 会漏成底部白光)
 	var grad := Gradient.new()

@@ -620,6 +620,8 @@ var match_history: Array = []                          # 对局记录 [{result,l
 var pet_levels: Dictionary = {}                        # 宠物等级 {petId: 1-10} (1:1 PoC petState.levels; 只调试面板改, 默认1)
 var bgm_volume: float = 0.45                           # 设置: BGM 音量
 var sfx_volume: float = 0.8                            # 设置: SFX 音量
+var fullscreen: bool = false                           # 设置: 全屏 (原来切了不存, 重启回窗口)
+var perf_lite: bool = false                            # 设置: 低画质模式 (原来是死按钮, 只改自己的 label)
 
 # ─── V2 异步PvP 生命赛季 持久字段 (写入 savegame.json; 见 docs/specs/V2-阶段2) ───
 var meta_deepsea_coins: int = 0                       # 局外深海币 (独立钱包; 区别于 coins/battle_coins/dual_coins)
@@ -678,6 +680,8 @@ func _ready() -> void:
 	if DisplayServer.get_name() == "headless":
 		test_mode = true   # headless(测试/仿真/导出) → 绝不写盘, 保护玩家存档
 	_load()
+	if fullscreen and DisplayServer.get_name() != "headless":
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)   # 开机恢复全屏(设置持久化)
 	ensure_season()   # V2: 初始化/滚动赛季 (阶段4)
 	# 把存档音量同步给 Audio autoload
 	if Engine.has_singleton("Audio") or get_node_or_null("/root/Audio"):
@@ -897,6 +901,8 @@ func save() -> void:
 		"pet_levels": pet_levels,
 		"bgm_volume": bgm_volume,
 		"sfx_volume": sfx_volume,
+		"fullscreen": fullscreen,
+		"perf_lite": perf_lite,
 		"meta_deepsea_coins": meta_deepsea_coins,
 		"season_id": season_id,
 		"season_start_ts": season_start_ts,
@@ -944,6 +950,8 @@ func _load() -> void:
 	pet_levels = data.get("pet_levels", {})
 	bgm_volume = data.get("bgm_volume", 0.45)
 	sfx_volume = data.get("sfx_volume", 0.8)
+	fullscreen = bool(data.get("fullscreen", false))
+	perf_lite = bool(data.get("perf_lite", false))
 	# V2 赛季持久字段
 	meta_deepsea_coins = int(data.get("meta_deepsea_coins", 0))
 	season_id = int(data.get("season_id", 1))
@@ -974,6 +982,8 @@ func _load() -> void:
 			inventory.append(x)
 
 
+## 重置所有进度。**不清设置项**(bgm/sfx 音量 · fullscreen · perf_lite) — 那是偏好不是进度。
+## ⚠ 破坏性: 调用方必须先做二次确认 (SettingsScene 已加确认弹窗)。
 func reset_save() -> void:
 	best_dungeon_stage = 0
 	coins = 0

@@ -289,8 +289,9 @@ func _fill_bg_and_center() -> void:
 			tile.size = Vector2(vp.x + 512, vp.y + 512)
 			tile.position = Vector2(-512, -512)
 			bg.add_child(tile)
-			var drift := tile.create_tween().set_loops()
-			drift.tween_property(tile, "position", Vector2(0, 0), 25.0).from(Vector2(-512, -512)).set_trans(Tween.TRANS_LINEAR)
+			if not (GameState != null and GameState.perf_lite):   # 低画质: 不跑常驻背景漂移 tween
+				var drift := tile.create_tween().set_loops()
+				drift.tween_property(tile, "position", Vector2(0, 0), 25.0).from(Vector2(-512, -512)).set_trans(Tween.TRANS_LINEAR)
 		var grad := Gradient.new()
 		grad.offsets = PackedFloat32Array([0.0, 0.6, 1.0])
 		grad.colors = PackedColorArray([

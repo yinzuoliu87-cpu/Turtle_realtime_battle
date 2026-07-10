@@ -6,8 +6,8 @@ extends Control
 const W := 1280.0
 const H := 720.0
 
-var _perf_lite := false   # 低画质模式 (桌面默认关). Godot 无 backdrop-filter → 仅 label 切换.
 var _perf_btn: Label = null
+var _full_btn: Label = null   # 全屏按钮文字 (切换后要同步, 原来没接住 → 切了还写"全屏")
 
 
 func _ready() -> void:
@@ -20,26 +20,36 @@ func _ready() -> void:
 	# 返回 icon 按钮 @ (40,40)
 	_icon_button(40.0, 40.0, "←", func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
 
-	# BGM 滑条 @ (W/2, 220)
-	_slider(W / 2.0, 220.0, "🎵 BGM 音量", GameState.bgm_volume, func(v):
-		GameState.bgm_volume = v; Audio.bgm_volume = v; GameState.save())
-	# SFX 滑条 @ (W/2, 330)
-	_slider(W / 2.0, 330.0, "🔊 音效音量", GameState.sfx_volume, func(v):
-		GameState.sfx_volume = v; Audio.sfx_volume = v; Audio.play_sfx("hit-physical", 1.0); GameState.save())
+	# BGM 滑条 @ (W/2, 220) — 拖动实时生效; 写盘只在松手时一次 (原来每帧 save() = 拖一下写几十次盘)
+	_slider(W / 2.0, 220.0, "🎵 BGM 音量", GameState.bgm_volume,
+		func(v): GameState.bgm_volume = v; Audio.bgm_volume = v,
+		func(): GameState.save())
+	# SFX 滑条 @ (W/2, 330) — 松手才试听 + 写盘 (原来拖动中每帧都播音效)
+	_slider(W / 2.0, 330.0, "🔊 音效音量", GameState.sfx_volume,
+		func(v): GameState.sfx_volume = v; Audio.sfx_volume = v,
+		func(): Audio.play_sfx("hit-physical", 1.0); GameState.save())
 
 	# 全屏 @ (W/2, 410) — PoC 用 ⛶(U+26F6) 做图标, 但打包字体链无此字形(web/linux 豆腐块)且无等义替代 → 只留文字
-	_text_button(W / 2.0, 410.0, _fullscreen_label(), _toggle_fullscreen)
+	_full_btn = _text_button(W / 2.0, 410.0, _fullscreen_label(), _toggle_fullscreen)
 
-	# 低画质模式 @ (W/2, 490) — PoC: isPerfLite() ? '🪶 低画质模式: 开 (流畅)' : '🪶 低画质模式: 关 (高画质)'
-	#   桌面默认关. Godot 无 backdrop-filter blur → 切换仅改 label (引擎天生差异, 见报告).
+	# 低画质模式 @ (W/2, 490) — 现在是【真开关】: 关 MSAA + 3D 渲染分辨率 ×0.75 + 停菜单背景漂移; 持久化到存档.
 	_perf_btn = _text_button(W / 2.0, 490.0, _perf_label(), _toggle_perf)
 
-	# 重置存档 @ (W/2, 580)
-	_text_button(W / 2.0, 580.0, "⚠ 重置所有存档", _reset_save)
+	# 重置存档 @ (W/2, 580) — ⚠ 破坏性 → 二次确认
+	_text_button(W / 2.0, 580.0, "⚠ 重置所有存档", _ask_reset)
 
 	# 底部提示 @ (W/2, H-40), 11px #888
 	var hint := _stroked_label("设置自动保存", 11, "#888888", "", 0)   # PoC 字面是"到 localStorage"(浏览器术语), Godot 存 user:// → 去掉误导后缀
 	_place_center(hint, W / 2.0, H - 40.0)
+
+
+## ESC 返回主菜单 (原来只能点左上角箭头)
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		if _confirm_layer != null and is_instance_valid(_confirm_layer):
+			_confirm_layer.queue_free()   # 确认框开着 → ESC 先取消
+			return
+		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
 
 func _fullscreen_label() -> String:
@@ -50,40 +60,96 @@ func _fullscreen_label() -> String:
 
 
 func _perf_label() -> String:
-	if _perf_lite:
+	if GameState.perf_lite:
 		return "🪶 低画质模式: 开 (流畅)"
 	return "🪶 低画质模式: 关 (高画质)"
 
 
+## 低画质模式 = 真开关 (原来只改自己的 label, grep 全库无第二处引用 = 死按钮)
+## 实际效果见 `apply_perf_lite()` (战斗视口) 与各菜单场景的背景漂移 gate。
 func _toggle_perf() -> void:
-	_perf_lite = not _perf_lite
+	GameState.perf_lite = not GameState.perf_lite
+	GameState.save()
 	if _perf_btn != null:
 		_perf_btn.text = _perf_label()
+	_toast("低画质: %s (下次进战斗生效)" % ("开" if GameState.perf_lite else "关"))
 
 
 func _toggle_fullscreen() -> void:
 	var m := DisplayServer.window_get_mode()
-	if m == DisplayServer.WINDOW_MODE_FULLSCREEN or m == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
-	else:
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	var to_full: bool = not (m == DisplayServer.WINDOW_MODE_FULLSCREEN or m == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if to_full else DisplayServer.WINDOW_MODE_WINDOWED)
+	GameState.fullscreen = to_full
+	GameState.save()                      # 持久化: 原来切了不存, 重启回窗口
+	if _full_btn != null:
+		_full_btn.text = _fullscreen_label()   # 同步文字: 原来 Label 没接住, 切了还写"全屏"
 
 
-func _reset_save() -> void:
+# ── 重置存档: ⚠ 破坏性, 必须二次确认 ──────────────────────────
+var _confirm_layer: Control = null
+
+func _ask_reset() -> void:
+	if _confirm_layer != null and is_instance_valid(_confirm_layer):
+		return
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.65)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(dim)
+	_confirm_layer = dim
+
+	var box := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("#1c2836"); sb.border_color = Color("#ff5566")
+	sb.set_border_width_all(3); sb.set_corner_radius_all(12)
+	box.add_theme_stylebox_override("panel", sb)
+	box.position = Vector2(W / 2.0 - 260, H / 2.0 - 130); box.size = Vector2(520, 260)
+	dim.add_child(box)
+
+	var ttl := Label.new()
+	ttl.text = "⚠ 重置所有存档？"
+	ttl.add_theme_font_size_override("font_size", 26)
+	ttl.add_theme_color_override("font_color", Color("#ff5566"))
+	ttl.position = Vector2(0, 22); ttl.size = Vector2(520, 36)
+	ttl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(ttl)
+
+	var msg := Label.new()
+	msg.text = "将清空：深海币 · 背包装备 · 出战统领 · 赛季进度(命/等级/胜场) · 糖果罐 · 布阵。\n**此操作不可撤销。**（音量/全屏/画质等偏好设置不受影响）"
+	msg.add_theme_font_size_override("font_size", 15)
+	msg.add_theme_color_override("font_color", Color("#c9d6e2"))
+	msg.position = Vector2(30, 74); msg.size = Vector2(460, 90)
+	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(msg)
+
+	var cancel := Button.new()
+	cancel.text = "取消"
+	cancel.add_theme_font_size_override("font_size", 18)
+	cancel.position = Vector2(70, 186); cancel.size = Vector2(160, 44)
+	cancel.pressed.connect(func(): dim.queue_free(); _confirm_layer = null)
+	box.add_child(cancel)
+
+	var ok := Button.new()
+	ok.text = "确认清空"
+	ok.add_theme_font_size_override("font_size", 18)
+	ok.add_theme_color_override("font_color", Color("#ff8a94"))
+	ok.position = Vector2(290, 186); ok.size = Vector2(160, 44)
+	ok.pressed.connect(func():
+		dim.queue_free(); _confirm_layer = null
+		_do_reset())
+	box.add_child(ok)
+
+
+func _do_reset() -> void:
 	GameState.reset_save()
-	# 成功提示 @ (W/2, 560), alpha tween 0→1 200ms, hold 1500ms 再淡出
-	var ok := _stroked_label("✓ 存档已清空", 16, "#06d6a0", "", 0)
-	_place_center(ok, W / 2.0, 560.0)
-	ok.modulate.a = 0.0
-	var tw := create_tween()
-	tw.tween_property(ok, "modulate:a", 1.0, 0.2)
-	tw.tween_interval(1.5)
-	tw.tween_property(ok, "modulate:a", 0.0, 0.2)
-	tw.tween_callback(ok.queue_free)
+	_toast("✓ 存档已清空")
 
 
 # ── 滑条 (PoC renderSlider, track w=380, handle r14) ──
-func _slider(cx: float, cy: float, label: String, init: float, cb: Callable) -> void:
+## cb        = 拖动中每次变化都调 (实时生效, 不写盘)
+## on_release= 松手/点轨道时调一次 (写盘 / 试听音效). 原实现在 cb 里 save()+play_sfx → 拖一下写几十次盘、爆音。
+func _slider(cx: float, cy: float, label: String, init: float, cb: Callable, on_release: Callable = Callable()) -> void:
 	var track_w := 380.0
 	var left := cx - track_w / 2.0
 
@@ -129,15 +195,18 @@ func _slider(cx: float, cy: float, label: String, init: float, cb: Callable) -> 
 		pct.text = "%d%%" % int(round(v * 100.0))
 		cb.call(v)
 
-	# 拖拽 handle
+	# 拖拽 handle (拖动中只实时应用; 松手才 on_release)
 	handle.gui_input.connect(func(ev: InputEvent):
 		if ev is InputEventMouseMotion and (ev.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
-			apply.call(handle.global_position.x + 14.0 + ev.relative.x))
-	# 点轨道跳
+			apply.call(handle.global_position.x + 14.0 + ev.relative.x)
+		elif ev is InputEventMouseButton and not ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			if on_release.is_valid(): on_release.call())
+	# 点轨道跳 (即刻应用 + 一次 on_release)
 	track.mouse_filter = Control.MOUSE_FILTER_STOP
 	track.gui_input.connect(func(ev: InputEvent):
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			apply.call(track.global_position.x + ev.position.x))
+			apply.call(track.global_position.x + ev.position.x)
+			if on_release.is_valid(): on_release.call())
 
 
 func _circle(r: float, col: Color) -> Control:
@@ -253,8 +322,24 @@ func _place_center(l: Label, cx: float, cy: float) -> void:
 func _mono_font() -> Font:
 	var f := SystemFont.new()
 	f.font_names = PackedStringArray(["monospace", "Consolas", "Courier New"])
-	f.fallbacks = [load("res://assets/fonts/NotoSansSC-Regular.otf")]   # CJK 网页/iOS 兜底 (SystemFont 在 web 取不到系统字体→中文乱码)
+	# CJK + emoji 兜底 (SystemFont 在 web/linux 取不到系统字体 → 中文乱码/emoji 豆腐块)
+	f.fallbacks = [
+		load("res://assets/fonts/NotoSansSC-Regular.otf"),
+		load("res://assets/fonts/NotoEmoji-Regular.ttf"),
+	]
 	return f
+
+
+## 轻量提示 (1.4s 后淡出)
+func _toast(msg: String) -> void:
+	var l := _stroked_label(msg, 16, "#06d6a0", "", 0)
+	_place_center(l, W / 2.0, 650.0)
+	l.modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(l, "modulate:a", 1.0, 0.2)
+	tw.tween_interval(1.4)
+	tw.tween_property(l, "modulate:a", 0.0, 0.3)
+	tw.tween_callback(l.queue_free)
 
 
 func _bg() -> void:
@@ -277,8 +362,9 @@ func _bg() -> void:
 		tile.size = Vector2(vp.x + 512, vp.y + 512)
 		tile.position = Vector2(-512, -512)
 		add_child(tile)
-		var drift := tile.create_tween().set_loops()
-		drift.tween_property(tile, "position", Vector2(0, 0), 25.0).from(Vector2(-512, -512)).set_trans(Tween.TRANS_LINEAR)
+		if not (GameState != null and GameState.perf_lite):   # 低画质: 不跑常驻背景漂移 tween
+			var drift := tile.create_tween().set_loops()
+			drift.tween_property(tile, "position", Vector2(0, 0), 25.0).from(Vector2(-512, -512)).set_trans(Tween.TRANS_LINEAR)
 	# ::after 暗渐变遮罩 (顶 alpha.15 → 底 .40), 压暗背景
 	# 显式设 offsets+colors (别用 set_color/add_point — Gradient 默认 offset1 是白点, 会漏成底部白光)
 	var grad := Gradient.new()
