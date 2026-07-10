@@ -43,10 +43,33 @@ class HP:
                 raise
 
     def children(self, parent_id):
+        # ★2026-07-11 修真bug: `?parentId=N` 端点【不按父过滤, 返回整个项目扁平列表】。
+        #   旧实现拿它当"某父的子元素"→ 幂等按名字在【全项目】查(名字唯一时侥幸对), 且无法判断真实归属。
+        #   真实父子关系只在 tree(parentId=0) 的 children 字段里 → 用 tree 递归找 parent_id 的直接 children。
         if parent_id not in self._children:
-            lst = self._req("/designelements?parentId=%d" % parent_id)
-            self._children[parent_id] = {e["name"]: e for e in (lst if isinstance(lst, list) else [])}
+            self._children[parent_id] = {}
+            if parent_id == 0:
+                for e in self._req("/designelements?parentId=0"):
+                    self._children[0][e["name"]] = e
+            else:
+                tree = self._req("/designelements?parentId=0")
+                node = self._find(tree, parent_id)
+                for c in (node.get("children", []) if node else []):
+                    self._children[parent_id][c["name"]] = c
         return self._children[parent_id]
+
+    def _find(self, els, tid):
+        for e in els:
+            if e.get("designElementId") == tid:
+                return e
+            r = self._find(e.get("children", []), tid)
+            if r:
+                return r
+        return None
+
+    def move(self, eid, parent_id):
+        """把元素移到 parent_id 下 (创建时 parentId 可能不生效, 需单独 PATCH)。"""
+        self._req("/designelements/%d" % eid, {"parentId": parent_id}, method="PATCH")
 
     def upsert(self, parent_id, name, description, type_id):
         """按 name 在 parent 下查找; 存在→PATCH description, 否则→POST 创建。返回 designElementId。"""
@@ -59,8 +82,11 @@ class HP:
             return eid
         el = self._req("/designelements",
                        {"name": name, "description": description,
-                        "designElementTypeId": type_id, "parentElementId": parent_id},
+                        "designElementTypeId": type_id, "parentId": parent_id},
                        method="POST")
         eid = el["designElementId"]
+        # ★创建时的 parentId 不一定生效(实测新元素会飘到顶层) → 无条件补一次 move 保证归位。
+        if parent_id != 0:
+            self.move(eid, parent_id)
         self._children[parent_id][name] = el   # 缓存, 避免同轮重复创建
         return eid
