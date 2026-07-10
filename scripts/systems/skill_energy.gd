@@ -16,18 +16,18 @@ const CD_FACTOR := 0.075    # 龟能花费 → 充满秒数 (=1/充能速率); 7
 const SKILL_COST := {
 	# 签名招
 	"turtleShieldBash": 70.0, "bambooHeal": 110.0, "angelBless": 53.0, "angelAscend": 80.0, "stoneRockShield": 100.0, "rockShockwave": 80.0, "stoneTaunt": 120.0, "iceFrost": 100.0, "iceFreeze": 80.0, "commonTeamShield": 80.0,
-	"ninjaBackstab": 95.0, "ghostStorm": 95.0, "ghostPhase": 80.0, "diamondFortify": 70.0, "diceAllIn": 120.0, "diceFlashStrike": 120.0,
+	"ninjaBackstab": 95.0, "ghostStorm": 95.0, "ghostPhase": 80.0, "diamondFortify": 50.0, "diceAllIn": 120.0, "diceFlashStrike": 120.0,
 	"gamblerBet": 100.0, "hunterStealth": 80.0, "pirateCannonBarrage": 80.0, "pirateRum": 120.0, "pirateShipPassive": 120.0, "bubbleShield": 80.0, "bubbleBurst": 100.0,
 	"lineLink": 90.0, "lineInkBomb": 120.0, "lightningSurgeBuff": 120.0, "phoenixShield": 90.0, "phoenixEnhancedRebirth": 120.0, "headlessFear": 110.0,
 	"fortuneDice": 70.0, "fortuneBuyEquip": 60.0, "crystalBarrier": 80.0, "chestCount": 100.0, "starWave": 100.0, "starGravityWarp": 120.0,
-	"twoHeadStrike": 100.0, "twoHeadDisrupt": 95.0, "twoHeadFusion": 110.0, "lavaSurge": 150.0, "cyberBeam": 100.0, "hidingDefend": 100.0, "shellAbsorb": 100.0,
+	"twoHeadStrike": 100.0, "twoHeadDisrupt": 95.0, "twoHeadFusion": 110.0, "lavaSurge": 150.0, "cyberBeam": 100.0, "hidingDefend": 100.0, "shellAbsorb": 90.0,
 	# 通用
 	"shield": 70.0, "heal": 70.0,
 	# 数据驱动伤害
 	"basicBarrage": 80.0, "basicChiWave": 100.0, "basicSlam": 120.0, "bambooLeaf": 90.0, "bambooSmack": 120.0, "bambooSpikes": 130.0, "angelEquality": 60.0,
 	"iceSpike": 120.0, "ninjaShuriken": 95.0, "ninjaBomb": 100.0, "twoHeadMagicWave": 100.0,
 	"ghostTouch": 95.0, "ghostPhantom": 95.0, "diamondPowerball": 100.0, "diamondSmash": 80.0, "fortuneStrike": 90.0,
-	"diceAttack": 95.0, "rainbowStorm": 125.0, "gamblerCards": 100.0, "gamblerDraw": 80.0, "gamblerFateWheel": 80.0,
+	"diceAttack": 95.0, "rainbowStorm": 80.0, "gamblerCards": 100.0, "gamblerDraw": 80.0, "gamblerFateWheel": 80.0,
 	"hunterShot": 90.0, "hunterBarrage": 100.0, "candyBarrage": 120.0, "candyHammer": 80.0, "candyBomb": 100.0, "lineSketch": 90.0,
 	"lightningStrike": 95.0, "lightningBarrage": 120.0, "lightningShield": 120.0, "phoenixBurn": 90.0, "phoenixScald": 100.0,
 	"lavaBolt": 90.0, "lavaQuake": 115.0, "lavaErupt": 80.0, "crystalSpike": 90.0, "crystalBurst": 100.0, "crystalBall": 70.0,
