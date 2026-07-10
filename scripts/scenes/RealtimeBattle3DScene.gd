@@ -9738,6 +9738,10 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 # ============================================================================
 #  召唤系统 (3D 化: billboard 立绘/色块 + blob影, 走同一 _tick_unit) — 逻辑 1:1 搬自 2D 版
 # ============================================================================
+# 缩头随从候选池 (12 只固定名单)。⚠2026-07-10 轮G 存疑: 旧图鉴文案写「随机召唤一只【A级及以下】的乌龟」,
+#   但本名单里 headless(无头龟) 是 SS 级, 且 A 级及以下实际有 19 只(这里只列了 12)。
+#   用户从未就召唤池给过原话 → 按判定规则「以活代码为准」, 文案已改成如实描述这 12 只。
+#   要不要把 headless 拿掉 / 补齐 A 级及以下, 留给用户拍板 (见 图鉴文案对账-轮次账本.md 轮G)。
 const HIDING_POOL := ["basic", "stone", "bamboo", "ninja", "dice", "rainbow", "hunter", "pirate", "candy", "bubble", "line", "headless"]
 
 func _spawn_hiding_minion(u: Dictionary) -> void:
@@ -9745,7 +9749,9 @@ func _spawn_hiding_minion(u: Dictionary) -> void:
 	var d: Dictionary = _data_by_id.get(pick, {})
 	var st: Array = STATS.get(pick, DEFAULT_STAT)
 	var _lm: float = _lvl_mult_for(u)                # 固定值召唤吃等级
-	var hp: float = float(d.get("hp", 1350)) * 0.40 * _lm  # 召唤=主人最终hp×40% (×等级)
+	# ★2026-07-10订正: 旧注释写"召唤=主人最终hp×40%"是错的。d = 【被召唤那只龟】的数据 → HP/ATK 都按【它自己】的基础值算。
+	#   HP = 该龟 hp × 40% (×等级);  ATK = 该龟 atk × 80% (×等级);  def/mr/crit 照该龟原值 (见下)。
+	var hp: float = float(d.get("hp", 1350)) * 0.40 * _lm
 	var minion = _spawn_summon(u, "minion", hp, float(d.get("atk", 40)) * 0.8 * _lm, {
 		"label": "随从", "spr_id": pick, "col_size": 36.0, "hp_w": 30.0,
 		"melee": bool(st[0]), "move_spd": float(st[1]), "atk_interval": float(st[2]), "atk_range": float(st[3]),

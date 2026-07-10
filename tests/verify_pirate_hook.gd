@@ -47,8 +47,7 @@ func _ready() -> void:
 	if killer.is_empty():
 		print("  – 找不到敌方单位, 跳过"); _done(); return
 
-	# ★隔离: 场景仍在 tick, 其它单位会打 killer → 伤害被污染(实测 flaky: got=188 vs expect=125)
-	#   只留 pirate + killer 存活, 并清掉 killer 身上的 DoT
+	# ★隔离: 场景仍在 tick, 其它单位会打 killer → 只留 pirate + killer 存活, 并清掉 killer 身上的 DoT
 	for o in scene._units:
 		if o is Dictionary and o != pirate and o != killer:
 			o["alive"] = false
@@ -56,6 +55,12 @@ func _ready() -> void:
 	killer["dots"] = []
 	killer["_review_dummy"] = false   # ★评审假人"受击即回满", 会把伤害抹平 → 关掉才测得到真伤害
 	killer["hp"] = killer["maxHp"]
+	# ★★2026-07-10 轮G 才查明的真 flaky 源: got=188 vs expect=125, 188 = 125×1.5 = 【暴击】。
+	#   `_apply_damage_from(..., raw=true)` 的真实伤害【照样掷暴击】(见该函数 "if raw and src.has(\"crit\")"),
+	#   海盗 crit=0.25 / crit_dmg=1.5 → 每 4 次就有 1 次 188。
+	#   我此前把它归咎于"场景 tick 污染", 并声称"连跑5次证明不flaky" —— 25% 的概率 5 次抓不到, 那句话是说早了。
+	#   本测试只想验【钩索基础伤害 = 25% 击杀者最大生命】, 与暴击无关 → 把暴击率置 0 消除随机。
+	pirate["crit"] = 0.0
 	killer["pos"] = pirate["pos"] + Vector2(600, 0)     # 放远一点, 验证拉近
 	var hp0: float = killer["hp"]
 	var expect: int = int(float(killer["maxHp"]) * 0.25)
