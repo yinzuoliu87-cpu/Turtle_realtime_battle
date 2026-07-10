@@ -273,7 +273,7 @@
         "pierce": 0,
         "cd": 0,
         "atkScale": 0.4,
-        "selfHpPct": 6,
+        "selfHpPct": 3,
         "brief": "竹叶龟甩出叶刃，造成（{N:0.4*ATK+HP*0.03}）物理伤害",
         "detail": "竹叶龟甩出叶刃，造成（40%×攻击力({ATK}) + 3%×最大生命值({HP}) = {N:0.4*ATK+HP*0.03}）物理伤害",
         "energyCost": 0
