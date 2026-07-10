@@ -6538,6 +6538,9 @@ func _sk_bamboo_smack(u: Dictionary, tgt) -> void:              # 竹叶龟·竹
 		if d > far_d:
 			far_d = d; far = o
 	if far == null: return
+	var far_pos0: Vector2 = far["pos"]                          # 拉近前的原位(画竹藤用)
+	_bolt_line(u["pos"], far_pos0, Color(0.22, 0.83, 0.33))     # 伸出竹藤(用户2026-07-06"伸出一条竹藤·打最远的敌人")
+	_burst_vfx("res://assets/sprites/vfx/bamboo-vine.png", far_pos0, 120.0, 1.0)   # 藤钩勾住
 	_apply_damage_from(u, far, _atk_dmg(u, 1.0, far), Color("#39d353"))
 	if not far.get("_eggImmune", false):                        # 蛋/免控只吃伤
 		far["stun_until"] = maxf(float(far.get("stun_until", 0.0)), _t + _cc_dur(far, 0.5))
@@ -6546,7 +6549,7 @@ func _sk_bamboo_smack(u: Dictionary, tgt) -> void:              # 竹叶龟·竹
 			far["pos"] = u["pos"] + dir.normalized() * 60.0    # 竹藤拉到贴身
 		_buff(far, "atk", -0.20, true, 4.0)                     # 冰寒-20%攻4秒
 		far["spd_move_mult"] = 0.8; far["spd_dbf_until"] = _t + 4.0   # 冰寒-20%移速4秒
-	_skill_ring(u["pos"], Color(0.22, 0.83, 0.33, 0.55), 54.0)  # 竹藤钩VFX占位
+	_skill_ring(u["pos"], Color(0.22, 0.83, 0.33, 0.4), 54.0)   # 拉到脸上落点环(淡)
 
 func _sk_bamboo_spikes(u: Dictionary, tgt) -> void:            # 竹叶龟·竹刺阵(用户封板·130龟能·科加斯Q式): 当前目标为心300码·蓄力0.6s→竹刺·90%A+15%maxHp物理·击飞1.5s
 	if tgt == null: return
@@ -8515,7 +8518,9 @@ func _sk_line_ink_bomb(u: Dictionary) -> void:                  # 线条龟·墨
 		for i in range(4):
 			_apply_damage_from(u, o, _atk_dmg(u, 0.25, o, true), Color("#c9b0ff"))
 		_add_stack(o, "ink", 4, 10)
-	_skill_ring(u["pos"], Color(0.55, 0.4, 0.75, 0.5), 200.0)   # 墨爆溅全场VFX占位
+		_burst_vfx("res://assets/sprites/vfx/ink-splat.png", o["pos"], 110.0, 0.9)   # 每敌身上墨溅
+	_burst_vfx("res://assets/sprites/vfx/ink-splat.png", u["pos"], 190.0, 0.5)   # 墨爆溅全场(中心大溅)
+	_skill_ring(u["pos"], Color(0.55, 0.4, 0.75, 0.4), 200.0)   # 墨爆环(淡)
 
 # 线条·收尾·画龙点睛: 对墨迹最多敌 (0.7+0.45×层数)×ATK物理 (用户封板L466: 不消耗墨迹)
 func _sk_line_finish(u: Dictionary) -> void:
@@ -8993,7 +8998,7 @@ func _apply_spawn_passives() -> void:
 				var es := _enemies_of(u)
 				if not es.is_empty():
 					var v = es[randi() % es.size()]
-					_apply_damage_from(u, v, _atk_dmg(u, 1.5, v) + int(float(v["maxHp"]) * 0.08), Color("#ffd07a")); _skill_ring(v["pos"], Color(1.0, 0.82, 0.4, 0.5), 60.0)   # 掠夺·登场轰击一个敌人1.5A+8%maxHp(★占位·待确认PoC原值+美术)·用户2026-07-09加回原版
+					_apply_damage_from(u, v, _atk_dmg(u, 1.5, v) + int(float(v["maxHp"]) * 0.08), Color("#ffd07a")); _burst_vfx("res://assets/sprites/vfx/cannon-blast.png", v["pos"], 150.0, 1.0)   # 掠夺·登场轰击1敌(炮弹爆·用户2026-07-09加回原版·★数值待确认PoC)
 			"candy":
 				var ce := _enemies_of(u)
 				if not ce.is_empty():
