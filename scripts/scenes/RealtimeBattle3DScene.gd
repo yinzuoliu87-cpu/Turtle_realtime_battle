@@ -13515,9 +13515,9 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	sub.add_theme_font_size_override("font_size", 13)
 	sub.add_theme_color_override("font_color", Color("#9fb6c9"))
 	head_info.add_child(sub)
-	# 关闭 ✕
+	# 关闭 ✖ (原 ✕ U+2715 打包字体链无字形 → 换 ✖ U+2716, Noto Emoji 有)
 	var close_btn := Button.new()
-	close_btn.text = "✕"
+	close_btn.text = "✖"
 	close_btn.add_theme_font_size_override("font_size", 16)
 	close_btn.custom_minimum_size = Vector2(30, 30)
 	close_btn.size_flags_vertical = Control.SIZE_SHRINK_BEGIN

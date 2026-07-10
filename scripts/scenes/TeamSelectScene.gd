@@ -284,7 +284,7 @@ func _build_ui() -> void:
 
 	# 上次阵容 (PoC .ts-frame-btn)
 	_last_btn = Button.new()
-	_last_btn.text = "↺ 上次阵容"
+	_last_btn.text = "🔄 上次阵容"   # ↺(U+21BA) 打包字体链无字形(web/linux豆腐块) → 换 🔄(U+1F504, Noto Emoji 有)
 	_last_btn.add_theme_font_size_override("font_size", _sf(12))
 	_style_frame_btn(_last_btn)
 	root.add_child(_last_btn)

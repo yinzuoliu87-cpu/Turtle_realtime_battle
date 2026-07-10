@@ -366,7 +366,13 @@ func _bold_font() -> FontVariation:
 		cjk.hinting = TextServer.HINTING_NONE
 		_bold_font_cache = FontVariation.new()
 		_bold_font_cache.base_font = load("res://assets/fonts/m6x11.ttf") as FontFile   # 英文/数字像素打底
-		_bold_font_cache.fallbacks = [cjk]                                              # 中文走雅黑 Bold
+		# 回退链: 系统雅黑Bold(桌面美观, 顺带给彩色emoji) → 【打包 Noto SC】(web/linux 无系统字体时的中文兜底)
+		#         → 【打包 Noto Emoji】(单色 emoji 兜底, 防豆腐块). 原来只挂 cjk(SystemFont) = 无系统字体时中文/emoji 全掉字形。
+		_bold_font_cache.fallbacks = [
+			cjk,
+			load("res://assets/fonts/NotoSansSC-Regular.otf") as FontFile,
+			load("res://assets/fonts/NotoEmoji-Regular.ttf") as FontFile,
+		]
 		_bold_font_cache.variation_embolden = 0.0    # 中文粗体已走 cjk.font_weight=700; 不用 embolden(会糙边)
 	return _bold_font_cache
 

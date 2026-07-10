@@ -1,7 +1,8 @@
-[gd_resource type="Theme" load_steps=6 format=3]
+[gd_resource type="Theme" load_steps=7 format=3]
 
 [ext_resource type="FontFile" path="res://assets/fonts/m6x11.ttf" id="1_font"]
 [ext_resource type="FontFile" path="res://assets/fonts/NotoSansSC-Regular.otf" id="2_noto"]
+[ext_resource type="FontFile" path="res://assets/fonts/NotoEmoji-Regular.ttf" id="3_emoji"]
 
 [sub_resource type="SystemFont" id="SystemFont_cjk"]
 ; 系统中文字体回退 (桌面端用; ⚠ web 沙箱取不到系统字体 → 靠下面【打包的 Noto】兜底, 否则 web 中文乱码)
@@ -9,9 +10,14 @@ font_names = PackedStringArray("Microsoft YaHei", "PingFang SC", "Hiragino Sans 
 allow_system_fallback = true
 
 [sub_resource type="FontVariation" id="FontVariation_main"]
-; m6x11 像素字体打底(英文/数字) → 缺的中文字形先回退【打包的 Noto SC】(web 也有字形=修乱码) → 再回退系统CJK(桌面美观)
+; 回退链(顺序重要):
+;   m6x11 像素字(英文/数字打底)
+;   → 【打包的 Noto SC】中文字形 (web/linux 也有 = 不依赖系统)
+;   → SystemFont_cjk (桌面: 命中系统雅黑/苹方; allow_system_fallback 顺带给出【彩色】emoji, Win=Segoe UI Emoji / mac=Apple Color Emoji)
+;   → 【打包的 Noto Emoji】单色兜底 (web/linux 取不到系统字体 → 否则 131 个 emoji 全变豆腐块)
+; 把 Noto Emoji 放【最后】: 桌面端优先吃系统彩色 emoji, 只有取不到时才落到单色版。
 base_font = ExtResource("1_font")
-fallbacks = Array[Font]([ExtResource("2_noto"), SubResource("SystemFont_cjk")])
+fallbacks = Array[Font]([ExtResource("2_noto"), SubResource("SystemFont_cjk"), ExtResource("3_emoji")])
 
 [sub_resource type="FontVariation" id="FontVariation_bold"]
 ; 合成粗体 (RichTextLabel [b] 用; 1:1 PoC 部分文字 font-weight 700-900)

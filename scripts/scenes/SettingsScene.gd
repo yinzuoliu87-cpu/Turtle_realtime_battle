@@ -27,7 +27,7 @@ func _ready() -> void:
 	_slider(W / 2.0, 330.0, "🔊 音效音量", GameState.sfx_volume, func(v):
 		GameState.sfx_volume = v; Audio.sfx_volume = v; Audio.play_sfx("hit-physical", 1.0); GameState.save())
 
-	# 全屏 @ (W/2, 410) — PoC: document.fullscreenElement ? '⛶ 退出全屏' : '⛶ 全屏' (默认 ⛶ 全屏)
+	# 全屏 @ (W/2, 410) — PoC 用 ⛶(U+26F6) 做图标, 但打包字体链无此字形(web/linux 豆腐块)且无等义替代 → 只留文字
 	_text_button(W / 2.0, 410.0, _fullscreen_label(), _toggle_fullscreen)
 
 	# 低画质模式 @ (W/2, 490) — PoC: isPerfLite() ? '🪶 低画质模式: 开 (流畅)' : '🪶 低画质模式: 关 (高画质)'
@@ -45,8 +45,8 @@ func _ready() -> void:
 func _fullscreen_label() -> String:
 	var m := DisplayServer.window_get_mode()
 	if m == DisplayServer.WINDOW_MODE_FULLSCREEN or m == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
-		return "⛶ 退出全屏"
-	return "⛶ 全屏"
+		return "退出全屏"
+	return "全屏"
 
 
 func _perf_label() -> String:
