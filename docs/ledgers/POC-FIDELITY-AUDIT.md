@@ -1,3 +1,13 @@
+> # ⛔ 陈旧文档（2026-07-10 复核）
+> **本文件是 fork 时从回合制仓库带过来的，不适用于实时版。**
+> 它的实施对象 `scripts/scenes/BattleScene.gd` / `games/turtle-battle-poc/` **在实时版根本不存在**
+> （实测：`BattleScene.gd` 找不到；`_play_slash_arc` 全库 0 命中）。
+> **未勾选项 ≠ 实时版待办**，不要照着做。
+> 实时版权威账本 = `docs/design/完全实装路线图.md` + `docs/design/交付前收尾-轮次账本.md` + `docs/design/28龟技能设计-权威.md`。
+>
+> 注：文中的"批0 触手(#553)"属于**类型羁绊（灵物）**，其消费方 `BattleScene._spawn/_process_tentacles` 不存在；
+> 羁绊 effects **用户已明确暂缓**，不是待办。
+
 # PoC 保真度全量审计 (2026-06-09, 用户要求"每处都与 PoC 一致")
 
 标准: Godot 必须与 `games/turtle-battle-poc/` 行为+像素 1:1。每条带 PoC + Godot 出处。
