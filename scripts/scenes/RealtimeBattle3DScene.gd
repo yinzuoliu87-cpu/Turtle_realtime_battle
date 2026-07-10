@@ -1846,8 +1846,11 @@ render_mode unshaded, cull_disabled, depth_prepass_alpha, shadows_disabled;
 uniform sampler2D tex : source_color, filter_nearest;
 uniform float fade_frac = 0.16;   // 从底起算渐隐区占图高比例
 uniform float fade_floor = 0.04;  // 接地处残留 alpha 下限
-// 注: sprite-sheet 切帧用 Sprite3D 原生 hframes/vframes/frame (mesh+UV 已裁到单帧),
-//     UV 到此已是单帧内 0..1, shader 只在其上做底部软渐隐, 不再重映射 (重映射会与原生裁切叠加成横向拉花).
+uniform float vframes = 1.0;      // ★sprite-sheet 的行数 (网格图必须传, 否则底淡算错)
+// 切帧由 Sprite3D 原生 hframes/vframes/frame 负责: 它把 mesh 的 UV 设成【该帧在整张图里的子矩形】,
+// 所以这里 texture(tex, UV) 直接采到当前帧。UV 是【全图坐标】, 不是帧内 0..1 ——
+// ★2026-07-10 订正: 旧注释写"UV 到此已是单帧内 0..1"是错的; 单行横条(vframes=1)时 UV.y 恰好等于帧内 y,
+//   所以一直没暴露。改成网格(vframes>1)后必须用 fract(UV.y*vframes) 取行内局部 y, 否则只有最后一行会渐隐。
 
 void vertex() {
 	// upright billboard: 取相机右/上/前向量重建朝向, 保留 MODEL 缩放 (squash/stretch 仍生效).
@@ -1860,11 +1863,12 @@ void vertex() {
 }
 
 void fragment() {
-	vec4 c = texture(tex, UV);       // UV = 当前帧内 0..1 (Sprite3D hframes 已裁)
-	// UV.y: 0=帧顶, 1=帧底. 底部这段线性渐隐.
+	vec4 c = texture(tex, UV);       // UV = 该帧在整张图里的子矩形坐标 (Sprite3D 原生裁帧)
+	// 帧内局部 y: 0=帧顶, 1=帧底。网格图(vframes>1)要把全图 UV.y 折算回行内。
+	float ly = (vframes <= 1.0) ? UV.y : fract(UV.y * vframes);
 	float fade = 1.0;
-	if (UV.y > 1.0 - fade_frac) {
-		float k = (1.0 - UV.y) / max(fade_frac, 0.0001);  // 渐隐线处=1, 最底=0
+	if (ly > 1.0 - fade_frac) {
+		float k = (1.0 - ly) / max(fade_frac, 0.0001);  // 渐隐线处=1, 最底=0
 		fade = mix(fade_floor, 1.0, clamp(k, 0.0, 1.0));
 	}
 	ALBEDO = c.rgb * COLOR.rgb;     // COLOR = Sprite3D.modulate (受击闪白 >1 提亮)
@@ -1874,13 +1878,14 @@ void fragment() {
 	_ground_fade_shader = sh
 	return sh
 
-# 给一张立绘 texture 造接地 shader 材质. 切帧由 Sprite3D 原生 hframes 负责, shader 只做底淡 (无帧 uniform).
+# 给一张立绘 texture 造接地 shader 材质. 切帧由 Sprite3D 原生 hframes/vframes 负责; shader 只做底淡, 需要行数(vframes)才能取行内局部 y.
 func _make_grounded_material(tex: Texture2D, _sd: Dictionary = {}) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	mat.shader = _get_ground_fade_shader()
 	mat.set_shader_parameter("tex", tex)
 	mat.set_shader_parameter("fade_frac", GROUND_FADE_FRAC)
 	mat.set_shader_parameter("fade_floor", GROUND_FADE_FLOOR)
+	mat.set_shader_parameter("vframes", float(maxi(1, int(_sd.get("vframes", 1)))))   # ★网格图必须传行数
 	return mat
 
 # blob 影贴图: radial 渐变 中心黑→边缘透明 (优化: 中段加点过渡, 边缘更柔不硬切)

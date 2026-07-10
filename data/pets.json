@@ -139,7 +139,7 @@
     "crit": 0.25,
     "img": "pets/stone.png",
     "sprite": {
-      "frames": 10,
+      "frames": 9,
       "frameW": 500,
       "frameH": 500,
       "duration": 1000
@@ -246,7 +246,7 @@
     "crit": 0.25,
     "img": "pets/bamboo.png",
     "sprite": {
-      "frames": 10,
+      "frames": 9,
       "frameW": 500,
       "frameH": 400,
       "duration": 1000
@@ -1044,7 +1044,7 @@
     "crit": 0.25,
     "img": "pets/fortune.png",
     "sprite": {
-      "frames": 18,
+      "frames": 17,
       "frameW": 500,
       "frameH": 500,
       "duration": 1800
@@ -1431,7 +1431,7 @@
     "crit": 0.25,
     "img": "pets/hunter.png",
     "sprite": {
-      "frames": 15,
+      "frames": 14,
       "frameW": 500,
       "frameH": 500,
       "duration": 1500
@@ -1626,7 +1626,7 @@
     "crit": 0.25,
     "img": "pets/candy.png",
     "sprite": {
-      "frames": 10,
+      "frames": 9,
       "frameW": 500,
       "frameH": 500,
       "duration": 1000
@@ -1815,7 +1815,7 @@
     "crit": 0.25,
     "img": "pets/line.png",
     "sprite": {
-      "frames": 14,
+      "frames": 13,
       "frameW": 500,
       "frameH": 500,
       "duration": 1400
@@ -2335,7 +2335,7 @@
     "crit": 0.25,
     "img": "pets/crystal.png",
     "sprite": {
-      "frames": 11,
+      "frames": 10,
       "frameW": 500,
       "frameH": 500,
       "duration": 1100
@@ -2656,7 +2656,7 @@
     "crit": 0.25,
     "img": "pets/space.png",
     "sprite": {
-      "frames": 12,
+      "frames": 11,
       "frameW": 500,
       "frameH": 500,
       "duration": 1200
@@ -2756,7 +2756,7 @@
     "crit": 0.25,
     "img": "pets/hiding.png",
     "sprite": {
-      "frames": 14,
+      "frames": 13,
       "frameW": 500,
       "frameH": 500,
       "duration": 1400
@@ -2848,7 +2848,7 @@
     "crit": 0.25,
     "img": "pets/headless.png",
     "sprite": {
-      "frames": 17,
+      "frames": 16,
       "frameW": 500,
       "frameH": 500,
       "duration": 1700
@@ -2939,7 +2939,7 @@
     "crit": 0.25,
     "img": "pets/shell.png",
     "sprite": {
-      "frames": 20,
+      "frames": 19,
       "frameW": 500,
       "frameH": 500,
       "duration": 2000
