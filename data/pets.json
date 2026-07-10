@@ -474,7 +474,7 @@
       ],
       "bonusDmgPct": 20,
       "brief": "寒冰龟登场时，使所有敌方单位的攻击速度、龟能充能速度、移动速度各降低30%（全场）；并对熔岩龟、凤凰龟造成额外+20%伤害。",
-      "desc": "寒冰龟登场时，对所有敌方单位施加冰寒，持续5秒。对熔岩龟和凤凰龟造成额外 <span class=\"val-atk\">+20%</span> 伤害，并<span class=\"val-atk\">免疫灼烧</span>（极寒）。<span style=\"color:#888\">冰寒：使目标降低20%攻击力</span>"
+      "desc": "寒冰龟登场时对全场敌方施加寒域：<span class=\"val-magic\">-30% 攻击速度、-30% 龟能充能速度、-30% 移动速度</span>，<span class=\"val-magic\">整场持续</span>。对熔岩龟与凤凰龟造成额外 <span class=\"val-atk\">+20%</span> 伤害，并<span class=\"val-atk\">免疫灼烧</span>（极寒）"
     },
     "skillPool": [
       {
@@ -487,7 +487,7 @@
         "cd": 0,
         "totalScale": 1.4,
         "brief": "寒冰龟普攻交替造成（{P:0.8*ATK}）物理与魔法伤害（本次物理、下次魔法，单段）。",
-        "detail": "寒冰龟对目标发射六段冰锥，造成共（70%×攻击力({ATK}) = {N:1.4*ATK*0.5}）物理伤害和（70%×攻击力({ATK}) = {M:1.4*ATK*0.5}）魔法伤害。",
+        "detail": "寒冰龟射出冰锥，<span class=\"val-normal\">单段</span>造成（80%×攻击力({ATK}) = {P:0.8*ATK}）伤害，伤害类型<span class=\"val-normal\">逐次交替</span>：本次物理、下次魔法。",
         "energyCost": 0,
         "atkScale": 0.8
       },
@@ -508,7 +508,7 @@
           "turns": 4
         },
         "brief": "寒冰龟在目标处降下一片圆形冰霜领域，持续5秒；领域内敌方魔抗-25%，每0.5秒受到（{M:0.18*ATK}）魔法伤害。",
-        "detail": "寒冰龟先削减全体敌方 <span class=\"val-atk\">-25%</span>魔抗，持续5秒，随后降下冰霜，对每个敌方单位造成十段共（180%×攻击力({ATK}) = {M:0.18*ATK*10}）魔法伤害。",
+        "detail": "寒冰龟在<span class=\"val-normal\">当前目标处</span>降下一片<span class=\"val-magic\">圆形冰霜领域</span>（半径150码），持续 5秒。领域内敌方 <span class=\"val-atk\">-25%</span> 魔抗；每 0.5 秒一跳、共 10 跳，每跳造成（18%×攻击力({ATK}) = {M:0.18*ATK}）魔法伤害（合计 180%×攻击力）。",
         "energyCost": 100
       },
       {
@@ -540,8 +540,8 @@
         "selfCast": true,
         "shieldScale": 0.5,
         "shieldDuration": 3,
-        "brief": "寒冰龟为全体友方施加（{S:0.5*ATK}）永久护盾",
-        "detail": "寒冰龟为全体友方施加（50%×攻击力({ATK}) = {S:0.5*ATK}）永久护盾。",
+        "brief": "寒冰龟为全体友方施加（{S:0.5*ATK}）护盾，持续4秒",
+        "detail": "寒冰龟为全体友方施加（50%×攻击力({ATK}) = {S:0.5*ATK}）护盾，持续 <span class=\"val-def\">4秒</span>。",
         "energyCost": 80
       }
     ],
@@ -633,7 +633,7 @@
       "critDmgBonus": 20,
       "armorPen": 8,
       "brief": "忍者龟天生忍术精通。开局永久获得：暴击率 <span class=\"val-atk\">+30%</span>、暴击伤害 <span class=\"val-atk\">+20%</span>、护甲穿透 <span class=\"val-atk\">+8</span>。",
-      "desc": "忍者龟天生忍术精通。开局永久获得：暴击率 <span class=\"val-atk\">+30%</span>，暴击伤害 <span class=\"val-atk\">+20%</span>，护甲穿透 <span class=\"val-atk\">+8</span>"
+      "desc": "忍者龟天生忍术精通。开局永久获得：暴击率 <span class=\"val-atk\">+30%</span>，暴击伤害 <span class=\"val-atk\">+20%</span>，护甲穿透 <span class=\"val-atk\">+8</span>。\n\n<span class=\"val-normal\">冲击</span>（自动冲刺斩·亚索E式）：500码内出现可冲的敌人时，朝最近敌做一次 <span class=\"val-atk\">固定450码</span> 位移冲刺；路径上（判定带宽62码）被冲的主目标受 130%×攻击力、其余敌受 80%×攻击力 物理伤害，并全部<span class=\"val-atk\">击飞0.8秒</span>，不加伤害递增。本体每次冲刺 0.4 秒冷却，同一敌人被冲后 10 秒内不再被冲。<span style=\"color:#888\">放技能不会被冲击打断。</span>"
     },
     "skillPool": [
       {
@@ -693,8 +693,8 @@
         "armorPenBuff": 5,
         "armorPenTurns": 1,
         "ignoreRow": true,
-        "brief": "忍者龟准备偷袭，获得+5护甲穿透持续5秒，随后闪现到目标身后背刺三段，造成共（{N:0.6667*ATK*3}）物理伤害，此技能可越过前排选择后排目标",
-        "detail": "忍者龟准备偷袭，获得+5护甲穿透持续5秒，随后闪现到最远敌（后排C）身后背刺三段，造成共（200%×攻击力 = {N:0.6667*ATK*3}）物理伤害，之后留在原地继续追砍该敌。此技能可越过前排选择后排目标"
+        "brief": "忍者龟准备偷袭，获得+5护甲穿透持续5秒，随后闪现到<span class=\"val-normal\">全场最远敌</span>身后背刺三段，造成共（{N:0.6667*ATK*3}）物理伤害，之后留在该处继续追砍它",
+        "detail": "忍者龟准备偷袭，获得+5护甲穿透持续5秒，随后闪现到<span class=\"val-normal\">全场最远敌</span>身后背刺三段，造成共（200%×攻击力 = {N:0.6667*ATK*3}）物理伤害，之后留在该敌处继续追砍它"
       }
     ],
     "defaultSkills": [
@@ -866,7 +866,7 @@
       "hpPct": 5,
       "turns": 3,
       "brief": "幽灵龟登场时<span style=\"color:#9b59b6\">诅咒</span>全体敌人持续5秒(每秒结算)，每秒造成目标最大生命值 <span class=\"val-atk\">5%</span> 的真实伤害。",
-      "desc": "幽灵龟的怨灵诅咒。\n\n幽灵龟登场时，诅咒全体敌人持续5秒(每秒结算)。\n每秒对每个敌人造成其 <span class=\"val-true\">5%</span> 最大生命值的真实持续伤害。"
+      "desc": "幽灵龟的怨灵诅咒。\n\n<span class=\"val-normal\">登场诅咒</span>：登场瞬间对全部敌人各施加 1 层诅咒。\n<span class=\"val-normal\">死亡诅咒</span>：幽灵龟死亡瞬间，对全部敌人再各施加 1 层诅咒。\n\n诅咒（每层）：每秒造成目标 <span class=\"val-true\">5%</span> 最大生命值的<span class=\"val-true\">真实伤害</span>（无视双抗），持续 5 秒（一层共 25% 最大生命）。多层同时结算。\n<span style=\"color:#888\">只在登场、死亡、灵魂风暴命中时施加；没有周期性续诅咒，普攻也不叠诅咒。</span>"
     },
     "skillPool": [
       {
@@ -895,8 +895,8 @@
         "lifestealPct": 80,
         "dodgePct": 25,
         "dodgeTurns": 2,
-        "brief": "幽灵龟对目标造成（{M:1.5*ATK}）魔法伤害，回复相当于造成伤害的80%生命值，并获得25%闪避持续5秒",
-        "detail": "幽灵龟对目标造成（150%×攻击力 = {M:1.5*ATK}）魔法伤害，回复相当于造成伤害的 80% 生命值，并获得25%闪避持续5秒"
+        "brief": "幽灵龟对目标造成（{M:1.5*ATK}）魔法伤害，回复相当于造成伤害的80%生命值，并获得25%闪避持续4秒",
+        "detail": "幽灵龟对目标造成（150%×攻击力 = {M:1.5*ATK}）魔法伤害，回复相当于造成伤害的 80% 生命值，并获得 25% 闪避，持续 <span class=\"val-def\">4秒</span>"
       },
       {
         "name": "灵魂风暴",
