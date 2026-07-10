@@ -714,46 +714,14 @@ func is_wild_enemy_mode() -> bool:
 	return false
 
 
-## 局内经济重置 (BattleScene 开局调) — 1:1 PoC :653 this.coins = _carryCoins.
-## 玩家钱包归 0 (dungeon stage>1 注入跨关结余); 敌方钱包清零. 持久 meta coins 不动.
-func reset_battle_economy() -> void:
-	battle_coins = dungeon_carry_coins if (mode == "dungeon" and dungeon_stage > 1) else 0
-	enemy_coins = 0
 
 
-## 利息 (1:1 PoC: 每持有 5 币得 1, 上限 10/回合, TFT 风, floor).
-func _interest(bank: int) -> int:
-	return mini(10, int(floor(bank / 5.0)))
 
 
-## 每回合开始经济结算 (1:1 PoC BattleScene:7795-7802).
-## 先按"加 10 之前"的存款结息 (TFT 顺序), 再 +10. 玩家 coins / 野生敌方 enemy_coins 各自结算.
-## 返回 {player_gain, player_interest, coins} 供 BattleScene 打日志/刷新币显示. BattleScene 在回合开始调用.
-func on_battle_turn_economy() -> Dictionary:
-	var p_interest: int = _interest(battle_coins)
-	battle_coins += 10 + p_interest
-	# 野生敌方 AI 同步收币 (深海/Boss 不给 → ai_gain_coins 守卫)
-	ai_gain_coins(10 + _interest(enemy_coins))
-	return {"player_gain": 10 + p_interest, "player_interest": p_interest, "coins": battle_coins}
 
 
-## 野生敌方 AI 收币 (1:1 PoC aiGainCoins; 非野生模式 / amount<=0 → no-op).
-func ai_gain_coins(amount: int) -> void:
-	if not is_wild_enemy_mode() or amount <= 0:
-		return
-	enemy_coins += amount
 
 
-## 财富羁绊 _synergyWealthCoinPerTurn / 招财 fortuneGold+2 每回合发币 (1:1 PoC BattleScene:5289-5308).
-## 玩家方 (left) 进 battle_coins 钱包; 野生敌方 (right) 进 enemy_coins. side: "left"/"right".
-## (PoC 把 wealthCoin 加到 this.coins/aiGainCoins, 不是 fortune 技能资源 _goldCoins.)
-func grant_wealth_coin(side: String, amount: int) -> void:
-	if amount <= 0:
-		return
-	if side == "left":
-		battle_coins += amount
-	else:
-		ai_gain_coins(amount)
 
 
 ## 记一场对局 (BattleEnd 调) — 最新在前, 封顶 50
@@ -778,43 +746,10 @@ func clear_team() -> void:
 
 # ─── 闯关 ────────────────────────────────────────────────────
 
-func start_dungeon() -> void:
-	mode = "dungeon"
-	dungeon_stage = 1
-	dungeon_carry_hp = {}
-	dungeon_dead_ids = []
-	dungeon_bonuses = []
-	dungeon_carry_coins = 0   # 新 run 清零 (1:1 PoC stage1 _carryCoins=0)
-	dungeon_carry_equips = {}; dungeon_carry_bench = []
-	# 整局规则: 抽一条非「正常对局」, 全程沿用 (1:1 PoC DungeonScene.ts:85-90)
-	var pool: Array = []
-	for r in DataRegistry.battle_rules:
-		if r is Dictionary and r.get("id", "") != "normal":
-			pool.append(str(r.get("name", "")))
-	dungeon_rule = pool[randi() % pool.size()] if not pool.is_empty() else ""
 
 
-func advance_stage() -> void:
-	# 1:1 PoC: 本关胜利结余 → 下关 _carryCoins (advance 在赢一关后调, battle_coins 尚未被下场 reset)
-	dungeon_carry_coins = battle_coins
-	dungeon_stage += 1
 
 
-## 进下一关前给 right_team 随机抽 3 龟 (排除玩家阵容). 从 BattleScene 移来, 供 BattleEnd 路由用.
-func setup_next_dungeon_stage() -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	var pool: Array = []
-	for pet in DataRegistry.all_pets:
-		var pid: String = pet["id"]
-		if not (pid in left_team):
-			pool.append(pid)
-	pool.shuffle()
-	var count: int = 1 if is_dungeon_boss_stage() else 3   # BOSS 关 1 只强敌, 否则 3
-	var new_right: Array[String] = []
-	for i in range(count):
-		new_right.append(pool[i % pool.size()])
-	right_team = new_right
 
 
 func reset_dungeon() -> void:
@@ -832,44 +767,12 @@ func is_dungeon_boss_stage() -> bool:
 	return dungeon_stage == 5
 
 
-## 战斗结束后调, 记录左方龟跨关 HP 状态 (1:1 PoC BattleScene.ts:1480-1513 playerHpSnapshot).
-##   存活龟 → dungeon_carry_hp (但 _build_teams 实际回满血, 与 PoC:1505-1507 / JS dungeon.js:191 一致);
-##   阵亡龟(alive==false 或 hp==0) → dungeon_dead_ids, 下一关 70% HP 复活 (PoC:1498-1503 wasDead).
-func snapshot_left_hp(fighters: Array) -> void:
-	dungeon_carry_hp = {}
-	dungeon_dead_ids = []
-	dungeon_carry_equips = {}
-	for f in fighters:
-		if f.get("side", "") != "left":
-			continue
-		# 召唤物/中立不计入玩家阵容继承
-		if f.get("_isSummon", false) or f.get("_isNeutral", false):
-			continue
-		var dead: bool = not bool(f.get("alive", false)) or int(f.get("hp", 0)) == 0
-		if dead:
-			dungeon_dead_ids.append(f["id"])
-		else:
-			dungeon_carry_hp[f["id"]] = f["hp"]
-		# 跨关携带身上已装装备 (死活都带, 死龟下关 70% 复活仍带装备) — 1:1 PoC snapshot.equipIds(:8672)
-		var eqs: Array = f.get("_equipped_ids", [])
-		if not eqs.is_empty():
-			dungeon_carry_equips[f["id"]] = eqs.duplicate()
 
 
 # ─── 持久化 ──────────────────────────────────────────────────
 
-func record_battle_win() -> void:
-	battles_won += 1
-	battles_total += 1
-	coins += 20    # 每场胜利 +20 龟币
-	if mode == "dungeon" and dungeon_stage > best_dungeon_stage:
-		best_dungeon_stage = dungeon_stage
-	save()
 
 
-func record_battle_loss() -> void:
-	battles_total += 1
-	save()
 
 
 ## 宠物等级 (1:1 PoC pet-level.ts getPetLevel/setPetLevel): 默认1, clamp 1-10, set 后存档
