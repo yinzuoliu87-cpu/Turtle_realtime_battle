@@ -9080,7 +9080,7 @@ func _apply_spawn_passives() -> void:
 				var es := _enemies_of(u)
 				if not es.is_empty():
 					var v = es[randi() % es.size()]
-					_apply_damage_from(u, v, _atk_dmg(u, 1.5, v) + int(float(v["maxHp"]) * 0.08), Color("#ffd07a")); _burst_vfx("res://assets/sprites/vfx/cannon-blast.png", v["pos"], 150.0, 1.0)   # 掠夺·登场轰击1敌(炮弹爆·用户2026-07-09加回原版·★数值待确认PoC)
+					_apply_damage_from(u, v, int(float(v["maxHp"]) * 0.25), Color("#ffd07a"), 0.0, true); _burst_vfx("res://assets/sprites/vfx/cannon-blast.png", v["pos"], 150.0, 1.0)   # 掠夺·登场轰击1敌 = 25%目标最大生命【真实伤害】(用户2026-07-10订死)
 			"candy":
 				var ce := _enemies_of(u)
 				if not ce.is_empty():
@@ -9486,7 +9486,7 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 	for f in _units:
 		if f.get("alive", false) and f.get("id") == "fortune" and f != u:
 			f["gold"] += 9
-	# 海盗掠夺(被动·用户2026-07-09加回原版·死亡钩索): 任意敌人(非召唤)阵亡 → 存活海盗龟钩索最近敌·拉近90码+造伤. 美术已做(索线+炮弹爆)·★伤害数值仍待确认PoC原值
+	# 海盗掠夺(被动·用户2026-07-09加回原版·死亡钩索): 任意敌人(非召唤)阵亡 → 存活海盗龟钩索最近敌·拉近90码+25%目标最大生命真实伤害(用户2026-07-10订死). 美术已做(索线+炮弹爆)
 	if not u.get("is_summon", false):
 		for _pf in _units:
 			if _pf.get("alive", false) and _pf.get("id") == "pirate" and _pf.get("side", "") != u.get("side", ""):
@@ -9502,7 +9502,7 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 					_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", _pk["pos"], _pt0, 26.0, Color(1.0, 0.85, 0.4, 0.85), 0.35)   # 死亡钩索索线(甩出抓住)
 					if _pd.length() > 90.0:
 						_pt["pos"] = _pk["pos"] - _pd.normalized() * 90.0
-					_apply_damage_from(_pk, _pt, _atk_dmg(_pk, 1.0, _pt), Color("#ffd07a"))
+					_apply_damage_from(_pk, _pt, int(float(_pt["maxHp"]) * 0.25), Color("#ffd07a"), 0.0, true)   # 死亡钩索 = 25%目标最大生命【真实伤害】(同登场·用户2026-07-10"死亡的伤害值同上")
 					_burst_vfx("res://assets/sprites/vfx/cannon-blast.png", _pt["pos"], 90.0, 1.0)})
 	# 缩头随从先死 → 主人永久继承"强化随从"增益(可多次随从累积·把力量传给主人)
 	if u.get("minion_kind", null) != null:
