@@ -9680,7 +9680,7 @@ func _spawn_pirate_ship(u: Dictionary, tgt = null) -> void:
 		if not e.get("alive", false): continue
 		if e["pos"].distance_to(aim["pos"]) > 200.0: continue
 		_apply_damage_from(ship, e, _atk_dmg(ship, 1.0, e, true), Color("#e8c07a"), 0.0, true)   # 1.0A魔法
-		_knockback(ship, e, 40.0, 1.0, 1.0)                                     # 击飞
+		_knockback(ship, e, 40.0, 3.667, 1.0)                                   # 击飞2.0秒滞空(vy_mult=3.667·用户2026-07-07"2秒击飞"·原1.0只有0.55秒)
 		e["stun_until"] = maxf(float(e.get("stun_until", 0.0)), _t + _cc_dur(e, 2.0))            # 击飞2秒
 	_skill_ring(aim["pos"], Color(0.9, 0.7, 0.4, 0.6), 200.0)
 	_shake(JUICE_SHAKE_HEAVY)
