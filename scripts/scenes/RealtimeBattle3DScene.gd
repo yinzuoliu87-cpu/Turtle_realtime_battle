@@ -6698,7 +6698,9 @@ func _ninja_dash(u: Dictionary, target: Dictionary) -> void:    # 被动·冲击
 		_apply_damage_from(u, o, _atk_dmg(u, 1.2, o), Color("#9fe8ff"))
 		_knockback(u, o, 40.0, 1.6, 1.0)                        # 击飞~0.8s
 		o["_ninja_dash_until"] = _t + 10.0                      # 每敌被冲后10s冷却(下次不冲它)
-	_bolt_line(start, u["pos"], Color(0.7, 0.95, 1.0))          # 疾风刀光占位(残影/穿身斩美术F5)
+		_burst_vfx("res://assets/sprites/vfx/ninja-slash.png", o["pos"], 88.0, 1.0)   # 疾风斩弧(亚索E式·用户2026-07-06)
+	_bolt_line(start, u["pos"], Color(0.7, 0.95, 1.0, 0.5))     # 冲刺残影(淡)
+	_burst_vfx("res://assets/sprites/vfx/ninja-slash.png", u["pos"], 98.0, 1.0)   # 落点疾风斩弧
 
 func _sk_ninja_backstab(u: Dictionary, tgt: Dictionary) -> void: # 技二·背刺(封板): +5穿甲5秒→闪现到最远敌(后排C)身后→连刺3段共2.0A物理→留原地追砍
 	var far = null
