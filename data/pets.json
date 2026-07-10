@@ -1347,7 +1347,7 @@
       "chance": 40,
       "dmgScale": 0.5,
       "brief": "赌神龟每段攻击有 <span class=\"val-atk\">40%</span> 概率追加一次额外打击，造成（{N:ATK*0.5}）物理伤害；额外打击可连锁触发，每次概率递减 <span class=\"val-atk\">20%</span>。",
-      "desc": "赌神龟每段攻击有 <span class=\"val-atk\">40%</span> 概率追加一次额外打击，造成（50%×攻击力({ATK}) = {N:ATK*0.5}）物理伤害；额外打击可连锁触发，每次概率递减 <span class=\"val-atk\">20%</span>（40% → 32% → 25.6% → …）。\n\n<span style=\"color:#8a93a0\">「赌注」期间多重打击概率额外 +20%。</span>"
+      "desc": "赌神龟每次普攻命中后有 <span class=\"val-atk\">40%</span> 概率<span class=\"val-normal\">立刻以约3.3倍攻速再打一次普攻</span>；再次命中可继续触发，每连锁一次概率 ×0.8（40% → 32% → 25.6% → …），没触发则重置回基础概率、等下一次普攻。\n\n<span style=\"color:#8a93a0\">基础概率 40%；出战选「命运之轮」→ 基础概率变 60%（代价是登场损失 30% 最大生命）；释放「赌注」→ 之后 3 秒内再 +20%。</span>"
     },
     "skillPool": [
       {
@@ -1376,8 +1376,8 @@
         "atkScale": 0.5,
         "selfShieldAtkPct": 25,
         "selfHealAtkPct": 25,
-        "brief": "赌神龟打出万能牌，对目标打击两段共造成（{N:ATK}）物理伤害，自身获得（{S:0.25*ATK}）永久护盾并回复（{H:0.25*ATK}）生命值，同时为目标施加1种随机减益，持续5秒。",
-        "detail": "赌神龟打出万能牌，对目标打击两段共造成（100%×攻击力({ATK}) = {N:ATK}）物理伤害，自身获得（25%×攻击力 = {S:0.25*ATK}）永久护盾并回复（25%×攻击力 = {H:0.25*ATK}）生命值，同时为目标施加1种随机减益，持续5秒。\n\n<span style=\"color:#8a93a0\">随机减益：攻击/护甲/魔抗降低，或中毒/流血/灼烧/冰寒/治疗削减。若为中毒/流血/灼烧，则转为添加层数。</span>"
+        "brief": "赌神龟丢出一张万能牌，对目标造成<span class=\"val-normal\">1 段</span>（{N:ATK}）物理伤害；自身获得（{S:0.25*ATK}）永久护盾并回复 5% 最大生命值，同时使目标攻击力 -15%",
+        "detail": "赌神龟丢出一张万能牌，对目标造成 <span class=\"val-normal\">1 段</span>（100%×攻击力({ATK}) = {N:ATK}）物理伤害〖用户2026-07-09：万能牌改为丢出一张牌只造成1段伤害〗。\n自身获得（25%×攻击力 = {S:0.25*ATK}）<span class=\"val-def\">永久护盾</span>，回复 <span class=\"val-heal\">5% 最大生命值</span>，并使目标<span class=\"val-atk\">攻击力 -15%</span>。"
       },
       {
         "name": "赌注",
@@ -1391,8 +1391,8 @@
         "cd": 0,
         "hpCostPct": 40,
         "multiBonus": 20,
-        "brief": "赌神龟消耗当前 <span class=\"val-atk\">40%</span> 生命值，将其分为七段物理伤害打向目标，期间使多重打击的概率增加 <span class=\"val-atk\">20%</span>",
-        "detail": "赌神龟消耗当前 <span class=\"val-atk\">40%</span> 生命值，将其分为七段物理伤害打向目标，期间使多重打击的概率增加 <span class=\"val-atk\">20%</span>。\n\n<span style=\"color:#8a93a0\">需当前生命值高于40%才能使用。</span>"
+        "brief": "赌神龟消耗当前 <span class=\"val-atk\">40%</span> 生命值，将其分为七段物理伤害打向目标（穿透减伤）；之后 <span class=\"val-atk\">3秒</span> 内多重打击概率 +20%",
+        "detail": "赌神龟消耗当前 <span class=\"val-atk\">40%</span> 生命值，将其分为<span class=\"val-normal\">七段</span>物理伤害打向目标（总量≈所消耗的生命值，<span class=\"val-true\">穿透减伤</span>）；释放后 <span class=\"val-atk\">3秒</span> 内多重打击概率额外 +20%。\n\n<span style=\"color:#8a93a0\">需当前生命值高于 40% 才能释放。</span>"
       },
       {
         "name": "命运之轮",
@@ -1404,8 +1404,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "赌神龟每2.5秒抽取一个花色，永久提升一项属性：♠黑桃 攻击力 <span class=\"val-atk\">+5</span>、最大生命值 <span class=\"val-heal\">+30</span>；♥红心 护甲 <span class=\"val-def\">+2</span>、魔抗 <span class=\"val-magic\">+2</span>；♦方块 暴击率 <span class=\"val-atk\">+8%</span>、护甲穿透 <span class=\"val-atk\">+2</span>；♣梅花 生命偷取 <span class=\"val-heal\">+4%</span>。",
-        "detail": "赌神龟每2.5秒抽取一个花色，永久提升一项属性：♠黑桃 攻击力 <span class=\"val-atk\">+5</span>、最大生命值 <span class=\"val-heal\">+30</span>；♥红心 护甲 <span class=\"val-def\">+2</span>、魔抗 <span class=\"val-magic\">+2</span>；♦方块 暴击率 <span class=\"val-atk\">+8%</span>、护甲穿透 <span class=\"val-atk\">+2</span>；♣梅花 生命偷取 <span class=\"val-heal\">+4%</span>。\n\n<span style=\"color:#8a93a0\">效果永久叠加，持续到战斗结束；深海闯关下也不会被每关重置。</span>"
+        "brief": "每次释放随机抽取一个花色，永久提升一项属性：♠黑桃 攻击力 <span class=\"val-atk\">+5</span>、最大生命值 <span class=\"val-heal\">+30</span>；♥红心 护甲 <span class=\"val-def\">+2</span>、魔抗 <span class=\"val-magic\">+2</span>；♦方块 暴击率 <span class=\"val-atk\">+8%</span>、护甲穿透 <span class=\"val-atk\">+2</span>；♣梅花 生命偷取 <span class=\"val-heal\">+4%</span>。选此技：登场损失 30% 最大生命，换基础多重打击概率 40%→60%",
+        "detail": "〖用户 2026-07-09 逐字〗<span class=\"val-normal\">选择本技能时</span>：赌神龟登场即<span class=\"val-true\">损失 30% 最大生命值</span>，换取<span class=\"val-atk\">额外 +20% 多重打击概率</span>（基础 40% → 60%）。\n\n<span class=\"val-normal\">主动</span>（龟能满自动释放）：随机抽取一个花色，永久提升一项属性：♠黑桃 攻击力 <span class=\"val-atk\">+5</span>、最大生命值 <span class=\"val-heal\">+30</span>；♥红心 护甲 <span class=\"val-def\">+2</span>、魔抗 <span class=\"val-magic\">+2</span>；♦方块 暴击率 <span class=\"val-atk\">+8%</span>、护甲穿透 <span class=\"val-atk\">+2</span>；♣梅花 生命偷取 <span class=\"val-heal\">+4%</span>。\n\n<span style=\"color:#8a93a0\">玩家赌神抽到的花色会在【本大轮】跨场累积，下一场登场时自动套用；换大轮时重置。</span>"
       }
     ],
     "defaultSkills": [
@@ -1499,7 +1499,7 @@
         "cd": 0,
         "arrowScale": 0.3,
         "brief": "猎人龟发射10根箭优先锁残血，每根（{T:0.3*ATK}）真实伤害（共{T:0.3*ATK*10}），每根命中生命<14%的敌即处决",
-        "detail": "猎人龟连珠速射10根绿箭优先锁残血目标，每根造成（30%×攻击力({ATK}) = {T:0.3*ATK}）真实伤害，10根共（300%×攻击力({ATK}) = {T:0.3*ATK*10}）；每根命中生命值低于14%的敌人即处决。\n\n<span style=\"color:#8a93a0\">封板设计：每根箭直线飞行可被挡(命中路径第一个敌/障碍即停),复用小龟「打击」可挡弹道 — 待小龟弹道系统建成接入,当前直击近似。</span>"
+        "detail": "猎人龟连珠速射 10 根绿箭，每根都以<span class=\"val-normal\">当前最残血的敌人</span>为方向，造成（30%×攻击力({ATK}) = {T:0.3*ATK}）真实伤害，10 根共（300%×攻击力({ATK}) = {T:0.3*ATK*10}）；每根命中生命值低于 14% 的敌人即处决。\n\n<span style=\"color:#8a93a0\">每根箭直线飞行、可被挡：命中路径上第一个敌人或龟蛋即结算（障碍物穿过、我方不阻挡）。残血目标死亡后，后续箭自然移向次残血目标，形成散射感。</span>"
       }
     ],
     "defaultSkills": [
@@ -1530,7 +1530,7 @@
       "bombardPct": 25,
       "deathHookPct": 25,
       "brief": "海盗龟无被动技能（掠夺已移除）；场上常驻一艘海盗船，作为火炮齐射／朗姆酒／海盗船技能的演出载体。",
-      "desc": "海盗龟开局轰击随机敌人，造成（25%×最大生命值({HP}) = {T:HP*0.25}）真实伤害；死亡时钩锁击杀者，同样造成（25%×最大生命值({HP}) = {T:HP*0.25}）真实伤害。"
+      "desc": "<span class=\"val-normal\">登场轰击</span>：海盗龟登场瞬间轰击 1 名随机敌人，造成其 <span class=\"val-true\">25% 最大生命值</span>的<span class=\"val-true\">真实伤害</span>。\n<span class=\"val-normal\">死亡钩索</span>：海盗龟自己阵亡的瞬间，甩出钩索抓住<span class=\"val-normal\">击杀它的单位</span>，把它拉到尸位 90 码内，并造成该单位 <span class=\"val-true\">25% 最大生命值</span>的<span class=\"val-true\">真实伤害</span>。\n<span style=\"color:#8a93a0\">两段伤害均为真实伤害，无视护甲与魔抗。</span>"
     },
     "skillPool": [
       {
@@ -1580,7 +1580,7 @@
           "pct": 15,
           "turns": 3
         },
-        "brief": "海盗龟喝下朗姆酒，每2.5秒回复（{H:HP*0.09}）生命值，持续5秒，并提升护甲（{D:ATK*0.15}），持续5秒",
+        "brief": "海盗船扔来一瓶朗姆酒：海盗龟<span class=\"val-heal\">每秒</span>回复（{H:HP*0.04}）生命值、持续 6秒（合计 24%），同时护甲与魔抗各 +（{D:ATK*0.15}）、持续 6秒",
         "detail": "海盗船扔来一瓶朗姆酒。海盗龟<span class=\"val-heal\">每秒</span>回复（4%×最大生命值({HP}) = {H:HP*0.04}）生命值，持续 <span class=\"val-heal\">6秒</span>（合计 24%）；同时提升 <span class=\"val-def\">护甲</span> 与 <span class=\"val-magic\">魔抗</span> 各（15%×攻击力({ATK}) = {D:ATK*0.15}），持续 6秒。\n\n<span style=\"color:#8a93a0\">持续回复效果可叠加。</span>",
         "fx": {
           "healHp": 0.09,
@@ -1637,7 +1637,7 @@
       "stealTurn": 3,
       "stealPct": 25,
       "brief": "糖果龟在开战7.5秒对随机敌人施放生命吸取，偷取其 <span class=\"val-atk\">25%</span> 最大生命值。",
-      "desc": "糖果龟在开战7.5秒对随机敌人施放生命吸取，偷取其 <span class=\"val-atk\">25%</span> 最大生命值。\n\n<span style=\"color:#8a93a0\">不会杀死目标（最低留 1 点生命值）。</span>"
+      "desc": "糖果龟<span class=\"val-normal\">登场时</span>对<span class=\"val-normal\">最大生命值最高的敌人</span>施放生命吸取：扣除其 <span class=\"val-atk\">25% 最大生命值</span>，并<span class=\"val-heal\">全额回复给糖果龟自己</span>。\n\n<span style=\"color:#8a93a0\">不会杀死目标（最低留 1 点生命值）。糖果龟的普攻本身没有自愈。</span>"
     },
     "skillPool": [
       {
