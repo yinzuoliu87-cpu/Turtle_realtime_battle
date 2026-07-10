@@ -27,6 +27,7 @@ const SCENES := [
 ]
 
 const BATTLE := "res://scenes/RealtimeBattle3D.tscn"
+const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 
 
 func _ready() -> void:
@@ -34,6 +35,11 @@ func _ready() -> void:
 	var gs = get_node_or_null("/root/GameState")
 	if gs != null:
 		gs.test_mode = true          # 绝不写玩家存档
+
+	# ★把构建模式打出来: 玩家拿到的 release 包里 _review_demo() 必须是 false,
+	#   否则玩家打的是沙包假人 + 赛季等级不生效 (2026-07-10 修的真 bug)。
+	print("[mode] is_debug_build=%s  headless=%s  _review_demo()=%s"
+		% [OS.is_debug_build(), DisplayServer.get_name() == "headless", RTScene._review_demo()])
 
 	print("=== 1. 逐场景 进入→tick→退出 ===")
 	for path in SCENES:
