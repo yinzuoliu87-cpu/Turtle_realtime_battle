@@ -1182,7 +1182,9 @@ func _spawn_lane_side(units: Array, side: String, lvl: int, base: Vector2) -> vo
 		else:
 			var elite: bool = (lead_n == 0 and minion_seen == 0)
 			minion_seen += 1
-			made = _make_unit("__minion__", side, pos, {"minion": true, "role": str(u.get("role", "front")), "elite": elite, "level": lvl})
+			var mlv: int = lvl
+			if side == "left": mlv += int(u.get("temp_lv", 0))   # 临时等级器用在小将身上(糖果罐战利品·记在阵容格子上)
+			made = _make_unit("__minion__", side, pos, {"minion": true, "role": str(u.get("role", "front")), "elite": elite, "level": mlv})
 		if u.has("hp_frac"):   # 幸存带血进终极
 			made["hp"] = maxf(1.0, made["maxHp"] * clampf(float(u["hp_frac"]), 0.05, 1.0))
 		if u.has("equips") and u["equips"] is Array and not (u["equips"] as Array).is_empty():

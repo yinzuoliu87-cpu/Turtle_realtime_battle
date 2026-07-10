@@ -946,6 +946,9 @@ func _load() -> void:
 	season_xp = int(data.get("season_xp", 0))
 	season_leaders = data.get("season_leaders", [])
 	persistent_bench = data.get("persistent_bench", [])
+	for _bi in range(persistent_bench.size()):        # 迁移: 老存档把临时等级器存成裸String → 转成字典(否则 auto_merge_all/_equip_cell 崩)
+		if persistent_bench[_bi] is String and str(persistent_bench[_bi]) == TEMP_LEVELER_ID:
+			persistent_bench[_bi] = TEMP_LEVELER_ITEM.duplicate()
 	persistent_equipped = data.get("persistent_equipped", {})
 	candy_jar_count = int(data.get("candy_jar_count", 0))
 	candy_jar_broken = bool(data.get("candy_jar_broken", false))
@@ -1024,6 +1027,14 @@ func add_season_xp(amt: int) -> void:
 
 # ══════ 糖果罐 局外赛季被动 API (封板L390-403·糖果龟当统领才有·打碎按当前计数领档奖) ══════
 ## 档位奖励规格(封板表): coins=深海币[lo,hi] / cost=装备费档 / star=装备星 / leveler=临时等级器概率
+## 临时等级器(糖果罐奖励): 消耗品条目, 用在龟/小将身上→该大轮等级永久+1. kind="item" 使其绕开装备逻辑。
+const TEMP_LEVELER_ID := "temp_leveler"
+const TEMP_LEVELER_ITEM := {"id": "temp_leveler", "star": 0, "kind": "item"}
+
+## 背包项是不是装备(非消耗品)? 3合1/装备渲染只认这个。
+static func is_equip_item(it) -> bool:
+	return it is Dictionary and str(it.get("kind", "equip")) != "item"
+
 const _CANDY_JAR_TIERS := [
 	{"coins": [8, 12],    "cost": [1, 2], "star": 1, "leveler": 0.0},    # 档1 计数0-5
 	{"coins": [15, 22],   "cost": [2, 3], "star": 1, "leveler": 0.0},    # 档2 6-11
@@ -1068,7 +1079,7 @@ func break_candy_jar() -> Dictionary:
 		persistent_bench.append({"id": eq_id, "star": star})
 	var got_leveler: bool = false   # 临时等级器按档概率给1个(字符串消耗品进背包)
 	if float(spec["leveler"]) > 0.0 and randf() < float(spec["leveler"]):
-		persistent_bench.append("temp_leveler")
+		persistent_bench.append(TEMP_LEVELER_ITEM.duplicate())   # 消耗品(非装备): kind="item" → 不参与3合1/不当装备渲染
 		got_leveler = true
 	candy_jar_broken = true
 	save()
@@ -1087,9 +1098,44 @@ func apply_temp_leveler(pet_id: String) -> void:
 	candy_temp_levels[pet_id] = int(candy_temp_levels.get(pet_id, 0)) + 1
 	save()
 
-## 某单位本大轮临时等级加成 (战斗spawn读→+级·尚待接入stat scaling·见F5)
+## 某单位本大轮临时等级加成 (已接战斗: RealtimeBattle3DScene._make_unit 的 _lvl += temp_level_bonus(id) → 主属性+5%/级)
 func temp_level_bonus(pet_id: String) -> int:
 	return int(candy_temp_levels.get(pet_id, 0))
+
+## 临时等级器用在【小将】身上: 小将无 pet_id(阵容里只有 kind/role) → 直接把 temp_lv 记在该格子的字典上,
+## 随格子一起换位/持久(dual_lineup 已存档). 战斗 _spawn_lane_side 读它加到该小将等级上。
+func apply_temp_leveler_minion(lane: String, idx: int) -> bool:
+	var dl: Dictionary = get_dual_lineup()
+	if not dl.has(lane): return false
+	var arr: Array = dl[lane]
+	if idx < 0 or idx >= arr.size() or not (arr[idx] is Dictionary): return false
+	var u: Dictionary = arr[idx]
+	if str(u.get("kind", "")) != "minion": return false
+	u["temp_lv"] = int(u.get("temp_lv", 0)) + 1
+	save()
+	return true
+
+## 从背包移除第一个临时等级器. 成功→true.
+func consume_temp_leveler(bench_idx: int) -> bool:
+	if bench_idx < 0 or bench_idx >= persistent_bench.size(): return false
+	var it = persistent_bench[bench_idx]
+	if not (it is Dictionary) or str(it.get("id", "")) != TEMP_LEVELER_ID: return false
+	persistent_bench.remove_at(bench_idx)
+	save()
+	return true
+
+## 某档的奖励预览文本 (UI 用; 不消耗)
+func candy_jar_tier_preview(tier: int) -> String:
+	if tier < 1 or tier > _CANDY_JAR_TIERS.size(): return ""
+	var sp: Dictionary = _CANDY_JAR_TIERS[tier - 1]
+	var c: Array = sp["coins"]
+	var cost: Array = sp["cost"]
+	var lv: float = float(sp["leveler"])
+	var costs := []
+	for x in cost: costs.append("%d费" % int(x))
+	var t := "深海币 %d~%d ｜ %s装备×1 (%d★)" % [int(c[0]), int(c[1]), "/".join(costs), int(sp["star"])]
+	if lv > 0.0: t += " ｜ 临时等级器 %d%%" % int(lv * 100.0)
+	return t
 
 ## 买经验: 4 深海币 = 4 XP (设计§五). 满级/币不足 → false.
 func buy_season_xp() -> bool:
@@ -1108,6 +1154,7 @@ func auto_merge_all() -> void:
 		changed = false
 		var counts := {}
 		for it in persistent_bench:
+			if not is_equip_item(it): continue          # 消耗品(临时等级器)不参与3合1
 			var k := "%s|%d" % [str(it.get("id", "")), int(it.get("star", 1))]
 			counts[k] = int(counts.get(k, 0)) + 1
 		for pet in persistent_equipped.keys():
@@ -1126,6 +1173,8 @@ func auto_merge_all() -> void:
 			var host_pet := ""                            # 有龟身件被合 → 记第一只龟(升星件放回它)
 			var bi := 0                                     # 先从背包移(纯背包合成行为不变)
 			while bi < persistent_bench.size() and removed < 3:
+				if not is_equip_item(persistent_bench[bi]):
+					bi += 1; continue                       # 跳过消耗品
 				var bit: Dictionary = persistent_bench[bi]
 				if str(bit.get("id", "")) == iid and int(bit.get("star", 1)) == star:
 					persistent_bench.remove_at(bi); removed += 1

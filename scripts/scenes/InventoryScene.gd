@@ -55,6 +55,8 @@ func _rebuild() -> void:
 	coin.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(coin)
 
+	_build_candy_jar()
+
 	var leaders := _lineup_ids()
 	_build_lineup(leaders)
 	_build_synergy_panel(leaders)
@@ -364,6 +366,8 @@ func _empty_bench_cell(pos: Vector2) -> Control:
 	return box
 
 func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
+	if str(it.get("kind", "")) == "item":       # 消耗品(临时等级器): 不是装备, 不查装备表/不显星
+		return _item_cell(it, idx, pos)
 	var sel := idx == _sel_bench
 	var eid := str(it.get("id", ""))
 	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
@@ -415,6 +419,12 @@ func _equip_to(pet_id: String, bench_idx: int) -> void:
 	var bench: Array = GameState.persistent_bench
 	if bench_idx < 0 or bench_idx >= bench.size():
 		_sel_bench = -1; _rebuild(); return
+	if str((bench[bench_idx] as Dictionary).get("kind", "")) == "item":   # 临时等级器 → 该龟本大轮永久+1级
+		GameState.apply_temp_leveler(pet_id)
+		GameState.consume_temp_leveler(bench_idx)
+		_sel_bench = -1
+		_toast("临时等级器 → %s 本大轮 +1 级 (现 +%d)" % [pet_id, GameState.temp_level_bonus(pet_id)])
+		_rebuild(); return
 	var eqs: Array = GameState.persistent_equipped.get(pet_id, [])
 	if eqs.size() >= P2.equip_slots_for_level(int(GameState.season_level)):
 		_sel_bench = -1; _rebuild(); return   # 槽满
@@ -443,6 +453,12 @@ func _equip_minion(lane: String, idx: int, bench_idx: int) -> void:
 	var bench: Array = GameState.persistent_bench
 	if bench_idx < 0 or bench_idx >= bench.size():
 		_sel_bench = -1; _rebuild(); return
+	if str((bench[bench_idx] as Dictionary).get("kind", "")) == "item":   # 临时等级器 → 该小将本大轮永久+1级
+		if GameState.apply_temp_leveler_minion(lane, idx):
+			GameState.consume_temp_leveler(bench_idx)
+			_toast("临时等级器 → 小将(%s路第%d格) 本大轮 +1 级" % [lane, idx + 1])
+		_sel_bench = -1
+		_rebuild(); return
 	var a: Dictionary = GameState.get_dual_lineup().duplicate(true)
 	if not a.has(lane) or idx < 0 or idx >= (a[lane] as Array).size():
 		_sel_bench = -1; _rebuild(); return
@@ -544,3 +560,147 @@ func _merge_all() -> void:
 			break
 	GameState.save()
 	_rebuild()
+
+
+# ============================================================================
+#  糖果罐（糖果龟被动 · 局外经济行 · 用户2026-07-07设计）
+#  · 大轮开始时若锁定统领含糖果龟 → 拥有 1 个糖果罐
+#  · 赢一局计数 +1 / 输一局 +4（逆风快攒）· 封顶 30
+#  · 随时可打碎领奖: 计数越高档位越高(6档) → 深海币 + 装备(按档费/星) + 临时等级器(按档概率)
+#  · 打碎后本大轮消失
+#  逻辑全在 GameState: has_candy_jar / candy_jar_count / candy_jar_tier / break_candy_jar
+# ============================================================================
+func _build_candy_jar() -> void:
+	if not GameState.has_candy_jar():
+		return                                   # 统领没锁糖果龟(或已碎) → 不显示这行
+	var cnt: int = int(GameState.candy_jar_count)
+	var tier: int = GameState.candy_jar_tier()
+	var box := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("#2a1c36"); sb.border_color = Color("#e79bd6")
+	sb.set_border_width_all(2); sb.set_corner_radius_all(8)
+	box.add_theme_stylebox_override("panel", sb)
+	box.position = Vector2(620, 20); box.size = Vector2(380, 52)
+	box.tooltip_text = "打碎后本大轮消失。\n当前档位奖励: %s" % GameState.candy_jar_tier_preview(tier)
+	add_child(box)
+
+	var lb := Label.new()
+	lb.text = "🍬 糖果罐  %d/30  ·  档%d" % [cnt, tier]
+	lb.add_theme_font_size_override("font_size", 18)
+	lb.add_theme_color_override("font_color", Color("#ffd6f2"))
+	lb.position = Vector2(12, 4); lb.size = Vector2(220, 24)
+	lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(lb)
+
+	var sub := Label.new()
+	sub.text = GameState.candy_jar_tier_preview(tier)
+	sub.add_theme_font_size_override("font_size", 11)
+	sub.add_theme_color_override("font_color", Color("#c9a8c0"))
+	sub.position = Vector2(12, 28); sub.size = Vector2(272, 20)
+	sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(sub)
+
+	var btn := Button.new()
+	btn.text = "打碎"
+	btn.add_theme_font_size_override("font_size", 16)
+	btn.position = Vector2(292, 10); btn.size = Vector2(76, 32)
+	btn.pressed.connect(_on_break_jar)
+	box.add_child(btn)
+
+
+func _on_break_jar() -> void:
+	var r: Dictionary = GameState.break_candy_jar()
+	if r.is_empty():
+		return
+	_show_jar_reward(r)
+
+
+func _show_jar_reward(r: Dictionary) -> void:
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.55)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(dim)
+
+	var box := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("#1c2836"); sb.border_color = Color("#ffd93d")
+	sb.set_border_width_all(3); sb.set_corner_radius_all(12)
+	box.add_theme_stylebox_override("panel", sb)
+	box.position = Vector2(W / 2.0 - 260, H / 2.0 - 150); box.size = Vector2(520, 300)
+	dim.add_child(box)
+
+	var ttl := Label.new()
+	ttl.text = "🍬 糖果罐碎了！  (档%d)" % int(r.get("tier", 1))
+	ttl.add_theme_font_size_override("font_size", 26)
+	ttl.add_theme_color_override("font_color", Color("#ffd93d"))
+	ttl.position = Vector2(0, 20); ttl.size = Vector2(520, 36)
+	ttl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(ttl)
+
+	var lines: Array = ["💠 深海币  +%d" % int(r.get("coins", 0))]
+	var eid := str(r.get("equip", ""))
+	if eid != "":
+		var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
+		lines.append("🗡 装备  %s  %s  → 进背包" % [str(edef.get("name", eid)), "★".repeat(int(r.get("star", 1)))])
+	if bool(r.get("leveler", false)):
+		lines.append("🔼 临时等级器 ×1  → 进背包 (点它再点一只龟/小将, 本大轮 +1 级)")
+
+	var y := 80.0
+	for t in lines:
+		var l := Label.new()
+		l.text = str(t)
+		l.add_theme_font_size_override("font_size", 18)
+		l.add_theme_color_override("font_color", Color("#e8f2ff"))
+		l.position = Vector2(40, y); l.size = Vector2(440, 30)
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		box.add_child(l)
+		y += 46.0
+
+	var ok := Button.new()
+	ok.text = "收下"
+	ok.add_theme_font_size_override("font_size", 20)
+	ok.position = Vector2(200, 234); ok.size = Vector2(120, 44)
+	ok.pressed.connect(func(): dim.queue_free(); _rebuild())
+	box.add_child(ok)
+
+
+# 消耗品格子 (临时等级器): 不是装备 → 不查装备表/不显星/不参与3合1
+func _item_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
+	var sel := idx == _sel_bench
+	var box := _slot_panel(pos, Color("#2a3a1c") if sel else Color("#26203a"), Color("#ffd93d") if sel else Color("#a98bd8"))
+	var ic := Label.new()
+	ic.text = "🔼"
+	ic.add_theme_font_size_override("font_size", 30)
+	ic.position = Vector2(0, 16); ic.size = Vector2(SLOT, 36)
+	ic.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(ic)
+	var nm := Label.new()
+	nm.text = "临时等级器"
+	nm.add_theme_font_size_override("font_size", 12)
+	nm.add_theme_color_override("font_color", Color("#e6d8ff"))
+	nm.position = Vector2(2, SLOT - 36); nm.size = Vector2(SLOT - 4, 32)
+	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(nm)
+	for ch in box.get_children():
+		ch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.tooltip_text = "临时等级器 (糖果罐战利品)\n选中它 → 点一只龟统领或小将 → 该单位【本大轮】永久 +1 级 (切大轮重置)"
+	box.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _on_bench_click(idx))
+	return box
+
+
+# 轻量提示条 (1.4s 后淡出) — 临时等级器等一次性反馈
+func _toast(msg: String) -> void:
+	var l := Label.new()
+	l.text = msg
+	l.add_theme_font_size_override("font_size", 18)
+	l.add_theme_color_override("font_color", Color("#ffd93d"))
+	l.position = Vector2(W / 2.0 - 300, 96); l.size = Vector2(600, 30)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(l)
+	var tw := create_tween()
+	tw.tween_interval(1.4)
+	tw.tween_property(l, "modulate:a", 0.0, 0.6)
+	tw.tween_callback(l.queue_free)
