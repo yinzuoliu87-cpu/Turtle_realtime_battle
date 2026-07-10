@@ -48,6 +48,16 @@ func _skill_role(pet_id: String, sk: Dictionary, i: int) -> String:
 		return "passive"
 	return "basic" if i == 0 else "active"
 
+
+## ★龟能事实源必须与战斗一致: 战斗 `_skill_cost()` = pets.json 的 `energyCost` 优先, 缺则 SkillEnergy 表兜底。
+## 原来图鉴只读 SkillEnergy.cost_of(type) → 两处对不上就在骗玩家:
+##   · 彩虹「护盾」: 战斗 50, 图鉴显 70 (type "shield" 是多龟共用的通用键, 一个值套不了所有龟)
+##   · 彩虹「反射」: SkillEnergy 表里根本没有 rainbowReflect → 图鉴显【龟能 0】, 战斗实际 110
+func _skill_energy(sk: Dictionary) -> int:
+	if sk.has("energyCost"):
+		return int(round(float(sk["energyCost"])))
+	return int(round(SkillEnergy.cost_of(str(sk.get("type", "")))))
+
 # 各学派强调色 + emoji 图标 (无 tag PNG → 用 emoji 占位; 颜色用于列表描边/标题). 11 学派.
 const SCHOOL_STYLE := {
 	"血牙帮":     {"color": "#ff6b6b", "emoji": "🩸"},
@@ -879,9 +889,8 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary) -> void:
 			continue
 		var cx: float = start_x + i * (card_w + gap)
 		var is_default: bool = i in default_idxs
-		# 技能锁 (1:1 PoC renderSkillListSection): idx3需Lv4, idx4需Lv7; 锁定仍可点开查看, 只挂🔒
-		var pet_lv := GameState.get_pet_level(str(pet.get("id", "")))
-		var is_locked: bool = (i == 3 and pet_lv < 4) or (i == 4 and pet_lv < 7)
+		# ★2026-07-10 去掉「idx3需Lv4 / idx4需Lv7」等级解锁 (回合制PoC残留, 与3选1冲突; 详见 TeamSelectScene._available_skill_indices)
+		var is_locked: bool = false
 		# 卡背/边框: 锁=暗灰#6b7686 / 默认技能=绿#06d6a0 / 普通=蓝#4a93d6
 		var border: String = "#6b7686" if is_locked else ("#06d6a0" if is_default else "#4a93d6")
 		var border_w: float = 2.5 if (is_default and not is_locked) else 2.0
@@ -922,13 +931,13 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary) -> void:
 		var chip_text := ""
 		var chip_color := "#58d3ff"
 		if is_locked:
-			chip_text = "🔒 Lv.4 解锁" if i == 3 else "🔒 Lv.7 解锁"; chip_color = "#ff8888"
+			chip_text = "🔒"; chip_color = "#ff8888"
 		else:
-			# 龟能口径 (无"冷却/CD"): 普攻=不花龟能 / 主动=显龟能花费 / 被动
+			# 龟能口径 (无"冷却/CD"): 普攻=不花龟能 / 主动=显龟能花费(与战斗同源) / 被动
 			match _skill_role(str(pet.get("id", "")), sk, i):
 				"passive": chip_text = "被动"; chip_color = "#c77dff"
 				"basic": chip_text = "基础 · 普攻"; chip_color = "#58d3ff"
-				_: chip_text = "主动 · 龟能%d" % int(round(SkillEnergy.cost_of(str(sk.get("type", ""))))); chip_color = "#06d6a0"
+				_: chip_text = "3选1候选 · 龟能%d" % _skill_energy(sk); chip_color = "#06d6a0"
 		_add_text(cx + 8, start_y + 60, chip_text, 13, chip_color, 0.0, 0.0)
 		# 简述 — 富文本 BBCode, 多行 clamp
 		var brief := SkillText.render_bbcode(str(sk.get("brief", "")), ctx, sk)
@@ -1025,8 +1034,8 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 	if is_default:
 		bb += "[color=#06d6a0][font_size=28]★[/font_size][/color] "
 	bb += "[color=#ffd93d][font_size=32]%s[/font_size][/color]" % str(sk.get("name", "?"))
-	if role_d == "active":   # 龟能口径: 主动技显龟能花费 (无"CD"); 攒满龟能才放
-		bb += "　[color=#06d6a0][font_size=20]龟能%d[/font_size][/color]" % int(round(SkillEnergy.cost_of(str(sk.get("type", "")))))
+	if role_d == "active":   # 龟能口径: 主动技显龟能花费 (无"CD"); 攒满龟能自动施放
+		bb += "　[color=#06d6a0][font_size=20]龟能%d[/font_size][/color]" % _skill_energy(sk)
 	var title := RichTextLabel.new()
 	title.bbcode_enabled = true
 	title.fit_content = true

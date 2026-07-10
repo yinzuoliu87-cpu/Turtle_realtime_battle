@@ -1246,7 +1246,7 @@ func _build_skill_picker(pet: Dictionary) -> void:
 func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool, is_sel: bool) -> Control:
 	var pid: String = pet["id"]
 	var unlocked: Array = _available_skill_indices(pet)
-	var is_locked: bool = not (idx in unlocked)
+	var is_locked: bool = not (idx in unlocked)   # 恒 false: _available_skill_indices 现在返回全部索引(等级解锁已移除)
 	var dev_locked: bool = (not is_fixed) and idx != 1 and not sk.get("impl", false)   # 非默认候选: 未标impl:true(未实装)才"开发中"锁; 实装好的技解锁3选1
 
 	var btn: Button = SkillTipButton.new()   # styled tooltip (PoC .dp-skill-tip 悬浮显名+CD+描述)
@@ -1305,14 +1305,14 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 
 	if is_locked:
 		btn.modulate = Color(1, 1, 1, 0.45)   # PoC .dp-skill-ico.locked opacity .45 (index.html:633)
-		btn.tooltip_text = ("需 Lv.4 解锁" if idx == 3 else "需 Lv.7 解锁")
+		btn.tooltip_text = "已锁定"   # 【不可达】等级解锁已移除(2026-07-10); 分支留作将来若引入其它锁条件
 	elif dev_locked:
 		btn.modulate = Color(1, 1, 1, 0.5)
 		btn.tooltip_text = "候选技开发中, 当前锁定默认签名技"
 
 	# 角标 (PoC .ico-corner bottom-right, index.html:634-641): lock=Lv4/Lv7 / fixed=基础 / selected=✓
 	if is_locked:
-		btn.add_child(_make_skill_corner("Lv4" if idx == 3 else "Lv7", Color("#2a2f3a"), Color("#ccdddd")))
+		btn.add_child(_make_skill_corner("锁", Color("#2a2f3a"), Color("#ccdddd")))   # 【不可达】同上
 	elif dev_locked:
 		btn.add_child(_make_skill_corner("开发中", Color("#3a2f2a"), Color("#ddc9a0")))
 	elif is_fixed:
@@ -1419,16 +1419,20 @@ func _skill_tooltip(pet: Dictionary, sk: Dictionary, idx: int = -1) -> String:
 
 
 # ─── 技能 5选3 逻辑 (PoC getPanelLoadout / toggleSkillInPanel 1:1) ──
+## 实时版 = 【3选1】: idx0 普攻常驻, idx1..3 三个候选【全部可选, 无等级门槛】。
+##
+## ★2026-07-10 移除了 idx3 需 Lv.4 / idx4 需 Lv.7 的等级解锁 —— 那是回合制 PoC 的
+##   `getPetLevel + skillUnlockLevel` 残留, 与用户的 3选1 设计直接冲突:
+##     〖用户 2026-06-30 13:16 逐字〗"这只龟现在是3个技能选一个来登场, 其他龟我也会慢慢的
+##       将4个可选改为3可选来降低复杂度和提升维护性"
+##   而 `pet_levels` 默认 1 且"只调试面板改" → 实机上 idx3 永远 locked,
+##   `clickable = not is_locked ...` 使它点不动 → 所谓"3选1"实际是【2选1】, 第三个候选谁也选不到。
+##   transcript 里 "解锁" 命中 0 次 = 用户从没要过技能等级解锁。
 func _available_skill_indices(pet: Dictionary) -> Array:
-	# 技能解锁按存档等级 (1:1 PoC getPetLevel + skillUnlockLevel): idx3 需 Lv4, idx4 需 Lv7, 其余 Lv1.
-	#   原硬编 Lv1(注释说"暂无等级存档")→ 调试面板设的等级带不进选龟(用户报"外面的等级带不进来,没同步").
-	var lv: int = GameState.get_pet_level(str(pet.get("id", "")))
 	var pool: Array = pet.get("skillPool", [])
 	var idxs: Array = []
 	for i in range(pool.size()):
-		var unlock: int = 4 if i == 3 else (7 if i == 4 else 1)
-		if lv >= unlock:
-			idxs.append(i)
+		idxs.append(i)
 	return idxs
 
 
@@ -1468,7 +1472,7 @@ func _toggle_skill(pid: String, idx: int) -> void:
 		return
 	var unlocked: Array = _available_skill_indices(pet)
 	if not (idx in unlocked):
-		_flash_status("需 Lv.4 解锁" if idx == 3 else "需 Lv.7 解锁")
+		_flash_status("该技能已锁定")   # 【不可达】等级解锁已移除(2026-07-10)
 		return
 	if idx != 1:                                        # 锁默认(Q2): 候选技未实装, 暂只能选默认签名技
 		_flash_status("候选技开发中, 当前锁定默认签名技")
