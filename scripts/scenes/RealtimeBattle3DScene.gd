@@ -399,6 +399,22 @@ const SKILL_VFX_MAP := {
 }
 var _skill_vfx_cache: Dictionary = {}     # 贴图名 → Texture2D (避免重复 load)
 
+# ★黑屏排查: 是否移动端(Android/iOS/Web-mobile) → 走不读屏幕纹理的安全路径
+static func _is_mobile() -> bool:
+	return OS.has_feature("mobile") or OS.get_name() in ["Android", "iOS"]
+
+## ★C1 黑屏排查: 安卓切后台/锁屏/来电 → GL context 丢失, 回来可能黑屏。
+##   全项目原本【无任何生命周期处理】。这里在【恢复/重新获得焦点】时强制 SubViewport 重绘一帧, 把画面拉回来。
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_RESUMED or what == NOTIFICATION_WM_WINDOW_FOCUS_IN:
+		if _sub != null and is_instance_valid(_sub):
+			# 逼一次强制重绘(UPDATE_ONCE→回 ALWAYS), 并让整个画布重画
+			_sub.render_target_update_mode = SubViewport.UPDATE_ONCE
+			await get_tree().process_frame
+			if is_instance_valid(_sub):
+				_sub.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+
+
 func _ready() -> void:
 	_load_pets()
 	_build_viewport()
@@ -457,7 +473,8 @@ func _build_viewport() -> void:
 	_sub.transparent_bg = false
 	_sub.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_sub.handle_input_locally = false
-	_sub.msaa_3d = Viewport.MSAA_2X
+	# ★A4 黑屏排查: 移动端 SubViewport + MSAA 在部分安卓 GPU 上有问题 → 移动端默认关 MSAA。桌面保留 2X。
+	_sub.msaa_3d = Viewport.MSAA_DISABLED if _is_mobile() else Viewport.MSAA_2X
 	# 低画质模式(设置里的开关·持久化): 关抗锯齿 + 3D 渲染分辨率 ×0.75 (UI 层不受影响, 仍是原生分辨率)
 	if GameState != null and GameState.perf_lite:
 		_sub.msaa_3d = Viewport.MSAA_DISABLED
@@ -2168,7 +2185,13 @@ func _ts_ensure_overlay() -> void:
 	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sh := Shader.new()   # 压暗褪色从center按radius扩散→昏暗冷灰; 但携带者(casters)周围留彩色泡(时之主保持彩色)
-	sh.code = "shader_type canvas_item;\nuniform sampler2D screen_tex : hint_screen_texture, filter_linear;\nuniform float amount : hint_range(0.0,1.0) = 0.0;\nuniform vec2 center = vec2(0.5,0.5);\nuniform float radius = 0.0;\nuniform float aspect = 1.778;\nuniform vec2 casters[4];\nuniform int caster_n = 0;\nuniform float caster_r = 0.115;\nvoid fragment(){\n\tvec3 c = texture(screen_tex, SCREEN_UV).rgb;\n\tvec2 d = SCREEN_UV - center; d.x *= aspect;\n\tfloat mask = 1.0 - smoothstep(radius-0.12, radius, length(d));\n\tfloat a = amount * mask;\n\tfloat keep = 0.0;\n\tfor(int i=0;i<4;i++){\n\t\tif(i>=caster_n){break;}\n\t\tvec2 cd = SCREEN_UV - casters[i]; cd.x *= aspect;\n\t\tkeep = max(keep, 1.0 - smoothstep(caster_r*0.55, caster_r, length(cd)));\n\t}\n\ta *= (1.0 - keep);\n\tfloat g = dot(c, vec3(0.299,0.587,0.114));\n\tvec3 dim = vec3(g*0.56, g*0.56, g*0.64);\n\tCOLOR = vec4(mix(c, dim, a), 1.0);\n}"
+	# ★2026-07-11 黑屏排查 A1: hint_screen_texture(读屏幕纹理) 在 gl_compatibility 移动端会导致【整屏黑】。
+	#   → 移动端用【不读屏】的等效 shader(半透明冷灰覆盖+径向扩散+携带者彩色泡), 桌面保留原读屏版(带真灰度)。
+	#   两版 uniform 完全相同(amount/radius/aspect/casters/caster_n) → _ts_tick_visual 的 set 逻辑不用改。
+	if _is_mobile():
+		sh.code = "shader_type canvas_item;\nuniform float amount : hint_range(0.0,1.0) = 0.0;\nuniform vec2 center = vec2(0.5,0.5);\nuniform float radius = 0.0;\nuniform float aspect = 1.778;\nuniform vec2 casters[4];\nuniform int caster_n = 0;\nuniform float caster_r = 0.115;\nvoid fragment(){\n\tvec2 d = SCREEN_UV - center; d.x *= aspect;\n\tfloat mask = 1.0 - smoothstep(radius-0.12, radius, length(d));\n\tfloat a = amount * mask;\n\tfloat keep = 0.0;\n\tfor(int i=0;i<4;i++){\n\t\tif(i>=caster_n){break;}\n\t\tvec2 cd = SCREEN_UV - casters[i]; cd.x *= aspect;\n\t\tkeep = max(keep, 1.0 - smoothstep(caster_r*0.55, caster_r, length(cd)));\n\t}\n\ta *= (1.0 - keep);\n\tCOLOR = vec4(0.04, 0.04, 0.08, a * 0.82);\n}"
+	else:
+		sh.code = "shader_type canvas_item;\nuniform sampler2D screen_tex : hint_screen_texture, filter_linear;\nuniform float amount : hint_range(0.0,1.0) = 0.0;\nuniform vec2 center = vec2(0.5,0.5);\nuniform float radius = 0.0;\nuniform float aspect = 1.778;\nuniform vec2 casters[4];\nuniform int caster_n = 0;\nuniform float caster_r = 0.115;\nvoid fragment(){\n\tvec3 c = texture(screen_tex, SCREEN_UV).rgb;\n\tvec2 d = SCREEN_UV - center; d.x *= aspect;\n\tfloat mask = 1.0 - smoothstep(radius-0.12, radius, length(d));\n\tfloat a = amount * mask;\n\tfloat keep = 0.0;\n\tfor(int i=0;i<4;i++){\n\t\tif(i>=caster_n){break;}\n\t\tvec2 cd = SCREEN_UV - casters[i]; cd.x *= aspect;\n\t\tkeep = max(keep, 1.0 - smoothstep(caster_r*0.55, caster_r, length(cd)));\n\t}\n\ta *= (1.0 - keep);\n\tfloat g = dot(c, vec3(0.299,0.587,0.114));\n\tvec3 dim = vec3(g*0.56, g*0.56, g*0.64);\n\tCOLOR = vec4(mix(c, dim, a), 1.0);\n}"
 	var mat := ShaderMaterial.new()
 	mat.shader = sh
 	mat.set_shader_parameter("amount", 0.0)
@@ -2187,7 +2210,11 @@ func _ts_ensure_overlay() -> void:
 	frect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	frect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var fsh := Shader.new()
-	fsh.code = "shader_type canvas_item;\nuniform sampler2D screen_tex : hint_screen_texture, filter_linear;\nuniform float invert : hint_range(0.0,1.0) = 0.0;\nvoid fragment(){\n\tvec3 c = texture(screen_tex, SCREEN_UV).rgb;\n\tCOLOR = vec4(mix(c, vec3(1.0)-c, invert), 1.0);\n}"
+	# ★A1: 移动端不读屏 → 反色改成白闪(uniform invert 不变, _ts 逻辑不用改); 桌面保留真反色
+	if _is_mobile():
+		fsh.code = "shader_type canvas_item;\nuniform float invert : hint_range(0.0,1.0) = 0.0;\nvoid fragment(){\n\tCOLOR = vec4(1.0, 1.0, 1.0, invert * 0.6);\n}"
+	else:
+		fsh.code = "shader_type canvas_item;\nuniform sampler2D screen_tex : hint_screen_texture, filter_linear;\nuniform float invert : hint_range(0.0,1.0) = 0.0;\nvoid fragment(){\n\tvec3 c = texture(screen_tex, SCREEN_UV).rgb;\n\tCOLOR = vec4(mix(c, vec3(1.0)-c, invert), 1.0);\n}"
 	var fmat := ShaderMaterial.new()
 	fmat.shader = fsh
 	fmat.set_shader_parameter("invert", 0.0)
@@ -10158,7 +10185,9 @@ func _flash(u: Dictionary, col: Color = JUICE_FLASH_COLOR) -> void:
 	u["flash_t"] = JUICE_FLASH_SEC
 	u["flash_col"] = col            # 受击闪光色 (默认过曝白; 可传绿等特殊色)
 	u["hitsq_t"] = JUICE_HIT_SQUASH_SEC
-	_play_action(u, "hurt")         # 有受击帧的龟播 hurt 动画 (不打断 death/attack)
+	# ★E1 黑屏排查(用户2026-07-11「按理压根不该用受伤动画」): 实时高频命中下, 受击帧动画会反复打断
+	#   idle/攻击动画 → 动画状态抖动。改为只保留闪白+压扁(juice), 不再切 hurt 动画帧。
+	# _play_action(u, "hurt")   # 已停用: 受击 flinch 动画在实时战斗里反复冲突
 
 # 命中重量分级: 单段伤害(或暴击/大招标志)决定 闪白/顿帧/震屏/粒子 强度.
 # heavy=技能/暴击命中级; big=大招/击飞级. light(普攻小段)只闪白不顿帧不抖.
