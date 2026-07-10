@@ -9646,6 +9646,12 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 			if o.get("is_summon", false) and o.get("summon_owner", null) == u and o["alive"]:
 				o["hp"] = 0.0; o["alive"] = false
 				_hide_summon_nodes(o)
+	# ★2026-07-11 用户拍板「要加死亡同步」: 水晶龟阵亡 → 水晶球随从一同消失 (仿缩头; 原本水晶球会继续战斗)
+	if u["id"] == "crystal":
+		for o in _units:
+			if o.get("is_summon", false) and o.get("summon_owner", null) == u and o.get("summon_kind", "") == "crystalball" and o["alive"]:
+				o["hp"] = 0.0; o["alive"] = false
+				_hide_summon_nodes(o)
 	# 赛博龟阵亡 → 浮游炮组装成机甲
 	if u["id"] == "cyber":
 		_cyber_assemble_mech(u)
@@ -9668,14 +9674,24 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 # ============================================================================
 #  召唤系统 (3D 化: billboard 立绘/色块 + blob影, 走同一 _tick_unit) — 逻辑 1:1 搬自 2D 版
 # ============================================================================
-# 缩头随从候选池 (12 只固定名单)。⚠2026-07-10 轮G 存疑: 旧图鉴文案写「随机召唤一只【A级及以下】的乌龟」,
-#   但本名单里 headless(无头龟) 是 SS 级, 且 A 级及以下实际有 19 只(这里只列了 12)。
-#   用户从未就召唤池给过原话 → 按判定规则「以活代码为准」, 文案已改成如实描述这 12 只。
-#   要不要把 headless 拿掉 / 补齐 A 级及以下, 留给用户拍板 (见 图鉴文案对账-轮次账本.md 轮G)。
-const HIDING_POOL := ["basic", "stone", "bamboo", "ninja", "dice", "rainbow", "hunter", "pirate", "candy", "bubble", "line", "headless"]
+# 缩头随从候选池。★2026-07-11 用户拍板:「缩头乌龟只能召唤A及以下的」「确保涵盖所有A，B，C的」
+#   → 不再手挑名单, 改为【运行时从稀有度动态生成】: 全部 A/B/C 稀有度的龟 (当前 19 只), 天然排除 S/SS/SSS。
+#   这样以后加龟或改稀有度也永远覆盖全 A/B/C, 不会漏也不会混进高稀有度。守卫: tests/verify_hiding_pool.gd。
+#   下面的常量只作【数据缺失时的兜底名单】(全是 A/B/C, 不含 headless)。
+const HIDING_POOL := ["basic", "stone", "bamboo", "ninja", "dice", "rainbow", "hunter", "pirate", "candy", "bubble", "line"]
+
+# 返回当前所有 A/B/C 稀有度的龟 id (缩头召唤池)。数据缺失时退回 HIDING_POOL 兜底。
+func _hiding_pool() -> Array:
+	var out: Array = []
+	for id in _data_by_id:
+		var r := str((_data_by_id[id] as Dictionary).get("rarity", ""))
+		if r == "A" or r == "B" or r == "C":
+			out.append(str(id))
+	return out if not out.is_empty() else HIDING_POOL
 
 func _spawn_hiding_minion(u: Dictionary) -> void:
-	var pick: String = HIDING_POOL[randi() % HIDING_POOL.size()]
+	var pool: Array = _hiding_pool()
+	var pick: String = pool[randi() % pool.size()]
 	var d: Dictionary = _data_by_id.get(pick, {})
 	var st: Array = STATS.get(pick, DEFAULT_STAT)
 	var _lm: float = _lvl_mult_for(u)                # 固定值召唤吃等级

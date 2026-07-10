@@ -2299,7 +2299,7 @@
       },
       {
         "name": "智能AI",
-        "icon": "skills/cyber-3.png",
+        "icon": "skills/cyber-4.png",
         "type": "cyberSmartAI",
         "impl": true,
         "hits": 0,
@@ -2620,7 +2620,7 @@
       },
       {
         "name": "财宝炮击",
-        "icon": "skills/chest-3.png",
+        "icon": "skills/chest-4.png",
         "type": "chestCannon",
         "impl": true,
         "hits": 1,
