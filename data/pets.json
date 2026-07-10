@@ -48,8 +48,8 @@
         "SS": 32,
         "SSS": 34
       },
-      "brief": "小龟面对强敌愈战愈勇：攻击时根据目标稀有度获得增伤；每6秒强化下次普攻(附0.7A+目标已损生命20%物理+击飞+获盾·龟盾融入被动)。",
-      "desc": "小龟面对强敌愈战愈勇。攻击时根据目标稀有度获得增伤：\n<span style=\"color:#06d6a0\">C</span> <span class=\"val-atk\">+20%</span>　<span style=\"color:#4cc9f0\">B</span> <span class=\"val-atk\">+23%</span>　<span style=\"color:#3a9abf\">A</span> <span class=\"val-atk\">+26%</span>　<span style=\"color:#c77dff\">S</span> <span class=\"val-atk\">+29%</span>　<span style=\"color:#ffd93d\">SS</span> <span class=\"val-atk\">+32%</span>　<span style=\"color:#ff6b6b\">SSS</span> <span class=\"val-atk\">+34%</span>"
+      "brief": "小龟面对强敌愈战愈勇：攻击时根据目标稀有度获得增伤（C +20% 一路到 SSS +34%）。每 <span class=\"val-atk\">6秒</span> 蓄力一次，下一发普攻附带「龟盾」：追加（{N:0.7*ATK} + 20%目标已损生命）物理伤害、<span class=\"val-atk\">击飞</span>目标，并让自己获得该伤害 <span class=\"val-atk\">80%</span> 的护盾。",
+      "desc": "小龟面对强敌愈战愈勇。攻击时根据目标稀有度获得增伤：\n<span style=\"color:#06d6a0\">C</span> <span class=\"val-atk\">+20%</span>　<span style=\"color:#4cc9f0\">B</span> <span class=\"val-atk\">+23%</span>　<span style=\"color:#3a9abf\">A</span> <span class=\"val-atk\">+26%</span>　<span style=\"color:#c77dff\">S</span> <span class=\"val-atk\">+29%</span>　<span style=\"color:#ffd93d\">SS</span> <span class=\"val-atk\">+32%</span>　<span style=\"color:#ff6b6b\">SSS</span> <span class=\"val-atk\">+34%</span>\n\n<span class=\"val-normal\">龟盾</span>（已融入被动）：每 <span class=\"val-atk\">6秒</span> 蓄力一次，下一发普攻获得强化——额外造成（70%×攻击力({ATK}) = {N:0.7*ATK}）+ 20%×目标已损生命值 物理伤害，将目标<span class=\"val-atk\">击飞</span>（约0.55秒滞空 + 击退），并让小龟获得（这两段伤害之和 × <span class=\"val-atk\">80%</span>）的护盾（不限时）。"
     },
     "skillPool": [
       {
@@ -259,7 +259,7 @@
       "healSelfHpPct": 8,
       "hpGainAtkPct": 60,
       "chargeDmgType": "magic",
-      "brief": "竹叶龟每6秒蓄力，下一发普攻获得强化：追加 {M:ATK*0.75+HP*0.06} 魔法伤害，回复 {H:HP*0.06} 生命，并永久 <span class=\"val-atk\">+6% 攻击力</span> / <span class=\"val-heal\">+3% 最大生命</span>。",
+      "brief": "竹叶龟每 <span class=\"val-atk\">6秒</span> 蓄力，下一发普攻获得强化：追加（{M:ATK*0.75+HP*0.08}）魔法伤害，飞回一颗生命球回复 <span class=\"val-heal\">8%</span> 最大生命值，并<span class=\"val-heal\">永久</span>提升最大生命值（+0.60×基础攻击力；攻击力本身不涨）。",
       "desc": "竹叶龟每6秒蓄力一次。蓄力后，下一发普攻获得强化：额外造成（75%×攻击力({ATK}) + 8%×最大生命值({HP}) = {M:ATK*0.75+HP*0.08}）魔法伤害；命中后飞出一颗绿色生命球回到竹叶龟身上（<span style=\"color:#8a93a0\">落到自己身上才生效</span>），回复 <span class=\"val-heal\">8%</span> 最大生命值，并<span class=\"val-heal\">永久</span>提升最大生命值（+0.60×基础攻击力；攻击力本身不涨）。\n若出战选了「竹击」，强化提升为 100%×攻击力 + 13%×最大生命值 魔法伤害、回血 12%、永久 +1.05×基础攻击力 最大生命值。"
     },
     "skillPool": [
@@ -632,7 +632,7 @@
       "critBonus": 30,
       "critDmgBonus": 20,
       "armorPen": 8,
-      "brief": "忍者龟天生忍术精通。开局永久获得：暴击率 <span class=\"val-atk\">+30%</span>、暴击伤害 <span class=\"val-atk\">+20%</span>、护甲穿透 <span class=\"val-atk\">+8</span>。",
+      "brief": "忍者龟天生忍术精通：开局永久获得暴击率 <span class=\"val-atk\">+30%</span>、暴击伤害 <span class=\"val-atk\">+20%</span>、护甲穿透 <span class=\"val-atk\">+8</span>。<span class=\"val-normal\">冲击</span>：500码内出现可冲的敌人时，自动朝最近敌做一次固定 450 码的冲刺斩，主目标受 130%×攻击力、路径其余敌受 80%×攻击力 物理伤害，并全部<span class=\"val-atk\">击飞0.8秒</span>。",
       "desc": "忍者龟天生忍术精通。开局永久获得：暴击率 <span class=\"val-atk\">+30%</span>，暴击伤害 <span class=\"val-atk\">+20%</span>，护甲穿透 <span class=\"val-atk\">+8</span>。\n\n<span class=\"val-normal\">冲击</span>（自动冲刺斩·亚索E式）：500码内出现可冲的敌人时，朝最近敌做一次 <span class=\"val-atk\">固定450码</span> 位移冲刺；路径上（判定带宽62码）被冲的主目标受 130%×攻击力、其余敌受 80%×攻击力 物理伤害，并全部<span class=\"val-atk\">击飞0.8秒</span>，不加伤害递增。本体每次冲刺 0.4 秒冷却，同一敌人被冲后 10 秒内不再被冲。<span style=\"color:#888\">放技能不会被冲击打断。</span>"
     },
     "skillPool": [
@@ -865,7 +865,7 @@
       "name": "怨灵",
       "hpPct": 5,
       "turns": 3,
-      "brief": "幽灵龟登场时<span style=\"color:#9b59b6\">诅咒</span>全体敌人持续5秒(每秒结算)，每秒造成目标最大生命值 <span class=\"val-atk\">5%</span> 的真实伤害。",
+      "brief": "幽灵龟<span class=\"val-normal\">登场时</span>对全体敌人各施加 1 层<span style=\"color:#9b59b6\">诅咒</span>；<span class=\"val-normal\">自己阵亡时</span>再各施加 1 层。每层诅咒持续5秒，每秒造成目标最大生命值 <span class=\"val-true\">5%</span> 的<span class=\"val-true\">真实伤害</span>（无视双抗，多层同时结算）。",
       "desc": "幽灵龟的怨灵诅咒。\n\n<span class=\"val-normal\">登场诅咒</span>：登场瞬间对全部敌人各施加 1 层诅咒。\n<span class=\"val-normal\">死亡诅咒</span>：幽灵龟死亡瞬间，对全部敌人再各施加 1 层诅咒。\n\n诅咒（每层）：每秒造成目标 <span class=\"val-true\">5%</span> 最大生命值的<span class=\"val-true\">真实伤害</span>（无视双抗），持续 5 秒（一层共 25% 最大生命）。多层同时结算。\n<span style=\"color:#888\">只在登场、死亡、灵魂风暴命中时施加；没有周期性续诅咒，普攻也不叠诅咒。</span>"
     },
     "skillPool": [
@@ -1052,7 +1052,7 @@
     "passive": {
       "type": "fortuneGold",
       "name": "聚宝盆",
-      "brief": "财神龟的聚宝盆源源不断产出金币，每2.5秒获得 <span class=\"val-atk\">3~8</span> 枚金币，任意单位阵亡时额外获得 <span class=\"val-atk\">+9</span> 枚金币；此外每2.5秒为我方额外产出 <span class=\"val-atk\">+2</span> 深海币。",
+      "brief": "财神龟的聚宝盆源源不断产出局内金币：每 <span class=\"val-atk\">3秒</span> 获得 <span class=\"val-atk\">4~7</span> 枚；场上任意单位阵亡时额外获得 <span class=\"val-atk\">9</span> 枚。金币只在本场战斗内有效，喂给「打击」与「梭哈」。",
       "desc": "财神龟的聚宝盆源源不断产出<span class=\"val-atk\">局内金币</span>：每 <span class=\"val-atk\">3秒</span> 获得 <span class=\"val-atk\">4~7</span> 枚；场上任意单位阵亡时额外获得 <span class=\"val-atk\">9</span> 枚。\n<span style=\"color:#8a93a0\">金币只在本场战斗内有效，喂给「打击」与「梭哈」。</span>"
     },
     "skillPool": [
@@ -1346,7 +1346,7 @@
       "name": "多重打击",
       "chance": 40,
       "dmgScale": 0.5,
-      "brief": "赌神龟每段攻击有 <span class=\"val-atk\">40%</span> 概率追加一次额外打击，造成（{N:ATK*0.5}）物理伤害；额外打击可连锁触发，每次概率递减 <span class=\"val-atk\">20%</span>。",
+      "brief": "赌神龟每次普攻命中后有 <span class=\"val-atk\">40%</span> 概率<span class=\"val-normal\">立刻以约3.3倍攻速再打一次普攻</span>；再次命中可继续触发，每连锁一次概率 ×0.8（40% → 32% → 25.6% → …），没触发则重置回基础概率。",
       "desc": "赌神龟每次普攻命中后有 <span class=\"val-atk\">40%</span> 概率<span class=\"val-normal\">立刻以约3.3倍攻速再打一次普攻</span>；再次命中可继续触发，每连锁一次概率 ×0.8（40% → 32% → 25.6% → …），没触发则重置回基础概率、等下一次普攻。\n\n<span style=\"color:#8a93a0\">基础概率 40%；出战选「命运之轮」→ 基础概率变 60%（代价是登场损失 30% 最大生命）；释放「赌注」→ 之后 3 秒内再 +20%。</span>"
     },
     "skillPool": [
@@ -1529,7 +1529,7 @@
       "name": "掠夺",
       "bombardPct": 25,
       "deathHookPct": 25,
-      "brief": "海盗龟无被动技能（掠夺已移除）；场上常驻一艘海盗船，作为火炮齐射／朗姆酒／海盗船技能的演出载体。",
+      "brief": "<span class=\"val-normal\">登场轰击</span>：海盗龟登场瞬间轰击 1 名随机敌人，造成其 <span class=\"val-true\">25% 最大生命值</span>的<span class=\"val-true\">真实伤害</span>。<span class=\"val-normal\">死亡钩索</span>：海盗龟阵亡瞬间甩出钩索抓住<span class=\"val-normal\">击杀它的单位</span>，把它拉到尸位 90 码内，并造成该单位 <span class=\"val-true\">25% 最大生命值</span>的<span class=\"val-true\">真实伤害</span>。",
       "desc": "<span class=\"val-normal\">登场轰击</span>：海盗龟登场瞬间轰击 1 名随机敌人，造成其 <span class=\"val-true\">25% 最大生命值</span>的<span class=\"val-true\">真实伤害</span>。\n<span class=\"val-normal\">死亡钩索</span>：海盗龟自己阵亡的瞬间，甩出钩索抓住<span class=\"val-normal\">击杀它的单位</span>，把它拉到尸位 90 码内，并造成该单位 <span class=\"val-true\">25% 最大生命值</span>的<span class=\"val-true\">真实伤害</span>。\n<span style=\"color:#8a93a0\">两段伤害均为真实伤害，无视护甲与魔抗。</span>"
     },
     "skillPool": [
@@ -1636,7 +1636,7 @@
       "name": "甜蜜掠夺",
       "stealTurn": 3,
       "stealPct": 25,
-      "brief": "糖果龟在开战7.5秒对随机敌人施放生命吸取，偷取其 <span class=\"val-atk\">25%</span> 最大生命值。",
+      "brief": "糖果龟<span class=\"val-normal\">登场时</span>对<span class=\"val-normal\">最大生命值最高的敌人</span>施放生命吸取：扣除其 <span class=\"val-atk\">25% 最大生命值</span>，并<span class=\"val-heal\">全额回复给糖果龟自己</span>（不会杀死目标，最低留 1 点生命）。",
       "desc": "糖果龟<span class=\"val-normal\">登场时</span>对<span class=\"val-normal\">最大生命值最高的敌人</span>施放生命吸取：扣除其 <span class=\"val-atk\">25% 最大生命值</span>，并<span class=\"val-heal\">全额回复给糖果龟自己</span>。\n\n<span style=\"color:#8a93a0\">不会杀死目标（最低留 1 点生命值）。糖果龟的普攻本身没有自愈。</span>"
     },
     "skillPool": [
@@ -2295,7 +2295,7 @@
         "cd": 0,
         "selfCast": true,
         "brief": "赛博龟黑掉1个随机敌方单位，使其倒戈为赛博龟一方战斗4秒(用它自己的普攻/技能打原队友)，4秒后变回",
-        "detail": "赛博龟射出黑客数据流，黑掉一个随机敌方单位，使其倒戈为赛博龟一方战斗4秒：用它自己的普攻与技能攻击原队友，4秒后数据链断开变回原队。\n\n<span style=\"color:#8a93a0\">被黑单位不算赛博方友军(不能被治疗/护盾·不算存活数)，仍会被原队友攻击；被黑单位的击杀归赛博龟方；蛋/免控免疫；可同时黑多个(每次黑1随机·可叠)。召唤物也可黑。(治疗/护盾排除为F5精修·当前只保证不破胜负判定)</span>"
+        "detail": "赛博龟射出黑客数据流，黑掉一个随机敌方单位，使其倒戈为赛博龟一方战斗4秒：用它自己的普攻与技能攻击原队友，4秒后数据链断开变回原队。\n\n<span style=\"color:#8a93a0\">被黑单位不算赛博方友军(不能被治疗/护盾·不算存活数)，仍会被原队友攻击；被黑单位的击杀归赛博龟方；蛋/免控免疫；可同时黑多个(每次黑1随机·可叠)。召唤物也可黑。</span>"
       },
       {
         "name": "智能AI",
@@ -2308,7 +2308,7 @@
         "cd": 0,
         "selfCast": true,
         "brief": "充能型：登场获得 <span class=\"val-atk\">3</span> 层充能与 +20% 移速，并常驻走位闪避；每次释放（40龟能）+1 层充能，并立即冲刺重定位（拉到理想输出距离/躲贴身）",
-        "detail": "赛博龟的智能行动脑（充能型）：登场即拥有 <span class=\"val-atk\">3</span> 层充能，并获得 +20% 移动速度与常驻走位闪避；每次释放（40龟能）积累 1 层充能，并立即冲刺重定位——拉开到理想输出距离（射程内不贴脸）、躲开贴身威胁。\n\n<span style=\"color:#8a93a0\">充能层数目前只作计数，尚未定义消耗方式与收益（待设计，不擅自补）。完整行动脑（优先躲致命大招/走位对齐贯穿激光扫最多敌/残血保命撤离）为后续精修，当前=冲刺kite近似。</span>"
+        "detail": "赛博龟的智能行动脑（充能型）：登场即拥有 <span class=\"val-atk\">3</span> 层充能，并获得 +20% 移动速度与常驻走位闪避；每次释放（40龟能）积累 1 层充能，并立即冲刺重定位——拉开到理想输出距离（射程内不贴脸）、躲开贴身威胁。\n\n<span style=\"color:#8a93a0\">充能层数目前只作计数，尚未定义消耗方式与收益（待设计）。完整行动脑（优先躲致命大招/走位对齐贯穿激光扫最多敌/残血保命撤离）为后续精修，当前的行为是：冲刺拉开到理想输出距离。</span>"
       }
     ],
     "defaultSkills": [
