@@ -1,3 +1,9 @@
+> # ⛔ 陈旧文档（2026-07-10 复核）
+> **本文件是 fork 时从回合制仓库带过来的，不适用于实时版。**
+> 它的审计对象 `scripts/scenes/BattleScene.gd` **在实时版根本不存在**；文中的回合UI/timeline/出手倒计时/战中商店经济
+> 也都是回合制概念。**未勾选项 ≠ 实时版待办**，不要照着做。
+> 实时版的权威账本 = `docs/design/完全实装路线图.md` + `docs/design/28龟技能设计-权威.md`。
+
 # 战斗场景 1:1 保真审计 (2026-06-02, 6-agent cited)
 
 PoC 权威源 = `games/turtle-battle-poc/src/`. Godot = `scripts/scenes/BattleScene.gd`.
