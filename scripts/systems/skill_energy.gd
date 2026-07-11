@@ -18,7 +18,7 @@ const SKILL_COST := {
 	#   值一律取自 pets.json 的 energyCost, 未自造。
 	"rainbowReflect": 110.0,
 	# 签名招
-	"bambooHeal": 110.0, "angelBless": 53.0, "angelAscend": 80.0, "stoneRockShield": 100.0, "rockShockwave": 80.0, "stoneTaunt": 120.0, "iceFrost": 100.0, "iceFreeze": 80.0, "commonTeamShield": 80.0,
+	"bambooHeal": 110.0, "angelBless": 80.0, "angelAscend": 80.0, "stoneRockShield": 100.0, "rockShockwave": 80.0, "stoneTaunt": 120.0, "iceFrost": 100.0, "iceFreeze": 80.0, "commonTeamShield": 80.0,
 	"ninjaBackstab": 95.0, "ghostStorm": 95.0, "ghostPhase": 80.0, "diamondFortify": 50.0, "diceAllIn": 120.0, "diceFlashStrike": 120.0,
 	"gamblerBet": 100.0, "hunterStealth": 80.0, "pirateCannonBarrage": 80.0, "pirateRum": 120.0, "pirateShipPassive": 120.0, "bubbleShield": 80.0, "bubbleBurst": 100.0,
 	"lineLink": 90.0, "lineInkBomb": 120.0, "lightningSurgeBuff": 120.0, "phoenixShield": 90.0, "phoenixEnhancedRebirth": 120.0, "headlessFear": 110.0,
