@@ -41,12 +41,12 @@ func _ready() -> void:
 		scene._units.append(d)
 
 	# ── A. 爆炸落地结算(直接调 _bomb_explode = _sk_ninja_bomb 抛物线到点后的回调; spr=null 跳精灵动画) ──
-	#   顺序: 圈内敌先施 -25%护甲(def 40→30) 再打伤害 → 每发 round(100×1.1 × (1-30/70)) = 63; 圈外敌 0
-	scene._bomb_explode(null, ninja, land, {"phys": 1.1, "defDown": 0.25, "color": Color("#ff9a3c")})
+	#   顺序: 圈内敌先施 -25%护甲(def 40→30) 再打伤害 → 每发 round(100×2.0 × (1-30/70)) = 114; 圈外敌 0
+	scene._bomb_explode(null, ninja, land, {"phys": 2.0, "defDown": 0.25, "color": Color("#ff9a3c")})
 	var t1: int = int(near1.get("_st_taken", 0))
 	var t2: int = int(near2.get("_st_taken", 0))
 	var tf: int = int(far1.get("_st_taken", 0))
-	_ok("圈内(≤400码)2敌受伤·每发63", t1 == 63 and t2 == 63, "near1=%d near2=%d" % [t1, t2])
+	_ok("圈内(≤400码)2敌受伤·每发114(2.0A)", t1 == 114 and t2 == 114, "near1=%d near2=%d" % [t1, t2])
 	_ok("★圈外(>400码)敌 0 伤害(半径截断)", tf == 0, "far=%d (距land 500码)" % tf)
 	_ok("圈内自带-25%护甲(def 40→30)", int(round(float(near1["def"]))) == 30, "near def=%.1f" % float(near1["def"]))
 	_ok("★圈外护甲不动(def=40)", int(round(float(far1["def"]))) == 40, "far def=%.1f" % float(far1["def"]))

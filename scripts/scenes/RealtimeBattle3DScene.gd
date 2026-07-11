@@ -9306,7 +9306,7 @@ const NINJA_BOMB_RADIUS := 400.0
 func _sk_ninja_bomb(u: Dictionary, tgt) -> void:
 	if tgt == null: tgt = _nearest_enemy(u)
 	if tgt == null: return
-	var opts := {"phys": 1.1, "defDown": 0.25, "color": Color("#ff9a3c")}
+	var opts := {"phys": 2.0, "defDown": 0.25, "color": Color("#ff9a3c")}   # 伤害2.0A(用户2026-07-11「提升到2ATK」·回合制原1.1·指定偏离)
 	var land: Vector2 = tgt["pos"]            # 落点 = 当前目标位置 (400码爆炸半径中心)
 	_anticipate(u)                            # 短蓄力(掏炸弹)
 	var spr := Sprite3D.new()
@@ -9364,7 +9364,7 @@ func _bomb_explode(spr, u: Dictionary, at2d: Vector2, opts: Dictionary) -> void:
 		_skill_ring(e["pos"], Color(col.r, col.g, col.b, 0.5), 46.0)   # 每敌破甲小环
 	for e in hit:
 		if e.get("alive", false):
-			var dmg := _atk_dmg(u, float(opts.get("phys", 1.1)), e, false)
+			var dmg := _atk_dmg(u, float(opts.get("phys", 2.0)), e, false)
 			if dmg > 0:
 				_apply_damage_from(u, e, dmg, col)
 
