@@ -2716,7 +2716,11 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	match str(u.get("state", "move")):
 		"move":
 			var rs := _pick_ready_skill(u)
-			if rs != "" and _SELF_CAST_SKILLS.has(rs):
+			if dist <= rng and not u.get("no_basic", false) and u["id"] != "phoenix" and u["atk_cd"] <= 0.0:
+				u["pending"] = "B"                       # 普攻优先: 在射程且普攻就绪→先普攻, 技能塞进普攻冷却空档(不打断攻击流·用户2026-07-11)
+				u["state"] = "windup"
+				u["state_t"] = clampf(float(u["atk_interval"]) * ATK_WINDUP_PCT, ATK_WINDUP_MIN, ATK_WINDUP_MAX)
+			elif rs != "" and _SELF_CAST_SKILLS.has(rs):
 				# 自/友向技: 任意距离即放, 不用靠近敌人 (修: 原所有技都要进射程=护盾贴脸才放的bug)
 				u["pending"] = "K:" + rs
 				u["state"] = "windup"; u["state_t"] = CAST_WINDUP
