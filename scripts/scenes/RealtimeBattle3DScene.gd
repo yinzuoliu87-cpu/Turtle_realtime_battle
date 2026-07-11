@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "two_head"           # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
+const REVIEW_SKILL_IDX := 1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 500.0            # 假人固定血量
@@ -122,6 +122,7 @@ const REVIEW_DEMO_CFG := {
 	"ninja:2": [ {"dx": 170.0, "dy": -75.0, "fixed": true}, {"dx": 250.0, "dy": 0.0, "fixed": true}, {"dx": 170.0, "dy": 75.0, "fixed": true}, {"dx": 650.0, "dy": 0.0, "fixed": true} ],   # 忍者炸弹(400码半径): 前3假人聚一簇居中(落点400码内→受伤)+第4假人远置650码(圈外→不受伤·验半径截断)→看引信炸弹抛向目标→落地爆炸帧动画(贴地不钻地)+400码冲击波环+圈内红字/掉甲
 	"ninja:3": [ {"dx": 120.0, "dy": -60.0, "fixed": true}, {"dx": 120.0, "dy": 60.0, "fixed": true}, {"dx": 470.0, "dy": 0.0, "fixed": true} ],   # 忍者背刺: 2近假人(120码)+1远假人(470码=全场最远)→看忍者闪现到最远那只身后+刀光拖影+背刺3段(每300ms一刀斩弧)+留该处追砍(下次最远变成近的2只→再闪回=来回背刺)
 	"two_head:0": [ {"dx": 280.0, "dy": 0.0, "fixed": true} ],   # 双头普攻(默认远程形态): 单假人280码→看1.2A灵能弹(紫#c0a0ff弹道); 近战形态0.9A挥砍在换形/技能审时看
+	"two_head:1": [ {"dx": 200.0, "dy": -70.0, "fixed": true}, {"dx": 280.0, "dy": 0.0, "fixed": true}, {"dx": 200.0, "dy": 70.0, "fixed": true} ],   # 双头技1(随形态·放完切形态): 3假人聚簇→远程灵能冲击(全体0.85A+15%maxHp蓝)/切近战锤击(单体1.4A橙+盾)交替
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
