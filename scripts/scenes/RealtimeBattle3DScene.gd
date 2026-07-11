@@ -185,6 +185,11 @@ const ACTION_DEATH := {
 	"ghost":  ["pets/animations/ghost/death.png", 12.0],
 	"ninja":  ["pets/animations/ninja/death.png", 11.0],
 }
+# 走路动画表 (移动时循环播·有 run.png 的龟): ninja/ghost. 停下回 idle.
+const ACTION_RUN := {
+	"ninja": ["pets/animations/ninja/run.png", 12.0],
+	"ghost": ["pets/animations/ghost/run.png", 12.0],
+}
 # GROUND_LIFT: 立绘落地基线 — 现在配合"底部 alpha 软渐隐 shader"故意略低(让软淡的脚部轻插进地面盖住交界),
 #   不再靠抬高去躲硬切. 见 §GROUNDING.
 const GROUND_LIFT := 0.06                  # 略沉 → 软淡脚部融进地面 (原 0.35 是为躲硬切的权宜, 已被 shader 根治)
@@ -2004,6 +2009,24 @@ func _resolve_summon_sprite(spr_id: String) -> Dictionary:
 #  立绘动画驱动: 每帧推进 idle 循环 / 动作一次. 设 Sprite3D.frame 切帧 (原生裁帧).
 #  idle: frame = int(t*fps) % frames (循环). 动作: 播到末帧后回 idle (清 anim_action).
 # ----------------------------------------------------------------------------
+# 移动时播 run 走路动画(循环), 停下回 idle. 攻击/受击/死亡/冲刺手动动画期间不切.
+func _update_run_anim(u: Dictionary) -> void:
+	if not u.has("run_sd"):
+		var e = ACTION_RUN.get(str(u.get("id", "")), null)
+		u["run_sd"] = (_resolve_action(str(e[0]), float(e[1])) if e != null else {})
+	var rsd: Dictionary = u["run_sd"]
+	if rsd.is_empty():
+		return
+	if str(u.get("anim_action", "")) != "" or u.get("_manual_anim", false):
+		return
+	var moved: float = u["pos"].distance_to(u.get("_run_last_pos", u["pos"]))
+	u["_run_last_pos"] = u["pos"]
+	var is_run_now: bool = (u.get("anim_sd", {}) == rsd)
+	if moved > 0.8 and not is_run_now:
+		_set_anim_sheet(u, rsd, "", true)
+	elif moved <= 0.8 and is_run_now:
+		_set_anim_sheet(u, u.get("idle_sd", {}), "", true)
+
 func _advance_anim(u: Dictionary, delta: float) -> void:
 	if u.get("_manual_anim", false):
 		return   # 手动逐帧动画期(忍者冲刺分段)不自动推进帧
@@ -2328,6 +2351,7 @@ func _process(delta: float) -> void:
 				if u.get("is_big_bear", false):
 					_tick_bear_anim(u, delta)   # 大熊: 状态机(走路/停顿/熊爪拍/砸地)
 				else:
+					_update_run_anim(u)
 					_advance_anim(u, delta)
 	_update_camera_shake(delta)    # 震屏始终推进 (含冻结期)
 	_update_world_transforms()
