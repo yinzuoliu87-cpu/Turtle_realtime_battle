@@ -9,6 +9,10 @@ const W := 1280.0
 const PANEL_W := 760.0
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):   # ESC 返回主菜单 (与图鉴一致)
+		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+
 func _ready() -> void:
 	_bg()
 

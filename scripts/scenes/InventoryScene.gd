@@ -14,11 +14,14 @@ const Phase2Types = preload("res://scripts/engine/phase2_types.gd")
 const Phase2Minion = preload("res://scripts/engine/phase2_minion.gd")
 
 var _sel_bench: int = -1   # 当前选中的背包装备索引 (-1=无)
-var _sel_unit: Dictionary = {}   # (旧) 阵容格子选中
 var _dl_sel: Dictionary = {}   # 双路布阵选中框 {lane, idx} (点两个互换分路)
 
 func _ready() -> void:
 	_rebuild()
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):   # ESC 返回主菜单 (与图鉴一致)
+		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
 func _rebuild() -> void:
 	for c in get_children():
@@ -231,50 +234,6 @@ func _draw_equip_cells(box: Control, eqs: Array, slots: int, y: float) -> void:
 ## 点格子: 选了装备+点龟=装备; 否则=单位摆位(无选中→选中, 已选中→移到该格, 占用则交换).
 # (旧 _on_grid_click 阵容格子已删, 双路布阵改用 _dl_click / _dl_toggle_role)
 
-## 龟统领格子: 立绘 + 名 + 装备数/槽.
-func _turtle_slot(pet_id: String, pos: Vector2) -> Control:
-	var box := _slot_panel(pos, Color("#13314a"), Color("#2e5a7e"))
-	var pet: Dictionary = DataRegistry.pet_by_id.get(pet_id, {})
-	var av_path := "res://assets/sprites/avatars/%s.png" % pet_id
-	if ResourceLoader.exists(av_path):
-		var av := TextureRect.new(); av.texture = load(av_path)
-		av.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; av.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		av.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		av.position = Vector2(SLOT / 2.0 - 28, 24); av.size = Vector2(56, 46)
-		box.add_child(av)
-	var nm := Label.new()
-	nm.text = str(pet.get("name", pet_id))
-	nm.add_theme_font_size_override("font_size", 14)
-	nm.add_theme_color_override("font_color", Color("#e8f2ff"))
-	nm.position = Vector2(0, SLOT - 22); nm.size = Vector2(SLOT, 20)
-	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(nm)
-	var eqs: Array = GameState.persistent_equipped.get(pet_id, []) if GameState.persistent_equipped is Dictionary else []
-	var slots := P2.equip_slots_for_level(int(GameState.season_level))
-	var eq := Label.new()
-	eq.text = "装备 %d/%d" % [eqs.size(), slots]
-	eq.add_theme_font_size_override("font_size", 12)
-	eq.add_theme_color_override("font_color", Color("#7fd0a0"))
-	eq.position = Vector2(0, 4); eq.size = Vector2(SLOT, 18)
-	eq.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(eq)
-	for ch in box.get_children():
-		ch.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 透传点击给 box
-	box.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _on_turtle_click(pet_id))
-	return box
-
-func _minion_slot(pos: Vector2) -> Control:
-	var box := _slot_panel(pos, Color("#1a1f28"), Color("#3a4452"))
-	var l := Label.new()
-	l.text = "小将\n占位"
-	l.add_theme_font_size_override("font_size", 13)
-	l.add_theme_color_override("font_color", Color("#6a7585"))
-	l.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	box.add_child(l)
-	return box
-
 func _slot_panel(pos: Vector2, bg: Color, border: Color) -> Panel:
 	var box := Panel.new()   # Panel(非PanelContainer): 子节点自由定位, 不被容器拉伸成重叠
 	var sb := StyleBoxFlat.new()
@@ -322,7 +281,7 @@ func _build_synergy_panel(leaders: Array) -> void:
 # ─── 下部: 装备管理 (背包 bench) ───
 func _build_bench() -> void:
 	var hdr := Label.new()
-	hdr.text = "装备背包 (永不丢 · 战后全收)  —  点装备选中 → 点龟装上 · 再点龟身卸下 · 选中可卖 · 下方一键合星"
+	hdr.text = "装备背包 (永不丢 · 战后全收)  —  点装备选中 → 点龟装上 · 再点龟身卸下 · 选中可卖 · 装/卸/买后自动三合一升星"
 	hdr.add_theme_font_size_override("font_size", 18)
 	hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
 	hdr.position = Vector2(60, 352); hdr.size = Vector2(1000, 26)
@@ -408,12 +367,6 @@ func _on_bench_click(idx: int) -> void:
 	_sel_bench = -1 if _sel_bench == idx else idx
 	_rebuild()
 
-func _on_turtle_click(pet_id: String) -> void:
-	if _sel_bench >= 0:
-		_equip_to(pet_id, _sel_bench)
-	else:
-		_unequip_last(pet_id)
-
 ## 选中的背包装备装到 pet_id (槽够才装).
 func _equip_to(pet_id: String, bench_idx: int) -> void:
 	var bench: Array = GameState.persistent_bench
@@ -495,7 +448,7 @@ func _unequip_minion_last(lane: String, idx: int) -> void:
 	GameState.save()
 	_rebuild()
 
-# ─── 动作区: 一键合星 + 卖出选中 ───
+# ─── 动作区: 卖出选中 (三合一升星全自动, 无需按钮) ───
 func _build_actions() -> void:
 	var hint := Label.new(); hint.text = "✨ 3 件同款同星 自动合成升星 (跟以前一样)"
 	hint.add_theme_font_size_override("font_size", 14); hint.add_theme_color_override("font_color", Color("#7a8595"))
@@ -529,38 +482,6 @@ func _sell_selected() -> void:
 	_sel_bench = -1
 	GameState.save()
 	_rebuild()
-
-## 一键合星: 同 id+star 满 3 → 去 3 加 1(star+1), 反复扫到无可合 (满3星不再合).
-func _merge_all() -> void:
-	var changed := true
-	while changed:
-		changed = false
-		var counts := {}
-		for it in GameState.persistent_bench:
-			var k := "%s|%d" % [str(it.get("id", "")), int(it.get("star", 1))]
-			counts[k] = int(counts.get(k, 0)) + 1
-		for k in counts.keys():
-			if int(counts[k]) < 3:
-				continue
-			var parts := str(k).split("|")
-			var iid := str(parts[0])
-			var star := int(parts[1])
-			if star >= 3:
-				continue
-			var removed := 0
-			var i := 0
-			while i < GameState.persistent_bench.size() and removed < 3:
-				var it: Dictionary = GameState.persistent_bench[i]
-				if str(it.get("id", "")) == iid and int(it.get("star", 1)) == star:
-					GameState.persistent_bench.remove_at(i); removed += 1
-				else:
-					i += 1
-			GameState.persistent_bench.append({"id": iid, "star": star + 1})
-			changed = true
-			break
-	GameState.save()
-	_rebuild()
-
 
 # ============================================================================
 #  糖果罐（糖果龟被动 · 局外经济行 · 用户2026-07-07设计）

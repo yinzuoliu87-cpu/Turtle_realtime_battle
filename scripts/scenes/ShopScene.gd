@@ -28,6 +28,10 @@ func _roll() -> void:
 func _price(edef: Dictionary) -> int:
 	return maxi(1, int(edef.get("cost", 1))) * PRICE_MULT
 
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):   # ESC 返回主菜单 (与图鉴一致)
+		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+
 func _rebuild() -> void:
 	for c in get_children():
 		c.visible = false

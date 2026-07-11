@@ -435,9 +435,9 @@ func _switch_tab(tab: String) -> void:
 				_items.append(r)
 				_add_simple_row(r.get("name", "?"), "#ffd93d", Color("#06d6a0"),
 					"res://assets/sprites/rules/%s.png" % r.get("id", ""), _items.size() - 1)
-			# 小商店物品池虚拟入口 (1:1 PoC CodexScene.ts:850-862; 绿 #06d6a0 描边, 点开 showShopPoolDetail)
-			_items.append({"_shopPool": true})
-			_add_simple_row("🛒 小商店物品池", "#06d6a0", Color("#06d6a0"), "", _items.size() - 1)
+			# 「小商店物品池」虚拟入口已删 (R3 2026-07-11): 那是回合制/PoC 局内金币小商店(第4/8/12场开张),
+			#   实时版 V2 经济已挪局外深海币商店, 战斗内无小商店 → 该页描述玩家永远遇不到的机制, 属知识库分歧, 删除。
+			#   (⚠ 规则之日 battle_rules 同样未在实时版战斗生效, 整个 rules Tab 的存废待用户拍板, 见交付报告)
 	if _items.size() > 0:
 		_select(0)
 	# 列表/详情滑入 (PoC scene.restart 每次切 tab 重播)
@@ -636,11 +636,7 @@ func _select(idx: int) -> void:
 		"equips": _show_equip(item)
 		"synergies": _show_school(item)
 		"status": _show_status(item)
-		"rules":
-			if item.get("_shopPool", false):
-				_show_shop_pool()
-			else:
-				_show_rule(item)
+		"rules": _show_rule(item)
 
 
 # ══════════════════════════════════════════════════════════
@@ -1280,55 +1276,3 @@ func _show_rule(r: Dictionary) -> void:
 	rt.add_theme_color_override("default_color", Color("#ffffff"))
 	rt.text = str(r.get("desc", ""))
 	detail.add_child(rt)
-
-# ─── 小商店物品池详情 (1:1 PoC CodexScene.ts:868-938 showShopPoolDetail) ───
-# 数据源 = Godot ShopData (scripts/engine/shop_data.gd): BASE_PRICE(:8) / SLOT_DIST(:9-15) / BUFF_POOL(:19-32).
-# Godot 无消耗品/普通/独特的具体物品分布表枚举, 只有按 category 抽自 DataRegistry — 与 PoC 一致只展示稀有度分布表, 不展示具体装备清单.
-func _show_shop_pool() -> void:
-	_clear_detail()
-	# 标题 28px #06d6a0 bold @(20,20) origin(0,0) (PoC:872-874)
-	_add_text(20, 20, "🛒 小商店", 28, "#06d6a0", 0.0, 0.0, true)
-	# 副标题 12px #888 @(20,58) (PoC:875-877)
-	_add_text(20, 58, "第 4/8/12 场开张, 6 格 A~F: A~E 按各自稀有度分布抽, F 恒为重置骰子", 12, "#888888", 0.0, 0.0)
-
-	# 稀有度标签/色 (PoC:879-881)
-	var rarity_label := {"buff": "增益", "consumable": "消耗品", "normal": "普通装备", "unique": "独特装备"}
-	var rarity_color := {"buff": "#6edc8c", "consumable": "#5ac8dc", "normal": "#aab0c0", "unique": "#ffc846"}
-	var rarities := ["buff", "consumable", "normal", "unique"]
-
-	var y := 92.0
-	# ▸ 价格 (PoC:885-897); 基准价取自 ShopData.BASE_PRICE
-	_add_text(20, y, "▸ 价格 (第一次商店基准, 动态 ±10%, 每次商店整体 +25%)", 14, "#ffd93d", 0.0, 0.0, true)
-	y += 24.0
-	for r in rarities:
-		_add_text(32, y, "· %s" % rarity_label[r], 12, rarity_color[r], 0.0, 0.0, true)
-		_add_text(200, y, "🪙 %d" % int(ShopData.BASE_PRICE[r]), 12, "#ffd93d", 0.0, 0.0)
-		y += 20.0
-	y += 10.0
-
-	# ▸ 每格稀有度分布 (%) (PoC:901-919); 分布取自 ShopData.SLOT_DIST
-	_add_text(20, y, "▸ 每格稀有度分布 (%)", 14, "#58d3ff", 0.0, 0.0, true)
-	y += 24.0
-	var header := "格   "
-	for r in rarities:
-		header += rarity_label[r] + "  "
-	_add_text(32, y, header, 11, "#888888", 0.0, 0.0)
-	y += 20.0
-	for slot in ["A", "B", "C", "D", "E"]:
-		var d: Dictionary = ShopData.SLOT_DIST[slot]
-		_add_text(32, y, "%s    %d      %d        %d        %d" % [slot, int(d["buff"]), int(d["consumable"]), int(d["normal"]), int(d["unique"])], 11, "#cdd", 0.0, 0.0)
-		y += 18.0
-	_add_text(32, y, "F    重置骰子 (重投: 首次 2 币, 之后每次 +1, 进商店重置)", 11, "#bea0ff", 0.0, 0.0)
-	y += 30.0
-
-	# ▸ 增益池 (N) (PoC:923-937); 池取自 ShopData.BUFF_POOL
-	_add_text(20, y, "▸ 增益池 (%d)" % ShopData.BUFF_POOL.size(), 14, "#6edc8c", 0.0, 0.0, true)
-	y += 22.0
-	for it in ShopData.BUFF_POOL:
-		# 行底 0x12202a@0.6 描边 0x6edc8c@0.35 (PoC:928-929); _add_rect 用中心锚, 行宽 detailW-40 高28 @中心(20+(W-40)/2, y+14)
-		_add_rect(20.0 + (DETAIL_W - 40.0) / 2.0, y + 14.0, DETAIL_W - 40.0, 28.0, "#12202a", 0.6, "#6edc8c", 1, 0.35)
-		# name #ffd93d bold @(32, y+14) origin(0,0.5) (PoC:930-932)
-		_add_text(32, y + 14.0, str(it.get("name", "?")), 12, "#ffd93d", 0.0, 0.5, true)
-		# desc #bbb @(32+150, y+14) origin(0,0.5) (PoC:933-935)
-		_add_text(32 + 150, y + 14.0, str(it.get("desc", "")), 11, "#bbb", 0.0, 0.5)
-		y += 32.0
