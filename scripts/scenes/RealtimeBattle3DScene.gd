@@ -7589,6 +7589,7 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 	var was_nb: bool = bool(u.get("no_basic", false))
 	u["no_move"] = true
 	u["no_basic"] = true
+	u["_ninja_gliding"] = true                                 # 滑行中(含起手/落地)→触发器不再触发下一次冲刺(用户2026-07-11)
 	var _nspr = u.get("sprite", null)
 	var _ndsd := _resolve_action("pets/animations/ninja/dash.png", 16.0)   # 忍者冲刺动作(起手1-4/滑行5-8/落地9-11·丢12-18)
 	var _ndash: bool = (not _ndsd.is_empty()) and is_instance_valid(_nspr)
@@ -7627,7 +7628,7 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 				if o.get("alive", false):
 					_apply_damage_from(u, o, _atk_dmg(u, 1.3 if o == target else 0.8, o), Color("#9fe8ff"))
 					_knockback(u, o, 40.0, 1.468, 1.0)          # 击飞 0.8s 滞空
-					o["_ninja_dash_until"] = _t + 10.0          # 每敌被冲后 10s 冷却
+					if o == target: o["_ninja_dash_until"] = _t + 10.0          # 只有【目标】进10s冷却·顺路割到的不占(用户2026-07-11)
 					_burst_vfx("res://assets/sprites/vfx/ninja-slash.png", o["pos"], 88.0, 1.0)
 	u["pos"] = endp
 	u["no_move"] = was_nm
@@ -7643,6 +7644,7 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 			await get_tree().create_timer(0.05).timeout
 		u["_manual_anim"] = false
 		if is_instance_valid(_nspr): _set_anim_sheet(u, u.get("idle_sd", {}), "", true)   # 回idle
+	u["_ninja_gliding"] = false                               # 冲刺(含落地)结束→放开触发
 
 func _sk_ninja_backstab(u: Dictionary, tgt: Dictionary) -> void: # 技三·背刺(1:1回合制 ninjaBackstab): +5穿甲5秒→闪现到【全场最远敌】身后→背刺【3段·每段300ms(hitStaggerMs)】各0.6667A物理(共2.0A)→留该处追砍
 	var far = null
@@ -10264,7 +10266,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		_chest_treasure_tick(u)
 	# --- 忍者·冲击(亚索E式被动auto-dash): 500码内有"可冲"敌(不在其10s冷却)且距上次冲刺≥0.4s → 自动朝最近敌冲刺斩(用户2026-07-06"半径500码，最近敌人") ---
 	if u["id"] == "ninja" and u.get("alive", false) and _t >= float(u.get("stun_until", 0.0)):
-		if _t - float(u.get("_ninja_last_dash", -99.0)) >= 0.4:
+		if _t - float(u.get("_ninja_last_dash", -99.0)) >= 0.4 and not u.get("_ninja_gliding", false):
 			var _nbest = null
 			var _nbd := 500.0
 			for o in _enemies_of(u):
