@@ -85,8 +85,8 @@ static func _review_demo() -> bool:
 	if OS.has_environment("REVIEW"):
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
-const REVIEW_TURTLE := "stone"             # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := -1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(被动审=让石头挨打堆岩层看体型增长)
+const REVIEW_TURTLE := "bamboo"             # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
+const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 500.0            # 假人固定血量
@@ -103,6 +103,7 @@ const REVIEW_DEMO_CFG := {
 	"stone:2": [ {"dx": 160.0, "dy": -70.0, "fixed": true}, {"dx": 160.0, "dy": 70.0, "fixed": true}, {"dx": 300.0, "dy": 0.0, "fixed": true} ],   # 岩石之躯震击: 前方带状3假人(都在±90带宽内·固定)→看横排扫击命中+击退
 	"stone:3": [ {"dx": 260.0, "dy": -150.0}, {"dx": 260.0, "dy": 150.0}, {"dx": 380.0, "dy": 0.0} ],   # 嘲讽: 3假人都在500码嘲讽+400码砸地范围内(不固定→被嘲讽后转头打石头, 3.5s砸地击飞)
 	"stone:-1": [ {"dx": 120.0, "dy": -70.0}, {"dx": 120.0, "dy": 70.0}, {"dx": 200.0, "dy": 0.0} ],   # 岩石之躯被动审: 3假人围上来持续打石头→石头堆岩层(体型+2%/层·减伤1%/层·上限30)看变大
+	"bamboo:0": [ {"dx": 100.0, "dy": 0.0} ],   # 竹叶一叶普攻: 单假人贴脸→看近战挥击 + 竹叶生长每6秒强化下一发(绿生命球飞回+成长)
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
