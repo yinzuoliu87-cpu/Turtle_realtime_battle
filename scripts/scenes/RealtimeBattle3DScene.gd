@@ -7524,7 +7524,7 @@ func _ninja_dash(u: Dictionary, target: Dictionary) -> void:    # 被动·冲击
 	if dir.length() < 1.0: dir = Vector2.RIGHT
 	dir = dir.normalized()
 	# ★#5修〖用户2026-07-11〗: 亚索 E 式【滑行穿过】(非瞬移), 滑速 600 码/秒. 450 码固定路径不变.
-	var endp: Vector2 = start + dir * 450.0
+	var endp: Vector2 = start + dir * 300.0                     # 冲刺距离 300码(用户2026-07-11: 450→300)
 	endp.x = clampf(endp.x, ARENA.position.x, ARENA.end.x)
 	endp.y = clampf(endp.y, ARENA.position.y, ARENA.end.y)
 	# 路径上的敌 (按沿路投影排序 → 滑到谁割谁)
@@ -7533,7 +7533,7 @@ func _ninja_dash(u: Dictionary, target: Dictionary) -> void:    # 被动·冲击
 		if not o.get("alive", false): continue
 		if not _on_line(start, dir, o["pos"], 62.0): continue
 		var proj: float = (o["pos"] - start).dot(dir)
-		if proj < 0.0 or proj > 450.0: continue
+		if proj < 0.0 or proj > 300.0: continue
 		hits.append({"o": o, "proj": proj, "done": false})
 	hits.sort_custom(func(a, b): return float(a["proj"]) < float(b["proj"]))
 	_bolt_line(start, endp, Color(0.7, 0.95, 1.0, 0.5))         # 冲刺残影(淡)
@@ -7549,10 +7549,24 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 	u["no_move"] = true
 	u["no_basic"] = true
 	var traveled := 0.0
+	# ★冲击特效(用户2026-07-11): 角色前方一道疾风拖影伴随滑行(fx-trail·贴地朝行进方向·每帧跟随身前)
+	var lead := Sprite3D.new()
+	lead.texture = load("res://assets/sprites/vfx/fx-trail.png")
+	lead.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+	lead.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	lead.axis = Vector3.AXIS_Y
+	lead.shaded = false; lead.transparent = true
+	lead.modulate = Color(0.72, 0.95, 1.0, 0.9)                # 疾风蓝白
+	var _lt := float(maxi(1, int(lead.texture.get_width())))
+	lead.pixel_size = (160.0 * WS) / _lt
+	lead.rotation.y = -atan2(dir.y, dir.x)                      # 朝行进方向
+	lead.position = _world_pos(start + dir * 60.0, 1.0)
+	_world.add_child(lead)
 	while traveled < total and u.get("alive", false) and is_inside_tree():
 		await get_tree().process_frame
 		traveled = minf(total, traveled + 600.0 * get_process_delta_time())   # 恒速 600 码/秒
 		u["pos"] = start + dir * traveled
+		if is_instance_valid(lead): lead.position = _world_pos(u["pos"] + dir * 60.0, 1.0)   # 拖影跟在身前
 		for h in hits:
 			if not h["done"] and traveled >= float(h["proj"]):
 				h["done"] = true
@@ -7565,6 +7579,10 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 	u["pos"] = endp
 	u["no_move"] = was_nm
 	u["no_basic"] = was_nb
+	if is_instance_valid(lead):                                # 冲刺结束→拖影淡出
+		var _lw := _reg_tween()
+		_lw.tween_property(lead, "modulate:a", 0.0, 0.14)
+		_lw.tween_callback(lead.queue_free)
 	_burst_vfx("res://assets/sprites/vfx/ninja-slash.png", u["pos"], 98.0, 1.0)   # 落点疾风斩弧
 
 func _sk_ninja_backstab(u: Dictionary, tgt: Dictionary) -> void: # 技二·背刺(封板): +5穿甲5秒→闪现到最远敌(后排C)身后→连刺3段共2.0A物理→留原地追砍
