@@ -266,6 +266,14 @@ var _sub: SubViewport
 var _projectiles: Array = []              # 飞行中的 3D 投射物 {node, from, to, tgt, dmg, magic, src, t, dur}
 var _lava_zones: Array = []               # 持续地面区域 (熔岩龟·岩浆池等) {center, radius, until, next_tick, src, disc}
 
+# --- 暂停 + 战斗日志 (R2b, 用户 2026-07-11) ---
+var _pause_panel: Control = null          # 暂停浮层(继续/重开/返回菜单), 默认隐; process_mode ALWAYS 保证暂停中可交互
+var _pause_btn: Button = null
+var _battle_log: Array = []               # 战斗日志 bbcode 行, 封顶 _LOG_CAP(参 soak 教训防无限增长)
+var _log_panel: Control = null            # 日志浮层(可滚动), 默认隐
+var _log_rt: RichTextLabel = null         # 日志文本(面板开着才实时追加)
+const _LOG_CAP := 200
+
 # --- 局内信息 UI (左右队头像框 + 点单位看详情面板; 纯 UI 不动玩法) ---
 var _team_panel_left: VBoxContainer = null    # 屏幕左侧头像框栏 (左队主龟)
 var _team_panel_right: VBoxContainer = null   # 屏幕右侧头像框栏 (右队主龟)
@@ -710,7 +718,7 @@ func _build_ui_layer() -> void:
 		vig.material = _make_vignette_material()   # canvas shader: 按 UV 半径算暗角 alpha (RGB 正确, 不露灰)
 		_ui_layer.add_child(vig)
 	var title := Label.new()
-	title.text = "2.5D 实时战斗 · 3v3 (左队 vs 右队)   [R 重开 · ESC 返回菜单]"
+	title.text = "2.5D 实时战斗 · 3v3 (左队 vs 右队)"
 	title.add_theme_font_size_override("font_size", 18)
 	title.add_theme_color_override("font_color", Color("#cfe6ff"))
 	title.position = Vector2(24, 16)
@@ -722,6 +730,157 @@ func _build_ui_layer() -> void:
 		_dl_hud.position = Vector2(340, 44); _dl_hud.size = Vector2(700, 24)
 		_dl_hud.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_ui_layer.add_child(_dl_hud)
+	_build_pause_log_ui()   # ⏸ 暂停 + 📜 日志 按钮/面板 (R2b)
+
+
+## ⏸ 暂停 + 📜 日志 顶栏按钮 + 两个默认隐藏面板. 按钮/面板 process_mode=ALWAYS → 暂停中仍可操作.
+func _build_pause_log_ui() -> void:
+	_pause_btn = Button.new()
+	_pause_btn.text = "⏸"
+	_pause_btn.position = Vector2(1208, 12); _pause_btn.size = Vector2(52, 38)
+	_pause_btn.add_theme_font_size_override("font_size", 22)
+	_style_hud_btn(_pause_btn)
+	_pause_btn.process_mode = Node.PROCESS_MODE_ALWAYS
+	_pause_btn.pressed.connect(_toggle_pause)
+	_ui_layer.add_child(_pause_btn)
+
+	var log_btn := Button.new()
+	log_btn.text = "📜"
+	log_btn.position = Vector2(1148, 12); log_btn.size = Vector2(52, 38)
+	log_btn.add_theme_font_size_override("font_size", 20)
+	_style_hud_btn(log_btn)
+	log_btn.process_mode = Node.PROCESS_MODE_ALWAYS
+	log_btn.pressed.connect(_toggle_log)
+	_ui_layer.add_child(log_btn)
+
+	_build_pause_panel()
+	_build_log_panel()
+
+
+## HUD 小按钮统一样式: 半透明深底 + 圆角 + hover 高亮.
+func _style_hud_btn(b: Button) -> void:
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	b.add_theme_color_override("font_color", Color("#dfeaf5"))
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.11, 0.16, 0.86)
+	sb.border_color = Color(0.4, 0.55, 0.72, 0.5)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(8)
+	b.add_theme_stylebox_override("normal", sb)
+	var sbh: StyleBoxFlat = sb.duplicate()
+	sbh.bg_color = Color(0.14, 0.19, 0.27, 0.94)
+	sbh.border_color = Color("#ffd86b")
+	b.add_theme_stylebox_override("hover", sbh)
+	b.add_theme_stylebox_override("pressed", sbh)
+	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+
+
+## 暂停浮层: 半透明黑幕 + 居中盒(继续/重开/返回菜单). 默认隐; process_mode ALWAYS(暂停中可点).
+func _build_pause_panel() -> void:
+	_pause_panel = Control.new()
+	_pause_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_pause_panel.size = Vector2(1280, 720)
+	_pause_panel.visible = false
+	_pause_panel.process_mode = Node.PROCESS_MODE_ALWAYS
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.62)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.size = Vector2(1280, 720)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP   # 吃掉点击(别穿到战斗)
+	_pause_panel.add_child(dim)
+	var title := Label.new()
+	title.text = "⏸ 已暂停"
+	title.add_theme_font_size_override("font_size", 46)
+	title.add_theme_color_override("font_color", Color("#ffe9a8"))
+	title.size = Vector2(1280, 70); title.position = Vector2(0, 236)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_pause_panel.add_child(title)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 24)
+	row.position = Vector2(0, 340); row.size = Vector2(1280, 50)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_pause_panel.add_child(row)
+	row.add_child(_make_result_btn("▶ 继续", Color("#7fe39a"), Color("#06301a"),
+		func() -> void: _toggle_pause()))
+	row.add_child(_make_result_btn("⚔ 重开", Color("#ffd93d"), Color("#3a2a00"),
+		func() -> void: get_tree().paused = false; get_tree().reload_current_scene()))
+	row.add_child(_make_result_btn("🏠 返回菜单", Color("#5aa0d8"), Color("#04121e"),
+		func() -> void: get_tree().paused = false; get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")))
+	_ui_layer.add_child(_pause_panel)
+
+
+## 暂停开关: 切 get_tree().paused + 显/隐暂停浮层. 结算后不响应.
+func _toggle_pause() -> void:
+	if _settled:
+		return
+	var p: bool = not get_tree().paused
+	get_tree().paused = p
+	if _pause_panel != null and is_instance_valid(_pause_panel):
+		_pause_panel.visible = p
+
+
+## 战斗日志浮层: 左下角可滚动富文本. 默认隐; process_mode ALWAYS.
+func _build_log_panel() -> void:
+	_log_panel = Panel.new()
+	_log_panel.position = Vector2(24, 300); _log_panel.size = Vector2(440, 380)
+	_log_panel.visible = false
+	_log_panel.process_mode = Node.PROCESS_MODE_ALWAYS
+	var psb := StyleBoxFlat.new()
+	psb.bg_color = Color(0.03, 0.05, 0.08, 0.92)
+	psb.border_color = Color(0.4, 0.55, 0.72, 0.5)
+	psb.set_border_width_all(2)
+	psb.set_corner_radius_all(8)
+	_log_panel.add_theme_stylebox_override("panel", psb)
+	var vb := VBoxContainer.new()
+	vb.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vb.offset_left = 12; vb.offset_top = 10; vb.offset_right = -12; vb.offset_bottom = -12
+	vb.add_theme_constant_override("separation", 6)
+	_log_panel.add_child(vb)
+	var hdr := Label.new()
+	hdr.text = "📜 战斗日志"
+	hdr.add_theme_font_size_override("font_size", 17)
+	hdr.add_theme_color_override("font_color", Color("#cfe6ff"))
+	vb.add_child(hdr)
+	_log_rt = RichTextLabel.new()
+	_log_rt.bbcode_enabled = true
+	_log_rt.scroll_active = true
+	_log_rt.scroll_following = true
+	_log_rt.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_log_rt.add_theme_font_size_override("normal_font_size", 14)
+	vb.add_child(_log_rt)
+	_ui_layer.add_child(_log_panel)
+
+
+## 日志开关: 显/隐面板; 打开时用累积的 _battle_log 重建文本.
+func _toggle_log() -> void:
+	if _log_panel == null or not is_instance_valid(_log_panel):
+		return
+	_log_panel.visible = not _log_panel.visible
+	if _log_panel.visible and _log_rt != null:
+		_log_rt.clear()
+		for line in _battle_log:
+			_log_rt.append_text(str(line) + "\n")
+
+
+## 追加一条战斗日志(bbcode). 封顶 _LOG_CAP 防无限增长; 面板开着才实时刷.
+func _log(bbcode: String) -> void:
+	_battle_log.append(bbcode)
+	if _battle_log.size() > _LOG_CAP:
+		_battle_log.remove_at(0)
+	if _log_panel != null and is_instance_valid(_log_panel) and _log_panel.visible and _log_rt != null:
+		_log_rt.append_text(bbcode + "\n")
+		while _log_rt.get_paragraph_count() > _LOG_CAP:
+			_log_rt.remove_paragraph(0)
+
+
+func _unit_name(u: Dictionary) -> String:
+	return str(u.get("name", u.get("id", "?")))
+
+func _log_side_hex(u: Dictionary) -> String:
+	return "#7fe39a" if u.get("side", "") == "left" else "#ff9a9a"
+
+func _skill_disp(stype: String) -> String:
+	return str((_skill_meta.get(stype, {}) as Dictionary).get("name", stype))
 
 # ============================================================================
 #  阵容 spawn — 读 GameState.season_leaders, 没有就 demo (1:1 复用 2D 解析)
@@ -5604,6 +5763,8 @@ func _kill(u: Dictionary, killer = null) -> void:
 				o["heal_reduce_pct"] = maxf(float(o.get("heal_reduce_pct", 0.0)), 0.5)
 		return
 	u["alive"] = false
+	if not u.get("is_summon", false) and not u.get("_isEgg", false):
+		_log("[color=#ff9a5a]☠ %s[/color] 被击败" % _unit_name(u))   # 战斗日志: 只记主龟阵亡(召唤体/蛋不刷屏)
 	if u.get("_isEgg", false):   # 龟蛋: 碎裂动画(替代普通死亡淡出), 胜负记账走 _dl_flow_check
 		_on_unit_death(u, killer)
 		_play_egg_shatter(u)
@@ -6396,6 +6557,7 @@ func _cast_skill(u: Dictionary, tgt: Dictionary, stype: String) -> bool:
 	# 施法技能不用飘空图标 (用户定): 技能视觉靠各自 _skill_ring/投射物/形变, 不浮贴图 billboard
 	# (原通用 _play_skill_vfx 飘空贴图已禁用 — 一张图标浮半空不贴 2.5D)
 	_do_skill(u, tgt, stype)
+	_log("[color=%s]✦ %s[/color] 施放 [color=#ffe08a]%s[/color]" % [_log_side_hex(u), _unit_name(u), _skill_disp(stype)])
 	return true
 
 # 技能 type → VFX 贴图名 (pets.json skillPool[].icon "skills/x.png" → "x"); 无则空串(回退签名)
@@ -10908,6 +11070,14 @@ func _show_banner(won: bool) -> void:
 	if _settled:
 		return
 	_settled = true
+	# 结算: 解除暂停态并禁用暂停按钮(结果屏不可暂停); 记一条日志.
+	if get_tree().paused:
+		get_tree().paused = false
+	if _pause_panel != null and is_instance_valid(_pause_panel):
+		_pause_panel.visible = false
+	if _pause_btn != null and is_instance_valid(_pause_btn):
+		_pause_btn.disabled = true
+	_log("[color=%s]%s[/color]" % ["#ffd93d" if won else "#ff6b6b", "🏆 战斗胜利!" if won else "💀 战斗失败!"])
 	# §AUDIO: 结算 — 败方放 defeat 音; BGM 淡出收尾.
 	if not won:
 		_sfx_simple("defeat")
@@ -10946,14 +11116,46 @@ func _show_banner(won: bool) -> void:
 	rew.size = Vector2(1280, 30); rew.position = Vector2(0, 350)
 	rew.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_ui_layer.add_child(rew)
-	var sub := Label.new()
-	sub.text = "[R 再战 · ESC 返回菜单]"
-	sub.add_theme_font_size_override("font_size", 18)
-	sub.add_theme_color_override("font_color", Color("#9fb6c9"))
-	sub.size = Vector2(1280, 26); sub.position = Vector2(0, 396)
-	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_ui_layer.add_child(sub)
+	# 结束操作按钮化 (用户 2026-07-11「不要点R/ESC, 要按钮」): 再战 / 返回菜单 两个 Button.
+	#   键盘 R/ESC 仍在 _unhandled_input 里作桌面快捷保留, 但不再显示文案(手机无键盘, 按钮为主).
+	var btn_row := HBoxContainer.new()
+	btn_row.add_theme_constant_override("separation", 28)
+	btn_row.position = Vector2(0, 392)
+	btn_row.size = Vector2(1280, 48)
+	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_ui_layer.add_child(btn_row)
+	btn_row.add_child(_make_result_btn("⚔ 再战", Color("#ffd93d"), Color("#3a2a00"),
+		func() -> void: get_tree().reload_current_scene()))
+	btn_row.add_child(_make_result_btn("🏠 返回菜单", Color("#5aa0d8"), Color("#04121e"),
+		func() -> void: get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")))
 	_build_stats_panel()             # #2 战斗统计面板
+
+
+## 结算按钮 (再战/返回菜单) — 圆角实色底 + 深字 + hover/pressed 态.
+func _make_result_btn(txt: String, bg: Color, fg: Color, cb: Callable) -> Button:
+	var b := Button.new()
+	b.text = txt
+	b.custom_minimum_size = Vector2(190, 46)
+	b.add_theme_font_size_override("font_size", 20)
+	b.add_theme_color_override("font_color", fg)
+	b.add_theme_color_override("font_hover_color", fg)
+	b.add_theme_color_override("font_pressed_color", fg)
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = bg
+	sb.set_corner_radius_all(10)
+	sb.content_margin_left = 20; sb.content_margin_right = 20
+	sb.content_margin_top = 8; sb.content_margin_bottom = 8
+	b.add_theme_stylebox_override("normal", sb)
+	var sbh: StyleBoxFlat = sb.duplicate()
+	sbh.bg_color = bg.lightened(0.15)
+	b.add_theme_stylebox_override("hover", sbh)
+	var sbp: StyleBoxFlat = sb.duplicate()
+	sbp.bg_color = bg.darkened(0.12)
+	b.add_theme_stylebox_override("pressed", sbp)
+	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	b.pressed.connect(cb)
+	return b
 
 # #2 伤害统计面板: 结算时显双方各龟 输出/承受/回复/护盾 (统计在 _apply_damage* / _heal / _grant_shield 累计)
 func _build_stats_panel() -> void:
