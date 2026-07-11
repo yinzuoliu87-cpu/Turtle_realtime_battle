@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "bamboo"             # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 2   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
+const REVIEW_SKILL_IDX := 3   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 500.0            # 假人固定血量
@@ -107,6 +107,7 @@ const REVIEW_DEMO_CFG := {
 	"bamboo:0": [ {"dx": 100.0, "dy": 0.0} ],   # 竹叶一叶普攻: 单假人贴脸→看近战挥击 + 竹叶生长每6秒强化下一发(绿生命球飞回+成长)
 	"bamboo:1": [ {"dx": 130.0, "dy": -70.0}, {"dx": 130.0, "dy": 70.0} ],   # 自然恢复: 2假人围打竹叶→掉血后放自愈(15%maxHp)看回血+治疗辉光(单龟无友军=无团队护盾)
 	"bamboo:2": [ {"dx": 130.0, "dy": 60.0, "fixed": true}, {"dx": 520.0, "dy": -120.0, "fixed": true} ],   # 竹击: 近假人拴住竹叶(近战打它) + 远假人(520码·钩最远)→看伸竹藤从远处拽贴身+眩晕冰寒
+	"bamboo:3": [ {"dx": 220.0, "dy": -70.0, "fixed": true}, {"dx": 220.0, "dy": 70.0, "fixed": true}, {"dx": 320.0, "dy": 0.0, "fixed": true} ],   # 竹刺阵: 3假人聚一起(都在300码内)→蓄力预警圈→竹刺齐爆+击飞1.5s
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -7283,12 +7284,20 @@ func _sk_bamboo_smack(u: Dictionary, tgt) -> void:              # 竹叶龟·竹
 	_apply_damage_from(u, far, _atk_dmg(u, 1.0, far), Color("#39d353"))
 	if not far.get("_eggImmune", false):                        # 蛋/免控只吃伤
 		far["stun_until"] = maxf(float(far.get("stun_until", 0.0)), _t + _cc_dur(far, 0.5))
-		var dir: Vector2 = (far["pos"] - u["pos"])
-		if dir.length() > 1.0:
-			far["pos"] = u["pos"] + dir.normalized() * 60.0    # 竹藤拉到贴身
 		_buff(far, "atk", -0.20, true, 4.0)                     # 冰寒-20%攻4秒
 		far["spd_move_mult"] = 0.8; far["spd_dbf_until"] = _t + 4.0   # 冰寒-20%移速4秒
-	_skill_ring(u["pos"], Color(0.22, 0.83, 0.33, 0.4), 54.0)   # 拉到脸上落点环(淡)
+		_hitstop = maxf(_hitstop, 0.05)                          # 抓住瞬间小顿(用户2026-07-11: 拽住得顿一下)
+		var ff = far
+		var uu := u
+		var pull_fn := func() -> void:                           # 顿0.2s后再拽贴身
+			if not ff.get("alive", false): return
+			var pd: Vector2 = ff["pos"] - uu["pos"]
+			if pd.length() > 1.0:
+				ff["pos"] = uu["pos"] + pd.normalized() * 60.0     # 竹藤拽到贴身
+			_bolt_line(uu["pos"], ff["pos"], Color(0.22, 0.83, 0.33))   # 收藤(收线感)
+			_impact_particles(ff["pos"], float(ff.get("height", 0.0)))
+			_skill_ring(uu["pos"], Color(0.22, 0.83, 0.33, 0.4), 54.0)   # 拉到脸上落点环
+		_pending_shots.append({"delay": 0.2, "src": u, "fn": pull_fn})
 
 func _sk_bamboo_spikes(u: Dictionary, tgt) -> void:            # 竹叶龟·竹刺阵(用户封板·130龟能·科加斯Q式): 当前目标为心300码·蓄力0.6s→竹刺·90%A+15%maxHp物理·击飞1.5s
 	if tgt == null: return
