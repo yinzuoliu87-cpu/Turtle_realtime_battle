@@ -9910,7 +9910,7 @@ func _apply_spawn_passives() -> void:
 					o["spd_aspd_mult"] = 0.7        # -30% 攻速
 					o["spd_echarge_mult"] = 0.7     # -30% 龟能充能速度
 					o["spd_move_mult"] = 0.7        # -30% 移速
-					o["spd_dbf_until"] = _t + 99999.0   # 登场全场(用户未定时长→默认永久)
+					o["spd_dbf_until"] = _t + 12.0   # 登场全场敌减速【12秒】(用户2026-07-11: 原永久改12秒)
 					_ice_chill_vfx(o["pos"])        # 敌人寒气蓝环
 					_flash(o, Color(0.6, 0.86, 1.0))   # 敌蓝闪
 			"headless":
