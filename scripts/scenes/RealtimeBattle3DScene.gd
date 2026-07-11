@@ -108,7 +108,7 @@ const REVIEW_DEMO_CFG := {
 	"bamboo:1": [ {"dx": 130.0, "dy": -70.0}, {"dx": 130.0, "dy": 70.0} ],   # 自然恢复: 2假人围打竹叶→掉血后放自愈(15%maxHp)看回血+治疗辉光(单龟无友军=无团队护盾)
 	"bamboo:2": [ {"dx": 130.0, "dy": 60.0, "fixed": true}, {"dx": 520.0, "dy": -120.0, "fixed": true} ],   # 竹击: 近假人拴住竹叶(近战打它) + 远假人(520码·钩最远)→看伸竹藤从远处拽贴身+眩晕冰寒
 	"bamboo:3": [ {"dx": 220.0, "dy": -70.0, "fixed": true}, {"dx": 220.0, "dy": 70.0, "fixed": true}, {"dx": 320.0, "dy": 0.0, "fixed": true} ],   # 竹刺阵: 3假人聚一起(都在300码内)→蓄力预警圈→竹刺齐爆+击飞1.5s
-	"angel:0": [ {"dx": 320.0, "dy": 0.0, "fixed": true} ],   # 天使普攻: 远程(射程400)·单假人在射程内→站原地射圣光平A+审判(+11%目标当前HP魔法·蓝字)
+	"angel:0": [ {"dx": 220.0, "dy": -240.0, "fixed": true} ],   # 天使普攻: 远程(射程400)·假人放斜上方(非水平)→验尖尖波弹道随方向转(尖端领飞) + 审判蓝字
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -5450,14 +5450,20 @@ const _PROJ_WAVE := {"angel": true}   # 这些龟普攻弹道用尖尖能量波(
 func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, basic_onhit: bool = false) -> void:
 	var start2d: Vector2 = from if from != null else (src["pos"] if src != null else tgt["pos"])
 	var p := Sprite3D.new()
+	var oriented := false
 	if src is Dictionary and _PROJ_WAVE.get(str(src.get("id", "")), false):
 		p.texture = _make_wave_texture(col)
 		p.pixel_size = 0.045   # 尖尖波 52×20 → ~2.3×0.9m
 		p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+		oriented = true        # 尖尖波有朝向→贴XZ绕Y转向行进方向(否则billboard永远面镜头指右, 斜射/上下射方向错)
 	else:
 		p.texture = _make_bolt_texture(col)
 		p.pixel_size = 0.014
-	p.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	if oriented:
+		p.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+		p.axis = Vector3.AXIS_Y
+	else:
+		p.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	p.shaded = false
 	p.transparent = true
 	var world_from := _world_pos(start2d, 1.0)   # 从胸口高度出
@@ -5466,6 +5472,7 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 	_projectiles.append({
 		"node": p, "from": world_from, "tgt": tgt, "dmg": dmg, "col": col,
 		"src": src, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 700.0, 0.22, 0.7), "basic_onhit": basic_onhit,
+		"oriented": oriented,
 	})
 
 func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   # 玩偶小熊仔: 召出走路动画小熊→走向敌→踢击动画(伤+击飞)→消失
@@ -5538,6 +5545,10 @@ func _step_projectiles(delta: float) -> void:
 		node.position = pr["from"].lerp(to, frac)
 		if pr.has("arc"):
 			node.position.y += float(pr["arc"]) * sin(PI * frac)   # 抛物线拱起(火球等)
+		if pr.get("oriented", false):                              # 尖尖波: 绕Y转向行进方向(尖端领着飞)
+			var d3: Vector3 = to - node.position
+			if d3.length() > 0.05:
+				node.rotation.y = -atan2(d3.z, d3.x)
 		if frac >= 1.0:
 			node.queue_free()
 			if tgt["alive"]:
