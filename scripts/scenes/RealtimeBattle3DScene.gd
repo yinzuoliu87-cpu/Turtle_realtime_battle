@@ -2638,6 +2638,7 @@ func _tick_follow_vfx() -> void:
 func _tick_unit(u: Dictionary, delta: float) -> void:
 	# DoT/buff到期/累积条/周期被动 (1:1 2D _tick_effects)
 	_tick_effects(u, delta)
+	_update_shield_barrier(u)   # 石头岩石护盾: 持盾常驻六棱屏障(跟随), 盾破/到期碎裂淡出
 	_heal_flush(u)   # LoL式治疗累加器: 攒一波回血合并成一个绿字(满血=0)
 	if _t < float(u.get("candle_hot_until", 0.0)):   # 蜡烛光圈037: 圈内逐渐回血(HoT)
 		_heal(u, float(u.get("candle_hot_rate", 0.0)) * delta, true)
@@ -2772,6 +2773,8 @@ func _tick_skill_cd(u: Dictionary, delta: float) -> void:
 			cds[str(s)] = maxf(0.0, _skill_cd(u, str(s)) - _ie)   # 初始龟能: 满冷却 - 初始龟能折算
 	if _t < float(u.get("stun_until", 0.0)) or u.get("airborne", false) or _t < float(u.get("storm_until", 0.0)) or _t < float(u.get("energy_lock_until", 0.0)):
 		return   # 眩晕/击飞/风暴/显式龟能锁 → 龟能锁定不充(用户)
+	if _t < float(u.get("rock_shield_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0:
+		return   # 石头岩石护盾: 持盾期锁龟能不充能, 盾破/到期即恢复(用户2026-07-11) → 屏障消失=你就知道盾没了
 	var _ecm: float = maxf(1.0, float(u.get("echarge_mult", 1.0))) if _t < float(u.get("echarge_until", 0.0)) else 1.0   # 龟能充能加速buff(祝福等)
 	if _t < float(u.get("spd_dbf_until", 0.0)):
 		_ecm *= float(u.get("spd_echarge_mult", 1.0))   # 充能减速debuff(寒冰登场等)
@@ -4158,6 +4161,40 @@ func _shield_bubble(u: Dictionary) -> void:
 	t.tween_property(spr, "pixel_size", (105.0 * WS) / tw_w, 0.35)
 	t.tween_property(spr, "modulate:a", 0.0, 0.35)
 	t.chain().tween_callback(spr.queue_free)
+
+# 石头岩石护盾: 持盾期间常驻 LoL Barrier 式金色六棱护罩(跟随单位), 盾破/到期→碎裂淡出.
+# 每帧从 _tick_unit 调; 靠 rock_shield_until + shield>0 判活(与锁龟能同一判据).
+func _update_shield_barrier(u: Dictionary) -> void:
+	var active: bool = _t < float(u.get("rock_shield_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0
+	var spr = u.get("_barrier_spr", null)
+	var valid: bool = spr != null and is_instance_valid(spr)
+	if active and not valid:
+		var b := Sprite3D.new()
+		b.texture = load("res://assets/sprites/vfx/fx-hex-bubble.png")
+		b.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+		b.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		b.shaded = false; b.transparent = true
+		b.modulate = Color(1.0, 0.86, 0.34, 0.5)                    # LoL Barrier 金色六棱护罩
+		var tw := float(maxi(1, int(b.texture.get_width())))
+		b.pixel_size = (150.0 * WS) / tw
+		b.position = _world_pos(u["pos"], float(u.get("height", 0.0)) + 0.75)
+		_world.add_child(b)
+		var pt := create_tween().bind_node(b).set_loops()           # 呼吸脉动(绑节点→节点free自停)
+		pt.tween_property(b, "modulate:a", 0.30, 0.55).set_trans(Tween.TRANS_SINE)
+		pt.tween_property(b, "modulate:a", 0.52, 0.55).set_trans(Tween.TRANS_SINE)
+		_follow_vfx.append({"spr": b, "unit": u, "h": 0.75})
+		u["_barrier_spr"] = b
+		u["_barrier_pulse"] = pt
+	elif not active and valid:
+		u["_barrier_spr"] = null
+		var pulse = u.get("_barrier_pulse", null)                   # 先杀脉动循环(否则和淡出抢 modulate:a)
+		if pulse != null and is_instance_valid(pulse): pulse.kill()
+		u["_barrier_pulse"] = null
+		var s2 = spr
+		var bt := create_tween(); bt.set_parallel(true)             # 盾没了→护罩碎裂放大淡出(你就"知道盾消失了")
+		bt.tween_property(s2, "modulate:a", 0.0, 0.2)
+		bt.tween_property(s2, "pixel_size", s2.pixel_size * 1.35, 0.2)
+		bt.chain().tween_callback(s2.queue_free)
 
 # 全局: 被减速单位行走留短暂泥印(棕色泥渍, 贴地)
 func _mud_mark(pos2d: Vector2) -> void:
@@ -7003,7 +7040,8 @@ func _basic_slam_run(u: Dictionary, tgt: Dictionary, dir: Vector2, u_start: Vect
 
 func _sk_stone_rock_shield(u: Dictionary) -> void:               # 石头龟·岩石护盾(用户设计: 合并岩石护甲+磐石·100龟能): 全队盾0.2A+5%maxHp + 自身双抗+20%5秒
 	for o in _allies_of(u):
-		_grant_shield(o, u["atk"] * 0.2 + u["maxHp"] * 0.05, 4.0)   # 全队盾=0.2×石头ATK+5%【石头龟】最大生命(用户2026-07-10订死·每友军等量)·通用护盾4秒
+		_grant_shield(o, u["atk"] * 1.0 + u["maxHp"] * 0.06, 4.0)   # 全队盾=1×石头ATK+6%【石头龟】最大生命(用户2026-07-11: 0.2A+5%→1A+6%)·每友军等量·4秒
+		o["rock_shield_until"] = _t + 4.0                          # 标记"石头岩石护盾"来源: LoL式六棱屏障VFX + 锁龟能(持盾期不充能), 盾破/到期即释放(用户2026-07-11)
 		_skill_ring(o["pos"], Color(0.79, 0.64, 0.42, 0.45), 46.0)
 	_buff(u, "def", 0.2, true, 5.0)   # 自身护甲+20%(pct·5秒)
 	_buff(u, "mr", 0.2, true, 5.0)    # 自身魔抗+20%
