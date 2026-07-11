@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "ice"             # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 3   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
+const REVIEW_SKILL_IDX := -1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(寒冰被动极寒审=多假人看登场群体寒冻)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 500.0            # 假人固定血量
@@ -116,6 +116,7 @@ const REVIEW_DEMO_CFG := {
 	"ice:1": [ {"dx": 260.0, "dy": -60.0, "fixed": true}, {"dx": 260.0, "dy": 60.0, "fixed": true}, {"dx": 350.0, "dy": 0.0, "fixed": true} ],   # 寒冰冰霜: 3假人聚一簇(150码冰霜场覆盖)→看冰霜场环+落冰+圈内-25%魔抗+每0.5s跳伤
 	"ice:2": [ {"dx": 220.0, "dy": -240.0, "fixed": true} ],   # 寒冰冰封: 假人放斜上方→验冰锥弹道随方向转(尖端朝目标·不再水平) + 命中0.6魔法+冻结1.5s
 	"ice:3": [ {"dx": 200.0, "dy": 0.0, "fixed": true} ],   # 寒冰团队护盾(重设计): 单假人(200码·在250爆炸圈内)·单龟=独狼→自己20%maxHp冰盾·盾破/到期爆250码5A魔法
+	"ice:-1": [ {"dx": 250.0, "dy": -120.0}, {"dx": 250.0, "dy": 120.0}, {"dx": 380.0, "dy": 0.0} ],   # 寒冰被动极寒: 3假人→看登场群体寒爆+每敌蓝寒环+全场-30%攻速/移速/充能
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
