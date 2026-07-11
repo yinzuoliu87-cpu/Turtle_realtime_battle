@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "ninja"             # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
+const REVIEW_SKILL_IDX := -1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 500.0            # 假人固定血量
@@ -10270,7 +10270,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	if u["id"] == "ninja" and u.get("alive", false) and _t >= float(u.get("stun_until", 0.0)):
 		if _t - float(u.get("_ninja_last_dash", -99.0)) >= 0.4 and not u.get("_ninja_gliding", false):
 			var _nbest = null
-			var _nbd := 500.0
+			var _nbd := 290.0   # 被动冲击触发射程(用户2026-07-11: 500→290码; <冲刺距离300→冲刺会略穿过目标)
 			for o in _enemies_of(u):
 				if not o.get("alive", false): continue
 				if _t < float(o.get("_ninja_dash_until", 0.0)): continue
