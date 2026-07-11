@@ -6938,7 +6938,7 @@ func _slam_apply_damage(u: Dictionary, tgt: Dictionary, tmax: float) -> void:
 		_apply_damage_from(u, tgt, _atk_dmg(u, 0.7, tgt) + int(tmax * 0.26), Color("#ff9d5c"))
 	for o in _enemies_of(u):
 		if o == tgt or not o.get("alive", false): continue
-		if o["pos"].distance_to(tgt["pos"]) <= 250.0:
+		if o["pos"].distance_to(tgt["pos"]) <= 350.0:   # 范围 350码(用户2026-07-11: 250→350)
 			_apply_damage_from(u, o, _atk_dmg(u, 0.2, o) + int(tmax * 0.19), Color("#ff9d5c"))
 
 ## 过肩摔完整编排(#7·用户2026-07-11): 擒抱→双方跳空(_slam_voff)→空中反转180°(flip_v)→坠落→落地范围伤+大尘爆+震屏. 双方 _slam 冻结.
@@ -6949,9 +6949,9 @@ func _basic_slam_run(u: Dictionary, tgt: Dictionary, dir: Vector2, u_start: Vect
 	tgt["_slam"] = true
 	tgt["no_move"] = true
 	var e_start: Vector2 = tgt["pos"]
-	var T_GRAB := 0.12
-	var T_AIR := 0.28
-	var T_FALL := 0.16
+	var T_GRAB := 0.15
+	var T_AIR := 0.5   # 更慢(用户2026-07-11)
+	var T_FALL := 0.32
 	var total := T_GRAB + T_AIR + T_FALL
 	var el := 0.0
 	var flipped := false
@@ -6965,8 +6965,8 @@ func _basic_slam_run(u: Dictionary, tgt: Dictionary, dir: Vector2, u_start: Vect
 		elif el < T_GRAB + T_AIR:                           # ② 跳空 + 抡向落点 + 空中反转
 			p = (el - T_GRAB) / T_AIR
 			var hy := sin(p * PI * 0.5)                     # ease 上升到 apex
-			tgt["_slam_voff"] = Vector3(0.0, 1.7 * hy, 0.0)
-			u["_slam_voff"] = Vector3(0.0, 1.1 * hy, 0.0)
+			tgt["_slam_voff"] = Vector3(0.0, 2.7 * hy, 0.0)
+			u["_slam_voff"] = Vector3(0.0, 2.0 * hy, 0.0)
 			tgt["pos"] = u_start.lerp(land, p)              # 敌被抡向落点
 			u["pos"] = u_start - dir * (18.0 * sin(p * PI)) # 龟小后仰再回
 			if p > 0.45 and not flipped:                    # 空中反转180°(billboard→flip_v 上下颠倒)
@@ -6976,8 +6976,8 @@ func _basic_slam_run(u: Dictionary, tgt: Dictionary, dir: Vector2, u_start: Vect
 		else:                                               # ③ 坠落: 猛砸下
 			p = (el - T_GRAB - T_AIR) / T_FALL
 			var fall := 1.0 - p
-			tgt["_slam_voff"] = Vector3(0.0, 1.7 * fall, 0.0)
-			u["_slam_voff"] = Vector3(0.0, 1.1 * fall, 0.0)
+			tgt["_slam_voff"] = Vector3(0.0, 2.7 * fall, 0.0)
+			u["_slam_voff"] = Vector3(0.0, 2.0 * fall, 0.0)
 			tgt["pos"] = land
 			u["pos"] = land + dir * 45.0
 	# ④ 落地结算: 复位翻转/偏移 + 眩晕 + 范围伤 + 大尘爆 + 震屏
@@ -6991,9 +6991,12 @@ func _basic_slam_run(u: Dictionary, tgt: Dictionary, dir: Vector2, u_start: Vect
 		tgt["stun_until"] = maxf(float(tgt.get("stun_until", 0.0)), _t + _cc_dur(tgt, 0.5))   # 砸地眩晕0.5s
 		_flash(tgt)
 	_slam_apply_damage(u, tgt, tmax)
-	_shake(JUICE_SHAKE_HEAVY)
-	_burst_vfx("res://assets/sprites/vfx/dust-impact.png", land, 260.0, 0.5)      # 落地大尘爆
-	_burst_vfx("res://assets/sprites/vfx/fx-shock-ring.png", land, 300.0, 0.10)   # 范围冲击环(=250码伤害圈)
+	_shake(JUICE_SHAKE_BIG)                        # 大砸=大震屏(用户2026-07-11: 表现大范围砸击)
+	_hitstop = maxf(_hitstop, 0.1)                 # 顿帧(重量感)
+	_impact_particles(land, 0.0)                   # 落地碎屑迸发
+	_burst_vfx("res://assets/sprites/vfx/dust-impact.png", land, 520.0, 0.6)      # 落地大尘爆
+	_burst_vfx("res://assets/sprites/vfx/fx-shock-ring.png", land, 680.0, 0.14)   # 范围冲击环(=350码伤害圈)
+	_burst_vfx("res://assets/sprites/vfx/fx-shock-ring.png", land, 940.0, 0.32)   # 二道扩散环(大·慢)→强调大范围砸击
 	u["_slam"] = false
 	tgt["_slam"] = false
 	tgt["no_move"] = false
