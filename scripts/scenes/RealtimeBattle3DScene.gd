@@ -88,6 +88,7 @@ static func _review_demo() -> bool:
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "two_head"           # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
 const REVIEW_SKILL_IDX := 1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
+const REVIEW_EQUIP := ["p2eq_001", "p2eq_016", "p2eq_034"]   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 500.0            # 假人固定血量
@@ -1416,6 +1417,7 @@ func _spawn_dual_lane() -> void:
 	_inject_equipment()
 	_apply_spawn_passives()
 	_eq_apply_all_stats()
+	_build_team_panels()   # ★双路补建左右头像框(装备图标随之显示): 原只在非双路分支L1051调·双路早退绕过→装了装备头像框空白(用户2026-07-11 #5)
 	_dl_state = "place"   # 先进场内放置阶段(拖我方单位到位)→点「开打」才 fight
 	_dl_enter_place()
 
@@ -12914,6 +12916,17 @@ const DEMO_EQUIP := {
 
 # 装备注入: 玩家队(left)读 persistent_equipped; demo 阵容兜底塞测试装备.
 func _inject_equipment() -> void:
+	if _review_demo() and not _is_dual_lane_mode() and not OS.has_environment("EQDEMO_EQUIP") and not REVIEW_EQUIP.is_empty():
+		# 调试场加装备(baked·不用env·用户2026-07-11 #2): 给受审龟装 REVIEW_EQUIP → 看装备显示(左右头像框)+效果
+		for _ru in _units:
+			if str(_ru.get("side","")) == "left" and str(_ru.get("id","")) == _review_turtle():
+				var _rl: Array = []
+				for _eid in REVIEW_EQUIP:
+					_rl.append({"id": str(_eid), "star": 2})
+					_ru["eq_state"][str(_eid)] = {}
+				_ru["equips"] = _rl
+				break
+		return
 	if _review_demo() and not OS.has_environment("EQDEMO_EQUIP") and not _is_dual_lane_mode():
 		return                          # 评审: 受审龟裸装, 看纯内在数值 (装备演示 EQDEMO / 双路对局 例外, 要装上)
 	var gs = get_node_or_null("/root/GameState")
@@ -14735,7 +14748,8 @@ func _update_team_panels() -> void:
 # ----------------------------------------------------------------------------
 func _close_info_panel() -> void:
 	if _info_panel != null and is_instance_valid(_info_panel):
-		_info_panel.queue_free()
+		var _bg := _info_panel.get_parent()   # 面板的父=全屏灰底backdrop(ColorRect 0,0,0,.45)·必须一起free否则关面板后屏幕整个灰(用户2026-07-11)
+		(_bg if _bg != null and _bg is ColorRect else _info_panel).queue_free()
 	_info_panel = null
 	_selected_unit = null
 
