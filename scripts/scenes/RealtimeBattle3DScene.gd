@@ -88,7 +88,7 @@ static func _review_demo() -> bool:
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "two_head"           # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
 const REVIEW_SKILL_IDX := 1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
-const REVIEW_EQUIP := ["p2eq_001", "p2eq_016", "p2eq_034"]   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
+const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
@@ -3057,6 +3057,9 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	if u["id"] == "two_head":       # 双头(封板): 普攻随形态 — 远程1.2A物理(灵能弹)/近战0.9A物理(挥砍)
 		var _thsc: float = 0.9 if u["melee"] else 1.2
 		_emit_basic(u, tgt, _atk_dmg(u, _thsc, tgt), Color("#c0a0ff"), 0)
+		if str(u.get("_th_enh", "")) != "":                      # 双生强化普攻: 搬旧切形态那一下的伤害+效果(就这1下·用户2026-07-11 B案)
+			_two_head_enhanced_basic(u, tgt, str(u["_th_enh"]))
+			u["_th_enh"] = ""
 		_on_basic_hit(u, tgt)
 		return
 	if u["id"] == "cyber":          # 贯穿激光(封板): 1A物理·穿透目标飞到射程尽头·打穿一线所有敌(射程450)
@@ -8809,49 +8812,20 @@ func _two_head_deferred_cast(u: Dictionary, tgt, stype: String) -> void:
 	_cast_skill(u, tgt, stype)
 	_eq_on_cast(u, tgt)
 
-func _two_head_after_cast(u: Dictionary, tgt) -> void:          # 被动·双生(用户2026-07-11「不要瞬移」): 放完技一/二→切形态+属性互换+切换攻击+【平滑位移(跳/滑·非瞬移)】
+func _two_head_after_cast(u: Dictionary, tgt) -> void:          # 被动·双生(用户2026-07-11 B案): 切形态+挂"下1下强化普攻"; 近战不单独位移(锤击自带跳接近)/远程纯滑退到射程
 	var to_ranged: bool = u["melee"]
 	u["two_form"] = "ranged" if to_ranged else "melee"
 	_two_head_apply_melee(u, not to_ranged)
 	u["melee"] = not to_ranged
 	u["atk_range"] = 400.0 if to_ranged else 70.0
-	var et = (tgt if (tgt is Dictionary and tgt.get("alive", false)) else _nearest_enemy(u))   # 扑击/滑退瞄技能目标(在远程射程400内·用户2026-07-11)
+	u["_th_enh"] = "ranged" if to_ranged else "melee"          # 挂强化: 下1下普攻搬旧切形态那一下的伤害+效果(远程=1.4A物理+破甲 / 近战=0.6A魔法+1.1A盾)
 	if to_ranged:
-		_two_head_retreat(u, et)                                # 切远程: 先1.4A+破甲→平滑滑退350码(不瞬移)
-	else:
-		if et != null:
-			_two_head_pounce(u, et)                              # 切近战: 跳扑到目标身前→落地0.6A魔法+盾(不瞬移)
-		else:
-			_grant_shield(u, u["atk"] * 1.1, 4.0)
+		var et = (tgt if (tgt is Dictionary and tgt.get("alive", false)) else _nearest_enemy(u))
+		_two_head_retreat(u, et)                               # 切远程: 纯平滑滑退350码到射程(伤害/破甲已挪到强化普攻)
+	# 切近战: 不单独位移 — 锤击(_two_head_hammer)自带跳跃接近敌人
 
-# 双头·切近战跳扑(用户2026-07-11·原_dash_to瞬移→跳): 跳向目标身前55码→落地 0.6A魔法+获1.1A盾4s
-func _two_head_pounce(u: Dictionary, et: Dictionary) -> void:
-	var from2d: Vector2 = u["pos"]
-	var toward: Vector2 = et["pos"] - from2d
-	var dest: Vector2 = et["pos"] - (toward.normalized() if toward.length() > 1.0 else Vector2.RIGHT) * 55.0
-	dest.x = clampf(dest.x, ARENA.position.x, ARENA.end.x)
-	dest.y = clampf(dest.y, ARENA.position.y, ARENA.end.y)
-	u["_slam"] = true
-	u["_anim_lock_until"] = _t + 0.4
-	var tw := _reg_tween()
-	tw.tween_method(_two_head_slide_step.bind(u, from2d, dest), 0.0, 1.0, 0.3)   # 滑扑(dash冲进·非跳非瞬移·后面锤击才跳)
-	tw.tween_callback(_two_head_pounce_land.bind(u, et, dest))
-
-func _two_head_pounce_land(u: Dictionary, et: Dictionary, at2d: Vector2) -> void:
-	u["_slam_voff"] = Vector3.ZERO
-	u["_slam"] = false
-	u["pos"] = at2d
-	_shake(0.08)
-	_skill_ring(at2d, Color(0.72, 0.8, 1.0, 0.6), 62.0)        # 落地灵能环
-	if et.get("alive", false):
-		_apply_damage_from(u, et, _atk_dmg(u, 0.6, et, true), Color("#ffb05c"))
-	_grant_shield(u, u["atk"] * 1.1, 4.0)
-
-# 双头·切远程滑退(用户2026-07-11·原 pos= 瞬移→平滑滑): 先1.4A物理+破甲-25%4s→平滑滑退350码远离
-func _two_head_retreat(u: Dictionary, et: Dictionary) -> void:
-	if et != null:
-		_apply_damage_from(u, et, _atk_dmg(u, 1.4, et), Color("#c0d0ff"))
-		_buff(et, "def", -0.25, true, 4.0)                     # 破甲-25%护甲4秒
+# 双头·切远程纯滑退(用户2026-07-11 B案: 伤害/破甲挪到强化普攻, 这里只位移): 向远离目标方向平滑滑退350码
+func _two_head_retreat(u: Dictionary, et) -> void:
 	var from2d: Vector2 = u["pos"]
 	var away: Vector2 = Vector2.RIGHT
 	if et != null:
@@ -8863,8 +8837,20 @@ func _two_head_retreat(u: Dictionary, et: Dictionary) -> void:
 	u["_slam"] = true
 	u["_anim_lock_until"] = _t + 0.36
 	var tw := _reg_tween()
-	tw.tween_method(_two_head_slide_step.bind(u, from2d, dest), 0.0, 1.0, 0.32)   # 平滑滑退(无跳)
+	tw.tween_method(_two_head_slide_step.bind(u, from2d, dest), 0.0, 1.0, 0.32)
 	tw.tween_callback(_two_head_slide_end.bind(u))
+
+# 双生强化普攻(用户2026-07-11·就下1下·B案连伤害一起搬): 切形态挂的强化, 普攻命中时把旧"切形态那一下"的伤害+效果并进这次普攻
+func _two_head_enhanced_basic(u: Dictionary, tgt: Dictionary, form: String) -> void:
+	if form == "melee":
+		if tgt.get("alive", false):
+			_apply_damage_from(u, tgt, _atk_dmg(u, 0.6, tgt, true), Color("#ffb05c"))   # 近战强化: +0.6A魔法伤害
+		_grant_shield(u, u["atk"] * 1.1, 4.0)                                            # + 自己获 1.1×ATK 护盾(4s)
+		_skill_ring(u["pos"], Color(0.72, 0.8, 1.0, 0.6), 62.0)
+	else:
+		if tgt.get("alive", false):
+			_apply_damage_from(u, tgt, _atk_dmg(u, 1.4, tgt), Color("#c0d0ff"))          # 远程强化: +1.4A物理伤害
+			_buff(tgt, "def", -0.25, true, 4.0)                                          # + 命中目标 -25% 护甲(4s·破甲)
 
 func _two_head_slide_step(pf: float, u: Dictionary, from2d: Vector2, dest: Vector2) -> void:
 	u["pos"] = from2d.lerp(dest, pf)
