@@ -2645,6 +2645,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	_tick_effects(u, delta)
 	_update_shield_barrier(u)   # 石头岩石护盾: 持盾常驻六棱屏障(跟随), 盾破/到期碎裂淡出
 	_update_stun_vfx(u)         # 通用眩晕圈: 眩晕期间头顶火花星绕转(椭圆), 结束即撤
+	_update_bamboo_charge_dots(u)   # 竹叶蓄满: 双手两绿点(强化就绪指示)
 	_heal_flush(u)   # LoL式治疗累加器: 攒一波回血合并成一个绿字(满血=0)
 	if _t < float(u.get("candle_hot_until", 0.0)):   # 蜡烛光圈037: 圈内逐渐回血(HoT)
 		_heal(u, float(u.get("candle_hot_rate", 0.0)) * delta, true)
@@ -4259,6 +4260,58 @@ func _update_stun_vfx(u: Dictionary) -> void:
 				t.tween_property(ss, "modulate:a", 0.0, 0.14)
 				t.chain().tween_callback(ss.queue_free)
 		u["_stun_spr"] = []
+
+# 竹叶·蓄满强化指示: bamboo_charge 期间双手各一个绿点(跟随·放出即散). 每帧 _tick_unit 调.
+func _update_bamboo_charge_dots(u: Dictionary) -> void:
+	var active: bool = u["id"] == "bamboo" and u.get("bamboo_charge", false)
+	var arr: Array = u.get("_bamboo_dots", [])
+	var have: bool = not arr.is_empty() and is_instance_valid(arr[0])
+	if active and not have:
+		var tex := _make_glow_texture()
+		var tw := float(maxi(1, int(tex.get_width())))
+		var dots: Array = []
+		for a in [0.0, PI]:   # 右手(+X) / 左手(-X) 两侧, orbit_spd=0=固定横偏
+			var s := Sprite3D.new()
+			s.texture = tex
+			s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+			s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			s.shaded = false; s.transparent = true
+			s.modulate = Color(0.45, 1.0, 0.5, 0.95)   # 绿点
+			s.pixel_size = (24.0 * WS) / tw
+			s.position = _world_pos(u["pos"], float(u.get("height", 0.0)) + 0.55)
+			_world.add_child(s)
+			_follow_vfx.append({"spr": s, "unit": u, "h": 0.55, "orbit_r": 0.26, "orbit_a": a, "orbit_spd": 0.0})
+			dots.append(s)
+		u["_bamboo_dots"] = dots
+	elif not active and have:
+		for s in arr:
+			if is_instance_valid(s):
+				var ss = s
+				var t := _reg_tween(); t.set_parallel(true)
+				t.tween_property(ss, "modulate:a", 0.0, 0.12)                  # 放出→散
+				t.tween_property(ss, "pixel_size", ss.pixel_size * 1.9, 0.12)
+				t.chain().tween_callback(ss.queue_free)
+		u["_bamboo_dots"] = []
+
+# 竹叶强化命中: 敌人身上爆一下大淡绿命中特效(≈上半身大小·一下即散·用户2026-07-11).
+func _bamboo_hit_splash(tgt: Dictionary) -> void:
+	var tex := _make_glow_texture()
+	var tw := float(maxi(1, int(tex.get_width())))
+	var big: float = (170.0 * WS) / tw          # "很大"≈上半身大小(可调)
+	var sp := Sprite3D.new()
+	sp.texture = tex
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sp.shaded = false; sp.transparent = true
+	sp.modulate = Color(0.6, 1.0, 0.62, 0.0)    # 淡绿
+	sp.pixel_size = big * 0.55
+	sp.position = _world_pos(tgt["pos"], float(tgt.get("height", 0.0)) + 0.5)
+	_world.add_child(sp)
+	var t := _reg_tween(); t.set_parallel(true)
+	t.tween_property(sp, "pixel_size", big, 0.09).set_ease(Tween.EASE_OUT)   # 爆开
+	t.tween_property(sp, "modulate:a", 0.9, 0.05)
+	t.chain().tween_property(sp, "modulate:a", 0.0, 0.2)                     # 即散
+	t.chain().tween_callback(sp.queue_free)
 
 # 全局: 被减速单位行走留短暂泥印(棕色泥渍, 贴地)
 func _mud_mark(pos2d: Vector2) -> void:
@@ -9865,7 +9918,7 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 				_shake(0.06)
 				_impact_particles(tgt["pos"], float(tgt.get("height", 0.0)))   # 命中碎屑迸发
 				_flash(tgt, Color(0.5, 1.7, 0.65))                             # 敌绿闪(生长主题)
-				_flash(u, Color(0.5, 1.7, 0.65))                               # 竹叶龟自身绿闪(不灭之握=施法者全身绿光·非冲击环, 用户2026-07-11纠)
+				_bamboo_hit_splash(tgt)                                        # 命中: 敌人身上爆一下大淡绿命中特效(≈上半身大小·用户2026-07-11); 施法者tell=双手绿点(蓄满期), 不在命中闪
 				# 回血+永久成长 延到绿球落到竹叶龟身上才生效 (用户: 到自己身上才吸收)
 				_spawn_bamboo_orb(tgt["pos"], u["pos"], func() -> void:
 					if not u.get("alive", false):
