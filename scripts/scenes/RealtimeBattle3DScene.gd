@@ -8774,14 +8774,63 @@ func _two_head_hammer_land(u: Dictionary, tgt: Dictionary, at2d: Vector2, dmg: i
 	u["_slam_voff"] = Vector3.ZERO
 	u["_slam"] = false
 	u["pos"] = at2d
-	_shake(0.16)                                               # 落地震屏
-	_skill_ring(at2d, Color(1.0, 0.72, 0.38, 0.85), 96.0)      # 地面锤击冲击环
-	_skill_ring(at2d, Color(1.0, 0.85, 0.5, 0.6), 52.0)
-	_impact_particles(at2d, 0.08)                              # 落地尘爆
+	_two_head_slam_impact(at2d)                                # 高质量砸地冲击(AI星爆+三层环+尘+岩屑+顿帧+大震屏·用户2026-07-11)
 	if tgt.get("alive", false):
 		_apply_damage_from(u, tgt, dmg, Color("#ffb05c"))
 		_grant_shield(u, dmg * 0.5, 4.0)                        # 获造成伤害50%护盾(4秒)
 		_flash(tgt)
+
+
+# 高质量砸地冲击(用户2026-07-11「搞质量高的·AI跑特效」): AI冲击星爆(PixelLab生成) + 三层地面冲击波环 + 大尘爆 + 岩屑迸溅 + 顿帧 + 大震屏
+func _two_head_slam_impact(at2d: Vector2) -> void:
+	_shake(JUICE_SHAKE_BIG)
+	_hitstop = maxf(_hitstop, 0.06)
+	var burst := Sprite3D.new()                                # ① AI 冲击星爆(billboard·由小爆大→亮闪→褪)
+	burst.texture = load("res://assets/sprites/vfx/slam-impact.png")
+	burst.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	burst.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	burst.shaded = false; burst.transparent = true
+	burst.pixel_size = (300.0 * WS) / 128.0
+	burst.position = _world_pos(at2d, 0.7)
+	burst.modulate = Color(1.0, 0.96, 0.82, 1.0)
+	_world.add_child(burst)
+	var bt := _reg_tween()
+	bt.tween_property(burst, "scale", Vector3.ONE * 1.35, 0.13).from(Vector3.ONE * 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	bt.tween_interval(0.05)
+	bt.tween_property(burst, "modulate:a", 0.0, 0.22)
+	bt.tween_callback(burst.queue_free)
+	_skill_ring(at2d, Color(1.0, 0.72, 0.34, 0.92), 108.0)     # ② 地面冲击波环 ×3(依次外扩)
+	_skill_ring(at2d, Color(1.0, 0.86, 0.5, 0.6), 58.0)
+	var rtw := _reg_tween()
+	rtw.tween_interval(0.09)
+	rtw.tween_callback(_skill_ring.bind(at2d, Color(1.0, 0.58, 0.26, 0.5), 156.0))
+	_burst_vfx("res://assets/sprites/vfx/dust-impact.png", at2d, 230.0, 0.35)   # ③ 大尘爆
+	_slam_debris(at2d)                                         # ④ 岩屑迸溅
+	_impact_particles(at2d, 0.0)                               # ⑤ 冲击尘粒
+
+# 砸地岩屑: 灰褐碎块一次性向上+四散迸溅+重力回落(0.75s后回收)
+func _slam_debris(at2d: Vector2) -> void:
+	var ps := GPUParticles3D.new()
+	ps.amount = 16; ps.lifetime = 0.6; ps.one_shot = true; ps.explosiveness = 1.0; ps.local_coords = false
+	var mat := ParticleProcessMaterial.new()
+	mat.direction = Vector3(0, 1, 0); mat.spread = 60.0
+	mat.initial_velocity_min = 4.0; mat.initial_velocity_max = 9.0
+	mat.gravity = Vector3(0, -18.0, 0)
+	mat.scale_min = 0.6; mat.scale_max = 1.7
+	mat.color = Color(0.52, 0.44, 0.36, 1.0)
+	ps.process_material = mat
+	var dm := StandardMaterial3D.new()
+	dm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	dm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	dm.vertex_color_use_as_albedo = true
+	dm.albedo_color = Color(0.52, 0.44, 0.36, 1.0)
+	dm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	var qm := QuadMesh.new(); qm.size = Vector2(0.14, 0.14); qm.material = dm
+	ps.draw_pass_1 = qm
+	ps.position = _world_pos(at2d, 0.12)
+	_world.add_child(ps)
+	ps.emitting = true
+	var ftw := _reg_tween(); ftw.tween_interval(0.75); ftw.tween_callback(ps.queue_free)
 
 func _sk_two_head_disrupt(u: Dictionary, tgt) -> void:           # 双头·技能二 form-variant(封板): 远程=精神干扰(1.0A魔法+治疗削减50%5s+破盾50%) / 近战=吸收(0.6A+8%maxHp物理+回血40%A+18%已损)
 	if tgt == null: tgt = _nearest_enemy(u)
