@@ -86,7 +86,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "basic"             # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
+const REVIEW_SKILL_IDX := 2   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 500.0            # 假人固定血量
