@@ -37,6 +37,7 @@ const ATK_LUNGE_PCT := 0.22                # 近战命中踏步(前冲再回)时
 const ATK_LUNGE_MIN := 0.10
 const ATK_LUNGE_MAX := 0.30
 const ATK_LUNGE_AMP := 0.30                # 近战踏步幅度(米)
+const MELEE_ATK_RANGE_MIN := 100.0         # 近战最小攻击射程(用户2026-07-11: 原70→贴脸重叠·站位=射程×0.85, 100→站位85不挤; SEP_RADIUS 92 是站位上限)
 const CAST_WINDUP := 0.34                   # 技能前摇(蓄力, 比普攻久 → 有重量感)
 const CAST_RECOVER := 0.24                  # 技能后摇
 const _BASIC_RARITY_BONUS := {"C": 0.20, "B": 0.23, "A": 0.26, "S": 0.29, "SS": 0.32, "SSS": 0.34}   # 小龟不屈: 按目标稀有度
@@ -1810,7 +1811,7 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		"armor_pen": 0.0, "armor_pen_pct": 0.0, "magic_pen": 0.0, "magic_pen_pct": 0.0,
 		"heal_amp": 0.0, "shield_amp": 0.0, "damage_reduction": 0.0, "damage_amp": 0.0, "reflect": 0.0, "tenacity": 0.0,
 		"melee": bool(st[0]), "move_spd": float(st[1]),
-		"atk_interval": float(st[2]), "atk_range": float(st[3]),
+		"atk_interval": float(st[2]), "atk_range": (maxf(float(st[3]), MELEE_ATK_RANGE_MIN) if bool(st[0]) else float(st[3])),   # 近战射程抬到≥100(用户: 修贴脸重叠·远程不动)
 		"atk_cd": 0.0, "energy": 0.0, "alive": true,
 		# 选3 多技能: loadout 的非基础技(physical/magic 是普攻=自动) → 主动技轮转, 龟能满放下一个
 		"active_skills": ([] if (is_minion or is_egg) else _resolve_active_skills(id, side == "left")), "skill_idx": 0,
@@ -5343,7 +5344,7 @@ func _atk_dmg(u: Dictionary, scale: float, tgt: Dictionary, magic: bool = false)
 
 # 立绘前冲 (近战命中视觉) — billboard offset 微推再回 (朝镜头, 不用翻 facing)
 # 近战命中踏步: 朝目标前冲再回. 走渲染追加偏移 _atk_voff(每帧render叠加, 见 _juice_decay), 不tween spr.position(会被逐帧render覆盖)
-func _melee_lunge(u: Dictionary, tgt: Dictionary) -> void:
+func _melee_lunge(u: Dictionary, tgt: Dictionary, amp: float = ATK_LUNGE_AMP) -> void:
 	if tgt == null:
 		return
 	var d: Vector2 = tgt["pos"] - u["pos"]
@@ -5354,6 +5355,7 @@ func _melee_lunge(u: Dictionary, tgt: Dictionary) -> void:
 	var _ldur: float = clampf(float(u.get("atk_interval", 0.5)) * ATK_LUNGE_PCT, ATK_LUNGE_MIN, ATK_LUNGE_MAX)   # 踏步时长随攻速(快攻速踏步短, 同前摇)
 	u["_lunge_t"] = _ldur
 	u["_lunge_dur"] = _ldur
+	u["_lunge_amp"] = amp   # 踏步幅度(默认ATK_LUNGE_AMP; 竹叶强化发传更大→不灭之握式前冲)
 
 # ============================================================================
 #  3D 投射物 (远程普攻/技能): 小 billboard 球从攻击者飞向目标, 到达落伤.
@@ -9858,13 +9860,18 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 			if u.get("bamboo_charge", false):
 				u["bamboo_charge"] = false
 				_apply_damage_from(u, tgt, _mitigate(u, u["atk"] * (1.0 if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else 0.75) + u["maxHp"] * (0.13 if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else 0.08), tgt, true), Color("#9be7ff"), 0.0, false)   # 追击魔法·选竹击=强化生长(1.0A+13%maxHp)否则基础(0.75A+8%maxHp)·用户核对JS bambooCharged
-				_flash(tgt, Color(0.5, 1.7, 0.65))   # 充能追击: 敌受击改绿色闪光(生长主题, 用户)
+				_melee_lunge(u, tgt, 0.66)                                     # 不灭之握式: 强化发踏步加倍(0.30→0.66)明显扑上去
+				_hitstop = maxf(_hitstop, 0.06)                                # 顿帧=命中厚重感
+				_shake(0.06)
+				_impact_particles(tgt["pos"], float(tgt.get("height", 0.0)))   # 命中碎屑迸发
+				_flash(tgt, Color(0.5, 1.7, 0.65))                             # 敌绿闪(生长主题)
+				_skill_ring(tgt["pos"], Color(0.42, 1.0, 0.5, 0.7), 88.0)      # 绿冲击环(藤蔓缠绕感)
 				# 回血+永久成长 延到绿球落到竹叶龟身上才生效 (用户: 到自己身上才吸收)
 				_spawn_bamboo_orb(tgt["pos"], u["pos"], func() -> void:
 					if not u.get("alive", false):
 						return
 					_heal(u, u["maxHp"] * (0.12 if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else 0.08))
-					var _gr := (1.05 if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else 0.60); u["maxHp"] += u["base_atk"] * _gr; u["hp"] += u["base_atk"] * _gr; _recalc_stats(u))   # 永久+maxHp=系数×ATK(回合制bambooCharged·选竹击1.05/基础0.60·ATK不涨)
+					var _gr := (1.05 if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else 0.60); u["maxHp"] += u["base_atk"] * _gr; u["hp"] += u["base_atk"] * _gr; _recalc_stats(u); _flash(u, Color(0.5, 1.7, 0.65)); _skill_ring(u["pos"], Color(0.42, 1.0, 0.5, 0.6), 70.0))   # 永久+maxHp=系数×ATK + 吸收瞬间竹叶龟绿光/脚下绿环(得到生命·不灭之握感)
 		"rainbow":                                        # 棱镜(改造): 普攻附当前颜色效果(红真伤/蓝小盾/绿回血)
 			match int(u.get("prism_color", -1)):
 				0: _apply_damage_from(u, tgt, int(u["atk"] * 0.25), Color("#ff6b6b"), 0.0, true)   # 红: 额外真伤
@@ -10643,7 +10650,8 @@ func _juice_decay(delta: float) -> void:
 			u["_lunge_t"] = maxf(0.0, u["_lunge_t"] - delta)
 			var _ld: float = maxf(0.001, float(u.get("_lunge_dur", ATK_LUNGE_MIN)))
 			var _lp: float = 1.0 - float(u["_lunge_t"]) / _ld   # 0→1
-			u["_atk_voff"] = u.get("_lunge_dir", Vector3.ZERO) * (sin(_lp * PI) * ATK_LUNGE_AMP)
+			u["_atk_voff"] = u.get("_lunge_dir", Vector3.ZERO) * (sin(_lp * PI) * float(u.get("_lunge_amp", ATK_LUNGE_AMP)))
+			if u["_lunge_t"] <= 0.0: u["_lunge_amp"] = ATK_LUNGE_AMP   # 踏步结束→幅度复位(强化发的加大踏步用完即还原)
 		elif u.get("_atk_voff", Vector3.ZERO) != Vector3.ZERO:
 			u["_atk_voff"] = Vector3.ZERO
 
