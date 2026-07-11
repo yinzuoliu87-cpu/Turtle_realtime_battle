@@ -9865,13 +9865,13 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 				_shake(0.06)
 				_impact_particles(tgt["pos"], float(tgt.get("height", 0.0)))   # 命中碎屑迸发
 				_flash(tgt, Color(0.5, 1.7, 0.65))                             # 敌绿闪(生长主题)
-				_skill_ring(tgt["pos"], Color(0.42, 1.0, 0.5, 0.7), 88.0)      # 绿冲击环(藤蔓缠绕感)
+				_flash(u, Color(0.5, 1.7, 0.65))                               # 竹叶龟自身绿闪(不灭之握=施法者全身绿光·非冲击环, 用户2026-07-11纠)
 				# 回血+永久成长 延到绿球落到竹叶龟身上才生效 (用户: 到自己身上才吸收)
 				_spawn_bamboo_orb(tgt["pos"], u["pos"], func() -> void:
 					if not u.get("alive", false):
 						return
 					_heal(u, u["maxHp"] * (0.12 if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else 0.08))
-					var _gr := (1.05 if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else 0.60); u["maxHp"] += u["base_atk"] * _gr; u["hp"] += u["base_atk"] * _gr; _recalc_stats(u); _flash(u, Color(0.5, 1.7, 0.65)); _skill_ring(u["pos"], Color(0.42, 1.0, 0.5, 0.6), 70.0))   # 永久+maxHp=系数×ATK + 吸收瞬间竹叶龟绿光/脚下绿环(得到生命·不灭之握感)
+					var _gr := (1.05 if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else 0.60); u["maxHp"] += u["base_atk"] * _gr; u["hp"] += u["base_atk"] * _gr; _recalc_stats(u); _flash(u, Color(0.5, 1.7, 0.65)))   # 永久+maxHp=系数×ATK + 吸收瞬间竹叶龟再绿闪(得到生命·不灭之握=绿闪非环)
 		"rainbow":                                        # 棱镜(改造): 普攻附当前颜色效果(红真伤/蓝小盾/绿回血)
 			match int(u.get("prism_color", -1)):
 				0: _apply_damage_from(u, tgt, int(u["atk"] * 0.25), Color("#ff6b6b"), 0.0, true)   # 红: 额外真伤
