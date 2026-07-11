@@ -2816,7 +2816,11 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 						if u["id"] == "space" and float(u.get("star_energy", 0.0)) > 0.0:   # 星能: 施法后追加30%储存星能真伤
 							_apply_damage_from(u, tgt, int(u["star_energy"] * 0.30), Color("#ffffff"), 0.0, true)
 						if u["id"] == "two_head" and stype != "twoHeadFusion":   # 双生: 放完技能一/二→自动切形态+切换攻击+位移
-							_two_head_after_cast(u, tgt)
+							var _thd: float = 0.6 if u["melee"] else 0.4   # 顿一下: 近战锤击跳~0.42s→落地+顿; 远程发波→顿(用户2026-07-11 别立即衔接)
+							u["_anim_lock_until"] = _t + _thd
+							var _thu: Dictionary = u
+							var _tht = tgt
+							_pending_shots.append({"delay": _thd, "src": u, "fn": func(): _two_head_after_cast(_thu, _tht)})
 						if u["id"] == "shell":                   # 潜影: 自己放技能→破隐(下次普攻附破隐bonus)
 							_shell_break_stealth(u)
 					else:
@@ -8798,7 +8802,7 @@ func _two_head_after_cast(u: Dictionary, tgt) -> void:          # 被动·双生
 	_two_head_apply_melee(u, not to_ranged)
 	u["melee"] = not to_ranged
 	u["atk_range"] = 400.0 if to_ranged else 70.0
-	var et = _nearest_enemy(u)
+	var et = (tgt if (tgt is Dictionary and tgt.get("alive", false)) else _nearest_enemy(u))   # 扑击/滑退瞄技能目标(在远程射程400内·用户2026-07-11)
 	if to_ranged:
 		_two_head_retreat(u, et)                                # 切远程: 先1.4A+破甲→平滑滑退350码(不瞬移)
 	else:
