@@ -9744,8 +9744,8 @@ func _apply_spawn_passives() -> void:
 			"rainbow":
 				u["prism_color"] = _juice_rng.randi() % 3   # 开局即给棱镜色(修: 原-1致前6秒普攻无附色)
 			"stone":
-				if "rockShockwave" in _chosen_skill_types(u["id"], u["side"] == "left"):
-					u["stone_rockbody"] = true   # 岩石之躯(选此才有): 每受伤+1岩层(上限30)每层-1%受伤
+				if "rockShockwave" in _chosen_skill_types(u["id"], u["side"] == "left") or (_review_demo() and u["id"] == _review_turtle()):
+					u["stone_rockbody"] = true   # 岩石之躯(实战: 选rockShockwave技2才有·打包被动); 特效验收时给受审石头强制开→单独看被动体型增长
 			"ninja":
 				u["crit"] += 0.30; u["crit_dmg"] += 0.20; u["armor_pen"] += 8.0   # 忍术(基础被动)
 				if "ninjaShuriken" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 忍者足(技三打包·选中才有): +25%闪避+40%暴击
