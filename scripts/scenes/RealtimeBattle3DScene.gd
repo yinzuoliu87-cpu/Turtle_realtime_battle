@@ -119,7 +119,7 @@ const REVIEW_DEMO_CFG := {
 	"ice:-1": [ {"dx": 250.0, "dy": -120.0}, {"dx": 250.0, "dy": 120.0}, {"dx": 380.0, "dy": 0.0} ],   # 寒冰被动极寒: 3假人→看登场群体寒爆+每敌蓝寒环+全场-30%攻速/移速/充能
 	"ninja:0": [ {"dx": 130.0, "dy": 0.0} ],   # 忍者斩击普攻: 近战快攻(interval0.6)单假人→看斩击挥/踏步/2层流血/高暴击
 	"ninja:1": [ {"dx": 600.0, "dy": 0.0, "fixed": true} ],   # 忍者手里剑(远程2000码): 假人放600码(出冲击500码范围)→忍者站原地朝远处掷旋转飞镖·看真远程弹道
-	"ninja:2": [ {"dx": 340.0, "dy": -90.0, "fixed": true}, {"dx": 420.0, "dy": 0.0, "fixed": true}, {"dx": 340.0, "dy": 90.0, "fixed": true}, {"dx": 850.0, "dy": 0.0, "fixed": true} ],   # 忍者炸弹(400码半径): 前3假人聚一簇(落点400码内→受伤)+第4假人远置850码(圈外→不受伤·验半径截断)→看引信炸弹高拱抛向目标→落地爆炸帧动画+400码冲击波环+圈内红字/掉甲
+	"ninja:2": [ {"dx": 170.0, "dy": -75.0, "fixed": true}, {"dx": 250.0, "dy": 0.0, "fixed": true}, {"dx": 170.0, "dy": 75.0, "fixed": true}, {"dx": 650.0, "dy": 0.0, "fixed": true} ],   # 忍者炸弹(400码半径): 前3假人聚一簇居中(落点400码内→受伤)+第4假人远置650码(圈外→不受伤·验半径截断)→看引信炸弹抛向目标→落地爆炸帧动画(贴地不钻地)+400码冲击波环+圈内红字/掉甲
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -9316,8 +9316,8 @@ func _sk_ninja_bomb(u: Dictionary, tgt) -> void:
 	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	spr.shaded = false; spr.transparent = true
 	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	spr.pixel_size = (200.0 * WS) / 64.0      # 1:1 PoC setDisplaySize(220)
-	spr.position = _world_pos(u["pos"], 1.15)
+	spr.pixel_size = (150.0 * WS) / 64.0      # 炸弹/爆炸尺寸(3D里过大会钻地)
+	spr.position = _world_pos(u["pos"], 0.8)
 	_world.add_child(spr)
 	# 抛物线(3段弹跳)0.4s + 12帧动画1.2s播一次 (并行), 全播完(1.2s)销毁
 	var tw := _reg_tween()
@@ -9328,25 +9328,27 @@ func _sk_ninja_bomb(u: Dictionary, tgt) -> void:
 	# 引爆 @0.8s: 震屏 + 400码冲击波环 + 半径伤害 (帧动画此刻正到爆炸帧8)
 	var boom := _reg_tween()
 	boom.tween_interval(0.8)
-	boom.tween_callback(_bomb_explode.bind(u, land, opts))
+	boom.tween_callback(_bomb_explode.bind(spr, u, land, opts))
 
 func _bomb_arc(pf: float, spr: Sprite3D, from2d: Vector2, to2d: Vector2) -> void:
 	if not is_instance_valid(spr):
 		return
-	# 3段弹跳抛物线 (1:1 PoC ARC_PEAK -160/-55/-22 → 3D height 3.4/1.2/0.5); 水平线性推进
+	# 3段弹跳抛物线 (1:1 PoC ARC_PEAK -160/-55/-22 → 3D height); 水平线性推进; base 0.6=贴地飞(小炸弹球不钻地)
 	var arc: float
 	var sub: float
-	if pf < 0.5:      sub = pf / 0.5;           arc = 3.4
-	elif pf < 0.75:   sub = (pf - 0.5) / 0.25;  arc = 1.2
-	elif pf < 0.95:   sub = (pf - 0.75) / 0.20; arc = 0.5
+	if pf < 0.5:      sub = pf / 0.5;           arc = 2.6
+	elif pf < 0.75:   sub = (pf - 0.5) / 0.25;  arc = 1.0
+	elif pf < 0.95:   sub = (pf - 0.75) / 0.20; arc = 0.4
 	else:             sub = 1.0;                arc = 0.0
-	spr.position = _world_pos(from2d.lerp(to2d, pf), 1.0 + arc * 4.0 * sub * (1.0 - sub))
+	spr.position = _world_pos(from2d.lerp(to2d, pf), 0.6 + arc * 4.0 * sub * (1.0 - sub))
 
 func _bomb_anim(fv: float, spr: Sprite3D) -> void:
 	if is_instance_valid(spr):
 		spr.frame = mini(11, int(fv))          # 12帧播一次(0→11 不循环·1:1 PoC repeat:0)
 
-func _bomb_explode(u: Dictionary, at2d: Vector2, opts: Dictionary) -> void:
+func _bomb_explode(spr, u: Dictionary, at2d: Vector2, opts: Dictionary) -> void:
+	if is_instance_valid(spr):
+		spr.position = _world_pos(at2d, 1.3)   # ★爆炸中心抬到贴地(大火球底边≈地面·防中心太低被地面挡=钻地)
 	_shake(0.16)                               # 1:1 PoC cameras.shake(260)
 	# ★400码爆炸范围可视: 扩张冲击波环到 NINJA_BOMB_RADIUS + 内圈亮闪 → 看清波及范围
 	_skill_ring(at2d, Color(1.0, 0.55, 0.2, 0.9), NINJA_BOMB_RADIUS)

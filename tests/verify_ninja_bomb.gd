@@ -42,7 +42,7 @@ func _ready() -> void:
 
 	# ── A. 爆炸落地结算(直接调 _bomb_explode = _sk_ninja_bomb 抛物线到点后的回调; spr=null 跳精灵动画) ──
 	#   顺序: 圈内敌先施 -25%护甲(def 40→30) 再打伤害 → 每发 round(100×1.1 × (1-30/70)) = 63; 圈外敌 0
-	scene._bomb_explode(ninja, land, {"phys": 1.1, "defDown": 0.25, "color": Color("#ff9a3c")})
+	scene._bomb_explode(null, ninja, land, {"phys": 1.1, "defDown": 0.25, "color": Color("#ff9a3c")})
 	var t1: int = int(near1.get("_st_taken", 0))
 	var t2: int = int(near2.get("_st_taken", 0))
 	var tf: int = int(far1.get("_st_taken", 0))
