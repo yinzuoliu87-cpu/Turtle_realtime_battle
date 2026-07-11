@@ -80,10 +80,16 @@ func _lineup_ids() -> Array:
 
 # ─── 上部: 双路布阵 (上战场/下战场, 3统领+3小将分3+3; 点头像互换分路, 点小将切前/后排) ───
 func _build_lineup(_leaders: Array) -> void:
+	# ★#4 装备可发现性: 动态两步提示 — 选了装备就变绿告诉你"现在点龟装上", 没选就提示"先点下方装备".
 	var hdr := Label.new()
-	hdr.text = "双路布阵 — 点两像互换分路 · 小将[前/后]切类型 · 选背包装备点单位装备格=装(统领/小将都能装,点空格卸)"
-	hdr.add_theme_font_size_override("font_size", 13); hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
-	hdr.position = Vector2(60, 84); hdr.size = Vector2(620, 20); add_child(hdr)
+	if _sel_bench >= 0:
+		hdr.text = "✅ 已选装备 →  现在点任意【龟/小将的装备格】装上它  (点龟身满格 = 卸下)"
+		hdr.add_theme_color_override("font_color", Color("#7fe39a"))
+	else:
+		hdr.text = "装备步骤：① 点下方【背包装备】选中  →  ② 点上方【龟的装备格】装上  ·  点两龟互换分路"
+		hdr.add_theme_color_override("font_color", Color("#ffd93d"))
+	hdr.add_theme_font_size_override("font_size", 15)
+	hdr.position = Vector2(60, 82); hdr.size = Vector2(780, 22); add_child(hdr)
 	var lineup := GameState.get_dual_lineup()
 	for lane_info in [["上战场", "top", 116.0, Color("#ffd93d")], ["下战场", "bottom", 238.0, Color("#7fd0ff")]]:
 		var lname := str(lane_info[0]); var lkey := str(lane_info[1]); var ly := float(lane_info[2]); var lcol: Color = lane_info[3]

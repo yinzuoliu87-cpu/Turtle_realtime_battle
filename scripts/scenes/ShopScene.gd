@@ -67,12 +67,13 @@ func _rebuild() -> void:
 	bxp.pressed.connect(func(): if GameState.buy_season_xp(): _rebuild())
 	add_child(bxp)
 
-	var sub := Label.new(); sub.text = "10 卡货架 · 点卡购买 → 进背包 · 大轮等级越高越易出高费装备 (Lv%d)" % _shop_level()
+	var sub := Label.new(); sub.text = "10 卡货架 · 点卡购买 → 进背包 (Lv%d)" % _shop_level()
 	sub.add_theme_font_size_override("font_size", 16); sub.add_theme_color_override("font_color", Color("#9fb6c9"))
-	sub.position = Vector2(60, 92); sub.size = Vector2(900, 24); add_child(sub)
+	sub.position = Vector2(60, 90); sub.size = Vector2(400, 24); add_child(sub)
+	_build_odds_row()   # ★#2: 出货概率(云顶式)
 
 	var gx := 80.0
-	var gy := 140.0
+	var gy := 150.0
 	for i in range(_offer.size()):
 		var col := i % 5
 		var row := i / 5
@@ -83,6 +84,26 @@ func _rebuild() -> void:
 	rf.position = Vector2(W / 2.0 - 110, gy + 2 * (SLOT_H + 28) + 16); rf.size = Vector2(220, 48)
 	rf.pressed.connect(_on_refresh); add_child(rf)
 	_build_bench_preview()
+
+## ★#2 出货概率行(云顶式): 当前大轮等级下各费用档(1-5)的出货概率%. 每费用色=对应稀有度色, 0%淡显.
+func _build_odds_row() -> void:
+	var odds: Array = P2.shop_cost_odds(_shop_level())   # [费1% .. 费5%]
+	var cost_cols := ["#9aa0b0", "#4ade80", "#60a5fa", "#c084fc", "#fbbf24"]   # 费1-5: 普通灰/精良绿/稀有蓝/史诗紫/传说金
+	var row := HBoxContainer.new()
+	row.position = Vector2(60, 116); row.size = Vector2(760, 24)
+	row.add_theme_constant_override("separation", 14)
+	add_child(row)
+	var lbl := Label.new(); lbl.text = "出货概率"
+	lbl.add_theme_font_size_override("font_size", 15); lbl.add_theme_color_override("font_color", Color("#8aa0b4"))
+	row.add_child(lbl)
+	for c in range(5):
+		var pct: int = int(odds[c]) if c < odds.size() else 0
+		var chip := Label.new()
+		chip.text = "%d费 %d%%" % [c + 1, pct]
+		chip.add_theme_font_size_override("font_size", 16)
+		var cc := Color(cost_cols[c])
+		chip.add_theme_color_override("font_color", cc if pct > 0 else Color(cc.r, cc.g, cc.b, 0.28))
+		row.add_child(chip)
 
 ## 商店下部背包预览 (设计§十一: 显装备管理方便对照/3合1; 详细操作回背包页).
 func _build_bench_preview() -> void:
