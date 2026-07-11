@@ -6563,9 +6563,14 @@ func _pick_ready_skill(u: Dictionary) -> String:
 	return best
 
 const SEP_PUSH_SPD := 168.0                  # 软分离推开速度 (px/s; 每帧全单位) — 调快点更快散开不糊一起
-func _apply_separation_pass(delta: float) -> void:   # 每帧全单位软分离: 攻击/待机也摊开(不再只move态), 根治扎堆遮血条
+func _apply_separation_pass(delta: float) -> void:   # 每帧全单位软分离: 摊开防扎堆遮血条; 但已交战的近战定身不推(见下)
 	for u in _units:
 		if not u["alive"] or u.get("no_move", false) or u.get("airborne", false) or u.get("_slam", false) or u.get("roll_active", false):
+			continue
+		# ★用户2026-07-11「近战靠近后应停止移动、定身攻击、收手, 别一直挤」:
+		#   已进攻击射程(交战)的近战 → 完全不被分离推 → 贴脸定身开打(根治"打起来一直挤")。
+		var _mt = u.get("_sep_target")
+		if bool(u.get("melee", false)) and _mt is Dictionary and (_mt as Dictionary).get("alive", false) and u["pos"].distance_to((_mt as Dictionary)["pos"]) <= float(u.get("atk_range", 70.0)) + 10.0:
 			continue
 		var _st := str(u.get("state", "move"))
 		var _sepmul: float = 0.4 if _st == "windup" else 1.0   # 前摇大体钉住(不挤着冲)但给40%分离→防完全叠一起; 后摇(orb-walk自由)/移动=全分离

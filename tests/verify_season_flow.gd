@@ -25,6 +25,9 @@ func _ok(name: String, cond: bool, detail: String = "") -> void:
 
 func _ready() -> void:
 	await get_tree().process_frame
+	# ★隔离 debug REVIEW 覆盖: REVIEW_SKILL_IDX 常量可能被设成受审技(如特效验收设0)→ _resolve_chosen_index
+	#   会对受审龟强制返回该 idx, 干扰"所有龟 loadout 荣誉"断言。用 env 覆盖成 -1 关掉该覆盖(仅本测试进程)。
+	OS.set_environment("REVIEW_SKILL", "-1")
 	var gs = get_node_or_null("/root/GameState")
 	if gs != null:
 		gs.test_mode = true   # 阻断任何自动 save (双保险)
