@@ -12,6 +12,7 @@ extends RefCounted
 ## 文件 I/O (load_pool/save_pool) 是薄包装; rng 由调用方传入 → 确定可测.
 
 const POOL_PATH := "user://ghost_pool.json"
+const SEED_PATH := "res://data/ghost_seed.json"   # 内置 10 支策划队(按档分桶), 冷启动/老档无种子时并入
 const BUCKET_CAP := 50          # 每档桶封顶 (防无限增长, 旧的挤出)
 const _P2 = preload("res://scripts/engine/phase2_config.gd")
 
@@ -133,14 +134,42 @@ static func leaderboard(pool: Dictionary, self_name: String, self_eggs: int, lim
 
 # ─── 文件 I/O (薄包装, user://ghost_pool.json) ───
 static func load_pool(path: String = POOL_PATH) -> Dictionary:
-	if not FileAccess.file_exists(path):
+	var pool: Dictionary = {"brackets": {}}
+	if FileAccess.file_exists(path):
+		var f := FileAccess.open(path, FileAccess.READ)
+		if f != null:
+			var txt := f.get_as_text(); f.close()
+			var parsed = JSON.parse_string(txt)
+			if parsed is Dictionary:
+				pool = parsed
+	if not pool.has("brackets"):
+		pool["brackets"] = {}
+	_ensure_seeded(pool)   # 冷启动/老档无种子 → 并入内置策划队(幂等, 已并过不重复); 下次 upload_ghost 落盘
+	return pool
+
+## 内置种子池 (res:// 只读, 导出包里也在). 解析失败=空.
+static func _load_seed() -> Dictionary:
+	if not FileAccess.file_exists(SEED_PATH):
 		return {"brackets": {}}
-	var f := FileAccess.open(path, FileAccess.READ)
+	var f := FileAccess.open(SEED_PATH, FileAccess.READ)
 	if f == null:
 		return {"brackets": {}}
-	var txt := f.get_as_text(); f.close()
-	var parsed = JSON.parse_string(txt)
-	return parsed if parsed is Dictionary else {"brackets": {}}
+	var parsed = JSON.parse_string(f.get_as_text()); f.close()
+	if parsed is Dictionary and (parsed as Dictionary).has("brackets"):
+		return parsed
+	return {"brackets": {}}
+
+## pool 里若还没有 seed_ 开头的 ghost, 把种子队全并进去 (幂等: 重跑不重复; 只改内存, save 才落盘).
+static func _ensure_seeded(pool: Dictionary) -> void:
+	var brackets: Dictionary = pool.get("brackets", {})
+	for b in brackets.keys():
+		for g in brackets[b]:
+			if str((g as Dictionary).get("ghost_id", "")).begins_with("seed_"):
+				return
+	var seed := _load_seed()
+	for b in seed.get("brackets", {}).keys():
+		for g in seed["brackets"][b]:
+			pool_add(pool, g)
 
 static func save_pool(pool: Dictionary, path: String = POOL_PATH) -> void:
 	var f := FileAccess.open(path, FileAccess.WRITE)

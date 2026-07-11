@@ -1,0 +1,683 @@
+{
+  "_note": "内置 ghost 种子池(10 支策划队, 按匹配档 bracket 分桶). Backend.load_pool 冷启动/老档无种子时幂等并入. leaders(阵容)+profile(名/头像)+equipped(按档装备) 均生效: 战斗端 _dual_foe_lane 读 lane_assign 取该路 leaders 并挂 equipped 走 _dl_equips 管线应用. pet_levels 对手侧当前用玩家 season_level(未按 ghost 自身), loadouts 对手侧走默认签名技.",
+  "brackets": {
+    "0": [
+      {
+        "schema_ver": 1,
+        "ghost_id": "seed_0a",
+        "is_bot": false,
+        "bracket": 0,
+        "profile": {
+          "name": "新手渔夫",
+          "avatar": "basic",
+          "id": "SEED0A"
+        },
+        "leaders": [
+          "basic",
+          "stone",
+          "bamboo"
+        ],
+        "lane_assign": {
+          "top": [
+            "basic",
+            "stone"
+          ],
+          "bottom": [
+            "bamboo"
+          ]
+        },
+        "loadouts": {},
+        "equipped": {
+          "basic": [
+            {
+              "id": "p2eq_001",
+              "star": 1
+            }
+          ],
+          "stone": [
+            {
+              "id": "p2eq_001",
+              "star": 1
+            }
+          ],
+          "bamboo": [
+            {
+              "id": "p2eq_001",
+              "star": 1
+            }
+          ]
+        },
+        "pet_levels": {
+          "basic": 2,
+          "stone": 2,
+          "bamboo": 2
+        },
+        "season_total_battles": 1,
+        "season_eggs_killed": 3
+      },
+      {
+        "schema_ver": 1,
+        "ghost_id": "seed_0b",
+        "is_bot": false,
+        "bracket": 0,
+        "profile": {
+          "name": "浅滩过客",
+          "avatar": "ice",
+          "id": "SEED0B"
+        },
+        "leaders": [
+          "ice",
+          "ninja",
+          "angel"
+        ],
+        "lane_assign": {
+          "top": [
+            "ice",
+            "ninja"
+          ],
+          "bottom": [
+            "angel"
+          ]
+        },
+        "loadouts": {},
+        "equipped": {
+          "ice": [
+            {
+              "id": "p2eq_001",
+              "star": 1
+            }
+          ],
+          "ninja": [
+            {
+              "id": "p2eq_001",
+              "star": 1
+            }
+          ],
+          "angel": [
+            {
+              "id": "p2eq_001",
+              "star": 1
+            }
+          ]
+        },
+        "pet_levels": {
+          "ice": 2,
+          "ninja": 2,
+          "angel": 2
+        },
+        "season_total_battles": 1,
+        "season_eggs_killed": 5
+      }
+    ],
+    "1": [
+      {
+        "schema_ver": 1,
+        "ghost_id": "seed_1a",
+        "is_bot": false,
+        "bracket": 1,
+        "profile": {
+          "name": "珊瑚卫队",
+          "avatar": "diamond",
+          "id": "SEED1A"
+        },
+        "leaders": [
+          "ghost",
+          "diamond",
+          "fortune"
+        ],
+        "lane_assign": {
+          "top": [
+            "ghost",
+            "diamond"
+          ],
+          "bottom": [
+            "fortune"
+          ]
+        },
+        "loadouts": {},
+        "equipped": {
+          "ghost": [
+            {
+              "id": "p2eq_001",
+              "star": 1
+            },
+            {
+              "id": "p2eq_007",
+              "star": 1
+            }
+          ],
+          "diamond": [
+            {
+              "id": "p2eq_001",
+              "star": 1
+            },
+            {
+              "id": "p2eq_007",
+              "star": 1
+            }
+          ],
+          "fortune": [
+            {
+              "id": "p2eq_001",
+              "star": 1
+            },
+            {
+              "id": "p2eq_007",
+              "star": 1
+            }
+          ]
+        },
+        "pet_levels": {
+          "ghost": 3,
+          "diamond": 3,
+          "fortune": 3
+        },
+        "season_total_battles": 3,
+        "season_eggs_killed": 9
+      },
+      {
+        "schema_ver": 1,
+        "ghost_id": "seed_1b",
+        "is_bot": false,
+        "bracket": 1,
+        "profile": {
+          "name": "潮汐商会",
+          "avatar": "pirate",
+          "id": "SEED1B"
+        },
+        "leaders": [
+          "hunter",
+          "pirate",
+          "bubble"
+        ],
+        "lane_assign": {
+          "top": [
+            "hunter",
+            "pirate"
+          ],
+          "bottom": [
+            "bubble"
+          ]
+        },
+        "loadouts": {},
+        "equipped": {
+          "hunter": [
+            {
+              "id": "p2eq_001",
+              "star": 1
+            },
+            {
+              "id": "p2eq_007",
+              "star": 1
+            }
+          ],
+          "pirate": [
+            {
+              "id": "p2eq_001",
+              "star": 1
+            },
+            {
+              "id": "p2eq_007",
+              "star": 1
+            }
+          ],
+          "bubble": [
+            {
+              "id": "p2eq_001",
+              "star": 1
+            },
+            {
+              "id": "p2eq_007",
+              "star": 1
+            }
+          ]
+        },
+        "pet_levels": {
+          "hunter": 3,
+          "pirate": 3,
+          "bubble": 3
+        },
+        "season_total_battles": 3,
+        "season_eggs_killed": 12
+      }
+    ],
+    "2": [
+      {
+        "schema_ver": 1,
+        "ghost_id": "seed_2a",
+        "is_bot": false,
+        "bracket": 2,
+        "profile": {
+          "name": "暗礁赌徒",
+          "avatar": "gambler",
+          "id": "SEED2A"
+        },
+        "leaders": [
+          "dice",
+          "gambler",
+          "rainbow"
+        ],
+        "lane_assign": {
+          "top": [
+            "dice",
+            "gambler"
+          ],
+          "bottom": [
+            "rainbow"
+          ]
+        },
+        "loadouts": {},
+        "equipped": {
+          "dice": [
+            {
+              "id": "p2eq_007",
+              "star": 1
+            },
+            {
+              "id": "p2eq_003",
+              "star": 1
+            }
+          ],
+          "gambler": [
+            {
+              "id": "p2eq_007",
+              "star": 1
+            },
+            {
+              "id": "p2eq_003",
+              "star": 1
+            }
+          ],
+          "rainbow": [
+            {
+              "id": "p2eq_007",
+              "star": 1
+            },
+            {
+              "id": "p2eq_003",
+              "star": 1
+            }
+          ]
+        },
+        "pet_levels": {
+          "dice": 4,
+          "gambler": 4,
+          "rainbow": 4
+        },
+        "season_total_battles": 5,
+        "season_eggs_killed": 18
+      }
+    ],
+    "3": [
+      {
+        "schema_ver": 1,
+        "ghost_id": "seed_3a",
+        "is_bot": false,
+        "bracket": 3,
+        "profile": {
+          "name": "机械神教",
+          "avatar": "cyber",
+          "id": "SEED3A"
+        },
+        "leaders": [
+          "cyber",
+          "crystal",
+          "chest"
+        ],
+        "lane_assign": {
+          "top": [
+            "cyber",
+            "crystal"
+          ],
+          "bottom": [
+            "chest"
+          ]
+        },
+        "loadouts": {},
+        "equipped": {
+          "cyber": [
+            {
+              "id": "p2eq_003",
+              "star": 2
+            },
+            {
+              "id": "p2eq_009",
+              "star": 1
+            }
+          ],
+          "crystal": [
+            {
+              "id": "p2eq_003",
+              "star": 2
+            },
+            {
+              "id": "p2eq_009",
+              "star": 1
+            }
+          ],
+          "chest": [
+            {
+              "id": "p2eq_003",
+              "star": 2
+            },
+            {
+              "id": "p2eq_009",
+              "star": 1
+            }
+          ]
+        },
+        "pet_levels": {
+          "cyber": 5,
+          "crystal": 5,
+          "chest": 5
+        },
+        "season_total_battles": 8,
+        "season_eggs_killed": 26
+      }
+    ],
+    "4": [
+      {
+        "schema_ver": 1,
+        "ghost_id": "seed_4a",
+        "is_bot": false,
+        "bracket": 4,
+        "profile": {
+          "name": "星界游侠",
+          "avatar": "space",
+          "id": "SEED4A"
+        },
+        "leaders": [
+          "space",
+          "hiding",
+          "headless"
+        ],
+        "lane_assign": {
+          "top": [
+            "space",
+            "hiding"
+          ],
+          "bottom": [
+            "headless"
+          ]
+        },
+        "loadouts": {},
+        "equipped": {
+          "hiding": [
+            {
+              "id": "p2eq_003",
+              "star": 2
+            },
+            {
+              "id": "p2eq_009",
+              "star": 2
+            },
+            {
+              "id": "p2eq_006",
+              "star": 1
+            }
+          ],
+          "headless": [
+            {
+              "id": "p2eq_003",
+              "star": 2
+            },
+            {
+              "id": "p2eq_009",
+              "star": 2
+            },
+            {
+              "id": "p2eq_006",
+              "star": 1
+            }
+          ],
+          "space": [
+            {
+              "id": "p2eq_003",
+              "star": 2
+            },
+            {
+              "id": "p2eq_009",
+              "star": 2
+            },
+            {
+              "id": "p2eq_006",
+              "star": 1
+            }
+          ]
+        },
+        "pet_levels": {
+          "hiding": 6,
+          "headless": 6,
+          "space": 6
+        },
+        "season_total_battles": 14,
+        "season_eggs_killed": 35
+      }
+    ],
+    "5": [
+      {
+        "schema_ver": 1,
+        "ghost_id": "seed_5a",
+        "is_bot": false,
+        "bracket": 5,
+        "profile": {
+          "name": "龟壳军团",
+          "avatar": "shell",
+          "id": "SEED5A"
+        },
+        "leaders": [
+          "shell",
+          "two_head",
+          "candy"
+        ],
+        "lane_assign": {
+          "top": [
+            "shell",
+            "two_head"
+          ],
+          "bottom": [
+            "candy"
+          ]
+        },
+        "loadouts": {},
+        "equipped": {
+          "shell": [
+            {
+              "id": "p2eq_006",
+              "star": 2
+            },
+            {
+              "id": "p2eq_014",
+              "star": 2
+            }
+          ],
+          "two_head": [
+            {
+              "id": "p2eq_006",
+              "star": 2
+            },
+            {
+              "id": "p2eq_014",
+              "star": 2
+            }
+          ],
+          "candy": [
+            {
+              "id": "p2eq_006",
+              "star": 2
+            },
+            {
+              "id": "p2eq_014",
+              "star": 2
+            }
+          ]
+        },
+        "pet_levels": {
+          "shell": 7,
+          "two_head": 7,
+          "candy": 7
+        },
+        "season_total_battles": 20,
+        "season_eggs_killed": 48
+      }
+    ],
+    "6": [
+      {
+        "schema_ver": 1,
+        "ghost_id": "seed_6a",
+        "is_bot": false,
+        "bracket": 6,
+        "profile": {
+          "name": "熔火宗师",
+          "avatar": "phoenix",
+          "id": "SEED6A"
+        },
+        "leaders": [
+          "phoenix",
+          "lava",
+          "lightning"
+        ],
+        "lane_assign": {
+          "top": [
+            "phoenix",
+            "lava"
+          ],
+          "bottom": [
+            "lightning"
+          ]
+        },
+        "loadouts": {},
+        "equipped": {
+          "phoenix": [
+            {
+              "id": "p2eq_006",
+              "star": 2
+            },
+            {
+              "id": "p2eq_014",
+              "star": 3
+            },
+            {
+              "id": "p2eq_024",
+              "star": 2
+            }
+          ],
+          "lava": [
+            {
+              "id": "p2eq_006",
+              "star": 2
+            },
+            {
+              "id": "p2eq_014",
+              "star": 3
+            },
+            {
+              "id": "p2eq_024",
+              "star": 2
+            }
+          ],
+          "lightning": [
+            {
+              "id": "p2eq_006",
+              "star": 2
+            },
+            {
+              "id": "p2eq_014",
+              "star": 3
+            },
+            {
+              "id": "p2eq_024",
+              "star": 2
+            }
+          ]
+        },
+        "pet_levels": {
+          "phoenix": 8,
+          "lava": 8,
+          "lightning": 8
+        },
+        "season_total_battles": 30,
+        "season_eggs_killed": 62
+      }
+    ],
+    "7": [
+      {
+        "schema_ver": 1,
+        "ghost_id": "seed_7a",
+        "is_bot": false,
+        "bracket": 7,
+        "profile": {
+          "name": "海渊霸主",
+          "avatar": "diamond",
+          "id": "SEED7A"
+        },
+        "leaders": [
+          "diamond",
+          "cyber",
+          "phoenix"
+        ],
+        "lane_assign": {
+          "top": [
+            "diamond",
+            "cyber"
+          ],
+          "bottom": [
+            "phoenix"
+          ]
+        },
+        "loadouts": {},
+        "equipped": {
+          "diamond": [
+            {
+              "id": "p2eq_014",
+              "star": 3
+            },
+            {
+              "id": "p2eq_024",
+              "star": 3
+            },
+            {
+              "id": "p2eq_059",
+              "star": 2
+            }
+          ],
+          "cyber": [
+            {
+              "id": "p2eq_014",
+              "star": 3
+            },
+            {
+              "id": "p2eq_024",
+              "star": 3
+            },
+            {
+              "id": "p2eq_059",
+              "star": 2
+            }
+          ],
+          "phoenix": [
+            {
+              "id": "p2eq_014",
+              "star": 3
+            },
+            {
+              "id": "p2eq_024",
+              "star": 3
+            },
+            {
+              "id": "p2eq_059",
+              "star": 2
+            }
+          ]
+        },
+        "pet_levels": {
+          "diamond": 9,
+          "cyber": 9,
+          "phoenix": 9
+        },
+        "season_total_battles": 40,
+        "season_eggs_killed": 80
+      }
+    ]
+  }
+}

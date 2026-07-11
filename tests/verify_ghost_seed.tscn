@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/verify_ghost_seed.gd" id="1_gs"]
+
+[node name="VerifyGhostSeed" type="Node"]
+script = ExtResource("1_gs")

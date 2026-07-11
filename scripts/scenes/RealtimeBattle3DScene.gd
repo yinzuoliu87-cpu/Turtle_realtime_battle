@@ -1418,12 +1418,27 @@ func _dl_survivor_specs(side_lr: String) -> Array:
 			return s
 	return [{"kind": "leader", "id": "basic"}]   # 兜底(理论不会到)
 
-# 对手当前路阵容: ghost 快照优先(dual_ghost[lane]), 否则 bot(2龟+1前排小将). P5 接真匹配.
+# 对手当前路阵容: 匹配抽到的 ghost 快照(lane_assign 该路 leaders + 各自 equipped) → 否则 bot(2龟+1前排小将).
+#   ★对手装备按档位生效: 从 dual_ghost.equipped[pet] 取, 挂到 spec["equips"] → _spawn_lane_side 转 _dl_equips → _inject_equipment 应用.
 func _dual_foe_lane(lane: String) -> Array:
 	if GameState != null and GameState.dual_ghost is Dictionary:
 		var dg: Dictionary = GameState.dual_ghost
+		# 兼容老结构: dg[lane] 直接是单位规格数组
 		if dg.has(lane) and dg[lane] is Array and not (dg[lane] as Array).is_empty():
 			return dg[lane]
+		# ghost/bot 快照: lane_assign[lane] = 该路 pet_id 列表; equipped[pet] = 该龟装备
+		var la = dg.get("lane_assign", {})
+		if la is Dictionary and (la as Dictionary).get(lane) is Array and not ((la as Dictionary)[lane] as Array).is_empty():
+			var geq: Dictionary = dg.get("equipped", {}) if dg.get("equipped") is Dictionary else {}
+			var specs: Array = []
+			for pid in (la as Dictionary)[lane]:
+				var spec: Dictionary = {"kind": "leader", "id": str(pid)}
+				if geq.has(str(pid)) and geq[str(pid)] is Array:
+					spec["equips"] = (geq[str(pid)] as Array).duplicate(true)   # 对手按档装备
+				specs.append(spec)
+			specs.append({"kind": "minion", "role": "front"})   # 每路补1前排小将(同 bot 结构)
+			return specs
+	# 兜底 bot(无快照/冷启动)
 	var pool := ["stone", "ninja", "ghost", "ice", "diamond", "fortune", "bamboo", "angel"]
 	var off: int = 0 if lane == "top" else 3
 	return [
