@@ -30,7 +30,7 @@ func _ready() -> void:
 	var near2: Dictionary = scene._make_unit("basic", "right", Vector2(320, 460))   # 近
 	var far1: Dictionary = scene._make_unit("basic", "right", Vector2(670, 400))    # 远(~470=全场最远)
 	for d in [near1, near2, far1]:
-		d["base_def"] = 5.0; d["def"] = 5.0            # def5 + 背刺+5穿甲 → resist0 → mult1.0
+		d["base_def"] = 15.0; d["def"] = 15.0          # def15 + 背刺+15穿甲 → resist0 → mult1.0(验穿甲=15)
 		d["damage_reduction"] = 0.0; d["shield"] = 0.0
 		d["maxHp"] = 1000000.0; d["hp"] = 1000000.0
 		d["no_basic"] = true; d["no_move"] = true; d["move_spd"] = 0.0
@@ -40,7 +40,7 @@ func _ready() -> void:
 	# 放背刺 (tgt 传近的, 应自己重定向到最远的 far1)
 	scene._sk_ninja_backstab(ninja, near1)
 
-	_ok("获得+5穿甲", int(round(float(ninja.get("armor_pen", 0.0)))) == 5, "armor_pen=%.1f" % float(ninja.get("armor_pen", 0.0)))
+	_ok("获得+15穿甲", int(round(float(ninja.get("armor_pen", 0.0)))) == 15, "armor_pen=%.1f" % float(ninja.get("armor_pen", 0.0)))
 	var dist_far: float = ninja["pos"].distance_to(far1["pos"])
 	_ok("★闪现到【最远敌】身后(贴近far1≤80)", dist_far <= 80.0, "闪现后距far1=%.0f" % dist_far)
 
