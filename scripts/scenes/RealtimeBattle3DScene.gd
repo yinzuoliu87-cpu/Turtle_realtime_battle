@@ -2698,6 +2698,8 @@ func _tick_follow_vfx() -> void:
 			var ang: float = float(f["orbit_a"]) + _t * float(f["orbit_spd"])
 			base += Vector3(cos(ang) * float(f["orbit_r"]), 0.0, sin(ang) * float(f["orbit_r"]))
 		spr.position = base
+		if f.get("pulse", false):
+			spr.modulate.a = 0.32 + 0.16 * sin(_t * 3.2)   # 融合态光环呼吸脉冲
 
 func _tick_unit(u: Dictionary, delta: float) -> void:
 	# DoT/buff到期/累积条/周期被动 (1:1 2D _tick_effects)
@@ -8916,8 +8918,10 @@ func _absorb_mote_step(pf: float, mote, from2d: Vector2, to2d: Vector2) -> void:
 func _sk_two_head_fusion(u: Dictionary, tgt) -> void:            # 双头·技能三融合(封板): 主动魔法波(4段·物理80%+真实80%共1.6A); 锁形态/坚韧/合体近战属性在登场gate
 	if tgt == null: tgt = _nearest_enemy(u)
 	if tgt == null: return
-	for i in range(4):                                          # 4段交替弧形魔法波(物理紫/真实白)依次飞向目标·波到结算该段(用户2026-07-11 VFX)
+	var n: int = int(u.get("two_wave_count", 4))               # 波数量: 基础4段·每次释放+1累积到战斗结束(用户2026-07-11)
+	for i in range(n):                                          # n段交替弧形魔法波(物理紫/真实白)依次飞向目标·波到结算该段
 		_pending_shots.append({"delay": float(i) * 0.11, "src": u, "fn": _two_head_fusion_wave.bind(u, tgt, i % 2 == 1)})
+	u["two_wave_count"] = n + 1                                 # 后续释放波数量+1
 
 # 融合·魔法波: 一道弧形波(magic-wave AI图)从双头飞向目标, 到达时结算该段伤害+紫/白冲击环
 func _two_head_fusion_wave(u: Dictionary, tgt: Dictionary, is_true: bool) -> void:
@@ -8953,11 +8957,12 @@ func _two_head_fusion_wave_hit(u: Dictionary, tgt: Dictionary, is_true: bool, wv
 	if not tgt.get("alive", false):
 		return
 	if is_true:
-		_apply_damage_from(u, tgt, int(u["atk"] * 0.4), Color("#ffffff"), 0.0, true)   # 真实
+		_apply_damage_from(u, tgt, int(u["atk"] * 0.8), Color("#ffffff"), 0.0, true)   # 真实 0.8A(用户2026-07-11)
 		_skill_ring(tgt["pos"], Color(1.0, 1.0, 1.0, 0.5), 42.0)
 	else:
-		_apply_damage_from(u, tgt, _atk_dmg(u, 0.4, tgt), Color("#c39bff"))             # 物理(紫字)
+		_apply_damage_from(u, tgt, _atk_dmg(u, 0.8, tgt), Color("#c39bff"))             # 物理 0.8A(用户2026-07-11)
 		_skill_ring(tgt["pos"], Color(0.74, 0.46, 1.0, 0.5), 42.0)
+	_knockback(u, tgt, 0.0, 0.6, 0.4)                                                  # 附加一点击飞(轻·airborne守卫防过度juggle·用户2026-07-11)
 
 # 融合登场VFX(用户2026-07-11): 合体能量爆发(fusion-burst AI图) + 持续"融合态"光环(跟随+脉冲, 显示锁定/强化)
 func _two_head_fusion_onset(u: Dictionary) -> void:
@@ -8982,12 +8987,8 @@ func _two_head_fusion_onset(u: Dictionary) -> void:
 	aura.modulate = Color(0.72, 0.44, 1.0, 0.42)
 	aura.pixel_size = (98.0 * WS) / float(maxi(1, aura.texture.get_height()))
 	_world.add_child(aura)
-	_follow_vfx.append({"spr": aura, "unit": u, "h": 0.5})
+	_follow_vfx.append({"spr": aura, "unit": u, "h": 0.5, "pulse": true})   # 脉冲交给 _tick_follow_vfx(避免 set_loops 空目标报"infinite loop")
 	u["_fuse_aura"] = aura
-	var at := _reg_tween()
-	at.set_loops()
-	at.tween_property(aura, "modulate:a", 0.2, 0.9).set_trans(Tween.TRANS_SINE)
-	at.tween_property(aura, "modulate:a", 0.48, 0.9).set_trans(Tween.TRANS_SINE)
 
 func _two_head_deferred_cast(u: Dictionary, tgt, stype: String) -> void:
 	if not u.get("alive", false):
