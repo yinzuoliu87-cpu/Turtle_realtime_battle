@@ -86,8 +86,8 @@ static func _review_demo() -> bool:
 	if OS.has_environment("REVIEW"):
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
-const REVIEW_TURTLE := "angel"             # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(天使被动审判审=让它普攻看审判蓝字)
+const REVIEW_TURTLE := "ice"             # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
+const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 500.0            # 假人固定血量
@@ -112,6 +112,7 @@ const REVIEW_DEMO_CFG := {
 	"angel:1": [ {"dx": 300.0, "dy": 0.0, "fixed": true} ],   # 天使祝福: 单假人(天使打它)·单龟无友军→祝福自己(金圣环+1.2A护盾+30%攻速+30%龟能充能5秒)
 	"angel:2": [ {"dx": 300.0, "dy": 0.0, "fixed": true, "rarity": "S"} ],   # 天使平等: 单S级假人(触发审判光柱·需A+)→看2道圣光斩弧+从天而降审判光柱+吸血
 	"angel:3": [ {"dx": 300.0, "dy": 0.0, "fixed": true} ],   # 天使飞升: 单假人(天使打它)→反复放飞升(自增buff)看金光圣环+攻速逐次变快(永久叠加)
+	"ice:0": [ {"dx": 300.0, "dy": 0.0, "fixed": true} ],   # 寒冰普攻冰刺: 远程(射程400)单假人在射程内→看冰弹弹道+命中冰蓝
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -8146,7 +8147,7 @@ func _sk_angel_equality(u: Dictionary, tgt) -> void:
 			_bolt_line(u["pos"], tgt["pos"], Color(1.0, 0.92, 0.66))      # 金白斩弧曳光
 			_skill_ring(tgt["pos"], Color(1.0, 0.9, 0.6, 0.5), 44.0)
 			_apply_damage_from(u, tgt, _atk_dmg(u, 0.5, tgt, false), Color("#ffe9a8"), 0.10)   # 100%物理·10%吸血
-			_apply_damage_from(u, tgt, _mitigate(u, tgt["hp"] * 0.10, tgt, true), Color("#9be7ff"), 0.0, false)   # 审判(每段攻击命中都吃·独立结算不触发其他被动·用户2026-07-10"每次攻击都要吃")
+			_apply_damage_from(u, tgt, _mitigate(u, tgt["hp"] * 0.08, tgt, true), Color("#9be7ff"), 0.0, false)   # 审判(每段攻击命中都吃·独立结算不触发其他被动·用户2026-07-10"每次攻击都要吃")
 		})
 	# A级及以上→第3段从天而降审判光柱: (50%ATK + 目标已损生命10%)真伤·无视双抗·同10%吸血
 	if int(order.get(str(tgt.get("rarity", "C")), 0)) >= 2:
@@ -8156,7 +8157,7 @@ func _sk_angel_equality(u: Dictionary, tgt) -> void:
 			var lost: float = maxf(0.0, float(tgt["maxHp"]) - float(tgt["hp"]))
 			var tru: int = maxi(1, int(float(u["atk"]) * 0.5 + lost * 0.10))
 			_apply_damage_from(u, tgt, tru, Color(1.0, 0.96, 0.76), 0.10, true)   # 真伤无视双抗·10%吸血
-			_apply_damage_from(u, tgt, _mitigate(u, tgt["hp"] * 0.10, tgt, true), Color("#9be7ff"), 0.0, false)   # 光柱也带审判(用户2026-07-11:附带被动·10%当前HP)
+			_apply_damage_from(u, tgt, _mitigate(u, tgt["hp"] * 0.08, tgt, true), Color("#9be7ff"), 0.0, false)   # 光柱也带审判(用户2026-07-11:附带被动·10%当前HP)
 			_flash(tgt, Color(1.0, 0.96, 0.76))
 		})
 
@@ -9969,7 +9970,7 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 			_apply_damage_from(u, tgt, _mitigate(u, tgt["maxHp"] * 0.015, tgt, true), Color("#9bdcff"), 0.0, false)   # 水晶刺附1.5%目标最大生命魔法(吃魔抗·封板L559·原折进物理=类型错)
 			_crystal_stack(u, tgt, 1)   # 普攻叠1层结晶(满5引爆·封板)·与水晶球共享层数走同一helper(引爆改吃魔抗)
 		"angel":                                          # 审判: 每段攻击额外 +目标当前HP 11% 魔法
-			_apply_damage_from(u, tgt, _mitigate(u, tgt["hp"] * 0.10, tgt, true), Color("#9be7ff"), 0.0, false)   # 魔法(吃魔抗+蓝字), 原flat固定值绕魔抗+错色=bug
+			_apply_damage_from(u, tgt, _mitigate(u, tgt["hp"] * 0.08, tgt, true), Color("#9be7ff"), 0.0, false)   # 魔法(吃魔抗+蓝字), 原flat固定值绕魔抗+错色=bug
 		# gambler 多重打击改云顶剑士式连击(见状态机 _gambler_multi_cd), 不在这里追加
 		"bamboo":                                         # 生长(改造): 蓄力时下一发普攻强化(追加魔法+回血+永久成长)
 			if u.get("bamboo_charge", false):
