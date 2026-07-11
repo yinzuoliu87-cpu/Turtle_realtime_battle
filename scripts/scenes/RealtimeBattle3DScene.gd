@@ -5855,7 +5855,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		_float_text(u["pos"] + Vector2(0, -64), "亡灵!", Color("#9b6bff"))
 	if _t < float(u.get("deathfloor_until", 0.0)):
 		u["hp"] = maxf(1.0, u["hp"])
-	var _dt: String = "true" if raw else _last_dmg_type
+	var _dt: String = "true" if raw else ("magic" if _bkt == "mag" else "physical")   # ★飘字类型取【本次伤害真实col】(_bkt), 非全局_last_dmg_type: 远程弹道在飞时, 期间别的伤害(如冰霜场魔法跳)会覆写全局→物理普攻落地显蓝(用户2026-07-11抓出·我sim测的是_bkt桶对但飘字色走的这条)
 	var _ncol: Color = _VC.color_of(_VC.cls_for("damage", _dt, was_crit))   # 飘字按伤害类型统一取色 (物红/魔蓝/真白, 1:1 回合制)
 	var _jdir: float = 0.0
 	if src is Dictionary and src != u and src.has("pos"):
