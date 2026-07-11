@@ -80,6 +80,9 @@ var _detail_top: VBoxContainer = null
 var _detail_bottom: VBoxContainer = null
 var _start_btn: Button = null
 var _last_btn: Button = null
+## 大轮阵容锁定模式 (用户 2026-07-11): season_leaders 已有 3 龟 = 本大轮已锁定 →
+##   阵容不可改(灰显/点=只看), 仅 3选1 技能可切; 确认出战直接进匹配. 新赛季(过期清 season_leaders)才回到全选模式.
+var _roster_locked: bool = false
 
 # 入场 choreography + CTA 脉冲 (1:1 PoC index.html:328/659-687)
 var _ent_title: Control = null       # .screen-title
@@ -95,8 +98,16 @@ func _ready() -> void:
 		status_bar.text = "❌ DataRegistry 未加载"
 		push_error("[TeamSelect] DataRegistry 没加载!")
 		return
-	GameState.clear_team()
-	GameState.loadouts = {}
+	# 大轮已锁定? = season_leaders 已是有效 3 龟. 锁定→预填不清; 未锁(新赛季/首次)→清空全选.
+	_roster_locked = _season_roster_ready()
+	GameState.clear_team()                       # 归零 left_team/left_slots (内部 typed 赋值; 避免外部给 Array[String] 属性赋无类型 [] 崩)
+	if _roster_locked:
+		var _lead_typed: Array[String] = []
+		for _pid in GameState.season_leaders:
+			_lead_typed.append(str(_pid))
+		GameState.left_team = _lead_typed        # 供 _load_team 恢复锁定阵容; loadouts 不清(随赛季持久)
+	else:
+		GameState.loadouts = {}
 	# 像素字体主题 (m6x11 英文/数字 + CJK 回退, 1:1 PoC 字体栈) — tscn 之前没挂 theme,
 	#   所有 Label 落回 Godot 内置无衬线字 = 字体不对; 挂上后整棵浮层继承。
 	var ui_theme: Theme = load("res://assets/themes/default_theme.tres")
@@ -110,8 +121,21 @@ func _ready() -> void:
 	_build_ui()
 	_load_team()
 	_refresh_all()
+	if _roster_locked:
+		_flash_status("🔒 本大轮阵容已锁定 · 点龟查看并调整 3选1 技能 · 确认出战")
 	# 窗口 resize/全屏/最大化 → 重算背景 + 按新尺寸重建浮层 (PoC fitSelectStage 绑 resize; 之前缺 → 铺不满根因)
 	get_viewport().size_changed.connect(_on_resize)
+
+
+## 本大轮阵容是否已锁定 = season_leaders 已是有效的 REQUIRED_PETS 只已知龟 (新赛季 start_new_season 清空 → 回全选).
+func _season_roster_ready() -> bool:
+	if not (GameState.season_leaders is Array):
+		return false
+	var n := 0
+	for pid in GameState.season_leaders:
+		if DataRegistry.pet_by_id.has(str(pid)):
+			n += 1
+	return n == REQUIRED_PETS
 
 
 ## menu 平铺底 (1:1 PoC html.menu-bg-active::before/after) — 铺满窗口, 垫在 select-bg 舞台后面,
@@ -775,6 +799,8 @@ func _refresh_grid() -> void:
 
 	for pet in pets:
 		_grid_flow.add_child(_make_pet_card(pet))
+	# 锁定态: 候选池灰显(去强调) — 表明本大轮不能改阵容; 卡片仍可点=查看详情/调技能, 只是不入队.
+	_grid_flow.modulate = Color(1, 1, 1, 0.55) if _roster_locked else Color(1, 1, 1, 1)
 
 
 func _make_pet_card(pet: Dictionary) -> Control:
@@ -994,6 +1020,12 @@ func _make_rarity_badge(rarity: String, rcolor: Color, font_px: int = 11) -> Con
 
 
 func _refresh_confirm() -> void:
+	if _roster_locked:
+		_start_btn.disabled = false
+		_start_btn.text = "⚔ 确认出战"
+		if _last_btn != null:
+			_last_btn.disabled = true          # 锁定态禁"上次阵容"
+		return
 	var placed := 0
 	for t in team:
 		if t != null and not _is_special_mark(t):   # 特殊占位不计入 3 龟
@@ -1474,10 +1506,16 @@ func _toggle_skill(pid: String, idx: int) -> void:
 	if not (idx in unlocked):
 		_flash_status("该技能已锁定")   # 【不可达】等级解锁已移除(2026-07-10)
 		return
-	if idx != 1:                                        # 锁默认(Q2): 候选技未实装, 暂只能选默认签名技
-		_flash_status("候选技开发中, 当前锁定默认签名技")
+	# 3选1: idx1=默认签名技恒可选; idx2/3 候选需 impl:true(与按钮层 dev_locked L1250 同一门控)。
+	#   旧的 `if idx != 1` 一刀切拦截是陈旧死码, 与 impl 标记矛盾(28龟 idx2/3 全 impl:true) → 已拆, 改成逐技校验。
+	var pool: Array = pet.get("skillPool", [])
+	if idx < 0 or idx >= pool.size():
 		return
-	GameState.loadouts[pid] = idx                       # 4选1: 单选, 点哪个就替换成哪个
+	var sk: Dictionary = pool[idx]
+	if idx != 1 and not bool(sk.get("impl", false)):
+		_flash_status("该候选技开发中, 暂锁默认签名技")
+		return
+	GameState.loadouts[pid] = idx                       # 3选1: 单选, 点哪个就替换成哪个
 	_refresh_slots()
 	_refresh_confirm()
 	_refresh_detail()
@@ -1493,6 +1531,8 @@ func _set_detail_pet(pid: String) -> void:
 
 ## 点卡片: 有空槽则入队 (PoC onPickPet — 找首个空槽)
 func _on_pick_pet(pid: String) -> void:
+	if _roster_locked:
+		return   # 大轮锁定: 卡片点击只看详情(由 gui_input 的 _set_detail_pet 处理), 不入队
 	if pid in team:
 		return   # 已在队中, 只查看
 	var placed := 0
@@ -1522,6 +1562,10 @@ func _on_pick_pet(pid: String) -> void:
 ## 点槽: tap-to-swap (1:1 PoC onSlotClick TeamSelectScene.ts:1579) —
 ##   满槽首点=选中 / 再点同槽=取消+移除(mark不移) / 再点异满槽=互换 / 空槽=移已选龟来 或 toggle active
 func _on_slot_click(idx: int) -> void:
+	if _roster_locked:
+		if team[idx] != null and not _is_special_mark(team[idx]):
+			_set_detail_pet(str(team[idx]))   # 锁定态: 点槽=查看该龟(调技能), 不换位/不移除
+		return
 	var id = team[idx]
 	var is_mark: bool = id != null and _is_special_mark(id)
 	# === 满槽路径 ===
@@ -1612,6 +1656,8 @@ func _make_drag_preview(pet_id: String) -> Control:
 
 ## 卡片拖起 (drag_func; bind 顺序 → (at_pos, source, pet_id))
 func _card_drag(_at_pos: Vector2, source: Control, pet_id: String) -> Variant:
+	if _roster_locked:
+		return null   # 大轮锁定: 禁拖入
 	if pet_id == "":
 		return null
 	source.set_drag_preview(_make_drag_preview(pet_id))
@@ -1620,6 +1666,8 @@ func _card_drag(_at_pos: Vector2, source: Control, pet_id: String) -> Variant:
 
 ## 满槽拖起 (drag_func; bind → (at_pos, panel, idx)) — 拖的是该槽里的龟/占位 id
 func _slot_drag(_at_pos: Vector2, panel: Control, idx: int) -> Variant:
+	if _roster_locked:
+		return null   # 大轮锁定: 禁槽间换位
 	var id = team[idx]
 	if id == null:
 		return null
@@ -1639,6 +1687,8 @@ func _slot_drop(_at_pos: Vector2, data: Variant, idx: int) -> void:
 
 ## 拖放落点处理 (1:1 PoC onDropPet TeamSelectScene.ts:1160)
 func _on_drop_pet(pet_id: String, slot_idx: int) -> void:
+	if _roster_locked:
+		return   # 大轮锁定: 忽略任何落点(防拖放绕过)
 	var old_idx := team.find(pet_id)
 	var existing = team[slot_idx]
 	if existing == pet_id:
@@ -1681,6 +1731,9 @@ func _on_drop_pet(pet_id: String, slot_idx: int) -> void:
 
 
 func _on_clear_all() -> void:
+	if _roster_locked:
+		_flash_status("本大轮阵容已锁定 · 无法清空(新赛季才能重选)")
+		return
 	team = [null, null, null]
 	_selected_slot_idx = -1
 	_active_slot_idx = -1
@@ -1689,6 +1742,8 @@ func _on_clear_all() -> void:
 
 
 func _on_restore_last() -> void:
+	if _roster_locked:
+		return   # 大轮锁定: 禁"上次阵容"覆盖
 	var last := _read_last_lineup()
 	if not last.has("slotMap"):
 		return
