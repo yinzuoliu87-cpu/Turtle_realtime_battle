@@ -6965,8 +6965,8 @@ func _basic_slam_run(u: Dictionary, tgt: Dictionary, dir: Vector2, u_start: Vect
 		elif el < T_GRAB + T_AIR:                           # ② 跳空 + 抡向落点 + 空中反转
 			p = (el - T_GRAB) / T_AIR
 			var hy := sin(p * PI * 0.5)                     # ease 上升到 apex
-			tgt["_slam_voff"] = Vector3(0.0, 2.7 * hy, 0.0)
-			u["_slam_voff"] = Vector3(0.0, 2.0 * hy, 0.0)
+			tgt["_slam_voff"] = Vector3(0.0, 5.4 * hy, 0.0)
+			u["_slam_voff"] = Vector3(0.0, 4.0 * hy, 0.0)
 			tgt["pos"] = u_start.lerp(land, p)              # 敌被抡向落点
 			u["pos"] = u_start - dir * (18.0 * sin(p * PI)) # 龟小后仰再回
 			if p > 0.45 and not flipped:                    # 空中反转180°(billboard→flip_v 上下颠倒)
@@ -6976,8 +6976,8 @@ func _basic_slam_run(u: Dictionary, tgt: Dictionary, dir: Vector2, u_start: Vect
 		else:                                               # ③ 坠落: 猛砸下
 			p = (el - T_GRAB - T_AIR) / T_FALL
 			var fall := 1.0 - p
-			tgt["_slam_voff"] = Vector3(0.0, 2.7 * fall, 0.0)
-			u["_slam_voff"] = Vector3(0.0, 2.0 * fall, 0.0)
+			tgt["_slam_voff"] = Vector3(0.0, 5.4 * fall, 0.0)
+			u["_slam_voff"] = Vector3(0.0, 4.0 * fall, 0.0)
 			tgt["pos"] = land
 			u["pos"] = land + dir * 45.0
 	# ④ 落地结算: 复位翻转/偏移 + 眩晕 + 范围伤 + 大尘爆 + 震屏
