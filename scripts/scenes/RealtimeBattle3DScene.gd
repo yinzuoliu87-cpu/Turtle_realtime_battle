@@ -5849,7 +5849,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	if u.get("_review_dummy", false): u["hp"] = u["maxHp"]   # 训练靶: 受击即回满, 打不死不结算(看完整)
 	if not from_equip and d > 0.0: _ink_link_transfer(u, d)   # 连笔: 受伤30%以真实伤害传导给连接对象(附录B-05)
 	# §STATS: 战斗统计 — 输出归攻击者/承受归目标 (用显示数 dmg); 按伤害类型分桶(战中分段条用) + 暴击计数
-	var _bkt := _dmg_bucket(raw, col)
+	var _bkt: String = ("tru" if raw else ("mag" if _last_dmg_type == "magic" else "phy"))   # 伤害分桶=真实类型(_last_dmg_type/raw), 非col: col是主题色·大量物理攻击传偏蓝色(忍者冲击#9fe8ff/#cfd8e8等)→原按col.b>col.r误判成法术=统计条+飘字全蓝(用户2026-07-11抓出)
 	if src is Dictionary and src.has("side") and src != u:
 		src["_st_dealt"] = int(src.get("_st_dealt", 0)) + dmg
 		_st_add_type(src, "_st_dealt_by_type", _bkt, dmg)
