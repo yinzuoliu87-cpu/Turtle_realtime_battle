@@ -86,7 +86,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "stone"             # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 3   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
+const REVIEW_SKILL_IDX := -1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(被动审=让石头挨打堆岩层看体型增长)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 500.0            # 假人固定血量
@@ -102,6 +102,7 @@ const REVIEW_DEMO_CFG := {
 	"basic:3": [ {"dx": 120.0, "dy": 0.0, "fixed": true}, {"dx": 210.0, "dy": -150.0, "fixed": true}, {"dx": 210.0, "dy": 150.0, "fixed": true} ],   # 过肩摔: 1贴脸(grab目标)+2近flank(固定·看落地250码范围伤)
 	"stone:2": [ {"dx": 160.0, "dy": -70.0, "fixed": true}, {"dx": 160.0, "dy": 70.0, "fixed": true}, {"dx": 300.0, "dy": 0.0, "fixed": true} ],   # 岩石之躯震击: 前方带状3假人(都在±90带宽内·固定)→看横排扫击命中+击退
 	"stone:3": [ {"dx": 260.0, "dy": -150.0}, {"dx": 260.0, "dy": 150.0}, {"dx": 380.0, "dy": 0.0} ],   # 嘲讽: 3假人都在500码嘲讽+400码砸地范围内(不固定→被嘲讽后转头打石头, 3.5s砸地击飞)
+	"stone:-1": [ {"dx": 120.0, "dy": -70.0}, {"dx": 120.0, "dy": 70.0}, {"dx": 200.0, "dy": 0.0} ],   # 岩石之躯被动审: 3假人围上来持续打石头→石头堆岩层(体型+2%/层·减伤1%/层·上限30)看变大
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -7204,8 +7205,8 @@ func _sk_stone_taunt(u: Dictionary) -> void:                    # 石头龟·嘲
 			if o.get("alive", false) and o["pos"].distance_to(uu["pos"]) <= 400.0:
 				_apply_damage_from(uu, o, _atk_dmg(uu, 1.0, o, true), Color("#c8a878"))
 				if not o.get("airborne", false):
-						_knockback(uu, o, 80.0, 1.1)   # 击飞【1.0秒·峰高1.65】(用户2026-07-11: 2s→1s且高度-40%) — vy=6.0×1.1=6.6
-						o["knock_g"] = -13.2           # 配重力-13.2(而非默认-22)→ 滞空=2×6.6/13.2=1.0s·峰高=6.6²/(2×13.2)=1.65(解耦时长与抛高)
+						_knockback(uu, o, 80.0, 3.6111)   # 击飞【1.2秒·峰高6.5】(用户2026-07-11) — vy=6.0×3.6111=21.667
+						o["knock_g"] = -36.111            # 配重力-36.111→ 滞空=2×21.667/36.111=1.2s·峰高=21.667²/(2×36.111)=6.5(解耦时长与抛高)
 		_shake(0.06)
 	_pending_shots.append({"delay": 3.5, "fn": slam, "src": u})
 
