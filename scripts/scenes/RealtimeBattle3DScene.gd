@@ -89,6 +89,7 @@ static func _review_demo() -> bool:
 const REVIEW_TURTLE := "two_head"           # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
 const REVIEW_SKILL_IDX := 1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
 const REVIEW_EQUIP := ["p2eq_001", "p2eq_016", "p2eq_034"]   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
+const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 500.0            # 假人固定血量
@@ -1499,10 +1500,12 @@ func _dual_foe_lane(lane: String) -> Array:
 	]
 
 # ── 双路流程控制 (P4: 团灭→破蛋10s窗口→结束; P5 升级为 top→bottom→final 分路推进) ──
-func _dl_side_alive(side: String) -> int:   # 一侧存活非蛋非召唤单位数
+# 团灭判定排除的【惰性】召唤(否则续着卡死破蛋窗口); 战斗型召唤(大熊/海螺虫/骷髅/小将/机甲/浮游炮)算存活→用户2026-07-11「还在打召唤物别突然弹下一战场」
+const _DL_INERT_SUMMON := {"candybomb": true, "crystalball": true}
+func _dl_side_alive(side: String) -> int:   # 一侧存活非蛋·非惰性召唤 单位数(战斗型召唤算数·用户2026-07-11 #3)
 	var n := 0
 	for u in _units:
-		if not u.get("alive", false) or u.get("_isEgg", false) or u.get("is_summon", false):
+		if not u.get("alive", false) or u.get("_isEgg", false) or (u.get("is_summon", false) and _DL_INERT_SUMMON.has(str(u.get("summon_kind", "")))):
 			continue
 		# 赛博侵入被黑单位: 按【原阵营】计存活数(临时倒戈不算赛博方·也别把原阵营"抹空"→防提前判胜负)
 		var _eff_side: String = str(u.get("_hijack_orig_side", u.get("side", ""))) if u.get("hijacked", false) else str(u.get("side", ""))
@@ -12353,7 +12356,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	# 普通战斗模式: 点战场单位 (立绘头顶 unproject 命中) → 弹详情面板; 框上的点击由框自己的 gui_input 接.
 	if not DEBUG_EDIT or not _edit_mode:
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			var hit = _edit_unit_at_screen(event.position)   # 复用既有 unproject 命中 (dist<64px, 取最近)
+			# ★命中用 get_mouse_position()(与龟爪光标同源=手指位置), 不用 event.position:
+			#   安卓触摸时 event.position 会偏到龟爪【中心】(比爪尖/手指低约半个光标)→点不准(用户2026-07-11 #6)。桌面两者相等, 无影响。
+			var _cpos: Vector2 = get_viewport().get_mouse_position() if get_viewport() != null else event.position
+			var hit = _edit_unit_at_screen(_cpos)   # 复用既有 unproject 命中 (dist<64px, 取最近)
 			if hit != null:
 				_show_unit_info_panel(hit)
 		return
@@ -12922,7 +12928,7 @@ func _inject_equipment() -> void:
 			if str(_ru.get("side","")) == "left" and str(_ru.get("id","")) == _review_turtle():
 				var _rl: Array = []
 				for _eid in REVIEW_EQUIP:
-					_rl.append({"id": str(_eid), "star": 2})
+					_rl.append({"id": str(_eid), "star": REVIEW_EQUIP_STAR})
 					_ru["eq_state"][str(_eid)] = {}
 				_ru["equips"] = _rl
 				break
