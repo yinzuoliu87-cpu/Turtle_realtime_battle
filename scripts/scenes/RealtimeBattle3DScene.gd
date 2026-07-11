@@ -274,6 +274,19 @@ var _log_panel: Control = null            # 日志浮层(可滚动), 默认隐
 var _log_rt: RichTextLabel = null         # 日志文本(面板开着才实时追加)
 const _LOG_CAP := 200
 
+# --- 战中伤害统计面板 (R2c, 照回合制 DmgStatsPanel 样式: 4Tab×双列×分段条) ---
+var _dmg_stats_panel: Control = null      # 战中统计浮层(📊 切), 默认隐
+var _dmg_stats_cols: Array = []           # [左队 rows VBox, 右队 rows VBox]
+var _dmg_stats_tab: String = "dealt"      # 当前 Tab: dealt/taken/heal/shield
+var _dmg_tab_btns: Array = []             # [{btn, key}] 供 active 高亮
+# 分段条配色 (1:1 回合制 _ds_parts, alpha 同): 物理红 / 法术蓝 / 真实+DoT 白 / 治疗绿 / 护盾青
+const _DS_COL_PHY := Color(1, 0.267, 0.267, 0.6)
+const _DS_COL_MAG := Color(0.302, 0.671, 0.969, 0.6)
+const _DS_COL_TRU := Color(1, 1, 1, 0.6)
+const _DS_COL_HEAL := Color(0.024, 0.839, 0.627, 0.65)
+const _DS_COL_SHIELD := Color(0.345, 0.827, 1, 0.6)
+const _DS_TABS := [["dealt", "⚔ 造成"], ["taken", "🛡 承受"], ["heal", "💚 治疗"], ["shield", "🔵 护盾"]]
+
 # --- 局内信息 UI (左右队头像框 + 点单位看详情面板; 纯 UI 不动玩法) ---
 var _team_panel_left: VBoxContainer = null    # 屏幕左侧头像框栏 (左队主龟)
 var _team_panel_right: VBoxContainer = null   # 屏幕右侧头像框栏 (右队主龟)
@@ -752,6 +765,15 @@ func _build_pause_log_ui() -> void:
 	log_btn.process_mode = Node.PROCESS_MODE_ALWAYS
 	log_btn.pressed.connect(_toggle_log)
 	_ui_layer.add_child(log_btn)
+
+	var stats_btn := Button.new()
+	stats_btn.text = "📊"
+	stats_btn.position = Vector2(1088, 12); stats_btn.size = Vector2(52, 38)
+	stats_btn.add_theme_font_size_override("font_size", 20)
+	_style_hud_btn(stats_btn)
+	stats_btn.process_mode = Node.PROCESS_MODE_ALWAYS
+	stats_btn.pressed.connect(_on_dmg_stats_toggle)
+	_ui_layer.add_child(stats_btn)
 
 	_build_pause_panel()
 	_build_log_panel()
@@ -5482,6 +5504,7 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color) -> void:
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	if u.get("_review_dummy", false): u["hp"] = u["maxHp"]   # 训练靶: 受击即回满, 打不死不结算(看完整)
 	u["_st_taken"] = int(u.get("_st_taken", 0)) + dmg   # §STATS: 无来源伤害(DoT等)只计承受
+	_st_add_type(u, "_st_taken_by_type", "dot", dmg)    # 无来源=DoT 桶(分段条 真实+DoT 白)
 	_float_text(u["pos"] + Vector2(randf_range(-26.0, 26.0), -40.0 + randf_range(-10.0, 6.0)), str(dmg), col)   # 抖开: 多段/AOE 出伤飘字不重叠成糊团
 	# §AUDIO: 无来源伤害也出命中音 (非暴击); 护盾破→shield-break
 	if shield_before > 0.0 and u["shield"] <= 0.0:
@@ -5554,10 +5577,15 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	if u.get("_review_dummy", false): u["hp"] = u["maxHp"]   # 训练靶: 受击即回满, 打不死不结算(看完整)
 	if not from_equip and d > 0.0: _ink_link_transfer(u, d)   # 连笔: 受伤30%以真实伤害传导给连接对象(附录B-05)
-	# §STATS: 战斗统计 — 输出归攻击者/承受归目标 (用显示数 dmg)
+	# §STATS: 战斗统计 — 输出归攻击者/承受归目标 (用显示数 dmg); 按伤害类型分桶(战中分段条用) + 暴击计数
+	var _bkt := _dmg_bucket(raw, col)
 	if src is Dictionary and src.has("side") and src != u:
 		src["_st_dealt"] = int(src.get("_st_dealt", 0)) + dmg
+		_st_add_type(src, "_st_dealt_by_type", _bkt, dmg)
+		if was_crit:
+			src["_st_crit"] = int(src.get("_st_crit", 0)) + 1
 	u["_st_taken"] = int(u.get("_st_taken", 0)) + dmg
+	_st_add_type(u, "_st_taken_by_type", _bkt, dmg)
 	# headless 亡灵: 首次濒死→5秒内HP不降到1以下(免死), 5秒后正常死
 	if u["id"] == "headless" and u["hp"] <= 0.0 and not u.get("undead_used", false):
 		u["undead_used"] = true; u["deathfloor_until"] = _t + 5.0
@@ -5765,6 +5793,8 @@ func _kill(u: Dictionary, killer = null) -> void:
 	u["alive"] = false
 	if not u.get("is_summon", false) and not u.get("_isEgg", false):
 		_log("[color=#ff9a5a]☠ %s[/color] 被击败" % _unit_name(u))   # 战斗日志: 只记主龟阵亡(召唤体/蛋不刷屏)
+		if killer is Dictionary and killer.has("side"):
+			killer["_st_kills"] = int(killer.get("_st_kills", 0)) + 1   # §STATS: 击杀数归凶手(击杀主龟才计)
 	if u.get("_isEgg", false):   # 龟蛋: 碎裂动画(替代普通死亡淡出), 胜负记账走 _dl_flow_check
 		_on_unit_death(u, killer)
 		_play_egg_shatter(u)
@@ -11158,12 +11188,201 @@ func _make_result_btn(txt: String, bg: Color, fg: Color, cb: Callable) -> Button
 	return b
 
 # #2 伤害统计面板: 结算时显双方各龟 输出/承受/回复/护盾 (统计在 _apply_damage* / _heal / _grant_shield 累计)
+# ══════════════════════════════════════════════════════════════
+# §STATS 类型分桶辅助 + 战中伤害统计面板 (R2c, 1:1 回合制 DmgStatsPanel/battle_stats 样式)
+# ══════════════════════════════════════════════════════════════
+func _dmg_bucket(raw: bool, col: Color) -> String:
+	if raw:
+		return "tru"                              # 真实伤害(无视护甲) → 白桶(与 DoT 合并)
+	return "mag" if col.b > col.r else "phy"      # 蓝主导=法术(#4dabf7) / 否则物理(#ff4444)
+
+func _st_add_type(u: Dictionary, key: String, bucket: String, amt: int) -> void:
+	var d: Dictionary = u.get(key, {})
+	d[bucket] = int(d.get(bucket, 0)) + amt
+	u[key] = d
+
+## 某方(left/right)全部单位 (含召唤体单列一行, 排除中立=side 非 left/right).
+func _stat_units(side: String) -> Array:
+	var out: Array = []
+	for u in _units:
+		if u.get("side", "") == side:
+			out.append(u)
+	return out
+
+## 当前 Tab 的标量值 (排序/显示)
+func _ds_val(u: Dictionary, tab: String) -> int:
+	match tab:
+		"dealt": return int(u.get("_st_dealt", 0))
+		"taken": return int(u.get("_st_taken", 0))
+		"heal": return int(u.get("_st_heal", 0))
+		"shield": return int(u.get("_st_shield", 0))
+	return 0
+
+## 当前 Tab 的分段条 [[值,色],...] (1:1 回合制 _ds_parts): 造成/承受按类型三段, 治疗/护盾单段.
+func _ds_parts(u: Dictionary, tab: String) -> Array:
+	if tab == "dealt" or tab == "taken":
+		var bt: Dictionary = u.get("_st_dealt_by_type" if tab == "dealt" else "_st_taken_by_type", {})
+		return [
+			[int(bt.get("phy", 0)), _DS_COL_PHY],
+			[int(bt.get("mag", 0)), _DS_COL_MAG],
+			[int(bt.get("tru", 0)) + int(bt.get("dot", 0)), _DS_COL_TRU],
+		]
+	elif tab == "heal":
+		return [[int(u.get("_st_heal", 0)), _DS_COL_HEAL]]
+	return [[int(u.get("_st_shield", 0)), _DS_COL_SHIELD]]
+
+## stacked bar (1:1 回合制 _make_ds_bar): 高12/圆角4/裁切; 空轨 rgba(1,1,1,.05); 段按值 stretch_ratio; 余量透明露空轨.
+func _make_ds_bar(parts: Array, col_max: int) -> Control:
+	var wrap := Panel.new()
+	wrap.custom_minimum_size = Vector2(0, 12)
+	wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	wrap.clip_contents = true
+	var wsb := StyleBoxFlat.new()
+	wsb.bg_color = Color(1, 1, 1, 0.05)
+	wsb.set_corner_radius_all(4)
+	wrap.add_theme_stylebox_override("panel", wsb)
+	var hb := HBoxContainer.new()
+	hb.set_anchors_preset(Control.PRESET_FULL_RECT)
+	hb.add_theme_constant_override("separation", 0)
+	var used := 0
+	for part in parts:
+		var v: int = int(part[0])
+		if v <= 0:
+			continue
+		var seg := ColorRect.new()
+		seg.color = part[1]
+		seg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		seg.size_flags_stretch_ratio = float(v)
+		hb.add_child(seg)
+		used += v
+	var rem: int = maxi(0, col_max - used)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer.size_flags_stretch_ratio = maxf(0.0001, float(rem))
+	hb.add_child(spacer)
+	wrap.add_child(hb)
+	return wrap
+
+## 一行 (1:1 回合制 _make_ds_row): 名(左绿/右红, 召唤体缩进)+值 / 下方分段条; 阵亡整行半透.
+func _make_ds_row(u: Dictionary, side: String, col_max: int) -> Control:
+	var row := VBoxContainer.new()
+	row.add_theme_constant_override("separation", 3)
+	if not bool(u.get("alive", true)):
+		row.modulate.a = 0.4
+	var top := HBoxContainer.new()
+	var nm := Label.new()
+	nm.text = ("↳ " if u.get("is_summon", false) else "") + str(u.get("name", u.get("id", "")))
+	nm.add_theme_font_size_override("font_size", 15)
+	nm.add_theme_color_override("font_color", Color("#06d6a0") if side == "left" else Color("#ff6b6b"))
+	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(nm)
+	var val := Label.new()
+	val.text = str(_ds_val(u, _dmg_stats_tab))
+	val.add_theme_font_size_override("font_size", 14)
+	val.add_theme_color_override("font_color", Color("#e6edf3"))
+	top.add_child(val)
+	row.add_child(top)
+	row.add_child(_make_ds_bar(_ds_parts(u, _dmg_stats_tab), col_max))
+	return row
+
+## 📊 战中统计面板开关 (1:1 回合制 _on_dmg_stats_toggle)
+func _on_dmg_stats_toggle() -> void:
+	if _dmg_stats_panel == null:
+		_build_dmg_stats_panel()
+	_dmg_stats_panel.visible = not _dmg_stats_panel.visible
+	if _dmg_stats_panel.visible:
+		_render_dmg_stats()
+
+## 战中统计面板骨架 (1:1 回合制 DmgStatsPanel): 暗底+金棕边 / 4Tab / 双列 rows / 0.4s 自刷.
+func _build_dmg_stats_panel() -> void:
+	_dmg_stats_panel = Panel.new()
+	_dmg_stats_panel.position = Vector2(12, 56); _dmg_stats_panel.size = Vector2(540, 430)
+	_dmg_stats_panel.visible = false
+	_dmg_stats_panel.process_mode = Node.PROCESS_MODE_ALWAYS
+	var psb := StyleBoxFlat.new()
+	psb.bg_color = Color(0.055, 0.075, 0.11, 0.97)
+	psb.border_color = Color("#6b5430")
+	psb.set_border_width_all(2)
+	psb.set_corner_radius_all(8)
+	_dmg_stats_panel.add_theme_stylebox_override("panel", psb)
+	var vb := VBoxContainer.new()
+	vb.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vb.offset_left = 14; vb.offset_top = 12; vb.offset_right = -14; vb.offset_bottom = -12
+	vb.add_theme_constant_override("separation", 8)
+	_dmg_stats_panel.add_child(vb)
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 8)
+	vb.add_child(tabs)
+	_dmg_tab_btns = []
+	for pair in _DS_TABS:
+		var b := Button.new()
+		b.text = pair[1]
+		b.add_theme_font_size_override("font_size", 15)
+		b.process_mode = Node.PROCESS_MODE_ALWAYS
+		b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		var key: String = pair[0]
+		b.pressed.connect(func() -> void: _dmg_stats_tab = key; _render_dmg_stats())
+		tabs.add_child(b)
+		_dmg_tab_btns.append({"btn": b, "key": key})
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 20)
+	cols.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vb.add_child(cols)
+	_dmg_stats_cols = []
+	for side_label in [["我方", "left"], ["敌方", "right"]]:
+		var colv := VBoxContainer.new()
+		colv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		colv.add_theme_constant_override("separation", 4)
+		var hdr := Label.new()
+		hdr.text = side_label[0]
+		hdr.add_theme_font_size_override("font_size", 15)
+		hdr.add_theme_color_override("font_color", Color("#06d6a0") if side_label[1] == "left" else Color("#ff6b6b"))
+		colv.add_child(hdr)
+		var rows := VBoxContainer.new()
+		rows.add_theme_constant_override("separation", 6)
+		colv.add_child(rows)
+		cols.add_child(colv)
+		_dmg_stats_cols.append(rows)
+	_ui_layer.add_child(_dmg_stats_panel)
+	var t := Timer.new()
+	t.wait_time = 0.4
+	t.autostart = true
+	t.timeout.connect(func() -> void:
+		if _dmg_stats_panel != null and _dmg_stats_panel.visible:
+			_render_dmg_stats())
+	_dmg_stats_panel.add_child(t)
+
+## 重建两列 rows (1:1 回合制 _render_dmg_stats): 各列按当前 Tab 值降序; Tab active 高亮.
+func _render_dmg_stats() -> void:
+	if _dmg_stats_cols.size() < 2:
+		return
+	for tb in _dmg_tab_btns:
+		var active: bool = tb["key"] == _dmg_stats_tab
+		(tb["btn"] as Button).add_theme_color_override("font_color", Color("#ffffff") if active else Color("#8b949e"))
+	var sides := ["left", "right"]
+	for ci in range(2):
+		var side: String = sides[ci]
+		var rows_vb: VBoxContainer = _dmg_stats_cols[ci]
+		for c in rows_vb.get_children():
+			rows_vb.remove_child(c)
+			c.queue_free()
+		var list: Array = _stat_units(side)
+		var tab := _dmg_stats_tab
+		list.sort_custom(func(a, b): return _ds_val(a, tab) > _ds_val(b, tab))
+		var col_max := 1
+		for u in list:
+			col_max = maxi(col_max, _ds_val(u, tab))
+		for u in list:
+			rows_vb.add_child(_make_ds_row(u, side, col_max))
+
+
+# ══════════════════════════════════════════════════════════════
+# 结算统计表 (1:1 回合制 BattleEndScene._stats_table 7 列样式) — 双队并排, 召唤体单列一行
+# ══════════════════════════════════════════════════════════════
 func _build_stats_panel() -> void:
 	var lefts: Array = []
 	var rights: Array = []
-	for u in _units:
-		if u.get("is_summon", false):
-			continue                 # 只统计上场龟, 不含召唤体/中立
+	for u in _units:                              # 含召唤体(单列一行), 排除中立(side 非 left/right)
 		if u.get("side") == "left":
 			lefts.append(u)
 		elif u.get("side") == "right":
@@ -11187,12 +11406,11 @@ func _build_stats_panel() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(title)
 	var cols := HBoxContainer.new()
-	cols.add_theme_constant_override("separation", 34)
+	cols.add_theme_constant_override("separation", 28)
 	vb.add_child(cols)
 	cols.add_child(_stats_column("🔵 我方", lefts, Color("#7ec8ff")))
 	cols.add_child(_stats_column("🔴 敌方", rights, Color("#ff9a9a")))
 	_ui_layer.add_child(panel)
-	# 自动居中(下半屏): 等一帧布局算出尺寸后摆位
 	panel.position = Vector2(316, 438)
 	_center_panel_deferred(panel)
 
@@ -11201,38 +11419,51 @@ func _center_panel_deferred(panel: Control) -> void:
 	if is_instance_valid(panel):
 		panel.position = Vector2(640.0 - panel.size.x * 0.5, 438.0)
 
+## 一队 7 列表 (1:1 回合制 _stats_table): 龟/出伤/受伤/治疗/暴击/击杀/剩余; 金表头 / 稀有度点 / 存活白·阵亡灰(阵亡).
 func _stats_column(header: String, units: Array, hc: Color) -> Control:
 	var grid := GridContainer.new()
-	grid.columns = 5
-	grid.add_theme_constant_override("h_separation", 12)
+	grid.columns = 7
+	grid.add_theme_constant_override("h_separation", 10)
 	grid.add_theme_constant_override("v_separation", 5)
-	var hdrs := [header, "输出", "承受", "回复", "护盾"]
-	for i in range(5):
+	var hdrs := [header, "出伤", "受伤", "治疗", "暴击", "击杀", "剩余"]
+	for i in range(7):
 		var l := Label.new()
 		l.text = hdrs[i]
 		l.add_theme_font_size_override("font_size", 14)
-		l.add_theme_color_override("font_color", hc if i == 0 else Color("#8aa0b4"))
+		l.add_theme_color_override("font_color", hc if i == 0 else Color("#ffd93d"))   # 金表头(回合制)
 		if i == 0:
-			l.custom_minimum_size = Vector2(96, 0)
+			l.custom_minimum_size = Vector2(126, 0)
 		else:
-			l.custom_minimum_size = Vector2(52, 0)
+			l.custom_minimum_size = Vector2(44, 0)
 			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		grid.add_child(l)
 	for u in units:
 		var dead: bool = not u.get("alive", true)
-		var nm := str(u.get("name", u.get("id", "")))
-		var cells := [("💀 " if dead else "") + nm, str(int(u.get("_st_dealt", 0))), str(int(u.get("_st_taken", 0))), str(int(u.get("_st_heal", 0))), str(int(u.get("_st_shield", 0)))]
-		var rcol := [Color("#e8f0f6"), Color("#ffcf6b"), Color("#ff8f8f"), Color("#7fe39a"), Color("#9fd0ff")]
-		for i in range(5):
+		var is_sm: bool = u.get("is_summon", false)
+		# col0: 稀有度色点 + 名(阵亡后缀)
+		var name_cell := HBoxContainer.new()
+		name_cell.add_theme_constant_override("separation", 5)
+		name_cell.custom_minimum_size = Vector2(126, 0)
+		var dot := ColorRect.new()
+		dot.custom_minimum_size = Vector2(8, 8)
+		dot.color = Color("#7a8a96") if is_sm else _pet_rarity_color(str(u.get("rarity", "C")))
+		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		name_cell.add_child(dot)
+		var nml := Label.new()
+		nml.text = ("↳ " if is_sm else "") + str(u.get("name", u.get("id", ""))) + ("(阵亡)" if dead else "")
+		nml.add_theme_font_size_override("font_size", 13)
+		nml.add_theme_color_override("font_color", Color("#888888") if dead else (Color("#cdd9c2") if is_sm else Color("#ffffff")))
+		name_cell.add_child(nml)
+		grid.add_child(name_cell)
+		var rem := "%d/%d" % [int(maxf(0.0, float(u.get("hp", 0)))), int(u.get("maxHp", 0))]
+		var vals := [str(int(u.get("_st_dealt", 0))), str(int(u.get("_st_taken", 0))), str(int(u.get("_st_heal", 0))), str(int(u.get("_st_crit", 0))), str(int(u.get("_st_kills", 0))), rem]
+		for i in range(6):
 			var l := Label.new()
-			l.text = cells[i]
-			l.add_theme_font_size_override("font_size", 14)
-			l.add_theme_color_override("font_color", Color("#7a8a96") if dead else rcol[i])
-			if i == 0:
-				l.custom_minimum_size = Vector2(96, 0)
-			else:
-				l.custom_minimum_size = Vector2(52, 0)
-				l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			l.text = vals[i]
+			l.add_theme_font_size_override("font_size", 13)
+			l.add_theme_color_override("font_color", Color("#888888") if dead else Color("#e8f0f6"))
+			l.custom_minimum_size = Vector2(44, 0)
+			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 			grid.add_child(l)
 	return grid
 

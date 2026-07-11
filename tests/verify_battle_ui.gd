@@ -41,6 +41,9 @@ func _ready() -> void:
 	add_child(scene)
 	await get_tree().process_frame
 	await get_tree().process_frame
+	# 停掉战斗 _process/_physics: 本测试往 _units 塞精简假单位验统计 UI, 不想触发逐帧战斗逻辑读 pos/sprite 等字段.
+	scene.set_process(false)
+	scene.set_physics_process(false)
 
 	# ── A. 暂停 ──
 	_ok("暂停按钮已建", scene._pause_btn != null)
@@ -70,7 +73,34 @@ func _ready() -> void:
 	scene._toggle_log()
 	_ok("日志面板关", scene._log_panel.visible == false)
 
-	# ── C. 结算按钮化 ──
+	# ── D. 战中统计: 类型分桶 + 面板 + 召唤体单列 ──
+	_ok("_dmg_bucket raw=真实", scene._dmg_bucket(true, Color("#ff4444")) == "tru")
+	_ok("_dmg_bucket 蓝=法术", scene._dmg_bucket(false, Color("#4dabf7")) == "mag")
+	_ok("_dmg_bucket 红=物理", scene._dmg_bucket(false, Color("#ff4444")) == "phy")
+	var probe: Dictionary = {}
+	scene._st_add_type(probe, "_st_dealt_by_type", "phy", 10)
+	scene._st_add_type(probe, "_st_dealt_by_type", "phy", 5)
+	_ok("_st_add_type 累加同桶", int((probe["_st_dealt_by_type"] as Dictionary).get("phy", 0)) == 15)
+	# 造 3 个单位(主龟+召唤体+敌) 喂进 _units
+	var ua: Dictionary = {"id": "basic", "name": "甲", "side": "left", "alive": true, "hp": 100, "maxHp": 100, "rarity": "A", "_st_dealt": 300, "_st_dealt_by_type": {"phy": 200, "mag": 80, "tru": 20}, "_st_heal": 50, "_st_shield": 30, "_st_crit": 2, "_st_kills": 1}
+	var ub: Dictionary = {"id": "minion", "name": "随从", "side": "left", "alive": true, "hp": 40, "maxHp": 60, "is_summon": true, "_st_dealt": 120, "_st_dealt_by_type": {"phy": 120}}
+	var uc: Dictionary = {"id": "stone", "name": "乙", "side": "right", "alive": false, "hp": 0, "maxHp": 100, "rarity": "C", "_st_taken": 420, "_st_taken_by_type": {"phy": 300, "dot": 120}}
+	scene._units.clear()
+	scene._units.append(ua); scene._units.append(ub); scene._units.append(uc)
+	scene._on_dmg_stats_toggle()
+	_ok("战中统计面板开", scene._dmg_stats_panel != null and scene._dmg_stats_panel.visible)
+	scene._render_dmg_stats()
+	var left_col: VBoxContainer = scene._dmg_stats_cols[0]
+	var left_rows: int = left_col.get_child_count()
+	_ok("我方列 2 行(主龟+召唤体单列一行)", left_rows == 2, "行数=%d" % left_rows)
+	scene._dmg_stats_tab = "taken"; scene._render_dmg_stats()
+	scene._dmg_stats_tab = "heal"; scene._render_dmg_stats()
+	scene._dmg_stats_tab = "shield"; scene._render_dmg_stats()
+	scene._dmg_stats_tab = "dealt"
+	_ok("4 Tab 切换渲染不崩", true)
+	scene._on_dmg_stats_toggle()   # 关
+
+	# ── C. 结算按钮化 (此时 _units 已有 3 单位 → 7 列结算表真渲染) ──
 	scene._show_banner(true)
 	await get_tree().process_frame
 	var btns := _count_buttons(scene._ui_layer)
