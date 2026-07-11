@@ -2664,9 +2664,11 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	var tgt = _acquire_target(u)
 	if tgt == null:
 		u["_has_target"] = false
+		u["_sep_target"] = null
 		u["state"] = "move"
 		return
 	u["_has_target"] = true
+	u["_sep_target"] = tgt   # ★近战修: 供 _separation 对"自己的攻击目标"缩小分离半径(否则 SEP_RADIUS92 > 近战射程70 → 永远贴不进射程)
 	var _fdx: float = tgt["pos"].x - u["pos"].x   # 朝向跟战斗目标(非移动方向): 交战/风筝/走位都稳定朝敌, 根治近战分离回推"转身"
 	if absf(_fdx) > 8.0:                            # 死区: 目标明显在某侧才转向(贴脸x≈时保持上次朝向不抖翻)
 		u["face_right"] = _fdx > 0.0
@@ -2869,13 +2871,20 @@ func _enemies_of(u: Dictionary) -> Array:
 
 func _separation(u: Dictionary) -> Vector2:
 	var push := Vector2.ZERO
+	# ★近战修: 对"自己的攻击目标"用缩小的分离半径(射程内), 让近战能贴进去开打; 其余单位照常 SEP_RADIUS 散开.
+	var mt = u.get("_sep_target", null)
+	var mt_valid: bool = bool(u.get("melee", false)) and mt is Dictionary and (mt as Dictionary).get("alive", false)
+	var tgt_radius: float = minf(SEP_RADIUS, float(u.get("atk_range", 70.0)) * 0.85)
 	for o in _units:
 		if o == u or not o["alive"]:
 			continue
 		var d: Vector2 = u["pos"] - o["pos"]
 		var l := d.length()
-		if l > 0.01 and l < SEP_RADIUS:
-			push += d.normalized() * (1.0 - l / SEP_RADIUS)
+		var radius: float = SEP_RADIUS
+		if mt_valid and is_same(o, mt):
+			radius = tgt_radius
+		if l > 0.01 and l < radius:
+			push += d.normalized() * (1.0 - l / radius)
 	return push * 0.9
 
 # ============================================================================
