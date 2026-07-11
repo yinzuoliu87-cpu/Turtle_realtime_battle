@@ -2658,7 +2658,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 
 	# --- 击飞真物理: vy 受重力, height 积分; 横向同时滑 (XZ 像素坐标方向) ---
 	if u["airborne"]:
-		u["vy"] += GRAVITY * delta
+		u["vy"] += float(u.get("knock_g", GRAVITY)) * delta   # 每次击飞可覆写重力(解耦滞空时长与抛高·如嘲讽砸地 -13.2); 缺省=GRAVITY
 		u["height"] += u["vy"] * delta
 		# 横向滑行换算回像素 (vx/vz 是米/s → /WS = 像素/s)
 		u["pos"].x += u["vx"] / WS * delta
@@ -2669,6 +2669,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 		if u["height"] <= 0.0:
 			u["height"] = 0.0; u["vy"] = 0.0; u["vx"] = 0.0; u["vz"] = 0.0
 			u["airborne"] = false
+			u.erase("knock_g")   # 落地 → 清本次击飞的重力覆写(下次默认 GRAVITY)
 			# Phase4: 落地 → 压扁回弹 + 小尘 + 轻震屏 (重量感)
 			u["land_t"] = JUICE_LAND_SEC
 			_shake(JUICE_SHAKE_HEAVY)
@@ -7202,7 +7203,9 @@ func _sk_stone_taunt(u: Dictionary) -> void:                    # 石头龟·嘲
 		for o in _enemies_of(uu):
 			if o.get("alive", false) and o["pos"].distance_to(uu["pos"]) <= 400.0:
 				_apply_damage_from(uu, o, _atk_dmg(uu, 1.0, o, true), Color("#c8a878"))
-				_knockback(uu, o, 80.0, 3.667)   # 击飞【2.0秒】(用户#8"击飞2秒"·滞空=2×(6.0×3.667)/22=2.0s·原vy_mult=2只给1.09s)
+				if not o.get("airborne", false):
+						_knockback(uu, o, 80.0, 1.1)   # 击飞【1.0秒·峰高1.65】(用户2026-07-11: 2s→1s且高度-40%) — vy=6.0×1.1=6.6
+						o["knock_g"] = -13.2           # 配重力-13.2(而非默认-22)→ 滞空=2×6.6/13.2=1.0s·峰高=6.6²/(2×13.2)=1.65(解耦时长与抛高)
 		_shake(0.06)
 	_pending_shots.append({"delay": 3.5, "fn": slam, "src": u})
 
