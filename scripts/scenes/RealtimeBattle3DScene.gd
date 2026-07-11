@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "two_head"           # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 2   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
+const REVIEW_SKILL_IDX := 3   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -126,6 +126,7 @@ const REVIEW_DEMO_CFG := {
 	"two_head:0": [ {"dx": 280.0, "dy": 0.0, "fixed": true} ],   # 双头普攻(默认远程形态): 单假人280码→看1.2A灵能弹(紫#c0a0ff弹道); 近战形态0.9A挥砍在换形/技能审时看
 	"two_head:1": [ {"dx": 200.0, "dy": -70.0, "fixed": true}, {"dx": 280.0, "dy": 0.0, "fixed": true}, {"dx": 200.0, "dy": 70.0, "fixed": true} ],   # 双头技1(随形态·放完切形态): 3假人聚簇→远程灵能冲击(全体0.85A+15%maxHp蓝)/切近战锤击(单体1.4A橙+盾)交替
 	"two_head:2": [ {"dx": 220.0, "dy": -55.0, "fixed": true}, {"dx": 300.0, "dy": 0.0, "fixed": true}, {"dx": 220.0, "dy": 55.0, "fixed": true} ],   # 双头技2(随形态): 远程精神干扰(头顶精神波+紫涟漪+破盾碎裂+裂心标记)/近战吸收(生命虹吸束+微粒回流+回血绿环)交替
+	"two_head:3": [ {"dx": 240.0, "dy": -50.0, "fixed": true}, {"dx": 320.0, "dy": 0.0, "fixed": true}, {"dx": 240.0, "dy": 50.0, "fixed": true} ],   # 双头技3融合(登场锁远程形态): 登场合体爆发+持续融合光环→反复放4段弧形魔法波(物理紫/真实白)·受击坚韧微光
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -6018,6 +6019,9 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		if th < 20:
 			th += 1; u["two_tough"] = th
 			u["base_def"] += 1.0; u["base_mr"] += 1.0; _recalc_stats(u)
+			if _t - float(u.get("_tough_glint_t", -1.0)) > 0.35:   # 坚韧变硬微光(节流·用户2026-07-11)
+				u["_tough_glint_t"] = _t
+				_skill_ring(u["pos"], Color(0.55, 0.75, 1.0, 0.5), 46.0)
 	# (反伤已合并到上方通用块, 删除重复的第二处石头反伤)
 	# 装备事件钩子 (on-hit 攻击方 / on-target 防守方 / HP阈值) — 装备自身造的段不再回钩
 	if not from_equip:
@@ -8912,13 +8916,79 @@ func _absorb_mote_step(pf: float, mote, from2d: Vector2, to2d: Vector2) -> void:
 func _sk_two_head_fusion(u: Dictionary, tgt) -> void:            # 双头·技能三融合(封板): 主动魔法波(4段·物理80%+真实80%共1.6A); 锁形态/坚韧/合体近战属性在登场gate
 	if tgt == null: tgt = _nearest_enemy(u)
 	if tgt == null: return
-	for i in range(4):
-		if not tgt.get("alive", false): break
-		if i % 2 == 0: _apply_damage_from(u, tgt, _atk_dmg(u, 0.4, tgt), Color("#ffffff"))          # 物理
-		else:          _apply_damage_from(u, tgt, int(u["atk"] * 0.4), Color("#ffffff"), 0.0, true) # 真实
-	_skill_ring(tgt["pos"], Color(0.75, 0.6, 1.0, 0.5), 48.0)
+	for i in range(4):                                          # 4段交替弧形魔法波(物理紫/真实白)依次飞向目标·波到结算该段(用户2026-07-11 VFX)
+		_pending_shots.append({"delay": float(i) * 0.11, "src": u, "fn": _two_head_fusion_wave.bind(u, tgt, i % 2 == 1)})
 
-# 双头·延后放技(双生反序: 切形态位移到位+顿后调): 放该形态技 + on-cast
+# 融合·魔法波: 一道弧形波(magic-wave AI图)从双头飞向目标, 到达时结算该段伤害+紫/白冲击环
+func _two_head_fusion_wave(u: Dictionary, tgt: Dictionary, is_true: bool) -> void:
+	if not u.get("alive", false) or not tgt.get("alive", false):
+		return
+	var col: Color = Color(1.0, 1.0, 1.0, 1.0) if is_true else Color(0.74, 0.46, 1.0, 1.0)   # 真实白/物理紫
+	var from2d: Vector2 = u["pos"]
+	var to2d: Vector2 = tgt["pos"]
+	var wv := Sprite3D.new()
+	wv.texture = load("res://assets/sprites/vfx/magic-wave.png")
+	wv.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	wv.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	wv.shaded = false; wv.transparent = true
+	wv.modulate = col
+	wv.pixel_size = (95.0 * WS) / 128.0
+	wv.position = _world_pos(from2d, 1.0)
+	_world.add_child(wv)
+	var wtw := _reg_tween()
+	wtw.tween_method(_two_head_wave_step.bind(wv, from2d, to2d), 0.0, 1.0, 0.27)   # 移速降40%(用户2026-07-11: 0.16→0.27s)
+	wtw.tween_callback(_two_head_fusion_wave_hit.bind(u, tgt, is_true, wv))
+
+func _two_head_wave_step(pf: float, wv, from2d: Vector2, to2d: Vector2) -> void:
+	if not is_instance_valid(wv):
+		return
+	wv.position = _world_pos(from2d.lerp(to2d, pf), lerpf(1.0, 1.15, pf))
+	wv.scale = Vector3.ONE * lerpf(0.7, 1.15, pf)
+
+func _two_head_fusion_wave_hit(u: Dictionary, tgt: Dictionary, is_true: bool, wv) -> void:
+	if is_instance_valid(wv):
+		var ft := _reg_tween()
+		ft.tween_property(wv, "modulate:a", 0.0, 0.1)
+		ft.tween_callback(wv.queue_free)
+	if not tgt.get("alive", false):
+		return
+	if is_true:
+		_apply_damage_from(u, tgt, int(u["atk"] * 0.4), Color("#ffffff"), 0.0, true)   # 真实
+		_skill_ring(tgt["pos"], Color(1.0, 1.0, 1.0, 0.5), 42.0)
+	else:
+		_apply_damage_from(u, tgt, _atk_dmg(u, 0.4, tgt), Color("#c39bff"))             # 物理(紫字)
+		_skill_ring(tgt["pos"], Color(0.74, 0.46, 1.0, 0.5), 42.0)
+
+# 融合登场VFX(用户2026-07-11): 合体能量爆发(fusion-burst AI图) + 持续"融合态"光环(跟随+脉冲, 显示锁定/强化)
+func _two_head_fusion_onset(u: Dictionary) -> void:
+	var burst := Sprite3D.new()
+	burst.texture = load("res://assets/sprites/vfx/fusion-burst.png")
+	burst.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	burst.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	burst.shaded = false; burst.transparent = true
+	burst.pixel_size = (260.0 * WS) / 128.0
+	burst.position = _world_pos(u["pos"], 1.0)
+	_world.add_child(burst)
+	var bt := _reg_tween()
+	bt.tween_property(burst, "scale", Vector3.ONE * 1.4, 0.2).from(Vector3.ONE * 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	bt.parallel().tween_property(burst, "modulate:a", 0.0, 0.42)
+	bt.chain().tween_callback(burst.queue_free)
+	_shake(0.1)
+	var aura := Sprite3D.new()
+	aura.texture = _make_glow_texture()
+	aura.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	aura.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	aura.shaded = false; aura.transparent = true
+	aura.modulate = Color(0.72, 0.44, 1.0, 0.42)
+	aura.pixel_size = (98.0 * WS) / float(maxi(1, aura.texture.get_height()))
+	_world.add_child(aura)
+	_follow_vfx.append({"spr": aura, "unit": u, "h": 0.5})
+	u["_fuse_aura"] = aura
+	var at := _reg_tween()
+	at.set_loops()
+	at.tween_property(aura, "modulate:a", 0.2, 0.9).set_trans(Tween.TRANS_SINE)
+	at.tween_property(aura, "modulate:a", 0.48, 0.9).set_trans(Tween.TRANS_SINE)
+
 func _two_head_deferred_cast(u: Dictionary, tgt, stype: String) -> void:
 	if not u.get("alive", false):
 		return
@@ -10419,6 +10489,7 @@ func _apply_spawn_passives() -> void:
 				if "twoHeadFusion" in _chosen_skill_types(u["id"], u["side"] == "left"):
 					u["two_fused"] = true                          # 融合: 锁形态(保持远程)+坚韧+合体近战属性
 					_two_head_apply_melee(u, true)
+					_two_head_fusion_onset(u)                      # 融合登场VFX(用户2026-07-11): 合体爆发+持续融合态光环
 			"diamond":                                    # 钻石结构(封板): 全队护甲/魔抗加成+50%(简化=开局全队+50%pct); 选钻石冲撞→强化结构(自身额外+100%·"受击再减20甲10抗"近似折进护甲留F5)
 				for o in _allies_of(u):
 					_buff(o, "def", 0.5, true, 9999.0)
