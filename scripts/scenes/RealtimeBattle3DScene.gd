@@ -50,7 +50,7 @@ const CTRL_SEC := 1.5                      # 眩晕/冻结/嘲讽 默认秒数
 
 # 28 龟战斗属性 (1:1 复用): id → [melee, move_spd(px/s), atk_interval(s), atk_range(px)]
 const STATS := {
-	"basic": [true, 105.0, 0.85, 70.0], "stone": [true, 70.0, 1.1, 70.0], "bamboo": [true, 105.0, 0.85, 70.0],
+	"basic": [true, 105.0, 0.85, 70.0], "stone": [true, 70.0, 1.6667, 70.0], "bamboo": [true, 105.0, 0.85, 70.0],
 	"angel": [false, 105.0, 0.85, 400.0], "ice": [false, 105.0, 0.85, 400.0], "ninja": [true, 145.0, 0.6, 70.0],
 	"two_head": [false, 145.0, 0.85, 400.0], "ghost": [false, 145.0, 0.6, 400.0], "diamond": [true, 70.0, 1.1, 70.0],
 	"fortune": [true, 105.0, 0.75, 70.0], "dice": [true, 145.0, 0.6, 70.0], "rainbow": [true, 105.0, 0.7, 70.0],
@@ -86,7 +86,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "stone"             # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
+const REVIEW_SKILL_IDX := 1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 500.0            # 假人固定血量
