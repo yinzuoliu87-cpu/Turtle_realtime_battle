@@ -118,7 +118,7 @@ const REVIEW_DEMO_CFG := {
 	"ice:3": [ {"dx": 200.0, "dy": 0.0, "fixed": true} ],   # 寒冰团队护盾(重设计): 单假人(200码·在250爆炸圈内)·单龟=独狼→自己20%maxHp冰盾·盾破/到期爆250码5A魔法
 	"ice:-1": [ {"dx": 250.0, "dy": -120.0}, {"dx": 250.0, "dy": 120.0}, {"dx": 380.0, "dy": 0.0} ],   # 寒冰被动极寒: 3假人→看登场群体寒爆+每敌蓝寒环+全场-30%攻速/移速/充能
 	"ninja:0": [ {"dx": 130.0, "dy": 0.0} ],   # 忍者斩击普攻: 近战快攻(interval0.6)单假人→看斩击挥/踏步/2层流血/高暴击
-	"ninja:1": [ {"dx": 260.0, "dy": 0.0, "fixed": true} ],   # 忍者手里剑: 单假人→放飞镖1.6A(暴击转真伤)·⚠现无飞镖弹道视觉(瞬间伤害)
+	"ninja:1": [ {"dx": 600.0, "dy": 0.0, "fixed": true} ],   # 忍者手里剑(远程2000码): 假人放600码(出冲击500码范围)→忍者站原地朝远处掷旋转飞镖·看真远程弹道
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -2733,8 +2733,8 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 				u["pending"] = "B"                       # 普攻优先: 在射程且普攻就绪→先普攻, 技能塞进普攻冷却空档(不打断攻击流·用户2026-07-11)
 				u["state"] = "windup"
 				u["state_t"] = clampf(float(u["atk_interval"]) * ATK_WINDUP_PCT, ATK_WINDUP_MIN, ATK_WINDUP_MAX)
-			elif rs != "" and _SELF_CAST_SKILLS.has(rs):
-				# 自/友向技: 任意距离即放, 不用靠近敌人 (修: 原所有技都要进射程=护盾贴脸才放的bug)
+			elif rs != "" and dist <= _skill_cast_range(u, str(rs)):
+				# 就绪技放技: 自/友向任意距离; 远程敌向技(如手里剑2000码)够得着就放·不被近战射程卡; 普通敌向技=进攻击射程放(用户2026-07-11)
 				u["pending"] = "K:" + rs
 				u["state"] = "windup"; u["state_t"] = CAST_WINDUP
 				_anticipate(u)
@@ -6647,6 +6647,12 @@ const _SELF_CAST_SKILLS := {
 	"rainbowStorm": true,
 	"gamblerBet": true, "stoneTaunt": true, "stoneRockShield": true,
 }
+
+# 远程敌向技的专属放技射程(码): 有这条的技能"够得着就放"·不被近战射程卡着(用户2026-07-11: 手里剑是远程技·改2000)
+const _SKILL_CAST_RANGE := {"ninjaShuriken": 2000.0}
+func _skill_cast_range(u: Dictionary, stype: String) -> float:
+	if _SELF_CAST_SKILLS.has(stype): return 99999.0                       # 自/友向: 任意距离即放
+	return float(_SKILL_CAST_RANGE.get(stype, u.get("atk_range", 70.0)))  # 远程敌向技用专属射程; 否则=攻击射程(近战贴身放)
 
 # ═══ 选3 多技能轮转 (用户2026-06-28拍板: 保留选3, 让3技在战斗真生效) ═══
 # 被动型技 (开局生效, 不进主动轮转; 在 _apply_spawn_passives 里按是否被选施加)
