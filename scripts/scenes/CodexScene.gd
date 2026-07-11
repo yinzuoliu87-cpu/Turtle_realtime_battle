@@ -437,7 +437,7 @@ func _switch_tab(tab: String) -> void:
 					"res://assets/sprites/rules/%s.png" % r.get("id", ""), _items.size() - 1)
 			# 「小商店物品池」虚拟入口已删 (R3 2026-07-11): 那是回合制/PoC 局内金币小商店(第4/8/12场开张),
 			#   实时版 V2 经济已挪局外深海币商店, 战斗内无小商店 → 该页描述玩家永远遇不到的机制, 属知识库分歧, 删除。
-			#   (⚠ 规则之日 battle_rules 同样未在实时版战斗生效, 整个 rules Tab 的存废待用户拍板, 见交付报告)
+			#   规则之日 battle_rules 目前未在实时版战斗生效, 但【用户 2026-07-11 定: 改制后加入, 现在待做】→ rules Tab 保留不删。
 	if _items.size() > 0:
 		_select(0)
 	# 列表/详情滑入 (PoC scene.restart 每次切 tab 重播)
