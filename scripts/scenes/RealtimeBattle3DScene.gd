@@ -119,7 +119,7 @@ const REVIEW_DEMO_CFG := {
 	"ice:-1": [ {"dx": 250.0, "dy": -120.0}, {"dx": 250.0, "dy": 120.0}, {"dx": 380.0, "dy": 0.0} ],   # 寒冰被动极寒: 3假人→看登场群体寒爆+每敌蓝寒环+全场-30%攻速/移速/充能
 	"ninja:0": [ {"dx": 130.0, "dy": 0.0} ],   # 忍者斩击普攻: 近战快攻(interval0.6)单假人→看斩击挥/踏步/2层流血/高暴击
 	"ninja:1": [ {"dx": 600.0, "dy": 0.0, "fixed": true} ],   # 忍者手里剑(远程2000码): 假人放600码(出冲击500码范围)→忍者站原地朝远处掷旋转飞镖·看真远程弹道
-	"ninja:2": [ {"dx": 340.0, "dy": -90.0, "fixed": true}, {"dx": 420.0, "dy": 0.0, "fixed": true}, {"dx": 340.0, "dy": 90.0, "fixed": true} ],   # 忍者炸弹(AOE): 3假人聚一簇→看点燃引信炸弹抛物线飞向敌群质心→落地爆炸帧动画+全体1.1A物理红字+每敌-25%护甲环
+	"ninja:2": [ {"dx": 340.0, "dy": -90.0, "fixed": true}, {"dx": 420.0, "dy": 0.0, "fixed": true}, {"dx": 340.0, "dy": 90.0, "fixed": true}, {"dx": 850.0, "dy": 0.0, "fixed": true} ],   # 忍者炸弹(400码半径): 前3假人聚一簇(落点400码内→受伤)+第4假人远置850码(圈外→不受伤·验半径截断)→看引信炸弹高拱抛向目标→落地爆炸帧动画+400码冲击波环+圈内红字/掉甲
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -5860,13 +5860,15 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 				d -= moved
 				_raw_lose(carrier, moved)
 	var shield_before: float = u["shield"]
-	if not raw and u["shield"] > 0.0:
+	# 护盾吸收【全类型】伤害(物理/法术/真实): 1:1 回合制 damage.gd「真伤(true)也走护盾」+ 用户2026-07-11「真伤/反伤真伤要被盾档」。
+	#   真伤只无视护甲/魔抗/减伤(见上方 not raw 分支), 但护盾照吸。唯一穿盾=墨迹(_ink_true·在护盾后单独加·由线条被动设计)。
+	if u["shield"] > 0.0:
 		var ab := minf(u["shield"], d)
 		u["shield"] -= ab; d -= ab
-	if not raw and d > 0.0 and float(u.get("_auraShieldVal", 0.0)) > 0.0:   # aura储能盾(金)单独吸收
+	if d > 0.0 and float(u.get("_auraShieldVal", 0.0)) > 0.0:   # aura储能盾(金)同样吸全类型
 		var ab_a := minf(float(u["_auraShieldVal"]), d)
 		u["_auraShieldVal"] = float(u["_auraShieldVal"]) - ab_a; d -= ab_a
-	if _ink_true > 0.0: d += _ink_true   # 墨迹真伤: 穿减伤穿盾, 直接进扣血并计入跳字
+	if _ink_true > 0.0: d += _ink_true   # 墨迹真伤: 穿减伤穿盾(唯一穿盾例外·护盾吸收后加), 直接进扣血并计入跳字
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	if u.get("_review_dummy", false): u["hp"] = u["maxHp"]   # 训练靶: 受击即回满, 打不死不结算(看完整)
 	if not from_equip and d > 0.0: _ink_link_transfer(u, d)   # 连笔: 受伤30%以真实伤害传导给连接对象(附录B-05)
@@ -5921,8 +5923,8 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	if u["id"] == "lightning" and _t < float(u.get("thunder_shield_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0 and src != u and src.get("alive", false) and not from_equip and dmg > 0:
 		_apply_damage_from(u, src, _atk_dmg(u, 0.1, src, true), Color("#4dabf7"), 0.0, false, true)
 		_add_stack(src, "electric", 1, 8)
-	# §AUDIO: 命中音 (暴击→hit-crit / 否则→hit-physical, 节流防多段刷屏); 护盾刚被打没→shield-break.
-	if shield_before > 0.0 and u["shield"] <= 0.0 and not raw:
+	# §AUDIO: 命中音 (暴击→hit-crit / 否则→hit-physical, 节流防多段刷屏); 护盾刚被打没→shield-break (真伤现在也能打盾→去掉 not raw).
+	if shield_before > 0.0 and u["shield"] <= 0.0:
 		u["shield_until"] = 0.0   # 盾被打空→清限时标记(防陈旧到期误清后续永久盾)
 		_sfx_shield_break()
 	else:
@@ -6669,7 +6671,7 @@ const _SELF_CAST_SKILLS := {
 }
 
 # 远程敌向技的专属放技射程(码): 有这条的技能"够得着就放"·不被近战射程卡着(用户2026-07-11: 手里剑是远程技·改2000)
-const _SKILL_CAST_RANGE := {"ninjaShuriken": 2000.0}
+const _SKILL_CAST_RANGE := {"ninjaShuriken": 2000.0, "ninjaBomb": 2000.0}
 func _skill_cast_range(u: Dictionary, stype: String) -> float:
 	if _SELF_CAST_SKILLS.has(stype): return 99999.0                       # 自/友向: 任意距离即放
 	return float(_SKILL_CAST_RANGE.get(stype, u.get("atk_range", 70.0)))  # 远程敌向技用专属射程; 否则=攻击射程(近战贴身放)
@@ -9295,52 +9297,74 @@ func _sk_burst(u: Dictionary, tgt: Dictionary) -> void:          # 兜底重击
 # ── 选3 多技能: 数据驱动伤害技 + 通用盾/治 (系数取自 pets.json detail 公式) ──
 # opts: {phys,magic,true: ×casterATK 的 物理/魔法/真实系数; hp,mr: ×caster maxHp/MR 附加;
 #        hits: 视觉段数(伤害总量不变); aoe: 全体敌; rider: 附带(burn/stun/slow/curse/atkdn/mrdn); name,color}
-# 忍者·炸弹 (AOE·1:1 回合制 ninjaBomb): 抛掷点燃引信的炸弹到敌群质心→落地爆炸→全体敌方 1.1×ATK 物理 + -25%护甲(5秒)
-#   机制沿用 _sk_dmg(在爆炸落地时结算·数值/减益完全不变), 仅把原来的"灰环占位"换成真·炸弹抛掷+爆炸帧动画(ninja-bomb.png 12帧)
+# 忍者·炸弹 (1:1 回合制 _ninja_bomb_throw / PoC ninja.js:523-619 编排 + 用户2026-07-11指定改动):
+#   ninja-bomb.png 12帧【全程1.2s播一次】(球→引信→爆闪→火球→蘑菇云·repeat:0不循环); 炸弹【3段弹跳抛物线】0.4s 弹向【当前目标】→
+#   引信到 0.8s 引爆(震屏+伤害·此刻帧正好走到爆炸帧8)→蘑菇云再0.4s播完销毁(1.2s)。
+#   ★爆炸 = 落点 NINJA_BOMB_RADIUS(400码) 半径内敌人 1.1×ATK 物理 + -25%护甲(5秒·BUFF_SEC)。
+#     半径=用户指定(回合制原"对全体敌方"无半径·用户2026-07-11「400码半径」)。放技射程2000码(远程扔·见 _SKILL_CAST_RANGE)。
+const NINJA_BOMB_RADIUS := 400.0
 func _sk_ninja_bomb(u: Dictionary, tgt) -> void:
-	var opts := {"phys": 1.1, "hits": 1, "aoe": true, "defDown": 0.25, "color": Color("#ff9a3c")}
-	var es: Array = _enemies_of(u)
-	if es.is_empty():
-		return
-	var center := Vector2.ZERO
-	for e in es:
-		center += e["pos"]
-	center /= float(es.size())               # 落点 = 敌群质心 (AOE·炸弹落敌群中间; 伤害仍打全体不受落点限制)
+	if tgt == null: tgt = _nearest_enemy(u)
+	if tgt == null: return
+	var opts := {"phys": 1.1, "defDown": 0.25, "color": Color("#ff9a3c")}
+	var land: Vector2 = tgt["pos"]            # 落点 = 当前目标位置 (400码爆炸半径中心)
 	_anticipate(u)                            # 短蓄力(掏炸弹)
 	var spr := Sprite3D.new()
 	spr.texture = load("res://assets/sprites/vfx/ninja-bomb.png")
-	spr.hframes = 12                          # 768×64 = 12帧(圆炸弹0-4→引信5-6→streak7→爆闪8→火球9→烟10-11)
-	spr.frame = 6                             # 点燃引信的炸弹
+	spr.hframes = 12                          # 768×64 = 12帧(球0-4→引信5-7→爆闪8→火球9→蘑菇云10-11); 球在帧内小·爆炸填满帧
+	spr.frame = 0
 	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	spr.shaded = false; spr.transparent = true
 	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	spr.pixel_size = (46.0 * WS) / 64.0
+	spr.pixel_size = (200.0 * WS) / 64.0      # 1:1 PoC setDisplaySize(220)
 	spr.position = _world_pos(u["pos"], 1.15)
 	_world.add_child(spr)
+	# 抛物线(3段弹跳)0.4s + 12帧动画1.2s播一次 (并行), 全播完(1.2s)销毁
 	var tw := _reg_tween()
-	tw.tween_method(_bomb_arc.bind(spr, u["pos"], center), 0.0, 1.0, 0.42)   # 抛物线飞向敌群
-	tw.tween_callback(_bomb_explode.bind(spr, u, center, opts))
+	tw.set_parallel(true)
+	tw.tween_method(_bomb_arc.bind(spr, u["pos"], land), 0.0, 1.0, 0.4)
+	tw.tween_method(_bomb_anim.bind(spr), 0.0, 12.0, 1.2)
+	tw.chain().tween_callback(spr.queue_free)
+	# 引爆 @0.8s: 震屏 + 400码冲击波环 + 半径伤害 (帧动画此刻正到爆炸帧8)
+	var boom := _reg_tween()
+	boom.tween_interval(0.8)
+	boom.tween_callback(_bomb_explode.bind(u, land, opts))
 
 func _bomb_arc(pf: float, spr: Sprite3D, from2d: Vector2, to2d: Vector2) -> void:
-	if is_instance_valid(spr):
-		spr.position = _world_pos(from2d.lerp(to2d, pf), 1.1 + sin(pf * PI) * 2.6)   # 拱起飞行
-		spr.frame = 6 + (int(_t * 14.0) % 2)   # 引信闪烁(6/7帧)
+	if not is_instance_valid(spr):
+		return
+	# 3段弹跳抛物线 (1:1 PoC ARC_PEAK -160/-55/-22 → 3D height 3.4/1.2/0.5); 水平线性推进
+	var arc: float
+	var sub: float
+	if pf < 0.5:      sub = pf / 0.5;           arc = 3.4
+	elif pf < 0.75:   sub = (pf - 0.5) / 0.25;  arc = 1.2
+	elif pf < 0.95:   sub = (pf - 0.75) / 0.20; arc = 0.5
+	else:             sub = 1.0;                arc = 0.0
+	spr.position = _world_pos(from2d.lerp(to2d, pf), 1.0 + arc * 4.0 * sub * (1.0 - sub))
 
-func _bomb_boom_frame(fv: float, spr: Sprite3D) -> void:
+func _bomb_anim(fv: float, spr: Sprite3D) -> void:
 	if is_instance_valid(spr):
-		spr.frame = clampi(int(fv), 8, 11)     # 爆炸→火球→烟(8→11)
+		spr.frame = mini(11, int(fv))          # 12帧播一次(0→11 不循环·1:1 PoC repeat:0)
 
-func _bomb_explode(spr: Sprite3D, u: Dictionary, at2d: Vector2, opts: Dictionary) -> void:
-	if is_instance_valid(spr):
-		spr.frame = 8
-		spr.position = _world_pos(at2d, 0.75)
-		spr.pixel_size = (88.0 * WS) / 64.0    # 爆炸放大
-		var et := _reg_tween()
-		et.tween_method(_bomb_boom_frame.bind(spr), 8.0, 11.99, 0.5)
-		et.tween_callback(spr.queue_free)
-	_shake(0.12)
-	_skill_ring(at2d, Color(1.0, 0.5, 0.15, 0.7), 74.0)   # 落点爆炸火环
-	_sk_dmg(u, null, opts)                     # 落地结算: 全体敌 1.1A物理 + -25%护甲5s (数值/减益同原实现·不变)
+func _bomb_explode(u: Dictionary, at2d: Vector2, opts: Dictionary) -> void:
+	_shake(0.16)                               # 1:1 PoC cameras.shake(260)
+	# ★400码爆炸范围可视: 扩张冲击波环到 NINJA_BOMB_RADIUS + 内圈亮闪 → 看清波及范围
+	_skill_ring(at2d, Color(1.0, 0.55, 0.2, 0.9), NINJA_BOMB_RADIUS)
+	_skill_ring(at2d, Color(1.0, 0.82, 0.4, 0.75), NINJA_BOMB_RADIUS * 0.55)
+	# 落点 400码内敌人: 先 -25%护甲(吃在这发上) 再 1.1A 物理; 圈外不受影响
+	var col: Color = opts.get("color", Color("#ff9a3c"))
+	var hit: Array = []
+	for e in _enemies_of(u):
+		if e != null and e.get("alive", false) and e["pos"].distance_to(at2d) <= NINJA_BOMB_RADIUS:
+			hit.append(e)
+	for e in hit:
+		_apply_skill_extras(u, e, opts)        # -25%护甲(defDown 0.25→BUFF_SEC=5秒)
+		_skill_ring(e["pos"], Color(col.r, col.g, col.b, 0.5), 46.0)   # 每敌破甲小环
+	for e in hit:
+		if e.get("alive", false):
+			var dmg := _atk_dmg(u, float(opts.get("phys", 1.1)), e, false)
+			if dmg > 0:
+				_apply_damage_from(u, e, dmg, col)
 
 func _sk_dmg(u: Dictionary, tgt, opts: Dictionary) -> void:
 	var col: Color = opts.get("color", Color("#ffd07a"))
