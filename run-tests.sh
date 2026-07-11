@@ -41,7 +41,7 @@ run_test () {  # $1 = 测试名
 
 echo "=== 自证测试 ==="
 for t in verify_dot_stacks verify_fonts verify_candy_jar verify_settings \
-         verify_menu verify_codex verify_codex_text verify_pirate_hook verify_cyber_charge verify_sprite_sheets verify_skill_energy verify_hiding_pool verify_crystal_death_sync verify_season_flow verify_battle_ui verify_ghost_seed verify_combat_sanity verify_ninja_shuriken verify_ninja_bomb verify_true_dmg_shield verify_ninja_backstab; do
+         verify_menu verify_codex verify_codex_text verify_pirate_hook verify_cyber_charge verify_sprite_sheets verify_skill_energy verify_hiding_pool verify_crystal_death_sync verify_season_flow verify_battle_ui verify_ghost_seed verify_combat_sanity verify_ninja_shuriken verify_ninja_bomb verify_true_dmg_shield verify_ninja_backstab verify_two_head_strike; do
   run_test "$t"
 done
 

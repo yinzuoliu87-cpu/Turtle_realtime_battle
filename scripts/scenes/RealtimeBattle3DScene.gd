@@ -8684,17 +8684,91 @@ func _two_head_apply_melee(u: Dictionary, on: bool) -> void:
 		u["base_atk"] += float(u.get("_th_atk", 0.0))
 		_recalc_stats(u)
 
-func _sk_two_head_strike(u: Dictionary, tgt) -> void:            # 双头·技能一 form-variant(封板): 远程=灵能冲击(全体0.85A+15%maxHp物理) / 近战=锤击(1.4A物理+获造成伤害50%护盾4秒)
+func _sk_two_head_strike(u: Dictionary, tgt) -> void:            # 双头·技能一 form-variant(用户2026-07-11重设计): 远程=灵能冲击(大紫炮弹→碰第一敌爆炸200码AOE 1A+10%maxHp物理) / 近战=锤击(跳起落地砸·1.4A物理+50%伤害盾4s)
+	if tgt == null: tgt = _nearest_enemy(u)
+	if tgt == null: return
 	if u["melee"]:
-		if tgt == null: tgt = _nearest_enemy(u)
-		if tgt == null: return
-		var dmg: int = _atk_dmg(u, 1.4, tgt)
-		_apply_damage_from(u, tgt, dmg, Color("#ffb05c"))
-		_grant_shield(u, dmg * 0.5, 4.0)                        # 获造成伤害50%护盾(4秒·限时盾)
+		_two_head_hammer(u, tgt)                                # 近战锤击: 跳起→落在目标→地面锤击
 	else:
+		var dir: Vector2 = tgt["pos"] - u["pos"]
+		if dir.length() < 1.0: dir = Vector2.RIGHT
+		_two_head_cannon(u, u["pos"], dir.normalized())         # 远程灵能冲击: 大紫炮弹
+
+# 双头·灵能冲击炮弹(用户2026-07-11): 大紫炮弹朝目标方向飞(射程2000·760码/s)→碰第一敌(46码)爆炸→200码内敌 1A+10%目标maxHp 物理
+func _two_head_cannon(u: Dictionary, from2d: Vector2, dir: Vector2) -> void:
+	var spr := Sprite3D.new()
+	spr.texture = _make_glow_texture()
+	spr.modulate = Color(0.78, 0.5, 1.0, 0.96)              # 灵能紫
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.shaded = false; spr.transparent = true
+	spr.pixel_size = (66.0 * WS) / float(maxi(1, spr.texture.get_width()))   # 大炮弹
+	spr.position = _world_pos(from2d, 1.1)
+	_world.add_child(spr)
+	var traveled := 0.0
+	var pos := from2d
+	var hit = null
+	while traveled < 2000.0 and u.get("alive", false) and is_inside_tree():
+		await get_tree().process_frame
+		traveled = minf(2000.0, traveled + 760.0 * get_process_delta_time())
+		pos = from2d + dir * traveled
+		pos.x = clampf(pos.x, ARENA.position.x, ARENA.end.x)
+		pos.y = clampf(pos.y, ARENA.position.y, ARENA.end.y)
+		if is_instance_valid(spr): spr.position = _world_pos(pos, 1.1)
 		for o in _enemies_of(u):
-			if not o.get("alive", false): continue
-			_apply_damage_from(u, o, _atk_dmg(u, 0.85, o) + int(o["maxHp"] * 0.15), Color("#c0d0ff"))
+			if o.get("alive", false) and pos.distance_to(o["pos"]) <= 46.0:
+				hit = o; break
+		if hit != null: break
+	if is_instance_valid(spr): spr.queue_free()
+	_two_head_cannon_boom(u, pos)
+
+func _two_head_cannon_boom(u: Dictionary, at2d: Vector2) -> void:
+	_shake(0.13)
+	var g := _make_glow_texture()
+	var sp := Sprite3D.new()
+	sp.texture = g; sp.modulate = Color(0.82, 0.56, 1.0, 0.95)
+	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; sp.shaded = false; sp.transparent = true
+	sp.pixel_size = (58.0 * WS) / float(maxi(1, g.get_width()))
+	sp.position = _world_pos(at2d, 0.85)
+	_world.add_child(sp)
+	var tw := _reg_tween(); tw.set_parallel(true)
+	tw.tween_property(sp, "pixel_size", sp.pixel_size * 3.4, 0.32).set_ease(Tween.EASE_OUT)
+	tw.tween_property(sp, "modulate:a", 0.0, 0.32)
+	tw.chain().tween_callback(sp.queue_free)
+	_skill_ring(at2d, Color(0.76, 0.55, 1.0, 0.9), 200.0)       # 200码爆炸范围冲击波
+	_skill_ring(at2d, Color(0.86, 0.72, 1.0, 0.7), 110.0)
+	for o in _enemies_of(u):
+		if o.get("alive", false) and at2d.distance_to(o["pos"]) <= 200.0:
+			_apply_damage_from(u, o, _atk_dmg(u, 1.0, o) + int(o["maxHp"] * 0.10), Color("#c0a0ff"))
+			_flash(o, Color(0.8, 0.6, 1.0))
+
+# 双头·锤击(近战 技1·用户2026-07-11): 跳起→落在目标身前→地面锤击(1.4A物理+获50%伤害盾4s)+落地震屏/冲击环/尘爆
+func _two_head_hammer(u: Dictionary, tgt: Dictionary) -> void:
+	var from2d: Vector2 = u["pos"]
+	var d: Vector2 = tgt["pos"] - from2d
+	var land2d: Vector2 = tgt["pos"] - (d.normalized() if d.length() > 1.0 else Vector2.RIGHT) * 52.0
+	u["_slam"] = true                                           # 跳跃期免分离推挤
+	u["_anim_lock_until"] = _t + 0.46                           # 跳跃期AI不出手/不移动
+	var dmg: int = _atk_dmg(u, 1.4, tgt)
+	var tw := _reg_tween()
+	tw.tween_method(_two_head_hammer_arc.bind(u, from2d, land2d), 0.0, 1.0, 0.42)
+	tw.tween_callback(_two_head_hammer_land.bind(u, tgt, land2d, dmg))
+
+func _two_head_hammer_arc(pf: float, u: Dictionary, from2d: Vector2, land2d: Vector2) -> void:
+	u["pos"] = from2d.lerp(land2d, pf)
+	u["_slam_voff"] = Vector3(0.0, sin(pf * PI) * 4.2, 0.0)     # 跳起弧线(render偏移·峰高4.2)
+
+func _two_head_hammer_land(u: Dictionary, tgt: Dictionary, at2d: Vector2, dmg: int) -> void:
+	u["_slam_voff"] = Vector3.ZERO
+	u["_slam"] = false
+	u["pos"] = at2d
+	_shake(0.16)                                               # 落地震屏
+	_skill_ring(at2d, Color(1.0, 0.72, 0.38, 0.85), 96.0)      # 地面锤击冲击环
+	_skill_ring(at2d, Color(1.0, 0.85, 0.5, 0.6), 52.0)
+	_impact_particles(at2d, 0.08)                              # 落地尘爆
+	if tgt.get("alive", false):
+		_apply_damage_from(u, tgt, dmg, Color("#ffb05c"))
+		_grant_shield(u, dmg * 0.5, 4.0)                        # 获造成伤害50%护盾(4秒)
+		_flash(tgt)
 
 func _sk_two_head_disrupt(u: Dictionary, tgt) -> void:           # 双头·技能二 form-variant(封板): 远程=精神干扰(1.0A魔法+治疗削减50%5s+破盾50%) / 近战=吸收(0.6A+8%maxHp物理+回血40%A+18%已损)
 	if tgt == null: tgt = _nearest_enemy(u)
