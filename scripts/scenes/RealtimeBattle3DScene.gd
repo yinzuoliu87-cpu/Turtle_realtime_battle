@@ -972,6 +972,8 @@ func _spawn_teams() -> void:
 			_lu["gold"] = 0.0   # demo: 财神起手金币(0=看自然攒金币)
 		if _review_demo() and REVIEW_DUMMY_ATTACKS:
 			_lu["_review_dummy"] = true   # 假人会还手时受审龟免死(看完整被动循环)
+		if _review_demo() and i == 0 and _review_skill_idx() >= 1:
+			_lu["echarge_perm"] = 5.0   # 评审某技: 受审龟龟能充能×5 → 高频放该技看清特效(演示用·非实战平衡·如手里剑95龟能实战约7~15s一发太稀)
 		if OS.has_environment("EQDEMO_EQUIP"):   # 装备演示
 			if i == 0:   # === 携带者(持受审装备) ===
 				_lu["_eqdemo_carrier"] = true
