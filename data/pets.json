@@ -542,7 +542,7 @@
         "shieldDuration": 3,
         "brief": "寒冰龟为全体友方施加（{S:0.5*ATK}）护盾，持续4秒",
         "detail": "寒冰龟为全体友方施加（50%×攻击力({ATK}) = {S:0.5*ATK}）护盾，持续 <span class=\"val-def\">4秒</span>。",
-        "energyCost": 80
+        "energyCost": 120
       }
     ],
     "defaultSkills": [

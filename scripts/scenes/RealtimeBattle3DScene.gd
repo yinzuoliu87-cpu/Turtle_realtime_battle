@@ -115,7 +115,7 @@ const REVIEW_DEMO_CFG := {
 	"ice:0": [ {"dx": 300.0, "dy": 0.0, "fixed": true} ],   # 寒冰普攻冰刺: 远程(射程400)单假人在射程内→看冰弹弹道+命中冰蓝
 	"ice:1": [ {"dx": 260.0, "dy": -60.0, "fixed": true}, {"dx": 260.0, "dy": 60.0, "fixed": true}, {"dx": 350.0, "dy": 0.0, "fixed": true} ],   # 寒冰冰霜: 3假人聚一簇(150码冰霜场覆盖)→看冰霜场环+落冰+圈内-25%魔抗+每0.5s跳伤
 	"ice:2": [ {"dx": 220.0, "dy": -240.0, "fixed": true} ],   # 寒冰冰封: 假人放斜上方→验冰锥弹道随方向转(尖端朝目标·不再水平) + 命中0.6魔法+冻结1.5s
-	"ice:3": [ {"dx": 300.0, "dy": 0.0, "fixed": true} ],   # 寒冰团队护盾: 单假人(ice打它)·单龟无友军→护盾给自己(0.5A盾4秒+六棱冰晶护盾泡)
+	"ice:3": [ {"dx": 200.0, "dy": 0.0, "fixed": true} ],   # 寒冰团队护盾(重设计): 单假人(200码·在250爆炸圈内)·单龟=独狼→自己20%maxHp冰盾·盾破/到期爆250码5A魔法
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -7444,10 +7444,35 @@ func _sk_ice_freeze(u: Dictionary, tgt: Dictionary) -> void:    # 寒冰龟·冰
 		return
 	_fire_ice_shard(u, tgt, _atk_dmg(u, 0.6, tgt, true))
 
-func _sk_ice_team_shield(u: Dictionary) -> void:               # 寒冰龟·团队护盾(封板L167·80龟能·通用护盾): 全体友军各0.5A护盾·4秒(通用护盾4秒·封板L74)
-	for o in _allies_of(u):                                    # _allies_of默认含自己=全体友方
-		_grant_shield(o, u["atk"] * 0.5, 4.0)                 # 0.5×攻击力·4秒(通用护盾·brief"永久"是L74规则前的旧文案)
+func _sk_ice_team_shield(u: Dictionary) -> void:               # 寒冰龟·团队护盾(用户2026-07-11重设计·120龟能): 全体友军5%施法者maxHp冰霜盾4秒·盾破/到期爆炸250码1×ATK魔法; 独狼(无其他友军)盾×4·爆炸5×ATK
+	var others := _allies_of(u, false)                         # 不含自己
+	var solo: bool = others.is_empty()
+	var shield_amt: float = u["maxHp"] * (0.20 if solo else 0.05)   # 5%施法者maxHp; 独狼×4=20%
+	var boom_mult: float = 5.0 if solo else 1.0                     # 爆炸1×ATK; 独狼5×ATK
+	for o in _allies_of(u):                                    # 含自己=全体友军
+		_frost_shield_burst(o)                                 # 若已挂上一发未爆→先结算(防覆盖丢爆裂)
+		_grant_shield(o, shield_amt, 4.0)                      # 冰霜盾·4秒
+		o["frost_shield_until"] = _t + 4.0                     # 爆裂追踪(独立通用shield_until): 到期/盾清零/持盾者死 任一→爆
+		o["frost_shield_src"] = u
+		o["frost_shield_boom"] = boom_mult
 		_aura_vfx("res://assets/sprites/vfx/fx-hex-bubble.png", o, 62.0, Color(0.68, 0.9, 1.0, 0.62), 4.0, 0.9)   # 六棱冰晶护盾泡(4秒·罩住友军)
+
+# 冰霜护盾爆裂: 到期/被打破(盾清零)/持盾者死 触发 → 持盾者250码内敌 boom×ATK 魔法 + 冰爆冲击环
+func _frost_shield_burst(ally: Dictionary) -> void:
+	if float(ally.get("frost_shield_until", 0.0)) <= 0.0:
+		return
+	ally["frost_shield_until"] = 0.0
+	var src = ally.get("frost_shield_src", null)
+	var boom: float = float(ally.get("frost_shield_boom", 1.0))
+	ally.erase("frost_shield_src")
+	if src is Dictionary:
+		var c: Vector2 = ally["pos"]
+		for o in _enemies_of(src):
+			if o.get("alive", false) and o["pos"].distance_to(c) <= 250.0:
+				_apply_damage_from(src, o, _atk_dmg(src, boom, o, true), Color("#bfe9ff"))   # boom×ATK 魔法(1或5)
+		_burst_vfx("res://assets/sprites/vfx/fx-shock-ring.png", c, 520.0, 0.14)   # 冰爆冲击环(≈250码半径)
+		_skill_ring(c, Color(0.68, 0.9, 1.0, 0.6), 250.0)
+		_impact_particles(c, 0.0); _shake(0.05)
 
 # 水平冰锥贴图(程序画: 后宽前尖朝右, 冰蓝+白核; 修竖冰柱方向错)
 func _make_ice_cone_texture() -> ImageTexture:
@@ -10023,6 +10048,10 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	var _bbu: float = float(u.get("bubble_shield_until", 0.0))
 	if _bbu > 0.0 and (_t >= _bbu or float(u.get("shield", 0.0)) <= 0.0):
 		_bubble_shield_burst(u)
+	# --- 冰霜团队护盾: 到期 或 被打破(盾清零) → 250码内敌 boom×ATK 魔法(用户2026-07-11) ---
+	var _fsu: float = float(u.get("frost_shield_until", 0.0))
+	if _fsu > 0.0 and (_t >= _fsu or float(u.get("shield", 0.0)) <= 0.0):
+		_frost_shield_burst(u)
 	# --- 赛博侵入: 被黑单位4秒到期→归队(side还原·清hijacked·数据链断) ---
 	if u.get("hijacked", false) and _t >= float(u.get("hijack_until", 0.0)):
 		u["side"] = str(u.get("_hijack_orig_side", u["side"]))
@@ -10310,6 +10339,9 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 	# 泡泡盾: 挂盾对象阵亡(=盾随之破) → 爆裂对施法者全体敌2.0A魔法(封板L435·防对象死丢爆裂)
 	if float(u.get("bubble_shield_until", 0.0)) > 0.0:
 		_bubble_shield_burst(u)
+	# 冰霜团队护盾: 持盾者阵亡(=盾随之破) → 250码内敌 boom×ATK 魔法(用户2026-07-11)
+	if float(u.get("frost_shield_until", 0.0)) > 0.0:
+		_frost_shield_burst(u)
 	# 财神聚宝盆: 任意单位阵亡 → 全场存活的财神龟 +9 金币
 	for f in _units:
 		if f.get("alive", false) and f.get("id") == "fortune" and f != u:
