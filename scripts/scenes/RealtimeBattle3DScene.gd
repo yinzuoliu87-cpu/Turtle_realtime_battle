@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "ninja"             # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
+const REVIEW_SKILL_IDX := 2   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
 const REVIEW_DUMMY := "basic"              # 假人 id (右队沙包)
 const REVIEW_DUMMY_HP := 500.0            # 假人固定血量
@@ -119,6 +119,7 @@ const REVIEW_DEMO_CFG := {
 	"ice:-1": [ {"dx": 250.0, "dy": -120.0}, {"dx": 250.0, "dy": 120.0}, {"dx": 380.0, "dy": 0.0} ],   # 寒冰被动极寒: 3假人→看登场群体寒爆+每敌蓝寒环+全场-30%攻速/移速/充能
 	"ninja:0": [ {"dx": 130.0, "dy": 0.0} ],   # 忍者斩击普攻: 近战快攻(interval0.6)单假人→看斩击挥/踏步/2层流血/高暴击
 	"ninja:1": [ {"dx": 600.0, "dy": 0.0, "fixed": true} ],   # 忍者手里剑(远程2000码): 假人放600码(出冲击500码范围)→忍者站原地朝远处掷旋转飞镖·看真远程弹道
+	"ninja:2": [ {"dx": 340.0, "dy": -90.0, "fixed": true}, {"dx": 420.0, "dy": 0.0, "fixed": true}, {"dx": 340.0, "dy": 90.0, "fixed": true} ],   # 忍者炸弹(AOE): 3假人聚一簇→看点燃引信炸弹抛物线飞向敌群质心→落地爆炸帧动画+全体1.1A物理红字+每敌-25%护甲环
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -6953,7 +6954,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"bambooSpikes":         _sk_bamboo_spikes(u, tgt)
 		"angelEquality":        _sk_angel_equality(u, tgt)
 		"ninjaShuriken":        _sk_ninja_shuriken(u, tgt)
-		"ninjaBomb":            _sk_dmg(u, tgt, {"phys": 1.1, "hits": 1, "aoe": true, "defDown": 0.25, "name": "烟雾弹!", "color": Color("#b0b0c0")})
+		"ninjaBomb":            _sk_ninja_bomb(u, tgt)
 		"ghostPhantom":         _sk_dmg(u, tgt, {"magic": 1.5, "hits": 1, "lifesteal": 0.8, "selfDodge": 0.25, "selfDodgeDur": 4.0, "name": "幻影!", "color": Color("#c77dff")})   # 闪避4秒(用户2026-07-09·回合制"2回合")
 		"diamondPowerball":     _sk_diamond_powerball(u, tgt)
 		"diamondSmash":         _sk_diamond_smash(u, tgt)
@@ -9294,6 +9295,53 @@ func _sk_burst(u: Dictionary, tgt: Dictionary) -> void:          # 兜底重击
 # ── 选3 多技能: 数据驱动伤害技 + 通用盾/治 (系数取自 pets.json detail 公式) ──
 # opts: {phys,magic,true: ×casterATK 的 物理/魔法/真实系数; hp,mr: ×caster maxHp/MR 附加;
 #        hits: 视觉段数(伤害总量不变); aoe: 全体敌; rider: 附带(burn/stun/slow/curse/atkdn/mrdn); name,color}
+# 忍者·炸弹 (AOE·1:1 回合制 ninjaBomb): 抛掷点燃引信的炸弹到敌群质心→落地爆炸→全体敌方 1.1×ATK 物理 + -25%护甲(5秒)
+#   机制沿用 _sk_dmg(在爆炸落地时结算·数值/减益完全不变), 仅把原来的"灰环占位"换成真·炸弹抛掷+爆炸帧动画(ninja-bomb.png 12帧)
+func _sk_ninja_bomb(u: Dictionary, tgt) -> void:
+	var opts := {"phys": 1.1, "hits": 1, "aoe": true, "defDown": 0.25, "color": Color("#ff9a3c")}
+	var es: Array = _enemies_of(u)
+	if es.is_empty():
+		return
+	var center := Vector2.ZERO
+	for e in es:
+		center += e["pos"]
+	center /= float(es.size())               # 落点 = 敌群质心 (AOE·炸弹落敌群中间; 伤害仍打全体不受落点限制)
+	_anticipate(u)                            # 短蓄力(掏炸弹)
+	var spr := Sprite3D.new()
+	spr.texture = load("res://assets/sprites/vfx/ninja-bomb.png")
+	spr.hframes = 12                          # 768×64 = 12帧(圆炸弹0-4→引信5-6→streak7→爆闪8→火球9→烟10-11)
+	spr.frame = 6                             # 点燃引信的炸弹
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.shaded = false; spr.transparent = true
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	spr.pixel_size = (46.0 * WS) / 64.0
+	spr.position = _world_pos(u["pos"], 1.15)
+	_world.add_child(spr)
+	var tw := _reg_tween()
+	tw.tween_method(_bomb_arc.bind(spr, u["pos"], center), 0.0, 1.0, 0.42)   # 抛物线飞向敌群
+	tw.tween_callback(_bomb_explode.bind(spr, u, center, opts))
+
+func _bomb_arc(pf: float, spr: Sprite3D, from2d: Vector2, to2d: Vector2) -> void:
+	if is_instance_valid(spr):
+		spr.position = _world_pos(from2d.lerp(to2d, pf), 1.1 + sin(pf * PI) * 2.6)   # 拱起飞行
+		spr.frame = 6 + (int(_t * 14.0) % 2)   # 引信闪烁(6/7帧)
+
+func _bomb_boom_frame(fv: float, spr: Sprite3D) -> void:
+	if is_instance_valid(spr):
+		spr.frame = clampi(int(fv), 8, 11)     # 爆炸→火球→烟(8→11)
+
+func _bomb_explode(spr: Sprite3D, u: Dictionary, at2d: Vector2, opts: Dictionary) -> void:
+	if is_instance_valid(spr):
+		spr.frame = 8
+		spr.position = _world_pos(at2d, 0.75)
+		spr.pixel_size = (88.0 * WS) / 64.0    # 爆炸放大
+		var et := _reg_tween()
+		et.tween_method(_bomb_boom_frame.bind(spr), 8.0, 11.99, 0.5)
+		et.tween_callback(spr.queue_free)
+	_shake(0.12)
+	_skill_ring(at2d, Color(1.0, 0.5, 0.15, 0.7), 74.0)   # 落点爆炸火环
+	_sk_dmg(u, null, opts)                     # 落地结算: 全体敌 1.1A物理 + -25%护甲5s (数值/减益同原实现·不变)
+
 func _sk_dmg(u: Dictionary, tgt, opts: Dictionary) -> void:
 	var col: Color = opts.get("color", Color("#ffd07a"))
 	var aoe: bool = opts.get("aoe", false)
