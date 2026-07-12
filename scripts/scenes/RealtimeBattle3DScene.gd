@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "diamond"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
+const REVIEW_SKILL_IDX := 3   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -8057,15 +8057,35 @@ func _diamond_roll_impact(u: Dictionary, cp: Vector2, sf: float) -> void:
 	_skill_ring(cp, Color(0.6, 0.86, 1.0, 0.6), 120.0)
 	_shake(JUICE_SHAKE_HEAVY if sf > 0.6 else JUICE_SHAKE_LIGHT)  # 满速更炸(封板美术L231)
 
-func _sk_diamond_smash(u: Dictionary, tgt) -> void:             # 钻石龟·钻石冲撞(封板): 100%护甲+100%魔抗+10%攻击力物理+9层流血 (强化钻石结构打包被动在登场gate)
+const DIAMOND_SMASH_CHARGE := 0.5       # 冲撞短暂蓄力时长(用户2026-07-12)
+const DIAMOND_SMASH_KNOCK_VY := 0.55    # 一点点击飞(小抬·vy_mult)
+const DIAMOND_SMASH_PUSH := 9.25         # 击退~300码(push_mult·headless探针tune@60fps)
+func _sk_diamond_smash(u: Dictionary, tgt) -> void:             # 钻石龟·钻石冲撞(用户2026-07-12改): 短暂蓄力→撞击(保留1.0甲+1.0抗+0.1A物理)+击退300码顺冲撞方向+一点点击飞+流血(层数=0.5A+0.1甲+0.1抗)+3s50%减速
 	if tgt == null: tgt = _nearest_enemy(u)
 	if tgt == null: return
+	u["_anim_lock_until"] = _t + DIAMOND_SMASH_CHARGE          # 蓄力期锁定原地聚力(不走不打)
+	_anticipate(u)
+	_burst_vfx("res://assets/sprites/vfx/diamond-fortify.png", u["pos"], 72.0, 0.5)   # 蓄力: 水晶能量在身上聚起
+	_skill_ring(u["pos"], Color(0.6, 0.86, 1.0, 0.5), 40.0)
+	_pending_shots.append({"delay": DIAMOND_SMASH_CHARGE, "src": u, "fn": _diamond_smash_impact.bind(u, tgt)})
+
+func _diamond_smash_impact(u: Dictionary, tgt) -> void:         # 蓄力结束→冲撞落地结算
+	if not u.get("alive", false): return
+	if tgt == null or not tgt.get("alive", false):
+		tgt = _nearest_enemy(u)
+	if tgt == null: return
 	_dash_to(u, tgt, 45.0)
-	var dmg: int = int(u["def"] + u["mr"] + u["atk"] * 0.1)
+	var dmg: int = int(u["def"] + u["mr"] + u["atk"] * 0.1)     # 保留原撞击伤害(1.0甲+1.0抗+0.1A物理·用户2026-07-12保留)
 	_apply_damage_from(u, tgt, dmg, Color("#9bdcff"))
-	_apply_dot_stacks(tgt, "bleed", 9, u)                       # 9层流血
-	_burst_vfx("res://assets/sprites/vfx/diamond-impact.png", tgt["pos"], 104.0, 0.5)   # 水晶碎裂撞击
-	_skill_ring(tgt["pos"], Color(0.7, 0.9, 1.0, 0.5), 48.0)
+	var bstacks: int = maxi(1, roundi(0.5 * float(u["atk"]) + 0.1 * float(u["def"]) + 0.1 * float(u["mr"])))   # 流血层数=0.5A+0.1甲+0.1抗(用户2026-07-12·走既有层数式流血)
+	_apply_dot_stacks(tgt, "bleed", bstacks, u)
+	var prev_slow: float = float(tgt.get("slow_mag", 1.0)) if _t < float(tgt.get("slow_until", 0.0)) else 1.0
+	_knockback(u, tgt, 0.0, DIAMOND_SMASH_KNOCK_VY, DIAMOND_SMASH_PUSH)   # 击退~300码(顺冲撞方向)+一点点击飞
+	tgt["slow_until"] = maxf(float(tgt.get("slow_until", 0.0)), _t + 3.0)   # 3秒50%减速
+	tgt["slow_mag"] = minf(prev_slow, 0.5)
+	_burst_vfx("res://assets/sprites/vfx/diamond-impact.png", tgt["pos"], 110.0, 0.5)   # 水晶碎裂撞击
+	_skill_ring(tgt["pos"], Color(0.7, 0.9, 1.0, 0.55), 54.0)
+	_shake(JUICE_SHAKE_HEAVY)
 
 func _diamond_slash_fx(u: Dictionary, tgt: Dictionary) -> void:   # 钻石普攻·切割: 水晶新月斩弧, 随攻击方向翻转·落在攻击者→目标之间(近战无弹道·用户2026-07-12指出方向问题)
 	var to_r: bool = tgt["pos"].x >= u["pos"].x
