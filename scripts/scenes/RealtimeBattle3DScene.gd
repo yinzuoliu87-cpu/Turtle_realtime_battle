@@ -14245,31 +14245,23 @@ func _make_fan_tex(col: Color, half_deg: float) -> ImageTexture:   # 扇形(顶�
 			img.set_pixel(x, y, c)
 	return ImageTexture.create_from_image(img)
 
-func _laser_blade_sweep(u: Dictionary, origin: Vector2, dir: Vector2, rng: float, half_deg: float) -> void:   # 红激光长刃: 扇区红光晕 + 厚白热刃平滑扫过
-	var base_ang: float = atan2(dir.y, dir.x)
-	var glow := Sprite3D.new()   # 扫过区域红光晕(整片扇形发光)
-	glow.texture = _make_fan_tex(Color(1.0, 0.14, 0.18, 1.0), half_deg)
-	glow.billboard = BaseMaterial3D.BILLBOARD_DISABLED; glow.axis = Vector3.AXIS_Y
-	glow.shaded = false; glow.transparent = true
-	glow.pixel_size = rng * WS / 128.0
-	glow.rotation = Vector3(0.0, -base_ang, 0.0)
-	glow.position = _world_pos(origin + dir * (rng * 0.5), 0.09)
-	glow.modulate = Color(1.0, 0.3, 0.3, 0.0)
-	_world.add_child(glow)
-	var gt := _reg_tween()
-	gt.tween_property(glow, "modulate:a", 0.5, 0.09)
-	gt.tween_property(glow, "modulate:a", 0.0, 0.2)
-	gt.tween_callback(glow.queue_free)
-	var blade := Sprite3D.new()   # 厚白热激光长刃(扫过)
-	blade.texture = _make_laser_beam_tex(Color(1.0, 0.16, 0.2))
-	blade.billboard = BaseMaterial3D.BILLBOARD_DISABLED; blade.axis = Vector3.AXIS_Y
-	blade.shaded = false; blade.transparent = true
-	blade.pixel_size = rng * WS / 100.0
-	blade.scale = Vector3(1.0, 3.6, 1.0)
-	_world.add_child(blade)
-	var swp := _reg_tween()
-	swp.tween_method(_laser_blade_step.bind(blade, origin, base_ang, rng, half_deg), 0.0, 1.0, 0.16).set_trans(Tween.TRANS_SINE)
-	swp.tween_callback(blade.queue_free)
+func _laser_blade_sweep(u: Dictionary, origin: Vector2, dir: Vector2, rng: float, half_deg: float) -> void:   # 像素红激光斩弧(武器挥砍感·用户2026-07-12重做, 替换程序渐变扇形)
+	var to_r: bool = dir.x >= 0.0
+	var cp: Vector2 = origin + dir * (rng * 0.55)
+	var b := Sprite3D.new()
+	b.texture = load("res://assets/sprites/vfx/laser-slash.png")
+	b.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素感(不平滑)
+	b.billboard = BaseMaterial3D.BILLBOARD_ENABLED; b.shaded = false; b.transparent = true
+	b.flip_h = not to_r                                        # 斩弧朝挥砍方向
+	var th := float(maxi(1, int(b.texture.get_height())))
+	b.pixel_size = (rng * 1.7) * WS / th
+	b.position = _world_pos(cp, 0.95)
+	_world.add_child(b)
+	var t := _reg_tween()
+	t.tween_property(b, "scale", Vector3.ONE, 0.08).from(Vector3(0.28, 1.0, 1.0)).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)   # 挥出: 从窄横向拉开=挥砍
+	t.tween_interval(0.05)
+	t.tween_property(b, "modulate:a", 0.0, 0.14)
+	t.tween_callback(b.queue_free)
 
 func _laser_blade_step(fr: float, blade: Sprite3D, origin: Vector2, base_ang: float, rng: float, half_deg: float) -> void:
 	if not is_instance_valid(blade): return
@@ -14444,9 +14436,10 @@ func _eq_laser_chop(u: Dictionary, tgt: Dictionary, si: int, base_range: float) 
 	var reach: float = base_range * 2.0
 	_shake(JUICE_SHAKE_BIG)
 	var wave := Sprite3D.new()
-	wave.texture = _make_laser_vblade_tex(Color(1.0, 0.18, 0.22))   # 白热芯竖激光刃
+	wave.texture = load("res://assets/sprites/vfx/laser-cleave.png")   # 像素竖劈能量束(用户2026-07-12重做)
+	wave.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	wave.billboard = BaseMaterial3D.BILLBOARD_ENABLED; wave.shaded = false; wave.transparent = true
-	wave.pixel_size = 0.06; wave.scale = Vector3(1.5, 2.4, 1.0)
+	wave.pixel_size = 0.02; wave.scale = Vector3(1.5, 1.5, 1.0)
 	wave.modulate = Color(1.0, 0.28, 0.3, 0.95)
 	_world.add_child(wave)
 	var traveled: float = 0.0
@@ -14460,6 +14453,7 @@ func _eq_laser_chop(u: Dictionary, tgt: Dictionary, si: int, base_range: float) 
 			last_tr = traveled
 			var tr := Sprite3D.new()
 			tr.texture = wave.texture
+			tr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 			tr.billboard = BaseMaterial3D.BILLBOARD_ENABLED; tr.shaded = false; tr.transparent = true
 			tr.pixel_size = wave.pixel_size; tr.scale = wave.scale * 0.9
 			tr.position = wave.position; tr.modulate = Color(1.0, 0.35, 0.4, 0.3)
