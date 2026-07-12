@@ -567,9 +567,9 @@ func _debug_arena_entry() -> void:
 	b.pressed.connect(_open_debug_arena)
 
 func _open_debug_arena() -> void:
-	_RB_DEBUG.DEBUG_EDIT = false   # 用户2026-07-11: 调试场改开评审demo(受审龟vs假人)+调试面板(技能/装备/星级切换), 非自由摆位空场
+	_RB_DEBUG.DEBUG_EDIT = true    # 调试场=自由摆位编辑器(左键摆龟/拖拽/右键删/装备笔刷/开始暂停·用户2026-07-12恢复)
 	var gs = get_node_or_null("/root/GameState")
-	if gs != null: gs.set("dual_active", false)   # 清双路态→走评审demo
+	if gs != null: gs.set("dual_active", false)   # 清双路态
 	get_tree().change_scene_to_file("res://scenes/RealtimeBattle3D.tscn")
 
 

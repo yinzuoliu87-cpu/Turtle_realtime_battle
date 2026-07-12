@@ -373,6 +373,9 @@ var _edit_pick_id := "basic"              # 当前选中要摆的龟 id (◀▶ 
 var _edit_pick_side := "left"             # 摆放阵营 left(友军) / right(假人)
 var _edit_dummy_hp := 500.0               # 右队假人血量 (−/+ 步进 100)
 var _edit_dummy_killable := false         # 右队假人是否会死 (false=不死回满沙包)
+var _edit_pick_equip_idx := -1            # 编辑器装备笔刷: -1=无, >=0=_dbg_equip_ids()索引(摆放单位带上)
+var _edit_pick_star := 1                  # 装备笔刷星级 1-3
+var _edit_lbl_equip: Label = null
 var _edit_drag_unit = null                # 正在拖拽的单位 (Dictionary 或 null)
 var _edit_drag_moved := false             # 本次按下是否真的拖动过 (区分点击放置 vs 拖拽挪位)
 var _edit_palette: Control = null         # 编辑面板根 (Control 子控件 mouse_filter=STOP 吃掉自身点击)
@@ -12986,6 +12989,10 @@ func _edit_handle_mouse_motion(ev: InputEventMouseMotion) -> void:
 # 摆放一个单位: 复用 _make_unit, 右队按调试场设置改成假人 (不动/不打/可设血/可不死).
 func _edit_place_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 	var u := _make_unit(id, side, pos)
+	if _edit_pick_equip_idx >= 0:
+		var _eids := _dbg_equip_ids()
+		if _edit_pick_equip_idx < _eids.size():
+			u["_edit_equips"] = [{"id": str(_eids[_edit_pick_equip_idx]), "star": _edit_pick_star}]
 	if side == "right":
 		u["no_basic"] = true
 		u["no_move"] = true
@@ -13048,6 +13055,7 @@ func _edit_back_to_edit() -> void:
 	_edit_clear()
 	for s in _edit_paused_setup:
 		var u := _make_unit(str(s["id"]), str(s["side"]), s["pos"])
+		u["_edit_equips"] = s.get("equips", [])
 		if str(s["side"]) == "right":
 			u["no_basic"] = true
 			u["no_move"] = true
@@ -13072,6 +13080,7 @@ func _edit_snapshot_setup() -> void:
 			"pos": Vector2(u["pos"]),
 			"hp": float(u.get("maxHp", 500.0)),
 			"killable": not bool(u.get("_review_dummy", false)) if str(u["side"]) == "right" else true,
+			"equips": u.get("_edit_equips", []),
 		})
 
 # ----------------------------------------------------------------------------
@@ -13147,6 +13156,24 @@ func _build_edit_palette() -> void:
 	row_hp.add_child(_edit_mk_btn("+", func(): _edit_adjust_hp(100.0), 34))
 	row_hp.add_child(_edit_mk_btn("掉血/不死", func(): _edit_toggle_killable(), 96))
 
+	# --- 装备笔刷 (◀ 装备名 ▶ + ★星级; 摆放的单位带上此装备) ---
+	var row_eq := HBoxContainer.new()
+	row_eq.add_theme_constant_override("separation", 6)
+	vb.add_child(row_eq)
+	var lbl_eq_t := Label.new(); lbl_eq_t.text = "装备:"
+	lbl_eq_t.add_theme_font_size_override("font_size", 14)
+	lbl_eq_t.add_theme_color_override("font_color", Color("#9fb6c8"))
+	row_eq.add_child(lbl_eq_t)
+	row_eq.add_child(_edit_mk_btn("◀", func(): _edit_cycle_equip(-1), 34))
+	_edit_lbl_equip = Label.new()
+	_edit_lbl_equip.custom_minimum_size = Vector2(150, 0)
+	_edit_lbl_equip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_edit_lbl_equip.add_theme_font_size_override("font_size", 14)
+	_edit_lbl_equip.add_theme_color_override("font_color", Color("#cfe6ff"))
+	row_eq.add_child(_edit_lbl_equip)
+	row_eq.add_child(_edit_mk_btn("▶", func(): _edit_cycle_equip(1), 34))
+	row_eq.add_child(_edit_mk_btn("★", func(): _edit_cycle_star(1), 34))
+
 	# --- 控制 (开始 / 编辑 / 清空 / 返回) ---
 	var row_ctl := HBoxContainer.new()
 	row_ctl.add_theme_constant_override("separation", 6)
@@ -13195,6 +13222,15 @@ func _edit_cycle_pick(dir: int) -> void:
 	_edit_pick_id = str(ids[idx])
 	_edit_refresh_labels()
 
+func _edit_cycle_equip(dir: int) -> void:
+	var n := _dbg_equip_ids().size()
+	_edit_pick_equip_idx = wrapi(_edit_pick_equip_idx + dir + 1, 0, n + 1) - 1   # [-1, n-1] 循环(-1=无)
+	_edit_refresh_labels()
+
+func _edit_cycle_star(dir: int) -> void:
+	_edit_pick_star = wrapi(_edit_pick_star + dir - 1, 0, 3) + 1   # 1-3 循环
+	_edit_refresh_labels()
+
 func _edit_toggle_side() -> void:
 	_edit_pick_side = "right" if _edit_pick_side == "left" else "left"
 	_edit_refresh_labels()
@@ -13217,6 +13253,13 @@ func _edit_refresh_labels() -> void:
 	if _edit_lbl_hp != null:
 		var kt := "会死" if _edit_dummy_killable else "不死"
 		_edit_lbl_hp.text = "%d (%s)" % [int(_edit_dummy_hp), kt]
+	if _edit_lbl_equip != null:
+		var _en := "无"
+		if _edit_pick_equip_idx >= 0:
+			var _eids := _dbg_equip_ids()
+			if _edit_pick_equip_idx < _eids.size():
+				_en = str(DataRegistry.phase2_equipment_by_id.get(_eids[_edit_pick_equip_idx], {}).get("name", _eids[_edit_pick_equip_idx]))
+		_edit_lbl_equip.text = "%s ★%d" % [_en, _edit_pick_star]
 
 func _edit_set_status(s: String) -> void:
 	if _edit_lbl_status != null:
@@ -13463,6 +13506,16 @@ const DEMO_EQUIP := {
 
 # 装备注入: 玩家队(left)读 persistent_equipped; demo 阵容兜底塞测试装备.
 func _inject_equipment() -> void:
+	if DEBUG_EDIT:                              # 调试场自由摆位: 单位带 _edit_equips(装备笔刷) → 应用, 无则裸装
+		for _eu in _units:
+			var _el: Array = _eu.get("_edit_equips", [])
+			if _el is Array and not _el.is_empty():
+				_eu["equips"] = _el.duplicate(true)
+				for _e in _el:
+					if _eu.get("eq_state") is Dictionary: _eu["eq_state"][str(_e.get("id", ""))] = {}
+			else:
+				_eu["equips"] = []
+		return
 	if _review_demo() and not _is_dual_lane_mode() and not OS.has_environment("EQDEMO_EQUIP") and (_dbg_equip_idx >= 0 or not REVIEW_EQUIP.is_empty()):
 		# 调试场加装备(调试面板"装备开" 或 REVIEW_EQUIP非空·用户2026-07-11 #2): 给受审龟装 → 看装备显示(左右头像框)+效果
 		var _eqs: Array = REVIEW_EQUIP
@@ -15533,7 +15586,7 @@ func _fmt_num(v: float) -> String:
 
 # 🛠 调试面板(评审demo顶部一排按钮·技能0-3/装备开关/星级1-3·点即改静态变量+重开·用户2026-07-11)
 func _build_debug_panel() -> void:
-	if not _review_demo() or _is_dual_lane_mode() or _ui_layer == null:
+	if not _review_demo() or _is_dual_lane_mode() or _ui_layer == null or DEBUG_EDIT:
 		return
 	var bar := HBoxContainer.new()
 	bar.position = Vector2(12, 44)
