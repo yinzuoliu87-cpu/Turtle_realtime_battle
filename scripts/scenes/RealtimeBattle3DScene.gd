@@ -5641,7 +5641,6 @@ func _fire_ghost_wisp(u: Dictionary, tgt: Dictionary) -> void:
 	p.texture = load("res://assets/sprites/vfx/ghost-wisp.png")
 	p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	p.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # 定向弹道(不billboard·锥尖领着飞·用户2026-07-11「方向不对」)
-	p.axis = Vector3.AXIS_Y
 	p.shaded = false; p.transparent = true
 	p.modulate = Color(0.75, 1.0, 0.88, 0.95)
 	p.pixel_size = (52.0 * WS) / 64.0
@@ -5651,7 +5650,7 @@ func _fire_ghost_wisp(u: Dictionary, tgt: Dictionary) -> void:
 	_projectiles.append({
 		"node": p, "from": world_from, "tgt": tgt, "src": u, "t": 0.0,
 		"dur": clampf(start2d.distance_to(tgt["pos"]) / 620.0, 0.2, 0.62),
-		"ghost_touch": true, "gt_phys": 0.4 * atk, "gt_true": 0.9 * atk, "basic_onhit": true, "oriented": true,
+		"ghost_touch": true, "gt_phys": 0.4 * atk, "gt_true": 0.9 * atk, "basic_onhit": true, "wisp_dir": true,
 	})
 
 # 幽魂命中: 幽绿灵体怨气(幽环 + 几缕glow飘散)
@@ -5732,6 +5731,15 @@ func _step_projectiles(delta: float) -> void:
 			var d3: Vector3 = to - node.position
 			if d3.length() > 0.05:
 				node.rotation.y = -atan2(d3.z, d3.x)
+		if pr.get("wisp_dir", false) and _cam != null:            # 幽魂弹: 正对镜头+屏幕roll→火苗尖指向目标屏幕方向(用户2026-07-11)
+			var ss2: Vector2 = _cam.unproject_position(node.global_position)
+			var st2: Vector2 = _cam.unproject_position(to)
+			var sd2: Vector2 = st2 - ss2
+			if sd2.length() > 1.0:
+				var roll2: float = atan2(-sd2.y, sd2.x) - PI / 2.0
+				var wtf2: Transform3D = node.global_transform
+				wtf2.basis = _cam.global_transform.basis * Basis(Vector3(0, 0, 1), roll2)
+				node.global_transform = wtf2
 		if pr.get("shuriken_anim", false):                         # 手里剑: 4帧忍者飞镖旋转动画
 			node.frame = int(pr["t"] * 18.0) % 4
 		if frac >= 1.0:
