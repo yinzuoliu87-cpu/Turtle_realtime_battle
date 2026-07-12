@@ -86,8 +86,8 @@ static func _review_demo() -> bool:
 	if OS.has_environment("REVIEW"):
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
-const REVIEW_TURTLE := "two_head"           # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 3   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
+const REVIEW_TURTLE := "ghost"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
+const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -127,6 +127,7 @@ const REVIEW_DEMO_CFG := {
 	"two_head:1": [ {"dx": 200.0, "dy": -70.0, "fixed": true}, {"dx": 280.0, "dy": 0.0, "fixed": true}, {"dx": 200.0, "dy": 70.0, "fixed": true} ],   # 双头技1(随形态·放完切形态): 3假人聚簇→远程灵能冲击(全体0.85A+15%maxHp蓝)/切近战锤击(单体1.4A橙+盾)交替
 	"two_head:2": [ {"dx": 220.0, "dy": -55.0, "fixed": true}, {"dx": 300.0, "dy": 0.0, "fixed": true}, {"dx": 220.0, "dy": 55.0, "fixed": true} ],   # 双头技2(随形态): 远程精神干扰(头顶精神波+紫涟漪+破盾碎裂+裂心标记)/近战吸收(生命虹吸束+微粒回流+回血绿环)交替
 	"two_head:3": [ {"dx": 240.0, "dy": -50.0, "fixed": true}, {"dx": 320.0, "dy": 0.0, "fixed": true}, {"dx": 240.0, "dy": 50.0, "fixed": true} ],   # 双头技3融合(登场锁远程形态): 登场合体爆发+持续融合光环→反复放4段弧形魔法波(物理紫/真实白)·受击坚韧微光
+	"ghost:0": [ {"dx": 280.0, "dy": 0.0, "fixed": true} ],   # 幽灵普攻幽魂触碰(远程range400): 单假人280码→看0.4A物理(红)+0.9A真实(白)+登场诅咒每秒5%maxHp真伤
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -2905,6 +2906,22 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 				return
 			keep.append(dot)
 	u["dots"] = keep
+	# 诅咒特效(用户2026-07-11): 中咒→头顶挂诅咒骷髅标记(跟随)+ 周期冒黑紫怨气; 咒散→标记消
+	var _has_curse := false
+	for _cd in u["dots"]:
+		if str(_cd["tag"]) == "curse":
+			_has_curse = true
+			break
+	if _has_curse:
+		if not is_instance_valid(u.get("_curse_mark", null)):
+			_ghost_curse_mark(u)
+		u["curse_vfx_t"] = float(u.get("curse_vfx_t", 0.0)) + delta
+		while u["curse_vfx_t"] >= 0.22:
+			u["curse_vfx_t"] -= 0.22
+			_ghost_curse_wisp(u["pos"])
+	elif is_instance_valid(u.get("_curse_mark", null)):
+		u["_curse_mark"].queue_free()
+		u["_curse_mark"] = null
 	# 层数式 DoT (灼烧/中毒/流血): 每 STACK_DOT_TICK(1秒) 结算一次出伤+衰减
 	u["_dottimer"] = u.get("_dottimer", 0.0) + delta
 	while u["_dottimer"] >= STACK_DOT_TICK:
@@ -3065,6 +3082,9 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 			_two_head_enhanced_basic(u, tgt, str(u["_th_enh"]))
 			u["_th_enh"] = ""
 		_on_basic_hit(u, tgt)
+		return
+	if u["id"] == "ghost":          # 幽灵普攻幽魂触碰(封板): 远程灵体触碰·专属幽魂弹道·命中同发0.4A物理(红)+0.9A真实(白)+灵体怨气(用户2026-07-11修:原真实段瞬发/物理段随弹道→不同时跳)
+		_fire_ghost_wisp(u, tgt)
 		return
 	if u["id"] == "cyber":          # 贯穿激光(封板): 1A物理·穿透目标飞到射程尽头·打穿一线所有敌(射程450)
 		var _cdir: Vector2 = tgt["pos"] - u["pos"]
@@ -5611,6 +5631,84 @@ func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   #
 		tw.tween_property(bear, "modulate:a", 0.0, 0.2)
 		tw.tween_callback(bear.queue_free)
 
+# 幽灵普攻·幽魂弹道(专属ghost-wisp): 携物理+真实, 命中同发红白两数字(修不同时跳)+灵体怨气
+func _fire_ghost_wisp(u: Dictionary, tgt: Dictionary) -> void:
+	var atk: float = u["atk"]
+	var start2d: Vector2 = u["pos"]
+	var p := Sprite3D.new()
+	p.texture = load("res://assets/sprites/vfx/ghost-wisp.png")
+	p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	p.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	p.shaded = false; p.transparent = true
+	p.modulate = Color(0.75, 1.0, 0.88, 0.95)
+	p.pixel_size = (46.0 * WS) / 64.0
+	var world_from := _world_pos(start2d, 1.0)
+	p.position = world_from
+	_world.add_child(p)
+	_projectiles.append({
+		"node": p, "from": world_from, "tgt": tgt, "src": u, "t": 0.0,
+		"dur": clampf(start2d.distance_to(tgt["pos"]) / 620.0, 0.2, 0.62),
+		"ghost_touch": true, "gt_phys": 0.4 * atk, "gt_true": 0.9 * atk, "basic_onhit": true,
+	})
+
+# 幽魂命中: 幽绿灵体怨气(幽环 + 几缕glow飘散)
+func _ghost_touch_hit(at2d: Vector2) -> void:
+	_skill_ring(at2d, Color(0.5, 1.0, 0.75, 0.55), 46.0)
+	var gt := _make_glow_texture()
+	for k in range(5):
+		var m := Sprite3D.new()
+		m.texture = gt
+		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		m.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		m.shaded = false; m.transparent = true
+		m.modulate = Color(0.55, 1.0, 0.78, 0.85)
+		m.pixel_size = (22.0 * WS) / float(maxi(1, gt.get_height()))
+		m.position = _world_pos(at2d, 1.0)
+		_world.add_child(m)
+		var ang: float = float(k) * TAU / 5.0 + 0.3
+		var dest: Vector2 = at2d + Vector2(cos(ang), sin(ang)) * randf_range(28.0, 50.0)
+		var mtw := _reg_tween()
+		mtw.tween_method(_ghost_mote_step.bind(m, at2d, dest), 0.0, 1.0, 0.3)
+		mtw.tween_callback(m.queue_free)
+
+func _ghost_mote_step(pf: float, m, from2d: Vector2, dest: Vector2) -> void:
+	if not is_instance_valid(m):
+		return
+	m.position = _world_pos(from2d.lerp(dest, pf), lerpf(1.0, 1.5, pf))
+	m.modulate.a = lerpf(0.85, 0.0, pf)
+
+# 诅咒·头顶骷髅标记(专属curse-mark·跟随中咒者·咒散/死亡自动消)
+func _ghost_curse_mark(u: Dictionary) -> void:
+	var m := Sprite3D.new()
+	m.texture = load("res://assets/sprites/vfx/curse-mark.png")
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	m.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	m.shaded = false; m.transparent = true
+	m.modulate = Color(1, 1, 1, 0.92)
+	m.pixel_size = (30.0 * WS) / 64.0
+	_world.add_child(m)
+	u["_curse_mark"] = m
+	_follow_vfx.append({"spr": m, "unit": u, "h": 2.0})
+
+# 诅咒·一缕黑紫怨气升腾
+func _ghost_curse_wisp(at2d: Vector2) -> void:
+	var m := Sprite3D.new()
+	m.texture = _make_glow_texture()
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	m.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	m.shaded = false; m.transparent = true
+	m.modulate = Color(0.55, 0.2, 0.72, 0.75)
+	m.pixel_size = (18.0 * WS) / float(maxi(1, m.texture.get_height()))
+	var off := Vector2(randf_range(-22.0, 22.0), randf_range(-14.0, 14.0))
+	m.position = _world_pos(at2d + off, 0.4)
+	_world.add_child(m)
+	var mtw := _reg_tween()
+	mtw.set_parallel(true)
+	mtw.tween_property(m, "position", _world_pos(at2d + off, 1.9), 0.6)
+	mtw.tween_property(m, "modulate:a", 0.0, 0.6)
+	mtw.chain().tween_callback(m.queue_free)
+
+
 func _step_projectiles(delta: float) -> void:
 	var ts_on: bool = not _ts_active.is_empty()
 	var keep: Array = []
@@ -5653,6 +5751,12 @@ func _step_projectiles(delta: float) -> void:
 					if float(pr.get("nj_true", 0.0)) >= 1.0 and tgt.get("alive", false):
 						_last_atk_crit = bool(pr.get("is_crit", false))   # 物理段hook可能改写→真伤段前重置
 						_apply_damage_from(pr["src"], tgt, int(round(float(pr["nj_true"]))), Color("#ffffff"), 0.0, true, false, true)   # 真伤段(白·pre_crit=已含暴击不再二次掷)
+				elif pr.get("ghost_touch", false):   # 幽魂触碰: 物理(红·减甲)+真实(白·穿甲) 命中同发跳两数字
+					_last_dmg_type = "physical"
+					_apply_damage_from(pr["src"], tgt, _phys_after_armor(pr["src"], float(pr["gt_phys"]), tgt), Color("#ff4444"), 0.0, false)
+					if tgt.get("alive", false):
+						_apply_damage_from(pr["src"], tgt, int(round(float(pr["gt_true"]))), Color("#ffffff"), 0.0, true)
+					_ghost_touch_hit(tgt["pos"])
 				elif pr.get("eq_bolt", false):   # 装备弹道(弩矢/飞镖等): 记为装备物理伤, 命中溅火花
 					_apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], float(pr.get("eq_ls", 0.0)), false, true)
 					if pr.get("eq_bleed", 0) > 0:
