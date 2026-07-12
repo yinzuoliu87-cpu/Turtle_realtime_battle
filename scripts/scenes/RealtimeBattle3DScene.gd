@@ -136,6 +136,7 @@ const REVIEW_DEMO_CFG := {
 	"ghost:0": [ {"dx": 280.0, "dy": 0.0, "fixed": true} ],   # 幽灵普攻幽魂触碰(远程range400): 单假人280码→看0.4A物理(红)+0.9A真实(白)+登场诅咒每秒5%maxHp真伤
 	"ghost:1": [ {"dx": 300.0, "dy": 0.0, "fixed": true} ],   # 幽灵技1幽冥突袭: 单假人→看幻影+触碰图+抛飞juggle+1.5A魔法+吸血+闪避
 	"ghost:2": [ {"dx": 300.0, "dy": 0.0, "fixed": true} ],   # 幽灵技2灵魂风暴: 单假人→看ghost-storm风暴图+2段魔法上诅咒(已诅咒→2.5A真伤)
+	"diamond:2": [ {"dx": 500.0, "dy": 0.0, "fixed": true} ],   # 钻石滚球: 单假人放远(500码·>200)+固定不动→开场触发200码被动自动免费滚球跨场撞击(用户2026-07-12)
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
