@@ -1432,16 +1432,17 @@ func _dl_build_present_overlay(mode: String) -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	back.add_child(center)
 	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(980, 560)   # 撑大呈现面板(用户2026-07-12「预览这么小」)
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.05, 0.09, 0.14, 0.97); sb.border_color = Color("#ffd93d"); sb.set_border_width_all(2); sb.set_corner_radius_all(14)
-	sb.content_margin_left = 28; sb.content_margin_right = 28; sb.content_margin_top = 22; sb.content_margin_bottom = 22
+	sb.bg_color = Color(0.05, 0.09, 0.14, 0.98); sb.border_color = Color("#ffd93d"); sb.set_border_width_all(3); sb.set_corner_radius_all(18)
+	sb.content_margin_left = 46; sb.content_margin_right = 46; sb.content_margin_top = 36; sb.content_margin_bottom = 36
 	panel.add_theme_stylebox_override("panel", sb)
 	center.add_child(panel)
-	var vb := VBoxContainer.new(); vb.add_theme_constant_override("separation", 14); panel.add_child(vb)
+	var vb := VBoxContainer.new(); vb.add_theme_constant_override("separation", 24); vb.alignment = BoxContainer.ALIGNMENT_CENTER; panel.add_child(vb)
 	var cur_lane := str(GameState.current_lane) if GameState != null else "top"
 	var lane_cn: Dictionary = {"top": "上路", "bottom": "下路", "final": "终极", "done": "结算"}
 	var title := Label.new()
-	title.add_theme_font_size_override("font_size", 30); title.add_theme_color_override("font_color", Color("#ffd93d"))
+	title.add_theme_font_size_override("font_size", 42); title.add_theme_color_override("font_color", Color("#ffd93d"))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(title)
 	if mode == "overview":
@@ -1484,37 +1485,37 @@ func _dl_record_line() -> String:
 
 # 对阵预览一行: [我方阵容列]  VS  [对方阵容列] (各带头像/等级/名字/装备图+星级)
 func _dl_matchup_row(lane: String) -> Control:
-	var row := HBoxContainer.new(); row.add_theme_constant_override("separation", 26); row.alignment = BoxContainer.ALIGNMENT_CENTER
+	var row := HBoxContainer.new(); row.add_theme_constant_override("separation", 44); row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_child(_dl_side_column(_dl_lane_specs(lane), true, "我方", Color("#9ae6b0")))
-	var vs := Label.new(); vs.text = "VS"; vs.add_theme_font_size_override("font_size", 34); vs.add_theme_color_override("font_color", Color("#ffd93d")); vs.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var vs := Label.new(); vs.text = "VS"; vs.add_theme_font_size_override("font_size", 56); vs.add_theme_color_override("font_color", Color("#ffd93d")); vs.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(vs)
 	row.add_child(_dl_side_column(_dl_foe_specs(lane), false, "对方", Color("#ff9b9b")))
 	return row
 
 # 总览一路: 【上路】 [我方小头像…] vs [对方小头像…]
 func _dl_overview_lane_row(lane: String, cn: String) -> Control:
-	var row := HBoxContainer.new(); row.add_theme_constant_override("separation", 12); row.alignment = BoxContainer.ALIGNMENT_CENTER
-	var tag := Label.new(); tag.text = "【%s】" % cn; tag.add_theme_font_size_override("font_size", 18); tag.add_theme_color_override("font_color", Color("#cfe6ff"))
-	tag.custom_minimum_size = Vector2(76, 0); row.add_child(tag)
+	var row := HBoxContainer.new(); row.add_theme_constant_override("separation", 18); row.alignment = BoxContainer.ALIGNMENT_CENTER
+	var tag := Label.new(); tag.text = "【%s】" % cn; tag.add_theme_font_size_override("font_size", 26); tag.add_theme_color_override("font_color", Color("#cfe6ff"))
+	tag.custom_minimum_size = Vector2(108, 0); row.add_child(tag)
 	if lane == "final":
-		var fl := Label.new(); fl.text = "上下路幸存者对决"; fl.add_theme_font_size_override("font_size", 16); fl.add_theme_color_override("font_color", Color("#9fb4c8"))
+		var fl := Label.new(); fl.text = "上下路幸存者对决"; fl.add_theme_font_size_override("font_size", 22); fl.add_theme_color_override("font_color", Color("#9fb4c8"))
 		row.add_child(fl)
 		return row
 	row.add_child(_dl_mini_avatars(_dl_lane_specs(lane)))
-	var vs := Label.new(); vs.text = "vs"; vs.add_theme_font_size_override("font_size", 16); vs.add_theme_color_override("font_color", Color("#ffd93d")); row.add_child(vs)
+	var vs := Label.new(); vs.text = "vs"; vs.add_theme_font_size_override("font_size", 24); vs.add_theme_color_override("font_color", Color("#ffd93d")); row.add_child(vs)
 	row.add_child(_dl_mini_avatars(_dl_foe_specs(lane)))
 	return row
 
 func _dl_mini_avatars(specs: Array) -> Control:
-	var h := HBoxContainer.new(); h.add_theme_constant_override("separation", 4)
+	var h := HBoxContainer.new(); h.add_theme_constant_override("separation", 6)
 	for s in specs:
-		h.add_child(_dl_avatar_node(s, 40))
+		h.add_child(_dl_avatar_node(s, 64))
 	return h
 
 # 一侧阵容列: 标题 + 逐单位卡片
 func _dl_side_column(specs: Array, is_mine: bool, header: String, col: Color) -> Control:
-	var vb := VBoxContainer.new(); vb.add_theme_constant_override("separation", 9); vb.alignment = BoxContainer.ALIGNMENT_CENTER
-	var h := Label.new(); h.text = header; h.add_theme_font_size_override("font_size", 20); h.add_theme_color_override("font_color", col); h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var vb := VBoxContainer.new(); vb.add_theme_constant_override("separation", 14); vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	var h := Label.new(); h.text = header; h.add_theme_font_size_override("font_size", 26); h.add_theme_color_override("font_color", col); h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(h)
 	if specs.is_empty():
 		var em := Label.new(); em.text = "—"; em.add_theme_color_override("font_color", Color("#7a8a96")); vb.add_child(em)
@@ -1525,19 +1526,20 @@ func _dl_side_column(specs: Array, is_mine: bool, header: String, col: Color) ->
 # 单位卡: [头像(稀有度描边)] [名字 / Lv] + 装备图标行(带★星级)
 func _dl_unit_card(spec, is_mine: bool) -> Control:
 	var card := PanelContainer.new()
-	var csb := StyleBoxFlat.new(); csb.bg_color = Color(0.08, 0.12, 0.18, 0.9); csb.set_corner_radius_all(8)
+	card.custom_minimum_size = Vector2(320, 0)
+	var csb := StyleBoxFlat.new(); csb.bg_color = Color(0.08, 0.12, 0.18, 0.9); csb.set_corner_radius_all(10)
 	csb.set_border_width_all(1); csb.border_color = Color(1, 1, 1, 0.08)
-	csb.content_margin_left = 8; csb.content_margin_right = 12; csb.content_margin_top = 6; csb.content_margin_bottom = 6
+	csb.content_margin_left = 12; csb.content_margin_right = 16; csb.content_margin_top = 9; csb.content_margin_bottom = 9
 	card.add_theme_stylebox_override("panel", csb)
-	var hb := HBoxContainer.new(); hb.add_theme_constant_override("separation", 10); card.add_child(hb)
-	hb.add_child(_dl_avatar_node(spec, 52))
-	var info := VBoxContainer.new(); info.add_theme_constant_override("separation", 3); info.alignment = BoxContainer.ALIGNMENT_CENTER; hb.add_child(info)
-	var nr := HBoxContainer.new(); nr.add_theme_constant_override("separation", 8); info.add_child(nr)
-	var nm := Label.new(); nm.text = _dl_spec_name(spec); nm.add_theme_font_size_override("font_size", 17); nm.add_theme_color_override("font_color", Color("#e6edf3"))
+	var hb := HBoxContainer.new(); hb.add_theme_constant_override("separation", 14); card.add_child(hb)
+	hb.add_child(_dl_avatar_node(spec, 84))
+	var info := VBoxContainer.new(); info.add_theme_constant_override("separation", 5); info.alignment = BoxContainer.ALIGNMENT_CENTER; hb.add_child(info)
+	var nr := HBoxContainer.new(); nr.add_theme_constant_override("separation", 10); info.add_child(nr)
+	var nm := Label.new(); nm.text = _dl_spec_name(spec); nm.add_theme_font_size_override("font_size", 24); nm.add_theme_color_override("font_color", Color("#e6edf3"))
 	nr.add_child(nm)
 	var lvl := 1
 	if GameState != null and GameState.season_level != null: lvl = maxi(1, int(GameState.season_level))
-	var lv := Label.new(); lv.text = "Lv.%d" % lvl; lv.add_theme_font_size_override("font_size", 13); lv.add_theme_color_override("font_color", Color("#ffd93d")); lv.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var lv := Label.new(); lv.text = "Lv.%d" % lvl; lv.add_theme_font_size_override("font_size", 17); lv.add_theme_color_override("font_color", Color("#ffd93d")); lv.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	nr.add_child(lv)
 	var eqs := _dl_spec_equips(spec, is_mine)
 	if not eqs.is_empty():
@@ -1547,7 +1549,7 @@ func _dl_unit_card(spec, is_mine: bool) -> Control:
 				er.add_child(_dl_equip_chip(str(e.get("id", "")), int(e.get("star", 1))))
 		info.add_child(er)
 	else:
-		var ne := Label.new(); ne.text = "（无装备）"; ne.add_theme_font_size_override("font_size", 12); ne.add_theme_color_override("font_color", Color("#5f6f7c")); info.add_child(ne)
+		var ne := Label.new(); ne.text = "（无装备）"; ne.add_theme_font_size_override("font_size", 15); ne.add_theme_color_override("font_color", Color("#5f6f7c")); info.add_child(ne)
 	return card
 
 # 头像节点(稀有度描边). spec 为 leader→avatars/<id>.png; minion→pets/minion.png
@@ -1577,8 +1579,8 @@ func _dl_avatar_node(spec, sz: int) -> Control:
 # 装备小图标(稀有度描边 + 右下★星级)
 func _dl_equip_chip(eid: String, star: int) -> Control:
 	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
-	var box := Panel.new(); box.custom_minimum_size = Vector2(30, 30)
-	var bsb := StyleBoxFlat.new(); bsb.bg_color = Color("#0c141c"); bsb.set_border_width_all(1); bsb.set_corner_radius_all(3)
+	var box := Panel.new(); box.custom_minimum_size = Vector2(44, 44)
+	var bsb := StyleBoxFlat.new(); bsb.bg_color = Color("#0c141c"); bsb.set_border_width_all(2); bsb.set_corner_radius_all(4)
 	bsb.border_color = _equip_rarity_color(str(edef.get("rarity", "普通")))
 	box.add_theme_stylebox_override("panel", bsb)
 	box.tooltip_text = "%s  ★%d\n%s" % [str(edef.get("name", eid)), star, str(edef.get("effectDesc1", ""))]
@@ -1596,9 +1598,9 @@ func _dl_equip_chip(eid: String, star: int) -> Control:
 		em.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; em.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		em.add_theme_font_size_override("font_size", 11); em.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(em)
 	var st := Label.new(); st.text = "★%d" % star
-	st.anchor_left = 0.0; st.anchor_top = 1.0; st.anchor_right = 1.0; st.anchor_bottom = 1.0; st.offset_top = -13
+	st.anchor_left = 0.0; st.anchor_top = 1.0; st.anchor_right = 1.0; st.anchor_bottom = 1.0; st.offset_top = -16
 	st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	st.add_theme_font_size_override("font_size", 10); st.add_theme_color_override("font_color", Color("#ffd93d"))
+	st.add_theme_font_size_override("font_size", 13); st.add_theme_color_override("font_color", Color("#ffd93d"))
 	st.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(st)
 	return box
@@ -1844,8 +1846,11 @@ func _dl_flow_check() -> void:
 			if GameState != null and GameState.egg_hp is Dictionary:
 				GameState.egg_hp[es] = maxf(0.0, float(u["hp"]))
 			if not u.get("alive", true):
-				_dl_finish(es == "right")   # 右蛋破→我方(左)赢
-				return
+				# 蛋破: 终极路=直接判负(无时限, 右蛋破→我方左赢); 非终极路=只累计不立刻输, 剩血(0)带下路/终极, 本路仍由10s窗口结束(用户设计§四·此前任何路蛋破都立刻finish=bug)
+				var _is_final: bool = GameState != null and str(GameState.current_lane) == "final"
+				if _is_final:
+					_dl_finish(es == "right")
+					return
 	var la := _dl_side_alive("left")
 	var ra := _dl_side_alive("right")
 	if _dl_state == "fight":
