@@ -373,13 +373,19 @@ var _edit_pick_id := "basic"              # 当前选中要摆的龟 id (◀▶ 
 var _edit_pick_side := "left"             # 摆放阵营 left(友军) / right(假人)
 var _edit_dummy_hp := 500.0               # 右队假人血量 (−/+ 步进 100)
 var _edit_dummy_killable := false         # 右队假人是否会死 (false=不死回满沙包)
-var _edit_pick_equip_idx := -1            # 编辑器装备笔刷: -1=无, >=0=_dbg_equip_ids()索引(摆放单位带上)
-var _edit_pick_star := 1                  # 装备笔刷星级 1-3
-var _edit_lbl_equip: Label = null
+var _edit_pick_star := 1                  # 装备星级 1-3 (加装备时用)
+var _edit_sel_unit = null                 # 选中的已摆单位(配装/删除)
+var _edit_grid_popup: Control = null      # 龟/装备网格弹层
+var _edit_equip_box: VBoxContainer = null # 选中单位装备栏容器
+var _edit_btn_pick: Button = null
+var _edit_btn_side: Button = null
+var _edit_star_btns: Array = []
+var _edit_speed_btns: Array = []
+var _edit_speed_idx := 1                  # 倍速档位(EDIT_SPEEDS索引, 默认1x)
+const EDIT_SPEEDS := [0.5, 1.0, 2.0, 4.0]
 var _edit_drag_unit = null                # 正在拖拽的单位 (Dictionary 或 null)
 var _edit_drag_moved := false             # 本次按下是否真的拖动过 (区分点击放置 vs 拖拽挪位)
 var _edit_palette: Control = null         # 编辑面板根 (Control 子控件 mouse_filter=STOP 吃掉自身点击)
-var _edit_lbl_pick: Label = null
 var _edit_lbl_hp: Label = null
 var _edit_lbl_status: Label = null
 var _edit_btn_start: Button = null
@@ -12993,7 +12999,7 @@ func _edit_handle_mouse_button(ev: InputEventMouseButton) -> void:
 		# 松手: 拖拽了 → 已实时挪好, 不再摆放; 否则点空地 → 摆放新单位.
 		if _edit_drag_unit != null:
 			if not _edit_drag_moved:
-				pass   # 单击已有单位(没拖动): 不操作 (避免误删/误叠)
+				_edit_select_unit(_edit_drag_unit)   # 单击已有单位(没拖动) → 选中配装(用户2026-07-12)
 		else:
 			var fp := _screen_to_field(screen)
 			fp.x = clampf(fp.x, ARENA.position.x, ARENA.end.x)
@@ -13017,10 +13023,6 @@ func _edit_handle_mouse_motion(ev: InputEventMouseMotion) -> void:
 # 摆放一个单位: 复用 _make_unit, 右队按调试场设置改成假人 (不动/不打/可设血/可不死).
 func _edit_place_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 	var u := _make_unit(id, side, pos)
-	if _edit_pick_equip_idx >= 0:
-		var _eids := _dbg_equip_ids()
-		if _edit_pick_equip_idx < _eids.size():
-			u["_edit_equips"] = [{"id": str(_eids[_edit_pick_equip_idx]), "star": _edit_pick_star}]
 	if side == "right":
 		u["no_basic"] = true
 		u["no_move"] = true
@@ -13069,6 +13071,7 @@ func _edit_start_battle() -> void:
 		return
 	# 快照当前摆位 (⏸编辑 用它重新生成一份干净的)
 	_edit_snapshot_setup()
+	_edit_save_setup()   # 存盘: 重开调试场自动恢复上次摆位
 	_inject_equipment()
 	_apply_spawn_passives()
 	_eq_apply_all_stats()
@@ -13114,6 +13117,31 @@ func _edit_snapshot_setup() -> void:
 # ----------------------------------------------------------------------------
 #  编辑面板 (代码构建, 无 .tscn). 子控件 mouse_filter=STOP → GUI 层吃掉点击, 不误摆到 UI 上.
 # ----------------------------------------------------------------------------
+func _edit_mk_btn(label: String, cb: Callable, min_w: float = 0.0) -> Button:
+	var b := Button.new()
+	b.text = label
+	b.add_theme_font_size_override("font_size", 19)
+	b.mouse_filter = Control.MOUSE_FILTER_STOP
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	b.custom_minimum_size = Vector2(min_w, 46)   # 触摸友好高度
+	if cb.is_valid():
+		b.pressed.connect(cb)
+	return b
+
+func _edit_lbl(t: String) -> Label:
+	var l := Label.new(); l.text = t
+	l.add_theme_font_size_override("font_size", 16)
+	l.add_theme_color_override("font_color", Color("#9fb6c8"))
+	return l
+
+func _edit_val_lbl(w: float) -> Label:
+	var l := Label.new()
+	l.custom_minimum_size = Vector2(w, 0)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", 16)
+	l.add_theme_color_override("font_color", Color("#cfe6ff"))
+	return l
+
 func _build_edit_palette() -> void:
 	var ids: Array = STATS.keys()
 	if not ids.is_empty() and not ids.has(_edit_pick_id):
@@ -13121,143 +13149,235 @@ func _build_edit_palette() -> void:
 	var panel := PanelContainer.new()
 	panel.name = "DebugEditPalette"
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.04, 0.08, 0.13, 0.92)
+	sb.bg_color = Color(0.04, 0.08, 0.13, 0.94)
 	sb.border_color = Color("#ffd93d")
 	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(10)
-	sb.content_margin_left = 12; sb.content_margin_right = 12
-	sb.content_margin_top = 10; sb.content_margin_bottom = 10
+	sb.set_corner_radius_all(12)
+	sb.content_margin_left = 16; sb.content_margin_right = 16
+	sb.content_margin_top = 14; sb.content_margin_bottom = 14
 	panel.add_theme_stylebox_override("panel", sb)
-	panel.position = Vector2(16, 60)
-	panel.mouse_filter = Control.MOUSE_FILTER_STOP   # 面板区域吃掉点击, 不穿透到战场摆位
+	panel.position = Vector2(16, 52)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_ui_layer.add_child(panel)
 	_edit_palette = panel
 
 	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 8)
+	vb.add_theme_constant_override("separation", 10)
 	panel.add_child(vb)
 
 	var title := Label.new()
-	title.text = "🛠 调试场 · 编辑"
-	title.add_theme_font_size_override("font_size", 18)
+	title.text = "🛠 调试场"
+	title.add_theme_font_size_override("font_size", 22)
 	title.add_theme_color_override("font_color", Color("#ffd93d"))
 	vb.add_child(title)
 
-	# --- 龟选择 (◀ id ▶) ---
-	var row_pick := HBoxContainer.new()
-	row_pick.add_theme_constant_override("separation", 6)
-	vb.add_child(row_pick)
-	row_pick.add_child(_edit_mk_btn("◀", func(): _edit_cycle_pick(-1), 34))
-	_edit_lbl_pick = Label.new()
-	_edit_lbl_pick.custom_minimum_size = Vector2(120, 0)
-	_edit_lbl_pick.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_edit_lbl_pick.add_theme_font_size_override("font_size", 15)
-	_edit_lbl_pick.add_theme_color_override("font_color", Color("#cfe6ff"))
-	row_pick.add_child(_edit_lbl_pick)
-	row_pick.add_child(_edit_mk_btn("▶", func(): _edit_cycle_pick(1), 34))
+	var row1 := HBoxContainer.new(); row1.add_theme_constant_override("separation", 8); vb.add_child(row1)
+	_edit_btn_pick = _edit_mk_btn("选龟", func(): _edit_open_turtle_grid(), 170)
+	row1.add_child(_edit_btn_pick)
+	_edit_btn_side = _edit_mk_btn("左队", func(): _edit_toggle_side(), 110)
+	row1.add_child(_edit_btn_side)
 
-	# --- 阵营 (左队/右队) ---
-	var row_side := HBoxContainer.new()
-	row_side.add_theme_constant_override("separation", 6)
-	vb.add_child(row_side)
-	var lbl_side := Label.new(); lbl_side.text = "阵营:"
-	lbl_side.add_theme_font_size_override("font_size", 14)
-	lbl_side.add_theme_color_override("font_color", Color("#9fb6c8"))
-	row_side.add_child(lbl_side)
-	row_side.add_child(_edit_mk_btn("切换 (左队/右队)", func(): _edit_toggle_side(), 150))
-
-	# --- 假人血量 (−/+) + 不死开关 ---
-	var row_hp := HBoxContainer.new()
-	row_hp.add_theme_constant_override("separation", 6)
-	vb.add_child(row_hp)
-	var lbl_hp_t := Label.new(); lbl_hp_t.text = "假人HP:"
-	lbl_hp_t.add_theme_font_size_override("font_size", 14)
-	lbl_hp_t.add_theme_color_override("font_color", Color("#9fb6c8"))
-	row_hp.add_child(lbl_hp_t)
-	row_hp.add_child(_edit_mk_btn("−", func(): _edit_adjust_hp(-100.0), 34))
-	_edit_lbl_hp = Label.new()
-	_edit_lbl_hp.custom_minimum_size = Vector2(60, 0)
-	_edit_lbl_hp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_edit_lbl_hp.add_theme_font_size_override("font_size", 14)
-	_edit_lbl_hp.add_theme_color_override("font_color", Color("#cfe6ff"))
+	var row_hp := HBoxContainer.new(); row_hp.add_theme_constant_override("separation", 8); vb.add_child(row_hp)
+	row_hp.add_child(_edit_lbl("假人HP"))
+	row_hp.add_child(_edit_mk_btn("−", func(): _edit_adjust_hp(-100.0), 48))
+	_edit_lbl_hp = _edit_val_lbl(96)
 	row_hp.add_child(_edit_lbl_hp)
-	row_hp.add_child(_edit_mk_btn("+", func(): _edit_adjust_hp(100.0), 34))
-	row_hp.add_child(_edit_mk_btn("掉血/不死", func(): _edit_toggle_killable(), 96))
+	row_hp.add_child(_edit_mk_btn("+", func(): _edit_adjust_hp(100.0), 48))
+	row_hp.add_child(_edit_mk_btn("掉血/不死", func(): _edit_toggle_killable(), 130))
 
-	# --- 装备笔刷 (◀ 装备名 ▶ + ★星级; 摆放的单位带上此装备) ---
-	var row_eq := HBoxContainer.new()
-	row_eq.add_theme_constant_override("separation", 6)
-	vb.add_child(row_eq)
-	var lbl_eq_t := Label.new(); lbl_eq_t.text = "装备:"
-	lbl_eq_t.add_theme_font_size_override("font_size", 14)
-	lbl_eq_t.add_theme_color_override("font_color", Color("#9fb6c8"))
-	row_eq.add_child(lbl_eq_t)
-	row_eq.add_child(_edit_mk_btn("◀", func(): _edit_cycle_equip(-1), 34))
-	_edit_lbl_equip = Label.new()
-	_edit_lbl_equip.custom_minimum_size = Vector2(150, 0)
-	_edit_lbl_equip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_edit_lbl_equip.add_theme_font_size_override("font_size", 14)
-	_edit_lbl_equip.add_theme_color_override("font_color", Color("#cfe6ff"))
-	row_eq.add_child(_edit_lbl_equip)
-	row_eq.add_child(_edit_mk_btn("▶", func(): _edit_cycle_equip(1), 34))
-	row_eq.add_child(_edit_mk_btn("★", func(): _edit_cycle_star(1), 34))
+	var row_star := HBoxContainer.new(); row_star.add_theme_constant_override("separation", 8); vb.add_child(row_star)
+	row_star.add_child(_edit_lbl("装备星级"))
+	_edit_star_btns = []
+	for st in [1, 2, 3]:
+		var stc: int = st
+		var bs := _edit_mk_btn("★%d" % stc, func(): _edit_set_star(stc), 60)
+		_edit_star_btns.append(bs)
+		row_star.add_child(bs)
 
-	# --- 控制 (开始 / 编辑 / 清空 / 返回) ---
-	var row_ctl := HBoxContainer.new()
-	row_ctl.add_theme_constant_override("separation", 6)
-	vb.add_child(row_ctl)
-	_edit_btn_start = _edit_mk_btn("▶ 开始", func(): _edit_start_battle(), 80)
+	var row_spd := HBoxContainer.new(); row_spd.add_theme_constant_override("separation", 8); vb.add_child(row_spd)
+	row_spd.add_child(_edit_lbl("倍速"))
+	_edit_speed_btns = []
+	for si in range(EDIT_SPEEDS.size()):
+		var sidx: int = si
+		var bp := _edit_mk_btn("%g×" % float(EDIT_SPEEDS[si]), func(): _edit_set_speed(sidx), 60)
+		_edit_speed_btns.append(bp)
+		row_spd.add_child(bp)
+
+	var row_ctl := HBoxContainer.new(); row_ctl.add_theme_constant_override("separation", 8); vb.add_child(row_ctl)
+	_edit_btn_start = _edit_mk_btn("▶ 开始", func(): _edit_start_battle(), 100)
 	row_ctl.add_child(_edit_btn_start)
-	_edit_btn_edit = _edit_mk_btn("⏸ 编辑", func(): _edit_back_to_edit(), 80)
+	_edit_btn_edit = _edit_mk_btn("⏸ 编辑", func(): _edit_back_to_edit(), 100)
 	_edit_btn_edit.disabled = true
 	row_ctl.add_child(_edit_btn_edit)
-	row_ctl.add_child(_edit_mk_btn("清空", func(): _edit_clear(), 64))
-	row_ctl.add_child(_edit_mk_btn("返回菜单", func(): _edit_exit_to_menu(), 90))
+	row_ctl.add_child(_edit_mk_btn("🔁 再来一把", func(): _edit_replay(), 130))
 
-	# --- 状态行 + 操作提示 ---
+	var row_ctl2 := HBoxContainer.new(); row_ctl2.add_theme_constant_override("separation", 8); vb.add_child(row_ctl2)
+	row_ctl2.add_child(_edit_mk_btn("清空", func(): _edit_clear(), 90))
+	row_ctl2.add_child(_edit_mk_btn("返回菜单", func(): _edit_exit_to_menu(), 120))
+
 	_edit_lbl_status = Label.new()
-	_edit_lbl_status.add_theme_font_size_override("font_size", 13)
+	_edit_lbl_status.add_theme_font_size_override("font_size", 15)
 	_edit_lbl_status.add_theme_color_override("font_color", Color("#ffe9a8"))
 	vb.add_child(_edit_lbl_status)
 	var help := Label.new()
-	help.text = "左键空地=摆放 · 拖拽单位=挪位 · 右键=删除"
-	help.add_theme_font_size_override("font_size", 12)
+	help.text = "点空地=摆龟 · 点单位=选中配装 · 拖拽=挪位"
+	help.add_theme_font_size_override("font_size", 13)
 	help.add_theme_color_override("font_color", Color("#7a8a96"))
 	vb.add_child(help)
 
-	_edit_refresh_labels()
+	_edit_equip_box = VBoxContainer.new()
+	_edit_equip_box.add_theme_constant_override("separation", 6)
+	vb.add_child(_edit_equip_box)
 
-func _edit_mk_btn(label: String, cb: Callable, min_w: float = 0.0) -> Button:
+	_edit_set_speed(_edit_speed_idx)
+	_edit_load_setup()
+	_edit_refresh_labels()
+	_edit_refresh_equip_panel()
+
+# ---- 网格弹层 (选龟 / 选装备) ----
+func _edit_make_popup(title_text: String) -> GridContainer:
+	_edit_close_popup()
+	var back := ColorRect.new()
+	back.color = Color(0, 0, 0, 0.55)
+	back.set_anchors_preset(Control.PRESET_FULL_RECT)
+	back.mouse_filter = Control.MOUSE_FILTER_STOP
+	back.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed: _edit_close_popup())
+	_ui_layer.add_child(back)
+	_edit_grid_popup = back
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	back.add_child(center)
+	var panel := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.05, 0.09, 0.14, 0.99)
+	sb.border_color = Color("#ffd93d"); sb.set_border_width_all(2); sb.set_corner_radius_all(12)
+	sb.content_margin_left = 16; sb.content_margin_right = 16; sb.content_margin_top = 14; sb.content_margin_bottom = 14
+	panel.add_theme_stylebox_override("panel", sb)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	center.add_child(panel)
+	var vb := VBoxContainer.new(); vb.add_theme_constant_override("separation", 10); panel.add_child(vb)
+	var hdr := HBoxContainer.new(); hdr.add_theme_constant_override("separation", 8); vb.add_child(hdr)
+	var t := Label.new(); t.text = title_text; t.add_theme_font_size_override("font_size", 21); t.add_theme_color_override("font_color", Color("#ffd93d"))
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hdr.add_child(t)
+	hdr.add_child(_edit_mk_btn("✕ 关闭", func(): _edit_close_popup(), 96))
+	var sc := ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(700, 460)
+	vb.add_child(sc)
+	var grid := GridContainer.new()
+	grid.columns = 5
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	sc.add_child(grid)
+	return grid
+
+func _edit_close_popup() -> void:
+	if _edit_grid_popup != null and is_instance_valid(_edit_grid_popup):
+		_edit_grid_popup.queue_free()
+	_edit_grid_popup = null
+
+func _edit_grid_card(nm: String, icon_path: String, border: Color, cb: Callable) -> Button:
 	var b := Button.new()
-	b.text = label
+	b.custom_minimum_size = Vector2(128, 112)
 	b.add_theme_font_size_override("font_size", 14)
-	b.mouse_filter = Control.MOUSE_FILTER_STOP   # 按钮吃掉自身点击 (不穿透摆位)
-	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	if min_w > 0.0:
-		b.custom_minimum_size = Vector2(min_w, 0)
-	if cb.is_valid():
-		b.pressed.connect(cb)
+	b.mouse_filter = Control.MOUSE_FILTER_STOP
+	b.text = nm
+	b.clip_text = true
+	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+	if icon_path != "" and ResourceLoader.exists(icon_path):
+		b.icon = load(icon_path)
+		b.expand_icon = true
+	var sbn := StyleBoxFlat.new(); sbn.bg_color = Color(0.1, 0.13, 0.18, 0.95); sbn.border_color = border; sbn.set_border_width_all(2); sbn.set_corner_radius_all(6)
+	b.add_theme_stylebox_override("normal", sbn)
+	if cb.is_valid(): b.pressed.connect(cb)
 	return b
 
-func _edit_cycle_pick(dir: int) -> void:
-	var ids: Array = STATS.keys()
-	if ids.is_empty():
+func _edit_open_turtle_grid() -> void:
+	var grid := _edit_make_popup("选龟 · 点选要摆的龟")
+	for id in STATS.keys():
+		var iid := str(id)
+		var nm := str(_data_by_id.get(iid, {}).get("name", iid))
+		var av := AVATAR_DIR + iid + ".png"
+		grid.add_child(_edit_grid_card(nm, av, Color("#8aa0b4"), func(): _edit_pick_turtle(iid)))
+
+func _edit_pick_turtle(id: String) -> void:
+	_edit_pick_id = id
+	_edit_close_popup()
+	_edit_refresh_labels()
+	_edit_set_status("选龟: %s · 点空地摆放" % str(_data_by_id.get(id, {}).get("name", id)))
+
+func _edit_rarity_color(eq: Dictionary) -> Color:
+	var rs := str(eq.get("rarity", "")).to_lower()
+	if rs in ["5", "传说", "legendary", "legend"]: return Color("#ffcf6b")
+	if rs in ["4", "史诗", "epic"]: return Color("#c77dff")
+	if rs in ["3", "稀有", "rare"]: return Color("#5aa9ff")
+	if rs in ["2", "精良", "good", "uncommon"]: return Color("#5fd08a")
+	return Color("#9aa4ad")
+
+func _edit_open_equip_grid() -> void:
+	if _edit_sel_unit == null:
+		_edit_set_status("先点一个单位选中, 再加装备")
 		return
-	var idx := ids.find(_edit_pick_id)
-	if idx < 0:
-		idx = 0
-	idx = (idx + dir + ids.size()) % ids.size()
-	_edit_pick_id = str(ids[idx])
-	_edit_refresh_labels()
+	var nm := str(_data_by_id.get(_edit_sel_unit.get("id", ""), {}).get("name", ""))
+	var grid := _edit_make_popup("加装备到 %s · 点选(可连点多件)" % nm)
+	for id in _dbg_equip_ids():
+		var iid := str(id)
+		var eq: Dictionary = DataRegistry.phase2_equipment_by_id.get(iid, {})
+		var enm := str(eq.get("name", iid))
+		var img := str(eq.get("img", ""))
+		var ip := ("res://assets/sprites/" + img) if (img != "" and not img.begins_with("res://")) else img
+		grid.add_child(_edit_grid_card(enm, ip, _edit_rarity_color(eq), func(): _edit_add_equip(iid)))
 
-func _edit_cycle_equip(dir: int) -> void:
-	var n := _dbg_equip_ids().size()
-	_edit_pick_equip_idx = wrapi(_edit_pick_equip_idx + dir + 1, 0, n + 1) - 1   # [-1, n-1] 循环(-1=无)
-	_edit_refresh_labels()
+func _edit_select_unit(u) -> void:
+	_edit_sel_unit = u
+	_edit_refresh_equip_panel()
+	if u != null:
+		_edit_set_status("选中 %s · 加装备/删除" % str(_data_by_id.get(u.get("id", ""), {}).get("name", "")))
 
-func _edit_cycle_star(dir: int) -> void:
-	_edit_pick_star = wrapi(_edit_pick_star + dir - 1, 0, 3) + 1   # 1-3 循环
-	_edit_refresh_labels()
+func _edit_refresh_equip_panel() -> void:
+	if _edit_equip_box == null: return
+	for c in _edit_equip_box.get_children(): c.queue_free()
+	if _edit_sel_unit == null: return
+	var nm := str(_data_by_id.get(_edit_sel_unit.get("id", ""), {}).get("name", ""))
+	var side_t := "友军" if str(_edit_sel_unit.get("side", "")) == "left" else "假人"
+	var hdr := HBoxContainer.new(); hdr.add_theme_constant_override("separation", 8); _edit_equip_box.add_child(hdr)
+	var l := Label.new(); l.text = "选中: %s(%s)" % [nm, side_t]
+	l.add_theme_font_size_override("font_size", 16); l.add_theme_color_override("font_color", Color("#9ae6b0"))
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hdr.add_child(l)
+	hdr.add_child(_edit_mk_btn("🗑 删除", func(): _edit_delete_sel(), 96))
+	hdr.add_child(_edit_mk_btn("取消", func(): _edit_select_unit(null), 80))
+	var wrap := HFlowContainer.new(); wrap.add_theme_constant_override("h_separation", 6); wrap.add_theme_constant_override("v_separation", 6); _edit_equip_box.add_child(wrap)
+	var eqs: Array = _edit_sel_unit.get("_edit_equips", [])
+	for e in eqs:
+		var eid := str(e.get("id", ""))
+		var enm := str(DataRegistry.phase2_equipment_by_id.get(eid, {}).get("name", eid))
+		var stv := int(e.get("star", 1))
+		wrap.add_child(_edit_mk_btn("%s★%d ✕" % [enm, stv], func(): _edit_remove_equip(eid), 0))
+	wrap.add_child(_edit_mk_btn("➕ 加装备", func(): _edit_open_equip_grid(), 120))
+
+func _edit_add_equip(iid: String) -> void:
+	if _edit_sel_unit == null: return
+	if not (_edit_sel_unit.get("_edit_equips") is Array): _edit_sel_unit["_edit_equips"] = []
+	(_edit_sel_unit["_edit_equips"] as Array).append({"id": iid, "star": _edit_pick_star})
+	var enm := str(DataRegistry.phase2_equipment_by_id.get(iid, {}).get("name", iid))
+	_edit_set_status("+ %s ★%d" % [enm, _edit_pick_star])
+	_edit_refresh_equip_panel()
+
+func _edit_remove_equip(iid: String) -> void:
+	if _edit_sel_unit == null: return
+	var eqs: Array = _edit_sel_unit.get("_edit_equips", [])
+	for i in range(eqs.size()):
+		if str((eqs[i] as Dictionary).get("id", "")) == iid:
+			eqs.remove_at(i); break
+	_edit_refresh_equip_panel()
+
+func _edit_delete_sel() -> void:
+	if _edit_sel_unit == null: return
+	var u = _edit_sel_unit
+	_edit_select_unit(null)
+	_edit_delete_unit(u)
+	_edit_set_status("删除单位 (剩 %d)" % _units.size())
 
 func _edit_toggle_side() -> void:
 	_edit_pick_side = "right" if _edit_pick_side == "left" else "left"
@@ -13271,29 +13391,74 @@ func _edit_toggle_killable() -> void:
 	_edit_dummy_killable = not _edit_dummy_killable
 	_edit_refresh_labels()
 
+func _edit_set_star(st: int) -> void:
+	_edit_pick_star = clampi(st, 1, 3)
+	_edit_refresh_labels()
+
+func _edit_set_speed(idx: int) -> void:
+	_edit_speed_idx = clampi(idx, 0, EDIT_SPEEDS.size() - 1)
+	Engine.time_scale = float(EDIT_SPEEDS[_edit_speed_idx])
+	_edit_refresh_labels()
+
+func _edit_replay() -> void:
+	if _edit_paused_setup.is_empty():
+		_edit_set_status("还没开始过 · 先摆几个点▶开始")
+		return
+	_edit_back_to_edit()
+	_edit_start_battle()
+
 func _edit_refresh_labels() -> void:
-	var ids: Array = STATS.keys()
-	var idx := maxi(0, ids.find(_edit_pick_id))
-	if _edit_lbl_pick != null:
-		var nm := str(_data_by_id.get(_edit_pick_id, {}).get("name", _edit_pick_id))
-		var side_t := "友军" if _edit_pick_side == "left" else "假人"
-		_edit_lbl_pick.text = "%s (%d/%d) · %s" % [nm, idx + 1, ids.size(), side_t]
+	if _edit_btn_pick != null:
+		_edit_btn_pick.text = "选龟: %s" % str(_data_by_id.get(_edit_pick_id, {}).get("name", _edit_pick_id))
+	if _edit_btn_side != null:
+		_edit_btn_side.text = "左队(友军)" if _edit_pick_side == "left" else "右队(假人)"
 	if _edit_lbl_hp != null:
 		var kt := "会死" if _edit_dummy_killable else "不死"
-		_edit_lbl_hp.text = "%d (%s)" % [int(_edit_dummy_hp), kt]
-	if _edit_lbl_equip != null:
-		var _en := "无"
-		if _edit_pick_equip_idx >= 0:
-			var _eids := _dbg_equip_ids()
-			if _edit_pick_equip_idx < _eids.size():
-				_en = str(DataRegistry.phase2_equipment_by_id.get(_eids[_edit_pick_equip_idx], {}).get("name", _eids[_edit_pick_equip_idx]))
-		_edit_lbl_equip.text = "%s ★%d" % [_en, _edit_pick_star]
+		_edit_lbl_hp.text = "%d(%s)" % [int(_edit_dummy_hp), kt]
+	for i in range(_edit_star_btns.size()):
+		(_edit_star_btns[i] as Button).modulate = Color(1, 0.9, 0.4, 1) if (i + 1) == _edit_pick_star else Color(0.55, 0.6, 0.66, 1)
+	for i in range(_edit_speed_btns.size()):
+		(_edit_speed_btns[i] as Button).modulate = Color(1, 0.9, 0.4, 1) if i == _edit_speed_idx else Color(0.55, 0.6, 0.66, 1)
 
 func _edit_set_status(s: String) -> void:
 	if _edit_lbl_status != null:
 		_edit_lbl_status.text = s
 
+func _edit_save_setup() -> void:
+	var arr: Array = []
+	for s in _edit_paused_setup:
+		var pos: Vector2 = s.get("pos", Vector2())
+		arr.append({"id": str(s.get("id", "")), "side": str(s.get("side", "")), "px": pos.x, "py": pos.y, "hp": float(s.get("hp", 500.0)), "killable": bool(s.get("killable", true)), "equips": s.get("equips", [])})
+	var f := FileAccess.open("user://debug_setup.json", FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(arr)); f.close()
+
+func _edit_load_setup() -> void:
+	if not FileAccess.file_exists("user://debug_setup.json"): return
+	var f := FileAccess.open("user://debug_setup.json", FileAccess.READ)
+	if f == null: return
+	var txt := f.get_as_text(); f.close()
+	var data = JSON.parse_string(txt)
+	if not (data is Array) or (data as Array).is_empty(): return
+	_edit_clear()
+	for s in data:
+		if not (s is Dictionary): continue
+		var u := _make_unit(str(s.get("id", "basic")), str(s.get("side", "left")), Vector2(float(s.get("px", 400.0)), float(s.get("py", 400.0))))
+		if str(s.get("side", "")) == "right":
+			u["no_basic"] = true; u["no_move"] = true; u["active_skills"] = []
+			u["maxHp"] = float(s.get("hp", 500.0)); u["hp"] = u["maxHp"]
+			if not bool(s.get("killable", false)): u["_review_dummy"] = true
+		var eqs = s.get("equips", [])
+		if eqs is Array and not (eqs as Array).is_empty():
+			var el: Array = []
+			for e in eqs:
+				if e is Dictionary: el.append({"id": str(e.get("id", "")), "star": int(e.get("star", 1))})
+			u["_edit_equips"] = el
+		_units.append(u)
+	_edit_set_status("已恢复上次摆位 (%d 单位)" % _units.size())
+
 func _edit_exit_to_menu() -> void:
+	Engine.time_scale = 1.0
 	DEBUG_EDIT = false
 	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
