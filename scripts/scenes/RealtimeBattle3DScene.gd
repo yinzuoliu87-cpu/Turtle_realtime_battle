@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "ghost"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
+const REVIEW_SKILL_IDX := 2   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -7914,13 +7914,19 @@ func _fire_shuriken(src: Dictionary, tgt: Dictionary, phys_raw: float, true_raw:
 func _sk_ghost_phantom(u: Dictionary, tgt) -> void:
 	if tgt == null: tgt = _nearest_enemy(u)
 	if tgt == null: return
-	_sk_dmg(u, tgt, {"magic": 1.5, "hits": 1, "lifesteal": 0.8, "selfDodge": 0.25, "selfDodgeDur": 4.0, "name": "幻影!", "color": Color("#c77dff")})
-	_play_anim_vfx("res://assets/sprites/vfx/ghost-phantom.png", tgt["pos"], 155.0, 15.0, 1.15)   # 幻影(回合制vfx/5帧·逐帧播)
-	_play_anim_vfx("res://assets/sprites/vfx/ghost-touch.png", tgt["pos"], 125.0, 17.0, 0.98)       # 触碰(vfx/7帧)
+	_play_anim_vfx("res://assets/sprites/vfx/ghost-phantom.png", tgt["pos"], 155.0, 15.0, 1.5)   # 幻影(回合制vfx/5帧·上移·用户2026-07-11)
+	_play_anim_vfx("res://assets/sprites/vfx/ghost-touch.png", tgt["pos"], 125.0, 17.0, 1.4)      # 触碰(vfx/7帧·上移)
 	_shake(0.08)
-	if tgt.get("alive", false):
-		_knockback(u, tgt, 0.0, 1.4, 0.45)   # 击退抛飞(回合制13段juggle→实时抛飞·airborne物理arc)
+	_pending_shots.append({"delay": 0.11, "src": u, "fn": _ghost_phantom_hit.bind(u, tgt)})   # 命中延到动画第2帧算(~0.11s·用户2026-07-11)
 
+# 幽冥突袭·延迟命中(第2帧): 1.5A魔法+80%吸血+25%闪避4s(经_sk_dmg保真)+击退抛飞
+func _ghost_phantom_hit(u: Dictionary, tgt) -> void:
+	if not u.get("alive", false): return
+	if not (tgt is Dictionary) or not tgt.get("alive", false): tgt = _nearest_enemy(u)
+	if tgt == null: return
+	_sk_dmg(u, tgt, {"magic": 1.5, "hits": 1, "lifesteal": 0.8, "selfDodge": 0.25, "selfDodgeDur": 4.0, "name": "幻影!", "color": Color("#c77dff")})
+	if tgt.get("alive", false):
+		_knockback(u, tgt, 0.0, 1.4, 0.45)   # 击退抛飞
 func _sk_ghost_soulstorm(u: Dictionary, tgt: Dictionary) -> void: # 幽灵龟·灵魂风暴 ✅
 	var cursed: bool = _has_dot(tgt, "curse")
 	if cursed:
