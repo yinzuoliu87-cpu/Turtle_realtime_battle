@@ -14254,8 +14254,9 @@ func _laser_blade_sweep(u: Dictionary, origin: Vector2, dir: Vector2, rng: float
 	b.billboard = BaseMaterial3D.BILLBOARD_ENABLED; b.shaded = false; b.transparent = true
 	b.flip_h = not to_r                                        # 斩弧朝挥砍方向
 	var th := float(maxi(1, int(b.texture.get_height())))
-	b.pixel_size = (rng * 1.7) * WS / th
-	b.position = _world_pos(cp, 0.95)
+	var _wh: float = clampf(rng * WS * 0.5, 2.4, 4.2)   # 斩弧世界高(避免过大)
+	b.pixel_size = _wh / th
+	b.position = _world_pos(cp, _wh * 0.5)              # 底边贴地(中心=半高)→不再一半入地(用户2026-07-12)
 	_world.add_child(b)
 	var t := _reg_tween()
 	t.tween_property(b, "scale", Vector3.ONE, 0.08).from(Vector3(0.28, 1.0, 1.0)).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)   # 挥出: 从窄横向拉开=挥砍
@@ -14448,7 +14449,7 @@ func _eq_laser_chop(u: Dictionary, tgt: Dictionary, si: int, base_range: float) 
 	while traveled < reach and is_instance_valid(wave) and is_instance_valid(self):
 		await get_tree().process_frame
 		traveled += 550.0 * get_process_delta_time()
-		wave.position = _world_pos(origin + dir * traveled, 0.9)
+		wave.position = _world_pos(origin + dir * traveled, 1.3)   # 抬高避免竖刃一半入地(用户2026-07-12)
 		if traveled - last_tr >= 45.0:   # 剑气拖尾: 每隔45码留一道淡残影(在刃后, 不糊白热芯)
 			last_tr = traveled
 			var tr := Sprite3D.new()
