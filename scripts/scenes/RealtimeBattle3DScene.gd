@@ -13347,6 +13347,18 @@ func _edit_refresh_equip_panel() -> void:
 	hdr.add_child(l)
 	hdr.add_child(_edit_mk_btn("🗑 删除", func(): _edit_delete_sel(), 96))
 	hdr.add_child(_edit_mk_btn("取消", func(): _edit_select_unit(null), 80))
+	var _sd: Dictionary = _data_by_id.get(str(_edit_sel_unit.get("id", "")), {})
+	var _spool: Array = _sd.get("skillPool", [])
+	if _spool.size() > 2:   # 有主动候选(3选1)
+		var _curi := _resolve_chosen_index(str(_edit_sel_unit.get("id", "")), str(_edit_sel_unit.get("side", "")) == "left")
+		var srow := HFlowContainer.new(); srow.add_theme_constant_override("h_separation", 6); srow.add_theme_constant_override("v_separation", 6); _edit_equip_box.add_child(srow)
+		srow.add_child(_edit_lbl("技能"))
+		for _si in range(1, _spool.size()):
+			var _sidx: int = _si
+			var _snm := str((_spool[_si] as Dictionary).get("name", "技%d" % _si))
+			var _sb := _edit_mk_btn(_snm, func(): _edit_set_unit_skill(_sidx), 0)
+			_sb.modulate = Color(1, 0.9, 0.4, 1) if _si == _curi else Color(0.58, 0.62, 0.68, 1)
+			srow.add_child(_sb)
 	var wrap := HFlowContainer.new(); wrap.add_theme_constant_override("h_separation", 6); wrap.add_theme_constant_override("v_separation", 6); _edit_equip_box.add_child(wrap)
 	var eqs: Array = _edit_sel_unit.get("_edit_equips", [])
 	for e in eqs:
@@ -13355,6 +13367,20 @@ func _edit_refresh_equip_panel() -> void:
 		var stv := int(e.get("star", 1))
 		wrap.add_child(_edit_mk_btn("%s★%d ✕" % [enm, stv], func(): _edit_remove_equip(eid), 0))
 	wrap.add_child(_edit_mk_btn("➕ 加装备", func(): _edit_open_equip_grid(), 120))
+
+func _edit_set_unit_skill(idx: int) -> void:
+	if _edit_sel_unit == null: return
+	var id := str(_edit_sel_unit.get("id", ""))
+	if GameState != null:
+		GameState.loadouts[id] = idx
+	for u in _units:                                       # 重解析该id所有已摆友方单位的主动技
+		if str(u.get("id", "")) == id and str(u.get("side", "")) == "left":
+			u["active_skills"] = _resolve_active_skills(id, true)
+			u["skill_idx"] = 0
+	var pool: Array = _data_by_id.get(id, {}).get("skillPool", [])
+	var snm := str((pool[idx] as Dictionary).get("name", "")) if idx < pool.size() else ""
+	_edit_set_status("技能 → %s" % snm)
+	_edit_refresh_equip_panel()
 
 func _edit_add_equip(iid: String) -> void:
 	if _edit_sel_unit == null: return
@@ -13426,12 +13452,15 @@ func _edit_set_status(s: String) -> void:
 
 func _edit_save_setup() -> void:
 	var arr: Array = []
+	var lds := {}
 	for s in _edit_paused_setup:
 		var pos: Vector2 = s.get("pos", Vector2())
 		arr.append({"id": str(s.get("id", "")), "side": str(s.get("side", "")), "px": pos.x, "py": pos.y, "hp": float(s.get("hp", 500.0)), "killable": bool(s.get("killable", true)), "equips": s.get("equips", [])})
+		var _id := str(s.get("id", ""))
+		if GameState != null and GameState.loadouts.has(_id): lds[_id] = GameState.loadouts[_id]
 	var f := FileAccess.open("user://debug_setup.json", FileAccess.WRITE)
 	if f != null:
-		f.store_string(JSON.stringify(arr)); f.close()
+		f.store_string(JSON.stringify({"units": arr, "loadouts": lds})); f.close()
 
 func _edit_load_setup() -> void:
 	if not FileAccess.file_exists("user://debug_setup.json"): return
@@ -13439,9 +13468,18 @@ func _edit_load_setup() -> void:
 	if f == null: return
 	var txt := f.get_as_text(); f.close()
 	var data = JSON.parse_string(txt)
-	if not (data is Array) or (data as Array).is_empty(): return
+	var arr: Array = []
+	if data is Array:
+		arr = data
+	elif data is Dictionary:
+		arr = (data as Dictionary).get("units", [])
+		var _lds = (data as Dictionary).get("loadouts", {})
+		if _lds is Dictionary and GameState != null:
+			for _k in (_lds as Dictionary).keys():
+				GameState.loadouts[str(_k)] = int(_lds[_k])
+	if arr.is_empty(): return
 	_edit_clear()
-	for s in data:
+	for s in arr:
 		if not (s is Dictionary): continue
 		var u := _make_unit(str(s.get("id", "basic")), str(s.get("side", "left")), Vector2(float(s.get("px", 400.0)), float(s.get("py", 400.0))))
 		if str(s.get("side", "")) == "right":
