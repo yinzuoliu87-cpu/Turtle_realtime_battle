@@ -2819,15 +2819,22 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 			if u["state_t"] <= 0.0:
 				var p := str(u.get("pending", "B"))
 				if p == "B":
-					if dist <= rng:
+					if tgt == null or not tgt.get("alive", false):
+						tgt = _nearest_enemy(u)                  # 前摇期目标死→改打最近敌(不浪费已承诺出手·用户2026-07-12)
+					var _fired := false
+					if tgt != null and tgt.get("alive", false):
+						# 出手承诺: 前摇一旦走完必打出, 不再被射程门丢弃(根治近战被风筝→抬手→目标跑出射程→这一击作废→再追→再空转→伤害完全打不出)
+						if u["melee"] and (tgt["pos"] - u["pos"]).length() > rng:
+							_melee_lunge(u, tgt)                 # 目标微脱离→踏步补缺口(视觉够到·伤害由_basic_attack保证)
 						_basic_attack(u, tgt)
+						_fired = true
 						if u["id"] == "space" and tgt.get("alive", false) and float(u.get("star_energy", 0.0)) > 0.0:   # 星能: 普攻也算施法·附带追加30%储存星能真伤(封板)
 							_apply_damage_from(u, tgt, int(u["star_energy"] * 0.30), Color("#ffffff"), 0.0, true)
 					# gambler 多重打击(云顶剑士式): 命中后掷概率, 中→快攻速再打, 没中→正常冷却
 					var _hf: float = maxf(1.0, float(u.get("haste_mult", 1.0))) if _t < float(u.get("haste_until", 0.0)) else 1.0   # 临时攻速buff(祝福等)
 					if u["id"] == "hunter" and tgt != null and tgt.get("alive", false) and float(tgt.get("hp", 0.0)) < float(tgt.get("maxHp", 1.0)) * 0.5:
 						_hf *= 1.5   # 猎人残血追猎(封板): 目标<50%生命 → +50%攻速
-					u["atk_cd"] = (_gambler_multi_cd(u) if (u["id"] == "gambler" and dist <= rng) else u["atk_interval"]) / maxf(0.1, _hf * (float(u.get("spd_aspd_mult", 1.0)) if _t < float(u.get("spd_dbf_until", 0.0)) else 1.0) * float(u.get("aspd_perm", 1.0)))   # ×永久攻速(贝母021等,本场)
+					u["atk_cd"] = (_gambler_multi_cd(u) if (u["id"] == "gambler" and _fired) else u["atk_interval"]) / maxf(0.1, _hf * (float(u.get("spd_aspd_mult", 1.0)) if _t < float(u.get("spd_dbf_until", 0.0)) else 1.0) * float(u.get("aspd_perm", 1.0)))   # ×永久攻速(贝母021等,本场)
 					u["state"] = "move"   # LoL忠实: 伤害点后立即自由(可动/被分离=orb walk), 无rooted后摇; 后摇=视觉lunge回收+squash不锁移动; 下次普攻等atk_cd(=1/攻速)
 				else:
 					var stype := p.substr(2)
