@@ -1383,6 +1383,7 @@ func _dl_present_advance() -> void:
 	if mode == "overview":
 		_dl_enter_present("preview")
 	elif mode == "preview":
+		_dl_build_lane_field()   # ★预览结束 → 此刻才真正加载本路战场(呈现期间战场为空, 无串场)
 		_dl_state = "place"
 		_dl_enter_place()
 	elif mode == "lane_settle":
@@ -1420,7 +1421,8 @@ func _dl_build_present_overlay(mode: String) -> void:
 	_dl_clear_present_overlay()
 	if _ui_layer == null: return
 	var back := ColorRect.new()
-	back.color = Color(0.02, 0.03, 0.05, 0.66)
+	# 完全不透明整屏幕幕布 —— 呈现层是隔开上/下/终极战场的「幕」, 绝不透出后面的战场(用户2026-07-12: 就是为了避免上下战场串东西)
+	back.color = Color(0.03, 0.05, 0.09, 1.0)
 	back.set_anchors_preset(Control.PRESET_FULL_RECT)
 	back.mouse_filter = Control.MOUSE_FILTER_STOP
 	back.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed: _dl_present_advance())
@@ -1541,6 +1543,19 @@ func _dl_clamp_place(fp: Vector2) -> Vector2:
 	return fp
 
 func _spawn_dual_lane() -> void:
+	# ★战场不在此刻加载 —— 先走呈现(总览/预览), 预览结束才 _dl_build_lane_field() 真正 spawn.
+	# 这样呈现时后面根本没有战场, 从源头杜绝上下路串场(用户2026-07-12「不能预览后再加载好战场吗，非要遮住是为啥」).
+	if OS.has_environment("DL_AUTOFIGHT"):
+		_dl_build_lane_field()
+		_dl_state = "place"; _dl_enter_place()   # 测试: 跳呈现直接加载战场→放置→自动打
+	elif not _dl_overview_shown:
+		_dl_overview_shown = true
+		_dl_enter_present("overview")   # 匹配后首次: 3路总览→预览→(加载战场)→放置
+	else:
+		_dl_enter_present("preview")    # 后续路: 对阵预览→(加载战场)→放置
+
+# 真正加载本路战场: spawn 双方单位+蛋+地图+装备+被动+头像框. 仅在呈现(预览)结束后调用 → 呈现期间战场为空.
+func _dl_build_lane_field() -> void:
 	var lane: String = str(GameState.current_lane) if GameState != null and GameState.current_lane != null else "top"
 	if lane == "" or lane == "done":
 		lane = "top"
@@ -1556,7 +1571,7 @@ func _spawn_dual_lane() -> void:
 		foe = _dl_survivor_specs("right")
 	else:
 		mine = GameState.get_dual_lineup().get(lane, [])
-		foe = _dual_foe_lane(lane)
+		foe = _dual_foe_lane(lane)   # 确定性(读固定 ghost 快照/固定 bot 池) → 与预览显示一致
 	_spawn_lane_side(mine, "left", lvl, Vector2(_cx - 420.0, _cy))
 	_spawn_lane_side(foe, "right", lvl, Vector2(_cx + 420.0, _cy))
 	# 两端基地各 spawn 一颗蛋(围栏罩住). egg_hp 跨路累积(缺则按平均等级初始化).
@@ -1570,13 +1585,6 @@ func _spawn_dual_lane() -> void:
 	_apply_spawn_passives()
 	_eq_apply_all_stats()
 	_build_team_panels()   # ★双路补建左右头像框(装备图标随之显示): 原只在非双路分支L1051调·双路早退绕过→装了装备头像框空白(用户2026-07-11 #5)
-	if OS.has_environment("DL_AUTOFIGHT"):
-		_dl_state = "place"; _dl_enter_place()   # 测试: 跳呈现直接放置→自动打
-	elif not _dl_overview_shown:
-		_dl_overview_shown = true
-		_dl_enter_present("overview")   # 匹配后首次: 3路总览→预览→放置
-	else:
-		_dl_enter_present("preview")    # 后续路: 对阵预览→放置
 
 func _dl_ensure_egg_hp(lvl: int) -> void:   # egg_hp 缺则按 2000+100×平均等级 初始化(两侧)
 	if GameState == null:
