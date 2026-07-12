@@ -9029,6 +9029,7 @@ func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招�
 		_float_text(u["pos"] + Vector2(0, -72), "招财·升星 %d★" % (star + 1), Color("#ffd93d"))
 	_burst_vfx("res://assets/sprites/vfx/fortune-coin-burst.png", u["pos"], 104.0, 0.7)   # 招财: 金币聚宝爆(用户2026-07-12)
 	_skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.6), 56.0)
+	_refresh_panel_equips(u)   # ★抽到/升星的临时装备图标即时显进左右信息框(用户2026-07-12)
 
 func _sk_lightning_shield(u: Dictionary) -> void:              # 闪电龟·雷盾 (用户2026-07-07: 3ATK护盾5秒, 盾在时反击0.1A魔法叠电击=见_apply_damage_from)
 	_grant_shield(u, u["atk"] * 3.0, 5.0)   # 雷盾5秒(与反击窗口thunder_shield_until同步·封板)
@@ -15820,18 +15821,14 @@ func _make_team_frame(u: Dictionary) -> Control:
 	hp_fill.size = Vector2(_PANEL_HP_W, 5)
 	hp_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hp_bg.add_child(hp_fill)
-	# 头像下方: 至多4个装备格 (图标 + 充能类装备的充能进度条)
-	u["panel_charge_bars"] = []
-	u["panel_count_labels"] = []
-	var equips: Array = u.get("equips", [])
-	if not equips.is_empty():
-		var eq_row := HBoxContainer.new()
-		eq_row.add_theme_constant_override("separation", 4)
-		eq_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		eq_row.alignment = BoxContainer.ALIGNMENT_CENTER
-		main_col.add_child(eq_row)
-		for _ei in range(mini(4, equips.size())):
-			eq_row.add_child(_make_panel_equip_slot(u, str((equips[_ei] as Dictionary).get("id", ""))))
+	# 头像下方: 至多4个装备格 (图标 + 充能类装备的充能进度条). 常建空行+存引用 → 招财进宝运行时抽装备可刷新(_refresh_panel_equips)
+	var eq_row := HBoxContainer.new()
+	eq_row.add_theme_constant_override("separation", 4)
+	eq_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	eq_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	main_col.add_child(eq_row)
+	u["panel_eq_row"] = eq_row
+	_refresh_panel_equips(u)
 
 	# 整框点击 → 详情面板
 	frame.gui_input.connect(func(ev: InputEvent):
@@ -15843,6 +15840,20 @@ func _make_team_frame(u: Dictionary) -> Control:
 	u["panel_hp_fill"] = hp_fill
 	u["panel_stylebox"] = sb
 	return frame
+
+# 重建头像下装备格 (从 u["equips"] 取, 至多4格). spawn时建 + 招财进宝运行时抽/升装备后调 → 图标即时显进左右信息框(用户2026-07-12).
+func _refresh_panel_equips(u: Dictionary) -> void:
+	var row = u.get("panel_eq_row", null)
+	if row == null or not is_instance_valid(row):
+		return
+	for c in (row as Node).get_children():
+		row.remove_child(c)   # 立即移出(别等queue_free到帧末→避免新旧图标重叠一帧)
+		c.queue_free()
+	u["panel_charge_bars"] = []
+	u["panel_count_labels"] = []
+	var equips: Array = u.get("equips", [])
+	for _ei in range(mini(4, equips.size())):
+		row.add_child(_make_panel_equip_slot(u, str((equips[_ei] as Dictionary).get("id", ""))))
 
 func _make_panel_equip_slot(u: Dictionary, eid: String) -> Control:   # 头像下装备格: 图标(稀有度描边)+充能条/层数徽章
 	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
