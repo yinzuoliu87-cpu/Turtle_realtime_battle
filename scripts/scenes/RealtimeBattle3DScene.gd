@@ -86,8 +86,8 @@ static func _review_demo() -> bool:
 	if OS.has_environment("REVIEW"):
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
-const REVIEW_TURTLE := "ninja"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
+const REVIEW_TURTLE := "fortune"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
+const REVIEW_SKILL_IDX := 2   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转 (财神: 1=骰子/2=梭哈/3=招财进宝)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -1019,7 +1019,7 @@ func _spawn_teams() -> void:
 			pos = Vector2(_cx - 250.0 + float(i) * 175.0, _cy)   # 携带者+友方假人 排在水平掠射线上(看火柱扫到友军回血)
 		var _lu := _make_unit(str(left[i]), "left", pos)
 		if _review_demo() and str(left[i]) == "fortune":
-			_lu["gold"] = 0.0   # demo: 财神起手金币(0=看自然攒金币)
+			_lu["gold"] = 30.0 if REVIEW_SKILL_IDX == 2 else 0.0   # demo: 审梭哈时备30金币看弹幕; 否则0看自然攒金币
 		if _review_demo() and REVIEW_DUMMY_ATTACKS:
 			_lu["_review_dummy"] = true   # 假人会还手时受审龟免死(看完整被动循环)
 		if OS.has_environment("EQDEMO_EQUIP"):   # 装备演示
@@ -3065,6 +3065,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	_tick_effects(u, delta)
 	_update_shield_barrier(u)   # 石头岩石护盾: 持盾常驻六棱屏障(跟随), 盾破/到期碎裂淡出
 	_update_diamond_barrier(u)   # 钻石坚不可摧: 持盾常驻青水晶护罩(跟随), 盾破/到期碎裂淡出
+	_update_gold_barrier(u)      # 财神金盾: 持盾常驻金色护罩(跟随), 盾破/到期碎裂淡出
 	_update_stun_vfx(u)         # 通用眩晕圈: 眩晕期间头顶火花星绕转(椭圆), 结束即撤
 	_update_bamboo_charge_dots(u)   # 竹叶蓄满: 双手两绿点(强化就绪指示)
 	_heal_flush(u)   # LoL式治疗累加器: 攒一波回血合并成一个绿字(满血=0)
@@ -3224,6 +3225,8 @@ func _tick_skill_cd(u: Dictionary, delta: float) -> void:
 		return   # 石头岩石护盾: 持盾期锁龟能不充能, 盾破/到期即恢复(用户2026-07-11) → 屏障消失=你就知道盾没了
 	if _t < float(u.get("diamond_fortify_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0:
 		return   # 钻石坚不可摧: 持盾期锁龟能不充能, 盾破/到期即恢复(用户2026-07-12·60龟能改制)
+	if _t < float(u.get("gold_shield_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0:
+		return   # 财神金盾: 持盾期锁龟能不充能, 盾破/到期即恢复(用户2026-07-12·梭哈后该技变金盾)
 	var _ecm: float = maxf(1.0, float(u.get("echarge_mult", 1.0))) if _t < float(u.get("echarge_until", 0.0)) else 1.0   # 龟能充能加速buff(祝福等)
 	if _t < float(u.get("spd_dbf_until", 0.0)):
 		_ecm *= float(u.get("spd_echarge_mult", 1.0))   # 充能减速debuff(寒冰登场等)
@@ -4726,6 +4729,40 @@ func _update_diamond_barrier(u: Dictionary) -> void:
 		var s2 = spr
 		_burst_vfx("res://assets/sprites/vfx/diamond-impact.png", u["pos"], 92.0, float(u.get("height", 0.0)) + 0.5)   # 盾没了→水晶碎裂小爆
 		var bt := create_tween(); bt.set_parallel(true)             # 护罩碎裂放大淡出(你就"知道盾消失了/龟能恢复")
+		bt.tween_property(s2, "modulate:a", 0.0, 0.2)
+		bt.tween_property(s2, "pixel_size", s2.pixel_size * 1.35, 0.2)
+		bt.chain().tween_callback(s2.queue_free)
+
+# 财神金盾: 持盾期常驻金色六棱护罩(跟随单位), 盾破/到期→碎裂淡出. 与锁龟能同判据(gold_shield_until + shield>0). 仿钻石护罩·金色区分.
+func _update_gold_barrier(u: Dictionary) -> void:
+	var active: bool = _t < float(u.get("gold_shield_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0
+	var spr = u.get("_gold_barrier_spr", null)
+	var valid: bool = spr != null and is_instance_valid(spr)
+	if active and not valid:
+		var b := Sprite3D.new()
+		b.texture = load("res://assets/sprites/vfx/fx-hex-bubble.png")
+		b.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+		b.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		b.shaded = false; b.transparent = true
+		b.modulate = Color(1.0, 0.82, 0.28, 0.5)                    # 财神=金色护罩
+		var tw := float(maxi(1, int(b.texture.get_width())))
+		b.pixel_size = (150.0 * WS) / tw
+		b.position = _world_pos(u["pos"], float(u.get("height", 0.0)) + 0.75)
+		_world.add_child(b)
+		var pt := create_tween().bind_node(b).set_loops()
+		pt.tween_property(b, "modulate:a", 0.30, 0.55).set_trans(Tween.TRANS_SINE)
+		pt.tween_property(b, "modulate:a", 0.55, 0.55).set_trans(Tween.TRANS_SINE)
+		_follow_vfx.append({"spr": b, "unit": u, "h": 0.75})
+		u["_gold_barrier_spr"] = b
+		u["_gold_barrier_pulse"] = pt
+	elif not active and valid:
+		u["_gold_barrier_spr"] = null
+		var pulse = u.get("_gold_barrier_pulse", null)
+		if pulse != null and is_instance_valid(pulse): pulse.kill()
+		u["_gold_barrier_pulse"] = null
+		var s2 = spr
+		_burst_vfx("res://assets/sprites/vfx/fortune-coin-burst.png", u["pos"], 88.0, float(u.get("height", 0.0)) + 0.5)   # 盾没了→金币爆(你就知道盾消失/龟能恢复)
+		var bt := create_tween(); bt.set_parallel(true)
 		bt.tween_property(s2, "modulate:a", 0.0, 0.2)
 		bt.tween_property(s2, "pixel_size", s2.pixel_size * 1.35, 0.2)
 		bt.chain().tween_callback(s2.queue_free)
@@ -7553,7 +7590,8 @@ func _cast_skill(u: Dictionary, tgt: Dictionary, stype: String) -> bool:
 	if not _IMPL_SKILLS.has(stype):
 		return false
 	if stype == "fortuneAllIn" and u.get("allin_used", false):
-		return false                                  # 梭哈一场限一次, 用过则轮转跳过不空放
+		# 梭哈一场限一次·用过后该技变「金盾」(80龟能·护盾=金币数·持盾锁龟能·用户2026-07-12): 有金币才放(护盾=金币数, 0金币不空放)
+		return int(u.get("gold", 0)) > 0
 	_anticipate(u)                  # 放大招前预备(缩)→挥出(伸) 形变
 	_shake(JUICE_SHAKE_HEAVY)       # 大招释放 = 轻震屏
 	# 施法技能不用飘空图标 (用户定): 技能视觉靠各自 _skill_ring/投射物/形变, 不浮贴图 billboard
@@ -7643,7 +7681,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"headlessSoulStrike":   _sk_headless_soul_charge(u)
 		"chestCannon":          _sk_chest_cannon(u, tgt)
 		# ── Batch2 特殊技 (bespoke) ──
-		"fortuneAllIn":         _sk_fortune_allin(u, tgt)
+		"fortuneAllIn":         (_sk_fortune_goldshield(u) if u.get("allin_used", false) else _sk_fortune_allin(u, tgt))
 		"starWormhole":         _sk_star_wormhole(u, tgt)
 		"starGravityWarp":      _sk_star_gravity_warp(u)
 		"lineFinish":           _sk_line_finish(u)
@@ -10572,10 +10610,23 @@ func _sk_gen_shield(u: Dictionary) -> void:
 # ── Batch2 特殊技 (bespoke; 按 pets.json brief/detail 实装) ──
 
 # 财神·梭哈: 一场限一次, 消耗全部金币, 每枚 0.18×ATK物理 + 0.18×ATK真实 (cd999)
-func _sk_fortune_allin(u: Dictionary, tgt) -> void:                 # 财神龟·梭哈 ✅ (蓄力→持续投金币, 目标死换下个)
+func _sk_fortune_goldshield(u: Dictionary) -> void:   # 财神·金盾(梭哈用过后该技变身·用户2026-07-12): 80龟能·护盾=当前金币数(不消耗金币)·持盾期锁龟能(盾破/4s到期解锁)
+	var amt: float = float(int(u.get("gold", 0)))
+	if amt <= 0.0:
+		return
+	_grant_shield(u, amt, 4.0)                 # 通用护盾4s
+	u["gold_shield_until"] = _t + 4.0          # 持盾期锁龟能(与shield同4s·盾破/到期即恢复·同钻石坚不可摧节奏)
+	_flash(u, Color(1.6, 1.35, 0.5))
+	_skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.7), 60.0)
+	_float_text(u["pos"] + Vector2(0, -66), "金盾 +%d" % int(amt), Color("#ffd93d"))
+	for _k in range(4):                        # 金块绕身聚成盾
+		_gold_chunk_erupt(u["pos"] + Vector2(randf_range(-26.0, 26.0), randf_range(-12.0, 12.0)))
+
+func _sk_fortune_allin(u: Dictionary, tgt) -> void:                 # 财神龟·梭哈 ✅ (蓄力→持续投金币, 目标死换下个; 用过后该技变金盾)
 	if tgt == null or u.get("allin_used", false):
 		return
 	u["allin_used"] = true
+	u["energy_cost"]["fortuneAllIn"] = 80.0    # ★梭哈后该技变「金盾」→ 龟能消耗 340→80(用户2026-07-12)
 	var coins: int = int(u["gold"])
 	u["gold"] = 0.0
 	if coins <= 0:
