@@ -1447,30 +1447,24 @@ func _dl_build_present_overlay(mode: String) -> void:
 	if mode == "overview":
 		title.text = "⚔  三路对阵总览"
 		for ln in ["top", "bottom", "final"]:
-			var row := Label.new(); row.add_theme_font_size_override("font_size", 19)
-			row.add_theme_color_override("font_color", Color("#cfe6ff"))
-			var mine_s := "上下路幸存" if ln == "final" else _dl_names_line(_dl_lane_specs(ln))
-			var foe_s := "上下路幸存" if ln == "final" else _dl_names_line(_dl_foe_specs(ln))
-			row.text = "【%s】 我方: %s   vs   对方: %s" % [lane_cn.get(ln, ln), mine_s, foe_s]
-			vb.add_child(row)
+			vb.add_child(_dl_overview_lane_row(ln, str(lane_cn.get(ln, ln))))
 	elif mode == "preview":
 		title.text = "【%s战场】 对阵预览" % lane_cn.get(cur_lane, cur_lane)
-		var m := Label.new(); m.add_theme_font_size_override("font_size", 21); m.add_theme_color_override("font_color", Color("#9ae6b0"))
-		m.text = "我方: " + _dl_names_line(_dl_lane_specs(cur_lane))
-		vb.add_child(m)
-		var f := Label.new(); f.add_theme_font_size_override("font_size", 21); f.add_theme_color_override("font_color", Color("#ff9b9b"))
-		f.text = "对方: " + _dl_names_line(_dl_foe_specs(cur_lane))
-		vb.add_child(f)
+		vb.add_child(_dl_matchup_row(cur_lane))
 	elif mode == "lane_settle":
 		var win_lr := "right" if _dl_pending_loser == "left" else "left"
 		title.text = "【%s战场】 结算" % lane_cn.get(cur_lane, cur_lane)
-		var r := Label.new(); r.add_theme_font_size_override("font_size", 22)
+		var r := Label.new(); r.add_theme_font_size_override("font_size", 26)
 		r.add_theme_color_override("font_color", Color("#9ae6b0") if win_lr == "left" else Color("#ff9b9b"))
 		r.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		r.text = ("我方胜！" if win_lr == "left" else "我方负") + "本路"
+		r.text = "🏆 我方拿下本路！" if win_lr == "left" else "💀 本路失守"
 		vb.add_child(r)
+		var rec := Label.new(); rec.add_theme_font_size_override("font_size", 19); rec.add_theme_color_override("font_color", Color("#ffe9a8"))
+		rec.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		rec.text = _dl_record_line()
+		vb.add_child(rec)
 		if GameState != null and GameState.egg_hp is Dictionary:
-			var e := Label.new(); e.add_theme_font_size_override("font_size", 17); e.add_theme_color_override("font_color", Color("#cfe6ff"))
+			var e := Label.new(); e.add_theme_font_size_override("font_size", 16); e.add_theme_color_override("font_color", Color("#cfe6ff"))
 			e.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			e.text = "蛋血  我方 %d  ·  对方 %d" % [int(GameState.egg_hp.get("left", 0.0)), int(GameState.egg_hp.get("right", 0.0))]
 			vb.add_child(e)
@@ -1478,6 +1472,149 @@ func _dl_build_present_overlay(mode: String) -> void:
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.text = "（自动 5 秒 · 点击跳过）"
 	vb.add_child(hint)
+
+# 本场分路比分行: "本场比分  我方 X - Y 对方"
+func _dl_record_line() -> String:
+	var lw := 0; var rw := 0
+	if GameState != null and GameState.lane_results is Dictionary:
+		for k in GameState.lane_results.keys():
+			if str(GameState.lane_results[k]) == "left": lw += 1
+			else: rw += 1
+	return "本场比分   我方 %d - %d 对方" % [lw, rw]
+
+# 对阵预览一行: [我方阵容列]  VS  [对方阵容列] (各带头像/等级/名字/装备图+星级)
+func _dl_matchup_row(lane: String) -> Control:
+	var row := HBoxContainer.new(); row.add_theme_constant_override("separation", 26); row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_child(_dl_side_column(_dl_lane_specs(lane), true, "我方", Color("#9ae6b0")))
+	var vs := Label.new(); vs.text = "VS"; vs.add_theme_font_size_override("font_size", 34); vs.add_theme_color_override("font_color", Color("#ffd93d")); vs.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(vs)
+	row.add_child(_dl_side_column(_dl_foe_specs(lane), false, "对方", Color("#ff9b9b")))
+	return row
+
+# 总览一路: 【上路】 [我方小头像…] vs [对方小头像…]
+func _dl_overview_lane_row(lane: String, cn: String) -> Control:
+	var row := HBoxContainer.new(); row.add_theme_constant_override("separation", 12); row.alignment = BoxContainer.ALIGNMENT_CENTER
+	var tag := Label.new(); tag.text = "【%s】" % cn; tag.add_theme_font_size_override("font_size", 18); tag.add_theme_color_override("font_color", Color("#cfe6ff"))
+	tag.custom_minimum_size = Vector2(76, 0); row.add_child(tag)
+	if lane == "final":
+		var fl := Label.new(); fl.text = "上下路幸存者对决"; fl.add_theme_font_size_override("font_size", 16); fl.add_theme_color_override("font_color", Color("#9fb4c8"))
+		row.add_child(fl)
+		return row
+	row.add_child(_dl_mini_avatars(_dl_lane_specs(lane)))
+	var vs := Label.new(); vs.text = "vs"; vs.add_theme_font_size_override("font_size", 16); vs.add_theme_color_override("font_color", Color("#ffd93d")); row.add_child(vs)
+	row.add_child(_dl_mini_avatars(_dl_foe_specs(lane)))
+	return row
+
+func _dl_mini_avatars(specs: Array) -> Control:
+	var h := HBoxContainer.new(); h.add_theme_constant_override("separation", 4)
+	for s in specs:
+		h.add_child(_dl_avatar_node(s, 40))
+	return h
+
+# 一侧阵容列: 标题 + 逐单位卡片
+func _dl_side_column(specs: Array, is_mine: bool, header: String, col: Color) -> Control:
+	var vb := VBoxContainer.new(); vb.add_theme_constant_override("separation", 9); vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	var h := Label.new(); h.text = header; h.add_theme_font_size_override("font_size", 20); h.add_theme_color_override("font_color", col); h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(h)
+	if specs.is_empty():
+		var em := Label.new(); em.text = "—"; em.add_theme_color_override("font_color", Color("#7a8a96")); vb.add_child(em)
+	for s in specs:
+		vb.add_child(_dl_unit_card(s, is_mine))
+	return vb
+
+# 单位卡: [头像(稀有度描边)] [名字 / Lv] + 装备图标行(带★星级)
+func _dl_unit_card(spec, is_mine: bool) -> Control:
+	var card := PanelContainer.new()
+	var csb := StyleBoxFlat.new(); csb.bg_color = Color(0.08, 0.12, 0.18, 0.9); csb.set_corner_radius_all(8)
+	csb.set_border_width_all(1); csb.border_color = Color(1, 1, 1, 0.08)
+	csb.content_margin_left = 8; csb.content_margin_right = 12; csb.content_margin_top = 6; csb.content_margin_bottom = 6
+	card.add_theme_stylebox_override("panel", csb)
+	var hb := HBoxContainer.new(); hb.add_theme_constant_override("separation", 10); card.add_child(hb)
+	hb.add_child(_dl_avatar_node(spec, 52))
+	var info := VBoxContainer.new(); info.add_theme_constant_override("separation", 3); info.alignment = BoxContainer.ALIGNMENT_CENTER; hb.add_child(info)
+	var nr := HBoxContainer.new(); nr.add_theme_constant_override("separation", 8); info.add_child(nr)
+	var nm := Label.new(); nm.text = _dl_spec_name(spec); nm.add_theme_font_size_override("font_size", 17); nm.add_theme_color_override("font_color", Color("#e6edf3"))
+	nr.add_child(nm)
+	var lvl := 1
+	if GameState != null and GameState.season_level != null: lvl = maxi(1, int(GameState.season_level))
+	var lv := Label.new(); lv.text = "Lv.%d" % lvl; lv.add_theme_font_size_override("font_size", 13); lv.add_theme_color_override("font_color", Color("#ffd93d")); lv.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	nr.add_child(lv)
+	var eqs := _dl_spec_equips(spec, is_mine)
+	if not eqs.is_empty():
+		var er := HBoxContainer.new(); er.add_theme_constant_override("separation", 4)
+		for e in eqs:
+			if e is Dictionary:
+				er.add_child(_dl_equip_chip(str(e.get("id", "")), int(e.get("star", 1))))
+		info.add_child(er)
+	else:
+		var ne := Label.new(); ne.text = "（无装备）"; ne.add_theme_font_size_override("font_size", 12); ne.add_theme_color_override("font_color", Color("#5f6f7c")); info.add_child(ne)
+	return card
+
+# 头像节点(稀有度描边). spec 为 leader→avatars/<id>.png; minion→pets/minion.png
+func _dl_avatar_node(spec, sz: int) -> Control:
+	var box := Panel.new(); box.custom_minimum_size = Vector2(sz, sz)
+	var bsb := StyleBoxFlat.new(); bsb.bg_color = Color("#0c141c"); bsb.set_border_width_all(2); bsb.set_corner_radius_all(6)
+	var id := ""
+	var is_minion := false
+	if spec is Dictionary:
+		if str(spec.get("kind", "")) == "minion" or spec.has("role"): is_minion = true
+		else: id = str(spec.get("id", spec.get("kind", "")))
+	bsb.border_color = Color("#8b949e") if is_minion else _pet_rarity_color(str(_data_by_id.get(id, {}).get("rarity", "C")))
+	box.add_theme_stylebox_override("panel", bsb)
+	var path := (SPRITE_DIR + "pets/minion.png") if is_minion else (SPRITE_DIR + "avatars/" + id + ".png")
+	if not ResourceLoader.exists(path) and not is_minion:
+		path = SPRITE_DIR + "pets/" + id + ".png"   # 无头像退回全身图
+	if ResourceLoader.exists(path):
+		var tex := TextureRect.new(); tex.texture = load(path)
+		tex.set_anchors_preset(Control.PRESET_FULL_RECT)
+		tex.offset_left = 3; tex.offset_top = 3; tex.offset_right = -3; tex.offset_bottom = -3
+		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		box.add_child(tex)
+	return box
+
+# 装备小图标(稀有度描边 + 右下★星级)
+func _dl_equip_chip(eid: String, star: int) -> Control:
+	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
+	var box := Panel.new(); box.custom_minimum_size = Vector2(30, 30)
+	var bsb := StyleBoxFlat.new(); bsb.bg_color = Color("#0c141c"); bsb.set_border_width_all(1); bsb.set_corner_radius_all(3)
+	bsb.border_color = _equip_rarity_color(str(edef.get("rarity", "普通")))
+	box.add_theme_stylebox_override("panel", bsb)
+	box.tooltip_text = "%s  ★%d\n%s" % [str(edef.get("name", eid)), star, str(edef.get("effectDesc1", ""))]
+	var img := str(edef.get("img", ""))
+	if img != "" and ResourceLoader.exists("res://assets/sprites/" + img):
+		var ic := TextureRect.new(); ic.texture = load("res://assets/sprites/" + img)
+		ic.set_anchors_preset(Control.PRESET_FULL_RECT)
+		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(ic)
+	else:
+		var em := Label.new(); em.text = str(edef.get("emoji", "?")); em.set_anchors_preset(Control.PRESET_FULL_RECT)
+		em.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; em.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		em.add_theme_font_size_override("font_size", 11); em.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(em)
+	var st := Label.new(); st.text = "★%d" % star
+	st.anchor_left = 0.0; st.anchor_top = 1.0; st.anchor_right = 1.0; st.anchor_bottom = 1.0; st.offset_top = -13
+	st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	st.add_theme_font_size_override("font_size", 10); st.add_theme_color_override("font_color", Color("#ffd93d"))
+	st.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(st)
+	return box
+
+# 单位装备解析(与 _inject_equipment 同口径): spec.equips 优先, 否则我方读 persistent_equipped
+func _dl_spec_equips(spec, is_mine: bool) -> Array:
+	if not (spec is Dictionary): return []
+	if spec.has("equips") and spec["equips"] is Array:
+		return spec["equips"]
+	if is_mine and str(spec.get("kind", "")) == "leader":
+		var id := str(spec.get("id", ""))
+		if GameState != null and GameState.get("persistent_equipped") is Dictionary:
+			var pe: Dictionary = GameState.persistent_equipped
+			if pe.has(id) and pe[id] is Array:
+				return pe[id]
+	return []
 
 func _dl_enter_place() -> void:
 	if OS.has_environment("DL_AUTOFIGHT"):   # 测试开关: 跳过放置直接开打 (headless 跑通整局流程用)
@@ -1574,10 +1711,11 @@ func _dl_build_lane_field() -> void:
 		foe = _dual_foe_lane(lane)   # 确定性(读固定 ghost 快照/固定 bot 池) → 与预览显示一致
 	_spawn_lane_side(mine, "left", lvl, Vector2(_cx - 420.0, _cy))
 	_spawn_lane_side(foe, "right", lvl, Vector2(_cx + 420.0, _cy))
-	# 两端基地各 spawn 一颗蛋(围栏罩住). egg_hp 跨路累积(缺则按平均等级初始化).
+	# 两端基地各 spawn 一颗蛋(围栏罩住). egg_hp 跨路累积(缺则按平均等级初始化); hp_max=原始满血→血条显跨路累积伤害.
 	_dl_ensure_egg_hp(lvl)
-	_units.append(_make_unit("__egg__", "left", Vector2(ARENA.position.x + 70.0, _cy), {"egg": true, "egg_side": "left", "hp": _dl_egg_hp("left")}))
-	_units.append(_make_unit("__egg__", "right", Vector2(ARENA.end.x - 70.0, _cy), {"egg": true, "egg_side": "right", "hp": _dl_egg_hp("right")}))
+	var egg_max: float = 2000.0 + 100.0 * float(lvl)   # 蛋原始满血(固定, 与 _dl_ensure_egg_hp 初值一致) = maxHp 基准
+	_units.append(_make_unit("__egg__", "left", Vector2(ARENA.position.x + 70.0, _cy), {"egg": true, "egg_side": "left", "hp": _dl_egg_hp("left"), "hp_max": egg_max}))
+	_units.append(_make_unit("__egg__", "right", Vector2(ARENA.end.x - 70.0, _cy), {"egg": true, "egg_side": "right", "hp": _dl_egg_hp("right"), "hp_max": egg_max}))
 	_build_map_props()   # 地图障碍(中央大礁+两侧墙)+基地穹顶围栏(幂等, 跨路复用)
 	_build_navmesh()     # 2D navmesh 避障(幂等; 障碍挖洞→单位绕行)
 	# 装备+登场被动管线(评审流程走的 756-758, 双路早退绕过了→这里补上): leader读persistent_equipped+dual_lineup, 小将读dual_lineup._dl_equips, 双方leader上登场被动
@@ -1929,7 +2067,7 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		st = [_mf, 105.0, 0.85, (70.0 if _mf else 400.0)]
 		sd = _minion_sprite_dict(_me, not _mf)
 	elif is_egg:   # 龟蛋: 纯血包 fighter(atk/def/mr=0), 不动不攻击, 免控/斩/嘲讽, 走完整伤害管线; 围栏未破不可主动索敌(AoE穿栏)
-		d = {"name": "龟蛋", "rarity": "SSS", "crit": 0.0, "hp": maxf(1.0, float(spec.get("hp", 2100))), "atk": 0.0, "def": 60.0, "mr": 60.0}   # 60双抗(用户2026-07-12)
+		d = {"name": "龟蛋", "rarity": "SSS", "crit": 0.0, "hp": maxf(1.0, float(spec.get("hp_max", spec.get("hp", 2100)))), "atk": 0.0, "def": 60.0, "mr": 60.0}   # maxHp=原始满血; 当前hp在下方按累积受损值覆盖(用户2026-07-12: 跨路掉血要可见); 60双抗
 		st = [true, 0.0, 99.0, 0.0]
 		sd = _egg_sprite_dict()
 	else:
@@ -2086,6 +2224,8 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		u["def"] = float(u.get("def", 60.0)) + 80.0; u["mr"] = float(u.get("mr", 60.0)) + 80.0
 		u["base_def"] = float(u.get("base_def", 60.0)) + 80.0; u["base_mr"] = float(u.get("base_mr", 60.0)) + 80.0
 		u["egg_side_lr"] = str(spec.get("egg_side", "left"))   # 该蛋归属方(left/right), 写回 GameState.egg_hp
+		# ★当前血=跨路累积受损值(maxHp保持原始满血) → 血条显示 累积伤害 1800/2500 而非满条(用户2026-07-12「明明蛋掉血了到第二战场还满血」)
+		u["hp"] = clampf(float(spec.get("hp", u["maxHp"])), 1.0, float(u["maxHp"]))
 		u["no_move"] = true; u["no_basic"] = true
 	return u
 
@@ -12732,6 +12872,15 @@ func _show_banner(won: bool) -> void:
 	big.size = Vector2(1280, 80); big.position = Vector2(0, 250)
 	big.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_ui_layer.add_child(big)
+	# 双路: 大标题下补「整场比分 X-Y」→ 上下路都输显 0-2 整场失败, 一目了然(用户2026-07-12)
+	if _is_dual_lane_mode() and gs != null and gs.get("lane_results") is Dictionary and not (gs.get("lane_results") as Dictionary).is_empty():
+		var score := Label.new()
+		score.text = _dl_record_line()
+		score.add_theme_font_size_override("font_size", 24)
+		score.add_theme_color_override("font_color", Color("#cfe6ff"))
+		score.size = Vector2(1280, 34); score.position = Vector2(0, 316)
+		score.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_ui_layer.add_child(score)
 	# 奖励/赛季行 (有赛季态才显)
 	var info := ""
 	if _had_season and gs != null:
