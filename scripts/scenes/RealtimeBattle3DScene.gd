@@ -8107,7 +8107,7 @@ func _sk_diamond_powerball(u: Dictionary, tgt) -> void:          # 钻石龟·�
 func _diamond_roll_tick(u: Dictionary, delta: float) -> void:
 	var sf: float = clampf((_t - float(u.get("roll_start", _t))) / 4.0, 0.0, 1.0)   # 0→满速4秒线性加速
 	var tgt = _nearest_enemy(u)
-	if tgt == null or _t > float(u.get("roll_start", _t)) + 6.0:   # 无敌可撞/超时6s→退出滚动
+	if tgt == null:   # 无敌可撞→退出滚动 (用户2026-07-12: 取消6秒超时限制, 滚到撞上为止)
 		u["roll_active"] = false; u["state"] = "move"
 		return
 	var to_t: Vector2 = tgt["pos"] - u["pos"]
