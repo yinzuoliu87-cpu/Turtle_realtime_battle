@@ -96,6 +96,12 @@ const REVIEW_DUMMY_HP := 500.0            # 假人固定血量
 const REVIEW_DUMMY_COUNT := 3   # 假人数量(单龟评审时); >1=排开
 const REVIEW_DUMMY_KILLABLE := false   # true=假人会死(看换目标); false=不死回满沙包(看完整动画)
 const REVIEW_DUMMY_ATTACKS := true     # true=假人会还手(看挨打类被动如龟壳储能); 同时受审龟免死看完整循环
+
+# 🛠 调试面板 运行时覆盖(跨 reload_current_scene 持久·用户2026-07-11「调试场加装备/选星级/选技能」)
+static var _dbg_skill := -99            # 覆盖受审技idx(-99=用REVIEW_SKILL_IDX)
+static var _dbg_star := 0               # 装备星级(0=用REVIEW_EQUIP_STAR·1-3)
+static var _dbg_equip_on := false       # 装备开关(true=给受审龟装 DBG_EQUIP_SET)
+const DBG_EQUIP_SET := ["p2eq_001", "p2eq_016", "p2eq_034"]   # "装备开"时装的默认套(武器/盾/召唤·测显示+效果)
 const LEFT_DEMO := ["basic", "stone", "lightning"]   # 非评审 demo (_review_demo()=false 时用)
 
 ## 每技【专属演示假人布局】: "受审龟id:skill_idx" → [ {dx,dy}, ... ] (相对受审龟: dx=右方X码, dy=深度Y偏移).
@@ -489,6 +495,7 @@ func _ready() -> void:
 	_build_environment()
 	_build_ground()
 	_build_ui_layer()
+	_build_debug_panel()   # 🛠 调试面板(评审demo·技能/装备/星级·用户2026-07-11)
 	_spawn_teams()
 	# §AUDIO: 战斗 BGM (淡入, autoload Audio 单例处理循环/音量)
 	var _audio := get_node_or_null("/root/Audio")
@@ -1059,7 +1066,8 @@ func _spawn_teams() -> void:
 
 func _review_turtle() -> String:   # 受审龟: env REVIEW_TURTLE 覆盖 const (评审任意龟)
 	return OS.get_environment("REVIEW_TURTLE") if OS.has_environment("REVIEW_TURTLE") else REVIEW_TURTLE
-func _review_skill_idx() -> int:   # 受审技idx: env REVIEW_SKILL 覆盖 const (-1=默认轮转)
+func _review_skill_idx() -> int:   # 受审技idx: 调试面板 > env REVIEW_SKILL > const (-1=默认轮转)
+	if _dbg_skill != -99: return _dbg_skill
 	return int(OS.get_environment("REVIEW_SKILL")) if OS.has_environment("REVIEW_SKILL") else REVIEW_SKILL_IDX
 func _resolve_left() -> Array:
 	if OS.has_environment("EQDEMO_EQUIP"):   # 装备演示: 远程携带者(默认hunter)
@@ -13248,13 +13256,15 @@ const DEMO_EQUIP := {
 
 # 装备注入: 玩家队(left)读 persistent_equipped; demo 阵容兜底塞测试装备.
 func _inject_equipment() -> void:
-	if _review_demo() and not _is_dual_lane_mode() and not OS.has_environment("EQDEMO_EQUIP") and not REVIEW_EQUIP.is_empty():
-		# 调试场加装备(baked·不用env·用户2026-07-11 #2): 给受审龟装 REVIEW_EQUIP → 看装备显示(左右头像框)+效果
+	if _review_demo() and not _is_dual_lane_mode() and not OS.has_environment("EQDEMO_EQUIP") and (_dbg_equip_on or not REVIEW_EQUIP.is_empty()):
+		# 调试场加装备(调试面板"装备开" 或 REVIEW_EQUIP非空·用户2026-07-11 #2): 给受审龟装 → 看装备显示(左右头像框)+效果
+		var _eqs: Array = REVIEW_EQUIP if not REVIEW_EQUIP.is_empty() else DBG_EQUIP_SET
+		var _star: int = _dbg_star if _dbg_star > 0 else REVIEW_EQUIP_STAR
 		for _ru in _units:
 			if str(_ru.get("side","")) == "left" and str(_ru.get("id","")) == _review_turtle():
 				var _rl: Array = []
-				for _eid in REVIEW_EQUIP:
-					_rl.append({"id": str(_eid), "star": REVIEW_EQUIP_STAR})
+				for _eid in _eqs:
+					_rl.append({"id": str(_eid), "star": _star})
 					_ru["eq_state"][str(_eid)] = {}
 				_ru["equips"] = _rl
 				break
@@ -15310,3 +15320,48 @@ func _fmt_num(v: float) -> String:
 	if s.ends_with("."):
 		s = s.substr(0, s.length() - 1)
 	return s
+
+# 🛠 调试面板(评审demo顶部一排按钮·技能0-3/装备开关/星级1-3·点即改静态变量+重开·用户2026-07-11)
+func _build_debug_panel() -> void:
+	if not _review_demo() or _is_dual_lane_mode() or _ui_layer == null:
+		return
+	var bar := HBoxContainer.new()
+	bar.position = Vector2(12, 44)
+	bar.add_theme_constant_override("separation", 3)
+	_ui_layer.add_child(bar)
+	var lbl := Label.new()
+	lbl.text = "🛠 "
+	lbl.add_theme_font_size_override("font_size", 18)
+	bar.add_child(lbl)
+	var cur_sk: int = _review_skill_idx()
+	for si in range(4):
+		var b := _dbg_btn("技%d%s" % [si, ("•" if si == cur_sk else "")])
+		b.pressed.connect(_dbg_set_skill.bind(si))
+		bar.add_child(b)
+	var eqb := _dbg_btn("装备%s" % ("开" if _dbg_equip_on else "关"))
+	eqb.pressed.connect(_dbg_toggle_equip)
+	bar.add_child(eqb)
+	var cur_star: int = _dbg_star if _dbg_star > 0 else REVIEW_EQUIP_STAR
+	for st in [1, 2, 3]:
+		var b := _dbg_btn("★%d%s" % [st, ("•" if st == cur_star else "")])
+		b.pressed.connect(_dbg_set_star.bind(st))
+		bar.add_child(b)
+
+func _dbg_btn(t: String) -> Button:
+	var b := Button.new()
+	b.text = t
+	b.focus_mode = Control.FOCUS_NONE
+	b.add_theme_font_size_override("font_size", 15)
+	return b
+
+func _dbg_set_skill(si: int) -> void:
+	_dbg_skill = si
+	get_tree().reload_current_scene()
+
+func _dbg_toggle_equip() -> void:
+	_dbg_equip_on = not _dbg_equip_on
+	get_tree().reload_current_scene()
+
+func _dbg_set_star(st: int) -> void:
+	_dbg_star = st
+	get_tree().reload_current_scene()
