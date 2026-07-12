@@ -6728,6 +6728,32 @@ func _burst_vfx(path: String, pos2d: Vector2, size_px: float, height: float = 0.
 	tw.tween_callback(b.queue_free)
 
 # 通用飞行VFX: 贴图从A飞到B (自动识别横排帧动画 nf=宽/高) → 到点自销. delay=起飞延迟(连珠错峰用).
+
+# 一次性帧动画VFX(横排sheet·帧宽=图高·逐帧播一遍→自销) — 1:1 回合制 BattleScene._play_vfx(横排帧sheet)
+func _play_anim_vfx(path: String, pos2d: Vector2, size_px: float, fps: float = 14.0, height: float = 1.1) -> void:
+	var tex: Texture2D = load(path)
+	if tex == null:
+		return
+	var fh: int = maxi(1, tex.get_height())
+	var n: int = maxi(1, int(tex.get_width() / fh))
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.hframes = n
+	spr.frame = 0
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.shaded = false
+	spr.transparent = true
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	spr.pixel_size = (size_px * WS) / float(fh)
+	spr.position = _world_pos(pos2d, height)
+	_world.add_child(spr)
+	var tw := _reg_tween()
+	tw.tween_method(_anim_vfx_frame.bind(spr, n), 0.0, float(n), float(n) / maxf(1.0, fps))
+	tw.tween_callback(spr.queue_free)
+
+func _anim_vfx_frame(fv: float, spr, n: int) -> void:
+	if is_instance_valid(spr):
+		spr.frame = mini(n - 1, int(fv))
 func _fly_vfx(path: String, from2d: Vector2, to2d: Vector2, size_px: float, dur: float, height: float = 1.0, delay: float = 0.0) -> void:
 	var t: Texture2D = load(path)
 	if t == null: return
@@ -7873,8 +7899,8 @@ func _sk_ghost_phantom(u: Dictionary, tgt) -> void:
 	if tgt == null: tgt = _nearest_enemy(u)
 	if tgt == null: return
 	_sk_dmg(u, tgt, {"magic": 1.5, "hits": 1, "lifesteal": 0.8, "selfDodge": 0.25, "selfDodgeDur": 4.0, "name": "幻影!", "color": Color("#c77dff")})
-	_burst_vfx("res://assets/sprites/skills/ghost-phantom.png", tgt["pos"], 180.0, 1.15)   # 幻影(回合制5帧图·实时单帧爆入)
-	_burst_vfx("res://assets/sprites/skills/ghost-touch.png", tgt["pos"], 140.0, 0.95)      # 触碰
+	_play_anim_vfx("res://assets/sprites/vfx/ghost-phantom.png", tgt["pos"], 155.0, 15.0, 1.15)   # 幻影(回合制vfx/5帧·逐帧播)
+	_play_anim_vfx("res://assets/sprites/vfx/ghost-touch.png", tgt["pos"], 125.0, 17.0, 0.98)       # 触碰(vfx/7帧)
 	_shake(0.08)
 	if tgt.get("alive", false):
 		_knockback(u, tgt, 0.0, 1.4, 0.45)   # 击退抛飞(回合制13段juggle→实时抛飞·airborne物理arc)
@@ -7887,7 +7913,7 @@ func _sk_ghost_soulstorm(u: Dictionary, tgt: Dictionary) -> void: # 幽灵龟·�
 		for i in range(2):
 			_apply_damage_from(u, tgt, _atk_dmg(u, 1.25, tgt, true), Color("#c77dff"))   # 无诅咒→2段共2.5A魔法(用户2026-07-09"打无诅咒目标是魔法")
 		_add_dot(tgt, "curse", tgt["maxHp"] * 0.05, BUFF_SEC)
-	_burst_vfx("res://assets/sprites/skills/ghost-storm.png", tgt["pos"], 170.0, 1.1)   # 灵魂风暴图(回合制ghost-storm·用户2026-07-11)
+	_play_anim_vfx("res://assets/sprites/vfx/ghost-storm.png", tgt["pos"], 135.0, 15.0, 1.1)   # 灵魂风暴(回合制vfx/8帧·逐帧播·用户2026-07-11纠正:原误用skills/单帧图)
 	_skill_ring(tgt["pos"], Color(0.78, 0.49, 1.0, 0.6), 92.0)
 	_shake(0.1)
 
