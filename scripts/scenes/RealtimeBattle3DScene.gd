@@ -6746,7 +6746,7 @@ func _burst_vfx(path: String, pos2d: Vector2, size_px: float, height: float = 0.
 # 通用飞行VFX: 贴图从A飞到B (自动识别横排帧动画 nf=宽/高) → 到点自销. delay=起飞延迟(连珠错峰用).
 
 # 一次性帧动画VFX(横排sheet·帧宽=图高·逐帧播一遍→自销) — 1:1 回合制 BattleScene._play_vfx(横排帧sheet)
-func _play_anim_vfx(path: String, pos2d: Vector2, size_px: float, fps: float = 14.0, height: float = 1.1) -> void:
+func _play_anim_vfx(path: String, pos2d: Vector2, size_px: float, fps: float = 14.0, height: float = 1.1, flip_h: bool = false) -> void:
 	var tex: Texture2D = load(path)
 	if tex == null:
 		return
@@ -6756,6 +6756,7 @@ func _play_anim_vfx(path: String, pos2d: Vector2, size_px: float, fps: float = 1
 	spr.texture = tex
 	spr.hframes = n
 	spr.frame = 0
+	spr.flip_h = flip_h
 	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	spr.shaded = false
 	spr.transparent = true
@@ -7196,21 +7197,27 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"shellShadow":          _sk_shell_shadow_dive(u, tgt)
 		"diceFate":             _sk_dice_fate(u)
 
-func _sk_basic_shield(u: Dictionary, tgt: Dictionary) -> void:   # 小龟·龟盾 ✅
+func _sk_basic_shield(u: Dictionary, tgt: Dictionary) -> void:   # 小龟·龟盾: 金弧劈砍→挥到位(0.25s)爆裂+命中(1:1 PoC时序/帧率·用户2026-07-11)
+	var to_r: bool = tgt["pos"].x >= u["pos"].x
+	var toward: Vector2 = u["pos"] - tgt["pos"]
+	var arc_off: Vector2 = (toward.normalized() if toward.length() > 1.0 else Vector2.LEFT) * 42.0
+	_play_anim_vfx("res://assets/sprites/vfx/basic-shieldbash-arc.png", tgt["pos"] + arc_off, 150.0, 16.67, 1.25, not to_r)
+	_anticipate(u)
+	_pending_shots.append({"delay": 0.25, "src": u, "fn": _basic_shield_impact_hit.bind(u, tgt)})
+
+func _basic_shield_impact_hit(u: Dictionary, tgt) -> void:
+	if not u.get("alive", false): return
+	if not (tgt is Dictionary) or not tgt.get("alive", false): tgt = _nearest_enemy(u)
+	if tgt == null: return
 	var lost: float = (tgt["maxHp"] - tgt["hp"]) * 0.20
 	var raw: float = u["atk"] * 0.7
 	var dmg := _atk_dmg(u, 0.7, tgt) + int(lost)
 	_apply_damage_from(u, tgt, dmg, Color("#ff4444"))
 	_grant_shield(u, (raw + lost) * 0.80)
-	_knockback(u, tgt, 60.0)                                       # 击飞+击退 (3D真物理: vy抬起+横推+重力砸地)
-	# 回合制龟盾特效(用户2026-07-11「用回合制特效」): 金弧劈砍(basic-shieldbash-arc 5帧)+盾徽爆裂(basic-shieldbash-impact 5帧)打目标 + 震屏
-	_play_anim_vfx("res://assets/sprites/vfx/basic-shieldbash-arc.png", tgt["pos"], 140.0, 18.0, 1.15)
-	_play_anim_vfx("res://assets/sprites/vfx/basic-shieldbash-impact.png", tgt["pos"], 120.0, 18.0, 1.05)
+	_knockback(u, tgt, 60.0)
+	_play_anim_vfx("res://assets/sprites/vfx/basic-shieldbash-impact.png", tgt["pos"], 130.0, 20.0, 1.05)
+	_skill_ring(u["pos"], Color(1.0, 0.9, 0.45, 0.5), 50.0)
 	_shake(0.1)
-	_skill_ring(u["pos"], Color(1.0, 0.9, 0.45, 0.45), 48.0)       # 小龟: 获盾 身下金环
-
-## 可【主动锁定】的敌人 (排除: 围栏未破的蛋 / 黑洞不可选 / 缩头随从被保护) — 主动瞄准类用.
-##   ★用户2026-07-11: 被围栏围住的蛋不能被主动锁(气波别瞄它); 但 AoE穿透/路径命中 仍能打到蛋(受伤可以, 走 _enemies_of/_basic_first_blocker 不受此限)。
 func _targetable_enemies(u: Dictionary) -> Array:
 	var out: Array = []
 	for o in _enemies_of(u):
