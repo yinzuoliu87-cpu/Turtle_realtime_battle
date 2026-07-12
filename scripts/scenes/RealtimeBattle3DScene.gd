@@ -1554,6 +1554,8 @@ func _dl_drop_fence(side_lr: String) -> void:   # 该方蛋围栏消失(可被�
 	for u in _units:
 		if u.get("_isEgg", false) and str(u.get("egg_side_lr", "")) == side_lr:
 			u["_egg_fence"] = false
+			u["def"] = maxf(0.0, float(u.get("def", 60.0)) - 80.0); u["mr"] = maxf(0.0, float(u.get("mr", 60.0)) - 80.0)   # 屏障消失→-80回落60(用户2026-07-12)
+			u["base_def"] = maxf(0.0, float(u.get("base_def", 140.0)) - 80.0); u["base_mr"] = maxf(0.0, float(u.get("base_mr", 140.0)) - 80.0)
 			if is_final:
 				u["_egg_final"] = true                # ×5承伤(见 _apply_damage_from)
 				u["_egg_selfloss_next"] = _t + 2.5    # 每2.5s自损25%maxHp
@@ -1659,6 +1661,14 @@ func _dl_clear_units() -> void:
 		if is_instance_valid(fs):
 			fs.queue_free()
 	_follow_vfx.clear()
+	for z in _lava_zones:                     # 补清: 岩浆池(用户2026-07-12"回合间没清")
+		var zd = z.get("disc", null)
+		if is_instance_valid(zd): zd.queue_free()
+	_lava_zones.clear()
+	for lk in _ink_links:                     # 补清: 墨迹连线
+		var ls = lk.get("spr", null)
+		if is_instance_valid(ls): ls.queue_free()
+	_ink_links.clear()
 
 func _dl_next_lane() -> void:
 	_dl_clear_units()
@@ -1789,7 +1799,7 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		st = [_mf, 105.0, 0.85, (70.0 if _mf else 400.0)]
 		sd = _minion_sprite_dict(_me, not _mf)
 	elif is_egg:   # 龟蛋: 纯血包 fighter(atk/def/mr=0), 不动不攻击, 免控/斩/嘲讽, 走完整伤害管线; 围栏未破不可主动索敌(AoE穿栏)
-		d = {"name": "龟蛋", "rarity": "SSS", "crit": 0.0, "hp": maxf(1.0, float(spec.get("hp", 2100))), "atk": 0.0, "def": 0.0, "mr": 0.0}
+		d = {"name": "龟蛋", "rarity": "SSS", "crit": 0.0, "hp": maxf(1.0, float(spec.get("hp", 2100))), "atk": 0.0, "def": 60.0, "mr": 60.0}   # 60双抗(用户2026-07-12)
 		st = [true, 0.0, 99.0, 0.0]
 		sd = _egg_sprite_dict()
 	else:
@@ -1942,7 +1952,9 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 	if is_egg:
 		u["_isEgg"] = true
 		u["_eggImmune"] = true          # 免控/斩/嘲讽
-		u["_egg_fence"] = true           # 围栏未破: 不可主动索敌(AoE穿栏)
+		u["_egg_fence"] = true           # 围栏未破: 单体+AoE都不可锁(用户2026-07-12) + 屏障+80双抗
+		u["def"] = float(u.get("def", 60.0)) + 80.0; u["mr"] = float(u.get("mr", 60.0)) + 80.0
+		u["base_def"] = float(u.get("base_def", 60.0)) + 80.0; u["base_mr"] = float(u.get("base_mr", 60.0)) + 80.0
 		u["egg_side_lr"] = str(spec.get("egg_side", "left"))   # 该蛋归属方(left/right), 写回 GameState.egg_hp
 		u["no_move"] = true; u["no_basic"] = true
 	return u
@@ -3029,6 +3041,7 @@ func _enemies_of(u: Dictionary) -> Array:
 	var out: Array = []
 	for o in _units:
 		if o["side"] != u["side"] and o["alive"]:
+			if o.get("_egg_fence", false): continue   # 围栏未破的蛋: 单体+AoE都不锁(用户2026-07-12: 珊瑚刺等别锁蛋)
 			out.append(o)
 	return out
 
