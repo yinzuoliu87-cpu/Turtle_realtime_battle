@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "diamond"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
+const REVIEW_SKILL_IDX := 2   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -10907,7 +10907,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	# --- 钻石滚球被动(封板): 选滚球 且 100码内无敌 → 免费自动滚(不耗龟能不充能)撞向最近·0.8s防抖内CD ---
 	if u["id"] == "diamond" and not u.get("roll_active", false) and _t > float(u.get("roll_free_cd", 0.0)) and "diamondPowerball" in _chosen_skill_types(u["id"], u["side"] == "left"):
 		var _dne = _nearest_enemy(u)
-		if _dne != null and _dne["pos"].distance_to(u["pos"]) > 100.0:   # 100码内无敌=最近敌>100码
+		if _dne != null and _dne["pos"].distance_to(u["pos"]) > 200.0:   # 200码内无敌=最近敌>200码(用户2026-07-12: 100→200)
 			u["roll_active"] = true; u["roll_start"] = _t; u["roll_free_cd"] = _t + 0.8
 	# --- 财神聚宝盆: 每3秒 +4~7金币 (用户) ---
 	if u["id"] == "fortune":
