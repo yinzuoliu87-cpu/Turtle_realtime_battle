@@ -304,6 +304,11 @@ var _over := false
 var _dl_state := ""
 var _dl_window_until := 0.0
 var _dl_wiped_side := ""    # 被团灭方(其蛋暴露): "left"/"right"
+var _dl_present_t := 0.0            # overview/preview/lane_settle 自动计时(实时5秒)
+var _dl_overview_shown := false     # 3路总览一场只放一次
+var _dl_pending_loser := ""         # lane_settle 待推进的败方
+var _dl_present_root: Control = null   # 呈现overlay根节点
+const DL_PRESENT_SEC := 5.0
 var _dl_hud: Label = null   # 双路 HUD: 当前路 + 双方蛋血
 var _dl_go_btn: Button = null      # 场内放置阶段「开打」钮
 var _dl_place_hint: Label = null   # 放置阶段提示(拖我方单位到位→开打)
@@ -1362,6 +1367,116 @@ func _nav_dir(u: Dictionary, tgt_pos: Vector2, straight: Vector2) -> Vector2:
 	return to_wp.normalized()
 
 # ── 场内放置阶段 (每战场开打前: 拖我方单位到你半场任意位置) ──
+func _dl_is_present() -> bool:
+	return _dl_state == "overview" or _dl_state == "preview" or _dl_state == "lane_settle"
+
+func _dl_enter_present(mode: String) -> void:
+	_dl_state = mode
+	_dl_present_t = 0.0
+	if is_instance_valid(_dl_go_btn): _dl_go_btn.visible = false
+	if is_instance_valid(_dl_place_hint): _dl_place_hint.visible = false
+	_dl_build_present_overlay(mode)
+
+func _dl_present_advance() -> void:
+	var mode := _dl_state
+	_dl_clear_present_overlay()
+	if mode == "overview":
+		_dl_enter_present("preview")
+	elif mode == "preview":
+		_dl_state = "place"
+		_dl_enter_place()
+	elif mode == "lane_settle":
+		_dl_lane_over(_dl_pending_loser)
+
+func _dl_clear_present_overlay() -> void:
+	if _dl_present_root != null and is_instance_valid(_dl_present_root):
+		_dl_present_root.queue_free()
+	_dl_present_root = null
+
+func _dl_spec_name(spec) -> String:
+	if not (spec is Dictionary): return "?"
+	if str(spec.get("kind", "")) == "minion" or spec.has("role"):
+		return "精英小将" if bool(spec.get("elite", false)) else "小将"
+	var id := str(spec.get("id", spec.get("kind", "")))
+	return str(_data_by_id.get(id, {}).get("name", id))
+
+func _dl_lane_specs(lane: String) -> Array:
+	if lane == "final":
+		return _dl_survivor_specs("left")
+	if GameState == null: return []
+	return GameState.get_dual_lineup().get(lane, [])
+
+func _dl_foe_specs(lane: String) -> Array:
+	if lane == "final":
+		return _dl_survivor_specs("right")
+	return _dual_foe_lane(lane)
+
+func _dl_names_line(specs: Array) -> String:
+	var ns: Array = []
+	for s in specs: ns.append(_dl_spec_name(s))
+	return "、".join(ns) if not ns.is_empty() else "—"
+
+func _dl_build_present_overlay(mode: String) -> void:
+	_dl_clear_present_overlay()
+	if _ui_layer == null: return
+	var back := ColorRect.new()
+	back.color = Color(0.02, 0.03, 0.05, 0.66)
+	back.set_anchors_preset(Control.PRESET_FULL_RECT)
+	back.mouse_filter = Control.MOUSE_FILTER_STOP
+	back.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed: _dl_present_advance())
+	_ui_layer.add_child(back)
+	_dl_present_root = back
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	back.add_child(center)
+	var panel := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.05, 0.09, 0.14, 0.97); sb.border_color = Color("#ffd93d"); sb.set_border_width_all(2); sb.set_corner_radius_all(14)
+	sb.content_margin_left = 28; sb.content_margin_right = 28; sb.content_margin_top = 22; sb.content_margin_bottom = 22
+	panel.add_theme_stylebox_override("panel", sb)
+	center.add_child(panel)
+	var vb := VBoxContainer.new(); vb.add_theme_constant_override("separation", 14); panel.add_child(vb)
+	var cur_lane := str(GameState.current_lane) if GameState != null else "top"
+	var lane_cn: Dictionary = {"top": "上路", "bottom": "下路", "final": "终极", "done": "结算"}
+	var title := Label.new()
+	title.add_theme_font_size_override("font_size", 30); title.add_theme_color_override("font_color", Color("#ffd93d"))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(title)
+	if mode == "overview":
+		title.text = "⚔  三路对阵总览"
+		for ln in ["top", "bottom", "final"]:
+			var row := Label.new(); row.add_theme_font_size_override("font_size", 19)
+			row.add_theme_color_override("font_color", Color("#cfe6ff"))
+			var mine_s := "上下路幸存" if ln == "final" else _dl_names_line(_dl_lane_specs(ln))
+			var foe_s := "上下路幸存" if ln == "final" else _dl_names_line(_dl_foe_specs(ln))
+			row.text = "【%s】 我方: %s   vs   对方: %s" % [lane_cn.get(ln, ln), mine_s, foe_s]
+			vb.add_child(row)
+	elif mode == "preview":
+		title.text = "【%s战场】 对阵预览" % lane_cn.get(cur_lane, cur_lane)
+		var m := Label.new(); m.add_theme_font_size_override("font_size", 21); m.add_theme_color_override("font_color", Color("#9ae6b0"))
+		m.text = "我方: " + _dl_names_line(_dl_lane_specs(cur_lane))
+		vb.add_child(m)
+		var f := Label.new(); f.add_theme_font_size_override("font_size", 21); f.add_theme_color_override("font_color", Color("#ff9b9b"))
+		f.text = "对方: " + _dl_names_line(_dl_foe_specs(cur_lane))
+		vb.add_child(f)
+	elif mode == "lane_settle":
+		var win_lr := "right" if _dl_pending_loser == "left" else "left"
+		title.text = "【%s战场】 结算" % lane_cn.get(cur_lane, cur_lane)
+		var r := Label.new(); r.add_theme_font_size_override("font_size", 22)
+		r.add_theme_color_override("font_color", Color("#9ae6b0") if win_lr == "left" else Color("#ff9b9b"))
+		r.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		r.text = ("我方胜！" if win_lr == "left" else "我方负") + "本路"
+		vb.add_child(r)
+		if GameState != null and GameState.egg_hp is Dictionary:
+			var e := Label.new(); e.add_theme_font_size_override("font_size", 17); e.add_theme_color_override("font_color", Color("#cfe6ff"))
+			e.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			e.text = "蛋血  我方 %d  ·  对方 %d" % [int(GameState.egg_hp.get("left", 0.0)), int(GameState.egg_hp.get("right", 0.0))]
+			vb.add_child(e)
+	var hint := Label.new(); hint.add_theme_font_size_override("font_size", 13); hint.add_theme_color_override("font_color", Color("#7a8a96"))
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.text = "（自动 5 秒 · 点击跳过）"
+	vb.add_child(hint)
+
 func _dl_enter_place() -> void:
 	if OS.has_environment("DL_AUTOFIGHT"):   # 测试开关: 跳过放置直接开打 (headless 跑通整局流程用)
 		_dl_start_fight()
@@ -1455,8 +1570,13 @@ func _spawn_dual_lane() -> void:
 	_apply_spawn_passives()
 	_eq_apply_all_stats()
 	_build_team_panels()   # ★双路补建左右头像框(装备图标随之显示): 原只在非双路分支L1051调·双路早退绕过→装了装备头像框空白(用户2026-07-11 #5)
-	_dl_state = "place"   # 先进场内放置阶段(拖我方单位到位)→点「开打」才 fight
-	_dl_enter_place()
+	if OS.has_environment("DL_AUTOFIGHT"):
+		_dl_state = "place"; _dl_enter_place()   # 测试: 跳呈现直接放置→自动打
+	elif not _dl_overview_shown:
+		_dl_overview_shown = true
+		_dl_enter_present("overview")   # 匹配后首次: 3路总览→预览→放置
+	else:
+		_dl_enter_present("preview")    # 后续路: 对阵预览→放置
 
 func _dl_ensure_egg_hp(lvl: int) -> void:   # egg_hp 缺则按 2000+100×平均等级 初始化(两侧)
 	if GameState == null:
@@ -1592,7 +1712,8 @@ func _dl_flow_check() -> void:
 			if OS.has_environment("XDBG"): print("XDBG_DL wiped=", _dl_wiped_side, " t=", _t, " → eggwindow(10s)")
 	elif _dl_state == "eggwindow":
 		if _t >= _dl_window_until:
-			_dl_lane_over(_dl_wiped_side)   # 窗口到期: 被团灭方输本路
+			_dl_pending_loser = _dl_wiped_side
+			_dl_enter_present("lane_settle")   # 结算5秒→再推进(用户2026-07-12)
 
 # P5: 本路结束 → 记录胜方 + 幸存snapshot(30%回血,供终极) + 推进 top→bottom→final/done
 func _dl_lane_over(loser_side: String) -> void:
@@ -1669,6 +1790,7 @@ func _dl_clear_units() -> void:
 		var ls = lk.get("spr", null)
 		if is_instance_valid(ls): ls.queue_free()
 	_ink_links.clear()
+	_dl_clear_present_overlay()
 
 func _dl_next_lane() -> void:
 	_dl_clear_units()
@@ -2388,7 +2510,10 @@ func _process(delta: float) -> void:
 		_ts_tick_visual(delta)                 # 时停视觉维持(钟表脉动/暗角等)
 	else:
 		# 🛠 调试场编辑态 / 双路场内放置态: 跳过模拟推进 (单位摆着不打不动), 但下方 transforms/overlay 照常 → 立绘渲染+血条仍刷新.
-		if not _over and not _edit_mode and _dl_state != "place":
+		if _dl_is_present():
+			_dl_present_t += delta
+			if _dl_present_t >= DL_PRESENT_SEC: _dl_present_advance()
+		if not _over and not _edit_mode and _dl_state != "place" and not _dl_is_present():
 			_t += delta
 			_ts_update_trigger(delta)   # 沙漏: 第10秒触发时停蓄力 → 蓄力满释放
 			for u in _units.duplicate():
