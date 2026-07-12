@@ -3136,6 +3136,8 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		return
 	if u["id"] == "diamond":                                          # 钻石普攻·切割: 水晶斩弧闪现(伤害走下方 _do_basic·BASIC_ATK.diamond=0.7A+0.6甲+0.6抗)
 		_diamond_slash_fx(u, tgt)
+	if u["id"] == "fortune":                                        # 财神普攻·金剑打击: 金色斩弧+迸金(伤害走 _do_basic·吃金币加成)
+		_fortune_strike_fx(u, tgt)
 	var spec: Dictionary = BASIC_ATK.get(u["id"], DEFAULT_BASIC)
 	if u["id"] == "lava" and u.get("lava_pierce_next", false):         # 技三·穿透普攻: 下一发熔岩弹变贯穿全场
 		u["lava_pierce_next"] = false
@@ -8175,6 +8177,25 @@ func _diamond_slash_fx(u: Dictionary, tgt: Dictionary) -> void:   # 钻石普攻
 	t.tween_property(b, "modulate:a", 0.0, 0.2)
 	t.tween_callback(b.queue_free)
 
+func _fortune_strike_fx(u: Dictionary, tgt: Dictionary) -> void:   # 财神金剑打击: 金色斩弧(随方向翻转)+目标迸金(复用斩弧染金·用户2026-07-12)
+	var to_r: bool = tgt["pos"].x >= u["pos"].x
+	var b := Sprite3D.new()
+	b.texture = load("res://assets/sprites/vfx/diamond-slash.png")
+	b.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	b.billboard = BaseMaterial3D.BILLBOARD_ENABLED; b.shaded = false; b.transparent = true
+	b.modulate = Color(1.0, 0.82, 0.25, 0.95)                       # 金色(财神金剑)
+	b.flip_h = not to_r
+	var th := float(maxi(1, int(b.texture.get_height())))
+	b.pixel_size = (80.0 * WS) / th
+	b.position = _world_pos(u["pos"].lerp(tgt["pos"], 0.7) + Vector2(0, -6), 0.7)
+	_world.add_child(b)
+	var t := _reg_tween()
+	t.tween_property(b, "scale", Vector3.ONE, 0.08).from(Vector3(0.55, 0.55, 0.55)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_interval(0.05)
+	t.tween_property(b, "modulate:a", 0.0, 0.18)
+	t.tween_callback(b.queue_free)
+	_gold_chunk_erupt(tgt["pos"] + Vector2(8.0, -4.0))              # 目标迸金
+
 func _sk_dice_allin(u: Dictionary) -> void:                      # 骰子龟·孤注一掷(用户设计: 前方120°/300码镰刀扇形斩·1.2A物理+30%吸血)
 	var tgt = _nearest_enemy(u)
 	var dir: Vector2 = (Vector2.RIGHT if tgt == null else (tgt["pos"] - u["pos"]))
@@ -8759,9 +8780,15 @@ func _sk_headless_soul_charge(u: Dictionary) -> void:           # 无头·灵魂
 	_float_text(u["pos"] + Vector2(0, -56), "灵魂蓄力", Color("#9b3bff"))
 	_skill_ring(u["pos"], Color(0.6, 0.23, 0.7, 0.5), 44.0)
 
-func _sk_fortune_dice(u: Dictionary) -> void:                    # 财神龟·骰子 ✅
-	u["gold"] += randi_range(3, 8)   # 2~6→3~8 (恢复文本设计值)
+func _sk_fortune_dice(u: Dictionary) -> void:                    # 财神龟·骰子(用户2026-07-12补特效): 掷骰3~8金币+回8%maxHP
+	var g: int = randi_range(3, 8)   # 2~6→3~8 (恢复文本设计值)
+	u["gold"] += g
 	_heal(u, u["maxHp"] * 0.08)
+	_burst_vfx("res://assets/sprites/vfx/fortune-coin-burst.png", u["pos"], 120.0, 0.75)   # 金币爆
+	_skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.55), 52.0)
+	_float_text(u["pos"] + Vector2(0, -66), "掷骰 +%d金币" % g, Color("#ffd93d"))
+	for _k in range(5):   # 金块从脚下冒出(聚财)
+		_gold_chunk_erupt(u["pos"] + Vector2(randf_range(-30.0, 30.0), randf_range(-14.0, 14.0)))
 	# (删: "放梭哈后给护盾"=4选1下死逻辑, 不可能同时有骰子+梭哈, 用户指出)
 
 func _sk_crystal_bulwark(u: Dictionary) -> void:                 # 水晶龟·水晶壁垒(用户封板: 1.5A护盾+全体友军护甲魔抗+15%·4秒)
