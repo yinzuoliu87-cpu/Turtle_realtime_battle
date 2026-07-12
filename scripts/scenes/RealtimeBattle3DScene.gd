@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "ghost"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
+const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -5640,17 +5640,18 @@ func _fire_ghost_wisp(u: Dictionary, tgt: Dictionary) -> void:
 	var p := Sprite3D.new()
 	p.texture = load("res://assets/sprites/vfx/ghost-wisp.png")
 	p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	p.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	p.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # 定向弹道(不billboard·锥尖领着飞·用户2026-07-11「方向不对」)
+	p.axis = Vector3.AXIS_Y
 	p.shaded = false; p.transparent = true
 	p.modulate = Color(0.75, 1.0, 0.88, 0.95)
-	p.pixel_size = (46.0 * WS) / 64.0
+	p.pixel_size = (52.0 * WS) / 64.0
 	var world_from := _world_pos(start2d, 1.0)
 	p.position = world_from
 	_world.add_child(p)
 	_projectiles.append({
 		"node": p, "from": world_from, "tgt": tgt, "src": u, "t": 0.0,
 		"dur": clampf(start2d.distance_to(tgt["pos"]) / 620.0, 0.2, 0.62),
-		"ghost_touch": true, "gt_phys": 0.4 * atk, "gt_true": 0.9 * atk, "basic_onhit": true,
+		"ghost_touch": true, "gt_phys": 0.4 * atk, "gt_true": 0.9 * atk, "basic_onhit": true, "oriented": true,
 	})
 
 # 幽魂命中: 幽绿灵体怨气(幽环 + 几缕glow飘散)
