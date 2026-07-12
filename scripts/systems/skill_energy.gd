@@ -19,7 +19,7 @@ const SKILL_COST := {
 	"rainbowReflect": 110.0,
 	# 签名招
 	"bambooHeal": 110.0, "angelBless": 80.0, "angelAscend": 80.0, "stoneRockShield": 100.0, "rockShockwave": 80.0, "stoneTaunt": 120.0, "iceFrost": 100.0, "iceFreeze": 80.0, "commonTeamShield": 120.0,
-	"ninjaBackstab": 110.0, "ghostStorm": 95.0, "ghostPhase": 80.0, "diamondFortify": 50.0, "diceAllIn": 120.0, "diceFlashStrike": 120.0,
+	"ninjaBackstab": 110.0, "ghostStorm": 95.0, "ghostPhase": 80.0, "diamondFortify": 60.0, "diceAllIn": 120.0, "diceFlashStrike": 120.0,
 	"gamblerBet": 100.0, "hunterStealth": 80.0, "pirateCannonBarrage": 80.0, "pirateRum": 120.0, "pirateShipPassive": 120.0, "bubbleShield": 80.0, "bubbleBurst": 100.0,
 	"lineLink": 90.0, "lineInkBomb": 120.0, "lightningSurgeBuff": 120.0, "phoenixShield": 90.0, "phoenixEnhancedRebirth": 120.0, "headlessFear": 110.0,
 	"fortuneDice": 70.0, "fortuneBuyEquip": 60.0, "crystalBarrier": 80.0, "chestCount": 100.0, "starWave": 100.0, "starGravityWarp": 120.0,
