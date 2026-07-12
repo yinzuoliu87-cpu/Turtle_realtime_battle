@@ -100,7 +100,8 @@ const REVIEW_DUMMY_ATTACKS := true     # true=假人会还手(看挨打类被动
 # 🛠 调试面板 运行时覆盖(跨 reload_current_scene 持久·用户2026-07-11「调试场加装备/选星级/选技能」)
 static var _dbg_skill := -99            # 覆盖受审技idx(-99=用REVIEW_SKILL_IDX)
 static var _dbg_star := 0               # 装备星级(0=用REVIEW_EQUIP_STAR·1-3)
-static var _dbg_equip_on := false       # 装备开关(true=给受审龟装 DBG_EQUIP_SET)
+static var _dbg_equip_idx := -1          # 装备: -1=关, >=0=装第N件单装备(_dbg_equip_ids索引·◀▶循环挑·用户2026-07-12)
+static var _dbg_turtle := ""             # 受审龟id覆盖("" = 用REVIEW_TURTLE·◀▶循环挑全28龟·用户2026-07-12)
 const DBG_EQUIP_SET := ["p2eq_001", "p2eq_016", "p2eq_034"]   # "装备开"时装的默认套(武器/盾/召唤·测显示+效果)
 const LEFT_DEMO := ["basic", "stone", "lightning"]   # 非评审 demo (_review_demo()=false 时用)
 
@@ -1065,7 +1066,8 @@ func _spawn_teams() -> void:
 				_eq_check_hp_threshold(_fu)
 	_build_team_panels()      # 局内 UI: 左右队头像框栏 (主龟; 召唤体不进) — 须在 equips 注入之后
 
-func _review_turtle() -> String:   # 受审龟: env REVIEW_TURTLE 覆盖 const (评审任意龟)
+func _review_turtle() -> String:   # 受审龟: 调试面板 > env REVIEW_TURTLE > const
+	if _dbg_turtle != "": return _dbg_turtle
 	return OS.get_environment("REVIEW_TURTLE") if OS.has_environment("REVIEW_TURTLE") else REVIEW_TURTLE
 func _review_skill_idx() -> int:   # 受审技idx: 调试面板 > env REVIEW_SKILL > const (-1=默认轮转)
 	if _dbg_skill != -99: return _dbg_skill
@@ -13396,9 +13398,12 @@ const DEMO_EQUIP := {
 
 # 装备注入: 玩家队(left)读 persistent_equipped; demo 阵容兜底塞测试装备.
 func _inject_equipment() -> void:
-	if _review_demo() and not _is_dual_lane_mode() and not OS.has_environment("EQDEMO_EQUIP") and (_dbg_equip_on or not REVIEW_EQUIP.is_empty()):
+	if _review_demo() and not _is_dual_lane_mode() and not OS.has_environment("EQDEMO_EQUIP") and (_dbg_equip_idx >= 0 or not REVIEW_EQUIP.is_empty()):
 		# 调试场加装备(调试面板"装备开" 或 REVIEW_EQUIP非空·用户2026-07-11 #2): 给受审龟装 → 看装备显示(左右头像框)+效果
-		var _eqs: Array = REVIEW_EQUIP if not REVIEW_EQUIP.is_empty() else DBG_EQUIP_SET
+		var _eqs: Array = REVIEW_EQUIP
+		if _eqs.is_empty():
+			var _ids := _dbg_equip_ids()
+			_eqs = [_ids[_dbg_equip_idx]] if (_dbg_equip_idx >= 0 and _dbg_equip_idx < _ids.size()) else []
 		var _star: int = _dbg_star if _dbg_star > 0 else REVIEW_EQUIP_STAR
 		for _ru in _units:
 			if str(_ru.get("side","")) == "left" and str(_ru.get("id","")) == _review_turtle():
@@ -15473,14 +15478,35 @@ func _build_debug_panel() -> void:
 	lbl.text = "🛠 "
 	lbl.add_theme_font_size_override("font_size", 18)
 	bar.add_child(lbl)
+	var tprev := _dbg_btn("◀龟")
+	tprev.pressed.connect(_dbg_turtle_cycle.bind(-1))
+	bar.add_child(tprev)
+	var tname := str(_data_by_id.get(_review_turtle(), {}).get("name", _review_turtle()))
+	var tlbl := _dbg_btn(tname)
+	tlbl.pressed.connect(_dbg_turtle_cycle.bind(1))
+	bar.add_child(tlbl)
+	var tnext := _dbg_btn("▶")
+	tnext.pressed.connect(_dbg_turtle_cycle.bind(1))
+	bar.add_child(tnext)
 	var cur_sk: int = _review_skill_idx()
 	for si in range(4):
 		var b := _dbg_btn("技%d%s" % [si, ("•" if si == cur_sk else "")])
 		b.pressed.connect(_dbg_set_skill.bind(si))
 		bar.add_child(b)
-	var eqb := _dbg_btn("装备%s" % ("开" if _dbg_equip_on else "关"))
-	eqb.pressed.connect(_dbg_toggle_equip)
-	bar.add_child(eqb)
+	var _eqnm := "关"
+	if _dbg_equip_idx >= 0:
+		var _eids := _dbg_equip_ids()
+		if _dbg_equip_idx < _eids.size():
+			_eqnm = str(DataRegistry.phase2_equipment_by_id.get(_eids[_dbg_equip_idx], {}).get("name", _eids[_dbg_equip_idx]))
+	var eqprev := _dbg_btn("◀装")
+	eqprev.pressed.connect(_dbg_equip_cycle.bind(-1))
+	bar.add_child(eqprev)
+	var eqlbl := _dbg_btn(_eqnm)
+	eqlbl.pressed.connect(_dbg_equip_cycle.bind(1))
+	bar.add_child(eqlbl)
+	var eqnext := _dbg_btn("▶")
+	eqnext.pressed.connect(_dbg_equip_cycle.bind(1))
+	bar.add_child(eqnext)
 	var cur_star: int = _dbg_star if _dbg_star > 0 else REVIEW_EQUIP_STAR
 	for st in [1, 2, 3]:
 		var b := _dbg_btn("★%d%s" % [st, ("•" if st == cur_star else "")])
@@ -15498,8 +15524,25 @@ func _dbg_set_skill(si: int) -> void:
 	_dbg_skill = si
 	get_tree().reload_current_scene()
 
-func _dbg_toggle_equip() -> void:
-	_dbg_equip_on = not _dbg_equip_on
+func _dbg_turtle_ids() -> Array:
+	return STATS.keys()
+
+func _dbg_turtle_cycle(dir: int) -> void:
+	var ids := _dbg_turtle_ids()
+	var i := ids.find(_review_turtle())
+	if i < 0: i = 0
+	_dbg_turtle = str(ids[wrapi(i + dir, 0, ids.size())])
+	_dbg_skill = -99   # 换龟→重置技能覆盖(不同龟技能不同)
+	get_tree().reload_current_scene()
+
+func _dbg_equip_ids() -> Array:
+	var ids: Array = DataRegistry.phase2_equipment_by_id.keys()
+	ids.sort()
+	return ids
+
+func _dbg_equip_cycle(dir: int) -> void:
+	var n := _dbg_equip_ids().size()
+	_dbg_equip_idx = wrapi(_dbg_equip_idx + dir + 1, 0, n + 1) - 1   # [-1, n-1] 循环(-1=关)
 	get_tree().reload_current_scene()
 
 func _dbg_set_star(st: int) -> void:
