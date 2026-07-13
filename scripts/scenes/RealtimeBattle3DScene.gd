@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "dice"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转 (骰子: 0=普攻掷骰/1=孤注一掷镰刀扇/2=命运骰子/3=稳定骰子刀妹Q)
+const REVIEW_SKILL_IDX := 3   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转 (骰子: 0=普攻掷骰/1=孤注一掷镰刀扇/2=命运骰子/3=稳定骰子刀妹Q)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -8630,21 +8630,60 @@ func _sk_dice_flash_strike(u: Dictionary) -> void:
 			if not uu.get("alive", false): return
 			var tgt = _dice_pick_strike_target(uu)
 			if tgt == null: return                              # 全灭 → 该刺空过(后续同样空过)
+			var _dfrom: Vector2 = uu["pos"]
+			_dice_dash_vfx(_dfrom, tgt["pos"] - _dfrom)         # 三角形冲刺特效(用户2026-07-13: 冲的时候前面有三角形)
 			_dash_to(uu, tgt, 60.0)                             # 短冲贴身
 			_apply_damage_from(uu, tgt, _atk_dmg(uu, scale_i, tgt), Color("#ff4444"))
 			_melee_lunge(uu, tgt)
 		if i == 0: fn.call()                                    # 首刺立刻(放技手感)
 		else: _pending_shots.append({"delay": float(i) * DICE_STRIKE_GAP, "fn": fn, "src": u})
 
-func _dice_pick_strike_target(u: Dictionary):                   # 最近·残血优先
-	var best = null
-	var best_score := INF
+func _dice_pick_strike_target(u: Dictionary):                   # 随机敌(用户2026-07-13:不是最近/残血)·射程2000·_enemies_of已跳围栏内蛋(注意龟蛋)
+	var cand: Array = []
 	for o in _enemies_of(u):
 		if not o.get("alive", false): continue
-		var score: float = o["pos"].distance_to(u["pos"]) + float(o["hp"]) * 0.1
-		if score < best_score:
-			best_score = score; best = o
-	return best
+		if o["pos"].distance_to(u["pos"]) > 2000.0: continue   # 射程2000
+		cand.append(o)
+	if cand.is_empty(): return null
+	return cand[randi() % cand.size()]
+
+var _dash_tri_tex: ImageTexture = null
+func _make_dash_triangle_texture() -> ImageTexture:   # 冲刺三角(金·尖端朝右/前·中实边淡); 缓存
+	if _dash_tri_tex != null: return _dash_tri_tex
+	var N := 48
+	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var half := float(N) * 0.5
+	for x in range(N):
+		var frac := float(x) / float(N - 1)      # 0(左底)..1(右尖)
+		var wy := (1.0 - frac) * half            # 该列半高
+		for y in range(N):
+			var dy := absf(float(y) - half)
+			if dy <= wy:
+				var edge := 1.0 - (dy / maxf(1.0, wy))
+				var a := (0.30 + 0.60 * frac) * (0.45 + 0.55 * edge)
+				img.set_pixel(x, y, Color(1.0, 0.88, 0.45, clampf(a, 0.0, 1.0)))
+	_dash_tri_tex = ImageTexture.create_from_image(img)
+	return _dash_tri_tex
+
+func _dice_dash_vfx(from2d: Vector2, dir: Vector2) -> void:   # 冲刺三角特效: 贴地·尖端指向冲刺方向·前方一段·快速淡出(用户2026-07-13)
+	if dir.length() < 1.0: return
+	var ang: float = atan2(dir.y, dir.x)
+	var nd: Vector2 = dir.normalized()
+	var spr := Sprite3D.new()
+	spr.texture = _make_dash_triangle_texture()
+	spr.billboard = BaseMaterial3D.BILLBOARD_DISABLED; spr.axis = Vector3.AXIS_Y   # 贴地
+	spr.shaded = false; spr.transparent = true
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	spr.pixel_size = (120.0 * WS) / 48.0          # 三角 ~120码长
+	spr.rotation = Vector3(0.0, -ang, 0.0)        # 尖端沿冲刺方向
+	spr.position = _world_pos(from2d + nd * 60.0, 0.12)   # 出现在身前
+	spr.modulate = Color(1.0, 0.88, 0.45, 0.95)
+	_world.add_child(spr)
+	var tw := _reg_tween(); tw.set_parallel(true)
+	tw.tween_property(spr, "modulate:a", 0.0, 0.18)
+	tw.tween_property(spr, "scale", Vector3(1.45, 1.0, 1.0), 0.18).set_trans(Tween.TRANS_QUAD)
+	tw.chain().tween_callback(spr.queue_free)
 
 func _rainbow_enh_prism_proc(u: Dictionary) -> void:            # 强化棱镜4色(用户设计·每5秒抽1): 橙全体友军+10%吸血5s / 黄随机敌灼烧0.67A / 青随机敌冰寒5s / 紫随机敌诅咒5s
 	var c: int = randi() % 4
