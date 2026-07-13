@@ -576,6 +576,55 @@ func _build_viewport() -> void:
 	_world.name = "World"
 	_sub.add_child(_world)
 
+# ═══ 新地图 tile 系统 (阶段0: MultiMesh 方块地面 · 纯色原型 · 数据驱动 · 纯视觉不改玩法) ═══
+func _build_tilemap_ground() -> void:
+	var TILE := 48.0                    # px/格
+	var A := ARENA
+	var mg := 6                         # 外扩格数(填满画面·远处沉黑)
+	var cols := int(ceil(A.size.x / TILE)) + mg * 2
+	var rows := int(ceil(A.size.y / TILE)) + mg * 2
+	var x0 := A.position.x - float(mg) * TILE
+	var y0 := A.position.y - float(mg) * TILE
+	var tw_m := TILE * WS
+	var cx := A.position.x + A.size.x * 0.5
+	var cy := A.position.y + A.size.y * 0.5
+	var xf_grass: Array = []; var xf_water: Array = []; var xf_stone: Array = []
+	for r in range(rows):
+		for c in range(cols):
+			var px := x0 + (float(c) + 0.5) * TILE
+			var py := y0 + (float(r) + 0.5) * TILE
+			var t := "grass"; var h := 0.0
+			var dx := (px - cx) / (A.size.x * 0.32)
+			var dy := (py - cy) / (A.size.y * 0.42)
+			if dx * dx + dy * dy < 1.0:                                   # 中央椭圆=凹水池
+				t = "water"; h = -0.30
+			elif (px < A.position.x + A.size.x * 0.15 or px > A.position.x + A.size.x * 0.85) and py > A.position.y and py < A.position.y + A.size.y:
+				t = "stone"; h = 0.25                                     # 两端(龟蛋位)=抬高石台
+			var xf := Transform3D(Basis(), _world_pos(Vector2(px, py), h))
+			match t:
+				"water": xf_water.append(xf)
+				"stone": xf_stone.append(xf)
+				_: xf_grass.append(xf)
+	_tilemap_add(xf_grass, Vector3(tw_m * 0.94, 0.15, tw_m * 0.94), Color(0.10, 0.14, 0.26))   # 暗蓝主地面
+	_tilemap_add(xf_water, Vector3(tw_m * 0.94, 0.15, tw_m * 0.94), Color(0.12, 0.72, 0.78))   # 青水(凹)
+	_tilemap_add(xf_stone, Vector3(tw_m * 0.94, 0.15, tw_m * 0.94), Color(0.24, 0.26, 0.38))   # 石台(凸)
+
+func _tilemap_add(xforms: Array, box_size: Vector3, col: Color) -> void:
+	if xforms.is_empty(): return
+	var mmi := MultiMeshInstance3D.new()
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	var box := BoxMesh.new(); box.size = box_size
+	mm.mesh = box
+	mm.instance_count = xforms.size()
+	for i in range(xforms.size()):
+		mm.set_instance_transform(i, xforms[i])
+	mmi.multimesh = mm
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = col
+	mmi.material_override = mat
+	_world.add_child(mmi)
+
 func _build_camera() -> void:
 	_cam = Camera3D.new()
 	_cam.name = "Camera3D"
@@ -586,6 +635,9 @@ func _build_camera() -> void:
 	if OS.has_environment("CAM_TOPDOWN"):      # 实验: 陡俯角+低FOV → 更像参考图的俯视地图感(用户2026-07-13·仍透视非等距)
 		_cam.fov = 30.0
 		_cam.position = Vector3(0.0, 40.0, 22.0)   # 更高更竖 → 俯角~61°; 低fov拉远补框
+	if OS.has_environment("TILEMAP"):          # ★新地图相机: 微调更陡(俯角~36°→~51°)+低FOV, 更像地图俯视(用户2026-07-13"我定更陡的")
+		_cam.fov = 40.0
+		_cam.position = Vector3(0.0, 28.0, 22.0)   # 俯角 atan2(27.4,22)≈51°; fov40拉远补框
 	_world.add_child(_cam)
 	_cam.look_at(Vector3(0.0, 0.6, 0.0), Vector3.UP)
 	_cam_base = _cam.position               # Phase4: 震屏围绕此基准偏移, 衰减后精确归位
@@ -702,7 +754,9 @@ func _build_floor_v2() -> void:
 	_floor_plane(Rect2(pool.end.x, pool.position.y, t, pool.size.y), 0.05, C_R)
 
 func _build_ground() -> void:
-	if OS.has_environment("FLOOR_V2"):   # 多材质凹水池地板占位版(用户2026-07-13·纯色验几何)
+	if OS.has_environment("TILEMAP"):    # ★新地图: MultiMesh方块tile地面(暗深海夜色·数据驱动·用户2026-07-13定案·纯视觉不改玩法)
+		_build_tilemap_ground(); return
+	if OS.has_environment("FLOOR_V2"):   # 多材质凹水池地板占位版(旧实验·被TILEMAP取代)
 		_build_floor_v2(); return
 	var mi := MeshInstance3D.new()
 	mi.name = "Ground"
