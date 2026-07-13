@@ -113,7 +113,7 @@ const REVIEW_DEMO_CFG := {
 	"stone:2": [ {"dx": 160.0, "dy": -70.0, "fixed": true}, {"dx": 160.0, "dy": 70.0, "fixed": true}, {"dx": 300.0, "dy": 0.0, "fixed": true} ],   # 岩石之躯震击: 前方带状3假人(都在±90带宽内·固定)→看横排扫击命中+击退
 	"stone:3": [ {"dx": 260.0, "dy": -150.0}, {"dx": 260.0, "dy": 150.0}, {"dx": 380.0, "dy": 0.0} ],   # 嘲讽: 3假人都在500码嘲讽+400码砸地范围内(不固定→被嘲讽后转头打石头, 3.5s砸地击飞)
 	"stone:-1": [ {"dx": 120.0, "dy": -70.0}, {"dx": 120.0, "dy": 70.0}, {"dx": 200.0, "dy": 0.0} ],   # 岩石之躯被动审: 3假人围上来持续打石头→石头堆岩层(体型+2%/层·减伤1%/层·上限30)看变大
-	"dice:3": [ {"dx": 300.0, "dy": -300.0, "fixed": true}, {"dx": 680.0, "dy": 240.0, "fixed": true}, {"dx": 980.0, "dy": -140.0, "fixed": true} ],   # 稳定骰子(刀妹Q): 3假人拉远散开→看真冲刺穿刺连突(长位移)+挥剑斩
+	"dice:3": [ {"dx": 320.0, "dy": -260.0, "fixed": true}, {"dx": 700.0, "dy": 220.0, "fixed": true}, {"dx": 1000.0, "dy": -120.0, "fixed": true} ],   # 稳定骰子(刀妹Q): 3假人散开→真冲刺穿过随机敌(落点穿过后方)+挥剑斩(按冲刺左右镜像)·多方向(用户2026-07-13)
 	"bamboo:0": [ {"dx": 100.0, "dy": 0.0} ],   # 竹叶一叶普攻: 单假人贴脸→看近战挥击 + 竹叶生长每6秒强化下一发(绿生命球飞回+成长)
 	"bamboo:1": [ {"dx": 130.0, "dy": -70.0}, {"dx": 130.0, "dy": 70.0} ],   # 自然恢复: 2假人围打竹叶→掉血后放自愈(15%maxHp)看回血+治疗辉光(单龟无友军=无团队护盾)
 	"bamboo:2": [ {"dx": 130.0, "dy": 60.0, "fixed": true}, {"dx": 520.0, "dy": -120.0, "fixed": true} ],   # 竹击: 近假人拴住竹叶(近战打它) + 远假人(520码·钩最远)→看伸竹藤从远处拽贴身+眩晕冰寒
@@ -8688,34 +8688,32 @@ func _dice_dash_hit(u: Dictionary, tgt: Dictionary, dir: Vector2) -> void:
 	_dice_blade_slash(tgt["pos"], dir)   # AI挥剑斩(沿冲刺方向)
 	_melee_lunge(u, tgt)
 
-func _dice_blade_slash(pos2d: Vector2, dir: Vector2) -> void:   # AI挥剑斩弧(dice-slash.png): 命中点·沿冲刺方向·放大淡出
+func _dice_blade_slash(pos2d: Vector2, dir: Vector2) -> void:   # AI挥剑斩弧(dice-slash.png): 立绘朝相机·按冲刺左右镜像(斩弧沿冲刺方向)·放大淡出
 	var tex: Texture2D = load("res://assets/sprites/vfx/dice-slash.png")
 	if tex == null: return
-	var ang: float = atan2(dir.y, dir.x) if dir.length() > 1.0 else 0.0
 	var s := Sprite3D.new()
 	s.texture = tex; s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED; s.axis = Vector3.AXIS_Y
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED   # 立绘朝相机(剑光在空中·不糊在地上)
+	s.flip_h = dir.x < 0.0                            # 冲刺朝左→镜像 → 斩弧总沿冲刺方向(用户2026-07-13: 方向要对)
 	s.shaded = false; s.transparent = true
-	s.pixel_size = (150.0 * WS) / float(maxi(1, int(tex.get_height())))
-	s.rotation = Vector3(0.0, -ang, 0.0)
-	s.position = _world_pos(pos2d, 0.4)
+	s.pixel_size = (170.0 * WS) / float(maxi(1, int(tex.get_height())))
+	s.position = _world_pos(pos2d, 0.7)
 	_world.add_child(s)
 	var tw := _reg_tween(); tw.set_parallel(true)
 	tw.tween_property(s, "scale", Vector3(1.35, 1.35, 1.35), 0.16).from(Vector3(0.7, 0.7, 0.7)).set_trans(Tween.TRANS_BACK)
 	tw.tween_property(s, "modulate:a", 0.0, 0.18).set_delay(0.05)
 	tw.chain().tween_callback(s.queue_free)
 
-func _dice_blade_trail(pos2d: Vector2, dir: Vector2) -> void:   # 冲刺青蓝刀锋残影
+func _dice_blade_trail(pos2d: Vector2, dir: Vector2) -> void:   # 冲刺青蓝刀锋残影(立绘朝相机·按冲刺左右镜像)
 	var tex: Texture2D = load("res://assets/sprites/vfx/dice-slash.png")
 	if tex == null: return
-	var ang: float = atan2(dir.y, dir.x) if dir.length() > 1.0 else 0.0
 	var s := Sprite3D.new()
 	s.texture = tex; s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED; s.axis = Vector3.AXIS_Y
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	s.flip_h = dir.x < 0.0
 	s.shaded = false; s.transparent = true
-	s.pixel_size = (95.0 * WS) / float(maxi(1, int(tex.get_height())))
-	s.rotation = Vector3(0.0, -ang, 0.0)
-	s.position = _world_pos(pos2d, 0.14)
+	s.pixel_size = (110.0 * WS) / float(maxi(1, int(tex.get_height())))
+	s.position = _world_pos(pos2d, 0.55)
 	s.modulate = Color(0.6, 0.85, 1.0, 0.5)
 	_world.add_child(s)
 	var tt := _reg_tween(); tt.tween_property(s, "modulate:a", 0.0, 0.14); tt.tween_callback(s.queue_free)
