@@ -873,9 +873,6 @@ func _build_camera() -> void:
 	_cam.fov = 50.0
 	# 场地上方偏后俯视下来 (3/4). 抬高+拉远以容纳 ~27×12.5 米全场.
 	_cam.position = Vector3(0.0, 18.9, 25.5)   # 放大1.4×后同比拉远(0,13.5,18.2→×1.4), 角度不变框住更大场地
-	if OS.has_environment("CAM_TOPDOWN"):      # 实验: 陡俯角+低FOV → 更像参考图的俯视地图感(用户2026-07-13·仍透视非等距)
-		_cam.fov = 30.0
-		_cam.position = Vector3(0.0, 40.0, 22.0)   # 更高更竖 → 俯角~61°; 低fov拉远补框
 	if OS.has_environment("TILEMAP") or OS.has_environment("MAPEDIT"):          # ★新地图相机: 微调更陡(俯角~36°→~51°)+低FOV, 更像地图俯视(用户2026-07-13"我定更陡的")
 		_cam.fov = 40.0
 		_cam.position = Vector3(0.0, 28.0, 22.0)   # 俯角 atan2(27.4,22)≈51°; fov40拉远补框
@@ -953,63 +950,9 @@ func _build_environment() -> void:
 	we.environment = env
 	_world.add_child(we)
 
-# ── 多材质凹水池地板 占位版(纯色·视觉only·套现有ARENA·用户2026-07-13) ──────────────
-#   主地面(深蓝紫) + 中央凹水池(青·大礁成岛·盆壁+粉描边rim) + 两端石板(蛋台). 高度纯视觉不碰navmesh.
-func _floor_plane(px: Rect2, y: float, col: Color) -> void:
-	var mi := MeshInstance3D.new()
-	var pm := PlaneMesh.new()
-	pm.size = Vector2(px.size.x * WS, px.size.y * WS)
-	mi.mesh = pm
-	mi.position = _world_pos(px.position + px.size * 0.5, y)
-	var m := StandardMaterial3D.new()
-	m.albedo_color = col; m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mi.material_override = m
-	_world.add_child(mi)
-
-func _floor_wall(mid_px: Vector2, span_px: float, along_z: bool, y_top: float, y_bot: float, col: Color) -> void:
-	var mi := MeshInstance3D.new()
-	var q := QuadMesh.new()
-	q.size = Vector2(span_px * WS, y_top - y_bot)      # 宽=沿边长, 高=凹陷深度
-	mi.mesh = q
-	mi.position = _world_pos(mid_px, (y_top + y_bot) * 0.5)
-	if along_z: mi.rotation_degrees = Vector3(0.0, 90.0, 0.0)   # 绕Y转90° → 宽度沿Z(左右墙)
-	var m := StandardMaterial3D.new()
-	m.albedo_color = col; m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.cull_mode = BaseMaterial3D.CULL_DISABLED         # 双面(池内外都可见)
-	mi.material_override = m
-	_world.add_child(mi)
-
-func _build_floor_v2() -> void:
-	var A := ARENA
-	var pool := Rect2(A.position.x + 360.0, A.position.y + 150.0, A.size.x - 720.0, A.size.y - 300.0)  # 中央大水池(大礁成岛)
-	var DEPTH := 0.55
-	_floor_plane(Rect2(A.position - Vector2(700, 700), A.size + Vector2(1400, 1400)), -0.85, Color("#140a24"))  # 远背景防虚空
-	var C_G := Color("#2a1f5c")   # 深蓝紫主地面: 池四周4条strip(留水池洞)
-	_floor_plane(Rect2(A.position.x, A.position.y, A.size.x, pool.position.y - A.position.y), 0.0, C_G)
-	_floor_plane(Rect2(A.position.x, pool.end.y, A.size.x, A.end.y - pool.end.y), 0.0, C_G)
-	_floor_plane(Rect2(A.position.x, pool.position.y, pool.position.x - A.position.x, pool.size.y), 0.0, C_G)
-	_floor_plane(Rect2(pool.end.x, pool.position.y, A.end.x - pool.end.x, pool.size.y), 0.0, C_G)
-	var C_S := Color("#6b6b94")   # 石板平台(两端蛋台)
-	_floor_plane(Rect2(A.position.x, _arena_center.y - 140.0, 220.0, 280.0), 0.02, C_S)
-	_floor_plane(Rect2(A.end.x - 220.0, _arena_center.y - 140.0, 220.0, 280.0), 0.02, C_S)
-	_floor_plane(pool, -DEPTH, Color("#2ee6e0"))   # 水池(凹下去·青)
-	var C_W := Color("#241a52")   # 盆壁4面(竖直·中调深紫·让凹陷深度看得清)
-	_floor_wall(Vector2((pool.position.x + pool.end.x) * 0.5, pool.position.y), pool.size.x, false, 0.0, -DEPTH, C_W)  # 上
-	_floor_wall(Vector2((pool.position.x + pool.end.x) * 0.5, pool.end.y), pool.size.x, false, 0.0, -DEPTH, C_W)      # 下
-	_floor_wall(Vector2(pool.position.x, (pool.position.y + pool.end.y) * 0.5), pool.size.y, true, 0.0, -DEPTH, C_W)  # 左
-	_floor_wall(Vector2(pool.end.x, (pool.position.y + pool.end.y) * 0.5), pool.size.y, true, 0.0, -DEPTH, C_W)       # 右
-	var C_R := Color("#e85a9c")   # 亮粉描边rim(池边一圈·y略高·空间感关键)
-	var t := 14.0
-	_floor_plane(Rect2(pool.position.x - t, pool.position.y - t, pool.size.x + 2.0 * t, t), 0.05, C_R)
-	_floor_plane(Rect2(pool.position.x - t, pool.end.y, pool.size.x + 2.0 * t, t), 0.05, C_R)
-	_floor_plane(Rect2(pool.position.x - t, pool.position.y, t, pool.size.y), 0.05, C_R)
-	_floor_plane(Rect2(pool.end.x, pool.position.y, t, pool.size.y), 0.05, C_R)
-
 func _build_ground() -> void:
 	if OS.has_environment("TILEMAP") or OS.has_environment("MAPEDIT"):    # ★新地图: MultiMesh方块tile地面(暗深海夜色·数据驱动·用户2026-07-13定案·纯视觉不改玩法)
 		_build_tilemap_ground(); return
-	if OS.has_environment("FLOOR_V2"):   # 多材质凹水池地板占位版(旧实验·被TILEMAP取代)
-		_build_floor_v2(); return
 	var mi := MeshInstance3D.new()
 	mi.name = "Ground"
 	var plane := PlaneMesh.new()
