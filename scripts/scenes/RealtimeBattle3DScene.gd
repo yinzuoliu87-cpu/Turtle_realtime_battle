@@ -8641,12 +8641,16 @@ func _sk_dice_flash_strike(u: Dictionary) -> void:   # 稳定骰子(刀妹Irelia
 # 设当前段目标 + 算「穿过落点」(目标位置再往冲刺方向前 overshoot) → 下一段自然从另一侧穿回来
 func _dice_dash_set_target(u: Dictionary, tgt) -> void:
 	u["dice_dash_target"] = tgt
+	u["dice_dash_seg_start"] = _t                                  # 本段起始(超时保险)
 	if tgt == null: return
 	var dir: Vector2 = tgt["pos"] - u["pos"]
 	if dir.length() < 1.0: dir = Vector2.RIGHT
 	dir = dir.normalized()
 	u["dice_dash_dir"] = dir
-	u["dice_dash_land"] = tgt["pos"] + dir * DICE_DASH_OVERSHOOT   # 落点在目标后方一点(穿过去)
+	var land: Vector2 = tgt["pos"] + dir * DICE_DASH_OVERSHOOT     # 落点在目标后方一点(穿过去)
+	land.x = clampf(land.x, ARENA.position.x + 20.0, ARENA.end.x - 20.0)   # ★落点clamp进场内(否则算到边界外→被clamp卡死)
+	land.y = clampf(land.y, ARENA.position.y + 20.0, ARENA.end.y - 20.0)
+	u["dice_dash_land"] = land
 
 # 稳定骰子真冲刺连突(刀妹Irelia Q式): 逐帧固定速位移穿过目标到落点 → 挥剑斩 → 顿0.2s → 下一段. 覆盖正常AI(锁住).
 func _dice_dash_tick(u: Dictionary, delta: float) -> void:
@@ -8662,7 +8666,8 @@ func _dice_dash_tick(u: Dictionary, delta: float) -> void:
 	var ddir: Vector2 = u.get("dice_dash_dir", Vector2.RIGHT)
 	var land: Vector2 = u.get("dice_dash_land", tgt["pos"])
 	var to_land: Vector2 = land - u["pos"]
-	if to_land.length() <= 26.0 or to_land.dot(ddir) <= 0.0:   # 到达落点/已穿过 → 挥剑斩结算
+	var stuck: bool = _t - float(u.get("dice_dash_seg_start", _t)) > 1.6   # ★超时保险: 本段冲>1.6s还没到(卡边界)→强制结算
+	if to_land.length() <= 26.0 or to_land.dot(ddir) <= 0.0 or stuck:   # 到达落点/已穿过/卡住 → 挥剑斩结算
 		u["pos"] = land
 		u["pos"].x = clampf(u["pos"].x, ARENA.position.x, ARENA.end.x)
 		u["pos"].y = clampf(u["pos"].y, ARENA.position.y, ARENA.end.y)

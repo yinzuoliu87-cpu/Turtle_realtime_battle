@@ -1,0 +1,4 @@
+[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://tests/verify_dice_dash.gd" id="1_dd"]
+[node name="VerifyDiceDash" type="Node"]
+script = ExtResource("1_dd")
