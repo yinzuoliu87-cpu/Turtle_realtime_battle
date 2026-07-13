@@ -751,7 +751,7 @@ func _ed_undo_last() -> void:
 
 func _build_tilemap_ground() -> void:
 	if _load_tilemap():                 # 优先数据驱动 map.json
-		if OS.has_environment("TILEMAP"): _build_tilemap_decor()   # 装饰仅TILEMAP预览(MAPEDIT编辑器不加·免遮挡刷格)
+		if not OS.has_environment("MAPEDIT"): _build_tilemap_decor()   # 装饰: 正式对局/TILEMAP都加, 仅编辑器不加(免遮挡刷格)
 		return
 	var TILE := 48.0                    # px/格 (fallback: json缺失时程序化生成·同阶段0逻辑)
 	var A := ARENA
@@ -873,7 +873,7 @@ func _build_camera() -> void:
 	_cam.fov = 50.0
 	# 场地上方偏后俯视下来 (3/4). 抬高+拉远以容纳 ~27×12.5 米全场.
 	_cam.position = Vector3(0.0, 18.9, 25.5)   # 放大1.4×后同比拉远(0,13.5,18.2→×1.4), 角度不变框住更大场地
-	if OS.has_environment("TILEMAP") or OS.has_environment("MAPEDIT"):          # ★新地图相机: 微调更陡(俯角~36°→~51°)+低FOV, 更像地图俯视(用户2026-07-13"我定更陡的")
+	if MAP_V2 or OS.has_environment("TILEMAP") or OS.has_environment("MAPEDIT"):          # ★新地图相机: 微调更陡(俯角~36°→~51°)+低FOV, 更像地图俯视(用户2026-07-13"我定更陡的")
 		_cam.fov = 40.0
 		_cam.position = Vector3(0.0, 28.0, 22.0)   # 俯角 atan2(27.4,22)≈51°; fov40拉远补框
 	_world.add_child(_cam)
@@ -950,8 +950,9 @@ func _build_environment() -> void:
 	we.environment = env
 	_world.add_child(we)
 
+const MAP_V2 := true   # ★新tile地图转常开(用户2026-07-14"调给我看看"): true=正式对局默认用新暗深海夜色tile地图; false回退旧地面; env(TILEMAP/MAPEDIT)仍可强制
 func _build_ground() -> void:
-	if OS.has_environment("TILEMAP") or OS.has_environment("MAPEDIT"):    # ★新地图: MultiMesh方块tile地面(暗深海夜色·数据驱动·用户2026-07-13定案·纯视觉不改玩法)
+	if MAP_V2 or OS.has_environment("TILEMAP") or OS.has_environment("MAPEDIT"):    # ★新地图: MultiMesh方块tile地面(暗深海夜色·数据驱动·用户2026-07-13定案·纯视觉不改玩法)
 		_build_tilemap_ground(); return
 	var mi := MeshInstance3D.new()
 	mi.name = "Ground"
