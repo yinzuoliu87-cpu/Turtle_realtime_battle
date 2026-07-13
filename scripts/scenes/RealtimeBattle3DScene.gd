@@ -576,9 +576,43 @@ func _build_viewport() -> void:
 	_world.name = "World"
 	_sub.add_child(_world)
 
-# ═══ 新地图 tile 系统 (阶段0: MultiMesh 方块地面 · 纯色原型 · 数据驱动 · 纯视觉不改玩法) ═══
+# ═══ 新地图 tile 系统 (MultiMesh 方块地面 · 数据驱动 map.json · 纯视觉不改玩法) ═══
+# 5类型: 0 grass主地面 / 1 water水凹 / 2 stone石台凸 / 3 sand浅滩 / 4 void空(不渲染)
+const TILE_COLS := {0: Color(0.10, 0.14, 0.26), 1: Color(0.12, 0.72, 0.78), 2: Color(0.24, 0.26, 0.38), 3: Color(0.30, 0.28, 0.18)}   # 阶段1纯色·阶段2换暗调材质
+func _load_tilemap() -> bool:           # 数据驱动: 读 data/maps/arena.json → 按type分桶填MultiMesh
+	var f := FileAccess.open("res://data/maps/arena.json", FileAccess.READ)
+	if f == null: return false
+	var txt := f.get_as_text(); f.close()
+	var data = JSON.parse_string(txt)
+	if data == null or not (data is Dictionary): return false
+	var tile: float = float(data.get("tile", 48.0))
+	var ox: float = float(data.get("origin_x", 0.0))
+	var oy: float = float(data.get("origin_y", 0.0))
+	var w: int = int(data.get("w", 0))
+	var h: int = int(data.get("h", 0))
+	var grid: Array = data.get("grid", [])
+	var height: Array = data.get("height", [])
+	if grid.is_empty(): return false
+	var tw_m := tile * WS
+	var buckets: Dictionary = {}        # type_idx → Array[Transform3D]
+	for r in range(mini(h, grid.size())):
+		var grow: Array = grid[r]
+		var hrow: Array = height[r] if r < height.size() else []
+		for c in range(mini(w, grow.size())):
+			var ti: int = int(grow[c])
+			if ti == 4: continue        # void 不渲染
+			var hh: float = float(hrow[c]) if c < hrow.size() else 0.0
+			var px := ox + (float(c) + 0.5) * tile
+			var py := oy + (float(r) + 0.5) * tile
+			if not buckets.has(ti): buckets[ti] = []
+			buckets[ti].append(Transform3D(Basis(), _world_pos(Vector2(px, py), hh)))
+	for ti in buckets:
+		_tilemap_add(buckets[ti], Vector3(tw_m * 0.94, 0.15, tw_m * 0.94), TILE_COLS.get(ti, Color(0.2, 0.2, 0.2)))
+	return true
+
 func _build_tilemap_ground() -> void:
-	var TILE := 48.0                    # px/格
+	if _load_tilemap(): return          # 优先数据驱动 map.json
+	var TILE := 48.0                    # px/格 (fallback: json缺失时程序化生成·同阶段0逻辑)
 	var A := ARENA
 	var mg := 6                         # 外扩格数(填满画面·远处沉黑)
 	var cols := int(ceil(A.size.x / TILE)) + mg * 2
