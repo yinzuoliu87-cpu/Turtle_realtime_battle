@@ -512,6 +512,10 @@ func _ready() -> void:
 	_build_camera()
 	_build_environment()
 	_build_ground()
+	if OS.has_environment("MAPEDIT"):   # 🖌 地图编辑器模式: 跳过战斗, 只刷tile
+		_enter_map_editor()
+		if OS.has_environment("SELFSHOT"): _self_screenshot()
+		return
 	_build_ui_layer()
 	_build_debug_panel()   # 🛠 调试面板(评审demo·技能/装备/星级·用户2026-07-11)
 	_spawn_teams()
@@ -608,20 +612,26 @@ func _tile_material(ti: int) -> Material:    # 每type材质: 水=滚动波纹sh
 	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	return m
 
-func _load_tilemap() -> bool:           # 数据驱动: 读 data/maps/arena.json → 按type分桶填MultiMesh
+var _tile_nodes: Array = []             # 当前tile MultiMesh节点(编辑器重绘时先清)
+func _load_tilemap() -> bool:           # 数据驱动: 读 data/maps/arena.json → _tilemap_from_data
 	var f := FileAccess.open("res://data/maps/arena.json", FileAccess.READ)
 	if f == null: return false
-	var txt := f.get_as_text(); f.close()
-	var data = JSON.parse_string(txt)
+	var data = JSON.parse_string(f.get_as_text()); f.close()
 	if data == null or not (data is Dictionary): return false
-	var tile: float = float(data.get("tile", 48.0))
-	var ox: float = float(data.get("origin_x", 0.0))
-	var oy: float = float(data.get("origin_y", 0.0))
-	var w: int = int(data.get("w", 0))
-	var h: int = int(data.get("h", 0))
-	var grid: Array = data.get("grid", [])
-	var height: Array = data.get("height", [])
-	if grid.is_empty(): return false
+	var grid = data.get("grid", [])
+	if not (grid is Array) or (grid as Array).is_empty(): return false
+	_tilemap_from_data(data, grid, data.get("height", []))
+	return true
+
+func _tilemap_from_data(meta: Dictionary, grid: Array, height: Array) -> void:   # 从内存数据(重)建tile地面
+	for n in _tile_nodes:
+		if is_instance_valid(n): n.queue_free()
+	_tile_nodes = []
+	var tile: float = float(meta.get("tile", 48.0))
+	var ox: float = float(meta.get("origin_x", 0.0))
+	var oy: float = float(meta.get("origin_y", 0.0))
+	var w: int = int(meta.get("w", 0))
+	var h: int = int(meta.get("h", 0))
 	var tw_m := tile * WS
 	var buckets: Dictionary = {}        # type_idx → Array[Transform3D]
 	for r in range(mini(h, grid.size())):
@@ -637,7 +647,107 @@ func _load_tilemap() -> bool:           # 数据驱动: 读 data/maps/arena.json
 			buckets[ti].append(Transform3D(Basis(), _world_pos(Vector2(px, py), hh)))
 	for ti in buckets:
 		_tilemap_add(buckets[ti], Vector3(tw_m * 0.94, 0.15, tw_m * 0.94), TILE_COLS.get(ti, Color(0.2, 0.2, 0.2)), _tile_material(ti))
-	return true
+
+# ═══ 局内地图刷子编辑器 (MAPEDIT=1 开 · 开发工具不进正式对局 · 纯视觉不改玩法) ═══
+const _ED_TYPE_NAMES := ["grass", "water", "stone", "sand", "void"]
+const _ED_HEIGHTS := {0: 0.0, 1: -0.30, 2: 0.25, 3: -0.05, 4: 0.0}
+var _map_editor := false
+var _ed_meta: Dictionary = {}
+var _ed_grid: Array = []
+var _ed_height: Array = []
+var _ed_type := 0
+var _ed_undo: Array = []
+var _ed_type_label: Label = null
+
+func _enter_map_editor() -> void:
+	_map_editor = true
+	set_process(false)          # 编辑器无战斗: 关掉战斗tick(否则碰未建的队伍/UI空节点报错)
+	set_physics_process(false)
+	var f := FileAccess.open("res://data/maps/arena.json", FileAccess.READ)
+	if f != null:
+		var data = JSON.parse_string(f.get_as_text()); f.close()
+		if data is Dictionary:
+			_ed_meta = data
+			_ed_grid = data.get("grid", [])
+			_ed_height = data.get("height", [])
+	_ed_build_ui()
+
+func _ed_build_ui() -> void:
+	var cl := CanvasLayer.new(); cl.layer = 60; add_child(cl)
+	var panel := PanelContainer.new()
+	panel.position = Vector2(12, 80)
+	var vb := VBoxContainer.new(); panel.add_child(vb)
+	var title := Label.new(); title.text = "🖌 地图编辑器 (左键刷格 · MAPEDIT)"; vb.add_child(title)
+	var hb := HBoxContainer.new(); vb.add_child(hb)
+	for ti in range(_ED_TYPE_NAMES.size()):
+		var b := Button.new(); b.text = "%d %s" % [ti, _ED_TYPE_NAMES[ti]]
+		b.pressed.connect(_ed_set_type.bind(ti))
+		hb.add_child(b)
+	_ed_type_label = Label.new(); _ed_type_label.text = "当前: grass (0)"; vb.add_child(_ed_type_label)
+	var hb2 := HBoxContainer.new(); vb.add_child(hb2)
+	var bsave := Button.new(); bsave.text = "💾保存"; bsave.pressed.connect(_ed_save); hb2.add_child(bsave)
+	var brel := Button.new(); brel.text = "↻重载"; brel.pressed.connect(_ed_reload); hb2.add_child(brel)
+	var bclr := Button.new(); bclr.text = "清空"; bclr.pressed.connect(_ed_clear); hb2.add_child(bclr)
+	var bund := Button.new(); bund.text = "撤销"; bund.pressed.connect(_ed_undo_last); hb2.add_child(bund)
+	cl.add_child(panel)
+
+func _ed_set_type(ti: int) -> void:
+	_ed_type = ti
+	if _ed_type_label != null:
+		_ed_type_label.text = "当前: %s (%d)" % [_ED_TYPE_NAMES[ti], ti]
+
+func _ed_paint_at_screen(mpos: Vector2) -> void:   # 屏幕→Y=0地面射线→格子→刷type+height→重绘
+	if _cam == null or _ed_grid.is_empty(): return
+	var origin := _cam.project_ray_origin(mpos)
+	var dir := _cam.project_ray_normal(mpos)
+	if absf(dir.y) < 0.0001: return
+	var t := -origin.y / dir.y
+	if t < 0.0: return
+	var wp := origin + dir * t
+	var px := wp.x / WS + _arena_center.x
+	var py := wp.z / WS + _arena_center.y
+	var tile: float = float(_ed_meta.get("tile", 48.0))
+	var c := int((px - float(_ed_meta.get("origin_x", 0.0))) / tile)
+	var r := int((py - float(_ed_meta.get("origin_y", 0.0))) / tile)
+	if r < 0 or r >= _ed_grid.size(): return
+	var grow: Array = _ed_grid[r]
+	if c < 0 or c >= grow.size(): return
+	if int(grow[c]) == _ed_type: return
+	_ed_undo.append([r, c, int(grow[c]), float(_ed_height[r][c])])
+	if _ed_undo.size() > 300: _ed_undo.pop_front()
+	grow[c] = _ed_type
+	_ed_height[r][c] = float(_ED_HEIGHTS[_ed_type])
+	_tilemap_from_data(_ed_meta, _ed_grid, _ed_height)
+
+func _ed_save() -> void:
+	_ed_meta["grid"] = _ed_grid
+	_ed_meta["height"] = _ed_height
+	var f := FileAccess.open("res://data/maps/arena.json", FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(_ed_meta)); f.close()
+
+func _ed_reload() -> void:
+	var f := FileAccess.open("res://data/maps/arena.json", FileAccess.READ)
+	if f != null:
+		var data = JSON.parse_string(f.get_as_text()); f.close()
+		if data is Dictionary:
+			_ed_meta = data; _ed_grid = data.get("grid", []); _ed_height = data.get("height", [])
+			_tilemap_from_data(_ed_meta, _ed_grid, _ed_height)
+
+func _ed_clear() -> void:
+	for r in range(_ed_grid.size()):
+		var grow: Array = _ed_grid[r]
+		for c in range(grow.size()):
+			grow[c] = 0; _ed_height[r][c] = 0.0
+	_tilemap_from_data(_ed_meta, _ed_grid, _ed_height)
+
+func _ed_undo_last() -> void:
+	if _ed_undo.is_empty(): return
+	var op = _ed_undo.pop_back()
+	var r: int = op[0]; var c: int = op[1]
+	if r < _ed_grid.size() and c < (_ed_grid[r] as Array).size():
+		_ed_grid[r][c] = op[2]; _ed_height[r][c] = op[3]
+		_tilemap_from_data(_ed_meta, _ed_grid, _ed_height)
 
 func _build_tilemap_ground() -> void:
 	if _load_tilemap(): return          # 优先数据驱动 map.json
@@ -689,6 +799,7 @@ func _tilemap_add(xforms: Array, box_size: Vector3, col: Color, mat: Material = 
 		var sm := StandardMaterial3D.new(); sm.albedo_color = col
 		mmi.material_override = sm
 	_world.add_child(mmi)
+	_tile_nodes.append(mmi)
 
 func _build_camera() -> void:
 	_cam = Camera3D.new()
@@ -700,7 +811,7 @@ func _build_camera() -> void:
 	if OS.has_environment("CAM_TOPDOWN"):      # 实验: 陡俯角+低FOV → 更像参考图的俯视地图感(用户2026-07-13·仍透视非等距)
 		_cam.fov = 30.0
 		_cam.position = Vector3(0.0, 40.0, 22.0)   # 更高更竖 → 俯角~61°; 低fov拉远补框
-	if OS.has_environment("TILEMAP"):          # ★新地图相机: 微调更陡(俯角~36°→~51°)+低FOV, 更像地图俯视(用户2026-07-13"我定更陡的")
+	if OS.has_environment("TILEMAP") or OS.has_environment("MAPEDIT"):          # ★新地图相机: 微调更陡(俯角~36°→~51°)+低FOV, 更像地图俯视(用户2026-07-13"我定更陡的")
 		_cam.fov = 40.0
 		_cam.position = Vector3(0.0, 28.0, 22.0)   # 俯角 atan2(27.4,22)≈51°; fov40拉远补框
 	_world.add_child(_cam)
@@ -830,7 +941,7 @@ func _build_floor_v2() -> void:
 	_floor_plane(Rect2(pool.end.x, pool.position.y, t, pool.size.y), 0.05, C_R)
 
 func _build_ground() -> void:
-	if OS.has_environment("TILEMAP"):    # ★新地图: MultiMesh方块tile地面(暗深海夜色·数据驱动·用户2026-07-13定案·纯视觉不改玩法)
+	if OS.has_environment("TILEMAP") or OS.has_environment("MAPEDIT"):    # ★新地图: MultiMesh方块tile地面(暗深海夜色·数据驱动·用户2026-07-13定案·纯视觉不改玩法)
 		_build_tilemap_ground(); return
 	if OS.has_environment("FLOOR_V2"):   # 多材质凹水池地板占位版(旧实验·被TILEMAP取代)
 		_build_floor_v2(); return
@@ -13935,6 +14046,12 @@ func _stats_column(header: String, units: Array, hc: Color) -> Control:
 	return grid
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _map_editor:   # 🖌 编辑器: 左键点/拖刷格(UI按钮的点击被按钮消费不会到这)
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			_ed_paint_at_screen(event.position)
+		elif event is InputEventMouseMotion and (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+			_ed_paint_at_screen(event.position)
+		return
 	if event is InputEventKey and event.pressed:
 		if event.keycode == KEY_R:
 			get_tree().reload_current_scene()
