@@ -1023,6 +1023,10 @@ func _spawn_teams() -> void:
 			_lu["gold"] = 30.0 if (REVIEW_SKILL_IDX == 2 or REVIEW_SKILL_IDX == 0) else 0.0   # demo: 审梭哈/被动时备30金币(梭哈看弹幕·被动看冒金币+普攻打得动看死亡涌币); 否则0看自然攒
 		if _review_demo() and REVIEW_DUMMY_ATTACKS:
 			_lu["_review_dummy"] = true   # 假人会还手时受审龟免死(看完整被动循环)
+		if _review_demo() and str(left[i]) == "dice" and REVIEW_SKILL_IDX == 0:   # 被动赌徒之血: 起手40%血→看血色气焰+暴击拉满(巨血防死·不回满以维持低血)
+			_lu["maxHp"] = float(_lu["maxHp"]) * 20.0
+			_lu["hp"] = _lu["maxHp"] * 0.4
+			_lu["_review_dummy"] = false
 		if OS.has_environment("EQDEMO_EQUIP"):   # 装备演示
 			if i == 0:   # === 携带者(持受审装备) ===
 				_lu["_eqdemo_carrier"] = true
@@ -3067,6 +3071,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	_update_shield_barrier(u)   # 石头岩石护盾: 持盾常驻六棱屏障(跟随), 盾破/到期碎裂淡出
 	_update_diamond_barrier(u)   # 钻石坚不可摧: 持盾常驻青水晶护罩(跟随), 盾破/到期碎裂淡出
 	_update_gold_barrier(u)      # 财神金盾: 持盾常驻金色护罩(跟随), 盾破/到期碎裂淡出
+	if u.get("id") == "dice": _update_dice_blood_aura(u)   # 骰子赌徒之血: 低血泛血色气焰(暗示暴击拉满·用户2026-07-13)
 	_update_stun_vfx(u)         # 通用眩晕圈: 眩晕期间头顶火花星绕转(椭圆), 结束即撤
 	_update_bamboo_charge_dots(u)   # 竹叶蓄满: 双手两绿点(强化就绪指示)
 	_heal_flush(u)   # LoL式治疗累加器: 攒一波回血合并成一个绿字(满血=0)
@@ -8708,6 +8713,30 @@ func _dice_blade_slash(pos2d: Vector2, dir: Vector2) -> void:   # AI挥剑斩弧
 	tw.tween_property(s, "scale", Vector3(1.35, 1.35, 1.35), 0.16).from(Vector3(0.7, 0.7, 0.7)).set_trans(Tween.TRANS_BACK)
 	tw.tween_property(s, "modulate:a", 0.0, 0.18).set_delay(0.05)
 	tw.chain().tween_callback(s.queue_free)
+
+# 骰子赌徒之血: 低血→身上泛血色气焰(随已损生命渐强·损30%满·脉动), 满血无. 暗示"血越低暴击越猛".
+func _update_dice_blood_aura(u: Dictionary) -> void:
+	var lost: float = clampf(1.0 - float(u["hp"]) / maxf(1.0, float(u["maxHp"])), 0.0, 1.0)
+	var inten: float = minf(lost / 0.30, 1.0)   # 0..1 (损30%满)
+	var spr = u.get("_dice_blood_spr", null)
+	var valid: bool = spr != null and is_instance_valid(spr)
+	if inten > 0.03 and u.get("alive", false):
+		if not valid:
+			spr = Sprite3D.new()
+			var gtex: Texture2D = _make_glow_texture()
+			spr.texture = gtex
+			spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			spr.shaded = false; spr.transparent = true
+			spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+			spr.pixel_size = (170.0 * WS) / float(maxi(1, int(gtex.get_height())))
+			_world.add_child(spr)
+			_follow_vfx.append({"spr": spr, "unit": u, "h": 0.35})
+			u["_dice_blood_spr"] = spr
+		var pulse: float = 0.6 + 0.4 * sin(_t * 7.0)
+		spr.modulate = Color(1.0, 0.12, 0.10, (0.10 + 0.42 * inten) * pulse)   # 血红·随损血+脉动
+	elif valid:
+		u["_dice_blood_spr"] = null
+		spr.queue_free()
 
 func _dice_blade_trail(pos2d: Vector2, dir: Vector2) -> void:   # 冲刺青蓝刀锋残影(立绘朝相机·按冲刺左右镜像)
 	var tex: Texture2D = load("res://assets/sprites/vfx/dice-slash.png")

@@ -1141,8 +1141,8 @@
       "maxCritAtLoss": 30,
       "maxCritGain": 50,
       "overflowMult": 1.5,
-      "brief": "骰子龟的赌徒之血在危机中觉醒，根据已损失的生命值获得额外暴击机率，在损失 <span class=\"val-atk\">30%</span> 生命值时达到满额 <span class=\"val-atk\">+50%</span> 暴击机率。暴击机率超过100%的部分，每1%转化为 <span class=\"val-atk\">1.5%</span> 暴击伤害。",
-      "desc": "骰子龟的赌徒之血在危机中觉醒，根据已损失的生命值获得额外暴击机率，在损失 <span class=\"val-atk\">30%</span> 生命值时达到满额 <span class=\"val-atk\">+50%</span> 暴击机率。暴击机率超过100%的部分，每1%转化为 <span class=\"val-atk\">1.5%</span> 暴击伤害。\n<span style=\"color:#8a93a0\">当前暴击机率：</span><span class=\"val-atk\">{crit*100}%</span>"
+      "brief": "骰子龟的赌徒之血在危机中觉醒，根据已损失的生命值获得额外暴击机率，在损失 <span class=\"val-atk\">30%</span> 生命值时达到满额 <span class=\"val-atk\">+50%</span> 暴击机率。",
+      "desc": "骰子龟的赌徒之血在危机中觉醒，根据已损失的生命值获得额外暴击机率，在损失 <span class=\"val-atk\">30%</span> 生命值时达到满额 <span class=\"val-atk\">+50%</span> 暴击机率。\n<span style=\"color:#8a93a0\">当前暴击机率：</span><span class=\"val-atk\">{crit*100}%</span>"
     },
     "skillPool": [
       {
