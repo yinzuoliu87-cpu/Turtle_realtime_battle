@@ -578,7 +578,36 @@ func _build_viewport() -> void:
 
 # ═══ 新地图 tile 系统 (MultiMesh 方块地面 · 数据驱动 map.json · 纯视觉不改玩法) ═══
 # 5类型: 0 grass主地面 / 1 water水凹 / 2 stone石台凸 / 3 sand浅滩 / 4 void空(不渲染)
-const TILE_COLS := {0: Color(0.10, 0.14, 0.26), 1: Color(0.12, 0.72, 0.78), 2: Color(0.24, 0.26, 0.38), 3: Color(0.30, 0.28, 0.18)}   # 阶段1纯色·阶段2换暗调材质
+const TILE_COLS := {0: Color(0.102, 0.137, 0.251), 1: Color(0.122, 0.722, 0.769), 2: Color(0.227, 0.247, 0.361), 3: Color(0.149, 0.188, 0.337)}   # 暗深海夜调色板(锁死·场景地图方案.md§4): grass#1a2340/water#1fb8c4/stone#3a3f5c/sand=shore#263056
+var _tile_tex_cache: ImageTexture = null
+func _make_tile_texture() -> ImageTexture:   # 斜网格weave(菱形地砖) + tile内边框(格线), 灰度→材质albedo_color上色
+	if _tile_tex_cache != null: return _tile_tex_cache
+	var N := 32
+	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
+	for y in range(N):
+		for x in range(N):
+			var v := 1.0
+			if (x + y) % 10 < 1 or (x - y + N) % 10 < 1:   # 双向斜线=菱形weave
+				v = 1.18                                    # 亮部(#263056感)
+			if x < 1 or x >= N - 1 or y < 1 or y >= N - 1:  # tile内边框=网格线
+				v = 0.66
+			img.set_pixel(x, y, Color(v, v, v, 1.0))
+	_tile_tex_cache = ImageTexture.create_from_image(img)
+	return _tile_tex_cache
+
+func _tile_material(ti: int) -> Material:    # 每type材质: 水=滚动波纹shader发光; 其余=暗调+斜网格贴图
+	if ti == 1:
+		var sm := ShaderMaterial.new()
+		var sh := Shader.new()
+		sh.code = "shader_type spatial;\nrender_mode unshaded, cull_disabled;\nuniform vec4 base_col : source_color = vec4(0.075,0.42,0.48,1.0);\nuniform vec4 hi_col : source_color = vec4(0.25,0.91,0.88,1.0);\nvoid fragment(){\n\tfloat w = sin((UV.x*6.0)+TIME*1.2)*0.5+0.5;\n\tw = mix(w, sin((UV.y*5.0)-TIME*0.9)*0.5+0.5, 0.5);\n\tvec3 c = mix(base_col.rgb, hi_col.rgb, w*0.55);\n\tALBEDO = c;\n\tEMISSION = c*0.3;\n}"
+		sm.shader = sh
+		return sm
+	var m := StandardMaterial3D.new()
+	m.albedo_color = TILE_COLS.get(ti, Color(0.2, 0.2, 0.2))
+	m.albedo_texture = _make_tile_texture()
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	return m
+
 func _load_tilemap() -> bool:           # 数据驱动: 读 data/maps/arena.json → 按type分桶填MultiMesh
 	var f := FileAccess.open("res://data/maps/arena.json", FileAccess.READ)
 	if f == null: return false
@@ -607,7 +636,7 @@ func _load_tilemap() -> bool:           # 数据驱动: 读 data/maps/arena.json
 			if not buckets.has(ti): buckets[ti] = []
 			buckets[ti].append(Transform3D(Basis(), _world_pos(Vector2(px, py), hh)))
 	for ti in buckets:
-		_tilemap_add(buckets[ti], Vector3(tw_m * 0.94, 0.15, tw_m * 0.94), TILE_COLS.get(ti, Color(0.2, 0.2, 0.2)))
+		_tilemap_add(buckets[ti], Vector3(tw_m * 0.94, 0.15, tw_m * 0.94), TILE_COLS.get(ti, Color(0.2, 0.2, 0.2)), _tile_material(ti))
 	return true
 
 func _build_tilemap_ground() -> void:
@@ -643,7 +672,7 @@ func _build_tilemap_ground() -> void:
 	_tilemap_add(xf_water, Vector3(tw_m * 0.94, 0.15, tw_m * 0.94), Color(0.12, 0.72, 0.78))   # 青水(凹)
 	_tilemap_add(xf_stone, Vector3(tw_m * 0.94, 0.15, tw_m * 0.94), Color(0.24, 0.26, 0.38))   # 石台(凸)
 
-func _tilemap_add(xforms: Array, box_size: Vector3, col: Color) -> void:
+func _tilemap_add(xforms: Array, box_size: Vector3, col: Color, mat: Material = null) -> void:
 	if xforms.is_empty(): return
 	var mmi := MultiMeshInstance3D.new()
 	var mm := MultiMesh.new()
@@ -654,9 +683,11 @@ func _tilemap_add(xforms: Array, box_size: Vector3, col: Color) -> void:
 	for i in range(xforms.size()):
 		mm.set_instance_transform(i, xforms[i])
 	mmi.multimesh = mm
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = col
-	mmi.material_override = mat
+	if mat != null:
+		mmi.material_override = mat
+	else:
+		var sm := StandardMaterial3D.new(); sm.albedo_color = col
+		mmi.material_override = sm
 	_world.add_child(mmi)
 
 func _build_camera() -> void:
@@ -692,6 +723,9 @@ func _build_environment() -> void:
 	fill.light_energy = 0.45
 	fill.light_color = Color(0.42, 0.66, 0.85)
 	_world.add_child(fill)
+	if OS.has_environment("TILEMAP"):    # 暗深海夜: 压暗主/补光, 让技能特效跳出
+		light.light_energy = 0.62
+		fill.light_energy = 0.30
 
 	var env := Environment.new()
 	# 背景: 由亮到暗的深海立式渐变 (天空 SkyMaterial 程序生成, 无外部图) → 远处不再是单色硬墙.
@@ -709,6 +743,14 @@ func _build_environment() -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.ambient_light_color = Color(0.40, 0.58, 0.70)
 	env.ambient_light_energy = 0.85
+	if OS.has_environment("TILEMAP"):    # 暗深海夜: 天空/环境光压暗成深夜(#0a0e1a深底), 特效才跳
+		sky_mat.sky_top_color = Color(0.020, 0.050, 0.110)
+		sky_mat.sky_horizon_color = Color(0.030, 0.070, 0.140)
+		sky_mat.ground_bottom_color = Color(0.010, 0.030, 0.080)
+		sky_mat.ground_horizon_color = Color(0.030, 0.060, 0.120)
+		sky_mat.sky_energy_multiplier = 0.35
+		env.ambient_light_color = Color(0.10, 0.16, 0.26)
+		env.ambient_light_energy = 0.45
 	# 深海雾: 远处沉入蓝黑给纵深 (Compatibility 下 fog 为 per-pixel 简化雾, 仍能拉出远近层次).
 	#   雾色压得很暗 (近背景色), 能量低 → 远处沉黑而非提亮成灰 (避免远地/边缘被雾刷亮成灰带).
 	env.fog_enabled = true
