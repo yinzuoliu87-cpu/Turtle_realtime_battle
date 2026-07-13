@@ -750,7 +750,9 @@ func _ed_undo_last() -> void:
 		_tilemap_from_data(_ed_meta, _ed_grid, _ed_height)
 
 func _build_tilemap_ground() -> void:
-	if _load_tilemap(): return          # 优先数据驱动 map.json
+	if _load_tilemap():                 # 优先数据驱动 map.json
+		if OS.has_environment("TILEMAP"): _build_tilemap_decor()   # 装饰仅TILEMAP预览(MAPEDIT编辑器不加·免遮挡刷格)
+		return
 	var TILE := 48.0                    # px/格 (fallback: json缺失时程序化生成·同阶段0逻辑)
 	var A := ARENA
 	var mg := 6                         # 外扩格数(填满画面·远处沉黑)
@@ -800,6 +802,69 @@ func _tilemap_add(xforms: Array, box_size: Vector3, col: Color, mat: Material = 
 		mmi.material_override = sm
 	_world.add_child(mmi)
 	_tile_nodes.append(mmi)
+
+# 阶段4: 边框密植发光水草/珊瑚(确定性种子·只非战斗区=ARENA外) + 氛围辉光粒子
+func _build_tilemap_decor() -> void:
+	var root := Node3D.new(); root.name = "TileDecor"; _world.add_child(root)
+	var rng := RandomNumberGenerator.new(); rng.seed = 20260714
+	var A := ARENA
+	var cx := A.position.x + A.size.x * 0.5
+	var cy := A.position.y + A.size.y * 0.5
+	var kelp := ["deco_kelp", "deco_coral_pink", "deco_coral_orange", "deco_rocks"]
+	var mg := 6.0 * 48.0
+	var step := 80.0
+	var py := A.position.y - mg
+	while py < A.end.y + mg:
+		var px := A.position.x - mg
+		while px < A.end.x + mg:
+			var outside_arena := not A.has_point(Vector2(px, py))
+			var do := pow((px - cx) / (A.size.x * 0.72), 2.0) + pow((py - cy) / (A.size.y * 0.92), 2.0)   # <1=地图内有tile
+			if outside_arena and do < 0.98 and rng.randf() < 0.58:   # 只在ARENA外的有地砖区撒(留空战斗区)
+				var jx := px + rng.randf_range(-26.0, 26.0)
+				var jy := py + rng.randf_range(-26.0, 26.0)
+				var img: String = kelp[rng.randi() % kelp.size()]
+				var spr := _map_billboard("res://assets/sprites/map/%s.png" % img, Vector2(jx, jy), rng.randf_range(1.5, 2.7))
+				var s := rng.randf_range(0.82, 1.28) * (1.15 if do > 0.7 else 1.0)   # 越靠边框越大(框边压)
+				spr.scale = Vector3(s, s, s)
+				spr.modulate = Color(0.50, 0.68, 0.92)   # 冷调压暗融夜色(边框植被)
+				root.add_child(spr)
+			px += step
+		py += step
+	_build_tilemap_ambient(root)
+
+func _build_tilemap_ambient(root: Node3D) -> void:   # 氛围辉光粒子: 覆盖场地·冰蓝→白·缓上飘·ADD发光
+	var p := GPUParticles3D.new()
+	p.amount = 100
+	p.lifetime = 6.5
+	p.local_coords = false
+	p.position = Vector3(0.0, 2.0, 0.0)
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = Vector3(ARENA.size.x * WS * 0.55, 4.0, ARENA.size.y * WS * 0.55)
+	pm.direction = Vector3(0.0, 1.0, 0.0)
+	pm.spread = 28.0
+	pm.initial_velocity_min = 0.12
+	pm.initial_velocity_max = 0.5
+	pm.gravity = Vector3(0.0, 0.12, 0.0)
+	pm.scale_min = 0.3
+	pm.scale_max = 0.95
+	var grad := Gradient.new()
+	grad.set_color(0, Color(0.40, 0.70, 1.0, 0.0))
+	grad.add_point(0.3, Color(0.58, 0.84, 1.0, 0.85))
+	grad.add_point(0.7, Color(0.86, 0.95, 1.0, 0.7))
+	grad.set_color(1, Color(1.0, 1.0, 1.0, 0.0))
+	var gtex := GradientTexture1D.new(); gtex.gradient = grad
+	pm.color_ramp = gtex
+	p.process_material = pm
+	var dm := StandardMaterial3D.new()
+	dm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	dm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	dm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	dm.vertex_color_use_as_albedo = true
+	dm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	var qm := QuadMesh.new(); qm.size = Vector2(0.1, 0.1); qm.material = dm
+	p.draw_pass_1 = qm
+	root.add_child(p)
 
 func _build_camera() -> void:
 	_cam = Camera3D.new()
