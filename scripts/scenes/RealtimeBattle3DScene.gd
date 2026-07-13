@@ -3129,6 +3129,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	_update_diamond_barrier(u)   # 钻石坚不可摧: 持盾常驻青水晶护罩(跟随), 盾破/到期碎裂淡出
 	_update_gold_barrier(u)      # 财神金盾: 持盾常驻金色护罩(跟随), 盾破/到期碎裂淡出
 	if u.get("id") == "dice": _update_dice_blood_aura(u)   # 骰子赌徒之血: 低血泛血色气焰(暗示暴击拉满·用户2026-07-13)
+	if u.get("id") == "rainbow": _update_rainbow_prism_aura(u)   # 彩虹棱镜: 持续显当前色(红/蓝/绿)一眼区分(用户2026-07-13)
 	_update_stun_vfx(u)         # 通用眩晕圈: 眩晕期间头顶火花星绕转(椭圆), 结束即撤
 	_update_bamboo_charge_dots(u)   # 竹叶蓄满: 双手两绿点(强化就绪指示)
 	_heal_flush(u)   # LoL式治疗累加器: 攒一波回血合并成一个绿字(满血=0)
@@ -8913,6 +8914,32 @@ func _update_dice_blood_aura(u: Dictionary) -> void:
 		u["_dice_blood_spr"] = null
 		spr.queue_free()
 
+# 彩虹棱镜光环: 持续显当前棱镜色(红真伤/蓝盾/绿回血)一眼区分·跟随+脉动 (用户2026-07-13"明显红蓝绿区分")
+const _PRISM_COLS := [Color(1.0, 0.22, 0.20), Color(0.25, 0.55, 1.0), Color(0.28, 1.0, 0.42)]   # 0红 1蓝 2绿
+func _update_rainbow_prism_aura(u: Dictionary) -> void:
+	var spr = u.get("_prism_aura_spr", null)
+	var valid: bool = spr != null and is_instance_valid(spr)
+	if not u.get("alive", false):
+		if valid:
+			u["_prism_aura_spr"] = null
+			spr.queue_free()
+		return
+	if not valid:
+		spr = Sprite3D.new()
+		var gtex: Texture2D = _make_glow_texture()
+		spr.texture = gtex
+		spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		spr.shaded = false; spr.transparent = true
+		spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+		spr.pixel_size = (190.0 * WS) / float(maxi(1, int(gtex.get_height())))
+		_world.add_child(spr)
+		_follow_vfx.append({"spr": spr, "unit": u, "h": 0.28})
+		u["_prism_aura_spr"] = spr
+	var pc: int = int(u.get("prism_color", -1))
+	var col: Color = _PRISM_COLS[pc] if pc >= 0 and pc < 3 else Color(1, 1, 1)
+	var pulse: float = 0.78 + 0.22 * sin(_t * 5.0)
+	spr.modulate = Color(col.r, col.g, col.b, 0.72 * pulse)
+
 func _dice_blade_trail(pos2d: Vector2, dir: Vector2) -> void:   # 冲刺青蓝刀锋残影(立绘朝相机·按冲刺左右镜像)
 	var tex: Texture2D = load("res://assets/sprites/vfx/dice-slash.png")
 	if tex == null: return
@@ -11623,6 +11650,14 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 				0: _apply_damage_from(u, tgt, int(u["atk"] * 0.25), Color("#ff6b6b"), 0.0, true)   # 红: 额外真伤
 				1: _grant_shield(u, u["atk"] * 0.2, 4.0)                                           # 蓝: 每普攻获小盾(通用护盾4秒·封板L74"基础龟被动蓄力普攻的护盾也4秒")
 				2: _heal(u, (u["maxHp"] - u["hp"]) * 0.025, true)                                               # 绿: 回2%最大HP
+			# 棱镜命中: 喷当前色(每次普攻都带色·醒目·用户2026-07-13)
+			var _rb_hc: Color = _PRISM_COLS[int(u.get("prism_color", -1))] if int(u.get("prism_color", -1)) >= 0 else Color(1, 1, 1)
+			var _rb_hb := _glow_bb(tgt["pos"], float(tgt.get("height", 0.0)) + 0.35, 135.0, Color(_rb_hc.r, _rb_hc.g, _rb_hc.b, 0.95))
+			var _rb_ht := _reg_tween(); _rb_ht.set_parallel(true)
+			_rb_ht.tween_property(_rb_hb, "scale", Vector3.ONE * 1.7, 0.24)
+			_rb_ht.tween_property(_rb_hb, "material_override:albedo_color", Color(_rb_hc.r, _rb_hc.g, _rb_hc.b, 0.0), 0.24)
+			_rb_ht.chain().tween_callback(_rb_hb.queue_free)
+			_flash(tgt, Color(_rb_hc.r + 0.5, _rb_hc.g + 0.5, _rb_hc.b + 0.5))
 	# 猎人猎杀已移到 _apply_damage_from 中央伤害路径(封板: 普攻/技能/装备任一伤害都处决<斩杀线)
 	# 猎人·隐蔽翻滚强化: 下次普攻附带0.9A物理(吃吸血), 用后即清
 	if u["id"] == "hunter" and u.get("hunter_roll_buff", false):
@@ -11756,6 +11791,8 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		if u["_rbtimer"] >= 6.0:
 			u["_rbtimer"] = 0.0
 			u["prism_color"] = randi() % 3   # 棱镜(改造): 自身获颜色6秒, 普攻附色(见 _on_basic_hit)
+			var _pcc: Color = _PRISM_COLS[int(u["prism_color"])]   # 换色瞬间闪新色(醒目提示切色)
+			_flash(u, Color(_pcc.r + 0.4, _pcc.g + 0.4, _pcc.b + 0.4))
 		if u["id"] == "rainbow" and u.get("_enh_prism", false):   # 强化棱镜(选反射打包): 每5秒抽1色(橙吸血/黄灼烧/青冰寒/紫诅咒)
 			u["_epTimer"] = float(u.get("_epTimer", 0.0)) + delta
 			if u["_epTimer"] >= 5.0:
