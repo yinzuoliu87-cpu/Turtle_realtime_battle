@@ -9543,13 +9543,13 @@ func _update_hunt_mark(u: Dictionary) -> void:
 		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		m.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		m.shaded = false; m.transparent = true
-		m.pixel_size = (48.0 * WS) / float(maxi(1, int(m.texture.get_width())))   # 大一点(用户2026-07-14)
-		m.position = _world_pos(u["pos"], float(u.get("height", 0.0)) + 2.9)   # 高一点(抬到血条上方·不重合)
+		m.pixel_size = (64.0 * WS) / float(maxi(1, int(m.texture.get_width())))   # 再大(用户2026-07-14)
+		m.position = _world_pos(u["pos"], float(u.get("height", 0.0)) + 6.0)   # 彻底离开血条(陡相机压缩world-Y·需抬更多·用户2026-07-14)
 		_world.add_child(m)
 		var pt := create_tween().bind_node(m).set_loops()
 		pt.tween_property(m, "modulate:a", 0.55, 0.5).set_trans(Tween.TRANS_SINE)
 		pt.tween_property(m, "modulate:a", 1.0, 0.5).set_trans(Tween.TRANS_SINE)
-		_follow_vfx.append({"spr": m, "unit": u, "h": 2.9})
+		_follow_vfx.append({"spr": m, "unit": u, "h": 6.0})
 		u["_hunt_mark_spr"] = m
 		u["_hunt_mark_pulse"] = pt
 	elif not active and valid:
