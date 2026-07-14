@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "pirate"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 3   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船/-1被动掠夺)
+const REVIEW_SKILL_IDX := -1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -153,6 +153,7 @@ const REVIEW_DEMO_CFG := {
 	"pirate:1": [ {"dx": 300.0, "dy": -90.0, "fixed": true}, {"dx": 300.0, "dy": 90.0, "fixed": true}, {"dx": 470.0, "dy": 0.0, "fixed": true} ],   # 海盗火炮齐射: 3假人聚目标区(都在800码内)→看海盗船高空驶入+炮弹雨6段落该区+爆炸+命中才跳伤害
 	"pirate:2": [ {"dx": 150.0, "dy": -55.0}, {"dx": 150.0, "dy": 55.0} ],   # 海盗朗姆酒: 2近战假人追打站桩海盗(海盗no_basic不自愈不触发假人盾·被打掉血)→放朗姆酒看船扔酒瓶+HoT绿回血顶着伤害回(连续绿字)+暖色酒气护光
 	"pirate:3": [ {"dx": 340.0, "dy": -70.0, "fixed": true}, {"dx": 340.0, "dy": 70.0, "fixed": true}, {"dx": 470.0, "dy": 0.0, "fixed": true} ],   # 海盗船: 3假人聚目标区→首发看后方演出船俯冲冲锋撞该区(200码1.0A魔法+击飞2s+大水花)→转变实体海盗船(pirate-ship立绘)留场射击·后续充能满看海盗龟放霰弹(60度扇8颗)
+	"pirate:-1": [ {"dx": 130.0, "dy": 0.0}, {"dx": 460.0, "dy": -70.0, "fixed": true} ],   # 海盗被动掠夺: 开场看登场轰击(船发炮弹→随机敌25%maxHp真伤); 近战假人打死海盗→死亡钩索(demo抓最远那只假人展示拉回·甩钩爪+链条猛拉回尸位+25%maxHp真伤·_pdeath_demo不真死循环)
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -1357,6 +1358,10 @@ func _spawn_teams() -> void:
 			_lu["deathfloor_until"] = 999999.0
 			_lu["_review_dummy"] = false
 			_lu["no_basic"] = true; _lu["no_move"] = true; _lu["move_spd"] = 0.0
+		if _review_demo() and str(left[i]) == "pirate" and REVIEW_SKILL_IDX == -1:   # 被动掠夺: 海盗40%残血+_pdeath_demo(被假人打死→放死亡钩索但不真死复位循环)·开场也看登场轰击
+			_lu["hp"] = float(_lu["maxHp"]) * 0.4
+			_lu["_review_dummy"] = false
+			_lu["_pdeath_demo"] = true
 		if OS.has_environment("EQDEMO_EQUIP"):   # 装备演示
 			if i == 0:   # === 携带者(持受审装备) ===
 				_lu["_eqdemo_carrier"] = true
@@ -7186,6 +7191,16 @@ func _play_egg_shatter(u: Dictionary) -> void:
 	tw.tween_callback(spr.hide)
 
 func _kill(u: Dictionary, killer = null) -> void:
+	if u.get("_pdeath_demo", false) and killer is Dictionary and killer.get("alive", false) and killer != u:   # 被动死亡钩索demo: 放钩索但不真死→复位血循环看(仅评审)
+		var _gtar: Dictionary = killer   # demo: 抓【最远】的敌(展示钩索拉回距离·真实战斗是抓击杀者)
+		var _fd := 0.0
+		for _go in _enemies_of(u):
+			if _go.get("alive", false):
+				var _dd: float = u["pos"].distance_to(_go["pos"])
+				if _dd > _fd: _fd = _dd; _gtar = _go
+		_pirate_death_grapple(u, _gtar)
+		u["hp"] = float(u["maxHp"]) * 0.4
+		return
 	# 首死复活钩子 (天使圣光 / 凤凰涅槃) — 仅作为常驻一次, 1:1 2D
 	if not u["reborn_used"] and ((u["id"] == "angel" and u.get("_angel_revive", false)) or u["id"] == "phoenix" or u.get("_chest_revive", false)):
 		u["reborn_used"] = true
@@ -13038,15 +13053,7 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 	#   依据: 回合制原版逐字(pets.json passive.desc)「死亡时钩锁击杀者，同样造成25%最大生命值真实伤害」
 	#         + 用户〖#15〗「掠夺我是说被动的【原版】海盗被动」+ 用户〖2026-07-10〗「死亡的伤害值同上」。
 	if u.get("id", "") == "pirate" and not u.get("is_summon", false) and killer is Dictionary and killer.get("alive", false) and killer != u:
-		var _pk: Dictionary = u                                  # 钩索从海盗龟的尸位甩出
-		var _pt: Dictionary = killer                             # 目标 = 击杀者
-		var _pd: Vector2 = _pk["pos"] - _pt["pos"]
-		var _pt0: Vector2 = _pt["pos"]                          # 抓取点(拉近前·索线要画到这)
-		_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", _pk["pos"], _pt0, 26.0, Color(1.0, 0.85, 0.4, 0.85), 0.35)   # 死亡钩索索线(甩出抓住)
-		if _pd.length() > 90.0:
-			_pt["pos"] = _pk["pos"] - _pd.normalized() * 90.0    # 把击杀者拉到海盗尸位 90 码处
-		_apply_damage_from(_pk, _pt, int(float(_pt["maxHp"]) * 0.25), Color("#ffd07a"), 0.0, true)   # 25%【击杀者】最大生命·真实伤害
-		_burst_vfx("res://assets/sprites/vfx/cannon-blast.png", _pt["pos"], 90.0, 1.0)
+		_pirate_death_grapple(u, killer)                         # 死亡钩索: 甩钩爪(带链)抓击杀者→拉回尸位90码+25%击杀者maxHp真伤
 	# 缩头随从先死 → 主人永久继承"强化随从"增益(可多次随从累积·把力量传给主人)
 	if u.get("minion_kind", null) != null:
 		var _hm = u.get("summon_owner", null)
@@ -13238,6 +13245,72 @@ func _pirate_ship_charge(ship, from2d: Vector2, from_h: float, to2d: Vector2, on
 	, 0.0, 1.0, 1.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)   # 俯冲放慢(用户"再慢一点"·1.5s更有气势)
 	tw.tween_callback(func() -> void:
 		if on_impact.is_valid(): on_impact.call())
+
+func _pirate_death_grapple(pirate: Dictionary, killer: Dictionary) -> void:   # 死亡钩索(用户2026-07-14做观感): 从尸位甩铁钩爪(带链条)飞向击杀者→抓住猛拉回尸位90码→25%击杀者maxHp真伤
+	if killer == null or not killer.get("alive", false): return
+	var from2d: Vector2 = pirate["pos"]
+	var kpos: Vector2 = killer["pos"]
+	var dir: Vector2 = from2d - kpos
+	if dir.length() < 1.0: dir = Vector2.RIGHT
+	dir = dir.normalized()
+	var htex := load("res://assets/sprites/vfx/grapple-hook.png")
+	var hook := Sprite3D.new()
+	hook.texture = htex; hook.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	hook.billboard = BaseMaterial3D.BILLBOARD_DISABLED; hook.shaded = false; hook.transparent = true
+	hook.pixel_size = (50.0 * WS) / float(maxi(1, htex.get_height()))
+	hook.position = _world_pos(from2d, 1.0)
+	_world.add_child(hook)
+	var throw_dur: float = clampf(from2d.distance_to(kpos) / 1500.0, 0.16, 0.34)
+	var ct := [0.0]
+	var pk: Dictionary = pirate; var kk: Dictionary = killer
+	var tw := _reg_tween()
+	tw.tween_method(func(p: float) -> void:   # ① 甩钩爪飞向击杀者(带链条拖尾)
+		if not is_instance_valid(hook): return
+		var hp2: Vector2 = from2d.lerp(kpos, p)
+		hook.position = _world_pos(hp2, 1.0)
+		_face_screen_dir(hook, from2d, kpos)
+		ct[0] += 0.02
+		if ct[0] >= 0.05:
+			ct[0] = 0.0
+			_pirate_chain(from2d, hp2)
+	, 0.0, 1.0, throw_dur)
+	tw.tween_callback(func() -> void:   # ② 抓住→猛拉回尸位
+		if not kk.get("alive", false):
+			if is_instance_valid(hook): hook.queue_free()
+			return
+		_skill_ring(kk["pos"], Color(1.0, 0.85, 0.4, 0.65), 42.0)
+		var dest: Vector2 = from2d - dir * 90.0
+		dest.x = clampf(dest.x, ARENA.position.x, ARENA.end.x); dest.y = clampf(dest.y, ARENA.position.y, ARENA.end.y)
+		kk["stun_until"] = maxf(float(kk.get("stun_until", 0.0)), _t + 0.5)   # 拉拽期定身(不乱动)
+		var kstart: Vector2 = kk["pos"]
+		var ct2 := [0.0]
+		var pull := _reg_tween()
+		pull.tween_method(func(q: float) -> void:
+			if not kk.get("alive", false): return
+			kk["pos"] = kstart.lerp(dest, q)
+			if is_instance_valid(hook): hook.position = _world_pos(kk["pos"], 1.0)
+			ct2[0] += 0.02
+			if ct2[0] >= 0.05:
+				ct2[0] = 0.0
+				_pirate_chain(from2d, kk["pos"])
+		, 0.0, 1.0, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		pull.tween_callback(func() -> void:   # ③ 到位: 真伤+爆炸
+			if is_instance_valid(hook): hook.queue_free()
+			if kk.get("alive", false):
+				_apply_damage_from(pk, kk, int(float(kk["maxHp"]) * 0.25), Color("#ffd07a"), 0.0, true)
+				_burst_vfx("res://assets/sprites/vfx/cannon-blast.png", kk["pos"], 120.0, 0.4)
+				_shake(0.06)))
+
+func _face_screen_dir(node: Node3D, world_from2d: Vector2, world_to2d: Vector2) -> void:   # 立牌朝相机+屏幕内指向 from→to 方向(钩爪尖朝行进)
+	if _cam == null: return
+	var d: Vector2 = _cam.unproject_position(_world_pos(world_to2d, 1.0)) - _cam.unproject_position(_world_pos(world_from2d, 1.0))
+	if d.length() < 1.0: return
+	var tf: Transform3D = node.global_transform
+	tf.basis = _cam.global_transform.basis * Basis(Vector3(0, 0, 1), atan2(-d.y, d.x) - PI / 2.0)
+	node.global_transform = tf
+
+func _pirate_chain(from2d: Vector2, to2d: Vector2) -> void:   # 钩索链条(chain-bolt 束·短命·连续调=连续链)
+	_beam_vfx("res://assets/sprites/vfx/chain-bolt.png", from2d, to2d, 18.0, Color(0.82, 0.9, 1.0, 0.9), 0.13)
 
 func _pirate_ship_wake(pos2d: Vector2) -> void:   # 航迹水花(青白·上飘淡出)
 	var w := _glow_bb(pos2d, 0.3, 40.0, Color(0.7, 0.92, 1.0, 0.7))
