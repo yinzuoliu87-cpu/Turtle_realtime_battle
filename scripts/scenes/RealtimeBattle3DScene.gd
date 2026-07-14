@@ -10847,14 +10847,31 @@ func _sk_candy_hammer(u: Dictionary, tgt) -> void:              # 糖果龟·技
 	if dir.length() < 1.0: dir = Vector2.RIGHT
 	dir = dir.normalized()
 	_anticipate(u)                                              # 蹲身蓄力
-	var hammer := _candy_hammer_raise(u["pos"], dir)           # 举起糖果锤
+	var hammer: Sprite3D = null                                # 举锤→猛砸一气呵成(用户2026-07-15"不连贯"→连续动作·无干等)
+	var htex := load("res://assets/sprites/skills/candy-hammer.png")
+	if htex != null:
+		hammer = Sprite3D.new()
+		hammer.texture = htex; hammer.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		hammer.billboard = BaseMaterial3D.BILLBOARD_DISABLED; hammer.shaded = false; hammer.transparent = true
+		hammer.pixel_size = (155.0 * WS) / float(maxi(1, htex.get_height()))
+		_candy_hammer_pose(hammer, u["pos"], dir, false, 0.0)
+		_world.add_child(hammer)
 	var uu: Dictionary = u; var d2: Vector2 = dir
-	_pending_shots.append({"delay": 0.4, "src": u, "fn": func() -> void:   # 蓄力0.4s→猛砸
-		if not uu.get("alive", false):
-			if is_instance_valid(hammer): hammer.queue_free()
-			return
-		_candy_hammer_slam(hammer, uu["pos"], d2)              # 锤落+沿线糖爆冲击
+	var tw := _reg_tween()
+	if hammer != null:
+		tw.tween_method(func(p: float) -> void: _candy_hammer_pose(hammer, uu["pos"], d2, false, p), 0.0, 1.0, 0.26).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)   # 举锤上抬后仰
+		tw.tween_method(func(p: float) -> void: _candy_hammer_pose(hammer, uu["pos"], d2, true, p), 0.0, 1.0, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)   # 猛砸下挥
+	else:
+		tw.tween_interval(0.38)
+	tw.tween_callback(func() -> void:   # 砸中: 沿线糖爆冲击+震屏+均分伤+回血
+		if hammer != null and is_instance_valid(hammer):
+			var ht := _reg_tween(); ht.tween_interval(0.06); ht.tween_property(hammer, "modulate:a", 0.0, 0.16); ht.tween_callback(hammer.queue_free)
 		_shake(JUICE_SHAKE_HEAVY)
+		for k in range(4):                                     # 沿线糖爆冲击带(从锤头往前铺·200码)
+			var at: Vector2 = uu["pos"] + d2 * (55.0 + float(k) * 48.0)
+			var bt := _reg_tween(); bt.tween_interval(float(k) * 0.03)
+			bt.tween_callback(func() -> void: _burst_vfx("res://assets/sprites/vfx/candy-burst.png", at, 150.0, 0.35))
+		if not uu.get("alive", false): return
 		var hits: Array = []
 		for o in _enemies_of(uu):
 			if o.get("alive", false) and _on_line(uu["pos"], d2, o["pos"], 70.0) and o["pos"].distance_to(uu["pos"]) <= 200.0:
@@ -10865,45 +10882,23 @@ func _sk_candy_hammer(u: Dictionary, tgt) -> void:              # 糖果龟·技
 		for o in hits:
 			var dm: int = _mitigate(uu, per_raw, o, false)
 			_apply_damage_from(uu, o, dm, Color("#ff9ed6")); dealt += dm
-		_heal(uu, float(dealt) * 0.40)})
+		_heal(uu, float(dealt) * 0.40))
 
-func _candy_hammer_raise(pos2d: Vector2, dir: Vector2) -> Sprite3D:   # 举起糖果锤(头顶偏后·蓄力)
-	var tex := load("res://assets/sprites/skills/candy-hammer.png")
-	if tex == null: return null
-	var h := Sprite3D.new()
-	h.texture = tex; h.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	h.billboard = BaseMaterial3D.BILLBOARD_DISABLED; h.shaded = false; h.transparent = true
-	h.pixel_size = (150.0 * WS) / float(maxi(1, tex.get_height()))
-	h.flip_h = dir.x < 0.0
-	h.position = _world_pos(pos2d - dir * 20.0, 3.0)
+func _candy_hammer_pose(hammer: Sprite3D, pos2d: Vector2, dir: Vector2, slamming: bool, p: float) -> void:   # 糖果锤姿态: raise=从身侧升头顶后方后仰 / slam=挥到前方下落
+	if not is_instance_valid(hammer): return
+	var flat: Vector2; var hh: float; var ang: float
+	var back: Vector2 = pos2d - dir * 24.0
+	var front: Vector2 = pos2d + dir * 82.0
+	if not slamming:
+		flat = pos2d.lerp(back, p); hh = lerpf(1.1, 3.1, p); ang = lerpf(0.0, (0.75 if dir.x >= 0.0 else -0.75), p)
+	else:
+		flat = back.lerp(front, p); hh = lerpf(3.1, 0.45, p * p); ang = lerpf((0.75 if dir.x >= 0.0 else -0.75), (-1.2 if dir.x >= 0.0 else 1.2), p)
+	hammer.flip_h = dir.x < 0.0
+	hammer.position = _world_pos(flat, hh)
 	if _cam != null:
-		var tf := h.global_transform
-		tf.basis = _cam.global_transform.basis * Basis(Vector3(0, 0, 1), (0.6 if dir.x >= 0.0 else -0.6))   # 举起后仰
-		h.global_transform = tf
-	_world.add_child(h)
-	return h
-
-func _candy_hammer_slam(hammer, pos2d: Vector2, dir: Vector2) -> void:   # 猛砸: 锤挥下→沿线糖爆冲击带
-	if hammer != null and is_instance_valid(hammer):
-		var tw := _reg_tween()
-		tw.tween_method(func(p: float) -> void:
-			if not is_instance_valid(hammer): return
-			hammer.position = _world_pos((pos2d - dir * 20.0).lerp(pos2d + dir * 90.0, p), lerpf(3.0, 0.6, p * p))   # 落砸弧
-			if _cam != null:
-				var ang: float = lerpf((0.6 if dir.x >= 0.0 else -0.6), (-1.1 if dir.x >= 0.0 else 1.1), p)
-				var tf: Transform3D = hammer.global_transform
-				tf.basis = _cam.global_transform.basis * Basis(Vector3(0, 0, 1), ang)
-				hammer.global_transform = tf
-		, 0.0, 1.0, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		tw.tween_interval(0.1)
-		tw.tween_property(hammer, "modulate:a", 0.0, 0.16)
-		tw.tween_callback(hammer.queue_free)
-	for k in range(4):   # 沿线糖爆冲击带(错峰铺开·200码)
-		var at: Vector2 = pos2d + dir * (50.0 + float(k) * 50.0)
-		var bt := _reg_tween()
-		bt.tween_interval(0.05 + float(k) * 0.035)
-		bt.tween_callback(func() -> void:
-			_burst_vfx("res://assets/sprites/vfx/candy-burst.png", at, 150.0, 0.35))
+		var tf: Transform3D = hammer.global_transform
+		tf.basis = _cam.global_transform.basis * Basis(Vector3(0, 0, 1), ang)
+		hammer.global_transform = tf
 
 func _sk_candy_barrage(u: Dictionary, tgt) -> void:            # 糖果龟·技能二糖衣炮弹(封板·120龟能): 敌最密集区降糖衣炮弹雨8跳·可见糖弹从天落下·落点局部命中(用户2026-07-14全套标准)·友2%maxHp盾/敌0.2A+2%maxHp魔法+减速20%
 	var es: Array = []
@@ -10916,11 +10911,11 @@ func _sk_candy_barrage(u: Dictionary, tgt) -> void:            # 糖果龟·技�
 		center = c / float(es.size())                            # 单位最密集区域(简化=敌质心)
 	_skill_ring(center, Color(1.0, 0.62, 0.84, 0.32), 600.0)     # 600码笼罩区淡指示
 	var uu: Dictionary = u; var ctr: Vector2 = center
-	for i in range(8):                                          # 8跳·每跳3颗糖弹散落该区·落点局部结算
-		_pending_shots.append({"delay": float(i) * 0.5, "src": u, "fn": func() -> void:
-			for b in range(3):
+	for i in range(8):                                          # 8跳·每跳6颗糖弹密集散落该区·落点局部结算(用户2026-07-15"不够密集"→3→6颗)
+		_pending_shots.append({"delay": float(i) * 0.45, "src": u, "fn": func() -> void:
+			for b in range(6):
 				var ang := randf() * TAU
-				var land: Vector2 = ctr + Vector2(cos(ang), sin(ang)) * randf_range(20.0, 560.0)
+				var land: Vector2 = ctr + Vector2(cos(ang), sin(ang)) * randf_range(15.0, 470.0)
 				_candy_shell_drop(land, func() -> void:          # 糖弹落地: 糖爆+落点120码局部结算
 					_burst_vfx("res://assets/sprites/vfx/candy-burst.png", land, 130.0, 0.28)
 					for o in _units:
@@ -10929,7 +10924,7 @@ func _sk_candy_barrage(u: Dictionary, tgt) -> void:            # 糖果龟·技�
 						if o["side"] == uu["side"]:
 							_grant_shield(o, uu["maxHp"] * 0.02, 2.0)
 						else:
-							_apply_damage_from(uu, o, int(uu["atk"] * 0.2 + uu["maxHp"] * 0.02), Color("#ff9ed6"))
+							_apply_damage_from(uu, o, _resolve_dmg(uu, uu["atk"] * 0.2 + uu["maxHp"] * 0.02, o, true), Color("#ff9ed6"), 0.0, false, true)
 							o["spd_move_mult"] = 0.8; o["spd_dbf_until"] = _t + 0.5)
 			})
 
@@ -13258,7 +13253,7 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 		if not es.is_empty():
 			var per: float = u["maxHp"] * u["death_aoe"] / float(es.size())
 			for o in es:
-				_apply_damage_from(u, o, int(per), Color("#ff8ad8"), 0.0, true, true)
+				_apply_damage_from(u, o, _resolve_dmg(u, per, o, true), Color("#ff8ad8"), 0.0, false, true)   # 魔法伤(蓝字·吃魔抗·封板"魔法"·用户2026-07-15纠错·原raw=true真伤=错)
 		if u.get("summon_kind", "") == "candybomb":   # 糖果炸弹死亡: 大糖爆+震屏+糖泡四溅(用户2026-07-14参照海盗船完整呈现)
 			_burst_vfx("res://assets/sprites/vfx/candy-burst.png", u["pos"], 340.0, 0.4)
 			_shake(JUICE_SHAKE_HEAVY)
