@@ -1404,7 +1404,7 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "每次释放随机抽取一个花色，永久提升一项属性：♠黑桃 攻击力 <span class=\"val-atk\">+5</span>、最大生命值 <span class=\"val-heal\">+30</span>；♥红心 护甲 <span class=\"val-def\">+2</span>、魔抗 <span class=\"val-magic\">+2</span>；♦方块 暴击率 <span class=\"val-atk\">+8%</span>、护甲穿透 <span class=\"val-atk\">+2</span>；♣梅花 生命偷取 <span class=\"val-heal\">+4%</span>。选此技：登场损失 30% 最大生命，换基础多重打击概率 40%→60%",
+        "brief": "每次释放进入抽取阶段（锁龟能），花色转盘落定后永久提升一项属性：♠黑桃 攻击力 <span class=\"val-atk\">+3</span>、最大生命值 <span class=\"val-heal\">+10</span>；♥红心 护甲 <span class=\"val-def\">+1</span>、魔抗 <span class=\"val-magic\">+1</span>；♦方块 暴击率 <span class=\"val-atk\">+2%</span>、护甲穿透 <span class=\"val-atk\">+1</span>；♣梅花 生命偷取 <span class=\"val-heal\">+0.5%</span>、攻击速度 <span class=\"val-atk\">+2%</span>。选此技：登场损失 30% 最大生命，换基础多重打击概率 40%→60%",
         "detail": "〖用户 2026-07-09 逐字〗<span class=\"val-normal\">选择本技能时</span>：赌神龟登场即<span class=\"val-true\">损失 30% 最大生命值</span>，换取<span class=\"val-atk\">额外 +20% 多重打击概率</span>（基础 40% → 60%）。\n\n<span class=\"val-normal\">主动</span>（龟能满自动释放）：随机抽取一个花色，永久提升一项属性：♠黑桃 攻击力 <span class=\"val-atk\">+5</span>、最大生命值 <span class=\"val-heal\">+30</span>；♥红心 护甲 <span class=\"val-def\">+2</span>、魔抗 <span class=\"val-magic\">+2</span>；♦方块 暴击率 <span class=\"val-atk\">+8%</span>、护甲穿透 <span class=\"val-atk\">+2</span>；♣梅花 生命偷取 <span class=\"val-heal\">+4%</span>。\n\n<span style=\"color:#8a93a0\">玩家赌神抽到的花色会在【本大轮】跨场累积，下一场登场时自动套用；换大轮时重置。</span>"
       }
     ],

@@ -55,7 +55,7 @@ const STATS := {
 	"angel": [false, 105.0, 0.85, 400.0], "ice": [false, 105.0, 0.85, 400.0], "ninja": [true, 145.0, 0.6, 70.0],
 	"two_head": [false, 145.0, 0.85, 400.0], "ghost": [false, 145.0, 0.6, 400.0], "diamond": [true, 70.0, 1.1, 70.0],
 	"fortune": [true, 105.0, 0.75, 70.0], "dice": [true, 145.0, 0.6, 70.0], "rainbow": [true, 105.0, 0.7, 70.0],
-	"gambler": [false, 145.0, 0.85, 400.0], "hunter": [false, 145.0, 0.7, 400.0], "pirate": [true, 105.0, 0.85, 70.0],
+	"gambler": [false, 145.0, 1.4286, 400.0], "hunter": [false, 145.0, 0.7, 400.0], "pirate": [true, 105.0, 0.85, 70.0],   # 赌神基础攻速0.7次/秒(间隔1/0.7·用户2026-07-14)
 	"candy": [true, 105.0, 0.85, 70.0], "bubble": [false, 70.0, 1.1, 400.0], "line": [false, 145.0, 0.6, 400.0],
 	"lightning": [false, 145.0, 0.6, 400.0], "phoenix": [false, 105.0, 0.7, 400.0], "lava": [false, 145.0, 0.7, 400.0],
 	"cyber": [false, 105.0, 0.85, 450.0], "crystal": [true, 70.0, 1.1, 70.0], "chest": [true, 105.0, 1.1, 70.0],
@@ -9416,30 +9416,30 @@ func _sk_gambler_fate_wheel(u: Dictionary) -> void:             # 赌神龟·命
 func _gambler_apply_wheel_suit(u: Dictionary, suit: int) -> void:   # 命运之轮落定实装: 加属性+跳文字(该花色色)
 	match suit:
 		0:
-			u["base_atk"] = float(u["base_atk"]) + 5.0; u["maxHp"] += 30.0; u["hp"] += 30.0
-			_float_text(u["pos"] + Vector2(0, -64), "♠ 攻+5 血+30", Color("#ffd93d"))
+			u["base_atk"] = float(u["base_atk"]) + 3.0; u["maxHp"] += 10.0; u["hp"] += 10.0
+			_float_text(u["pos"] + Vector2(0, -64), "♠ 攻+3 血+10", Color("#ffd93d"))
 		1:
-			u["base_def"] = float(u["base_def"]) + 2.0; u["base_mr"] = float(u["base_mr"]) + 2.0
-			_float_text(u["pos"] + Vector2(0, -64), "♥ 护甲+2 魔抗+2", Color("#ff5b6b"))
+			u["base_def"] = float(u["base_def"]) + 1.0; u["base_mr"] = float(u["base_mr"]) + 1.0
+			_float_text(u["pos"] + Vector2(0, -64), "♥ 护甲+1 魔抗+1", Color("#ff5b6b"))
 		2:
-			u["crit"] = float(u["crit"]) + 0.08; u["armor_pen"] = float(u.get("armor_pen", 0.0)) + 2.0
-			_float_text(u["pos"] + Vector2(0, -64), "♦ 暴击+8% 护穿+2", Color("#ff9f43"))
+			u["crit"] = float(u["crit"]) + 0.02; u["armor_pen"] = float(u.get("armor_pen", 0.0)) + 1.0
+			_float_text(u["pos"] + Vector2(0, -64), "♦ 暴击+2% 护穿+1", Color("#ff9f43"))
 		_:
-			_buff(u, "lifesteal", 0.04, false, 9999.0)
-			_float_text(u["pos"] + Vector2(0, -64), "♣ 吸血+4%", Color("#5be08a"))
+			_buff(u, "lifesteal", 0.005, false, 9999.0); u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + 0.02
+			_float_text(u["pos"] + Vector2(0, -64), "♣ 吸血+0.5% 攻速+2%", Color("#5be08a"))
 	_recalc_stats(u)
 
 func _gambler_apply_wheel_stacks(u: Dictionary) -> void:   # 命运之轮跨场累积(方案B): 登场套用GameState本大轮已抽花色(切轮重置)·只玩家赌神调用
 	var ws: Dictionary = GameState.gambler_wheel_stacks
 	if ws.is_empty(): return
 	for i in range(int(ws.get("spade", 0))):
-		u["base_atk"] = float(u["base_atk"]) + 5.0; u["maxHp"] += 30.0; u["hp"] += 30.0
+		u["base_atk"] = float(u["base_atk"]) + 3.0; u["maxHp"] += 10.0; u["hp"] += 10.0
 	for i in range(int(ws.get("heart", 0))):
-		u["base_def"] = float(u["base_def"]) + 2.0; u["base_mr"] = float(u["base_mr"]) + 2.0
+		u["base_def"] = float(u["base_def"]) + 1.0; u["base_mr"] = float(u["base_mr"]) + 1.0
 	for i in range(int(ws.get("diamond", 0))):
-		u["crit"] = float(u["crit"]) + 0.08; u["armor_pen"] = float(u.get("armor_pen", 0.0)) + 2.0
+		u["crit"] = float(u["crit"]) + 0.02; u["armor_pen"] = float(u.get("armor_pen", 0.0)) + 1.0
 	for i in range(int(ws.get("club", 0))):
-		_buff(u, "lifesteal", 0.04, false, 9999.0)
+		_buff(u, "lifesteal", 0.005, false, 9999.0); u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + 0.02
 	_recalc_stats(u)
 
 # 赌神小型glow pop(缩放淡出·放慢放大更明显·用户2026-07-14)

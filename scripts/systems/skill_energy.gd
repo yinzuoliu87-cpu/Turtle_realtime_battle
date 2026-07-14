@@ -30,7 +30,7 @@ const SKILL_COST := {
 	"basicBarrage": 80.0, "basicChiWave": 100.0, "basicSlam": 120.0, "bambooSmack": 120.0, "bambooSpikes": 130.0, "angelEquality": 60.0,
 	"ninjaShuriken": 95.0, "ninjaBomb": 100.0, 
 	"ghostPhantom": 95.0, "diamondPowerball": 100.0, "diamondSmash": 80.0, 
-	"rainbowStorm": 80.0, "gamblerDraw": 80.0, "gamblerFateWheel": 80.0,
+	"rainbowStorm": 80.0, "gamblerDraw": 80.0, "gamblerFateWheel": 110.0,
 	"hunterShot": 90.0, "hunterBarrage": 100.0, "candyBarrage": 120.0, "candyHammer": 80.0, "candyBomb": 100.0, 
 	"lightningBarrage": 120.0, "lightningShield": 120.0, "phoenixScald": 100.0,
 	"lavaQuake": 115.0, "lavaErupt": 80.0, "crystalBurst": 100.0, "crystalBall": 70.0,
