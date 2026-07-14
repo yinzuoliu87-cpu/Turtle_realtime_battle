@@ -1340,7 +1340,7 @@ func _spawn_teams() -> void:
 			_lu["_review_dummy"] = false
 		if _review_demo() and str(left[i]) == "gambler" and REVIEW_SKILL_IDX == 2:   # 赌注低血模式: 起手22%血(<40%)→触发低血分支(回8%maxHp+3秒多重·绿闪绿环)·随回血/消耗在阈值震荡(巨血防死)
 			_lu["maxHp"] = float(_lu["maxHp"]) * 20.0
-			_lu["hp"] = _lu["maxHp"] * 0.22
+			_lu["hp"] = _lu["maxHp"] * 0.7   # 起手70%>40%→先正常模式(消耗40%+红字多重), 掉到40%以下再低血模式(回血)·两模式都看到
 			_lu["_review_dummy"] = false
 		if OS.has_environment("EQDEMO_EQUIP"):   # 装备演示
 			if i == 0:   # === 携带者(持受审装备) ===
@@ -9321,20 +9321,21 @@ func _gambler_bet_multi(u: Dictionary, tgt: Dictionary, ch: float) -> void:
 	_heal(u, u["atk"] * 0.3)   # ★每触发一次多重打击回0.3ATK生命(用户2026-07-14·赌注期间回血本)
 	var bdmg: int = _atk_dmg(u, 1.0, tgt)   # 额外一发=普攻1.0A
 	_pending_shots.append({"delay": 0.09, "fn": func() -> void:
-		_gambler_throw_hit(u, tgt, bdmg, false)      # 甩基础牌(自身不再掷·递归在下句续)
+		_gambler_throw_hit(u, tgt, bdmg, false, false)   # 甩基础牌(普攻物理红·非穿透·自身不再掷·递归在下句续)
 		_gambler_bet_multi(u, tgt, ch * 0.8)         # 连锁×0.8递减
 		, "src": u})
 
 # 赌神: 甩1张牌→命中结算dmg+金光pop (赌注barrage用·命中才跳伤害; roll_multi=每张触发多重打击)
-func _gambler_throw_hit(u: Dictionary, tgt: Dictionary, dmg: int, roll_multi: bool = false) -> void:
+func _gambler_throw_hit(u: Dictionary, tgt: Dictionary, dmg: int, roll_multi: bool = false, is_true: bool = true) -> void:
 	if tgt == null or not tgt.get("alive", false): return
+	var dcol: Color = Color("#ffd93d") if is_true else Color("#ff6b6b")   # 穿透金 / 普攻物理红
 	var from3 := _world_pos(u["pos"], 1.0)
 	var tp: Vector2 = tgt["pos"]
 	var to3 := _world_pos(tp, 1.0)
 	var th: float = float(tgt.get("height", 0.0))
 	var t: Texture2D = load("res://assets/sprites/vfx/gambler-card.png")
 	if t == null:
-		_apply_damage_from(u, tgt, dmg, Color("#ffd93d"), 0.0, true)
+		_apply_damage_from(u, tgt, dmg, dcol, 0.0, is_true)
 		if roll_multi: _gambler_bet_multi(u, tgt, _gambler_bet_ch(u))
 		return
 	var card := Sprite3D.new()
@@ -9363,7 +9364,7 @@ func _gambler_throw_hit(u: Dictionary, tgt: Dictionary, dmg: int, roll_multi: bo
 	ctw.tween_callback(func() -> void:
 		if is_instance_valid(card): card.queue_free()
 		if tgt.get("alive", false):
-			_apply_damage_from(u, tgt, dmg, Color("#ffd93d"), 0.0, true)   # ★命中才跳伤害
+			_apply_damage_from(u, tgt, dmg, dcol, 0.0, is_true)   # ★命中才跳伤害(穿透金/物理红)
 			if roll_multi: _gambler_bet_multi(u, tgt, _gambler_bet_ch(u))  # 每张牌触发多重打击(B)
 		_gambler_pop(tp, th, Color(1.0, 0.85, 0.35, 0.9)))
 
