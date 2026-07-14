@@ -86,8 +86,8 @@ static func _review_demo() -> bool:
 	if OS.has_environment("REVIEW"):
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
-const REVIEW_TURTLE := "hunter"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := -1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动·看普攻/技能任一伤害处决) (猎人: 0射箭✅/1精准射击✅/2隐蔽✅/3狩猎弹幕✅/-1被动猎杀)
+const REVIEW_TURTLE := "pirate"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
+const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀/1火炮齐射/2朗姆酒/3海盗船/-1被动掠夺)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -149,6 +149,7 @@ const REVIEW_DEMO_CFG := {
 	"hunter:2": [ {"dx": -165.0, "dy": 20.0}, {"dx": 165.0, "dy": -20.0} ],   # 猎人隐蔽: 双侧melee假人夹击(都<150威胁·不固定→追击)→触发智能翻滚"远离最近近战"分支①·猎人在两假人间左右横跳(方向随最近威胁反转→留在中央开阔区)·看残影拖尾+起落尘+灵巧绿环·下发普攻红色强化数字
 	"hunter:3": [ {"dx": 320.0, "dy": -80.0, "fixed": true}, {"dx": 320.0, "dy": 80.0, "fixed": true}, {"dx": 540.0, "dy": 0.0, "fixed": true} ],   # 猎人狩猎弹幕: 3假人散开→看10箭每0.2s一发·随机锁敌·慢速抛物线追踪(箭头随角度上扬/下俯)·命中才跳白色真伤(0.36A/箭·共3.6A)
 	"hunter:-1": [ {"dx": 300.0, "dy": -75.0, "fixed": true}, {"dx": 300.0, "dy": 75.0, "fixed": true} ],   # 猎人被动猎杀: 2残血demo靶(_hunt_demo_victim·钉在12%血)→猎人普攻/技能任一伤害都处决(金斩杀爆+处决金字)→窃取(金精华流回猎人+掠夺金字+金光·猎人属性永久累积变强)·不真死循环看
+	"pirate:0": [ {"dx": 120.0, "dy": 0.0} ],   # 海盗弯刀普攻: 单假人贴脸→看近战弯刀劈砍(1A物理+自愈0.2A绿字)
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -3834,6 +3835,8 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		_diamond_slash_fx(u, tgt)
 	if u["id"] == "fortune":                                        # 财神普攻·金剑打击: 金色斩弧+迸金(伤害走 _do_basic·吃金币加成)
 		_fortune_strike_fx(u, tgt)
+	if u["id"] == "pirate":                                         # 海盗普攻·弯刀劈砍: 钢色新月斩弧+命中环(伤害走 _do_basic·1A物理+自愈0.2A)
+		_weapon_slash(u["pos"], tgt["pos"], Color(0.88, 0.93, 1.0))
 	var spec: Dictionary = BASIC_ATK.get(u["id"], DEFAULT_BASIC)
 	if u["id"] == "lava" and u.get("lava_pierce_next", false):         # 技三·穿透普攻: 下一发熔岩弹变贯穿全场
 		u["lava_pierce_next"] = false
