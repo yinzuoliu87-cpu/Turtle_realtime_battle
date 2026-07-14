@@ -3642,8 +3642,8 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 	# 中毒特效: 持续冒毒绿泡(照灼烧余烬·让"中毒"状态一眼可辨·用户2026-07-14)
 	if u["alive"] and int(u.get("dot_stacks", {}).get("poison", 0)) > 0:
 		u["poison_vfx_t"] = float(u.get("poison_vfx_t", 0.0)) + delta
-		while u["poison_vfx_t"] >= 0.28:
-			u["poison_vfx_t"] -= 0.28
+		while u["poison_vfx_t"] >= 0.2:
+			u["poison_vfx_t"] -= 0.2
 			_spawn_poison_bubble(u)
 	if u["id"] == "phoenix" and u.get("flame_sector", null) != null and is_instance_valid(u.get("flame_sector")) and _t > float(u.get("flame_sector_t", 0.0)):
 		u["flame_sector"].visible = false
@@ -6081,16 +6081,16 @@ func _spawn_poison_bubble(u: Dictionary) -> void:   # 中毒持续视觉(照灼�
 	spr.texture = _make_fire_glow_tex()   # 软圆辉光当毒泡
 	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	spr.shaded = false; spr.transparent = true
-	spr.pixel_size = 0.0040
-	spr.modulate = Color(0.55, 0.92, 0.22, 0.85)   # 毒绿(偏黄绿·刻意区分治疗纯绿)
-	spr.scale = Vector3(0.5, 0.5, 0.5)
-	var h0: float = 0.35
+	spr.pixel_size = 0.0068   # 大而明显(用户2026-07-14"毒buff再大一点")
+	spr.modulate = Color(0.62, 0.98, 0.18, 0.98)   # 亮毒绿(偏黄绿·刻意区分治疗纯绿)
+	spr.scale = Vector3(0.75, 0.75, 0.75)
+	var h0: float = 0.4
 	spr.position = _world_pos(pos2d, h0)
 	_world.add_child(spr)
 	var tw := _reg_tween(); tw.set_parallel(true)
-	tw.tween_property(spr, "position", _world_pos(pos2d, h0 + 0.6), 0.6)   # 缓升(毒气上飘)
-	tw.tween_property(spr, "scale", Vector3(0.92, 0.92, 0.92), 0.6)        # 边升边胀(泡)
-	tw.tween_property(spr, "modulate", Color(0.4, 0.72, 0.15, 0.0), 0.6)
+	tw.tween_property(spr, "position", _world_pos(pos2d, h0 + 0.85), 0.7)   # 缓升(毒气上飘·升更高)
+	tw.tween_property(spr, "scale", Vector3(1.5, 1.5, 1.5), 0.7)            # 边升边胀(大泡)
+	tw.tween_property(spr, "modulate", Color(0.45, 0.78, 0.12, 0.0), 0.7)
 	tw.chain().tween_callback(spr.queue_free)
 
 # 喷火扇形AOE指示: 贴地 淡橙填充 + 亮橙边轮廓 (边界明确, 跟伤害扇形一致); 持续刷新跟目标, 停喷由_tick_effects隐藏
