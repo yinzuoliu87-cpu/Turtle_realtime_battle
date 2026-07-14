@@ -86,8 +86,8 @@ static func _review_demo() -> bool:
 	if OS.has_environment("REVIEW"):
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
-const REVIEW_TURTLE := "gambler"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 3   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转 (赌神: 0普攻卡牌✅/1万能牌✅/2赌注✅/3命运之轮)
+const REVIEW_TURTLE := "hunter"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
+const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转 (猎人战役开始)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -144,6 +144,7 @@ const REVIEW_DEMO_CFG := {
 	"gambler:1": [ {"dx": 320.0, "dy": -30.0, "fixed": true} ],   # 赌神万能牌: 单假人射程内→丢发光小丑牌+命中金光+减攻红标+自身护盾罩+回血绿
 	"gambler:2": [ {"dx": 320.0, "dy": -30.0, "fixed": true} ],   # 赌神赌注: 单假人→牺牲40%血红闪+甩7张牌barrage(错峰·命中才跳伤害)+金光pop
 	"gambler:3": [ {"dx": 300.0, "dy": 0.0, "fixed": true} ],   # 赌神命运之轮: 单假人→反复放看花色♠♥♦♣老虎机转盘落定+该色大爆+属性飘字
+	"hunter:0": [ {"dx": 340.0, "dy": -30.0, "fixed": true} ],   # 猎人射箭: 单假人射程内(340<400)→看箭矢弹道(点先行4帧)命中+目标<50%血追猎+50%攻速
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -6417,6 +6418,12 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 		p.pixel_size = 0.9 / 54.0   # ~0.9m 高扑克牌
 		p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		card_spin = true
+	elif src is Dictionary and str(src.get("id", "")) == "hunter":   # 猎人: 射箭矢(4帧·点先行贴XZ转向行进方向·接现有hunter-arrow素材)
+		p.texture = load("res://assets/sprites/vfx/hunter-arrow.png")
+		p.hframes = 4; p.frame = 0
+		p.pixel_size = (72.0 * WS) / 128.0   # 箭512×128 4帧·每帧128 → ~1.7m箭
+		p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		oriented = true
 	elif src is Dictionary and _PROJ_WAVE.get(str(src.get("id", "")), false):
 		p.texture = _make_wave_texture(col)
 		p.pixel_size = 0.045   # 尖尖波 52×20 → ~2.3×0.9m
