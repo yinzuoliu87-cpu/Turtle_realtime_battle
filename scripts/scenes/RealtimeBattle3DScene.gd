@@ -86,8 +86,8 @@ static func _review_demo() -> bool:
 	if OS.has_environment("REVIEW"):
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
-const REVIEW_TURTLE := "rainbow"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 3   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转 (彩虹: 0=普攻七彩光束(看棱镜随机色)/1=棱镜护盾/2=全色风暴/3=反射弹射)
+const REVIEW_TURTLE := "gambler"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
+const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转 (赌神战役开始)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -140,6 +140,7 @@ const REVIEW_DEMO_CFG := {
 	"ghost:1": [ {"dx": 300.0, "dy": 0.0, "fixed": true} ],   # 幽灵技1幽冥突袭: 单假人→看幻影+触碰图+抛飞juggle+1.5A魔法+吸血+闪避
 	"ghost:2": [ {"dx": 300.0, "dy": 0.0, "fixed": true} ],   # 幽灵技2灵魂风暴: 单假人→看ghost-storm风暴图+2段魔法上诅咒(已诅咒→2.5A真伤)
 	"diamond:2": [ {"dx": 500.0, "dy": 0.0, "fixed": true} ],   # 钻石滚球: 单假人放远(500码·>200)+固定不动→开场触发200码被动自动免费滚球跨场撞击(用户2026-07-12)
+	"gambler:0": [ {"dx": 350.0, "dy": -30.0, "fixed": true} ],   # 赌神卡牌射击: 单假人射程内(350<400)→赌神站原地甩旋转扑克牌+看多重打击被动连锁(40%再打)
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -6403,7 +6404,13 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 	var start2d: Vector2 = from if from != null else (src["pos"] if src != null else tgt["pos"])
 	var p := Sprite3D.new()
 	var oriented := false
-	if src is Dictionary and _PROJ_WAVE.get(str(src.get("id", "")), false):
+	var card_spin := false
+	if src is Dictionary and str(src.get("id", "")) == "gambler":   # 赌神: 甩旋转扑克牌(黑桃A)
+		p.texture = load("res://assets/sprites/vfx/gambler-card.png")
+		p.pixel_size = 0.9 / 54.0   # ~0.9m 高扑克牌
+		p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		card_spin = true
+	elif src is Dictionary and _PROJ_WAVE.get(str(src.get("id", "")), false):
 		p.texture = _make_wave_texture(col)
 		p.pixel_size = 0.045   # 尖尖波 52×20 → ~2.3×0.9m
 		p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
@@ -6414,6 +6421,8 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 	if oriented:
 		p.billboard = BaseMaterial3D.BILLBOARD_DISABLED
 		p.axis = Vector3.AXIS_Y
+	elif card_spin:
+		p.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # 手动: 面向相机+滚转(旋转扑克牌)
 	else:
 		p.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	p.shaded = false
@@ -6424,7 +6433,7 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 	_projectiles.append({
 		"node": p, "from": world_from, "tgt": tgt, "dmg": dmg, "col": col,
 		"src": src, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 700.0, 0.22, 0.7), "basic_onhit": basic_onhit,
-		"oriented": oriented, "dtype": _last_dmg_type,
+		"oriented": oriented, "card_spin": card_spin, "dtype": _last_dmg_type,
 	})
 
 func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   # 玩偶小熊仔: 召出走路动画小熊→走向敌→踢击动画(伤+击飞)→消失
@@ -6588,6 +6597,10 @@ func _step_projectiles(delta: float) -> void:
 				var wtf2: Transform3D = node.global_transform
 				wtf2.basis = _cam.global_transform.basis * Basis(Vector3(0, 0, 1), roll2)
 				node.global_transform = wtf2
+		if pr.get("card_spin", false) and _cam != null:            # 赌神: 面向相机+滚转(旋转扑克牌·复用wisp_dir的相机basis法)
+			var ctf: Transform3D = node.global_transform
+			ctf.basis = _cam.global_transform.basis * Basis(Vector3(0, 0, 1), pr["t"] * 13.0)
+			node.global_transform = ctf
 		if pr.get("shuriken_anim", false):                         # 手里剑: 4帧忍者飞镖旋转动画
 			node.frame = int(pr["t"] * 18.0) % 4
 		if frac >= 1.0:
