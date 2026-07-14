@@ -9896,14 +9896,17 @@ func _sk_pirate_rum(u: Dictionary) -> void:                     # 海盗龟·朗
 		_gambler_pop(uu["pos"], float(uu.get("height", 0.0)) + 0.5, Color(0.95, 0.62, 0.25, 0.85))
 		_skill_ring(uu["pos"], Color(0.95, 0.62, 0.25, 0.55), 52.0))
 
-func _pirate_rum_bottle(from2d: Vector2, from_h: float, to2d: Vector2, on_land: Callable) -> void:   # 朗姆酒瓶: 从船抛物旋转飞向海盗→到手调on_land
+func _pirate_rum_bottle(from2d: Vector2, from_h: float, to2d: Vector2, on_land: Callable) -> void:   # 朗姆酒瓶: 船抛真酒瓶(equip-rum-icon)翻滚飞向海盗→到手调on_land
 	var b := Sprite3D.new()
-	b.texture = _make_glow_texture()
+	var bt := load("res://assets/sprites/equip/equip-rum-icon.png")
+	if bt == null:
+		if on_land.is_valid(): on_land.call()
+		return
+	b.texture = bt
 	b.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	b.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	b.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # 手动面向相机+翻滚(酒瓶旋转)
 	b.shaded = false; b.transparent = true
-	b.modulate = Color(0.85, 0.55, 0.2, 0.95)   # 琥珀酒色
-	b.pixel_size = (26.0 * WS) / float(maxi(1, b.texture.get_height()))
+	b.pixel_size = (46.0 * WS) / float(maxi(1, bt.get_height()))
 	b.position = _world_pos(from2d, from_h)
 	_world.add_child(b)
 	var dur: float = clampf(from2d.distance_to(to2d) / 900.0, 0.4, 0.7)
@@ -9913,6 +9916,10 @@ func _pirate_rum_bottle(from2d: Vector2, from_h: float, to2d: Vector2, on_land: 
 		var flat: Vector2 = from2d.lerp(to2d, p)
 		var hh: float = from_h * (1.0 - p) + 2.4 * sin(PI * p) + 1.0   # 高抛物(船高抛给海盗)
 		b.position = _world_pos(flat, maxf(0.4, hh))
+		if _cam != null:                                # 面向相机+屏幕内翻滚
+			var tf: Transform3D = b.global_transform
+			tf.basis = _cam.global_transform.basis * Basis(Vector3(0, 0, 1), p * TAU * 2.5)
+			b.global_transform = tf
 	, 0.0, 1.0, dur).set_trans(Tween.TRANS_SINE)
 	tw.tween_callback(func() -> void:
 		if is_instance_valid(b): b.queue_free()
