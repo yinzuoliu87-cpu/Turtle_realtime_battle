@@ -1442,7 +1442,7 @@
       "hpThresh": 14,
       "stealPct": 14,
       "lifesteal": 8,
-      "brief": "猎人龟的普攻/技能/装备 任一伤害都会处决生命值低于 <span class=\"val-atk\">14%</span> 的敌人；处决/击杀时窃取对方 <span class=\"val-atk\">14%</span> 基础属性并叠加 <span class=\"val-heal\">8%</span> 生命偷取，永久累积到战斗结束。",
+      "brief": "场上只要有敌人生命值低于 <span class=\"val-atk\">14%</span>，猎人龟就自动射出一支强化箭将其处决；处决/击杀时窃取对方 <span class=\"val-atk\">14%</span> 基础属性并叠加 <span class=\"val-heal\">8%</span> 生命偷取，永久累积到战斗结束。",
       "desc": "猎人龟的普攻/技能/装备 任一伤害都会处决生命值低于 <span class=\"val-atk\">14%</span> 的敌人（被【精准射击】猎杀印记标记时抬到24%）；处决/击杀时窃取对方 <span class=\"val-atk\">14%</span> 基础属性并叠加 <span class=\"val-heal\">8%</span> 生命偷取，永久累积到战斗结束。\n已猎杀 {B:hunterKills} 只 — 累计 攻击 +{N:hunterStolenAtk} / 护甲 +{D:hunterStolenDef} / 魔抗 +{M:hunterStolenMr} / 最大生命值 +{H:hunterStolenHp} / 生命偷取 {B:lifesteal}%"
     },
     "skillPool": [
