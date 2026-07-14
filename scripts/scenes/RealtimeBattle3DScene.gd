@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "hunter"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 3   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转 (猎人: 0射箭✅/1精准射击✅/2隐蔽✅/3狩猎弹幕)
+const REVIEW_SKILL_IDX := -1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动·看普攻/技能任一伤害处决) (猎人: 0射箭✅/1精准射击✅/2隐蔽✅/3狩猎弹幕✅/-1被动猎杀)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -148,6 +148,7 @@ const REVIEW_DEMO_CFG := {
 	"hunter:1": [ {"dx": 340.0, "dy": -30.0, "fixed": true} ],   # 猎人精准射击: 单假人→看瞄准蓄力红线+金色狙击曳光+命中毒绿爆+猎杀印记
 	"hunter:2": [ {"dx": -165.0, "dy": 20.0}, {"dx": 165.0, "dy": -20.0} ],   # 猎人隐蔽: 双侧melee假人夹击(都<150威胁·不固定→追击)→触发智能翻滚"远离最近近战"分支①·猎人在两假人间左右横跳(方向随最近威胁反转→留在中央开阔区)·看残影拖尾+起落尘+灵巧绿环·下发普攻红色强化数字
 	"hunter:3": [ {"dx": 320.0, "dy": -80.0, "fixed": true}, {"dx": 320.0, "dy": 80.0, "fixed": true}, {"dx": 540.0, "dy": 0.0, "fixed": true} ],   # 猎人狩猎弹幕: 3假人散开→看10箭每0.2s一发·随机锁敌·慢速抛物线追踪(箭头随角度上扬/下俯)·命中才跳白色真伤(0.36A/箭·共3.6A)
+	"hunter:-1": [ {"dx": 300.0, "dy": -75.0, "fixed": true}, {"dx": 300.0, "dy": 75.0, "fixed": true} ],   # 猎人被动猎杀: 2残血demo靶(_hunt_demo_victim·钉在12%血)→猎人普攻/技能任一伤害都处决(金斩杀爆+处决金字)→窃取(金精华流回猎人+掠夺金字+金光·猎人属性永久累积变强)·不真死循环看
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -1391,6 +1392,10 @@ func _spawn_teams() -> void:
 			ru["hp"] = ru["maxHp"]
 			if not REVIEW_DUMMY_KILLABLE:
 				ru["_review_dummy"] = true       # 不死沙包(受击回满); KILLABLE=会死(看换目标)
+			if _review_turtle() == "hunter" and _review_skill_idx() == -1:   # 猎人被动猎杀demo靶: 钉12%残血(<14%斩杀线)→猎人任一伤害都处决; 不真死(执行路径复位)循环看处决+窃取
+				ru.erase("_review_dummy")
+				ru["maxHp"] = 3500.0; ru["hp"] = ru["maxHp"] * 0.12
+				ru["_hunt_demo_victim"] = true
 		if OS.has_environment("EQDEMO_EQUIP"):   # 装备演示假人: 固定不动/5000血/30双抗/会掉血
 			if OS.has_environment("EQDEMO_ENEMY_ATTACKS"):
 				ru["no_basic"] = false; ru["no_move"] = false   # 敌逼近+普攻打携带者(演受伤/挨打类件)
@@ -7022,9 +7027,14 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	if src.get("id", "") == "hunter" and u.get("alive", false) and u != src:
 		var _hthr: float = 0.24 if _t < float(u.get("hunt_mark_until", 0.0)) else 0.14
 		if u["hp"] < u["maxHp"] * _hthr:
-			u["hp"] = 0.0
+			_hunter_execute_fx(u)                                  # 处决金色斩杀爆(环+金光pop+轻震)
 			_float_text(u["pos"] + Vector2(0, -40), "处决!", Color("#ffd700"))
-			_kill(u, src)
+			if u.get("_hunt_demo_victim", false):                  # 被动demo靶: 不真死→显窃取+复位残血(无限循环看被动·仅评审)
+				_hunter_apply_steal(src, u)
+				u["hp"] = u["maxHp"] * 0.12
+			else:
+				u["hp"] = 0.0
+				_kill(u, src)
 	# 怒气 (熔岩造伤25% / 受伤20%)
 	if src["id"] == "lava":
 		src["rage"] = minf(RAGE_MAX, src["rage"] + float(dmg) * 0.10)
@@ -9763,6 +9773,37 @@ func _step_homing_arrow(pr: Dictionary, node: Sprite3D, delta: float) -> bool:  
 			tf.basis = _cam.global_transform.basis * Basis(Vector3(0, 0, 1), roll)
 			node.global_transform = tf
 	return true
+
+func _hunter_execute_fx(u: Dictionary) -> void:   # 被动猎杀·处决瞬间: 金色斩杀爆(环+金光pop+轻震)·配"处决!"金字(用户2026-07-14)
+	_skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.7), 56.0)
+	_gambler_pop(u["pos"], float(u.get("height", 0.0)) + 0.5, Color(1.0, 0.86, 0.3, 0.85))
+	_shake(0.05)
+
+func _hunter_apply_steal(killer: Dictionary, victim: Dictionary) -> void:   # 被动猎杀·窃取结算: 偷14%攻/防/魔抗/最大生命+叠8%吸血(永久累积到战斗结束)+金色精华VFX
+	if killer == null or not killer.get("alive", false) or killer.get("id", "") != "hunter": return
+	killer["base_atk"] += float(victim["base_atk"]) * 0.14
+	killer["base_def"] += float(victim["base_def"]) * 0.14   # 窃取: 护甲/魔抗/最大生命也偷14%
+	killer["base_mr"] += float(victim["base_mr"]) * 0.14
+	var hs: float = float(victim["maxHp"]) * 0.14
+	killer["maxHp"] += hs; killer["hp"] += hs
+	killer["lifesteal"] += 0.08
+	_recalc_stats(killer)
+	_hunter_steal_fx(killer, victim["pos"])
+
+func _hunter_steal_fx(killer: Dictionary, from2d: Vector2) -> void:   # 被动猎杀·窃取: 金色精华从死者流向猎人 + "掠夺!"金字 + 猎人金光环(累积变强可视化·用户2026-07-14)
+	if not killer.get("alive", false): return
+	var kp: Vector2 = killer["pos"]
+	for k in range(3):
+		var off := Vector2(randf_range(-18.0, 18.0), randf_range(-14.0, 14.0))
+		var mote := _glow_bb(from2d + off, 0.9, 24.0, Color(1.0, 0.83, 0.28, 0.95))
+		var tw := _reg_tween()
+		tw.tween_interval(float(k) * 0.07)
+		var mv := tw.tween_property(mote, "position", _world_pos(kp, 1.1), 0.45)
+		mv.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.parallel().tween_property(mote, "scale", Vector3(0.4, 0.4, 0.4), 0.45)
+		tw.chain().tween_callback(mote.queue_free)
+	_float_text(kp + Vector2(0, -66), "掠夺!", Color("#ffd700"))
+	_skill_ring(kp, Color(1.0, 0.84, 0.2, 0.55), 46.0)
 
 func _sk_pirate_rum(u: Dictionary) -> void:                     # 海盗龟·朗姆酒(用户封板·120龟能): 每秒回4%maxHP×6秒 + 0.5A护甲6秒
 	u["rum_until"] = _t + 6.0; u["rum_dps"] = u["maxHp"] * 0.04   # 每秒回4%maxHP×6秒(分秒HoT·在per-frame _heal(rum_dps×delta)结算·封板保真)
@@ -12812,15 +12853,9 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 	if u["id"] == "cyber":
 		_cyber_assemble_mech(u)
 	# (删: 原"死亡给对面财神+2金币"=不在规格的stray bug; 数据是每2.5s+2深海币meta, 非死亡金币)
-	# 猎人猎杀: 击杀者是猎人 → 窃取属性+叠吸血
-	if killer != null and killer["alive"] and killer["id"] == "hunter":
-		killer["base_atk"] += u["base_atk"] * 0.14
-		killer["base_def"] += u["base_def"] * 0.14   # 窃取(补): 护甲/魔抗/最大生命也偷14%
-		killer["base_mr"] += u["base_mr"] * 0.14
-		var _hs: float = u["maxHp"] * 0.14
-		killer["maxHp"] += _hs; killer["hp"] += _hs
-		killer["lifesteal"] += 0.08
-		_recalc_stats(killer)
+	# 猎人猎杀: 击杀者是猎人 → 窃取属性+叠吸血(含金色精华VFX)
+	if killer != null and killer.get("alive", false) and killer.get("id", "") == "hunter":
+		_hunter_apply_steal(killer, u)
 	# 幽灵强化怨灵: 死亡时再诅咒全体敌一次
 	if u["id"] == "ghost":
 		for o in _enemies_of(u):
