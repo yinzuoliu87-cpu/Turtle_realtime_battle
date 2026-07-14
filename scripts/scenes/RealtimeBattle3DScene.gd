@@ -9399,25 +9399,35 @@ func _gambler_wheel_vfx(u: Dictionary, suit: int) -> void:
 
 func _sk_gambler_fate_wheel(u: Dictionary) -> void:             # 赌神龟·命运之轮(用户封板·80龟能): 抽1花色永久加属性(♠攻+5&血+30/♥护甲魔抗+2/♦暴击+8%&护穿+2/♣吸血+4%)·跨场累积=存GameState.gambler_wheel_stacks(本大轮累积·切轮重置·方案B·用户2026-07-09)
 	var _suit := randi() % 4
-	_gambler_wheel_vfx(u, _suit)   # 花色老虎机转盘spin→落定(用户2026-07-14)
-	if u.get("side", "") == "left":   # 跨场累积: 只玩家赌神写入本大轮累积(敌/ghost镜像不写·切轮reset)
+	if u.get("side", "") == "left":   # 跨场累积: 抽中即记录(只玩家赌神写本大轮累积·敌/ghost镜像不写·切轮reset)
 		var _sk: String = ["spade", "heart", "diamond", "club"][_suit]
 		GameState.gambler_wheel_stacks[_sk] = int(GameState.gambler_wheel_stacks.get(_sk, 0)) + 1
-	match _suit:
+	# ★流程优化(用户2026-07-14): 放技→抽取阶段锁龟能+转盘动画→花色落定后才跳文字+实装属性→龟能自动解锁
+	var SPIN := 1.0
+	u["energy_lock_until"] = _t + SPIN + 0.15   # 抽取阶段锁龟能(转盘转完+缓冲·到期自动解锁·_tick_skill_cd判)
+	_gambler_wheel_vfx(u, _suit)                # 花色老虎机转盘spin(SPIN秒·EASE_OUT减速落定)
+	var uu: Dictionary = u
+	var suit: int = _suit
+	_pending_shots.append({"delay": SPIN, "fn": func() -> void:   # 花色落定那一刻才结算
+		if not uu.get("alive", false): return
+		_gambler_apply_wheel_suit(uu, suit)
+		, "src": u})
+
+func _gambler_apply_wheel_suit(u: Dictionary, suit: int) -> void:   # 命运之轮落定实装: 加属性+跳文字(该花色色)
+	match suit:
 		0:
 			u["base_atk"] = float(u["base_atk"]) + 5.0; u["maxHp"] += 30.0; u["hp"] += 30.0
 			_float_text(u["pos"] + Vector2(0, -64), "♠ 攻+5 血+30", Color("#ffd93d"))
 		1:
 			u["base_def"] = float(u["base_def"]) + 2.0; u["base_mr"] = float(u["base_mr"]) + 2.0
-			_float_text(u["pos"] + Vector2(0, -64), "♥ 护甲+2 魔抗+2", Color("#ffd93d"))
+			_float_text(u["pos"] + Vector2(0, -64), "♥ 护甲+2 魔抗+2", Color("#ff5b6b"))
 		2:
 			u["crit"] = float(u["crit"]) + 0.08; u["armor_pen"] = float(u.get("armor_pen", 0.0)) + 2.0
-			_float_text(u["pos"] + Vector2(0, -64), "♦ 暴击+8% 护穿+2", Color("#ffd93d"))
+			_float_text(u["pos"] + Vector2(0, -64), "♦ 暴击+8% 护穿+2", Color("#ff9f43"))
 		_:
 			_buff(u, "lifesteal", 0.04, false, 9999.0)
-			_float_text(u["pos"] + Vector2(0, -64), "♣ 吸血+4%", Color("#ffd93d"))
+			_float_text(u["pos"] + Vector2(0, -64), "♣ 吸血+4%", Color("#5be08a"))
 	_recalc_stats(u)
-	_skill_ring(u["pos"], Color(1.0, 0.84, 0.3, 0.6), 58.0)
 
 func _gambler_apply_wheel_stacks(u: Dictionary) -> void:   # 命运之轮跨场累积(方案B): 登场套用GameState本大轮已抽花色(切轮重置)·只玩家赌神调用
 	var ws: Dictionary = GameState.gambler_wheel_stacks
