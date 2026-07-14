@@ -9537,22 +9537,28 @@ func _update_hunt_mark(u: Dictionary) -> void:
 	var active: bool = u.get("alive", false) and _t < float(u.get("hunt_mark_until", 0.0))
 	var spr = u.get("_hunt_mark_spr", null)
 	var valid: bool = spr != null and is_instance_valid(spr)
-	if active and not valid:
-		var m := Sprite3D.new()
-		m.texture = load("res://assets/sprites/vfx/hunter-mark.png")
-		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-		m.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		m.shaded = false; m.transparent = true
-		m.pixel_size = (64.0 * WS) / float(maxi(1, int(m.texture.get_width())))   # 再大(用户2026-07-14)
-		m.position = _world_pos(u["pos"], float(u.get("height", 0.0)) + 6.0)   # 彻底离开血条(陡相机压缩world-Y·需抬更多·用户2026-07-14)
-		_world.add_child(m)
-		var pt := create_tween().bind_node(m).set_loops()
-		pt.tween_property(m, "modulate:a", 0.55, 0.5).set_trans(Tween.TRANS_SINE)
-		pt.tween_property(m, "modulate:a", 1.0, 0.5).set_trans(Tween.TRANS_SINE)
-		_follow_vfx.append({"spr": m, "unit": u, "h": 6.0})
-		u["_hunt_mark_spr"] = m
-		u["_hunt_mark_pulse"] = pt
-	elif not active and valid:
+	if active:
+		if not valid:
+			var m := Sprite2D.new()   # ★2D屏幕空间(根治透视斜投影→永远在角色正上方·用户2026-07-14)
+			m.texture = load("res://assets/sprites/vfx/hunter-mark.png")
+			m.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			m.scale = Vector2(1.3, 1.3)   # ~62px
+			m.z_index = 30
+			if _ui_layer != null: _ui_layer.add_child(m)
+			var pt := create_tween().bind_node(m).set_loops()
+			pt.tween_property(m, "modulate:a", 0.55, 0.5).set_trans(Tween.TRANS_SINE)
+			pt.tween_property(m, "modulate:a", 1.0, 0.5).set_trans(Tween.TRANS_SINE)
+			u["_hunt_mark_spr"] = m
+			u["_hunt_mark_pulse"] = pt
+			spr = m
+		if _cam != null:   # 每帧: 屏幕空间定位在角色正上方(2D不受透视斜投影) + 像素偏移(血条上方·低10%好控)
+			var head := _world_pos(u["pos"], float(u.get("height", 0.0)) + 1.0)
+			if _cam.is_position_behind(head):
+				spr.visible = false
+			else:
+				spr.visible = true
+				spr.position = _cam.unproject_position(head) + Vector2(0.0, -58.0)
+	elif valid:
 		u["_hunt_mark_spr"] = null
 		var pulse = u.get("_hunt_mark_pulse", null)
 		if pulse != null and is_instance_valid(pulse): pulse.kill()
