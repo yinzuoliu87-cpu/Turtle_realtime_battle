@@ -9874,26 +9874,27 @@ func _sk_pirate_rum(u: Dictionary) -> void:                     # 海盗龟·朗
 
 func _sk_pirate_volley(u: Dictionary, tgt) -> void:              # 海盗龟·火炮齐射(用户2026-07-14补演出): 海盗船高空驶入→对目标800码区降炮弹雨6段·命中才跳伤害·每段0.17A+1.7%maxHp
 	# 每段 = 0.17×ATK + 1.7%目标最大生命 (回合制 hits=6/atkScale=0.17/hpPct=1.7) → 6段共 1.02A + 10.2%maxHp
-	if tgt == null or not tgt.get("alive", false): return
-	var c: Vector2 = tgt["pos"]
+	if tgt == null or not tgt.get("alive", false): tgt = _nearest_enemy(u)
+	if tgt == null: return
 	var ship := _pirate_get_ship(u)                            # 持久演出船(一只·驻场·各招共用·不淡出)
-	var ship2d: Vector2 = (ship.get_meta("ship2d") if ship != null else Vector2(c.x, ARENA.position.y + 55.0))
+	var ship2d: Vector2 = (ship.get_meta("ship2d") if ship != null else Vector2(tgt["pos"].x, ARENA.position.y + 55.0))
 	var ship_h: float = (ship.get_meta("ship_h") if ship != null else 6.5)
-	_skill_ring(c, Color(1.0, 0.82, 0.4, 0.42), 800.0)          # 800码轰击区指示环
-	for i in range(6):                                          # 6段炮弹雨(错峰·从持久船发)
-		_pending_shots.append({"delay": 0.5 + float(i) * 0.3, "src": u, "fn": func() -> void:
+	for i in range(6):                                          # 6发炮弹·各朝随机敌发射·落点250码AOE(命中打伤害·用户2026-07-14)
+		_pending_shots.append({"delay": 0.4 + float(i) * 0.28, "src": u, "fn": func() -> void:
+			var cand: Array = []
+			for o in _enemies_of(u):
+				if o.get("alive", false): cand.append(o)
+			if cand.is_empty(): return
+			var aim: Dictionary = cand[randi() % cand.size()]   # 随机敌
+			var land: Vector2 = aim["pos"] + Vector2(randf_range(-32.0, 32.0), randf_range(-32.0, 32.0))   # 落点略散=炮击手感
 			_pirate_ship_muzzle(ship2d, ship_h)                # 船炮口闪
-			for b in range(2):                                 # 每段2颗散布落弹
-				var ang := randf() * TAU
-				var land: Vector2 = c + Vector2(cos(ang), sin(ang)) * randf_range(30.0, 300.0)
-				var deal := b == 0                             # 每段伤害只结算一次(对800码圈内全体)
-				_pirate_cannonball(ship2d, ship_h, land, func() -> void:
-					_burst_vfx("res://assets/sprites/vfx/cannon-blast.png", land, 240.0, 0.3)
-					_shake(0.045)
-					if deal:
-						for o in _enemies_of(u):
-							if o.get("alive", false) and o["pos"].distance_to(c) <= 800.0:
-								_apply_damage_from(u, o, _atk_dmg(u, 0.17, o) + int(o["maxHp"] * 0.017), Color("#ffd07a")))
+			_pirate_cannonball(ship2d, ship_h, land, func() -> void:   # 炮弹到点才结算(命中才跳)
+				_burst_vfx("res://assets/sprites/vfx/cannon-blast.png", land, 230.0, 0.3)
+				_shake(0.05)
+				_skill_ring(land, Color(1.0, 0.55, 0.3, 0.5), 250.0)   # 落点250码范围环
+				for o in _enemies_of(u):                        # 落点250码内: 0.5A+2%目标maxHp 物理(红)
+					if o.get("alive", false) and o["pos"].distance_to(land) <= 250.0:
+						_apply_damage_from(u, o, _atk_dmg(u, 0.5, o) + int(o["maxHp"] * 0.02), Color("#ff4444")))
 			})
 
 func _pirate_get_ship(u: Dictionary) -> Sprite3D:   # 该海盗的持久演出船(一只·首次建后驻场·火炮/朗姆/登场轰击共用·不重复生成不淡出·用户2026-07-14"船是一只在的")
