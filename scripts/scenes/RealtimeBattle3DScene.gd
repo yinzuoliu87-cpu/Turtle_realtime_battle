@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "gambler"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 2   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转 (赌神: 0普攻卡牌✅/1万能牌✅/2赌注/3命运之轮)
+const REVIEW_SKILL_IDX := 3   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转 (赌神: 0普攻卡牌✅/1万能牌✅/2赌注✅/3命运之轮)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -143,6 +143,7 @@ const REVIEW_DEMO_CFG := {
 	"gambler:0": [ {"dx": 350.0, "dy": -30.0, "fixed": true} ],   # 赌神卡牌射击: 单假人射程内(350<400)→赌神站原地甩旋转扑克牌+看多重打击被动连锁(40%再打)
 	"gambler:1": [ {"dx": 320.0, "dy": -30.0, "fixed": true} ],   # 赌神万能牌: 单假人射程内→丢发光小丑牌+命中金光+减攻红标+自身护盾罩+回血绿
 	"gambler:2": [ {"dx": 320.0, "dy": -30.0, "fixed": true} ],   # 赌神赌注: 单假人→牺牲40%血红闪+甩7张牌barrage(错峰·命中才跳伤害)+金光pop
+	"gambler:3": [ {"dx": 300.0, "dy": 0.0, "fixed": true} ],   # 赌神命运之轮: 单假人→反复放看花色♠♥♦♣老虎机转盘落定+该色大爆+属性飘字
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -9368,8 +9369,37 @@ func _gambler_throw_hit(u: Dictionary, tgt: Dictionary, dmg: int, roll_multi: bo
 			if roll_multi: _gambler_bet_multi(u, tgt, _gambler_bet_ch(u))  # 每张牌触发多重打击(B)
 		_gambler_pop(tp, th, Color(1.0, 0.85, 0.35, 0.9)))
 
+# 命运之轮转盘: 花色♠♥♦♣老虎机式快转→减速→落定抽中花色+该色大爆
+func _gambler_wheel_vfx(u: Dictionary, suit: int) -> void:
+	var suits := ["♠", "♥", "♦", "♣"]
+	var scols := [Color("#ffd93d"), Color("#ff5b6b"), Color("#ff9f43"), Color("#5be08a")]
+	var lbl := Label3D.new()
+	lbl.text = "♠"
+	lbl.font_size = 180
+	lbl.pixel_size = 0.011
+	lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lbl.outline_size = 14
+	lbl.outline_modulate = Color(0, 0, 0, 0.9)
+	lbl.position = _world_pos(u["pos"], 3.7)   # 头顶更高(用户2026-07-14"再高一点")
+	_world.add_child(lbl)
+	var target := 12.0 + float(suit)           # 3整圈+落在suit(12%4=0→末位=suit)
+	var tw := _reg_tween()
+	tw.tween_method(func(v: float) -> void:
+		if is_instance_valid(lbl):
+			var idx := int(round(v)) % 4
+			lbl.text = suits[idx]
+			lbl.modulate = scols[idx]
+		, 0.0, target, 1.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)   # 快转→减速落定
+	tw.tween_callback(func() -> void:
+		_gambler_pop(u["pos"], float(u.get("height", 0.0)) + 2.8, Color(scols[suit].r, scols[suit].g, scols[suit].b, 0.95))
+		_skill_ring(u["pos"], Color(scols[suit].r, scols[suit].g, scols[suit].b, 0.65), 62.0))
+	tw.tween_interval(0.55)
+	tw.tween_property(lbl, "modulate:a", 0.0, 0.3)
+	tw.tween_callback(lbl.queue_free)
+
 func _sk_gambler_fate_wheel(u: Dictionary) -> void:             # 赌神龟·命运之轮(用户封板·80龟能): 抽1花色永久加属性(♠攻+5&血+30/♥护甲魔抗+2/♦暴击+8%&护穿+2/♣吸血+4%)·跨场累积=存GameState.gambler_wheel_stacks(本大轮累积·切轮重置·方案B·用户2026-07-09)
 	var _suit := randi() % 4
+	_gambler_wheel_vfx(u, _suit)   # 花色老虎机转盘spin→落定(用户2026-07-14)
 	if u.get("side", "") == "left":   # 跨场累积: 只玩家赌神写入本大轮累积(敌/ghost镜像不写·切轮reset)
 		var _sk: String = ["spade", "heart", "diamond", "club"][_suit]
 		GameState.gambler_wheel_stacks[_sk] = int(GameState.gambler_wheel_stacks.get(_sk, 0)) + 1
