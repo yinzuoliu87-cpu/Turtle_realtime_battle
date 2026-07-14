@@ -1580,7 +1580,7 @@
           "pct": 15,
           "turns": 3
         },
-        "brief": "海盗船扔来一瓶朗姆酒：海盗龟<span class=\"val-heal\">每秒</span>回复（{H:HP*0.04}）生命值、持续 6秒（合计 24%），同时护甲与魔抗各 +（{D:ATK*0.15}）、持续 6秒",
+        "brief": "海盗船扔来一瓶朗姆酒：海盗龟每秒回复（{H:HP*0.04}）生命值、持续 6秒（合计 24%），同时护甲 +（{D:ATK*0.65}）、魔抗 +（{D:ATK*0.15}）、持续 6秒",
         "detail": "海盗船扔来一瓶朗姆酒。海盗龟<span class=\"val-heal\">每秒</span>回复（4%×最大生命值({HP}) = {H:HP*0.04}）生命值，持续 <span class=\"val-heal\">6秒</span>（合计 24%）；同时提升 <span class=\"val-def\">护甲</span> 与 <span class=\"val-magic\">魔抗</span> 各（15%×攻击力({ATK}) = {D:ATK*0.15}），持续 6秒。\n\n<span style=\"color:#8a93a0\">持续回复效果可叠加。</span>",
         "fx": {
           "healHp": 0.09,

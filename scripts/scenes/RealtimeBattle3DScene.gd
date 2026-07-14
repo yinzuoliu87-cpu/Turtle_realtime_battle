@@ -9886,7 +9886,7 @@ func _sk_pirate_rum(u: Dictionary) -> void:                     # 海盗龟·朗
 	u["rum_glow_until"] = _t + 6.0                               # 暖色酒气护光标记
 	var _rum_dr: float = u["atk"] * 0.15                          # 回合制 pirate·heal defUpAtkPct{pct:15} → +15%×ATK 双抗·6秒
 	_buff(u, "def", _rum_dr, false, 6.0); _buff(u, "mr", _rum_dr, false, 6.0)
-	_buff(u, "def", u["atk"] * 0.5, false, 6.0)                  # ⚠+0.5A护甲(desc无·待用户确认是否删)
+	_buff(u, "def", u["atk"] * 0.5, false, 6.0)                  # +0.5A护甲(用户2026-07-14确认保留·连同上方0.15A=护甲共+0.65A/魔抗+0.15A)
 	var ship := _pirate_get_ship(u)                             # 海盗船扔酒瓶(从持久船抛向海盗)
 	var ship2d: Vector2 = (ship.get_meta("ship2d") if ship != null else u["pos"] + Vector2(0.0, -220.0))
 	var ship_h: float = (ship.get_meta("ship_h") if ship != null else 5.0)
