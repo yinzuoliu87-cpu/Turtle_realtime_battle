@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "pirate"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 2   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒/3海盗船/-1被动掠夺)
+const REVIEW_SKILL_IDX := 3   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船/-1被动掠夺)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -152,6 +152,7 @@ const REVIEW_DEMO_CFG := {
 	"pirate:0": [ {"dx": 120.0, "dy": 0.0} ],   # 海盗弯刀普攻: 单假人贴脸→看近战弯刀劈砍(1A物理+自愈0.2A绿字)
 	"pirate:1": [ {"dx": 300.0, "dy": -90.0, "fixed": true}, {"dx": 300.0, "dy": 90.0, "fixed": true}, {"dx": 470.0, "dy": 0.0, "fixed": true} ],   # 海盗火炮齐射: 3假人聚目标区(都在800码内)→看海盗船高空驶入+炮弹雨6段落该区+爆炸+命中才跳伤害
 	"pirate:2": [ {"dx": 150.0, "dy": -55.0}, {"dx": 150.0, "dy": 55.0} ],   # 海盗朗姆酒: 2近战假人追打站桩海盗(海盗no_basic不自愈不触发假人盾·被打掉血)→放朗姆酒看船扔酒瓶+HoT绿回血顶着伤害回(连续绿字)+暖色酒气护光
+	"pirate:3": [ {"dx": 340.0, "dy": -70.0, "fixed": true}, {"dx": 340.0, "dy": 70.0, "fixed": true}, {"dx": 470.0, "dy": 0.0, "fixed": true} ],   # 海盗船: 3假人聚目标区→首发看后方演出船俯冲冲锋撞该区(200码1.0A魔法+击飞2s+大水花)→转变实体海盗船(pirate-ship立绘)留场射击·后续充能满看海盗龟放霰弹(60度扇8颗)
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -1423,6 +1424,9 @@ func _spawn_teams() -> void:
 	_inject_equipment()       # 装备注入 (玩家队读 persistent_equipped; demo队塞测试装备) — 须在被动之前
 	_apply_spawn_passives()   # 登场被动 (开战即生效: 忍术暴击/怨灵诅咒/冰寒减攻/召唤等)
 	_eq_apply_all_stats()     # 开战: 全装备纯属性 / 永久 flag 加到携带者 (spawn 被动之后, 不被覆盖)
+	for _pu in _units:        # 海盗: 开战即在后方显示持久海盗船(用户2026-07-14"战斗开始就在位置上")
+		if str(_pu.get("id", "")) == "pirate" and not _pu.get("is_summon", false):
+			_pirate_get_ship(_pu)
 	if OS.has_environment("EQDEMO_FORCE_HP50"):   # demo: 强制携带者<50%触发救命类(044/045), 便于验证特效
 		for _fu in _units:
 			if _fu["side"] == "left" and not _fu.get("equips", []).is_empty():
@@ -2700,6 +2704,14 @@ func _resolve_summon_sprite(spr_id: String) -> Dictionary:
 			var t: Texture2D = load(anim)
 			if t != null:
 				return _sprite_dict_from(t, {"frames": 8, "frameW": 74, "frameH": 73, "duration": 800}, true)
+	# 海盗船(技3实体·封板): 用 skills/pirate-ship.png(与后方演出船同图·转变连贯)
+	if spr_id == "pirate-ship":
+		var sp := SPRITE_DIR + "skills/pirate-ship.png"
+		if not ResourceLoader.exists(sp): sp = SPRITE_DIR + "battle/pirate-ship.png"
+		if ResourceLoader.exists(sp):
+			var st: Texture2D = load(sp)
+			if st != null:
+				return _sprite_dict_from(st, null, false)
 	# 通用: pets/<spr_id>.png 静态全身图
 	var full := SPRITE_DIR + "pets/" + spr_id + ".png"
 	if ResourceLoader.exists(full):
@@ -9978,6 +9990,7 @@ func _pirate_ship_bob(ship: Sprite3D) -> void:   # 驻场轻摇(海浪起伏)
 	var bob := ship.create_tween().set_loops()
 	bob.tween_property(ship, "position:y", base_y + 0.22, 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	bob.tween_property(ship, "position:y", base_y, 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	ship.set_meta("bob_tw", bob)   # 存bob供冲锋时杀掉
 
 func _pirate_perf_ship(pos2d: Vector2, h: float, side: String) -> Sprite3D:   # 建演出海盗船sprite(纯装饰·骷髅旗): 淡入
 	var path := "res://assets/sprites/skills/pirate-ship.png"
@@ -13149,28 +13162,89 @@ func _pirate_shotgun(u: Dictionary, tgt) -> void:
 			hit["pos"].y = clampf(hit["pos"].y, ARENA.position.y, ARENA.end.y)
 			_hit_spark(hit)
 
-func _spawn_pirate_ship(u: Dictionary, tgt = null) -> void:
-	var ship = _spawn_summon(u, "ship", u["maxHp"] * 1.5, u["atk"], {
-		"label": "海盗船", "col_size": 38.0, "hp_w": 44.0, "melee": false,
-		"move_spd": 120.0, "atk_range": 300.0, "no_basic": true,                # 射程300(封板)
-		"special": "ship_shot", "special_cd": 1.25, "special_scale": 0.4,       # 攻速0.8≈1.25s/发·普攻射最近敌0.4A(封板L379)
-	})
-	if ship == null:
-		return
-	# 登场冲锋直撞目标: 冲到目标→第一个敌200码1.0A魔法+击飞2秒(封板)
+func _spawn_pirate_ship(u: Dictionary, tgt = null) -> void:   # 首次: 后方持久演出船俯冲冲锋→撞击点转变为实体海盗船参战(用户2026-07-14设计)
 	var aim = tgt if (tgt != null and tgt.get("alive", false)) else _nearest_enemy(u)
 	if aim == null:
 		return
-	ship["pos"] = u["pos"]
-	_dash_to(ship, aim, 40.0)                               # 冲锋切入
-	for e in _enemies_of(ship):
-		if not e.get("alive", false): continue
-		if e["pos"].distance_to(aim["pos"]) > 200.0: continue
-		_apply_damage_from(ship, e, _atk_dmg(ship, 1.0, e, true), Color("#e8c07a"), 0.0, true)   # 1.0A魔法
-		_knockback(ship, e, 40.0, 3.667, 1.0)                                   # 击飞2.0秒滞空(vy_mult=3.667·用户2026-07-07"2秒击飞"·原1.0只有0.55秒)
-		e["stun_until"] = maxf(float(e.get("stun_until", 0.0)), _t + _cc_dur(e, 2.0))            # 击飞2秒
-	_skill_ring(aim["pos"], Color(0.9, 0.7, 0.4, 0.6), 200.0)
-	_shake(JUICE_SHAKE_HEAVY)
+	var impact2d: Vector2 = aim["pos"]
+	var deco := _pirate_get_ship(u)                        # 后方持久演出船=这次冲锋的船
+	var from2d: Vector2 = (deco.get_meta("ship2d") if deco != null else u["pos"] + Vector2(0.0, -320.0))
+	var from_h: float = (deco.get_meta("ship_h") if deco != null else 6.0)
+	if deco != null:                                       # 杀掉驻场轻摇tween(要冲锋了)
+		var bt = deco.get_meta("bob_tw", null)
+		if bt != null and is_instance_valid(bt) and bt is Tween: bt.kill()
+	_pirate_ship_muzzle(from2d, from_h); _pirate_ship_muzzle(from2d + Vector2(30, 0), from_h)   # 蓄力: 炮口全闪
+	var uu: Dictionary = u
+	_pirate_ship_charge(deco, from2d, from_h, impact2d, func() -> void:   # 俯冲到撞击点→结算+转变实体
+		_pirate_ship_splash(impact2d)                     # 大水花爆
+		_skill_ring(impact2d, Color(0.9, 0.7, 0.4, 0.6), 200.0)
+		_shake(JUICE_SHAKE_HEAVY)
+		var ship = _spawn_pirate_ship_entity(uu, impact2d)   # 撞击点淡入实体海盗船(pirate-ship.png)
+		var src: Dictionary = ship if ship != null else uu
+		for e in _enemies_of(uu):                         # 撞击: 200码内1.0A魔法+击飞2秒(封板)
+			if not e.get("alive", false): continue
+			if e["pos"].distance_to(impact2d) > 200.0: continue
+			_apply_damage_from(src, e, _atk_dmg(uu, 1.0, e, true), Color("#e8c07a"), 0.0, true)
+			_knockback(src, e, 40.0, 3.667, 1.0)
+			e["stun_until"] = maxf(float(e.get("stun_until", 0.0)), _t + _cc_dur(e, 2.0))
+		if deco != null and is_instance_valid(deco): deco.queue_free()   # 演出船"化作"实体→消失
+		uu["_perf_ship"] = null)
+
+func _spawn_pirate_ship_entity(u: Dictionary, at2d: Vector2):   # 实体海盗船(封板值·pirate-ship.png立绘)落在撞击点·淡入
+	var ship = _spawn_summon(u, "ship", u["maxHp"] * 1.5, u["atk"], {
+		"label": "海盗船", "spr_id": "pirate-ship", "col_size": 46.0, "hp_w": 52.0, "melee": false,
+		"move_spd": 120.0, "atk_range": 300.0, "no_basic": true,                # 射程300(封板)
+		"special": "ship_shot", "special_cd": 1.25, "special_scale": 0.4,       # 攻速0.8≈1.25s/发·射最近敌0.4A(封板)
+	})
+	if ship == null:
+		return null
+	ship["pos"] = at2d
+	var spr = ship.get("sprite", null)
+	if spr != null and is_instance_valid(spr):             # 立绘调大到船尺度(比召唤体大·船该大) + 落场淡入砸落回弹
+		if spr.texture != null:
+			spr.pixel_size = (165.0 * WS) / float(maxi(1, spr.texture.get_height()))
+			spr.offset = Vector2(0.0, spr.texture.get_height() * 0.42)   # 底对齐(船底贴地)
+		ship["_ship_big"] = true
+		spr.modulate.a = 0.0
+		var tw := _reg_tween(); tw.set_parallel(true)
+		tw.tween_property(spr, "modulate:a", 1.0, 0.25)
+		tw.tween_property(spr, "scale", spr.scale, 0.2).from(spr.scale * 1.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	return ship
+
+func _pirate_ship_charge(ship, from2d: Vector2, from_h: float, to2d: Vector2, on_impact: Callable) -> void:   # 演出船俯冲: 从后方高空冲向撞击点·边冲边变大·拉水花航迹
+	if ship == null or not is_instance_valid(ship):
+		if on_impact.is_valid(): on_impact.call()
+		return
+	var base_sc: Vector3 = ship.scale
+	var tw := _reg_tween()
+	tw.tween_method(func(p: float) -> void:
+		if not is_instance_valid(ship): return
+		var flat: Vector2 = from2d.lerp(to2d, p)
+		var hh: float = lerpf(from_h, 0.7, p * p)          # 加速俯冲(重力式下沉)
+		ship.position = _world_pos(flat, hh)
+		ship.scale = base_sc * lerpf(1.0, 1.7, p)          # 冲近变大(逼近感)
+		if int(p * 22.0) % 2 == 0:
+			_pirate_ship_wake(flat + Vector2(0.0, 10.0))   # 船尾水花航迹
+	, 0.0, 1.0, 0.62).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func() -> void:
+		if on_impact.is_valid(): on_impact.call())
+
+func _pirate_ship_wake(pos2d: Vector2) -> void:   # 航迹水花(青白·上飘淡出)
+	var w := _glow_bb(pos2d, 0.3, 40.0, Color(0.7, 0.92, 1.0, 0.7))
+	var tw := _reg_tween(); tw.set_parallel(true)
+	tw.tween_property(w, "scale", Vector3.ONE * 1.5, 0.4)
+	tw.tween_property(w, "material_override:albedo_color", Color(0.7, 0.92, 1.0, 0.0), 0.4)
+	tw.chain().tween_callback(w.queue_free)
+
+func _pirate_ship_splash(pos2d: Vector2) -> void:   # 撞击大水花爆(青白冲击环+飞溅)
+	for k in range(3):
+		var w := _glow_bb(pos2d, 0.3 + float(k) * 0.2, 120.0 + float(k) * 60.0, Color(0.75, 0.94, 1.0, 0.8))
+		var tw := _reg_tween(); tw.set_parallel(true)
+		tw.tween_property(w, "scale", Vector3.ONE * (1.8 + float(k) * 0.4), 0.4).set_delay(float(k) * 0.05)
+		tw.tween_property(w, "material_override:albedo_color", Color(0.75, 0.94, 1.0, 0.0), 0.45)
+		tw.chain().tween_callback(w.queue_free)
+	if ResourceLoader.exists("res://assets/sprites/vfx/cannon-blast.png"):
+		_burst_vfx("res://assets/sprites/vfx/cannon-blast.png", pos2d, 200.0, 0.3)
 
 # 赛博龟阵亡 → 浮游炮全部组装成机甲 (独立单位)
 func _cyber_assemble_mech(u: Dictionary) -> void:
