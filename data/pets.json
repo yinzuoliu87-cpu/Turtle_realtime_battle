@@ -1636,7 +1636,7 @@
       "name": "甜蜜掠夺",
       "stealTurn": 3,
       "stealPct": 25,
-      "brief": "糖果龟<span class=\"val-normal\">登场时</span>对<span class=\"val-normal\">最大生命值最高的敌人</span>施放生命吸取：扣除其 <span class=\"val-atk\">25% 最大生命值</span>，并<span class=\"val-heal\">全额回复给糖果龟自己</span>（不会杀死目标，最低留 1 点生命）。",
+      "brief": "糖果龟<span class=\"val-normal\">战斗第 8 秒时</span>对<span class=\"val-normal\">最大生命值最高的敌人</span>施放生命吸取：扣除其 <span class=\"val-atk\">25% 最大生命值</span>，并<span class=\"val-heal\">全额回复给糖果龟自己</span>（不会杀死目标，最低留 1 点生命）。",
       "desc": "糖果龟<span class=\"val-normal\">登场时</span>对<span class=\"val-normal\">最大生命值最高的敌人</span>施放生命吸取：扣除其 <span class=\"val-atk\">25% 最大生命值</span>，并<span class=\"val-heal\">全额回复给糖果龟自己</span>。\n\n<span style=\"color:#8a93a0\">不会杀死目标（最低留 1 点生命值）。糖果龟的普攻本身没有自愈。</span>"
     },
     "skillPool": [
