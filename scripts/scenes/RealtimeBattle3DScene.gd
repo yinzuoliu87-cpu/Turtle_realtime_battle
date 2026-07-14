@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "pirate"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀/1火炮齐射/2朗姆酒/3海盗船/-1被动掠夺)
+const REVIEW_SKILL_IDX := 1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射/2朗姆酒/3海盗船/-1被动掠夺)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -150,6 +150,7 @@ const REVIEW_DEMO_CFG := {
 	"hunter:3": [ {"dx": 320.0, "dy": -80.0, "fixed": true}, {"dx": 320.0, "dy": 80.0, "fixed": true}, {"dx": 540.0, "dy": 0.0, "fixed": true} ],   # 猎人狩猎弹幕: 3假人散开→看10箭每0.2s一发·随机锁敌·慢速抛物线追踪(箭头随角度上扬/下俯)·命中才跳白色真伤(0.36A/箭·共3.6A)
 	"hunter:-1": [ {"dx": 300.0, "dy": -75.0, "fixed": true}, {"dx": 300.0, "dy": 75.0, "fixed": true} ],   # 猎人被动猎杀: 2残血demo靶(_hunt_demo_victim·钉在12%血)→猎人普攻/技能任一伤害都处决(金斩杀爆+处决金字)→窃取(金精华流回猎人+掠夺金字+金光·猎人属性永久累积变强)·不真死循环看
 	"pirate:0": [ {"dx": 120.0, "dy": 0.0} ],   # 海盗弯刀普攻: 单假人贴脸→看近战弯刀劈砍(1A物理+自愈0.2A绿字)
+	"pirate:1": [ {"dx": 300.0, "dy": -90.0, "fixed": true}, {"dx": 300.0, "dy": 90.0, "fixed": true}, {"dx": 470.0, "dy": 0.0, "fixed": true} ],   # 海盗火炮齐射: 3假人聚目标区(都在800码内)→看海盗船高空驶入+炮弹雨6段落该区+爆炸+命中才跳伤害
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -9871,16 +9872,85 @@ func _sk_pirate_rum(u: Dictionary) -> void:                     # 海盗龟·朗
 	_buff(u, "def", u["atk"] * 0.5, false, 6.0)                  # +0.5×攻击力护甲(flat·6秒)
 	_skill_ring(u["pos"], Color(0.82, 0.5, 0.2, 0.5), 48.0)
 
-func _sk_pirate_volley(u: Dictionary, tgt) -> void:              # 海盗龟·火炮齐射 ✅
-	# 〖用户2026-07-07〗"海盗龟先制定目标，然后海盗船高高发射炮弹，对目标800码范围发射6次造成伤害"
-	# 每发 = 0.17×ATK + 1.7%目标最大生命 (回合制 pirateCannonBarrage: hits=6/atkScale=0.17/hpPct=1.7) → 6发共 1.02A + 10.2%maxHp
+func _sk_pirate_volley(u: Dictionary, tgt) -> void:              # 海盗龟·火炮齐射(用户2026-07-14补演出): 海盗船高空驶入→对目标800码区降炮弹雨6段·命中才跳伤害·每段0.17A+1.7%maxHp
+	# 每段 = 0.17×ATK + 1.7%目标最大生命 (回合制 hits=6/atkScale=0.17/hpPct=1.7) → 6段共 1.02A + 10.2%maxHp
 	if tgt == null or not tgt.get("alive", false): return
 	var c: Vector2 = tgt["pos"]
-	for o in _enemies_of(u):
-		if not o.get("alive", false): continue
-		if o["pos"].distance_to(c) > 800.0: continue             # 以【目标】为心·800码圈内(非全体敌)
-		for i in range(6):
-			_apply_damage_from(u, o, _atk_dmg(u, 0.17, o) + int(o["maxHp"] * 0.017), Color("#ffd07a"))
+	var ship2d := Vector2(clampf(c.x, ARENA.position.x + 150.0, ARENA.end.x - 150.0), maxf(ARENA.position.y + 30.0, c.y - 380.0))   # 目标区后方高处
+	var ship_h := 6.5
+	var ship := _pirate_perf_ship(ship2d, ship_h, str(u["side"]))
+	_skill_ring(c, Color(1.0, 0.82, 0.4, 0.42), 800.0)          # 800码轰击区指示环
+	for i in range(6):                                          # 6段炮弹雨(错峰)
+		_pending_shots.append({"delay": 0.5 + float(i) * 0.3, "src": u, "fn": func() -> void:
+			if is_instance_valid(ship): _pirate_ship_muzzle(ship2d, ship_h)   # 船炮口闪
+			for b in range(2):                                 # 每段2颗散布落弹
+				var ang := randf() * TAU
+				var land: Vector2 = c + Vector2(cos(ang), sin(ang)) * randf_range(30.0, 300.0)
+				var deal := b == 0                             # 每段伤害只结算一次(对800码圈内全体)
+				_pirate_cannonball(ship2d, ship_h, land, func() -> void:
+					_burst_vfx("res://assets/sprites/vfx/cannon-blast.png", land, 240.0, 0.3)
+					_shake(0.045)
+					if deal:
+						for o in _enemies_of(u):
+							if o.get("alive", false) and o["pos"].distance_to(c) <= 800.0:
+								_apply_damage_from(u, o, _atk_dmg(u, 0.17, o) + int(o["maxHp"] * 0.017), Color("#ffd07a")))
+			})
+	_pending_shots.append({"delay": 0.5 + 6.0 * 0.3 + 0.6, "src": u, "fn": func() -> void:   # 最后一段后船淡出驶离
+		if is_instance_valid(ship):
+			var tout := _reg_tween()
+			tout.tween_property(ship, "modulate:a", 0.0, 0.5)
+			tout.tween_callback(ship.queue_free)})
+
+func _pirate_perf_ship(pos2d: Vector2, h: float, side: String) -> Sprite3D:   # 演出海盗船(火炮齐射/朗姆酒/登场轰击共用·纯装饰): 高空淡入
+	var path := "res://assets/sprites/skills/pirate-ship.png"
+	if not ResourceLoader.exists(path): path = "res://assets/sprites/battle/pirate-ship.png"
+	if not ResourceLoader.exists(path): return null
+	var tex: Texture2D = load(path)
+	var s := Sprite3D.new()
+	s.texture = tex
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	s.shaded = false; s.transparent = true
+	s.flip_h = (side == "right")
+	s.pixel_size = (250.0 * WS) / float(maxi(1, tex.get_height()))
+	s.modulate = Color(1, 1, 1, 0)
+	s.position = _world_pos(pos2d, h)
+	_world.add_child(s)
+	var tin := _reg_tween()
+	tin.tween_property(s, "modulate:a", 1.0, 0.45).set_trans(Tween.TRANS_SINE)
+	return s
+
+func _pirate_ship_muzzle(ship2d: Vector2, h: float) -> void:   # 船炮口闪(橙火光pop)
+	var g := _glow_bb(ship2d + Vector2(randf_range(-30.0, 30.0), 10.0), h - 0.4, 70.0, Color(1.0, 0.78, 0.32, 0.9))
+	var tw := _reg_tween(); tw.set_parallel(true)
+	tw.tween_property(g, "scale", Vector3.ONE * 1.6, 0.22)
+	tw.tween_property(g, "material_override:albedo_color", Color(1.0, 0.78, 0.32, 0.0), 0.22)
+	tw.chain().tween_callback(g.queue_free)
+
+func _pirate_cannonball(from2d: Vector2, from_h: float, to2d: Vector2, on_land: Callable) -> void:   # 炮弹: 从船抛物下落到落点→自销调on_land
+	var ball := Sprite3D.new()
+	ball.texture = _make_glow_texture()
+	ball.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	ball.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	ball.shaded = false; ball.transparent = true
+	ball.modulate = Color(0.16, 0.14, 0.13, 1.0)   # 深铁色炮弹
+	ball.pixel_size = (28.0 * WS) / float(maxi(1, ball.texture.get_height()))
+	ball.position = _world_pos(from2d, from_h)
+	_world.add_child(ball)
+	var dur: float = clampf(from2d.distance_to(to2d) / 950.0, 0.34, 0.62)
+	var tw := _reg_tween()
+	tw.tween_method(func(p: float) -> void:
+		if not is_instance_valid(ball): return
+		var flat: Vector2 = from2d.lerp(to2d, p)
+		var hh: float = from_h * pow(1.0 - p, 1.7) + 1.2 * sin(PI * p)   # 抛物下落(先抛起再重力加速落地)
+		ball.position = _world_pos(flat, maxf(0.1, hh))
+		if int(p * 20.0) % 3 == 0:   # 烟尾
+			var sm := _glow_bb(flat, maxf(0.2, hh), 16.0, Color(0.4, 0.38, 0.36, 0.5))
+			var st := _reg_tween(); st.tween_property(sm, "material_override:albedo_color", Color(0.4, 0.38, 0.36, 0.0), 0.3); st.tween_callback(sm.queue_free)
+	, 0.0, 1.0, dur).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func() -> void:
+		if is_instance_valid(ball): ball.queue_free()
+		if on_land.is_valid(): on_land.call())
 
 func _sk_bubble_shield(u: Dictionary, _tgt: Dictionary) -> void: # 泡泡龟·泡泡盾(封板L435·80龟能): 给最脆友军1.8A泡泡盾(4秒)·到期/被打破/挂盾对象死→爆裂对施法者全体敌2.0A魔法
 	var ally = _lowest_hp_ally(u)
