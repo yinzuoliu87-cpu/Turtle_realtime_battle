@@ -23,10 +23,10 @@ void fragment(){
 	float ang = UV.x;                 // 角向 0..1 (0.5=锥中线)
 	float rad = UV.y;                 // 径向 0=嘴 → 1=远端
 	float tt = TIME;
-	// 放射状条纹(角向高频·径向拉长·往外滚) = 参考的"笔触"火舌
-	float streaks = fbm(vec2(ang * 22.0, rad * 2.6 - tt * 2.6));
-	// 大形体噪声(轮廓翻滚)
-	float body_n = fbm(vec2(ang * 6.0 + tt * 0.35, rad * 3.2 - tt * 1.5));
+	// 放射状条纹(角向高频·径向拉长·往外滚·快) = 参考的"笔触"火舌
+	float streaks = fbm(vec2(ang * 22.0, rad * 2.6 - tt * 4.4));
+	// 大形体噪声(轮廓翻滚·快)
+	float body_n = fbm(vec2(ang * 6.0 + tt * 0.5, rad * 3.2 - tt * 2.4));
 	// 轮廓: 角向两侧噪声侵蚀 + 远端噪声化尖灭 + 嘴部起
 	float edge = smoothstep(0.02, 0.24 + (body_n - 0.5) * 0.34, ang)
 	           * smoothstep(0.98, 0.76 - (body_n - 0.5) * 0.34, ang);
@@ -34,9 +34,9 @@ void fragment(){
 	float startF = smoothstep(0.0, 0.05, rad);
 	float sil = edge * tip * startF;
 	float fire = sil * (0.55 + streaks * 0.75);
-	// 深色烟团: 越靠边/越远越浓(参考~40%面积是暗烟·给对比和形)
-	float smoke_n = fbm(vec2(ang * 9.0 - tt * 0.6, rad * 4.2 - tt * 1.05));
-	float smokiness = clamp((rad * 1.5 - 0.18) + abs(ang - 0.5) * 1.9, 0.0, 1.0) * smoothstep(0.24, 0.58, smoke_n);
+	// 暗色烟边: 只远端/边缘少量(用户2026-07-15"没这么多黑"→减半+暗红棕非黑)
+	float smoke_n = fbm(vec2(ang * 9.0 - tt * 0.9, rad * 4.2 - tt * 1.9));
+	float smokiness = clamp((rad * 1.15 - 0.35) + abs(ang - 0.5) * 1.2, 0.0, 1.0) * smoothstep(0.36, 0.72, smoke_n);
 	// 颜色: 嘴白黄热核(小) → 橙 → 远端暗红, 条纹强对比
 	float heat = (1.0 - rad) * (0.42 + streaks * 1.1);
 	vec3 col = mix(vec3(0.72, 0.13, 0.03), vec3(1.0, 0.55, 0.15), clamp(heat * 1.25, 0.0, 1.0));
@@ -44,7 +44,7 @@ void fragment(){
 	float core = smoothstep(0.26, 0.0, rad) * smoothstep(0.16, 0.0, abs(ang - 0.5));   // 嘴部白热收小(参考: 只一小簇)
 	col = mix(col, vec3(1.0, 0.98, 0.9), core * 0.85);
 	col *= 0.78 + streaks * 0.45;                                                     // 条纹明暗强化(放射笔触感)
-	col = mix(col, vec3(0.1, 0.055, 0.045), smokiness * 0.92);                        // 烟团压暗(不透明的暗·非透明)
+	col = mix(col, vec3(0.32, 0.11, 0.05), smokiness * 0.7);                          // 烟边压成暗红棕(非黑·量收敛)
 	// 火体不透明: 轮廓内alpha≈1, 只边缘渐隐(参考: 地面透不出来)
 	float a = smoothstep(0.1, 0.3, sil * (0.7 + streaks * 0.45)) * intensity;
 	ALBEDO = col;
