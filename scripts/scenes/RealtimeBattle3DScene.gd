@@ -86,8 +86,8 @@ static func _review_demo() -> bool:
 	if OS.has_environment("REVIEW"):
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
-const REVIEW_TURTLE := "phoenix"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 2   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
+const REVIEW_TURTLE := "lava"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
+const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -179,6 +179,11 @@ const REVIEW_DEMO_CFG := {
 	"phoenix:2": [ {"dx": 330.0, "dy": 0.0, "fixed": true} ],   # 烫伤: 单假人远处→看蓄力投火球(1.5A魔法)+命中爆开+灼烧/破盾/减攻防抗/治疗削减
 	"phoenix:3": [ {"dx": 160.0, "dy": -50.0}, {"dx": 160.0, "dy": 50.0} ],   # 强化涅槃(技三): 2假人→看自身烈焰加速火环(+50%攻速+50%移速4秒·喷火随攻速增伤)
 	"phoenix:-1": [ {"dx": 160.0, "dy": -55.0}, {"dx": 160.0, "dy": 55.0} ],   # 涅槃被动: 2假人(注: 评审受审龟免死→复活需真死·此处看被动登场态·复活演出需F5真战)
+	"lava:0": [ {"dx": 300.0, "dy": 0.0, "fixed": true} ],   # 熔岩弹普攻: 单假人射程内→看熔岩弹弹道+命中(0.6A+4%maxHp魔法)+灼烧层
+	"lava:1": [ {"dx": 260.0, "dy": -70.0, "fixed": true}, {"dx": 260.0, "dy": 70.0, "fixed": true}, {"dx": 360.0, "dy": 0.0, "fixed": true} ],   # 地裂: 3假人聚拢→敌最密处生成180码岩浆池5秒(池内0.06A魔/0.5s+减速35%+魔抗-30%)
+	"lava:2": [ {"dx": 240.0, "dy": -55.0, "fixed": true}, {"dx": 240.0, "dy": 55.0, "fixed": true} ],   # 岩浆涌动: 2假人贴近→蓄力→目标脚下岩浆柱击飞附近(1.5A魔)+自身0.8A永久护盾
+	"lava:3": [ {"dx": 200.0, "dy": 0.0, "fixed": true}, {"dx": 400.0, "dy": 0.0, "fixed": true}, {"dx": 600.0, "dy": 0.0, "fixed": true} ],   # 熔岩爆发(普通形态): 3假人一线→智能冲刺+下发熔岩弹贯穿全场(沿途每敌0.6A+4%maxHp+灼烧)
+	"lava:-1": [ {"dx": 150.0, "dy": -60.0}, {"dx": 150.0, "dy": 60.0} ],   # 熔岩之心被动: 2假人贴近对打→出伤/承伤各10%转怒气→满100变身火山龟15秒(血量/攻击/护甲/体型全涨)
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
