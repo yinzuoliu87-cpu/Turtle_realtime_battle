@@ -86,8 +86,8 @@ static func _review_demo() -> bool:
 	if OS.has_environment("REVIEW"):
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
-const REVIEW_TURTLE := "phoenix"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
+const REVIEW_TURTLE := "line"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
+const REVIEW_SKILL_IDX := 3   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -167,7 +167,7 @@ const REVIEW_DEMO_CFG := {
 	"line:0": [ {"dx": 300.0, "dy": 0.0, "fixed": true} ],   # 线条素描普攻: 单假人→看落笔墨线勾+命中墨溅+头顶墨迹层数徽章递增
 	"line:1": [ {"dx": 260.0, "dy": -70.0, "fixed": true}, {"dx": 260.0, "dy": 70.0, "fixed": true} ],   # 线条连笔: 最近2假人→看两敌间画墨线连接3秒+各叠墨迹+伤害传导
 	"line:2": [ {"dx": 300.0, "dy": 0.0, "fixed": true} ],   # 线条画龙点睛: 单假人(线条龟普攻先叠墨迹)→看对最高墨迹敌大终笔墨挥+点睛大墨爆(伤害随层暴涨)
-	"line:3": [ {"dx": 300.0, "dy": -80.0, "fixed": true}, {"dx": 300.0, "dy": 80.0, "fixed": true}, {"dx": 460.0, "dy": 0.0, "fixed": true} ],   # 线条墨水炸弹: 3假人→看投墨弹抛向敌区+落点大墨爆+全体溅墨各叠4墨迹
+	"line:3": [ {"dx": 220.0, "dy": -70.0, "fixed": true}, {"dx": 220.0, "dy": 70.0, "fixed": true}, {"dx": 560.0, "dy": -20.0, "fixed": true} ],   # 线条墨水炸弹(用户2026-07-15改300码AOE): 2近假人(聚一起)+1远假人(dx560·超300码·屏内可见)→墨弹智能瞄最密集处落点+300码环+只炸圈内2近(远的不吃伤=看范围)
 	"line:-1": [ {"dx": 260.0, "dy": 0.0, "fixed": true} ],   # 线条被动墨迹: 单假人→线条龟普攻/技能叠墨迹(头顶徽章)→每受伤额外+5%/层真实伤
 	"lightning:0": [ {"dx": 220.0, "dy": 0.0, "fixed": true}, {"dx": 400.0, "dy": -70.0, "fixed": true}, {"dx": 560.0, "dy": 50.0, "fixed": true} ],   # 闪电普攻: 3假人成链→看一道锯齿电弧劈主目标+依次接力连锁2跳(×0.6递减)+各叠电击层徽章
 	"lightning:1": [ {"dx": 240.0, "dy": -60.0, "fixed": true}, {"dx": 240.0, "dy": 60.0, "fixed": true} ],   # 涌动: 2假人→看自身涌起电流增伤光环5秒+立即对目标1次真伤电击(期间被动电击真伤+50%)
@@ -3921,9 +3921,7 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	if u["id"] == "bubble":                                         # 泡泡普攻·泡泡三连击: 命中泡泡爆+泡沫(伤害走 _do_basic·0.5A×3物理)
 		_burst_vfx("res://assets/sprites/skills/bubble-attack.png", tgt["pos"], 80.0, 0.9)
 		_bubble_rise(tgt["pos"] + Vector2(randf_range(-14.0, 14.0), 0.0))
-	if u["id"] == "line":                                           # 线条普攻·素描: 落笔墨线勾向目标+命中墨溅(伤害走 _do_basic·1A魔法+叠1墨迹)
-		_bolt_line(u["pos"], tgt["pos"], Color(0.3, 0.22, 0.4, 0.85))
-		_burst_vfx("res://assets/sprites/vfx/ink-splat.png", tgt["pos"], 72.0, 0.5)
+	# 线条普攻·素描: 施法只发墨弹飞(_do_basic远程弹道), 墨线+墨溅改到子弹命中瞬间才显(用户2026-07-15: 原在施法瞬间显=没等子弹到)→见 _on_basic_hit "line" 分支
 	var spec: Dictionary = BASIC_ATK.get(u["id"], DEFAULT_BASIC)
 	if u["id"] == "lava" and u.get("lava_pierce_next", false):         # 技三·穿透普攻: 下一发熔岩弹变贯穿全场
 		u["lava_pierce_next"] = false
@@ -8010,7 +8008,7 @@ const _SELF_CAST_SKILLS := {
 }
 
 # 远程敌向技的专属放技射程(码): 有这条的技能"够得着就放"·不被近战射程卡着(用户2026-07-11: 手里剑是远程技·改2000)
-const _SKILL_CAST_RANGE := {"ninjaShuriken": 2000.0, "ninjaBomb": 2000.0, "ninjaBackstab": 2000.0}
+const _SKILL_CAST_RANGE := {"ninjaShuriken": 2000.0, "ninjaBomb": 2000.0, "ninjaBackstab": 2000.0, "lineInkBomb": 2000.0}   # 墨水炸弹=远程投掷技射程2000(用户2026-07-15·落点300码AOE)
 func _skill_cast_range(u: Dictionary, stype: String) -> float:
 	if _SELF_CAST_SKILLS.has(stype): return 99999.0                       # 自/友向: 任意距离即放
 	return float(_SKILL_CAST_RANGE.get(stype, u.get("atk_range", 70.0)))  # 远程敌向技用专属射程; 否则=攻击射程(近战贴身放)
@@ -12472,25 +12470,33 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·
 		tw.tween_method(step, 0.0, 1400.0, 1.6).set_trans(Tween.TRANS_LINEAR)   # 缓慢移动~1.6s跨1400码
 		tw.chain().tween_callback(hole.queue_free)
 	_pending_shots.append({"delay": 0.3, "fn": fire, "src": u})     # 蓄力0.3s→发射
-func _sk_line_ink_bomb(u: Dictionary) -> void:                  # 线条龟·墨水炸弹(用户设计·120龟能): 全体敌4段共1A魔法+各叠4墨迹(打包被动=墨迹上限提到10·叠满10层+50%真实受伤)
+const INK_BOMB_RADIUS := 300.0                                  # 墨水炸弹AOE半径(用户2026-07-15: 原全体→落点300码范围内)
+func _sk_line_ink_bomb(u: Dictionary) -> void:                  # 线条龟·墨水炸弹(用户设计·120龟能; 用户2026-07-15: 全体→落点300码AOE): 投墨弹至最密集处→落点300码内敌各4段0.25A魔法+叠4墨迹(打包被动=墨迹上限提到10)
 	var es: Array = []                                          # 投掷墨水炸弹→落点大墨爆+命中才溅墨结算(用户2026-07-15做投掷)
 	for o in _enemies_of(u):
 		if o.get("alive", false): es.append(o)
 	if es.is_empty(): return
-	var center := Vector2.ZERO
-	for o in es: center += o["pos"]
-	center /= float(es.size())
+	var center: Vector2 = es[0]["pos"]                          # 落点=能覆盖最多敌的300码圆心(智能瞄最密集处·非全体质心)
+	var best_cnt := -1
+	for a in es:
+		var cnt := 0
+		for b in es:
+			if (a["pos"] as Vector2).distance_to(b["pos"]) <= INK_BOMB_RADIUS: cnt += 1
+		if cnt > best_cnt:
+			best_cnt = cnt; center = a["pos"]
 	var uu: Dictionary = u
-	_ink_bomb_throw(u["pos"], center, func() -> void:
-		_burst_vfx("res://assets/sprites/vfx/ink-splat.png", center, 250.0, 0.6)   # 落点大墨爆
+	var land: Vector2 = center
+	_ink_bomb_throw(u["pos"], land, func() -> void:
+		_burst_vfx("res://assets/sprites/vfx/ink-splat.png", land, 300.0, 0.6)   # 落点大墨爆(300码)
 		_shake(JUICE_SHAKE_HEAVY)
 		for o in _enemies_of(uu):
 			if not o.get("alive", false): continue
+			if (o["pos"] as Vector2).distance_to(land) > INK_BOMB_RADIUS: continue   # ★只打落点300码内(用户2026-07-15: 原全体)
 			for i in range(4):
 				_apply_damage_from(uu, o, _atk_dmg(uu, 0.25, o, true), Color("#c9b0ff"))
 			_add_stack(o, "ink", 4, _ink_cap(uu))
 			_burst_vfx("res://assets/sprites/vfx/ink-splat.png", o["pos"], 110.0, 0.9)   # 每敌身上墨溅
-		_skill_ring(center, Color(0.55, 0.4, 0.75, 0.5), 200.0))
+		_skill_ring(land, Color(0.55, 0.4, 0.75, 0.5), INK_BOMB_RADIUS))   # 环显300码AOE范围
 
 func _ink_bomb_throw(from2d: Vector2, to2d: Vector2, on_land: Callable) -> void:   # 墨水炸弹: 深墨球抛向敌区→落点自销调on_land
 	var ball := Sprite3D.new()
@@ -13080,6 +13086,8 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 		return
 	match u["id"]:
 		"line":
+			_bolt_line(u["pos"], tgt["pos"], Color(0.3, 0.22, 0.4, 0.85))                     # 落笔墨线(命中瞬间才显·用户2026-07-15)
+			_burst_vfx("res://assets/sprites/vfx/ink-splat.png", tgt["pos"], 72.0, 0.5)       # 命中墨溅(与子弹命中同步·原在施法瞬间=没等子弹到)
 			_add_stack(tgt, "ink", 1, _ink_cap(u))
 		"lightning":
 			_lightning_electric(u, tgt)   # 普攻主目标叠电击+可引爆(连锁跳由_lightning_hop叠)
