@@ -66,7 +66,7 @@ func _ready() -> void:
 	var expect: int = int(float(killer["maxHp"]) * 0.25)
 
 	scene._kill(pirate, killer)
-	await get_tree().process_frame
+	await get_tree().create_timer(1.4).timeout   # 钩索是动画序列(甩钩0.16-0.34s→拉拽→到位才结算·2026-07-14观感重做), 等演出完再断言
 
 	var lost: float = hp0 - float(killer["hp"])
 	_ok("击杀者受到 ≈25% 自身最大生命的伤害", absf(lost - float(expect)) <= 2.0,
@@ -96,7 +96,7 @@ func _ready() -> void:
 	print("=== 3. 源码级: 不再是「任意敌死→钩最近敌」 ===")
 	var src := _src("res://scripts/scenes/RealtimeBattle3DScene.gd")
 	_ok("触发条件是 u.id == pirate", src.find("u.get(\"id\", \"\") == \"pirate\" and not u.get(\"is_summon\", false) and killer is Dictionary") >= 0)
-	_ok("目标是 killer, 不是 _nearest_enemy", src.find("var _pt: Dictionary = killer") >= 0)
+	_ok("目标是 killer, 不是 _nearest_enemy", src.find("var kk: Dictionary = killer") >= 0)   # 2026-07-14钩索动画重做后变量改名
 
 	_done()
 
