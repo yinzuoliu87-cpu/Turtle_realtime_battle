@@ -48,5 +48,5 @@ void fragment(){
 	// 火体不透明: 轮廓内alpha≈1, 只边缘渐隐(参考: 地面透不出来)
 	float a = smoothstep(0.1, 0.3, sil * (0.7 + streaks * 0.45)) * intensity;
 	ALBEDO = col;
-	ALPHA = clamp(a, 0.0, 1.0);
+	ALPHA = clamp(a, 0.0, 1.0) * COLOR.a;   // ×顶点alpha=径向环开关(停喷火飞完才灭/转向拖尾·用户2026-07-15)
 }

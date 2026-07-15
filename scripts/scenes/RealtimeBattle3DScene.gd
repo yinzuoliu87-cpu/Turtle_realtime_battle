@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "phoenix"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
+const REVIEW_SKILL_IDX := 2   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -3740,7 +3740,15 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 			u["poison_vfx_t"] -= 0.2
 			_spawn_poison_bubble(u)
 	if u["id"] == "phoenix" and u.get("flame_sector", null) != null and is_instance_valid(u.get("flame_sector")) and _t > float(u.get("flame_sector_t", 0.0)):
-		u["flame_sector"].visible = false
+		var _fs = u["flame_sector"]   # 停喷≠瞬灭(用户2026-07-15"完整运动"): 追加关样本继续回放→残焰飞到目的地才灭
+		if _fs.visible:
+			var _hist: Array = u.get("phx_hist", [])
+			_hist.append([_t, (float(_hist[-1][1]) if not _hist.is_empty() else 0.0), 0.0])
+			while _hist.size() > 90: _hist.pop_front()
+			u["phx_hist"] = _hist
+			if not _phoenix_build_flame_mesh(u):
+				_fs.visible = false
+				u["phx_hist"] = []
 		if not u["alive"]:
 			return
 	# buff 到期 → 重算属性
@@ -6255,34 +6263,75 @@ func _phoenix_sector_indicator(u: Dictionary, tgt: Dictionary) -> void:
 		_world.add_child(sect)
 		u["flame_sector"] = sect
 	sect.visible = true
-	u["flame_sector_t"] = _t + 0.12
+	u["flame_sector_t"] = _t + 0.05
 	(sect.material_override as ShaderMaterial).set_shader_parameter("intensity", 0.9 + 0.1 * sin(_t * 11.0))   # 强度轻跳(烧动)
+	var hist: Array = u.get("phx_hist", [])                       # 喷射历史[t,角,开]: 分环回放→停喷火飞完才灭/转向拖尾(用户2026-07-15"完整运动")
+	hist.append([_t, float(u.get("phx_aim", 0.0)), 1.0])
+	while hist.size() > 90: hist.pop_front()
+	u["phx_hist"] = hist
+	if not _phoenix_build_flame_mesh(u):
+		sect.visible = false
+
+const PHX_FLIGHT_T := 0.3   # 火从嘴飞到锥远端的时间(秒): 历史回放窗口(停喷/转向的残焰按此飞完)
+
+func _phx_hist_sample(hist: Array, tq: float) -> Array:   # 采样喷射历史→[角,开](线性插值·lerp_angle)
+	if hist.is_empty(): return [0.0, 0.0]
+	if tq <= float(hist[0][0]): return [float(hist[0][1]), float(hist[0][2])]
+	for k in range(hist.size() - 1, -1, -1):
+		if float(hist[k][0]) <= tq:
+			if k == hist.size() - 1: return [float(hist[k][1]), float(hist[k][2])]
+			var a: Array = hist[k]
+			var b: Array = hist[k + 1]
+			var f: float = clampf((tq - float(a[0])) / maxf(0.0001, float(b[0]) - float(a[0])), 0.0, 1.0)
+			return [lerp_angle(float(a[1]), float(b[1]), f), lerpf(float(a[2]), float(b[2]), f)]
+	return [float(hist[0][1]), float(hist[0][2])]
+
+func _phoenix_build_flame_mesh(u: Dictionary) -> bool:   # 分环建扇形mesh: 第r环回放r×飞行时间前的(角,开)→火锋推进/停喷外飘/转向弯流全自然涌现; 返回false=全灭
+	var sect = u.get("flame_sector", null)
+	if sect == null or not is_instance_valid(sect): return false
+	var im: ImmediateMesh = sect.mesh
+	im.clear_surfaces()
+	var hist: Array = u.get("phx_hist", [])
+	if hist.is_empty(): return false
+	var R := 12
+	var N := 12
+	var ring_a: Array = []
+	var ring_on: Array = []
+	var any := false
+	for i in range(R + 1):
+		var s: Array = _phx_hist_sample(hist, _t - (float(i) / float(R)) * PHX_FLIGHT_T)
+		ring_a.append(float(s[0])); ring_on.append(float(s[1]))
+		if float(s[1]) > 0.02: any = true
+	if not any: return false
 	var origin: Vector2 = u["pos"]
-	var dir: Vector2 = tgt["pos"] - origin
-	if dir.length() < 1.0:
-		return
-	var base_ang: float = float(u.get("phx_aim", dir.angle()))   # 平滑瞄准角(换目标扫过去·非瞬跳)
 	var half: float = deg_to_rad(PHX_CONE_HALF_DEG)
 	var rng: float = float(u.get("atk_range", 400.0)) * 0.92
-	var mouth: Vector2 = origin + Vector2(cos(base_ang), sin(base_ang)) * 18.0
-	var im: ImmediateMesh = sect.mesh   # 世界空间贴地扇形(照兰博Q参考·锥形轮廓天然可读不穿地); UV: u=角向0..1 / v=径向0嘴..1远端 → shader画条纹/烟团
-	im.clear_surfaces()
-	var N := 20
+	var mouth: Vector2 = origin + Vector2(cos(ring_a[0]), sin(ring_a[0])) * 18.0
 	im.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
-	for i in range(N):
-		var f0: float = float(i) / float(N)
-		var f1: float = float(i + 1) / float(N)
-		var a0: float = base_ang - half + (2.0 * half) * f0
-		var a1: float = base_ang - half + (2.0 * half) * f1
-		var p0: Vector2 = mouth + Vector2(cos(a0), sin(a0)) * rng
-		var p1: Vector2 = mouth + Vector2(cos(a1), sin(a1)) * rng
-		im.surface_set_uv(Vector2((f0 + f1) * 0.5, 0.0))   # 嘴(径向v=0)
-		im.surface_add_vertex(_world_pos(mouth, 0.12))
-		im.surface_set_uv(Vector2(f0, 1.0))                # 远端(径向v=1)
-		im.surface_add_vertex(_world_pos(p0, 0.12))
-		im.surface_set_uv(Vector2(f1, 1.0))
-		im.surface_add_vertex(_world_pos(p1, 0.12))
+	for i in range(R):
+		for j in range(N):
+			var f0: float = float(j) / float(N)
+			var f1: float = float(j + 1) / float(N)
+			var v00: Vector2 = _phx_fan_pt(mouth, ring_a[i], half, rng, float(i) / float(R), f0)
+			var v01: Vector2 = _phx_fan_pt(mouth, ring_a[i], half, rng, float(i) / float(R), f1)
+			var v10: Vector2 = _phx_fan_pt(mouth, ring_a[i + 1], half, rng, float(i + 1) / float(R), f0)
+			var v11: Vector2 = _phx_fan_pt(mouth, ring_a[i + 1], half, rng, float(i + 1) / float(R), f1)
+			var c0 := Color(1, 1, 1, ring_on[i])
+			var c1 := Color(1, 1, 1, ring_on[i + 1])
+			var r0: float = float(i) / float(R)
+			var r1: float = float(i + 1) / float(R)
+			im.surface_set_color(c0); im.surface_set_uv(Vector2(f0, r0)); im.surface_add_vertex(_world_pos(v00, 0.12))
+			im.surface_set_color(c1); im.surface_set_uv(Vector2(f0, r1)); im.surface_add_vertex(_world_pos(v10, 0.12))
+			im.surface_set_color(c1); im.surface_set_uv(Vector2(f1, r1)); im.surface_add_vertex(_world_pos(v11, 0.12))
+			im.surface_set_color(c0); im.surface_set_uv(Vector2(f0, r0)); im.surface_add_vertex(_world_pos(v00, 0.12))
+			im.surface_set_color(c1); im.surface_set_uv(Vector2(f1, r1)); im.surface_add_vertex(_world_pos(v11, 0.12))
+			im.surface_set_color(c0); im.surface_set_uv(Vector2(f1, r0)); im.surface_add_vertex(_world_pos(v01, 0.12))
 	im.surface_end()
+	return true
+
+func _phx_fan_pt(mouth: Vector2, center_ang: float, half: float, rng: float, r: float, f: float) -> Vector2:   # 扇形上(径向r,角向f)的2D点(环各自的历史中心角→弯流)
+	var aa: float = center_ang - half + 2.0 * half * f
+	return mouth + Vector2(cos(aa), sin(aa)) * (rng * r)
 
 # 凤凰·烫伤 ✅: 蓄力投掷火球(1.5ATK魔法+1ATK灼烧+破盾/减攻防抗/治疗削减), 命中爆开 (用户)
 func _sk_phoenix_scald(u: Dictionary, tgt) -> void:
