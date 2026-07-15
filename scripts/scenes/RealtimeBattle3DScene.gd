@@ -171,7 +171,7 @@ const REVIEW_DEMO_CFG := {
 	"line:-1": [ {"dx": 260.0, "dy": 0.0, "fixed": true} ],   # 线条被动墨迹: 单假人→线条龟普攻/技能叠墨迹(头顶徽章)→每受伤额外+5%/层真实伤
 	"lightning:0": [ {"dx": 220.0, "dy": 0.0, "fixed": true}, {"dx": 400.0, "dy": -70.0, "fixed": true}, {"dx": 560.0, "dy": 50.0, "fixed": true} ],   # 闪电普攻: 3假人成链→看一道锯齿电弧劈主目标+依次接力连锁2跳(×0.6递减)+各叠电击层徽章
 	"lightning:1": [ {"dx": 240.0, "dy": -60.0, "fixed": true}, {"dx": 240.0, "dy": 60.0, "fixed": true} ],   # 涌动: 2假人→看自身涌起电流增伤光环5秒+立即对目标1次真伤电击(期间被动电击真伤+50%)
-	"lightning:2": [ {"dx": 220.0, "dy": -140.0, "fixed": true}, {"dx": 220.0, "dy": 140.0, "fixed": true}, {"dx": 420.0, "dy": -70.0, "fixed": true}, {"dx": 420.0, "dy": 70.0, "fixed": true}, {"dx": 600.0, "dy": 0.0, "fixed": true} ],   # 雷暴: 5假人散开→头顶生风暴云→20道天降竖直落雷(闪电龟自有lightning-0/3·非被动落雷)随机轰击+各叠电击层
+	"lightning:2": [ {"dx": 200.0, "dy": -120.0, "fixed": true}, {"dx": 200.0, "dy": 120.0, "fixed": true}, {"dx": 340.0, "dy": -55.0, "fixed": true}, {"dx": 340.0, "dy": 55.0, "fixed": true}, {"dx": 290.0, "dy": 0.0, "fixed": true} ],   # 雷暴: 5假人聚拢居中(原推到右边缘→云和落雷被裁)→敌上空生大风暴云→20道天降竖直落雷(闪电龟自有lightning-0/3·非被动落雷)随机轰击+各叠电击层
 	"lightning:3": [ {"dx": 150.0, "dy": -70.0}, {"dx": 150.0, "dy": 70.0}, {"dx": 230.0, "dy": 0.0} ],   # 雷盾: 3假人贴近还手→看以雷电包裹自身(脚下电爆环+3道电弧环绕5秒)+护盾在时每挨一段反击0.1A魔法叠电击
 	"lightning:-1": [ {"dx": 180.0, "dy": -60.0}, {"dx": 180.0, "dy": 60.0} ],   # 雷电被动: 2假人贴近→每4秒自动电击随机敌(common落雷)+普攻/电击叠电击层徽章→满8层引爆(清零·区别于雷暴的自有落雷)
 }
@@ -6373,29 +6373,39 @@ func _lightning_hop(u: Dictionary, from_pos: Vector2, target: Dictionary, fr: fl
 	if hop_i > 0:
 		_lightning_electric(u, target)   # 连锁每跳也叠电击层(主目标由_on_basic_hit叠, 避免重复)
 
-func _sk_lightning_barrage(u: Dictionary) -> void:             # 闪电龟·雷暴 ✅ (头顶生风暴云→20道极快锯齿电弧劈随机敌, 用户自画)
-	var cloud_h := 3.4
+func _sk_lightning_barrage(u: Dictionary) -> void:             # 闪电龟·雷暴 (用户2026-07-15纠错重做: 原风暴云低压施法者脸上像帽子=离谱→改敌方阵型上空高处的大风暴云下雷)
+	var es := _enemies_of(u)
+	var center: Vector2 = u["pos"]                 # 风暴云中心=敌方阵型质心(雷暴"随机轰击敌方"→云在敌上空非施法者头顶)
+	if not es.is_empty():
+		center = Vector2.ZERO
+		for e in es:
+			center += e["pos"]
+		center /= float(es.size())
+	var cloud_h := 4.5                             # 敌上空高处(原3.4太低压脸·5.4又顶出画面顶→4.5)
 	var cloud := Sprite3D.new()
 	var ctex := load("res://assets/sprites/skills/lightning-2.png")
 	if ctex != null:
 		cloud.texture = ctex
-		cloud.pixel_size = 3.4 / float(maxi(1, ctex.get_height()))   # 加大风暴云(用户2026-07-15雷暴重做)
+		cloud.pixel_size = 5.2 / float(maxi(1, ctex.get_height()))   # 大风暴云(原3.4→5.2)
 	cloud.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	cloud.shaded = false
 	cloud.transparent = true
 	cloud.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	cloud.position = _world_pos(u["pos"], cloud_h)
+	cloud.position = _world_pos(center, cloud_h)
+	cloud.modulate = Color(0.55, 0.66, 0.92, 0.0)  # 冷色压暗成阴沉风暴云(非亮图标)·淡入
 	_world.add_child(cloud)
+	var tin := _reg_tween()
+	tin.tween_property(cloud, "modulate:a", 0.96, 0.22)
 	var tw := _reg_tween()
-	for i in range(20):                            # 20道极快电(每0.06s)
+	for i in range(20):                            # 20道天降落雷(每0.075s·稍慢更可读)
 		tw.tween_callback(_barrage_bolt.bind(u, cloud_h))
-		tw.tween_interval(0.06)
+		tw.tween_interval(0.075)
 	tw.tween_callback(_barrage_cloud_fade.bind(cloud))
 
 func _barrage_strike(pos2d: Vector2) -> void:   # 雷暴专属落雷(闪电龟自有lightning-0竖直落雷+lightning-3电爆; 用户2026-07-15强调: 区别于被动8层引爆的common-lightning-strike)
 	var tex := load("res://assets/sprites/skills/lightning-0.png")
 	if tex != null:
-		var world_h := 3.6
+		var world_h := 4.4                            # 落雷加高(从高空风暴云延伸下来·2026-07-15)
 		var spr := Sprite3D.new()
 		spr.texture = tex
 		spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
