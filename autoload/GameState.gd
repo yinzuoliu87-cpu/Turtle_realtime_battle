@@ -12,6 +12,8 @@ var left_slots: Array[String] = []
 var right_slots: Array[String] = []
 ## 玩家每只龟的 5选3 技能选择 {pet_id → [idx,...]}; TeamSelect 写, BattleScene 读 (空=用 defaultSkills)
 var loadouts: Dictionary = {}
+## 对手(ghost快照)的技能选择 {pet_id → idx}; 匹配到ghost时战斗场景填, 敌侧_resolve_chosen_index读(用户2026-07-15: ghost带技能配置); 不落盘
+var foe_loadouts: Dictionary = {}
 
 ## "single"  — 自定义单局, 战斗结束回选龟
 ## "dungeon" — 闯关模式, 战斗结束按胜负进下一关 / 回主菜单

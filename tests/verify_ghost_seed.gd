@@ -1,5 +1,5 @@
 extends Node
-## verify_ghost_seed.gd — 守卫: 内置 ghost 种子池 (49 支策划队, 按档分桶·装备随档递增, 冷启动/老档并入)
+## verify_ghost_seed.gd — 守卫: 内置 ghost 种子池 (70 支策划队, 按档分桶·装备随档递增, 冷启动/老档并入)
 ## 用户〖2026-07-11〗:「对战到的队伍多么, 加10个快照看看, 按档位的是吗」
 ##
 ## 断言(测纯函数, 不碰真实 user://ghost_pool.json):
@@ -37,7 +37,7 @@ func _ready() -> void:
 	var total := 0
 	for b in brackets.keys():
 		total += (brackets[b] as Array).size()
-	_ok("种子池 = 49 支队", total == 49, "实际 %d" % total)
+	_ok("种子池 = 70 支队", total == 70, "实际 %d" % total)
 	_ok("覆盖档 0-7", brackets.has("0") and brackets.has("7"))
 
 	# 2. 每支队合法
@@ -68,8 +68,8 @@ func _ready() -> void:
 	var c1 := _count(pool)
 	Backend._ensure_seeded(pool)
 	var c2 := _count(pool)
-	_ok("_ensure_seeded 空池并入 49", c1 == 49, "%d" % c1)
-	_ok("_ensure_seeded 幂等(重并不重复)", c2 == 49, "%d" % c2)
+	_ok("_ensure_seeded 空池并入 70", c1 == 70, "%d" % c1)
+	_ok("_ensure_seeded 幂等(重并不重复)", c2 == 70, "%d" % c2)
 
 	# 4. pool_find 各档能抽到种子对手
 	var rng := RandomNumberGenerator.new()
@@ -124,7 +124,7 @@ func _ready() -> void:
 func _done() -> void:
 	print("")
 	if _fail == 0:
-		print("ALL PASS — ghost 种子池(49策划队/按档递增) 守卫通过")
+		print("ALL PASS — ghost 种子池(70策划队/按档递增/带loadouts) 守卫通过")
 	else:
 		print("FAIL x", _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
