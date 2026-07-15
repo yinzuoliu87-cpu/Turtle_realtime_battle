@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "lightning"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 2   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
+const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -9793,17 +9793,20 @@ func _make_stack_badge(icon_path: String, tint: Color) -> Control:   # 头顶层
 	var icon := TextureRect.new()
 	var t := load(icon_path)
 	if t != null: icon.texture = t
-	icon.custom_minimum_size = Vector2(32, 32); icon.size = Vector2(32, 32)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE                # ★关键修复(用户2026-07-15): 图标原图365~500px, 不设IGNORE_SIZE会按原始巨大尺寸渲染(size=32被无视)→跟随图标失控
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.custom_minimum_size = Vector2(34, 34); icon.size = Vector2(34, 34)
+	icon.position = Vector2(0, 0)
 	icon.modulate = tint
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(icon)
 	var lbl := Label.new()
-	lbl.add_theme_font_size_override("font_size", 15)
+	lbl.add_theme_font_size_override("font_size", 17)
 	lbl.add_theme_color_override("font_color", Color(1, 1, 1))
 	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0))
-	lbl.add_theme_constant_override("outline_size", 4)
-	lbl.position = Vector2(23, 11)
+	lbl.add_theme_constant_override("outline_size", 5)
+	lbl.position = Vector2(30, 6)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(lbl)
 	root.set_meta("lbl", lbl)
