@@ -86,7 +86,7 @@ static func _review_demo() -> bool:
 	if OS.has_environment("REVIEW"):
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
-const REVIEW_TURTLE := "lightning"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
+const REVIEW_TURTLE := "phoenix"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
 const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
@@ -174,6 +174,11 @@ const REVIEW_DEMO_CFG := {
 	"lightning:2": [ {"dx": 200.0, "dy": -120.0, "fixed": true}, {"dx": 200.0, "dy": 120.0, "fixed": true}, {"dx": 340.0, "dy": -55.0, "fixed": true}, {"dx": 340.0, "dy": 55.0, "fixed": true}, {"dx": 290.0, "dy": 0.0, "fixed": true} ],   # 雷暴: 5假人聚拢居中(原推到右边缘→云和落雷被裁)→敌上空生大风暴云→20道天降竖直落雷(闪电龟自有lightning-0/3·非被动落雷)随机轰击+各叠电击层
 	"lightning:3": [ {"dx": 150.0, "dy": -70.0}, {"dx": 150.0, "dy": 70.0}, {"dx": 230.0, "dy": 0.0} ],   # 雷盾: 3假人贴近还手→看以雷电包裹自身(脚下电爆环+3道电弧环绕5秒)+护盾在时每挨一段反击0.1A魔法叠电击
 	"lightning:-1": [ {"dx": 180.0, "dy": -60.0}, {"dx": 180.0, "dy": 60.0} ],   # 雷电被动: 2假人贴近→每4秒自动电击随机敌(common落雷)+普攻/电击叠电击层徽章→满8层引爆(清零·区别于雷暴的自有落雷)
+	"phoenix:0": [ {"dx": 150.0, "dy": -45.0, "fixed": true}, {"dx": 150.0, "dy": 45.0, "fixed": true} ],   # 灼烧普攻: 2假人在喷火锥前→看持续喷火(70°扇形)+每0.5s伤害+灼烧层
+	"phoenix:1": [ {"dx": 140.0, "dy": -70.0}, {"dx": 140.0, "dy": 70.0}, {"dx": 220.0, "dy": 0.0} ],   # 熔岩盾: 3假人贴近还手→看3.5A熔岩护盾4秒+每挨一段反击0.14A魔法
+	"phoenix:2": [ {"dx": 330.0, "dy": 0.0, "fixed": true} ],   # 烫伤: 单假人远处→看蓄力投火球(1.5A魔法)+命中爆开+灼烧/破盾/减攻防抗/治疗削减
+	"phoenix:3": [ {"dx": 160.0, "dy": -50.0}, {"dx": 160.0, "dy": 50.0} ],   # 强化涅槃(技三): 2假人→看自身烈焰加速火环(+50%攻速+50%移速4秒·喷火随攻速增伤)
+	"phoenix:-1": [ {"dx": 160.0, "dy": -55.0}, {"dx": 160.0, "dy": 55.0} ],   # 涅槃被动: 2假人(注: 评审受审龟免死→复活需真死·此处看被动登场态·复活演出需F5真战)
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
