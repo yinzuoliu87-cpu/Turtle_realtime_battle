@@ -6085,8 +6085,12 @@ func _phoenix_flame_channel(u: Dictionary, tgt: Dictionary, delta: float) -> voi
 	u["flip_h"] = tgt["pos"].x < u["pos"].x          # 朝向目标
 	_phoenix_sector_indicator(u, tgt)
 	u["phx_spawn_t"] = float(u.get("phx_spawn_t", 0.0)) + delta
-	while u["phx_spawn_t"] >= 0.0055:                  # 持续喷火苗 ~50颗/秒(连续火流)
-		u["phx_spawn_t"] -= 0.02
+	while u["phx_spawn_t"] >= 0.05:                  # 主喷流(flame-jet横向火流素材)~20/秒·每个闪动叠成连续喷射(用户2026-07-15: 原散火苗像小篝火→改真喷流)
+		u["phx_spawn_t"] -= 0.05
+		_phoenix_flame_jet(u, tgt)
+	u["phx_spark_t"] = float(u.get("phx_spark_t", 0.0)) + delta
+	while u["phx_spark_t"] >= 0.045:                 # 飞散火星(dragon-flame小火苗动画·细节+烧动感)
+		u["phx_spark_t"] -= 0.045
 		_phoenix_flame_puff(u, tgt)
 	u["phx_burn_t"] = float(u.get("phx_burn_t", 0.0)) + delta
 	while u["phx_burn_t"] >= 0.5:                    # 每0.5s 伤害结算
@@ -6120,7 +6124,35 @@ func _phoenix_flame_cone(u: Dictionary, tgt: Dictionary) -> void:
 		_flash(e, Color("#ff8a3a"))
 
 # 单颗喷火苗: 嘴部喷出→沿锥角向外冲(火舌位移感), 软发光blob叠成顺滑火流, 黄白→橙→红透+边冲边长大
-func _phoenix_flame_puff(u: Dictionary, tgt: Dictionary) -> void:
+func _phoenix_flame_jet(u: Dictionary, tgt: Dictionary) -> void:   # 主喷流: flame-jet横向火流从口喷向目标·拉伸够长·每发闪动→叠成连续喷射(用户2026-07-15)
+	var origin: Vector2 = u["pos"]
+	var dir: Vector2 = tgt["pos"] - origin
+	if dir.length() < 1.0:
+		return
+	dir = dir.normalized()
+	var mouth: Vector2 = origin + dir * 24.0
+	var dist: float = clampf(origin.distance_to(tgt["pos"]), 150.0, 320.0)   # 喷流长度=够到目标(150~320码)
+	var jet := Sprite3D.new()
+	jet.texture = load("res://assets/sprites/vfx/flame-jet.png")
+	jet.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	jet.shaded = false
+	jet.transparent = true
+	jet.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	jet.flip_h = dir.x < 0.0                                                 # 朝向: 敌在左则翻转(窄端始终对准口)
+	jet.pixel_size = 0.0118                                                  # 素材134×72→基准高~0.85世界·宽~66码
+	var lenf: float = (dist / 66.0) * _juice_rng.randf_range(0.92, 1.06)     # X拉伸够长(+每发长度闪动)
+	var hf: float = _juice_rng.randf_range(0.82, 1.14)                       # 高度闪动(烧动感)
+	jet.scale = Vector3(lenf, hf, 1.0)
+	jet.modulate = Color(1.0, 0.92, 0.6, 0.92)
+	jet.position = _world_pos(mouth + dir * (dist * 0.5), 0.9)               # 中点(centered sprite跨口→目标)
+	_world.add_child(jet)
+	var tw := _reg_tween()
+	tw.set_parallel(true)
+	tw.tween_property(jet, "modulate", Color(1.0, 0.5, 0.15, 0.0), 0.15)     # 快闪灭(被下一发接替=连续)
+	tw.tween_property(jet, "scale", Vector3(lenf * 1.04, hf * 1.18, 1.0), 0.15)
+	tw.chain().tween_callback(jet.queue_free)
+
+func _phoenix_flame_puff(u: Dictionary, tgt: Dictionary) -> void:   # 飞散火星(dragon-flame小火苗动画·喷流上的细节碎火)
 	var origin: Vector2 = u["pos"]
 	var dir: Vector2 = tgt["pos"] - origin
 	if dir.length() < 1.0:
@@ -6129,27 +6161,34 @@ func _phoenix_flame_puff(u: Dictionary, tgt: Dictionary) -> void:
 	var rng: float = float(u.get("atk_range", 400.0))
 	var base_ang: float = dir.angle()
 	var half: float = deg_to_rad(PHX_CONE_HALF_DEG)
-	var ang: float = base_ang + _juice_rng.randf_range(-half, half) * 1.0
-	var travel: float = _juice_rng.randf_range(rng * 0.45, rng * 1.0)
-	var mouth: Vector2 = origin + Vector2(cos(base_ang), sin(base_ang)) * 20.0
+	var ang: float = base_ang + _juice_rng.randf_range(-half, half) * 0.65   # 收紧火锥→定向喷流(非散开)
+	var travel: float = _juice_rng.randf_range(rng * 0.55, rng * 1.0)
+	var mouth: Vector2 = origin + Vector2(cos(base_ang), sin(base_ang)) * 24.0
 	var endp: Vector2 = origin + Vector2(cos(ang), sin(ang)) * travel
+	var start_p: Vector2 = mouth.lerp(endp, _juice_rng.randf_range(0.0, 0.5))   # 沿喷流线随机起点→火流从口到尖铺满(非全堆在口部=散篝火)
 	var spr := Sprite3D.new()
-	spr.texture = _make_fire_glow_tex()
+	spr.texture = load("res://assets/sprites/vfx/dragon-flame.png")   # 8帧动画火焰(烧动感·非静态软光点)
+	spr.hframes = 8
+	spr.frame = _juice_rng.randi() % 8
 	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	spr.shaded = false
 	spr.transparent = true
-	spr.pixel_size = 0.014
-	spr.modulate = Color(1.0, 0.97, 0.78, 1.0)
-	spr.scale = Vector3(0.5, 0.5, 0.5)
-	spr.position = _world_pos(mouth, 1.0)
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	spr.pixel_size = 0.006
+	spr.modulate = Color(1.0, 0.95, 0.72, 0.95)
+	spr.scale = Vector3(0.4, 0.4, 0.4)
+	spr.position = _world_pos(start_p, 0.95)
 	_world.add_child(spr)
-	var life: float = _juice_rng.randf_range(0.28, 0.42)
-	var hend: float = 1.0 + _juice_rng.randf_range(0.0, 0.45)
+	var life: float = _juice_rng.randf_range(0.26, 0.4)
+	var hend: float = 0.95 + _juice_rng.randf_range(0.05, 0.5)   # 火星往上飘散
 	var tw := _reg_tween()
 	tw.set_parallel(true)
-	tw.tween_property(spr, "position", _world_pos(endp, hend), life)
-	tw.tween_property(spr, "scale", Vector3(2.3, 2.3, 2.3), life)
-	tw.tween_property(spr, "modulate", Color(0.92, 0.22, 0.05, 0.0), life)
+	tw.tween_property(spr, "position", _world_pos(endp, hend), life).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)   # 喷出去(先快后慢)
+	tw.tween_property(spr, "scale", Vector3(1.1, 1.1, 1.1), life)      # 边喷边胀
+	tw.tween_property(spr, "modulate", Color(0.95, 0.3, 0.06, 0.0), life)   # 黄白→暗红透
+	tw.tween_method(func(p: float) -> void:                            # 帧循环=火焰跳动(烧动感)
+		if is_instance_valid(spr): spr.frame = int(p * 18.0) % 8
+	, 0.0, 1.0, life)
 	tw.chain().tween_callback(spr.queue_free)
 
 # 灼烧特效 (自设计, 不用回合制): 燃烧单位身上窜升腾软光小火苗 (黄→红透+缩, 边燃边升)
