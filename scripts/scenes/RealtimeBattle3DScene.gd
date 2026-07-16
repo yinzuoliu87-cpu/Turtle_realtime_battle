@@ -208,6 +208,11 @@ const REVIEW_DEMO_CFG := {
 	"space:2": [ {"dx": 220.0, "dy": -90.0, "fixed": true}, {"dx": 220.0, "dy": 90.0, "fixed": true}, {"dx": 360.0, "dy": 0.0, "fixed": true} ],   # 星波(星能满→彗星): 3假人→环形星波+满能紫环预警1s→流星斜射→尘暴星星闪点冲击环
 	"space:3": [ {"dx": 240.0, "dy": -100.0, "fixed": true}, {"dx": 240.0, "dy": 100.0, "fixed": true}, {"dx": 400.0, "dy": 0.0, "fixed": true} ],   # 扭曲空间「奇点」: 3假人散开→吸入1.03s→爆发帧0.8A魔; 星能满=+击飞拽空中0.57s穿奇点镜像落对侧换位(头顶紫螺旋+尾迹+白火花)+吸积盘
 	"space:-1": [ {"dx": 300.0, "dy": -50.0, "fixed": true}, {"dx": 300.0, "dy": 50.0, "fixed": true} ],   # 星能被动: 2假人→造伤35%转星能(资源条)+普攻弹道命中帧追加12%当前星能真伤(白字·用户2026-07-16封板)
+	"hiding:0": [ {"dx": 110.0, "dy": 0.0, "fixed": true} ],   # 缩壳普攻: 贴脸假人→每击硬化微光+每5层甲片环+0.1A盾
+	"hiding:1": [ {"dx": 140.0, "dy": -60.0, "fixed": true}, {"dx": 140.0, "dy": 60.0, "fixed": true} ],   # 缩头: 假人打缩头(看80%减伤+土棕硬壳罩3秒)+能量束给随从
+	"hiding:2": [ {"dx": 140.0, "dy": 0.0, "fixed": true} ],   # 防御: 壳青绿护罩4秒呼吸→碎裂+绿光点转血
+	"hiding:3": [ {"dx": 220.0, "dy": 0.0, "fixed": true} ],   # 强化随从: 金色注入光束+3金星绕随从升腾
+	"hiding:-1": [ {"dx": 240.0, "dy": -80.0, "fixed": true}, {"dx": 240.0, "dy": 80.0, "fixed": true} ],   # 喊龟被动: 召唤法阵+光柱+星粒; 随从死→遗志金光点回流主人
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -14123,11 +14128,134 @@ func _sk_cyber_cannon(u: Dictionary, tgt) -> void:              # 赛博龟·能
 	_muzzle_flash(u["pos"], dir, Color("#9bf0ff"))             # 起手枪口闪
 	_pending_shots.append({"delay": 0.9, "fn": fire, "src": u})   # 蓄力0.9s→发射(Lux R节奏)
 
+func _hiding_dome(u: Dictionary, col: Color, dur: float) -> void:   # 缩头·壳护罩: hex-bubble罩身呼吸dur秒→碎裂放大淡出(跟随单位·2026-07-17 Q4草案)
+	var dm := Sprite3D.new()
+	dm.texture = load("res://assets/sprites/vfx/fx-hex-bubble.png")
+	dm.billboard = BaseMaterial3D.BILLBOARD_ENABLED; dm.shaded = false; dm.transparent = true
+	dm.pixel_size = (110.0 * WS) / float(maxi(1, dm.texture.get_height()))
+	dm.modulate = Color(col.r, col.g, col.b, 0.0)
+	dm.position = _world_pos(u["pos"], 0.75)
+	_world.add_child(dm)
+	_follow_vfx.append({"spr": dm, "unit": u, "h": 0.75})
+	var cycles: int = maxi(1, int(round((dur - 0.6) / 0.6)))
+	var t := _reg_tween()
+	t.tween_property(dm, "modulate:a", 0.75, 0.18)
+	for i in range(cycles):                                     # 呼吸脉动(护罩活着的感觉)
+		t.tween_property(dm, "scale", Vector3.ONE * 1.08, 0.3)
+		t.tween_property(dm, "scale", Vector3.ONE, 0.3)
+	t.tween_interval(maxf(0.05, dur - 0.18 - float(cycles) * 0.6 - 0.28))
+	t.tween_property(dm, "scale", Vector3.ONE * 1.35, 0.28)     # 到期碎裂: 放大+淡出(不瞬删)
+	t.parallel().tween_property(dm, "modulate:a", 0.0, 0.28)
+	t.chain().tween_callback(dm.queue_free)
+
+func _hiding_summon_vfx(pos: Vector2) -> void:                 # 喊龟·召唤法阵(2026-07-17 Q4草案): 细线环扩开+内环倒收+土金光柱+星粒上腾+落地尘
+	var glow := _make_fire_glow_tex()
+	var stex := _make_star_texture()
+	var ring := Sprite3D.new()                                  # 外法阵环扩开
+	ring.texture = _make_thin_ring_tex()
+	ring.billboard = BaseMaterial3D.BILLBOARD_DISABLED; ring.axis = Vector3.AXIS_Y
+	ring.shaded = false; ring.transparent = true
+	ring.modulate = Color(0.95, 0.8, 0.45, 0.9)
+	ring.pixel_size = (20.0 * WS) / 256.0
+	ring.position = _world_pos(pos, 0.065)
+	_world.add_child(ring)
+	var rt := _reg_tween()
+	rt.tween_method(func(q: float) -> void:
+		if is_instance_valid(ring): ring.pixel_size = (maxf(20.0, 300.0 * q) * WS) / 256.0
+	, 0.0, 1.0, 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	rt.tween_interval(0.45)
+	rt.tween_property(ring, "modulate:a", 0.0, 0.3)
+	rt.tween_callback(ring.queue_free)
+	var inner := _px_ground_sprite(_make_pixel_ring_tex(), pos, 260.0, Color(0.85, 0.7, 0.4, 0.7), 0.06)   # 内环倒收(聚拢感)
+	var it := _reg_tween()
+	it.tween_method(func(q: float) -> void:
+		if is_instance_valid(inner): inner.pixel_size = (maxf(50.0, 260.0 * (1.0 - q)) * WS) / 48.0
+	, 0.0, 1.0, 0.45)
+	it.tween_property(inner, "modulate:a", 0.0, 0.2)
+	it.tween_callback(inner.queue_free)
+	for gi in range(3):                                         # 土金光柱(三段叠高·从地亮起)
+		var gp := Sprite3D.new()
+		gp.texture = glow
+		gp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; gp.shaded = false; gp.transparent = true
+		gp.pixel_size = (float(90 - gi * 20) * WS) / 128.0
+		gp.modulate = Color(1.0, 0.85, 0.5, 0.0)
+		gp.position = _world_pos(pos, 0.3 + 0.55 * float(gi))
+		_world.add_child(gp)
+		var gt := _reg_tween()
+		gt.tween_property(gp, "modulate:a", 0.7, 0.15).set_delay(0.08 * float(gi))
+		gt.tween_interval(0.3)
+		gt.tween_property(gp, "modulate:a", 0.0, 0.3)
+		gt.tween_callback(gp.queue_free)
+	for si in range(6):                                         # 星粒上腾
+		var sp := Sprite3D.new()
+		sp.texture = stex
+		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; sp.shaded = false; sp.transparent = true
+		sp.pixel_size = 0.006
+		sp.modulate = Color(1.0, 0.9, 0.6, 0.95)
+		var sa: float = TAU * float(si) / 6.0
+		sp.position = _world_pos(pos + Vector2(cos(sa), sin(sa)) * randf_range(30.0, 70.0), 0.1)
+		_world.add_child(sp)
+		var spt := _reg_tween(); spt.set_parallel(true)
+		spt.tween_property(sp, "position", _world_pos(pos + Vector2(cos(sa), sin(sa)) * randf_range(20.0, 50.0), randf_range(1.2, 1.8)), 0.7).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		spt.tween_property(sp, "modulate:a", 0.0, 0.7)
+		spt.chain().tween_callback(sp.queue_free)
+	_burst_vfx("res://assets/sprites/vfx/dust-impact.png", pos, 130.0, 0.12)
+
+func _hiding_legacy_vfx(from_pos: Vector2, owner: Dictionary) -> void:   # 遗志继承: 金光点从随从尸位飞回主人入体+金环闪(2026-07-17 Q4草案)
+	var glow := _make_fire_glow_tex()
+	var oref: Dictionary = owner
+	for i in range(5):
+		var dot := Sprite3D.new()
+		dot.texture = glow
+		dot.billboard = BaseMaterial3D.BILLBOARD_ENABLED; dot.shaded = false; dot.transparent = true
+		dot.pixel_size = 0.005
+		dot.modulate = Color(1.0, 0.85, 0.45, 0.95)
+		var start: Vector2 = from_pos + Vector2(randf_range(-30.0, 30.0), randf_range(-30.0, 30.0))
+		dot.position = _world_pos(start, randf_range(0.3, 0.9))
+		_world.add_child(dot)
+		var dt := _reg_tween()
+		dt.tween_interval(0.06 * float(i))
+		dt.tween_method(func(q: float) -> void:                 # 活追踪主人(主人在走也能飞进身体)
+			if is_instance_valid(dot) and oref.get("alive", false):
+				dot.position = _world_pos(start.lerp(oref["pos"], q), lerpf(0.6, 0.8, q))
+		, 0.0, 1.0, 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		dt.tween_property(dot, "modulate:a", 0.0, 0.12)
+		dt.tween_callback(dot.queue_free)
+	var ft := _reg_tween()                                      # 入体金环闪
+	ft.tween_interval(0.55)
+	ft.tween_callback(func() -> void:
+		if oref.get("alive", false):
+			_skill_ring(oref["pos"], Color(1.0, 0.85, 0.4, 0.7), 70.0))
+
 func _sk_hiding_defend(u: Dictionary) -> void:                   # 缩头乌龟·防御(封板·100龟能): 缩壳20%maxHp盾(4秒)+护甲+20%(5秒)·到期剩余盾20%转生命
 	_grant_shield(u, u["maxHp"] * 0.20, 4.0)
 	_buff(u, "def", 0.2, true, 5.0)
 	var uu: Dictionary = u
 	_pending_shots.append({"delay": 3.95, "fn": func(): _heal(uu, float(uu.get("shield", 0.0)) * 0.20), "src": u})   # 到期前读剩余盾×20%转生命
+	_hiding_dome(u, Color(0.55, 0.85, 0.6, 1.0), 4.0)          # 壳青绿护罩4秒呼吸→碎裂(2026-07-17: 原零画面)
+	_pending_shots.append({"delay": 4.0, "fn": func(): _hiding_legacy_heal_vfx(uu), "src": u})   # 碎裂后: 绿光点流入(剩盾转血可视)
+
+func _hiding_legacy_heal_vfx(u: Dictionary) -> void:            # 防御盾到期转血: 绿光点绕身流入
+	if not u.get("alive", false): return
+	var glow := _make_fire_glow_tex()
+	var oref: Dictionary = u
+	for i in range(3):
+		var dot := Sprite3D.new()
+		dot.texture = glow
+		dot.billboard = BaseMaterial3D.BILLBOARD_ENABLED; dot.shaded = false; dot.transparent = true
+		dot.pixel_size = 0.005
+		dot.modulate = Color(0.5, 0.95, 0.6, 0.9)
+		var sa: float = TAU * float(i) / 3.0
+		var start: Vector2 = (oref["pos"] as Vector2) + Vector2(cos(sa), sin(sa)) * 60.0
+		dot.position = _world_pos(start, 0.4)
+		_world.add_child(dot)
+		var dt := _reg_tween()
+		dt.tween_method(func(q: float) -> void:
+			if is_instance_valid(dot) and oref.get("alive", false):
+				dot.position = _world_pos(start.lerp(oref["pos"], q), lerpf(0.4, 0.8, q))
+		, 0.0, 1.0, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		dt.tween_property(dot, "modulate:a", 0.0, 0.1)
+		dt.tween_callback(dot.queue_free)
 
 func _hiding_minion_of(u: Dictionary):                          # 取该缩头龟的存活随从(A方案完整龟)
 	var result = null
@@ -14156,22 +14284,64 @@ func _sk_hiding_shrink(u: Dictionary) -> void:                  # 缩头(封板�
 		var acts: Array = m.get("active_skills", [])
 		if not acts.is_empty(): cost = SkillEnergy.cost_of(str(acts[0]))
 		m["energy"] = float(m.get("energy", 0.0)) + cost * 0.5   # 给随从+50%技能龟能(加速放技)
-		_skill_ring(m["pos"], Color(0.6, 0.9, 1.0, 0.5), 44.0)
+		_beam_vfx("res://assets/sprites/vfx/fx-trail.png", u["pos"], m["pos"], 20.0, Color(0.5, 0.85, 1.0, 0.6), 0.4)   # 能量束射向随从(2026-07-17)
+		var mref: Dictionary = m
+		var mb := _reg_tween()
+		mb.tween_interval(0.35)
+		mb.tween_callback(func() -> void:
+			if mref.get("alive", false): _skill_ring(mref["pos"], Color(0.6, 0.9, 1.0, 0.6), 50.0))
 	u["stun_until"] = maxf(float(u.get("stun_until", 0.0)), _t + 3.0)   # 缩头3秒: 不能攻击/移动(定身)
 	u["damage_reduction"] = 0.80                                # 80%减伤
 	var uu: Dictionary = u
 	_pending_shots.append({"delay": 3.0, "fn": func(): uu["damage_reduction"] = 0.0, "src": u})
-	_skill_ring(u["pos"], Color(0.55, 0.5, 0.4, 0.6), 50.0)
+	_hiding_dome(u, Color(0.78, 0.64, 0.4, 1.0), 3.0)          # 土棕硬壳护罩3秒(80%减伤可视·与技2壳绿区分)
+	_burst_vfx("res://assets/sprites/vfx/dust-impact.png", u["pos"], 90.0, 0.1)   # 缩进壳的尘土
 
 func _sk_hiding_buff(u: Dictionary) -> void:                    # 强化随从(封板·80龟能): 随从注入力量5秒(攻/甲/抗+10%·吸血+10%·暴击+20%)
 	var m = _hiding_minion_of(u)
-	if m != null: _hiding_apply_buff(m, 5.0)
+	if m == null: return
+	_hiding_apply_buff(m, 5.0)
+	_beam_vfx("res://assets/sprites/vfx/fx-trail.png", u["pos"], m["pos"], 24.0, Color(1.0, 0.85, 0.4, 0.65), 0.45)   # 金色注入光束(2026-07-17)
+	var stex := _make_star_texture()
+	var mref: Dictionary = m
+	for si in range(3):                                         # 3颗金星绕随从升腾
+		var sp := Sprite3D.new()
+		sp.texture = stex
+		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; sp.shaded = false; sp.transparent = true
+		sp.pixel_size = 0.007
+		sp.modulate = Color(1.0, 0.88, 0.45, 0.0)
+		sp.position = _world_pos(m["pos"], 0.3)
+		_world.add_child(sp)
+		var a0: float = TAU * float(si) / 3.0
+		var st := _reg_tween()
+		st.tween_interval(0.3)
+		st.tween_method(func(q: float) -> void:
+			if not is_instance_valid(sp): return
+			if mref.get("alive", false):
+				var aa: float = a0 + q * TAU * 1.5
+				sp.position = _world_pos((mref["pos"] as Vector2) + Vector2(cos(aa), sin(aa)) * 34.0, 0.3 + q * 1.3)
+			sp.modulate.a = 0.95 * clampf(q / 0.15, 0.0, 1.0) * clampf((1.0 - q) / 0.25, 0.0, 1.0)
+		, 0.0, 1.0, 0.9)
+		st.tween_callback(sp.queue_free)
 
 func _hiding_shell_harden(u: Dictionary) -> void:              # 缩壳(普攻rider): 每次普攻+1护甲+1魔抗(永久累积)+0.1A护盾
 	u["base_def"] = float(u["base_def"]) + 1.0
 	u["base_mr"] = float(u["base_mr"]) + 1.0
 	_recalc_stats(u)
 	_grant_shield(u, u["atk"] * 0.1)
+	u["_harden_n"] = int(u.get("_harden_n", 0)) + 1             # 硬化反馈(2026-07-17·Q12轻量): 每击微光, 每5层一次甲片环
+	var gp := Sprite3D.new()
+	gp.texture = _make_fire_glow_tex()
+	gp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; gp.shaded = false; gp.transparent = true
+	gp.pixel_size = (26.0 * WS) / 128.0
+	gp.modulate = Color(0.9, 0.78, 0.5, 0.8)
+	gp.position = _world_pos(u["pos"], 0.7)
+	_world.add_child(gp)
+	var gt := _reg_tween()
+	gt.tween_property(gp, "modulate:a", 0.0, 0.2)
+	gt.tween_callback(gp.queue_free)
+	if int(u["_harden_n"]) % 5 == 0:
+		_skill_ring(u["pos"], Color(0.85, 0.72, 0.45, 0.55), 56.0)
 
 func _sk_shell_absorb(u: Dictionary, tgt) -> void:              # 龟壳·吸收(封板): 偷目标10%最大生命→转移(目标maxHp&当前同步减·龟壳maxHp&当前同步增)
 	if tgt == null: tgt = _nearest_enemy(u)
@@ -15659,6 +15829,7 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 		var _hm = u.get("summon_owner", null)
 		if _hm != null and _hm.get("alive", false) and str(_hm.get("id", "")) == "hiding":
 			_hiding_apply_buff(_hm, -1.0)
+			_hiding_legacy_vfx(u["pos"], _hm)                    # 遗志: 金光点从随从尸位飞回主人入体(2026-07-17)
 	# 召唤体死亡爆炸 (糖果炸弹: 全体敌均摊魔伤)
 	if u.get("death_aoe", 0.0) > 0.0:
 		var es := _enemies_of(u)
@@ -15743,6 +15914,7 @@ func _spawn_hiding_minion(u: Dictionary) -> void:
 		minion["skill_cd"] = {}                                         # 施法需(防u["skill_cd"][stype]崩)
 		minion["skill_gcd_until"] = 0.0
 		_recalc_stats(minion)
+		_hiding_summon_vfx(minion["pos"])                               # 召唤法阵+光柱+星粒+落地尘(2026-07-17·原无演出)
 
 # 海盗船·技能三(封板L379): 首次充能满召唤实体船→冲锋撞目标(第一敌200码1.0A魔法+击飞2秒)→留场; 船=HP1.5×/ATK1.0×/无双抗/攻速0.8射程300/普攻射最近敌0.4A
 func _sk_pirate_ship(u: Dictionary, tgt) -> void:
