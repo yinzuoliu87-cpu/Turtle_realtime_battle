@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "space"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
+const REVIEW_SKILL_IDX := 1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -3716,8 +3716,8 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 						u["skill_cd"][stype] = _skill_cd(u, stype)
 						u["skill_gcd_until"] = _t + SKILL_GCD
 						_eq_on_cast(u, tgt)
-						if u["id"] == "space" and float(u.get("star_energy", 0.0)) > 0.0:   # 星能: 施法后追加30%储存星能真伤
-							_apply_damage_from(u, tgt, int(u["star_energy"] * 0.30), Color("#ffffff"), 0.0, true)
+						if u["id"] == "space" and float(u.get("star_energy", 0.0)) > 0.0:   # 星能: 施法后追加12%当前星能真伤(用户2026-07-16: 30%→12%)
+							_apply_damage_from(u, tgt, int(u["star_energy"] * 0.12), Color("#ffffff"), 0.0, true)
 						if u["id"] == "shell":                   # 潜影: 自己放技能→破隐(下次普攻附破隐bonus)
 							_shell_break_stealth(u)
 					else:
@@ -6909,7 +6909,7 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 	if card_spin: pdur = clampf(start2d.distance_to(tgt["pos"]) / 430.0, 0.42, 1.1)   # 扑克牌弹道放慢看清(用户2026-07-14)
 	var _stt: int = 0
 	if basic_onhit and src is Dictionary and str(src.get("id", "")) == "space" and float(src.get("star_energy", 0.0)) > 0.0:
-		_stt = int(float(src["star_energy"]) * 0.30)   # 星能追加真伤打包进普攻弹道·命中才结算(用户2026-07-16'附在普攻上')
+		_stt = int(float(src["star_energy"]) * 0.12)   # 星能追加真伤=12%当前星能(用户2026-07-16: 30%→12%)·打包进普攻弹道命中才结算
 	_projectiles.append({
 		"node": p, "from": world_from, "tgt": tgt, "dmg": dmg, "col": col,
 		"src": src, "t": 0.0, "dur": pdur, "basic_onhit": basic_onhit, "star_true": _stt,
