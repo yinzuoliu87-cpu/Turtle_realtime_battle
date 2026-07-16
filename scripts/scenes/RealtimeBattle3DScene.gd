@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "chest"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
+const REVIEW_SKILL_IDX := 1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -195,7 +195,7 @@ const REVIEW_DEMO_CFG := {
 	"crystal:3": [ {"dx": 300.0, "dy": 0.0, "fixed": true} ],   # 水晶球: 登场即召水晶球实体(50%HP/同ATK)每5秒双段光线+主动时本体同步射线·共享结晶层
 	"crystal:-1": [ {"dx": 110.0, "dy": -50.0, "fixed": true}, {"dx": 110.0, "dy": 50.0, "fixed": true} ],   # 结晶共鸣被动: 近战贴脸2假人→普攻叠结晶(徽章+环绕碎晶)满5引爆(19%maxHp魔+永久-20%魔抗)+受魔伤减免20%
 	"chest:0": [ {"dx": 100.0, "dy": -45.0, "fixed": true}, {"dx": 100.0, "dy": 45.0, "fixed": true} ],   # 宝箱砸击普攻(近战): 2假人贴脸→K'Sante式前方短直线AOE扫击
-	"chest:1": [ {"dx": 120.0, "dy": -55.0}, {"dx": 120.0, "dy": 55.0} ],   # 清点财宝: 2假人围打(掉血)→回5%HP+0.6A盾·财宝值每100点强度+14%
+	"chest:1": [ {"dx": 120.0, "dy": -55.0}, {"dx": 120.0, "dy": 55.0} ],   # 清点财宝(2026-07-16改): 2假人围打(掉血)→回5%HP(每1000财宝治疗+10%)+0.6A盾
 	"chest:2": [ {"dx": 200.0, "dy": -90.0, "fixed": true}, {"dx": 200.0, "dy": 90.0, "fixed": true}, {"dx": 340.0, "dy": 0.0, "fixed": true} ],   # 财宝风暴: 3假人聚拢→以目标为心400码金币旋风(14金币升螺旋)+5跳伤害
 	"chest:3": [ {"dx": 220.0, "dy": 0.0, "fixed": true}, {"dx": 420.0, "dy": 0.0, "fixed": true}, {"dx": 620.0, "dy": 0.0, "fixed": true} ],   # 财宝炮击(2026-07-15换皮金币洪流): 3假人一线→蓄力0.4s→喷金币+金块洪流·线上各3A物理+击飞击退+命中金币爆
 	"chest:-1": [ {"dx": 110.0, "dy": -50.0, "fixed": true}, {"dx": 110.0, "dy": 50.0, "fixed": true} ],   # 藏宝图被动: 贴脸2假人→出伤攒财宝值→开箱(头顶弹战利品图标+金环+回血·基础→进阶→传说一场最多5件)
@@ -11463,10 +11463,10 @@ func _chest_pick_equip(costs: Array) -> String:
 		return ""
 	return str(pool[randi() % pool.size()])
 
-func _sk_chest_inventory(u: Dictionary) -> void:                 # 宝箱龟·清点财宝 ✅
-	var bonus: float = 1.0 + 0.14 * floorf(u["dmg_dealt"] / 100.0)   # 每100财宝值(=造成伤害)技能强度+14%
+func _sk_chest_inventory(u: Dictionary) -> void:                 # 宝箱龟·清点财宝(用户2026-07-16改: 每1000财宝→治疗+10%·盾不吃加成)
+	var bonus: float = 1.0 + 0.10 * floorf(u["dmg_dealt"] / 1000.0)
 	_heal(u, u["maxHp"] * 0.05 * bonus)
-	_grant_shield(u, u["atk"] * 0.6 * bonus)
+	_grant_shield(u, u["atk"] * 0.6)
 
 func _chest_basic(u: Dictionary, tgt: Dictionary) -> void:       # 普攻·宝箱砸击(封板): K'Sante一段Q式·朝目标前方短直线AOE·各1A物理(近战扫一小片非单体)
 	var dir: Vector2 = tgt["pos"] - u["pos"]
