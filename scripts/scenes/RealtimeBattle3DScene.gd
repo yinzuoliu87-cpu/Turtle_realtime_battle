@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "space"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 3   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
+const REVIEW_SKILL_IDX := -1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (星际: 0普攻✅/1虫洞✅/2星波✅/3扭曲空间✅过2026-07-16/-1被动←验收中)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -207,7 +207,7 @@ const REVIEW_DEMO_CFG := {
 	"space:1": [ {"dx": 250.0, "dy": -70.0, "fixed": true}, {"dx": 420.0, "dy": 0.0, "fixed": true}, {"dx": 600.0, "dy": 70.0, "fixed": true} ],   # 虫洞: 3假人沿线→140码/s缓慢黑洞推进+吸经过敌90码+星尘吸入粒子
 	"space:2": [ {"dx": 220.0, "dy": -90.0, "fixed": true}, {"dx": 220.0, "dy": 90.0, "fixed": true}, {"dx": 360.0, "dy": 0.0, "fixed": true} ],   # 星波(星能满→彗星): 3假人→环形星波+满能紫环预警1s→流星斜射→尘暴星星闪点冲击环
 	"space:3": [ {"dx": 240.0, "dy": -100.0, "fixed": true}, {"dx": 240.0, "dy": 100.0, "fixed": true}, {"dx": 400.0, "dy": 0.0, "fixed": true} ],   # 扭曲空间「奇点」: 3假人散开→吸入1.03s→爆发帧0.8A魔; 星能满=+击飞拽空中0.57s落球心60码环(头顶紫螺旋+尾迹+白火花)+吸积盘
-	"space:-1": [ {"dx": 300.0, "dy": -50.0, "fixed": true}, {"dx": 300.0, "dy": 50.0, "fixed": true} ],   # 星能被动: 2假人→造伤62%转星能(资源条)+每次普攻/技能追加30%储存星能真伤(白字)
+	"space:-1": [ {"dx": 300.0, "dy": -50.0, "fixed": true}, {"dx": 300.0, "dy": 50.0, "fixed": true} ],   # 星能被动: 2假人→造伤35%转星能(资源条)+普攻弹道命中帧追加12%当前星能真伤(白字·用户2026-07-16封板)
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
