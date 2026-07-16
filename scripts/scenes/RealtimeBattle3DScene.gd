@@ -213,6 +213,11 @@ const REVIEW_DEMO_CFG := {
 	"hiding:2": [ {"dx": 140.0, "dy": 0.0, "fixed": true} ],   # 防御: 壳青绿护罩4秒呼吸→碎裂+绿光点转血
 	"hiding:3": [ {"dx": 220.0, "dy": 0.0, "fixed": true} ],   # 强化随从: 金色注入光束+3金星绕随从升腾
 	"hiding:-1": [ {"dx": 240.0, "dy": -80.0, "fixed": true}, {"dx": 240.0, "dy": 80.0, "fixed": true} ],   # 喊龟被动: 召唤法阵+光柱+星粒; 随从死→遗志金光点回流主人
+	"headless:0": [ {"dx": 110.0, "dy": 0.0, "fixed": true} ],   # 撕咬普攻: 1A物理+3%maxHp魔法双数字
+	"headless:1": [ {"dx": 150.0, "dy": -70.0, "fixed": true}, {"dx": 150.0, "dy": 70.0, "fixed": true}, {"dx": 320.0, "dy": 0.0, "fixed": true} ],   # 恐吓: 近2只中招(咆哮气爆+三波纹+颤抖标记)·远1只在200码外不中(验范围)
+	"headless:2": [ {"dx": 200.0, "dy": -90.0, "fixed": true}, {"dx": 350.0, "dy": 90.0, "fixed": true}, {"dx": 550.0, "dy": 0.0, "fixed": true} ],   # 万千触须: 3假人散开→全场触须8×5爆出+命中大触须钉住+吸血红珠回流
+	"headless:3": [ {"dx": 110.0, "dy": 0.0, "fixed": true} ],   # 灵魂打击: 蓄力紫焰绕颈tell→下次撕咬魂爆处决
+	"headless:-1": [ {"dx": 130.0, "dy": -60.0, "fixed": true}, {"dx": 130.0, "dy": 60.0, "fixed": true} ],   # 亡灵被动: 挨打残血加攻·首次濒死金环5秒免死(需假人还手)
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -4018,10 +4023,13 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		if tgt.get("alive", false): _apply_damage_from(u, tgt, int(tgt["maxHp"] * 0.03), Color("#c77dff"))   # 3%maxHp魔法
 		if u.get("headless_soul_buff", false):                     # 灵魂打击: 满能→下次普攻附加(单体)
 			u["headless_soul_buff"] = false
+			var sspr = u.get("_soul_spr", null)                     # 撤蓄力紫焰tell(2026-07-17)
+			if sspr is Sprite3D and is_instance_valid(sspr): (sspr as Sprite3D).queue_free()
+			u["_soul_spr"] = null
 			if tgt.get("alive", false):
 				_apply_damage_from(u, tgt, _atk_dmg(u, 0.9, tgt), Color("#9b3bff"))
 				_apply_damage_from(u, tgt, int(tgt["hp"] * 0.20), Color("#9b3bff"))   # 20%目标当前生命魔法
-				_float_text(u["pos"] + Vector2(0, -60), "灵魂打击!", Color("#9b3bff"))
+				_headless_soul_hit(tgt)                              # 魂爆处决感(删技能名飘字=UI规矩)
 		_on_basic_hit(u, tgt)
 		return
 	if u["id"] == "diamond":                                          # 钻石普攻·切割: 水晶斩弧闪现(伤害走下方 _do_basic·BASIC_ATK.diamond=0.7A+0.6甲+0.6抗)
@@ -7406,6 +7414,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	if u["id"] == "headless" and u["hp"] <= 0.0 and not u.get("undead_used", false):
 		u["undead_used"] = true; u["deathfloor_until"] = _t + 5.0
 		_float_text(u["pos"] + Vector2(0, -64), "亡灵!", Color("#9b6bff"))
+		_headless_undead_vfx(u)                                    # 免死金骨光环5秒(2026-07-17)
 	if _t < float(u.get("deathfloor_until", 0.0)):
 		u["hp"] = maxf(1.0, u["hp"])
 	var _dt: String = "true" if raw else _last_dmg_type   # 飘字类型=真实伤害类型(_resolve_dmg设的_last_dmg_type·即时伤害对); 远程弹道在飞时会被别的伤害覆写→弹道在_step_projectiles命中前用捕获的pr.dtype还原(见那里)
@@ -11080,44 +11089,271 @@ func _angel_judgment_pillar(pos2d: Vector2) -> void:
 	tp.chain().tween_property(pil, "modulate:a", 0.0, 0.22)
 	tp.chain().tween_callback(pil.queue_free)
 
-func _sk_headless_fear(u: Dictionary, _tgt = null) -> void:      # 无头·恐吓(封板·110龟能): 半径200码内所有敌 定身+缴械+锁技3秒(stun_until·龟能照充满也不放·蛋免控·无伤害)
+func _headless_fear_mark(o: Dictionary) -> void:               # 恐惧标记: 头顶紫骷髅高频颤抖~3秒(区别幽灵诅咒的静浮·2026-07-17)
+	var tex: Texture2D = load("res://assets/sprites/vfx/curse-mark.png")
+	if tex == null: return
+	var mk := Sprite3D.new()
+	mk.texture = tex
+	mk.billboard = BaseMaterial3D.BILLBOARD_ENABLED; mk.shaded = false; mk.transparent = true
+	mk.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	mk.pixel_size = (30.0 * WS) / float(maxi(1, tex.get_height()))
+	mk.modulate = Color(0.9, 0.5, 1.0, 0.0)
+	mk.position = _world_pos(o["pos"], 2.3)
+	_world.add_child(mk)
+	var oref: Dictionary = o
+	var t := _reg_tween()
+	t.tween_property(mk, "modulate:a", 0.95, 0.12)
+	t.tween_method(func(q: float) -> void:                      # 高频颤抖+跟随单位
+		if is_instance_valid(mk) and oref.get("alive", false):
+			mk.position = _world_pos((oref["pos"] as Vector2) + Vector2(sin(q * 60.0) * 5.0, 0.0), 2.3 + sin(q * 47.0) * 0.05)
+	, 0.0, 1.0, 2.6)
+	t.tween_property(mk, "modulate:a", 0.0, 0.3)
+	t.tween_callback(mk.queue_free)
+
+func _sk_headless_fear(u: Dictionary, _tgt = null) -> void:      # 无头·恐吓(封板·110龟能): 半径200码内所有敌 定身+缴械+锁技3秒(蛋免控·无伤害); 2026-07-17演出: 咆哮紫黑气爆+三道恐惧波纹+紫雾盘+颤抖恐惧标记(删技能名飘字=UI规矩)
 	var cx: Vector2 = u["pos"]
+	var burst := Sprite3D.new()                                  # 咆哮: 自身紫黑气爆
+	burst.texture = _make_fire_glow_tex()
+	burst.billboard = BaseMaterial3D.BILLBOARD_ENABLED; burst.shaded = false; burst.transparent = true
+	burst.pixel_size = (120.0 * WS) / 128.0
+	burst.modulate = Color(0.55, 0.15, 0.7, 0.9)
+	burst.position = _world_pos(cx, 0.8)
+	burst.scale = Vector3.ONE * 0.4
+	_world.add_child(burst)
+	var bt := _reg_tween(); bt.set_parallel(true)
+	bt.tween_property(burst, "scale", Vector3.ONE * 1.6, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	bt.tween_property(burst, "modulate:a", 0.0, 0.3)
+	bt.chain().tween_callback(burst.queue_free)
+	_shake(0.06)
+	for wi in range(3):                                          # 三道恐惧波纹先后扩到200码(半径)
+		var wv := Sprite3D.new()
+		wv.texture = _make_thin_ring_tex()
+		wv.billboard = BaseMaterial3D.BILLBOARD_DISABLED; wv.axis = Vector3.AXIS_Y
+		wv.shaded = false; wv.transparent = true
+		wv.modulate = Color(0.7, 0.3, 0.9, 0.85)
+		wv.pixel_size = (20.0 * WS) / 256.0
+		wv.position = _world_pos(cx, 0.065)
+		_world.add_child(wv)
+		var wt := _reg_tween()
+		wt.tween_interval(0.09 * float(wi))
+		wt.tween_method(func(q: float) -> void:
+			if is_instance_valid(wv):
+				wv.pixel_size = (maxf(20.0, 400.0 * q) * WS) / 256.0
+				wv.modulate.a = 0.85 * (1.0 - q * 0.7)
+		, 0.0, 1.0, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		wt.tween_property(wv, "modulate:a", 0.0, 0.15)
+		wt.tween_callback(wv.queue_free)
+	var mist := _px_ground_sprite(_make_fire_glow_tex(), cx, 400.0, Color(0.4, 0.1, 0.5, 0.35), 0.06)   # 恐惧紫雾盘缓散
+	var mt := _reg_tween()
+	mt.tween_property(mist, "modulate:a", 0.0, 0.9)
+	mt.tween_callback(mist.queue_free)
 	for o in _enemies_of(u):
 		if not o.get("alive", false): continue
 		if o["pos"].distance_to(cx) > 200.0: continue
 		if o.get("_eggImmune", false): continue
 		o["stun_until"] = maxf(float(o.get("stun_until", 0.0)), _t + _cc_dur(o, 3.0))
-		_float_text(o["pos"] + Vector2(0, -48), "恐吓", Color("#9b3bff"))
-	_skill_ring(cx, Color(0.6, 0.2, 0.7, 0.5), 200.0)
+		_headless_fear_mark(o)
 
-func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万千触须(封板·160龟能·虐杀原形): 全场无差别触须·伸(穿过)→停→收(脱离)约4s·自身也硬控·本次+22%吸血
+func _headless_tendril(pos2d: Vector2, big: bool, erupt_delay: float, retract_delay: float) -> void:   # 万千触须·单根(毁灭者节奏2026-07-17 Q1: 破土爆出→定格痉挛→撕扯缩回; bio-spike精英素材紫染)
+	var vs := ["bio-spike-a", "bio-spike-b", "bio-spike-c"]
+	var tex: Texture2D = load("res://assets/sprites/vfx/%s.png" % vs[randi() % 3])
+	if tex == null: return
+	var spk := Sprite3D.new()
+	spk.texture = tex
+	spk.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spk.shaded = false; spk.transparent = true
+	spk.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	var sz: float = randf_range(110.0, 160.0) if big else randf_range(70.0, 120.0)
+	var fullp: float = (sz * WS) / float(maxi(1, int(tex.get_height())))
+	spk.pixel_size = fullp * 0.15
+	spk.flip_h = randf() < 0.5
+	spk.position = _world_pos(pos2d, 0.04)
+	spk.rotation.z = randf_range(-0.3, 0.3)
+	spk.modulate = Color(1.0, 0.72, 1.2, 0.0)                  # 紫黑触须(区别精英暗红)
+	_world.add_child(spk)
+	var htop: float = randf_range(0.55, 0.75) if big else randf_range(0.36, 0.55)
+	var hold: float = maxf(0.3, retract_delay - erupt_delay - 0.12)
+	var st := _reg_tween()
+	st.tween_interval(erupt_delay)
+	st.tween_callback(func() -> void:                           # 破土瞬间: 现身+根部紫晕
+		if not is_instance_valid(spk): return
+		spk.modulate.a = 1.0
+		var rg := Sprite3D.new()
+		rg.texture = _make_fire_glow_tex()
+		rg.billboard = BaseMaterial3D.BILLBOARD_ENABLED; rg.shaded = false; rg.transparent = true
+		rg.pixel_size = (randf_range(22.0, 32.0) * WS) / 128.0
+		rg.modulate = Color(0.5, 0.12, 0.6, 0.6)
+		rg.position = _world_pos(pos2d, 0.1)
+		_world.add_child(rg)
+		var rt := _reg_tween()
+		rt.tween_property(rg, "modulate:a", 0.0, 0.5)
+		rt.tween_callback(rg.queue_free))
+	st.tween_property(spk, "pixel_size", fullp, 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	st.parallel().tween_property(spk, "position", _world_pos(pos2d, htop), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	st.chain().tween_property(spk, "pixel_size", fullp * 1.06, hold * 0.5)   # 定格痉挛(缓胀缓缩·活物感)
+	st.tween_property(spk, "pixel_size", fullp * 0.97, hold * 0.5)
+	st.tween_property(spk, "position", _world_pos(pos2d, 0.02), 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)   # 撕扯缩回地底
+	st.parallel().tween_property(spk, "pixel_size", fullp * 0.12, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	st.chain().tween_callback(spk.queue_free)
+
+func _headless_drain_dot(from_pos: Vector2, u: Dictionary) -> void:   # 触须吸血: 红光珠从命中者飞回无头(22%吸血可视)
+	var dot := Sprite3D.new()
+	dot.texture = _make_fire_glow_tex()
+	dot.billboard = BaseMaterial3D.BILLBOARD_ENABLED; dot.shaded = false; dot.transparent = true
+	dot.pixel_size = 0.005
+	dot.modulate = Color(1.0, 0.25, 0.35, 0.9)
+	var start: Vector2 = from_pos + Vector2(randf_range(-20.0, 20.0), randf_range(-20.0, 20.0))
+	dot.position = _world_pos(start, 0.6)
+	_world.add_child(dot)
+	var uref: Dictionary = u
+	var dt := _reg_tween()
+	dt.tween_method(func(q: float) -> void:
+		if is_instance_valid(dot) and uref.get("alive", false):
+			dot.position = _world_pos(start.lerp(uref["pos"], q), 0.6)
+	, 0.0, 1.0, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	dt.tween_property(dot, "modulate:a", 0.0, 0.1)
+	dt.tween_callback(dot.queue_free)
+
+func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万千触须(封板·160龟能·虐杀原形毁灭者Q1): 全场无差别触须·伸0.3s→停→收3.0s·自身硬控·+22%吸血; 2026-07-17演出: 起手紫黑气爆+裂纹环→触须8×5网格布满全场(Q9"特效得布满")波前由近及远爆出→痉挛定格→3.0s撕扯缩回+吸血红珠回流
 	u["stun_until"] = maxf(float(u.get("stun_until", 0.0)), _t + 4.0)   # 自身硬控全程(施法动作·亡灵拉全场自己也搭进去)
 	var center: Vector2 = u["pos"]
+	var uu: Dictionary = u
+	var burst := Sprite3D.new()                                  # 起手: 紫黑气爆+震屏顿帧+地面裂纹环
+	burst.texture = _make_fire_glow_tex()
+	burst.billboard = BaseMaterial3D.BILLBOARD_ENABLED; burst.shaded = false; burst.transparent = true
+	burst.pixel_size = (150.0 * WS) / 128.0
+	burst.modulate = Color(0.5, 0.1, 0.65, 0.95)
+	burst.position = _world_pos(center, 0.8)
+	burst.scale = Vector3.ONE * 0.3
+	_world.add_child(burst)
+	var bt := _reg_tween(); bt.set_parallel(true)
+	bt.tween_property(burst, "scale", Vector3.ONE * 1.8, 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	bt.tween_property(burst, "modulate:a", 0.0, 0.28)
+	bt.chain().tween_callback(burst.queue_free)
+	_shake(0.1)
+	_add_hitstop(JUICE_HITSTOP_KNOCK)
+	var crack := _px_ground_sprite(_make_pixel_ring_tex(), center, 60.0, Color(0.6, 0.2, 0.75, 0.8), 0.06)
+	var ct := _reg_tween()
+	ct.tween_method(func(q: float) -> void:
+		if is_instance_valid(crack): crack.pixel_size = (maxf(60.0, 500.0 * q) * WS) / 48.0
+	, 0.0, 1.0, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	ct.tween_property(crack, "modulate:a", 0.0, 0.3)
+	ct.tween_callback(crack.queue_free)
+	var diag: float = (ARENA.size * 0.5).length()                # 触须布满全场: 8×5网格+抖动·波前由近及远0.05→0.3s
+	for gx in range(8):
+		for gy in range(5):
+			var p := Vector2(
+				ARENA.position.x + ARENA.size.x * (float(gx) + 0.5) / 8.0 + randf_range(-40.0, 40.0),
+				ARENA.position.y + ARENA.size.y * (float(gy) + 0.5) / 5.0 + randf_range(-30.0, 30.0))
+			var dly: float = 0.05 + 0.25 * clampf(p.distance_to(center) / maxf(1.0, diag), 0.0, 1.0)
+			_headless_tendril(p, randf() < 0.2, dly, 3.0)
 	var pass_fn := func():                                      # 伸/穿过(≈0.3s铺满): 无差别 敌1A+眩晕 / 友0.5A+眩晕(刷新不叠)
 		for o in _units:
-			if not o.get("alive", false) or o == u: continue
-			var sc: float = 1.0 if o["side"] != u["side"] else 0.5
-			_apply_damage_from(u, o, _atk_dmg(u, sc, o), Color("#9b3bff"), 0.22)
+			if not o.get("alive", false) or o == uu: continue
+			var sc: float = 1.0 if o["side"] != uu["side"] else 0.5
+			_apply_damage_from(uu, o, _atk_dmg(uu, sc, o), Color("#9b3bff"), 0.22)
 			if not o.get("_eggImmune", false):
 				o["stun_until"] = maxf(float(o.get("stun_until", 0.0)), _t + 2.7)   # 眩晕持续到脱离
 				o["_tendril_stun"] = true
-		_skill_ring(center, Color(0.42, 0.16, 0.62, 0.5), 720.0)
+			_headless_tendril(o["pos"], true, 0.0, 2.7)          # 命中者脚下一根大触须钉住
+			if o["side"] != uu["side"]: _headless_drain_dot(o["pos"], uu)   # 吸血红珠回流
 	_pending_shots.append({"delay": 0.3, "fn": pass_fn, "src": u})
 	var detach_fn := func():                                    # 收/脱离(≈3.0s): 无差别 敌1.5A / 友0.5A + 回复行动(解眩晕)
+		_shake(0.12)
 		for o in _units:
-			if not o.get("alive", false) or o == u: continue
-			var sc: float = 1.5 if o["side"] != u["side"] else 0.5
-			_apply_damage_from(u, o, _atk_dmg(u, sc, o), Color("#ff3b6b"), 0.22)
+			if not o.get("alive", false) or o == uu: continue
+			var sc: float = 1.5 if o["side"] != uu["side"] else 0.5
+			_apply_damage_from(uu, o, _atk_dmg(uu, sc, o), Color("#ff3b6b"), 0.22)
+			_hit_spark(o)
 			if o.get("_tendril_stun", false):
 				o["_tendril_stun"] = false
 				o["stun_until"] = _t   # 解眩晕→回复行动
-		_skill_ring(center, Color(1.0, 0.24, 0.42, 0.5), 720.0)
+			if o["side"] != uu["side"]: _headless_drain_dot(o["pos"], uu)   # 脱离撕扯再吸一口
 	_pending_shots.append({"delay": 3.0, "fn": detach_fn, "src": u})
 
-func _sk_headless_soul_charge(u: Dictionary) -> void:           # 无头·灵魂打击(封板·80龟能·充能强化普攻): 满能→下次普攻附0.9A物理+20%当前生命魔法(在_basic_attack消费)·触发后龟能清零重充
+func _sk_headless_soul_charge(u: Dictionary) -> void:           # 无头·灵魂打击(封板·80龟能·充能强化普攻): 满能→下次普攻附0.9A物理+20%当前生命魔法(在_basic_attack消费); 2026-07-17演出: 蓄力紫焰绕颈tell(循环·消费时撤)+删技能名飘字
 	u["headless_soul_buff"] = true
-	_float_text(u["pos"] + Vector2(0, -56), "灵魂蓄力", Color("#9b3bff"))
+	var old = u.get("_soul_spr", null)
+	if old is Sprite3D and is_instance_valid(old): (old as Sprite3D).queue_free()
+	var fl := Sprite3D.new()                                     # 紫焰绕颈(循环VFX·bind_node防泄漏)
+	fl.texture = _make_fire_glow_tex()
+	fl.billboard = BaseMaterial3D.BILLBOARD_ENABLED; fl.shaded = false; fl.transparent = true
+	fl.pixel_size = (30.0 * WS) / 128.0
+	fl.modulate = Color(0.75, 0.3, 1.0, 0.9)
+	fl.position = _world_pos(u["pos"], 1.5)
+	_world.add_child(fl)
+	u["_soul_spr"] = fl
+	var uref: Dictionary = u
+	var lt := create_tween().set_loops()
+	lt.bind_node(fl)
+	lt.tween_method(func(q: float) -> void:
+		if not is_instance_valid(fl): return
+		if uref.get("alive", false):
+			var aa: float = q * TAU
+			fl.position = _world_pos((uref["pos"] as Vector2) + Vector2(cos(aa), sin(aa)) * 26.0, 1.5 + sin(aa * 2.0) * 0.12)
+	, 0.0, 1.0, 0.9)
 	_skill_ring(u["pos"], Color(0.6, 0.23, 0.7, 0.5), 44.0)
+
+func _headless_soul_hit(tgt: Dictionary) -> void:               # 灵魂打击命中: 紫白双层魂爆+4紫星散射(处决感)
+	var glow := _make_fire_glow_tex()
+	for li in range(2):
+		var g := Sprite3D.new()
+		g.texture = glow
+		g.billboard = BaseMaterial3D.BILLBOARD_ENABLED; g.shaded = false; g.transparent = true
+		g.pixel_size = (float(70 + li * 40) * WS) / 128.0
+		g.modulate = Color(0.95, 0.9, 1.0, 0.95) if li == 0 else Color(0.6, 0.25, 0.9, 0.8)
+		g.position = _world_pos(tgt["pos"], 0.8)
+		g.scale = Vector3.ONE * 0.4
+		_world.add_child(g)
+		var gt := _reg_tween(); gt.set_parallel(true)
+		gt.tween_property(g, "scale", Vector3.ONE * 1.7, 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		gt.tween_property(g, "modulate:a", 0.0, 0.28)
+		gt.chain().tween_callback(g.queue_free)
+	var stex := _make_star_texture()
+	for si in range(4):
+		var sp := Sprite3D.new()
+		sp.texture = stex
+		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; sp.shaded = false; sp.transparent = true
+		sp.pixel_size = 0.006
+		sp.modulate = Color(0.8, 0.5, 1.0, 1.0)
+		sp.position = _world_pos(tgt["pos"], 0.8)
+		_world.add_child(sp)
+		var sa: float = TAU * float(si) / 4.0 + 0.4
+		var spt := _reg_tween(); spt.set_parallel(true)
+		spt.tween_property(sp, "position", _world_pos((tgt["pos"] as Vector2) + Vector2(cos(sa), sin(sa)) * 60.0, randf_range(0.3, 1.2)), 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		spt.tween_property(sp, "modulate:a", 0.0, 0.4)
+		spt.chain().tween_callback(sp.queue_free)
+	_shake(0.05)
+
+func _headless_undead_vfx(u: Dictionary) -> void:               # 亡灵免死: 金白闪+金环贴地跟随5秒呼吸→渐隐(2026-07-17)
+	var glow := _make_fire_glow_tex()
+	var fb := Sprite3D.new()                                     # 触发瞬间金白闪
+	fb.texture = glow
+	fb.billboard = BaseMaterial3D.BILLBOARD_ENABLED; fb.shaded = false; fb.transparent = true
+	fb.pixel_size = (110.0 * WS) / 128.0
+	fb.modulate = Color(1.0, 0.92, 0.6, 0.95)
+	fb.position = _world_pos(u["pos"], 0.8)
+	fb.scale = Vector3.ONE * 0.4
+	_world.add_child(fb)
+	var ft := _reg_tween(); ft.set_parallel(true)
+	ft.tween_property(fb, "scale", Vector3.ONE * 1.6, 0.3)
+	ft.tween_property(fb, "modulate:a", 0.0, 0.3)
+	ft.chain().tween_callback(fb.queue_free)
+	var ring := Sprite3D.new()                                   # 金环贴地跟随5秒(不死窗口可视)
+	ring.texture = _make_thin_ring_tex()
+	ring.billboard = BaseMaterial3D.BILLBOARD_DISABLED; ring.axis = Vector3.AXIS_Y
+	ring.shaded = false; ring.transparent = true
+	ring.modulate = Color(1.0, 0.85, 0.4, 0.9)
+	ring.pixel_size = (110.0 * WS) / 256.0
+	ring.position = _world_pos(u["pos"], 0.065)
+	_world.add_child(ring)
+	_follow_vfx.append({"spr": ring, "unit": u, "h": 0.065})
+	var rt := _reg_tween()
+	for i in range(4):                                           # 呼吸4轮≈4.4s
+		rt.tween_property(ring, "modulate:a", 0.45, 0.55)
+		rt.tween_property(ring, "modulate:a", 0.9, 0.55)
+	rt.tween_property(ring, "modulate:a", 0.0, 0.5)              # 第5秒渐隐(不瞬删)
+	rt.tween_callback(ring.queue_free)
 
 func _sk_fortune_dice(u: Dictionary) -> void:                    # 财神龟·骰子(用户2026-07-12补特效): 掷骰3~8金币+回8%maxHP
 	var g: int = randi_range(3, 8)   # 2~6→3~8 (恢复文本设计值)
