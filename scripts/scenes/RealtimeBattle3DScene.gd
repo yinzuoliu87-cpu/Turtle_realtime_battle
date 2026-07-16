@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "chest"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
+const REVIEW_SKILL_IDX := 2   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -11559,38 +11559,153 @@ func _sk_chest_cannon(u: Dictionary, tgt) -> void:              # 技三·财宝
 	_anticipate(u)
 	_pending_shots.append({"delay": 0.4, "fn": fire, "src": u})
 
-func _sk_chest_storm(u: Dictionary, tgt) -> void:              # 技二·财宝风暴(封板·100龟能): 以当前目标为心400码圆形风暴·持续2.5s每0.5s一跳(5跳)·圈内敌各0.2A物理(共1.0A)
+func _sk_chest_storm(u: Dictionary, tgt) -> void:              # 技二·财宝风暴(2026-07-16重做·照Janna Q龙卷j006形成/j012风柱/j018螺旋盘): 金币龙卷风; 判定不变(400码·5跳各0.2A物理)
 	if tgt == null: tgt = _nearest_enemy(u)
 	if tgt == null: return
 	var center: Vector2 = tgt["pos"]
+	var uu := u
+	var stex: Texture2D = load("res://assets/sprites/vfx/coin-storm-spiral.png")
+	var disc: Sprite3D = null
+	var disc_ps: float = 0.01
+	if stex != null:                                            # ① 贴地大螺旋底盘(500码·3金臂·整体旋转)
+		disc = Sprite3D.new()
+		disc.texture = stex
+		disc.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+		disc.axis = Vector3.AXIS_Y
+		disc.shaded = false; disc.transparent = true
+		disc.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+		disc_ps = (500.0 * WS) / float(maxi(1, stex.get_width()))
+		disc.pixel_size = disc_ps * 0.3
+		disc.modulate = Color(1.0, 0.85, 0.35, 0.0)
+		disc.position = _world_pos(center, 0.07)
+		_world.add_child(disc)
+	var glow := _make_fire_glow_tex()
+	var pillars: Array = []
+	for pi in range(3):                                         # ② 中心风柱(3层金光叠柱·底粗顶细·脉动)
+		var pg := Sprite3D.new()
+		pg.texture = glow
+		pg.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		pg.shaded = false; pg.transparent = true
+		pg.pixel_size = ((130.0 - 32.0 * float(pi)) * WS) / float(maxi(1, glow.get_width()))
+		pg.modulate = Color(1.0, 0.85, 0.4, 0.0)
+		pg.position = _world_pos(center, 0.35 + 0.72 * float(pi))
+		_world.add_child(pg)
+		pillars.append(pg)
 	var ctex: Texture2D = load("res://assets/sprites/ui/coin.png")
-	for k in range(14):                                             # 金币旋风: 14枚金币绕圈飞舞2.5秒(升螺旋·2026-07-15)
+	var coins: Array = []
+	var lay_cfg := [[210.0, 0.35, 12, 4.2], [150.0, 0.95, 9, 4.8], [100.0, 1.5, 7, 5.6], [62.0, 2.05, 4, 6.4]]
+	for li in range(lay_cfg.size()):                            # ③ 金币漏斗: 4层32枚·统一风向·底大顶小·从地面卷起(不凭空)
+		var lay: Array = lay_cfg[li]
+		for k in range(int(lay[2])):
+			var ck := Sprite3D.new()
+			ck.texture = ctex
+			ck.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			ck.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			ck.shaded = false; ck.transparent = true
+			ck.pixel_size = 0.030 + 0.008 * randf()
+			var a0: float = TAU * float(k) / float(lay[2]) + randf() * 0.4
+			ck.position = _world_pos(center + Vector2(cos(a0), sin(a0)) * float(lay[0]) * 0.25, 0.04)
+			_world.add_child(ck)
+			coins.append({"spr": ck, "r": float(lay[0]), "h": float(lay[1]), "spd": float(lay[3]),
+				"a0": a0, "rj": randf_range(0.85, 1.15), "up": randf_range(0.0, 0.28), "ph": randf() * TAU})
+	var drv := _reg_tween()                                     # ④ 主驱动0→2.1s: 形成0.45s卷起→全速旋转(消散另段)
+	drv.tween_method(func(t: float) -> void:
+		var T: float = t * 2.1
+		var form: float = clampf(T / 0.45, 0.0, 1.0)
+		if is_instance_valid(disc):
+			disc.rotation.y = -T * 5.5
+			disc.modulate.a = maxf(disc.modulate.a - 0.04, 0.55 * form)   # 脉冲闪亮后回落
+			disc.pixel_size = disc_ps * (0.3 + 0.7 * form)
+		for pi2 in range(pillars.size()):
+			var pg2 = pillars[pi2]
+			if is_instance_valid(pg2):
+				pg2.modulate.a = 0.28 * form * (0.85 + 0.15 * sin(T * 9.0 + float(pi2) * 1.7))
+		for c in coins:
+			var sp = c["spr"]
+			if not is_instance_valid(sp): continue
+			var rise: float = clampf((T - float(c["up"])) / 0.35, 0.0, 1.0)
+			var aa: float = float(c["a0"]) + T * float(c["spd"])
+			var rr: float = float(c["r"]) * (0.25 + 0.75 * rise) * float(c["rj"]) * (1.0 + 0.06 * sin(T * 3.0 + float(c["ph"])))
+			var hh: float = 0.04 + (float(c["h"]) - 0.04) * rise
+			sp.position = _world_pos(center + Vector2(cos(aa), sin(aa)) * rr, hh)
+			var mb: float = 0.85 + 0.3 * absf(sin(T * 7.0 + float(c["ph"])))
+			sp.modulate = Color(mb, mb, mb, 1.0)
+	, 0.0, 1.0, 2.1)
+	drv.tween_callback(func() -> void:                          # ⑤ 消散: 金币沿切线甩出抛物线落地(动量延续)·盘减速缩小淡出·柱下沉
+		for c in coins:
+			var sp = c["spr"]
+			if not is_instance_valid(sp): continue
+			var af: float = float(c["a0"]) + 2.1 * float(c["spd"])
+			var pcur: Vector2 = center + Vector2(cos(af), sin(af)) * float(c["r"]) * float(c["rj"])
+			var tangent: Vector2 = Vector2(-sin(af), cos(af))
+			var dst: Vector2 = pcur + tangent * randf_range(130.0, 230.0) + Vector2(cos(af), sin(af)) * randf_range(20.0, 80.0)
+			var fdur: float = randf_range(0.4, 0.55)
+			var ft := _reg_tween(); ft.set_parallel(true)
+			ft.tween_property(sp, "position", _world_pos(dst, 0.05), fdur).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			ft.tween_property(sp, "modulate:a", 0.0, 0.2).set_delay(fdur - 0.12)
+			ft.chain().tween_callback(sp.queue_free)
+		if is_instance_valid(disc):
+			var dt2 := _reg_tween(); dt2.set_parallel(true)
+			dt2.tween_property(disc, "rotation:y", disc.rotation.y - 1.4, 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)   # 减速尾旋
+			dt2.tween_property(disc, "modulate:a", 0.0, 0.45)
+			dt2.tween_property(disc, "pixel_size", disc.pixel_size * 0.88, 0.45)
+			dt2.chain().tween_callback(disc.queue_free)
+		for pg3 in pillars:
+			if is_instance_valid(pg3):
+				var pt3 := _reg_tween(); pt3.set_parallel(true)
+				pt3.tween_property(pg3, "modulate:a", 0.0, 0.4)
+				pt3.tween_property(pg3, "position", pg3.position + Vector3(0, -0.3, 0), 0.4)
+				pt3.chain().tween_callback(pg3.queue_free)
+		for _res in range(7):                                    # 风暴过后地面残留金币0.7s渐隐
+			var rs := Sprite3D.new()
+			rs.texture = ctex
+			rs.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			rs.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			rs.shaded = false; rs.transparent = true
+			rs.pixel_size = 0.026
+			var ra2: float = randf() * TAU
+			rs.position = _world_pos(center + Vector2(cos(ra2), sin(ra2)) * randf_range(30.0, 170.0), 0.05)
+			rs.modulate = Color(1, 1, 1, 0.9)
+			_world.add_child(rs)
+			var rt2 := _reg_tween()
+			rt2.tween_property(rs, "modulate:a", 0.0, 0.7)
+			rt2.tween_callback(rs.queue_free))
+	for i in range(5):                                          # ⑥ 5跳结算(数值不动)+命中特效+脉冲
+		var fn := func():
+			if is_instance_valid(disc):
+				disc.modulate.a = minf(0.85, disc.modulate.a + 0.25)   # 风暴脉冲闪亮(驱动器逐帧回落)
+			for o in _enemies_of(uu):
+				if o.get("alive", false) and o["pos"].distance_to(center) <= 400.0:
+					_apply_damage_from(uu, o, _atk_dmg(uu, 0.2, o), Color("#ffd93d"))
+					_burst_vfx("res://assets/sprites/vfx/treasure-slam.png", o["pos"], 74.0)   # 命中金光爆
+					_chest_coin_spray(o["pos"], 2)                                              # 敌身金币被抽飞
+			_skill_ring(center, Color(1.0, 0.82, 0.2, 0.35), 400.0)
+			for _d in range(2):                                                                 # 边缘扬尘
+				var da: float = randf() * TAU
+				_skill_ring(center + Vector2(cos(da), sin(da)) * randf_range(330.0, 390.0), Color(1.0, 0.85, 0.4, 0.3), 22.0)
+		_pending_shots.append({"delay": float(i) * 0.5, "fn": fn, "src": u})
+
+func _chest_coin_spray(pos2d: Vector2, n: int) -> void:        # 金币弹飞(抛物线落地淡出·命中反馈)
+	var ctex: Texture2D = load("res://assets/sprites/ui/coin.png")
+	if ctex == null: return
+	for k in range(n):
 		var ck := Sprite3D.new()
 		ck.texture = ctex
 		ck.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-		ck.billboard = BaseMaterial3D.BILLBOARD_ENABLED; ck.shaded = false; ck.transparent = true
-		ck.pixel_size = 0.032
-		ck.position = _world_pos(center, 0.3)
+		ck.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		ck.shaded = false; ck.transparent = true
+		ck.pixel_size = 0.024 + 0.006 * randf()
+		ck.position = _world_pos(pos2d, 0.5)
 		_world.add_child(ck)
-		var a0: float = TAU * float(k) / 14.0
-		var rr: float = randf_range(180.0, 380.0)
-		var spd: float = randf_range(2.4, 3.4) * (1.0 if k % 2 == 0 else -1.0)
-		var kt := _reg_tween()
-		kt.tween_method(func(t: float) -> void:
-			if not is_instance_valid(ck): return
-			var aa: float = a0 + spd * t * 2.5
-			ck.position = _world_pos(center + Vector2(cos(aa), sin(aa)) * rr, 0.3 + t * 1.4)   # 绕圈+缓慢升起
-			ck.modulate.a = 1.0 - maxf(0.0, t - 0.75) * 4.0
-		, 0.0, 1.0, 2.5)
-		kt.tween_callback(ck.queue_free)
-	for i in range(5):
-		var fn := func():
-			for o in _enemies_of(u):
-				if o.get("alive", false) and o["pos"].distance_to(center) <= 400.0:
-					_apply_damage_from(u, o, _atk_dmg(u, 0.2, o), Color("#ffd93d"))
-			_skill_ring(center, Color(1.0, 0.82, 0.2, 0.4), 400.0)
-		_pending_shots.append({"delay": float(i) * 0.5, "fn": fn, "src": u})
-
+		var ang: float = randf() * TAU
+		var dst: Vector2 = pos2d + Vector2(cos(ang), sin(ang)) * randf_range(40.0, 90.0)
+		var dur: float = randf_range(0.35, 0.5)
+		var tw := _reg_tween(); tw.set_parallel(true)
+		tw.tween_property(ck, "position", _world_pos(dst, 0.05), dur).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_property(ck, "modulate:a", 0.0, 0.15).set_delay(dur - 0.15)
+		tw.chain().tween_callback(ck.queue_free)
+		var up := _reg_tween()
+		up.tween_property(ck, "position:y", ck.position.y + randf_range(0.15, 0.4), dur * 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 func _chest_greed_apply(u: Dictionary, n: int) -> void:        # 贪婪(技三打包被动): 每携带1件装备永久+4%攻+7%最大生命 (单位=登场base快照·不复利)
 	if n <= 0: return
 	u["base_atk"] = float(u["base_atk"]) + float(u.get("chest_greed_atk_unit", 0.0)) * n
