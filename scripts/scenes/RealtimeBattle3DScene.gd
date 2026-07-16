@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "crystal"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
+const REVIEW_SKILL_IDX := 1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -4444,6 +4444,33 @@ func _crystal_spark(pos2d: Vector2, h: float = 0.9) -> void:
 	var tw2 := _reg_tween()
 	tw2.tween_property(spr, "rotation:z", spr.rotation.z + 0.8, 0.45)
 
+# 引爆弹射碎片: 从中心抛物线飞出(升→落)+自旋+末端淡出 (满5引爆用·用户2026-07-16要完整爆炸演出)
+func _crystal_shrapnel(pos2d: Vector2) -> void:
+	var tex: Texture2D = load("res://assets/sprites/vfx/crystal-shard.png")
+	if tex == null: return
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.shaded = false
+	spr.transparent = true
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	spr.pixel_size = (randf_range(14.0, 24.0) * WS) / float(maxi(1, int(tex.get_height())))
+	spr.position = _world_pos(pos2d, 0.8)
+	spr.modulate = Color(1, 1, 1, 1)
+	spr.rotation.z = randf() * TAU
+	_world.add_child(spr)
+	var ang: float = randf() * TAU
+	var dist: float = randf_range(55.0, 130.0)
+	var dst: Vector2 = pos2d + Vector2(cos(ang), sin(ang)) * dist
+	var dur: float = randf_range(0.4, 0.6)
+	var tw := _reg_tween(); tw.set_parallel(true)
+	tw.tween_property(spr, "position", _world_pos(dst, 0.15), dur).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)   # 水平飞出+落地(QUAD_IN=重力感)
+	tw.tween_property(spr, "rotation:z", spr.rotation.z + randf_range(-7.0, 7.0), dur)
+	tw.tween_property(spr, "modulate:a", 0.0, 0.18).set_delay(dur - 0.18)
+	tw.chain().tween_callback(spr.queue_free)
+	var up := _reg_tween()                                       # 先升后落(两段高度=抛物线)
+	up.tween_property(spr, "position:y", spr.position.y + randf_range(0.2, 0.55), dur * 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
 # 水晶光束: 亮白核 + 紫辉 + 沿线水晶碎片 (030 直线用)
 func _crystal_beam(a2d: Vector2, b2d: Vector2, col: Color) -> void:
 	_bolt_line(a2d, b2d, Color(1.0, 0.95, 1.0, 0.95))
@@ -4483,31 +4510,69 @@ func _unfollow_vfx(spr) -> void:
 		if _follow_vfx[i].get("spr", null) == spr:
 			_follow_vfx.remove_at(i)
 
-# 水晶引爆: 紫辉爆闪 + 环 + 碎片四射
+# 水晶满5引爆(用户2026-07-16重做): 爆闪+环 → 6根大水晶尖刺CRACK弹出定格 → 碎裂+14片抛物线弹射 + 冰雾
 func _crystal_detonate(pos2d: Vector2) -> void:
-	_shake(0.1)                                              # 引爆=大事件, 加大震屏
-	_skill_ring(pos2d, Color(0.72, 0.92, 1.0, 0.88), 26.0)   # 内爆环(冰蓝2026-07-15)
-	_skill_ring(pos2d, Color(0.5, 0.78, 1.0, 0.45), 74.0)   # 冲击波外环
+	_shake(0.14)                                             # 引爆=大事件
+	_skill_ring(pos2d, Color(0.72, 0.92, 1.0, 0.88), 26.0)   # 内爆环
+	_skill_ring(pos2d, Color(0.5, 0.78, 1.0, 0.45), 74.0)    # 冲击波外环
 	var glow := _make_fire_glow_tex()
-	# 中心白紫爆闪(更亮更大)
-	var fl := Sprite3D.new()
+	var fl := Sprite3D.new()                                  # 中心冰白爆闪
 	fl.texture = glow
-	fl.modulate = Color(0.96, 0.86, 1.0, 0.98)
+	fl.modulate = Color(0.9, 0.98, 1.0, 1.0)
 	fl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	fl.shaded = false
 	fl.transparent = true
-	fl.pixel_size = (34.0 * WS) / float(maxi(1, glow.get_width()))
+	fl.pixel_size = (40.0 * WS) / float(maxi(1, glow.get_width()))
 	fl.position = _world_pos(pos2d, 0.9)
 	_world.add_child(fl)
 	var tw := _reg_tween()
 	tw.set_parallel(true)
-	tw.tween_property(fl, "pixel_size", (130.0 * WS) / float(maxi(1, glow.get_width())), 0.28)
-	tw.tween_property(fl, "modulate:a", 0.0, 0.28)
+	tw.tween_property(fl, "pixel_size", (150.0 * WS) / float(maxi(1, glow.get_width())), 0.26)
+	tw.tween_property(fl, "modulate:a", 0.0, 0.26)
 	tw.chain().tween_callback(fl.queue_free)
-	# 碎晶四射(11片环形爆开)
-	for k in range(11):
-		var a: float = k * TAU / 11.0 + randf_range(-0.2, 0.2)
-		_crystal_spark(pos2d + Vector2(cos(a), sin(a)) * randf_range(22.0, 58.0))
+	var mist := Sprite3D.new()                                # 冰雾(淡蓝慢扩散)
+	mist.texture = glow
+	mist.modulate = Color(0.7, 0.88, 1.0, 0.4)
+	mist.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	mist.shaded = false
+	mist.transparent = true
+	mist.pixel_size = (60.0 * WS) / float(maxi(1, glow.get_width()))
+	mist.position = _world_pos(pos2d, 0.5)
+	_world.add_child(mist)
+	var mtw := _reg_tween(); mtw.set_parallel(true)
+	mtw.tween_property(mist, "pixel_size", (210.0 * WS) / float(maxi(1, glow.get_width())), 0.8)
+	mtw.tween_property(mist, "modulate:a", 0.0, 0.8)
+	mtw.chain().tween_callback(mist.queue_free)
+	var tex: Texture2D = load("res://assets/sprites/vfx/crystal-shard.png")
+	if tex != null:                                           # 6根大水晶尖刺: CRACK弹出(BACK缓动)→定格→碎裂
+		for k in range(6):
+			var a: float = k * TAU / 6.0 + randf_range(-0.25, 0.25)
+			var off: Vector2 = pos2d + Vector2(cos(a), sin(a)) * randf_range(14.0, 34.0)
+			var spike := Sprite3D.new()
+			spike.texture = tex
+			spike.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			spike.shaded = false
+			spike.transparent = true
+			spike.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			var full: float = (randf_range(52.0, 78.0) * WS) / float(maxi(1, int(tex.get_height())))
+			spike.pixel_size = full * 0.15
+			spike.position = _world_pos(off, randf_range(0.5, 1.1))
+			spike.rotation.z = randf_range(-0.5, 0.5)
+			spike.modulate = Color(1.25, 1.35, 1.5, 1.0)
+			_world.add_child(spike)
+			var st := _reg_tween()
+			st.tween_property(spike, "pixel_size", full, 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)   # CRACK弹出
+			st.tween_interval(0.22)                                                                                   # 定格一拍
+			st.tween_property(spike, "modulate:a", 0.0, 0.12)                                                         # 碎裂消失
+			st.tween_callback(spike.queue_free)
+	var dref: Vector2 = pos2d                                  # 尖刺碎裂时机(0.32s)追加一波弹射碎片
+	for k2 in range(8):
+		_crystal_shrapnel(pos2d)                                # 即刻第一波
+	var dt := _reg_tween()
+	dt.tween_interval(0.32)
+	dt.tween_callback(func() -> void:
+		for k3 in range(6):
+			_crystal_shrapnel(dref))
 
 # 031: 水晶射线360度扫一圈(1.5s), 射线扫到敌人即结算魔法伤+叠层
 func _eq_crystal_sweep(u: Dictionary, si: int) -> void:
