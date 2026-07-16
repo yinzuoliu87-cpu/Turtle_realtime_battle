@@ -11150,7 +11150,7 @@ func _crystal_spike_line(u: Dictionary) -> void:   # 照小菊R第三击(2026-07
 	var origin: Vector2 = u["pos"]
 	var tok: int = randi()                                       # 命中标记记在敌单位上(⛔不拿字典当Dict键)
 	var uu := u
-	var segs: int = 12
+	var segs: int = 22   # 间隔~32码(原12段58码太稀·用户2026-07-16)
 	# ① 砸地起手爆发(小菊: 脚前亮爆+尘土)
 	_skill_ring(origin + dirv * 40.0, Color(0.72, 0.92, 1.0, 0.85), 34.0)
 	_shake(0.07)
@@ -11210,32 +11210,41 @@ func _crystal_spike_line(u: Dictionary) -> void:   # 照小菊R第三击(2026-07
 		_pending_shots.append({"delay": SPIKE_WAVE_TIME * float(i + 1) / float(segs), "fn": func() -> void:
 			if not ARENA.has_point(pref): return
 			_skill_ring(pref, Color(0.62, 0.88, 1.0, 0.5), 22.0)     # 地面破土环
-			if randf() < 0.55: _crystal_shrapnel(pref)                # 零星碎屑
-			if randf() < 0.5: _crystal_spark(pref + Vector2(randf_range(-16.0, 16.0), randf_range(-10.0, 10.0)), 0.35)   # 侧翼小晶(一排晶脊感)
+			if randf() < 0.35: _crystal_shrapnel(pref)                # 零星碎屑(22段密度下调频)
+			if randf() < 0.3: _crystal_spark(pref + Vector2(randf_range(-16.0, 16.0), randf_range(-10.0, 10.0)), 0.35)
 			var tex2: Texture2D = load("res://assets/sprites/vfx/crystal-shard.png")
-			if tex2 != null:                                          # 尖刺从地底刺上来(低位小→满高BACK弹出→定格→碎)
-				var spk := Sprite3D.new()
-				spk.texture = tex2
-				spk.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-				spk.shaded = false; spk.transparent = true
-				spk.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-				var fullp: float = (randf_range(68.0, 92.0) * WS) / float(maxi(1, int(tex2.get_height())))   # 加大(用户"从地底刺上来"要厚重·自验后调)
-				spk.pixel_size = fullp * 0.2
-				spk.position = _world_pos(pref, 0.05)
-				spk.rotation.z = randf_range(-0.3, 0.3)
-				spk.modulate = Color(1.15, 1.3, 1.45, 1.0)
-				_world.add_child(spk)
-				var st := _reg_tween()
-				st.set_parallel(true)
-				st.tween_property(spk, "pixel_size", fullp, 0.09).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-				st.tween_property(spk, "position", _world_pos(pref, 0.55), 0.09).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-				st.chain().tween_interval(0.5)
-				st.chain().tween_property(spk, "position", _world_pos(pref, 0.02), 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)   # 缩回地底(升出的对称·不凭空消失)
-				st.parallel().tween_property(spk, "pixel_size", fullp * 0.15, 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-				st.chain().tween_callback(spk.queue_free)
+			if tex2 != null:                                          # 晶簇=1主刺+1~2侧刺·翻转/角度/大小/色调/停留全随机(用户: 每根不能一模一样)
+				var n_spk: int = 2 + (1 if randf() < 0.5 else 0)
+				for k_s in range(n_spk):
+					var main: bool = k_s == 0
+					var spk := Sprite3D.new()
+					spk.texture = tex2
+					spk.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+					spk.shaded = false; spk.transparent = true
+					spk.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+					spk.flip_h = randf() < 0.5
+					var sz: float = randf_range(64.0, 96.0) if main else randf_range(30.0, 56.0)
+					var fullp: float = (sz * WS) / float(maxi(1, int(tex2.get_height())))
+					var soff: Vector2 = Vector2.ZERO if main else Vector2(randf_range(-18.0, 18.0), randf_range(-12.0, 12.0))
+					spk.pixel_size = fullp * 0.2
+					spk.position = _world_pos(pref + soff, 0.05)
+					spk.rotation.z = randf_range(-0.45, 0.45)
+					var brt: float = randf_range(0.95, 1.35)
+					spk.modulate = Color(brt, brt * 1.12, brt * 1.25, 1.0)
+					_world.add_child(spk)
+					var gdur: float = randf_range(0.08, 0.12)
+					var htop: float = randf_range(0.5, 0.62) if main else randf_range(0.26, 0.38)
+					var st := _reg_tween()
+					st.set_parallel(true)
+					st.tween_property(spk, "pixel_size", fullp, gdur).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+					st.tween_property(spk, "position", _world_pos(pref + soff, htop), gdur).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+					st.chain().tween_interval(randf_range(0.4, 0.6))
+					st.chain().tween_property(spk, "position", _world_pos(pref + soff, 0.02), 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)   # 缩回地底(升出的对称)
+					st.parallel().tween_property(spk, "pixel_size", fullp * 0.15, 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+					st.chain().tween_callback(spk.queue_free)
 			var scar_tex: Texture2D = load("res://assets/sprites/vfx/crystal-shard.png")
 			if scar_tex != null:                                      # 碎晶地痕(小菊翻土痕→冰蓝碎晶·贴地1.1s渐隐)
-				for _sc in range(2):
+				for _sc in range(1):   # 22段密度下每段1片痕足够
 					var scar := Sprite3D.new()
 					scar.texture = scar_tex
 					scar.billboard = BaseMaterial3D.BILLBOARD_ENABLED
