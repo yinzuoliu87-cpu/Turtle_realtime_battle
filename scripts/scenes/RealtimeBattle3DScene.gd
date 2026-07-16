@@ -13186,35 +13186,38 @@ func _sk_cyber_hijack(u: Dictionary) -> void:                   # 赛博龟·侵
 
 func _sk_cyber_smart(u: Dictionary) -> void:                   # 赛博龟·智能AI(封板·40龟能·充能型): +1充能→冲刺重定位(kite拉到理想射程·躲贴身); 常驻走位+登场+20%移速 [完整行动脑(躲大招/对齐激光)留F5]
 	u["cyber_ai_charge"] = int(u.get("cyber_ai_charge", 0)) + 1
-	var ne = _nearest_enemy(u)
-	if ne != null:
-		var best: Vector2 = u["pos"]                            # ★真智能走位(用户2026-07-16): 绕自身200码采样16候选点打分(离全体敌远+离墙远), 被堵角自动从敌侧面绕出去
-		var best_score := -INF
-		var es := _enemies_of(u)
-		for i in range(16):
-			var aa: float = TAU * float(i) / 16.0
-			var cand: Vector2 = u["pos"] + Vector2(cos(aa), sin(aa)) * 200.0   # 冲刺距离200码(用户2026-07-16定)
-			cand.x = clampf(cand.x, ARENA.position.x + 50.0, ARENA.end.x - 50.0)
-			cand.y = clampf(cand.y, ARENA.position.y + 40.0, ARENA.end.y - 40.0)
-			var d_enemy := INF
-			for o in es:
-				if o.get("alive", false): d_enemy = minf(d_enemy, cand.distance_to(o["pos"]))
-			var d_wall: float = minf(minf(cand.x - ARENA.position.x, ARENA.end.x - cand.x), minf(cand.y - ARENA.position.y, ARENA.end.y - cand.y))
-			var score: float = minf(d_enemy, 420.0) + minf(d_wall, 160.0) * 0.8
-			if score > best_score:
-				best_score = score
-				best = cand
-		_beam_vfx("res://assets/sprites/vfx/fx-trail.png", u["pos"], best, 44.0, Color(0.3, 0.9, 1.0, 0.6), 0.28)   # 冲刺残影
-		var from4: Vector2 = u["pos"]
-		var uu4 := u
-		var dur4: float = maxf(0.05, from4.distance_to(best) / 800.0)   # 冲刺速度800码/s(用户2026-07-16定·非瞬移)
-		u["_slam"] = true                                       # 冲刺期锁AI(位移由tween驱动)
-		var dt4 := _reg_tween()
-		dt4.tween_method(func(q: float) -> void:
-			if uu4.get("alive", false): uu4["pos"] = from4.lerp(best, q)
-		, 0.0, 1.0, dur4)
-		dt4.tween_callback(func() -> void: uu4["_slam"] = false)
+	_cyber_smart_dash(u)
 	_skill_ring(u["pos"], Color(0.3, 0.9, 1.0, 0.5), 46.0)
+
+func _cyber_smart_dash(u: Dictionary) -> void:   # 智能走位冲刺核心(主动放技+被动躲避共用·用户2026-07-16): 绕自身200码采样16候选打分(离敌远+离墙远)·800码/s真位移
+	var ne = _nearest_enemy(u)
+	if ne == null: return
+	var best: Vector2 = u["pos"]
+	var best_score := -INF
+	var es := _enemies_of(u)
+	for i in range(16):
+		var aa: float = TAU * float(i) / 16.0
+		var cand: Vector2 = u["pos"] + Vector2(cos(aa), sin(aa)) * 200.0
+		cand.x = clampf(cand.x, ARENA.position.x + 50.0, ARENA.end.x - 50.0)
+		cand.y = clampf(cand.y, ARENA.position.y + 40.0, ARENA.end.y - 40.0)
+		var d_enemy := INF
+		for o in es:
+			if o.get("alive", false): d_enemy = minf(d_enemy, cand.distance_to(o["pos"]))
+		var d_wall: float = minf(minf(cand.x - ARENA.position.x, ARENA.end.x - cand.x), minf(cand.y - ARENA.position.y, ARENA.end.y - cand.y))
+		var score: float = minf(d_enemy, 420.0) + minf(d_wall, 160.0) * 0.8
+		if score > best_score:
+			best_score = score
+			best = cand
+	_beam_vfx("res://assets/sprites/vfx/fx-trail.png", u["pos"], best, 44.0, Color(0.3, 0.9, 1.0, 0.6), 0.28)
+	var from4: Vector2 = u["pos"]
+	var uu4 := u
+	var dur4: float = maxf(0.05, from4.distance_to(best) / 800.0)
+	u["_slam"] = true
+	var dt4 := _reg_tween()
+	dt4.tween_method(func(q: float) -> void:
+		if uu4.get("alive", false): uu4["pos"] = from4.lerp(best, q)
+	, 0.0, 1.0, dur4)
+	dt4.tween_callback(func() -> void: uu4["_slam"] = false)
 
 # 泡泡·束缚: 定身目标 1.5s + 束缚期间每受一段伤害 永久-X护甲/魔抗 (见 _apply_damage_from 钩子)
 func _sk_bubble_bind(u: Dictionary, tgt) -> void:
@@ -13849,6 +13852,11 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			u["_ptimer"] = 0.0
 			u["drone_n"] = mini(20, int(u.get("drone_n", 0)) + 2)
 		_tick_cyber_drones(u, delta)
+		if not u.get("_slam", false) and "cyberSmartAI" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 常驻走位闪避(用户2026-07-16"不会被动用冲刺"): 敌贴近130码→自动躲避冲刺(冷却2.5s·不+充能)
+			var _ne5 = _nearest_enemy(u)
+			if _ne5 != null and (u["pos"] as Vector2).distance_to(_ne5["pos"]) < 130.0 and _t >= float(u.get("_ai_dodge_cd", 0.0)):
+				u["_ai_dodge_cd"] = _t + 2.5
+				_cyber_smart_dash(u)
 	# --- 石头坚壁: 每2.5秒永久+开局护甲/6, 上限=开局护甲×2(+100%); 反伤随护甲涨 ---
 	elif u["id"] == "stone":
 		if not u.has("stone_init_def"):
@@ -14468,40 +14476,141 @@ func _tick_cyber_drones(u: Dictionary, delta: float) -> void:   # 浮游炮纯�
 					"src": u, "t": 0.0, "dur": clampf((u["pos"] - tgt["pos"]).length() / 900.0, 0.15, 0.5),
 					"basic_onhit": false, "oriented": false, "card_spin": false, "dtype": "physical"})
 
-func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡: 浮游炮汇聚一点→组装机甲(用户2026-07-15: 视觉炮飞向一点)
+func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07-16理想效果): 本体消散→浮游炮游动集结→各自对最近敌蓄力→贯穿激光0.4A魔法→飞向集结点→机甲5秒组装(血/攻/甲/抗从低涨到设定值·期间不能动)→就位近战
 	var n: int = int(u.get("drone_n", 0))
 	if n <= 0:
 		return
 	var arr: Array = u.get("_drones", [])
-	var cpos: Vector2 = u["pos"]
-	for d in arr:                                                 # 全部浮游炮飞向死亡点汇聚
-		var spr = d.get("spr")
-		if not is_instance_valid(spr): continue
-		var sref = spr
-		var ct := _reg_tween(); ct.set_parallel(true)
-		ct.tween_property(sref, "position", _world_pos(cpos, 0.9), 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		ct.tween_property(sref, "modulate:a", 0.2, 0.32)
-		ct.chain().tween_callback(sref.queue_free)
 	u["_drones"] = []
 	u["drone_n"] = 0
-	var mech_hp: float = u["maxHp"] * 0.5 + 200.0 * HP_MULT * n + u["maxHp"] * 0.12 * n   # 原每炮血量(12%maxHp)并入机甲(炮改视觉后数值等价)
-	var mech_atk: float = u["base_atk"] * (0.6 + 0.25 * n)
+	var cpos: Vector2 = u["pos"]
+	var retreat: float = -1.0 if str(u.get("side", "left")) == "left" else 1.0   # 集结点=尸位向己方后场偏120码
+	var gather: Vector2 = cpos + Vector2(retreat * 120.0, 0.0)
+	gather.x = clampf(gather.x, ARENA.position.x + 60.0, ARENA.end.x - 60.0)
+	gather.y = clampf(gather.y, ARENA.position.y + 40.0, ARENA.end.y - 40.0)
 	var uu: Dictionary = u
-	var st := _reg_tween()                                        # 0.35s汇聚完 → 白闪 → 机甲亮相
-	st.tween_interval(0.35)
-	st.tween_callback(func() -> void:
-		_gambler_pop(cpos, 0.8, Color(0.7, 0.98, 1.0, 0.95))
-		_skill_ring(cpos, Color(0.5, 0.9, 1.0, 0.7), 80.0)
+	var live: Array = []
+	for d in arr:
+		if is_instance_valid(d.get("spr")): live.append(d["spr"])
+	# ① 浮游炮游动到集结编队(0.7s·绕集结点小圆散开)
+	for i in range(live.size()):
+		var spr = live[i]
+		var fa: float = TAU * float(i) / float(maxi(1, live.size()))
+		var fpos: Vector2 = gather + Vector2(cos(fa), sin(fa)) * 55.0
+		var ft := _reg_tween()
+		ft.tween_property(spr, "position", _world_pos(fpos, 1.4), 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	# ② 蓄力(0.6s炮身发亮)→各自对最近敌射贯穿激光(0.4×赛博ATK魔法·线上全体)
+	var atk_ref: float = float(u["atk"])
+	_pending_shots.append({"delay": 0.75, "fn": func() -> void:
+		for spr2 in live:
+			if is_instance_valid(spr2):
+				var ch := _reg_tween()
+				ch.tween_property(spr2, "modulate", Color(1.6, 1.9, 2.2), 0.55)
+	, "src": u})
+	_pending_shots.append({"delay": 1.35, "fn": func() -> void:   # ★Gaster Blaster式(认证参考: 官方光束2帧@30fps瞬展全宽·蓄力口部聚能·发射后坐): 每炮蓄力光球0.45s→厚白束瞬展+后坐
+		for i2 in range(live.size()):
+			var spr3 = live[i2]
+			if not is_instance_valid(spr3): continue
+			var dpos: Vector2 = gather + Vector2(cos(TAU * float(i2) / float(maxi(1, live.size()))), sin(TAU * float(i2) / float(maxi(1, live.size())))) * 55.0
+			var best = null
+			var bd := INF
+			for o in _units:
+				if o["side"] != uu["side"] and o.get("alive", false) and not o.get("_egg_fence", false):
+					var dd: float = dpos.distance_to(o["pos"])
+					if dd < bd: bd = dd; best = o
+			if best == null: continue
+			var ldir: Vector2 = (best["pos"] - dpos)
+			if ldir.length() < 1.0: ldir = Vector2.RIGHT
+			ldir = ldir.normalized()
+			var orb := Sprite3D.new()                                # 口部聚能光球(蓄力0.45s膨胀)
+			orb.texture = _make_fire_glow_tex()
+			orb.billboard = BaseMaterial3D.BILLBOARD_ENABLED; orb.shaded = false; orb.transparent = true
+			orb.pixel_size = 0.005
+			orb.modulate = Color(0.85, 1.0, 1.0, 0.9)
+			orb.position = _world_pos(dpos + ldir * 16.0, 1.4)
+			_world.add_child(orb)
+			var ot := _reg_tween()
+			ot.tween_property(orb, "scale", Vector3(3.2, 3.2, 3.2), 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			ot.tween_callback(func() -> void:
+				if is_instance_valid(orb): orb.queue_free()
+				if is_instance_valid(spr3):                          # 后坐: 炮体向后弹再回位(Gaster Blaster标志)
+					var rb := _reg_tween()
+					rb.tween_property(spr3, "position", spr3.position + _world_pos(dpos - ldir * 34.0, 1.4) - _world_pos(dpos, 1.4), 0.08)
+					rb.tween_property(spr3, "position", spr3.position, 0.25)
+				var endp2: Vector2 = dpos + ldir * 1300.0
+				_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", dpos, endp2, 90.0, Color(1.0, 1.0, 1.0, 1.0), 0.3)    # 厚白核心束(瞬展·参考2帧全宽)
+				_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", dpos, endp2, 150.0, Color(0.6, 0.95, 1.0, 0.5), 0.45) # 青晕外束(略久=收细消散感)
+				_shake(0.03)
+				for o2 in _units:
+					if o2["side"] != uu["side"] and o2.get("alive", false) and _on_line(dpos, ldir, o2["pos"], 40.0):
+						_apply_damage_from(uu, o2, _resolve_dmg(uu, atk_ref * 0.4, o2, true), Color("#7ee8ff"))      # 0.4A魔法(蓝字)
+						_hit_spark(o2))
+	, "src": u})
+	# ③ 飞向集结点消失(2.4s起·等激光演出完)
+	_pending_shots.append({"delay": 2.4, "fn": func() -> void:
+		for spr4 in live:
+			if not is_instance_valid(spr4): continue
+			var ct := _reg_tween(); ct.set_parallel(true)
+			ct.tween_property(spr4, "position", _world_pos(gather, 0.8), 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			ct.tween_property(spr4, "modulate:a", 0.15, 0.3)
+			ct.chain().tween_callback(spr4.queue_free)
+	, "src": u})
+	# ④ 机甲组装(2.8s起·5秒血/攻/甲/抗从10%涨到设定值·期间_slam锁不能动不能打)
+	var final_hp: float = u["maxHp"] * 0.5 + 200.0 * HP_MULT * n + u["maxHp"] * 0.12 * n
+	var final_atk: float = u["base_atk"] * (0.6 + 0.25 * n)
+	_pending_shots.append({"delay": 2.8, "fn": func() -> void:
+		_gambler_pop(gather, 0.8, Color(0.7, 0.98, 1.0, 0.95))
+		_skill_ring(gather, Color(0.5, 0.9, 1.0, 0.7), 80.0)
 		_shake(JUICE_SHAKE_HEAVY)
-		var mech = _spawn_summon(uu, "mech", mech_hp, mech_atk, {
-			"label": "机甲", "spr_id": "mech", "col_size": 40.0, "hp_w": 46.0, "melee": false,
-			"move_spd": 130.0, "atk_interval": 1.0, "atk_range": 320.0,
+		var mech = _spawn_summon(uu, "mech", final_hp, final_atk, {
+			"label": "机甲", "spr_id": "mech", "col_size": 40.0, "hp_w": 46.0, "melee": true,
+			"move_spd": 130.0, "atk_interval": 1.0, "atk_range": 70.0,
 			"special": "mech_blast", "special_cd": 2.5, "special_scale": 1.5,
 		})
-		if mech != null:
-			mech["pos"] = cpos)
-
-# 召唤独立单位 — 3D 版: billboard 立绘(有 spr_id) 或彩色 billboard + blob影 + 血条 overlay. 走同一 tick.
+		if mech == null: return
+		mech["pos"] = gather
+		mech["_slam"] = true                                     # 组装期锁AI(不能移动/攻击)
+		mech["maxHp"] = final_hp * 0.1; mech["hp"] = mech["maxHp"]
+		mech["atk"] = final_atk * 0.1; mech["base_atk"] = final_atk * 0.1
+		var mref: Dictionary = mech
+		var spr5 = mech.get("sprite", null)
+		if is_instance_valid(spr5):
+			spr5.modulate = Color(1, 1, 1, 0.45)                 # 组装中半透明→逐渐成型
+			var mt := _reg_tween()
+			mt.tween_property(spr5, "modulate:a", 1.0, 5.0)
+		var grow := _reg_tween()                                 # 5秒属性增长(血条看得见地涨·受击扣的血保留)
+		grow.tween_method(func(g: float) -> void:
+			if not mref.get("alive", false): return
+			var prev_max: float = float(mref["maxHp"])
+			mref["maxHp"] = lerpf(final_hp * 0.1, final_hp, g)
+			mref["hp"] = minf(float(mref["hp"]) + (float(mref["maxHp"]) - prev_max), float(mref["maxHp"]))
+			mref["atk"] = lerpf(final_atk * 0.1, final_atk, g)
+			mref["base_atk"] = mref["atk"]
+		, 0.0, 1.0, 5.0)
+		grow.tween_callback(func() -> void:                      # 就位: 解锁+白闪+环
+			if not mref.get("alive", false): return
+			mref["_slam"] = false
+			_flash(mref, Color(1.6, 1.9, 2.2))
+			_skill_ring(mref["pos"], Color(0.6, 0.95, 1.0, 0.8), 64.0)
+			_shake(JUICE_SHAKE_LIGHT))
+		var weld := [0]                                          # 组装特效: 5秒内周期焊接火花+电弧
+		var wt := _reg_tween()
+		wt.tween_method(func(_g: float) -> void:
+			weld[0] += 1
+			if weld[0] % 6 != 0 or not mref.get("alive", false): return
+			var wp: Vector2 = (mref["pos"] as Vector2) + Vector2(randf_range(-28.0, 28.0), randf_range(-16.0, 16.0))
+			var wk := Sprite3D.new()
+			wk.texture = _make_fire_glow_tex()
+			wk.billboard = BaseMaterial3D.BILLBOARD_ENABLED; wk.shaded = false; wk.transparent = true
+			wk.pixel_size = 0.006
+			wk.modulate = Color(0.8, 1.0, 1.0, 1.0)
+			wk.position = _world_pos(wp, randf_range(0.3, 1.2))
+			_world.add_child(wk)
+			var wtw := _reg_tween()
+			wtw.tween_property(wk, "modulate:a", 0.0, 0.18)
+			wtw.tween_callback(wk.queue_free)
+		, 0.0, 1.0, 5.0)
+	, "src": u})
 func _spawn_summon(owner: Dictionary, kind: String, hp: float, atk: float, behavior: Dictionary = {}):
 	var pos: Vector2 = owner["pos"] + Vector2(randf_range(-40, 40), randf_range(30, 60))
 	pos.x = clampf(pos.x, ARENA.position.x, ARENA.end.x)
