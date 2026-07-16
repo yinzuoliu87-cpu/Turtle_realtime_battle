@@ -14125,7 +14125,9 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·
 		var tw := _reg_tween()
 		tw.tween_method(step, 0.0, end_d, end_d / 140.0).set_trans(Tween.TRANS_LINEAR)   # 140码/s推进到边界
 		tw.chain().tween_callback(boom)
-	_pending_shots.append({"delay": 0.35, "fn": fire, "src": u})
+	_pending_shots.append({"delay": 0.3, "fn": fire, "src": u})     # 蓄力0.3s→发射
+
+const INK_BOMB_RADIUS := 300.0                                  # 墨水炸弹AOE半径(用户2026-07-15: 原全体→落点300码范围内)
 func _sk_line_ink_bomb(u: Dictionary) -> void:                  # 线条龟·墨水炸弹(用户设计·120龟能; 用户2026-07-15: 全体→落点300码AOE): 投墨弹至最密集处→落点300码内敌各4段0.25A魔法+叠4墨迹(打包被动=墨迹上限提到10)
 	var es: Array = []                                          # 投掷墨水炸弹→落点大墨爆+命中才溅墨结算(用户2026-07-15做投掷)
 	for o in _enemies_of(u):
