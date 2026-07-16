@@ -86,8 +86,8 @@ static func _review_demo() -> bool:
 	if OS.has_environment("REVIEW"):
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
-const REVIEW_TURTLE := "crystal"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 3   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
+const REVIEW_TURTLE := "chest"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
+const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -11348,14 +11348,20 @@ func _crystal_ray_vfx(src: Dictionary, tgt: Dictionary, seg_dmg_fn: Callable) ->
 	for seg in range(2):
 		var last: bool = seg == 1
 		_pending_shots.append({"delay": 0.25 + 0.15 * float(seg), "fn": func() -> void:
-			if not sref.get("alive", false) or not tref.get("alive", false): return
+			if not sref.get("alive", false): return
 			var a2: Vector2 = sref["pos"]
-			var b2: Vector2 = tref["pos"]
+			var ldir: Vector2 = ((tref["pos"] as Vector2) - a2) if tref.get("alive", false) else Vector2.RIGHT * (1.0 if str(sref.get("side", "left")) == "left" else -1.0)
+			if ldir.length() < 1.0: ldir = Vector2.RIGHT
+			ldir = ldir.normalized()
+			var b2: Vector2 = a2 + ldir * 2000.0                                                                        # 贯穿直线2000码(用户2026-07-16)
 			_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", a2, b2, 30.0, Color(1.0, 1.0, 1.0, 0.95), 0.22)   # 白核
 			_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", a2, b2, 52.0, Color(0.55, 0.9, 1.0, 0.6), 0.3)    # 冰蓝晕
-			_crystal_spark(b2, 0.8)
-			_skill_ring(b2, Color(0.62, 0.88, 1.0, 0.5), 26.0)
-			seg_dmg_fn.call(sref, tref, last)
+			for o in _units:                                                                                            # 线上全体敌人各吃一段(用户: 对一条直线敌人造成伤害)
+				if o["side"] == sref["side"] or not o.get("alive", false): continue
+				if not _on_line(a2, ldir, o["pos"], 46.0): continue
+				_crystal_spark(o["pos"], 0.8)
+				_skill_ring(o["pos"], Color(0.62, 0.88, 1.0, 0.5), 26.0)
+				seg_dmg_fn.call(sref, o, last)
 		, "src": src})
 
 # 水晶龟·水晶球 本体主动(封板L571·70龟能): 朝目标射一道水晶光线=2段共1.0A魔法 + 叠2层结晶(与水晶球随从共享满5引爆)·水晶球随从在spawn gate召唤
@@ -13972,7 +13978,7 @@ func _apply_spawn_passives() -> void:
 				if "crystalBall" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 水晶球(技三·选中才召): 登场召唤实体水晶球(2026-07-16加大+特效)
 					var _orb = _spawn_summon(u, "crystalball", u["maxHp"] * 0.50, u["atk"], {
 						"label": "水晶球", "spr_id": "crystal-ball", "col_size": 38.0, "hp_w": 40.0, "melee": false,
-						"move_spd": 90.0, "atk_range": 320.0, "no_basic": true,
+						"move_spd": 90.0, "atk_range": 2000.0, "no_basic": true,   # 射程2000(用户2026-07-16)
 						"special": "ray", "special_cd": 5.0, "special_scale": 0.5,   # 攻速0.2≈5s一发(封板)·每发2段共1.0A魔法
 					})
 					if _orb != null:                              # 登场爆闪+常驻脉动光环(用户2026-07-16: 球太小没特效)
@@ -14416,12 +14422,7 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 			if o.get("is_summon", false) and o.get("summon_owner", null) == u and o["alive"]:
 				o["hp"] = 0.0; o["alive"] = false
 				_hide_summon_nodes(o)
-	# ★2026-07-11 用户拍板「要加死亡同步」: 水晶龟阵亡 → 水晶球随从一同消失 (仿缩头; 原本水晶球会继续战斗)
-	if u["id"] == "crystal":
-		for o in _units:
-			if o.get("is_summon", false) and o.get("summon_owner", null) == u and o.get("summon_kind", "") == "crystalball" and o["alive"]:
-				o["hp"] = 0.0; o["alive"] = false
-				_hide_summon_nodes(o)
+	# (删死亡同步·用户2026-07-16反转07-11拍板: 水晶球不随主人阵亡, 继续战斗)
 	# 赛博龟阵亡 → 浮游炮组装成机甲
 	if u["id"] == "cyber":
 		_cyber_assemble_mech(u)
