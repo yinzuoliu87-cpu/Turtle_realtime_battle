@@ -2539,7 +2539,10 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		var _mm: float = pow(1.05, maxf(0.0, float(int(spec.get("level", 1)) - 1)))
 		d = {"name": ("精英小将" if _me else "小将"), "rarity": "C", "crit": 0.0,
 			"hp": 250.0 * _mm * 3.0, "atk": 30.0 * _mm * (1.4 if _mf else 1.5), "def": 7.0, "mr": 7.0}
-		st = [_mf, 105.0, 0.85, (70.0 if _mf else 400.0)]
+		if _me:
+			st = [true, 105.0, 1.0 / 0.65, 90.0]   # 精英(虐杀原形改造2026-07-16): 近战长手刃·攻速0.65次/s
+		else:
+			st = [_mf, 105.0, 0.85, (70.0 if _mf else 400.0)]
 		sd = _minion_sprite_dict(_me, not _mf)
 	elif is_egg:   # 龟蛋: 纯血包 fighter(atk/def/mr=0), 不动不攻击, 免控/斩/嘲讽, 走完整伤害管线; 围栏未破不可主动索敌(AoE穿栏)
 		d = {"name": "龟蛋", "rarity": "SSS", "crit": 0.0, "hp": maxf(1.0, float(spec.get("hp_max", spec.get("hp", 2100)))), "atk": 0.0, "def": 60.0, "mr": 60.0}   # maxHp=原始满血; 当前hp在下方按累积受损值覆盖(用户2026-07-12: 跨路掉血要可见); 60双抗
@@ -2692,6 +2695,12 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		u["_isMinion"] = true
 		u["minion_role"] = str(spec.get("role", "front"))
 		u["is_elite"] = bool(spec.get("elite", false))
+		if u["is_elite"]:                              # 精英小将(虐杀原形改造2026-07-16): 唯一技能铁锤100龟能+被动计数器
+			u["active_skills"] = ["eliteHammer"]
+			u["energy_cost"]["eliteHammer"] = 100.0
+			u["_eb_n"] = 0
+			u["_hammer_n"] = 0
+			u["_whip_cd"] = 0.0
 	if is_egg:
 		u["_isEgg"] = true
 		u["_eggImmune"] = true          # 免控/斩/嘲讽
@@ -3609,6 +3618,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 
 	_tick_skill_cd(u, delta)        # 技能冷却(=龟能充能)走时间; ★但眩晕/击飞/风暴期内部直接return→龟能锁定不充(见_tick_skill_cd)
 	_tick_bulwark(u)                # 水晶壁垒监视: 盾到期/被打破→直线水晶刺+解锁龟能(用户2026-07-16)
+	_tick_elite_whip(u)             # 精英小将铁锁(Whipfist): 索敌>350码→链拉体(CD5s·虐杀原形改造2026-07-16)
 	u["atk_cd"] = maxf(0.0, float(u.get("atk_cd", 0.0)) - delta)   # 普攻冷却也始终走 (漏了它→打一下就再不普攻=用户报的"整个没普攻"; 召唤体也安全)
 	if int(u.get("allin_coins", 0)) > 0:
 		_fortune_allin_channel(u, delta)
@@ -3960,6 +3970,9 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	if u["id"] == "shell":          # 龟壳改造: 1ATK单段·物/真逐攻交替 + 主目标120px内其他敌溅射50%(同类型)
 		_shell_basic(u, tgt)
 		_on_basic_hit(u, tgt)
+		return
+	if u["id"] == "__minion__" and u.get("is_elite", false):   # 精英小将(虐杀原形): 吞噬检查→第5击旋刃→长手刃1A物理
+		_elite_basic(u, tgt)
 		return
 	if u["id"] == "chest":          # 宝箱砸击(封板): K'Sante一段Q式·前方短直线AOE·1A物理(近战扫一小片非单体)
 		_chest_basic(u, tgt)
@@ -8356,6 +8369,7 @@ const _IMPL_SKILLS := {
 	"lineLink": true, "lightningSurgeBuff": true, "phoenixShield": true, "phoenixEnhancedRebirth": true, "headlessFear": true,
 	"fortuneDice": true, "crystalBarrier": true, "chestCount": true, "starWave": true,
 	"twoHeadStrike": true, "twoHeadDisrupt": true, "twoHeadFusion": true, "lavaSurge": true, "cyberBeam": true, "hidingDefend": true, "shellAbsorb": true,
+	"eliteHammer": true,   # 精英小将·铁锤(虐杀原形改造2026-07-16)
 	# 通用 (多龟共享 type)
 	"shield": true, # 数据驱动伤害技 (系数取自 pets.json detail 公式 {N/M/T:...})
 	"basicBarrage": true, "basicChiWave": true, "basicSlam": true, "bambooSmack": true, "bambooSpikes": true, "angelEquality": true,
@@ -8551,6 +8565,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"fortuneDice":          _sk_fortune_dice(u)
 		"crystalBarrier":       _sk_crystal_bulwark(u)
 		"chestCount":           _sk_chest_inventory(u)
+		"eliteHammer":          _sk_elite_hammer(u, tgt)
 		"starWave":             _sk_star_wave(u)
 		"twoHeadStrike":        _sk_two_head_strike(u, tgt)
 		"twoHeadDisrupt":       _sk_two_head_disrupt(u, tgt)
@@ -11467,6 +11482,289 @@ func _sk_chest_inventory(u: Dictionary) -> void:                 # 宝箱龟·�
 	var bonus: float = 1.0 + 0.10 * floorf(u["dmg_dealt"] / 1000.0)
 	_heal(u, u["maxHp"] * 0.05 * bonus)
 	_grant_shield(u, u["atk"] * 0.6)
+
+# ───── 精英小将·虐杀原形改造(用户2026-07-16): Blade普攻/Blade Frenzy旋刃/Whipfist铁锁/Hammerfist铁锤/Consume吞噬 ─────
+func _elite_basic(u: Dictionary, tgt: Dictionary) -> void:      # 普攻·长手刃(Blade): 1A物理+黑红刀光; 第5击旋刃; <15%HP先吞噬
+	if _elite_try_consume(u, tgt):
+		return
+	u["_eb_n"] = int(u.get("_eb_n", 0)) + 1
+	if u["_eb_n"] % 5 == 0:
+		_elite_whirl(u)
+		return
+	var dirv: Vector2 = (tgt["pos"] as Vector2) - (u["pos"] as Vector2)
+	dirv = dirv.normalized() if dirv.length() > 1.0 else Vector2.RIGHT
+	_emit_basic(u, tgt, _atk_dmg(u, 1.0, tgt), Color("#e05555"), 0)
+	_elite_slash_arc(tgt["pos"], dirv)
+
+func _elite_mist(pos2d: Vector2, h: float, n: int = 3) -> void:  # 黑红雾团(变形通用语言: 黑主体+暗红筋络·每次幻化都爆一口)
+	var glow := _make_fire_glow_tex()
+	for k in range(n):
+		var m := Sprite3D.new()
+		m.texture = glow
+		m.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		m.shaded = false; m.transparent = true
+		m.pixel_size = (randf_range(26.0, 46.0) * WS) / float(maxi(1, glow.get_width()))
+		m.modulate = Color(0.12, 0.02, 0.03, 0.75) if k % 2 == 0 else Color(0.5, 0.07, 0.09, 0.6)
+		m.position = _world_pos(pos2d + Vector2(randf_range(-18.0, 18.0), randf_range(-12.0, 12.0)), h + randf_range(-0.15, 0.25))
+		_world.add_child(m)
+		var tw := _reg_tween(); tw.set_parallel(true)
+		tw.tween_property(m, "pixel_size", m.pixel_size * 1.6, 0.3)
+		tw.tween_property(m, "modulate:a", 0.0, 0.3)
+		tw.chain().tween_callback(m.queue_free)
+
+func _elite_slash_arc(pos2d: Vector2, dirv: Vector2) -> void:    # 黑红刀光(暗色系·区别其他龟亮色)
+	var t: Texture2D = load("res://assets/sprites/vfx/ninja-slash.png")
+	if t == null: return
+	var sl := Sprite3D.new()
+	sl.texture = t
+	sl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sl.shaded = false; sl.transparent = true
+	sl.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sl.pixel_size = (86.0 * WS) / float(maxi(1, t.get_height()))
+	sl.position = _world_pos(pos2d, 0.8)
+	sl.rotation.z = atan2(-dirv.y, dirv.x) + randf_range(-0.3, 0.3)
+	sl.modulate = Color(0.75, 0.12, 0.15, 0.95)
+	sl.flip_h = randf() < 0.5
+	_world.add_child(sl)
+	var tw := _reg_tween(); tw.set_parallel(true)
+	tw.tween_property(sl, "pixel_size", sl.pixel_size * 1.25, 0.16)
+	tw.tween_property(sl, "modulate:a", 0.0, 0.18)
+	tw.chain().tween_callback(sl.queue_free)
+
+func _elite_whirl(u: Dictionary) -> void:                        # 被动3·旋刃(Blade Frenzy): 第5击→200码1.3A物理+吸血50%
+	_elite_mist(u["pos"], 0.7, 4)
+	_skill_ring(u["pos"], Color(0.55, 0.08, 0.1, 0.7), 200.0)
+	var uu := u
+	var spin_t: Texture2D = load("res://assets/sprites/vfx/ninja-slash.png")
+	if spin_t != null:                                            # 刃光绕身转一圈(0.28s)
+		var sp := Sprite3D.new()
+		sp.texture = spin_t
+		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sp.shaded = false; sp.transparent = true
+		sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		sp.pixel_size = (96.0 * WS) / float(maxi(1, spin_t.get_height()))
+		sp.modulate = Color(0.75, 0.12, 0.15, 0.95)
+		_world.add_child(sp)
+		var swp := _reg_tween()
+		swp.tween_method(func(q: float) -> void:
+			if not is_instance_valid(sp): return
+			if not uu.get("alive", false): return
+			var aa: float = q * TAU
+			sp.position = _world_pos((uu["pos"] as Vector2) + Vector2(cos(aa), sin(aa)) * 110.0, 0.7)
+			sp.rotation.z = -aa
+			sp.modulate.a = 0.95 * (1.0 - maxf(0.0, q - 0.7) / 0.3)
+		, 0.0, 1.0, 0.28)
+		swp.tween_callback(sp.queue_free)
+	var total: int = 0
+	for o in _enemies_of(u):
+		if not o.get("alive", false): continue
+		if (o["pos"] as Vector2).distance_to(u["pos"]) > 200.0: continue
+		var dmg: int = _atk_dmg(u, 1.3, o)
+		_apply_damage_from(u, o, dmg, Color("#e05555"))
+		total += dmg
+		var dv: Vector2 = (o["pos"] as Vector2) - (u["pos"] as Vector2)
+		_elite_slash_arc(o["pos"], dv.normalized() if dv.length() > 1.0 else Vector2.RIGHT)
+	if total > 0:
+		_heal(u, float(total) * 0.5)                              # 吸血50%(生物质回收)
+
+func _elite_try_consume(_u: Dictionary, _tgt: Dictionary) -> bool:   # 被动1·吞噬(E相实装)
+	return false
+
+func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁锁(Whipfist Longshot·CD5s用户拍板): 索敌>350码→链射→顿+目标眩晕0.4s→拉体落身后+1A魔法
+	if not (u.get("is_elite", false) and u.get("alive", false)): return
+	if u.get("_slam", false) or u.get("airborne", false): return
+	if _t < float(u.get("_whip_cd", 0.0)) or _t < float(u.get("stun_until", 0.0)): return
+	var tgt = _acquire_target(u)
+	if tgt == null or not tgt.get("alive", false): return
+	var d: float = (tgt["pos"] as Vector2).distance_to(u["pos"])
+	if d <= 350.0: return
+	u["_whip_cd"] = _t + 5.0
+	u["_slam"] = true
+	var uu := u
+	var tref: Dictionary = tgt
+	var from5: Vector2 = u["pos"]
+	var to5: Vector2 = tgt["pos"]
+	_elite_mist(from5 + (to5 - from5).normalized() * 24.0, 0.8, 3)   # 手臂黑雾幻化
+	_bolt_line(from5, to5, Color(0.55, 0.1, 0.12, 0.9))
+	var ctex: Texture2D = load("res://assets/sprites/vfx/bio-chain.png")
+	if ctex != null:                                              # 链节依次伸出(快)
+		var links: int = clampi(int(d / 55.0), 5, 14)
+		for i in range(links):
+			var lp: Vector2 = from5.lerp(to5, float(i + 1) / float(links))
+			var lk := Sprite3D.new()
+			lk.texture = ctex
+			lk.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			lk.shaded = false; lk.transparent = true
+			lk.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			lk.pixel_size = (20.0 * WS) / float(maxi(1, ctex.get_height()))
+			lk.position = _world_pos(lp, 0.8)
+			lk.rotation.z = atan2(-(to5 - from5).y, (to5 - from5).x)
+			lk.modulate = Color(1, 1, 1, 0.0)
+			_world.add_child(lk)
+			var lt := _reg_tween()
+			lt.tween_interval(0.01 * float(i))
+			lt.tween_property(lk, "modulate:a", 1.0, 0.03)
+			lt.tween_interval(0.3)
+			lt.tween_property(lk, "modulate:a", 0.0, 0.1)
+			lt.tween_callback(lk.queue_free)
+	_pending_shots.append({"delay": 0.14, "fn": func() -> void:   # 命中: 顿一下+目标眩晕0.4s
+		if not tref.get("alive", false) or not uu.get("alive", false):
+			uu["_slam"] = false
+			return
+		tref["stun_until"] = maxf(float(tref.get("stun_until", 0.0)), _t + 0.4)
+		_flash(tref, Color(1.35, 1.2, 1.2))
+		_hit_spark(tref)
+	, "src": u})
+	_pending_shots.append({"delay": 0.3, "fn": func() -> void:    # 拉体: 0.18s冲到目标身后
+		if not uu.get("alive", false): return
+		if not tref.get("alive", false):
+			uu["_slam"] = false
+			return
+		var tp: Vector2 = tref["pos"]
+		var dirp: Vector2 = tp - (uu["pos"] as Vector2)
+		dirp = dirp.normalized() if dirp.length() > 1.0 else Vector2.RIGHT
+		var dest: Vector2 = tp + dirp * 46.0
+		dest.x = clampf(dest.x, ARENA.position.x + 30.0, ARENA.end.x - 30.0)
+		dest.y = clampf(dest.y, ARENA.position.y + 20.0, ARENA.end.y - 20.0)
+		var fromp: Vector2 = uu["pos"]
+		_beam_vfx("res://assets/sprites/vfx/fx-trail.png", fromp, dest, 40.0, Color(0.45, 0.08, 0.1, 0.6), 0.25)
+		var pt5 := _reg_tween()
+		pt5.tween_method(func(q: float) -> void:
+			if uu.get("alive", false): uu["pos"] = fromp.lerp(dest, q)
+		, 0.0, 1.0, 0.18)
+		pt5.tween_callback(func() -> void:
+			uu["_slam"] = false
+			if tref.get("alive", false) and uu.get("alive", false):
+				_apply_damage_from(uu, tref, _atk_dmg(uu, 1.0, tref, true), Color("#9bdcff"))   # 1A魔法(蓝字)
+				_elite_mist(uu["pos"], 0.6, 3)
+				var dv2: Vector2 = (tref["pos"] as Vector2) - (uu["pos"] as Vector2)
+				_elite_slash_arc(tref["pos"], dv2.normalized() if dv2.length() > 1.0 else Vector2.RIGHT))
+	, "src": u})
+
+func _elite_spike(pos2d: Vector2, big: bool) -> void:            # 单根黑刺(Groundspike): 地底BACK弹出→定格→缩回·3变体随机
+	var vs := ["bio-spike-a", "bio-spike-b", "bio-spike-c"]
+	var tex: Texture2D = load("res://assets/sprites/vfx/%s.png" % vs[randi() % 3])
+	if tex == null: return
+	var spk := Sprite3D.new()
+	spk.texture = tex
+	spk.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spk.shaded = false; spk.transparent = true
+	spk.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	var sz: float = randf_range(64.0, 96.0) if big else randf_range(44.0, 70.0)
+	var fullp: float = (sz * WS) / float(maxi(1, int(tex.get_height())))
+	spk.pixel_size = fullp * 0.2
+	spk.flip_h = randf() < 0.5
+	spk.position = _world_pos(pos2d, 0.05)
+	spk.rotation.z = randf_range(-0.35, 0.35)
+	_world.add_child(spk)
+	_skill_ring(pos2d, Color(0.5, 0.08, 0.1, 0.45), 16.0)         # 破土
+	var htop: float = randf_range(0.5, 0.66) if big else randf_range(0.34, 0.5)
+	var st := _reg_tween(); st.set_parallel(true)
+	st.tween_property(spk, "pixel_size", fullp, randf_range(0.08, 0.12)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	st.tween_property(spk, "position", _world_pos(pos2d, htop), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	st.chain().tween_interval(randf_range(0.35, 0.5))
+	st.chain().tween_property(spk, "position", _world_pos(pos2d, 0.02), 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	st.parallel().tween_property(spk, "pixel_size", fullp * 0.15, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	st.chain().tween_callback(spk.queue_free)
+
+func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁锤(100龟能·Hammerfist): 60°锥500码刺浪1.5A魔+击飞0.5s; 每第3次→跃起下锤700码全域3A魔+击飞1.2s(Elbow Drop+Groundspike Graveyard)
+	if tgt == null: tgt = _nearest_enemy(u)
+	if tgt == null: return
+	u["_hammer_n"] = int(u.get("_hammer_n", 0)) + 1
+	var big: bool = int(u["_hammer_n"]) % 3 == 0
+	var uu := u
+	_elite_mist(u["pos"], 0.8, 4)                                 # 武器黑雾幻化铁拳
+	var ftex: Texture2D = load("res://assets/sprites/vfx/bio-fist.png")
+	var dirv: Vector2 = (tgt["pos"] as Vector2) - (u["pos"] as Vector2)
+	dirv = dirv.normalized() if dirv.length() > 1.0 else Vector2.RIGHT
+	if ftex != null:                                              # 铁拳短蓄力(0.3s变大)
+		var fs := Sprite3D.new()
+		fs.texture = ftex
+		fs.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		fs.shaded = false; fs.transparent = true
+		fs.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		fs.pixel_size = (26.0 * WS) / float(maxi(1, ftex.get_height()))
+		fs.position = _world_pos((u["pos"] as Vector2) + dirv * 28.0, 1.0)
+		_world.add_child(fs)
+		var ft := _reg_tween()
+		ft.tween_property(fs, "pixel_size", (54.0 * WS) / float(maxi(1, ftex.get_height())), 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		ft.tween_interval(0.1 if not big else 0.9)
+		ft.tween_property(fs, "modulate:a", 0.0, 0.12)
+		ft.tween_callback(fs.queue_free)
+	if not big:
+		# ── 普通形态: 蓄力0.3s→锤地→60°锥500码刺浪(8波·近→远)
+		u["_slam"] = true
+		var origin: Vector2 = u["pos"]
+		var tok: int = randi()
+		_pending_shots.append({"delay": 0.3, "fn": func() -> void:
+			if not uu.get("alive", false): return
+			uu["_slam"] = false
+			_shake(0.1)
+			_skill_ring(origin + dirv * 40.0, Color(0.55, 0.1, 0.12, 0.75), 40.0)
+			_elite_mist(origin + dirv * 40.0, 0.3, 4)
+		, "src": u})
+		for step in range(8):
+			var dist: float = 500.0 * float(step + 1) / 8.0
+			var sref: int = step
+			_pending_shots.append({"delay": 0.3 + 0.052 * float(step + 1), "fn": func() -> void:
+				if not uu.get("alive", false): return
+				var n_sp: int = 2 + int(float(sref) * 0.8)                     # 近端2根→远端7根(锥越远弧越宽)
+				for k in range(n_sp):
+					var aoff: float = deg_to_rad(randf_range(-30.0, 30.0))
+					var pdir: Vector2 = dirv.rotated(aoff)
+					var pp: Vector2 = origin + pdir * (dist + randf_range(-20.0, 20.0))
+					if ARENA.has_point(pp): _elite_spike(pp, false)
+				for o in _units:
+					if o["side"] == uu["side"] or not o.get("alive", false): continue
+					if int(o.get("_espk_tok", -1)) == tok: continue
+					var rel: Vector2 = (o["pos"] as Vector2) - origin
+					if rel.length() > dist + 40.0 or rel.length() < dist - 40.0: continue
+					if absf(rel.angle_to(dirv)) > deg_to_rad(30.0): continue
+					o["_espk_tok"] = tok
+					_apply_damage_from(uu, o, _atk_dmg(uu, 1.5, o, true), Color("#9bdcff"))   # 1.5A魔法
+					_knock_up(o, origin, 5.5)                                                  # 击飞0.5s
+			, "src": u})
+	else:
+		# ── 每第3次: 跃起(滞空蓄力·照熔岩: 可受伤不可索敌)→下锤→700码全域环形刺浪(10波)3A魔+击飞1.2s
+		u["_slam"] = true
+		u["untargetable_until"] = _t + 1.15
+		var center: Vector2 = u["pos"]
+		var tok2: int = randi()
+		_skill_ring(center, Color(0.55, 0.1, 0.12, 0.5), 700.0)   # 预警大圈
+		var jt := _reg_tween()                                     # 跃起0.3s→滞空0.5s→砸落0.15s
+		jt.tween_method(func(q: float) -> void:
+			if uu.get("alive", false): uu["height"] = q * 2.2
+		, 0.0, 1.0, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		jt.tween_interval(0.5)
+		jt.tween_method(func(q: float) -> void:
+			if uu.get("alive", false): uu["height"] = (1.0 - q) * 2.2
+		, 0.0, 1.0, 0.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		jt.tween_callback(func() -> void:
+			if not uu.get("alive", false): return
+			uu["_slam"] = false
+			uu["height"] = 0.0
+			_shake(JUICE_SHAKE_HEAVY)
+			_skill_ring(uu["pos"] as Vector2, Color(0.6, 0.12, 0.14, 0.85), 90.0)
+			_elite_mist(uu["pos"] as Vector2, 0.3, 6)
+			var c2: Vector2 = uu["pos"]
+			for step2 in range(10):
+				var dist2: float = 700.0 * float(step2 + 1) / 10.0
+				var sref2: int = step2
+				_pending_shots.append({"delay": 0.05 * float(step2 + 1), "fn": func() -> void:
+					var n_sp2: int = 5 + sref2                                  # 周长越大刺越多(5→14)
+					for k2 in range(n_sp2):
+						var aa2: float = randf() * TAU
+						var pp2: Vector2 = c2 + Vector2(cos(aa2), sin(aa2)) * (dist2 + randf_range(-25.0, 25.0))
+						if ARENA.has_point(pp2): _elite_spike(pp2, true)
+					for o2 in _units:
+						if o2["side"] == uu["side"] or not o2.get("alive", false): continue
+						if int(o2.get("_espk_tok", -1)) == tok2: continue
+						var dd2: float = (o2["pos"] as Vector2).distance_to(c2)
+						if dd2 > dist2 + 45.0 or dd2 < dist2 - 45.0: continue
+						o2["_espk_tok"] = tok2
+						_apply_damage_from(uu, o2, _atk_dmg(uu, 3.0, o2, true), Color("#9bdcff"))   # 3A魔法
+						_knock_up(o2, c2, 13.2)                                                      # 击飞1.2s
+				, "src": uu}))
 
 func _chest_basic(u: Dictionary, tgt: Dictionary) -> void:       # 普攻·宝箱砸击(封板): K'Sante一段Q式·朝目标前方短直线AOE·各1A物理(近战扫一小片非单体)
 	var dir: Vector2 = tgt["pos"] - u["pos"]
