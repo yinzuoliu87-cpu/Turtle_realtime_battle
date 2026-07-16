@@ -1403,8 +1403,7 @@ func _spawn_teams() -> void:
 			_lu["_pdeath_demo"] = true
 		if _review_demo() and str(left[i]) == "lava":   # 熔岩评审便利: 出生90怒气→打几下就变身火山(验火山形态技变体/被动不用干等攒怒气)
 			_lu["rage"] = 90.0
-		if _review_demo() and str(left[i]) == "cyber" and REVIEW_SKILL_IDX == -1:   # 赛博被动demo: 被假人打死→浮游炮汇聚组装机甲(演一次·40%残血加速)
-			_lu["hp"] = float(_lu["maxHp"]) * 0.4
+		if _review_demo() and str(left[i]) == "cyber" and REVIEW_SKILL_IDX == -1:   # 赛博被动demo: 满血挨打(先看浮游炮攒到编队)→被打死→浮游炮汇聚组装机甲→复位循环
 			_lu["_review_dummy"] = false
 			_lu["_cydeath_demo"] = true
 		if _review_demo() and str(left[i]) == "bubble" and REVIEW_SKILL_IDX == 3:   # 泡泡爆破: 预置满泡泡值(不用挨打攒·每帧回满)+站桩→反复放爆破看两门+泡沫墙清晰展开
@@ -3496,6 +3495,13 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 			u["_vfxcast_t"] = 0.0
 			match OS.get_environment("VFXCAST"):
 				"lavawave": _lava_volcano_erupt(u)
+	if u.get("hijacked", false) and u.get("alive", false):   # 侵入故障化标识(用户2026-07-15确认: 红/绿故障闪·芯片图标在头顶信息层)
+		var _gspr = u.get("sprite", null)
+		if is_instance_valid(_gspr):
+			match int(_t * 9.0) % 3:
+				0: _gspr.modulate = Color(1.35, 0.55, 0.55)
+				1: _gspr.modulate = Color(0.5, 1.3, 0.95)
+				_: _gspr.modulate = Color(1, 1, 1)
 	if u.has("_home_pos") and u.get("alive", false) and not u.get("airborne", false):   # fixed评审假人: 被击飞落地后缓步归位(板稳定)
 		var _hp2: Vector2 = u["_home_pos"]
 		if (u["pos"] as Vector2).distance_to(_hp2) > 4.0:
@@ -3945,7 +3951,9 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		for o in _enemies_of(u):
 			if o.get("alive", false) and _on_line(u["pos"], _cdir, o["pos"], 55.0):
 				_apply_damage_from(u, o, _atk_dmg(u, 1.0, o), Color("#9bf0ff"))
-		_bolt_line(u["pos"], u["pos"] + _cdir * 1300.0, Color(0.6, 0.94, 1.0))
+				_hit_spark(o)                                                       # 沿线每个命中点火花(2026-07-15提质)
+		_bolt_line(u["pos"], u["pos"] + _cdir * 1300.0, Color(0.85, 1.0, 1.0))     # 白青亮核心线
+		_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", u["pos"], u["pos"] + _cdir * 1300.0, 44.0, Color(0.5, 0.9, 1.0, 0.55), 0.22)   # 青色辉光束(细·随核心线衰减)
 		_on_basic_hit(u, tgt)
 		return
 	if u["id"] == "headless":       # 撕咬(封板): 1A物理 + 3%目标最大生命魔法; 灵魂打击充能满→附0.9A物理+20%当前生命魔法
@@ -7430,9 +7438,13 @@ func _kill(u: Dictionary, killer = null) -> void:
 		_pirate_death_grapple(u, _gtar)
 		u["hp"] = float(u["maxHp"]) * 0.4
 		return
-	if u.get("_cydeath_demo", false):   # 赛博被动demo: 打死→浮游炮汇聚组装机甲演出, 本体复位血循环看(仅评审·演一次后正常)
-		u["_cydeath_demo"] = false
-		_cyber_assemble_mech(u)
+	if u.get("_cydeath_demo", false):   # 赛博被动demo: 打死→浮游炮汇聚组装机甲演出, 本体复位血循环看(仅评审·场上无demo机甲才再组装防堆积)
+		var _have_mech := false
+		for _mo in _units:
+			if _mo.get("alive", false) and _mo.get("is_summon", false) and str(_mo.get("summon_kind", "")) == "mech" and _mo.get("summon_owner", null) == u:
+				_have_mech = true; break
+		if not _have_mech:
+			_cyber_assemble_mech(u)
 		u["hp"] = float(u["maxHp"]) * 0.6
 		return
 	# 首死复活钩子 (天使圣光 / 凤凰涅槃) — 仅作为常驻一次, 1:1 2D
@@ -9945,8 +9957,11 @@ func _layout_head_badges(u: Dictionary) -> void:
 	if ne > 0: stacks.append({"icon": "res://assets/sprites/passive/lightning-storm-icon.png", "tint": Color(1.0, 0.92, 0.4), "n": ne, "sz": 34.0})
 	var ni := int(st.get("ink", 0))
 	if ni > 0: stacks.append({"icon": "res://assets/sprites/passive/ink-mark-icon.png", "tint": Color(0.75, 0.72, 0.85), "n": ni, "sz": 34.0})
+	var nai := int(u.get("cyber_ai_charge", 0))
+	if nai > 0: stacks.append({"icon": "res://assets/sprites/vfx/hijack-chip.png", "tint": Color(0.55, 0.95, 1.0), "n": nai, "sz": 32.0})   # 智能AI充能层(青调芯片·2026-07-15)
 	var status: Array = []            # 状态图标(纯图标·瞬时态)·可扩展: 未来 stun/taunt/silence/curse 在此追加
 	if _t < float(u.get("hunt_mark_until", 0.0)): status.append({"icon": "res://assets/sprites/vfx/hunter-mark.png", "tint": Color(1, 1, 1), "n": 0, "sz": 44.0})
+	if u.get("hijacked", false): status.append({"icon": "res://assets/sprites/vfx/hijack-chip.png", "tint": Color(1, 1, 1), "n": 0, "sz": 34.0})   # 被侵入: 芯片图标(2026-07-15)
 	var vis: bool = u.get("alive", false) and _cam != null
 	var anchor := Vector2.ZERO
 	if vis:
@@ -12364,7 +12379,29 @@ func _sk_cyber_cannon(u: Dictionary, tgt) -> void:              # 赛博龟·能
 	dir = dir.normalized()
 	var drones: int = int(u.get("drone_n", 0))   # 浮游炮改纯视觉后从计数取(2026-07-15)
 	var uu := u
-	var fire := func() -> void:                                 # 蓄力后·直线长激光能量射线(用户#15·非贴身跃击)
+	# ★照Lux R终极闪光重做(用户2026-07-15: 节奏效果全参考·配色换科技青蓝): 蓄力0.9s(能量向心+细瞄准线)→贯屏三层巨柱瞬现→残光衰减+衍射颗粒
+	for i in range(8):                                          # 蓄力: 青色能量向心汇聚
+		var sa: float = TAU * float(i) / 8.0 + _juice_rng.randf_range(-0.3, 0.3)
+		var soff: Vector2 = Vector2(cos(sa), sin(sa)) * _juice_rng.randf_range(60.0, 100.0)
+		var sp := Sprite3D.new()
+		sp.texture = _make_fire_glow_tex()
+		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; sp.shaded = false; sp.transparent = true
+		sp.pixel_size = 0.007
+		sp.modulate = Color(0.55, 0.95, 1.0, 0.0)
+		sp.position = _world_pos(u["pos"] + soff, _juice_rng.randf_range(0.5, 1.3))
+		_world.add_child(sp)
+		var st := _reg_tween()
+		st.tween_interval(float(i) * 0.07)
+		st.tween_property(sp, "modulate:a", 0.9, 0.1)
+		st.tween_property(sp, "position", _world_pos(u["pos"], 0.9), 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		st.parallel().tween_property(sp, "modulate:a", 0.0, 0.35)
+		st.tween_callback(sp.queue_free)
+	for k in range(3):                                          # 蓄力期: 细青瞄准线(参考Lux R的细线预警·3段脉冲)
+		_pending_shots.append({"delay": 0.05 + 0.28 * float(k), "fn": func() -> void:
+			if uu.get("alive", false):
+				_bolt_line(uu["pos"], uu["pos"] + dir * 1300.0, Color(0.5, 0.9, 1.0, 0.35))
+		, "src": u})
+	var fire := func() -> void:                                 # 发射: 贯屏巨柱(三层: 白热核心+主青束+外晕)瞬现
 		if not uu.get("alive", false): return
 		for o in _enemies_of(uu):
 			if not o.get("alive", false): continue
@@ -12373,10 +12410,28 @@ func _sk_cyber_cannon(u: Dictionary, tgt) -> void:              # 赛博龟·能
 			_apply_damage_from(uu, o, _atk_dmg(uu, 1.0, o), Color("#9bf0ff"))                          # 1A物理
 			if drones > 0:
 				_apply_damage_from(uu, o, int(uu["atk"] * 0.1 * drones), Color("#d0ffff"), 0.0, true)  # 0.1A×浮游炮数真伤
-		_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", uu["pos"], uu["pos"] + dir * 900.0, 126.0, Color(0.6, 0.94, 1.0, 0.9), 0.5)   # 能量大炮长激光(用户07-07"对一条直线蓄力后发出长的激光似的能量射线")
-		_skill_ring(uu["pos"] + dir * 200.0, Color(0.6, 0.94, 1.0, 0.5), 46.0)
-	_muzzle_flash(u["pos"], dir, Color("#9bf0ff"))             # 蓄力枪口闪
-	_pending_shots.append({"delay": 0.25, "fn": fire, "src": u})   # 蓄力0.25s→发射直线长激光
+			_hit_spark(o)
+		var endp: Vector2 = uu["pos"] + dir * 1300.0
+		_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", uu["pos"], endp, 90.0, Color(1.0, 1.0, 1.0, 1.0), 0.35)     # ①白热核心束
+		_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", uu["pos"], endp, 200.0, Color(0.55, 0.93, 1.0, 0.85), 0.55) # ②主青束
+		_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", uu["pos"], endp, 340.0, Color(0.4, 0.8, 1.0, 0.4), 0.8)     # ③外晕束(残光最久)
+		_gambler_pop(uu["pos"] + dir * 30.0, 0.9, Color(0.85, 1.0, 1.0, 0.95))                          # 发射爆闪
+		_shake(JUICE_SHAKE_BIG); _add_hitstop(JUICE_HITSTOP_KNOCK)
+		for j in range(12):                                     # 衍射颗粒沿线散落(参考Lux R残光棱彩颗粒)
+			var pp: Vector2 = uu["pos"] + dir * _juice_rng.randf_range(80.0, 1000.0) + Vector2(-dir.y, dir.x) * _juice_rng.randf_range(-70.0, 70.0)
+			var gk := Sprite3D.new()
+			gk.texture = _make_fire_glow_tex()
+			gk.billboard = BaseMaterial3D.BILLBOARD_ENABLED; gk.shaded = false; gk.transparent = true
+			gk.pixel_size = 0.004
+			gk.modulate = Color(_juice_rng.randf_range(0.6, 1.0), 1.0, 1.0, 0.9)
+			gk.position = _world_pos(pp, _juice_rng.randf_range(0.3, 1.2))
+			_world.add_child(gk)
+			var gt := _reg_tween(); gt.set_parallel(true)
+			gt.tween_property(gk, "position", _world_pos(pp, 1.6 + _juice_rng.randf_range(0.0, 0.5)), 0.6)
+			gt.tween_property(gk, "modulate:a", 0.0, 0.6)
+			gt.chain().tween_callback(gk.queue_free)
+	_muzzle_flash(u["pos"], dir, Color("#9bf0ff"))             # 起手枪口闪
+	_pending_shots.append({"delay": 0.9, "fn": fire, "src": u})   # 蓄力0.9s→发射(Lux R节奏)
 
 func _sk_hiding_defend(u: Dictionary) -> void:                   # 缩头乌龟·防御(封板·100龟能): 缩壳20%maxHp盾(4秒)+护甲+20%(5秒)·到期剩余盾20%转生命
 	_grant_shield(u, u["maxHp"] * 0.20, 4.0)
@@ -13488,6 +13543,8 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	if u.get("hijacked", false) and _t >= float(u.get("hijack_until", 0.0)):
 		u["side"] = str(u.get("_hijack_orig_side", u["side"]))
 		u["hijacked"] = false
+		var _hspr = u.get("sprite", null)
+		if is_instance_valid(_hspr): _hspr.modulate = Color(1, 1, 1)   # 还原故障染色(2026-07-15)
 		_float_text(u["pos"] + Vector2(0, -48), "归队", Color("#8a93a0"))
 	# --- 龟壳·潜影(暗影主被动·选中暗影才有): 6秒未受伤→进入隐身 ---
 	if u["id"] == "shell" and not u.get("shell_stealth", false) and _t - float(u.get("shell_last_dmg_t", 0.0)) >= 6.0 and "shellShadow" in _chosen_skill_types(u["id"], u["side"] == "left"):
