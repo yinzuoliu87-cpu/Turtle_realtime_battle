@@ -14003,48 +14003,73 @@ func _throw_gold_coin(src: Dictionary, tgt: Dictionary) -> void:
 	})
 
 # 星际·虫洞(用户2026-07-09重做): 短暂蓄力→发射缓慢移动虫洞沿目标方向直线→吸经过敌90码+1段1.5A×(1+5%秒)魔法(每敌一次)
-func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·虫洞(用户2026-07-09重设计): 短暂蓄力→发射1个缓慢移动的虫洞沿目标方向直线飞→吸经过敌90码(拉向虫洞)+造成1段=1.5A×(1+5%每秒)魔法(每敌一次)
+func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·虫洞(用户2026-07-16重做): 蓄力→140码/s直线飞到地图边界→引力场150码真重力吸(1/r²加速度·弧线卷入)→捕获100码吸着走(绕洞打转·位移被主导·可攻可被打)→边界爆炸=1.5A×(1+5%每秒·发射时刻定格)魔法+携带者炸开
 	if tgt == null: tgt = _nearest_enemy(u)
 	if tgt == null: return
 	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
 	if dir.length() < 0.1: dir = Vector2.RIGHT
 	var start: Vector2 = u["pos"]
-	var mult: float = 1.5 * (1.0 + 0.05 * _t)                       # 1段伤害=1.5A×(1+5%每秒)·发射时刻定格
+	var mult: float = 1.5 * (1.0 + 0.05 * _t)                       # 爆炸伤害=1.5A×(1+5%每秒)·发射时刻定格(用户2026-07-16保持)
 	var uu := u
 	_anticipate(u)                                                  # 短暂蓄力前摇
-	var fire := func() -> void:                                     # 蓄力后发射缓慢移动虫洞
+	var fire := func() -> void:
 		if not uu.get("alive", false): return
-		var hole := Sprite3D.new()                                  # 虫洞视觉(fx-vortex真旋涡·PIL程序化半透明螺旋+暗心)
-		hole.texture = load("res://assets/sprites/vfx/fx-vortex.png")   # 真旋涡(PIL程序化半透明螺旋+暗心)
+		var hole := Sprite3D.new()                                  # 虫洞视觉(fx-vortex真旋涡)
+		hole.texture = load("res://assets/sprites/vfx/fx-vortex.png")
 		hole.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		hole.shaded = false; hole.transparent = true
-		hole.modulate = Color(1.0, 1.0, 1.0, 0.95)   # 贴图自带紫色·不再染色
-		hole.pixel_size = (240.0 * WS) / 128.0   # 旋涡直径≈240码(影响半径120)
+		hole.modulate = Color(1.0, 1.0, 1.0, 0.95)
+		hole.pixel_size = (240.0 * WS) / 128.0
 		hole.position = _world_pos(start, 0.4)
 		_world.add_child(hole)
-		var hit: Array = []  # ★2026-07-10 闪退真因: 不能拿【单位字典】当 Dictionary 的 key —— Godot 会对 key 求哈希, 单位字典里有 summons/summon_owner 等互相引用的结构 → recursive_hash 无限递归 → 每次查表刷一条 ERROR: Max recursion reached。改用 Array(.has 走 == 不哈希)。
-		var radius := 120.0                                         # 虫洞影响半径(F5可调)
-		var step := func(d: float) -> void:
-			var c: Vector2 = start + dir * d                        # 虫洞当前位置
-			if is_instance_valid(hole): hole.position = _world_pos(c, 0.4)
-			for o in _enemies_of(uu):
-				if not o.get("alive", false) or hit.has(o): continue
-				if o["pos"].distance_to(c) > radius: continue
-				hit.append(o)
-				if not o.get("_eggImmune", false):                  # 吸敌90码(拉向虫洞·不是推开)
-					var pull: Vector2 = c - o["pos"]
-					if pull.length() > 1.0: o["pos"] += pull.normalized() * 90.0
-				_apply_damage_from(uu, o, _atk_dmg(uu, mult, o, true), Color("#c9a0ff"))   # 1段魔法
-				_skill_ring(o["pos"], Color(0.75, 0.6, 1.0, 0.6), 50.0)
+		# 飞行终点=地图边界(射线与ARENA求交·用户2026-07-16"在地图边界爆炸")
+		var end_d: float = 99999.0
+		if absf(dir.x) > 0.001:
+			end_d = minf(end_d, ((ARENA.end.x - 30.0 - start.x) / dir.x) if dir.x > 0.0 else ((ARENA.position.x + 30.0 - start.x) / dir.x))
+		if absf(dir.y) > 0.001:
+			end_d = minf(end_d, ((ARENA.end.y - 24.0 - start.y) / dir.y) if dir.y > 0.0 else ((ARENA.position.y + 24.0 - start.y) / dir.y))
+		end_d = maxf(80.0, end_d)
+		var grav: Array = []    # 引力场内敌 [{o, vel}] (⛔不拿单位字典当Dict键)
+		var caught: Array = []  # 被捕获携带敌 [{o, ang, rr}]
+		var pd := [0.0]
 		var suck := [0.0]
-		var step2 := func(d: float) -> void:
-			step.call(d)
+		var step := func(d: float) -> void:
+			var dt: float = maxf(0.0, (d - pd[0]) / 140.0)          # 本帧时长(推进速度140码/s换算)
+			pd[0] = d
+			var c: Vector2 = start + dir * d
+			if is_instance_valid(hole): hole.position = _world_pos(c, 0.4)
+			for o in _enemies_of(uu):                                # ① 引力场150码: 真重力1/r²加速度(近强远弱·弧线卷入)
+				if not o.get("alive", false) or o.get("_eggImmune", false): continue
+				var carried := false
+				for cg in caught:
+					if cg["o"] == o: carried = true; break
+				if carried: continue
+				var r: float = (o["pos"] as Vector2).distance_to(c)
+				if r > 150.0: continue
+				if r <= 100.0:                                       # ② 捕获(100码·用户定): 吸着走·绕洞打转
+					var rel: Vector2 = (o["pos"] as Vector2) - c
+					caught.append({"o": o, "ang": atan2(rel.y, rel.x), "rr": maxf(50.0, r)})
+					_skill_ring(o["pos"], Color(0.75, 0.6, 1.0, 0.6), 44.0)
+					continue
+				var gi := -1
+				for k in range(grav.size()):
+					if grav[k]["o"] == o: gi = k; break
+				if gi < 0:
+					grav.append({"o": o, "vel": Vector2.ZERO}); gi = grav.size() - 1
+				var acc: float = 900000.0 / maxf(r, 45.0) / maxf(r, 45.0)   # 1/r²引力(150码≈40码/s²→45码≈444·封顶防瞬吸)
+				var g2: Dictionary = grav[gi]
+				g2["vel"] = (g2["vel"] as Vector2) * 0.985 + (c - (o["pos"] as Vector2)).normalized() * acc * dt
+				o["pos"] = (o["pos"] as Vector2) + (g2["vel"] as Vector2) * dt
+			for cg2 in caught:                                       # ③ 携带: 跟虫洞走+绕洞缓转·半径缓收(事件视界打转)
+				var oc: Dictionary = cg2["o"]
+				if not oc.get("alive", false): continue
+				cg2["ang"] = float(cg2["ang"]) + dt * 2.2
+				cg2["rr"] = maxf(52.0, float(cg2["rr"]) - 26.0 * dt)
+				oc["pos"] = c + Vector2(cos(float(cg2["ang"])), sin(float(cg2["ang"]))) * float(cg2["rr"])
 			suck[0] += 1.0
-			if int(suck[0]) % 5 == 0 and is_instance_valid(hole):   # 吸入粒子: 星尘从四周螺旋吸进虫洞(缓慢期间持续)
-				var c2: Vector2 = start + dir * d
+			if int(suck[0]) % 5 == 0 and is_instance_valid(hole):    # 星尘吸入粒子
 				var pa: float = randf() * TAU
-				var pr: float = randf_range(120.0, 200.0)
-				var pp: Vector2 = c2 + Vector2(cos(pa), sin(pa)) * pr
+				var pp: Vector2 = c + Vector2(cos(pa), sin(pa)) * randf_range(120.0, 200.0)
 				var dust := Sprite3D.new()
 				dust.texture = _make_fire_glow_tex()
 				dust.billboard = BaseMaterial3D.BILLBOARD_ENABLED; dust.shaded = false; dust.transparent = true
@@ -14053,14 +14078,54 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·
 				dust.position = _world_pos(pp, randf_range(0.2, 0.9))
 				_world.add_child(dust)
 				var dtw := _reg_tween(); dtw.set_parallel(true)
-				dtw.tween_property(dust, "position", _world_pos(c2 + dir * 20.0, 0.4), 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+				dtw.tween_property(dust, "position", _world_pos(c + dir * 20.0, 0.4), 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 				dtw.tween_property(dust, "modulate:a", 0.0, 0.4)
 				dtw.chain().tween_callback(dust.queue_free)
+		var boom := func() -> void:                                  # ④ 边界爆炸: 原伤害值一次性结算+携带者炸开
+			var c3: Vector2 = start + dir * end_d
+			_shake(0.12)
+			_skill_ring(c3, Color(0.85, 0.7, 1.0, 0.9), 70.0)
+			_skill_ring(c3, Color(0.6, 0.45, 1.0, 0.55), 170.0)
+			var fl := Sprite3D.new()                                 # 紫白爆闪
+			fl.texture = _make_fire_glow_tex()
+			fl.billboard = BaseMaterial3D.BILLBOARD_ENABLED; fl.shaded = false; fl.transparent = true
+			fl.pixel_size = (60.0 * WS) / float(maxi(1, _make_fire_glow_tex().get_width()))
+			fl.modulate = Color(0.92, 0.8, 1.0, 1.0)
+			fl.position = _world_pos(c3, 0.5)
+			_world.add_child(fl)
+			var ft := _reg_tween(); ft.set_parallel(true)
+			ft.tween_property(fl, "pixel_size", fl.pixel_size * 3.2, 0.3)
+			ft.tween_property(fl, "modulate:a", 0.0, 0.3)
+			ft.chain().tween_callback(fl.queue_free)
+			for k2 in range(12):                                     # 星尘四散
+				var sa: float = TAU * float(k2) / 12.0 + randf() * 0.3
+				var sd := Sprite3D.new()
+				sd.texture = _make_star_texture()
+				sd.billboard = BaseMaterial3D.BILLBOARD_ENABLED; sd.shaded = false; sd.transparent = true
+				sd.pixel_size = 0.007
+				sd.modulate = Color(0.9, 0.8, 1.0, 1.0)
+				sd.position = _world_pos(c3, 0.5)
+				_world.add_child(sd)
+				var sdt := _reg_tween(); sdt.set_parallel(true)
+				sdt.tween_property(sd, "position", _world_pos(c3 + Vector2(cos(sa), sin(sa)) * randf_range(90.0, 170.0), 0.1), 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+				sdt.tween_property(sd, "modulate:a", 0.0, 0.45)
+				sdt.chain().tween_callback(sd.queue_free)
+			var boomed: Array = []
+			for cg3 in caught:                                       # 携带者: 吃伤+炸开
+				var ob: Dictionary = cg3["o"]
+				if not ob.get("alive", false): continue
+				boomed.append(ob)
+				_apply_damage_from(uu, ob, _atk_dmg(uu, mult, ob, true), Color("#c9a0ff"))
+				_knock_up(ob, c3, 6.6)
+			for o3 in _enemies_of(uu):                               # 爆炸半径150码内其余敌也吃原伤害
+				if not o3.get("alive", false) or boomed.has(o3): continue
+				if (o3["pos"] as Vector2).distance_to(c3) > 150.0: continue
+				_apply_damage_from(uu, o3, _atk_dmg(uu, mult, o3, true), Color("#c9a0ff"))
+			if is_instance_valid(hole): hole.queue_free()
 		var tw := _reg_tween()
-		tw.tween_method(step2, 0.0, 1400.0, 10.0).set_trans(Tween.TRANS_LINEAR)   # 140码/s缓慢推进(用户2026-07-15定·10s跨1400码)
-		tw.chain().tween_callback(hole.queue_free)
-	_pending_shots.append({"delay": 0.3, "fn": fire, "src": u})     # 蓄力0.3s→发射
-const INK_BOMB_RADIUS := 300.0                                  # 墨水炸弹AOE半径(用户2026-07-15: 原全体→落点300码范围内)
+		tw.tween_method(step, 0.0, end_d, end_d / 140.0).set_trans(Tween.TRANS_LINEAR)   # 140码/s推进到边界
+		tw.chain().tween_callback(boom)
+	_pending_shots.append({"delay": 0.35, "fn": fire, "src": u})
 func _sk_line_ink_bomb(u: Dictionary) -> void:                  # 线条龟·墨水炸弹(用户设计·120龟能; 用户2026-07-15: 全体→落点300码AOE): 投墨弹至最密集处→落点300码内敌各4段0.25A魔法+叠4墨迹(打包被动=墨迹上限提到10)
 	var es: Array = []                                          # 投掷墨水炸弹→落点大墨爆+命中才溅墨结算(用户2026-07-15做投掷)
 	for o in _enemies_of(u):
