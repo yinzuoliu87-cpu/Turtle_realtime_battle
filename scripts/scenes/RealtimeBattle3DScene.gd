@@ -7225,6 +7225,8 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color) -> void:
 # 来源已知的伤害: 闪避 / 吸血 / 伤害统计 / 累积条(怒气/星能/储能) / 受伤被动. extra_ls=技能额外吸血%; raw=真伤穿盾
 func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, extra_ls: float = 0.0, raw: bool = false, from_equip: bool = false, pre_crit: bool = false) -> void:
 	# pre_crit=true: 该 raw 段的暴击已在上游算进 dmg(如手里剑真伤段=暴击总伤的一部分)→ 此处不再掷真伤暴击(防二次暴击)
+	if u.get("_assembling", false):   # 机甲组装期免疫一切攻击(用户2026-07-16)
+		return
 	# 闪避 (目标 dodge_bonus); 瞄准镜054: 攻击者伤害无视闪避 (必中)
 	if u.get("dodge_bonus", 0.0) > 0.0 and not src.get("eq_cannot_be_dodged", false) and randf() < u["dodge_bonus"]:
 		_float_text(u["pos"] + Vector2(0, -40), "闪避", Color("#a0e8ff"))
@@ -13852,10 +13854,11 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			u["_ptimer"] = 0.0
 			u["drone_n"] = mini(20, int(u.get("drone_n", 0)) + 2)
 		_tick_cyber_drones(u, delta)
-		if not u.get("_slam", false) and "cyberSmartAI" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 常驻走位闪避(用户2026-07-16"不会被动用冲刺"): 敌贴近130码→自动躲避冲刺(冷却2.5s·不+充能)
+		if not u.get("_slam", false) and "cyberSmartAI" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 常驻走位闪避(用户2026-07-16: 被动冲刺是消耗充能层数的): 敌贴近130码+有层数→消耗1层自动躲避冲刺(冷却2.5s)
 			var _ne5 = _nearest_enemy(u)
-			if _ne5 != null and (u["pos"] as Vector2).distance_to(_ne5["pos"]) < 130.0 and _t >= float(u.get("_ai_dodge_cd", 0.0)):
+			if _ne5 != null and int(u.get("cyber_ai_charge", 0)) > 0 and (u["pos"] as Vector2).distance_to(_ne5["pos"]) < 130.0 and _t >= float(u.get("_ai_dodge_cd", 0.0)):
 				u["_ai_dodge_cd"] = _t + 2.5
+				u["cyber_ai_charge"] = int(u["cyber_ai_charge"]) - 1
 				_cyber_smart_dash(u)
 	# --- 石头坚壁: 每2.5秒永久+开局护甲/6, 上限=开局护甲×2(+100%); 反伤随护甲涨 ---
 	elif u["id"] == "stone":
@@ -14564,32 +14567,34 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 		_shake(JUICE_SHAKE_HEAVY)
 		var mech = _spawn_summon(uu, "mech", final_hp, final_atk, {
 			"label": "机甲", "spr_id": "mech", "col_size": 40.0, "hp_w": 46.0, "melee": true,
-			"move_spd": 130.0, "atk_interval": 1.0, "atk_range": 70.0,
+			"move_spd": 130.0, "atk_interval": 1.0, "atk_range": 100.0,   # 近战最低标准100防卡位(用户2026-07-16"70会卡位")
 			"special": "mech_blast", "special_cd": 2.5, "special_scale": 1.5,
 		})
 		if mech == null: return
 		mech["pos"] = gather
 		mech["_slam"] = true                                     # 组装期锁AI(不能移动/攻击)
-		mech["maxHp"] = final_hp * 0.1; mech["hp"] = mech["maxHp"]
-		mech["atk"] = final_atk * 0.1; mech["base_atk"] = final_atk * 0.1
+		mech["_assembling"] = true                               # 组装期免疫攻击(伤害闸·用户2026-07-16"期间也不能被攻击")
+		mech["untargetable_until"] = _t + 5.05                   # 不可被索敌
+		mech["maxHp"] = maxf(1.0, final_hp * 0.01); mech["hp"] = mech["maxHp"]   # 从~0涨到满(用户2026-07-16)
+		mech["atk"] = 0.0; mech["base_atk"] = 0.0
 		var mref: Dictionary = mech
 		var spr5 = mech.get("sprite", null)
 		if is_instance_valid(spr5):
 			spr5.modulate = Color(1, 1, 1, 0.45)                 # 组装中半透明→逐渐成型
 			var mt := _reg_tween()
 			mt.tween_property(spr5, "modulate:a", 1.0, 5.0)
-		var grow := _reg_tween()                                 # 5秒属性增长(血条看得见地涨·受击扣的血保留)
+		var grow := _reg_tween()                                 # 5秒属性增长(0→满·血条看得见地涨·组装期免伤无扣血)
 		grow.tween_method(func(g: float) -> void:
 			if not mref.get("alive", false): return
-			var prev_max: float = float(mref["maxHp"])
-			mref["maxHp"] = lerpf(final_hp * 0.1, final_hp, g)
-			mref["hp"] = minf(float(mref["hp"]) + (float(mref["maxHp"]) - prev_max), float(mref["maxHp"]))
-			mref["atk"] = lerpf(final_atk * 0.1, final_atk, g)
+			mref["maxHp"] = maxf(1.0, lerpf(final_hp * 0.01, final_hp, g))
+			mref["hp"] = mref["maxHp"]
+			mref["atk"] = lerpf(0.0, final_atk, g)
 			mref["base_atk"] = mref["atk"]
 		, 0.0, 1.0, 5.0)
-		grow.tween_callback(func() -> void:                      # 就位: 解锁+白闪+环
+		grow.tween_callback(func() -> void:                      # 就位: 解锁+解除免疫+白闪+环
 			if not mref.get("alive", false): return
 			mref["_slam"] = false
+			mref["_assembling"] = false
 			_flash(mref, Color(1.6, 1.9, 2.2))
 			_skill_ring(mref["pos"], Color(0.6, 0.95, 1.0, 0.8), 64.0)
 			_shake(JUICE_SHAKE_LIGHT))
