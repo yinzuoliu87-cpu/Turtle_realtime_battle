@@ -59,7 +59,7 @@ const STATS := {
 	"candy": [true, 105.0, 0.85, 70.0], "bubble": [false, 70.0, 1.1, 400.0], "line": [false, 145.0, 0.6, 400.0],
 	"lightning": [false, 145.0, 0.6, 400.0], "phoenix": [false, 105.0, 0.7, 400.0], "lava": [false, 145.0, 0.7, 400.0],
 	"cyber": [false, 74.0, 0.85, 450.0], "crystal": [true, 70.0, 1.1, 70.0], "chest": [true, 105.0, 1.1, 70.0],   # cyber移速105→74(削30%·用户2026-07-16)
-	"space": [false, 145.0, 0.85, 400.0], "hiding": [true, 70.0, 1.1, 70.0], "headless": [true, 145.0, 0.85, 70.0],
+	"space": [false, 145.0, 1.4286, 400.0], "hiding": [true, 70.0, 1.1, 70.0], "headless": [true, 145.0, 0.85, 70.0],   # space攻速0.7=1/0.7间隔(用户2026-07-16封板令)
 	"shell": [true, 105.0, 1.1, 70.0],
 }
 const DEFAULT_STAT := [true, 105.0, 0.85, 70.0]
