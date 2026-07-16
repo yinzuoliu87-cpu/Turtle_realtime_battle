@@ -11576,9 +11576,21 @@ func _sk_chest_storm(u: Dictionary, tgt) -> void:              # 技二·财宝�
 		disc.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
 		disc_ps = (500.0 * WS) / float(maxi(1, stex.get_width()))
 		disc.pixel_size = disc_ps * 0.3
-		disc.modulate = Color(1.0, 0.85, 0.35, 0.0)
-		disc.position = _world_pos(center, 0.07)
+		disc.modulate = Color(1.25, 1.05, 0.5, 0.0)   # 过曝亮金(青地砖上要压得住·自验后调)
+		disc.position = _world_pos(center, 0.12)
 		_world.add_child(disc)
+	var disc2: Sprite3D = null                                  # 第二层小螺旋盘(260码·1.6倍速·纵深感)
+	if stex != null:
+		disc2 = Sprite3D.new()
+		disc2.texture = stex
+		disc2.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+		disc2.axis = Vector3.AXIS_Y
+		disc2.shaded = false; disc2.transparent = true
+		disc2.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+		disc2.pixel_size = (260.0 * WS) / float(maxi(1, stex.get_width()))
+		disc2.modulate = Color(1.35, 1.1, 0.55, 0.0)
+		disc2.position = _world_pos(center, 0.16)
+		_world.add_child(disc2)
 	var glow := _make_fire_glow_tex()
 	var pillars: Array = []
 	for pi in range(3):                                         # ② 中心风柱(3层金光叠柱·底粗顶细·脉动)
@@ -11614,12 +11626,15 @@ func _sk_chest_storm(u: Dictionary, tgt) -> void:              # 技二·财宝�
 		var form: float = clampf(T / 0.45, 0.0, 1.0)
 		if is_instance_valid(disc):
 			disc.rotation.y = -T * 5.5
-			disc.modulate.a = maxf(disc.modulate.a - 0.04, 0.55 * form)   # 脉冲闪亮后回落
+			disc.modulate.a = maxf(disc.modulate.a - 0.04, 0.78 * form)   # 脉冲闪亮后回落(0.55→0.78自验后调亮)
 			disc.pixel_size = disc_ps * (0.3 + 0.7 * form)
+		if is_instance_valid(disc2):
+			disc2.rotation.y = -T * 8.8
+			disc2.modulate.a = 0.6 * form
 		for pi2 in range(pillars.size()):
 			var pg2 = pillars[pi2]
 			if is_instance_valid(pg2):
-				pg2.modulate.a = 0.28 * form * (0.85 + 0.15 * sin(T * 9.0 + float(pi2) * 1.7))
+				pg2.modulate.a = 0.42 * form * (0.85 + 0.15 * sin(T * 9.0 + float(pi2) * 1.7))   # 0.28→0.42自验后调亮
 		for c in coins:
 			var sp = c["spr"]
 			if not is_instance_valid(sp): continue
@@ -11644,6 +11659,11 @@ func _sk_chest_storm(u: Dictionary, tgt) -> void:              # 技二·财宝�
 			ft.tween_property(sp, "position", _world_pos(dst, 0.05), fdur).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 			ft.tween_property(sp, "modulate:a", 0.0, 0.2).set_delay(fdur - 0.12)
 			ft.chain().tween_callback(sp.queue_free)
+		if is_instance_valid(disc2):
+			var d2t := _reg_tween(); d2t.set_parallel(true)
+			d2t.tween_property(disc2, "modulate:a", 0.0, 0.4)
+			d2t.tween_property(disc2, "rotation:y", disc2.rotation.y - 1.8, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			d2t.chain().tween_callback(disc2.queue_free)
 		if is_instance_valid(disc):
 			var dt2 := _reg_tween(); dt2.set_parallel(true)
 			dt2.tween_property(disc, "rotation:y", disc.rotation.y - 1.4, 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)   # 减速尾旋
