@@ -87,7 +87,7 @@ static func _review_demo() -> bool:
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const REVIEW_TURTLE := "space"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
+const REVIEW_SKILL_IDX := 2   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -12295,54 +12295,277 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 	_burst_vfx("res://assets/sprites/vfx/fx-black-hole.png", center, 260.0, 0.12)   # 引力黑洞=黑色椭圆(用户2026-05-29"黑洞状态下用黑色椭圆代替那个位置")
 	_skill_ring(center, Color(0.7, 0.6, 1.0, 0.42), 500.0)   # 500码拖拽范围环(发条R式)
 
-func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·星波(封板2026-07-07·100龟能·吃星能): 普通=自身为心环形星波扩散·经过敌1.0A魔法; 星能满强化=环形波+召唤巨彗星砸敌阵中心额外1.5A魔法(龙王R天崩地裂式)+消耗全部星能; 不减速不击飞
+func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·星波(封板数值·2026-07-16演出重设计"星潮扩散/天崩"): 普通=扩散环0.58s波扫到才结算1.0A魔法; 星能满追加巨彗星敌阵中心1.5A(落地结算)+清空星能
 	var charged: bool = float(u.get("star_energy", 0.0)) >= u["maxHp"] * 0.40
-	var es: Array = []
-	for o in _enemies_of(u):
-		if o.get("alive", false): es.append(o)
-	for o in es:                                                 # 环形星波·扩散经过全体敌
-		_apply_damage_from(u, o, _atk_dmg(u, 1.0, o, true), Color("#c9b0ff"))
-	_burst_vfx("res://assets/sprites/vfx/fx-shock-ring.png", u["pos"], 520.0, 0.08)   # 环形星波扩散(用户#3"由龟中心释放环形波")
-	if charged and not es.is_empty():                            # 强化: 巨彗星(照龙王R官方逐帧2026-07-15: 紫环预警→拖尾流星斜射→尘暴+星星闪点+冲击环·伤害落地结算)
+	var uu2 := u
+	var origin: Vector2 = u["pos"]
+	var stex := _make_star_texture()
+	var glow0 := _make_fire_glow_tex()
+	# ── 起手(0.2s): 4颗小星被吸进龟身(聚能预兆)
+	for gi in range(4):
+		var ga: float = TAU * float(gi) / 4.0 + randf() * 0.5
+		var gs := Sprite3D.new()
+		gs.texture = stex
+		gs.billboard = BaseMaterial3D.BILLBOARD_ENABLED; gs.shaded = false; gs.transparent = true
+		gs.pixel_size = 0.009
+		gs.modulate = Color(1.0, 0.95, 1.0, 0.95)
+		gs.position = _world_pos(origin + Vector2(cos(ga), sin(ga)) * randf_range(90.0, 140.0), randf_range(0.3, 1.0))
+		_world.add_child(gs)
+		var gt := _reg_tween(); gt.set_parallel(true)
+		gt.tween_property(gs, "position", _world_pos(origin, 0.8), 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		gt.tween_property(gs, "modulate:a", 0.0, 0.06).set_delay(0.14)
+		gt.chain().tween_callback(gs.queue_free)
+	# ── 波环扩散(0.2s起·0.58s推到520码): 双层贴地环+环带12星随波转·波前扫到才结算·尽头碎星屑
+	var rtex := _make_pixel_ring_tex()
+	var wave := func() -> void:
+		if not uu2.get("alive", false): return
+		var rc := _px_ground_sprite(rtex, origin, 20.0, Color(0.95, 0.9, 1.0, 0.95), 0.06)    # 锐利白紫波前
+		var rh := _px_ground_sprite(rtex, origin, 20.0, Color(0.65, 0.45, 1.0, 0.5), 0.055)   # 外侧紫晕带(略大=带宽感)
+		var wstars: Array = []
+		for wi in range(12):                                      # 环带嵌星(随波旋转)
+			var ws := Sprite3D.new()
+			ws.texture = stex
+			ws.billboard = BaseMaterial3D.BILLBOARD_ENABLED; ws.shaded = false; ws.transparent = true
+			ws.pixel_size = 0.008
+			ws.modulate = Color(1.0, 0.95, 1.0, 0.9)
+			ws.position = _world_pos(origin, 0.25)
+			_world.add_child(ws)
+			wstars.append(ws)
+		var hitset: Array = []                                    # 波前扫到才结算(⛔不拿单位字典当键)
+		var dust_t := [0.0]
+		var wt := _reg_tween()
+		wt.tween_method(func(q: float) -> void:
+			var r: float = 520.0 * q
+			if is_instance_valid(rc): rc.pixel_size = (maxf(20.0, r * 2.0) * WS) / float(maxi(1, rtex.get_height()))
+			if is_instance_valid(rh):
+				rh.pixel_size = (maxf(20.0, r * 2.0 + 56.0) * WS) / float(maxi(1, rtex.get_height()))
+				rh.modulate.a = 0.5 * (1.0 - q * 0.5)
+			for wi2 in range(wstars.size()):
+				var ws2 = wstars[wi2]
+				if not is_instance_valid(ws2): continue
+				var wa: float = TAU * float(wi2) / 12.0 + q * 2.6
+				ws2.position = _world_pos(origin + Vector2(cos(wa), sin(wa)) * r, 0.25)
+			dust_t[0] += 1.0
+			if int(dust_t[0]) % 4 == 0 and r > 40.0:              # 波过留痕: 星尘微光点0.4s渐隐
+				var da: float = randf() * TAU
+				var dp := Sprite3D.new()
+				dp.texture = glow0
+				dp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; dp.shaded = false; dp.transparent = true
+				dp.pixel_size = 0.004
+				dp.modulate = Color(0.85, 0.7, 1.0, 0.8)
+				dp.position = _world_pos(origin + Vector2(cos(da), sin(da)) * randf_range(r * 0.4, r * 0.95), randf_range(0.1, 0.5))
+				_world.add_child(dp)
+				var dpt := _reg_tween()
+				dpt.tween_property(dp, "modulate:a", 0.0, 0.4)
+				dpt.tween_callback(dp.queue_free)
+			for o in _enemies_of(uu2):                            # 波前扫到才结算1.0A魔法(近先远后·封板系数)
+				if not o.get("alive", false) or hitset.has(o): continue
+				if (o["pos"] as Vector2).distance_to(origin) > r: continue
+				hitset.append(o)
+				_apply_damage_from(uu2, o, _atk_dmg(uu2, 1.0, o, true), Color("#c9b0ff"))
+				_hit_spark(o)
+				for hb in range(2):                                # 命中: 2颗小星从敌身弹出
+					var ha: float = randf() * TAU
+					var hs := Sprite3D.new()
+					hs.texture = stex
+					hs.billboard = BaseMaterial3D.BILLBOARD_ENABLED; hs.shaded = false; hs.transparent = true
+					hs.pixel_size = 0.007
+					hs.modulate = Color(1.0, 0.95, 1.0, 1.0)
+					hs.position = _world_pos(o["pos"], 0.7)
+					_world.add_child(hs)
+					var ht := _reg_tween(); ht.set_parallel(true)
+					ht.tween_property(hs, "position", _world_pos((o["pos"] as Vector2) + Vector2(cos(ha), sin(ha)) * randf_range(30.0, 60.0), 0.15), 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+					ht.tween_property(hs, "modulate:a", 0.0, 0.35)
+					ht.chain().tween_callback(hs.queue_free)
+		, 0.0, 1.0, 0.58)
+		wt.tween_callback(func() -> void:                         # 消散: 环碎成一圈星屑向外散开(不凭空消失)
+			if is_instance_valid(rc): rc.queue_free()
+			if is_instance_valid(rh): rh.queue_free()
+			for wi3 in range(wstars.size()):
+				var ws3 = wstars[wi3]
+				if not is_instance_valid(ws3): continue
+				var wa3: float = TAU * float(wi3) / 12.0 + 2.6
+				var wt3 := _reg_tween(); wt3.set_parallel(true)
+				wt3.tween_property(ws3, "position", _world_pos(origin + Vector2(cos(wa3), sin(wa3)) * 580.0, 0.1), 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+				wt3.tween_property(ws3, "modulate:a", 0.0, 0.3)
+				wt3.chain().tween_callback(ws3.queue_free))
+	_pending_shots.append({"delay": 0.2, "fn": wave, "src": u})
+	if charged:                                                   # ── 强化: 巨彗星「天崩」(逐帧订正asol_hi a30/a38/a44)
+		var es: Array = []
+		for o in _enemies_of(u):
+			if o.get("alive", false): es.append(o)
+		if es.is_empty(): return
 		var center := Vector2.ZERO
 		for o in es: center += o["pos"]
 		center /= float(es.size())
-		u["star_energy"] = 0.0                                   # 施放即消耗
-		var uu2 := u
-		var ring1 := _px_ground_sprite(_make_pixel_ring_tex(), center, 800.0, Color(0.75, 0.5, 1.0, 0.0), 0.05)   # 紫色大圆环预警(双环)
-		var ring2 := _px_ground_sprite(_make_pixel_ring_tex(), center, 640.0, Color(0.9, 0.7, 1.0, 0.0), 0.055)
+		u["star_energy"] = 0.0                                    # 施放即消耗全部星能
+		var ring1 := _px_ground_sprite(rtex, center, 800.0, Color(0.75, 0.5, 1.0, 0.0), 0.05)   # 紫双环预警
+		var ring2 := _px_ground_sprite(rtex, center, 640.0, Color(0.9, 0.7, 1.0, 0.0), 0.055)
 		var rt := _reg_tween(); rt.set_parallel(true)
 		rt.tween_property(ring1, "modulate:a", 0.7, 0.15)
 		rt.tween_property(ring2, "modulate:a", 0.55, 0.15)
-		var comet := func() -> void:                             # 1.0s预警后: 流星从画面外斜射进来(0.3s)
+		var orbs: Array = []                                      # 环上节点珠×3(a30)
+		for oi in range(3):
+			var orb := Sprite3D.new()
+			orb.texture = glow0
+			orb.billboard = BaseMaterial3D.BILLBOARD_ENABLED; orb.shaded = false; orb.transparent = true
+			orb.pixel_size = 0.009
+			orb.modulate = Color(1.0, 0.97, 1.0, 0.95)
+			orb.position = _world_pos(center + Vector2(400.0, 0.0), 0.15)
+			_world.add_child(orb)
+			orbs.append(orb)
+		var pillar := Sprite3D.new()                              # 天光柱预兆: 细紫光垂到落点·1s变亮变粗
+		pillar.texture = glow0
+		pillar.billboard = BaseMaterial3D.BILLBOARD_ENABLED; pillar.shaded = false; pillar.transparent = true
+		pillar.pixel_size = 0.006
+		pillar.modulate = Color(0.75, 0.55, 1.0, 0.25)
+		pillar.position = _world_pos(center, 2.6)
+		pillar.scale = Vector3(0.4, 14.0, 1.0)
+		_world.add_child(pillar)
+		var obt := _reg_tween(); obt.set_parallel(true)
+		obt.tween_property(pillar, "modulate:a", 0.7, 0.95)
+		obt.tween_property(pillar, "pixel_size", 0.014, 0.95)
+		obt.chain().tween_method(func(q: float) -> void:
+			for oi2 in range(orbs.size()):
+				var ob2 = orbs[oi2]
+				if not is_instance_valid(ob2): continue
+				var oa: float = TAU * float(oi2) / 3.0 + q * 1.6
+				ob2.position = _world_pos(center + Vector2(cos(oa), sin(oa)) * 400.0, 0.15)
+		, 0.0, 1.0, 0.001)
+		var obr := _reg_tween()                                   # 节点珠绕环(独立驱动1s)
+		obr.tween_method(func(q: float) -> void:
+			for oi3 in range(orbs.size()):
+				var ob3 = orbs[oi3]
+				if not is_instance_valid(ob3): continue
+				var oa2: float = TAU * float(oi3) / 3.0 + q * 1.7
+				ob3.position = _world_pos(center + Vector2(cos(oa2), sin(oa2)) * 400.0, 0.15)
+		, 0.0, 1.0, 1.0)
+		var rise_t := _reg_tween()                                # 地面星屑被吸起(反向预兆·每0.12s一粒)
+		rise_t.tween_method(func(q: float) -> void:
+			if int(q * 8.0) != int(maxf(0.0, q - 0.125) * 8.0):
+				var ra: float = randf() * TAU
+				var rp: Vector2 = center + Vector2(cos(ra), sin(ra)) * randf_range(60.0, 320.0)
+				var rs := Sprite3D.new()
+				rs.texture = stex
+				rs.billboard = BaseMaterial3D.BILLBOARD_ENABLED; rs.shaded = false; rs.transparent = true
+				rs.pixel_size = 0.007
+				rs.modulate = Color(0.9, 0.8, 1.0, 0.85)
+				rs.position = _world_pos(rp, 0.1)
+				_world.add_child(rs)
+				var rst := _reg_tween(); rst.set_parallel(true)
+				rst.tween_property(rs, "position", _world_pos(rp, randf_range(1.6, 2.6)), 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+				rst.tween_property(rs, "modulate:a", 0.0, 0.5)
+				rst.chain().tween_callback(rs.queue_free)
+		, 0.0, 1.0, 1.0)
+		var comet := func() -> void:                              # 1.0s后: 坠落0.25s(大火球头+束状粗光柱+嵌星+坠落微震)
 			if is_instance_valid(ring1): ring1.queue_free()
 			if is_instance_valid(ring2): ring2.queue_free()
+			if is_instance_valid(pillar): pillar.queue_free()
+			for ob4 in orbs:
+				if is_instance_valid(ob4): ob4.queue_free()
+			if not uu2.get("alive", false): return
 			var from2: Vector2 = center + Vector2(520.0, -420.0)
-			var head := Sprite3D.new()
-			head.texture = _make_fire_glow_tex()
+			var fdir: Vector2 = (from2 - center).normalized()
+			var head := Sprite3D.new()                            # 白炽大火球头(~90码)
+			var htex: Texture2D = load("res://assets/sprites/vfx/comet-head.png")
+			if htex != null:
+				head.texture = htex
+				head.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+				head.pixel_size = (90.0 * WS) / float(maxi(1, htex.get_height()))
+			else:
+				head.texture = glow0
+				head.pixel_size = 0.03
 			head.billboard = BaseMaterial3D.BILLBOARD_ENABLED; head.shaded = false; head.transparent = true
-			head.pixel_size = 0.02
-			head.modulate = Color(1.0, 0.8, 1.0, 1.0)
+			head.modulate = Color(1.0, 0.97, 1.0, 1.0)
 			head.position = _world_pos(from2, 4.2)
 			_world.add_child(head)
+			_shake(0.04)                                           # 坠落中就开始微震
 			var ct2 := _reg_tween()
 			ct2.tween_method(func(pv: float) -> void:
 				if not is_instance_valid(head): return
 				var cp: Vector2 = from2.lerp(center, pv)
-				head.position = _world_pos(cp, 4.2 * (1.0 - pv) + 0.4 * pv)
-				if int(pv * 24.0) % 2 == 0:
-					_bolt_line(cp + (from2 - center).normalized() * 20.0, cp + (from2 - center).normalized() * 140.0, Color(0.85, 0.6, 1.0, 0.5))
-			, 0.0, 1.0, 0.3)
+				var ch2: float = 4.2 * (1.0 - pv) + 0.4 * pv
+				head.position = _world_pos(cp, ch2)
+				head.rotation.z = -atan2(-fdir.y, fdir.x) + PI
+				_bolt_line(cp, cp + fdir * 280.0, Color(1.0, 0.97, 1.0, 0.92))                                # 束状粗光柱: 白炽核
+				_bolt_line(cp + fdir.orthogonal() * 8.0, cp + fdir * 250.0, Color(0.8, 0.55, 1.0, 0.6))       # 紫晕两翼
+				_bolt_line(cp - fdir.orthogonal() * 8.0, cp + fdir * 250.0, Color(0.6, 0.4, 0.95, 0.45))
+				var tr := Sprite3D.new()                                                                       # 残柱留光
+				tr.texture = glow0
+				tr.billboard = BaseMaterial3D.BILLBOARD_ENABLED; tr.shaded = false; tr.transparent = true
+				tr.pixel_size = 0.016
+				tr.modulate = Color(0.85, 0.65, 1.0, 0.7)
+				tr.position = _world_pos(cp, ch2)
+				_world.add_child(tr)
+				var trt := _reg_tween()
+				trt.tween_property(tr, "modulate:a", 0.0, 0.3)
+				trt.tween_callback(tr.queue_free)
+				if int(pv * 20.0) % 3 == 0:                                                                    # 沿途嵌星(f_022)
+					var sst := Sprite3D.new()
+					sst.texture = stex
+					sst.billboard = BaseMaterial3D.BILLBOARD_ENABLED; sst.shaded = false; sst.transparent = true
+					sst.pixel_size = 0.01
+					sst.modulate = Color(1.0, 0.97, 1.0, 1.0)
+					sst.position = _world_pos(cp + Vector2(randf_range(-18.0, 18.0), randf_range(-12.0, 12.0)), ch2 + randf_range(-0.2, 0.3))
+					_world.add_child(sst)
+					var sstt := _reg_tween()
+					sstt.tween_property(sst, "modulate:a", 0.0, 0.5)
+					sstt.tween_callback(sst.queue_free)
+			, 0.0, 1.0, 0.25)
 			ct2.tween_callback(func() -> void:
 				if is_instance_valid(head): head.queue_free()
-				for o2 in _enemies_of(uu2):
+				for o2 in _enemies_of(uu2):                        # 伤害撞击帧结算(封板1.5A·400码)
 					if o2.get("alive", false) and o2["pos"].distance_to(center) <= 400.0:
 						_apply_damage_from(uu2, o2, _atk_dmg(uu2, 1.5, o2, true), Color("#ffd0ff"))
-				_burst_vfx("res://assets/sprites/vfx/comet-impact.png", center, 300.0, 1.6)
-				_skill_ring(center, Color(1.0, 0.85, 1.0, 0.65), 400.0)
+				_screen_flash_light()                              # 全屏轻白闪一拍
 				_shake(JUICE_SHAKE_BIG); _add_hitstop(JUICE_HITSTOP_KNOCK)
-				var stex := _make_star_texture()
-				for si in range(12):
+				var core := Sprite3D.new()                         # 白金光核膨胀
+				core.texture = glow0
+				core.billboard = BaseMaterial3D.BILLBOARD_ENABLED; core.shaded = false; core.transparent = true
+				core.pixel_size = (70.0 * WS) / float(maxi(1, glow0.get_width()))
+				core.modulate = Color(1.0, 0.95, 0.82, 1.0)
+				core.position = _world_pos(center, 0.5)
+				_world.add_child(core)
+				var cot := _reg_tween(); cot.set_parallel(true)
+				cot.tween_property(core, "pixel_size", (220.0 * WS) / float(maxi(1, glow0.get_width())), 0.32)
+				cot.tween_property(core, "modulate:a", 0.0, 0.35)
+				cot.chain().tween_callback(core.queue_free)
+				for pi2 in range(9):                               # 紫黑烟尘花瓣(a38: 向外+上翻卷·膨胀渐隐0.7s)
+					var pa2: float = TAU * float(pi2) / 9.0 + randf() * 0.35
+					var petal := Sprite3D.new()
+					petal.texture = glow0
+					petal.billboard = BaseMaterial3D.BILLBOARD_ENABLED; petal.shaded = false; petal.transparent = true
+					petal.pixel_size = (randf_range(90.0, 130.0) * WS) / float(maxi(1, glow0.get_width()))
+					petal.modulate = Color(0.4, 0.1, 0.2, 0.85) if pi2 % 3 == 0 else Color(0.22, 0.08, 0.32, 0.9)
+					petal.position = _world_pos(center + Vector2(cos(pa2), sin(pa2)) * 40.0, 0.4)
+					_world.add_child(petal)
+					var pt2 := _reg_tween(); pt2.set_parallel(true)
+					pt2.tween_property(petal, "position", _world_pos(center + Vector2(cos(pa2), sin(pa2)) * randf_range(150.0, 230.0), randf_range(1.0, 1.9)), 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+					pt2.tween_property(petal, "pixel_size", petal.pixel_size * 1.7, 0.55)
+					pt2.tween_property(petal, "modulate:a", 0.0, 0.7)
+					pt2.chain().tween_callback(petal.queue_free)
+				_burst_vfx("res://assets/sprites/vfx/comet-impact.png", center, 320.0, 1.6)
+				_skill_ring(center, Color(1.0, 0.85, 1.0, 0.65), 400.0)
+				_skill_ring(center, Color(0.7, 0.5, 1.0, 0.5), 240.0)
+				var cons: Array = []                               # 星座刻印(a38): 6星细线相连·缓亮定格缓隐
+				for si0 in range(6):
+					var ca0: float = TAU * float(si0) / 6.0 + randf_range(-0.35, 0.35)
+					cons.append(center + Vector2(cos(ca0), sin(ca0)) * randf_range(120.0, 240.0))
+				for si2 in range(cons.size()):
+					_bolt_line(cons[si2], cons[(si2 + 1) % cons.size()], Color(0.9, 0.8, 1.0, 0.4))
+					var cst := Sprite3D.new()
+					cst.texture = stex
+					cst.billboard = BaseMaterial3D.BILLBOARD_ENABLED; cst.shaded = false; cst.transparent = true
+					cst.pixel_size = 0.013
+					cst.modulate = Color(1.0, 0.95, 1.0, 0.0)
+					cst.position = _world_pos(cons[si2], randf_range(0.4, 1.2))
+					_world.add_child(cst)
+					var cstt := _reg_tween()
+					cstt.tween_property(cst, "modulate:a", 1.0, 0.3)
+					cstt.tween_interval(0.3)
+					cstt.tween_property(cst, "modulate:a", 0.0, 1.0)
+					cstt.tween_callback(cst.queue_free)
+				for si in range(12):                               # 外围星星闪点
 					var sa2: float = TAU * float(si) / 12.0 + randf_range(-0.2, 0.2)
 					var sp2: Vector2 = center + Vector2(cos(sa2), sin(sa2)) * randf_range(60.0, 260.0)
 					var ss := Sprite3D.new()
@@ -12357,9 +12580,34 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 					st2.tween_interval(randf() * 0.2)
 					st2.tween_property(ss, "modulate:a", 1.0, 0.08)
 					st2.tween_property(ss, "modulate:a", 0.0, 0.5)
-					st2.tween_callback(ss.queue_free))
+					st2.tween_callback(ss.queue_free)
+				for sr2 in range(4):                               # 星痕余韵(a44: 沿坠落方向星串1.2s缓隐)
+					var rp2: Vector2 = center + fdir * (40.0 + 55.0 * float(sr2)) + Vector2(randf_range(-14.0, 14.0), randf_range(-10.0, 10.0))
+					var rst2 := Sprite3D.new()
+					rst2.texture = stex
+					rst2.billboard = BaseMaterial3D.BILLBOARD_ENABLED; rst2.shaded = false; rst2.transparent = true
+					rst2.pixel_size = 0.009
+					rst2.modulate = Color(1.0, 0.95, 1.0, 0.9)
+					rst2.position = _world_pos(rp2, 0.3 + 0.25 * float(sr2))
+					_world.add_child(rst2)
+					var rstt2 := _reg_tween()
+					rstt2.tween_property(rst2, "modulate:a", 0.0, 1.2)
+					rstt2.tween_callback(rst2.queue_free))
 		_pending_shots.append({"delay": 1.0, "fn": comet, "src": u})
 
+func _screen_flash_light() -> void:                              # 全屏轻白闪一拍(彗星撞击帧·0.06s淡入0.12s淡出·layer60盖UI下方一点)
+	var cl := CanvasLayer.new()
+	cl.layer = 55
+	var rect := ColorRect.new()
+	rect.color = Color(1.0, 0.98, 0.95, 0.0)
+	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cl.add_child(rect)
+	add_child(cl)
+	var tw := _reg_tween()
+	tw.tween_property(rect, "color:a", 0.28, 0.06)
+	tw.tween_property(rect, "color:a", 0.0, 0.12)
+	tw.tween_callback(cl.queue_free)
 func _sk_candy_hammer(u: Dictionary, tgt) -> void:              # 糖果龟·技能一糖果锤(封板·80龟能): 举糖果锤蓄力→猛砸直线200码·总(1.8A+12%自maxHp)物理由命中敌均分·回血40%(用户2026-07-14做举锤蓄力+落砸)
 	if tgt == null: tgt = _nearest_enemy(u)
 	if tgt == null: return
