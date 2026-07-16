@@ -14545,8 +14545,8 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 					rb.tween_property(spr3, "position", spr3.position + _world_pos(dpos - ldir * 34.0, 1.4) - _world_pos(dpos, 1.4), 0.08)
 					rb.tween_property(spr3, "position", spr3.position, 0.25)
 				var endp2: Vector2 = dpos + ldir * 1300.0
-				_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", dpos, endp2, 90.0, Color(1.0, 1.0, 1.0, 1.0), 0.3)    # 厚白核心束(瞬展·参考2帧全宽)
-				_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", dpos, endp2, 150.0, Color(0.6, 0.95, 1.0, 0.5), 0.45) # 青晕外束(略久=收细消散感)
+				_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", dpos, endp2, 150.0, Color(1.0, 1.0, 1.0, 1.0), 0.7)   # 厚白核心束(用户2026-07-16: 更宽更明显更持久)
+				_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", dpos, endp2, 250.0, Color(0.6, 0.95, 1.0, 0.75), 1.0) # 青晕外束(略久=收细消散感)
 				_shake(0.03)
 				for o2 in _units:
 					if o2["side"] != uu["side"] and o2.get("alive", false) and _on_line(dpos, ldir, o2["pos"], 40.0):
