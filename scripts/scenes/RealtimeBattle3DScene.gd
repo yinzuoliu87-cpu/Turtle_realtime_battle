@@ -206,7 +206,7 @@ const REVIEW_DEMO_CFG := {
 	"space:0": [ {"dx": 320.0, "dy": 0.0, "fixed": true} ],   # 星光弹普攻: 单假人射程内→星形弹道+0.9A魔+5%当前HP+星能追加真伤(白字)
 	"space:1": [ {"dx": 250.0, "dy": -70.0, "fixed": true}, {"dx": 420.0, "dy": 0.0, "fixed": true}, {"dx": 600.0, "dy": 70.0, "fixed": true} ],   # 虫洞: 3假人沿线→140码/s缓慢黑洞推进+吸经过敌90码+星尘吸入粒子
 	"space:2": [ {"dx": 220.0, "dy": -90.0, "fixed": true}, {"dx": 220.0, "dy": 90.0, "fixed": true}, {"dx": 360.0, "dy": 0.0, "fixed": true} ],   # 星波(星能满→彗星): 3假人→环形星波+满能紫环预警1s→流星斜射→尘暴星星闪点冲击环
-	"space:3": [ {"dx": 240.0, "dy": -100.0, "fixed": true}, {"dx": 240.0, "dy": 100.0, "fixed": true}, {"dx": 400.0, "dy": 0.0, "fixed": true} ],   # 扭曲空间(星能满→拖拽): 3假人散开→0.8A魔+满能平滑拽向中心(漩涡标记+尾迹+白火花)
+	"space:3": [ {"dx": 240.0, "dy": -100.0, "fixed": true}, {"dx": 240.0, "dy": 100.0, "fixed": true}, {"dx": 400.0, "dy": 0.0, "fixed": true} ],   # 扭曲空间「奇点」: 3假人散开→吸入0.72s→爆发帧0.8A魔; 星能满=+拉拽0.4s(头顶紫螺旋+尾迹+白火花)+吸积盘
 	"space:-1": [ {"dx": 300.0, "dy": -50.0, "fixed": true}, {"dx": 300.0, "dy": 50.0, "fixed": true} ],   # 星能被动: 2假人→造伤62%转星能(资源条)+每次普攻/技能追加30%储存星能真伤(白字)
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
@@ -12254,7 +12254,9 @@ func _chest_greed_apply(u: Dictionary, n: int) -> void:        # 贪婪(技三�
 	u["hp"] = float(u["hp"]) + hb
 	_recalc_stats(u)
 
-func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭曲空间(用户封板·120龟能·吃星能): 普通=敌阵中心500码全体0.8A魔法; 星能满=同上+把500码内敌拖拽拉向中心(发条R集火)+消耗全部星能
+func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭曲空间「奇点」(封板数值不动: 普通=敌阵中心500码全体0.8A魔法; 强化星能满=+拽向中心min(d×0.6,200)+清空星能; 120龟能)
+	# 演出重设计照发条R官方逐帧(C:/tmp/ori_burst: b13施放三件套/b13-b24吸入0.37s/b25-27屏息/b28爆发帧/b29-b34拉拽0.2s)·星际×2放慢换算
+	# 用户2026-07-16批准: 伤害挪到爆发帧(0.87s)结算+施法锁龟能星能(技2先例·兜底1.6s); 吸入0.72s→屏息0.15s→爆发→强化拉拽0.4s
 	var es: Array = []
 	for o in _enemies_of(u):
 		if o.get("alive", false): es.append(o)
@@ -12262,38 +12264,237 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 	var center := Vector2.ZERO
 	for o in es: center += o["pos"]
 	center /= float(es.size())
-	var charged: bool = float(u.get("star_energy", 0.0)) >= u["maxHp"] * 0.40   # 星能满
-	for o in es:
-		if o["pos"].distance_to(center) <= 500.0:
-			_apply_damage_from(u, o, _atk_dmg(u, 0.8, o, true), Color("#b09bff"))
-			if charged and not o.get("_eggImmune", false):                      # 强化: 平滑拽向中心(照发条R官方逐帧2026-07-15: 拽拉+漩涡标记+尾迹+白火花)
-				var pdir: Vector2 = (center - o["pos"])
-				if pdir.length() > 1.0:
-					var from3: Vector2 = o["pos"]
-					var dest3: Vector2 = o["pos"] + pdir.normalized() * minf(pdir.length() * 0.6, 200.0)
-					var oref3: Dictionary = o
-					_beam_vfx("res://assets/sprites/vfx/fx-trail.png", from3, dest3, 30.0, Color(0.72, 0.55, 1.0, 0.6), 0.3)
-					var pt3 := _reg_tween()
-					pt3.tween_method(func(q: float) -> void:
-						if oref3.get("alive", false): oref3["pos"] = from3.lerp(dest3, q)
-					, 0.0, 1.0, 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-					pt3.tween_callback(func() -> void:
-						if not oref3.get("alive", false): return
-						_hit_spark(oref3)
-						var vx := Sprite3D.new()
-						vx.texture = load("res://assets/sprites/vfx/fx-vortex.png")
-						vx.billboard = BaseMaterial3D.BILLBOARD_ENABLED; vx.shaded = false; vx.transparent = true
-						vx.pixel_size = (52.0 * WS) / 128.0
-						vx.modulate = Color(1, 1, 1, 0.9)
-						vx.position = _world_pos(oref3["pos"], 1.9)
-						_world.add_child(vx)
-						var vt := _reg_tween()
-						vt.tween_property(vx, "modulate:a", 0.0, 0.5)
-						vt.tween_callback(vx.queue_free))
-	if charged:
-		u["star_energy"] = 0.0                                                  # 星能满强化→消耗全部
-	_burst_vfx("res://assets/sprites/vfx/fx-black-hole.png", center, 260.0, 0.12)   # 引力黑洞=黑色椭圆(用户2026-05-29"黑洞状态下用黑色椭圆代替那个位置")
-	_skill_ring(center, Color(0.7, 0.6, 1.0, 0.42), 500.0)   # 500码拖拽范围环(发条R式)
+	var charged: bool = float(u.get("star_energy", 0.0)) >= u["maxHp"] * 0.40   # 星能满→强化
+	var uu := u
+	u["energy_lock_until"] = maxf(float(u.get("energy_lock_until", 0.0)), _t + 1.6)   # 施法锁龟能+星能(爆发/拽完提前恢复·兜底防永锁)
+	u["star_lock_until"] = float(u["energy_lock_until"])
+	var glow := _make_fire_glow_tex()
+	var rtex := _make_pixel_ring_tex()
+	var stex := _make_star_texture()
+	var wtex := _make_ring_texture(Color(1, 1, 1, 1))
+	# ── 预告(0.15s): 奇点从地里升起由小长大 + 白紫细范围环从中心扩到500码(h≥0.06防掉地下)
+	var core := Sprite3D.new()
+	core.texture = load("res://assets/sprites/vfx/fx-black-hole.png")
+	core.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	core.billboard = BaseMaterial3D.BILLBOARD_ENABLED; core.shaded = false; core.transparent = true
+	core.pixel_size = (64.0 * WS) / float(maxi(1, core.texture.get_height()))
+	core.position = _world_pos(center, 0.12)
+	core.scale = Vector3.ONE * 0.2
+	_world.add_child(core)
+	var halo := Sprite3D.new()                                   # 紫罗兰软晕(吸入全程渐亮=充能感)
+	halo.texture = glow
+	halo.billboard = BaseMaterial3D.BILLBOARD_ENABLED; halo.shaded = false; halo.transparent = true
+	halo.pixel_size = (150.0 * WS) / 128.0
+	halo.modulate = Color(0.62, 0.45, 1.0, 0.28)
+	halo.position = _world_pos(center, 0.86)
+	_world.add_child(halo)
+	var ct := _reg_tween(); ct.set_parallel(true)
+	ct.tween_property(core, "position", _world_pos(center, 0.9), 0.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	ct.tween_property(core, "scale", Vector3.ONE, 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	ct.tween_property(halo, "modulate:a", 0.85, 0.72)
+	var ring := _px_ground_sprite(rtex, center, 20.0, Color(0.9, 0.82, 1.0, 0.9), 0.065)
+	var rt := _reg_tween()
+	rt.tween_method(func(q: float) -> void:
+		if is_instance_valid(ring): ring.pixel_size = (maxf(20.0, 1000.0 * q) * WS) / float(maxi(1, rtex.get_height()))
+	, 0.0, 1.0, 0.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	rt.tween_interval(0.42)
+	rt.tween_property(ring, "modulate:a", 0.0, 0.22)             # 屏息段渐隐(不瞬删)
+	rt.tween_callback(ring.queue_free)
+	if charged:                                                  # 强化锚点①: 贴地紫黑吸积盘持续自转(远看即知强化)
+		var vtex: Texture2D = load("res://assets/sprites/vfx/fx-vortex.png")
+		var disk := _px_ground_sprite(vtex, center, 170.0, Color(0.55, 0.35, 0.95, 0.8), 0.07)
+		var dkt := _reg_tween(); dkt.set_parallel(true)
+		dkt.tween_method(func(q: float) -> void:
+			if is_instance_valid(disk): disk.rotation.y = q * TAU * 2.4
+		, 0.0, 1.0, 1.3)
+		dkt.tween_property(disk, "modulate:a", 0.0, 0.3).set_delay(1.0)
+		dkt.chain().tween_callback(disk.queue_free)
+		for o in es:                                             # 强化锚点②前奏: 敌人脚下指向中心的紫色拉力短痕
+			if not o.get("alive", false) or (o["pos"] as Vector2).distance_to(center) > 500.0: continue
+			var pd: Vector2 = (center - (o["pos"] as Vector2)).normalized()
+			_beam_vfx("res://assets/sprites/vfx/fx-trail.png", o["pos"], (o["pos"] as Vector2) + pd * 46.0, 14.0, Color(0.62, 0.42, 1.0, 0.5), 0.6, 0.06)
+	# ── 吸入(0→0.72s): 白色烟圈螺旋内收拖彗尾(EASE_IN先慢后快·同时到达) + 紫星尘被吸向中心
+	var wisp_n: int = 8 if charged else 6
+	for wi in range(wisp_n):
+		var a0: float = TAU * float(wi) / float(wisp_n) + randf() * 0.6
+		var r0: float = randf_range(400.0, 500.0)
+		var h0: float = randf_range(0.4, 1.1)
+		var dly: float = randf_range(0.0, 0.18)
+		var mv: float = 0.72 - dly
+		var wisp := Sprite3D.new()
+		wisp.texture = wtex
+		wisp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; wisp.shaded = false; wisp.transparent = true
+		wisp.pixel_size = (34.0 * WS) / 96.0
+		wisp.modulate = Color(1, 1, 1, 0.0)
+		wisp.position = _world_pos(center + Vector2(cos(a0), sin(a0)) * r0, h0)
+		_world.add_child(wisp)
+		var tail_i := [0]
+		var wt := _reg_tween()
+		wt.tween_interval(dly)
+		wt.tween_method(func(q: float) -> void:
+			if not is_instance_valid(wisp): return
+			var rr: float = r0 * (1.0 - q)
+			var aa: float = a0 + q * 1.6
+			wisp.position = _world_pos(center + Vector2(cos(aa), sin(aa)) * rr, lerpf(h0, 0.9, q))
+			wisp.modulate.a = 0.85 * clampf(q / 0.12, 0.0, 1.0) * clampf((1.0 - q) / 0.15, 0.0, 1.0)   # 淡入淡出(有来处有去处)
+			tail_i[0] += 1
+			if tail_i[0] % 3 == 0:                               # 彗尾: 渐隐光点链
+				var tp := Sprite3D.new()
+				tp.texture = glow
+				tp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; tp.shaded = false; tp.transparent = true
+				tp.pixel_size = 0.004
+				tp.modulate = Color(0.95, 0.9, 1.0, 0.5)
+				tp.position = wisp.position
+				_world.add_child(tp)
+				var tpt := _reg_tween()
+				tpt.tween_property(tp, "modulate:a", 0.0, 0.3)
+				tpt.tween_callback(tp.queue_free)
+		, 0.0, 1.0, mv).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		wt.tween_callback(wisp.queue_free)
+	var dust_i := [0]
+	var sdt := _reg_tween()
+	sdt.tween_method(func(_q: float) -> void:                    # 紫星尘被吸向中心(技2星尘留痕的反向)
+		dust_i[0] += 1
+		if dust_i[0] % 4 != 0: return
+		var da: float = randf() * TAU
+		var dp := Sprite3D.new()
+		dp.texture = stex
+		dp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; dp.shaded = false; dp.transparent = true
+		dp.pixel_size = 0.005
+		dp.modulate = Color(0.8, 0.65, 1.0, 0.75)
+		dp.position = _world_pos(center + Vector2(cos(da), sin(da)) * randf_range(140.0, 470.0), randf_range(0.1, 0.6))
+		_world.add_child(dp)
+		var dpt := _reg_tween(); dpt.set_parallel(true)
+		dpt.tween_property(dp, "position", _world_pos(center, 0.85), 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		dpt.tween_property(dp, "modulate:a", 0.0, 0.38)
+		dpt.chain().tween_callback(dp.queue_free)
+	, 0.0, 1.0, 0.66)
+	# ── 屏息(0.72-0.87s)→爆发帧(0.87s): 伤害本帧结算(用户批)+白紫爆闪+透镜波纹+强化拉拽
+	var do_burst := func() -> void:
+		if not uu.get("alive", false):                           # 施法者阵亡→奇点静默消散(有去处), 不结算
+			if is_instance_valid(core):
+				var cf := _reg_tween(); cf.set_parallel(true)
+				cf.tween_property(core, "scale", Vector3.ONE * 0.1, 0.3)
+				cf.tween_property(core, "position", _world_pos(center, 0.08), 0.3)
+				cf.tween_property(halo, "modulate:a", 0.0, 0.3)
+				cf.chain().tween_callback(func() -> void: core.queue_free(); halo.queue_free())
+			return
+		if not charged:                                          # 普通版: 爆发即恢复龟能/星能
+			uu["energy_lock_until"] = _t
+			uu["star_lock_until"] = _t
+		var victims: Array = []
+		for o2 in _enemies_of(uu):                               # 爆发帧结算(同帧飘字·封板0.8A魔法)
+			if not o2.get("alive", false): continue
+			if (o2["pos"] as Vector2).distance_to(center) > 500.0: continue
+			_apply_damage_from(uu, o2, _atk_dmg(uu, 0.8, o2, true), Color("#b09bff"))
+			_hit_spark(o2)
+			victims.append(o2)
+		_shake(0.12 if charged else 0.08)
+		var fl := Sprite3D.new()                                 # 白紫爆闪(白核紫边)
+		fl.texture = glow
+		fl.billboard = BaseMaterial3D.BILLBOARD_ENABLED; fl.shaded = false; fl.transparent = true
+		fl.pixel_size = (170.0 * WS) / 128.0
+		fl.modulate = Color(1.0, 0.96, 1.0, 0.95)
+		fl.position = _world_pos(center, 0.9)
+		fl.scale = Vector3.ONE * 0.5
+		_world.add_child(fl)
+		var flt := _reg_tween(); flt.set_parallel(true)
+		flt.tween_property(fl, "scale", Vector3.ONE * 2.6, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		flt.tween_property(fl, "modulate:a", 0.0, 0.3)
+		flt.chain().tween_callback(fl.queue_free)
+		var ltex: Texture2D = load("res://assets/sprites/vfx/fx-shock-ring.png")
+		var lens := _px_ground_sprite(ltex, center, 40.0, Color(0.85, 0.75, 1.0, 0.85), 0.068)   # 透镜波纹: 空间"拧了一下"
+		var lt := _reg_tween()
+		lt.tween_method(func(q: float) -> void:
+			if is_instance_valid(lens):
+				lens.pixel_size = (maxf(40.0, 1000.0 * q) * WS) / float(maxi(1, ltex.get_height()))
+				lens.modulate.a = 0.85 * (1.0 - q)
+		, 0.0, 1.0, 0.25)
+		lt.tween_callback(lens.queue_free)
+		if not charged:                                          # 普通版收尾: 奇点缩小沉回地里(与来处对称)+淡紫残痕
+			var cd := _reg_tween(); cd.set_parallel(true)
+			cd.tween_property(core, "scale", Vector3.ONE * 0.12, 0.45).set_delay(0.25)
+			cd.tween_property(core, "position", _world_pos(center, 0.08), 0.45).set_delay(0.25)
+			cd.tween_property(halo, "modulate:a", 0.0, 0.5).set_delay(0.2)
+			cd.chain().tween_callback(func() -> void: core.queue_free(); halo.queue_free())
+			var mark := _px_ground_sprite(rtex, center, 300.0, Color(0.6, 0.45, 0.95, 0.4), 0.06)
+			var mkt := _reg_tween()
+			mkt.tween_property(mark, "modulate:a", 0.0, 0.5)
+			mkt.tween_callback(mark.queue_free)
+			return
+		# ── 强化锚点③: 拉拽0.4s(封板拽距min(d×0.6,200)·同时到位=远者快) 头顶紫螺旋+尾迹+沿途白火花
+		uu["star_energy"] = 0.0                                  # 爆发帧清空星能(强化代价)
+		var vtex2: Texture2D = load("res://assets/sprites/vfx/fx-vortex.png")
+		for o3 in victims:
+			if o3.get("_eggImmune", false): continue
+			var pdir: Vector2 = center - (o3["pos"] as Vector2)
+			if pdir.length() <= 1.0: continue
+			var from3: Vector2 = o3["pos"]
+			var dest3: Vector2 = from3 + pdir.normalized() * minf(pdir.length() * 0.6, 200.0)
+			var oref3: Dictionary = o3
+			_beam_vfx("res://assets/sprites/vfx/fx-trail.png", from3, dest3, 26.0, Color(0.72, 0.55, 1.0, 0.55), 0.45)
+			var swirl := Sprite3D.new()                          # 头顶紫螺旋丝带(发条R翻卷标记b29-b41)
+			swirl.texture = vtex2
+			swirl.billboard = BaseMaterial3D.BILLBOARD_ENABLED; swirl.shaded = false; swirl.transparent = true
+			swirl.pixel_size = (46.0 * WS) / float(maxi(1, vtex2.get_height()))
+			swirl.modulate = Color(0.78, 0.6, 1.0, 0.0)
+			swirl.position = _world_pos(from3, 2.0)
+			swirl.scale = Vector3.ONE * 0.5
+			_world.add_child(swirl)
+			var spark_i := [0]
+			var pt3 := _reg_tween()
+			pt3.tween_method(func(q: float) -> void:
+				if oref3.get("alive", false): oref3["pos"] = from3.lerp(dest3, q)
+				if is_instance_valid(swirl):
+					swirl.position = _world_pos(oref3["pos"] if oref3.get("alive", false) else from3.lerp(dest3, q), 2.0)
+					swirl.modulate.a = 0.9 * clampf(q / 0.2, 0.0, 1.0)
+					swirl.scale = Vector3.ONE * (0.5 + q * 0.5)
+				spark_i[0] += 1
+				if spark_i[0] % 5 == 0:                          # 沿途白粉火花星屑(发条R脚下迸溅)
+					var sp := Sprite3D.new()
+					sp.texture = stex
+					sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; sp.shaded = false; sp.transparent = true
+					sp.pixel_size = 0.006
+					sp.modulate = Color(1.0, 0.9, 0.95, 0.95)
+					sp.position = _world_pos(from3.lerp(dest3, q) + Vector2(randf_range(-16.0, 16.0), randf_range(-16.0, 16.0)), randf_range(0.1, 0.5))
+					_world.add_child(sp)
+					var spt := _reg_tween()
+					spt.tween_property(sp, "modulate:a", 0.0, 0.3)
+					spt.tween_callback(sp.queue_free)
+			, 0.0, 1.0, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			pt3.tween_callback(func() -> void:                   # 到位: 受击白星+螺旋卷动放大渐隐(不瞬删)
+				if oref3.get("alive", false): _hit_spark(oref3)
+				if is_instance_valid(swirl):
+					var st2 := _reg_tween(); st2.set_parallel(true)
+					st2.tween_property(swirl, "scale", Vector3.ONE * 1.35, 0.35)
+					st2.tween_property(swirl, "modulate:a", 0.0, 0.35)
+					st2.chain().tween_callback(swirl.queue_free))
+		var fin := _reg_tween()                                  # 拽完: 恢复锁+奇点吃饱膨胀一拍再缩灭+紫环印记缓隐
+		fin.tween_interval(0.42)
+		fin.tween_callback(func() -> void:
+			if uu.get("alive", false):
+				uu["energy_lock_until"] = _t
+				uu["star_lock_until"] = _t
+			if is_instance_valid(core):
+				var eat := _reg_tween()
+				eat.tween_property(core, "scale", Vector3.ONE * 1.3, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+				eat.tween_property(core, "scale", Vector3.ONE * 0.1, 0.4)
+				eat.parallel().tween_property(core, "position", _world_pos(center, 0.08), 0.4)
+				eat.parallel().tween_property(halo, "modulate:a", 0.0, 0.4)
+				eat.chain().tween_callback(func() -> void: core.queue_free(); halo.queue_free())
+			var mark2 := _px_ground_sprite(rtex, center, 300.0, Color(0.6, 0.45, 0.95, 0.45), 0.06)
+			var mk2 := _reg_tween()
+			mk2.tween_property(mark2, "modulate:a", 0.0, 1.2)
+			mk2.tween_callback(mark2.queue_free))
+	var master := _reg_tween()
+	master.tween_interval(0.72)
+	master.tween_callback(func() -> void:                        # 屏息: 奇点脉动一拍(爆发前的静默b25-b27)
+		if is_instance_valid(core):
+			var pt := _reg_tween()
+			pt.tween_property(core, "scale", Vector3.ONE * 1.16, 0.07).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			pt.tween_property(core, "scale", Vector3.ONE, 0.07))
+	master.tween_interval(0.15)
+	master.tween_callback(do_burst)
 
 func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·星波(封板数值·2026-07-16演出重设计"星潮扩散/天崩"): 普通=扩散环0.58s波扫到才结算1.0A魔法; 星能满追加巨彗星敌阵中心1.5A(落地结算)+清空星能
 	var charged: bool = float(u.get("star_energy", 0.0)) >= u["maxHp"] * 0.40
