@@ -11807,19 +11807,32 @@ func _elite_spike(pos2d: Vector2, big: bool) -> void:            # 单根黑刺(
 	spk.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	spk.shaded = false; spk.transparent = true
 	spk.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	var sz: float = randf_range(64.0, 96.0) if big else randf_range(44.0, 70.0)
+	var sz: float = randf_range(95.0, 140.0) if big else randf_range(70.0, 105.0)   # 加大(用户2026-07-16'更大更明显')
 	var fullp: float = (sz * WS) / float(maxi(1, int(tex.get_height())))
 	spk.pixel_size = fullp * 0.2
 	spk.flip_h = randf() < 0.5
 	spk.position = _world_pos(pos2d, 0.05)
 	spk.rotation.z = randf_range(-0.35, 0.35)
+	spk.modulate = Color(1.25, 1.1, 1.1, 1.0)                      # 提亮(暗地上要明显)
 	_world.add_child(spk)
-	_skill_ring(pos2d, Color(0.5, 0.08, 0.1, 0.45), 16.0)         # 破土
+	_skill_ring(pos2d, Color(0.55, 0.09, 0.1, 0.55), 22.0)         # 破土
+	var rgt2: Texture2D = _make_fire_glow_tex()
+	var rg := Sprite3D.new()                                       # 根部暗红光晕(衬出刺)
+	rg.texture = rgt2
+	rg.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	rg.shaded = false; rg.transparent = true
+	rg.pixel_size = (randf_range(24.0, 34.0) * WS) / float(maxi(1, rgt2.get_width()))
+	rg.modulate = Color(0.7, 0.1, 0.12, 0.6)
+	rg.position = _world_pos(pos2d, 0.12)
+	_world.add_child(rg)
+	var rgt := _reg_tween()
+	rgt.tween_property(rg, "modulate:a", 0.0, 0.5)
+	rgt.tween_callback(rg.queue_free)
 	var htop: float = randf_range(0.5, 0.66) if big else randf_range(0.34, 0.5)
 	var st := _reg_tween(); st.set_parallel(true)
 	st.tween_property(spk, "pixel_size", fullp, randf_range(0.08, 0.12)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	st.tween_property(spk, "position", _world_pos(pos2d, htop), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	st.chain().tween_interval(randf_range(0.35, 0.5))
+	st.chain().tween_interval(randf_range(0.45, 0.62))
 	st.chain().tween_property(spk, "position", _world_pos(pos2d, 0.02), 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	st.parallel().tween_property(spk, "pixel_size", fullp * 0.15, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	st.chain().tween_callback(spk.queue_free)
@@ -11868,7 +11881,7 @@ func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁�
 			var sref: int = step
 			_pending_shots.append({"delay": 0.43 + 0.052 * float(step + 1), "fn": func() -> void:
 				if not uu.get("alive", false): return
-				var n_sp: int = 2 + int(float(sref) * 0.8)
+				var n_sp: int = 4 + int(float(sref) * 1.2)   # 加密(近4→远12根/波)
 				for k in range(n_sp):
 					var aoff: float = deg_to_rad(randf_range(-30.0, 30.0))
 					var pp: Vector2 = origin + dirv.rotated(aoff) * (dist + randf_range(-20.0, 20.0))
@@ -11938,7 +11951,7 @@ func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁�
 				var dist2: float = 700.0 * float(step2 + 1) / 10.0
 				var sref2: int = step2
 				_pending_shots.append({"delay": 0.05 * float(step2 + 1), "fn": func() -> void:
-					var n_sp2: int = 5 + sref2
+					var n_sp2: int = 8 + sref2 * 2   # 加密(8→26根/波)
 					for k2 in range(n_sp2):
 						var aa2: float = randf() * TAU
 						var pp2: Vector2 = c2 + Vector2(cos(aa2), sin(aa2)) * (dist2 + randf_range(-25.0, 25.0))
