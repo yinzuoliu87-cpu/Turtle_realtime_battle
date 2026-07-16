@@ -86,7 +86,7 @@ static func _review_demo() -> bool:
 	if OS.has_environment("REVIEW"):
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
-const REVIEW_TURTLE := "crystal"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
+const REVIEW_TURTLE := "chest"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
 const REVIEW_SKILL_IDX := -1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
@@ -194,6 +194,11 @@ const REVIEW_DEMO_CFG := {
 	"crystal:2": [ {"dx": 220.0, "dy": -80.0, "fixed": true}, {"dx": 220.0, "dy": 80.0, "fixed": true}, {"dx": 380.0, "dy": 0.0, "fixed": true}, {"dx": 640.0, "dy": 0.0, "fixed": true} ],   # 碎晶爆破(2026-07-15改350码): 3近假人圈内吃3段碎晶坠落+1远假人(640>350)圈外不中=看范围
 	"crystal:3": [ {"dx": 300.0, "dy": 0.0, "fixed": true} ],   # 水晶球: 登场即召水晶球实体(50%HP/同ATK)每5秒双段光线+主动时本体同步射线·共享结晶层
 	"crystal:-1": [ {"dx": 110.0, "dy": -50.0, "fixed": true}, {"dx": 110.0, "dy": 50.0, "fixed": true} ],   # 结晶共鸣被动: 近战贴脸2假人→普攻叠结晶(徽章+环绕碎晶)满5引爆(19%maxHp魔+永久-20%魔抗)+受魔伤减免20%
+	"chest:0": [ {"dx": 100.0, "dy": -45.0, "fixed": true}, {"dx": 100.0, "dy": 45.0, "fixed": true} ],   # 宝箱砸击普攻(近战): 2假人贴脸→K'Sante式前方短直线AOE扫击
+	"chest:1": [ {"dx": 120.0, "dy": -55.0}, {"dx": 120.0, "dy": 55.0} ],   # 清点财宝: 2假人围打(掉血)→回5%HP+0.6A盾·财宝值每100点强度+14%
+	"chest:2": [ {"dx": 200.0, "dy": -90.0, "fixed": true}, {"dx": 200.0, "dy": 90.0, "fixed": true}, {"dx": 340.0, "dy": 0.0, "fixed": true} ],   # 财宝风暴: 3假人聚拢→以目标为心400码金币旋风(14金币升螺旋)+5跳伤害
+	"chest:3": [ {"dx": 220.0, "dy": 0.0, "fixed": true}, {"dx": 420.0, "dy": 0.0, "fixed": true}, {"dx": 620.0, "dy": 0.0, "fixed": true} ],   # 财宝炮击(2026-07-15换皮金币洪流): 3假人一线→蓄力0.4s→喷金币+金块洪流·线上各3A物理+击飞击退+命中金币爆
+	"chest:-1": [ {"dx": 110.0, "dy": -50.0, "fixed": true}, {"dx": 110.0, "dy": 50.0, "fixed": true} ],   # 藏宝图被动: 贴脸2假人→出伤攒财宝值→开箱(头顶弹战利品图标+金环+回血·基础→进阶→传说一场最多5件)
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -11105,6 +11110,23 @@ func _chest_treasure_tick(u: Dictionary) -> void:
 		_chest_apply_treasure(u, tid)
 		if u.get("chest_greed", false): _chest_greed_apply(u, 1)   # 贪婪: 新开1件→+4%攻+7%最大生命
 		_float_text(u["pos"] + Vector2(0, -72), "开箱! " + str(_CHEST_TREASURE_NAME.get(tid, tid)), Color("#ffd93d"))
+		var ipath: String = "res://assets/sprites/equip/chest-t-%s.png" % tid   # 头顶弹出战利品图标(用户2026-07-15: 看清开了什么)
+		if ResourceLoader.exists(ipath):
+			var ic := Sprite3D.new()
+			ic.texture = load(ipath)
+			ic.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			ic.billboard = BaseMaterial3D.BILLBOARD_ENABLED; ic.shaded = false; ic.transparent = true
+			ic.pixel_size = (44.0 * WS) / 32.0
+			ic.modulate = Color(1, 1, 1, 0.0)
+			ic.position = _world_pos(u["pos"], 2.3)
+			_world.add_child(ic)
+			var it := _reg_tween()
+			it.tween_property(ic, "modulate:a", 1.0, 0.12)
+			it.parallel().tween_property(ic, "scale", Vector3(1.25, 1.25, 1.25), 0.25).from(Vector3(0.5, 0.5, 0.5)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			it.tween_interval(0.9)
+			it.tween_property(ic, "position", _world_pos(u["pos"], 2.9), 0.3)
+			it.parallel().tween_property(ic, "modulate:a", 0.0, 0.3)
+			it.tween_callback(ic.queue_free)
 	_heal(u, u["maxHp"] * heal_pct)
 	_skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.5), 52.0)
 
@@ -11179,17 +11201,62 @@ func _sk_chest_cannon(u: Dictionary, tgt) -> void:              # 技三·财宝
 	var dir: Vector2 = tgt["pos"] - u["pos"]
 	if dir.length() < 1.0: dir = Vector2.RIGHT
 	dir = dir.normalized()
-	for o in _enemies_of(u):
-		if not o.get("alive", false): continue
-		if not _on_line(u["pos"], dir, o["pos"], 58.0): continue
-		_apply_damage_from(u, o, _atk_dmg(u, 3.0, o), Color("#ffe066"))
-		_knockback(u, o, 60.0, 1.2, 1.4)                            # 击飞+击退
-	_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", u["pos"], u["pos"] + dir * 1300.0, 132.0, Color(1.0, 0.9, 0.3, 0.85), 0.55)   # 财宝炮击长激光(用户07-07"对一条直线·类似手枪长激光")
+	var uu := u
+	var fire := func() -> void:                                     # 蓄力0.4s→喷金币洪流(用户2026-07-15确认换皮: 激光→金币+宝物炮流·机制不动)
+		if not uu.get("alive", false): return
+		for o in _enemies_of(uu):
+			if not o.get("alive", false): continue
+			if not _on_line(uu["pos"], dir, o["pos"], 58.0): continue
+			_apply_damage_from(uu, o, _atk_dmg(uu, 3.0, o), Color("#ffe066"))
+			_knockback(uu, o, 60.0, 1.2, 1.4)                       # 击飞+击退
+			_burst_vfx("res://assets/sprites/vfx/fortune-coin-burst.png", o["pos"], 130.0, 0.5)   # 命中金币爆
+		_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", uu["pos"], uu["pos"] + dir * 1300.0, 110.0, Color(1.0, 0.85, 0.35, 0.5), 0.5)   # 金色气浪底
+		_shake(JUICE_SHAKE_BIG)
+		var ctex: Texture2D = load("res://assets/sprites/ui/coin.png")
+		var gtex: Texture2D = load("res://assets/sprites/vfx/gold-chunk.png")
+		for k in range(26):                                         # 金币+金块洪流沿线喷射(散布±40码·翻滚)
+			var pk := Sprite3D.new()
+			pk.texture = ctex if k % 3 != 0 else gtex
+			pk.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			pk.billboard = BaseMaterial3D.BILLBOARD_ENABLED; pk.shaded = false; pk.transparent = true
+			pk.pixel_size = 0.028 * randf_range(0.8, 1.3)
+			pk.position = _world_pos(uu["pos"] + dir * 30.0, 0.8)
+			_world.add_child(pk)
+			var endp: Vector2 = uu["pos"] + dir * randf_range(300.0, 1250.0) + Vector2(-dir.y, dir.x) * randf_range(-40.0, 40.0)
+			var life: float = randf_range(0.3, 0.55)
+			var pt := _reg_tween()
+			pt.tween_interval(randf() * 0.18)
+			pt.tween_property(pk, "position", _world_pos(endp, randf_range(0.2, 1.2)), life).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			pt.parallel().tween_property(pk, "modulate:a", 0.0, life)
+			pt.tween_callback(pk.queue_free)
+	_muzzle_flash(u["pos"], dir, Color("#ffd93d"))
+	_anticipate(u)
+	_pending_shots.append({"delay": 0.4, "fn": fire, "src": u})
 
 func _sk_chest_storm(u: Dictionary, tgt) -> void:              # 技二·财宝风暴(封板·100龟能): 以当前目标为心400码圆形风暴·持续2.5s每0.5s一跳(5跳)·圈内敌各0.2A物理(共1.0A)
 	if tgt == null: tgt = _nearest_enemy(u)
 	if tgt == null: return
 	var center: Vector2 = tgt["pos"]
+	var ctex: Texture2D = load("res://assets/sprites/ui/coin.png")
+	for k in range(14):                                             # 金币旋风: 14枚金币绕圈飞舞2.5秒(升螺旋·2026-07-15)
+		var ck := Sprite3D.new()
+		ck.texture = ctex
+		ck.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		ck.billboard = BaseMaterial3D.BILLBOARD_ENABLED; ck.shaded = false; ck.transparent = true
+		ck.pixel_size = 0.032
+		ck.position = _world_pos(center, 0.3)
+		_world.add_child(ck)
+		var a0: float = TAU * float(k) / 14.0
+		var rr: float = randf_range(180.0, 380.0)
+		var spd: float = randf_range(2.4, 3.4) * (1.0 if k % 2 == 0 else -1.0)
+		var kt := _reg_tween()
+		kt.tween_method(func(t: float) -> void:
+			if not is_instance_valid(ck): return
+			var aa: float = a0 + spd * t * 2.5
+			ck.position = _world_pos(center + Vector2(cos(aa), sin(aa)) * rr, 0.3 + t * 1.4)   # 绕圈+缓慢升起
+			ck.modulate.a = 1.0 - maxf(0.0, t - 0.75) * 4.0
+		, 0.0, 1.0, 2.5)
+		kt.tween_callback(ck.queue_free)
 	for i in range(5):
 		var fn := func():
 			for o in _enemies_of(u):
