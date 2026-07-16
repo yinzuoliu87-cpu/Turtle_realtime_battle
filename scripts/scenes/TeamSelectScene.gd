@@ -271,6 +271,14 @@ func _place(ctrl: Control, key: String) -> void:
 	ctrl.position = rc.position
 	ctrl.size = rc.size
 
+## 贴边功能按钮: 放置后夹回可视区 —— cover×1.17舞台在比16:9更宽的屏(iPhone 2.17:1)垂直裁挖>设计余量,
+## 贴边按钮(返回/清空/上次/开始)会被裁出屏; 背景画裁边可接受, 按钮必须可点(用户2026-07-16"按钮不超屏不卡住")
+func _place_clamped(ctrl: Control, key: String) -> void:
+	_place(ctrl, key)
+	var vp := _vp()
+	ctrl.position.x = clampf(ctrl.position.x, 6.0, maxf(6.0, vp.x - ctrl.size.x - 6.0))
+	ctrl.position.y = clampf(ctrl.position.y, 6.0, maxf(6.0, vp.y - ctrl.size.y - 6.0))
+
 
 # ══════════════════════════════════════════════════════════════
 # 建 UI
@@ -294,7 +302,7 @@ func _build_ui() -> void:
 	back.add_theme_font_size_override("font_size", _sf(13))
 	_style_overlay_btn(back)
 	root.add_child(back)
-	_place(back, "back")
+	_place_clamped(back, "back")
 	back.pressed.connect(_on_back)
 
 	# 清空 (PoC .ts-frame-btn: 透明底无边, 白字阴影, 坐在画好的框上)
@@ -303,7 +311,7 @@ func _build_ui() -> void:
 	clear.add_theme_font_size_override("font_size", _sf(12))
 	_style_frame_btn(clear)
 	root.add_child(clear)
-	_place(clear, "clear")
+	_place_clamped(clear, "clear")
 	clear.pressed.connect(_on_clear_all)
 
 	# 上次阵容 (PoC .ts-frame-btn)
@@ -312,7 +320,7 @@ func _build_ui() -> void:
 	_last_btn.add_theme_font_size_override("font_size", _sf(12))
 	_style_frame_btn(_last_btn)
 	root.add_child(_last_btn)
-	_place(_last_btn, "last")
+	_place_clamped(_last_btn, "last")
 	_last_btn.pressed.connect(_on_restore_last)
 	_ent_top = [back, clear, _last_btn]
 
@@ -344,7 +352,7 @@ func _build_ui() -> void:
 	_start_btn.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
 	_start_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	root.add_child(_start_btn)
-	_place(_start_btn, "start")
+	_place_clamped(_start_btn, "start")
 	_start_btn.pressed.connect(_on_start)
 
 	if not _did_entrance:   # 入场只播一次 (resize 重建不重播)
