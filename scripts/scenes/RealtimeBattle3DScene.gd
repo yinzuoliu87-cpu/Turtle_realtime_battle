@@ -78,7 +78,7 @@ const DEFAULT_STAT := [true, 105.0, 0.85, 70.0]
 ##    · 编辑器 / F5 / debug 导出  → REVIEW_DEMO_DEFAULT (评审期 = true) ← 你审龟用的
 ##    · SHIP=1   环境变量         → 强制 false (headless 验证上线语义)
 ##    · REVIEW=1 环境变量         → 强制 true  (在 release 包里也能开评审场)
-const REVIEW_DEMO_DEFAULT := true
+const REVIEW_DEMO_DEFAULT := false   # 2026-07-16审龟暂停+iOS测试包(debug构建)需真实对局: debug包不再劫持战斗; 桌面审龟用 REVIEW=1 env照旧
 
 static func _review_demo() -> bool:
 	if OS.has_environment("SHIP"):
