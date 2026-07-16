@@ -159,7 +159,7 @@ static func _load_seed() -> Dictionary:
 		return parsed
 	return {"brackets": {}}
 
-const SEED_VER := 2   # 种子池版本(2026-07-15: 49→70支+loadouts+档8); 升版→老档清旧seed_并入新种子(玩家上传的真ghost保留)
+const SEED_VER := 3   # 种子池版本(2026-07-16: 分路4模式+精英小将minions键); 升版→老档清旧seed_并入新种子(玩家上传的真ghost保留)
 ## 种子并入(版本化): 无seed_ 或 池版本<SEED_VER → 清旧seed_+并入新种子+落盘. 修真机bug"老池挡住新种子永不升级"(用户2026-07-15).
 static func _ensure_seeded(pool: Dictionary) -> void:
 	var brackets: Dictionary = pool.get("brackets", {})

@@ -1,5 +1,5 @@
 {
- "_note": "策划 ghost 种子池 v2(70支·9档0-8对齐bracket_for_battles·战斗场次越高装备越好: 档0=1件★1费1/Lv2 → 档8=5件★3费5/Lv10; loadouts=每龟技能选择敌侧经foe_loadouts生效; SEED_VER=2版本化并入·老池自动升级·用户2026-07-15真机纠错). leaders+profile+equipped+lane_assign+pet_levels+loadouts 都生效; 战斗编成=3统领+3小将(上2/下1).",
+ "_note": "策划 ghost 种子池 v3(70支·9档0-8·场次越高装备越好档0=1件★1费1/Lv2→档8=5件★3费5/Lv10; 分路4模式轮转[2/1经典·1/2下重·3统领上路·3统领下路·空统领路小将守]+minions键带role/elite(档3+=1精英/档6+=2精英)·用户2026-07-16; loadouts敌侧经foe_loadouts生效; SEED_VER=3版本化并入).",
  "brackets": {
   "0": [
    {
@@ -8,53 +8,71 @@
     "is_bot": false,
     "bracket": 0,
     "profile": {
-     "name": "泡泡队·0档",
-     "avatar": "bubble",
+     "name": "无头队·0档",
+     "avatar": "headless",
      "id": "SEED00"
     },
     "leaders": [
-     "bubble",
-     "basic",
-     "line"
+     "headless",
+     "shell",
+     "lava"
     ],
     "lane_assign": {
      "top": [
-      "bubble",
-      "basic"
+      "headless",
+      "shell"
      ],
      "bottom": [
-      "line"
+      "lava"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "bubble": 1,
-     "basic": 1,
-     "line": 3
+     "headless": 1,
+     "shell": 2,
+     "lava": 2
     },
     "equipped": {
-     "bubble": [
+     "headless": [
+      {
+       "id": "p2eq_001",
+       "star": 1
+      }
+     ],
+     "shell": [
       {
        "id": "p2eq_002",
        "star": 1
       }
      ],
-     "basic": [
+     "lava": [
       {
-       "id": "p2eq_028",
-       "star": 1
-      }
-     ],
-     "line": [
-      {
-       "id": "p2eq_028",
+       "id": "p2eq_035",
        "star": 1
       }
      ]
     },
     "pet_levels": {
-     "bubble": 2,
-     "basic": 2,
-     "line": 2
+     "headless": 2,
+     "shell": 2,
+     "lava": 2
     },
     "season_total_battles": 0,
     "season_eggs_killed": 1
@@ -65,55 +83,73 @@
     "is_bot": false,
     "bracket": 0,
     "profile": {
-     "name": "凤凰队·0档",
-     "avatar": "phoenix",
+     "name": "忍者队·0档",
+     "avatar": "ninja",
      "id": "SEED01"
     },
     "leaders": [
+     "ninja",
      "phoenix",
-     "two_head",
-     "stone"
+     "chest"
     ],
     "lane_assign": {
      "top": [
-      "phoenix",
-      "two_head"
+      "ninja"
      ],
      "bottom": [
-      "stone"
+      "phoenix",
+      "chest"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "phoenix": 2,
-     "two_head": 1,
-     "stone": 3
+     "ninja": 3,
+     "phoenix": 1,
+     "chest": 1
     },
     "equipped": {
-     "phoenix": [
+     "ninja": [
       {
-       "id": "p2eq_041",
+       "id": "p2eq_012",
        "star": 1
       }
      ],
-     "two_head": [
+     "phoenix": [
       {
        "id": "p2eq_032",
        "star": 1
       }
      ],
-     "stone": [
+     "chest": [
       {
-       "id": "p2eq_012",
+       "id": "p2eq_032",
        "star": 1
       }
      ]
     },
     "pet_levels": {
+     "ninja": 2,
      "phoenix": 2,
-     "two_head": 2,
-     "stone": 2
+     "chest": 2
     },
-    "season_total_battles": 1,
+    "season_total_battles": 0,
     "season_eggs_killed": 1
    },
    {
@@ -122,53 +158,70 @@
     "is_bot": false,
     "bracket": 0,
     "profile": {
-     "name": "寒冰队·0档",
-     "avatar": "ice",
+     "name": "赌神队·0档",
+     "avatar": "gambler",
      "id": "SEED02"
     },
     "leaders": [
-     "ice",
-     "space",
-     "bamboo"
+     "gambler",
+     "rainbow",
+     "diamond"
     ],
     "lane_assign": {
      "top": [
-      "ice",
-      "space"
+      "gambler",
+      "rainbow",
+      "diamond"
+     ],
+     "bottom": []
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      }
      ],
      "bottom": [
-      "bamboo"
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "ice": 1,
-     "space": 1,
-     "bamboo": 3
+     "gambler": 2,
+     "rainbow": 3,
+     "diamond": 3
     },
     "equipped": {
-     "ice": [
+     "gambler": [
       {
        "id": "p2eq_001",
        "star": 1
       }
      ],
-     "space": [
+     "rainbow": [
       {
-       "id": "p2eq_012",
+       "id": "p2eq_048",
        "star": 1
       }
      ],
-     "bamboo": [
+     "diamond": [
       {
-       "id": "p2eq_032",
+       "id": "p2eq_012",
        "star": 1
       }
      ]
     },
     "pet_levels": {
-     "ice": 2,
-     "space": 2,
-     "bamboo": 2
+     "gambler": 2,
+     "rainbow": 2,
+     "diamond": 2
     },
     "season_total_battles": 0,
     "season_eggs_killed": 1
@@ -179,53 +232,70 @@
     "is_bot": false,
     "bracket": 0,
     "profile": {
-     "name": "闪电队·0档",
-     "avatar": "lightning",
+     "name": "海盗队·0档",
+     "avatar": "pirate",
      "id": "SEED03"
     },
     "leaders": [
-     "lightning",
-     "crystal",
-     "hunter"
+     "pirate",
+     "fortune",
+     "crystal"
     ],
     "lane_assign": {
-     "top": [
-      "lightning",
+     "top": [],
+     "bottom": [
+      "pirate",
+      "fortune",
       "crystal"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ],
      "bottom": [
-      "hunter"
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "lightning": 1,
-     "crystal": 1,
-     "hunter": 2
+     "pirate": 2,
+     "fortune": 1,
+     "crystal": 1
     },
     "equipped": {
-     "lightning": [
+     "pirate": [
       {
-       "id": "p2eq_001",
+       "id": "p2eq_032",
+       "star": 1
+      }
+     ],
+     "fortune": [
+      {
+       "id": "p2eq_022",
        "star": 1
       }
      ],
      "crystal": [
       {
-       "id": "p2eq_018",
-       "star": 1
-      }
-     ],
-     "hunter": [
-      {
-       "id": "p2eq_001",
+       "id": "p2eq_044",
        "star": 1
       }
      ]
     },
     "pet_levels": {
-     "lightning": 2,
-     "crystal": 2,
-     "hunter": 2
+     "pirate": 2,
+     "fortune": 2,
+     "crystal": 2
     },
     "season_total_battles": 1,
     "season_eggs_killed": 1
@@ -236,43 +306,61 @@
     "is_bot": false,
     "bracket": 0,
     "profile": {
-     "name": "骰子队·0档",
-     "avatar": "dice",
+     "name": "赌神队·0档",
+     "avatar": "gambler",
      "id": "SEED04"
     },
     "leaders": [
-     "dice",
-     "stone",
-     "basic"
+     "gambler",
+     "candy",
+     "shell"
     ],
     "lane_assign": {
      "top": [
-      "dice",
-      "stone"
+      "gambler",
+      "candy"
      ],
      "bottom": [
-      "basic"
+      "shell"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "dice": 1,
-     "stone": 1,
-     "basic": 2
+     "gambler": 2,
+     "candy": 2,
+     "shell": 2
     },
     "equipped": {
-     "dice": [
+     "gambler": [
       {
-       "id": "p2eq_035",
+       "id": "p2eq_012",
        "star": 1
       }
      ],
-     "stone": [
+     "candy": [
       {
-       "id": "p2eq_008",
+       "id": "p2eq_028",
        "star": 1
       }
      ],
-     "basic": [
+     "shell": [
       {
        "id": "p2eq_008",
        "star": 1
@@ -280,9 +368,9 @@
      ]
     },
     "pet_levels": {
-     "dice": 2,
-     "stone": 2,
-     "basic": 2
+     "gambler": 2,
+     "candy": 2,
+     "shell": 2
     },
     "season_total_battles": 0,
     "season_eggs_killed": 1
@@ -293,53 +381,71 @@
     "is_bot": false,
     "bracket": 0,
     "profile": {
-     "name": "赛博队·0档",
-     "avatar": "cyber",
+     "name": "缩头乌队·0档",
+     "avatar": "hiding",
      "id": "SEED05"
     },
     "leaders": [
-     "cyber",
-     "phoenix",
-     "line"
+     "hiding",
+     "angel",
+     "ghost"
     ],
     "lane_assign": {
      "top": [
-      "cyber",
-      "phoenix"
+      "hiding"
      ],
      "bottom": [
-      "line"
+      "angel",
+      "ghost"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "cyber": 1,
-     "phoenix": 2,
-     "line": 2
+     "hiding": 2,
+     "angel": 1,
+     "ghost": 3
     },
     "equipped": {
-     "cyber": [
+     "hiding": [
       {
-       "id": "p2eq_012",
+       "id": "p2eq_032",
        "star": 1
       }
      ],
-     "phoenix": [
-      {
-       "id": "p2eq_044",
-       "star": 1
-      }
-     ],
-     "line": [
+     "angel": [
       {
        "id": "p2eq_048",
+       "star": 1
+      }
+     ],
+     "ghost": [
+      {
+       "id": "p2eq_044",
        "star": 1
       }
      ]
     },
     "pet_levels": {
-     "cyber": 2,
-     "phoenix": 2,
-     "line": 2
+     "hiding": 2,
+     "angel": 2,
+     "ghost": 2
     },
     "season_total_battles": 1,
     "season_eggs_killed": 1
@@ -350,55 +456,72 @@
     "is_bot": false,
     "bracket": 0,
     "profile": {
-     "name": "泡泡队·0档",
-     "avatar": "bubble",
+     "name": "双头队·0档",
+     "avatar": "two_head",
      "id": "SEED06"
     },
     "leaders": [
-     "bubble",
-     "shell",
-     "lightning"
+     "two_head",
+     "stone",
+     "ghost"
     ],
     "lane_assign": {
      "top": [
-      "bubble",
-      "shell"
+      "two_head",
+      "stone",
+      "ghost"
+     ],
+     "bottom": []
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      }
      ],
      "bottom": [
-      "lightning"
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "bubble": 3,
-     "shell": 3,
-     "lightning": 2
+     "two_head": 3,
+     "stone": 2,
+     "ghost": 1
     },
     "equipped": {
-     "bubble": [
+     "two_head": [
       {
-       "id": "p2eq_032",
+       "id": "p2eq_044",
        "star": 1
       }
      ],
-     "shell": [
+     "stone": [
       {
-       "id": "p2eq_007",
+       "id": "p2eq_044",
        "star": 1
       }
      ],
-     "lightning": [
+     "ghost": [
       {
-       "id": "p2eq_032",
+       "id": "p2eq_008",
        "star": 1
       }
      ]
     },
     "pet_levels": {
-     "bubble": 2,
-     "shell": 2,
-     "lightning": 2
+     "two_head": 2,
+     "stone": 2,
+     "ghost": 2
     },
-    "season_total_battles": 0,
+    "season_total_battles": 1,
     "season_eggs_killed": 1
    },
    {
@@ -407,53 +530,70 @@
     "is_bot": false,
     "bracket": 0,
     "profile": {
-     "name": "钻石队·0档",
-     "avatar": "diamond",
+     "name": "闪电队·0档",
+     "avatar": "lightning",
      "id": "SEED07"
     },
     "leaders": [
-     "diamond",
-     "two_head",
-     "line"
+     "lightning",
+     "crystal",
+     "chest"
     ],
     "lane_assign": {
+     "top": [],
+     "bottom": [
+      "lightning",
+      "crystal",
+      "chest"
+     ]
+    },
+    "minions": {
      "top": [
-      "diamond",
-      "two_head"
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ],
      "bottom": [
-      "line"
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "diamond": 2,
-     "two_head": 1,
-     "line": 3
+     "lightning": 3,
+     "crystal": 3,
+     "chest": 3
     },
     "equipped": {
-     "diamond": [
+     "lightning": [
       {
-       "id": "p2eq_048",
+       "id": "p2eq_032",
        "star": 1
       }
      ],
-     "two_head": [
+     "crystal": [
       {
-       "id": "p2eq_018",
+       "id": "p2eq_022",
        "star": 1
       }
      ],
-     "line": [
+     "chest": [
       {
-       "id": "p2eq_012",
+       "id": "p2eq_028",
        "star": 1
       }
      ]
     },
     "pet_levels": {
-     "diamond": 2,
-     "two_head": 2,
-     "line": 2
+     "lightning": 2,
+     "crystal": 2,
+     "chest": 2
     },
     "season_total_battles": 0,
     "season_eggs_killed": 1
@@ -466,53 +606,71 @@
     "is_bot": false,
     "bracket": 1,
     "profile": {
-     "name": "忍者队·1档",
-     "avatar": "ninja",
+     "name": "赛博队·1档",
+     "avatar": "cyber",
      "id": "SEED10"
     },
     "leaders": [
-     "ninja",
-     "candy",
-     "shell"
+     "cyber",
+     "bubble",
+     "line"
     ],
     "lane_assign": {
      "top": [
-      "ninja",
-      "candy"
+      "cyber",
+      "bubble"
      ],
      "bottom": [
-      "shell"
+      "line"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "ninja": 1,
-     "candy": 3,
-     "shell": 2
+     "cyber": 3,
+     "bubble": 3,
+     "line": 3
     },
     "equipped": {
-     "ninja": [
+     "cyber": [
       {
-       "id": "p2eq_032",
+       "id": "p2eq_018",
        "star": 1
       }
      ],
-     "candy": [
+     "bubble": [
       {
-       "id": "p2eq_035",
+       "id": "p2eq_018",
        "star": 1
       }
      ],
-     "shell": [
+     "line": [
       {
-       "id": "p2eq_019",
+       "id": "p2eq_028",
        "star": 1
       }
      ]
     },
     "pet_levels": {
-     "ninja": 3,
-     "candy": 3,
-     "shell": 3
+     "cyber": 3,
+     "bubble": 3,
+     "line": 3
     },
     "season_total_battles": 3,
     "season_eggs_killed": 1
@@ -523,53 +681,71 @@
     "is_bot": false,
     "bracket": 1,
     "profile": {
-     "name": "天使队·1档",
-     "avatar": "angel",
+     "name": "骰子队·1档",
+     "avatar": "dice",
      "id": "SEED11"
     },
     "leaders": [
-     "angel",
-     "shell",
-     "hiding"
+     "dice",
+     "phoenix",
+     "fortune"
     ],
     "lane_assign": {
      "top": [
-      "angel",
-      "shell"
+      "dice"
      ],
      "bottom": [
-      "hiding"
+      "phoenix",
+      "fortune"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "angel": 1,
-     "shell": 3,
-     "hiding": 1
+     "dice": 1,
+     "phoenix": 1,
+     "fortune": 2
     },
     "equipped": {
-     "angel": [
+     "dice": [
       {
-       "id": "p2eq_048",
+       "id": "p2eq_018",
        "star": 1
       }
      ],
-     "shell": [
+     "phoenix": [
       {
-       "id": "p2eq_008",
+       "id": "p2eq_018",
        "star": 1
       }
      ],
-     "hiding": [
+     "fortune": [
       {
-       "id": "p2eq_042",
+       "id": "p2eq_028",
        "star": 1
       }
      ]
     },
     "pet_levels": {
-     "angel": 3,
-     "shell": 3,
-     "hiding": 3
+     "dice": 3,
+     "phoenix": 3,
+     "fortune": 3
     },
     "season_total_battles": 2,
     "season_eggs_killed": 1
@@ -580,53 +756,70 @@
     "is_bot": false,
     "bracket": 1,
     "profile": {
-     "name": "猎人队·1档",
-     "avatar": "hunter",
+     "name": "糖果队·1档",
+     "avatar": "candy",
      "id": "SEED12"
     },
     "leaders": [
-     "hunter",
-     "stone",
-     "crystal"
+     "candy",
+     "shell",
+     "stone"
     ],
     "lane_assign": {
      "top": [
-      "hunter",
+      "candy",
+      "shell",
       "stone"
      ],
+     "bottom": []
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ],
      "bottom": [
-      "crystal"
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "hunter": 2,
-     "stone": 2,
-     "crystal": 1
+     "candy": 2,
+     "shell": 2,
+     "stone": 1
     },
     "equipped": {
-     "hunter": [
+     "candy": [
       {
-       "id": "p2eq_002",
+       "id": "p2eq_015",
+       "star": 1
+      }
+     ],
+     "shell": [
+      {
+       "id": "p2eq_048",
        "star": 1
       }
      ],
      "stone": [
       {
-       "id": "p2eq_022",
-       "star": 1
-      }
-     ],
-     "crystal": [
-      {
-       "id": "p2eq_007",
+       "id": "p2eq_044",
        "star": 1
       }
      ]
     },
     "pet_levels": {
-     "hunter": 3,
-     "stone": 3,
-     "crystal": 3
+     "candy": 3,
+     "shell": 3,
+     "stone": 3
     },
     "season_total_battles": 3,
     "season_eggs_killed": 1
@@ -637,55 +830,72 @@
     "is_bot": false,
     "bracket": 1,
     "profile": {
-     "name": "寒冰队·1档",
-     "avatar": "ice",
+     "name": "双头队·1档",
+     "avatar": "two_head",
      "id": "SEED13"
     },
     "leaders": [
-     "ice",
-     "shell",
-     "line"
+     "two_head",
+     "lava",
+     "chest"
     ],
     "lane_assign": {
+     "top": [],
+     "bottom": [
+      "two_head",
+      "lava",
+      "chest"
+     ]
+    },
+    "minions": {
      "top": [
-      "ice",
-      "shell"
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ],
      "bottom": [
-      "line"
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "ice": 1,
-     "shell": 2,
-     "line": 3
+     "two_head": 3,
+     "lava": 2,
+     "chest": 2
     },
     "equipped": {
-     "ice": [
+     "two_head": [
       {
-       "id": "p2eq_044",
+       "id": "p2eq_001",
        "star": 1
       }
      ],
-     "shell": [
+     "lava": [
       {
-       "id": "p2eq_019",
+       "id": "p2eq_042",
        "star": 1
       }
      ],
-     "line": [
+     "chest": [
       {
-       "id": "p2eq_041",
+       "id": "p2eq_001",
        "star": 1
       }
      ]
     },
     "pet_levels": {
-     "ice": 3,
-     "shell": 3,
-     "line": 3
+     "two_head": 3,
+     "lava": 3,
+     "chest": 3
     },
-    "season_total_battles": 2,
+    "season_total_battles": 3,
     "season_eggs_killed": 1
    },
    {
@@ -694,55 +904,73 @@
     "is_bot": false,
     "bracket": 1,
     "profile": {
-     "name": "凤凰队·1档",
-     "avatar": "phoenix",
+     "name": "壳队·1档",
+     "avatar": "shell",
      "id": "SEED14"
     },
     "leaders": [
-     "phoenix",
-     "ghost",
-     "candy"
+     "shell",
+     "hunter",
+     "cyber"
     ],
     "lane_assign": {
      "top": [
-      "phoenix",
-      "ghost"
+      "shell",
+      "hunter"
      ],
      "bottom": [
-      "candy"
+      "cyber"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "phoenix": 2,
-     "ghost": 2,
-     "candy": 1
+     "shell": 3,
+     "hunter": 3,
+     "cyber": 2
     },
     "equipped": {
-     "phoenix": [
+     "shell": [
       {
-       "id": "p2eq_008",
+       "id": "p2eq_054",
        "star": 1
       }
      ],
-     "ghost": [
+     "hunter": [
       {
-       "id": "p2eq_028",
+       "id": "p2eq_054",
        "star": 1
       }
      ],
-     "candy": [
+     "cyber": [
       {
-       "id": "p2eq_022",
+       "id": "p2eq_018",
        "star": 1
       }
      ]
     },
     "pet_levels": {
-     "phoenix": 3,
-     "ghost": 3,
-     "candy": 3
+     "shell": 3,
+     "hunter": 3,
+     "cyber": 3
     },
-    "season_total_battles": 3,
+    "season_total_battles": 2,
     "season_eggs_killed": 1
    },
    {
@@ -751,55 +979,73 @@
     "is_bot": false,
     "bracket": 1,
     "profile": {
-     "name": "凤凰队·1档",
-     "avatar": "phoenix",
+     "name": "猎人队·1档",
+     "avatar": "hunter",
      "id": "SEED15"
     },
     "leaders": [
-     "phoenix",
-     "line",
-     "chest"
+     "hunter",
+     "space",
+     "hiding"
     ],
     "lane_assign": {
      "top": [
-      "phoenix",
-      "line"
+      "hunter"
      ],
      "bottom": [
-      "chest"
+      "space",
+      "hiding"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "phoenix": 2,
-     "line": 2,
-     "chest": 2
+     "hunter": 2,
+     "space": 2,
+     "hiding": 1
     },
     "equipped": {
-     "phoenix": [
+     "hunter": [
       {
-       "id": "p2eq_044",
+       "id": "p2eq_054",
        "star": 1
       }
      ],
-     "line": [
+     "space": [
       {
-       "id": "p2eq_008",
+       "id": "p2eq_041",
        "star": 1
       }
      ],
-     "chest": [
+     "hiding": [
       {
-       "id": "p2eq_032",
+       "id": "p2eq_019",
        "star": 1
       }
      ]
     },
     "pet_levels": {
-     "phoenix": 3,
-     "line": 3,
-     "chest": 3
+     "hunter": 3,
+     "space": 3,
+     "hiding": 3
     },
-    "season_total_battles": 3,
+    "season_total_battles": 2,
     "season_eggs_killed": 1
    },
    {
@@ -808,55 +1054,72 @@
     "is_bot": false,
     "bracket": 1,
     "profile": {
-     "name": "竹叶队·1档",
-     "avatar": "bamboo",
+     "name": "双头队·1档",
+     "avatar": "two_head",
      "id": "SEED16"
     },
     "leaders": [
-     "bamboo",
-     "dice",
-     "candy"
+     "two_head",
+     "bubble",
+     "ghost"
     ],
     "lane_assign": {
      "top": [
-      "bamboo",
-      "dice"
+      "two_head",
+      "bubble",
+      "ghost"
+     ],
+     "bottom": []
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      }
      ],
      "bottom": [
-      "candy"
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "bamboo": 2,
-     "dice": 3,
-     "candy": 2
+     "two_head": 1,
+     "bubble": 2,
+     "ghost": 2
     },
     "equipped": {
-     "bamboo": [
+     "two_head": [
       {
-       "id": "p2eq_018",
+       "id": "p2eq_035",
        "star": 1
       }
      ],
-     "dice": [
+     "bubble": [
       {
        "id": "p2eq_001",
        "star": 1
       }
      ],
-     "candy": [
+     "ghost": [
       {
-       "id": "p2eq_022",
+       "id": "p2eq_012",
        "star": 1
       }
      ]
     },
     "pet_levels": {
-     "bamboo": 3,
-     "dice": 3,
-     "candy": 3
+     "two_head": 3,
+     "bubble": 3,
+     "ghost": 3
     },
-    "season_total_battles": 3,
+    "season_total_battles": 2,
     "season_eggs_killed": 1
    },
    {
@@ -865,55 +1128,72 @@
     "is_bot": false,
     "bracket": 1,
     "profile": {
-     "name": "寒冰队·1档",
-     "avatar": "ice",
+     "name": "缩头乌队·1档",
+     "avatar": "hiding",
      "id": "SEED17"
     },
     "leaders": [
-     "ice",
-     "lightning",
-     "chest"
+     "hiding",
+     "lava",
+     "shell"
     ],
     "lane_assign": {
+     "top": [],
+     "bottom": [
+      "hiding",
+      "lava",
+      "shell"
+     ]
+    },
+    "minions": {
      "top": [
-      "ice",
-      "lightning"
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ],
      "bottom": [
-      "chest"
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "ice": 3,
-     "lightning": 2,
-     "chest": 3
+     "hiding": 1,
+     "lava": 1,
+     "shell": 3
     },
     "equipped": {
-     "ice": [
+     "hiding": [
+      {
+       "id": "p2eq_015",
+       "star": 1
+      }
+     ],
+     "lava": [
       {
        "id": "p2eq_007",
        "star": 1
       }
      ],
-     "lightning": [
+     "shell": [
       {
-       "id": "p2eq_048",
-       "star": 1
-      }
-     ],
-     "chest": [
-      {
-       "id": "p2eq_002",
+       "id": "p2eq_028",
        "star": 1
       }
      ]
     },
     "pet_levels": {
-     "ice": 3,
-     "lightning": 3,
-     "chest": 3
+     "hiding": 3,
+     "lava": 3,
+     "shell": 3
     },
-    "season_total_battles": 2,
+    "season_total_battles": 3,
     "season_eggs_killed": 1
    }
   ],
@@ -924,65 +1204,83 @@
     "is_bot": false,
     "bracket": 2,
     "profile": {
-     "name": "财神队·2档",
-     "avatar": "fortune",
+     "name": "赛博队·2档",
+     "avatar": "cyber",
      "id": "SEED20"
     },
     "leaders": [
-     "fortune",
-     "space",
-     "lightning"
+     "cyber",
+     "gambler",
+     "bamboo"
     ],
     "lane_assign": {
      "top": [
-      "fortune",
-      "space"
+      "cyber",
+      "gambler"
      ],
      "bottom": [
-      "lightning"
+      "bamboo"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "fortune": 2,
-     "space": 3,
-     "lightning": 2
+     "cyber": 1,
+     "gambler": 2,
+     "bamboo": 1
     },
     "equipped": {
-     "fortune": [
+     "cyber": [
       {
-       "id": "p2eq_054",
+       "id": "p2eq_035",
        "star": 1
       },
       {
-       "id": "p2eq_042",
+       "id": "p2eq_051",
        "star": 1
       }
      ],
-     "space": [
+     "gambler": [
       {
-       "id": "p2eq_032",
+       "id": "p2eq_008",
        "star": 1
       },
       {
-       "id": "p2eq_002",
+       "id": "p2eq_020",
        "star": 1
       }
      ],
-     "lightning": [
+     "bamboo": [
       {
-       "id": "p2eq_007",
+       "id": "p2eq_045",
        "star": 1
       },
       {
-       "id": "p2eq_009",
+       "id": "p2eq_019",
        "star": 1
       }
      ]
     },
     "pet_levels": {
-     "fortune": 4,
-     "space": 4,
-     "lightning": 4
+     "cyber": 4,
+     "gambler": 4,
+     "bamboo": 4
     },
     "season_total_battles": 4,
     "season_eggs_killed": 1
@@ -993,65 +1291,83 @@
     "is_bot": false,
     "bracket": 2,
     "profile": {
-     "name": "骰子队·2档",
-     "avatar": "dice",
+     "name": "泡泡队·2档",
+     "avatar": "bubble",
      "id": "SEED21"
     },
     "leaders": [
-     "dice",
-     "fortune",
-     "gambler"
+     "bubble",
+     "angel",
+     "candy"
     ],
     "lane_assign": {
      "top": [
-      "dice",
-      "fortune"
+      "bubble"
      ],
      "bottom": [
-      "gambler"
+      "angel",
+      "candy"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "dice": 1,
-     "fortune": 3,
-     "gambler": 2
+     "bubble": 3,
+     "angel": 1,
+     "candy": 3
     },
     "equipped": {
-     "dice": [
+     "bubble": [
       {
-       "id": "p2eq_048",
+       "id": "p2eq_042",
        "star": 1
       },
       {
-       "id": "p2eq_055",
+       "id": "p2eq_036",
        "star": 1
       }
      ],
-     "fortune": [
+     "angel": [
       {
-       "id": "p2eq_011",
+       "id": "p2eq_002",
        "star": 1
       },
       {
-       "id": "p2eq_054",
+       "id": "p2eq_007",
        "star": 1
       }
      ],
-     "gambler": [
+     "candy": [
       {
-       "id": "p2eq_003",
+       "id": "p2eq_009",
        "star": 1
       },
       {
-       "id": "p2eq_023",
+       "id": "p2eq_053",
        "star": 1
       }
      ]
     },
     "pet_levels": {
-     "dice": 4,
-     "fortune": 4,
-     "gambler": 4
+     "bubble": 4,
+     "angel": 4,
+     "candy": 4
     },
     "season_total_battles": 5,
     "season_eggs_killed": 2
@@ -1062,102 +1378,50 @@
     "is_bot": false,
     "bracket": 2,
     "profile": {
-     "name": "凤凰队·2档",
-     "avatar": "phoenix",
+     "name": "猎人队·2档",
+     "avatar": "hunter",
      "id": "SEED22"
     },
     "leaders": [
+     "hunter",
      "phoenix",
-     "gambler",
-     "headless"
+     "hiding"
     ],
     "lane_assign": {
      "top": [
+      "hunter",
       "phoenix",
-      "gambler"
+      "hiding"
      ],
-     "bottom": [
-      "headless"
-     ]
+     "bottom": []
     },
-    "loadouts": {
-     "phoenix": 3,
-     "gambler": 1,
-     "headless": 1
-    },
-    "equipped": {
-     "phoenix": [
-      {
-       "id": "p2eq_015",
-       "star": 1
-      },
-      {
-       "id": "p2eq_011",
-       "star": 1
-      }
-     ],
-     "gambler": [
-      {
-       "id": "p2eq_016",
-       "star": 1
-      },
-      {
-       "id": "p2eq_021",
-       "star": 1
-      }
-     ],
-     "headless": [
-      {
-       "id": "p2eq_048",
-       "star": 1
-      },
-      {
-       "id": "p2eq_049",
-       "star": 1
-      }
-     ]
-    },
-    "pet_levels": {
-     "phoenix": 4,
-     "gambler": 4,
-     "headless": 4
-    },
-    "season_total_battles": 5,
-    "season_eggs_killed": 2
-   },
-   {
-    "schema_ver": 1,
-    "ghost_id": "seed_2_3",
-    "is_bot": false,
-    "bracket": 2,
-    "profile": {
-     "name": "线条队·2档",
-     "avatar": "line",
-     "id": "SEED23"
-    },
-    "leaders": [
-     "line",
-     "candy",
-     "diamond"
-    ],
-    "lane_assign": {
+    "minions": {
      "top": [
-      "line",
-      "candy"
+      {
+       "role": "front",
+       "elite": false
+      }
      ],
      "bottom": [
-      "diamond"
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "line": 2,
-     "candy": 3,
-     "diamond": 2
+     "hunter": 1,
+     "phoenix": 2,
+     "hiding": 3
     },
     "equipped": {
-     "line": [
+     "hunter": [
       {
-       "id": "p2eq_007",
+       "id": "p2eq_019",
        "star": 1
       },
       {
@@ -1165,31 +1429,117 @@
        "star": 1
       }
      ],
-     "candy": [
+     "phoenix": [
       {
-       "id": "p2eq_009",
+       "id": "p2eq_044",
        "star": 1
       },
       {
-       "id": "p2eq_048",
+       "id": "p2eq_008",
        "star": 1
       }
      ],
-     "diamond": [
+     "hiding": [
       {
-       "id": "p2eq_005",
+       "id": "p2eq_012",
        "star": 1
       },
       {
-       "id": "p2eq_058",
+       "id": "p2eq_051",
        "star": 1
       }
      ]
     },
     "pet_levels": {
-     "line": 4,
-     "candy": 4,
-     "diamond": 4
+     "hunter": 4,
+     "phoenix": 4,
+     "hiding": 4
+    },
+    "season_total_battles": 4,
+    "season_eggs_killed": 1
+   },
+   {
+    "schema_ver": 1,
+    "ghost_id": "seed_2_3",
+    "is_bot": false,
+    "bracket": 2,
+    "profile": {
+     "name": "双头队·2档",
+     "avatar": "two_head",
+     "id": "SEED23"
+    },
+    "leaders": [
+     "two_head",
+     "ninja",
+     "space"
+    ],
+    "lane_assign": {
+     "top": [],
+     "bottom": [
+      "two_head",
+      "ninja",
+      "space"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ]
+    },
+    "loadouts": {
+     "two_head": 1,
+     "ninja": 1,
+     "space": 3
+    },
+    "equipped": {
+     "two_head": [
+      {
+       "id": "p2eq_008",
+       "star": 1
+      },
+      {
+       "id": "p2eq_020",
+       "star": 1
+      }
+     ],
+     "ninja": [
+      {
+       "id": "p2eq_041",
+       "star": 1
+      },
+      {
+       "id": "p2eq_044",
+       "star": 1
+      }
+     ],
+     "space": [
+      {
+       "id": "p2eq_005",
+       "star": 1
+      },
+      {
+       "id": "p2eq_015",
+       "star": 1
+      }
+     ]
+    },
+    "pet_levels": {
+     "two_head": 4,
+     "ninja": 4,
+     "space": 4
     },
     "season_total_battles": 4,
     "season_eggs_killed": 1
@@ -1200,68 +1550,86 @@
     "is_bot": false,
     "bracket": 2,
     "profile": {
-     "name": "天使队·2档",
-     "avatar": "angel",
+     "name": "壳队·2档",
+     "avatar": "shell",
      "id": "SEED24"
     },
     "leaders": [
-     "angel",
-     "stone",
-     "candy"
+     "shell",
+     "dice",
+     "line"
     ],
     "lane_assign": {
      "top": [
-      "angel",
-      "stone"
+      "shell",
+      "dice"
      ],
      "bottom": [
-      "candy"
+      "line"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "angel": 1,
-     "stone": 3,
-     "candy": 2
+     "shell": 3,
+     "dice": 1,
+     "line": 1
     },
     "equipped": {
-     "angel": [
+     "shell": [
       {
-       "id": "p2eq_018",
+       "id": "p2eq_035",
        "star": 1
       },
       {
-       "id": "p2eq_019",
+       "id": "p2eq_001",
        "star": 1
       }
      ],
-     "stone": [
+     "dice": [
       {
-       "id": "p2eq_016",
+       "id": "p2eq_012",
        "star": 1
       },
       {
-       "id": "p2eq_002",
+       "id": "p2eq_029",
        "star": 1
       }
      ],
-     "candy": [
+     "line": [
       {
-       "id": "p2eq_023",
+       "id": "p2eq_029",
        "star": 1
       },
       {
-       "id": "p2eq_045",
+       "id": "p2eq_022",
        "star": 1
       }
      ]
     },
     "pet_levels": {
-     "angel": 4,
-     "stone": 4,
-     "candy": 4
+     "shell": 4,
+     "dice": 4,
+     "line": 4
     },
-    "season_total_battles": 5,
-    "season_eggs_killed": 2
+    "season_total_battles": 4,
+    "season_eggs_killed": 1
    },
    {
     "schema_ver": 1,
@@ -1269,33 +1637,147 @@
     "is_bot": false,
     "bracket": 2,
     "profile": {
-     "name": "缩头乌队·2档",
-     "avatar": "hiding",
+     "name": "小队·2档",
+     "avatar": "basic",
      "id": "SEED25"
     },
     "leaders": [
-     "hiding",
-     "diamond",
-     "shell"
+     "basic",
+     "space",
+     "line"
     ],
     "lane_assign": {
      "top": [
-      "hiding",
-      "diamond"
+      "basic"
      ],
      "bottom": [
-      "shell"
+      "space",
+      "line"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "hiding": 3,
-     "diamond": 1,
-     "shell": 3
+     "basic": 3,
+     "space": 2,
+     "line": 2
     },
     "equipped": {
-     "hiding": [
+     "basic": [
       {
-       "id": "p2eq_049",
+       "id": "p2eq_019",
+       "star": 1
+      },
+      {
+       "id": "p2eq_025",
+       "star": 1
+      }
+     ],
+     "space": [
+      {
+       "id": "p2eq_037",
+       "star": 1
+      },
+      {
+       "id": "p2eq_032",
+       "star": 1
+      }
+     ],
+     "line": [
+      {
+       "id": "p2eq_027",
+       "star": 1
+      },
+      {
+       "id": "p2eq_037",
+       "star": 1
+      }
+     ]
+    },
+    "pet_levels": {
+     "basic": 4,
+     "space": 4,
+     "line": 4
+    },
+    "season_total_battles": 4,
+    "season_eggs_killed": 1
+   },
+   {
+    "schema_ver": 1,
+    "ghost_id": "seed_2_6",
+    "is_bot": false,
+    "bracket": 2,
+    "profile": {
+     "name": "线条队·2档",
+     "avatar": "line",
+     "id": "SEED26"
+    },
+    "leaders": [
+     "line",
+     "pirate",
+     "ice"
+    ],
+    "lane_assign": {
+     "top": [
+      "line",
+      "pirate",
+      "ice"
+     ],
+     "bottom": []
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
+     ]
+    },
+    "loadouts": {
+     "line": 2,
+     "pirate": 1,
+     "ice": 1
+    },
+    "equipped": {
+     "line": [
+      {
+       "id": "p2eq_002",
+       "star": 1
+      },
+      {
+       "id": "p2eq_039",
+       "star": 1
+      }
+     ],
+     "pirate": [
+      {
+       "id": "p2eq_044",
        "star": 1
       },
       {
@@ -1303,19 +1785,9 @@
        "star": 1
       }
      ],
-     "diamond": [
+     "ice": [
       {
-       "id": "p2eq_045",
-       "star": 1
-      },
-      {
-       "id": "p2eq_049",
-       "star": 1
-      }
-     ],
-     "shell": [
-      {
-       "id": "p2eq_011",
+       "id": "p2eq_044",
        "star": 1
       },
       {
@@ -1325,81 +1797,12 @@
      ]
     },
     "pet_levels": {
-     "hiding": 4,
-     "diamond": 4,
-     "shell": 4
+     "line": 4,
+     "pirate": 4,
+     "ice": 4
     },
     "season_total_battles": 5,
     "season_eggs_killed": 2
-   },
-   {
-    "schema_ver": 1,
-    "ghost_id": "seed_2_6",
-    "is_bot": false,
-    "bracket": 2,
-    "profile": {
-     "name": "水晶队·2档",
-     "avatar": "crystal",
-     "id": "SEED26"
-    },
-    "leaders": [
-     "crystal",
-     "bubble",
-     "basic"
-    ],
-    "lane_assign": {
-     "top": [
-      "crystal",
-      "bubble"
-     ],
-     "bottom": [
-      "basic"
-     ]
-    },
-    "loadouts": {
-     "crystal": 3,
-     "bubble": 1,
-     "basic": 1
-    },
-    "equipped": {
-     "crystal": [
-      {
-       "id": "p2eq_020",
-       "star": 1
-      },
-      {
-       "id": "p2eq_027",
-       "star": 1
-      }
-     ],
-     "bubble": [
-      {
-       "id": "p2eq_037",
-       "star": 1
-      },
-      {
-       "id": "p2eq_018",
-       "star": 1
-      }
-     ],
-     "basic": [
-      {
-       "id": "p2eq_036",
-       "star": 1
-      },
-      {
-       "id": "p2eq_039",
-       "star": 1
-      }
-     ]
-    },
-    "pet_levels": {
-     "crystal": 4,
-     "bubble": 4,
-     "basic": 4
-    },
-    "season_total_battles": 4,
-    "season_eggs_killed": 1
    },
    {
     "schema_ver": 1,
@@ -1407,33 +1810,60 @@
     "is_bot": false,
     "bracket": 2,
     "profile": {
-     "name": "星际队·2档",
-     "avatar": "space",
+     "name": "骰子队·2档",
+     "avatar": "dice",
      "id": "SEED27"
     },
     "leaders": [
-     "space",
-     "ghost",
-     "rainbow"
+     "dice",
+     "ninja",
+     "hiding"
     ],
     "lane_assign": {
+     "top": [],
+     "bottom": [
+      "dice",
+      "ninja",
+      "hiding"
+     ]
+    },
+    "minions": {
      "top": [
-      "space",
-      "ghost"
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ],
      "bottom": [
-      "rainbow"
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "space": 3,
-     "ghost": 3,
-     "rainbow": 3
+     "dice": 3,
+     "ninja": 1,
+     "hiding": 3
     },
     "equipped": {
-     "space": [
+     "dice": [
       {
-       "id": "p2eq_016",
+       "id": "p2eq_020",
+       "star": 1
+      },
+      {
+       "id": "p2eq_042",
+       "star": 1
+      }
+     ],
+     "ninja": [
+      {
+       "id": "p2eq_037",
        "star": 1
       },
       {
@@ -1441,34 +1871,24 @@
        "star": 1
       }
      ],
-     "ghost": [
+     "hiding": [
       {
-       "id": "p2eq_022",
+       "id": "p2eq_016",
        "star": 1
       },
       {
-       "id": "p2eq_011",
-       "star": 1
-      }
-     ],
-     "rainbow": [
-      {
-       "id": "p2eq_032",
-       "star": 1
-      },
-      {
-       "id": "p2eq_036",
+       "id": "p2eq_007",
        "star": 1
       }
      ]
     },
     "pet_levels": {
-     "space": 4,
-     "ghost": 4,
-     "rainbow": 4
+     "dice": 4,
+     "ninja": 4,
+     "hiding": 4
     },
-    "season_total_battles": 4,
-    "season_eggs_killed": 1
+    "season_total_battles": 5,
+    "season_eggs_killed": 2
    }
   ],
   "3": [
@@ -1478,65 +1898,83 @@
     "is_bot": false,
     "bracket": 3,
     "profile": {
-     "name": "竹叶队·3档",
-     "avatar": "bamboo",
+     "name": "赌神队·3档",
+     "avatar": "gambler",
      "id": "SEED30"
     },
     "leaders": [
-     "bamboo",
-     "rainbow",
-     "ghost"
+     "gambler",
+     "pirate",
+     "candy"
     ],
     "lane_assign": {
      "top": [
-      "bamboo",
-      "rainbow"
+      "gambler",
+      "pirate"
      ],
      "bottom": [
-      "ghost"
+      "candy"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "bamboo": 2,
-     "rainbow": 1,
-     "ghost": 2
+     "gambler": 1,
+     "pirate": 3,
+     "candy": 2
     },
     "equipped": {
-     "bamboo": [
+     "gambler": [
       {
        "id": "p2eq_011",
        "star": 2
       },
       {
-       "id": "p2eq_009",
+       "id": "p2eq_045",
        "star": 2
       }
      ],
-     "rainbow": [
+     "pirate": [
       {
-       "id": "p2eq_009",
+       "id": "p2eq_045",
        "star": 2
       },
       {
-       "id": "p2eq_011",
+       "id": "p2eq_029",
        "star": 2
       }
      ],
-     "ghost": [
+     "candy": [
       {
-       "id": "p2eq_055",
+       "id": "p2eq_005",
        "star": 2
       },
       {
-       "id": "p2eq_021",
+       "id": "p2eq_013",
        "star": 2
       }
      ]
     },
     "pet_levels": {
-     "bamboo": 5,
-     "rainbow": 5,
-     "ghost": 5
+     "gambler": 5,
+     "pirate": 5,
+     "candy": 5
     },
     "season_total_battles": 7,
     "season_eggs_killed": 2
@@ -1547,68 +1985,86 @@
     "is_bot": false,
     "bracket": 3,
     "profile": {
-     "name": "闪电队·3档",
-     "avatar": "lightning",
+     "name": "海盗队·3档",
+     "avatar": "pirate",
      "id": "SEED31"
     },
     "leaders": [
-     "lightning",
-     "diamond",
-     "basic"
+     "pirate",
+     "hunter",
+     "phoenix"
     ],
     "lane_assign": {
      "top": [
-      "lightning",
-      "diamond"
+      "pirate"
      ],
      "bottom": [
-      "basic"
+      "hunter",
+      "phoenix"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "lightning": 3,
-     "diamond": 2,
-     "basic": 2
+     "pirate": 2,
+     "hunter": 1,
+     "phoenix": 2
     },
     "equipped": {
-     "lightning": [
+     "pirate": [
       {
-       "id": "p2eq_011",
+       "id": "p2eq_016",
        "star": 2
       },
-      {
-       "id": "p2eq_009",
-       "star": 2
-      }
-     ],
-     "diamond": [
       {
        "id": "p2eq_058",
        "star": 2
-      },
-      {
-       "id": "p2eq_053",
-       "star": 2
       }
      ],
-     "basic": [
+     "hunter": [
       {
-       "id": "p2eq_003",
+       "id": "p2eq_025",
        "star": 2
       },
       {
        "id": "p2eq_016",
        "star": 2
       }
+     ],
+     "phoenix": [
+      {
+       "id": "p2eq_003",
+       "star": 2
+      },
+      {
+       "id": "p2eq_025",
+       "star": 2
+      }
      ]
     },
     "pet_levels": {
-     "lightning": 5,
-     "diamond": 5,
-     "basic": 5
+     "pirate": 5,
+     "hunter": 5,
+     "phoenix": 5
     },
-    "season_total_battles": 8,
-    "season_eggs_killed": 3
+    "season_total_battles": 6,
+    "season_eggs_killed": 2
    },
    {
     "schema_ver": 1,
@@ -1616,65 +2072,82 @@
     "is_bot": false,
     "bracket": 3,
     "profile": {
-     "name": "幽灵队·3档",
-     "avatar": "ghost",
+     "name": "闪电队·3档",
+     "avatar": "lightning",
      "id": "SEED32"
     },
     "leaders": [
-     "ghost",
-     "hunter",
-     "lightning"
+     "lightning",
+     "stone",
+     "shell"
     ],
     "lane_assign": {
      "top": [
-      "ghost",
-      "hunter"
+      "lightning",
+      "stone",
+      "shell"
+     ],
+     "bottom": []
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      }
      ],
      "bottom": [
-      "lightning"
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "ghost": 1,
-     "hunter": 3,
-     "lightning": 3
+     "lightning": 1,
+     "stone": 1,
+     "shell": 1
     },
     "equipped": {
-     "ghost": [
-      {
-       "id": "p2eq_009",
-       "star": 2
-      },
-      {
-       "id": "p2eq_023",
-       "star": 2
-      }
-     ],
-     "hunter": [
-      {
-       "id": "p2eq_016",
-       "star": 2
-      },
+     "lightning": [
       {
        "id": "p2eq_003",
        "star": 2
+      },
+      {
+       "id": "p2eq_005",
+       "star": 2
       }
      ],
-     "lightning": [
+     "stone": [
       {
-       "id": "p2eq_023",
+       "id": "p2eq_027",
        "star": 2
       },
       {
        "id": "p2eq_055",
        "star": 2
       }
+     ],
+     "shell": [
+      {
+       "id": "p2eq_009",
+       "star": 2
+      },
+      {
+       "id": "p2eq_039",
+       "star": 2
+      }
      ]
     },
     "pet_levels": {
-     "ghost": 5,
-     "hunter": 5,
-     "lightning": 5
+     "lightning": 5,
+     "stone": 5,
+     "shell": 5
     },
     "season_total_battles": 7,
     "season_eggs_killed": 2
@@ -1685,43 +2158,50 @@
     "is_bot": false,
     "bracket": 3,
     "profile": {
-     "name": "水晶队·3档",
-     "avatar": "crystal",
+     "name": "星际队·3档",
+     "avatar": "space",
      "id": "SEED33"
     },
     "leaders": [
-     "crystal",
-     "two_head",
-     "bubble"
+     "space",
+     "hiding",
+     "lava"
     ],
     "lane_assign": {
+     "top": [],
+     "bottom": [
+      "space",
+      "hiding",
+      "lava"
+     ]
+    },
+    "minions": {
      "top": [
-      "crystal",
-      "two_head"
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ],
      "bottom": [
-      "bubble"
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "crystal": 2,
-     "two_head": 3,
-     "bubble": 1
+     "space": 2,
+     "hiding": 1,
+     "lava": 1
     },
     "equipped": {
-     "crystal": [
+     "space": [
       {
-       "id": "p2eq_011",
-       "star": 2
-      },
-      {
-       "id": "p2eq_013",
-       "star": 2
-      }
-     ],
-     "two_head": [
-      {
-       "id": "p2eq_037",
+       "id": "p2eq_020",
        "star": 2
       },
       {
@@ -1729,24 +2209,34 @@
        "star": 2
       }
      ],
-     "bubble": [
+     "hiding": [
       {
-       "id": "p2eq_055",
+       "id": "p2eq_016",
        "star": 2
       },
       {
-       "id": "p2eq_003",
+       "id": "p2eq_029",
+       "star": 2
+      }
+     ],
+     "lava": [
+      {
+       "id": "p2eq_027",
+       "star": 2
+      },
+      {
+       "id": "p2eq_016",
        "star": 2
       }
      ]
     },
     "pet_levels": {
-     "crystal": 5,
-     "two_head": 5,
-     "bubble": 5
+     "space": 5,
+     "hiding": 5,
+     "lava": 5
     },
-    "season_total_battles": 8,
-    "season_eggs_killed": 3
+    "season_total_battles": 6,
+    "season_eggs_killed": 2
    },
    {
     "schema_ver": 1,
@@ -1754,68 +2244,86 @@
     "is_bot": false,
     "bracket": 3,
     "profile": {
-     "name": "小队·3档",
-     "avatar": "basic",
+     "name": "猎人队·3档",
+     "avatar": "hunter",
      "id": "SEED34"
     },
     "leaders": [
-     "basic",
-     "gambler",
-     "lightning"
+     "hunter",
+     "line",
+     "headless"
     ],
     "lane_assign": {
      "top": [
-      "basic",
-      "gambler"
+      "hunter",
+      "line"
      ],
      "bottom": [
-      "lightning"
+      "headless"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "basic": 3,
-     "gambler": 3,
-     "lightning": 3
+     "hunter": 3,
+     "line": 1,
+     "headless": 3
     },
     "equipped": {
-     "basic": [
+     "hunter": [
       {
-       "id": "p2eq_051",
+       "id": "p2eq_013",
        "star": 2
       },
       {
-       "id": "p2eq_037",
+       "id": "p2eq_016",
        "star": 2
       }
      ],
-     "gambler": [
+     "line": [
       {
-       "id": "p2eq_037",
+       "id": "p2eq_039",
        "star": 2
       },
       {
-       "id": "p2eq_005",
+       "id": "p2eq_021",
        "star": 2
       }
      ],
-     "lightning": [
+     "headless": [
       {
-       "id": "p2eq_045",
+       "id": "p2eq_053",
        "star": 2
       },
       {
-       "id": "p2eq_036",
+       "id": "p2eq_049",
        "star": 2
       }
      ]
     },
     "pet_levels": {
-     "basic": 5,
-     "gambler": 5,
-     "lightning": 5
+     "hunter": 5,
+     "line": 5,
+     "headless": 5
     },
-    "season_total_battles": 8,
-    "season_eggs_killed": 3
+    "season_total_battles": 7,
+    "season_eggs_killed": 2
    },
    {
     "schema_ver": 1,
@@ -1823,53 +2331,157 @@
     "is_bot": false,
     "bracket": 3,
     "profile": {
-     "name": "线条队·3档",
-     "avatar": "line",
+     "name": "缩头乌队·3档",
+     "avatar": "hiding",
      "id": "SEED35"
     },
     "leaders": [
-     "line",
-     "ghost",
-     "pirate"
+     "hiding",
+     "stone",
+     "phoenix"
     ],
     "lane_assign": {
      "top": [
-      "line",
-      "ghost"
+      "hiding"
      ],
      "bottom": [
-      "pirate"
+      "stone",
+      "phoenix"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "line": 2,
-     "ghost": 2,
-     "pirate": 3
+     "hiding": 3,
+     "stone": 2,
+     "phoenix": 1
     },
     "equipped": {
-     "line": [
+     "hiding": [
+      {
+       "id": "p2eq_011",
+       "star": 2
+      },
+      {
+       "id": "p2eq_005",
+       "star": 2
+      }
+     ],
+     "stone": [
+      {
+       "id": "p2eq_009",
+       "star": 2
+      },
       {
        "id": "p2eq_013",
        "star": 2
-      },
-      {
-       "id": "p2eq_055",
-       "star": 2
       }
      ],
-     "ghost": [
+     "phoenix": [
       {
-       "id": "p2eq_045",
+       "id": "p2eq_058",
        "star": 2
       },
       {
-       "id": "p2eq_036",
+       "id": "p2eq_029",
+       "star": 2
+      }
+     ]
+    },
+    "pet_levels": {
+     "hiding": 5,
+     "stone": 5,
+     "phoenix": 5
+    },
+    "season_total_battles": 8,
+    "season_eggs_killed": 3
+   },
+   {
+    "schema_ver": 1,
+    "ghost_id": "seed_3_6",
+    "is_bot": false,
+    "bracket": 3,
+    "profile": {
+     "name": "缩头乌队·3档",
+     "avatar": "hiding",
+     "id": "SEED36"
+    },
+    "leaders": [
+     "hiding",
+     "shell",
+     "ninja"
+    ],
+    "lane_assign": {
+     "top": [
+      "hiding",
+      "shell",
+      "ninja"
+     ],
+     "bottom": []
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
+     ]
+    },
+    "loadouts": {
+     "hiding": 1,
+     "shell": 2,
+     "ninja": 3
+    },
+    "equipped": {
+     "hiding": [
+      {
+       "id": "p2eq_049",
+       "star": 2
+      },
+      {
+       "id": "p2eq_023",
        "star": 2
       }
      ],
-     "pirate": [
+     "shell": [
       {
-       "id": "p2eq_021",
+       "id": "p2eq_053",
+       "star": 2
+      },
+      {
+       "id": "p2eq_003",
+       "star": 2
+      }
+     ],
+     "ninja": [
+      {
+       "id": "p2eq_053",
        "star": 2
       },
       {
@@ -1879,80 +2491,11 @@
      ]
     },
     "pet_levels": {
-     "line": 5,
-     "ghost": 5,
-     "pirate": 5
+     "hiding": 5,
+     "shell": 5,
+     "ninja": 5
     },
-    "season_total_battles": 6,
-    "season_eggs_killed": 2
-   },
-   {
-    "schema_ver": 1,
-    "ghost_id": "seed_3_6",
-    "is_bot": false,
-    "bracket": 3,
-    "profile": {
-     "name": "熔岩队·3档",
-     "avatar": "lava",
-     "id": "SEED36"
-    },
-    "leaders": [
-     "lava",
-     "phoenix",
-     "two_head"
-    ],
-    "lane_assign": {
-     "top": [
-      "lava",
-      "phoenix"
-     ],
-     "bottom": [
-      "two_head"
-     ]
-    },
-    "loadouts": {
-     "lava": 2,
-     "phoenix": 3,
-     "two_head": 1
-    },
-    "equipped": {
-     "lava": [
-      {
-       "id": "p2eq_039",
-       "star": 2
-      },
-      {
-       "id": "p2eq_025",
-       "star": 2
-      }
-     ],
-     "phoenix": [
-      {
-       "id": "p2eq_025",
-       "star": 2
-      },
-      {
-       "id": "p2eq_013",
-       "star": 2
-      }
-     ],
-     "two_head": [
-      {
-       "id": "p2eq_037",
-       "star": 2
-      },
-      {
-       "id": "p2eq_055",
-       "star": 2
-      }
-     ]
-    },
-    "pet_levels": {
-     "lava": 5,
-     "phoenix": 5,
-     "two_head": 5
-    },
-    "season_total_battles": 6,
+    "season_total_battles": 7,
     "season_eggs_killed": 2
    },
    {
@@ -1961,67 +2504,84 @@
     "is_bot": false,
     "bracket": 3,
     "profile": {
-     "name": "幽灵队·3档",
-     "avatar": "ghost",
+     "name": "无头队·3档",
+     "avatar": "headless",
      "id": "SEED37"
     },
     "leaders": [
-     "ghost",
-     "ninja",
-     "candy"
+     "headless",
+     "chest",
+     "ice"
     ],
     "lane_assign": {
+     "top": [],
+     "bottom": [
+      "headless",
+      "chest",
+      "ice"
+     ]
+    },
+    "minions": {
      "top": [
-      "ghost",
-      "ninja"
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ],
      "bottom": [
-      "candy"
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "ghost": 1,
-     "ninja": 1,
-     "candy": 3
+     "headless": 2,
+     "chest": 3,
+     "ice": 2
     },
     "equipped": {
-     "ghost": [
+     "headless": [
+      {
+       "id": "p2eq_016",
+       "star": 2
+      },
+      {
+       "id": "p2eq_013",
+       "star": 2
+      }
+     ],
+     "chest": [
+      {
+       "id": "p2eq_013",
+       "star": 2
+      },
+      {
+       "id": "p2eq_025",
+       "star": 2
+      }
+     ],
+     "ice": [
+      {
+       "id": "p2eq_025",
+       "star": 2
+      },
       {
        "id": "p2eq_009",
-       "star": 2
-      },
-      {
-       "id": "p2eq_045",
-       "star": 2
-      }
-     ],
-     "ninja": [
-      {
-       "id": "p2eq_055",
-       "star": 2
-      },
-      {
-       "id": "p2eq_037",
-       "star": 2
-      }
-     ],
-     "candy": [
-      {
-       "id": "p2eq_045",
-       "star": 2
-      },
-      {
-       "id": "p2eq_023",
        "star": 2
       }
      ]
     },
     "pet_levels": {
-     "ghost": 5,
-     "ninja": 5,
-     "candy": 5
+     "headless": 5,
+     "chest": 5,
+     "ice": 5
     },
-    "season_total_battles": 6,
+    "season_total_battles": 7,
     "season_eggs_killed": 2
    }
   ],
@@ -2032,59 +2592,49 @@
     "is_bot": false,
     "bracket": 4,
     "profile": {
-     "name": "海盗队·4档",
-     "avatar": "pirate",
+     "name": "竹叶队·4档",
+     "avatar": "bamboo",
      "id": "SEED40"
     },
     "leaders": [
-     "pirate",
-     "shell",
-     "ghost"
+     "bamboo",
+     "space",
+     "stone"
     ],
     "lane_assign": {
      "top": [
-      "pirate",
-      "shell"
+      "bamboo",
+      "space"
      ],
      "bottom": [
-      "ghost"
+      "stone"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "pirate": 3,
-     "shell": 2,
-     "ghost": 1
+     "bamboo": 2,
+     "space": 3,
+     "stone": 1
     },
     "equipped": {
-     "pirate": [
-      {
-       "id": "p2eq_047",
-       "star": 2
-      },
-      {
-       "id": "p2eq_050",
-       "star": 2
-      },
-      {
-       "id": "p2eq_005",
-       "star": 2
-      }
-     ],
-     "shell": [
-      {
-       "id": "p2eq_011",
-       "star": 2
-      },
-      {
-       "id": "p2eq_053",
-       "star": 2
-      },
-      {
-       "id": "p2eq_009",
-       "star": 2
-      }
-     ],
-     "ghost": [
+     "bamboo": [
       {
        "id": "p2eq_047",
        "star": 2
@@ -2094,17 +2644,45 @@
        "star": 2
       },
       {
-       "id": "p2eq_005",
+       "id": "p2eq_051",
+       "star": 2
+      }
+     ],
+     "space": [
+      {
+       "id": "p2eq_014",
+       "star": 2
+      },
+      {
+       "id": "p2eq_043",
+       "star": 2
+      },
+      {
+       "id": "p2eq_003",
+       "star": 2
+      }
+     ],
+     "stone": [
+      {
+       "id": "p2eq_049",
+       "star": 2
+      },
+      {
+       "id": "p2eq_013",
+       "star": 2
+      },
+      {
+       "id": "p2eq_047",
        "star": 2
       }
      ]
     },
     "pet_levels": {
-     "pirate": 6,
-     "shell": 6,
-     "ghost": 6
+     "bamboo": 6,
+     "space": 6,
+     "stone": 6
     },
-    "season_total_battles": 12,
+    "season_total_battles": 11,
     "season_eggs_killed": 4
    },
    {
@@ -2113,294 +2691,69 @@
     "is_bot": false,
     "bracket": 4,
     "profile": {
-     "name": "财神队·4档",
-     "avatar": "fortune",
+     "name": "糖果队·4档",
+     "avatar": "candy",
      "id": "SEED41"
     },
     "leaders": [
-     "fortune",
-     "lightning",
-     "headless"
+     "candy",
+     "two_head",
+     "ninja"
     ],
     "lane_assign": {
      "top": [
-      "fortune",
-      "lightning"
+      "candy"
      ],
      "bottom": [
-      "headless"
+      "two_head",
+      "ninja"
      ]
     },
-    "loadouts": {
-     "fortune": 2,
-     "lightning": 2,
-     "headless": 2
-    },
-    "equipped": {
-     "fortune": [
-      {
-       "id": "p2eq_027",
-       "star": 2
-      },
-      {
-       "id": "p2eq_045",
-       "star": 2
-      },
-      {
-       "id": "p2eq_047",
-       "star": 2
-      }
-     ],
-     "lightning": [
-      {
-       "id": "p2eq_031",
-       "star": 2
-      },
-      {
-       "id": "p2eq_043",
-       "star": 2
-      },
-      {
-       "id": "p2eq_055",
-       "star": 2
-      }
-     ],
-     "headless": [
-      {
-       "id": "p2eq_011",
-       "star": 2
-      },
-      {
-       "id": "p2eq_050",
-       "star": 2
-      },
-      {
-       "id": "p2eq_058",
-       "star": 2
-      }
-     ]
-    },
-    "pet_levels": {
-     "fortune": 6,
-     "lightning": 6,
-     "headless": 6
-    },
-    "season_total_battles": 10,
-    "season_eggs_killed": 4
-   },
-   {
-    "schema_ver": 1,
-    "ghost_id": "seed_4_2",
-    "is_bot": false,
-    "bracket": 4,
-    "profile": {
-     "name": "彩虹队·4档",
-     "avatar": "rainbow",
-     "id": "SEED42"
-    },
-    "leaders": [
-     "rainbow",
-     "hunter",
-     "ice"
-    ],
-    "lane_assign": {
+    "minions": {
      "top": [
-      "rainbow",
-      "hunter"
+      {
+       "role": "front",
+       "elite": false
+      }
      ],
      "bottom": [
-      "ice"
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "rainbow": 3,
-     "hunter": 1,
-     "ice": 3
+     "candy": 3,
+     "two_head": 2,
+     "ninja": 3
     },
     "equipped": {
-     "rainbow": [
-      {
-       "id": "p2eq_026",
-       "star": 2
-      },
-      {
-       "id": "p2eq_045",
-       "star": 2
-      },
+     "candy": [
       {
        "id": "p2eq_049",
        "star": 2
-      }
-     ],
-     "hunter": [
+      },
       {
-       "id": "p2eq_031",
+       "id": "p2eq_005",
        "star": 2
       },
       {
-       "id": "p2eq_004",
-       "star": 2
-      },
-      {
-       "id": "p2eq_011",
+       "id": "p2eq_003",
        "star": 2
       }
      ],
-     "ice": [
-      {
-       "id": "p2eq_045",
-       "star": 2
-      },
-      {
-       "id": "p2eq_023",
-       "star": 2
-      },
-      {
-       "id": "p2eq_016",
-       "star": 2
-      }
-     ]
-    },
-    "pet_levels": {
-     "rainbow": 6,
-     "hunter": 6,
-     "ice": 6
-    },
-    "season_total_battles": 10,
-    "season_eggs_killed": 4
-   },
-   {
-    "schema_ver": 1,
-    "ghost_id": "seed_4_3",
-    "is_bot": false,
-    "bracket": 4,
-    "profile": {
-     "name": "钻石队·4档",
-     "avatar": "diamond",
-     "id": "SEED43"
-    },
-    "leaders": [
-     "diamond",
-     "space",
-     "bamboo"
-    ],
-    "lane_assign": {
-     "top": [
-      "diamond",
-      "space"
-     ],
-     "bottom": [
-      "bamboo"
-     ]
-    },
-    "loadouts": {
-     "diamond": 1,
-     "space": 2,
-     "bamboo": 1
-    },
-    "equipped": {
-     "diamond": [
+     "two_head": [
       {
        "id": "p2eq_037",
        "star": 2
       },
       {
-       "id": "p2eq_013",
-       "star": 2
-      },
-      {
-       "id": "p2eq_040",
-       "star": 2
-      }
-     ],
-     "space": [
-      {
-       "id": "p2eq_011",
-       "star": 2
-      },
-      {
-       "id": "p2eq_055",
-       "star": 2
-      },
-      {
-       "id": "p2eq_024",
-       "star": 2
-      }
-     ],
-     "bamboo": [
-      {
-       "id": "p2eq_011",
-       "star": 2
-      },
-      {
-       "id": "p2eq_027",
-       "star": 2
-      },
-      {
-       "id": "p2eq_006",
-       "star": 2
-      }
-     ]
-    },
-    "pet_levels": {
-     "diamond": 6,
-     "space": 6,
-     "bamboo": 6
-    },
-    "season_total_battles": 11,
-    "season_eggs_killed": 4
-   },
-   {
-    "schema_ver": 1,
-    "ghost_id": "seed_4_4",
-    "is_bot": false,
-    "bracket": 4,
-    "profile": {
-     "name": "赛博队·4档",
-     "avatar": "cyber",
-     "id": "SEED44"
-    },
-    "leaders": [
-     "cyber",
-     "phoenix",
-     "ninja"
-    ],
-    "lane_assign": {
-     "top": [
-      "cyber",
-      "phoenix"
-     ],
-     "bottom": [
-      "ninja"
-     ]
-    },
-    "loadouts": {
-     "cyber": 2,
-     "phoenix": 1,
-     "ninja": 1
-    },
-    "equipped": {
-     "cyber": [
-      {
-       "id": "p2eq_030",
-       "star": 2
-      },
-      {
-       "id": "p2eq_020",
-       "star": 2
-      },
-      {
-       "id": "p2eq_031",
-       "star": 2
-      }
-     ],
-     "phoenix": [
-      {
-       "id": "p2eq_049",
-       "star": 2
-      },
-      {
-       "id": "p2eq_038",
+       "id": "p2eq_050",
        "star": 2
       },
       {
@@ -2410,7 +2763,105 @@
      ],
      "ninja": [
       {
+       "id": "p2eq_030",
+       "star": 2
+      },
+      {
+       "id": "p2eq_051",
+       "star": 2
+      },
+      {
+       "id": "p2eq_006",
+       "star": 2
+      }
+     ]
+    },
+    "pet_levels": {
+     "candy": 6,
+     "two_head": 6,
+     "ninja": 6
+    },
+    "season_total_battles": 9,
+    "season_eggs_killed": 3
+   },
+   {
+    "schema_ver": 1,
+    "ghost_id": "seed_4_2",
+    "is_bot": false,
+    "bracket": 4,
+    "profile": {
+     "name": "无头队·4档",
+     "avatar": "headless",
+     "id": "SEED42"
+    },
+    "leaders": [
+     "headless",
+     "crystal",
+     "stone"
+    ],
+    "lane_assign": {
+     "top": [
+      "headless",
+      "crystal",
+      "stone"
+     ],
+     "bottom": []
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
+     ]
+    },
+    "loadouts": {
+     "headless": 2,
+     "crystal": 3,
+     "stone": 2
+    },
+    "equipped": {
+     "headless": [
+      {
+       "id": "p2eq_058",
+       "star": 2
+      },
+      {
+       "id": "p2eq_016",
+       "star": 2
+      },
+      {
        "id": "p2eq_021",
+       "star": 2
+      }
+     ],
+     "crystal": [
+      {
+       "id": "p2eq_004",
+       "star": 2
+      },
+      {
+       "id": "p2eq_023",
+       "star": 2
+      },
+      {
+       "id": "p2eq_039",
+       "star": 2
+      }
+     ],
+     "stone": [
+      {
+       "id": "p2eq_004",
        "star": 2
       },
       {
@@ -2418,17 +2869,214 @@
        "star": 2
       },
       {
-       "id": "p2eq_005",
+       "id": "p2eq_020",
        "star": 2
       }
      ]
     },
     "pet_levels": {
-     "cyber": 6,
-     "phoenix": 6,
-     "ninja": 6
+     "headless": 6,
+     "crystal": 6,
+     "stone": 6
     },
-    "season_total_battles": 11,
+    "season_total_battles": 9,
+    "season_eggs_killed": 3
+   },
+   {
+    "schema_ver": 1,
+    "ghost_id": "seed_4_3",
+    "is_bot": false,
+    "bracket": 4,
+    "profile": {
+     "name": "天使队·4档",
+     "avatar": "angel",
+     "id": "SEED43"
+    },
+    "leaders": [
+     "angel",
+     "crystal",
+     "shell"
+    ],
+    "lane_assign": {
+     "top": [],
+     "bottom": [
+      "angel",
+      "crystal",
+      "shell"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ]
+    },
+    "loadouts": {
+     "angel": 2,
+     "crystal": 1,
+     "shell": 2
+    },
+    "equipped": {
+     "angel": [
+      {
+       "id": "p2eq_004",
+       "star": 2
+      },
+      {
+       "id": "p2eq_036",
+       "star": 2
+      },
+      {
+       "id": "p2eq_005",
+       "star": 2
+      }
+     ],
+     "crystal": [
+      {
+       "id": "p2eq_026",
+       "star": 2
+      },
+      {
+       "id": "p2eq_049",
+       "star": 2
+      },
+      {
+       "id": "p2eq_037",
+       "star": 2
+      }
+     ],
+     "shell": [
+      {
+       "id": "p2eq_020",
+       "star": 2
+      },
+      {
+       "id": "p2eq_025",
+       "star": 2
+      },
+      {
+       "id": "p2eq_006",
+       "star": 2
+      }
+     ]
+    },
+    "pet_levels": {
+     "angel": 6,
+     "crystal": 6,
+     "shell": 6
+    },
+    "season_total_battles": 10,
+    "season_eggs_killed": 4
+   },
+   {
+    "schema_ver": 1,
+    "ghost_id": "seed_4_4",
+    "is_bot": false,
+    "bracket": 4,
+    "profile": {
+     "name": "天使队·4档",
+     "avatar": "angel",
+     "id": "SEED44"
+    },
+    "leaders": [
+     "angel",
+     "dice",
+     "stone"
+    ],
+    "lane_assign": {
+     "top": [
+      "angel",
+      "dice"
+     ],
+     "bottom": [
+      "stone"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ]
+    },
+    "loadouts": {
+     "angel": 1,
+     "dice": 1,
+     "stone": 2
+    },
+    "equipped": {
+     "angel": [
+      {
+       "id": "p2eq_020",
+       "star": 2
+      },
+      {
+       "id": "p2eq_009",
+       "star": 2
+      },
+      {
+       "id": "p2eq_045",
+       "star": 2
+      }
+     ],
+     "dice": [
+      {
+       "id": "p2eq_046",
+       "star": 2
+      },
+      {
+       "id": "p2eq_049",
+       "star": 2
+      },
+      {
+       "id": "p2eq_051",
+       "star": 2
+      }
+     ],
+     "stone": [
+      {
+       "id": "p2eq_009",
+       "star": 2
+      },
+      {
+       "id": "p2eq_031",
+       "star": 2
+      },
+      {
+       "id": "p2eq_047",
+       "star": 2
+      }
+     ]
+    },
+    "pet_levels": {
+     "angel": 6,
+     "dice": 6,
+     "stone": 6
+    },
+    "season_total_battles": 12,
     "season_eggs_killed": 4
    },
    {
@@ -2437,114 +3085,79 @@
     "is_bot": false,
     "bracket": 4,
     "profile": {
-     "name": "赌神队·4档",
-     "avatar": "gambler",
+     "name": "熔岩队·4档",
+     "avatar": "lava",
      "id": "SEED45"
     },
     "leaders": [
-     "gambler",
-     "basic",
-     "lightning"
+     "lava",
+     "fortune",
+     "diamond"
     ],
     "lane_assign": {
      "top": [
-      "gambler",
-      "basic"
+      "lava"
      ],
      "bottom": [
-      "lightning"
+      "fortune",
+      "diamond"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "gambler": 1,
-     "basic": 3,
-     "lightning": 1
+     "lava": 2,
+     "fortune": 1,
+     "diamond": 3
     },
     "equipped": {
-     "gambler": [
+     "lava": [
       {
-       "id": "p2eq_051",
+       "id": "p2eq_026",
        "star": 2
       },
       {
-       "id": "p2eq_057",
+       "id": "p2eq_049",
        "star": 2
       },
       {
-       "id": "p2eq_047",
+       "id": "p2eq_046",
        "star": 2
       }
      ],
-     "basic": [
+     "fortune": [
       {
-       "id": "p2eq_047",
-       "star": 2
-      },
-      {
-       "id": "p2eq_004",
-       "star": 2
-      },
-      {
-       "id": "p2eq_024",
-       "star": 2
-      }
-     ],
-     "lightning": [
-      {
-       "id": "p2eq_030",
-       "star": 2
-      },
-      {
-       "id": "p2eq_014",
+       "id": "p2eq_053",
        "star": 2
       },
       {
        "id": "p2eq_036",
        "star": 2
+      },
+      {
+       "id": "p2eq_049",
+       "star": 2
       }
-     ]
-    },
-    "pet_levels": {
-     "gambler": 6,
-     "basic": 6,
-     "lightning": 6
-    },
-    "season_total_battles": 10,
-    "season_eggs_killed": 4
-   },
-   {
-    "schema_ver": 1,
-    "ghost_id": "seed_4_6",
-    "is_bot": false,
-    "bracket": 4,
-    "profile": {
-     "name": "钻石队·4档",
-     "avatar": "diamond",
-     "id": "SEED46"
-    },
-    "leaders": [
-     "diamond",
-     "gambler",
-     "hiding"
-    ],
-    "lane_assign": {
-     "top": [
-      "diamond",
-      "gambler"
      ],
-     "bottom": [
-      "hiding"
-     ]
-    },
-    "loadouts": {
-     "diamond": 3,
-     "gambler": 3,
-     "hiding": 1
-    },
-    "equipped": {
      "diamond": [
       {
-       "id": "p2eq_053",
+       "id": "p2eq_020",
        "star": 2
       },
       {
@@ -2552,108 +3165,69 @@
        "star": 2
       },
       {
-       "id": "p2eq_047",
-       "star": 2
-      }
-     ],
-     "gambler": [
-      {
-       "id": "p2eq_014",
-       "star": 2
-      },
-      {
-       "id": "p2eq_030",
-       "star": 2
-      },
-      {
-       "id": "p2eq_003",
-       "star": 2
-      }
-     ],
-     "hiding": [
-      {
-       "id": "p2eq_050",
-       "star": 2
-      },
-      {
-       "id": "p2eq_006",
-       "star": 2
-      },
-      {
-       "id": "p2eq_045",
+       "id": "p2eq_049",
        "star": 2
       }
      ]
     },
     "pet_levels": {
-     "diamond": 6,
-     "gambler": 6,
-     "hiding": 6
+     "lava": 6,
+     "fortune": 6,
+     "diamond": 6
     },
-    "season_total_battles": 11,
-    "season_eggs_killed": 4
+    "season_total_battles": 14,
+    "season_eggs_killed": 5
    },
    {
     "schema_ver": 1,
-    "ghost_id": "seed_4_7",
+    "ghost_id": "seed_4_6",
     "is_bot": false,
     "bracket": 4,
     "profile": {
-     "name": "钻石队·4档",
-     "avatar": "diamond",
-     "id": "SEED47"
+     "name": "财神队·4档",
+     "avatar": "fortune",
+     "id": "SEED46"
     },
     "leaders": [
-     "diamond",
-     "candy",
-     "phoenix"
+     "fortune",
+     "crystal",
+     "stone"
     ],
     "lane_assign": {
      "top": [
-      "diamond",
-      "candy"
+      "fortune",
+      "crystal",
+      "stone"
+     ],
+     "bottom": []
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      }
      ],
      "bottom": [
-      "phoenix"
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "diamond": 3,
-     "candy": 1,
-     "phoenix": 2
+     "fortune": 3,
+     "crystal": 2,
+     "stone": 3
     },
     "equipped": {
-     "diamond": [
+     "fortune": [
       {
-       "id": "p2eq_050",
-       "star": 2
-      },
-      {
-       "id": "p2eq_009",
-       "star": 2
-      },
-      {
-       "id": "p2eq_051",
-       "star": 2
-      }
-     ],
-     "candy": [
-      {
-       "id": "p2eq_037",
-       "star": 2
-      },
-      {
-       "id": "p2eq_006",
-       "star": 2
-      },
-      {
-       "id": "p2eq_053",
-       "star": 2
-      }
-     ],
-     "phoenix": [
-      {
-       "id": "p2eq_021",
+       "id": "p2eq_004",
        "star": 2
       },
       {
@@ -2661,18 +3235,144 @@
        "star": 2
       },
       {
-       "id": "p2eq_051",
+       "id": "p2eq_050",
+       "star": 2
+      }
+     ],
+     "crystal": [
+      {
+       "id": "p2eq_005",
+       "star": 2
+      },
+      {
+       "id": "p2eq_016",
+       "star": 2
+      },
+      {
+       "id": "p2eq_025",
+       "star": 2
+      }
+     ],
+     "stone": [
+      {
+       "id": "p2eq_009",
+       "star": 2
+      },
+      {
+       "id": "p2eq_058",
+       "star": 2
+      },
+      {
+       "id": "p2eq_016",
        "star": 2
       }
      ]
     },
     "pet_levels": {
-     "diamond": 6,
-     "candy": 6,
-     "phoenix": 6
+     "fortune": 6,
+     "crystal": 6,
+     "stone": 6
     },
-    "season_total_battles": 11,
-    "season_eggs_killed": 4
+    "season_total_battles": 13,
+    "season_eggs_killed": 5
+   },
+   {
+    "schema_ver": 1,
+    "ghost_id": "seed_4_7",
+    "is_bot": false,
+    "bracket": 4,
+    "profile": {
+     "name": "竹叶队·4档",
+     "avatar": "bamboo",
+     "id": "SEED47"
+    },
+    "leaders": [
+     "bamboo",
+     "ninja",
+     "stone"
+    ],
+    "lane_assign": {
+     "top": [],
+     "bottom": [
+      "bamboo",
+      "ninja",
+      "stone"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ]
+    },
+    "loadouts": {
+     "bamboo": 3,
+     "ninja": 2,
+     "stone": 3
+    },
+    "equipped": {
+     "bamboo": [
+      {
+       "id": "p2eq_004",
+       "star": 2
+      },
+      {
+       "id": "p2eq_026",
+       "star": 2
+      },
+      {
+       "id": "p2eq_037",
+       "star": 2
+      }
+     ],
+     "ninja": [
+      {
+       "id": "p2eq_039",
+       "star": 2
+      },
+      {
+       "id": "p2eq_005",
+       "star": 2
+      },
+      {
+       "id": "p2eq_009",
+       "star": 2
+      }
+     ],
+     "stone": [
+      {
+       "id": "p2eq_057",
+       "star": 2
+      },
+      {
+       "id": "p2eq_004",
+       "star": 2
+      },
+      {
+       "id": "p2eq_014",
+       "star": 2
+      }
+     ]
+    },
+    "pet_levels": {
+     "bamboo": 6,
+     "ninja": 6,
+     "stone": 6
+    },
+    "season_total_battles": 14,
+    "season_eggs_killed": 5
    }
   ],
   "5": [
@@ -2682,37 +3382,55 @@
     "is_bot": false,
     "bracket": 5,
     "profile": {
-     "name": "凤凰队·5档",
-     "avatar": "phoenix",
+     "name": "宝箱队·5档",
+     "avatar": "chest",
      "id": "SEED50"
     },
     "leaders": [
-     "phoenix",
-     "lightning",
-     "pirate"
+     "chest",
+     "bamboo",
+     "phoenix"
     ],
     "lane_assign": {
      "top": [
-      "phoenix",
-      "lightning"
+      "chest",
+      "bamboo"
      ],
      "bottom": [
-      "pirate"
+      "phoenix"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "phoenix": 3,
-     "lightning": 2,
-     "pirate": 2
+     "chest": 1,
+     "bamboo": 3,
+     "phoenix": 2
     },
     "equipped": {
-     "phoenix": [
+     "chest": [
       {
-       "id": "p2eq_040",
+       "id": "p2eq_030",
        "star": 2
       },
       {
-       "id": "p2eq_057",
+       "id": "p2eq_043",
        "star": 2
       },
       {
@@ -2720,74 +3438,21 @@
        "star": 2
       }
      ],
-     "lightning": [
+     "bamboo": [
+      {
+       "id": "p2eq_047",
+       "star": 2
+      },
+      {
+       "id": "p2eq_057",
+       "star": 2
+      },
       {
        "id": "p2eq_014",
        "star": 2
-      },
-      {
-       "id": "p2eq_006",
-       "star": 2
-      },
-      {
-       "id": "p2eq_024",
-       "star": 2
       }
      ],
-     "pirate": [
-      {
-       "id": "p2eq_030",
-       "star": 2
-      },
-      {
-       "id": "p2eq_038",
-       "star": 2
-      },
-      {
-       "id": "p2eq_004",
-       "star": 2
-      }
-     ]
-    },
-    "pet_levels": {
-     "phoenix": 7,
-     "lightning": 7,
-     "pirate": 7
-    },
-    "season_total_battles": 17,
-    "season_eggs_killed": 6
-   },
-   {
-    "schema_ver": 1,
-    "ghost_id": "seed_5_1",
-    "is_bot": false,
-    "bracket": 5,
-    "profile": {
-     "name": "赛博队·5档",
-     "avatar": "cyber",
-     "id": "SEED51"
-    },
-    "leaders": [
-     "cyber",
-     "headless",
-     "angel"
-    ],
-    "lane_assign": {
-     "top": [
-      "cyber",
-      "headless"
-     ],
-     "bottom": [
-      "angel"
-     ]
-    },
-    "loadouts": {
-     "cyber": 2,
-     "headless": 2,
-     "angel": 2
-    },
-    "equipped": {
-     "cyber": [
+     "phoenix": [
       {
        "id": "p2eq_026",
        "star": 2
@@ -2797,94 +3462,70 @@
        "star": 2
       },
       {
-       "id": "p2eq_038",
-       "star": 2
-      }
-     ],
-     "headless": [
-      {
-       "id": "p2eq_030",
-       "star": 2
-      },
-      {
-       "id": "p2eq_004",
-       "star": 2
-      },
-      {
-       "id": "p2eq_006",
-       "star": 2
-      }
-     ],
-     "angel": [
-      {
-       "id": "p2eq_057",
-       "star": 2
-      },
-      {
-       "id": "p2eq_040",
-       "star": 2
-      },
-      {
-       "id": "p2eq_014",
+       "id": "p2eq_047",
        "star": 2
       }
      ]
     },
     "pet_levels": {
-     "cyber": 7,
-     "headless": 7,
-     "angel": 7
+     "chest": 7,
+     "bamboo": 7,
+     "phoenix": 7
     },
-    "season_total_battles": 16,
-    "season_eggs_killed": 6
+    "season_total_battles": 18,
+    "season_eggs_killed": 7
    },
    {
     "schema_ver": 1,
-    "ghost_id": "seed_5_2",
+    "ghost_id": "seed_5_1",
     "is_bot": false,
     "bracket": 5,
     "profile": {
-     "name": "天使队·5档",
-     "avatar": "angel",
-     "id": "SEED52"
+     "name": "星际队·5档",
+     "avatar": "space",
+     "id": "SEED51"
     },
     "leaders": [
-     "angel",
      "space",
-     "line"
+     "shell",
+     "ice"
     ],
     "lane_assign": {
      "top": [
-      "angel",
       "space"
      ],
      "bottom": [
-      "line"
+      "shell",
+      "ice"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "angel": 3,
-     "space": 3,
-     "line": 2
+     "space": 1,
+     "shell": 2,
+     "ice": 2
     },
     "equipped": {
-     "angel": [
-      {
-       "id": "p2eq_004",
-       "star": 2
-      },
-      {
-       "id": "p2eq_047",
-       "star": 2
-      },
-      {
-       "id": "p2eq_006",
-       "star": 2
-      }
-     ],
      "space": [
       {
-       "id": "p2eq_004",
+       "id": "p2eq_024",
        "star": 2
       },
       {
@@ -2896,9 +3537,23 @@
        "star": 2
       }
      ],
-     "line": [
+     "shell": [
       {
-       "id": "p2eq_043",
+       "id": "p2eq_014",
+       "star": 2
+      },
+      {
+       "id": "p2eq_026",
+       "star": 2
+      },
+      {
+       "id": "p2eq_024",
+       "star": 2
+      }
+     ],
+     "ice": [
+      {
+       "id": "p2eq_006",
        "star": 2
       },
       {
@@ -2906,15 +3561,113 @@
        "star": 2
       },
       {
-       "id": "p2eq_038",
+       "id": "p2eq_014",
        "star": 2
       }
      ]
     },
     "pet_levels": {
-     "angel": 7,
      "space": 7,
-     "line": 7
+     "shell": 7,
+     "ice": 7
+    },
+    "season_total_battles": 15,
+    "season_eggs_killed": 6
+   },
+   {
+    "schema_ver": 1,
+    "ghost_id": "seed_5_2",
+    "is_bot": false,
+    "bracket": 5,
+    "profile": {
+     "name": "幽灵队·5档",
+     "avatar": "ghost",
+     "id": "SEED52"
+    },
+    "leaders": [
+     "ghost",
+     "ice",
+     "bamboo"
+    ],
+    "lane_assign": {
+     "top": [
+      "ghost",
+      "ice",
+      "bamboo"
+     ],
+     "bottom": []
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
+     ]
+    },
+    "loadouts": {
+     "ghost": 2,
+     "ice": 1,
+     "bamboo": 3
+    },
+    "equipped": {
+     "ghost": [
+      {
+       "id": "p2eq_047",
+       "star": 2
+      },
+      {
+       "id": "p2eq_030",
+       "star": 2
+      },
+      {
+       "id": "p2eq_014",
+       "star": 2
+      }
+     ],
+     "ice": [
+      {
+       "id": "p2eq_006",
+       "star": 2
+      },
+      {
+       "id": "p2eq_047",
+       "star": 2
+      },
+      {
+       "id": "p2eq_026",
+       "star": 2
+      }
+     ],
+     "bamboo": [
+      {
+       "id": "p2eq_047",
+       "star": 2
+      },
+      {
+       "id": "p2eq_004",
+       "star": 2
+      },
+      {
+       "id": "p2eq_024",
+       "star": 2
+      }
+     ]
+    },
+    "pet_levels": {
+     "ghost": 7,
+     "ice": 7,
+     "bamboo": 7
     },
     "season_total_battles": 17,
     "season_eggs_killed": 6
@@ -2925,80 +3678,97 @@
     "is_bot": false,
     "bracket": 5,
     "profile": {
-     "name": "壳队·5档",
-     "avatar": "shell",
+     "name": "凤凰队·5档",
+     "avatar": "phoenix",
      "id": "SEED53"
     },
     "leaders": [
-     "shell",
-     "ice",
-     "lightning"
+     "phoenix",
+     "chest",
+     "hunter"
     ],
     "lane_assign": {
+     "top": [],
+     "bottom": [
+      "phoenix",
+      "chest",
+      "hunter"
+     ]
+    },
+    "minions": {
      "top": [
-      "shell",
-      "ice"
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ],
      "bottom": [
-      "lightning"
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "shell": 1,
-     "ice": 1,
-     "lightning": 1
+     "phoenix": 3,
+     "chest": 3,
+     "hunter": 1
     },
     "equipped": {
-     "shell": [
+     "phoenix": [
       {
-       "id": "p2eq_026",
+       "id": "p2eq_004",
        "star": 2
       },
-      {
-       "id": "p2eq_024",
-       "star": 2
-      },
-      {
-       "id": "p2eq_031",
-       "star": 2
-      }
-     ],
-     "ice": [
       {
        "id": "p2eq_030",
        "star": 2
       },
       {
-       "id": "p2eq_043",
+       "id": "p2eq_047",
+       "star": 2
+      }
+     ],
+     "chest": [
+      {
+       "id": "p2eq_024",
        "star": 2
       },
       {
        "id": "p2eq_040",
        "star": 2
-      }
-     ],
-     "lightning": [
-      {
-       "id": "p2eq_038",
-       "star": 2
       },
       {
-       "id": "p2eq_057",
+       "id": "p2eq_026",
+       "star": 2
+      }
+     ],
+     "hunter": [
+      {
+       "id": "p2eq_040",
        "star": 2
       },
       {
        "id": "p2eq_046",
        "star": 2
+      },
+      {
+       "id": "p2eq_004",
+       "star": 2
       }
      ]
     },
     "pet_levels": {
-     "shell": 7,
-     "ice": 7,
-     "lightning": 7
+     "phoenix": 7,
+     "chest": 7,
+     "hunter": 7
     },
-    "season_total_battles": 15,
-    "season_eggs_killed": 6
+    "season_total_battles": 18,
+    "season_eggs_killed": 7
    },
    {
     "schema_ver": 1,
@@ -3006,217 +3776,73 @@
     "is_bot": false,
     "bracket": 5,
     "profile": {
-     "name": "石头队·5档",
-     "avatar": "stone",
+     "name": "天使队·5档",
+     "avatar": "angel",
      "id": "SEED54"
     },
     "leaders": [
-     "stone",
-     "bamboo",
-     "basic"
-    ],
-    "lane_assign": {
-     "top": [
-      "stone",
-      "bamboo"
-     ],
-     "bottom": [
-      "basic"
-     ]
-    },
-    "loadouts": {
-     "stone": 3,
-     "bamboo": 1,
-     "basic": 3
-    },
-    "equipped": {
-     "stone": [
-      {
-       "id": "p2eq_050",
-       "star": 2
-      },
-      {
-       "id": "p2eq_026",
-       "star": 2
-      },
-      {
-       "id": "p2eq_043",
-       "star": 2
-      }
-     ],
-     "bamboo": [
-      {
-       "id": "p2eq_046",
-       "star": 2
-      },
-      {
-       "id": "p2eq_004",
-       "star": 2
-      },
-      {
-       "id": "p2eq_026",
-       "star": 2
-      }
-     ],
-     "basic": [
-      {
-       "id": "p2eq_030",
-       "star": 2
-      },
-      {
-       "id": "p2eq_050",
-       "star": 2
-      },
-      {
-       "id": "p2eq_026",
-       "star": 2
-      }
-     ]
-    },
-    "pet_levels": {
-     "stone": 7,
-     "bamboo": 7,
-     "basic": 7
-    },
-    "season_total_battles": 18,
-    "season_eggs_killed": 7
-   },
-   {
-    "schema_ver": 1,
-    "ghost_id": "seed_5_5",
-    "is_bot": false,
-    "bracket": 5,
-    "profile": {
-     "name": "糖果队·5档",
-     "avatar": "candy",
-     "id": "SEED55"
-    },
-    "leaders": [
-     "candy",
-     "dice",
-     "headless"
-    ],
-    "lane_assign": {
-     "top": [
-      "candy",
-      "dice"
-     ],
-     "bottom": [
-      "headless"
-     ]
-    },
-    "loadouts": {
-     "candy": 3,
-     "dice": 3,
-     "headless": 1
-    },
-    "equipped": {
-     "candy": [
-      {
-       "id": "p2eq_038",
-       "star": 2
-      },
-      {
-       "id": "p2eq_043",
-       "star": 2
-      },
-      {
-       "id": "p2eq_024",
-       "star": 2
-      }
-     ],
-     "dice": [
-      {
-       "id": "p2eq_038",
-       "star": 2
-      },
-      {
-       "id": "p2eq_030",
-       "star": 2
-      },
-      {
-       "id": "p2eq_026",
-       "star": 2
-      }
-     ],
-     "headless": [
-      {
-       "id": "p2eq_046",
-       "star": 2
-      },
-      {
-       "id": "p2eq_031",
-       "star": 2
-      },
-      {
-       "id": "p2eq_030",
-       "star": 2
-      }
-     ]
-    },
-    "pet_levels": {
-     "candy": 7,
-     "dice": 7,
-     "headless": 7
-    },
-    "season_total_battles": 18,
-    "season_eggs_killed": 7
-   },
-   {
-    "schema_ver": 1,
-    "ghost_id": "seed_5_6",
-    "is_bot": false,
-    "bracket": 5,
-    "profile": {
-     "name": "彩虹队·5档",
-     "avatar": "rainbow",
-     "id": "SEED56"
-    },
-    "leaders": [
-     "rainbow",
-     "candy",
+     "angel",
+     "gambler",
      "space"
     ],
     "lane_assign": {
      "top": [
-      "rainbow",
-      "candy"
+      "angel",
+      "gambler"
      ],
      "bottom": [
       "space"
      ]
     },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ]
+    },
     "loadouts": {
-     "rainbow": 2,
-     "candy": 1,
+     "angel": 2,
+     "gambler": 2,
      "space": 1
     },
     "equipped": {
-     "rainbow": [
+     "angel": [
       {
-       "id": "p2eq_030",
+       "id": "p2eq_057",
        "star": 2
       },
       {
-       "id": "p2eq_031",
-       "star": 2
-      },
-      {
-       "id": "p2eq_006",
-       "star": 2
-      }
-     ],
-     "candy": [
-      {
-       "id": "p2eq_004",
+       "id": "p2eq_050",
        "star": 2
       },
       {
        "id": "p2eq_047",
        "star": 2
+      }
+     ],
+     "gambler": [
+      {
+       "id": "p2eq_047",
+       "star": 2
       },
       {
-       "id": "p2eq_026",
+       "id": "p2eq_040",
+       "star": 2
+      },
+      {
+       "id": "p2eq_046",
        "star": 2
       }
      ],
@@ -3226,21 +3852,218 @@
        "star": 2
       },
       {
-       "id": "p2eq_047",
+       "id": "p2eq_040",
        "star": 2
       },
       {
-       "id": "p2eq_004",
+       "id": "p2eq_026",
        "star": 2
       }
      ]
     },
     "pet_levels": {
-     "rainbow": 7,
-     "candy": 7,
+     "angel": 7,
+     "gambler": 7,
      "space": 7
     },
-    "season_total_battles": 15,
+    "season_total_battles": 16,
+    "season_eggs_killed": 6
+   },
+   {
+    "schema_ver": 1,
+    "ghost_id": "seed_5_5",
+    "is_bot": false,
+    "bracket": 5,
+    "profile": {
+     "name": "壳队·5档",
+     "avatar": "shell",
+     "id": "SEED55"
+    },
+    "leaders": [
+     "shell",
+     "ghost",
+     "crystal"
+    ],
+    "lane_assign": {
+     "top": [
+      "shell"
+     ],
+     "bottom": [
+      "ghost",
+      "crystal"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
+     ]
+    },
+    "loadouts": {
+     "shell": 1,
+     "ghost": 3,
+     "crystal": 3
+    },
+    "equipped": {
+     "shell": [
+      {
+       "id": "p2eq_006",
+       "star": 2
+      },
+      {
+       "id": "p2eq_040",
+       "star": 2
+      },
+      {
+       "id": "p2eq_057",
+       "star": 2
+      }
+     ],
+     "ghost": [
+      {
+       "id": "p2eq_014",
+       "star": 2
+      },
+      {
+       "id": "p2eq_047",
+       "star": 2
+      },
+      {
+       "id": "p2eq_046",
+       "star": 2
+      }
+     ],
+     "crystal": [
+      {
+       "id": "p2eq_040",
+       "star": 2
+      },
+      {
+       "id": "p2eq_038",
+       "star": 2
+      },
+      {
+       "id": "p2eq_057",
+       "star": 2
+      }
+     ]
+    },
+    "pet_levels": {
+     "shell": 7,
+     "ghost": 7,
+     "crystal": 7
+    },
+    "season_total_battles": 16,
+    "season_eggs_killed": 6
+   },
+   {
+    "schema_ver": 1,
+    "ghost_id": "seed_5_6",
+    "is_bot": false,
+    "bracket": 5,
+    "profile": {
+     "name": "缩头乌队·5档",
+     "avatar": "hiding",
+     "id": "SEED56"
+    },
+    "leaders": [
+     "hiding",
+     "bamboo",
+     "hunter"
+    ],
+    "lane_assign": {
+     "top": [
+      "hiding",
+      "bamboo",
+      "hunter"
+     ],
+     "bottom": []
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
+     ]
+    },
+    "loadouts": {
+     "hiding": 1,
+     "bamboo": 2,
+     "hunter": 1
+    },
+    "equipped": {
+     "hiding": [
+      {
+       "id": "p2eq_043",
+       "star": 2
+      },
+      {
+       "id": "p2eq_057",
+       "star": 2
+      },
+      {
+       "id": "p2eq_006",
+       "star": 2
+      }
+     ],
+     "bamboo": [
+      {
+       "id": "p2eq_024",
+       "star": 2
+      },
+      {
+       "id": "p2eq_031",
+       "star": 2
+      },
+      {
+       "id": "p2eq_050",
+       "star": 2
+      }
+     ],
+     "hunter": [
+      {
+       "id": "p2eq_031",
+       "star": 2
+      },
+      {
+       "id": "p2eq_030",
+       "star": 2
+      },
+      {
+       "id": "p2eq_047",
+       "star": 2
+      }
+     ]
+    },
+    "pet_levels": {
+     "hiding": 7,
+     "bamboo": 7,
+     "hunter": 7
+    },
+    "season_total_battles": 16,
     "season_eggs_killed": 6
    },
    {
@@ -3249,41 +4072,58 @@
     "is_bot": false,
     "bracket": 5,
     "profile": {
-     "name": "赌神队·5档",
-     "avatar": "gambler",
+     "name": "竹叶队·5档",
+     "avatar": "bamboo",
      "id": "SEED57"
     },
     "leaders": [
-     "gambler",
+     "bamboo",
      "space",
-     "dice"
+     "ice"
     ],
     "lane_assign": {
+     "top": [],
+     "bottom": [
+      "bamboo",
+      "space",
+      "ice"
+     ]
+    },
+    "minions": {
      "top": [
-      "gambler",
-      "space"
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ],
      "bottom": [
-      "dice"
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "gambler": 1,
-     "space": 2,
-     "dice": 3
+     "bamboo": 1,
+     "space": 3,
+     "ice": 2
     },
     "equipped": {
-     "gambler": [
+     "bamboo": [
       {
-       "id": "p2eq_026",
+       "id": "p2eq_050",
        "star": 2
       },
       {
-       "id": "p2eq_040",
+       "id": "p2eq_024",
        "star": 2
       },
       {
-       "id": "p2eq_047",
+       "id": "p2eq_030",
        "star": 2
       }
      ],
@@ -3293,36 +4133,36 @@
        "star": 2
       },
       {
-       "id": "p2eq_038",
-       "star": 2
-      },
-      {
-       "id": "p2eq_040",
-       "star": 2
-      }
-     ],
-     "dice": [
-      {
-       "id": "p2eq_026",
-       "star": 2
-      },
-      {
        "id": "p2eq_024",
        "star": 2
       },
       {
-       "id": "p2eq_047",
+       "id": "p2eq_014",
+       "star": 2
+      }
+     ],
+     "ice": [
+      {
+       "id": "p2eq_004",
+       "star": 2
+      },
+      {
+       "id": "p2eq_006",
+       "star": 2
+      },
+      {
+       "id": "p2eq_057",
        "star": 2
       }
      ]
     },
     "pet_levels": {
-     "gambler": 7,
+     "bamboo": 7,
      "space": 7,
-     "dice": 7
+     "ice": 7
     },
-    "season_total_battles": 17,
-    "season_eggs_killed": 6
+    "season_total_battles": 18,
+    "season_eggs_killed": 7
    }
   ],
   "6": [
@@ -3332,89 +4172,107 @@
     "is_bot": false,
     "bracket": 6,
     "profile": {
-     "name": "海盗队·6档",
-     "avatar": "pirate",
+     "name": "无头队·6档",
+     "avatar": "headless",
      "id": "SEED60"
     },
     "leaders": [
-     "pirate",
-     "bamboo",
-     "lightning"
+     "headless",
+     "lava",
+     "hunter"
     ],
     "lane_assign": {
      "top": [
-      "pirate",
-      "bamboo"
+      "headless",
+      "lava"
      ],
      "bottom": [
-      "lightning"
+      "hunter"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": true
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "pirate": 1,
-     "bamboo": 3,
-     "lightning": 3
+     "headless": 2,
+     "lava": 2,
+     "hunter": 1
     },
     "equipped": {
-     "pirate": [
+     "headless": [
       {
-       "id": "p2eq_031",
+       "id": "p2eq_010",
        "star": 3
       },
-      {
-       "id": "p2eq_030",
-       "star": 3
-      },
-      {
-       "id": "p2eq_052",
-       "star": 3
-      },
-      {
-       "id": "p2eq_026",
-       "star": 3
-      }
-     ],
-     "bamboo": [
       {
        "id": "p2eq_057",
        "star": 3
       },
       {
-       "id": "p2eq_024",
+       "id": "p2eq_034",
        "star": 3
       },
       {
-       "id": "p2eq_031",
-       "star": 3
-      },
-      {
-       "id": "p2eq_030",
+       "id": "p2eq_033",
        "star": 3
       }
      ],
-     "lightning": [
+     "lava": [
+      {
+       "id": "p2eq_046",
+       "star": 3
+      },
+      {
+       "id": "p2eq_050",
+       "star": 3
+      },
+      {
+       "id": "p2eq_010",
+       "star": 3
+      },
+      {
+       "id": "p2eq_024",
+       "star": 3
+      }
+     ],
+     "hunter": [
+      {
+       "id": "p2eq_052",
+       "star": 3
+      },
       {
        "id": "p2eq_006",
        "star": 3
       },
       {
-       "id": "p2eq_017",
-       "star": 3
-      },
-      {
        "id": "p2eq_031",
        "star": 3
       },
       {
-       "id": "p2eq_004",
+       "id": "p2eq_046",
        "star": 3
       }
      ]
     },
     "pet_levels": {
-     "pirate": 8,
-     "bamboo": 8,
-     "lightning": 8
+     "headless": 8,
+     "lava": 8,
+     "hunter": 8
     },
     "season_total_battles": 23,
     "season_eggs_killed": 9
@@ -3425,73 +4283,55 @@
     "is_bot": false,
     "bracket": 6,
     "profile": {
-     "name": "宝箱队·6档",
-     "avatar": "chest",
+     "name": "无头队·6档",
+     "avatar": "headless",
      "id": "SEED61"
     },
     "leaders": [
-     "chest",
-     "pirate",
-     "line"
+     "headless",
+     "line",
+     "angel"
     ],
     "lane_assign": {
      "top": [
-      "chest",
-      "pirate"
+      "headless"
      ],
      "bottom": [
-      "line"
+      "line",
+      "angel"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": true
+      }
      ]
     },
     "loadouts": {
-     "chest": 1,
-     "pirate": 2,
-     "line": 2
+     "headless": 1,
+     "line": 2,
+     "angel": 1
     },
     "equipped": {
-     "chest": [
-      {
-       "id": "p2eq_010",
-       "star": 3
-      },
-      {
-       "id": "p2eq_017",
-       "star": 3
-      },
-      {
-       "id": "p2eq_026",
-       "star": 3
-      },
-      {
-       "id": "p2eq_024",
-       "star": 3
-      }
-     ],
-     "pirate": [
-      {
-       "id": "p2eq_059",
-       "star": 3
-      },
-      {
-       "id": "p2eq_026",
-       "star": 3
-      },
-      {
-       "id": "p2eq_050",
-       "star": 3
-      },
-      {
-       "id": "p2eq_017",
-       "star": 3
-      }
-     ],
-     "line": [
-      {
-       "id": "p2eq_056",
-       "star": 3
-      },
+     "headless": [
       {
        "id": "p2eq_006",
+       "star": 3
+      },
+      {
+       "id": "p2eq_033",
        "star": 3
       },
       {
@@ -3502,12 +4342,48 @@
        "id": "p2eq_046",
        "star": 3
       }
+     ],
+     "line": [
+      {
+       "id": "p2eq_026",
+       "star": 3
+      },
+      {
+       "id": "p2eq_056",
+       "star": 3
+      },
+      {
+       "id": "p2eq_010",
+       "star": 3
+      },
+      {
+       "id": "p2eq_033",
+       "star": 3
+      }
+     ],
+     "angel": [
+      {
+       "id": "p2eq_031",
+       "star": 3
+      },
+      {
+       "id": "p2eq_026",
+       "star": 3
+      },
+      {
+       "id": "p2eq_059",
+       "star": 3
+      },
+      {
+       "id": "p2eq_024",
+       "star": 3
+      }
      ]
     },
     "pet_levels": {
-     "chest": 8,
-     "pirate": 8,
-     "line": 8
+     "headless": 8,
+     "line": 8,
+     "angel": 8
     },
     "season_total_battles": 21,
     "season_eggs_killed": 8
@@ -3518,59 +4394,76 @@
     "is_bot": false,
     "bracket": 6,
     "profile": {
-     "name": "骰子队·6档",
-     "avatar": "dice",
+     "name": "赛博队·6档",
+     "avatar": "cyber",
      "id": "SEED62"
     },
     "leaders": [
-     "dice",
-     "lightning",
-     "diamond"
+     "cyber",
+     "phoenix",
+     "crystal"
     ],
     "lane_assign": {
      "top": [
-      "dice",
-      "lightning"
+      "cyber",
+      "phoenix",
+      "crystal"
+     ],
+     "bottom": []
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      }
      ],
      "bottom": [
-      "diamond"
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "dice": 3,
-     "lightning": 1,
-     "diamond": 1
+     "cyber": 3,
+     "phoenix": 3,
+     "crystal": 2
     },
     "equipped": {
-     "dice": [
+     "cyber": [
       {
-       "id": "p2eq_017",
+       "id": "p2eq_043",
        "star": 3
       },
+      {
+       "id": "p2eq_014",
+       "star": 3
+      },
+      {
+       "id": "p2eq_024",
+       "star": 3
+      },
+      {
+       "id": "p2eq_006",
+       "star": 3
+      }
+     ],
+     "phoenix": [
       {
        "id": "p2eq_059",
        "star": 3
       },
       {
-       "id": "p2eq_030",
+       "id": "p2eq_057",
        "star": 3
       },
       {
-       "id": "p2eq_033",
-       "star": 3
-      }
-     ],
-     "lightning": [
-      {
-       "id": "p2eq_034",
-       "star": 3
-      },
-      {
-       "id": "p2eq_050",
-       "star": 3
-      },
-      {
-       "id": "p2eq_052",
+       "id": "p2eq_010",
        "star": 3
       },
       {
@@ -3578,32 +4471,32 @@
        "star": 3
       }
      ],
-     "diamond": [
+     "crystal": [
       {
-       "id": "p2eq_024",
+       "id": "p2eq_046",
        "star": 3
       },
       {
-       "id": "p2eq_059",
+       "id": "p2eq_057",
        "star": 3
       },
       {
-       "id": "p2eq_050",
+       "id": "p2eq_017",
        "star": 3
       },
       {
-       "id": "p2eq_034",
+       "id": "p2eq_043",
        "star": 3
       }
      ]
     },
     "pet_levels": {
-     "dice": 8,
-     "lightning": 8,
-     "diamond": 8
+     "cyber": 8,
+     "phoenix": 8,
+     "crystal": 8
     },
-    "season_total_battles": 29,
-    "season_eggs_killed": 11
+    "season_total_battles": 26,
+    "season_eggs_killed": 10
    },
    {
     "schema_ver": 1,
@@ -3611,162 +4504,50 @@
     "is_bot": false,
     "bracket": 6,
     "profile": {
-     "name": "闪电队·6档",
-     "avatar": "lightning",
+     "name": "天使队·6档",
+     "avatar": "angel",
      "id": "SEED63"
     },
     "leaders": [
-     "lightning",
-     "fortune",
-     "ghost"
+     "angel",
+     "line",
+     "shell"
     ],
     "lane_assign": {
+     "top": [],
+     "bottom": [
+      "angel",
+      "line",
+      "shell"
+     ]
+    },
+    "minions": {
      "top": [
-      "lightning",
-      "fortune"
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": true
+      }
      ],
      "bottom": [
-      "ghost"
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "lightning": 1,
-     "fortune": 1,
-     "ghost": 3
+     "angel": 3,
+     "line": 2,
+     "shell": 2
     },
     "equipped": {
-     "lightning": [
-      {
-       "id": "p2eq_059",
-       "star": 3
-      },
-      {
-       "id": "p2eq_050",
-       "star": 3
-      },
-      {
-       "id": "p2eq_004",
-       "star": 3
-      },
-      {
-       "id": "p2eq_033",
-       "star": 3
-      }
-     ],
-     "fortune": [
-      {
-       "id": "p2eq_057",
-       "star": 3
-      },
-      {
-       "id": "p2eq_030",
-       "star": 3
-      },
-      {
-       "id": "p2eq_052",
-       "star": 3
-      },
-      {
-       "id": "p2eq_010",
-       "star": 3
-      }
-     ],
-     "ghost": [
-      {
-       "id": "p2eq_026",
-       "star": 3
-      },
-      {
-       "id": "p2eq_046",
-       "star": 3
-      },
-      {
-       "id": "p2eq_059",
-       "star": 3
-      },
-      {
-       "id": "p2eq_056",
-       "star": 3
-      }
-     ]
-    },
-    "pet_levels": {
-     "lightning": 8,
-     "fortune": 8,
-     "ghost": 8
-    },
-    "season_total_battles": 27,
-    "season_eggs_killed": 10
-   },
-   {
-    "schema_ver": 1,
-    "ghost_id": "seed_6_4",
-    "is_bot": false,
-    "bracket": 6,
-    "profile": {
-     "name": "赛博队·6档",
-     "avatar": "cyber",
-     "id": "SEED64"
-    },
-    "leaders": [
-     "cyber",
-     "basic",
-     "two_head"
-    ],
-    "lane_assign": {
-     "top": [
-      "cyber",
-      "basic"
-     ],
-     "bottom": [
-      "two_head"
-     ]
-    },
-    "loadouts": {
-     "cyber": 2,
-     "basic": 2,
-     "two_head": 1
-    },
-    "equipped": {
-     "cyber": [
+     "angel": [
       {
        "id": "p2eq_024",
-       "star": 3
-      },
-      {
-       "id": "p2eq_033",
-       "star": 3
-      },
-      {
-       "id": "p2eq_056",
-       "star": 3
-      },
-      {
-       "id": "p2eq_034",
-       "star": 3
-      }
-     ],
-     "basic": [
-      {
-       "id": "p2eq_043",
-       "star": 3
-      },
-      {
-       "id": "p2eq_024",
-       "star": 3
-      },
-      {
-       "id": "p2eq_030",
-       "star": 3
-      },
-      {
-       "id": "p2eq_059",
-       "star": 3
-      }
-     ],
-     "two_head": [
-      {
-       "id": "p2eq_034",
        "star": 3
       },
       {
@@ -3774,82 +4555,7 @@
        "star": 3
       },
       {
-       "id": "p2eq_010",
-       "star": 3
-      },
-      {
-       "id": "p2eq_014",
-       "star": 3
-      }
-     ]
-    },
-    "pet_levels": {
-     "cyber": 8,
-     "basic": 8,
-     "two_head": 8
-    },
-    "season_total_battles": 25,
-    "season_eggs_killed": 10
-   },
-   {
-    "schema_ver": 1,
-    "ghost_id": "seed_6_5",
-    "is_bot": false,
-    "bracket": 6,
-    "profile": {
-     "name": "双头队·6档",
-     "avatar": "two_head",
-     "id": "SEED65"
-    },
-    "leaders": [
-     "two_head",
-     "ice",
-     "pirate"
-    ],
-    "lane_assign": {
-     "top": [
-      "two_head",
-      "ice"
-     ],
-     "bottom": [
-      "pirate"
-     ]
-    },
-    "loadouts": {
-     "two_head": 1,
-     "ice": 1,
-     "pirate": 3
-    },
-    "equipped": {
-     "two_head": [
-      {
-       "id": "p2eq_033",
-       "star": 3
-      },
-      {
-       "id": "p2eq_004",
-       "star": 3
-      },
-      {
-       "id": "p2eq_034",
-       "star": 3
-      },
-      {
-       "id": "p2eq_006",
-       "star": 3
-      }
-     ],
-     "ice": [
-      {
-       "id": "p2eq_006",
-       "star": 3
-      },
-      {
-       "id": "p2eq_014",
-       "star": 3
-      },
-      {
-       "id": "p2eq_057",
+       "id": "p2eq_046",
        "star": 3
       },
       {
@@ -3857,9 +4563,102 @@
        "star": 3
       }
      ],
-     "pirate": [
+     "line": [
       {
-       "id": "p2eq_014",
+       "id": "p2eq_010",
+       "star": 3
+      },
+      {
+       "id": "p2eq_057",
+       "star": 3
+      },
+      {
+       "id": "p2eq_033",
+       "star": 3
+      },
+      {
+       "id": "p2eq_050",
+       "star": 3
+      }
+     ],
+     "shell": [
+      {
+       "id": "p2eq_038",
+       "star": 3
+      },
+      {
+       "id": "p2eq_024",
+       "star": 3
+      },
+      {
+       "id": "p2eq_040",
+       "star": 3
+      },
+      {
+       "id": "p2eq_046",
+       "star": 3
+      }
+     ]
+    },
+    "pet_levels": {
+     "angel": 8,
+     "line": 8,
+     "shell": 8
+    },
+    "season_total_battles": 23,
+    "season_eggs_killed": 9
+   },
+   {
+    "schema_ver": 1,
+    "ghost_id": "seed_6_4",
+    "is_bot": false,
+    "bracket": 6,
+    "profile": {
+     "name": "壳队·6档",
+     "avatar": "shell",
+     "id": "SEED64"
+    },
+    "leaders": [
+     "shell",
+     "stone",
+     "bubble"
+    ],
+    "lane_assign": {
+     "top": [
+      "shell",
+      "stone"
+     ],
+     "bottom": [
+      "bubble"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": true
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ]
+    },
+    "loadouts": {
+     "shell": 1,
+     "stone": 2,
+     "bubble": 3
+    },
+    "equipped": {
+     "shell": [
+      {
+       "id": "p2eq_057",
        "star": 3
       },
       {
@@ -3867,19 +4666,166 @@
        "star": 3
       },
       {
-       "id": "p2eq_006",
+       "id": "p2eq_030",
        "star": 3
       },
       {
        "id": "p2eq_034",
        "star": 3
       }
+     ],
+     "stone": [
+      {
+       "id": "p2eq_033",
+       "star": 3
+      },
+      {
+       "id": "p2eq_056",
+       "star": 3
+      },
+      {
+       "id": "p2eq_031",
+       "star": 3
+      },
+      {
+       "id": "p2eq_017",
+       "star": 3
+      }
+     ],
+     "bubble": [
+      {
+       "id": "p2eq_046",
+       "star": 3
+      },
+      {
+       "id": "p2eq_047",
+       "star": 3
+      },
+      {
+       "id": "p2eq_050",
+       "star": 3
+      },
+      {
+       "id": "p2eq_059",
+       "star": 3
+      }
      ]
     },
     "pet_levels": {
-     "two_head": 8,
-     "ice": 8,
-     "pirate": 8
+     "shell": 8,
+     "stone": 8,
+     "bubble": 8
+    },
+    "season_total_battles": 30,
+    "season_eggs_killed": 12
+   },
+   {
+    "schema_ver": 1,
+    "ghost_id": "seed_6_5",
+    "is_bot": false,
+    "bracket": 6,
+    "profile": {
+     "name": "竹叶队·6档",
+     "avatar": "bamboo",
+     "id": "SEED65"
+    },
+    "leaders": [
+     "bamboo",
+     "lightning",
+     "hunter"
+    ],
+    "lane_assign": {
+     "top": [
+      "bamboo"
+     ],
+     "bottom": [
+      "lightning",
+      "hunter"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": true
+      }
+     ]
+    },
+    "loadouts": {
+     "bamboo": 2,
+     "lightning": 1,
+     "hunter": 1
+    },
+    "equipped": {
+     "bamboo": [
+      {
+       "id": "p2eq_050",
+       "star": 3
+      },
+      {
+       "id": "p2eq_031",
+       "star": 3
+      },
+      {
+       "id": "p2eq_057",
+       "star": 3
+      },
+      {
+       "id": "p2eq_046",
+       "star": 3
+      }
+     ],
+     "lightning": [
+      {
+       "id": "p2eq_033",
+       "star": 3
+      },
+      {
+       "id": "p2eq_030",
+       "star": 3
+      },
+      {
+       "id": "p2eq_014",
+       "star": 3
+      },
+      {
+       "id": "p2eq_059",
+       "star": 3
+      }
+     ],
+     "hunter": [
+      {
+       "id": "p2eq_052",
+       "star": 3
+      },
+      {
+       "id": "p2eq_006",
+       "star": 3
+      },
+      {
+       "id": "p2eq_031",
+       "star": 3
+      },
+      {
+       "id": "p2eq_004",
+       "star": 3
+      }
+     ]
+    },
+    "pet_levels": {
+     "bamboo": 8,
+     "lightning": 8,
+     "hunter": 8
     },
     "season_total_battles": 22,
     "season_eggs_killed": 8
@@ -3890,162 +4836,90 @@
     "is_bot": false,
     "bracket": 6,
     "profile": {
-     "name": "小队·6档",
-     "avatar": "basic",
+     "name": "糖果队·6档",
+     "avatar": "candy",
      "id": "SEED66"
     },
     "leaders": [
-     "basic",
-     "ninja",
-     "ghost"
+     "candy",
+     "bubble",
+     "gambler"
     ],
     "lane_assign": {
      "top": [
-      "basic",
-      "ninja"
+      "candy",
+      "bubble",
+      "gambler"
+     ],
+     "bottom": []
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      }
      ],
      "bottom": [
-      "ghost"
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "basic": 3,
-     "ninja": 1,
-     "ghost": 2
+     "candy": 3,
+     "bubble": 2,
+     "gambler": 3
     },
     "equipped": {
-     "basic": [
+     "candy": [
       {
-       "id": "p2eq_031",
+       "id": "p2eq_004",
        "star": 3
       },
-      {
-       "id": "p2eq_043",
-       "star": 3
-      },
-      {
-       "id": "p2eq_034",
-       "star": 3
-      },
-      {
-       "id": "p2eq_052",
-       "star": 3
-      }
-     ],
-     "ninja": [
       {
        "id": "p2eq_026",
        "star": 3
       },
       {
-       "id": "p2eq_034",
-       "star": 3
-      },
-      {
-       "id": "p2eq_040",
-       "star": 3
-      },
-      {
-       "id": "p2eq_057",
-       "star": 3
-      }
-     ],
-     "ghost": [
-      {
-       "id": "p2eq_046",
-       "star": 3
-      },
-      {
        "id": "p2eq_010",
        "star": 3
       },
       {
-       "id": "p2eq_052",
-       "star": 3
-      },
-      {
-       "id": "p2eq_033",
+       "id": "p2eq_006",
        "star": 3
       }
-     ]
-    },
-    "pet_levels": {
-     "basic": 8,
-     "ninja": 8,
-     "ghost": 8
-    },
-    "season_total_battles": 30,
-    "season_eggs_killed": 12
-   },
-   {
-    "schema_ver": 1,
-    "ghost_id": "seed_6_7",
-    "is_bot": false,
-    "bracket": 6,
-    "profile": {
-     "name": "线条队·6档",
-     "avatar": "line",
-     "id": "SEED67"
-    },
-    "leaders": [
-     "line",
-     "space",
-     "basic"
-    ],
-    "lane_assign": {
-     "top": [
-      "line",
-      "space"
      ],
-     "bottom": [
-      "basic"
-     ]
-    },
-    "loadouts": {
-     "line": 1,
-     "space": 1,
-     "basic": 1
-    },
-    "equipped": {
-     "line": [
+     "bubble": [
       {
        "id": "p2eq_038",
        "star": 3
       },
       {
-       "id": "p2eq_010",
+       "id": "p2eq_056",
        "star": 3
       },
       {
-       "id": "p2eq_050",
+       "id": "p2eq_033",
        "star": 3
       },
       {
-       "id": "p2eq_030",
+       "id": "p2eq_031",
        "star": 3
       }
      ],
-     "space": [
-      {
-       "id": "p2eq_052",
-       "star": 3
-      },
-      {
-       "id": "p2eq_047",
-       "star": 3
-      },
+     "gambler": [
       {
        "id": "p2eq_043",
        "star": 3
       },
       {
-       "id": "p2eq_056",
-       "star": 3
-      }
-     ],
-     "basic": [
-      {
-       "id": "p2eq_017",
+       "id": "p2eq_057",
        "star": 3
       },
       {
@@ -4053,22 +4927,128 @@
        "star": 3
       },
       {
-       "id": "p2eq_038",
-       "star": 3
-      },
-      {
-       "id": "p2eq_024",
+       "id": "p2eq_026",
        "star": 3
       }
      ]
     },
     "pet_levels": {
-     "line": 8,
-     "space": 8,
-     "basic": 8
+     "candy": 8,
+     "bubble": 8,
+     "gambler": 8
     },
-    "season_total_battles": 22,
-    "season_eggs_killed": 8
+    "season_total_battles": 26,
+    "season_eggs_killed": 10
+   },
+   {
+    "schema_ver": 1,
+    "ghost_id": "seed_6_7",
+    "is_bot": false,
+    "bracket": 6,
+    "profile": {
+     "name": "赌神队·6档",
+     "avatar": "gambler",
+     "id": "SEED67"
+    },
+    "leaders": [
+     "gambler",
+     "dice",
+     "candy"
+    ],
+    "lane_assign": {
+     "top": [],
+     "bottom": [
+      "gambler",
+      "dice",
+      "candy"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": true
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ]
+    },
+    "loadouts": {
+     "gambler": 1,
+     "dice": 3,
+     "candy": 2
+    },
+    "equipped": {
+     "gambler": [
+      {
+       "id": "p2eq_010",
+       "star": 3
+      },
+      {
+       "id": "p2eq_059",
+       "star": 3
+      },
+      {
+       "id": "p2eq_046",
+       "star": 3
+      },
+      {
+       "id": "p2eq_030",
+       "star": 3
+      }
+     ],
+     "dice": [
+      {
+       "id": "p2eq_030",
+       "star": 3
+      },
+      {
+       "id": "p2eq_046",
+       "star": 3
+      },
+      {
+       "id": "p2eq_047",
+       "star": 3
+      },
+      {
+       "id": "p2eq_057",
+       "star": 3
+      }
+     ],
+     "candy": [
+      {
+       "id": "p2eq_033",
+       "star": 3
+      },
+      {
+       "id": "p2eq_056",
+       "star": 3
+      },
+      {
+       "id": "p2eq_004",
+       "star": 3
+      },
+      {
+       "id": "p2eq_017",
+       "star": 3
+      }
+     ]
+    },
+    "pet_levels": {
+     "gambler": 8,
+     "dice": 8,
+     "candy": 8
+    },
+    "season_total_battles": 27,
+    "season_eggs_killed": 10
    }
   ],
   "7": [
@@ -4084,35 +5064,45 @@
     },
     "leaders": [
      "phoenix",
-     "stone",
-     "hiding"
+     "lightning",
+     "space"
     ],
     "lane_assign": {
      "top": [
       "phoenix",
-      "stone"
+      "lightning"
      ],
      "bottom": [
-      "hiding"
+      "space"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": true
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "phoenix": 1,
-     "stone": 2,
-     "hiding": 2
+     "phoenix": 3,
+     "lightning": 1,
+     "space": 2
     },
     "equipped": {
      "phoenix": [
       {
-       "id": "p2eq_006",
-       "star": 3
-      },
-      {
-       "id": "p2eq_040",
-       "star": 3
-      },
-      {
-       "id": "p2eq_026",
+       "id": "p2eq_059",
        "star": 3
       },
       {
@@ -4120,21 +5110,21 @@
        "star": 3
       },
       {
-       "id": "p2eq_014",
+       "id": "p2eq_057",
        "star": 3
-      }
-     ],
-     "stone": [
+      },
       {
        "id": "p2eq_031",
        "star": 3
       },
       {
-       "id": "p2eq_026",
+       "id": "p2eq_010",
        "star": 3
-      },
+      }
+     ],
+     "lightning": [
       {
-       "id": "p2eq_059",
+       "id": "p2eq_047",
        "star": 3
       },
       {
@@ -4142,13 +5132,21 @@
        "star": 3
       },
       {
-       "id": "p2eq_006",
+       "id": "p2eq_050",
+       "star": 3
+      },
+      {
+       "id": "p2eq_059",
+       "star": 3
+      },
+      {
+       "id": "p2eq_056",
        "star": 3
       }
      ],
-     "hiding": [
+     "space": [
       {
-       "id": "p2eq_046",
+       "id": "p2eq_050",
        "star": 3
       },
       {
@@ -4156,26 +5154,26 @@
        "star": 3
       },
       {
-       "id": "p2eq_050",
+       "id": "p2eq_040",
        "star": 3
       },
       {
-       "id": "p2eq_017",
+       "id": "p2eq_043",
        "star": 3
       },
       {
-       "id": "p2eq_057",
+       "id": "p2eq_038",
        "star": 3
       }
      ]
     },
     "pet_levels": {
      "phoenix": 9,
-     "stone": 9,
-     "hiding": 9
+     "lightning": 9,
+     "space": 9
     },
-    "season_total_battles": 33,
-    "season_eggs_killed": 13
+    "season_total_battles": 39,
+    "season_eggs_killed": 15
    },
    {
     "schema_ver": 1,
@@ -4183,138 +5181,73 @@
     "is_bot": false,
     "bracket": 7,
     "profile": {
-     "name": "水晶队·7档",
-     "avatar": "crystal",
+     "name": "双头队·7档",
+     "avatar": "two_head",
      "id": "SEED71"
     },
     "leaders": [
-     "crystal",
-     "bubble",
-     "ice"
+     "two_head",
+     "gambler",
+     "phoenix"
     ],
     "lane_assign": {
      "top": [
-      "crystal",
-      "bubble"
+      "two_head"
      ],
      "bottom": [
-      "ice"
+      "gambler",
+      "phoenix"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": true
+      }
      ]
     },
     "loadouts": {
-     "crystal": 1,
-     "bubble": 3,
-     "ice": 3
+     "two_head": 3,
+     "gambler": 1,
+     "phoenix": 3
     },
     "equipped": {
-     "crystal": [
+     "two_head": [
       {
-       "id": "p2eq_050",
+       "id": "p2eq_040",
        "star": 3
       },
       {
-       "id": "p2eq_017",
+       "id": "p2eq_004",
        "star": 3
       },
       {
-       "id": "p2eq_010",
+       "id": "p2eq_030",
        "star": 3
       },
       {
-       "id": "p2eq_031",
-       "star": 3
-      },
-      {
-       "id": "p2eq_026",
-       "star": 3
-      }
-     ],
-     "bubble": [
-      {
-       "id": "p2eq_024",
-       "star": 3
-      },
-      {
-       "id": "p2eq_017",
-       "star": 3
-      },
-      {
-       "id": "p2eq_059",
-       "star": 3
-      },
-      {
-       "id": "p2eq_034",
-       "star": 3
-      },
-      {
-       "id": "p2eq_026",
-       "star": 3
-      }
-     ],
-     "ice": [
-      {
-       "id": "p2eq_010",
+       "id": "p2eq_043",
        "star": 3
       },
       {
        "id": "p2eq_014",
        "star": 3
-      },
-      {
-       "id": "p2eq_017",
-       "star": 3
-      },
-      {
-       "id": "p2eq_046",
-       "star": 3
-      },
-      {
-       "id": "p2eq_034",
-       "star": 3
       }
-     ]
-    },
-    "pet_levels": {
-     "crystal": 9,
-     "bubble": 9,
-     "ice": 9
-    },
-    "season_total_battles": 33,
-    "season_eggs_killed": 13
-   },
-   {
-    "schema_ver": 1,
-    "ghost_id": "seed_7_2",
-    "is_bot": false,
-    "bracket": 7,
-    "profile": {
-     "name": "钻石队·7档",
-     "avatar": "diamond",
-     "id": "SEED72"
-    },
-    "leaders": [
-     "diamond",
-     "ninja",
-     "hunter"
-    ],
-    "lane_assign": {
-     "top": [
-      "diamond",
-      "ninja"
      ],
-     "bottom": [
-      "hunter"
-     ]
-    },
-    "loadouts": {
-     "diamond": 2,
-     "ninja": 1,
-     "hunter": 1
-    },
-    "equipped": {
-     "diamond": [
+     "gambler": [
       {
-       "id": "p2eq_038",
+       "id": "p2eq_004",
        "star": 3
       },
       {
@@ -4322,33 +5255,11 @@
        "star": 3
       },
       {
-       "id": "p2eq_040",
-       "star": 3
-      },
-      {
-       "id": "p2eq_014",
-       "star": 3
-      },
-      {
-       "id": "p2eq_024",
-       "star": 3
-      }
-     ],
-     "ninja": [
-      {
-       "id": "p2eq_026",
-       "star": 3
-      },
-      {
-       "id": "p2eq_030",
+       "id": "p2eq_043",
        "star": 3
       },
       {
        "id": "p2eq_034",
-       "star": 3
-      },
-      {
-       "id": "p2eq_059",
        "star": 3
       },
       {
@@ -4356,13 +5267,13 @@
        "star": 3
       }
      ],
-     "hunter": [
+     "phoenix": [
       {
-       "id": "p2eq_059",
+       "id": "p2eq_034",
        "star": 3
       },
       {
-       "id": "p2eq_031",
+       "id": "p2eq_030",
        "star": 3
       },
       {
@@ -4370,86 +5281,103 @@
        "star": 3
       },
       {
-       "id": "p2eq_040",
+       "id": "p2eq_056",
        "star": 3
       },
       {
-       "id": "p2eq_034",
+       "id": "p2eq_059",
        "star": 3
       }
      ]
     },
     "pet_levels": {
-     "diamond": 9,
-     "ninja": 9,
-     "hunter": 9
+     "two_head": 9,
+     "gambler": 9,
+     "phoenix": 9
     },
-    "season_total_battles": 40,
-    "season_eggs_killed": 16
+    "season_total_battles": 39,
+    "season_eggs_killed": 15
    },
    {
     "schema_ver": 1,
-    "ghost_id": "seed_7_3",
+    "ghost_id": "seed_7_2",
     "is_bot": false,
     "bracket": 7,
     "profile": {
-     "name": "星际队·7档",
-     "avatar": "space",
-     "id": "SEED73"
+     "name": "赌神队·7档",
+     "avatar": "gambler",
+     "id": "SEED72"
     },
     "leaders": [
+     "gambler",
      "space",
-     "bubble",
-     "dice"
+     "lava"
     ],
     "lane_assign": {
      "top": [
+      "gambler",
       "space",
-      "bubble"
+      "lava"
+     ],
+     "bottom": []
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      }
      ],
      "bottom": [
-      "dice"
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
+     "gambler": 2,
      "space": 1,
-     "bubble": 1,
-     "dice": 3
+     "lava": 1
     },
     "equipped": {
-     "space": [
+     "gambler": [
       {
-       "id": "p2eq_033",
+       "id": "p2eq_030",
        "star": 3
       },
       {
-       "id": "p2eq_024",
+       "id": "p2eq_010",
        "star": 3
       },
       {
-       "id": "p2eq_040",
+       "id": "p2eq_006",
        "star": 3
       },
       {
-       "id": "p2eq_031",
+       "id": "p2eq_059",
        "star": 3
       },
       {
-       "id": "p2eq_056",
+       "id": "p2eq_026",
        "star": 3
       }
      ],
-     "bubble": [
+     "space": [
       {
-       "id": "p2eq_056",
+       "id": "p2eq_052",
        "star": 3
       },
       {
-       "id": "p2eq_004",
+       "id": "p2eq_047",
        "star": 3
       },
       {
-       "id": "p2eq_017",
+       "id": "p2eq_014",
        "star": 3
       },
       {
@@ -4457,130 +5385,147 @@
        "star": 3
       },
       {
-       "id": "p2eq_047",
+       "id": "p2eq_006",
        "star": 3
       }
      ],
-     "dice": [
+     "lava": [
       {
-       "id": "p2eq_026",
+       "id": "p2eq_046",
        "star": 3
       },
       {
-       "id": "p2eq_024",
+       "id": "p2eq_040",
        "star": 3
       },
       {
-       "id": "p2eq_006",
+       "id": "p2eq_038",
        "star": 3
       },
       {
-       "id": "p2eq_033",
+       "id": "p2eq_057",
        "star": 3
       },
       {
-       "id": "p2eq_043",
+       "id": "p2eq_059",
        "star": 3
       }
      ]
     },
     "pet_levels": {
+     "gambler": 9,
      "space": 9,
-     "bubble": 9,
-     "dice": 9
+     "lava": 9
     },
-    "season_total_battles": 31,
-    "season_eggs_killed": 12
+    "season_total_battles": 34,
+    "season_eggs_killed": 13
    },
    {
     "schema_ver": 1,
-    "ghost_id": "seed_7_4",
+    "ghost_id": "seed_7_3",
     "is_bot": false,
     "bracket": 7,
     "profile": {
      "name": "缩头乌队·7档",
      "avatar": "hiding",
-     "id": "SEED74"
+     "id": "SEED73"
     },
     "leaders": [
      "hiding",
-     "headless",
-     "basic"
+     "hunter",
+     "line"
     ],
     "lane_assign": {
-     "top": [
+     "top": [],
+     "bottom": [
       "hiding",
-      "headless"
+      "hunter",
+      "line"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": true
+      }
      ],
      "bottom": [
-      "basic"
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "hiding": 1,
-     "headless": 2,
-     "basic": 2
+     "hiding": 3,
+     "hunter": 1,
+     "line": 3
     },
     "equipped": {
      "hiding": [
       {
-       "id": "p2eq_034",
-       "star": 3
-      },
-      {
-       "id": "p2eq_050",
-       "star": 3
-      },
-      {
-       "id": "p2eq_030",
-       "star": 3
-      },
-      {
-       "id": "p2eq_043",
+       "id": "p2eq_014",
        "star": 3
       },
       {
        "id": "p2eq_056",
        "star": 3
-      }
-     ],
-     "headless": [
-      {
-       "id": "p2eq_024",
-       "star": 3
       },
       {
-       "id": "p2eq_030",
-       "star": 3
-      },
-      {
-       "id": "p2eq_047",
-       "star": 3
-      },
-      {
-       "id": "p2eq_050",
+       "id": "p2eq_052",
        "star": 3
       },
       {
        "id": "p2eq_010",
        "star": 3
+      },
+      {
+       "id": "p2eq_057",
+       "star": 3
       }
      ],
-     "basic": [
+     "hunter": [
+      {
+       "id": "p2eq_038",
+       "star": 3
+      },
+      {
+       "id": "p2eq_010",
+       "star": 3
+      },
+      {
+       "id": "p2eq_017",
+       "star": 3
+      },
       {
        "id": "p2eq_059",
        "star": 3
       },
       {
-       "id": "p2eq_050",
+       "id": "p2eq_047",
+       "star": 3
+      }
+     ],
+     "line": [
+      {
+       "id": "p2eq_043",
        "star": 3
       },
       {
-       "id": "p2eq_004",
+       "id": "p2eq_014",
        "star": 3
       },
       {
        "id": "p2eq_056",
+       "star": 3
+      },
+      {
+       "id": "p2eq_017",
        "star": 3
       },
       {
@@ -4591,45 +5536,67 @@
     },
     "pet_levels": {
      "hiding": 9,
-     "headless": 9,
-     "basic": 9
+     "hunter": 9,
+     "line": 9
     },
-    "season_total_battles": 37,
+    "season_total_battles": 36,
     "season_eggs_killed": 14
    },
    {
     "schema_ver": 1,
-    "ghost_id": "seed_7_5",
+    "ghost_id": "seed_7_4",
     "is_bot": false,
     "bracket": 7,
     "profile": {
      "name": "星际队·7档",
      "avatar": "space",
-     "id": "SEED75"
+     "id": "SEED74"
     },
     "leaders": [
      "space",
-     "headless",
-     "shell"
+     "hiding",
+     "two_head"
     ],
     "lane_assign": {
      "top": [
       "space",
-      "headless"
+      "hiding"
      ],
      "bottom": [
-      "shell"
+      "two_head"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": true
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
      "space": 3,
-     "headless": 3,
-     "shell": 3
+     "hiding": 1,
+     "two_head": 3
     },
     "equipped": {
      "space": [
       {
-       "id": "p2eq_031",
+       "id": "p2eq_017",
+       "star": 3
+      },
+      {
+       "id": "p2eq_033",
        "star": 3
       },
       {
@@ -4637,11 +5604,7 @@
        "star": 3
       },
       {
-       "id": "p2eq_043",
-       "star": 3
-      },
-      {
-       "id": "p2eq_030",
+       "id": "p2eq_010",
        "star": 3
       },
       {
@@ -4649,11 +5612,152 @@
        "star": 3
       }
      ],
-     "headless": [
+     "hiding": [
       {
-       "id": "p2eq_038",
+       "id": "p2eq_024",
        "star": 3
       },
+      {
+       "id": "p2eq_047",
+       "star": 3
+      },
+      {
+       "id": "p2eq_026",
+       "star": 3
+      },
+      {
+       "id": "p2eq_004",
+       "star": 3
+      },
+      {
+       "id": "p2eq_030",
+       "star": 3
+      }
+     ],
+     "two_head": [
+      {
+       "id": "p2eq_017",
+       "star": 3
+      },
+      {
+       "id": "p2eq_047",
+       "star": 3
+      },
+      {
+       "id": "p2eq_010",
+       "star": 3
+      },
+      {
+       "id": "p2eq_006",
+       "star": 3
+      },
+      {
+       "id": "p2eq_056",
+       "star": 3
+      }
+     ]
+    },
+    "pet_levels": {
+     "space": 9,
+     "hiding": 9,
+     "two_head": 9
+    },
+    "season_total_battles": 38,
+    "season_eggs_killed": 15
+   },
+   {
+    "schema_ver": 1,
+    "ghost_id": "seed_7_5",
+    "is_bot": false,
+    "bracket": 7,
+    "profile": {
+     "name": "小队·7档",
+     "avatar": "basic",
+     "id": "SEED75"
+    },
+    "leaders": [
+     "basic",
+     "angel",
+     "ninja"
+    ],
+    "lane_assign": {
+     "top": [
+      "basic"
+     ],
+     "bottom": [
+      "angel",
+      "ninja"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": true
+      }
+     ]
+    },
+    "loadouts": {
+     "basic": 1,
+     "angel": 2,
+     "ninja": 3
+    },
+    "equipped": {
+     "basic": [
+      {
+       "id": "p2eq_046",
+       "star": 3
+      },
+      {
+       "id": "p2eq_006",
+       "star": 3
+      },
+      {
+       "id": "p2eq_034",
+       "star": 3
+      },
+      {
+       "id": "p2eq_040",
+       "star": 3
+      },
+      {
+       "id": "p2eq_056",
+       "star": 3
+      }
+     ],
+     "angel": [
+      {
+       "id": "p2eq_034",
+       "star": 3
+      },
+      {
+       "id": "p2eq_014",
+       "star": 3
+      },
+      {
+       "id": "p2eq_047",
+       "star": 3
+      },
+      {
+       "id": "p2eq_043",
+       "star": 3
+      },
+      {
+       "id": "p2eq_057",
+       "star": 3
+      }
+     ],
+     "ninja": [
       {
        "id": "p2eq_031",
        "star": 3
@@ -4663,17 +5767,7 @@
        "star": 3
       },
       {
-       "id": "p2eq_014",
-       "star": 3
-      },
-      {
        "id": "p2eq_010",
-       "star": 3
-      }
-     ],
-     "shell": [
-      {
-       "id": "p2eq_059",
        "star": 3
       },
       {
@@ -4681,26 +5775,18 @@
        "star": 3
       },
       {
-       "id": "p2eq_006",
-       "star": 3
-      },
-      {
-       "id": "p2eq_047",
-       "star": 3
-      },
-      {
-       "id": "p2eq_043",
+       "id": "p2eq_004",
        "star": 3
       }
      ]
     },
     "pet_levels": {
-     "space": 9,
-     "headless": 9,
-     "shell": 9
+     "basic": 9,
+     "angel": 9,
+     "ninja": 9
     },
-    "season_total_battles": 34,
-    "season_eggs_killed": 13
+    "season_total_battles": 39,
+    "season_eggs_killed": 15
    },
    {
     "schema_ver": 1,
@@ -4708,59 +5794,50 @@
     "is_bot": false,
     "bracket": 7,
     "profile": {
-     "name": "糖果队·7档",
-     "avatar": "candy",
+     "name": "线条队·7档",
+     "avatar": "line",
      "id": "SEED76"
     },
     "leaders": [
-     "candy",
-     "headless",
-     "diamond"
+     "line",
+     "ninja",
+     "pirate"
     ],
     "lane_assign": {
      "top": [
-      "candy",
-      "headless"
+      "line",
+      "ninja",
+      "pirate"
+     ],
+     "bottom": []
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      }
      ],
      "bottom": [
-      "diamond"
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "candy": 3,
-     "headless": 1,
-     "diamond": 2
+     "line": 2,
+     "ninja": 2,
+     "pirate": 2
     },
     "equipped": {
-     "candy": [
+     "line": [
       {
-       "id": "p2eq_047",
-       "star": 3
-      },
-      {
-       "id": "p2eq_004",
-       "star": 3
-      },
-      {
-       "id": "p2eq_026",
-       "star": 3
-      },
-      {
-       "id": "p2eq_056",
-       "star": 3
-      },
-      {
-       "id": "p2eq_050",
-       "star": 3
-      }
-     ],
-     "headless": [
-      {
-       "id": "p2eq_017",
-       "star": 3
-      },
-      {
-       "id": "p2eq_056",
+       "id": "p2eq_031",
        "star": 3
       },
       {
@@ -4768,15 +5845,23 @@
        "star": 3
       },
       {
-       "id": "p2eq_004",
+       "id": "p2eq_017",
        "star": 3
       },
       {
-       "id": "p2eq_031",
+       "id": "p2eq_052",
+       "star": 3
+      },
+      {
+       "id": "p2eq_010",
        "star": 3
       }
      ],
-     "diamond": [
+     "ninja": [
+      {
+       "id": "p2eq_031",
+       "star": 3
+      },
       {
        "id": "p2eq_047",
        "star": 3
@@ -4786,7 +5871,17 @@
        "star": 3
       },
       {
-       "id": "p2eq_030",
+       "id": "p2eq_043",
+       "star": 3
+      },
+      {
+       "id": "p2eq_033",
+       "star": 3
+      }
+     ],
+     "pirate": [
+      {
+       "id": "p2eq_004",
        "star": 3
       },
       {
@@ -4794,17 +5889,25 @@
        "star": 3
       },
       {
-       "id": "p2eq_010",
+       "id": "p2eq_059",
+       "star": 3
+      },
+      {
+       "id": "p2eq_040",
+       "star": 3
+      },
+      {
+       "id": "p2eq_047",
        "star": 3
       }
      ]
     },
     "pet_levels": {
-     "candy": 9,
-     "headless": 9,
-     "diamond": 9
+     "line": 9,
+     "ninja": 9,
+     "pirate": 9
     },
-    "season_total_battles": 35,
+    "season_total_battles": 37,
     "season_eggs_killed": 14
    }
   ],
@@ -4815,31 +5918,93 @@
     "is_bot": false,
     "bracket": 8,
     "profile": {
-     "name": "宝箱队·8档",
-     "avatar": "chest",
+     "name": "石头队·8档",
+     "avatar": "stone",
      "id": "SEED80"
     },
     "leaders": [
-     "chest",
-     "bubble",
-     "cyber"
+     "stone",
+     "headless",
+     "fortune"
     ],
     "lane_assign": {
      "top": [
-      "chest",
-      "bubble"
+      "stone",
+      "headless"
      ],
      "bottom": [
-      "cyber"
+      "fortune"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": true
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "chest": 3,
-     "bubble": 1,
-     "cyber": 3
+     "stone": 3,
+     "headless": 2,
+     "fortune": 1
     },
     "equipped": {
-     "chest": [
+     "stone": [
+      {
+       "id": "p2eq_056",
+       "star": 3
+      },
+      {
+       "id": "p2eq_052",
+       "star": 3
+      },
+      {
+       "id": "p2eq_034",
+       "star": 3
+      },
+      {
+       "id": "p2eq_017",
+       "star": 3
+      },
+      {
+       "id": "p2eq_033",
+       "star": 3
+      }
+     ],
+     "headless": [
+      {
+       "id": "p2eq_033",
+       "star": 3
+      },
+      {
+       "id": "p2eq_059",
+       "star": 3
+      },
+      {
+       "id": "p2eq_056",
+       "star": 3
+      },
+      {
+       "id": "p2eq_010",
+       "star": 3
+      },
+      {
+       "id": "p2eq_034",
+       "star": 3
+      }
+     ],
+     "fortune": [
       {
        "id": "p2eq_056",
        "star": 3
@@ -4853,66 +6018,22 @@
        "star": 3
       },
       {
-       "id": "p2eq_034",
-       "star": 3
-      },
-      {
-       "id": "p2eq_017",
-       "star": 3
-      }
-     ],
-     "bubble": [
-      {
        "id": "p2eq_033",
        "star": 3
       },
       {
        "id": "p2eq_034",
-       "star": 3
-      },
-      {
-       "id": "p2eq_052",
-       "star": 3
-      },
-      {
-       "id": "p2eq_017",
-       "star": 3
-      },
-      {
-       "id": "p2eq_056",
-       "star": 3
-      }
-     ],
-     "cyber": [
-      {
-       "id": "p2eq_010",
-       "star": 3
-      },
-      {
-       "id": "p2eq_033",
-       "star": 3
-      },
-      {
-       "id": "p2eq_052",
-       "star": 3
-      },
-      {
-       "id": "p2eq_034",
-       "star": 3
-      },
-      {
-       "id": "p2eq_056",
        "star": 3
       }
      ]
     },
     "pet_levels": {
-     "chest": 10,
-     "bubble": 10,
-     "cyber": 10
+     "stone": 10,
+     "headless": 10,
+     "fortune": 10
     },
-    "season_total_battles": 44,
-    "season_eggs_killed": 17
+    "season_total_battles": 60,
+    "season_eggs_killed": 24
    },
    {
     "schema_ver": 1,
@@ -4920,37 +6041,73 @@
     "is_bot": false,
     "bracket": 8,
     "profile": {
-     "name": "糖果队·8档",
-     "avatar": "candy",
+     "name": "缩头乌队·8档",
+     "avatar": "hiding",
      "id": "SEED81"
     },
     "leaders": [
-     "candy",
-     "stone",
-     "diamond"
+     "hiding",
+     "chest",
+     "line"
     ],
     "lane_assign": {
      "top": [
-      "candy",
-      "stone"
+      "hiding"
      ],
      "bottom": [
-      "diamond"
+      "chest",
+      "line"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": true
+      }
      ]
     },
     "loadouts": {
-     "candy": 3,
-     "stone": 3,
-     "diamond": 2
+     "hiding": 2,
+     "chest": 3,
+     "line": 2
     },
     "equipped": {
-     "candy": [
+     "hiding": [
       {
-       "id": "p2eq_034",
+       "id": "p2eq_017",
+       "star": 3
+      },
+      {
+       "id": "p2eq_010",
+       "star": 3
+      },
+      {
+       "id": "p2eq_056",
+       "star": 3
+      },
+      {
+       "id": "p2eq_059",
        "star": 3
       },
       {
        "id": "p2eq_033",
+       "star": 3
+      }
+     ],
+     "chest": [
+      {
+       "id": "p2eq_010",
        "star": 3
       },
       {
@@ -4958,21 +6115,103 @@
        "star": 3
       },
       {
+       "id": "p2eq_059",
+       "star": 3
+      },
+      {
+       "id": "p2eq_056",
+       "star": 3
+      },
+      {
+       "id": "p2eq_033",
+       "star": 3
+      }
+     ],
+     "line": [
+      {
+       "id": "p2eq_059",
+       "star": 3
+      },
+      {
+       "id": "p2eq_034",
+       "star": 3
+      },
+      {
        "id": "p2eq_010",
+       "star": 3
+      },
+      {
+       "id": "p2eq_052",
        "star": 3
       },
       {
        "id": "p2eq_017",
        "star": 3
       }
+     ]
+    },
+    "pet_levels": {
+     "hiding": 10,
+     "chest": 10,
+     "line": 10
+    },
+    "season_total_battles": 69,
+    "season_eggs_killed": 27
+   },
+   {
+    "schema_ver": 1,
+    "ghost_id": "seed_8_2",
+    "is_bot": false,
+    "bracket": 8,
+    "profile": {
+     "name": "泡泡队·8档",
+     "avatar": "bubble",
+     "id": "SEED82"
+    },
+    "leaders": [
+     "bubble",
+     "diamond",
+     "phoenix"
+    ],
+    "lane_assign": {
+     "top": [
+      "bubble",
+      "diamond",
+      "phoenix"
      ],
-     "stone": [
+     "bottom": []
+    },
+    "minions": {
+     "top": [
       {
-       "id": "p2eq_052",
+       "role": "front",
+       "elite": true
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
+     ]
+    },
+    "loadouts": {
+     "bubble": 1,
+     "diamond": 2,
+     "phoenix": 3
+    },
+    "equipped": {
+     "bubble": [
+      {
+       "id": "p2eq_056",
        "star": 3
       },
       {
-       "id": "p2eq_033",
+       "id": "p2eq_059",
        "star": 3
       },
       {
@@ -4984,7 +6223,7 @@
        "star": 3
       },
       {
-       "id": "p2eq_034",
+       "id": "p2eq_052",
        "star": 3
       }
      ],
@@ -4998,68 +6237,25 @@
        "star": 3
       },
       {
+       "id": "p2eq_056",
+       "star": 3
+      },
+      {
        "id": "p2eq_059",
        "star": 3
       },
       {
        "id": "p2eq_010",
        "star": 3
-      },
-      {
-       "id": "p2eq_017",
-       "star": 3
       }
-     ]
-    },
-    "pet_levels": {
-     "candy": 10,
-     "stone": 10,
-     "diamond": 10
-    },
-    "season_total_battles": 59,
-    "season_eggs_killed": 23
-   },
-   {
-    "schema_ver": 1,
-    "ghost_id": "seed_8_2",
-    "is_bot": false,
-    "bracket": 8,
-    "profile": {
-     "name": "赛博队·8档",
-     "avatar": "cyber",
-     "id": "SEED82"
-    },
-    "leaders": [
-     "cyber",
-     "dice",
-     "space"
-    ],
-    "lane_assign": {
-     "top": [
-      "cyber",
-      "dice"
      ],
-     "bottom": [
-      "space"
-     ]
-    },
-    "loadouts": {
-     "cyber": 2,
-     "dice": 1,
-     "space": 3
-    },
-    "equipped": {
-     "cyber": [
-      {
-       "id": "p2eq_034",
-       "star": 3
-      },
+     "phoenix": [
       {
        "id": "p2eq_059",
        "star": 3
       },
       {
-       "id": "p2eq_017",
+       "id": "p2eq_052",
        "star": 3
       },
       {
@@ -5069,60 +6265,20 @@
       {
        "id": "p2eq_033",
        "star": 3
-      }
-     ],
-     "dice": [
-      {
-       "id": "p2eq_010",
-       "star": 3
-      },
-      {
-       "id": "p2eq_059",
-       "star": 3
-      },
-      {
-       "id": "p2eq_034",
-       "star": 3
       },
       {
        "id": "p2eq_017",
-       "star": 3
-      },
-      {
-       "id": "p2eq_052",
-       "star": 3
-      }
-     ],
-     "space": [
-      {
-       "id": "p2eq_017",
-       "star": 3
-      },
-      {
-       "id": "p2eq_052",
-       "star": 3
-      },
-      {
-       "id": "p2eq_056",
-       "star": 3
-      },
-      {
-       "id": "p2eq_059",
-       "star": 3
-      },
-      {
-       "id": "p2eq_010",
        "star": 3
       }
      ]
     },
     "pet_levels": {
-     "cyber": 10,
-     "dice": 10,
-     "space": 10
+     "bubble": 10,
+     "diamond": 10,
+     "phoenix": 10
     },
-    "season_total_battles": 61,
-    "season_eggs_killed": 24
+    "season_total_battles": 48,
+    "season_eggs_killed": 19
    },
    {
     "schema_ver": 1,
@@ -5136,57 +6292,66 @@
     },
     "leaders": [
      "lightning",
-     "pirate",
-     "space"
+     "hunter",
+     "chest"
     ],
     "lane_assign": {
-     "top": [
+     "top": [],
+     "bottom": [
       "lightning",
-      "pirate"
+      "hunter",
+      "chest"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": true
+      }
      ],
      "bottom": [
-      "space"
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
      "lightning": 3,
-     "pirate": 2,
-     "space": 1
+     "hunter": 3,
+     "chest": 1
     },
     "equipped": {
      "lightning": [
       {
+       "id": "p2eq_034",
+       "star": 3
+      },
+      {
+       "id": "p2eq_033",
+       "star": 3
+      },
+      {
        "id": "p2eq_052",
-       "star": 3
-      },
-      {
-       "id": "p2eq_056",
-       "star": 3
-      },
-      {
-       "id": "p2eq_059",
-       "star": 3
-      },
-      {
-       "id": "p2eq_017",
        "star": 3
       },
       {
        "id": "p2eq_010",
        "star": 3
+      },
+      {
+       "id": "p2eq_017",
+       "star": 3
       }
      ],
-     "pirate": [
+     "hunter": [
       {
-       "id": "p2eq_056",
-       "star": 3
-      },
-      {
-       "id": "p2eq_034",
-       "star": 3
-      },
-      {
-       "id": "p2eq_052",
+       "id": "p2eq_017",
        "star": 3
       },
       {
@@ -5194,13 +6359,25 @@
        "star": 3
       },
       {
-       "id": "p2eq_017",
+       "id": "p2eq_034",
+       "star": 3
+      },
+      {
+       "id": "p2eq_010",
+       "star": 3
+      },
+      {
+       "id": "p2eq_059",
        "star": 3
       }
      ],
-     "space": [
+     "chest": [
       {
        "id": "p2eq_017",
+       "star": 3
+      },
+      {
+       "id": "p2eq_033",
        "star": 3
       },
       {
@@ -5212,22 +6389,18 @@
        "star": 3
       },
       {
-       "id": "p2eq_034",
-       "star": 3
-      },
-      {
-       "id": "p2eq_033",
+       "id": "p2eq_056",
        "star": 3
       }
      ]
     },
     "pet_levels": {
      "lightning": 10,
-     "pirate": 10,
-     "space": 10
+     "hunter": 10,
+     "chest": 10
     },
-    "season_total_battles": 67,
-    "season_eggs_killed": 26
+    "season_total_battles": 42,
+    "season_eggs_killed": 16
    },
    {
     "schema_ver": 1,
@@ -5235,31 +6408,53 @@
     "is_bot": false,
     "bracket": 8,
     "profile": {
-     "name": "彩虹队·8档",
-     "avatar": "rainbow",
+     "name": "双头队·8档",
+     "avatar": "two_head",
      "id": "SEED84"
     },
     "leaders": [
-     "rainbow",
-     "space",
-     "phoenix"
+     "two_head",
+     "lightning",
+     "bubble"
     ],
     "lane_assign": {
      "top": [
-      "rainbow",
-      "space"
+      "two_head",
+      "lightning"
      ],
      "bottom": [
-      "phoenix"
+      "bubble"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": true
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "rainbow": 1,
-     "space": 2,
-     "phoenix": 3
+     "two_head": 1,
+     "lightning": 1,
+     "bubble": 3
     },
     "equipped": {
-     "rainbow": [
+     "two_head": [
+      {
+       "id": "p2eq_052",
+       "star": 3
+      },
       {
        "id": "p2eq_033",
        "star": 3
@@ -5273,21 +6468,43 @@
        "star": 3
       },
       {
+       "id": "p2eq_010",
+       "star": 3
+      }
+     ],
+     "lightning": [
+      {
+       "id": "p2eq_059",
+       "star": 3
+      },
+      {
        "id": "p2eq_052",
+       "star": 3
+      },
+      {
+       "id": "p2eq_033",
        "star": 3
       },
       {
        "id": "p2eq_034",
        "star": 3
+      },
+      {
+       "id": "p2eq_017",
+       "star": 3
       }
      ],
-     "space": [
+     "bubble": [
       {
        "id": "p2eq_033",
        "star": 3
       },
       {
        "id": "p2eq_017",
+       "star": 3
+      },
+      {
+       "id": "p2eq_034",
        "star": 3
       },
       {
@@ -5297,42 +6514,16 @@
       {
        "id": "p2eq_056",
        "star": 3
-      },
-      {
-       "id": "p2eq_034",
-       "star": 3
-      }
-     ],
-     "phoenix": [
-      {
-       "id": "p2eq_033",
-       "star": 3
-      },
-      {
-       "id": "p2eq_017",
-       "star": 3
-      },
-      {
-       "id": "p2eq_034",
-       "star": 3
-      },
-      {
-       "id": "p2eq_052",
-       "star": 3
-      },
-      {
-       "id": "p2eq_010",
-       "star": 3
       }
      ]
     },
     "pet_levels": {
-     "rainbow": 10,
-     "space": 10,
-     "phoenix": 10
+     "two_head": 10,
+     "lightning": 10,
+     "bubble": 10
     },
-    "season_total_battles": 61,
-    "season_eggs_killed": 24
+    "season_total_battles": 45,
+    "season_eggs_killed": 18
    },
    {
     "schema_ver": 1,
@@ -5340,61 +6531,49 @@
     "is_bot": false,
     "bracket": 8,
     "profile": {
-     "name": "凤凰队·8档",
-     "avatar": "phoenix",
+     "name": "泡泡队·8档",
+     "avatar": "bubble",
      "id": "SEED85"
     },
     "leaders": [
-     "phoenix",
-     "ice",
-     "basic"
+     "bubble",
+     "pirate",
+     "bamboo"
     ],
     "lane_assign": {
      "top": [
-      "phoenix",
-      "ice"
+      "bubble"
      ],
      "bottom": [
-      "basic"
+      "pirate",
+      "bamboo"
+     ]
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": false
+      }
+     ],
+     "bottom": [
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": true
+      }
      ]
     },
     "loadouts": {
-     "phoenix": 2,
-     "ice": 1,
-     "basic": 1
+     "bubble": 2,
+     "pirate": 1,
+     "bamboo": 1
     },
     "equipped": {
-     "phoenix": [
-      {
-       "id": "p2eq_017",
-       "star": 3
-      },
-      {
-       "id": "p2eq_010",
-       "star": 3
-      },
-      {
-       "id": "p2eq_059",
-       "star": 3
-      },
-      {
-       "id": "p2eq_052",
-       "star": 3
-      },
-      {
-       "id": "p2eq_033",
-       "star": 3
-      }
-     ],
-     "ice": [
-      {
-       "id": "p2eq_010",
-       "star": 3
-      },
-      {
-       "id": "p2eq_017",
-       "star": 3
-      },
+     "bubble": [
       {
        "id": "p2eq_034",
        "star": 3
@@ -5404,13 +6583,7 @@
        "star": 3
       },
       {
-       "id": "p2eq_033",
-       "star": 3
-      }
-     ],
-     "basic": [
-      {
-       "id": "p2eq_010",
+       "id": "p2eq_059",
        "star": 3
       },
       {
@@ -5420,9 +6593,45 @@
       {
        "id": "p2eq_017",
        "star": 3
+      }
+     ],
+     "pirate": [
+      {
+       "id": "p2eq_052",
+       "star": 3
+      },
+      {
+       "id": "p2eq_033",
+       "star": 3
       },
       {
        "id": "p2eq_059",
+       "star": 3
+      },
+      {
+       "id": "p2eq_010",
+       "star": 3
+      },
+      {
+       "id": "p2eq_034",
+       "star": 3
+      }
+     ],
+     "bamboo": [
+      {
+       "id": "p2eq_056",
+       "star": 3
+      },
+      {
+       "id": "p2eq_033",
+       "star": 3
+      },
+      {
+       "id": "p2eq_010",
+       "star": 3
+      },
+      {
+       "id": "p2eq_034",
        "star": 3
       },
       {
@@ -5432,12 +6641,12 @@
      ]
     },
     "pet_levels": {
-     "phoenix": 10,
-     "ice": 10,
-     "basic": 10
+     "bubble": 10,
+     "pirate": 10,
+     "bamboo": 10
     },
-    "season_total_battles": 58,
-    "season_eggs_killed": 23
+    "season_total_battles": 69,
+    "season_eggs_killed": 27
    },
    {
     "schema_ver": 1,
@@ -5445,81 +6654,58 @@
     "is_bot": false,
     "bracket": 8,
     "profile": {
-     "name": "钻石队·8档",
-     "avatar": "diamond",
+     "name": "熔岩队·8档",
+     "avatar": "lava",
      "id": "SEED86"
     },
     "leaders": [
-     "diamond",
-     "angel",
-     "stone"
+     "lava",
+     "crystal",
+     "fortune"
     ],
     "lane_assign": {
      "top": [
-      "diamond",
-      "angel"
+      "lava",
+      "crystal",
+      "fortune"
+     ],
+     "bottom": []
+    },
+    "minions": {
+     "top": [
+      {
+       "role": "front",
+       "elite": true
+      }
      ],
      "bottom": [
-      "stone"
+      {
+       "role": "front",
+       "elite": true
+      },
+      {
+       "role": "back",
+       "elite": false
+      }
      ]
     },
     "loadouts": {
-     "diamond": 1,
-     "angel": 1,
-     "stone": 2
+     "lava": 1,
+     "crystal": 1,
+     "fortune": 2
     },
     "equipped": {
-     "diamond": [
+     "lava": [
       {
        "id": "p2eq_059",
-       "star": 3
-      },
-      {
-       "id": "p2eq_052",
-       "star": 3
-      },
-      {
-       "id": "p2eq_033",
-       "star": 3
-      },
-      {
-       "id": "p2eq_056",
        "star": 3
       },
       {
        "id": "p2eq_034",
        "star": 3
-      }
-     ],
-     "angel": [
+      },
       {
        "id": "p2eq_033",
-       "star": 3
-      },
-      {
-       "id": "p2eq_056",
-       "star": 3
-      },
-      {
-       "id": "p2eq_059",
-       "star": 3
-      },
-      {
-       "id": "p2eq_017",
-       "star": 3
-      },
-      {
-       "id": "p2eq_052",
-       "star": 3
-      }
-     ],
-     "stone": [
-      {
-       "id": "p2eq_052",
-       "star": 3
-      },
-      {
-       "id": "p2eq_059",
        "star": 3
       },
       {
@@ -5527,22 +6713,62 @@
        "star": 3
       },
       {
+       "id": "p2eq_017",
+       "star": 3
+      }
+     ],
+     "crystal": [
+      {
        "id": "p2eq_056",
+       "star": 3
+      },
+      {
+       "id": "p2eq_052",
        "star": 3
       },
       {
        "id": "p2eq_017",
        "star": 3
+      },
+      {
+       "id": "p2eq_033",
+       "star": 3
+      },
+      {
+       "id": "p2eq_010",
+       "star": 3
+      }
+     ],
+     "fortune": [
+      {
+       "id": "p2eq_059",
+       "star": 3
+      },
+      {
+       "id": "p2eq_034",
+       "star": 3
+      },
+      {
+       "id": "p2eq_017",
+       "star": 3
+      },
+      {
+       "id": "p2eq_033",
+       "star": 3
+      },
+      {
+       "id": "p2eq_052",
+       "star": 3
       }
      ]
     },
     "pet_levels": {
-     "diamond": 10,
-     "angel": 10,
-     "stone": 10
+     "lava": 10,
+     "crystal": 10,
+     "fortune": 10
     },
-    "season_total_battles": 45,
-    "season_eggs_killed": 18
+    "season_total_battles": 63,
+    "season_eggs_killed": 25
    }
   ]
  }

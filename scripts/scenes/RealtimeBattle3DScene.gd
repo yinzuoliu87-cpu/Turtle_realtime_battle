@@ -86,8 +86,8 @@ static func _review_demo() -> bool:
 	if OS.has_environment("REVIEW"):
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
-const REVIEW_TURTLE := "space"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 2   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
+const REVIEW_TURTLE := "cyber"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
+const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -2201,22 +2201,31 @@ func _dual_foe_lane(lane: String) -> Array:
 		# 兼容老结构: dg[lane] 直接是单位规格数组
 		if dg.has(lane) and dg[lane] is Array and not (dg[lane] as Array).is_empty():
 			return dg[lane]
-		# ghost/bot 快照: lane_assign[lane] = 该路 pet_id 列表; equipped[pet] = 该龟装备
+		# ghost/bot 快照: lane_assign[lane]=该路统领; minions[lane]=该路小将配置(role/elite·快照可带·用户2026-07-16分路多变+精英小将); equipped[pet]=装备
 		var la = dg.get("lane_assign", {})
-		if la is Dictionary and (la as Dictionary).get(lane) is Array and not ((la as Dictionary)[lane] as Array).is_empty():
-			var geq: Dictionary = dg.get("equipped", {}) if dg.get("equipped") is Dictionary else {}
-			var specs: Array = []
-			for pid in (la as Dictionary)[lane]:
-				var spec: Dictionary = {"kind": "leader", "id": str(pid)}
-				if geq.has(str(pid)) and geq[str(pid)] is Array:
-					spec["equips"] = (geq[str(pid)] as Array).duplicate(true)   # 对手按档装备
-				specs.append(spec)
-			if lane == "top":                                   # 3统领+3小将编成(用户2026-07-15真机纠错: 原每路1小将=全队5单位): 上路2小将/下路1小将
-				specs.append({"kind": "minion", "role": "front"})
-				specs.append({"kind": "minion", "role": "back"})
-			else:
-				specs.append({"kind": "minion", "role": "front"})
-			return specs
+		if la is Dictionary and (la as Dictionary).get(lane) is Array:
+			var lane_leaders: Array = (la as Dictionary)[lane]
+			var gmin = dg.get("minions", {})
+			var lane_minions: Array = (gmin as Dictionary).get(lane, []) if gmin is Dictionary else []
+			if not lane_leaders.is_empty() or not lane_minions.is_empty():
+				var geq: Dictionary = dg.get("equipped", {}) if dg.get("equipped") is Dictionary else {}
+				var specs: Array = []
+				for pid in lane_leaders:
+					var spec: Dictionary = {"kind": "leader", "id": str(pid)}
+					if geq.has(str(pid)) and geq[str(pid)] is Array:
+						spec["equips"] = (geq[str(pid)] as Array).duplicate(true)   # 对手按档装备
+					specs.append(spec)
+				if not lane_minions.is_empty():                 # 快照自带小将配置(role+elite)
+					for m in lane_minions:
+						if m is Dictionary:
+							specs.append({"kind": "minion", "role": str((m as Dictionary).get("role", "front")), "elite": bool((m as Dictionary).get("elite", false))})
+				else:                                           # 老快照无minions键→默认编成(上2/下1·共3小将)
+					if lane == "top":
+						specs.append({"kind": "minion", "role": "front"})
+						specs.append({"kind": "minion", "role": "back"})
+					else:
+						specs.append({"kind": "minion", "role": "front"})
+				return specs
 	# 兜底 bot(无快照/冷启动): 同3统领+3小将编成(上路2统领2小将/下路1统领1小将)
 	var pool := ["stone", "ninja", "ghost", "ice", "diamond", "fortune", "bamboo", "angel"]
 	if lane == "top":
