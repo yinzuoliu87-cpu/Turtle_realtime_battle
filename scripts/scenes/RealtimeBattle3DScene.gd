@@ -12384,8 +12384,14 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 			if not charged and uu2.get("alive", false):
 				uu2["energy_lock_until"] = _t                      # 基础版: 波结束恢复龟能/星能
 				uu2["star_lock_until"] = _t
-			if is_instance_valid(rc): rc.queue_free()
-			if is_instance_valid(rh): rh.queue_free()
+			if is_instance_valid(rc):                              # 波前慢慢消散0.55s(用户2026-07-16: 不准瞬间消失)
+				var rcf := _reg_tween()
+				rcf.tween_property(rc, "modulate:a", 0.0, 0.55)
+				rcf.tween_callback(rc.queue_free)
+			if is_instance_valid(rh):
+				var rhf := _reg_tween()
+				rhf.tween_property(rh, "modulate:a", 0.0, 0.55)
+				rhf.tween_callback(rh.queue_free)
 			for wi3 in range(wstars.size()):
 				var ws3 = wstars[wi3]
 				if not is_instance_valid(ws3): continue
@@ -12463,9 +12469,10 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				rst.chain().tween_callback(rs.queue_free)
 		, 0.0, 1.0, 2.0)
 		var comet := func() -> void:                              # 1.0s后: 坠落0.25s(大火球头+束状粗光柱+嵌星+坠落微震)
-			if is_instance_valid(ring1): ring1.queue_free()
-			if is_instance_valid(ring2): ring2.queue_free()
-			if is_instance_valid(pillar): pillar.queue_free()
+			if is_instance_valid(pillar):                          # 天光柱: 坠落瞬间快速隐去(彗星接管); 紫环保留到撞击后慢散
+				var pf := _reg_tween()
+				pf.tween_property(pillar, "modulate:a", 0.0, 0.15)
+				pf.tween_callback(pillar.queue_free)
 			for ob4 in orbs:
 				if is_instance_valid(ob4): ob4.queue_free()
 			if not uu2.get("alive", false): return
@@ -12525,6 +12532,14 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				if uu2.get("alive", false):
 					uu2["energy_lock_until"] = _t                  # 巨彗星造成伤害后才恢复龟能/星能(用户2026-07-16)
 					uu2["star_lock_until"] = _t
+				if is_instance_valid(ring1):                       # 紫色地面预警环: 撞击后慢慢消散0.9s(用户2026-07-16)
+					var r1f := _reg_tween()
+					r1f.tween_property(ring1, "modulate:a", 0.0, 0.9)
+					r1f.tween_callback(ring1.queue_free)
+				if is_instance_valid(ring2):
+					var r2f := _reg_tween()
+					r2f.tween_property(ring2, "modulate:a", 0.0, 0.9)
+					r2f.tween_callback(ring2.queue_free)
 				_screen_flash_light()                              # 全屏轻白闪一拍
 				_shake(JUICE_SHAKE_BIG); _add_hitstop(JUICE_HITSTOP_KNOCK)
 				var core := Sprite3D.new()                         # 白金光核膨胀
