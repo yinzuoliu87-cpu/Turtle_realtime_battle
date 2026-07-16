@@ -188,7 +188,7 @@ const REVIEW_DEMO_CFG := {
 	"cyber:1": [ {"dx": 260.0, "dy": -45.0, "fixed": true}, {"dx": 430.0, "dy": 0.0, "fixed": true}, {"dx": 600.0, "dy": 45.0, "fixed": true} ],   # 能量大炮(照Lux R): 3假人带宽±70内→蓄力瞄准线→贯屏青蓝巨柱+衰减残光+衍射颗粒
 	"cyber:2": [ {"dx": 220.0, "dy": -85.0}, {"dx": 220.0, "dy": 85.0}, {"dx": 320.0, "dy": 0.0} ],   # 侵入: 3假人(不固定)→黑1只故障化标识+倒戈4秒打原队友
 	"cyber:3": [ {"dx": 150.0, "dy": -55.0}, {"dx": 150.0, "dy": 55.0} ],   # 智能AI: 2假人贴近→赛博冲刺重定位(kite拉开距离)+充能层
-	"cyber:-1": [ {"dx": 240.0, "dy": -60.0}, {"dx": 240.0, "dy": 60.0} ],   # 浮游炮被动: 2假人→看炮每3秒+2环绕跟飞(上限20)+各自1.6s错峰射击; 假人打死赛博(demo一次)→浮游炮汇聚组装机甲
+	"cyber:-1": [ {"dx": 130.0, "dy": 0.0} ],   # 浮游炮被动(用户2026-07-16: 固定赛博+1攻击假人看清演出): 炮攒编队→打死→炮群自由飞散(全场随机点)→龙骨炮齐射→机甲5秒组装→循环
 	"crystal:0": [ {"dx": 100.0, "dy": 0.0, "fixed": true} ],   # 水晶刺普攻(近战): 单假人贴脸→碎晶突刺+0.6A物+1.5%maxHp魔+叠1结晶(头顶徽章+环绕碎晶)
 	"crystal:1": [ {"dx": 130.0, "dy": -60.0}, {"dx": 130.0, "dy": 60.0} ],   # 水晶壁垒: 2假人围打→1.5A护盾+冰蓝水晶罩4秒+全体友军甲抗+15%(单龟自强)
 	"crystal:2": [ {"dx": 220.0, "dy": -80.0, "fixed": true}, {"dx": 220.0, "dy": 80.0, "fixed": true}, {"dx": 380.0, "dy": 0.0, "fixed": true}, {"dx": 640.0, "dy": 0.0, "fixed": true} ],   # 碎晶爆破(2026-07-15改350码): 3近假人圈内吃3段碎晶坠落+1远假人(640>350)圈外不中=看范围
@@ -1418,9 +1418,11 @@ func _spawn_teams() -> void:
 			_lu["_pdeath_demo"] = true
 		if _review_demo() and str(left[i]) == "lava":   # 熔岩评审便利: 出生90怒气→打几下就变身火山(验火山形态技变体/被动不用干等攒怒气)
 			_lu["rage"] = 90.0
-		if _review_demo() and str(left[i]) == "cyber" and REVIEW_SKILL_IDX == -1:   # 赛博被动demo: 满血挨打(先看浮游炮攒到编队)→被打死→浮游炮汇聚组装机甲→复位循环
+		if _review_demo() and str(left[i]) == "cyber" and REVIEW_SKILL_IDX == -1:   # 赛博被动demo(用户2026-07-16: 固定不动+1假人打): 攒编队→打死→自由飞散→齐射→组装→循环
 			_lu["_review_dummy"] = false
 			_lu["_cydeath_demo"] = true
+			_lu["no_move"] = true
+			_lu["move_spd"] = 0.0
 		if _review_demo() and str(left[i]) == "bubble" and REVIEW_SKILL_IDX == 3:   # 泡泡爆破: 预置满泡泡值(不用挨打攒·每帧回满)+站桩→反复放爆破看两门+泡沫墙清晰展开
 			_lu["bubble_store"] = float(_lu["maxHp"])
 			_lu["_bubble_burst_demo"] = true
@@ -14495,13 +14497,15 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 	var live: Array = []
 	for d in arr:
 		if is_instance_valid(d.get("spr")): live.append(d["spr"])
-	# ① 浮游炮游动到集结编队(0.7s·绕集结点小圆散开)
+	# ① 浮游炮自由飞散(用户2026-07-16: 散点=竞技场内任何地方·别密集)·错峰起飞·时长不一
+	var scat: Array = []
 	for i in range(live.size()):
 		var spr = live[i]
-		var fa: float = TAU * float(i) / float(maxi(1, live.size()))
-		var fpos: Vector2 = gather + Vector2(cos(fa), sin(fa)) * 55.0
+		var fpos := Vector2(randf_range(ARENA.position.x + 40.0, ARENA.end.x - 40.0), randf_range(ARENA.position.y + 30.0, ARENA.end.y - 30.0))
+		scat.append(fpos)
 		var ft := _reg_tween()
-		ft.tween_property(spr, "position", _world_pos(fpos, 1.4), 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		ft.tween_interval(randf() * 0.35)
+		ft.tween_property(spr, "position", _world_pos(fpos, randf_range(1.1, 1.8)), randf_range(0.6, 1.2)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	# ② 蓄力(0.6s炮身发亮)→各自对最近敌射贯穿激光(0.4×赛博ATK魔法·线上全体)
 	var atk_ref: float = float(u["atk"])
 	_pending_shots.append({"delay": 0.75, "fn": func() -> void:
@@ -14514,7 +14518,7 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 		for i2 in range(live.size()):
 			var spr3 = live[i2]
 			if not is_instance_valid(spr3): continue
-			var dpos: Vector2 = gather + Vector2(cos(TAU * float(i2) / float(maxi(1, live.size()))), sin(TAU * float(i2) / float(maxi(1, live.size())))) * 55.0
+			var dpos: Vector2 = scat[i2] if i2 < scat.size() else gather   # 激光从各自散点发射
 			var best = null
 			var bd := INF
 			for o in _units:
@@ -14561,6 +14565,7 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 	# ④ 机甲组装(2.8s起·5秒血/攻/甲/抗从10%涨到设定值·期间_slam锁不能动不能打)
 	var final_hp: float = u["maxHp"] * 0.5 + 200.0 * HP_MULT * n + u["maxHp"] * 0.12 * n
 	var final_atk: float = u["base_atk"] * (0.6 + 0.25 * n)
+	var final_def: float = 60.0 + 2.0 * float(u.get("level", 1))   # 护甲魔抗=60+2×等级(用户2026-07-16定)
 	_pending_shots.append({"delay": 2.8, "fn": func() -> void:
 		_gambler_pop(gather, 0.8, Color(0.7, 0.98, 1.0, 0.95))
 		_skill_ring(gather, Color(0.5, 0.9, 1.0, 0.7), 80.0)
@@ -14577,6 +14582,7 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 		mech["untargetable_until"] = _t + 5.05                   # 不可被索敌
 		mech["maxHp"] = maxf(1.0, final_hp * 0.01); mech["hp"] = mech["maxHp"]   # 从~0涨到满(用户2026-07-16)
 		mech["atk"] = 0.0; mech["base_atk"] = 0.0
+		mech["def"] = 0.0; mech["base_def"] = 0.0; mech["mr"] = 0.0; mech["base_mr"] = 0.0
 		var mref: Dictionary = mech
 		var spr5 = mech.get("sprite", null)
 		if is_instance_valid(spr5):
@@ -14590,6 +14596,8 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 			mref["hp"] = mref["maxHp"]
 			mref["atk"] = lerpf(0.0, final_atk, g)
 			mref["base_atk"] = mref["atk"]
+			mref["def"] = lerpf(0.0, final_def, g); mref["base_def"] = mref["def"]
+			mref["mr"] = lerpf(0.0, final_def, g); mref["base_mr"] = mref["mr"]
 		, 0.0, 1.0, 5.0)
 		grow.tween_callback(func() -> void:                      # 就位: 解锁+解除免疫+白闪+环
 			if not mref.get("alive", false): return
