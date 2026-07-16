@@ -159,17 +159,31 @@ static func _load_seed() -> Dictionary:
 		return parsed
 	return {"brackets": {}}
 
-## pool 里若还没有 seed_ 开头的 ghost, 把种子队全并进去 (幂等: 重跑不重复; 只改内存, save 才落盘).
+const SEED_VER := 2   # 种子池版本(2026-07-15: 49→70支+loadouts+档8); 升版→老档清旧seed_并入新种子(玩家上传的真ghost保留)
+## 种子并入(版本化): 无seed_ 或 池版本<SEED_VER → 清旧seed_+并入新种子+落盘. 修真机bug"老池挡住新种子永不升级"(用户2026-07-15).
 static func _ensure_seeded(pool: Dictionary) -> void:
 	var brackets: Dictionary = pool.get("brackets", {})
+	var have_seed := false
 	for b in brackets.keys():
 		for g in brackets[b]:
 			if str((g as Dictionary).get("ghost_id", "")).begins_with("seed_"):
-				return
+				have_seed = true
+				break
+		if have_seed: break
+	if have_seed and int(pool.get("_seed_ver", 0)) >= SEED_VER:
+		return
+	for b in brackets.keys():                       # 清旧版seed_(玩家真ghost保留)
+		var keep: Array = []
+		for g in brackets[b]:
+			if not str((g as Dictionary).get("ghost_id", "")).begins_with("seed_"):
+				keep.append(g)
+		brackets[b] = keep
 	var seed := _load_seed()
 	for b in seed.get("brackets", {}).keys():
 		for g in seed["brackets"][b]:
 			pool_add(pool, g)
+	pool["_seed_ver"] = SEED_VER
+	save_pool(pool)                                 # 升级立即落盘(否则要等下次upload才存)
 
 static func save_pool(pool: Dictionary, path: String = POOL_PATH) -> void:
 	var f := FileAccess.open(path, FileAccess.WRITE)
@@ -181,8 +195,10 @@ static func save_pool(pool: Dictionary, path: String = POOL_PATH) -> void:
 ## 抽对手: 同档 ghost, 没有就 bot. 永远返回一个可打的对手 (永久安全网).
 static func find_opponent(bracket: int, exclude_ids: Array, rng: RandomNumberGenerator) -> Dictionary:
 	var pool := load_pool()
-	var g = pool_find(pool, bracket, exclude_ids, rng)
-	return g if g != null else make_bot(bracket, rng)
+	for b in range(bracket, -1, -1):                # 本档没人(被排除/池洞)→就近低档回落, 全空才bot(修真机"高档空池永远同一支/bot")
+		var g = pool_find(pool, b, exclude_ids, rng)
+		if g != null: return g
+	return make_bot(bracket, rng)
 
 ## 上传自己阵容快照进池 (玩家配好 build / 赢一场后).
 static func upload_ghost(snapshot: Dictionary) -> void:

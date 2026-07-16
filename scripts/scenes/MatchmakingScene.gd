@@ -36,7 +36,12 @@ func _ready() -> void:
 	#   排除自己锁定的统领 (season_leaders) 防匹到完全同阵; vs 卡头像/名取自抽到的对手 profile.
 	var _rng := RandomNumberGenerator.new(); _rng.randomize()
 	var exclude: Array = GameState.season_leaders.duplicate() if GameState.season_leaders is Array else []
+	exclude.append_array(GameState.recent_ghost_ids)   # 排除最近3场对手(防连续同一快照·用户2026-07-15)
 	GameState.dual_ghost = Backend.find_opponent(Backend.bracket_for_battles(int(GameState.season_total_battles)), exclude, _rng)
+	var _gid := str((GameState.dual_ghost as Dictionary).get("ghost_id", "")) if GameState.dual_ghost is Dictionary else ""
+	if _gid != "":
+		GameState.recent_ghost_ids.append(_gid)
+		while GameState.recent_ghost_ids.size() > 3: GameState.recent_ghost_ids.pop_front()
 	var opp := _opponent_from_ghost(GameState.dual_ghost)
 	GameState.dual_opponent = opp
 	_build_searching()

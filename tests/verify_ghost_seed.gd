@@ -3,10 +3,10 @@ extends Node
 ## 用户〖2026-07-11〗:「对战到的队伍多么, 加10个快照看看, 按档位的是吗」
 ##
 ## 断言(测纯函数, 不碰真实 user://ghost_pool.json):
-##   1. _load_seed() 解析出 10 支队, 覆盖档 0-7。
+##   1. _load_seed() 解析出 70 支队, 覆盖档 0-8。
 ##   2. 每支队合法: leaders 3 只已知龟 / bracket 与桶键一致 / lane_assign 上+下=3 / is_bot=false。
 ##   3. _ensure_seeded 把种子并入空池(10支), 且幂等(重并不重复)。
-##   4. pool_find 在档 0-7 都能抽到种子对手(seed_ 开头)。
+##   4. pool_find 在档 0-8 都能抽到种子对手(seed_ 开头)。
 
 const Backend = preload("res://scripts/engine/backend.gd")
 const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
@@ -38,7 +38,7 @@ func _ready() -> void:
 	for b in brackets.keys():
 		total += (brackets[b] as Array).size()
 	_ok("种子池 = 70 支队", total == 70, "实际 %d" % total)
-	_ok("覆盖档 0-7", brackets.has("0") and brackets.has("7"))
+	_ok("覆盖档 0-8", brackets.has("0") and brackets.has("8"))
 
 	# 2. 每支队合法
 	var bad: Array = []
@@ -74,11 +74,11 @@ func _ready() -> void:
 	# 4. pool_find 各档能抽到种子对手
 	var rng := RandomNumberGenerator.new()
 	var miss: Array = []
-	for bi in range(8):
+	for bi in range(9):
 		var g = Backend.pool_find(pool, bi, [], rng)
 		if g == null or not str((g as Dictionary).get("ghost_id", "")).begins_with("seed_"):
 			miss.append(str(bi))
-	_ok("★档 0-7 都能抽到种子对手", miss.is_empty(), ("缺档: " + ", ".join(miss)) if not miss.is_empty() else "")
+	_ok("★档 0-8 都能抽到种子对手", miss.is_empty(), ("缺档: " + ", ".join(miss)) if not miss.is_empty() else "")
 
 	# 5. ★对手装备接线: _dual_foe_lane 从 ghost lane_assign 取 leaders 且挂上 equipped
 	var gs = get_node_or_null("/root/GameState")
