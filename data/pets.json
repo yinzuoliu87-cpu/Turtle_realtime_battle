@@ -2974,13 +2974,9 @@
     "name": "攻击",
     "icon": "skills/shell-0.png",
     "type": "shellStrike",
-    "hits": 2,
     "power": 0,
     "pierce": 0,
     "cd": 0,
-    "totalScale": 1.2,
-    "splashAdjacent": 25,
-    "isolatedBonus": 1.5,
     "brief": "龟壳打击造成 1×攻击力 伤害（物理 / 真实逐次交替），对主目标 120 码内的其他敌人溅射 50%（类型跟随主段）",
     "detail": "龟壳的普攻是<span class=\"val-atk\">单段</span>打击，造成（100%×攻击力({ATK}) = {N:ATK}）伤害；伤害类型<span class=\"val-atk\">逐次交替</span>——这一发物理，下一发<span class=\"val-true\">真实</span>（真实伤害穿减伤）。\n每一发都会对主目标 <span class=\"val-atk\">120 码</span>内的其他敌人溅射 <span class=\"val-atk\">50%</span> 伤害（类型跟随主段）。",
     "energyCost": 0

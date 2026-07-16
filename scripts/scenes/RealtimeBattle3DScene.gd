@@ -218,6 +218,11 @@ const REVIEW_DEMO_CFG := {
 	"headless:2": [ {"dx": 200.0, "dy": -90.0, "fixed": true}, {"dx": 350.0, "dy": 90.0, "fixed": true}, {"dx": 550.0, "dy": 0.0, "fixed": true} ],   # 万千触须: 3假人散开→全场触须8×5爆出+命中大触须钉住+吸血红珠回流
 	"headless:3": [ {"dx": 110.0, "dy": 0.0, "fixed": true} ],   # 灵魂打击: 蓄力紫焰绕颈tell→下次撕咬魂爆处决
 	"headless:-1": [ {"dx": 130.0, "dy": -60.0, "fixed": true}, {"dx": 130.0, "dy": 60.0, "fixed": true} ],   # 亡灵被动: 挨打残血加攻·首次濒死金环5秒免死(需假人还手)
+	"shell:0": [ {"dx": 110.0, "dy": 0.0, "fixed": true}, {"dx": 190.0, "dy": 70.0, "fixed": true} ],   # 龟壳打击: 物/真逐击交替+副目标120码溅射50%
+	"shell:1": [ {"dx": 150.0, "dy": 0.0, "fixed": true} ],   # 吸收: 4红珠鱼贯流向龟壳+maxHp转移
+	"shell:2": [ {"dx": 200.0, "dy": -70.0, "fixed": true}, {"dx": 200.0, "dy": 70.0, "fixed": true} ],   # 复制: 两侧镜像残影签名→轮流放2敌技60%
+	"shell:3": [ {"dx": 150.0, "dy": 0.0, "fixed": true}, {"dx": 500.0, "dy": 0.0, "fixed": true} ],   # 暗影俯冲: 沿线1近1远→起跳暗焰+冲刺+沿途暗焰痕+落地爆+斑块燃烧区→羽化入隐
+	"shell:-1": [ {"dx": 130.0, "dy": -60.0, "fixed": true}, {"dx": 130.0, "dy": 60.0, "fixed": true} ],   # 气场觉醒/储能: 2假人还手(REVIEW_DUMMY_ATTACKS须true)→受伤储能→空气扭曲起手+黄色远古双层波带+6金星; 第10/20秒觉醒金光
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -14587,8 +14592,11 @@ func _sk_shell_absorb(u: Dictionary, tgt) -> void:              # 龟壳·吸收
 	tgt["hp"] = minf(float(tgt["hp"]), float(tgt["maxHp"]))     # 目标maxHp+当前同步减
 	u["maxHp"] = float(u["maxHp"]) + steal
 	u["hp"] = float(u["hp"]) + steal                            # 龟壳maxHp+当前同步增
-	_float_text(tgt["pos"] + Vector2(0, -40), "吸收!", Color("#cfd8e8"))
 	_float_text(u["pos"] + Vector2(0, -52), "+%d" % int(steal), Color("#7fe3a0"))
+	var tp: Vector2 = tgt["pos"]                                # 2026-07-17: 4颗红色生命珠鱼贯从目标流向龟壳(删"吸收!"技能名飘字=UI规矩)
+	var uref: Dictionary = u
+	for i in range(4):
+		_pending_shots.append({"delay": 0.08 * float(i), "fn": func(): _headless_drain_dot(tp, uref), "src": u})
 
 func _shell_dark_flame(pos2d: Vector2, size: float, dur: float) -> void:   # 暗焰喷发(起跳/落地/破隐·2026-07-17): 紫芯+黑烟双层胀开渐隐
 	var glow := _make_fire_glow_tex()
@@ -15305,7 +15313,22 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:               # 龟壳·复制(
 			if _COPYABLE_SKILLS.has(s) and not pool.has(s):
 				pool.append(s)
 	pool.shuffle()
-	if pool.size() >= 1:
+	if pool.size() >= 1:                                       # 2026-07-17镜像签名: 施放前两侧紫白残影错位闪现0.35s+白紫环(复制感)
+		var glow := _make_fire_glow_tex()
+		for mi in range(2):
+			var mg := Sprite3D.new()
+			mg.texture = glow
+			mg.billboard = BaseMaterial3D.BILLBOARD_ENABLED; mg.shaded = false; mg.transparent = true
+			mg.pixel_size = (60.0 * WS) / 128.0
+			mg.modulate = Color(0.85, 0.7, 1.0, 0.85)
+			var off: float = 30.0 if mi == 0 else -30.0
+			mg.position = _world_pos((u["pos"] as Vector2) + Vector2(off, 0.0), 0.7)
+			_world.add_child(mg)
+			var mt := _reg_tween(); mt.set_parallel(true)
+			mt.tween_property(mg, "position", _world_pos((u["pos"] as Vector2) + Vector2(off * 1.8, 0.0), 0.7), 0.35)
+			mt.tween_property(mg, "modulate:a", 0.0, 0.35)
+			mt.chain().tween_callback(mg.queue_free)
+		_skill_ring(u["pos"], Color(0.85, 0.7, 1.0, 0.6), 52.0)
 		u["dmg_out_mult"] = 0.6                                # 60%效果(封板)·即时伤害经_apply_damage_from乘数
 		_copy_fx_mult = 0.6                                    # 60%效果·护盾/治疗/DoT
 		_do_skill(u, tgt, str(pool[0]))                        # 第1个立即
@@ -16071,13 +16094,46 @@ func _shell_release(u: Dictionary) -> void:
 	if se < 1.0:
 		return
 	# 1) 缓慢移动冲击波 (Image环贴图, 半径0→520px / 1.8s; 每敌只命中一次)
+	_shell_haze(u)                                   # 起手空气扭曲(用户2026-07-17 Q3"开始阶段扭曲角色周围视角和空气")
 	_shell_spawn_shockwave(u, int(se * 0.40))
 	# 2) 衰减护盾 = 80%储能, 5秒线性流失到0
 	var amt: float = se * 0.80
 	u["_auraShieldVal"] = float(u.get("_auraShieldVal", 0.0)) + amt   # 金色储能护盾(特殊色, 1:1回合制aura盾)
 	u["shell_shield_decay_rate"] = amt / SHELL_SHIELD_SEC   # 每秒扣量 (按授予值算, 5秒清)
 
+func _shell_haze(u: Dictionary) -> void:            # 释放起手·空气扭曲拟真(2026-07-17 Q3自设): 双层低alpha金glow反相脉动0.7s+2道气浪环升起
+	var glow := _make_fire_glow_tex()
+	for i in range(2):
+		var h := Sprite3D.new()
+		h.texture = glow
+		h.billboard = BaseMaterial3D.BILLBOARD_ENABLED; h.shaded = false; h.transparent = true
+		h.pixel_size = (float(130 + i * 50) * WS) / 128.0
+		h.modulate = Color(1.0, 0.9, 0.55, 0.16)
+		h.position = _world_pos(u["pos"], 0.7)
+		h.scale = Vector3.ONE * (1.0 if i == 0 else 0.8)
+		_world.add_child(h)
+		var t := _reg_tween()
+		for k in range(3):                          # 反相脉动=热浪抖动感
+			t.tween_property(h, "scale", Vector3.ONE * (1.18 if i == 0 else 0.66), 0.12)
+			t.tween_property(h, "scale", Vector3.ONE * (1.0 if i == 0 else 0.8), 0.12)
+		t.tween_property(h, "modulate:a", 0.0, 0.15)
+		t.tween_callback(h.queue_free)
+	for i in range(2):                              # 气浪环从脚边升起(空气被顶开)
+		var r := Sprite3D.new()
+		r.texture = _make_ring_texture(Color(1, 1, 1, 1))
+		r.billboard = BaseMaterial3D.BILLBOARD_ENABLED; r.shaded = false; r.transparent = true
+		r.pixel_size = (90.0 * WS) / 96.0
+		r.modulate = Color(1.0, 0.92, 0.6, 0.5)
+		r.position = _world_pos(u["pos"], 0.3)
+		_world.add_child(r)
+		var rt := _reg_tween()
+		rt.tween_interval(0.18 * float(i))
+		rt.tween_property(r, "position", _world_pos(u["pos"], 1.6), 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		rt.parallel().tween_property(r, "modulate:a", 0.0, 0.5)
+		rt.chain().tween_callback(r.queue_free)
+
 # 冲击波节点 (Image环贴图躺平贴地; 绝不用 GradientTexture2D FILL_RADIAL → 会画方角)
+# 2026-07-17 Q3"黄色远古冲击波": 双层波带(宽晕带+锐利细线波前)+6颗金星随波带转(远古符文感)
 func _shell_spawn_shockwave(u: Dictionary, dmg: int) -> void:
 	var spr := Sprite3D.new()
 	spr.texture = _make_ring_texture(Color(1.0, 0.84, 0.22, 1.0))
@@ -16089,9 +16145,31 @@ func _shell_spawn_shockwave(u: Dictionary, dmg: int) -> void:
 	spr.pixel_size = 0.0001                          # 起始 ~0 (扩张到 520px 直径)
 	spr.position = _world_pos(u["pos"], 0.05)
 	_world.add_child(spr)
+	var front := Sprite3D.new()                      # 锐利波前(细线环·晕带+锐前沿=厚重远古)
+	front.texture = _make_thin_ring_tex()
+	front.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	front.axis = Vector3.AXIS_Y
+	front.shaded = false; front.transparent = true
+	front.modulate = Color(1.0, 0.95, 0.55, 1.0)
+	front.pixel_size = 0.0001
+	front.position = _world_pos(u["pos"], 0.07)
+	_world.add_child(front)
+	var stars: Array = []
+	var stex := _make_star_texture()
+	for i in range(6):                               # 6颗金星嵌波带随波转
+		var sp := Sprite3D.new()
+		sp.texture = stex
+		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; sp.shaded = false; sp.transparent = true
+		sp.pixel_size = 0.008
+		sp.modulate = Color(1.0, 0.88, 0.4, 0.95)
+		sp.position = _world_pos(u["pos"], 0.25)
+		_world.add_child(sp)
+		stars.append(sp)
 	# 状态: 中心/当前半径/已命中集合(逐敌一次)/伤害/节点
 	u["shell_sw"] = {
 		"node": spr,
+		"node2": front,
+		"stars": stars,
 		"center": u["pos"],
 		"t": 0.0,
 		"radius": 0.0,
@@ -16111,6 +16189,16 @@ func _shell_shockwave_tick(u: Dictionary, delta: float) -> void:
 	if spr != null and is_instance_valid(spr):
 		spr.pixel_size = maxf(0.0001, (r * 2.0 * WS) / 96.0)
 		spr.modulate.a = 1.0 - frac * 0.55           # 边扩边淡 (终态 ~0.45, 保持可见到末尾)
+	var front = sw.get("node2", null)                # 锐利波前同步扩(2026-07-17双层波带)
+	if front != null and is_instance_valid(front):
+		front.pixel_size = maxf(0.0001, (r * 2.0 * WS) / 256.0)
+		front.modulate.a = 1.0 - frac * 0.35
+	var stars: Array = sw.get("stars", [])           # 金星嵌波带随波转
+	for si in range(stars.size()):
+		var sp = stars[si]
+		if sp != null and is_instance_valid(sp):
+			var sa: float = TAU * float(si) / 6.0 + frac * 2.0
+			sp.position = _world_pos((sw["center"] as Vector2) + Vector2(cos(sa), sin(sa)) * r, 0.25)
 	# 命中: 距中心 <= 当前半径 且未命中过的敌人 (环刚扫过) 各吃一次
 	var center: Vector2 = sw["center"]
 	var hit: Dictionary = sw["hit"]
@@ -16126,10 +16214,15 @@ func _shell_shockwave_tick(u: Dictionary, delta: float) -> void:
 			if (e["pos"] - center).length() <= r:
 				hit[eid] = true
 				_apply_damage_from(u, e, dmg, Color("#b0ffe0"))
-	# 结束: 清理节点+状态
+	# 结束: 清理节点+状态(node2/stars一并清·不瞬删=波前已淡到0.65alpha自然收)
 	if frac >= 1.0:
 		if spr != null and is_instance_valid(spr):
 			spr.queue_free()
+		if front != null and is_instance_valid(front):
+			front.queue_free()
+		for sp2 in stars:
+			if sp2 != null and is_instance_valid(sp2):
+				sp2.queue_free()
 		u["shell_sw"] = null
 
 # ============================================================================
