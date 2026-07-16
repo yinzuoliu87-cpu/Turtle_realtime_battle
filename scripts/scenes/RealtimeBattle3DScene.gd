@@ -3697,8 +3697,6 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 							_melee_lunge(u, tgt)                 # 目标微脱离→踏步补缺口(视觉够到·伤害由_basic_attack保证)
 						_basic_attack(u, tgt)
 						_fired = true
-						if u["id"] == "space" and tgt.get("alive", false) and float(u.get("star_energy", 0.0)) > 0.0:   # 星能: 普攻也算施法·附带追加30%储存星能真伤(封板)
-							_apply_damage_from(u, tgt, int(u["star_energy"] * 0.30), Color("#ffffff"), 0.0, true)
 					# gambler 多重打击(云顶剑士式): 命中后掷概率, 中→快攻速再打, 没中→正常冷却
 					var _hf: float = maxf(1.0, float(u.get("haste_mult", 1.0))) if _t < float(u.get("haste_until", 0.0)) else 1.0   # 临时攻速buff(祝福等)
 					if u["id"] == "hunter" and tgt != null and tgt.get("alive", false) and float(tgt.get("hp", 0.0)) < float(tgt.get("maxHp", 1.0)) * 0.5:
@@ -6909,9 +6907,12 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 	_world.add_child(p)
 	var pdur := clampf(start2d.distance_to(tgt["pos"]) / 700.0, 0.22, 0.7)
 	if card_spin: pdur = clampf(start2d.distance_to(tgt["pos"]) / 430.0, 0.42, 1.1)   # 扑克牌弹道放慢看清(用户2026-07-14)
+	var _stt: int = 0
+	if basic_onhit and src is Dictionary and str(src.get("id", "")) == "space" and float(src.get("star_energy", 0.0)) > 0.0:
+		_stt = int(float(src["star_energy"]) * 0.30)   # 星能追加真伤打包进普攻弹道·命中才结算(用户2026-07-16'附在普攻上')
 	_projectiles.append({
 		"node": p, "from": world_from, "tgt": tgt, "dmg": dmg, "col": col,
-		"src": src, "t": 0.0, "dur": pdur, "basic_onhit": basic_onhit,
+		"src": src, "t": 0.0, "dur": pdur, "basic_onhit": basic_onhit, "star_true": _stt,
 		"oriented": oriented, "card_spin": card_spin, "dtype": _last_dmg_type,
 	})
 
@@ -7128,6 +7129,8 @@ func _step_projectiles(delta: float) -> void:
 					_freeze(tgt, pr["freeze_on_hit"])   # 冰封: 弹道命中→冻结
 				if pr.get("coin_true", 0) > 0:
 					_apply_damage_from(pr["src"], tgt, int(pr["coin_true"]), Color("#fff0a0"), 0.0, true)   # 金币真实那半
+				if pr.get("star_true", 0) > 0 and tgt.get("alive", false):
+					_apply_damage_from(pr["src"], tgt, int(pr["star_true"]), Color("#ffffff"), 0.0, true)   # 星能追加真伤(白字·附普攻命中同帧·用户2026-07-16)
 			continue
 		keep.append(pr)
 	_projectiles = keep
