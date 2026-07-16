@@ -86,8 +86,8 @@ static func _review_demo() -> bool:
 	if OS.has_environment("REVIEW"):
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
-const REVIEW_TURTLE := "chest"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 2   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
+const REVIEW_TURTLE := "star"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
+const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (海盗: 0弯刀✅/1火炮齐射✅/2朗姆酒✅/3海盗船✅/-1被动掠夺)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -7489,8 +7489,8 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		# 宝箱藏宝图 on-hit 战利品 (火石灼烧/毒箭治疗削减/雷刃金闪电引爆·此块已在not from_equip内→天然防循环)
 		var _cht = src.get("chest_treasures", null)
 		if _cht is Dictionary and src != u and u.get("alive", false):
-			if _cht.has("flint"):    # 火石: 命中→灼烧层=round(0.67×ATK)
-				_apply_dot_stacks(u, "burn", maxi(1, roundi(float(src["atk"]) * 0.67)), src)
+			if _cht.has("flint"):    # 火石: 命中→灼烧层=round(0.1×ATK)(用户2026-07-16: 0.67→0.1)
+				_apply_dot_stacks(u, "burn", maxi(1, roundi(float(src["atk"]) * 0.1)), src)
 			if _cht.has("poison"):   # 毒箭: 命中→治疗削减-50%·5秒
 				u["heal_reduce_until"] = maxf(float(u.get("heal_reduce_until", 0.0)), _t + 5.0)
 				u["heal_reduce_pct"] = maxf(float(u.get("heal_reduce_pct", 0.0)), 0.5)
@@ -11411,13 +11411,29 @@ const _CHEST_TREASURE_NAME := {
 
 # 宝箱·藏宝图(封板L590-594·完整15件专属池): 造成伤害积累财宝值(=dmg_dealt), 过阈值开专属战利品(分档池·不重复)+回血, 一场最多5件
 func _chest_treasure_tick(u: Dictionary) -> void:
-	var opened: int = int(u.get("chest_opened", 0))
-	if opened >= 5:
-		return
-	var lvl_mult: float = 1.0 + 0.03 * float(maxi(0, int(u.get("level", 1)) - 1))   # 阈值随等级+3%/级(封板)
-	var thresh: Array = [80.0, 130.0, 240.0, 360.0, 590.0]
-	if float(u.get("dmg_dealt", 0.0)) < float(thresh[opened]) * lvl_mult:
-		return
+	# 大轮制(用户2026-07-16): 我方真实对局=财宝值跨场累积(GameState)·阈值1000/2500/4500/7000/12000·开出=一大轮常驻; demo/敌侧=单场旧制
+	var season_mode: bool = (not _review_demo()) and str(u.get("side", "")) == "left" and GameState != null and not u.get("is_summon", false)
+	var opened: int
+	if season_mode:
+		var synced: float = float(u.get("_ttl_synced", 0.0))
+		var cur: float = float(u.get("dmg_dealt", 0.0))
+		if cur > synced:
+			GameState.chest_treasure_value += cur - synced
+			u["_ttl_synced"] = cur
+		opened = (GameState.chest_treasures_won as Array).size()
+		if opened >= 5:
+			return
+		var thresh_s: Array = [1000.0, 2500.0, 4500.0, 7000.0, 12000.0]
+		if float(GameState.chest_treasure_value) < float(thresh_s[opened]):
+			return
+	else:
+		opened = int(u.get("chest_opened", 0))
+		if opened >= 5:
+			return
+		var lvl_mult: float = 1.0 + 0.03 * float(maxi(0, int(u.get("level", 1)) - 1))   # 阈值随等级+3%/级(单场旧制)
+		var thresh: Array = [80.0, 130.0, 240.0, 360.0, 590.0]
+		if float(u.get("dmg_dealt", 0.0)) < float(thresh[opened]) * lvl_mult:
+			return
 	u["chest_opened"] = opened + 1
 	var group: String = ["basic", "basic", "adv", "adv", "legend"][opened]   # 第1-2箱基础/3-4进阶/5传说
 	var heal_pct: float = [0.08, 0.08, 0.11, 0.11, 0.15][opened]
@@ -11425,6 +11441,9 @@ func _chest_treasure_tick(u: Dictionary) -> void:
 	if tid != "":
 		_chest_apply_treasure(u, tid)
 		if u.get("chest_greed", false): _chest_greed_apply(u, 1)   # 贪婪: 新开1件→+4%攻+7%最大生命
+		if (not _review_demo()) and str(u.get("side", "")) == "left" and GameState != null and not u.get("is_summon", false):
+			GameState.chest_treasures_won.append(tid)              # 大轮常驻装备(用户2026-07-16)+当场落盘防丢
+			GameState.save()
 		_float_text(u["pos"] + Vector2(0, -72), "开箱! " + str(_CHEST_TREASURE_NAME.get(tid, tid)), Color("#ffd93d"))
 		var ipath: String = "res://assets/sprites/equip/chest-t-%s.png" % tid   # 头顶弹出战利品图标(用户2026-07-15: 看清开了什么)
 		if ResourceLoader.exists(ipath):
@@ -11487,8 +11506,9 @@ func _chest_pick_equip(costs: Array) -> String:
 		return ""
 	return str(pool[randi() % pool.size()])
 
-func _sk_chest_inventory(u: Dictionary) -> void:                 # 宝箱龟·清点财宝(用户2026-07-16改: 每1000财宝→治疗+10%·盾不吃加成)
-	var bonus: float = 1.0 + 0.10 * floorf(u["dmg_dealt"] / 1000.0)
+func _sk_chest_inventory(u: Dictionary) -> void:                 # 宝箱龟·清点财宝(用户2026-07-16改: 每1000财宝→治疗+10%·盾不吃加成; 财宝值=大轮累积)
+	var tv: float = float(GameState.chest_treasure_value) if ((not _review_demo()) and str(u.get("side", "")) == "left" and GameState != null) else float(u.get("dmg_dealt", 0.0))
+	var bonus: float = 1.0 + 0.10 * floorf(tv / 1000.0)
 	_heal(u, u["maxHp"] * 0.05 * bonus)
 	_grant_shield(u, u["atk"] * 0.6)
 
@@ -14628,6 +14648,9 @@ func _apply_spawn_passives() -> void:
 						"death_aoe": 1.5,
 					})
 			"chest":
+				if (not _review_demo()) and str(u.get("side", "")) == "left" and GameState != null:
+					for _tw0 in GameState.chest_treasures_won:     # 大轮已开战利品→开局回装(常驻整轮·用户2026-07-16)
+						_chest_apply_treasure(u, str(_tw0))
 				if "chestCannon" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 贪婪(技三打包被动)选中才有
 					u["chest_greed"] = true
 					u["chest_greed_atk_unit"] = u["base_atk"] * 0.04
