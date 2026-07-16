@@ -7464,8 +7464,8 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		_egg_add_progress(src, float(dmg) * 0.1)
 	if u.get("has_egg", false):   # 温泉蛋(036): 承受伤害×0.1进度
 		_egg_add_progress(u, float(dmg) * 0.1)
-	# 星能 (星际造伤62%)
-	if src["id"] == "space":
+	# 星能 (星际造伤62%·星波施法期锁定不涨·用户2026-07-16)
+	if src["id"] == "space" and _t >= float(src.get("star_lock_until", 0.0)):
 		src["star_energy"] = minf(src["maxHp"] * 0.40, src["star_energy"] + float(dmg) * 0.62)
 	# 储能 (龟壳受伤转储能, 上限50%最大HP) — 仅"store"相位累积 ("cd"相位不储)
 	if u["id"] == "shell" and u.get("shell_phase", "store") == "store":
@@ -12299,6 +12299,8 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 	var charged: bool = float(u.get("star_energy", 0.0)) >= u["maxHp"] * 0.40
 	var uu2 := u
 	var origin: Vector2 = u["pos"]
+	u["energy_lock_until"] = maxf(float(u.get("energy_lock_until", 0.0)), _t + (3.2 if charged else 1.8))   # 施法锁龟能(用户2026-07-16)·②③提前恢复
+	u["star_lock_until"] = float(u["energy_lock_until"])                                                    # 星能同锁(积累暂停)
 	var stex := _make_star_texture()
 	var glow0 := _make_fire_glow_tex()
 	# ── 起手(0.2s): 4颗小星被吸进龟身(聚能预兆)
@@ -12312,8 +12314,8 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 		gs.position = _world_pos(origin + Vector2(cos(ga), sin(ga)) * randf_range(90.0, 140.0), randf_range(0.3, 1.0))
 		_world.add_child(gs)
 		var gt := _reg_tween(); gt.set_parallel(true)
-		gt.tween_property(gs, "position", _world_pos(origin, 0.8), 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		gt.tween_property(gs, "modulate:a", 0.0, 0.06).set_delay(0.14)
+		gt.tween_property(gs, "position", _world_pos(origin, 0.8), 0.36).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		gt.tween_property(gs, "modulate:a", 0.0, 0.12).set_delay(0.28)
 		gt.chain().tween_callback(gs.queue_free)
 	# ── 波环扩散(0.2s起·0.58s推到520码): 双层贴地环+环带12星随波转·波前扫到才结算·尽头碎星屑
 	var rtex := _make_pixel_ring_tex()
@@ -12356,7 +12358,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				dp.position = _world_pos(origin + Vector2(cos(da), sin(da)) * randf_range(r * 0.4, r * 0.95), randf_range(0.1, 0.5))
 				_world.add_child(dp)
 				var dpt := _reg_tween()
-				dpt.tween_property(dp, "modulate:a", 0.0, 0.4)
+				dpt.tween_property(dp, "modulate:a", 0.0, 0.8)
 				dpt.tween_callback(dp.queue_free)
 			for o in _enemies_of(uu2):                            # 波前扫到才结算1.0A魔法(近先远后·封板系数)
 				if not o.get("alive", false) or hitset.has(o): continue
@@ -12374,11 +12376,14 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 					hs.position = _world_pos(o["pos"], 0.7)
 					_world.add_child(hs)
 					var ht := _reg_tween(); ht.set_parallel(true)
-					ht.tween_property(hs, "position", _world_pos((o["pos"] as Vector2) + Vector2(cos(ha), sin(ha)) * randf_range(30.0, 60.0), 0.15), 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-					ht.tween_property(hs, "modulate:a", 0.0, 0.35)
+					ht.tween_property(hs, "position", _world_pos((o["pos"] as Vector2) + Vector2(cos(ha), sin(ha)) * randf_range(30.0, 60.0), 0.15), 0.7).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+					ht.tween_property(hs, "modulate:a", 0.0, 0.7)
 					ht.chain().tween_callback(hs.queue_free)
-		, 0.0, 1.0, 0.58)
+		, 0.0, 1.0, 1.16)
 		wt.tween_callback(func() -> void:                         # 消散: 环碎成一圈星屑向外散开(不凭空消失)
+			if not charged and uu2.get("alive", false):
+				uu2["energy_lock_until"] = _t                      # 基础版: 波结束恢复龟能/星能
+				uu2["star_lock_until"] = _t
 			if is_instance_valid(rc): rc.queue_free()
 			if is_instance_valid(rh): rh.queue_free()
 			for wi3 in range(wstars.size()):
@@ -12386,10 +12391,10 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				if not is_instance_valid(ws3): continue
 				var wa3: float = TAU * float(wi3) / 12.0 + 2.6
 				var wt3 := _reg_tween(); wt3.set_parallel(true)
-				wt3.tween_property(ws3, "position", _world_pos(origin + Vector2(cos(wa3), sin(wa3)) * 580.0, 0.1), 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-				wt3.tween_property(ws3, "modulate:a", 0.0, 0.3)
+				wt3.tween_property(ws3, "position", _world_pos(origin + Vector2(cos(wa3), sin(wa3)) * 580.0, 0.1), 0.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+				wt3.tween_property(ws3, "modulate:a", 0.0, 0.6)
 				wt3.chain().tween_callback(ws3.queue_free))
-	_pending_shots.append({"delay": 0.2, "fn": wave, "src": u})
+	_pending_shots.append({"delay": 0.4, "fn": wave, "src": u})
 	if charged:                                                   # ── 强化: 巨彗星「天崩」(逐帧订正asol_hi a30/a38/a44)
 		var es: Array = []
 		for o in _enemies_of(u):
@@ -12402,8 +12407,8 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 		var ring1 := _px_ground_sprite(rtex, center, 800.0, Color(0.75, 0.5, 1.0, 0.0), 0.05)   # 紫双环预警
 		var ring2 := _px_ground_sprite(rtex, center, 640.0, Color(0.9, 0.7, 1.0, 0.0), 0.055)
 		var rt := _reg_tween(); rt.set_parallel(true)
-		rt.tween_property(ring1, "modulate:a", 0.7, 0.15)
-		rt.tween_property(ring2, "modulate:a", 0.55, 0.15)
+		rt.tween_property(ring1, "modulate:a", 0.7, 0.3)
+		rt.tween_property(ring2, "modulate:a", 0.55, 0.3)
 		var orbs: Array = []                                      # 环上节点珠×3(a30)
 		for oi in range(3):
 			var orb := Sprite3D.new()
@@ -12423,8 +12428,8 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 		pillar.scale = Vector3(0.4, 14.0, 1.0)
 		_world.add_child(pillar)
 		var obt := _reg_tween(); obt.set_parallel(true)
-		obt.tween_property(pillar, "modulate:a", 0.7, 0.95)
-		obt.tween_property(pillar, "pixel_size", 0.014, 0.95)
+		obt.tween_property(pillar, "modulate:a", 0.7, 1.9)
+		obt.tween_property(pillar, "pixel_size", 0.014, 1.9)
 		obt.chain().tween_method(func(q: float) -> void:
 			for oi2 in range(orbs.size()):
 				var ob2 = orbs[oi2]
@@ -12439,7 +12444,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				if not is_instance_valid(ob3): continue
 				var oa2: float = TAU * float(oi3) / 3.0 + q * 1.7
 				ob3.position = _world_pos(center + Vector2(cos(oa2), sin(oa2)) * 400.0, 0.15)
-		, 0.0, 1.0, 1.0)
+		, 0.0, 1.0, 2.0)
 		var rise_t := _reg_tween()                                # 地面星屑被吸起(反向预兆·每0.12s一粒)
 		rise_t.tween_method(func(q: float) -> void:
 			if int(q * 8.0) != int(maxf(0.0, q - 0.125) * 8.0):
@@ -12456,7 +12461,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				rst.tween_property(rs, "position", _world_pos(rp, randf_range(1.6, 2.6)), 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 				rst.tween_property(rs, "modulate:a", 0.0, 0.5)
 				rst.chain().tween_callback(rs.queue_free)
-		, 0.0, 1.0, 1.0)
+		, 0.0, 1.0, 2.0)
 		var comet := func() -> void:                              # 1.0s后: 坠落0.25s(大火球头+束状粗光柱+嵌星+坠落微震)
 			if is_instance_valid(ring1): ring1.queue_free()
 			if is_instance_valid(ring2): ring2.queue_free()
@@ -12498,7 +12503,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				tr.position = _world_pos(cp, ch2)
 				_world.add_child(tr)
 				var trt := _reg_tween()
-				trt.tween_property(tr, "modulate:a", 0.0, 0.3)
+				trt.tween_property(tr, "modulate:a", 0.0, 0.6)
 				trt.tween_callback(tr.queue_free)
 				if int(pv * 20.0) % 3 == 0:                                                                    # 沿途嵌星(f_022)
 					var sst := Sprite3D.new()
@@ -12509,14 +12514,17 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 					sst.position = _world_pos(cp + Vector2(randf_range(-18.0, 18.0), randf_range(-12.0, 12.0)), ch2 + randf_range(-0.2, 0.3))
 					_world.add_child(sst)
 					var sstt := _reg_tween()
-					sstt.tween_property(sst, "modulate:a", 0.0, 0.5)
+					sstt.tween_property(sst, "modulate:a", 0.0, 1.0)
 					sstt.tween_callback(sst.queue_free)
-			, 0.0, 1.0, 0.25)
+			, 0.0, 1.0, 0.5)
 			ct2.tween_callback(func() -> void:
 				if is_instance_valid(head): head.queue_free()
 				for o2 in _enemies_of(uu2):                        # 伤害撞击帧结算(封板1.5A·400码)
 					if o2.get("alive", false) and o2["pos"].distance_to(center) <= 400.0:
 						_apply_damage_from(uu2, o2, _atk_dmg(uu2, 1.5, o2, true), Color("#ffd0ff"))
+				if uu2.get("alive", false):
+					uu2["energy_lock_until"] = _t                  # 巨彗星造成伤害后才恢复龟能/星能(用户2026-07-16)
+					uu2["star_lock_until"] = _t
 				_screen_flash_light()                              # 全屏轻白闪一拍
 				_shake(JUICE_SHAKE_BIG); _add_hitstop(JUICE_HITSTOP_KNOCK)
 				var core := Sprite3D.new()                         # 白金光核膨胀
@@ -12527,8 +12535,8 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				core.position = _world_pos(center, 0.5)
 				_world.add_child(core)
 				var cot := _reg_tween(); cot.set_parallel(true)
-				cot.tween_property(core, "pixel_size", (220.0 * WS) / float(maxi(1, glow0.get_width())), 0.32)
-				cot.tween_property(core, "modulate:a", 0.0, 0.35)
+				cot.tween_property(core, "pixel_size", (220.0 * WS) / float(maxi(1, glow0.get_width())), 0.64)
+				cot.tween_property(core, "modulate:a", 0.0, 0.7)
 				cot.chain().tween_callback(core.queue_free)
 				for pi2 in range(9):                               # 紫黑烟尘花瓣(a38: 向外+上翻卷·膨胀渐隐0.7s)
 					var pa2: float = TAU * float(pi2) / 9.0 + randf() * 0.35
@@ -12540,9 +12548,9 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 					petal.position = _world_pos(center + Vector2(cos(pa2), sin(pa2)) * 40.0, 0.4)
 					_world.add_child(petal)
 					var pt2 := _reg_tween(); pt2.set_parallel(true)
-					pt2.tween_property(petal, "position", _world_pos(center + Vector2(cos(pa2), sin(pa2)) * randf_range(150.0, 230.0), randf_range(1.0, 1.9)), 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-					pt2.tween_property(petal, "pixel_size", petal.pixel_size * 1.7, 0.55)
-					pt2.tween_property(petal, "modulate:a", 0.0, 0.7)
+					pt2.tween_property(petal, "position", _world_pos(center + Vector2(cos(pa2), sin(pa2)) * randf_range(150.0, 230.0), randf_range(1.0, 1.9)), 1.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+					pt2.tween_property(petal, "pixel_size", petal.pixel_size * 1.7, 1.1)
+					pt2.tween_property(petal, "modulate:a", 0.0, 1.4)
 					pt2.chain().tween_callback(petal.queue_free)
 				_burst_vfx("res://assets/sprites/vfx/comet-impact.png", center, 320.0, 1.6)
 				_skill_ring(center, Color(1.0, 0.85, 1.0, 0.65), 400.0)
@@ -12561,9 +12569,9 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 					cst.position = _world_pos(cons[si2], randf_range(0.4, 1.2))
 					_world.add_child(cst)
 					var cstt := _reg_tween()
-					cstt.tween_property(cst, "modulate:a", 1.0, 0.3)
-					cstt.tween_interval(0.3)
-					cstt.tween_property(cst, "modulate:a", 0.0, 1.0)
+					cstt.tween_property(cst, "modulate:a", 1.0, 0.6)
+					cstt.tween_interval(0.6)
+					cstt.tween_property(cst, "modulate:a", 0.0, 2.0)
 					cstt.tween_callback(cst.queue_free)
 				for si in range(12):                               # 外围星星闪点
 					var sa2: float = TAU * float(si) / 12.0 + randf_range(-0.2, 0.2)
@@ -12579,7 +12587,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 					var st2 := _reg_tween()
 					st2.tween_interval(randf() * 0.2)
 					st2.tween_property(ss, "modulate:a", 1.0, 0.08)
-					st2.tween_property(ss, "modulate:a", 0.0, 0.5)
+					st2.tween_property(ss, "modulate:a", 0.0, 1.0)
 					st2.tween_callback(ss.queue_free)
 				for sr2 in range(4):                               # 星痕余韵(a44: 沿坠落方向星串1.2s缓隐)
 					var rp2: Vector2 = center + fdir * (40.0 + 55.0 * float(sr2)) + Vector2(randf_range(-14.0, 14.0), randf_range(-10.0, 10.0))
@@ -12591,9 +12599,9 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 					rst2.position = _world_pos(rp2, 0.3 + 0.25 * float(sr2))
 					_world.add_child(rst2)
 					var rstt2 := _reg_tween()
-					rstt2.tween_property(rst2, "modulate:a", 0.0, 1.2)
+					rstt2.tween_property(rst2, "modulate:a", 0.0, 2.4)
 					rstt2.tween_callback(rst2.queue_free))
-		_pending_shots.append({"delay": 1.0, "fn": comet, "src": u})
+		_pending_shots.append({"delay": 2.0, "fn": comet, "src": u})
 
 func _screen_flash_light() -> void:                              # 全屏轻白闪一拍(彗星撞击帧·0.06s淡入0.12s淡出·layer60盖UI下方一点)
 	var cl := CanvasLayer.new()
