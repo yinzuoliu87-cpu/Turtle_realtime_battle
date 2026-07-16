@@ -1,0 +1,74 @@
+# iOS未签名IPA云端构建(2026-07-17 用户"iOS包用线连手机·你开始吧")
+# 路线: macOS runner → Godot headless导出Xcode工程(export_project_only) → xcodebuild免签编译 → 打包unsigned IPA artifact
+# 用户侧: Actions页下载 turtle-ios-unsigned → Windows装Sideloadly → iPhone USB连电脑 → 拖入IPA用AppleID签名安装
+#         → 手机 设置→通用→VPN与设备管理→信任自己的AppleID证书。免费证书7天过期, 重签即可(存档不丢)。
+# 构建=debug模板: OS.is_debug_build()=true → 调试场按钮出现; REVIEW_DEMO_DEFAULT=false → 正常匹配不被劫持。
+name: iOS unsigned IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build-ios:
+    runs-on: macos-14
+    timeout-minutes: 40
+    env:
+      GODOT_VERSION: "4.6.3-stable"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Godot (macOS)
+        run: |
+          curl -fL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_macos.universal.zip"
+          unzip -q godot.zip
+          echo "GODOT=$PWD/Godot.app/Contents/MacOS/Godot" >> "$GITHUB_ENV"
+
+      - name: Install export templates
+        run: |
+          curl -fL -o templates.tpz "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_export_templates.tpz"
+          TPL_DIR="$HOME/Library/Application Support/Godot/export_templates/${GODOT_VERSION/-stable/.stable}"
+          mkdir -p "$TPL_DIR"
+          unzip -q templates.tpz -d /tmp/tpl
+          cp -R /tmp/tpl/templates/. "$TPL_DIR/"
+          ls "$TPL_DIR" | head
+
+      - name: Import project resources
+        run: |
+          "$GODOT" --headless --import --path . || true
+
+      - name: Export iOS Xcode project (debug, project only)
+        run: |
+          mkdir -p build/ios
+          "$GODOT" --headless --export-debug "iOS" "$PWD/build/ios/turtle.ipa" --path .
+          echo "--- exported files ---"
+          find build/ios -maxdepth 2 | head -40
+
+      - name: Build .app without codesign
+        run: |
+          cd build/ios
+          PROJ=$(ls -d *.xcodeproj | head -1)
+          SCHEME="${PROJ%.xcodeproj}"
+          echo "project=$PROJ scheme=$SCHEME"
+          xcodebuild -project "$PROJ" -scheme "$SCHEME" -configuration Debug -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            CONFIGURATION_BUILD_DIR="$PWD/out" build
+          echo "--- built ---"
+          ls out
+
+      - name: Pack unsigned IPA
+        run: |
+          cd build/ios
+          APP=$(ls -d out/*.app | head -1)
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -qry turtle-ios-unsigned.ipa Payload
+          ls -la turtle-ios-unsigned.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: turtle-ios-unsigned
+          path: build/ios/turtle-ios-unsigned.ipa
+          retention-days: 14
