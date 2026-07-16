@@ -1418,6 +1418,9 @@ func _spawn_teams() -> void:
 			_lu["_pdeath_demo"] = true
 		if _review_demo() and str(left[i]) == "lava":   # 熔岩评审便利: 出生90怒气→打几下就变身火山(验火山形态技变体/被动不用干等攒怒气)
 			_lu["rage"] = 90.0
+		if _review_demo() and str(left[i]) == "crystal" and REVIEW_SKILL_IDX == 1:   # 水晶壁垒demo: 固定不动(防近战追击漂移到场角→水晶刺朝场外放看不见)
+			_lu["no_move"] = true
+			_lu["move_spd"] = 0.0
 		if _review_demo() and str(left[i]) == "cyber" and REVIEW_SKILL_IDX == -1:   # 赛博被动demo(用户2026-07-16: 固定不动+1假人打): 攒编队→打死→自由飞散→齐射→组装→循环
 			_lu["_review_dummy"] = false
 			_lu["_cydeath_demo"] = true
@@ -11152,7 +11155,8 @@ func _crystal_spike_line(u: Dictionary) -> void:   # 一段段水晶从地底刺
 		_pending_shots.append({"delay": 0.055 * float(i), "fn": func() -> void:
 			if not ARENA.has_point(pref): return
 			_skill_ring(pref, Color(0.62, 0.88, 1.0, 0.5), 22.0)     # 地面破土环
-			if randf() < 0.4: _crystal_shrapnel(pref)                 # 零星碎屑
+			if randf() < 0.55: _crystal_shrapnel(pref)                # 零星碎屑
+			if randf() < 0.5: _crystal_spark(pref + Vector2(randf_range(-16.0, 16.0), randf_range(-10.0, 10.0)), 0.35)   # 侧翼小晶(一排晶脊感)
 			var tex2: Texture2D = load("res://assets/sprites/vfx/crystal-shard.png")
 			if tex2 != null:                                          # 尖刺从地底刺上来(低位小→满高BACK弹出→定格→碎)
 				var spk := Sprite3D.new()
@@ -11160,7 +11164,7 @@ func _crystal_spike_line(u: Dictionary) -> void:   # 一段段水晶从地底刺
 				spk.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 				spk.shaded = false; spk.transparent = true
 				spk.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-				var fullp: float = (randf_range(46.0, 62.0) * WS) / float(maxi(1, int(tex2.get_height())))
+				var fullp: float = (randf_range(68.0, 92.0) * WS) / float(maxi(1, int(tex2.get_height())))   # 加大(用户"从地底刺上来"要厚重·自验后调)
 				spk.pixel_size = fullp * 0.2
 				spk.position = _world_pos(pref, 0.05)
 				spk.rotation.z = randf_range(-0.3, 0.3)
