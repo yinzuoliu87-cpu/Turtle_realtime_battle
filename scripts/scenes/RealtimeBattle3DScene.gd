@@ -11271,16 +11271,21 @@ func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万�
 	ct.tween_property(crack, "modulate:a", 0.0, 0.3)
 	ct.tween_callback(crack.queue_free)
 	var maxr: float = 720.0                                      # 触须从体内朝四面八方radial爆发铺满全场(用户2026-07-17"从无头龟体内朝四面八方射出"/虐杀原形2触须爆发)
-	for ai in range(20):                                         # 20条射线x4根=80触须(近先远后=从体内向外扩的wave)
-		var ang: float = TAU * float(ai) / 20.0 + randf_range(-0.06, 0.06)
+	for ci in range(10):                                         # ★体内中央爆发簇: 龟身周围10根最先最大的触须(=从体内射出的origin·放射感来源)
+		var ca: float = TAU * float(ci) / 10.0 + randf_range(-0.1, 0.1)
+		var cod := Vector2(cos(ca), sin(ca))
+		var cp := center + cod * randf_range(20.0, 55.0)
+		_headless_tendril(cp, true, randf_range(0.0, 0.05), 3.0, clampf(cod.x * 0.7, -0.7, 0.7))
+	for ai in range(26):                                         # 26条射线×5根=130触须(近先远后=从体内向外扩的wave·加密)
+		var ang: float = TAU * float(ai) / 26.0 + randf_range(-0.05, 0.05)
 		var od := Vector2(cos(ang), sin(ang))                    # 该射线朝外方向
-		var lean: float = clampf(od.x * 0.5, -0.5, 0.5)          # 屏幕x分量决定向外倾(右射右倾/左射左倾=放射)
-		for ri in range(4):
-			var rad: float = 80.0 + float(ri) * (maxr - 80.0) / 4.0 + randf_range(-24.0, 24.0)
-			rad = clampf(rad, 60.0, maxr)
+		var lean: float = clampf(od.x * 0.75, -0.7, 0.7)         # 向外倾加强(右射右倾/左射左倾=放射感)
+		for ri in range(5):
+			var rad: float = 90.0 + float(ri) * (maxr - 90.0) / 5.0 + randf_range(-22.0, 22.0)
+			rad = clampf(rad, 70.0, maxr)
 			var p := Vector2(clampf(center.x + od.x * rad, ARENA.position.x, ARENA.end.x), clampf(center.y + od.y * rad, ARENA.position.y, ARENA.end.y))
 			var dly: float = 0.03 + 0.27 * clampf(rad / maxr, 0.0, 1.0)   # 近处先爆远处后爆=从体内向外扩
-			_headless_tendril(p, ri >= 2 or randf() < 0.15, dly, 3.0, lean)
+			_headless_tendril(p, ri >= 3 or randf() < 0.15, dly, 3.0, lean)
 	var pass_fn := func():                                      # 伸/穿过(≈0.3s铺满): 无差别 敌1A+眩晕 / 友0.5A+眩晕(刷新不叠)
 		for o in _units:
 			if not o.get("alive", false) or o == uu: continue
@@ -11401,19 +11406,20 @@ func _headless_scythe_telegraph(center: Vector2, aim: Vector2, dur: float) -> vo
 	for i in range(-3, 4):                                      # 7道填充射线(锥内)
 		var a: float = half * float(i) / 3.0
 		var d := aim.rotated(a)
-		_beam_vfx("res://assets/sprites/vfx/fx-trail.png", center, center + d * 300.0, 16.0, Color(0.5, 0.25, 0.85, 0.32), dur, 0.06)
+		_beam_vfx("res://assets/sprites/vfx/fx-trail.png", center, center + d * 300.0, 30.0, Color(0.55, 0.3, 0.95, 0.72), dur, 0.06)
+		_beam_vfx("res://assets/sprites/vfx/fx-trail.png", center + d * 150.0, center + d * 300.0, 34.0, Color(0.85, 0.55, 1.0, 0.85), dur, 0.065)   # 外半环加成区更亮(Camille W外半亮)
 	for sgn in [-1.0, 1.0]:                                     # 2道边缘亮线(锥界)
 		var d2 := aim.rotated(half * sgn)
-		_beam_vfx("res://assets/sprites/vfx/fx-trail.png", center, center + d2 * 300.0, 24.0, Color(0.72, 0.42, 1.0, 0.85), dur, 0.065)
+		_beam_vfx("res://assets/sprites/vfx/fx-trail.png", center, center + d2 * 300.0, 30.0, Color(0.85, 0.55, 1.0, 0.98), dur, 0.07)
 	var glow := _make_fire_glow_tex()
-	for i2 in range(11):                                        # 外缘半环高亮点(300码弧/外圈加成感)
-		var a3: float = -half + 2.0 * half * float(i2) / 10.0
+	for i2 in range(19):                                        # 外缘弧线(300码/外圈加成感·连密)
+		var a3: float = -half + 2.0 * half * float(i2) / 18.0
 		var pd := center + aim.rotated(a3) * 300.0
 		var dot := Sprite3D.new()
 		dot.texture = glow
 		dot.billboard = BaseMaterial3D.BILLBOARD_ENABLED; dot.shaded = false; dot.transparent = true
-		dot.pixel_size = 0.006
-		dot.modulate = Color(0.85, 0.55, 1.0, 0.9)
+		dot.pixel_size = 0.012
+		dot.modulate = Color(0.95, 0.7, 1.0, 1.0)
 		dot.position = _world_pos(pd, 0.2)
 		_world.add_child(dot)
 		var dt := _reg_tween()
@@ -11446,7 +11452,7 @@ func _headless_scythe(u: Dictionary) -> void:                  # 镰刀横扫(Ca
 	rt.tween_property(raise, "position", _world_pos(u["pos"], 2.3), 0.15)   # 举起蓄力
 	rt.tween_callback(raise.queue_free)
 	_pending_shots.append({"delay": 0.35, "fn": func():        # 蓄力后->预警扇形
-		if uu.get("alive", false): _headless_scythe_telegraph(uu["pos"], uu.get("_scythe_aim", Vector2.RIGHT), 0.25), "src": u})
+		if uu.get("alive", false): _headless_scythe_telegraph(uu["pos"], uu.get("_scythe_aim", Vector2.RIGHT), 0.3), "src": u})
 	_pending_shots.append({"delay": 0.6, "fn": func():         # 预警后->镰刀扫过+结算
 		var aim2: Vector2 = uu.get("_scythe_aim", Vector2.RIGHT)
 		uu["_slam"] = false                                    # 解定身
@@ -11474,9 +11480,9 @@ func _headless_scythe_sweep(center: Vector2, aim: Vector2) -> void:   # 镰刀�
 	blade.texture = load("res://assets/sprites/vfx/soul-scythe.png")
 	blade.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	blade.billboard = BaseMaterial3D.BILLBOARD_ENABLED; blade.shaded = false; blade.transparent = true
-	blade.pixel_size = (170.0 * WS) / 96.0
+	blade.pixel_size = (150.0 * WS) / 96.0
 	blade.modulate = Color(1.0, 0.9, 1.1, 1.0)
-	blade.position = _world_pos(center + aim.rotated(-half) * 210.0, 1.1)
+	blade.position = _world_pos(center + aim.rotated(-half) * 130.0, 1.1)
 	_world.add_child(blade)
 	var glow := _make_fire_glow_tex()
 	var bt := _reg_tween()
@@ -11484,14 +11490,14 @@ func _headless_scythe_sweep(center: Vector2, aim: Vector2) -> void:   # 镰刀�
 		if not is_instance_valid(blade): return
 		var a: float = lerpf(-half, half, q)
 		var d := aim.rotated(a)
-		blade.position = _world_pos(center + d * 210.0, 1.1)
+		blade.position = _world_pos(center + d * 130.0, 1.1)
 		blade.rotation.z = -a
 		var tr := Sprite3D.new()                               # 新月弧光拖尾(渐隐)
 		tr.texture = glow
 		tr.billboard = BaseMaterial3D.BILLBOARD_ENABLED; tr.shaded = false; tr.transparent = true
 		tr.pixel_size = 0.007
 		tr.modulate = Color(0.8, 0.55, 1.0, 0.85)
-		tr.position = _world_pos(center + d * 210.0, 1.0)
+		tr.position = _world_pos(center + d * 130.0, 1.0)
 		_world.add_child(tr)
 		var trt := _reg_tween()
 		trt.tween_property(tr, "modulate:a", 0.0, 0.28)
