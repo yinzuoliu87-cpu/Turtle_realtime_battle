@@ -3565,10 +3565,12 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	if u.get("_bubble_burst_demo", false): u["bubble_store"] = float(u["maxHp"])   # 泡泡爆破demo: 每帧回满泡泡值(反复放爆破看门/墙)
 	if _vfxiso and OS.has_environment("VFXCAST") and u["id"] == _review_turtle() and u.get("alive", false):   # 纯特效隔离验证(用户2026-07-15"单独验证特效"): 黑底+周期强制放指定演出(跳过变身/能量)
 		u["_vfxcast_t"] = float(u.get("_vfxcast_t", 0.0)) + delta
-		if u["_vfxcast_t"] >= 7.0:
+		if u["_vfxcast_t"] >= (3.0 if OS.get_environment("VFXCAST").begins_with("headless") else 7.0):
 			u["_vfxcast_t"] = 0.0
 			match OS.get_environment("VFXCAST"):
 				"lavawave": _lava_volcano_erupt(u)
+				"headless_scythe": _headless_scythe_sweep(u["pos"], Vector2.RIGHT)   # 隔离验证斩击弧光(2026-07-17临时)
+				"headless_tendrils": _sk_headless_tendrils(u)
 	if u.get("hijacked", false) and u.get("alive", false):   # 侵入故障化标识(用户2026-07-15确认: 红/绿故障闪·芯片图标在头顶信息层)
 		var _gspr = u.get("sprite", null)
 		if is_instance_valid(_gspr):
@@ -11560,37 +11562,45 @@ func _headless_scythe(u: Dictionary) -> void:                  # 镰刀横扫(Ca
 				_headless_reap_soul(o["pos"], uu)                  # 收割感: 从敌身扯灵魂飞回无头龟(用户2026-07-17 F)
 	, "src": u})
 
-func _headless_scythe_sweep(center: Vector2, aim: Vector2) -> void:   # 镰刀扫过: 刃沿100度弧划过+新月弧光拖尾
-	var half := deg_to_rad(50.0)
-	var blade := Sprite3D.new()
-	blade.texture = load("res://assets/sprites/vfx/soul-scythe.png")
-	blade.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	blade.billboard = BaseMaterial3D.BILLBOARD_ENABLED; blade.shaded = false; blade.transparent = true
-	blade.pixel_size = (320.0 * WS) / 96.0   # 加大(用户2026-07-17"镰刀太小了")
-	blade.modulate = Color(1.0, 0.9, 1.1, 1.0)
-	blade.position = _world_pos(center + aim.rotated(-half) * 230.0, 1.1)
-	_world.add_child(blade)
-	var glow := _make_fire_glow_tex()
-	var bt := _reg_tween()
-	bt.tween_method(func(q: float) -> void:                    # 从-50度扫到+50度(0.22s)
-		if not is_instance_valid(blade): return
-		var a: float = lerpf(-half, half, q)
-		var d := aim.rotated(a)
-		blade.position = _world_pos(center + d * 230.0, 1.1)   # 半径230铺满有效距离
-		blade.rotation.z = -a
-		var tr := Sprite3D.new()                               # 新月弧光拖尾(渐隐)
-		tr.texture = glow
-		tr.billboard = BaseMaterial3D.BILLBOARD_ENABLED; tr.shaded = false; tr.transparent = true
-		tr.pixel_size = 0.013
-		tr.modulate = Color(0.8, 0.55, 1.0, 0.85)
-		tr.position = _world_pos(center + d * 230.0, 1.0)
-		_world.add_child(tr)
-		var trt := _reg_tween()
-		trt.tween_property(tr, "modulate:a", 0.0, 0.4)
-		trt.tween_callback(tr.queue_free)
-	, 0.0, 1.0, 0.5)   # 扫击放慢0.22→0.5(用户"速度慢一点")
-	bt.tween_property(blade, "modulate:a", 0.0, 0.1)
-	bt.tween_callback(blade.queue_free)
+func _headless_scythe_sweep(center: Vector2, aim: Vector2) -> void:   # 镰刀横扫·斩击弧光(用户2026-07-17整改·删杵着的静态镰刀+乱扇形碎片): 只留一道大月牙斩弧扫过·带挥动+顿帧冲击·一气呵成
+	# 屏幕朝敌方向(月牙弧顶朝敌·和触须同算法)
+	var scr_ang: float = 0.0
+	if _cam != null:
+		var a0 := _cam.unproject_position(_world_pos(center, 0.6))
+		var a1 := _cam.unproject_position(_world_pos(center + aim * 120.0, 0.6))
+		var sd := a1 - a0
+		if sd.length() > 0.5: scr_ang = atan2(sd.y, sd.x)
+	var base_rot: float = -(scr_ang - PI * 0.5)
+	var slash := Sprite3D.new()
+	slash.texture = load("res://assets/sprites/vfx/soul-slash-1.png")
+	slash.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	slash.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	slash.shaded = false; slash.transparent = true
+	slash.modulate = Color(1.0, 0.88, 1.2, 0.0)
+	slash.pixel_size = (600.0 * WS) / 160.0                    # 大月牙~600码
+	slash.position = _world_pos(center + aim * 180.0, 0.7)
+	slash.rotation.z = base_rot - 0.5                         # 起手偏一侧(蓄势)
+	slash.scale = Vector3(0.55, 0.7, 1.0)
+	_world.add_child(slash)
+	var t := _reg_tween()
+	t.tween_property(slash, "modulate:a", 0.85, 0.1)          # 一头起(成形)
+	t.parallel().tween_method(func(q: float) -> void:         # 挥动: 从一侧甩正+张开成整片(斩过)
+		if is_instance_valid(slash):
+			slash.rotation.z = base_rot - 0.5 + q * 0.5
+			slash.scale = Vector3(0.55, 0.7, 1.0).lerp(Vector3(1.1, 1.05, 1.0), q)
+	, 0.0, 1.0, 0.22)
+	t.tween_callback(func() -> void:                          # →全亮宽刃(峰值·斩到=冲击)
+		if is_instance_valid(slash): slash.texture = load("res://assets/sprites/vfx/soul-slash-2.png")
+		_shake(0.18); _add_hitstop(JUICE_HITSTOP_KNOCK))
+	t.tween_property(slash, "scale", Vector3(1.28, 1.12, 1.0), 0.14)   # 峰值张满
+	t.parallel().tween_method(func(q: float) -> void:
+		if is_instance_valid(slash): slash.rotation.z = base_rot + q * 0.28
+	, 0.0, 1.0, 0.14)
+	t.tween_callback(func() -> void:                          # →碎散
+		if is_instance_valid(slash): slash.texture = load("res://assets/sprites/vfx/soul-slash-3.png"))
+	t.tween_property(slash, "modulate:a", 0.0, 0.24)
+	t.parallel().tween_property(slash, "scale", Vector3(1.45, 1.2, 1.0), 0.24)
+	t.tween_callback(slash.queue_free)
 
 func _update_headless_flame(u: Dictionary) -> void:            # 亡灵残血: 越残血龟身紫焰越浓(线性/对应+1%攻/1%损血越残越猛/2026-07-17)
 	if u.get("_undead_demo", false) and u.get("undead_used", false) and _t > float(u.get("deathfloor_until", 0.0)):   # demo循环: 免死窗过→回满+清标记→可再触发
