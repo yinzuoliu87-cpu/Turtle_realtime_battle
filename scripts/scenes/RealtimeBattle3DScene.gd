@@ -2839,11 +2839,15 @@ func _resolve_summon_sprite(spr_id: String) -> Dictionary:
 			var st: Texture2D = load(sp)
 			if st != null:
 				return _sprite_dict_from(st, null, false)
-	# 通用: pets/<spr_id>.png 静态全身图
+	# 通用: pets/<spr_id>.png — ★2026-07-17修(用户"召唤的竹叶龟直接是序列图"): pets图多已repack成帧sheet,
+	#   有sprite帧元数据(pets.json)→按帧动画切(hframes/idle循环); 无元数据(真·静态单图)→整图显示。修前一律当静态→sheet宠物显示成一排小龟
 	var full := SPRITE_DIR + "pets/" + spr_id + ".png"
 	if ResourceLoader.exists(full):
 		var tex: Texture2D = load(full)
 		if tex != null:
+			var meta = (_data_by_id.get(spr_id, {}) as Dictionary).get("sprite", null)
+			if meta is Dictionary and int((meta as Dictionary).get("frames", 0)) > 1:
+				return _sprite_dict_from(tex, meta, true)
 			return _sprite_dict_from(tex, null, false)
 	return {"tex": null}
 
