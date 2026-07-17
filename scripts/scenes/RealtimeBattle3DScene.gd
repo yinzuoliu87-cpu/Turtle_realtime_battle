@@ -3795,10 +3795,6 @@ func _nearest_enemy(u: Dictionary):
 			continue
 		if o.get("_egg_fence", false):   # 龟蛋围栏未破 → 不可被主动索敌(但AoE/增益穿栏, 走_enemies_of不受此限)
 			continue
-		if o.get("hiding_protected", false):   # 缩头随从: 本体存活时不可被敌单体选中
-			var ow = o.get("summon_owner", null)
-			if ow != null and ow.get("alive", false):
-				continue
 		var dd: float = (o["pos"] - u["pos"]).length_squared()
 		if dd < best_d:
 			best_d = dd; best = o
@@ -8689,9 +8685,6 @@ func _targetable_enemies(u: Dictionary) -> Array:
 		if not o.get("alive", false): continue
 		if o.get("_egg_fence", false): continue
 		if _t < float(o.get("untargetable_until", 0.0)): continue
-		if o.get("hiding_protected", false):
-			var ow = o.get("summon_owner", null)
-			if ow != null and ow.get("alive", false): continue
 		out.append(o)
 	return out
 
@@ -16355,7 +16348,8 @@ func _spawn_hiding_minion(u: Dictionary) -> void:
 	})
 	if minion != null:
 		minion["minion_kind"] = pick
-		minion["hiding_protected"] = true
+		if _review_demo():
+			minion["echarge_perm"] = maxf(4.0, float(minion.get("echarge_perm", 1.0)))   # 评审场随从充能×4(demo里看得到它放技; 实战原速·2026-07-17)
 		# A方案·完整乌龟随从: 真·某龟种(id-keyed普攻/被动/技能触发) + 带自己技能/龟能/AI
 		minion["id"] = pick
 		minion["rarity"] = str(d.get("rarity", "C"))
