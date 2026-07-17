@@ -64,7 +64,8 @@
     "emoji": "😈",
     "effectImpl": true,
     "effectDesc1": "携带者的伤害处决生命值低于斩杀线的敌人(斩杀线=5/7/10%最大生命+10/15/40%×暴击率);处决后回复20点龟能(无龟能的单位改为回复40点生命)。",
-    "effectDesc3": ""
+    "effectDesc3": "",
+    "img": "equip/tyrant-fang.png"
   },
   {
     "id": "p2eq_005",
@@ -80,7 +81,8 @@
     "emoji": "🗡️",
     "effectImpl": true,
     "effectDesc1": "携带者每段伤害命中后,有50/75/100%概率追加一次双生刺击,造成0.7/0.8/1.0×攻击力的物理伤害。",
-    "effectDesc3": "3星：追击概率提升至100%。"
+    "effectDesc3": "3星：追击概率提升至100%。",
+    "img": "equip/twin-daggers.png"
   },
   {
     "id": "p2eq_006",
@@ -113,7 +115,8 @@
     "emoji": "⚔️",
     "effectImpl": true,
     "effectDesc1": "携带者施法后,斩击最前敌人所在的一横排(同列前后位置),对每名敌人造成(20/35/60+0.5/0.8/1.1×攻击力)物理伤害;并为自己获得相当于本次总伤害50/75/100%的护盾。",
-    "effectDesc3": ""
+    "effectDesc3": "",
+    "img": "equip/rusty-broadsword.png"
   },
   {
     "id": "p2eq_008",
@@ -146,7 +149,8 @@
     "emoji": "🌙",
     "effectImpl": true,
     "effectDesc1": "携带者每段攻击充能20/20/25点刃能(范围技能减半);刃能满100点时消耗,对命中目标所在的一列敌人每人造成(30/45/60真实伤害+0.5/0.7/0.9×攻击力物理);若该列只剩1名敌人则该列伤害×2/2.5/3。",
-    "effectDesc3": ""
+    "effectDesc3": "",
+    "img": "equip/wide-saber.png"
   },
   {
     "id": "p2eq_010",
@@ -179,7 +183,8 @@
     "emoji": "🌙",
     "effectImpl": true,
     "effectDesc1": "携带者施法后连斩5/6/8次随机敌人,每次造成(40/50/70+0.5/0.7/1.0×攻击力)物理伤害(后续每发逐渐衰减);携带者的溢出治疗转化为血护盾(上限200/350/500)。",
-    "effectDesc3": ""
+    "effectDesc3": "",
+    "img": "equip/blood-amulet.png"
   },
   {
     "id": "p2eq_012",
@@ -212,7 +217,8 @@
     "emoji": "🦪",
     "effectImpl": true,
     "effectDesc1": "携带者每次受到伤害获得1层硬化,每层提供+1/1.5/2护甲和+1/1.5/2魔抗(上限20层);叠满20层时获得50/60/80点护盾。",
-    "effectDesc3": "3星：叠满硬化层时把累积的护甲魔抗分给全队。"
+    "effectDesc3": "3星：叠满硬化层时把累积的护甲魔抗分给全队。",
+    "img": "equip/urchin-shield.png"
   },
   {
     "id": "p2eq_014",
@@ -228,7 +234,8 @@
     "emoji": "🏰",
     "effectImpl": true,
     "effectDesc1": "携带者每次受到伤害获得硬化层数(+1/1.5/2护甲和魔抗,上限20层,无满层护盾);硬化叠满20层后每8秒对全体敌人汲取生命,每名敌人受到0.8/1.0/1.5×(护甲+魔抗)魔法伤害,每汲取1名敌人携带者回复40/65/130点生命。",
-    "effectDesc3": ""
+    "effectDesc3": "",
+    "img": "equip/fortress-armor.png"
   },
   {
     "id": "p2eq_015",
@@ -278,7 +285,8 @@
     "emoji": "⚓",
     "effectImpl": true,
     "effectDesc1": "携带者免疫击飞与斩杀;每次受到伤害时为生命百分比最低的友军回复相当于自身1/2/15%最大生命的生命,累积治疗满100点获得1点沉锚充能;普攻时消耗1点充能击飞最前敌人,造成(0.4/0.6/3.0×(护甲+魔抗)+6/15/70%目标最大生命)物理伤害并眩晕其1.5秒。",
-    "effectDesc3": ""
+    "effectDesc3": "",
+    "img": "equip/anchor-shield.png"
   },
   {
     "id": "p2eq_018",
@@ -345,7 +353,8 @@
     "emoji": "🦪",
     "effectImpl": true,
     "effectDesc1": "携带者每5秒向全队攻击力最高的友军连接绿色绑定光束(持续),为该友军提供40/60/90点护盾并将其受到的25/40/60%伤害转移给携带者;同时为自己和该友军提供10龟能与+10%攻击速度(叠加,持续到本场战斗结束)。",
-    "effectDesc3": ""
+    "effectDesc3": "",
+    "img": "equip/pearl-guard.png"
   },
   {
     "id": "p2eq_022",
@@ -361,7 +370,8 @@
     "emoji": "🔮",
     "effectImpl": true,
     "effectDesc1": "携带者施法后短暂蓄力,投掷一个火瓶砸向最前敌人,命中造成40/60/100火焰伤害,并施加(20/35/60+10/15/20%攻击力)灼烧层数+「真火」5秒(其受到的灼烧改为真实伤害)。",
-    "effectDesc3": ""
+    "effectDesc3": "",
+    "img": "equip/ember-flask.png"
   },
   {
     "id": "p2eq_023",
@@ -462,7 +472,8 @@
     "emoji": "🔮",
     "effectImpl": true,
     "effectDesc1": "携带者施法后,对最前敌人造成40/60/100魔法伤害,并施加冰寒5秒。",
-    "effectDesc3": ""
+    "effectDesc3": "",
+    "img": "equip/frost-flask.png"
   },
   {
     "id": "p2eq_029",
@@ -529,7 +540,8 @@
     "emoji": "🐌",
     "effectImpl": true,
     "effectDesc1": "纯属性件——只提供生命值,无主动效果。",
-    "effectDesc3": ""
+    "effectDesc3": "",
+    "img": "equip/bone-talisman.png"
   },
   {
     "id": "p2eq_033",
@@ -579,7 +591,8 @@
     "emoji": "⚙️",
     "effectImpl": true,
     "effectDesc1": "携带者每6秒+1/2/3齿轮层;每场战斗结束时,每层齿轮为持有方折算2枚深海币(装备不销毁,死亡也保留齿轮)。",
-    "effectDesc3": ""
+    "effectDesc3": "",
+    "img": "equip/brass-gear.png"
   },
   {
     "id": "p2eq_036",
@@ -680,7 +693,8 @@
     "emoji": "🐚",
     "effectImpl": true,
     "effectDesc1": "纯属性件——只提供属性,无主动效果。",
-    "effectDesc3": ""
+    "effectDesc3": "",
+    "img": "equip/ebb-vial.png"
   },
   {
     "id": "p2eq_042",
@@ -696,7 +710,8 @@
     "emoji": "💧",
     "effectImpl": true,
     "effectDesc1": "携带者每2.5秒为全队(含自己)回复其已损失生命的3/6/10%。",
-    "effectDesc3": "3星：回复比例提升,且生命最低的友军获得双倍回复。"
+    "effectDesc3": "3星：回复比例提升,且生命最低的友军获得双倍回复。",
+    "img": "equip/ripple-potion.png"
   },
   {
     "id": "p2eq_043",
@@ -729,7 +744,8 @@
     "emoji": "🧿",
     "effectImpl": true,
     "effectDesc1": "携带者生命值首次降至50%以下时,回复12/27/40%最大生命值(整局一次)。",
-    "effectDesc3": ""
+    "effectDesc3": "",
+    "img": "equip/deepsea-necklace.png"
   },
   {
     "id": "p2eq_045",
@@ -796,7 +812,8 @@
     "emoji": "🔫",
     "effectImpl": true,
     "effectDesc1": "携带者施法后射出4/5/6发子弹,每发命中沿途第一个敌人(可被前排阻挡),各造成0.5/0.54/0.6×攻击力的物理伤害。",
-    "effectDesc3": "3星：射出6发(而非4发)。"
+    "effectDesc3": "3星：射出6发(而非4发)。",
+    "img": "equip/brass-pistol.png"
   },
   {
     "id": "p2eq_049",
@@ -812,7 +829,8 @@
     "emoji": "🏹",
     "effectImpl": true,
     "effectDesc1": "携带者施法后向每名后排敌人连射1/2/3发,每发按目标已损失生命造成0.8~1.3×攻击力的物理伤害(已损30%生命时达到最大)。",
-    "effectDesc3": "3星：对每名后排敌人连射3发。"
+    "effectDesc3": "3星：对每名后排敌人连射3发。",
+    "img": "equip/repeat-crossbow.png"
   },
   {
     "id": "p2eq_050",
@@ -828,7 +846,8 @@
     "emoji": "🐚",
     "effectImpl": true,
     "effectDesc1": "携带者施法后打出20/30/60发随机分布的子弹,每发对命中敌人造成0.1/0.12/0.14×攻击力的物理伤害并使其永久-1/2/3护甲。",
-    "effectDesc3": "3星：打出60发(而非20发)。"
+    "effectDesc3": "3星：打出60发(而非20发)。",
+    "img": "equip/ghost-gatling.png"
   },
   {
     "id": "p2eq_051",
@@ -844,7 +863,8 @@
     "emoji": "🎰",
     "effectImpl": true,
     "effectDesc1": "携带者施法后对一横排(同列前后)首敌造成1.5/2.0/2.8×攻击力物理伤害并施加0.5/0.5/0.6×攻击力流血,其身后的敌人受到50%效果。",
-    "effectDesc3": ""
+    "effectDesc3": "",
+    "img": "equip/laser-pistol.png"
   },
   {
     "id": "p2eq_052",
@@ -877,7 +897,8 @@
     "emoji": "💥",
     "effectImpl": true,
     "effectDesc1": "携带者施法后向密集区打出12/14/18发弹珠(40度扇形随机分布),每颗造成0.22×攻击力的物理伤害;被8发及以上命中的敌人眩晕1.5秒。",
-    "effectDesc3": "3星：打出18发弹珠(而非12发)。"
+    "effectDesc3": "3星：打出18发弹珠(而非12发)。",
+    "img": "equip/conch-shotgun.png"
   },
   {
     "id": "p2eq_054",
@@ -893,7 +914,8 @@
     "emoji": "🎯",
     "effectImpl": true,
     "effectDesc1": "携带者造成的伤害无视闪避(必中)。",
-    "effectDesc3": ""
+    "effectDesc3": "",
+    "img": "equip/scope.png"
   },
   {
     "id": "p2eq_055",
@@ -909,7 +931,8 @@
     "emoji": "🎯",
     "effectImpl": true,
     "effectDesc1": "携带者命中或施法时标记目标5秒,被标记的敌人受到的伤害+20%。",
-    "effectDesc3": ""
+    "effectDesc3": "",
+    "img": "equip/targeter.png"
   },
   {
     "id": "p2eq_056",
@@ -942,7 +965,8 @@
     "emoji": "🔭",
     "effectImpl": true,
     "effectDesc1": "携带者施法后对生命百分比最低的敌人开枪,沿途敌人受到2/3/7×攻击力的物理伤害;若击杀则立即再开一枪(可递归,上限12次)。",
-    "effectDesc3": ""
+    "effectDesc3": "",
+    "img": "equip/sniper-barrel.png"
   },
   {
     "id": "p2eq_058",
@@ -958,7 +982,8 @@
     "emoji": "🔩",
     "effectImpl": true,
     "effectDesc1": "携带者每段伤害贯穿目标,对其身后同列的敌人造成25/40/60%×本段伤害的物理伤害。",
-    "effectDesc3": ""
+    "effectDesc3": "",
+    "img": "equip/pierce-shell.png"
   },
   {
     "id": "p2eq_059",
