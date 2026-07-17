@@ -10,6 +10,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write   # 失败时把构建日志推到ci-logs分支(本地无token读不了Actions日志API·git拉分支即可看)
+
 jobs:
   build-ios:
     runs-on: macos-14
@@ -47,16 +50,29 @@ jobs:
 
       - name: Build .app without codesign
         run: |
+          set -o pipefail
           cd build/ios
           PROJ=$(ls -d *.xcodeproj | head -1)
-          SCHEME="${PROJ%.xcodeproj}"
-          echo "project=$PROJ scheme=$SCHEME"
-          xcodebuild -project "$PROJ" -scheme "$SCHEME" -configuration Debug -sdk iphoneos \
-            -destination 'generic/platform=iOS' \
+          echo "project=$PROJ" | tee diag.log
+          xcodebuild -list -project "$PROJ" 2>&1 | tee -a diag.log || true
+          xcodebuild -project "$PROJ" -alltargets -configuration Debug -sdk iphoneos \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
-            CONFIGURATION_BUILD_DIR="$PWD/out" build
+            CONFIGURATION_BUILD_DIR="$PWD/out" build 2>&1 | tee xcodebuild.log
           echo "--- built ---"
           ls out
+
+      - name: Push logs to ci-logs branch on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          rm -rf /tmp/logrepo && mkdir /tmp/logrepo && cd /tmp/logrepo
+          git init -q -b ci-logs
+          cp "$GITHUB_WORKSPACE"/build/ios/*.log . 2>/dev/null || echo "no logs captured" > note.txt
+          tail -c 200000 xcodebuild.log > xcodebuild.tail.log 2>/dev/null || true
+          git add -A
+          git -c user.name=ci -c user.email=ci@ci commit -qm "ci logs run#${GITHUB_RUN_NUMBER}"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-logs
 
       - name: Pack unsigned IPA
         run: |
