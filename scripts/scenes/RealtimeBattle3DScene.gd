@@ -11562,45 +11562,63 @@ func _headless_scythe(u: Dictionary) -> void:                  # 镰刀横扫(Ca
 				_headless_reap_soul(o["pos"], uu)                  # 收割感: 从敌身扯灵魂飞回无头龟(用户2026-07-17 F)
 	, "src": u})
 
-func _headless_scythe_sweep(center: Vector2, aim: Vector2) -> void:   # 镰刀横扫·斩击弧光(用户2026-07-17整改·删杵着的静态镰刀+乱扇形碎片): 只留一道大月牙斩弧扫过·带挥动+顿帧冲击·一气呵成
-	# 屏幕朝敌方向(月牙弧顶朝敌·和触须同算法)
-	var scr_ang: float = 0.0
-	if _cam != null:
-		var a0 := _cam.unproject_position(_world_pos(center, 0.6))
-		var a1 := _cam.unproject_position(_world_pos(center + aim * 120.0, 0.6))
-		var sd := a1 - a0
-		if sd.length() > 0.5: scr_ang = atan2(sd.y, sd.x)
-	var base_rot: float = -(scr_ang - PI * 0.5)
-	var slash := Sprite3D.new()
-	slash.texture = load("res://assets/sprites/vfx/soul-slash-1.png")
-	slash.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	slash.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	slash.shaded = false; slash.transparent = true
-	slash.modulate = Color(1.0, 0.88, 1.2, 0.0)
-	slash.pixel_size = (600.0 * WS) / 160.0                    # 大月牙~600码
-	slash.position = _world_pos(center + aim * 180.0, 0.7)
-	slash.rotation.z = base_rot - 0.5                         # 起手偏一侧(蓄势)
-	slash.scale = Vector3(0.55, 0.7, 1.0)
-	_world.add_child(slash)
-	var t := _reg_tween()
-	t.tween_property(slash, "modulate:a", 0.85, 0.1)          # 一头起(成形)
-	t.parallel().tween_method(func(q: float) -> void:         # 挥动: 从一侧甩正+张开成整片(斩过)
-		if is_instance_valid(slash):
-			slash.rotation.z = base_rot - 0.5 + q * 0.5
-			slash.scale = Vector3(0.55, 0.7, 1.0).lerp(Vector3(1.1, 1.05, 1.0), q)
-	, 0.0, 1.0, 0.22)
-	t.tween_callback(func() -> void:                          # →全亮宽刃(峰值·斩到=冲击)
-		if is_instance_valid(slash): slash.texture = load("res://assets/sprites/vfx/soul-slash-2.png")
+func _headless_scythe_sweep(center: Vector2, aim: Vector2) -> void:   # 镰刀横扫(照Camille W逐帧还原·用户2026-07-17): 核心=实心扇形铺满·一道亮边(镰刀领头)扫过扇形·扫过处点亮·落地整片闪+顿帧(废飞月牙)
+	var half := deg_to_rad(50.0)
+	# 1) 实心扇形填充铺满300码(Camille W实心锥·apex龟身)
+	var cone := Sprite3D.new()
+	cone.texture = _make_cone_tex()
+	cone.billboard = BaseMaterial3D.BILLBOARD_DISABLED; cone.axis = Vector3.AXIS_Y
+	cone.shaded = false; cone.transparent = true
+	cone.modulate = Color(0.6, 0.35, 1.0, 0.0)
+	cone.pixel_size = (300.0 * WS) / 128.0
+	cone.rotation.y = -atan2(aim.y, aim.x) - PI * 0.5
+	cone.position = _world_pos(center, 0.055)
+	_world.add_child(cone)
+	var cnt := _reg_tween()
+	cnt.tween_property(cone, "modulate:a", 0.55, 0.08)         # 实心扇形亮起
+	cnt.tween_interval(0.12)
+	cnt.tween_property(cone, "modulate:a", 0.95, 0.14)         # 扫过=整片点亮
+	cnt.tween_property(cone, "modulate:a", 0.0, 0.28)          # 落地后淡出
+	cnt.tween_callback(cone.queue_free)
+	# 2) 亮边扫过: 一道径向亮光边(镰刀领头)从-50度扫到+50度(0.42s·慢·份量), 扫过处扇形点亮
+	var blade := Sprite3D.new()
+	blade.texture = load("res://assets/sprites/vfx/soul-scythe.png")
+	blade.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	blade.billboard = BaseMaterial3D.BILLBOARD_ENABLED; blade.shaded = false; blade.transparent = true
+	blade.pixel_size = (300.0 * WS) / 96.0
+	blade.modulate = Color(1.0, 0.92, 1.15, 1.0)
+	blade.position = _world_pos(center + aim.rotated(-half) * 280.0, 1.0)
+	_world.add_child(blade)
+	var glow := _make_fire_glow_tex()
+	var bt := _reg_tween()
+	bt.tween_method(func(q: float) -> void:                    # 镰刀+亮边扫过扇形(慢)
+		if not is_instance_valid(blade): return
+		var a: float = lerpf(-half, half, q)
+		var d := aim.rotated(a)
+		blade.position = _world_pos(center + d * 280.0, 1.0)
+		blade.rotation.z = -a
+		# 亮边: 沿当前角度整条径向亮线(扫过处刷亮)
+		var edge := Sprite3D.new()
+		edge.texture = load("res://assets/sprites/vfx/fx-trail.png")
+		edge.billboard = BaseMaterial3D.BILLBOARD_DISABLED; edge.axis = Vector3.AXIS_Y
+		edge.shaded = false; edge.transparent = true
+		edge.modulate = Color(1.0, 0.95, 1.2, 0.95)
+		var thpx: int = maxi(1, (edge.texture as Texture2D).get_height())
+		var twpx: int = maxi(1, (edge.texture as Texture2D).get_width())
+		var eps: float = (34.0 * WS) / float(thpx)
+		edge.pixel_size = eps
+		edge.rotation.y = -atan2(d.y, d.x)
+		edge.scale = Vector3((300.0 * WS) / maxf(0.001, float(twpx) * eps), 1.0, 1.0)
+		edge.position = _world_pos(center + d * 150.0, 0.07)
+		_world.add_child(edge)
+		var et := _reg_tween()
+		et.tween_property(edge, "modulate:a", 0.0, 0.28)
+		et.tween_callback(edge.queue_free)
+	, 0.0, 1.0, 0.42)
+	bt.tween_callback(func() -> void:                          # 扫到尽头=落地: 整片闪+顿帧震
 		_shake(0.18); _add_hitstop(JUICE_HITSTOP_KNOCK))
-	t.tween_property(slash, "scale", Vector3(1.28, 1.12, 1.0), 0.14)   # 峰值张满
-	t.parallel().tween_method(func(q: float) -> void:
-		if is_instance_valid(slash): slash.rotation.z = base_rot + q * 0.28
-	, 0.0, 1.0, 0.14)
-	t.tween_callback(func() -> void:                          # →碎散
-		if is_instance_valid(slash): slash.texture = load("res://assets/sprites/vfx/soul-slash-3.png"))
-	t.tween_property(slash, "modulate:a", 0.0, 0.24)
-	t.parallel().tween_property(slash, "scale", Vector3(1.45, 1.2, 1.0), 0.24)
-	t.tween_callback(slash.queue_free)
+	bt.tween_property(blade, "modulate:a", 0.0, 0.12)
+	bt.tween_callback(blade.queue_free)
 
 func _update_headless_flame(u: Dictionary) -> void:            # 亡灵残血: 越残血龟身紫焰越浓(线性/对应+1%攻/1%损血越残越猛/2026-07-17)
 	if u.get("_undead_demo", false) and u.get("undead_used", false) and _t > float(u.get("deathfloor_until", 0.0)):   # demo循环: 免死窗过→回满+清标记→可再触发
