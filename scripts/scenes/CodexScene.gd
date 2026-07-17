@@ -541,7 +541,7 @@ func _equip_tab_count() -> int:
 
 # ── 装备 Tab 列表: 59 件 p2eq 按费用 1→5 分组 + 末尾 8 件消耗品 (1:1 上线野生=duallane 实际装备池) ──
 #   数据源: DataRegistry.phase2_equipment (data/phase2-equipment.json); 消耗品 = all_equipment 中 category=consumable。
-#   行描边用稀有度色(P2EQ_RARITY_COLOR), 标题用费用色(COST_COLOR); emoji 前缀进名字(p2eq 无 PNG icon, 只有 emoji)。
+#   行描边用稀有度色(P2EQ_RARITY_COLOR), 标题用费用色(COST_COLOR); p2eq 有 PNG 图标(img·2026-07-18)→图标格+纯名, 无 img 才 emoji 前缀兜底。
 func _add_equip_rows() -> void:
 	# 费用分组 (1→5)
 	for cost in [1, 2, 3, 4, 5]:
@@ -560,8 +560,11 @@ func _add_equip_rows() -> void:
 			var rarity: String = str(eq.get("rarity", ""))
 			var stroke: String = P2EQ_RARITY_COLOR.get(rarity, ccol)
 			var emoji: String = str(eq.get("emoji", "📦"))
-			# emoji 前缀进名字 (p2eq 无 PNG icon → 走 _add_simple_row 空 icon_path 分支)
-			_add_simple_row("%s %s" % [emoji, eq.get("name", "?")], "#ffffff", Color(stroke), "", _items.size() - 1)
+			var img: String = str(eq.get("img", ""))
+			var ipath: String = "res://assets/sprites/%s" % img if img.ends_with(".png") else ""
+			# 有 PNG 图标(新版 img·2026-07-18装备图标)→图标格+纯名; 无→emoji 前缀兜底(旧行为)
+			var rname: String = str(eq.get("name", "?")) if ipath != "" else "%s %s" % [emoji, str(eq.get("name", "?"))]
+			_add_simple_row(rname, "#ffffff", Color(stroke), ipath, _items.size() - 1)
 	# 消耗品分组 (取自 all_equipment category=consumable, 8 件; 有 PNG icon)
 	var consumables := []
 	for eq in DataRegistry.all_equipment:
@@ -1086,7 +1089,7 @@ func _show_equip(eq: Dictionary) -> void:
 
 
 # ── p2eq 装备详情 (data/phase2-equipment.json 字段) ──
-#   头图: emoji 徽章 (无 PNG icon)。名 + 费用 + 类型(series·category) + 学派(schools_of) + 属性(baseStats1) + 效果(effectDesc1/3)。
+#   头图: PNG 图标(img·2026-07-18装备图标)→无 img 才 emoji 徽章兜底。名 + 费用 + 类型(series·category) + 学派(schools_of) + 属性(baseStats1) + 效果(effectDesc1/3)。
 func _show_p2eq(eq: Dictionary) -> void:
 	_clear_detail()
 	var cost: int = int(eq.get("cost", 0))
@@ -1094,9 +1097,14 @@ func _show_p2eq(eq: Dictionary) -> void:
 	var ccol: String = COST_COLOR.get(cost, "#4cc9f0")
 	var rcol: String = P2EQ_RARITY_COLOR.get(rarity, ccol)
 	var emoji: String = str(eq.get("emoji", "📦"))
-	# 头图区: emoji 徽章框 (中心锚 @(60,70), 同学派详情头图位)
+	# 头图区: PNG 图标(新版 img·2026-07-18装备图标)→无则 emoji 徽章框兜底 (中心锚 @(60,70))
+	var img: String = str(eq.get("img", ""))
+	var ipath: String = "res://assets/sprites/%s" % img if img.ends_with(".png") else ""
 	_add_rect(60, 70, 90, 90, "#12202a", 0.55, rcol, 2.0, 0.9)
-	_add_text(60, 70, emoji, 44, rcol, 0.5, 0.5, true)
+	if ipath != "" and ResourceLoader.exists(ipath):
+		_add_image(60, 70, ipath, 78, 78, true)
+	else:
+		_add_text(60, 70, emoji, 44, rcol, 0.5, 0.5, true)
 	# 名 30px 黄 + 费用/稀有度副标
 	_add_text(130, 30, eq.get("name", "?"), 30, "#ffd93d", 0.0, 0.5, true)
 	_add_text(130, 66, "费用 %d" % cost, 14, ccol, 0.0, 0.5, true)
