@@ -86,8 +86,8 @@ static func _review_demo() -> bool:
 	if OS.has_environment("REVIEW"):
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
-const REVIEW_TURTLE := "space"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := -1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (星际: 0普攻✅/1虫洞✅/2星波✅/3扭曲空间✅过2026-07-16/-1被动←验收中)
+const REVIEW_TURTLE := "hiding"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
+const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (26缩头验收从普攻起·2026-07-17)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -209,20 +209,20 @@ const REVIEW_DEMO_CFG := {
 	"space:3": [ {"dx": 240.0, "dy": -100.0, "fixed": true}, {"dx": 240.0, "dy": 100.0, "fixed": true}, {"dx": 400.0, "dy": 0.0, "fixed": true} ],   # 扭曲空间「奇点」: 3假人散开→吸入1.03s→爆发帧0.8A魔; 星能满=+击飞拽空中0.57s穿奇点镜像落对侧换位(头顶紫螺旋+尾迹+白火花)+吸积盘
 	"space:-1": [ {"dx": 300.0, "dy": -50.0, "fixed": true}, {"dx": 300.0, "dy": 50.0, "fixed": true} ],   # 星能被动: 2假人→造伤35%转星能(资源条)+普攻弹道命中帧追加12%当前星能真伤(白字·用户2026-07-16封板)
 	"hiding:0": [ {"dx": 110.0, "dy": 0.0, "fixed": true} ],   # 缩壳普攻: 贴脸假人→每击硬化微光+每5层甲片环+0.1A盾
-	"hiding:1": [ {"dx": 140.0, "dy": -60.0, "fixed": true}, {"dx": 140.0, "dy": 60.0, "fixed": true} ],   # 缩头: 假人打缩头(看80%减伤+土棕硬壳罩3秒)+能量束给随从
-	"hiding:2": [ {"dx": 140.0, "dy": 0.0, "fixed": true} ],   # 防御: 壳青绿护罩4秒呼吸→碎裂+绿光点转血
+	"hiding:1": [ {"dx": 140.0, "dy": -60.0}, {"dx": 140.0, "dy": 60.0} ],   # 缩头: 假人打缩头(看80%减伤+土棕硬壳罩3秒)+能量束给随从
+	"hiding:2": [ {"dx": 140.0, "dy": 0.0} ],   # 防御: 壳青绿护罩4秒呼吸→碎裂+绿光点转血
 	"hiding:3": [ {"dx": 220.0, "dy": 0.0, "fixed": true} ],   # 强化随从: 金色注入光束+3金星绕随从升腾
 	"hiding:-1": [ {"dx": 240.0, "dy": -80.0, "fixed": true}, {"dx": 240.0, "dy": 80.0, "fixed": true} ],   # 喊龟被动: 召唤法阵+光柱+星粒; 随从死→遗志金光点回流主人
 	"headless:0": [ {"dx": 110.0, "dy": 0.0, "fixed": true} ],   # 撕咬普攻: 1A物理+3%maxHp魔法双数字
 	"headless:1": [ {"dx": 150.0, "dy": -70.0, "fixed": true}, {"dx": 150.0, "dy": 70.0, "fixed": true}, {"dx": 320.0, "dy": 0.0, "fixed": true} ],   # 恐吓: 近2只中招(咆哮气爆+三波纹+颤抖标记)·远1只在200码外不中(验范围)
 	"headless:2": [ {"dx": 200.0, "dy": -90.0, "fixed": true}, {"dx": 350.0, "dy": 90.0, "fixed": true}, {"dx": 550.0, "dy": 0.0, "fixed": true} ],   # 万千触须: 3假人散开→全场触须8×5爆出+命中大触须钉住+吸血红珠回流
 	"headless:3": [ {"dx": 110.0, "dy": 0.0, "fixed": true} ],   # 灵魂打击: 蓄力紫焰绕颈tell→下次撕咬魂爆处决
-	"headless:-1": [ {"dx": 130.0, "dy": -60.0, "fixed": true}, {"dx": 130.0, "dy": 60.0, "fixed": true} ],   # 亡灵被动: 挨打残血加攻·首次濒死金环5秒免死(需假人还手)
+	"headless:-1": [ {"dx": 130.0, "dy": -60.0}, {"dx": 130.0, "dy": 60.0} ],   # 亡灵被动: 挨打残血加攻·首次濒死金环5秒免死(需假人还手)
 	"shell:0": [ {"dx": 110.0, "dy": 0.0, "fixed": true}, {"dx": 190.0, "dy": 70.0, "fixed": true} ],   # 龟壳打击: 物/真逐击交替+副目标120码溅射50%
 	"shell:1": [ {"dx": 150.0, "dy": 0.0, "fixed": true} ],   # 吸收: 4红珠鱼贯流向龟壳+maxHp转移
 	"shell:2": [ {"dx": 200.0, "dy": -70.0, "fixed": true}, {"dx": 200.0, "dy": 70.0, "fixed": true} ],   # 复制: 两侧镜像残影签名→轮流放2敌技60%
 	"shell:3": [ {"dx": 150.0, "dy": 0.0, "fixed": true}, {"dx": 500.0, "dy": 0.0, "fixed": true} ],   # 暗影俯冲: 沿线1近1远→起跳暗焰+冲刺+沿途暗焰痕+落地爆+斑块燃烧区→羽化入隐
-	"shell:-1": [ {"dx": 130.0, "dy": -60.0, "fixed": true}, {"dx": 130.0, "dy": 60.0, "fixed": true} ],   # 气场觉醒/储能: 2假人还手(REVIEW_DUMMY_ATTACKS须true)→受伤储能→空气扭曲起手+黄色远古双层波带+6金星; 第10/20秒觉醒金光
+	"shell:-1": [ {"dx": 130.0, "dy": -60.0}, {"dx": 130.0, "dy": 60.0} ],   # 气场觉醒/储能: 2假人还手(REVIEW_DUMMY_ATTACKS须true)→受伤储能→空气扭曲起手+黄色远古双层波带+6金星; 第10/20秒觉醒金光
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)
 	if not _review_demo():
@@ -11172,7 +11172,7 @@ func _headless_tendril(pos2d: Vector2, big: bool, erupt_delay: float, retract_de
 	var fullp: float = (sz * WS) / float(maxi(1, int(tex.get_height())))
 	spk.pixel_size = fullp * 0.15
 	spk.flip_h = randf() < 0.5
-	spk.position = _world_pos(pos2d, 0.04)
+	spk.position = _world_pos(pos2d, 0.05)
 	spk.rotation.z = randf_range(-0.3, 0.3)
 	spk.modulate = Color(1.0, 0.72, 1.2, 0.0)                  # 紫黑触须(区别精英暗红)
 	_world.add_child(spk)
@@ -16143,7 +16143,7 @@ func _shell_spawn_shockwave(u: Dictionary, dmg: int) -> void:
 	spr.transparent = true
 	spr.modulate = Color(1.0, 0.84, 0.22, 1.0)       # 黄色能量波(用户); alpha 起始满, 扩张中淡出
 	spr.pixel_size = 0.0001                          # 起始 ~0 (扩张到 520px 直径)
-	spr.position = _world_pos(u["pos"], 0.05)
+	spr.position = _world_pos(u["pos"], 0.06)   # h≥0.06防掉地下(用户2026-07-17"不要特效大部分到地下")
 	_world.add_child(spr)
 	var front := Sprite3D.new()                      # 锐利波前(细线环·晕带+锐前沿=厚重远古)
 	front.texture = _make_thin_ring_tex()
