@@ -88,7 +88,7 @@ static func _review_demo() -> bool:
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 const ART_FACES_RIGHT := ["hiding"]         # 原图朝右的立绘例外表(全局约定=原图朝左; 这些立绘flip取反·用户2026-07-17缩头"建模左右反")
 const REVIEW_TURTLE := "hiding"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-const REVIEW_SKILL_IDX := 3   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (26缩头: 普攻✅技1✅技2✅过2026-07-17·技3强化随从验收中)
+const REVIEW_SKILL_IDX := -1   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (26缩头: 普攻✅技1✅技2✅技3✅过2026-07-17·被动喊龟验收中)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
 const REVIEW_SHOWCASE := []   # 非空=展示模式: 这些龟一队vs等量假人(一窗连续看多只); 空=单龟评审
@@ -213,7 +213,7 @@ const REVIEW_DEMO_CFG := {
 	"hiding:1": [ {"dx": 140.0, "dy": -60.0}, {"dx": 140.0, "dy": 60.0} ],   # 缩头: 假人打缩头(看80%减伤+土棕硬壳罩3秒)+能量束给随从
 	"hiding:2": [ {"dx": 140.0, "dy": 0.0} ],   # 防御: 壳青绿护罩4秒呼吸→碎裂+绿光点转血
 	"hiding:3": [ {"dx": 220.0, "dy": 0.0, "fixed": true} ],   # 强化随从: 金色注入光束+3金星绕随从升腾
-	"hiding:-1": [ {"dx": 240.0, "dy": -80.0, "fixed": true}, {"dx": 240.0, "dy": 80.0, "fixed": true} ],   # 喊龟被动: 召唤法阵+光柱+星粒; 随从死→遗志金光点回流主人
+	"hiding:-1": [ {"dx": 240.0, "dy": -80.0}, {"dx": 240.0, "dy": 80.0} ],   # 喊龟被动: 召唤法阵+光柱+星粒; 随从死→遗志金光点回流主人
 	"headless:0": [ {"dx": 110.0, "dy": 0.0, "fixed": true} ],   # 撕咬普攻: 1A物理+3%maxHp魔法双数字
 	"headless:1": [ {"dx": 150.0, "dy": -70.0, "fixed": true}, {"dx": 150.0, "dy": 70.0, "fixed": true}, {"dx": 320.0, "dy": 0.0, "fixed": true} ],   # 恐吓: 近2只中招(咆哮气爆+三波纹+颤抖标记)·远1只在200码外不中(验范围)
 	"headless:2": [ {"dx": 200.0, "dy": -90.0, "fixed": true}, {"dx": 350.0, "dy": 90.0, "fixed": true}, {"dx": 550.0, "dy": 0.0, "fixed": true} ],   # 万千触须: 3假人散开→全场触须8×5爆出+命中大触须钉住+吸血红珠回流
