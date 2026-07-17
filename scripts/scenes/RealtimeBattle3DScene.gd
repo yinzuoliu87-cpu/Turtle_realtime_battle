@@ -15665,6 +15665,8 @@ func _allies_of(u: Dictionary, include_self: bool = true) -> Array:
 # ============================================================================
 # 召唤体永远主动平A不放技能; 选被动的龟(暂无)也不放. demo 默认全选主动.
 func _is_passive_pick(u: Dictionary) -> bool:
+	if u.get("minion_kind", null) != null:
+		return false   # 缩头随从=实体完整龟, 自己充能放技(用户2026-07-17"没看到随从放技能他的龟能条呢"; 修前所有召唤体一律不充能=随从技能从未真通)
 	return u.get("is_summon", false)
 
 # 寒冰登场寒气特效: 蓝霜地环×2 + 上升冰晶 (敌人小, 寒冰自身big)
