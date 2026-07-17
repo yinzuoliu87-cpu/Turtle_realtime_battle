@@ -3563,7 +3563,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	if u.get("id") == "hunter": _update_hunter_passive(u)   # 被动猎杀: 扫场→任一敌<斩杀线→自动射强化箭处决(用户2026-07-14重做·不在中央伤害路径判)
 	if u.get("id") == "headless": _update_headless_flame(u)   # 亡灵残血紫焰(越残越浓/2026-07-17)
 	if u.get("_bubble_burst_demo", false): u["bubble_store"] = float(u["maxHp"])   # 泡泡爆破demo: 每帧回满泡泡值(反复放爆破看门/墙)
-	if _vfxiso and OS.has_environment("VFXCAST") and u["id"] == _review_turtle() and u.get("alive", false):   # 纯特效隔离验证(用户2026-07-15"单独验证特效"): 黑底+周期强制放指定演出(跳过变身/能量)
+	if OS.has_environment("VFXCAST") and u["id"] == _review_turtle() and u.get("alive", false):   # 纯特效隔离验证(用户2026-07-15): 周期强制放指定演出(VFXISO黑底可选·不强制→验镰刀时留龟立绘看支点)
 		u["_vfxcast_t"] = float(u.get("_vfxcast_t", 0.0)) + delta
 		if u["_vfxcast_t"] >= (3.0 if OS.get_environment("VFXCAST").begins_with("headless") else 7.0):
 			u["_vfxcast_t"] = 0.0
@@ -11562,63 +11562,97 @@ func _headless_scythe(u: Dictionary) -> void:                  # 镰刀横扫(Ca
 				_headless_reap_soul(o["pos"], uu)                  # 收割感: 从敌身扯灵魂飞回无头龟(用户2026-07-17 F)
 	, "src": u})
 
-func _headless_scythe_sweep(center: Vector2, aim: Vector2) -> void:   # 镰刀横扫(照Camille W逐帧还原·用户2026-07-17): 核心=实心扇形铺满·一道亮边(镰刀领头)扫过扇形·扫过处点亮·落地整片闪+顿帧(废飞月牙)
+func _scythe_face_screen(scythe: Sprite3D, center: Vector2, aim: Vector2, theta: float) -> void:   # 镰刀朝向·手动basis=面朝相机+刀锋对齐地面径向(用户2026-07-17): billboard会吞掉node旋转→改手动: 法线朝相机(正面可读), 局部up=柄尾→地面径向投影到⊥相机平面(刀锋随θ在屏幕内转=挥砍·且与地面扇形咬合)
+	if not is_instance_valid(scythe) or _cam == null: return
+	var grip := _world_pos(center, 0.5)
+	var tip := _world_pos(center + aim.rotated(theta) * 200.0, 0.06)
+	var to_cam := (_cam.global_position - grip).normalized()
+	var up := (tip - grip)                                     # 期望刀锋朝向(柄尾→地面径向)
+	up = up - to_cam * up.dot(to_cam)                          # 投影到⊥相机平面(仍正面朝相机)
+	if up.length() < 0.02: up = Vector3.UP
+	up = up.normalized()
+	var xaxis := up.cross(to_cam).normalized()
+	scythe.basis = Basis(xaxis, up, to_cam)                    # 列: x宽 / y刀锋朝向 / z法线朝相机
+	scythe.position = grip
+
+func _headless_scythe_sweep(center: Vector2, aim: Vector2) -> void:   # 镰刀横扫·柄尾钉龟身+刀身billboard绕柄尾转100度(用户2026-07-17终版·Camille W): rotation.z跟随投影后的场内径向→刀锋始终咬合地面扇形当前扫向(非平面乱转)→贴地宽亮刀光累积铺满100度footprint(等距主角)→收势整片白闪+顿帧震
+	if _cam == null: return
 	var half := deg_to_rad(50.0)
-	# 1) 实心扇形填充铺满300码(Camille W实心锥·apex龟身)
+	var a0 := -deg_to_rad(60.0)                                # 起手刀锋后引(蓄势超-50度)
+	var a1 := half                                            # 收势到+50度
+	var grip := _world_pos(center, 0.5)                        # 柄尾支点=龟握持点(全程钉死)
+	var blade_len := 250.0                                     # 镰刀视觉长度(billboard高·大而醒目)
+	var tex: Texture2D = load("res://assets/sprites/vfx/soul-scythe-2.png")
+	if tex == null: tex = load("res://assets/sprites/vfx/soul-scythe.png")
+	var th_px: int = maxi(1, (tex as Texture2D).get_height())
+	var ps: float = (blade_len * WS) / float(th_px)
+	# —— 地面扇形footprint(等距主角·随扫渐亮=扫过区被点亮) ——
 	var cone := Sprite3D.new()
 	cone.texture = _make_cone_tex()
 	cone.billboard = BaseMaterial3D.BILLBOARD_DISABLED; cone.axis = Vector3.AXIS_Y
 	cone.shaded = false; cone.transparent = true
-	cone.modulate = Color(0.6, 0.35, 1.0, 0.0)
+	cone.modulate = Color(0.7, 0.4, 1.1, 0.0)
 	cone.pixel_size = (300.0 * WS) / 128.0
 	cone.rotation.y = -atan2(aim.y, aim.x) - PI * 0.5
-	cone.position = _world_pos(center, 0.055)
+	cone.position = _world_pos(center, 0.05)
+	cone.no_depth_test = true; cone.render_priority = 16
 	_world.add_child(cone)
-	var cnt := _reg_tween()
-	cnt.tween_property(cone, "modulate:a", 0.55, 0.08)         # 实心扇形亮起
-	cnt.tween_interval(0.12)
-	cnt.tween_property(cone, "modulate:a", 0.95, 0.14)         # 扫过=整片点亮
-	cnt.tween_property(cone, "modulate:a", 0.0, 0.28)          # 落地后淡出
-	cnt.tween_callback(cone.queue_free)
-	# 2) 亮边扫过: 一道径向亮光边(镰刀领头)从-50度扫到+50度(0.42s·慢·份量), 扫过处扇形点亮
-	var blade := Sprite3D.new()
-	blade.texture = load("res://assets/sprites/vfx/soul-scythe.png")
-	blade.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	blade.billboard = BaseMaterial3D.BILLBOARD_ENABLED; blade.shaded = false; blade.transparent = true
-	blade.pixel_size = (300.0 * WS) / 96.0
-	blade.modulate = Color(1.0, 0.92, 1.15, 1.0)
-	blade.position = _world_pos(center + aim.rotated(-half) * 280.0, 1.0)
-	_world.add_child(blade)
-	var glow := _make_fire_glow_tex()
-	var bt := _reg_tween()
-	bt.tween_method(func(q: float) -> void:                    # 镰刀+亮边扫过扇形(慢)
-		if not is_instance_valid(blade): return
-		var a: float = lerpf(-half, half, q)
-		var d := aim.rotated(a)
-		blade.position = _world_pos(center + d * 280.0, 1.0)
-		blade.rotation.z = -a
-		# 亮边: 沿当前角度整条径向亮线(扫过处刷亮)
+	# —— 镰刀本体(billboard·柄尾锚origin·rotation.z绕柄尾扫) ——
+	var scythe := Sprite3D.new()
+	scythe.texture = tex
+	scythe.billboard = BaseMaterial3D.BILLBOARD_DISABLED     # 手动basis控朝向(billboard会吞node旋转→刀不转)
+	scythe.shaded = false; scythe.transparent = true
+	scythe.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	scythe.offset = Vector2(0, float(th_px) * 0.5)           # 底边(柄尾)锚在origin→绕柄尾转
+	scythe.no_depth_test = true; scythe.render_priority = 44
+	scythe.modulate = Color(1.1, 0.95, 1.35, 0.0)
+	scythe.pixel_size = ps
+	scythe.position = grip
+	_scythe_face_screen(scythe, center, aim, a0)            # 现身于后引角(蓄势)
+	_world.add_child(scythe)
+	var trailtex: Texture2D = load("res://assets/sprites/vfx/fx-trail.png")
+	var etw: int = maxi(1, (trailtex as Texture2D).get_width()) if trailtex != null else 1
+	var eth: int = maxi(1, (trailtex as Texture2D).get_height()) if trailtex != null else 1
+	var mt := _reg_tween(); mt.set_parallel(true)
+	mt.tween_property(scythe, "modulate:a", 1.0, 0.05)      # 刀身蓄势现身
+	mt.tween_property(cone, "modulate:a", 0.22, 0.06)       # 扇形起底(预示扫向)
+	# 挥砍: θ从a0快挥到a1(0.16s·慢起加速)·每帧billboard旋转+贴地宽亮刀光累积铺满扇形(footprint为主角)
+	var swt := _reg_tween()
+	swt.tween_method(func(q: float) -> void:
+		if not is_instance_valid(scythe): return
+		var theta: float = lerpf(a0, a1, q)
+		_scythe_face_screen(scythe, center, aim, theta)
+		if is_instance_valid(cone): cone.modulate.a = 0.22 + 0.5 * clampf((theta + half) / (2.0 * half), 0.0, 1.0)   # 扫过区渐亮
+		if trailtex == null or theta < -half: return
+		var d := aim.rotated(clampf(theta, -half, half))    # 贴地宽亮径向刀光(扫过处刷亮·累积成footprint)
 		var edge := Sprite3D.new()
-		edge.texture = load("res://assets/sprites/vfx/fx-trail.png")
+		edge.texture = trailtex
 		edge.billboard = BaseMaterial3D.BILLBOARD_DISABLED; edge.axis = Vector3.AXIS_Y
 		edge.shaded = false; edge.transparent = true
-		edge.modulate = Color(1.0, 0.95, 1.2, 0.95)
-		var thpx: int = maxi(1, (edge.texture as Texture2D).get_height())
-		var twpx: int = maxi(1, (edge.texture as Texture2D).get_width())
-		var eps: float = (34.0 * WS) / float(thpx)
+		var eps: float = (78.0 * WS) / float(eth)           # 加宽(份量)
 		edge.pixel_size = eps
+		edge.modulate = Color(0.95, 0.72, 1.35, 0.82)       # 紫白刀光(非死白·刀身可读)
 		edge.rotation.y = -atan2(d.y, d.x)
-		edge.scale = Vector3((300.0 * WS) / maxf(0.001, float(twpx) * eps), 1.0, 1.0)
+		edge.scale = Vector3((300.0 * WS) / maxf(0.001, float(etw) * eps), 1.0, 1.0)
 		edge.position = _world_pos(center + d * 150.0, 0.07)
+		edge.no_depth_test = true; edge.render_priority = 24
 		_world.add_child(edge)
 		var et := _reg_tween()
-		et.tween_property(edge, "modulate:a", 0.0, 0.28)
+		et.tween_interval(0.16)
+		et.tween_property(edge, "modulate:a", 0.0, 0.36)
 		et.tween_callback(edge.queue_free)
-	, 0.0, 1.0, 0.42)
-	bt.tween_callback(func() -> void:                          # 扫到尽头=落地: 整片闪+顿帧震
-		_shake(0.18); _add_hitstop(JUICE_HITSTOP_KNOCK))
-	bt.tween_property(blade, "modulate:a", 0.0, 0.12)
-	bt.tween_callback(blade.queue_free)
+	, 0.0, 1.0, 0.16).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)   # 慢起→加速(份量)
+	swt.tween_callback(func() -> void:                        # 收势落地: 扇形整片白闪+顿帧震(收割定格)
+		_scythe_face_screen(scythe, center, aim, a1)
+		_shake(0.22); _add_hitstop(JUICE_HITSTOP_KNOCK)
+		if is_instance_valid(cone):
+			var flt := _reg_tween()
+			flt.tween_property(cone, "modulate", Color(0.95, 0.82, 1.3, 0.8), 0.04)   # 落地整片紫白闪(收割定格)
+			flt.tween_property(cone, "modulate:a", 0.0, 0.34)
+			flt.tween_callback(cone.queue_free))
+	swt.tween_interval(0.1)                                   # 顿(收割定格·脆)
+	swt.tween_property(scythe, "modulate:a", 0.0, 0.2)      # 镰刀化紫气消散(有去处)
+	swt.tween_callback(scythe.queue_free)
 
 func _update_headless_flame(u: Dictionary) -> void:            # 亡灵残血: 越残血龟身紫焰越浓(线性/对应+1%攻/1%损血越残越猛/2026-07-17)
 	if u.get("_undead_demo", false) and u.get("undead_used", false) and _t > float(u.get("deathfloor_until", 0.0)):   # demo循环: 免死窗过→回满+清标记→可再触发
