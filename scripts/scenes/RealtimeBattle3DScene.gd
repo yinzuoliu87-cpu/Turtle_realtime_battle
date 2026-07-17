@@ -86,6 +86,7 @@ static func _review_demo() -> bool:
 	if OS.has_environment("REVIEW"):
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
+const ART_FACES_RIGHT := ["hiding"]         # 原图朝右的立绘例外表(全局约定=原图朝左; 这些立绘flip取反·用户2026-07-17缩头"建模左右反")
 const REVIEW_TURTLE := "hiding"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
 const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (26缩头验收从普攻起·2026-07-17)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
@@ -16955,7 +16956,7 @@ func _update_world_transforms() -> void:
 		if not bool(u.get("_has_target", false)) and absf(_dx) > 0.3:
 			u["face_right"] = _dx > 0.0
 		u["last_x"] = _px
-		spr.flip_h = bool(u.get("face_right", str(u["side"]) == "left"))
+		spr.flip_h = bool(u.get("face_right", str(u["side"]) == "left")) != ART_FACES_RIGHT.has(str(u.get("id", "")))   # 原图朝右的立绘取反(用户2026-07-17"建模左右反")
 		# --- Phase4: squash/stretch 形变 + idle bob 高度微浮 (全从 base 起算, 不累积) ---
 		var sq := _juice_scale_for(u)              # (sx, sy) 形变系数 (base=1,1)
 		var bob := _juice_bob_for(u)               # idle 呼吸 Y 偏移 (米)
