@@ -11153,29 +11153,49 @@ func _sk_headless_fear(u: Dictionary, _tgt = null) -> void:      # 无头·恐�
 		, 0.0, 1.0, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		wt.tween_property(wv, "modulate:a", 0.0, 0.15)
 		wt.tween_callback(wv.queue_free)
-	# 用户2026-07-17: 黑紫雾团从中心爆开铺满整个200码->缓慢消散(废原小紫雾盘)
+	# 用户2026-07-17: 黑紫雾团从中心爆开铺满整个200码范围->缓慢消散(废原小紫雾盘·改分布式雾团铺满)
 	var mtex := _make_fire_glow_tex()
-	for mi in range(3):                                          # 3层黑紫雾(核暗/中紫/外淡)由小胀满400码直径
-		var mist := Sprite3D.new()
-		mist.texture = mtex
-		mist.billboard = BaseMaterial3D.BILLBOARD_ENABLED; mist.shaded = false; mist.transparent = true
-		mist.pixel_size = (60.0 * WS) / 128.0
-		var mcol: Color = [Color(0.12, 0.05, 0.18, 0.85), Color(0.35, 0.1, 0.5, 0.7), Color(0.5, 0.22, 0.7, 0.45)][mi]
-		mist.modulate = Color(mcol.r, mcol.g, mcol.b, 0.0)
-		mist.position = _world_pos(cx, 0.6 + 0.2 * float(mi))
-		mist.scale = Vector3.ONE * 0.3
-		_world.add_child(mist)
-		var mt := _reg_tween(); mt.set_parallel(true)
-		mt.tween_property(mist, "pixel_size", (float(420 - mi * 40) * WS) / 128.0, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)   # 爆开铺满~200码半径
-		mt.tween_property(mist, "modulate:a", mcol.a, 0.25)
-		mt.chain().tween_interval(1.6)
-		mt.chain().tween_property(mist, "modulate:a", 0.0, 1.1)   # 缓慢消散
-		mt.chain().tween_callback(mist.queue_free)
-	# 贴地黑紫雾盘(范围可视)缓散
-	var pool := _px_ground_sprite(mtex, cx, 400.0, Color(0.3, 0.08, 0.45, 0.4), 0.06)
+	var core := Sprite3D.new()                                  # 中心黑核浓雾(体内涌出)
+	core.texture = mtex
+	core.billboard = BaseMaterial3D.BILLBOARD_ENABLED; core.shaded = false; core.transparent = true
+	core.pixel_size = (90.0 * WS) / 128.0
+	core.modulate = Color(0.1, 0.04, 0.16, 0.0)
+	core.position = _world_pos(cx, 0.8)
+	core.scale = Vector3.ONE * 0.3
+	_world.add_child(core)
+	var cot := _reg_tween(); cot.set_parallel(true)
+	cot.tween_property(core, "scale", Vector3.ONE * 2.2, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	cot.tween_property(core, "modulate:a", 0.9, 0.2)
+	cot.chain().tween_interval(1.8)
+	cot.chain().tween_property(core, "modulate:a", 0.0, 1.4)
+	cot.chain().tween_callback(core.queue_free)
+	for pi in range(22):                                        # 22团黑紫雾铺满200码半径(近密远疏·扩散波·各慢消散~2s)
+		var pa: float = randf() * TAU
+		var pr: float = 200.0 * sqrt(randf())                   # sqrt=均匀铺满圆盘
+		var pp := cx + Vector2(cos(pa), sin(pa)) * pr
+		var puff := Sprite3D.new()
+		puff.texture = mtex
+		puff.billboard = BaseMaterial3D.BILLBOARD_ENABLED; puff.shaded = false; puff.transparent = true
+		var pcol: Color = [Color(0.16, 0.06, 0.24), Color(0.3, 0.1, 0.45), Color(0.42, 0.18, 0.6)][pi % 3]
+		puff.modulate = Color(pcol.r, pcol.g, pcol.b, 0.0)
+		puff.position = _world_pos(pp, randf_range(0.4, 1.0))
+		puff.scale = Vector3.ONE * 0.3
+		_world.add_child(puff)
+		var psz: float = randf_range(70.0, 120.0)
+		puff.pixel_size = (psz * WS) / 128.0
+		var dly: float = 0.02 + 0.28 * clampf(pr / 200.0, 0.0, 1.0)   # 由近及远扩散(爆开铺满感)
+		var ppt := _reg_tween()
+		ppt.tween_interval(dly)
+		ppt.tween_property(puff, "scale", Vector3.ONE, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		ppt.parallel().tween_property(puff, "modulate:a", randf_range(0.55, 0.8), 0.3)
+		ppt.chain().tween_interval(1.3)
+		ppt.chain().tween_property(puff, "modulate:a", 0.0, randf_range(1.0, 1.6))   # 缓慢消散(错峰)
+		ppt.tween_callback(puff.queue_free)
+	# 贴地黑紫雾盘(范围可视200码)缓散
+	var pool := _px_ground_sprite(mtex, cx, 400.0, Color(0.3, 0.08, 0.45, 0.45), 0.06)
 	var pt := _reg_tween()
-	pt.tween_interval(1.5)
-	pt.tween_property(pool, "modulate:a", 0.0, 1.3)
+	pt.tween_interval(1.8)
+	pt.tween_property(pool, "modulate:a", 0.0, 1.4)
 	pt.tween_callback(pool.queue_free)
 	for o in _enemies_of(u):
 		if not o.get("alive", false): continue
