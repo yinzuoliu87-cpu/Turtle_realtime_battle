@@ -2811,8 +2811,8 @@
     "shieldHpPct": 20,
     "shieldDuration": 4,
     "shieldHealPct": 20,
-    "brief": "缩头乌龟缩入壳中，获得（{S:HP*0.2}）护盾(4秒)+护甲+20%(5秒)，护盾到期时将剩余护盾的 <span class=\"val-heal\">20%</span> 转化为生命值",
-    "detail": "缩头乌龟缩入壳中，获得（20%×最大生命值({HP}) = {S:HP*0.2}）护盾（持续4秒）并提升护甲 <span class=\"val-atk\">+20%</span>（持续5秒）；护盾到期时将剩余护盾值的 <span class=\"val-heal\">20%</span> 转化为生命值回复。"
+    "brief": "缩头乌龟缩入壳中，获得（{S:HP*0.2}）护盾(4秒)+护甲+20%(5秒)，护盾到期时将剩余护盾的 <span class=\"val-heal\">20%</span> 转化为生命值。持盾期间龟能锁定,盾破/到期恢复",
+    "detail": "缩头乌龟缩入壳中，获得（20%×最大生命值({HP}) = {S:HP*0.2}）护盾（持续4秒）并提升护甲 <span class=\"val-atk\">+20%</span>（持续5秒）；护盾到期时将剩余护盾值的 <span class=\"val-heal\">20%</span> 转化为生命值回复。\n持有此特殊护盾期间<span class=\"val-atk\">龟能锁定</span>(不充能),护盾被打破或到期即恢复。"
    },
    {
     "name": "强化随从",
