@@ -11210,7 +11210,7 @@ func _headless_tendril_shoot(center: Vector2, dir: Vector2, length: float, big: 
 	if tex == null: return
 	var tw_px: int = maxi(1, tex.get_width())
 	var th_px: int = maxi(1, tex.get_height())
-	var thick: float = randf_range(48.0, 72.0) if big else randf_range(32.0, 52.0)   # 触须粗细(加粗·万千感)
+	var thick: float = randf_range(130.0, 190.0) if big else randf_range(90.0, 130.0)   # 触须粗细(刺身只占画布~1/4→大幅调粗·用户2026-07-17"太细了")
 	var ps: float = (thick * WS) / float(th_px)
 	var spk := Sprite3D.new()
 	spk.texture = tex
