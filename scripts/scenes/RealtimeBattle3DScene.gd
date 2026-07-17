@@ -16350,8 +16350,7 @@ func _spawn_hiding_minion(u: Dictionary) -> void:
 	})
 	if minion != null:
 		minion["minion_kind"] = pick
-		if _review_demo():
-			minion["echarge_perm"] = maxf(4.0, float(minion.get("echarge_perm", 1.0)))   # 评审场随从充能×4(demo里看得到它放技; 实战原速·2026-07-17)
+		# (2026-07-17用户"除了血量以外其他东西应该和该龟一模一样"→撤掉曾加的评审场充能×4, 随从充能=真身原速)
 		# A方案·完整乌龟随从: 真·某龟种(id-keyed普攻/被动/技能触发) + 带自己技能/龟能/AI
 		minion["id"] = pick
 		minion["rarity"] = str(d.get("rarity", "C"))
