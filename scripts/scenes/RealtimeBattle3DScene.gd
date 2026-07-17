@@ -86,7 +86,7 @@ static func _review_demo() -> bool:
 	if OS.has_environment("REVIEW"):
 		return true
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
-const ART_FACES_RIGHT := ["hiding"]         # 原图朝右的立绘例外表(全局约定=原图朝左; 这些立绘flip取反·用户2026-07-17缩头"建模左右反")
+const ART_FACES_RIGHT := ["hiding", "headless"]   # 原图朝右的立绘例外表(全局约定=原图朝左; 这些立绘flip取反·缩头2026-07-17用户抓+无头预检自查颈残端在右)
 const REVIEW_TURTLE := "headless"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
 const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (26缩头全✅封板2026-07-17→27无头预检中: 0普攻起)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
