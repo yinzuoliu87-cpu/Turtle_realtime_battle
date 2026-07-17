@@ -15,12 +15,17 @@ permissions:
 
 jobs:
   build-ios:
-    runs-on: macos-14
+    runs-on: macos-latest   # Xcode 15.4链接libgodot.a报swift_Builtin_float缺失(Godot 4.6模板=Swift 6工具链编的)→要新Xcode
     timeout-minutes: 40
     env:
       GODOT_VERSION: "4.6.3-stable"
     steps:
       - uses: actions/checkout@v4
+
+      - name: Select newest Xcode on image
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+          xcodebuild -version
 
       - name: Download Godot (macOS)
         run: |
