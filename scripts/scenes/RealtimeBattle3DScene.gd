@@ -4759,8 +4759,10 @@ func _crystal_sweep_step(ang: float, u: Dictionary, si: int, reach: float, state
 	state["prev"] = ang
 
 func _ang_in(prev: float, cur: float, t: float) -> bool:
-	while t < prev:
+	var _guard := 0                         # 防卡死(用户2026-07-18): prev 若为 inf/极大(角度计算异常)→t<prev恒真=死循环; 64次封顶兜底
+	while t < prev and _guard < 64:
 		t += TAU
+		_guard += 1
 	return t > prev and t <= cur
 
 # 032: 登场召唤亡灵骷髅 (双抗20000近乎免疫, 存活15s自灭, 死亡200码内%最大生命真伤)
