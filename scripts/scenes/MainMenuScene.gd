@@ -161,34 +161,51 @@ func _show_page(page: String) -> void:
 	_build_page_buttons(page, false)
 
 
-## 建主菜单按钮 (实时版: 单页, 各按钮从左滑入入场). _on_first_load 仅保留以兼容调用签名.
+## 建左栏英雄区 (正式化重排·用户2026-07-18「左英雄+右信息板·保留金框」):
+##   Logo 下 → 大「开始战斗」英雄键(焦点·380×96) → 2×2 次级键(背包/商店/图鉴/排行榜·统一金框).
+##   设置/教程 挪到右上工具簇, 战绩 挪到右信息板 (见 _right_column). 各键从左滑入错峰入场.
 func _build_page_buttons(_page: String, _on_first_load: bool) -> void:
-	# 干净的商业级实时版主菜单: 5 入口 (开始战斗/背包/商店/排行榜/设置). 战斗 → 选龟 → 匹配 → 2.5D 战斗.
-	#   去掉回合制残留的 online/local 子页 (快速匹配/野生对局/房间对战/测试模式/推塔) — 用户嫌乱看不懂.
-	var items: Array = [
-		["⚔ 开始战斗", func(): _start_battle_flow(), false],
-		["🎒 背包", func(): _go("Inventory"), false],
-		["🛒 商店", func(): _go("Shop"), false],
-		["⚙ 设置", func(): _go("Settings"), false],
+	# ── 英雄键: ⚔ 开始战斗 (最大·居左栏中轴·主 CTA) ──
+	var hero_size := Vector2(384.0, 96.0)
+	var hero_center := Vector2(LEFT_CX, 300.0)
+	var hero := _frame_button("⚔  开始战斗", func(): _start_battle_flow(), false, hero_size, 27)
+	hero.position = hero_center - hero_size / 2.0
+	hero.set_meta("home_y", hero.position.y)
+	page_box.add_child(hero)
+	_slide_in_left(hero, 0)
+	# ── 2×2 次级键: 背包/商店/图鉴/排行榜 (同金框·小一号·左右两列) ──
+	var gsz := Vector2(180.0, 78.0)
+	var gap_x := 16.0
+	var gap_y := 14.0
+	var col_dx := (gsz.x + gap_x) / 2.0                      # 两列中心相对左栏中轴 ±col_dx
+	var grid_cy0 := hero_center.y + hero_size.y / 2.0 + 24.0 + gsz.y / 2.0
+	var subs: Array = [
+		["🎒  背包", func(): _go("Inventory")],
+		["🛒  商店", func(): _go("Shop")],
+		["📖  图鉴", func(): _go("Codex")],
+		["🏆  排行榜", func(): _go("Leaderboard")],
 	]
-	var n := items.size()
-	var btn_spacing := BTN_H + BTN_GAP
-	var cx := LEFT_CX                       # 主菜单按钮全在左栏
-	var cy0 := GROUP_TOP + BTN_H / 2.0
-	for i in range(n):
-		var it: Array = items[i]
-		var b := _frame_button(it[0], it[1], it[2])
-		var center := Vector2(cx, cy0 + i * btn_spacing)
-		b.position = center - Vector2(BTN_W / 2.0, BTN_H / 2.0)
+	for i in range(subs.size()):
+		var s: Array = subs[i]
+		var r := i / 2                                       # 行 0,0,1,1
+		var c := i % 2                                       # 列 0,1,0,1
+		var center := Vector2(LEFT_CX - col_dx + float(c) * (gsz.x + gap_x), grid_cy0 + float(r) * (gsz.y + gap_y))
+		var b := _frame_button(s[0], s[1], false, gsz, 21)
+		b.position = center - gsz / 2.0
 		b.set_meta("home_y", b.position.y)
 		page_box.add_child(b)
-		b.modulate.a = 0.0
-		# 入场: 从左滑入 + 淡入, 错峰 (1:1 PoC duration420 delay550+80i) — 保留的好动画
-		var tw := create_tween()
-		b.position.x = -560.0
-		tw.tween_interval(0.55 + 0.08 * i)
-		tw.tween_property(b, "position:x", center.x - BTN_W / 2.0, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tw.parallel().tween_property(b, "modulate:a", 1.0, 0.42)
+		_slide_in_left(b, i + 1)
+
+
+## 左栏键入场: 从屏外左侧滑入 + 淡入, 错峰 (保留原 PoC 好动画)
+func _slide_in_left(holder: Control, idx: int) -> void:
+	var home_x := holder.position.x
+	holder.modulate.a = 0.0
+	holder.position.x = -560.0
+	var tw := create_tween()
+	tw.tween_interval(0.5 + 0.08 * float(idx))
+	tw.tween_property(holder, "position:x", home_x, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(holder, "modulate:a", 1.0, 0.42)
 
 
 ## btn-frame.png 金色边框按钮 (NinePatchRect 9宫格保证渲染 + 透明Button点击 + 文字)
@@ -287,11 +304,11 @@ func layer_modulate_fade(veil: ColorRect, center: CenterContainer) -> void:
 	tw.parallel().tween_property(center, "modulate:a", 1.0, 0.2)
 
 
-func _frame_button(label: String, cb: Callable, disabled: bool) -> Control:
+func _frame_button(label: String, cb: Callable, disabled: bool, size: Vector2 = Vector2(BTN_W, BTN_H), font_size: int = 22) -> Control:
 	var holder := Control.new()
-	holder.custom_minimum_size = Vector2(BTN_W, BTN_H)
-	holder.size = Vector2(BTN_W, BTN_H)
-	holder.pivot_offset = Vector2(BTN_W / 2.0, BTN_H / 2.0)   # hover/press 绕中心缩放
+	holder.custom_minimum_size = size
+	holder.size = size
+	holder.pivot_offset = size / 2.0   # hover/press 绕中心缩放
 	# 木框背景 menu-frame-rect = frame-rect.png — Phaser setDisplaySize 整图拉伸, TextureRect STRETCH_SCALE 1:1
 	var frame_path := "res://assets/sprites/menu/frame-rect.png"
 	if not ResourceLoader.exists(frame_path):
@@ -317,7 +334,7 @@ func _frame_button(label: String, cb: Callable, disabled: bool) -> Control:
 	# 文字 = 1:1 PoC addDomText: 22px 雅黑Bold, 填充#3a1f00, "描边"实为 4 方向 text-shadow(±1px 金#ffe4a0)
 	#   (dom-text.ts:43-48 — 非 outline 轮廓扩张! 故不能用 Godot outline_size, 要 4 个偏移金副本)
 	var fill := Color("#8b7755") if disabled else Color("#3a1f00")
-	holder.add_child(_make_stroked_label(label, 22, fill, Color("#ffe4a0")))
+	holder.add_child(_make_stroked_label(label, font_size, fill, Color("#ffe4a0")))
 	# hover/press 动画 (PoC ts:358-375): hover scale1.04 + 暖金 tint; 点击 press scale0.96 → 渲染1帧 → 回弹+回调
 	if not disabled:
 		btn.mouse_entered.connect(_btn_hover.bind(holder, frame_node, true))
@@ -404,21 +421,39 @@ func _btn_press(holder: Control, frame_node: TextureRect, cb: Callable) -> void:
 		cb.call()
 
 
-# ─── 右墙: 龟币框 + 4磁贴 (frame-square, 仅图标) ───
+# ─── 右上工具簇(设置/教程/龟币) + 右信息板(赛季进度/战绩) — 正式化重排(用户2026-07-18) ───
+#   去掉旧的右侧 4 磁贴竖列 + 左上赛季裸条; 信息统一进右侧金边信息板, 设置/教程收进右上小磁贴.
 func _right_column() -> void:
-	# 龟币框 frame-coin 152×85 中心(1280-16-76, 78)
+	# ── 右上一排: [教程][设置] 方形磁贴 + 龟币框 (右边缘贴墙) ──
+	var coin := _coin_frame()
+	coin.position = Vector2(W - WALL - 152, 30)
+	content_root.add_child(coin); _card_nodes.append(coin); coin.set_meta("home_y", coin.position.y)
+	_slide_in(coin, 0)
+	var usz := 62.0
+	var uy := 30.0 + (85.0 - usz) / 2.0                       # 与龟币框竖直居中对齐
+	var set_x := float(W - WALL - 152) - 14.0 - usz
+	var help_x := set_x - 10.0 - usz
+	var set_tile := _tile("", "⚙", func(): _go("Settings"), Vector2(set_x, uy), "", usz)
+	content_root.add_child(set_tile); _card_nodes.append(set_tile); set_tile.set_meta("home_y", set_tile.position.y)
+	_slide_in(set_tile, 1)
+	var help_tile := _tile("ui/help-button", "❓", func(): _on_tutorial(), Vector2(help_x, uy), "", usz)
+	content_root.add_child(help_tile); _card_nodes.append(help_tile); help_tile.set_meta("home_y", help_tile.position.y)
+	_slide_in(help_tile, 2)
+	# ── 右信息板: 赛季进度(大轮/Lv/命/深海币) + 战绩(可点→Record) ──
+	_info_panel()
+
+
+## 龟币框 (frame-coin + 绿龟币图标染色 + 数字) — 抽出复用; 返回未定位的 Control, 调用方定位/入场
+func _coin_frame() -> Control:
 	var coin := Control.new()
-	coin.position = Vector2(W - WALL - 152, 78 - 42)
-	content_root.add_child(coin)
-	_card_nodes.append(coin); coin.set_meta("home_y", coin.position.y)   # 参与过场
+	coin.custom_minimum_size = Vector2(152, 85); coin.size = Vector2(152, 85)
 	if ResourceLoader.exists("res://assets/sprites/menu/frame-coin.png"):
 		var cf := TextureRect.new(); cf.texture = load("res://assets/sprites/menu/frame-coin.png")
 		cf.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; cf.stretch_mode = TextureRect.STRETCH_SCALE
 		cf.size = Vector2(152, 85); coin.add_child(cf)
-	# 绿色龟币图标 (PoC ts:604 Lucide coins 描边绿#1f8f3f). ui/coin.png 是黑线稿 → 把非透明像素染绿
-	if ResourceLoader.exists("res://assets/sprites/ui/coin.png"):
+	if ResourceLoader.exists("res://assets/sprites/ui/coin.png"):   # 黑线稿→非透明像素染绿(#1f8f3f)
 		var cimg: Image = load("res://assets/sprites/ui/coin.png").get_image()
-		var green := Color(0.122, 0.561, 0.247)   # #1f8f3f
+		var green := Color(0.122, 0.561, 0.247)
 		for yy in range(cimg.get_height()):
 			for xx in range(cimg.get_width()):
 				var px := cimg.get_pixel(xx, yy)
@@ -427,47 +462,81 @@ func _right_column() -> void:
 		var ci := TextureRect.new(); ci.texture = ImageTexture.create_from_image(cimg)
 		ci.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; ci.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		ci.size = Vector2(36, 36); ci.position = Vector2(76 - 39.5 - 18, 42 - 18); coin.add_child(ci)
-	# 龟币数字: 深绿 #2c4a1e 22px (PoC ts:608-609 浅羊皮纸框上深字), 左对齐于 cx+W*0.02≈79
 	var cl := Label.new(); cl.text = "%d" % GameState.coins
 	cl.position = Vector2(79, 0); cl.size = Vector2(73, 85)
 	cl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT; cl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	cl.add_theme_font_size_override("font_size", 22); cl.add_theme_color_override("font_color", Color("#2c4a1e")); coin.add_child(cl)
-	# 入场: 龟币框为 cards[0], 4 磁贴 cards[1..4]; PoC ts:199-201 slide x→home + alpha, dur420 delay 850+60i
-	_slide_in(coin, 0)
-	# 4 磁贴 (图鉴/教程/排行榜/战绩) — PoC BootScene key→file: codex-icon, ui/help-button, menu/icon-achievements, menu/icon-record
-	var defs := [
-		["menu/codex-icon", "图鉴", func(): _go("Codex")],
-		["ui/help-button", "教程", func(): _on_tutorial()],
-		["menu/icon-achievements", "排行榜", func(): _go("Leaderboard")],
-		["menu/icon-record", "战绩", func(): _go("Record")],
-	]
-	# 战绩磁贴显示 "X胜 Y负" (1:1 PoC makeSquareTile subValue, recordValue = total>0 ? `${w}胜 ${l}负` : '')
+	return coin
+
+
+## 右信息板: 金边深蓝卡(保留金框) — 赛季进度(大轮/Lv/命/深海币) + 战绩(可点→Record)
+func _info_panel() -> void:
+	var PW := 560.0
+	var px := float(W - WALL) - PW                            # 右边缘贴墙
+	var py := 236.0
+	var panel := PanelContainer.new()
+	panel.position = Vector2(px, py)
+	panel.custom_minimum_size = Vector2(PW, 0.0)             # 宽固定·高随内容
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.04, 0.10, 0.16, 0.96)             # 深海蓝近实心(正式化·防背景图标透出)
+	sb.border_color = Color("#ffd93d"); sb.set_border_width_all(2)   # 金边(保留金框)
+	sb.set_corner_radius_all(14)
+	sb.content_margin_left = 28; sb.content_margin_right = 28
+	sb.content_margin_top = 22; sb.content_margin_bottom = 24
+	panel.add_theme_stylebox_override("panel", sb)
+	content_root.add_child(panel)
+	_card_nodes.append(panel); panel.set_meta("home_y", py)
+	var vb := VBoxContainer.new(); vb.add_theme_constant_override("separation", 15)
+	panel.add_child(vb)
+	var hd := Label.new(); hd.text = "🐢  赛季进度"
+	hd.add_theme_font_size_override("font_size", 25); hd.add_theme_color_override("font_color", Color("#ffd93d"))
+	vb.add_child(hd)
+	# 图标用确定性单色符号(不走 emoji 字体回退 → 桌面/安卓一致·根治 emoji 乱渲染): 用 font_color 上色
+	vb.add_child(_panel_row("🏆", "第 %d 大轮" % int(GameState.season_id), "Lv %d" % int(GameState.season_level), Color("#ffd93d")))
+	vb.add_child(_panel_row("♥", "剩余命数", "%d / 8" % int(GameState.hearts), Color("#ff6b6b")))
+	vb.add_child(_panel_row("◆", "深海币", "%d" % int(GameState.meta_deepsea_coins), Color("#4fc3f7")))
+	var sep := HSeparator.new()
+	var sls := StyleBoxLine.new(); sls.color = Color(1.0, 0.85, 0.24, 0.35); sls.thickness = 1
+	sep.add_theme_stylebox_override("separator", sls)
+	vb.add_child(sep)
 	var _w: int = GameState.battles_won
 	var _total: int = GameState.battles_total
-	var _rec := "%d胜 %d负" % [_w, maxi(0, _total - _w)] if _total > 0 else ""
-	var tx := W - WALL - TILE   # 左上 x (磁贴右边缘贴墙)
-	for i in range(4):
-		var d: Array = defs[i]
-		var sub_v: String = _rec if d[1] == "战绩" else ""
-		var tile := _tile(d[0], d[1], d[2], Vector2(tx, TILE_TOP + i * TSTEP - TILE / 2.0), sub_v)
-		content_root.add_child(tile)
-		_card_nodes.append(tile); tile.set_meta("home_y", tile.position.y)   # 参与过场
-		_slide_in(tile, i + 1)
-	# V2 赛季状态条: 第N大轮 + 命 + 深海币 (设计§八 主菜单显示). 深色半透底条压住背景斗兽场, 保证可读 (截图发现原裸字对比度低)
-	var v2bg := PanelContainer.new()
-	var v2sb := StyleBoxFlat.new()
-	v2sb.bg_color = Color(0.04, 0.10, 0.16, 0.74)   # 深海蓝半透
-	v2sb.set_corner_radius_all(8)
-	v2sb.content_margin_left = 12; v2sb.content_margin_right = 12
-	v2sb.content_margin_top = 5; v2sb.content_margin_bottom = 5
-	v2bg.add_theme_stylebox_override("panel", v2sb)
-	v2bg.position = Vector2(16, 12)
-	content_root.add_child(v2bg)
-	var v2 := Label.new()
-	v2.text = "🏆 第 %d 大轮   ·   Lv %d   ·   ❤ 命 %d/8   ·   💠 深海币 %d" % [int(GameState.season_id), int(GameState.season_level), int(GameState.hearts), int(GameState.meta_deepsea_coins)]
-	v2.add_theme_font_size_override("font_size", 20)
-	v2.add_theme_color_override("font_color", Color("#ffe9a8"))
-	v2bg.add_child(v2)
+	var _rec := "%d 胜 %d 负" % [_w, maxi(0, _total - _w)] if _total > 0 else "暂无战绩"
+	var rec := Button.new()
+	rec.text = "📜  战绩          %s      ›" % _rec
+	rec.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	rec.add_theme_font_size_override("font_size", 20)
+	rec.add_theme_color_override("font_color", Color("#dfe6f0"))
+	rec.add_theme_color_override("font_hover_color", Color("#ffe9a8"))
+	rec.add_theme_color_override("font_pressed_color", Color("#ffe9a8"))
+	var rn := StyleBoxFlat.new(); rn.bg_color = Color(1, 1, 1, 0.04); rn.set_corner_radius_all(8)
+	rn.content_margin_left = 10; rn.content_margin_right = 10; rn.content_margin_top = 9; rn.content_margin_bottom = 9
+	var rh := rn.duplicate() as StyleBoxFlat; rh.bg_color = Color(1.0, 0.85, 0.24, 0.16)
+	rec.add_theme_stylebox_override("normal", rn)
+	rec.add_theme_stylebox_override("hover", rh)
+	rec.add_theme_stylebox_override("pressed", rh)
+	rec.focus_mode = Control.FOCUS_NONE
+	rec.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	rec.pressed.connect(func(): _go("Record"))
+	vb.add_child(rec)
+
+
+## 信息板一行: 图标 + 名称(左, 撑开) + 值(右)
+func _panel_row(icon: String, name_txt: String, value: String, icon_col: Color = Color("#dfe6f0")) -> Control:
+	var h := HBoxContainer.new(); h.add_theme_constant_override("separation", 10)
+	var ic := Label.new(); ic.text = icon; ic.add_theme_font_size_override("font_size", 21)
+	ic.add_theme_color_override("font_color", icon_col)
+	ic.custom_minimum_size = Vector2(30, 0); ic.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	h.add_child(ic)
+	var nm := Label.new(); nm.text = name_txt; nm.add_theme_font_size_override("font_size", 20)
+	nm.add_theme_color_override("font_color", Color("#dfe6f0"))
+	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(nm)
+	var vv := Label.new(); vv.text = value; vv.add_theme_font_size_override("font_size", 20)
+	vv.add_theme_color_override("font_color", Color("#ffe9a8"))
+	vv.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	h.add_child(vv)
+	return h
 
 
 ## 右栏卡片入场: 从右(贴墙外)滑入 + 淡入. PoC delay 850+60*idx, dur420.
@@ -481,11 +550,11 @@ func _slide_in(holder: Control, idx: int) -> void:
 	tw.parallel().tween_property(holder, "modulate:a", 1.0, 0.42)
 
 
-func _tile(icon_key: String, label: String, cb: Callable, pos: Vector2, sub_value: String = "") -> Control:
+func _tile(icon_key: String, label: String, cb: Callable, pos: Vector2, sub_value: String = "", sz: float = float(TILE)) -> Control:
 	var holder := Control.new()
 	holder.position = pos
-	holder.custom_minimum_size = Vector2(TILE, TILE)
-	holder.size = Vector2(TILE, TILE)
+	holder.custom_minimum_size = Vector2(sz, sz)
+	holder.size = Vector2(sz, sz)
 	var btn := TextureButton.new()
 	btn.set_anchors_preset(Control.PRESET_FULL_RECT)
 	btn.ignore_texture_size = true; btn.stretch_mode = TextureButton.STRETCH_SCALE
@@ -503,9 +572,9 @@ func _tile(icon_key: String, label: String, cb: Callable, pos: Vector2, sub_valu
 		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		# 有 subValue(战绩) 时图标缩到 0.58 + 上移 size*0.10 给文字让位 (1:1 PoC makeSquareTile)
 		var has_sub := sub_value != ""
-		var isz := roundi(TILE * (0.58 if has_sub else 0.62))   # PoC ts:574
-		var iy_off := -TILE * 0.10 if has_sub else -6.0
-		ic.size = Vector2(isz, isz); ic.position = Vector2((TILE - isz) / 2.0, (TILE - isz) / 2.0 + iy_off)
+		var isz := roundi(sz * (0.58 if has_sub else 0.62))   # PoC ts:574
+		var iy_off := -sz * 0.10 if has_sub else -6.0
+		ic.size = Vector2(isz, isz); ic.position = Vector2((sz - isz) / 2.0, (sz - isz) / 2.0 + iy_off)
 		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE; holder.add_child(ic)
 		if has_sub:
 			var vl := Label.new()
@@ -514,12 +583,12 @@ func _tile(icon_key: String, label: String, cb: Callable, pos: Vector2, sub_valu
 			vl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			vl.add_theme_font_size_override("font_size", 13)
 			vl.add_theme_color_override("font_color", Color("#ffd966"))
-			vl.size = Vector2(TILE, 16); vl.position = Vector2(0, TILE / 2.0 + TILE * 0.34 - 8.0)
+			vl.size = Vector2(sz, 16); vl.position = Vector2(0, sz / 2.0 + sz * 0.34 - 8.0)
 			vl.mouse_filter = Control.MOUSE_FILTER_IGNORE; holder.add_child(vl)
 	else:
 		var tl := Label.new(); tl.text = label; tl.set_anchors_preset(Control.PRESET_FULL_RECT)
 		tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; tl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		tl.add_theme_font_size_override("font_size", 22); tl.mouse_filter = Control.MOUSE_FILTER_IGNORE; holder.add_child(tl)
+		tl.add_theme_font_size_override("font_size", roundi(sz * 0.44)); tl.mouse_filter = Control.MOUSE_FILTER_IGNORE; holder.add_child(tl)
 	return holder
 
 
