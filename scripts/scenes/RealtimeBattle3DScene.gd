@@ -21943,13 +21943,22 @@ func _info_bar(parent: Control, cur: float, mx: float, fill_col: Color, label: S
 	lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(lb)
 
-# 属性格 (图标+值), 放进 GridContainer
-func _info_stat_cell(grid: GridContainer, icon: String, val: String, col: Color = Color("#d6e4f0")) -> void:
-	var c := Label.new()
-	c.text = "%s %s" % [icon, val]
-	c.add_theme_font_size_override("font_size", 14)
-	c.add_theme_color_override("font_color", col)
-	grid.add_child(c)
+# 属性格 (图标+值), 放进 GridContainer; icon_tex 非空→用真图标(Phaser stats/*·2026-07-18), 否则 emoji 兜底
+func _info_stat_cell(grid: GridContainer, icon: String, val: String, col: Color = Color("#d6e4f0"), icon_tex: String = "") -> void:
+	var h := HBoxContainer.new(); h.add_theme_constant_override("separation", 6)
+	if icon_tex != "" and ResourceLoader.exists(icon_tex):
+		var it := TextureRect.new(); it.texture = load(icon_tex)
+		it.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; it.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		it.custom_minimum_size = Vector2(26, 26); it.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		h.add_child(it)
+	else:
+		var ic := Label.new(); ic.text = icon; ic.add_theme_font_size_override("font_size", 16)
+		ic.custom_minimum_size = Vector2(26, 0); ic.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		h.add_child(ic)
+	var c := Label.new(); c.text = val; c.add_theme_font_size_override("font_size", 14)
+	c.add_theme_color_override("font_color", col); c.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(c)
+	grid.add_child(h)
 
 # 当前生效的状态 → chips (只显生效的); 无则"无异常状态"
 func _info_status_chips(vb: VBoxContainer, u: Dictionary) -> void:
@@ -22057,15 +22066,16 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	var grid := GridContainer.new(); grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 18); grid.add_theme_constant_override("v_separation", 5)
 	vb.add_child(grid)
-	_info_stat_cell(grid, "⚔", "攻击 %d" % int(u.get("atk", 0)), Color("#ff9d8a"))
-	_info_stat_cell(grid, "🛡", "护甲 %d" % int(u.get("def", 0)))
-	_info_stat_cell(grid, "🔮", "魔抗 %d" % int(u.get("mr", 0)), Color("#9bdcff"))
-	_info_stat_cell(grid, "💥", "暴击 %d%%" % int(float(u.get("crit", 0.0)) * 100.0))
-	_info_stat_cell(grid, "⏱", "攻速 %ss" % _fmt_num(float(u.get("atk_interval", 0.0))))
-	_info_stat_cell(grid, "🎯", "射程 %d" % int(u.get("atk_range", 0)))
-	_info_stat_cell(grid, "👟", "移速 %d" % int(u.get("move_spd", 0)))
+	var sic := "res://assets/sprites/ui/stats/"   # 8项全真图标(用户2026-07-18「属性图标phaser有配」): atk/def/mr/crit/lifesteal取Phaser·攻速/射程/移速=PixelLab配套生成·全去emoji(根治绿块+跨平台一致)
+	_info_stat_cell(grid, "⚔", "攻击 %d" % int(u.get("atk", 0)), Color("#ff9d8a"), sic + "atk-icon.png")
+	_info_stat_cell(grid, "🛡", "护甲 %d" % int(u.get("def", 0)), Color("#d6e4f0"), sic + "def-icon.png")
+	_info_stat_cell(grid, "🔮", "魔抗 %d" % int(u.get("mr", 0)), Color("#9bdcff"), sic + "mr-icon.png")
+	_info_stat_cell(grid, "💥", "暴击 %d%%" % int(float(u.get("crit", 0.0)) * 100.0), Color("#d6e4f0"), sic + "crit-icon.png")
+	_info_stat_cell(grid, "⏱", "攻速 %ss" % _fmt_num(float(u.get("atk_interval", 0.0))), Color("#d6e4f0"), sic + "atkspd-icon.png")
+	_info_stat_cell(grid, "🎯", "射程 %d" % int(u.get("atk_range", 0)), Color("#d6e4f0"), sic + "range-icon.png")
+	_info_stat_cell(grid, "👟", "移速 %d" % int(u.get("move_spd", 0)), Color("#d6e4f0"), sic + "movespd-icon.png")
 	if float(u.get("lifesteal", 0.0)) > 0.0:
-		_info_stat_cell(grid, "🩸", "吸血 %d%%" % int(float(u.get("lifesteal", 0.0)) * 100.0))
+		_info_stat_cell(grid, "🩸", "吸血 %d%%" % int(float(u.get("lifesteal", 0.0)) * 100.0), Color("#d6e4f0"), sic + "lifesteal-icon.png")
 
 	_add_panel_sep(vb)
 
