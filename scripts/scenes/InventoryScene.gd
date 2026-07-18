@@ -159,8 +159,14 @@ func _build_lineup(_leaders: Array) -> void:
 		ll.text = "%s  %s" % ["⬆" if lkey == "top" else "⬇", bf]
 		ll.add_theme_font_size_override("font_size", 16); ll.add_theme_color_override("font_color", lcol)
 		ll.position = Vector2(44, by - 21); ll.size = Vector2(180, 18); add_child(ll)
+		var minion_n := arr.size() - lead_n
+		var ctext := ""
+		if lead_n > 0:
+			ctext = "统领 ×%d" % lead_n
+		if minion_n > 0:
+			ctext += ("　　小将 ×%d" % minion_n) if ctext != "" else ("小将 ×%d" % minion_n)
 		var cnt := Label.new()
-		cnt.text = "统领 ×%d    小将 ×%d" % [lead_n, arr.size() - lead_n]
+		cnt.text = ctext
 		cnt.add_theme_font_size_override("font_size", 13)
 		cnt.add_theme_color_override("font_color", Color(lcol.r, lcol.g, lcol.b, 0.72))
 		cnt.position = Vector2(30 + box_span + 20 - 200, by - 20); cnt.size = Vector2(186, 16)
@@ -429,7 +435,7 @@ func _team_equips_for_synergy() -> Array:
 func _build_synergy_panel(leaders: Array) -> void:
 	var w := 300.0                    # 羁绊窄列(用户2026-07-18"不要这么多空间")·靠右
 	var x0 := _vw - w - 28.0
-	var hdr := Label.new(); hdr.text = "类型羁绊  (点看详情)"
+	var hdr := Label.new(); hdr.text = "类型羁绊"
 	hdr.add_theme_font_size_override("font_size", 17); hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
 	hdr.position = Vector2(x0, 100); hdr.size = Vector2(w, 24); add_child(hdr)
 	var cy := 132.0
@@ -575,6 +581,8 @@ func _build_bench() -> void:
 
 # ─── 底部选中操作条 (大改: 替代满屏文字说明; 选中装备才显名/效果/卖出/取消) ───
 func _build_op_bar() -> void:
+	if _sel_bench < 0 or _sel_bench >= GameState.persistent_bench.size():
+		return   # 无选中装备 → 不显底部操作条(原那行"3件同款合成"已收进"?"帮助·用户2026-07-19)
 	var by := 636.0
 	var bar := Panel.new()
 	var sb := StyleBoxFlat.new(); sb.bg_color = Color("#101c2a"); sb.border_color = Color("#2a3a4e")
@@ -603,10 +611,6 @@ func _build_op_bar() -> void:
 		cancel.add_theme_font_size_override("font_size", 16)
 		cancel.position = Vector2(bw - 108, 14); cancel.size = Vector2(92, 38)
 		cancel.pressed.connect(func(): _sel_bench = -1; _rebuild()); bar.add_child(cancel)
-	else:
-		var l := Label.new(); l.text = "✨ 3 件同款同星装备自动合成升星"
-		l.add_theme_font_size_override("font_size", 14); l.add_theme_color_override("font_color", Color("#8595a5"))
-		l.position = Vector2(16, 22); l.size = Vector2(bw - 32, 24); l.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(l)
 
 func _rarity_color(rarity: String) -> Color:
 	match rarity:
