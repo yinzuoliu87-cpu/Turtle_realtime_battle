@@ -622,6 +622,8 @@ func _ready() -> void:
 		return
 	_build_ui_layer()
 	_build_debug_panel()   # 🛠 调试面板(评审demo·技能/装备/星级·用户2026-07-11)
+	if OS.has_environment("STRESS"):   # 卡死猎手: 开局前轮换左队(覆盖全28龟)
+		_stress_pre()
 	_spawn_teams()
 	if OS.has_environment("INFO_DEMO"):   # DEV: 自动弹第一只友军的详情面板(截图核对侧边信息面板用·env门控·正常包无)
 		var _t2 := get_tree().create_timer(1.6)
@@ -3213,9 +3215,11 @@ func _make_status_bar(side: String, level: int = 0) -> Dictionary:
 # ============================================================================
 func _process(delta: float) -> void:
 	delta = minf(delta, 0.1)   # ★钳制delta(用户2026-07-18防卡死): 卡顿/切后台/加载导致的delta尖峰会让每帧DoT/VFX累加while循环炸开(一帧生成成百上千节点→下帧更慢=死亡螺旋). 上限0.1s
-	if _stress:                # 卡死猎手: 心跳 + 一局结束/超时→重开
+	if _stress:                # 卡死猎手: 心跳 + 自动开打(跳摆位) + 一局结束/超时→重开
 		_hb += 1
-		if _over or _t > 90.0:
+		if _dl_state == "place":
+			_dl_start_fight()          # 无头无玩家→自动开打(present阶段自己计时推进)
+		if _over or _dl_state == "done" or _t > 120.0:
 			_stress_reload(); return
 		_dbg_op = "process"
 	# Phase4 顿帧 hit-stop: 计时 >0 时冻结"模拟"(逻辑推进 + juice 视觉态衰减)给重量感,
@@ -4780,12 +4784,26 @@ func _ang_in(prev: float, cur: float, t: float) -> bool:
 	return t > prev and t <= cur
 
 # ── 卡死猎手(STRESS env): 加速无头循环对局 + 看门狗线程 ──
+func _stress_pre() -> void:   # STRESS: 开局前轮换左队(全28龟)增加覆盖; _stress_n 在此累加(先于_stress_start)
+	_stress_n += 1
+	if GameState == null: return
+	var ids: Array = []
+	for p in DataRegistry.launch_pets:
+		ids.append(str((p as Dictionary).get("id", "basic")))
+	if ids.size() < 3: return
+	var pick: Array = []
+	for k in range(3):
+		pick.append(str(ids[(_stress_n * 3 + k) % ids.size()]))
+	GameState.season_leaders = pick
+	GameState.left_team = pick.duplicate()
+	GameState.dual_lineup = {}    # 按新leaders重建左队布阵
+	GameState.dual_active = true
+
 func _stress_start() -> void:
 	_stress = true
 	Engine.max_fps = 0          # 无头解帧率上限→尽快跑; delta仍钳制0.1s(逻辑不炸)
 	Engine.time_scale = 5.0     # 5×加速(delta≈0.08·未撞0.1钳制·保持较细粒度)
-	_stress_n += 1
-	print("[STRESS] battle #%d begin" % _stress_n)
+	print("[STRESS] battle #%d begin  left=%s" % [_stress_n, str(GameState.season_leaders) if GameState != null else "?"])
 	_wd_thread = Thread.new()
 	_wd_thread.start(_stress_watchdog)
 
