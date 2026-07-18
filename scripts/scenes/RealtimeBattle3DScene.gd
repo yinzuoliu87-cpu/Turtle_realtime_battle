@@ -4794,10 +4794,22 @@ func _stress_pre() -> void:   # STRESS: 开局前轮换左队(全28龟)增加覆
 	var pick: Array = []
 	for k in range(3):
 		pick.append(str(ids[(_stress_n * 3 + k) % ids.size()]))
-	GameState.season_leaders = pick
-	GameState.left_team = pick.duplicate()
-	GameState.dual_lineup = {}    # 按新leaders重建左队布阵
 	GameState.dual_active = true
+	GameState.dual_lineup = {}    # 按新leaders重建左队布阵(get_dual_lineup检测leaders变→自动重建)
+	GameState.season_leaders = pick
+	# 给左队3龟各随机3件装备(轮换·覆盖装备触发路径=飞镖/齿轮/等复杂effect·卡死高发区)
+	var eqids: Array = []
+	for e in DataRegistry.phase2_equipment:
+		if int((e as Dictionary).get("shopAvailable", 0)) == 1:
+			eqids.append(str((e as Dictionary)["id"]))
+	var pe := {}
+	if eqids.size() > 0:
+		for pi in range(pick.size()):
+			var el: Array = []
+			for j in range(3):
+				el.append({"id": str(eqids[(_stress_n * 11 + pi * 3 + j) % eqids.size()]), "star": 1 + (_stress_n + j) % 3})
+			pe[str(pick[pi])] = el
+	GameState.persistent_equipped = pe
 
 func _stress_start() -> void:
 	_stress = true
