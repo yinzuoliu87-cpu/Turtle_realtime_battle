@@ -2409,7 +2409,7 @@ func _dl_snapshot_survivors() -> void:
 # 清当前路所有单位/弹道/特效节点 → 供重开下一路
 func _dl_clear_units() -> void:
 	for u in _units:
-		for k in ["sprite", "shadow", "contact", "ring"]:
+		for k in ["sprite", "shadow", "contact", "ring", "flame_sector"]:   # +flame_sector: 凤凰喷火扇形常驻MeshInstance3D·换路不清会残留下半场(用户2026-07-18"换到下半场没清掉")
 			var n = u.get(k, null)
 			if is_instance_valid(n):
 				n.queue_free()

@@ -557,16 +557,16 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	return box
 
 
-# 背包格触屏点选: 透传拖动给 ScrollContainer(可滑动) + 松开位移小才算点选(滑动不误选·2026-07-18)
+# 背包格点选: 透传拖动给 ScrollContainer(可滑动) + 松开位移小才算点选(滑动不误选).
+# ★仅认 mouse: 触屏由 emulate_mouse_from_touch(默认开) 自动转 mouse → 若同时收 touch 会【双触发】, 而 _on_bench_click 是 toggle → 选中瞬间又被切回=装不上(用户2026-07-18"背包怎么装装备"). 只认mouse则每次点选恰一次.
 func _wire_bench_tap(box: Control, idx: int) -> void:
 	box.mouse_filter = Control.MOUSE_FILTER_PASS
 	box.gui_input.connect(func(ev: InputEvent):
-		var down: bool = (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT) or (ev is InputEventScreenTouch and ev.pressed)
-		var up: bool = (ev is InputEventMouseButton and not ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT) or (ev is InputEventScreenTouch and not ev.pressed)
-		if down:
-			_press_pos = ev.position
-		elif up and ev.position.distance_to(_press_pos) < 12.0:
-			_on_bench_click(idx))
+		if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT:
+			if ev.pressed:
+				_press_pos = ev.position
+			elif ev.position.distance_to(_press_pos) < 16.0:
+				_on_bench_click(idx))
 
 # ─── 交互: 点背包装备选中 → 点龟装上 (再点已选=取消; 点龟身无选中=卸最后一件回背包) ───
 func _on_bench_click(idx: int) -> void:
