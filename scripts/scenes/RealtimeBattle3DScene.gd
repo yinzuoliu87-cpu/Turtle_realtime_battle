@@ -510,7 +510,14 @@ var _ts_clock: TextureRect = null         # 时停停摆钟(叠加层顶, 不被
 var _ts_glow_sprs: Array = []             # 携带者"时之主"金辉光sprite(结束移除)
 var _shake_amp := 0.0                     # 当前震屏幅度 (米); 每帧指数衰减归 0
 var _shake_t := 0.0                       # 震屏相位 (驱动伪随机偏移)
-var _cam_base := Vector3.ZERO             # 镜头基准位 (shake 围绕它偏移, 衰减后精确归位)
+var _cam_base := Vector3.ZERO             # 镜头基准位(默认·未缩放); shake 围绕缩放后基准偏移
+var _cam_zoom := 1.0                      # 战场缩放(用户2026-07-18): 1=默认·>1拉近放大·<1拉远; PC滚轮/移动双指捏合
+const CAM_ZOOM_MIN := 0.72
+const CAM_ZOOM_MAX := 2.3
+const CAM_TARGET := Vector3(0.0, 0.6, 0.0)   # look_at 目标(缩放=沿视轴向它推拉·方向不变故无需重look_at)
+var _cam_zoom_base := Vector3.ZERO        # 缩放后的镜头基准(shake 围绕它·= CAM_TARGET + (_cam_base-CAM_TARGET)/zoom)
+var _touch_pts := {}                      # 多点触摸 {index: pos}(移动双指捏合缩放)
+var _pinch_prev := -1.0                   # 上帧双指间距(捏合比例基线)
 var _juice_rng := RandomNumberGenerator.new()   # 震屏/粒子专用 rng
 
 # --- §GROUNDING: 立绘底部软渐隐 shader (一份 Shader 共享, 每龟一份 ShaderMaterial 因 texture 不同) ---
@@ -973,8 +980,9 @@ func _build_camera() -> void:
 		_cam.fov = 40.0
 		_cam.position = Vector3(0.0, 28.0, 22.0)   # 俯角 atan2(27.4,22)≈51°; fov40拉远补框
 	_world.add_child(_cam)
-	_cam.look_at(Vector3(0.0, 0.6, 0.0), Vector3.UP)
+	_cam.look_at(CAM_TARGET, Vector3.UP)
 	_cam_base = _cam.position               # Phase4: 震屏围绕此基准偏移, 衰减后精确归位
+	_cam_zoom_base = _cam_base              # 初始缩放基准=默认位(zoom=1)
 	_juice_rng.randomize()
 
 func _build_environment() -> void:
@@ -17958,20 +17966,35 @@ func _juice_bob_for(u: Dictionary) -> float:
 	var ph: float = u.get("bob_phase", 0.0) + _t * JUICE_BOB_SPEED
 	return sin(ph) * JUICE_BOB_AMP
 
-# 震屏每帧推进: 衰减幅度 + 伪随机偏移镜头, 归零时精确复位到 _cam_base
+# 战场缩放: 沿视轴向 CAM_TARGET 推拉镜头(方向不变→无需重look_at); shake 围绕缩放后基准
+func _apply_cam_zoom() -> void:
+	if _cam == null or not is_instance_valid(_cam):
+		return
+	_cam_zoom = clampf(_cam_zoom, CAM_ZOOM_MIN, CAM_ZOOM_MAX)
+	_cam_zoom_base = CAM_TARGET + (_cam_base - CAM_TARGET) / _cam_zoom
+	if _shake_amp <= 0.0001:
+		_cam.position = _cam_zoom_base   # 不在震屏中→立即应用(震屏中由 _update_camera_shake 每帧应用)
+
+func _pinch_dist() -> float:
+	if _touch_pts.size() < 2:
+		return -1.0
+	var ks: Array = _touch_pts.keys()
+	return (_touch_pts[ks[0]] as Vector2).distance_to(_touch_pts[ks[1]] as Vector2)
+
+# 震屏每帧推进: 衰减幅度 + 伪随机偏移镜头, 归零时精确复位到缩放后基准
 func _update_camera_shake(delta: float) -> void:
 	if _cam == null or not is_instance_valid(_cam):
 		return
 	if _shake_amp <= 0.0001:
 		_shake_amp = 0.0
-		_cam.position = _cam_base
+		_cam.position = _cam_zoom_base
 		return
 	_shake_t += delta
 	_shake_amp = _shake_amp * exp(-JUICE_SHAKE_DECAY * delta)   # 指数衰减
 	# 伪随机偏移 (sin/cos 不同频 → 不规则); 横/竖各一份, 不动深度 z
 	var ox: float = sin(_shake_t * JUICE_SHAKE_FREQ * TAU) * _shake_amp
 	var oy: float = cos(_shake_t * JUICE_SHAKE_FREQ * 0.81 * TAU + 1.3) * _shake_amp
-	_cam.position = _cam_base + Vector3(ox, oy, 0.0)
+	_cam.position = _cam_zoom_base + Vector3(ox, oy, 0.0)
 
 # 触发震屏: 取较大幅度叠加(封顶), 重置相位让新事件抖得明显
 func _shake(amp: float) -> void:
@@ -19112,6 +19135,25 @@ func _stats_column(header: String, units: Array, hc: Color) -> Control:
 	return grid
 
 func _unhandled_input(event: InputEvent) -> void:
+	# ── 战场缩放(用户2026-07-18): PC滚轮 / 移动双指捏合 · 各模式通用, 最先处理 ──
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			_cam_zoom *= 1.10; _apply_cam_zoom(); return
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			_cam_zoom /= 1.10; _apply_cam_zoom(); return
+	if event is InputEventScreenTouch:
+		if event.pressed: _touch_pts[event.index] = event.position
+		else: _touch_pts.erase(event.index)
+		_pinch_prev = _pinch_dist()          # 手指数变化→重置捏合基线
+		if _touch_pts.size() >= 2: return    # 双指=缩放态, 不放行到点选(防捏合误开面板)
+	elif event is InputEventScreenDrag:
+		_touch_pts[event.index] = event.position
+		if _touch_pts.size() >= 2:
+			var d := _pinch_dist()
+			if _pinch_prev > 0.0 and d > 0.0:
+				_cam_zoom *= d / _pinch_prev; _apply_cam_zoom()
+			_pinch_prev = d
+			return
 	if _map_editor:   # 🖌 编辑器: 左键点/拖刷格(UI按钮的点击被按钮消费不会到这)
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			_ed_paint_at_screen(event.position)
@@ -19134,7 +19176,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	# 普通战斗模式: 点战场单位 (立绘头顶 unproject 命中) → 弹详情面板; 框上的点击由框自己的 gui_input 接.
 	if not DEBUG_EDIT or not _edit_mode:
-		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT and _touch_pts.size() < 2:
 			# ★命中用 get_mouse_position()(与龟爪光标同源=手指位置), 不用 event.position:
 			#   安卓触摸时 event.position 会偏到龟爪【中心】(比爪尖/手指低约半个光标)→点不准(用户2026-07-11 #6)。桌面两者相等, 无影响。
 			var _cpos: Vector2 = get_viewport().get_mouse_position() if get_viewport() != null else event.position
@@ -21920,6 +21962,15 @@ func _close_info_panel() -> void:
 	_info_panel = null
 	_selected_unit = null
 
+# 面板内非按钮控件设 IGNORE → 触摸透传到 ScrollContainer(手机可竖滑·2026-07-18); 关闭按钮(Button)保留可点
+func _info_passthrough(node: Node) -> void:
+	for c in node.get_children():
+		if c is Button:
+			continue
+		if c is Control:
+			(c as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_info_passthrough(c)
+
 # 面板内一条进度条(HP/龟能): 深底+彩色填充+居中文字覆盖
 func _info_bar(parent: Control, cur: float, mx: float, fill_col: Color, label: String) -> void:
 	var holder := Control.new()
@@ -22109,6 +22160,8 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	else:
 		for e in equips:
 			_add_equip_row(vb, str(e.get("id", "")), int(e.get("star", 1)))
+
+	_info_passthrough(vb)   # 面板内非按钮控件透传触摸→ScrollContainer可滑(手机·用户2026-07-18「列表滑动考虑手机端」)
 
 	# 从右滑入
 	panel.offset_left += PW + 40.0; panel.offset_right += PW + 40.0

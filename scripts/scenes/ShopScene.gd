@@ -23,7 +23,33 @@ func _shop_level() -> int:
 	return clampi(int(GameState.season_level), 1, 10)   # 大轮等级驱动出货档 (用户 2026-06-27)
 
 func _roll() -> void:
-	_offer = Phase2Equip.roll_shop(DataRegistry.phase2_equipment, _shop_level(), 10, _rng)
+	# 用户2026-07-18: 已3星(满星)的装备不再出现在货架(买了也没用·避免占位)
+	var maxed := _maxed_item_ids()
+	var pool: Array = DataRegistry.phase2_equipment
+	if not maxed.is_empty():
+		pool = []
+		for e in DataRegistry.phase2_equipment:
+			if not maxed.has(str((e as Dictionary).get("id", ""))):
+				pool.append(e)
+	_offer = Phase2Equip.roll_shop(pool, _shop_level(), 10, _rng)
+
+# 玩家已有 3 星(满星)的装备 id 集合(背包+统领已装+小将已装)→ 商店 roll 时排除
+func _maxed_item_ids() -> Dictionary:
+	var s := {}
+	for it in GameState.persistent_bench:
+		if it is Dictionary and int(it.get("star", 1)) >= 3: s[str(it.get("id", ""))] = true
+	if GameState.persistent_equipped is Dictionary:
+		for pid in GameState.persistent_equipped:
+			for it2 in GameState.persistent_equipped[pid]:
+				if it2 is Dictionary and int(it2.get("star", 1)) >= 3: s[str(it2.get("id", ""))] = true
+	if GameState.has_method("get_dual_lineup"):
+		var lineup: Dictionary = GameState.get_dual_lineup()
+		for lk in ["top", "bottom"]:
+			for u in lineup.get(lk, []):
+				if u is Dictionary and u.get("equips") is Array:
+					for it3 in u["equips"]:
+						if it3 is Dictionary and int(it3.get("star", 1)) >= 3: s[str(it3.get("id", ""))] = true
+	return s
 
 func _price(edef: Dictionary) -> int:
 	return maxi(1, int(edef.get("cost", 1))) * PRICE_MULT

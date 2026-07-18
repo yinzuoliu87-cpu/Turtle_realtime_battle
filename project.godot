@@ -45,6 +45,7 @@ window/handheld/orientation="sensor_landscape"
 [gui]
 
 theme/custom="res://assets/themes/default_theme.tres"
+common/default_scroll_deadzone=18
 
 [rendering]
 
