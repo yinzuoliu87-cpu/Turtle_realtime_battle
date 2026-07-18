@@ -111,31 +111,16 @@ const UBOX_GAP := 16.0
 func _build_lineup(_leaders: Array) -> void:
 	var lineup := GameState.get_dual_lineup()
 	var box_span := 3.0 * UBOX_W + 2.0 * UBOX_GAP
-	# 标题「出战阵容」+ 右上"?"帮助(详细玩法按需弹·默认不铺教程字·用户2026-07-19)
-	var sect := Label.new()
-	sect.text = "出战阵容"
-	sect.add_theme_font_size_override("font_size", 18)
-	sect.add_theme_color_override("font_color", Color("#cfe0ef"))
-	sect.position = Vector2(40, 62); sect.size = Vector2(140, 24); add_child(sect)
-	# 上下文提示: 只在"选了装备 / 选了单位"时冒一句(非常驻教程)
-	var ctx := ""
-	var ctxcol := Color.WHITE
-	if _sel_bench >= 0:
-		ctx = "→ 点【龟 / 小将】装上它"; ctxcol = Color("#7fe39a")
-	elif not _dl_sel.is_empty():
-		ctx = "→ 再点另一个位置 = 互换战场"; ctxcol = Color("#ffd93d")
-	if ctx != "":
-		var ch := Label.new()
-		ch.text = ctx; ch.add_theme_font_size_override("font_size", 15); ch.add_theme_color_override("font_color", ctxcol)
-		ch.position = Vector2(150, 63); ch.size = Vector2(_vw - 520, 22); add_child(ch)
+	# "?"帮助放顶栏右侧(不占阵容区·不压返回键→修「出战阵容」压返回的重叠·用户2026-07-19)。
+	# 操作引导靠单位框变色: 选了装备→框绿边"装这里" / 选中单位→框金边; 不再铺常驻文字。
 	var help := Button.new()
 	help.text = "?"; help.tooltip_text = "怎么配阵容"
 	help.add_theme_font_size_override("font_size", 16)
 	var hsb := StyleBoxFlat.new(); hsb.bg_color = Color("#1a2634"); hsb.border_color = Color("#4a6a8a")
-	hsb.set_border_width_all(1); hsb.set_corner_radius_all(13)
+	hsb.set_border_width_all(1); hsb.set_corner_radius_all(14)
 	help.add_theme_stylebox_override("normal", hsb); help.add_theme_stylebox_override("hover", hsb); help.add_theme_stylebox_override("pressed", hsb)
 	help.add_theme_color_override("font_color", Color("#9fc0dd"))
-	help.position = Vector2(124.0, 60.0); help.size = Vector2(24, 24)   # 紧挨「出战阵容」标题右侧, 不再挤战场带右上的计数
+	help.position = Vector2(_vw - 304.0, 30.0); help.size = Vector2(28, 28)   # 顶栏右·深海币左侧
 	help.pressed.connect(func(): _show_lineup_help())
 	add_child(help)
 	# 两条"战场带"(染色圆角底 + 战场名 + 编成计数) → 一眼看出上/下是两个各自开打的战场
