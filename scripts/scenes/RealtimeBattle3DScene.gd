@@ -1370,7 +1370,10 @@ func _log(bbcode: String) -> void:
 	if _log_panel != null and is_instance_valid(_log_panel) and _log_panel.visible and _log_rt != null:
 		_log_rt.append_text(bbcode + "\n")
 		while _log_rt.get_paragraph_count() > _LOG_CAP:
+			var _pc0 := _log_rt.get_paragraph_count()
 			_log_rt.remove_paragraph(0)
+			if _log_rt.get_paragraph_count() >= _pc0:   # ★remove_paragraph 偶发不生效(Godot RichTextLabel)→count不降=死循环→break(用户2026-07-18"打斗途中突然死机": 战斗日志刷屏时触发)
+				break
 
 
 func _unit_name(u: Dictionary) -> String:
@@ -3174,6 +3177,7 @@ func _make_status_bar(side: String, level: int = 0) -> Dictionary:
 #  主循环 (移动 / 索敌 / 普攻 / 龟能 / 击飞物理 — 复用 2D 口径)
 # ============================================================================
 func _process(delta: float) -> void:
+	delta = minf(delta, 0.1)   # ★钳制delta(用户2026-07-18防卡死): 卡顿/切后台/加载导致的delta尖峰会让每帧DoT/VFX累加while循环炸开(一帧生成成百上千节点→下帧更慢=死亡螺旋). 上限0.1s
 	# Phase4 顿帧 hit-stop: 计时 >0 时冻结"模拟"(逻辑推进 + juice 视觉态衰减)给重量感,
 	# 但镜头震屏照常推进(冻结期间的抖动正是冲击力来源). 不碰 Engine.time_scale → 计时归零即恢复,
 	# 永不卡死 (即使触发函数早退, 下一帧 delta 也会把 _hitstop 减到 0).
