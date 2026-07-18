@@ -32,11 +32,11 @@ const RL := {
 	"slot2":      {"x": 915,  "y": 172, "w": 108, "h": 156},
 	"grid":       {"x": 160,  "y": 375, "w": 1050,"h": 403},
 	# 右上信息区上部拆成 4 独立块(立绘/名字/属性/被动)—各自可拖可缩 (用户2026-07-18: 被动属性要能分开调大小)
-	"dtPortrait": {"x": 1252, "y": 140, "w": 233, "h": 156},
-	"dtName":     {"x": 1252, "y": 298, "w": 233, "h": 26},
-	"dtStats":    {"x": 1252, "y": 326, "w": 233, "h": 58},
-	"dtPassive":  {"x": 1252, "y": 386, "w": 233, "h": 34},
-	"detailBottom":{"x": 1253,"y": 426, "w": 225, "h": 202},
+	"dtPortrait": {"x": 1252, "y": 144, "w": 233, "h": 156},
+	"dtName":     {"x": 1251, "y": 276, "w": 233, "h": 26},
+	"dtStats":    {"x": 1252, "y": 307, "w": 233, "h": 58},
+	"dtPassive":  {"x": 1251, "y": 390, "w": 230, "h": 56},
+	"detailBottom":{"x": 1251,"y": 460, "w": 229, "h": 202},
 	"start":      {"x": 1258, "y": 715, "w": 214, "h": 68},
 }
 
@@ -1387,13 +1387,13 @@ func _refresh_detail() -> void:
 			if ResourceLoader.exists(full):
 				var pic := TextureRect.new()
 				pic.texture = load(full)
-				pic.custom_minimum_size = Vector2(_sp(22), _sp(22))   # PoC .dp-passive-icon 22px
+				pic.custom_minimum_size = Vector2(_sp(34), _sp(34))   # 被动图标调大(用户2026-07-18·原22)
 				pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 				pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 				prow.add_child(pic)
 		var pnm := Label.new()
 		pnm.text = passive.get("name", "被动")
-		pnm.add_theme_font_size_override("font_size", _sf(13))
+		pnm.add_theme_font_size_override("font_size", _sf(17))   # 被动名调大(用户2026-07-18·原13)
 		pnm.add_theme_color_override("font_color", Color("#7dffb3"))
 		pnm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		prow.add_child(pnm)
