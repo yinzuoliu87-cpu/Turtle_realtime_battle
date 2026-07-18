@@ -49,7 +49,7 @@ func _ready() -> void:
 	if OS.is_debug_build() or OS.has_environment("DEVTOOLS"):
 		_debug_arena_entry()
 	get_viewport().size_changed.connect(_on_menu_resize)
-	_maybe_ask_fullscreen()   # 1:1 PoC maybeAskFullscreen: 每会话一次问是否全屏
+	# (去掉全屏询问弹窗·用户2026-07-18「去掉这个全屏提示」; _maybe_ask_fullscreen 保留未调用, 需要可在设置里切全屏)
 
 
 ## 内容框居中于真实视口 (1:1 PoC FIT 居中); bg 在 self 上随视口自适应
