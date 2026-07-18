@@ -109,21 +109,35 @@ const UBOX_H := 102.0
 const UBOX_GAP := 12.0
 
 func _build_lineup(_leaders: Array) -> void:
-	# 顶部一行精简提示 (随状态变: 装备模式绿 / 换位中金 / 常态灰)
-	var hdr := Label.new()
-	if _sel_bench >= 0:
-		hdr.text = "已选装备 → 点任意【龟 / 小将】装上 · 点单位身上的装备格 = 卸那一件"
-		hdr.add_theme_color_override("font_color", Color("#7fe39a"))
-	elif not _dl_sel.is_empty():
-		hdr.text = "已选中一个位置 → 再点另一个【龟 / 小将】的位置 = 两者互换战场"
-		hdr.add_theme_color_override("font_color", Color("#ffd93d"))
-	else:
-		hdr.text = "点两个单位 = 互换上/下战场 · 点小将【前排/后排】切排 · 装备见下方背包"
-		hdr.add_theme_color_override("font_color", Color("#8fa6b9"))
-	hdr.add_theme_font_size_override("font_size", 14)
-	hdr.position = Vector2(40, 66); hdr.size = Vector2(_vw - 360, 20); add_child(hdr)
 	var lineup := GameState.get_dual_lineup()
 	var box_span := 3.0 * UBOX_W + 2.0 * UBOX_GAP
+	# 标题「出战阵容」+ 右上"?"帮助(详细玩法按需弹·默认不铺教程字·用户2026-07-19)
+	var sect := Label.new()
+	sect.text = "出战阵容"
+	sect.add_theme_font_size_override("font_size", 18)
+	sect.add_theme_color_override("font_color", Color("#cfe0ef"))
+	sect.position = Vector2(40, 62); sect.size = Vector2(140, 24); add_child(sect)
+	# 上下文提示: 只在"选了装备 / 选了单位"时冒一句(非常驻教程)
+	var ctx := ""
+	var ctxcol := Color.WHITE
+	if _sel_bench >= 0:
+		ctx = "→ 点【龟 / 小将】装上它"; ctxcol = Color("#7fe39a")
+	elif not _dl_sel.is_empty():
+		ctx = "→ 再点另一个位置 = 互换战场"; ctxcol = Color("#ffd93d")
+	if ctx != "":
+		var ch := Label.new()
+		ch.text = ctx; ch.add_theme_font_size_override("font_size", 15); ch.add_theme_color_override("font_color", ctxcol)
+		ch.position = Vector2(150, 63); ch.size = Vector2(_vw - 520, 22); add_child(ch)
+	var help := Button.new()
+	help.text = "?"; help.tooltip_text = "怎么配阵容"
+	help.add_theme_font_size_override("font_size", 16)
+	var hsb := StyleBoxFlat.new(); hsb.bg_color = Color("#1a2634"); hsb.border_color = Color("#4a6a8a")
+	hsb.set_border_width_all(1); hsb.set_corner_radius_all(13)
+	help.add_theme_stylebox_override("normal", hsb); help.add_theme_stylebox_override("hover", hsb); help.add_theme_stylebox_override("pressed", hsb)
+	help.add_theme_color_override("font_color", Color("#9fc0dd"))
+	help.position = Vector2(30.0 + box_span + 20.0 - 28.0, 60.0); help.size = Vector2(26, 26)
+	help.pressed.connect(func(): _show_lineup_help())
+	add_child(help)
 	# 两条"战场带"(染色圆角底 + 战场名 + 编成计数) → 一眼看出上/下是两个各自开打的战场
 	for lane_info in [["上战场", "top", 106.0, Color("#ffd93d"), Color(0.24, 0.19, 0.06)], ["下战场", "bottom", 244.0, Color("#7fd0ff"), Color(0.05, 0.14, 0.24)]]:
 		var bf := str(lane_info[0]); var lkey := str(lane_info[1]); var by := float(lane_info[2])
@@ -219,8 +233,8 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 			eqs = unit.get("equips", [])
 		var slots := P2.equip_slots_for_level(int(GameState.season_level))
 		_build_equip_cells(box, 70.0, eqs, slots, kind == "leader", pid, lane, idx)
-	# 小将 前排/后排 (清楚的可点标签 pill: 前排=橙/近战, 后排=青/射击)
-	if kind == "minion":
+	# 小将 前排/后排 (清楚的可点标签 pill: 前排=橙/近战, 后排=青/射击) — 精英小将=统领替身, 不显前后排(用户2026-07-18)
+	if kind == "minion" and not is_elite:
 		var front := str(unit.get("role", "front")) == "front"
 		var tgl := Button.new()
 		tgl.text = "前排" if front else "后排"
@@ -477,6 +491,36 @@ func _show_synergy_popup(type_key: String, cur_tier: int) -> void:
 	ok.pressed.connect(func(): dim.queue_free())
 	box.add_child(ok)
 
+
+## 阵容玩法帮助弹窗 (把原来常驻的教程字收到这·按需看)
+func _show_lineup_help() -> void:
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.55)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	dim.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed: dim.queue_free())
+	add_child(dim)
+	var bw := 560.0; var bh := 306.0
+	var box := Panel.new()
+	var sb := StyleBoxFlat.new(); sb.bg_color = Color("#1c2836"); sb.border_color = Color("#ffd93d")
+	sb.set_border_width_all(3); sb.set_corner_radius_all(12)
+	box.add_theme_stylebox_override("panel", sb)
+	box.position = Vector2(_vw / 2.0 - bw / 2.0, 180.0); box.size = Vector2(bw, bh)
+	box.mouse_filter = Control.MOUSE_FILTER_STOP
+	dim.add_child(box)
+	var ttl := Label.new(); ttl.text = "怎么配出战阵容"
+	ttl.add_theme_font_size_override("font_size", 22); ttl.add_theme_color_override("font_color", Color("#ffd93d"))
+	ttl.position = Vector2(24, 18); ttl.size = Vector2(bw - 48, 30); box.add_child(ttl)
+	var body := Label.new()
+	body.text = "· 上/下是两个各自开打的战场, 分兵布置\n· 点两个单位 = 互换它们的战场 / 位置\n· 点小将的【前排 / 后排】= 近战挥砍 ↔ 远程射击\n· 点下方背包里的装备 → 再点龟 / 小将 = 装上\n· 点单位身上的装备格 = 卸下回背包\n· 3 件同款同星装备自动合成升星"
+	body.add_theme_font_size_override("font_size", 15); body.add_theme_color_override("font_color", Color("#cfe0ef"))
+	body.position = Vector2(24, 58); body.size = Vector2(bw - 48, bh - 120); body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; box.add_child(body)
+	var ok := Button.new(); ok.text = "知道了"; ok.add_theme_font_size_override("font_size", 17)
+	ok.position = Vector2(bw / 2.0 - 60, bh - 52); ok.size = Vector2(120, 40)
+	ok.pressed.connect(func(): dim.queue_free())
+	box.add_child(ok)
+
+
 # ─── 下部: 装备背包 (大改: 可滑动列表·铺满宽·大格; 说明移到底部操作条) ───
 func _build_bench() -> void:
 	var hdr := Label.new()
@@ -554,8 +598,8 @@ func _build_op_bar() -> void:
 		cancel.position = Vector2(bw - 108, 14); cancel.size = Vector2(92, 38)
 		cancel.pressed.connect(func(): _sel_bench = -1; _rebuild()); bar.add_child(cancel)
 	else:
-		var l := Label.new(); l.text = "点背包装备选中 → 点【龟 / 小将】装上  ·  点单位身上的装备格 = 卸那一件  ·  3 件同款同星自动合成升星"
-		l.add_theme_font_size_override("font_size", 14); l.add_theme_color_override("font_color", Color("#7a8595"))
+		var l := Label.new(); l.text = "✨ 3 件同款同星装备自动合成升星"
+		l.add_theme_font_size_override("font_size", 14); l.add_theme_color_override("font_color", Color("#8595a5"))
 		l.position = Vector2(16, 22); l.size = Vector2(bw - 32, 24); l.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(l)
 
 func _rarity_color(rarity: String) -> Color:

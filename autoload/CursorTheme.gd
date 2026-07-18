@@ -40,6 +40,8 @@ var _enabled := false
 func _ready() -> void:
 	if DisplayServer.get_name() == "headless":
 		return   # 单测无显示
+	if OS.get_name() in ["Android", "iOS"]:
+		return   # 移动端触屏无鼠标 → 不建自绘光标(否则屏上残留一只绿龟爪·用户2026-07-18)
 	_point_tex = _build(2, _point_cols, _point_rects, 24, 24)
 	_fist_tex = _build(2, _fist_cols, _fist_rects, 24, 22)
 	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN
