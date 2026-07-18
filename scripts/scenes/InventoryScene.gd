@@ -194,12 +194,16 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 	sb.set_border_width_all(4 if sel else (3 if can_equip else 2)); sb.set_corner_radius_all(8)
 	box.add_theme_stylebox_override("panel", sb)
 	box.position = pos; box.size = Vector2(UBOX_W, UBOX_H)
+	# ── 横排卡片(用户2026-07-19: 宽框别太空): 左=大立绘/占位?, 右=名+装备格; 小将前后排pill在右上 ──
+	var left_w := 102.0
+	var rx := left_w + 8.0                 # 右列起点 110
+	var is_reg_minion := kind == "minion" and not is_elite
 	if is_ph:
 		var q := Label.new()
 		q.text = "?"
-		q.add_theme_font_size_override("font_size", 52)
+		q.add_theme_font_size_override("font_size", 58)
 		q.add_theme_color_override("font_color", Color("#9fb2c8"))
-		q.position = Vector2(0, 0); q.size = Vector2(UBOX_W, 58)
+		q.position = Vector2(6, 6); q.size = Vector2(left_w - 8, UBOX_H - 12)
 		q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		q.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(q)
 	else:
@@ -211,7 +215,7 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		if ResourceLoader.exists(img_path):
 			var a := TextureRect.new(); a.texture = load(img_path)
 			a.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; a.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED; a.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			a.position = Vector2(UBOX_W / 2.0 - 48, 2); a.size = Vector2(96, 56); a.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(a)
+			a.position = Vector2(6, 6); a.size = Vector2(left_w - 8, UBOX_H - 12); a.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(a)
 	var nm := Label.new()
 	if is_ph:
 		nm.text = "统领%d" % (int(unit.get("slot", idx)) + 1)
@@ -220,16 +224,16 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		nm.text = str(pet.get("name", pid))
 	else:
 		nm.text = "精英小将" if is_elite else "小将"
-	nm.add_theme_font_size_override("font_size", 15); nm.add_theme_color_override("font_color", Color("#e8f2ff"))
-	nm.position = Vector2(0, 60); nm.size = Vector2(UBOX_W, 18); nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; nm.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(nm)
-	# 装备格(可点卸那一件) — 占位统领无真龟, 不建装备格, 改提示
+	nm.add_theme_font_size_override("font_size", 16); nm.add_theme_color_override("font_color", Color("#e8f2ff"))
+	nm.position = Vector2(rx, 14); nm.size = Vector2(UBOX_W - rx - (60.0 if is_reg_minion else 8.0), 22)   # 小将留右上pill空间
+	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(nm)
 	if is_ph:
 		var hint := Label.new()
 		hint.text = "选龟后填入"
-		hint.add_theme_font_size_override("font_size", 11)
+		hint.add_theme_font_size_override("font_size", 12)
 		hint.add_theme_color_override("font_color", Color("#7f8fa0"))
-		hint.position = Vector2(0, 88); hint.size = Vector2(UBOX_W, 16)
-		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; hint.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(hint)
+		hint.position = Vector2(rx, 62); hint.size = Vector2(UBOX_W - rx - 8, 16)
+		hint.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(hint)
 	else:
 		var eqs: Array = []
 		if kind == "leader":
@@ -238,9 +242,9 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		elif unit.get("equips", null) is Array:
 			eqs = unit.get("equips", [])
 		var slots := P2.equip_slots_for_level(int(GameState.season_level))
-		_build_equip_cells(box, 84.0, eqs, slots, kind == "leader", pid, lane, idx)
-	# 小将 前排/后排 (清楚的可点标签 pill: 前排=橙/近战, 后排=青/射击) — 精英小将=统领替身, 不显前后排(用户2026-07-18)
-	if kind == "minion" and not is_elite:
+		_build_equip_cells(box, 60.0, eqs, slots, kind == "leader", pid, lane, idx, rx)
+	# 小将 前排/后排 pill (右上·精英小将=统领替身不显·用户2026-07-18)
+	if is_reg_minion:
 		var front := str(unit.get("role", "front")) == "front"
 		var tgl := Button.new()
 		tgl.text = "前排" if front else "后排"
@@ -254,18 +258,18 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		tgl.add_theme_stylebox_override("hover", tsb)
 		tgl.add_theme_stylebox_override("pressed", tsb)
 		tgl.add_theme_color_override("font_color", Color("#ffdba8") if front else Color("#b8e8ff"))
-		tgl.position = Vector2(UBOX_W - 58.0, 4.0); tgl.size = Vector2(54, 22)
+		tgl.position = Vector2(UBOX_W - 56.0, 10.0); tgl.size = Vector2(50, 22)
 		tgl.pressed.connect(func(): _dl_toggle_role(lane, idx))
 		box.add_child(tgl)
 	box.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _dl_click(lane, idx))
 	return box
 
 ## 单位身上的装备格一行: 填充格显图标·点它=卸那一件(无选中时); 选中装备时格子透传→点框body装备.
-func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, is_leader: bool, pet_id: String, lane: String, idx: int) -> void:
-	var cw := 30.0
-	var gap := 6.0
+func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, is_leader: bool, pet_id: String, lane: String, idx: int, x_start: float = -1.0) -> void:
+	var cw := 28.0
+	var gap := 5.0
 	var total := float(slots) * cw + maxf(0.0, float(slots - 1)) * gap
-	var x0 := UBOX_W / 2.0 - total / 2.0
+	var x0 := x_start if x_start >= 0.0 else (UBOX_W / 2.0 - total / 2.0)   # x_start≥0=横排卡片右列左对齐, 否则居中
 	for ci in range(slots):
 		var cell := Panel.new()
 		var csb := StyleBoxFlat.new()
