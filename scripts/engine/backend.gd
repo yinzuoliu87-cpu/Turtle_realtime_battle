@@ -50,6 +50,11 @@ static func pool_add(pool: Dictionary, snapshot: Dictionary) -> void:
 	if not pool["brackets"].has(b):
 		pool["brackets"][b] = []
 	var bucket: Array = pool["brackets"][b]
+	var new_id := str(snapshot.get("ghost_id", ""))   # ★去重(用户2026-07-18): 同ghost_id(同一玩家阵容跨场重传)先删旧再入→池里一个逻辑对手=一条, 排除最近3场才真挡得住
+	if new_id != "":
+		for i in range(bucket.size() - 1, -1, -1):
+			if str((bucket[i] as Dictionary).get("ghost_id", "")) == new_id:
+				bucket.remove_at(i)
 	bucket.push_front(snapshot)
 	while bucket.size() > BUCKET_CAP:
 		bucket.pop_back()

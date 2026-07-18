@@ -2228,7 +2228,23 @@ func _dl_survivor_specs(side_lr: String) -> Array:
 			return s
 	return [{"kind": "leader", "id": "basic"}]   # 兜底(理论不会到)
 
-# 对手当前路阵容: 匹配抽到的 ghost 快照(lane_assign 该路 leaders + 各自 equipped) → 否则 bot(2龟+1前排小将).
+func _foe_normalize_lane(raw: Array) -> Array:   # 对手每路规整到"恰好3单位"(用户2026-07-18"每条路都是3个单位·跟玩家一样"): 保留全部统领(≤3), 小将补/裁到 3-统领数(=玩家逻辑). 3统领→0小将 / 空统领→3小将 皆合规
+	var leaders: Array = []
+	var minions: Array = []
+	for s in raw:
+		if s is Dictionary and str((s as Dictionary).get("kind", "")) == "leader": leaders.append(s)
+		elif s is Dictionary and str((s as Dictionary).get("kind", "")) == "minion": minions.append(s)
+	var want: int = clampi(3 - leaders.size(), 0, 3)
+	var out: Array = leaders.duplicate()          # 统领全留(含各自equips)
+	var added: int = 0
+	for m in minions:                             # 优先沿用快照自带小将(role/elite), 多余裁掉
+		if added >= want: break
+		out.append(m); added += 1
+	while added < want:                           # 不足补默认小将(首前排·余后排)
+		out.append({"kind": "minion", "role": "front" if added == 0 else "back"}); added += 1
+	return out
+
+# 对手当前路阵容: 匹配抽到的 ghost 快照(lane_assign 该路 leaders + 各自 equipped) → 否则 bot. 每路统一经 _foe_normalize_lane 规整到3单位(与玩家同规则).
 #   ★对手装备按档位生效: 从 dual_ghost.equipped[pet] 取, 挂到 spec["equips"] → _spawn_lane_side 转 _dl_equips → _inject_equipment 应用.
 func _dual_foe_lane(lane: String) -> Array:
 	if GameState != null and GameState.dual_ghost is Dictionary:
@@ -2236,7 +2252,7 @@ func _dual_foe_lane(lane: String) -> Array:
 		GameState.foe_loadouts = dg.get("loadouts", {}) if dg.get("loadouts") is Dictionary else {}   # ghost技能选择→敌侧生效(用户2026-07-15)
 		# 兼容老结构: dg[lane] 直接是单位规格数组
 		if dg.has(lane) and dg[lane] is Array and not (dg[lane] as Array).is_empty():
-			return dg[lane]
+			return _foe_normalize_lane(dg[lane])
 		# ghost/bot 快照: lane_assign[lane]=该路统领; minions[lane]=该路小将配置(role/elite·快照可带·用户2026-07-16分路多变+精英小将); equipped[pet]=装备
 		var la = dg.get("lane_assign", {})
 		if la is Dictionary and (la as Dictionary).get(lane) is Array:
@@ -2251,30 +2267,20 @@ func _dual_foe_lane(lane: String) -> Array:
 					if geq.has(str(pid)) and geq[str(pid)] is Array:
 						spec["equips"] = (geq[str(pid)] as Array).duplicate(true)   # 对手按档装备
 					specs.append(spec)
-				if not lane_minions.is_empty():                 # 快照自带小将配置(role+elite)
-					for m in lane_minions:
-						if m is Dictionary:
-							specs.append({"kind": "minion", "role": str((m as Dictionary).get("role", "front")), "elite": bool((m as Dictionary).get("elite", false))})
-				else:                                           # 老快照无minions键→默认编成(上2/下1·共3小将)
-					if lane == "top":
-						specs.append({"kind": "minion", "role": "front"})
-						specs.append({"kind": "minion", "role": "back"})
-					else:
-						specs.append({"kind": "minion", "role": "front"})
-				return specs
-	# 兜底 bot(无快照/冷启动): 同3统领+3小将编成(上路2统领2小将/下路1统领1小将)
+				for m in lane_minions:                          # 快照自带小将配置(role+elite)·多余normalize裁·不足补
+					if m is Dictionary:
+						specs.append({"kind": "minion", "role": str((m as Dictionary).get("role", "front")), "elite": bool((m as Dictionary).get("elite", false))})
+				return _foe_normalize_lane(specs)               # ★每路规整到3单位=minions(3-统领)·与玩家同(用户2026-07-18)
+	# 兜底 bot(无快照/冷启动): 每路3单位·上路2统领+1小将 / 下路1统领+2小将(normalize补齐·与玩家默认同·用户2026-07-18)
 	var pool := ["stone", "ninja", "ghost", "ice", "diamond", "fortune", "bamboo", "angel"]
 	if lane == "top":
-		return [
+		return _foe_normalize_lane([
 			{"kind": "leader", "id": pool[0]},
 			{"kind": "leader", "id": pool[1]},
-			{"kind": "minion", "role": "front"},
-			{"kind": "minion", "role": "back"},
-		]
-	return [
+		])
+	return _foe_normalize_lane([
 		{"kind": "leader", "id": pool[3]},
-		{"kind": "minion", "role": "front"},
-	]
+	])
 
 # ── 双路流程控制 (P4: 团灭→破蛋10s窗口→结束; P5 升级为 top→bottom→final 分路推进) ──
 # 团灭判定排除的【惰性】召唤(否则续着卡死破蛋窗口); 战斗型召唤(大熊/海螺虫/骷髅/小将/机甲/浮游炮)算存活→用户2026-07-11「还在打召唤物别突然弹下一战场」
@@ -2393,6 +2399,9 @@ func _dl_snapshot_survivors() -> void:
 				spec["kind"] = "minion"; spec["role"] = str(u.get("minion_role", "front")); spec["elite"] = bool(u.get("is_elite", false))
 			else:
 				spec["kind"] = "leader"; spec["id"] = str(u.get("id", "basic"))
+			var eq: Array = u.get("equips", [])   # ★带装备进终极战场(用户2026-07-18"到终极战场装备都消失了"): 原survivor spec漏拷equips→_spawn_lane_side走不到_dl_equips→_inject只兜底左leader base装→小将/敌leader/局内获取装全空. 拷equips后双方leader+小将+局内装全带入
+			if eq is Array and not (eq as Array).is_empty():
+				spec["equips"] = (eq as Array).duplicate(true)
 			cur.append(spec)
 		GameState.dual_survivors[side] = cur
 
@@ -18256,7 +18265,7 @@ func _settle_season(won: bool) -> void:
 			if gs.get("left_team") is Array and (gs.left_team as Array).is_empty():
 				var _ldr: Array = gs.get("season_leaders")
 				gs.left_team.assign(_ldr.slice(0, 3))
-			var _gid := "g_%d_%d" % [int(gs.season_id), int(_t * 1000.0)]
+			var _gid := "g_%d" % int(gs.season_id)   # ★稳定id(用户2026-07-18"同一对手连续2把匹配到"): 原带_t战斗秒数→每场upload都是新id但同阵→池里同队堆几十个id→排除最近3个没用. 改按大轮id稳定=同一玩家阵容恒为1个ghost_id, 配pool_add去重→排除最近3场真生效
 			var _av := str(gs.season_leaders[0]) if (gs.season_leaders as Array).size() > 0 else "basic"
 			Backend.upload_ghost(Backend.build_ghost_snapshot(_gid, {"name": "玩家阵容", "avatar": _av, "id": _gid}))
 	gs.meta_deepsea_coins += _last_reward

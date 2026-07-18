@@ -15,6 +15,7 @@ const Phase2Minion = preload("res://scripts/engine/phase2_minion.gd")
 
 var _sel_bench: int = -1   # 当前选中的背包装备索引 (-1=无)
 var _dl_sel: Dictionary = {}   # 双路布阵选中框 {lane, idx} (点两个互换分路)
+var _vw: float = 1280.0   # 实际视口宽(手机expand后可达~1560): 顶栏/背包按真实宽铺开·不再左挤留空(2026-07-18)
 
 func _ready() -> void:
 	_rebuild()
@@ -24,6 +25,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
 func _rebuild() -> void:
+	_vw = maxf(W, get_viewport_rect().size.x)   # 真实视口宽(手机expand后~1560)→顶栏/背包按此铺开
 	for c in get_children():
 		c.visible = false   # 立即隐藏避免与新节点重叠 (queue_free 延到帧末, 不在信号中即时free防崩)
 		c.queue_free()
@@ -37,7 +39,7 @@ func _rebuild() -> void:
 	title.text = "🎒 背包 / 出战配置"
 	title.add_theme_font_size_override("font_size", 32)
 	title.add_theme_color_override("font_color", Color("#ffd93d"))
-	title.position = Vector2(W / 2.0 - 220, 22); title.size = Vector2(440, 46)
+	title.position = Vector2(_vw / 2.0 - 220, 22); title.size = Vector2(440, 46)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(title)
 
@@ -54,7 +56,7 @@ func _rebuild() -> void:
 	coin.text = "💠 深海币 %d" % int(GameState.meta_deepsea_coins)
 	coin.add_theme_font_size_override("font_size", 22)
 	coin.add_theme_color_override("font_color", Color("#5fd0e0"))
-	coin.position = Vector2(W - 260, 30); coin.size = Vector2(232, 32)
+	coin.position = Vector2(_vw - 260, 30); coin.size = Vector2(232, 32)
 	coin.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(coin)
 
@@ -127,8 +129,8 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		nm.text = str(pet.get("name", unit.get("id", "")))
 	else:
 		nm.text = "精英小将" if is_elite else "小将"
-	nm.add_theme_font_size_override("font_size", 11); nm.add_theme_color_override("font_color", Color("#e8f2ff"))
-	nm.position = Vector2(0, 42); nm.size = Vector2(112, 14); nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; box.add_child(nm)
+	nm.add_theme_font_size_override("font_size", 13); nm.add_theme_color_override("font_color", Color("#e8f2ff"))
+	nm.position = Vector2(0, 41); nm.size = Vector2(112, 16); nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; box.add_child(nm)
 	# 装备格 + 装/卸按钮: leader读 persistent_equipped / 小将读 dual_lineup 条目.equips (战斗端都注入)
 	var eqs: Array = []
 	if kind == "leader":
@@ -216,8 +218,8 @@ func _slot_center_label(box: Control, txt: String, col: Color) -> void:
 	box.add_child(l)
 ## 龟身装备槽可视化: 画 slots 个小格 (满格=该件稀有度色, 空格=暗轮廓), 居中一行. 替代"装N/M"文字.
 func _draw_equip_cells(box: Control, eqs: Array, slots: int, y: float) -> void:
-	var cw := 10.0
-	var gap := 3.0
+	var cw := 14.0   # 装备格加大(用户2026-07-18"拆卸装备太小"): 10→14·更易看清/点按
+	var gap := 4.0
 	var total := slots * cw + maxf(0.0, float(slots - 1)) * gap
 	var x0 := box.size.x / 2.0 - total / 2.0
 	for idx in range(slots):
@@ -254,7 +256,7 @@ func _slot_panel(pos: Vector2, bg: Color, border: Color) -> Panel:
 func _build_synergy_panel(leaders: Array) -> void:
 	var hdr := Label.new(); hdr.text = "类型羁绊 (同类型装备越多越强)"
 	hdr.add_theme_font_size_override("font_size", 18); hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
-	hdr.position = Vector2(700, 86); hdr.size = Vector2(520, 26); add_child(hdr)
+	hdr.position = Vector2(700, 86); hdr.size = Vector2(_vw - 730, 26); add_child(hdr)
 	var all_equips: Array = []
 	for pid in leaders:
 		for it in GameState.persistent_equipped.get(str(pid), []):
@@ -273,14 +275,15 @@ func _build_synergy_panel(leaders: Array) -> void:
 		csb.bg_color = Color("#16263a"); csb.border_color = Color("#3e6a8e")
 		csb.set_border_width_all(2); csb.set_corner_radius_all(8)
 		chip.add_theme_stylebox_override("panel", csb)
-		chip.position = Vector2(700, y); chip.size = Vector2(530, 58); add_child(chip)
+		var chip_w: float = _vw - 730.0   # 羁绊卡按真实宽铺开(填右侧空白·2026-07-18)
+		chip.position = Vector2(700, y); chip.size = Vector2(chip_w, 58); add_child(chip)
 		var nm := Label.new()
 		nm.text = "%s %s  ×%d  (档 %d)" % [Phase2Types.emoji_of(t), Phase2Types.display_name(t), int(a.get("count", 0)), int(a.get("tier", 1))]
 		nm.add_theme_font_size_override("font_size", 17); nm.add_theme_color_override("font_color", Color("#ffd93d"))
-		nm.position = Vector2(12, 6); nm.size = Vector2(506, 24); chip.add_child(nm)
+		nm.position = Vector2(12, 6); nm.size = Vector2(chip_w - 24, 24); chip.add_child(nm)
 		var desc := Label.new(); desc.text = Phase2Types.tier_desc(t, int(a.get("tier", 1)))
 		desc.add_theme_font_size_override("font_size", 12); desc.add_theme_color_override("font_color", Color("#bcd0e0"))
-		desc.position = Vector2(12, 30); desc.size = Vector2(506, 24); desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		desc.position = Vector2(12, 30); desc.size = Vector2(chip_w - 24, 24); desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		chip.add_child(desc)
 		y += 66
 
@@ -290,12 +293,12 @@ func _build_bench() -> void:
 	hdr.text = "装备背包 (永不丢 · 战后全收)  —  点装备选中 → 点龟装上 · 再点龟身卸下 · 选中可卖 · 装/卸/买后自动三合一升星"
 	hdr.add_theme_font_size_override("font_size", 18)
 	hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
-	hdr.position = Vector2(60, 352); hdr.size = Vector2(1000, 26)
+	hdr.position = Vector2(60, 352); hdr.size = Vector2(_vw - 120, 26)
 	add_child(hdr)
 	var bench: Array = GameState.persistent_bench if GameState.persistent_bench is Array else []
 	var gx := 64.0
 	var gy := 392.0
-	var per_row := 11
+	var per_row := maxi(11, int((_vw - 2.0 * gx) / (SLOT + 8.0)))   # 背包按真实宽铺满(手机~13列)·不再左挤留右空(2026-07-18)
 	var i := 0
 	for it in bench:
 		var col := i % per_row

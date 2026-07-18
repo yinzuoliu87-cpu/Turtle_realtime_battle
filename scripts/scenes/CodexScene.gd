@@ -8,6 +8,7 @@ extends Node2D
 @onready var list_bg: ColorRect = $UI/ListBg
 @onready var list_scroll: ScrollContainer = $UI/ListScroll
 @onready var list_vbox: VBoxContainer = $UI/ListScroll/ListVBox
+var _row_press_pos := Vector2.ZERO   # 触屏点选/滑动判定: 记按下位置, 松开位移小才算点选(手机2026-07-18)
 @onready var detail_bg: ColorRect = $UI/DetailBg
 @onready var detail: Control = $UI/Detail
 @onready var status_bar: Label = $UI/StatusBar
@@ -276,6 +277,7 @@ func _ready() -> void:
 	title_lbl.position.y -= 80.0
 	var tt := create_tween()
 	tt.tween_property(title_lbl, "position:y", 0.0, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	list_vbox.mouse_filter = Control.MOUSE_FILTER_PASS   # 列表容器透传触摸→ScrollContainer 可触屏拖滑(手机2026-07-18)
 	var start_tab := "pets"
 	if OS.has_environment("SHOT_TAB"):   # dev: 截图指定 tab (供 diff)
 		start_tab = OS.get_environment("SHOT_TAB")
@@ -611,12 +613,26 @@ func _add_header(text: String, color: String) -> void:
 	list_vbox.add_child(wrap)
 
 
+func _row_passthrough(node: Node) -> void:   # 行内视觉控件全设 IGNORE, 让触摸/拖动透传到行 Panel→再到 ScrollContainer(否则子控件吞掉拖动=手机滑不动·2026-07-18)
+	for c in node.get_children():
+		if c is Control:
+			(c as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_row_passthrough(c)
+
 func _connect_row(p: Panel, idx: int, stroke: Color) -> void:
+	p.mouse_filter = Control.MOUSE_FILTER_PASS   # 触屏拖动透传到 ScrollContainer→列表可滑(手机2026-07-18)
+	var wrap := p.get_parent()
+	if wrap is Control: (wrap as Control).mouse_filter = Control.MOUSE_FILTER_PASS
+	_row_passthrough(p)                          # 行内子控件不吞触摸
 	p.gui_input.connect(func(ev: InputEvent):
-		# 鼠标左键 或 触摸 都接 (防 emulate_touch_from_mouse 把点击变 touch 时收不到)
-		var clicked: bool = (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT) \
+		# 触屏: 按下记位置, 松开时位移小才算"点选"(位移大=在滑动列表→不选). 鼠标左键同理.
+		var down: bool = (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT) \
 			or (ev is InputEventScreenTouch and ev.pressed)
-		if clicked:
+		var up: bool = (ev is InputEventMouseButton and not ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT) \
+			or (ev is InputEventScreenTouch and not ev.pressed)
+		if down:
+			_row_press_pos = ev.position
+		elif up and ev.position.distance_to(_row_press_pos) < 14.0:
 			_select(idx))
 	p.mouse_entered.connect(func():
 		var sb: StyleBoxFlat = p.get_theme_stylebox("panel")
