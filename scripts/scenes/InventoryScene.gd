@@ -135,7 +135,7 @@ func _build_lineup(_leaders: Array) -> void:
 	hsb.set_border_width_all(1); hsb.set_corner_radius_all(13)
 	help.add_theme_stylebox_override("normal", hsb); help.add_theme_stylebox_override("hover", hsb); help.add_theme_stylebox_override("pressed", hsb)
 	help.add_theme_color_override("font_color", Color("#9fc0dd"))
-	help.position = Vector2(30.0 + box_span + 20.0 - 28.0, 60.0); help.size = Vector2(26, 26)
+	help.position = Vector2(124.0, 60.0); help.size = Vector2(24, 24)   # 紧挨「出战阵容」标题右侧, 不再挤战场带右上的计数
 	help.pressed.connect(func(): _show_lineup_help())
 	add_child(help)
 	# 两条"战场带"(染色圆角底 + 战场名 + 编成计数) → 一眼看出上/下是两个各自开打的战场
@@ -530,7 +530,7 @@ func _show_lineup_help() -> void:
 # ─── 下部: 装备背包 (大改: 可滑动列表·铺满宽·大格; 说明移到底部操作条) ───
 func _build_bench() -> void:
 	var hdr := Label.new()
-	hdr.text = "装备背包  (永不丢 · 战后全收 · 可上下滑动)"
+	hdr.text = "装备背包　(可上下滑动)"
 	hdr.add_theme_font_size_override("font_size", 18)
 	hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
 	hdr.position = Vector2(40, 386); hdr.size = Vector2(_vw - 80, 26)
