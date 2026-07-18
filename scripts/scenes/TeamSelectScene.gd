@@ -84,6 +84,17 @@ var _last_btn: Button = null
 ##   阵容不可改(灰显/点=只看), 仅 3选1 技能可切; 确认出战直接进匹配. 新赛季(过期清 season_leaders)才回到全选模式.
 var _roster_locked: bool = false
 
+# ─── 布局编辑器 (F9 开/关 · 拖动=移动 · 右下角把手=缩放 · F10=导出RL到控制台 · 用户2026-07-18) ───
+#   右侧信息区/技能区等区块拖到跟背景框对齐后, 屏上标签直接显示 POC(1647×955) 的 x/y/w/h, 抄回给我 bake 进 RL。
+var _rl_override: Dictionary = {}     # 编辑期覆盖 RL {key:{x,y,w,h}} (POC 1647×955 空间)
+var _place_reg: Dictionary = {}       # key → 已放置的 Control (编辑期实时重放真内容)
+var _edit_mode: bool = false
+var _edit_layer: Control = null
+var _edit_handles: Dictionary = {}    # key → {handle:Panel, label:Label}
+var _drag_key: String = ""
+var _drag_mode: String = ""           # "move" / "resize"
+var _drag_last: Vector2 = Vector2.ZERO
+
 # 入场 choreography + CTA 脉冲 (1:1 PoC index.html:328/659-687)
 var _ent_title: Control = null       # .screen-title
 var _ent_top: Array = []             # .select-top (返回/清空/上次)
@@ -259,14 +270,27 @@ func _sf(px: float) -> int:
 
 
 func _rect(key: String) -> Rect2:
-	var r: Dictionary = RL[key]
+	var r: Dictionary = _rl_override[key] if _rl_override.has(key) else RL[key]
 	var s := _stage_scale()
 	var top_left := _stage_to_screen(Vector2(float(r["x"]), float(r["y"])))
 	return Rect2(top_left, Vector2(float(r["w"]), float(r["h"])) * s)
 
 
-## 放置一个 Control 到 PoC 区域 (绝对定位)
+## 屏幕坐标 → PoC(1647×955) 局部坐标 (_stage_to_screen 的逆·布局编辑器读回坐标用)
+func _screen_to_stage(sp: Vector2) -> Vector2:
+	var vp := _vp()
+	var s := _stage_scale()
+	var center := Vector2(POC_W, POC_H) * 0.5
+	var off := STAGE_OFFSET
+	var win := Vector2(DisplayServer.window_get_size())
+	if win.x > 0.5 and win.y > 0.5:
+		off = STAGE_OFFSET * (vp / win)
+	return center + (sp - vp * 0.5 - off) / s
+
+
+## 放置一个 Control 到 PoC 区域 (绝对定位). 顺带登记 key→节点, 供布局编辑器实时重放.
 func _place(ctrl: Control, key: String) -> void:
+	_place_reg[key] = ctrl
 	var rc := _rect(key)
 	ctrl.position = rc.position
 	ctrl.size = rc.size
@@ -281,12 +305,162 @@ func _place_clamped(ctrl: Control, key: String) -> void:
 
 
 # ══════════════════════════════════════════════════════════════
+# 布局编辑器 (F9 切换) — 拖块对齐背景框, 屏上/控制台读回 POC(1647×955) 坐标
+#   拖块 body=移动, 右下角黄把手=缩放; 松手打印单块坐标; F10 打印整份 RL. 用户2026-07-18.
+# ══════════════════════════════════════════════════════════════
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not (event is InputEventKey) or not event.pressed or event.echo:
+		return
+	var k := event as InputEventKey
+	if k.keycode == KEY_F9:
+		_toggle_layout_edit()
+		get_viewport().set_input_as_handled()
+	elif k.keycode == KEY_F10 and _edit_mode:
+		_export_rl()
+		get_viewport().set_input_as_handled()
+
+
+func _toggle_layout_edit() -> void:
+	_edit_mode = not _edit_mode
+	if _edit_mode:
+		_build_edit_layer()
+		_flash_status("🔧 布局编辑开: 拖=移动 · 右下角=缩放 · F10导出坐标 · 再按F9关")
+	else:
+		if is_instance_valid(_edit_layer):
+			_edit_layer.queue_free()
+		_edit_layer = null
+		_edit_handles.clear()
+		_drag_key = ""
+		_flash_status("布局编辑关")
+
+
+func _build_edit_layer() -> void:
+	if is_instance_valid(_edit_layer):
+		_edit_layer.queue_free()
+	_edit_handles.clear()
+	_edit_layer = Control.new()
+	_edit_layer.name = "EditLayer"
+	_edit_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_edit_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_edit_layer.z_index = 4096   # 盖在 UI/Root 之上
+	var ui := get_node_or_null("UI")
+	(ui if ui != null else self).add_child(_edit_layer)
+	var tip := Label.new()
+	tip.text = "布局编辑 · 拖块对齐背景框 · 右下角把手缩放 · F10导出全部坐标 · F9关闭"
+	tip.add_theme_color_override("font_color", Color("#ffe6b0"))
+	tip.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+	tip.add_theme_constant_override("outline_size", 4)
+	tip.add_theme_font_size_override("font_size", 13)
+	tip.position = Vector2(12, 4)
+	_edit_layer.add_child(tip)
+	for key in _place_reg.keys():   # 只给已放置区块建把手(自动跳过未建的 synergy)
+		if is_instance_valid(_place_reg[key]):
+			_make_edit_handle(str(key))
+
+
+func _make_edit_handle(key: String) -> void:
+	var rc := _rect(key)
+	var handle := Panel.new()
+	handle.position = rc.position
+	handle.size = rc.size
+	handle.mouse_filter = Control.MOUSE_FILTER_STOP
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.20, 0.85, 0.60, 0.14)
+	sb.border_color = Color("#3cf0a0")
+	sb.set_border_width_all(2)
+	handle.add_theme_stylebox_override("panel", sb)
+	_edit_layer.add_child(handle)
+	var lbl := Label.new()
+	lbl.add_theme_color_override("font_color", Color("#ffffff"))
+	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+	lbl.add_theme_constant_override("outline_size", 4)
+	lbl.add_theme_font_size_override("font_size", 12)
+	lbl.position = Vector2(4, 2)
+	handle.add_child(lbl)
+	var grip := Panel.new()
+	grip.size = Vector2(18, 18)
+	grip.mouse_filter = Control.MOUSE_FILTER_STOP
+	var gsb := StyleBoxFlat.new()
+	gsb.bg_color = Color("#ffd93d")
+	grip.add_theme_stylebox_override("panel", gsb)
+	handle.add_child(grip)
+	grip.position = handle.size - grip.size
+	_edit_handles[key] = {"handle": handle, "label": lbl, "grip": grip}
+	handle.gui_input.connect(func(ev): _handle_input(key, "move", ev))
+	grip.gui_input.connect(func(ev): _handle_input(key, "resize", ev))
+	_update_edit_label(key)
+
+
+func _handle_input(key: String, mode: String, ev: InputEvent) -> void:
+	if ev is InputEventMouseButton and (ev as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		if (ev as InputEventMouseButton).pressed:
+			_drag_key = key
+			_drag_mode = mode
+			_drag_last = get_viewport().get_mouse_position()
+		elif _drag_key == key:
+			_drag_key = ""
+			print("[RL] \"%s\": %s" % [key, _rl_line(key)])
+
+
+func _input(event: InputEvent) -> void:
+	if not _edit_mode or _drag_key == "":
+		return
+	if event is InputEventMouseMotion:
+		var mp := get_viewport().get_mouse_position()
+		var d := (mp - _drag_last) / _stage_scale()   # 屏幕位移 → POC 位移
+		_drag_last = mp
+		var r: Dictionary = _rl_val(_drag_key).duplicate()
+		if _drag_mode == "move":
+			r["x"] = float(r["x"]) + d.x
+			r["y"] = float(r["y"]) + d.y
+		else:
+			r["w"] = maxf(16.0, float(r["w"]) + d.x)
+			r["h"] = maxf(16.0, float(r["h"]) + d.y)
+		_rl_override[_drag_key] = r
+		if is_instance_valid(_place_reg.get(_drag_key)):
+			_place(_place_reg[_drag_key], _drag_key)
+		var rc := _rect(_drag_key)
+		var h: Dictionary = _edit_handles.get(_drag_key, {})
+		if h.has("handle") and is_instance_valid(h["handle"]):
+			h["handle"].position = rc.position
+			h["handle"].size = rc.size
+			(h["grip"] as Control).position = (h["handle"] as Control).size - (h["grip"] as Control).size
+		_update_edit_label(_drag_key)
+
+
+func _rl_val(key: String) -> Dictionary:
+	return _rl_override[key] if _rl_override.has(key) else RL[key]
+
+
+func _rl_line(key: String) -> String:
+	var r := _rl_val(key)
+	return "{\"x\": %d, \"y\": %d, \"w\": %d, \"h\": %d}," % [int(round(float(r["x"]))), int(round(float(r["y"]))), int(round(float(r["w"]))), int(round(float(r["h"])))]
+
+
+func _update_edit_label(key: String) -> void:
+	var h: Dictionary = _edit_handles.get(key, {})
+	if not h.has("label") or not is_instance_valid(h["label"]):
+		return
+	var r := _rl_val(key)
+	(h["label"] as Label).text = "%s\nx%d y%d\nw%d h%d" % [key, int(round(float(r["x"]))), int(round(float(r["y"]))), int(round(float(r["w"]))), int(round(float(r["h"])))]
+
+
+func _export_rl() -> void:
+	var out := "\n===== 复制以下 RL (含你拖动后的坐标) =====\nconst RL := {\n"
+	for key in RL.keys():
+		out += "\t\"%s\": %s\n" % [key, _rl_line(str(key))]
+	out += "}\n===== 结束 =====\n"
+	print(out)
+	_flash_status("📋 已导出 RL 坐标到控制台 (终端复制给我)")
+
+
+# ══════════════════════════════════════════════════════════════
 # 建 UI
 # ══════════════════════════════════════════════════════════════
 func _build_ui() -> void:
 	# 标题 (PoC .ts-title: #ffe6b0 22px, letter-spacing 2px, 阴影)
 	var title := Label.new()
-	title.text = "选择你的伙伴"
+	title.text = "选择你的统领"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", _sf(22))
