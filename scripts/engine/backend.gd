@@ -59,6 +59,10 @@ static func pool_add(pool: Dictionary, snapshot: Dictionary) -> void:
 	while bucket.size() > BUCKET_CAP:
 		bucket.pop_back()
 
+## 玩家自己上传的快照? 本地池里 profile 名恒为"玩家阵容"(单机没别的真人)→匹配一律跳过, 防撞自己阵容(用户2026-07-18: 只按id排除挡不住修复前遗留的旧volatile id自传·按名一网打尽).
+static func _is_self_ghost(g) -> bool:
+	return g is Dictionary and str(((g as Dictionary).get("profile", {}) as Dictionary).get("name", "")) == "玩家阵容"
+
 ## 从池抽一个同档对手 (排除 exclude_ids). 桶空/全排除 → null (调用方 make_bot 兜底).
 static func pool_find(pool: Dictionary, bracket: int, exclude_ids: Array, rng: RandomNumberGenerator):
 	var brackets: Dictionary = pool.get("brackets", {})
@@ -67,6 +71,7 @@ static func pool_find(pool: Dictionary, bracket: int, exclude_ids: Array, rng: R
 		return null
 	var candidates: Array = []
 	for g in brackets[b]:
+		if _is_self_ghost(g): continue
 		if not exclude_ids.has(str((g as Dictionary).get("ghost_id", ""))):
 			candidates.append(g)
 	if candidates.is_empty():
@@ -164,7 +169,7 @@ static func _load_seed() -> Dictionary:
 		return parsed
 	return {"brackets": {}}
 
-const SEED_VER := 3   # 种子池版本(2026-07-16: 分路4模式+精英小将minions键); 升版→老档清旧seed_并入新种子(玩家上传的真ghost保留)
+const SEED_VER := 4   # 种子池版本(2026-07-18: 中高档种子扩充·老将不再重复面对~14队→b4-8各+12/b0-3各+4·共146支); 升版→老档清旧seed_并入新种子(玩家上传的真ghost保留)
 ## 种子并入(版本化): 无seed_ 或 池版本<SEED_VER → 清旧seed_+并入新种子+落盘. 修真机bug"老池挡住新种子永不升级"(用户2026-07-15).
 static func _ensure_seeded(pool: Dictionary) -> void:
 	var brackets: Dictionary = pool.get("brackets", {})
@@ -206,6 +211,7 @@ static func pool_find_window(pool: Dictionary, lo: int, hi: int, exclude_ids: Ar
 		if not brackets.has(b):
 			continue
 		for g in brackets[b]:
+			if _is_self_ghost(g): continue   # 跳过自己上传的快照(防撞自己·新旧id一网打尽)
 			if not exclude_ids.has(str((g as Dictionary).get("ghost_id", ""))):
 				candidates.append(g)
 	if candidates.is_empty():
