@@ -691,11 +691,13 @@ func _on_resize() -> void:
 # (mode-guide PoC 有, 本实现无对应节点 → 省略其档)
 # ══════════════════════════════════════════════════════════════
 func _play_entrance() -> void:
-	# PoC 实际 DOM(TeamSelectScene.ts:421-456): 标题=ts-title / 导轨=pg-rarity-rail / 无 select-top·mode-guide。
-	# index.html:659-662 入场规则选择器(.screen-title/.mode-guide/.select-top/.pg-filter-bar)与实际 class 不匹配
-	#   = 死规则, 不命中任何元素。唯一命中的是 .pet-grid(规则663 ↔ DOM line445 class="pet-grid")。
-	# → 选龟界面 PoC 实际只有 pet-grid 淡入上浮; 标题掉落/按钮左滑/导轨淡入曾是自创, 已删。
-	_entrance(_ent_scroll, Vector2(0, 20), 0.98, 0.62, 0.45, Tween.TRANS_CUBIC)
+	# 原入场: 龟池先空白0.62s→再上浮20px+缩放0.98→1+淡入0.45s (用户2026-07-18「浮现特效很烂」:
+	#   空白等待+漂浮缩放=卡顿廉价感)。改成 无延迟·无上浮·无缩放·纯快速淡入0.14s → 干净利落即显。
+	if _ent_scroll == null or not is_instance_valid(_ent_scroll):
+		return
+	_ent_scroll.modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(_ent_scroll, "modulate:a", 1.0, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 
 ## 单元素入场: 从 (rest+off, from_scale, alpha0) 经 delay 后 dur 内回到 rest/1/1.
