@@ -2268,9 +2268,13 @@ func _dual_foe_lane(lane: String) -> Array:
 					if geq.has(str(pid)) and geq[str(pid)] is Array:
 						spec["equips"] = (geq[str(pid)] as Array).duplicate(true)   # 对手按档装备
 					specs.append(spec)
-				for m in lane_minions:                          # 快照自带小将配置(role+elite)·多余normalize裁·不足补
+				for m in lane_minions:                          # 快照自带小将配置(role+elite+装备)·多余normalize裁·不足补
 					if m is Dictionary:
-						specs.append({"kind": "minion", "role": str((m as Dictionary).get("role", "front")), "elite": bool((m as Dictionary).get("elite", false))})
+						var mspec: Dictionary = {"kind": "minion", "role": str((m as Dictionary).get("role", "front")), "elite": bool((m as Dictionary).get("elite", false))}
+						var meq = (m as Dictionary).get("equips", null)   # 对手小将装备(用户2026-07-18)→_spawn_lane_side转_dl_equips注入
+						if meq is Array and not (meq as Array).is_empty():
+							mspec["equips"] = (meq as Array).duplicate(true)
+						specs.append(mspec)
 				return _foe_normalize_lane(specs)               # ★每路规整到3单位=minions(3-统领)·与玩家同(用户2026-07-18)
 	# 兜底 bot(无快照/冷启动): 每路3单位·上路2统领+1小将 / 下路1统领+2小将(normalize补齐·与玩家默认同·用户2026-07-18)
 	var pool := ["stone", "ninja", "ghost", "ice", "diamond", "fortune", "bamboo", "angel"]
@@ -8364,7 +8368,7 @@ const _SELF_CAST_SKILLS := {
 }
 
 # 远程敌向技的专属放技射程(码): 有这条的技能"够得着就放"·不被近战射程卡着(用户2026-07-11: 手里剑是远程技·改2000)
-const _SKILL_CAST_RANGE := {"ninjaShuriken": 2000.0, "ninjaBomb": 2000.0, "ninjaBackstab": 2000.0, "lineInkBomb": 2000.0}   # 墨水炸弹=远程投掷技射程2000(用户2026-07-15·落点300码AOE)
+const _SKILL_CAST_RANGE := {"ninjaShuriken": 2000.0, "ninjaBomb": 2000.0, "ninjaBackstab": 2000.0, "lineInkBomb": 2000.0, "eliteHammer": 500.0}   # 墨水炸弹=远程投掷技射程2000(用户2026-07-15·落点300码AOE); 精英铁锤放技射程=技能有效距离500码(用户2026-07-18·原走atk_range90贴身才放)
 func _skill_cast_range(u: Dictionary, stype: String) -> float:
 	if _SELF_CAST_SKILLS.has(stype): return 99999.0                       # 自/友向: 任意距离即放
 	return float(_SKILL_CAST_RANGE.get(stype, u.get("atk_range", 70.0)))  # 远程敌向技用专属射程; 否则=攻击射程(近战贴身放)

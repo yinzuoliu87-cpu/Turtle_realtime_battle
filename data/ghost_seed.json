@@ -1,5 +1,5 @@
 {
- "_note": "策划 ghost 种子池 v4(146支·9档0-8·场次越高装备越好档0=1件★1费1/Lv2→档8=5件★3费5/Lv10; 分路4模式轮转[2/1经典·1/2下重·3统领上路·3统领下路·空统领路小将守]+minions键带role/elite(档3+=1精英/档6+=2精英)·用户2026-07-16; 老池老将扩充中高档种子·2026-07-18; loadouts敌侧经foe_loadouts生效; SEED_VER=4版本化并入).",
+ "_note": "策划 ghost 种子池 v4(146支·9档0-8·场次越高装备越好档0=1件★1费1/Lv2→档8=5件★3费5/Lv10; 分路4模式轮转[2/1经典·1/2下重·3统领上路·3统领下路·空统领路小将守]+minions键带role/elite(档3+=1精英/档6+=2精英)·用户2026-07-16; 老池老将扩充中高档种子·2026-07-18; minions(小将)现各带1-3件装备·星级/费档镜像本队队长档位(档0=1件★1费1→档4=3件★2费3-4→档8=3件★3费5)·敌侧小将不再裸装·2026-07-18; loadouts敌侧经foe_loadouts生效; SEED_VER=5版本化并入).",
  "brackets": {
   "0": [
    {
@@ -30,17 +30,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -105,17 +123,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -179,17 +215,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -253,17 +307,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -328,17 +400,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -403,17 +493,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -477,17 +585,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -551,17 +677,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -626,17 +770,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -701,17 +863,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -776,17 +956,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -851,17 +1049,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -928,17 +1144,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -1003,17 +1237,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -1077,17 +1329,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -1151,17 +1421,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -1226,17 +1514,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -1301,17 +1607,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -1375,17 +1699,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -1449,17 +1791,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -1524,17 +1884,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -1599,17 +1977,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -1674,17 +2070,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -1749,17 +2163,35 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_015",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_019",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_042",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -1826,17 +2258,47 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        },
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        },
+        {
+         "id": "p2eq_008",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_012",
+         "star": 1
+        },
+        {
+         "id": "p2eq_018",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -1913,17 +2375,47 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        },
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        },
+        {
+         "id": "p2eq_008",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_012",
+         "star": 1
+        },
+        {
+         "id": "p2eq_018",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -1999,17 +2491,47 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        },
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        },
+        {
+         "id": "p2eq_008",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_012",
+         "star": 1
+        },
+        {
+         "id": "p2eq_018",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -2085,17 +2607,47 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        },
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        },
+        {
+         "id": "p2eq_008",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_012",
+         "star": 1
+        },
+        {
+         "id": "p2eq_018",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -2172,17 +2724,47 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        },
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        },
+        {
+         "id": "p2eq_008",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_012",
+         "star": 1
+        },
+        {
+         "id": "p2eq_018",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -2259,17 +2841,47 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        },
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        },
+        {
+         "id": "p2eq_008",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_012",
+         "star": 1
+        },
+        {
+         "id": "p2eq_018",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -2345,17 +2957,47 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        },
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        },
+        {
+         "id": "p2eq_008",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_012",
+         "star": 1
+        },
+        {
+         "id": "p2eq_018",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -2431,17 +3073,47 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        },
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        },
+        {
+         "id": "p2eq_008",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_012",
+         "star": 1
+        },
+        {
+         "id": "p2eq_018",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -2518,17 +3190,47 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        },
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        },
+        {
+         "id": "p2eq_008",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_012",
+         "star": 1
+        },
+        {
+         "id": "p2eq_018",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -2605,17 +3307,47 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        },
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        },
+        {
+         "id": "p2eq_008",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_012",
+         "star": 1
+        },
+        {
+         "id": "p2eq_018",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -2692,17 +3424,47 @@
      "top": [
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        },
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        },
+        {
+         "id": "p2eq_008",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_012",
+         "star": 1
+        },
+        {
+         "id": "p2eq_018",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -2779,17 +3541,47 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_001",
+         "star": 1
+        },
+        {
+         "id": "p2eq_002",
+         "star": 1
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_007",
+         "star": 1
+        },
+        {
+         "id": "p2eq_008",
+         "star": 1
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_012",
+         "star": 1
+        },
+        {
+         "id": "p2eq_018",
+         "star": 1
+        }
+       ]
       }
      ]
     },
@@ -2868,17 +3660,47 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_009",
+         "star": 2
+        },
+        {
+         "id": "p2eq_011",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -2955,17 +3777,47 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_009",
+         "star": 2
+        },
+        {
+         "id": "p2eq_011",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -3041,17 +3893,47 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_009",
+         "star": 2
+        },
+        {
+         "id": "p2eq_011",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -3127,17 +4009,47 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_009",
+         "star": 2
+        },
+        {
+         "id": "p2eq_011",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -3214,17 +4126,47 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_009",
+         "star": 2
+        },
+        {
+         "id": "p2eq_011",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -3301,17 +4243,47 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_009",
+         "star": 2
+        },
+        {
+         "id": "p2eq_011",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -3387,17 +4359,47 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_009",
+         "star": 2
+        },
+        {
+         "id": "p2eq_011",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -3473,17 +4475,47 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_009",
+         "star": 2
+        },
+        {
+         "id": "p2eq_011",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -3560,17 +4592,47 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_009",
+         "star": 2
+        },
+        {
+         "id": "p2eq_011",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -3647,17 +4709,47 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_009",
+         "star": 2
+        },
+        {
+         "id": "p2eq_011",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -3734,17 +4826,47 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_009",
+         "star": 2
+        },
+        {
+         "id": "p2eq_011",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -3821,17 +4943,47 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_009",
+         "star": 2
+        },
+        {
+         "id": "p2eq_011",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -3910,17 +5062,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        },
+        {
+         "id": "p2eq_009",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_011",
+         "star": 2
+        },
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_020",
+         "star": 2
+        },
+        {
+         "id": "p2eq_021",
+         "star": 2
+        },
+        {
+         "id": "p2eq_023",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -4009,17 +5203,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        },
+        {
+         "id": "p2eq_009",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_011",
+         "star": 2
+        },
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_020",
+         "star": 2
+        },
+        {
+         "id": "p2eq_021",
+         "star": 2
+        },
+        {
+         "id": "p2eq_023",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -4107,17 +5343,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        },
+        {
+         "id": "p2eq_009",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_011",
+         "star": 2
+        },
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_020",
+         "star": 2
+        },
+        {
+         "id": "p2eq_021",
+         "star": 2
+        },
+        {
+         "id": "p2eq_023",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -4205,17 +5483,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        },
+        {
+         "id": "p2eq_009",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_011",
+         "star": 2
+        },
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_020",
+         "star": 2
+        },
+        {
+         "id": "p2eq_021",
+         "star": 2
+        },
+        {
+         "id": "p2eq_023",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -4304,17 +5624,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        },
+        {
+         "id": "p2eq_009",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_011",
+         "star": 2
+        },
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_020",
+         "star": 2
+        },
+        {
+         "id": "p2eq_021",
+         "star": 2
+        },
+        {
+         "id": "p2eq_023",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -4403,17 +5765,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        },
+        {
+         "id": "p2eq_009",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_011",
+         "star": 2
+        },
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_020",
+         "star": 2
+        },
+        {
+         "id": "p2eq_021",
+         "star": 2
+        },
+        {
+         "id": "p2eq_023",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -4501,17 +5905,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        },
+        {
+         "id": "p2eq_009",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_011",
+         "star": 2
+        },
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_020",
+         "star": 2
+        },
+        {
+         "id": "p2eq_021",
+         "star": 2
+        },
+        {
+         "id": "p2eq_023",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -4599,17 +6045,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        },
+        {
+         "id": "p2eq_009",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_011",
+         "star": 2
+        },
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_020",
+         "star": 2
+        },
+        {
+         "id": "p2eq_021",
+         "star": 2
+        },
+        {
+         "id": "p2eq_023",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -4698,17 +6186,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        },
+        {
+         "id": "p2eq_009",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_011",
+         "star": 2
+        },
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_020",
+         "star": 2
+        },
+        {
+         "id": "p2eq_021",
+         "star": 2
+        },
+        {
+         "id": "p2eq_023",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -4797,17 +6327,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        },
+        {
+         "id": "p2eq_009",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_011",
+         "star": 2
+        },
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_020",
+         "star": 2
+        },
+        {
+         "id": "p2eq_021",
+         "star": 2
+        },
+        {
+         "id": "p2eq_023",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -4896,17 +6468,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        },
+        {
+         "id": "p2eq_009",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_011",
+         "star": 2
+        },
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_020",
+         "star": 2
+        },
+        {
+         "id": "p2eq_021",
+         "star": 2
+        },
+        {
+         "id": "p2eq_023",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -4995,17 +6609,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        },
+        {
+         "id": "p2eq_009",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_011",
+         "star": 2
+        },
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_020",
+         "star": 2
+        },
+        {
+         "id": "p2eq_021",
+         "star": 2
+        },
+        {
+         "id": "p2eq_023",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -5094,15 +6750,57 @@
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        },
+        {
+         "id": "p2eq_009",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_011",
+         "star": 2
+        },
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_020",
+         "star": 2
+        },
+        {
+         "id": "p2eq_021",
+         "star": 2
+        },
+        {
+         "id": "p2eq_023",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -5191,17 +6889,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        },
+        {
+         "id": "p2eq_009",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_011",
+         "star": 2
+        },
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_020",
+         "star": 2
+        },
+        {
+         "id": "p2eq_021",
+         "star": 2
+        },
+        {
+         "id": "p2eq_023",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -5290,17 +7030,59 @@
      "top": [
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        },
+        {
+         "id": "p2eq_009",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_011",
+         "star": 2
+        },
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_020",
+         "star": 2
+        },
+        {
+         "id": "p2eq_021",
+         "star": 2
+        },
+        {
+         "id": "p2eq_023",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -5389,17 +7171,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        },
+        {
+         "id": "p2eq_009",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_011",
+         "star": 2
+        },
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_020",
+         "star": 2
+        },
+        {
+         "id": "p2eq_021",
+         "star": 2
+        },
+        {
+         "id": "p2eq_023",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -5487,15 +7311,57 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        },
+        {
+         "id": "p2eq_009",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_011",
+         "star": 2
+        },
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_020",
+         "star": 2
+        },
+        {
+         "id": "p2eq_021",
+         "star": 2
+        },
+        {
+         "id": "p2eq_023",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": []
@@ -5585,17 +7451,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        },
+        {
+         "id": "p2eq_009",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_011",
+         "star": 2
+        },
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_020",
+         "star": 2
+        },
+        {
+         "id": "p2eq_021",
+         "star": 2
+        },
+        {
+         "id": "p2eq_023",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -5684,17 +7592,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        },
+        {
+         "id": "p2eq_009",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_011",
+         "star": 2
+        },
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_020",
+         "star": 2
+        },
+        {
+         "id": "p2eq_021",
+         "star": 2
+        },
+        {
+         "id": "p2eq_023",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -5783,15 +7733,57 @@
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 2
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        },
+        {
+         "id": "p2eq_009",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_011",
+         "star": 2
+        },
+        {
+         "id": "p2eq_013",
+         "star": 2
+        },
+        {
+         "id": "p2eq_016",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_020",
+         "star": 2
+        },
+        {
+         "id": "p2eq_021",
+         "star": 2
+        },
+        {
+         "id": "p2eq_023",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -5882,17 +7874,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 2
+        },
+        {
+         "id": "p2eq_006",
+         "star": 2
+        },
+        {
+         "id": "p2eq_014",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 2
+        },
+        {
+         "id": "p2eq_026",
+         "star": 2
+        },
+        {
+         "id": "p2eq_030",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 2
+        },
+        {
+         "id": "p2eq_038",
+         "star": 2
+        },
+        {
+         "id": "p2eq_040",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -5981,17 +8015,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 2
+        },
+        {
+         "id": "p2eq_006",
+         "star": 2
+        },
+        {
+         "id": "p2eq_014",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 2
+        },
+        {
+         "id": "p2eq_026",
+         "star": 2
+        },
+        {
+         "id": "p2eq_030",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 2
+        },
+        {
+         "id": "p2eq_038",
+         "star": 2
+        },
+        {
+         "id": "p2eq_040",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -6079,17 +8155,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 2
+        },
+        {
+         "id": "p2eq_006",
+         "star": 2
+        },
+        {
+         "id": "p2eq_014",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 2
+        },
+        {
+         "id": "p2eq_026",
+         "star": 2
+        },
+        {
+         "id": "p2eq_030",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 2
+        },
+        {
+         "id": "p2eq_038",
+         "star": 2
+        },
+        {
+         "id": "p2eq_040",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -6177,17 +8295,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 2
+        },
+        {
+         "id": "p2eq_006",
+         "star": 2
+        },
+        {
+         "id": "p2eq_014",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 2
+        },
+        {
+         "id": "p2eq_026",
+         "star": 2
+        },
+        {
+         "id": "p2eq_030",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 2
+        },
+        {
+         "id": "p2eq_038",
+         "star": 2
+        },
+        {
+         "id": "p2eq_040",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -6276,17 +8436,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 2
+        },
+        {
+         "id": "p2eq_006",
+         "star": 2
+        },
+        {
+         "id": "p2eq_014",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 2
+        },
+        {
+         "id": "p2eq_026",
+         "star": 2
+        },
+        {
+         "id": "p2eq_030",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 2
+        },
+        {
+         "id": "p2eq_038",
+         "star": 2
+        },
+        {
+         "id": "p2eq_040",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -6375,17 +8577,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 2
+        },
+        {
+         "id": "p2eq_006",
+         "star": 2
+        },
+        {
+         "id": "p2eq_014",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 2
+        },
+        {
+         "id": "p2eq_026",
+         "star": 2
+        },
+        {
+         "id": "p2eq_030",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 2
+        },
+        {
+         "id": "p2eq_038",
+         "star": 2
+        },
+        {
+         "id": "p2eq_040",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -6473,17 +8717,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 2
+        },
+        {
+         "id": "p2eq_006",
+         "star": 2
+        },
+        {
+         "id": "p2eq_014",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 2
+        },
+        {
+         "id": "p2eq_026",
+         "star": 2
+        },
+        {
+         "id": "p2eq_030",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 2
+        },
+        {
+         "id": "p2eq_038",
+         "star": 2
+        },
+        {
+         "id": "p2eq_040",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -6571,17 +8857,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 2
+        },
+        {
+         "id": "p2eq_006",
+         "star": 2
+        },
+        {
+         "id": "p2eq_014",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 2
+        },
+        {
+         "id": "p2eq_026",
+         "star": 2
+        },
+        {
+         "id": "p2eq_030",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 2
+        },
+        {
+         "id": "p2eq_038",
+         "star": 2
+        },
+        {
+         "id": "p2eq_040",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -6670,17 +8998,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 2
+        },
+        {
+         "id": "p2eq_006",
+         "star": 2
+        },
+        {
+         "id": "p2eq_014",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 2
+        },
+        {
+         "id": "p2eq_026",
+         "star": 2
+        },
+        {
+         "id": "p2eq_030",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 2
+        },
+        {
+         "id": "p2eq_038",
+         "star": 2
+        },
+        {
+         "id": "p2eq_040",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -6769,17 +9139,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 2
+        },
+        {
+         "id": "p2eq_006",
+         "star": 2
+        },
+        {
+         "id": "p2eq_014",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 2
+        },
+        {
+         "id": "p2eq_026",
+         "star": 2
+        },
+        {
+         "id": "p2eq_030",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 2
+        },
+        {
+         "id": "p2eq_038",
+         "star": 2
+        },
+        {
+         "id": "p2eq_040",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -6868,17 +9280,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 2
+        },
+        {
+         "id": "p2eq_006",
+         "star": 2
+        },
+        {
+         "id": "p2eq_014",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 2
+        },
+        {
+         "id": "p2eq_026",
+         "star": 2
+        },
+        {
+         "id": "p2eq_030",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 2
+        },
+        {
+         "id": "p2eq_038",
+         "star": 2
+        },
+        {
+         "id": "p2eq_040",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -6967,17 +9421,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 2
+        },
+        {
+         "id": "p2eq_006",
+         "star": 2
+        },
+        {
+         "id": "p2eq_014",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 2
+        },
+        {
+         "id": "p2eq_026",
+         "star": 2
+        },
+        {
+         "id": "p2eq_030",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 2
+        },
+        {
+         "id": "p2eq_038",
+         "star": 2
+        },
+        {
+         "id": "p2eq_040",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -7066,15 +9562,57 @@
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 2
+        },
+        {
+         "id": "p2eq_006",
+         "star": 2
+        },
+        {
+         "id": "p2eq_014",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 2
+        },
+        {
+         "id": "p2eq_026",
+         "star": 2
+        },
+        {
+         "id": "p2eq_030",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 2
+        },
+        {
+         "id": "p2eq_038",
+         "star": 2
+        },
+        {
+         "id": "p2eq_040",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -7163,17 +9701,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 2
+        },
+        {
+         "id": "p2eq_006",
+         "star": 2
+        },
+        {
+         "id": "p2eq_014",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 2
+        },
+        {
+         "id": "p2eq_026",
+         "star": 2
+        },
+        {
+         "id": "p2eq_030",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 2
+        },
+        {
+         "id": "p2eq_038",
+         "star": 2
+        },
+        {
+         "id": "p2eq_040",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -7262,17 +9842,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 2
+        },
+        {
+         "id": "p2eq_006",
+         "star": 2
+        },
+        {
+         "id": "p2eq_014",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 2
+        },
+        {
+         "id": "p2eq_026",
+         "star": 2
+        },
+        {
+         "id": "p2eq_030",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 2
+        },
+        {
+         "id": "p2eq_038",
+         "star": 2
+        },
+        {
+         "id": "p2eq_040",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -7361,17 +9983,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 2
+        },
+        {
+         "id": "p2eq_006",
+         "star": 2
+        },
+        {
+         "id": "p2eq_014",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 2
+        },
+        {
+         "id": "p2eq_026",
+         "star": 2
+        },
+        {
+         "id": "p2eq_030",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 2
+        },
+        {
+         "id": "p2eq_038",
+         "star": 2
+        },
+        {
+         "id": "p2eq_040",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -7459,15 +10123,57 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 2
+        },
+        {
+         "id": "p2eq_006",
+         "star": 2
+        },
+        {
+         "id": "p2eq_014",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 2
+        },
+        {
+         "id": "p2eq_026",
+         "star": 2
+        },
+        {
+         "id": "p2eq_030",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 2
+        },
+        {
+         "id": "p2eq_038",
+         "star": 2
+        },
+        {
+         "id": "p2eq_040",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": []
@@ -7557,17 +10263,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 2
+        },
+        {
+         "id": "p2eq_006",
+         "star": 2
+        },
+        {
+         "id": "p2eq_014",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 2
+        },
+        {
+         "id": "p2eq_026",
+         "star": 2
+        },
+        {
+         "id": "p2eq_030",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 2
+        },
+        {
+         "id": "p2eq_038",
+         "star": 2
+        },
+        {
+         "id": "p2eq_040",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -7656,17 +10404,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 2
+        },
+        {
+         "id": "p2eq_006",
+         "star": 2
+        },
+        {
+         "id": "p2eq_014",
+         "star": 2
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 2
+        },
+        {
+         "id": "p2eq_026",
+         "star": 2
+        },
+        {
+         "id": "p2eq_030",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 2
+        },
+        {
+         "id": "p2eq_038",
+         "star": 2
+        },
+        {
+         "id": "p2eq_040",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -7755,15 +10545,57 @@
      "bottom": [
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 2
+        },
+        {
+         "id": "p2eq_006",
+         "star": 2
+        },
+        {
+         "id": "p2eq_014",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 2
+        },
+        {
+         "id": "p2eq_026",
+         "star": 2
+        },
+        {
+         "id": "p2eq_030",
+         "star": 2
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 2
+        },
+        {
+         "id": "p2eq_038",
+         "star": 2
+        },
+        {
+         "id": "p2eq_040",
+         "star": 2
+        }
+       ]
       }
      ]
     },
@@ -7854,17 +10686,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -7965,17 +10839,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -8075,17 +10991,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -8185,17 +11143,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -8296,17 +11296,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -8407,17 +11449,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -8517,17 +11601,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -8627,17 +11753,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -8738,17 +11906,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -8849,17 +12059,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -8960,17 +12212,59 @@
      "top": [
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -9071,17 +12365,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -9182,15 +12518,57 @@
      "bottom": [
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -9291,17 +12669,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -9402,17 +12822,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -9513,17 +12975,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -9623,15 +13127,57 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": []
@@ -9733,17 +13279,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -9844,17 +13432,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -9955,15 +13585,57 @@
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -10066,17 +13738,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -10189,17 +13903,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -10311,17 +14067,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -10433,17 +14231,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -10556,17 +14396,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -10679,17 +14561,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -10801,17 +14725,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -10924,17 +14890,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -11047,17 +15055,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -11170,17 +15220,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -11293,17 +15385,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -11416,15 +15550,57 @@
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -11537,17 +15713,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -11660,17 +15878,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -11783,17 +16043,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -11905,15 +16207,57 @@
      "top": [
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": []
@@ -12027,17 +16371,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -12150,17 +16536,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -12273,15 +16701,57 @@
      "bottom": [
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_004",
+         "star": 3
+        },
+        {
+         "id": "p2eq_006",
+         "star": 3
+        },
+        {
+         "id": "p2eq_014",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_024",
+         "star": 3
+        },
+        {
+         "id": "p2eq_026",
+         "star": 3
+        },
+        {
+         "id": "p2eq_030",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_031",
+         "star": 3
+        },
+        {
+         "id": "p2eq_038",
+         "star": 3
+        },
+        {
+         "id": "p2eq_040",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -12396,17 +16866,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        },
+        {
+         "id": "p2eq_033",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_034",
+         "star": 3
+        },
+        {
+         "id": "p2eq_052",
+         "star": 3
+        },
+        {
+         "id": "p2eq_056",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_059",
+         "star": 3
+        },
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -12519,17 +17031,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        },
+        {
+         "id": "p2eq_033",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_034",
+         "star": 3
+        },
+        {
+         "id": "p2eq_052",
+         "star": 3
+        },
+        {
+         "id": "p2eq_056",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_059",
+         "star": 3
+        },
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -12641,17 +17195,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        },
+        {
+         "id": "p2eq_033",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_034",
+         "star": 3
+        },
+        {
+         "id": "p2eq_052",
+         "star": 3
+        },
+        {
+         "id": "p2eq_056",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_059",
+         "star": 3
+        },
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -12763,17 +17359,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        },
+        {
+         "id": "p2eq_033",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_034",
+         "star": 3
+        },
+        {
+         "id": "p2eq_052",
+         "star": 3
+        },
+        {
+         "id": "p2eq_056",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_059",
+         "star": 3
+        },
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -12886,17 +17524,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        },
+        {
+         "id": "p2eq_033",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_034",
+         "star": 3
+        },
+        {
+         "id": "p2eq_052",
+         "star": 3
+        },
+        {
+         "id": "p2eq_056",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_059",
+         "star": 3
+        },
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -13009,17 +17689,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        },
+        {
+         "id": "p2eq_033",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_034",
+         "star": 3
+        },
+        {
+         "id": "p2eq_052",
+         "star": 3
+        },
+        {
+         "id": "p2eq_056",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_059",
+         "star": 3
+        },
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -13131,17 +17853,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        },
+        {
+         "id": "p2eq_033",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_034",
+         "star": 3
+        },
+        {
+         "id": "p2eq_052",
+         "star": 3
+        },
+        {
+         "id": "p2eq_056",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_059",
+         "star": 3
+        },
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -13254,17 +18018,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        },
+        {
+         "id": "p2eq_033",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_034",
+         "star": 3
+        },
+        {
+         "id": "p2eq_052",
+         "star": 3
+        },
+        {
+         "id": "p2eq_056",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_059",
+         "star": 3
+        },
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -13377,17 +18183,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        },
+        {
+         "id": "p2eq_033",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_034",
+         "star": 3
+        },
+        {
+         "id": "p2eq_052",
+         "star": 3
+        },
+        {
+         "id": "p2eq_056",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_059",
+         "star": 3
+        },
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -13500,17 +18348,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        },
+        {
+         "id": "p2eq_033",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_034",
+         "star": 3
+        },
+        {
+         "id": "p2eq_052",
+         "star": 3
+        },
+        {
+         "id": "p2eq_056",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_059",
+         "star": 3
+        },
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -13623,17 +18513,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        },
+        {
+         "id": "p2eq_033",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_034",
+         "star": 3
+        },
+        {
+         "id": "p2eq_052",
+         "star": 3
+        },
+        {
+         "id": "p2eq_056",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_059",
+         "star": 3
+        },
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -13746,15 +18678,57 @@
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        },
+        {
+         "id": "p2eq_033",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_034",
+         "star": 3
+        },
+        {
+         "id": "p2eq_052",
+         "star": 3
+        },
+        {
+         "id": "p2eq_056",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_059",
+         "star": 3
+        },
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -13867,17 +18841,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        },
+        {
+         "id": "p2eq_033",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_034",
+         "star": 3
+        },
+        {
+         "id": "p2eq_052",
+         "star": 3
+        },
+        {
+         "id": "p2eq_056",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_059",
+         "star": 3
+        },
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -13990,17 +19006,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        },
+        {
+         "id": "p2eq_033",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_034",
+         "star": 3
+        },
+        {
+         "id": "p2eq_052",
+         "star": 3
+        },
+        {
+         "id": "p2eq_056",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_059",
+         "star": 3
+        },
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -14113,17 +19171,59 @@
      "top": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        },
+        {
+         "id": "p2eq_033",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_034",
+         "star": 3
+        },
+        {
+         "id": "p2eq_052",
+         "star": 3
+        },
+        {
+         "id": "p2eq_056",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_059",
+         "star": 3
+        },
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -14235,15 +19335,57 @@
      "top": [
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        },
+        {
+         "id": "p2eq_033",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_034",
+         "star": 3
+        },
+        {
+         "id": "p2eq_052",
+         "star": 3
+        },
+        {
+         "id": "p2eq_056",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_059",
+         "star": 3
+        },
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": []
@@ -14357,17 +19499,59 @@
      "top": [
       {
        "role": "back",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        },
+        {
+         "id": "p2eq_033",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_034",
+         "star": 3
+        },
+        {
+         "id": "p2eq_052",
+         "star": 3
+        },
+        {
+         "id": "p2eq_056",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_059",
+         "star": 3
+        },
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -14480,17 +19664,59 @@
      "top": [
       {
        "role": "front",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        },
+        {
+         "id": "p2eq_033",
+         "star": 3
+        }
+       ]
       }
      ],
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_034",
+         "star": 3
+        },
+        {
+         "id": "p2eq_052",
+         "star": 3
+        },
+        {
+         "id": "p2eq_056",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_059",
+         "star": 3
+        },
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        }
+       ]
       }
      ]
     },
@@ -14603,15 +19829,57 @@
      "bottom": [
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        },
+        {
+         "id": "p2eq_033",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "back",
-       "elite": false
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_034",
+         "star": 3
+        },
+        {
+         "id": "p2eq_052",
+         "star": 3
+        },
+        {
+         "id": "p2eq_056",
+         "star": 3
+        }
+       ]
       },
       {
        "role": "front",
-       "elite": true
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_059",
+         "star": 3
+        },
+        {
+         "id": "p2eq_010",
+         "star": 3
+        },
+        {
+         "id": "p2eq_017",
+         "star": 3
+        }
+       ]
       }
      ]
     },

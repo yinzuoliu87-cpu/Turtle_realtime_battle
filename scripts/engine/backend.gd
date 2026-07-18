@@ -169,7 +169,7 @@ static func _load_seed() -> Dictionary:
 		return parsed
 	return {"brackets": {}}
 
-const SEED_VER := 4   # 种子池版本(2026-07-18: 中高档种子扩充·老将不再重复面对~14队→b4-8各+12/b0-3各+4·共146支); 升版→老档清旧seed_并入新种子(玩家上传的真ghost保留)
+const SEED_VER := 5   # 种子池版本(2026-07-18: 小将minions各带1-3件装备·镜像本队队长星级/费档→敌侧小将不再裸装·共146支438小将); 升版→老档清旧seed_并入新种子(玩家上传的真ghost保留)
 ## 种子并入(版本化): 无seed_ 或 池版本<SEED_VER → 清旧seed_+并入新种子+落盘. 修真机bug"老池挡住新种子永不升级"(用户2026-07-15).
 static func _ensure_seeded(pool: Dictionary) -> void:
 	var brackets: Dictionary = pool.get("brackets", {})
@@ -248,6 +248,20 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 		if not eqs.is_empty():
 			equipped[p] = eqs.duplicate(true)
 		levels[p] = GameState.get_pet_level(p)
+	# 小将(dual_lineup)配置+装备也存进快照(用户2026-07-18"快照里小将也应该有装备")→对手小将不再裸装
+	var minions := {}
+	if GameState.dual_lineup is Dictionary:
+		for lk in ["top", "bottom"]:
+			var arr: Array = (GameState.dual_lineup as Dictionary).get(lk, [])
+			var mlist: Array = []
+			for uu in arr:
+				if uu is Dictionary and str((uu as Dictionary).get("kind", "")) == "minion":
+					var m := {"role": str((uu as Dictionary).get("role", "front")), "elite": bool((uu as Dictionary).get("elite", false))}
+					var meq = (uu as Dictionary).get("equips", null)
+					if meq is Array and not (meq as Array).is_empty():
+						m["equips"] = (meq as Array).duplicate(true)
+					mlist.append(m)
+			minions[lk] = mlist
 	return {
 		"schema_ver": 1,
 		"ghost_id": ghost_id,
@@ -256,6 +270,7 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 		"profile": profile,
 		"leaders": leaders,
 		"lane_assign": lane_assign,
+		"minions": minions,
 		"loadouts": {},
 		"equipped": equipped,
 		"pet_levels": levels,
