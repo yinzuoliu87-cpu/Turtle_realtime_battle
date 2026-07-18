@@ -102,6 +102,8 @@ var _drag_key: String = ""
 var _drag_mode: String = ""           # "move" / "resize"
 var _drag_last: Vector2 = Vector2.ZERO
 
+var _info_popup: Control = null       # 点按信息弹窗(被动/技能·跨PC点击+手机点触)
+
 # 入场 choreography + CTA 脉冲 (1:1 PoC index.html:328/659-687)
 var _ent_title: Control = null       # .screen-title
 var _ent_top: Array = []             # .select-top (返回/清空/上次)
@@ -495,6 +497,87 @@ func _save_rl_file() -> void:
 
 
 # ══════════════════════════════════════════════════════════════
+# 点按信息弹窗 — 被动/技能 点一下弹名+描述 (PC点击 + 手机点触 都行·点空白关)
+#   悬停 tooltip 只 PC 有; 手机无 hover → 加点按弹窗补齐. 用户2026-07-18.
+# ══════════════════════════════════════════════════════════════
+func _close_detail_popup() -> void:
+	if is_instance_valid(_info_popup):
+		_info_popup.queue_free()
+	_info_popup = null
+
+
+## 直接吃 tooltip_text 文本(首行=名, 其余=描述)转成弹窗, 复用已有全部格式
+func _show_detail_popup_from(text: String, accent: Color, anchor: Rect2) -> void:
+	var t := text.strip_edges()
+	var nl := t.find("\n")
+	var ttl := t if nl < 0 else t.substr(0, nl)
+	var body := "" if nl < 0 else t.substr(nl + 1)
+	_show_detail_popup(ttl.strip_edges(), body.strip_edges(), accent, anchor)
+
+
+func _show_detail_popup(title_txt: String, body_txt: String, accent: Color, anchor: Rect2) -> void:
+	_close_detail_popup()
+	var host: Node = get_node_or_null("UI")
+	if host == null:
+		host = self
+	_info_popup = Control.new()
+	_info_popup.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_info_popup.mouse_filter = Control.MOUSE_FILTER_STOP   # 全屏 catcher: 点任意处关闭
+	_info_popup.z_index = 4000
+	host.add_child(_info_popup)
+	_info_popup.gui_input.connect(func(ev: InputEvent) -> void:
+		if ev is InputEventMouseButton and (ev as InputEventMouseButton).pressed:
+			_close_detail_popup())
+	var dim := ColorRect.new()   # 轻微压暗 = 一眼看出是弹窗(模态)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.22)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_info_popup.add_child(dim)
+	var panel := PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP        # 点面板本身不关(留着读)
+	var psb := StyleBoxFlat.new()
+	psb.bg_color = Color(0.055, 0.086, 0.13, 0.98)
+	psb.border_color = accent
+	psb.set_border_width_all(2)
+	psb.set_corner_radius_all(_sp(10))
+	psb.content_margin_left = _sp(14); psb.content_margin_right = _sp(14)
+	psb.content_margin_top = _sp(10); psb.content_margin_bottom = _sp(12)
+	panel.add_theme_stylebox_override("panel", psb)
+	panel.visible = false
+	_info_popup.add_child(panel)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", _sp(6))
+	panel.add_child(vb)
+	var tl := Label.new()
+	tl.text = title_txt
+	tl.add_theme_font_size_override("font_size", _sf(18))
+	tl.add_theme_color_override("font_color", accent)
+	vb.add_child(tl)
+	if body_txt != "":
+		var bl := Label.new()
+		bl.text = body_txt
+		bl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		bl.custom_minimum_size = Vector2(_sp(320), 0)
+		bl.add_theme_font_size_override("font_size", _sf(14))
+		bl.add_theme_color_override("font_color", Color("#e8eef5"))
+		vb.add_child(bl)
+	# 尺寸下一帧才算出 → 等一帧再定位; 放 anchor 左侧(不挡被点元素), 放不下换右侧, 夹屏内
+	await get_tree().process_frame
+	if not is_instance_valid(panel):
+		return
+	var vp := _vp()
+	var psz := panel.size
+	var px := anchor.position.x - psz.x - _sp(12)
+	if px < 8.0:
+		px = anchor.position.x + anchor.size.x + _sp(12)
+	var py := anchor.position.y
+	px = clampf(px, 8.0, maxf(8.0, vp.x - psz.x - 8.0))
+	py = clampf(py, 8.0, maxf(8.0, vp.y - psz.y - 8.0))
+	panel.position = Vector2(px, py)
+	panel.visible = true
+
+
+# ══════════════════════════════════════════════════════════════
 # 建 UI
 # ══════════════════════════════════════════════════════════════
 func _build_ui() -> void:
@@ -720,6 +803,7 @@ func _build_grid_region() -> void:
 	scroll.position = rc.position + Vector2(grid_off, 0)
 	scroll.size = Vector2(rc.size.x - grid_off, rc.size.y)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER   # 隐藏滚动条(进度带)·滚动仍启用(手机拖·PC滚轮)·用户2026-07-18
 	root.add_child(scroll)
 	_ent_scroll = scroll
 	_grid_flow = GridContainer.new()
@@ -1420,9 +1504,15 @@ func _refresh_detail() -> void:
 		pnm.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		tag_pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		tag_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# 点/触 被动 → 弹窗看描述 (PC 悬停之外再补点按, 手机唯一途径)
+		chip.mouse_filter = Control.MOUSE_FILTER_STOP
+		var _passive_tip: String = chip.tooltip_text
+		chip.gui_input.connect(func(ev: InputEvent) -> void:
+			if ev is InputEventMouseButton and (ev as InputEventMouseButton).pressed and (ev as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+				_show_detail_popup_from(_passive_tip, Color("#7dffb3"), chip.get_global_rect()))
 		_dt_passive.add_child(chip)
 
-	# ── 下块: 技能 5选3 ──
+	# ── 下块: 技能 3选1 ──
 	_build_skill_picker(pet)
 
 
@@ -1599,6 +1689,10 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 		elif dev_locked:
 			btn.disabled = false
 			btn.pressed.connect(func() -> void: _flash_status("该候选技开发中, 暂锁默认签名技"))
+	# 点/触 技能图标 → 弹窗看名+龟能+描述 (手机无 hover 的唯一途径; 与选中互不影响)
+	var _skinfo: String = _skill_tooltip(pet, sk, idx)
+	if not btn.disabled:
+		btn.pressed.connect(func() -> void: _show_detail_popup_from(_skinfo, Color("#ffd86b"), btn.get_global_rect()))
 	return btn
 
 
