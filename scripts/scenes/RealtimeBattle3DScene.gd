@@ -2579,7 +2579,7 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		var _me: bool = bool(spec.get("elite", false))
 		var _mm: float = pow(1.05, maxf(0.0, float(int(spec.get("level", 1)) - 1)))
 		d = {"name": ("精英小将" if _me else "小将"), "rarity": "C", "crit": 0.0,
-			"hp": 250.0 * _mm * 3.0, "atk": 30.0 * _mm * (1.4 if _mf else 1.5), "def": 7.0, "mr": 7.0}
+			"hp": 250.0 * _mm * 3.0, "atk": 30.0 * _mm * (1.5 if (_me or not _mf) else 1.4), "def": 7.0, "mr": 7.0}   # 精英ATK统一1.5系数=45(用户2026-07-18拍板"后排公式45"·原前排42与注释45不一致); 普通小将前排1.4/后排1.5不变
 		if _me:
 			st = [true, 105.0, 1.0 / 0.65, 90.0]   # 精英(虐杀原形改造2026-07-16): 近战长手刃·攻速0.65次/s
 		else:
