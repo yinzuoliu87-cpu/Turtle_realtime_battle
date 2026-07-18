@@ -197,10 +197,29 @@ static func save_pool(pool: Dictionary, path: String = POOL_PATH) -> void:
 	f.store_string(JSON.stringify(pool, "  ")); f.close()
 
 # ─── 高层 orchestration (gameplay 调这俩) ───
+## 在 [lo,hi] 档窗口内汇总所有候选(排除exclude)随机抽一个. 空→null.
+static func pool_find_window(pool: Dictionary, lo: int, hi: int, exclude_ids: Array, rng: RandomNumberGenerator):
+	var brackets: Dictionary = pool.get("brackets", {})
+	var candidates: Array = []
+	for bi in range(maxi(0, lo), hi + 1):
+		var b := str(bi)
+		if not brackets.has(b):
+			continue
+		for g in brackets[b]:
+			if not exclude_ids.has(str((g as Dictionary).get("ghost_id", ""))):
+				candidates.append(g)
+	if candidates.is_empty():
+		return null
+	return candidates[rng.randi() % candidates.size()]
+
 ## 抽对手: 同档 ghost, 没有就 bot. 永远返回一个可打的对手 (永久安全网).
 static func find_opponent(bracket: int, exclude_ids: Array, rng: RandomNumberGenerator) -> Dictionary:
 	var pool := load_pool()
-	for b in range(bracket, -1, -1):                # 本档没人(被排除/池洞)→就近低档回落, 全空才bot(修真机"高档空池永远同一支/bot")
+	# ★先在[档-1,档,档+1]窗口里汇总候选随机抽(用户2026-07-18"匹配多了总撞同一阵容"): 老玩家永久钉死档8·单档只~7种子→循环撞同几支. 拉宽到相邻三档~21候选=多样性大增
+	var gw = pool_find_window(pool, bracket - 1, bracket + 1, exclude_ids, rng)
+	if gw != null:
+		return gw
+	for b in range(bracket, -1, -1):                # 窗口全空/全排除 → 就近低档回落, 全空才bot
 		var g = pool_find(pool, b, exclude_ids, rng)
 		if g != null: return g
 	return make_bot(bracket, rng)

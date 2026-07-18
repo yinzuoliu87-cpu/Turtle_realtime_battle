@@ -41,7 +41,7 @@ func _ready() -> void:
 	var _gid := str((GameState.dual_ghost as Dictionary).get("ghost_id", "")) if GameState.dual_ghost is Dictionary else ""
 	if _gid != "":
 		GameState.recent_ghost_ids.append(_gid)
-		while GameState.recent_ghost_ids.size() > 3: GameState.recent_ghost_ids.pop_front()
+		while GameState.recent_ghost_ids.size() > 8: GameState.recent_ghost_ids.pop_front()   # 3→8(用户2026-07-18): 配合档窗口~21候选, 循环过大半池才重复(防总撞同一支)
 	var opp := _opponent_from_ghost(GameState.dual_ghost)
 	GameState.dual_opponent = opp
 	_build_searching()
