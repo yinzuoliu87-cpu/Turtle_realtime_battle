@@ -19,21 +19,25 @@ extends Node2D
 const POC_W := 1647.0
 const POC_H := 955.0
 const RL := {
-	"title":      {"x": 587,  "y": 76,  "w": 330, "h": 30},
-	"back":       {"x": 431,  "y": 76,  "w": 96,  "h": 36},
-	"clear":      {"x": 1021, "y": 79,  "w": 78,  "h": 29},
-	"last":       {"x": 1109, "y": 79,  "w": 94,  "h": 29},
+	"title":      {"x": 588,  "y": 78,  "w": 330, "h": 30},
+	"back":       {"x": 431,  "y": 74,  "w": 96,  "h": 36},
+	"clear":      {"x": 1022, "y": 83,  "w": 78,  "h": 29},
+	"last":       {"x": 1110, "y": 82,  "w": 94,  "h": 29},
 	"synergy":    {"x": 183,  "y": 114, "w": 407, "h": 262},
 	# 实时 3v3：3 格阵容居中(去回合制 6 格前/后排, 实时自由走位定位无意义, 战斗只读 3 龟 id)
 	#   背景图 select-bg.png 烤了 6 格+前/后排横幅 → slotBay 暗托盘盖住它, 上面画 3 格 (代码绘, 居中对齐托盘)
-	"slotBay":    {"x": 434,  "y": 120, "w": 766, "h": 233},
-	"slot0":      {"x": 616,  "y": 174, "w": 108, "h": 156},
-	"slot1":      {"x": 764,  "y": 174, "w": 108, "h": 156},
-	"slot2":      {"x": 912,  "y": 174, "w": 108, "h": 156},
+	"slotBay":    {"x": 433,  "y": 120, "w": 766, "h": 233},
+	"slot0":      {"x": 615,  "y": 172, "w": 108, "h": 156},
+	"slot1":      {"x": 766,  "y": 172, "w": 108, "h": 156},
+	"slot2":      {"x": 915,  "y": 172, "w": 108, "h": 156},
 	"grid":       {"x": 160,  "y": 375, "w": 1050,"h": 403},
-	"detailTop":  {"x": 1250, "y": 136, "w": 230, "h": 293},
-	"detailBottom":{"x": 1255,"y": 431, "w": 214, "h": 262},
-	"start":      {"x": 1255, "y": 714, "w": 214, "h": 68},
+	# 右上信息区上部拆成 4 独立块(立绘/名字/属性/被动)—各自可拖可缩 (用户2026-07-18: 被动属性要能分开调大小)
+	"dtPortrait": {"x": 1252, "y": 140, "w": 233, "h": 156},
+	"dtName":     {"x": 1252, "y": 298, "w": 233, "h": 26},
+	"dtStats":    {"x": 1252, "y": 326, "w": 233, "h": 58},
+	"dtPassive":  {"x": 1252, "y": 386, "w": 233, "h": 34},
+	"detailBottom":{"x": 1253,"y": 426, "w": 225, "h": 202},
+	"start":      {"x": 1258, "y": 715, "w": 214, "h": 68},
 }
 
 const RARITY_COLOR: Dictionary = {
@@ -76,7 +80,10 @@ var _slot_nodes: Array = []          # 6 个槽 Panel
 var _grid_flow: GridContainer = null
 var _grid_card_w: float = 116.0      # 每卡宽 = 填满网格行(1:1 PoC .pet-grid minmax(116px,1fr) 卡拉伸铺满, 非固定116留白); _build_grid_region 算
 var _synergy_box: HFlowContainer = null
-var _detail_top: VBoxContainer = null
+var _dt_portrait: PanelContainer = null   # 右上信息区: 立绘块(独立可拖/缩)
+var _dt_name: PanelContainer = null       # 名字+稀有+Lv 块
+var _dt_stats: PanelContainer = null      # 属性块(生命/攻击/防御/魔抗)
+var _dt_passive: PanelContainer = null    # 被动块
 var _detail_bottom: VBoxContainer = null
 var _start_btn: Button = null
 var _last_btn: Button = null
@@ -733,14 +740,11 @@ func _build_grid_region() -> void:
 
 
 func _build_detail_region() -> void:
-	# 上块
-	var top_panel := PanelContainer.new()
-	root.add_child(top_panel)
-	_place(top_panel, "detailTop")
-	top_panel.add_theme_stylebox_override("panel", _dark_panel())
-	_detail_top = VBoxContainer.new()
-	_detail_top.add_theme_constant_override("separation", _sp(4))
-	top_panel.add_child(_detail_top)
+	# 上区: 立绘/名字/属性/被动 各自独立成块 (可拖可缩·用户2026-07-18); 内容由 _refresh_detail 填
+	_dt_portrait = _make_detail_panel("dtPortrait")
+	_dt_name = _make_detail_panel("dtName")
+	_dt_stats = _make_detail_panel("dtStats")
+	_dt_passive = _make_detail_panel("dtPassive")
 
 	# 下块 (技能 5选3)
 	var bot_panel := PanelContainer.new()
@@ -751,6 +755,17 @@ func _build_detail_region() -> void:
 	_detail_bottom.alignment = BoxContainer.ALIGNMENT_CENTER   # PoC #poc-detail-bottom justify-center
 	_detail_bottom.add_theme_constant_override("separation", _sp(10))
 	bot_panel.add_child(_detail_bottom)
+
+
+## 建一个独立信息子块面板 (透明底·按 RL key 放置·登记进编辑器·不挡下层点击)
+func _make_detail_panel(key: String) -> PanelContainer:
+	var p := PanelContainer.new()
+	root.add_child(p)
+	_place(p, key)
+	p.add_theme_stylebox_override("panel", _dark_panel())
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.clip_contents = true
+	return p
 
 
 ## 透明面板 (PoC .ts-region / .dp-panel — 画框由背景整图皮提供, 内容浮层不画底)
@@ -1263,10 +1278,10 @@ func _refresh_confirm() -> void:
 
 # ─── 右栏详情 ──────────────────────────────────────────────────
 func _refresh_detail() -> void:
-	for c in _detail_top.get_children():
-		c.queue_free()
-	for c in _detail_bottom.get_children():
-		c.queue_free()
+	for cont in [_dt_portrait, _dt_name, _dt_stats, _dt_passive, _detail_bottom]:
+		if cont != null:
+			for c in cont.get_children():
+				c.queue_free()
 	if detail_pet_id == "":
 		return
 	var pet: Dictionary = DataRegistry.pet_by_id.get(detail_pet_id, {})
@@ -1321,7 +1336,7 @@ func _refresh_detail() -> void:
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_apply_pet_idle_texture(portrait, pet)
 	portrait_wrap.add_child(portrait)            # 立绘在辉光之上
-	_detail_top.add_child(portrait_wrap)
+	_dt_portrait.add_child(portrait_wrap)
 
 	# PoC .dp-name-row: 居中, 名 + 填充稀有 badge + Lv
 	var name_row := HBoxContainer.new()
@@ -1338,7 +1353,7 @@ func _refresh_detail() -> void:
 	lvl.add_theme_font_size_override("font_size", _sf(13))
 	lvl.add_theme_color_override("font_color", Color("#ffd86b"))
 	name_row.add_child(lvl)
-	_detail_top.add_child(name_row)
+	_dt_name.add_child(name_row)
 
 	# PoC .dp-stats: 2 列网格 (1fr 1fr)
 	var stats_grid := GridContainer.new()
@@ -1349,7 +1364,7 @@ func _refresh_detail() -> void:
 	stats_grid.add_child(_stat_row("res://assets/sprites/stats/atk-icon.png", "攻击力", atk))
 	stats_grid.add_child(_stat_row("res://assets/sprites/stats/def-icon.png", "防御力", def_))
 	stats_grid.add_child(_stat_row("res://assets/sprites/stats/mr-icon.png", "魔抗", mr))
-	_detail_top.add_child(stats_grid)
+	_dt_stats.add_child(stats_grid)
 
 	# 被动 chip (PoC .dp-passive-chip: 绿底圆角框 + 图标 + 名(#7dffb3) + "被动" pill)
 	var passive_raw = pet.get("passive")
@@ -1405,7 +1420,7 @@ func _refresh_detail() -> void:
 		pnm.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		tag_pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		tag_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_detail_top.add_child(chip)
+		_dt_passive.add_child(chip)
 
 	# ── 下块: 技能 5选3 ──
 	_build_skill_picker(pet)
