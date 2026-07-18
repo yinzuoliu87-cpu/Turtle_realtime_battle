@@ -16,9 +16,29 @@ const Phase2Minion = preload("res://scripts/engine/phase2_minion.gd")
 var _sel_bench: int = -1   # 当前选中的背包装备索引 (-1=无)
 var _dl_sel: Dictionary = {}   # 双路布阵选中框 {lane, idx} (点两个互换分路)
 var _vw: float = 1280.0   # 实际视口宽(手机expand后可达~1560): 顶栏/背包按真实宽铺开·不再左挤留空(2026-07-18)
+var _press_pos := Vector2.ZERO   # 背包格触屏点选/滑动判定: 松开位移小才算点选(可滑动列表·2026-07-18)
 
 func _ready() -> void:
+	if OS.has_environment("INV_DEMO"):   # dev截图用: 内存填演示背包(不save·不碰真存档)
+		_inject_demo_inventory()
 	_rebuild()
+
+func _inject_demo_inventory() -> void:   # 仅 INV_DEMO 环境: 填装备看满仓布局(不调 save)
+	GameState.season_level = 8
+	var ids := ["p2eq_001", "p2eq_004", "p2eq_005", "p2eq_007", "p2eq_009", "p2eq_011", "p2eq_013", "p2eq_014", "p2eq_016", "p2eq_017", "p2eq_021", "p2eq_022", "p2eq_028", "p2eq_032", "p2eq_035", "p2eq_039", "p2eq_044", "p2eq_048", "p2eq_050", "p2eq_052", "p2eq_005", "p2eq_007"]
+	GameState.persistent_bench = []
+	for i in range(ids.size()):
+		GameState.persistent_bench.append({"id": ids[i], "star": (i % 3) + 1})
+	var leaders := _lineup_ids()
+	if leaders.size() > 0:
+		GameState.persistent_equipped[str(leaders[0])] = [{"id": "p2eq_001", "star": 2}, {"id": "p2eq_005", "star": 1}, {"id": "p2eq_007", "star": 1}]
+	var lineup := GameState.get_dual_lineup()
+	for lk in ["top", "bottom"]:
+		for u in lineup.get(lk, []):
+			if u is Dictionary and str(u.get("kind", "")) == "minion":
+				u["equips"] = [{"id": "p2eq_004", "star": 1}, {"id": "p2eq_009", "star": 2}]
+				break
+	GameState.dual_lineup = lineup
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):   # ESC 返回主菜单 (与图鉴一致)
@@ -66,7 +86,7 @@ func _rebuild() -> void:
 	_build_lineup(leaders)
 	_build_synergy_panel(leaders)
 	_build_bench()
-	_build_actions()
+	_build_op_bar()
 
 ## 取出战 3 统领: season_leaders 优先, 空则 lastLineup.json.
 func _lineup_ids() -> Array:
@@ -81,39 +101,51 @@ func _lineup_ids() -> Array:
 	return []
 
 # ─── 上部: 双路布阵 (上战场/下战场, 3统领+3小将分3+3; 点头像互换分路, 点小将切前/后排) ───
+const UBOX_W := 176.0   # 阵容单位框(放大·2026-07-18大改)
+const UBOX_H := 102.0
+const UBOX_GAP := 12.0
+
 func _build_lineup(_leaders: Array) -> void:
-	# ★#4 装备可发现性: 动态两步提示 — 选了装备就变绿告诉你"现在点龟装上", 没选就提示"先点下方装备".
+	# 极简两步引导(选中装备变绿)
 	var hdr := Label.new()
 	if _sel_bench >= 0:
-		hdr.text = "✅ 已选装备 →  现在点任意【龟/小将的装备格】装上它  (点龟身满格 = 卸下)"
+		hdr.text = "✅ 已选装备 →  点任意【龟 / 小将】装上它  ·  点单位身上的装备格 = 卸那一件"
 		hdr.add_theme_color_override("font_color", Color("#7fe39a"))
 	else:
-		hdr.text = "装备步骤：① 点下方【背包装备】选中  →  ② 点上方【龟的装备格】装上  ·  点两龟互换分路"
-		hdr.add_theme_color_override("font_color", Color("#ffd93d"))
+		hdr.text = "① 点下方装备选中  →  ② 点【龟 / 小将】装上  ·  点两个单位 = 互换分路"
+		hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
 	hdr.add_theme_font_size_override("font_size", 15)
-	hdr.position = Vector2(60, 82); hdr.size = Vector2(780, 22); add_child(hdr)
+	hdr.position = Vector2(40, 74); hdr.size = Vector2(_vw - 400, 22); add_child(hdr)
 	var lineup := GameState.get_dual_lineup()
-	for lane_info in [["上战场", "top", 116.0, Color("#ffd93d")], ["下战场", "bottom", 238.0, Color("#7fd0ff")]]:
+	for lane_info in [["上路", "top", 122.0, Color("#ffd93d")], ["下路", "bottom", 250.0, Color("#7fd0ff")]]:
 		var lname := str(lane_info[0]); var lkey := str(lane_info[1]); var ly := float(lane_info[2]); var lcol: Color = lane_info[3]
 		var arr: Array = lineup.get(lkey, [])
 		var lead_n := 0
 		for u in arr:
 			if u is Dictionary and str(u.get("kind", "")) == "leader": lead_n += 1
-		var ll := Label.new(); ll.text = "%s  (统领%d / 小将%d)" % [lname, lead_n, arr.size() - lead_n]
+		var ll := Label.new(); ll.text = "%s   统领%d / 小将%d" % [lname, lead_n, arr.size() - lead_n]
 		ll.add_theme_font_size_override("font_size", 15); ll.add_theme_color_override("font_color", lcol)
-		ll.position = Vector2(60, ly); ll.size = Vector2(240, 20); add_child(ll)
+		ll.position = Vector2(40, ly - 24); ll.size = Vector2(300, 20); add_child(ll)
 		for i in range(arr.size()):
-			add_child(_dl_unit_box(lkey, i, arr[i], lead_n, Vector2(60 + i * 122, ly + 22)))
+			add_child(_dl_unit_box(lkey, i, arr[i], lead_n, Vector2(40 + i * (UBOX_W + UBOX_GAP), ly)))
 
-## 布阵单位框: 统领(立绘+名) / 小将(立绘+[前后排]toggle+精英标). 点框body=选中↔互换分路.
+## 布阵单位框(大改): 大立绘+名+可点装备格(点填充格=卸那件)+小将前后排角标. 选中装备时整框高亮"装这里". 点框body=装备(选中时)↔互换分路.
 func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Vector2) -> Control:
 	var kind := str(unit.get("kind", "minion"))
 	var sel := str(_dl_sel.get("lane", "")) == lane and int(_dl_sel.get("idx", -1)) == idx
 	var is_elite := kind == "minion" and lead_n == 0 and _dl_first_minion_idx(lane) == idx
+	var can_equip := _sel_bench >= 0   # 选了装备 → 此框可装(全高亮)
 	var bg := Color("#13314a") if kind == "leader" else (Color("#4a3410") if is_elite else Color("#1a2230"))
-	var bd := Color("#ffd93d") if sel else (Color("#2e5a7e") if kind == "leader" else (Color("#c79a3a") if is_elite else Color("#3a4658")))
-	var box := _slot_panel(pos, bg, bd)
-	box.size = Vector2(112, 96)
+	var bd: Color
+	if sel: bd = Color("#ffd93d")
+	elif can_equip: bd = Color("#7fe39a")   # 选中装备时所有单位框高亮"装这里"(含小将→一眼可装)
+	else: bd = (Color("#2e5a7e") if kind == "leader" else (Color("#c79a3a") if is_elite else Color("#3a4658")))
+	var box := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = bg; sb.border_color = bd
+	sb.set_border_width_all(3 if (sel or can_equip) else 2); sb.set_corner_radius_all(8)
+	box.add_theme_stylebox_override("panel", sb)
+	box.position = pos; box.size = Vector2(UBOX_W, UBOX_H)
 	var img_path := ""
 	if kind == "leader":
 		img_path = "res://assets/sprites/avatars/%s.png" % str(unit.get("id", ""))
@@ -122,16 +154,16 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 	if ResourceLoader.exists(img_path):
 		var a := TextureRect.new(); a.texture = load(img_path)
 		a.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; a.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED; a.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		a.position = Vector2(34, 2); a.size = Vector2(44, 38); box.add_child(a)
+		a.position = Vector2(UBOX_W / 2.0 - 36, 4); a.size = Vector2(72, 50); a.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(a)
 	var nm := Label.new()
 	if kind == "leader":
 		var pet: Dictionary = DataRegistry.pet_by_id.get(str(unit.get("id", "")), {})
 		nm.text = str(pet.get("name", unit.get("id", "")))
 	else:
 		nm.text = "精英小将" if is_elite else "小将"
-	nm.add_theme_font_size_override("font_size", 13); nm.add_theme_color_override("font_color", Color("#e8f2ff"))
-	nm.position = Vector2(0, 41); nm.size = Vector2(112, 16); nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; box.add_child(nm)
-	# 装备格 + 装/卸按钮: leader读 persistent_equipped / 小将读 dual_lineup 条目.equips (战斗端都注入)
+	nm.add_theme_font_size_override("font_size", 14); nm.add_theme_color_override("font_color", Color("#e8f2ff"))
+	nm.position = Vector2(0, 56); nm.size = Vector2(UBOX_W, 18); nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; nm.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(nm)
+	# 装备格(可点卸那一件)
 	var eqs: Array = []
 	if kind == "leader":
 		if GameState.persistent_equipped is Dictionary:
@@ -139,32 +171,89 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 	elif unit.get("equips", null) is Array:
 		eqs = unit.get("equips", [])
 	var slots := P2.equip_slots_for_level(int(GameState.season_level))
-	_draw_equip_cells(box, eqs, slots, 60.0)
-	var eqbtn := Button.new()
-	eqbtn.flat = true; eqbtn.focus_mode = Control.FOCUS_NONE
-	eqbtn.tooltip_text = "选中背包装备→点这装上; 无选中→点这卸最后一件"
-	eqbtn.position = Vector2(2, 57); eqbtn.size = Vector2(108, 15)
-	eqbtn.pressed.connect(func():
-		if _sel_bench >= 0:
-			if kind == "leader": _equip_to(str(unit.get("id", "")), _sel_bench)
-			else: _equip_minion(lane, idx, _sel_bench)
-		else:
-			if kind == "leader": _unequip_last(str(unit.get("id", "")))
-			else: _unequip_minion_last(lane, idx))
-	box.add_child(eqbtn)
+	_build_equip_cells(box, 78.0, eqs, slots, kind == "leader", str(unit.get("id", "")), lane, idx)
+	# 小将前/后排角标(右上角小按钮)
 	if kind == "minion":
 		var role := str(unit.get("role", "front"))
 		var tgl := Button.new()
-		tgl.text = "前排·近战" if role == "front" else "后排·射击"
-		tgl.add_theme_font_size_override("font_size", 11)
-		tgl.position = Vector2(6, 74); tgl.size = Vector2(100, 18)
+		tgl.text = "前" if role == "front" else "后"
+		tgl.tooltip_text = "前排·近战 ↔ 后排·射击"
+		tgl.add_theme_font_size_override("font_size", 13)
+		tgl.position = Vector2(UBOX_W - 34, 4); tgl.size = Vector2(30, 24)
 		tgl.pressed.connect(func(): _dl_toggle_role(lane, idx))
 		box.add_child(tgl)
-	for ch in box.get_children():
-		if not (ch is Button):
-			ch.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _dl_click(lane, idx))
 	return box
+
+## 单位身上的装备格一行: 填充格显图标·点它=卸那一件(无选中时); 选中装备时格子透传→点框body装备.
+func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, is_leader: bool, pet_id: String, lane: String, idx: int) -> void:
+	var cw := 22.0
+	var gap := 6.0
+	var total := float(slots) * cw + maxf(0.0, float(slots - 1)) * gap
+	var x0 := UBOX_W / 2.0 - total / 2.0
+	for ci in range(slots):
+		var cell := Panel.new()
+		var csb := StyleBoxFlat.new()
+		var filled := ci < eqs.size()
+		if filled:
+			var eid := str((eqs[ci] as Dictionary).get("id", ""))
+			var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
+			csb.bg_color = _rarity_color(str(edef.get("rarity", "普通")))
+			csb.border_color = Color(1, 1, 1, 0.5)
+		else:
+			csb.bg_color = Color(0, 0, 0, 0.35); csb.border_color = Color("#3a4452")
+		csb.set_border_width_all(1); csb.set_corner_radius_all(3)
+		cell.add_theme_stylebox_override("panel", csb)
+		cell.position = Vector2(x0 + float(ci) * (cw + gap), y); cell.size = Vector2(cw, cw)
+		if filled:
+			var eid2 := str((eqs[ci] as Dictionary).get("id", ""))
+			var edef2: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid2, {})
+			var im := str(edef2.get("img", ""))
+			if im != "" and ResourceLoader.exists("res://assets/sprites/" + im):
+				var tr := TextureRect.new(); tr.texture = load("res://assets/sprites/" + im)
+				tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+				tr.position = Vector2(1, 1); tr.size = Vector2(cw - 2, cw - 2); tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				cell.add_child(tr)
+		if _sel_bench >= 0:
+			cell.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 装备模式: 透传→点框body装上
+		elif filled:
+			cell.tooltip_text = "点击卸下这件 → 回背包"
+			var cci := ci
+			cell.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: (_unequip_at(pet_id, cci) if is_leader else _unequip_minion_at(lane, idx, cci)))
+		else:
+			cell.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 空格透传
+		box.add_child(cell)
+
+## 卸下统领第 cell_idx 件装备 → 回背包.
+func _unequip_at(pet_id: String, cell_idx: int) -> void:
+	var eqs: Array = GameState.persistent_equipped.get(pet_id, [])
+	if cell_idx < 0 or cell_idx >= eqs.size():
+		return
+	GameState.persistent_bench.append(eqs[cell_idx])
+	eqs.remove_at(cell_idx)
+	GameState.persistent_equipped[pet_id] = eqs
+	GameState.auto_merge_all()
+	GameState.save()
+	_rebuild()
+
+## 卸下小将第 cell_idx 件装备 → 回背包.
+func _unequip_minion_at(lane: String, idx: int, cell_idx: int) -> void:
+	var a: Dictionary = GameState.get_dual_lineup().duplicate(true)
+	if not a.has(lane) or idx < 0 or idx >= (a[lane] as Array).size():
+		return
+	var u: Dictionary = a[lane][idx]
+	var eqs: Array = u.get("equips", []) if u.get("equips", null) is Array else []
+	if cell_idx < 0 or cell_idx >= eqs.size():
+		return
+	GameState.persistent_bench.append(eqs[cell_idx])
+	eqs.remove_at(cell_idx)
+	u["equips"] = eqs
+	a[lane][idx] = u
+	GameState.dual_lineup = a
+	GameState.auto_merge_all()
+	GameState.save()
+	_rebuild()
 
 ## 该路首个小将 idx (0统领路首小将=精英)
 func _dl_first_minion_idx(lane: String) -> int:
@@ -253,70 +342,166 @@ func _slot_panel(pos: Vector2, bg: Color, border: Color) -> Panel:
 	return box
 
 # ─── 右侧: 类型羁绊 (装备类型激活, 设计§十) ───
-func _build_synergy_panel(leaders: Array) -> void:
-	var hdr := Label.new(); hdr.text = "类型羁绊 (同类型装备越多越强)"
-	hdr.add_theme_font_size_override("font_size", 18); hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
-	hdr.position = Vector2(700, 86); hdr.size = Vector2(_vw - 730, 26); add_child(hdr)
+## 羁绊统计: 统领装备(persistent_equipped) + 小将装备(dual_lineup)·跟龟一样计入(用户2026-07-18)
+func _team_equips_for_synergy() -> Array:
 	var all_equips: Array = []
-	for pid in leaders:
+	for pid in _lineup_ids():
 		for it in GameState.persistent_equipped.get(str(pid), []):
 			all_equips.append(it)
-	var active: Array = Phase2Types.calc_active([{"_p2_equips": all_equips}])
+	var lineup := GameState.get_dual_lineup()
+	for lk in ["top", "bottom"]:
+		for u in lineup.get(lk, []):
+			if u is Dictionary and str(u.get("kind", "")) == "minion" and u.get("equips", null) is Array:
+				for it in u.get("equips", []):
+					all_equips.append(it)
+	return all_equips
+
+# 右侧类型羁绊(大改): 只显名称+档位, 点击弹框看完整效果; 计入小将装备.
+func _build_synergy_panel(leaders: Array) -> void:
+	var w := 300.0                    # 羁绊窄列(用户2026-07-18"不要这么多空间")·靠右
+	var x0 := _vw - w - 28.0
+	var hdr := Label.new(); hdr.text = "类型羁绊  (点看详情)"
+	hdr.add_theme_font_size_override("font_size", 17); hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
+	hdr.position = Vector2(x0, 100); hdr.size = Vector2(w, 24); add_child(hdr)
+	var active: Array = Phase2Types.calc_active([{"_p2_equips": _team_equips_for_synergy()}])
 	if active.is_empty():
-		var e := Label.new(); e.text = "（给龟装多件同类型装备 → 激活羁绊加成）"
-		e.add_theme_font_size_override("font_size", 14); e.add_theme_color_override("font_color", Color("#5a6675"))
-		e.position = Vector2(704, 124); e.size = Vector2(540, 22); add_child(e)
+		var e := Label.new(); e.text = "（给龟 / 小将装多件同类型装备 → 激活羁绊）"
+		e.add_theme_font_size_override("font_size", 13); e.add_theme_color_override("font_color", Color("#5a6675"))
+		e.position = Vector2(x0, 132); e.size = Vector2(w, 40); e.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; add_child(e)
 		return
-	var y := 122.0
+	var y := 132.0
 	for a in active:
 		var t := str(a.get("type", ""))
+		var tier := int(a.get("tier", 1))
 		var chip := Panel.new()
 		var csb := StyleBoxFlat.new()
 		csb.bg_color = Color("#16263a"); csb.border_color = Color("#3e6a8e")
 		csb.set_border_width_all(2); csb.set_corner_radius_all(8)
 		chip.add_theme_stylebox_override("panel", csb)
-		var chip_w: float = _vw - 730.0   # 羁绊卡按真实宽铺开(填右侧空白·2026-07-18)
-		chip.position = Vector2(700, y); chip.size = Vector2(chip_w, 58); add_child(chip)
+		chip.position = Vector2(x0, y); chip.size = Vector2(w, 40); add_child(chip)
 		var nm := Label.new()
-		nm.text = "%s %s  ×%d  (档 %d)" % [Phase2Types.emoji_of(t), Phase2Types.display_name(t), int(a.get("count", 0)), int(a.get("tier", 1))]
-		nm.add_theme_font_size_override("font_size", 17); nm.add_theme_color_override("font_color", Color("#ffd93d"))
-		nm.position = Vector2(12, 6); nm.size = Vector2(chip_w - 24, 24); chip.add_child(nm)
-		var desc := Label.new(); desc.text = Phase2Types.tier_desc(t, int(a.get("tier", 1)))
-		desc.add_theme_font_size_override("font_size", 12); desc.add_theme_color_override("font_color", Color("#bcd0e0"))
-		desc.position = Vector2(12, 30); desc.size = Vector2(chip_w - 24, 24); desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		chip.add_child(desc)
-		y += 66
+		nm.text = "%s %s  ×%d   档%d" % [Phase2Types.emoji_of(t), Phase2Types.display_name(t), int(a.get("count", 0)), tier]
+		nm.add_theme_font_size_override("font_size", 16); nm.add_theme_color_override("font_color", Color("#ffd93d"))
+		nm.position = Vector2(12, 8); nm.size = Vector2(w - 40, 24); nm.mouse_filter = Control.MOUSE_FILTER_IGNORE; chip.add_child(nm)
+		var arw := Label.new(); arw.text = "›"; arw.add_theme_font_size_override("font_size", 20); arw.add_theme_color_override("font_color", Color("#7fb0d8"))
+		arw.position = Vector2(w - 26, 4); arw.size = Vector2(18, 30); arw.mouse_filter = Control.MOUSE_FILTER_IGNORE; chip.add_child(arw)
+		chip.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _show_synergy_popup(t, tier))
+		y += 48.0
 
-# ─── 下部: 装备管理 (背包 bench) ───
+## 羁绊详情弹框: 1/2/3 档效果全列, 当前档高亮. 点暗幕/关闭 关.
+func _show_synergy_popup(type_key: String, cur_tier: int) -> void:
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.55)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	dim.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed: dim.queue_free())
+	add_child(dim)
+	var bw := 620.0; var bh := 320.0
+	var box := Panel.new()
+	var sb := StyleBoxFlat.new(); sb.bg_color = Color("#1c2836"); sb.border_color = Color("#ffd93d")
+	sb.set_border_width_all(3); sb.set_corner_radius_all(12)
+	box.add_theme_stylebox_override("panel", sb)
+	box.position = Vector2(_vw / 2.0 - bw / 2.0, 190.0); box.size = Vector2(bw, bh)
+	box.mouse_filter = Control.MOUSE_FILTER_STOP   # 框内不穿透关闭
+	dim.add_child(box)
+	var ttl := Label.new(); ttl.text = "%s %s   (当前 档%d)" % [Phase2Types.emoji_of(type_key), Phase2Types.display_name(type_key), cur_tier]
+	ttl.add_theme_font_size_override("font_size", 24); ttl.add_theme_color_override("font_color", Color("#ffd93d"))
+	ttl.position = Vector2(24, 18); ttl.size = Vector2(bw - 48, 34); box.add_child(ttl)
+	var y := 66.0
+	for ti in [1, 2, 3]:
+		var d := str(Phase2Types.tier_desc(type_key, ti))
+		if d.strip_edges() == "":
+			continue
+		var l := Label.new(); l.text = "档%d:  %s" % [ti, d]
+		l.add_theme_font_size_override("font_size", 14)
+		l.add_theme_color_override("font_color", Color("#ffd93d") if ti == cur_tier else Color("#9fb0c0"))
+		l.position = Vector2(24, y); l.size = Vector2(bw - 48, 66); l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; box.add_child(l)
+		y += 72.0
+	var ok := Button.new(); ok.text = "关闭"; ok.add_theme_font_size_override("font_size", 18)
+	ok.position = Vector2(bw / 2.0 - 60, bh - 52); ok.size = Vector2(120, 40)
+	ok.pressed.connect(func(): dim.queue_free())
+	box.add_child(ok)
+
+# ─── 下部: 装备背包 (大改: 可滑动列表·铺满宽·大格; 说明移到底部操作条) ───
 func _build_bench() -> void:
 	var hdr := Label.new()
-	hdr.text = "装备背包 (永不丢 · 战后全收)  —  点装备选中 → 点龟装上 · 再点龟身卸下 · 选中可卖 · 装/卸/买后自动三合一升星"
+	hdr.text = "装备背包  (永不丢 · 战后全收 · 可上下滑动)"
 	hdr.add_theme_font_size_override("font_size", 18)
 	hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
-	hdr.position = Vector2(60, 352); hdr.size = Vector2(_vw - 120, 26)
+	hdr.position = Vector2(40, 364); hdr.size = Vector2(_vw - 80, 26)
 	add_child(hdr)
 	var bench: Array = GameState.persistent_bench if GameState.persistent_bench is Array else []
-	var gx := 64.0
-	var gy := 392.0
-	var per_row := maxi(11, int((_vw - 2.0 * gx) / (SLOT + 8.0)))   # 背包按真实宽铺满(手机~13列)·不再左挤留右空(2026-07-18)
+	var gx := 40.0
+	var top := 396.0
+	var pitch := SLOT + 16.0
+	var scroll_w := _vw - 2.0 * gx
+	var scroll_h := 630.0 - top             # 到操作条上方
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(gx, top)
+	scroll.custom_minimum_size = Vector2(scroll_w, scroll_h); scroll.size = Vector2(scroll_w, scroll_h)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	add_child(scroll)
+	var content := Control.new()
+	content.mouse_filter = Control.MOUSE_FILTER_PASS   # 触屏拖动透传→ScrollContainer 滚动
+	scroll.add_child(content)
+	var per_row := maxi(8, int(scroll_w / (SLOT + 8.0)))
+	var cpitch := SLOT + 8.0
+	var min_rows := int(ceil(scroll_h / pitch))                       # 至少铺满可视区
+	var used_rows := int(ceil(float(maxi(bench.size(), 1)) / float(per_row)))
+	var total_cells := maxi(min_rows, used_rows) * per_row
+	content.custom_minimum_size = Vector2(scroll_w - 4.0, float(int(ceil(float(total_cells) / float(per_row)))) * pitch)
 	var i := 0
 	for it in bench:
 		var col := i % per_row
 		var row := i / per_row
-		add_child(_equip_cell(it, i, Vector2(gx + col * (SLOT + 8), gy + row * (SLOT + 28))))
+		content.add_child(_equip_cell(it, i, Vector2(float(col) * cpitch, float(row) * pitch)))
 		i += 1
-	# 补空格子 → 背包始终呈完整网格 (整行对齐, 空槽=暗格显·, 至少一行)
-	var total_cells := maxi(per_row, int(ceil(float(bench.size()) / float(per_row))) * per_row)
 	while i < total_cells:
 		var col2 := i % per_row
 		var row2 := i / per_row
-		add_child(_empty_bench_cell(Vector2(gx + col2 * (SLOT + 8), gy + row2 * (SLOT + 28))))
+		content.add_child(_empty_bench_cell(Vector2(float(col2) * cpitch, float(row2) * pitch)))
 		i += 1
 	if bench.is_empty():
 		var hint := Label.new()
 		hint.text = "（背包空 — 去商店买装备）"
 		hint.add_theme_font_size_override("font_size", 14); hint.add_theme_color_override("font_color", Color("#5a6675"))
-		hint.position = Vector2(64, 392 + SLOT + 34); hint.size = Vector2(600, 22); add_child(hint)
+		hint.position = Vector2(6, 6); hint.size = Vector2(600, 22); hint.mouse_filter = Control.MOUSE_FILTER_IGNORE; content.add_child(hint)
+
+# ─── 底部选中操作条 (大改: 替代满屏文字说明; 选中装备才显名/效果/卖出/取消) ───
+func _build_op_bar() -> void:
+	var by := 636.0
+	var bar := Panel.new()
+	var sb := StyleBoxFlat.new(); sb.bg_color = Color("#101c2a"); sb.border_color = Color("#2a3a4e")
+	sb.set_border_width_all(2); sb.set_corner_radius_all(8)
+	bar.add_theme_stylebox_override("panel", sb)
+	var bw := _vw - 48.0
+	bar.position = Vector2(24, by); bar.size = Vector2(bw, 66); add_child(bar)
+	if _sel_bench >= 0 and _sel_bench < GameState.persistent_bench.size():
+		var sit: Dictionary = GameState.persistent_bench[_sel_bench]
+		if str(sit.get("kind", "")) == "item":
+			var l := Label.new(); l.text = "🔼 临时等级器已选  →  点一只 龟 / 小将,本大轮永久 +1 级"
+			l.add_theme_font_size_override("font_size", 16); l.add_theme_color_override("font_color", Color("#e6d8ff"))
+			l.position = Vector2(16, 20); l.size = Vector2(bw - 320, 28); l.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(l)
+		else:
+			var sdef: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(sit.get("id", "")), {})
+			var l := Label.new()
+			l.text = "▶ %s  ★%d  (%s)   —— 点上方【龟 / 小将】装上   ·   %s" % [str(sdef.get("name", "")), int(sit.get("star", 1)), str(sdef.get("rarity", "普通")), str(sdef.get("effectDesc1", ""))]
+			l.add_theme_font_size_override("font_size", 14); l.add_theme_color_override("font_color", Color("#ffd93d"))
+			l.position = Vector2(16, 10); l.size = Vector2(bw - 320, 48); l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; l.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(l)
+			var sv := _sell_value(sit)
+			var sell := Button.new(); sell.text = "💰 卖出 +%d💠" % sv
+			sell.add_theme_font_size_override("font_size", 16)
+			sell.position = Vector2(bw - 290, 14); sell.size = Vector2(170, 38)
+			sell.pressed.connect(_sell_selected); bar.add_child(sell)
+		var cancel := Button.new(); cancel.text = "取消"
+		cancel.add_theme_font_size_override("font_size", 16)
+		cancel.position = Vector2(bw - 108, 14); cancel.size = Vector2(92, 38)
+		cancel.pressed.connect(func(): _sel_bench = -1; _rebuild()); bar.add_child(cancel)
+	else:
+		var l := Label.new(); l.text = "点背包装备选中 → 点【龟 / 小将】装上  ·  点单位身上的装备格 = 卸那一件  ·  3 件同款同星自动合成升星"
+		l.add_theme_font_size_override("font_size", 14); l.add_theme_color_override("font_color", Color("#7a8595"))
+		l.position = Vector2(16, 22); l.size = Vector2(bw - 32, 24); l.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(l)
 
 func _rarity_color(rarity: String) -> Color:
 	match rarity:
@@ -331,6 +516,7 @@ func _empty_bench_cell(pos: Vector2) -> Control:
 	_slot_center_label(box, "·", Color("#39434f"))
 	for ch in box.get_children():
 		ch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.mouse_filter = Control.MOUSE_FILTER_PASS   # 空格也透传拖动→可滑动
 	return box
 
 func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
@@ -367,9 +553,20 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	for ch in box.get_children():
 		ch.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.tooltip_text = "%s (%s)\n%s" % [str(edef.get("name", eid)), str(edef.get("rarity", "普通")), str(edef.get("effectDesc1", "（无主动效果）"))]
-	box.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _on_bench_click(idx))
+	_wire_bench_tap(box, idx)
 	return box
 
+
+# 背包格触屏点选: 透传拖动给 ScrollContainer(可滑动) + 松开位移小才算点选(滑动不误选·2026-07-18)
+func _wire_bench_tap(box: Control, idx: int) -> void:
+	box.mouse_filter = Control.MOUSE_FILTER_PASS
+	box.gui_input.connect(func(ev: InputEvent):
+		var down: bool = (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT) or (ev is InputEventScreenTouch and ev.pressed)
+		var up: bool = (ev is InputEventMouseButton and not ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT) or (ev is InputEventScreenTouch and not ev.pressed)
+		if down:
+			_press_pos = ev.position
+		elif up and ev.position.distance_to(_press_pos) < 12.0:
+			_on_bench_click(idx))
 
 # ─── 交互: 点背包装备选中 → 点龟装上 (再点已选=取消; 点龟身无选中=卸最后一件回背包) ───
 func _on_bench_click(idx: int) -> void:
@@ -510,7 +707,7 @@ func _build_candy_jar() -> void:
 	sb.bg_color = Color("#2a1c36"); sb.border_color = Color("#e79bd6")
 	sb.set_border_width_all(2); sb.set_corner_radius_all(8)
 	box.add_theme_stylebox_override("panel", sb)
-	box.position = Vector2(620, 20); box.size = Vector2(380, 52)
+	box.position = Vector2(_vw - 400.0, 58.0); box.size = Vector2(372, 44)   # 右上·避开居中标题(2026-07-18大改)
 	box.tooltip_text = "打碎后本大轮消失。\n当前档位奖励: %s" % GameState.candy_jar_tier_preview(tier)
 	add_child(box)
 
@@ -616,7 +813,7 @@ func _item_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	for ch in box.get_children():
 		ch.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.tooltip_text = "临时等级器 (糖果罐战利品)\n选中它 → 点一只龟统领或小将 → 该单位【本大轮】永久 +1 级 (切大轮重置)"
-	box.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _on_bench_click(idx))
+	_wire_bench_tap(box, idx)
 	return box
 
 
