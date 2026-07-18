@@ -173,24 +173,25 @@ func _build_page_buttons(_page: String, _on_first_load: bool) -> void:
 	hero.set_meta("home_y", hero.position.y)
 	page_box.add_child(hero)
 	_slide_in_left(hero, 0)
-	# ── 2×2 次级键: 背包/商店/图鉴/排行榜 (同金框·小一号·左右两列) ──
-	var gsz := Vector2(180.0, 78.0)
-	var gap_x := 16.0
+	# ── 2×2 次级键: 背包/商店/图鉴/排行榜 (同金框·64px像素图标+文字·左右两列·用户2026-07-18图标化) ──
+	var gsz := Vector2(196.0, 82.0)
+	var gap_x := 14.0
 	var gap_y := 14.0
 	var col_dx := (gsz.x + gap_x) / 2.0                      # 两列中心相对左栏中轴 ±col_dx
 	var grid_cy0 := hero_center.y + hero_size.y / 2.0 + 24.0 + gsz.y / 2.0
+	var mic := "res://assets/sprites/menu/"
 	var subs: Array = [
-		["🎒  背包", func(): _go("Inventory")],
-		["🛒  商店", func(): _go("Shop")],
-		["📖  图鉴", func(): _go("Codex")],
-		["🏆  排行榜", func(): _go("Leaderboard")],
+		["背包", func(): _go("Inventory"), mic + "ic-bag.png"],
+		["商店", func(): _go("Shop"), mic + "ic-shop.png"],
+		["图鉴", func(): _go("Codex"), mic + "ic-codex.png"],
+		["排行榜", func(): _go("Leaderboard"), mic + "ic-trophy.png"],
 	]
 	for i in range(subs.size()):
 		var s: Array = subs[i]
 		var r := i / 2                                       # 行 0,0,1,1
 		var c := i % 2                                       # 列 0,1,0,1
 		var center := Vector2(LEFT_CX - col_dx + float(c) * (gsz.x + gap_x), grid_cy0 + float(r) * (gsz.y + gap_y))
-		var b := _frame_button(s[0], s[1], false, gsz, 21)
+		var b := _frame_button(s[0], s[1], false, gsz, 22, str(s[2]))
 		b.position = center - gsz / 2.0
 		b.set_meta("home_y", b.position.y)
 		page_box.add_child(b)
@@ -304,7 +305,7 @@ func layer_modulate_fade(veil: ColorRect, center: CenterContainer) -> void:
 	tw.parallel().tween_property(center, "modulate:a", 1.0, 0.2)
 
 
-func _frame_button(label: String, cb: Callable, disabled: bool, size: Vector2 = Vector2(BTN_W, BTN_H), font_size: int = 22) -> Control:
+func _frame_button(label: String, cb: Callable, disabled: bool, size: Vector2 = Vector2(BTN_W, BTN_H), font_size: int = 22, icon_path: String = "") -> Control:
 	var holder := Control.new()
 	holder.custom_minimum_size = size
 	holder.size = size
@@ -334,7 +335,24 @@ func _frame_button(label: String, cb: Callable, disabled: bool, size: Vector2 = 
 	# 文字 = 1:1 PoC addDomText: 22px 雅黑Bold, 填充#3a1f00, "描边"实为 4 方向 text-shadow(±1px 金#ffe4a0)
 	#   (dom-text.ts:43-48 — 非 outline 轮廓扩张! 故不能用 Godot outline_size, 要 4 个偏移金副本)
 	var fill := Color("#8b7755") if disabled else Color("#3a1f00")
-	holder.add_child(_make_stroked_label(label, font_size, fill, Color("#ffe4a0")))
+	var lbl := _make_stroked_label(label, font_size, fill, Color("#ffe4a0"))
+	holder.add_child(lbl)
+	# 左侧 64px 图标(用户2026-07-18: 图标化+协调) — 文字移到图标右侧区居中(避让, 不遮)
+	if icon_path != "" and ResourceLoader.exists(icon_path):
+		var isz: float = size.y * 0.62
+		var ix: float = size.x * 0.09
+		var ic := TextureRect.new()
+		ic.texture = load(icon_path)
+		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ic.size = Vector2(isz, isz)
+		ic.position = Vector2(ix, (size.y - isz) / 2.0)
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(ic)
+		var lx: float = ix + isz + 6.0
+		lbl.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		lbl.position = Vector2(lx, 0.0)
+		lbl.size = Vector2(size.x - lx - size.x * 0.06, size.y)
 	# hover/press 动画 (PoC ts:358-375): hover scale1.04 + 暖金 tint; 点击 press scale0.96 → 渲染1帧 → 回弹+回调
 	if not disabled:
 		btn.mouse_entered.connect(_btn_hover.bind(holder, frame_node, true))
@@ -491,10 +509,11 @@ func _info_panel() -> void:
 	var hd := Label.new(); hd.text = "🐢  赛季进度"
 	hd.add_theme_font_size_override("font_size", 25); hd.add_theme_color_override("font_color", Color("#ffd93d"))
 	vb.add_child(hd)
-	# 图标用确定性单色符号(不走 emoji 字体回退 → 桌面/安卓一致·根治 emoji 乱渲染): 用 font_color 上色
-	vb.add_child(_panel_row("🏆", "第 %d 大轮" % int(GameState.season_id), "Lv %d" % int(GameState.season_level), Color("#ffd93d")))
+	# 大轮=奖杯图标 / 深海币=深海币图标(64px像素·用户2026-07-18) · 命=红心符号(无图标资产·确定性单色)
+	var mic := "res://assets/sprites/menu/"
+	vb.add_child(_panel_row("🏆", "第 %d 大轮" % int(GameState.season_id), "Lv %d" % int(GameState.season_level), Color("#ffd93d"), mic + "ic-trophy.png"))
 	vb.add_child(_panel_row("♥", "剩余命数", "%d / 8" % int(GameState.hearts), Color("#ff6b6b")))
-	vb.add_child(_panel_row("◆", "深海币", "%d" % int(GameState.meta_deepsea_coins), Color("#4fc3f7")))
+	vb.add_child(_panel_row("◆", "深海币", "%d" % int(GameState.meta_deepsea_coins), Color("#4fc3f7"), mic + "ic-deepsea.png"))
 	var sep := HSeparator.new()
 	var sls := StyleBoxLine.new(); sls.color = Color(1.0, 0.85, 0.24, 0.35); sls.thickness = 1
 	sep.add_theme_stylebox_override("separator", sls)
@@ -522,12 +541,18 @@ func _info_panel() -> void:
 
 
 ## 信息板一行: 图标 + 名称(左, 撑开) + 值(右)
-func _panel_row(icon: String, name_txt: String, value: String, icon_col: Color = Color("#dfe6f0")) -> Control:
+func _panel_row(icon: String, name_txt: String, value: String, icon_col: Color = Color("#dfe6f0"), icon_tex: String = "") -> Control:
 	var h := HBoxContainer.new(); h.add_theme_constant_override("separation", 10)
-	var ic := Label.new(); ic.text = icon; ic.add_theme_font_size_override("font_size", 21)
-	ic.add_theme_color_override("font_color", icon_col)
-	ic.custom_minimum_size = Vector2(30, 0); ic.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	h.add_child(ic)
+	if icon_tex != "" and ResourceLoader.exists(icon_tex):   # 64px像素图标(用户2026-07-18)
+		var it := TextureRect.new(); it.texture = load(icon_tex)
+		it.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; it.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		it.custom_minimum_size = Vector2(34, 32); it.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		h.add_child(it)
+	else:
+		var ic := Label.new(); ic.text = icon; ic.add_theme_font_size_override("font_size", 21)
+		ic.add_theme_color_override("font_color", icon_col)
+		ic.custom_minimum_size = Vector2(34, 0); ic.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		h.add_child(ic)
 	var nm := Label.new(); nm.text = name_txt; nm.add_theme_font_size_override("font_size", 20)
 	nm.add_theme_color_override("font_color", Color("#dfe6f0"))
 	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
