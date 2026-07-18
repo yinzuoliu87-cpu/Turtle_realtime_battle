@@ -136,6 +136,8 @@ func _ready() -> void:
 		_flash_status("🔒 本大轮阵容已锁定 · 点龟查看并调整 3选1 技能 · 确认出战")
 	# 窗口 resize/全屏/最大化 → 重算背景 + 按新尺寸重建浮层 (PoC fitSelectStage 绑 resize; 之前缺 → 铺不满根因)
 	get_viewport().size_changed.connect(_on_resize)
+	if OS.has_environment("TSEDIT"):
+		call_deferred("_toggle_layout_edit")   # 直接开布局编辑器(给用户拖坐标·boot 即进)
 
 
 ## 本大轮阵容是否已锁定 = season_leaders 已是有效的 REQUIRED_PETS 只已知龟 (新赛季 start_new_season 清空 → 回全选).
@@ -346,13 +348,28 @@ func _build_edit_layer() -> void:
 	var ui := get_node_or_null("UI")
 	(ui if ui != null else self).add_child(_edit_layer)
 	var tip := Label.new()
-	tip.text = "布局编辑 · 拖块对齐背景框 · 右下角把手缩放 · F10导出全部坐标 · F9关闭"
+	tip.text = "布局编辑 · 拖绿框=移动 · 拖右下角黄块=缩放 · 拖完点右上「保存坐标」→"
 	tip.add_theme_color_override("font_color", Color("#ffe6b0"))
 	tip.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
 	tip.add_theme_constant_override("outline_size", 4)
 	tip.add_theme_font_size_override("font_size", 13)
 	tip.position = Vector2(12, 4)
 	_edit_layer.add_child(tip)
+	# 右上角大「保存坐标」按钮 — 点一下写文件, 我直接读, 你不用抄任何东西
+	var save_btn := Button.new()
+	save_btn.text = "💾 保存坐标"
+	save_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	save_btn.add_theme_font_size_override("font_size", 16)
+	save_btn.custom_minimum_size = Vector2(150, 40)
+	save_btn.position = Vector2(_vp().x - 164, 4)
+	var ssb := StyleBoxFlat.new()
+	ssb.bg_color = Color("#2e7d46")
+	ssb.set_corner_radius_all(8)
+	ssb.set_border_width_all(2)
+	ssb.border_color = Color("#7fe6a0")
+	save_btn.add_theme_stylebox_override("normal", ssb)
+	_edit_layer.add_child(save_btn)
+	save_btn.pressed.connect(_save_rl_file)
 	for key in _place_reg.keys():   # 只给已放置区块建把手(自动跳过未建的 synergy)
 		if is_instance_valid(_place_reg[key]):
 			_make_edit_handle(str(key))
@@ -452,6 +469,22 @@ func _export_rl() -> void:
 	out += "}\n===== 结束 =====\n"
 	print(out)
 	_flash_status("📋 已导出 RL 坐标到控制台 (终端复制给我)")
+
+
+## 保存坐标到文件 — 用户点按钮即写 user://rl_layout.txt, 我直接读回 (免抄免复制)
+func _save_rl_file() -> void:
+	var out := "const RL := {\n"
+	for key in RL.keys():
+		out += "\t\"%s\": %s\n" % [key, _rl_line(str(key))]
+	out += "}\n"
+	var f := FileAccess.open("user://rl_layout.txt", FileAccess.WRITE)
+	if f == null:
+		_flash_status("❌ 保存失败 (FileAccess null)")
+		return
+	f.store_string(out)
+	f.close()
+	print(out)
+	_flash_status("💾 已保存 → user://rl_layout.txt (告诉我一声我就读)")
 
 
 # ══════════════════════════════════════════════════════════════
