@@ -147,6 +147,8 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_on_resize)
 	if OS.has_environment("TSEDIT"):
 		call_deferred("_toggle_layout_edit")   # 直接开布局编辑器(给用户拖坐标·boot 即进)
+	if OS.has_environment("POPUP_DEMO"):
+		call_deferred("_demo_popup")            # 自验: 最靠右锚点弹窗是否夹回屏内
 
 
 ## 本大轮阵容是否已锁定 = season_leaders 已是有效的 REQUIRED_PETS 只已知龟 (新赛季 start_new_season 清空 → 回全选).
@@ -506,6 +508,13 @@ func _close_detail_popup() -> void:
 	_info_popup = null
 
 
+## 自验用: 拿最靠右的锚点弹一个长描述弹窗, 看是否夹回屏内 (POPUP_DEMO 门控)
+func _demo_popup() -> void:
+	var vp := _vp()
+	var anchor := Rect2(vp.x - 90.0, 260.0, 64.0, 64.0)
+	_show_detail_popup("测试被动·不屈", "受到致命伤害时一次不死, 保留 1 点生命(每场 1 次)。这段较长描述用于测试自动换行与屏内夹取是否正常, 多写几个字确保会换到第二三行。", Color("#7dffb3"), anchor)
+
+
 ## 直接吃 tooltip_text 文本(首行=名, 其余=描述)转成弹窗, 复用已有全部格式
 func _show_detail_popup_from(text: String, accent: Color, anchor: Rect2) -> void:
 	var t := text.strip_edges()
@@ -561,19 +570,20 @@ func _show_detail_popup(title_txt: String, body_txt: String, accent: Color, anch
 		bl.add_theme_font_size_override("font_size", _sf(14))
 		bl.add_theme_color_override("font_color", Color("#e8eef5"))
 		vb.add_child(bl)
-	# 尺寸下一帧才算出 → 等一帧再定位; 放 anchor 左侧(不挡被点元素), 放不下换右侧, 夹屏内
-	await get_tree().process_frame
-	if not is_instance_valid(panel):
-		return
+	# 尺寸同步算(不靠等帧·避免 size=0 → 夹屏失败跑屏外); 放 anchor 左侧(不挡被点元素), 放不下换右, 最终夹屏内
 	var vp := _vp()
-	var psz := panel.size
-	var px := anchor.position.x - psz.x - _sp(12)
-	if px < 8.0:
-		px = anchor.position.x + anchor.size.x + _sp(12)
+	var psz := panel.get_combined_minimum_size()
+	psz.x = maxf(psz.x, 40.0)
+	psz.y = maxf(psz.y, 20.0)
+	var m := float(_sp(10))
+	var px := anchor.position.x - psz.x - float(_sp(12))   # 默认放左侧
+	if px < m:
+		px = anchor.position.x + anchor.size.x + float(_sp(12))   # 左边放不下→放右侧
 	var py := anchor.position.y
-	px = clampf(px, 8.0, maxf(8.0, vp.x - psz.x - 8.0))
-	py = clampf(py, 8.0, maxf(8.0, vp.y - psz.y - 8.0))
+	px = clampf(px, m, maxf(m, vp.x - psz.x - m))   # 最终夹进屏内(左右)
+	py = clampf(py, m, maxf(m, vp.y - psz.y - m))   # 夹进屏内(上下)
 	panel.position = Vector2(px, py)
+	panel.size = psz
 	panel.visible = true
 
 
