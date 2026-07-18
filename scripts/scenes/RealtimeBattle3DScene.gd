@@ -609,6 +609,12 @@ func _ready() -> void:
 	_build_ui_layer()
 	_build_debug_panel()   # 🛠 调试面板(评审demo·技能/装备/星级·用户2026-07-11)
 	_spawn_teams()
+	if OS.has_environment("INFO_DEMO"):   # DEV: 自动弹第一只友军的详情面板(截图核对侧边信息面板用·env门控·正常包无)
+		var _t2 := get_tree().create_timer(1.6)
+		_t2.timeout.connect(func() -> void:
+			for _u in _units:
+				if _u.get("alive", false) and str(_u.get("side", "")) == "left" and not _u.get("_isEgg", false) and not _u.get("is_summon", false):
+					_show_unit_info_panel(_u); break)
 	# §AUDIO: 战斗 BGM (淡入, autoload Audio 单例处理循环/音量)
 	var _audio := get_node_or_null("/root/Audio")
 	if _audio != null:
@@ -19134,7 +19140,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			var _cpos: Vector2 = get_viewport().get_mouse_position() if get_viewport() != null else event.position
 			var hit = _edit_unit_at_screen(_cpos)   # 复用既有 unproject 命中 (dist<64px, 取最近)
 			if hit != null:
-				_show_unit_info_panel(hit)
+				_show_unit_info_panel(hit)          # 点到单位→开/切详情
+			elif _info_panel != null and is_instance_valid(_info_panel):
+				_close_info_panel()                 # 点空白→关(侧边版无backdrop)
 		return
 	# 🛠 调试场: 鼠标在战场(非面板)上 → 摆位/拖拽/删除. 面板按钮 mouse_filter=STOP 已在 GUI 层吃掉,
 	#   故到 _unhandled_input 的鼠标事件 = 点在战场空白处 (安全当作摆位操作).
@@ -21907,10 +21915,73 @@ func _update_team_panels() -> void:
 # ----------------------------------------------------------------------------
 func _close_info_panel() -> void:
 	if _info_panel != null and is_instance_valid(_info_panel):
-		var _bg := _info_panel.get_parent()   # 面板的父=全屏灰底backdrop(ColorRect 0,0,0,.45)·必须一起free否则关面板后屏幕整个灰(用户2026-07-11)
+		var _bg := _info_panel.get_parent()   # 老版本有全屏灰底backdrop→连父free; 新侧边版面板直接挂_ui_layer(无backdrop)→只free面板
 		(_bg if _bg != null and _bg is ColorRect else _info_panel).queue_free()
 	_info_panel = null
 	_selected_unit = null
+
+# 面板内一条进度条(HP/龟能): 深底+彩色填充+居中文字覆盖
+func _info_bar(parent: Control, cur: float, mx: float, fill_col: Color, label: String) -> void:
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(0, 22)
+	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(holder)
+	var pb := ProgressBar.new()
+	pb.set_anchors_preset(Control.PRESET_FULL_RECT)
+	pb.min_value = 0.0; pb.max_value = maxf(1.0, mx); pb.value = clampf(cur, 0.0, mx)
+	pb.show_percentage = false
+	var bgsb := StyleBoxFlat.new(); bgsb.bg_color = Color("#0b1220"); bgsb.set_corner_radius_all(5)
+	bgsb.set_border_width_all(1); bgsb.border_color = Color("#243247")
+	var flsb := StyleBoxFlat.new(); flsb.bg_color = fill_col; flsb.set_corner_radius_all(5)
+	pb.add_theme_stylebox_override("background", bgsb)
+	pb.add_theme_stylebox_override("fill", flsb)
+	pb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(pb)
+	var lb := Label.new(); lb.text = label; lb.set_anchors_preset(Control.PRESET_FULL_RECT)
+	lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lb.add_theme_font_size_override("font_size", 12); lb.add_theme_color_override("font_color", Color("#ffffff"))
+	lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(lb)
+
+# 属性格 (图标+值), 放进 GridContainer
+func _info_stat_cell(grid: GridContainer, icon: String, val: String, col: Color = Color("#d6e4f0")) -> void:
+	var c := Label.new()
+	c.text = "%s %s" % [icon, val]
+	c.add_theme_font_size_override("font_size", 14)
+	c.add_theme_color_override("font_color", col)
+	grid.add_child(c)
+
+# 当前生效的状态 → chips (只显生效的); 无则"无异常状态"
+func _info_status_chips(vb: VBoxContainer, u: Dictionary) -> void:
+	var chips: Array = []
+	if _t < float(u.get("stun_until", 0.0)): chips.append(["😵 眩晕", "#ff8a3d"])
+	if _t < float(u.get("burn_until", 0.0)): chips.append(["🔥 灼烧", "#ff6b3d"])
+	if _t < float(u.get("slow_until", 0.0)): chips.append(["🐌 减速", "#7fd0ff"])
+	if _t < float(u.get("taunt_until", 0.0)): chips.append(["😡 嘲讽", "#ff5c8a"])
+	if _t < float(u.get("untargetable_until", 0.0)): chips.append(["🌀 隐身/不可选", "#b28bff"])
+	if _t < float(u.get("heal_reduce_until", 0.0)): chips.append(["💔 治疗削减", "#ff6b6b"])
+	if _t < float(u.get("energy_lock_until", 0.0)): chips.append(["🔒 龟能锁", "#ffcf5a"])
+	if float(u.get("shield", 0.0)) > 0.0: chips.append(["🛡 护盾 %d" % int(u.get("shield", 0.0)), "#7fe0ff"])
+	if float(u.get("rage", 0.0)) > 0.0: chips.append(["😤 怒气 %d" % int(u.get("rage", 0.0)), "#ff9d5c"])
+	if float(u.get("star_energy", 0.0)) > 0.0: chips.append(["⭐ 星能 %d" % int(u.get("star_energy", 0.0)), "#b28bff"])
+	if float(u.get("store_energy", 0.0)) > 0.0: chips.append(["🟡 储能 %d" % int(u.get("store_energy", 0.0)), "#ffd93d"])
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 6); flow.add_theme_constant_override("v_separation", 4)
+	vb.add_child(flow)
+	if chips.is_empty():
+		var e := Label.new(); e.text = "无异常状态"
+		e.add_theme_font_size_override("font_size", 13); e.add_theme_color_override("font_color", Color("#7a8694"))
+		flow.add_child(e)
+		return
+	for ch in chips:
+		var p := PanelContainer.new()
+		var sb := StyleBoxFlat.new(); sb.bg_color = Color(str(ch[1])); sb.bg_color.a = 0.20
+		sb.border_color = Color(str(ch[1])); sb.set_border_width_all(1); sb.set_corner_radius_all(6)
+		sb.content_margin_left = 8; sb.content_margin_right = 8; sb.content_margin_top = 2; sb.content_margin_bottom = 2
+		p.add_theme_stylebox_override("panel", sb)
+		var l := Label.new(); l.text = str(ch[0]); l.add_theme_font_size_override("font_size", 12)
+		l.add_theme_color_override("font_color", Color(str(ch[1])))
+		p.add_child(l); flow.add_child(p)
 
 func _show_unit_info_panel(u: Dictionary) -> void:
 	_close_info_panel()
@@ -21919,111 +21990,108 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 		return
 	var id := str(u.get("id", ""))
 	var pet: Dictionary = DataRegistry.pet_by_id.get(id, {})
+	var is_left := str(u.get("side", "")) == "left"
+	var side_col := Color("#4ade80") if is_left else Color("#ff6b6b")
 
-	# 背景遮罩 (点空白处关) — 铺满屏
-	var backdrop := ColorRect.new()
-	backdrop.color = Color(0, 0, 0, 0.45)
-	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
-	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
-	backdrop.gui_input.connect(func(ev: InputEvent):
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			_close_info_panel())
-	_ui_layer.add_child(backdrop)
-
+	# ── 侧边面板(右锚·不遮全场·无backdrop·用户2026-07-18「侧边不遮战场」) ──
+	var PW := 400.0
 	var panel := PanelContainer.new()
 	panel.name = "InfoPanel"
 	var psb := StyleBoxFlat.new()
-	psb.bg_color = Color("#101622")
-	psb.set_border_width_all(2)
-	psb.border_color = Color("#2a3650")
+	psb.bg_color = Color(0.055, 0.086, 0.13, 0.96)
+	psb.set_border_width_all(2); psb.border_color = Color("#ffd93d")   # 金框(与主菜单一致)
 	psb.set_corner_radius_all(14)
-	psb.content_margin_left = 18; psb.content_margin_right = 18
-	psb.content_margin_top = 16; psb.content_margin_bottom = 16
+	psb.content_margin_left = 16; psb.content_margin_right = 16
+	psb.content_margin_top = 14; psb.content_margin_bottom = 14
 	panel.add_theme_stylebox_override("panel", psb)
-	panel.custom_minimum_size = Vector2(420, 0)
-	panel.set_anchors_preset(Control.PRESET_CENTER)
-	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-	panel.mouse_filter = Control.MOUSE_FILTER_STOP   # 吃掉面板内点击 (别穿到 backdrop)
-	backdrop.add_child(panel)
-	# detail_panel_frame 斜面边框 overlay (full-rect, mouse ignore)
-	var bevel := DetailPanelFrame.new()
-	bevel.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bevel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(bevel)
+	panel.anchor_left = 1.0; panel.anchor_right = 1.0; panel.anchor_top = 0.0; panel.anchor_bottom = 1.0
+	panel.offset_left = -(PW + 16.0); panel.offset_right = -16.0
+	panel.offset_top = 56.0; panel.offset_bottom = -16.0
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP   # 吃掉面板内点击(不穿到战场·点空白才关)
+	_ui_layer.add_child(panel)
 	_info_panel = panel
 
+	var scroll := ScrollContainer.new()
+	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	panel.add_child(scroll)
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 8)
-	panel.add_child(vb)
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(vb)
 
-	# --- 头部: 大头像 + 名 + 稀有度 + 等级 + 关闭按钮 ---
-	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 12)
-	vb.add_child(head)
+	# 头部: 头像 + 名 + 阵营/稀有度/Lv + ✖
+	var head := HBoxContainer.new(); head.add_theme_constant_override("separation", 10); vb.add_child(head)
 	var big := TextureRect.new()
 	big.texture = _unit_portrait_texture(u)
-	big.custom_minimum_size = Vector2(72, 72)
-	big.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	big.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	big.custom_minimum_size = Vector2(64, 64)
+	big.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; big.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	big.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	head.add_child(big)
-	var head_info := VBoxContainer.new()
-	head_info.add_theme_constant_override("separation", 3)
-	head_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(head_info)
-	var name_lbl := Label.new()
-	name_lbl.text = str(u.get("name", id))
-	name_lbl.add_theme_font_size_override("font_size", 22)
+	var hi := VBoxContainer.new(); hi.add_theme_constant_override("separation", 2)
+	hi.size_flags_horizontal = Control.SIZE_EXPAND_FILL; head.add_child(hi)
+	var nm := Label.new(); nm.text = str(u.get("name", id)); nm.add_theme_font_size_override("font_size", 21)
 	var rar := str(pet.get("rarity", u.get("rarity", "C")))
-	name_lbl.add_theme_color_override("font_color", _pet_rarity_color(rar))
-	head_info.add_child(name_lbl)
+	nm.add_theme_color_override("font_color", _pet_rarity_color(rar)); hi.add_child(nm)
 	var sub := Label.new()
-	sub.text = "稀有度 %s    Lv %d" % [rar, int(u.get("level", 1))]
-	sub.add_theme_font_size_override("font_size", 13)
-	sub.add_theme_color_override("font_color", Color("#9fb6c9"))
-	head_info.add_child(sub)
-	# 关闭 ✖ (原 ✕ U+2715 打包字体链无字形 → 换 ✖ U+2716, Noto Emoji 有)
-	var close_btn := Button.new()
-	close_btn.text = "✖"
-	close_btn.add_theme_font_size_override("font_size", 16)
-	close_btn.custom_minimum_size = Vector2(30, 30)
-	close_btn.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	close_btn.pressed.connect(_close_info_panel)
-	head.add_child(close_btn)
+	sub.text = "%s · %s · Lv %d" % ["友军" if is_left else "敌方", rar, int(u.get("level", 1))]
+	sub.add_theme_font_size_override("font_size", 13); sub.add_theme_color_override("font_color", side_col); hi.add_child(sub)
+	var close_btn := Button.new(); close_btn.text = "✖"; close_btn.add_theme_font_size_override("font_size", 16)
+	close_btn.custom_minimum_size = Vector2(30, 30); close_btn.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	close_btn.pressed.connect(_close_info_panel); head.add_child(close_btn)
+
+	# HP 条(阵营色)
+	_info_bar(vb, float(u.get("hp", 0.0)), float(u.get("maxHp", 1.0)), side_col, "HP  %d / %d" % [int(u.get("hp", 0)), int(u.get("maxHp", 0))])
+	# 龟能条(有主动技才显): 主技充能% = 1 − 剩余冷却/满冷却
+	var acts: Array = u.get("active_skills", [])
+	if not _is_passive_pick(u) and acts.size() > 0:
+		var st0 := str(acts[0])
+		var mxcd := _skill_cd(u, st0)
+		var cd := float((u.get("skill_cd", {}) as Dictionary).get(st0, mxcd))
+		var rdy := clampf(1.0 - (cd / maxf(0.01, mxcd)), 0.0, 1.0)
+		_info_bar(vb, rdy, 1.0, Color("#ffce4d"), "龟能  %d%%" % int(rdy * 100.0))
 
 	_add_panel_sep(vb)
 
-	# --- 属性栏 ---
-	var stat_lbl := Label.new()
-	stat_lbl.text = "HP %d/%d   ATK %d   防 %d   抗 %d\n暴击 %d%%   攻速 %ss   射程 %d" % [
-		int(u.get("hp", 0)), int(u.get("maxHp", 0)), int(u.get("atk", 0)),
-		int(u.get("def", 0)), int(u.get("mr", 0)), int(float(u.get("crit", 0.0)) * 100.0),
-		_fmt_num(float(u.get("atk_interval", 0.0))), int(u.get("atk_range", 0))]
-	stat_lbl.add_theme_font_size_override("font_size", 14)
-	stat_lbl.add_theme_color_override("font_color", Color("#d6e4f0"))
-	vb.add_child(stat_lbl)
+	# 属性格 (2列·图标)
+	var grid := GridContainer.new(); grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 18); grid.add_theme_constant_override("v_separation", 5)
+	vb.add_child(grid)
+	_info_stat_cell(grid, "⚔", "攻击 %d" % int(u.get("atk", 0)), Color("#ff9d8a"))
+	_info_stat_cell(grid, "🛡", "护甲 %d" % int(u.get("def", 0)))
+	_info_stat_cell(grid, "🔮", "魔抗 %d" % int(u.get("mr", 0)), Color("#9bdcff"))
+	_info_stat_cell(grid, "💥", "暴击 %d%%" % int(float(u.get("crit", 0.0)) * 100.0))
+	_info_stat_cell(grid, "⏱", "攻速 %ss" % _fmt_num(float(u.get("atk_interval", 0.0))))
+	_info_stat_cell(grid, "🎯", "射程 %d" % int(u.get("atk_range", 0)))
+	_info_stat_cell(grid, "👟", "移速 %d" % int(u.get("move_spd", 0)))
+	if float(u.get("lifesteal", 0.0)) > 0.0:
+		_info_stat_cell(grid, "🩸", "吸血 %d%%" % int(float(u.get("lifesteal", 0.0)) * 100.0))
 
 	_add_panel_sep(vb)
 
-	# --- 被动 ---
+	# 当前状态 chips
+	_add_section_title(vb, "当前状态")
+	_info_status_chips(vb, u)
+
+	# 被动
 	var passive: Dictionary = u.get("passive", {})
 	if passive is Dictionary and not (passive as Dictionary).is_empty():
+		_add_panel_sep(vb)
 		_add_section_title(vb, "被动 · " + str(passive.get("name", "")))
 		var pdesc := _strip_html(str(passive.get("desc", passive.get("brief", ""))))
-		if pdesc != "":
-			_add_body_text(vb, pdesc)
+		if pdesc != "": _add_body_text(vb, pdesc)
 
-	# --- 已选技能 ---
+	# 技能
 	var skills := _panel_skill_entries(u)
 	if not skills.is_empty():
+		_add_panel_sep(vb)
 		_add_section_title(vb, "技能")
 		for sk in skills:
 			_add_section_title(vb, "  " + str(sk["name"]), Color("#9fd0ff"), 14)
-			if str(sk["desc"]) != "":
-				_add_body_text(vb, str(sk["desc"]))
+			if str(sk["desc"]) != "": _add_body_text(vb, str(sk["desc"]))
 
-	# --- 装备 ---
+	# 装备
+	_add_panel_sep(vb)
 	var equips: Array = u.get("equips", [])
 	_add_section_title(vb, "装备 (%d)" % equips.size())
 	if equips.is_empty():
@@ -22031,6 +22099,12 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	else:
 		for e in equips:
 			_add_equip_row(vb, str(e.get("id", "")), int(e.get("star", 1)))
+
+	# 从右滑入
+	panel.offset_left += PW + 40.0; panel.offset_right += PW + 40.0
+	var tw := _reg_tween()
+	tw.tween_property(panel, "offset_left", -(PW + 16.0), 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(panel, "offset_right", -16.0, 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 # 技能条目 [{name, desc}]: 取该龟已选的主动技 (走 _chosen_skill_types) + 普攻名 (skillPool[0]).
 func _panel_skill_entries(u: Dictionary) -> Array:
