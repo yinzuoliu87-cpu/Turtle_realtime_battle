@@ -15,9 +15,34 @@ var _offer: Array = []
 var _rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
+	if int(GameState.season_total_battles) <= 0:
+		_build_locked()   # 商店锁: 本大轮未打第一场 → 不开店(用户2026-07-18「商店打完第一场后解锁」)
+		return
 	_rng.randomize()
 	_roll()
 	_rebuild()
+
+## 商店上锁屏 (大轮开局·未打第一场): 提示 + 返回, 不出货架
+func _build_locked() -> void:
+	var vw := maxf(W, get_viewport_rect().size.x)
+	var bg := ColorRect.new()
+	bg.color = Color("#0a1622")
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(bg)
+	var lbl := Label.new()
+	lbl.text = "🔒 商店未开\n\n本大轮打完第一场战斗后开店"
+	lbl.add_theme_font_size_override("font_size", 26)
+	lbl.add_theme_color_override("font_color", Color("#ffd93d"))
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.position = Vector2(vw / 2.0 - 320.0, 250.0); lbl.size = Vector2(640, 180)
+	add_child(lbl)
+	var back := Button.new()
+	back.text = "← 返回"
+	back.add_theme_font_size_override("font_size", 20)
+	back.position = Vector2(28, 26); back.size = Vector2(120, 44)
+	back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
+	add_child(back)
 
 func _shop_level() -> int:
 	return clampi(int(GameState.season_level), 1, 10)   # 大轮等级驱动出货档 (用户 2026-06-27)

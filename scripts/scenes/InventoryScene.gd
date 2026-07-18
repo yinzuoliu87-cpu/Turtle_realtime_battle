@@ -21,6 +21,9 @@ var _press_pos := Vector2.ZERO   # 背包格触屏点选/滑动判定: 松开位
 func _ready() -> void:
 	if OS.has_environment("INV_DEMO"):   # dev截图用: 内存填演示背包(不save·不碰真存档)
 		_inject_demo_inventory()
+	if OS.has_environment("PH_DEMO"):    # dev: 清统领模拟大轮开局 → 看统领1/2/3问号占位(不save)
+		GameState.season_leaders = []
+		GameState.dual_lineup = {}
 	_rebuild()
 
 func _inject_demo_inventory() -> void:   # 仅 INV_DEMO 环境: 填装备看满仓布局(不调 save)
@@ -132,13 +135,16 @@ func _build_lineup(_leaders: Array) -> void:
 ## 布阵单位框(大改): 大立绘+名+可点装备格(点填充格=卸那件)+小将前后排角标. 选中装备时整框高亮"装这里". 点框body=装备(选中时)↔互换分路.
 func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Vector2) -> Control:
 	var kind := str(unit.get("kind", "minion"))
+	var pid := str(unit.get("id", ""))
+	var is_ph := kind == "leader" and pid == ""   # 占位统领(大轮未选统领·id空) → 显示「统领N ?」
 	var sel := str(_dl_sel.get("lane", "")) == lane and int(_dl_sel.get("idx", -1)) == idx
 	var is_elite := kind == "minion" and lead_n == 0 and _dl_first_minion_idx(lane) == idx
-	var can_equip := _sel_bench >= 0   # 选了装备 → 此框可装(全高亮)
-	var bg := Color("#13314a") if kind == "leader" else (Color("#4a3410") if is_elite else Color("#1a2230"))
+	var can_equip := _sel_bench >= 0 and not is_ph   # 选了装备 → 此框可装(占位统领无真龟·不可装)
+	var bg := Color("#22304a") if is_ph else (Color("#13314a") if kind == "leader" else (Color("#4a3410") if is_elite else Color("#1a2230")))
 	var bd: Color
 	if sel: bd = Color("#ffd93d")
 	elif can_equip: bd = Color("#7fe39a")   # 选中装备时所有单位框高亮"装这里"(含小将→一眼可装)
+	elif is_ph: bd = Color("#8a97a8")   # 占位统领: 灰蓝虚位感
 	else: bd = (Color("#2e5a7e") if kind == "leader" else (Color("#c79a3a") if is_elite else Color("#3a4658")))
 	var box := Panel.new()
 	var sb := StyleBoxFlat.new()
@@ -146,32 +152,51 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 	sb.set_border_width_all(3 if (sel or can_equip) else 2); sb.set_corner_radius_all(8)
 	box.add_theme_stylebox_override("panel", sb)
 	box.position = pos; box.size = Vector2(UBOX_W, UBOX_H)
-	var img_path := ""
-	if kind == "leader":
-		img_path = "res://assets/sprites/avatars/%s.png" % str(unit.get("id", ""))
+	if is_ph:
+		var q := Label.new()
+		q.text = "?"
+		q.add_theme_font_size_override("font_size", 44)
+		q.add_theme_color_override("font_color", Color("#9fb2c8"))
+		q.position = Vector2(0, 2); q.size = Vector2(UBOX_W, 52)
+		q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		q.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(q)
 	else:
-		img_path = "res://assets/sprites/%s" % Phase2Minion.minion_img(is_elite, str(unit.get("role", "front")) == "back")
-	if ResourceLoader.exists(img_path):
-		var a := TextureRect.new(); a.texture = load(img_path)
-		a.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; a.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED; a.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		a.position = Vector2(UBOX_W / 2.0 - 36, 4); a.size = Vector2(72, 50); a.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(a)
+		var img_path := ""
+		if kind == "leader":
+			img_path = "res://assets/sprites/avatars/%s.png" % pid
+		else:
+			img_path = "res://assets/sprites/%s" % Phase2Minion.minion_img(is_elite, str(unit.get("role", "front")) == "back")
+		if ResourceLoader.exists(img_path):
+			var a := TextureRect.new(); a.texture = load(img_path)
+			a.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; a.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED; a.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			a.position = Vector2(UBOX_W / 2.0 - 36, 4); a.size = Vector2(72, 50); a.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(a)
 	var nm := Label.new()
-	if kind == "leader":
-		var pet: Dictionary = DataRegistry.pet_by_id.get(str(unit.get("id", "")), {})
-		nm.text = str(pet.get("name", unit.get("id", "")))
+	if is_ph:
+		nm.text = "统领%d" % (int(unit.get("slot", idx)) + 1)
+	elif kind == "leader":
+		var pet: Dictionary = DataRegistry.pet_by_id.get(pid, {})
+		nm.text = str(pet.get("name", pid))
 	else:
 		nm.text = "精英小将" if is_elite else "小将"
 	nm.add_theme_font_size_override("font_size", 14); nm.add_theme_color_override("font_color", Color("#e8f2ff"))
 	nm.position = Vector2(0, 56); nm.size = Vector2(UBOX_W, 18); nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; nm.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(nm)
-	# 装备格(可点卸那一件)
-	var eqs: Array = []
-	if kind == "leader":
-		if GameState.persistent_equipped is Dictionary:
-			eqs = GameState.persistent_equipped.get(str(unit.get("id", "")), [])
-	elif unit.get("equips", null) is Array:
-		eqs = unit.get("equips", [])
-	var slots := P2.equip_slots_for_level(int(GameState.season_level))
-	_build_equip_cells(box, 78.0, eqs, slots, kind == "leader", str(unit.get("id", "")), lane, idx)
+	# 装备格(可点卸那一件) — 占位统领无真龟, 不建装备格, 改提示
+	if is_ph:
+		var hint := Label.new()
+		hint.text = "选龟后填入"
+		hint.add_theme_font_size_override("font_size", 11)
+		hint.add_theme_color_override("font_color", Color("#7f8fa0"))
+		hint.position = Vector2(0, 82); hint.size = Vector2(UBOX_W, 16)
+		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; hint.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(hint)
+	else:
+		var eqs: Array = []
+		if kind == "leader":
+			if GameState.persistent_equipped is Dictionary:
+				eqs = GameState.persistent_equipped.get(pid, [])
+		elif unit.get("equips", null) is Array:
+			eqs = unit.get("equips", [])
+		var slots := P2.equip_slots_for_level(int(GameState.season_level))
+		_build_equip_cells(box, 78.0, eqs, slots, kind == "leader", pid, lane, idx)
 	# 小将前/后排角标(右上角小按钮)
 	if kind == "minion":
 		var role := str(unit.get("role", "front"))

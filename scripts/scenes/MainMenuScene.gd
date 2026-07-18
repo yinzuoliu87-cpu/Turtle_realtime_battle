@@ -182,7 +182,7 @@ func _build_page_buttons(_page: String, _on_first_load: bool) -> void:
 	var mic := "res://assets/sprites/menu/"
 	var subs: Array = [
 		["背包", func(): _go("Inventory"), mic + "ic-bag.png"],
-		["商店", func(): _go("Shop"), mic + "ic-shop.png"],
+		["商店", func(): _open_shop(), mic + "ic-shop.png"],
 		["图鉴", func(): _go("Codex"), mic + "ic-codex.png"],
 		["排行榜", func(): _go("Leaderboard"), mic + "ic-trophy.png"],
 	]
@@ -675,6 +675,33 @@ func _go(scene: String) -> void:
 		push_error("[MainMenu] 目标场景不存在: " + path)
 		return
 	get_tree().change_scene_to_file(path)
+
+
+## 商店入口: 大轮未打第一场 → 上锁不进(用户2026-07-18); 打完第一场解锁
+func _open_shop() -> void:
+	if int(GameState.season_total_battles) <= 0:
+		_toast("🔒 本大轮打完第一场才开店")
+		return
+	_go("Shop")
+
+
+## 轻提示: 顶部飘一行金字, 1.4s 后淡出
+func _toast(msg: String) -> void:
+	var t := Label.new()
+	t.text = msg
+	t.add_theme_font_size_override("font_size", 24)
+	t.add_theme_color_override("font_color", Color("#ffd93d"))
+	t.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+	t.add_theme_constant_override("outline_size", 5)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var vw := get_viewport_rect().size.x
+	t.position = Vector2(vw / 2.0 - 320.0, 120.0); t.size = Vector2(640, 40)
+	t.z_index = 200
+	add_child(t)
+	var tw := create_tween()
+	tw.tween_interval(1.4)
+	tw.tween_property(t, "modulate:a", 0.0, 0.5)
+	tw.tween_callback(t.queue_free)
 
 
 ## 开始战斗 → 选龟流程 (实时版): 选龟(TeamSelect) → 匹配(Matchmaking) → 2.5D 战斗(RealtimeBattle3D).
