@@ -194,12 +194,12 @@ func _build_page_buttons(_page: String, _on_first_load: bool) -> void:
 		var r := i / 2                                       # 行 0,0,1,1
 		var c := i % 2                                       # 列 0,1,0,1
 		var center := Vector2(LEFT_CX - col_dx + float(c) * (gsz.x + gap_x), grid_cy0 + float(r) * (gsz.y + gap_y))
-		var dis := (str(s[0]) == "商店") and shop_locked      # 商店锁 → 灰显禁用+🔒角标(不再靠点后toast)
-		var b := _frame_button(s[0], s[1], dis, gsz, 22, str(s[2]))
+		var locked := (str(s[0]) == "商店") and shop_locked   # 商店锁 → 灰显+🔒角标, 但仍可点→toast提示为啥锁
+		var b := _frame_button(s[0], s[1], false, gsz, 22, str(s[2]), locked)
 		b.position = center - gsz / 2.0
 		b.set_meta("home_y", b.position.y)
 		page_box.add_child(b)
-		if dis:
+		if locked:
 			_add_lock_badge(b, gsz)
 		_slide_in_left(b, i + 1)
 
@@ -323,7 +323,7 @@ func layer_modulate_fade(veil: ColorRect, center: CenterContainer) -> void:
 	tw.parallel().tween_property(center, "modulate:a", 1.0, 0.2)
 
 
-func _frame_button(label: String, cb: Callable, disabled: bool, size: Vector2 = Vector2(BTN_W, BTN_H), font_size: int = 22, icon_path: String = "") -> Control:
+func _frame_button(label: String, cb: Callable, disabled: bool, size: Vector2 = Vector2(BTN_W, BTN_H), font_size: int = 22, icon_path: String = "", locked: bool = false) -> Control:
 	var holder := Control.new()
 	holder.custom_minimum_size = size
 	holder.size = size
@@ -341,7 +341,7 @@ func _frame_button(label: String, cb: Callable, disabled: bool, size: Vector2 = 
 		frame_node.stretch_mode = TextureRect.STRETCH_SCALE
 		frame_node.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		# PoC ts:314 bg.setAlpha(0.95); 禁用走灰 tint (ts:311)
-		frame_node.modulate = Color(0.6, 0.6, 0.6, 0.95) if disabled else Color(1, 1, 1, 0.95)
+		frame_node.modulate = Color(0.6, 0.6, 0.6, 0.95) if (disabled or locked) else Color(1, 1, 1, 0.95)
 		holder.add_child(frame_node)
 	# 透明 Button 接点击 (flat 无样式, 不盖金框)
 	var btn := Button.new()
@@ -352,7 +352,7 @@ func _frame_button(label: String, cb: Callable, disabled: bool, size: Vector2 = 
 	holder.add_child(btn)
 	# 文字 = 1:1 PoC addDomText: 22px 雅黑Bold, 填充#3a1f00, "描边"实为 4 方向 text-shadow(±1px 金#ffe4a0)
 	#   (dom-text.ts:43-48 — 非 outline 轮廓扩张! 故不能用 Godot outline_size, 要 4 个偏移金副本)
-	var fill := Color("#8b7755") if disabled else Color("#3a1f00")
+	var fill := Color("#8b7755") if (disabled or locked) else Color("#3a1f00")
 	var lbl := _make_stroked_label(label, font_size, fill, Color("#ffe4a0"))
 	holder.add_child(lbl)
 	# 左侧 64px 图标(用户2026-07-18: 图标化+协调) — 文字移到图标右侧区居中(避让, 不遮)
@@ -373,11 +373,14 @@ func _frame_button(label: String, cb: Callable, disabled: bool, size: Vector2 = 
 		lbl.size = Vector2(size.x - lx - size.x * 0.06, size.y)
 	# hover/press 动画 (PoC ts:358-375): hover scale1.04 + 暖金 tint; 点击 press scale0.96 → 渲染1帧 → 回弹+回调
 	if not disabled:
-		btn.mouse_entered.connect(_btn_hover.bind(holder, frame_node, true))
-		btn.mouse_exited.connect(_btn_hover.bind(holder, frame_node, false))
-		# PoC ts:370-375: pointerdown → setScale(0.96) → delayedCall(16) → resetVisual + onClick。
-		#   旧版 pressed.connect(cb) 在松手同帧立刻 change_scene → press 缩放没机会渲染 = "点了没动画"。
-		btn.button_down.connect(_btn_press.bind(holder, frame_node, cb))
+		if locked:
+			btn.pressed.connect(cb)   # 锁定态: 保持灰(不做会重置灰的hover/press动画), 但仍可点→cb出toast提示
+		else:
+			btn.mouse_entered.connect(_btn_hover.bind(holder, frame_node, true))
+			btn.mouse_exited.connect(_btn_hover.bind(holder, frame_node, false))
+			# PoC ts:370-375: pointerdown → setScale(0.96) → delayedCall(16) → resetVisual + onClick。
+			#   旧版 pressed.connect(cb) 在松手同帧立刻 change_scene → press 缩放没机会渲染 = "点了没动画"。
+			btn.button_down.connect(_btn_press.bind(holder, frame_node, cb))
 	return holder
 
 
@@ -615,8 +618,8 @@ func _tile(icon_key: String, label: String, cb: Callable, pos: Vector2, sub_valu
 		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		# 有 subValue(战绩) 时图标缩到 0.58 + 上移 size*0.10 给文字让位 (1:1 PoC makeSquareTile)
 		var has_sub := sub_value != ""
-		var isz := roundi(sz * (0.58 if has_sub else 0.62))   # PoC ts:574
-		var iy_off := -sz * 0.10 if has_sub else -6.0
+		var isz := roundi(sz * (0.58 if has_sub else 0.72))   # 无sub图标(教程❓)填满些 (原0.62偏小)
+		var iy_off := -sz * 0.10 if has_sub else 0.0          # 无sub → 正居中(原-6上偏→与旁边⚙不齐·歪·用户2026-07-18)
 		ic.size = Vector2(isz, isz); ic.position = Vector2((sz - isz) / 2.0, (sz - isz) / 2.0 + iy_off)
 		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE; holder.add_child(ic)
 		if has_sub:
