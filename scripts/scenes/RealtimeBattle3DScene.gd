@@ -202,9 +202,9 @@ const REVIEW_DEMO_CFG := {
 	"chest:3": [ {"dx": 220.0, "dy": 0.0, "fixed": true}, {"dx": 420.0, "dy": 0.0, "fixed": true}, {"dx": 620.0, "dy": 0.0, "fixed": true} ],   # 财宝炮击(2026-07-15换皮金币洪流): 3假人一线→蓄力0.4s→喷金币+金块洪流·线上各3A物理+击飞击退+命中金币爆
 	"chest:-1": [ {"dx": 110.0, "dy": -50.0, "fixed": true}, {"dx": 110.0, "dy": 50.0, "fixed": true} ],   # 藏宝图被动: 贴脸2假人→出伤攒财宝值→开箱(头顶弹战利品图标+金环+回血·基础→进阶→传说一场最多5件)
 	"elite:0": [ {"dx": 130.0, "dy": 0.0} ],   # 精英小将(虐杀原形)普攻+旋刃: 1假人→长手刃1A黑红刀光·第5击旋刃360°1.3A+吸血50%
-	"elite:1": [ {"dx": 520.0, "dy": 0.0, "fixed": true} ],   # 铁锁: 假人520码(在200~600触发带内)→链射顿+眩晕0.4s→拉体落身后1A魔(demo每~4.5s传回再看·范围2026-07-18改200~600)
+	"elite:1": [ {"dx": 300.0, "dy": 0.0, "fixed": true} ],   # 铁锁: 假人300码(在150~350触发带内)→链射顿+眩晕0.4s→拉体落身后1A魔(demo每~4.5s传回再看·范围2026-07-18改150~350)
 	"elite:2": [ {"dx": 200.0, "dy": -60.0, "fixed": true}, {"dx": 350.0, "dy": 40.0, "fixed": true}, {"dx": 450.0, "dy": -30.0, "fixed": true} ],   # 铁锤: 3固定假人在锥内→60°500码8波刺浪1.5A+击飞·每第3次跃起700码全域3A+击飞1.2s
-	"elite:-1": [ {"dx": 520.0, "dy": 0.0, "fixed": true} ],   # 吞噬+铁链二合一(用户2026-07-16): 远假人520码钉18%残血带技能→铁链拉体→砍→吞噬(复活循环)→传回左侧再铁链
+	"elite:-1": [ {"dx": 300.0, "dy": 0.0, "fixed": true} ],   # 吞噬+铁链二合一(用户2026-07-16): 假人300码钉18%残血带技能→铁链拉体→砍→吞噬(复活循环)→传回左侧再铁链
 	"space:0": [ {"dx": 320.0, "dy": 0.0, "fixed": true} ],   # 星光弹普攻: 单假人射程内→星形弹道+0.9A魔+5%当前HP+星能追加真伤(白字)
 	"space:1": [ {"dx": 250.0, "dy": -70.0, "fixed": true}, {"dx": 420.0, "dy": 0.0, "fixed": true}, {"dx": 600.0, "dy": 70.0, "fixed": true} ],   # 虫洞: 3假人沿线→140码/s缓慢黑洞推进+吸经过敌90码+星尘吸入粒子
 	"space:2": [ {"dx": 220.0, "dy": -90.0, "fixed": true}, {"dx": 220.0, "dy": 90.0, "fixed": true}, {"dx": 360.0, "dy": 0.0, "fixed": true} ],   # 星波(星能满→彗星): 3假人→环形星波+满能紫环预警1s→流星斜射→尘暴星星闪点冲击环
@@ -3666,7 +3666,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 
 	_tick_skill_cd(u, delta)        # 技能冷却(=龟能充能)走时间; ★但眩晕/击飞/风暴期内部直接return→龟能锁定不充(见_tick_skill_cd)
 	_tick_bulwark(u)                # 水晶壁垒监视: 盾到期/被打破→直线水晶刺+解锁龟能(用户2026-07-16)
-	_tick_elite_whip(u)             # 精英小将铁锁(Whipfist): 索敌200~600码之间→链拉体(CD5s·虐杀原形改造·范围2026-07-18改)
+	_tick_elite_whip(u)             # 精英小将铁锁(Whipfist): 索敌150~350码之间→链拉体(CD5s·虐杀原形改造·范围2026-07-18改)
 	u["atk_cd"] = maxf(0.0, float(u.get("atk_cd", 0.0)) - delta)   # 普攻冷却也始终走 (漏了它→打一下就再不普攻=用户报的"整个没普攻"; 召唤体也安全)
 	if int(u.get("allin_coins", 0)) > 0:
 		_fortune_allin_channel(u, delta)
@@ -12373,14 +12373,14 @@ func _elite_steal_skill_type(tref: Dictionary) -> String:        # 吞噬偷技:
 		if _IMPL_SKILLS.has(stype): return stype
 	return ""
 
-func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁锁(Whipfist Longshot·CD5s用户拍板): 索敌 200~600码之间→链射→顿+目标眩晕0.4s→拉体落身后+1A魔法(用户2026-07-18: 触发范围>350改为200~600码之间)
+func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁锁(Whipfist Longshot·CD5s用户拍板): 索敌 150~350码之间→链射→顿+目标眩晕0.4s→拉体落身后+1A魔法(用户2026-07-18: 触发范围>350改为150~350码之间)
 	if not (u.get("is_elite", false) and u.get("alive", false)): return
 	if u.get("_slam", false) or u.get("airborne", false): return
 	if _t < float(u.get("_whip_cd", 0.0)) or _t < float(u.get("stun_until", 0.0)): return
 	var tgt = _acquire_target(u)
 	if tgt == null or not tgt.get("alive", false): return
 	var d: float = (tgt["pos"] as Vector2).distance_to(u["pos"])
-	if d < 200.0 or d > 600.0:
+	if d < 150.0 or d > 350.0:
 		if _review_demo() and _review_turtle() == "elite" and (_review_skill_idx() == 1 or _review_skill_idx() == -1) and _t >= float(u.get("_whipdemo_next", 1.0e9)):
 			u["_whipdemo_next"] = 1.0e9                           # demo: 拉体完成后~4.5s传回左侧再看一次铁锁
 			_elite_mist(u["pos"] as Vector2, 0.6, 3)
