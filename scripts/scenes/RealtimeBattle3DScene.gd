@@ -18350,16 +18350,13 @@ func _show_banner(won: bool) -> void:
 	rew.size = Vector2(1280, 30); rew.position = Vector2(0, 350)
 	rew.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_ui_layer.add_child(rew)
-	# 结束操作按钮化 (用户 2026-07-11「不要点R/ESC, 要按钮」): 再战 / 返回菜单 两个 Button.
-	#   键盘 R/ESC 仍在 _unhandled_input 里作桌面快捷保留, 但不再显示文案(手机无键盘, 按钮为主).
+	# 结束操作按钮化: 只留「返回菜单」(用户2026-07-18"匹配里不应该有再战": 再战=reload重打同对手, roguelike流程不该原地重战→删).
 	var btn_row := HBoxContainer.new()
 	btn_row.add_theme_constant_override("separation", 28)
 	btn_row.position = Vector2(0, 392)
 	btn_row.size = Vector2(1280, 48)
 	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_ui_layer.add_child(btn_row)
-	btn_row.add_child(_make_result_btn("⚔ 再战", Color("#ffd93d"), Color("#3a2a00"),
-		func() -> void: get_tree().reload_current_scene()))
 	btn_row.add_child(_make_result_btn("🏠 返回菜单", Color("#5aa0d8"), Color("#04121e"),
 		func() -> void: get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")))
 	_build_stats_panel()             # #2 战斗统计面板
@@ -18783,7 +18780,11 @@ func _edit_handle_mouse_motion(ev: InputEventMouseMotion) -> void:
 
 # 摆放一个单位: 复用 _make_unit, 右队按调试场设置改成假人 (不动/不打/可设血/可不死).
 func _edit_place_unit(id: String, side: String, pos: Vector2) -> Dictionary:
-	var u := _make_unit(id, side, pos)
+	var u: Dictionary
+	if id == "__minion__":   # 调试场摆小将(用户2026-07-18"调试场需要加入小将"): 前排近战默认·可切
+		u = _make_unit("__minion__", side, pos, {"minion": true, "role": "front", "elite": false, "level": maxi(1, int(_edit_dummy_hp / 300.0))})
+	else:
+		u = _make_unit(id, side, pos)
 	if side == "right":
 		u["no_basic"] = true
 		u["no_move"] = true
@@ -18933,9 +18934,13 @@ func _build_edit_palette() -> void:
 	vb.add_child(title)
 
 	var row1 := HBoxContainer.new(); row1.add_theme_constant_override("separation", 8); vb.add_child(row1)
-	_edit_btn_pick = _edit_mk_btn("选龟", func(): _edit_open_turtle_grid(), 170)
+	_edit_btn_pick = _edit_mk_btn("选龟", func(): _edit_open_turtle_grid(), 150)
 	row1.add_child(_edit_btn_pick)
-	_edit_btn_side = _edit_mk_btn("左队", func(): _edit_toggle_side(), 110)
+	row1.add_child(_edit_mk_btn("小将", func() -> void:   # 选小将笔刷(用户2026-07-18): 点空地即摆小将·假人HP/星级/左右队沿用当前设置
+		_edit_pick_id = "__minion__"
+		if _edit_btn_pick != null: _edit_btn_pick.text = "当前: 小将"
+		_edit_set_status("已选 小将 → 点空地摆放 (再点『选龟』换回龟)"), 96))
+	_edit_btn_side = _edit_mk_btn("左队", func(): _edit_toggle_side(), 100)
 	row1.add_child(_edit_btn_side)
 
 	var row_hp := HBoxContainer.new(); row_hp.add_theme_constant_override("separation", 8); vb.add_child(row_hp)

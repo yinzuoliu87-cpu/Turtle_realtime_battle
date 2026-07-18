@@ -137,6 +137,25 @@ func _build_bench_preview() -> void:
 		e.add_theme_font_size_override("font_size", 14); e.add_theme_color_override("font_color", Color("#5a6675"))
 		e.position = Vector2(84, 592); e.size = Vector2(400, 22); add_child(e)
 
+# 已拥有该装备件数(背包+统领已装+小将已装): 商店卡标"已有N"→知道再买几件凑3合1升星(用户2026-07-18"看不到已装备/不知道多少件才2/3星")
+func _owned_count(item_id: String) -> int:
+	if item_id == "": return 0
+	var n := 0
+	for it in GameState.persistent_bench:
+		if it is Dictionary and str(it.get("id", "")) == item_id: n += 1
+	if GameState.persistent_equipped is Dictionary:
+		for pid in GameState.persistent_equipped:
+			for it2 in GameState.persistent_equipped[pid]:
+				if it2 is Dictionary and str(it2.get("id", "")) == item_id: n += 1
+	if GameState.has_method("get_dual_lineup"):
+		var lineup: Dictionary = GameState.get_dual_lineup()
+		for lk in ["top", "bottom"]:
+			for u in lineup.get(lk, []):
+				if u is Dictionary and u.get("equips", null) is Array:
+					for it3 in u["equips"]:
+						if it3 is Dictionary and str(it3.get("id", "")) == item_id: n += 1
+	return n
+
 func _rarity_color(rarity: String) -> Color:
 	match rarity:
 		"精良": return Color("#4ade80")
@@ -178,6 +197,12 @@ func _card(idx: int, pos: Vector2) -> Control:
 	nm.position = Vector2(2, 74); nm.size = Vector2(SLOT_W - 4, 28)
 	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(nm)
+	var owned := _owned_count(str(edef.get("id", "")))   # 已拥有件数(凑3件同款同星→自动升星)
+	if owned > 0:
+		var oc := Label.new(); oc.text = "已有%d" % owned
+		oc.add_theme_font_size_override("font_size", 12); oc.add_theme_color_override("font_color", Color("#ffd93d") if owned >= 2 else Color("#9fb6c9"))
+		oc.position = Vector2(SLOT_W - 66, 6); oc.size = Vector2(60, 18); oc.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		box.add_child(oc)
 	var price := _price(edef)
 	var afford := int(GameState.meta_deepsea_coins) >= price
 	var pr := Label.new(); pr.text = "💠 %d" % price
