@@ -27,6 +27,8 @@ var _bg_tile: TextureRect   # 平铺图 (resize 时重设尺寸)
 
 
 func _ready() -> void:
+	if OS.has_environment("PH_DEMO"):   # dev: 模拟大轮开局(未打第一场) → 看商店键灰锁
+		GameState.season_total_battles = 0
 	await get_tree().process_frame
 	# 1:1 PoC: 背景铺满整个窗口(无黑边), 内容 1280×720 居中。EXPAND → 视口随窗口比例扩展(不裁不缩内容)。
 	#   16:9 屏 EXPAND 不扩展 = 与旧 FIT 完全一致(无回归); 非 16:9 时背景填满、内容居中。
@@ -186,15 +188,19 @@ func _build_page_buttons(_page: String, _on_first_load: bool) -> void:
 		["图鉴", func(): _go("Codex"), mic + "ic-codex.png"],
 		["排行榜", func(): _go("Leaderboard"), mic + "ic-trophy.png"],
 	]
+	var shop_locked := int(GameState.season_total_battles) <= 0   # 大轮未打第一场 → 商店锁(用户2026-07-18: 灰显+把锁)
 	for i in range(subs.size()):
 		var s: Array = subs[i]
 		var r := i / 2                                       # 行 0,0,1,1
 		var c := i % 2                                       # 列 0,1,0,1
 		var center := Vector2(LEFT_CX - col_dx + float(c) * (gsz.x + gap_x), grid_cy0 + float(r) * (gsz.y + gap_y))
-		var b := _frame_button(s[0], s[1], false, gsz, 22, str(s[2]))
+		var dis := (str(s[0]) == "商店") and shop_locked      # 商店锁 → 灰显禁用+🔒角标(不再靠点后toast)
+		var b := _frame_button(s[0], s[1], dis, gsz, 22, str(s[2]))
 		b.position = center - gsz / 2.0
 		b.set_meta("home_y", b.position.y)
 		page_box.add_child(b)
+		if dis:
+			_add_lock_badge(b, gsz)
 		_slide_in_left(b, i + 1)
 
 
@@ -207,6 +213,18 @@ func _slide_in_left(holder: Control, idx: int) -> void:
 	tw.tween_interval(0.5 + 0.08 * float(idx))
 	tw.tween_property(holder, "position:x", home_x, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.parallel().tween_property(holder, "modulate:a", 1.0, 0.42)
+
+
+## 锁定角标: 右上角 🔒 (商店未开时叠在灰框上, 一眼看出锁着)
+func _add_lock_badge(holder: Control, size: Vector2) -> void:
+	var lock := Label.new()
+	lock.text = "🔒"
+	lock.add_theme_font_size_override("font_size", 26)
+	lock.position = Vector2(size.x - 36.0, 2.0)
+	lock.size = Vector2(32, 32)
+	lock.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(lock)
 
 
 ## btn-frame.png 金色边框按钮 (NinePatchRect 9宫格保证渲染 + 透明Button点击 + 文字)
