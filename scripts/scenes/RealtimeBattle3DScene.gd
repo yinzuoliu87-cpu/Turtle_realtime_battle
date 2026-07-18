@@ -3669,6 +3669,12 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 
 	# --- 击飞真物理: vy 受重力, height 积分; 横向同时滑 (XZ 像素坐标方向) ---
 	if u["airborne"]:
+		# 飞镖056: 任何单位被击飞→敌侧有飞镖携带者就标"靶子"(用户2026-07-18「很多被击飞没触发」: 原来只在_knockback里标·漏了直接设airborne的技能+已在空中再击飞的·这里按airborne态统一捕获·已标则跳过不重复)
+		if _t >= float(u.get("eq_target_until", 0.0)) and not u.get("_isEgg", false):
+			var _foe_side: String = "right" if str(u.get("side", "")) == "left" else "left"
+			if _side_has_equip(_foe_side, "p2eq_056"):
+				u["eq_target_until"] = _t + 99999.0
+				_mark_vfx(u, 99999.0, Color("#ffa040"))
 		u["vy"] += float(u.get("knock_g", GRAVITY)) * delta   # 每次击飞可覆写重力(解耦滞空时长与抛高·如嘲讽砸地 -13.2); 缺省=GRAVITY
 		u["height"] += u["vy"] * delta
 		# 横向滑行换算回像素 (vx/vz 是米/s → /WS = 像素/s)
