@@ -109,6 +109,20 @@ static func make_bot(bracket: int, rng: RandomNumberGenerator) -> Dictionary:
 				eqs.append({"id": shop_ids[rng.randi() % shop_ids.size()], "star": 1})
 		if eqs.size() > 0:
 			equipped[pid] = eqs
+	# 小将补位到每路3单位 + 随机装备(用户2026-07-18「快照里对面小将没有装备」根因: make_bot原来根本没minions字段→bot小将全裸; 镜像build_ghost_snapshot补上)
+	var minions := {"top": [], "bottom": []}
+	for lk in ["top", "bottom"]:
+		var lead_cnt: int = (lane_assign[lk] as Array).size()
+		var want: int = clampi(3 - lead_cnt, 0, 3)
+		for mi in range(want):
+			var meqs: Array = []
+			for _j in range(slots):
+				if shop_ids.size() > 0:
+					meqs.append({"id": shop_ids[rng.randi() % shop_ids.size()], "star": 1})
+			var m := {"role": "front" if mi == 0 else "back", "elite": (lead_cnt == 0 and mi == 0)}
+			if meqs.size() > 0:
+				m["equips"] = meqs
+			(minions[lk] as Array).append(m)
 	return {
 		"schema_ver": 1,
 		"ghost_id": "bot_%d_%d" % [bracket, rng.randi() % 1000000],
@@ -117,6 +131,7 @@ static func make_bot(bracket: int, rng: RandomNumberGenerator) -> Dictionary:
 		"profile": {"name": "海域守卫", "avatar": str(leaders[0]) if leaders.size() > 0 else "basic", "id": "BOT"},
 		"leaders": leaders,
 		"lane_assign": lane_assign,
+		"minions": minions,
 		"loadouts": {},
 		"equipped": equipped,
 		"pet_levels": levels,

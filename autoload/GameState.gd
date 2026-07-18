@@ -1101,6 +1101,15 @@ func auto_merge_all() -> void:
 			for eit in persistent_equipped[pet]:
 				var ke := "%s|%d" % [str(eit.get("id", "")), int(eit.get("star", 1))]
 				counts[ke] = int(counts.get(ke, 0)) + 1
+		# ★小将(dual_lineup)装的也进合成池(用户2026-07-18「买两件也不合成」根因: 龟身1星在小将上→auto_merge_all原来只扫背包+统领·漏小将→凑不齐3件; 商店"已有N"却算了小将→显示3却不合=矛盾)
+		if dual_lineup is Dictionary:
+			for lane in ["top", "bottom"]:
+				for mu in (dual_lineup.get(lane, []) as Array):
+					if mu is Dictionary and (mu as Dictionary).get("equips") is Array:
+						for meit in ((mu as Dictionary)["equips"] as Array):
+							if meit is Dictionary:
+								var km := "%s|%d" % [str(meit.get("id", "")), int(meit.get("star", 1))]
+								counts[km] = int(counts.get(km, 0)) + 1
 		for k in counts.keys():
 			if int(counts[k]) < 3:
 				continue
@@ -1110,7 +1119,9 @@ func auto_merge_all() -> void:
 			if star >= 3:
 				continue
 			var removed := 0
-			var host_pet := ""                            # 有龟身件被合 → 记第一只龟(升星件放回它)
+			var host_pet := ""                            # 有统领件被合 → 记第一只龟(升星件放回它)
+			var host_lane := ""                           # 或有小将件被合 → 记第一只小将(升星件放回它)
+			var host_idx := -1
 			var bi := 0                                     # 先从背包移(纯背包合成行为不变)
 			while bi < persistent_bench.size() and removed < 3:
 				if not is_equip_item(persistent_bench[bi]):
@@ -1120,7 +1131,7 @@ func auto_merge_all() -> void:
 					persistent_bench.remove_at(bi); removed += 1
 				else:
 					bi += 1
-			if removed < 3:                                 # 不够再从龟身移
+			if removed < 3:                                 # 不够再从统领龟身移
 				for pet2 in persistent_equipped.keys():
 					var eqs: Array = persistent_equipped[pet2]
 					var ei := 0
@@ -1134,8 +1145,31 @@ func auto_merge_all() -> void:
 					persistent_equipped[pet2] = eqs
 					if removed >= 3:
 						break
-			if host_pet != "":
+			if removed < 3 and dual_lineup is Dictionary:   # 还不够再从小将(dual_lineup)移
+				for lane2 in ["top", "bottom"]:
+					var arr2: Array = dual_lineup.get(lane2, [])
+					for midx in range(arr2.size()):
+						if removed >= 3: break
+						var mu2 = arr2[midx]
+						if not (mu2 is Dictionary) or not ((mu2 as Dictionary).get("equips") is Array): continue
+						var meqs: Array = (mu2 as Dictionary)["equips"]
+						var mei := 0
+						while mei < meqs.size() and removed < 3:
+							var mit = meqs[mei]
+							if mit is Dictionary and str(mit.get("id", "")) == iid and int(mit.get("star", 1)) == star:
+								meqs.remove_at(mei); removed += 1
+								if host_pet == "" and host_lane == "": host_lane = lane2; host_idx = midx
+							else:
+								mei += 1
+						(mu2 as Dictionary)["equips"] = meqs
+					if removed >= 3: break
+			if host_pet != "":                              # 升星件优先装回统领
 				persistent_equipped[host_pet].append({"id": iid, "star": star + 1})
+			elif host_lane != "" and host_idx >= 0:         # 否则装回小将
+				var hu: Dictionary = (dual_lineup[host_lane] as Array)[host_idx]
+				var heq: Array = hu.get("equips", []) if hu.get("equips") is Array else []
+				heq.append({"id": iid, "star": star + 1})
+				hu["equips"] = heq
 			else:
 				persistent_bench.append({"id": iid, "star": star + 1})
 			changed = true

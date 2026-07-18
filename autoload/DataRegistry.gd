@@ -40,8 +40,7 @@ func _ready() -> void:
 	all_pets = _load_json_array("res://data/pets.json")
 	for pet in all_pets:
 		pet_by_id[pet["id"]] = pet
-		if str(pet.get("id", "")) in LAUNCH_IDS:
-			launch_pets.append(pet)
+		launch_pets.append(pet)   # 用户2026-07-18「把28只龟全部变为选龟可用」: 28龟全封板→全部上线(原LAUNCH_IDS只11只的门控已废, 常量保留供未来分批上线参考)
 
 	pet_synergy_tags = _load_json_dict("res://data/pet-synergy-tags.json")
 

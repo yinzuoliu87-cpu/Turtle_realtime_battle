@@ -84,6 +84,7 @@ func _rebuild() -> void:
 	rf.position = Vector2(W / 2.0 - 110, gy + 2 * (SLOT_H + 28) + 16); rf.size = Vector2(220, 48)
 	rf.pressed.connect(_on_refresh); add_child(rf)
 	_build_bench_preview()
+	_build_lineup_equips()   # 用户2026-07-18「商店里看不到装备在龟身上的东西」→ 右侧只读阵容+已装备面板
 
 ## ★#2 出货概率行(云顶式): 当前大轮等级下各费用档(1-5)的出货概率%. 每费用色=对应稀有度色, 0%淡显.
 func _build_odds_row() -> void:
@@ -136,6 +137,66 @@ func _build_bench_preview() -> void:
 		var e := Label.new(); e.text = "（空 — 上面买几件）"
 		e.add_theme_font_size_override("font_size", 14); e.add_theme_color_override("font_color", Color("#5a6675"))
 		e.position = Vector2(84, 592); e.size = Vector2(400, 22); add_child(e)
+
+# 右侧只读面板: 出战阵容(上/下路6单位)每个龟/小将身上装了什么(用户2026-07-18「商店里看不到装备在龟身上的东西」)。在🎒背包页调整; 这里只看。
+func _build_lineup_equips() -> void:
+	var lineup: Dictionary = GameState.get_dual_lineup() if GameState.has_method("get_dual_lineup") else {}
+	var px := 730.0
+	var hdr := Label.new(); hdr.text = "🐢 出战阵容 · 已装备（回 🎒 背包页调整）"
+	hdr.add_theme_font_size_override("font_size", 16); hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
+	hdr.position = Vector2(px, 148); hdr.size = Vector2(540, 22); add_child(hdr)
+	var row := 0
+	for lk in ["top", "bottom"]:
+		for u in (lineup.get(lk, []) as Array):
+			if not (u is Dictionary): continue
+			var y := 178.0 + row * 56.0
+			row += 1
+			var is_leader := str(u.get("kind", "")) == "leader"
+			var nm := ""
+			if is_leader:
+				nm = str(DataRegistry.pet_by_id.get(str(u.get("id", "")), {}).get("name", u.get("id", "龟")))
+			elif bool(u.get("elite", false)):
+				nm = "精英小将"
+			else:
+				nm = "近战小将" if str(u.get("role", "front")) == "front" else "远程小将"
+			var nl := Label.new(); nl.text = "%s·%s" % ["上" if lk == "top" else "下", nm]
+			nl.add_theme_font_size_override("font_size", 15); nl.add_theme_color_override("font_color", Color("#e8f2ff"))
+			nl.position = Vector2(px, y + 16); nl.size = Vector2(122, 24); add_child(nl)
+			var eqs: Array = []
+			if is_leader:
+				var pe = GameState.persistent_equipped.get(str(u.get("id", "")), []) if GameState.persistent_equipped is Dictionary else []
+				if pe is Array: eqs = pe
+			elif u.get("equips") is Array:
+				eqs = u["equips"]
+			if eqs.is_empty():
+				var e := Label.new(); e.text = "（无装备）"
+				e.add_theme_font_size_override("font_size", 13); e.add_theme_color_override("font_color", Color("#5a6675"))
+				e.position = Vector2(px + 130, y + 18); e.size = Vector2(200, 22); add_child(e)
+			else:
+				for ci in range(mini(eqs.size(), 6)):
+					var it: Dictionary = eqs[ci]
+					var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(it.get("id", "")), {})
+					var cell := Panel.new()
+					var csb := StyleBoxFlat.new(); csb.bg_color = Color("#162230")
+					csb.border_color = _rarity_color(str(edef.get("rarity", "普通"))); csb.set_border_width_all(2); csb.set_corner_radius_all(6)
+					cell.add_theme_stylebox_override("panel", csb)
+					cell.position = Vector2(px + 130 + ci * 56, y); cell.size = Vector2(50, 50)
+					cell.tooltip_text = "%s ★%d" % [str(edef.get("name", "?")), int(it.get("star", 1))]
+					add_child(cell)
+					var img := str(edef.get("img", ""))
+					if img != "" and ResourceLoader.exists("res://assets/sprites/" + img):
+						var ic := TextureRect.new(); ic.texture = load("res://assets/sprites/" + img)
+						ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+						ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+						ic.position = Vector2(9, 3); ic.size = Vector2(32, 30); ic.mouse_filter = Control.MOUSE_FILTER_IGNORE; cell.add_child(ic)
+					var st := Label.new(); st.text = "★".repeat(int(it.get("star", 1)))
+					st.add_theme_font_size_override("font_size", 10); st.add_theme_color_override("font_color", Color("#ffd93d"))
+					st.position = Vector2(0, 35); st.size = Vector2(50, 14); st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+					st.mouse_filter = Control.MOUSE_FILTER_IGNORE; cell.add_child(st)
+	if row == 0:
+		var e2 := Label.new(); e2.text = "（尚未编排出战阵容 · 去背包/选龟）"
+		e2.add_theme_font_size_override("font_size", 14); e2.add_theme_color_override("font_color", Color("#5a6675"))
+		e2.position = Vector2(px, 182); e2.size = Vector2(400, 22); add_child(e2)
 
 # 已拥有该装备件数(背包+统领已装+小将已装): 商店卡标"已有N"→知道再买几件凑3合1升星(用户2026-07-18"看不到已装备/不知道多少件才2/3星")
 func _owned_count(item_id: String) -> int:
