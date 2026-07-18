@@ -19332,7 +19332,7 @@ func _edit_snapshot_setup() -> void:
 			"hp": float(u.get("maxHp", 500.0)),
 			"killable": not bool(u.get("_review_dummy", false)) if str(u["side"]) == "right" else true,
 			"equips": u.get("_edit_equips", []),
-			"minion": bool(u.get("is_minion", false)),
+			"minion": str(u.get("id", "")) == "__minion__",   # 小将靠id判定(单位字典不存is_minion·只有is_elite)→存盘/JSON正确; 重建另有id兜底
 			"role": str(u.get("_edit_minion_role", "front")),
 			"level": int(u.get("_edit_minion_lvl", 1)),
 		})
