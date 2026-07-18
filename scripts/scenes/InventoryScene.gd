@@ -104,9 +104,9 @@ func _lineup_ids() -> Array:
 	return []
 
 # ─── 上部: 双路布阵 (上战场/下战场, 3统领+3小将分3+3; 点头像互换分路, 点小将切前/后排) ───
-const UBOX_W := 176.0   # 阵容单位框(放大·2026-07-18大改)
-const UBOX_H := 102.0
-const UBOX_GAP := 12.0
+const UBOX_W := 244.0   # 阵容单位框(再放大·填左侧空间+适手机点触·用户2026-07-19)
+const UBOX_H := 116.0
+const UBOX_GAP := 16.0
 
 func _build_lineup(_leaders: Array) -> void:
 	var lineup := GameState.get_dual_lineup()
@@ -139,7 +139,7 @@ func _build_lineup(_leaders: Array) -> void:
 	help.pressed.connect(func(): _show_lineup_help())
 	add_child(help)
 	# 两条"战场带"(染色圆角底 + 战场名 + 编成计数) → 一眼看出上/下是两个各自开打的战场
-	for lane_info in [["上战场", "top", 106.0, Color("#ffd93d"), Color(0.24, 0.19, 0.06)], ["下战场", "bottom", 244.0, Color("#7fd0ff"), Color(0.05, 0.14, 0.24)]]:
+	for lane_info in [["上战场", "top", 108.0, Color("#ffd93d"), Color(0.24, 0.19, 0.06)], ["下战场", "bottom", 254.0, Color("#7fd0ff"), Color(0.05, 0.14, 0.24)]]:
 		var bf := str(lane_info[0]); var lkey := str(lane_info[1]); var by := float(lane_info[2])
 		var lcol: Color = lane_info[3]; var bandbg: Color = lane_info[4]
 		var arr: Array = lineup.get(lkey, [])
@@ -191,9 +191,9 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 	if is_ph:
 		var q := Label.new()
 		q.text = "?"
-		q.add_theme_font_size_override("font_size", 44)
+		q.add_theme_font_size_override("font_size", 52)
 		q.add_theme_color_override("font_color", Color("#9fb2c8"))
-		q.position = Vector2(0, 0); q.size = Vector2(UBOX_W, 46)
+		q.position = Vector2(0, 0); q.size = Vector2(UBOX_W, 58)
 		q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		q.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(q)
 	else:
@@ -205,7 +205,7 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		if ResourceLoader.exists(img_path):
 			var a := TextureRect.new(); a.texture = load(img_path)
 			a.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; a.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED; a.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			a.position = Vector2(UBOX_W / 2.0 - 36, 2); a.size = Vector2(72, 44); a.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(a)
+			a.position = Vector2(UBOX_W / 2.0 - 48, 2); a.size = Vector2(96, 56); a.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(a)
 	var nm := Label.new()
 	if is_ph:
 		nm.text = "统领%d" % (int(unit.get("slot", idx)) + 1)
@@ -214,15 +214,15 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		nm.text = str(pet.get("name", pid))
 	else:
 		nm.text = "精英小将" if is_elite else "小将"
-	nm.add_theme_font_size_override("font_size", 14); nm.add_theme_color_override("font_color", Color("#e8f2ff"))
-	nm.position = Vector2(0, 47); nm.size = Vector2(UBOX_W, 18); nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; nm.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(nm)
+	nm.add_theme_font_size_override("font_size", 15); nm.add_theme_color_override("font_color", Color("#e8f2ff"))
+	nm.position = Vector2(0, 60); nm.size = Vector2(UBOX_W, 18); nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; nm.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(nm)
 	# 装备格(可点卸那一件) — 占位统领无真龟, 不建装备格, 改提示
 	if is_ph:
 		var hint := Label.new()
 		hint.text = "选龟后填入"
 		hint.add_theme_font_size_override("font_size", 11)
 		hint.add_theme_color_override("font_color", Color("#7f8fa0"))
-		hint.position = Vector2(0, 72); hint.size = Vector2(UBOX_W, 16)
+		hint.position = Vector2(0, 88); hint.size = Vector2(UBOX_W, 16)
 		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; hint.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(hint)
 	else:
 		var eqs: Array = []
@@ -232,7 +232,7 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		elif unit.get("equips", null) is Array:
 			eqs = unit.get("equips", [])
 		var slots := P2.equip_slots_for_level(int(GameState.season_level))
-		_build_equip_cells(box, 70.0, eqs, slots, kind == "leader", pid, lane, idx)
+		_build_equip_cells(box, 84.0, eqs, slots, kind == "leader", pid, lane, idx)
 	# 小将 前排/后排 (清楚的可点标签 pill: 前排=橙/近战, 后排=青/射击) — 精英小将=统领替身, 不显前后排(用户2026-07-18)
 	if kind == "minion" and not is_elite:
 		var front := str(unit.get("role", "front")) == "front"
@@ -248,7 +248,7 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		tgl.add_theme_stylebox_override("hover", tsb)
 		tgl.add_theme_stylebox_override("pressed", tsb)
 		tgl.add_theme_color_override("font_color", Color("#ffdba8") if front else Color("#b8e8ff"))
-		tgl.position = Vector2(UBOX_W - 48.0, 3.0); tgl.size = Vector2(44, 20)
+		tgl.position = Vector2(UBOX_W - 58.0, 4.0); tgl.size = Vector2(54, 22)
 		tgl.pressed.connect(func(): _dl_toggle_role(lane, idx))
 		box.add_child(tgl)
 	box.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _dl_click(lane, idx))
@@ -256,7 +256,7 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 
 ## 单位身上的装备格一行: 填充格显图标·点它=卸那一件(无选中时); 选中装备时格子透传→点框body装备.
 func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, is_leader: bool, pet_id: String, lane: String, idx: int) -> void:
-	var cw := 28.0
+	var cw := 30.0
 	var gap := 6.0
 	var total := float(slots) * cw + maxf(0.0, float(slots - 1)) * gap
 	var x0 := UBOX_W / 2.0 - total / 2.0
@@ -432,13 +432,19 @@ func _build_synergy_panel(leaders: Array) -> void:
 	var hdr := Label.new(); hdr.text = "类型羁绊  (点看详情)"
 	hdr.add_theme_font_size_override("font_size", 17); hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
 	hdr.position = Vector2(x0, 100); hdr.size = Vector2(w, 24); add_child(hdr)
+	var cy := 132.0
+	if _sel_bench >= 0:   # 装备模式上下文提示: 引导玩家凑同类型激活/升档羁绊(用户2026-07-19)
+		var ctx := Label.new(); ctx.text = "▸ 给同一只装多件同类型 → 激活 / 升档"
+		ctx.add_theme_font_size_override("font_size", 13); ctx.add_theme_color_override("font_color", Color("#7fe39a"))
+		ctx.position = Vector2(x0, 126); ctx.size = Vector2(w, 18); ctx.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; add_child(ctx)
+		cy = 152.0
 	var active: Array = Phase2Types.calc_active([{"_p2_equips": _team_equips_for_synergy()}])
 	if active.is_empty():
 		var e := Label.new(); e.text = "（给龟 / 小将装多件同类型装备 → 激活羁绊）"
 		e.add_theme_font_size_override("font_size", 13); e.add_theme_color_override("font_color", Color("#5a6675"))
-		e.position = Vector2(x0, 132); e.size = Vector2(w, 40); e.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; add_child(e)
+		e.position = Vector2(x0, cy); e.size = Vector2(w, 40); e.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; add_child(e)
 		return
-	var y := 132.0
+	var y := cy
 	for a in active:
 		var t := str(a.get("type", ""))
 		var tier := int(a.get("tier", 1))
@@ -527,11 +533,11 @@ func _build_bench() -> void:
 	hdr.text = "装备背包  (永不丢 · 战后全收 · 可上下滑动)"
 	hdr.add_theme_font_size_override("font_size", 18)
 	hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
-	hdr.position = Vector2(40, 364); hdr.size = Vector2(_vw - 80, 26)
+	hdr.position = Vector2(40, 386); hdr.size = Vector2(_vw - 80, 26)
 	add_child(hdr)
 	var bench: Array = GameState.persistent_bench if GameState.persistent_bench is Array else []
 	var gx := 40.0
-	var top := 396.0
+	var top := 418.0
 	var pitch := SLOT + 16.0
 	var scroll_w := _vw - 2.0 * gx
 	var scroll_h := 630.0 - top             # 到操作条上方
@@ -539,7 +545,7 @@ func _build_bench() -> void:
 	scroll.position = Vector2(gx, top)
 	scroll.custom_minimum_size = Vector2(scroll_w, scroll_h); scroll.size = Vector2(scroll_w, scroll_h)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER   # 隐滚动条·保留拖动滚动(用户2026-07-19·跟选龟一致)
 	add_child(scroll)
 	var content := Control.new()
 	content.mouse_filter = Control.MOUSE_FILTER_PASS   # 触屏拖动透传→ScrollContainer 滚动
