@@ -4970,7 +4970,7 @@ func _conch_transform(pos2d: Vector2) -> void:
 	for k in range(6):
 		_bone_speck(pos2d + Vector2(randf_range(-30, 30), randf_range(-30, 30)))
 
-const _EQ_CUSTOM_IV := {"p2eq_004": 6.0, "p2eq_048": 8.0, "p2eq_022": 8.0, "p2eq_028": 6.0, "p2eq_030": 7.0, "p2eq_031": 8.0, "p2eq_037": 5.0, "p2eq_038": 6.0, "p2eq_040": 6.0, "p2eq_042": 8.0, "p2eq_052": 4.0}
+const _EQ_CUSTOM_IV := {"p2eq_004": 6.0, "p2eq_048": 8.0, "p2eq_049": 8.0, "p2eq_022": 8.0, "p2eq_028": 6.0, "p2eq_030": 7.0, "p2eq_031": 8.0, "p2eq_037": 5.0, "p2eq_038": 6.0, "p2eq_040": 6.0, "p2eq_042": 8.0, "p2eq_052": 4.0}
 func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
@@ -4986,6 +4986,7 @@ func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 			match iid:
 				"p2eq_004": _eq_tyrantfang_tick(u, si)
 				"p2eq_048": _eq_pistol_volley(u, si)
+				"p2eq_049": _eq_crossbow_volley(u, si)
 				"p2eq_022": _eq_fuel_throw(u, si)
 				"p2eq_028": _eq_ice_throw(u, si)
 				"p2eq_030": _eq_crystal_line(u, si)
@@ -5019,6 +5020,20 @@ func _ripple_heal_vfx(pos2d: Vector2, size_px: float) -> void:
 		tw.tween_property(r, "frame", nf - 1, 0.55)
 	tw.tween_property(r, "modulate:a", 0.0, 0.6).set_ease(Tween.EASE_IN)
 	tw.chain().tween_callback(r.queue_free)
+
+func _eq_crossbow_volley(u: Dictionary, si: int) -> void:   # 连发弩049: 每8秒朝最远敌方向依次射1/2/3发, 命中沿途首敌(可被前排挡), 按已损血加伤
+	if not u.get("alive", false): return
+	var far49 := _eq_farthest_enemies(u, false)
+	if far49.is_empty(): return
+	var dir49: Vector2 = (far49[0]["pos"] - u["pos"]).normalized()
+	var fire49 := func():
+		if not u.get("alive", false): return
+		var ft49 = _eq_first_in_line(u, dir49, 42.0)
+		if ft49 == null: return
+		var lost49: float = clampf((1.0 - ft49["hp"] / ft49["maxHp"]) / 0.3, 0.0, 1.0)
+		_muzzle_flash(u["pos"], dir49, Color("#d8f0a8"))
+		_spawn_eq_bolt(u, ft49, _atk_dmg(u, lerpf(0.8, 1.3, lost49), ft49), "res://assets/sprites/vfx/crossbow-bolt.png", Color("#eaffd0"))
+	_queue_shots([1, 2, 3][si], 0.12, fire49, u)
 
 func _eq_pistol_volley(u: Dictionary, si: int) -> void:   # 黄铜手铳048: 每8秒依次射4/5/6发, 每发命中直线首敌(错峰: 枪口闪+子弹+火花)
 	if not u.get("alive", false): return
@@ -21811,18 +21826,8 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 				pass
 			"p2eq_048":   # 黄铜手铳: 改为每8秒定时(_EQ_CUSTOM_IV→_eq_pistol_volley, 用户2026-07-19); on_cast不处理
 				pass
-			"p2eq_049":   # 连发弩: 朝最远敌方向依次射N发, 首敌命中(可被前排挡), 按已损血加伤; 弩矢弹道
-				var far49 := _eq_farthest_enemies(u, false)
-				if not far49.is_empty():
-					var dir49: Vector2 = (far49[0]["pos"] - u["pos"]).normalized()
-					var fire49 := func():
-						if not u.get("alive", false): return
-						var ft49 = _eq_first_in_line(u, dir49, 42.0)
-						if ft49 == null: return
-						var lost49: float = clampf((1.0 - ft49["hp"] / ft49["maxHp"]) / 0.3, 0.0, 1.0)
-						_muzzle_flash(u["pos"], dir49, Color("#d8f0a8"))
-						_spawn_eq_bolt(u, ft49, _atk_dmg(u, lerpf(0.8, 1.3, lost49), ft49), "res://assets/sprites/vfx/crossbow-bolt.png", Color("#eaffd0"))
-					_queue_shots([1, 2, 3][si], 0.12, fire49, u)
+			"p2eq_049":   # 连发弩: 改为每8秒定时(_EQ_CUSTOM_IV→_eq_crossbow_volley, 用户2026-07-19); on_cast不处理
+				pass
 			"p2eq_050":   # 幽灵加特林: 依次快射N发随机分布+减甲(累计上限; 枪口连闪+曳光雨)
 				var g_shred: float = [1.0, 2.0, 3.0][si]
 				var g_cap: float = [15.0, 25.0, 40.0][si]   # 该效果对单个目标累计减甲上限
