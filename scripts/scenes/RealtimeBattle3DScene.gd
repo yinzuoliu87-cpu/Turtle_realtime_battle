@@ -5255,8 +5255,7 @@ func _eq_shotgun_blast(u: Dictionary, si: int) -> void:   # 霰弹贝古053: 朝
 		_shotgun_pellet(u["pos"], endp, Color(1.0, 0.86, 0.5, 0.95), dur53, func() -> void:
 			if not _tg.get("alive", false): return
 			_apply_damage_from(u, _tg, _atk_dmg(u, 0.22, _tg), Color("#ffd07a"), 0.0, false, true)
-			_tg["_sg_hits"] = int(_tg.get("_sg_hits", 0)) + 1
-)
+			_tg["_sg_hits"] = int(_tg.get("_sg_hits", 0)) + 1)
 	# 全部弹珠落地后再判眩晕(命中计数记在单位自身字段 —— 不拿单位字典当Dict键, 见 2026-07-19 卡死教训)
 	if touched.is_empty(): return
 	_pending_shots.append({"delay": maxdur + 0.06, "src": u, "fn": func() -> void:
