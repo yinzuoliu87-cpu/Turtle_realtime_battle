@@ -3243,6 +3243,7 @@ func _process(delta: float) -> void:
 		else:
 			if not _over:
 				for u in _ts_active:
+					_ts_advance_unit_timers(u, delta)   # 先让它自己的状态到期时刻按真实时间走(否则_t冻结→眩晕等永不解除)
 					_tick_unit(u, delta)        # active携带者自由行动(移动/普攻/放技/命中即时结算)
 				_step_projectiles(delta)        # 内部gate: 只推进active的弹道; 其余悬空
 				_step_pending_shots(delta)      # 内部gate: 只active的依次射击
@@ -3290,6 +3291,69 @@ func _process(delta: float) -> void:
 # ═══════════════════════════════════════════════════════════════════
 #  沙漏059 JoJo时停 — 触发/蓄力/冻结/恢复/视觉 (登场10s → 蓄力1s → 时停4/10/30s, 一场一次)
 # ═══════════════════════════════════════════════════════════════════
+const _TS_TIMER_FIELDS := [
+	"_anim_lock_until",
+	"_mark_until",
+	"_ninja_dash_until",
+	"bind_until",
+	"bubble_shield_until",
+	"bulwark_until",
+	"burn_until",
+	"candle_hot_until",
+	"crit_fate_until",
+	"deathfloor_until",
+	"diamond_fortify_until",
+	"dice_dash_pause_until",
+	"echarge_until",
+	"energy_lock_until",
+	"eq_marked_until",
+	"eq_target_until",
+	"frost_shield_until",
+	"gambler_bet_until",
+	"gold_shield_until",
+	"haste_until",
+	"heal_reduce_until",
+	"hiding_shield_until",
+	"hijack_until",
+	"hunt_mark_until",
+	"lava_shield_until",
+	"phase_until",
+	"rock_shield_until",
+	"rum_glow_until",
+	"rum_until",
+	"shield_until",
+	"shock_boost_until",
+	"signal_until",
+	"skill_gcd_until",
+	"slow_until",
+	"spd_dbf_until",
+	"star_lock_until",
+	"stone_dr_until",
+	"storm_until",
+	"stun_until",
+	"taunt_until",
+	"thunder_shield_until",
+	"true_fire_until",
+	"untargetable_until",
+	"volcano_until",
+]
+
+func _ts_advance_unit_timers(u: Dictionary, delta: float) -> void:
+	# 时停期间全局 _t 冻结, 但 active 携带者仍在行动 —— 它身上所有"时间戳型"状态
+	# (眩晕/嘲讽/减速/护盾/各种buff的到期时刻) 都是相对 _t 记的, _t 不走就永远不到期。
+	# 用户2026-07-19: "如果在时间暂停的时候自己眩晕了, 为什么会被一直眩晕?" —— 就是这个原因。
+	# 修法: 只为该单位把这些到期时刻按真实 delta 前移, 等价于单独为它推进时间。
+	for f in _TS_TIMER_FIELDS:
+		var v: float = float(u.get(f, 0.0))
+		if v > _t:
+			u[f] = maxf(_t, v - delta)
+	for b in u.get("buffs", []):
+		if b is Dictionary and float(b.get("until", 0.0)) > _t:
+			b["until"] = maxf(_t, float(b["until"]) - delta)
+	for d in u.get("dots", []):
+		if d is Dictionary and float(d.get("until", 0.0)) > _t:
+			d["until"] = maxf(_t, float(d["until"]) - delta)
+
 func _unit_hourglass_star(u: Dictionary) -> int:   # 该单位所装沙漏最高星(0=无)
 	var best := 0
 	for e in u.get("equips", []):
@@ -3332,11 +3396,18 @@ func _ts_fire() -> void:
 	if casters.is_empty():
 		return
 	_ts_active = casters
-	_ts_remaining = [4.0, 10.0, 30.0][clampi(_ts_maxstar, 1, 3) - 1]
+	_ts_remaining = [5.0, 10.0, 30.0][clampi(_ts_maxstar, 1, 3) - 1]   # 用户2026-07-19: 4→5秒
+	for _c in casters:   # 用户2026-07-19: 时停期间+100%龟能充能速度, 且开始瞬间立即+15龟能
+		_c["_ts_echarge"] = 2.0
+		if _has_energy_system(_c):
+			_eq_grant_energy(_c, 15.0)
+			_float_text(_c["pos"] + Vector2(0, -62), "+15龟能", Color("#8fd4ff"))
 	_ts_begin_freeze()
 	_ts_visual_start()
 
 func _end_timestop() -> void:
+	for _c in _ts_active:
+		if _c is Dictionary: _c.erase("_ts_echarge")   # 时停结束: 撤掉+100%充能速度
 	_ts_resume_freeze()
 	_ts_visual_end()
 	_ts_active = []
@@ -3866,7 +3937,7 @@ func _tick_skill_cd(u: Dictionary, delta: float) -> void:
 		_ecm *= float(u.get("spd_echarge_mult", 1.0))   # 充能减速debuff(寒冰登场等)
 	_ecm = maxf(0.05, _ecm)
 	for k in cds:
-		cds[k] = maxf(0.0, float(cds[k]) - delta * _ecm * float(u.get("echarge_perm", 1.0)))   # 麻痹也走, 只是放不出; ×充能速率(含装备永久充能速率echarge_perm)
+		cds[k] = maxf(0.0, float(cds[k]) - delta * _ecm * float(u.get("echarge_perm", 1.0)) * float(u.get("_ts_echarge", 1.0)))   # 麻痹也走, 只是放不出; ×充能速率(含装备永久充能速率echarge_perm) ×沙漏时停期+100%
 	if float(u.get("energy_bank", 0.0)) > 0.0:   # 龟能银行(贝母021溢出): 冷却能吸就吸(如刚重置), 吸不下继续留着
 		_apply_energy_bank(u)
 
