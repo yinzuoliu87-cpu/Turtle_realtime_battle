@@ -78,7 +78,7 @@ static func adjacent_fighters(all_fighters: Array, target: Dictionary) -> Array:
 	var keys := adjacent_slots(tkey)
 	var out: Array = []
 	for f in all_fighters:
-		if f.get("alive", false) and f != target and f.get("side", "") == target.get("side", "") \
+		if f.get("alive", false) and not is_same(f, target) and f.get("side", "") == target.get("side", "") \
 				and f.get("_slotKey", "") != "" and keys.has(f.get("_slotKey", "")):
 			out.append(f)
 	return out

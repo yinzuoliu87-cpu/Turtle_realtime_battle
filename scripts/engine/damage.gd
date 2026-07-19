@@ -150,7 +150,7 @@ static func apply_raw_damage(tgt: Dictionary, final_dmg: int, dmg_type: String =
 	var _gl = tgt.get("_p2GuardLink", null)
 	if _gl is Dictionary:
 		var _guard = _gl.get("to", null)
-		if _guard is Dictionary and _guard.get("alive", false) and _guard != tgt:
+		if _guard is Dictionary and _guard.get("alive", false) and not is_same(_guard, tgt):
 			var _gp: float = clampf(float(_gl.get("pct", 0.0)), 0.0, 0.9)
 			var _moved: int = int(round(float(final_dmg) * _gp))
 			if _moved > 0:

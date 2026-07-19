@@ -29,7 +29,7 @@ static func recalc(f: Dictionary, allies: Array = []) -> void:
 		for t in allies:
 			var passive = t.get("passive", null)
 			if t.get("alive", false) and passive is Dictionary and passive.get("type", "") == "diamondStructure":
-				var is_self: bool = (t == f)
+				var is_self: bool = (is_same(t, f))
 				var amp_pct: float
 				if is_self and t.get("_diamondEnhanced", false):
 					amp_pct = 100.0

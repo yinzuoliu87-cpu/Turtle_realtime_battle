@@ -1007,7 +1007,7 @@ static func on_cast(caster: Dictionary, item_id: String, star: int, all_fighters
 				if col51.is_empty():
 					col51 = [front51]
 				for e51 in col51:
-					var m51: float = 1.0 if e51 == front51 else 0.5
+					var m51: float = 1.0 if is_same(e51, front51) else 0.5
 					fx.append(_gun_beam_marker(all_fighters, caster, e51, "#ff3838", 7.0, 0.30))   # 红色激光束 (从龟射向该列敌)
 					fx.append(_skill_hit(all_fighters, caster, e51, atk * scale51 * m51, "physical"))
 					Dot.apply_stacks(e51, "bleed", maxi(1, roundi(atk * bleed51 * m51)))
@@ -1239,7 +1239,7 @@ static func on_turn_begin(f: Dictionary, item_id: String, star: int, all_fighter
 			var per19: float = [8.0, 9.0, 10.0][t - 1]
 			var tg19: Array = [f]
 			var low19: Dictionary = _lowest_hp_ally(all_fighters, f)
-			if not low19.is_empty() and low19 != f:
+			if not low19.is_empty() and not is_same(low19, f):
 				tg19.append(low19)
 			for tg in tg19:
 				var lost19: float = float(int(tg.get("maxHp", 0)) - int(tg.get("hp", 0)))
@@ -1271,7 +1271,7 @@ static func on_turn_begin(f: Dictionary, item_id: String, star: int, all_fighter
 				var sg21: int = Buffs.grant_shield(best21, [40, 60, 90][t - 1])
 				fx.append({"target_idx": _idx(all_fighters, best21), "value": sg21, "kind": "shield", "vfx": "shieldlink", "vfx_from": _idx(all_fighters, f)})   # 连接光链 + 盾光
 				_cleanse_debuffs(best21, [1, 1, 2][t - 1])
-				if best21 != f:   # 不给自己挂转移链 (避免自伤循环)
+				if not is_same(best21, f):   # 不给自己挂转移链 (避免自伤循环)
 					best21["_p2GuardLink"] = {"to": f, "pct": [0.25, 0.40, 0.60][t - 1]}
 
 		"p2eq_023":
@@ -1338,7 +1338,7 @@ static func on_turn_begin(f: Dictionary, item_id: String, star: int, all_fighter
 						low_ratio42 = ratio42
 						low42 = a42
 			for a42 in allies42:
-				var heal_mult42: float = 2.0 if (t >= 3 and a42 == low42) else 1.0
+				var heal_mult42: float = 2.0 if (t >= 3 and is_same(a42, low42)) else 1.0
 				var hh42: int = _heal(a42, float(int(a42.get("maxHp", 0)) - int(a42.get("hp", 0))) * [0.03, 0.06, 0.10][t - 1] * heal_mult42)
 				if hh42 > 0:
 					fx.append({"target_idx": _idx(all_fighters, a42), "value": hh42, "kind": "heal", "vfx": "waterripple"})   # 水波涟漪 + 全队绿光
@@ -1551,7 +1551,7 @@ static func on_death(dead: Dictionary, all_fighters: Array) -> Dictionary:
 			out["coins"] = int(out["coins"]) + int(dead.get("_p2Gears", 0)) * 2
 	# 052: 死者是左轮持有者的敌人 → 对面所有左轮 +1 子弹 (cap 6)
 	for f in all_fighters:
-		if not (f is Dictionary) or not f.get("alive", false) or f == dead:
+		if not (f is Dictionary) or not f.get("alive", false) or is_same(f, dead):
 			continue
 		if f.get("side", "") == dead.get("side", ""):
 			continue
