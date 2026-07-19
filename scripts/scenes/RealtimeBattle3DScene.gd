@@ -16854,6 +16854,13 @@ func _has_dot(u: Dictionary, tag: String) -> bool:
 			return true
 	return false
 
+# DoT 抗性减免(用户2026-07-19: 灼烧/中毒=魔法吃魔抗, 流血=物理吃护甲)。
+# 层数模型不记录施加者→无穿透/无暴击, 只按目标抗性走与 _resolve_dmg 相同的 K=40 减伤曲线。
+func _dot_after_resist(u: Dictionary, dmg: float, magic: bool) -> int:
+	var resist: float = float(u["mr"]) if magic else float(u["def"])
+	var mult: float = (1.0 - resist / (resist + 40.0)) if resist >= 0.0 else (1.0 + absf(resist) / (absf(resist) + 40.0))
+	return maxi(1, int(round(dmg * mult)))
+
 # 层数 DoT 每秒结算 (1:1 dot.gd tick). 固定顺序 burn→poison→bleed; 出伤后层数衰减, ≤0 移除.
 func _tick_dot_stacks(u: Dictionary) -> void:
 	var ds: Dictionary = u.get("dot_stacks", {})
@@ -16873,15 +16880,15 @@ func _tick_dot_stacks(u: Dictionary) -> void:
 				if _t < u.get("true_fire_until", 0.0):
 					_raw_lose(u, float(dmg))
 				else:
-					_apply_damage(u, dmg, Color("#4dabf7"))   # 灼烧魔蓝(用户)
+					_apply_damage(u, _dot_after_resist(u, float(dmg), true), Color("#4dabf7"))   # 灼烧=魔法伤害·吃魔抗(用户2026-07-19)
 			"poison":
 				dmg = stacks
 				new_val = floori(stacks * 0.8)   # 衰减80%(用户)
-				_apply_damage(u, dmg, Color("#7ee87e"))
+				_apply_damage(u, _dot_after_resist(u, float(dmg), true), Color("#7ee87e"))   # 中毒=魔法伤害·吃魔抗(用户2026-07-19)
 			"bleed":
 				dmg = stacks
 				new_val = floori(stacks * 0.8)   # 衰减80%(用户)
-				_apply_damage(u, dmg, Color("#ff6b6b"))
+				_apply_damage(u, _dot_after_resist(u, float(dmg), false), Color("#ff6b6b"))   # 流血=物理伤害·吃护甲(用户2026-07-19)
 		ds[type] = maxi(0, new_val)
 		if ds[type] <= 0:
 			ds.erase(type)
