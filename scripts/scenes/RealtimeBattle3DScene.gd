@@ -16908,7 +16908,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 		"headless":
 			u["lifesteal"] += 0.22
 		"dice":
-			u["dice_base_crit"] = u["crit"]; u["dice_base_critdmg"] = u["crit_dmg"]   # 基准(供损血暴击算)
+			u["dice_base_crit"] = u["crit"]   # 基准(供损血暴击率算); 暴伤那半已删 —— 全局已有"暴击率溢出100%每1%→1.5%暴伤"(_resolve_dmg), 不需要单独基准(用户2026-07-19)
 			if "diceFlashStrike" in _chosen_skill_types(u["id"], u["side"] == "left"):
 				u["armor_pen"] += u["base_def"] + u["base_mr"]   # 真正的赌徒(打包稳定骰子): 登场双抗全转等量护穿(纯物理)
 				u["base_def"] = 0.0; u["base_mr"] = 0.0; _recalc_stats(u)
