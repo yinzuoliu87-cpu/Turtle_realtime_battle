@@ -9107,7 +9107,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"hidingDefend":         _sk_hiding_defend(u)
 		"shellAbsorb":          _sk_shell_absorb(u, tgt)
 		# ── 通用 (多龟共享 type) ──
-		"shield":               _sk_gen_shield(u)
+		"shield":               _sk_rainbow_shield(u)   # 彩虹龟·棱镜护盾: 原路由到通用_sk_gen_shield(无时长·无棱镜特效), 2026-07-13写好的专用版从未被调用(用户2026-07-19"接")
 		"stoneRockShield":      _sk_stone_rock_shield(u)
 		"rockShockwave":        _sk_rock_shockwave(u)
 		"stoneTaunt":           _sk_stone_taunt(u)
@@ -16090,27 +16090,7 @@ func _apply_rider(u: Dictionary, e: Dictionary, rider: String) -> void:
 		"atkdn": _buff(e, "atk", -0.15, true)
 		"mrdn":  _buff(e, "mr", -0.20, true)
 
-# 通用护盾 (stone/rainbow/candy 的 shield 技): 全队上盾
-# 当前技能数据条目 (按 type 在该龟 skillPool 找; 数据驱动读 fx/name/energyCost)
-func _cur_skill_data(u: Dictionary, stype: String) -> Dictionary:
-	var d: Dictionary = _data_by_id.get(str(u["id"]), {})
-	for sk in d.get("skillPool", []):
-		if str(sk.get("type", "")) == stype:
-			return sk
-	return {}
 
-# 数据驱动护盾: 每龟读自己 fx (shieldAtk/shieldHp/healHp) + 技能名 (不再跑通用硬编码)
-func _sk_gen_shield(u: Dictionary) -> void:
-	var sk := _cur_skill_data(u, "shield")
-	var fx: Dictionary = sk.get("fx", {})
-	var sa := float(fx.get("shieldAtk", 0.3))
-	var sh := float(fx.get("shieldHp", 0.0))
-	var heal_hp := float(fx.get("healHp", 0.0))
-	for o in _allies_of(u):
-		_grant_shield(o, u["atk"] * sa + o["maxHp"] * sh)
-		if heal_hp > 0.0:
-			_heal(o, o["maxHp"] * heal_hp)
-		_skill_ring(o["pos"], Color(0.6, 0.86, 1.0, 0.45), 46.0)   # 护盾贴地环 (替代飘空图标)
 
 # ── Batch2 特殊技 (bespoke; 按 pets.json brief/detail 实装) ──
 
