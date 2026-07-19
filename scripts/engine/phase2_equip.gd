@@ -16,8 +16,6 @@ const P2 := preload("res://scripts/engine/phase2_config.gd")
 const STAR_MULT := 1.8          # 占位: 每升一星, 基础属性 ×1.8
 const MERGE_COUNT := 3          # 三合一: 3 件同款同星 → 1 件高一星
 const MAX_STAR := 3
-const SET_SERIES_MIN := 3       # 系列套装: 同系列 ≥3 件触发
-const SET_SUBSCHOOL_MIN := 2    # 子流派套装: 同套装标签 ≥2 件触发
 
 # 基础属性 token 后缀 → fighter 字段 (长后缀优先匹配, 见 parse_base_stats)
 const _STAT_SUFFIX := [
@@ -126,23 +124,3 @@ static func roll_shop(pool: Array, level: int, count: int, rng: RandomNumberGene
 
 ## 检测套装 (壳): 统计已装备的系列/套装标签计数, 返回触发的套装.
 ## 加成数值占位 (设计未定) → bonus 为空 dict, 待填.
-static func detect_sets(equipped: Array) -> Array:
-	var by_series: Dictionary = {}
-	var by_tag: Dictionary = {}
-	for it in equipped:
-		if not (it is Dictionary):
-			continue
-		var ser := str(it.get("series", ""))
-		var tag := str(it.get("setTag", ""))
-		if ser != "":
-			by_series[ser] = int(by_series.get(ser, 0)) + 1
-		if tag != "":
-			by_tag[tag] = int(by_tag.get(tag, 0)) + 1
-	var out: Array = []
-	for ser in by_series:
-		if int(by_series[ser]) >= SET_SERIES_MIN:
-			out.append({"kind": "series", "name": ser, "count": int(by_series[ser]), "bonus": {}})
-	for tag in by_tag:
-		if int(by_tag[tag]) >= SET_SUBSCHOOL_MIN:
-			out.append({"kind": "subschool", "name": tag, "count": int(by_tag[tag]), "bonus": {}})
-	return out

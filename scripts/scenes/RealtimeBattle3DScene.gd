@@ -1898,10 +1898,6 @@ func _dl_foe_specs(lane: String) -> Array:
 		return _dl_survivor_specs("right")
 	return _dual_foe_lane(lane)
 
-func _dl_names_line(specs: Array) -> String:
-	var ns: Array = []
-	for s in specs: ns.append(_dl_spec_name(s))
-	return "、".join(ns) if not ns.is_empty() else "—"
 
 func _dl_build_present_overlay(mode: String) -> void:
 	_dl_clear_present_overlay()
@@ -5357,24 +5353,6 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 				_apply_dot_stacks(o, "burn", [20, 30, 40][si], u)
 				_boom_wave(o["pos"], 110.0)   # 每个被波及敌小爆
 
-# 蜡烛光圈(037微弱): 250码暖金贴地光环, 缓慢淡出标示回血区
-func _candle_circle(pos2d: Vector2, radius_px: float, dur: float) -> void:
-	var r := Sprite3D.new()
-	r.texture = _make_ring_texture(Color(1.0, 0.85, 0.5, 1.0))
-	r.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-	r.axis = Vector3.AXIS_Y
-	r.shaded = false; r.transparent = true
-	r.modulate = Color(1.0, 0.82, 0.45, 0.0)
-	r.position = _world_pos(pos2d, 0.05)
-	r.pixel_size = (radius_px * 2.0 * WS) / 96.0
-	_world.add_child(r)
-	var tw := _reg_tween()
-	tw.tween_property(r, "modulate:a", 0.55, 0.4)
-	tw.tween_property(r, "modulate:a", 0.12, dur * 0.6)
-	tw.tween_property(r, "modulate:a", 0.0, dur * 0.4)
-	tw.tween_callback(r.queue_free)
-
-# 回血阵(AI生成动画): 绿金魔法治疗阵躺平贴地, 帧循环脉动, 淡入维持淡出. 用于蜡烛微弱/大回复
 func _heal_circle_vfx(pos2d: Vector2, radius_px: float, dur: float) -> void:
 	var tex: Texture2D = load("res://assets/sprites/vfx/heal-circle-anim.png")
 	var fh: int = maxi(1, tex.get_height())
@@ -6607,31 +6585,6 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007(重做�
 	if is_instance_valid(qi):
 		var ft := _reg_tween(); ft.tween_property(qi, "modulate:a", 0.0, 0.2); ft.tween_callback(qi.queue_free)
 
-func _eq_coral_spike(u: Dictionary, far: Dictionary, si: int) -> void:   # 珊瑚刺弹体→最远敌, 到达: 物理+%maxHP魔法(错峰显示)
-	var start: Vector2 = u["pos"]
-	var d: Vector2 = far["pos"] - start
-	var dist: float = d.length()
-	if dist < 1.0: return
-	var dir: Vector2 = d / dist
-	var sp := Sprite3D.new()
-	sp.texture = _make_sword_texture(Color(1.0, 0.5, 0.42))   # 珊瑚色刺
-	sp.billboard = BaseMaterial3D.BILLBOARD_DISABLED; sp.axis = Vector3.AXIS_Y
-	sp.shaded = false; sp.transparent = true; sp.pixel_size = 0.035
-	sp.rotation = Vector3(0.0, -atan2(dir.y, dir.x), 0.0)   # 刺尖指向目标
-	sp.position = _world_pos(start, 0.7)
-	_world.add_child(sp)
-	var traveled: float = 0.0
-	while traveled < dist and is_instance_valid(sp) and is_instance_valid(self):
-		await get_tree().process_frame
-		traveled += 850.0 * get_process_delta_time()
-		sp.position = _world_pos(start + dir * minf(traveled, dist), 0.7)
-	if is_instance_valid(sp): sp.queue_free()
-	if not far.get("alive", false): return
-	_skill_ring(far["pos"], Color(1.0, 0.5, 0.4, 0.5), 40.0)
-	_apply_damage_from(u, far, _atk_dmg(u, [1.0, 1.2, 1.5][si], far), Color("#ff6b5b"), 0.0, false, true)   # 物理(红, 高度rank0下)
-	var mrm: float = 40.0 / (40.0 + maxf(0.0, float(far["mr"])))   # 魔抗减免K=40; 魔法段同帧跳→_float_row_offset自动错行(不叠, 无延时)
-	_last_dmg_type = "magic"
-	_apply_damage_from(u, far, maxi(1, int(far["maxHp"] * [0.08, 0.12, 0.18][si] * mrm)), Color("#bfe9ff"), 0.0, false, true)   # %maxHP魔法(蓝,rank1上)
 
 func _tick_coral(u: Dictionary, delta: float) -> void:   # 双穿珊瑚刺p2eq_008: 每9秒对最远敌射珊瑚尖刺(用户2026-07-19: 6→9); 命中才结算; 每件独立
 	if u.get("equips", []).is_empty(): return
@@ -7580,30 +7533,6 @@ func _barrage_cloud_fade(cloud: Sprite3D) -> void:
 	tw.tween_property(cloud, "modulate:a", 0.0, 0.3)
 	tw.tween_callback(cloud.queue_free)
 
-func _lightning_bolt_3d(from2d: Vector2, from_h: float, to2d: Vector2, to_h: float, col: Color) -> void:   # 锯齿3D电弧(从云劈向敌)
-	var im := MeshInstance3D.new()
-	var imesh := ImmediateMesh.new()
-	im.mesh = imesh
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.vertex_color_use_as_albedo = true
-	mat.albedo_color = col
-	imesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP, mat)
-	var n := 7
-	for i in range(n + 1):
-		var t := float(i) / float(n)
-		var p2 := from2d.lerp(to2d, t)
-		var hh: float = lerpf(from_h, to_h, t)
-		if i > 0 and i < n:
-			p2 += Vector2(_juice_rng.randf_range(-12.0, 12.0), _juice_rng.randf_range(-12.0, 12.0))
-		imesh.surface_set_color(col)
-		imesh.surface_add_vertex(_world_pos(p2, hh))
-	imesh.surface_end()
-	_world.add_child(im)
-	var tw := _reg_tween()
-	tw.tween_property(mat, "albedo_color:a", 0.0, 0.18)
-	tw.tween_callback(im.queue_free)
 
 func _lightning_strike(pos2d: Vector2, _col: Color, world_h: float = 2.6) -> void:   # 天降闪电 common-lightning-strike 5帧(9fps); world_h=雷高度(越大雷越大, 中心≈world_h*0.478); 4.6时中心≈2.2=飘字高度→伤害跳在雷中间
 	var tex := load("res://assets/sprites/vfx/common-lightning-strike.png")
@@ -7702,8 +7631,6 @@ func _melee_lunge(u: Dictionary, tgt: Dictionary, amp: float = ATK_LUNGE_AMP) ->
 #  2D 接口对齐: _fire_bolt_from(src, tgt, dmg, col, from). src 用于 lifesteal/统计/累积 (可 null).
 #  col 用于飘字色 (不再区分 magic bool; 物/法分流由 _atk_dmg 时已算进 dmg).
 # ============================================================================
-func _fire_bolt(from: Vector2, tgt: Dictionary, dmg: int, col: Color) -> void:
-	_fire_bolt_from(null, tgt, dmg, col, from)
 
 const _PROJ_WAVE := {"angel": true}   # 这些龟普攻弹道用尖尖能量波(程序画), 缺则默认bolt
 func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, basic_onhit: bool = false) -> void:
@@ -8454,15 +8381,6 @@ func _knockback(by: Dictionary, tgt: Dictionary, _dist: float, vy_mult: float = 
 		tgt["eq_target_until"] = _t + 99999.0
 		_mark_vfx(tgt, 99999.0, Color("#ffa040"))
 
-# 拉近: 把 tgt 拉到 by 面前 to_dist 处 (XZ 平面改 pos)
-func _pull(by: Dictionary, tgt: Dictionary, to_dist: float) -> void:
-	var dir: Vector2 = (tgt["pos"] - by["pos"]).normalized()
-	if dir.length() < 0.1: dir = Vector2.RIGHT
-	tgt["pos"] = by["pos"] + dir * to_dist
-	tgt["pos"].x = clampf(tgt["pos"].x, ARENA.position.x, ARENA.end.x)
-	tgt["pos"].y = clampf(tgt["pos"].y, ARENA.position.y, ARENA.end.y)
-
-# 突进: 把 u 瞬移到 tgt 旁 gap 处 (近战切入; XZ 平面改 pos)
 func _dash_to(u: Dictionary, tgt: Dictionary, gap: float) -> void:
 	var dir: Vector2 = (u["pos"] - tgt["pos"]).normalized()
 	if dir.length() < 0.1: dir = Vector2.RIGHT
@@ -9584,10 +9502,6 @@ func _cast_skill(u: Dictionary, tgt: Dictionary, stype: String) -> bool:
 	_log("[color=%s]✦ %s[/color] 施放 [color=#ffe08a]%s[/color]" % [_log_side_hex(u), _unit_name(u), _skill_disp(stype)])
 	return true
 
-# 技能 type → VFX 贴图名 (pets.json skillPool[].icon "skills/x.png" → "x"); 无则空串(回退签名)
-func _skill_vfx_name(stype: String) -> String:
-	var icon: String = str((_skill_meta.get(stype, {}) as Dictionary).get("icon", ""))
-	return icon.get_file().get_basename() if icon != "" else ""
 
 func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 	if _stress: _dbg_op = "skill:" + stype + ":" + str(u.get("id", "?"))   # 卡死猎手: 追踪当前放的技(冻死时定位)
@@ -11967,9 +11881,6 @@ func _rainbow_storm_end(u: Dictionary) -> void:
 		disc.queue_free()
 	u["storm_disc"] = null
 
-func _sk_fortune_coins(u: Dictionary) -> void:                  # 财神龟·聚财 (旧·已从3选1移除·留死函数无害)
-	u["gold"] += 10
-	_skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.5), 46.0)
 
 func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招财进宝(封板·60龟能起): 首抽1件1/2/3费临时装备(1★·战后消失不占槽)→消耗变160/240/460; 后续释放升1星(精确数值delta) → 3★后消耗回60且每次释放回复1×ATK生命
 	var star: int = int(u.get("buyequip_star", 0))
@@ -16562,12 +16473,6 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影�
 		_pending_shots.append({"delay": float(i) * 0.5, "fn": fn, "src": u})
 	_beam_vfx("res://assets/sprites/vfx/fx-trail.png", start, dest, 60.0, Color(0.62, 0.22, 0.72, 0.7), 0.34)   # 暗影猛扑拖影
 
-func _sk_burst(u: Dictionary, tgt: Dictionary) -> void:          # 兜底重击
-	_apply_damage_from(u, tgt, _atk_dmg(u, 2.5, tgt), Color("#ff9d5c"))
-	for o in _enemies_of(u):
-		if not is_same(o, tgt) and (o["pos"] - tgt["pos"]).length() <= 110.0:
-			_apply_damage_from(u, o, _atk_dmg(u, 1.25, o), Color("#ff9d5c"))
-	_skill_ring(tgt["pos"], Color(1.0, 0.6, 0.3, 0.5), 110.0)
 
 # ── 选3 多技能: 数据驱动伤害技 + 通用盾/治 (系数取自 pets.json detail 公式) ──
 # opts: {phys,magic,true: ×casterATK 的 物理/魔法/真实系数; hp,mr: ×caster maxHp/MR 附加;
@@ -17412,48 +17317,6 @@ func _tick_dot_stacks(u: Dictionary) -> void:
 			ds.erase(type)
 		if not u["alive"]:
 			return
-
-func _cleanse(u: Dictionary) -> int:
-	var n: int = u["dots"].size()
-	u["dots"] = []
-	for type in ["burn", "poison", "bleed"]:
-		if int(u.get("dot_stacks", {}).get(type, 0)) > 0:
-			n += 1
-			u["dot_stacks"][type] = 0
-	var kept: Array = []
-	for b in u["buffs"]:
-		if b["amount"] < 0.0:
-			n += 1
-		else:
-			kept.append(b)
-	u["buffs"] = kept
-	u["slow_until"] = 0.0
-	_recalc_stats(u)
-	return n
-
-# 计数净化: 至多移除 n 个负面 (dot类/负面buff/减速/眩晕 各算1个); 返回实际移除数.
-func _cleanse_n(u: Dictionary, n: int) -> int:
-	var removed := 0
-	for type in ["burn", "poison", "bleed"]:
-		if removed >= n: break
-		if int(u.get("dot_stacks", {}).get(type, 0)) > 0:
-			u["dot_stacks"][type] = 0; removed += 1
-	if removed < n and not u["dots"].is_empty():
-		u["dots"].pop_back(); removed += 1
-	if removed < n:
-		var kept: Array = []
-		for b in u["buffs"]:
-			if b["amount"] < 0.0 and removed < n:
-				removed += 1
-			else:
-				kept.append(b)
-		u["buffs"] = kept
-		_recalc_stats(u)
-	if removed < n and _t < float(u.get("slow_until", 0.0)):
-		u["slow_until"] = 0.0; removed += 1
-	if removed < n and _t < float(u.get("stun_until", 0.0)):
-		u["stun_until"] = 0.0; removed += 1
-	return removed
 
 func _add_stack(u: Dictionary, tag: String, n: int, cap: int) -> int:
 	var cur: int = u["stacks"].get(tag, 0) + n
@@ -18814,15 +18677,6 @@ func _tick_summon_special(u: Dictionary, delta: float) -> void:
 				if not low["alive"]: break
 				_apply_damage_from(u, low, _atk_dmg(u, u.get("special_scale", 1.5) * 0.5, low), Color("#9bf0ff"))
 
-# 纯色块贴图 (召唤体占位, 无立绘时)
-func _make_block_texture(col: Color) -> GradientTexture2D:
-	var grad := Gradient.new()
-	grad.set_color(0, col)
-	grad.set_color(1, col)
-	var gt := GradientTexture2D.new()
-	gt.gradient = grad
-	gt.width = 64; gt.height = 64
-	return gt
 
 # ============================================================================
 #  每帧: 3D 节点世界坐标更新 (XZ + 高度) + 影/环随高缩放淡 + Phase4 squash/闪白/bob
@@ -19199,27 +19053,6 @@ func _mark_vfx(tgt: Dictionary, dur: float, col: Color) -> void:
 	pt.tween_property(r, "modulate:a", 0.35, 0.5).from(0.85)
 	pt.tween_property(r, "modulate:a", 0.85, 0.5)
 
-# 治疗迸发: 绿治疗环扩散 + 几粒上升绿光 (救命回血044/045/竹弓039/大回复用). scale 越大越盛
-func _heal_burst(u: Dictionary, scale: float = 1.0) -> void:
-	if u == null: return
-	_skill_ring(u["pos"], Color(0.45, 1.0, 0.55, 0.6), 58.0 * scale)
-	if _spark_tex == null: _spark_tex = _make_glow_texture()
-	for k in range(int(4 * scale) + 2):
-		var sp := Sprite3D.new()
-		sp.texture = _spark_tex
-		sp.modulate = Color(0.5, 1.0, 0.62, 0.9)
-		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		sp.shaded = false; sp.transparent = true
-		sp.pixel_size = 0.009
-		var off := Vector2(randf_range(-28.0, 28.0), 0.0)
-		sp.position = _world_pos(u["pos"] + off, 0.2)
-		_world.add_child(sp)
-		var tw := _reg_tween(); tw.set_parallel(true)
-		tw.tween_property(sp, "position", _world_pos(u["pos"] + off, 1.5 + randf_range(0.0, 0.5)), 0.6)
-		tw.tween_property(sp, "modulate:a", 0.0, 0.6)
-		tw.chain().tween_callback(sp.queue_free)
-
-# 上半身绿光脉动(深海项链044救命回血, 用户: 就龟上半身一个绿光动画): 龟身染绿脉动2下 + 绿辉裹上半身 + 几缕上升绿光
 func _heal_body_glow(u: Dictionary) -> void:
 	if u == null: return
 	var spr = u.get("sprite", null)   # ① 龟精灵本体染绿脉动2下(最直接的"龟身绿光")
@@ -19573,48 +19406,6 @@ func _particle_burst(pos2d: Vector2) -> void:
 	ps.emitting = true
 	var _pt := _reg_tween(); _pt.tween_interval(1.0); _pt.tween_callback(ps.queue_free)   # 拆开(tween_interval返回IntervalTweener不能再链)
 
-# 能量冲击波: 环形发射 100 颗, 径向向外飞 (radial_velocity 从中心向外) + 微上抬, 短命 → 一圈外扩光环.
-func _particle_wave(pos2d: Vector2) -> void:
-	var ps := GPUParticles3D.new()
-	ps.amount = 120
-	ps.lifetime = 0.55
-	ps.one_shot = true
-	ps.explosiveness = 0.95          # 整圈同时炸开
-	ps.local_coords = true           # 局部坐标: radial_velocity 以发射器(环心)为枢轴向外
-	var mat := ParticleProcessMaterial.new()
-	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
-	mat.emission_ring_axis = Vector3(0, 1, 0)    # 环躺平在 XZ 地面
-	mat.emission_ring_radius = 0.35
-	mat.emission_ring_inner_radius = 0.2
-	mat.emission_ring_height = 0.05
-	mat.direction = Vector3(0, 1, 0)
-	mat.spread = 12.0
-	mat.flatness = 0.0
-	mat.initial_velocity_min = 0.4               # 几乎不靠 direction; 主要靠径向速度向外
-	mat.initial_velocity_max = 1.2
-	mat.radial_velocity_min = 6.0                # ← 关键: 从环心向外冲 (冲击波扩散)
-	mat.radial_velocity_max = 9.0
-	mat.gravity = Vector3(0, 1.5, 0)             # 轻微上飘 (不下坠, 能量上升感)
-	mat.scale_min = 0.35
-	mat.scale_max = 0.85
-	# 颜色渐变: 青白 → 青蓝 (能量主色, 与火焰橙形成对比) → 暗蓝 → 透明 (末尾 alpha=0)
-	var grad := Gradient.new()
-	grad.set_offset(0, 0.0); grad.set_color(0, Color(0.9, 1.0, 1.0, 1.0))      # 青白核
-	grad.add_point(0.45, Color(0.3, 0.9, 1.0, 0.95))                           # 青蓝 (主色, 拉长占比)
-	grad.add_point(0.75, Color(0.15, 0.55, 1.0, 0.6))                          # 暗蓝
-	grad.set_offset(grad.get_point_count() - 1, 1.0)
-	grad.set_color(grad.get_point_count() - 1, Color(0.1, 0.2, 0.6, 0.0))      # 透明
-	var ramp := GradientTexture1D.new()
-	ramp.gradient = grad
-	mat.color_ramp = ramp
-	ps.process_material = mat
-	ps.draw_pass_1 = _make_glow_quad(0.4)
-	ps.position = _world_pos(pos2d, 0.25)
-	_world.add_child(ps)
-	ps.emitting = true
-	var _pt := _reg_tween(); _pt.tween_interval(1.0); _pt.tween_callback(ps.queue_free)   # 拆开(tween_interval返回IntervalTweener不能再链)
-
-# 共用: 加色发光 billboard quad (软圆 glow 贴图 + 颜色按 color_ramp 着色); size 为米.
 func _make_glow_quad(size_m: float) -> QuadMesh:
 	var dm := StandardMaterial3D.new()
 	dm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -21537,39 +21328,6 @@ func _make_sector_tex(col: Color) -> ImageTexture:   # 环形扇区(顶点在左
 			img.set_pixel(x, y, c)
 	return ImageTexture.create_from_image(img)
 
-func _make_moon_tex(col: Color) -> ImageTexture:   # 弯月刃(凸面朝+X): 大圆减偏移圆, 亮核软光, 像素感
-	var S := 96
-	var img := Image.create(S, S, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	var ocx := float(S) * 0.36; var ocy := float(S) * 0.5; var oR := float(S) * 0.44
-	var ccx := float(S) * 0.14; var ccy := float(S) * 0.5; var cR := float(S) * 0.45
-	for y in range(S):
-		for x in range(S):
-			var od := sqrt(pow(float(x) - ocx, 2.0) + pow(float(y) - ocy, 2.0))
-			var cd := sqrt(pow(float(x) - ccx, 2.0) + pow(float(y) - ccy, 2.0))
-			if od > oR or cd < cR: continue
-			var e := minf((oR - od) / 5.0, (cd - cR) / 5.0)
-			e = clampf(e, 0.0, 1.0)
-			var c := col.lerp(Color(1, 1, 1), clampf(e * 1.5, 0.0, 1.0) * 0.7)
-			c.a = clampf(e + 0.25, 0.0, 1.0)
-			img.set_pixel(x, y, c)
-	return ImageTexture.create_from_image(img)
-func _make_fan_tex(col: Color, half_deg: float) -> ImageTexture:   # 扇形(顶点左中/满半径/±half_deg): 激光长刃扇形斩
-	var S := 128
-	var img := Image.create(S, S, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	var cy := float(S) * 0.5; var half := deg_to_rad(half_deg)
-	for y in range(S):
-		for x in range(S):
-			var dx := float(x); var dy := float(y) - cy
-			var dist := sqrt(dx * dx + dy * dy) / float(S - 1)
-			if dist > 1.0: continue
-			var a := atan2(dy, dx)
-			if absf(a) > half: continue
-			var e := clampf(minf(minf((1.0 - dist) / 0.16, (half - absf(a)) / deg_to_rad(12.0)), 1.0), 0.0, 1.0)
-			var c := col; c.a = col.a * (0.22 + 0.78 * e)
-			img.set_pixel(x, y, c)
-	return ImageTexture.create_from_image(img)
 
 func _laser_blade_sweep(u: Dictionary, origin: Vector2, dir: Vector2, rng: float, half_deg: float) -> void:   # 120°扇形扫过·贴地(用户2026-07-12: 顶点在攻击者/朝目标/半径=射程, 正好盖120°伤害区)
 	var base_ang: float = atan2(dir.y, dir.x)
@@ -21595,23 +21353,6 @@ func _laser_blade_sweep(u: Dictionary, origin: Vector2, dir: Vector2, rng: float
 func _laser_fan_frame(fr: float, spr: Sprite3D, nfr: int) -> void:
 	if is_instance_valid(spr): spr.frame = clampi(int(fr), 0, nfr - 1)
 
-func _laser_blade_step(fr: float, blade: Sprite3D, origin: Vector2, base_ang: float, rng: float, half_deg: float) -> void:
-	if not is_instance_valid(blade): return
-	var a: float = base_ang + deg_to_rad(lerpf(-half_deg, half_deg, fr))
-	var bd := Vector2(cos(a), sin(a))
-	blade.rotation = Vector3(0.0, -a, 0.0)
-	blade.position = _world_pos(origin + bd * (rng * 0.5), 0.16)
-	var tr := Sprite3D.new()   # 淡拖尾
-	tr.texture = blade.texture
-	tr.billboard = BaseMaterial3D.BILLBOARD_DISABLED; tr.axis = Vector3.AXIS_Y
-	tr.shaded = false; tr.transparent = true
-	tr.pixel_size = blade.pixel_size; tr.scale = blade.scale
-	tr.rotation = blade.rotation; tr.position = blade.position
-	tr.modulate = Color(1.0, 0.35, 0.38, 0.26)
-	_world.add_child(tr)
-	var tt := _reg_tween(); tt.tween_property(tr, "modulate:a", 0.0, 0.12); tt.tween_callback(tr.queue_free)
-
-# 骰子·孤注一掷: 红镰刀贴地扫过 120° 扇形(顶点在攻击者·朝目标·半径=射程) + 红拖尾. 用户2026-07-13"做个镰刀·弧扫特效".
 func _dice_scythe_sweep(u: Dictionary, origin: Vector2, dir: Vector2, rng: float, half_deg: float) -> void:
 	var tex: Texture2D = load("res://assets/sprites/vfx/dice-scythe.png")
 	if tex == null: return
@@ -21645,56 +21386,6 @@ func _dice_scythe_step(fr: float, blade: Sprite3D, origin: Vector2, base_ang: fl
 	_world.add_child(tr)
 	var tt := _reg_tween(); tt.tween_property(tr, "modulate:a", 0.0, 0.15); tt.tween_callback(tr.queue_free)
 
-func _make_laser_slash_sheet(col: Color) -> ImageTexture:   # 激光斩弧6帧(尼拉式: 前缘白热扫过+后方拖尾smear; 生成→扫→峰→碎→散)
-	var FW := 128; var FN := 6
-	var img := Image.create(FW * FN, FW, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	var cx := float(FW) * 0.5; var cy := float(FW) * 0.5; var R := float(FW) * 0.4
-	for f in range(FN):
-		var t := float(f) / float(FN - 1)
-		var lead := deg_to_rad(lerpf(-80.0, 80.0, clampf(t * 1.35, 0.0, 1.0)))   # 前缘角扫过去
-		var span := deg_to_rad(lerpf(35.0, 100.0, clampf(t * 1.25, 0.0, 1.0)))   # 拖尾角长
-		var bright: float = (minf(t / 0.28, 1.0)) if t <= 0.55 else (maxf(0.0, 1.0 - (t - 0.55) / 0.45))
-		var thick := float(FW) * (0.018 + 0.06 * sin(PI * clampf(t, 0.0, 1.0)))
-		var ox := f * FW
-		for y in range(FW):
-			for x in range(FW):
-				var dx := float(x) - cx; var dy := float(y) - cy
-				var d := sqrt(dx * dx + dy * dy)
-				var a := atan2(dy, dx)
-				var behind := lead - a
-				if behind < 0.0 or behind > span: continue
-				var jag := sin(a * 13.0 + t * 5.0) * 2.2
-				var dd := absf(d - (R + jag))
-				if dd > thick: continue
-				if t > 0.6 and sin(a * 17.0 + float(f) * 2.1) > lerpf(1.15, -0.2, (t - 0.6) / 0.4): continue
-				var lead_b := 1.0 - clampf(behind / span, 0.0, 1.0)
-				var edge := 1.0 - dd / thick
-				var inten := edge * bright * (0.3 + 0.7 * lead_b)
-				if inten <= 0.02: continue
-				var whiteness := clampf(edge * 1.6, 0.0, 1.0) * (0.45 + 0.55 * lead_b)
-				var c := col.lerp(Color(1, 1, 1), whiteness)
-				c.a = clampf(inten * 1.05, 0.0, 1.0)
-				img.set_pixel(ox + x, y, c)
-	return ImageTexture.create_from_image(img)
-func _make_laser_vblade_tex(col: Color) -> ImageTexture:   # 竖激光刃(白热芯+红光晕/尖顶): 尖朝上
-	var W := 22; var H := 92
-	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	var cx := float(W - 1) / 2.0
-	for y in range(H):
-		var fy := float(y) / float(H - 1)
-		var tap := (fy / 0.14) if fy < 0.14 else (1.0 if fy < 0.9 else (1.0 - fy) / 0.1)   # 尖顶+底收
-		tap = clampf(tap, 0.0, 1.0)
-		if tap <= 0.02: continue
-		for x in range(W):
-			var dx := absf(float(x) - cx) / (float(W) * 0.5)
-			var core := clampf(1.0 - dx * 3.0, 0.0, 1.0)
-			var glow := clampf(1.0 - dx, 0.0, 1.0)
-			var c := Color(1, 1, 1).lerp(col, 1.0 - core)
-			c.a = clampf((core + glow * 0.55) * tap, 0.0, 1.0)
-			img.set_pixel(x, y, c)
-	return ImageTexture.create_from_image(img)
 func _make_laser_beam_tex(col: Color) -> ImageTexture:   # 激光束(白热核+色光晕/两端尖), 沿+X
 	var W := 100; var H := 16
 	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
@@ -21713,27 +21404,6 @@ func _make_laser_beam_tex(col: Color) -> ImageTexture:   # 激光束(白热核+�
 			img.set_pixel(x, y, c)
 	return ImageTexture.create_from_image(img)
 
-func _laser_fan_sweep(origin: Vector2, dir: Vector2, rng: float, half_deg: float) -> void:   # 红激光扇形斩: 一排白热激光束错峰扫过弧
-	var base_ang: float = atan2(dir.y, dir.x)
-	var n := 9
-	for i in range(n):
-		var frac: float = float(i) / float(n - 1)
-		var a: float = base_ang + deg_to_rad(lerpf(-half_deg, half_deg, frac))
-		var bdir := Vector2(cos(a), sin(a))
-		var beam := Sprite3D.new()
-		beam.texture = _make_laser_beam_tex(Color(1.0, 0.2, 0.24))
-		beam.billboard = BaseMaterial3D.BILLBOARD_DISABLED; beam.axis = Vector3.AXIS_Y
-		beam.shaded = false; beam.transparent = true
-		beam.pixel_size = rng * WS / 100.0
-		beam.rotation = Vector3(0.0, -a, 0.0)
-		beam.position = _world_pos(origin + bdir * (rng * 0.5), 0.14)
-		beam.modulate = Color(1.0, 0.35, 0.35, 0.0)
-		_world.add_child(beam)
-		var bt := _reg_tween()
-		bt.tween_interval(frac * 0.12)
-		bt.tween_property(beam, "modulate:a", 0.98, 0.03)
-		bt.tween_property(beam, "modulate:a", 0.0, 0.15)
-		bt.tween_callback(beam.queue_free)
 func _tick_laser(u: Dictionary, delta: float) -> void:   # 激光长刃p2eq_010: 独立计时器(按携带者攻速)每次扇形斩(用户)
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
@@ -22540,11 +22210,6 @@ func _burn_frame(fr: float, spr: Sprite3D) -> void:
 	if is_instance_valid(spr):
 		spr.frame = int(fr) % 8
 
-func _dragon_trail_puff(pos2d: Vector2, height: float, size_px: float, delay: float) -> void:
-	var tw := _reg_tween()
-	if delay > 0.0:
-		tw.tween_interval(delay)
-	tw.tween_callback(_spawn_dragon_puff.bind(pos2d, height, size_px))
 
 func _spawn_dragon_puff(pos2d: Vector2, height: float, size_px: float) -> void:
 	var tex := _make_fire_glow_tex()
@@ -22563,24 +22228,7 @@ func _spawn_dragon_puff(pos2d: Vector2, height: float, size_px: float) -> void:
 	t.tween_property(spr, "pixel_size", spr.pixel_size * 0.5, 0.42)
 	t.chain().tween_callback(spr.queue_free)
 
-# 延时播序列帧特效(火龙飞到目标那刻才炸)
-func _delayed_sheet_vfx(pos2d: Vector2, sheet: Texture2D, frames: int, delay: float) -> void:
-	if sheet == null:
-		return
-	if delay <= 0.0:
-		play_sheet_vfx(pos2d, sheet, frames, 150.0, 0.5, 0.7)
-		return
-	var tw := _reg_tween()
-	tw.tween_interval(delay)
-	tw.tween_callback(play_sheet_vfx.bind(pos2d, sheet, frames, 120.0, 0.45, 0.7))
 
-func _delayed_heal_glint(pos2d: Vector2, delay: float) -> void:
-	if delay <= 0.0:
-		_skill_ring(pos2d, Color(0.45, 1.0, 0.55, 0.55), 46.0)
-		return
-	var tw := _reg_tween()
-	tw.tween_interval(delay)
-	tw.tween_callback(_skill_ring.bind(pos2d, Color(0.45, 1.0, 0.55, 0.55), 46.0))
 
 # ============================================================================
 #  局内信息 UI — 左右队头像框栏 + 点单位看详情面板 (纯 UI, 不动玩法)
