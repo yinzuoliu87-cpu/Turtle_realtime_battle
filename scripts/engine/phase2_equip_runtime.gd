@@ -1668,7 +1668,7 @@ static func on_hit_as_target(owner: Dictionary, _attacker: Dictionary, dmg: int,
 					var share: int = roundi(20.0 * inc)
 					if share > 0:
 						for a in all_fighters:
-							if a is Dictionary and a.get("alive", false) and a != owner \
+							if a is Dictionary and a.get("alive", false) and not is_same(a, owner) \
 									and a.get("side", "") == owner.get("side", ""):
 								a["baseDef"] = int(a.get("baseDef", 0)) + share
 								a["def"] = a["baseDef"]
