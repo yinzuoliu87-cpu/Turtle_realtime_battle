@@ -6180,7 +6180,7 @@ func _tick_broadsword(u: Dictionary, delta: float) -> void:   # 锈蚀阔剑p2eq
 		e["bsw_t"] = 0.0
 		_eq_broadsword(u, _eq_si(int(e.get("star", 1))))
 
-func _tick_sword_storm(u: Dictionary, delta: float) -> void:   # 千刃风暴p2eq_006: 每7秒触发(用户); 每件独立计时
+func _tick_sword_storm(u: Dictionary, delta: float) -> void:   # 千刃风暴p2eq_006: 每7秒触发; 每件独立计时
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_006": continue

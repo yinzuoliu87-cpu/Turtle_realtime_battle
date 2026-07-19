@@ -97,7 +97,7 @@
     "poolPhase": 3,
     "emoji": "🌪️",
     "effectImpl": true,
-    "effectDesc1": "携带者施法后,一排剑穿过全体敌人,对每名敌人造成(70/100/400+0.8/1.3/4.0×攻击力)物理伤害。",
+    "effectDesc1": "携带者每7秒召出一排剑穿过全体敌人,对每名敌人造成(70/100/400+0.8/1.3/4.0×攻击力)物理伤害。",
     "effectDesc3": "",
     "img": "equip/equip-blade-icon.png"
   },
