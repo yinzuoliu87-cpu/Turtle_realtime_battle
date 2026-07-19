@@ -4970,7 +4970,7 @@ func _conch_transform(pos2d: Vector2) -> void:
 	for k in range(6):
 		_bone_speck(pos2d + Vector2(randf_range(-30, 30), randf_range(-30, 30)))
 
-const _EQ_CUSTOM_IV := {"p2eq_004": 6.0, "p2eq_022": 8.0, "p2eq_028": 6.0, "p2eq_030": 7.0, "p2eq_031": 8.0, "p2eq_037": 5.0, "p2eq_038": 6.0, "p2eq_040": 6.0, "p2eq_042": 8.0, "p2eq_052": 4.0}
+const _EQ_CUSTOM_IV := {"p2eq_004": 6.0, "p2eq_048": 8.0, "p2eq_022": 8.0, "p2eq_028": 6.0, "p2eq_030": 7.0, "p2eq_031": 8.0, "p2eq_037": 5.0, "p2eq_038": 6.0, "p2eq_040": 6.0, "p2eq_042": 8.0, "p2eq_052": 4.0}
 func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
@@ -4985,6 +4985,7 @@ func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 			stt["iv_t"] = float(stt["iv_t"]) - iv
 			match iid:
 				"p2eq_004": _eq_tyrantfang_tick(u, si)
+				"p2eq_048": _eq_pistol_volley(u, si)
 				"p2eq_022": _eq_fuel_throw(u, si)
 				"p2eq_028": _eq_ice_throw(u, si)
 				"p2eq_030": _eq_crystal_line(u, si)
@@ -5018,6 +5019,19 @@ func _ripple_heal_vfx(pos2d: Vector2, size_px: float) -> void:
 		tw.tween_property(r, "frame", nf - 1, 0.55)
 	tw.tween_property(r, "modulate:a", 0.0, 0.6).set_ease(Tween.EASE_IN)
 	tw.chain().tween_callback(r.queue_free)
+
+func _eq_pistol_volley(u: Dictionary, si: int) -> void:   # 黄铜手铳048: 每8秒依次射4/5/6发, 每发命中直线首敌(错峰: 枪口闪+子弹+火花)
+	if not u.get("alive", false): return
+	var t48 = _nearest_enemy(u)
+	var dir48: Vector2 = (t48["pos"] - u["pos"]).normalized() if t48 != null else Vector2.RIGHT
+	var mul48: float = [0.5, 0.54, 0.6][si]
+	var fire48 := func():
+		if not u.get("alive", false): return
+		var ft48 = _eq_first_in_line(u, dir48, 36.0)
+		if ft48 == null: return
+		_muzzle_flash(u["pos"], dir48, Color("#ffe08a"))
+		_spawn_eq_bolt(u, ft48, _atk_dmg(u, mul48, ft48), "res://assets/sprites/vfx/bullet.png", Color("#fff0b0"), false, 0, 0.026)
+	_queue_shots([4, 5, 6][si], 0.08, fire48, u)
 
 func _eq_ripple_tick(u: Dictionary, si: int) -> void:
 	var low042 = null; var lv042 := INF
@@ -7668,7 +7682,7 @@ func _step_projectiles(delta: float) -> void:
 			var st2: Vector2 = _cam.unproject_position(to)
 			var sd2: Vector2 = st2 - ss2
 			if sd2.length() > 1.0:
-				var roll2: float = atan2(-sd2.y, sd2.x) - PI / 2.0
+				var roll2: float = atan2(-sd2.y, sd2.x) - PI / 2.0 + float(pr.get("wisp_off", 0.0))   # wisp_off: 纹理朝前方向修正(默认+Y; 横向贴图=+X 传 PI/2)
 				var wtf2: Transform3D = node.global_transform
 				wtf2.basis = _cam.global_transform.basis * Basis(Vector3(0, 0, 1), roll2)
 				node.global_transform = wtf2
@@ -7836,22 +7850,22 @@ func _spawn_eq_bolt(src: Dictionary, tgt: Dictionary, dmg: int, tex_path: String
 	p.texture = load(tex_path)
 	p.pixel_size = psize
 	p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	p.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	p.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # 手动basis: billboard会吃掉roll(001飞斩教训) → 原 billboard+rotation.z 是坏写法
 	p.shaded = false; p.transparent = true
 	p.modulate = col
-	var dir2d: Vector2 = (tgt["pos"] - start2d)
-	if not spin:
-		p.rotation.z = atan2(-dir2d.y * 0.55, dir2d.x)   # 朝向随方向(俯视前缩近似)
 	p.position = _world_pos(start2d, 1.0)
 	_world.add_child(p)
-	if spin:   # 飞镖: 旋转飞行
-		var sw := _reg_tween().bind_node(p).set_loops()  # ★bind_node: 目标被 queue_free 后 tween 随之销毁; 否则循环 tween 的 tweener 会瞬间完成 → 单圈时长=0 → 刷 ERROR: Infinite loop detected
-		sw.tween_property(p, "rotation:z", TAU, 0.18).from(0.0)
-	_projectiles.append({
+	var pd: Dictionary = {
 		"node": p, "from": _world_pos(start2d, 1.0), "tgt": tgt, "dmg": dmg, "col": col,
 		"src": src, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 520.0, 0.22, 1.1),   # 慢一半(用户"完全看不清")
 		"eq_bolt": true, "eq_bleed": bleed,
-	})
+	}
+	if spin:
+		pd["card_spin"] = true            # 飞镖056: 面向镜头+绕视线轴自转(方形贴图, 无需朝向修正)
+	else:
+		pd["wisp_dir"] = true             # 子弹/弩矢: 弹头朝目标屏幕方向(等距下不歪)
+		pd["wisp_off"] = PI / 2.0         # bullet/crossbow-bolt 都是横向贴图(+X朝前)
+	_projectiles.append(pd)
 
 # 激光束: a→b 一道立起来的发光带(叠加混合), 快速淡出. 用于激光手枪/狙击曳光
 func _laser_beam(a2d: Vector2, b2d: Vector2, col: Color, half_w: float = 0.16, dur: float = 0.2, h: float = 1.0) -> void:
@@ -19110,7 +19124,7 @@ func _spawn_bamboo_arrow(src: Dictionary, tgt: Dictionary, dmg: int, grow: float
 	_projectiles.append({
 		"node": p, "from": from, "tgt": tgt, "dmg": dmg, "col": Color("#a8ffb0"),
 		"src": src, "t": 0.0, "dur": clampf(src["pos"].distance_to(tgt["pos"]) / 850.0, 0.14, 0.5),
-		"bamboo": true, "wisp_dir": true, "bamboo_grow": grow,
+		"bamboo": true, "wisp_dir": true, "wisp_off": PI / 2.0, "bamboo_grow": grow,   # bamboo-arrow.png 是96x24横向贴图(+X朝前)
 	})
 
 # 娜美式潮浪(海浪护符043): 朝敌人2D方向的对角潮浪 — 从敌人反方向(身后)400码涌起 → 沿"朝敌人"方向慢速推过全场 → 连续宽浪墙(垂直于行进方向铺开)翻涌 → 命中击飞(用户2026-07-04: 全场横扫+2D对角朝敌)
@@ -21795,16 +21809,8 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 				pass
 			"p2eq_039":   # 竹制弓箭: 改为每第3段普攻消耗1次充能(_eq_on_basic_attack, 用户2026-07-19); on_cast不处理
 				pass
-			"p2eq_048":   # 黄铜手铳: 依次射N发, 每发命中直线首敌(错峰: 枪口闪+曳光+火花)
-				var dir48: Vector2 = (_nearest_enemy(u)["pos"] - u["pos"]).normalized() if _nearest_enemy(u) != null else Vector2.RIGHT
-				var mul48: float = [0.5, 0.54, 0.6][si]
-				var fire48 := func():
-					if not u.get("alive", false): return
-					var ft48 = _eq_first_in_line(u, dir48, 36.0)
-					if ft48 == null: return
-					_muzzle_flash(u["pos"], dir48, Color("#ffe08a"))
-					_spawn_eq_bolt(u, ft48, _atk_dmg(u, mul48, ft48), "res://assets/sprites/vfx/bullet.png", Color("#fff0b0"), false, 0, 0.026)   # 真子弹依次飞出(命中结算伤+火花)
-				_queue_shots([4, 5, 6][si], 0.08, fire48, u)
+			"p2eq_048":   # 黄铜手铳: 改为每8秒定时(_EQ_CUSTOM_IV→_eq_pistol_volley, 用户2026-07-19); on_cast不处理
+				pass
 			"p2eq_049":   # 连发弩: 朝最远敌方向依次射N发, 首敌命中(可被前排挡), 按已损血加伤; 弩矢弹道
 				var far49 := _eq_farthest_enemies(u, false)
 				if not far49.is_empty():
