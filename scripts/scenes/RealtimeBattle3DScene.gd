@@ -396,6 +396,7 @@ var _dl_overview_shown := false     # 3路总览一场只放一次
 var _dl_pending_loser := ""         # lane_settle 待推进的败方
 var _dl_present_root: Control = null   # 呈现overlay根节点
 const DL_PRESENT_SEC := 5.0
+var _st_lane_hist: Array = []   # 已结束战场的统计快照(纯数据行, 不引单位字典): [{lane,left:[row],right:[row]}] — 结算表要含前面战场(用户2026-07-19"只展示了当前战场的总结")
 var _dl_hud: Label = null   # 双路 HUD: 当前路 + 双方蛋血
 var _dl_go_btn: Button = null      # 场内放置阶段「开打」钮
 var _dl_place_hint: Label = null   # 放置阶段提示(拖我方单位到位→开打)
@@ -2352,7 +2353,7 @@ func _dl_lane_over(loser_side: String) -> void:
 	if next_lane == "final" and GameState != null and not GameState.dual_lane_needs_final():
 		_dl_finish(_dl_overall_won())   # 2-0 横扫
 		return
-	_dl_next_lane()                   # 清场重开下一路(bottom/final)
+	_dl_next_lane(lane)               # 清场重开下一路(bottom/final); 传本路名 → 清场前先存统计快照
 
 func _dl_overall_won() -> bool:
 	if GameState == null:
@@ -2450,7 +2451,8 @@ func _dl_clear_units() -> void:
 	if OS.has_environment("XDBG"): print("XDBG_DL 换路清扫遗留节点: ", _swept)
 	_dl_clear_present_overlay()
 
-func _dl_next_lane() -> void:
+func _dl_next_lane(finished_lane: String = "") -> void:
+	_st_snapshot_lane(finished_lane)   # ★必须在 _dl_clear_units 之前: 清场后 _units 就空了
 	_dl_clear_units()
 	_over = false
 	_dl_state = ""
@@ -19066,6 +19068,60 @@ func _stat_units(side: String) -> Array:
 
 
 
+## 一行统计快照 = 纯标量 plain dict, 键名与 _stats_column 读的完全一致 → 快照行可直接喂给同一个渲染函数.
+## 【不存单位字典本身】: 单位字典互相引用会成环, 留着既漏内存又踩深比较坑(见 _arr_has_unit 注释).
+## 显示名兜底: name 是【空串】时 Dictionary.get 照样返回空串(不走默认值) → 统计表出空白行.
+## 冷启动/兜底阵容的 spec 可能没 id, 于是 name/id 双空; 真实对局玩家选过龟不会走到这.
+func _st_name(u: Dictionary) -> String:
+	var n := str(u.get("name", ""))
+	if n != "": return n
+	n = str(u.get("id", ""))
+	return n if n != "" else "未知龟"
+
+func _st_row(u: Dictionary) -> Dictionary:
+	return {
+		"name": _st_name(u), "is_summon": bool(u.get("is_summon", false)),
+		"rarity": str(u.get("rarity", "C")), "alive": bool(u.get("alive", true)),
+		"hp": maxf(0.0, float(u.get("hp", 0))), "maxHp": float(u.get("maxHp", 0)),
+		"_st_dealt": int(u.get("_st_dealt", 0)), "_st_taken": int(u.get("_st_taken", 0)),
+		"_st_heal": int(u.get("_st_heal", 0)), "_st_crit": int(u.get("_st_crit", 0)),
+		"_st_kills": int(u.get("_st_kills", 0)),
+	}
+
+## 本路打完 → 把当前 _units 的统计冻成快照存进 _st_lane_hist(供结算表翻页看前面战场).
+func _st_snapshot_lane(lane: String) -> void:
+	if lane == "" or lane == "done":
+		return
+	var snap := {"lane": lane, "left": [], "right": []}
+	for u in _units:
+		var sd := str(u.get("side", ""))
+		if sd == "left" or sd == "right":
+			(snap[sd] as Array).append(_st_row(u))
+	_st_lane_hist.append(snap)
+
+## 合计页: 按 (阵营, 名字, 该路内同名第几个) 归并求和 —— 同名小将不会挤成一行, 跨路的"同一只"能对上.
+## 剩余血量取【最后出现的那一路】的值(累加没意义).
+func _st_merge_all(pages: Array, side: String) -> Array:
+	var order: Array = []            # 保序: 先出现的排前面
+	var acc: Dictionary = {}         # key(String) -> row
+	for pg in pages:
+		var seen: Dictionary = {}    # 本路内同名计数
+		for r in (pg[side] as Array):
+			var nm: String = str(r["name"])
+			var n: int = int(seen.get(nm, 0)); seen[nm] = n + 1
+			var key := "%s#%d" % [nm, n]
+			if not acc.has(key):
+				acc[key] = _st_row(r); order.append(key)   # _st_row 对 plain row 幂等 = 拷贝
+			else:
+				var a: Dictionary = acc[key]
+				for f in ["_st_dealt", "_st_taken", "_st_heal", "_st_crit", "_st_kills"]:
+					a[f] = int(a[f]) + int(r[f])
+				a["alive"] = r["alive"]; a["hp"] = r["hp"]; a["maxHp"] = r["maxHp"]   # 血量取最后一路
+	var out: Array = []
+	for k in order:
+		out.append(acc[k])
+	return out
+
 ## 📊 战中统计面板开关 (1:1 回合制 _on_dmg_stats_toggle)
 func _on_dmg_stats_toggle() -> void:
 	_dmg_stats.setup(_ui_layer, _stat_units)
@@ -19078,13 +19134,27 @@ func _on_dmg_stats_toggle() -> void:
 # 结算统计表 (1:1 回合制 BattleEndScene._stats_table 7 列样式) — 双队并排, 召唤体单列一行
 # ══════════════════════════════════════════════════════════════
 func _build_stats_panel() -> void:
-	var lefts: Array = []
-	var rights: Array = []
-	for u in _units:                              # 含召唤体(单列一行), 排除中立(side 非 left/right)
-		if u.get("side") == "left":
-			lefts.append(u)
-		elif u.get("side") == "right":
-			rights.append(u)
+	# 结算页要含【前面战场】的总结, 不能只有当前这一路(用户2026-07-19): 已结束的路走 _st_lane_hist 快照,
+	# 当前路直接读活的 _units; 三路以上信息量太大 → 做成分页(默认停在「合计」).
+	var pages: Array = []            # [{lane, title, left:[row], right:[row]}]
+	for snap in _st_lane_hist:
+		pages.append({"lane": snap["lane"], "title": _LANE_CN.get(snap["lane"], str(snap["lane"])),
+			"left": snap["left"], "right": snap["right"]})
+	var cur := {"lane": "cur", "title": "", "left": [], "right": []}
+	for u in _units:
+		var sd := str(u.get("side", ""))
+		if sd == "left" or sd == "right":
+			(cur[sd] as Array).append(_st_row(u))
+	if not ((cur["left"] as Array).is_empty() and (cur["right"] as Array).is_empty()):
+		var cl := str(GameState.current_lane) if GameState != null else ""
+		cur["title"] = _LANE_CN.get(cl, "本场") if not pages.is_empty() else "本场"
+		pages.append(cur)
+	if pages.is_empty():
+		return
+	if pages.size() > 1:             # 只有一路就没有「合计」的必要
+		pages.append({"lane": "all", "title": "合计",
+			"left": _st_merge_all(pages, "left"), "right": _st_merge_all(pages, "right")})
+
 	var panel := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.05, 0.08, 0.12, 0.92)
@@ -19103,19 +19173,77 @@ func _build_stats_panel() -> void:
 	title.add_theme_color_override("font_color", Color("#cfe6ff"))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(title)
-	var cols := HBoxContainer.new()
-	cols.add_theme_constant_override("separation", 28)
-	vb.add_child(cols)
-	cols.add_child(_stats_column("🔵 我方", lefts, Color("#7ec8ff")))
-	cols.add_child(_stats_column("🔴 敌方", rights, Color("#ff9a9a")))
+
+	# 页体: 每页一个 HBox(我方|敌方), 同时只显一个; 外面套 ScrollContainer —— 合计页行数可能超屏底
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var body := Control.new()
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(body)
+	var bodies: Array = []
+	for pg in pages:
+		var cols := HBoxContainer.new()
+		cols.add_theme_constant_override("separation", 28)
+		cols.add_child(_stats_column("🔵 我方", pg["left"], Color("#7ec8ff")))
+		cols.add_child(_stats_column("🔴 敌方", pg["right"], Color("#ff9a9a")))
+		cols.visible = false
+		body.add_child(cols)
+		bodies.append(cols)
+
+	# 页签(单路时不显): 点了切页 + 高亮
+	var tab_btns: Array = []
+	if pages.size() > 1:
+		var tabs := HBoxContainer.new()
+		tabs.add_theme_constant_override("separation", 6)
+		tabs.alignment = BoxContainer.ALIGNMENT_CENTER
+		vb.add_child(tabs)
+		for i in range(pages.size()):
+			var b := Button.new()
+			b.text = str(pages[i]["title"])
+			b.add_theme_font_size_override("font_size", 14)
+			b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+			b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+			var idx := i
+			b.pressed.connect(func() -> void: _stats_show_page(bodies, tab_btns, idx))
+			tabs.add_child(b)
+			tab_btns.append(b)
+	vb.add_child(scroll)
+	_stats_show_page(bodies, tab_btns, pages.size() - 1)   # 默认落在最后一页(多路=合计 / 单路=本场)
 	_ui_layer.add_child(panel)
 	panel.position = Vector2(316, 438)
 	_center_panel_deferred(panel)
 
+const _LANE_CN := {"top": "上路", "bottom": "下路", "final": "终极"}
+
+## 切页: 只显第 idx 页, 页体高度按当前页自适应(Control 不会自己撑高 → 手动扛 min height).
+func _stats_show_page(bodies: Array, btns: Array, idx: int) -> void:
+	for i in range(bodies.size()):
+		(bodies[i] as Control).visible = (i == idx)
+	for i in range(btns.size()):
+		(btns[i] as Button).add_theme_color_override("font_color", Color("#ffd93d") if i == idx else Color("#8b949e"))
+	_stats_fit_body(bodies, idx)
+
+## 切页后重排: Control 不会被子节点撑高 → 手动把 body 顶到本页尺寸, 再把 scroll 夹到「屏底剩余高度」以内.
+func _stats_fit_body(bodies: Array, idx: int) -> void:
+	await get_tree().process_frame
+	if idx < 0 or idx >= bodies.size(): return
+	var c: Control = bodies[idx]
+	if not is_instance_valid(c) or not is_instance_valid(c.get_parent()): return
+	var body: Control = c.get_parent()
+	body.custom_minimum_size = c.size
+	var scroll := body.get_parent()
+	if not (scroll is ScrollContainer): return
+	# 面板顶=438, 减去标题/页签/内边距 ≈ 96, 屏底再留 10 → 页体可用高
+	var avail: float = maxf(120.0, get_viewport().get_visible_rect().size.y - 438.0 - 96.0 - 10.0)
+	(scroll as ScrollContainer).custom_minimum_size = Vector2(c.size.x, minf(c.size.y, avail))
+	var panel: Node = scroll.get_parent()
+	if is_instance_valid(panel) and panel.get_parent() is Control:
+		_center_panel_deferred(panel.get_parent() as Control)
+
 func _center_panel_deferred(panel: Control) -> void:
 	await get_tree().process_frame
 	if is_instance_valid(panel):
-		panel.position = Vector2(640.0 - panel.size.x * 0.5, 438.0)
+		panel.position = Vector2(640.0 - panel.size.x * 0.5, 438.0)   # 别改成"放不下就上顶": 会盖住上方的「返回菜单」钮; 放不下由页体内部滚动兜(见 _stats_fit_body)
 
 ## 一队 7 列表 (1:1 回合制 _stats_table): 龟/出伤/受伤/治疗/暴击/击杀/剩余; 金表头 / 稀有度点 / 存活白·阵亡灰(阵亡).
 func _stats_column(header: String, units: Array, hc: Color) -> Control:
@@ -19148,7 +19276,7 @@ func _stats_column(header: String, units: Array, hc: Color) -> Control:
 		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		name_cell.add_child(dot)
 		var nml := Label.new()
-		nml.text = ("↳ " if is_sm else "") + str(u.get("name", u.get("id", ""))) + ("(阵亡)" if dead else "")
+		nml.text = ("↳ " if is_sm else "") + _st_name(u) + ("(阵亡)" if dead else "")
 		nml.add_theme_font_size_override("font_size", 13)
 		nml.add_theme_color_override("font_color", Color("#888888") if dead else (Color("#cdd9c2") if is_sm else Color("#ffffff")))
 		name_cell.add_child(nml)
