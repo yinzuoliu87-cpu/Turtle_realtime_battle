@@ -4990,7 +4990,7 @@ func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 				"p2eq_050": _eq_gatling_burst(u, si)
 				"p2eq_051": _eq_laser_pistol(u, si)
 				"p2eq_053": _eq_shotgun_blast(u, si)
-				"p2eq_057": _eq_sniper(u, si, 0)
+				"p2eq_057": _eq_sniper_windup(u, si)
 				"p2eq_022": _eq_fuel_throw(u, si)
 				"p2eq_028": _eq_ice_throw(u, si)
 				"p2eq_030": _eq_crystal_line(u, si)
@@ -21916,6 +21916,44 @@ func _eq_crystal_stack(src: Dictionary, o: Dictionary, si: int) -> void:
 		_crystal_stack_set(o, lv)   # 更新可视层数
 
 # 狙击长管 057: 递归开枪
+func _eq_sniper_windup(u: Dictionary, si: int) -> void:   # 狙击长管057: 每8秒先蓄力1秒(瞄准线+枪口聚能+锁定环)再开枪(用户2026-07-19)
+	if not u.get("alive", false): return
+	var low = null; var lv := INF
+	for o in _enemies_of(u):
+		var p: float = o["hp"] / maxf(1.0, o["maxHp"])
+		if p < lv: lv = p; low = o
+	if low == null: return
+	_sniper_charge_fx(u, low)
+	_pending_shots.append({"delay": 1.0, "fn": func(): _eq_sniper(u, si, 0), "src": u})   # 递归追加的后续枪仍是"立即", 不再各蓄1秒
+
+func _sniper_charge_fx(u: Dictionary, tgt: Dictionary) -> void:   # 蓄力1秒: 细红瞄准线由暗渐亮 + 枪口聚能球胀大 + 目标身上三道收缩锁定环
+	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
+	if dir == Vector2.ZERO: dir = Vector2.RIGHT
+	_laser_beam(u["pos"], tgt["pos"] + dir * 90.0, Color(1.0, 0.22, 0.26, 0.34), 0.025, 1.0, 1.0)   # 细红瞄准线(持续1秒)
+	# 枪口聚能球: 由小变大再爆开
+	var tex := _make_fire_glow_tex()
+	var tw0: float = float(maxi(1, int(tex.get_width())))
+	var orb := Sprite3D.new()
+	orb.texture = tex
+	orb.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+	orb.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	orb.shaded = false; orb.transparent = true
+	orb.no_depth_test = true; orb.render_priority = 5
+	orb.modulate = Color(1.0, 0.35, 0.32, 0.0)
+	orb.pixel_size = (10.0 * WS) / tw0
+	orb.position = _world_pos(u["pos"] + dir * 26.0, 1.05)
+	_world.add_child(orb)
+	var ot := _reg_tween(); ot.set_parallel(true)
+	ot.tween_property(orb, "pixel_size", (60.0 * WS) / tw0, 0.9).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	ot.tween_property(orb, "modulate:a", 0.95, 0.8)
+	ot.chain().tween_property(orb, "modulate:a", 0.0, 0.12)
+	ot.chain().tween_callback(orb.queue_free)
+	# 目标身上三道收缩锁定环(每0.3秒一道, 越来越小=锁定收紧)
+	for k in range(3):
+		var rt := _reg_tween()
+		rt.tween_interval(float(k) * 0.3)
+		rt.tween_callback(_skill_ring.bind(tgt["pos"], Color(1.0, 0.3, 0.3, 0.5 + 0.15 * float(k)), 92.0 - 26.0 * float(k)))
+
 func _eq_sniper(u: Dictionary, si: int, depth: int) -> void:
 	if depth >= 12:
 		return
@@ -21927,6 +21965,8 @@ func _eq_sniper(u: Dictionary, si: int, depth: int) -> void:
 		return
 	var dir: Vector2 = (low["pos"] - u["pos"]).normalized()
 	_muzzle_flash(u["pos"], dir, Color("#ff5a5a"))
+	_shake(JUICE_SHAKE_HEAVY)                                                  # 开枪后坐(用户2026-07-19)
+	_skill_ring(u["pos"] + dir * 28.0, Color(1.0, 0.42, 0.36, 0.8), 46.0)      # 枪口爆环
 	var _snd: float = 1.5 if OS.has_environment("XDBG") else 0.28
 	var _tip: Vector2 = low["pos"] + dir * 150.0
 	_laser_beam(u["pos"], _tip, Color(1.0, 0.24, 0.28, 0.82), 0.17, _snd, 1.0)          # 粗红外辉(醒目狙击曳光)
