@@ -541,8 +541,8 @@
     "poolPhase": 2,
     "emoji": "💧",
     "effectImpl": true,
-    "effectDesc1": "携带者每8秒为全队(含自己)回复其已损失生命的3/6/10%。",
-    "effectDesc3": "3星：生命最低的友军获得双倍回复。",
+    "effectDesc1": "携带者每8秒为全队(含自己)各回复其已损失生命的3/6/10%(生命越低回复越多,满血则不回复);3星时,生命百分比最低的友军获得双倍回复。",
+    "effectDesc3": "",
     "img": "equip/ripple-potion.png"
   },
   {
