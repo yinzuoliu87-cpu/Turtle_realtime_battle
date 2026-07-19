@@ -20722,8 +20722,6 @@ func _eq_apply_one_stats(u: Dictionary, item_id: String, star: int) -> void:
 	# ↓ 以下4类原先漏接: 数值表里写了、单位字段也确实被消费, 但从没往里写 → 属性栏骗人(用户2026-07-19发现)
 	if st.has("reflectPct"):    # 反伤% → 通用反伤钩(_apply_damage_from 读 u.reflect·真伤反弹)
 		u["reflect"] = float(u.get("reflect", 0.0)) + float(st["reflectPct"]) / 100.0
-	if st.has("_echargePct"):   # 龟能充能速率% → _tick_unit 读 u.echarge_perm (cds -= delta × echarge_perm); 原来只在STATS里写着没人读=死属性(020/022/059三件·用户2026-07-19"先补")
-		u["echarge_perm"] = float(u.get("echarge_perm", 1.0)) * (1.0 + float(st["_echargePct"]) / 100.0)
 	if st.has("healAmp"):       # 治疗增幅% → _heal 读 u.heal_amp (amt *= 1+heal_amp)
 		u["heal_amp"] = float(u.get("heal_amp", 0.0)) + float(st["healAmp"]) / 100.0
 	if st.has("shieldAmp"):     # 护盾增幅% → _grant_shield 读 u.shield_amp (amt *= 1+shield_amp)
