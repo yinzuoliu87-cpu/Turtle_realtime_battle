@@ -421,6 +421,12 @@ func _switch_tab(tab: String) -> void:
 			for pet in DataRegistry.launch_pets:
 				_items.append(pet)
 				_add_pet_row(pet)
+			# 深海小将(用户2026-07-19「图鉴里补上小将的信息」): 不是龟, 不在 pets.json 里,
+			# 战斗中由 _make_unit(spec.minion) 现场造 → 只能用虚拟条目, 数值/技能全部照 RealtimeBattle3DScene 抄
+			for mk in MINION_KINDS:
+				_items.append({"_minion": mk["kind"]})
+				_add_simple_row(str(mk["name"]), "#cdd9c2", Color("#7a8a96"),
+					"res://assets/sprites/pets/%s" % mk["img"], _items.size() - 1)
 		"equips":
 			_add_equip_rows()
 		"synergies":
@@ -652,7 +658,9 @@ func _select(idx: int) -> void:
 	_codex_passive_view = false   # 切换条目重置被动展开 (回技能卡列表)
 	var item: Dictionary = _items[idx]
 	match current_tab:
-		"pets": _show_pet(item)
+		"pets":
+			if item.has("_minion"): _show_minion(str(item["_minion"]))
+			else: _show_pet(item)
 		"equips": _show_equip(item)
 		"synergies": _show_school(item)
 		"status": _show_status(item)
@@ -775,6 +783,99 @@ func _ctx_for(pet: Dictionary) -> Dictionary:
 
 
 # ─── 龟详情 (1:1 PoC showPetDetail 顶部固定区) ───
+# ══════════════════════════════════════════════════════════
+# 深海小将 (虚拟图鉴条目 — 非龟, pets.json 里没有)
+#
+# 【事实源】RealtimeBattle3DScene.gd `_make_unit` 的 is_minion 分支 + `_sk_minion_*` / `_elite_*`.
+# 这里的每个数字都是从那段代码抄的, 改小将数值时【必须同步这张表】, 否则图鉴就开始骗人。
+# 注意 scripts/engine/phase2_minion.gd 是回合制遗留壳(名字叫"深海小将精英", 数值也不同), 不是事实源。
+# ══════════════════════════════════════════════════════════
+const MINION_KINDS := [
+	{"kind": "front", "name": "近战小将", "img": "minion.png"},
+	{"kind": "back",  "name": "远程小将", "img": "minion-back.png"},
+	{"kind": "elite", "name": "精英小将", "img": "minion-elite.png"},
+]
+
+## Lv1 数值 + 说明. hp/atk 随等级 ×1.05^(lv-1) 复利, 双抗定值(与 _make_unit 一致).
+const MINION_INFO := {
+	"front": {
+		"name": "近战小将", "img": "minion.png", "role": "前排 · 近战",
+		"hp": 750, "atk": 42, "def": 13, "mr": 13, "interval": 0.85, "range": 70, "spd": 105,
+		"skill_name": "人体浪板", "skill_cost": 120,
+		"skill_desc": "射程 2000。高高跃起并回复 2×攻击力 生命(离目标太近则先后跳拉开)，射出铁链将目标眩晕并把自己拉过去；接触瞬间造成 [color=#ff9f43]目标 10% 最大生命[/color] 物理伤害，随后踩着目标滑行——对被踩者持续造成 2×攻击力 物理伤害，沿途敌人受到 1.5×攻击力 物理伤害并被击退，最后跳下。",
+	},
+	"back": {
+		"name": "远程小将", "img": "minion-back.png", "role": "后排 · 远程",
+		"hp": 750, "atk": 45, "def": 7, "mr": 7, "interval": 0.85, "range": 400, "spd": 105,
+		"skill_name": "追踪火箭筒", "skill_cost": 120,
+		"skill_desc": "射程 2000。蓄力 1.5 秒后发射一枚慢速追踪导弹，命中处核爆：400 码范围内造成 [color=#ff9f43]4×攻击力[/color] 物理伤害，并使命中的敌人受到的治疗降低 50%，持续 4 秒。",
+	},
+	"elite": {
+		"name": "精英小将", "img": "minion-elite.png", "role": "统领位补位 · 近战",
+		"hp": 1000, "atk": 50, "def": 16, "mr": 20, "interval": 1.54, "range": 90, "spd": 105,
+		"skill_name": "铁锤", "skill_cost": 100,
+		"skill_desc": "射程 500。举拳蓄力 0.35 秒后砸地，对身前 60° 锥形 500 码内造成 [color=#ff9f43]4×攻击力[/color] 魔法伤害；每第 3 次改为高高跃起、空中蓄力 1 秒后下锤，覆盖 700 码全域并造成 [color=#ff9f43]6×攻击力[/color] 魔法伤害。",
+		"passives": [
+			{"name": "长手刃 (普攻)", "desc": "普攻造成 1×攻击力 物理伤害，每第 5 击附带旋刃。"},
+			{"name": "吞噬", "desc": "目标生命低于 15% 时发动，1.5 秒演出期间自身获得 [color=#ff9f43]95% 伤害减免[/color]，完成后回复 [color=#ff9f43]目标剩余生命的 2 倍[/color]，并获得持续 5 秒的 50% 攻速提升，同时窃取目标的主动技能。普攻、铁锁、铁拳与强化普攻都能触发。"},
+			{"name": "铁锁", "desc": "冷却 5 秒。锁定 150~350 码之间的敌人，链射命中后使其眩晕 0.4 秒、拉到自己身后，并造成 1×攻击力 魔法伤害。"},
+		],
+	},
+}
+
+## 小将详情页 — 布局对齐 _show_pet(立绘左上 / 名字与属性右上 / 分隔线下技能被动).
+func _show_minion(kind: String) -> void:
+	_clear_detail()
+	var mi: Dictionary = MINION_INFO.get(kind, {})
+	if mi.is_empty():
+		return
+	_add_image(100, 110, "res://assets/sprites/pets/%s" % mi["img"], 170, 170, true)
+	var mid_x := 220.0
+	_add_text(mid_x, 30, str(mi["name"]), 32, "#ffd93d", 0.0, 0.5, true)
+	_add_text(mid_x, 75, "深海小将", 14, "#888888", 0.0, 0.5)
+	_add_text(mid_x + 80, 75, str(mi["role"]), 14, "#58d3ff", 0.0, 0.5, true)
+	_add_text(mid_x, 112, "非统领单位 · 不可选入阵容 · 由系统补位生成", 13, "#7a8a96", 0.0, 0.5)
+	_add_text(mid_x, 140, "生命与攻击随等级 ×1.05 复利成长, 双抗为定值", 13, "#7a8a96", 0.0, 0.5)
+	# 属性两列 (Lv1 值)
+	var rows := [
+		["最大生命值", str(mi["hp"]), "#06d6a0"], ["攻击力", str(mi["atk"]), "#ff9f43"],
+		["护甲", str(mi["def"]), "#ffd93d"], ["魔抗", str(mi["mr"]), "#4dabf7"],
+		["攻击间隔", "%s 秒" % str(mi["interval"]), "#d6e4f0"], ["攻击距离", str(mi["range"]), "#d6e4f0"],
+		["移动速度", str(mi["spd"]), "#d6e4f0"], ["", "", ""],
+	]
+	for i in range(rows.size()):
+		if str(rows[i][0]) == "":
+			continue
+		var cx: float = 500.0 + float(i % 2) * 200.0
+		var cy: float = 30.0 + float(i / 2) * 38.0
+		_add_text(cx, cy, str(rows[i][0]), 13, "#888888", 0.0, 0.5)
+		_add_text(cx + 110.0, cy, str(rows[i][1]), 18, str(rows[i][2]), 0.0, 0.5, true)
+	_add_rect(DETAIL_W / 2.0, 195.0, DETAIL_W - 40, 1, "#ffd93d", 0.4)
+	# 技能 + 被动
+	var y := 214.0
+	_add_text(20, y, "技能 · %s  (%d 龟能)" % [str(mi["skill_name"]), int(mi["skill_cost"])], 15, "#58d3ff", 0.0, 0.0, true)
+	y += 26.0
+	y = _minion_body(str(mi["skill_desc"]), y) + 14.0
+	for pv in mi.get("passives", []):
+		_add_text(20, y, "被动 · %s" % str(pv["name"]), 15, "#58d3ff", 0.0, 0.0, true)
+		y += 26.0
+		y = _minion_body(str(pv["desc"]), y) + 12.0
+
+## 一段正文(自动换行), 返回下一段该起的 y.
+func _minion_body(txt: String, y: float) -> float:
+	var rt := RichTextLabel.new()
+	rt.bbcode_enabled = true; rt.fit_content = true; rt.scroll_active = false
+	rt.position = Vector2(20, y)
+	rt.custom_minimum_size = Vector2(DETAIL_W - 40, 0)
+	rt.add_theme_font_size_override("normal_font_size", 13)
+	rt.add_theme_color_override("default_color", Color("#ffffff"))
+	rt.text = txt
+	detail.add_child(rt)
+	# fit_content 的真实高度要等一帧才有 → 按字数估行, 够用且不抖(每行约 62 个全角字)
+	var lines: float = ceilf(float(txt.length()) / 62.0)
+	return y + maxf(20.0, lines * 19.0)
+
+
 func _show_pet(pet: Dictionary) -> void:
 	_clear_detail()
 	var rarity: String = pet.get("rarity", "C")
