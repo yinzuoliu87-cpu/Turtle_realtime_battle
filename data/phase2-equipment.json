@@ -710,7 +710,7 @@
     "poolPhase": 2,
     "emoji": "🎯",
     "effectImpl": true,
-    "effectDesc1": "携带者命中目标时标记其5秒,被标记的敌人受到的伤害+20%。",
+    "effectDesc1": "携带者命中目标时标记其5秒;被标记的敌人受到来自【全队任何来源】的伤害都+20%。",
     "effectDesc3": "",
     "img": "equip/targeter.png"
   },
