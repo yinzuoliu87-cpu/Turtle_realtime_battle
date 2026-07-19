@@ -4329,10 +4329,10 @@ func _tick_fortress(u: Dictionary, delta: float) -> void:   # 深海堡垒甲p2e
 		if float(e["fortress_t"]) < 8.0: continue
 		e["fortress_t"] = 0.0
 		var si: int = _eq_si(int(e.get("star", 1)))
-		var k2: float = [1.0, 2.0, 4.0][si]   # 用户2026-07-19: 0.8/1.0/1.5 -> 1/2/4
+		var k2: float = [0.9, 1.6, 3.0][si]   # 用户2026-07-19: 0.8/1.0/1.5 -> 1/2/4 -> 0.9/1.6/3
 		for o in _enemies_of(u):
 			_bolt_line(o["pos"], u["pos"], Color("#bfe9ff"))
-			_apply_damage_from(u, o, int(k2 * (u["def"] + u["mr"])), Color("#bfe9ff"), 0.0, true, true)
+			_apply_damage_from(u, o, _resolve_dmg(u, k2 * (u["def"] + u["mr"]), o, true), Color("#bfe9ff"), 0.0, false, true)   # 真·魔法伤害(走魔抗); 原 raw=true 是白字真伤·与文案"魔法伤害"不符(用户2026-07-19指出)
 			_heal(u, [60.0, 110.0, 250.0][si] + maxf(0.0, u["maxHp"] - u["hp"]) * 0.06)   # 用户2026-07-19: 60/110/250 + 已损生命6%(逐敌结算)
 
 func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016: 每5秒为全队(含自己)护盾15/20/25(用户2026-07-02, 原走2.5s周期); 每件独立
