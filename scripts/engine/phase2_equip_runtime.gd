@@ -37,7 +37,7 @@ const STATS := {
 	"p2eq_012": [{"hp": 40, "def": 5}, {"hp": 70, "def": 10}, {"hp": 100, "def": 18}],
 	"p2eq_013": [{"hp": 60, "reflectPct": 8}, {"hp": 110, "reflectPct": 11}, {"hp": 200, "reflectPct": 15}],
 	"p2eq_014": [{"hp": 80, "def": 14, "mr": 14}, {"hp": 160, "def": 25, "mr": 25}, {"hp": 600, "def": 50, "mr": 50}],
-	"p2eq_015": [{"hp": 50, "reflectPct": 10}, {"hp": 80, "reflectPct": 17}, {"hp": 130, "reflectPct": 25}],
+	"p2eq_015": [{"hp": 60, "reflectPct": 10}, {"hp": 90, "reflectPct": 17}, {"hp": 140, "reflectPct": 25}],
 	"p2eq_016": [{"def": 6, "mr": 6}, {"def": 13, "mr": 13}, {"def": 21, "mr": 21}],
 	"p2eq_017": [{"hp": 150, "def": 15, "mr": 15}, {"hp": 250, "def": 35, "mr": 35}, {"hp": 4000, "def": 150, "mr": 150}],
 	# ── 盾系 018-021 (批3) ──
