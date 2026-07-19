@@ -7700,7 +7700,7 @@ func _laser_beam(a2d: Vector2, b2d: Vector2, col: Color, half_w: float = 0.16, d
 #  伤害应用 (1:1 复用 2D: 护盾吸收→HP; 闪避/吸血/统计/累积条/受伤被动; 击杀; 飘字)
 # ============================================================================
 # 无来源伤害 (DoT 层数结算等)
-func _apply_damage(u: Dictionary, dmg: int, col: Color) -> void:
+func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: String = "dot") -> void:
 	var d := float(dmg)
 	var shield_before: float = u["shield"]
 	if u["shield"] > 0.0:
@@ -7708,8 +7708,13 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color) -> void:
 		u["shield"] -= ab; d -= ab
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	if u.get("_review_dummy", false): u["hp"] = u["maxHp"]   # 训练靶: 受击即回满, 打不死不结算(看完整)
-	u["_st_taken"] = int(u.get("_st_taken", 0)) + dmg   # §STATS: 无来源伤害(DoT等)只计承受
-	_st_add_type(u, "_st_taken_by_type", "dot", dmg)    # 无来源=DoT 桶(分段条 真实+DoT 白)
+	u["_st_taken"] = int(u.get("_st_taken", 0)) + dmg
+	_st_add_type(u, "_st_taken_by_type", bucket, dmg)
+	# §STATS 修(用户2026-07-19"统计面板感觉很多伤害没统计"): DoT(灼烧/中毒/流血)此前【只计承受方】,
+	#   施加者的"造成"完全没算 —— 而 dot_src 一直有记来源, 只是结算时没用。这里补上施加者归属。
+	if src is Dictionary and src.get("alive", false) and not is_same(src, u):
+		src["_st_dealt"] = int(src.get("_st_dealt", 0)) + dmg
+		_st_add_type(src, "_st_dealt_by_type", bucket, dmg)
 	_float_text(u["pos"] + Vector2(randf_range(-26.0, 26.0), -40.0 + randf_range(-10.0, 6.0)), str(dmg), col)   # 抖开: 多段/AOE 出伤飘字不重叠成糊团
 	# §AUDIO: 无来源伤害也出命中音 (非暴击); 护盾破→shield-break
 	if shield_before > 0.0 and u["shield"] <= 0.0:
@@ -8839,7 +8844,7 @@ const _SELF_CAST_SKILLS := {
 }
 
 # 远程敌向技的专属放技射程(码): 有这条的技能"够得着就放"·不被近战射程卡着(用户2026-07-11: 手里剑是远程技·改2000)
-const _SKILL_CAST_RANGE := {"ninjaShuriken": 2000.0, "ninjaBomb": 2000.0, "ninjaBackstab": 2000.0, "lineInkBomb": 2000.0, "eliteHammer": 500.0, "minionBodysurf": 2000.0, "minionRocket": 2000.0}   # 墨水炸弹/精英铁锤/小将浪板+火箭 各自射程(用户2026-07-18: 小将两技射程2000)
+const _SKILL_CAST_RANGE := {"ninjaShuriken": 2000.0, "ninjaBomb": 2000.0, "ninjaBackstab": 2000.0, "lineInkBomb": 2000.0, "eliteHammer": 500.0, "minionBodysurf": 2000.0, "minionRocket": 2000.0, "chestStorm": 2000.0}   # chestStorm=宝箱龟财宝风暴(用户2026-07-19: 射程改2000)   # 墨水炸弹/精英铁锤/小将浪板+火箭 各自射程(用户2026-07-18: 小将两技射程2000)
 func _skill_cast_range(u: Dictionary, stype: String) -> float:
 	if _SELF_CAST_SKILLS.has(stype): return 99999.0                       # 自/友向: 任意距离即放
 	return float(_SKILL_CAST_RANGE.get(stype, u.get("atk_range", 70.0)))  # 远程敌向技用专属射程; 否则=攻击射程(近战贴身放)
@@ -16741,17 +16746,17 @@ func _tick_dot_stacks(u: Dictionary) -> void:
 				dmg = stacks + roundi(max_hp * stacks * 0.001)
 				new_val = floori(stacks * 0.8)   # 衰减80%(用户)
 				if _t < u.get("true_fire_until", 0.0):
-					_raw_lose(u, float(dmg))
+					_apply_damage(u, dmg, Color("#ffffff"), u.get("dot_src", {}).get("burn", null), "tru")   # 真火: 灼烧转真伤(原走_raw_lose→无飘字无统计·用户2026-07-19)
 				else:
-					_apply_damage(u, _dot_after_resist(u, float(dmg), true), Color("#4dabf7"))   # 灼烧=魔法伤害·吃魔抗(用户2026-07-19)
+					_apply_damage(u, _dot_after_resist(u, float(dmg), true), Color("#4dabf7"), u.get("dot_src", {}).get("burn", null), "mag")   # 灼烧=魔法伤害·吃魔抗
 			"poison":
 				dmg = stacks
 				new_val = floori(stacks * 0.8)   # 衰减80%(用户)
-				_apply_damage(u, _dot_after_resist(u, float(dmg), true), Color("#7ee87e"))   # 中毒=魔法伤害·吃魔抗(用户2026-07-19)
+				_apply_damage(u, _dot_after_resist(u, float(dmg), true), Color("#7ee87e"), u.get("dot_src", {}).get("poison", null), "mag")   # 中毒=魔法伤害·吃魔抗
 			"bleed":
 				dmg = stacks
 				new_val = floori(stacks * 0.8)   # 衰减80%(用户)
-				_apply_damage(u, _dot_after_resist(u, float(dmg), false), Color("#ff6b6b"))   # 流血=物理伤害·吃护甲(用户2026-07-19)
+				_apply_damage(u, _dot_after_resist(u, float(dmg), false), Color("#ff6b6b"), u.get("dot_src", {}).get("bleed", null), "phy")   # 流血=物理伤害·吃护甲
 		ds[type] = maxi(0, new_val)
 		if ds[type] <= 0:
 			ds.erase(type)
