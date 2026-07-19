@@ -451,7 +451,8 @@ const PANEL_COUNT := {   # 头像下装备格右下角层数徽章: id → eq_st
 }
 const PANEL_CHARGE := {   # 局内头像下装备格的充能进度条: id → [充能字段, 满值]
 	"p2eq_009": ["blade_energy", 100.0], "p2eq_026": ["thunder", 100.0],
-	"p2eq_023": ["fire_mana", 100.0, "#ff8a3c"]   # 法力条(火橙), "p2eq_017": ["anchor_accum", 250.0], "p2eq_036": ["incub", 100.0],
+	"p2eq_023": ["fire_mana", 100.0, "#ff8a3c"],   # 023法力条(火橙; 第3项=自定义条色, 缺省青)
+	"p2eq_017": ["anchor_accum", 250.0], "p2eq_036": ["incub", 100.0],
 }
 var _selected_unit = null                     # 当前选中(点击)的单位 Dictionary, 高亮其框
 var _info_panel: PanelContainer = null        # 详情面板 (居中, 显等级/属性/被动/技能/装备); 重开覆盖
