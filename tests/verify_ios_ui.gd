@@ -70,20 +70,29 @@ func _offscreen_buttons(root: Node, vp: Vector2) -> Array:
 ## 夹边逻辑从屏外拉回 y≈6, 正好落进随后才画的面板矩形里. rect ⊆ 屏幕 → 老断言全绿, 但手指点不到。
 ##
 ## 判据: 同一 CanvasItem 父链下, 索引比按钮【大】(=画在上面)且不透明(modulate.a>0.05)的 Control,
-## 若其 rect 盖住按钮中心点, 且它本身不是按钮的祖先/后代 → 判为遮挡。
+## 若其 rect 与按钮 rect 的重叠面积 ≥ 按钮面积的 25%, 且它本身不是按钮的祖先/后代 → 判为遮挡。
+##
+## ★用【面积重叠】而不是【中心点命中】: 2026-07-19 第一版用中心点, 结果对选龟页给出假阴性 ——
+## 无头模式下 DisplayServer.window_get_size() 返回 (0,0), TeamSelectScene._stage_to_screen 的
+## 偏移折算 (STAGE_OFFSET * vp/win) 因此走了兜底分支, 舞台整体比真机低算约 30px,
+## 木托盘(slotBay)刚好落到返回键中心点下方 14px → 中心点没被命中, 测试全绿, 但真机上按钮被木板压住。
+## 面积判据对这 30px 的漂移不敏感, 抓得住。
 func _occluded_buttons(root: Node, _vp: Vector2) -> Array:
 	var btns: Array = []
 	_visible_buttons(root, btns)
 	var bad: Array = []
 	for b in btns:
 		var bc: Control = b as Control
-		var center: Vector2 = bc.get_global_rect().get_center()
-		var blocker := _find_blocker(root, bc, center)
+		var blocker := _find_blocker(root, bc)
 		if blocker != "":
 			bad.append("%s(%s) 被 %s 盖住" % [b.name, (b as Button).text.left(8) if b is Button else "-", blocker])
 	return bad
 
-func _find_blocker(root: Node, btn: Control, pt: Vector2) -> String:
+func _find_blocker(root: Node, btn: Control) -> String:
+	var br: Rect2 = btn.get_global_rect()
+	var barea: float = br.size.x * br.size.y
+	if barea <= 1.0:
+		return ""
 	var stack: Array = [root]
 	while not stack.is_empty():
 		var n: Node = stack.pop_back()
@@ -98,8 +107,9 @@ func _find_blocker(root: Node, btn: Control, pt: Vector2) -> String:
 			continue                                  # 不吃鼠标的纯装饰层不算遮挡
 		if btn.is_ancestor_of(c) or c.is_ancestor_of(btn):
 			continue                                  # 自己的子孙/祖先(按钮内的图标、包着它的容器)不算
-		if not c.get_global_rect().has_point(pt):
-			continue
+		var inter: Rect2 = c.get_global_rect().intersection(br)
+		if inter.size.x * inter.size.y < barea * 0.25:
+			continue                                  # 只是蹭到边不算; 盖掉四分之一以上才算遮住
 		if not _draws_above(c, btn):
 			continue
 		return "%s%s" % [c.name, ("/" + str((c as Button).text).left(6)) if c is Button else ""]
@@ -124,6 +134,37 @@ func _draws_above(a: Control, b: Control) -> bool:
 		return (ca as CanvasItem).z_index > (cb as CanvasItem).z_index
 	return ca.get_index() > cb.get_index()
 
+## 选龟页贴边按钮(返回/清空/上次/开始)必须画在最上层 —— 结构断言, 不做几何模拟.
+##
+## 【为什么不靠几何】用户2026-07-19实机反馈「返回键被木板遮住」, 木板 = _build_slots 的 slotBay 暗托盘,
+## 它在这四个按钮【之后】add_child, 手机比例下按钮又被 _place_clamped 夹到屏幕上沿, 正好落进托盘里。
+## 但无头测试复现不了: DisplayServer.window_get_size() 返回 (0,0) → _stage_to_screen 的偏移折算
+## (STAGE_OFFSET * vp/win) 走兜底, 整个舞台比真机低约 30px, 托盘刚好滑到按钮下面。
+## 我先后用「中心点命中」和「面积重叠≥25%」两版几何判据, 都被这 30px 漂移骗成假阴性。
+## 所以这里改断【结构不变式】: _raise_edge_btns() 把它们移到 root 末尾 = 最后绘制 = 谁也压不住,
+## 与视口尺寸、舞台缩放、窗口尺寸全都无关, 无头环境同样成立。
+func _check_teamselect_edge_btns(inst: Node) -> void:
+	var root: Control = inst.get_node_or_null("UI/Root")
+	if root == null:
+		_ok("TeamSelect: 贴边按钮在最上层", false, "找不到 UI/Root")
+		return
+	var n := root.get_child_count()
+	var tail: Array = []
+	for i in range(maxi(0, n - 4), n):
+		var c := root.get_child(i)
+		tail.append(str((c as Button).text) if c is Button else c.get_class())
+	var want := ["‹ 返回", "⊘ 清空", "🔄 上次阵容"]
+	var missing: Array = []
+	for w in want:
+		var hit := false
+		for t in tail:
+			if str(t).begins_with(w.substr(0, 3)):
+				hit = true
+		if not hit:
+			missing.append(w)
+	_ok("TeamSelect: 贴边按钮在 root 末尾(画在最上层, 不会被木托盘压住)",
+		missing.is_empty(), "末4个子节点=%s 缺=%s" % [str(tail), str(missing)])
+
 func _check_scene_buttons(scene_name: String, vp: Vector2) -> void:
 	var ps = load("res://scenes/%s.tscn" % scene_name)
 	if ps == null:
@@ -138,6 +179,8 @@ func _check_scene_buttons(scene_name: String, vp: Vector2) -> void:
 	_ok("%s: %d 个可见按钮全在屏内" % [scene_name, btns.size()], bad.is_empty(), "; ".join(bad) if not bad.is_empty() else "")
 	var occ := _occluded_buttons(inst, vp)
 	_ok("%s: 无按钮被后画的面板盖住" % scene_name, occ.is_empty(), "; ".join(occ) if not occ.is_empty() else "")
+	if scene_name == "TeamSelect":
+		_check_teamselect_edge_btns(inst)
 	inst.queue_free()
 	await get_tree().process_frame
 

@@ -319,11 +319,17 @@ func _place_clamped(ctrl: Control, key: String) -> void:
 	ctrl.position.y = clampf(ctrl.position.y, m.y, maxf(m.y, vp.y - ctrl.size.y - m.w))
 	_edge_btns.append(ctrl)   # 登记 → 建完所有区域后统一提到最前(见 _raise_edge_btns)
 
-## 贴边按钮(返回/清空/上次/开始)提到最上层 —— 【防御性, 不是已确诊的病因】.
-## 这几个按钮在 slotBay/网格/详情区之【前】add_child, 手机比例下又会被夹到屏幕边缘,
-## 理论上可能落进后画的面板里被盖住. 但 1560×720 实测探针显示当前布局下并没有发生
-## (盖住它们的只有画在下层的背景). 留着是因为代价只有一次 move_child, 且以后调 RL 坐标
-## 或加新面板时这类遮挡是很容易复发的一类 bug; tests/verify_ios_ui.gd 有对应断言看着。
+## 贴边按钮(返回/清空/上次/开始)提到最上层 —— 【这就是手机端返回键被遮的病因·用户2026-07-19实机确认「是被木板遮拦」】.
+##
+## 这几个按钮在 _build_slots/_build_grid_region/_build_detail_region 之【前】add_child,
+## 手机比例下 _place_clamped 又把它们从设计位(y≈-90, 屏外)夹到屏幕上沿 y≈6,
+## 正好落进随后才画的 slotBay 暗木托盘里. 同为 root 子节点, 后加的画在上面 → 返回键被木板压住点不到.
+##
+## ⚠ 无头测试复现不了这个几何: DisplayServer.window_get_size() 返回 (0,0) →
+## _stage_to_screen 的偏移折算 (STAGE_OFFSET * vp/win) 走兜底分支, 整个舞台比真机低约 30px,
+## 木托盘刚好滑到按钮下方 → 我用「中心点命中」和「面积重叠」两版几何探针都得到了假阴性,
+## 一度误判成"不是z序,是刘海". 别再用几何模拟去查这个,
+## tests/verify_ios_ui.gd 改断结构不变式(这四个按钮必须在 root 末尾), 撤掉本函数即变红。
 func _raise_edge_btns() -> void:
 	for c in _edge_btns:
 		if is_instance_valid(c) and c.get_parent() == root:
