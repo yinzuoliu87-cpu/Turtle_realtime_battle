@@ -4335,7 +4335,7 @@ func _tick_fortress(u: Dictionary, delta: float) -> void:   # 深海堡垒甲p2e
 			_apply_damage_from(u, o, _resolve_dmg(u, k2 * (u["def"] + u["mr"]), o, true), Color("#bfe9ff"), 0.0, false, true)   # 真·魔法伤害(走魔抗); 原 raw=true 是白字真伤·与文案"魔法伤害"不符(用户2026-07-19指出)
 			_heal(u, [60.0, 110.0, 250.0][si] + maxf(0.0, u["maxHp"] - u["hp"]) * 0.06)   # 用户2026-07-19: 60/110/250 + 已损生命6%(逐敌结算)
 
-func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016: 每5秒为全队(含自己)护盾15/20/25(用户2026-07-02, 原走2.5s周期); 每件独立
+func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016: 每5秒放一个总护盾池(100/250/400 + 携带者8%最大生命)由全队(含自己)均分(用户2026-07-19; 原每人固定15/20/25); 每件独立
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_016": continue
@@ -4343,8 +4343,12 @@ func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016:
 		if float(e["ironwall_t"]) < 5.0: continue
 		e["ironwall_t"] = 0.0
 		var si: int = _eq_si(int(e.get("star", 1)))
-		for o in _allies_of(u):
-			_grant_shield(o, [15.0, 20.0, 25.0][si])
+		var mates: Array = _allies_of(u)
+		if mates.is_empty(): continue
+		var pool: float = [100.0, 250.0, 400.0][si] + u["maxHp"] * 0.08   # 总池: 固定 + 携带者8%最大生命
+		var each: float = pool / float(mates.size())                      # 全队(含自己)均分
+		for o in mates:
+			_grant_shield(o, each)
 
 func _tick_thunder(u: Dictionary, delta: float) -> void:   # 雷鸣贝壳p2eq_025: 每4秒降N道大雷(道间错峰0.3s), 各劈随机敌1×ATK真伤(伤害在闪电中段跳); 每件独立(用户2026-07-02: 原2.5s)
 	if u.get("equips", []).is_empty(): return
@@ -20679,8 +20683,8 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 		"p2eq_015":   # 荆棘海胆: 反伤转真伤+施流血
 			stt["reflect_pct"] = [10.0, 17.0, 25.0][si] / 100.0
 			stt["reflect_bleed"] = [2.0, 2.5, 3.0][si]
-		"p2eq_016":   # 铁壁盾: 每段非真实伤害固定减 2/4/6 (flat_dr, 叠加多件取和)
-			u["flat_dr"] = float(u.get("flat_dr", 0.0)) + [2.0, 4.0, 6.0][si]
+		"p2eq_016":   # 铁壁盾: 每段非真实伤害固定减 3/6/10 (flat_dr, 叠加多件取和·用户2026-07-19)
+			u["flat_dr"] = float(u.get("flat_dr", 0.0)) + [3.0, 6.0, 10.0][si]
 		"p2eq_024":   # 龙蛋: 装备即3层吐息
 			stt["dragon_stacks"] = 3
 		"p2eq_039":   # 竹制弓箭: 生长充能数 (3★=3次)
