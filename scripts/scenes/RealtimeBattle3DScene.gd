@@ -5833,7 +5833,7 @@ func _tick_jelly(u: Dictionary, delta: float) -> void:   # 龟苓膏块p2eq_012:
 		if float(e["jelly_t"]) < 4.0: continue
 		e["jelly_t"] = 0.0
 		var si: int = _eq_si(int(e.get("star", 1)))
-		_grant_shield(u, [30.0, 40.0, 55.0][si])
+		_grant_shield(u, [40.0, 60.0, 90.0][si] + u["maxHp"] * 0.04)   # 用户2026-07-19: 30/40/55 → 40/60/90 + 4%最大生命
 
 func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 锈蚀短剑p2eq_001: 每3s就绪, 射程2000(全场)内最近敌即甩飞斩剑气; 每件独立(多件各自触发)
 	if u.get("equips", []).is_empty(): return
