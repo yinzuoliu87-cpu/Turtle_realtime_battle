@@ -5839,9 +5839,9 @@ func _tick_jelly(u: Dictionary, delta: float) -> void:   # 龟苓膏块p2eq_012:
 		var si: int = _eq_si(int(e.get("star", 1)))
 		_grant_shield(u, [30.0, 40.0, 55.0][si])
 
-func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 锈蚀短剑p2eq_001: 每3s就绪, 射程(=携带者射程)内有敌即斜砍; 每件独立(多件各自触发)
+func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 锈蚀短剑p2eq_001: 每3s就绪, 射程2000(全场)内最近敌即甩飞斩剑气; 每件独立(多件各自触发)
 	if u.get("equips", []).is_empty(): return
-	var t = null; var got := false; var rng: float = float(u.get("atk_range", 70.0))
+	var t = null; var got := false; var rng: float = 2000.0   # 射程2000(用户2026-07-19: 近战→远程「裂空飞斩」剑气全场覆盖)
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_001": continue
 		e["rust_t"] = float(e.get("rust_t", 0.0)) + delta   # 计时存装备条目→每副本独立就绪
@@ -5851,8 +5851,8 @@ func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 锈蚀短剑p2eq_
 		if t == null or (t["pos"] - u["pos"]).length() > rng: continue   # 射程内无敌→保持就绪等待
 		e["rust_t"] = 0.0
 		var si: int = _eq_si(int(e.get("star", 1)))
-		_weapon_slash(u["pos"], t["pos"], Color("#ffd27a"))
-		_apply_damage_from(u, t, _atk_dmg(u, [0.6, 0.75, 1.0][si], t) + int([40, 60, 100][si] * u["crit"]), Color("#ff4444"), 0.0, false, true)
+		var dmg01: int = _atk_dmg(u, [0.6, 0.75, 1.0][si], t) + int([40, 60, 100][si] * u["crit"])
+		_weapon_flyslash(u, t, dmg01, Color("#ffd27a"))   # 剑气飞到目标才结算伤(命中判定在_projectiles arrival)
 
 func _make_slash_texture(col: Color) -> ImageTexture:   # 斜劈斩弧: 一段新月弧(左上→右下), 亮核软边
 	var S := 64
@@ -5890,6 +5890,65 @@ func _weapon_slash(from2d: Vector2, to2d: Vector2, col: Color) -> void:   # 面�
 	tw.chain().tween_property(arc, "modulate:a", 0.0, 0.13)
 	tw.chain().tween_callback(arc.queue_free)
 	_skill_ring(to2d, Color(col.r, col.g, col.b, 0.6), 42.0)
+
+var _flyslash_tex: ImageTexture = null
+func _make_flyslash_texture(col: Color) -> ImageTexture:   # 飞斩剑气(彗星新月): 前刃凸面朝上(+Y=行进方向·配wisp_dir令尖朝目标)+白热芯+向后(下)渐隐拖尾
+	var W := 72; var H := 128
+	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var cx := float(W) * 0.5
+	var arc_cy := float(H) * 0.40          # 前刃圆心(取其"上冠"一段=凸面朝上)
+	var R := float(H) * 0.33
+	var thick := float(H) * 0.060
+	var tail_top := arc_cy - R + thick     # 拖尾从前刃后缘起
+	for y in range(H):
+		for x in range(W):
+			var dx := float(x) - cx
+			var acc := Color(0, 0, 0, 0)
+			# --- ① 前刃新月弧带(白热芯) ---
+			var dyd := float(y) - arc_cy
+			var d := sqrt(dx * dx + dyd * dyd)
+			if absf(d - R) <= thick:
+				var a := atan2(dyd, dx)     # 正上=-90°; 上冠 -142°..-38°
+				if a >= deg_to_rad(-142.0) and a <= deg_to_rad(-38.0):
+					var frac := clampf((a + deg_to_rad(142.0)) / deg_to_rad(104.0), 0.0, 1.0)
+					var edge := 1.0 - absf(d - R) / thick
+					var taper := sin(PI * frac)
+					var cc := col.lerp(Color(1, 1, 1), clampf(edge * 1.8, 0.0, 1.0) * 0.92)
+					acc = Color(cc.r, cc.g, cc.b, clampf(edge * edge * taper * 1.15, 0.0, 1.0))
+			# --- ② 向后(图像下=-Y=行进反方向)渐隐锥形拖尾 ---
+			if float(y) > tail_top:
+				var tprog := clampf((float(y) - tail_top) / (float(H) - tail_top), 0.0, 1.0)
+				var halfw := lerpf(float(W) * 0.16, 1.0, pow(tprog, 0.65))   # 宽根→尖尾
+				var dxc := absf(dx)
+				if dxc <= halfw:
+					var lat := 1.0 - dxc / maxf(halfw, 0.001)
+					var ta := lat * lat * (1.0 - tprog) * 0.55
+					var tc := col.lerp(Color(1, 1, 1), 0.25)
+					if ta > acc.a: acc = Color(tc.r, tc.g, tc.b, ta)
+			if acc.a > 0.003:
+				img.set_pixel(x, y, acc)
+	return ImageTexture.create_from_image(img)
+
+func _weapon_flyslash(src: Dictionary, tgt: Dictionary, dmg: int, col: Color) -> void:   # 锈蚀短剑p2eq_001(射程2000): 朝目标飞的新月剑气→wisp_dir令尖朝目标屏幕方向·命中(frac>=1)才结算伤(用户2026-07-19)
+	if tgt == null: return
+	if _flyslash_tex == null: _flyslash_tex = _make_flyslash_texture(col)
+	var start2d: Vector2 = src["pos"]
+	_skill_ring(start2d, Color(col.r, col.g, col.b, 0.5), 24.0)   # 起手: 携带者剑处一抹白亮(蓄势)
+	var p := Sprite3D.new()
+	p.texture = _flyslash_tex
+	p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+	p.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # wisp_dir: 弹道循环每帧手动 camera_basis×roll → 尖朝目标屏幕方向(billboard会覆盖手动basis, 必须关)
+	p.shaded = false; p.transparent = true
+	p.modulate = col
+	p.pixel_size = 0.055
+	p.position = _world_pos(start2d, 1.0)
+	_world.add_child(p)
+	_projectiles.append({
+		"node": p, "from": _world_pos(start2d, 1.0), "tgt": tgt, "dmg": dmg, "col": col,
+		"src": src, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 520.0, 0.8, 2.6),   # 飞行速度: 降60%后再减半(用户2026-07-19: /2600→/1040→/520)
+		"flyslash": true, "wisp_dir": true, "o2d": start2d,
+	})
 
 var _slash_sheet_cache: ImageTexture = null
 func _make_slash_sheet(col: Color) -> ImageTexture:   # Undertale式红色像素斩击 5帧(斜向弧: 白热芯+红光, 生成→峰值→断裂消散); NEAREST放大=像素感; 缓存
@@ -7294,6 +7353,9 @@ func _step_projectiles(delta: float) -> void:
 					if pr.get("eq_bleed", 0) > 0:
 						_apply_dot_stacks(tgt, "bleed", int(pr["eq_bleed"]), pr["src"])
 					_hit_spark(tgt)
+				elif pr.get("flyslash", false):   # 锈蚀短剑001飞斩: 命中才结算装备物理伤(红字)+落点炸斩弧+命中环
+					_apply_damage_from(pr["src"], tgt, pr["dmg"], Color("#ff4444"), 0.0, false, true)
+					_weapon_slash(pr.get("o2d", tgt["pos"]), tgt["pos"], pr["col"])
 				elif pr["src"] != null:
 					_apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], 0.0, pr.get("raw", false))   # raw=手里剑暴击转真伤等
 				else:
