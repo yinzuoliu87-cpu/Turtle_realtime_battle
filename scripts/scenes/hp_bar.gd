@@ -15,6 +15,7 @@ var _max_hp := 1.0
 var _shield := 0.0
 var _holy := 0.0          # 圣甲圣盾量 (shield 中属圣盾的部分) — 血条上画成白黄亮 (区别普通盾段)
 var _hshell := 0.0        # 缩头防御特殊盾量 (shield 中属壳盾的部分) — 画壳青绿段
+var _urchin := 0.0        # 海胆护盾量 (013满层·shield 中属海胆盾的部分) — 画海胆紫段(10秒渐衰肉眼可见)
 var _aura := 0.0
 var _bubble := 0.0
 var _anem := 0.0
@@ -43,6 +44,8 @@ const _SHIELD_D := Color8(0xc8, 0xc8, 0xdc)
 const _HOLY_L := Color8(0xff, 0xf4, 0xc0)    # 圣盾段 白黄亮 (圣光色, 区别普通灰白盾)
 const _HSHELL_L := Color8(0x8f, 0xf0, 0xb8)  # 缩头防御特殊盾段 壳青绿亮(用户2026-07-17"特殊点的颜色放血条")
 const _HSHELL_D := Color8(0x3f, 0x9f, 0x6e)  # 壳青绿暗
+const _URCHIN_L := Color8(0xcc, 0x66, 0xf5)  # 海胆盾段 亮紫 (013满层·用户2026-07-19"特殊颜色")
+const _URCHIN_D := Color8(0x93, 0x33, 0xba)  # 海胆紫暗
 const _HOLY_D := Color8(0xff, 0xdf, 0x70)
 const _AURA := Color8(0xff, 0xd9, 0x66)
 const _BUBBLE := Color8(0x4c, 0xc9, 0xf0)
@@ -78,6 +81,7 @@ func update_state(f: Dictionary, hp_override := -1.0, shield_override := -1.0) -
 	if f.has("_holyShieldVal") and float(f.get("_holyShieldVal", 0)) > _shield and shield_override < 0.0:
 		f["_holyShieldVal"] = _shield
 	_hshell = clampf(float(f.get("_hidingShellVal", 0)), 0.0, maxf(0.0, _shield - _holy))
+	_urchin = clampf(float(f.get("urchin_sh_left", 0)), 0.0, maxf(0.0, _shield - _holy - _hshell))   # 海胆盾段: 随10秒衰减自动缩
 	if f.has("_hidingShellVal") and float(f.get("_hidingShellVal", 0)) > _shield and shield_override < 0.0:
 		f["_hidingShellVal"] = _shield   # 盾被打掉→壳盾段同步收敛(圣盾同款写回)
 	_aura = maxf(0.0, float(f.get("_auraShieldVal", f.get("_lavaShieldVal", f.get("_hidingShieldVal", 0)))))
@@ -190,7 +194,8 @@ func _draw() -> void:
 	# 护盾段: 圣盾部分(白黄亮)先画, 普通盾部分(灰白)接其后 — 一看血条即区分圣盾 (圣甲) 与普通盾。
 	cursor += _seg(x, cursor, w, _holy, _HOLY_L, _HOLY_D, 0.6)
 	cursor += _seg(x, cursor, w, _hshell, _HSHELL_L, _HSHELL_D, 0.6)
-	cursor += _seg(x, cursor, w, maxf(0.0, _shield - _holy - _hshell), _SHIELD_L, _SHIELD_D, 0.55)
+	cursor += _seg(x, cursor, w, _urchin, _URCHIN_L, _URCHIN_D, 0.6)
+	cursor += _seg(x, cursor, w, maxf(0.0, _shield - _holy - _hshell - _urchin), _SHIELD_L, _SHIELD_D, 0.55)
 	cursor += _seg(x, cursor, w, _aura, _AURA, _AURA, 0.6)
 	cursor += _seg(x, cursor, w, _bubble, _BUBBLE, _BUBBLE, 0.55)
 	cursor += _seg(x, cursor, w, _anem, _ANEM, _ANEM, 0.7)
