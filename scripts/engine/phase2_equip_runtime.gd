@@ -41,7 +41,7 @@ const STATS := {
 	"p2eq_016": [{"def": 6, "mr": 6}, {"def": 13, "mr": 13}, {"def": 21, "mr": 21}],
 	"p2eq_017": [{"hp": 200, "def": 15, "mr": 15}, {"hp": 450, "def": 35, "mr": 35}, {"hp": 4000, "def": 150, "mr": 150}],
 	# ── 盾系 018-021 (批3) ──
-	"p2eq_018": [{"hp": 50, "mr": 8, "healAmp": 5, "shieldAmp": 5}, {"hp": 70, "mr": 13, "healAmp": 13, "shieldAmp": 13}, {"hp": 100, "mr": 18, "healAmp": 20, "shieldAmp": 20}],
+	"p2eq_018": [{"hp": 70, "mr": 8, "healAmp": 5, "shieldAmp": 5}, {"hp": 140, "mr": 13, "healAmp": 13, "shieldAmp": 13}, {"hp": 300, "mr": 18, "healAmp": 20, "shieldAmp": 20}],
 	"p2eq_019": [{"def": 5, "mr": 10}, {"def": 10, "mr": 15}, {"def": 16, "mr": 21}],
 	"p2eq_020": [{"hp": 100, "def": 3, "mr": 3, "_echargePct": 10}, {"hp": 140, "def": 4, "mr": 4, "_echargePct": 10}, {"hp": 210, "def": 6, "mr": 6, "_echargePct": 10}],
 	"p2eq_021": [{"hp": 60, "_maxEnergy": 20}, {"hp": 100, "_maxEnergy": 20}, {"hp": 180, "_maxEnergy": 20}],

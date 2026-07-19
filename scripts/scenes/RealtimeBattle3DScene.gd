@@ -5223,6 +5223,7 @@ func _tick_shell(u: Dictionary, delta: float) -> void:   # 守护贝壳p2eq_018:
 		e["shell_t"] = 0.0
 		var si: int = _eq_si(int(e.get("star", 1)))
 		_heal(u, [30, 45, 60][si] + u["maxHp"] * [0.05, 0.09, 0.15][si])
+		_shell_guard_fx(u)   # 半壳合拢护罩演出(用户2026-07-19)
 
 func _tick_anemone(u: Dictionary, delta: float) -> void:   # 海葵药膏p2eq_019: 每7秒奶自己+最低血友军(30/45/60+12/14/18%目标已损血)×海葵增幅; 累计200/180/150治疗+1海葵层(治疗&盾强度+8/9/10%/层); 每件独立(用户2026-07-02,原2.5s)
 	if u.get("equips", []).is_empty(): return
@@ -6243,6 +6244,72 @@ func _tick_coral(u: Dictionary, delta: float) -> void:   # 双穿珊瑚刺p2eq_0
 		if far == null: continue
 		e["coral_t"] = 0.0
 		_fire_coral_spike(u, far, _eq_si(int(e.get("star", 1))))
+
+var _shellhalf_tex: ImageTexture = null
+
+func _make_shellhalf_texture() -> ImageTexture:   # 守护贝壳018: 扇贝半壳(铰链在下缘·穹顶朝上)·玉青壳身+暗壳沟+奶金壳缘+深描边(实心物体感·非光效)
+	var W := 76; var H := 42
+	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var jade := Color(0.13, 0.60, 0.57)      # 壳身玉青(暗部)
+	var jade2 := Color(0.44, 0.88, 0.79)     # 壳身亮部
+	var rim := Color(1.00, 0.92, 0.68)       # 壳缘奶金
+	var line := Color(0.05, 0.19, 0.23)      # 描边/壳沟深色
+	var cx := float(W) * 0.5
+	var hy := float(H) - 1.0                 # 铰链=底边中点
+	var rad := float(H) - 2.0
+	for y in range(H):
+		for x in range(W):
+			var dx := float(x) - cx
+			var dy := hy - float(y)                       # 向上为正
+			if dy < 0.0: continue
+			var d := sqrt(dx * dx * 0.30 + dy * dy)       # 横向压扁=扇贝更宽
+			if d > rad: continue
+			var ang := atan2(dy, dx * 0.55)               # 0..PI 扇面角
+			var t := d / rad                              # 0=铰链 1=外缘
+			var edge := clampf(sin(ang) * 2.6, 0.0, 1.0)  # 两个铰链角收成尖
+			if edge <= 0.02: continue
+			var rib := 0.5 + 0.5 * sin(ang * 11.0)        # 放射壳肋(沟=暗)
+			var c := jade.lerp(jade2, clampf(0.30 + 0.55 * rib - 0.25 * t, 0.0, 1.0))
+			c = c.lerp(line, 0.30 * (1.0 - rib))          # 壳沟压暗(不是发白射线)
+			if t > 0.80 and t <= 0.94:
+				c = c.lerp(rim, (t - 0.80) / 0.14 * 0.85)  # 外圈奶金壳缘
+			if t > 0.94 or edge < 0.30:
+				c = c.lerp(line, 0.75)                     # 外缘+两侧尖角深描边
+			img.set_pixel(x, y, Color(c.r, c.g, c.b, clampf(edge * 1.6, 0.0, 1.0)))
+	return ImageTexture.create_from_image(img)
+
+func _shell_guard_fx(u: Dictionary) -> void:   # 守护贝壳018: 双半壳张开→咬合(壳体金闪)→再张开消散 + 脚下治疗圈(用户2026-07-19"做个特效")
+	if _shellhalf_tex == null: _shellhalf_tex = _make_shellhalf_texture()
+	var base: Vector3 = _world_pos(u["pos"], 0.80)   # 罩住龟身(0.50时只罩到腿)
+	var open_d := 0.34      # 张开时上下半壳各自的偏移(米)
+	var shut_d := 0.03      # 合拢=壳缘贴合
+	for k in [1.0, -1.0]:   # +1=上半壳(穹顶朝上), -1=下半壳(翻转·穹顶朝下)
+		var sh := Sprite3D.new()
+		sh.texture = _shellhalf_tex
+		sh.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+		sh.billboard = BaseMaterial3D.BILLBOARD_ENABLED   # 自身护罩=非方向性, billboard即可(不是弹道)
+		sh.shaded = false; sh.transparent = true
+		sh.no_depth_test = true; sh.render_priority = 6   # 防被地板/身体盖住
+		sh.pixel_size = 0.0145                            # ≈1.1m 宽, 与龟体量相称
+		sh.flip_v = (k < 0.0)
+		sh.modulate = Color(1, 1, 1, 0)
+		sh.position = base + Vector3(0, open_d * k, 0)
+		_world.add_child(sh)
+		var tp := _reg_tween().bind_node(sh)
+		tp.tween_property(sh, "position", base + Vector3(0, shut_d * k, 0), 0.20).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)   # 咬合(带蓄势)
+		tp.tween_interval(0.30)                                                                                                         # 含住=治疗生效
+		tp.tween_property(sh, "position", base + Vector3(0, (open_d + 0.22) * k, 0), 0.32).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)   # 张开散去
+		# modulate 全交给一条链(别开第二条 tween 抢同一属性)
+		var tf := _reg_tween().bind_node(sh)
+		tf.tween_property(sh, "modulate", Color(1, 1, 1, 1), 0.12)                    # 淡入
+		tf.tween_interval(0.06)
+		tf.tween_property(sh, "modulate", Color(1.9, 1.8, 1.35, 1.0), 0.05)           # 咬合瞬间: 壳体过曝金光(取代原环纹理金闪·细扁环只剩左右两段弧=橘色碎屑)
+		tf.tween_property(sh, "modulate", Color(1, 1, 1, 1), 0.24)
+		tf.tween_interval(0.20)
+		tf.tween_property(sh, "modulate", Color(1, 1, 1, 0), 0.32)                    # 散去
+		tf.tween_callback(sh.queue_free)
+	_heal_circle_vfx(u["pos"], 46.0, 0.95)        # 脚下治疗圈
 
 var _coralspike_tex: ImageTexture = null
 func _make_coralspike_texture() -> ImageTexture:   # 珊瑚尖刺: 锯齿珊瑚橙尖刺(尖朝上=纹理+Y=行进方向·配wisp_dir)·浅珊瑚白尖
