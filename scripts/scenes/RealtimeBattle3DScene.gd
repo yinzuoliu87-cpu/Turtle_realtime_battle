@@ -6732,7 +6732,7 @@ const PHX_FLAME_BURN_COEF := 0.07     # 每0.5s tick 灼烧层系数 ×ATK ★T3
 
 # 凤凰持续喷火 channel (Botworld Flamer式: 一直喷不脉冲; 每0.5s结算伤害; 边喷边kite; 放技能由状态机打断)
 func _phoenix_flame_channel(u: Dictionary, tgt: Dictionary, delta: float) -> void:
-	u["flip_h"] = tgt["pos"].x < u["pos"].x          # 朝向目标
+	u["face_right"] = tgt["pos"].x > u["pos"].x      # 朝向目标(原写的是 u["flip_h"] —— 立绘朝向实际由 face_right 驱动, 那行没人读=死写法·2026-07-19)
 	# ★贴地扇形火焰(用户2026-07-15拍板·照兰博Q官方参考): shader扇形(条纹火舌+暗烟裹边+不透明) + 喷嘴白热星芒闪 + 少量火星
 	var want: float = (tgt["pos"] - u["pos"]).angle() if (tgt["pos"] - u["pos"]).length() > 1.0 else float(u.get("phx_aim", 0.0))
 	if _t - float(u.get("phx_aim_t", -9.9)) > 0.4:   # 停喷过0.4s重开→直接对准(不从旧方向扫)
