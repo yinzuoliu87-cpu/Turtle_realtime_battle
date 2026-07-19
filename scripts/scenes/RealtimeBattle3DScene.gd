@@ -5231,6 +5231,57 @@ func _eq_fpga_tick(u: Dictionary, si: int) -> void:
 				_pending_shots.append({"delay": 3.5, "fn": func(): u["damage_reduction"] = maxf(0.0, float(u.get("damage_reduction", 0.0)) - 0.25), "src": u})
 
 
+func _eq_ebb_surge(u: Dictionary, hp_add: float, atk_add: float, dur: float) -> void:   # 退潮浊液041: 涨潮期开始
+	if not u.get("alive", false) or u.get("_ebb_on", false): return
+	u["_ebb_on"] = true
+	u["maxHp"] += hp_add; u["hp"] += hp_add
+	u["base_atk"] = float(u.get("base_atk", 0.0)) + atk_add
+	u["atk_range"] = float(u.get("atk_range", 70.0)) + 50.0
+	u["size_mult"] = float(u.get("size_mult", 1.0)) * 1.3      # 体积+30%(走size_mult, 每帧juice从base起算不会覆盖)
+	_recalc_stats(u)
+	_ebb_tide_fx(u, true)
+	_float_text(u["pos"] + Vector2(0, -70), "涨潮", Color("#5fe0d0"))
+	_pending_shots.append({"delay": dur, "fn": func(): _eq_ebb_recede(u, hp_add, atk_add), "src": u})
+
+func _eq_ebb_recede(u: Dictionary, hp_add: float, atk_add: float) -> void:   # 退潮浊液041: 到期还原
+	if not u.get("_ebb_on", false): return
+	u["_ebb_on"] = false
+	u["maxHp"] = maxf(1.0, float(u["maxHp"]) - hp_add)
+	u["hp"] = minf(float(u["hp"]), float(u["maxHp"]))          # 退潮不致死, 只削到新上限
+	u["base_atk"] = maxf(0.0, float(u.get("base_atk", 0.0)) - atk_add)
+	u["atk_range"] = maxf(10.0, float(u.get("atk_range", 70.0)) - 50.0)
+	u["size_mult"] = maxf(0.01, float(u.get("size_mult", 1.0)) / 1.3)
+	_recalc_stats(u)
+	if u.get("alive", false):
+		_ebb_tide_fx(u, false)
+		_float_text(u["pos"] + Vector2(0, -70), "退潮", Color("#8fb8c8"))
+
+func _ebb_tide_fx(u: Dictionary, rising: bool) -> void:   # 041: 涨潮=水纹上涌+青环扩; 退潮=水纹下沉+环收
+	var col := Color(0.36, 0.88, 0.82) if rising else Color(0.45, 0.62, 0.72)
+	_skill_ring(u["pos"], Color(col.r, col.g, col.b, 0.7), 66.0)
+	_splash_ring_bold(u["pos"], col, 120.0)      # 贴地潮环(no_depth_test·不被地板吞)
+	var gt := _make_fire_glow_tex()
+	for k in range(11):
+		var m := Sprite3D.new()
+		m.texture = gt
+		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+		m.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		m.shaded = false; m.transparent = true
+		m.no_depth_test = true; m.render_priority = 4
+		m.modulate = Color(col.r, col.g, col.b, 0.0)
+		m.pixel_size = (randf_range(20.0, 40.0) * WS) / float(maxi(1, gt.get_height()))
+		var ang: float = float(k) * TAU / 11.0 + randf_range(-0.25, 0.25)
+		var off: Vector2 = Vector2(cos(ang), sin(ang)) * randf_range(28.0, 62.0)
+		var h0: float = 0.08 if rising else 1.9
+		var h1: float = 1.9 if rising else 0.08
+		m.position = _world_pos(u["pos"] + off, h0)
+		_world.add_child(m)
+		var tw := _reg_tween(); tw.set_parallel(true)
+		tw.tween_property(m, "modulate:a", 0.95, 0.13).set_delay(float(k) * 0.025)
+		tw.tween_property(m, "position", _world_pos(u["pos"] + off, h1), 0.5).set_delay(float(k) * 0.03)
+		tw.chain().tween_property(m, "modulate:a", 0.0, 0.22)
+		tw.chain().tween_callback(m.queue_free)
+
 func _tick_gear(u: Dictionary, delta: float) -> void:   # 黄铜齿轮035(用户2026-07-18改: 随时间铸币·每6秒左队携带者直接+1/2/3深海币+飘字·跟死亡无关·原"攒齿轮层战斗结束折币"改掉)
 	if u.get("equips", []).is_empty(): return
 	if str(u.get("side", "")) != "left": return   # 深海币=玩家侧meta货币, 只玩家(左队)携带者产币
@@ -20909,6 +20960,11 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 		"p2eq_047":   # 重击锤: ATK += maxHp×pct (一次性按当前maxHp折算)
 			u["hammer_pct"] = float(u.get("hammer_pct", 0.0)) + [0.04, 0.06, 0.15][si]   # 重击锤: 随maxHp动态(在_recalc_stats累加), 多件叠加
 			_recalc_stats(u)
+		"p2eq_041":   # 退潮浊液: 登场5秒后涨潮(临时+maxHp/+攻击/+体积/+射程), 到期退潮还原(用户2026-07-19)
+			var hp41: float = [250.0, 400.0, 650.0][si]   # 装备hp是最终值, 不乘HP_MULT
+			var atk41: float = [10.0, 16.0, 25.0][si]
+			var dur41: float = [8.0, 11.0, 15.0][si]
+			_pending_shots.append({"delay": 5.0, "fn": func(): _eq_ebb_surge(u, hp41, atk41, dur41), "src": u})
 		"p2eq_035":   # 黄铜齿轮: 本局累计产币数(显示用)
 			stt["coins_made"] = 0
 		"p2eq_034":   # 玩偶小熊: 大熊层 + 已销毁标记 + 每4s派小熊计时 + 蓄力标记
