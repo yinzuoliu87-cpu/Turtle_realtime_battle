@@ -413,7 +413,7 @@ static func sword_echo(produced: Array, attacker: Dictionary, all_fighters: Arra
 			var ee: Dictionary = _raw_hit(all_fighters, tgt, echo_amt, dt, false)
 			if int(ee.get("value", 0)) > 0:
 				ee["vfx"] = "swordecho"   # 剑[回响]: 目标处斩击弧 VFX (BattleScene 效果循环消费)
-				ee["vfx_from"] = all_fighters.find(attacker)   # 携带者idx → 刃光方向(carrier→target)
+				ee["vfx_from"] = _idx_of(all_fighters, attacker)   # 携带者idx → 刃光方向(carrier→target)
 				fx.append(ee)
 	return fx
 
@@ -453,7 +453,7 @@ static func gun_fire_shot(owner: Dictionary, gun_id: String, target: Dictionary,
 	# 金弹: 同子弹伤害(走完整 calc, 与原子弹一致) + 该枪附带效果 + 额外 60/80/100% 真伤。
 	var gold: Dictionary = _skill_hit(all_fighters, owner, target, base_raw, dmg_type)
 	gold["vfx"] = "goldbullet"   # 金色子弹 VFX (BattleScene: 金色子弹弹道)
-	gold["vfx_from"] = all_fighters.find(owner)   # 枪携带者idx → 金弹弹道起点(owner→target)
+	gold["vfx_from"] = _idx_of(all_fighters, owner)   # 枪携带者idx → 金弹弹道起点(owner→target)
 	_stamp_arrival(gold, 0.0, 0.20)   # 金弹 travel 0.20s → 血跟金弹落地才掉
 	fx.append(gold)
 	var dealt: int = int(gold.get("value", 0))
@@ -471,7 +471,7 @@ static func gun_fire_shot(owner: Dictionary, gun_id: String, target: Dictionary,
 		var extra: int = maxi(1, roundi(float(dealt) * _gun_gold_pct(tier)))
 		var ge: Dictionary = _raw_hit(all_fighters, target, extra, "true", false)
 		ge["vfx"] = "goldbullet"
-		ge["vfx_from"] = all_fighters.find(owner)   # 金弹额外真伤段同弹道起点
+		ge["vfx_from"] = _idx_of(all_fighters, owner)   # 金弹额外真伤段同弹道起点
 		_stamp_arrival(ge, 0.0, 0.20)   # 金弹额外真伤段同弹道 → 血跟金弹落地才掉
 		fx.append(ge)
 	return fx
@@ -747,7 +747,7 @@ static func on_hit(attacker: Dictionary, target: Dictionary, dmg: int, item_id: 
 				for c in SlotHelpers.same_row_fighters(all_fighters, target):
 					if c is Dictionary and c.get("alive", false) and c.get("side", "") != attacker.get("side", ""):
 						col.append(c)
-				if not col.has(target):
+				if not _arr_has_ref(col, target):
 					col.append(target)
 				var mult: float = solo_mult if col.size() <= 1 else 1.0
 				for c in col:
@@ -1806,3 +1806,13 @@ static func sweep(caster: Dictionary, target: Dictionary, star: int, all_fighter
 		if healed > 0:
 			fx.append({"target_idx": _idx(all_fighters, caster), "value": healed, "kind": "heal", "vfx": "healglow"})   # on_cast 吸血回血绿光 (原无 vfx)
 	return fx
+
+static func _idx_of(arr: Array, x) -> int:   # ★引用查找: Array.find() 对 Dictionary 是深比较, 单位字典成环→卡死(同053)
+	for i in range(arr.size()):
+		if is_same(arr[i], x): return i
+	return -1
+
+static func _arr_has_ref(arr: Array, x) -> bool:   # ★引用判重: 同上, 不能用 has()/in
+	for it in arr:
+		if is_same(it, x): return true
+	return false
