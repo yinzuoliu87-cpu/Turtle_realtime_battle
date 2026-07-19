@@ -3890,6 +3890,10 @@ func _nearest_enemy(u: Dictionary):
 
 # 每单位每帧: DoT 落血 / buff 到期清理 / 层数DoT结算 / 召唤体周期特殊技 / 周期被动 (1:1 2D _tick_effects)
 func _tick_effects(u: Dictionary, delta: float) -> void:
+	# 信号放大器038: 增伤到期回收(damage_amp 是常驻字段, 需显式撤回本件贡献)
+	if float(u.get("signal_amp", 0.0)) > 0.0 and _t >= float(u.get("signal_until", 0.0)):
+		u["damage_amp"] = maxf(0.0, float(u.get("damage_amp", 0.0)) - float(u["signal_amp"]))
+		u["signal_amp"] = 0.0
 	# 海胆护盾(013满层): 10秒内线性衰减(用户2026-07-19); 从共享护盾池里逐帧扣回
 	var _ush: float = float(u.get("urchin_sh_left", 0.0))
 	if _ush > 0.0:
@@ -5079,7 +5083,7 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 		_shake(0.06)
 		var dmg37: float = float([20, 30, 44][si]) + u["atk"] * [0.5, 0.7, 1.0][si]
 		for o in _enemies_of(u):
-			if o["pos"].distance_to(u["pos"]) <= 499.0:
+			if o["pos"].distance_to(u["pos"]) <= 500.0:   # 499→500(用户2026-07-19)
 				_apply_damage_from(u, o, _resolve_dmg(u, dmg37, o, true), Color("#ffb066"), 0.0, false, true)   # 魔法伤(蓝字), 非真伤
 				_apply_dot_stacks(o, "burn", [20, 30, 40][si], u)
 				_boom_wave(o["pos"], 110.0)   # 每个被波及敌小爆
@@ -5151,13 +5155,14 @@ func _boom_wave(pos2d: Vector2, size_px: float, h: float = 0.8) -> void:
 func _eq_signal_tick(u: Dictionary, si: int) -> void:
 	var lo: Array = [0.10, 0.25, 0.70]; var hi: Array = [0.16, 0.40, 0.80]
 	var amp: float = randf_range(lo[si], hi[si])
-	var found38 := false
-	for b in u["buffs"]:
-		if str(b.get("tag", "")) == "signal":
-			b["amount"] = maxf(float(b["amount"]), amp); b["until"] = _t + 3.5; found38 = true; amp = float(b["amount"]); break
-	if not found38:
-		u["buffs"].append({"stat": "atk", "amount": amp, "pct": true, "until": _t + 3.5, "tag": "signal"})
-	_recalc_stats(u)
+	# 真·增伤(damage_amp): 放大所有伤害, 不再是 +%攻击力(那样只放大吃ATK的段·用户2026-07-19"38要是amp")
+	var contributed: float = float(u.get("signal_amp", 0.0))
+	u["damage_amp"] = maxf(0.0, float(u.get("damage_amp", 0.0)) - contributed)      # 先撤掉本件的旧贡献
+	var cur: float = (contributed if _t < float(u.get("signal_until", 0.0)) else 0.0)  # 已过期则不参与"取较大者"
+	amp = maxf(cur, amp)
+	u["damage_amp"] = float(u.get("damage_amp", 0.0)) + amp
+	u["signal_amp"] = amp
+	u["signal_until"] = _t + 3.5
 	_signal_pulse(u["pos"])
 	_float_text(u["pos"] + Vector2(0, -58), "增伤+%d%%" % int(amp * 100.0), Color("#ffcf5a"))
 
