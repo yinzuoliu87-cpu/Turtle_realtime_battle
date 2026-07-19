@@ -441,7 +441,7 @@ const PANEL_COUNT := {   # 头像下装备格右下角层数徽章: id → eq_st
 	"p2eq_034": "bear_layers",      # 大熊层
 	"p2eq_013": "harden_stacks", "p2eq_014": "harden_stacks",   # 硬化层(0-20)
 	"p2eq_024": "dragon_stacks",   # 吐息层(0-3)
-	"p2eq_035": "gears",           # 齿轮层
+	"p2eq_035": "coins_made",      # 本局累计产币数(原"齿轮层"已随2026-07-18改版作废·恒为0)
 	"p2eq_052": "revolver_bullets", "p2eq_027": "baton_charges", "p2eq_039": "bamboo_charges",   # 子弹/电击/生长充能
 	"p2eq_019": "anemone_layers",  # 海葵层
 	"p2eq_020": "exercise",       # 哑铃锻炼层(局内, 每场重置)
@@ -2510,7 +2510,6 @@ func _dl_finish(won: bool) -> void:
 	if OS.has_environment("XDBG"): print("XDBG_DL finish won=", won, " t=", _t, " egg_hp=", (GameState.egg_hp if GameState != null else {}))
 	_over = true
 	_dl_state = "done"
-	_settle_gears()        # ★#1修: 双路(正常对局)结束此前只弹横幅, 从不结算 → 无币/经验/命/战绩/ghost。补齐同非双路路径。
 	_settle_season(won)    # 结果喂赛季(命/币/胜场/XP/糖果罐/ghost上传), 守卫一次性
 	_show_banner(won)
 
@@ -5227,6 +5226,7 @@ func _tick_gear(u: Dictionary, delta: float) -> void:   # 黄铜齿轮035(用户
 			if gs != null and gs.get("meta_deepsea_coins") != null:
 				gs.set("meta_deepsea_coins", int(gs.get("meta_deepsea_coins")) + coins)
 			_float_text(u["pos"], "+%d💠" % coins, Color("#5fd0e0"))   # 可见反馈(用户: 之前无反馈以为没生效)
+			stt["coins_made"] = int(stt.get("coins_made", 0)) + coins   # 头像装备格徽章显示本局累计产币(用户2026-07-19)
 		u["eq_state"]["p2eq_035"] = stt
 
 func _tick_shell(u: Dictionary, delta: float) -> void:   # 守护贝壳p2eq_018: 每8秒自回(30/45/60+5/9/15%maxHP)生命(受治疗增幅); 每件独立(用户2026-07-02, 原2.5s)
@@ -19360,19 +19360,8 @@ func _check_end() -> void:
 	if left_alive == 0 or right_alive == 0:
 		_over = true
 		var won: bool = right_alive == 0
-		_settle_gears()            # 黄铜齿轮035: 战斗结束→左队每层齿轮折2深海币(死不销毁)
 		_settle_season(won)        # 结果喂赛季 (命/币/胜场/XP/ghost), 守卫一次性
 		_show_banner(won)
-
-func _settle_gears() -> void:   # 黄铜齿轮035: 战斗结束结算, 左队所有单位齿轮层×2深海币
-	var gs = get_node_or_null("/root/GameState")
-	if gs == null or gs.get("meta_deepsea_coins") == null: return
-	var total := 0
-	for u in _units:
-		if str(u.get("side", "")) == "left":
-			total += int((u.get("eq_state", {}) as Dictionary).get("p2eq_035", {}).get("gears", 0))
-	if total > 0:
-		gs.set("meta_deepsea_coins", int(gs.get("meta_deepsea_coins")) + total * 2)
 
 # 赛季结算 (1:1 搬自 2D RealtimeBattleScene._settle_season): 闭环把胜负喂回 GameState 养成
 func _settle_season(won: bool) -> void:
@@ -20889,8 +20878,8 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 		"p2eq_047":   # 重击锤: ATK += maxHp×pct (一次性按当前maxHp折算)
 			u["hammer_pct"] = float(u.get("hammer_pct", 0.0)) + [0.04, 0.06, 0.15][si]   # 重击锤: 随maxHp动态(在_recalc_stats累加), 多件叠加
 			_recalc_stats(u)
-		"p2eq_035":   # 黄铜齿轮: 齿轮层
-			stt["gears"] = 0
+		"p2eq_035":   # 黄铜齿轮: 本局累计产币数(显示用)
+			stt["coins_made"] = 0
 		"p2eq_034":   # 玩偶小熊: 大熊层 + 已销毁标记 + 每4s派小熊计时 + 蓄力标记
 			stt["bear_layers"] = 0
 			stt["bear_done"] = false
@@ -21878,7 +21867,7 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 					worm["eq_state"] = {}; worm["equips"] = []
 					if si == 2:   # 3★: 标记每周期分裂
 						worm["worm_split"] = true
-			"p2eq_035":   # 黄铜齿轮: 死亡不销毁不结算(改战斗结束 _settle_gears 统一折币)
+			"p2eq_035":   # 黄铜齿轮: 死亡不销毁不结算(产币走 _tick_gear 每6秒实时到账, 与死亡无关)
 				pass
 	# 左轮052: 任何敌人阵亡 → 对方(u的敌方)持左轮的存活单位 +1发子弹 (上限6)
 	for o in _units:
