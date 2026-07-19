@@ -4322,18 +4322,18 @@ func _tick_fortress(u: Dictionary, delta: float) -> void:   # 深海堡垒甲p2e
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_014": continue
 		var stt: Dictionary = u["eq_state"].get("p2eq_014", {})
-		if int(stt.get("harden_stacks", 0)) < 20:
+		if int(stt.get("harden_stacks", 0)) < int(stt.get("harden_cap", 25)):
 			e["fortress_t"] = 8.0   # 未叠满→预置8(叠满瞬间立即首次汲取)
 			continue
 		e["fortress_t"] = float(e.get("fortress_t", 0.0)) + delta
 		if float(e["fortress_t"]) < 8.0: continue
 		e["fortress_t"] = 0.0
 		var si: int = _eq_si(int(e.get("star", 1)))
-		var k2: float = [0.8, 1.0, 1.5][si]
+		var k2: float = [1.0, 2.0, 4.0][si]   # 用户2026-07-19: 0.8/1.0/1.5 -> 1/2/4
 		for o in _enemies_of(u):
 			_bolt_line(o["pos"], u["pos"], Color("#bfe9ff"))
 			_apply_damage_from(u, o, int(k2 * (u["def"] + u["mr"])), Color("#bfe9ff"), 0.0, true, true)
-			_heal(u, [40, 65, 130][si])
+			_heal(u, [60.0, 110.0, 250.0][si] + maxf(0.0, u["maxHp"] - u["hp"]) * 0.06)   # 用户2026-07-19: 60/110/250 + 已损生命6%(逐敌结算)
 
 func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016: 每5秒为全队(含自己)护盾15/20/25(用户2026-07-02, 原走2.5s周期); 每件独立
 	if u.get("equips", []).is_empty(): return
@@ -20653,8 +20653,9 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 			stt["ghost_shield"] = [30.0, 50.0, 120.0][si]
 		"p2eq_054":   # 瞄准镜: 必中 (无视目标闪避)
 			u["eq_cannot_be_dodged"] = true
-		"p2eq_013", "p2eq_014":   # 炙烤海胆 / 深海堡垒甲: 受击硬化层 +def/mr (cap20)
-			stt["harden_inc"] = [1.0, 1.5, 2.0][si]
+		"p2eq_013", "p2eq_014":   # 炙烤海胆(cap20·+1/1.5/2) / 深海堡垒甲(cap25·+2/4/6·用户2026-07-19)
+			stt["harden_inc"] = ([2.0, 4.0, 6.0][si] if item_id == "p2eq_014" else [1.0, 1.5, 2.0][si])
+			stt["harden_cap"] = (25 if item_id == "p2eq_014" else 20)
 			stt["harden_stacks"] = 0
 			stt["harden_given"] = false
 		"p2eq_015":   # 荆棘海胆: 反伤转真伤+施流血
@@ -21407,13 +21408,14 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 		match iid:
 			"p2eq_013", "p2eq_014":   # 受击硬化: +def/mr (cap20层); 013满层给护盾
 				var cur: int = int(stt.get("harden_stacks", 0))
-				if cur < 20:
+				var hcap: int = int(stt.get("harden_cap", 20))
+				if cur < hcap:
 					cur += 1
 					var inc: float = float(stt.get("harden_inc", 1.0))
 					u["base_def"] += inc; u["base_mr"] += inc
 					_recalc_stats(u)
 					stt["harden_stacks"] = cur
-					if cur >= 20 and not bool(stt.get("harden_given", false)):
+					if cur >= hcap and not bool(stt.get("harden_given", false)):
 						if iid == "p2eq_013":   # 013满层: 海胆护盾(特殊紫色) 100/170/250 + 5/12/20%最大生命(用户2026-07-19; 原50/60/80金盾)
 							var _usb: float = float(u.get("shield", 0.0))
 							_grant_shield(u, [100.0, 170.0, 250.0][si] + u["maxHp"] * [0.05, 0.12, 0.20][si])
