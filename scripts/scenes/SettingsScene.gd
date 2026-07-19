@@ -22,7 +22,7 @@ func _ready() -> void:
 
 	# BGM 滑条 @ (W/2, 220) — 拖动实时生效; 写盘只在松手时一次 (原来每帧 save() = 拖一下写几十次盘)
 	_slider(W / 2.0, 220.0, "🎵 BGM 音量", GameState.bgm_volume,
-		func(v): GameState.bgm_volume = v; Audio.bgm_volume = v,
+		func(v): GameState.bgm_volume = v; Audio.bgm_volume = v; Audio.apply_bgm_volume(),   # ★补: 原来只设变量没调 apply → 拖动对正在播的BGM无效(用户2026-07-19"音量键根本没效果")
 		func(): GameState.save())
 	# SFX 滑条 @ (W/2, 330) — 松手才试听 + 写盘 (原来拖动中每帧都播音效)
 	_slider(W / 2.0, 330.0, "🔊 音效音量", GameState.sfx_volume,
