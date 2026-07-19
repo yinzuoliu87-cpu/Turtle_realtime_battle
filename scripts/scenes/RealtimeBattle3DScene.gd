@@ -4943,7 +4943,7 @@ func _conch_transform(pos2d: Vector2) -> void:
 	for k in range(6):
 		_bone_speck(pos2d + Vector2(randf_range(-30, 30), randf_range(-30, 30)))
 
-const _EQ_CUSTOM_IV := {"p2eq_004": 6.0, "p2eq_022": 8.0, "p2eq_037": 5.0, "p2eq_038": 6.0, "p2eq_040": 6.0, "p2eq_042": 8.0, "p2eq_052": 4.0}
+const _EQ_CUSTOM_IV := {"p2eq_004": 6.0, "p2eq_022": 8.0, "p2eq_028": 6.0, "p2eq_037": 5.0, "p2eq_038": 6.0, "p2eq_040": 6.0, "p2eq_042": 8.0, "p2eq_052": 4.0}
 func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
@@ -4959,6 +4959,7 @@ func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 			match iid:
 				"p2eq_004": _eq_tyrantfang_tick(u, si)
 				"p2eq_022": _eq_fuel_throw(u, si)
+				"p2eq_028": _eq_ice_throw(u, si)
 				"p2eq_037": _eq_candle_tick(u, si, stt)
 				"p2eq_038": _eq_signal_tick(u, si)
 				"p2eq_040": _eq_fpga_tick(u, si)
@@ -21697,8 +21698,8 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 				pass
 			"p2eq_022":   # 余烬燃油瓶: 改为每8秒定时(_EQ_CUSTOM_IV→_eq_fuel_throw, 用户2026-07-19); on_cast不处理
 				pass
-			"p2eq_028":   # 冰霜冻露瓶: 对最近敌魔伤+冰寒(减速)
-				_eq_ice_throw(u, si)
+			"p2eq_028":   # 冰霜冻露瓶: 改为每6秒定时(_EQ_CUSTOM_IV→_eq_ice_throw, 用户2026-07-19); on_cast不处理
+				pass
 			"p2eq_030":   # 迷你水晶球A: 朝目标无限直线连发2/2/3段水晶光束(错峰), 每段全线敌魔法伤+1层水晶
 				var t4 = _nearest_enemy(u)
 				if t4 != null:

@@ -359,7 +359,7 @@
     "poolPhase": 1,
     "emoji": "🔮",
     "effectImpl": true,
-    "effectDesc1": "携带者施法后,对最前敌人造成40/60/100魔法伤害,并施加冰寒5秒。",
+    "effectDesc1": "携带者每6秒短暂蓄力,抛出一个冰瓶砸向最近的敌人,命中造成40/60/100魔法伤害并将其小幅击退,同时施加冰寒5秒(移动速度-20%、攻击速度-10%)。",
     "effectDesc3": "",
     "img": "equip/frost-flask.png"
   },
