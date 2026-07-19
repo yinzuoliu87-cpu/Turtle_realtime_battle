@@ -4559,6 +4559,17 @@ func _frost_mist(pos2d: Vector2) -> void:
 
 # 水晶碎片火花: 弹出+缓旋+淡出 (光束/引爆/扫射点缀)
 # 030 单段水晶光束结算: 从携带者当前位置沿 dir 无限直线, 全线敌魔法伤+1层水晶
+func _eq_crystal_line(u: Dictionary, si: int) -> void:   # 迷你水晶球A030: 每7秒朝最近敌方向连发2/2/3段贯穿光束(错峰0.2s)
+	if not u.get("alive", false): return
+	var t4 = _nearest_enemy(u)
+	if t4 == null: return
+	var dir2: Vector2 = (t4["pos"] - u["pos"]).normalized()
+	if dir2 == Vector2.ZERO: dir2 = Vector2.RIGHT
+	for _seg in range([2, 2, 3][si]):
+		var twc := _reg_tween()
+		twc.tween_interval(float(_seg) * 0.2)   # 施加水晶间隔0.2s(用户)
+		twc.tween_callback(_crystal_line_seg.bind(u, si, dir2))
+
 func _crystal_line_seg(u: Dictionary, si: int, dir: Vector2) -> void:
 	if not u.get("alive", false): return
 	var origin: Vector2 = u["pos"]
@@ -4943,7 +4954,7 @@ func _conch_transform(pos2d: Vector2) -> void:
 	for k in range(6):
 		_bone_speck(pos2d + Vector2(randf_range(-30, 30), randf_range(-30, 30)))
 
-const _EQ_CUSTOM_IV := {"p2eq_004": 6.0, "p2eq_022": 8.0, "p2eq_028": 6.0, "p2eq_037": 5.0, "p2eq_038": 6.0, "p2eq_040": 6.0, "p2eq_042": 8.0, "p2eq_052": 4.0}
+const _EQ_CUSTOM_IV := {"p2eq_004": 6.0, "p2eq_022": 8.0, "p2eq_028": 6.0, "p2eq_030": 7.0, "p2eq_031": 8.0, "p2eq_037": 5.0, "p2eq_038": 6.0, "p2eq_040": 6.0, "p2eq_042": 8.0, "p2eq_052": 4.0}
 func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
@@ -4960,6 +4971,8 @@ func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 				"p2eq_004": _eq_tyrantfang_tick(u, si)
 				"p2eq_022": _eq_fuel_throw(u, si)
 				"p2eq_028": _eq_ice_throw(u, si)
+				"p2eq_030": _eq_crystal_line(u, si)
+				"p2eq_031": _eq_crystal_sweep(u, si)
 				"p2eq_037": _eq_candle_tick(u, si, stt)
 				"p2eq_038": _eq_signal_tick(u, si)
 				"p2eq_040": _eq_fpga_tick(u, si)
@@ -21700,17 +21713,10 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 				pass
 			"p2eq_028":   # 冰霜冻露瓶: 改为每6秒定时(_EQ_CUSTOM_IV→_eq_ice_throw, 用户2026-07-19); on_cast不处理
 				pass
-			"p2eq_030":   # 迷你水晶球A: 朝目标无限直线连发2/2/3段水晶光束(错峰), 每段全线敌魔法伤+1层水晶
-				var t4 = _nearest_enemy(u)
-				if t4 != null:
-					var dir2: Vector2 = (t4["pos"] - u["pos"]).normalized()
-					if dir2 == Vector2.ZERO: dir2 = Vector2.RIGHT
-					for _seg in range([2, 2, 3][si]):
-						var twc := _reg_tween()
-						twc.tween_interval(float(_seg) * 0.2)   # 施加水晶间隔0.2s(用户)
-						twc.tween_callback(_crystal_line_seg.bind(u, si, dir2))
-			"p2eq_031":   # 迷你水晶球B: 施法→水晶射线360度扫一圈(1.5s), 扫到即魔法伤+1层水晶(3★引爆波及邻格)
-				_eq_crystal_sweep(u, si)
+			"p2eq_030":   # 迷你水晶球A: 改为每7秒定时(_EQ_CUSTOM_IV→_eq_crystal_line, 用户2026-07-19); on_cast不处理
+				pass
+			"p2eq_031":   # 迷你水晶球B: 改为每8秒定时(_EQ_CUSTOM_IV→_eq_crystal_sweep, 用户2026-07-19); on_cast不处理
+				pass
 			"p2eq_039":   # 竹制弓箭: 充能内→强化攻击+自回血+永久+maxHP
 				var stt2: Dictionary = u["eq_state"].get("p2eq_039", {})
 				if int(stt2.get("bamboo_charges", 0)) > 0:
