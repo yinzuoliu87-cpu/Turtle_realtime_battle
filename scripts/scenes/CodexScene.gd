@@ -423,6 +423,7 @@ func _switch_tab(tab: String) -> void:
 				_add_pet_row(pet)
 			# 深海小将(用户2026-07-19「图鉴里补上小将的信息」): 不是龟, 不在 pets.json 里,
 			# 战斗中由 _make_unit(spec.minion) 现场造 → 只能用虚拟条目, 数值/技能全部照 RealtimeBattle3DScene 抄
+			_add_group_header("深海小将")   # 页签计数仍是「龟(28)」, 小将不算龟 → 拿分隔条把两段划开(用户2026-07-19)
 			for mk in MINION_KINDS:
 				_items.append({"_minion": mk["kind"]})
 				_add_simple_row(str(mk["name"]), "#cdd9c2", Color("#7a8a96"),
@@ -516,6 +517,32 @@ func _add_pet_row(pet: Dictionary) -> void:
 	rar.add_theme_color_override("font_color", Color(RARITY_COLOR.get(rarity, "#ffffff")))
 	p.add_child(rar)
 	_connect_row(p, idx, col)
+
+
+## 列表内分组分隔条: 左右细线夹一个小标题, 不可点(纯视觉分段).
+func _add_group_header(title: String) -> void:
+	var h := Control.new()
+	h.custom_minimum_size = Vector2(LIST_W - 16, 30)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	list_vbox.add_child(h)
+	var lbl := Label.new()
+	lbl.text = title
+	lbl.add_theme_font_size_override("font_size", 12)
+	lbl.add_theme_color_override("font_color", Color("#7a8a96"))
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.set_anchors_preset(Control.PRESET_FULL_RECT)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(lbl)
+	var tw: float = float(title.length()) * 13.0
+	for side in [0, 1]:
+		var ln := ColorRect.new()
+		ln.color = Color("#3a4a5c")
+		ln.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var seg: float = ((LIST_W - 16.0) - tw) / 2.0 - 14.0
+		ln.size = Vector2(maxf(8.0, seg), 1)
+		ln.position = Vector2(10.0 if side == 0 else (LIST_W - 16.0 - 10.0 - maxf(8.0, seg)), 15)
+		h.add_child(ln)
 
 
 func _add_simple_row(label: String, label_color: String, stroke: Color, icon_path: String, idx: int) -> void:
