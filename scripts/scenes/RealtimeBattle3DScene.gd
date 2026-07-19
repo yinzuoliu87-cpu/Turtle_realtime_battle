@@ -8226,6 +8226,26 @@ func _skill_ring(pos2d: Vector2, col: Color, radius: float) -> void:
 	tw.tween_property(r, "modulate:a", 0.0, 0.35)
 	tw.chain().tween_callback(r.queue_free)
 
+func _splash_ring_bold(pos2d: Vector2, col: Color, radius: float) -> void:   # 醒目冲击环: 双层贴地环 + no_depth_test(恒画在地板/地形/立绘之上·不被高度吞·用户2026-07-19)
+	var target_ps: float = (radius * 2.0 * WS) / 96.0
+	for k in range(2):   # k0=主环(实) k1=外环(虚·略慢略大) → 双层更醒目
+		var r := Sprite3D.new()
+		r.texture = _make_ring_texture(col)
+		r.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+		r.axis = Vector3.AXIS_Y          # 躺平贴地
+		r.shaded = false; r.transparent = true
+		r.no_depth_test = true           # ★关深度测试: 贴地环恒在最上层, 地板/珊瑚高度盖不住
+		r.render_priority = 6 + k
+		r.modulate = Color(col.r, col.g, col.b, 1.0 if k == 0 else 0.5)
+		r.position = _world_pos(pos2d, 0.12)
+		r.pixel_size = target_ps * (0.28 if k == 0 else 0.14)
+		_world.add_child(r)
+		var dur: float = 0.4 + 0.12 * float(k)
+		var tw := _reg_tween(); tw.set_parallel(true)
+		tw.tween_property(r, "pixel_size", target_ps * (1.0 if k == 0 else 1.18), dur)
+		tw.tween_property(r, "modulate:a", 0.0, dur)
+		tw.chain().tween_callback(r.queue_free)
+
 # 射线: 两点间一条 3D 直线 (水晶球/机甲激光), 快速淡出 (tween 整体 modulate alpha)
 func _bolt_line(a2d: Vector2, b2d: Vector2, col: Color) -> void:
 	var im := MeshInstance3D.new()
@@ -20509,12 +20529,13 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 			"p2eq_002":   # 海带卷刀: 命中→施加流血层 (范围技能触发减半; 3★流血层数天然可叠)
 				var bs: int = maxi(1, roundi([0.075, 0.1, 0.15][si] * src["atk"] * (0.5 if is_aoe else 1.0)))
 				_apply_dot_stacks(tgt, "bleed", bs, src)
-			"p2eq_003":   # 锋利鲨齿: 溅射150码内相邻敌 + 圈圈扩散(用户)
+			"p2eq_003":   # 锋利鲨齿: 溅射200码内敌 + 醒目双层冲击环(no_depth_test防地板盖)+每敌立式火花(用户2026-07-19)
 				var frac: float = [0.15, 0.28, 0.50][si]
-				_skill_ring(tgt["pos"], Color(1.0, 0.82, 0.42, 0.75), 150.0)   # 溅射圈扩散(贴地环从命中点扩到150码)
+				_splash_ring_bold(tgt["pos"], Color(1.0, 0.80, 0.36, 0.95), 200.0)   # 醒目双环从命中点扩到200码·恒画在地板之上
 				for o in _enemies_of(src):
-					if o != tgt and (o["pos"] - tgt["pos"]).length() <= 150.0:
+					if o != tgt and (o["pos"] - tgt["pos"]).length() <= 200.0:
 						_apply_damage_from(src, o, maxi(1, int(dmg * frac)), Color("#ffd07a"), 0.0, false, true)
+						_hit_spark(o)   # 每个被溅射敌人身上一记立式火花(胸高billboard·地板高度盖不住)
 			"p2eq_005":   # 双生匕首: 命中概率追加一刀双生刺击
 				if randf() < [0.5, 0.75, 1.0][si]:
 					_apply_damage_from(src, tgt, _atk_dmg(src, [0.7, 0.8, 1.0][si], tgt), Color("#ff4444"), 0.0, false, true)

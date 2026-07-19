@@ -46,7 +46,7 @@
     "poolPhase": 2,
     "emoji": "🦈",
     "effectImpl": true,
-    "effectDesc1": "携带者每段伤害命中后,向目标的相邻格单位溅射15/28/50%×本段伤害的物理伤害。",
+    "effectDesc1": "携带者每段伤害命中后,向目标周围200码内的敌人各溅射15/28/50%×本段伤害的物理伤害。",
     "effectDesc3": "",
     "img": "equip/dungeon-tooth.png"
   },
