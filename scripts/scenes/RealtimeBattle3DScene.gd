@@ -5074,25 +5074,31 @@ func _eq_laser_pistol(u: Dictionary, si: int) -> void:   # 激光手枪051: 每8
 				_apply_damage_from(u, o, _atk_dmg(u, [0.75, 1.0, 1.4][si], o), Color("#ff8aa0"), 0.0, false, true)
 				_apply_dot_stacks(o, "bleed", maxi(1, roundi(u["atk"] * [0.5, 0.5, 0.6][si] * 0.5)), u)   # 身后50%流血
 
-func _eq_shotgun_blast(u: Dictionary, si: int) -> void:   # 霰弹贝古053: 每8秒40度扇形弹珠齐射, 被8发及以上命中的敌人眩晕
+const SHOTGUN_PELLET_DEG := 2.5   # 霰弹贝古053: 相邻两颗弹珠的固定夹角(度) —— 发数越多扇面自然越宽
+
+func _eq_shotgun_blast(u: Dictionary, si: int) -> void:   # 霰弹贝古053(用户2026-07-19重做): 朝最近敌扇形散开, 每颗弹珠沿自己的直线无限飞, 撞到第一个敌人即结算并消失; 被8发及以上命中→眩晕
 	if not u.get("alive", false): return
-	var dir53: Vector2 = (_nearest_enemy(u)["pos"] - u["pos"]).normalized() if _nearest_enemy(u) != null else Vector2.RIGHT
+	var t53 = _nearest_enemy(u)
+	var dir53: Vector2 = (t53["pos"] - u["pos"]).normalized() if t53 != null else Vector2.RIGHT
 	_muzzle_flash(u["pos"], dir53, Color("#ffe0a0"))
 	_skill_ring(u["pos"] + dir53 * 22.0, Color(1.0, 0.85, 0.4, 0.7), 26.0)
-	# ★卡死修(用户2026-07-19卡死猎手 053霰弹): 原 hitc[o]=int(hitc.get(o,0))+1 用【整个单位字典】当 Dictionary 键 →
-	#   Godot 递归哈希该字典, 而单位字典含互相引用(bubble_shield_src/summon_owner/dmg_redirect等)在混战后期成环/极深 → 哈希卡死。
-	#   改成命中计数记在单位自身字段 _sg_hits(不拿字典当键/不做字典内容比较), 末尾扫 _units 判定+清理。
-	for _s in range([12, 14, 18][si]):
-		var es3 := _enemies_of(u)
-		if es3.is_empty(): break
-		var o = es3[randi() % es3.size()]
-		var spr53: Vector2 = dir53.rotated(randf_range(-0.35, 0.35)) * 260.0
-		_shotgun_pellet(u["pos"], u["pos"] + spr53, Color(1.0, 0.86, 0.5, 0.95))   # 小铅丸喷出
-		_apply_damage_from(u, o, _atk_dmg(u, 0.22, o), Color("#ffd07a"), 0.0, false, true)
-		o["_sg_hits"] = int(o.get("_sg_hits", 0)) + 1
-	for o in _units:
+	var n53: int = [12, 14, 18][si]
+	var step53: float = deg_to_rad(SHOTGUN_PELLET_DEG)
+	var touched: Array = []
+	for k in range(n53):
+		var off53: float = (float(k) - float(n53 - 1) * 0.5) * step53   # 均匀分布在中线两侧
+		var d53: Vector2 = dir53.rotated(off53)
+		var hit53 = _eq_first_in_line(u, d53, 40.0)                     # 这条线上最近的敌人=挡住这颗弹珠的那个
+		var endp: Vector2 = (hit53["pos"] if hit53 != null else u["pos"] + d53 * 1800.0)   # 没挡住→无限飞出场外
+		_shotgun_pellet(u["pos"], endp, Color(1.0, 0.86, 0.5, 0.95))
+		if hit53 != null:
+			_apply_damage_from(u, hit53, _atk_dmg(u, 0.22, hit53), Color("#ffd07a"), 0.0, false, true)
+			hit53["_sg_hits"] = int(hit53.get("_sg_hits", 0)) + 1
+			if not _arr_has_unit(touched, hit53): touched.append(hit53)
+	# ★命中计数记在单位自身字段(不拿单位字典当Dict键/不做字典内容比较) —— 2026-07-19 卡死真因就在这里, 见 [[fb-no-unit-dict-as-key]]
+	for o in touched:
 		if int(o.get("_sg_hits", 0)) >= 8: _freeze(o, CTRL_SEC)
-		if o.has("_sg_hits"): o.erase("_sg_hits")
+		o.erase("_sg_hits")
 
 func _eq_pistol_volley(u: Dictionary, si: int) -> void:   # 黄铜手铳048: 每8秒依次射4/5/6发, 每发命中直线首敌(错峰: 枪口闪+子弹+火花)
 	if not u.get("alive", false): return
