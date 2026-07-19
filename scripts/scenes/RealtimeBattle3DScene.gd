@@ -4943,7 +4943,7 @@ func _conch_transform(pos2d: Vector2) -> void:
 	for k in range(6):
 		_bone_speck(pos2d + Vector2(randf_range(-30, 30), randf_range(-30, 30)))
 
-const _EQ_CUSTOM_IV := {"p2eq_004": 6.0, "p2eq_037": 5.0, "p2eq_038": 6.0, "p2eq_040": 6.0, "p2eq_042": 8.0, "p2eq_052": 4.0}
+const _EQ_CUSTOM_IV := {"p2eq_004": 6.0, "p2eq_022": 8.0, "p2eq_037": 5.0, "p2eq_038": 6.0, "p2eq_040": 6.0, "p2eq_042": 8.0, "p2eq_052": 4.0}
 func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
@@ -4958,6 +4958,7 @@ func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 			stt["iv_t"] = float(stt["iv_t"]) - iv
 			match iid:
 				"p2eq_004": _eq_tyrantfang_tick(u, si)
+				"p2eq_022": _eq_fuel_throw(u, si)
 				"p2eq_037": _eq_candle_tick(u, si, stt)
 				"p2eq_038": _eq_signal_tick(u, si)
 				"p2eq_040": _eq_fpga_tick(u, si)
@@ -5304,7 +5305,7 @@ func _dumbbell_hit(spr: Sprite3D, u: Dictionary, tgt: Dictionary, dmg: int) -> v
 	_knockback(u, tgt, 0.0, 1.0, 2.0)   # 砸中击退
 	_skill_ring(tgt["pos"], Color(0.8, 0.82, 0.9, 0.6), 50.0); _shake(JUICE_SHAKE_HEAVY)
 
-func _eq_fuel_throw(u: Dictionary, si: int) -> void:   # 余烬燃油瓶022: 施法后短蓄力→投掷火瓶到最近敌→命中施灼烧层+真火5秒
+func _eq_fuel_throw(u: Dictionary, si: int) -> void:   # 余烬燃油瓶022: 每8秒→短蓄力→抛物线掷出火瓶(翻滚·余烬拖尾)→碎裂溅火+灼烧+真火5秒
 	if not u.get("alive", false): return
 	if _nearest_enemy(u) == null: return
 	_anticipate(u)   # 短蓄力
@@ -5312,15 +5313,46 @@ func _eq_fuel_throw(u: Dictionary, si: int) -> void:   # 余烬燃油瓶022: 施
 	if not is_instance_valid(self) or not u.get("alive", false): return
 	var t = _nearest_enemy(u)
 	if t == null: return
+	var from2d: Vector2 = u["pos"]
+	var to2d: Vector2 = t["pos"]
 	var spr := Sprite3D.new()
-	spr.texture = _make_fire_glow_tex()
-	spr.modulate = Color(1.0, 0.62, 0.22); spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED; spr.shaded = false; spr.transparent = true
-	spr.pixel_size = 0.02
-	spr.position = _world_pos(u["pos"], 1.15)
+	spr.texture = load("res://assets/sprites/equip/ember-flask.png")   # 真瓶子立绘当投掷物(原来是一团光球)
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	spr.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # ★翻滚要真转; BILLBOARD会吃掉roll(001飞斩的教训)
+	spr.shaded = false; spr.transparent = true
+	spr.no_depth_test = true; spr.render_priority = 5
+	spr.pixel_size = (42.0 * WS) / float(maxi(1, spr.texture.get_height()))
+	spr.position = _world_pos(from2d, 1.15)
 	_world.add_child(spr)
+	var dist: float = from2d.distance_to(to2d)
 	var tw := _reg_tween()
-	tw.tween_property(spr, "position", _world_pos(t["pos"], 1.0), 0.32)
+	tw.tween_method(_fuel_flask_step.bind(spr, from2d, to2d, clampf(dist / 900.0, 0.55, 1.5)), 0.0, 1.0, clampf(dist / 620.0, 0.45, 1.05))
 	tw.tween_callback(_fuel_bottle_hit.bind(spr, u, t, si))
+
+func _fuel_flask_step(pf: float, spr, from2d: Vector2, to2d: Vector2, peak: float) -> void:   # 火瓶飞行帧: 抛物线高度 + 翻滚 + 掉余烬
+	if not is_instance_valid(spr): return
+	var p2: Vector2 = from2d.lerp(to2d, pf)
+	var h: float = lerpf(1.15, 0.55, pf) + peak * 4.0 * pf * (1.0 - pf)   # 4·p·(1-p)=标准抛物, 顶点在中段
+	spr.position = _world_pos(p2, h)
+	if _cam != null:   # 面向镜头 + 绕视线轴自转(投掷物无固定朝向, 翻滚即可, 不用wisp_dir)
+		spr.global_transform.basis = _cam.global_transform.basis * Basis(Vector3(0, 0, 1), -pf * TAU * 2.2)
+	if randf() < 0.5: _ember_drop(p2, h)
+
+func _ember_drop(at2d: Vector2, h: float) -> void:   # 火瓶拖尾: 一粒余烬边落边淡
+	var m := Sprite3D.new()
+	m.texture = _make_fire_glow_tex()
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+	m.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	m.shaded = false; m.transparent = true
+	m.modulate = Color(1.0, 0.55, 0.18, 0.8)
+	m.pixel_size = (randf_range(7.0, 13.0) * WS) / float(maxi(1, m.texture.get_height()))
+	m.position = _world_pos(at2d, h)
+	_world.add_child(m)
+	var tw := _reg_tween()
+	tw.set_parallel(true)
+	tw.tween_property(m, "position", _world_pos(at2d, maxf(0.06, h - 0.55)), 0.34)
+	tw.tween_property(m, "modulate:a", 0.0, 0.34)
+	tw.chain().tween_callback(m.queue_free)
 
 func _fuel_bottle_hit(spr: Sprite3D, u: Dictionary, t: Dictionary, si: int) -> void:
 	if is_instance_valid(spr): spr.queue_free()
@@ -5329,7 +5361,33 @@ func _fuel_bottle_hit(spr: Sprite3D, u: Dictionary, t: Dictionary, si: int) -> v
 	var tf: int = maxi(1, roundi([20, 35, 60][si] + [0.10, 0.15, 0.20][si] * u["atk"]))
 	_apply_dot_stacks(t, "burn", tf, u)
 	t["true_fire_until"] = _t + 5.0
-	_skill_ring(t["pos"], Color(1.0, 0.5, 0.15, 0.6), 56.0); _particle_burst(t["pos"])   # 火瓶碎裂+点燃火环
+	_fuel_shatter_fx(t["pos"])
+
+func _fuel_shatter_fx(at2d: Vector2) -> void:   # 碎裂: 地面燃烧圈 + 火焰四溅(各自小抛物落地)
+	_splash_ring_bold(at2d, Color(1.0, 0.42, 0.10), 92.0)   # 醒目贴地火圈(no_depth_test·不被地板高度吞)
+	_skill_ring(at2d, Color(1.0, 0.55, 0.18, 0.65), 58.0)
+	_particle_burst(at2d)
+	var gt := _make_fire_glow_tex()
+	for k in range(9):
+		var m := Sprite3D.new()
+		m.texture = gt
+		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+		m.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		m.shaded = false; m.transparent = true
+		m.modulate = Color(1.0, randf_range(0.42, 0.72), 0.14, 0.95)
+		m.pixel_size = (randf_range(13.0, 26.0) * WS) / float(maxi(1, gt.get_height()))
+		m.position = _world_pos(at2d, 0.3)
+		_world.add_child(m)
+		var ang: float = float(k) * TAU / 9.0 + randf_range(-0.28, 0.28)
+		var dest: Vector2 = at2d + Vector2(cos(ang), sin(ang)) * randf_range(42.0, 98.0)
+		var mtw := _reg_tween()
+		mtw.tween_method(_fuel_splash_step.bind(m, at2d, dest), 0.0, 1.0, randf_range(0.30, 0.52))
+		mtw.tween_callback(m.queue_free)
+
+func _fuel_splash_step(pf: float, m, from2d: Vector2, dest: Vector2) -> void:   # 溅开的火焰: 小抛物飞出+淡出
+	if not is_instance_valid(m): return
+	m.position = _world_pos(from2d.lerp(dest, pf), 0.22 + 0.85 * pf * (1.0 - pf))
+	m.modulate.a = lerpf(0.95, 0.0, pf)
 
 # 027 电棍: 每3s就绪→下次普攻消耗1层(附魔法伤+眩晕); 就绪时身上冒电光
 func _tick_baton(u: Dictionary, delta: float) -> void:
@@ -21626,8 +21684,8 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 				_eq_bloodletting(u, si)
 			"p2eq_014":   # 深海堡垒甲: 汲取移到 _tick_fortress(硬化满20层后每8秒汲取, 用户2026-07-02); on_cast不处理
 				pass
-			"p2eq_022":   # 余烬燃油瓶: 蓄力→投掷火瓶→命中灼烧+真火 (_eq_fuel_throw)
-				_eq_fuel_throw(u, si)
+			"p2eq_022":   # 余烬燃油瓶: 改为每8秒定时(_EQ_CUSTOM_IV→_eq_fuel_throw, 用户2026-07-19); on_cast不处理
+				pass
 			"p2eq_028":   # 冰霜冻露瓶: 对最近敌魔伤+冰寒(减速)
 				_eq_ice_throw(u, si)
 			"p2eq_030":   # 迷你水晶球A: 朝目标无限直线连发2/2/3段水晶光束(错峰), 每段全线敌魔法伤+1层水晶
