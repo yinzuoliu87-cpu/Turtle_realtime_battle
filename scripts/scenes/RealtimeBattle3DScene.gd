@@ -5799,7 +5799,7 @@ func _tick_barnacle(u: Dictionary, delta: float) -> void:   # 守护贝母p2eq_0
 			if prev is Dictionary: prev.erase("dmg_redirect_to")
 			var best = null; var ba := -1.0
 			for o in _allies_of(u):
-				if o == u: continue
+				if is_same(o, u): continue   # is_same: 单位字典深比较有卡死风险(同053)
 				if float(o["atk"]) > ba: ba = float(o["atk"]); best = o
 			stt["link_target"] = best
 			u["eq_state"]["p2eq_021"] = stt
@@ -5810,14 +5810,14 @@ func _tick_barnacle(u: Dictionary, delta: float) -> void:   # 守护贝母p2eq_0
 				o["aspd_perm"] = float(o.get("aspd_perm", 1.0)) + 0.10   # +10%攻速(永久本场,叠加)
 				_skill_ring(o["pos"], Color(0.55, 1.0, 0.78, 0.5), 44.0)
 			if best != null:   # 连接友军: 盾 + 伤害转移(25/40/60%受伤转给携带者); 不净化(用户)
-				_grant_shield(best, [40.0, 60.0, 90.0][si])
+				_grant_shield(best, [60.0, 110.0, 180.0][si])   # 用户2026-07-19: 40/60/90→60/110/180
 				best["dmg_redirect_to"] = {"carrier": u, "pct": [0.25, 0.40, 0.60][si], "until": _t + 5.5}
 		_update_barnacle_line(u, stt.get("link_target", null))   # 每帧: 持续绿色绑定线(跟随移动/能量脉动)
 		break   # 只处理一件(共享绑定线)
 
 func _update_barnacle_line(u: Dictionary, target) -> void:   # 守护贝母021: 携带者↔连接友军的持续绿色绑定线(每帧重绘跟随, 能量脉动α)
 	var im = u.get("barnacle_line", null)
-	if not (target is Dictionary) or not target.get("alive", false) or target == u or not u.get("alive", false):
+	if not (target is Dictionary) or not target.get("alive", false) or is_same(target, u) or not u.get("alive", false):   # is_same: 同上
 		if is_instance_valid(im): im.visible = false
 		return
 	if not is_instance_valid(im):
@@ -7843,7 +7843,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	var _rd = u.get("dmg_redirect_to", null)
 	if _rd is Dictionary and _t < float(_rd.get("until", 0.0)):
 		var carrier = _rd.get("carrier", null)
-		if carrier is Dictionary and carrier.get("alive", false) and carrier != u and d > 0.0:
+		if carrier is Dictionary and carrier.get("alive", false) and not is_same(carrier, u) and d > 0.0:   # is_same: 这里在【中央伤害管线】上, 每次伤害结算都跑 → 深比较风险最高
 			var moved: float = d * float(_rd.get("pct", 0.0))
 			if moved >= 1.0:
 				d -= moved
