@@ -40,6 +40,7 @@ const LIST_W := 280.0
 # ── 二阶段双路「装备学派」羁绊 (替代旧的 10 龟羁绊; 上线版野生=duallane 用此 11 学派) ──
 # 学派定义(名/tag/tiers)取自 Phase2Schools.SCHOOLS; 成员装备由 p2eq-schools.json 反查; 效果文案=学派效果-实装规格.md 逐字转录。
 const Phase2Schools := preload("res://scripts/engine/phase2_schools.gd")
+const Phase2Types := preload("res://scripts/engine/phase2_types.gd")   # 类型(12)映射: p2eq-types.json
 const SkillEnergy := preload("res://scripts/systems/skill_energy.gd")   # 龟能花费 单一事实源 (跟战斗同口径)
 
 # 技能在实时版里的角色: passive(被动) / basic(普攻,不花龟能) / active(主动,花龟能). 跟战斗 BASIC_ATK+改造一致.
@@ -559,8 +560,7 @@ func _add_equip_rows() -> void:
 		_add_header("▸ 费用 %d (%d)" % [cost, items.size()], ccol)
 		for eq in items:
 			_items.append(eq)
-			var rarity: String = str(eq.get("rarity", ""))
-			var stroke: String = P2EQ_RARITY_COLOR.get(rarity, ccol)
+			var stroke: String = ccol
 			var emoji: String = str(eq.get("emoji", "📦"))
 			var img: String = str(eq.get("img", ""))
 			var ipath: String = "res://assets/sprites/%s" % img if img.ends_with(".png") else ""
@@ -1105,13 +1105,12 @@ func _show_equip(eq: Dictionary) -> void:
 
 
 # ── p2eq 装备详情 (data/phase2-equipment.json 字段) ──
-#   头图: PNG 图标(img·2026-07-18装备图标)→无 img 才 emoji 徽章兜底。名 + 费用 + 类型(series·category) + 学派(schools_of) + 属性(baseStats1) + 效果(effectDesc1/3)。
+#   头图: PNG 图标(img·2026-07-18装备图标)→无 img 才 emoji 徽章兜底。名 + 费用 + 类型(p2eq-types) + 学派(p2eq-schools) + 属性(baseStats1) + 效果(effectDesc1/3)。
 func _show_p2eq(eq: Dictionary) -> void:
 	_clear_detail()
 	var cost: int = int(eq.get("cost", 0))
-	var rarity: String = str(eq.get("rarity", ""))
 	var ccol: String = COST_COLOR.get(cost, "#4cc9f0")
-	var rcol: String = P2EQ_RARITY_COLOR.get(rarity, ccol)
+	var rcol: String = ccol
 	var emoji: String = str(eq.get("emoji", "📦"))
 	# 头图区: PNG 图标(新版 img·2026-07-18装备图标)→无则 emoji 徽章框兜底 (中心锚 @(60,70))
 	var img: String = str(eq.get("img", ""))
@@ -1124,10 +1123,9 @@ func _show_p2eq(eq: Dictionary) -> void:
 	# 名 30px 黄 + 费用/稀有度副标
 	_add_text(130, 30, eq.get("name", "?"), 30, "#ffd93d", 0.0, 0.5, true)
 	_add_text(130, 66, "费用 %d" % cost, 14, ccol, 0.0, 0.5, true)
-	_add_text(130 + 80, 66, rarity, 14, rcol, 0.0, 0.5, true)
-	# 类型行: series · category (剑系 · 轻剑 等)
-	# 轻剑/重剑等子类(category)已废 → 类型只显系 (用户 2026-06-23)
-	var type_str := str(eq.get("series", ""))
+	# 类型行: 真类型(12种·p2eq-types.json)。旧 series/category 字段已废弃删除(用户2026-07-19)
+	var _tp: String = Phase2Types.type_of(str(eq.get("id", "")))
+	var type_str: String = ("%s %s" % [Phase2Types.emoji_of(_tp), Phase2Types.display_name(_tp)]) if _tp != "" else "—"
 	_add_text(130, 92, type_str, 13, "#888888", 0.0, 0.5)
 	# 学派 (可多个, p2eq-schools.json → schools_of); 无 → "—"
 	var schools: Array = Phase2Schools.schools_of(str(eq.get("id", "")))

@@ -262,7 +262,7 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, is_leade
 		if filled:
 			var eid := str((eqs[ci] as Dictionary).get("id", ""))
 			var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
-			csb.bg_color = _rarity_color(str(edef.get("rarity", "普通")))
+			csb.bg_color = _cost_color(int(edef.get("cost", 1)))
 			csb.border_color = Color(1, 1, 1, 0.5)
 		else:
 			csb.bg_color = Color(0, 0, 0, 0.35); csb.border_color = Color("#3a4452")
@@ -381,7 +381,7 @@ func _draw_equip_cells(box: Control, eqs: Array, slots: int, y: float) -> void:
 		if idx < eqs.size():
 			var eid := str((eqs[idx] as Dictionary).get("id", ""))
 			var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
-			csb.bg_color = _rarity_color(str(edef.get("rarity", "普通")))
+			csb.bg_color = _cost_color(int(edef.get("cost", 1)))
 			csb.border_color = Color(1, 1, 1, 0.45)
 		else:
 			csb.bg_color = Color(0, 0, 0, 0.35)
@@ -588,7 +588,7 @@ func _build_op_bar() -> void:
 		else:
 			var sdef: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(sit.get("id", "")), {})
 			var l := Label.new()
-			l.text = "▶ %s  ★%d  (%s)   —— 点上方【龟 / 小将】装上   ·   %s" % [str(sdef.get("name", "")), int(sit.get("star", 1)), str(sdef.get("rarity", "普通")), str(sdef.get("effectDesc1", ""))]
+			l.text = "▶ %s  ★%d  (%s)   —— 点上方【龟 / 小将】装上   ·   %s" % [str(sdef.get("name", "")), int(sit.get("star", 1)), "费用%d" % int(sdef.get("cost", 1)), str(sdef.get("effectDesc1", ""))]
 			l.add_theme_font_size_override("font_size", 14); l.add_theme_color_override("font_color", Color("#ffd93d"))
 			l.position = Vector2(16, 10); l.size = Vector2(bw - 320, 48); l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; l.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(l)
 			var sv := _sell_value(sit)
@@ -601,12 +601,12 @@ func _build_op_bar() -> void:
 		cancel.position = Vector2(bw - 108, 14); cancel.size = Vector2(92, 38)
 		cancel.pressed.connect(func(): _sel_bench = -1; _rebuild()); bar.add_child(cancel)
 
-func _rarity_color(rarity: String) -> Color:
-	match rarity:
-		"精良": return Color("#4ade80")
-		"稀有": return Color("#60a5fa")
-		"史诗": return Color("#c084fc")
-		"传说": return Color("#fbbf24")
+func _cost_color(cost: int) -> Color:   # 按费用上色(用户2026-07-19: 稀有度字段废弃, 费用才是真档位; 与旧稀有度严格1:1 → 颜色不变)
+	match cost:
+		2: return Color("#4ade80")
+		3: return Color("#60a5fa")
+		4: return Color("#c084fc")
+		5: return Color("#fbbf24")
 		_: return Color("#8a96a3")
 
 func _empty_bench_cell(pos: Vector2) -> Control:
@@ -623,7 +623,7 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	var sel := idx == _sel_bench
 	var eid := str(it.get("id", ""))
 	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
-	var rcol := _rarity_color(str(edef.get("rarity", "普通")))
+	var rcol := _cost_color(int(edef.get("cost", 1)))
 	var box := _slot_panel(pos, Color("#2a3a1c") if sel else Color("#1c2836"), Color("#ffd93d") if sel else rcol)
 	var img := str(edef.get("img", ""))
 	if img != "" and ResourceLoader.exists("res://assets/sprites/" + img):
@@ -650,7 +650,7 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	box.add_child(st)
 	for ch in box.get_children():
 		ch.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.tooltip_text = "%s (%s)\n%s" % [str(edef.get("name", eid)), str(edef.get("rarity", "普通")), str(edef.get("effectDesc1", "（无主动效果）"))]
+	box.tooltip_text = "%s (%s)\n%s" % [str(edef.get("name", eid)), "费用%d" % int(edef.get("cost", 1)), str(edef.get("effectDesc1", "（无主动效果）"))]
 	_wire_bench_tap(box, idx)
 	return box
 
@@ -760,7 +760,7 @@ func _build_actions() -> void:
 	if _sel_bench >= 0 and _sel_bench < GameState.persistent_bench.size():
 		var sit: Dictionary = GameState.persistent_bench[_sel_bench]
 		var sdef: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(sit.get("id", "")), {})
-		var dnm := Label.new(); dnm.text = "▶ %s  ★%d  (%s · %d费)" % [str(sdef.get("name", "")), int(sit.get("star", 1)), str(sdef.get("rarity", "普通")), int(sdef.get("cost", 1))]
+		var dnm := Label.new(); dnm.text = "▶ %s  ★%d  (%s · %d费)" % [str(sdef.get("name", "")), int(sit.get("star", 1)), "费用%d" % int(sdef.get("cost", 1)), int(sdef.get("cost", 1))]
 		dnm.add_theme_font_size_override("font_size", 16); dnm.add_theme_color_override("font_color", Color("#ffd93d"))
 		dnm.position = Vector2(64, 520); dnm.size = Vector2(1140, 22); add_child(dnm)
 		var ddesc := Label.new(); ddesc.text = str(sdef.get("effectDesc1", "（无主动效果）"))

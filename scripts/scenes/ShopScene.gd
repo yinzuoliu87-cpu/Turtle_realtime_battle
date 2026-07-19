@@ -170,7 +170,7 @@ func _build_bench_preview() -> void:
 		var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(it.get("id", "")), {})
 		var cell := Panel.new()
 		var csb := StyleBoxFlat.new()
-		csb.bg_color = Color("#162230"); csb.border_color = _rarity_color(str(edef.get("rarity", "普通")))
+		csb.bg_color = Color("#162230"); csb.border_color = _cost_color(int(edef.get("cost", 1)))
 		csb.set_border_width_all(2); csb.set_corner_radius_all(6)
 		cell.add_theme_stylebox_override("panel", csb)
 		cell.position = Vector2(80 + j * 72, 590); cell.size = Vector2(64, 64); add_child(cell)
@@ -229,7 +229,7 @@ func _build_lineup_equips() -> void:
 					var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(it.get("id", "")), {})
 					var cell := Panel.new()
 					var csb := StyleBoxFlat.new(); csb.bg_color = Color("#162230")
-					csb.border_color = _rarity_color(str(edef.get("rarity", "普通"))); csb.set_border_width_all(2); csb.set_corner_radius_all(6)
+					csb.border_color = _cost_color(int(edef.get("cost", 1))); csb.set_border_width_all(2); csb.set_corner_radius_all(6)
 					cell.add_theme_stylebox_override("panel", csb)
 					cell.position = Vector2(px + 130 + ci * 56, y); cell.size = Vector2(50, 50)
 					cell.tooltip_text = "%s ★%d" % [str(edef.get("name", "?")), int(it.get("star", 1))]
@@ -268,12 +268,12 @@ func _owned_count(item_id: String) -> int:
 						if it3 is Dictionary and str(it3.get("id", "")) == item_id: n += 1
 	return n
 
-func _rarity_color(rarity: String) -> Color:
-	match rarity:
-		"精良": return Color("#4ade80")
-		"稀有": return Color("#60a5fa")
-		"史诗": return Color("#c084fc")
-		"传说": return Color("#fbbf24")
+func _cost_color(cost: int) -> Color:   # 按费用上色(用户2026-07-19: 稀有度字段废弃, 费用才是真档位; 与旧稀有度严格1:1 → 颜色不变)
+	match cost:
+		2: return Color("#4ade80")
+		3: return Color("#60a5fa")
+		4: return Color("#c084fc")
+		5: return Color("#fbbf24")
 		_: return Color("#8a96a3")
 
 func _card(idx: int, pos: Vector2) -> Control:
@@ -281,7 +281,7 @@ func _card(idx: int, pos: Vector2) -> Control:
 	var sb := StyleBoxFlat.new()
 	var bought: bool = _offer[idx] == null
 	sb.bg_color = Color("#11202e") if not bought else Color("#0c141c")
-	sb.border_color = (_rarity_color(str((_offer[idx] as Dictionary).get("rarity", "普通"))) if not bought else Color("#1a2630"))
+	sb.border_color = (_cost_color(int((_offer[idx] as Dictionary).get("cost", 1))) if not bought else Color("#1a2630"))
 	sb.set_border_width_all(2); sb.set_corner_radius_all(8)
 	box.add_theme_stylebox_override("panel", sb)
 	box.position = pos; box.size = Vector2(SLOT_W, SLOT_H)
@@ -324,7 +324,7 @@ func _card(idx: int, pos: Vector2) -> Control:
 	box.add_child(pr)
 	for ch in box.get_children():
 		ch.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.tooltip_text = "%s (%d费 · %s)\n%s" % [str(edef.get("name", "?")), int(edef.get("cost", 1)), str(edef.get("rarity", "普通")), str(edef.get("effectDesc1", ""))]
+	box.tooltip_text = "%s (%d费)\n%s" % [str(edef.get("name", "?")), int(edef.get("cost", 1)), str(edef.get("effectDesc1", ""))]
 	box.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _on_buy(idx))
 	return box
 
