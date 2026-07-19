@@ -5221,9 +5221,11 @@ func _eq_fpga_tick(u: Dictionary, si: int) -> void:
 		var xoff: float = (float(k) - float(n - 1) / 2.0) * 34.0
 		_float_text(u["pos"] + Vector2(xoff, -72.0), codes[pick], ccols[pick])   # 二进制码头顶跳
 		match pick:
-			0: _heal(u, u["maxHp"] * 0.05); u["base_def"] += 2; u["base_mr"] += 2; _recalc_stats(u)
-			1: u["base_atk"] += 5; u["lifesteal"] += 0.04; _recalc_stats(u)
-			2: _buff(u, "atk", 0.15, true, 3.5)
+			0: _heal(u, u["maxHp"] * 0.05); u["base_def"] += 12; u["base_mr"] += 12; _recalc_stats(u)   # 用户2026-07-19: +2 → +12
+			1: u["base_atk"] += 15; u["lifesteal"] += 0.07; _recalc_stats(u)                            # 用户2026-07-19: +5/+4% → +15/+7%
+			2:
+				u["damage_amp"] = float(u.get("damage_amp", 0.0)) + 0.15   # 10: 真·增伤(放大所有伤害·用户2026-07-19"amp要"); 原 _buff(atk,15%) 只放大吃ATK的段, 而040自己不给攻击力
+				_pending_shots.append({"delay": 3.5, "fn": func(): u["damage_amp"] = maxf(0.0, float(u.get("damage_amp", 0.0)) - 0.15), "src": u})
 			3:
 				u["damage_reduction"] = float(u.get("damage_reduction", 0.0)) + 0.25   # 11: 受到伤害-25%(真伤除外·用户2026-07-19: 原误做+25%护甲对魔/真伤无效→改真减伤)
 				_pending_shots.append({"delay": 3.5, "fn": func(): u["damage_reduction"] = maxf(0.0, float(u.get("damage_reduction", 0.0)) - 0.25), "src": u})
