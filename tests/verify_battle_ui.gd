@@ -88,15 +88,15 @@ func _ready() -> void:
 	scene._units.clear()
 	scene._units.append(ua); scene._units.append(ub); scene._units.append(uc)
 	scene._on_dmg_stats_toggle()
-	_ok("战中统计面板开", scene._dmg_stats_panel != null and scene._dmg_stats_panel.visible)
-	scene._render_dmg_stats()
-	var left_col: VBoxContainer = scene._dmg_stats_cols[0]
+	var dsp = scene._dmg_stats
+	_ok("战中统计面板开", dsp != null and dsp.panel != null and dsp.panel.visible)
+	dsp.render()
+	var left_col: VBoxContainer = dsp._cols[0]
 	var left_rows: int = left_col.get_child_count()
 	_ok("我方列 2 行(主龟+召唤体单列一行)", left_rows == 2, "行数=%d" % left_rows)
-	scene._dmg_stats_tab = "taken"; scene._render_dmg_stats()
-	scene._dmg_stats_tab = "heal"; scene._render_dmg_stats()
-	scene._dmg_stats_tab = "shield"; scene._render_dmg_stats()
-	scene._dmg_stats_tab = "dealt"
+	for tb in ["taken", "heal", "shield"]:
+		dsp._tab = tb; dsp.render()
+	dsp._tab = "dealt"
 	_ok("4 Tab 切换渲染不崩", true)
 	scene._on_dmg_stats_toggle()   # 关
 
