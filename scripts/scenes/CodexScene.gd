@@ -153,7 +153,8 @@ func _add_back_button() -> void:
 	var back := Button.new()
 	back.text = "←"
 	back.add_theme_font_size_override("font_size", 26)
-	back.position = Vector2(20.0, 18.0)
+	var _m := SafeArea.margins(Vector2(get_viewport().get_visible_rect().size), 18.0)
+	back.position = Vector2(maxf(20.0, _m.x), _m.y)   # 手机刘海/圆角: 左上角留安全区(桌面仍是 20/18)
 	back.custom_minimum_size = Vector2(44.0, 44.0)
 	back.focus_mode = Control.FOCUS_NONE
 	back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
@@ -163,7 +164,7 @@ func _add_back_button() -> void:
 		var dbg := Button.new()
 		dbg.text = "🛠"
 		dbg.add_theme_font_size_override("font_size", 22)
-		dbg.position = Vector2(1280.0 - 64.0, 18.0)
+		dbg.position = Vector2(float(get_viewport().get_visible_rect().size.x) - 64.0 - SafeArea.insets(Vector2(get_viewport().get_visible_rect().size)).z, 18.0)
 		dbg.custom_minimum_size = Vector2(44.0, 44.0)
 		dbg.focus_mode = Control.FOCUS_NONE
 		dbg.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND

@@ -12490,6 +12490,26 @@ const _CHEST_TREASURE_NAME := {
 	"crown": "王冠", "thunder": "雷刃", "starlight": "星辉",
 }
 
+## 战利品描述(信息面板用) —— 逐条对着 _chest_apply_treasure 的【实际代码】写, 改效果时这里必须同步.
+const _CHEST_TREASURE_DESC := {
+	"dagger": "攻击力 +25%",
+	"wood_shield": "护甲与魔抗 +20%",
+	"rum": "每 10 秒回复 8% 最大生命",
+	"blood_dice": "暴击率 +35%",
+	"chain": "砸击的范围与射程 ×2",
+	"stone": "砸击额外 +100% 护甲与 +100% 魔抗",
+	"long_sword": "攻击力 +45%",
+	"bloodblade": "吸血 +25%",
+	"flint": "普攻命中施加灼烧",
+	"gem_armor": "护甲与魔抗 +25%, 最大生命 +60",
+	"poison": "普攻命中使目标受到的治疗 -50%, 持续 5 秒",
+	"phoenix_statue": "首次死亡以 25% 最大生命复活",
+	"crown": "攻击力 +40%, 暴击 +40%, 暴击伤害 +25%, 吸血提升",
+	"thunder": "命中叠金色闪电, 满 5 层引爆 1.0×ATK 真实伤害",
+	"starlight": "自身造成的所有伤害转为真实伤害",
+}
+const _CHEST_THRESH := [1000.0, 2500.0, 4500.0, 7000.0, 12000.0]   # 大轮制开箱阈值(与 _chest_treasure_tick 同源)
+
 # 宝箱·藏宝图(封板L590-594·完整15件专属池): 造成伤害积累财宝值(=dmg_dealt), 过阈值开专属战利品(分档池·不重复)+回血, 一场最多5件
 func _chest_treasure_tick(u: Dictionary) -> void:
 	# 大轮制(用户2026-07-16): 我方真实对局=财宝值跨场累积(GameState)·阈值1000/2500/4500/7000/12000·开出=一大轮常驻; demo/敌侧=单场旧制
@@ -12504,8 +12524,7 @@ func _chest_treasure_tick(u: Dictionary) -> void:
 		opened = (GameState.chest_treasures_won as Array).size()
 		if opened >= 5:
 			return
-		var thresh_s: Array = [1000.0, 2500.0, 4500.0, 7000.0, 12000.0]
-		if float(GameState.chest_treasure_value) < float(thresh_s[opened]):
+		if float(GameState.chest_treasure_value) < float(_CHEST_THRESH[opened]):
 			return
 	else:
 		opened = int(u.get("chest_opened", 0))
@@ -22077,6 +22096,11 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 		var pdesc := _strip_html(str(passive.get("desc", passive.get("brief", ""))))
 		if pdesc != "": _add_body_text(vb, pdesc)
 
+	# 宝箱龟专属: 财宝值进度 + 已开出的战利品(用户2026-07-19"信息面板得显示当前累计的财宝值/当前抽取的装备和图标/专属装备的描述")
+	if _is_chest_turtle(u):
+		_add_panel_sep(vb)
+		_info_chest_section(vb, u)
+
 	# 技能
 	var skills := _panel_skill_entries(u)
 	if not skills.is_empty():
@@ -22103,6 +22127,75 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	var tw := _reg_tween()
 	tw.tween_property(panel, "offset_left", -(PW + 16.0), 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tw.parallel().tween_property(panel, "offset_right", -16.0, 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+## 是不是宝箱龟(藏宝图被动会往 chest_treasures 里塞东西; 用 id 判定最稳)
+func _is_chest_turtle(u: Dictionary) -> bool:
+	return str(u.get("id", "")) == "chest"
+
+## 宝箱龟信息区: 财宝值 + 到下一个宝箱的进度 + 已开出的 N 件战利品(图标/名/描述).
+## 财宝值取法必须和 _chest_treasure_tick 一致 —— 我方真实对局走 GameState(跨战场大轮累积),
+## demo/敌侧走本单位 dmg_dealt(单场旧制); 两边取错会显示成完全不同的数。
+func _info_chest_section(vb: VBoxContainer, u: Dictionary) -> void:
+	var season_mode: bool = (not _review_demo()) and str(u.get("side", "")) == "left" and GameState != null and not u.get("is_summon", false)
+	var tv: float = float(GameState.chest_treasure_value) if season_mode else float(u.get("dmg_dealt", 0.0))
+	var opened: int = (GameState.chest_treasures_won as Array).size() if season_mode else int(u.get("chest_opened", 0))
+	_add_section_title(vb, "藏宝图 · 财宝值")
+	if opened >= 5:
+		_info_bar(vb, 1.0, 1.0, Color("#ffd93d"), "财宝 %d  ·  宝箱已开满 (5/5)" % int(tv))
+	else:
+		var need: float = float(_CHEST_THRESH[opened]) if season_mode else 0.0
+		if season_mode:
+			var prev: float = float(_CHEST_THRESH[opened - 1]) if opened > 0 else 0.0
+			_info_bar(vb, clampf(tv - prev, 0.0, maxf(1.0, need - prev)), maxf(1.0, need - prev), Color("#ffd93d"),
+				"财宝 %d / %d  ·  下一个宝箱 (%d/5)" % [int(tv), int(need), opened + 1])
+		else:
+			_info_bar(vb, 1.0, 1.0, Color("#ffd93d"), "财宝 %d  ·  已开 %d/5 (单场制)" % [int(tv), opened])
+	# 已开出的战利品: 面板显【本单位身上生效的那些】(chest_treasures), 跨场常驻的也已注入到单位上
+	var owned: Dictionary = u.get("chest_treasures", {})
+	_add_section_title(vb, "  已获战利品 (%d)" % owned.size(), Color("#ffd93d"), 14)
+	if owned.is_empty():
+		_add_body_text(vb, "尚未开出", Color("#7a8694"))
+		return
+	for tid in owned.keys():
+		_chest_loot_row(vb, str(tid))
+
+## 一件战利品: 金框图标 + 名 + 效果描述 (样式对齐 _add_equip_row)
+func _chest_loot_row(parent: VBoxContainer, tid: String) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	parent.add_child(row)
+	var icon_box := PanelContainer.new()
+	var isb := StyleBoxFlat.new()
+	isb.bg_color = Color("#0c141c")
+	isb.set_border_width_all(2); isb.border_color = Color("#ffd93d")
+	isb.set_corner_radius_all(5)
+	icon_box.add_theme_stylebox_override("panel", isb)
+	icon_box.custom_minimum_size = Vector2(40, 40)
+	row.add_child(icon_box)
+	var ipath := "res://assets/sprites/equip/chest-t-%s.png" % tid
+	if ResourceLoader.exists(ipath):
+		var ic := TextureRect.new()
+		ic.texture = load(ipath)
+		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon_box.add_child(ic)
+	var tcol := VBoxContainer.new()
+	tcol.add_theme_constant_override("separation", 1)
+	tcol.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(tcol)
+	var nl := Label.new()
+	nl.text = str(_CHEST_TREASURE_NAME.get(tid, tid))
+	nl.add_theme_font_size_override("font_size", 14)
+	nl.add_theme_color_override("font_color", Color("#ffd93d"))
+	tcol.add_child(nl)
+	var dl := Label.new()
+	dl.text = str(_CHEST_TREASURE_DESC.get(tid, ""))
+	dl.add_theme_font_size_override("font_size", 12)
+	dl.add_theme_color_override("font_color", Color("#c9d4de"))
+	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	dl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tcol.add_child(dl)
 
 # 技能条目 [{name, desc}]: 取该龟已选的主动技 (走 _chosen_skill_types) + 普攻名 (skillPool[0]).
 func _panel_skill_entries(u: Dictionary) -> Array:

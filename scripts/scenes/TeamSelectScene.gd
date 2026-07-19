@@ -72,6 +72,7 @@ var filter_rarity: String = "all"
 var _selected_slot_idx: int = -1   # tap-to-swap 选中的满槽 (1:1 PoC selectedSlotIdx)
 var _active_slot_idx: int = -1     # 待填的空槽 active (1:1 PoC activeSlotIdx)
 var _did_entrance: bool = false    # 入场动画只播一次 (resize 重建不重播)
+var _edge_btns: Array = []   # 贴边按钮(返回/清空/上次/开始) — 建完所有区域后要提到最前, 见 _raise_edge_btns
 var _resize_pending: bool = false  # resize 重排去抖
 var rng := RandomNumberGenerator.new()
 
@@ -313,8 +314,20 @@ func _place(ctrl: Control, key: String) -> void:
 func _place_clamped(ctrl: Control, key: String) -> void:
 	_place(ctrl, key)
 	var vp := _vp()
-	ctrl.position.x = clampf(ctrl.position.x, 6.0, maxf(6.0, vp.x - ctrl.size.x - 6.0))
-	ctrl.position.y = clampf(ctrl.position.y, 6.0, maxf(6.0, vp.y - ctrl.size.y - 6.0))
+	var m := SafeArea.margins(vp, 6.0)   # 手机刘海/灵动岛/手势条 → 边距按各边安全区加大(桌面恒 6)
+	ctrl.position.x = clampf(ctrl.position.x, m.x, maxf(m.x, vp.x - ctrl.size.x - m.z))
+	ctrl.position.y = clampf(ctrl.position.y, m.y, maxf(m.y, vp.y - ctrl.size.y - m.w))
+	_edge_btns.append(ctrl)   # 登记 → 建完所有区域后统一提到最前(见 _raise_edge_btns)
+
+## 贴边按钮(返回/清空/上次/开始)提到最上层 —— 【防御性, 不是已确诊的病因】.
+## 这几个按钮在 slotBay/网格/详情区之【前】add_child, 手机比例下又会被夹到屏幕边缘,
+## 理论上可能落进后画的面板里被盖住. 但 1560×720 实测探针显示当前布局下并没有发生
+## (盖住它们的只有画在下层的背景). 留着是因为代价只有一次 move_child, 且以后调 RL 坐标
+## 或加新面板时这类遮挡是很容易复发的一类 bug; tests/verify_ios_ui.gd 有对应断言看着。
+func _raise_edge_btns() -> void:
+	for c in _edge_btns:
+		if is_instance_valid(c) and c.get_parent() == root:
+			root.move_child(c, -1)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -591,6 +604,7 @@ func _show_detail_popup(title_txt: String, body_txt: String, accent: Color, anch
 # 建 UI
 # ══════════════════════════════════════════════════════════════
 func _build_ui() -> void:
+	_edge_btns.clear()   # resize 会整份重建 UI → 先清旧登记(里面是已 free 的节点)
 	# 标题 (PoC .ts-title: #ffe6b0 22px, letter-spacing 2px, 阴影)
 	var title := Label.new()
 	title.text = "选择你的统领"
@@ -661,6 +675,8 @@ func _build_ui() -> void:
 	root.add_child(_start_btn)
 	_place_clamped(_start_btn, "start")
 	_start_btn.pressed.connect(_on_start)
+
+	_raise_edge_btns()   # ★所有区域都建完了才提层 —— 早提会被后面的 slotBay/详情区盖回去
 
 	if not _did_entrance:   # 入场只播一次 (resize 重建不重播)
 		_did_entrance = true
