@@ -5234,19 +5234,21 @@ func _tick_anemone(u: Dictionary, delta: float) -> void:   # 海葵药膏p2eq_01
 		e["anemone_t"] = 0.0
 		var si: int = _eq_si(int(e.get("star", 1)))
 		var stt: Dictionary = u["eq_state"].get("p2eq_019", {})
-		var amp19: float = 1.0 + float(int(stt.get("anemone_layers", 0))) * [0.08, 0.09, 0.10][si]
-		var h1: float = ([30, 45, 60][si] + (u["maxHp"] - u["hp"]) * [0.12, 0.14, 0.18][si]) * amp19
-		_heal(u, h1)
-		var prov19: float = h1
-		var low = _lowest_hp_ally(u)
-		if low != null and low != u:
-			var h2: float = ([30, 45, 60][si] + (low["maxHp"] - low["hp"]) * [0.12, 0.14, 0.18][si]) * amp19
-			_heal(low, h2); prov19 += h2
+		# 海葵层的+治疗/护盾强度已经在获得层时真的加进 u.heal_amp/shield_amp (见下), _heal 会自己乘, 这里不能再乘一遍
+		var h1: float = [30, 45, 60][si] + (u["maxHp"] - u["hp"]) * [0.12, 0.14, 0.18][si]
+		var prov19: float = _heal(u, h1)                     # 按【实际】回血计数(同017口径·用户2026-07-19)
+		var low = _lowest_hp_pct_ally(u)                     # 文案是"生命百分比最低"
+		if low != null and not is_same(low, u):              # is_same: 单位字典深比较有卡死风险(同053)
+			var h2: float = [30, 45, 60][si] + (low["maxHp"] - low["hp"]) * [0.12, 0.14, 0.18][si]
+			prov19 += _heal(low, h2)
 		stt["anemone_heal"] = float(stt.get("anemone_heal", 0.0)) + prov19
 		var thr19: float = [200.0, 180.0, 150.0][si]
 		while float(stt["anemone_heal"]) >= thr19:
 			stt["anemone_heal"] = float(stt["anemone_heal"]) - thr19
 			stt["anemone_layers"] = int(stt.get("anemone_layers", 0)) + 1
+			var inc19: float = [0.08, 0.09, 0.10][si]
+			u["heal_amp"] = float(u.get("heal_amp", 0.0)) + inc19       # 海葵层原来只放大019自己的回血, 文案说的"治疗与护盾强度"根本没生效 → 真的加进全局(用户2026-07-19)
+			u["shield_amp"] = float(u.get("shield_amp", 0.0)) + inc19   # 一局内累计不封顶, 单位每场重建 eq_state/heal_amp → 天然重置
 			_skill_ring(u["pos"], Color(0.55, 0.9, 0.7, 0.5), 44.0)
 		u["eq_state"]["p2eq_019"] = stt
 
@@ -17046,6 +17048,14 @@ func _on_line(origin: Vector2, dir: Vector2, p: Vector2, width: float) -> bool:
 	var perp: float = (rel - dir * along).length()
 	return perp <= width
 
+func _lowest_hp_pct_ally(u: Dictionary):   # 生命【百分比】最低的友军(含自己) — 装备文案说的是百分比, _lowest_hp_ally 是绝对值语义
+	var best = null; var bv := INF
+	for o in _allies_of(u):
+		var pct: float = float(o["hp"]) / maxf(1.0, float(o["maxHp"]))
+		if pct < bv:
+			bv = pct; best = o
+	return best
+
 func _lowest_hp_ally(u: Dictionary):
 	var best = null; var bv := INF
 	for o in _allies_of(u):
@@ -17056,7 +17066,7 @@ func _lowest_hp_ally(u: Dictionary):
 func _allies_of(u: Dictionary, include_self: bool = true) -> Array:
 	var out: Array = []
 	for o in _units:
-		if o["side"] == u["side"] and o["alive"] and (include_self or o != u):
+		if o["side"] == u["side"] and o["alive"] and (include_self or not is_same(o, u)):   # is_same: 单位字典互引成环, == / != 会深比较→有卡死风险(同053教训)
 			out.append(o)
 	return out
 
