@@ -22136,6 +22136,29 @@ func _is_chest_turtle(u: Dictionary) -> bool:
 ## 财宝值取法必须和 _chest_treasure_tick 一致 —— 我方真实对局走 GameState(跨战场大轮累积),
 ## demo/敌侧走本单位 dmg_dealt(单场旧制); 两边取错会显示成完全不同的数。
 func _info_chest_section(vb: VBoxContainer, u: Dictionary) -> void:
+	# 【详情面板整体是一次性快照, 从不刷新】—— 但用户要的是"当前累计的财宝值", 冻在开面板那一刻的数字没意义,
+	# 且开箱是随时发生的. 所以这一块自己挂 0.5s 定时重建(只重建本块, 不动面板其余部分).
+	var sec := VBoxContainer.new()
+	sec.add_theme_constant_override("separation", 6)
+	sec.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vb.add_child(sec)
+	_fill_chest_section(sec, u)
+	var t := Timer.new()
+	t.wait_time = 0.5
+	t.autostart = true
+	t.process_mode = Node.PROCESS_MODE_ALWAYS   # 暂停时也刷(面板本来就能在暂停下看)
+	t.timeout.connect(func() -> void:
+		if is_instance_valid(sec):
+			_fill_chest_section(sec, u))
+	sec.add_child(t)
+
+func _fill_chest_section(sec: VBoxContainer, u: Dictionary) -> void:
+	for c in sec.get_children():
+		if c is Timer:
+			continue                    # 留着自己的刷新定时器, 别把脚下的梯子拆了
+		sec.remove_child(c)
+		c.queue_free()
+	var vb := sec
 	var season_mode: bool = (not _review_demo()) and str(u.get("side", "")) == "left" and GameState != null and not u.get("is_summon", false)
 	var tv: float = float(GameState.chest_treasure_value) if season_mode else float(u.get("dmg_dealt", 0.0))
 	var opened: int = (GameState.chest_treasures_won as Array).size() if season_mode else int(u.get("chest_opened", 0))
