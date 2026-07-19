@@ -30,7 +30,7 @@
     "emoji": "⚔️",
     "effectImpl": true,
     "effectDesc1": "携带者每段伤害命中后,对目标施加相当于0.075/0.1/0.15×攻击力的流血层数(范围技能触发的流血减半)。",
-    "effectDesc3": "3星：流血提升至0.15×攻击力且可叠加3层。",
+    "effectDesc3": "3星：流血可叠加至3层。",
     "img": "equip/dungeon-blade.png"
   },
   {
@@ -81,7 +81,7 @@
     "emoji": "🗡️",
     "effectImpl": true,
     "effectDesc1": "携带者每段伤害命中后,有50/75/100%概率追加一次双生刺击,造成0.7/0.8/1.0×攻击力的物理伤害。",
-    "effectDesc3": "3星：追击概率提升至100%。",
+    "effectDesc3": "",
     "img": "equip/twin-daggers.png"
   },
   {
@@ -506,7 +506,7 @@
     "emoji": "🔮",
     "effectImpl": true,
     "effectDesc1": "携带者施法后,沿一列(同排前中后三格)发射2/2/3段水晶光束,每段对该列每名敌人造成30/35/40魔法伤害并施加1层迷你水晶;敌人叠满3层水晶时被引爆,受到相当于14/17/20%其最大生命的魔法伤害并重置层数。",
-    "effectDesc3": "3星：每次发射增至3段。",
+    "effectDesc3": "",
     "img": "equip/dungeon-mini-crystal.png"
   },
   {
@@ -574,7 +574,7 @@
     "emoji": "🧸",
     "effectImpl": true,
     "effectDesc1": "携带者每2.5秒派出一只小熊走向随机敌人(优先前排),造成(1/2/5×攻击力+100/210/1000)物理伤害并将其击飞,同时携带者+1大熊层;大熊层满5/3/1层时装备销毁,在空位召唤一只大熊(250生命/50攻击力)登场;若无空位则继续小熊攻击直到出现空位。",
-    "effectDesc3": "3星：大熊层满1层即可召唤大熊登场。",
+    "effectDesc3": "",
     "img": "equip/dungeon-doll.png"
   },
   {
@@ -676,7 +676,7 @@
     "emoji": "🔧",
     "effectImpl": true,
     "effectDesc1": "携带者每2.5秒随机抽取1/2/4个2-bit状态短时间内生效:00=回复5%最大生命且永久+2护甲魔抗;01=永久+5攻击力且永久+4%生命偷取;10=短时间内+15%增伤;11=短时间内受到的伤害-25%(真实伤害除外)。",
-    "effectDesc3": "3星：每2.5秒抽取4个状态(而非1个),全部短时间内生效。",
+    "effectDesc3": "",
     "img": "equip/dungeon-fpga.png"
   },
   {
@@ -710,7 +710,7 @@
     "emoji": "💧",
     "effectImpl": true,
     "effectDesc1": "携带者每2.5秒为全队(含自己)回复其已损失生命的3/6/10%。",
-    "effectDesc3": "3星：回复比例提升,且生命最低的友军获得双倍回复。",
+    "effectDesc3": "3星：生命最低的友军获得双倍回复。",
     "img": "equip/ripple-potion.png"
   },
   {
@@ -761,7 +761,7 @@
     "emoji": "🦪",
     "effectImpl": true,
     "effectDesc1": "携带者生命值首次降至50%以下时,回复15/29/65%最大生命值,并向1/1/2名随机敌人发射火球,造成相当于8/17/30%目标最大生命的魔法伤害并施加30/70/150层灼烧(整局一次)。",
-    "effectDesc3": "3星：额外发射的火球数量翻倍为2颗。",
+    "effectDesc3": "",
     "img": "equip/dungeon-pearl.png"
   },
   {
@@ -812,7 +812,7 @@
     "emoji": "🔫",
     "effectImpl": true,
     "effectDesc1": "携带者施法后射出4/5/6发子弹,每发命中沿途第一个敌人(可被前排阻挡),各造成0.5/0.54/0.6×攻击力的物理伤害。",
-    "effectDesc3": "3星：射出6发(而非4发)。",
+    "effectDesc3": "",
     "img": "equip/brass-pistol.png"
   },
   {
@@ -829,7 +829,7 @@
     "emoji": "🏹",
     "effectImpl": true,
     "effectDesc1": "携带者施法后向每名后排敌人连射1/2/3发,每发按目标已损失生命造成0.8~1.3×攻击力的物理伤害(已损30%生命时达到最大)。",
-    "effectDesc3": "3星：对每名后排敌人连射3发。",
+    "effectDesc3": "",
     "img": "equip/repeat-crossbow.png"
   },
   {
@@ -846,7 +846,7 @@
     "emoji": "🐚",
     "effectImpl": true,
     "effectDesc1": "携带者施法后打出20/30/60发随机分布的子弹,每发对命中敌人造成0.1/0.12/0.14×攻击力的物理伤害并使其永久-1/2/3护甲。",
-    "effectDesc3": "3星：打出60发(而非20发)。",
+    "effectDesc3": "",
     "img": "equip/ghost-gatling.png"
   },
   {
@@ -897,7 +897,7 @@
     "emoji": "💥",
     "effectImpl": true,
     "effectDesc1": "携带者施法后向密集区打出12/14/18发弹珠(40度扇形随机分布),每颗造成0.22×攻击力的物理伤害;被8发及以上命中的敌人眩晕1.5秒。",
-    "effectDesc3": "3星：打出18发弹珠(而非12发)。",
+    "effectDesc3": "",
     "img": "equip/conch-shotgun.png"
   },
   {
