@@ -3890,6 +3890,12 @@ func _nearest_enemy(u: Dictionary):
 
 # 每单位每帧: DoT 落血 / buff 到期清理 / 层数DoT结算 / 召唤体周期特殊技 / 周期被动 (1:1 2D _tick_effects)
 func _tick_effects(u: Dictionary, delta: float) -> void:
+	# 海胆护盾(013满层): 10秒内线性衰减(用户2026-07-19); 从共享护盾池里逐帧扣回
+	var _ush: float = float(u.get("urchin_sh_left", 0.0))
+	if _ush > 0.0:
+		var _udec: float = minf(float(u.get("urchin_sh_rate", 0.0)) * delta, _ush)
+		u["shield"] = maxf(0.0, float(u.get("shield", 0.0)) - _udec)
+		u["urchin_sh_left"] = maxf(0.0, _ush - _udec)
 	# 旧式灼烧 (兼容 burn_until/burn_dps)
 	if _t < u["burn_until"] and u["burn_dps"] > 0.0:
 		_raw_lose(u, u["burn_dps"] * delta)
@@ -16663,6 +16669,27 @@ func _grant_shield(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 	_skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.4), 44.0)
 	_sfx_shield_gain()                       # §AUDIO: 得盾音 (节流; 群体上盾不刷屏)
 
+
+func _urchin_shield_fx(u: Dictionary) -> void:   # 海胆护盾(013满层): 紫刺放射+紫环+紫字, 与普通金盾区分(用户2026-07-19"特殊颜色")
+	var col := Color(0.80, 0.32, 0.94)   # 海胆紫
+	_splash_ring_bold(u["pos"], Color(col.r, col.g, col.b, 0.9), 130.0)
+	_float_text(u["pos"] + Vector2(0, -72), "海胆盾", col, false, "shield")
+	if _spark_tex == null: _spark_tex = _make_glow_texture()
+	for i in range(12):   # 放射紫刺(海胆感)
+		var ang: float = TAU * float(i) / 12.0
+		var sp := Sprite3D.new()
+		sp.texture = _spark_tex
+		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; sp.shaded = false; sp.transparent = true
+		sp.modulate = Color(col.r, col.g, col.b, 0.95)
+		sp.position = _world_pos(u["pos"], 0.9)
+		sp.pixel_size = 0.011
+		_world.add_child(sp)
+		var to: Vector2 = u["pos"] + Vector2(cos(ang), sin(ang)) * 64.0
+		var tw := _reg_tween(); tw.set_parallel(true)
+		tw.tween_property(sp, "position", _world_pos(to, 0.9), 0.26).set_ease(Tween.EASE_OUT)
+		tw.tween_property(sp, "modulate:a", 0.0, 0.30)
+		tw.chain().tween_callback(sp.queue_free)
+
 func _egg_level_up_vfx(u: Dictionary, total_lvl: int) -> void:   # 温泉蛋升级: 金光柱升腾 + 脚下金块 + "LV UP LvN"
 	_skill_ring(u["pos"], Color(1.0, 0.85, 0.4, 0.65), 56.0)
 	_float_text(u["pos"] + Vector2(0, -74), "LV UP  Lv%d" % total_lvl, Color("#ffe08a"))
@@ -20629,7 +20656,6 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 		"p2eq_013", "p2eq_014":   # 炙烤海胆 / 深海堡垒甲: 受击硬化层 +def/mr (cap20)
 			stt["harden_inc"] = [1.0, 1.5, 2.0][si]
 			stt["harden_stacks"] = 0
-			stt["harden_shield"] = (50.0 if item_id == "p2eq_013" else 0.0) if si == 0 else ([60.0, 80.0][si - 1] if item_id == "p2eq_013" else 0.0)
 			stt["harden_given"] = false
 		"p2eq_015":   # 荆棘海胆: 反伤转真伤+施流血
 			stt["reflect_pct"] = [10.0, 17.0, 25.0][si] / 100.0
@@ -21388,14 +21414,13 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 					_recalc_stats(u)
 					stt["harden_stacks"] = cur
 					if cur >= 20 and not bool(stt.get("harden_given", false)):
-						if float(stt.get("harden_shield", 0.0)) > 0.0:
-							_grant_shield(u, float(stt["harden_shield"]))
-						# 013 3★: 叠满硬化层→把累积的护甲魔抗(20层×inc)分给全队 (一次)
-						if iid == "p2eq_013" and si == 2:
-							var acc: float = 20.0 * inc   # 3★ inc=2.0 → 40护甲+40魔抗
-							for o in _allies_of(u):
-								if o == u: continue
-								o["base_def"] += acc; o["base_mr"] += acc; _recalc_stats(o)
+						if iid == "p2eq_013":   # 013满层: 海胆护盾(特殊紫色) 100/170/250 + 5/12/20%最大生命(用户2026-07-19; 原50/60/80金盾)
+							var _usb: float = float(u.get("shield", 0.0))
+							_grant_shield(u, [100.0, 170.0, 250.0][si] + u["maxHp"] * [0.05, 0.12, 0.20][si])
+							var _ugot: float = float(u.get("shield", 0.0)) - _usb   # 实际获盾(经shield_amp/上限后)
+							u["urchin_sh_left"] = _ugot
+							u["urchin_sh_rate"] = _ugot / 10.0   # 10秒内线性衰减完(用户2026-07-19"慢慢衰减")
+							_urchin_shield_fx(u)   # 紫刺环+紫字, 与普通金盾区分
 						stt["harden_given"] = true
 			"p2eq_015":   # 荆棘海胆: 反伤真伤 + 施流血给攻击者
 				if src.get("alive", false) and src["side"] != u["side"]:
