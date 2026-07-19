@@ -3691,6 +3691,9 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	if u.get("_skele_pending", false):                    # 032: 登场召唤亡灵骷髅(首帧)
 		u["_skele_pending"] = false
 		_eq_summon_skeleton(u, int(u.get("_skele_si", 0)))
+	if u.get("_turret_pending", false):                   # 058: 登场召唤炮台(首帧)
+		u["_turret_pending"] = false
+		_eq_summon_turret(u, int(u.get("_turret_si", 0)))
 	if u.get("_slam", false):   # 火山砸地演出中: 锁AI/移动 (height/pos由slam tween驱动)
 		return
 	var stunned: bool = _t < u["stun_until"]
@@ -3809,7 +3812,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 					var _hf: float = maxf(1.0, float(u.get("haste_mult", 1.0))) if _t < float(u.get("haste_until", 0.0)) else 1.0   # 临时攻速buff(祝福等)
 					if u["id"] == "hunter" and tgt != null and tgt.get("alive", false) and float(tgt.get("hp", 0.0)) < float(tgt.get("maxHp", 1.0)) * 0.5:
 						_hf *= 1.5   # 猎人残血追猎(封板): 目标<50%生命 → +50%攻速
-					u["atk_cd"] = (_gambler_multi_cd(u) if (u["id"] == "gambler" and _fired) else u["atk_interval"]) / maxf(0.1, _hf * (float(u.get("spd_aspd_mult", 1.0)) if _t < float(u.get("spd_dbf_until", 0.0)) else 1.0) * float(u.get("aspd_perm", 1.0)) * _anchor_aspd(u))   # ×永久攻速(贝母021等,本场) ×沉锚充能期+100%攻速
+					u["atk_cd"] = (_gambler_multi_cd(u) if (u["id"] == "gambler" and _fired) else u["atk_interval"]) / maxf(0.1, _hf * (float(u.get("spd_aspd_mult", 1.0)) if _t < float(u.get("spd_dbf_until", 0.0)) else 1.0) * float(u.get("aspd_perm", 1.0)) * _anchor_aspd(u) * float(u.get("_turret_aspd_mult", 1.0)))   # ×永久攻速(贝母021等,本场) ×沉锚充能期+100%攻速 ×058在炮台400码内的攻速加成
 					u["state"] = "move"   # LoL忠实: 伤害点后立即自由(可动/被分离=orb walk), 无rooted后摇; 后摇=视觉lunge回收+squash不锁移动; 下次普攻等atk_cd(=1/攻速)
 				else:
 					var stype := p.substr(2)
@@ -3999,6 +4002,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 		_tick_baton(u, delta)
 		_tick_ice_fissure(u, delta)
 		_tick_gear(u, delta)
+		_tick_eq_turret(u, delta)   # 058炮台: 双抗随携带者存活 + 携带者近身攻速 + 锁定红线
 		_tick_eq_intervals(u, delta)
 		_tick_anemone(u, delta)
 		_tick_dumbbell(u, delta)
@@ -4098,6 +4102,8 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	_anticipate(u)                  # Phase4: 普攻预备(缩)+挥出(伸) 前后摇形变
 	_play_action(u, "attack")       # 有动作帧的龟(basic/ghost/ninja)播普攻动画, 其余靠 juice 形变
 	_eq_on_basic_attack(u, tgt)   # 普攻计数装备(008每5次普攻射珊瑚刺, 不算多段)
+	if u.get("_eq_turret", false):   # 058炮台: 每次普攻自身永久+护穿+暴击(到本场战斗结束)
+		_turret_on_shot(u, tgt)
 	if u.get("is_big_bear", false):  # 大熊: 熊掌攒层, 满2层→放冲击波(小菊式)
 		_big_bear_attack(u, tgt)
 		return
@@ -4891,6 +4897,83 @@ func _stress_reload() -> void:   # 一局结束(或超时)→停看门狗→重�
 	get_tree().reload_current_scene()
 
 # 032: 登场召唤亡灵骷髅 (双抗20000近乎免疫, 存活15s自灭, 死亡200码内%最大生命真伤)
+func _eq_summon_turret(u: Dictionary, si: int) -> void:   # 穿甲遗弹058(重做): 登场召唤不可移动的炮台
+	if not u.get("alive", false): return
+	var tr = _spawn_summon(u, "turret", [500.0, 1000.0, 1800.0][si], [20.0, 30.0, 45.0][si],
+		{"label": "炮台", "spr_id": "turret", "col_size": 44.0, "hp_w": 32.0,
+		 "atk_interval": 2.0, "atk_range": 2000.0, "move_spd": 0.0, "melee": false})
+	if tr == null: return
+	tr["eq_state"] = {}; tr["equips"] = []
+	tr["_eq_turret"] = true
+	tr["_turret_si"] = si
+	tr["move_spd"] = 0.0; tr["no_move"] = true      # 移速为0
+	tr["crit"] = 0.0; tr["armor_pen"] = 0.0
+	u["_turret_ref"] = tr                            # 只用 is_same 比较, 绝不当Dict键/深比较
+	# 登场演出: 蓝白部署环 + 起降形变
+	_splash_ring_bold(tr["pos"], Color(0.42, 0.82, 1.0), 110.0)
+	_skill_ring(tr["pos"], Color(0.5, 0.88, 1.0, 0.7), 62.0)
+	if is_instance_valid(tr["sprite"]):
+		var bs: Vector3 = tr["sprite"].scale
+		tr["sprite"].scale = Vector3(bs.x * 1.3, 0.05, bs.z)
+		var dtw := _reg_tween()
+		dtw.tween_property(tr["sprite"], "scale", bs, 0.34).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _tick_eq_turret(u: Dictionary, delta: float) -> void:   # 058: 炮台双抗随携带者存活 / 携带者在400码内得攻速 / 锁定红线
+	var tr = u.get("_turret_ref", null)
+	if not (tr is Dictionary):
+		return
+	if not tr.get("alive", false):
+		u["_turret_aspd_mult"] = 1.0
+		_update_turret_line(tr)
+		return
+	var si: int = int(u.get("_turret_si", 0))
+	var res: float = ([70.0, 85.0, 100.0][si] if u.get("alive", false) else 0.0)   # 携带者阵亡→双抗归零
+	if absf(float(tr.get("base_def", -1.0)) - res) > 0.01:
+		tr["base_def"] = res; tr["base_mr"] = res
+		_recalc_stats(tr)
+	var near: bool = u.get("alive", false) and (u["pos"] - tr["pos"]).length() <= 400.0
+	u["_turret_aspd_mult"] = (1.0 + [0.20, 0.30, 0.40][si]) if near else 1.0   # 直接赋值(不累加·不会泄漏)
+	_update_turret_line(tr)
+
+func _turret_on_shot(tr: Dictionary, tgt) -> void:   # 058炮台每次普攻: 永久+护穿+2%暴击(到本场战斗结束) + 枪口闪
+	var si: int = int(tr.get("_turret_si", 0))
+	tr["armor_pen"] = float(tr.get("armor_pen", 0.0)) + [2.0, 2.0, 3.0][si]
+	tr["crit"] = minf(1.0, float(tr.get("crit", 0.0)) + 0.02)
+	if tgt is Dictionary:
+		_muzzle_flash(tr["pos"], (tgt["pos"] - tr["pos"]), Color("#ff6a6a"))
+	_skill_ring(tr["pos"], Color(1.0, 0.45, 0.42, 0.45), 34.0)
+
+func _update_turret_line(tr) -> void:   # 058: 炮台↔当前锁定目标的细红线(每帧重绘跟随)
+	if not (tr is Dictionary): return
+	var im = tr.get("_turret_line", null)
+	var target = tr.get("_sep_target", null)
+	if not tr.get("alive", false) or not (target is Dictionary) or not target.get("alive", false):
+		if is_instance_valid(im): im.visible = false
+		return
+	if not is_instance_valid(im):
+		im = MeshInstance3D.new()
+		im.mesh = ImmediateMesh.new()
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		mat.no_depth_test = true
+		mat.vertex_color_use_as_albedo = true
+		im.material_override = mat
+		_world.add_child(im)
+		tr["_turret_line"] = im
+	im.visible = true
+	var imesh: ImmediateMesh = im.mesh
+	var col := Color(1.0, 0.26, 0.26, 0.55 + 0.25 * sin(_t * 7.0))   # 细红线+呼吸
+	var a := _world_pos(tr["pos"], 1.35)
+	var b := _world_pos(target["pos"], 1.35)
+	if (b - a).length() < 0.01: return
+	imesh.clear_surfaces()
+	imesh.surface_begin(Mesh.PRIMITIVE_LINES, im.material_override)
+	imesh.surface_set_color(col); imesh.surface_add_vertex(a)
+	imesh.surface_set_color(col); imesh.surface_add_vertex(b)
+	imesh.surface_end()
+
 func _eq_summon_skeleton(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false): return
 	var sk = _spawn_summon(u, "skeleton", [19.0, 21.0, 25.0][si] * HP_MULT, [3.0, 5.0, 8.0][si], {"label": "亡灵骷髅", "spr_id": "skeleton", "col_size": 32.0, "hp_w": 22.0, "atk_interval": 1.0 / 1.2, "atk_range": 70.0, "melee": true, "move_spd": 130.0})
@@ -8347,7 +8430,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 	if u.get("_cydeath_demo", false):   # 赛博被动demo: 打死→浮游炮汇聚组装机甲演出, 本体复位血循环看(仅评审·场上无demo机甲才再组装防堆积)
 		var _have_mech := false
 		for _mo in _units:
-			if _mo.get("alive", false) and _mo.get("is_summon", false) and str(_mo.get("summon_kind", "")) == "mech" and _mo.get("summon_owner", null) == u:
+			if _mo.get("alive", false) and _mo.get("is_summon", false) and str(_mo.get("summon_kind", "")) == "mech" and is_same(_mo.get("summon_owner", null), u):
 				_have_mech = true; break
 		if not _have_mech:
 			_cyber_assemble_mech(u)
@@ -21048,6 +21131,9 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 			stt["revolver_bullets"] = 6
 		"p2eq_027":   # 电棍: 3层电击
 			stt["baton_charges"] = [3, 4, 5][si]
+		"p2eq_058":   # 穿甲遗弹(重做·用户2026-07-19): 登场召唤炮台 (延到首帧spawn, 同032)
+			u["_turret_pending"] = true
+			u["_turret_si"] = si
 		"p2eq_032":   # 唤灵骨符: 登场召唤亡灵骷髅 (延到首帧spawn, 避免开战setup中append _units)
 			u["_skele_pending"] = true
 			u["_skele_si"] = si
@@ -21183,17 +21269,6 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 			"p2eq_055":   # 靶向器: 命中标记目标 (+20% 受伤) 2回合
 				tgt["eq_marked_until"] = _t + 5.0
 				_mark_vfx(tgt, 5.0, Color("#ff4d4d"))
-			"p2eq_058":   # 穿甲遗弹: 贯穿→身后同列敌
-				var frac2: float = [0.25, 0.40, 0.60][si]
-				var dir: Vector2 = (tgt["pos"] - src["pos"]).normalized()
-				var _pd: float = 1.5 if OS.has_environment("XDBG") else 0.22
-				for o in _enemies_of(src):
-					if not is_same(o, tgt) and _on_line(tgt["pos"], dir, o["pos"], 40.0):
-						var _pt: Vector2 = o["pos"] + dir * 45.0
-						_laser_beam(tgt["pos"], _pt, Color(1.0, 0.78, 0.34, 0.82), 0.13, _pd, 1.0)          # 粗金穿透辉
-						_laser_beam(tgt["pos"], _pt, Color(1.0, 0.96, 0.8, 0.95), 0.05, _pd * 0.85, 1.02)     # 白热贯穿核
-						_apply_damage_from(src, o, maxi(1, int(dmg * frac2)), Color("#ffd07a"), 0.0, false, true)
-						_hit_spark(o)
 		src["eq_state"][iid] = stt
 
 # 雷电法杖 026: 连锁闪电
