@@ -5062,7 +5062,7 @@ func _eq_laser_pistol(u: Dictionary, si: int) -> void:   # 激光手枪051: 每8
 	var dir4: Vector2 = (_nearest_enemy(u)["pos"] - u["pos"]).normalized() if _nearest_enemy(u) != null else Vector2.RIGHT
 	var first = _eq_first_in_line(u, dir4, 50.0)
 	if first != null:
-		var endp51: Vector2 = first["pos"] + dir4 * 340.0
+		var endp51: Vector2 = u["pos"] + dir4 * 2600.0   # 无限穿透: 光束画到场外(伤害判定 _on_line 本就无距离上限, 原340码只是视觉长度→表现短于实际打击范围·用户2026-07-19"改为无限穿透")
 		_muzzle_flash(u["pos"], dir4, Color("#ff5a72"))
 		_laser_beam(u["pos"], endp51, Color(1.0, 0.24, 0.36, 0.85), 0.22, 0.22)   # 红辉(宽)
 		_laser_beam(u["pos"], endp51, Color(1.0, 0.92, 0.94, 0.95), 0.07, 0.14)   # 白核(细)
