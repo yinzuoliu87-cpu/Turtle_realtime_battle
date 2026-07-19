@@ -4970,7 +4970,7 @@ func _conch_transform(pos2d: Vector2) -> void:
 	for k in range(6):
 		_bone_speck(pos2d + Vector2(randf_range(-30, 30), randf_range(-30, 30)))
 
-const _EQ_CUSTOM_IV := {"p2eq_004": 6.0, "p2eq_048": 8.0, "p2eq_049": 8.0, "p2eq_022": 8.0, "p2eq_028": 6.0, "p2eq_030": 7.0, "p2eq_031": 8.0, "p2eq_037": 5.0, "p2eq_038": 6.0, "p2eq_040": 6.0, "p2eq_042": 8.0, "p2eq_052": 4.0}
+const _EQ_CUSTOM_IV := {"p2eq_004": 6.0, "p2eq_048": 8.0, "p2eq_049": 8.0, "p2eq_050": 8.0, "p2eq_051": 8.0, "p2eq_053": 8.0, "p2eq_057": 8.0, "p2eq_022": 8.0, "p2eq_028": 6.0, "p2eq_030": 7.0, "p2eq_031": 8.0, "p2eq_037": 5.0, "p2eq_038": 6.0, "p2eq_040": 6.0, "p2eq_042": 8.0, "p2eq_052": 4.0}
 func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
@@ -4987,6 +4987,10 @@ func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 				"p2eq_004": _eq_tyrantfang_tick(u, si)
 				"p2eq_048": _eq_pistol_volley(u, si)
 				"p2eq_049": _eq_crossbow_volley(u, si)
+				"p2eq_050": _eq_gatling_burst(u, si)
+				"p2eq_051": _eq_laser_pistol(u, si)
+				"p2eq_053": _eq_shotgun_blast(u, si)
+				"p2eq_057": _eq_sniper(u, si, 0)
 				"p2eq_022": _eq_fuel_throw(u, si)
 				"p2eq_028": _eq_ice_throw(u, si)
 				"p2eq_030": _eq_crystal_line(u, si)
@@ -5034,6 +5038,61 @@ func _eq_crossbow_volley(u: Dictionary, si: int) -> void:   # 连发弩049: 每8
 		_muzzle_flash(u["pos"], dir49, Color("#d8f0a8"))
 		_spawn_eq_bolt(u, ft49, _atk_dmg(u, lerpf(0.8, 1.3, lost49), ft49), "res://assets/sprites/vfx/crossbow-bolt.png", Color("#eaffd0"))
 	_queue_shots([1, 2, 3][si], 0.12, fire49, u)
+
+func _eq_gatling_burst(u: Dictionary, si: int) -> void:   # 幽灵加特林050: 每8秒连打20/30/60发随机分布+永久减甲(单目标累计上限)
+	if not u.get("alive", false): return
+	var g_shred: float = [1.0, 2.0, 3.0][si]
+	var g_cap: float = [15.0, 25.0, 40.0][si]
+	var g_mul: float = [0.1, 0.12, 0.14][si]
+	var fire50 := func():
+		if not u.get("alive", false): return
+		var es50 := _enemies_of(u)
+		if es50.is_empty(): return
+		var o50 = es50[randi() % es50.size()]
+		_muzzle_flash(u["pos"], (o50["pos"] - u["pos"]), Color("#d0ffff"))
+		_spawn_eq_bolt(u, o50, _atk_dmg(u, g_mul, o50), "res://assets/sprites/vfx/bullet.png", Color("#d0ffff"), false, 0, 0.02)
+		var g_acc: float = float(o50.get("gatling_shred_acc", 0.0))
+		if g_acc < g_cap:
+			var g_dec: float = minf(g_shred, g_cap - g_acc)
+			o50["base_def"] = maxf(0.0, o50["base_def"] - g_dec); o50["gatling_shred_acc"] = g_acc + g_dec; _recalc_stats(o50)
+	_queue_shots([20, 30, 60][si], 0.03, fire50, u)
+
+func _eq_laser_pistol(u: Dictionary, si: int) -> void:   # 激光手枪051: 每8秒穿透红激光, 首敌满伤+流血, 身后敌半伤半流血
+	if not u.get("alive", false): return
+	var dir4: Vector2 = (_nearest_enemy(u)["pos"] - u["pos"]).normalized() if _nearest_enemy(u) != null else Vector2.RIGHT
+	var first = _eq_first_in_line(u, dir4, 50.0)
+	if first != null:
+		var endp51: Vector2 = first["pos"] + dir4 * 340.0
+		_muzzle_flash(u["pos"], dir4, Color("#ff5a72"))
+		_laser_beam(u["pos"], endp51, Color(1.0, 0.24, 0.36, 0.85), 0.22, 0.22)   # 红辉(宽)
+		_laser_beam(u["pos"], endp51, Color(1.0, 0.92, 0.94, 0.95), 0.07, 0.14)   # 白核(细)
+		_apply_damage_from(u, first, _atk_dmg(u, [1.5, 2.0, 2.8][si], first), Color("#ff8aa0"), 0.0, false, true)
+		_apply_dot_stacks(first, "bleed", maxi(1, roundi(u["atk"] * [0.5, 0.5, 0.6][si])), u)
+		_hit_spark(first)
+		for o in _enemies_of(u):
+			if not is_same(o, first) and _on_line(first["pos"], dir4, o["pos"], 50.0):
+				_apply_damage_from(u, o, _atk_dmg(u, [0.75, 1.0, 1.4][si], o), Color("#ff8aa0"), 0.0, false, true)
+				_apply_dot_stacks(o, "bleed", maxi(1, roundi(u["atk"] * [0.5, 0.5, 0.6][si] * 0.5)), u)   # 身后50%流血
+
+func _eq_shotgun_blast(u: Dictionary, si: int) -> void:   # 霰弹贝古053: 每8秒40度扇形弹珠齐射, 被8发及以上命中的敌人眩晕
+	if not u.get("alive", false): return
+	var dir53: Vector2 = (_nearest_enemy(u)["pos"] - u["pos"]).normalized() if _nearest_enemy(u) != null else Vector2.RIGHT
+	_muzzle_flash(u["pos"], dir53, Color("#ffe0a0"))
+	_skill_ring(u["pos"] + dir53 * 22.0, Color(1.0, 0.85, 0.4, 0.7), 26.0)
+	# ★卡死修(用户2026-07-19卡死猎手 053霰弹): 原 hitc[o]=int(hitc.get(o,0))+1 用【整个单位字典】当 Dictionary 键 →
+	#   Godot 递归哈希该字典, 而单位字典含互相引用(bubble_shield_src/summon_owner/dmg_redirect等)在混战后期成环/极深 → 哈希卡死。
+	#   改成命中计数记在单位自身字段 _sg_hits(不拿字典当键/不做字典内容比较), 末尾扫 _units 判定+清理。
+	for _s in range([12, 14, 18][si]):
+		var es3 := _enemies_of(u)
+		if es3.is_empty(): break
+		var o = es3[randi() % es3.size()]
+		var spr53: Vector2 = dir53.rotated(randf_range(-0.35, 0.35)) * 260.0
+		_shotgun_pellet(u["pos"], u["pos"] + spr53, Color(1.0, 0.86, 0.5, 0.95))   # 小铅丸喷出
+		_apply_damage_from(u, o, _atk_dmg(u, 0.22, o), Color("#ffd07a"), 0.0, false, true)
+		o["_sg_hits"] = int(o.get("_sg_hits", 0)) + 1
+	for o in _units:
+		if int(o.get("_sg_hits", 0)) >= 8: _freeze(o, CTRL_SEC)
+		if o.has("_sg_hits"): o.erase("_sg_hits")
 
 func _eq_pistol_volley(u: Dictionary, si: int) -> void:   # 黄铜手铳048: 每8秒依次射4/5/6发, 每发命中直线首敌(错峰: 枪口闪+子弹+火花)
 	if not u.get("alive", false): return
@@ -21828,57 +21887,14 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 				pass
 			"p2eq_049":   # 连发弩: 改为每8秒定时(_EQ_CUSTOM_IV→_eq_crossbow_volley, 用户2026-07-19); on_cast不处理
 				pass
-			"p2eq_050":   # 幽灵加特林: 依次快射N发随机分布+减甲(累计上限; 枪口连闪+曳光雨)
-				var g_shred: float = [1.0, 2.0, 3.0][si]
-				var g_cap: float = [15.0, 25.0, 40.0][si]   # 该效果对单个目标累计减甲上限
-				var g_mul: float = [0.1, 0.12, 0.14][si]
-				var fire50 := func():
-					if not u.get("alive", false): return
-					var es50 := _enemies_of(u)
-					if es50.is_empty(): return
-					var o50 = es50[randi() % es50.size()]
-					_muzzle_flash(u["pos"], (o50["pos"] - u["pos"]), Color("#d0ffff"))
-					_spawn_eq_bolt(u, o50, _atk_dmg(u, g_mul, o50), "res://assets/sprites/vfx/bullet.png", Color("#d0ffff"), false, 0, 0.02)   # 真青幽灵弹依次快射(命中结算伤+火花)
-					var g_acc: float = float(o50.get("gatling_shred_acc", 0.0))
-					if g_acc < g_cap:
-						var g_dec: float = minf(g_shred, g_cap - g_acc)
-						o50["base_def"] = maxf(0.0, o50["base_def"] - g_dec); o50["gatling_shred_acc"] = g_acc + g_dec; _recalc_stats(o50)
-				_queue_shots([20, 30, 60][si], 0.03, fire50, u)
-			"p2eq_051":   # 激光手枪: 穿透红激光(白核+红辉)一横排首敌满伤+流血, 身后敌半伤半流血
-				var dir4: Vector2 = (_nearest_enemy(u)["pos"] - u["pos"]).normalized() if _nearest_enemy(u) != null else Vector2.RIGHT
-				var first = _eq_first_in_line(u, dir4, 50.0)
-				if first != null:
-					var endp51: Vector2 = first["pos"] + dir4 * 340.0
-					_muzzle_flash(u["pos"], dir4, Color("#ff5a72"))
-					_laser_beam(u["pos"], endp51, Color(1.0, 0.24, 0.36, 0.85), 0.22, 0.22)   # 红辉(宽)
-					_laser_beam(u["pos"], endp51, Color(1.0, 0.92, 0.94, 0.95), 0.07, 0.14)   # 白核(细)
-					_apply_damage_from(u, first, _atk_dmg(u, [1.5, 2.0, 2.8][si], first), Color("#ff8aa0"), 0.0, false, true)
-					_apply_dot_stacks(first, "bleed", maxi(1, roundi(u["atk"] * [0.5, 0.5, 0.6][si])), u)
-					_hit_spark(first)
-					for o in _enemies_of(u):
-						if not is_same(o, first) and _on_line(first["pos"], dir4, o["pos"], 50.0):
-							_apply_damage_from(u, o, _atk_dmg(u, [0.75, 1.0, 1.4][si], o), Color("#ff8aa0"), 0.0, false, true)
-							_apply_dot_stacks(o, "bleed", maxi(1, roundi(u["atk"] * [0.5, 0.5, 0.6][si] * 0.5)), u)   # 身后50%流血
-			"p2eq_053":   # 霰弹贝古: 枪口大闪→40°扇形弹珠齐射, 被8+发命中→眩晕
-				var dir53: Vector2 = (_nearest_enemy(u)["pos"] - u["pos"]).normalized() if _nearest_enemy(u) != null else Vector2.RIGHT
-				_muzzle_flash(u["pos"], dir53, Color("#ffe0a0"))
-				_skill_ring(u["pos"] + dir53 * 22.0, Color(1.0, 0.85, 0.4, 0.7), 26.0)
-				# ★卡死修(用户2026-07-19卡死猎手 053霰弹): 原 hitc[o]=int(hitc.get(o,0))+1 用【整个单位字典】当 Dictionary 键 →
-				#   Godot 递归哈希该字典, 而单位字典含互相引用(bubble_shield_src/summon_owner/dmg_redirect等)在混战后期成环/极深 → 哈希卡死。
-				#   改成命中计数记在单位自身字段 _sg_hits(不拿字典当键/不做字典内容比较), 末尾扫 _units 判定+清理。
-				for _s in range([12, 14, 18][si]):
-					var es3 := _enemies_of(u)
-					if es3.is_empty(): break
-					var o = es3[randi() % es3.size()]
-					var spr53: Vector2 = dir53.rotated(randf_range(-0.35, 0.35)) * 260.0
-					_shotgun_pellet(u["pos"], u["pos"] + spr53, Color(1.0, 0.86, 0.5, 0.95))   # 小铅丸喷出
-					_apply_damage_from(u, o, _atk_dmg(u, 0.22, o), Color("#ffd07a"), 0.0, false, true)
-					o["_sg_hits"] = int(o.get("_sg_hits", 0)) + 1
-				for o in _units:
-					if int(o.get("_sg_hits", 0)) >= 8: _freeze(o, CTRL_SEC)
-					if o.has("_sg_hits"): o.erase("_sg_hits")
-			"p2eq_057":   # 狙击长管: 对最低血%敌沿途敌, 击杀则再开
-				_eq_sniper(u, si, 0)
+			"p2eq_050":   # 幽灵加特林: 改为每8秒定时(_EQ_CUSTOM_IV→_eq_gatling_burst, 用户2026-07-19); on_cast不处理
+				pass
+			"p2eq_051":   # 激光手枪: 改为每8秒定时(_EQ_CUSTOM_IV→_eq_laser_pistol, 用户2026-07-19); on_cast不处理
+				pass
+			"p2eq_053":   # 霰弹贝古: 改为每8秒定时(_EQ_CUSTOM_IV→_eq_shotgun_blast, 用户2026-07-19); on_cast不处理
+				pass
+			"p2eq_057":   # 狙击长管: 改为每8秒定时(_EQ_CUSTOM_IV→_eq_sniper, 用户2026-07-19); on_cast不处理
+				pass
 			"p2eq_010":   # 激光长刃: 移到独立计时器 _tick_laser(第二普攻扇形斩); on_cast不处理
 				pass
 
