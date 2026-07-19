@@ -3827,7 +3827,7 @@ func _tick_skill_cd(u: Dictionary, delta: float) -> void:
 		return   # 水晶壁垒: 持盾期锁龟能, 盾破/到期→放直线水晶刺后恢复(用户2026-07-16)
 	if _t < float(u.get("hiding_shield_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0:
 		return   # 缩头防御特殊盾: 持盾期锁龟能, 盾破/到期即恢复(用户2026-07-17)
-	var _ecm: float = maxf(1.0, float(u.get("echarge_mult", 1.0))) if _t < float(u.get("echarge_until", 0.0)) else 1.0   # 龟能充能加速buff(祝福等)
+	var _ecm: float = maxf(1.0, float(u.get("echarge_mult", 1.0))) if _t < float(u.get("echarge_until", 0.0)) else 1.0   # 龟能充能加速buff —— 目前【无任何来源】: 天使祝福原有的30%龟能充能已于2026-07-11被用户删除, 此读取分支是残留(留作将来接口)
 	if _t < float(u.get("spd_dbf_until", 0.0)):
 		_ecm *= float(u.get("spd_echarge_mult", 1.0))   # 充能减速debuff(寒冰登场等)
 	_ecm = maxf(0.05, _ecm)
