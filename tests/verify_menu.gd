@@ -52,10 +52,20 @@ func _ready() -> void:
 	_ok("已改为 static func _review_demo()", bat.find("static func _review_demo() -> bool:") >= 0)
 	_ok("读 SHIP 环境变量", bat.find("OS.has_environment(\"SHIP\")") >= 0)
 	_ok("不再有裸 const REVIEW_DEMO :=", bat.find("const REVIEW_DEMO :=") < 0)
-	# 运行时: 本进程没设 SHIP → 应为评审模式
-	_ok("无 SHIP 时 _review_demo()==true (评审期默认)", RT._review_demo() == true)
-	_ok("有 SHIP 环境变量时会返回 false (逻辑: DEFAULT and not has_env)",
-		RT.REVIEW_DEMO_DEFAULT == true and not OS.has_environment("SHIP"))
+	# ★不要在这里写死 REVIEW_DEMO_DEFAULT 的取值!
+	#   2026-07-16 用户把它 true→false(iOS测试包需真实对局), 而本测试仍断言 ==true,
+	#   于是 run-tests.sh 从那天起一直是红的、没人发现 —— 直到 07-20 改成自动发现才暴露。
+	#   默认值是【会被业务需要反复翻】的旋钮, 断言它的取值等于给自己埋雷。
+	#   这里只守【机制不变量】: 三条优先级链路必须在, 且默认路径与常量保持一致。
+	_ok("SHIP=1 短路为 false(最高优先级)",
+		bat.find("if OS.has_environment(\"SHIP\"):") >= 0)
+	_ok("REVIEW=1 强制为 true(次优先, release 包里也能开评审场)",
+		bat.find("if OS.has_environment(\"REVIEW\"):") >= 0)
+	# 本进程没设 SHIP/REVIEW → 结果必须等于 DEFAULT ∧ is_debug_build(), 与常量当前取值无关
+	if not OS.has_environment("SHIP") and not OS.has_environment("REVIEW"):
+		_ok("无环境变量时 _review_demo() == DEFAULT ∧ is_debug_build()",
+			RT._review_demo() == (RT.REVIEW_DEMO_DEFAULT and OS.is_debug_build()),
+			"DEFAULT=%s debug=%s → %s" % [RT.REVIEW_DEMO_DEFAULT, OS.is_debug_build(), RT._review_demo()])
 
 	print("=== 5. ★事实记录: 评审模式会强制全体 Lv1 (含真实双路对局) ===")
 	_ok("_unit_level() 里有 `if _review_demo(): return 1`",

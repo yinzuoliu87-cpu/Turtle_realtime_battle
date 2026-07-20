@@ -66,3 +66,15 @@ _*.png
 _*.png.import
 _dragon_*
 tri_audit_report.txt
+
+# ── Python (tools/ 下 19 个脚本) ──────────────────────────────────────────────
+#   2026-07-20: tools/__pycache__/*.pyc 曾被误提交进仓库(此前无任何 python 忽略规则)。
+__pycache__/
+*.py[cod]
+
+# ── 工具产物 ─────────────────────────────────────────────────────────────────
+#   注意: tools/hp_s*_report.txt 是【有意跟踪】的 —— 它们既是同步轮次留痕,
+#   hp_staleness_check.py 还要读它们的 mtime 判断新鲜度。别加进忽略。
+#   这里只忽略无留痕价值的即时审计输出。
+tooltip_number_audit_report.txt
+data_integrity_report.txt

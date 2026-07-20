@@ -22,13 +22,23 @@ FATAL='Infinite loop detected|SCRIPT ERROR|Parse Error|Max recursion|freed insta
 
 PASS=0; FAIL=0
 
+# 帧预算 (--quit-after 的单位是【帧】不是毫秒)。默认 500 帧 ≈ 8 秒。
+# 需要更多的测试在此登记 —— 帧数不够会让测试【跑到一半被掐断】,
+# 表现为"没打 ALL PASS"而不是"某条断言 FAIL", 极易被误读成真失败。
+frames_for () {
+  case "$1" in
+    verify_ios_ui) echo 4000 ;;   # 逐个进出 9 个菜单场景, 500 帧只够跑完 2 个
+    *)             echo 500  ;;
+  esac
+}
+
 run_test () {  # $1 = 测试名
   local name="$1"
   if [ ! -f "$DIR/tests/$name.tscn" ]; then
     echo "  SKIP  $name (无 .tscn)"; return
   fi
   local out rc fatal
-  out="$("$GODOT" --headless --path "$DIR" "res://tests/$name.tscn" --quit-after 500 2>&1)"
+  out="$("$GODOT" --headless --path "$DIR" "res://tests/$name.tscn" --quit-after "$(frames_for "$name")" 2>&1)"
   rc=$?
   fatal="$(echo "$out" | grep -cE "$FATAL")"
   if [ "$rc" -eq 0 ] && [ "$fatal" -eq 0 ] && { echo "$out" | grep -q "ALL PASS" || echo "$out" | grep -q "自证完成"; }; then
@@ -39,11 +49,20 @@ run_test () {  # $1 = 测试名
   fi
 }
 
-echo "=== 自证测试 ==="
-for t in verify_dot_stacks verify_fonts verify_candy_jar verify_settings \
-         verify_menu verify_codex verify_codex_text verify_pirate_hook verify_cyber_charge verify_sprite_sheets verify_skill_energy verify_hiding_pool verify_crystal_death_sync verify_season_flow verify_battle_ui verify_ghost_seed verify_combat_sanity verify_ninja_shuriken verify_ninja_bomb verify_true_dmg_shield verify_ninja_backstab verify_two_head_strike verify_two_head_enhanced verify_two_head_fusion verify_attack_commit verify_dual_egg_decider verify_fortune_goldshield verify_dice_dash; do
+# ★自动发现, 不用硬编码名单 —— 2026-07-20 的教训:
+#   原来这里是手写的 28 个名字, 而 tests/ 下实际有 36 个 verify_*.gd。
+#   漏登记的 8 个【从来没被执行过】, 其中 verify_ios_ui 早就因帧数不足跑不完, 无人知晓。
+#   写测试的人不会记得回来改名单, 所以名单这种形式本身就是错的 —— 改成扫目录。
+#   新增测试只要放进 tests/ 并配好 .tscn 就自动纳入, 无需任何登记动作。
+echo "=== 自证测试 (自动发现 tests/verify_*.gd) ==="
+DISCOVERED=0
+for f in "$DIR"/tests/verify_*.gd; do
+  [ -e "$f" ] || continue
+  t="$(basename "$f" .gd)"
+  DISCOVERED=$((DISCOVERED+1))
   run_test "$t"
 done
+echo "  (发现 $DISCOVERED 个测试)"
 
 # ── 全流程闪退冒烟 ────────────────────────────────────────────────────────────
 #   必须用 SHIP=1 跑: 否则 _review_demo() 为真 → 假人永不死 → 战斗永不结束 → 结算路径根本没测到。
