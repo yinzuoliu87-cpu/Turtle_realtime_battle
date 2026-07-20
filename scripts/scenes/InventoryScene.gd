@@ -626,7 +626,10 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	box.add_child(st)
 	for ch in box.get_children():
 		ch.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.tooltip_text = "%s (%s)\n%s" % [str(edef.get("name", eid)), "费用%d" % int(edef.get("cost", 1)), str(edef.get("effectDesc1", "（无主动效果）"))]
+	# tooltip: 名字/★/费用 + 【该星级全部属性加成】 + 效果(用户2026-07-19"背包里我要看到每件装备提供的属性, 必须写完整")
+	box.tooltip_text = "%s  ★%d  (费用%d)\n\n属性加成:\n%s\n\n效果: %s" % [
+		str(edef.get("name", eid)), star, int(edef.get("cost", 1)),
+		_stat_block(eid, star), str(edef.get("effectDesc1", "（无主动效果）"))]
 	_wire_bench_tap(box, idx)
 	return box
 

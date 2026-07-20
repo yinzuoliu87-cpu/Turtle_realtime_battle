@@ -20,6 +20,43 @@ const SlotHelpers := preload("res://scripts/engine/slot_helpers.gd")
 const Buffs := preload("res://scripts/engine/buffs.gd")   # grant_shield (护盾增幅+疲惫统一收口)
 
 # ── 逐星基础属性 (idx 0=1★ / 1=2★ / 2=3★)。crit=小数。_lifestealPct=整数%。──
+## 把某件装备某星级的属性表, 格式化成人能读的一行/多行(背包、图鉴共用)。
+##
+## ★字段与实装口径【一一对应】—— 见 RealtimeBattle3DScene._eq_apply_one_stats 里同名的 14 个分支。
+## 加新字段时两边都要改, 否则背包会漏显示(用户2026-07-19「背包里我要看到每件装备提供的属性, 必须写完整」)。
+## 百分比类字段在实装里是 /100 后加到单位上的, 这里按【玩家看到的百分比】显示。
+static func stat_lines(item_id: String, star: int) -> Array:
+	var arr: Array = STATS.get(item_id, [])
+	var i: int = clampi(star, 1, 3) - 1
+	if i < 0 or i >= arr.size():
+		return []
+	var st: Dictionary = arr[i]
+	var out: Array = []
+	# 顺序 = 玩家最关心的在前(攻→生命→双抗→暴击→穿透→吸血→增幅→龟能)
+	if st.has("atk"):            out.append(["攻击力", "+%d" % int(st["atk"])])
+	if st.has("hp"):             out.append(["最大生命", "+%d" % int(st["hp"])])
+	if st.has("def"):            out.append(["护甲", "+%d" % int(st["def"])])
+	if st.has("mr"):             out.append(["魔抗", "+%d" % int(st["mr"])])
+	if st.has("crit"):           out.append(["暴击率", "+%d%%" % int(round(float(st["crit"]) * 100.0))])
+	if st.has("critDmg"):        out.append(["暴击伤害", "+%d%%" % int(round(float(st["critDmg"]) * 100.0))])
+	if st.has("armorPen"):       out.append(["护甲穿透", "+%d" % int(st["armorPen"])])
+	if st.has("magicPen"):       out.append(["魔法穿透", "+%d" % int(st["magicPen"])])
+	if st.has("_lifestealPct"):  out.append(["生命偷取", "+%d%%" % int(st["_lifestealPct"])])
+	if st.has("reflectPct"):     out.append(["反伤", "+%d%%" % int(st["reflectPct"])])
+	if st.has("healAmp"):        out.append(["治疗增幅", "+%d%%" % int(st["healAmp"])])
+	if st.has("shieldAmp"):      out.append(["护盾增幅", "+%d%%" % int(st["shieldAmp"])])
+	if st.has("shieldHealPct"):  out.append(["治疗与护盾增幅", "+%d%%" % int(st["shieldHealPct"])])
+	if st.has("_maxEnergy"):     out.append(["初始龟能", "+%d" % int(st["_maxEnergy"])])
+	if st.has("_echargePct"):    out.append(["龟能充能速率", "+%d%%" % int(st["_echargePct"])])
+	return out
+
+## 单行紧凑版(给 tooltip / 一行标签用): "攻击力+20 · 暴击率+25%"
+static func stat_line_compact(item_id: String, star: int) -> String:
+	var parts: Array = []
+	for kv in stat_lines(item_id, star):
+		parts.append("%s%s" % [kv[0], kv[1]])
+	return " · ".join(parts) if not parts.is_empty() else "无属性加成"
+
 const STATS := {
 	"p2eq_001": [{"atk": 5, "crit": 0.10}, {"atk": 12, "crit": 0.15}, {"atk": 20, "crit": 0.25}],
 	"p2eq_002": [{"atk": 12}, {"atk": 24}, {"atk": 40}],
