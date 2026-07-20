@@ -1,5 +1,12 @@
 # 双路龟蛋 PvP 架构设计
 
+> ## ⛔ 2026-07-19 核实：本文的**前提已整个不成立**
+> 通篇建立在「回合制 → 输入率极低 → 不需要实时同步」之上，而现行是**实时自动战斗**。
+> 协议 `TURN_BEGIN` / `ACTION{skillIdx}`、「某路全灭 → 3 回合攻蛋」（实时版是团灭后 **10 秒窗口**）均不适用；
+> 引用的 `skill_handlers.gd` / `BattleScene.gd` 都已删除。
+> **现行 PvP 形态 = 异步 ghost 快照 + bot 兜底**（`scripts/engine/backend.gd` 的 `find_opponent`/`make_bot`/`bracket_for_battles` + `data/ghost_seed.json` 146 支种子队），不是本文讨论的房主权威 lockstep。
+
+
 > 用户 2026-06-12: 双路龟蛋会用在 PvP, 先想清楚怎么搞再继续接战斗 (别把单机用完即弃的逻辑硬塞进去).
 
 ## 为什么 PvP 在本作很可行

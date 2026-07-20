@@ -1,5 +1,12 @@
 # 表现层 + 场景流程 迁移规格 (2-agent 抠 Phaser 源, 1:1)
 
+> ## ⛔ 2026-07-19 核实：本文自称「后续迁移的权威参照」，但 **B 章整章的场景都不存在**
+> `BattleEndScene` / `DungeonScene` / `RewardPickScene` / `ChoiceEventScene` / `BossPickScene` —— 闯关/奖励/事件/BossPick 整条支线在实时版没有。
+> B1 的「龟币公式 胜=50+floor(totalDmg/100)」也已作废：现行是深海币 `8 + 命数 + 2×已失命 + (胜则+6)`（`RealtimeBattle3DScene: _settle_season`）。
+> A2「回合横幅 / 回合4·8·12 商店回合」→ 实时版无回合、无局内商店。
+> **A 章的表现层参数（飘字三色堆叠 / VFX 帧布局）仍有参考价值，B 章场景流程整章作废。**
+
+
 > 本文件是后续表现层/场景迁移的权威参照。所有坐标/数值/公式均 1:1 抽自 Phaser PoC, 不自创。
 
 ## A. 战斗表现层

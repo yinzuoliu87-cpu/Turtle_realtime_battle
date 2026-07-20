@@ -1,5 +1,12 @@
 # 实时龟战 V1 · Android APK 打包（2026-07-05）
 
+> ## ⚠ 2026-07-19 核实：出包命令与现行铁律**冲突**
+> 本文「二、重新出 APK」给的是 `--export-debug`，而铁律是 **出包必须 `--export-release`**
+> （见 `docs/design/实时版-系统机制权威.md` §10）。debug 构建会带调试场按钮与符号。
+> 另「对手：bot 兜底（真人快照 ghost 后续接）」已过期 —— ghost 早已接上（`backend.gd` + `ghost_seed.json` 146 支）。
+> 环境/SDK 路径、ETC2 开关等流程说明**仍然有效**。
+
+
 > ✅ **APK 已成功产出**：`桌面\turtle-realtime-v1.apk`（181MB，包名 com.turtlebattle.realtime，应用名「斗龟场 实时版」，arm64-v8a，minSdk24/targetSdk36，debug 签名 verifies）。传手机允许「未知来源」直接装。
 >
 > **真因（曾卡很久）**：Android 导出一直报「配置错误」但**正文空白**——因为 Godot 只在**导出对话框 UI**里显示错误正文，headless 命令行不打印。用截图+点击驱动编辑器 GUI 打开导出对话框，才看到真提示：**「目标平台需要 ETC2/ASTC 纹理压缩，请在项目设置启用 导入 ETC2 ASTC」**。启用 `rendering/textures/vram_compression/import_etc2_astc=true`(已入库) 后，headless 一条命令就能出 APK。
