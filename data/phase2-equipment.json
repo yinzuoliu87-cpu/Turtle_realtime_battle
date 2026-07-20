@@ -5,9 +5,7 @@
     "cost": 1,
     "baseStats1": "+攻5/12/20·暴击10/15/25%",
     "shopAvailable": 1,
-    "poolPhase": 1,
     "emoji": "🗡️",
-    "effectImpl": true,
     "effectDesc1": "携带者每3秒甩出一道飞斩剑气,射向射程2000内最近的敌人,命中时造成(0.6/0.75/1.0×攻击力+40/60/100×暴击率)物理伤害。",
     "effectDesc3": "",
     "img": "equip/equip-sword-icon.png"
@@ -18,9 +16,7 @@
     "cost": 1,
     "baseStats1": "+攻12/24/40",
     "shopAvailable": 1,
-    "poolPhase": 1,
     "emoji": "⚔️",
-    "effectImpl": true,
     "effectDesc1": "携带者每段伤害命中后,对目标施加相当于0.075/0.1/0.15×攻击力的流血层数(范围技能触发的流血减半)。",
     "effectDesc3": "3星：流血可叠加至3层。",
     "img": "equip/dungeon-blade.png"
@@ -31,9 +27,7 @@
     "cost": 3,
     "baseStats1": "+攻8/14/30·护穿5/7/10·暴击15/25/40%",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "🦈",
-    "effectImpl": true,
     "effectDesc1": "携带者每段伤害命中后,向目标周围200码内的敌人各溅射15/28/50%×本段伤害的物理伤害。",
     "effectDesc3": "",
     "img": "equip/dungeon-tooth.png"
@@ -44,9 +38,7 @@
     "cost": 4,
     "baseStats1": "+攻15/30/90·暴击25/35/60%·吸血5/9/15%",
     "shopAvailable": 1,
-    "poolPhase": 3,
     "emoji": "😈",
-    "effectImpl": true,
     "effectDesc1": "携带者的伤害处决生命值低于斩杀线的敌人(斩杀线=5/7/10%最大生命+10/15/40%×暴击率);处决后回复20点龟能(无龟能的单位改为回复40点生命)。此外携带者每6秒向最近的敌人射出一颗剧毒獠牙,造成2/3/7×攻击力魔法伤害,并回复自身相当于该伤害100%的生命。",
     "effectDesc3": "",
     "img": "equip/tyrant-fang.png"
@@ -57,9 +49,7 @@
     "cost": 3,
     "baseStats1": "+攻14/30/50·吸血4/7/10%·+20最大龟能",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "🗡️",
-    "effectImpl": true,
     "effectDesc1": "携带者每段伤害命中后,有50/75/100%概率追加一次双生刺击,造成0.7/0.8/1.0×攻击力的物理伤害。",
     "effectDesc3": "",
     "img": "equip/twin-daggers.png"
@@ -70,9 +60,7 @@
     "cost": 4,
     "baseStats1": "+攻18/40/90·护穿6/12/20",
     "shopAvailable": 1,
-    "poolPhase": 3,
     "emoji": "🌪️",
-    "effectImpl": true,
     "effectDesc1": "携带者每7秒召出一排剑穿过全体敌人,对每名敌人造成(70/100/400+0.8/1.3/4.0×攻击力)物理伤害。",
     "effectDesc3": "",
     "img": "equip/equip-blade-icon.png"
@@ -83,9 +71,7 @@
     "cost": 1,
     "baseStats1": "+攻5/10/20·生命20/45/100",
     "shopAvailable": 1,
-    "poolPhase": 1,
     "emoji": "⚔️",
-    "effectImpl": true,
     "effectDesc1": "携带者每6秒朝最近的敌人挥出一道剑气墙,沿途扫过2000码内一线的敌人,对每名敌人造成(20/35/60+0.5/0.8/1.1×攻击力)物理伤害;并为自己获得相当于本次总伤害50/75/100%的护盾。",
     "effectDesc3": "",
     "img": "equip/rusty-broadsword.png"
@@ -96,9 +82,7 @@
     "cost": 1,
     "baseStats1": "+攻8/15/30·护穿4/8/12·魔穿4/8/12",
     "shopAvailable": 1,
-    "poolPhase": 1,
     "emoji": "🪸",
-    "effectImpl": true,
     "effectDesc1": "携带者每9秒对距离自己最远的敌人发射一根珊瑚尖刺,命中造成(1/1.2/1.5×攻击力)物理伤害,外加相当于8/12/18%目标最大生命值的魔法伤害。",
     "effectDesc3": "",
     "img": "equip/dungeon-spike.png"
@@ -109,9 +93,7 @@
     "cost": 3,
     "baseStats1": "+攻12/25/40·+20最大龟能",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "🌙",
-    "effectImpl": true,
     "effectDesc1": "携带者每段攻击充能20/20/25点刃能(范围技能减半);刃能满100点时朝敌方斩出一道60°扇形月光斩(在2000码内自动选定释放点,使其500~800码扇形band罩住敌群),对band内每名敌人造成(30/45/60真实伤害+0.5/0.7/0.9×攻击力物理);若仅命中1名敌人则伤害×2/2.5/3。",
     "effectDesc3": "",
     "img": "equip/wide-saber.png"
@@ -122,9 +104,7 @@
     "cost": 5,
     "baseStats1": "+攻30/75/200·护穿10/18/30·生命50/120/1300",
     "shopAvailable": 1,
-    "poolPhase": 4,
     "emoji": "📏",
-    "effectImpl": true,
     "effectDesc1": "携带者每隔一次攻击间隔朝最近的敌人斩出一道120°扇形红激光,半径等于自身攻击射程(3星时×2),对扇形内每名敌人造成(15/32/200+0.6/1.0/8.0×攻击力)物理伤害;若仅命中1名敌人则追加一道竖劈冲击波,沿直线推进对沿途每名敌人各造成一次全额伤害;携带者回复相当于本次总伤害35/80/100%的生命。",
     "effectDesc3": "",
     "img": "equip/dungeon-laser-blade.png"
@@ -135,9 +115,7 @@
     "cost": 3,
     "baseStats1": "+攻10/23/40·吸血15/24/33%·治疗增幅15/24/33%",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "🌙",
-    "effectImpl": true,
     "effectDesc1": "携带者施法后连斩5/6/8次随机敌人,每次造成(40/50/70+0.5/0.7/1.0×攻击力)物理伤害(后续每发逐渐衰减);携带者的溢出治疗转化为血护盾(上限200/350/500)。",
     "effectDesc3": "",
     "img": "equip/blood-amulet.png"
@@ -148,9 +126,7 @@
     "cost": 1,
     "baseStats1": "+生命40/70/100·护甲5/10/18",
     "shopAvailable": 1,
-    "poolPhase": 1,
     "emoji": "🐢",
-    "effectImpl": true,
     "effectDesc1": "携带者每4秒为自身获得(40/60/90+4%最大生命值)点护盾。",
     "effectDesc3": "",
     "img": "equip/turtle-jelly.png"
@@ -161,9 +137,7 @@
     "cost": 3,
     "baseStats1": "+生命60/110/200·反伤8/11/15%",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "🦪",
-    "effectImpl": true,
     "effectDesc1": "携带者每次受到伤害获得1层硬化,每层提供+1/1.5/2护甲和+1/1.5/2魔抗(上限20层);叠满20层时获得「海胆护盾」(100/170/250+5/12/20%最大生命值),该护盾在10秒内逐渐衰减。",
     "effectDesc3": "",
     "img": "equip/urchin-shield.png"
@@ -174,9 +148,7 @@
     "cost": 4,
     "baseStats1": "+生命80/160/600·护甲&魔抗14/25/50",
     "shopAvailable": 1,
-    "poolPhase": 3,
     "emoji": "🏰",
-    "effectImpl": true,
     "effectDesc1": "携带者每次受到伤害获得1层硬化,每层提供+2/4/6护甲和魔抗(上限25层,无满层护盾);硬化叠满25层时立即汲取一次,此后每8秒对全体敌人汲取生命,每名敌人受到0.9/1.6/3×(护甲+魔抗)魔法伤害,每汲取1名敌人携带者回复(60/110/250+自身已损生命值6%)生命。",
     "effectDesc3": "",
     "img": "equip/fortress-armor.png"
@@ -187,9 +159,7 @@
     "cost": 2,
     "baseStats1": "+生命60/90/140·反伤10/17/25%",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "🦔",
-    "effectImpl": true,
     "effectDesc1": "携带者对被反伤的目标施加2/2.5/3层流血。",
     "effectDesc3": "",
     "img": "equip/dungeon-urchin.png"
@@ -200,9 +170,7 @@
     "cost": 3,
     "baseStats1": "+护甲6/13/21·魔抗6/13/21",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "🛡️",
-    "effectImpl": true,
     "effectDesc1": "携带者每段受到的非真实伤害减少3/6/10点(固定值);每5秒产生一个(100/250/400+携带者8%最大生命值)的护盾总量,由全队(含自己)平均分摊。",
     "effectDesc3": "",
     "img": "equip/equip-shield-icon.png"
@@ -213,9 +181,7 @@
     "cost": 5,
     "baseStats1": "+生命200/450/4000·护甲&魔抗15/35/150",
     "shopAvailable": 1,
-    "poolPhase": 4,
     "emoji": "⚓",
-    "effectImpl": true,
     "effectDesc1": "携带者免疫击飞与斩杀;每次受到伤害时为生命百分比最低的友军回复相当于自身1/2/15%最大生命的生命,累积治疗满250点获得1点沉锚充能;持有沉锚充能期间普攻攻速+100%;普攻时消耗1点充能击飞最前敌人,造成(0.4/0.6/3.0×(护甲+魔抗)+6/15/70%目标最大生命)物理伤害并眩晕其1.5秒。",
     "effectDesc3": "",
     "img": "equip/anchor-shield.png"
@@ -226,9 +192,7 @@
     "cost": 1,
     "baseStats1": "+生命70/140/300·魔抗8/13/18·治疗&盾增5/13/20%",
     "shopAvailable": 1,
-    "poolPhase": 1,
     "emoji": "🐚",
-    "effectImpl": true,
     "effectDesc1": "携带者每8秒自回(30/45/60+5/9/15%最大生命值)生命(受治疗增幅影响)。",
     "effectDesc3": "",
     "img": "equip/dungeon-shell.png"
@@ -239,9 +203,7 @@
     "cost": 2,
     "baseStats1": "+护甲5/10/16·魔抗10/15/21",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "🌺",
-    "effectImpl": true,
     "effectDesc1": "携带者每7秒为自己和生命百分比最低的友军回复(30/45/60+12/14/18%目标已损失生命)生命;每累计提供200/180/150点【实际】治疗获得1层海葵,每层使治疗与护盾强度+8/9/10%。",
     "effectDesc3": "",
     "img": "equip/dungeon-anemone.png"
@@ -252,9 +214,7 @@
     "cost": 3,
     "baseStats1": "+生命100/140/210·护甲&魔抗3/4/6·+10%龟能充能速率",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "🏋️",
-    "effectImpl": true,
     "effectDesc1": "携带者每8秒原地锻炼(期间不普攻不充能)获得1层锻炼(每层最大生命与当前生命+40/75/110,战斗结束重置),随后蓄力投掷哑铃砸向最前敌人,造成相当于5/7/10%自身最大生命的物理伤害并将其击退。",
     "effectDesc3": "",
     "img": "equip/dungeon-dumbbell.png"
@@ -265,9 +225,7 @@
     "cost": 3,
     "baseStats1": "+生命60/100/180·+20初始龟能",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "🦪",
-    "effectImpl": true,
     "effectDesc1": "携带者每5秒向全队攻击力最高的友军连接绿色绑定光束(持续),为该友军提供60/110/180点护盾并将其受到的25/40/60%伤害按原类型转移给携带者(携带者护盾可吸收);同时为自己和该友军提供10龟能与+10%攻击速度(叠加,持续到本场战斗结束)。",
     "effectDesc3": "",
     "img": "equip/pearl-guard.png"
@@ -278,9 +236,7 @@
     "cost": 1,
     "baseStats1": "+攻8/15/25·+10%龟能充能速率",
     "shopAvailable": 1,
-    "poolPhase": 1,
     "emoji": "🔮",
-    "effectImpl": true,
     "effectDesc1": "携带者每8秒短暂蓄力,抛出一个火瓶砸向最近的敌人,命中造成40/60/100真实伤害,并施加(20/35/60+10/15/20%攻击力)灼烧层数+「真火」5秒(其受到的灼烧改为真实伤害)。",
     "effectDesc3": "",
     "img": "equip/ember-flask.png"
@@ -291,9 +247,7 @@
     "cost": 3,
     "baseStats1": "+生命40/60/80·攻10/25/40·魔穿5/8/13",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "🔥",
-    "effectImpl": true,
     "effectDesc1": "被动:携带者每段攻击命中额外施加(2/5/8+7/11/15%攻击力)层灼烧,并获得10点法力(法力进度显示在图标下方)。主动(法力满100时自动释放):蓄力后朝敌方挥出一道火焰波,在60度扇形内缓慢移动550码,对扫过的敌人各施加40/60/90层灼烧(主动施加的灼烧不获得法力)。",
     "effectDesc3": "",
     "img": "equip/dungeon-fire-coral.png"
@@ -304,9 +258,7 @@
     "cost": 4,
     "baseStats1": "+攻30/55/300·魔穿15/25/50·+20龟能",
     "shopAvailable": 1,
-    "poolPhase": 3,
     "emoji": "🐲",
-    "effectImpl": true,
     "effectDesc1": "携带者装备时即拥有3层吐息,之后每2.5秒获得1层;满3层时清零并召唤喷火龙:龙从携带者位置朝最靠近敌方质心的那名敌人拉出一条直线,一直飞到最远敌人身后,对这条直线两侧各88码内的单位按火柱扫到的先后依次结算——敌人受到(50/120/1500+0.7/1.0/2.0×攻击力)魔法伤害并被施加(67%攻击力)层灼烧;友军回复(70/150/1000+0.7/1.0/2.0×攻击力)生命。",
     "effectDesc3": "",
     "img": "equip/dungeon-dragon-egg.png"
@@ -317,9 +269,7 @@
     "cost": 3,
     "baseStats1": "+攻25/35/55",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "🐚",
-    "effectImpl": true,
     "effectDesc1": "携带者每4秒降下1/2/3道雷各电击1名随机敌人,每道造成1×攻击力的真实伤害。",
     "effectDesc3": "",
     "img": "equip/dungeon-crystal.png"
@@ -330,9 +280,7 @@
     "cost": 4,
     "baseStats1": "+魔穿8/13/20",
     "shopAvailable": 1,
-    "poolPhase": 3,
     "emoji": "🌩️",
-    "effectImpl": true,
     "effectDesc1": "携带者每段伤害充能25点;充能满100点时朝随机目标发射连锁闪电,造成40/60/90魔法伤害,在不同敌人间跳跃,最多命中4/5/6个目标,发射后保留溢出充能。",
     "effectDesc3": "",
     "img": "equip/equip-lightning-staff.png"
@@ -343,9 +291,7 @@
     "cost": 3,
     "baseStats1": "+生命20/40/80·护甲&魔抗5/8/13",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "🔌",
-    "effectImpl": true,
     "effectDesc1": "携带者每3秒充能就绪,下一次普攻命中时对该目标追加30/40/50魔法伤害并使其眩晕2.5/2.5/3秒,每次消耗1层电击(装备时拥有3/4/5层,层数为0时停止,装备不消失;层数每场战斗重置)。",
     "effectDesc3": "",
     "img": "equip/equip-stun-baton.png"
@@ -356,9 +302,7 @@
     "cost": 1,
     "baseStats1": "+生命30/40/60·魔穿5/9/14",
     "shopAvailable": 1,
-    "poolPhase": 1,
     "emoji": "🔮",
-    "effectImpl": true,
     "effectDesc1": "携带者每6秒短暂蓄力,抛出一个冰瓶砸向最近的敌人,命中造成40/60/100魔法伤害并将其小幅击退,同时施加冰寒5秒(移动速度-20%、攻击速度-10%)。",
     "effectDesc3": "",
     "img": "equip/frost-flask.png"
@@ -369,9 +313,7 @@
     "cost": 3,
     "baseStats1": "+生命50/110/150·护甲9/15/25",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "❄️",
-    "effectImpl": true,
     "effectDesc1": "携带者每12秒为自身获得100/160/250点护盾并砸地,朝最近的敌人推出一条冰道(长500码、中线两侧各90码),冰道推进到谁才结算谁:受到25/40/60魔法伤害,被竖直击飞约0.6秒并冰封1/1.8/2.5秒。",
     "effectDesc3": "",
     "img": "equip/dungeon-jelly.png"
@@ -382,9 +324,7 @@
     "cost": 4,
     "baseStats1": "+攻7/12/20·生命20/40/80·魔穿5/8/13",
     "shopAvailable": 1,
-    "poolPhase": 3,
     "emoji": "🔮",
-    "effectImpl": true,
     "effectDesc1": "携带者每7秒朝最近的敌人方向发射2/2/3段贯穿水晶光束(每段间隔0.2秒),每段对这条直线上(中线两侧各55码)的每名敌人造成30/35/40魔法伤害并施加1层迷你水晶;敌人叠满3层水晶时被引爆,受到相当于14/17/20%其最大生命的魔法伤害并重置层数。",
     "effectDesc3": "",
     "img": "equip/dungeon-mini-crystal.png"
@@ -395,9 +335,7 @@
     "cost": 4,
     "baseStats1": "+攻7/12/20·生命20/40/80·魔穿3/6/10",
     "shopAvailable": 1,
-    "poolPhase": 3,
     "emoji": "🔮",
-    "effectImpl": true,
     "effectDesc1": "携带者每8秒以自身为中心用水晶射线360°扫射一圈(半径1000码,耗时1.5秒,射线跟随携带者移动),扫到的敌人各造成60/130/700魔法伤害并施加1层迷你水晶,同时偷取目标10/15/50%当前魔抗(真偷取:目标减少、携带者获得,永久到战斗结束);敌人叠满3层水晶时被引爆,受到相当于14/17/20%其最大生命的魔法伤害并重置层数。",
     "effectDesc3": "",
     "img": "equip/dungeon-mini-crystal-b.png"
@@ -408,9 +346,7 @@
     "cost": 1,
     "baseStats1": "+生命50/60/70",
     "shopAvailable": 1,
-    "poolPhase": 1,
     "emoji": "🐌",
-    "effectImpl": true,
     "effectDesc1": "携带者开战时召唤一只亡灵骷髅(生命19/21/25×成长·攻击力3/5/8·护甲魔抗极高近乎无敌·存活15秒;死亡时爆炸对周围200码内敌人造成8/13/20%其最大生命的真实伤害)。",
     "effectDesc3": "",
     "img": "equip/bone-talisman.png"
@@ -421,9 +357,7 @@
     "cost": 5,
     "baseStats1": "+生命110/270/3000",
     "shopAvailable": 1,
-    "poolPhase": 4,
     "emoji": "🐌",
-    "effectImpl": true,
     "effectDesc1": "携带者彻底阵亡(所有复活机会用尽)时,在原位变形为一只小虫(400/900/5000生命·30/55/200攻击力,无护甲魔抗,只有星级无等级),自动攻击最近的敌人,攻速0.65/秒,造成1×攻击力的物理伤害。",
     "effectDesc3": "3星：变虫后每2.5秒在空位分裂出一只新小虫(上限4只)。",
     "img": "equip/dungeon-conch.png"
@@ -434,9 +368,7 @@
     "cost": 5,
     "baseStats1": "+攻20/50/300·生命120/250/1000",
     "shopAvailable": 1,
-    "poolPhase": 4,
     "emoji": "🧸",
-    "effectImpl": true,
     "effectDesc1": "携带者每4秒派出一只小熊走向最近的敌人,造成(1/2/5×攻击力+100/210/1000)物理伤害并将其击飞,同时携带者+1大熊层;大熊层满5/3/1层时装备销毁,携带者蓄力1.2秒后在空位召唤一只大熊(生命650/1100/10000·攻击力70/120/2000·护甲与魔抗各20·攻速0.5/秒·近战)登场;若无空位则继续小熊攻击直到出现空位。大熊普攻为熊掌(1×攻击力物理)并每次累积1层,满2层时下一击改为冲击波(射程临时扩至600码):造成1.5×攻击力物理伤害,将命中的敌人击飞0.8秒并拉回身前70码,随后层数清零。",
     "effectDesc3": "",
     "img": "equip/dungeon-doll.png"
@@ -447,9 +379,7 @@
     "cost": 1,
     "baseStats1": "+生命100/130/180·攻5/13/22",
     "shopAvailable": 1,
-    "poolPhase": 1,
     "emoji": "⚙️",
-    "effectImpl": true,
     "effectDesc1": "携带者(仅玩家/左队)每6秒直接为持有方+1/2/3枚深海币并飘字(与齿轮层数、战斗结束、死亡均无关)。",
     "effectDesc3": "",
     "img": "equip/brass-gear.png"
@@ -460,9 +390,7 @@
     "cost": 3,
     "baseStats1": "+生命70/120/180",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "🥚",
-    "effectImpl": true,
     "effectDesc1": "携带者持续获得孵化进度(每2.5秒+5、敌方死亡+10、己方死亡+15、造成伤害×0.1、承受伤害×0.1),进度满100获得1点临时等级(上限+3,每级+5%基础属性);孵满后为全队均摊300/400/600点护盾(一次)。",
     "effectDesc3": "",
     "img": "equip/equip-incubator.png"
@@ -473,9 +401,7 @@
     "cost": 3,
     "baseStats1": "+攻10/25/40·生命80/130/180",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "🕯️",
-    "effectImpl": true,
     "effectDesc1": "蜡烛在3个阶段间循环,每5秒切换并触发:熄灭阶段无效果;微弱阶段携带者在5秒内持续回复共(20/30/44+0.5/0.7/1.0×攻击力)生命,250码内的友军各按半数持续回复;燃烧阶段蜡烛爆燃,对携带者500码范围内的所有敌人各造成(20/30/44+0.5/0.7/1.0×攻击力)魔法伤害并施加20/30/40层灼烧。",
     "effectDesc3": "",
     "img": "equip/dungeon-candle-off.png"
@@ -486,9 +412,7 @@
     "cost": 4,
     "baseStats1": "+生命80/140/200",
     "shopAvailable": 1,
-    "poolPhase": 3,
     "emoji": "📡",
-    "effectImpl": true,
     "effectDesc1": "携带者每6秒获得一段持续3.5秒的增伤(放大自身造成的所有伤害),数值在(10~16%)/(25~40%)/(70~80%)间随机;若已有增伤未结束则取两者较大值,并把持续时间刷新为3.5秒。",
     "effectDesc3": "",
     "img": "equip/dungeon-amplifier.png"
@@ -499,9 +423,7 @@
     "cost": 3,
     "baseStats1": "+生命80/140/200",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "🎋",
-    "effectImpl": true,
     "effectDesc1": "携带者获得6/10/15次生长充能(每场战斗重置);每第3段普攻消耗1次充能:射一发强化竹箭给最近的敌人,造成(25/30/35+6%自身最大生命)魔法伤害,命中后冒出一颗绿色生命球飞回携带者——落到身上才结算:回复自身6%最大生命,并使自身最大生命永久+50/70/90(仅本场战斗)。",
     "effectDesc3": "",
     "img": "equip/equip-bamboo-leaf.png"
@@ -512,9 +434,7 @@
     "cost": 4,
     "baseStats1": "+生命100/200/500",
     "shopAvailable": 1,
-    "poolPhase": 3,
     "emoji": "🔧",
-    "effectImpl": true,
     "effectDesc1": "携带者每6秒随机抽取1/2/4个2-bit状态(可重复抽中同一个):00=回复5%最大生命,并累计+12护甲与魔抗;01=累计+15攻击力与+7%生命偷取;10=3.5秒内增伤+15%(放大自身造成的所有伤害);11=3.5秒内受到的伤害-25%(真实伤害除外)。其中00与01的加成在本场战斗内持续累计,该场战斗结束后重置。",
     "effectDesc3": "",
     "img": "equip/dungeon-fpga.png"
@@ -525,9 +445,7 @@
     "cost": 1,
     "baseStats1": "+生命40/90/170·盾疗10/15/20%",
     "shopAvailable": 1,
-    "poolPhase": 1,
     "emoji": "🐚",
-    "effectImpl": true,
     "effectDesc1": "携带者登场5秒后进入涨潮:获得250/400/650最大生命值与10/16/25攻击力,体积增大30%、攻击射程+50码,持续8/11/15秒;到期退潮,上述临时加成全部还原(退潮不会致死,只把生命削到新上限)。",
     "effectDesc3": "",
     "img": "equip/ebb-vial.png"
@@ -538,9 +456,7 @@
     "cost": 2,
     "baseStats1": "+生命60/100/180·盾疗20/25/30%",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "💧",
-    "effectImpl": true,
     "effectDesc1": "携带者每8秒为全队(含自己)各回复其已损失生命的3/6/10%;3星时,生命百分比最低的友军获得双倍回复。",
     "effectDesc3": "",
     "img": "equip/ripple-potion.png"
@@ -551,9 +467,7 @@
     "cost": 4,
     "baseStats1": "+生命80/200/5000·盾疗10/20/30%",
     "shopAvailable": 1,
-    "poolPhase": 3,
     "emoji": "🌊",
-    "effectImpl": true,
     "effectDesc1": "携带者每2.5秒+1巨浪层,满3/2/2层时清零并从身后400码涌起一道浪墙,朝敌方方向横扫全场(浪墙宽度自动覆盖到最远的单位),敌我双方都会被扫到:友军获得40/95/120点护盾并永久+2/3/5护甲与魔抗,敌人受到60/110/200魔法伤害并永久-2/3/5护甲与魔抗。",
     "effectDesc3": "",
     "img": "equip/dungeon-wave.png"
@@ -564,9 +478,7 @@
     "cost": 1,
     "baseStats1": "+生命40/60/90·护甲5/12/20",
     "shopAvailable": 1,
-    "poolPhase": 1,
     "emoji": "🧿",
-    "effectImpl": true,
     "effectDesc1": "携带者生命值首次降至50%以下时,回复12/27/40%最大生命值(每场战斗一次)。",
     "effectDesc3": "",
     "img": "equip/deepsea-necklace.png"
@@ -577,9 +489,7 @@
     "cost": 3,
     "baseStats1": "+生命90/170/300·护甲&魔抗4/8/15",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "🦪",
-    "effectImpl": true,
     "effectDesc1": "携带者生命值首次降至50%以下时,回复15/29/65%最大生命值,并向1/1/2名随机敌人发射火球,造成相当于8/17/30%目标最大生命的魔法伤害并施加30/70/150层灼烧(每场战斗一次)。",
     "effectDesc3": "",
     "img": "equip/dungeon-pearl.png"
@@ -590,9 +500,7 @@
     "cost": 4,
     "baseStats1": "+生命80/140/400·闪避15/25/50%",
     "shopAvailable": 1,
-    "poolPhase": 3,
     "emoji": "🦑",
-    "effectImpl": true,
     "effectDesc1": "携带者每成功闪避一次攻击,立即获得30/50/120点永久护盾。",
     "effectDesc3": "",
     "img": "equip/dungeon-ghost.png"
@@ -603,9 +511,7 @@
     "cost": 4,
     "baseStats1": "+生命100/200/700",
     "shopAvailable": 1,
-    "poolPhase": 3,
     "emoji": "🔨",
-    "effectImpl": true,
     "effectDesc1": "携带者获得相当于4/6/15%自身最大生命值的攻击力(随最大生命动态成长)。",
     "effectDesc3": "",
     "img": "equip/dungeon-hammer.png"
@@ -616,9 +522,7 @@
     "cost": 1,
     "baseStats1": "+攻12/25/41",
     "shopAvailable": 1,
-    "poolPhase": 1,
     "emoji": "🔫",
-    "effectImpl": true,
     "effectDesc1": "携带者每8秒依次射出4/5/6发子弹,每发命中沿途第一个敌人(可被前排阻挡),各造成0.5/0.54/0.6×攻击力的物理伤害。",
     "effectDesc3": "",
     "img": "equip/brass-pistol.png"
@@ -629,9 +533,7 @@
     "cost": 3,
     "baseStats1": "+攻15/32/50·暴击15/25/40%",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "🏹",
-    "effectImpl": true,
     "effectDesc1": "携带者每8秒朝距离自己最远的敌人方向依次连射1/2/3发,每发命中沿途第一个敌人(可被前排阻挡),按目标已损失生命造成0.8~1.3×攻击力的物理伤害(已损30%生命时达到最大)。",
     "effectDesc3": "",
     "img": "equip/repeat-crossbow.png"
@@ -642,9 +544,7 @@
     "cost": 4,
     "baseStats1": "+攻20/50/120·护穿5/11/18",
     "shopAvailable": 1,
-    "poolPhase": 3,
     "emoji": "🐚",
-    "effectImpl": true,
     "effectDesc1": "携带者每8秒打出20/30/60发随机分布的子弹,每发对命中敌人造成0.1/0.12/0.14×攻击力的物理伤害并使其永久-1/2/3护甲(对单一目标累计减甲上限15/25/40)。",
     "effectDesc3": "",
     "img": "equip/ghost-gatling.png"
@@ -655,9 +555,7 @@
     "cost": 3,
     "baseStats1": "+攻16/28/42·护穿3/6/10·吸血4/6/9%",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "🎰",
-    "effectImpl": true,
     "effectDesc1": "携带者每8秒朝最近的敌人打出一道无限穿透的激光,命中这条直线上(中线两侧各50码)的所有敌人:第一个敌人受到1.5/2.0/2.8×攻击力物理伤害并被施加0.5/0.5/0.6×攻击力的流血层数,其身后的敌人各受到50%效果。",
     "effectDesc3": "",
     "img": "equip/laser-pistol.png"
@@ -668,9 +566,7 @@
     "cost": 5,
     "baseStats1": "+攻40/90/500·护穿15/24/50",
     "shopAvailable": 1,
-    "poolPhase": 4,
     "emoji": "🔫",
-    "effectImpl": true,
     "effectDesc1": "携带者装备时拥有6发子弹(任何敌人阵亡时+1发,上限6发;每场战斗重置);每4秒向1名随机敌人射出1发,造成(150/310/1200+3/5/9×攻击力)物理伤害;子弹为0时停火(装备不消失)。",
     "effectDesc3": "",
     "img": "equip/dungeon-revolver.png"
@@ -681,9 +577,7 @@
     "cost": 3,
     "baseStats1": "+攻14/25/41·暴击10/15/25%",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "💥",
-    "effectImpl": true,
     "effectDesc1": "携带者每8秒朝最近的敌人打出12/14/18颗弹珠,相邻两颗夹角2.5度、均匀分布在中线两侧;每颗弹珠沿自己的直线一直飞,撞到路径上的第一个敌人即造成0.22×攻击力的物理伤害并消失;同一次齐射中被8颗及以上弹珠命中的敌人眩晕1.5秒。",
     "effectDesc3": "",
     "img": "equip/conch-shotgun.png"
@@ -694,9 +588,7 @@
     "cost": 1,
     "baseStats1": "+攻10/15/20·暴击15/25/40%·暴伤+10/15/20%",
     "shopAvailable": 1,
-    "poolPhase": 1,
     "emoji": "🎯",
-    "effectImpl": true,
     "effectDesc1": "携带者造成的伤害无视闪避(必中)。",
     "effectDesc3": "",
     "img": "equip/scope.png"
@@ -707,9 +599,7 @@
     "cost": 3,
     "baseStats1": "+攻9/15/21·+20龟能",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "🎯",
-    "effectImpl": true,
     "effectDesc1": "携带者命中目标时标记其5秒;被标记的敌人受到来自【全队任何来源】的伤害都+20%。",
     "effectDesc3": "",
     "img": "equip/targeter.png"
@@ -720,9 +610,7 @@
     "cost": 5,
     "baseStats1": "+攻45/90/400",
     "shopAvailable": 1,
-    "poolPhase": 4,
     "emoji": "🎯",
-    "effectImpl": true,
     "effectDesc1": "任何敌人被己方击飞时即挂上「靶子」标记(不会自行消失);携带者每2.5秒向所有带靶子的敌人各射1镖,造成(130/190/600+1.5/3.0/9.0×攻击力)物理伤害并施加相当于10%攻击力的流血层数,命中后移除该敌人的靶子。",
     "effectDesc3": "",
     "img": "equip/dungeon-dart.png"
@@ -733,9 +621,7 @@
     "cost": 4,
     "baseStats1": "+攻18/30/70·护穿10/16/30",
     "shopAvailable": 1,
-    "poolPhase": 3,
     "emoji": "🔭",
-    "effectImpl": true,
     "effectDesc1": "携带者每8秒锁定生命百分比最低的敌人并蓄力1秒,随后开枪:这条直线上的敌人各受到2/3/7×攻击力的物理伤害;若这一枪造成击杀则立即再开一枪(重新选最低血目标,无需再蓄力,可递归,上限12次)。",
     "effectDesc3": "",
     "img": "equip/sniper-barrel.png"
@@ -746,9 +632,7 @@
     "cost": 3,
     "baseStats1": "+攻17/29/41·+20龟能",
     "shopAvailable": 1,
-    "poolPhase": 2,
     "emoji": "🔩",
-    "effectImpl": true,
     "effectDesc1": "携带者登场时召唤一座不可移动的炮台:500/1000/1800最大生命、20/30/45攻击力、每秒0.5次攻速、2000码射程;普攻锁定目标(一条红色细线连向它),造成1×攻击力物理伤害,并使炮台自身永久获得2/2/3护甲穿透与2%暴击率(持续到本场战斗结束)。携带者存活时炮台获得70/85/100护甲与魔抗;携带者位于炮台400码范围内时自身获得20/30/40%攻击速度。",
     "effectDesc3": "",
     "img": "equip/pierce-shell.png"
@@ -759,9 +643,7 @@
     "cost": 5,
     "baseStats1": "+生命100/210/1000·龟能充能+10%",
     "shopAvailable": 1,
-    "poolPhase": 4,
     "emoji": "⏳",
-    "effectImpl": true,
     "effectDesc1": "登场第10秒蓄力1秒后释放「时间停止」:全场其他单位/弹道/特效全部定格,持续5/10/30秒;此期间只有【全场最高星级】沙漏的携带者(敌我皆可,同星并存)能自由攻击/施法/移动,伤害即时结算,并额外获得100%龟能充能速度、且在时停开始瞬间立即获得15点龟能;若场上存在更高星的沙漏,低星那件本场不会生效。一场战斗一次。",
     "effectDesc3": "",
     "img": "equip/dungeon-hourglass.png"

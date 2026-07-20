@@ -1,13 +1,4 @@
 {
-  "turnScaleAtk": "⚔️",
-  "turnScaleHp": "💗",
-  "bonusDmgAbove60": "🎯",
-  "lowHpCrit": "💢",
-  "deathExplode": "💥",
-  "deathHook": "🪝",
-  "healOnKill": "💚",
-  "counterAttack": "⚡",
-  "shieldOnHit": "status/shield-icon.png",
   "lavaRage": "passive/lava-heart-icon.png",
   "undeadRage": "passive/undead-rage-icon.png",
   "crystalResonance": "passive/crystal-resonance-icon.png",
@@ -18,7 +9,6 @@
   "phoenixRebirth": "passive/phoenix-rebirth-icon.png",
   "lightningStorm": "passive/lightning-storm-icon.png",
   "fortuneGold": "passive/fortune-gold-icon.png",
-  "twoHeadVitality": "passive/two-head-icon.png",
   "twoHeadDual": "passive/two-head-icon.png",
   "gamblerMultiHit": "passive/gambler-multi-icon.png",
   "summonAlly": "passive/summon-ally-icon.png",
@@ -35,7 +25,6 @@
   "diamondStructure": "passive/diamond-structure-icon.png",
   "gamblerBlood": "passive/gambler-blood-icon.png",
   "pirateBarrage": "passive/pirate-plunder-icon.png",
-  "mechBody": "passive/mech-form-icon.png",
   "candySteal": "passive/candy-steal-icon.png",
   "chestTreasure": "passive/chest-treasure-icon.png"
 }
