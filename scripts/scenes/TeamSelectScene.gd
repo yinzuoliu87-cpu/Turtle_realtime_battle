@@ -212,6 +212,31 @@ func _ensure_menu_bg() -> void:
 
 
 ## 背景整图皮 select-bg.png 吃跟浮层同一舞台变换 (居中+scale+offset), 跟 PoC .ts-stage 1:1
+## contain 留白填充: 在 select-bg 之下垫一张铺满视口的木板色底, 免得短边露出 menu-bg 的绿。
+## 颜色取自 select-bg 边缘的深木色, 与木板衔接不突兀。
+func _ensure_letterbox() -> void:
+	var ui := get_node_or_null("UI")
+	if ui == null:
+		return
+	var lb := ui.get_node_or_null("Letterbox") as ColorRect
+	if lb == null:
+		lb = ColorRect.new()
+		lb.name = "Letterbox"
+		lb.color = Color("#241708")            # 深木色(取自 select-bg 边缘)
+		lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ui.add_child(lb)
+	# ★层序: 必须在 MenuBg【之上】、Background【之下】。
+	# 先前放索引0(最底)被 MenuBg 盖住 → 留白处仍露绿(实测)。两者都往0插时后插的赢。
+	var mb := ui.get_node_or_null("MenuBg")
+	var bgn := ui.get_node_or_null("Background")
+	var want: int = 0
+	if mb != null: want = mb.get_index() + 1
+	if bgn != null: want = mini(want, bgn.get_index())
+	ui.move_child(lb, clampi(want, 0, ui.get_child_count() - 1))
+	lb.set_anchors_preset(Control.PRESET_FULL_RECT)
+	lb.offset_left = 0; lb.offset_top = 0; lb.offset_right = 0; lb.offset_bottom = 0
+
+
 func _fit_background() -> void:
 	var bg := get_node_or_null("UI/Background")
 	if bg == null or not (bg is TextureRect):
@@ -221,9 +246,11 @@ func _fit_background() -> void:
 	tr.anchor_left = 0; tr.anchor_top = 0; tr.anchor_right = 0; tr.anchor_bottom = 0
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_SCALE   # 拉满给定矩形 (PoC background-size:100% 100%)
+	# 背景与内容同尺同位(共用 _stage_to_screen), 这样 select-bg 上烤死的槽位框才对得上内容。
 	var s := _stage_scale()
 	tr.position = _stage_to_screen(Vector2.ZERO)
 	tr.size = Vector2(POC_W, POC_H) * s
+	_ensure_letterbox()   # contain 会在短边留白 → 垫一层木板色, 别露出后面的绿底
 
 
 # ══════════════════════════════════════════════════════════════
@@ -241,13 +268,24 @@ func _vp() -> Vector2:
 	return Vector2(get_viewport().get_visible_rect().size)
 
 
-## 舞台缩放: 始终 cover(max) — 用户要"木板盖住绿色"(背景不该露绿). PoC 窗口虽 contain, 但
-##   高分辨率/非16:9 下 contain 会露绿底; 改 cover 让木板始终盖满视口(裁边可接受, 槽/UI居中可见).
+## 舞台缩放 = contain(min) —— 背景与内容【必须共用同一个】(select-bg 上烤死了槽位框/面板框,
+## 两者缩放一旦不同, 画好的框就跟代码画的内容错位)。
+##
+## 【为什么从 cover 改回 contain·用户2026-07-19「选龟界面移动端还是有问题」】
+## 原先是 cover(max×1.17): 出发点是"木板要盖住绿底", 当时注释写着"裁边可接受"。
+## 但实测非 16:9 下裁掉的是【内容本身】:
+##   iPhone 1560×720 → 内容 1825×1058, 竖裁 338px(底排龟卡 + 开始冒险钮没了)
+##   iPad   960×720  → 内容 1453×842,  横裁 493px(右侧详情面板一半 + 左列龟卡没了)
+## 我一度试过"背景 cover / 内容 contain", 结果背景上烤死的槽位框与内容对不上 —— 证明两者必须同尺。
+## 现在: 统一 contain 保证【整个 1647×955 设计区都在屏内】, 短边留白由 _fit_background 的
+## 同色底垫(取木板色)填掉 → 既不裁内容, 也不露绿。
 func _stage_scale() -> float:
 	var vp := _vp()
-	var sx := vp.x / POC_W
-	var sy := vp.y / POC_H
-	return max(sx, sy) * STAGE_ZOOM
+	return minf(vp.x / POC_W, vp.y / POC_H)
+
+
+func _content_scale() -> float:
+	return _stage_scale()   # 保留此名供调用方可读; 现与舞台同尺(见 _stage_scale 注释)
 
 
 ## PoC 舞台局部坐标 → 屏幕坐标 (居中 + scale + offset, 跟 .ts-stage transform 1:1)
@@ -256,7 +294,7 @@ func _stage_scale() -> float:
 ##   (用户报"背景木板下移"). 修: 把偏移按 逻辑/真实 比折算, 使其渲染后恰为 76 真实px (720p 窗口下 =76 不变).
 func _stage_to_screen(p: Vector2) -> Vector2:
 	var vp := _vp()
-	var s := _stage_scale()
+	var s := _content_scale()
 	var center := Vector2(POC_W, POC_H) * 0.5
 	var off := STAGE_OFFSET
 	var win := Vector2(DisplayServer.window_get_size())
@@ -269,7 +307,7 @@ func _stage_to_screen(p: Vector2) -> Vector2:
 ## (卡片/间距/头像/徽章/图标/字号/padding) 在 PoC 也吃同一 .ts-stage scale(s).
 ## 所以所有内容 base px 都要 × _s() 才跟 PoC 同密度 (1280×720 下 s≈0.882).
 func _s() -> float:
-	return _stage_scale()
+	return _content_scale()
 
 
 ## base px → 缩放后整数 px (尺寸/间距/圆角/margin)
@@ -284,7 +322,7 @@ func _sf(px: float) -> int:
 
 func _rect(key: String) -> Rect2:
 	var r: Dictionary = _rl_override[key] if _rl_override.has(key) else RL[key]
-	var s := _stage_scale()
+	var s := _content_scale()
 	var top_left := _stage_to_screen(Vector2(float(r["x"]), float(r["y"])))
 	return Rect2(top_left, Vector2(float(r["w"]), float(r["h"])) * s)
 
