@@ -13,7 +13,6 @@ extends RefCounted
 
 const P2 := preload("res://scripts/engine/phase2_config.gd")
 
-const STAR_MULT := 1.8          # 占位: 每升一星, 基础属性 ×1.8
 const MERGE_COUNT := 3          # 三合一: 3 件同款同星 → 1 件高一星
 const MAX_STAR := 3
 
@@ -56,15 +55,6 @@ static func parse_base_stats(s: String) -> Dictionary:
 				for field in pair[1]:
 					out[field] = float(out.get(field, 0.0)) + val
 				break
-	return out
-
-
-## 升星属性 (占位 ×1.8^(star-1)). star: 1/2/3.
-static func star_stats(base: Dictionary, star: int) -> Dictionary:
-	var mult: float = pow(STAR_MULT, maxi(0, star - 1))
-	var out: Dictionary = {}
-	for k in base:
-		out[k] = float(base[k]) * mult
 	return out
 
 

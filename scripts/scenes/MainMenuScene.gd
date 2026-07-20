@@ -9,14 +9,10 @@ const H := 720
 const LEFT_CX := 240        # LEFT_PAD60 + BTN_W360/2
 const BTN_W := 360
 const BTN_H := 87           # 360×161/666
-const BTN_GAP := 12
-const GROUP_TOP := 234      # 左栏按钮组起始 y — 左栏实为 4 入口(开始战斗/背包/商店/设置);
                             # 排行榜/图鉴/教程/战绩 走右侧 4 磁贴。4×(87+12)=396 → 234..630 < 720, 不溢出。
                             # 〔原注释写"5 入口…排行榜"= 陈旧, 排行榜早就挪到右侧磁贴了〕
 const WALL := 16
 const TILE := 104
-const TSTEP := 120
-const TILE_TOP := 190
 
 var page_box: Control       # 当前页按钮容器
 var _active_page: String = ""   # 当前页 (空=未加载); 过场用

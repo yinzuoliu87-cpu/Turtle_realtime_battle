@@ -8,7 +8,6 @@ extends Control
 const W := 1280.0
 const H := 720.0
 const SLOT := 96.0
-const GS := 74.0   # 阵容 6 格定位网格的格子尺寸
 const P2 = preload("res://scripts/engine/phase2_config.gd")
 const Phase2Types = preload("res://scripts/engine/phase2_types.gd")
 const Phase2Minion = preload("res://scripts/engine/phase2_minion.gd")

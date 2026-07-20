@@ -113,8 +113,6 @@ static var _dbg_skill := -99            # 覆盖受审技idx(-99=用REVIEW_SKILL
 static var _dbg_star := 0               # 装备星级(0=用REVIEW_EQUIP_STAR·1-3)
 static var _dbg_equip_idx := -1          # 装备: -1=关, >=0=装第N件单装备(_dbg_equip_ids索引·◀▶循环挑·用户2026-07-12)
 static var _dbg_turtle := ""             # 受审龟id覆盖("" = 用REVIEW_TURTLE·◀▶循环挑全28龟·用户2026-07-12)
-## ⚠ 死常量(2026-07-19核实零读取): 实际生效的默认装备套是下方的 DEMO_EQUIP, 别改这张。
-const DBG_EQUIP_SET := ["p2eq_001", "p2eq_016", "p2eq_034"]   # "装备开"时装的默认套(武器/盾/召唤·测显示+效果)
 const LEFT_DEMO := ["basic", "stone", "lightning"]   # 非评审 demo (_review_demo()=false 时用)
 
 ## 每技【专属演示假人布局】: "受审龟id:skill_idx" → [ {dx,dy}, ... ] (相对受审龟: dx=右方X码, dy=深度Y偏移).
@@ -330,13 +328,9 @@ const GROUND_FADE_FRAC := 0.16            # 从底起算渐隐区占图高比例
 const GROUND_FADE_FLOOR := 0.04           # 接地处残留 alpha 下限 (0=完全透明, 略>0 防"悬空感")
 # ② 接触软影 — 紧贴脚下的深核影 (盖住立绘/地面交界, 加强"踩在地上"判定)
 const CONTACT_BASE := Vector3(1.15, 1.0, 1.0)   # 接触核影基准缩放 (比外圈 blob 小且更实)
-const CONTACT_BASE_A := 0.5
 # ③ 深海地面 (ground shader): 中心亮→边缘暗蓝的景深渐变 + 焦散 + 边界环
 const GROUND_NEAR := Color(0.42, 0.62, 0.55)    # 场地中心地色 (亮暖沙青; 卡通像素鲜活风, 大猫贤者方向)
 const GROUND_FAR := Color(0.13, 0.42, 0.48)   # 远/边缘地色 (亮青水; 远处是明亮浅海不是黑洞)
-## ⚠ 死常量(2026-07-19核实零读取): 改它不会影响画面, 旁边 GROUND_NEAR/GROUND_FAR/CAUSTIC_* 才是活的。
-const GROUND_VIGNETTE := 0.62             # 边界暗角强度 (0..1; 越大边缘越快沉黑)
-const CAUSTIC_STRENGTH := 0.10            # 程序焦散光纹强度 (深海水面投影感; 0=关)
 const CAUSTIC_SPEED := 0.35               # 焦散流动速度
 # ④ 竞技场边界软环 (地面上一圈柔光 → 给围合感, 替代硬地平线)
 const ARENA_RING_COLOR := Color(0.35, 0.62, 0.78)
@@ -8312,7 +8306,6 @@ var _float_dmg_window: Dictionary = {}    # 伤害飘字按类型排行错开 (1
 var _float_nd_window: Dictionary = {}     # 非伤害(治疗/盾)紧凑堆叠
 var _float_merge: Dictionary = {}         # 同目标+同类型+同帧伤害合并成一个数(奥恩式: 跳两者之和) key=posx_posy_type→{lbl,amount,t,crit}
 # 同时跳出的飘字按规矩错开行: 伤害红0/蓝1/白2 紧凑×22(缺色不留空, 220ms窗口); 非伤害到达序堆叠(100ms)
-const FLOAT_ROW_GAP := 15.0   # ⚠【死常量·2026-07-19核实全项目零读取】原注释写"改这里=全局生效"是错的, 改它不会有任何效果。同帧多数字的排布现由 _float_text 内部自己算。
 func _float_row_offset(key: String, kind: String, dmg_type: String, fsize: float = 18.0) -> float:
 	if kind == "damage":
 		var rank: int = 0 if dmg_type == "physical" else (1 if dmg_type == "magic" else 2)   # 下→上: 物理0/魔法1/真实2 (白上蓝中红下)
@@ -8994,22 +8987,6 @@ func _chi_embers(pos2d: Vector2, h: float, amount: int = 10) -> void:
 	var tw := _reg_tween()
 	tw.tween_interval(0.9)
 	tw.tween_callback(ps.queue_free)
-
-
-# ============================================================================
-#  主动技注册表 (28 龟 · 各取规格里的「候选1」) — 逐函数 1:1 搬自 2D 版.
-#  完整实装 = ✅ / 简化 = ⚠, 见每条注释. (装备 on-cast 钩子 Phase 3b, 这里不调)
-# ============================================================================
-# 单体进攻型大招: VFX 落在目标身上 (命中点); 其余(自/队增益·全体)落在施法者身上.
-## ⚠ 死表(2026-07-19核实零读取): VFX落点现由各技能函数自己画, 这张分发表已不参与。
-const _SKILL_VFX_ON_TARGET := {
-	"ninja": true, "ghost": true, "gambler": true, "headless": true,
-	"lightning": true, "two_head": true, "cyber": true,
-}
-# 自带程序化 VFX 的技能: 跳过通用飘空 billboard (该技在自己函数里画贴地环/击飞等, 更贴 2.5D)
-const _SKILL_SELF_VFX := {
-	"turtleShieldBash": true,
-}
 # 自/友向技(护盾/治疗/增益/变身): 不针对敌人, 任意距离即放(不用靠近敌人); 其余(敌向/普攻)要进射程
 const _SELF_CAST_SKILLS := {
 	"shield": true, "heal": true, "bambooHeal": true, "angelBless": true, "commonTeamShield": true,
@@ -20462,8 +20439,6 @@ func _self_screenshot() -> void:
 # ============================================================================
 const P2RT := preload("res://scripts/engine/phase2_equip_runtime.gd")
 const EQ_TICK := 2.5            # 装备周期触发 = 1回合 ≈ 2.5 秒 (规格)
-const EQ_BLEED_SEC := 5.0       # ⚠死常量(2026-07-19核实零读取): DoT 时长实际由 dot.gd 那条路径定, 这两个旋钮调不动任何东西。原标记"(待F5)"作废。
-const EQ_BURN_SEC := 5.0
 
 # demo 测试装备 (persistent_equipped 空时): 给每龟塞2-3件有视觉效果的件, 验证效果真触发. (与 2D 版 DEMO_EQUIP 一致)
 const DEMO_EQUIP := {

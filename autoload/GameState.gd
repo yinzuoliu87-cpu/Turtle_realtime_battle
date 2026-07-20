@@ -159,17 +159,6 @@ func grant_dual_round() -> void:
 		if grant_xp:
 			add_xp(s, _P2.PASSIVE_XP)   # V2-TODO 阶段2: "每回合+2" 改 "每场+2"(局外结算触发)
 
-# ─── 新商店 (局内等级→费用概率档, 局内币购买; 替代老战中商店) ───
-## 掷新货架 (按 side 的局内等级费用概率). battle_seed≠0 时可复现(PvP一致).
-func roll_shop_offer(side: String = "left") -> void:
-	if battle_seed != 0:
-		_dual_shop_rng.seed = battle_seed + dual_shop_visits
-	else:
-		_dual_shop_rng.randomize()
-	var lvl: int = int(dual_level.get(side, 1))
-	dual_shop_offer = _Equip.roll_shop(DataRegistry.phase2_equipment, lvl, _P2.SMALL_SHOP_SLOTS, _dual_shop_rng)
-	dual_shop_visits += 1
-
 ## 买货架第 idx 件 → 进备战席(bench_inventory, {id,star:1}), 扣局内币. 成功 true.
 func buy_shop_item(idx: int, side: String = "left") -> bool:
 	if idx < 0 or idx >= dual_shop_offer.size():
@@ -210,13 +199,6 @@ func _buy_would_merge(item_id: String, star: int, side: String) -> bool:
 			if it is Dictionary and str(it.get("id", "")) == item_id and int(it.get("star", 1)) == star:
 				have += 1
 	return have >= _Equip.MERGE_COUNT - 1
-
-## 装备出售价 = floor(cost × star × 0.8) (cost 取 phase2 装备定义; 缺失则按 1; 至少退 1).
-##   ×0.8 = 云顶式"卖略亏": 单件买立刻卖也有 ~20% 损耗 (旧 cost×star = 全额退/零损耗, 已废). 集中一处便于调平衡.
-func sell_value(item_id: String, star: int) -> int:
-	var def: Dictionary = DataRegistry.phase2_equipment_by_id.get(item_id, {})
-	var cost: int = int(def.get("cost", 1)) if def is Dictionary else 1
-	return maxi(1, int(floor(maxi(1, cost) * maxi(1, star) * 0.8)))
 
 ## 三合一升星 (TFT风自动合成): 备战席里 3 件同id同星 → 合成 1 件高一星, 反复直到无可合.
 ##   3件1星→1件2星; 再3件2星→1件3星(满星). 返回合成发生的次数.
@@ -453,9 +435,6 @@ func dual_lane_needs_final() -> bool:
 func dual_lane_winner() -> String:
 	return _DualLane.overall_winner(lane_results)
 
-func egg_alive(side: String) -> bool:
-	return int(egg_hp.get(side, 0)) > 0
-
 # ─── 闯关进度 (单次冒险, 不持久化, 失败重置) ───────────────────
 var dungeon_stage: int = 1                           # 当前第几关 (1-5)
 var dungeon_carry_hp: Dictionary = {}                 # {pet_id → remaining_hp}, 跨关继承
@@ -618,12 +597,6 @@ func reset_dungeon() -> void:
 	dungeon_carry_coins = 0
 	dungeon_rule = ""
 	dungeon_carry_equips = {}; dungeon_carry_bench = []
-
-
-func is_dungeon_boss_stage() -> bool:
-	return dungeon_stage == 5
-
-
 
 
 # ─── 持久化 ──────────────────────────────────────────────────

@@ -1526,43 +1526,6 @@ static func on_death(dead: Dictionary, all_fighters: Array) -> Dictionary:
 	return out
 
 
-# ══════════════════════════════════════════════════════════════════
-# 【奇械·深海工坊 死亡产装备】(类型·奇械 激活 2/4/6)
-#   本局每累计失去一名我方统领/小将 → 该侧【每件奇械】各产一件装备, 费用=当前累计失去数(封顶5)。
-#   每个累计死亡数档位一局仅触发一次, 产出装备【永久进背包】(GameState.bench_inventory)。规格 #544。
-#
-#   本 helper 纯函数: 统计某侧场上【激活奇械】的总件数(= _gadgetPieces 之和, 仅算携带且激活者),
-#   按 cost 从 pool 掷出等量装备 id, 返回 [id, id, ...](件数个)。掷选/封顶/触发去重由 BattleScene 死亡口管。
-#   ⚠ cost 对应费用档(1-5); 该费用没货则回退低费(镜 phase2_equip.roll_shop 回退); pool 用 shopAvailable==1 池
-#   (2026-07-19 核实: 59/59 件 shopAvailable 全为 1, 含 7 件 cost5 → 回退分支对 cost5 实际不触发。
-#    原注释说"cost5 全为 0"是错的, 且该字段自初始 fork 至今从未改过, 应是照抄回合制版的数据现状。)
-# ══════════════════════════════════════════════════════════════════
-static func gadget_piece_count(all_fighters: Array, side: String) -> int:
-	var n: int = 0
-	for f in all_fighters:
-		if not (f is Dictionary) or f.get("side", "") != side or not f.get("alive", false):
-			continue
-		n += int(f.get("_gadgetPieces", 0))   # apply_team_start 已标 = 该龟身上奇械件数(仅激活时标)
-	return n
-
-## 按 cost 从 pool 掷一件装备 id (shopAvailable==1; 该费没货回退低费); 无货返 ""。
-static func _roll_equip_of_cost(pool: Array, cost: int, rng: RandomNumberGenerator) -> String:
-	var by_cost: Dictionary = {}
-	for it in pool:
-		if not (it is Dictionary) or int(it.get("shopAvailable", 0)) != 1:
-			continue
-		var c: int = int(it.get("cost", 1))
-		if not by_cost.has(c):
-			by_cost[c] = []
-		(by_cost[c] as Array).append(str(it.get("id", "")))
-	var tier: int = clampi(cost, 1, 5)
-	while tier >= 1 and (not by_cost.has(tier) or (by_cost[tier] as Array).is_empty()):
-		tier -= 1   # 该费没货 → 回退低费 (当前数据 1-5 费都有货, 此分支是防御性的)
-	if tier < 1:
-		return ""
-	var lst: Array = by_cost[tier]
-	return str(lst[rng.randi() % lst.size()])
-
 # ── 同侧存活、ATK 最高的友军 (021 伤害最高友军的近似) ──
 static func _highest_atk_ally(all_fighters: Array, owner: Dictionary) -> Dictionary:
 	var best: Dictionary = {}

@@ -6,7 +6,7 @@ extends Control
 const W := 1280.0
 const SLOT_W := 108.0
 const SLOT_H := 132.0
-const REFRESH_COST := 2   # ⚠双源: 另一份是 phase2_config.gd:24 SHOP_REFRESH_BASE(值也是2)。改价要两处一起改, 否则界面显示与实际扣费会对不上(2026-07-19标注)
+const REFRESH_COST := 2   # 刷新花费。原 phase2_config 那套(SHOP_REFRESH_BASE + shop_refresh_cost())已随死代码清理删除, 现在这里是唯一来源(2026-07-19)
 const PRICE_MULT := 1        # 售价 = 装备 cost (费) × 1 = 几费卖几深海币 (用户 2026-07-01; 原 ×3 占位已改)
 const Phase2Equip = preload("res://scripts/engine/phase2_equip.gd")
 const P2 = preload("res://scripts/engine/phase2_config.gd")
