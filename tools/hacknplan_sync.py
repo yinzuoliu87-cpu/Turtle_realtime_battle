@@ -71,6 +71,14 @@ class HP:
         """把元素移到 parent_id 下 (创建时 parentId 可能不生效, 需单独 PATCH)。"""
         self._req("/designelements/%d" % eid, {"parentId": parent_id}, method="PATCH")
 
+    def rename(self, eid, new_name):
+        """改名。用于本地重编号(如 §7→§10)时保住云端同一元素, 避免 upsert 按名字新建导致旧元素成孤儿。"""
+        self._req("/designelements/%d" % eid, {"name": new_name}, method="PATCH")
+
+    def find_child(self, parent_id, name):
+        """在 parent 下按名字找, 返回 element 或 None(只读)。"""
+        return self.children(parent_id).get(name)
+
     def upsert(self, parent_id, name, description, type_id):
         """按 name 在 parent 下查找; 存在→PATCH description, 否则→POST 创建。返回 designElementId。"""
         existing = self.children(parent_id).get(name)
