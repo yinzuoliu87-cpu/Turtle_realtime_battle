@@ -37,6 +37,9 @@ var _sfx_cache: Dictionary = {}   # name → AudioStream
 # BGM 单例
 var _bgm_player: AudioStreamPlayer = null
 var _current_bgm: String = ""
+## 当前 BGM 的场景基准音量(menu 0.4 / battle·boss 0.35 / 默认 0.45)。
+## apply_bgm_volume 必须用它, 否则拖滑条会把音量跳到另一条公式上(2026-07-19 修)。
+var _current_base_vol: float = 0.45
 
 
 func _ready() -> void:
@@ -53,9 +56,14 @@ func _ready() -> void:
 
 
 ## 把 bgm_volume 即时应用到正在播放的 BGM player (滑条拖动时实时听感, 无淡入).
+##
+## ★必须与 play_bgm 用【同一条公式】: base_vol × (bgm_volume / 0.45)。
+## 2026-07-19 第一版这里直接用了 bgm_volume, 把 base_vol 丢了 → 菜单(base 0.4)拖一下滑条
+## 音量就跳到 0.45, 战斗(base 0.35)更明显(+29%), 而且数值没变也会跳。
 func apply_bgm_volume() -> void:
 	if _bgm_player != null and _bgm_player.playing:
-		_bgm_player.volume_db = linear_to_db(maxf(bgm_volume, 0.0001))
+		var lin: float = _current_base_vol * (bgm_volume / 0.45)
+		_bgm_player.volume_db = linear_to_db(maxf(0.0001, lin))
 
 
 # ─── SFX ──────────────────────────────────────────────────────
@@ -124,6 +132,7 @@ func play_bgm(name: String, fade_in_s: float = 1.0, base_vol: float = 0.45) -> v
 		(stream as AudioStreamMP3).loop = true
 
 	_current_bgm = name
+	_current_base_vol = base_vol      # 记下本曲基准, 供 apply_bgm_volume 用同一条公式(见该函数注释)
 	_bgm_player.stream = stream
 	_bgm_player.volume_db = -80.0    # 起点静音
 	_bgm_player.play()

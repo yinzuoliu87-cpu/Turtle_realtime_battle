@@ -8,7 +8,7 @@ extends RefCounted
 ## 现状(壳): 升星/合成/套装的【结构与规则】已搭, 数值是占位, 待用户定:
 ##   - 1星基础属性 ×1.8 升星 = 占位公式 (设计文档没给精确值)
 ##   - 套装加成数值 = 占位 (设计只定了触发条件: 系列≥3 / 子流派≥2, 没给加成数值)
-##   - 装备效果(effectDesc1/3) 还没接战斗 apply (data 里 effectImpl=false)
+##   - (过期描述已订正 2026-07-19) 装备效果早已全部接进实时战斗, 见 phase2_equip_runtime.gd; data 里 effectImpl 恒为 true 且无人读取
 ## 数据来源: res://data/phase2-equipment.json (59件, xlsx「处理B」结构化).
 
 const P2 := preload("res://scripts/engine/phase2_config.gd")

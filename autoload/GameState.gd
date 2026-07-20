@@ -86,7 +86,7 @@ var dual_opponent: Dictionary = {}
 ## 新商店货架 (当前掷出的装备, 买掉的位置=null). 局内等级决定费用概率档.
 var dual_shop_offer: Array = []
 var dual_shop_locked: bool = false   # TFT 式锁店: true → 每回合免费换货跳过(锁住看中的货架)
-var dual_shop_refresh_n: Dictionary = {"left": 0, "right": 0}   # 同回合手动刷新次数 → 刷新费递增(每大回合 grant_dual_round 重置归0)
+var dual_shop_refresh_n: Dictionary = {"left": 0, "right": 0}   # ⚠死字段(2026-07-19核实): 无人读写; 且注释描述的两件事都不成立 —— SHOP_REFRESH_STEP=0 刷新费不递增, grant_dual_round 也不重置它。下方 L495 注释说它"已删除"其实没删。
 var _dual_shop_rng := RandomNumberGenerator.new()
 
 ## 双路状态重置 (开新局调).

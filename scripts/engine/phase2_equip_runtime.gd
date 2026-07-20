@@ -1570,7 +1570,8 @@ static func on_death(dead: Dictionary, all_fighters: Array) -> Dictionary:
 #   本 helper 纯函数: 统计某侧场上【激活奇械】的总件数(= _gadgetPieces 之和, 仅算携带且激活者),
 #   按 cost 从 pool 掷出等量装备 id, 返回 [id, id, ...](件数个)。掷选/封顶/触发去重由 BattleScene 死亡口管。
 #   ⚠ cost 对应费用档(1-5); 该费用没货则回退低费(镜 phase2_equip.roll_shop 回退); pool 用 shopAvailable==1 池
-#   (cost5 装备全 shopAvailable==0 → 回退到费4, 是已知数据现状, 见报告)。
+#   (2026-07-19 核实: 59/59 件 shopAvailable 全为 1, 含 7 件 cost5 → 回退分支对 cost5 实际不触发。
+#    原注释说"cost5 全为 0"是错的, 且该字段自初始 fork 至今从未改过, 应是照抄回合制版的数据现状。)
 # ══════════════════════════════════════════════════════════════════
 static func gadget_piece_count(all_fighters: Array, side: String) -> int:
 	var n: int = 0
@@ -1592,7 +1593,7 @@ static func _roll_equip_of_cost(pool: Array, cost: int, rng: RandomNumberGenerat
 		(by_cost[c] as Array).append(str(it.get("id", "")))
 	var tier: int = clampi(cost, 1, 5)
 	while tier >= 1 and (not by_cost.has(tier) or (by_cost[tier] as Array).is_empty()):
-		tier -= 1   # 该费没货 → 回退低费 (cost5 现无 shopAvailable 货 → 落费4)
+		tier -= 1   # 该费没货 → 回退低费 (当前数据 1-5 费都有货, 此分支是防御性的)
 	if tier < 1:
 		return ""
 	var lst: Array = by_cost[tier]

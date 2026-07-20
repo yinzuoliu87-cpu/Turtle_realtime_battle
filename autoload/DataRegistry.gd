@@ -19,7 +19,8 @@ const LAUNCH_IDS := ["basic", "stone", "bamboo", "angel", "ice", "fortune", "rai
 var launch_pets: Array = []   # all_pets 里属于 LAUNCH_IDS 的子集
 var all_equipment: Array = []
 var equipment_by_id: Dictionary = {}
-# 二阶段装备 (三合一升星, xlsx「处理B」): 59件, 仅数据+名字+emoji, 效果未接战斗(effectImpl=false).
+# 二阶段装备 (三合一升星, xlsx「处理B」): 59件, 效果已全部接进实时战斗(见 scripts/engine/phase2_equip_runtime.gd)。
+# (原注释说"仅数据+名字+emoji·effectImpl=false"是早期状态的化石; 数据里 59/59 都是 effectImpl:true, 该字段本身无代码读取)
 var phase2_equipment: Array = []
 var phase2_equipment_by_id: Dictionary = {}
 var status_defs: Array = []

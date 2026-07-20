@@ -121,6 +121,10 @@ static func base_size_of(cls: String) -> int:
 
 
 # ─── Juice 参数 (跟 Phaser BattleScene 同步) ───────────────────
+# ⛔ 2026-07-19 核实: 本段常量【全部零读取】, 且与实际生效的那套【连单位都不同】(这里 毫秒/像素, 实际是 秒/米)。
+# 实际生效的是 RealtimeBattle3DScene.gd 的 JUICE_* 一组(JUICE_HITSTOP_HEAVY=0.055秒 / JUICE_SHAKE_HEAVY=0.10米 等)。
+# 想调顿帧/震屏去改那边 —— 改这里等于调到空气上。
+# (本文件其余部分 FLOAT_STYLE / color_of / cls_for / base_size_of 另算, 别整个文件删)
 
 ## hit-stop 微停时长 (毫秒) — Phaser BattleScene:2796 juiceHitStop(70)
 const HIT_STOP_MS_CRIT: int = 70

@@ -3,6 +3,9 @@ extends RefCounted
 
 ## Phaser → Godot 坐标/尺寸单一换算源 (杜绝逐元素手算漂移).
 ##
+## ⛔ 2026-07-19 核实: 【本文件已死】—— PhaserLayout 全项目零引用(含 .tscn), 两个 static func 也无人调。
+## 各场景(MainMenu/Record/TeamSelect)都是自己手算坐标。下面这条"铁律"从未真正执行过, 别照它去用本文件。
+##
 ## 移植铁律: Godot 里每个视觉数值都必须能引用到 Phaser 源码某一行.
 ##   引用不出来 = 自创 = 错. 不靠截图判断"对上", 靠数值与 Phaser 字面相等.
 ##
