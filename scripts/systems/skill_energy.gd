@@ -37,7 +37,9 @@ const SKILL_COST := {
 	"chestStorm": 100.0, "headlessTendrils": 160.0, "headlessSoulStrike": 80.0, 
 	# Batch2 特殊
 	"chestCannon": 120.0, "fortuneAllIn": 340.0, "starWormhole": 100.0, "lineFinish": 120.0,
-	"cyberHijack": 120.0, "cyberSmartAI": 40.0, "bubbleBind": 70.0, "hidingShrink": 100.0, "hidingBuffSummon": 80.0, "shellCopy": 130.0, "shellShadow": 130.0, "diceFate": 90.0,
+	# ★与 pets.json 同步(2026-07-19): 侵入 120→135 是 08d2d41「侵入改制·用户2026-07-16过」定的,
+	# 当时只改了 pets.json+文案, 漏了这张兜底表 → verify_skill_energy 报冲突。
+	"cyberHijack": 135.0, "cyberSmartAI": 110.0, "bubbleBind": 70.0, "hidingShrink": 100.0, "hidingBuffSummon": 80.0, "shellCopy": 130.0, "shellShadow": 130.0, "diceFate": 90.0,
 }
 
 ## 该技龟能花费 (缺省 95)

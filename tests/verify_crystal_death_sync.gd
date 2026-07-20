@@ -1,6 +1,12 @@
 extends Node
-## verify_crystal_death_sync.gd — 守卫: 水晶龟阵亡 → 水晶球随从一同消失
-## 用户〖2026-07-11〗:「要加死亡同步」(水晶球原本会在水晶龟死后继续战斗)
+## verify_crystal_death_sync.gd — 守卫: 水晶龟阵亡后【水晶球继续战斗】, 而缩头龟随从随主人消失
+##
+## ⚠ 本文件断言的是【反转后】的行为, 别照文件名想当然:
+##   用户〖2026-07-11〗:「要加死亡同步」→ 水晶球随主人死
+##   用户〖2026-07-16〗反转:「水晶球不随主人阵亡, 继续战斗」→ 代码删掉了死亡同步
+##     (见 RealtimeBattle3DScene.gd「删死亡同步·用户2026-07-16反转07-11拍板」那行)
+##   当时只改了代码, 这个测试没跟着改 → 它守着一个已被推翻的决定红了很久(2026-07-19 修正)。
+## 缩头龟随从【仍然】随主人消失, 两者行为不同是有意的, 所以两条都断言, 防以后又被顺手"统一"掉。
 
 const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 
@@ -42,7 +48,7 @@ func _ready() -> void:
 	scene._kill(crystal, killer)
 	await get_tree().process_frame
 
-	_ok("★水晶龟阵亡后水晶球也阵亡", not ball.get("alive", true),
+	_ok("★水晶龟阵亡后水晶球【继续战斗】(用户2026-07-16反转)", ball.get("alive", false),
 		"ball.alive=%s" % [ball.get("alive")])
 
 	# 对照: 缩头龟死了随从也死(既有行为, 顺带回归)
@@ -61,7 +67,7 @@ func _ready() -> void:
 func _done() -> void:
 	print("")
 	if _fail == 0:
-		print("ALL PASS — 水晶球随水晶龟阵亡同步消失")
+		print("ALL PASS — 水晶球不随主人阵亡(继续战斗) / 缩头龟随从随主人消失")
 	else:
 		print("FAIL x", _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

@@ -1,9 +1,11 @@
 extends Node
-## verify_ghost_seed.gd — 守卫: 内置 ghost 种子池 (70 支策划队, 按档分桶·装备随档递增, 冷启动/老档并入)
+## verify_ghost_seed.gd — 守卫: 内置 ghost 种子池 (146 支策划队, 按档分桶·装备随档递增, 冷启动/老档并入)
 ## 用户〖2026-07-11〗:「对战到的队伍多么, 加10个快照看看, 按档位的是吗」
 ##
 ## 断言(测纯函数, 不碰真实 user://ghost_pool.json):
-##   1. _load_seed() 解析出 70 支队, 覆盖档 0-8。
+##   1. _load_seed() 解析出 146 支队, 覆盖档 0-8。
+##      ★数量是【硬编码期望值】, 故意不从 json 反推(那样断言就成了自己跟自己比, 池被截断也发现不了)。
+##      改池容量时必须同步改这里 —— 45602ea 把 70→146 就漏了改, 这个测试红了整整一天没人注意。
 ##   2. 每支队合法: leaders 3 只已知龟 / bracket 与桶键一致 / lane_assign 上+下=3 / is_bot=false。
 ##   3. _ensure_seeded 把种子并入空池(10支), 且幂等(重并不重复)。
 ##   4. pool_find 在档 0-8 都能抽到种子对手(seed_ 开头)。
@@ -37,7 +39,7 @@ func _ready() -> void:
 	var total := 0
 	for b in brackets.keys():
 		total += (brackets[b] as Array).size()
-	_ok("种子池 = 70 支队", total == 70, "实际 %d" % total)
+	_ok("种子池 = 146 支队", total == 146, "实际 %d" % total)
 	_ok("覆盖档 0-8", brackets.has("0") and brackets.has("8"))
 
 	# 2. 每支队合法
@@ -68,8 +70,8 @@ func _ready() -> void:
 	var c1 := _count(pool)
 	Backend._ensure_seeded(pool)
 	var c2 := _count(pool)
-	_ok("_ensure_seeded 空池并入 70", c1 == 70, "%d" % c1)
-	_ok("_ensure_seeded 幂等(重并不重复)", c2 == 70, "%d" % c2)
+	_ok("_ensure_seeded 空池并入 146", c1 == 146, "%d" % c1)
+	_ok("_ensure_seeded 幂等(重并不重复)", c2 == 146, "%d" % c2)
 
 	# 4. pool_find 各档能抽到种子对手
 	var rng := RandomNumberGenerator.new()
@@ -124,7 +126,7 @@ func _ready() -> void:
 func _done() -> void:
 	print("")
 	if _fail == 0:
-		print("ALL PASS — ghost 种子池(70策划队/按档递增/带loadouts) 守卫通过")
+		print("ALL PASS — ghost 种子池(146策划队/按档递增/带loadouts) 守卫通过")
 	else:
 		print("FAIL x", _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
