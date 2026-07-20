@@ -2072,7 +2072,52 @@ func _dl_enter_place() -> void:
 	_dl_go_btn.visible = true
 	_dl_place_hint.visible = true
 
+# ══════════════════════════════════════════════════════════════
+# §SUDDEN 战场决胜机制 (用户2026-07-19「存活40秒后, 治疗效果降低50%, 并每5秒获得25%增伤持续到战场结束」)
+#
+# 起因: 巡检 243 局发现【双方都带装备时 10.3% 的对局永远打不完】—— 结束条件只有"一方团灭"和"蛋被打碎",
+# 没有任何时间兜底; 双方续航一旦盖过对方输出就是死局(实测忍者龟5秒回300血、寒冰龟护盾还在涨)。
+#
+# ★计时按【战场】各自算, 不能用 _t: _t 在上路→下路→终极之间是累加不重置的(实测上路53s结束、下路接着跑到120s),
+#   直接用 _t>=40 会让下路一开场就已经过线。所以 _dl_start_fight 每次开打都重置 _sd_t0。
+# ★增伤要在两条伤害路径都乘: _apply_damage 和 _apply_damage_from 是各自独立扣血的, 只改一处会漏掉一半伤害。
+# ══════════════════════════════════════════════════════════════
+const SD_START := 40.0        # 本战场开打满 40 秒 → 进入决胜
+const SD_STEP := 5.0          # 之后每 5 秒一档
+const SD_AMP_PER := 0.25      # 每档 +25% 增伤(累计, 持续到本战场结束)
+const SD_HEAL_MULT := 0.5     # 决胜期治疗效果 ×50%
+var _sd_t0 := 0.0             # 本战场开打时刻
+var _sd_stacks := 0           # 已获得的增伤档数(0=未进入决胜)
+
+func _sd_amp() -> float:
+	return SD_AMP_PER * float(_sd_stacks)
+
+func _sd_heal_mult() -> float:
+	return SD_HEAL_MULT if _sd_stacks > 0 else 1.0
+
+func _sd_tick() -> void:
+	if _over:
+		return
+	var el: float = _t - _sd_t0
+	if el < SD_START:
+		return
+	var want: int = 1 + int((el - SD_START) / SD_STEP)   # 40s→1档(+25%), 45s→2档, 50s→3档...
+	if want <= _sd_stacks:
+		return
+	_sd_stacks = want
+	if _sd_stacks == 1:
+		_announce_sudden()
+
+## 决胜开始: 全场飘字 + 提示(只在第1档播一次, 后续档位靠 HUD 显示数值)
+func _announce_sudden() -> void:
+	for u in _units:
+		if u.get("alive", false) and not u.get("_isEgg", false):
+			_float_text(u["pos"] + Vector2(0, -90), "决胜!", Color("#ff6b6b"))
+	_log("⚔ 决胜阶段: 治疗效果 -50%, 每 5 秒全场 +25% 增伤")
+
 func _dl_start_fight() -> void:
+	_sd_t0 = _t          # ★每个战场各自计时(_t 跨路累加, 见 §SUDDEN)
+	_sd_stacks = 0
 	_edit_drag_unit = null
 	_dl_state = "fight"
 	if is_instance_valid(_dl_go_btn): _dl_go_btn.visible = false
@@ -2496,6 +2541,8 @@ func _dl_update_hud() -> void:   # 双路 HUD: 当前路 + 双方蛋血 + 破蛋
 	if _dl_state == "eggwindow":
 		var rem := _dl_window_until - _t
 		st = ("  ·  破蛋窗口 %.0fs" % maxf(0.0, rem)) if rem < 1.0e17 else "  ·  破蛋(决胜)"
+	if _sd_stacks > 0:   # §SUDDEN 决胜档位: 不显玩家会莫名其妙"怎么突然打得动了/奶不住了"
+		st += "  ·  ⚔决胜 +%d%%增伤 · 治疗-50%%" % int(_sd_amp() * 100.0)
 	_dl_hud.text = "【%s】   我方蛋 %d   vs   敌方蛋 %d%s" % [lane_cn, lhp, rhp, st]
 
 ## 匹配对手快照的首领 id (Matchmaking 写 GameState.dual_ghost). 过滤到 STATS 已知龟, 上限 3.
@@ -3122,6 +3169,7 @@ func _make_status_bar(side: String, level: int = 0) -> Dictionary:
 func _process(delta: float) -> void:
 	delta = minf(delta, 0.1)   # ★钳制delta(用户2026-07-18防卡死): 卡顿/切后台/加载导致的delta尖峰会让每帧DoT/VFX累加while循环炸开(一帧生成成百上千节点→下帧更慢=死亡螺旋). 上限0.1s
 	_adf_ct = 0   # 每帧重置伤害调用计数(_apply_damage_from 帧内爆炸=死亡链无限级联→自身截断防卡死)
+	_sd_tick()   # §SUDDEN 战场决胜(40s起治疗-50% + 每5s +25%增伤)
 	if _audit and _t >= _audit_next:
 		_audit_next = _t + 1.0
 		_audit_tick()
@@ -3129,7 +3177,7 @@ func _process(delta: float) -> void:
 		_hb += 1
 		if _dl_state == "place":
 			_dl_start_fight()          # 无头无玩家→自动开打(present阶段自己计时推进)
-		if _over or _dl_state == "done" or _t > 120.0:
+		if _over or _dl_state == "done" or _t > 240.0:   # 上限 120→240: 一场三路合法时长可超120s(上路含破蛋窗口+呈现就要60s+), 120s会把正常推进的局误记成僵持(用户2026-07-19决胜机制验收)
 			_stress_reload(); return
 		_dbg_op = "process"
 	# Phase4 顿帧 hit-stop: 计时 >0 时冻结"模拟"(逻辑推进 + juice 视觉态衰减)给重量感,
@@ -7787,6 +7835,8 @@ func _laser_beam(a2d: Vector2, b2d: Vector2, col: Color, half_w: float = 0.16, d
 # ============================================================================
 # 无来源伤害 (DoT 层数结算等)
 func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: String = "dot") -> void:
+	if _sd_stacks > 0:
+		dmg = maxi(1, int(round(float(dmg) * (1.0 + _sd_amp()))))   # §SUDDEN 决胜增伤(这条路走 DoT/真伤等)
 	var d := float(dmg)
 	var shield_before: float = u["shield"]
 	if u["shield"] > 0.0:
@@ -7835,6 +7885,8 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	# 伤害输出乘数 (龟壳复制60%等; 默认1.0=不变): 缩放src本次造成的即时伤害
 	if src.get("dmg_out_mult", 1.0) != 1.0:
 		dmg = int(round(float(dmg) * float(src.get("dmg_out_mult", 1.0))))
+	if _sd_stacks > 0:
+		dmg = maxi(1, int(round(float(dmg) * (1.0 + _sd_amp()))))   # §SUDDEN 决胜增伤(这条路走普攻/技能主线)
 	# 星辉战利品(宝箱传说): 所有伤害转真实=跳过减伤(钻石18%/岩层/铁壁flat) — 完整"绕护甲"局限留F5(伤害多已由_atk_dmg预减)
 	if src.get("chest_starlight", false):
 		raw = true
@@ -16736,6 +16788,7 @@ func _heal(u: Dictionary, amt: float, silent: bool = false) -> float:   # 返回
 	if amt <= 0.0: return 0.0
 	amt *= _copy_fx_mult                        # 龟壳复制期: 治疗也按60%
 	amt *= 1.0 + float(u.get("heal_amp", 0.0))   # 治疗加成(受到方,所有来源)
+	amt *= _sd_heal_mult()                       # §SUDDEN 决胜期治疗 ×50%
 	if _t < float(u.get("heal_reduce_until", 0.0)):
 		amt *= maxf(0.0, 1.0 - float(u.get("heal_reduce_pct", 0.0)))   # 治疗削减(凤凰涅槃/烫伤等)
 	var hb: float = u["hp"]
