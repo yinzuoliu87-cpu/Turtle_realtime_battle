@@ -4927,13 +4927,29 @@ func _audit_tick() -> void:
 		else:
 			u["_ad_air"] = 0.0
 		if float(u.get("stun_until", 0.0)) > _t:
+			if float(u.get("_ad_stun", 0.0)) <= 0.0:
+				u["_ad_stun_n0"] = int(u.get("_stun_n", 0))   # 本段起点的施加次数, 用来算窗口内被上了几次控
 			u["_ad_stun"] = float(u.get("_ad_stun", 0.0)) + 1.0
 			if float(u["_ad_stun"]) > 10.0:
-				_audit_flag("stun_stuck", "%s 连续眩晕 %.0fs  剩余=%.1f 最后来源=%s 续控明细=%s" % [
-					nm, float(u["_ad_stun"]), float(u.get("stun_until", 0.0)) - _t,
+				_audit_flag("stun_stuck", "%s 被控锁 %.0fs(采样) 期间共被上控 %d 次  剩余=%.1f 最后来源=%s 全场来源=%s" % [
+					nm, float(u["_ad_stun"]), int(u.get("_stun_n", 0)) - int(u.get("_ad_stun_n0", 0)),
+					float(u.get("stun_until", 0.0)) - _t,
 					str(u.get("_stun_src", "?")), str(u.get("_stun_chain", {}))])
 		else:
 			u["_ad_stun"] = 0.0
+		# 属性失控: 有些成长类装备(哑铃每8s+最大生命/齿轮/锻炼层)没有上限, 长局里会滚成天文数字.
+		# 记下首次采样时的基线, 之后看倍数 —— 这类问题不会报错也不会卡死, 只会让对局变得莫名其妙。
+		if not u.has("_ad_b_hp"):
+			u["_ad_b_hp"] = mx
+			u["_ad_b_atk"] = float(u.get("atk", 0.0))
+		var b_hp: float = float(u.get("_ad_b_hp", mx))
+		var b_atk: float = float(u.get("_ad_b_atk", 1.0))
+		if b_hp > 1.0 and mx > b_hp * 5.0:
+			_audit_flag("maxhp_runaway", "%s 最大生命 %.0f → %.0f (%.1f×)" % [nm, b_hp, mx, mx / b_hp])
+		if b_atk > 1.0 and float(u.get("atk", 0.0)) > b_atk * 5.0:
+			_audit_flag("atk_runaway", "%s 攻击 %.0f → %.0f (%.1f×)" % [nm, b_atk, float(u.get("atk", 0.0)), float(u.get("atk", 0.0)) / b_atk])
+		if float(u.get("shield", 0.0)) > mx * 3.0:
+			_audit_flag("shield_runaway", "%s 护盾 %.0f = %.1f× 最大生命" % [nm, float(u.get("shield", 0.0)), float(u.get("shield", 0.0)) / maxf(1.0, mx)])
 		var pos: Vector2 = u.get("pos", Vector2.ZERO)
 		if absf(pos.x) > 6000.0 or absf(pos.y) > 6000.0 or is_nan(pos.x) or is_nan(pos.y):
 			_audit_flag("out_of_arena", "%s pos=%s" % [nm, str(pos)])
@@ -16829,10 +16845,14 @@ func _heal_flush(u: Dictionary) -> void:   # LoL式: 治疗累加器→静默0.1
 ## tenacity=false 用于【自身施法定身】(缩头/亡灵拉全场等), 那是自己给自己上的动作锁, 不该吃自己的韧性。
 func _stun(u: Dictionary, sec: float, src_tag: String, no_tenacity: bool = false) -> void:
 	var d: float = sec if no_tenacity else _cc_dur(u, sec)
-	if _audit and _t < float(u.get("stun_until", 0.0)):
-		var ch: Dictionary = u.get("_stun_chain", {})   # 已经晕着又被续 → 记是谁续的(链控诊断)
+	if _audit:
+		# ★无条件记账. 第一版只在"已晕着又被续"时记, 结果明细恒为空 —— 因为控制是在采样缝隙里
+		# 断开再重上的(每次都是"当前没晕"→不记), 而 1 秒一次的采样看不见那个缝, 于是把
+		# "断续被控 11 秒"误报成"连续眩晕 11 秒"。指标要数【施加次数】, 不是数采样。
+		var ch: Dictionary = u.get("_stun_chain", {})
 		ch[src_tag] = int(ch.get(src_tag, 0)) + 1
 		u["_stun_chain"] = ch
+		u["_stun_n"] = int(u.get("_stun_n", 0)) + 1
 	u["_stun_src"] = src_tag
 	u["stun_until"] = maxf(float(u.get("stun_until", 0.0)), _t + d)
 
