@@ -896,7 +896,7 @@
         "dodgePct": 25,
         "dodgeTurns": 2,
         "brief": "幽灵龟对目标造成（{M:1.5*ATK}）魔法伤害，回复相当于造成伤害的80%生命值，并获得25%闪避持续4秒",
-        "detail": "幽灵龟对目标造成（150%×攻击力 = {M:1.5*ATK}）魔法伤害，回复相当于造成伤害的 80% 生命值，并获得 25% 闪避，持续 <span class=\"val-def\">4秒</span>"
+        "detail": "幽灵龟对目标造成（150%×攻击力 = {M:1.5*ATK}）魔法伤害，回复相当于造成伤害的 80% 生命值，并获得 25% 闪避，持续 <span class=\"val-def\">4秒</span>\n\n<span style=\"color:#8a93a0\">命中还会把目标<b>击退抛飞</b>。</span>"
       },
       {
         "name": "灵魂风暴",
@@ -1405,7 +1405,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "每次释放进入抽取阶段（锁龟能），花色转盘落定后永久提升一项属性：♠黑桃 攻击力 <span class=\"val-atk\">+3</span>、最大生命值 <span class=\"val-heal\">+10</span>；♥红心 护甲 <span class=\"val-def\">+1</span>、魔抗 <span class=\"val-magic\">+1</span>；♦方块 暴击率 <span class=\"val-atk\">+2%</span>、护甲穿透 <span class=\"val-atk\">+1</span>；♣梅花 生命偷取 <span class=\"val-heal\">+0.5%</span>、攻击速度 <span class=\"val-atk\">+2%</span>。选此技：登场损失 30% 最大生命，换基础多重打击概率 40%→60%",
-        "detail": "〖用户 2026-07-09 逐字〗<span class=\"val-normal\">选择本技能时</span>：赌神龟登场即<span class=\"val-true\">损失 30% 最大生命值</span>，换取<span class=\"val-atk\">额外 +20% 多重打击概率</span>（基础 40% → 60%）。\n\n<span class=\"val-normal\">主动</span>（龟能满自动释放）：随机抽取一个花色，永久提升一项属性：♠黑桃 攻击力 <span class=\"val-atk\">+3</span>、最大生命值 <span class=\"val-heal\">+10</span>；♥红心 护甲 <span class=\"val-def\">+1</span>、魔抗 <span class=\"val-magic\">+1</span>；♦方块 暴击率 <span class=\"val-atk\">+2%</span>、护甲穿透 <span class=\"val-atk\">+1</span>；♣梅花 生命偷取 <span class=\"val-heal\">+0.5%</span>、攻速 <span class=\"val-atk\">+2%</span>。\n\n<span style=\"color:#8a93a0\">玩家赌神抽到的花色会在【本大轮】跨场累积，下一场登场时自动套用；换大轮时重置。</span>"
+        "detail": "〖用户 2026-07-09 逐字〗<span class=\"val-normal\">选择本技能时</span>：赌神龟登场即<span class=\"val-true\">损失 30% 最大生命值</span>，换取<span class=\"val-atk\">额外 +20% 多重打击概率</span>（基础 40% → 60%）。\n\n<span class=\"val-normal\">主动</span>（龟能满自动释放）：随机抽取一个花色，永久提升一项属性：♠黑桃 攻击力 <span class=\"val-atk\">+3</span>、最大生命值 <span class=\"val-heal\">+10</span>；♥红心 护甲 <span class=\"val-def\">+1</span>、魔抗 <span class=\"val-magic\">+1</span>；♦方块 暴击率 <span class=\"val-atk\">+2%</span>、护甲穿透 <span class=\"val-atk\">+1</span>；♣梅花 生命偷取 <span class=\"val-heal\">+0.5%</span>、攻速 <span class=\"val-atk\">+2%</span>。\n\n<span style=\"color:#8a93a0\">玩家赌神抽到的花色会在【本大轮】跨场累积，下一场登场时自动套用；换大轮时重置。</span>\n\n<span style=\"color:#8a93a0\">抽取阶段（转盘旋转约 1.15 秒）内<b>锁龟能不充能</b>，花色落定后自动解锁。</span>"
       }
     ],
     "defaultSkills": [
@@ -1530,7 +1530,7 @@
       "bombardPct": 25,
       "deathHookPct": 25,
       "brief": "<span class=\"val-normal\">登场轰击</span>：海盗龟登场瞬间轰击 1 名随机敌人，造成其 <span class=\"val-true\">25% 最大生命值</span>的<span class=\"val-true\">真实伤害</span>。<span class=\"val-normal\">死亡钩索</span>：海盗龟阵亡瞬间甩出钩索抓住<span class=\"val-normal\">击杀它的单位</span>，把它拉到尸位 90 码内，并造成该单位 <span class=\"val-true\">25% 最大生命值</span>的<span class=\"val-true\">真实伤害</span>。",
-      "desc": "<span class=\"val-normal\">登场轰击</span>：海盗龟登场瞬间轰击 1 名随机敌人，造成其 <span class=\"val-true\">25% 最大生命值</span>的<span class=\"val-true\">真实伤害</span>。\n<span class=\"val-normal\">死亡钩索</span>：海盗龟自己阵亡的瞬间，甩出钩索抓住<span class=\"val-normal\">击杀它的单位</span>，把它拉到尸位 90 码内，并造成该单位 <span class=\"val-true\">25% 最大生命值</span>的<span class=\"val-true\">真实伤害</span>。\n<span style=\"color:#8a93a0\">两段伤害均为真实伤害，无视护甲与魔抗。</span>"
+      "desc": "<span class=\"val-normal\">登场轰击</span>：海盗龟登场瞬间轰击 1 名随机敌人，造成其 <span class=\"val-true\">25% 最大生命值</span>的<span class=\"val-true\">真实伤害</span>。\n<span class=\"val-normal\">死亡钩索</span>：海盗龟自己阵亡的瞬间，甩出钩索抓住<span class=\"val-normal\">击杀它的单位</span>，把它拉到尸位 90 码内，并造成该单位 <span class=\"val-true\">25% 最大生命值</span>的<span class=\"val-true\">真实伤害</span>。\n<span style=\"color:#8a93a0\">两段伤害均为真实伤害，无视护甲与魔抗。</span>\n\n<span style=\"color:#8a93a0\">钩索拉拽期间目标被<b>定身 0.5 秒</b>。</span>"
     },
     "skillPool": [
       {
