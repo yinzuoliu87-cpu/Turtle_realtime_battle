@@ -75,8 +75,8 @@ static func xp_to_next(level: int) -> int:
 
 # ─── 双路龟蛋战斗 (V3.2) ─────────────────────────────────────
 const LANES := ["top", "bottom"]      # 上路 / 下路
-const EGG_HP_BASE := 2000             # 龟蛋基地基础 HP (用户 2026-06-23: 翻倍 1000→2000)
-const EGG_HP_PER_AVG_LEVEL := 100     # + 100 × 双方均等级 (用户 2026-06-23: 翻倍 50→100)
+const EGG_HP_BASE := 3000             # 龟蛋基地基础 HP (用户 2026-07-19: 2000→3000)
+const EGG_HP_PER_AVG_LEVEL := 300     # + 300 × 大轮等级 (用户 2026-07-19: 100→300)
 const LANE_HEAL_PCT := 0.30           # 每路结束, 幸存龟回复"已损HP"的 30%
 const MINION_FILL := true             # 不足 3 龟的一路, 用小将补位
 
