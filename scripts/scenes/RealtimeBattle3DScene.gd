@@ -4932,7 +4932,9 @@ func _audit_tick() -> void:
 				u["_ad_stun_n0"] = int(u.get("_stun_n", 0))   # 本段起点的施加次数, 用来算窗口内被上了几次控
 			u["_ad_stun"] = float(u.get("_ad_stun", 0.0)) + 1.0
 			if float(u["_ad_stun"]) > 10.0:
-				_audit_flag("stun_stuck", "%s 被控锁 %.0fs(采样) 期间共被上控 %d 次  剩余=%.1f 最后来源=%s 全场来源=%s" % [
+				# 【观测项, 不是缺陷】用户2026-07-19 拍板不加控制递减(DR) → 控制链锁死是已知且接受的行为。
+				# 保留只为看有没有异常长的锁, 不要当 bug 去修。见 docs/design/实时版-系统机制权威.md §8
+				_audit_flag("观测:stun_chain", "%s 被控锁 %.0fs(采样) 期间共被上控 %d 次  剩余=%.1f 最后来源=%s 全场来源=%s" % [
 					nm, float(u["_ad_stun"]), int(u.get("_stun_n", 0)) - int(u.get("_ad_stun_n0", 0)),
 					float(u.get("stun_until", 0.0)) - _t,
 					str(u.get("_stun_src", "?")), str(u.get("_stun_chain", {}))])
@@ -4940,11 +4942,14 @@ func _audit_tick() -> void:
 			u["_ad_stun"] = 0.0
 		# 属性失控: 有些成长类装备(哑铃每8s+最大生命/齿轮/锻炼层)没有上限, 长局里会滚成天文数字.
 		# 记下首次采样时的基线, 之后看倍数 —— 这类问题不会报错也不会卡死, 只会让对局变得莫名其妙。
-		# 基线要等属性像样了再采: 召唤体(机甲等)刚 spawn 那一帧 atk 可能还是 1,
-		# 拿它当基线会把正常的初始化报成"攻击涨了8.9倍"(2026-07-19 误报)
-		if not u.has("_ad_b_hp") and mx > 50.0 and float(u.get("atk", 0.0)) > 5.0:
+		# 基线必须等单位【稳定】后再采, 否则测的是出生过程不是成长:
+		#   赛博机甲有 5 秒组装爬坡(atk 从 0 lerp 到设定值), 期间任何一帧当基线都会算出几倍"增长"。
+		#   光加"atk>5"的门槛治不好 —— 爬坡会穿过任意门槛(先后误报过 1→10 和 12→72 两次)。
+		#   改为: 连续看到该单位 6 次采样(≈6s, 覆盖组装/召唤的出生动画)之后才取基线。
+		u["_ad_seen"] = int(u.get("_ad_seen", 0)) + 1
+		if not u.has("_ad_b_hp") and int(u["_ad_seen"]) >= 6 and mx > 50.0 and not u.get("_assembling", false):
 			u["_ad_b_hp"] = mx
-			u["_ad_b_atk"] = float(u.get("atk", 0.0))
+			u["_ad_b_atk"] = maxf(1.0, float(u.get("atk", 0.0)))
 		var b_hp: float = float(u.get("_ad_b_hp", mx))
 		var b_atk: float = float(u.get("_ad_b_atk", 1.0))
 		if b_hp > 1.0 and mx > b_hp * 5.0:
