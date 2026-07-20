@@ -1,4 +1,11 @@
 # 杖系/元素 装备 实装规格 (用户批4, 2026-06-13)
+
+> ## ⚠ 2026-07-19 核实：本文是【回合制口径】的早期规格，多处与现行装备不符
+> 钩子名（on_turn_begin / on_side_end / on_cast）与"N 回合"时长都是回合制概念，实时版是秒级 tick。
+> 部分装备的名字/属性/效果在后续评审中已改。（例：p2eq_022 本文写"余烬法杖·+20最大龟能·on_cast·真火1回合"，实际是"余烬燃油瓶·充能速率+10%·每8秒抛火瓶·真火5秒"）
+> → 现行事实源：`data/phase2-equipment.json`（名/费/文案）+ `scripts/engine/phase2_equip_runtime.gd`（`P2RT.STATS` 与各 `_eq_*` 实装）
+> + `docs/design/装备逐件审查进度.md`（由数据生成，逐件当前状态）。
+
 > 单位同前: crit小数 / 灼烧=Dot bleed同款stacks / magicPen=flat / 龟能=_maxEnergy。**023=phase1 e_fire / 024=phase1 e_dragon_egg 可复用逻辑**。
 
 ## p2eq_022 🔮余烬法杖 — 费1 [元素/杖·火]

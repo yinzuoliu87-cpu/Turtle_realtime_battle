@@ -1,5 +1,12 @@
 # 盾系装备 + 剑系011 实装规格 (用户批2, 2026-06-13)
 
+> ## ⚠ 2026-07-19 核实：本文是【回合制口径】的早期规格，多处与现行装备不符
+> 钩子名（on_turn_begin / on_side_end / on_cast）与"N 回合"时长都是回合制概念，实时版是秒级 tick。
+> 部分装备的名字/属性/效果在后续评审中已改。
+> → 现行事实源：`data/phase2-equipment.json`（名/费/文案）+ `scripts/engine/phase2_equip_runtime.gd`（`P2RT.STATS` 与各 `_eq_*` 实装）
+> + `docs/design/装备逐件审查进度.md`（由数据生成，逐件当前状态）。
+
+
 > 单位同剑系: crit小数·_lifestealPct整数%·armorPen/magicPen/def/mr=flat·reflectPct=%·healAmp=%。
 > 钩子: apply_stats / on_hit(逐段) / on_hit_as_target(受击) / on_cast(施法后) / on_turn_begin。
 > **盾系只给了 012-017 (6/10), 缺 018-021。** 几何: 横排=same_column(F0B0) / 列=same_row(F0F1F2)。

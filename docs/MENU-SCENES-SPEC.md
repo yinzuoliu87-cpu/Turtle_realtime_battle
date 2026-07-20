@@ -1,5 +1,9 @@
 # 菜单/经济/现有场景补全 规格 (2-agent 抠 Phaser, 1:1 关键数据)
 
+> ## ⚠ 2026-07-19 核实：本文的 Achievements 50 项完整规格【无对应实装】。
+> 全项目无 `AchievementsScene` / `Achievements.tscn`，成就系统未做。其余菜单场景规格仍有效。
+
+
 ## Settings (SettingsScene.ts)
 - 标题"设置"40px#ffd93d@(w/2,80); 返回←@(40,40). BGM标签@(w/2-190,190)+滑条380×8@(w/2,220)(轨#444/填#ffd93d/滑块28圆); SFX同@300/330. 全屏按钮@(w/2,410)260×50; 低画质@490; 重置存档@580; 成功提示✓ 16px#06d6a0.
 - 存档键 turtle-poc-settings-v1 {bgmVol:0.4, sfxVol:0.6}. 重置删 team/progress/dungeon-best/tutorial-seen.

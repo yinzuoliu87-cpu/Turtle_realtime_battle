@@ -1,5 +1,9 @@
 # OTHER-SCENES-AUDIT — 严格 1:1 迁移审计 (只读)
 
+> ## ⚠ 2026-07-19 核实：本文引用的 `BattleEndScene.gd` 与 `AchievementsScene` 【两个文件都不存在】。
+> 实时版的结算在 `RealtimeBattle3DScene.gd` 内（`_show_banner` / `_build_stats_panel`）；成就系统未实装。
+
+
 Phaser/TS PoC = 权威源, Godot = 迁移目标. 行号为打开文件确认的真实行号.
 判定图例: **MISSING** = 整模块缺失 | **自创** = Godot 有 PoC 没有 | **行为不同** = 都有但逻辑/数值不一致 | **数值错** = 常量/公式错 | **迁移差异** = DOM↔Control 合理实现差(不算 bug).
 

@@ -1,5 +1,9 @@
 # C 组系统移植规格 (5 龟状态机) — agent 审 PoC 提取, Godot 实现依据
 
+> ## ⚠ 2026-07-19 核实：本文所指的中心扣血点 `Damage.apply_raw_damage` 已非现行路径。
+> 实时版走 `RealtimeBattle3DScene.gd` 的 `_apply_damage_from`（普攻/技能主线）与 `_apply_damage`（DoT/真伤），两条各自独立扣盾扣血。
+
+
 > 2026-05-31 6-agent 审 PoC 后整理。权威源 = `../turtle-battle-poc/src/`（skill-handlers.ts / pets.ts / BattleScene.ts / passive-triggers.ts / damage.ts），JS 参照 `../../_reference/turtle-battle-js/js/`。
 > 数值锚见各节。所有"变身/换形"系列改 `base*` 再同步当前值，**recalc 不能抹掉**；多在 `Damage.apply_raw_damage` 中心扣血点挂累积。
 

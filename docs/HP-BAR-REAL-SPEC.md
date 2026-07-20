@@ -1,5 +1,12 @@
 # 血条真实规格 (2026-06-04, 对真PoC运行时核验) — ⭐ 之前两次读错代码层
 
+> ## ⛔ 2026-07-19 核实：本文结论与 `docs/BATTLE-RENDER-MAP.md` 【完全相反】，且本文是错的那份
+> 本文说"真实可见 = `scene-turtle-dom.ts`，`turtle-hud.ts` 那套不是运行的实现"；
+> 而 `BATTLE-RENDER-MAP.md:12` 查证 "`scene-turtle-dom.ts` 全仓库从不 import = 死代码，改它无用"，真渲染层是 `turtle-hud.ts`(88px)。
+> 实际落地的 `scripts/scenes/hp_bar.gd` 走的正是 **88px turtle-hud** 那套（各常量都引 turtle-hud.ts 行号）。
+> → 本文是更早的错误判断，血条规格以 `BATTLE-RENDER-MAP.md` 与 `hp_bar.gd` 为准。
+
+
 ## 教训 (用户"UI差远了"的根因)
 战斗血条**可见层 = DOM overlay** `scene-turtle-dom.ts` 的 `.st-hp-row` (CSS 在该文件 injectCss).
 - ❌ 我先读 `turtle-hud.ts`(88×5/逐行渐变/0x281010槽) → **那不是运行的实现**.

@@ -1,4 +1,11 @@
 # 召唤系/潮汐系/枪械系/独立件 实装规格 (用户批5, 2026-06-13 — 填完剩余034-059)
+
+> ## ⚠ 2026-07-19 核实：本文是【回合制口径】的早期规格，多处与现行装备不符
+> 钩子名（on_turn_begin / on_side_end / on_cast）与"N 回合"时长都是回合制概念，实时版是秒级 tick。
+> 部分装备的名字/属性/效果在后续评审中已改。（例：039 本文写"一次生长充能"，实际是"6/10/15 次充能，每第3段普攻消耗1次"）
+> → 现行事实源：`data/phase2-equipment.json`（名/费/文案）+ `scripts/engine/phase2_equip_runtime.gd`（`P2RT.STATS` 与各 `_eq_*` 实装）
+> + `docs/design/装备逐件审查进度.md`（由数据生成，逐件当前状态）。
+
 > 单位同前(crit小数/灼烧=Dot burn/生命偷取=_lifestealPct%/穿透flat/龟能=_maxEnergy/盾疗=shieldHealPct). **★=phase1可复用**.
 
 ## 召唤系

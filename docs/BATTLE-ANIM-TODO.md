@@ -1,5 +1,9 @@
 # 战斗技能动画/节奏 1:1 移植 — 工作清单
 
+> ## ⚠ 2026-07-19 核实：本文引用的 `skill_handlers.gd` 与 `BattleScene` 均已不存在（回合制遗留）。
+> 实时版的伤害收口是 `RealtimeBattle3DScene.gd` 的 `_apply_damage` 与 `_apply_damage_from`（两条独立路径）。
+
+
 ## ⚠️⚠️ 2026-06-05 架构修正 (用户: "忍者放技能每帧完全不一样" → "明显所有龟都有问题")
 **根因 (4-agent 全28龟逐行审计确认, 系统性非单龟)**: 旧版把每个技能拆 `_skill_windup(播完位移)→execute(一次性算全部伤害)→post(击飞)` 三段顺序; 而 PoC skill-handlers.ts 是一条 async 链, 在动画确切毫秒穿插命中。更深: `skill_handlers.gd` 在**数据层**就把 N 段命中累加成单个 effect → 多段技能塌缩成「**一个数字、同帧、伤害与动画脱钩**」。
 **已修 (8 commit, 336测全程绿)**:
