@@ -42,6 +42,7 @@ static func stat_lines(item_id: String, star: int) -> Array:
 	if st.has("armorPen"):       out.append(["护甲穿透", "+%d" % int(st["armorPen"])])
 	if st.has("magicPen"):       out.append(["魔法穿透", "+%d" % int(st["magicPen"])])
 	if st.has("_lifestealPct"):  out.append(["生命偷取", "+%d%%" % int(st["_lifestealPct"])])
+	if st.has("dodgePct"):       out.append(["闪避", "+%d%%" % int(st["dodgePct"])])
 	if st.has("reflectPct"):     out.append(["反伤", "+%d%%" % int(st["reflectPct"])])
 	if st.has("healAmp"):        out.append(["治疗增幅", "+%d%%" % int(st["healAmp"])])
 	if st.has("shieldAmp"):      out.append(["护盾增幅", "+%d%%" % int(st["shieldAmp"])])
@@ -55,6 +56,36 @@ static func stat_line_compact(item_id: String, star: int) -> String:
 	var parts: Array = []
 	for kv in stat_lines(item_id, star):
 		parts.append("%s%s" % [kv[0], kv[1]])
+	return " · ".join(parts) if not parts.is_empty() else "无属性加成"
+
+## 三星合并版(给图鉴用): "攻击力 +8/14/30 · 暴击率 +15/25/40%"
+##
+## ★为什么要有这个: 图鉴原先直接打印 data 里手写的 `baseStats1` 字符串,
+##   而 baseStats1 只是 STATS 的【人工镜像】, 没有任何机制保证它跟代码一致
+##   —— 靠人肉核对维持"零差异"(见 tools/hp_s9_equip.py 的注释)。
+##   改走这里之后, 图鉴与战斗实装同源, 手写镜像再漂移也影响不到玩家看到的数字。
+##
+## 星级间某字段缺失时补 "—", 例如只有 3★ 才给的属性显示成 "—/—/+20"。
+static func stat_lines_all_stars(item_id: String) -> Array:
+	var names: Array = []          # 保持 stat_lines 的字段顺序, 不用 Dictionary(无序)
+	var by_name: Dictionary = {}
+	for s in [1, 2, 3]:
+		for kv in stat_lines(item_id, s):
+			var n: String = str(kv[0])
+			if not by_name.has(n):
+				by_name[n] = ["—", "—", "—"]
+				names.append(n)
+			by_name[n][s - 1] = str(kv[1])
+	var out: Array = []
+	for n in names:
+		out.append([n, "/".join(PackedStringArray(by_name[n]))])
+	return out
+
+## 三星合并单行: "攻击力 +8/+14/+30 · 暴击率 +15%/+25%/+40%"
+static func stat_line_all_stars(item_id: String) -> String:
+	var parts: Array = []
+	for kv in stat_lines_all_stars(item_id):
+		parts.append("%s %s" % [kv[0], kv[1]])
 	return " · ".join(parts) if not parts.is_empty() else "无属性加成"
 
 const STATS := {
@@ -127,7 +158,7 @@ const STATS := {
 	# ── 召唤036温泉蛋 (批13, 复用孵化进度) ──
 	"p2eq_036": [{"hp": 70}, {"hp": 120}, {"hp": 180}],
 	# ── 潮汐046幽灵墨鱼 (批14, 复用_roll_dodge) ──
-	"p2eq_046": [{"hp": 80}, {"hp": 140}, {"hp": 400}],
+	"p2eq_046": [{"hp": 80, "dodgePct": 15}, {"hp": 140, "dodgePct": 25}, {"hp": 400, "dodgePct": 50}],
 	# ── 枪械056飞镖 (批15, 复用_knockedUpThisTurn击飞靶子) ──
 	"p2eq_056": [{"atk": 45}, {"atk": 90}, {"atk": 400}],
 	# ── 召唤032唤灵骨符(纯属性) + 033复活海螺(复用e_conch死亡变虫) (批16) ──

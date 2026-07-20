@@ -55,10 +55,30 @@ func _ready() -> void:
 		if not fmt.has(k): missing.append(k)
 	_ok("★背包格式化覆盖了实装的全部字段(不漏显示)", missing.is_empty(),
 		"漏: %s" % [missing])
+	# ★不是所有属性都走 _eq_apply_one_stats 的平铺路径。
+	#   有的经 _buff() 之类的专用分支实装 —— 这类字段允许只出现在格式化器里,
+	#   但必须在此登记, 且下面会验证它【真的被战斗代码读到】, 免得这里变成藏孤儿字段的后门。
+	var alt_path := {
+		"dodgePct": "p2eq_046 幽灵墨鱼: 经 _buff(u, \"dodge\", ...) 给永久闪避, 不走平铺属性",
+	}
 	var extra: Array = []
 	for k in fmt.keys():
-		if not impl.has(k): extra.append(k)
-	_ok("格式化没有实装里不存在的字段", extra.is_empty(), "多: %s" % [extra])
+		if not impl.has(k) and not alt_path.has(k): extra.append(k)
+	_ok("格式化没有实装里不存在的字段(非平铺路径的须在 alt_path 登记)",
+		extra.is_empty(), "多: %s" % [extra])
+
+	# 登记在 alt_path 的字段, 必须能在战斗场源码里找到取用点 —— 否则就是幽灵字段
+	var bat_src := ""
+	var fb := FileAccess.open("res://scripts/scenes/RealtimeBattle3DScene.gd", FileAccess.READ)
+	if fb != null:
+		bat_src = fb.get_as_text()
+		fb.close()
+	var ghost: Array = []
+	for k in alt_path.keys():
+		if not bat_src.contains(str(k)): ghost.append(k)
+	_ok("★alt_path 登记的字段在战斗代码里真被取用(防幽灵字段)",
+		ghost.is_empty() and not alt_path.is_empty(),
+		"登记 %d 个, 取不到的: %s" % [alt_path.size(), ghost])
 
 	# ── B. 59 件 × 3 星 全部能出结果, 无空白无异常 ──
 	var eqs: Array = DataRegistry.phase2_equipment

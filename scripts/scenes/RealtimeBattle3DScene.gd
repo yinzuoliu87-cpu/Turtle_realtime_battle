@@ -20593,7 +20593,13 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 	var stt: Dictionary = u["eq_state"].get(item_id, {})
 	match item_id:
 		"p2eq_046":   # 幽灵墨鱼: 永久闪避 buff (复用 dodge 系统)
-			_buff(u, "dodge", [0.15, 0.25, 0.50][si], false, 99999.0)
+			# 闪避率改从 P2RT.STATS 取 —— 它此前是这里的内联字面量, 而图鉴/背包读 STATS,
+			# 于是闪避在两处 UI 里都不显示(用户2026-07-19「必须写完整」的漏网)。现在同源。
+			var _a46: Array = P2RT.STATS.get("p2eq_046", [])
+			var _dg46: float = 0.0
+			if si < _a46.size():
+				_dg46 = float((_a46[si] as Dictionary).get("dodgePct", 0.0)) / 100.0
+			_buff(u, "dodge", _dg46, false, 99999.0)
 			stt["ghost_shield"] = [30.0, 50.0, 120.0][si]
 		"p2eq_054":   # 瞄准镜: 必中 (无视目标闪避)
 			u["eq_cannot_be_dodged"] = true
