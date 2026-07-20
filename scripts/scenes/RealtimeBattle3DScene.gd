@@ -17146,6 +17146,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 				_flash(o, Color(0.6, 0.86, 1.0))   # 敌蓝闪
 		"headless":
 			u["lifesteal"] += 0.22
+			u["headless_base_atk"] = float(u.get("base_atk", u.get("atk", 0.0)))   # 亡灵怒: 损血加攻的基准(每帧按损血重算, 见 _tick_periodic_passive)
 		"dice":
 			u["dice_base_crit"] = u["crit"]   # 基准(供损血暴击率算); 暴伤那半已删 —— 全局已有"暴击率溢出100%每1%→1.5%暴伤"(_resolve_dmg), 不需要单独基准(用户2026-07-19)
 			if "diceFlashStrike" in _chosen_skill_types(u["id"], u["side"] == "left"):
@@ -17333,6 +17334,19 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 				var _ndd: float = u["pos"].distance_to(o["pos"])
 				if _ndd <= _nbd: _nbd = _ndd; _nbest = o
 			if _nbest != null: _ninja_dash(u, _nbest)
+	# 亡灵怒(补实装 2026-07-19 用户拍板): 无头龟每损失 1% 最大生命 → 攻击力 +1%, 最高 +100%。
+	# 文案(pets.json headless.passive)与权威文档都写了这条, 但代码里【从来没有实现过】——
+	# 只有 _update_headless_flame 的函数头注释提了句"对应+1%攻/1%损血", 函数体却只改紫焰特效。
+	# 写法照骰子龟「赌徒之血」同型: 登场存基准 → 每帧按【当前损血】重算(不累积, 回血会降回去)。
+	if u["id"] == "headless":
+		var _hb: float = float(u.get("headless_base_atk", 0.0))
+		if _hb > 0.0:
+			var _hlost: float = clampf(1.0 - float(u["hp"]) / maxf(1.0, float(u["maxHp"])), 0.0, 1.0)
+			var _want: float = _hb * (1.0 + _hlost)
+			if not is_equal_approx(float(u.get("base_atk", 0.0)), _want):
+				u["base_atk"] = _want
+				_recalc_stats(u)
+
 	if u["id"] == "dice":   # 赌徒之血: 按已损血加暴击(损30%满+50%); 暴击率>100%部分每1%→1.5%暴伤
 		var _lost: float = clampf(1.0 - u["hp"] / u["maxHp"], 0.0, 1.0)
 		u["crit"] = float(u.get("dice_base_crit", u["crit"])) + minf(_lost / 0.30, 1.0) * 0.50
