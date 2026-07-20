@@ -21733,25 +21733,6 @@ func _burn_frame(fr: float, spr: Sprite3D) -> void:
 		spr.frame = int(fr) % 8
 
 
-func _spawn_dragon_puff(pos2d: Vector2, height: float, size_px: float) -> void:
-	var tex := VfxTex._make_fire_glow_tex()
-	var spr := Sprite3D.new()
-	spr.texture = tex
-	spr.modulate = Color(1.0, 0.5, 0.12, 0.92)
-	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	spr.shaded = false
-	spr.transparent = true
-	spr.pixel_size = (size_px * WS) / float(maxi(1, int(tex.get_width())))
-	spr.position = _world_pos(pos2d, height)
-	_world.add_child(spr)
-	var t := _reg_tween()
-	t.set_parallel(true)
-	t.tween_property(spr, "modulate:a", 0.0, 0.42)
-	t.tween_property(spr, "pixel_size", spr.pixel_size * 0.5, 0.42)
-	t.chain().tween_callback(spr.queue_free)
-
-
-
 # ============================================================================
 #  局内信息 UI — 左右队头像框栏 + 点单位看详情面板 (纯 UI, 不动玩法)
 #    1) _build_team_panels: 左右两竖栏 (主龟; 召唤体不进), 每框=头像+名+等级牌+迷你血条, 可点

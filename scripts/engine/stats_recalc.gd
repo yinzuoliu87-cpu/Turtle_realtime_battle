@@ -135,27 +135,6 @@ static func recalc(f: Dictionary, allies: Array = []) -> void:
 	f["_statsDirty"] = false
 
 
-## snapshot 当前 crit/armorPen/lifesteal 为 base (recalc 之后走 base + buffs)
-## 战斗开始建完 fighter + 装备 apply 后调一次。
-static func snapshot_base(f: Dictionary) -> void:
-	f["_baseCrit"] = f.get("crit", 0.0)
-	# _baseLifesteal 排除 _lifestealPct 折入部分 (recalc 会再加一遍), 防双计
-	var cur_ls: float = f.get("lifestealPct", 0.0)
-	var equip_ls: float = float(f.get("_lifestealPct", 0)) / 100.0
-	f["_baseLifesteal"] = cur_ls - equip_ls
-	f["_baseArmorPen"] = f.get("armorPen", 0)
-
-
-## 给所有 fighter 重算 (传同侧友军给 recalc 用于 diamond defAmp)
-static func recalc_all(fighters: Array) -> void:
-	for f in fighters:
-		var allies: Array = []
-		for x in fighters:
-			if x.get("side", "") == f.get("side", ""):
-				allies.append(x)
-		recalc(f, allies)
-
-
 ## 回合末: 所有 buff duration--, 移除到期的。DoT 层数 buff (duration 999) 跳过。
 ## 返 expired 数组让 caller 飘"buff 到期"。
 static func tick_buffs_duration(f: Dictionary) -> Array:

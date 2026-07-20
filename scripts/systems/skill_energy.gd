@@ -46,10 +46,6 @@ const SKILL_COST := {
 static func cost_of(stype: String) -> float:
 	return float(SKILL_COST.get(stype, COST_DEFAULT))
 
-## 该技充满需多少秒 (= 花费 × CD_FACTOR); 即"冷却秒数"
-static func charge_secs(stype: String) -> float:
-	return cost_of(stype) * CD_FACTOR
-
 ## 该技是不是"要花龟能的主动技" (在花费表里=主动; 普攻/被动不在表里走自己的节奏)
 static func is_active(stype: String) -> bool:
 	return SKILL_COST.has(stype)

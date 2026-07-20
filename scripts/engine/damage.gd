@@ -106,11 +106,6 @@ static func calc_damage(atk: Dictionary, tgt: Dictionary, base: float, dmg_type:
 
 # ─── 暴击 ───────────────────────────────────────────────────────
 
-## 0-1 概率, 默认 Godot 内置 randf()
-static func roll_crit(crit_chance: float) -> bool:
-	return randf() < crit_chance
-
-
 ## 暴击伤害倍率 (爆击溢出: crit>1 时多余转加伤)
 ##   critMult = 1.5 + extraCritDmg(临时) + extraCritDmgPerm(永久) + buffCritDmg + overflow×overflowMult
 ##   overflowMult 默认 1.5, 可被 passive 覆盖

@@ -138,19 +138,3 @@ const STANDBY_RECOVER_PCT := 0.30        # 待命回复: 存活单位回已损HP
 const ETERNAL_AFTER_ROUND := 30          # 单场第 30 回合后触发"永恒"叠加 (每场独立计)
 const ETERNAL_LEADER_STACK := 0.50       # 存活统领每回合 +50% 增伤/受伤 (仅统领, 小将/蛋不吃)
 const NO_DRAW := true                    # 无平局 (回合交替→总有先后)
-
-## 终极战场内 败方蛋登场后 单次攻蛋最终伤害 = 原始 ×5 (仅此阶段; 统领决战/上下路攻蛋仍 1×).
-static func egg_final_hit(raw: int) -> int:
-	return int(round(raw * FINAL_LOSER_EGG_DMG_MULT))
-
-## 终极战场内 败方蛋每回合自损 = 25% maxHP.
-static func egg_self_loss(egg_max_hp: int) -> int:
-	return int(round(egg_max_hp * FINAL_LOSER_EGG_SELF_LOSS))
-
-## 待命回复量: 已损失生命的 30% (只补已损部分, 不超上限).
-static func standby_recover(cur_hp: int, max_hp: int) -> int:
-	return int(round(maxi(0, max_hp - cur_hp) * STANDBY_RECOVER_PCT))
-
-## 永恒 buff 伤害系数: N 层 → ×(1 + 0.5N) (造成与受到各自乘).
-static func eternal_mult(stacks: int) -> float:
-	return 1.0 + ETERNAL_LEADER_STACK * maxi(0, stacks)

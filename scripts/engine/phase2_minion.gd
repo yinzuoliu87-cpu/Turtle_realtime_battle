@@ -83,20 +83,3 @@ static func make_minion(level: int, side: String, slot_key: String, is_elite: bo
 		"_isElite": is_elite,        # 整排均摊伤害 (待接战斗)
 	}
 
-
-## 给某一路某方补小将到 3 名: leader_count 已有统领数 → 补 (3 - leader_count) 个小将.
-##   leader_count==0 → 该方一前排小将升精英 (返回里第一个小将 is_elite=true).
-##   返回: 新建的小将 dict 数组 (槽位从已用之后顺延; 这里给出建议 slot_keys, 调用方可覆盖).
-static func fill_lane(leader_count: int, level: int, side: String) -> Array:
-	var need: int = maxi(0, 3 - leader_count)
-	if need <= 0:
-		return []
-	var slots := ["front-0", "front-1", "front-2", "back-0", "back-1", "back-2"]
-	# 已有统领默认占前排, 小将从空槽顺延 (壳: 简单按 leader_count 偏移)
-	var out: Array = []
-	var make_elite: bool = leader_count == 0
-	for i in range(need):
-		var sk: String = slots[(leader_count + i) % slots.size()]
-		var elite: bool = make_elite and i == 0   # 空一路 → 第一个小将升精英
-		out.append(make_minion(level, side, sk, elite))
-	return out

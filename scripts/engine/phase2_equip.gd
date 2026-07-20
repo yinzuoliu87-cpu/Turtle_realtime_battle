@@ -68,36 +68,6 @@ static func star_stats(base: Dictionary, star: int) -> Dictionary:
 	return out
 
 
-## item def + 当前星级 → 解析并升星后的属性.
-static func item_stats(item: Dictionary, star: int) -> Dictionary:
-	return star_stats(parse_base_stats(str(item.get("baseStats1", ""))), star)
-
-
-## 三合一可否: 恰好 MERGE_COUNT 件、同 id、同星、且未到满星.
-static func can_merge(item_ids: Array, star: int) -> bool:
-	if item_ids.size() != MERGE_COUNT or star >= MAX_STAR:
-		return false
-	for x in item_ids:
-		if x != item_ids[0]:
-			return false
-	return true
-
-
-## 合成结果 = 同 id 高一星.
-static func merge_result(item_id: String, star: int) -> Dictionary:
-	return {"id": item_id, "star": mini(MAX_STAR, star + 1)}
-
-
-## 升到 star 星 需要的同款【1星】总数: 1星=1, 2星=3, 3星=9.
-static func items_for_star(star: int) -> int:
-	return int(round(pow(MERGE_COUNT, maxi(0, star - 1))))
-
-
-## 星级标签.
-static func star_label(star: int) -> String:
-	return "%d星" % clampi(star, 1, MAX_STAR)
-
-
 ## 新商店掷货: 按局内等级的费用概率(SHOP_COST_ODDS[level]) 掷 count 个槽, 每槽从该费用的可刷池随机取一件.
 ##   pool=DataRegistry.phase2_equipment; rng 由调用方给(可 battle_seed 化→PvP一致/可测). 该费用没货则往低费回退.
 static func roll_shop(pool: Array, level: int, count: int, rng: RandomNumberGenerator) -> Array:

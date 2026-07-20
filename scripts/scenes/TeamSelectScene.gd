@@ -290,18 +290,6 @@ func _rect(key: String) -> Rect2:
 	return Rect2(top_left, Vector2(float(r["w"]), float(r["h"])) * s)
 
 
-## 屏幕坐标 → PoC(1647×955) 局部坐标 (_stage_to_screen 的逆·布局编辑器读回坐标用)
-func _screen_to_stage(sp: Vector2) -> Vector2:
-	var vp := _vp()
-	var s := _stage_scale()
-	var center := Vector2(POC_W, POC_H) * 0.5
-	var off := STAGE_OFFSET
-	var win := Vector2(DisplayServer.window_get_size())
-	if win.x > 0.5 and win.y > 0.5:
-		off = STAGE_OFFSET * (vp / win)
-	return center + (sp - vp * 0.5 - off) / s
-
-
 ## 放置一个 Control 到 PoC 区域 (绝对定位). 顺带登记 key→节点, 供布局编辑器实时重放.
 func _place(ctrl: Control, key: String) -> void:
 	_place_reg[key] = ctrl
@@ -722,23 +710,6 @@ func _play_entrance() -> void:
 	tw.tween_property(_ent_scroll, "modulate:a", 1.0, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 
-## 单元素入场: 从 (rest+off, from_scale, alpha0) 经 delay 后 dur 内回到 rest/1/1.
-## backwards 填充: 先把起始态摆好 (delay 期间保持隐藏), 再播.
-func _entrance(node: Control, off: Vector2, from_scale: float, delay: float, dur: float, trans: int) -> void:
-	if node == null or not is_instance_valid(node):
-		return
-	var rest: Vector2 = node.position
-	node.pivot_offset = node.size * 0.5
-	node.position = rest + off
-	node.scale = Vector2(from_scale, from_scale)
-	node.modulate.a = 0.0
-	var tw := create_tween()
-	tw.tween_interval(delay)
-	tw.tween_property(node, "position", rest, dur).set_trans(trans).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(node, "scale", Vector2.ONE, dur).set_trans(trans).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(node, "modulate:a", 1.0, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-
-
 func _build_synergy_region() -> void:
 	# PoC #ts-rg-synergy: 透明 (坐在画好的羊皮纸上), 标题深色 #4a2f12
 	var panel := PanelContainer.new()
@@ -886,11 +857,6 @@ func _make_detail_panel(key: String) -> PanelContainer:
 	return p
 
 
-## 透明面板 (PoC .ts-region / .dp-panel — 画框由背景整图皮提供, 内容浮层不画底)
-func _clear_panel() -> StyleBoxEmpty:
-	return StyleBoxEmpty.new()
-
-
 ## 给 Label 加投影 (近似 CSS text-shadow)
 func _add_text_shadow(lbl: Label, ofs: Vector2, col: Color) -> void:
 	lbl.add_theme_constant_override("shadow_offset_x", int(ofs.x))
@@ -972,28 +938,6 @@ func _sync_special_slots() -> void:
 	# 实时版停用召唤预留板位: 召唤物在战斗中现场生成, 选龟界面只摆 3 真龟, 不占位.
 	#   (回合制 6 格板有空位可预留, 实时 3 格全填 3 龟无空位; 留空函数避免 mark 越界/占位)
 	return
-
-
-func _sync_mark_slot(pet_id: String, mark: String, require_passive: bool, passive_type: String) -> void:
-	var has_pet := pet_id in team
-	var should_have := has_pet
-	if has_pet and require_passive and passive_type != "":
-		# crystal/candy 需 loadout 含特定 passive 技能 (PoC syncMarkSlot:1853-1857)
-		var pet: Dictionary = DataRegistry.pet_by_id.get(pet_id, {})
-		var pool: Array = pet.get("skillPool", [])
-		should_have = false
-		for i in _get_panel_loadout(pet_id):
-			if i >= 0 and i < pool.size() and str((pool[i] as Dictionary).get("type", "")) == passive_type:
-				should_have = true
-				break
-	var idx := team.find(mark)
-	if should_have and idx < 0:
-		for i in MARK_SLOT_ORDER:   # back-2→front-0
-			if team[i] == null:
-				team[i] = mark
-				break
-	elif not should_have and idx >= 0:
-		team[idx] = null
 
 
 func _refresh_all() -> void:

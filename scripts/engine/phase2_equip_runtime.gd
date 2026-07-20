@@ -118,34 +118,6 @@ static func _heal(target: Dictionary, amount: float) -> int:
 	return _healed
 
 
-## 逐星基础属性加到 fighter (mirror equipment_runtime._add_atk 等字段约定: 写 base + 同步当前值)。
-## 战中合星: 调整 fighter【基础】属性 ±装备属性 (sign=+1装上/-1卸下), StatsRecalc.recalc 从 base 重建 live。
-##   走 base 字段(baseAtk/_baseCrit/...)而非 live (避免与 buff 互撞/快照重算坑)。
-##   注: 不处理逐件特殊状态(_p2Harden/血盾上限/010横扫技 等); 带这类的罕见装备战中合星属性需 F5 核。
-static func merge_restat(f: Dictionary, item_id: String, star: int, sign: float) -> void:
-	var arr: Array = STATS.get(item_id, [])
-	var i: int = clampi(star, 1, 3) - 1
-	if i < 0 or i >= arr.size():
-		return
-	var st: Dictionary = arr[i]
-	if st.has("atk"): f["baseAtk"] = int(f.get("baseAtk", 0)) + roundi(sign * float(st["atk"]))
-	if st.has("hp"):
-		f["maxHp"] = maxi(1, int(f.get("maxHp", 0)) + roundi(sign * float(st["hp"])))
-		f["hp"] = clampi(int(f.get("hp", 0)) + roundi(sign * float(st["hp"])), 1, int(f["maxHp"]))
-	if st.has("crit"): f["_baseCrit"] = maxf(0.0, float(f.get("_baseCrit", f.get("crit", 0.0))) + sign * float(st["crit"]))
-	if st.has("armorPen"): f["_baseArmorPen"] = int(f.get("_baseArmorPen", f.get("armorPen", 0))) + roundi(sign * float(st["armorPen"]))
-	if st.has("magicPen"): f["magicPen"] = int(f.get("magicPen", 0)) + roundi(sign * float(st["magicPen"]))
-	if st.has("_lifestealPct"): f["_lifestealPct"] = int(f.get("_lifestealPct", 0)) + roundi(sign * float(st["_lifestealPct"]))
-	if st.has("_maxEnergy"): f["_maxEnergy"] = int(f.get("_maxEnergy", 0)) + roundi(sign * float(st["_maxEnergy"]))
-	if st.has("def"): f["baseDef"] = int(f.get("baseDef", 0)) + roundi(sign * float(st["def"]))
-	if st.has("mr"): f["baseMr"] = int(f.get("baseMr", 0)) + roundi(sign * float(st["mr"]))
-	if st.has("reflectPct"): f["reflectPct"] = float(f.get("reflectPct", 0.0)) + sign * float(st["reflectPct"])
-	if st.has("healAmp"): f["healAmp"] = float(f.get("healAmp", 0.0)) + sign * float(st["healAmp"])
-	if st.has("shieldAmp"): f["shieldAmp"] = float(f.get("shieldAmp", 0.0)) + sign * float(st["shieldAmp"])
-	if st.has("shieldHealPct"): f["shieldHealPct"] = float(f.get("shieldHealPct", 0.0)) + sign * float(st["shieldHealPct"])
-	if st.has("critDmg"): f["_extraCritDmgPerm"] = float(f.get("_extraCritDmgPerm", 0.0)) + sign * float(st["critDmg"])
-
-
 static func apply_stats(f: Dictionary, item_id: String, star: int, scale: float = 1.0) -> void:
 	var arr: Array = STATS.get(item_id, [])
 	var i: int = clampi(star, 1, 3) - 1
@@ -510,14 +482,6 @@ static func staff_add_mana(f: Dictionary, amount: float) -> void:
 # 回合开始: 每件法器 +25 法力。
 static func staff_round_begin(f: Dictionary) -> void:
 	staff_add_mana(f, 25.0)
-
-# 携带者打出技能伤害(原始伤害值之和)→ ×0.1 入每件法器法力。法器效果自身伤害【不】走这里。
-static func staff_on_skill_damage(f: Dictionary, total_dmg: float) -> void:
-	staff_add_mana(f, total_dmg * 0.1)
-
-# 携带者受伤(实际承受值)→ ×0.1 入每件法器法力。
-static func staff_on_damaged(f: Dictionary, dmg_taken: float) -> void:
-	staff_add_mana(f, dmg_taken * 0.1)
 
 # 某件法器法力是否满档(可触发)。
 static func staff_ready(f: Dictionary, staff_id: String) -> bool:
@@ -1598,19 +1562,6 @@ static func _roll_equip_of_cost(pool: Array, cost: int, rng: RandomNumberGenerat
 		return ""
 	var lst: Array = by_cost[tier]
 	return str(lst[rng.randi() % lst.size()])
-
-## 一次死亡产出: 某侧激活奇械总件数 × 一件 cost 费装备 → 返回产出的装备 id 数组(件数个, 每件独立掷)。
-static func gadget_produce(all_fighters: Array, side: String, cost: int, pool: Array, rng: RandomNumberGenerator) -> Array:
-	var out: Array = []
-	var pieces: int = gadget_piece_count(all_fighters, side)
-	if pieces <= 0:
-		return out
-	for _i in range(pieces):
-		var eid: String = _roll_equip_of_cost(pool, cost, rng)
-		if eid != "":
-			out.append(eid)
-	return out
-
 
 # ── 同侧存活、ATK 最高的友军 (021 伤害最高友军的近似) ──
 static func _highest_atk_ally(all_fighters: Array, owner: Dictionary) -> Dictionary:

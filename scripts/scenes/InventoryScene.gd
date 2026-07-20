@@ -369,29 +369,6 @@ func _slot_center_label(box: Control, txt: String, col: Color) -> void:
 	l.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	box.add_child(l)
-## 龟身装备槽可视化: 画 slots 个小格 (满格=该件稀有度色, 空格=暗轮廓), 居中一行. 替代"装N/M"文字.
-func _draw_equip_cells(box: Control, eqs: Array, slots: int, y: float) -> void:
-	var cw := 14.0   # 装备格加大(用户2026-07-18"拆卸装备太小"): 10→14·更易看清/点按
-	var gap := 4.0
-	var total := slots * cw + maxf(0.0, float(slots - 1)) * gap
-	var x0 := box.size.x / 2.0 - total / 2.0
-	for idx in range(slots):
-		var cell := Panel.new()
-		var csb := StyleBoxFlat.new()
-		if idx < eqs.size():
-			var eid := str((eqs[idx] as Dictionary).get("id", ""))
-			var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
-			csb.bg_color = _cost_color(int(edef.get("cost", 1)))
-			csb.border_color = Color(1, 1, 1, 0.45)
-		else:
-			csb.bg_color = Color(0, 0, 0, 0.35)
-			csb.border_color = Color("#3a4452")
-		csb.set_border_width_all(1); csb.set_corner_radius_all(2)
-		cell.add_theme_stylebox_override("panel", csb)
-		cell.position = Vector2(x0 + idx * (cw + gap), y)
-		cell.size = Vector2(cw, cw)
-		box.add_child(cell)
-
 ## 点格子: 选了装备+点龟=装备; 否则=单位摆位(无选中→选中, 已选中→移到该格, 占用则交换).
 # (旧 _on_grid_click 阵容格子已删, 双路布阵改用 _dl_click / _dl_toggle_role)
 
@@ -694,17 +671,6 @@ func _equip_to(pet_id: String, bench_idx: int) -> void:
 	GameState.save()
 	_rebuild()
 
-## 卸下 pet_id 最后一件装备 → 回背包.
-func _unequip_last(pet_id: String) -> void:
-	var eqs: Array = GameState.persistent_equipped.get(pet_id, [])
-	if eqs.is_empty():
-		return
-	GameState.persistent_bench.append(eqs.pop_back())
-	GameState.persistent_equipped[pet_id] = eqs
-	GameState.auto_merge_all()   # 卸回背包后自动 3 合 1 (背包+龟身一起算)
-	GameState.save()
-	_rebuild()
-
 ## 小将装备(实时新增): 存 dual_lineup[lane][idx].equips (id共享__minion__进不了persistent_equipped). 战斗端 _spawn_lane_side 读 .equips→_dl_equips 注入.
 func _equip_minion(lane: String, idx: int, bench_idx: int) -> void:
 	var bench: Array = GameState.persistent_bench
@@ -734,43 +700,6 @@ func _equip_minion(lane: String, idx: int, bench_idx: int) -> void:
 	GameState.auto_merge_all()   # 整理背包(小将装的不进合成池, 但背包其余照常3合1)
 	GameState.save()
 	_rebuild()
-
-## 卸下小将最后一件装备 → 回背包.
-func _unequip_minion_last(lane: String, idx: int) -> void:
-	var a: Dictionary = GameState.get_dual_lineup().duplicate(true)
-	if not a.has(lane) or idx < 0 or idx >= (a[lane] as Array).size():
-		return
-	var u: Dictionary = a[lane][idx]
-	var eqs: Array = u.get("equips", []) if u.get("equips", null) is Array else []
-	if eqs.is_empty():
-		return
-	GameState.persistent_bench.append(eqs.pop_back())
-	u["equips"] = eqs
-	a[lane][idx] = u
-	GameState.dual_lineup = a
-	GameState.auto_merge_all()
-	GameState.save()
-	_rebuild()
-
-# ─── 动作区: 卖出选中 (三合一升星全自动, 无需按钮) ───
-func _build_actions() -> void:
-	var hint := Label.new(); hint.text = "✨ 3 件同款同星 自动合成升星 (跟以前一样)"
-	hint.add_theme_font_size_override("font_size", 14); hint.add_theme_color_override("font_color", Color("#7a8595"))
-	hint.position = Vector2(64, 644); hint.size = Vector2(360, 24); add_child(hint)
-	if _sel_bench >= 0 and _sel_bench < GameState.persistent_bench.size():
-		var sit: Dictionary = GameState.persistent_bench[_sel_bench]
-		var sdef: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(sit.get("id", "")), {})
-		var dnm := Label.new(); dnm.text = "▶ %s  ★%d  (%s · %d费)" % [str(sdef.get("name", "")), int(sit.get("star", 1)), "费用%d" % int(sdef.get("cost", 1)), int(sdef.get("cost", 1))]
-		dnm.add_theme_font_size_override("font_size", 16); dnm.add_theme_color_override("font_color", Color("#ffd93d"))
-		dnm.position = Vector2(64, 520); dnm.size = Vector2(1140, 22); add_child(dnm)
-		var ddesc := Label.new(); ddesc.text = str(sdef.get("effectDesc1", "（无主动效果）"))
-		ddesc.add_theme_font_size_override("font_size", 13); ddesc.add_theme_color_override("font_color", Color("#bcd0e0"))
-		ddesc.position = Vector2(64, 546); ddesc.size = Vector2(1140, 44); ddesc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; add_child(ddesc)
-		var sv := _sell_value(GameState.persistent_bench[_sel_bench])
-		var sl := Button.new(); sl.text = "💰 卖出选中 (+%d💠)" % sv
-		sl.add_theme_font_size_override("font_size", 18)
-		sl.position = Vector2(340, 636); sl.size = Vector2(240, 44)
-		sl.pressed.connect(_sell_selected); add_child(sl)
 
 func _sell_value(item: Dictionary) -> int:
 	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(item.get("id", "")), {})

@@ -59,12 +59,6 @@ func setup(p_is_ally: bool, p_is_boss: bool) -> void:
 	border = 3.0 if p_is_boss else 2.0
 
 
-## 当前血条正显示的 HP 值 (上次 update_state 后定格的 _hp). 多源逐段修用:
-##   伤害飘字 chokepoint 据此 step-down (显示血量 ≥ 真实 hp, 逐飘字收敛). 未初始化(-1)→调用方退回真实 hp.
-func displayed_hp() -> float:
-	return _prev_hp
-
-
 ## hp_override / shield_override >= 0: 用给定值替代 f 的 hp/shield (多段技能血条逐段下降用).
 ##   _prev_hp 仍保留上次显示值 → 每段 update 自动触发 old→new 红 trail (turtle-hud playDamageTrail).
 func update_state(f: Dictionary, hp_override := -1.0, shield_override := -1.0) -> void:

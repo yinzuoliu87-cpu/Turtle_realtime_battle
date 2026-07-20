@@ -370,11 +370,6 @@ static func tentacle_setup(team: Array) -> Dictionary:
 	return {"count": tier, "dmg_mult": 1.0 + 0.05 * float(star_sum)}
 
 
-## 单次触手拍击的基础伤害 (沿途每个敌人): (4% 目标最大HP + 55) × dmg_mult。返整数(>=1)。
-static func tentacle_slap_damage(target_max_hp: int, dmg_mult: float) -> int:
-	return maxi(1, roundi((0.04 * float(target_max_hp) + 55.0) * dmg_mult))
-
-
 # ══════════════════════════════════════════════════════════════════
 # 【法器·法力系统】(类型·法器 [法师] 激活 2/4/6 → 满档 100/80/60)
 #   ⚠ 铁律: 法力(mana) ≠ 龟能(energy)。法力存在独立字段 _staff_mana = {装备id: 当前值},
@@ -383,16 +378,6 @@ static func tentacle_slap_damage(target_max_hp: int, dmg_mult: float) -> int:
 # ══════════════════════════════════════════════════════════════════
 
 const STAFF_TYPE := "法器"
-## 法器满档(触发阈值): tier 2/4/6 → 100/80/60。tier=该队法器激活档(1/2/3)。
-static func staff_mana_cap(tier: int) -> int:
-	return [100, 80, 60][clampi(tier, 1, 3) - 1]
-
-## 某 fighter 的法器激活档(1-based, 0=未激活/无法器)。优先读 apply_team_start 标记的 _staffTier。
-static func staff_tier_of(f: Dictionary) -> int:
-	if not (f is Dictionary):
-		return 0
-	return int(f.get("_staffTier", 0))
-
 ## 该 fighter 携带的全部法器装备 id (顺序与 _p2_equips 一致)。
 static func staff_ids_of(f: Dictionary) -> Array:
 	var out: Array = []

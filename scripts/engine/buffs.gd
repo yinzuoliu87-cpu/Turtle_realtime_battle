@@ -74,68 +74,12 @@ static func has(f: Dictionary, type: String) -> bool:
 	return find(f, type) != null
 
 
-## 求和某 type 全部 value (多数情况 1 个; 备 lifesteal 多源)
-static func sum_value(f: Dictionary, type: String) -> float:
-	var total: float = 0.0
-	var buffs: Array = f.get("buffs", [])
-	for b in buffs:
-		if b is Dictionary and b.get("type", "") == type:
-			total += b.get("value", 0)
-	return total
-
-
-## 消费一次 (一次性 buff 如 trap): 返 value, 同时移除。无则 0。
-static func consume_one(f: Dictionary, type: String) -> float:
-	var buffs: Array = f.get("buffs", [])
-	for i in range(buffs.size()):
-		var b = buffs[i]
-		if b is Dictionary and b.get("type", "") == type:
-			var v: float = b.get("value", 0)
-			buffs.remove_at(i)
-			return v
-	return 0.0
-
-
-## 移除所有同 type buff, 返移除数
-static func remove_all(f: Dictionary, type: String) -> int:
-	var buffs: Array = f.get("buffs", [])
-	var before: int = buffs.size()
-	var kept: Array = []
-	for b in buffs:
-		if not (b is Dictionary and b.get("type", "") == type):
-			kept.append(b)
-	f["buffs"] = kept
-	return before - kept.size()
-
-
 # ─── 集合判定 (target selector / next_actor 用) ──────────────────
 
 ## 是否被眩晕且本回合还没用过跳过 (stun value=1, _stunUsed 守卫)
 static func is_stunned(f: Dictionary) -> bool:
 	return has(f, "stun") and not f.get("_stunUsed", false)
 
-
-static func is_stealth(f: Dictionary) -> bool:
-	return has(f, "stealth")
-
-
-static func is_blackhole(f: Dictionary) -> bool:
-	return has(f, "blackhole") or f.get("_isInBlackhole", false)
-
-
-## 返回带 taunt buff 的 fighter 子集 (target selector 用)
-static func collect_taunters(fighters: Array, side: String) -> Array:
-	var out: Array = []
-	for f in fighters:
-		if f.get("side", "") == side and f.get("alive", false) and has(f, "taunt"):
-			out.append(f)
-	return out
-
-
-## 决胜局 疲惫 (overtime fatigue): 30 回合后全龟获得, 治疗/护盾效果 ×0.5 直到战斗结束。
-## 由 BattleScene._apply_overtime_escalation 设 _overtimeFatigue=true。
-static func is_fatigued(f: Dictionary) -> bool:
-	return f.get("_overtimeFatigue", false)
 
 ## 受治疗/获护盾的量按 疲惫 折算 (疲惫 → ×0.5, 否则原值)。返回 int。
 static func fatigue_amt(f: Dictionary, amt) -> int:
@@ -153,8 +97,3 @@ static func grant_shield(f: Dictionary, amt) -> int:
 	f["shield"] = int(f.get("shield", 0)) + add
 	return add
 
-
-## 回合开始: 重置 per-turn 标记
-static func reset_per_turn_flags(f: Dictionary) -> void:
-	f["_stunUsed"] = false
-	f["_equipFireStackedThisCast"] = false

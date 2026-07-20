@@ -115,31 +115,6 @@ func reset_dual_lane() -> void:
 	side_controllers = {"left": "local", "right": "ai"}
 	battle_seed = 0
 
-## 一组龟 id 的平均等级 (四舍五入, 至少1). 双路小将等级 / 起始局内等级 / 龟蛋HP 用 (= 选龟平均等级).
-func team_avg_level(ids: Array) -> int:
-	if ids.is_empty():
-		return 1
-	var s := 0
-	for id in ids:
-		s += get_pet_level(str(id))
-	return maxi(1, int(round(float(s) / float(ids.size()))))
-
-
-## 开局布置双路 (壳): 6 龟均分上/下路 + 按均等级初始化龟蛋 HP.
-## 上线版玩家会暗选分路, 这里 auto_split 占位; player_avg_lv/enemy_avg_lv 给龟蛋 HP 公式.
-func setup_dual_lane(player_ids: Array, enemy_ids: Array, start_level: int = 1) -> void:
-	reset_dual_lane()
-	mode = "duallane"
-	lane_assign = _DualLane.auto_split(player_ids)
-	enemy_lane_assign = _DualLane.auto_split(enemy_ids)
-	# 龟蛋HP 由局内等级定 (TFT风); 开局等级 start_level (默认1→1050).
-	dual_level = {"left": start_level, "right": start_level}
-	dual_avg_level = {"left": start_level, "right": start_level}   # 修(审计A4#2): 原漏设 → 冒烟/测试路径小将恒Lv1
-	var hp: int = _P2.egg_hp(start_level)
-	egg_hp = {"left": hp, "right": hp}
-	egg_hp_max = {"left": hp, "right": hp}
-	current_lane = "top"
-
 ## 加 XP, 自动连续升级; 每升一级强化龟蛋(用户定: max+50且current+50, 累计伤害保留). 返回升的级数.
 func add_xp(side: String, n: int) -> int:
 	if n <= 0 or int(dual_level.get(side, 1)) >= _P2.MAX_LEVEL:
@@ -235,19 +210,6 @@ func _buy_would_merge(item_id: String, star: int, side: String) -> bool:
 			if it is Dictionary and str(it.get("id", "")) == item_id and int(it.get("star", 1)) == star:
 				have += 1
 	return have >= _Equip.MERGE_COUNT - 1
-
-## 备战席第 idx 件【出售】退币 (仅玩家用; AI 不出售). 售价 = 该装备 cost × 星级 (1星=cost / 2星=2×cost / 3星=3×cost,
-##   ≈ 凑成该星所付总买价的折算: 2星耗3件买价但只退2×, 略低于买价, 贴合云顶"卖略亏"). 退到 dual_coins[side]. 成功 true.
-##   消耗品/单体buff(字符串 bench 项, 如口哨/糖果罐) 没有 cost 概念 → 不可售, 返回 false。
-func sell_bench_item(idx: int, side: String = "left") -> bool:
-	if idx < 0 or idx >= bench_inventory.size():
-		return false
-	var b = bench_inventory[idx]
-	if not (b is Dictionary):
-		return false   # phase1 字符串项 (口哨/糖果罐/消耗品) 不可售
-	dual_coins[side] = int(dual_coins.get(side, 0)) + sell_value(str(b.get("id", "")), int(b.get("star", 1)))
-	bench_inventory.remove_at(idx)
-	return true
 
 ## 装备出售价 = floor(cost × star × 0.8) (cost 取 phase2 装备定义; 缺失则按 1; 至少退 1).
 ##   ×0.8 = 云顶式"卖略亏": 单件买立刻卖也有 ~20% 损耗 (旧 cost×star = 全额退/零损耗, 已废). 集中一处便于调平衡.
@@ -397,18 +359,6 @@ func equip_to_turtle(bench_idx: int, pet_id: String, side: String = "left") -> b
 	try_merge_all(side)   # 装备后跨域三合一
 	return true
 
-## 把某龟第 slot_idx 件卸回备战席. 成功 true.
-func unequip_from_turtle(pet_id: String, slot_idx: int) -> bool:
-	if not equipped_p2.has(pet_id):
-		return false
-	var arr: Array = equipped_p2[pet_id]
-	if slot_idx < 0 or slot_idx >= arr.size() or bench_inventory.size() >= _P2.BENCH_CAP:
-		return false
-	bench_inventory.append(arr[slot_idx])
-	arr.remove_at(slot_idx)
-	try_merge_all()   # 卸下后跨域三合一
-	return true
-
 ## 敌方AI购物 (right): 全复用玩家管线 (buy_xp / buy_shop_item / equip_to_turtle+try_merge_all).
 ##   ① 盈余高于装备预算且未满级 → 买经验升级开槽 (槽跟上玩家)。
 ##   ② 掷货 → 每件买得起的 → buy_shop_item 进【AI 专属席】→ equip_to_turtle 装到有空槽的敌方龟(自带三合一升星)。
@@ -490,17 +440,6 @@ func ai_dual_shop() -> int:
 	dual_shop_offer = saved_offer
 	return bought
 
-## 刷新货架 (花刷新费). 成功 true.
-##   刷新费恒为 shop_refresh_cost(0) (=flat 2, STEP=0 不递增); 单一来源.
-##   旧 dual_shop_refresh_n 累加已失效 (STEP=0 → n 不影响费用), 删除以免误导.
-func refresh_shop(side: String = "left") -> bool:
-	var cost: int = _P2.shop_refresh_cost(0)
-	if int(dual_coins.get(side, 0)) < cost:
-		return false
-	dual_coins[side] = int(dual_coins[side]) - cost
-	roll_shop_offer(side)
-	return true
-
 ## 记录某路胜者 ("left"/"right"), 推进到下一路.
 func record_lane_result(winner: String) -> void:
 	lane_results[current_lane] = winner
@@ -514,94 +453,8 @@ func dual_lane_needs_final() -> bool:
 func dual_lane_winner() -> String:
 	return _DualLane.overall_winner(lane_results)
 
-## 整局是否已分胜负: 谁的龟蛋被摧毁谁败 (胜负只看蛋, 不看赢几路). "" = 未分.
-func dual_match_over() -> String:
-	var l_dead: bool = int(egg_hp_max.get("left", 0)) > 0 and not egg_alive("left")
-	var r_dead: bool = int(egg_hp_max.get("right", 0)) > 0 and not egg_alive("right")
-	if l_dead and r_dead:
-		return "left"   # 双蛋同灭(真平局, 终极双方团灭罕见) → 归玩家 (原顺查左先=恒判右赢=偏袒敌方)
-	if l_dead:
-		return "right"
-	if r_dead:
-		return "left"
-	return ""
-
-## 上下两路是否都打完.
-func dual_lanes_done() -> bool:
-	return _DualLane.lanes_done(lane_results)
-
-## 快照某场存活统领(非小将/召唤/蛋) → 待命回复30%已损 → 累计进 dual_survivors (终极带血汇合).
-func snapshot_lane_survivors(fighters: Array) -> void:
-	for f in fighters:
-		if f.get("_isMinion", false) or f.get("_isEgg", false) or f.get("_isSummon", false):
-			continue
-		if not f.get("alive", false):
-			continue
-		var s := str(f.get("side", ""))
-		if s != "left" and s != "right":
-			continue
-		var hp: int = int(f.get("hp", 0))
-		var maxhp: int = int(f.get("maxHp", 0))
-		var recovered: int = mini(maxhp, hp + int(round((maxhp - hp) * _P2.STANDBY_RECOVER_PCT)))
-		# 回写战中(拖装/合星)对装备的最终改动 → 持久存储, 跨路保留 (仅我方;
-		#   否则下路/终极从 equipped_p2 重建会丢战中装的, 且该件已从备战席删=彻底丢失。审计 2026-06-23)
-		if s == "left" and f.has("_p2_equips"):
-			equipped_p2[str(f.get("id", ""))] = (f["_p2_equips"] as Array).duplicate(true)
-		(dual_survivors[s] as Array).append({
-			"id": str(f.get("id", "")), "hp": recovered, "maxHp": maxhp,
-			"level": int(f.get("_level", 1)),
-		})
-
-## 攻蛋: 对某方龟蛋累计伤害 (amount 为最终值, 调用方按场景先算好×5; 跨上/下/终极累计).
-## 返回是否摧毁 (HP 归零). §4 伤害跨战场累计保留.
-func damage_egg(side: String, amount: int) -> bool:
-	var cur: int = maxi(0, int(egg_hp.get(side, 0)) - maxi(0, amount))
-	egg_hp[side] = cur
-	return cur <= 0
-
 func egg_alive(side: String) -> bool:
 	return int(egg_hp.get(side, 0)) > 0
-
-## 龟蛋血量比例 (HUD 用) 0..1.
-func egg_frac(side: String) -> float:
-	var mx: int = int(egg_hp_max.get(side, 0))
-	return clampf(float(egg_hp.get(side, 0)) / float(mx), 0.0, 1.0) if mx > 0 else 0.0
-
-## 双路对局快照 (PvP 权威同步 / 断线重连用) — 可 JSON 序列化的对局态.
-## (单位逐龟 state 不在此, 由战斗层另行同步; 这里是对局框架态.)
-func dual_lane_snapshot() -> Dictionary:
-	return {
-		"lane_assign": lane_assign.duplicate(true),
-		"enemy_lane_assign": enemy_lane_assign.duplicate(true),
-		"current_lane": current_lane,
-		"egg_hp": egg_hp.duplicate(true),
-		"egg_hp_max": egg_hp_max.duplicate(true),
-		"lane_results": lane_results.duplicate(true),
-		"dual_shop_visits": dual_shop_visits,
-		"dual_level": dual_level.duplicate(true),
-		"dual_xp": dual_xp.duplicate(true),
-		"dual_passive_xp_started": dual_passive_xp_started,
-		"dual_coins": dual_coins.duplicate(true),
-		"side_controllers": side_controllers.duplicate(true),
-		"battle_seed": battle_seed,
-	}
-
-## 应用对局快照 (权威下发 → 本端覆盖). 重连续战用.
-func apply_dual_lane_snapshot(snap: Dictionary) -> void:
-	mode = "duallane"
-	lane_assign = (snap.get("lane_assign", {}) as Dictionary).duplicate(true)
-	enemy_lane_assign = (snap.get("enemy_lane_assign", {}) as Dictionary).duplicate(true)
-	current_lane = str(snap.get("current_lane", "top"))
-	egg_hp = (snap.get("egg_hp", {}) as Dictionary).duplicate(true)
-	egg_hp_max = (snap.get("egg_hp_max", {}) as Dictionary).duplicate(true)
-	lane_results = (snap.get("lane_results", {}) as Dictionary).duplicate(true)
-	dual_shop_visits = int(snap.get("dual_shop_visits", 0))
-	dual_level = (snap.get("dual_level", {"left": 1, "right": 1}) as Dictionary).duplicate(true)
-	dual_xp = (snap.get("dual_xp", {"left": 0, "right": 0}) as Dictionary).duplicate(true)
-	dual_passive_xp_started = bool(snap.get("dual_passive_xp_started", true))   # 重连默认已开始(不再误跳首回合)
-	dual_coins = (snap.get("dual_coins", {"left": 0, "right": 0}) as Dictionary).duplicate(true)
-	side_controllers = (snap.get("side_controllers", {"left": "local", "right": "ai"}) as Dictionary).duplicate(true)
-	battle_seed = int(snap.get("battle_seed", 0))
 
 # ─── 闯关进度 (单次冒险, 不持久化, 失败重置) ───────────────────
 var dungeon_stage: int = 1                           # 当前第几关 (1-5)
@@ -727,27 +580,6 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 # ─── 局内经济 (用户 v0.9.9 — 1:1 PoC BattleScene 经济) ──────────
-
-## 野生敌方模式判定 (1:1 PoC isWildEnemyMode: 'pve'||'custom').
-## 野生 = 玩家打随机野生龟的对局; 深海/Boss/测试 不给敌方 AI 钱 (aiGainCoins 守卫).
-## Godot: single/custom/pve = 野生自定义局; dungeon 非 boss 关也是随机野生龟; boss/boss-pick/test 排除.
-func is_wild_enemy_mode() -> bool:
-	if mode in ["single", "custom", "pve"]:
-		return true
-	if mode == "dungeon" and not is_dungeon_boss_stage():
-		return true
-	return false
-
-
-
-
-
-
-
-
-
-
-
 
 ## 记一场对局 (BattleEnd 调) — 最新在前, 封顶 50
 func record_match(result: String, lineup: Array, mode_str: String, turn_num: int) -> void:
