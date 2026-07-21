@@ -1714,15 +1714,21 @@ func _build_far_backdrop(root: Node3D) -> void:
 	var img := Image.create(2, H, false, Image.FORMAT_RGBA8)
 	for y in range(H):
 		var t := float(y) / float(H - 1)          # 0=近(接地砖) 1=远(水雾)
-		# 近端接住地砖色, 远端提亮成水雾青(第一版远端太暗, 天际线看不出层次)
-		var c := Color(0.060, 0.095, 0.165).lerp(Color(0.115, 0.310, 0.375), pow(t, 0.65))
+		# ★2026-07-21 实测定位(沿画面竖线采样 RGB, 不是凭眼睛看):
+		#     y=0..12  #021B2E→#254B6D   只有最顶 14px 有颜色
+		#     y=30 起  #001727 → #000913 近乎纯黑, 一直黑到地砖
+		#   根因不是"装饰不够", 是【这张渐变图只看得到最近的 20%】——
+		#   面 z 向 46m 覆盖 z∈[-60,-14], 而画面只看得到 z∈[-24,-15], 亮端在 z=-60 永远进不了画面。
+		#   对策: ①面收到刚好等于可见带(见下方 pm.size/position) ②两端都补亮
+		#         —— filmic tonemap + contrast 1.08 会把暗部再吃掉约一半, 所以要按【看到的】反推着调。
+		var c := Color(0.075, 0.130, 0.200).lerp(Color(0.190, 0.430, 0.500), pow(t, 0.65))
 		for x in range(2):
 			img.set_pixel(x, y, c)
 	var grad_tex := ImageTexture.create_from_image(img)
 
 	var floor_far := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
-	pm.size = Vector2(150.0, 46.0)               # x 向够宽(画面在那个距离约 60m 宽), z 向从地砖边延伸出去
+	pm.size = Vector2(150.0, 16.0)               # x 向够宽(画面在那个距离约 60m 宽); z 向【只铺可见带】, 见下
 	pm.orientation = PlaneMesh.FACE_Y            # 平铺在地面上
 	floor_far.mesh = pm
 	var wm := StandardMaterial3D.new()
@@ -1732,8 +1738,9 @@ func _build_far_backdrop(root: Node3D) -> void:
 	wm.cull_mode = BaseMaterial3D.CULL_DISABLED
 	wm.fog_enabled = false                       # 自己不吃雾(否则又被刷成黑)
 	floor_far.material_override = wm
-	# 中心放在 z=-37 → 覆盖 z∈[-60,-14], 正好从地砖边缘往远处接出去
-	floor_far.position = Vector3(0.0, -0.03, -37.0)
+	# 中心 z=-22 → 覆盖 z∈[-30,-14]。可见带是 z∈[-24,-15], 于是渐变的 t 能跑到 0.63
+	#   (原来中心 -37/深 46 → 只跑到 t≈0.22, 亮端根本进不了画面, 这就是"天空是黑的"的真因)
+	floor_far.position = Vector3(0.0, -0.03, -22.0)
 	floor_far.rotation_degrees = Vector3(0.0, 180.0, 0.0)   # 让渐变的"远端"朝外
 	floor_far.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	holder.add_child(floor_far)
@@ -1744,47 +1751,43 @@ func _build_far_backdrop(root: Node3D) -> void:
 	#   所以【越近的层能放越高的东西】。第一版所有剪影都压到 1.8~3.6m 摆在同一深度带,
 	#   看着就是零散几块、没有纵深(用户 2026-07-21:「太弱了」)。改成三层, 由近及远:
 	#     近层 高而清晰 → 中层 → 远层 矮而淡, 叠出天际线。
-	var reef_paths := ["res://assets/sprites/map/reef_big.png",
-					   "res://assets/sprites/map/reef_wall.png",
-					   "res://assets/sprites/map/deco_rocks.png"]
-	var rtexs: Array = []
-	for rp in reef_paths:
-		if ResourceLoader.exists(rp):
-			rtexs.append(load(rp))
-	if not rtexs.is_empty():
-		var rng := RandomNumberGenerator.new()
-		rng.seed = 20260721                       # 确定性: 每局远景一致, 不闪
-		# [z范围, 高度范围, 数量, 亮度] —— 近层亮而高, 远层暗而矮
-		var layers := [
-			[-15.4, -17.2, 3.0, 4.8, 14, 1.00],   # 近: 主体礁群
-			[-17.6, -19.8, 2.0, 3.2, 16, 0.72],   # 中
-			[-20.2, -23.2, 1.0, 1.9, 18, 0.48],   # 远: 天际线
-		]
-		for L in layers:
-			var z0: float = L[0]
-			var z1: float = L[1]
-			var h0: float = L[2]
-			var h1: float = L[3]
-			var cnt: int = int(L[4])
-			var bright: float = L[5]
-			for i in range(cnt):
-				var rtex: Texture2D = rtexs[rng.randi() % rtexs.size()]
-				var spr := Sprite3D.new()
-				spr.texture = rtex
-				spr.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-				spr.shaded = false
-				spr.transparent = true
-				spr.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
-				var scl := rng.randf_range(h0, h1)
-				spr.pixel_size = scl / float(maxi(1, rtex.get_height()))
-				# 大气透视: 越远越淡越偏蓝
-				var base := Color(0.30, 0.52, 0.66) * bright
-				base.a = 1.0
-				spr.modulate = base
-				spr.position = Vector3(rng.randf_range(-32.0, 32.0), scl * 0.5,
-									   rng.randf_range(z0, z1))
-				spr.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-				holder.add_child(spr)
+	# ★2026-07-21 第二版(用户:「你直接这样贴一个图也不太行」)。
+	#   第一版是【把前景那几张礁石精灵随机撒到远处再调暗】—— 撒出来的是"更多装饰",
+	#   不是地貌: 没有连续的山脊线、没有落差, 每块之间都是空的, 所以读作贴图。
+	#   改成【程序生成的连续山脊剪影】: 一条通宽的锯齿轮廓, 三层由近及远叠出天际线。
+	# ★俯视下【越远的东西在屏幕上越高】, 所以由远及近 = 由上往下堆。
+	#   可见高度上限 y_top = 28 - 0.606×(22-z): z=-17.5→4.0m  z=-20→2.5m  z=-22.4→1.1m。
+	#   第二版曾把最近一层做到 4.6m ≈ 顶满整条可见带 → 就是一整块大色斑, 后两层被它全挡住。
+	#   现在每层只占各自上限的一半左右, 才叠得出天际线。
+	# ★颜色必须【贴着背景水色】只差一点 —— 远景是雾里的地貌不是剪纸。
+	#   第二版用 (0.30,0.52,0.66) 比背景亮一大截, 就成了一块亮青色卡纸。
+	# ★颜色第三版: 前一版把山脊做成【比背景暗】的剪影 → 实测在 y≈32~50 压出一条纯黑带
+	#   (#00101E/#000410, 采样见下面渐变面的注释)。filmic tonemap 把暗部再吃一半, 暗剪影必然糊成黑。
+	#   水下远景地貌是【雾里的亮轮廓】(同雾中远山), 越远越亮越贴雾色 —— 按这个来。
+	var ridges := [
+		# [z,     高度, 粗糙度, 种子, 颜色]  —— 远→近, 越远越亮(离水面光源越近 + 中间隔的水越多)
+		[-22.4, 1.05, 0.50, 43, Color(0.235, 0.470, 0.540)],
+		[-20.0, 1.45, 0.72, 27, Color(0.200, 0.400, 0.470)],
+		[-17.5, 2.00, 1.00, 11, Color(0.165, 0.330, 0.400)],
+	]
+	for R in ridges:
+		var rz: float = R[0]
+		var rh: float = R[1]
+		var rough: float = R[2]
+		var rtex := _make_ridge_texture(int(R[3]), rough)
+		var spr := Sprite3D.new()
+		spr.texture = rtex
+		spr.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # 山脊是固定几何, 不能跟着相机转
+		spr.shaded = false
+		spr.transparent = true
+		spr.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD      # 剪影用 discard, 免去半透排序问题
+		spr.pixel_size = rh / float(rtex.get_height())
+		var base: Color = R[4]
+		base.a = 1.0
+		spr.modulate = base
+		spr.position = Vector3(0.0, rh * 0.5, rz)
+		spr.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		holder.add_child(spr)
 
 	# ── ②b 远景发光群(珊瑚/海葵/海带) ──────────────────────────
 	# 剪影只有轮廓没有"生气"。加一层加性发光的小点缀, 让远处天际线有光斑闪烁感,
@@ -1846,8 +1849,166 @@ func _build_far_backdrop(root: Node3D) -> void:
 		sh.pixel_size = 0.030
 		sh.modulate = Color(0.42, 0.80, 1.0, 0.22)
 		sh.position = Vector3(-26.0 + float(i) * 10.5, 1.6, -18.5)
+		# ★2026-07-21 第二版: 原来 billboard=ENABLED 且不带倾角 → 渲染成一排【笔直的竖白条打在地板上】,
+		#   像聚光灯不像水下光柱。真实的丁达尔光是从【水面斜射下来】的。
+		#   billboard 关掉才能转; 远景本来就正对相机(相机在 +z 看向 -z), 不转也朝向对。
+		sh.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+		sm.billboard_mode = BaseMaterial3D.BILLBOARD_DISABLED
+		sh.rotation_degrees = Vector3(0.0, 0.0, 11.0 if (i % 2 == 0) else -8.0)
 		sh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		holder.add_child(sh)
+
+	# ── ④鱼群 + ⑤气泡柱: 背景"活起来"的关键 ────────────────────
+	# ★这才是第一版最大的漏 —— 整条远景带零动态。前景在打架、背景一动不动,
+	#   再多装饰也读作"贴了张图"(用户 2026-07-21)。
+	_build_far_fish(holder)
+	_build_far_bubbles(holder)
+
+
+## 程序生成一条山脊剪影贴图: 通宽锯齿轮廓, 下方实心上方透明, 顶沿带一道亮边(轮廓可读).
+##   ★不用美术图 —— 现有礁石精灵是【前景尺度】的, 拉到远处会因细节密度不对而"读不出距离"。
+func _make_ridge_texture(seed_v: int, rough: float) -> ImageTexture:
+	# ★宽高比决定世界尺寸: pixel_size 按【高】算, 所以世界宽 = w/h × 高。
+	#   要在 z≈-20 处铺满画面需要约 70m 宽; h=64、高 1.5m → 每米约 43px → w 至少 64×(70/1.5)≈3000。
+	#   第二版 w=512 → 只有 10m 宽, 两边留着大豁口(截图里山脊没到屏幕边)。
+	var w := 3072
+	var h := 64
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_v
+	# 三层不同频率的正弦叠加 = 起伏有大有小, 比纯随机更像地貌
+	var ph := [rng.randf() * TAU, rng.randf() * TAU, rng.randf() * TAU]
+	for x in range(w):
+		var fx := float(x) / float(w)
+		var t: float = 0.50
+		t += 0.26 * sin(fx * TAU * 1.7 + ph[0]) * rough
+		t += 0.14 * sin(fx * TAU * 4.3 + ph[1]) * rough
+		t += 0.07 * sin(fx * TAU * 9.1 + ph[2]) * rough
+		var top := int(clampf(1.0 - t, 0.06, 0.96) * float(h))   # 轮廓线所在行 (越小越高)
+		for y in range(top, h):
+			# 内部竖向渐变: 顶沿略亮(水面来的散射), 往下沉暗。
+			#   第二版整块填纯白再 modulate → 平得像剪纸, 这是"贴图感"的一大来源。
+			var fy: float = float(y - top) / float(maxi(1, h - top))
+			# 收窄到 1.10→0.85: 原来底部乘 0.62, 经 tonemap 压暗后山脊下半截直接沉成黑块
+			var v: float = lerpf(1.10, 0.85, pow(fy, 0.75))
+			img.set_pixel(x, y, Color(v, v, v, 1.0))
+	return ImageTexture.create_from_image(img)
+
+
+## 小鱼剪影贴图 (远景只需要轮廓: 椭圆身 + 三角尾).
+func _make_fish_texture() -> ImageTexture:
+	var w := 22
+	var h := 12
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var cx := 8.0
+	var cy := float(h) * 0.5
+	for x in range(w):
+		for y in range(h):
+			var inside := false
+			var dx := (float(x) - cx) / 7.5
+			var dy := (float(y) - cy) / 3.4
+			if dx * dx + dy * dy <= 1.0:
+				inside = true                                   # 身体
+			elif x >= 14:
+				var span := float(x - 14) / 7.0 * 4.6            # 尾: 越往后张得越开
+				if absf(float(y) - cy) <= span:
+					inside = true
+			if inside:
+				img.set_pixel(x, y, Color(1, 1, 1, 1))
+	return ImageTexture.create_from_image(img)
+
+
+## 远景鱼群: 若干小群横向漂过, 到边界回卷.
+##   ★用【裸 create_tween】驱动, 不进 _sim_tweens ——
+##     ①_dl_clear_units() 换路时会把 _sim_tweens 全 kill, 背景鱼会集体停住
+##     ②战斗定格(hitstop)不该冻住环境, 环境停了反而穿帮
+func _build_far_fish(holder: Node3D) -> void:
+	var ftex := _make_fish_texture()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20260723                       # 确定性: 每局一致
+	var span := 84.0                          # 横向行程 (比可见宽度大, 出画外才回卷)
+	for s in range(5):                        # 5 群
+		var school := Node3D.new()
+		holder.add_child(school)
+		var zz: float = rng.randf_range(-17.0, -22.5)
+		var depth: float = inverse_lerp(-17.0, -22.5, zz)        # 0=近 1=远
+		var yy: float = rng.randf_range(0.6, 2.0) * (1.0 - depth * 0.45)
+		var dir: float = 1.0 if rng.randf() < 0.5 else -1.0
+		# 尺寸/亮度: 40m 外 0.32m 高只有 6px, 太小认不出是鱼 —— 放大到 10~18px 这一档
+		var scl: float = rng.randf_range(0.55, 0.95) * (1.0 - depth * 0.35)
+		# ★要比背景水色【亮】才看得见(背景实测 #0D3349 ~ (0.05,0.20,0.28));
+		#   暗鱼在 filmic tonemap 下会直接糊进背景, 同山脊那次的坑
+		var col := Color(0.46, 0.72, 0.86).lerp(Color(0.30, 0.50, 0.66), depth)
+		var n := rng.randi_range(5, 9)
+		for i in range(n):
+			var fs := Sprite3D.new()
+			fs.texture = ftex
+			fs.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+			fs.shaded = false
+			fs.transparent = true
+			fs.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+			fs.pixel_size = scl / float(ftex.get_height())
+			fs.modulate = col
+			# 群内错位: 不要排成一条直线
+			fs.position = Vector3(rng.randf_range(-2.2, 2.2), rng.randf_range(-0.5, 0.5),
+								  rng.randf_range(-0.5, 0.5))
+			fs.scale.x = -1.0 if dir < 0.0 else 1.0   # 朝向跟着游动方向(贴图默认朝右)
+			fs.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			school.add_child(fs)
+		var x0: float = -span * 0.5 * dir + rng.randf_range(-14.0, 14.0)
+		school.position = Vector3(x0, yy, zz)
+		var dur: float = span / rng.randf_range(1.4, 2.6)         # 远的慢 → 视差
+		var tw := school.create_tween().set_loops()
+		tw.tween_property(school, "position:x", x0 + span * dir, dur)
+		tw.tween_callback(func() -> void:
+			if is_instance_valid(school):
+				school.position.x = x0)
+		# ★随机初相位: 不给的话所有群都从行程起点(画面外 ±42)出发, 而那个深度可见范围只有 ±30,
+		#   单圈 32~60 秒 —— 开局几十秒内一条鱼都看不到(第一次就是这么"做了等于没做")。
+		tw.custom_step(rng.randf() * dur)
+
+
+## 远景气泡柱: 几处海床喷口不断冒泡上升, 给"水体"以垂直方向的动.
+##   可见高度有限(z≈-19 处约 3.8m), 所以升到 ~2.6m 就淡出, 不做更高。
+func _build_far_bubbles(holder: Node3D) -> void:
+	var btex := VfxTex._make_lightshaft_texture()   # 复用: 上下渐隐的软条, 缩到很小就是一颗软光点
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20260724
+	for v in range(3):                              # 3 处喷口
+		var vx: float = rng.randf_range(-24.0, 24.0)
+		var vz: float = rng.randf_range(-17.5, -21.0)
+		for i in range(7):                          # 每口 7 颗, 用延迟错开成一串
+			var bs := Sprite3D.new()
+			bs.texture = btex
+			bs.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			bs.shaded = false
+			bs.transparent = true
+			var bm := StandardMaterial3D.new()
+			bm.albedo_texture = btex          # ★material_override 必须设贴图, 否则渲成纯白方块(本文件踩过两次)
+			bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			bm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			bm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+			bm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+			bm.fog_enabled = false
+			bs.material_override = bm
+			var bsc: float = rng.randf_range(0.10, 0.22)
+			bs.pixel_size = bsc / float(btex.get_height())
+			bs.modulate = Color(0.55, 0.88, 1.0, 0.34)
+			bs.position = Vector3(vx + rng.randf_range(-0.5, 0.5), 0.05, vz)
+			bs.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			holder.add_child(bs)
+			var rise: float = rng.randf_range(2.0, 2.7)
+			var dur: float = rng.randf_range(3.2, 5.0)
+			var tw := bs.create_tween().set_loops()
+			tw.tween_interval(float(i) * dur / 7.0)          # 同口内错峰 → 连成一串而不是齐射
+			tw.tween_property(bs, "position:y", rise, dur)
+			tw.parallel().tween_property(bs, "modulate:a", 0.0, dur).set_delay(dur * 0.55)
+			tw.tween_callback(func() -> void:
+				if is_instance_valid(bs):
+					bs.position.y = 0.05
+					bs.modulate.a = 0.34)
 
 
 func _build_lightshafts(root: Node3D) -> void:
@@ -2053,7 +2214,10 @@ func _dl_build_present_overlay(mode: String) -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	back.add_child(center)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(980, 560)   # 撑大呈现面板(用户2026-07-12「预览这么小」)
+	# 撑大呈现面板(用户2026-07-12「预览这么小」), 但按视口收口 ——
+	#   原来死写 980x560, 窄屏(手机竖屏/小窗)直接顶出屏幕外, 卡片被裁掉看不全。
+	var _vp: Vector2 = get_viewport().get_visible_rect().size   # ★Node3D 没有 get_viewport_rect()
+	panel.custom_minimum_size = Vector2(minf(980.0, _vp.x - 48.0), minf(560.0, _vp.y - 48.0))
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.05, 0.09, 0.14, 0.98); sb.border_color = Color("#ffd93d"); sb.set_border_width_all(3); sb.set_corner_radius_all(18)
 	sb.content_margin_left = 46; sb.content_margin_right = 46; sb.content_margin_top = 36; sb.content_margin_bottom = 36
@@ -2094,6 +2258,31 @@ func _dl_build_present_overlay(mode: String) -> void:
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.text = "（自动 5 秒 · 点击跳过）"
 	vb.add_child(hint)
+	_dl_stagger_in(vb)
+
+
+## 幕布内容逐个弹入 (2026-07-21): 原本整块一次性出现, 信息一股脑砸脸上。
+##   ★只能 tween alpha/scale —— 这些是 VBoxContainer 的子项, position 由布局接管, tween 它会被布局覆盖回去。
+##   ★不能过 _reg_tween(): 后者会进 _sim_tweens, 而 _dl_clear_units() 换路时会把 _sim_tweens
+##     全 kill 掉 —— 跨路的幕布动画会被连坐杀掉。
+func _dl_stagger_in(vb: VBoxContainer) -> void:
+	var i := 0
+	for c in vb.get_children():
+		var ctrl := c as Control
+		if ctrl == null:
+			continue
+		ctrl.modulate.a = 0.0
+		# pivot 要等布局算出 size 才能定 —— 这里 size 还是 0, 直接乘会把轴心钉在左上角,
+		#   缩放就变成"从左边长出来"而不是原地弹。挂 resized 一次性回调。
+		var _c := ctrl
+		_c.resized.connect(func() -> void: _c.pivot_offset = _c.size * 0.5, CONNECT_ONE_SHOT)
+		ctrl.scale = Vector2(0.88, 0.88)
+		# tween 绑在 ctrl 上而不是场景上: 幕布被提前点掉时随节点一起销毁, 不会对着已释放的目标报错。
+		var tw := ctrl.create_tween()
+		tw.tween_interval(0.07 * float(i))
+		tw.tween_property(ctrl, "modulate:a", 1.0, 0.16)
+		tw.parallel().tween_property(ctrl, "scale", Vector2.ONE, 0.26).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		i += 1
 
 # 本场分路比分行: "本场比分  我方 X - Y 对方".
 #   extra_lane/extra_winner: 结算幕布显示时本路结果尚未 record(record在5秒后的lane_over才调) → 传入待记结果, 让「赢上路→显1-0」而非0-0(用户2026-07-12).
@@ -2323,6 +2512,22 @@ func _dl_start_fight() -> void:
 	_dl_state = "fight"
 	if is_instance_valid(_dl_go_btn): _dl_go_btn.visible = false
 	if is_instance_valid(_dl_place_hint): _dl_place_hint.visible = false
+	_dl_fight_start_dramatize()
+
+
+## 开打瞬间演出 (2026-07-21): 原本"点开打→什么都没有→单位就动了", 一段的开头没有落点。
+##   做法对齐 _dl_wipe_dramatize(一段的结尾): 定格 + 震屏 + 闪屏 + 大字 + 两侧战线冲击环。
+##   ★不要在这里做任何按 _t 计时的东西 —— _t 跨路累加, 见 §SUDDEN / _sd_t0。
+func _dl_fight_start_dramatize() -> void:
+	_add_hitstop(0.18)                                  # 短定格: 比团灭(0.30)短, 是"起势"不是"收势"
+	_shake(JUICE_SHAKE_HEAVY)
+	_dl_flash_screen(Color(1.0, 0.92, 0.55), 0.22)      # 淡金起手闪
+	_float_text(_arena_center + Vector2(0.0, -120.0), "开 战", Color("#ffd93d"), true, "label")
+	# 两侧战线各炸一圈, 强调"两边同时压上来"
+	var half_w: float = ARENA.size.x * 0.5
+	var cy: float = _arena_center.y
+	_splash_ring_bold(Vector2(_arena_center.x - half_w * 0.55, cy), Color(0.36, 0.66, 1.0), 150.0)
+	_splash_ring_bold(Vector2(_arena_center.x + half_w * 0.55, cy), Color(1.0, 0.42, 0.42), 150.0)
 
 func _dl_handle_place_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
