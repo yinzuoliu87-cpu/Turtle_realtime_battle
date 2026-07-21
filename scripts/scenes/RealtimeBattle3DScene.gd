@@ -1971,6 +1971,14 @@ func _dl_enter_present(mode: String) -> void:
 	if is_instance_valid(_dl_go_btn): _dl_go_btn.visible = false
 	if is_instance_valid(_dl_place_hint): _dl_place_hint.visible = false
 	_dl_build_present_overlay(mode)
+	# ★幕布淡入(用户 2026-07-21 要"更好的动画与展示效果")。原来是瞬间 add_child 硬切。
+	#   ★★必须用裸 create_tween 而不是 _reg_tween: 换路时 _dl_clear_units 会 kill 掉
+	#     全部 _sim_tweens, 跨路存活的过场动画会被连坐清掉(注册契约见文件头)。
+	if _dl_present_root != null and is_instance_valid(_dl_present_root):
+		_dl_present_root.modulate.a = 0.0
+		var tw := create_tween()
+		tw.tween_property(_dl_present_root, "modulate:a", 1.0, 0.28) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 func _dl_present_advance() -> void:
 	var mode := _dl_state
@@ -1985,8 +1993,15 @@ func _dl_present_advance() -> void:
 		_dl_lane_over(_dl_pending_loser)
 
 func _dl_clear_present_overlay() -> void:
+	# ★淡出再销毁(原来是瞬间 queue_free 硬切)。先摘掉引用, 免得淡出期间又被当成"当前幕"。
+	#   同样用裸 create_tween(见 _dl_enter_present 的说明)。
 	if _dl_present_root != null and is_instance_valid(_dl_present_root):
-		_dl_present_root.queue_free()
+		var old := _dl_present_root
+		old.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 淡出期间不再吃点击
+		var tw := create_tween()
+		tw.tween_property(old, "modulate:a", 0.0, 0.22) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+		tw.tween_callback(old.queue_free)
 	_dl_present_root = null
 
 func _dl_spec_name(spec) -> String:
@@ -2513,6 +2528,63 @@ func _dl_is_decider(wiped_side: String) -> bool:
 		return str(GameState.lane_results.get("top", "")) == winner   # 上路也是这方赢 → 横扫定局
 	return false
 
+## ★团灭瞬间的演出(用户 2026-07-21:「上半场结束/下半场结束…设计更好的动画与展示效果」)。
+## 原来这一刻【只有基地穹顶塌缩 0.7s】—— 团灭这么大的事, 玩家只看到 HUD 多几个字。
+## 这里全部复用项目已有的 juice helper, 不新造轮子:
+##   顿帧 → 让"最后一个倒下"这一刻停住；震屏 → 冲击感；全屏闪 → 断章感；
+##   大字 → 明确告诉玩家发生了什么(用 _float_text 的 label 模式, 决胜公告也是这么做的)。
+## ★用裸 create_tween 的地方见 _dl_enter_present 说明(跨路存活不能被 _sim_tweens 连坐清掉)。
+func _dl_wipe_dramatize(wiped_lr: String) -> void:
+	var we_lost: bool = (wiped_lr == "left")
+	_add_hitstop(0.30)                     # 定格: 比普通击杀(0.05~0.12)长得多, 标记"这是一段的结束"
+	_shake(JUICE_SHAKE_BIG)
+	# 全屏闪: 我方被团灭→暗红警示; 我方获胜→金色
+	var col: Color = Color(0.85, 0.12, 0.16) if we_lost else Color(1.0, 0.82, 0.30)
+	_dl_flash_screen(col, 0.34)
+	# 全场大字
+	var txt: String = "全军覆没" if we_lost else "敌军覆没"
+	var tcol: Color = Color("#ff6b6b") if we_lost else Color("#ffd93d")
+	_float_text(_arena_center + Vector2(0.0, -120.0), txt, tcol, true, "label")
+	# 幸存方每个单位身上冒一记火花, 强调"是他们打完的"
+	var survivor: String = "right" if we_lost else "left"
+	for u in _units:
+		if u.get("alive", false) and str(u.get("side", "")) == survivor and not u.get("_isEgg", false):
+			_hit_spark(u)
+
+## ★蛋破演出 —— 整场的最高潮, 原来却是【直接跳胜负横幅】, 零过场(横扫/终极路都走这条)。
+## 比团灭更重: 更长的顿帧 + 最大震屏 + 蛋位置爆冲击环 + 全场大字。
+func _dl_egg_break_dramatize(broken_side_lr: String) -> void:
+	var we_lost: bool = (broken_side_lr == "left")
+	_add_hitstop(0.45)                    # 比团灭(0.30)更长 —— 这是整场结束
+	_shake(JUICE_SHAKE_MAX)
+	_dl_flash_screen(Color(1.0, 0.95, 0.85) if not we_lost else Color(0.9, 0.1, 0.12), 0.55)
+	# 在破掉的那颗蛋的位置炸冲击环
+	for u in _units:
+		if u.get("_isEgg", false) and str(u.get("egg_side_lr", "")) == broken_side_lr:
+			_splash_ring_bold(u.get("pos", _arena_center), Color(1.0, 0.85, 0.4, 0.95), 420.0)
+			# ★贴图路径必须是真实存在的 —— _burst_vfx 里 load() 失败会静默 return, 什么都不显示。
+			#   我第一版写了 explosion.png(不存在), 查目录才发现。
+			_burst_vfx("res://assets/sprites/vfx/boom-wave-anim.png", u.get("pos", _arena_center), 260.0, 0.9)
+			break
+	var txt: String = "龟蛋破碎" if we_lost else "击碎敌蛋"
+	_float_text(_arena_center + Vector2(0.0, -140.0), txt,
+		Color("#ff5c5c") if we_lost else Color("#ffe680"), true, "label")
+
+## 全屏一次性闪光(仿 _smolder_flash 的写法; 用于段落切换)
+func _dl_flash_screen(col: Color, dur: float) -> void:
+	if _ui_layer == null or not is_instance_valid(_ui_layer):
+		return
+	var r := ColorRect.new()
+	r.color = Color(col.r, col.g, col.b, 0.0)
+	r.set_anchors_preset(Control.PRESET_FULL_RECT)
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ui_layer.add_child(r)
+	var tw := create_tween()
+	tw.tween_property(r, "color:a", 0.34, dur * 0.18).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(r, "color:a", 0.0, dur * 0.82).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tw.tween_callback(r.queue_free)
+
+
 func _dl_drop_fence(side_lr: String) -> void:   # 该方蛋围栏消失(可被自由索敌); 定局路(终极/横扫)暴露蛋挂 ×5承伤+自损
 	var final_buff: bool = _dl_is_decider(side_lr)   # 定局路: 蛋挂×5+自损→快速打碎收尾(用户2026-07-12「将终极战场buff给到蛋上，打碎蛋再结束」)
 	for u in _units:
@@ -2547,6 +2619,7 @@ func _dl_flow_check() -> void:
 					var _ln := str(GameState.current_lane)
 					if _ln != "" and _ln != "done" and not GameState.lane_results.has(_ln):
 						GameState.lane_results[_ln] = ("right" if es == "left" else "left")
+				_dl_egg_break_dramatize(es)   # ★蛋破演出(原来是直接跳胜负横幅, 整场最高潮却零过场)
 				_dl_finish(es == "right")   # 蛋破=立即结束整场(用户2026-07-12「蛋被打碎立马结束」); 右蛋破→我方(左)赢
 				return
 	var la := _dl_side_alive("left")
@@ -2554,6 +2627,7 @@ func _dl_flow_check() -> void:
 	if _dl_state == "fight":
 		if la == 0 or ra == 0:
 			_dl_wiped_side = "left" if la == 0 else "right"
+			_dl_wipe_dramatize(_dl_wiped_side)   # ★团灭演出(原来这一刻只有穹顶塌缩, 毫无冲击力)
 			_dl_drop_fence(_dl_wiped_side)   # 内部按定局判定给蛋挂终极buff(×5承伤+自损)
 			var decider: bool = _dl_is_decider(_dl_wiped_side)   # 终极路 或 横扫定胜负那一路 = 定局路
 			_dl_window_until = (1.0e18 if decider else _t + 10.0)   # 定局→无限(打碎蛋才结束·自损保证≤10s必碎); 非定局→10s累计后本路结束
