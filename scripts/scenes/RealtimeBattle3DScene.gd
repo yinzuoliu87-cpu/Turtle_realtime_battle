@@ -19583,6 +19583,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	# 双路场内放置阶段: 拖我方(left)非蛋单位到位 (clamp 我方半场+避障); 「开打」钮在 GUI 层.
 	if _dl_state == "place" and _is_dual_lane_mode():
+		# ★放置阶段也要能点空白关面板 —— 否则这阶段开了详情面板就只剩 ESC 能关
+		#   (用户 2026-07-21 要「点空白就退出」, 这条早退曾把它挡掉)。
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT \
+				and _info_panel != null and is_instance_valid(_info_panel):
+			var _pp: Vector2 = get_viewport().get_mouse_position() if get_viewport() != null else event.position
+			if _edit_unit_at_screen(_pp) == null:
+				_close_info_panel()
 		_dl_handle_place_input(event)
 		return
 	# 普通战斗模式: 点战场单位 (立绘头顶 unproject 命中) → 弹详情面板; 框上的点击由框自己的 gui_input 接.
@@ -22123,10 +22130,56 @@ func _update_team_panels() -> void:
 			if clb == null or not is_instance_valid(clb): continue
 			var lstt = u.get("eq_state", {}).get(str(cl["iid"]), {})
 			clb.text = str(int(lstt.get(str(cl["key"]), 0)))
+	# ★详情面板的动态部件也在这刷 —— 这里已经是每帧调用、且 _selected_unit 可用,
+	#   不必另开 Timer(用户 2026-07-21:「面板里所有的数值需要实时变化」)。
+	_refresh_info_panel()
 
 # ----------------------------------------------------------------------------
 #  3) 详情面板 (居中, detail_panel_frame 斜面边框) — 等级/属性/被动/技能/装备
 # ----------------------------------------------------------------------------
+## 详情面板动态部件每帧刷新(HP条/龟能条/属性行)。挂在 _update_team_panels 尾部。
+## ★只改已存在节点的 text/value, 不重建 —— 重建会打断 ScrollContainer 滚动位置且每帧分配节点。
+## ★属性行数会变(某属性从 0 变非 0 时会多出一行), 行数一变就整块重建面板, 否则引用会错位。
+func _refresh_info_panel() -> void:
+	if _info_panel == null or not is_instance_valid(_info_panel):
+		return
+	var u = _selected_unit
+	if u == null or not (u is Dictionary):
+		return
+	var ud: Dictionary = u
+	# HP 条
+	if _info_hp_bar != null and is_instance_valid(_info_hp_bar):
+		var mx: float = maxf(1.0, float(ud.get("maxHp", 1.0)))
+		_info_hp_bar.max_value = mx
+		_info_hp_bar.value = clampf(float(ud.get("hp", 0.0)), 0.0, mx)
+	if _info_hp_lbl != null and is_instance_valid(_info_hp_lbl):
+		_info_hp_lbl.text = "HP  %d / %d" % [int(ud.get("hp", 0)), int(ud.get("maxHp", 0))]
+	# 龟能条
+	if _info_en_bar != null and is_instance_valid(_info_en_bar):
+		var acts: Array = ud.get("active_skills", [])   # 与建面板处同源(L22405), 不要另造函数
+		if not acts.is_empty():
+			var st0 := str(acts[0])
+			var mxcd := _skill_cd(ud, st0)
+			var cd := float((ud.get("skill_cd", {}) as Dictionary).get(st0, mxcd))
+			var rdy := clampf(1.0 - (cd / maxf(0.01, mxcd)), 0.0, 1.0)
+			_info_en_bar.value = rdy
+			if _info_en_lbl != null and is_instance_valid(_info_en_lbl):
+				_info_en_lbl.text = "龟能  %d%%" % int(rdy * 100.0)
+	# 属性行
+	var rows: Array = _info_stat_rows(ud)
+	if rows.size() != _info_stat_labels.size():
+		# 行数变了(有属性从0变非0) → 引用会错位, 整块重建
+		_show_unit_info_panel(ud)
+		return
+	for i in range(rows.size()):
+		var lb = _info_stat_labels[i]
+		if lb == null or not is_instance_valid(lb):
+			continue
+		var txt := str((rows[i] as Array)[1])
+		if lb.text != txt:
+			lb.text = txt
+
+
 func _close_info_panel() -> void:
 	if _info_panel != null and is_instance_valid(_info_panel):
 		var _bg := _info_panel.get_parent()   # 老版本有全屏灰底backdrop→连父free; 新侧边版面板直接挂_ui_layer(无backdrop)→只free面板
@@ -22144,7 +22197,7 @@ func _info_passthrough(node: Node) -> void:
 		_info_passthrough(c)
 
 # 面板内一条进度条(HP/龟能): 深底+彩色填充+居中文字覆盖
-func _info_bar(parent: Control, cur: float, mx: float, fill_col: Color, label: String) -> void:
+func _info_bar(parent: Control, cur: float, mx: float, fill_col: Color, label: String) -> Array:
 	var holder := Control.new()
 	holder.custom_minimum_size = Vector2(0, 22)
 	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -22165,9 +22218,81 @@ func _info_bar(parent: Control, cur: float, mx: float, fill_col: Color, label: S
 	lb.add_theme_font_size_override("font_size", 12); lb.add_theme_color_override("font_color", Color("#ffffff"))
 	lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(lb)
+	return [pb, lb]   # ★返回 [进度条, 文本] 供每帧刷新(见 _refresh_info_panel)
 
-# 属性格 (图标+值), 放进 GridContainer; icon_tex 非空→用真图标(Phaser stats/*·2026-07-18), 否则 emoji 兜底
-func _info_stat_cell(grid: GridContainer, icon: String, val: String, col: Color = Color("#d6e4f0"), icon_tex: String = "") -> void:
+# 属性格 (图标+值), 放进 GridContainer; icon_tex 非空→用真图标(Phaser stats/*·2026-07-18), 否则留空占位
+## ── 详情面板的动态部件引用(每帧刷新用; 面板重建时全部重置) ──
+## ★用户 2026-07-21:「面板里所有的数值需要实时变化, 比如血条, 移速攻速, 下面的技能伤害数值」。
+##   原实现是【一次性快照, 从不刷新】(源码里作者自己写了这句), 于是开着面板时
+##   掉血/加buff/减速 全看不出来。现在把动态部件的节点引用存下来, 每帧改它们的文本/值,
+##   而不是整块重建(重建会打断滚动位置 + 每帧分配节点)。
+var _info_stat_labels: Array = []      # 属性行的文本 Label(顺序与 _info_stat_rows 一一对应)
+var _info_stat_grid: GridContainer = null
+var _info_hp_bar: ProgressBar = null
+var _info_hp_lbl: Label = null
+var _info_en_bar: ProgressBar = null
+var _info_en_lbl: Label = null
+var _info_stat_n: int = -1             # 上次的属性行数; 变了就得重建(有属性从0变非0)
+
+## 详情面板【属性行】的单一事实源 —— 建面板和每帧刷新都走这一个函数,
+## 所以两边不可能漂移(加属性只改这里一处)。返回 [[图标路径, 文本, 颜色], ...]。
+##
+## ★核心 7 项恒显示; 其余"有值才显示"(0 的不占位, 免得面板一片 0)。
+## ★不要用 emoji 当图标 —— 本项目已「全去emoji(根治绿块+跨平台一致)」, 没图标就留空占位。
+func _info_stat_rows(u: Dictionary) -> Array:
+	var sic := "res://assets/sprites/ui/stats/"
+	var W := Color("#d6e4f0")
+	var rows: Array = [
+		[sic + "atk-icon.png",      "攻击 %d" % int(u.get("atk", 0)),                                Color("#ff9d8a")],
+		[sic + "def-icon.png",      "护甲 %d" % int(u.get("def", 0)),                                W],
+		[sic + "mr-icon.png",       "魔抗 %d" % int(u.get("mr", 0)),                                 Color("#9bdcff")],
+		[sic + "crit-icon.png",     "暴击 %d%%" % int(float(u.get("crit", 0.0)) * 100.0),            W],
+		[sic + "atkspd-icon.png",   "攻速 %ss" % _fmt_num(float(u.get("atk_interval", 0.0))),        W],
+		[sic + "range-icon.png",    "射程 %d" % int(u.get("atk_range", 0)),                          W],
+		[sic + "movespd-icon.png",  "移速 %d" % int(u.get("move_spd", 0)),                           W],
+	]
+	# ── 以下为用户 2026-07-21 要求补的「更多属性」(治疗强度/护盾强度/闪避率等) ──
+	# 吸血: 装备的 lifesteal + buff 来的 ls_bonus(原来只显前者, buff 吸血看不见)
+	var ls: float = float(u.get("lifesteal", 0.0)) + float(u.get("ls_bonus", 0.0))
+	if ls > 0.0:
+		rows.append([sic + "lifesteal-icon.png", "吸血 %d%%" % int(round(ls * 100.0)), Color("#ff8fb0")])
+	var dodge: float = float(u.get("dodge_bonus", 0.0))
+	if dodge > 0.0:
+		rows.append(["", "闪避 %d%%" % int(round(dodge * 100.0)), Color("#a0e8ff")])
+	var heal_amp: float = float(u.get("heal_amp", 0.0))
+	if not is_zero_approx(heal_amp):
+		rows.append(["", "治疗强度 %+d%%" % int(round(heal_amp * 100.0)), Color("#7fe39a")])
+	var shield_amp: float = float(u.get("shield_amp", 0.0))
+	if not is_zero_approx(shield_amp):
+		rows.append(["", "护盾强度 %+d%%" % int(round(shield_amp * 100.0)), Color("#ffd93d")])
+	var cdmg: float = float(u.get("crit_dmg", 1.5))
+	if not is_equal_approx(cdmg, 1.5):
+		rows.append(["", "暴伤 %d%%" % int(round(cdmg * 100.0)), Color("#ffb37a")])
+	var apen: float = float(u.get("armor_pen", 0.0))
+	if apen > 0.0:
+		rows.append(["", "护甲穿透 %d" % int(apen), Color("#ffc48a")])
+	var mpen: float = float(u.get("magic_pen", 0.0))
+	if mpen > 0.0:
+		rows.append(["", "魔法穿透 %d" % int(mpen), Color("#c9a0ff")])
+	var refl: float = float(u.get("reflect", 0.0))
+	if refl > 0.0:
+		rows.append(["", "反伤 %d%%" % int(round(refl * 100.0)), Color("#ff9d8a")])
+	var ten: float = float(u.get("tenacity", 0.0))
+	if ten > 0.0:
+		rows.append(["", "韧性 %d%%" % int(round(ten * 100.0)), Color("#d6e4f0")])
+	var dr: float = float(u.get("damage_reduction", 0.0))
+	if dr > 0.0:
+		rows.append(["", "减伤 %d%%" % int(round(dr * 100.0)), Color("#9bdcff")])
+	var damp: float = float(u.get("damage_amp", 0.0))
+	if damp > 0.0:
+		rows.append(["", "增伤 %d%%" % int(round(damp * 100.0)), Color("#ff7a7a")])
+	var ech: float = float(u.get("echarge_perm", 0.0))
+	if ech > 0.0:
+		rows.append(["", "龟能充能 +%d%%" % int(round(ech * 100.0)), Color("#ffce4d")])
+	return rows
+
+
+func _info_stat_cell(grid: GridContainer, icon: String, val: String, col: Color = Color("#d6e4f0"), icon_tex: String = "") -> Label:
 	var h := HBoxContainer.new(); h.add_theme_constant_override("separation", 6)
 	if icon_tex != "" and ResourceLoader.exists(icon_tex):
 		var it := TextureRect.new(); it.texture = load(icon_tex)
@@ -22182,6 +22307,7 @@ func _info_stat_cell(grid: GridContainer, icon: String, val: String, col: Color 
 	c.add_theme_color_override("font_color", col); c.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	h.add_child(c)
 	grid.add_child(h)
+	return c   # ★返回文本 Label, 供每帧刷新时改 text(见 _refresh_info_panel)
 
 # 当前生效的状态 → chips (只显生效的); 无则"无异常状态"
 func _info_status_chips(vb: VBoxContainer, u: Dictionary) -> void:
@@ -22268,12 +22394,13 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	var sub := Label.new()
 	sub.text = "%s · %s · Lv %d" % ["友军" if is_left else "敌方", rar, int(u.get("level", 1))]
 	sub.add_theme_font_size_override("font_size", 13); sub.add_theme_color_override("font_color", side_col); hi.add_child(sub)
-	var close_btn := Button.new(); close_btn.text = "✖"; close_btn.add_theme_font_size_override("font_size", 16)
-	close_btn.custom_minimum_size = Vector2(30, 30); close_btn.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	close_btn.pressed.connect(_close_info_panel); head.add_child(close_btn)
+	# ★不再放 ✖ 按钮(用户 2026-07-21:「点空白处就直接退出信息面板, 不要那个×」)。
+	#   关闭走两条: ①点面板外空白(_unhandled_input) ②ESC。面板本身 MOUSE_FILTER_STOP,
+	#   所以点在面板【内】不会误关。
 
 	# HP 条(阵营色)
-	_info_bar(vb, float(u.get("hp", 0.0)), float(u.get("maxHp", 1.0)), side_col, "HP  %d / %d" % [int(u.get("hp", 0)), int(u.get("maxHp", 0))])
+	var _hpref: Array = _info_bar(vb, float(u.get("hp", 0.0)), float(u.get("maxHp", 1.0)), side_col, "HP  %d / %d" % [int(u.get("hp", 0)), int(u.get("maxHp", 0))])
+	_info_hp_bar = _hpref[0]; _info_hp_lbl = _hpref[1]
 	# 龟能条(有主动技才显): 主技充能% = 1 − 剩余冷却/满冷却
 	var acts: Array = u.get("active_skills", [])
 	if not _is_passive_pick(u) and acts.size() > 0:
@@ -22281,7 +22408,8 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 		var mxcd := _skill_cd(u, st0)
 		var cd := float((u.get("skill_cd", {}) as Dictionary).get(st0, mxcd))
 		var rdy := clampf(1.0 - (cd / maxf(0.01, mxcd)), 0.0, 1.0)
-		_info_bar(vb, rdy, 1.0, Color("#ffce4d"), "龟能  %d%%" % int(rdy * 100.0))
+		var _enref: Array = _info_bar(vb, rdy, 1.0, Color("#ffce4d"), "龟能  %d%%" % int(rdy * 100.0))
+		_info_en_bar = _enref[0]; _info_en_lbl = _enref[1]
 
 	_add_panel_sep(vb)
 
@@ -22289,16 +22417,13 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	var grid := GridContainer.new(); grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 18); grid.add_theme_constant_override("v_separation", 5)
 	vb.add_child(grid)
-	var sic := "res://assets/sprites/ui/stats/"   # 8项全真图标(用户2026-07-18「属性图标phaser有配」): atk/def/mr/crit/lifesteal取Phaser·攻速/射程/移速=PixelLab配套生成·全去emoji(根治绿块+跨平台一致)
-	_info_stat_cell(grid, "⚔", "攻击 %d" % int(u.get("atk", 0)), Color("#ff9d8a"), sic + "atk-icon.png")
-	_info_stat_cell(grid, "🛡", "护甲 %d" % int(u.get("def", 0)), Color("#d6e4f0"), sic + "def-icon.png")
-	_info_stat_cell(grid, "🔮", "魔抗 %d" % int(u.get("mr", 0)), Color("#9bdcff"), sic + "mr-icon.png")
-	_info_stat_cell(grid, "💥", "暴击 %d%%" % int(float(u.get("crit", 0.0)) * 100.0), Color("#d6e4f0"), sic + "crit-icon.png")
-	_info_stat_cell(grid, "⏱", "攻速 %ss" % _fmt_num(float(u.get("atk_interval", 0.0))), Color("#d6e4f0"), sic + "atkspd-icon.png")
-	_info_stat_cell(grid, "🎯", "射程 %d" % int(u.get("atk_range", 0)), Color("#d6e4f0"), sic + "range-icon.png")
-	_info_stat_cell(grid, "👟", "移速 %d" % int(u.get("move_spd", 0)), Color("#d6e4f0"), sic + "movespd-icon.png")
-	if float(u.get("lifesteal", 0.0)) > 0.0:
-		_info_stat_cell(grid, "🩸", "吸血 %d%%" % int(float(u.get("lifesteal", 0.0)) * 100.0), Color("#d6e4f0"), sic + "lifesteal-icon.png")
+	# ★属性行走 _info_stat_rows() 单一事实源(建面板与每帧刷新同源, 不会漂移)。
+	#   图标: 8项有真图标, 其余留空占位 —— 本项目已「全去emoji(根治绿块+跨平台一致)」。
+	_info_stat_labels.clear()
+	for row in _info_stat_rows(u):
+		var lb := _info_stat_cell(grid, "", str(row[1]), row[2], str(row[0]))
+		_info_stat_labels.append(lb)
+	_info_stat_grid = grid
 
 	_add_panel_sep(vb)
 
@@ -22354,8 +22479,9 @@ func _is_chest_turtle(u: Dictionary) -> bool:
 ## 财宝值取法必须和 _chest_treasure_tick 一致 —— 我方真实对局走 GameState(跨战场大轮累积),
 ## demo/敌侧走本单位 dmg_dealt(单场旧制); 两边取错会显示成完全不同的数。
 func _info_chest_section(vb: VBoxContainer, u: Dictionary) -> void:
-	# 【详情面板整体是一次性快照, 从不刷新】—— 但用户要的是"当前累计的财宝值", 冻在开面板那一刻的数字没意义,
-	# 且开箱是随时发生的. 所以这一块自己挂 0.5s 定时重建(只重建本块, 不动面板其余部分).
+	# 财宝值随时在变(开箱随时发生), 冻在开面板那一刻的数字没意义, 所以本块自挂 0.5s 定时重建。
+	# 注: 2026-07-21 起面板的 HP条/龟能条/属性行已改为每帧刷新(见 _refresh_info_panel),
+	#     本块因为要【整块重建】(条目数会变)才单独用定时器, 不并进那条每帧路径。
 	var sec := VBoxContainer.new()
 	sec.add_theme_constant_override("separation", 6)
 	sec.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -22439,11 +22565,38 @@ func _chest_loot_row(parent: VBoxContainer, tid: String) -> void:
 	tcol.add_child(dl)
 
 # 技能条目 [{name, desc}]: 取该龟已选的主动技 (走 _chosen_skill_types) + 普攻名 (skillPool[0]).
+## 小将技能文案表 —— 小将 id 是 "__minion__", pets.json 里【没有】这个条目,
+## 于是 _panel_skill_entries 查不到 pool → 详情面板整个「技能」区不渲染
+## (用户 2026-07-21:「小将的技能描述要在面板里去显示」)。
+## 文案取自各技能实现函数的头注释(那里就是权威描述), 数值口径见对应 _sk_* 实现。
+const MINION_SKILL_DESC := {
+	"minionBodysurf": {
+		"name": "人体浪板",
+		"desc": "高跳回复 2×攻击力 生命 → 射出铁链定身 → 拉向目标 → 接触造成目标 10% 最大生命的物理伤害 → 踩着滑行(对被踩者持续 2×攻击力物理, 沿途 1.5×攻击力并击退) → 跳下。射程 2000 · 120 龟能",
+	},
+	"minionRocket": {
+		"name": "追踪火箭筒",
+		"desc": "蓄力 1.5 秒(枪口聚能) → 发射慢速追踪导弹(带尾焰) → 命中核爆: 400 码范围 4×攻击力物理伤害, 并施加 4 秒 50% 治疗削减。射程 2000 · 120 龟能",
+	},
+	"eliteHammer": {
+		"name": "精英铁锤",
+		"desc": "精英小将专属: 抡锤砸地, 范围击飞并造成物理伤害。射程 500 · 100 龟能",
+	},
+}
+
 func _panel_skill_entries(u: Dictionary) -> Array:
 	var id := str(u.get("id", ""))
 	var pet: Dictionary = DataRegistry.pet_by_id.get(id, {})
 	var pool: Array = pet.get("skillPool", [])
 	var out: Array = []
+	# ★小将走独立文案表(pets.json 里没有 __minion__)
+	if pool.is_empty():
+		for t in u.get("active_skills", []):
+			var md = MINION_SKILL_DESC.get(str(t), null)
+			if md != null:
+				out.append({"name": str(md["name"]), "desc": str(md["desc"])})
+		if not out.is_empty():
+			return out
 	var chosen: Array = _chosen_skill_types(id, str(u.get("side", "")) == "left")
 	# 已选主动技 (按 type 在 pool 里找名/描述)
 	for t in chosen:
