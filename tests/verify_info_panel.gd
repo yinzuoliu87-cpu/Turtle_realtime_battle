@@ -146,6 +146,11 @@ func _test_live_refresh() -> void:
 	_ok("★技能描述纳入每帧刷新(伤害数值跟着属性变)",
 		rb.contains("_info_skill_lbls"), "刷新函数体 %d 字符" % rb.length())
 	_ok("★被动描述也纳入每帧刷新", rb.contains("_info_passive_tpl"))
+	# ★「当前状态」chips(护盾/灼烧/眩晕/怒气…)在战斗中变得最频繁, 原来也是建一次就不动
+	_ok("★状态 chips 纳入刷新(护盾/灼烧/眩晕会跟着变)", rb.contains("_info_status_box"),
+		"" if rb.contains("_info_status_box") else "状态区还是死的")
+	_ok("★状态用签名节流(不每帧无脑重建节点→不闪不掉帧)",
+		src.contains("func _status_signature") and rb.contains("_info_status_sig"))
 	# 面板取技能条目时必须渲染, 不能再直接 _strip_html 原文
 	var pe := _func_body(src, "_panel_skill_entries")
 	_ok("★技能条目走模板渲染(不再原样贴 pets.json)",
