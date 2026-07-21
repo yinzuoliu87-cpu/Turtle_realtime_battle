@@ -34,6 +34,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	_test_tile_sink()
 	_test_obstacle_vs_visual()
+	_test_map_data_sane()
 	print("ALL PASS — 地图几何(特效不被埋 + 障碍贴合视觉)" if _fail == 0 else "FAILED: %d" % _fail)
 	get_tree().quit(0 if _fail == 0 else 1)
 
@@ -111,6 +112,62 @@ func _test_obstacle_vs_visual() -> void:
 		"_dl_clamp_place 里仍有独立数值" if not clamp_body.contains("OBSTACLE_MARGIN") else "")
 
 	scene.queue_free()
+
+
+## C. 地图数据自洽 —— 格子放大(用户2026-07-21「格子太密集, 放大1.6倍」)最容易悄悄搞坏的几件:
+##    ①w/h 与 grid 实际行列不符 → 边缘整排格子不渲染
+##    ②覆盖范围盖不住 ARENA → 战斗区露出空洞
+##    ③改了 tile 却没同步 origin → 整张图偏移(这是最隐蔽的, 画面会歪但不报错)
+func _test_map_data_sane() -> void:
+	var f := FileAccess.open("res://data/maps/arena.json", FileAccess.READ)
+	if f == null:
+		_ok("读取 arena.json", false, "打不开")
+		return
+	var parsed = JSON.parse_string(f.get_as_text())
+	f.close()
+	if not (parsed is Dictionary):
+		_ok("arena.json 是合法 JSON", false)
+		return
+	var d: Dictionary = parsed
+	var tile: float = float(d.get("tile", 0.0))
+	var ox: float = float(d.get("origin_x", 0.0))
+	var oy: float = float(d.get("origin_y", 0.0))
+	var w: int = int(d.get("w", 0))
+	var h: int = int(d.get("h", 0))
+	var grid: Array = d.get("grid", [])
+
+	_ok("tile 尺寸合理(>0)", tile > 0.0, "tile=%.1f" % tile)
+	_ok("★grid 行数 == h", grid.size() == h, "grid %d 行, h=%d" % [grid.size(), h])
+	var bad_rows := 0
+	for row in grid:
+		if not (row is Array) or (row as Array).size() != w:
+			bad_rows += 1
+	_ok("★每行列数 == w(否则边缘整排不渲染)", bad_rows == 0,
+		"列数不符的行: %d (w=%d)" % [bad_rows, w])
+
+	# 覆盖必须完整包住 ARENA, 否则战斗区会有没铺地砖的空洞
+	var A: Rect2 = RTScene.ARENA
+	var cov := Rect2(ox, oy, float(w) * tile, float(h) * tile)
+	_ok("★地砖覆盖包住整个 ARENA(战斗区无空洞)", cov.encloses(A),
+		"覆盖 %s / ARENA %s" % [cov, A])
+
+	# 地图中心不应离 ARENA 中心太远(改 tile 忘了改 origin 的典型症状)
+	var map_c := cov.position + cov.size * 0.5
+	var arena_c: Vector2 = A.position + A.size * 0.5
+	var off := (map_c - arena_c).length()
+	_ok("★地图中心贴近 ARENA 中心(改 tile 没同步 origin 会在这暴露)", off < 120.0,
+		"偏移 %.0f px (地图中心 %s, ARENA 中心 %s)" % [off, map_c, arena_c])
+
+	# 海岛轮廓(void=4)还在 —— 全铺满就失去剪影了
+	var voids := 0
+	var total := 0
+	for row in grid:
+		for v in (row as Array):
+			total += 1
+			if int(v) == 4: voids += 1
+	var ratio := float(voids) / maxf(1.0, float(total))
+	_ok("★海岛 void 轮廓仍在(不是铺满一整块)", ratio > 0.05 and ratio < 0.6,
+		"void 占比 %.1f%% (%d/%d)" % [ratio * 100.0, voids, total])
 
 
 ## 从源码里解析 _obstacles 的字面量定义(不跑场景, 避免建整个战斗场)

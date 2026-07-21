@@ -929,7 +929,7 @@ func _build_tilemap_decor() -> void:
 	var cx := A.position.x + A.size.x * 0.5
 	var cy := A.position.y + A.size.y * 0.5
 	var kelp := ["deco_kelp", "deco_coral_pink", "deco_coral_orange", "deco_rocks", "glow-kelp", "glow-anem", "glow-coral", "glow-coral", "glow-kelp"]   # 阶段5: 加PixelLab发光变体(重复=提高发光植物占比)
-	var mg := 6.0 * 48.0
+	var mg := 288.0   # 装饰带宽度(px, ARENA 外扩)。★与格子大小无关, 别跟着 tile 一起缩放
 	var step := 80.0
 	var py := A.position.y - mg
 	while py < A.end.y + mg:
