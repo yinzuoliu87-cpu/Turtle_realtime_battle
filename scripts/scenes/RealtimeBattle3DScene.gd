@@ -781,105 +781,32 @@ const TILE_SINK := TILE_THICK * 0.5   # 砖心下沉量 → 上表面 y=0
 ## 统一到这里。注意它是【叠加在 rx/ry 之上】的, rx 本身必须贴合视觉(见 _build_map_props)。
 const OBSTACLE_MARGIN := 28.0
 
-const _ED_TYPE_NAMES := ["grass", "water", "stone", "sand", "void"]
-const _ED_HEIGHTS := {0: 0.0, 1: -0.30, 2: 0.25, 3: -0.05, 4: 0.0}
-var _map_editor := false
-var _ed_meta: Dictionary = {}
-var _ed_grid: Array = []
-var _ed_height: Array = []
-var _ed_type := 0
-var _ed_undo: Array = []
-var _ed_type_label: Label = null
+## 🖌 地图编辑器已拆到 scripts/scenes/map_editor.gd(2026-07-21)。
+## 拆得动的原因: 该簇对伤害管线调用为 0、只读 _cam/_arena_center, 其余状态全是自己的。
+## 主场景这边只剩一个实例 + 两个入口(build_ui / paint_at_screen)。
+const MapEditorMod := preload("res://scripts/scenes/map_editor.gd")
+var _map_editor := false        # ★模式开关(不是编辑器状态) —— 拆分时差点被我连坐删掉
+var _map_ed = null              # MapEditor 实例; 不写成 : MapEditor 是因为 class_name 需 --import 注册后才可用
+
+## 刷格入口: 模块没建好时安全跳过(编辑器未开时 _unhandled_input 也可能走到)
+func _map_ed_paint(mpos: Vector2) -> void:
+	if _map_ed != null:
+		_map_ed.paint_at_screen(mpos)
 
 func _enter_map_editor() -> void:
 	_map_editor = true
 	set_process(false)          # 编辑器无战斗: 关掉战斗tick(否则碰未建的队伍/UI空节点报错)
 	set_physics_process(false)
 	var f := FileAccess.open("res://data/maps/arena.json", FileAccess.READ)
+	var _meta: Dictionary = {}
 	if f != null:
 		var data = JSON.parse_string(f.get_as_text()); f.close()
 		if data is Dictionary:
-			_ed_meta = data
-			_ed_grid = data.get("grid", [])
-			_ed_height = data.get("height", [])
-	_ed_build_ui()
-
-func _ed_build_ui() -> void:
-	var cl := CanvasLayer.new(); cl.layer = 60; add_child(cl)
-	var panel := PanelContainer.new()
-	panel.position = Vector2(12, 80)
-	var vb := VBoxContainer.new(); panel.add_child(vb)
-	var title := Label.new(); title.text = "🖌 地图编辑器 (左键刷格 · MAPEDIT)"; vb.add_child(title)
-	var hb := HBoxContainer.new(); vb.add_child(hb)
-	for ti in range(_ED_TYPE_NAMES.size()):
-		var b := Button.new(); b.text = "%d %s" % [ti, _ED_TYPE_NAMES[ti]]
-		b.pressed.connect(_ed_set_type.bind(ti))
-		hb.add_child(b)
-	_ed_type_label = Label.new(); _ed_type_label.text = "当前: grass (0)"; vb.add_child(_ed_type_label)
-	var hb2 := HBoxContainer.new(); vb.add_child(hb2)
-	var bsave := Button.new(); bsave.text = "💾保存"; bsave.pressed.connect(_ed_save); hb2.add_child(bsave)
-	var brel := Button.new(); brel.text = "↻重载"; brel.pressed.connect(_ed_reload); hb2.add_child(brel)
-	var bclr := Button.new(); bclr.text = "清空"; bclr.pressed.connect(_ed_clear); hb2.add_child(bclr)
-	var bund := Button.new(); bund.text = "撤销"; bund.pressed.connect(_ed_undo_last); hb2.add_child(bund)
-	cl.add_child(panel)
-
-func _ed_set_type(ti: int) -> void:
-	_ed_type = ti
-	if _ed_type_label != null:
-		_ed_type_label.text = "当前: %s (%d)" % [_ED_TYPE_NAMES[ti], ti]
-
-func _ed_paint_at_screen(mpos: Vector2) -> void:   # 屏幕→Y=0地面射线→格子→刷type+height→重绘
-	if _cam == null or _ed_grid.is_empty(): return
-	var origin := _cam.project_ray_origin(mpos)
-	var dir := _cam.project_ray_normal(mpos)
-	if absf(dir.y) < 0.0001: return
-	var t := -origin.y / dir.y
-	if t < 0.0: return
-	var wp := origin + dir * t
-	var px := wp.x / WS + _arena_center.x
-	var py := wp.z / WS + _arena_center.y
-	var tile: float = float(_ed_meta.get("tile", 48.0))
-	var c := int((px - float(_ed_meta.get("origin_x", 0.0))) / tile)
-	var r := int((py - float(_ed_meta.get("origin_y", 0.0))) / tile)
-	if r < 0 or r >= _ed_grid.size(): return
-	var grow: Array = _ed_grid[r]
-	if c < 0 or c >= grow.size(): return
-	if int(grow[c]) == _ed_type: return
-	_ed_undo.append([r, c, int(grow[c]), float(_ed_height[r][c])])
-	if _ed_undo.size() > 300: _ed_undo.pop_front()
-	grow[c] = _ed_type
-	_ed_height[r][c] = float(_ED_HEIGHTS[_ed_type])
-	_tilemap_from_data(_ed_meta, _ed_grid, _ed_height)
-
-func _ed_save() -> void:
-	_ed_meta["grid"] = _ed_grid
-	_ed_meta["height"] = _ed_height
-	var f := FileAccess.open("res://data/maps/arena.json", FileAccess.WRITE)
-	if f != null:
-		f.store_string(JSON.stringify(_ed_meta)); f.close()
-
-func _ed_reload() -> void:
-	var f := FileAccess.open("res://data/maps/arena.json", FileAccess.READ)
-	if f != null:
-		var data = JSON.parse_string(f.get_as_text()); f.close()
-		if data is Dictionary:
-			_ed_meta = data; _ed_grid = data.get("grid", []); _ed_height = data.get("height", [])
-			_tilemap_from_data(_ed_meta, _ed_grid, _ed_height)
-
-func _ed_clear() -> void:
-	for r in range(_ed_grid.size()):
-		var grow: Array = _ed_grid[r]
-		for c in range(grow.size()):
-			grow[c] = 0; _ed_height[r][c] = 0.0
-	_tilemap_from_data(_ed_meta, _ed_grid, _ed_height)
-
-func _ed_undo_last() -> void:
-	if _ed_undo.is_empty(): return
-	var op = _ed_undo.pop_back()
-	var r: int = op[0]; var c: int = op[1]
-	if r < _ed_grid.size() and c < (_ed_grid[r] as Array).size():
-		_ed_grid[r][c] = op[2]; _ed_height[r][c] = op[3]
-		_tilemap_from_data(_ed_meta, _ed_grid, _ed_height)
+			_meta = data
+	_map_ed = MapEditorMod.new()
+	_map_ed.setup(self, _cam, _arena_center, WS, func(m, g, h): _tilemap_from_data(m, g, h))
+	_map_ed.load_data(_meta, _meta.get("grid", []), _meta.get("height", []))
+	_map_ed.build_ui()
 
 func _build_tilemap_ground() -> void:
 	if _load_tilemap():                 # 优先数据驱动 map.json
@@ -19819,9 +19746,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				return
 	if _map_editor:   # 🖌 编辑器: 左键点/拖刷格(UI按钮的点击被按钮消费不会到这)
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			_ed_paint_at_screen(event.position)
+			_map_ed_paint(event.position)
 		elif event is InputEventMouseMotion and (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
-			_ed_paint_at_screen(event.position)
+			_map_ed_paint(event.position)
 		return
 	if event is InputEventKey and event.pressed:
 		if event.keycode == KEY_R:
