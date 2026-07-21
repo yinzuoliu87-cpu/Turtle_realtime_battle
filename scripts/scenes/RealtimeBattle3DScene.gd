@@ -23,6 +23,11 @@ const ARENA := Rect2(70, 110, 1596, 728)   # 战场边界 (像素口径). 双路
 #   "冷却"不是独立计时器 = 龟能充满该技花费的时间(花费×0.075秒)。冷却 与 龟能充能 是同一回事。
 #   花费/换算/is_active 全在单一事实源 SkillEnergy (战斗/图鉴/选龟共用, 防口径分叉)。
 const SkillEnergy := preload("res://scripts/systems/skill_energy.gd")
+## 技能文案模板渲染器(图鉴一直在用, 战斗详情面板此前【没接】)。
+## 不接的后果: pets.json 里的 {N:0.7*ATK} / {{ATK}} 这类占位符【原样漏到界面上】,
+## 玩家看到的是模板字符串而不是数字(用户 2026-07-21 在面板截图里指出)。
+## 接上之后, 技能伤害数值 = 按该龟【当前】属性算出来的真数字, 且能随属性变化实时刷新。
+const SkillText := preload("res://scripts/engine/skill_text.gd")
 const SKILL_GCD := 0.4                      # 同龟两次放技最小间隔 (防多技同帧连爆)
 # AI 状态机节拍 (Botworld式: 移动/攻击互斥 + 施法锁 + 前摇; 用户2026-06-28 #5最高优先级)
 # LoL式普攻(官方Attack_speed/Basic_attack wiki, 完整模型):
@@ -22406,6 +22411,24 @@ func _refresh_info_panel() -> void:
 		var txt := str((rows[i] as Array)[1])
 		if lb.text != txt:
 			lb.text = txt
+	# ★技能/被动描述里的伤害数值也要跟着属性变(用户 2026-07-21:「下面的技能伤害数值」)。
+	#   模板里的 {N:0.7*ATK} 按【当前】ATK 重算 —— 吃了增伤/破防 buff 后数字会跟着动。
+	if _info_passive_lbl != null and is_instance_valid(_info_passive_lbl) and _info_passive_tpl != "":
+		var pv: Dictionary = ud.get("passive", {}) if ud.get("passive", null) is Dictionary else {}
+		var ptxt := _render_skill_text(_info_passive_tpl, ud, pv)
+		if _info_passive_lbl.text != ptxt:
+			_info_passive_lbl.text = ptxt
+	for ent in _info_skill_lbls:
+		var slb = (ent as Dictionary).get("lbl", null)
+		if slb == null or not is_instance_valid(slb):
+			continue
+		var stpl := str((ent as Dictionary).get("tpl", ""))
+		if stpl == "":
+			continue
+		var sdict = (ent as Dictionary).get("sk", {})
+		var stxt := _render_skill_text(stpl, ud, sdict if sdict is Dictionary else {})
+		if slb.text != stxt:
+			slb.text = stxt
 
 
 func _close_info_panel() -> void:
@@ -22461,6 +22484,22 @@ var _info_hp_lbl: Label = null
 var _info_en_bar: ProgressBar = null
 var _info_en_lbl: Label = null
 var _info_stat_n: int = -1             # 上次的属性行数; 变了就得重建(有属性从0变非0)
+## 技能/被动描述里的伤害数值也要跟着属性实时变(用户 2026-07-21:「下面的技能伤害数值」)。
+## 存"模板原文 + 对应 Label + 技能字典", 每帧用当前属性重渲染。
+var _info_passive_lbl: Label = null
+var _info_passive_tpl: String = ""
+var _info_skill_lbls: Array = []       # [{lbl: Label, tpl: String, sk: Dictionary}, ...]
+
+## 把技能/被动文案模板按【单位当前属性】渲染成人读文本。
+## pets.json 里写的是 {N:0.7*ATK} / {{ATK}} 这类占位符, 不渲染就【原样漏到界面】。
+## 图鉴一直走 SkillText, 战斗详情面板此前漏接 —— 这就是用户在面板上看到 {N:0.7*ATK} 的原因。
+func _render_skill_text(tpl: String, u: Dictionary, sk: Dictionary) -> String:
+	if tpl == "":
+		return ""
+	var out := tpl
+	if SkillText != null:
+		out = SkillText.render_plain(tpl, u, sk if sk is Dictionary else {})
+	return _strip_html(out)
 
 ## 详情面板【属性行】的单一事实源 —— 建面板和每帧刷新都走这一个函数,
 ## 所以两边不可能漂移(加属性只改这里一处)。返回 [[图标路径, 文本, 颜色], ...]。
@@ -22479,44 +22518,28 @@ func _info_stat_rows(u: Dictionary) -> Array:
 		[sic + "range-icon.png",    "射程 %d" % int(u.get("atk_range", 0)),                          W],
 		[sic + "movespd-icon.png",  "移速 %d" % int(u.get("move_spd", 0)),                           W],
 	]
-	# ── 以下为用户 2026-07-21 要求补的「更多属性」(治疗强度/护盾强度/闪避率等) ──
-	# 吸血: 装备的 lifesteal + buff 来的 ls_bonus(原来只显前者, buff 吸血看不见)
+	# ── 用户 2026-07-21 要求补的「更多属性」 ──
+	# ★★全部【恒显示】(用户第二轮明确:「全都要显示啊」)。原来做成"有值才显示",
+	#   结果没装备的龟根本看不到治疗强度/护盾强度/闪避这几行。
+	# ★★口径修正: 治疗强度/护盾强度是【乘算】的 —— 实装是 amt *= (1 + heal_amp),
+	#   所以【基准是 100%】而不是 0。原来显示成 "+0%" 属于口径错误(用户指出:「不是100%吗」)。
+	#   同理 暴伤基准 150%(crit_dmg 默认 1.5)、龟能充能基准 100%。
+	#   而闪避/吸血/穿透/反伤/韧性/减伤/增伤 是【加算】的, 基准就是 0。
 	var ls: float = float(u.get("lifesteal", 0.0)) + float(u.get("ls_bonus", 0.0))
-	if ls > 0.0:
-		rows.append([sic + "lifesteal-icon.png", "吸血 %d%%" % int(round(ls * 100.0)), Color("#ff8fb0")])
-	var dodge: float = float(u.get("dodge_bonus", 0.0))
-	if dodge > 0.0:
-		rows.append(["", "闪避 %d%%" % int(round(dodge * 100.0)), Color("#a0e8ff")])
-	var heal_amp: float = float(u.get("heal_amp", 0.0))
-	if not is_zero_approx(heal_amp):
-		rows.append(["", "治疗强度 %+d%%" % int(round(heal_amp * 100.0)), Color("#7fe39a")])
-	var shield_amp: float = float(u.get("shield_amp", 0.0))
-	if not is_zero_approx(shield_amp):
-		rows.append(["", "护盾强度 %+d%%" % int(round(shield_amp * 100.0)), Color("#ffd93d")])
-	var cdmg: float = float(u.get("crit_dmg", 1.5))
-	if not is_equal_approx(cdmg, 1.5):
-		rows.append(["", "暴伤 %d%%" % int(round(cdmg * 100.0)), Color("#ffb37a")])
-	var apen: float = float(u.get("armor_pen", 0.0))
-	if apen > 0.0:
-		rows.append(["", "护甲穿透 %d" % int(apen), Color("#ffc48a")])
-	var mpen: float = float(u.get("magic_pen", 0.0))
-	if mpen > 0.0:
-		rows.append(["", "魔法穿透 %d" % int(mpen), Color("#c9a0ff")])
-	var refl: float = float(u.get("reflect", 0.0))
-	if refl > 0.0:
-		rows.append(["", "反伤 %d%%" % int(round(refl * 100.0)), Color("#ff9d8a")])
-	var ten: float = float(u.get("tenacity", 0.0))
-	if ten > 0.0:
-		rows.append(["", "韧性 %d%%" % int(round(ten * 100.0)), Color("#d6e4f0")])
-	var dr: float = float(u.get("damage_reduction", 0.0))
-	if dr > 0.0:
-		rows.append(["", "减伤 %d%%" % int(round(dr * 100.0)), Color("#9bdcff")])
-	var damp: float = float(u.get("damage_amp", 0.0))
-	if damp > 0.0:
-		rows.append(["", "增伤 %d%%" % int(round(damp * 100.0)), Color("#ff7a7a")])
-	var ech: float = float(u.get("echarge_perm", 0.0))
-	if ech > 0.0:
-		rows.append(["", "龟能充能 +%d%%" % int(round(ech * 100.0)), Color("#ffce4d")])
+	rows.append([sic + "lifesteal-icon.png", "吸血 %d%%" % int(round(ls * 100.0)), Color("#ff8fb0")])
+	rows.append(["", "闪避 %d%%" % int(round(float(u.get("dodge_bonus", 0.0)) * 100.0)), Color("#a0e8ff")])
+	# 乘算类: 显示最终倍率(100% = 没有加成)
+	rows.append(["", "治疗强度 %d%%" % int(round((1.0 + float(u.get("heal_amp", 0.0))) * 100.0)), Color("#7fe39a")])
+	rows.append(["", "护盾强度 %d%%" % int(round((1.0 + float(u.get("shield_amp", 0.0))) * 100.0)), Color("#ffd93d")])
+	rows.append(["", "暴伤 %d%%" % int(round(float(u.get("crit_dmg", 1.5)) * 100.0)), Color("#ffb37a")])
+	rows.append(["", "龟能充能 %d%%" % int(round((1.0 + float(u.get("echarge_perm", 0.0))) * 100.0)), Color("#ffce4d")])
+	# 加算类: 基准 0
+	rows.append(["", "护甲穿透 %d" % int(u.get("armor_pen", 0.0)), Color("#ffc48a")])
+	rows.append(["", "魔法穿透 %d" % int(u.get("magic_pen", 0.0)), Color("#c9a0ff")])
+	rows.append(["", "反伤 %d%%" % int(round(float(u.get("reflect", 0.0)) * 100.0)), Color("#ff9d8a")])
+	rows.append(["", "韧性 %d%%" % int(round(float(u.get("tenacity", 0.0)) * 100.0)), Color("#d6e4f0")])
+	rows.append(["", "减伤 %d%%" % int(round(float(u.get("damage_reduction", 0.0)) * 100.0)), Color("#9bdcff")])
+	rows.append(["", "增伤 %d%%" % int(round(float(u.get("damage_amp", 0.0)) * 100.0)), Color("#ff7a7a")])
 	return rows
 
 
@@ -22664,8 +22687,11 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	if passive is Dictionary and not (passive as Dictionary).is_empty():
 		_add_panel_sep(vb)
 		_add_section_title(vb, "被动 · " + str(passive.get("name", "")))
-		var pdesc := _strip_html(str(passive.get("desc", passive.get("brief", ""))))
-		if pdesc != "": _add_body_text(vb, pdesc)
+		# ★走模板渲染: 把 {N:0.7*ATK} 这类占位符按【本龟当前属性】算成真数字
+		var pdesc := _render_skill_text(str(passive.get("desc", passive.get("brief", ""))), u, passive)
+		if pdesc != "":
+			_info_passive_lbl = _add_body_text(vb, pdesc)
+			_info_passive_tpl = str(passive.get("desc", passive.get("brief", "")))
 
 	# 宝箱龟专属: 财宝值进度 + 已开出的战利品(用户2026-07-19"信息面板得显示当前累计的财宝值/当前抽取的装备和图标/专属装备的描述")
 	if _is_chest_turtle(u):
@@ -22677,9 +22703,13 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	if not skills.is_empty():
 		_add_panel_sep(vb)
 		_add_section_title(vb, "技能")
+		_info_skill_lbls.clear()
 		for sk in skills:
 			_add_section_title(vb, "  " + str(sk["name"]), Color("#9fd0ff"), 14)
-			if str(sk["desc"]) != "": _add_body_text(vb, str(sk["desc"]))
+			if str(sk["desc"]) != "":
+				var slb := _add_body_text(vb, str(sk["desc"]))
+				# 存"模板原文+Label+技能字典" → 每帧按当前属性重渲染伤害数值
+				_info_skill_lbls.append({"lbl": slb, "tpl": str(sk.get("tpl", "")), "sk": sk.get("sk", {})})
 
 	# 装备
 	_add_panel_sep(vb)
@@ -22830,14 +22860,18 @@ func _panel_skill_entries(u: Dictionary) -> Array:
 	for t in chosen:
 		for sk in pool:
 			if sk is Dictionary and str(sk.get("type", "")) == str(t):
-				out.append({"name": str(sk.get("name", t)), "desc": _strip_html(str(sk.get("brief", sk.get("detail", ""))))})
+				out.append({"name": str(sk.get("name", t)),
+							"desc": _render_skill_text(str(sk.get("brief", sk.get("detail", ""))), u, sk),
+							"tpl": str(sk.get("brief", sk.get("detail", ""))), "sk": sk})
 				break
 	# 普攻 (skillPool[0] 一般是 physical/magic) — 补一条让面板不空
 	if not pool.is_empty() and pool[0] is Dictionary:
 		var s0: Dictionary = pool[0]
 		var t0 := str(s0.get("type", ""))
 		if t0 == "physical" or t0 == "magic":
-			out.append({"name": str(s0.get("name", "普攻")) + " (普攻)", "desc": _strip_html(str(s0.get("brief", "")))})
+			out.append({"name": str(s0.get("name", "普攻")) + " (普攻)",
+						"desc": _render_skill_text(str(s0.get("brief", "")), u, s0),
+						"tpl": str(s0.get("brief", "")), "sk": s0})
 	return out
 
 # 装备行: 图标 + 名 + ★×star + 效果 (effectDesc1, strip html). 稀有度色描边图标框.
@@ -22907,7 +22941,7 @@ func _add_section_title(parent: VBoxContainer, text: String, col: Color = Color(
 	l.add_theme_color_override("font_color", col)
 	parent.add_child(l)
 
-func _add_body_text(parent: VBoxContainer, text: String, col: Color = Color("#c2d0de")) -> void:
+func _add_body_text(parent: VBoxContainer, text: String, col: Color = Color("#c2d0de")) -> Label:
 	var l := Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 12)
@@ -22915,6 +22949,7 @@ func _add_body_text(parent: VBoxContainer, text: String, col: Color = Color("#c2
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.custom_minimum_size = Vector2(380, 0)
 	parent.add_child(l)
+	return l   # ★返回 Label 供每帧重渲染技能伤害数值
 
 # 攻速等小数: 去多余 0 (0.850000 → 0.85)
 func _fmt_num(v: float) -> String:

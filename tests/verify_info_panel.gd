@@ -32,6 +32,7 @@ func _ready() -> void:
 	_test_minion_skills(s)
 	_test_live_refresh()
 	_test_no_close_button()
+	_test_placeholder_rendered(s)
 
 	s.queue_free()
 	print("ALL PASS — 详情面板(更多属性/小将技能/实时刷新/点空白关)" if _fail == 0 else "FAILED: %d" % _fail)
@@ -63,17 +64,28 @@ func _test_stat_rows(s) -> void:
 	for k in ["攻击", "护甲", "魔抗", "暴击", "攻速", "射程", "移速"]:
 		_ok("核心属性『%s』恒显示" % k, txt.contains(k))
 
-	# ★0 值的不该占位(否则面板一片 0)
+	# ★用户 2026-07-21 第二轮明确「全都要显示啊」→ 裸单位也必须列全, 不能因为是 0 就藏起来。
+	#   (第一版做成"有值才显示", 结果没装备的龟看不到治疗强度/护盾强度/闪避那几行。)
 	var plain := {"atk": 10.0, "def": 1.0, "mr": 1.0, "crit": 0.0, "atk_interval": 1.0,
 				  "atk_range": 100.0, "move_spd": 50.0}
 	var rows2: Array = s._info_stat_rows(plain)
 	var txt2 := ""
 	for r in rows2:
 		txt2 += str((r as Array)[1]) + " | "
-	_ok("★没有的属性不占位(0 值不显示)",
-		not txt2.contains("治疗强度") and not txt2.contains("闪避") and not txt2.contains("反伤"),
+	_ok("★裸单位也把所有属性列全(不因为是0就藏)",
+		txt2.contains("治疗强度") and txt2.contains("护盾强度") and txt2.contains("闪避")
+		and txt2.contains("反伤") and txt2.contains("韧性"),
 		txt2)
-	_ok("★核心行数固定为 7(裸单位)", rows2.size() == 7, "实际 %d 行" % rows2.size())
+	# ★★口径: 治疗/护盾强度是【乘算】(amt *= 1+amp), 基准是 100% 而不是 0
+	#   —— 用户指出「治疗和护盾强度不是100%吗」, 原来显示成 +0% 是口径错误。
+	_ok("★治疗强度基准 = 100%(乘算口径, 不是 +0%)", txt2.contains("治疗强度 100%"), txt2)
+	_ok("★护盾强度基准 = 100%", txt2.contains("护盾强度 100%"))
+	_ok("★暴伤基准 = 150%(crit_dmg 默认 1.5)", txt2.contains("暴伤 150%"))
+	_ok("★龟能充能基准 = 100%", txt2.contains("龟能充能 100%"))
+	# 加算类基准仍是 0
+	_ok("加算类(闪避/反伤)基准为 0%", txt2.contains("闪避 0%") and txt2.contains("反伤 0%"))
+	_ok("属性行数稳定(裸单位与满属性单位一致=恒显示)",
+		rows2.size() == rows.size(), "裸 %d 行 / 满 %d 行" % [rows2.size(), rows.size()])
 
 	# ★不许用 emoji 当图标(本项目已全去 emoji 根治绿块)
 	var bad_icon := 0
@@ -124,6 +136,21 @@ func _test_live_refresh() -> void:
 	_ok("★旧注释『一次性快照, 从不刷新』已清除(否则会误导后来人)",
 		not src.contains("详情面板整体是一次性快照"))
 
+	# ★★用户点名的「下面的技能伤害数值」也要实时 —— 这块第一版整个漏了:
+	#   面板直接贴 pets.json 原文, 于是 {N:0.7*ATK} / {{ATK}} 这类【占位符原样漏到界面上】。
+	#   图鉴一直走 SkillText 渲染, 战斗面板没接。
+	_ok("★战斗场接入了 SkillText 模板渲染器", src.contains("const SkillText := preload"))
+	_ok("★有 _render_skill_text(把占位符按当前属性算成数字)",
+		src.contains("func _render_skill_text"))
+	var rb := _func_body(src, "_refresh_info_panel")
+	_ok("★技能描述纳入每帧刷新(伤害数值跟着属性变)",
+		rb.contains("_info_skill_lbls"), "刷新函数体 %d 字符" % rb.length())
+	_ok("★被动描述也纳入每帧刷新", rb.contains("_info_passive_tpl"))
+	# 面板取技能条目时必须渲染, 不能再直接 _strip_html 原文
+	var pe := _func_body(src, "_panel_skill_entries")
+	_ok("★技能条目走模板渲染(不再原样贴 pets.json)",
+		pe.contains("_render_skill_text"), "仍在直接 _strip_html 原文 = 占位符会漏出来")
+
 
 ## 2d. 去掉 ✖ + 点空白关
 func _test_no_close_button() -> void:
@@ -146,6 +173,24 @@ func _test_no_close_button() -> void:
 
 ## 精确取某个顶层函数的函数体(从它的 func 行到【下一个顶层 func】为止)。
 ## 用固定字符窗口截会把后面别的函数框进来 → 断言变恒真。
+## ★行为级: 真渲染一段带占位符的模板, 出来的必须是【数字】而不是 {N:...}
+## 用户 2026-07-21 在面板截图里直接看到了 "{N:0.7*ATK}" 和 "{{ATK}}" 漏在界面上。
+func _test_placeholder_rendered(s) -> void:
+	var u := {"atk": 100.0, "maxHp": 1000.0, "hp": 1000.0, "def": 10.0, "mr": 10.0,
+			  "crit": 0.0, "level": 1, "id": "basic"}
+	var tpl := "造成 {N:0.7*ATK} 点物理伤害"
+	var out: String = s._render_skill_text(tpl, u, {})
+	_ok("★占位符被算成数字(不再原样漏到界面)",
+		not out.contains("{N:") and not out.contains("{{"), "渲染结果: %s" % out)
+	# ATK=100 → 0.7*ATK = 70, 结果里应出现 70
+	_ok("★算出来的数值正确(ATK=100 → 0.7×ATK=70)", out.contains("70"), "渲染结果: %s" % out)
+	# 属性变了, 渲染结果要跟着变(这就是"实时"的本质)
+	u["atk"] = 200.0
+	var out2: String = s._render_skill_text(tpl, u, {})
+	_ok("★★属性变化后重渲染的数字跟着变(ATK翻倍→140)",
+		out2.contains("140") and out2 != out, "ATK=200 渲染: %s" % out2)
+
+
 func _func_body(src: String, fname: String) -> String:
 	var lines := src.split("\n")
 	var out := ""
