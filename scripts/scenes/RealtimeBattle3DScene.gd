@@ -1732,7 +1732,8 @@ func _build_far_backdrop(root: Node3D) -> void:
 	var img := Image.create(2, H, false, Image.FORMAT_RGBA8)
 	for y in range(H):
 		var t := float(y) / float(H - 1)          # 0=近(接地砖) 1=远(水雾)
-		var c := Color(0.055, 0.085, 0.150).lerp(Color(0.075, 0.230, 0.290), pow(t, 0.7))
+		# 近端接住地砖色, 远端提亮成水雾青(第一版远端太暗, 天际线看不出层次)
+		var c := Color(0.060, 0.095, 0.165).lerp(Color(0.115, 0.310, 0.375), pow(t, 0.65))
 		for x in range(2):
 			img.set_pixel(x, y, c)
 	var grad_tex := ImageTexture.create_from_image(img)
@@ -1772,20 +1773,80 @@ func _build_far_backdrop(root: Node3D) -> void:
 			spr.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
 			spr.no_depth_test = false
 			# ★高度受可见带约束: z=-20 处超过 y≈2.4m 就顶出画面, 所以剪影只能矮而宽
-			var scl := rng.randf_range(1.6, 3.4)
+			var scl := rng.randf_range(1.8, 3.6)
 			spr.pixel_size = scl / float(maxi(1, rtex.get_height()))
-			# 越远越暗越偏蓝 = 大气透视
+			# 大气透视: 越远越淡越偏蓝。
+			# ★第一版调得太暗(0.11,0.24,0.34 → 0.06,0.13,0.22), 结果剪影和背景糊成一片、
+			#   放大截图才勉强看得出 —— 用户 2026-07-21 看完说"太弱了"。这里整体提亮拉开对比。
 			var dep := rng.randf()
-			spr.modulate = Color(0.11, 0.24, 0.34).lerp(Color(0.06, 0.13, 0.22), dep)
+			spr.modulate = Color(0.26, 0.46, 0.60).lerp(Color(0.13, 0.26, 0.40), dep)
 			var zz := -16.5 - dep * 6.5              # z∈[-23,-16.5]: 正好落在地砖边缘到画面顶那条带
 			spr.position = Vector3(rng.randf_range(-30.0, 30.0), scl * 0.5, zz)
 			spr.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			holder.add_child(spr)
 
-	# ── ③(不放光柱) ───────────────────────────────────────────
-	# 试过在这加水面光柱, 但可见带太窄 → 只能看到光柱最亮的顶端一小截,
-	# 渲染出来是几根【死白的竖条】, 很难看(已截图确认)。远景保持"海床渐变 + 礁石剪影"两层即可。
-	# 光柱在近景仍有(双路模式的 _build_lightshafts), 那里高度够、看得到完整柱体。
+	# ── ②b 远景发光群(珊瑚/海葵/海带) ──────────────────────────
+	# 剪影只有轮廓没有"生气"。加一层加性发光的小点缀, 让远处天际线有光斑闪烁感,
+	# 这也是深海题材最能出氛围的一笔。
+	var glows := ["glow-coral", "glow-anem", "glow-kelp"]
+	var grng := RandomNumberGenerator.new()
+	grng.seed = 20260722
+	for i in range(22):
+		var gp := "res://assets/sprites/map/%s.png" % glows[i % glows.size()]
+		if not ResourceLoader.exists(gp):
+			continue
+		var gtex: Texture2D = load(gp)
+		var gs := Sprite3D.new()
+		gs.texture = gtex
+		gs.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		gs.shaded = false
+		gs.transparent = true
+		var gm := StandardMaterial3D.new()
+		gm.albedo_texture = gtex        # ★★必须给覆盖材质设贴图!
+		# material_override 会【整个替换】Sprite3D 自己的材质, 不设 albedo_texture
+		# 就渲染成一块【纯白方块】—— 我在这和远景光柱上连犯两次, 都是截图才看出来
+		# (用户 2026-07-21 看到顶部一排白方块)。现有的 _build_lightshafts 是对的, 可对照。
+		gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		gm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD      # 加性=发光
+		gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+		gm.fog_enabled = false
+		gs.material_override = gm
+		var gsc := grng.randf_range(0.7, 1.7)
+		gs.pixel_size = gsc / float(maxi(1, gtex.get_height()))
+		var gd := grng.randf()
+		# 冷青→蓝紫 随机, 远的更淡
+		var gcol := Color(0.35, 0.95, 1.00).lerp(Color(0.62, 0.45, 1.00), grng.randf())
+		gcol.a = 0.50 - gd * 0.22
+		gs.modulate = gcol
+		gs.position = Vector3(grng.randf_range(-29.0, 29.0), gsc * 0.45 + 0.15, -16.0 - gd * 6.8)
+		gs.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		holder.add_child(gs)
+
+	# ── ③远景水面光柱 ─────────────────────────────────────────
+	# ★注: 第一次加这个渲染成了几根"死白竖条", 我当时以为是可见带太窄、把它删了 —— 判断错了。
+	#   真因是【material_override 没设 albedo_texture】(见上), 修好后光柱是正常的。
+	#   教训: 看到渲染异常先查材质/贴图有没有接上, 别急着归因于"角度/尺寸不合适"。
+	var stex := VfxTex._make_lightshaft_texture()
+	for i in range(6):
+		var sh := Sprite3D.new()
+		sh.texture = stex
+		sh.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sh.shaded = false
+		sh.transparent = true
+		var sm := StandardMaterial3D.new()
+		sm.albedo_texture = stex        # ★同上, 不能漏
+		sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		sm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		sm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+		sm.fog_enabled = false
+		sh.material_override = sm
+		sh.pixel_size = 0.030
+		sh.modulate = Color(0.42, 0.80, 1.0, 0.22)
+		sh.position = Vector3(-26.0 + float(i) * 10.5, 1.6, -18.5)
+		sh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		holder.add_child(sh)
 
 
 func _build_lightshafts(root: Node3D) -> void:
