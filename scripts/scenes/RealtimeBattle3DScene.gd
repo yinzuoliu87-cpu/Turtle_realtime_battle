@@ -3421,8 +3421,12 @@ func _update_run_anim(u: Dictionary) -> void:
 	var is_run_now: bool = (u.get("anim_sd", {}) == rsd)
 	if moved > 0.8 and not is_run_now:
 		_set_anim_sheet(u, rsd, "", true)
+		# ★走动走的是 is_idle=true 分支(直接套 idle_px/idle_offy), 同样绕不过归一问题:
+		#   idle_px 是按 80px 帧算的, 套到 96px 帧上 → 本体只有 1.17m 且悬空 0.43m。
+		if u.get("is_elite", false):
+			_elite_fix_norm(u, rsd)
 	elif moved <= 0.8 and is_run_now:
-		_set_anim_sheet(u, u.get("idle_sd", {}), "", true)
+		_set_anim_sheet(u, u.get("idle_sd", {}), "", true)   # 回 idle: 该分支会自己还原 idle_px/idle_offy
 
 func _advance_anim(u: Dictionary, delta: float) -> void:
 	if u.get("_manual_anim", false):
@@ -3503,6 +3507,33 @@ func _elite_anim(u: Dictionary, action: String) -> void:
 	if asd.is_empty():
 		return
 	_set_anim_sheet(u, asd, action, false)
+	_elite_fix_norm(u, asd)
+
+
+# PixelLab 96×96 动作帧的实测常量 (2026-07-21, 逐帧量 bbox 得到, 七张图完全一致):
+#   第0帧内容 = [高 47, 底行 71] —— 角色本体高 47px, 脚底在第 71 行, 脚下空 25px。
+#   (后续帧 bbox 更大是刀光/环形斩的特效超出本体, 不能当本体尺寸用。)
+const ELITE_ACT_BODY_H := 47.0    # 动作帧里角色本体高(px)
+const ELITE_ACT_FEET_ROW := 71.0  # 动作帧里脚底所在行
+const ELITE_IDLE_BODY_H := 71.0   # idle 图 minion-elite.png 的角色本体高(px, 帧高 80)
+
+
+## 修正精英动作帧的归一 —— 不修的话一播动作角色就缩到 56%。
+##   _set_anim_sheet 的通用规则是 pixel_size = TARGET_BODY_H / 帧高, 它默认【角色本体填满整帧】。
+##   idle 图确实如此(71/80 = 89%), 但 PixelLab 的 96×96 输出里本体只占 47/96 = 49%
+##   → 同样归一到 2m, idle 角色 1.78m 而动作角色只有 0.98m, 差 1.81 倍(用户 2026-07-21 一眼看出)。
+##   ★不能靠放大 png 解决: 71/47 = 1.51 非整数倍, 像素画重采样会糊。改归一系数, 纯数字不动图。
+func _elite_fix_norm(u: Dictionary, sd: Dictionary) -> void:
+	var spr = u.get("sprite", null)
+	if not is_instance_valid(spr):
+		return
+	var frame_h: float = float(int(sd.get("frame_h", 96)))
+	# ①本体大小对齐 idle: 让 47px 的本体显示成和 idle 的 71px 本体一样大
+	var idle_px: float = float(u.get("idle_px", PIXEL_SIZE))
+	spr.pixel_size = idle_px * (ELITE_IDLE_BODY_H / ELITE_ACT_BODY_H)
+	# ②脚底对齐: 通用规则用 frame_h*0.5(假设内容顶到帧底), 但这里脚下空着 25px,
+	#    照抄会让角色整个悬空约 0.94m。按实测脚底行反推。
+	spr.offset = Vector2(0.0, ELITE_ACT_FEET_ROW - frame_h * 0.5)
 
 
 func _play_action(u: Dictionary, kind: String) -> void:
@@ -3541,6 +3572,8 @@ func _play_action(u: Dictionary, kind: String) -> void:
 		var _aiv: float = maxf(0.15, float(u.get("atk_interval", 0.85)))
 		asd["fps"] = clampf(_afr / (_aiv * 0.45), 10.0, 30.0)   # 斩击动作时长随攻速(LoL式·越快越短): 占攻击周期~45%
 	_set_anim_sheet(u, asd, kind, false)
+	if id == "__minion_elite__":
+		_elite_fix_norm(u, asd)   # 普攻(ACTION_ATTACK)也是 96×96 的 PixelLab 图, 同样要修归一
 
 # ----------------------------------------------------------------------------
 #  §GROUNDING — 立绘底部软渐隐 ShaderMaterial (根治"纸板硬切地面").

@@ -33,7 +33,83 @@ func _ready() -> void:
 	_check_sheets_exist(src)
 	_check_hooks(src)
 	_check_no_interrupt(src)
+	_check_body_norm(src)
 	_done()
+
+
+## ④归一常量 ↔ 图的实际内容 必须对上
+##   _set_anim_sheet 的通用归一假设"角色本体填满整帧", 但 PixelLab 的 96×96 输出里
+##   本体只占 47px、脚底在第 71 行 —— 所以代码里用 ELITE_ACT_BODY_H / ELITE_ACT_FEET_ROW
+##   手工补偿。★谁重新生成一次动作图, 这两个数就可能变, 而变了【不会报错】,
+##   只会让角色一播动作就变大/变小/悬空(2026-07-21 用户一眼看出"大小明显不对")。
+func _check_body_norm(src: String) -> void:
+	var want_body := _const_int(src, "ELITE_ACT_BODY_H")
+	var want_feet := _const_int(src, "ELITE_ACT_FEET_ROW")
+	var want_idle := _const_int(src, "ELITE_IDLE_BODY_H")
+	if want_body <= 0 or want_feet <= 0 or want_idle <= 0:
+		_fail("解析不到归一常量 (BODY_H=%d FEET_ROW=%d IDLE_BODY_H=%d)" % [want_body, want_feet, want_idle])
+		return
+	# ★用【各图首帧高度的中位数】比, 不逐张比等值 ——
+	#   环形斩第 0 帧刀刃已经甩出来了(实测 56 vs 本体 47), 那不是本体尺寸;
+	#   逐张等值会被这种单张异常带偏。中位数对它免疫, 又能抓住"整体重做导致尺寸变了"。
+	var heights: Array[int] = []
+	var n := 0
+	for act in ["attack", "whirl", "hammer", "hammer_big", "whip", "consume", "run"]:
+		var p := "res://assets/sprites/pets/animations/elite/%s.png" % act
+		if not ResourceLoader.exists(p):
+			continue                      # 缺图由 _check_sheets_exist 报
+		var bb := _frame0_bbox(p)
+		if bb.is_empty():
+			_fail("%s 第0帧整帧透明?" % act)
+			continue
+		n += 1
+		heights.append(int(bb["h"]))
+		# 脚底行必须每张都一致 —— 它决定角色贴不贴地, 差一点就悬空/陷地, 没有"异常帧"的借口
+		if int(bb["bottom"]) != want_feet:
+			_fail("%s 第0帧脚底行 %d ≠ ELITE_ACT_FEET_ROW %d —— 动作播出来会悬空/陷地" % [act, int(bb["bottom"]), want_feet])
+	if n > 0:
+		heights.sort()
+		var med: int = heights[n / 2]
+		if absi(med - want_body) > 2:
+			_fail("动作图本体高中位数 %d ≠ ELITE_ACT_BODY_H %d (容差2) —— 角色一播动作就会大小不对。各图首帧: %s"
+				% [med, want_body, str(heights)])
+	# idle 基准图
+	var ib := _frame0_bbox("res://assets/sprites/pets/minion-elite.png")
+	if not ib.is_empty() and int(ib["h"]) != want_idle:
+		_fail("idle 本体高 %d ≠ ELITE_IDLE_BODY_H %d" % [int(ib["h"]), want_idle])
+	print("  [归一] 校对 %d 张动作图 + idle 基准" % n)   # ★打印分母: N=0 是空检查不是通过
+
+
+## 取图第 0 帧的不透明内容包围盒 {h, bottom}. 方帧横排 → 第0帧是左上角 h×h。
+func _frame0_bbox(path: String) -> Dictionary:
+	var tex: Texture2D = load(path)
+	if tex == null:
+		return {}
+	var img := tex.get_image()
+	if img == null:
+		return {}
+	var fh := img.get_height()
+	var fw: int = mini(fh, img.get_width())
+	var top := -1
+	var bot := -1
+	for y in range(fh):
+		for x in range(fw):
+			if img.get_pixel(x, y).a > 0.01:
+				if top < 0:
+					top = y
+				bot = y
+				break
+	if top < 0:
+		return {}
+	return {"h": bot - top + 1, "bottom": bot + 1}   # bottom 用 1-based 行数, 同 PIL bbox 口径
+
+
+## 从源码里抠 `const NAME := 123.0` 的数值
+func _const_int(src: String, name: String) -> int:
+	var re := RegEx.new()
+	re.compile("const\\s+" + name + "\\s*:=\\s*([0-9]+)")
+	var m := re.search(src)
+	return int(m.get_string(1)) if m != null else -1
 
 
 ## ① 表里登记的图都在磁盘上
