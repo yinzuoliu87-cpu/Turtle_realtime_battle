@@ -1,0 +1,67 @@
+# 提交门禁 CI (2026-07-21)
+#
+# 【为什么单开一个 workflow 而不塞进 ios-build.yml】
+#   出包与门禁职责不同: 门禁红了不该拦住出包(你可能就是要装个包去现场看 bug),
+#   出包挂了(苹果工具链抽风)也不该让人以为代码坏了。分开跑, 各自结论清晰。
+#
+# 【为什么必须有】此前 CI 只出 iOS 包、【零处跑测试】, 于是:
+#   · run-tests.sh 从 2026-07-16 起一直是红的, 4 天没人发现
+#   · 36 个测试里 8 个从没被执行过(runner 是硬编码名单, 已改自动发现)
+#   本地门禁靠人记得跑; CI 门禁是【每次 push 都强制跑】, 这才是真兜底。
+#
+# 用 ubuntu(比 macOS runner 便宜且快); Godot headless 跑测试不需要图形。
+name: 提交门禁(测试+审计)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GODOT_VERSION: "4.6.3-stable"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 装 Godot (linux headless)
+        run: |
+          curl -fL -o godot.zip \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          unzip -q godot.zip
+          BIN="$(ls Godot_v*_linux.x86_64 | head -1)"
+          chmod +x "$BIN"
+          echo "GODOT=$PWD/$BIN" >> "$GITHUB_ENV"
+          "$PWD/$BIN" --version || true
+
+      - name: 导入资源 (注册 class_name / 生成 .godot)
+        run: |
+          "$GODOT" --headless --import --path . || true
+
+      - name: 只读数据审计 (不需要 Godot, 先跑=快速失败)
+        run: |
+          python3 tools/data_integrity.py
+          python3 tools/tooltip_number_audit.py
+          TRI_OUT="$PWD/tri_audit_report.txt" python3 tools/tri_audit.py
+
+      - name: 自证测试 + 冒烟 + 三方对账
+        run: |
+          bash run-tests.sh
+
+      - name: 失败时把日志推到 ci-logs 分支
+        if: failure()
+        run: |
+          # 本地读不了 Actions 日志 API(无 token), 推到分支后 git fetch origin ci-logs 就能看
+          mkdir -p /tmp/cilog
+          cp -f tri_audit_report.txt /tmp/cilog/ 2>/dev/null || true
+          git config user.name "ci"; git config user.email "ci@local"
+          git checkout --orphan ci-logs-tmp
+          git rm -rf --cached . >/dev/null 2>&1 || true
+          rm -rf $(ls -A | grep -v '^\.git$') 2>/dev/null || true
+          cp -f /tmp/cilog/* . 2>/dev/null || true
+          date > gate-failed-at.txt
+          git add -A && git commit -m "gate failed $(date -u +%FT%TZ)" || true
+          git push -f origin HEAD:ci-logs || true

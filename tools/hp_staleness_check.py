@@ -9,10 +9,14 @@ import io, sys, os, subprocess
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 # 事实源 → (同步脚本, 该脚本运行时写出的报告文件, 标签)
+# ★路径 2026-07-21 随「常备工具 / 一次性脚本」分离改到 tools/oneoff/。
+#   同步脚本是【一次性批次】(hp_s8..s13), 归 oneoff; 本检查器是【常备】, 留在 tools/。
+#   搬完当场跑这个检查器才发现路径写死了 —— 工具搬家必须逐个跑一遍, 不能只看目录整齐了。
+ONEOFF = 'tools/oneoff'
 PAIRS = [
-    ('docs/design/实时版-系统机制权威.md', 'tools/hp_s8_systems.py', 'tools/hp_s8_report.txt',  'S8  系统机制'),
-    ('data/phase2-equipment.json',        'tools/hp_s9_equip.py',   'tools/hp_s9_report.txt',  'S9  59件装备'),
-    ('docs/design/28龟技能设计-权威.md',    'tools/hp_s13_resync.py', 'tools/hp_s13_report.txt', 'S10/S13 28龟'),
+    ('docs/design/实时版-系统机制权威.md', ONEOFF + '/hp_s8_systems.py', ONEOFF + '/hp_s8_report.txt',  'S8  系统机制'),
+    ('data/phase2-equipment.json',        ONEOFF + '/hp_s9_equip.py',   ONEOFF + '/hp_s9_report.txt',  'S9  59件装备'),
+    ('docs/design/28龟技能设计-权威.md',    ONEOFF + '/hp_s13_resync.py', ONEOFF + '/hp_s13_report.txt', 'S10/S13 28龟'),
 ]
 
 def file_mtime(p):
