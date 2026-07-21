@@ -88,6 +88,23 @@ else
   FAIL=$((FAIL+1)); echo "  FAIL  tri_audit"; echo "$TRI" | tail -3 | sed 's/^/        /'
 fi
 
+# ── 只读数据审计器 ──────────────────────────────────────────────────────────
+#   ★这些以前只能【手动跑】, 于是"改了没人拦" —— 装备文案与代码分歧就是这么攒出来的
+#   (2026-07-19 那轮花了近 30 个来回逐条人工核对)。现在进门禁, 分歧当场报。
+run_audit () {   # $1=脚本 $2=判定通过的关键字 $3=显示名
+  local out
+  out="$(cd "$DIR" && python "$1" 2>&1)"
+  if echo "$out" | grep -q "$2"; then
+    PASS=$((PASS+1)); echo "  PASS  $3"
+  else
+    FAIL=$((FAIL+1)); echo "  FAIL  $3"; echo "$out" | tail -6 | sed 's/^/        /'
+  fi
+}
+
+echo "=== 只读数据审计 ==="
+run_audit "tools/data_integrity.py"       "ALL OK" "data_integrity (json交叉引用/资源路径/孤儿字段)"
+run_audit "tools/tooltip_number_audit.py" "ALL OK" "tooltip_number_audit (装备文案数值 ↔ 代码)"
+
 echo ""
 if [ "$FAIL" -eq 0 ]; then
   echo "ALL PASS ($PASS/$PASS)"

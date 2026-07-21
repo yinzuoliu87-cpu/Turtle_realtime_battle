@@ -22456,6 +22456,14 @@ func _refresh_info_panel() -> void:
 			for ch in _info_status_box.get_children():
 				ch.queue_free()
 			_info_status_chips(_info_status_box, ud)
+	# ★装备区: 星级/件数变了才重建(财神招财临时升星、宝箱龟开出新装备)
+	if _info_equip_box != null and is_instance_valid(_info_equip_box):
+		var esig := _equip_signature(ud)
+		if esig != _info_equip_sig:
+			_info_equip_sig = esig
+			for ch in _info_equip_box.get_children():
+				ch.queue_free()
+			_fill_equip_section(_info_equip_box, ud)
 
 
 func _close_info_panel() -> void:
@@ -22518,6 +22526,24 @@ var _info_passive_tpl: String = ""
 var _info_skill_lbls: Array = []       # [{lbl: Label, tpl: String, sk: Dictionary}, ...]
 var _info_status_box: VBoxContainer = null   # 状态 chips 容器(条目数会变→整块重建)
 var _info_status_sig := ""                   # 上次的状态签名; 没变就不重建(省每帧分配节点)
+var _info_equip_box: VBoxContainer = null    # 装备区容器(星级/件数会变→整块重建)
+var _info_equip_sig := ""
+
+## 装备区: 件数 + 各件 id/星 的签名, 变了才重建(财神招财临时升星/宝箱龟开出新装备都会变)
+func _equip_signature(u: Dictionary) -> String:
+	var s := ""
+	for e in u.get("equips", []):
+		s += "%s:%d," % [str((e as Dictionary).get("id", "")), int((e as Dictionary).get("star", 1))]
+	return s
+
+func _fill_equip_section(box: VBoxContainer, u: Dictionary) -> void:
+	var equips: Array = u.get("equips", [])
+	_add_section_title(box, "装备 (%d)" % equips.size())
+	if equips.is_empty():
+		_add_body_text(box, "无装备", Color("#7a8694"))
+	else:
+		for e in equips:
+			_add_equip_row(box, str(e.get("id", "")), int(e.get("star", 1)))
 
 ## 状态签名: 把当前所有状态压成一个字符串, 变了才重建 chips。
 ## ★不能每帧无脑重建 —— 那会每帧 queue_free + new 一堆节点, 还会让 UI 闪。
@@ -22765,15 +22791,15 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 				# 存"模板原文+Label+技能字典" → 每帧按当前属性重渲染伤害数值
 				_info_skill_lbls.append({"lbl": slb, "tpl": str(sk.get("tpl", "")), "sk": sk.get("sk", {})})
 
-	# 装备
+	# 装备 —— ★也纳入实时(用户「面板里所有的数值需要实时变化」, 我不该给它开例外)。
+	#   战斗中装备会变: 财神招财临时升星、宝箱龟开出新装备。条目数/星级都会变 → 整块重建, 签名节流。
 	_add_panel_sep(vb)
 	var equips: Array = u.get("equips", [])
-	_add_section_title(vb, "装备 (%d)" % equips.size())
-	if equips.is_empty():
-		_add_body_text(vb, "无装备", Color("#7a8694"))
-	else:
-		for e in equips:
-			_add_equip_row(vb, str(e.get("id", "")), int(e.get("star", 1)))
+	_info_equip_box = VBoxContainer.new()
+	_info_equip_box.add_theme_constant_override("separation", 4)
+	vb.add_child(_info_equip_box)
+	_fill_equip_section(_info_equip_box, u)
+	_info_equip_sig = _equip_signature(u)
 
 	_info_passthrough(vb)   # 面板内非按钮控件透传触摸→ScrollContainer可滑(手机·用户2026-07-18「列表滑动考虑手机端」)
 
