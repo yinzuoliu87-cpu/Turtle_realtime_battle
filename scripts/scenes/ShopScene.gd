@@ -19,8 +19,44 @@ func _ready() -> void:
 		_build_locked()   # 商店锁: 本大轮未打第一场 → 不开店(用户2026-07-18「商店打完第一场后解锁」)
 		return
 	_rng.randomize()
-	_roll()
+	# ★货架要跨场景保留 —— 原来这里无条件 _roll(), 于是每次退出重进都重掷:
+	#   买掉的位子会复活、看中的货被冲掉(用户 2026-07-21 报的 bug)。
+	#   现在只有【打完新的一场】(season_total_battles 变了)才自动换货, 否则恢复上次的货架。
+	if not _restore_offer():
+		_roll()
 	_rebuild()
+
+## 从 GameState 恢复货架。成功返回 true; 货架不存在/已过期(打过新战斗)返回 false。
+func _restore_offer() -> bool:
+	if int(GameState.meta_shop_battles) != int(GameState.season_total_battles):
+		return false      # 打过新的一场 → 该换货了
+	var saved: Array = GameState.meta_shop_offer
+	if saved.is_empty():
+		return false
+	_offer = []
+	for row in saved:
+		if row == null:
+			_offer.append(null)          # 这一格已经买走, 保持空
+			continue
+		var eid := str((row as Dictionary).get("id", ""))
+		var found = null
+		for e in DataRegistry.phase2_equipment:
+			if str((e as Dictionary).get("id", "")) == eid:
+				found = e
+				break
+		_offer.append(found)             # 数据里查无此装备(改过json) → null, 不崩
+	return true
+
+## 把当前货架写回 GameState(只存 id, 不存整份装备字典 —— 存档不膨胀且不会存旧数值)
+func _persist_offer() -> void:
+	var out: Array = []
+	for it in _offer:
+		if it == null:
+			out.append(null)
+		else:
+			out.append({"id": str((it as Dictionary).get("id", ""))})
+	GameState.meta_shop_offer = out
+	GameState.meta_shop_battles = int(GameState.season_total_battles)
 
 ## 商店上锁屏 (大轮开局·未打第一场): 提示 + 返回, 不出货架
 func _build_locked() -> void:
@@ -57,6 +93,7 @@ func _roll() -> void:
 			if not maxed.has(str((e as Dictionary).get("id", ""))):
 				pool.append(e)
 	_offer = Phase2Equip.roll_shop(pool, _shop_level(), 10, _rng)
+	_persist_offer()   # 掷完立刻落盘, 否则退出重进又变了
 
 # 玩家已有 3 星(满星)的装备 id 集合(背包+统领已装+小将已装)→ 商店 roll 时排除
 func _maxed_item_ids() -> Dictionary:
@@ -339,6 +376,7 @@ func _on_buy(idx: int) -> void:
 	GameState.persistent_bench.append({"id": str(edef.get("id", "")), "star": 1})
 	GameState.auto_merge_all()   # 买后自动 3 合 1 (背包+龟身一起算)
 	_offer[idx] = null
+	_persist_offer()   # 买走的位子要留空, 不能退出重进又长回来
 	GameState.save()
 	_rebuild()
 

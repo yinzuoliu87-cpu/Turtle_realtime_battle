@@ -748,11 +748,25 @@ func _tilemap_from_data(meta: Dictionary, grid: Array, height: Array) -> void:  
 			var px := ox + (float(c) + 0.5) * tile
 			var py := oy + (float(r) + 0.5) * tile
 			if not buckets.has(ti): buckets[ti] = []
-			buckets[ti].append(Transform3D(Basis(), _world_pos(Vector2(px, py), hh)))
+			buckets[ti].append(Transform3D(Basis(), _world_pos(Vector2(px, py), hh - TILE_SINK)))
 	for ti in buckets:
-		_tilemap_add(buckets[ti], Vector3(tw_m * 0.94, 0.15, tw_m * 0.94), TILE_COLS.get(ti, Color(0.2, 0.2, 0.2)), _tile_material(ti))
+		_tilemap_add(buckets[ti], Vector3(tw_m * 0.94, TILE_THICK, tw_m * 0.94), TILE_COLS.get(ti, Color(0.2, 0.2, 0.2)), _tile_material(ti))
 
 # ═══ 局内地图刷子编辑器 (MAPEDIT=1 开 · 开发工具不进正式对局 · 纯视觉不改玩法) ═══
+## 地砖厚度(米)。★BoxMesh 以 transform 为【几何中心】, 所以砖体占 y∈[-厚/2, +厚/2]。
+## 若把 transform 放在 y=0, 上表面就在 +0.075 —— 于是所有 y<0.075 的贴地特效
+## (技能环 0.05 / 影子 0.02 / 队色环 0.015 / 泥印 0.03 …共 40+ 处) 全被埋进砖里看不见,
+## 这就是用户 2026-07-21 报的「地砖有了高度导致特效被藏到地板下方」。
+## 解法: 建砖时统一下沉 TILE_THICK*0.5, 让【上表面落在 y=0】=== 贴地特效的基准面。
+## 这样一次修好全部, 不用逐个去抬那 40+ 处的 y 值(逐个抬还会引出穿模)。
+const TILE_THICK := 0.15
+const TILE_SINK := TILE_THICK * 0.5   # 砖心下沉量 → 上表面 y=0
+
+## 障碍物 footprint 外扩余量(像素) = 单位半身宽, 让单位绕行时不会把身子插进礁石。
+## ★以前 navmesh 用 +28、放置 clamp 用 +26, 两处口径不一致(没人说得清为什么差 2)。
+## 统一到这里。注意它是【叠加在 rx/ry 之上】的, rx 本身必须贴合视觉(见 _build_map_props)。
+const OBSTACLE_MARGIN := 28.0
+
 const _ED_TYPE_NAMES := ["grass", "water", "stone", "sand", "void"]
 const _ED_HEIGHTS := {0: 0.0, 1: -0.30, 2: 0.25, 3: -0.05, 4: 0.0}
 var _map_editor := false
@@ -879,14 +893,14 @@ func _build_tilemap_ground() -> void:
 				t = "water"; h = 0.0
 			elif (px < A.position.x + A.size.x * 0.15 or px > A.position.x + A.size.x * 0.85) and py > A.position.y and py < A.position.y + A.size.y:
 				t = "stone"; h = 0.0                                      # 两端石台(颜色区分·不抬高=特效不掉地下)
-			var xf := Transform3D(Basis(), _world_pos(Vector2(px, py), h))
+			var xf := Transform3D(Basis(), _world_pos(Vector2(px, py), h - TILE_SINK))
 			match t:
 				"water": xf_water.append(xf)
 				"stone": xf_stone.append(xf)
 				_: xf_grass.append(xf)
-	_tilemap_add(xf_grass, Vector3(tw_m * 0.94, 0.15, tw_m * 0.94), Color(0.10, 0.14, 0.26))   # 暗蓝主地面
-	_tilemap_add(xf_water, Vector3(tw_m * 0.94, 0.15, tw_m * 0.94), Color(0.12, 0.72, 0.78))   # 青水(凹)
-	_tilemap_add(xf_stone, Vector3(tw_m * 0.94, 0.15, tw_m * 0.94), Color(0.24, 0.26, 0.38))   # 石台(凸)
+	_tilemap_add(xf_grass, Vector3(tw_m * 0.94, TILE_THICK, tw_m * 0.94), Color(0.10, 0.14, 0.26))   # 暗蓝主地面
+	_tilemap_add(xf_water, Vector3(tw_m * 0.94, TILE_THICK, tw_m * 0.94), Color(0.12, 0.72, 0.78))   # 青水(凹)
+	_tilemap_add(xf_stone, Vector3(tw_m * 0.94, TILE_THICK, tw_m * 0.94), Color(0.24, 0.26, 0.38))   # 石台(凸)
 
 func _tilemap_add(xforms: Array, box_size: Vector3, col: Color, mat: Material = null) -> void:
 	if xforms.is_empty(): return
@@ -1630,10 +1644,17 @@ func _build_map_props() -> void:
 		return
 	var root := Node3D.new(); root.name = "MapProps"; _world.add_child(root)
 	var c := _arena_center
+	# ★rx/ry 必须贴合【视觉半宽】—— 用户 2026-07-21:「障碍物的生效范围比看起来的大很多」。
+	#   _map_billboard 按【图高】归一到 h 米, 宽度按图比例被动决定, 所以视觉半宽是算得出来的:
+	#     视觉半宽(游戏px) = 图宽 × (h / 图高) / WS / 2
+	#     reef_big  128×128, h=2.7 → 56.2 px   (旧 rx=168, 是视觉的 3.0 倍)
+	#     reef_wall  96×72,  h=1.5 → 41.7 px   (旧 rx=104, 是视觉的 2.5 倍)
+	#   再叠加 navmesh 的 OBSTACLE_MARGIN, 旧值实际挡到 196px —— 单位离礁石老远就开始拐弯。
+	#   现在取略大于视觉半宽(留一点手感余量), ry 按原来的长宽比例同步收。
 	_obstacles = [
-		{"c": c, "rx": 168.0, "ry": 96.0, "img": "reef_big", "h": 2.7},                 # 中央大礁
-		{"c": c + Vector2(-235.0, -198.0), "rx": 104.0, "ry": 40.0, "img": "reef_wall", "h": 1.5},  # 上墙(左偏)
-		{"c": c + Vector2(235.0, 198.0), "rx": 104.0, "ry": 40.0, "img": "reef_wall", "h": 1.5},     # 下墙(右偏)
+		{"c": c, "rx": 60.0, "ry": 36.0, "img": "reef_big", "h": 2.7},                 # 中央大礁(视觉半宽56)
+		{"c": c + Vector2(-235.0, -198.0), "rx": 45.0, "ry": 20.0, "img": "reef_wall", "h": 1.5},  # 上墙(左偏·视觉半宽42)
+		{"c": c + Vector2(235.0, 198.0), "rx": 45.0, "ry": 20.0, "img": "reef_wall", "h": 1.5},     # 下墙(右偏)
 	]
 	for ob in _obstacles:
 		root.add_child(_map_billboard("res://assets/sprites/map/%s.png" % str(ob["img"]), ob["c"], float(ob["h"])))
@@ -1758,7 +1779,7 @@ func _build_navmesh() -> void:
 		Vector2(ARENA.position.x + m, ARENA.end.y - m),
 	]))
 	for ob in _obstacles:   # 障碍挖洞: footprint椭圆 + 单位半径margin(留出绕行间隙)
-		src.add_obstruction_outline(_ellipse_pts(ob["c"], float(ob["rx"]) + 28.0, float(ob["ry"]) + 28.0, 14))
+		src.add_obstruction_outline(_ellipse_pts(ob["c"], float(ob["rx"]) + OBSTACLE_MARGIN, float(ob["ry"]) + OBSTACLE_MARGIN, 14))
 	NavigationServer2D.bake_from_source_geometry_data(poly, src)
 	NavigationServer2D.region_set_navigation_polygon(_nav_region, poly)
 	NavigationServer2D.map_force_update(_nav_map)
@@ -2149,8 +2170,8 @@ func _dl_clamp_place(fp: Vector2) -> Vector2:
 	fp.y = clampf(fp.y, ARENA.position.y + 60.0, ARENA.end.y - 60.0)
 	for ob in _obstacles:   # 避开障碍footprint(椭圆内→推到边)
 		var c: Vector2 = ob["c"]
-		var rx: float = float(ob["rx"]) + 26.0
-		var ry: float = float(ob["ry"]) + 26.0
+		var rx: float = float(ob["rx"]) + OBSTACLE_MARGIN
+		var ry: float = float(ob["ry"]) + OBSTACLE_MARGIN
 		var d: Vector2 = fp - c
 		var e: float = Vector2(d.x / rx, d.y / ry).length()
 		if e < 1.0 and e > 0.01:
