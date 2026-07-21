@@ -1054,11 +1054,18 @@ func _build_environment() -> void:
 		env.ambient_light_energy = 0.45
 	# 深海雾: 远处沉入蓝黑给纵深 (Compatibility 下 fog 为 per-pixel 简化雾, 仍能拉出远近层次).
 	#   雾色压得很暗 (近背景色), 能量低 → 远处沉黑而非提亮成灰 (避免远地/边缘被雾刷亮成灰带).
+	# ★2026-07-21 用户:「除了地板以外, 天空背景没有任何东西, 需要设计天空」。
+	#   根因不是"没画天空", 而是【看不到天空】+【远处被雾吃光】:
+	#     相机俯角约 51°(pos(0,28,22) look_at(0,0.6,0), fov40) → 画面上沿射线仍在水平线下方 31°,
+	#     所以 ProceduralSky 的天空半球一个像素都进不了画面; 上方那条带其实是
+	#     "地砖以外的远处地面", 而 fog_density=0.022 + 近黑雾色把它刷成了纯黑。
+	#   对策: ①雾密度大幅下调并把雾色提到深海青(远处读作"水深"而不是"虚空")
+	#         ②另加远景背景层 _build_far_backdrop()(渐变水幕 + 远礁剪影 + 光柱)
 	env.fog_enabled = true
-	env.fog_light_color = Color(0.018, 0.055, 0.085)
-	env.fog_light_energy = 0.4
+	env.fog_light_color = Color(0.035, 0.105, 0.150)   # 提亮 + 偏青: 远处是海水不是黑洞
+	env.fog_light_energy = 0.55
 	env.fog_sun_scatter = 0.0
-	env.fog_density = 0.022
+	env.fog_density = 0.008                            # 0.022 → 0.008: 远景能透出来
 	# 色调 + 微调: filmic tonemap 给"正经游戏"质感, 略提对比/降饱和到冷调.
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.tonemap_exposure = 1.05
@@ -1081,6 +1088,9 @@ func _build_environment() -> void:
 const MAP_V2 := true   # ★新tile地图转常开(用户2026-07-14"调给我看看"): true=正式对局默认用新暗深海夜色tile地图; false回退旧地面; env(TILEMAP/MAPEDIT)仍可强制
 func _build_ground() -> void:
 	if OS.has_environment("VFXISO"): return   # 纯特效隔离: 不建地面/装饰(只留特效对比参考·弄完删env)
+	# ★远景背景层("天空")在所有模式都建 —— 不像障碍物那样只在双路(用户 2026-07-21)
+	if not OS.has_environment("MAPEDIT"):
+		_build_far_backdrop(_world)
 	if MAP_V2 or OS.has_environment("TILEMAP") or OS.has_environment("MAPEDIT"):    # ★新地图: MultiMesh方块tile地面(暗深海夜色·数据驱动·用户2026-07-13定案·纯视觉不改玩法)
 		_build_tilemap_ground(); return
 	var mi := MeshInstance3D.new()
@@ -1699,6 +1709,85 @@ func _build_decorations(root: Node3D) -> void:
 		root.add_child(spr)
 
 # 水面光柱: 几道加性发光的柔和光束(billboard竖条), 打进深海竞技场 → 氛围/纵深.
+## ═══ 远景背景层(「天空」) ═══ 用户 2026-07-21:「天空背景没有任何东西, 需要设计天空」
+##
+## 相机俯角约 51°, 地平线【永远不在画面里】, 所以真正要填的不是天空半球, 而是
+## 画面上沿那片「地砖以外的远处」。这里造三层, 由远及近:
+##   ①渐变水幕: 一面大幕布, 上浅下深(越靠上越接近水面透光) —— 给纵深底色, 取代原来的纯黑
+##   ②远礁剪影: 一排压暗的礁石轮廓, 高低错落 —— 让远处有"地形"而不是一块平色
+##   ③水面光柱: 复用已有的 _build_lightshafts 手法, 从上方斜射
+## 全部 unshaded + 关阴影, 不参与光照计算(纯背景, 不该被战场光影影响)。
+func _build_far_backdrop(root: Node3D) -> void:
+	var holder := Node3D.new()
+	holder.name = "FarBackdrop"
+	root.add_child(holder)
+
+	# ── ①远景海床(渐变延伸) ────────────────────────────────────
+	# ★几何前提(算过, 别凭感觉放): 相机 pos(0,28,22) look_at(0,0.6,0) fov40 → 俯角 51.2°,
+	#   画面【上沿】射线打到地面在 z ≈ -24; 地砖最远边在 z ≈ -15。
+	#   所以"天空"其实是地面上 z∈[-24,-15] 这条窄带, 且那里的东西只能高几米
+	#   (z=-20 处超过 y≈2.4m 就顶出画面了)。竖直幕布放高了完全看不见 —— 我第一版就这么错的。
+	# 做法: 用一张【平铺的】渐变海床把地砖往远处延伸, 近端接住地砖色, 远端提亮成水雾青。
+	var H := 64
+	var img := Image.create(2, H, false, Image.FORMAT_RGBA8)
+	for y in range(H):
+		var t := float(y) / float(H - 1)          # 0=近(接地砖) 1=远(水雾)
+		var c := Color(0.055, 0.085, 0.150).lerp(Color(0.075, 0.230, 0.290), pow(t, 0.7))
+		for x in range(2):
+			img.set_pixel(x, y, c)
+	var grad_tex := ImageTexture.create_from_image(img)
+
+	var floor_far := MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(150.0, 46.0)               # x 向够宽(画面在那个距离约 60m 宽), z 向从地砖边延伸出去
+	pm.orientation = PlaneMesh.FACE_Y            # 平铺在地面上
+	floor_far.mesh = pm
+	var wm := StandardMaterial3D.new()
+	wm.albedo_texture = grad_tex
+	wm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	wm.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+	wm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	wm.fog_enabled = false                       # 自己不吃雾(否则又被刷成黑)
+	floor_far.material_override = wm
+	# 中心放在 z=-37 → 覆盖 z∈[-60,-14], 正好从地砖边缘往远处接出去
+	floor_far.position = Vector3(0.0, -0.03, -37.0)
+	floor_far.rotation_degrees = Vector3(0.0, 180.0, 0.0)   # 让渐变的"远端"朝外
+	floor_far.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	holder.add_child(floor_far)
+
+	# ── ②远礁剪影 ──────────────────────────────────────────────
+	# 复用地图礁石图, 压暗成剪影 + 高低错落, 让远处有地形轮廓
+	var reef_path := "res://assets/sprites/map/reef_big.png"
+	if ResourceLoader.exists(reef_path):
+		var rtex: Texture2D = load(reef_path)
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 20260721                       # 确定性: 每局远景一致, 不闪
+		var n := 16   # 密一点, 让远处天际线有起伏而不是零星几块
+		for i in range(n):
+			var spr := Sprite3D.new()
+			spr.texture = rtex
+			spr.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+			spr.shaded = false
+			spr.transparent = true
+			spr.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+			spr.no_depth_test = false
+			# ★高度受可见带约束: z=-20 处超过 y≈2.4m 就顶出画面, 所以剪影只能矮而宽
+			var scl := rng.randf_range(1.6, 3.4)
+			spr.pixel_size = scl / float(maxi(1, rtex.get_height()))
+			# 越远越暗越偏蓝 = 大气透视
+			var dep := rng.randf()
+			spr.modulate = Color(0.11, 0.24, 0.34).lerp(Color(0.06, 0.13, 0.22), dep)
+			var zz := -16.5 - dep * 6.5              # z∈[-23,-16.5]: 正好落在地砖边缘到画面顶那条带
+			spr.position = Vector3(rng.randf_range(-30.0, 30.0), scl * 0.5, zz)
+			spr.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			holder.add_child(spr)
+
+	# ── ③(不放光柱) ───────────────────────────────────────────
+	# 试过在这加水面光柱, 但可见带太窄 → 只能看到光柱最亮的顶端一小截,
+	# 渲染出来是几根【死白的竖条】, 很难看(已截图确认)。远景保持"海床渐变 + 礁石剪影"两层即可。
+	# 光柱在近景仍有(双路模式的 _build_lightshafts), 那里高度够、看得到完整柱体。
+
+
 func _build_lightshafts(root: Node3D) -> void:
 	var tex := VfxTex._make_lightshaft_texture()
 	var cx: float = _arena_center.x
