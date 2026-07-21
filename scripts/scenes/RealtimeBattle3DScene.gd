@@ -1736,7 +1736,11 @@ func _build_far_backdrop(root: Node3D) -> void:
 	wm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	wm.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
 	wm.cull_mode = BaseMaterial3D.CULL_DISABLED
-	wm.fog_enabled = false                       # 自己不吃雾(否则又被刷成黑)
+	# 自己不吃雾(否则远景又被刷成黑)。
+	# ★材质上是 disable_fog(BaseMaterial3D), 不是 fog_enabled —— 后者是 Godot 3.x 的名字,
+	#   写了【不报错只发一条 WARNING】然后被丢弃, 于是"不吃雾"根本没生效(2026-07-22 压测日志里发现)。
+	#   注意 Environment.fog_enabled 是合法的, 别一起改掉。
+	wm.disable_fog = true
 	floor_far.material_override = wm
 	# 中心 z=-22 → 覆盖 z∈[-30,-14]。可见带是 z∈[-24,-15], 于是渐变的 t 能跑到 0.63
 	#   (原来中心 -37/深 46 → 只跑到 t≈0.22, 亮端根本进不了画面, 这就是"天空是黑的"的真因)
@@ -1814,7 +1818,7 @@ func _build_far_backdrop(root: Node3D) -> void:
 		gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		gm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD      # 加性=发光
 		gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-		gm.fog_enabled = false
+		gm.disable_fog = true
 		gs.material_override = gm
 		var gsc := grng.randf_range(0.7, 1.7)
 		gs.pixel_size = gsc / float(maxi(1, gtex.get_height()))
@@ -1844,7 +1848,7 @@ func _build_far_backdrop(root: Node3D) -> void:
 		sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		sm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 		sm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-		sm.fog_enabled = false
+		sm.disable_fog = true
 		sh.material_override = sm
 		sh.pixel_size = 0.030
 		sh.modulate = Color(0.42, 0.80, 1.0, 0.22)
@@ -1991,7 +1995,7 @@ func _build_far_bubbles(holder: Node3D) -> void:
 			bm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 			bm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 			bm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-			bm.fog_enabled = false
+			bm.disable_fog = true
 			bs.material_override = bm
 			var bsc: float = rng.randf_range(0.10, 0.22)
 			bs.pixel_size = bsc / float(btex.get_height())
