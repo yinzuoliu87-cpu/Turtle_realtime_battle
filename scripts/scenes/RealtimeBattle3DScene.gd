@@ -20680,6 +20680,12 @@ func _cam_handle_input(event: InputEvent) -> bool:
 	#     插太后收不到事件(那些分支都 return)。
 	#   ★与点选共存的关键: 按下先记起点, 位移超过 PAN_THRESHOLD 才算拖动;
 	#     没超阈值的抬起仍按点选处理(否则每次拖屏都会误开/误关详情面板)。
+	# ★放置阶段正在拖龟摆位 → 镜头【完全让路】(用户 2026-07-22:「开局拖动是什么情况」)。
+	#   机制: 按下时相机与放置逻辑各记各的状态; 鼠标一移超 PAN_THRESHOLD, 相机块就 _cam_pan_by()
+	#   并【return true】→ _unhandled_input 当场返回 → 放置逻辑再也收不到后续 motion
+	#   → 龟停在半路、镜头却跑了。所以只要 _edit_drag_unit 在手, 这里就直接放弃本事件。
+	if _edit_drag_unit != null and _dl_state == "place":
+		return false
 	if not _map_editor:
 		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
