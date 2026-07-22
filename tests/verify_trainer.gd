@@ -1,0 +1,201 @@
+extends Node
+
+## verify_trainer.gd — 训龟大师本体 (用户 2026-07-22 需求3)
+##
+## 用户逐字规格:
+##   「500生命值，1ATK，0双抗的训龟大师，对面就是人机控制的训龟大师」
+##   「在场上不会被主动索敌但会吃到aoe伤害」
+##   「被动是受到的所有类型的伤害降低为1，包括真实伤害」
+##   「射程2000，普攻为扔出石头造成1物理伤害」
+##   「训龟大师不算(团灭)，其实就是个场外监视者」
+##   「每次比如上，下终极战场都会重置他的血量」
+##
+## ★这些全是【行为】, 不是字符串。所以本测试真建场景、真造伤害、真查存活计数。
+## ★立绘("像素风的冒险家")尚未拍板 —— 这里只断言"没真图时会 warning 而不是静默兜底"。
+
+const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
+
+var _fail := 0
+
+
+func _ok(n: String, c: bool, d: String = "") -> void:
+	if c:
+		print("  [PASS] ", n, ("  " + d) if d != "" else "")
+	else:
+		_fail += 1
+		print("  [FAIL] ", n, "  ", d)
+
+
+func _ready() -> void:
+	await get_tree().process_frame
+	var s = RTScene.new()
+	get_tree().root.add_child(s)
+	for i in 8:
+		await get_tree().process_frame
+
+	var trainers: Array = []
+	var others: Array = []
+	for u in s._units:
+		if u.get("is_trainer", false):
+			trainers.append(u)
+		else:
+			others.append(u)
+	print("  [分母] 场上单位 %d 个, 其中训龟大师 %d 个" % [s._units.size(), trainers.size()])
+	_ok("场上有单位(N=0 说明战斗没起来, 下面全是空检查)", s._units.size() > 0)
+	_ok("★双方各一个训龟大师", trainers.size() == 2, "实际 %d 个" % trainers.size())
+	if trainers.size() < 2:
+		s.queue_free()
+		_done()
+		return
+
+	var sides: Array = []
+	for t in trainers:
+		sides.append(str(t.get("side", "")))
+	sides.sort()
+	_ok("★左右各一个(己方玩家/对面人机)", sides == ["left", "right"], str(sides))
+
+	var tr: Dictionary = trainers[0]
+
+	# ── ① 属性 ──
+	_ok("★500 生命", is_equal_approx(float(tr["maxHp"]), 500.0), "maxHp=%.1f" % float(tr["maxHp"]))
+	_ok("★1 攻击力", is_equal_approx(float(tr["atk"]), 1.0), "atk=%.2f" % float(tr["atk"]))
+	_ok("★0 护甲", is_equal_approx(float(tr["def"]), 0.0), "def=%.2f" % float(tr["def"]))
+	_ok("★0 魔抗", is_equal_approx(float(tr["mr"]), 0.0), "mr=%.2f" % float(tr["mr"]))
+	# ★字段名是 atk_range 不是 range(见 _make_unit: "atk_range": float(st[3]))。
+	#   我第一版写成 range → 读到 0 → 报了假 FAIL, 差点去"修"一个没坏的地方。
+	_ok("★射程 2000", float(tr.get("atk_range", 0.0)) >= 2000.0, "atk_range=%.0f" % float(tr.get("atk_range", 0.0)))
+
+	# ── ② 所有类型伤害降为 1(含真伤) ──
+	#    直接问公共减伤函数: 两条伤害路径都过它, 一处正确即全覆盖。
+	var victim: Dictionary = tr
+	var cases := [[999.0, false, "普通(物理/魔法)"], [999.0, true, "真实伤害(raw)"], [1.0e9, true, "极大真伤"]]
+	for c in cases:
+		var got: float = s._mitigate_incoming(victim, float(c[0]), bool(c[1]), false)
+		_ok("★%s %.0f → 降为 1" % [str(c[2]), float(c[0])], got <= 1.0 + 1e-6, "实得 %.4f" % got)
+	# 对照: 普通单位【不该】被降为 1, 否则是把全场都改坏了
+	if others.size() > 0:
+		var ov: Dictionary = others[0]
+		var og: float = s._mitigate_incoming(ov, 999.0, false, false)
+		print("  [对照] 普通单位 %s 受 999 → %.1f" % [str(ov.get("name", "?")), og])
+		_ok("★★对照组: 普通单位不受此封顶(否则是把全场伤害都改坏了)", og > 1.0, "%.4f" % og)
+
+	# ── ③ 不被主动索敌, 但吃 AOE ──
+	var foe: Dictionary = {}
+	for o in others:
+		if o.get("alive", false) and str(o.get("side", "")) != str(tr.get("side", "")):
+			foe = o
+			break
+	_ok("找得到一个敌方普通单位来做索敌测试", not foe.is_empty())
+	if not foe.is_empty():
+		# 把训龟大师挪到敌人脚边 —— 若会被索敌, 它就是最近的那个
+		var saved_pos: Vector2 = tr["pos"]
+		tr["pos"] = foe["pos"] + Vector2(5.0, 0.0)
+		var picked = s._nearest_enemy(foe)
+		var picked_is_trainer: bool = picked is Dictionary and (picked as Dictionary).get("is_trainer", false)
+		print("  [实测] 把训龟大师放到敌人脚边(距离 5 码), _nearest_enemy 选中的是: %s"
+			% ("训龟大师" if picked_is_trainer else str((picked as Dictionary).get("name", "?")) if picked is Dictionary else "null"))
+		_ok("★贴脸也不会被主动索敌(_nearest_enemy 跳过它)", not picked_is_trainer)
+		# AoE 走 _enemies_of —— 那条路必须【能】拿到它
+		var aoe: Array = s._enemies_of(foe)
+		var in_aoe := false
+		for o in aoe:
+			if o.get("is_trainer", false):
+				in_aoe = true
+		_ok("★但 AoE 打得到(_enemies_of 故意不跳过它)", in_aoe,
+			"_enemies_of 返回 %d 个, 不含训龟大师" % aoe.size())
+		tr["pos"] = saved_pos
+
+	# ── ④ 不计团灭/胜负 ──
+	var side := str(tr.get("side", "left"))
+	var alive_before: int = s._dl_side_alive(side)
+	var n_normal_alive := 0
+	for o in others:
+		if o.get("alive", false) and str(o.get("side", "")) == side and not o.get("_isEgg", false) and not o.get("is_summon", false):
+			n_normal_alive += 1
+	print("  [实测] %s 侧: _dl_side_alive=%d, 普通存活单位=%d(训龟大师不该被算进去)"
+		% [side, alive_before, n_normal_alive])
+	_ok("★训龟大师不计入存活数(否则打不死它 → 永远不会团灭)",
+		alive_before <= n_normal_alive, "%d vs %d" % [alive_before, n_normal_alive])
+
+	# ── ⑤ 扔石头 = 1 点物理 ──
+	var spec: Dictionary = RTScene.BASIC_ATK.get("__trainer__", {})
+	_ok("★普攻表里有训龟大师条目", not spec.is_empty())
+	_ok("★扔石头是物理伤害", float(spec.get("phys", 0.0)) > 0.0)
+	_ok("★1.0×ATK 而 ATK=1 → 恰好 1 点",
+		is_equal_approx(float(spec.get("phys", 0.0)) * float(tr["atk"]), 1.0),
+		"%.2f×%.2f" % [float(spec.get("phys", 0.0)), float(tr["atk"])])
+
+	# ── ⑥ 场外监视者: 不移动 ──
+	_ok("站着不动(no_move)", bool(tr.get("no_move", false)))
+	_ok("暂无主动法术(用户: 法术技能待制作)", (tr.get("active_skills", []) as Array).is_empty())
+
+	# ── ⑦ 每个战场重置血量(用户:「每次比如上, 下终极战场都会重置他的血量」) ──
+	#    实现方式: 分路切换会 _dl_clear_units() 再 _spawn_dual_lane(), 训龟大师随之重建 = 天然重置。
+	#    唯一会破坏它的是【被写进幸存名单】—— 那样终极战场会拿残血 spec 重建, 还会多 spawn 一个。
+	#    ★所以这条必须直接测幸存快照, 不能只靠"我知道它会重建"(2026-07-22 反向验证抓到:
+	#      不测的话, 把幸存排除那行拆掉照样全绿)。
+	if GameState != null and (GameState.dual_survivors is Dictionary):
+		tr["hp"] = 100.0                     # 打成残血
+		GameState.dual_survivors = {"left": [], "right": []}
+		s._dl_snapshot_survivors()
+		var n_tr_in_snap := 0
+		var n_snap := 0
+		for sd in ["left", "right"]:
+			for spec2 in GameState.dual_survivors.get(sd, []):
+				n_snap += 1
+				if str((spec2 as Dictionary).get("id", "")) == "__trainer__":
+					n_tr_in_snap += 1
+		print("  [实测] 幸存快照共 %d 条, 其中训龟大师 %d 条" % [n_snap, n_tr_in_snap])
+		_ok("幸存快照非空(N=0 就测不出下面那条)", n_snap > 0)
+		_ok("★训龟大师不进幸存名单 → 终极战场会重新 spawn 满血(而不是带着残血过去)",
+			n_tr_in_snap == 0, "快照里混进了 %d 条训龟大师" % n_tr_in_snap)
+		tr["hp"] = tr["maxHp"]
+
+	# ── ⑧ 立绘未就绪要吭声, 不许静默兜底 ──
+	var src := FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")
+	var body := _func_body(src, "_trainer_sprite_dict")
+	_ok("★没真图时会 push_warning(形象待定, 不许静默当成做完了)",
+		_code_only(body).contains("push_warning("), "函数体 %d 字符" % body.length())
+
+	s.queue_free()
+	_done()
+
+
+func _done() -> void:
+	print("ALL PASS — 训龟大师本体(属性/索敌/伤害封顶/不计团灭/扔石头)" if _fail == 0 else "FAILED: %d" % _fail)
+	get_tree().quit(0 if _fail == 0 else 1)
+
+
+func _func_body(src: String, fname: String) -> String:
+	var head := "\nfunc %s(" % fname
+	var i := src.find(head)
+	if i < 0:
+		return ""
+	var start := i + 1
+	var j := src.find("\nfunc ", start)
+	if j < 0:
+		j = src.length()
+	return src.substr(start, j - start)
+
+
+func _strip_comment(line: String) -> String:
+	var in_q := false
+	var q := ""
+	for i in line.length():
+		var ch := line[i]
+		if in_q:
+			if ch == q and (i == 0 or line[i - 1] != "\\"):
+				in_q = false
+		elif ch == "\"" or ch == "'":
+			in_q = true
+			q = ch
+		elif ch == "#":
+			return line.substr(0, i)
+	return line
+
+
+func _code_only(block: String) -> String:
+	var out := ""
+	for l in block.split("\n"):
+		out += _strip_comment(str(l)) + "\n"
+	return out
