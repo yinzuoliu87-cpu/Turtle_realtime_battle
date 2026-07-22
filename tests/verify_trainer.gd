@@ -179,6 +179,54 @@ func _ready() -> void:
 	_ok("★★场上每个训龟大师都真的挂上了纹理(看得见)", n_vis == trainers.size(),
 		"%d/%d" % [n_vis, trainers.size()])
 
+	# ── ⑨ 朝向: 立绘【实际画的朝向】必须与 ART_FACES_RIGHT 登记的一致 ──
+	#
+	# ★2026-07-23 我第一版写成了【同义反复】: 用 art_faces_right 算 flip_h, 再用 flip_h
+	#   反推"屏幕朝向", 代进去等于 face_right —— 跟图片画的什么毫无关系, 拿掉例外表条目照样绿。
+	#   要真验, 必须【从像素测出图画的朝向】, 再和代码的登记对账。
+	# 判据: 3/4 侧视角色的头部重心会偏向朝向侧(脸凸出去), 躯干/背包在后。
+	#   判不出时【明确报"测不出"而不是默默通过】—— Q 版大圆盔那种左右对称的头就判不出。
+	var tex2 = s._trainer_sprite_dict().get("tex")
+	if tex2 != null:
+		var img: Image = tex2.get_image()
+		var W := img.get_width()
+		var H := img.get_height()
+		var x0 := W
+		var x1 := -1
+		var y0 := H
+		var y1 := -1
+		for y in H:
+			for x in W:
+				if img.get_pixel(x, y).a > 0.5:
+					x0 = mini(x0, x); x1 = maxi(x1, x)
+					y0 = mini(y0, y); y1 = maxi(y1, y)
+		if x1 >= x0 and y1 >= y0:
+			var cut: int = y0 + int(float(y1 - y0 + 1) * 0.35)
+			var hs := 0.0
+			var hn := 0
+			var bs := 0.0
+			var bn := 0
+			for y in range(y0, y1 + 1):
+				for x in range(x0, x1 + 1):
+					if img.get_pixel(x, y).a <= 0.5:
+						continue
+					if y < cut:
+						hs += float(x); hn += 1
+					else:
+						bs += float(x); bn += 1
+			if hn > 0 and bn > 0:
+				var d: float = (hs / float(hn)) - (bs / float(bn))
+				var registered: bool = RTScene.ART_FACES_RIGHT.has("__trainer__")
+				print("  [实测] 立绘头部重心相对躯干 %+.2f px ; ART_FACES_RIGHT 登记为朝%s"
+					% [d, ("右" if registered else "左")])
+				if absf(d) < 0.3:
+					print("  [跳过] 这张图左右太对称, 判不出朝向 —— 换形象后请人工确认(不当作通过)")
+				else:
+					var art_right_measured: bool = d > 0.0
+					_ok("★★立绘实际朝向与 ART_FACES_RIGHT 登记一致(不一致 = 双方都背对战场)",
+						art_right_measured == registered,
+						"图画的是朝%s, 代码登记朝%s" % [("右" if art_right_measured else "左"), ("右" if registered else "左")])
+
 	s.queue_free()
 	_done()
 

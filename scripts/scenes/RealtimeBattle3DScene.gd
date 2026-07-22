@@ -133,7 +133,11 @@ static func _review_demo() -> bool:
 	return REVIEW_DEMO_DEFAULT and OS.is_debug_build()
 ## 原图朝右的立绘例外表(全局约定=原图朝左, 这些要取反)。
 ## 键可以是【龟 id】, 也可以是【召唤物 kind】—— 见 _art_faces_right() 为什么要分两种查法。
-const ART_FACES_RIGHT := ["hiding", "headless", "mech"]   # 缩头2026-07-17用户抓 / 无头预检自查颈残端在右 / 机甲2026-07-19用户抓「建模也反了」
+## 原图【朝右】的立绘 —— 引擎默认认为所有立绘朝左, 这里列例外(会取反 flip_h)。
+## __trainer__ 2026-07-23: PixelLab 的 south-east 面就是朝右, 而训龟大师后续的走路/扔石头
+##   动作图也全是同一套朝向 —— 与其每张都逐帧镜像(小将那 7 张就是这么交的税), 不如登记例外。
+##   ★探针实测(修之前): 我方 face_right=true / art_faces_right=false → flip_h=true → 背对战场。
+const ART_FACES_RIGHT := ["hiding", "headless", "mech", "__trainer__"]   # 缩头2026-07-17用户抓 / 无头预检自查颈残端在右 / 机甲2026-07-19用户抓「建模也反了」 / 训龟大师2026-07-23
 const REVIEW_TURTLE := "headless"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
 ## ⚠ 用的时候一律走 `_review_skill_idx()`, 别直接引用本常量 ——
 ## 那个函数才会读【调试面板覆盖】和【env REVIEW_SKILL】; 直接用常量的话环境变量对该处失效。
