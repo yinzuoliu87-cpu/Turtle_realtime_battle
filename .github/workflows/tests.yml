@@ -61,18 +61,23 @@ jobs:
       - name: 把失败行做成注解(无 token 也能远程读)
         if: failure()
         run: |
-          echo "::group::gate 失败摘要"
-          if [ -f /tmp/gate.log ]; then
-            # 每条注解有长度上限, 分批吐; 只挑真正有信息的行
-            grep -nE "\[FAIL\]|^FAIL|FAILED|SCRIPT ERROR|Parse Error|Max recursion|NEEDS (FIX|REVIEW)|错误" /tmp/gate.log               | head -40 | while IFS= read -r line; do
-                  echo "::error title=gate::${line}"
-                done
-            echo "::error title=gate-tail::$(tail -n 25 /tmp/gate.log | tr '
-' ' | ' | cut -c1-1500)"
-          else
+          # ★这一段 2026-07-23 修过一次: 原来有一行 `tr '\n' ' | '`, 里面的换行是【真换行】,
+          #   续行顶到第 0 列 —— 缩进比块标量小就会终止块, GitHub 于是拿后半行当 YAML 解析
+          #   → 整个工作流解析失败 → name 读不到(页面显示成文件路径)、【一个 job 都不跑】。
+          #   表现是 conclusion=failure 但 jobs 为空, 极易误判成"测试挂了"。
+          #   教训: 工作流里【不要写含转义换行的单行命令】, 用多行、每行都保持缩进。
+          if [ ! -f /tmp/gate.log ]; then
             echo "::error title=gate::没抓到 /tmp/gate.log"
+            exit 0
           fi
-          echo "::endgroup::"
+          grep -nE "\[FAIL\]|^FAIL|FAILED|SCRIPT ERROR|Parse Error|Max recursion|NEEDS" /tmp/gate.log > /tmp/gate.hits || true
+          head -40 /tmp/gate.hits | while IFS= read -r line; do
+            echo "::error title=gate::${line}"
+          done
+          tail -n 25 /tmp/gate.log > /tmp/gate.tail
+          while IFS= read -r line; do
+            echo "::error title=gate-tail::${line}"
+          done < /tmp/gate.tail
 
       - name: 失败时把日志推到 ci-logs 分支
         if: failure()
