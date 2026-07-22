@@ -53,8 +53,30 @@ jobs:
           # ★必须把输出落盘 —— 否则失败时那步只推了个时间戳, 等于什么都没留下
           bash run-tests.sh 2>&1 | tee /tmp/gate.log
 
+      # ★把失败原因做成 check-run 注解 —— 这是【唯一不需要 token 就能远程读到】的通道:
+      #   · Actions 日志 API 要 admin 权限(403)
+      #   · artifact 下载要认证(401), 公开仓库也一样
+      #   · 推 ci-logs 分支要 contents:write, 而仓库的 Actions 默认权限是只读 → 403
+      #   2026-07-22 实测三条全堵死, 我完全读不到门禁为什么红。注解 API 是公开可读的。
+      - name: 把失败行做成注解(无 token 也能远程读)
+        if: failure()
+        run: |
+          echo "::group::gate 失败摘要"
+          if [ -f /tmp/gate.log ]; then
+            # 每条注解有长度上限, 分批吐; 只挑真正有信息的行
+            grep -nE "\[FAIL\]|^FAIL|FAILED|SCRIPT ERROR|Parse Error|Max recursion|NEEDS (FIX|REVIEW)|错误" /tmp/gate.log               | head -40 | while IFS= read -r line; do
+                  echo "::error title=gate::${line}"
+                done
+            echo "::error title=gate-tail::$(tail -n 25 /tmp/gate.log | tr '
+' ' | ' | cut -c1-1500)"
+          else
+            echo "::error title=gate::没抓到 /tmp/gate.log"
+          fi
+          echo "::endgroup::"
+
       - name: 失败时把日志推到 ci-logs 分支
         if: failure()
+        continue-on-error: true   # 仓库 Actions 权限若是只读, 这一步必然 403; 别让它盖过真正的失败原因
         run: |
           # 本地读不了 Actions 日志 API(无 token), 推到分支后 git fetch origin ci-logs 就能看
           mkdir -p /tmp/cilog
