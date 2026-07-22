@@ -611,6 +611,7 @@ var _cam_pan := Vector3.ZERO
 var _pan_active := false                  # 正在拖动视角
 var _pan_from := Vector2.ZERO             # 按下时的屏幕位置(判定"是拖动还是点选")
 var _pan_moved := false                   # 已超过阈值 → 本次抬起不当点选处理
+var _touch_seen := false                  # 收到过真触屏事件 → 忽略 emulate_mouse_from_touch 的模拟鼠标平移
 const PAN_THRESHOLD := 10.0               # 超过这么多像素才算拖动(以下算点选, 免得点单位变成误拖)
 const PAN_LIMIT := 9.0                    # 平移上限(米), 防止把视野拖到看不见战场
 var _mech_incoming := {}                  # {side: 到期_t} 赛博机甲组装过渡: 死→机甲spawn空档此侧仍算存活(防提前破蛋·用户2026-07-18)
@@ -1337,7 +1338,13 @@ func _build_pause_panel() -> void:
 	dim.color = Color(0, 0, 0, 0.62)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.size = Vector2(1280, 720)
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP   # 吃掉点击(别穿到战斗)
+	# ★暗幕只做视觉, 不吃事件。原为 STOP —— 那是"别穿到战斗"的过度手段:
+	#   暂停时战斗点击本来就该被 paused 挡住, 面板上的按钮自己是 STOP 不会被误穿。
+	# ★澄清(别再照抄旧说法): 我一度以为这是"点暂停后拖不动"的第二个根因, 2026-07-22 的
+	#   2×2 探针把它证伪了 —— 单改这里【无效】, 单改 process_mode 就够。真根因只有一个:
+	#   主场景 INHERIT→PAUSABLE, 暂停时 _unhandled_input 根本不被调用(见 _CamInputRelay)。
+	#   这条改动本身仍然正确(暗幕不该吃事件), 但它不背那个锅。
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_pause_panel.add_child(dim)
 	var title := Label.new()
 	title.text = "⏸ 已暂停"
@@ -1358,6 +1365,12 @@ func _build_pause_panel() -> void:
 	row.add_child(_make_result_btn("🏠 返回菜单", Color("#5aa0d8"), Color("#04121e"),
 		func() -> void: get_tree().paused = false; get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")))
 	_ui_layer.add_child(_pause_panel)
+	# ★暂停中也要能缩放/拖动看战场(测试人员 2026-07-22:「点暂停键鼠标似乎也无法拖动」)。
+	#   根节点 INHERIT→PAUSABLE, 暂停时 _unhandled_input 不被调用, 所以挂个 ALWAYS 中继顶上。
+	var _relay := _CamInputRelay.new()
+	_relay.host = self
+	_relay.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(_relay)
 
 
 ## 暂停开关: 切 get_tree().paused + 显/隐暂停浮层. 结算后不响应.
@@ -1366,6 +1379,12 @@ func _toggle_pause() -> void:
 		return
 	var p: bool = not get_tree().paused
 	get_tree().paused = p
+	# ★进出暂停都要清拖动/捏合的脏态: 暂停若发生在拖动【中途】, release 永远收不到,
+	#   _pan_active 会带着 true 活到恢复之后 → 恢复后不按键镜头也在跑。
+	_pan_active = false
+	_pan_moved = false
+	_touch_pts.clear()
+	_pinch_prev = -1.0
 	if _pause_panel != null and is_instance_valid(_pause_panel):
 		_pause_panel.visible = p
 
@@ -20413,13 +20432,20 @@ func _stats_column(header: String, units: Array, hc: Color) -> Control:
 			grid.add_child(l)
 	return grid
 
-func _unhandled_input(event: InputEvent) -> void:
+## 相机输入(滚轮缩放 / 双指捏合 / 拖动平移)。抽成独立函数是为了【暂停中也能用】——
+## 根节点 process_mode=INHERIT, 跟着 root 的 PAUSABLE 走 → 暂停时 can_process()=false,
+## _unhandled_input 压根不会被调用。这才是测试人员说的"点暂停后鼠标无法拖动"的真根因
+## (2026-07-22 的 2×2 探针实测: 单改暂停幕 mouse_filter 无效, process_mode 是唯一阻断点)。
+## 整场改 ALWAYS 会让暂停彻底失效(_process 里的战斗 tick 照跑), 所以只把相机输入抽出来,
+## 由 _CamInputRelay(ALWAYS) 在暂停期间转发。
+## 返回 true = 事件已被相机消费, 调用方不要再往下走。
+func _cam_handle_input(event: InputEvent) -> bool:
 	# ── 战场缩放(用户2026-07-18): PC滚轮 / 移动双指捏合 · 各模式通用, 最先处理 ──
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			_cam_zoom *= 1.10; _apply_cam_zoom(); return
+			_cam_zoom *= 1.10; _apply_cam_zoom(); return true
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_cam_zoom /= 1.10; _apply_cam_zoom(); return
+			_cam_zoom /= 1.10; _apply_cam_zoom(); return true
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			_touch_pts[event.index] = event.position
@@ -20431,9 +20457,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			if _pan_moved:
 				_pan_moved = false
 				_pinch_prev = _pinch_dist()
-				return                        # 刚才是拖视角, 松手不当点选
+				return true                        # 刚才是拖视角, 松手不当点选
 		_pinch_prev = _pinch_dist()          # 手指数变化→重置捏合基线
-		if _touch_pts.size() >= 2: return    # 双指=缩放态, 不放行到点选(防捏合误开面板)
+		# ★捏合抬指后必须重置平移起点, 否则: 捏合期间 _pan_from 还是最初落指点(距离远大于阈值),
+		#   抬起一根手指的瞬间 _touch_pts 降到 1 → 平移分支立刻判定"已超阈值" →
+		#   剩下那根手指的移动被当成拖视角直接接管。要求重新落指才允许平移。
+		if _touch_pts.size() == 1:
+			for _k in _touch_pts:
+				_pan_from = _touch_pts[_k]
+			_pan_moved = false
+		if _touch_pts.size() >= 2: return true    # 双指=缩放态, 不放行到点选(防捏合误开面板)
 	elif event is InputEventScreenDrag:
 		_touch_pts[event.index] = event.position
 		if _touch_pts.size() >= 2:
@@ -20441,7 +20474,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if _pinch_prev > 0.0 and d > 0.0:
 				_cam_zoom *= d / _pinch_prev; _apply_cam_zoom()
 			_pinch_prev = d
-			return
+			return true
 	# ── 视角平移(用户 2026-07-21:「手机端触屏拖动移动摄像机, 电脑端按住推动」) ──
 	#   ★必须插在【捏合之后、地图编辑器/放置阶段之前】: 插太前会抢掉捏合缩放,
 	#     插太后收不到事件(那些分支都 return)。
@@ -20455,20 +20488,34 @@ func _unhandled_input(event: InputEvent) -> void:
 				_pan_active = false
 				if _pan_moved:
 					_pan_moved = false
-					return      # 这是一次拖动, 不当点选(不开/关面板)
-		elif event is InputEventMouseMotion and _pan_active and _touch_pts.size() < 2:
+					return true      # 这是一次拖动, 不当点选(不开/关面板)
+		# ★同时看 button_mask 与 _touch_seen:
+		#   ① 只看 _pan_active 的话, release 一旦落在任何 MOUSE_FILTER_STOP 控件上(详情面板/头像卡/
+		#      暂停幕/结算幕)就被 GUI 吃掉、永远到不了这里 → _pan_active 永久卡 true →
+		#      之后不按任何键、纯移鼠标镜头也一直跟着跑。放置阶段的拖拽早就做了这层兜底, 平移漏了。
+		#   ② emulate_mouse_from_touch 默认开 → 单指拖同时产生 ScreenDrag 和模拟 MouseMotion,
+		#      两条分支各跑一次 _cam_pan_by → 手机上平移速度是设计值的 2 倍
+		#      (InventoryScene.gd:639 记过这个坑, 平移这次又踩)。收到过真触屏就不再认模拟鼠标。
+		elif event is InputEventMouseMotion and _pan_active and _touch_pts.size() < 2 and not _touch_seen and (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
 			if not _pan_moved and event.position.distance_to(_pan_from) > PAN_THRESHOLD:
 				_pan_moved = true
 			if _pan_moved:
 				_cam_pan_by(event.relative.x, event.relative.y)
-				return
+				return true
 		elif event is InputEventScreenDrag and _touch_pts.size() == 1:
+			_touch_seen = true   # 真触屏 → 之后忽略模拟鼠标的平移(防 2× 速度)
 			# 手机单指拖 = 移动视角(双指已在上面被捏合缩放接走)
 			if not _pan_moved and event.position.distance_to(_pan_from) > PAN_THRESHOLD:
 				_pan_moved = true
 			if _pan_moved:
 				_cam_pan_by(event.relative.x, event.relative.y)
-				return
+				return true
+	return false
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if _cam_handle_input(event):
+		return
 	if _map_editor:   # 🖌 编辑器: 左键点/拖刷格(UI按钮的点击被按钮消费不会到这)
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			_map_ed_paint(event.position)
@@ -20498,7 +20545,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	# 普通战斗模式: 点战场单位 (立绘头顶 unproject 命中) → 弹详情面板; 框上的点击由框自己的 gui_input 接.
 	if not DEBUG_EDIT or not _edit_mode:
-		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT and _touch_pts.size() < 2:
+		# ★开/关面板必须在【抬起】判定, 而不是按下 —— 按下那一刻无法知道用户接下来是点还是拖。
+		#   旧实现在 press 就开面板, 而 _pan_moved 的阈值 gate 只在 release 分支起作用,
+		#   等于 gate 形同虚设: 从单位附近起手拖视角 → 面板瞬间弹出; 从空白起手拖 → 面板被关掉。
+		#   单位命中半径 64px, 战场上几乎找不到"安全起手点" —— 这就是测试人员说的"放大和拖动冲突"。
+		#   ★_pan_moved 由上面的平移分支在超过 PAN_THRESHOLD 时置位; 它在 release 分支被读完即清,
+		#     所以这里要在【那之前】判断 —— 平移分支的 release 已经 return 掉了拖动情形, 能走到这里的
+		#     必然是"没超过阈值"的抬起, 即真正的点选。
+		if event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT and _touch_pts.size() < 2:
 			# ★命中用 get_mouse_position()(与龟爪光标同源=手指位置), 不用 event.position:
 			#   安卓触摸时 event.position 会偏到龟爪【中心】(比爪尖/手指低约半个光标)→点不准(用户2026-07-11 #6)。桌面两者相等, 无影响。
 			var _cpos: Vector2 = get_viewport().get_mouse_position() if get_viewport() != null else event.position
@@ -23793,3 +23847,25 @@ func _dbg_equip_cycle(dir: int) -> void:
 func _dbg_set_star(st: int) -> void:
 	_dbg_star = st
 	get_tree().reload_current_scene()
+
+
+# ============================================================================
+#  ⏸ 暂停期相机输入中继 (2026-07-22, 测试人员「点暂停键鼠标似乎也无法拖动」)
+# ============================================================================
+# 主场景 process_mode=INHERIT → 跟 root 的 PAUSABLE → get_tree().paused 时
+# can_process()=false, _unhandled_input 一次都不会被调用。整场改 ALWAYS 会让
+# _process 里的战斗 tick 在暂停中照跑(等于取消暂停), 所以只让这个空壳节点常驻,
+# 暂停期间把事件转给主场景的 _cam_handle_input。
+#
+# ★只在 paused 时转发: 未暂停时主场景自己收得到, 两边都转会让平移变 2 倍速
+#   (与 _touch_seen 那个模拟鼠标 2× 坑同源, 那次是 InventoryScene.gd:639 记过的)。
+class _CamInputRelay extends Node:
+	var host: Node = null
+
+	func _unhandled_input(event: InputEvent) -> void:
+		if host == null or not is_instance_valid(host):
+			return
+		if not get_tree().paused:
+			return
+		if host._cam_handle_input(event):
+			get_viewport().set_input_as_handled()
