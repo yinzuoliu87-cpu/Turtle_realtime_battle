@@ -76,6 +76,20 @@ func _rebuild() -> void:
 	back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
 	add_child(back)
 
+	# 🛒 商店 —— 商店有「→🎒背包」(ShopScene.gd:139), 反向却一直没有:
+	#   背包空了想买装备, 得先退回主菜单再点商店(用户需求1「背包里加条路径去前往商店」)。
+	# ★锁着时不隐藏而是【灰显 + 说明为什么】: 直接不画按钮会让人以为没这条路,
+	#   而"打完第一场解锁"这条规则本身也需要被告知(ShopScene.gd:18 是同一条门槛)。
+	var shop := Button.new()
+	var shop_locked: bool = int(GameState.season_total_battles) <= 0
+	shop.text = "🛒 商店" if not shop_locked else "🔒 商店"
+	shop.add_theme_font_size_override("font_size", 20)
+	shop.position = Vector2(160, 26); shop.size = Vector2(120, 44)
+	shop.disabled = shop_locked
+	shop.tooltip_text = "打完本大轮第一场后解锁" if shop_locked else "去商店买装备"
+	shop.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Shop.tscn"))
+	add_child(shop)
+
 	# 深海币 (右上)
 	var coin := Label.new()
 	coin.text = "💠 深海币 %d" % int(GameState.meta_deepsea_coins)
