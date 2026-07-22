@@ -3515,9 +3515,15 @@ func _spawn_trainers() -> void:
 	for u in _units:
 		if u.get("is_trainer", false):
 			return
-	var back_y: float = ARENA.position.y + 60.0
-	_units.append(_make_unit(TRAINER_ID, "left", Vector2(ARENA.position.x + 60.0, back_y), {"trainer": true}))
-	_units.append(_make_unit(TRAINER_ID, "right", Vector2(ARENA.end.x - 60.0, back_y), {"trainer": true}))
+	# ★站位: 各自【蛋的后上方】。蛋在左右两侧的中间高度(_cy), 所以这里也用中间高度,
+	#   只在纵向让开一点免得和蛋重叠。
+	#   2026-07-22 截图复盘: 初版写的是 ARENA.position.y + 60 = 战场【上边缘角落】,
+	#   而蛋在左侧中间 —— 于是他既不在基地后面也不在战斗附近, 视觉上完全不成立。
+	#   (这类"位置对不对"只有真截图才看得出来, 门禁 100% 绿也照样是错的。)
+	var _tcy: float = ARENA.position.y + ARENA.size.y * 0.5
+	var back_y: float = _tcy - 150.0
+	_units.append(_make_unit(TRAINER_ID, "left", Vector2(ARENA.position.x + 40.0, back_y), {"trainer": true}))
+	_units.append(_make_unit(TRAINER_ID, "right", Vector2(ARENA.end.x - 40.0, back_y), {"trainer": true}))
 	_build_trainer_joystick()
 
 
@@ -3545,8 +3551,11 @@ func _trainer_sprite_dict() -> Dictionary:
 ##   而当时的门禁只断言了"会 push_warning", 没断言"占位图真的能显示" ——
 ##   守住了会吭声, 没守住看得见。程序生成没有路径依赖, 不可能再出这种事。
 func _make_trainer_placeholder_tex() -> ImageTexture:
-	var w := 24
-	var h := 48
+	# ★尺寸/比例: 游戏按【帧高】把立绘归一到 TARGET_BODY_H(2米), 所以本体必须【填满整帧】,
+	#   否则会被压成细条。初版 24×48 而身子只占中间 14px 宽 → 屏幕上只有 15×44 的一根竖条
+	#   (2026-07-22 截图才看出来; 精英小将也踩过同一个坑: "归一按帧高算但本体只占半帧")。
+	var w := 34
+	var h := 44
 	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
 	var magenta := Color(1.0, 0.0, 0.85, 1.0)
@@ -3554,7 +3563,8 @@ func _make_trainer_placeholder_tex() -> ImageTexture:
 	for y in h:
 		for x in w:
 			# 粗人形: 上 1/4 是头(窄), 其余是身子(宽)
-			var inside: bool = (x >= 8 and x < 16 and y < 12) or (x >= 5 and x < 19 and y >= 12)
+			# 头(占上 1/4)+ 身子(占满宽) —— 让有效内容铺满整帧
+			var inside: bool = (x >= 11 and x < 23 and y < 11) or (x >= 2 and x < 32 and y >= 11)
 			if not inside:
 				continue
 			# 4px 棋盘 → 一眼看出是占位, 不会被误当成正式美术

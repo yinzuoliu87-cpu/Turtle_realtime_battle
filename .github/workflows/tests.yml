@@ -49,13 +49,18 @@ jobs:
 
       - name: 自证测试 + 冒烟 + 三方对账
         run: |
-          bash run-tests.sh
+          set -o pipefail
+          # ★必须把输出落盘 —— 否则失败时那步只推了个时间戳, 等于什么都没留下
+          bash run-tests.sh 2>&1 | tee /tmp/gate.log
 
       - name: 失败时把日志推到 ci-logs 分支
         if: failure()
         run: |
           # 本地读不了 Actions 日志 API(无 token), 推到分支后 git fetch origin ci-logs 就能看
           mkdir -p /tmp/cilog
+          cp -f /tmp/gate.log /tmp/cilog/gate.log 2>/dev/null || echo "(没抓到 gate.log)" > /tmp/cilog/gate.log
+          tail -n 120 /tmp/gate.log > /tmp/cilog/gate.tail.log 2>/dev/null || true
+          grep -nE "FAIL|错误|Error|ERROR|Parse|Max recursion" /tmp/gate.log | head -80 > /tmp/cilog/gate.errors.log 2>/dev/null || true
           cp -f tri_audit_report.txt /tmp/cilog/ 2>/dev/null || true
           git config user.name "ci"; git config user.email "ci@local"
           git checkout --orphan ci-logs-tmp
@@ -64,4 +69,13 @@ jobs:
           cp -f /tmp/cilog/* . 2>/dev/null || true
           date > gate-failed-at.txt
           git add -A && git commit -m "gate failed $(date -u +%FT%TZ)" || true
-          git push -f origin HEAD:ci-logs || true
+          # ★不再 `|| true` 静默吞掉: 这条逃生口此前【从没真正工作过】——
+          #   tests.yml 没有 permissions 块(默认只读) → push 必然 403, 而 || true 把它咽了,
+          #   于是这一步永远显示 success, ci-logs 却停在 2026-07-17。
+          #   2026-07-22: 0.10.2 那次门禁红了, 我因此完全读不到原因。
+          if git push -f origin HEAD:ci-logs; then
+            echo "::notice::失败日志已推到 ci-logs 分支; 本地看: git fetch -f origin +refs/heads/ci-logs:refs/remotes/origin/ci-logs && git show origin/ci-logs:gate.errors.log"
+          else
+            echo "::error::推 ci-logs 失败 —— 检查 workflow 的 permissions: contents: write"
+            exit 1
+          fi
