@@ -254,3 +254,40 @@ static func highlight_star(desc: String, star: int) -> String:
 		pos = m.get_end()
 	out += desc.substr(pos)
 	return out
+
+
+## ── 两级描述的统一取值口径 (用户需求1: 缩略 / 详细) ──────────────────────
+##
+## ★为什么要收口: 2026-07-22 实测同一个信息面板里【被动段给详细、技能段给缩略】,
+##   而选龟界面的 tooltip 与点开的弹窗是【同一串】(等于只有一级), 图鉴才是真两级。
+##   6 处散落的 fallback 链各写各的, 口径必然漂。
+##
+## ★字段名不统一是历史包袱, 别在这里"顺手统一": 技能是 brief/detail, 被动是 brief/【desc】。
+##   passive.desc 这个名字被 3 个工具硬编码(tri_audit / brief_detail_audit / data_integrity),
+##   重命名的收益低于成本 —— 所以差异吸收在本函数里, 不外溢。
+
+## 缩略: 给算好的实时值(照 Riot 2020 改版口径 —— 基础提示给结论, 比率藏进扩展提示)
+static func brief_of(d: Dictionary) -> String:
+	var b := str(d.get("brief", ""))
+	if b != "":
+		return b
+	return str(d.get("detail", d.get("desc", "")))
+
+
+## 详细: 展开比率与公式。技能取 detail, 被动取 desc, 都没有才退回 brief
+static func detail_of(d: Dictionary) -> String:
+	var t := str(d.get("detail", ""))
+	if t != "":
+		return t
+	t = str(d.get("desc", ""))
+	if t != "":
+		return t
+	return str(d.get("brief", ""))
+
+
+## 按模式取: want_detail=true 要详细。详细缺失时【自动退回缩略】而不是显示空白
+static func text_of(d: Dictionary, want_detail: bool) -> String:
+	if not want_detail:
+		return brief_of(d)
+	var t := detail_of(d)
+	return t if t != "" else brief_of(d)

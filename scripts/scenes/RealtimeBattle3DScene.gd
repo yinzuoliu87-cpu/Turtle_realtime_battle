@@ -23696,10 +23696,13 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 		_add_panel_sep(vb)
 		_add_section_title(vb, "被动 · " + str(passive.get("name", "")))
 		# ★走模板渲染: 把 {N:0.7*ATK} 这类占位符按【本龟当前属性】算成真数字
-		var pdesc := _render_skill_text(str(passive.get("desc", passive.get("brief", ""))), u, passive)
+		# ★统一口径: 原来这里【写死取 desc(详细)】而技能段写死取 brief(缩略),
+		#   同一个面板里两种口径 —— 现在都听 _skill_detail() 的。
+		var _ptpl := SkillText.text_of(passive, _skill_detail())
+		var pdesc := _render_skill_text(_ptpl, u, passive)
 		if pdesc != "":
 			_info_passive_lbl = _add_body_text(vb, pdesc)
-			_info_passive_tpl = str(passive.get("desc", passive.get("brief", "")))
+			_info_passive_tpl = _ptpl
 
 	# 宝箱龟专属: 财宝值进度 + 已开出的战利品(用户2026-07-19"信息面板得显示当前累计的财宝值/当前抽取的装备和图标/专属装备的描述")
 	if _is_chest_turtle(u):
@@ -23711,6 +23714,9 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	if not skills.is_empty():
 		_add_panel_sep(vb)
 		_add_section_title(vb, "技能")
+		# ★简明/详细开关(用户需求1 两级描述)。放在技能段上方 —— 它同时管被动段与技能段,
+		#   但被动段在上面已经画完了, 放这里是为了【靠近文字最多的地方】, 手够得着。
+		_add_detail_toggle(vb, u)
 		_info_skill_lbls.clear()
 		for sk in skills:
 			_add_section_title(vb, "  " + str(sk["name"]), Color("#9fd0ff"), 14)
@@ -23868,21 +23874,52 @@ func _panel_skill_entries(u: Dictionary) -> Array:
 	for t in chosen:
 		for sk in pool:
 			if sk is Dictionary and str(sk.get("type", "")) == str(t):
+				var _stpl := SkillText.text_of(sk, _skill_detail())
 				out.append({"name": str(sk.get("name", t)),
-							"desc": _render_skill_text(str(sk.get("brief", sk.get("detail", ""))), u, sk),
-							"tpl": str(sk.get("brief", sk.get("detail", ""))), "sk": sk})
+							"desc": _render_skill_text(_stpl, u, sk),
+							"tpl": _stpl, "sk": sk})
 				break
 	# 普攻 (skillPool[0] 一般是 physical/magic) — 补一条让面板不空
 	if not pool.is_empty() and pool[0] is Dictionary:
 		var s0: Dictionary = pool[0]
 		var t0 := str(s0.get("type", ""))
 		if t0 == "physical" or t0 == "magic":
+			var _btpl := SkillText.text_of(s0, _skill_detail())
 			out.append({"name": str(s0.get("name", "普攻")) + " (普攻)",
-						"desc": _render_skill_text(str(s0.get("brief", "")), u, s0),
-						"tpl": str(s0.get("brief", "")), "sk": s0})
+						"desc": _render_skill_text(_btpl, u, s0),
+						"tpl": _btpl, "sk": s0})
 	return out
 
-# 装备行: 图标 + 名 + ★×star + 效果 (effectDesc1, strip html). 稀有度色描边图标框.
+## 当前是否看详细。存 GameState → 跨场景记住(用户拍板"面板级开关, 选择记住")。
+func _skill_detail() -> bool:
+	return GameState != null and bool(GameState.get("skill_text_detail"))
+
+
+## 面板顶部的「简明 / 详细」切换。切完【整块重建】面板 ——
+## 详细文案长度差很多, 只换文字会让布局错位。
+func _add_detail_toggle(vb: VBoxContainer, u: Dictionary) -> void:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_END
+	vb.add_child(row)
+	var btn := Button.new()
+	var on := _skill_detail()
+	btn.text = "详细 ▾" if on else "简明 ▸"
+	btn.tooltip_text = "切换技能说明: 简明只给算好的数值, 详细展开公式与比率"
+	btn.add_theme_font_size_override("font_size", 13)
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.pressed.connect(func() -> void:
+		if GameState != null:
+			GameState.skill_text_detail = not _skill_detail()
+		# 重开同一只龟的面板 = 整块按新模式重建
+		var keep = _selected_unit
+		_close_info_panel()
+		if keep is Dictionary and (keep as Dictionary).get("alive", false):
+			_show_unit_info_panel(keep))
+	row.add_child(btn)
+
+
+## 装备行: 图标 + 名 + ★×star + 效果 稀有度色描边图标框.
 func _add_equip_row(parent: VBoxContainer, eid: String, star: int) -> void:
 	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
 	var row := HBoxContainer.new()

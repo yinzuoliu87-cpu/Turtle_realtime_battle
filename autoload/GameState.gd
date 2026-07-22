@@ -25,6 +25,10 @@ var mode: String = "single"
 ##   BattleScene._ready 读取后立即清空 (一次性消费, 不污染下一局)。
 var tutorial: bool = false
 
+## 技能说明看【详细】还是【简明】(用户需求1 两级描述)。存这里而不是战斗场的成员变量,
+## 是为了跨场景/跨对局记住 —— 玩家对"要不要看公式"的偏好是稳定的, 每局重设很烦。
+var skill_text_detail: bool = false
+
 ## 本局战斗规则 (规则之日) — 7 项之一 (烈焰/雷暴/铁壁/狂暴/装备/下雨/正常) 或 "" = 无规则.
 ## TeamSelect 选规则后写入, BattleScene._ready 读取后清空 (PoC scene.start data.rule 等价).
 var battle_rule: String = ""
