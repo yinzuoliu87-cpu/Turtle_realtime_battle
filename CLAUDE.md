@@ -43,6 +43,24 @@ python tools/hp_staleness_check.py     # 云端同步新鲜度
 
 ---
 
+## 2.5 版本号（每次玩家可感知的改动都要 +1）
+
+`大版本.功能版本.改动序号`，当前 `0.9.3`。第 3 位每次改动 +1；第 2 位加新玩法时 +1。
+
+**改版本号要同时改四处**，漏一处 `verify_version` 直接红：
+
+| 处 | 位置 |
+|---|---|
+| ① 事实源 | `project.godot` → `config/version` |
+| ② 记账 | `CHANGELOG.md` 顶部新增 `## x.y.z — YYYY-MM-DD` |
+| ③ iOS 包 | `export_presets.cfg` → `application/short_version` |
+| ④ Android 包 | `export_presets.cfg` → `version/name` |
+
+游戏内显示（主菜单右下角）**从 `ProjectSettings` 读**，不许写死 —— 门禁会扫硬编码字面量。
+版本号的全部价值在于**测试者报 bug 时能说清是哪个版本**，四处不一致就说不清了。
+
+---
+
 ## 3. 本项目特有的地雷
 
 **这些都是踩过的，不是假想。**

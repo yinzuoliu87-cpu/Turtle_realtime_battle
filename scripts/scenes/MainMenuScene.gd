@@ -476,6 +476,23 @@ func _right_column() -> void:
 	_slide_in(help_tile, 2)
 	# ── 右信息板: 赛季进度(大轮/Lv/命/深海币) + 战绩(可点→Record) ──
 	_info_panel()
+	_version_stamp()
+
+
+## 右下角版本号 —— 版本号最大的实际价值就是【测试者报 bug 时能说清是哪个版本】。
+## ★必须从 ProjectSettings 读, 不许写死字符串: 写死就等于多一份会漂的副本,
+##   而 iOS/Android/游戏内三处版本号曾经就是各说各的(无 / 0.9.0 / 1.0)。
+##   门禁 verify_version 会断言这里没有硬编码版本号。
+func _version_stamp() -> void:
+	var v := str(ProjectSettings.get_setting("application/config/version", ""))
+	if v == "":
+		return
+	var l := _menu_label("v%s" % v, 16, Color("#7f8a99"))
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	l.size = Vector2(200, 22)
+	l.position = Vector2(W - WALL - 200, H - WALL - 22)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content_root.add_child(l)
 
 
 ## 龟币框 (frame-coin + 绿龟币图标染色 + 数字) — 抽出复用; 返回未定位的 Control, 调用方定位/入场
