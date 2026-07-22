@@ -111,8 +111,19 @@ func _fps_in_table(src: String, table: String, act: String) -> float:
 ##   不用"各帧 bbox 中心的平均"—— 那个会被来回摆动的动作抵消掉
 ##   (实测它把明明朝右刺的 melee/attack 判成"居中")。
 func _check_facing() -> void:
-	# [目录, 用来判方向的动作]  —— 挑动势指向明确的那张
-	var cases := [["melee", "attack"]]
+	# ★【全量扫目录】而不是挑一张。2026-07-22 用户报「近战小将怎么走路是反的」——
+	#   这条断言当时只查 melee/attack 一张, 而那张恰好是对的, 于是一直绿着;
+	#   实际 14 张里有 7 张朝向反了(melee 的 dive/leap/run/throw + elite 的
+	#   hammer/hammer_big/whip/whirl)。挑一张代表 = 用一个样本给整个目录背书。
+	var cases: Array = []
+	for d in ["melee", "elite"]:
+		var dir := DirAccess.open("res://assets/sprites/pets/animations/%s" % d)
+		if dir == null:
+			continue
+		for f in dir.get_files():
+			if f.ends_with(".png"):
+				cases.append([d, f.get_basename()])
+	cases.sort_custom(func(a, b): return str(a[0]) + str(a[1]) < str(b[0]) + str(b[1]))
 	var n := 0
 	for c in cases:
 		var p := "res://assets/sprites/pets/animations/%s/%s.png" % [str(c[0]), str(c[1])]
@@ -123,8 +134,11 @@ func _check_facing() -> void:
 		print("  [朝向] %s/%s 伸展方向 %+.1f (负=朝左, 与全局约定一致)" % [str(c[0]), str(c[1]), d])
 		if d > 0.0:
 			_fail("%s/%s 是【朝右】的, 但项目约定原图朝左(ART_FACES_RIGHT 里没有小将) —— 引擎会再翻一次, 变成背对敌人出招。修法: 逐帧水平镜像" % [str(c[0]), str(c[1])])
+	print("  [分母] 朝向检查覆盖了 %d 张动作图" % n)
 	if n == 0:
 		_fail("朝向检查一张图都没跑到 —— 空检查不是通过")
+	elif n < 10:
+		_fail("只扫到 %d 张动作图, 预期 ≥10(melee 7 + elite 6) —— 目录没读到就等于漏检" % n)
 
 
 ## 武器伸得最远那一帧, 极值在中线哪一侧 (正=朝右)
