@@ -989,13 +989,6 @@ func _build_camera() -> void:
 	_cam.look_at(CAM_TARGET, Vector3.UP)
 	_cam_base = _cam.position               # Phase4: 震屏围绕此基准偏移, 衰减后精确归位
 	_cam_zoom_base = _cam_base              # 初始缩放基准=默认位(zoom=1)
-	if OS.has_environment("CAMPROBE"):      # ★临时探针(验完删): CAMPROBE="zoom,panx,panz" 驱镜头到极限验远景
-		var _cp: PackedStringArray = OS.get_environment("CAMPROBE").split(",")
-		if _cp.size() >= 3:
-			_cam_zoom = float(_cp[0])
-			_cam_pan = Vector3(float(_cp[1]), 0.0, float(_cp[2]))
-			_apply_cam_zoom()
-			print("PROBE_CAM zoom=%.2f pan=(%.1f,%.1f) campos=%s" % [_cam_zoom, _cam_pan.x, _cam_pan.z, str(_cam.position)])
 	_juice_rng.randomize()
 
 func _build_environment() -> void:
@@ -1711,50 +1704,9 @@ func _build_far_backdrop(root: Node3D) -> void:
 	holder.name = "FarBackdrop"
 	root.add_child(holder)
 
-	# ── ①远景海床(渐变延伸) ────────────────────────────────────
-	# ★几何前提(算过, 别凭感觉放): 相机 pos(0,28,22) look_at(0,0.6,0) fov40 → 俯角 51.2°,
-	#   画面【上沿】射线打到地面在 z ≈ -24; 地砖最远边在 z ≈ -15。
-	#   所以"天空"其实是地面上 z∈[-24,-15] 这条窄带, 且那里的东西只能高几米
-	#   (z=-20 处超过 y≈2.4m 就顶出画面了)。竖直幕布放高了完全看不见 —— 我第一版就这么错的。
-	# 做法: 用一张【平铺的】渐变海床把地砖往远处延伸, 近端接住地砖色, 远端提亮成水雾青。
-	var H := 64
-	var img := Image.create(2, H, false, Image.FORMAT_RGBA8)
-	for y in range(H):
-		var t := float(y) / float(H - 1)          # 0=近(接地砖) 1=远(水雾)
-		# ★2026-07-21 实测定位(沿画面竖线采样 RGB, 不是凭眼睛看):
-		#     y=0..12  #021B2E→#254B6D   只有最顶 14px 有颜色
-		#     y=30 起  #001727 → #000913 近乎纯黑, 一直黑到地砖
-		#   根因不是"装饰不够", 是【这张渐变图只看得到最近的 20%】——
-		#   面 z 向 46m 覆盖 z∈[-60,-14], 而画面只看得到 z∈[-24,-15], 亮端在 z=-60 永远进不了画面。
-		#   对策: ①面收到刚好等于可见带(见下方 pm.size/position) ②两端都补亮
-		#         —— filmic tonemap + contrast 1.08 会把暗部再吃掉约一半, 所以要按【看到的】反推着调。
-		var c := Color(0.075, 0.130, 0.200).lerp(Color(0.190, 0.430, 0.500), pow(t, 0.65))
-		for x in range(2):
-			img.set_pixel(x, y, c)
-	var grad_tex := ImageTexture.create_from_image(img)
-
-	var floor_far := MeshInstance3D.new()
-	var pm := PlaneMesh.new()
-	pm.size = Vector2(150.0, 16.0)               # x 向够宽(画面在那个距离约 60m 宽); z 向【只铺可见带】, 见下
-	pm.orientation = PlaneMesh.FACE_Y            # 平铺在地面上
-	floor_far.mesh = pm
-	var wm := StandardMaterial3D.new()
-	wm.albedo_texture = grad_tex
-	wm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	wm.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-	wm.cull_mode = BaseMaterial3D.CULL_DISABLED
-	# 自己不吃雾(否则远景又被刷成黑)。
-	# ★材质上是 disable_fog(BaseMaterial3D), 不是 fog_enabled —— 后者是 Godot 3.x 的名字,
-	#   写了【不报错只发一条 WARNING】然后被丢弃, 于是"不吃雾"根本没生效(2026-07-22 压测日志里发现)。
-	#   注意 Environment.fog_enabled 是合法的, 别一起改掉。
-	wm.disable_fog = true
-	floor_far.material_override = wm
-	# 中心 z=-22 → 覆盖 z∈[-30,-14]。可见带是 z∈[-24,-15], 于是渐变的 t 能跑到 0.63
-	#   (原来中心 -37/深 46 → 只跑到 t≈0.22, 亮端根本进不了画面, 这就是"天空是黑的"的真因)
-	floor_far.position = Vector3(0.0, -0.03, -22.0)
-	floor_far.rotation_degrees = Vector3(0.0, 180.0, 0.0)   # 让渐变的"远端"朝外
-	floor_far.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	holder.add_child(floor_far)
+	# ★2026-07-22: 旧的"渐变海床平面"(150×16 的平 PlaneMesh @ z=-22)已删 ——
+	#   它只铺 z∈[-30,-14], 最坏机位要看到 z=-42.2 → 上方 15% 纯黑。
+	#   现由 _build_far_terrain() 的真地形网格(200×120m)统一承担, 两层并存会打架。
 
 	# ── ②远景地形: 三层纵深 ────────────────────────────────────
 	# ★可见高度是随距离变的(算过): 画面上沿射线 y_top = 28 - 0.606×(22-z)
@@ -1775,30 +1727,12 @@ func _build_far_backdrop(root: Node3D) -> void:
 	# ★颜色第三版: 前一版把山脊做成【比背景暗】的剪影 → 实测在 y≈32~50 压出一条纯黑带
 	#   (#00101E/#000410, 采样见下面渐变面的注释)。filmic tonemap 把暗部再吃一半, 暗剪影必然糊成黑。
 	#   水下远景地貌是【雾里的亮轮廓】(同雾中远山), 越远越亮越贴雾色 —— 按这个来。
-	var ridges := [
-		# [z,     高度, 粗糙度, 种子, 颜色]  —— 远→近, 越远越亮(离水面光源越近 + 中间隔的水越多)
-		[-22.4, 1.05, 0.50, 43, Color(0.235, 0.470, 0.540)],
-		[-20.0, 1.45, 0.72, 27, Color(0.200, 0.400, 0.470)],
-		[-17.5, 2.00, 1.00, 11, Color(0.165, 0.330, 0.400)],
-	]
-	for R in ridges:
-		var rz: float = R[0]
-		var rh: float = R[1]
-		var rough: float = R[2]
-		var rtex := _make_ridge_texture(int(R[3]), rough)
-		var spr := Sprite3D.new()
-		spr.texture = rtex
-		spr.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # 山脊是固定几何, 不能跟着相机转
-		spr.shaded = false
-		spr.transparent = true
-		spr.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD      # 剪影用 discard, 免去半透排序问题
-		spr.pixel_size = rh / float(rtex.get_height())
-		var base: Color = R[4]
-		base.a = 1.0
-		spr.modulate = base
-		spr.position = Vector3(0.0, rh * 0.5, rz)
-		spr.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		holder.add_child(spr)
+	# ★2026-07-22 第三版(用户「感觉你还是在贴一个墙就完事？」):
+	#   前两版的"山脊"是 billboard=DISABLED 的 Sprite3D —— 字面意义上的【三面立着的平板】。
+	#   固定机位能糊弄, 一动镜头就散架。实拍证明: 缩小0.72+平移9m 时画面上方 15% 是纯黑,
+	#   因为远景海床只铺到 z=-30 而最坏机位要看到 z=-42.2(差 12.2 米)。
+	#   现在改成【一张真地形网格】: 有真实高低与透视, 平移缩放都不穿帮。
+	_build_far_terrain(holder)
 
 	# ── ②b 远景发光群(珊瑚/海葵/海带) ──────────────────────────
 	# 剪影只有轮廓没有"生气"。加一层加性发光的小点缀, 让远处天际线有光斑闪烁感,
@@ -1878,6 +1812,91 @@ func _build_far_backdrop(root: Node3D) -> void:
 
 ## 程序生成一条山脊剪影贴图: 通宽锯齿轮廓, 下方实心上方透明, 顶沿带一道亮边(轮廓可读).
 ##   ★不用美术图 —— 现有礁石精灵是【前景尺度】的, 拉到远处会因细节密度不对而"读不出距离"。
+# ----------------------------------------------------------------------------
+#  §FARTERRAIN — 远景真地形 (2026-07-22 第三版)
+#
+#  ★为什么必须是真网格而不是平板精灵:
+#    前两版用 billboard=DISABLED 的 Sprite3D 当"山脊" = 三面立着的平板。
+#    固定机位看着还行, 一动镜头(用户刚要的平移/缩放)立刻散架 —— 没有视差、没有厚度、边会走完。
+#    实拍(CAMPROBE 探针驱到极限)证明: 缩小0.72 + 平移9m 时画面上方 15% 是【纯黑】。
+#
+#  ★尺寸是算出来的不是拍脑袋: 最坏机位(缩小0.72+后移9m)画面上沿射线打到地面在 z=-42.2,
+#    横向 x∈[-34.5, 52.5]。所以铺 200×120 米(z∈[-90,+30], x∈±100)带足余量。
+#
+#  ★战场范围内必须【严格平坦】: 场上有 40+ 贴地特效画在 y=0(裂地/毒圈/冲击环…),
+#    地形一旦在那里起伏就会穿模。所以起伏量按到战场中心的距离做 smoothstep 淡入,
+#    近处恒为 0。
+# ----------------------------------------------------------------------------
+const FAR_TERRAIN_SIZE := Vector2(200.0, 120.0)   # x, z 覆盖范围(米)
+const FAR_TERRAIN_CENTER_Z := -30.0               # z 中心 → 覆盖 z∈[-90,+30], 罩住最坏机位的 z=-42.2
+const FAR_TERRAIN_SEG := Vector2i(80, 48)         # 网格分段 → 3969 顶点, 对 GPU 是零负担
+const FAR_TERRAIN_FLAT_R := 26.0                  # 这个半径内恒平(护住战场里的贴地特效)
+const FAR_TERRAIN_RISE_R := 46.0                  # 到这个半径起伏达到满幅
+
+
+## 到战场中心的水平距离 → 起伏权重 (0=近处恒平, 1=远处满幅)
+func _far_terrain_weight(x: float, z: float) -> float:
+	var d := Vector2(x, z).length()
+	return smoothstep(FAR_TERRAIN_FLAT_R, FAR_TERRAIN_RISE_R, d)
+
+
+## 地形高度场: 三层不同频率的正弦叠加(比纯随机更像地貌) × 距离权重
+func _far_terrain_height(x: float, z: float) -> float:
+	var w := _far_terrain_weight(x, z)
+	if w <= 0.0:
+		return 0.0
+	var h := 0.0
+	h += 1.55 * sin(x * 0.055 + 1.3) * cos(z * 0.048 - 0.7)
+	h += 0.70 * sin(x * 0.130 - 2.1) * cos(z * 0.115 + 1.9)
+	h += 0.28 * sin(x * 0.290 + 0.4) * cos(z * 0.265 - 2.6)
+	return h * w
+
+
+func _build_far_terrain(holder: Node3D) -> void:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var half := FAR_TERRAIN_SIZE * 0.5
+	var seg := FAR_TERRAIN_SEG
+	var stepx := FAR_TERRAIN_SIZE.x / float(seg.x)
+	var stepz := FAR_TERRAIN_SIZE.y / float(seg.y)
+	# 顶点色做大气透视: 越远越亮越贴雾色(水下远景是雾里的亮轮廓, 同雾中远山)。
+	#   第二版把山脊做成"比背景暗的剪影"→ 在 y≈32~50 压出一条纯黑带(filmic tonemap 把暗部再吃一半)。
+	var near_col := Color(0.070, 0.125, 0.190)
+	var far_col := Color(0.205, 0.455, 0.520)
+	for iz in range(seg.y):
+		for ix in range(seg.x):
+			var x0 := -half.x + float(ix) * stepx
+			var x1 := x0 + stepx
+			# ★中心 z=-30 → 覆盖 z∈[-90,+30]。
+			#   第一版把偏移写成 +SIZE.y*0.5-30 = +30, 结果铺成了 z∈[-30,+90] —— 整片地形在【相机身后】,
+			#   远处一点没铺, 于是上方仍是纯黑(四机位验收里 panup 黑占比 38%)。符号错, 不是参数不对。
+			var z0 := -half.y + float(iz) * stepz + FAR_TERRAIN_CENTER_Z
+			var z1 := z0 + stepz
+			var quad := [Vector2(x0, z0), Vector2(x1, z0), Vector2(x1, z1), Vector2(x0, z1)]
+			# 两个三角形 (0,1,2) (0,2,3)
+			for tri in [[0, 2, 1], [0, 3, 2]]:
+				for k in tri:
+					var q: Vector2 = quad[k]
+					var y := _far_terrain_height(q.x, q.y)
+					# 越远(z 越负)越贴雾色; 同时高处略提亮 → 山脊顶自然亮一点
+					var t: float = clampf((-q.y - 12.0) / 34.0, 0.0, 1.0)
+					var c := near_col.lerp(far_col, pow(t, 0.72))
+					c = c.lightened(clampf(y * 0.06, 0.0, 0.16))
+					st.set_color(c)
+					st.add_vertex(Vector3(q.x, y - 0.05, q.y))
+	st.generate_normals()
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	var m := StandardMaterial3D.new()
+	m.vertex_color_use_as_albedo = true
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED   # 与其余远景一致, 不吃主光
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.disable_fog = false   # ★这次【要】吃雾: 地平线交给雾去化, 才没有几何硬边
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	holder.add_child(mi)
+
+
 func _make_ridge_texture(seed_v: int, rough: float) -> ImageTexture:
 	# ★宽高比决定世界尺寸: pixel_size 按【高】算, 所以世界宽 = w/h × 高。
 	#   要在 z≈-20 处铺满画面需要约 70m 宽; h=64、高 1.5m → 每米约 43px → w 至少 64×(70/1.5)≈3000。
