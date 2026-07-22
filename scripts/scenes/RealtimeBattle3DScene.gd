@@ -4213,13 +4213,19 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 				"lavawave": _lava_volcano_erupt(u)
 				"headless_scythe": _headless_scythe_sweep(u["pos"], Vector2.RIGHT)   # 隔离验证斩击弧光(2026-07-17临时)
 				"headless_tendrils": _sk_headless_tendrils(u)
-	if u.get("hijacked", false) and u.get("alive", false):   # 侵入故障化标识(用户2026-07-15确认: 红/绿故障闪·芯片图标在头顶信息层)
+	# 侵入标识(用户2026-07-22 重定: 全身冒红光 + 电流穿身 + 环绕特效; ★血条【依旧是敌方色】不改)
+	#   原为红/绿故障闪(2026-07-15), 绿色会让人误以为它变成了我方 —— 现在统一成红。
+	if u.get("hijacked", false) and u.get("alive", false):
 		var _gspr = u.get("sprite", null)
 		if is_instance_valid(_gspr):
-			match int(_t * 9.0) % 3:
-				0: _gspr.modulate = Color(1.35, 0.55, 0.55)
-				1: _gspr.modulate = Color(0.5, 1.3, 0.95)
-				_: _gspr.modulate = Color(1, 1, 1)
+			var _pul: float = 0.5 + 0.5 * sin(_t * 11.0)                  # 红光呼吸
+			_gspr.modulate = Color(1.0 + 0.55 * _pul, 0.42 + 0.18 * _pul, 0.42 + 0.18 * _pul)
+		# 电流穿身: 每 ~0.13s 在身体范围内随机位置炸一道小电弧(不用 tween, 靠 _burst_vfx 自播完自销)
+		if _t >= float(u.get("_hj_zap_next", 0.0)):
+			u["_hj_zap_next"] = _t + randf_range(0.09, 0.17)
+			var _zp: Vector2 = (u["pos"] as Vector2) + Vector2(randf_range(-16.0, 16.0), randf_range(-20.0, 12.0))
+			_burst_vfx("res://assets/sprites/vfx/electric-zap.png", _zp,
+				randf_range(20.0, 34.0), float(u.get("height", 0.0)) + randf_range(0.25, 1.05))
 	if u.has("_home_pos") and u.get("alive", false) and not u.get("airborne", false) and not u.get("_slam", false):   # fixed评审假人: 被击飞落地后缓步归位(板稳定·_slam定身期不归位→扭曲空间换位落点可保持)
 		var _hp2: Vector2 = u["_home_pos"]
 		if (u["pos"] as Vector2).distance_to(_hp2) > 4.0:
@@ -4441,15 +4447,81 @@ func _tick_skill_cd(u: Dictionary, delta: float) -> void:
 
 # --- 索敌: 被嘲讽则强制打嘲讽来源, 否则最近敌 (跳过 untargetable / 缩头护身随从) ---
 func _acquire_target(u: Dictionary):
-	if _t < u["taunt_until"] and u["taunt_by"] != null and u["taunt_by"]["alive"]:
+	# ★嘲讽分支必须再过一遍 _is_hostile: 它原先绕过一切阵营判定, 于是
+	#   "侵入前嘲讽过赛博方的单位, 被侵入后赛博方仍死锁着它" / "归队瞬间还锁着新队友"
+	#   都会出现同阵营互殴(伤害层没有友伤闸)。见 §HOSTILE
+	if _t < u["taunt_until"] and u["taunt_by"] != null and u["taunt_by"]["alive"] and _is_hostile(u, u["taunt_by"]):
 		return u["taunt_by"]
 	return _nearest_enemy(u)
+
+# ----------------------------------------------------------------------------
+#  §HOSTILE — 统一敌我判定原语 (2026-07-22)
+#
+#  ★为什么必须有这个函数: 在它之前, 全工程【零个敌我原语】, 敌我判断散在 20 处、
+#    清一色只写 `o["side"] != u["side"]`。赛博龟侵入需要【不对称敌我】——
+#    被侵入者对所有人都是敌人, 但它自己只打原队友 —— 用 side 一个字段表达不了,
+#    所以旧实现只能去【改写 side】, 结果把它变成了赛博方的"真友军"(赛博全队打不到它,
+#    还会给它加治疗), 与权威文档 28龟技能设计-权威.md:1467「不算友军·会被打」相反。
+#
+#  ★口径(用户 2026-07-22 拍板, 已用他的例子验算):
+#      我方=赛博+2友军, 敌方仅 1 个被侵入单位 →
+#        赛博/友军1/友军2 → 都打被侵入者 ✅
+#        被侵入者 → 无目标 = 站着发呆 ✅   (它只打原队友, 而原队友已没了)
+#      治疗/护盾: 被侵入者对谁都不是友军 = 孤军
+#
+#  ★side 全程不动。这样"死亡不归队 / 跨路串阵营 / 单路瞬间判胜 / 召唤物串队"
+#    这四类问题根本不会发生 —— 它们全都源于改写 side。
+#
+#  ★注意: 全工程另有 29 处 `side == "left"` 是在判【是不是玩家方】(UI 配色/技能选择/
+#    局外数据), 不是敌我逻辑, 一律不要改成 _is_hostile。
+# ----------------------------------------------------------------------------
+
+## a 会不会攻击 b。★不对称: _is_hostile(a,b) 与 _is_hostile(b,a) 可以不同。
+func _is_hostile(a: Dictionary, b: Dictionary) -> bool:
+	if is_same(a, b):
+		return false          # is_same: 单位字典互引成环, == 会深比较→卡死(项目铁律)
+	if bool(b.get("hijacked", false)):
+		return true           # 被侵入者对所有人都是敌人(含侵入它的赛博方)
+	if bool(a.get("hijacked", false)):
+		return str(b.get("side", "")) == str(a.get("_hijack_orig_side", ""))   # 它只打原队友
+	return str(a.get("side", "")) != str(b.get("side", ""))
+
+
+## 双向都不敌对才算友军 → 被侵入者是孤军(谁也不给它加治疗/护盾, 它也不给别人加)
+func _is_ally(a: Dictionary, b: Dictionary) -> bool:
+	if is_same(a, b):
+		return false
+	return (not _is_hostile(a, b)) and (not _is_hostile(b, a))
+
+
+## 胜负/存活数用的"有效阵营" —— 被侵入者仍按原阵营计, 免得把原阵营"抹空"提前判胜负
+func _eff_side(u: Dictionary) -> String:
+	return str(u.get("_hijack_orig_side", u.get("side", ""))) if u.get("hijacked", false) else str(u.get("side", ""))
+
+
+## 击杀归属改写 —— 被侵入者打死的人, 人头算侵入它的赛博龟(用户2026-07-22)。
+##   赛博龟【自己已死也照算】: 侵入是它放的, 战果就是它的。
+##   ★_hijack_by 存的是单位字典的【引用值】, 不是 key —— 项目铁律只禁止拿单位字典【做 Dictionary 的键】
+##     和用 == 比较, 存引用是既有做法(同 taunt_by)。
+func _credit_killer(src):
+	if src is Dictionary and src.get("hijacked", false):
+		var by = src.get("_hijack_by", null)
+		if by is Dictionary:
+			return by
+	return src
+
+
+## 侵入环绕特效: 贴地红环跟随本体, 与"电流穿身"(见 _tick_unit 的 hijacked 分支)配套
+func _hijack_fx_attach(v: Dictionary) -> void:
+	_aura_vfx("res://assets/sprites/vfx/electric-zap.png", v, 46.0, Color(1.0, 0.25, 0.25, 0.55), 5.0, 0.05)
+	_skill_ring(v["pos"], Color(1.0, 0.22, 0.22, 0.6), 58.0)
+
 
 func _nearest_enemy(u: Dictionary):
 	var best = null
 	var best_d := INF
 	for o in _units:
-		if o["side"] == u["side"] or not o["alive"]:
+		if not _is_hostile(u, o) or not o["alive"]:   # ★原为 o["side"] == u["side"], 见 §HOSTILE
 			continue
 		if _t < o["untargetable_until"]:   # 黑洞 → 不可被选
 			continue
@@ -4580,7 +4652,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 func _enemies_of(u: Dictionary) -> Array:
 	var out: Array = []
 	for o in _units:
-		if o["side"] != u["side"] and o["alive"]:
+		if _is_hostile(u, o) and o["alive"]:   # ★原为 o["side"] != u["side"], 见 §HOSTILE
 			if o.get("_egg_fence", false): continue   # 围栏未破的蛋: 单体+AoE都不锁(用户2026-07-12: 珊瑚刺等别锁蛋)
 			out.append(o)
 	return out
@@ -8685,7 +8757,7 @@ func _knockback(by: Dictionary, tgt: Dictionary, _dist: float, vy_mult: float = 
 	_add_hitstop(JUICE_HITSTOP_KNOCK)
 	_impact_particles(tgt["pos"], tgt.get("height", 0.0))
 	# 飞镖056: 任意敌被己方击飞 → 标"靶子", 携带者周期 tick 射镖
-	if tgt["side"] != by["side"] and _side_has_equip(by["side"], "p2eq_056"):
+	if _is_hostile(by, tgt) and _side_has_equip(by["side"], "p2eq_056"):
 		tgt["eq_target_until"] = _t + 99999.0
 		_mark_vfx(tgt, 99999.0, Color("#ffa040"))
 
@@ -8725,6 +8797,9 @@ func _play_egg_shatter(u: Dictionary) -> void:
 func _kill(u: Dictionary, killer = null) -> void:
 	if u.get("_dead_done", false):
 		return   # 死亡已完整处理过→不重入(防死亡链重入无限递归卡死·用户2026-07-19卡死猎手: 053霰弹击杀 egg/minion 冻死)
+	# 人头归属改写(用户2026-07-22): 被侵入者打死的人算侵入它的赛博龟, 赛博自己已死也照算。
+	#   放在函数最前 → 后面所有用 killer 的地方(击杀数/on-kill装备/日志)一次性全对。
+	killer = _credit_killer(killer)
 	if u.get("_pdeath_demo", false) and killer is Dictionary and killer.get("alive", false) and not is_same(killer, u):   # 被动死亡钩索demo: 放钩索但不真死→复位血循环看(仅评审)
 		var _gtar: Dictionary = killer   # demo: 抓【最远】的敌(展示钩索拉回距离·真实战斗是抓击杀者)
 		var _fd := 0.0
@@ -12539,26 +12614,26 @@ func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万�
 		for o in _units:
 			if not o.get("alive", false) or is_same(o, uu): continue
 			if (o["pos"] as Vector2).distance_to(center) > 1500.0: continue   # 射程1500码(用户2026-07-19; 原为全场无差别)
-			var sc: float = 1.0 if o["side"] != uu["side"] else 0.5
+			var sc: float = 1.0 if _is_hostile(uu, o) else 0.5
 			_apply_damage_from(uu, o, _atk_dmg(uu, sc, o), Color("#9b3bff"), 0.22)
 			if not o.get("_eggImmune", false):
 				_stun(o, 2.7, "_sk_headless_tendrils", true)   # 眩晕持续到脱离
 				o["_tendril_stun"] = true
 			_headless_tendril_shoot(center, ((o["pos"] as Vector2) - center).normalized() if ((o["pos"] as Vector2) - center).length() > 1.0 else Vector2.RIGHT, deg_to_rad(18.0), maxf(90.0, (o["pos"] as Vector2).distance_to(center)), true, 0.0, 2.4)   # 命中者: 从龟身甩一根粗触须缠住
-			if o["side"] != uu["side"]: _headless_drain_dot(o["pos"], uu)   # 吸血红珠回流
+			if _is_hostile(uu, o): _headless_drain_dot(o["pos"], uu)   # 吸血红珠回流
 	_pending_shots.append({"delay": 0.3, "fn": pass_fn, "src": u})
 	var detach_fn := func():                                    # 收/脱离(≈3.0s): 无差别 敌1.5A / 友0.5A + 回复行动(解眩晕)
 		_shake(0.12)
 		for o in _units:
 			if not o.get("alive", false) or is_same(o, uu): continue
 			if (o["pos"] as Vector2).distance_to(center) > 1500.0: continue   # 射程1500码(用户2026-07-19; 原为全场无差别)
-			var sc: float = 1.5 if o["side"] != uu["side"] else 0.5
+			var sc: float = 1.5 if _is_hostile(uu, o) else 0.5
 			_apply_damage_from(uu, o, _atk_dmg(uu, sc, o), Color("#ff3b6b"), 0.22)
 			_hit_spark(o)
 			if o.get("_tendril_stun", false):
 				o["_tendril_stun"] = false
 				o["stun_until"] = _t   # 解眩晕→回复行动
-			if o["side"] != uu["side"]: _headless_drain_dot(o["pos"], uu)   # 脱离撕扯再吸一口
+			if _is_hostile(uu, o): _headless_drain_dot(o["pos"], uu)   # 脱离撕扯再吸一口
 	_pending_shots.append({"delay": 3.0, "fn": detach_fn, "src": u})
 
 func _sk_headless_soul_charge(u: Dictionary) -> void:           # 无头·灵魂打击(机制大改·用户2026-07-17拍板·80龟能): 触发→下3次攻击强化(射程+60·各额外0.5A+10%当前HP魔法·牙齿闭合)→第3下落地蓄力→镰刀横扫(100°300码击退300+幽灵诅咒5s·Camille W); 全程锁龟能, 扫完解锁清零重充
@@ -13070,7 +13145,7 @@ func _crystal_spike_line(u: Dictionary) -> void:   # 照小菊R第三击(2026-07
 					sct.tween_property(scar, "modulate:a", 0.0, 0.6)   # 土痕0.3-0.5s渐隐(小菊)·取0.6
 					sct.tween_callback(scar.queue_free)
 			for o in _units:
-				if o["side"] == uu["side"] or not o.get("alive", false): continue
+				if not _is_hostile(uu, o) or not o.get("alive", false): continue
 				if int(o.get("_spike_tok", -1)) == tok: continue
 				if (o["pos"] as Vector2).distance_to(pref) > 52.0: continue
 				o["_spike_tok"] = tok
@@ -13168,7 +13243,7 @@ func _crystal_ray_vfx(src: Dictionary, tgt: Dictionary, seg_dmg_fn: Callable) ->
 			_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", a2, b2, 30.0, Color(1.0, 1.0, 1.0, 0.95), 0.22)   # 白核
 			_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", a2, b2, 52.0, Color(0.55, 0.9, 1.0, 0.6), 0.3)    # 冰蓝晕
 			for o in _units:                                                                                            # 线上全体敌人各吃一段(用户: 对一条直线敌人造成伤害)
-				if o["side"] == sref["side"] or not o.get("alive", false): continue
+				if not _is_hostile(sref, o) or not o.get("alive", false): continue
 				if not _on_line(a2, ldir, o["pos"], 46.0): continue
 				_crystal_spark(o["pos"], 0.8)
 				_skill_ring(o["pos"], Color(0.62, 0.88, 1.0, 0.5), 26.0)
@@ -14114,7 +14189,7 @@ func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁�
 					var pp: Vector2 = origin + dirv.rotated(aoff) * (dist + randf_range(-20.0, 20.0))
 					if ARENA.has_point(pp): _elite_spike(pp, false)
 				for o in _units:
-					if o["side"] == uu["side"] or not o.get("alive", false): continue
+					if not _is_hostile(uu, o) or not o.get("alive", false): continue
 					if int(o.get("_espk_tok", -1)) == tok: continue
 					var rel: Vector2 = (o["pos"] as Vector2) - origin
 					if rel.length() > dist + 40.0 or rel.length() < dist - 40.0: continue
@@ -14184,7 +14259,7 @@ func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁�
 						var pp2: Vector2 = c2 + Vector2(cos(aa2), sin(aa2)) * (dist2 + randf_range(-25.0, 25.0))
 						if ARENA.has_point(pp2): _elite_spike(pp2, true)
 					for o2 in _units:
-						if o2["side"] == uu["side"] or not o2.get("alive", false): continue
+						if not _is_hostile(uu, o2) or not o2.get("alive", false): continue
 						if int(o2.get("_espk_tok", -1)) == tok2: continue
 						var dd2: float = (o2["pos"] as Vector2).distance_to(c2)
 						if dd2 > dist2 + 45.0 or dd2 < dist2 - 45.0: continue
@@ -15132,7 +15207,7 @@ func _sk_candy_barrage(u: Dictionary, tgt) -> void:            # 糖果龟·技�
 					for o in _units:
 						if not o.get("alive", false): continue
 						if o["pos"].distance_to(land) > 120.0: continue
-						if o["side"] == uu["side"]:
+						if not _is_hostile(uu, o):
 							_grant_shield(o, uu["maxHp"] * 0.02, 2.0)
 						else:
 							_apply_damage_from(uu, o, _resolve_dmg(uu, uu["atk"] * 0.2 + uu["maxHp"] * 0.02, o, true), Color("#ff9ed6"), 0.0, false, true)
@@ -17130,12 +17205,17 @@ func _sk_cyber_hijack(u: Dictionary) -> void:                   # 赛博龟·侵
 			es.append(o)
 	if es.is_empty(): return
 	var v: Dictionary = es[randi() % es.size()]
-	v["_hijack_orig_side"] = str(v["side"])
-	v["side"] = str(u["side"])                                  # 倒戈: side→赛博方(它索敌打原队友·原队友side差也打它)
+	# ★2026-07-22 重做: 【不再改写 side】。旧实现 v["side"] = u["side"] 把它变成赛博方的"真友军"
+	#   → 赛博全队索敌/技能都跳过它(用户主诉"我方要能打"), 还会给它加治疗; 且衍生出
+	#   死亡不归队 / 跨路串阵营 / 单路瞬间判胜 / 召唤物串队 四类问题。
+	#   现在只挂标记, 敌我关系由 _is_hostile 统一裁决(见 §HOSTILE)。
+	v["_hijack_orig_side"] = str(v["side"])   # 保留: _eff_side / 统计分组 / 归队清标记都读它
 	v["hijacked"] = true
 	v["hijack_until"] = _t + 5.0                                # 5秒(用户2026-07-16: 4→5)
+	v["_hijack_by"] = u                                         # 人头归属: 被侵入者杀的算赛博的(用户2026-07-22, 赛博自己死了也算)
 	v["taunt_until"] = 0.0; v["taunt_by"] = null               # 清嘲讽残留(防倒戈期错误锁定)
 	v["stun_until"] = 0.0                                       # 解控(立即可倒戈行动)
+	_hijack_fx_attach(v)                                        # 全身红光 + 电流环绕(用户2026-07-22)
 	_float_text(v["pos"] + Vector2(0, -56), "侵入!", Color("#3fffd0"))
 	_skill_ring(v["pos"], Color(0.25, 1.0, 0.82, 0.5), 52.0)
 	_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", u["pos"], v["pos"], 30.0, Color(0.25, 1.0, 0.82, 0.75), 0.6)   # 侵入数据链(用户07-07仅给"参考Botworld黑客机器人"·具体视觉无原话)
@@ -17581,7 +17661,15 @@ func _lowest_hp_ally(u: Dictionary):
 func _allies_of(u: Dictionary, include_self: bool = true) -> Array:
 	var out: Array = []
 	for o in _units:
-		if o["side"] == u["side"] and o["alive"] and (include_self or not is_same(o, u)):   # is_same: 单位字典互引成环, == / != 会深比较→有卡死风险(同053教训)
+		# ★原为 o["side"] == u["side"]。改用 _is_ally(双向都不敌对) → 被侵入者是孤军:
+		#   赛博方不会给它加治疗/护盾, 它也不给赛博方加。见 §HOSTILE
+		if not o["alive"]:
+			continue
+		if is_same(o, u):          # is_same: 单位字典互引成环, ==/!= 会深比较→卡死(同053教训)
+			if include_self:
+				out.append(o)
+			continue
+		if _is_ally(u, o):
 			out.append(o)
 	return out
 
@@ -17818,12 +17906,16 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	var _fsu: float = float(u.get("frost_shield_until", 0.0))
 	if _fsu > 0.0 and (_t >= _fsu or float(u.get("shield", 0.0)) <= 0.0):
 		_frost_shield_burst(u)
-	# --- 赛博侵入: 被黑单位4秒到期→归队(side还原·清hijacked·数据链断) ---
+	# --- 赛博侵入: 5秒到期→归队(清 hijacked·数据链断) ---
+	#   ★2026-07-22 起 side 全程没被改过, 所以这里【不需要还原 side】。
+	#     也正因如此, "死在侵入期→还原逻辑永不跑(死人不 tick)→尸体永久留在赛博阵营"
+	#     这个老问题不复存在。
 	if u.get("hijacked", false) and _t >= float(u.get("hijack_until", 0.0)):
-		u["side"] = str(u.get("_hijack_orig_side", u["side"]))
 		u["hijacked"] = false
+		u["_hijack_by"] = null
+		u["taunt_until"] = 0.0; u["taunt_by"] = null   # 归队时清嘲讽: 否则带着对"新队友"的嘲讽回去会锁错目标
 		var _hspr = u.get("sprite", null)
-		if is_instance_valid(_hspr): _hspr.modulate = Color(1, 1, 1)   # 还原故障染色(2026-07-15)
+		if is_instance_valid(_hspr): _hspr.modulate = Color(1, 1, 1)   # 还原红光染色
 		_float_text(u["pos"] + Vector2(0, -48), "归队", Color("#8a93a0"))
 	# --- 龟壳·潜影(暗影主被动·选中暗影才有): 6秒未受伤→进入隐身 ---
 	if u["id"] == "shell" and not u.get("shell_stealth", false) and _t - float(u.get("shell_last_dmg_t", 0.0)) >= 6.0 and "shellShadow" in _chosen_skill_types(u["id"], u["side"] == "left"):
@@ -18618,7 +18710,7 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 			var best = null
 			var bd := INF
 			for o in _units:
-				if o["side"] != uu["side"] and o.get("alive", false) and not o.get("_egg_fence", false):
+				if _is_hostile(uu, o) and o.get("alive", false) and not o.get("_egg_fence", false):
 					var dd: float = dpos.distance_to(o["pos"])
 					if dd < bd: bd = dd; best = o
 			if best == null: continue
@@ -18645,7 +18737,7 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 				_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", dpos, endp2, 250.0, Color(0.6, 0.95, 1.0, 0.75), 1.0) # 青晕外束(略久=收细消散感)
 				_shake(0.03)
 				for o2 in _units:
-					if o2["side"] != uu["side"] and o2.get("alive", false) and _on_line(dpos, ldir, o2["pos"], 40.0):
+					if _is_hostile(uu, o2) and o2.get("alive", false) and _on_line(dpos, ldir, o2["pos"], 40.0):
 						_apply_damage_from(uu, o2, _resolve_dmg(uu, atk_ref * 0.4, o2, true), Color("#7ee8ff"))      # 0.4A魔法(蓝字)
 						_hit_spark(o2))
 	, "src": u})
@@ -19705,7 +19797,9 @@ func _check_end() -> void:
 	var right_alive := 0
 	for u in _units:
 		if u["alive"] and not u.get("is_summon", false):   # 召唤体不计入胜负判定
-			if u["side"] == "left": left_alive += 1
+			# ★用有效阵营: 被侵入者仍按【原阵营】计。否则侵入掉对方最后一只 →
+			#   right_alive==0 → 单路/评审模式【瞬间判胜】(双路的 _dl_side_alive 早已这么做, 这里一直漏着)
+			if _eff_side(u) == "left": left_alive += 1
 			else: right_alive += 1
 	if left_alive == 0 or right_alive == 0:
 		_over = true
@@ -19916,7 +20010,7 @@ func _st_add_type(u: Dictionary, key: String, bucket: String, amt: int) -> void:
 func _stat_units(side: String) -> Array:
 	var out: Array = []
 	for u in _units:
-		if u.get("side", "") == side:
+		if _eff_side(u) == side:
 			out.append(u)
 	return out
 
@@ -21348,7 +21442,7 @@ func _eq_farthest_enemies(u: Dictionary, half: bool) -> Array:
 # 某一方是否有存活单位携带某装备 (飞镖靶子标记用)
 func _side_has_equip(side: String, item_id: String) -> bool:
 	for o in _units:
-		if o["side"] == side and o["alive"]:
+		if _eff_side(o) == side and o["alive"]:
 			for e in o.get("equips", []):
 				if str(e["id"]) == item_id:
 					return true
@@ -21357,7 +21451,7 @@ func _side_has_equip(side: String, item_id: String) -> bool:
 func _count_summons(side: String, kind: String) -> int:
 	var c := 0
 	for o in _units:
-		if o.get("is_summon", false) and o["side"] == side and o["alive"] and str(o.get("summon_kind", "")) == kind:
+		if o.get("is_summon", false) and _eff_side(o) == side and o["alive"] and str(o.get("summon_kind", "")) == kind:
 			c += 1
 	return c
 
@@ -21854,7 +21948,7 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 							_urchin_shield_fx(u)   # 紫刺环+紫字, 与普通金盾区分
 						stt["harden_given"] = true
 			"p2eq_015":   # 荆棘海胆: 反伤真伤 + 施流血给攻击者
-				if src.get("alive", false) and src["side"] != u["side"]:
+				if src.get("alive", false) and _is_hostile(u, src):
 					var refl: float = float(dmg) * float(stt.get("reflect_pct", 0.10))
 					if refl >= 1.0:
 						_apply_damage_from(u, src, int(refl), Color("#c9a36b"), 0.0, true, true)   # 反伤=真实伤害跳白字(原_raw_lose静默不跳数字=bug); from_equip防循环
@@ -22068,7 +22162,7 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 				pass
 	# 左轮052: 任何敌人阵亡 → 对方(u的敌方)持左轮的存活单位 +1发子弹 (上限6)
 	for o in _units:
-		if o["alive"] and o["side"] != u["side"]:
+		if o["alive"] and _eff_side(o) != _eff_side(u):
 			for e2 in o.get("equips", []):
 				if str(e2["id"]) == "p2eq_052":
 					var rst: Dictionary = o["eq_state"].get("p2eq_052", {})
