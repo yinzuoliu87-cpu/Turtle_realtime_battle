@@ -72,11 +72,23 @@ func _ready() -> void:
 	#   慢机器上一帧超过 0.1 秒时, 计时器按真实时间走、战斗时钟最多只走 0.1/帧
 	#   → 游戏时间落后于计时器 → 1.4 秒到点时钩索还没结算 → got=0。
 	#   改成【轮询等效果真的落地】: 快慢机器都对, 且比死等更快返回。
-	var _waited := 0
-	while _waited < 600 and float(killer["hp"]) >= hp0:   # 上限 600 帧(远超钩索所需), 防死循环
+	# ★等待上限该用【墙钟】, 不是帧数、也不是游戏时钟。2026-07-23 一次踩了两个坑:
+	#   ① 按【帧数】(600) —— 本地 94 帧就落地, 但 CI 无头帧率极高、每帧只推进 1ms 上下,
+	#      同样的时间要跑上千帧 → 循环没退出 → "ALL PASS" 没打出来 →
+	#      run-tests.sh 判 FAIL(rc=0、致命报错=0), 看着像断言失败, 其实是被帧预算掐断。
+	#   ② 按【游戏时钟 _t】—— 更糟: _kill 之后战斗判定结束(_over), _t 直接不走了,
+	#      实测 "游戏时间 0.00 秒 / 94 帧"。拿一个冻结的时钟当尺子, 永远不会超时。
+	#   钩索是 tween 驱动的(甩钩→拉拽→到位才结算), tween 走真实时间, 所以墙钟才是对的尺子。
+	var _ms0: int = Time.get_ticks_msec()
+	var _frames := 0
+	while Time.get_ticks_msec() - _ms0 < 5000 and float(killer["hp"]) >= hp0:
 		await get_tree().process_frame
-		_waited += 1
-	print("  (钩索落地用了 %d 帧)" % _waited)
+		_frames += 1
+	print("  (钩索落地: 墙钟 %d 毫秒 / %d 帧)" % [Time.get_ticks_msec() - _ms0, _frames])
+	# ★这条辅助函数叫 _ok 不是 _fail(本文件里 _fail 是个计数用的 int) —— 我又一次凭印象写函数名,
+	#   今天第三次(range/atk_range、spr/sprite)。写之前 grep 一下实际名字。
+	_ok("钩索在超时前结算了(超时 = 根本没触发, 不是数值不对)",
+		float(killer["hp"]) < hp0, "等了 %d 毫秒仍未结算" % (Time.get_ticks_msec() - _ms0))
 
 	var lost: float = hp0 - float(killer["hp"])
 	_ok("击杀者受到 ≈25% 自身最大生命的伤害", absf(lost - float(expect)) <= 2.0,

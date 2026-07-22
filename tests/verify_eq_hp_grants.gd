@@ -52,11 +52,14 @@ func _test_dumbbell() -> void:
 	#   (_process 开头 minf(delta, 0.1) 防卡死), 而 create_timer 用【未钳制】的真实帧 delta
 	#   → 慢机器上游戏时间会落后于计时器 → 效果还没结算就断言 → 假 FAIL。
 	#   这条虽然还没在 CI 上红过, 但和 2026-07-22 抓到的海盗钩索是同一个隐患, 一并改掉。
+	# ★同 verify_pirate_hook: 上限用【墙钟】—— 不能用帧数(CI 帧率极高, 帧数不够被掐断),
+	#   也不能用游戏时钟(战斗一结束 _t 就冻结, 拿冻结的时钟当尺子永远不超时)。
+	var _ms0: int = Time.get_ticks_msec()
 	var _w := 0
-	while _w < 600 and is_equal_approx(float(u["maxHp"]), mx0):
+	while Time.get_ticks_msec() - _ms0 < 5000 and is_equal_approx(float(u["maxHp"]), mx0):
 		await get_tree().process_frame
 		_w += 1
-	print("  (哑铃锻炼结算用了 %d 帧)" % _w)
+	print("  (哑铃锻炼结算: 墙钟 %d 毫秒 / %d 帧)" % [Time.get_ticks_msec() - _ms0, _w])
 	var d_mx: float = float(u["maxHp"]) - mx0
 	var d_hp: float = float(u["hp"]) - hp0
 	_ok("020 哑铃 3★ 最大生命 +110(文案值, 非 330)", is_equal_approx(d_mx, 110.0), "实际 +%.0f" % d_mx)

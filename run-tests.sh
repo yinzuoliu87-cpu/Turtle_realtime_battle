@@ -28,6 +28,11 @@ PASS=0; FAIL=0
 frames_for () {
   case "$1" in
     verify_ios_ui) echo 4000 ;;   # 逐个进出 9 个菜单场景, 500 帧只够跑完 2 个
+    # ★等【游戏内效果结算】的测试: CI 无头帧率远高于本机, 同样的游戏时间要跑多得多的帧。
+    #   2026-07-23: verify_pirate_hook 本地 93 帧落地, CI 上 500 帧不够 → 被掐断 →
+    #   没打 ALL PASS → 判 FAIL(rc=0、致命报错=0), 看着像断言失败, 其实是预算不足。
+    verify_pirate_hook)  echo 8000 ;;
+    verify_eq_hp_grants) echo 8000 ;;
     *)             echo 500  ;;
   esac
 }
