@@ -9,11 +9,13 @@
 class_name DmgStatsPanel
 extends RefCounted
 
-const COL_PHY := Color(1, 0.267, 0.267, 0.6)
-const COL_MAG := Color(0.302, 0.671, 0.969, 0.6)
-const COL_TRU := Color(1, 1, 1, 0.6)
-const COL_HEAL := Color(0.024, 0.839, 0.627, 0.65)
-const COL_SHIELD := Color(0.345, 0.827, 1, 0.6)
+const UIPalette = preload("res://scripts/engine/ui_palette.gd")
+# 语义色引用 UIPalette 单一色表(2026-07-22); alpha 仍由本面板自己定 —— 色块要半透明
+const COL_PHY := Color(UIPalette.PHYS, 0.6)
+const COL_MAG := Color(UIPalette.MAGIC, 0.6)
+const COL_TRU := Color(UIPalette.TRUE_DMG, 0.6)
+const COL_HEAL := Color(UIPalette.HEAL, 0.65)
+const COL_SHIELD := Color(UIPalette.SHIELD_VALUE, 0.6)
 const TABS := [["dealt", "⚔ 造成"], ["taken", "🛡 承受"], ["heal", "💚 治疗"], ["shield", "🔵 护盾"]]
 
 var panel: Control = null                 # 浮层本体(默认隐)
@@ -99,7 +101,7 @@ func make_row(u: Dictionary, side: String, col_max: int) -> Control:
 	var nm := Label.new()
 	nm.text = ("↳ " if u.get("is_summon", false) else "") + str(u.get("name", u.get("id", "")))
 	nm.add_theme_font_size_override("font_size", 15)
-	nm.add_theme_color_override("font_color", Color("#06d6a0") if side == "left" else Color("#ff6b6b"))
+	nm.add_theme_color_override("font_color", Color(UIPalette.SIDE_LEFT) if side == "left" else Color(UIPalette.SIDE_RIGHT))
 	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(nm)
 	var v := Label.new()
@@ -155,7 +157,7 @@ func build() -> void:
 		var hdr := Label.new()
 		hdr.text = side_label[0]
 		hdr.add_theme_font_size_override("font_size", 15)
-		hdr.add_theme_color_override("font_color", Color("#06d6a0") if side_label[1] == "left" else Color("#ff6b6b"))
+		hdr.add_theme_color_override("font_color", Color(UIPalette.SIDE_LEFT) if side_label[1] == "left" else Color(UIPalette.SIDE_RIGHT))
 		colv.add_child(hdr)
 		var rows := VBoxContainer.new()
 		rows.add_theme_constant_override("separation", 6)

@@ -13,6 +13,10 @@ extends RefCounted
 # 输出 BBCode (RichTextLabel), 中间态走 PoC 同款 HTML 再转 BBCode 保证关键词 lookbehind 一致.
 # ══════════════════════════════════════════════════════════
 
+# ★用 preload 常量而不是靠 class_name 全局注册 —— 新建脚本在编辑器重扫之前
+#   全局类名不存在, 无头跑测试会 "Identifier UIPalette not declared"。
+const UIPalette = preload("res://scripts/engine/ui_palette.gd")
+
 # 颜色字母 → val-class
 const COLOR_CLASS := {
 	"N": "val-normal", "P": "val-pierce", "S": "val-shield",
@@ -20,14 +24,15 @@ const COLOR_CLASS := {
 	"M": "val-magic", "T": "val-true",
 }
 
-# val-class → hex (来自 PoC battle.css / VAL_CSS_HEX)
+# val-class → hex。三色伤害等语义色【引用 UIPalette】, 不再写字面量
+# (2026-07-22: 物理红原为 #ff6b6b, 与飘字/统计面板的 #ff4444 打架; 用户拍板统一到后者)
 const VAL_HEX := {
-	"val-normal": "#ff6b6b", "val-magic": "#4dabf7", "val-true": "#ffffff",
-	"val-pierce": "#ffffff", "val-shield": "#e0e0e0", "val-heal": "#06d6a0",
-	"val-buff": "#7dffb3", "val-def": "#ffd93d", "val-extra": "#ffcc00",
+	"val-normal": UIPalette.PHYS, "val-magic": UIPalette.MAGIC, "val-true": UIPalette.TRUE_DMG,
+	"val-pierce": UIPalette.PIERCE, "val-shield": UIPalette.SHIELD_TEXT, "val-heal": UIPalette.HEAL,
+	"val-buff": UIPalette.BUFF, "val-def": UIPalette.DEF, "val-extra": "#ffcc00",
 	"val-burn": "#ff6600", "val-lifesteal": "#e85d75", "val-dot": "#9b59b6",
-	"val-stun": "#fbbf24", "val-crit": "#ff6b6b", "val-crit-dmg": "#ffaa33",
-	"val-reflect": "#94a3b8", "val-heal-reduce": "#a78bfa", "val-atk": "#ff6b6b",
+	"val-stun": "#fbbf24", "val-crit": UIPalette.PHYS, "val-crit-dmg": "#ffaa33",
+	"val-reflect": "#94a3b8", "val-heal-reduce": "#a78bfa", "val-atk": UIPalette.PHYS,
 }
 
 # 关键词自动上色 (照搬 PoC ui-skill-text.js:107-136, 顺序敏感 — 长词在前)
