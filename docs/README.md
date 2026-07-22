@@ -48,6 +48,23 @@
 | [design/Botworld节奏实测数据.md](design/Botworld节奏实测数据.md) | 竞品实测 ground truth，用于校准节奏 |
 | [design/技能改制设计决策.md](design/技能改制设计决策.md) | 用户逐条拍板的决策记录，**决策不可删**（即使其中数值已过期） |
 | [design/真机问题-根因与处理协议.md](design/真机问题-根因与处理协议.md) | 真机排障规程，可复用 |
+| [实时版APK打包.md](实时版APK打包.md) | Android 出包环境与一条命令重出 APK |
+
+---
+
+## 3b. 出包（先看这里，别自己搭）
+
+**结论都在 [`CLAUDE.md` §6 构建与发布](../CLAUDE.md)，这里只放入口。**
+
+| 目标 | 入口 |
+|---|---|
+| **iOS 装机包** | `.github/workflows/ios-build.yml`（push main 自动跑）→ artifact `turtle-ios-unsigned` |
+| 提交门禁 | `.github/workflows/tests.yml` |
+| Web | `SHIP=1 bash build-web.sh` |
+| Android | [实时版APK打包.md](实时版APK打包.md) |
+
+> **Windows 出不了 `.ipa`**（要 macOS 的 `xcodebuild`/`codesign`），只能走上面那条 macOS runner。
+> 2026-07-22 因为没查这张表，在本地重复折腾了一轮。
 
 ---
 
