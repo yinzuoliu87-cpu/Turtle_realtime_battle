@@ -45,6 +45,14 @@ func _ready() -> void:
 ##   剩下那段时间角色是站姿。实测: surf 12fps×4帧=0.33s 而踩滑节拍 0.833s
 ##   → 踩着敌人滑行的【后 0.50 秒角色站着】。leap/throw 也各早完 0.07s。
 ## 节拍取自 _sk_minion_bodysurf / _minion_bodysurf_ride 里的真实数字, 见方案书 §3.5 时间轴。
+## 精英五段的节拍(2026-07-22 复查补上 —— 做精英动画时压根没量过, 四段对不上)
+##   数字取自代码: _elite_whirl 的 tween 0.42 / _sk_elite_hammer 撞击帧 delay 0.43 /
+##   hammer_big 0.35跳起+1.0空中蓄力+0.12下砸 / _tick_elite_whip 0.3链射+0.18拉体 /
+##   _elite_try_consume 的 _pending_shots delay 1.5
+const ELITE_BEATS := {
+	"whirl": 0.42, "hammer": 0.43, "hammer_big": 1.47, "whip": 0.48, "consume": 1.50,
+}
+
 const MELEE_BEATS := {
 	"leap": 0.64,    # 0.00-0.64 蓄力(tween_interval 0.3) + 起跳(tween_method 0.34)
 	"throw": 0.64,   # 0.64-1.28 滞空(_pending_shots delay 0.68 → 1.28)
@@ -54,35 +62,40 @@ const MELEE_BEATS := {
 }
 
 func _check_melee_timing(src: String) -> void:
+	_check_timing_group(src, "melee", "ACTION_MELEE", MELEE_BEATS)
+	_check_timing_group(src, "elite", "ACTION_ELITE", ELITE_BEATS)
+
+
+func _check_timing_group(src: String, dir_name: String, table: String, beats: Dictionary) -> void:
 	var n := 0
-	for act in MELEE_BEATS.keys():
-		var fps := _melee_fps(src, str(act))
+	for act in beats.keys():
+		var fps := _fps_in_table(src, table, str(act))
 		if fps <= 0.0:
-			_fail("ACTION_MELEE 里解析不到 %s 的 fps" % str(act))
+			_fail("%s 里解析不到 %s 的 fps" % [table, str(act)])
 			continue
-		var p := "res://assets/sprites/pets/animations/melee/%s.png" % str(act)
+		var p := "res://assets/sprites/pets/animations/%s/%s.png" % [dir_name, str(act)]
 		if not ResourceLoader.exists(p):
 			_fail("缺图 %s" % p)
 			continue
 		var tex: Texture2D = load(p)
 		var frames: int = maxi(1, tex.get_width() / tex.get_height())
 		var dur: float = float(frames) / fps
-		var beat: float = float(MELEE_BEATS[act])
+		var beat: float = float(beats[act])
 		n += 1
 		if absf(dur - beat) > 0.03:
-			_fail("%s 动画 %.3fs ≠ 节拍 %.3fs (差 %+.3fs) —— %s"
-				% [str(act), dur, beat, dur - beat,
+			_fail("%s/%s 动画 %.3fs ≠ 节拍 %.3fs (差 %+.3fs) —— %s"
+				% [dir_name, str(act), dur, beat, dur - beat,
 				   "动画先播完, 剩下时间角色会站着" if dur < beat else "动画会被下一段打断"])
-	print("  [节拍] 校对 %d 个动作的 动画时长 ↔ 代码节拍" % n)
+	print("  [节拍] %s: 校对 %d 个动作" % [dir_name, n])
 	if n == 0:
 		_fail("节拍校对一个都没跑到 —— 空检查不是通过")
 
 
-## 从 ACTION_MELEE 里抠某动作的 fps
-func _melee_fps(src: String, act: String) -> float:
+## 从指定动作表里抠某动作的 fps
+func _fps_in_table(src: String, table: String, act: String) -> float:
 	var re := RegEx.new()
 	re.compile("\"" + act + "\"\\s*:\\s*\\[\\s*\"[^\"]+\"\\s*,\\s*([0-9.]+)")
-	var m := re.search(src.substr(maxi(0, src.find("const ACTION_MELEE"))))
+	var m := re.search(src.substr(maxi(0, src.find("const " + table))))
 	return float(m.get_string(1)) if m != null else 0.0
 
 

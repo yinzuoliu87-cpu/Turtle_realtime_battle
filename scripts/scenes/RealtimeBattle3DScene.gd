@@ -353,12 +353,23 @@ const ACTION_MELEE := {
 	"surf":  ["pets/animations/melee/surf.png", 4.8],     # 4帧 / 0.833s = 每帧208ms(保持平衡姿势, 不是高频抖)
 	"land":  ["pets/animations/melee/land.png", 13.0],    # 4帧 / 0.31s ≈ 落地 0.30s
 }
+# ★fps 让【动画时长 == 技能节拍】。2026-07-22 复查发现精英五段有四段对不上,
+#   动画先播完 → _advance_anim 立刻回 idle → 剩下那段时间角色是站姿:
+#     whirl      0.333s vs 节拍 0.42s  早完 0.09s
+#     hammer     0.364s vs 节拍 0.43s  早完 0.07s
+#     hammer_big 0.400s vs 节拍 1.47s  【早完 1.07s】= 空中蓄力那 1 秒角色站着悬停
+#     consume    0.900s vs 节拍 1.50s  早完 0.60s
+#   节拍取自代码真实数字: whirl 的 tween 0.42 / hammer 撞击帧 delay 0.43 /
+#   hammer_big 0.35跳起+1.0空中蓄力+0.12下砸 / consume 的 _pending_shots delay 1.5。
+#   ★hammer_big 单靠 fps 摊不平(4帧/1.47s = 每帧368ms, 远超项目 62-208ms 区间), 因为它
+#     两头是快动作、中间是 1 秒【悬停】。改成按节拍排帧序 0,0,1,1,[2]×12,3,3 = 18帧,
+#     即给"空中蓄力"那一帧做 hold —— 这是动画标准手法, 与"重复凑循环"不是一回事。
 const ACTION_ELITE := {
-	"whirl":      ["pets/animations/elite/whirl.png", 12.0],
-	"hammer":     ["pets/animations/elite/hammer.png", 11.0],
-	"hammer_big": ["pets/animations/elite/hammer_big.png", 10.0],
-	"whip":       ["pets/animations/elite/whip.png", 14.0],
-	"consume":    ["pets/animations/elite/consume.png", 10.0],
+	"whirl":      ["pets/animations/elite/whirl.png", 9.52],      # 4帧 / 0.42s
+	"hammer":     ["pets/animations/elite/hammer.png", 9.30],     # 4帧 / 0.43s
+	"hammer_big": ["pets/animations/elite/hammer_big.png", 12.24],# 18帧 / 1.47s(含1s hold)
+	"whip":       ["pets/animations/elite/whip.png", 14.0],       # 7帧 / 0.50s ≈ 节拍 0.48s
+	"consume":    ["pets/animations/elite/consume.png", 6.0],     # 9帧 / 1.50s
 }
 const ACTION_HURT := {
 	"basic":  ["pets/animations/basic/hurt.png", 16.0],
