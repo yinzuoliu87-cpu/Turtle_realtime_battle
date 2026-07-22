@@ -29,7 +29,60 @@ func _ready() -> void:
 	_check_is_real_mesh(src)
 	_check_coverage(src)
 	_check_flat_near(src)
+	_check_height_field(src)
 	_done()
+
+
+## ④ 直接采样高度场 —— 断言"平坦半径 ≥ 战场"是间接的, 这里验【实际高度】
+##   (2026-07-22 关方案书 H15/H16 时补: 原先只断言半径, 万一噪声公式改了半径没改就漏)
+##   H16 战场内必须严格 0 (场上 40+ 贴地特效画在 y=0, 有起伏就顶穿)
+##   H15 战场外的地形不得高过单位身高 (否则会挡住站在边缘的单位)
+func _check_height_field(src: String) -> void:
+	var flat := _const_f(src, "FAR_TERRAIN_FLAT_R")
+	var rise := _const_f(src, "FAR_TERRAIN_RISE_R")
+	if flat <= 0.0 or rise <= flat:
+		_fail("平坦/起伏半径解析失败 (flat=%.1f rise=%.1f)" % [flat, rise])
+		return
+	var arena_r := 24.5      # ARENA 约 42.5×24 m → 半对角 ≈ 24.4 m
+	var body_h := 2.0        # TARGET_BODY_H
+	var max_in := 0.0
+	var max_out := 0.0
+	var n_in := 0
+	var n_out := 0
+	for i in range(-46, 47, 2):
+		for j in range(-46, 47, 2):
+			var x := float(i)
+			var z := float(j)
+			var d := sqrt(x * x + z * z)
+			if d > 50.0:
+				continue
+			var y: float = absf(_terrain_h(x, z, flat, rise))
+			if d <= arena_r:
+				n_in += 1
+				max_in = maxf(max_in, y)
+			else:
+				n_out += 1
+				max_out = maxf(max_out, y)
+	print("  [高度场] 战场内采样 %d 点 最大 %.6f m / 战场外 %d 点 最大 %.2f m" % [n_in, max_in, n_out, max_out])
+	if n_in == 0 or n_out == 0:
+		_fail("高度场采样点不足(内%d 外%d) —— 空检查不是通过" % [n_in, n_out])
+		return
+	if max_in > 0.001:
+		_fail("H16: 战场内地形起伏 %.4f m ≠ 0 —— 会顶穿画在 y=0 的贴地特效(裂地/毒圈/冲击环)" % max_in)
+	if max_out > body_h:
+		_fail("H15: 战场外地形最高 %.2f m > 单位身高 %.1f m —— 会挡住站在边缘的单位" % [max_out, body_h])
+
+
+## 复刻 _far_terrain_height 的公式(与实现对照, 不 import)
+func _terrain_h(x: float, z: float, flat: float, rise: float) -> float:
+	var w := smoothstep(flat, rise, sqrt(x * x + z * z))
+	if w <= 0.0:
+		return 0.0
+	var h := 0.0
+	h += 1.55 * sin(x * 0.055 + 1.3) * cos(z * 0.048 - 0.7)
+	h += 0.70 * sin(x * 0.130 - 2.1) * cos(z * 0.115 + 1.9)
+	h += 0.28 * sin(x * 0.290 + 0.4) * cos(z * 0.265 - 2.6)
+	return h * w
 
 
 ## ① 必须是真网格, 不能退回平板精灵
