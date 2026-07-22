@@ -1,5 +1,7 @@
 extends Control
 
+const RichTooltip = preload("res://scripts/scenes/rich_tooltip.gd")
+
 ## InventoryScene — V2 局外背包 / 出战配置 (阶段2 UI 首版, 设计§十).
 ## 上部: 出战阵容 (上路/下路, 龟统领 + 小将占位); 下部: 装备管理 (背包 bench).
 ## 首版 = 布局 + 显示 (实时挤位/防吞/装备拖拽/3合1 后续迭代). 截图验证布局用.
@@ -564,10 +566,16 @@ func _build_op_bar() -> void:
 			l.position = Vector2(16, 20); l.size = Vector2(bw - 320, 28); l.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(l)
 		else:
 			var sdef: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(sit.get("id", "")), {})
-			var l := Label.new()
-			l.text = "▶ %s  ★%d  (%s)   —— 点上方【龟 / 小将】装上   ·   %s" % [str(sdef.get("name", "")), int(sit.get("star", 1)), "费用%d" % int(sdef.get("cost", 1)), str(sdef.get("effectDesc1", ""))]
-			l.add_theme_font_size_override("font_size", 14); l.add_theme_color_override("font_color", Color("#ffd93d"))
-			l.position = Vector2(16, 10); l.size = Vector2(bw - 320, 48); l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; l.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(l)
+			# ★装备文案按玩家当前星级高亮(2026-07-22): 三元组 a/b/c 里这一档亮、另两档暗。
+			#   只在渲染时变换, 数据格式一个字不动 —— tooltip_number_audit 靠那个正则对账。
+			var _star: int = int(sit.get("star", 1))
+			var l := RichTextLabel.new()
+			l.bbcode_enabled = true
+			l.fit_content = true
+			l.scroll_active = false
+			l.text = "▶ %s  ★%d  (%s)   —— 点上方【龟 / 小将】装上   ·   %s" % [str(sdef.get("name", "")), _star, "费用%d" % int(sdef.get("cost", 1)), SkillText.highlight_star(str(sdef.get("effectDesc1", "")), _star)]
+			l.add_theme_font_size_override("normal_font_size", 14); l.add_theme_color_override("default_color", Color("#ffd93d"))
+			l.position = Vector2(16, 10); l.size = Vector2(bw - 320, 48); l.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(l)
 			var sv := _sell_value(sit)
 			var sell := Button.new(); sell.text = "💰 卖出 +%d💠" % sv
 			sell.add_theme_font_size_override("font_size", 16)
@@ -628,9 +636,12 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	for ch in box.get_children():
 		ch.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# tooltip: 名字/★/费用 + 【该星级全部属性加成】 + 效果(用户2026-07-19"背包里我要看到每件装备提供的属性, 必须写完整")
-	box.tooltip_text = "%s  ★%d  (费用%d)\n\n属性加成:\n%s\n\n效果: %s" % [
+	# ★系统 tooltip 是纯文本, 会把 [color=..] 原样显示给玩家 —— 所以挂 rich_tooltip
+	#   覆写 _make_custom_tooltip, 才能真的渲染出星级高亮。
+	box.set_script(RichTooltip)
+	box.tooltip_text = "[b]%s[/b]  ★%d  (费用%d)\n\n属性加成:\n%s\n\n效果: %s" % [
 		str(edef.get("name", eid)), star, int(edef.get("cost", 1)),
-		_stat_block(eid, star), str(edef.get("effectDesc1", "（无主动效果）"))]
+		_stat_block(eid, star), SkillText.highlight_star(str(edef.get("effectDesc1", "（无主动效果）")), star)]
 	_wire_bench_tap(box, idx)
 	return box
 

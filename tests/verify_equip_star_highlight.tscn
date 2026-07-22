@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/verify_equip_star_highlight.gd" id="1_esh"]
+
+[node name="VerifyEquipStarHighlight" type="Node"]
+script = ExtResource("1_esh")

@@ -222,3 +222,35 @@ static func render_plain(template: String, f: Dictionary, s: Dictionary) -> Stri
 	var html := render_html(template, f, s)
 	var strip := RegEx.create_from_string("<[^>]+>")
 	return strip.sub(html, "", true)
+
+
+## 装备文案按【当前星级】高亮: a/b/c 三元组里, 玩家这一档加粗上色, 另两档变暗。
+##
+## ★只在【渲染时】变换, 绝不碰 data/phase2-equipment.json 的格式 ——
+##   tools/tooltip_number_audit.py 靠 `\d+/\d+/\d+` 这个正则从 effectDesc1 抠三元组去和代码对账,
+##   格式一变它就抠不出来 → total 归零 → 打印 ALL OK 但什么都没查(方案书 R1 记过这个静默失效)。
+##
+## star 取 1/2/3; 传 0 或越界 = 不高亮(图鉴那种没有玩家星级的场合)。
+static func highlight_star(desc: String, star: int) -> String:
+	if desc == "":
+		return ""
+	if star < 1 or star > 3:
+		return desc
+	var re := RegEx.create_from_string("(\\d+(?:\\.\\d+)?)/(\\d+(?:\\.\\d+)?)/(\\d+(?:\\.\\d+)?)")
+	var out := ""
+	var pos := 0
+	for m in re.search_all(desc):
+		out += desc.substr(pos, m.get_start() - pos)
+		var parts := [m.get_string(1), m.get_string(2), m.get_string(3)]
+		var seg := ""
+		for i in 3:
+			if i > 0:
+				seg += "[color=#5a6472]/[/color]"
+			if i == star - 1:
+				seg += "[b][color=%s]%s[/color][/b]" % [UIPalette.DEF, parts[i]]
+			else:
+				seg += "[color=#5a6472]%s[/color]" % parts[i]
+		out += seg
+		pos = m.get_end()
+	out += desc.substr(pos)
+	return out
