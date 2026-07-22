@@ -3276,7 +3276,7 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		"active_skills": ([] if (is_minion or is_egg) else _resolve_active_skills(id, side == "left")), "skill_idx": 0,
 		"skill_cd": {}, "skill_gcd_until": 0.0,   # 逐技各自冷却剩余秒(懒填) + 同龟连放最小间隔
 		# 永久护盾 / 控制 / 旧式灼烧(保留兼容) ----
-		"shield": 0.0, "burn_until": 0.0, "burn_dps": 0.0, "stun_until": 0.0, "slow_until": 0.0,
+		"shield": 0.0, "stun_until": 0.0, "slow_until": 0.0,
 		# 层数式 DoT (灼烧/中毒/流血, 1:1 dot.gd 层数衰减模型) ----
 		"dot_stacks": {}, "_dottimer": 0.0, "dot_src": {}, "true_fire_until": 0.0,
 		# 效果积木状态 ----
@@ -3897,7 +3897,6 @@ const _TS_TIMER_FIELDS := [
 	"bind_until",
 	"bubble_shield_until",
 	"bulwark_until",
-	"burn_until",
 	"candle_hot_until",
 	"crit_fate_until",
 	"deathfloor_until",
@@ -4645,12 +4644,6 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 		var _udec: float = minf(float(u.get("urchin_sh_rate", 0.0)) * delta, _ush)
 		u["shield"] = maxf(0.0, float(u.get("shield", 0.0)) - _udec)
 		u["urchin_sh_left"] = maxf(0.0, _ush - _udec)
-	# 旧式灼烧 (兼容 burn_until/burn_dps)
-	# ★死字段: burn_dps/burn_until 全项目【零处写入】(只有初始化 + 这里读)。保留仅为兼容。
-	if _t < u["burn_until"] and u["burn_dps"] > 0.0:
-		_apply_damage(u, maxi(1, int(round(u["burn_dps"] * delta))), Color("#ffffff"), null, "tru")
-		if not u["alive"]:
-			return
 	# flat DoT 列表 (诅咒等 = 真伤)
 	# ★2026-07-22 改走正规伤害路径。原先走 _raw_lose(8行): 不进统计/不跳飘字/不过任何减伤/
 	#   无组装期免疫闸/评审训练靶会被诅咒打死; 且 dps*delta 逐帧连续掉血(血条像漏水)。
@@ -19055,7 +19048,7 @@ func _spawn_summon(owner: Dictionary, kind: String, hp: float, atk: float, behav
 		"atk_interval": float(behavior.get("atk_interval", 1.2)),
 		"atk_range": float(behavior.get("atk_range", 280.0 if kind == "drone" else 70.0)),
 		"atk_cd": 0.0, "energy": 0.0, "alive": true, "is_summon": true,
-		"shield": 0.0, "burn_until": 0.0, "burn_dps": 0.0, "stun_until": 0.0, "slow_until": 0.0,
+		"shield": 0.0, "stun_until": 0.0, "slow_until": 0.0,
 		"dot_stacks": {}, "_dottimer": 0.0, "dot_src": {}, "true_fire_until": 0.0,
 		"buffs": [], "dots": [], "taunt_until": 0.0, "taunt_by": null,
 		"dodge_bonus": 0.0, "ls_bonus": 0.0,
@@ -23196,9 +23189,8 @@ func _fill_equip_section(box: VBoxContainer, u: Dictionary) -> void:
 ## 状态签名: 把当前所有状态压成一个字符串, 变了才重建 chips。
 ## ★不能每帧无脑重建 —— 那会每帧 queue_free + new 一堆节点, 还会让 UI 闪。
 func _status_signature(u: Dictionary) -> String:
-	return "%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d" % [
+	return "%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d" % [
 		1 if _t < float(u.get("stun_until", 0.0)) else 0,
-		1 if _t < float(u.get("burn_until", 0.0)) else 0,
 		1 if _t < float(u.get("slow_until", 0.0)) else 0,
 		1 if _t < float(u.get("taunt_until", 0.0)) else 0,
 		1 if _t < float(u.get("untargetable_until", 0.0)) else 0,
@@ -23208,7 +23200,11 @@ func _status_signature(u: Dictionary) -> String:
 		int(u.get("rage", 0.0)),
 		int(u.get("star_energy", 0.0)),
 		int(u.get("store_energy", 0.0)),
-		int(u.get("dot_burn_stacks", 0)),
+		# ★原为 dot_burn_stacks —— 全项目零处写入的死字段, 等于这一位恒为 0,
+		#   层数怎么变签名都不变 → 面板不刷新。改读真实的 dot_stacks 三种。
+		int((u.get("dot_stacks", {}) as Dictionary).get("burn", 0)),
+		int((u.get("dot_stacks", {}) as Dictionary).get("poison", 0)),
+		int((u.get("dot_stacks", {}) as Dictionary).get("bleed", 0)),
 	]
 
 ## 把技能/被动文案模板按【单位当前属性】渲染成人读文本。
@@ -23285,7 +23281,17 @@ func _info_stat_cell(grid: GridContainer, icon: String, val: String, col: Color 
 func _info_status_chips(vb: VBoxContainer, u: Dictionary) -> void:
 	var chips: Array = []
 	if _t < float(u.get("stun_until", 0.0)): chips.append(["😵 眩晕", "#ff8a3d"])
-	if _t < float(u.get("burn_until", 0.0)): chips.append(["🔥 灼烧", "#ff6b3d"])
+	# ★2026-07-22 修: 原先读 burn_until —— 那是【零处写入的死字段】(全项目只有初始化和这里读),
+	#   所以「🔥 灼烧」chip 从来没出现过, 哪怕身上叠了 200 层。真实层数在 dot_stacks。
+	#   顺带补上中毒/流血 —— 它们连 chip 都没有过。
+	var _ds: Dictionary = u.get("dot_stacks", {})
+	var _bn: int = int(_ds.get("burn", 0))
+	var _po: int = int(_ds.get("poison", 0))
+	var _bl: int = int(_ds.get("bleed", 0))
+	if _bn > 0: chips.append(["🔥 灼烧 %d" % _bn, "#ff6b3d"])
+	if _po > 0: chips.append(["🧪 中毒 %d" % _po, "#7ee87e"])
+	if _bl > 0: chips.append(["🩸 流血 %d" % _bl, "#ff6b6b"])
+	if _t < float(u.get("true_fire_until", 0.0)): chips.append(["🔥 真火", "#ffffff"])
 	if _t < float(u.get("slow_until", 0.0)): chips.append(["🐌 减速", "#7fd0ff"])
 	if _t < float(u.get("taunt_until", 0.0)): chips.append(["😡 嘲讽", "#ff5c8a"])
 	if _t < float(u.get("untargetable_until", 0.0)): chips.append(["🌀 隐身/不可选", "#b28bff"])

@@ -16,6 +16,7 @@ extends Node
 #   ③ DOT 抗性计算吃施加者的护穿与增伤
 
 const SCENE_PATH := "res://scripts/scenes/RealtimeBattle3DScene.gd"
+const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 
 var _fails: Array[String] = []
 
@@ -31,7 +32,50 @@ func _ready() -> void:
 	_check_dot_pen(src)
 	_check_curse_path(src)
 	_check_resist_math()
+	_check_status_chips(src)
 	_done()
+
+
+## ⑤ DOT 状态在信息面板上要看得见 (2026-07-22 关方案书 H21)
+##
+## ★原来读的 burn_until / dot_burn_stacks 是【零处写入的死字段】(全项目只有初始化和这里读),
+##   所以「🔥 灼烧」chip 从来没出现过, 哪怕身上叠了 200 层; 中毒/流血更是连 chip 都没有。
+##   状态签名里那一位也恒为 0 → 层数怎么变面板都不刷新。
+##
+## ★这两个函数【只在玩家点开信息面板时才跑】, 无头自动对局永远到不了 ——
+##   我为此插了三轮探针全是 0 命中(空检查不是通过)。所以这里【直接实例化脚本调用】,
+##   这才是能自动跑的验法。
+func _check_status_chips(src: String) -> void:
+	# 静态: chips 与签名都必须读真实的 dot_stacks, 不许再碰死字段
+	var chips_body := _code_only(_func_body(src, "_info_status_chips"))
+	var sig_body := _code_only(_func_body(src, "_status_signature"))
+	if chips_body == "" or sig_body == "":
+		_fail("找不到 _info_status_chips / _status_signature")
+		return
+	for pair in [[chips_body, "_info_status_chips"], [sig_body, "_status_signature"]]:
+		var b: String = pair[0]
+		var nm: String = pair[1]
+		if b.find("dot_stacks") < 0:
+			_fail("%s 没读 dot_stacks —— DOT 状态在面板上看不见" % nm)
+		if b.find("burn_until") >= 0 or b.find("dot_burn_stacks") >= 0:
+			_fail("%s 还在读死字段(burn_until / dot_burn_stacks, 全项目零处写入)" % nm)
+
+	# 行为: 签名必须随层数变化 —— 否则面板不会刷新
+	var inst = RTScene.new()
+	var base := {"dot_stacks": {}}
+	var burned := {"dot_stacks": {"burn": 7}}
+	var poisoned := {"dot_stacks": {"poison": 3}}
+	var s0: String = inst._status_signature(base)
+	var s1: String = inst._status_signature(burned)
+	var s2: String = inst._status_signature(poisoned)
+	print("  [状态签名] 无DOT=%s / 灼烧7=%s / 中毒3=%s" % [s0, s1, s2])
+	if s0 == s1:
+		_fail("叠了 7 层灼烧后状态签名没变 —— 面板不会刷新, 玩家看不到状态变化")
+	if s0 == s2:
+		_fail("叠了 3 层中毒后状态签名没变 —— 面板不会刷新")
+	if s1 == s2:
+		_fail("灼烧与中毒的签名相同 —— 两种状态互相覆盖")
+	inst.free()
 
 
 ## ① 两条路径必须都调 _mitigate_incoming —— 否则又会各改各的, 回到 DOT 不吃减伤的老路
