@@ -43,41 +43,69 @@ func _ready() -> void:
 ##   手工补偿。★谁重新生成一次动作图, 这两个数就可能变, 而变了【不会报错】,
 ##   只会让角色一播动作就变大/变小/悬空(2026-07-21 用户一眼看出"大小明显不对")。
 func _check_body_norm(src: String) -> void:
-	var want_body := _const_int(src, "ELITE_ACT_BODY_H")
-	var want_feet := _const_int(src, "ELITE_ACT_FEET_ROW")
-	var want_idle := _const_int(src, "ELITE_IDLE_BODY_H")
-	if want_body <= 0 or want_feet <= 0 or want_idle <= 0:
-		_fail("解析不到归一常量 (BODY_H=%d FEET_ROW=%d IDLE_BODY_H=%d)" % [want_body, want_feet, want_idle])
-		return
-	# ★用【各图首帧高度的中位数】比, 不逐张比等值 ——
-	#   环形斩第 0 帧刀刃已经甩出来了(实测 56 vs 本体 47), 那不是本体尺寸;
-	#   逐张等值会被这种单张异常带偏。中位数对它免疫, 又能抓住"整体重做导致尺寸变了"。
-	var heights: Array[int] = []
-	var n := 0
-	for act in ["attack", "whirl", "hammer", "hammer_big", "whip", "consume", "run"]:
-		var p := "res://assets/sprites/pets/animations/elite/%s.png" % act
-		if not ResourceLoader.exists(p):
-			continue                      # 缺图由 _check_sheets_exist 报
-		var bb := _frame0_bbox(p)
-		if bb.is_empty():
-			_fail("%s 第0帧整帧透明?" % act)
+	# ★2026-07-22 泛化: 归一数据从三个常量改成 ANIM_NORM 表(每套图数值不同, 不能沿用别人的)。
+	#   表: 动画键 → [动作图本体高, 动作图脚底行, idle 图本体高]
+	var groups := {
+		"__minion_elite__": {"dir": "elite", "idle": "pets/minion-elite.png",
+			"ref": "attack", "acts": ["attack", "whirl", "hammer", "hammer_big", "whip", "consume", "run"]},
+		"__minion_front__": {"dir": "melee", "idle": "pets/minion.png",
+			"ref": "attack", "acts": ["attack", "leap", "throw", "dive", "surf", "land"]},
+	}
+	var checked := 0
+	for key in groups.keys():
+		var want := _norm_row(src, str(key))
+		if want.is_empty():
+			_fail("ANIM_NORM 里没有 %s 的归一数据 —— 该单位一播动作就会大小不对" % str(key))
 			continue
-		n += 1
-		heights.append(int(bb["h"]))
-		# 脚底行必须每张都一致 —— 它决定角色贴不贴地, 差一点就悬空/陷地, 没有"异常帧"的借口
-		if int(bb["bottom"]) != want_feet:
-			_fail("%s 第0帧脚底行 %d ≠ ELITE_ACT_FEET_ROW %d —— 动作播出来会悬空/陷地" % [act, int(bb["bottom"]), want_feet])
-	if n > 0:
+		var g: Dictionary = groups[key]
+		var heights: Array[int] = []
+		var n := 0
+		for act in g["acts"]:
+			var p2 := "res://assets/sprites/pets/animations/%s/%s.png" % [str(g["dir"]), str(act)]
+			if not ResourceLoader.exists(p2):
+				continue
+			var bb := _frame0_bbox(p2)
+			if bb.is_empty():
+				_fail("%s/%s 第0帧整帧透明?" % [str(g["dir"]), str(act)])
+				continue
+			n += 1
+			heights.append(int(bb["h"]))
+			# ★只对【中性站姿】那张做严格断言。其余动作的 bbox 天然会变, 拿它们比是判据设计错误:
+			#   melee/throw 有绳索垂到脚下(脚底行 76)、melee/surf 脚下踩着一块板(71)、
+			#   melee/leap 是蹲姿(本体只有 42)、elite/whirl 第0帧刀刃已甩出(56 vs 本体 47)。
+			#   归一系数本来就是按中性站姿算的, 测试就该盯那一张。
+			if str(act) == str(g["ref"]):
+				if int(bb["bottom"]) != int(want[1]):
+					_fail("%s/%s(中性站姿) 脚底行 %d ≠ 表里的 %d —— 角色会悬空/陷地"
+						% [str(g["dir"]), str(act), int(bb["bottom"]), int(want[1])])
+				if absi(int(bb["h"]) - int(want[0])) > 2:
+					_fail("%s/%s(中性站姿) 本体高 %d ≠ 表里的 %d (容差2) —— 一播动作就大小不对"
+						% [str(g["dir"]), str(act), int(bb["h"]), int(want[0])])
+		if n == 0:
+			_fail("%s 一张动作图都没找到 —— 这组检查是空的" % str(key))
+			continue
 		heights.sort()
 		var med: int = heights[n / 2]
-		if absi(med - want_body) > 2:
-			_fail("动作图本体高中位数 %d ≠ ELITE_ACT_BODY_H %d (容差2) —— 角色一播动作就会大小不对。各图首帧: %s"
-				% [med, want_body, str(heights)])
-	# idle 基准图
-	var ib := _frame0_bbox("res://assets/sprites/pets/minion-elite.png")
-	if not ib.is_empty() and int(ib["h"]) != want_idle:
-		_fail("idle 本体高 %d ≠ ELITE_IDLE_BODY_H %d" % [int(ib["h"]), want_idle])
-	print("  [归一] 校对 %d 张动作图 + idle 基准" % n)   # ★打印分母: N=0 是空检查不是通过
+		# idle 基准
+		var ib := _frame0_bbox("res://assets/sprites/" + str(g["idle"]))
+		if not ib.is_empty() and absi(int(ib["h"]) - int(want[2])) > 2:
+			_fail("%s 的 idle 本体高 %d ≠ 表里的 %d" % [str(key), int(ib["h"]), int(want[2])])
+		checked += 1
+		print("  [归一] %s: %d 张动作图, 本体中位数 %d, 脚底 %d, idle %d"
+			% [str(key), n, med, int(want[1]), int(want[2])])
+	if checked == 0:
+		_fail("一组都没校到 —— 这是空检查不是通过")
+
+
+## 从 ANIM_NORM 里抠某个键的三元组
+func _norm_row(src: String, key: String) -> Array:
+	var re := RegEx.new()
+	# 匹配形如   "__minion_front__": [45.0, 65.0, 60.0],
+	re.compile("\"" + key + "\"\\s*:\\s*\\[\\s*([0-9.]+)\\s*,\\s*([0-9.]+)\\s*,\\s*([0-9.]+)")
+	var m := re.search(src)
+	if m == null:
+		return []
+	return [float(m.get_string(1)), float(m.get_string(2)), float(m.get_string(3))]
 
 
 ## 取图第 0 帧的不透明内容包围盒 {h, bottom}. 方帧横排 → 第0帧是左上角 h×h。
