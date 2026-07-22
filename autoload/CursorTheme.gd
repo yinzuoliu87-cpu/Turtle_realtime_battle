@@ -38,6 +38,13 @@ var _enabled := false
 
 
 func _ready() -> void:
+	# ★暂停时也要跟手(用户 2026-07-22:「点暂停光标没有动啊，这是大问题」)。
+	#   自绘光标靠 _process 每帧贴到鼠标位置; autoload 默认 process_mode=INHERIT,
+	#   跟着 root 的 PAUSABLE 走 → get_tree().paused 后 _process 直接停跑 → 光标定在原地,
+	#   而系统光标又是 MOUSE_MODE_HIDDEN 的, 于是看起来"鼠标彻底失灵"。
+	#   探针实测(2026-07-22): 暂停后 can_process() = false。
+	#   ★必须放在下面几个早退【之前】—— 放后面的话无头/移动端根本执行不到, 门禁也验不着。
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	if DisplayServer.get_name() == "headless":
 		return   # 单测无显示
 	if OS.get_name() in ["Android", "iOS"]:
