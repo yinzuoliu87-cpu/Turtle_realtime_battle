@@ -34,7 +34,68 @@ func _ready() -> void:
 	_check_hooks(src)
 	_check_no_interrupt(src)
 	_check_body_norm(src)
+	_check_facing()
 	_done()
+
+
+## ⑤ 动作图的朝向必须与 idle 一致 (2026-07-22 用户「方向是否正确」抓到)
+##
+## ★这个 bug 完全无声: PixelLab 生成的近战小将 attack 是【朝右刺】的, 而项目全局约定是
+##   「原图朝左」(ART_FACES_RIGHT 只有 hiding/headless/mech 三个例外), 于是引擎认为它朝左 →
+##   敌人在右时 flip_h=true 把它翻过去 → 变成【背对敌人朝左刺】。
+##   探针实测: face_right=true art_right=false flip_h=true —— 逻辑没错, 是素材反了。
+##   已把 7 张近战图逐帧水平镜像修正(不能整条镜像, 那会连帧顺序一起倒过来)。
+##
+## 判据: 拿【武器伸出最远的那一帧】比, 看极值落在身体中线的哪一侧。
+##   不用"各帧 bbox 中心的平均"—— 那个会被来回摆动的动作抵消掉
+##   (实测它把明明朝右刺的 melee/attack 判成"居中")。
+func _check_facing() -> void:
+	# [目录, 用来判方向的动作]  —— 挑动势指向明确的那张
+	var cases := [["melee", "attack"]]
+	var n := 0
+	for c in cases:
+		var p := "res://assets/sprites/pets/animations/%s/%s.png" % [str(c[0]), str(c[1])]
+		if not ResourceLoader.exists(p):
+			continue
+		var d := _reach_dir(p)
+		n += 1
+		print("  [朝向] %s/%s 伸展方向 %+.1f (负=朝左, 与全局约定一致)" % [str(c[0]), str(c[1]), d])
+		if d > 0.0:
+			_fail("%s/%s 是【朝右】的, 但项目约定原图朝左(ART_FACES_RIGHT 里没有小将) —— 引擎会再翻一次, 变成背对敌人出招。修法: 逐帧水平镜像" % [str(c[0]), str(c[1])])
+	if n == 0:
+		_fail("朝向检查一张图都没跑到 —— 空检查不是通过")
+
+
+## 武器伸得最远那一帧, 极值在中线哪一侧 (正=朝右)
+func _reach_dir(path: String) -> float:
+	var tex: Texture2D = load(path)
+	if tex == null:
+		return 0.0
+	var img := tex.get_image()
+	if img == null:
+		return 0.0
+	var h := img.get_height()
+	var frames: int = maxi(1, img.get_width() / h)
+	var best := 0.0
+	for f in range(frames):
+		var lo := h
+		var hi := -1
+		for x in range(h):
+			for y in range(h):
+				if img.get_pixel(f * h + x, y).a > 0.01:
+					lo = mini(lo, x)
+					hi = maxi(hi, x)
+					break
+		if hi < 0:
+			continue
+		var mid := float(h) * 0.5
+		# 该帧向左/向右各伸出多远, 取更大的那侧作为本帧的"伸展方向"
+		var reach_r := float(hi) - mid
+		var reach_l := mid - float(lo)
+		var d: float = reach_r if reach_r > reach_l else -reach_l
+		if absf(d) > absf(best):
+			best = d
+	return best
 
 
 ## ④归一常量 ↔ 图的实际内容 必须对上
