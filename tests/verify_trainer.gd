@@ -156,6 +156,28 @@ func _ready() -> void:
 	var body := _func_body(src, "_trainer_sprite_dict")
 	_ok("★没真图时会 push_warning(形象待定, 不许静默当成做完了)",
 		_code_only(body).contains("push_warning("), "函数体 %d 字符" % body.length())
+	# ★★这条才是真正要守的: 占位图【必须真的能显示】。
+	#   2026-07-22 翻车: 兜底路径写的是 pets/basic.png, 那个文件根本不存在
+	#   (basic 的真立绘是 pets/animations/basic/idle.png) → tex=null → 训龟大师【场上完全看不见】,
+	#   而我还对着窗口跟用户说"长得就是小龟的样子"。
+	#   当时门禁只查了"会不会 push_warning" —— 守住了会吭声, 没守住看得见。
+	var sd: Dictionary = s._trainer_sprite_dict()
+	var stex = sd.get("tex")
+	print("  [实测] 训龟大师立绘纹理 = %s" % ("null(场上会隐形!)" if stex == null else "%s" % stex.get_size()))
+	_ok("★★立绘纹理不是 null(null = 单位在场上完全看不见)", stex != null)
+	if stex != null:
+		_ok("占位图有实际尺寸", stex.get_size().x > 0 and stex.get_size().y > 0, "%s" % stex.get_size())
+	# 场上那两个的 Sprite3D 也必须真挂上了纹理
+	var n_vis := 0
+	for t2 in trainers:
+		# ★键名是 "sprite" 不是 "spr"(见 _make_unit 的 "sprite": spr) —— 我第一版写 "spr" 拿到 null,
+		#   报了 0/2 的假 FAIL。今天第二次栽在拿错字段名上(上次是 range vs atk_range)。
+		var sp = t2.get("sprite")
+		if sp != null and is_instance_valid(sp) and sp.texture != null:
+			n_vis += 1
+	print("  [分母] 场上 %d 个训龟大师中, Sprite3D 真有纹理的 %d 个" % [trainers.size(), n_vis])
+	_ok("★★场上每个训龟大师都真的挂上了纹理(看得见)", n_vis == trainers.size(),
+		"%d/%d" % [n_vis, trainers.size()])
 
 	s.queue_free()
 	_done()

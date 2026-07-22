@@ -3525,13 +3525,41 @@ func _spawn_trainers() -> void:
 ## ★没真图时【退回占位并 push_warning】而不是静默兜底: 占位是小龟, 和冒险家长得完全不一样,
 ##   悄悄用会让人(包括我自己)以为形象已经做完了。门禁 verify_trainer 也断言这条 warning 存在。
 func _trainer_sprite_dict() -> Dictionary:
-	var path := TRAINER_SPRITE
-	if not ResourceLoader.exists(path):
-		push_warning("[训龟大师] 立绘未就绪 —— 用占位图 %s。形象待定(用户要「像素风的冒险家」)" % TRAINER_SPRITE_FALLBACK)
-		path = TRAINER_SPRITE_FALLBACK
-	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
+	var tex: Texture2D = null
+	if ResourceLoader.exists(TRAINER_SPRITE):
+		tex = load(TRAINER_SPRITE)
+	if tex == null:
+		push_warning("[训龟大师] 立绘未就绪 —— 用程序占位图。形象待定(用户要「像素风的冒险家」)")
+		tex = _make_trainer_placeholder_tex()
 	var th: int = tex.get_height() if tex != null else 64
 	return {"tex": tex, "frames": 1, "fps": 1.0, "frame_h": th, "hframes": 1, "vframes": 1, "loop": false}
+
+
+## 造一张【一眼就知道美术还没做】的占位纹理: 洋红/黑棋盘拼的人形。
+##
+## ★为什么不拿现成立绘兜底: 项目里 pets/*.png 【全是精灵表】(bamboo.png 是 4000×800 装 9 帧),
+##   当单帧用会把整张表糊成一坨。
+## ★为什么必须程序生成: 我原来的兜底路径写的是 pets/basic.png —— 那个文件【根本不存在】
+##   (basic 的真立绘是 pets/animations/basic/idle.png), 于是 tex=null, 训龟大师在场上
+##   【完全看不见】, 我还对着窗口跟用户说"长得就是小龟的样子"。
+##   而当时的门禁只断言了"会 push_warning", 没断言"占位图真的能显示" ——
+##   守住了会吭声, 没守住看得见。程序生成没有路径依赖, 不可能再出这种事。
+func _make_trainer_placeholder_tex() -> ImageTexture:
+	var w := 24
+	var h := 48
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var magenta := Color(1.0, 0.0, 0.85, 1.0)
+	var black := Color(0.05, 0.05, 0.08, 1.0)
+	for y in h:
+		for x in w:
+			# 粗人形: 上 1/4 是头(窄), 其余是身子(宽)
+			var inside: bool = (x >= 8 and x < 16 and y < 12) or (x >= 5 and x < 19 and y >= 12)
+			if not inside:
+				continue
+			# 4px 棋盘 → 一眼看出是占位, 不会被误当成正式美术
+			img.set_pixel(x, y, magenta if ((x / 4 + y / 4) % 2 == 0) else black)
+	return ImageTexture.create_from_image(img)
 
 
 func _egg_sprite_dict() -> Dictionary:
