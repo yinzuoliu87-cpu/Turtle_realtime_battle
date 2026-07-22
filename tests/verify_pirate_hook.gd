@@ -66,7 +66,17 @@ func _ready() -> void:
 	var expect: int = int(float(killer["maxHp"]) * 0.25)
 
 	scene._kill(pirate, killer)
-	await get_tree().create_timer(1.4).timeout   # 钩索是动画序列(甩钩0.16-0.34s→拉拽→到位才结算·2026-07-14观感重做), 等演出完再断言
+	# ★不能死等墙钟时间。2026-07-22 在 CI(Linux)上连红两次而本地 6/6 全过, 根因是机制级的:
+	#   战斗时钟 `_t` 用的是【钳制后】的 delta(_process 开头 `delta = minf(delta, 0.1)` 防卡死),
+	#   而 get_tree().create_timer() 用的是【未钳制】的真实帧 delta。
+	#   慢机器上一帧超过 0.1 秒时, 计时器按真实时间走、战斗时钟最多只走 0.1/帧
+	#   → 游戏时间落后于计时器 → 1.4 秒到点时钩索还没结算 → got=0。
+	#   改成【轮询等效果真的落地】: 快慢机器都对, 且比死等更快返回。
+	var _waited := 0
+	while _waited < 600 and float(killer["hp"]) >= hp0:   # 上限 600 帧(远超钩索所需), 防死循环
+		await get_tree().process_frame
+		_waited += 1
+	print("  (钩索落地用了 %d 帧)" % _waited)
 
 	var lost: float = hp0 - float(killer["hp"])
 	_ok("击杀者受到 ≈25% 自身最大生命的伤害", absf(lost - float(expect)) <= 2.0,

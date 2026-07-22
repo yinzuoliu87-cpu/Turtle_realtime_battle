@@ -48,7 +48,15 @@ func _test_dumbbell() -> void:
 	var hp0: float = u["hp"]
 	var mx0: float = u["maxHp"]
 	scene._eq_dumbbell_routine(u, 2)          # si=2 → 3★ → 文案 +110
-	await get_tree().create_timer(1.6).timeout   # 锻炼有 3×0.3s 蹲起动作, 等它走完
+	# ★同 verify_pirate_hook: 不能死等墙钟时间。战斗时钟 _t 用【钳制后】的 delta
+	#   (_process 开头 minf(delta, 0.1) 防卡死), 而 create_timer 用【未钳制】的真实帧 delta
+	#   → 慢机器上游戏时间会落后于计时器 → 效果还没结算就断言 → 假 FAIL。
+	#   这条虽然还没在 CI 上红过, 但和 2026-07-22 抓到的海盗钩索是同一个隐患, 一并改掉。
+	var _w := 0
+	while _w < 600 and is_equal_approx(float(u["maxHp"]), mx0):
+		await get_tree().process_frame
+		_w += 1
+	print("  (哑铃锻炼结算用了 %d 帧)" % _w)
 	var d_mx: float = float(u["maxHp"]) - mx0
 	var d_hp: float = float(u["hp"]) - hp0
 	_ok("020 哑铃 3★ 最大生命 +110(文案值, 非 330)", is_equal_approx(d_mx, 110.0), "实际 +%.0f" % d_mx)
