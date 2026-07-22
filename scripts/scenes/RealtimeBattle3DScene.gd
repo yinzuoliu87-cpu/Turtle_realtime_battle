@@ -336,12 +336,18 @@ const ACTION_ATTACK := {
 # 近战小将·人体浪板的分段动作(2026-07-22)。时间轴由代码量出, 见 docs/plans/20260722-五需求方案书.md §4:
 #   0.00-0.64 蓄力+起跳 → 0.64-1.28 滞空甩索(0.68 射链) → 1.28-1.58 被拉俯冲(双脚前伸)
 #   → 1.58-2.41 踩滑(0.833s) → 2.41 侧跳落地
+# ★fps 必须让【动画时长 == 代码节拍】, 否则动画先播完 → _advance_anim 立刻回 idle,
+#   剩下那段时间角色是【站姿】。2026-07-22 实测(用户追问"时间对不上吗"):
+#     leap/throw 7fps → 0.57s vs 节拍 0.64s, 各早完 0.07s
+#     surf      12fps → 0.33s vs 节拍 0.833s, 【早完 0.50s】—— 踩着敌人滑行的后半程在站着
+#   surf 的修法是把 4 帧在图里重复成 10 帧(仍 12fps), 不是压低 fps ——
+#   4 帧摊到 0.833s 等于每帧亮 0.21s, 会一顿一顿。
 const ACTION_MELEE := {
-	"leap":  ["pets/animations/melee/leap.png", 7.0],
-	"throw": ["pets/animations/melee/throw.png", 7.0],
-	"dive":  ["pets/animations/melee/dive.png", 13.0],
-	"surf":  ["pets/animations/melee/surf.png", 12.0],
-	"land":  ["pets/animations/melee/land.png", 13.0],
+	"leap":  ["pets/animations/melee/leap.png", 6.25],    # 4帧 / 0.64s(0.00-0.64 蓄力+起跳)
+	"throw": ["pets/animations/melee/throw.png", 6.25],   # 4帧 / 0.64s(0.64-1.28 滞空甩索)
+	"dive":  ["pets/animations/melee/dive.png", 13.0],    # 4帧 / 0.31s ≈ 节拍 0.30s
+	"surf":  ["pets/animations/melee/surf.png", 12.0],    # 10帧 / 0.833s = 踩滑节拍(帧已重复2.5轮)
+	"land":  ["pets/animations/melee/land.png", 13.0],    # 4帧 / 0.31s ≈ 落地 0.30s
 }
 const ACTION_ELITE := {
 	"whirl":      ["pets/animations/elite/whirl.png", 12.0],

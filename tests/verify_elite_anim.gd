@@ -35,7 +35,55 @@ func _ready() -> void:
 	_check_no_interrupt(src)
 	_check_body_norm(src)
 	_check_facing()
+	_check_melee_timing(src)
 	_done()
+
+
+## ⑥ 近战小将各动作的【动画时长】必须等于技能里的【代码节拍】(2026-07-22 用户「时间对不上吗」)
+##
+## ★对不上的后果不是"手感差"而是【动画先播完 → _advance_anim 立刻回 idle】,
+##   剩下那段时间角色是站姿。实测: surf 12fps×4帧=0.33s 而踩滑节拍 0.833s
+##   → 踩着敌人滑行的【后 0.50 秒角色站着】。leap/throw 也各早完 0.07s。
+## 节拍取自 _sk_minion_bodysurf / _minion_bodysurf_ride 里的真实数字, 见方案书 §3.5 时间轴。
+const MELEE_BEATS := {
+	"leap": 0.64,    # 0.00-0.64 蓄力(tween_interval 0.3) + 起跳(tween_method 0.34)
+	"throw": 0.64,   # 0.64-1.28 滞空(_pending_shots delay 0.68 → 1.28)
+	"dive": 0.30,    # 1.28-1.58 俯冲(_minion_bodysurf_ride 的 while d < 0.3)
+	"surf": 0.833,   # 1.58-2.41 踩滑(slide_dur = 0.833)
+	"land": 0.30,    # 2.41 侧跳落地
+}
+
+func _check_melee_timing(src: String) -> void:
+	var n := 0
+	for act in MELEE_BEATS.keys():
+		var fps := _melee_fps(src, str(act))
+		if fps <= 0.0:
+			_fail("ACTION_MELEE 里解析不到 %s 的 fps" % str(act))
+			continue
+		var p := "res://assets/sprites/pets/animations/melee/%s.png" % str(act)
+		if not ResourceLoader.exists(p):
+			_fail("缺图 %s" % p)
+			continue
+		var tex: Texture2D = load(p)
+		var frames: int = maxi(1, tex.get_width() / tex.get_height())
+		var dur: float = float(frames) / fps
+		var beat: float = float(MELEE_BEATS[act])
+		n += 1
+		if absf(dur - beat) > 0.03:
+			_fail("%s 动画 %.3fs ≠ 节拍 %.3fs (差 %+.3fs) —— %s"
+				% [str(act), dur, beat, dur - beat,
+				   "动画先播完, 剩下时间角色会站着" if dur < beat else "动画会被下一段打断"])
+	print("  [节拍] 校对 %d 个动作的 动画时长 ↔ 代码节拍" % n)
+	if n == 0:
+		_fail("节拍校对一个都没跑到 —— 空检查不是通过")
+
+
+## 从 ACTION_MELEE 里抠某动作的 fps
+func _melee_fps(src: String, act: String) -> float:
+	var re := RegEx.new()
+	re.compile("\"" + act + "\"\\s*:\\s*\\[\\s*\"[^\"]+\"\\s*,\\s*([0-9.]+)")
+	var m := re.search(src.substr(maxi(0, src.find("const ACTION_MELEE"))))
+	return float(m.get_string(1)) if m != null else 0.0
 
 
 ## ⑤ 动作图的朝向必须与 idle 一致 (2026-07-22 用户「方向是否正确」抓到)
