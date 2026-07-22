@@ -49,7 +49,8 @@ const RARITY_ORDER := ["SSS", "SS", "S", "A", "B", "C"]
 const SLOT_KEYS := ["pos-0", "pos-1", "pos-2"]   # 实时 3v3：3 格阵容(去前/后排)
 const TEAM_DRAFT_PATH := "user://team_draft.json"   # 1:1 PoC localStorage[LS_KEY] — 未确认阵容草稿持久化
 const REQUIRED_PETS := 3
-const SkillTipButton := preload("res://scripts/scenes/SkillTipButton.gd")   # 技能图标 styled tooltip
+const SkillTipButton := preload("res://scripts/scenes/SkillTipButton.gd")
+const TutorialGuide := preload("res://scripts/scenes/TutorialGuide.gd")   # 技能图标 styled tooltip
 const SkillEnergy := preload("res://scripts/systems/skill_energy.gd")        # 龟能花费 单一事实源 (无"CD")
 
 # 特殊占位 mark (1:1 PoC TeamSelectScene.ts:119-121) — 占编队槽但非真龟, 显召唤预留位
@@ -143,6 +144,10 @@ func _ready() -> void:
 	_refresh_all()
 	if _roster_locked:
 		_flash_status("🔒 本大轮阵容已锁定 · 点龟查看并调整 3选1 技能 · 确认出战")
+	# 新手引导(用户需求1): TutorialGuide.gd 143 行早就写完了, 但【全项目零引用】——
+	#   主菜单「❓教程」只设了 GameState.tutorial=true 就进普通战斗, 没人读这个 flag。
+	if GameState.tutorial:
+		TutorialGuide.attach(self, "team_select")
 	# 窗口 resize/全屏/最大化 → 重算背景 + 按新尺寸重建浮层 (PoC fitSelectStage 绑 resize; 之前缺 → 铺不满根因)
 	get_viewport().size_changed.connect(_on_resize)
 	if OS.has_environment("TSEDIT"):

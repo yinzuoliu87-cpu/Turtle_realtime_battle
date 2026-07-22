@@ -1,4 +1,6 @@
 extends Node
+
+const STEPS_PATH := "res://data/tutorial-steps.json"
 ## TutorialGuide — 新手教程步骤引导 (1:1 PoC src/scenes/TutorialGuide.ts)。
 ## 顶部/底部非阻挡横幅: 序号徽章 + 提示文 + 下一步/知道了/完成 + 跳过。玩家照提示在真实战斗里操作,
 ## advanceOn 事件由 BattleScene 在对应动作发生时 notify → 自动推进。
@@ -141,3 +143,29 @@ func _finish() -> void:
 # <b>...</b> → [b]...[/b] (PoC 教程文用 HTML 粗体)
 func _html_b_to_bbcode(s: String) -> String:
 	return s.replace("<b>", "[b]").replace("</b>", "[/b]")
+
+## 从 data/tutorial-steps.json 取某个场景的步骤。
+## ★取不到就返回空数组, 调用方据此【不显示引导】而不是崩 —— 引导缺失不该让游戏挂掉。
+static func steps_for(key: String) -> Array:
+	var raw := FileAccess.get_file_as_string(STEPS_PATH)
+	if raw == "":
+		push_warning("[TutorialGuide] 读不到 %s" % STEPS_PATH)
+		return []
+	var parsed = JSON.parse_string(raw)
+	if not (parsed is Dictionary):
+		push_warning("[TutorialGuide] %s 不是对象" % STEPS_PATH)
+		return []
+	var arr = parsed.get(key, [])
+	return arr if arr is Array else []
+
+
+## 一行接入: 有引导步骤才建节点。返回 guide 实例(没有步骤则 null)。
+## 调用方拿到实例后可在关键动作处调 guide.notify("事件名") 推进。
+static func attach(host: Node, key: String) -> Node:
+	var steps := steps_for(key)
+	if steps.is_empty():
+		return null
+	var g = load("res://scripts/scenes/TutorialGuide.gd").new()
+	host.add_child(g)
+	g.start(steps, func() -> void: pass)
+	return g

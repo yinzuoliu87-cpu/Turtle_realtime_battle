@@ -508,6 +508,8 @@ var _projectiles: Array = []              # 飞行中的 3D 投射物 {node, fro
 var _lava_zones: Array = []               # 持续地面区域 (熔岩龟·岩浆池等) {center, radius, until, next_tick, src, disc}
 
 # --- 暂停 + 战斗日志 (R2b, 用户 2026-07-11) ---
+const TutorialGuide := preload("res://scripts/scenes/TutorialGuide.gd")
+var _tutorial: Node = null                # 新手引导实例(GameState.tutorial 才建); null=不在教程里
 var _pause_panel: Control = null          # 暂停浮层(继续/重开/返回菜单), 默认隐; process_mode ALWAYS 保证暂停中可交互
 var _pause_btn: Button = null
 var _battle_log: Array = []               # 战斗日志 bbcode 行, 封顶 _LOG_CAP(参 soak 教训防无限增长)
@@ -727,6 +729,10 @@ func _ready() -> void:
 	if OS.has_environment("STRESS"):   # 卡死猎手: 开局前轮换左队(覆盖全28龟)
 		_stress_pre()
 	_spawn_teams()
+	# 新手引导(用户需求1): TutorialGuide.gd 早就写完但全项目零引用, 这里接上。
+	#   ★存成员变量 —— 后面 _show_unit_info_panel 要调 notify() 推进那一步。
+	if GameState.tutorial:
+		_tutorial = TutorialGuide.attach(self, "battle")
 	if OS.has_environment("INFO_DEMO"):   # DEV: 自动弹第一只友军的详情面板(截图核对侧边信息面板用·env门控·正常包无)
 		var _t2 := get_tree().create_timer(1.6)
 		_t2.timeout.connect(func() -> void:
@@ -23393,6 +23399,9 @@ func _info_status_chips(vb: VBoxContainer, u: Dictionary) -> void:
 		p.add_child(l); flow.add_child(p)
 
 func _show_unit_info_panel(u: Dictionary) -> void:
+	# 引导第 2 步等的就是"玩家点开了详情面板"这个动作(advanceOn: info_panel_opened)。
+	if _tutorial != null and is_instance_valid(_tutorial):
+		_tutorial.notify("info_panel_opened")
 	_close_info_panel()
 	_selected_unit = u
 	if _ui_layer == null:
