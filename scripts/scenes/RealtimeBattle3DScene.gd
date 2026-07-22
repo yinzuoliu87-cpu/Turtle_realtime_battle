@@ -407,6 +407,10 @@ const ACTION_RUN := {
 	#   三种小将共用 id, 用 id 会让普通小将也套精英的帧, 见 _anim_key()。
 	"__minion_elite__": ["pets/animations/elite/run.png", 12.0],
 	"__minion_front__": ["pets/animations/melee/run.png", 12.0],
+	# 训龟大师(2026-07-23): 走路循环。id 是 __trainer__, _anim_key 直接返回 id → 走到这里。
+	#   移动由玩家 _trainer_move_by 驱动, 但立绘照样流经 _update_run_anim(在 for u in _units 里),
+	#   靠"帧间位移>0.8"自动切走路/停回 idle —— 不用另写触发。
+	"__trainer__": ["pets/animations/trainer/run.png", 8.0],
 }
 # GROUND_LIFT: 立绘落地基线 — 现在配合"底部 alpha 软渐隐 shader"故意略低(让软淡的脚部轻插进地面盖住交界),
 #   不再靠抬高去躲硬切. 见 §GROUNDING.
@@ -2016,8 +2020,12 @@ func _make_fish_texture() -> ImageTexture:
 	var h := 12
 	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
-	var cx := 8.0
+	# ★头在右、尾在左 = 贴图朝右(与下方 scale.x 逻辑的"默认朝右"一致)。
+	#   2026-07-23 用户报「背景的鱼方向反了」: 原来头在左(cx=8)、尾在右(x>=14),
+	#   实际是【朝左】的, 而 scale.x 按"默认朝右"翻 → 两个游动方向都变成倒着游。
+	var cx := float(w) - 8.0                                     # 身体中心靠右
 	var cy := float(h) * 0.5
+	var tail_x := 8                                             # 尾根: 靠左
 	for x in range(w):
 		for y in range(h):
 			var inside := false
@@ -2025,8 +2033,8 @@ func _make_fish_texture() -> ImageTexture:
 			var dy := (float(y) - cy) / 3.4
 			if dx * dx + dy * dy <= 1.0:
 				inside = true                                   # 身体
-			elif x >= 14:
-				var span := float(x - 14) / 7.0 * 4.6            # 尾: 越往后张得越开
+			elif x <= tail_x:
+				var span := float(tail_x - x) / 7.0 * 4.6       # 尾: 越往前(左)张得越开
 				if absf(float(y) - cy) <= span:
 					inside = true
 			if inside:
@@ -3494,6 +3502,88 @@ func _trainer_input_tick(delta: float) -> void:
 	_trainer_move_by(u, _trainer_input_vec(), delta)
 
 
+## 训龟大师普攻: 站定扔石头, 抛物线飞向最近敌, 命中 1 物理(用户2026-07-22:「射程2000扔石头1物理」)。
+## ★双方的训龟大师都要打(己方玩家操控但攻击自动、敌方人机), 所以对【全体 is_trainer】跑。
+##   它不被主动索敌(见 _nearest_enemy 的跳过), 但【它自己会索敌开火】—— 这两件事不矛盾:
+##   前者是"别人能不能锁它", 后者是"它能不能锁别人"。
+func _tick_trainer_attacks(delta: float) -> void:
+	if _over:
+		return
+	for u in _units:
+		if not u.get("is_trainer", false) or not u.get("alive", false):
+			continue
+		u["_tr_atk_cd"] = maxf(0.0, float(u.get("_tr_atk_cd", 0.0)) - delta)
+		if float(u["_tr_atk_cd"]) > 0.0:
+			continue
+		var tgt = _nearest_enemy_for_trainer(u)
+		if tgt == null:
+			continue
+		u["_tr_atk_cd"] = TRAINER_ATK_INTERVAL
+		# 朝向目标(扔之前转身), 再播扔石头动作
+		u["face_right"] = tgt["pos"].x > u["pos"].x
+		_trainer_throw_anim(u)
+		_fire_trainer_rock(u, tgt)
+
+
+## 训龟大师【自己】的索敌: 射程内最近的敌人。不复用 _nearest_enemy ——
+## 那个会跳过 is_trainer(别人锁不到它), 但没有射程限制、也不该被别的规则牵连。
+func _nearest_enemy_for_trainer(u: Dictionary):
+	var best = null
+	var best_d := TRAINER_RANGE * TRAINER_RANGE
+	for o in _units:
+		if not o.get("alive", false) or not _is_hostile(u, o):
+			continue
+		if o.get("is_trainer", false):
+			continue   # 训龟大师之间不互殴(都是场外监视者)
+		if _t < float(o.get("untargetable_until", 0.0)):
+			continue
+		var dd: float = (o["pos"] - u["pos"]).length_squared()
+		if dd < best_d:
+			best_d = dd; best = o
+	return best
+
+
+## 播扔石头动作(一次性, 播完自动回 idle/run — 走 anim_action 白名单)
+func _trainer_throw_anim(u: Dictionary) -> void:
+	var spr = u.get("sprite", null)
+	if not is_instance_valid(spr):
+		return
+	if not u.has("_throw_sd"):
+		u["_throw_sd"] = _resolve_action("pets/animations/trainer/throw.png", 10.0)
+	var tsd: Dictionary = u["_throw_sd"]
+	if tsd.is_empty():
+		return
+	_set_anim_sheet(u, tsd, "throw", false)   # anim_action=throw → 播一次到末帧回 idle
+
+
+## 抛物线石头: 从训龟大师胸口飞向目标, 到点命中扣 1 物理(经 _mitigate 后仍是 1)。
+func _fire_trainer_rock(u: Dictionary, tgt: Dictionary) -> void:
+	var p := Sprite3D.new()
+	var rp := "res://assets/sprites/vfx/lava-rock.png"
+	if ResourceLoader.exists(rp):
+		p.texture = load(rp)
+		p.pixel_size = (26.0 * WS) / float(maxi(1, p.texture.get_height()))
+	else:
+		p.texture = VfxTex._make_bolt_texture(Color("#b9b3a6"))
+		p.pixel_size = 0.02
+	p.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	p.shaded = false
+	p.transparent = true
+	p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	var start2d: Vector2 = u["pos"]
+	var world_from := _world_pos(start2d, 1.1)   # 从胸口高度出手
+	p.position = world_from
+	_world.add_child(p)
+	var dist: float = start2d.distance_to(tgt["pos"])
+	var pdur := clampf(dist / 650.0, 0.25, 0.9)
+	_projectiles.append({
+		"node": p, "from": world_from, "tgt": tgt, "dmg": 1, "col": Color("#d9d2c4"),
+		"src": u, "t": 0.0, "dur": pdur, "basic_onhit": false,
+		"arc": clampf(dist * 0.010, 0.8, 3.2),    # ★抛物线拱高(用户2026-07-23:「弹道是抛物线的」): 远则拱高
+		"dtype": "phys", "spin": true,
+	})
+
+
 ## 移动端才建摇杆; PC 上根本不建(不占屏)。
 ## ★TRAINER_JOY=1 可在 PC 上强开, 用于自验手感与门禁 —— 否则这段代码在开发机上永远跑不到,
 ##   等于没写(EQDEMO 那次的教训: 触发不到的路径看着像"没生效")。
@@ -4027,6 +4117,7 @@ func _process(delta: float) -> void:
 	_adf_ct = 0   # 每帧重置伤害调用计数(_apply_damage_from 帧内爆炸=死亡链无限级联→自身截断防卡死)
 	_sd_tick()   # §SUDDEN 战场决胜(40s起治疗-50% + 每5s +25%增伤)
 	_trainer_input_tick(delta)   # 训龟大师: PC 键盘 / 移动端摇杆(用户2026-07-22)
+	_tick_trainer_attacks(delta) # 训龟大师普攻: 站定扔石头抛物线弹道(用户2026-07-23)
 	if _audit and _t >= _audit_next:
 		_audit_next = _t + 1.0
 		_audit_tick()

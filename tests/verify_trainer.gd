@@ -179,6 +179,37 @@ func _ready() -> void:
 	_ok("★★场上每个训龟大师都真的挂上了纹理(看得见)", n_vis == trainers.size(),
 		"%d/%d" % [n_vis, trainers.size()])
 
+	# ── ⑩ 扔石头: 动作 + 抛物线石头 + 1 点物理(用户2026-07-23:「射程2000扔石头1物理」「弹道是抛物线的」) ──
+	# 找一个敌方普通单位当靶
+	var rock_foe: Dictionary = {}
+	for o in others:
+		if o.get("alive", false) and s._is_hostile(tr, o) and not o.get("is_trainer", false) and not o.get("_isEgg", false):
+			rock_foe = o
+			break
+	if not rock_foe.is_empty():
+		var n0: int = s._projectiles.size()
+		s._fire_trainer_rock(tr, rock_foe)
+		_ok("★扔石头生成了一颗投射物", s._projectiles.size() == n0 + 1)
+		if s._projectiles.size() > n0:
+			var rock: Dictionary = s._projectiles[s._projectiles.size() - 1]
+			print("  [实测] 石头 dmg=%s arc=%.2f米 dtype=%s" % [rock.get("dmg"), rock.get("arc", 0.0), str(rock.get("dtype"))])
+			_ok("★石头伤害 = 1", int(rock.get("dmg", -1)) == 1)
+			_ok("★★石头走抛物线(arc>0, 用户点名要的)", float(rock.get("arc", 0.0)) > 0.0, "arc=%.2f" % float(rock.get("arc", 0.0)))
+			_ok("★石头是物理伤害", str(rock.get("dtype", "")) == "phys")
+			_ok("★石头飞向敌方", s._is_hostile(tr, rock.get("tgt", {})))
+	# 扔石头动作能触发(anim_action=throw, 播完自动回)
+	s._trainer_throw_anim(tr)
+	_ok("★普攻播扔石头动作(anim_action=throw)", str(tr.get("anim_action", "")) == "throw")
+	# 训龟大师自己会索敌开火(它不被别人锁, 但能锁别人 —— 两回事)
+	if not rock_foe.is_empty():
+		rock_foe["pos"] = tr["pos"] + Vector2(200.0, 0.0)
+		var picked = s._nearest_enemy_for_trainer(tr)
+		_ok("★训龟大师能锁到射程内的敌人开火", picked != null)
+	# 减伤对【普通目标】必须恰好放行 1(之前探针随机挑到钻石龟被动减18%=0.82, 那是目标的锅不是石头的)
+	var plain := {"id": "basic", "def": 0.0, "mr": 0.0, "hp": 100.0, "maxHp": 100.0, "alive": true}
+	_ok("★1 点物理对普通目标不被削(=1)", is_equal_approx(s._mitigate_incoming(plain, 1.0, false), 1.0),
+		"实得 %.3f" % s._mitigate_incoming(plain, 1.0, false))
+
 	# ── ⑨ 朝向: 立绘【实际画的朝向】必须与 ART_FACES_RIGHT 登记的一致 ──
 	#
 	# ★2026-07-23 我第一版写成了【同义反复】: 用 art_faces_right 算 flip_h, 再用 flip_h
