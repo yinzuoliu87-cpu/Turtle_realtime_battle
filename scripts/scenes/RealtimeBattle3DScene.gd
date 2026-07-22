@@ -989,6 +989,13 @@ func _build_camera() -> void:
 	_cam.look_at(CAM_TARGET, Vector3.UP)
 	_cam_base = _cam.position               # Phase4: 震屏围绕此基准偏移, 衰减后精确归位
 	_cam_zoom_base = _cam_base              # 初始缩放基准=默认位(zoom=1)
+	if OS.has_environment("CAMPROBE"):      # ★临时探针(验完删): CAMPROBE="zoom,panx,panz" 驱镜头到极限验远景
+		var _cp: PackedStringArray = OS.get_environment("CAMPROBE").split(",")
+		if _cp.size() >= 3:
+			_cam_zoom = float(_cp[0])
+			_cam_pan = Vector3(float(_cp[1]), 0.0, float(_cp[2]))
+			_apply_cam_zoom()
+			print("PROBE_CAM zoom=%.2f pan=(%.1f,%.1f) campos=%s" % [_cam_zoom, _cam_pan.x, _cam_pan.z, str(_cam.position)])
 	_juice_rng.randomize()
 
 func _build_environment() -> void:
