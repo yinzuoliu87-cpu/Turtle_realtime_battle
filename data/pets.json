@@ -363,8 +363,8 @@
     "passive": {
       "type": "judgement",
       "name": "审判",
-      "hpPct": 11,
-      "brief": "天使龟的审判之力。每段攻击命中敌人时，额外造成目标当前生命值 <span class=\"val-magic\">11%</span> 的魔法伤害。",
+      "hpPct": 8,
+      "brief": "天使龟的审判之力。每段攻击命中敌人时，额外造成目标当前生命值 <span class=\"val-magic\">8%</span> 的魔法伤害。",
       "desc": "天使龟的审判之力。每段攻击命中敌人时，额外造成目标当前生命值 <span class=\"val-magic\">8%</span> 的魔法伤害。\n<span style=\"color:#888\">该额外伤害独立结算、不会暴击、不叠加命中层数（电击/结晶等）；但会触发目标反伤与自身吸血。</span>"
     },
     "skillPool": [
@@ -632,7 +632,7 @@
       "critBonus": 30,
       "critDmgBonus": 20,
       "armorPen": 8,
-      "brief": "忍者龟天生忍术精通：开局永久获得暴击率 <span class=\"val-atk\">+30%</span>、暴击伤害 <span class=\"val-atk\">+20%</span>、护甲穿透 <span class=\"val-atk\">+8</span>。<span class=\"val-normal\">冲击</span>：500码内出现可冲的敌人时，自动朝最近敌做一次固定 450 码的冲刺斩，主目标受 130%×攻击力、路径其余敌受 80%×攻击力 物理伤害，并全部<span class=\"val-atk\">击飞0.8秒</span>。",
+      "brief": "忍者龟天生忍术精通：开局永久获得暴击率 <span class=\"val-atk\">+30%</span>、暴击伤害 <span class=\"val-atk\">+20%</span>、护甲穿透 <span class=\"val-atk\">+8</span>。<span class=\"val-normal\">冲击</span>：290码内出现可冲的敌人时，自动朝最近敌做一次固定 300 码的冲刺斩，主目标受 130%×攻击力、路径其余敌受 80%×攻击力 物理伤害，并全部<span class=\"val-atk\">击飞0.8秒</span>。",
       "desc": "忍者龟天生忍术精通。开局永久获得：暴击率 <span class=\"val-atk\">+30%</span>，暴击伤害 <span class=\"val-atk\">+20%</span>，护甲穿透 <span class=\"val-atk\">+8</span>。\n\n<span class=\"val-normal\">冲击</span>（自动冲刺斩·亚索E式）：290码内出现可冲的敌人时，朝最近敌做一次 <span class=\"val-atk\">固定300码</span> 位移冲刺；路径上（判定带宽62码）被冲的主目标受 130%×攻击力、其余敌受 80%×攻击力 物理伤害，并全部<span class=\"val-atk\">击飞0.8秒</span>，不加伤害递增。本体每次冲刺 0.4 秒冷却，同一敌人被冲后 10 秒内不再被冲。<span style=\"color:#888\">放技能不会被冲击打断。</span>"
     },
     "skillPool": [
@@ -954,7 +954,7 @@
       "name": "钻石结构",
       "defBuffAmp": 50,
       "flatReductionPct": 20,
-      "brief": "钻石龟的结构强化全队防御体系。全队护甲和魔抗加成效果额外放大 <span class=\"val-atk\">+50%</span>。钻石龟使受到的每段伤害固定减少 <span class=\"val-atk\">18%</span>（真实伤害除外）。",
+      "brief": "钻石龟的结构强化全队防御体系。登场时全队（含自己）护甲、魔抗各 <span class=\"val-atk\">+50%</span>。钻石龟使受到的每段伤害固定减少 <span class=\"val-atk\">18%</span>（真实伤害除外）。",
       "desc": "钻石龟的结构强化全队防御体系：<span class=\"val-def\">登场时全队（含自己）护甲、魔抗各 +50%</span>。\n钻石龟自身受到的每段伤害固定减少 <span class=\"val-def\">18%</span>。<span style=\"color:#888\">真实伤害与穿透伤害不受此减免影响。</span>"
     },
     "skillPool": [
