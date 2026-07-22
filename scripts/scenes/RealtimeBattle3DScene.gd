@@ -340,13 +340,17 @@ const ACTION_ATTACK := {
 #   剩下那段时间角色是【站姿】。2026-07-22 实测(用户追问"时间对不上吗"):
 #     leap/throw 7fps → 0.57s vs 节拍 0.64s, 各早完 0.07s
 #     surf      12fps → 0.33s vs 节拍 0.833s, 【早完 0.50s】—— 踩着敌人滑行的后半程在站着
-#   surf 的修法是把 4 帧在图里重复成 10 帧(仍 12fps), 不是压低 fps ——
-#   4 帧摊到 0.833s 等于每帧亮 0.21s, 会一顿一顿。
+#   ★surf 曾一度改成"把4帧重复成10帧仍12fps", 被用户质疑「你这么循环, 你自己觉得没问题吗」——
+#     确实有问题: 10帧=2.5个循环会【停在半个循环上】; 2.5轮/0.833s≈每秒摆3次, 比走路
+#     (11帧@12fps=0.92s一个步循环≈每秒1.1步)还快, 那是抖不是滑; 而且 pro 出的4帧不是为循环
+#     设计的, 帧3接帧0没有连续性保证, 循环反而把接缝多暴露两次。
+#     改回 4帧@4.8fps: 每帧208ms, 项目现有区间是62-160ms, 略慢但同量级 —— 滑板保持平衡
+#     本来就是"摆一个姿势保持住"。
 const ACTION_MELEE := {
 	"leap":  ["pets/animations/melee/leap.png", 6.25],    # 4帧 / 0.64s(0.00-0.64 蓄力+起跳)
 	"throw": ["pets/animations/melee/throw.png", 6.25],   # 4帧 / 0.64s(0.64-1.28 滞空甩索)
 	"dive":  ["pets/animations/melee/dive.png", 13.0],    # 4帧 / 0.31s ≈ 节拍 0.30s
-	"surf":  ["pets/animations/melee/surf.png", 12.0],    # 10帧 / 0.833s = 踩滑节拍(帧已重复2.5轮)
+	"surf":  ["pets/animations/melee/surf.png", 4.8],     # 4帧 / 0.833s = 每帧208ms(保持平衡姿势, 不是高频抖)
 	"land":  ["pets/animations/melee/land.png", 13.0],    # 4帧 / 0.31s ≈ 落地 0.30s
 }
 const ACTION_ELITE := {
