@@ -39,6 +39,7 @@ func _ready() -> void:
 	_check_user_scenario()
 	_check_source_has_primitive()
 	_check_no_raw_side_targeting()
+	_check_no_unit_dict_eq()
 	_done()
 
 
@@ -133,6 +134,42 @@ func _check_source_has_primitive() -> void:
 ## ④ 防回归的关键: 战斗场里不该再有【裸 side 敌我判定】
 ##   口径: 两个单位的 side 互比(如 o["side"] != u["side"])。
 ##   与字面量 "left"/"right" 比的那些是"判是不是玩家方"(UI配色/技能选择/局外数据), 不算。
+## ⑤ 不得拿【单位字典】做 == / != 比较 (2026-07-22 补)
+##
+## ★项目铁律(CLAUDE.md §3.2 + _allies_of 的注释「is_same: 单位字典互引成环, ==/!= 会深比较
+##   →有卡死风险(同053教训)」): 单位字典之间互相引用成环, Godot 的 == 是深比较, 会无限递归。
+##   查侵入的召唤物联动(方案书 H9)时发现三处漏网: _sk_candy_bomb_feed / _hiding_minion_of /
+##   缩头本体死亡同步杀随从, 全在写 `o.get("summon_owner", null) == u`。
+##   同文件 8959 行早就用了正确写法 is_same(...), 所以不是不知道, 是漏改。
+##   H9 本身的结论是【不受侵入影响】—— 那条链按 summon_owner 身份判定, 不看 side。
+func _check_no_unit_dict_eq() -> void:
+	var src := FileAccess.get_file_as_string(SCENE_PATH)
+	if src == "":
+		return
+	var re := RegEx.new()
+	# 形如  x.get("summon_owner", null) == u   /   x["taunt_by"] == y
+	# ★必须排除与 null 比 —— `u["taunt_by"] != null` 是合法的空值判断, 不会触发深比较。
+	#   第一版没排, 把它误报成违规(2026-07-22 实测)。
+	# ★前瞻要把空白【包进去】写成 (?!\s*null) —— 写成 \s*(?!null) 会被回溯绕过:
+	#   \s* 退回匹配零个空格后, 前瞻看到的是 " null" 而不是 "null", 于是判定通过(2026-07-22 实测)。
+	re.compile("(get\\(\"(summon_owner|taunt_by|_hijack_by)\"[^)]*\\)|\\[\"(summon_owner|taunt_by|_hijack_by)\"\\])\\s*(==|!=)(?!\\s*null)")
+	var hits: Array[String] = []
+	var ln := 0
+	for line in src.split("\n"):
+		ln += 1
+		var code := _strip_comment(str(line))
+		if re.search(code) != null:
+			hits.append("%d: %s" % [ln, code.strip_edges().substr(0, 72)])
+	print("  [单位字典==] 命中 %d 处" % hits.size())   # ★打印分母
+	if hits.is_empty():
+		# 反向自检: 正则必须能命中人造样本, 否则 0 是假通过
+		if re.search('if o.get("summon_owner", null) == u:') == null:
+			_fail("单位字典== 扫描的正则失效(人造样本都匹配不到) —— 这个 0 是假通过")
+	else:
+		for h in hits:
+			_fail("拿单位字典做 ==/!= 深比较, 互引成环会卡死, 应用 is_same() → %s" % h)
+
+
 func _check_no_raw_side_targeting():
 	var src := FileAccess.get_file_as_string(SCENE_PATH)
 	if src == "":
