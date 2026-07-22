@@ -20776,7 +20776,13 @@ func _edit_grid_card(nm: String, icon_path: String, border: Color, cb: Callable)
 	var b := Button.new()
 	b.custom_minimum_size = Vector2(128, 112)
 	b.add_theme_font_size_override("font_size", 14)
-	b.mouse_filter = Control.MOUSE_FILTER_STOP
+	# ★手机端滑动(用户2026-07-22「调试场选装备选龟需要适配手机端的滑动」):
+	#   GUI 事件遇 MOUSE_FILTER_STOP 就停止冒泡 → 永远到不了外层 ScrollContainer,
+	#   于是 28 龟 / 59 装备的网格在触屏上【完全滑不动】。
+	#   项目里已有同款教训与解法: CodexScene.gd:651「子控件吞掉拖动=手机滑不动·2026-07-18」。
+	#   PASS: 触屏拖动透传给 ScrollContainer, 而 BaseButton 只处理 InputEventMouseButton,
+	#   模拟鼠标点击照常生效 → 既能滑又能点。
+	b.mouse_filter = Control.MOUSE_FILTER_PASS
 	b.text = nm
 	b.clip_text = true
 	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP

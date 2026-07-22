@@ -288,7 +288,79 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await _check_scene_buttons("MainMenu", Vector2(get_tree().root.size))
 
+	_check_teamselect_stage()
+
 	_done()
+
+
+## F. 选龟舞台几何 (2026-07-22 用户「选龟界面画面无法匹配 ios 屏幕…画布大小很奇怪」)
+##
+## ★为什么 A~E 段抓不到这个 bug: 它们只断言"按钮 rect ⊆ 屏幕 / 按钮不被遮挡 / 贴边按钮在末尾",
+##   而 contain 之后按钮本来就都在屏内 → 全绿。真正错的是【舞台本身】:
+##     ① 竖直余量 slack=0 却仍无条件加 +76px 下移 → 底边被推出屏外
+##     ② contain 在 2.167:1 的 iPhone 上左右各留 20.4% 的死板纯色条
+##
+## 这里是【纯几何断言, 不实例化场景】—— 因为无头下 DisplayServer.window_get_size() 返回 (0,0),
+## 真去实例化算出来的舞台会比真机低算约 30px(tests/verify_ios_ui.gd:74 与 TeamSelectScene 里都记过
+## 这个坑)。所以直接按公式验, 不受窗口尺寸影响。
+func _check_teamselect_stage() -> void:
+	var src := FileAccess.get_file_as_string("res://scripts/scenes/TeamSelectScene.gd")
+	if src == "":
+		_ok("选龟舞台", false, "读不到 TeamSelectScene.gd")
+		return
+	# ① 偏移必须按可用余量夹住
+	var body := src.substr(maxi(0, src.find("\nfunc _stage_to_screen(")), 900)
+	_ok("选龟·偏移按余量夹住", body.find("clampf(off.y") >= 0,
+		"_stage_to_screen 无条件加 STAGE_OFFSET → slack=0 时必切底")
+	# ② 死常量 STAGE_ZOOM 不该再有【活的】定义
+	var has_live_zoom := false
+	for l in src.split("\n"):
+		var s2 := str(l).strip_edges()
+		if s2.begins_with("const STAGE_ZOOM"):
+			has_live_zoom = true
+	_ok("选龟·死常量已删", not has_live_zoom, "STAGE_ZOOM 全仓库零引用, 留着误导")
+	# ③ 缩放必须"尽量铺满但不裁内容带"(用户2026-07-22「整个画布和按钮是不能放大吗」)
+	_ok("选龟·按内容带缩放", src.find("func _content_band(") >= 0 and src.find("cover") >= 0,
+		"_stage_scale 仍是纯 contain → 屏幕两侧留大片死板, 画布看着很小")
+	# ④ 公式自检: 三种屏比下 ①内容带必须完整在屏内 ②不该白白留一大片边
+	var poc := Vector2(1647.0, 955.0)
+	var band_pos := Vector2(160.0, 74.0)      # 与 RL 实测一致(grid.x=160 / back.y=74)
+	var band_size := Vector2(1312.0, 709.0)   # x 到 start 右缘 1472, y 到 start 底 783
+	for vp in [Vector2(1560, 720), Vector2(1280, 720), Vector2(1280, 960)]:
+		var s3: float = minf(maxf(vp.x / poc.x, vp.y / poc.y),
+			minf(vp.x / band_size.x, vp.y / band_size.y))
+		var bc := band_pos + band_size * 0.5
+		var slack: Vector2 = (vp - band_size * s3) * 0.5
+		var off := Vector2(clampf(0.0, -maxf(0.0, slack.x), maxf(0.0, slack.x)),
+			clampf(76.0, -maxf(0.0, slack.y), maxf(0.0, slack.y)))
+		# 内容带在屏幕上的矩形
+		var bl: Vector2 = vp * 0.5 + off + (band_pos - bc) * s3
+		var br: Vector2 = bl + band_size * s3
+		_ok("选龟·%dx%d 内容带完整" % [int(vp.x), int(vp.y)],
+			bl.x >= -0.5 and bl.y >= -0.5 and br.x <= vp.x + 0.5 and br.y <= vp.y + 0.5,
+			"内容带 x∈[%.0f,%.0f] y∈[%.0f,%.0f] 超出 %.0fx%.0f —— 会丢按钮" % [bl.x, br.x, bl.y, br.y, vp.x, vp.y])
+		# 铺满度: 画面至少要被舞台覆盖 88%(否则又变成"中间一小块")
+		var cov: float = minf(1.0, (poc.x * s3) / vp.x) * minf(1.0, (poc.y * s3) / vp.y)
+		_ok("选龟·%dx%d 铺满度 %.0f%%" % [int(vp.x), int(vp.y), cov * 100.0], cov >= 0.88,
+			"舞台只盖住 %.0f%% 屏幕 → 死板留白过大" % (cov * 100.0))
+		# ★舞台某轴盖得住就【不许留缝】。上一版只验"内容带完整", 抓不到这个 ——
+		#   PC 1280×720 顶部露了 103px 黑缝(PoC 烤死的 STAGE_OFFSET=76 没被夹掉), 全绿照过。
+		var stage: Vector2 = poc * s3
+		var org: Vector2 = vp * 0.5 + off - bc * s3
+		for ax in [0, 1]:
+			if stage[ax] >= vp[ax]:
+				org[ax] = clampf(org[ax], vp[ax] - stage[ax], 0.0)
+			else:
+				org[ax] = (vp[ax] - stage[ax]) * 0.5
+		var gap_t: float = maxf(0.0, org.y)
+		var gap_b: float = maxf(0.0, vp.y - (org.y + stage.y))
+		var gap_l: float = maxf(0.0, org.x)
+		var gap_r: float = maxf(0.0, vp.x - (org.x + stage.x))
+		var must_fill_y: bool = stage.y >= vp.y
+		var must_fill_x: bool = stage.x >= vp.x
+		_ok("选龟·%dx%d 无黑缝" % [int(vp.x), int(vp.y)],
+			(not must_fill_y or (gap_t < 0.5 and gap_b < 0.5)) and (not must_fill_x or (gap_l < 0.5 and gap_r < 0.5)),
+			"舞台盖得住却留缝: 上%.0f 下%.0f 左%.0f 右%.0f" % [gap_t, gap_b, gap_l, gap_r])
 
 func _done() -> void:
 	get_tree().paused = false

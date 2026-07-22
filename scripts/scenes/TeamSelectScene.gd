@@ -218,11 +218,25 @@ func _ensure_letterbox() -> void:
 	var ui := get_node_or_null("UI")
 	if ui == null:
 		return
+	# ★2026-07-22 B方案: 纯色 ColorRect → 【select-bg 自身 cover 铺满】。
+	#   原先 contain 后 iPhone 左右各留 159px 的死板纯色条(占屏 20.4%), 用户说"画布大小很奇怪"。
+	#   现在底层用同一张图做 cover(会裁边, 但它只是填充层, 内容不看它),
+	#   上层 Background 仍 contain 且【共用同一个 s】→ 烤在图上的槽位框与内容不会错位
+	#   (TeamSelectScene.gd:279 记着: 背景/内容各用各的缩放会错位, 这是红线)。
+	#   select-bg 左右边缘是横向木纹(2026-07-22 读图确认), cover 拉伸不穿帮。
+	# ★2026-07-22: 底垫层退回【纯色】。
+	#   一度改成"同一张 select-bg 放大铺底", 结果两侧露出【第二套道具】(两个罗盘/两个钱袋/
+	#   两根羽毛)且中间一条硬缝 —— 用户:「在背景后面加个背景再把后面背景放大？这把画面破坏了」。
+	#   现在舞台改成"放大到铺满、按内容带锚定裁切", 绝大多数分辨率下根本不留白;
+	#   极端比例(如 4:3 收住缩放时)才露一点边, 用与木板衔接的深木色兜底即可。
 	var lb := ui.get_node_or_null("Letterbox") as ColorRect
+	if ui.get_node_or_null("Letterbox") != null and lb == null:
+		ui.get_node_or_null("Letterbox").queue_free()
+		lb = null
 	if lb == null:
 		lb = ColorRect.new()
 		lb.name = "Letterbox"
-		lb.color = Color("#241708")            # 深木色(取自 select-bg 边缘)
+		lb.color = Color("#241708")
 		lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ui.add_child(lb)
 	# ★层序: 必须在 MenuBg【之上】、Background【之下】。
@@ -248,9 +262,17 @@ func _fit_background() -> void:
 	tr.stretch_mode = TextureRect.STRETCH_SCALE   # 拉满给定矩形 (PoC background-size:100% 100%)
 	# 背景与内容同尺同位(共用 _stage_to_screen), 这样 select-bg 上烤死的槽位框才对得上内容。
 	var s := _stage_scale()
-	tr.position = _stage_to_screen(Vector2.ZERO)
-	tr.size = Vector2(POC_W, POC_H) * s
-	_ensure_letterbox()   # contain 会在短边留白 → 垫一层木板色, 别露出后面的绿底
+	var org := _stage_to_screen(Vector2.ZERO)
+	var siz := Vector2(POC_W, POC_H) * s
+	# ★像素吸附(2026-07-22): 浮点 position/size 会在边缘留【亚像素缝】——
+	#   实测 iPhone 顶部露 1 行纯黑(PC 是 0 行, 因为它的数恰好整除)。1px 肉眼几乎看不见,
+	#   但换个分辨率就会放大, 而且"边上有缝"这件事本身就是错的。
+	#   做法: 起点向下取整、尺寸向上取整 → 永远【盖过】理论矩形, 只多不少。
+	#   ★只吸附背景, 不动 _stage_to_screen 本身 —— 内容(槽位/卡片)必须保持与背景同一浮点变换,
+	#     否则烤在图上的槽位框会与内容错开(TeamSelectScene.gd:279 记的红线)。
+	tr.position = org.floor()
+	tr.size = (org + siz).ceil() - org.floor()
+	_ensure_letterbox()   # 极端比例下仍可能留边 → 垫一层木板色, 别露出后面的绿底
 
 
 # ══════════════════════════════════════════════════════════════
@@ -261,7 +283,8 @@ func _fit_background() -> void:
 # 不能用之前的非均匀 sx/sy 线性拉伸 (会把背景画好的槽/凹槽/绿按钮错位)。
 # stageZoom=1.17 / ox=0 / oy=76 跟 PoC TeamSelectScene.ts bake 值 1:1。
 # ══════════════════════════════════════════════════════════════
-const STAGE_ZOOM := 1.17
+# ★STAGE_ZOOM 已删(2026-07-22): 全仓库【只定义、零引用】—— cover→contain 那次改动把 ×1.17
+#   摘掉了但常量留着。它正是"画布相对旧版整整小了 17%"这句话的来源, 留着只会误导。
 const STAGE_OFFSET := Vector2(0, 76)
 
 func _vp() -> Vector2:
@@ -279,9 +302,41 @@ func _vp() -> Vector2:
 ## 我一度试过"背景 cover / 内容 contain", 结果背景上烤死的槽位框与内容对不上 —— 证明两者必须同尺。
 ## 现在: 统一 contain 保证【整个 1647×955 设计区都在屏内】, 短边留白由 _fit_background 的
 ## 同色底垫(取木板色)填掉 → 既不裁内容, 也不露绿。
+## ★2026-07-22 用户「整个画布和按钮是不能放大吗」→ 能, 而且不会丢按钮。
+##
+## 规则: **尽量放大铺满屏, 但永不裁到【内容带】**。
+##   s = min( cover(填满屏所需), 让内容带横向放得下, 让内容带竖向放得下 )
+##
+## 为什么这样就安全 —— 设计图 1647×955 里真正的交互内容只占中间一块(由 RL 实测算出):
+##   内容带 x∈[160,1472] y∈[74,783] → 上留白 74 / 下留白 172 / 左留白 160 / 右留白 175,
+##   共 246px 竖向、335px 横向【纯装饰】。放大后裁掉的正是这些边角。
+##
+## 实算 iPhone 横屏 1560×720:
+##   contain 0.754 → 舞台 1241×720, 左右各留 159px 死板(旧版, 用户说"画布大小很奇怪")
+##   本规则 0.947 → 舞台 1560×904 铺满, 内容带高 672 < 720 富余 48px, 上裁46/下裁138 全在装饰区
+##   = 放大 1.26 倍且一个按钮都不少
+## iPad 4:3 1280×960: 纯 cover 会横向裁 187px > 左留白 160 → 切进龟池;
+##   本规则取 0.976 自动收住, 宁可留一点边也不裁内容。
+func _content_band() -> Rect2:
+	# 从 RL 实测算, 不写死 —— 布局改了这里自动跟上(F9/F10 布局编辑器会改 RL)
+	var lo := Vector2(1.0e9, 1.0e9)
+	var hi := Vector2(-1.0e9, -1.0e9)
+	for k in RL.keys():
+		var r: Dictionary = RL[k]
+		var x := float(r.get("x", 0))
+		var y := float(r.get("y", 0))
+		lo.x = minf(lo.x, x); lo.y = minf(lo.y, y)
+		hi.x = maxf(hi.x, x + float(r.get("w", 0))); hi.y = maxf(hi.y, y + float(r.get("h", 0)))
+	return Rect2(lo, hi - lo)
+
+
 func _stage_scale() -> float:
 	var vp := _vp()
-	return minf(vp.x / POC_W, vp.y / POC_H)
+	var band := _content_band()
+	var cover := maxf(vp.x / POC_W, vp.y / POC_H)         # 铺满屏所需
+	var fit_w: float = vp.x / maxf(1.0, band.size.x)      # 内容带横向放得下的上限
+	var fit_h: float = vp.y / maxf(1.0, band.size.y)      # 内容带竖向放得下的上限
+	return minf(cover, minf(fit_w, fit_h))
 
 
 func _content_scale() -> float:
@@ -300,6 +355,28 @@ func _stage_to_screen(p: Vector2) -> Vector2:
 	var win := Vector2(DisplayServer.window_get_size())
 	if win.x > 0.5 and win.y > 0.5:
 		off = STAGE_OFFSET * (vp / win)   # 逻辑偏移 = 真实偏移 ÷ content-scale → 渲染后 =76 真实px
+	# ★2026-07-22: 居中的是【内容带】而不是整张设计图 —— 放大后必然要裁掉一些边,
+	#   按内容带居中能让裁切自动落到纯装饰区(上留白74/下留白172/左160/右175), 按钮一个不丢。
+	var band := _content_band()
+	center = band.position + band.size * 0.5               # 设计坐标下内容带的中心
+	var stage := Vector2(POC_W, POC_H) * s                 # 舞台在屏幕上的实际尺寸
+	# 先按内容带余量夹住 PoC 那个烤死的 76px 下移
+	var slack := (vp - band.size * s) * 0.5
+	off.x = clampf(off.x, -maxf(0.0, slack.x), maxf(0.0, slack.x))
+	off.y = clampf(off.y, -maxf(0.0, slack.y), maxf(0.0, slack.y))
+	# ★再加一条硬不变式:【舞台某轴大于视口时不许留缝】。
+	#   只夹内容带余量是不够的 —— 内容带比整图小, PC(1280×720) 上算出余量 85 > 76,
+	#   于是那 76px 原样保留 → 顶部露 103px 黑缝(用户 2026-07-22 一眼看出), iPad 更是 138px。
+	#   这条不变式与设备无关: 舞台盖得住就必须盖满, 盖不住才居中留边。
+	var origin: Vector2 = vp * 0.5 + off - center * s      # 舞台左上角(设计原点)的屏幕位置
+	for axis in [0, 1]:
+		if stage[axis] >= vp[axis]:
+			# 盖得住 → 左上角不能 >0(否则前面留缝), 右下角不能 <vp(否则后面留缝)
+			var o: float = clampf(origin[axis], vp[axis] - stage[axis], 0.0)
+			off[axis] += o - origin[axis]
+		else:
+			# 盖不住 → 居中(此时留边是必然的, 由底垫色兜)
+			off[axis] += (vp[axis] - stage[axis]) * 0.5 - origin[axis]
 	return vp * 0.5 + off + (p - center) * s
 
 
@@ -1158,12 +1235,24 @@ func _make_pet_card(pet: Dictionary) -> Control:
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.add_theme_stylebox_override("panel", sb)
 	card.add_child(bg)
+	# ★手机端滑动(用户2026-07-22「选龟页面也是」):
+	#   Control 默认 MOUSE_FILTER_STOP → GUI 事件不冒泡到外层 ScrollContainer, 龟池在触屏上滑不动。
+	#   而 :848 又把滚动条设成 SHOW_NEVER(注释还写着"滚动仍启用(手机拖)") → 手机上【完全没有滚动手段】。
+	#   解法照抄项目已实机验证的模板 InventoryScene.gd:651: PASS + 按下/抬起位移阈值判点选。
+	card.mouse_filter = Control.MOUSE_FILTER_PASS
+	var _press := {"p": Vector2.ZERO}
 	card.gui_input.connect(func(ev: InputEvent) -> void:
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			_set_detail_pet(pid)
-			_on_pick_pet(pid))
+		if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT:
+			if ev.pressed:
+				_press["p"] = ev.position
+			elif ev.position.distance_to(_press["p"]) < 16.0:   # 位移小才算点选, 否则那是在滑列表
+				_set_detail_pet(pid)
+				_on_pick_pet(pid))
 	# 拖放: 卡片可拖入编队槽 (1:1 PoC .pet-card draggable=true)
-	card.set_drag_forwarding(_card_drag.bind(card, pid), Callable(), Callable())
+	# ★手机上必须关掉: Godot 原生 DnD 一旦启动就吃掉手指移动, 滚动永远抢不过它。
+	#   触屏改走"点卡片(上面的 _on_pick_pet) → 点槽位"两步。
+	if not SafeArea.is_mobile():
+		card.set_drag_forwarding(_card_drag.bind(card, pid), Callable(), Callable())
 
 	# 内容: MarginContainer(满卡 + PoC padding:10px 8px 8px) → VBox(头像 → meta, 顶对齐自然流)
 	var pad_wrap := MarginContainer.new()
