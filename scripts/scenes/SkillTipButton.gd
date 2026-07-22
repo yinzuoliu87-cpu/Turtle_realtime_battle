@@ -33,12 +33,17 @@ func _make_custom_tooltip(for_text: String) -> Object:
 		var rest: Array = []
 		for i in range(1, lines.size()):
 			rest.append(lines[i])
-		var body := Label.new()
-		body.text = "\n".join(rest)
-		body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		# ★RichTextLabel + bbcode: 调用方传的是 SkillText.render_bbcode 的结果,
+		#   数值与关键词带颜色标记(2026-07-22 上色铺开)。用 Label 会把 [color=..] 原样显示出来。
+		# ★fit_content 必须开 —— 不开的话 RichTextLabel 高度为 0, tooltip 只剩标题。
+		var body := RichTextLabel.new()
+		body.bbcode_enabled = true
+		body.fit_content = true
+		body.scroll_active = false
 		body.custom_minimum_size = Vector2(220, 0)   # PoC max-width 250 / min 180
-		body.add_theme_font_size_override("font_size", 11)   # tip-body 11px
-		body.add_theme_color_override("font_color", Color("#bbccdd"))   # #bcd
+		body.add_theme_font_size_override("normal_font_size", 11)   # tip-body 11px
+		body.add_theme_color_override("default_color", Color("#bbccdd"))   # #bcd
+		body.text = "\n".join(rest)
 		vb.add_child(body)
 
 	return pc

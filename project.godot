@@ -20,7 +20,7 @@ config/description="斗龟场 实时自走棋版 (Botworld 式实时战斗) — 
 2026-05-30 从 Phaser 3 PoC 迁移而来,
 为了上 App Store / Steam / 工业级编辑体验。"
 run/main_scene="res://scenes/MainMenu.tscn"
-config/version="0.9.5"
+config/version="0.9.6"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 boot_splash/bg_color=Color(0.0392, 0.0549, 0.0941, 1)
 config/icon="res://icon.svg"
