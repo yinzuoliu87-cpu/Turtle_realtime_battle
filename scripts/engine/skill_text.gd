@@ -190,25 +190,83 @@ static func render_html(template: String, f: Dictionary, s: Dictionary) -> Strin
 
 
 ## HTML → BBCode (span → [color]; PoC parseRichText 的 Godot 等价).
+##
+## ★栈式解析, 正确处理【嵌套 span】(2026-07-23 重写)。旧实现是一条正则
+##   `<span..>([^<]*)</span>` —— 内层 `[^<]*` 一碰到嵌套的 `<` 就断裂, 外层 span
+##   整个匹配失败 → 掉进「纯文本」分支 → `span class="val-true">` 这种【原始标签字面量
+##   直接漏给玩家】。嵌套从两处天然产生: ①灰字注释里写了自动上色关键词(护甲/最大生命值/
+##   真实伤害…)会被关键词规则包一层 span; ②手写 span 里放了 {token}(token 自展开成 span)。
+##   实测 pets.json 有 58 处这样的泄漏, 且「别在灰字里写关键词」这条脆弱人肉约定谁都守不住。
+##
+## ★语义采【最外层 span 颜色胜出】: 灰字注释整段保持灰(去强调本意), 内层关键词不再抢色;
+##   手写色块整段保持该色。对【无嵌套】输入与旧实现逐字节等价(仅多解码 &lt; 等实体), 只消泄漏不造泄漏。
 static func html_to_bbcode(html: String) -> String:
-	_ensure_re()
-	var norm := html.replace("<br>", "\n").replace("<br/>", "\n").replace("<br />", "\n")
-	# <b>/<i> 直转
-	norm = norm.replace("<b>", "[b]").replace("</b>", "[/b]").replace("<i>", "[i]").replace("</i>", "[/i]")
+	var s := html
 	var out := ""
-	for m in _span_re.search_all(norm):
-		var cls := m.get_string(1)
-		var inline := m.get_string(2)
-		var inner := m.get_string(3)
-		var plain := m.get_string(4)
-		if cls != "" and inner != "":
-			var hex: String = VAL_HEX.get(cls, "#ffffff")
-			out += "[color=%s]%s[/color]" % [hex, inner]
-		elif inline != "" and inner != "":
-			out += "[color=%s]%s[/color]" % [inline, inner]
-		elif plain != "":
-			out += plain
+	var depth := 0   # span 嵌套深度; 只在最外层 span 开/合处发 [color]/[/color]
+	var i := 0
+	var n := s.length()
+	while i < n:
+		if s[i] == "<":
+			var gt := s.find(">", i)
+			if gt < 0:
+				out += "<"   # 孤立的 < 当普通字符
+				i += 1
+				continue
+			var tag := s.substr(i, gt - i + 1)
+			i = gt + 1
+			var low := tag.to_lower()
+			if low.begins_with("<br"):
+				out += "\n"
+			elif low == "<b>": out += "[b]"
+			elif low == "</b>": out += "[/b]"
+			elif low == "<i>": out += "[i]"
+			elif low == "</i>": out += "[/i]"
+			elif low.begins_with("</span"):
+				if depth > 0:
+					depth -= 1
+					if depth == 0:
+						out += "[/color]"
+			elif low.begins_with("<span"):
+				if depth == 0:
+					out += "[color=%s]" % _span_color(tag)
+				depth += 1
+			# 其它未知标签: 丢弃
+		else:
+			var lt := s.find("<", i)
+			if lt < 0:
+				lt = n
+			out += _decode_entities(s.substr(i, lt - i))
+			i = lt
+	if depth > 0:
+		out += "[/color]"   # 兜底: 未闭合 span
 	return out
+
+## 从 <span ...> 起始标签抽颜色: class="val-x" → VAL_HEX; style="color:#hex" → 原色。
+static func _span_color(tag: String) -> String:
+	var cq := tag.find("class=\"")
+	if cq >= 0:
+		var e := tag.find("\"", cq + 7)
+		if e > cq:
+			return VAL_HEX.get(tag.substr(cq + 7, e - cq - 7), "#ffffff")
+	var sp := tag.find("color:")
+	if sp >= 0:
+		var h := ""
+		var k := sp + 6
+		while k < tag.length() and tag[k] == " ":
+			k += 1
+		while k < tag.length() and "#0123456789abcdefABCDEF".contains(tag[k]):
+			h += tag[k]; k += 1
+		if h != "":
+			return h
+	return "#ffffff"
+
+## 解码 HTML 实体 → 真字符。RichTextLabel 不解实体, 数据里写的 &lt;120码 不解会原样显示成 "&lt;120码"。
+## &amp; 最后解, 免得把 &amp;lt; 二次解码成 <。
+static func _decode_entities(t: String) -> String:
+	if not t.contains("&"):
+		return t
+	return t.replace("&lt;", "<").replace("&gt;", ">").replace("&#39;", "'").replace("&quot;", "\"").replace("&amp;", "&")
 
 
 ## 便捷: 模板 → BBCode (RichTextLabel 直用).
