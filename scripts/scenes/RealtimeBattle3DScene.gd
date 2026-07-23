@@ -978,24 +978,34 @@ func _build_tilemap_decor() -> void:
 	var A := ARENA
 	var cx := A.position.x + A.size.x * 0.5
 	var cy := A.position.y + A.size.y * 0.5
-	var kelp := ["deco_kelp", "deco_coral_pink", "deco_coral_orange", "deco_rocks", "glow-kelp", "glow-anem", "glow-coral", "glow-coral", "glow-kelp"]   # 阶段5: 加PixelLab发光变体(重复=提高发光植物占比)
-	var mg := 288.0   # 装饰带宽度(px, ARENA 外扩)。★与格子大小无关, 别跟着 tile 一起缩放
-	var step := 80.0
+	# ★点2(用户2026-07-23: 测试反馈太密+很多相同装饰): 7种均匀(去掉原glow-coral/glow-kelp各2遍的人为加权刷屏)
+	var kelp := ["deco_kelp", "deco_coral_pink", "deco_coral_orange", "deco_rocks", "glow-kelp", "glow-anem", "glow-coral"]
+	var mg := 200.0   # ★装饰带收窄 288→200(点2: 太密)
+	var step := 120.0   # ★网格放大 80→120(点2: 稀疏)
+	var placed: Array = []   # ★防扎堆: 记已放点, 太近(<70px)跳过(点2: 原无间距检查→成簇)
 	var py := A.position.y - mg
 	while py < A.end.y + mg:
 		var px := A.position.x - mg
 		while px < A.end.x + mg:
 			var outside_arena := not A.has_point(Vector2(px, py))
 			var do := pow((px - cx) / (A.size.x * 0.72), 2.0) + pow((py - cy) / (A.size.y * 0.92), 2.0)   # <1=地图内有tile
-			if outside_arena and do < 0.98 and rng.randf() < 0.58:   # 只在ARENA外的有地砖区撒(留空战斗区)
+			if outside_arena and do < 0.98 and rng.randf() < 0.30:   # ★概率 0.58→0.30(点2: 稀疏一半)
 				var jx := px + rng.randf_range(-26.0, 26.0)
 				var jy := py + rng.randf_range(-26.0, 26.0)
-				var img: String = kelp[rng.randi() % kelp.size()]
-				var spr := _map_billboard("res://assets/sprites/map/%s.png" % img, Vector2(jx, jy), rng.randf_range(1.5, 2.7))
-				var s := rng.randf_range(0.82, 1.28) * (1.15 if do > 0.7 else 1.0)   # 越靠边框越大(框边压)
-				spr.scale = Vector3(s, s, s)
-				spr.modulate = Color(0.50, 0.68, 0.92)   # 冷调压暗融夜色(边框植被)
-				root.add_child(spr)
+				var jp := Vector2(jx, jy)
+				var too_close := false
+				for pp in placed:
+					if (pp as Vector2).distance_to(jp) < 70.0:
+						too_close = true; break
+				if not too_close:
+					placed.append(jp)
+					var img: String = kelp[rng.randi() % kelp.size()]
+					var spr := _map_billboard("res://assets/sprites/map/%s.png" % img, jp, rng.randf_range(1.5, 2.7))
+					var s := rng.randf_range(0.82, 1.28) * (1.15 if do > 0.7 else 1.0)   # 越靠边框越大(框边压)
+					spr.scale = Vector3(s * (-1.0 if rng.randf() < 0.5 else 1.0), s, s)   # ★随机水平镜像破"一模一样"(点2)
+					var _b: float = rng.randf_range(0.82, 1.08)   # ★明暗/色相抖动(点2: 原modulate死值Color(0.5,0.68,0.92)→全同)
+					spr.modulate = Color(clampf(0.50 * _b + rng.randf_range(-0.05, 0.05), 0.0, 1.0), clampf(0.68 * _b, 0.0, 1.0), clampf(0.92 * _b + rng.randf_range(-0.04, 0.04), 0.0, 1.0))
+					root.add_child(spr)
 			px += step
 		py += step
 	_build_tilemap_ambient(root)
@@ -1774,10 +1784,13 @@ func _build_decorations(root: Node3D) -> void:
 		[A.position.x+165, _arena_center.y-165, "deco_coral_orange", 1.5, 0.9], [A.position.x+165, _arena_center.y+165, "deco_coral_pink", 1.6, 0.9],
 		[A.end.x-165, _arena_center.y-165, "deco_coral_pink", 1.6, 0.9], [A.end.x-165, _arena_center.y+165, "deco_coral_orange", 1.5, 0.9],
 	]
+	var drng := RandomNumberGenerator.new(); drng.seed = 20260723   # ★点2: 给固定装饰加随机镜像/抖动破重复
 	for de in decos:
 		var spr := _map_billboard("res://assets/sprites/map/%s.png" % str(de[2]), Vector2(float(de[0]), float(de[1])), float(de[3]))
-		spr.scale = Vector3(float(de[4]), float(de[4]), float(de[4]))
-		spr.modulate = Color(0.92, 0.96, 1.0)   # 卡通亮场: 珊瑚恢复鲜艳(不再压暗); 亮场里彩珊瑚本该艳
+		var sc: float = float(de[4])
+		spr.scale = Vector3(sc * (-1.0 if drng.randf() < 0.5 else 1.0), sc, sc)   # ★随机水平镜像(点2)
+		var _b: float = drng.randf_range(0.86, 1.0)   # ★明暗抖动(点2: 原死值Color(0.92,0.96,1.0)→全同)
+		spr.modulate = Color(0.92 * _b + drng.randf_range(-0.04, 0.04), 0.96 * _b, 1.0 * _b)
 		root.add_child(spr)
 
 # 水面光柱: 几道加性发光的柔和光束(billboard竖条), 打进深海竞技场 → 氛围/纵深.
@@ -1830,7 +1843,7 @@ func _build_far_backdrop(root: Node3D) -> void:
 	var glows := ["glow-coral", "glow-anem", "glow-kelp"]
 	var grng := RandomNumberGenerator.new()
 	grng.seed = 20260722
-	for i in range(22):
+	for i in range(14):   # ★远景发光 22→14(点2: 减重复的发光刷屏)
 		var gp := "res://assets/sprites/map/%s.png" % glows[i % glows.size()]
 		if not ResourceLoader.exists(gp):
 			continue
