@@ -15,9 +15,11 @@ var _offer: Array = []
 var _rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
-	if int(GameState.season_total_battles) <= 0:
+	var _td = get_node_or_null("/root/TutorialDirector")
+	var _in_tut: bool = _td != null and _td.is_active()
+	if int(GameState.season_total_battles) <= 0 and not _in_tut:
 		_build_locked()   # 商店锁: 本大轮未打第一场 → 不开店(用户2026-07-18「商店打完第一场后解锁」)
-		return
+		return             # ★教学沙盒不计战斗数(不给奖励)→ 会永远锁; 教学模式旁路开店(用户2026-07-23"教买装备")
 	_rng.randomize()
 	# ★货架要跨场景保留 —— 原来这里无条件 _roll(), 于是每次退出重进都重掷:
 	#   买掉的位子会复活、看中的货被冲掉(用户 2026-07-21 报的 bug)。
@@ -25,8 +27,7 @@ func _ready() -> void:
 	if not _restore_offer():
 		_roll()
 	_rebuild()
-	var _td = get_node_or_null("/root/TutorialDirector")
-	if _td != null: _td.attach_next_button(self, "shop")   # 教学: 下一站→背包
+	if _td != null: _td.attach_next_button(self, "shop")   # 教学: 下一站→背包(复用上面的 _td)
 
 ## 从 GameState 恢复货架。成功返回 true; 货架不存在/已过期(打过新战斗)返回 false。
 func _restore_offer() -> bool:

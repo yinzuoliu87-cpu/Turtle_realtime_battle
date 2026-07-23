@@ -820,15 +820,19 @@ func _maybe_first_launch_tutorial() -> void:
 	_begin_tutorial(true)   # 首次: mandatory=true(无跳过)
 
 
-## 统一的教学启动: 进沙盒第一把。mandatory=首次不能跳。
+## 统一的教学启动: 从【选龟界面】进第一把(教选龟+站位)。mandatory=首次不能跳。
 ## ★沙盒(tutorial_active): 不给奖励(_settle_season 直接 return)、固定阵容、弱对手。
+## ★走完整流程(选龟→双路战斗含摆位), 但选龟界面只显 3 只教学龟(用户2026-07-23)。
 func _begin_tutorial(mandatory: bool) -> void:
-	GameState.mode = "single"
 	GameState.tutorial = true
 	GameState.tutorial_active = true
-	GameState.tutorial_stage = "match1"       # 导演: 第一把(教选龟+站位)
+	GameState.dual_active = true               # 双路模式 → 战斗有【摆位阶段】可教站位
+	GameState.tutorial_stage = "match1_pick"   # 导演: 第一把从选龟开始
 	GameState.tutorial_mandatory = mandatory
 	GameState.dungeon_stage = 1
 	GameState.dungeon_carry_hp = {}; GameState.dungeon_dead_ids = []
 	GameState.clear_team()
-	get_tree().change_scene_to_file("res://scenes/RealtimeBattle3D.tscn")
+	var _td = get_node_or_null("/root/TutorialDirector")
+	if _td != null:
+		_td.begin_sandbox()    # 快照真经济+发教学币(结束还原, 不给奖励)
+	get_tree().change_scene_to_file("res://scenes/TeamSelect.tscn")

@@ -1201,6 +1201,16 @@ func _refresh_grid() -> void:
 		_style_rarity_btn(b, rb["key"] == filter_rarity)
 
 	var pets: Array = DataRegistry.launch_pets.duplicate()
+	# ★教学模式: 只显 3 只教学龟(用户2026-07-23"选龟时下面只显示教学用的三只龟"), 免得新手又懵。
+	var _td = get_node_or_null("/root/TutorialDirector")
+	if _td != null and _td.is_active():
+		var keep: Array = _td.FIXED_TEAM
+		var filt: Array = []
+		for p2 in pets:
+			if str(p2.get("id", "")) in keep:
+				filt.append(p2)
+		if not filt.is_empty():
+			pets = filt
 	# rarity filter
 	if filter_rarity != "all":
 		var filtered: Array = []
@@ -2223,6 +2233,11 @@ func _on_start() -> void:
 
 	_write_last_lineup()
 
+	# ★教学模式: 不走匹配(不联网), 由导演直接进第一把双路战斗(弱对手)。
+	var _tdc = get_node_or_null("/root/TutorialDirector")
+	if _tdc != null and _tdc.is_active():
+		get_tree().change_scene_to_file(_tdc.next_scene_after("team_select"))
+		return
 	# → 匹配动画 (Matchmaking): 抽对手 ghost 写 dual_ghost → 进 2.5D 战斗.
 	get_tree().change_scene_to_file("res://scenes/Matchmaking.tscn")
 
