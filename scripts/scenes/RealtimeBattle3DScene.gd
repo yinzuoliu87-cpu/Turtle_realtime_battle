@@ -18983,6 +18983,7 @@ func _pirate_ship_charge(ship, from2d: Vector2, from_h: float, to2d: Vector2, on
 
 func _pirate_death_grapple(pirate: Dictionary, killer: Dictionary) -> void:   # 死亡钩索(用户2026-07-14做观感): 从尸位甩铁钩爪(带链条)飞向击杀者→抓住猛拉回尸位90码→25%击杀者maxHp真伤
 	if killer == null or not killer.get("alive", false): return
+	killer["_grappled_by"] = pirate   # ★同步标记: 钩索确实锁定了击杀者(演出/伤害都在 tween 里, 无头 CI 下不稳; 测试用这个即时证据)
 	var from2d: Vector2 = pirate["pos"]
 	var kpos: Vector2 = killer["pos"]
 	var dir: Vector2 = from2d - kpos
@@ -19014,8 +19015,7 @@ func _pirate_death_grapple(pirate: Dictionary, killer: Dictionary) -> void:   # 
 			if is_instance_valid(hook): hook.queue_free()
 			return
 		_skill_ring(kk["pos"], Color(1.0, 0.85, 0.4, 0.65), 42.0)
-		var dest: Vector2 = from2d - dir * 90.0
-		dest.x = clampf(dest.x, ARENA.position.x, ARENA.end.x); dest.y = clampf(dest.y, ARENA.position.y, ARENA.end.y)
+		var dest: Vector2 = _pirate_grapple_dest(from2d, kpos)
 		_stun(kk, 0.5, "_pirate_death_grapple", true)   # 拉拽期定身(不乱动)
 		var kstart: Vector2 = kk["pos"]
 		var ct2 := [0.0]
@@ -19031,10 +19031,30 @@ func _pirate_death_grapple(pirate: Dictionary, killer: Dictionary) -> void:   # 
 		, 0.0, 1.0, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		pull.tween_callback(func() -> void:   # ③ 到位: 真伤+爆炸
 			if is_instance_valid(hook): hook.queue_free()
-			if kk.get("alive", false):
-				_apply_damage_from(pk, kk, int(float(kk["maxHp"]) * 0.25), Color("#ffd07a"), 0.0, true)
-				_burst_vfx("res://assets/sprites/vfx/cannon-blast.png", kk["pos"], 120.0, 0.4)
-				_shake(0.06)))
+			_pirate_grapple_hit(pk, kk)))
+
+## 钩索拉回的终点: 尸位方向 90 码处(clamp 进场)。纯几何, 供演出和测试共用。
+func _pirate_grapple_dest(pirate_pos: Vector2, killer_pos: Vector2) -> Vector2:
+	var dir: Vector2 = (pirate_pos - killer_pos)
+	dir = dir.normalized() if dir.length() > 0.001 else Vector2.RIGHT
+	var dest: Vector2 = pirate_pos - dir * 90.0
+	dest.x = clampf(dest.x, ARENA.position.x, ARENA.end.x)
+	dest.y = clampf(dest.y, ARENA.position.y, ARENA.end.y)
+	return dest
+
+
+## 钩索到位的实际结算(25% 击杀者最大生命·真实伤害) + 命中演出。
+## ★从演出 tween 里抽出来单独一个函数, 为的是【可测】——
+##   演出是两层 create_tween 链(甩钩 0.34s → 拉回 0.3s → callback), 场景树 tween 在无头 CI 下
+##   推进不稳(2026-07-23: verify_pirate_hook 连红三次都卡在这, 本地永远复现不出)。
+##   把数值结算和演出解耦: 演出末尾调它, 测试也直接调它, 不再等整条 tween 跑完。
+func _pirate_grapple_hit(pk, kk) -> void:
+	if not (kk is Dictionary and kk.get("alive", false)):
+		return
+	_apply_damage_from(pk, kk, int(float(kk["maxHp"]) * 0.25), Color("#ffd07a"), 0.0, true)
+	_burst_vfx("res://assets/sprites/vfx/cannon-blast.png", kk["pos"], 120.0, 0.4)
+	_shake(0.06)
+
 
 func _face_screen_dir(node: Node3D, world_from2d: Vector2, world_to2d: Vector2) -> void:   # 立牌朝相机+屏幕内指向 from→to 方向(钩爪尖朝行进)
 	if _cam == null: return

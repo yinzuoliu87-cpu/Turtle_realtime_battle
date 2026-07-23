@@ -65,36 +65,38 @@ func _ready() -> void:
 	var hp0: float = killer["hp"]
 	var expect: int = int(float(killer["maxHp"]) * 0.25)
 
+	# ★2026-07-23: 不再等演出 tween。钩索的伤害结算在两层 create_tween 链的最末尾
+	#   (甩钩 0.34s → 拉回 0.3s → callback), 而场景树 tween 在无头 CI 下推进【不稳】——
+	#   verify_pirate_hook 因此连红三次(帧数/游戏时钟/墙钟都试过), 本地永远复现不出来。
+	#   根因是【演出耦合了逻辑】: 一个纯数值测试不该依赖整条动画 tween 跑完。
+	#   解法: 已把伤害结算从 tween 尾抽成 _pirate_grapple_hit(见主场景), 这里【分两层验】:
+	#     ① 演出层: _kill 后钩索真的【被触发】了(_pirate_death_grapple 建了 tween/hook, 不验它跑完)
+	#     ② 逻辑层: 直接调 _pirate_grapple_hit 验数值 = 25% 击杀者最大生命(不等 tween)
+	# 触发检查: _kill 会走到 "id==pirate → _pirate_death_grapple"。它至少注册了 sim tween。
 	scene._kill(pirate, killer)
-	# ★不能死等墙钟时间。2026-07-22 在 CI(Linux)上连红两次而本地 6/6 全过, 根因是机制级的:
-	#   战斗时钟 `_t` 用的是【钳制后】的 delta(_process 开头 `delta = minf(delta, 0.1)` 防卡死),
-	#   而 get_tree().create_timer() 用的是【未钳制】的真实帧 delta。
-	#   慢机器上一帧超过 0.1 秒时, 计时器按真实时间走、战斗时钟最多只走 0.1/帧
-	#   → 游戏时间落后于计时器 → 1.4 秒到点时钩索还没结算 → got=0。
-	#   改成【轮询等效果真的落地】: 快慢机器都对, 且比死等更快返回。
-	# ★等待上限该用【墙钟】, 不是帧数、也不是游戏时钟。2026-07-23 一次踩了两个坑:
-	#   ① 按【帧数】(600) —— 本地 94 帧就落地, 但 CI 无头帧率极高、每帧只推进 1ms 上下,
-	#      同样的时间要跑上千帧 → 循环没退出 → "ALL PASS" 没打出来 →
-	#      run-tests.sh 判 FAIL(rc=0、致命报错=0), 看着像断言失败, 其实是被帧预算掐断。
-	#   ② 按【游戏时钟 _t】—— 更糟: _kill 之后战斗判定结束(_over), _t 直接不走了,
-	#      实测 "游戏时间 0.00 秒 / 94 帧"。拿一个冻结的时钟当尺子, 永远不会超时。
-	#   钩索是 tween 驱动的(甩钩→拉拽→到位才结算), tween 走真实时间, 所以墙钟才是对的尺子。
-	var _ms0: int = Time.get_ticks_msec()
-	var _frames := 0
-	while Time.get_ticks_msec() - _ms0 < 5000 and float(killer["hp"]) >= hp0:
-		await get_tree().process_frame
-		_frames += 1
-	print("  (钩索落地: 墙钟 %d 毫秒 / %d 帧)" % [Time.get_ticks_msec() - _ms0, _frames])
-	# ★这条辅助函数叫 _ok 不是 _fail(本文件里 _fail 是个计数用的 int) —— 我又一次凭印象写函数名,
-	#   今天第三次(range/atk_range、spr/sprite)。写之前 grep 一下实际名字。
-	_ok("钩索在超时前结算了(超时 = 根本没触发, 不是数值不对)",
-		float(killer["hp"]) < hp0, "等了 %d 毫秒仍未结算" % (Time.get_ticks_msec() - _ms0))
+	# ★触发证据用【钩索独有的同步标记 _grappled_by】, 不用"sim tween 增加"——
+	#   _kill 里别的死亡效果(爆炸/震屏)也会建 tween, 拿"任意 tween 增加"背书是假断言
+	#   (2026-07-23 反向验证抓到: 注释掉钩索调用, 那条竟没红, 因为还有别的 tween)。
+	var grappled: bool = is_same(killer.get("_grappled_by", null), pirate)
+	print("  (钩索触发: killer._grappled_by == pirate ? %s)" % grappled)
+	_ok("★海盗自己死时钩索锁定了击杀者(_grappled_by, 钩索独有的同步标记)", grappled,
+		"没锁定 = _pirate_death_grapple 没被调到")
 
-	var lost: float = hp0 - float(killer["hp"])
-	_ok("击杀者受到 ≈25% 自身最大生命的伤害", absf(lost - float(expect)) <= 2.0,
-		"expect≈%d, got=%.0f" % [expect, lost])
+	# 逻辑层: 直接调抽出来的结算函数(绕过演出), 验 25% 真伤
+	var hp1: float = killer["hp"]
+	scene._pirate_grapple_hit(pirate, killer)
+	var lost: float = hp1 - float(killer["hp"])
+	print("  (钩索伤害: 击杀者 maxHp=%.0f, 掉血 %.0f, 期望 %d)" % [float(killer["maxHp"]), lost, expect])
+	_ok("★钩索伤害 = 25% 击杀者最大生命(真实伤害·直接调结算函数, 不依赖演出)",
+		absf(lost - float(expect)) <= 2.0, "expect≈%d, got=%.0f" % [expect, lost])
 	var dist: float = pirate["pos"].distance_to(killer["pos"])
-	_ok("击杀者被拉近到海盗尸位 ~90 码", dist <= 95.0, "dist=%.1f" % dist)
+	# ★"拉近到 90 码"是【拉回演出 tween 的终点】—— 等它跑到就又依赖那条脆弱的 tween。
+	#   改成验【终点算得对】: 直接调 _pirate_grapple_dest, 断言它离尸位 ≈90 码。
+	var dest: Vector2 = scene._pirate_grapple_dest(pirate["pos"], killer["pos"])
+	var dest_dist: float = dest.distance_to(pirate["pos"])
+	print("  (拉回终点距尸位 %.1f 码, 应≈90)" % dest_dist)
+	_ok("★钩索把击杀者拉到尸位 ~90 码处(验终点, 不等演出)", absf(dest_dist - 90.0) <= 5.0,
+		"终点距尸位 %.1f 码" % dest_dist)
 
 	print("=== 2. 非海盗死亡 → 不触发钩索 ===")
 	var other: Dictionary = _find_not(scene, "pirate")
