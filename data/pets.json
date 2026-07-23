@@ -632,7 +632,7 @@
       "critBonus": 30,
       "critDmgBonus": 20,
       "armorPen": 8,
-      "brief": "忍者龟精通忍术，开局<span class=\"val-atk\">永久</span>获得 <span class=\"val-atk\">30% 暴击率</span>、<span class=\"val-atk\">20% 暴击伤害</span> 和 <span class=\"val-atk\">8 点护甲穿透</span>。<span class=\"val-normal\">冲击</span>：当附近出现可冲刺的敌人时，忍者龟自动朝最近的敌人冲刺 300 码斩击，对主目标造成 130%×攻击力、对路径上其余敌人造成 80%×攻击力 物理伤害，并将命中的敌人全部<span class=\"val-atk\">击飞 0.8 秒</span>。",
+      "brief": "忍者龟精通忍术，开局<span class=\"val-atk\">永久</span>获得 <span class=\"val-atk\">30% 暴击率</span>、<span class=\"val-atk\">20% 暴击伤害</span> 和 <span class=\"val-atk\">8 护甲穿透</span>。<span class=\"val-normal\">冲击</span>：当附近出现可冲刺的敌人时，忍者龟自动朝最近的敌人冲刺 300 码斩击，对主目标造成 130%×攻击力、对路径上其余敌人造成 80%×攻击力 物理伤害，并将命中的敌人全部<span class=\"val-atk\">击飞 0.8 秒</span>。",
       "desc": "忍者龟天生忍术精通。开局永久获得：暴击率 <span class=\"val-atk\">+30%</span>，暴击伤害 <span class=\"val-atk\">+20%</span>，护甲穿透 <span class=\"val-atk\">+8</span>。\n\n<span class=\"val-normal\">冲击</span>（自动冲刺斩·亚索E式）：290码内出现可冲的敌人时，朝最近敌做一次 <span class=\"val-atk\">固定300码</span> 位移冲刺；路径上（判定带宽62码）被冲的主目标受 130%×攻击力、其余敌受 80%×攻击力 物理伤害，并全部<span class=\"val-atk\">击飞0.8秒</span>，不加伤害递增。本体每次冲刺 0.4 秒冷却，同一敌人被冲后 10 秒内不再被冲。<span style=\"color:#888\">放技能不会被冲击打断。</span>"
     },
     "skillPool": [
@@ -693,7 +693,7 @@
         "armorPenBuff": 5,
         "armorPenTurns": 1,
         "ignoreRow": true,
-        "brief": "忍者龟准备偷袭，获得 <span class=\"val-atk\">5 点护甲穿透</span>持续 <span class=\"val-atk\">5 秒</span>，随后闪现到<span class=\"val-normal\">全场最远的敌人</span>身后背刺三段，共造成 {N:0.6667*ATK*3} 物理伤害，之后留在原地继续追砍该目标。",
+        "brief": "忍者龟准备偷袭，获得 <span class=\"val-atk\">15 护甲穿透</span>持续 <span class=\"val-atk\">5 秒</span>，随后闪现到<span class=\"val-normal\">全场最远的敌人</span>身后背刺三段，共造成 {N:0.6667*ATK*3} 物理伤害，之后留在原地继续追砍该目标。",
         "detail": "忍者龟准备偷袭，获得+15护甲穿透持续5秒，随后闪现到<span class=\"val-normal\">全场最远敌</span>身后背刺三段，造成共（200%×攻击力 = {N:0.6667*ATK*3}）物理伤害，之后留在该敌处继续追砍它"
       }
     ],
@@ -2123,7 +2123,7 @@
       "transformMrScale": 0.2,
       "transformAoeDmgScale": 1.2,
       "transformDuration": 15,
-      "brief": "熔岩龟将造成伤害的 <span class=\"val-atk\">10%</span> 与承受伤害的 <span class=\"val-atk\">10%</span> 转化为<span class=\"val-normal\">怒气</span>。怒气积满 <span class=\"val-atk\">100</span> 点时，熔岩龟变身为火山龟，转为近战形态、全属性提升并获得火山技能组，持续 <span class=\"val-atk\">15 秒</span>。",
+      "brief": "熔岩龟将造成伤害的 <span class=\"val-atk\">10%</span> 与承受伤害的 <span class=\"val-atk\">10%</span> 转化为<span class=\"val-normal\">怒气</span>。怒气积满 <span class=\"val-atk\">100</span> 时，熔岩龟变身为火山龟，转为近战形态、全属性提升并获得火山技能组，持续 <span class=\"val-atk\">15 秒</span>。",
       "desc": "熔岩龟将造成伤害的 10% 与承受伤害的 10% 转化为怒气。\n怒气满100时变身为火山龟，持续15秒，变身时获得加成：最大生命值 +（250%×攻击力({ATK}) = {H:ATK*2.5}），攻击力 +（20%×攻击力({ATK}) = {N:ATK*0.2}），护甲 +（20%×攻击力({ATK}) = {D:ATK*0.2}），魔抗 +（20%×攻击力({ATK}) = {M:ATK*0.2}）；同时转为近战形态（射程 70 码、移速 175）。\n变身演出：跃起 → 在敌人最密集处出现半径 400 码的预警圈 → 砸地：圈内敌人全部被击飞（约0.86秒滞空），各受到（120%×攻击力）魔法伤害与 <span style=\"color:#ff6600\">（0.67×攻击力）层灼烧</span>；熔岩龟每命中一名敌人，便回复 <span class=\"val-heal\">该敌人已损生命值的 8%</span>。\n15秒后变回原来的远程形态。",
       "descVolcano": "熔岩龟已变身为火山龟！\n\n已获得加成：\n最大生命值 <span class=\"val-heal\">+{H:ATK*2.5}</span>\n攻击力 <span class=\"val-atk\">+{N:ATK*0.2}</span>\n护甲 <span class=\"val-atk\">+{D:ATK*0.2}</span>\n魔抗 <span class=\"val-atk\">+{M:ATK*0.2}</span>\n\n拥有更强大的火山技能组。\n剩余 <span class=\"val-atk\">{lavaTransformTurns}</span> 秒后恢复小形态。"
     },
@@ -2782,7 +2782,7 @@
         "pierce": 0,
         "cd": 0,
         "atkScale": 1,
-        "brief": "缩头乌龟缩着壳挥出普攻，造成 {N:ATK} 物理伤害。每次普攻还使自身<span class=\"val-atk\">永久</span>获得 <span class=\"val-atk\">1</span> 点护甲和 <span class=\"val-atk\">1</span> 点魔抗，并获得 {N:ATK*0.1} 护盾，越打越硬。",
+        "brief": "缩头乌龟缩着壳挥出普攻，造成 {N:ATK} 物理伤害。每次普攻还使自身<span class=\"val-atk\">永久</span>获得 <span class=\"val-atk\">1</span> 护甲和 <span class=\"val-atk\">1</span> 魔抗，并获得 {N:ATK*0.1} 护盾，越打越硬。",
         "detail": "缩头乌龟的普攻·缩壳：对目标造成（100%×攻击力({ATK}) = {N:ATK}）物理伤害；每次普攻自身永久累积 +1护甲 +1魔抗，并获得（10%×攻击力 = {N:ATK*0.1}）护盾（缩壳越打越硬）。"
       },
       {
