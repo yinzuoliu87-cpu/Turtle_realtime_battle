@@ -48,6 +48,9 @@ func _ready() -> void:
 		_debug_arena_entry()
 	get_viewport().size_changed.connect(_on_menu_resize)
 	# (去掉全屏询问弹窗·用户2026-07-18「去掉这个全屏提示」; _maybe_ask_fullscreen 保留未调用, 需要可在设置里切全屏)
+	# ★首次打开强制新手教学(用户2026-07-23)。判据: 从没走完过教学(onboarded=false)。
+	#   ONBOARD=1/0 可强制开/关, 供开发与门禁 —— 否则本机跑一次就 onboarded=true, 再也测不到。
+	_maybe_first_launch_tutorial()
 
 
 ## 内容框居中于真实视口 (1:1 PoC FIT 居中); bg 在 self 上随视口自适应
@@ -794,10 +797,38 @@ func _on_tutorial() -> void:
 	cancel_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	bh.add_child(cancel_btn)
 	start_btn.pressed.connect(func() -> void:
-		# mode 用玩家可控的 single (含经济/商店); tutorial 标记正交 (1:1 PoC mode:'pve'+tutorial:true)
-		GameState.mode = "single"; GameState.tutorial = true; GameState.dungeon_stage = 1
-		GameState.dungeon_carry_hp = {}; GameState.dungeon_dead_ids = []
-		GameState.clear_team()
-		get_tree().change_scene_to_file("res://scenes/RealtimeBattle3D.tscn"))   # 实时版: 教程入口 → 2.5D 战斗 (统一所有战斗入口走 RealtimeBattle3D)
+		ov.queue_free()
+		_begin_tutorial(false))   # ❓ 手动重玩: 可跳过(mandatory=false)
 	cancel_btn.pressed.connect(func() -> void: ov.queue_free())
 	add_child(ov)
+
+
+## 首次打开 → 强制走教学(不弹确认框、不能跳)。已走完(onboarded)则不触发。
+func _maybe_first_launch_tutorial() -> void:
+	if OS.get_environment("ONBOARD") == "0":
+		return   # 显式关(测试/开发)
+	var force := OS.get_environment("ONBOARD") == "1"
+	# ★只在【真正作为当前主场景】时触发 —— 冒烟/门禁把主菜单当子节点 instantiate() 时,
+	#   get_tree().current_scene 不是它, 这时 change_scene 会搅乱人家的场景树(smoke 报 44 条 null)。
+	#   force(ONBOARD=1)时放行, 供门禁真跑首次流程。
+	if not force and get_tree().current_scene != self:
+		return
+	if not force and GameState.onboarded:
+		return   # 走完过, 不再强制
+	if not force and GameState.tutorial_active:
+		return   # 已经在教学里(防重入)
+	_begin_tutorial(true)   # 首次: mandatory=true(无跳过)
+
+
+## 统一的教学启动: 进沙盒第一把。mandatory=首次不能跳。
+## ★沙盒(tutorial_active): 不给奖励(_settle_season 直接 return)、固定阵容、弱对手。
+func _begin_tutorial(mandatory: bool) -> void:
+	GameState.mode = "single"
+	GameState.tutorial = true
+	GameState.tutorial_active = true
+	GameState.tutorial_stage = "match1"       # 导演: 第一把(教选龟+站位)
+	GameState.tutorial_mandatory = mandatory
+	GameState.dungeon_stage = 1
+	GameState.dungeon_carry_hp = {}; GameState.dungeon_dead_ids = []
+	GameState.clear_team()
+	get_tree().change_scene_to_file("res://scenes/RealtimeBattle3D.tscn")

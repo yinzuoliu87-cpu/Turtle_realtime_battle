@@ -25,6 +25,16 @@ var mode: String = "single"
 ##   BattleScene._ready 读取后立即清空 (一次性消费, 不污染下一局)。
 var tutorial: bool = false
 
+## ── 新手教程模式 (用户 2026-07-23: 两把战斗+中场商店/图鉴, 沙盒不给奖励) ──
+## onboarded: 是否走完过首次教学 → 存档, 只触发一次(删档才再触发)
+var onboarded: bool = false
+## tutorial_stage: 教学当前阶段(跨场景记住走到哪) —— ""=非教学 / match1 / interlude / match2 / done
+var tutorial_stage: String = ""
+## tutorial_active: 沙盒开关 —— 为真时不给奖励(不设 season_leaders)、商店免费、固定阵容+弱对手。【不进存档】(运行时态)
+var tutorial_active: bool = false
+## tutorial_mandatory: 首次强制(无跳过) / ❓重玩(可跳)。【不进存档】
+var tutorial_mandatory: bool = false
+
 ## 技能说明看【详细】还是【简明】(用户需求1 两级描述)。存这里而不是战斗场的成员变量,
 ## 是为了跨场景/跨对局记住 —— 玩家对"要不要看公式"的偏好是稳定的, 每局重设很烦。
 var skill_text_detail: bool = false
@@ -669,6 +679,7 @@ func save() -> void:
 		"gambler_wheel_stacks": gambler_wheel_stacks,
 		"lane_loadout": lane_loadout,
 		"dual_lineup": dual_lineup,
+		"onboarded": onboarded,   # 走完首次教学 → 不再触发
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f == null:
@@ -690,6 +701,7 @@ func _load() -> void:
 	if not (parsed is Dictionary):
 		return
 	var data: Dictionary = parsed
+	onboarded = data.get("onboarded", false)
 	best_dungeon_stage = data.get("best_dungeon_stage", 0)
 	coins = data.get("coins", 0)
 	battles_won = data.get("battles_won", 0)

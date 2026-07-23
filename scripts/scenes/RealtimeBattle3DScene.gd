@@ -20317,6 +20317,11 @@ func _check_end() -> void:
 # 赛季结算 (1:1 搬自 2D RealtimeBattleScene._settle_season): 闭环把胜负喂回 GameState 养成
 func _settle_season(won: bool) -> void:
 	var gs = get_node_or_null("/root/GameState")
+	# ★新手教程沙盒(用户2026-07-23:「不获得任何奖励」): 直接不喂赛季。
+	#   放最前面 —— 下方所有 season_total_battles++/coins+= 都在这行之后, 一个都到不了。
+	if gs != null and bool(gs.get("tutorial_active")):
+		_had_season = false
+		return
 	# demo / 无赛季态: 玩家没配 season_leaders → 不喂赛季 (只显横幅)
 	_had_season = gs != null and (gs.get("season_leaders") is Array) and (gs.get("season_leaders") as Array).size() >= 1
 	if not _had_season:
