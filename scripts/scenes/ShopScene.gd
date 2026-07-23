@@ -13,6 +13,7 @@ const P2 = preload("res://scripts/engine/phase2_config.gd")
 
 var _offer: Array = []
 var _rng := RandomNumberGenerator.new()
+var _tut_coin: Label = null   # 教学高亮"深海币"锚点(每次 _rebuild 重设)
 
 func _ready() -> void:
 	var _td = get_node_or_null("/root/TutorialDirector")
@@ -27,7 +28,9 @@ func _ready() -> void:
 	if not _restore_offer():
 		_roll()
 	_rebuild()
-	if _td != null: _td.attach_next_button(self, "shop")   # 教学: 下一站→背包(复用上面的 _td)
+	if _td != null:
+		_td.attach_guide(self, "shop")          # 分步引导(带高亮: 币/货架)
+		_td.attach_next_button(self, "shop")    # 右上"去背包"推进钮(引导最后一步无高亮→可点)
 
 ## 从 GameState 恢复货架。成功返回 true; 货架不存在/已过期(打过新战斗)返回 false。
 func _restore_offer() -> bool:
@@ -125,6 +128,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _rebuild() -> void:
 	for c in get_children():
+		if c.is_in_group("tut_overlay"):
+			continue   # ★教学浮层(引导/下一站按钮)不能随重建销毁 —— 买装备会触发 _rebuild
 		c.visible = false
 		c.queue_free()
 	var bg := ColorRect.new(); bg.color = Color("#0a1622")
@@ -147,6 +152,7 @@ func _rebuild() -> void:
 	coin.add_theme_font_size_override("font_size", 24); coin.add_theme_color_override("font_color", Color("#5fd0e0"))
 	coin.position = Vector2(W - 280, 30); coin.size = Vector2(252, 34)
 	coin.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT; add_child(coin)
+	_tut_coin = coin   # 教学高亮"币"锚点
 	# 大轮等级 + 买经验 (设计§五: 4费=4XP, 升级→出货档/装备槽涨)
 	var lv := Label.new()
 	lv.text = "大轮 Lv %d  (XP %d/%d)" % [int(GameState.season_level), int(GameState.season_xp), P2.xp_to_next(int(GameState.season_level))]
@@ -390,3 +396,16 @@ func _on_refresh() -> void:
 	_roll()
 	GameState.save()
 	_rebuild()
+
+
+## 新手引导高亮锚点(用户2026-07-23 D)。名字→屏幕矩形; 解析不到返回空 Rect2(本步不挖洞)。
+func _tutorial_anchor(anchor: String) -> Rect2:
+	match anchor:
+		"coins":   # 深海币显示
+			if _tut_coin != null and is_instance_valid(_tut_coin):
+				return _tut_coin.get_global_rect()
+		"offer":   # 货架卡片区(5列×2行, 与 _rebuild 同口径 gx=80 gy=150)
+			var w: float = 5.0 * (SLOT_W + 24.0)
+			var h: float = 2.0 * (SLOT_H + 28.0)
+			return Rect2(80.0, 150.0, w, h)
+	return Rect2()

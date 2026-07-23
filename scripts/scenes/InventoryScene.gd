@@ -28,7 +28,9 @@ func _ready() -> void:
 		GameState.dual_lineup = {}
 	_rebuild()
 	var _td = get_node_or_null("/root/TutorialDirector")
-	if _td != null: _td.attach_next_button(self, "inventory")   # 教学: 下一站→图鉴
+	if _td != null:
+		_td.attach_guide(self, "inventory")        # 分步引导(带高亮: 战场/背包)
+		_td.attach_next_button(self, "inventory")  # 右上"看看图鉴"推进钮
 
 func _inject_demo_inventory() -> void:   # 仅 INV_DEMO 环境: 填装备看满仓布局(不调 save)
 	GameState.season_level = 8
@@ -54,6 +56,8 @@ func _unhandled_input(event: InputEvent) -> void:
 func _rebuild() -> void:
 	_vw = maxf(W, get_viewport_rect().size.x)   # 真实视口宽(手机expand后~1560)→顶栏/背包按此铺开
 	for c in get_children():
+		if c.is_in_group("tut_overlay"):
+			continue   # ★教学浮层(引导/下一站按钮)不随重建销毁 —— 装/卸装备会触发 _rebuild
 		c.visible = false   # 立即隐藏避免与新节点重叠 (queue_free 延到帧末, 不在信号中即时free防崩)
 		c.queue_free()
 	var bg := ColorRect.new()
@@ -899,3 +903,14 @@ func _toast(msg: String) -> void:
 	tw.tween_interval(1.4)
 	tw.tween_property(l, "modulate:a", 0.0, 0.6)
 	tw.tween_callback(l.queue_free)
+
+
+## 新手引导高亮锚点(用户2026-07-23 D)。名字→屏幕矩形; 与 _build_lineup/_build_bench 同口径常量算。
+func _tutorial_anchor(anchor: String) -> Rect2:
+	match anchor:
+		"lanes":     # 上/下战场两条带(教"调站位")
+			var box_span: float = 3.0 * UBOX_W + 2.0 * UBOX_GAP
+			return Rect2(30.0, 84.0, box_span + 20.0, 290.0)
+		"backpack":  # 装备背包区(教"装装备")
+			return Rect2(40.0, 386.0, _vw - 80.0, 244.0)
+	return Rect2()

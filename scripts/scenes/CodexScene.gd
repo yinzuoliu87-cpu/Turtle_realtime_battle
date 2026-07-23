@@ -286,7 +286,18 @@ func _ready() -> void:
 		start_tab = OS.get_environment("SHOT_TAB")
 	_switch_tab(start_tab)
 	var _td = get_node_or_null("/root/TutorialDirector")
-	if _td != null: _td.attach_next_button(self, "codex")   # 教学: 下一站→第二把战斗
+	if _td != null:
+		_td.attach_guide(self, "codex")        # 分步引导(带高亮: 分类页签)
+		_td.attach_next_button(self, "codex")  # 右上"打第二把"推进钮
+
+
+## 新手引导高亮锚点(用户2026-07-23 D)。名字→屏幕矩形; 解析不到返回空 Rect2(本步不挖洞)。
+func _tutorial_anchor(anchor: String) -> Rect2:
+	match anchor:
+		"tabs":   # 顶部分类页签栏(龟/装备/羁绊/状态/规则)
+			if tab_bar != null and is_instance_valid(tab_bar):
+				return tab_bar.get_global_rect()
+	return Rect2()
 
 
 # ── 背景铺满 + 内容居中 (1:1 PoC menu-bg-active 边距 + 1280×720 画布居中) ──

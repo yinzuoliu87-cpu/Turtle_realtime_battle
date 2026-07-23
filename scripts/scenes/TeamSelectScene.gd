@@ -144,10 +144,12 @@ func _ready() -> void:
 	_refresh_all()
 	if _roster_locked:
 		_flash_status("🔒 本大轮阵容已锁定 · 点龟查看并调整 3选1 技能 · 确认出战")
-	# 新手引导(用户需求1): TutorialGuide.gd 143 行早就写完了, 但【全项目零引用】——
-	#   主菜单「❓教程」只设了 GameState.tutorial=true 就进普通战斗, 没人读这个 flag。
-	if GameState.tutorial:
-		TutorialGuide.attach(self, "team_select")
+	# 新手引导: 教学模式挂分步引导(带高亮锚点)。导演按当前阶段选步骤集 + 是否 mandatory。
+	var _tdg = get_node_or_null("/root/TutorialDirector")
+	if _tdg != null and _tdg.is_active():
+		_tdg.attach_guide(self, "team_select")
+	elif GameState.tutorial:
+		TutorialGuide.attach(self, "team_select")   # 兜底(旧 tutorial=true 路径)
 	# 窗口 resize/全屏/最大化 → 重算背景 + 按新尺寸重建浮层 (PoC fitSelectStage 绑 resize; 之前缺 → 铺不满根因)
 	get_viewport().size_changed.connect(_on_resize)
 	if OS.has_environment("TSEDIT"):
@@ -2337,3 +2339,33 @@ func _skill_energy(sk: Dictionary) -> int:
 	if ec != null:
 		return int(round(float(ec)))
 	return int(round(SkillEnergy.cost_of(str(sk.get("type", "")))))
+
+
+## 新手引导高亮锚点(用户2026-07-23 D): 把锚点名换成屏幕矩形, TutorialGuide 据此挖洞高亮。
+## 解析不到(控件还没建)→返回空 Rect2, TutorialGuide 本步不挖洞(见 _apply_highlight)。
+func _tutorial_anchor(anchor: String) -> Rect2:
+	match anchor:
+		"roster":   # 底部 3 龟卡网格(教学只显 3 只)
+			if _grid_flow != null and is_instance_valid(_grid_flow):
+				return _grid_flow.get_global_rect()
+		"slots":    # 顶部出战阵容槽(3 格)
+			return _tut_union_rect(_slot_nodes)
+		"confirm":  # 确认出战钮
+			if _start_btn != null and is_instance_valid(_start_btn):
+				return _start_btn.get_global_rect()
+	return Rect2()
+
+## 一组 Control 的全局矩形并集(空/无效的跳过)。
+func _tut_union_rect(nodes: Array) -> Rect2:
+	var r := Rect2()
+	var first := true
+	for n in nodes:
+		if n is Control and is_instance_valid(n):
+			var gr: Rect2 = (n as Control).get_global_rect()
+			if gr.size.x <= 0.0 or gr.size.y <= 0.0:
+				continue
+			if first:
+				r = gr; first = false
+			else:
+				r = r.merge(gr)
+	return r

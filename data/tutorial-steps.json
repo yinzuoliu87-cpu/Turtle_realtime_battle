@@ -1,23 +1,50 @@
 {
-  "_note": "新手引导步骤。由 scripts/scenes/TutorialGuide.gd 读取。key = 场景标识。",
-  "_schema": "每步: text(必填, 支持 <b>) / anchor(top|bottom, 默认 top) / advanceOn(可选: 等这个事件才前进, 由场景调 notify() 触发)",
+  "_note": "新手引导步骤。由 scripts/scenes/TutorialGuide.gd 读取; 教学导演 TutorialDirector.steps_key_for 决定当前阶段用哪套。",
+  "_schema": "每步: text(必填, 支持 <b>) / anchor(top|bottom, 默认 top) / highlight(可选: 场景 _tutorial_anchor(name) 认得的锚点名, 挖洞高亮该控件) / advanceOn(可选: 等这个事件才前进, 场景调 notify() 触发)",
+  "_anchors": {
+    "team_select": "roster(3龟卡) / slots(阵容槽) / confirm(确认出战钮)",
+    "place": "field(左半场) / go_button(开打钮)",
+    "shop": "offer(货架) / coins(深海币)",
+    "inventory": "lanes(上下战场) / backpack(装备背包)",
+    "codex": "tabs(分类页签)"
+  },
 
   "team_select": [
     {
-      "text": "欢迎来到<b>斗龟场</b>。先在这里<b>挑选你的出战龟</b> —— 点头像选中，再点场地摆位。",
+      "text": "欢迎来到<b>斗龟场</b>！先在这里挑选你的出战龟。教学里给你三只上手最简单的 —— 就用它们。",
+      "anchor": "top",
+      "highlight": "roster"
+    },
+    {
+      "text": "点龟头像能在右侧看它的<b>属性和技能</b>。把鼠标停在技能图标上看说明；<b>数值是彩色的</b>：红=物理、蓝=魔法、白=真伤。",
       "anchor": "top"
     },
     {
-      "text": "把鼠标停在龟的<b>技能图标</b>上，能看到这个技能干什么。<b>数值是彩色的</b>：红=物理、蓝=魔法、白=真伤、黄=护甲。",
+      "text": "上面这三格是你的<b>出战阵容</b>。三只龟已经帮你放好了 —— 记住这个位置，一会儿战场上还能细调站位。",
+      "anchor": "top",
+      "highlight": "slots"
+    },
+    {
+      "text": "准备好了就点<b>「确认出战」</b>，进入第一场战斗。",
+      "anchor": "bottom",
+      "highlight": "confirm"
+    }
+  ],
+
+  "place": [
+    {
+      "text": "开打<b>之前</b>，你可以<b>摆位</b>：把自己的龟拖到<b>左半场</b>任意位置。这就是「站位」。",
+      "anchor": "top",
+      "highlight": "field"
+    },
+    {
+      "text": "<b>前排扛伤、后排输出</b> —— 谁站前面谁先挨打。摆位决定谁先被集火，很关键。",
       "anchor": "top"
     },
     {
-      "text": "阵容里<b>前排扛伤、后排输出</b>。摆位决定谁先被打到，不只是站得好看。",
-      "anchor": "top"
-    },
-    {
-      "text": "选好了就点<b>「⚔ 开始冒险」</b>。战斗全自动，你的决策全在开打之前。",
-      "anchor": "bottom"
+      "text": "摆好了就点<b>「开打」</b>。战斗全自动，你的所有决策都在开打之前。",
+      "anchor": "bottom",
+      "highlight": "go_button"
     }
   ],
 
@@ -36,8 +63,54 @@
       "anchor": "top"
     },
     {
-      "text": "打完会结算奖励。之后去<b>商店</b>买装备、在<b>背包</b>里装到龟身上 —— 变强主要靠这一步。",
+      "text": "打完会结算。接下来带你去<b>商店</b>买装备、在<b>背包</b>里装到龟身上 —— 变强主要靠这一步。",
       "anchor": "bottom"
+    }
+  ],
+
+  "shop": [
+    {
+      "text": "这是<b>商店</b>。用<b>深海币</b>买装备，装备是变强的关键。教学给了你一些币。",
+      "anchor": "top",
+      "highlight": "coins"
+    },
+    {
+      "text": "货架上<b>点一张卡就买下</b>，装备会进你的背包。挑一件便宜的买来试试。",
+      "anchor": "top",
+      "highlight": "offer"
+    },
+    {
+      "text": "买好了，点右上角<b>「去背包」</b>，把装备装到龟身上。",
+      "anchor": "bottom"
+    }
+  ],
+
+  "inventory": [
+    {
+      "text": "这是<b>背包 / 出战配置</b>。上面是<b>上战场 / 下战场</b>两条战线，每只龟身上有装备槽。",
+      "anchor": "top",
+      "highlight": "lanes"
+    },
+    {
+      "text": "下面是你的<b>装备背包</b>。<b>点一件装备、再点一只龟的空槽</b>，就装上了。拖动龟头像还能<b>换上下战场</b>调站位。",
+      "anchor": "bottom",
+      "highlight": "backpack"
+    },
+    {
+      "text": "装好、位置也调顺了，点右上角<b>「看看图鉴」</b>。",
+      "anchor": "top"
+    }
+  ],
+
+  "codex": [
+    {
+      "text": "这是<b>图鉴</b>。所有的龟、装备、羁绊、状态、规则都能在这查 —— 不确定某个东西干嘛用，就来这里翻。",
+      "anchor": "top",
+      "highlight": "tabs"
+    },
+    {
+      "text": "看完了，点右上角<b>「打第二把」</b>，带着刚装好的装备再打一场，教学就结束啦。",
+      "anchor": "top"
     }
   ]
 }

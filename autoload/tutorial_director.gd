@@ -163,6 +163,7 @@ func attach_next_button(host: CanvasItem, here: String) -> void:
 	layer.layer = 7000
 	layer.add_child(btn)
 	host.add_child(layer)
+	layer.add_to_group("tut_overlay")   # ★场景 _rebuild 要跳过本组, 否则"下一站"按钮被销毁(买装备后就没了)
 
 
 ## 只读: 从 here 出发下一站是哪(不改 stage)。给 attach_next_button 显示用。
@@ -175,6 +176,19 @@ func _peek_next(here: String) -> String:
 		"codex": return BATTLE
 		"battle": return SHOP if st == "match1" else MAIN_MENU
 	return MAIN_MENU
+
+
+## 一行接入某场景的分步引导: 取当前阶段该用的 key + 是否 mandatory, 挂 TutorialGuide。
+## 非教学 / 本阶段无引导 → 返回 null(什么都不挂)。host 需实现 _tutorial_anchor(name)->Rect2 才有高亮。
+func attach_guide(host: Node, scene_id: String) -> Node:
+	if not is_active():
+		return null
+	var key := steps_key_for(scene_id)
+	if key == "":
+		return null
+	var mandatory: bool = bool(GameState.get("tutorial_mandatory"))
+	var TG = load("res://scripts/scenes/TutorialGuide.gd")
+	return TG.attach(host, key, Callable(), mandatory)
 
 
 ## 当前阶段该挂哪套引导步骤(TutorialGuide 的 key)。空=这场景本阶段没有引导。
