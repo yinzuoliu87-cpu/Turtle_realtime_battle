@@ -59,6 +59,10 @@ python tools/hp_staleness_check.py     # 云端同步新鲜度
 游戏内显示（主菜单右下角）**从 `ProjectSettings` 读**，不许写死 —— 门禁会扫硬编码字面量。
 版本号的全部价值在于**测试者报 bug 时能说清是哪个版本**，四处不一致就说不清了。
 
+**每次升版本号后，给那个提交打 git tag**（`git tag -a v0.12.1 <提交> -m "..."` 然后 `git push origin --tags`）。
+tag 让"回到某个版本"从翻提交号变成 `git checkout v0.11.0`，也是 GitHub Release 的锚点
+（Release 能把 IPA 永久挂上去，不受 artifact 14 天限制）。2026-07-23 补齐了 v0.9.3~v0.12.1 全部 21 个 tag。
+
 ---
 
 ## 3. 本项目特有的地雷
