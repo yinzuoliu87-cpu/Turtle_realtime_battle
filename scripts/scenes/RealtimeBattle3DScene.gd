@@ -20459,10 +20459,13 @@ func _show_banner(won: bool) -> void:
 	# ★教学模式: 结算按钮走导演(战斗1打完→商店, 战斗2打完→结束回菜单), 而不是直接返回菜单。
 	var _td = get_node_or_null("/root/TutorialDirector")
 	if _td != null and _td.is_active():
-		var _dest: String = _td.next_scene_after("battle")
-		var _label: String = "去商店 逛逛 ▶" if _dest.ends_with("Shop.tscn") else ("完成教学 ✓" if _dest.ends_with("MainMenu.tscn") else "继续 ▶")
+		# ★文字用 _peek_next【只读】—— 用 next_scene_after 会在【建按钮时】就推进 stage,
+		#   导致战斗1一结算 stage 就跳到 shop, 玩家还没点。点了才 next_scene_after 真推进。
+		#   (2026-07-23 自动跑一遍抓到: 战斗1→MainMenu、收尾没关沙盒, 就是这个副作用。)
+		var _peek: String = _td._peek_next("battle")
+		var _label: String = "去商店 逛逛 ▶" if _peek.ends_with("Shop.tscn") else ("完成教学 ✓" if _peek.ends_with("MainMenu.tscn") else "继续 ▶")
 		btn_row.add_child(_make_result_btn(_label, Color("#ffc23c"), Color("#3a1f00"),
-			func() -> void: get_tree().change_scene_to_file(_dest)))
+			func() -> void: get_tree().change_scene_to_file(_td.next_scene_after("battle"))))
 	else:
 		btn_row.add_child(_make_result_btn("🏠 返回菜单", Color("#5aa0d8"), Color("#04121e"),
 			func() -> void: get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")))

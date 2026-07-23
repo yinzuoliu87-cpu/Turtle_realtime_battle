@@ -45,6 +45,18 @@ func _ready() -> void:
 	_ok("★★教学结束置 onboarded=true(不再触发)", GameState.onboarded == true)
 	_ok("★★教学结束关沙盒(tutorial_active=false)", GameState.tutorial_active == false)
 
+	# ★attach_next_button 不能有副作用: 建按钮时 stage 不能变(2026-07-23 bug: 建按钮时
+	#   调了 next_scene_after 推进了 stage → 战斗1直接→MainMenu、收尾没关沙盒)。
+	GameState.tutorial_active = true
+	GameState.tutorial_stage = "shop"
+	var host := Control.new(); add_child(host)
+	var stage_before: String = td.stage()
+	td.attach_next_button(host, "shop")
+	print("  [实测] attach_next_button 前 stage=%s, 后 stage=%s" % [stage_before, td.stage()])
+	_ok("★★建'下一站'按钮【不改 stage】(否则流程会串)", td.stage() == stage_before,
+		"stage 从 %s 变成了 %s" % [stage_before, td.stage()])
+	host.queue_free()
+
 	# 固定阵容 + 弱对手
 	_ok("★固定阵容非空(用户: 固定阵容)", td.FIXED_TEAM.size() >= 1)
 	_ok("★弱对手比玩家少(必赢)", td.WEAK_FOE.size() < td.FIXED_TEAM.size(), "%d vs %d" % [td.WEAK_FOE.size(), td.FIXED_TEAM.size()])

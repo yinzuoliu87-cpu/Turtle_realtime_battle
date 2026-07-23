@@ -72,10 +72,10 @@ func _finish() -> String:
 func attach_next_button(host: CanvasItem, here: String) -> void:
 	if not is_active():
 		return
-	var dest: String = next_scene_after(here)
-	# next_scene_after 已经推进了 stage —— 这里只建按钮, 点了才 change_scene。撤回推进:
-	# ★不能让"建按钮"这个副作用改状态。改用只读的 _peek_next。
-	dest = _peek_next(here)
+	# ★只读 _peek_next(不推进 stage) —— 建按钮不能有副作用。
+	#   2026-07-23 bug: 第一版这里调了 next_scene_after(会推进 stage), 导致战斗1→MainMenu、
+	#   收尾 tutorial_active 没关。建按钮时【绝不改状态】, 只有点了才推进。
+	var dest: String = _peek_next(here)
 	var label: String = {
 		"shop": "装备买好了 → 去背包",
 		"inventory": "装好了 → 看看图鉴",
