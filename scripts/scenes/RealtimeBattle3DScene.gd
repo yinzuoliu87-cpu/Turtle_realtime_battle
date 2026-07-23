@@ -978,8 +978,9 @@ func _build_tilemap_decor() -> void:
 	var A := ARENA
 	var cx := A.position.x + A.size.x * 0.5
 	var cy := A.position.y + A.size.y * 0.5
-	# ★点2(用户2026-07-23: 测试反馈太密+很多相同装饰): 7种均匀(去掉原glow-coral/glow-kelp各2遍的人为加权刷屏)
-	var kelp := ["deco_kelp", "deco_coral_pink", "deco_coral_orange", "deco_rocks", "glow-kelp", "glow-anem", "glow-coral"]
+	# ★点2(用户2026-07-23: 测试反馈太密+很多相同装饰): 去掉原glow-coral/glow-kelp各2遍的人为加权刷屏,
+	#   并补 PixelLab 生成的 4 种新装饰(扇贝/石头/海星/海草·壳石生植不同类)增加种类, 现共 11 种。
+	var kelp := ["deco_kelp", "deco_coral_pink", "deco_coral_orange", "deco_rocks", "deco_scallop", "deco_boulder", "deco_starfish", "deco_seagrass", "glow-kelp", "glow-anem", "glow-coral"]
 	var mg := 200.0   # ★装饰带收窄 288→200(点2: 太密)
 	var step := 120.0   # ★网格放大 80→120(点2: 稀疏)
 	var placed: Array = []   # ★防扎堆: 记已放点, 太近(<70px)跳过(点2: 原无间距检查→成簇)
