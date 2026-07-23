@@ -28,17 +28,49 @@ VERIFIED_FAR = {
     ('p2eq_058', '70/85/100'):  '_tick_eq_turret 携带者存活时炮台双抗',
     ('p2eq_058', '2/2/3'):      '_turret_on_shot 每次普攻永久+护穿',
     ('p2eq_058', '20/30/40'):   '_tick_eq_turret 携带者400码内攻速加成',
+    # ── 2026-07-23 拆回合制 P2RT 后新增(逐条核实数值在实时对应装备的效果函数里·见工具 verify_far) ──
+    ('p2eq_007', '0.5/0.8/1.1'): '_eq_broadsword 锈蚀阔剑 [0.5,0.8,1.1]',
+    ('p2eq_007', '20/35/60'):    '_eq_broadsword 锈蚀阔剑 [20,35,60]',
+    ('p2eq_007', '50/75/100'):   '_eq_broadsword 锈蚀阔剑 [0.5,0.75,1.0]×100',
+    ('p2eq_008', '8/12/18'):     '_step_projectiles 珊瑚刺%maxHP [0.08,0.12,0.18]',
+    ('p2eq_008', '1/1.2/1.5'):   '_step_projectiles 珊瑚刺 [1.0,1.2,1.5]',
+    ('p2eq_009', '0.5/0.7/0.9'): '_eq_wide_blade 宽刃弯刀 [0.5,0.7,0.9]',
+    ('p2eq_009', '2/2.5/3'):     '_eq_wide_blade 宽刃弯刀 [2.0,2.5,3.0]',
+    ('p2eq_009', '30/45/60'):    '_eq_wide_blade 宽刃弯刀 [30,45,60]',
+    ('p2eq_022', '40/60/100'):   '_fuel_bottle_hit 余烬燃油瓶 [40,60,100]',
+    ('p2eq_022', '10/15/20'):    '_fuel_bottle_hit 余烬燃油瓶 [0.10,0.15,0.20]',
+    ('p2eq_022', '20/35/60'):    '_fuel_bottle_hit 余烬燃油瓶 [20,35,60]',
+    ('p2eq_024', '0.7/1.0/2.0'): '_dragon_hit_enemy/_dragon_heal_ally 龙蛋 [0.7,1.0,2.0]',
+    ('p2eq_024', '50/120/1500'): '_dragon_hit_enemy 龙蛋魔法伤 [50,120,1500]',
+    ('p2eq_024', '70/150/1000'): '_dragon_heal_ally 龙蛋回血 [70,150,1000]',
+    ('p2eq_043', '60/110/200'):  '_eq_water_wave 海浪护符 [60,110,200]',
+    ('p2eq_043', '2/3/5'):       '_eq_water_wave 海浪护符 [2,3,5]',
+    ('p2eq_043', '40/95/120'):   '_eq_water_wave 海浪护符 [40,95,120]',
+    ('p2eq_057', '2/3/7'):       '_eq_sniper 狙击长管 [2,3,7]',
 }
 WIN = 2500
 
 eq = json.load(io.open('data/phase2-equipment.json', encoding='utf-8'))
 eq = eq if isinstance(eq, list) else eq.get('equipment', eq.get('items'))
 code = io.open('scripts/scenes/RealtimeBattle3DScene.gd', encoding='utf-8').read() \
-     + '\n@@@\n' + io.open('scripts/engine/phase2_equip_runtime.gd', encoding='utf-8').read()
+     + '\n@@@\n' + io.open('scripts/engine/equip_stats.gd', encoding='utf-8').read()
+# 2026-07-23: 装备【效果】数值只在 RealtimeBattle3DScene(实时实装)对账; equip_stats 只有属性STATS(无[N,N,N]效果三元组)。
+# 原来还读回合制 phase2_equip_runtime.gd 的效果数组 —— 那是死代码, 让文案能匹配到游戏不用的旧数值(分歧源), 已去掉。
 
 NUM = r'-?\d+(?:\.\d+)?'
 ARRS = [(m.start(), tuple(float(g) for g in m.groups()))
         for m in re.finditer(r'\[\s*(%s)\s*,\s*(%s)\s*,\s*(%s)\s*\]' % (NUM, NUM, NUM), code)]
+
+# ── id → 效果函数 锚点 (2026-07-23 拆掉回合制 P2RT 后新增) ──
+# 回合制 P2RT 把 "p2eq_NNN" 和它的效果数组写在一起(近), 实时版则是: id 在 match 分派表里、
+# 数值在几十行外的 _eq_<名> 函数体内(远)。只锚 id 字符串会把这些逐星数组误判成"远处命中"。
+# 于是把每件装备【分派到的效果函数定义处】也当作它的锚点 → 数值就落在 WIN 内。
+_ID2FN = {}
+for _m in re.finditer(r'"(p2eq_\d+)"\s*:\s*(_\w+)\s*\(', code):
+    _ID2FN.setdefault(_m.group(1), set()).add(_m.group(2))
+_FNDEF = {}
+for _m in re.finditer(r'\bfunc\s+(_\w+)\s*\(', code):
+    _FNDEF[_m.group(1)] = _m.start()
 
 def close(a, b):
     return abs(a - b) <= max(1e-6, abs(b) * 1e-6)
@@ -48,6 +80,9 @@ total = 0
 for e in eq:
     eid = e['id']
     anchors = [m.start() for m in re.finditer(re.escape('"%s"' % eid), code)]
+    for _fn in _ID2FN.get(eid, ()):        # 该装备分派到的效果函数定义处也算锚点
+        if _fn in _FNDEF:
+            anchors.append(_FNDEF[_fn])
     trips = set(re.findall(r'(\d+(?:\.\d+)?)/(\d+(?:\.\d+)?)/(\d+(?:\.\d+)?)', str(e.get('effectDesc1', ''))))
     for t in trips:
         total += 1
