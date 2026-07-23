@@ -324,7 +324,7 @@ const HOOK_PULL := 70.0          # 每秒朝大师方向拖拽(码/秒)
 const HOOK_VULN_MULT := 1.25     # 被钩4秒内受到伤害 ×1.25
 const VirtualJoystick := preload("res://scripts/scenes/virtual_joystick.gd")
 const SpellDisc := preload("res://scripts/scenes/spell_disc.gd")
-const HOOK_ICON := "res://assets/sprites/vfx/trainer-hook.png"
+const HOOK_ICON := "res://assets/sprites/vfx/hook-skill-icon.png"   # 圆盘技能图标(精修·带链条+青芒宝石); 飞行弹体仍用 trainer-hook.png
 ## 立绘: 用户要「像素风的冒险家」, 形象未定 —— 有真图就用, 没有则退回占位并 warning。
 ## ★不做成静默兜底: 占位图和最终形象长得完全不一样, 悄悄用会让人以为已经做完了。
 const TRAINER_SPRITE := "res://assets/sprites/pets/trainer.png"
