@@ -3377,7 +3377,7 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		# 永久护盾 / 控制 / 旧式灼烧(保留兼容) ----
 		"shield": 0.0, "stun_until": 0.0, "slow_until": 0.0,
 		# 层数式 DoT (灼烧/中毒/流血, 1:1 dot.gd 层数衰减模型) ----
-		"dot_stacks": {}, "_dottimer": 0.0, "dot_src": {}, "true_fire_until": 0.0,
+		"dot_stacks": {}, "_dottimer": 0.0, "dot_src": {}, "true_fire_until": 0.0, "_dot_float": {},
 		# 效果积木状态 ----
 		"buffs": [], "dots": [],
 		"taunt_until": 0.0, "taunt_by": null,
@@ -4233,6 +4233,7 @@ func _process(delta: float) -> void:
 	_update_ninja_marks()          # 忍者冲击标记(纯视觉·用户2026-07-12): 未被冲击敌头顶挂锁定标记, 缩地闪到→碎裂, 10s冷却结束→重现
 	_tick_ink_links()              # 线条·连笔连接线跟随双方脚底(到期/死亡断链)
 	_update_overlay()
+	_update_dot_floats()           # DOT累积数字(点1): 跟随头顶+左右错开; 桶结束→弹射跳走
 
 # ═══════════════════════════════════════════════════════════════════
 #  沙漏059 JoJo时停 — 触发/蓄力/冻结/恢复/视觉 (登场10s → 蓄力1s → 时停4/10/30s, 一场一次)
@@ -5006,7 +5007,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 			if float(dot["_acc"]) >= 1.0:
 				var _cd_dmg: int = int(floor(float(dot["_acc"])))
 				dot["_acc"] = float(dot["_acc"]) - float(_cd_dmg)
-				_apply_damage(u, _cd_dmg, Color("#b48cff"), dot.get("src", null), "tru")
+				_apply_damage(u, _cd_dmg, Color("#b48cff"), dot.get("src", null), "tru", false, true, true)
 				if not u["alive"]:
 					return
 			keep.append(dot)
@@ -8991,7 +8992,7 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 	return d
 
 
-func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: String = "dot", is_self: bool = false) -> void:
+func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: String = "dot", is_self: bool = false, dot_accum: bool = false, mute_sfx: bool = false) -> void:
 	if u.get("_assembling", false):
 		return   # 机甲组装期免疫一切伤害。★这条路径(DoT/真伤)原先没有这个闸, 只有 _apply_damage_from 有 → DoT 能打穿组装免疫(2026-07-19)
 	if _sd_stacks > 0:
@@ -9024,12 +9025,17 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: Stri
 	if src is Dictionary and src.get("alive", false) and not is_same(src, u):
 		src["_st_dealt"] = int(src.get("_st_dealt", 0)) + dmg
 		_st_add_type(src, "_st_dealt_by_type", bucket, dmg)
-	_float_text(u["pos"] + Vector2(randf_range(-26.0, 26.0), -40.0 + randf_range(-10.0, 6.0)), str(dmg), col)   # 抖开: 多段/AOE 出伤飘字不重叠成糊团
-	# §AUDIO: 无来源伤害也出命中音 (非暴击); 护盾破→shield-break
-	if shield_before > 0.0 and u["shield"] <= 0.0:
-		_sfx_shield_break()
+	# ★DOT 累积模式(点1): 不跳小飘字, 累加进头顶【按伤害类型桶】的常驻数字(灼烧+中毒同 mag 桶)。
+	if dot_accum:
+		_dot_accumulate(u, bucket, dmg)
 	else:
-		_sfx_hit(false)
+		_float_text(u["pos"] + Vector2(randf_range(-26.0, 26.0), -40.0 + randf_range(-10.0, 6.0)), str(dmg), col)   # 抖开: 多段/AOE 出伤飘字不重叠成糊团
+	# §AUDIO: 无来源伤害也出命中音 (非暴击); 护盾破→shield-break。mute_sfx=诅咒 tick 静音(用户2026-07-23)
+	if not mute_sfx:
+		if shield_before > 0.0 and u["shield"] <= 0.0:
+			_sfx_shield_break()
+		else:
+			_sfx_hit(false)
 	if u["hp"] <= 0.0 and u["alive"]:
 		# ★带上 src: 原为 _kill(u) 无凶手 → DOT 击杀【不算击杀数】, 且暴君之牙处决回血这类
 		#   on-kill 装备钩子全不触发(对比另一条路 _kill(u, src))。2026-07-22 修。
@@ -9555,6 +9561,103 @@ func _dmg_float_step(el: float, node_fl: Control, base: Vector2, jump_x: float, 
 	node_fl.scale = Vector2(sc, sc)
 	node_fl.position = base + Vector2(px, py)
 	node_fl.modulate.a = 1.0 if el < fade_start else maxf(0.0, 1.0 - (el - fade_start) / (total_dur - fade_start))
+
+# ══════════════════════════════════════════════════════════════
+# §DOT-FLOAT 累积伤害数字 (用户2026-07-23 点1)
+# DOT(灼烧/中毒/流血/诅咒)不再每 tick 跳一个小数字, 而是【按伤害类型桶】各维持一个常驻头顶数字,
+# 每 tick 累加(总数越变越大、字号随量·1→2→3→4), 该桶所有 DOT 结束才触发弹射跳走(复用伤害飘字动画)。
+# 分桶=伤害类型: mag(灼烧+中毒同桶·蓝) / phy(流血·红) / tru(诅咒+真火·紫)。多桶并存左右错开。
+# ══════════════════════════════════════════════════════════════
+func _dot_bucket_col(bucket: String) -> Color:
+	match bucket:
+		"mag": return Color("#4dabf7")
+		"phy": return Color("#ff6b6b")
+		"tru": return Color("#b48cff")
+	return Color("#ffffff")
+
+## 该桶是否还有活着的 DOT 在供养(结束检测)。mag=灼烧(非真火)或中毒; phy=流血; tru=真火灼烧或任一 flat DoT(诅咒)。
+func _dot_bucket_active(u: Dictionary, bucket: String) -> bool:
+	var ds: Dictionary = u.get("dot_stacks", {})
+	var true_fire: bool = _t < float(u.get("true_fire_until", 0.0))
+	match bucket:
+		"phy":
+			return int(ds.get("bleed", 0)) > 0
+		"mag":
+			return (int(ds.get("burn", 0)) > 0 and not true_fire) or int(ds.get("poison", 0)) > 0
+		"tru":
+			if int(ds.get("burn", 0)) > 0 and true_fire:
+				return true
+			for dot in u.get("dots", []):
+				if _t < float(dot.get("until", 0.0)):
+					return true
+	return false
+
+## 累加一次 DOT 伤害进对应桶的常驻数字。首次建 Label(挂 _ui_layer), 之后每帧由 _update_dot_floats 跟头顶。
+func _dot_accumulate(u: Dictionary, bucket: String, dmg: int) -> void:
+	if not (u.get("_dot_float") is Dictionary):
+		u["_dot_float"] = {}
+	var df: Dictionary = u["_dot_float"]
+	var col: Color = _dot_bucket_col(bucket)
+	var st: Dictionary = df.get(bucket, {})
+	if st.is_empty() or not is_instance_valid(st.get("node", null)):
+		var lbl := _make_num_label("0", col, 20)
+		if _ui_layer != null:
+			_ui_layer.add_child(lbl)
+		var used := {}   # 左右错开: 避开其它桶已占的槽
+		for b in df:
+			if b != bucket and is_instance_valid((df[b] as Dictionary).get("node", null)):
+				used[int((df[b] as Dictionary).get("slot", 0))] = true
+		var slot := 0
+		while used.has(slot):
+			slot += 1
+		st = {"node": lbl, "total": 0, "slot": slot}
+	st["total"] = int(st.get("total", 0)) + dmg
+	var lbl2: Label = st["node"]
+	lbl2.text = str(int(st["total"]))
+	lbl2.add_theme_font_size_override("font_size", _float_size(int(st["total"]), false))
+	lbl2.add_theme_color_override("font_color", col)
+	df[bucket] = st
+
+## 该桶所有 DOT 结束 → 常驻数字弹射跳走(复用伤害飘字 kind=damage), 释放常驻节点。
+func _dot_float_flyaway(u: Dictionary, bucket: String, st: Dictionary) -> void:
+	if is_instance_valid(st.get("node", null)):
+		(st["node"] as Node).queue_free()
+	var total: int = int(st.get("total", 0))
+	if total > 0:
+		var dt: String = {"mag": "magic", "phy": "physical", "tru": "true"}.get(bucket, "true")
+		_float_text(u["pos"], str(total), _dot_bucket_col(bucket), false, "damage", dt)
+
+## 每帧: 常驻 DOT 数字跟随头顶 + 左右错开; 桶结束(或单位死)→弹射跳走。在 _process 里 _update_overlay 之后调。
+func _update_dot_floats() -> void:
+	if _cam == null:
+		return
+	for u in _units:
+		if not (u.get("_dot_float") is Dictionary):
+			continue
+		var df: Dictionary = u["_dot_float"]
+		if df.is_empty():
+			continue
+		var dead: Array = []
+		for bucket in df:
+			var st: Dictionary = df[bucket]
+			var node = st.get("node", null)
+			if not is_instance_valid(node):
+				dead.append(bucket); continue
+			if not u.get("alive", false) or not _dot_bucket_active(u, bucket):
+				_dot_float_flyaway(u, bucket, st)
+				dead.append(bucket); continue
+			var head := _world_pos(u["pos"], 2.7)   # 比伤害飘字(2.2)高一截, 不挡血条
+			if _cam.is_position_behind(head):
+				(node as Control).visible = false; continue
+			(node as Control).visible = true
+			var screen: Vector2 = _cam.unproject_position(head)
+			var slot: int = int(st.get("slot", 0))
+			var xoff: float = 0.0 if slot == 0 else (-48.0 if slot == 1 else 48.0)
+			var lbl := node as Label
+			var tsz := _float_num_font().get_string_size(lbl.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, float(lbl.get_theme_font_size("font_size")))
+			lbl.position = screen - tsz / 2.0 + Vector2(xoff, 0.0)
+		for b in dead:
+			df.erase(b)
 
 # ── 竹叶生命球 (1:1 回合制 _spawn_bamboo_orb 港到2.5D): 绿球从目标抛物线(3D高度弧)飞回竹叶龟 + 绿拖尾 + 落点爆 ──
 func _spawn_bamboo_orb(from_pos: Vector2, to_pos: Vector2, on_land: Callable = Callable()) -> void:
@@ -18140,17 +18243,17 @@ func _tick_dot_stacks(u: Dictionary) -> void:
 				dmg = stacks + roundi(max_hp * stacks * 0.001)
 				new_val = floori(stacks * 0.8)   # 衰减80%(用户)
 				if _t < u.get("true_fire_until", 0.0):
-					_apply_damage(u, dmg, Color("#ffffff"), u.get("dot_src", {}).get("burn", null), "tru")   # 真火: 灼烧转真伤(原走_raw_lose→无飘字无统计·用户2026-07-19)
+					_apply_damage(u, dmg, Color("#ffffff"), u.get("dot_src", {}).get("burn", null), "tru", false, true)   # 真火: 灼烧转真伤(原走_raw_lose→无飘字无统计·用户2026-07-19)
 				else:
-					_apply_damage(u, _dot_after_resist(u, float(dmg), true, u.get("dot_src", {}).get("burn", null)), Color("#4dabf7"), u.get("dot_src", {}).get("burn", null), "mag")   # 灼烧=魔法伤害·吃魔抗
+					_apply_damage(u, _dot_after_resist(u, float(dmg), true, u.get("dot_src", {}).get("burn", null)), Color("#4dabf7"), u.get("dot_src", {}).get("burn", null), "mag", false, true)   # 灼烧=魔法伤害·吃魔抗
 			"poison":
 				dmg = stacks
 				new_val = floori(stacks * 0.8)   # 衰减80%(用户)
-				_apply_damage(u, _dot_after_resist(u, float(dmg), true, u.get("dot_src", {}).get("poison", null)), Color("#7ee87e"), u.get("dot_src", {}).get("poison", null), "mag")   # 中毒=魔法伤害·吃魔抗
+				_apply_damage(u, _dot_after_resist(u, float(dmg), true, u.get("dot_src", {}).get("poison", null)), Color("#7ee87e"), u.get("dot_src", {}).get("poison", null), "mag", false, true)   # 中毒=魔法伤害·吃魔抗
 			"bleed":
 				dmg = stacks
 				new_val = floori(stacks * 0.8)   # 衰减80%(用户)
-				_apply_damage(u, _dot_after_resist(u, float(dmg), false, u.get("dot_src", {}).get("bleed", null)), Color("#ff6b6b"), u.get("dot_src", {}).get("bleed", null), "phy")   # 流血=物理伤害·吃护甲
+				_apply_damage(u, _dot_after_resist(u, float(dmg), false, u.get("dot_src", {}).get("bleed", null)), Color("#ff6b6b"), u.get("dot_src", {}).get("bleed", null), "phy", false, true)   # 流血=物理伤害·吃护甲
 		ds[type] = maxi(0, new_val)
 		if ds[type] <= 0:
 			ds.erase(type)
@@ -19466,7 +19569,7 @@ func _spawn_summon(owner: Dictionary, kind: String, hp: float, atk: float, behav
 		"atk_range": float(behavior.get("atk_range", 280.0 if kind == "drone" else 70.0)),
 		"atk_cd": 0.0, "energy": 0.0, "alive": true, "is_summon": true,
 		"shield": 0.0, "stun_until": 0.0, "slow_until": 0.0,
-		"dot_stacks": {}, "_dottimer": 0.0, "dot_src": {}, "true_fire_until": 0.0,
+		"dot_stacks": {}, "_dottimer": 0.0, "dot_src": {}, "true_fire_until": 0.0, "_dot_float": {},
 		"buffs": [], "dots": [], "taunt_until": 0.0, "taunt_by": null,
 		"dodge_bonus": 0.0, "ls_bonus": 0.0,
 		"stacks": {}, "rage": 0.0, "star_energy": 0.0, "store_energy": 0.0, "gold": 0.0,
