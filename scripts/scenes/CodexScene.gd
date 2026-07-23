@@ -43,6 +43,7 @@ const Phase2Schools := preload("res://scripts/engine/phase2_schools.gd")
 const Phase2Types := preload("res://scripts/engine/phase2_types.gd")   # 类型(12)映射: p2eq-types.json
 const SkillEnergy := preload("res://scripts/systems/skill_energy.gd")   # 龟能花费 单一事实源 (跟战斗同口径)
 const P2RT := preload("res://scripts/engine/phase2_equip_runtime.gd")   # 装备属性 单一事实源 STATS (跟战斗/背包同口径)
+const TurtleStats := preload("res://scripts/engine/turtle_stats.gd")    # 龟战斗属性 单一事实源(移速/攻速/射程, 跟战斗同源·点5)
 
 # 技能在实时版里的角色: passive(被动) / basic(普攻,不花龟能) / active(主动,花龟能). 跟战斗 BASIC_ATK+改造一致.
 #   普攻=skillPool[0] (忍者已改回近战刺客: 斩击=普攻idx0, 冲击转被动auto-dash不占技位).
@@ -935,36 +936,39 @@ func _show_pet(pet: Dictionary) -> void:
 	_add_text(mid_x, 75, "稀有度", 14, "#888888", 0.0, 0.5)
 	_add_text(mid_x + 60, 75, rarity, 28, rarity_color, 0.0, 0.5, true)
 
-	# Tag 图标区: 4 tag, x=midX+25+i×70, 图 y130 50×60, 文字 y180 14px
-	var tags = pet.get("tags", [])
-	if tags is Array:
-		var nt: int = mini(tags.size(), 4)
-		for i in nt:
-			var tag: String = tags[i]
-			var cx: float = mid_x + 25 + i * 70.0
-			_add_image(cx, 130, "res://assets/sprites/tags/%s标签.png" % tag, 50, 60)
-			_add_text(cx, 180, tag, 14, "#58d3ff", 0.5, 0.5, true)
+	# ★tag 区已删(用户2026-07-23 点5): 守护/元素/物理/法术等 10 种标签全是凑羁绊的, 龟间羁绊已废 → 全去。
+	#   腾出立绘下方空间给属性/技能区。
 
 	# 3) 4 属性条 — statColX500 statRowH42; 方块 sqW5 sqH14 gap2 pitch7
 	# m = 稀有度倍率 × 等级加成 (1:1 PoC CodexScene:168 RARITY_MULT×getLevelBonus); rarity_mult 取真值表(原硬编1.5/2.0=bug)
 	var m: float = float(DataRegistry.rarity_mult.get(rarity, 1.0)) * (1.0 + (lv - 1) * 0.05)
+	# ★移速/攻速(点5): 从 TurtleStats.STATS 单一事实源读, 与战斗同口径 ——
+	#   移速【不缩放】(定值); 攻速=1/攻击间隔 且【+2%/级】(atk_interval /= 1+0.02*(lv-1), 见战斗 _make_unit); 都不乘 rarity_mult。
+	var _tid := str(pet.get("id", ""))
+	var _ts: Array = TurtleStats.STATS.get(_tid, [])
+	var _mspd: int = int(round(float(_ts[1]))) if _ts.size() > 1 else 0
+	var _aspd: float = (1.0 / float(_ts[2])) * (1.0 + 0.02 * float(lv - 1)) if _ts.size() > 2 and float(_ts[2]) > 0.0 else 0.0
 	var stats := [
-		{"key": "hp", "label": "最大生命值", "val": roundi(pet.get("hp", 0) * m), "color": "#06d6a0", "div": 40.0},
-		{"key": "atk", "label": "攻击力", "val": roundi(pet.get("atk", 0) * m), "color": "#ff9f43", "div": 5.0},
-		{"key": "def", "label": "护甲", "val": roundi(pet.get("def", 0) * m), "color": "#ffd93d", "div": 2.5},
-		{"key": "mr", "label": "魔抗", "val": roundi(pet.get("mr", pet.get("def", 0)) * m), "color": "#4dabf7", "div": 2.5},
+		{"key": "hp", "label": "最大生命值", "val": roundi(pet.get("hp", 0) * m), "disp": str(roundi(pet.get("hp", 0) * m)), "color": "#06d6a0", "div": 40.0},
+		{"key": "atk", "label": "攻击力", "val": roundi(pet.get("atk", 0) * m), "disp": str(roundi(pet.get("atk", 0) * m)), "color": "#ff9f43", "div": 5.0},
+		{"key": "def", "label": "护甲", "val": roundi(pet.get("def", 0) * m), "disp": str(roundi(pet.get("def", 0) * m)), "color": "#ffd93d", "div": 2.5},
+		{"key": "mr", "label": "魔抗", "val": roundi(pet.get("mr", pet.get("def", 0)) * m), "disp": str(roundi(pet.get("mr", pet.get("def", 0)) * m)), "color": "#4dabf7", "div": 2.5},
+		{"key": "move", "label": "移速", "val": _mspd, "disp": str(_mspd), "color": "#8fd4ff", "div": 15.0},
+		{"key": "aspd", "label": "攻击速度", "val": roundi(_aspd * 100.0), "disp": ("%.2f" % _aspd) + " 次/秒", "color": "#ff9ecb", "div": 8.0},
 	]
 	var stat_col_x := 500.0
-	var stat_row_h := 42.0
+	var stat_row_h := 27.0   # ★6 行(加了移速/攻速)压行高, 容进分隔线上方(点5)
 	var value_x := 700.0
 	var bars_start_x := 716.0
 	var sq_w := 5.0; var sq_h := 14.0; var sq_pitch := 7.0
 	for i in stats.size():
 		var st: Dictionary = stats[i]
-		var sy := 30.0 + i * stat_row_h
-		_add_image(stat_col_x, sy, "res://assets/sprites/stats/%s-icon.png" % st["key"], 26, 26)
-		_add_text(stat_col_x + 28, sy, st["label"], 16, "#bbbbbb", 0.0, 0.5)
-		_add_text(value_x, sy, str(st["val"]), 24, st["color"], 1.0, 0.5, true)
+		var sy := 22.0 + i * stat_row_h
+		var _iconp: String = "res://assets/sprites/stats/%s-icon.png" % st["key"]
+		if ResourceLoader.exists(_iconp):   # move/aspd 图标可能未画 → 缺图只显文字, 不崩
+			_add_image(stat_col_x, sy, _iconp, 24, 24)
+		_add_text(stat_col_x + 28, sy, st["label"], 15, "#bbbbbb", 0.0, 0.5)
+		_add_text(value_x, sy, str(st.get("disp", st["val"])), 21, st["color"], 1.0, 0.5, true)
 		var count := int(floor(float(st["val"]) / float(st["div"])))
 		for k in count:
 			var sq_cx := bars_start_x + k * sq_pitch + sq_w / 2.0
