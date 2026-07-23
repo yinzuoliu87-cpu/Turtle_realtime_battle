@@ -2685,7 +2685,7 @@ func _dl_handle_place_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			var hit = _edit_unit_at_screen(event.position)   # 只拖我方(left)非蛋非召唤
-			if hit != null and str(hit.get("side", "")) == "left" and not hit.get("_isEgg", false) and not hit.get("is_summon", false):
+			if _can_place_drag(hit):
 				_edit_drag_unit = hit
 			else:
 				_edit_drag_unit = null
@@ -3526,8 +3526,21 @@ func _trainer_move_by(u: Dictionary, dir: Vector2, delta: float) -> void:
 		u["face_right"] = dir.x > 0.0
 
 
+## 摆位阶段能不能拖这个单位: 只拖我方(left)非蛋非召唤非训龟大师(用户2026-07-23 点6)。
+## ★抽成纯函数便于门禁直接测(不用起 3D 场景)。
+func _can_place_drag(hit) -> bool:
+	return hit != null and str(hit.get("side", "")) == "left" \
+		and not hit.get("_isEgg", false) and not hit.get("is_summon", false) \
+		and not hit.get("is_trainer", false)
+
+## 训龟大师的移动/攻击 tick 现在该不该跑: 战斗结束/摆位/呈现/编辑期都不跑(用户2026-07-23 点6)。
+## ★摆位期投掷石头/被键盘摇杆推动都是 bug —— 移动/攻击是玩法动作, 非战斗期该停。抽成纯函数便于门禁测。
+func _trainer_ticks_active() -> bool:
+	return not _over and _dl_state != "place" and not _dl_is_present() and not _edit_mode
+
+
 func _trainer_input_tick(delta: float) -> void:
-	if _over:
+	if not _trainer_ticks_active():
 		return
 	var u = _my_trainer()
 	if u == null:
@@ -3540,8 +3553,8 @@ func _trainer_input_tick(delta: float) -> void:
 ##   它不被主动索敌(见 _nearest_enemy 的跳过), 但【它自己会索敌开火】—— 这两件事不矛盾:
 ##   前者是"别人能不能锁它", 后者是"它能不能锁别人"。
 func _tick_trainer_attacks(delta: float) -> void:
-	if _over:
-		return
+	if not _trainer_ticks_active():
+		return   # ★摆位/呈现/编辑期大师不投掷(用户2026-07-23 点6: 战斗没开始就别扔石头)
 	for u in _units:
 		if not u.get("is_trainer", false) or not u.get("alive", false):
 			continue
