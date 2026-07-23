@@ -197,6 +197,12 @@ func _ready() -> void:
 			_ok("★★石头走抛物线(arc>0, 用户点名要的)", float(rock.get("arc", 0.0)) > 0.0, "arc=%.2f" % float(rock.get("arc", 0.0)))
 			_ok("★石头是物理伤害", str(rock.get("dtype", "")) == "phys")
 			_ok("★石头飞向敌方", s._is_hostile(tr, rock.get("tgt", {})))
+	# ★不发默认子弹: 训龟大师【只】走扔石头, 不能同时跑 AI 默认普攻(BASIC_ATK 发子弹)。
+	#   2026-07-23 用户:「为什么同时在扔石头和发射子弹」—— 单位字典漏了 no_basic,
+	#   两条攻击并行。这里断言 no_basic=true(否则又会双重攻击)。
+	_ok("★★训龟大师关掉了 AI 默认普攻(no_basic=true, 否则会同时扔石头+发子弹)",
+		bool(tr.get("no_basic", false)), "no_basic=%s" % str(tr.get("no_basic", "(未设)")))
+
 	# 扔石头动作能触发(anim_action=throw, 播完自动回)
 	s._trainer_throw_anim(tr)
 	_ok("★普攻播扔石头动作(anim_action=throw)", str(tr.get("anim_action", "")) == "throw")

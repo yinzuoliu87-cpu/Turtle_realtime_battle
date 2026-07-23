@@ -3418,6 +3418,9 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 	if is_trainer:
 		u["is_trainer"] = true
 		u["no_move"] = true              # 场外监视者: 站着不动
+		u["no_basic"] = true             # ★关掉 AI 默认普攻(BASIC_ATK 发子弹) —— 训龟大师【只】走
+		#   _tick_trainer_attacks 扔石头这一条。不关的话两条并行 = 同时扔石头又发子弹
+		#   (用户 2026-07-23:「为什么同时在扔石头和发射子弹」)。
 		u["active_skills"] = []          # 法术 5 选 1 待设计(用户: "法术技能待制作")
 	if is_egg:
 		u["_isEgg"] = true
