@@ -42,7 +42,7 @@ const LIST_W := 280.0
 const Phase2Schools := preload("res://scripts/engine/phase2_schools.gd")
 const Phase2Types := preload("res://scripts/engine/phase2_types.gd")   # 类型(12)映射: p2eq-types.json
 const SkillEnergy := preload("res://scripts/systems/skill_energy.gd")   # 龟能花费 单一事实源 (跟战斗同口径)
-const P2RT := preload("res://scripts/engine/phase2_equip_runtime.gd")   # 装备属性 单一事实源 STATS (跟战斗/背包同口径)
+const EquipStats := preload("res://scripts/engine/equip_stats.gd")   # 装备属性 单一事实源 STATS (跟战斗/背包同口径; 2026-07-23 从回合制P2RT抽出)
 const TurtleStats := preload("res://scripts/engine/turtle_stats.gd")    # 龟战斗属性 单一事实源(移速/攻速/射程, 跟战斗同源·点5)
 
 # 技能在实时版里的角色: passive(被动) / basic(普攻,不花龟能) / active(主动,花龟能). 跟战斗 BASIC_ATK+改造一致.
@@ -1279,11 +1279,11 @@ func _show_p2eq(eq: Dictionary) -> void:
 	var school_str := "  /  ".join(PackedStringArray(schools)) if not schools.is_empty() else "—"
 	_add_text(130, 116, "学派: %s" % school_str, 13, "#c084fc", 0.0, 0.5, true)
 
-	# 属性 —— 取自 P2RT.STATS(战斗实装的同一张表), 不再打印 data 里手写的 baseStats1。
+	# 属性 —— 取自 EquipStats.STATS(战斗实装的同一张表), 不再打印 data 里手写的 baseStats1。
 	# baseStats1 只是 STATS 的人工镜像, 无机制保证一致; 走这里则图鉴与实装天然同源。
 	_add_text(20, 158, "属性", 14, "#58d3ff", 0.0, 0.0, true)
 	var _eid: String = str(eq.get("id", ""))
-	var _stat_str: String = P2RT.stat_line_all_stars(_eid)
+	var _stat_str: String = EquipStats.stat_line_all_stars(_eid)
 	_add_text(20, 184, _stat_str, 16, "#ffd93d", 0.0, 0.0, true)
 
 	# 效果 (effectDesc1 = 1星基础 / effectDesc3 = 3星升级)

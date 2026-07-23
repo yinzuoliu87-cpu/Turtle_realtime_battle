@@ -22163,11 +22163,11 @@ func _self_screenshot() -> void:
 
 # ============================================================================
 #  装备实时实装 (59件 p2eq_*) — 1:1 搬自 2D 版 RealtimeBattleScene.gd (docs/design/装备实时实装规格.md)
-#  数据驱动: 逐星属性复用 P2RT.STATS; 事件钩子 on-hit/on-cast/on-target/on-dodge/on-kill/on-death/HP阈值 + 周期 tick(2.5s).
+#  数据驱动: 逐星属性复用 EquipStats.STATS; 事件钩子 on-hit/on-cast/on-target/on-dodge/on-kill/on-death/HP阈值 + 周期 tick(2.5s).
 #  2.5D 适配: 逻辑/数值全照搬; VFX/坐标触点用 Phase3 的 3D 等价 (_float_text/_skill_ring/_bolt_line/_fire_bolt_from/_spawn_summon).
 #  分类标注: ✅完整 / ⚠改造(节拍·时长·站位) / 🚧TODO(简化) — 与 2D 版一致.
 # ============================================================================
-const P2RT := preload("res://scripts/engine/phase2_equip_runtime.gd")
+const EquipStats := preload("res://scripts/engine/equip_stats.gd")   # 装备逐星属性(2026-07-23 从回合制 phase2_equip_runtime 抽出的纯数据)
 const EQ_TICK := 2.5            # 装备周期触发 = 1回合 ≈ 2.5 秒 (规格)
 
 # demo 测试装备 (persistent_equipped 空时): 给每龟塞2-3件有视觉效果的件, 验证效果真触发. (与 2D 版 DEMO_EQUIP 一致)
@@ -22250,9 +22250,9 @@ func _eq_apply_all_stats() -> void:
 		for e in u.get("equips", []):
 			_eq_apply_one_stats(u, str(e["id"]), int(e.get("star", 1)))
 
-# 单件逐星属性 → 实时单位字段 (复用 P2RT.STATS; 字段口径换到实时引擎).
+# 单件逐星属性 → 实时单位字段 (复用 EquipStats.STATS; 字段口径换到实时引擎).
 func _eq_apply_one_stats(u: Dictionary, item_id: String, star: int) -> void:
-	var arr: Array = P2RT.STATS.get(item_id, [])
+	var arr: Array = EquipStats.STATS.get(item_id, [])
 	var i: int = clampi(star, 1, 3) - 1
 	if i < 0 or i >= arr.size():
 		_eq_apply_flags(u, item_id, star)
@@ -22296,7 +22296,7 @@ func _eq_apply_one_stats(u: Dictionary, item_id: String, star: int) -> void:
 
 # 财神招财临时装备升星: STATS[item]每星是绝对值→只加(新星-旧星)数值差量(不重跑_eq_apply_flags,避免dodge/harden/on-hit等flag类重复叠加·flag类逐星缩放留F5)
 func _eq_star_delta_stats(u: Dictionary, item_id: String, from_star: int, to_star: int) -> void:
-	var arr: Array = P2RT.STATS.get(item_id, [])
+	var arr: Array = EquipStats.STATS.get(item_id, [])
 	var fi: int = clampi(from_star, 1, 3) - 1
 	var ti: int = clampi(to_star, 1, 3) - 1
 	if fi < 0 or ti < 0 or fi >= arr.size() or ti >= arr.size():
@@ -22323,9 +22323,9 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 	var stt: Dictionary = u["eq_state"].get(item_id, {})
 	match item_id:
 		"p2eq_046":   # 幽灵墨鱼: 永久闪避 buff (复用 dodge 系统)
-			# 闪避率改从 P2RT.STATS 取 —— 它此前是这里的内联字面量, 而图鉴/背包读 STATS,
+			# 闪避率改从 EquipStats.STATS 取 —— 它此前是这里的内联字面量, 而图鉴/背包读 STATS,
 			# 于是闪避在两处 UI 里都不显示(用户2026-07-19「必须写完整」的漏网)。现在同源。
-			var _a46: Array = P2RT.STATS.get("p2eq_046", [])
+			var _a46: Array = EquipStats.STATS.get("p2eq_046", [])
 			var _dg46: float = 0.0
 			if si < _a46.size():
 				_dg46 = float((_a46[si] as Dictionary).get("dodgePct", 0.0)) / 100.0

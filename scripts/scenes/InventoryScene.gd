@@ -12,7 +12,7 @@ const H := 720.0
 const SLOT := 96.0
 const P2 = preload("res://scripts/engine/phase2_config.gd")
 const Phase2Types = preload("res://scripts/engine/phase2_types.gd")
-const P2RT = preload("res://scripts/engine/phase2_equip_runtime.gd")   # 装备逐星属性表(与战斗实装同源)
+const EquipStats = preload("res://scripts/engine/equip_stats.gd")   # 装备逐星属性表(与战斗实装同源; 2026-07-23 从回合制P2RT抽出)
 const Phase2Minion = preload("res://scripts/engine/phase2_minion.gd")
 
 var _sel_bench: int = -1   # 当前选中的背包装备索引 (-1=无)
@@ -670,7 +670,7 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 # ★仅认 mouse: 触屏由 emulate_mouse_from_touch(默认开) 自动转 mouse → 若同时收 touch 会【双触发】, 而 _on_bench_click 是 toggle → 选中瞬间又被切回=装不上(用户2026-07-18"背包怎么装装备"). 只认mouse则每次点选恰一次.
 ## 多行属性块(tooltip 用): 每行 "· 攻击力  +20"; 无属性的装备明说, 别留空
 func _stat_block(eid: String, star: int) -> String:
-	var rows: Array = P2RT.stat_lines(eid, star)
+	var rows: Array = EquipStats.stat_lines(eid, star)
 	if rows.is_empty():
 		return "  （本件不提供属性加成，只有效果）"
 	var out: Array = []

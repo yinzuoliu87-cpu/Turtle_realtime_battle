@@ -16,7 +16,7 @@ extends Node
 ##   ("+攻8/14/30·护穿5/7/10" vs "攻击力 +8/+14/+30 · 护甲穿透 +5/+7/+10"),
 ##   能核的是数值本身。反向验证见文件末尾 _selftest_can_fail()。
 
-const P2RT := preload("res://scripts/engine/phase2_equip_runtime.gd")
+const P2RT := preload("res://scripts/engine/equip_stats.gd")   # 2026-07-23: STATS+stat格式化已抽到 equip_stats(P2RT死代码待删)
 
 var _fail := 0
 

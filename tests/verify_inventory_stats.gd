@@ -7,7 +7,7 @@ extends Node
 ##   本项目已发生过同类事故: reflectPct/healAmp/shieldAmp/shieldHealPct 四类"数值表里写了、
 ##   单位字段也确实被消费, 但从没往里写" → 属性栏骗人。
 
-const P2RT := preload("res://scripts/engine/phase2_equip_runtime.gd")
+const P2RT := preload("res://scripts/engine/equip_stats.gd")   # 2026-07-23: stat_lines 已抽到 equip_stats
 const QUOTE := "\""
 var _fail := 0
 
@@ -36,7 +36,7 @@ func _ready() -> void:
 	if f != null: f.close()
 	_ok("解析到实装读取的字段", impl.size() >= 10, "共 %d 个: %s" % [impl.size(), impl.keys()])
 
-	var f2 := FileAccess.open("res://scripts/engine/phase2_equip_runtime.gd", FileAccess.READ)
+	var f2 := FileAccess.open("res://scripts/engine/equip_stats.gd", FileAccess.READ)
 	var fmt := {}
 	var ins2 := false
 	while f2 != null and not f2.eof_reached():
