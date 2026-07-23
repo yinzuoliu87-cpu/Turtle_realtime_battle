@@ -285,6 +285,8 @@ func _ready() -> void:
 	if OS.has_environment("SHOT_TAB"):   # dev: 截图指定 tab (供 diff)
 		start_tab = OS.get_environment("SHOT_TAB")
 	_switch_tab(start_tab)
+	var _td = get_node_or_null("/root/TutorialDirector")
+	if _td != null: _td.attach_next_button(self, "codex")   # 教学: 下一站→第二把战斗
 
 
 # ── 背景铺满 + 内容居中 (1:1 PoC menu-bg-active 边距 + 1280×720 画布居中) ──

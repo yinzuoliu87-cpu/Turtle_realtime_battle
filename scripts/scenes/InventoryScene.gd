@@ -27,6 +27,8 @@ func _ready() -> void:
 		GameState.season_leaders = []
 		GameState.dual_lineup = {}
 	_rebuild()
+	var _td = get_node_or_null("/root/TutorialDirector")
+	if _td != null: _td.attach_next_button(self, "inventory")   # 教学: 下一站→图鉴
 
 func _inject_demo_inventory() -> void:   # 仅 INV_DEMO 环境: 填装备看满仓布局(不调 save)
 	GameState.season_level = 8

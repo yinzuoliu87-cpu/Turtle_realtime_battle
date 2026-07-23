@@ -25,6 +25,8 @@ func _ready() -> void:
 	if not _restore_offer():
 		_roll()
 	_rebuild()
+	var _td = get_node_or_null("/root/TutorialDirector")
+	if _td != null: _td.attach_next_button(self, "shop")   # 教学: 下一站→背包
 
 ## 从 GameState 恢复货架。成功返回 true; 货架不存在/已过期(打过新战斗)返回 false。
 func _restore_offer() -> bool:

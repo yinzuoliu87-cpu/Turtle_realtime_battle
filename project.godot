@@ -34,6 +34,7 @@ Audio="*res://autoload/Audio.gd"
 PreloadCache="*res://autoload/preload_cache.gd"
 ShotDiff="*res://autoload/shot_diff.gd"
 CursorTheme="*res://autoload/CursorTheme.gd"
+TutorialDirector="*res://autoload/tutorial_director.gd"
 
 [display]
 

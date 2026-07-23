@@ -1656,6 +1656,9 @@ func _review_skill_idx() -> int:   # 受审技idx: 调试面板 > env REVIEW_SKI
 	if _dbg_skill != -99: return _dbg_skill
 	return int(OS.get_environment("REVIEW_SKILL")) if OS.has_environment("REVIEW_SKILL") else REVIEW_SKILL_IDX
 func _resolve_left() -> Array:
+	var _td = get_node_or_null("/root/TutorialDirector")
+	if _td != null and _td.is_active():   # ★新手教学: 固定阵容(用户拍板"固定阵容+弱对手必赢")
+		return _td.FIXED_TEAM.duplicate()
 	if OS.has_environment("EQDEMO_EQUIP"):   # 装备演示: 远程携带者(默认hunter)
 		var lst: Array = [OS.get_environment("EQDEMO_CARRIER") if OS.has_environment("EQDEMO_CARRIER") else "basic"]
 		var na: int = int(OS.get_environment("EQDEMO_ALLIES")) if OS.has_environment("EQDEMO_ALLIES") else 0
@@ -1669,6 +1672,9 @@ func _resolve_left() -> Array:
 	return ldr if ldr.size() >= 1 else LEFT_DEMO.duplicate()
 
 func _resolve_right() -> Array:
+	var _td = get_node_or_null("/root/TutorialDirector")
+	if _td != null and _td.is_active():   # ★新手教学: 弱对手(必赢, 让新手两把都稳过)
+		return _td.WEAK_FOE.duplicate()
 	if OS.has_environment("EQDEMO_EQUIP"):   # 装备演示: 2个固定假人(相距500码)
 		return ["basic", "basic"]
 	if _review_demo():
@@ -20450,8 +20456,16 @@ func _show_banner(won: bool) -> void:
 	_banner_anchor_row(btn_row, 0.575, 24.0)   # ★锚点自适应(原 position=(0,392) 写死)
 	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_ui_layer.add_child(btn_row)
-	btn_row.add_child(_make_result_btn("🏠 返回菜单", Color("#5aa0d8"), Color("#04121e"),
-		func() -> void: get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")))
+	# ★教学模式: 结算按钮走导演(战斗1打完→商店, 战斗2打完→结束回菜单), 而不是直接返回菜单。
+	var _td = get_node_or_null("/root/TutorialDirector")
+	if _td != null and _td.is_active():
+		var _dest: String = _td.next_scene_after("battle")
+		var _label: String = "去商店 逛逛 ▶" if _dest.ends_with("Shop.tscn") else ("完成教学 ✓" if _dest.ends_with("MainMenu.tscn") else "继续 ▶")
+		btn_row.add_child(_make_result_btn(_label, Color("#ffc23c"), Color("#3a1f00"),
+			func() -> void: get_tree().change_scene_to_file(_dest)))
+	else:
+		btn_row.add_child(_make_result_btn("🏠 返回菜单", Color("#5aa0d8"), Color("#04121e"),
+			func() -> void: get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")))
 	_banner_fade_in(btn_row, 0.60)
 	_build_stats_panel()             # #2 战斗统计面板
 
