@@ -24,3 +24,9 @@ static func resist_multiplier(resist: float) -> float:
 	if resist >= 0.0:
 		return 1.0 - resist / (resist + 40.0)
 	return 1.0 + absf(resist) / (absf(resist) + 40.0)
+
+## 穿透后的净抗性: 先按百分比穿透(pen_pct), 再减固定穿透(flat_pen)。可为负(过穿→增伤·配合 resist_multiplier)。
+## base_resist = 目标护甲(def)或魔抗(mr)[·削甲通道处理后]; pen_pct/flat_pen = 攻击者的对应穿透。
+## 与 god file 原地公式逐字一致(原散在 3 处: _resolve_dmg 魔法9071/物理9074 · _atk_dmg 9093)。
+static func effective_resist(base_resist: float, pen_pct: float, flat_pen: float) -> float:
+	return base_resist * (1.0 - pen_pct) - flat_pen

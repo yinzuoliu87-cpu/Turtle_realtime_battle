@@ -9068,10 +9068,10 @@ func _resolve_dmg(u: Dictionary, base: float, tgt: Dictionary, magic: bool) -> i
 		base *= DamageMath.crit_multiplier(float(u["crit"]), float(u["crit_dmg"]))   # 暴击率溢出100%每1%→1.5%暴伤
 	var resist: float
 	if magic:
-		resist = float(tgt["mr"]) * (1.0 - float(u.get("magic_pen_pct", 0.0))) - float(u.get("magic_pen", 0.0))
+		resist = DamageMath.effective_resist(float(tgt["mr"]), float(u.get("magic_pen_pct", 0.0)), float(u.get("magic_pen", 0.0)))
 	else:
 		var tdef: float = float(tgt["def"]) * (0.7 if _t < float(tgt.get("def_shred_until", 0.0)) else 1.0)   # 削甲通道(口哨灵体小龟气波 -30%护甲·用户2026-07-23)
-		resist = tdef * (1.0 - float(u.get("armor_pen_pct", 0.0))) - float(u.get("armor_pen", 0.0))
+		resist = DamageMath.effective_resist(tdef, float(u.get("armor_pen_pct", 0.0)), float(u.get("armor_pen", 0.0)))
 	var mult: float = DamageMath.resist_multiplier(resist)
 	base *= mult
 	base *= 1.0 + float(u.get("damage_amp", 0.0))          # 攻击者增伤%
@@ -9090,7 +9090,7 @@ func _atk_dmg(u: Dictionary, scale: float, tgt: Dictionary, magic: bool = false)
 
 # 只做物理减免(减甲/增伤/减伤/虚化), 不掷暴击 — 供已在上游算过暴击的伤害段(手里剑物理段)复用 _resolve_dmg 的减甲公式而不二次暴击
 func _phys_after_armor(u: Dictionary, raw: float, tgt: Dictionary) -> int:
-	var resist: float = float(tgt["def"]) * (1.0 - float(u.get("armor_pen_pct", 0.0))) - float(u.get("armor_pen", 0.0))
+	var resist: float = DamageMath.effective_resist(float(tgt["def"]), float(u.get("armor_pen_pct", 0.0)), float(u.get("armor_pen", 0.0)))
 	var mult: float = DamageMath.resist_multiplier(resist)
 	var d: float = raw * mult
 	d *= 1.0 + float(u.get("damage_amp", 0.0))

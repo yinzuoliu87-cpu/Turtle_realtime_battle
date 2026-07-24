@@ -42,5 +42,21 @@ func _ready() -> void:
 			mism2 += 1
 	_ok("★减伤曲线·与原公式 200 随机采样逐位一致(N=200)", mism2 == 0, "分歧 %d/200" % mism2)
 
-	print("ALL PASS — DamageMath(暴击倍率+减伤曲线·抽SIM模块·6处去重·与原式逐位一致)" if _fail == 0 else "FAILED: %d" % _fail)
+	# ⑤ effective_resist(穿透后净抗性·原逐字散在3处 9071/9074/9093)
+	_ok("base=100, 无穿透 → 100", is_equal_approx(DamageMath.effective_resist(100.0, 0.0, 0.0), 100.0))
+	_ok("base=100, 30%穿 → 70", is_equal_approx(DamageMath.effective_resist(100.0, 0.3, 0.0), 70.0))
+	_ok("base=100, 30%穿+10固定 → 60", is_equal_approx(DamageMath.effective_resist(100.0, 0.3, 10.0), 60.0))
+	_ok("base=20, 50%穿+20固定 → -10 (过穿为负→增伤)", is_equal_approx(DamageMath.effective_resist(20.0, 0.5, 20.0), -10.0))
+	var mism3 := 0
+	for _k in range(200):
+		var base := randf() * 200.0
+		var pct := randf() * 0.8
+		var flat := randf() * 50.0
+		var got := DamageMath.effective_resist(base, pct, flat)
+		var ref := base * (1.0 - pct) - flat                  # ← god file 原地公式
+		if not is_equal_approx(got, ref):
+			mism3 += 1
+	_ok("★穿透式·与原公式 200 随机采样逐位一致(N=200)", mism3 == 0, "分歧 %d/200" % mism3)
+
+	print("ALL PASS — DamageMath(暴击/减伤曲线/穿透·抽SIM模块·9处去重·与原式逐位一致)" if _fail == 0 else "FAILED: %d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
