@@ -166,13 +166,16 @@ func _show_page(page: String) -> void:
 ##   Logo 下 → 大「开始战斗」英雄键(焦点·380×96) → 2×2 次级键(背包/商店/图鉴/排行榜·统一金框).
 ##   设置/教程 挪到右上工具簇, 战绩 挪到右信息板 (见 _right_column). 各键从左滑入错峰入场.
 func _build_page_buttons(_page: String, _on_first_load: bool) -> void:
+	var eliminated := GameState.is_eliminated()   # 0命=本大轮淘汰(用户2026-07-24拍板"淘汰锁定") → 锁匹配+商店, 只"设置→重置存档"解锁
 	# ── 英雄键: ⚔ 开始战斗 (最大·居左栏中轴·主 CTA) ──
 	var hero_size := Vector2(384.0, 96.0)
 	var hero_center := Vector2(LEFT_CX, 300.0)
-	var hero := _frame_button("⚔  开始战斗", func(): _start_battle_flow(), false, hero_size, 27)
+	var hero := _frame_button("⚔  开始战斗", func(): _start_battle_flow(), false, hero_size, 27, "", eliminated)
 	hero.position = hero_center - hero_size / 2.0
 	hero.set_meta("home_y", hero.position.y)
 	page_box.add_child(hero)
+	if eliminated:
+		_add_lock_badge(hero, hero_size)
 	_slide_in_left(hero, 0)
 	# ── 2×2 次级键: 背包/商店/图鉴/排行榜 (同金框·64px像素图标+文字·左右两列·用户2026-07-18图标化) ──
 	var gsz := Vector2(196.0, 82.0)
@@ -187,7 +190,7 @@ func _build_page_buttons(_page: String, _on_first_load: bool) -> void:
 		["图鉴", func(): _go("Codex"), mic + "ic-codex.png"],
 		["排行榜", func(): _go("Leaderboard"), mic + "ic-trophy.png"],
 	]
-	var shop_locked := int(GameState.season_total_battles) <= 0   # 大轮未打第一场 → 商店锁(用户2026-07-18: 灰显+把锁)
+	var shop_locked := int(GameState.season_total_battles) <= 0 or eliminated   # 商店锁: 大轮未打第一场(2026-07-18) OR 已淘汰(2026-07-24) → 灰显+🔒
 	for i in range(subs.size()):
 		var s: Array = subs[i]
 		var r := i / 2                                       # 行 0,0,1,1
@@ -724,6 +727,9 @@ func _go(scene: String) -> void:
 
 ## 商店入口: 大轮未打第一场 → 上锁不进(用户2026-07-18); 打完第一场解锁
 func _open_shop() -> void:
+	if GameState.is_eliminated():
+		_toast("💀 赛季已淘汰 · 设置→重置存档 重开赛季")
+		return
 	if int(GameState.season_total_battles) <= 0:
 		_toast("🔒 本大轮打完第一场才开店")
 		return
@@ -752,6 +758,9 @@ func _toast(msg: String) -> void:
 ## 开始战斗 → 选龟流程 (实时版): 选龟(TeamSelect) → 匹配(Matchmaking) → 2.5D 战斗(RealtimeBattle3D).
 ##   非教程的常规入口. mode 置 single (含经济, 非教程标记). 进选龟前清掉上局对手快照, 让 Matchmaking 重抽.
 func _start_battle_flow() -> void:
+	if GameState.is_eliminated():   # 大轮淘汰锁(用户2026-07-24): 0命封匹配, 只重置存档解锁
+		_toast("💀 赛季已淘汰 · 设置→重置存档 重开赛季")
+		return
 	GameState.mode = "single"
 	GameState.tutorial = false
 	GameState.dual_ghost = {}
