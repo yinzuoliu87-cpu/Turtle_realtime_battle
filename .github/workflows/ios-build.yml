@@ -11,6 +11,9 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    paths-ignore:   # 纯文档/说明改动不出包(免得每次写文档都跑 ~20min iOS 构建)
+      - 'docs/**'
+      - '**.md'
 
 permissions:
   contents: write   # 失败时把构建日志推到ci-logs分支(本地无token读不了Actions日志API·git拉分支即可看)
