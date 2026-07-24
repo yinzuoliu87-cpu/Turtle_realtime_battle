@@ -7006,7 +7006,7 @@ func _eq_ripple_tick(u: Dictionary, si: int) -> void:
 	var low042 = null; var lv042 := INF
 	if si == 2:
 		for o in _allies_of(u):
-			var p042: float = o["hp"] / maxf(1.0, o["maxHp"])
+			var p042: float = CombatMath.hp_frac(o["hp"], o["maxHp"])
 			if p042 < lv042: lv042 = p042; low042 = o
 	for o in _allies_of(u):
 		var pct042: float = [0.03, 0.06, 0.10][si]
@@ -18835,18 +18835,18 @@ func _tick_dot_stacks(u: Dictionary) -> void:
 		match type:
 			"burn":
 				dmg = stacks + roundi(max_hp * stacks * 0.001)
-				new_val = floori(stacks * 0.8)   # 衰减80%(用户)
+				new_val = CombatMath.decay_stacks(stacks)   # 衰减80%(用户)
 				if _t < u.get("true_fire_until", 0.0):
 					_apply_damage(u, dmg, Color("#ffffff"), u.get("dot_src", {}).get("burn", null), "tru", false, true)   # 真火: 灼烧转真伤(原走_raw_lose→无飘字无统计·用户2026-07-19)
 				else:
 					_apply_damage(u, _dot_after_resist(u, float(dmg), true, u.get("dot_src", {}).get("burn", null)), Color("#4dabf7"), u.get("dot_src", {}).get("burn", null), "mag", false, true)   # 灼烧=魔法伤害·吃魔抗
 			"poison":
 				dmg = stacks
-				new_val = floori(stacks * 0.8)   # 衰减80%(用户)
+				new_val = CombatMath.decay_stacks(stacks)   # 衰减80%(用户)
 				_apply_damage(u, _dot_after_resist(u, float(dmg), true, u.get("dot_src", {}).get("poison", null)), Color("#7ee87e"), u.get("dot_src", {}).get("poison", null), "mag", false, true)   # 中毒=魔法伤害·吃魔抗
 			"bleed":
 				dmg = stacks
-				new_val = floori(stacks * 0.8)   # 衰减80%(用户)
+				new_val = CombatMath.decay_stacks(stacks)   # 衰减80%(用户)
 				_apply_damage(u, _dot_after_resist(u, float(dmg), false, u.get("dot_src", {}).get("bleed", null)), Color("#ff6b6b"), u.get("dot_src", {}).get("bleed", null), "phy", false, true)   # 流血=物理伤害·吃护甲
 		ds[type] = maxi(0, new_val)
 		if ds[type] <= 0:
@@ -18893,7 +18893,7 @@ func _arr_erase_unit(arr: Array, x) -> void:   # ★引用删除: Array.erase() 
 func _lowest_hp_pct_ally(u: Dictionary):   # 生命【百分比】最低的友军(含自己) — 装备文案说的是百分比, _lowest_hp_ally 是绝对值语义
 	var best = null; var bv := INF
 	for o in _allies_of(u):
-		var pct: float = float(o["hp"]) / maxf(1.0, float(o["maxHp"]))
+		var pct: float = CombatMath.hp_frac(float(o["hp"]), float(o["maxHp"]))
 		if pct < bv:
 			bv = pct; best = o
 	return best
@@ -23483,7 +23483,7 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 				# 生命百分比最低的友军 (含自己)
 				var low = null; var lv := INF
 				for o in _allies_of(u):
-					var p: float = o["hp"] / maxf(1.0, o["maxHp"])
+					var p: float = CombatMath.hp_frac(o["hp"], o["maxHp"])
 					if p < lv: lv = p; low = o
 				var done: float = 0.0
 				if low != null:
@@ -23586,7 +23586,7 @@ func _eq_sniper_windup(u: Dictionary, si: int) -> void:   # 狙击长管057: 每
 	if not u.get("alive", false): return
 	var low = null; var lv := INF
 	for o in _pick_enemies_of(u):
-		var p: float = o["hp"] / maxf(1.0, o["maxHp"])
+		var p: float = CombatMath.hp_frac(o["hp"], o["maxHp"])
 		if p < lv: lv = p; low = o
 	if low == null: return
 	_sniper_charge_fx(u, low)
@@ -24420,7 +24420,7 @@ func _refresh_info_panel() -> void:
 			var st0 := str(acts[0])
 			var mxcd := _skill_cd(ud, st0)
 			var cd := float((ud.get("skill_cd", {}) as Dictionary).get(st0, mxcd))
-			var rdy := clampf(1.0 - (cd / maxf(0.01, mxcd)), 0.0, 1.0)
+			var rdy := CombatMath.cooldown_ready(cd, mxcd)
 			_info_en_bar.value = rdy
 			if _info_en_lbl != null and is_instance_valid(_info_en_lbl):
 				_info_en_lbl.text = "龟能  %d%%" % int(rdy * 100.0)
@@ -24754,7 +24754,7 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 		var st0 := str(acts[0])
 		var mxcd := _skill_cd(u, st0)
 		var cd := float((u.get("skill_cd", {}) as Dictionary).get(st0, mxcd))
-		var rdy := clampf(1.0 - (cd / maxf(0.01, mxcd)), 0.0, 1.0)
+		var rdy := CombatMath.cooldown_ready(cd, mxcd)
 		var _enref: Array = _info_bar(vb, rdy, 1.0, Color("#ffce4d"), "龟能  %d%%" % int(rdy * 100.0))
 		_info_en_bar = _enref[0]; _info_en_lbl = _enref[1]
 
