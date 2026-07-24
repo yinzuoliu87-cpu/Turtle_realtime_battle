@@ -3307,6 +3307,16 @@ func _next_cast_tok() -> int:
 	_cast_tok += 1
 	return _cast_tok
 
+## 按【战斗时钟 _t】等待 secs 秒(Phase2·§3.5): 替 create_timer(走未钳制真实时间·CI/慢机偏)。
+## _t 走钳制后 delta → 效果跟随 sim 时间·暂停时正确停;帧上限防 _t 冻结(_kill 后)时死循环。
+## 正常 60fps 下 _t≈真实时间 → 手感不变;慢机/CI 下按 sim 时间(这才对)。
+func _wait_sim(secs: float) -> void:
+	var t_end: float = _t + secs
+	var guard: int = 0
+	while _t < t_end and guard < 6000 and is_instance_valid(self):
+		await get_tree().process_frame
+		guard += 1
+
 func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -> Dictionary:
 	var is_minion: bool = bool(spec.get("minion", false))
 	var is_egg: bool = bool(spec.get("egg", false))
@@ -5958,7 +5968,7 @@ func _big_bear_charge_and_spawn(u: Dictionary, si: int) -> void:   # 满层: 携
 	var gt := _reg_tween()
 	gt.tween_property(glow, "modulate:a", 0.95, 1.0)
 	gt.parallel().tween_property(glow, "scale", Vector3(3.2, 3.2, 3.2), 1.2)
-	await get_tree().create_timer(1.2).timeout
+	await _wait_sim(1.2)
 	if not is_instance_valid(self): return
 	if is_instance_valid(glow): glow.queue_free()
 	var stt: Dictionary = u.get("eq_state", {}).get("p2eq_034", {})
@@ -7332,7 +7342,7 @@ func _eq_dumbbell_routine(u: Dictionary, si: int) -> void:   # 原地锻炼(锁�
 	for _b in range(3):   # 锻炼动作: 3下蹲起形变
 		if not u.get("alive", false): u["_slam"] = false; return
 		_anticipate(u)
-		await get_tree().create_timer(0.3).timeout
+		await _wait_sim(0.3)
 	if not is_instance_valid(self): return
 	var stt: Dictionary = u["eq_state"].get("p2eq_020", {})   # 锻炼层(eq_state局内计数, 每场战斗重置)
 	stt["exercise"] = int(stt.get("exercise", 0)) + 1
@@ -7341,7 +7351,7 @@ func _eq_dumbbell_routine(u: Dictionary, si: int) -> void:   # 原地锻炼(锁�
 	u["maxHp"] += gain; u["hp"] += gain
 	_skill_ring(u["pos"], Color(0.8, 0.9, 1.0, 0.42), 48.0)   # 锻炼强化光
 	_anticipate(u); _shake(JUICE_SHAKE_HEAVY)   # 蓄力
-	await get_tree().create_timer(0.35).timeout
+	await _wait_sim(0.35)
 	u["_slam"] = false
 	if not u.get("alive", false): return
 	var t = _nearest_enemy(u)
@@ -7372,7 +7382,7 @@ func _eq_fuel_throw(u: Dictionary, si: int) -> void:   # 余烬燃油瓶022: 每
 	if not u.get("alive", false): return
 	if _nearest_enemy(u) == null: return
 	_anticipate(u)   # 短蓄力
-	await get_tree().create_timer(0.3).timeout
+	await _wait_sim(0.3)
 	if not is_instance_valid(self) or not u.get("alive", false): return
 	var t = _nearest_enemy(u)
 	if t == null: return
@@ -8078,7 +8088,7 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007(重做�
 	var gt := _reg_tween(); gt.set_parallel(true)
 	gt.tween_property(sword, "modulate:a", 1.0, 0.28)
 	gt.tween_property(sword, "scale", Vector3(1.5, 1.5, 1.5), 0.4)
-	await get_tree().create_timer(0.6).timeout
+	await _wait_sim(0.6)
 	if not u.get("alive", false):
 		if is_instance_valid(sword): sword.queue_free()
 		return
@@ -8272,7 +8282,7 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 	var gt := _reg_tween()
 	gt.tween_property(glow, "modulate:a", 0.85, 0.4)
 	gt.parallel().tween_property(glow, "scale", Vector3(2.8, 2.8, 2.8), 0.45)
-	await get_tree().create_timer(0.45).timeout
+	await _wait_sim(0.45)
 	if is_instance_valid(glow): glow.queue_free()
 	if not u.get("alive", false): return
 	var n := 7
@@ -8292,12 +8302,12 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 		st.tween_property(sp, "modulate:a", 0.95, 0.2).set_delay(float(k) * 0.03)
 		st.tween_property(sp, "scale", Vector3.ONE, 0.25).set_delay(float(k) * 0.03)
 		swords.append(sp)
-	await get_tree().create_timer(0.42).timeout   # 等一排剑生成完
+	await _wait_sim(0.42)   # 等一排剑生成完
 	if not u.get("alive", false): return
 	for spr in swords:   # 调转方向: 一排剑同时旋转对准行进方向(带回弹)
 		if is_instance_valid(spr):
 			_reg_tween().tween_property(spr, "rotation:y", ang, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	await get_tree().create_timer(0.34).timeout
+	await _wait_sim(0.34)
 	if not u.get("alive", false): return
 	_shake(JUICE_SHAKE_HEAVY)
 	var reach := 1050.0
@@ -11792,7 +11802,7 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 		for _wf in range(4):                                # 起手 1-4帧
 			if not u.get("alive", false): break
 			if is_instance_valid(_nspr): _nspr.frame = _wf
-			await get_tree().create_timer(0.045).timeout
+			await _wait_sim(0.045)
 	var traveled := 0.0
 	# ★冲击特效(用户2026-07-11): 角色前方一道疾风拖影伴随滑行(fx-trail·贴地朝行进方向·每帧跟随身前)
 	var lead := Sprite3D.new()
@@ -11833,7 +11843,7 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 	if _ndash:
 		for _lf in range(8, 11):                            # 落地 9-11帧
 			if is_instance_valid(_nspr): _nspr.frame = _lf
-			await get_tree().create_timer(0.05).timeout
+			await _wait_sim(0.05)
 		u["_manual_anim"] = false
 		if is_instance_valid(_nspr): _set_anim_sheet(u, u.get("idle_sd", {}), "", true)   # 回idle
 	u["_ninja_gliding"] = false                               # 冲刺(含落地)结束→放开触发
@@ -17154,7 +17164,7 @@ func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火�
 		wf.chain().tween_callback(wall.queue_free)
 	if is_instance_valid(wave):
 		wave.emitting = false
-		await get_tree().create_timer(wave.lifetime + 0.1).timeout
+		await _wait_sim(wave.lifetime + 0.1)
 		if is_instance_valid(wave):
 			wave.queue_free()
 
@@ -23296,7 +23306,7 @@ func _eq_laser_sweep(u: Dictionary, tgt: Dictionary, si: int) -> void:   # 扇�
 		tele.position = _world_pos(u["pos"] + dir * base_rng, 0.1)
 		tele.scale = Vector3(1.0, 0.35, 1.0); tele.modulate = Color(1.0, 0.3, 0.3, 0.0)
 		_reg_tween().tween_property(tele, "modulate:a", 0.5, 0.18)
-		await get_tree().create_timer(0.2).timeout
+		await _wait_sim(0.2)
 		if is_instance_valid(tele):
 			var telf := _reg_tween()
 			telf.tween_property(tele, "modulate:a", 0.0, 0.1)
@@ -23372,7 +23382,7 @@ func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽�
 	for _p in range(2):
 		tt.tween_property(tel, "modulate:a", 0.28, 0.14)
 		tt.tween_property(tel, "modulate:a", 0.6, 0.14)
-	await get_tree().create_timer(0.56).timeout
+	await _wait_sim(0.56)
 	if not src.get("alive", false):
 		if is_instance_valid(tel): tel.queue_free()
 		return
@@ -23416,7 +23426,7 @@ func _eq_fire_coral_active(src: Dictionary, si: int) -> void:   # 灼热火珊�
 		for o in es: cen += o["pos"]
 		dir = (cen / float(es.size()) - src["pos"]).normalized()
 	_anticipate(src); _shake(JUICE_SHAKE_HEAVY)   # 蓄力
-	await get_tree().create_timer(0.4).timeout
+	await _wait_sim(0.4)
 	if not is_instance_valid(self) or not src.get("alive", false): return
 	var origin: Vector2 = src["pos"]
 	var wave := Sprite3D.new()   # 橙火弯月波(躺平朝dir, 边挥边扩)
@@ -23520,7 +23530,7 @@ func _eq_bloodletting(u: Dictionary, si: int) -> void:   # 饮血护符坠(011):
 		var decay: float = pow(0.85, k)
 		_blood_slash(u["pos"], o["pos"], 0.0)   # 这一刀立即砍
 		_apply_damage_from(u, o, int((_resolve_dmg(u, u["atk"] * [0.5, 0.7, 1.0][si] + [40.0, 50.0, 70.0][si], o, false)) * decay), Color("#ff8aa0"), 0.33, false, true)
-		await get_tree().create_timer(0.3).timeout   # 一段一段: 每0.3s一刀
+		await _wait_sim(0.3)   # 一段一段: 每0.3s一刀
 	if not is_instance_valid(self): return
 	var shg: int = int(u["shield"] - sh0)   # 连斩吸血溢出转的盾, 结尾汇总一次
 	if shg > 0: _float_text(u["pos"] + Vector2(28, -46), "护盾+" + str(shg), Color("#8ad7ff"), false, "shield")
