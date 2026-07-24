@@ -6,11 +6,11 @@
 name: iOS unsigned IPA
 
 on:
-  # ★只手动触发(用户2026-07-24): 原来每次 push main 都跑, 而这个构建当前会失败
-  #   (Godot 4.6 iOS 模板用 Swift 6 工具链编, runner 的 Xcode 链 libgodot.a 缺 swift_Builtin_float 符号)
-  #   → 每次推送都发一封 GitHub "run failed" 邮件。改成只在要出包时手动跑(Actions 页 → Run workflow)。
-  #   tests.yml 仍在 push 上跑(那是提交门禁, 要它挡回归)。
+  # 手动触发 + push main(用户2026-07-24 复要出包)。构建现已恢复 success(早前那个 Swift 链接失败
+  #   是本地误判, 实际近期 iOS run 全绿), 所以恢复 push 触发不会再刷失败邮件。
   workflow_dispatch:
+  push:
+    branches: [main]
 
 permissions:
   contents: write   # 失败时把构建日志推到ci-logs分支(本地无token读不了Actions日志API·git拉分支即可看)
@@ -95,3 +95,16 @@ jobs:
           name: turtle-ios-unsigned
           path: build/ios/turtle-ios-unsigned.ipa
           retention-days: 14
+
+      # ★发布到 Release「ios-latest」(用户2026-07-24: 要能自动下到桌面)。
+      #   Release 资产【公开可下载·不需登录/token】, 而 artifact 需要 GitHub 认证才能下 →
+      #   本地无 token 只能靠 Release 拿包。每次构建覆盖同名资产, 永远是最新。
+      - name: Publish IPA to Release (公开可下载)
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create ios-latest --title "iOS unsigned (latest)" \
+            --notes "自动构建 unsigned IPA · Sideloadly 装机(免费证书7天)。每次 push main 覆盖更新。" \
+            2>/dev/null || true
+          gh release upload ios-latest build/ios/turtle-ios-unsigned.ipa --clobber

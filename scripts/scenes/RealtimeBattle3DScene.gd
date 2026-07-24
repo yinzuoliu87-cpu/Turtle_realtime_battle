@@ -614,6 +614,13 @@ var _edit_palette: Control = null         # 编辑面板根 (Control 子控件 m
 var _edit_lbl_hp: Label = null
 var _edit_lbl_status: Label = null
 var _edit_btn_start: Button = null
+# ── 调试场重做(用户2026-07-24: 摆放流程/大师/精英/面板折叠) ──
+static var _edit_collapsed := false        # 大设置面板折叠态(静态·跨编辑/开始/再来 重建持久)
+var _edit_trainer_active := "hook"         # 摆训龟大师时给它装的主动技(hook/fury_potion/whistle/glacier)
+var _edit_brush_bar: PanelContainer = null # 底部常驻笔刷栏(取代模态选龟弹窗)
+var _edit_brush_cells: Array = []          # [ [Button, brush_key], … ] 用于高亮当前笔刷
+var _edit_body: VBoxContainer = null       # 大面板可折叠的主体(折叠时隐它, 只留标题栏)
+var _edit_btn_collapse: Button = null      # 折叠/展开按钮
 var _edit_btn_edit: Button = null
 
 # --- Phase 4 juice 全局态 ---
@@ -1529,6 +1536,7 @@ func _spawn_teams() -> void:
 	if DEBUG_EDIT:
 		_edit_mode = true
 		_build_edit_palette()
+		_build_brush_bar()   # 底部常驻笔刷栏(取代模态选龟·用户2026-07-24)
 		_edit_set_status("编辑模式: 点空地摆兵 · 拖拽挪位 · 右键删")
 		return
 	if _is_dual_lane_mode():   # 双路: 读 dual_lineup 当前路 spawn 我方 leaders+小将 + 对手, 绕过评审/EQDEMO
@@ -21745,9 +21753,24 @@ func _edit_handle_mouse_motion(ev: InputEventMouseMotion) -> void:
 # 摆放一个单位: 复用 _make_unit, 右队按调试场设置改成假人 (不动/不打/可设血/可不死).
 func _edit_place_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 	var u: Dictionary
-	if id == "__minion__":   # 调试场摆小将(用户2026-07-18): _edit_minion_role切前排近战(浪板)/后排远程(火箭)
+	# ★训龟大师(用户2026-07-24): 调试场【自由摆位】, 不走正式对局"蛋后上方"那套站位(调试场没蛋)。
+	if id == TRAINER_ID:
+		u = _make_unit(TRAINER_ID, side, pos, {"trainer": true})
+		u["_tr_active"] = _valid_active(_edit_trainer_active)
+		u["_tr_passive"] = ""
+		_units.append(u)
+		if str(side) == "left":
+			_build_spell_disc()   # 我方大师 → 建法术圆盘(按 Q / 点盘 放主动)
+		_edit_set_status("摆放 训龟大师·%s (%s) · 我方按 Q 放/敌方自动放 · 共 %d 单位" % [
+			str(TRAINER_SKILLS.get(_edit_trainer_active, {}).get("name", _edit_trainer_active)),
+			("友军" if side == "left" else "敌方"), _units.size()])
+		return u
+	if id == "__minion__":   # 调试场摆小将: front=近战浪板 / back=远程火箭 / elite=精英(用户2026-07-24 补精英)
 		var _mlvl := maxi(1, int(_edit_dummy_hp / 300.0))
-		u = _make_unit("__minion__", side, pos, {"minion": true, "role": _edit_minion_role, "elite": false, "level": _mlvl})
+		var _elite: bool = (_edit_minion_role == "elite")
+		var _spec: Dictionary = {"minion": true, "elite": _elite, "level": _mlvl}
+		if not _elite: _spec["role"] = _edit_minion_role   # 精英不分前后排(独立造型)
+		u = _make_unit("__minion__", side, pos, _spec)
 		u["_edit_minion_role"] = _edit_minion_role   # 存角色/等级→⏸编辑重生/存盘时按此重建(否则小将退化成默认龟)
 		u["_edit_minion_lvl"] = _mlvl
 	else:
@@ -21763,7 +21786,9 @@ func _edit_place_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 	elif _edit_full_energy:
 		_edit_apply_full_energy(u)      # 友军: 满龟能开→技能即就绪+快速回充
 	_units.append(u)
-	var _pn := ("近战小将·浪板" if _edit_minion_role == "front" else "远程小将·火箭") if id == "__minion__" else str(_data_by_id.get(id, {}).get("name", id))
+	var _pn: String = str(_data_by_id.get(id, {}).get("name", id))
+	if id == "__minion__":
+		_pn = {"front": "近战小将·浪板", "back": "远程小将·火箭", "elite": "精英小将"}.get(_edit_minion_role, "小将")
 	_edit_set_status("摆放 %s (%s) · 共 %d 单位" % [_pn, ("友军" if side == "left" else "假人"), _units.size()])
 	return u
 
@@ -21820,10 +21845,19 @@ func _edit_start_battle() -> void:
 func _edit_unit_from_setup(s: Dictionary) -> Dictionary:
 	var side := str(s.get("side", "left"))
 	var u: Dictionary
+	# 训龟大师(用户2026-07-24): 自由摆位·带装配的主动
+	if bool(s.get("trainer", false)) or str(s.get("id", "")) == TRAINER_ID:
+		u = _make_unit(TRAINER_ID, side, s.get("pos", Vector2()), {"trainer": true})
+		u["_tr_active"] = _valid_active(str(s.get("tr_active", "hook")))
+		u["_tr_passive"] = ""
+		return u
 	if bool(s.get("minion", false)) or str(s.get("id", "")) == "__minion__":
 		var role := str(s.get("role", "front"))
 		var lvl := int(s.get("level", 1))
-		u = _make_unit("__minion__", side, s.get("pos", Vector2()), {"minion": true, "role": role, "elite": false, "level": lvl})
+		var _el: bool = (role == "elite")   # 精英小将(用户2026-07-24)
+		var _sp: Dictionary = {"minion": true, "elite": _el, "level": lvl}
+		if not _el: _sp["role"] = role
+		u = _make_unit("__minion__", side, s.get("pos", Vector2()), _sp)
 		u["_edit_minion_role"] = role
 		u["_edit_minion_lvl"] = lvl
 	else:
@@ -21833,11 +21867,17 @@ func _edit_unit_from_setup(s: Dictionary) -> Dictionary:
 		u["no_basic"] = true
 		u["no_move"] = true
 		u["active_skills"] = []
-		u["maxHp"] = float(s.get("hp", _edit_dummy_hp))
-		u["hp"] = u["maxHp"]
-		if not bool(s.get("killable", false)):
-			u["_review_dummy"] = true
-	elif _edit_full_energy:
+	u["maxHp"] = float(s.get("hp", u.get("maxHp", _edit_dummy_hp)))   # 血量: 左右都按 per-unit 存的(用户2026-07-24)
+	u["hp"] = u["maxHp"]
+	if not bool(s.get("killable", true)):
+		u["_review_dummy"] = true   # 无敌沙包(per-unit·左右都可)
+	if side == "left" and bool(s.get("fe", false)):   # 满龟能(per-unit)
+		var cds: Dictionary = u.get("skill_cd", {})
+		for _sk in u.get("active_skills", []): cds[str(_sk)] = 0.0
+		u["skill_cd"] = cds
+		u["echarge_perm"] = maxf(float(u.get("echarge_perm", 1.0)), 4.0)
+		u["_edit_fe"] = true
+	elif side == "left" and _edit_full_energy:
 		_edit_apply_full_energy(u)
 	return u
 
@@ -21860,11 +21900,14 @@ func _edit_snapshot_setup() -> void:
 			"side": str(u["side"]),
 			"pos": Vector2(u["pos"]),
 			"hp": float(u.get("maxHp", 500.0)),
-			"killable": not bool(u.get("_review_dummy", false)) if str(u["side"]) == "right" else true,
+			"killable": not bool(u.get("_review_dummy", false)),   # 无敌态: 左右都存(用户2026-07-24 per-unit)
+			"fe": bool(u.get("_edit_fe", false)),                  # 满龟能态(per-unit)
 			"equips": u.get("_edit_equips", []),
 			"minion": str(u.get("id", "")) == "__minion__",   # 小将靠id判定(单位字典不存is_minion·只有is_elite)→存盘/JSON正确; 重建另有id兜底
-			"role": str(u.get("_edit_minion_role", "front")),
+			"role": str(u.get("_edit_minion_role", "front")),   # role=="elite" 即精英小将(用户2026-07-24)
 			"level": int(u.get("_edit_minion_lvl", 1)),
+			"trainer": bool(u.get("is_trainer", false)),        # 训龟大师(用户2026-07-24)
+			"tr_active": str(u.get("_tr_active", "hook")),
 		})
 
 # ----------------------------------------------------------------------------
@@ -21918,30 +21961,23 @@ func _build_edit_palette() -> void:
 	vb.add_theme_constant_override("separation", 10)
 	panel.add_child(vb)
 
+	# 标题栏 + 折叠按钮(用户2026-07-24: 左边大面板要能关) —— 折叠时只留这一行, 释放整个左半场。
+	var titlebar := HBoxContainer.new(); titlebar.add_theme_constant_override("separation", 8); vb.add_child(titlebar)
 	var title := Label.new()
 	title.text = "🛠 调试场"
 	title.add_theme_font_size_override("font_size", 22)
 	title.add_theme_color_override("font_color", Color("#ffd93d"))
-	vb.add_child(title)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	titlebar.add_child(title)
+	_edit_btn_collapse = _edit_mk_btn("⊟ 折叠", func(): _edit_toggle_collapse(), 84)
+	titlebar.add_child(_edit_btn_collapse)
+	# 可折叠主体: 后续所有设置行都进 _edit_body(把 vb 重指向它)
+	_edit_body = VBoxContainer.new(); _edit_body.add_theme_constant_override("separation", 10); vb.add_child(_edit_body)
+	vb = _edit_body
 
-	var row1 := HBoxContainer.new(); row1.add_theme_constant_override("separation", 8); vb.add_child(row1)
-	_edit_btn_pick = _edit_mk_btn("选龟", func(): _edit_open_turtle_grid(), 200)
-	row1.add_child(_edit_btn_pick)
-	_edit_btn_side = _edit_mk_btn("左队", func(): _edit_toggle_side(), 130)
-	row1.add_child(_edit_btn_side)
-
-	# 小将两种笔刷(用户2026-07-18: 调试场选不到远程火箭): 近战·浪板=front / 远程·火箭=back
+	# 选龟/选边/小将 → 已移到底部常驻笔刷栏(_build_brush_bar·用户2026-07-24), 这里不再放。
 	var row_min := HBoxContainer.new(); row_min.add_theme_constant_override("separation", 8); vb.add_child(row_min)
-	row_min.add_child(_edit_lbl("小将"))
-	row_min.add_child(_edit_mk_btn("近战·浪板", func() -> void:
-		_edit_pick_id = "__minion__"; _edit_minion_role = "front"
-		_edit_refresh_labels()
-		_edit_set_status("已选 近战小将(人体浪板) → 点空地摆放 (再点『选龟』换回龟)"), 130))
-	row_min.add_child(_edit_mk_btn("远程·火箭", func() -> void:
-		_edit_pick_id = "__minion__"; _edit_minion_role = "back"
-		_edit_refresh_labels()
-		_edit_set_status("已选 远程小将(追踪火箭筒) → 点空地摆放 (再点『选龟』换回龟)"), 130))
-	_edit_btn_energy = _edit_mk_btn("满龟能:关", func(): _edit_toggle_full_energy(), 130)
+	_edit_btn_energy = _edit_mk_btn("满龟能默认:关", func(): _edit_toggle_full_energy(), 160)
 	row_min.add_child(_edit_btn_energy)
 
 	var row_hp := HBoxContainer.new(); row_hp.add_theme_constant_override("separation", 8); vb.add_child(row_hp)
@@ -22000,8 +22036,114 @@ func _build_edit_palette() -> void:
 	_edit_load_setup()
 	_edit_refresh_labels()
 	_edit_refresh_equip_panel()
+	_edit_apply_collapse()   # 恢复折叠态(跨编辑/开始/再来 重建持久·用户2026-07-24)
 
-# ---- 网格弹层 (选龟 / 选装备) ----
+func _edit_toggle_collapse() -> void:
+	_edit_collapsed = not _edit_collapsed
+	_edit_apply_collapse()
+
+func _edit_apply_collapse() -> void:
+	if _edit_body != null and is_instance_valid(_edit_body):
+		_edit_body.visible = not _edit_collapsed
+	if _edit_btn_collapse != null and is_instance_valid(_edit_btn_collapse):
+		_edit_btn_collapse.text = "▶ 展开" if _edit_collapsed else "⊟ 折叠"
+
+# ════════════════════════════════════════════════════════════════════
+#  底部常驻笔刷栏 (用户2026-07-24: 取代模态选龟弹窗, 点选笔刷→连点连摆·不挡战场)
+# ════════════════════════════════════════════════════════════════════
+func _build_brush_bar() -> void:
+	if _edit_brush_bar != null and is_instance_valid(_edit_brush_bar):
+		_edit_brush_bar.queue_free()
+	_edit_brush_cells = []
+	var bar := PanelContainer.new()
+	bar.name = "DebugBrushBar"
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.03, 0.055, 0.09, 0.95)
+	sb.border_color = Color("#ffd93d"); sb.border_width_top = 2
+	sb.content_margin_left = 8; sb.content_margin_right = 8; sb.content_margin_top = 6; sb.content_margin_bottom = 6
+	bar.add_theme_stylebox_override("panel", sb)
+	bar.mouse_filter = Control.MOUSE_FILTER_STOP
+	bar.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	bar.offset_top = -94
+	_ui_layer.add_child(bar)
+	_edit_brush_bar = bar
+	var root := VBoxContainer.new(); root.add_theme_constant_override("separation", 3); bar.add_child(root)
+	var line := HBoxContainer.new(); line.add_theme_constant_override("separation", 8); root.add_child(line)
+	_edit_btn_side = _edit_mk_btn("左队(友军)", func(): _edit_toggle_side(), 116)
+	line.add_child(_edit_btn_side)
+	var sc := ScrollContainer.new()
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	sc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.custom_minimum_size = Vector2(0, 64)
+	line.add_child(sc)
+	var strip := HBoxContainer.new(); strip.add_theme_constant_override("separation", 5); sc.add_child(strip)
+	for id in STATS.keys():
+		var iid := str(id)
+		if iid == "__minion__" or iid == TRAINER_ID: continue
+		strip.add_child(_edit_brush_cell(iid, AVATAR_DIR + iid + ".png", str(_data_by_id.get(iid, {}).get("name", iid))))
+	strip.add_child(_edit_brush_cell("__minion__:front", "", "浪板"))
+	strip.add_child(_edit_brush_cell("__minion__:back", "", "火箭"))
+	strip.add_child(_edit_brush_cell("__minion__:elite", "", "精英"))
+	strip.add_child(_edit_brush_cell(TRAINER_ID, TRAINER_SPRITE, "大师"))
+	var hint := Label.new()
+	hint.text = "点笔刷(下面高亮)→点战场连点连摆 · 点已摆的龟→设置面板出配置(技能/装备/血量/无敌/满龟能)"
+	hint.add_theme_font_size_override("font_size", 12)
+	hint.add_theme_color_override("font_color", Color("#ffe9a8"))
+	root.add_child(hint)
+	_edit_refresh_brush_highlight()
+
+func _edit_brush_cell(key: String, icon_path: String, label: String) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(54, 54)
+	b.tooltip_text = label
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	if icon_path != "" and ResourceLoader.exists(icon_path):
+		b.icon = load(icon_path); b.expand_icon = true
+		b.add_theme_constant_override("icon_max_width", 46)
+	else:
+		b.text = label; b.add_theme_font_size_override("font_size", 15)
+	b.pressed.connect(func(): _edit_set_brush(key))
+	_edit_brush_cells.append([b, key])
+	return b
+
+func _edit_current_brush_key() -> String:
+	if _edit_pick_id == "__minion__":
+		return "__minion__:" + _edit_minion_role
+	return _edit_pick_id
+
+func _edit_set_brush(key: String) -> void:
+	if key.begins_with("__minion__:"):
+		_edit_pick_id = "__minion__"
+		_edit_minion_role = key.substr(11)   # front/back/elite
+	else:
+		_edit_pick_id = key
+	_edit_refresh_brush_highlight()
+	_edit_refresh_labels()
+	_edit_set_status("笔刷: %s · 点空地摆放(可连点)" % _edit_brush_name(key))
+
+func _edit_brush_name(key: String) -> String:
+	if key == TRAINER_ID: return "训龟大师"
+	if key.begins_with("__minion__:"):
+		return {"front": "近战小将·浪板", "back": "远程小将·火箭", "elite": "精英小将"}.get(key.substr(11), "小将")
+	return str(_data_by_id.get(key, {}).get("name", key))
+
+func _edit_refresh_brush_highlight() -> void:
+	var cur := _edit_current_brush_key()
+	for pair in _edit_brush_cells:
+		var b: Button = pair[0]
+		if not is_instance_valid(b): continue
+		var on: bool = (str(pair[1]) == cur)
+		var s := StyleBoxFlat.new()
+		s.bg_color = Color(0.16, 0.22, 0.14, 1.0) if on else Color(0.09, 0.13, 0.19, 1.0)
+		s.border_color = Color("#ffd93d") if on else Color(0.24, 0.30, 0.38, 1.0)
+		s.set_border_width_all(3 if on else 1); s.set_corner_radius_all(6)
+		b.add_theme_stylebox_override("normal", s)
+		b.add_theme_stylebox_override("hover", s)
+		b.add_theme_stylebox_override("pressed", s)
+		b.modulate = Color(1, 1, 1, 1) if on else Color(0.7, 0.74, 0.8, 1)
+
+# ---- 网格弹层 (选装备; 选龟已改成底部笔刷栏) ----
 func _edit_make_popup(title_text: String) -> GridContainer:
 	_edit_close_popup()
 	var back := ColorRect.new()
@@ -22132,6 +22274,26 @@ func _edit_refresh_equip_panel() -> void:
 			var _sb := _edit_mk_btn(_snm, func(): _edit_set_unit_skill(_sidx), 0)
 			_sb.modulate = Color(1, 0.9, 0.4, 1) if _si == _curi else Color(0.58, 0.62, 0.68, 1)
 			srow.add_child(_sb)
+	# ── 单龟配置(用户2026-07-24: 血量/无敌/满龟能 逐只设·不再全局; 大师=主动技选择器) ──
+	var _u: Dictionary = _edit_sel_unit
+	if _u.get("is_trainer", false):
+		var trow := HFlowContainer.new(); trow.add_theme_constant_override("h_separation", 6); trow.add_theme_constant_override("v_separation", 6); _edit_equip_box.add_child(trow)
+		trow.add_child(_edit_lbl("主动技"))
+		for _tk in ["hook", "fury_potion", "whistle", "glacier"]:
+			var _tkk: String = _tk
+			var _tb := _edit_mk_btn(str(TRAINER_SKILLS[_tk]["name"]), func(): _edit_set_trainer_skill(_tkk), 0)
+			_tb.modulate = Color(1, 0.9, 0.4, 1) if str(_u.get("_tr_active", "")) == _tk else Color(0.58, 0.62, 0.68, 1)
+			trow.add_child(_tb)
+	else:
+		var hrow := HBoxContainer.new(); hrow.add_theme_constant_override("separation", 6); _edit_equip_box.add_child(hrow)
+		hrow.add_child(_edit_lbl("血量"))
+		hrow.add_child(_edit_mk_btn("−", func(): _edit_sel_adjust_hp(-500.0), 44))
+		var _hl := Label.new(); _hl.text = "%d" % int(_u.get("maxHp", 0)); _hl.add_theme_font_size_override("font_size", 15); _hl.add_theme_color_override("font_color", Color("#ffe9a8")); _hl.custom_minimum_size = Vector2(80, 0); _hl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; hrow.add_child(_hl)
+		hrow.add_child(_edit_mk_btn("+", func(): _edit_sel_adjust_hp(500.0), 44))
+		var _inv: bool = _u.get("_review_dummy", false)
+		hrow.add_child(_edit_mk_btn("无敌:%s" % ("开" if _inv else "关"), func(): _edit_sel_toggle_invincible(), 92))
+		var _fe: bool = _u.get("_edit_fe", false)
+		hrow.add_child(_edit_mk_btn("满龟能:%s" % ("开" if _fe else "关"), func(): _edit_sel_toggle_energy(), 110))
 	var wrap := HFlowContainer.new(); wrap.add_theme_constant_override("h_separation", 6); wrap.add_theme_constant_override("v_separation", 6); _edit_equip_box.add_child(wrap)
 	var eqs: Array = _edit_sel_unit.get("_edit_equips", [])
 	for e in eqs:
@@ -22153,6 +22315,38 @@ func _edit_set_unit_skill(idx: int) -> void:
 	var pool: Array = _data_by_id.get(id, {}).get("skillPool", [])
 	var snm := str((pool[idx] as Dictionary).get("name", "")) if idx < pool.size() else ""
 	_edit_set_status("技能 → %s" % snm)
+	_edit_refresh_equip_panel()
+
+## ── 单龟配置助手(用户2026-07-24: 血量/无敌/满龟能/大师主动 逐只设) ──
+func _edit_set_trainer_skill(tk: String) -> void:
+	if _edit_sel_unit == null: return
+	_edit_sel_unit["_tr_active"] = _valid_active(tk)
+	_edit_trainer_active = tk   # 记住 → 下次摆大师也用这个
+	_edit_set_status("大师主动 → %s" % str(TRAINER_SKILLS.get(tk, {}).get("name", tk)))
+	_edit_refresh_equip_panel()
+
+func _edit_sel_adjust_hp(d: float) -> void:
+	if _edit_sel_unit == null: return
+	_edit_sel_unit["maxHp"] = maxf(100.0, float(_edit_sel_unit.get("maxHp", 500.0)) + d)
+	_edit_sel_unit["hp"] = _edit_sel_unit["maxHp"]
+	_edit_refresh_equip_panel()
+
+func _edit_sel_toggle_invincible() -> void:
+	if _edit_sel_unit == null: return
+	if _edit_sel_unit.get("_review_dummy", false): _edit_sel_unit.erase("_review_dummy")
+	else: _edit_sel_unit["_review_dummy"] = true   # 无敌沙包(受击回满)
+	_edit_refresh_equip_panel()
+
+func _edit_sel_toggle_energy() -> void:
+	if _edit_sel_unit == null: return
+	var u: Dictionary = _edit_sel_unit
+	if u.get("_edit_fe", false):
+		u["echarge_perm"] = 1.0; u.erase("_edit_fe")
+	else:
+		var cds: Dictionary = u.get("skill_cd", {})
+		for s in u.get("active_skills", []): cds[str(s)] = 0.0   # 技能即就绪
+		u["skill_cd"] = cds
+		u["echarge_perm"] = maxf(float(u.get("echarge_perm", 1.0)), 4.0); u["_edit_fe"] = true
 	_edit_refresh_equip_panel()
 
 func _edit_add_equip(iid: String) -> void:
