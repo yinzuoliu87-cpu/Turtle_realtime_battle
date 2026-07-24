@@ -6,9 +6,11 @@
 name: iOS unsigned IPA
 
 on:
+  # ★只手动触发(用户2026-07-24): 原来每次 push main 都跑, 而这个构建当前会失败
+  #   (Godot 4.6 iOS 模板用 Swift 6 工具链编, runner 的 Xcode 链 libgodot.a 缺 swift_Builtin_float 符号)
+  #   → 每次推送都发一封 GitHub "run failed" 邮件。改成只在要出包时手动跑(Actions 页 → Run workflow)。
+  #   tests.yml 仍在 push 上跑(那是提交门禁, 要它挡回归)。
   workflow_dispatch:
-  push:
-    branches: [main]
 
 permissions:
   contents: write   # 失败时把构建日志推到ci-logs分支(本地无token读不了Actions日志API·git拉分支即可看)
