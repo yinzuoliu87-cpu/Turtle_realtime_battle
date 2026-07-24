@@ -36,7 +36,7 @@ func _ready() -> void:
 	_build_cancel_btn()   # 取消键: 误点匹配可中途返回主菜单 (流程审计 F1)
 	# V2 异步匹配: 后端抽同档对手快照 (ghost/池空→bot 兜底); 战斗右队读 dual_ghost.leaders (RealtimeBattle3DScene._resolve_right).
 	#   排除自己上传的ghost(防匹到自己阵容) + 最近3场对手; vs 卡头像/名取自抽到的对手 profile.
-	var _rng := RandomNumberGenerator.new(); _rng.randomize()
+	var _rng := Backend.make_match_rng()   # 单一受控PRNG(切片1): 默认randomize()与线上一致; TURTLE_SEED设时确定→同种子同对手(测试/复现)
 	var exclude: Array = ["g_%d" % int(GameState.season_id)]   # ★排除自己ghost(按稳定id·2026-07-18): 原塞season_leaders(宠物id)与ghost_id口径不符=死代码防不住; 玩家自己upload的id=g_<大轮id>
 	exclude.append_array(GameState.recent_ghost_ids)   # 排除最近3场对手(防连续同一快照·用户2026-07-15)
 	GameState.dual_ghost = Backend.find_opponent(Backend.bracket_for_battles(int(GameState.season_total_battles)), exclude, _rng)

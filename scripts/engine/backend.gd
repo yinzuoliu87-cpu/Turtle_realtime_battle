@@ -233,6 +233,19 @@ static func pool_find_window(pool: Dictionary, lo: int, hi: int, exclude_ids: Ar
 		return null
 	return candidates[rng.randi() % candidates.size()]
 
+## 匹配用的【单一受控 PRNG】(Riot 确定性做法: 一个隔离的、可种子化的随机源)。
+## 默认 randomize() —— 与线上行为字节一致, 玩家侧永远随机。
+## 仅当环境变量 TURTLE_SEED=<整数> 时改用固定种子 → 同种子必得同对手 → 测试/复现可确定。
+## 这是"结构治理·切片1": 把匹配随机收束到一个入口, 后续战斗 RNG 也走同一模式。
+static func make_match_rng() -> RandomNumberGenerator:
+	var r := RandomNumberGenerator.new()
+	var s := OS.get_environment("TURTLE_SEED")
+	if s != "" and s.is_valid_int():
+		r.seed = int(s)
+	else:
+		r.randomize()
+	return r
+
 ## 抽对手: 同档 ghost, 没有就 bot. 永远返回一个可打的对手 (永久安全网).
 static func find_opponent(bracket: int, exclude_ids: Array, rng: RandomNumberGenerator) -> Dictionary:
 	var pool := load_pool()
