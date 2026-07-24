@@ -3747,7 +3747,7 @@ func _cast_whistle(trainer: Dictionary, _aim: Vector2) -> bool:
 	if float(trainer.get("_active_cd", 0.0)) > 0.0:
 		return false
 	trainer["_active_cd"] = float(TRAINER_SKILLS["whistle"]["cd"])
-	match randi() % 3:
+	match _battle_rng.randi() % 3:
 		0: _whistle_temphp(trainer)
 		1: _whistle_spirit_wave(trainer)
 		_: _whistle_berserk(trainer)
@@ -3760,7 +3760,7 @@ func _random_ally(trainer: Dictionary):
 	for o in _units:
 		if o.get("alive", false) and not o.get("is_trainer", false) and not o.get("_isEgg", false) and str(o.get("side", "")) == side:
 			pool.append(o)
-	return pool[randi() % pool.size()] if not pool.is_empty() else null
+	return pool[_battle_rng.randi() % pool.size()] if not pool.is_empty() else null
 
 ## 效果①临时血: 随机友军 +700 临时最大生命(5秒)。到期【按比例削】。可测。
 func _whistle_temphp(trainer: Dictionary):
@@ -6112,7 +6112,7 @@ func _thunder_bolt(u: Dictionary) -> void:
 	if not u.get("alive", false): return
 	var es := _pick_enemies_of(u)
 	if es.is_empty(): return
-	var o = es[randi() % es.size()]
+	var o = es[_battle_rng.randi() % es.size()]
 	_lightning_strike(o["pos"], Color("#8fd4ff"), 4.6)   # 大雷(中心≈2.2=飘字高度)
 	var tw := _reg_tween()                             # 伤害在闪电动画中段(~0.25s)跳=落在雷中间
 	tw.tween_interval(0.25)
@@ -6935,7 +6935,7 @@ func _eq_gatling_burst(u: Dictionary, si: int) -> void:   # 幽灵加特林050: 
 		if not u.get("alive", false): return
 		var es50 := _pick_enemies_of(u)
 		if es50.is_empty(): return
-		var o50 = es50[randi() % es50.size()]
+		var o50 = es50[_battle_rng.randi() % es50.size()]
 		_muzzle_flash(u["pos"], (o50["pos"] - u["pos"]), Color("#d0ffff"))
 		_spawn_eq_bolt(u, o50, _atk_dmg(u, g_mul, o50), "res://assets/sprites/vfx/bullet.png", Color("#d0ffff"), false, 0, 0.02)
 		var g_acc: float = float(o50.get("gatling_shred_acc", 0.0))
@@ -7028,7 +7028,7 @@ func _eq_revolver_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 		var es3 := _pick_enemies_of(u)
 		if not es3.is_empty():
 			stt["revolver_bullets"] = int(stt["revolver_bullets"]) - 1
-			var o = es3[randi() % es3.size()]
+			var o = es3[_battle_rng.randi() % es3.size()]
 			_muzzle_flash(u["pos"], (o["pos"] - u["pos"]), Color("#ffe08a"))
 			_spawn_eq_bolt(u, o, _resolve_dmg(u, u["atk"] * [3.0, 5.0, 9.0][si] + [150.0, 310.0, 1200.0][si], o, false), "res://assets/sprites/vfx/bullet.png", Color("#ffe6a8"), false, 0, 0.034)   # 左轮重弹(真子弹, 大一号)
 
@@ -7189,7 +7189,7 @@ func _eq_fpga_tick(u: Dictionary, si: int) -> void:
 	var ccols := [Color("#7ad0ff"), Color("#a0ff8a"), Color("#ffd05a"), Color("#ff8ad0")]
 	var n: int = [1, 2, 4][si]
 	for k in range(n):
-		var pick: int = randi() % 4
+		var pick: int = _battle_rng.randi() % 4
 		var xoff: float = (float(k) - float(n - 1) / 2.0) * 34.0
 		_float_text(u["pos"] + Vector2(xoff, -72.0), codes[pick], ccols[pick])   # 二进制码头顶跳
 		match pick:
@@ -12233,10 +12233,10 @@ func _dice_pick_strike_target(u: Dictionary):                   # 随机敌(用�
 		if o["pos"].distance_to(u["pos"]) > 2000.0: continue   # 射程2000
 		cand.append(o)
 	if cand.is_empty(): return null
-	return cand[randi() % cand.size()]
+	return cand[_battle_rng.randi() % cand.size()]
 
 func _rainbow_enh_prism_proc(u: Dictionary) -> void:            # 强化棱镜4色(用户设计·每5秒抽1): 橙全体友军+10%吸血5s / 黄随机敌灼烧0.67A / 青随机敌冰寒5s / 紫随机敌诅咒5s
-	var c: int = randi() % 4
+	var c: int = _battle_rng.randi() % 4
 	var es: Array = _pick_enemies_of(u)
 	match c:
 		0:
@@ -12245,15 +12245,15 @@ func _rainbow_enh_prism_proc(u: Dictionary) -> void:            # 强化棱镜4�
 			_float_text(u["pos"] + Vector2(0, -60), "橙·全体吸血", Color("#ff9d3c"))
 		1:
 			if not es.is_empty():
-				var t = es[randi() % es.size()]
+				var t = es[_battle_rng.randi() % es.size()]
 				_apply_dot_stacks(t, "burn", maxi(1, int(round(float(u["atk"]) * 0.67))), u)
 		2:
 			if not es.is_empty():
-				var t2 = es[randi() % es.size()]
+				var t2 = es[_battle_rng.randi() % es.size()]
 				t2["spd_aspd_mult"] = 0.7; t2["spd_dbf_until"] = _t + 5.0   # 冰寒-30%攻速5秒
 		3:
 			if not es.is_empty():
-				var t3 = es[randi() % es.size()]
+				var t3 = es[_battle_rng.randi() % es.size()]
 				_add_dot(t3, "curse", t3["maxHp"] * 0.05, 5.0, u)             # 诅咒每秒5%maxHp真伤5秒
 	_skill_ring(u["pos"], Color(0.8, 0.6, 1.0, 0.4), 48.0)
 
@@ -12397,7 +12397,7 @@ func _gambler_wheel_vfx(u: Dictionary, suit: int) -> void:
 	tw.tween_callback(lbl.queue_free)
 
 func _sk_gambler_fate_wheel(u: Dictionary) -> void:             # 赌神龟·命运之轮(用户封板·80龟能): 抽1花色永久加属性(♠攻+5&血+30/♥护甲魔抗+2/♦暴击+8%&护穿+2/♣吸血+4%)·跨场累积=存GameState.gambler_wheel_stacks(本大轮累积·切轮重置·方案B·用户2026-07-09)
-	var _suit := randi() % 4
+	var _suit := _battle_rng.randi() % 4
 	if u.get("side", "") == "left":   # 跨场累积: 抽中即记录(只玩家赌神写本大轮累积·敌/ghost镜像不写·切轮reset)
 		var _sk: String = ["spade", "heart", "diamond", "club"][_suit]
 		GameState.gambler_wheel_stacks[_sk] = int(GameState.gambler_wheel_stacks.get(_sk, 0)) + 1
@@ -12732,7 +12732,7 @@ func _sk_hunter_barrage(u: Dictionary, _tgt) -> void:          # 猎人龟·狩�
 				if o.get("alive", false) and not _is_untargetable(o):
 					cand.append(o)
 			if cand.is_empty(): return
-			var tgt: Dictionary = cand[randi() % cand.size()]   # 随机选一个敌
+			var tgt: Dictionary = cand[_battle_rng.randi() % cand.size()]   # 随机选一个敌
 			_fire_hunter_arrow(uu, tgt, int(round(float(uu["atk"]) * 0.36)))   # 每箭0.36A(共3.6A)
 			})
 
@@ -12959,7 +12959,7 @@ func _sk_pirate_volley(u: Dictionary, tgt) -> void:              # 海盗龟·�
 			for o in _pick_enemies_of(u):
 				if o.get("alive", false): cand.append(o)
 			if cand.is_empty(): return
-			var aim: Dictionary = cand[randi() % cand.size()]   # 随机敌
+			var aim: Dictionary = cand[_battle_rng.randi() % cand.size()]   # 随机敌
 			var land: Vector2 = aim["pos"] + Vector2(randf_range(-32.0, 32.0), randf_range(-32.0, 32.0))   # 落点略散=炮击手感
 			_pirate_ship_muzzle(ship2d, ship_h)                # 船炮口闪
 			_pirate_cannonball(ship2d, ship_h, land, func() -> void:   # 炮弹到点才结算(命中才跳)
@@ -14566,7 +14566,7 @@ func _chest_pick_treasure(u: Dictionary, group: String) -> String:   # 该档随
 			for tid in _CHEST_TREASURE_POOL[g]:
 				if not owned.has(tid): avail.append(tid)
 	if avail.is_empty(): return ""
-	return str(avail[randi() % avail.size()])
+	return str(avail[_battle_rng.randi() % avail.size()])
 
 func _chest_apply_treasure(u: Dictionary, tid: String) -> void:   # 逐件bespoke效果(属性即时应用·机制类置flag由钩子读)
 	if not u.has("chest_treasures"): u["chest_treasures"] = {}
@@ -14595,7 +14595,7 @@ func _chest_pick_equip(costs: Array) -> String:
 			pool.append(str(eq.get("id", "")))
 	if pool.is_empty():
 		return ""
-	return str(pool[randi() % pool.size()])
+	return str(pool[_battle_rng.randi() % pool.size()])
 
 func _sk_chest_inventory(u: Dictionary) -> void:                 # 宝箱龟·清点财宝(用户2026-07-16改: 每1000财宝→治疗+10%·盾不吃加成; 财宝值=大轮累积)
 	var tv: float = float(GameState.chest_treasure_value) if ((not _review_demo()) and str(u.get("side", "")) == "left" and GameState != null) else float(u.get("dmg_dealt", 0.0))
@@ -18434,7 +18434,7 @@ func _sk_cyber_hijack(u: Dictionary) -> void:                   # 赛博龟·侵
 		if o.get("alive", false) and not o.get("_eggImmune", false) and not o.get("hijacked", false):
 			es.append(o)
 	if es.is_empty(): return
-	var v: Dictionary = es[randi() % es.size()]
+	var v: Dictionary = es[_battle_rng.randi() % es.size()]
 	# ★2026-07-22 重做: 【不再改写 side】。旧实现 v["side"] = u["side"] 把它变成赛博方的"真友军"
 	#   → 赛博全队索敌/技能都跳过它(用户主诉"我方要能打"), 还会给它加治疗; 且衍生出
 	#   死亡不归队 / 跨路串阵营 / 单路瞬间判胜 / 召唤物串队 四类问题。
@@ -19011,7 +19011,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 		"pirate":
 			var es := _pick_enemies_of(u)
 			if not es.is_empty():
-				var v = es[randi() % es.size()]
+				var v = es[_battle_rng.randi() % es.size()]
 				var pship := _pirate_get_ship(u)   # 掠夺·登场轰击: 从海盗船发炮弹弹道→命中才跳25%目标最大生命真实伤害(用户2026-07-14加弹道·2026-07-10订死数值)
 				var ps2d: Vector2 = (pship.get_meta("ship2d") if pship != null else u["pos"] + Vector2(0.0, -260.0))
 				var psh: float = (pship.get_meta("ship_h") if pship != null else 5.5)
@@ -19269,7 +19269,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		u["_rbtimer"] = u.get("_rbtimer", 0.0) + delta
 		if u["_rbtimer"] >= 6.0:
 			u["_rbtimer"] = 0.0
-			u["prism_color"] = randi() % 3   # 棱镜(改造): 自身获颜色6秒, 普攻附色(见 _on_basic_hit)
+			u["prism_color"] = _battle_rng.randi() % 3   # 棱镜(改造): 自身获颜色6秒, 普攻附色(见 _on_basic_hit)
 			var _pcc: Color = _PRISM_COLS[int(u["prism_color"])]   # 换色瞬间闪新色(醒目提示切色)
 			_flash(u, Color(_pcc.r + 0.4, _pcc.g + 0.4, _pcc.b + 0.4))
 		if u["id"] == "rainbow" and u.get("_enh_prism", false):   # 强化棱镜(选反射打包): 每5秒抽1色(橙吸血/黄灼烧/青冰寒/紫诅咒)
@@ -19299,7 +19299,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			u["_ltimer"] = 0.0
 			var le := _pick_enemies_of(u)
 			if not le.is_empty():
-				var lv2 = le[randi() % le.size()]
+				var lv2 = le[_battle_rng.randi() % le.size()]
 				_apply_damage_from(u, lv2, _shock_dmg(u), Color("#4dabf7"), 0.0, true)
 				_lightning_strike(lv2["pos"], Color("#aef0ff"))   # 天降闪电(自动电击)
 
@@ -19612,7 +19612,7 @@ func _hiding_pool() -> Array:
 
 func _spawn_hiding_minion(u: Dictionary) -> void:
 	var pool: Array = _hiding_pool()
-	var pick: String = pool[randi() % pool.size()]
+	var pick: String = pool[_battle_rng.randi() % pool.size()]
 	var d: Dictionary = _data_by_id.get(pick, {})
 	var st: Array = STATS.get(pick, DEFAULT_STAT)
 	var _lm: float = _lvl_mult_for(u)                # 固定值召唤吃等级
@@ -20239,7 +20239,7 @@ func _tick_summon_special(u: Dictionary, delta: float) -> void:
 		"cannon":
 			var es := _pick_enemies_of(u)
 			if es.is_empty(): return
-			var o = es[randi() % es.size()]
+			var o = es[_battle_rng.randi() % es.size()]
 			_fire_bolt_from(u, o, _atk_dmg(u, u.get("special_scale", 0.2), o), Color("#ffb05c"))
 			_skill_ring(o["pos"], Color(1.0, 0.6, 0.2, 0.45), 40.0)
 		"ship_shot":                                          # 海盗船普攻: 射最近敌0.4A(封板L379·攻速0.8由special_cd驱动)
@@ -20256,7 +20256,7 @@ func _tick_summon_special(u: Dictionary, delta: float) -> void:
 		"random_hit":
 			var es2 := _pick_enemies_of(u)
 			if es2.is_empty(): return
-			var o2 = es2[randi() % es2.size()]
+			var o2 = es2[_battle_rng.randi() % es2.size()]
 			_fire_bolt_from(u, o2, _atk_dmg(u, u.get("special_scale", 0.25), o2), Color("#9bf0ff"))
 		"mech_blast":
 			var low = null; var lv := INF
@@ -23053,7 +23053,7 @@ func _eq_chain_lightning(u: Dictionary, si: int) -> void:
 	# 目标序列: 首个随机, 之后每跳=离当前最近(优先未命中; 无未命中则跳已命中, 排除刚打的→两目标间来回弹)
 	var seq: Array = []
 	var hit: Array = []  # ★2026-07-10 闪退真因: 不能拿【单位字典】当 Dictionary 的 key —— Godot 会对 key 求哈希, 单位字典里有 summons/summon_owner 等互相引用的结构 → recursive_hash 无限递归 → 每次查表刷一条 ERROR: Max recursion reached。改用 Array(.has 走 == 不哈希)。
-	var first = enemies[randi() % enemies.size()]
+	var first = enemies[_battle_rng.randi() % enemies.size()]
 	seq.append(first); hit.append(first)
 	var cur = first
 	for h in range(hops - 1):
@@ -23510,7 +23510,7 @@ func _eq_bloodletting(u: Dictionary, si: int) -> void:   # 饮血护符坠(011):
 		if not u.get("alive", false): break
 		var es := _pick_enemies_of(u)
 		if es.is_empty(): break
-		var o = es[randi() % es.size()]
+		var o = es[_battle_rng.randi() % es.size()]
 		var decay: float = pow(0.85, k)
 		_blood_slash(u["pos"], o["pos"], 0.0)   # 这一刀立即砍
 		_apply_damage_from(u, o, int((_resolve_dmg(u, u["atk"] * [0.5, 0.7, 1.0][si] + [40.0, 50.0, 70.0][si], o, false)) * decay), Color("#ff8aa0"), 0.33, false, true)
@@ -23709,7 +23709,7 @@ func _eq_check_hp_threshold(u: Dictionary) -> void:
 				var es := _pick_enemies_of(u)
 				for b in range(balls):
 					if es.is_empty(): break
-					var o = es[randi() % es.size()]
+					var o = es[_battle_rng.randi() % es.size()]
 					_spawn_fireball(u, o, int(o["maxHp"] * [0.08, 0.17, 0.30][si]), [30, 70, 150][si])
 					_skill_ring(o["pos"], Color(1.0, 0.45, 0.12, 0.6), 50.0)   # 火球爆裂环
 				fired = true
