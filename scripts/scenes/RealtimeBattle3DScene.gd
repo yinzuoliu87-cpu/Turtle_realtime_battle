@@ -3802,16 +3802,39 @@ func _whistle_berserk_on(ally: Dictionary) -> void:
 	ally["deathfloor_until"] = _t + 4.0         # 4秒免疫死亡(血锁≥1)
 	_skill_ring(ally["pos"], Color(1.0, 0.4, 0.3, 0.75), 46.0)
 
-## 灵体小龟演出: 蓝幽灵入场 + 气波束(复用气波素材·placeholder)。素材(蓝幽灵小龟)待 R1g。
+## 灵体小龟演出: 蓝幽灵小龟入场(spirit-turtle.png·缺图则只放气波不崩) + 蓝气波束(qibo-ball.png 真气波素材)。
 func _whistle_spirit_dramatize(trainer: Dictionary, origin: Vector2, dir: Vector2) -> void:
 	if _world == null:
 		return
+	_spawn_spirit_turtle(origin)
 	var end2d: Vector2 = origin + dir * 500.0
-	var wtex := "res://assets/sprites/vfx/chi-wave.png"
-	if not ResourceLoader.exists(wtex):
-		wtex = "res://assets/sprites/vfx/chain-bolt.png"   # 气波素材待补, 暂用链束占位
-	_beam_vfx(wtex, origin, end2d, 66.0, Color(0.55, 0.85, 1.0, 0.85), 0.35)
+	_beam_vfx("res://assets/sprites/vfx/qibo-ball.png", origin, end2d, 66.0, Color(0.6, 0.9, 1.0, 0.9), 0.35)
 	_skill_ring(origin, Color(0.5, 0.8, 1.0, 0.6), 40.0)
+
+## 蓝幽灵小龟短暂现身: 幽蓝 billboard 从大师身前淡入上浮再淡出(纯演出·缺图优雅跳过, 不阻塞气波)。
+func _spawn_spirit_turtle(origin: Vector2) -> void:
+	var path := "res://assets/sprites/vfx/spirit-turtle.png"
+	if not ResourceLoader.exists(path):
+		return                                     # 素材未就绪: 只放气波(R1g 前的优雅降级)
+	var tex: Texture2D = load(path)
+	if tex == null:
+		return
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.shaded = false
+	spr.transparent = true
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	spr.pixel_size = (TARGET_BODY_H * 0.55) / float(maxi(1, tex.get_height()))   # 比正规龟小一号(灵体小龟)
+	spr.modulate = Color(0.7, 0.9, 1.0, 0.0)       # 幽蓝, 从透明淡入
+	var base: Vector3 = _world_pos(origin, 1.1)
+	spr.position = base
+	_world.add_child(spr)
+	var tw := _reg_tween(); tw.set_parallel(true)
+	tw.tween_property(spr, "modulate:a", 0.9, 0.15)
+	tw.parallel().tween_property(spr, "position", base + Vector3(0.0, 0.8, 0.0), 0.75)
+	tw.chain().tween_property(spr, "modulate:a", 0.0, 0.35)
+	tw.chain().tween_callback(spr.queue_free)
 
 ## ── 冰川(主动·CD17·方向·用户2026-07-23): 沿方向生成 500码 冰川带(持续6秒); 站带上的敌 -40%移速 + 受伤+20% ──
 func _cast_glacier(trainer: Dictionary, aim: Vector2) -> bool:
@@ -3856,11 +3879,12 @@ func _tick_glaciers(_delta: float) -> void:
 			o["glacier_vuln_until"] = _t + 0.2   # 受伤 +20%(见 _mitigate_incoming)
 	_glacier_zones = keep
 
-## 冰川带演出: 从大师沿方向铺一条蓝白冰带(placeholder·素材待 R1g)。
+## 冰川带演出: 从大师沿方向铺一条真冰带(ice-field.png), 铺满整条 500 码带、亮蓝白, 持续 6 秒 = 冰川区判定寿命。
 func _glacier_dramatize(from2d: Vector2, dir: Vector2) -> void:
 	if _world == null:
 		return
-	_beam_vfx("res://assets/sprites/vfx/chain-bolt.png", from2d, from2d + dir * 500.0, 90.0, Color(0.6, 0.85, 1.0, 0.6), 0.5)
+	# 用真冰贴图铺地(160×64 蓝白冰), 而非链束占位; 6 秒常驻(与 _glacier_zones 的 until 对齐, 站上去减速期间一直看得见冰)
+	_beam_vfx("res://assets/sprites/vfx/ice-field.png", from2d, from2d + dir * 500.0, 90.0, Color(0.85, 0.95, 1.0, 0.9), 6.0, 0.12)
 	_skill_ring(from2d, Color(0.7, 0.9, 1.0, 0.6), 46.0)
 
 ## ★纯效果结算(可测): 钩住 target → 眩晕(吃韧性) + 标记4秒【一段段拽】 + 4秒受伤放大。不建任何 tween。

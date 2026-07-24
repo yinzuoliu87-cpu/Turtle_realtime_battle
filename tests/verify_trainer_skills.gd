@@ -11,6 +11,18 @@ func _ok(n: String, c: bool, d: String = "") -> void:
 	if c: print("  [PASS] ", n, ("  " + d) if d != "" else "")
 	else: _fail += 1; print("  [FAIL] ", n, "  ", d)
 
+## _world 里有没有一只贴图路径以 suffix 结尾的 Sprite3D(判"美术真的铺进场景显示了", 不止逻辑判定)。
+## ★为什么要这条: 大师立绘曾因兜底路径写错→场上完全看不见, 而当时门禁只断言了 push_warning。
+##   见 RealtimeBattle3DScene._make_trainer_placeholder_tex 注释。素材必须【真的能显示】才算做完。
+func _world_has_sprite(scene, suffix: String) -> bool:
+	if scene._world == null:
+		return false
+	for ch in scene._world.get_children():
+		if ch is Sprite3D and (ch as Sprite3D).texture != null \
+				and str((ch as Sprite3D).texture.resource_path).ends_with(suffix):
+			return true
+	return false
+
 func _ready() -> void:
 	await get_tree().process_frame
 	var scene = RTScene.new()
@@ -116,6 +128,8 @@ func _test_whistle(scene) -> void:
 	_ok("★口哨·气波: 命中沿途敌(≥1)", n >= 1, "命中 %d" % n)
 	_ok("★口哨·气波: 命中敌掉血", float(enemy["hp"]) < ehp0)
 	_ok("★口哨·气波: 命中敌削甲30%(def_shred_until)", float(enemy.get("def_shred_until", 0.0)) > scene._t)
+	# ★灵体小龟【真的现身】: 素材 spirit-turtle.png 已就绪 → _world 里应生成一只幽蓝 billboard(不止判定命中)
+	_ok("★口哨·灵体小龟真的现身(_world 有 spirit-turtle billboard)", _world_has_sprite(scene, "spirit-turtle.png"))
 
 func _test_glacier(scene) -> void:
 	var trainer = null
@@ -137,6 +151,8 @@ func _test_glacier(scene) -> void:
 	trainer["_active_cd"] = 0.0
 	var ok: bool = scene._cast_glacier(trainer, Vector2(1.0, 0.0))
 	_ok("★冰川·施放建带 + CD17", ok and scene._glacier_zones.size() >= 1 and abs(float(trainer.get("_active_cd", 0.0)) - 17.0) < 0.1)
+	# ★冰川带【真的铺出真冰贴图】: _glacier_dramatize 用 ice-field.png 铺地(非 chain-bolt 占位) → _world 有该 Sprite3D
+	_ok("★冰川·铺出真冰贴图(_world 有 ice-field 冰带)", _world_has_sprite(scene, "ice-field.png"))
 	scene._tick_glaciers(0.03)
 	_ok("★冰川·带上敌减速 -40%(slow_mag 0.6)", abs(float(e_on.get("slow_mag", 1.0)) - 0.6) < 0.01 and float(e_on.get("slow_until", 0.0)) > scene._t)
 	_ok("★冰川·带上敌受伤+20%(glacier_vuln)", float(e_on.get("glacier_vuln_until", 0.0)) > scene._t)
