@@ -543,6 +543,7 @@ var _world: Node3D                        # 3D 内容挂载点 (SubViewport 内)
 var _sub: SubViewport
 var _projectiles: Array = []              # 飞行中的 3D 投射物 {node, from, to, tgt, dmg, magic, src, t, dur}
 var _lava_zones: Array = []               # 持续地面区域 (熔岩龟·岩浆池等) {center, radius, until, next_tick, src, disc}
+var _glacier_zones: Array = []            # 冰川带(训龟大师·用户2026-07-23) {from, dir, len, width, until, side}: 站带上的敌-40%移速+受伤+20%
 
 # --- 暂停 + 战斗日志 (R2b, 用户 2026-07-11) ---
 const TutorialGuide := preload("res://scripts/scenes/TutorialGuide.gd")
@@ -3140,6 +3141,7 @@ func _dl_clear_units() -> void:
 		var zd = z.get("disc", null)
 		if is_instance_valid(zd): zd.queue_free()
 	_lava_zones.clear()
+	_glacier_zones.clear()                    # 补清: 冰川带(换路/清场不残留)
 	for lk in _ink_links:                     # 补清: 墨迹连线
 		var ls = lk.get("spr", null)
 		if is_instance_valid(ls): ls.queue_free()
@@ -3725,17 +3727,141 @@ func _fury_dramatize(trainer: Dictionary, point: Vector2) -> void:
 		_skill_ring(point, Color(1.0, 0.5, 0.2, 0.75), 300.0)          # 300码怒火圈
 		_burst_vfx("res://assets/sprites/vfx/cannon-blast.png", point, 120.0, 0.4))
 
+## ── 口哨(主动·CD14·无目标·用户2026-07-23): 随机 3 选 1 —— 临时血 / 灵体小龟气波 / 狂暴免死 ──
 func _cast_whistle(trainer: Dictionary, _aim: Vector2) -> bool:
 	if float(trainer.get("_active_cd", 0.0)) > 0.0:
 		return false
 	trainer["_active_cd"] = float(TRAINER_SKILLS["whistle"]["cd"])
-	return true   # TODO R1d: 随机3选1(临时血/灵体小龟气波/狂暴)
+	match randi() % 3:
+		0: _whistle_temphp(trainer)
+		1: _whistle_spirit_wave(trainer)
+		_: _whistle_berserk(trainer)
+	return true
 
+## 随机一个我方存活单位(非大师非蛋)。
+func _random_ally(trainer: Dictionary):
+	var side: String = str(trainer.get("side", ""))
+	var pool: Array = []
+	for o in _units:
+		if o.get("alive", false) and not o.get("is_trainer", false) and not o.get("_isEgg", false) and str(o.get("side", "")) == side:
+			pool.append(o)
+	return pool[randi() % pool.size()] if not pool.is_empty() else null
+
+## 效果①临时血: 随机友军 +700 临时最大生命(5秒)。到期【按比例削】。可测。
+func _whistle_temphp(trainer: Dictionary):
+	var ally = _random_ally(trainer)
+	if ally == null:
+		return null
+	_apply_temp_maxhp(ally, 700.0, 5.0)
+	_skill_ring(ally["pos"], Color(0.5, 1.0, 0.6, 0.7), 46.0)
+	return ally
+
+## ★临时最大生命(可测·纯函数): +amt maxHp&hp, sec 秒后到期【按比例削】(§2.4: 当前血 × 新上限/旧上限)。
+func _apply_temp_maxhp(u: Dictionary, amt: float, sec: float) -> void:
+	u["maxHp"] = float(u["maxHp"]) + amt
+	u["hp"] = float(u["hp"]) + amt
+	var uu: Dictionary = u
+	_pending_shots.append({"delay": sec, "src": u, "fn": func() -> void:
+		if not uu.get("alive", false):
+			return
+		var old_max: float = float(uu["maxHp"])
+		var new_max: float = maxf(1.0, old_max - amt)
+		uu["hp"] = float(uu["hp"]) * (new_max / old_max)   # 按比例削
+		uu["maxHp"] = new_max})
+
+## 效果②灵体小龟气波: 召蓝幽灵小龟→对最近敌放穿透气波(带宽80·沿途敌): 击飞 + 200物理 + 削甲30%(5秒)。返回命中数。可测。
+func _whistle_spirit_wave(trainer: Dictionary) -> int:
+	var tgt = _nearest_enemy_for_trainer(trainer)
+	if tgt == null:
+		return 0
+	var origin: Vector2 = trainer["pos"]
+	var dir: Vector2 = (tgt["pos"] - origin).normalized()
+	var n: int = 0
+	for o in _pick_enemies_of(trainer):   # 定向(不选大师/组装机甲)
+		if not _on_line(origin, dir, o["pos"], 80.0):
+			continue
+		o["def_shred_until"] = _t + 5.0    # 先削甲(30%·让这一发也吃到)
+		_apply_damage_from(trainer, o, _resolve_dmg(trainer, 200.0, o, false), Color("#8fd0ff"), 0.0, false, false)   # 200物理
+		_knockback(trainer, o, 100.0)      # 击飞
+		n += 1
+	_whistle_spirit_dramatize(trainer, origin, dir)
+	return n
+
+## 效果③狂暴: 随机友军 +20%攻击力 +20%吸血(4秒) + 免疫死亡(4秒·deathfloor血锁不死)。
+func _whistle_berserk(trainer: Dictionary):
+	var ally = _random_ally(trainer)
+	if ally == null:
+		return null
+	_whistle_berserk_on(ally)
+	return ally
+
+## ★狂暴纯效果(可测): 对指定友军上 buff。
+func _whistle_berserk_on(ally: Dictionary) -> void:
+	_buff(ally, "atk", 0.2, true, 4.0)          # +20% 攻击力
+	_buff(ally, "lifesteal", 20, false, 4.0)    # +20% 生命偷取
+	ally["deathfloor_until"] = _t + 4.0         # 4秒免疫死亡(血锁≥1)
+	_skill_ring(ally["pos"], Color(1.0, 0.4, 0.3, 0.75), 46.0)
+
+## 灵体小龟演出: 蓝幽灵入场 + 气波束(复用气波素材·placeholder)。素材(蓝幽灵小龟)待 R1g。
+func _whistle_spirit_dramatize(trainer: Dictionary, origin: Vector2, dir: Vector2) -> void:
+	if _world == null:
+		return
+	var end2d: Vector2 = origin + dir * 500.0
+	var wtex := "res://assets/sprites/vfx/chi-wave.png"
+	if not ResourceLoader.exists(wtex):
+		wtex = "res://assets/sprites/vfx/chain-bolt.png"   # 气波素材待补, 暂用链束占位
+	_beam_vfx(wtex, origin, end2d, 66.0, Color(0.55, 0.85, 1.0, 0.85), 0.35)
+	_skill_ring(origin, Color(0.5, 0.8, 1.0, 0.6), 40.0)
+
+## ── 冰川(主动·CD17·方向·用户2026-07-23): 沿方向生成 500码 冰川带(持续6秒); 站带上的敌 -40%移速 + 受伤+20% ──
 func _cast_glacier(trainer: Dictionary, aim: Vector2) -> bool:
 	if float(trainer.get("_active_cd", 0.0)) > 0.0:
 		return false
 	trainer["_active_cd"] = float(TRAINER_SKILLS["glacier"]["cd"])
-	return true   # TODO R1e: 方向500码冰川带
+	var dir: Vector2 = aim.normalized() if aim.length() > 0.01 else Vector2.RIGHT
+	trainer["_cast_lock_until"] = _t + HOOK_WINDUP
+	_glacier_zones.append({
+		"from": trainer["pos"], "dir": dir, "len": 500.0, "width": 90.0,
+		"until": _t + 6.0, "side": str(trainer.get("side", "")),
+	})
+	_glacier_dramatize(trainer["pos"], dir)
+	return true
+
+## 每帧: 站在任一冰川带上的【敌方】单位 → 刷新 -40%移速 + 受伤+20%(0.2秒短窗·每帧续=站着才持续)。到期清带。
+func _tick_glaciers(_delta: float) -> void:
+	if _glacier_zones.is_empty():
+		return
+	var keep: Array = []
+	for z in _glacier_zones:
+		if _t >= float(z["until"]):
+			continue
+		keep.append(z)
+		var from2d: Vector2 = z["from"]
+		var dir: Vector2 = z["dir"]
+		var zlen: float = float(z["len"])
+		var half_w: float = float(z["width"]) * 0.5
+		for o in _units:
+			if not o.get("alive", false) or o.get("is_trainer", false):
+				continue
+			if str(o.get("side", "")) == str(z["side"]):
+				continue   # 只冻【敌方】
+			var rel: Vector2 = o["pos"] - from2d
+			var along: float = rel.dot(dir)
+			if along < 0.0 or along > zlen:
+				continue
+			if (rel - dir * along).length() > half_w:
+				continue
+			o["slow_until"] = _t + 0.2      # -40% 移速(slow_mag 0.6)
+			o["slow_mag"] = 0.6
+			o["glacier_vuln_until"] = _t + 0.2   # 受伤 +20%(见 _mitigate_incoming)
+	_glacier_zones = keep
+
+## 冰川带演出: 从大师沿方向铺一条蓝白冰带(placeholder·素材待 R1g)。
+func _glacier_dramatize(from2d: Vector2, dir: Vector2) -> void:
+	if _world == null:
+		return
+	_beam_vfx("res://assets/sprites/vfx/chain-bolt.png", from2d, from2d + dir * 500.0, 90.0, Color(0.6, 0.85, 1.0, 0.6), 0.5)
+	_skill_ring(from2d, Color(0.7, 0.9, 1.0, 0.6), 46.0)
 
 ## ★纯效果结算(可测): 钩住 target → 眩晕(吃韧性) + 标记4秒【一段段拽】 + 4秒受伤放大。不建任何 tween。
 func _hook_grab(trainer: Dictionary, target: Dictionary) -> void:
@@ -4642,6 +4768,7 @@ func _process(delta: float) -> void:
 				_tick_unit(u, delta)
 			_apply_separation_pass(delta)   # 每帧全单位软分离(攻击/待机也摊开, 根治扎堆遮血条)
 			_tick_lava_zones(delta)         # 持续地面区域 (熔岩龟·岩浆池) 周期结算
+			_tick_glaciers(delta)           # 冰川带(训龟大师): 站带上的敌减速+易伤
 			_step_projectiles(delta)
 			_step_pending_shots(delta)
 			_check_end()
@@ -8911,7 +9038,8 @@ func _resolve_dmg(u: Dictionary, base: float, tgt: Dictionary, magic: bool) -> i
 	if magic:
 		resist = float(tgt["mr"]) * (1.0 - float(u.get("magic_pen_pct", 0.0))) - float(u.get("magic_pen", 0.0))
 	else:
-		resist = float(tgt["def"]) * (1.0 - float(u.get("armor_pen_pct", 0.0))) - float(u.get("armor_pen", 0.0))
+		var tdef: float = float(tgt["def"]) * (0.7 if _t < float(tgt.get("def_shred_until", 0.0)) else 1.0)   # 削甲通道(口哨灵体小龟气波 -30%护甲·用户2026-07-23)
+		resist = tdef * (1.0 - float(u.get("armor_pen_pct", 0.0))) - float(u.get("armor_pen", 0.0))
 	var mult: float = (1.0 - resist / (resist + 40.0)) if resist >= 0.0 else (1.0 + absf(resist) / (absf(resist) + 40.0))
 	base *= mult
 	base *= 1.0 + float(u.get("damage_amp", 0.0))          # 攻击者增伤%
@@ -9403,6 +9531,8 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 		d *= 1.2                                     # 靶向器055: 被标记目标受伤 +20%
 	if not is_self and _t < u.get("hook_vuln_until", 0.0):
 		d *= 1.25                                    # ★钩锁(点3): 被钩住4秒内受到伤害 +25%
+	if not is_self and _t < u.get("glacier_vuln_until", 0.0):
+		d *= 1.2                                     # ★冰川: 站冰川上受到伤害 +20%(用户2026-07-23)
 	if not is_self and u.get("_egg_final", false):
 		d *= 5.0                                     # 终极战场暴露蛋: ×5承伤(快速决胜)
 	if u["id"] == "diamond" and not raw:

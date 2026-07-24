@@ -20,10 +20,12 @@ func _ready() -> void:
 
 	_test_magic_stone(scene)
 	_test_fury_potion(scene)
+	_test_whistle(scene)
+	_test_glacier(scene)
 	_test_source(scene)
 
 	scene.queue_free()
-	print("ALL PASS — 训龟大师技能(魔法石)" if _fail == 0 else "FAILED: %d" % _fail)
+	print("ALL PASS — 训龟大师技能(魔法石/怒火药水/口哨/冰川)" if _fail == 0 else "FAILED: %d" % _fail)
 	get_tree().quit(0 if _fail == 0 else 1)
 
 func _test_magic_stone(scene) -> void:
@@ -79,6 +81,72 @@ func _test_fury_potion(scene) -> void:
 	_ok("★近友军 +25%移速(move_buff_mult=1.25)", abs(float(near_ally.get("move_buff_mult", 1.0)) - 1.25) < 0.01)
 	_ok("★近友军 +25%龟能充能(echarge_mult=1.25)", abs(float(near_ally.get("echarge_mult", 1.0)) - 1.25) < 0.01)
 	_ok("★落点300码外友军不受益(有范围)", float(far_ally.get("haste_until", 0.0)) <= scene._t)
+
+func _test_whistle(scene) -> void:
+	var trainer = null
+	var ally = null
+	var enemy = null
+	for u in scene._units:
+		if u.get("is_trainer", false) and str(u.get("side", "")) == "left":
+			trainer = u
+		elif not u.get("is_trainer", false) and str(u.get("side", "")) == "left" and u.get("alive", false):
+			ally = u
+		elif not u.get("is_trainer", false) and str(u.get("side", "")) == "right" and u.get("alive", false):
+			enemy = u
+	_ok("口哨: 找到大师+友军+敌(分母)", trainer != null and ally != null and enemy != null)
+	if trainer == null or ally == null or enemy == null:
+		return
+	# ① 临时血: _apply_temp_maxhp 直接测
+	var mx0: float = float(ally["maxHp"])
+	var hp0: float = float(ally["hp"])
+	scene._apply_temp_maxhp(ally, 700.0, 5.0)
+	_ok("★口哨·临时血: maxHp +700", abs(float(ally["maxHp"]) - (mx0 + 700.0)) < 0.5)
+	_ok("★口哨·临时血: 当前hp +700", abs(float(ally["hp"]) - (hp0 + 700.0)) < 0.5)
+	# ③ 狂暴: +20%攻击力 + 免疫死亡
+	var atk0: float = float(ally["atk"])
+	scene._whistle_berserk_on(ally)   # 直接对已知友军(绕过随机)
+	_ok("★口哨·狂暴: 攻击力 +20%", float(ally["atk"]) > atk0 * 1.15,
+		"%.0f → %.0f" % [atk0, float(ally["atk"])])
+	_ok("★口哨·狂暴: 4秒免疫死亡(deathfloor)", float(ally.get("deathfloor_until", 0.0)) > scene._t)
+	# ② 灵体小龟气波: 敌在线上→削甲+击飞+伤害
+	enemy["pos"] = trainer["pos"] + Vector2(200.0, 0.0)   # 摆到大师正东(线上)
+	enemy["def_shred_until"] = 0.0
+	var ehp0: float = float(enemy["hp"])
+	var n: int = scene._whistle_spirit_wave(trainer)
+	_ok("★口哨·气波: 命中沿途敌(≥1)", n >= 1, "命中 %d" % n)
+	_ok("★口哨·气波: 命中敌掉血", float(enemy["hp"]) < ehp0)
+	_ok("★口哨·气波: 命中敌削甲30%(def_shred_until)", float(enemy.get("def_shred_until", 0.0)) > scene._t)
+
+func _test_glacier(scene) -> void:
+	var trainer = null
+	var e_on = null
+	var e_off = null
+	for u in scene._units:
+		if u.get("is_trainer", false) and str(u.get("side", "")) == "left":
+			trainer = u
+		elif not u.get("is_trainer", false) and str(u.get("side", "")) == "right" and u.get("alive", false):
+			if e_on == null: e_on = u
+			elif e_off == null: e_off = u
+	_ok("冰川: 找到大师 + 2 敌(分母)", trainer != null and e_on != null and e_off != null)
+	if trainer == null or e_on == null or e_off == null:
+		return
+	scene._glacier_zones.clear()
+	e_on["pos"] = trainer["pos"] + Vector2(200.0, 0.0)    # 大师正东200 → 冰川带上
+	e_off["pos"] = trainer["pos"] + Vector2(200.0, 300.0) # 偏离带(带宽90/2=45)
+	e_on["slow_until"] = 0.0; e_on["glacier_vuln_until"] = 0.0; e_off["glacier_vuln_until"] = 0.0
+	trainer["_active_cd"] = 0.0
+	var ok: bool = scene._cast_glacier(trainer, Vector2(1.0, 0.0))
+	_ok("★冰川·施放建带 + CD17", ok and scene._glacier_zones.size() >= 1 and abs(float(trainer.get("_active_cd", 0.0)) - 17.0) < 0.1)
+	scene._tick_glaciers(0.03)
+	_ok("★冰川·带上敌减速 -40%(slow_mag 0.6)", abs(float(e_on.get("slow_mag", 1.0)) - 0.6) < 0.01 and float(e_on.get("slow_until", 0.0)) > scene._t)
+	_ok("★冰川·带上敌受伤+20%(glacier_vuln)", float(e_on.get("glacier_vuln_until", 0.0)) > scene._t)
+	_ok("★冰川·偏离带的敌不受影响(有边界)", float(e_off.get("glacier_vuln_until", 0.0)) <= scene._t)
+	# 易伤 +20% 落到 _mitigate_incoming(与无易伤对比·排除其它减伤干扰)
+	e_on["glacier_vuln_until"] = 0.0
+	var base_mit: float = scene._mitigate_incoming(e_on, 100.0, false, false)
+	e_on["glacier_vuln_until"] = scene._t + 1.0
+	var vuln_mit: float = scene._mitigate_incoming(e_on, 100.0, false, false)
+	_ok("★冰川·易伤 ×1.2", abs(vuln_mit - base_mit * 1.2) < 1.0, "%.0f → %.0f" % [base_mit, vuln_mit])
 
 func _test_source(scene) -> void:
 	var src: String = ""
