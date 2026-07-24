@@ -678,7 +678,8 @@ var _dbg_op2 := "-"                        # 更细粒度定位: 最后经手的
 static var _adf_warned := false
 var _wd_thread: Thread = null
 static var _stress_n := 0                 # 已跑对局数(跨reload累计)
-var _juice_rng := RandomNumberGenerator.new()   # 震屏/粒子专用 rng
+var _juice_rng := RandomNumberGenerator.new()   # 震屏/粒子专用 rng (演出·永不种子化, 否则回放看着卡)
+var _battle_rng := RandomNumberGenerator.new()  # ★sim 专用受控 PRNG (Phase1·大厂做法): 决定战斗结果的随机走它。默认 randomize()=手感与线上一致; TURTLE_SEED 设时确定→可复现/回放
 
 # --- §GROUNDING: 立绘底部软渐隐 shader (一份 Shader 共享, 每龟一份 ShaderMaterial 因 texture 不同) ---
 var _ground_fade_shader: Shader = null
@@ -1097,6 +1098,12 @@ func _build_camera() -> void:
 	_cam_base = _cam.position               # Phase4: 震屏围绕此基准偏移, 衰减后精确归位
 	_cam_zoom_base = _cam_base              # 初始缩放基准=默认位(zoom=1)
 	_juice_rng.randomize()
+	# ★sim RNG 种子化(Phase1): TURTLE_SEED=<int> 时确定(测试/回放)·否则 randomize()(默认·手感不变)
+	var _bseed := OS.get_environment("TURTLE_SEED")
+	if _bseed != "" and _bseed.is_valid_int():
+		_battle_rng.seed = int(_bseed)
+	else:
+		_battle_rng.randomize()
 
 func _build_environment() -> void:
 	# 主光 (顶光偏前侧): 暖白, 给立绘/地面立体受光. shaded=false 立绘不吃光, 但地面/影/召唤体吃 → 仍出体积感.
@@ -5758,7 +5765,7 @@ func _gambler_multi_cd(u: Dictionary) -> float:
 	if _t < float(u.get("gambler_bet_until", 0.0)):
 		base_ch += 0.20                                       # 赌注放技→3秒内临时+20%(封顶示例0.80)
 	var ch: float = float(u.get("multi_chance", base_ch))
-	if randf() < ch:
+	if _battle_rng.randf() < ch:
 		u["multi_chance"] = ch * 0.8                  # 递减: 每次连锁×0.8
 		return maxf(0.12, u["atk_interval"] * 0.30)   # 快攻速再打 (~3.3×攻速; F5可调)
 	u["multi_chance"] = base_ch                       # 没中→重置回基础(含命运之轮0.60/赌注+0.20), 等下一次普攻
@@ -9063,7 +9070,7 @@ func _lightning_arc(a2d: Vector2, b2d: Vector2, col: Color) -> void:   # 锯齿�
 func _resolve_dmg(u: Dictionary, base: float, tgt: Dictionary, magic: bool) -> int:
 	_last_dmg_type = "magic" if magic else "physical"   # 记类型供飘字取色
 	var eff_crit: float = minf(float(u["crit"]), 1.0)
-	_last_atk_crit = randf() < eff_crit
+	_last_atk_crit = _battle_rng.randf() < eff_crit
 	if _last_atk_crit:
 		base *= DamageMath.crit_multiplier(float(u["crit"]), float(u["crit_dmg"]))   # 暴击率溢出100%每1%→1.5%暴伤
 	var resist: float
@@ -9639,7 +9646,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		return
 	# 闪避 (目标 dodge_bonus); 瞄准镜054: 攻击者伤害无视闪避 (必中)
 	# no_dodge: 吸取类必中(用户2026-07-22「吸取不可以被闪避或暴击」)
-	if not no_dodge and u.get("dodge_bonus", 0.0) > 0.0 and not src.get("eq_cannot_be_dodged", false) and randf() < u["dodge_bonus"]:
+	if not no_dodge and u.get("dodge_bonus", 0.0) > 0.0 and not src.get("eq_cannot_be_dodged", false) and _battle_rng.randf() < u["dodge_bonus"]:
 		_float_text(u["pos"] + Vector2(0, -40), "闪避", Color("#a0e8ff"))
 		_eq_on_dodge(u)          # on-dodge 钩子 (幽灵墨鱼046: 闪避→永久护盾)
 		return
@@ -9659,7 +9666,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	# 真伤暴击 (全局: "暴击全龟通用"; 真伤照旧无视护甲/减伤, 只加暴击判定) (用户)
 	if raw and not pre_crit and src is Dictionary and src.has("crit") and not is_same(src, u):
 		var _trc: float = minf(float(src.get("crit", 0.0)), 1.0)
-		_last_atk_crit = randf() < _trc
+		_last_atk_crit = _battle_rng.randf() < _trc
 		if _last_atk_crit:
 			dmg = int(round(float(dmg) * DamageMath.crit_multiplier(float(src.get("crit", 0.0)), float(src.get("crit_dmg", 1.5)))))
 	var was_crit := _last_atk_crit          # §AUDIO: 先抓暴击态 (下方 hook 里嵌套 _atk_dmg 会改写它)
@@ -11860,7 +11867,7 @@ func _sk_ninja_shuriken(u: Dictionary, tgt) -> void:           # 技·手里剑(
 	if tgt == null: tgt = _nearest_enemy(u)
 	if tgt == null: return
 	var base_dmg: float = float(u["atk"]) * 1.6               # 1.6A 基础(未减甲/未暴击)
-	var is_crit: bool = randf() < minf(float(u.get("crit", 0.0)), 1.0)   # 暴击=忍者自身暴击率(非固定概率)
+	var is_crit: bool = _battle_rng.randf() < minf(float(u.get("crit", 0.0)), 1.0)   # 暴击=忍者自身暴击率(非固定概率)
 	var phys_raw: float = base_dmg                            # 非暴击: 全物理一发
 	var true_raw: float = 0.0
 	if is_crit:
@@ -12310,7 +12317,7 @@ func _gambler_bet_ch(u: Dictionary) -> float:
 # B(用户2026-07-14): 赌注每张牌命中掷多重打击→中则额外甩一发普攻(1.0A)+继续以×0.8递减连锁(滚雪球)
 func _gambler_bet_multi(u: Dictionary, tgt: Dictionary, ch: float) -> void:
 	if not u.get("alive", false) or tgt == null or not tgt.get("alive", false): return
-	if randf() >= ch: return
+	if _battle_rng.randf() >= ch: return
 	_heal(u, u["atk"] * 0.3)   # ★每触发一次多重打击回0.3ATK生命(用户2026-07-14·赌注期间回血本)
 	var bdmg: int = _atk_dmg(u, 1.0, tgt)   # 额外一发=普攻1.0A
 	_pending_shots.append({"delay": 0.09, "fn": func() -> void:
@@ -23017,7 +23024,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 						_apply_damage_from(src, o, maxi(1, int(dmg * frac)), Color("#ffd07a"), 0.0, false, true)
 						_hit_spark(o)   # 每个被溅射敌人身上一记立式火花(胸高billboard·地板高度盖不住)
 			"p2eq_005":   # 双生匕首: 命中概率追加一刀双生刺击
-				if randf() < [0.5, 0.75, 1.0][si]:
+				if _battle_rng.randf() < [0.5, 0.75, 1.0][si]:
 					_apply_damage_from(src, tgt, _atk_dmg(src, [0.7, 0.8, 1.0][si], tgt), Color("#ff4444"), 0.0, false, true)
 			"p2eq_023":   # 灼热火珊瑚(被动): 每段额外灼烧 + 充能
 				var burn: int = maxi(1, roundi([2.0, 5.0, 8.0][si] + [0.07, 0.11, 0.15][si] * src["atk"]))
