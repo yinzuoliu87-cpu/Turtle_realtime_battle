@@ -2692,6 +2692,9 @@ func _announce_sudden() -> void:
 func _dl_start_fight() -> void:
 	_sd_t0 = _t          # ★每个战场各自计时(_t 跨路累加, 见 §SUDDEN)
 	_sd_stacks = 0
+	for _tu in _units:   # 魔法石攻速叠层【本场结束重置】(§3.4: 按本场计, 不用全局_t) —— 每路开打清零
+		if _tu.get("is_trainer", false):
+			_tu["_ms_stacks"] = 0
 	_edit_drag_unit = null
 	_dl_state = "fight"
 	if is_instance_valid(_dl_go_btn): _dl_go_btn.visible = false
@@ -3598,11 +3601,15 @@ func _tick_trainer_attacks(delta: float) -> void:
 		var tgt = _nearest_enemy_for_trainer(u)
 		if tgt == null:
 			continue
-		u["_tr_atk_cd"] = TRAINER_ATK_INTERVAL
+		# 魔法石(被动): 每次攻击 +5% 攻速(可叠·本场结束重置) → 攻击间隔按叠层缩短
+		var haste: float = 1.0 + 0.05 * float(u.get("_ms_stacks", 0)) if str(u.get("_tr_passive", "")) == "magic_stone" else 1.0
+		u["_tr_atk_cd"] = TRAINER_ATK_INTERVAL / haste
 		# 朝向目标(扔之前转身), 再播扔石头动作
 		u["face_right"] = tgt["pos"].x > u["pos"].x
 		_trainer_throw_anim(u)
 		_fire_trainer_rock(u, tgt)
+		if str(u.get("_tr_passive", "")) == "magic_stone":
+			_trainer_magicstone_onhit(u, tgt)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -3941,6 +3948,16 @@ func _fire_trainer_rock(u: Dictionary, tgt: Dictionary) -> void:
 		"arc": clampf(dist * 0.010, 0.8, 3.2),    # ★抛物线拱高(用户2026-07-23:「弹道是抛物线的」): 远则拱高
 		"dtype": "phys", "spin": true,
 	})
+
+
+## ★魔法石(被动·用户2026-07-23): 大师普攻命中→附带 2% 目标最大生命 魔法伤害 + 自己 +5% 攻速(可叠·本场结束重置)。
+## ★可测纯函数(不依赖演出): 石头是归巢弹→火时即视作命中, 直接结算(数值稳)。攻速叠层是【计数】(_ms_stacks), 换场清零。
+func _trainer_magicstone_onhit(u: Dictionary, tgt: Dictionary) -> void:
+	if not (tgt is Dictionary and tgt.get("alive", false)):
+		return
+	var magic: int = maxi(1, int(_resolve_dmg(u, float(tgt["maxHp"]) * 0.02, tgt, true)))   # 2%目标最大生命·魔法(过魔抗)
+	_apply_damage_from(u, tgt, magic, Color("#c86bff"), 0.0, false, true)
+	u["_ms_stacks"] = int(u.get("_ms_stacks", 0)) + 1                                        # 攻速叠一层(持续到本场结束)
 
 
 ## 移动端才建摇杆; PC 上根本不建(不占屏)。
