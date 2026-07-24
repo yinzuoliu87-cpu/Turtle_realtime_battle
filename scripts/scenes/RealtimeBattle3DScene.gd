@@ -9065,7 +9065,7 @@ func _resolve_dmg(u: Dictionary, base: float, tgt: Dictionary, magic: bool) -> i
 	var eff_crit: float = minf(float(u["crit"]), 1.0)
 	_last_atk_crit = randf() < eff_crit
 	if _last_atk_crit:
-		base *= float(u["crit_dmg"]) + maxf(0.0, float(u["crit"]) - 1.0) * 1.5   # 暴击率溢出100%每1%→1.5%暴伤
+		base *= DamageMath.crit_multiplier(float(u["crit"]), float(u["crit_dmg"]))   # 暴击率溢出100%每1%→1.5%暴伤
 	var resist: float
 	if magic:
 		resist = float(tgt["mr"]) * (1.0 - float(u.get("magic_pen_pct", 0.0))) - float(u.get("magic_pen", 0.0))
@@ -9668,7 +9668,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		var _trc: float = minf(float(src.get("crit", 0.0)), 1.0)
 		_last_atk_crit = randf() < _trc
 		if _last_atk_crit:
-			dmg = int(round(float(dmg) * (float(src.get("crit_dmg", 1.5)) + maxf(0.0, float(src.get("crit", 0.0)) - 1.0) * 1.5)))
+			dmg = int(round(float(dmg) * DamageMath.crit_multiplier(float(src.get("crit", 0.0)), float(src.get("crit_dmg", 1.5)))))
 	var was_crit := _last_atk_crit          # §AUDIO: 先抓暴击态 (下方 hook 里嵌套 _atk_dmg 会改写它)
 	# 受伤被动(结算前改 dmg): 线条·墨迹(每层额外5%真实伤害·穿减伤穿盾) / 钻石·结构(受伤减免)
 	var _ink := int((u.get("stacks", {}) as Dictionary).get("ink", 0))
@@ -11876,7 +11876,7 @@ func _sk_ninja_shuriken(u: Dictionary, tgt) -> void:           # 技·手里剑(
 	var phys_raw: float = base_dmg                            # 非暴击: 全物理一发
 	var true_raw: float = 0.0
 	if is_crit:
-		var crit_mult: float = float(u.get("crit_dmg", 1.5)) + maxf(0.0, float(u.get("crit", 0.0)) - 1.0) * 1.5   # 暴击倍率(溢出100%每1%→1.5%·同_resolve_dmg)
+		var crit_mult: float = DamageMath.crit_multiplier(float(u.get("crit", 0.0)), float(u.get("crit_dmg", 1.5)))   # 暴击倍率(溢出100%每1%→1.5%·同_resolve_dmg)
 		var crit_total: float = round(base_dmg * crit_mult)  # 暴击总伤(已乘暴击倍率)
 		var lv: int = int(u.get("level", 1))
 		true_raw = round(crit_total * minf(100.0, 40.0 + 2.0 * float(lv)) / 100.0)   # 其中(40+2%/级)%(封顶100%)→真实伤害(穿甲)
