@@ -36,20 +36,25 @@ const VAL_HEX := {
 }
 
 # 关键词自动上色 (照搬 PoC ui-skill-text.js:107-136, 顺序敏感 — 长词在前)
-# [pattern, html_replacement]; pattern 是 PCRE2 (支持 lookbehind/lookahead).
+# [pattern, val-class, 可选 icon-key]; pattern 是 PCRE2 (支持 lookbehind/lookahead).
+# ★第 3 项 = 属性图标 key(assets/sprites/stats/<key>-icon.png), 有则在该关键词【前面】内联一枚图标
+#   (用户2026-07-24 需求·选 A: 只给【真属性】加图标, 伤害类型/DoT/控制词 保持彩色字不加图标)。
+const ICON_PX := 16     # 内联属性图标默认像素高(没传字号时的兜底; 传了字号则按字号缩放, 见 render_bbcode)
 const KEYWORD_RULES := [
 	["物理伤害", "val-normal"], ["魔法伤害", "val-magic"], ["真实伤害", "val-true"],
 	["(?<!\">)真实(?!伤害|<)", "val-true"], ["(?<!\">)物理(?!伤害|<)", "val-normal"],
-	["(?<!\">)魔法(?!伤害|<)", "val-magic"], ["防御力加成", "val-def"],
-	["(?<!\">)攻击力(?!<)", "val-normal"], ["(?<!\">)护甲穿透(?!<)", "val-def"],
-	["(?<!\">)护甲(?!穿透|<)", "val-def"], ["(?<!\">)魔抗(?!<)", "val-magic"],
-	["(?<!\">)最大生命值(?!<)", "val-heal"], ["(?<!\">)最大HP(?!<)", "val-heal"],
+	["(?<!\">)魔法(?!伤害|<)", "val-magic"], ["防御力加成", "val-def", "def"],
+	["(?<!\">)攻击力(?!<)", "val-normal", "atk"], ["(?<!\">)护甲穿透(?!<)", "val-def"],
+	["(?<!\">)护甲(?!穿透|<)", "val-def", "def"], ["(?<!\">)魔抗(?!<)", "val-magic", "mr"],
+	["(?<!\">)最大生命值?(?!<)", "val-heal", "hp"], ["(?<!\">)最大HP(?!<)", "val-heal", "hp"],
 	["(?<!\">)治疗削减(?!<)", "val-heal-reduce"], ["(?<!\">)灼烧(?!<)", "val-burn"],
-	["(?<!\">)生命偷取(?!<)", "val-lifesteal"], ["(?<!\">)眩晕(?!<)", "val-stun"],
-	["(?<!\">)诅咒(?!<)", "val-dot"], ["(?<!\">)护盾(?!<)", "val-shield"],
+	["(?<!\">)生命偷取(?!<)", "val-lifesteal", "lifesteal"], ["(?<!\">)眩晕(?!<)", "val-stun"],
+	["(?<!\">)诅咒(?!<)", "val-dot"], ["(?<!\">)护盾(?!<)", "val-shield", "shield"],
 	["(?<!\">)中毒(?!<)", "val-dot"], ["(?<!\">)流血(?!<)", "val-lifesteal"],
 	["(?<!\">)冰寒(?!<)", "val-magic"], ["(?<!\">)反伤(?!<)", "val-reflect"],
-	["(?<!\">)暴击率(?!<)", "val-crit"], ["(?<!\">)暴击伤害(?!<)", "val-crit-dmg"],
+	["(?<!\">)暴击率(?!<)", "val-crit", "crit"], ["(?<!\">)暴击伤害(?!<)", "val-crit-dmg", "crit-dmg"],
+	["(?<!\">)闪避(?!<)", "val-buff", "dodge"], ["(?<!\">)移动速度(?!<)", "val-magic", "move"],
+	["(?<!\">)攻击速度(?!<)", "val-crit", "aspd"], ["(?<!\">)射程(?!<)", "val-def", "range"],
 	["(?<!\">)额外伤害(?!<)", "val-extra"],
 ]
 
@@ -157,7 +162,7 @@ static func _ensure_re() -> void:
 		_token_re = RegEx.create_from_string("\\{([NPHSBDMT]):([^}]+)\\}|\\{([^}]+)\\}")
 		_span_re = RegEx.create_from_string("<span\\s+(?:class=\"([^\"]+)\"|style=\"color:\\s*(#[0-9a-fA-F]+)[^\"]*\")[^>]*>([^<]*)</span>|([^<]+)")
 		for rule in KEYWORD_RULES:
-			_keyword_re.append([RegEx.create_from_string(rule[0]), rule[1]])
+			_keyword_re.append([RegEx.create_from_string(rule[0]), rule[1], (rule[2] if rule.size() > 2 else "")])
 
 
 ## 渲染模板 → HTML (1:1 PoC renderSkillTemplate: token 展开 + 关键词上色).
@@ -180,12 +185,16 @@ static func render_html(template: String, f: Dictionary, s: Dictionary) -> Strin
 			result += str(val)
 		last = m.get_end()
 	result += template.substr(last)
-	# 2) 关键词自动上色
+	# 2) 关键词自动上色 (+ 属性词前内联图标·用户2026-07-24)
 	for kr in _keyword_re:
 		var re: RegEx = kr[0]
 		var cls: String = kr[1]
+		var ico: String = kr[2]
 		# 提取关键词文本: 用 sub 把每个匹配替换成 span; 匹配文本本身用 $0 (PCRE2 \0)
-		result = re.sub(result, "<span class=\"%s\">$0</span>" % cls, true)
+		var repl := "<span class=\"%s\">$0</span>" % cls
+		if ico != "":   # 真属性 → 关键词【前】插一枚图标(html_to_bbcode 转 [img]); 伤害类型/DoT/控制词 ico="" 不插
+			repl = "<img src=\"res://assets/sprites/stats/%s-icon.png\"/>" % ico + repl
+		result = re.sub(result, repl, true)
 	return result
 
 
@@ -200,7 +209,7 @@ static func render_html(template: String, f: Dictionary, s: Dictionary) -> Strin
 ##
 ## ★语义采【最外层 span 颜色胜出】: 灰字注释整段保持灰(去强调本意), 内层关键词不再抢色;
 ##   手写色块整段保持该色。对【无嵌套】输入与旧实现逐字节等价(仅多解码 &lt; 等实体), 只消泄漏不造泄漏。
-static func html_to_bbcode(html: String) -> String:
+static func html_to_bbcode(html: String, icon_px: int = ICON_PX) -> String:
 	var s := html
 	var out := ""
 	var depth := 0   # span 嵌套深度; 只在最外层 span 开/合处发 [color]/[/color]
@@ -231,6 +240,13 @@ static func html_to_bbcode(html: String) -> String:
 				if depth == 0:
 					out += "[color=%s]" % _span_color(tag)
 				depth += 1
+			elif low.begins_with("<img"):
+				# 内联属性图标: <img src="res://..."/> → [img=W]path[/img](等比·高≈字高)。
+				# ★放在 depth 判断【之外】: 图标插在关键词 span【前】, 此刻可能在灰字 span 内(depth>0),
+				#   但 [img] 不受 [color] 影响, 直接输出即可(图标本身有色, 不吃文字色)。
+				var isrc := _img_src(tag)
+				if isrc != "":
+					out += "[img=%d]%s[/img]" % [icon_px, isrc]
 			# 其它未知标签: 丢弃
 		else:
 			var lt := s.find("<", i)
@@ -261,6 +277,16 @@ static func _span_color(tag: String) -> String:
 			return h
 	return "#ffffff"
 
+## 从 <img src="..."/> 抽 src 路径。
+static func _img_src(tag: String) -> String:
+	var q := tag.find("src=\"")
+	if q < 0:
+		return ""
+	var e := tag.find("\"", q + 5)
+	if e < 0:
+		return ""
+	return tag.substr(q + 5, e - q - 5)
+
 ## 解码 HTML 实体 → 真字符。RichTextLabel 不解实体, 数据里写的 &lt;120码 不解会原样显示成 "&lt;120码"。
 ## &amp; 最后解, 免得把 &amp;lt; 二次解码成 <。
 static func _decode_entities(t: String) -> String:
@@ -270,8 +296,11 @@ static func _decode_entities(t: String) -> String:
 
 
 ## 便捷: 模板 → BBCode (RichTextLabel 直用).
-static func render_bbcode(template: String, f: Dictionary, s: Dictionary) -> String:
-	return html_to_bbcode(render_html(template, f, s))
+## font_px = 该描述所在 RichTextLabel 的字号 → 内联属性图标按字号缩放, 每个场合都与文字同高(用户2026-07-24 选C)。
+## 传 0 = 用默认 ICON_PX。图标高 ≈ 字号×1.15(实测比字号略大一点点最贴, 见 20260724 方案书)。
+static func render_bbcode(template: String, f: Dictionary, s: Dictionary, font_px: int = 0) -> String:
+	var ipx := ICON_PX if font_px <= 0 else maxi(12, roundi(float(font_px) * 1.15))
+	return html_to_bbcode(render_html(template, f, s), ipx)
 
 
 ## 便捷: 模板 → 纯文本 (无色, 仅展开数字; Label 用). 去掉所有 <…> 标签.

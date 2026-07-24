@@ -1102,7 +1102,7 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary) -> void:
 				_: chip_text = "3选1候选 · 龟能%d" % _skill_energy(sk); chip_color = "#06d6a0"
 		_add_text(cx + 8, start_y + 60, chip_text, 13, chip_color, 0.0, 0.0)
 		# 简述 — 富文本 BBCode, 多行 clamp
-		var brief := SkillText.render_bbcode(str(sk.get("brief", "")), ctx, sk)
+		var brief := SkillText.render_bbcode(str(sk.get("brief", "")), ctx, sk, 13)
 		var rt := RichTextLabel.new()
 		rt.bbcode_enabled = true
 		rt.fit_content = true
@@ -1219,7 +1219,7 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 	rt.size = Vector2(DETAIL_W - 40, 352)
 	rt.add_theme_font_size_override("normal_font_size", 13)
 	rt.add_theme_color_override("default_color", Color("#ffffff"))
-	rt.text = SkillText.render_bbcode(str(sk.get("detail", sk.get("brief", ""))), ctx, sk)
+	rt.text = SkillText.render_bbcode(str(sk.get("detail", sk.get("brief", ""))), ctx, sk, 13)
 	detail.add_child(rt)
 
 
@@ -1238,7 +1238,7 @@ func _render_passive_detail_inline(pet: Dictionary, ctx: Dictionary) -> void:
 	rt.size = Vector2(DETAIL_W - 40, 402)
 	rt.add_theme_font_size_override("normal_font_size", 13)
 	rt.add_theme_color_override("default_color", Color("#ffffff"))
-	rt.text = SkillText.render_bbcode(full_desc, ctx, passive)
+	rt.text = SkillText.render_bbcode(full_desc, ctx, passive, 13)
 	detail.add_child(rt)
 
 
@@ -1317,7 +1317,7 @@ func _show_consumable(eq: Dictionary) -> void:
 	if tgt_label != "":
 		_add_text(240, 68, tgt_label, 13, "#888888", 0.0, 0.5)
 	_add_text(180, 110, "描述", 14, "#58d3ff", 0.0, 0.5, true)
-	var desc := SkillText.render_bbcode(str(eq.get("desc", "")), {"atk": 0, "def": 0, "mr": 0, "maxHp": 0}, {})
+	var desc := SkillText.render_bbcode(str(eq.get("desc", "")), {"atk": 0, "def": 0, "mr": 0, "maxHp": 0}, {}, 13)
 	var rt := RichTextLabel.new()
 	rt.bbcode_enabled = true; rt.fit_content = true; rt.scroll_active = false
 	rt.position = Vector2(180, 132)

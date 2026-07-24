@@ -29,7 +29,7 @@ func _ready() -> void:
 	var eq := FileAccess.get_file_as_string("res://data/phase2-equipment.json")
 	_ok("★龙蛋文案含 30/45/70 层灼烧", eq.contains("30/45/70层灼烧"))
 	_ok("★暴君文案含 1/1.8/4×攻击力", eq.contains("1/1.8/4×攻击力魔法伤害"))
-	_ok("★暴君文案含 4/6/12% 斩杀线", eq.contains("4/6/12%最大生命×(1+暴击率)"))
+	_ok("★暴君文案含 4/6/12% 斩杀线", eq.contains("4/6/12%最大生命值×(1+暴击率)"))   # 2026-07-24 术语补全: 最大生命→最大生命值
 
 	print("ALL PASS — 装备削弱(龙蛋/暴君之牙)" if _fail == 0 else "FAILED: %d" % _fail)
 	get_tree().quit(0 if _fail == 0 else 1)

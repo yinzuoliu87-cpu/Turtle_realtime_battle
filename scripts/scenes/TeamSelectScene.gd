@@ -1622,7 +1622,7 @@ func _refresh_detail() -> void:
 		chip.add_child(prow)
 		# 被动描述只在 hover 看 (1:1 PoC ts:796/825 "悬浮看描述 省空间") — 不常驻铺文字(撑爆面板的自创)
 		var fake_f := {"atk": atk, "def": def_, "mr": mr, "maxHp": hp, "crit": pet.get("crit", 0.25), "lv": det_lv, "passive": passive}
-		chip.tooltip_text = "%s\n%s" % [passive.get("name", "被动"), SkillText.render_bbcode(str(passive.get("brief", "")), fake_f, passive)]
+		chip.tooltip_text = "%s\n%s" % [passive.get("name", "被动"), SkillText.render_bbcode(str(passive.get("brief", "")), fake_f, passive, 14)]
 		# 内容 IGNORE 鼠标 → 整 chip 捕获 hover 出 tooltip
 		prow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		pnm.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1877,7 +1877,7 @@ func _skill_tooltip(pet: Dictionary, sk: Dictionary, idx: int = -1) -> String:
 	var def_: int = roundi(pet.get("def", 0) * tb)
 	var mr: int = roundi(pet.get("mr", pet.get("def", 0)) * tb)
 	var fake_f := {"atk": atk, "def": def_, "mr": mr, "maxHp": hp, "crit": pet.get("crit", 0.25), "lv": tlv, "passive": pet.get("passive")}
-	var brief: String = SkillText.render_bbcode(str(sk.get("brief", "")), fake_f, sk)
+	var brief: String = SkillText.render_bbcode(str(sk.get("brief", "")), fake_f, sk, 14)
 	var head: String = str(sk.get("name", "?"))
 	if SkillEnergy.is_active(str(sk.get("type", ""))):   # 龟能口径(无"CD"): 主动技显龟能花费, 攒满才放
 		head += " (龟能%d)" % _skill_energy(sk)
@@ -1889,12 +1889,12 @@ func _skill_tooltip(pet: Dictionary, sk: Dictionary, idx: int = -1) -> String:
 		if idx < melee.size():
 			var ms: Dictionary = melee[idx]
 			if str(ms.get("name", "")) != sk_name and ms.get("name", "") != "":
-				body += "\n近战：%s — %s" % [ms.get("name", ""), SkillText.render_bbcode(str(ms.get("brief", "")), fake_f, ms)]
+				body += "\n近战：%s — %s" % [ms.get("name", ""), SkillText.render_bbcode(str(ms.get("brief", "")), fake_f, ms, 14)]
 		var volcano: Array = pet.get("volcanoSkills", [])
 		if idx < volcano.size() and not sk.get("passiveSkill", false):
 			var vs: Dictionary = volcano[idx]
 			if not vs.get("passiveSkill", false) and str(vs.get("name", "")) != sk_name and vs.get("name", "") != "":
-				body += "\n火山：%s — %s" % [vs.get("name", ""), SkillText.render_bbcode(str(vs.get("brief", "")), fake_f, vs)]
+				body += "\n火山：%s — %s" % [vs.get("name", ""), SkillText.render_bbcode(str(vs.get("brief", "")), fake_f, vs, 14)]
 	return "%s\n%s" % [head, body]
 
 
