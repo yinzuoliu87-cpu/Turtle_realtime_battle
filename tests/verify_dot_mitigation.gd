@@ -107,17 +107,21 @@ func _check_apply_damage_hooks(src: String) -> void:
 	#   反向验证时把 aura 盾的判断条件改成 false, 因为下面几行仍写着 u["_auraShieldVal"],
 	#   只查标识符的版本照样绿(2026-07-22 实测到这个假通过)。
 	var need := {
-		"u.get(\"_auraShieldVal\"": "aura 储能盾不吸 DOT(金龟/龟壳储能盾期间被灼烧照样掉血)",
 		"deathfloor_until": "亡灵免死锁血被 DOT 打穿(免死光环亮着人被烧死)",
 		"_assembling": "组装期免疫被 DOT 打穿",
 	}
 	for k in need.keys():
 		if b.find(str(k)) < 0:
 			_fail("_apply_damage 缺 %s → %s" % [str(k), str(need[k])])
+	# ★护盾/aura盾吸收 2026-07-24 收口到 class_name ShieldMath.absorb(两路共用·§3.3 地雷去重)。
+	#   验意图不变(DOT 也要吃 aura 盾): _apply_damage 委托给它; aura 具体行为由 verify_shield_absorb
+	#   的 300 采样等价测守(比源码字符串硬)。这里只验委托没丢。
+	if b.find("ShieldMath.absorb(") < 0:
+		_fail("_apply_damage 没调 ShieldMath.absorb —— 护盾/aura盾吸收丢失(DOT 不吸盾)")
 	# _kill 必须带 killer, 否则 DOT 击杀不算击杀数、on-kill 装备不触发
 	if b.find("_kill(u, ") < 0:
 		_fail("_apply_damage 的 _kill 没带 killer —— DOT 击杀不算击杀数, 暴君之牙等 on-kill 装备不触发")
-	print("  [落伤钩子] aura盾/免死/组装免疫/带killer 四项已检")
+	print("  [落伤钩子] 委托_absorb_shields(内含aura盾)/免死/组装免疫/带killer 已检")
 
 
 ## ③ DOT 抗性要吃施加者的护穿与增伤(用户 2026-07-22 拍板)
@@ -205,8 +209,9 @@ func _code_only(block: String) -> String:
 
 
 func _func_body(src: String, fname: String) -> String:
-	var head := "\nfunc %s(" % fname
-	var i := src.find(head)
+	var i := src.find("\nfunc %s(" % fname)
+	if i < 0:
+		i = src.find("\nstatic func %s(" % fname)   # 2026-07-24: 也认 static func(如抽出的 _absorb_shields)
 	if i < 0:
 		return ""
 	var start := i + 1

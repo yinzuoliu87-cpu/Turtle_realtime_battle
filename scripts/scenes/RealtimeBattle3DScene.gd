@@ -9594,14 +9594,7 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: Stri
 	var d := _mitigate_incoming(u, float(dmg), _raw, is_self)
 	dmg = maxi(1, int(round(d)))                     # 统计/飘字用减伤【后】的值, 否则面板数字与实际掉血对不上
 	var shield_before: float = u["shield"]
-	if u["shield"] > 0.0:
-		var ab := minf(u["shield"], d)
-		u["shield"] -= ab; d -= ab
-	# aura 储能盾(金龟/龟壳): 另一条路 8507-8509 有, 这条路一直没有 → 储能盾期间被灼烧照样掉血
-	if d > 0.0 and float(u.get("_auraShieldVal", 0.0)) > 0.0:
-		var ab2 := minf(float(u["_auraShieldVal"]), d)
-		u["_auraShieldVal"] = float(u["_auraShieldVal"]) - ab2
-		d -= ab2
+	d = ShieldMath.absorb(u, d)   # 普通盾+aura盾 吸全类型(§3.3 收口·两路共用)
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	# 无头龟·亡灵免死锁血: 另一条路有(deathfloor_until), 这条路没有 → 免死光环亮着人被 DOT 烧死
 	if u["hp"] <= 0.0 and _t < float(u.get("deathfloor_until", 0.0)):
@@ -9691,12 +9684,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	var shield_before: float = u["shield"]
 	# 护盾吸收【全类型】伤害(物理/法术/真实): 1:1 回合制 damage.gd「真伤(true)也走护盾」+ 用户2026-07-11「真伤/反伤真伤要被盾档」。
 	#   真伤只无视护甲/魔抗/减伤(见上方 not raw 分支), 但护盾照吸。唯一穿盾=墨迹(_ink_true·在护盾后单独加·由线条被动设计)。
-	if u["shield"] > 0.0:
-		var ab := minf(u["shield"], d)
-		u["shield"] -= ab; d -= ab
-	if d > 0.0 and float(u.get("_auraShieldVal", 0.0)) > 0.0:   # aura储能盾(金)同样吸全类型
-		var ab_a := minf(float(u["_auraShieldVal"]), d)
-		u["_auraShieldVal"] = float(u["_auraShieldVal"]) - ab_a; d -= ab_a
+	d = ShieldMath.absorb(u, d)   # 普通盾+aura盾 吸全类型(§3.3 收口·两路共用)
 	if _ink_true > 0.0: d += _ink_true   # 墨迹真伤: 穿减伤穿盾(唯一穿盾例外·护盾吸收后加), 直接进扣血并计入跳字
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	if u.get("_review_dummy", false): u["hp"] = u["maxHp"]   # 训练靶: 受击即回满, 打不死不结算(看完整)

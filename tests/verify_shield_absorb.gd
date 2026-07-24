@@ -4,8 +4,6 @@ extends Node
 ## 守: 与【抽出前的原地逻辑】逐位一致(剩余伤 + 普通盾终值 + aura盾终值); 边界; prove-fail。
 ## 注: 数值级 headless 可证"逐位一致"; 但"28 龟实战手感/平衡"仍需用户 F5。
 
-const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
-
 var _fail := 0
 func _ok(n: String, c: bool, d: String = "") -> void:
 	if c: print("  [PASS] ", n, ("  " + d) if d != "" else "")
@@ -28,15 +26,15 @@ func _mk(shield: float, aura: float) -> Dictionary:
 func _ready() -> void:
 	# 已知例 + 边界
 	var u1 := _mk(30.0, 0.0)
-	var r1 := RB._absorb_shields(u1, 50.0)
+	var r1 := ShieldMath.absorb(u1, 50.0)
 	_ok("盾30 吸50 → 剩20·盾0(盾破)", is_equal_approx(r1, 20.0) and is_equal_approx(u1["shield"], 0.0))
 	var u2 := _mk(100.0, 0.0)
-	var r2 := RB._absorb_shields(u2, 40.0)
+	var r2 := ShieldMath.absorb(u2, 40.0)
 	_ok("盾100 吸40 → 剩0·盾60(盾够)", is_equal_approx(r2, 0.0) and is_equal_approx(u2["shield"], 60.0))
 	var u3 := _mk(20.0, 50.0)
-	var r3 := RB._absorb_shields(u3, 45.0)
+	var r3 := ShieldMath.absorb(u3, 45.0)
 	_ok("盾20+aura50 吸45 → 剩0·盾0·aura25(接力)", is_equal_approx(r3, 0.0) and is_equal_approx(u3["shield"], 0.0) and is_equal_approx(u3["_auraShieldVal"], 25.0))
-	_ok("无盾 → 原样穿透", is_equal_approx(RB._absorb_shields(_mk(0.0, 0.0), 33.0), 33.0))
+	_ok("无盾 → 原样穿透", is_equal_approx(ShieldMath.absorb(_mk(0.0, 0.0), 33.0), 33.0))
 
 	# ★与原地逻辑 300 随机采样逐位一致(同输入分别喂 helper 和 ref, 比 剩伤+普通盾终值+aura盾终值)
 	var mism := 0
@@ -46,7 +44,7 @@ func _ready() -> void:
 		var dmg := randf() * 250.0
 		var ua := _mk(s, a)
 		var ub := _mk(s, a)
-		var ra := RB._absorb_shields(ua, dmg)
+		var ra := ShieldMath.absorb(ua, dmg)
 		var rb := _ref_absorb(ub, dmg)
 		if not (is_equal_approx(ra, rb) and is_equal_approx(ua["shield"], ub["shield"]) and is_equal_approx(float(ua["_auraShieldVal"]), float(ub["_auraShieldVal"]))):
 			mism += 1
