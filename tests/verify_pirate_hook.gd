@@ -38,14 +38,13 @@ func _ready() -> void:
 	await get_tree().process_frame
 
 	print("=== 1. 海盗阵亡 → 钩锁击杀者 ===")
-	var pirate: Dictionary = _find(scene, "pirate")
-	if pirate.is_empty():
-		# 场上没有海盗 → 手工造一只
-		pirate = scene._make_unit("pirate", "left", Vector2(500, 400))
-		scene._units.append(pirate)
-	var killer: Dictionary = _first_enemy(scene, pirate)
-	if killer.is_empty():
-		print("  – 找不到敌方单位, 跳过"); _done(); return
+	# ★用【固定的干净单位】, 不挑随机 spawn 敌当击杀者 —— CI(及本地)每次队伍随机 shuffle, 挑到
+	#   带盾/墨迹/易伤/特殊减伤的龟, 25% 真伤断言就飘: 带盾→真伤被吸 lost=0; 带增伤→got 291>253。
+	#   本测试验的是"钩索=25%击杀者maxHp真伤"这个机制, 与击杀者是谁无关 → 用裸装 basic, 与队伍解耦。
+	var pirate: Dictionary = scene._make_unit("pirate", "left", Vector2(500, 400))
+	var killer: Dictionary = scene._make_unit("basic", "right", Vector2(1100, 400))
+	scene._units.append(pirate)
+	scene._units.append(killer)
 
 	# ★隔离: 场景仍在 tick, 其它单位会打 killer → 只留 pirate + killer 存活, 并清掉 killer 身上的 DoT
 	for o in scene._units:
@@ -55,6 +54,11 @@ func _ready() -> void:
 	killer["dots"] = []
 	killer["_review_dummy"] = false   # ★评审假人"受击即回满", 会把伤害抹平 → 关掉才测得到真伤害
 	killer["hp"] = killer["maxHp"]
+	# ★清盾: _pirate_grapple_hit 走 _apply_damage_from(raw=true), 而真伤【照样被护盾吸】(主场景 §护盾吸全类型)。
+	#   CI 默认队挑到的 killer 恰好带盾(≥25%maxHp)时, 25% 真伤被全吸 → lost=0 假红; 本地裸装 killer 侥幸过。
+	#   已本地注入 300 盾复现 got=0 证实。本测试验的是"钩索基础伤害=25%maxHp", 与盾无关 → 清掉两种盾通道。
+	killer["shield"] = 0.0
+	killer["_auraShieldVal"] = 0.0
 	# ★★2026-07-10 轮G 才查明的真 flaky 源: got=188 vs expect=125, 188 = 125×1.5 = 【暴击】。
 	#   `_apply_damage_from(..., raw=true)` 的真实伤害【照样掷暴击】(见该函数 "if raw and src.has(\"crit\")"),
 	#   海盗 crit=0.25 / crit_dmg=1.5 → 每 4 次就有 1 次 188。
