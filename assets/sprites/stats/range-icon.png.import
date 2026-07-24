@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dyv2pmtgwfiow"
-path="res://.godot/imported/atkspd-icon.png-06b8a33f6c74030e65f392592a814ce8.ctex"
+uid="uid://dbaa33jrmjiss"
+path="res://.godot/imported/range-icon.png-5832fe46494eb73917e158c3c78907dd.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/ui/stats/atkspd-icon.png"
-dest_files=["res://.godot/imported/atkspd-icon.png-06b8a33f6c74030e65f392592a814ce8.ctex"]
+source_file="res://assets/sprites/stats/range-icon.png"
+dest_files=["res://.godot/imported/range-icon.png-5832fe46494eb73917e158c3c78907dd.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://tlkf6txkj8yc"
-path="res://.godot/imported/movespd-icon.png-a9c912def5fc99f5b48b3a6f5992b8e4.ctex"
+uid="uid://kty60x5umkjb"
+path="res://.godot/imported/move-icon.png-46e286f2dc3da2e8bfd0f82cfb89afcd.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/ui/stats/movespd-icon.png"
-dest_files=["res://.godot/imported/movespd-icon.png-a9c912def5fc99f5b48b3a6f5992b8e4.ctex"]
+source_file="res://assets/sprites/stats/move-icon.png"
+dest_files=["res://.godot/imported/move-icon.png-46e286f2dc3da2e8bfd0f82cfb89afcd.ctex"]
 
 [params]
 

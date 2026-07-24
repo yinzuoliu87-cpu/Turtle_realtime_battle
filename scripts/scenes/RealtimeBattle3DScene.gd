@@ -24396,16 +24396,16 @@ func _render_skill_text(tpl: String, u: Dictionary, sk: Dictionary) -> String:
 ## ★核心 7 项恒显示; 其余"有值才显示"(0 的不占位, 免得面板一片 0)。
 ## ★不要用 emoji 当图标 —— 本项目已「全去emoji(根治绿块+跨平台一致)」, 没图标就留空占位。
 func _info_stat_rows(u: Dictionary) -> Array:
-	var sic := "res://assets/sprites/ui/stats/"
+	var sic := "res://assets/sprites/stats/"   # 统一到唯一一套属性图标(32px·用户2026-07-24: 战斗内也用这套, 删了旧的 ui/stats/ 64px 异画风)
 	var W := Color("#d6e4f0")
 	var rows: Array = [
 		[sic + "atk-icon.png",      "攻击 %d" % int(u.get("atk", 0)),                                Color("#ff9d8a")],
 		[sic + "def-icon.png",      "护甲 %d" % int(u.get("def", 0)),                                W],
 		[sic + "mr-icon.png",       "魔抗 %d" % int(u.get("mr", 0)),                                 Color("#9bdcff")],
 		[sic + "crit-icon.png",     "暴击 %d%%" % int(float(u.get("crit", 0.0)) * 100.0),            W],
-		[sic + "atkspd-icon.png",   "攻速 %ss" % _fmt_num(float(u.get("atk_interval", 0.0))),        W],
+		[sic + "aspd-icon.png",     "攻速 %ss" % _fmt_num(float(u.get("atk_interval", 0.0))),        W],
 		[sic + "range-icon.png",    "射程 %d" % int(u.get("atk_range", 0)),                          W],
-		[sic + "movespd-icon.png",  "移速 %d" % int(u.get("move_spd", 0)),                           W],
+		[sic + "move-icon.png",     "移速 %d" % int(u.get("move_spd", 0)),                           W],
 	]
 	# ── 用户 2026-07-21 要求补的「更多属性」 ──
 	# ★★全部【恒显示】(用户第二轮明确:「全都要显示啊」)。原来做成"有值才显示",
