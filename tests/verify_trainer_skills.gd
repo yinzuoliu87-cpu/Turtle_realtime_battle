@@ -19,6 +19,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 
 	_test_magic_stone(scene)
+	_test_fury_potion(scene)
 	_test_source(scene)
 
 	scene.queue_free()
@@ -53,6 +54,31 @@ func _test_magic_stone(scene) -> void:
 	# 无魔法石被动的大师不触发(反向)
 	var t2 = {"is_trainer": true, "side": "left", "alive": true, "_tr_passive": "", "_ms_stacks": 0}
 	_ok("★没装魔法石→攻速haste=1(源码断言在下条)", int(t2.get("_ms_stacks", 0)) == 0)
+
+func _test_fury_potion(scene) -> void:
+	var trainer = null
+	var allies: Array = []
+	for u in scene._units:
+		if u.get("is_trainer", false) and str(u.get("side", "")) == "left":
+			trainer = u
+		elif not u.get("is_trainer", false) and str(u.get("side", "")) == "left" and u.get("alive", false):
+			allies.append(u)
+	_ok("怒火药水: 找到大师 + ≥2 友军(分母)", trainer != null and allies.size() >= 2)
+	if trainer == null or allies.size() < 2:
+		return
+	var near_ally = allies[0]
+	var far_ally = allies[1]
+	var pt: Vector2 = near_ally["pos"]
+	far_ally["pos"] = pt + Vector2(500.0, 0.0)      # 挪出 300 码外
+	for a in [near_ally, far_ally]:
+		a["haste_until"] = 0.0; a["move_buff_until"] = 0.0; a["echarge_until"] = 0.0
+	var n: int = scene._fury_apply_buffs(trainer, pt)
+	_ok("★怒火药水·落点300码内友军受益(≥1)", n >= 1, "受益 %d 人" % n)
+	_ok("★近友军 +30%攻速(haste_mult=1.3·5秒)",
+		abs(float(near_ally.get("haste_mult", 1.0)) - 1.3) < 0.01 and float(near_ally.get("haste_until", 0.0)) > scene._t)
+	_ok("★近友军 +25%移速(move_buff_mult=1.25)", abs(float(near_ally.get("move_buff_mult", 1.0)) - 1.25) < 0.01)
+	_ok("★近友军 +25%龟能充能(echarge_mult=1.25)", abs(float(near_ally.get("echarge_mult", 1.0)) - 1.25) < 0.01)
+	_ok("★落点300码外友军不受益(有范围)", float(far_ally.get("haste_until", 0.0)) <= scene._t)
 
 func _test_source(scene) -> void:
 	var src: String = ""

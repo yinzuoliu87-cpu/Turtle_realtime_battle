@@ -3670,12 +3670,60 @@ func _cast_hook(trainer: Dictionary, dir: Vector2) -> bool:
 	_hook_dramatize_miss(trainer, dir)
 	return false
 
-## ── 怒火药水 / 口哨 / 冰川 (R1c-R1e 补效果; 此处 R1a 先接进分派+冷却, 效果待做) ──
+## ── 怒火药水(主动·CD16·700码点·用户2026-07-23 需求): 丢药水→落点300码内友军 5秒 +30%攻速 +25%龟能充能 +25%移速 ──
 func _cast_fury_potion(trainer: Dictionary, aim: Vector2) -> bool:
 	if float(trainer.get("_active_cd", 0.0)) > 0.0:
 		return false
 	trainer["_active_cd"] = float(TRAINER_SKILLS["fury_potion"]["cd"])
-	return true   # TODO R1c: 700码点丢药水→300码友军三buff
+	var pt: Vector2 = trainer["pos"] + aim.limit_length(700.0)          # 落点(射程700内)
+	trainer["_cast_lock_until"] = _t + HOOK_WINDUP                      # 丢药水时短暂站定
+	var tt: Dictionary = trainer
+	var throw_t: float = HOOK_WINDUP + trainer["pos"].distance_to(pt) / 800.0   # 前摇 + 抛出飞行
+	_pending_shots.append({"delay": throw_t, "src": trainer, "fn": func() -> void:
+		_fury_apply_buffs(tt, pt)})                                    # 落地才生效(delta定时·无头也稳)
+	_fury_dramatize(trainer, pt)
+	return true
+
+## ★纯效果结算(可测): 落点 300码内【友军】获得 5秒 三 buff。返回受益人数。不建 tween。
+func _fury_apply_buffs(trainer: Dictionary, point: Vector2) -> int:
+	var side: String = str(trainer.get("side", ""))
+	var n: int = 0
+	for o in _units:
+		if not o.get("alive", false) or o.get("is_trainer", false):
+			continue
+		if str(o.get("side", "")) != side:
+			continue
+		if o["pos"].distance_to(point) > 300.0:
+			continue
+		o["haste_mult"] = 1.3;      o["haste_until"] = _t + 5.0        # +30% 攻速
+		o["move_buff_mult"] = 1.25; o["move_buff_until"] = _t + 5.0    # +25% 移速
+		o["echarge_mult"] = 1.25;   o["echarge_until"] = _t + 5.0      # +25% 龟能充能速率
+		n += 1
+	return n
+
+## 怒火药水演出: 抛物线飞到落点 → 橙红 splash + 怒火圈(纯观感)。素材(原图)待 R1g, 暂用火光占位。
+func _fury_dramatize(trainer: Dictionary, point: Vector2) -> void:
+	if _world == null:
+		return
+	var from2d: Vector2 = trainer["pos"]
+	var tex := load("res://assets/sprites/vfx/fury-potion.png") if ResourceLoader.exists("res://assets/sprites/vfx/fury-potion.png") else VfxTex._make_fire_glow_tex()
+	var pot := Sprite3D.new()
+	pot.texture = tex; pot.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	pot.billboard = BaseMaterial3D.BILLBOARD_ENABLED; pot.shaded = false; pot.transparent = true
+	pot.pixel_size = (40.0 * WS) / float(maxi(1, tex.get_height()))
+	pot.modulate = Color(1.0, 0.55, 0.25)
+	_world.add_child(pot)
+	var peak: float = 2.4
+	var tw := _reg_tween()
+	tw.tween_interval(HOOK_WINDUP)
+	tw.tween_method(func(p: float) -> void:   # 抛物线飞
+		if not is_instance_valid(pot): return
+		pot.position = _world_pos(from2d.lerp(point, p), 0.9 + peak * sin(PI * p))
+	, 0.0, 1.0, maxf(0.15, from2d.distance_to(point) / 800.0))
+	tw.tween_callback(func() -> void:
+		if is_instance_valid(pot): pot.queue_free()
+		_skill_ring(point, Color(1.0, 0.5, 0.2, 0.75), 300.0)          # 300码怒火圈
+		_burst_vfx("res://assets/sprites/vfx/cannon-blast.png", point, 120.0, 0.4))
 
 func _cast_whistle(trainer: Dictionary, _aim: Vector2) -> bool:
 	if float(trainer.get("_active_cd", 0.0)) > 0.0:
@@ -3790,20 +3838,32 @@ func _update_spell_disc() -> void:
 
 ## 移动端【按住圆盘拖动瞄准】回调(Wild Rift 式·用户2026-07-24)。phase: update=拖动中 / cast=松手施法 / cancel=取消。
 ## screen_dir=圆盘上拖动的屏幕方向; 2.5D 俯视下近似当作战场方向。
-func _on_spell_aim(phase: String, screen_dir: Vector2) -> void:
+func _on_spell_aim(phase: String, screen_off: Vector2) -> void:
 	match phase:
 		"update":
-			_disc_aiming = screen_dir.length() > 0.01 and _trainer_ticks_active()
-			_disc_aim_dir = screen_dir
+			_disc_aiming = screen_off.length() > 0.01 and _trainer_ticks_active()
+			_disc_aim_dir = screen_off
 		"cast":
 			_disc_aiming = false
 			if not _trainer_ticks_active():
 				return
 			var tr = _my_trainer()
 			if tr != null:
-				_cast_active(tr, screen_dir)   # _cast_active/各技能内部只用方向(会 normalize)
+				_cast_active(tr, _disc_off_to_field(tr, screen_off))
 		_:
 			_disc_aiming = false
+
+## 圆盘拖动的屏幕偏移 → 战场偏移(target点 = 大师pos + 返回值)。拖满(≈R*1.4像素)=技能射程, 半拖=半射程。
+## 方向技(钩锁/冰川)只用方向, 幅度无所谓; 点目标技(怒火药水)靠幅度定落点距离。
+func _disc_off_to_field(trainer: Dictionary, screen_off: Vector2) -> Vector2:
+	if screen_off.length() < 0.01:
+		return Vector2.RIGHT
+	var sid: String = str(trainer.get("_tr_active", "hook"))
+	var rng: float = float(TRAINER_SKILLS.get(sid, {}).get("range", 600.0))
+	if rng <= 0.0:
+		rng = 600.0
+	var frac: float = clampf(screen_off.length() / (SpellDisc.R * 1.4), 0.0, 1.0)
+	return screen_off.normalized() * rng * frac
 
 ## 战场技能指示器: 从大师沿瞄准方向画到射程末端(橙线)。每帧刷新=拖动时持续显示。无目标技能(口哨·range0)不画。
 func _draw_aim_indicator() -> void:
@@ -5149,7 +5209,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	var to_t: Vector2 = tgt["pos"] - u["pos"]
 	var dist := to_t.length()
 	var rng: float = u["atk_range"]
-	var spd: float = u["move_spd"] * (float(u.get("slow_mag", 0.6)) if _t < u["slow_until"] else 1.0) * (float(u.get("spd_move_mult", 1.0)) if _t < float(u.get("spd_dbf_until", 0.0)) else 1.0)
+	var spd: float = u["move_spd"] * (float(u.get("slow_mag", 0.6)) if _t < u["slow_until"] else 1.0) * (float(u.get("spd_move_mult", 1.0)) if _t < float(u.get("spd_dbf_until", 0.0)) else 1.0) * (float(u.get("move_buff_mult", 1.0)) if _t < float(u.get("move_buff_until", 0.0)) else 1.0)   # ×移速buff通道(怒火药水等·独立于减速debuff防冲突)
 
 	# ═══ AI 状态机: 移动 ↔ 前摇 → 出手 → 后摇 (移动与攻击/施法互斥 = 施法锁; 根治"边走边放") ═══
 	match str(u.get("state", "move")):

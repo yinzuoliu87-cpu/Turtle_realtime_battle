@@ -61,16 +61,15 @@ func _gui_input(e: InputEvent) -> void:
 		if d < DEADZONE:                       # 轻点 → 自动瞄准最近敌
 			_emit_aim("cancel")
 			if _on_tap.is_valid(): _on_tap.call()
-		else:                                  # 拖动过 → 朝拖动方向施法
-			if _on_aim.is_valid(): _on_aim.call("cast", _aim_off.normalized())
+		else:                                  # 拖动过 → 朝拖动方向施法(送【原始拖动偏移】, 主场景按技能射程映射距离)
+			if _on_aim.is_valid(): _on_aim.call("cast", _aim_off)
 		_aim_off = Vector2.ZERO
 		queue_redraw()
 		accept_event()
 
 func _emit_aim(phase: String) -> void:
 	if _on_aim.is_valid():
-		var dir := _aim_off.normalized() if _aim_off.length() > 0.001 else Vector2.ZERO
-		_on_aim.call(phase, dir)
+		_on_aim.call(phase, _aim_off)   # 送原始拖动偏移(主场景归一取方向 / 按幅度取距离)
 
 func _draw() -> void:
 	var c := Vector2(R, R)
