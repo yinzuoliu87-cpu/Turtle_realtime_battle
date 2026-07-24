@@ -3275,7 +3275,7 @@ func _unit_level(side: String) -> int:
 #   装备 flat 加值 + 固定值召唤体(随从/海螺虫/大熊) 用它"吃等级"; owner 派生召唤体已间接吃, 不用.
 func _lvl_mult_for(u: Dictionary) -> float:
 	var lvl: int = maxi(1, _unit_level(str(u.get("side", "left"))))
-	return 1.0 + 0.05 * float(lvl - 1)
+	return UnitScaling.level_multiplier(lvl)
 
 func _random_bot(n: int) -> Array:
 	var pool: Array = STATS.keys()
@@ -3461,7 +3461,7 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 	# ★训龟大师不吃等级缩放: 用户给的 500/1/0/0 是【定值】, 缩放会让"伤害降为1"之外的
 	#   血量随大轮涨, 与"场外监视者"的设定不符。
 	if _lvl > 1 and not is_minion and not is_egg and not is_trainer:
-		var _m: float = 1.0 + 0.05 * float(_lvl - 1)
+		var _m: float = UnitScaling.level_multiplier(_lvl)
 		u["maxHp"] *= _m; u["hp"] = u["maxHp"]
 		u["atk"] *= _m; u["base_atk"] *= _m
 		u["def"] *= _m; u["base_def"] *= _m
