@@ -322,6 +322,16 @@ const HOOK_CD_MISS := 10.0       # 空放(没钩到人)→只冷却10秒(返还1
 const HOOK_STUN := 4.0           # 钩住眩晕(秒, 吃韧性)
 const HOOK_PULL := 70.0          # 每秒朝大师方向拖拽(码/秒)
 const HOOK_VULN_MULT := 1.25     # 被钩4秒内受到伤害 ×1.25
+
+# ══ 训龟大师【主动技能】注册表(用户2026-07-23 需求: 装配系统·单主动槽·只用Q) ══
+# id → {名/圆盘图标/冷却}。大师单位带 _tr_active(装配的主动 id) + 通用 _active_cd(所有主动共用一个冷却字段)。
+# 施放统一走 _cast_active(u, aim), 按 _tr_active 分派到各技能。圆盘显示已装配技能的图标+冷却。
+const TRAINER_SKILLS := {
+	"hook":        {"name": "钩锁",   "icon": "res://assets/sprites/vfx/hook-skill-icon.png",   "cd": 20.0},
+	"fury_potion": {"name": "怒火药水", "icon": "res://assets/sprites/vfx/fury-potion-icon.png",  "cd": 16.0},
+	"whistle":     {"name": "口哨",   "icon": "res://assets/sprites/vfx/whistle-icon.png",      "cd": 14.0},
+	"glacier":     {"name": "冰川",   "icon": "res://assets/sprites/vfx/glacier-icon.png",      "cd": 17.0},
+}
 const VirtualJoystick := preload("res://scripts/scenes/virtual_joystick.gd")
 const SpellDisc := preload("res://scripts/scenes/spell_disc.gd")
 const HOOK_ICON := "res://assets/sprites/vfx/hook-skill-icon.png"   # 圆盘技能图标(精修·带链条+青芒宝石); 飞行弹体仍用 trainer-hook.png
@@ -3605,21 +3615,52 @@ func _hook_first_target(trainer: Dictionary, dir: Vector2):
 			bd = dd; best = o
 	return best
 
+## ★主动技能统一入口: 按大师装配的 _tr_active 分派。aim=施法方向/点(相对大师的向量)。返回是否"命中/成功"(供AI/测试)。
+## 冷却门在各技能里自查 _active_cd(所有主动共用这一个冷却字段·单槽)。
+func _cast_active(trainer: Dictionary, aim: Vector2) -> bool:
+	if trainer == null or not trainer.get("alive", false):
+		return false
+	match str(trainer.get("_tr_active", "hook")):
+		"hook":        return _cast_hook(trainer, aim)
+		"fury_potion": return _cast_fury_potion(trainer, aim)
+		"whistle":     return _cast_whistle(trainer, aim)
+		"glacier":     return _cast_glacier(trainer, aim)
+	return false
+
 ## 施放钩锁: 冷却好了才放。命中→_hook_grab + CD20; 空放→CD只10(返还10)。返回是否命中(供测试/AI)。
 func _cast_hook(trainer: Dictionary, dir: Vector2) -> bool:
 	if trainer == null or not trainer.get("alive", false):
 		return false
-	if float(trainer.get("_hook_cd", 0.0)) > 0.0:
+	if float(trainer.get("_active_cd", 0.0)) > 0.0:
 		return false
 	var tgt = _hook_first_target(trainer, dir)
 	if tgt != null:
 		_hook_grab(trainer, tgt)
-		trainer["_hook_cd"] = HOOK_CD
+		trainer["_active_cd"] = HOOK_CD
 		_hook_dramatize(trainer, tgt)   # 演出(甩钩+链条), 与结算解耦
 		return true
-	trainer["_hook_cd"] = HOOK_CD_MISS   # 空放: 只10秒(返还10)
+	trainer["_active_cd"] = HOOK_CD_MISS   # 空放: 只10秒(返还10)
 	_hook_dramatize_miss(trainer, dir)
 	return false
+
+## ── 怒火药水 / 口哨 / 冰川 (R1c-R1e 补效果; 此处 R1a 先接进分派+冷却, 效果待做) ──
+func _cast_fury_potion(trainer: Dictionary, aim: Vector2) -> bool:
+	if float(trainer.get("_active_cd", 0.0)) > 0.0:
+		return false
+	trainer["_active_cd"] = float(TRAINER_SKILLS["fury_potion"]["cd"])
+	return true   # TODO R1c: 700码点丢药水→300码友军三buff
+
+func _cast_whistle(trainer: Dictionary, _aim: Vector2) -> bool:
+	if float(trainer.get("_active_cd", 0.0)) > 0.0:
+		return false
+	trainer["_active_cd"] = float(TRAINER_SKILLS["whistle"]["cd"])
+	return true   # TODO R1d: 随机3选1(临时血/灵体小龟气波/狂暴)
+
+func _cast_glacier(trainer: Dictionary, aim: Vector2) -> bool:
+	if float(trainer.get("_active_cd", 0.0)) > 0.0:
+		return false
+	trainer["_active_cd"] = float(TRAINER_SKILLS["glacier"]["cd"])
+	return true   # TODO R1e: 方向500码冰川带
 
 ## ★纯效果结算(可测): 钩住 target → 眩晕(吃韧性) + 标记4秒拖拽 + 4秒受伤放大。不建任何 tween。
 func _hook_grab(trainer: Dictionary, target: Dictionary) -> void:
@@ -3632,8 +3673,8 @@ func _hook_grab(trainer: Dictionary, target: Dictionary) -> void:
 ## 每帧: 大师钩锁冷却扣减; 被钩单位朝其大师拖 HOOK_PULL 码/秒。在 _process 战斗门内调。
 func _tick_hooks(delta: float) -> void:
 	for u in _units:
-		if u.get("is_trainer", false) and float(u.get("_hook_cd", 0.0)) > 0.0:
-			u["_hook_cd"] = maxf(0.0, float(u["_hook_cd"]) - delta)
+		if u.get("is_trainer", false) and float(u.get("_active_cd", 0.0)) > 0.0:
+			u["_active_cd"] = maxf(0.0, float(u["_active_cd"]) - delta)
 		if _t < float(u.get("_hook_pull_until", 0.0)):
 			var by = u.get("_hook_pull_by", null)
 			if by is Dictionary and by.get("alive", false):
@@ -3668,11 +3709,11 @@ func _trainer_ai_step(u: Dictionary, delta: float) -> void:
 	var to: Vector2 = u["_ai_wander_to"] - u["pos"]
 	if to.length() > 12.0:
 		_trainer_move_by(u, to.normalized() * 0.6, delta)   # 半速晃(悠着点=真人感)
-	# ② 逮机会甩钩: CD 好了 → 朝最近敌人方向甩(在射程/线上则命中, 否则空放, 都算真人感)
-	if float(u.get("_hook_cd", 0.0)) <= 0.0:
+	# ② 逮机会放主动: CD 好了 → 朝最近敌人方向放(钩锁在射程/线上则命中, 否则空放; 其余技能各自处理)
+	if float(u.get("_active_cd", 0.0)) <= 0.0:
 		var tgt = _nearest_enemy_for_trainer(u)
 		if tgt != null:
-			_cast_hook(u, tgt["pos"] - u["pos"])
+			_cast_active(u, tgt["pos"] - u["pos"])
 
 ## 玩家按 Q: 我方(左侧)大师朝【鼠标方向】甩钩锁(PC·学 LoL 锤石 Q·用户2026-07-23 点3)。
 func _player_cast_hook() -> void:
@@ -3684,9 +3725,9 @@ func _player_cast_hook() -> void:
 	var u: Dictionary = tr
 	var mp: Vector2 = get_viewport().get_mouse_position() if get_viewport() != null else Vector2.ZERO
 	var aim: Vector2 = _screen_to_field(mp) - u["pos"]
-	_cast_hook(u, aim)
+	_cast_active(u, aim)
 
-## 移动端点圆盘: 我方大师朝【最近敌人】甩钩(触屏没有鼠标方向, 自动瞄准)。
+## 移动端点圆盘: 我方大师朝【最近敌人】放主动(触屏没有鼠标方向, 自动瞄准; 拖动瞄准在 spell_disc 内处理)。
 func _player_cast_hook_auto() -> void:
 	if not _trainer_ticks_active():
 		return
@@ -3696,7 +3737,7 @@ func _player_cast_hook_auto() -> void:
 	var u: Dictionary = tr
 	var tgt = _nearest_enemy_for_trainer(u)
 	var aim: Vector2 = (tgt["pos"] - u["pos"]) if tgt != null else (Vector2.LEFT if str(u.get("side","")) == "right" else Vector2.RIGHT)
-	_cast_hook(u, aim)
+	_cast_active(u, aim)
 
 ## 每帧刷新法术圆盘: 喂我方大师钩锁冷却(比例+剩余秒); 非战斗期(摆位/呈现/结束)隐藏。
 func _update_spell_disc() -> void:
@@ -3707,8 +3748,11 @@ func _update_spell_disc() -> void:
 	_spell_disc.visible = show
 	if not show:
 		return
-	var cd: float = float((tr as Dictionary).get("_hook_cd", 0.0))
-	_spell_disc.set_cd(cd / HOOK_CD, cd)
+	var u: Dictionary = tr
+	var sid: String = str(u.get("_tr_active", "hook"))
+	var cd_max: float = float(TRAINER_SKILLS.get(sid, {}).get("cd", HOOK_CD))
+	var cd: float = float(u.get("_active_cd", 0.0))
+	_spell_disc.set_cd(cd / maxf(0.01, cd_max), cd)
 
 ## 命中演出: 甩钩爪飞向目标 + 链条拖尾(纯观感, 结算已在 _hook_grab 完成, 不依赖它跑完)。
 func _hook_dramatize(trainer: Dictionary, target: Dictionary) -> void:
@@ -3866,8 +3910,23 @@ func _spawn_trainers() -> void:
 	var back_y: float = _tcy - 150.0
 	_units.append(_make_unit(TRAINER_ID, "left", Vector2(ARENA.position.x + 40.0, back_y), {"trainer": true}))
 	_units.append(_make_unit(TRAINER_ID, "right", Vector2(ARENA.end.x - 40.0, back_y), {"trainer": true}))
+	# 装配(用户2026-07-23): 我方(left)读 GameState 局外配置; 敌方(right)默认钩锁(将来接快照 loadout)。
+	for u in _units:
+		if not u.get("is_trainer", false):
+			continue
+		if str(u.get("side", "")) == "left":
+			u["_tr_active"] = _valid_active(GameState.trainer_active)
+			u["_tr_passive"] = str(GameState.trainer_passive)
+		else:
+			u["_tr_active"] = "hook"
+			u["_tr_passive"] = ""
 	_build_trainer_joystick()
 	_build_spell_disc()
+
+## 校验装配的主动 id 合法(旧档/脏数据兜底为 hook)。
+func _valid_active(sid) -> String:
+	var s := str(sid)
+	return s if TRAINER_SKILLS.has(s) else "hook"
 
 
 ## 法术圆盘(点3): 右下角钩锁钮。PC 端主要靠按 Q(朝鼠标), 圆盘作冷却指示; 移动端点它施法(自动瞄最近敌)。
@@ -3876,7 +3935,10 @@ func _build_spell_disc() -> void:
 		return
 	if _ui_layer == null:
 		return
-	var icon: Texture2D = load(HOOK_ICON) if ResourceLoader.exists(HOOK_ICON) else null
+	# 圆盘显示【我方大师已装配的主动技能】图标(缺图→无图标, 不崩)
+	var sid: String = _valid_active(GameState.trainer_active)
+	var ipath: String = str(TRAINER_SKILLS.get(sid, {}).get("icon", HOOK_ICON))
+	var icon: Texture2D = load(ipath) if ResourceLoader.exists(ipath) else null
 	_spell_disc = SpellDisc.new()
 	_spell_disc.setup(icon, "Q", Callable(self, "_player_cast_hook_auto"))
 	var vp: Vector2 = Vector2(get_viewport().get_visible_rect().size)

@@ -55,12 +55,12 @@ func _ready() -> void:
 	var e2 := _mk("right", 300.0, 0.0)
 	b._units = [L2, e2]
 	_ok("★命中→返回true", b._cast_hook(L2, Vector2(1, 0)) == true)
-	_ok("★命中→CD=20", abs(float(L2.get("_hook_cd", 0.0)) - 20.0) < 0.01, "%.1f" % float(L2.get("_hook_cd", 0.0)))
+	_ok("★命中→CD=20", abs(float(L2.get("_active_cd", 0.0)) - 20.0) < 0.01, "%.1f" % float(L2.get("_active_cd", 0.0)))
 	_ok("CD未好→不能再放(返回false)", b._cast_hook(L2, Vector2(1, 0)) == false)
 	var L3 := _mk("left", 0.0, 0.0, {"is_trainer": true})
 	b._units = [L3]   # 场上无敌 → 空放
 	_ok("★空放→返回false", b._cast_hook(L3, Vector2(1, 0)) == false)
-	_ok("★空放→CD只10(返还10)", abs(float(L3.get("_hook_cd", 0.0)) - 10.0) < 0.01, "%.1f" % float(L3.get("_hook_cd", 0.0)))
+	_ok("★空放→CD只10(返还10)", abs(float(L3.get("_active_cd", 0.0)) - 10.0) < 0.01, "%.1f" % float(L3.get("_active_cd", 0.0)))
 
 	# ═══ ④ _mitigate_incoming: 被钩4秒内受伤 ×1.25 ═══
 	var hv := _mk("right", 0.0, 0.0, {"hook_vuln_until": 5.0})   # _t=0 < 5 → 生效
@@ -70,13 +70,13 @@ func _ready() -> void:
 	_ok("自损(is_self)不吃放大", abs(b._mitigate_incoming(hv, 100.0, false, true) - 100.0) < 0.5)
 
 	# ═══ ⑤ _tick_hooks: CD扣减 + 被钩单位朝大师拖 70/秒 ═══
-	var Lc := _mk("left", 400.0, 300.0, {"is_trainer": true, "_hook_cd": 5.0})
+	var Lc := _mk("left", 400.0, 300.0, {"is_trainer": true, "_active_cd": 5.0})
 	var pulled := _mk("right", 700.0, 300.0, {"_hook_pull_until": 10.0, "_hook_pull_by": Lc})
 	b._units = [Lc, pulled]
 	b._t = 0.0
 	var d0: float = pulled["pos"].distance_to(Lc["pos"])
 	b._tick_hooks(1.0)
-	_ok("★钩锁CD每帧扣减(5→4)", abs(float(Lc.get("_hook_cd", 0.0)) - 4.0) < 0.01, "%.2f" % float(Lc.get("_hook_cd", 0.0)))
+	_ok("★钩锁CD每帧扣减(5→4)", abs(float(Lc.get("_active_cd", 0.0)) - 4.0) < 0.01, "%.2f" % float(Lc.get("_active_cd", 0.0)))
 	var d1: float = pulled["pos"].distance_to(Lc["pos"])
 	_ok("★被钩单位朝大师拖≈70码/秒", abs((d0 - d1) - 70.0) < 2.0, "拖了 %.1f 码" % (d0 - d1))
 
@@ -86,7 +86,8 @@ func _ready() -> void:
 		src = (Battle as GDScript).source_code
 	_ok("★Q键接了 _player_cast_hook", src.contains("_player_cast_hook") and src.contains("KEY_Q"))
 	_ok("★_process 挂了 _tick_hooks", src.contains("_tick_hooks(delta)"))
-	_ok("★敌方大师 AI 甩钩已接线", src.contains("_tick_trainer_ai") and src.contains("_cast_hook(u,"))
+	_ok("★敌方大师 AI 放主动已接线(_cast_active分派)", src.contains("_tick_trainer_ai") and src.contains("_cast_active(u,"))
+	_ok("★装配分派入口 _cast_active 存在", src.contains("func _cast_active") and src.contains('"fury_potion":') and src.contains('"glacier":'))
 	_ok("★受伤放大接进 _mitigate_incoming", src.contains("hook_vuln_until"))
 
 	b.free()
