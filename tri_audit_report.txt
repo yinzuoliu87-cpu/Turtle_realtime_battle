@@ -1,0 +1,16 @@
+三方一致性对账 (自检探针通过: 冲突检测器 OK, 文档切出 28 个龟小节)
+
+### A. energyCost: pets.json ↔ skill_energy.gd  →  0 处
+
+### B. BASIC_ATK id ⊂ 龟 id  →  1 处
+    BASIC_ATK 有 __trainer__ 但不是龟 id
+
+### C. skillPool icon 文件存在性  →  0 处
+
+### D0. 文档缺小节的龟  →  0 处
+
+### E. 具名常量: 文档 ↔ 代码 const  →  0 处
+
+### F. 击飞 vy_mult: 文档声称值 ⊂ 代码实参  →  0 处
+
+=== 合计差异: 1 处 ===

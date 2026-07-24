@@ -1,0 +1,86 @@
+=== 自证测试 (自动发现 tests/verify_*.gd) ===
+  PASS  verify_attack_commit
+  PASS  verify_battle_ui
+  PASS  verify_bracket_gear
+  PASS  verify_cam_pan
+  PASS  verify_candy_jar
+  PASS  verify_codex
+  PASS  verify_codex_stats
+  PASS  verify_codex_text
+  PASS  verify_combat_sanity
+  PASS  verify_crystal_death_sync
+  PASS  verify_cursor_pause
+  PASS  verify_cyber_charge
+  PASS  verify_cyber_hijack
+  PASS  verify_dice_dash
+  PASS  verify_dot_float
+  PASS  verify_dot_mitigation
+  PASS  verify_dot_stacks
+  PASS  verify_dual_egg_decider
+  PASS  verify_elite_anim
+  PASS  verify_elite_haste
+  PASS  verify_eq_hp_grants
+  PASS  verify_equip_nerf
+  PASS  verify_equip_star_highlight
+  PASS  verify_equip_stats_source
+  PASS  verify_far_terrain
+  PASS  verify_fish_dir
+  PASS  verify_fonts
+  PASS  verify_fortune_goldshield
+  PASS  verify_ghost_seed
+  PASS  verify_headless_rage
+  PASS  verify_hiding_pool
+  PASS  verify_hook
+  PASS  verify_info_panel
+  PASS  verify_interaction_matrix
+  PASS  verify_inventory_stats
+  PASS  verify_ios_ui
+  PASS  verify_map_geometry
+  PASS  verify_menu
+  PASS  verify_misc_guards
+  PASS  verify_nav_paths
+  PASS  verify_ninja_backstab
+  PASS  verify_ninja_bomb
+  PASS  verify_ninja_shuriken
+  PASS  verify_onboarding
+  PASS  verify_palette
+  FAIL  verify_pirate_hook  (rc=1, 致命报错=0)
+          ✗ ★钩索伤害 = 25% 击杀者最大生命(真实伤害·直接调结算函数, 不依赖演出)  expect≈277, got=0
+  PASS  verify_season_flow
+  PASS  verify_settings
+  PASS  verify_shop_persist
+  PASS  verify_skill_energy
+  PASS  verify_skill_text_color
+  PASS  verify_skill_text_leak
+  PASS  verify_sprite_sheets
+  PASS  verify_sudden_death
+  PASS  verify_touch_scroll
+  PASS  verify_trainer
+  PASS  verify_trainer_config
+  PASS  verify_trainer_move
+  PASS  verify_trainer_place
+  PASS  verify_trainer_skills
+  PASS  verify_trainer_target
+  PASS  verify_true_dmg_shield
+  PASS  verify_tutorial
+  PASS  verify_tutorial_anchors
+  PASS  verify_tutorial_director
+  PASS  verify_tutorial_highlight
+  PASS  verify_two_head_enhanced
+  PASS  verify_two_head_fusion
+  PASS  verify_two_head_strike
+  PASS  verify_two_level_desc
+  PASS  verify_untargetable
+  PASS  verify_version
+  (发现 72 个测试)
+=== 全流程闪退冒烟 (SHIP=1 真实对局) ===
+  PASS  smoke_scenes (9场景进出×4 + 战斗中途硬释放×3 + 60秒完整战斗)
+=== 三方一致性对账 ===
+  PASS  tri_audit (差异 1 处)
+=== 只读数据审计 ===
+  PASS  data_integrity (json交叉引用/资源路径/孤儿字段)
+  PASS  tooltip_number_audit (装备文案数值 ↔ 代码)
+  PASS  brief_detail_audit (龟技能 brief ↔ detail 数值)
+  PASS  workflow_lint (CI 工作流 YAML 语法)
+
+FAIL x1  (PASS 77)
