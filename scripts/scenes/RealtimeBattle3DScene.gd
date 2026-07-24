@@ -680,6 +680,7 @@ var _wd_thread: Thread = null
 static var _stress_n := 0                 # 已跑对局数(跨reload累计)
 var _juice_rng := RandomNumberGenerator.new()   # 震屏/粒子专用 rng (演出·永不种子化, 否则回放看着卡)
 var _battle_rng := RandomNumberGenerator.new()  # ★sim 专用受控 PRNG (Phase1·大厂做法): 决定战斗结果的随机走它。默认 randomize()=手感与线上一致; TURTLE_SEED 设时确定→可复现/回放
+var _cast_tok: int = 0                          # 单调计数·多段技命中去重标记(替 randi() token: 确定性+无碰撞·§3.2 不拿字典做key)
 
 # --- §GROUNDING: 立绘底部软渐隐 shader (一份 Shader 共享, 每龟一份 ShaderMaterial 因 texture 不同) ---
 var _ground_fade_shader: Shader = null
@@ -3301,6 +3302,11 @@ func _random_bot(n: int) -> Array:
 func _world_pos(pos: Vector2, height: float) -> Vector3:
 	return Vector3((pos.x - _arena_center.x) * WS, height, (pos.y - _arena_center.y) * WS)
 
+## 下一个多段技命中去重 token (单调·确定性·替原 randi())
+func _next_cast_tok() -> int:
+	_cast_tok += 1
+	return _cast_tok
+
 func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -> Dictionary:
 	var is_minion: bool = bool(spec.get("minion", false))
 	var is_egg: bool = bool(spec.get("egg", false))
@@ -3947,7 +3953,7 @@ func _trainer_ai_step(u: Dictionary, delta: float) -> void:
 	# ① 乱走: 每隔一小段换一个随机游走点(限在自己半场后方, 不越中线冲进战场), 朝它半速晃
 	u["_ai_wander_cd"] = float(u.get("_ai_wander_cd", 0.0)) - delta
 	if float(u["_ai_wander_cd"]) <= 0.0 or not u.has("_ai_wander_to"):
-		u["_ai_wander_cd"] = randf_range(0.8, 1.8)
+		u["_ai_wander_cd"] = _battle_rng.randf_range(0.8, 1.8)
 		var xmin: float = ARENA.position.x if is_left else _arena_center.x + 60.0
 		var xmax: float = _arena_center.x - 60.0 if is_left else ARENA.end.x
 		u["_ai_wander_to"] = Vector2(randf_range(xmin, xmax), randf_range(ARENA.position.y + 50.0, ARENA.end.y - 50.0))
@@ -5263,7 +5269,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 			_gspr.modulate = Color(1.0 + 0.55 * _pul, 0.42 + 0.18 * _pul, 0.42 + 0.18 * _pul)
 		# 电流穿身: 每 ~0.13s 在身体范围内随机位置炸一道小电弧(不用 tween, 靠 _burst_vfx 自播完自销)
 		if _t >= float(u.get("_hj_zap_next", 0.0)):
-			u["_hj_zap_next"] = _t + randf_range(0.09, 0.17)
+			u["_hj_zap_next"] = _t + _battle_rng.randf_range(0.09, 0.17)
 			var _zp: Vector2 = (u["pos"] as Vector2) + Vector2(randf_range(-16.0, 16.0), randf_range(-20.0, 12.0))
 			_burst_vfx("res://assets/sprites/vfx/electric-zap.png", _zp,
 				randf_range(20.0, 34.0), float(u.get("height", 0.0)) + randf_range(0.25, 1.05))
@@ -14244,7 +14250,7 @@ func _crystal_spike_line(u: Dictionary) -> void:   # 照小菊R第三击(2026-07
 		var dv: Vector2 = (tgt["pos"] as Vector2) - (u["pos"] as Vector2)
 		if dv.length() > 1.0: dirv = dv.normalized()
 	var origin: Vector2 = u["pos"]
-	var tok: int = randi()                                       # 命中标记记在敌单位上(⛔不拿字典当Dict键)
+	var tok: int = _next_cast_tok()                                       # 命中标记记在敌单位上(⛔不拿字典当Dict键)
 	var uu := u
 	var segs: int = 22   # 间隔~32码(原12段58码太稀·用户2026-07-16)
 	# ① 砸地起手爆发(小菊: 脚前亮爆+尘土)
@@ -15369,7 +15375,7 @@ func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁�
 		u["_slam"] = true
 		var origin: Vector2 = u["pos"]
 		var slam_p: Vector2 = origin + dirv * 46.0
-		var tok: int = randi()
+		var tok: int = _next_cast_tok()
 		if ftex != null:
 			var fs := Sprite3D.new()
 			fs.texture = ftex
@@ -15418,7 +15424,7 @@ func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁�
 		u["_slam"] = true
 		u["untargetable_until"] = _t + 1.6                         # 滞空不可索敌可受伤(照熔岩)
 		var center: Vector2 = u["pos"]
-		var tok2: int = randi()
+		var tok2: int = _next_cast_tok()
 		_skill_ring(center, Color(0.55, 0.1, 0.12, 0.5), 700.0)   # 预警大圈
 		var wr := _reg_tween()                                     # 蓄力期预警再脉动2次
 		wr.tween_interval(0.6)
