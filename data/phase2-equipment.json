@@ -46,7 +46,7 @@
   {
     "id": "p2eq_005",
     "name": "双生匕首",
-    "cost": 3,
+    "cost": 2,
     "baseStats1": "+攻14/30/50·吸血4/7/10%·+20最大龟能",
     "shopAvailable": 1,
     "emoji": "🗡️",
@@ -79,7 +79,7 @@
   {
     "id": "p2eq_008",
     "name": "双穿珊瑚刺",
-    "cost": 1,
+    "cost": 2,
     "baseStats1": "+攻8/15/30·护穿4/8/12·魔穿4/8/12",
     "shopAvailable": 1,
     "emoji": "🪸",
@@ -90,7 +90,7 @@
   {
     "id": "p2eq_009",
     "name": "宽刃弯刀",
-    "cost": 3,
+    "cost": 2,
     "baseStats1": "+攻12/25/40·+20最大龟能",
     "shopAvailable": 1,
     "emoji": "🌙",
@@ -134,7 +134,7 @@
   {
     "id": "p2eq_013",
     "name": "炙烤海胆",
-    "cost": 3,
+    "cost": 2,
     "baseStats1": "+生命60/110/200·反伤8/11/15%",
     "shopAvailable": 1,
     "emoji": "🦪",
@@ -156,7 +156,7 @@
   {
     "id": "p2eq_015",
     "name": "荆棘海胆",
-    "cost": 2,
+    "cost": 4,
     "baseStats1": "+生命60/90/140·反伤10/17/25%",
     "shopAvailable": 1,
     "emoji": "🦔",
@@ -255,7 +255,7 @@
   {
     "id": "p2eq_024",
     "name": "龙蛋",
-    "cost": 4,
+    "cost": 3,
     "baseStats1": "+攻30/55/300·魔穿15/25/50·+20龟能",
     "shopAvailable": 1,
     "emoji": "🐲",
@@ -321,7 +321,7 @@
   {
     "id": "p2eq_030",
     "name": "迷你水晶球A",
-    "cost": 4,
+    "cost": 2,
     "baseStats1": "+攻7/12/20·生命20/40/80·魔穿5/8/13",
     "shopAvailable": 1,
     "emoji": "🔮",
@@ -332,7 +332,7 @@
   {
     "id": "p2eq_031",
     "name": "迷你水晶球B",
-    "cost": 4,
+    "cost": 2,
     "baseStats1": "+攻7/12/20·生命20/40/80·魔穿3/6/10",
     "shopAvailable": 1,
     "emoji": "🔮",
@@ -387,7 +387,7 @@
   {
     "id": "p2eq_036",
     "name": "温泉蛋",
-    "cost": 3,
+    "cost": 2,
     "baseStats1": "+生命70/120/180",
     "shopAvailable": 1,
     "emoji": "🥚",
@@ -420,7 +420,7 @@
   {
     "id": "p2eq_039",
     "name": "竹制弓箭",
-    "cost": 3,
+    "cost": 2,
     "baseStats1": "+生命80/140/200",
     "shopAvailable": 1,
     "emoji": "🎋",
@@ -508,7 +508,7 @@
   {
     "id": "p2eq_047",
     "name": "重击锤",
-    "cost": 4,
+    "cost": 2,
     "baseStats1": "+生命100/200/700",
     "shopAvailable": 1,
     "emoji": "🔨",
@@ -530,7 +530,7 @@
   {
     "id": "p2eq_049",
     "name": "连发弩",
-    "cost": 3,
+    "cost": 2,
     "baseStats1": "+攻15/32/50·暴击15/25/40%",
     "shopAvailable": 1,
     "emoji": "🏹",
@@ -552,7 +552,7 @@
   {
     "id": "p2eq_051",
     "name": "激光手枪",
-    "cost": 3,
+    "cost": 2,
     "baseStats1": "+攻16/28/42·护穿3/6/10·吸血4/6/9%",
     "shopAvailable": 1,
     "emoji": "🎰",
