@@ -13,10 +13,12 @@ func _ok(n: String, c: bool, d: String = "") -> void:
 func _ready() -> void:
 	var b = Battle.new()
 
-	# ① 分桶颜色: mag蓝/phy红/tru紫
-	_ok("mag桶=蓝", b._dot_bucket_col("mag").is_equal_approx(Color("#4dabf7")))
-	_ok("phy桶=红", b._dot_bucket_col("phy").is_equal_approx(Color("#ff6b6b")))
-	_ok("tru桶=紫", b._dot_bucket_col("tru").is_equal_approx(Color("#b48cff")))
+	# ① 分桶颜色【必须跟 UIPalette 单一色表走】: 法术蓝/物理红/真实白(用户2026-07-24: 原 tru 硬编码成紫#b48cff、
+	#   phy 硬编码成 #ff6b6b, 与结算面板+调色板「真实=白」不一致 → 现统一引 UIPalette。这条守卫防它再飘回硬编码色)。
+	_ok("mag桶=蓝(=UIPalette.MAGIC)", b._dot_bucket_col("mag").is_equal_approx(Color(UIPalette.MAGIC)))
+	_ok("phy桶=红(=UIPalette.PHYS #ff4444)", b._dot_bucket_col("phy").is_equal_approx(Color(UIPalette.PHYS)))
+	_ok("tru桶=白(=UIPalette.TRUE_DMG·非紫)", b._dot_bucket_col("tru").is_equal_approx(Color(UIPalette.TRUE_DMG)))
+	_ok("★tru桶【不再是】旧紫#b48cff(防回退)", not b._dot_bucket_col("tru").is_equal_approx(Color("#b48cff")))
 
 	# ② 累积: 灼烧(mag)+中毒(mag)进【同一个】mag桶累加; 流血(phy)单独
 	var u := {}

@@ -3019,7 +3019,7 @@ func _dl_flow_check() -> void:
 	for u in _units:
 		if u.get("_egg_final", false) and u.get("alive", false) and _t >= float(u.get("_egg_selfloss_next", 1.0e18)):
 			u["_egg_selfloss_next"] = _t + EGG_SELFLOSS_IV
-			_apply_damage(u, maxi(1, int(round(u["maxHp"] * EGG_SELFLOSS_PCT))), Color("#ff9a9a"), null, "tru", true)
+			_apply_damage(u, maxi(1, int(round(u["maxHp"] * EGG_SELFLOSS_PCT))), Color(UIPalette.TRUE_DMG), null, "tru", true)   # 自损=真伤 → 白(跟「真实=白」惯例·用户2026-07-24; 原 #ff9a9a 粉)
 	# 蛋血同步回 GameState + 蛋破判负(谁蛋先破谁输)
 	for u in _units:
 		if u.get("_isEgg", false):
@@ -5585,7 +5585,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 			if float(dot["_acc"]) >= 1.0:
 				var _cd_dmg: int = int(floor(float(dot["_acc"])))
 				dot["_acc"] = float(dot["_acc"]) - float(_cd_dmg)
-				_apply_damage(u, _cd_dmg, Color("#b48cff"), dot.get("src", null), "tru", false, true, true)
+				_apply_damage(u, _cd_dmg, Color(UIPalette.TRUE_DMG), dot.get("src", null), "tru", false, true, true)   # col 实际被 dot_accum 按桶色覆盖(tru=白); 这里给白只为不误导
 				if not u["alive"]:
 					return
 			keep.append(dot)
@@ -8122,7 +8122,7 @@ func _tick_coral(u: Dictionary, delta: float) -> void:   # 双穿珊瑚刺p2eq_0
 		e["coral_t"] = float(e.get("coral_t", 0.0)) + delta
 		if float(e["coral_t"]) < 9.0: continue
 		var far = null; var fd := -1.0
-		for o in _enemies_of(u):
+		for o in _pick_enemies_of(u):   # ★单体定向(挑最远一个)必须走 _pick_enemies_of: 排除训龟大师(场外监视者·永远最远)+不可选中; 见 §PICK-TARGET 铁律。原用 _enemies_of → 珊瑚刺永远锁大师(用户2026-07-24)
 			var dd2: float = (o["pos"] - u["pos"]).length_squared()
 			if dd2 > fd: fd = dd2; far = o
 		if far == null: continue
@@ -10152,11 +10152,14 @@ func _dmg_float_step(el: float, node_fl: Control, base: Vector2, jump_x: float, 
 # 分桶=伤害类型: mag(灼烧+中毒同桶·蓝) / phy(流血·红) / tru(诅咒+真火·紫)。多桶并存左右错开。
 # ══════════════════════════════════════════════════════════════
 func _dot_bucket_col(bucket: String) -> Color:
+	# ★语义色走 UIPalette 单一色表(用户2026-07-22「全统一」): 物理红#ff4444 / 法术蓝#4dabf7 / 真实白#ffffff。
+	#   原来这里没跟调色板走, 硬编码 phy#ff6b6b / tru 紫#b48cff —— 与结算面板+调色板「真实=白」不一致
+	#   (用户2026-07-24:「自损和诅咒为什么用紫色」)。诅咒/真火/自损都是 tru 桶 → 现统一为白。
 	match bucket:
-		"mag": return Color("#4dabf7")
-		"phy": return Color("#ff6b6b")
-		"tru": return Color("#b48cff")
-	return Color("#ffffff")
+		"mag": return Color(UIPalette.MAGIC)
+		"phy": return Color(UIPalette.PHYS)
+		"tru": return Color(UIPalette.TRUE_DMG)
+	return Color(UIPalette.TRUE_DMG)
 
 ## 该桶是否还有活着的 DOT 在供养(结束检测)。mag=灼烧(非真火)或中毒; phy=流血; tru=真火灼烧或任一 flat DoT(诅咒)。
 func _dot_bucket_active(u: Dictionary, bucket: String) -> bool:
@@ -11557,7 +11560,7 @@ func _sk_stone_taunt(u: Dictionary) -> void:                    # 石头龟·嘲
 func _sk_bamboo_smack(u: Dictionary, tgt) -> void:              # 竹叶龟·竹击(用户封板·120龟能): 钩全场最远敌·1.0A物理·眩晕0.5s·拉贴身·冰寒4秒(-20%攻/-20%移速); 蛋免控只吃伤
 	var far = null
 	var far_d := -1.0
-	for o in _enemies_of(u):
+	for o in _pick_enemies_of(u):   # ★单体定向(钩最远一个)走 _pick_enemies_of: 不锁训龟大师(场外·永远最远)+不可选中; 见 §PICK-TARGET(与珊瑚刺同类·用户2026-07-24)
 		if not o.get("alive", false): continue
 		var d: float = o["pos"].distance_to(u["pos"])
 		if d > far_d:
@@ -11829,7 +11832,7 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 func _sk_ninja_backstab(u: Dictionary, tgt: Dictionary) -> void: # 技三·背刺(1:1回合制 ninjaBackstab): +5穿甲5秒→闪现到【全场最远敌】身后→背刺【3段·每段300ms(hitStaggerMs)】各0.6667A物理(共2.0A)→留该处追砍
 	var far = null
 	var fd := -1.0
-	for o in _enemies_of(u):
+	for o in _pick_enemies_of(u):   # ★单体定向(闪现到最远敌身后)走 _pick_enemies_of: 否则忍者会瞬移到场外训龟大师身后背刺(场外·永远最远); 见 §PICK-TARGET(用户2026-07-24)
 		if not o.get("alive", false): continue
 		var dd: float = u["pos"].distance_to(o["pos"])
 		if dd > fd: fd = dd; far = o

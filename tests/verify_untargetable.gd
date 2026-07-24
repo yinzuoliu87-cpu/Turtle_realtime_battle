@@ -74,6 +74,25 @@ func _ready() -> void:
 	_ok("★组装期机甲 免疫 _apply_damage(DoT/真伤路径)", is_equal_approx(float(mech["hp"]), hp_before),
 		"%.0f → %.0f" % [hp_before, float(mech["hp"])])
 
+	# ── E. 训龟大师(场外监视者)不被【单体定向】技选中 ──
+	# 起因(用户 2026-07-24):「双穿珊瑚刺为啥还能锁到训龟大师」。根因: 珊瑚刺/竹击/背刺 这类"挑最远一个"
+	# 的单体定向技原走 _enemies_of(含大师) → 而大师在场外·永远最远 → 每次都锁它(飞去角落/瞬移过去)。
+	# 铁律(§PICK-TARGET): 单体挑选必须走 _pick_enemies_of(排除大师+不可选中); 真 AOE 才用 _enemies_of。
+	var caster: Dictionary = scene._make_unit("basic", "left", Vector2(0, 0))
+	var real_foe: Dictionary = scene._make_unit("basic", "right", Vector2(200, 0))               # 近敌(真目标)
+	var foe_trainer: Dictionary = scene._make_unit("basic", "right", Vector2(3000, 0), {"trainer": true})   # 场外大师·永远最远
+	scene._units.clear()
+	scene._units.append(caster); scene._units.append(real_foe); scene._units.append(foe_trainer)
+	_ok("★_enemies_of 含训龟大师(真AOE仍会溅到它·吃1)", scene._arr_has_unit(scene._enemies_of(caster), foe_trainer))
+	_ok("★_pick_enemies_of 排除训龟大师(单体定向不锁)", not scene._arr_has_unit(scene._pick_enemies_of(caster), foe_trainer))
+	_ok("★_pick_enemies_of 仍含真敌(非空检查·断言非恒真)", scene._arr_has_unit(scene._pick_enemies_of(caster), real_foe))
+	# 端到端: 竹击(钩全场最远)→ 应钩近处真敌、不碰场外大师(远)。改回 _enemies_of 则相反 → 本条转红。
+	foe_trainer["spd_dbf_until"] = 0.0; real_foe["spd_dbf_until"] = 0.0
+	scene._sk_bamboo_smack(caster, real_foe)
+	_ok("★竹击不冰寒场外大师(没锁它)", float(foe_trainer.get("spd_dbf_until", 0.0)) <= scene._t,
+		"大师 spd_dbf_until=%.1f _t=%.1f" % [float(foe_trainer.get("spd_dbf_until", 0.0)), scene._t])
+	_ok("★竹击命中真敌(证明钩到了近敌·非空)", float(real_foe.get("spd_dbf_until", 0.0)) > scene._t)
+
 	scene.queue_free()
 	await get_tree().process_frame
 
