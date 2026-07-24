@@ -15,3 +15,12 @@ extends RefCounted
 ## 与 god file 原地公式逐字一致: crit_dmg + maxf(0.0, crit-1.0) * 1.5。
 static func crit_multiplier(crit_chance: float, crit_dmg: float) -> float:
 	return crit_dmg + maxf(0.0, crit_chance - 1.0) * 1.5
+
+## 护甲/魔抗 → 伤害倍率(经典递减曲线, 常数 K=40)。resist 已含穿透后的净值。
+## resist≥0: 减伤 → 1 - resist/(resist+40)  (resist=40→0.5·resist=120→0.25·resist=0→1.0)
+## resist<0(负护甲/魔抗): 增伤 → 1 + |resist|/(|resist|+40)  (resist=-40→1.5)
+## 与 god file 原地公式逐字一致(原散在 3 处: _resolve_dmg 9075 / _atk_dmg 9094 / 18817)。
+static func resist_multiplier(resist: float) -> float:
+	if resist >= 0.0:
+		return 1.0 - resist / (resist + 40.0)
+	return 1.0 + absf(resist) / (absf(resist) + 40.0)

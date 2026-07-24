@@ -26,7 +26,21 @@ func _ready() -> void:
 		var ref := cd + maxf(0.0, c - 1.0) * 1.5     # ← god file 原地公式(逐字)
 		if not is_equal_approx(got, ref):
 			mism += 1
-	_ok("★与原公式 200 随机采样逐位一致(N=200)", mism == 0, "分歧 %d/200" % mism)
+	_ok("★暴击·与原公式 200 随机采样逐位一致(N=200)", mism == 0, "分歧 %d/200" % mism)
 
-	print("ALL PASS — DamageMath.crit_multiplier(抽出SIM模块·3处去重·与原式一致)" if _fail == 0 else "FAILED: %d" % _fail)
+	# ④ resist_multiplier(护甲/魔抗减伤曲线·原逐字散在3处 9075/9094/18817)
+	_ok("resist=0 → 1.0 (无护甲不减)", is_equal_approx(DamageMath.resist_multiplier(0.0), 1.0))
+	_ok("resist=40 → 0.5 (等于常数K·减半)", is_equal_approx(DamageMath.resist_multiplier(40.0), 0.5))
+	_ok("resist=120 → 0.25 (1-120/160)", is_equal_approx(DamageMath.resist_multiplier(120.0), 0.25))
+	_ok("resist=-40 → 1.5 (负护甲增伤)", is_equal_approx(DamageMath.resist_multiplier(-40.0), 1.5))
+	var mism2 := 0
+	for _j in range(200):
+		var resist := -100.0 + randf() * 400.0        # -100..300 净抗性(含负护甲)
+		var got := DamageMath.resist_multiplier(resist)
+		var ref := (1.0 - resist / (resist + 40.0)) if resist >= 0.0 else (1.0 + absf(resist) / (absf(resist) + 40.0))  # ← god file 原地公式
+		if not is_equal_approx(got, ref):
+			mism2 += 1
+	_ok("★减伤曲线·与原公式 200 随机采样逐位一致(N=200)", mism2 == 0, "分歧 %d/200" % mism2)
+
+	print("ALL PASS — DamageMath(暴击倍率+减伤曲线·抽SIM模块·6处去重·与原式逐位一致)" if _fail == 0 else "FAILED: %d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
