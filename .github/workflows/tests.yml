@@ -18,6 +18,10 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: write   # ★失败时把门禁日志推到 ci-logs 分支要写权限。原来缺这块 → push 必 403、被 || true 咽掉 →
+                    #   那一步永远显示 success、ci-logs 停在 2026-07-17, 于是 CI 门禁连红我却看不到日志(用户2026-07-24)。
+
 jobs:
   gate:
     runs-on: ubuntu-latest

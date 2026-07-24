@@ -157,12 +157,16 @@ func _test_glacier(scene) -> void:
 	_ok("★冰川·带上敌减速 -40%(slow_mag 0.6)", abs(float(e_on.get("slow_mag", 1.0)) - 0.6) < 0.01 and float(e_on.get("slow_until", 0.0)) > scene._t)
 	_ok("★冰川·带上敌受伤+20%(glacier_vuln)", float(e_on.get("glacier_vuln_until", 0.0)) > scene._t)
 	_ok("★冰川·偏离带的敌不受影响(有边界)", float(e_off.get("glacier_vuln_until", 0.0)) <= scene._t)
-	# 易伤 +20% 落到 _mitigate_incoming(与无易伤对比·排除其它减伤干扰)
-	e_on["glacier_vuln_until"] = 0.0
-	var base_mit: float = scene._mitigate_incoming(e_on, 100.0, false, false)
-	e_on["glacier_vuln_until"] = scene._t + 1.0
-	var vuln_mit: float = scene._mitigate_incoming(e_on, 100.0, false, false)
-	_ok("★冰川·易伤 ×1.2", abs(vuln_mit - base_mit * 1.2) < 1.0, "%.0f → %.0f" % [base_mit, vuln_mit])
+	# 易伤 +20% 落到 _mitigate_incoming。★必须用【干净合成单位】隔离出纯 ×1.2:
+	#   _mitigate_incoming 里 glacier_vuln 是【乘】1.2, 但 flat_dr(铁壁盾016)是【减】、在乘之后 →
+	#   vuln = 100×1.2 − flat_dr, 而 base×1.2 = (100 − flat_dr)×1.2, 两者差 0.2×flat_dr。
+	#   原来直接拿 e_on(真龟)测: e_on 若带 flat_dr≥5 装备就假红。本地 e_on 恰好裸装侥幸过,
+	#   CI 默认队 e_on 带了铁壁盾 → 76→92 超容差、门禁连红多次(用户2026-07-24 从 Actions 注解抓到)。
+	var clean: Dictionary = {"id": "basic", "alive": true, "side": "right", "def": 0.0, "mr": 0.0, "flat_dr": 0.0}
+	var base_mit: float = scene._mitigate_incoming(clean, 100.0, false, false)
+	clean["glacier_vuln_until"] = scene._t + 1.0
+	var vuln_mit: float = scene._mitigate_incoming(clean, 100.0, false, false)
+	_ok("★冰川·易伤 ×1.2(干净单位·隔离flat_dr)", abs(base_mit - 100.0) < 0.01 and abs(vuln_mit - 120.0) < 0.01, "%.1f → %.1f" % [base_mit, vuln_mit])
 
 func _test_source(scene) -> void:
 	var src: String = ""
