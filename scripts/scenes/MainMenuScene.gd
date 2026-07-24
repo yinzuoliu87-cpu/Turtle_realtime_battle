@@ -201,6 +201,14 @@ func _build_page_buttons(_page: String, _on_first_load: bool) -> void:
 		if locked:
 			_add_lock_badge(b, gsz)
 		_slide_in_left(b, i + 1)
+	# ── 训龟大师 独立键(用户2026-07-23: 配形象 + 主动技能) —— 不挤进 2×2 ──
+	var tsz := Vector2(300.0, 62.0)
+	var tcy := grid_cy0 + 2.0 * (gsz.y + gap_y) + 16.0 + tsz.y / 2.0
+	var tb := _frame_button("🐢 训龟大师", func(): _go("TrainerConfig"), false, tsz, 23, "")
+	tb.position = Vector2(LEFT_CX, tcy) - tsz / 2.0
+	tb.set_meta("home_y", tb.position.y)
+	page_box.add_child(tb)
+	_slide_in_left(tb, subs.size() + 1)
 
 
 ## 左栏键入场: 从屏外左侧滑入 + 淡入, 错峰 (保留原 PoC 好动画)
