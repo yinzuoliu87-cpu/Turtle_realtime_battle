@@ -120,10 +120,10 @@ func _edit_clear() -> void:
 	_edit_set_status("已清空")
 
 # ▶开始: 把当前摆位生效为战斗. 为干净起见 (避免重复 _inject/_apply 叠加), 先快照摆位, 再做开战准备.
-#   注: 编辑态摆放时已逐个 battle._make_unit, 但还没跑过 battle._inject_equipment/battle._apply_spawn_passives/battle._equip_sys._eq_apply_all_stats,
+#   注: 编辑态摆放时已逐个 battle._make_unit, 但还没跑过 battle._inject_equipment/battle._apply_spawn_passives/battle._equip_sys._stats._eq_apply_all_stats,
 #   所以这里补跑一次即可 (开战准备), 之后退出编辑态 → 模拟开始推进.
 # ▶开始: 把当前摆位生效为战斗. 为干净起见 (避免重复 _inject/_apply 叠加), 先快照摆位, 再做开战准备.
-#   注: 编辑态摆放时已逐个 battle._make_unit, 但还没跑过 battle._inject_equipment/battle._apply_spawn_passives/battle._equip_sys._eq_apply_all_stats,
+#   注: 编辑态摆放时已逐个 battle._make_unit, 但还没跑过 battle._inject_equipment/battle._apply_spawn_passives/battle._equip_sys._stats._eq_apply_all_stats,
 #   所以这里补跑一次即可 (开战准备), 之后退出编辑态 → 模拟开始推进.
 func _edit_start_battle() -> void:
 	if battle._units.is_empty():
@@ -134,7 +134,7 @@ func _edit_start_battle() -> void:
 	_edit_save_setup()   # 存盘: 重开调试场自动恢复上次摆位
 	battle._inject_equipment()
 	battle._apply_spawn_passives()
-	battle._equip_sys._eq_apply_all_stats()
+	battle._equip_sys._stats._eq_apply_all_stats()
 	if battle._edit_full_energy:   # 装备/被动结算后再补满龟能→技能即就绪(不被_eq_apply_all_stats重置回充率覆盖)
 		for u in battle._units:
 			if u.get("side", "") == "left": _edit_apply_full_energy(u)

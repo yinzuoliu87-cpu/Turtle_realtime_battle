@@ -438,7 +438,7 @@ func _dl_build_lane_field() -> void:
 	# 装备+登场被动管线(评审流程走的 756-758, 双路早退绕过了→这里补上): leader读persistent_equipped+dual_lineup, 小将读dual_lineup._dl_equips, 双方leader上登场被动
 	battle._inject_equipment()
 	battle._apply_spawn_passives()
-	battle._equip_sys._eq_apply_all_stats()
+	battle._equip_sys._stats._eq_apply_all_stats()
 	battle._build_team_panels()   # ★双路补建左右头像框(装备图标随之显示): 原只在非双路分支L1051调·双路早退绕过→装了装备头像框空白(用户2026-07-11 #5)
 
 func _dl_ensure_egg_hp(lvl: int) -> void:   # egg_hp 缺则按 3000+300×平均等级 初始化(两侧·用户2026-07-19)

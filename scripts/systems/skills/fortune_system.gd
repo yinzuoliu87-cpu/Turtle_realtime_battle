@@ -34,7 +34,7 @@ func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招�
 		if iid == "": return
 		if not u.has("equips"): u["equips"] = []
 		u["equips"].append({"id": iid, "star": 1})
-		battle._equip_sys._eq_apply_one_stats(u, iid, 1)
+		battle._equip_sys._stats._eq_apply_one_stats(u, iid, 1)
 		u["buyequip_id"] = iid; u["buyequip_star"] = 1
 		var tier: int = int(DataRegistry.phase2_equipment_by_id.get(iid, {}).get("cost", 1))
 		u["energy_cost"]["fortuneBuyEquip"] = 60.0 + [100.0, 180.0, 400.0][clampi(tier - 1, 0, 2)]   # 消耗随抽到费拉长
@@ -44,7 +44,7 @@ func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招�
 		battle._float_text(u["pos"] + Vector2(0, -72), "招财·满! 回血", Color("#ffd93d"))
 	else:                                                       # 升星: 应用精确数值delta(旧星→新星) + 同步equips条目星级
 		var iid2: String = str(u.get("buyequip_id", ""))
-		battle._equip_sys._eq_star_delta_stats(u, iid2, star, star + 1)          # 精确升星: 加(新星-旧星)属性差量(flag类缩放留F5)
+		battle._equip_sys._stats._eq_star_delta_stats(u, iid2, star, star + 1)          # 精确升星: 加(新星-旧星)属性差量(flag类缩放留F5)
 		for e in u.get("equips", []):                          # 同步equips条目(战后清理/信息面板显示星级一致)
 			if str(e.get("id", "")) == iid2:
 				e["star"] = star + 1

@@ -22,8 +22,9 @@ func _ready() -> void:
 
 	# ── A. 实装读了哪些字段 vs 格式化函数认得哪些 ──
 	# 2026-07-25: 装备效果已从主场景抽到 scripts/systems/equip/equip_system.gd(装备与技能分开管理)。
-	#   _eq_apply_one_stats 现在住那里 → 从装备系统文件解析实装字段。
-	var f := FileAccess.open("res://scripts/systems/equip/equip_system.gd", FileAccess.READ)
+	#   2026-07-26: 被动属性应用簇(_eq_apply_*)再从 equip_system 分出到 equip_stats_apply.gd(spawn期·区别于主动效果)。
+	#   _eq_apply_one_stats 现在住那里 → 从该文件解析实装字段。
+	var f := FileAccess.open("res://scripts/systems/equip/equip_stats_apply.gd", FileAccess.READ)
 	var impl := {}
 	var inside := false
 	while f != null and not f.eof_reached():
