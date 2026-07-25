@@ -5348,7 +5348,8 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 		# 横向滑行换算回像素 (vx/vz 是米/s → /WS = 像素/s)
 		u["pos"].x += u["vx"] / WS * delta
 		u["pos"].y += u["vz"] / WS * delta
-		u["vx"] *= 0.9; u["vz"] *= 0.9
+		var _kdamp: float = pow(0.9, delta * 60.0)   # ★帧率无关阻尼(2026-07-25): 原每帧×0.9 假设60fps; 高帧率下每秒衰减快数倍→击飞竖直照抛(vy走delta)但横向vx几乎不滑="飞不出去"。按时间衰减·60fps下=0.9原值
+		u["vx"] *= _kdamp; u["vz"] *= _kdamp
 		u["pos"].x = clampf(u["pos"].x, ARENA.position.x, ARENA.end.x)
 		u["pos"].y = clampf(u["pos"].y, ARENA.position.y, ARENA.end.y)
 		if u["height"] <= 0.0:
