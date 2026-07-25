@@ -9,7 +9,7 @@
 class_name DmgStatsPanel
 extends RefCounted
 
-const UIPalette = preload("res://scripts/engine/ui_palette.gd")
+const UIPalette = preload("res://scripts/util/ui_palette.gd")
 # 语义色引用 UIPalette 单一色表(2026-07-22); alpha 仍由本面板自己定 —— 色块要半透明
 const COL_PHY := Color(UIPalette.PHYS, 0.6)
 const COL_MAG := Color(UIPalette.MAGIC, 0.6)

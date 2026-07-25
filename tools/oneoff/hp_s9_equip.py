@@ -20,7 +20,7 @@ schools = json.load(io.open('data/p2eq-schools.json', encoding='utf-8'))
 
 hp = HP()
 FOLDER = hp.upsert(556, "🛠️ 装备 · 实时版 (59件 · phase2-equipment)",
-                   "59 件实时版装备。事实源: data/phase2-equipment.json(名/费/文案) + scripts/engine/phase2_equip_runtime.gd 的 P2RT.STATS(逐星属性, 已核实与 baseStats1 零差异)。"
+                   "59 件实时版装备。事实源: data/phase2-equipment.json(名/费/文案) + scripts/gamedata/equip_stats.gd 的 P2RT.STATS(逐星属性, 已核实与 baseStats1 零差异)。"
                    "★不含「稀有度/setTag/series/category」—— 这些字段已废弃并从数据删除。", 13)
 log("装备文件夹 =", FOLDER)
 

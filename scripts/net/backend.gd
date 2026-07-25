@@ -3,7 +3,7 @@ extends RefCounted
 ## Backend — V2 异步 ghost 匹配 / bot 兜底 / 排行榜 的【本地实现】(阶段4/5 MVP).
 ##
 ## 用 preload 引 (不用 class_name):
-##   const Backend = preload("res://scripts/engine/backend.gd")
+##   const Backend = preload("res://scripts/net/backend.gd")
 ##
 ## MVP 全本地: ghost 池存 user://ghost_pool.json (按进度档分桶). 接口稳定,
 ## 以后换 RemoteBackend(Supabase) 不动调用方. 设计见 docs/design/V2模式策划 §十三.
@@ -14,7 +14,7 @@ extends RefCounted
 const POOL_PATH := "user://ghost_pool.json"
 const SEED_PATH := "res://data/ghost_seed.json"   # 内置 10 支策划队(按档分桶), 冷启动/老档无种子时并入
 const BUCKET_CAP := 50          # 每档桶封顶 (防无限增长, 旧的挤出)
-const _P2 = preload("res://scripts/engine/phase2_config.gd")
+const _P2 = preload("res://scripts/gamedata/phase2_config.gd")
 
 # ─── 进度档 (设计§十三): 总战斗数 → 匹配档 0-8. 低档窄(对齐槽断点)/高档宽(保池子有人) ───
 static func bracket_for_battles(total: int) -> int:

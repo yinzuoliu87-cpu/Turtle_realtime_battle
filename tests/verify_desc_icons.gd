@@ -2,7 +2,7 @@ extends Node
 ## verify_desc_icons.gd — 描述内联属性图标 (用户2026-07-24: 选A·只真属性加图标, 图标紧贴属性词前)
 ## SkillText.render_bbcode 在【真属性关键词】前插一枚 [img] 属性图标; 伤害类型/DoT/控制词不插。
 
-const SkillText = preload("res://scripts/engine/skill_text.gd")
+const SkillText = preload("res://scripts/util/skill_text.gd")
 
 var _fail := 0
 func _ok(n: String, c: bool, d: String = "") -> void:

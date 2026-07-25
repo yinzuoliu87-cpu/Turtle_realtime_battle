@@ -6,7 +6,7 @@ extends Node
 ##     ③无 TURTLE_SEED → randomize(两次种子不同·默认行为=随机·与线上一致)
 ## 反向证据: ③证明"确定性"非恒真(默认仍随机); ①用非空池 + 真 ghost_id 防 vacuous 断言。
 
-const Backend := preload("res://scripts/engine/backend.gd")
+const Backend := preload("res://scripts/net/backend.gd")
 
 var _fail := 0
 func _ok(n: String, c: bool, d: String = "") -> void:

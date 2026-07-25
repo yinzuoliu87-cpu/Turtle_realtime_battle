@@ -10,10 +10,10 @@ const RichTooltip = preload("res://scripts/scenes/rich_tooltip.gd")
 const W := 1280.0
 const H := 720.0
 const SLOT := 96.0
-const P2 = preload("res://scripts/engine/phase2_config.gd")
-const Phase2Types = preload("res://scripts/engine/phase2_types.gd")
-const EquipStats = preload("res://scripts/engine/equip_stats.gd")   # 装备逐星属性表(与战斗实装同源; 2026-07-23 从回合制P2RT抽出)
-const Phase2Minion = preload("res://scripts/engine/phase2_minion.gd")
+const P2 = preload("res://scripts/gamedata/phase2_config.gd")
+const Phase2Types = preload("res://scripts/gamedata/phase2_types.gd")
+const EquipStats = preload("res://scripts/gamedata/equip_stats.gd")   # 装备逐星属性表(与战斗实装同源; 2026-07-23 从回合制P2RT抽出)
+const Phase2Minion = preload("res://scripts/gamedata/phase2_minion.gd")
 
 var _sel_bench: int = -1   # 当前选中的背包装备索引 (-1=无)
 var _dl_sel: Dictionary = {}   # 双路布阵选中框 {lane, idx} (点两个互换分路)

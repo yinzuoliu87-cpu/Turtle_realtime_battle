@@ -11,9 +11,9 @@ extends Node
 ##      将来谁改漂了当场红。这是"不重构也能防漂"的办法
 ##   ③ 消费方源码里不许再出现被并掉的旧色值字面量
 
-const UIPalette = preload("res://scripts/engine/ui_palette.gd")
+const UIPalette = preload("res://scripts/util/ui_palette.gd")
 const DMG_PANEL := preload("res://scripts/scenes/dmg_stats_panel.gd")
-const SKILL_TEXT_SRC := "res://scripts/engine/skill_text.gd"
+const SKILL_TEXT_SRC := "res://scripts/util/skill_text.gd"
 const DMG_PANEL_SRC := "res://scripts/scenes/dmg_stats_panel.gd"
 
 # 被并掉的旧值 —— 消费方源码里再出现就是有人绕过色表

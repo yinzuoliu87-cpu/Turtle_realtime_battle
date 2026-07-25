@@ -3,7 +3,7 @@ extends RefCounted
 ## Phase2Minion — 深海小将 补位单位生成 (壳, 1:1 设计文档 V3.2 §3「小将补位」)
 ##
 ## 用 preload 引 (不用 class_name):
-##   const Minion = preload("res://scripts/engine/phase2_minion.gd")
+##   const Minion = preload("res://scripts/gamedata/phase2_minion.gd")
 ##
 ## 规则: 每条战场开打前自动补小将, 使该路双方单位各达 3 名(前3+后3共6位).
 ##   Lv1 基础: 基数 250生命×3=750 / 30攻×1.5=45 / 7护甲 / 7魔抗 (×3/×1.5=用户2026-06-25补丁); 每级全属性 ×1.05 复利.

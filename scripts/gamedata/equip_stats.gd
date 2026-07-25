@@ -6,7 +6,7 @@ extends RefCounted
 ##   抽干净后, 装备【属性】只有这一份来源, 装备【效果】只有 RealtimeBattle3DScene._eq_* 一份, 不再分歧。
 ##
 ## 用 preload 引 (不用 class_name — 防 F5 未声明崩):
-##   const EquipStats := preload("res://scripts/engine/equip_stats.gd")
+##   const EquipStats := preload("res://scripts/gamedata/equip_stats.gd")
 ##   EquipStats.STATS / EquipStats.stat_lines(id, star) / EquipStats.stat_line_all_stars(id)
 ##
 ## 单位 (从代码核实): crit=小数0~1 · _lifestealPct=整数% · armorPen/magicPen=flat · _maxEnergy=flat。

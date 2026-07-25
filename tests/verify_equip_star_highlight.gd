@@ -11,8 +11,8 @@ extends Node
 ##   数据格式一变它就抠不出来 → total 归零 → 打印 ALL OK 但什么都没查(方案书 R1 记的静默失效)。
 
 const RichTooltip := preload("res://scripts/scenes/rich_tooltip.gd")
-const UIPalette = preload("res://scripts/engine/ui_palette.gd")
-const SkillTextC = preload("res://scripts/engine/skill_text.gd")
+const UIPalette = preload("res://scripts/util/ui_palette.gd")
+const SkillTextC = preload("res://scripts/util/skill_text.gd")
 const INV_SRC := "res://scripts/scenes/InventoryScene.gd"
 const EQ_JSON := "res://data/phase2-equipment.json"
 

@@ -9,7 +9,7 @@ extends RefCounted
 ##
 ## 【拆分模板】照抄 scripts/scenes/dmg_stats_panel.gd:
 ##   RefCounted + 构造注入宿主要素 + Callable 回调宿主 —— 主场景侧只剩几行。
-##   ★注意 scripts/engine/ 不是拆分模板(那是回合制旧引擎), 别参考那边。
+##   ★注意 scripts/gamedata/util/net 是数据/工具/后端基础层, 不是行为层拆分模板(那是 dmg_stats_panel.gd)。
 ##
 ## 【开发工具, 不进正式对局】MAPEDIT=1 才开; 纯视觉编辑, 不改玩法数值。
 

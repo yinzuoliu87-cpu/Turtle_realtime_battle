@@ -15,7 +15,7 @@ extends RefCounted
 
 # ★用 preload 常量而不是靠 class_name 全局注册 —— 新建脚本在编辑器重扫之前
 #   全局类名不存在, 无头跑测试会 "Identifier UIPalette not declared"。
-const UIPalette = preload("res://scripts/engine/ui_palette.gd")
+const UIPalette = preload("res://scripts/util/ui_palette.gd")
 
 # 颜色字母 → val-class
 const COLOR_CLASS := {

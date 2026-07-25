@@ -2,7 +2,7 @@ extends Node
 
 ## verify_codex_stats.gd — 点5机械部分: 图鉴删tag + 移速/攻速(单一事实源+等级缩放) (用户 2026-07-23)
 
-const TurtleStats := preload("res://scripts/engine/turtle_stats.gd")
+const TurtleStats := preload("res://scripts/gamedata/turtle_stats.gd")
 
 var _fail: int = 0
 func _ok(n: String, c: bool, d: String = "") -> void:
@@ -25,7 +25,7 @@ func _ready() -> void:
 
 	# ③ 单一事实源: 战斗脚本引用 turtle_stats.gd(不再各存一份→图鉴不会骗人)
 	var bsrc := FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")
-	_ok("★战斗 STATS 引用 turtle_stats.gd(单源)", bsrc.contains('preload("res://scripts/engine/turtle_stats.gd").STATS'))
+	_ok("★战斗 STATS 引用 turtle_stats.gd(单源)", bsrc.contains('preload("res://scripts/gamedata/turtle_stats.gd").STATS'))
 	var csrc := FileAccess.get_file_as_string("res://scripts/scenes/CodexScene.gd")
 	_ok("★图鉴读同一 TurtleStats.STATS", csrc.contains("TurtleStats.STATS"))
 	_ok("★图鉴属性区加了移速", csrc.contains('"移速"'))

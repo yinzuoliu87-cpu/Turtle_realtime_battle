@@ -10,7 +10,7 @@ extends Node
 ##   6 处散落的 fallback 链各写各的 —— 所以先收口到 SkillText.brief_of/detail_of/text_of。
 
 const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
-const SkillTextC = preload("res://scripts/engine/skill_text.gd")
+const SkillTextC = preload("res://scripts/util/skill_text.gd")
 
 var _fail := 0
 

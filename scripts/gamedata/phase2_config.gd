@@ -3,7 +3,7 @@ extends RefCounted
 ## Phase2Config — 二阶段 经济/商店/双路龟蛋 数值集中地 (壳, 全占位)
 ##
 ## 用 preload 引 (不用 class_name):
-##   const P2 = preload("res://scripts/engine/phase2_config.gd")
+##   const P2 = preload("res://scripts/gamedata/phase2_config.gd")
 ##
 ## 这里所有数字都是【占位】, 设计文档明确标"待实测调"。把它们集中在一个文件,
 ## 用户定稿后改这里一处即可。逻辑壳调用这些常量, 不把魔法数字散落各处。

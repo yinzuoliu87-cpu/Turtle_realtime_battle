@@ -16,7 +16,7 @@
 
 `docs/` 下其余 90+ 篇是历史记录/草案/账本，**默认不可信**，多数带 ⛔/⚠ 横幅。不要因为标题写着"权威""焊死""单一事实源"就当真——曾同时有 4 份文件自称唯一事实源。
 
-**装备属性的真事实源是 `P2RT.STATS`**（`scripts/engine/phase2_equip_runtime.gd`），战斗与背包 UI 都从它取值。`data/phase2-equipment.json` 里的 `baseStats1` 是它的手写镜像，仅供展示。
+**装备属性的真事实源是 `EquipStats.STATS`**（`scripts/gamedata/equip_stats.gd`）、龟属性是 `turtle_stats.gd` 的 `STATS`。战斗（`battle.EquipStats.STATS`）与背包/图鉴 UI 都从它取值。`data/phase2-equipment.json` 里的 `baseStats1` 是它的手写镜像，仅供展示。（历史：这份数据 2026-07-23 从回合制 `phase2_equip_runtime.gd` 抽出为纯数据、回合制效果逻辑已删；2026-07-25 又从 `scripts/engine/` 迁到 `scripts/gamedata/`。）
 
 ---
 
@@ -173,7 +173,11 @@ while _w < 600 and float(u["hp"]) >= hp0:   # 上限防死循环
 - 类型标注：返回值 **98.4%**、变量 **93.3%** —— 新代码请标注
 - 拆分模板照抄 [`scripts/scenes/dmg_stats_panel.gd`](scripts/scenes/dmg_stats_panel.gd)：`RefCounted` + 构造注入 `CanvasLayer` + `Callable` 取只读数据，主场景侧只剩 3 行
 
-> `scripts/engine/` **不是**已拆出去的行为层，是**回合制旧版引擎**。实时版只借用了它的 `STATS` 表，其余全是平行重写，**不要当拆分模板**。
+> **（2026-07-25 修正一处旧文档谎言）** 曾经这里写"`scripts/engine/` 是回合制旧引擎、只借 STATS 表"——**假的**，探针证明那 13 个文件全是活代码。已把 `scripts/engine/` 按真实身份拆成三个诚实的文件夹：<br>
+> · `scripts/gamedata/`（装备/龟/学派**属性表 + 配置**·`EquipStats`/`turtle_stats`/`phase2_*`·被战斗/背包/商店/图鉴/GameState 用）<br>
+> · `scripts/util/`（**共享工具**·`VfxTex` 特效纹理/`SkillText` 技能文案/`UIPalette` 配色/`SafeArea`）<br>
+> · `scripts/net/`（**云后端/匹配**·`backend.gd` 排行榜/bot对手/bracket）<br>
+> 它们**不是**行为层拆分模板（那是 `dmg_stats_panel.gd`），是被全项目复用的基础层。回合制**战斗逻辑**早已删净（见 `equip_stats.gd` 头注）。
 
 ---
 

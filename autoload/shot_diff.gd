@@ -1,6 +1,6 @@
 extends Node
 
-const Backend = preload("res://scripts/engine/backend.gd")
+const Backend = preload("res://scripts/net/backend.gd")
 
 ## 比对截图工具 (dev only). 设环境变量 SHOTDIFF=1 (或 SHOTDIFF=<秒数>) 启动:
 ##   等 N 秒(默认2.8, 让场景建好+入场动画结束) → 截当前场景视口存 res://_shot.png → quit.

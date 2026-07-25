@@ -9,8 +9,8 @@ extends Node
 ##
 ## ★这类数据错误【不报错、不崩溃】, 只会让匹配到的对手强度失真, 只能靠测试守。
 
-const P2 := preload("res://scripts/engine/phase2_config.gd")
-const Backend := preload("res://scripts/engine/backend.gd")
+const P2 := preload("res://scripts/gamedata/phase2_config.gd")
+const Backend := preload("res://scripts/net/backend.gd")
 
 var _fail := 0
 

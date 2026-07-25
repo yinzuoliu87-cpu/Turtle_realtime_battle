@@ -3,7 +3,7 @@ extends RefCounted
 ## Phase2DualLane — 双路龟蛋战斗 流程逻辑 (壳, 纯函数, 可单测)
 ##
 ## 用 preload 引 (不用 class_name):
-##   const DualLane = preload("res://scripts/engine/phase2_duallane.gd")
+##   const DualLane = preload("res://scripts/gamedata/phase2_duallane.gd")
 ##
 ## 现状(壳): 分路/路序/胜负判定的【纯逻辑】已搭并可测。还缺(下一步, 多需 UI/战斗渲染):
 ##   - 分路暗选 UI (玩家把 6 龟拖到上/下路; 这里先 auto_split 均分占位)
@@ -11,7 +11,7 @@ extends RefCounted
 ##   - 终极战场 final 的演出 + 永恒 buff 叠加 (见 phase2_config G 段)
 ##   - BattleScene 在 mode=="duallane" 时按 current_lane 取 3 龟开打 (已加 guarded 钩子)
 
-const P2 := preload("res://scripts/engine/phase2_config.gd")
+const P2 := preload("res://scripts/gamedata/phase2_config.gd")
 
 
 ## 自动分路 (壳): ids → {top:[...], bottom:[...]}, 奇偶均分.

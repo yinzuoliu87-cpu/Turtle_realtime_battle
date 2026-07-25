@@ -3,7 +3,7 @@ extends RefCounted
 ## Phase2Equip — 二阶段装备: 三合一升星 + 套装 (壳, 数值占位)
 ##
 ## 用 preload 引 (不用 class_name — 防 F5 未声明崩):
-##   const Phase2Equip = preload("res://scripts/engine/phase2_equip.gd")
+##   const Phase2Equip = preload("res://scripts/gamedata/phase2_equip.gd")
 ##
 ## 现状(壳): 升星/合成/套装的【结构与规则】已搭, 数值是占位, 待用户定:
 ##   - 1星基础属性 ×1.8 升星 = 占位公式 (设计文档没给精确值)
@@ -11,7 +11,7 @@ extends RefCounted
 ##   - (过期描述已订正 2026-07-19) 装备效果早已全部接进实时战斗, 见 phase2_equip_runtime.gd; data 里 effectImpl 恒为 true 且无人读取
 ## 数据来源: res://data/phase2-equipment.json (59件, xlsx「处理B」结构化).
 
-const P2 := preload("res://scripts/engine/phase2_config.gd")
+const P2 := preload("res://scripts/gamedata/phase2_config.gd")
 
 const MERGE_COUNT := 3          # 三合一: 3 件同款同星 → 1 件高一星
 const MAX_STAR := 3

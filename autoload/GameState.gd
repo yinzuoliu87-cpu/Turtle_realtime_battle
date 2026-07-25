@@ -97,9 +97,9 @@ var side_controllers: Dictionary = {"left": "local", "right": "ai"}
 ## 战斗随机种子 (权威定+下发; 收口战斗内随机→可复现/回放). 0=未设(用系统随机).
 var battle_seed: int = 0
 
-const _DualLane := preload("res://scripts/engine/phase2_duallane.gd")
-const _P2 := preload("res://scripts/engine/phase2_config.gd")
-const _Equip := preload("res://scripts/engine/phase2_equip.gd")
+const _DualLane := preload("res://scripts/gamedata/phase2_duallane.gd")
+const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
+const _Equip := preload("res://scripts/gamedata/phase2_equip.gd")
 ## 匹配到的对手资料 (野生=模拟真人 / 在线=真人) {name, avatar(pet_id), id}. 匹配动画写, 双路读显.
 var dual_opponent: Dictionary = {}
 ## 新商店货架 (当前掷出的装备, 买掉的位置=null). 局内等级决定费用概率档.

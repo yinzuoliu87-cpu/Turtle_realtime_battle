@@ -10,7 +10,7 @@ const FAKE_NAMES := [
 	"深海霸主", "龟界传说", "咸鱼翻身", "老司机带带我", "萌新龟龟", "海底捞月", "龟速前进", "一击三连",
 	"佛系养龟", "头号玩家", "水深危险", "乌龟跑得快", "退役龟皇", "龟龟不下班", "南极来的", "稳健型选手",
 ]
-const Backend := preload("res://scripts/engine/backend.gd")
+const Backend := preload("res://scripts/net/backend.gd")
 
 var content_root: Control
 var _font_cache: FontVariation = null

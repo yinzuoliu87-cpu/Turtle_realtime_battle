@@ -4,7 +4,7 @@ extends Control
 ## MVP: 本地 ghost 池各阵容的 season_eggs_killed + 自己, 排序展示. 真后端复算防作弊=上线版.
 
 const W := 1280.0
-const Backend = preload("res://scripts/engine/backend.gd")
+const Backend = preload("res://scripts/net/backend.gd")
 
 func _ready() -> void:
 	var bg := ColorRect.new(); bg.color = Color("#0a1622")

@@ -1,6 +1,6 @@
 extends Node3D
 const HpBarScene := preload("res://scripts/scenes/hp_bar.gd")   # 回合制版好看血条 (自定义 _draw, 复用)
-const Backend := preload("res://scripts/engine/backend.gd")    # 赛季结算上传 ghost (异步PvP池)
+const Backend := preload("res://scripts/net/backend.gd")    # 赛季结算上传 ghost (异步PvP池)
 ## RealtimeBattle3DScene — 2.5D 战斗核心 (Phase 2, 见 docs/design/2.5D战斗架构方案.md §四.2-4)
 ## 真阵容在 2.5D 里能打: 读 GameState 配队 / demo 兜底 → Sprite3D billboard + blob影 + HP/龟能 overlay.
 ## 移动·索敌·普攻·分离·龟能·灭队判定 全复用 2D 版 RealtimeBattleScene 的逻辑口径(数值/公式/STATS),
@@ -62,7 +62,7 @@ const SkillEnergy := preload("res://scripts/systems/skill_energy.gd")
 ## 不接的后果: pets.json 里的 {N:0.7*ATK} / {{ATK}} 这类占位符【原样漏到界面上】,
 ## 玩家看到的是模板字符串而不是数字(用户 2026-07-21 在面板截图里指出)。
 ## 接上之后, 技能伤害数值 = 按该龟【当前】属性算出来的真数字, 且能随属性变化实时刷新。
-const SkillText := preload("res://scripts/engine/skill_text.gd")
+const SkillText := preload("res://scripts/util/skill_text.gd")
 const SKILL_GCD := 0.4                      # 同龟两次放技最小间隔 (防多技同帧连爆)
 # AI 状态机节拍 (Botworld式: 移动/攻击互斥 + 施法锁 + 前摇; 用户2026-06-28 #5最高优先级)
 # LoL式普攻(官方Attack_speed/Basic_attack wiki, 完整模型):
@@ -95,7 +95,7 @@ const CTRL_SEC := 1.5                      # 眩晕/冻结/嘲讽 默认秒数
 
 # 28 龟战斗属性 (1:1 复用): id → [melee, move_spd(px/s), atk_interval(s), atk_range(px)]
 # ★攻速按定位统一压到 0.6-0.85 次/秒 区间(用户2026-07-18"按定位但只能在0.6到0.85之间定"): 刺客0.85(间隔1.1765)/近战斗士0.8(1.25)/远程射手0.75(1.3333)/法师+辅助0.7(1.4286)/坦克0.6(1.6667); 精英保0.65(硬编码另处). 削弱普攻主导·让技能更吃重.
-const STATS := preload("res://scripts/engine/turtle_stats.gd").STATS   # ★单一事实源已抽到 turtle_stats.gd(图鉴同源读), 见该文件
+const STATS := preload("res://scripts/gamedata/turtle_stats.gd").STATS   # ★单一事实源已抽到 turtle_stats.gd(图鉴同源读), 见该文件
 const DEFAULT_STAT := [true, 105.0, 0.85, 70.0]
 ## 评审期开关: 战斗 = 1受审龟 vs 假人沙包 (看单龟完整循环)。
 ## ⚠ 它【不只影响评审场】——`_unit_level()` 里 `if _review_demo(): return 1`,
@@ -11535,7 +11535,7 @@ func _self_screenshot() -> void:
 #  2.5D 适配: 逻辑/数值全照搬; VFX/坐标触点用 Phase3 的 3D 等价 (_float_text/_skill_ring/_bolt_line/_fire_bolt_from/_spawn_summon).
 #  分类标注: ✅完整 / ⚠改造(节拍·时长·站位) / 🚧TODO(简化) — 与 2D 版一致.
 # ============================================================================
-const EquipStats := preload("res://scripts/engine/equip_stats.gd")   # 装备逐星属性(2026-07-23 从回合制 phase2_equip_runtime 抽出的纯数据)
+const EquipStats := preload("res://scripts/gamedata/equip_stats.gd")   # 装备逐星属性(2026-07-23 从回合制 phase2_equip_runtime 抽出的纯数据)
 const EQ_TICK := 2.5            # 装备周期触发 = 1回合 ≈ 2.5 秒 (规格)
 
 # demo 测试装备 (persistent_equipped 空时): 给每龟塞2-3件有视觉效果的件, 验证效果真触发. (与 2D 版 DEMO_EQUIP 一致)

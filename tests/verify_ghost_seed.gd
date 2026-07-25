@@ -10,7 +10,7 @@ extends Node
 ##   3. _ensure_seeded 把种子并入空池(10支), 且幂等(重并不重复)。
 ##   4. pool_find 在档 0-8 都能抽到种子对手(seed_ 开头)。
 
-const Backend = preload("res://scripts/engine/backend.gd")
+const Backend = preload("res://scripts/net/backend.gd")
 const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 
 var _fail := 0

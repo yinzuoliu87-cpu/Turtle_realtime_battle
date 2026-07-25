@@ -4,7 +4,7 @@ extends RefCounted
 ## UIPalette — 语义色的单一事实源 (2026-07-22 建)
 ##
 ## 【为什么要有】此前同一个语义色散在【三张互不相干的表】里:
-##   scripts/engine/skill_text.gd  VAL_HEX        (17 项, 给技能/装备文案)
+##   scripts/util/skill_text.gd  VAL_HEX        (17 项, 给技能/装备文案)
 ##   scripts/systems/visual_constants.gd FLOAT_STYLE (给战斗飘字)
 ##   scripts/scenes/dmg_stats_panel.gd   COL_*     (给伤害统计面板)
 ## 实测物理红有两个值: 文案 #ff6b6b / 飘字与统计面板 #ff4444。

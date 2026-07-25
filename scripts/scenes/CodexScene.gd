@@ -39,11 +39,11 @@ const LIST_W := 280.0
 
 # ── 二阶段双路「装备学派」羁绊 (替代旧的 10 龟羁绊; 上线版野生=duallane 用此 11 学派) ──
 # 学派定义(名/tag/tiers)取自 Phase2Schools.SCHOOLS; 成员装备由 p2eq-schools.json 反查; 效果文案=学派效果-实装规格.md 逐字转录。
-const Phase2Schools := preload("res://scripts/engine/phase2_schools.gd")
-const Phase2Types := preload("res://scripts/engine/phase2_types.gd")   # 类型(12)映射: p2eq-types.json
+const Phase2Schools := preload("res://scripts/gamedata/phase2_schools.gd")
+const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")   # 类型(12)映射: p2eq-types.json
 const SkillEnergy := preload("res://scripts/systems/skill_energy.gd")   # 龟能花费 单一事实源 (跟战斗同口径)
-const EquipStats := preload("res://scripts/engine/equip_stats.gd")   # 装备属性 单一事实源 STATS (跟战斗/背包同口径; 2026-07-23 从回合制P2RT抽出)
-const TurtleStats := preload("res://scripts/engine/turtle_stats.gd")    # 龟战斗属性 单一事实源(移速/攻速/射程, 跟战斗同源·点5)
+const EquipStats := preload("res://scripts/gamedata/equip_stats.gd")   # 装备属性 单一事实源 STATS (跟战斗/背包同口径; 2026-07-23 从回合制P2RT抽出)
+const TurtleStats := preload("res://scripts/gamedata/turtle_stats.gd")    # 龟战斗属性 单一事实源(移速/攻速/射程, 跟战斗同源·点5)
 
 # 技能在实时版里的角色: passive(被动) / basic(普攻,不花龟能) / active(主动,花龟能). 跟战斗 BASIC_ATK+改造一致.
 #   普攻=skillPool[0] (忍者已改回近战刺客: 斩击=普攻idx0, 冲击转被动auto-dash不占技位).
@@ -830,7 +830,7 @@ func _ctx_for(pet: Dictionary) -> Dictionary:
 #
 # 【事实源】RealtimeBattle3DScene.gd `_make_unit` 的 is_minion 分支 + `_sk_minion_*` / `_elite_*`.
 # 这里的每个数字都是从那段代码抄的, 改小将数值时【必须同步这张表】, 否则图鉴就开始骗人。
-# 注意 scripts/engine/phase2_minion.gd 是回合制遗留壳(名字叫"深海小将精英", 数值也不同), 不是事实源。
+# 注意 scripts/gamedata/phase2_minion.gd 是回合制遗留壳(名字叫"深海小将精英", 数值也不同), 不是事实源。
 # ══════════════════════════════════════════════════════════
 const MINION_KINDS := [
 	{"kind": "front", "name": "近战小将", "img": "minion.png"},
