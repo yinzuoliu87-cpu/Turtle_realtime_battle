@@ -4770,12 +4770,7 @@ func _process(delta: float) -> void:
 	# ★确定性模式(TURTLE_SEED 设): 用固定步长 SIM_DT → 同种子+同帧序=可复现回放/验证(不受帧率抖动影响)。
 	#   交互游玩(无种子): 钳制真实delta防死亡螺旋(2026-07-18)—— 手感/行为与原来完全一致·零风险。
 	delta = SIM_DT if _deterministic else minf(delta, 0.1)
-	_adf_ct = 0   # 每帧重置伤害调用计数(_apply_damage_from 帧内爆炸=死亡链无限级联→自身截断防卡死)
-	_sd_tick()   # §SUDDEN 战场决胜(40s起治疗-50% + 每5s +25%增伤)
-	_trainer_input_tick(delta)   # 训龟大师: PC 键盘 / 移动端摇杆(用户2026-07-22)
-	_tick_trainer_attacks(delta) # 训龟大师普攻: 站定扔石头抛物线弹道(用户2026-07-23)
-	_tick_trainer_ai(delta)      # 敌方(快照)大师 AI: 乱走 + 逮机会甩钩锁(点3·场外援助·用户2026-07-23)
-	_tick_hooks(delta)           # 钩锁: CD 扣减 + 被钩单位每帧朝大师拖(点3)
+	_trainer_input_tick(delta)   # INPUT(每帧读一次): 训龟大师 PC键盘/移动端摇杆(用户2026-07-22)
 	if _audit and _t >= _audit_next:
 		_audit_next = _t + 1.0
 		_audit_tick()
@@ -4786,64 +4781,83 @@ func _process(delta: float) -> void:
 		if _over or _dl_state == "done" or _t > 240.0:   # 上限 120→240: 一场三路合法时长可超120s(上路含破蛋窗口+呈现就要60s+), 120s会把正常推进的局误记成僵持(用户2026-07-19决胜机制验收)
 			_stress_reload(); return
 		_dbg_op = "process"
-	# Phase4 顿帧 hit-stop: 计时 >0 时冻结"模拟"(逻辑推进 + juice 视觉态衰减)给重量感,
-	# 但镜头震屏照常推进(冻结期间的抖动正是冲击力来源). 不碰 Engine.time_scale → 计时归零即恢复,
-	# 永不卡死 (即使触发函数早退, 下一帧 delta 也会把 _hitstop 减到 0).
-	var frozen := _hitstop > 0.0
+	# ═══ Phase4 sim/演出分层(2026-07-25·切片1): sim 走 _sim_step, 演出走 _render_step。 ═══
+	# ★frozen/in_ts 必须在 sim 【之前】捕获一次, sim 与 render 用【同一个】判定 —— 否则 sim 里 _hitstop-=dt
+	#   归零后 render 再读 _hitstop 会翻成"没冻结"→顿帧那帧的演出跑了 = 行为漂移。
+	# 切片1: 仍每帧各调一次(dt=render_dt=delta) → 行为逐字不变。切片2 才把 _sim_step 塞进累加器跑 N 次。
+	var frozen: bool = _hitstop > 0.0
+	var in_ts: bool = not _ts_active.is_empty()
+	_sim_step(delta, frozen, in_ts)
+	_render_step(delta, frozen, in_ts)
+
+## Phase4: 纯模拟推进(决定战斗结果·可被累加器按固定步长跑 N 次/帧)。frozen/in_ts 由调用方在 sim 前捕获传入。
+func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
+	_adf_ct = 0   # 每帧(每步)重置伤害调用计数(_apply_damage_from 帧内爆炸=死亡链无限级联→自身截断防卡死)
+	_sd_tick()   # §SUDDEN 战场决胜(40s起治疗-50% + 每5s +25%增伤)
+	_tick_trainer_attacks(dt) # 训龟大师普攻: 站定扔石头抛物线弹道(用户2026-07-23)
+	_tick_trainer_ai(dt)      # 敌方(快照)大师 AI: 乱走 + 逮机会甩钩锁(点3·场外援助·用户2026-07-23)
+	_tick_hooks(dt)           # 钩锁: CD 扣减 + 被钩单位每帧朝大师拖(点3)
+	# Phase4 顿帧 hit-stop: 计时 >0 时冻结"模拟"给重量感(镜头震屏照常推进·在 _render_step)。
 	if frozen:
-		_hitstop = maxf(0.0, _hitstop - delta)
-	elif not _ts_active.is_empty():
-		# ═══ 沙漏JoJo时停: 冻结全局_t → 全场非active的所有_t计时器暂停(金风暴/海浪/DoT无缝续); 只tick active携带者(冷却/龟能delta制照走) ═══
-		_ts_remaining -= delta
+		_hitstop = maxf(0.0, _hitstop - dt)
+	elif in_ts:
+		# ═══ 沙漏JoJo时停: 冻结全局_t → 全场非active的所有_t计时器暂停; 只tick active携带者 ═══
+		_ts_remaining -= dt
 		_ts_active = _ts_active.filter(func(x): return x is Dictionary and x.get("alive", false))
 		if _ts_remaining <= 0.0 or _ts_active.is_empty():
 			_end_timestop()
 		else:
 			if not _over:
 				for u in _ts_active:
-					_ts_advance_unit_timers(u, delta)   # 先让它自己的状态到期时刻按真实时间走(否则_t冻结→眩晕等永不解除)
-					_tick_unit(u, delta)        # active携带者自由行动(移动/普攻/放技/命中即时结算)
-				_step_projectiles(delta)        # 内部gate: 只推进active的弹道; 其余悬空
-				_step_pending_shots(delta)      # 内部gate: 只active的依次射击
+					_ts_advance_unit_timers(u, dt)   # 先让它自己的状态到期时刻按真实时间走(否则_t冻结→眩晕等永不解除)
+					_tick_unit(u, dt)        # active携带者自由行动(移动/普攻/放技/命中即时结算)
+				_step_projectiles(dt)        # 内部gate: 只推进active的弹道; 其余悬空
+				_step_pending_shots(dt)      # 内部gate: 只active的依次射击
 				_check_end()
-		_juice_decay(delta)                    # 内部gate: 只衰减active的juice(非active冲击姿势定格)
-		for u in _ts_active:                    # 只推进active立绘帧动画(非active定格)
-			if u.get("alive", false):
-				if u.get("is_big_bear", false):
-					_tick_bear_anim(u, delta)
-				else:
-					_advance_anim(u, delta)
-		_ts_tick_visual(delta)                 # 时停视觉维持(钟表脉动/暗角等)
 	else:
-		# 🛠 调试场编辑态 / 双路场内放置态: 跳过模拟推进 (单位摆着不打不动), 但下方 transforms/overlay 照常 → 立绘渲染+血条仍刷新.
 		if _dl_is_present():
-			_dl_present_t += delta
+			_dl_present_t += dt
 			if _dl_present_t >= DL_PRESENT_SEC: _dl_present_advance()
 		if not _over and not _edit_mode and _dl_state != "place" and not _dl_is_present():
-			_t += delta
-			_ts_update_trigger(delta)   # 沙漏: 第10秒触发时停蓄力 → 蓄力满释放
+			_t += dt
+			_ts_update_trigger(dt)   # 沙漏: 第10秒触发时停蓄力 → 蓄力满释放
 			for u in _units.duplicate():
 				if not u["alive"]:
 					continue
-				_tick_unit(u, delta)
-			_apply_separation_pass(delta)   # 每帧全单位软分离(攻击/待机也摊开, 根治扎堆遮血条)
-			_tick_lava_zones(delta)         # 持续地面区域 (熔岩龟·岩浆池) 周期结算
-			_tick_glaciers(delta)           # 冰川带(训龟大师): 站带上的敌减速+易伤
-			_step_projectiles(delta)
-			_step_pending_shots(delta)
+				_tick_unit(u, dt)
+			_apply_separation_pass(dt)   # 每帧全单位软分离(攻击/待机也摊开, 根治扎堆遮血条)
+			_tick_lava_zones(dt)         # 持续地面区域 (熔岩龟·岩浆池) 周期结算
+			_tick_glaciers(dt)           # 冰川带(训龟大师): 站带上的敌减速+易伤
+			_step_projectiles(dt)
+			_step_pending_shots(dt)
 			_check_end()
-		_juice_decay(delta)        # squash/闪白/挥击 等计时衰减 (冻结期间不衰 → 冲击姿势保持)
-		for u in _units:           # 立绘帧动画推进 (idle 循环 / 动作一次), 冻结期不推进保持冲击姿势
+
+## Phase4: 纯演出(立绘帧动画/相机/overlay·每帧一次)。frozen/in_ts 与 _sim_step 用同一份(sim前捕获)。
+func _render_step(rd: float, frozen: bool, in_ts: bool) -> void:
+	if frozen:
+		pass   # 顿帧: 冻结演出(juice/立绘定格保持冲击姿势), 只下方震屏照常
+	elif in_ts:
+		_juice_decay(rd)                    # 内部gate: 只衰减active的juice(非active冲击姿势定格)
+		for u in _ts_active:                # 只推进active立绘帧动画(非active定格)
+			if u.get("alive", false):
+				if u.get("is_big_bear", false):
+					_tick_bear_anim(u, rd)
+				else:
+					_advance_anim(u, rd)
+		_ts_tick_visual(rd)                 # 时停视觉维持(钟表脉动/暗角等)
+	else:
+		_juice_decay(rd)        # squash/闪白/挥击 等计时衰减
+		for u in _units:           # 立绘帧动画推进 (idle 循环 / 动作一次)
 			if u["alive"] or u.get("anim_action", "") == "death":
 				if u.get("is_big_bear", false):
-					_tick_bear_anim(u, delta)   # 大熊: 状态机(走路/停顿/熊爪拍/砸地)
+					_tick_bear_anim(u, rd)   # 大熊: 状态机(走路/停顿/熊爪拍/砸地)
 				else:
-					_update_run_anim(u, delta)
-					_advance_anim(u, delta)
-	_update_camera_shake(delta)    # 震屏始终推进 (含冻结期)
+					_update_run_anim(u, rd)
+					_advance_anim(u, rd)
+	_update_camera_shake(rd)    # 震屏始终推进 (含冻结期)
 	_update_world_transforms()
 	_tick_follow_vfx()             # 跟随特效(冰块等)贴目标最新世界坐标(含击飞height)
-	_update_ninja_marks()          # 忍者冲击标记(纯视觉·用户2026-07-12): 未被冲击敌头顶挂锁定标记, 缩地闪到→碎裂, 10s冷却结束→重现
+	_update_ninja_marks()          # 忍者冲击标记(纯视觉·用户2026-07-12)
 	_tick_ink_links()              # 线条·连笔连接线跟随双方脚底(到期/死亡断链)
 	_update_overlay()
 	_update_dot_floats()           # DOT累积数字(点1): 跟随头顶+左右错开; 桶结束→弹射跳走
