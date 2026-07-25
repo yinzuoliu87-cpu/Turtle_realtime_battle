@@ -21,7 +21,7 @@ var _fails: Array[String] = []
 func _ready() -> void:
 	_check_source("res://scripts/scenes/battle_debug_arena.gd", "_edit_grid_card",
 		"调试场选装备/选龟网格卡片")   # _edit_* 已抽到 BattleDebugArena(2026-07-25)
-	_check_source("res://scripts/scenes/TeamSelectScene.gd", "_make_pet_card",
+	_check_source("res://scripts/scenes/team_select/pet_grid.gd", "_make_pet_card",
 		"选龟龟池卡片")
 	_check_teamselect_drag()
 	_done()
@@ -47,7 +47,7 @@ func _check_source(path: String, fname: String, human: String) -> void:
 
 ## 选龟卡片的原生拖放在手机上必须关掉, 否则 DnD 一启动就吃掉手指移动, 滚动抢不过
 func _check_teamselect_drag() -> void:
-	var src := FileAccess.get_file_as_string("res://scripts/scenes/TeamSelectScene.gd")
+	var src := FileAccess.get_file_as_string("res://scripts/scenes/team_select/pet_grid.gd")
 	if src == "":
 		return
 	# ★只看【卡片构造函数体内】的拖放。全局 find 会命中第一处 —— 那是编队槽(_slot_drag)的,
