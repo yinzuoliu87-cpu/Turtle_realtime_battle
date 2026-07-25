@@ -73,13 +73,13 @@ func _test_panel_switches() -> void:
 
 	if GameState != null:
 		GameState.skill_text_detail = false
-	var brief_rows := s._panel_skill_entries(u)
+	var brief_rows: Array = s._info_sys._panel_skill_entries(u)
 	var brief_txt := ""
 	for r in brief_rows:
 		brief_txt += str((r as Dictionary).get("desc", ""))
 	if GameState != null:
 		GameState.skill_text_detail = true
-	var detail_rows := s._panel_skill_entries(u)
+	var detail_rows: Array = s._info_sys._panel_skill_entries(u)
 	var detail_txt := ""
 	for r in detail_rows:
 		detail_txt += str((r as Dictionary).get("desc", ""))

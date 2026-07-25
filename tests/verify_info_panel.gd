@@ -49,7 +49,7 @@ func _test_stat_rows(s) -> void:
 		"crit_dmg": 2.0, "armor_pen": 12.0, "magic_pen": 8.0, "reflect": 0.20,
 		"tenacity": 0.35, "damage_reduction": 0.12, "damage_amp": 0.18, "echarge_perm": 0.40,
 	}
-	var rows: Array = s._info_stat_rows(u)
+	var rows: Array = s._info_sys._info_stat_rows(u)
 	var txt := ""
 	for r in rows:
 		txt += str((r as Array)[1]) + " | "
@@ -68,7 +68,7 @@ func _test_stat_rows(s) -> void:
 	#   (第一版做成"有值才显示", 结果没装备的龟看不到治疗强度/护盾强度/闪避那几行。)
 	var plain := {"atk": 10.0, "def": 1.0, "mr": 1.0, "crit": 0.0, "atk_interval": 1.0,
 				  "atk_range": 100.0, "move_spd": 50.0}
-	var rows2: Array = s._info_stat_rows(plain)
+	var rows2: Array = s._info_sys._info_stat_rows(plain)
 	var txt2 := ""
 	for r in rows2:
 		txt2 += str((r as Array)[1]) + " | "
@@ -105,7 +105,7 @@ func _test_minion_skills(s) -> void:
 
 	# ★真正走一遍面板取条目的路径: 小将 pets.json 里没有条目, 必须靠这张表兜底
 	var minion := {"id": "__minion__", "side": "left", "active_skills": ["minionRocket"]}
-	var ents: Array = s._panel_skill_entries(minion)
+	var ents: Array = s._info_sys._panel_skill_entries(minion)
 	_ok("★小将能取到技能条目(原来这里是空的→技能区整块不渲染)", ents.size() >= 1,
 		"取到 %d 条" % ents.size())
 	if ents.size() > 0:
@@ -248,4 +248,8 @@ func _src() -> String:
 		return ""
 	var s := f.get_as_text()
 	f.close()
+	var g := FileAccess.open("res://scripts/scenes/info_panel.gd", FileAccess.READ)   # 面板函数已抽到 InfoPanel(2026-07-25)
+	if g != null:
+		s += "
+" + g.get_as_text(); g.close()
 	return s

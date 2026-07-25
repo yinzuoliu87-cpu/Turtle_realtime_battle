@@ -22,7 +22,8 @@ var _fails: Array[String] = []
 
 
 func _ready() -> void:
-	var src := FileAccess.get_file_as_string(SCENE_PATH)
+	var src := FileAccess.get_file_as_string(SCENE_PATH) + "
+" + FileAccess.get_file_as_string("res://scripts/scenes/info_panel.gd")   # _info_status_chips 已抽到 InfoPanel(2026-07-25)
 	if src == "":
 		_fail("读不到 %s" % SCENE_PATH)
 		_done()
