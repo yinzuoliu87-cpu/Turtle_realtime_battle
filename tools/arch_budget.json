@@ -2,12 +2,13 @@
   "_doc": "架构预算欠债台账。规则见 tools/arch_budget.py 顶部。数字只许改小(还债), 改大=增债需评审。",
   "max_file_lines": 3000,
   "max_func_lines": 250,
-  "scan_roots": ["scripts", "autoload"],
-
+  "scan_roots": [
+    "scripts",
+    "autoload"
+  ],
   "file_ratchet": {
-    "scripts/scenes/RealtimeBattle3DScene.gd": 25272
+    "scripts/scenes/RealtimeBattle3DScene.gd": 24939
   },
-
   "func_ratchet": {
     "scripts/scenes/RealtimeBattle3DScene.gd::_sk_star_wave": 324,
     "scripts/scenes/RealtimeBattle3DScene.gd::_sk_star_gravity_warp": 256

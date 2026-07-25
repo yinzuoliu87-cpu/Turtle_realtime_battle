@@ -628,24 +628,10 @@ var _hitstop := 0.0                       # 剩余顿帧秒 (>0 时 _process 跳
 var _follow_vfx: Array = []               # 跟随单位的特效sprite [{spr,unit,h}] — 每帧贴 _world_pos(unit.pos, unit.height+h); sprite被free则自动剔除
 var _pending_shots: Array = []            # 依次射出的子弹队列 [{delay, fn:Callable, src}] — 每帧减delay, 到点call(错峰射击: 手铳/加特林/狙击链); src=归属(时停只推进active携带者)
 # ═══ 沙漏059 JoJo时停 ═══ 冻结全局_t + 只tick active携带者; 其他单位/弹道/依次射击/tween/粒子 全定格
-var _ts_active: Array = []                # 当前能自由行动的active携带者(空=无时停; 可多个=全场最高星沙漏者敌我并存)
-var _ts_remaining := 0.0                  # 时停剩余真实秒
-var _ts_charging := false                 # 蓄力中(1s, 世界仍正常)
-var _ts_charge_t := 0.0
-var _ts_charge_casters: Array = []
-var _ts_fired := false                    # 一场一次
-var _ts_maxstar := 0                      # 生效沙漏星级(定时长4/10/30)
+var _timestop := TimestopSystem.new(self)   # 沙漏时停系统(2026-07-25 从本文件抽出)
 var _world_permanent: Dictionary = {}   # 建场阶段 _world 的常驻子节点(instance_id) —— 换路清场时只清不在此集内的(=特效/单位残留)
 var _dmg_stats := DmgStatsPanel.new()   # 战中📊统计浮层(已抽到 scripts/scenes/dmg_stats_panel.gd)
 var _sim_tweens: Array = []               # VFX tween注册表(时停暂停非active用; 见 _reg_tween)
-var _ts_frozen_tweens: Array = []         # 时停期间被暂停的tween(结束resume)
-var _ts_frozen_particles: Array = []      # 时停期间被暂停的GPUParticles3D(speed_scale归零, 结束还原)
-var _ts_overlay: CanvasLayer = null       # 时停灰世界叠加层(压暗褪色从携带者扩散; layer5=在UI下→只灰3D世界, 数字/血条保彩)
-var _ts_rect: ColorRect = null
-var _ts_flash_overlay: CanvasLayer = null # 反色闪叠加层(layer60=在UI上→含全屏UI一起反色)
-var _ts_flash_rect: ColorRect = null
-var _ts_clock: TextureRect = null         # 时停停摆钟(叠加层顶, 不被褪色)
-var _ts_glow_sprs: Array = []             # 携带者"时之主"金辉光sprite(结束移除)
 var _shake_amp := 0.0                     # 当前震屏幅度 (米); 每帧指数衰减归 0
 var _shake_t := 0.0                       # 震屏相位 (驱动伪随机偏移)
 var _cam_base := Vector3.ZERO             # 镜头基准位(默认·未缩放); shake 围绕缩放后基准偏移
@@ -3170,15 +3156,15 @@ func _dl_clear_units() -> void:
 	# ★换路彻底清场(用户2026-07-12「10秒到buff要立马清, 很多技能同理要清场」):
 	#   per-unit 状态(流血/DoT/buff/护盾/眩晕/减速等) 随上面 _units 释放已清, 下一路单位全新 dots:[]/buffs:[] —— 不跨路带.
 	#   下面补清【全局残留】: 时停 + 被时停暂停的tween/粒子 + 时之主光辉 + 所有VFX tween + 飘字错峰窗口, 保证下一路干净起步.
-	if not _ts_active.is_empty() or _ts_remaining > 0.0:
-		_ts_resume_freeze()                   # 时停未结束→先恢复被暂停的tween/粒子(否则卡死进下一路)
-	_ts_active.clear(); _ts_remaining = 0.0
-	_ts_charge_casters.clear(); _ts_frozen_tweens.clear(); _ts_frozen_particles.clear()
-	if is_instance_valid(_ts_overlay): _ts_overlay.visible = false
-	if is_instance_valid(_ts_flash_overlay): _ts_flash_overlay.visible = false
-	for g in _ts_glow_sprs:
+	if not _timestop._ts_active.is_empty() or _timestop._ts_remaining > 0.0:
+		_timestop._ts_resume_freeze()                   # 时停未结束→先恢复被暂停的tween/粒子(否则卡死进下一路)
+	_timestop._ts_active.clear(); _timestop._ts_remaining = 0.0
+	_timestop._ts_charge_casters.clear(); _timestop._ts_frozen_tweens.clear(); _timestop._ts_frozen_particles.clear()
+	if is_instance_valid(_timestop._ts_overlay): _timestop._ts_overlay.visible = false
+	if is_instance_valid(_timestop._ts_flash_overlay): _timestop._ts_flash_overlay.visible = false
+	for g in _timestop._ts_glow_sprs:
 		if is_instance_valid(g): g.queue_free()
-	_ts_glow_sprs.clear()
+	_timestop._ts_glow_sprs.clear()
 	for tw in _sim_tweens:                    # 杀掉所有在跑的VFX tween(斩弧/曳光/召唤动画等), 别续进下一路
 		if tw != null and tw.is_valid(): tw.kill()
 	_sim_tweens.clear()
@@ -4795,14 +4781,14 @@ func _process(delta: float) -> void:
 	# ★frozen/in_ts 每步 sim 前重新捕获(顿帧/时停可能跨步变化), sim 与 render 分别用各自最新态。
 	if _deterministic:
 		var frozen: bool = _hitstop > 0.0
-		var in_ts: bool = not _ts_active.is_empty()
+		var in_ts: bool = not _timestop._ts_active.is_empty()
 		_sim_step(SIM_DT, frozen, in_ts)
 		_render_alpha = 0.0   # det/headless: 无渲染·不插值
 	else:
 		_advance_sim_accum(rd)   # ★切片2: 交互累加器抽成可测种子(verify_interactive_determinism 直接驱动·证帧率无关)
 	# 演出每帧一次(真实时间·立绘动画/相机随真实帧走→平滑)。frozen/in_ts 用 sim 后最新态。
 	var r_frozen: bool = _hitstop > 0.0
-	var r_in_ts: bool = not _ts_active.is_empty()
+	var r_in_ts: bool = not _timestop._ts_active.is_empty()
 	_render_step(rd, r_frozen, r_in_ts)
 
 ## Phase4切片2: 交互固定步长累加器。攒够 SIM_DT 就跑一步 sim → 总 sim 时间只取决于 Σ钳制delta,
@@ -4815,7 +4801,7 @@ func _advance_sim_accum(rd: float) -> void:
 	while _sim_accum >= SIM_DT and steps < 8:   # 每帧最多8步(大hitch丢余量防雪崩·手感优先于追偿)
 		_snapshot_render_prev()   # ★切片2b: 存这步前的 pos/height 供渲染插值(最后一次=渲染要的 prev)
 		var frozen: bool = _hitstop > 0.0
-		var in_ts: bool = not _ts_active.is_empty()
+		var in_ts: bool = not _timestop._ts_active.is_empty()
 		_sim_step(SIM_DT, frozen, in_ts)
 		_sim_accum -= SIM_DT
 		steps += 1
@@ -4833,14 +4819,14 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 		_hitstop = maxf(0.0, _hitstop - dt)
 	elif in_ts:
 		# ═══ 沙漏JoJo时停: 冻结全局_t → 全场非active的所有_t计时器暂停; 只tick active携带者 ═══
-		_ts_remaining -= dt
-		_ts_active = _ts_active.filter(func(x): return x is Dictionary and x.get("alive", false))
-		if _ts_remaining <= 0.0 or _ts_active.is_empty():
-			_end_timestop()
+		_timestop._ts_remaining -= dt
+		_timestop._ts_active = _timestop._ts_active.filter(func(x): return x is Dictionary and x.get("alive", false))
+		if _timestop._ts_remaining <= 0.0 or _timestop._ts_active.is_empty():
+			_timestop._end_timestop()
 		else:
 			if not _over:
-				for u in _ts_active:
-					_ts_advance_unit_timers(u, dt)   # 先让它自己的状态到期时刻按真实时间走(否则_t冻结→眩晕等永不解除)
+				for u in _timestop._ts_active:
+					_timestop._ts_advance_unit_timers(u, dt)   # 先让它自己的状态到期时刻按真实时间走(否则_t冻结→眩晕等永不解除)
 					_tick_unit(u, dt)        # active携带者自由行动(移动/普攻/放技/命中即时结算)
 				_step_projectiles(dt)        # 内部gate: 只推进active的弹道; 其余悬空
 				_step_pending_shots(dt)      # 内部gate: 只active的依次射击
@@ -4851,7 +4837,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 			if _dl_present_t >= DL_PRESENT_SEC: _dl_present_advance()
 		if not _over and not _edit_mode and _dl_state != "place" and not _dl_is_present():
 			_t += dt
-			_ts_update_trigger(dt)   # 沙漏: 第10秒触发时停蓄力 → 蓄力满释放
+			_timestop._ts_update_trigger(dt)   # 沙漏: 第10秒触发时停蓄力 → 蓄力满释放
 			for u in _units.duplicate():
 				if not u["alive"]:
 					continue
@@ -4869,13 +4855,13 @@ func _render_step(rd: float, frozen: bool, in_ts: bool) -> void:
 		pass   # 顿帧: 冻结演出(juice/立绘定格保持冲击姿势), 只下方震屏照常
 	elif in_ts:
 		_juice_decay(rd)                    # 内部gate: 只衰减active的juice(非active冲击姿势定格)
-		for u in _ts_active:                # 只推进active立绘帧动画(非active定格)
+		for u in _timestop._ts_active:                # 只推进active立绘帧动画(非active定格)
 			if u.get("alive", false):
 				if u.get("is_big_bear", false):
 					_tick_bear_anim(u, rd)
 				else:
 					_advance_anim(u, rd)
-		_ts_tick_visual(rd)                 # 时停视觉维持(钟表脉动/暗角等)
+		_timestop._ts_tick_visual(rd)                 # 时停视觉维持(钟表脉动/暗角等)
 	else:
 		_juice_decay(rd)        # squash/闪白/挥击 等计时衰减
 		for u in _units:           # 立绘帧动画推进 (idle 循环 / 动作一次)
@@ -4943,81 +4929,6 @@ const _TS_TIMER_FIELDS := [
 	"volcano_until",
 ]
 
-func _ts_advance_unit_timers(u: Dictionary, delta: float) -> void:
-	# 时停期间全局 _t 冻结, 但 active 携带者仍在行动 —— 它身上所有"时间戳型"状态
-	# (眩晕/嘲讽/减速/护盾/各种buff的到期时刻) 都是相对 _t 记的, _t 不走就永远不到期。
-	# 用户2026-07-19: "如果在时间暂停的时候自己眩晕了, 为什么会被一直眩晕?" —— 就是这个原因。
-	# 修法: 只为该单位把这些到期时刻按真实 delta 前移, 等价于单独为它推进时间。
-	for f in _TS_TIMER_FIELDS:
-		var v: float = float(u.get(f, 0.0))
-		if v > _t:
-			u[f] = maxf(_t, v - delta)
-	for b in u.get("buffs", []):
-		if b is Dictionary and float(b.get("until", 0.0)) > _t:
-			b["until"] = maxf(_t, float(b["until"]) - delta)
-	for d in u.get("dots", []):
-		if d is Dictionary and float(d.get("until", 0.0)) > _t:
-			d["until"] = maxf(_t, float(d["until"]) - delta)
-
-func _unit_hourglass_star(u: Dictionary) -> int:   # 该单位所装沙漏最高星(0=无)
-	var best := 0
-	for e in u.get("equips", []):
-		if str(e.get("id", "")) == "p2eq_059":
-			best = maxi(best, int(e.get("star", 1)))
-	return best
-
-func _ts_update_trigger(delta: float) -> void:   # (仅正常态调)第10秒触发蓄力 → 蓄力满释放
-	if _ts_charging:
-		_ts_charge_t -= delta
-		if _ts_charge_t <= 0.0:
-			_ts_charging = false
-			_ts_fire()
-		return
-	if _ts_fired or not _ts_active.is_empty() or _t < 10.0:
-		return
-	var maxstar := 0
-	for u in _units:
-		if u.get("alive", false):
-			maxstar = maxi(maxstar, _unit_hourglass_star(u))
-	if maxstar <= 0:
-		return
-	var casters: Array = []
-	for u in _units:
-		if u.get("alive", false) and _unit_hourglass_star(u) == maxstar:
-			casters.append(u)   # 最高星沙漏者(敌我皆算, 低星作废)
-	if casters.is_empty():
-		return
-	_ts_fired = true
-	_ts_maxstar = maxstar
-	_ts_charging = true
-	_ts_charge_t = 1.0
-	_ts_charge_casters = casters
-	for c in casters:
-		_ts_charge_vfx(c)
-
-func _ts_fire() -> void:
-	var casters: Array = _ts_charge_casters.filter(func(x): return x is Dictionary and x.get("alive", false))
-	_ts_charge_casters = []
-	if casters.is_empty():
-		return
-	_ts_active = casters
-	_ts_remaining = [5.0, 10.0, 30.0][clampi(_ts_maxstar, 1, 3) - 1]   # 用户2026-07-19: 4→5秒
-	for _c in casters:   # 用户2026-07-19: 时停期间+100%龟能充能速度, 且开始瞬间立即+15龟能
-		_c["_ts_echarge"] = 2.0
-		if _has_energy_system(_c):
-			_eq_grant_energy(_c, 15.0)
-			_float_text(_c["pos"] + Vector2(0, -62), "+15龟能", Color("#8fd4ff"))
-	_ts_begin_freeze()
-	_ts_visual_start()
-
-func _end_timestop() -> void:
-	for _c in _ts_active:
-		if _c is Dictionary: _c.erase("_ts_echarge")   # 时停结束: 撤掉+100%充能速度
-	_ts_resume_freeze()
-	_ts_visual_end()
-	_ts_active = []
-	_ts_remaining = 0.0
-
 # VFX tween 注册(时停暂停非active产生的用). 见 create_tween→_reg_tween 替换.
 func _reg_tween() -> Tween:
 	var t := create_tween()
@@ -5026,250 +4937,6 @@ func _reg_tween() -> Tween:
 		_sim_tweens = _sim_tweens.filter(func(x): return x != null and x.is_valid())
 	return t
 
-func _ts_begin_freeze() -> void:   # 暂停时停开始时在跑的所有VFX tween + 粒子(active之后新建的不在此列→照跑)
-	_ts_frozen_tweens = []
-	for t in _sim_tweens:
-		if t != null and t.is_valid() and t.is_running():
-			t.pause()
-			_ts_frozen_tweens.append(t)
-	_ts_frozen_particles = []
-	_ts_freeze_particles_in(_world)
-
-func _ts_freeze_particles_in(n: Node) -> void:
-	for c in n.get_children():
-		if c is GPUParticles3D and c.speed_scale > 0.0:
-			c.set_meta("_ts_spd", c.speed_scale)
-			c.speed_scale = 0.0
-			_ts_frozen_particles.append(c)
-		if c.get_child_count() > 0:
-			_ts_freeze_particles_in(c)
-
-func _ts_resume_freeze() -> void:
-	for t in _ts_frozen_tweens:
-		if t != null and t.is_valid():
-			t.play()
-	_ts_frozen_tweens = []
-	for p in _ts_frozen_particles:
-		if is_instance_valid(p):
-			p.speed_scale = float(p.get_meta("_ts_spd", 1.0))
-	_ts_frozen_particles = []
-
-func _ts_ensure_overlay() -> void:
-	if _ts_overlay != null and is_instance_valid(_ts_overlay):
-		return
-	var vp := get_viewport().get_visible_rect().size
-	# --- 灰世界层(layer5, 在UI层10之下 → 只灰3D世界, 数字/血条保彩上浮) ---
-	_ts_overlay = CanvasLayer.new()
-	_ts_overlay.layer = 5
-	add_child(_ts_overlay)
-	var rect := ColorRect.new()
-	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
-	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var sh := Shader.new()   # 压暗褪色从center按radius扩散→昏暗冷灰; 但携带者(casters)周围留彩色泡(时之主保持彩色)
-	# ★2026-07-11 黑屏排查 A1: hint_screen_texture(读屏幕纹理) 在 gl_compatibility 移动端会导致【整屏黑】。
-	#   → 移动端用【不读屏】的等效 shader(半透明冷灰覆盖+径向扩散+携带者彩色泡), 桌面保留原读屏版(带真灰度)。
-	#   两版 uniform 完全相同(amount/radius/aspect/casters/caster_n) → _ts_tick_visual 的 set 逻辑不用改。
-	if _is_mobile():
-		sh.code = "shader_type canvas_item;\nuniform float amount : hint_range(0.0,1.0) = 0.0;\nuniform vec2 center = vec2(0.5,0.5);\nuniform float radius = 0.0;\nuniform float aspect = 1.778;\nuniform vec2 casters[4];\nuniform int caster_n = 0;\nuniform float caster_r = 0.115;\nvoid fragment(){\n\tvec2 d = SCREEN_UV - center; d.x *= aspect;\n\tfloat mask = 1.0 - smoothstep(radius-0.12, radius, length(d));\n\tfloat a = amount * mask;\n\tfloat keep = 0.0;\n\tfor(int i=0;i<4;i++){\n\t\tif(i>=caster_n){break;}\n\t\tvec2 cd = SCREEN_UV - casters[i]; cd.x *= aspect;\n\t\tkeep = max(keep, 1.0 - smoothstep(caster_r*0.55, caster_r, length(cd)));\n\t}\n\ta *= (1.0 - keep);\n\tCOLOR = vec4(0.04, 0.04, 0.08, a * 0.82);\n}"
-	else:
-		sh.code = "shader_type canvas_item;\nuniform sampler2D screen_tex : hint_screen_texture, filter_linear;\nuniform float amount : hint_range(0.0,1.0) = 0.0;\nuniform vec2 center = vec2(0.5,0.5);\nuniform float radius = 0.0;\nuniform float aspect = 1.778;\nuniform vec2 casters[4];\nuniform int caster_n = 0;\nuniform float caster_r = 0.115;\nvoid fragment(){\n\tvec3 c = texture(screen_tex, SCREEN_UV).rgb;\n\tvec2 d = SCREEN_UV - center; d.x *= aspect;\n\tfloat mask = 1.0 - smoothstep(radius-0.12, radius, length(d));\n\tfloat a = amount * mask;\n\tfloat keep = 0.0;\n\tfor(int i=0;i<4;i++){\n\t\tif(i>=caster_n){break;}\n\t\tvec2 cd = SCREEN_UV - casters[i]; cd.x *= aspect;\n\t\tkeep = max(keep, 1.0 - smoothstep(caster_r*0.55, caster_r, length(cd)));\n\t}\n\ta *= (1.0 - keep);\n\tfloat g = dot(c, vec3(0.299,0.587,0.114));\n\tvec3 dim = vec3(g*0.56, g*0.56, g*0.64);\n\tCOLOR = vec4(mix(c, dim, a), 1.0);\n}"
-	var mat := ShaderMaterial.new()
-	mat.shader = sh
-	mat.set_shader_parameter("amount", 0.0)
-	mat.set_shader_parameter("radius", 0.0)
-	mat.set_shader_parameter("aspect", vp.x / maxf(1.0, vp.y))
-	mat.set_shader_parameter("casters", PackedVector2Array())
-	mat.set_shader_parameter("caster_n", 0)
-	rect.material = mat
-	_ts_overlay.add_child(rect)
-	_ts_rect = rect
-	# --- 反色闪层(layer60, 在UI层之上 → 反色含全屏UI) ---
-	_ts_flash_overlay = CanvasLayer.new()
-	_ts_flash_overlay.layer = 60
-	add_child(_ts_flash_overlay)
-	var frect := ColorRect.new()
-	frect.set_anchors_preset(Control.PRESET_FULL_RECT)
-	frect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var fsh := Shader.new()
-	# ★A1: 移动端不读屏 → 反色改成白闪(uniform invert 不变, _ts 逻辑不用改); 桌面保留真反色
-	if _is_mobile():
-		fsh.code = "shader_type canvas_item;\nuniform float invert : hint_range(0.0,1.0) = 0.0;\nvoid fragment(){\n\tCOLOR = vec4(1.0, 1.0, 1.0, invert * 0.6);\n}"
-	else:
-		fsh.code = "shader_type canvas_item;\nuniform sampler2D screen_tex : hint_screen_texture, filter_linear;\nuniform float invert : hint_range(0.0,1.0) = 0.0;\nvoid fragment(){\n\tvec3 c = texture(screen_tex, SCREEN_UV).rgb;\n\tCOLOR = vec4(mix(c, vec3(1.0)-c, invert), 1.0);\n}"
-	var fmat := ShaderMaterial.new()
-	fmat.shader = fsh
-	fmat.set_shader_parameter("invert", 0.0)
-	frect.material = fmat
-	_ts_flash_overlay.add_child(frect)
-	_ts_flash_rect = frect
-
-func _ts_casters_screen_uv() -> Vector2:   # active携带者质心的屏幕UV(扩散中心)
-	if _cam == null or _ts_active.is_empty():
-		return Vector2(0.5, 0.5)
-	var acc := Vector2.ZERO; var n := 0
-	for c in _ts_active:
-		var head: Vector3 = _world_pos(c["pos"], 1.0)
-		if not _cam.is_position_behind(head):
-			acc += _cam.unproject_position(head); n += 1
-	if n == 0:
-		return Vector2(0.5, 0.5)
-	var vp := get_viewport().get_visible_rect().size
-	return (acc / float(n)) / Vector2(maxf(1.0, vp.x), maxf(1.0, vp.y))
-
-# 释放: ①反色闪 ②压暗褪色从携带者扩散(昏暗冷灰) ③钟+携带者金辉光 (忠实DIO "時よ止まれ")
-func _ts_visual_start() -> void:
-	_ts_ensure_overlay()
-	var mat: ShaderMaterial = _ts_rect.material
-	var fmat: ShaderMaterial = _ts_flash_rect.material
-	mat.set_shader_parameter("center", _ts_casters_screen_uv())
-	mat.set_shader_parameter("radius", 0.0)
-	mat.set_shader_parameter("amount", 0.0)
-	fmat.set_shader_parameter("invert", 0.0)
-	var fl := create_tween()   # ①反色闪(负片一下, 含全屏UI)
-	fl.tween_method(func(v: float): fmat.set_shader_parameter("invert", v), 0.0, 0.92, 0.05)
-	fl.tween_method(func(v: float): fmat.set_shader_parameter("invert", v), 0.92, 0.0, 0.13)
-	var sp := create_tween(); sp.set_parallel(true)   # ②压暗褪色从携带者铺开
-	sp.tween_method(func(v: float): mat.set_shader_parameter("radius", v), 0.0, 2.1, 0.5).set_ease(Tween.EASE_OUT)
-	sp.tween_method(func(v: float): mat.set_shader_parameter("amount", v), 0.0, 1.0, 0.5)
-	for c in _ts_active:
-		_ts_shock_ring(c["pos"])       # 中心能量涟漪波
-		_ts_caster_glow(c)             # ③携带者"时之主"金辉光
-	_ts_spawn_clock()                  # 停摆钟浮现
-
-func _ts_visual_end() -> void:   # 解除: 反色再闪 + 回色(时间恢复流动)
-	_ts_clear_visual_nodes()
-	if _ts_rect == null or not is_instance_valid(_ts_rect):
-		return
-	var mat: ShaderMaterial = _ts_rect.material
-	var fmat: ShaderMaterial = _ts_flash_rect.material
-	var fl := create_tween()
-	fl.tween_method(func(v: float): fmat.set_shader_parameter("invert", v), 0.0, 0.7, 0.04)
-	fl.tween_method(func(v: float): fmat.set_shader_parameter("invert", v), 0.7, 0.0, 0.1)
-	var tw := create_tween()
-	tw.tween_method(func(v: float): mat.set_shader_parameter("amount", v), 1.0, 0.0, 0.35)
-
-func _ts_tick_visual(_delta: float) -> void:   # 每帧喂携带者屏幕位置给灰shader → 彩色泡跟随移动的时之主
-	if _ts_rect == null or not is_instance_valid(_ts_rect) or _cam == null:
-		return
-	var vp := get_viewport().get_visible_rect().size
-	var arr := PackedVector2Array()
-	for c in _ts_active:
-		if arr.size() >= 4:
-			break
-		var head: Vector3 = _world_pos(c["pos"], 1.0)
-		if not _cam.is_position_behind(head):
-			var sp := _cam.unproject_position(head)
-			arr.append(Vector2(sp.x / maxf(1.0, vp.x), sp.y / maxf(1.0, vp.y)))
-	var mat: ShaderMaterial = _ts_rect.material
-	mat.set_shader_parameter("casters", arr)
-	mat.set_shader_parameter("caster_n", arr.size())
-
-# 中心能量涟漪: 一圈青白波从pos扩散(时停释放冲击波)
-func _ts_shock_ring(pos2d: Vector2) -> void:
-	var r := Sprite3D.new()
-	var tex := VfxTex._make_fire_glow_tex()
-	r.texture = tex
-	r.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	r.shaded = false; r.transparent = true
-	r.modulate = Color(0.7, 0.92, 1.0, 0.0)
-	r.pixel_size = (60.0 * WS) / float(maxi(1, tex.get_width()))
-	r.position = _world_pos(pos2d, 1.0)
-	_world.add_child(r)
-	var tw := create_tween(); tw.set_parallel(true)   # 视觉波不冻结
-	tw.tween_property(r, "modulate:a", 0.85, 0.12)
-	tw.tween_property(r, "pixel_size", (900.0 * WS) / float(maxi(1, tex.get_width())), 0.55).set_ease(Tween.EASE_OUT)
-	tw.chain().tween_property(r, "modulate:a", 0.0, 0.2)
-	tw.chain().tween_callback(r.queue_free)
-
-# 携带者金辉光: 身后金色发光球, 跟随+脉动 (时之主)
-func _ts_caster_glow(c: Dictionary) -> void:
-	var g := Sprite3D.new()
-	var tex := VfxTex._make_fire_glow_tex()
-	g.texture = tex
-	g.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	g.shaded = false; g.transparent = true
-	g.render_priority = -1
-	g.modulate = Color(1.0, 0.82, 0.32, 0.0)
-	g.pixel_size = (150.0 * WS) / float(maxi(1, tex.get_width()))
-	g.position = _world_pos(c["pos"], 1.0)
-	_world.add_child(g)
-	_follow_vfx.append({"spr": g, "unit": c, "h": 1.0})
-	_ts_glow_sprs.append(g)
-	var tw := create_tween().bind_node(g).set_loops()   # 脉动(不冻结→时之主持续发光)  # ★bind_node: 目标被 queue_free 后 tween 随之销毁; 否则循环 tween 的 tweener 会瞬间完成 → 单圈时长=0 → 刷 ERROR: Infinite loop detected
-	tw.tween_property(g, "modulate:a", 0.7, 0.6).from(0.35)
-	tw.tween_property(g, "modulate:a", 0.35, 0.6)
-
-# 停摆钟: 叠加层顶(不被褪色), 半透明浮于屏幕中心, 缓慢脉动
-func _ts_spawn_clock() -> void:
-	if _ts_overlay == null or not is_instance_valid(_ts_overlay):
-		return
-	var clk := TextureRect.new()
-	clk.texture = load("res://assets/sprites/vfx/ts-clock.png")
-	clk.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	clk.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	clk.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var vp := get_viewport().get_visible_rect().size
-	var sz := 230.0
-	clk.size = Vector2(sz, sz)
-	clk.position = Vector2(vp.x * 0.5 - sz * 0.5, vp.y * 0.05)   # 屏幕中心偏上
-	clk.pivot_offset = Vector2(sz * 0.5, sz * 0.5)
-	clk.modulate = Color(1, 1, 1, 0.0)
-	_ts_overlay.add_child(clk)
-	_ts_clock = clk
-	var tw := create_tween().bind_node(clk).set_loops()  # ★bind_node: 目标被 queue_free 后 tween 随之销毁; 否则循环 tween 的 tweener 会瞬间完成 → 单圈时长=0 → 刷 ERROR: Infinite loop detected
-	tw.tween_property(clk, "modulate:a", 0.30, 0.9).from(0.10)
-	tw.tween_property(clk, "modulate:a", 0.15, 0.9)
-
-func _ts_clear_visual_nodes() -> void:
-	for g in _ts_glow_sprs:
-		if is_instance_valid(g):
-			g.queue_free()
-	_ts_glow_sprs = []
-	if _ts_clock != null and is_instance_valid(_ts_clock):
-		var clk := _ts_clock
-		var tw := create_tween()
-		tw.tween_property(clk, "modulate:a", 0.0, 0.25)
-		tw.tween_callback(clk.queue_free)
-	_ts_clock = null
-
-# 蓄力(1s): 携带者头顶沙漏虚影浮现+微升 + 金沙粒从四周螺旋汇入 + 脚下金环
-func _ts_charge_vfx(c: Dictionary) -> void:
-	_skill_ring(c["pos"], Color(1.0, 0.85, 0.35, 0.85), 100.0)
-	# 沙漏虚影
-	var hg := Sprite3D.new()
-	hg.texture = load("res://assets/sprites/vfx/ts-hourglass.png")
-	hg.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	hg.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	hg.shaded = false; hg.transparent = true
-	hg.modulate = Color(1.0, 0.92, 0.6, 0.0)
-	hg.pixel_size = (54.0 * WS) / float(maxi(1, hg.texture.get_height()))
-	hg.position = _world_pos(c["pos"], 2.4)
-	_world.add_child(hg)
-	var tw := create_tween(); tw.set_parallel(true)
-	tw.tween_property(hg, "modulate:a", 0.95, 0.4)
-	tw.tween_property(hg, "position", _world_pos(c["pos"], 3.0), 1.0).set_ease(Tween.EASE_OUT)
-	tw.chain().tween_property(hg, "modulate:a", 0.0, 0.2)
-	tw.chain().tween_callback(hg.queue_free)
-	# 金沙粒螺旋汇入(圆粒: 用_make_fire_glow_tex真圆, 非_make_glow_texture方角GradientTexture2D)
-	var ptex := VfxTex._make_fire_glow_tex()
-	for k in range(10):
-		var sp := Sprite3D.new()
-		sp.texture = ptex
-		sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
-		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		sp.shaded = false; sp.transparent = true
-		sp.modulate = Color(1.0, 0.82, 0.32, 0.9)
-		sp.pixel_size = 0.42 / float(maxi(1, ptex.get_width()))
-		var ang := TAU * float(k) / 10.0
-		var off := Vector2(cos(ang), sin(ang)) * 130.0
-		sp.position = _world_pos(c["pos"] + off, 1.4)
-		_world.add_child(sp)
-		var stw := create_tween(); stw.set_parallel(true)
-		stw.tween_property(sp, "position", _world_pos(c["pos"], 1.6), 0.9).set_ease(Tween.EASE_IN)
-		stw.tween_property(sp, "modulate:a", 0.0, 0.9)
-		stw.chain().tween_callback(sp.queue_free)
-
-# 跟随单位的特效: 每帧把 sprite 贴到目标最新世界坐标(含击飞抬升). sprite 被 queue_free 后自动从列表剔除.
 func _tick_follow_vfx() -> void:
 	for i in range(_follow_vfx.size() - 1, -1, -1):
 		var f: Dictionary = _follow_vfx[i]
@@ -9386,13 +9053,13 @@ func _ghost_curse_wisp(at2d: Vector2) -> void:
 
 
 func _step_projectiles(delta: float) -> void:
-	var ts_on: bool = not _ts_active.is_empty()
+	var ts_on: bool = not _timestop._ts_active.is_empty()
 	var keep: Array = []
 	for pr in _projectiles:
 		var node: Sprite3D = pr["node"]
 		if not is_instance_valid(node):
 			continue
-		if ts_on and not _arr_has_unit(_ts_active, pr.get("src")):   # 同7595: Array.has对单位字典是深比较, 改引用比较
+		if ts_on and not _arr_has_unit(_timestop._ts_active, pr.get("src")):   # 同7595: Array.has对单位字典是深比较, 改引用比较
 			keep.append(pr); continue   # 时停: 非active携带者的弹道悬空定格(不推进)
 		pr["t"] += delta
 		if pr.get("homing_arc", false):   # 猎人狩猎弹幕: 慢速抛物线追踪箭(自处理移动/命中/朝向)
@@ -9505,10 +9172,10 @@ func _step_projectiles(delta: float) -> void:
 
 # 依次射出的子弹: 每帧减 delay, 到点 call 回调(回调内部再选目标+射线+伤害, 死亡守卫在回调里判)
 func _step_pending_shots(delta: float) -> void:
-	var ts_on: bool = not _ts_active.is_empty()
+	var ts_on: bool = not _timestop._ts_active.is_empty()
 	for i in range(_pending_shots.size() - 1, -1, -1):
 		var s: Dictionary = _pending_shots[i]
-		if ts_on and not _arr_has_unit(_ts_active, s.get("src")):   # is_same引用比较(Array.has对字典是深比较=053卡死同族; 上轮扫雷因它不是裸标识符而漏网)
+		if ts_on and not _arr_has_unit(_timestop._ts_active, s.get("src")):   # is_same引用比较(Array.has对字典是深比较=053卡死同族; 上轮扫雷因它不是裸标识符而漏网)
 			continue   # 时停: 非active携带者的依次射击冻结
 		s["delay"] = float(s["delay"]) - delta
 		if float(s["delay"]) <= 0.0:
@@ -15129,7 +14796,7 @@ func _minion_rocket_fly(u: Dictionary, tref: Dictionary, from: Vector2) -> void:
 	while flew < 2400.0 and is_instance_valid(miss) and is_inside_tree():
 		await get_tree().process_frame
 		if _over: break
-		if _hitstop > 0.0 or (not _ts_active.is_empty() and not _arr_has_unit(_ts_active, u)): continue   # 时停: 只冻非active单位; 携带沙漏的自己要照常落地(否则_slam永不解锁=卡空中·用户2026-07-19)   # 顿帧/时停期悬停
+		if _hitstop > 0.0 or (not _timestop._ts_active.is_empty() and not _arr_has_unit(_timestop._ts_active, u)): continue   # 时停: 只冻非active单位; 携带沙漏的自己要照常落地(否则_slam永不解锁=卡空中·用户2026-07-19)   # 顿帧/时停期悬停
 		var dt: float = get_process_delta_time()
 		var target_pos: Vector2 = (tref["pos"] as Vector2) if tref.get("alive", false) else pos
 		var to: Vector2 = target_pos - pos
@@ -15317,7 +14984,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 	while d < 0.3 and u.get("alive", false):             # 0.3s从空中俯冲扑到目标身上(边冲边下落·减速40%·用户2026-07-18)
 		await get_tree().process_frame
 		if _over: break
-		if _hitstop > 0.0 or (not _ts_active.is_empty() and not _arr_has_unit(_ts_active, u)): continue   # 时停: 只冻非active单位; 携带沙漏的自己要照常落地(否则_slam永不解锁=卡空中·用户2026-07-19)
+		if _hitstop > 0.0 or (not _timestop._ts_active.is_empty() and not _arr_has_unit(_timestop._ts_active, u)): continue   # 时停: 只冻非active单位; 携带沙漏的自己要照常落地(否则_slam永不解锁=卡空中·用户2026-07-19)
 		d += get_process_delta_time()
 		var kk: float = clampf(d / 0.3, 0.0, 1.0)
 		if u.get("alive", false):
@@ -15341,7 +15008,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 	while sd < slide_dur and u.get("alive", false) and tref.get("alive", false):
 		await get_tree().process_frame
 		if _over: break
-		if _hitstop > 0.0 or (not _ts_active.is_empty() and not _arr_has_unit(_ts_active, u)): continue   # 时停: 只冻非active单位; 携带沙漏的自己要照常落地(否则_slam永不解锁=卡空中·用户2026-07-19)
+		if _hitstop > 0.0 or (not _timestop._ts_active.is_empty() and not _arr_has_unit(_timestop._ts_active, u)): continue   # 时停: 只冻非active单位; 携带沙漏的自己要照常落地(否则_slam永不解锁=卡空中·用户2026-07-19)
 		var dt := get_process_delta_time()
 		sd += dt
 		var _sq: float = clampf(sd / slide_dur, 0.0, 1.0)
@@ -20402,11 +20069,11 @@ func _update_world_transforms() -> void:
 
 # 每帧衰减各单位 juice 计时 (hit-stop 冻结期不调 → 冲击姿势保持)
 func _juice_decay(delta: float) -> void:
-	var ts_on: bool = not _ts_active.is_empty()
+	var ts_on: bool = not _timestop._ts_active.is_empty()
 	for u in _units:
 		if not u["alive"]:
 			continue
-		if ts_on and not _arr_has_unit(_ts_active, u):
+		if ts_on and not _arr_has_unit(_timestop._ts_active, u):
 			continue   # 时停: 非active的juice计时不衰 → 冲击/挥击姿势定格
 		if u.get("flash_t", 0.0) > 0.0:  u["flash_t"]  = maxf(0.0, u["flash_t"]  - delta)
 		if u.get("hitsq_t", 0.0) > 0.0:  u["hitsq_t"]  = maxf(0.0, u["hitsq_t"]  - delta)
