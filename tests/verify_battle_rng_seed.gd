@@ -20,6 +20,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_ok("★TURTLE_SEED 设时 _battle_rng 用该固定种子(可复现)", int(s._battle_rng.seed) == 77777, "seed=%d" % int(s._battle_rng.seed))
+	_ok("★TURTLE_SEED 设时 _deterministic=true(Phase2b: _process 走固定步长 SIM_DT)", s._deterministic == true)
 	# _juice_rng(演出)必须【不】被种子化 —— 否则回放画面卡死(Cliffski)。它走 randomize, seed≠77777
 	_ok("★_juice_rng(演出)不被种子化(与 sim rng 分离)", int(s._juice_rng.seed) != 77777, "juice seed=%d" % int(s._juice_rng.seed))
 	s.queue_free()

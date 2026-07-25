@@ -681,6 +681,8 @@ static var _stress_n := 0                 # 已跑对局数(跨reload累计)
 var _juice_rng := RandomNumberGenerator.new()   # 震屏/粒子专用 rng (演出·永不种子化, 否则回放看着卡)
 var _battle_rng := RandomNumberGenerator.new()  # ★sim 专用受控 PRNG (Phase1·大厂做法): 决定战斗结果的随机走它。默认 randomize()=手感与线上一致; TURTLE_SEED 设时确定→可复现/回放
 var _cast_tok: int = 0                          # 单调计数·多段技命中去重标记(替 randi() token: 确定性+无碰撞·§3.2 不拿字典做key)
+const SIM_DT := 1.0 / 60.0                       # 确定性模式的固定 sim 步长(≈60fps手感·headless回放用)
+var _deterministic := false                      # ★Phase2b: TURTLE_SEED 设时=true → _process 用固定步长 SIM_DT(同种子同帧序→可复现回放/验证)。交互游玩(无种子)仍走可变真实delta·手感不变·零风险
 
 # --- §GROUNDING: 立绘底部软渐隐 shader (一份 Shader 共享, 每龟一份 ShaderMaterial 因 texture 不同) ---
 var _ground_fade_shader: Shader = null
@@ -1103,6 +1105,7 @@ func _build_camera() -> void:
 	var _bseed := OS.get_environment("TURTLE_SEED")
 	if _bseed != "" and _bseed.is_valid_int():
 		_battle_rng.seed = int(_bseed)
+		_deterministic = true   # 固定 sim 步长 → 同种子+同帧序 = 可复现(headless 回放/验证/CI)
 	else:
 		_battle_rng.randomize()
 
@@ -4764,7 +4767,9 @@ func _make_status_bar(side: String, level: int = 0) -> Dictionary:
 #  主循环 (移动 / 索敌 / 普攻 / 龟能 / 击飞物理 — 复用 2D 口径)
 # ============================================================================
 func _process(delta: float) -> void:
-	delta = minf(delta, 0.1)   # ★钳制delta(用户2026-07-18防卡死): 卡顿/切后台/加载导致的delta尖峰会让每帧DoT/VFX累加while循环炸开(一帧生成成百上千节点→下帧更慢=死亡螺旋). 上限0.1s
+	# ★确定性模式(TURTLE_SEED 设): 用固定步长 SIM_DT → 同种子+同帧序=可复现回放/验证(不受帧率抖动影响)。
+	#   交互游玩(无种子): 钳制真实delta防死亡螺旋(2026-07-18)—— 手感/行为与原来完全一致·零风险。
+	delta = SIM_DT if _deterministic else minf(delta, 0.1)
 	_adf_ct = 0   # 每帧重置伤害调用计数(_apply_damage_from 帧内爆炸=死亡链无限级联→自身截断防卡死)
 	_sd_tick()   # §SUDDEN 战场决胜(40s起治疗-50% + 每5s +25%增伤)
 	_trainer_input_tick(delta)   # 训龟大师: PC 键盘 / 移动端摇杆(用户2026-07-22)
