@@ -1,6 +1,6 @@
 extends SceneTree
 ## 像素 diff 工具 (dev) — 客观对比 PoC 截图 vs Godot 截图, 高亮超阈值差异区。
-## 用法: DIFF_A=poc.png DIFF_B=godot.png DIFF_OUT=diff.png DIFF_T=0.12 godot --headless -s diff_images.gd
+## 用法: DIFF_A=poc.png DIFF_B=godot.png DIFF_OUT=diff.png DIFF_T=0.12 godot --headless -s tools/diff_images.gd
 ##   DIFF_A=PoC 基准, DIFF_B=Godot, DIFF_OUT=差异图(红=差异, 灰=Godot底), DIFF_T=色距阈值 0..1 (默认0.12)。
 ## 输出: 差异图 PNG + 控制台打印差异像素% (整体 + 分九宫格, 便于定位是哪块差)。
 
