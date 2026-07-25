@@ -635,6 +635,7 @@ var _pending_shots: Array = []            # 依次射出的子弹队列 [{delay,
 # ═══ 沙漏059 JoJo时停 ═══ 冻结全局_t + 只tick active携带者; 其他单位/弹道/依次射击/tween/粒子 全定格
 var _timestop := TimestopSystem.new(self)   # 沙漏时停系统(2026-07-25 从本文件抽出)
 var _equip_sys := EquipSystem.new(self)   # 装备效果系统(2026-07-25 抽出·与技能分开)
+var _review_console := ReviewConsole.new(self)   # 评审台控制台(REVIEW·dev-only: 面板+切龟/切技/切装/星级按钮)(2026-07-25 抽出)
 var _info_sys := InfoPanel.new(self)   # 点龟详情面板 + 左右队头像框栏(等级/属性/状态/技能/装备/宝箱)(2026-07-25 抽出)
 var _dl_sys := DualLaneFlow.new(self)   # 双路对战流程(呈现总览/放置/逐路推进/破蛋决胜/HUD)(2026-07-25 抽出)
 var _debug := BattleDebugArena.new(self)   # 调试场(DEBUG_EDIT: 摆兵/配装/拖拽/满龟能/大师技·dev-only)(2026-07-25 抽出)
@@ -804,7 +805,7 @@ func _ready() -> void:
 		if OS.has_environment("SELFSHOT"): _self_screenshot()
 		return
 	_build_ui_layer()
-	_build_debug_panel()   # 🛠 调试面板(评审demo·技能/装备/星级·用户2026-07-11)
+	_review_console._build_debug_panel()   # 🛠 调试面板(评审demo·技能/装备/星级·用户2026-07-11)
 	if OS.has_environment("STRESS"):   # 卡死猎手: 开局前轮换左队(覆盖全28龟)
 		_stress_pre()
 	_spawn_teams()
@@ -11563,7 +11564,7 @@ func _inject_equipment() -> void:
 		# 调试场加装备(调试面板"装备开" 或 REVIEW_EQUIP非空·用户2026-07-11 #2): 给受审龟装 → 看装备显示(左右头像框)+效果
 		var _eqs: Array = REVIEW_EQUIP
 		if _eqs.is_empty():
-			var _ids := _dbg_equip_ids()
+			var _ids := _review_console._dbg_equip_ids()
 			_eqs = [_ids[_dbg_equip_idx]] if (_dbg_equip_idx >= 0 and _dbg_equip_idx < _ids.size()) else []
 		var _star: int = _dbg_star if _dbg_star > 0 else REVIEW_EQUIP_STAR
 		for _ru in _units:
@@ -12572,100 +12573,6 @@ func _fmt_num(v: float) -> String:
 		s = s.substr(0, s.length() - 1)
 	return s
 
-# 🛠 调试面板(评审demo顶部一排按钮·技能0-3/装备开关/星级1-3·点即改静态变量+重开·用户2026-07-11)
-func _build_debug_panel() -> void:
-	if not _review_demo() or _is_dual_lane_mode() or _ui_layer == null or DEBUG_EDIT:
-		return
-	var bar := HBoxContainer.new()
-	bar.position = Vector2(12, 44)
-	bar.add_theme_constant_override("separation", 3)
-	_ui_layer.add_child(bar)
-	var lbl := Label.new()
-	lbl.text = "🛠 "
-	lbl.add_theme_font_size_override("font_size", 18)
-	bar.add_child(lbl)
-	var tprev := _dbg_btn("◀龟")
-	tprev.pressed.connect(_dbg_turtle_cycle.bind(-1))
-	bar.add_child(tprev)
-	var tname := str(_data_by_id.get(_review_turtle(), {}).get("name", _review_turtle()))
-	var tlbl := _dbg_btn(tname)
-	tlbl.pressed.connect(_dbg_turtle_cycle.bind(1))
-	bar.add_child(tlbl)
-	var tnext := _dbg_btn("▶")
-	tnext.pressed.connect(_dbg_turtle_cycle.bind(1))
-	bar.add_child(tnext)
-	var cur_sk: int = _review_skill_idx()
-	for si in range(4):
-		var b := _dbg_btn("技%d%s" % [si, ("•" if si == cur_sk else "")])
-		b.pressed.connect(_dbg_set_skill.bind(si))
-		bar.add_child(b)
-	var _eqnm := "关"
-	if _dbg_equip_idx >= 0:
-		var _eids := _dbg_equip_ids()
-		if _dbg_equip_idx < _eids.size():
-			_eqnm = str(DataRegistry.phase2_equipment_by_id.get(_eids[_dbg_equip_idx], {}).get("name", _eids[_dbg_equip_idx]))
-	var eqprev := _dbg_btn("◀装")
-	eqprev.pressed.connect(_dbg_equip_cycle.bind(-1))
-	bar.add_child(eqprev)
-	var eqlbl := _dbg_btn(_eqnm)
-	eqlbl.pressed.connect(_dbg_equip_cycle.bind(1))
-	bar.add_child(eqlbl)
-	var eqnext := _dbg_btn("▶")
-	eqnext.pressed.connect(_dbg_equip_cycle.bind(1))
-	bar.add_child(eqnext)
-	var cur_star: int = _dbg_star if _dbg_star > 0 else REVIEW_EQUIP_STAR
-	for st in [1, 2, 3]:
-		var b := _dbg_btn("★%d%s" % [st, ("•" if st == cur_star else "")])
-		b.pressed.connect(_dbg_set_star.bind(st))
-		bar.add_child(b)
-
-func _dbg_btn(t: String) -> Button:
-	var b := Button.new()
-	b.text = t
-	b.focus_mode = Control.FOCUS_NONE
-	b.add_theme_font_size_override("font_size", 15)
-	return b
-
-func _dbg_set_skill(si: int) -> void:
-	_dbg_skill = si
-	get_tree().reload_current_scene()
-
-func _dbg_turtle_ids() -> Array:
-	return STATS.keys()
-
-func _dbg_turtle_cycle(dir: int) -> void:
-	var ids := _dbg_turtle_ids()
-	var i := ids.find(_review_turtle())
-	if i < 0: i = 0
-	_dbg_turtle = str(ids[wrapi(i + dir, 0, ids.size())])
-	_dbg_skill = -99   # 换龟→重置技能覆盖(不同龟技能不同)
-	get_tree().reload_current_scene()
-
-func _dbg_equip_ids() -> Array:
-	var ids: Array = DataRegistry.phase2_equipment_by_id.keys()
-	ids.sort()
-	return ids
-
-func _dbg_equip_cycle(dir: int) -> void:
-	var n := _dbg_equip_ids().size()
-	_dbg_equip_idx = wrapi(_dbg_equip_idx + dir + 1, 0, n + 1) - 1   # [-1, n-1] 循环(-1=关)
-	get_tree().reload_current_scene()
-
-func _dbg_set_star(st: int) -> void:
-	_dbg_star = st
-	get_tree().reload_current_scene()
-
-
-# ============================================================================
-#  ⏸ 暂停期相机输入中继 (2026-07-22, 测试人员「点暂停键鼠标似乎也无法拖动」)
-# ============================================================================
-# 主场景 process_mode=INHERIT → 跟 root 的 PAUSABLE → get_tree().paused 时
-# can_process()=false, _unhandled_input 一次都不会被调用。整场改 ALWAYS 会让
-# _process 里的战斗 tick 在暂停中照跑(等于取消暂停), 所以只让这个空壳节点常驻,
-# 暂停期间把事件转给主场景的 _cam_handle_input。
-#
-# ★只在 paused 时转发: 未暂停时主场景自己收得到, 两边都转会让平移变 2 倍速
-#   (与 _touch_seen 那个模拟鼠标 2× 坑同源, 那次是 InventoryScene.gd:639 记过的)。
 class _CamInputRelay extends Node:
 	var host: Node = null
 

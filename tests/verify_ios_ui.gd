@@ -259,7 +259,7 @@ func _ready() -> void:
 		cs._debug._edit_open_equip_grid()
 		await get_tree().process_frame
 		await get_tree().process_frame
-		var eq_n: int = cs._dbg_equip_ids().size()
+		var eq_n: int = cs._review_console._dbg_equip_ids().size()
 		_ok("装备网格可开且有货(装备数=%d≥10)" % eq_n, eq_n >= 10)
 		var bad_e := _offscreen_buttons(cs, vp_real)
 		_ok("装备网格全在屏内", bad_e.is_empty(), "; ".join(bad_e.slice(0, 4)) if not bad_e.is_empty() else "")

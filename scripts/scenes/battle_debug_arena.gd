@@ -402,7 +402,7 @@ func _edit_open_equip_grid() -> void:
 		return
 	var nm = str(battle._data_by_id.get(battle._edit_sel_unit.get("id", ""), {}).get("name", ""))
 	var grid = _edit_make_popup("加装备到 %s · 点选(可连点多件)" % nm)
-	for id in battle._dbg_equip_ids():
+	for id in battle._review_console._dbg_equip_ids():
 		var iid = str(id)
 		var eq: Dictionary = DataRegistry.phase2_equipment_by_id.get(iid, {})
 		var enm = str(eq.get("name", iid))
