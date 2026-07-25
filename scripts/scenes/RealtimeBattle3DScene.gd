@@ -4429,7 +4429,7 @@ func _resolve_summon_sprite(spr_id: String) -> Dictionary:
 #  idle: frame = int(t*fps) % frames (循环). 动作: 播到末帧后回 idle (清 anim_action).
 # ----------------------------------------------------------------------------
 # 移动时播 run 走路动画(循环), 停下回 idle. 攻击/受击/死亡/冲刺手动动画期间不切.
-func _update_run_anim(u: Dictionary) -> void:
+func _update_run_anim(u: Dictionary, delta: float) -> void:
 	if not u.has("run_sd"):
 		var e = ACTION_RUN.get(_anim_key(u), null)   # ★同 _play_action: 三种小将共用 id, 要走动画键
 		u["run_sd"] = (_resolve_action(str(e[0]), float(e[1])) if e != null else {})
@@ -4441,13 +4441,13 @@ func _update_run_anim(u: Dictionary) -> void:
 	var moved: float = u["pos"].distance_to(u.get("_run_last_pos", u["pos"]))
 	u["_run_last_pos"] = u["pos"]
 	var is_run_now: bool = (u.get("anim_sd", {}) == rsd)
-	if moved > 0.8 and not is_run_now:
+	if moved > 48.0 * delta and not is_run_now:   # ★帧率无关(2026-07-25 用户在4070无上限帧率下抓到"走路动画没了"): 原 moved>0.8 是【每帧位移】阈值·假设60fps; 高帧率下每帧位移<0.8→永不触发。48px/s = 0.8px/(1/60帧) → 按速度判·任何帧率一致
 		_set_anim_sheet(u, rsd, "", true)
 		# ★走动走的是 is_idle=true 分支(直接套 idle_px/idle_offy), 同样绕不过归一问题:
 		#   idle_px 是按 80px 帧算的, 套到 96px 帧上 → 本体只有 1.17m 且悬空 0.43m。
 		if ANIM_NORM.has(_anim_key(u)):
 			_elite_fix_norm(u, rsd)
-	elif moved <= 0.8 and is_run_now:
+	elif moved <= 48.0 * delta and is_run_now:   # 回 idle 同阈值(帧率无关)
 		_set_anim_sheet(u, u.get("idle_sd", {}), "", true)   # 回 idle: 该分支会自己还原 idle_px/idle_offy
 
 func _advance_anim(u: Dictionary, delta: float) -> void:
@@ -4838,7 +4838,7 @@ func _process(delta: float) -> void:
 				if u.get("is_big_bear", false):
 					_tick_bear_anim(u, delta)   # 大熊: 状态机(走路/停顿/熊爪拍/砸地)
 				else:
-					_update_run_anim(u)
+					_update_run_anim(u, delta)
 					_advance_anim(u, delta)
 	_update_camera_shake(delta)    # 震屏始终推进 (含冻结期)
 	_update_world_transforms()
