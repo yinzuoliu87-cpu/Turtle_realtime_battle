@@ -23,7 +23,7 @@ func _ready() -> void:
 	e["maxHp"] = 1e9; e["hp"] = 1e9
 	sc._units.append(f); sc._units.append(e)
 	f["gold"] = 25.0
-	sc._sk_fortune_allin(f, e)
+	sc._fortune_sys._sk_fortune_allin(f, e)
 	_ok("梭哈: allin_used=true", f.get("allin_used", false) == true)
 	_ok("梭哈: 该技龟能消耗改80(变金盾)", is_equal_approx(float(f["energy_cost"].get("fortuneAllIn", 0.0)), 80.0), "cost=%d" % int(f["energy_cost"].get("fortuneAllIn", 0)))
 
@@ -35,7 +35,7 @@ func _ready() -> void:
 	# ── ③ 金盾: 护盾=金币数 · 不消耗金币 · 锁龟能标记 ──
 	f["gold"] = 20.0
 	f["shield"] = 0.0
-	sc._sk_fortune_goldshield(f)
+	sc._fortune_sys._sk_fortune_goldshield(f)
 	_ok("金盾: 护盾量=当前金币数(20)", is_equal_approx(float(f.get("shield", 0.0)), 20.0), "shield=%d" % int(f.get("shield", 0)))
 	_ok("金盾: 金币不消耗(仍20)", int(f["gold"]) == 20, "gold=%d" % int(f["gold"]))
 	_ok("金盾: gold_shield_until 设了(>当前t=10)", float(f.get("gold_shield_until", 0.0)) > sc._t)
@@ -53,7 +53,7 @@ func _ready() -> void:
 	# ── ⑤ 金盾无金币时不放(护盾不为0乱给) ──
 	var f2: Dictionary = sc._make_unit("fortune", "left", Vector2(300, 300))
 	f2["gold"] = 0.0; f2["shield"] = 0.0
-	sc._sk_fortune_goldshield(f2)
+	sc._fortune_sys._sk_fortune_goldshield(f2)
 	_ok("金盾: 0金币→不给护盾(不空放)", is_equal_approx(float(f2.get("shield", 0.0)), 0.0))
 
 	print("")

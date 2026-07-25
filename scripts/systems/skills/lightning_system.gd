@@ -87,3 +87,66 @@ func _lightning_arc(a2d: Vector2, b2d: Vector2, col: Color) -> void:   # 锯齿�
 
 # 伤害公式 (1:1 复用 2D battle._atk_dmg): base×scale ×暴击 ×(100/(100+resist-pierce))
 # 伤害核心: 暴击(封顶100%溢出转暴伤×1.5) → 有效护甲/魔抗(先%后flat,可负) → 减伤倍率(K=40,负防增伤) → 增伤/减伤
+
+func _sk_lightning_barrage(u: Dictionary) -> void:             # 闪电龟·雷暴 (用户2026-07-15纠错重做: 原风暴云低压施法者脸上像帽子=离谱→改敌方阵型上空高处的大风暴云下雷)
+	var es = battle._enemies_of(u)
+	var center: Vector2 = u["pos"]                 # 风暴云中心=敌方阵型质心(雷暴"随机轰击敌方"→云在敌上空非施法者头顶)
+	if not es.is_empty():
+		center = Vector2.ZERO
+		for e in es:
+			center += e["pos"]
+		center /= float(es.size())
+	var cloud_h = 4.5                             # 敌上空高处(原3.4太低压脸·5.4又顶出画面顶→4.5)
+	var cloud = Sprite3D.new()
+	var ctex = load("res://assets/sprites/skills/lightning-2.png")
+	if ctex != null:
+		cloud.texture = ctex
+		cloud.pixel_size = 5.2 / float(maxi(1, ctex.get_height()))   # 大风暴云(原3.4→5.2)
+	cloud.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	cloud.shaded = false
+	cloud.transparent = true
+	cloud.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	cloud.position = battle._world_pos(center, cloud_h)
+	cloud.modulate = Color(0.55, 0.66, 0.92, 0.0)  # 冷色压暗成阴沉风暴云(非亮图标)·淡入
+	battle._world.add_child(cloud)
+	var tin = battle._reg_tween()
+	tin.tween_property(cloud, "modulate:a", 0.96, 0.22)
+	var tw = battle._reg_tween()
+	for i in range(20):                            # 20道天降落雷(每0.075s·稍慢更可读)
+		tw.tween_callback(battle._barrage_bolt.bind(u, cloud_h))
+		tw.tween_interval(0.075)
+	tw.tween_callback(battle._barrage_cloud_fade.bind(cloud))
+
+func _sk_lightning_shield(u: Dictionary) -> void:              # 闪电龟·雷盾 (用户2026-07-07: 3ATK护盾5秒, 盾在时反击0.1A魔法叠电击=见_apply_damage_from; 2026-07-15补以雷电包裹自身VFX)
+	battle._grant_shield(u, u["atk"] * 3.0, 5.0)   # 雷盾5秒(与反击窗口thunder_shield_until同步·封板)
+	u["thunder_shield_until"] = battle._t + 5.0
+	battle._skill_ring(u["pos"], Color(0.45, 0.85, 1.0, 0.5), 50.0)
+	battle._aura_vfx("res://assets/sprites/skills/lightning-3.png", u, 58.0, Color(0.45, 0.85, 1.0, 0.5), 5.0)   # 脚下电爆光环随身5秒
+	var etex: Texture2D = load("res://assets/sprites/vfx/electric-zap.png")   # 以雷电包裹自身: 3道电弧环绕身体5秒
+	if etex != null:
+		var n = 3
+		for i in range(n):
+			var s = Sprite3D.new()
+			s.texture = etex
+			s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			s.shaded = false; s.transparent = true
+			s.modulate = Color(0.72, 0.92, 1.0, 0.92)
+			s.pixel_size = (42.0 * battle.WS) / float(maxi(1, etex.get_height()))
+			s.position = battle._world_pos(u["pos"], float(u.get("height", 0.0)) + 0.7)
+			battle._world.add_child(s)
+			battle._follow_vfx.append({"spr": s, "unit": u, "h": 0.7, "orbit_r": 0.30, "orbit_a": float(i) * TAU / float(n), "orbit_spd": 6.0})
+			var tw = battle._reg_tween()
+			tw.tween_interval(4.7)                                  # 环绕5秒后淡出(sprite free→_follow_vfx自动剔除)
+			tw.tween_property(s, "modulate:a", 0.0, 0.3)
+			tw.tween_callback(s.queue_free)
+
+func _sk_lightning_surge(u: Dictionary, tgt: Dictionary) -> void: # 闪电龟·涌动 ✅
+	if tgt != null and tgt.get("alive", false):
+		battle._apply_damage_from(u, tgt, int(u["atk"] * 1.23), Color("#4dabf7"), 0.0, true)   # 立即1次被动电击=真实(原误为魔法)
+	u["shock_boost_until"] = battle._t + 5.0      # 5秒内被动电击真伤+50%(窄化; 原误为通用+50%攻击+stray层)
+	u["shock_boost_pct"] = 0.5
+	battle._skill_ring(u["pos"], Color(0.45, 0.85, 1.0, 0.5), 52.0)
+	battle._aura_vfx("res://assets/sprites/skills/lightning-3.png", u, 54.0, Color(0.3, 0.67, 0.97, 0.5), 5.0)   # 涌动增伤电流光环5秒(标示buff激活期)
+	battle._hit_spark(u)                                                                                          # 自身电流上涌
+

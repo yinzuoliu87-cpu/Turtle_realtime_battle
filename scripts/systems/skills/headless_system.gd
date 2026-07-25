@@ -396,3 +396,200 @@ func _headless_undead_vfx(u: Dictionary) -> void:               # 亡灵免死: 
 		rt.tween_property(ring, "modulate:a", 0.9, 0.55)
 	rt.tween_property(ring, "modulate:a", 0.0, 0.5)              # 第5秒渐隐(不瞬删)
 	rt.tween_callback(ring.queue_free)
+
+func _sk_headless_fear(u: Dictionary, _tgt = null) -> void:      # 无头·恐吓(封板·110龟能): 半径200码内所有敌 定身+缴械+锁技3秒(蛋免控·无伤害); 2026-07-17演出: 咆哮紫黑气爆+三道恐惧波纹+紫雾盘+颤抖恐惧标记(删技能名飘字=UI规矩)
+	var cx: Vector2 = u["pos"]
+	var burst = Sprite3D.new()                                  # 咆哮: 自身紫黑气爆
+	burst.texture = VfxTex._make_fire_glow_tex()
+	burst.billboard = BaseMaterial3D.BILLBOARD_ENABLED; burst.shaded = false; burst.transparent = true
+	burst.pixel_size = (120.0 * battle.WS) / 128.0
+	burst.modulate = Color(0.55, 0.15, 0.7, 0.9)
+	burst.position = battle._world_pos(cx, 0.8)
+	burst.scale = Vector3.ONE * 0.4
+	battle._world.add_child(burst)
+	var bt = battle._reg_tween(); bt.set_parallel(true)
+	bt.tween_property(burst, "scale", Vector3.ONE * 1.6, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	bt.tween_property(burst, "modulate:a", 0.0, 0.3)
+	bt.chain().tween_callback(burst.queue_free)
+	battle._shake(0.06)
+	for wi in range(3):                                          # 三道恐惧波纹先后扩到200码(半径)
+		var wv = Sprite3D.new()
+		wv.texture = VfxTex._make_thin_ring_tex()
+		wv.billboard = BaseMaterial3D.BILLBOARD_DISABLED; wv.axis = Vector3.AXIS_Y
+		wv.shaded = false; wv.transparent = true
+		wv.modulate = Color(0.7, 0.3, 0.9, 0.85)
+		wv.pixel_size = (20.0 * battle.WS) / 256.0
+		wv.position = battle._world_pos(cx, 0.065)
+		battle._world.add_child(wv)
+		var wt = battle._reg_tween()
+		wt.tween_interval(0.09 * float(wi))
+		wt.tween_method(func(q: float) -> void:
+			if is_instance_valid(wv):
+				wv.pixel_size = (maxf(20.0, 400.0 * q) * battle.WS) / 256.0
+				wv.modulate.a = 0.85 * (1.0 - q * 0.7)
+		, 0.0, 1.0, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		wt.tween_property(wv, "modulate:a", 0.0, 0.15)
+		wt.tween_callback(wv.queue_free)
+	# 用户2026-07-17: 黑紫雾团从中心爆开铺满整个200码范围->缓慢消散(废原小紫雾盘·改分布式雾团铺满)
+	var mtex = VfxTex._make_fire_glow_tex()
+	var core = Sprite3D.new()                                  # 中心黑核浓雾(体内涌出)
+	core.texture = mtex
+	core.billboard = BaseMaterial3D.BILLBOARD_ENABLED; core.shaded = false; core.transparent = true
+	core.pixel_size = (140.0 * battle.WS) / 128.0
+	core.modulate = Color(0.08, 0.03, 0.14, 0.0)
+	core.position = battle._world_pos(cx, 0.8)
+	core.scale = Vector3.ONE * 0.3
+	battle._world.add_child(core)
+	var cot = battle._reg_tween(); cot.set_parallel(true)
+	cot.tween_property(core, "scale", Vector3.ONE * 2.8, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	cot.tween_property(core, "modulate:a", 0.98, 0.18)
+	cot.chain().tween_interval(1.8)
+	cot.chain().tween_property(core, "modulate:a", 0.0, 1.4)
+	cot.chain().tween_callback(core.queue_free)
+	for pi in range(42):                                        # 42团黑紫雾铺满200码半径(加密加浓·用户2026-07-17"黑雾不够密集不够明显")
+		var pa: float = randf() * TAU
+		var pr: float = 200.0 * sqrt(randf())                   # sqrt=均匀铺满圆盘
+		var pp = cx + Vector2(cos(pa), sin(pa)) * pr
+		var puff = Sprite3D.new()
+		puff.texture = mtex
+		puff.billboard = BaseMaterial3D.BILLBOARD_ENABLED; puff.shaded = false; puff.transparent = true
+		var pcol: Color = [Color(0.16, 0.06, 0.24), Color(0.3, 0.1, 0.45), Color(0.42, 0.18, 0.6)][pi % 3]
+		puff.modulate = Color(pcol.r, pcol.g, pcol.b, 0.0)
+		puff.position = battle._world_pos(pp, randf_range(0.4, 1.0))
+		puff.scale = Vector3.ONE * 0.3
+		battle._world.add_child(puff)
+		var psz: float = randf_range(95.0, 155.0)   # 加大
+		puff.pixel_size = (psz * battle.WS) / 128.0
+		var dly: float = 0.02 + 0.28 * clampf(pr / 200.0, 0.0, 1.0)   # 由近及远扩散(爆开铺满感)
+		var ppt = battle._reg_tween()
+		ppt.tween_interval(dly)
+		ppt.tween_property(puff, "scale", Vector3.ONE, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		ppt.parallel().tween_property(puff, "modulate:a", randf_range(0.75, 0.95), 0.28)   # 更浓
+		ppt.chain().tween_interval(1.3)
+		ppt.chain().tween_property(puff, "modulate:a", 0.0, randf_range(1.0, 1.6))   # 缓慢消散(错峰)
+		ppt.tween_callback(puff.queue_free)
+	# 贴地黑紫雾盘(范围可视200码)缓散
+	var pool = battle._px_ground_sprite(mtex, cx, 400.0, Color(0.28, 0.07, 0.42, 0.6), 0.06)   # 贴地雾盘更浓
+	var pt = battle._reg_tween()
+	pt.tween_interval(1.8)
+	pt.tween_property(pool, "modulate:a", 0.0, 1.4)
+	pt.tween_callback(pool.queue_free)
+	for o in battle._enemies_of(u):
+		if not o.get("alive", false): continue
+		if o["pos"].distance_to(cx) > 200.0: continue
+		if o.get("_eggImmune", false): continue
+		battle._stun(o, 3.0, "_sk_headless_fear")
+		_headless_fear_mark(o)
+
+func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万千触须(封板·160龟能·虐杀原形毁灭者Q1): 全场无差别触须·伸0.3s→停→收3.0s·自身硬控·+22%吸血; 2026-07-17演出: 起手紫黑气爆+裂纹环→触须8×5网格布满全场(Q9"特效得布满")波前由近及远爆出→痉挛定格→3.0s撕扯缩回+吸血红珠回流
+	battle._stun(u, 4.0, "_sk_headless_tendrils", true)   # 自身硬控全程(施法动作·亡灵拉全场自己也搭进去)
+	var center: Vector2 = u["pos"]
+	var uu: Dictionary = u
+	# 用户2026-07-17: 中心一个病毒状黑色球体随触须爆发脉动(变大变小)
+	var virus = Sprite3D.new()
+	virus.texture = load("res://assets/sprites/vfx/fx-black-hole.png")
+	virus.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	virus.billboard = BaseMaterial3D.BILLBOARD_ENABLED; virus.shaded = false; virus.transparent = true
+	virus.pixel_size = (120.0 * battle.WS) / float(maxi(1, virus.texture.get_height()))
+	virus.modulate = Color(0.12, 0.05, 0.16, 0.0)               # 黑紫病毒球
+	virus.position = battle._world_pos(center, 0.75)
+	virus.scale = Vector3.ONE * 0.2
+	battle._world.add_child(virus)
+	battle._follow_vfx.append({"spr": virus, "unit": u, "h": 0.75})    # 跟随龟身(死亡自动清)
+	var vgt = battle._reg_tween()
+	vgt.tween_property(virus, "modulate:a", 0.95, 0.15)         # 涌出
+	vgt.parallel().tween_property(virus, "scale", Vector3.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	var vpt = battle._reg_tween()                                     # 脉动(变大变小·病毒感)3s
+	vpt.tween_method(func(q: float) -> void:
+		if is_instance_valid(virus):
+			var puls: float = 1.0 + sin(q * TAU * 5.0) * 0.28   # 5次脉动
+			virus.scale = Vector3.ONE * puls
+			virus.rotation.y = q * TAU * 0.6                    # 缓转(蠕动感)
+	, 0.0, 1.0, 3.0)
+	vpt.tween_property(virus, "scale", Vector3.ONE * 0.1, 0.35)   # 收缩没入体内
+	vpt.parallel().tween_property(virus, "modulate:a", 0.0, 0.35)
+	vpt.chain().tween_callback(virus.queue_free)
+	var burst = Sprite3D.new()                                  # 起手: 紫黑气爆+震屏顿帧+地面裂纹环
+	burst.texture = VfxTex._make_fire_glow_tex()
+	burst.billboard = BaseMaterial3D.BILLBOARD_ENABLED; burst.shaded = false; burst.transparent = true
+	burst.pixel_size = (200.0 * battle.WS) / 128.0
+	burst.modulate = Color(0.6, 0.08, 0.3, 0.98)   # 起手体内生物质暗红爆(2026-07-17)
+	burst.position = battle._world_pos(center, 0.8)
+	burst.scale = Vector3.ONE * 0.3
+	battle._world.add_child(burst)
+	var bt = battle._reg_tween(); bt.set_parallel(true)
+	bt.tween_property(burst, "scale", Vector3.ONE * 2.4, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	bt.tween_property(burst, "modulate:a", 0.0, 0.28)
+	bt.chain().tween_callback(burst.queue_free)
+	battle._shake(0.1)
+	battle._add_hitstop(battle.JUICE_HITSTOP_KNOCK)
+	var crack = battle._px_ground_sprite(VfxTex._make_pixel_ring_tex(), center, 60.0, Color(0.6, 0.2, 0.75, 0.8), 0.06)
+	var ct = battle._reg_tween()
+	ct.tween_method(func(q: float) -> void:
+		if is_instance_valid(crack): crack.pixel_size = (maxf(60.0, 500.0 * q) * battle.WS) / 48.0
+	, 0.0, 1.0, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	ct.tween_property(crack, "modulate:a", 0.0, 0.3)
+	ct.tween_callback(crack.queue_free)
+	# 触须从龟身球心朝【上半球任意三维方向】爆发(用户2026-07-17"想象球体只留上半球·朝上半球任意方向射"·虐杀原形2)
+	for ti in range(100):                                       # 100根: 方位角0-360×仰角(偏低角·上半球)
+		var az: float = randf() * TAU                            # 方位角
+		var od = Vector2(cos(az), sin(az))
+		var e01: float = randf(); e01 = e01 * e01                # 平方偏低→更多触须近平射(用户2026-07-17"更多低角度")
+		var elev: float = deg_to_rad(4.0 + 82.0 * e01)           # 仰角: 大量近平射→少数冲天
+		var L: float = randf_range(340.0, 860.0) * 1.2 * (1.0 - 0.25 * e01)   # 长度: 低角度更长+20%(用户2026-07-17仅视觉·布满竞技场)
+		var dly: float = randf_range(0.0, 0.14)                  # 错峰爆出(炸开感)
+		_headless_tendril_shoot(center, od, elev, L, randf() < 0.4, dly, randf_range(2.0, 2.4))
+	var pass_fn = func():                                      # 伸/穿过(≈0.3s铺满): 无差别 敌1A+眩晕 / 友0.5A+眩晕(刷新不叠)
+		for o in battle._units:
+			if not o.get("alive", false) or is_same(o, uu): continue
+			if (o["pos"] as Vector2).distance_to(center) > 1500.0: continue   # 射程1500码(用户2026-07-19; 原为全场无差别)
+			var sc: float = 1.0 if battle._is_hostile(uu, o) else 0.5
+			battle._apply_damage_from(uu, o, battle._atk_dmg(uu, sc, o), Color("#9b3bff"), 0.22)
+			if not o.get("_eggImmune", false):
+				battle._stun(o, 2.7, "_sk_headless_tendrils", true)   # 眩晕持续到脱离
+				o["_tendril_stun"] = true
+			_headless_tendril_shoot(center, ((o["pos"] as Vector2) - center).normalized() if ((o["pos"] as Vector2) - center).length() > 1.0 else Vector2.RIGHT, deg_to_rad(18.0), maxf(90.0, (o["pos"] as Vector2).distance_to(center)), true, 0.0, 2.4)   # 命中者: 从龟身甩一根粗触须缠住
+			if battle._is_hostile(uu, o): _headless_drain_dot(o["pos"], uu)   # 吸血红珠回流
+	battle._pending_shots.append({"delay": 0.3, "fn": pass_fn, "src": u})
+	var detach_fn = func():                                    # 收/脱离(≈3.0s): 无差别 敌1.5A / 友0.5A + 回复行动(解眩晕)
+		battle._shake(0.12)
+		for o in battle._units:
+			if not o.get("alive", false) or is_same(o, uu): continue
+			if (o["pos"] as Vector2).distance_to(center) > 1500.0: continue   # 射程1500码(用户2026-07-19; 原为全场无差别)
+			var sc: float = 1.5 if battle._is_hostile(uu, o) else 0.5
+			battle._apply_damage_from(uu, o, battle._atk_dmg(uu, sc, o), Color("#ff3b6b"), 0.22)
+			battle._hit_spark(o)
+			if o.get("_tendril_stun", false):
+				o["_tendril_stun"] = false
+				o["stun_until"] = battle._t   # 解眩晕→回复行动
+			if battle._is_hostile(uu, o): _headless_drain_dot(o["pos"], uu)   # 脱离撕扯再吸一口
+	battle._pending_shots.append({"delay": 3.0, "fn": detach_fn, "src": u})
+
+func _sk_headless_soul_charge(u: Dictionary) -> void:           # 无头·灵魂打击(机制大改·用户2026-07-17拍板·80龟能): 触发→下3次攻击强化(射程+60·各额外0.5A+10%当前HP魔法·牙齿闭合)→第3下落地蓄力→镰刀横扫(100°300码击退300+幽灵诅咒5s·Camille W); 全程锁龟能, 扫完解锁清零重充
+	u["headless_soul_stacks"] = 3
+	u["headless_soul_base_range"] = float(u.get("atk_range", 100.0))
+	u["atk_range"] = float(u["headless_soul_base_range"]) + 60.0   # 强化窗口+60射程(用户"60+基础射程")
+	u["energy_lock_until"] = battle._t + 999.0                            # 锁龟能条到镰刀扫完(_headless_scythe置回_t)
+	var old = u.get("_soul_spr", null)
+	if old is Sprite3D and is_instance_valid(old): (old as Sprite3D).queue_free()
+	var fl = Sprite3D.new()                                     # 紫焰绕颈tell(循环·3次+镰刀全程亮·bind_node防泄漏)
+	fl.texture = VfxTex._make_fire_glow_tex()
+	fl.billboard = BaseMaterial3D.BILLBOARD_ENABLED; fl.shaded = false; fl.transparent = true
+	fl.pixel_size = (34.0 * battle.WS) / 128.0
+	fl.modulate = Color(0.75, 0.3, 1.0, 0.9)
+	fl.position = battle._world_pos(u["pos"], 1.5)
+	battle._world.add_child(fl)
+	u["_soul_spr"] = fl
+	var uref: Dictionary = u
+	var lt = battle.create_tween().set_loops()
+	lt.bind_node(fl)
+	lt.tween_method(func(q: float) -> void:
+		if not is_instance_valid(fl): return
+		if uref.get("alive", false):
+			var aa: float = q * TAU
+			fl.position = battle._world_pos((uref["pos"] as Vector2) + Vector2(cos(aa), sin(aa)) * 26.0, 1.5 + sin(aa * 2.0) * 0.12)
+	, 0.0, 1.0, 0.9)
+	battle._skill_ring(u["pos"], Color(0.6, 0.23, 0.7, 0.5), 44.0)
+	battle._pending_shots.append({"delay": 7.0, "fn": func():            # 兜底: 7秒内没打完3下(无敌/被控)→强制镰刀收尾防永锁龟能
+		if int(uref.get("headless_soul_stacks", 0)) > 0: _headless_scythe(uref), "src": u})
+

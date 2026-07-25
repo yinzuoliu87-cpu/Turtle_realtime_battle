@@ -88,7 +88,7 @@ func _ready() -> void:
 	_ok("★_pick_enemies_of 仍含真敌(非空检查·断言非恒真)", scene._arr_has_unit(scene._pick_enemies_of(caster), real_foe))
 	# 端到端: 竹击(钩全场最远)→ 应钩近处真敌、不碰场外大师(远)。改回 _enemies_of 则相反 → 本条转红。
 	foe_trainer["spd_dbf_until"] = 0.0; real_foe["spd_dbf_until"] = 0.0
-	scene._sk_bamboo_smack(caster, real_foe)
+	scene._bamboo_sys._sk_bamboo_smack(caster, real_foe)
 	_ok("★竹击不冰寒场外大师(没锁它)", float(foe_trainer.get("spd_dbf_until", 0.0)) <= scene._t,
 		"大师 spd_dbf_until=%.1f _t=%.1f" % [float(foe_trainer.get("spd_dbf_until", 0.0)), scene._t])
 	_ok("★竹击命中真敌(证明钩到了近敌·非空)", float(real_foe.get("spd_dbf_until", 0.0)) > scene._t)

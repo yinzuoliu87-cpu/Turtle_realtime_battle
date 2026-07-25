@@ -409,3 +409,72 @@ func _crystal_ray_vfx(src: Dictionary, tgt: Dictionary, seg_dmg_fn: Callable) ->
 		, "src": src})
 
 # 水晶龟·水晶球 本体主动(封板L571·70龟能): 朝目标射一道水晶光线=2段共1.0A魔法 + 叠2层结晶(与水晶球随从共享满5引爆)·水晶球随从在spawn gate召唤
+
+func _sk_crystal_bulwark(u: Dictionary) -> void:                 # 水晶龟·水晶壁垒(用户2026-07-16改制): 1A+5%maxHp护盾4秒·持盾锁龟能·盾结束/被打破→700码直线水晶刺·全体友军甲抗+15%4秒
+	battle._grant_shield(u, u["atk"] * 1.0 + u["maxHp"] * 0.05, 4.0)
+	u["bulwark_until"] = battle._t + 4.0
+	u["_bulwark_armed"] = true
+	var dome = Sprite3D.new()                                   # 冰蓝水晶罩(随身4秒)
+	var dtex: Texture2D = load("res://assets/sprites/vfx/fx-hex-bubble.png")
+	if dtex != null:
+		dome.texture = dtex
+		dome.billboard = BaseMaterial3D.BILLBOARD_ENABLED; dome.shaded = false; dome.transparent = true
+		dome.pixel_size = (120.0 * battle.WS) / float(maxi(1, dtex.get_height()))
+		dome.modulate = Color(0.62, 0.88, 1.0, 0.0)
+		dome.position = battle._world_pos(u["pos"], 0.9)
+		battle._world.add_child(dome)
+		battle._follow_vfx.append({"spr": dome, "unit": u, "h": 0.9})
+		u["_bulwark_dome"] = dome
+		var dw = battle._reg_tween()
+		dw.tween_property(dome, "modulate:a", 0.55, 0.2)
+		dw.tween_interval(3.4)
+		dw.tween_property(dome, "modulate:a", 0.0, 0.4)
+		dw.tween_callback(func() -> void:
+			if is_instance_valid(dome): dome.queue_free())
+	for o in battle._allies_of(u):
+		battle._buff(o, "def", 0.15, true, 4.0); battle._buff(o, "mr", 0.15, true, 4.0)
+		battle._skill_ring(o["pos"], Color(0.62, 0.88, 1.0, 0.55), 40.0)   # 友军冰蓝强化环
+
+func _sk_crystal_burst(u: Dictionary, tgt) -> void:   # 碎晶爆破: 目标周围350码内每敌3段错峰碎晶坠落(每段0.233A魔+0.033A真+叠1层结晶·共3层满5引爆)
+	if tgt == null: tgt = battle._nearest_enemy(u)
+	if tgt == null: return
+	var center: Vector2 = tgt["pos"]
+	u["energy_lock_until"] = maxf(float(u.get("energy_lock_until", 0.0)), battle._t + 0.65)   # 释放途中锁龟能·放完自动解锁(用户2026-07-16; 三段0.38s+坠落0.16s≈0.55s)
+	battle._skill_ring(center, Color(0.6, 0.86, 1.0, 0.5), battle.CRYSTAL_BURST_RADIUS)   # 350码范围环
+	var uu = u
+	for o in battle._enemies_of(u):
+		if not o.get("alive", false): continue
+		if (o["pos"] as Vector2).distance_to(center) > battle.CRYSTAL_BURST_RADIUS: continue
+		var oref: Dictionary = o
+		for k in range(3):                                       # 3段碎晶从天坠落(错峰0.14s)
+			battle._pending_shots.append({"delay": 0.1 + 0.14 * float(k), "fn": func() -> void:
+				if not oref.get("alive", false) or not uu.get("alive", false): return
+				var sh = Sprite3D.new()
+				sh.texture = load("res://assets/sprites/vfx/crystal-shard.png")
+				sh.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+				sh.billboard = BaseMaterial3D.BILLBOARD_ENABLED; sh.shaded = false; sh.transparent = true
+				sh.pixel_size = (30.0 * battle.WS) / 48.0
+				sh.flip_h = randf() < 0.5
+				var op2: Vector2 = oref["pos"] + Vector2(randf_range(-14.0, 14.0), randf_range(-8.0, 8.0))
+				sh.position = battle._world_pos(op2, 2.4)
+				battle._world.add_child(sh)
+				var dt = battle._reg_tween()
+				dt.tween_property(sh, "position", battle._world_pos(op2, 0.55), 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)   # 坠落
+				dt.tween_callback(func() -> void:
+					if is_instance_valid(sh): sh.queue_free()
+					if not oref.get("alive", false): return
+					_crystal_spark(oref["pos"], 0.7)
+					battle._apply_damage_from(uu, oref, battle._atk_dmg(uu, 0.233, oref, true), Color("#9bdcff"))                 # 每段0.233A魔法
+					battle._apply_damage_from(uu, oref, int(maxf(1.0, uu["atk"] * 0.033)), Color("#ffffff"), 0.0, true)   # +0.033A真实
+					_crystal_stack(uu, oref, 1))
+			, "src": u})
+
+func _sk_crystal_orb(u: Dictionary, tgt) -> void:
+	if tgt == null or not tgt.get("alive", false):
+		return
+	battle._skill_ring(u["pos"], Color(0.72, 0.92, 1.0, 0.6), 34.0)     # 本体施法环
+	_crystal_ray_vfx(u, tgt, func(sr: Dictionary, tr: Dictionary, last: bool) -> void:
+		battle._apply_damage_from(sr, tr, battle._atk_dmg(sr, 0.5, tr, true), Color("#9bdcff"), 0.0, true)   # 每段0.5A魔法(raw避免二次减免·封板)
+		if last: _crystal_stack(sr, tr, 2))                      # 末段叠2层结晶(封板)
+
+# 宝箱藏宝图·15件专属战利品池 (封板L592-594·效果取自Phaser chest.js实时适配): 基础/进阶/传说三档

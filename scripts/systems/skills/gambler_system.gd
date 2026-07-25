@@ -186,3 +186,43 @@ func _gambler_wild_vfx(u: Dictionary, tgt: Dictionary) -> void:
 			battle._buff(tgt, "atk", -0.15, true)
 	battle._shield_dome(u)                                                   # 护盾罩
 	_gambler_pop(u["pos"], float(u.get("height", 0.0)), Color(0.30, 1.0, 0.5, 0.85))   # 回血绿
+
+func _sk_gambler_bet(u: Dictionary, tgt: Dictionary) -> void:    # 赌神龟·赌注(用户封板·100龟能): 需当前生命>40%; 消耗当前生命40%→7段物理砸目标(共≈0.4×当前生命); 施放3秒多重概率+20%
+	if tgt == null or not tgt.get("alive", false): return
+	if u["hp"] < u["maxHp"] * 0.40:                              # ★低血模式(用户2026-07-14): 血不够押本→转而回8%maxHp + 3秒多重+20%(不甩牌·不消耗血)
+		battle._heal(u, u["maxHp"] * 0.08)
+		u["gambler_bet_until"] = battle._t + 3.0
+		battle._flash(u, Color(0.4, 1.7, 0.6))                         # 绿闪(求稳回血)
+		battle._skill_ring(u["pos"], Color(0.3, 1.0, 0.5, 0.55), 54.0)   # 绿环
+		_gambler_pop(u["pos"], float(u.get("height", 0.0)), Color(0.3, 1.0, 0.5, 0.85))   # 回血绿
+		return
+	var cost: float = u["hp"] * 0.40
+	u["hp"] = maxf(1.0, u["hp"] - cost)
+	battle._flash(u, Color(1.7, 0.4, 0.4))                            # HP牺牲红闪(押上血本)
+	var per: int = maxi(1, int(cost / 7.0))
+	u["gambler_bet_until"] = battle._t + 3.0                           # 3秒多重概率+20%(见_gambler_multi_cd·回补钩)
+	battle._skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.55), 54.0)
+	for i in range(7):                                         # 7张牌barrage(错峰0.11s·命中才跳伤害·每张触发多重打击B·扣'七段')
+		battle._pending_shots.append({"delay": float(i) * 0.11, "fn": func() -> void: _gambler_throw_hit(u, tgt, per, true), "src": u})
+
+func _sk_gambler_fate_wheel(u: Dictionary) -> void:             # 赌神龟·命运之轮(用户封板·80龟能): 抽1花色永久加属性(♠攻+5&血+30/♥护甲魔抗+2/♦暴击+8%&护穿+2/♣吸血+4%)·跨场累积=存GameState.gambler_wheel_stacks(本大轮累积·切轮重置·方案B·用户2026-07-09)
+	var _suit = battle._battle_rng.randi() % 4
+	if u.get("side", "") == "left":   # 跨场累积: 抽中即记录(只玩家赌神写本大轮累积·敌/ghost镜像不写·切轮reset)
+		var _sk: String = ["spade", "heart", "diamond", "club"][_suit]
+		GameState.gambler_wheel_stacks[_sk] = int(GameState.gambler_wheel_stacks.get(_sk, 0)) + 1
+	# ★流程优化(用户2026-07-14): 放技→抽取阶段锁龟能+转盘动画→花色落定后才跳文字+实装属性→龟能自动解锁
+	var SPIN = 1.0
+	u["energy_lock_until"] = battle._t + SPIN + 0.15   # 抽取阶段锁龟能(转盘转完+缓冲·到期自动解锁·_tick_skill_cd判)
+	_gambler_wheel_vfx(u, _suit)                # 花色老虎机转盘spin(SPIN秒·EASE_OUT减速落定)
+	var uu: Dictionary = u
+	var suit: int = _suit
+	battle._pending_shots.append({"delay": SPIN, "fn": func() -> void:   # 花色落定那一刻才结算
+		if not uu.get("alive", false): return
+		_gambler_apply_wheel_suit(uu, suit)
+		, "src": u})
+
+func _sk_gambler_wild(u: Dictionary, tgt: Dictionary) -> void:   # 赌神龟·万能牌: 丢1张牌=1段1.0A物理(用户2026-07-09"只造成1段伤害")+自身0.25A护盾+回5%maxHp+目标攻-15%
+	battle._grant_shield(u, u["atk"] * 0.25)   # 自身护盾/回血即时(施法者)
+	battle._heal(u, u["maxHp"] * 0.05)
+	_gambler_wild_vfx(u, tgt)   # 丢小丑牌; ★目标伤害+减攻在牌命中回调里结算(命中才跳伤害·用户2026-07-14)
+

@@ -75,3 +75,29 @@ func _diamond_slash_fx(u: Dictionary, tgt: Dictionary) -> void:   # 钻石普攻
 	t.tween_interval(0.06)
 	t.tween_property(b, "modulate:a", 0.0, 0.2)
 	t.tween_callback(b.queue_free)
+
+func _sk_diamond_unbreak(u: Dictionary) -> void:                 # 钻石龟·坚不可摧(封板): 20%最大生命护盾(4秒·限时盾原语)+护甲/魔抗各+20%攻击力(flat·5秒)
+	battle._grant_shield(u, u["maxHp"] * 0.20, 4.0)
+	u["diamond_fortify_until"] = battle._t + 4.0   # 持盾期锁龟能+青水晶护罩(与shield同4s·盾破/到期即恢复·用户2026-07-12)
+	battle._buff(u, "def", u["atk"] * 0.2, false, 5.0)
+	battle._buff(u, "mr", u["atk"] * 0.2, false, 5.0)
+	battle._burst_vfx("res://assets/sprites/vfx/diamond-fortify.png", u["pos"], 100.0, 0.5)   # 水晶护甲成型(蓝晶迸发·此前零特效)
+	battle._skill_ring(u["pos"], Color(0.55, 0.82, 1.0, 0.55), 58.0)
+	battle._shake(battle.JUICE_SHAKE_LIGHT)
+
+func _sk_diamond_powerball(u: Dictionary, tgt) -> void:          # 钻石龟·钻石滚球(封板·龙龟Q Powerball·100龟能): 进入蜷球滚动位移态(移速0起4s加速满速·朝最近敌·免疫定身沉默打断)·撞击120码AOE(护甲/魔抗/2%maxHp按速插值)+击飞1s+眩晕0.5~3s
+	if battle._nearest_enemy(u) == null:
+		return
+	u["roll_active"] = true
+	u["roll_start"] = battle._t
+	battle._skill_ring(u["pos"], Color(0.6, 0.86, 1.0, 0.5), 44.0)
+
+func _sk_diamond_smash(u: Dictionary, tgt) -> void:             # 钻石龟·钻石冲撞(用户2026-07-12改): 短暂蓄力→撞击(保留1.0甲+1.0抗+0.1A物理)+击退300码顺冲撞方向+一点点击飞+流血(层数=0.5A+0.1甲+0.1抗)+3s50%减速
+	if tgt == null: tgt = battle._nearest_enemy(u)
+	if tgt == null: return
+	u["_anim_lock_until"] = battle._t + battle.DIAMOND_SMASH_CHARGE          # 蓄力期锁定原地聚力(不走不打)
+	battle._anticipate(u)
+	battle._burst_vfx("res://assets/sprites/vfx/diamond-fortify.png", u["pos"], 72.0, 0.5)   # 蓄力: 水晶能量在身上聚起
+	battle._skill_ring(u["pos"], Color(0.6, 0.86, 1.0, 0.5), 40.0)
+	battle._pending_shots.append({"delay": battle.DIAMOND_SMASH_CHARGE, "src": u, "fn": _diamond_smash_impact.bind(u, tgt)})
+

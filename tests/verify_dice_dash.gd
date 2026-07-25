@@ -14,7 +14,7 @@ func _run_corner(sc, dpos: Vector2, fpos: Vector2, label: String) -> void:
 	var foe: Dictionary = sc._make_unit("basic", "right", fpos)
 	foe["maxHp"] = 1.0e9; foe["hp"] = 1.0e9   # 打不死→连突跑满所有段
 	sc._units.append(dice); sc._units.append(foe)
-	sc._sk_dice_flash_strike(dice)
+	sc._dice_sys._sk_dice_flash_strike(dice)
 	_ok("[%s] 放技→进入冲刺连突态" % label, dice.get("dice_dash_active", false) == true)
 	var steps := 0
 	while dice.get("dice_dash_active", false) and steps < 3000:

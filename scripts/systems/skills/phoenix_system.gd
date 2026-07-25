@@ -232,3 +232,40 @@ func _phoenix_flame_burst(pos2d: Vector2) -> void:
 		tw.chain().tween_callback(spr.queue_free)
 
 # 火球抛物线飞行 (t:0→1; 高度 lerp + sin峰=抛起弧线) + 火焰拖尾
+
+# 凤凰·烫伤 ✅: 蓄力投掷火球(1.5ATK魔法+1ATK灼烧+破盾/减攻防抗/治疗削减), 命中爆开 (用户)
+func _sk_phoenix_scald(u: Dictionary, tgt) -> void:
+	if tgt == null or not tgt.get("alive", false):
+		return
+	var dir: Vector2 = tgt["pos"] - u["pos"]
+	if dir.length() < 1.0:
+		dir = Vector2(1, 0)
+	dir = dir.normalized()
+	var mouth: Vector2 = u["pos"] + dir * 18.0
+	var fb = Sprite3D.new()
+	fb.texture = VfxTex._make_fire_glow_tex()
+	fb.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	fb.shaded = false
+	fb.transparent = true
+	fb.pixel_size = 0.011
+	fb.modulate = Color(1.0, 0.85, 0.45, 0.95)
+	fb.scale = Vector3(0.4, 0.4, 0.4)
+	fb.position = battle._world_pos(mouth, 1.05)
+	battle._world.add_child(fb)
+	var tgt_pos: Vector2 = tgt["pos"]
+	var tw = battle._reg_tween()
+	tw.tween_property(fb, "scale", Vector3(1.9, 1.9, 1.9), 0.30)             # 蓄力(火球长大)
+	tw.parallel().tween_property(fb, "modulate", Color(1.0, 0.40, 0.12, 1.0), 0.30)
+	tw.tween_method(battle._scald_arc.bind(fb, mouth, tgt_pos), 0.0, 1.0, 0.42)        # 投掷
+	tw.tween_callback(_phoenix_scald_hit.bind(u, tgt, fb))
+
+func _sk_phoenix_lavashield(u: Dictionary) -> void:              # 凤凰龟·熔岩盾 (用户2026-07-07: 3.5A护盾4秒+反击0.14A魔法)
+	battle._grant_shield(u, u["atk"] * 3.5, 4.0)   # 凤凰熔岩盾4秒(与反击窗口lava_shield_until同步·封板)
+	u["lava_shield_until"] = battle._t + 4.0          # 4秒内每受一段攻击反击0.14×ATK魔法(见_apply_damage_from)
+	battle._skill_ring(u["pos"], Color(1.0, 0.5, 0.2, 0.5), 50.0)
+
+func _sk_phoenix_haste(u: Dictionary) -> void:                   # 凤凰龟·技三主动 (用户2026-07-07: 自身+50%攻速+50%移速4秒·配合喷火随攻速增伤; 强化涅槃被动在spawn施加)
+	u["haste_mult"] = 1.5; u["haste_until"] = battle._t + 4.0          # +50%攻速(复用祝福haste机制)
+	u["spd_move_mult"] = 1.5; u["spd_dbf_until"] = battle._t + 4.0     # +50%移速(复用spd_move_mult机制)
+	battle._aura_vfx("res://assets/sprites/vfx/fx-glow-ring.png", u, 84.0, Color(1.0, 0.55, 0.15, 0.6), 4.0)   # 烈焰加速火环(强化涅槃+50%攻速移速4秒)
+

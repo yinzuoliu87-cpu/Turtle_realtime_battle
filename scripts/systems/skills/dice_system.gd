@@ -137,3 +137,51 @@ func _dice_scythe_step(fr: float, blade: Sprite3D, origin: Vector2, base_ang: fl
 	battle._world.add_child(tr)
 	var tt = battle._reg_tween(); tt.tween_property(tr, "modulate:a", 0.0, 0.15); tt.tween_callback(tr.queue_free)
 
+func _sk_dice_allin(u: Dictionary) -> void:                      # 骰子龟·孤注一掷(用户设计: 前方120°/300码镰刀扇形斩·1.2A物理+30%吸血)
+	var tgt = battle._nearest_enemy(u)
+	var dir: Vector2 = (Vector2.RIGHT if tgt == null else (tgt["pos"] - u["pos"]))
+	if dir.length() < 1.0: dir = Vector2.RIGHT
+	dir = dir.normalized()
+	var half_cos: float = cos(deg_to_rad(60.0))                  # 半角60°=全120°
+	for o in battle._enemies_of(u):
+		if not o.get("alive", false): continue
+		var to_o: Vector2 = o["pos"] - u["pos"]
+		var d: float = to_o.length()
+		if d > 300.0 or d < 1.0: continue
+		if dir.dot(to_o / d) < half_cos: continue
+		battle._apply_damage_from(u, o, battle._atk_dmg(u, 1.2, o), Color("#ff4444"), 0.30)
+	_dice_scythe_sweep(u, u["pos"], dir, 300.0, 60.0)   # 红镰刀贴地弧扫过120°扇形(用户2026-07-13)
+	battle._skill_ring(u["pos"], Color(1.0, 0.3, 0.3, 0.35), 52.0)
+
+# 骰子龟·稳定骰子(刀妹Q式·〖#4"刀妹Q式·你仔细设计"〗; 数值取回合制 diceFlashStrike: baseHits=4 / perHitScale=0.9 / falloffPct=10)
+#   掷骰 1-6 → 冲刺 (4 + 点数) 次; 首段 0.9×ATK 物理(吃暴击), 之后每段递减 10% (0.9 × 0.9^i)
+#   每刺间隔 DICE_STRIKE_GAP 秒【分帧铺开】(原来全部在同一帧解算 → 视觉糊成一坨/飘字堆叠)
+func _sk_dice_flash_strike(u: Dictionary) -> void:   # 稳定骰子(刀妹Irelia Q·破空斩式·用户2026-07-13): 掷骰(4+点数)段, 每段真冲刺穿到随机敌+挥剑斩·递减10%
+	var pips: int = randi_range(1, 6)
+	var count: int = 4 + pips
+	battle._float_text(u["pos"] + Vector2(0, -64), "稳定骰子! %d点→%d刺" % [pips, count], Color("#ffd93d"))
+	var t0 = _dice_pick_strike_target(u)
+	if t0 == null: return
+	u["dice_dash_active"] = true                    # 进入真冲刺连突态(逐帧穿刺, 见 _dice_dash_tick)
+	u["dice_dash_remaining"] = count
+	u["dice_dash_seg"] = 0
+	_dice_dash_set_target(u, t0)                    # 设目标+算穿过落点
+
+func _sk_dice_fate(u: Dictionary) -> void:
+	if u.get("crit_fate_until", 0.0) > battle._t:           # 撤销未到期旧增益, 防叠加
+		u["crit"] -= u.get("crit_fate_amt", 0.0)
+		u["crit_dmg"] -= u.get("crit_dmg_fate_amt", 0.0)
+	var roll: float = randf_range(0.4, 1.3)
+	var over: float = maxf(0.0, (u["crit"] + roll) - 1.0)   # 暴击封顶100%, 超出转暴伤
+	var add_crit: float = roll - over
+	var add_cd: float = over * 1.5
+	u["crit"] += add_crit
+	u["crit_dmg"] += add_cd
+	u["crit_fate_until"] = battle._t + 999.0   # 持续到下次放技能(开头撤旧增益自然重掷·用户设计)
+	u["crit_fate_amt"] = add_crit
+	u["crit_dmg_fate_amt"] = add_cd
+	battle._float_text(u["pos"] + Vector2(0, -64), "命运骰子! +%d%%暴击" % int(roll * 100), Color("#ffd93d"))
+
+# 龟壳·复制: 随机复制 2 个敌方可用技立即释放 (60%效果简化为全效, 留 batch3)
+# 龟壳复制期的"非伤害"效果乘数(护盾/治疗/DoT). 伤害走 src["dmg_out_mult"]. 两者都只覆盖【同步段】:
+# 被复制技能里延迟触发的子效果(tween/_pending_shots)仍按全效结算 → 见 附录B-07。

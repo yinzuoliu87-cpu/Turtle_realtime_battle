@@ -94,3 +94,37 @@ func _ghost_phantom_hit(u: Dictionary, tgt) -> void:
 	battle._sk_dmg(u, tgt, {"magic": 1.5, "hits": 1, "lifesteal": 0.8, "selfDodge": 0.25, "selfDodgeDur": 4.0, "name": "幻影!", "color": Color("#c77dff")})
 	if tgt.get("alive", false):
 		battle._knockback(u, tgt, 0.0, 1.4, 0.45)   # 击退抛飞
+
+# 幽灵·技1 幽冥突袭(用户2026-07-11「用回合制特效」): 1.5A魔法+80%吸血+25%闪避4s(经_sk_dmg保真) + 回合制幻影(ghost-phantom)+触碰(ghost-touch)图 + 击退抛飞juggle
+func _sk_ghost_phantom(u: Dictionary, tgt) -> void:
+	if tgt == null: tgt = battle._nearest_enemy(u)
+	if tgt == null: return
+	battle._play_anim_vfx("res://assets/sprites/vfx/ghost-phantom.png", tgt["pos"], 155.0, 15.0, 1.5)   # 幻影(回合制vfx/5帧·上移·用户2026-07-11)
+	battle._play_anim_vfx("res://assets/sprites/vfx/ghost-touch.png", tgt["pos"], 125.0, 17.0, 1.4)      # 触碰(vfx/7帧·上移)
+	battle._shake(0.08)
+	battle._pending_shots.append({"delay": 0.11, "src": u, "fn": _ghost_phantom_hit.bind(u, tgt)})   # 命中延到动画第2帧算(~0.11s·用户2026-07-11)
+
+func _sk_ghost_soulstorm(u: Dictionary, tgt: Dictionary) -> void: # 幽灵龟·灵魂风暴 ✅
+	var cursed: bool = battle._has_dot(tgt, "curse")
+	if cursed:
+		battle._apply_damage_from(u, tgt, int(u["atk"] * 2.5), Color("#e0b0ff"), 0.0, true)   # 有诅咒→2.5A真伤(处决感·用户2026-07-09"打有诅咒是真伤")
+	else:
+		for i in range(2):
+			battle._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.25, tgt, true), Color("#c77dff"))   # 无诅咒→2段共2.5A魔法(用户2026-07-09"打无诅咒目标是魔法")
+		battle._add_dot(tgt, "curse", tgt["maxHp"] * 0.05, 10.0, u)   # 技2诅咒10秒(用户2026-07-11·被动登场诅咒仍5s)
+	battle._play_anim_vfx("res://assets/sprites/vfx/ghost-storm.png", tgt["pos"], 135.0, 15.0, 1.1)   # 灵魂风暴(回合制vfx/8帧·逐帧播·用户2026-07-11纠正:原误用skills/单帧图)
+	battle._skill_ring(tgt["pos"], Color(0.78, 0.49, 1.0, 0.6), 92.0)
+	battle._shake(0.1)
+
+func _sk_ghost_phase(u: Dictionary, tgt: Dictionary) -> void:    # 幽灵龟·虚化 (用户2026-07-08): 虚化4秒受物理伤害-90% + 对目标2段共1.2A真伤
+	u["phase_until"] = battle._t + 4.0
+	u["energy_lock_until"] = battle._t + 4.0   # 虚化时锁龟能条(用户2026-07-11·复用energy_lock_until→_tick_skill_cd锁)
+	for i in range(2):
+		battle._apply_damage_from(u, tgt, int(u["atk"] * 0.6), Color("#c77dff"), 0.0, true)   # 真实(穿减伤)
+	battle._aura_vfx("res://assets/sprites/vfx/fx-glow-ring.png", u, 78.0, Color(0.78, 0.49, 1.0, 0.55), 4.0)   # 虚化紫环(虚化4秒·跟随)
+	battle._skill_ring(u["pos"], Color(0.7, 0.45, 1.0, 0.78), 92.0)   # 虚化入场幽紫脉冲(用户2026-07-11)
+	var _pr2 = battle._reg_tween()
+	_pr2.tween_interval(0.08)
+	_pr2.tween_callback(battle._skill_ring.bind(u["pos"], Color(0.6, 0.4, 0.95, 0.5), 145.0))
+	battle._shake(0.06)
+

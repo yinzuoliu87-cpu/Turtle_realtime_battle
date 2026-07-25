@@ -579,3 +579,47 @@ func _lava_slam_impact(u: Dictionary, center: Vector2) -> void:   # 落地: 击�
 		battle._apply_damage_from(u, o, battle._atk_dmg(u, 1.2, o, true), Color("#ff7a33"))
 		battle._apply_dot_stacks(o, "burn", battle._default_burn_stacks(u), u)
 		battle._heal(u, (o["maxHp"] - o["hp"]) * 0.08)
+
+func _sk_lava_cast(u: Dictionary, tgt: Dictionary, set_id: String = "A") -> void:   # 熔岩龟·按选中技分派(A地裂/B岩浆涌动/C喷射)×形态变体
+	var volcano: bool = u.get("volcano", false)
+	match set_id:
+		"A":
+			if volcano: _lava_volcano_erupt(u)
+			else:       _lava_quake(u)
+		"B":
+			if volcano: _lava_flame_strike(u, tgt)
+			else:       _lava_magma_surge(u, tgt)
+		_:
+			_lava_quake(u)
+
+# 通用·击飞: 把 o 从 center 上抛+外推 (1:1 _lava_slam_impact 的击飞段, 抽公共)
+func _sk_lava_erupt(u: Dictionary, tgt) -> void:                # 熔岩龟·技三(用户设计): 火山形态=暴走(+20%maxHp5s+30%攻速+30%移速) / 普通形态=智能冲刺(保命撤/追击贴)+下发普攻穿透
+	if u.get("volcano", false):
+		var gain: float = u["maxHp"] * 0.20
+		u["_lava_ult_hp"] = float(u.get("_lava_ult_hp", 0.0)) + gain
+		u["maxHp"] += gain; u["hp"] += gain
+		u["haste_mult"] = 1.3; u["haste_until"] = battle._t + 5.0        # +30%攻速
+		u["spd_move_mult"] = 1.3; u["spd_dbf_until"] = battle._t + 5.0   # +30%移速
+		var tw = battle._reg_tween()
+		tw.tween_interval(5.0)
+		tw.tween_callback(_lava_ult_revert.bind(u))
+		battle._skill_ring(u["pos"], Color(1.0, 0.4, 0.1, 0.6), 62.0); battle._flash(u, Color(1.6, 0.9, 0.4))
+		return
+	var danger: bool = u["hp"] < u["maxHp"] * 0.35
+	if not danger:
+		for e in battle._enemies_of(u):
+			if e.get("alive", false) and e.get("melee", false) and (e["pos"] - u["pos"]).length() < 110.0:
+				danger = true; break
+	if danger:                                                   # 保命: 背离最近威胁撤220码
+		var threat = battle._nearest_enemy(u)
+		var d: Vector2 = ((u["pos"] - threat["pos"]).normalized() if threat != null else Vector2.RIGHT)
+		if d.length() < 0.1: d = Vector2.RIGHT
+		u["pos"] += d * 220.0
+		u["pos"].x = clampf(u["pos"].x, battle.ARENA.position.x, battle.ARENA.end.x)
+		u["pos"].y = clampf(u["pos"].y, battle.ARENA.position.y, battle.ARENA.end.y)
+	elif tgt != null and tgt.get("alive", false):               # 追击: 冲贴目标
+		battle._dash_to(u, tgt, 80.0)
+	u["atk_cd"] = 0.0                                            # 重置下次普攻(立刻可放)
+	u["lava_pierce_next"] = true                                # 下一发熔岩弹变穿透
+	battle._skill_ring(u["pos"], Color(1.0, 0.45, 0.15, 0.6), 54.0); battle._flash(u, Color(1.6, 0.9, 0.4))
+
