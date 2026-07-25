@@ -309,7 +309,7 @@ func _toggle_skill(pid: String, idx: int) -> void:
 	GameState.loadouts[pid] = idx                       # 3选1: 单选, 点哪个就替换成哪个
 	host._refresh_slots()
 	host._refresh_confirm()
-	host._refresh_detail()
+	host._detail._refresh_detail()
 
 
 # ══════════════════════════════════════════════════════════════
