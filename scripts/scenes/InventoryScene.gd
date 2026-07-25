@@ -16,6 +16,7 @@ const EquipStats = preload("res://scripts/gamedata/equip_stats.gd")   # 装备�
 const Phase2Minion = preload("res://scripts/gamedata/phase2_minion.gd")
 
 var _sel_bench: int = -1   # 当前选中的背包装备索引 (-1=无)
+var _inv_ops := InvOps.new(self)   # 背包·装备/卸下/卖出 业务逻辑(2026-07-25 抽出)
 var _dl_sel: Dictionary = {}   # 双路布阵选中框 {lane, idx} (点两个互换分路)
 var _vw: float = 1280.0   # 实际视口宽(手机expand后可达~1560): 顶栏/背包按真实宽铺开·不再左挤留空(2026-07-18)
 var _press_pos := Vector2.ZERO   # 背包格触屏点选/滑动判定: 松开位移小才算点选(可滑动列表·2026-07-18)
@@ -306,42 +307,12 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, is_leade
 		elif filled:
 			cell.tooltip_text = "点击卸下这件 → 回背包"
 			var cci := ci
-			cell.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: (_unequip_at(pet_id, cci) if is_leader else _unequip_minion_at(lane, idx, cci)))
+			cell.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: (_inv_ops._unequip_at(pet_id, cci) if is_leader else _inv_ops._unequip_minion_at(lane, idx, cci)))
 		else:
 			cell.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 空格透传
 		box.add_child(cell)
 
 ## 卸下统领第 cell_idx 件装备 → 回背包.
-func _unequip_at(pet_id: String, cell_idx: int) -> void:
-	var eqs: Array = GameState.persistent_equipped.get(pet_id, [])
-	if cell_idx < 0 or cell_idx >= eqs.size():
-		return
-	GameState.persistent_bench.append(eqs[cell_idx])
-	eqs.remove_at(cell_idx)
-	GameState.persistent_equipped[pet_id] = eqs
-	GameState.auto_merge_all()
-	GameState.save()
-	_rebuild()
-
-## 卸下小将第 cell_idx 件装备 → 回背包.
-func _unequip_minion_at(lane: String, idx: int, cell_idx: int) -> void:
-	var a: Dictionary = GameState.get_dual_lineup().duplicate(true)
-	if not a.has(lane) or idx < 0 or idx >= (a[lane] as Array).size():
-		return
-	var u: Dictionary = a[lane][idx]
-	var eqs: Array = u.get("equips", []) if u.get("equips", null) is Array else []
-	if cell_idx < 0 or cell_idx >= eqs.size():
-		return
-	GameState.persistent_bench.append(eqs[cell_idx])
-	eqs.remove_at(cell_idx)
-	u["equips"] = eqs
-	a[lane][idx] = u
-	GameState.dual_lineup = a
-	GameState.auto_merge_all()
-	GameState.save()
-	_rebuild()
-
-## 该路首个小将 idx (0统领路首小将=精英)
 func _dl_first_minion_idx(lane: String) -> int:
 	var arr: Array = GameState.get_dual_lineup().get(lane, [])
 	for i in range(arr.size()):
@@ -354,10 +325,10 @@ func _dl_click(lane: String, idx: int) -> void:
 	var arr: Array = GameState.get_dual_lineup().get(lane, [])
 	var unit: Dictionary = arr[idx] if idx < arr.size() and arr[idx] is Dictionary else {}
 	if _sel_bench >= 0 and str(unit.get("kind", "")) == "leader":
-		_equip_to(str(unit.get("id", "")), _sel_bench)
+		_inv_ops._equip_to(str(unit.get("id", "")), _sel_bench)
 		return
 	if _sel_bench >= 0 and str(unit.get("kind", "")) == "minion":
-		_equip_minion(lane, idx, _sel_bench)
+		_inv_ops._equip_minion(lane, idx, _sel_bench)
 		return
 	if _dl_sel.is_empty():
 		_dl_sel = {"lane": lane, "idx": idx}
@@ -596,11 +567,11 @@ func _build_op_bar() -> void:
 			l.text = "▶ %s  ★%d  (%s)   —— 点上方【龟 / 小将】装上   ·   %s" % [str(sdef.get("name", "")), _star, "费用%d" % int(sdef.get("cost", 1)), SkillText.highlight_star(str(sdef.get("effectDesc1", "")), _star)]
 			l.add_theme_font_size_override("normal_font_size", 14); l.add_theme_color_override("default_color", Color("#ffd93d"))
 			l.position = Vector2(16, 10); l.size = Vector2(bw - 320, 48); l.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(l)
-			var sv := _sell_value(sit)
+			var sv := _inv_ops._sell_value(sit)
 			var sell := Button.new(); sell.text = "💰 卖出 +%d💠" % sv
 			sell.add_theme_font_size_override("font_size", 16)
 			sell.position = Vector2(bw - 290, 14); sell.size = Vector2(170, 38)
-			sell.pressed.connect(_sell_selected); bar.add_child(sell)
+			sell.pressed.connect(_inv_ops._sell_selected); bar.add_child(sell)
 		var cancel := Button.new(); cancel.text = "取消"
 		cancel.add_theme_font_size_override("font_size", 16)
 		cancel.position = Vector2(bw - 108, 14); cancel.size = Vector2(92, 38)
@@ -694,81 +665,6 @@ func _on_bench_click(idx: int) -> void:
 	_rebuild()
 
 ## 选中的背包装备装到 pet_id (槽够才装).
-func _equip_to(pet_id: String, bench_idx: int) -> void:
-	var bench: Array = GameState.persistent_bench
-	if bench_idx < 0 or bench_idx >= bench.size():
-		_sel_bench = -1; _rebuild(); return
-	if str((bench[bench_idx] as Dictionary).get("kind", "")) == "item":   # 临时等级器 → 该龟本大轮永久+1级
-		GameState.apply_temp_leveler(pet_id)
-		GameState.consume_temp_leveler(bench_idx)
-		_sel_bench = -1
-		_toast("临时等级器 → %s 本大轮 +1 级 (现 +%d)" % [pet_id, GameState.temp_level_bonus(pet_id)])
-		_rebuild(); return
-	var eqs: Array = GameState.persistent_equipped.get(pet_id, [])
-	if eqs.size() >= P2.equip_slots_for_level(int(GameState.season_level)):
-		_sel_bench = -1; _rebuild(); return   # 槽满
-	var item = bench[bench_idx]
-	bench.remove_at(bench_idx)
-	eqs.append(item)
-	GameState.persistent_equipped[pet_id] = eqs
-	_sel_bench = -1
-	GameState.auto_merge_all()   # 装上后若凑够3件(背包+龟身)自动合星
-	GameState.save()
-	_rebuild()
-
-## 小将装备(实时新增): 存 dual_lineup[lane][idx].equips (id共享__minion__进不了persistent_equipped). 战斗端 _spawn_lane_side 读 .equips→_dl_equips 注入.
-func _equip_minion(lane: String, idx: int, bench_idx: int) -> void:
-	var bench: Array = GameState.persistent_bench
-	if bench_idx < 0 or bench_idx >= bench.size():
-		_sel_bench = -1; _rebuild(); return
-	if str((bench[bench_idx] as Dictionary).get("kind", "")) == "item":   # 临时等级器 → 该小将本大轮永久+1级
-		if GameState.apply_temp_leveler_minion(lane, idx):
-			GameState.consume_temp_leveler(bench_idx)
-			_toast("临时等级器 → 小将(%s路第%d格) 本大轮 +1 级" % [lane, idx + 1])
-		_sel_bench = -1
-		_rebuild(); return
-	var a: Dictionary = GameState.get_dual_lineup().duplicate(true)
-	if not a.has(lane) or idx < 0 or idx >= (a[lane] as Array).size():
-		_sel_bench = -1; _rebuild(); return
-	var u: Dictionary = a[lane][idx]
-	if str(u.get("kind", "")) != "minion":
-		_sel_bench = -1; _rebuild(); return
-	var eqs: Array = u.get("equips", []) if u.get("equips", null) is Array else []
-	if eqs.size() >= P2.equip_slots_for_level(int(GameState.season_level)):
-		_sel_bench = -1; _rebuild(); return   # 槽满(跟 leader 同 equip_slots_for_level)
-	eqs.append(bench[bench_idx])
-	bench.remove_at(bench_idx)
-	u["equips"] = eqs
-	a[lane][idx] = u
-	GameState.dual_lineup = a
-	_sel_bench = -1
-	GameState.auto_merge_all()   # 整理背包(小将装的不进合成池, 但背包其余照常3合1)
-	GameState.save()
-	_rebuild()
-
-func _sell_value(item: Dictionary) -> int:
-	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(item.get("id", "")), {})
-	var cost := maxi(1, int(edef.get("cost", 1)))
-	var star := maxi(1, int(item.get("star", 1)))
-	return int(floor(cost * star * 0.8))
-
-func _sell_selected() -> void:
-	if _sel_bench < 0 or _sel_bench >= GameState.persistent_bench.size():
-		return
-	GameState.meta_deepsea_coins += _sell_value(GameState.persistent_bench[_sel_bench])
-	GameState.persistent_bench.remove_at(_sel_bench)
-	_sel_bench = -1
-	GameState.save()
-	_rebuild()
-
-# ============================================================================
-#  糖果罐（糖果龟被动 · 局外经济行 · 用户2026-07-07设计）
-#  · 大轮开始时若锁定统领含糖果龟 → 拥有 1 个糖果罐
-#  · 赢一局计数 +1 / 输一局 +4（逆风快攒）· 封顶 30
-#  · 随时可打碎领奖: 计数越高档位越高(6档) → 深海币 + 装备(按档费/星) + 临时等级器(按档概率)
-#  · 打碎后本大轮消失
-#  逻辑全在 GameState: has_candy_jar / candy_jar_count / candy_jar_tier / break_candy_jar
-# ============================================================================
 func _build_candy_jar() -> void:
 	if not GameState.has_candy_jar():
 		return                                   # 统领没锁糖果龟(或已碎) → 不显示这行
