@@ -7,10 +7,10 @@
     "autoload"
   ],
   "file_ratchet": {
-    "scripts/scenes/RealtimeBattle3DScene.gd": 24125
+    "scripts/scenes/RealtimeBattle3DScene.gd": 23420
   },
   "func_ratchet": {
-    "scripts/scenes/RealtimeBattle3DScene.gd::_sk_star_wave": 324,
-    "scripts/scenes/RealtimeBattle3DScene.gd::_sk_star_gravity_warp": 256
+    "scripts/systems/star_system.gd::_sk_star_wave": 330,
+    "scripts/systems/star_system.gd::_sk_star_gravity_warp": 260
   }
 }
