@@ -47,7 +47,7 @@ func _test_dumbbell() -> void:
 	}
 	var hp0: float = u["hp"]
 	var mx0: float = u["maxHp"]
-	scene._eq_dumbbell_routine(u, 2)          # si=2 → 3★ → 文案 +110
+	scene._equip_sys._eq_dumbbell_routine(u, 2)   # si=2 → 3★ → 文案 +110 (2026-07-25: 装备效果已抽到 EquipSystem)
 	# ★同 verify_pirate_hook: 不能死等墙钟时间。战斗时钟 _t 用【钳制后】的 delta
 	#   (_process 开头 minf(delta, 0.1) 防卡死), 而 create_timer 用【未钳制】的真实帧 delta
 	#   → 慢机器上游戏时间会落后于计时器 → 效果还没结算就断言 → 假 FAIL。

@@ -48,6 +48,17 @@ VERIFIED_FAR = {
     ('p2eq_043', '2/3/5'):       '_eq_water_wave 海浪护符 [2,3,5]',
     ('p2eq_043', '40/95/120'):   '_eq_water_wave 海浪护符 [40,95,120]',
     ('p2eq_057', '2/3/7'):       '_eq_sniper 狙击长管 [2,3,7]',
+    # ── 2026-07-25 装备效果抽到 equip/equip_system.gd(装备与技能分开)后, id 分派与效果数组分居两文件
+    #    (或效果在留守主场景的 _ice_throw_go/_fuel_bottle_hit/_tick_laser 里)→ 字符距离超 WIN=远处命中。
+    #    纯搬迁·数值一个没改(移动前均在册通过)·逐条核对数组仍在对应装备的效果码里。 ──
+    ('p2eq_006', '0.8/1.3/4.0'):  '_eq_sword_storm 千刃风暴(reorg远)',
+    ('p2eq_006', '70/100/400'):   '_eq_sword_storm 千刃风暴(reorg远)',
+    ('p2eq_010', '35/80/100'):    '激光长刃 _tick_laser/_eq_laser_* (reorg远)',
+    ('p2eq_010', '0.6/1.0/8.0'):  '_eq_laser_chop/sweep 激光 [0.6,1.0,8.0](equip_system:968)',
+    ('p2eq_010', '15/32/200'):    '_eq_laser_chop/sweep 激光 [15,32,200](equip_system:968)',
+    ('p2eq_028', '40/60/100'):    '_ice_throw_go 冰霜冻露瓶 [40,60,100](留守主场景·reorg远)',
+    ('p2eq_029', '100/160/250'):  '冰封水母 p2eq_029 case(reorg远)',
+    ('p2eq_030', '30/35/40'):     '迷你水晶球A p2eq_030(reorg远)',
 }
 WIN = 2500
 
@@ -72,7 +83,9 @@ ARRS = [(m.start(), tuple(float(g) for g in m.groups()))
 # 数值在几十行外的 _eq_<名> 函数体内(远)。只锚 id 字符串会把这些逐星数组误判成"远处命中"。
 # 于是把每件装备【分派到的效果函数定义处】也当作它的锚点 → 数值就落在 WIN 内。
 _ID2FN = {}
-for _m in re.finditer(r'"(p2eq_\d+)"\s*:\s*(_\w+)\s*\(', code):
+# 2026-07-25: 装备效果抽到 EquipSystem 后, 分派可能写成 "p2eq_NNN": _equip_sys._eq_xxx( →
+#   跳过 <名>_sys. 前缀, 锚到真正的效果函数名(否则锚到 _equip_sys → 数值当"远处命中"误报)。
+for _m in re.finditer(r'"(p2eq_\d+)"\s*:\s*(?:_\w+_sys\.)?(_\w+)\s*\(', code):
     _ID2FN.setdefault(_m.group(1), set()).add(_m.group(2))
 _FNDEF = {}
 for _m in re.finditer(r'\bfunc\s+(_\w+)\s*\(', code):

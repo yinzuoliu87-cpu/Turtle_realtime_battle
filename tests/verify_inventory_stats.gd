@@ -21,7 +21,9 @@ func _ready() -> void:
 	await get_tree().process_frame
 
 	# ── A. 实装读了哪些字段 vs 格式化函数认得哪些 ──
-	var f := FileAccess.open("res://scripts/scenes/RealtimeBattle3DScene.gd", FileAccess.READ)
+	# 2026-07-25: 装备效果已从主场景抽到 scripts/systems/equip/equip_system.gd(装备与技能分开管理)。
+	#   _eq_apply_one_stats 现在住那里 → 从装备系统文件解析实装字段。
+	var f := FileAccess.open("res://scripts/systems/equip/equip_system.gd", FileAccess.READ)
 	var impl := {}
 	var inside := false
 	while f != null and not f.eof_reached():
@@ -73,6 +75,13 @@ func _ready() -> void:
 	if fb != null:
 		bat_src = fb.get_as_text()
 		fb.close()
+	# 装备效果拆分后, 取用点(如 _buff(u,"dodge") 幽灵墨鱼)可能在 equip 系统里 → 一并纳入。
+	for _ed in ["res://scripts/systems/equip", "res://scripts/systems/skills"]:
+		var _d := DirAccess.open(_ed)
+		if _d:
+			for _sf in _d.get_files():
+				if _sf.ends_with(".gd"):
+					bat_src += "\n" + FileAccess.get_file_as_string(_ed + "/" + _sf)
 	var ghost: Array = []
 	for k in alt_path.keys():
 		if not bat_src.contains(str(k)): ghost.append(k)
