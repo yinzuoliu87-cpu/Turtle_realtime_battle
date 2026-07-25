@@ -88,7 +88,7 @@ func _ready() -> void:
 
 	# 逻辑层: 直接调抽出来的结算函数(绕过演出), 验 25% 真伤
 	var hp1: float = killer["hp"]
-	scene._pirate_grapple_hit(pirate, killer)
+	scene._pirate_sys._pirate_grapple_hit(pirate, killer)   # (2026-07-25 pirate 抽出 skills/pirate_system.gd)
 	var lost: float = hp1 - float(killer["hp"])
 	print("  (钩索伤害: 击杀者 maxHp=%.0f, 掉血 %.0f, 期望 %d)" % [float(killer["maxHp"]), lost, expect])
 	_ok("★钩索伤害 = 25% 击杀者最大生命(真实伤害·直接调结算函数, 不依赖演出)",
@@ -96,7 +96,7 @@ func _ready() -> void:
 	var dist: float = pirate["pos"].distance_to(killer["pos"])
 	# ★"拉近到 90 码"是【拉回演出 tween 的终点】—— 等它跑到就又依赖那条脆弱的 tween。
 	#   改成验【终点算得对】: 直接调 _pirate_grapple_dest, 断言它离尸位 ≈90 码。
-	var dest: Vector2 = scene._pirate_grapple_dest(pirate["pos"], killer["pos"])
+	var dest: Vector2 = scene._pirate_sys._pirate_grapple_dest(pirate["pos"], killer["pos"])
 	var dest_dist: float = dest.distance_to(pirate["pos"])
 	print("  (拉回终点距尸位 %.1f 码, 应≈90)" % dest_dist)
 	_ok("★钩索把击杀者拉到尸位 ~90 码处(验终点, 不等演出)", absf(dest_dist - 90.0) <= 5.0,
@@ -122,7 +122,7 @@ func _ready() -> void:
 			"before=%.0f after=%.0f" % [before, float(k2["hp"])])
 
 	print("=== 3. 源码级: 不再是「任意敌死→钩最近敌」 ===")
-	var src := _src("res://scripts/scenes/RealtimeBattle3DScene.gd")
+	var src := _src("res://scripts/scenes/RealtimeBattle3DScene.gd") + "\n" + _src("res://scripts/systems/skills/pirate_system.gd")   # 钩索结算已抽到 skills/pirate_system.gd(2026-07-25)
 	_ok("触发条件是 u.id == pirate", src.find("u.get(\"id\", \"\") == \"pirate\" and not u.get(\"is_summon\", false) and killer is Dictionary") >= 0)
 	_ok("目标是 killer, 不是 _nearest_enemy", src.find("var kk: Dictionary = killer") >= 0)   # 2026-07-14钩索动画重做后变量改名
 

@@ -405,7 +405,7 @@ func _hook_dramatize(trainer: Dictionary, target: Dictionary) -> void:
 		ct[0] += 0.02
 		if ct[0] >= 0.05:
 			ct[0] = 0.0
-			battle._pirate_chain(from2d, hp2)
+			battle._pirate_sys._pirate_chain(from2d, hp2)
 	, 0.0, 1.0, flight)
 	tw.tween_callback(func() -> void:         # ④ 到达
 		battle._skill_ring(to2d, Color(0.75, 0.82, 0.95, 0.7), 40.0)
@@ -437,7 +437,7 @@ func _hook_dramatize_miss(trainer: Dictionary, dir: Vector2) -> void:
 		ct[0] += 0.02
 		if ct[0] >= 0.05:
 			ct[0] = 0.0
-			battle._pirate_chain(from2d, hp2)
+			battle._pirate_sys._pirate_chain(from2d, hp2)
 	, 0.0, 1.0, 0.34)
 	tw.tween_callback(func() -> void:
 		if is_instance_valid(hook): hook.queue_free())
