@@ -42,7 +42,7 @@ func _ready() -> void:
 
 	# ── A. 爆炸落地结算(直接调 _bomb_explode = _sk_ninja_bomb 抛物线到点后的回调; spr=null 跳精灵动画) ──
 	#   顺序: 圈内敌先施 -25%护甲(def 40→30) 再打伤害 → 每发 round(100×2.0 × (1-30/70)) = 114; 圈外敌 0
-	scene._bomb_explode(null, ninja, land, {"phys": 2.0, "defDown": 0.25, "color": Color("#ff9a3c")})
+	scene._ninja_sys._bomb_explode(null, ninja, land, {"phys": 2.0, "defDown": 0.25, "color": Color("#ff9a3c")})
 	var t1: int = int(near1.get("_st_taken", 0))
 	var t2: int = int(near2.get("_st_taken", 0))
 	var tf: int = int(far1.get("_st_taken", 0))
@@ -53,7 +53,7 @@ func _ready() -> void:
 
 	# ── B. 投掷炸弹 no-crash + 生成弹体精灵(帧动画/爆炸走 tween, headless 不推进但设置不该崩) ──
 	var wc0: int = scene._world.get_child_count()
-	scene._sk_ninja_bomb(ninja, near1)
+	scene._ninja_sys._sk_ninja_bomb(ninja, near1)
 	_ok("投掷 _sk_ninja_bomb 不崩+生成弹体精灵", scene._world.get_child_count() > wc0, "world child %d→%d" % [wc0, scene._world.get_child_count()])
 
 	print("")

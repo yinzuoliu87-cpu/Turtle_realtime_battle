@@ -101,7 +101,8 @@ func _check_user_scenario() -> void:
 
 ## ③ 战斗场里确实建了统一原语, 且侵入不再改写 side
 func _check_source_has_primitive() -> void:
-	var src := FileAccess.get_file_as_string(SCENE_PATH)
+	var src := FileAccess.get_file_as_string(SCENE_PATH) + "
+" + FileAccess.get_file_as_string("res://scripts/systems/skills/cyber_system.gd")   # cyber 已抽出(2026-07-25)
 	if src == "":
 		_fail("读不到 %s" % SCENE_PATH)
 		return
@@ -143,7 +144,8 @@ func _check_source_has_primitive() -> void:
 ##   同文件 8959 行早就用了正确写法 is_same(...), 所以不是不知道, 是漏改。
 ##   H9 本身的结论是【不受侵入影响】—— 那条链按 summon_owner 身份判定, 不看 side。
 func _check_no_unit_dict_eq() -> void:
-	var src := FileAccess.get_file_as_string(SCENE_PATH)
+	var src := FileAccess.get_file_as_string(SCENE_PATH) + "
+" + FileAccess.get_file_as_string("res://scripts/systems/skills/cyber_system.gd")   # cyber 已抽出(2026-07-25)
 	if src == "":
 		return
 	var re := RegEx.new()
@@ -171,7 +173,8 @@ func _check_no_unit_dict_eq() -> void:
 
 
 func _check_no_raw_side_targeting():
-	var src := FileAccess.get_file_as_string(SCENE_PATH)
+	var src := FileAccess.get_file_as_string(SCENE_PATH) + "
+" + FileAccess.get_file_as_string("res://scripts/systems/skills/cyber_system.gd")   # cyber 已抽出(2026-07-25)
 	if src == "":
 		return
 	var re := RegEx.new()

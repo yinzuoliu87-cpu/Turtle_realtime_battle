@@ -38,7 +38,7 @@ func _ready() -> void:
 		scene._units.append(d)
 
 	# 放背刺 (tgt 传近的, 应自己重定向到最远的 far1)
-	scene._sk_ninja_backstab(ninja, near1)
+	scene._ninja_sys._sk_ninja_backstab(ninja, near1)
 
 	_ok("获得+15穿甲", int(round(float(ninja.get("armor_pen", 0.0)))) == 15, "armor_pen=%.1f" % float(ninja.get("armor_pen", 0.0)))
 	var dist_far: float = ninja["pos"].distance_to(far1["pos"])

@@ -48,7 +48,7 @@ func _ready() -> void:
 		"%.1f -> %.1f" % [spd0, float(cy["move_spd"])])
 
 	print("=== 2. 每次释放 +1 充能 ===")
-	scene._sk_cyber_smart(cy)
+	scene._cyber_sys._sk_cyber_smart(cy)
 	_ok("释放一次 → 4 层", int(cy.get("cyber_ai_charge", -1)) == 4,
 		"got=%d" % int(cy.get("cyber_ai_charge", -1)))
 

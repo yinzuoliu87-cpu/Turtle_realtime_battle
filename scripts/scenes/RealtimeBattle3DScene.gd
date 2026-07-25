@@ -635,6 +635,9 @@ var _pending_shots: Array = []            # 依次射出的子弹队列 [{delay,
 # ═══ 沙漏059 JoJo时停 ═══ 冻结全局_t + 只tick active携带者; 其他单位/弹道/依次射击/tween/粒子 全定格
 var _timestop := TimestopSystem.new(self)   # 沙漏时停系统(2026-07-25 从本文件抽出)
 var _equip_sys := EquipSystem.new(self)   # 装备效果系统(2026-07-25 抽出·与技能分开)
+var _candy_sys := CandySystem.new(self)   # 糖果龟技能系统(2026-07-25 抽出)
+var _cyber_sys := CyberSystem.new(self)   # 赛博龟技能系统(2026-07-25 抽出)
+var _ninja_sys := NinjaSystem.new(self)   # 忍者龟技能系统(2026-07-25 抽出)
 var _pirate_sys := PirateSystem.new(self)   # 海盗龟技能系统(2026-07-25 抽出)
 var _equip_tick_sys := EquipTickSystem.new(self)   # 装备周期效果tick系统(2026-07-25 抽出)
 var _audio_sys := AudioSystem.new(self)   # 音效系统(2026-07-25 抽出)
@@ -4535,7 +4538,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 		u["_sweet_t"] = float(u.get("_sweet_t", 0.0)) + delta
 		if float(u["_sweet_t"]) >= 8.0:
 			u["_sweet_drained"] = true
-			_candy_sweet_drain(u)
+			_candy_sys._candy_sweet_drain(u)
 	if u.get("summon_kind", "") == "candybomb" and u.get("alive", false):   # 糖果炸弹: 随血量缩小(融化感)+持续糖泡(用户2026-07-14参照海盗船完整呈现)
 		var _cbspr = u.get("sprite", null)
 		if is_instance_valid(_cbspr):
@@ -4544,7 +4547,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 		u["_cb_vfx_t"] = float(u.get("_cb_vfx_t", 0.0)) + delta
 		if float(u["_cb_vfx_t"]) >= 0.42:
 			u["_cb_vfx_t"] = 0.0
-			_candy_bomb_bubble(u)
+			_candy_sys._candy_bomb_bubble(u)
 	_update_stun_vfx(u)         # 通用眩晕圈: 眩晕期间头顶火花星绕转(椭圆), 结束即撤
 	_update_bamboo_charge_dots(u)   # 竹叶蓄满: 双手两绿点(强化就绪指示)
 	_heal_flush(u)   # LoL式治疗累加器: 攒一波回血合并成一个绿字(满血=0)
@@ -5967,31 +5970,7 @@ func _update_ninja_marks() -> void:
 			var pulse = o.get("_ninja_mark_pulse", null)
 			if pulse != null and is_instance_valid(pulse): pulse.kill()
 			o["_ninja_mark_pulse"] = null
-			_ninja_mark_shatter(spr)
-
-func _ninja_mark_shatter(spr) -> void:
-	if not is_instance_valid(spr): return
-	var pos: Vector3 = spr.position
-	var sc0: Vector3 = spr.scale
-	var bt := create_tween(); bt.set_parallel(true)
-	bt.tween_property(spr, "modulate:a", 0.0, 0.2)
-	bt.tween_property(spr, "scale", sc0 * 1.6, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	bt.chain().tween_callback(spr.queue_free)
-	for k in range(4):
-		var sh := Sprite3D.new()
-		sh.texture = load("res://assets/sprites/vfx/crystal-shard.png")
-		sh.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-		sh.billboard = BaseMaterial3D.BILLBOARD_ENABLED; sh.shaded = false; sh.transparent = true
-		sh.modulate = Color(1.0, 0.35, 0.35, 0.9)
-		sh.pixel_size = 0.006
-		sh.position = pos
-		_world.add_child(sh)
-		var ang: float = float(k) * TAU / 4.0 + 0.4
-		var dst := pos + Vector3(cos(ang) * 0.2, 0.06, sin(ang) * 0.2)
-		var st := create_tween().bind_node(sh); st.set_parallel(true)
-		st.tween_property(sh, "position", dst, 0.24)
-		st.tween_property(sh, "modulate:a", 0.0, 0.24)
-		st.chain().tween_callback(sh.queue_free)
+			_ninja_sys._ninja_mark_shatter(spr)
 
 func _update_stun_vfx(u: Dictionary) -> void:
 	var active: bool = _t < float(u.get("stun_until", 0.0))
@@ -7454,7 +7433,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 			if _mo.get("alive", false) and _mo.get("is_summon", false) and str(_mo.get("summon_kind", "")) == "mech" and is_same(_mo.get("summon_owner", null), u):
 				_have_mech = true; break
 		if not _have_mech:
-			_cyber_assemble_mech(u)
+			_cyber_sys._cyber_assemble_mech(u)
 		u["hp"] = float(u["maxHp"]) * 0.6
 		return
 	# 首死复活钩子 (天使圣光 / 凤凰涅槃) — 仅作为常驻一次, 1:1 2D
@@ -8488,7 +8467,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"fortuneBuyEquip":      _sk_fortune_buyequip(u)
 		"lightningShield":      _sk_lightning_shield(u)
 		"rainbowReflect":       _sk_rainbow_reflect(u)
-		"ninjaBackstab":        _sk_ninja_backstab(u, tgt)
+		"ninjaBackstab":        _ninja_sys._sk_ninja_backstab(u, tgt)
 		"ghostStorm":           _sk_ghost_soulstorm(u, tgt)
 		"ghostPhase":           _sk_ghost_phase(u, tgt)
 		"diamondFortify":       _sk_diamond_unbreak(u)
@@ -8518,7 +8497,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"twoHeadFusion":        _sk_two_head_fusion(u, tgt)
 		"lavaSurge":            _sk_lava_cast(u, tgt, "B")   # 岩浆涌动 (修: 原走set A=地裂)
 		"lavaErupt":            _sk_lava_erupt(u, tgt)       # 技三: 智能冲刺+穿透普攻 / 火山暴走
-		"cyberBeam":            _sk_cyber_cannon(u, tgt)
+		"cyberBeam":            _cyber_sys._sk_cyber_cannon(u, tgt)
 		"hidingDefend":         _sk_hiding_defend(u)
 		"shellAbsorb":          _shell_sys._sk_shell_absorb(u, tgt)
 		# ── 通用 (多龟共享 type) ──
@@ -8533,8 +8512,8 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"bambooSmack":          _sk_bamboo_smack(u, tgt)
 		"bambooSpikes":         _sk_bamboo_spikes(u, tgt)
 		"angelEquality":        _angel_sys._sk_angel_equality(u, tgt)
-		"ninjaShuriken":        _sk_ninja_shuriken(u, tgt)
-		"ninjaBomb":            _sk_ninja_bomb(u, tgt)
+		"ninjaShuriken":        _ninja_sys._sk_ninja_shuriken(u, tgt)
+		"ninjaBomb":            _ninja_sys._sk_ninja_bomb(u, tgt)
 		"ghostPhantom":         _sk_ghost_phantom(u, tgt)
 		"diamondPowerball":     _sk_diamond_powerball(u, tgt)
 		"diamondSmash":         _sk_diamond_smash(u, tgt)
@@ -8542,9 +8521,9 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"gamblerDraw":          _sk_gambler_wild(u, tgt)   # 万能牌(默认签名技): 原来错派纯伤害, 改回 _sk_gambler_wild(2段+盾+治疗+减益)
 		"hunterShot":           _sk_hunter_shot(u, tgt)
 		"hunterBarrage":        _sk_hunter_barrage(u, tgt)
-		"candyBarrage":         _sk_candy_barrage(u, tgt)
-		"candyHammer":          _sk_candy_hammer(u, tgt)
-		"candyBomb":            _sk_candy_bomb_feed(u)
+		"candyBarrage":         _candy_sys._sk_candy_barrage(u, tgt)
+		"candyHammer":          _candy_sys._sk_candy_hammer(u, tgt)
+		"candyBomb":            _candy_sys._sk_candy_bomb_feed(u)
 		"lightningBarrage":     _sk_lightning_barrage(u)
 		"phoenixScald":         _sk_phoenix_scald(u, tgt)
 		"lavaQuake":            _sk_lava_cast(u, tgt, "A")   # 地裂(默认): 修-原派_sk_dmg带slow→应_lava_quake(全体魔+削魔抗20%)
@@ -8560,8 +8539,8 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"starGravityWarp":      _star_sys._sk_star_gravity_warp(u)
 		"lineFinish":           _line_sys._sk_line_finish(u)
 		"lineInkBomb":          _line_sys._sk_line_ink_bomb(u)
-		"cyberHijack":          _sk_cyber_hijack(u)
-		"cyberSmartAI":         _sk_cyber_smart(u)
+		"cyberHijack":          _cyber_sys._sk_cyber_hijack(u)
+		"cyberSmartAI":         _cyber_sys._sk_cyber_smart(u)
 		"bubbleBind":           _sk_bubble_bind(u, tgt)
 		"bubbleBurst":          _sk_bubble_burst(u, tgt)
 		"hidingShrink":         _sk_hiding_shrink(u)
@@ -9005,141 +8984,6 @@ func _fire_ice_shard(src: Dictionary, tgt: Dictionary, dmg: int) -> void:   # �
 		"node": p, "from": world_from, "tgt": tgt, "dmg": dmg, "col": Color("#4dabf7"),
 		"src": src, "t": 0.0, "dur": dur, "basic_onhit": false, "freeze_on_hit": 1.5, "oriented": true, "dtype": _last_dmg_type,
 	})
-
-func _ninja_dash(u: Dictionary, target: Dictionary) -> void:    # 被动·冲击(亚索E式): 朝最近敌固定位移300码(2026-07-22订正: 头注释一直没跟上同日的 450→300)·主目标1.3A/路径其余0.8A物理+击飞0.8s·每敌10s冷却·无伤害递增
-	# 〖用户2026-07-06〗"450码固定距离，最近，所以理想的效果就是他会连着滑几下，不用加递增"; 伤害取回合制 ninjaImpact(atkScale=1.3 / behindScale=0.8)
-	u["_ninja_last_dash"] = _t
-	var start: Vector2 = u["pos"]
-	var dir: Vector2 = target["pos"] - start
-	if dir.length() < 1.0: dir = Vector2.RIGHT
-	dir = dir.normalized()
-	# ★#5修〖用户2026-07-11〗: 亚索 E 式【滑行穿过】(非瞬移), 滑速 600 码/秒. 固定路径 300 码(同日 450→300).
-	var endp: Vector2 = start + dir * 300.0                     # 冲刺距离 300码(用户2026-07-11: 450→300)
-	endp.x = clampf(endp.x, ARENA.position.x, ARENA.end.x)
-	endp.y = clampf(endp.y, ARENA.position.y, ARENA.end.y)
-	# 路径上的敌 (按沿路投影排序 → 滑到谁割谁)
-	var hits: Array = []
-	for o in _enemies_of(u):
-		if not o.get("alive", false): continue
-		if not _on_line(start, dir, o["pos"], 62.0): continue
-		var proj: float = (o["pos"] - start).dot(dir)
-		if proj < 0.0 or proj > 300.0: continue
-		hits.append({"o": o, "proj": proj, "done": false})
-	hits.sort_custom(func(a, b): return float(a["proj"]) < float(b["proj"]))
-	_bolt_line(start, endp, Color(0.7, 0.95, 1.0, 0.5))         # 冲刺残影(淡)
-	_ninja_glide(u, start, endp, dir, target, hits)            # 滑行(async, fire-and-forget)
-
-## 忍者冲击滑行 (亚索 E 式 · 600 码/秒 · 穿过路径敌逐个割). no_move 期间分离跳过, 每帧直接推 pos.
-func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, target: Dictionary, hits: Array) -> void:
-	var total: float = start.distance_to(endp)
-	if total < 1.0:
-		return
-	var was_nm: bool = bool(u.get("no_move", false))
-	var was_nb: bool = bool(u.get("no_basic", false))
-	u["no_move"] = true
-	u["no_basic"] = true
-	u["_ninja_gliding"] = true                                 # 滑行中(含起手/落地)→触发器不再触发下一次冲刺(用户2026-07-11)
-	var _nspr = u.get("sprite", null)
-	var _ndsd := _resolve_action("pets/animations/ninja/dash.png", 16.0)   # 忍者冲刺动作(起手1-4/滑行5-8/落地9-11·丢12-18)
-	var _ndash: bool = (not _ndsd.is_empty()) and is_instance_valid(_nspr)
-	if _ndash:
-		u["_manual_anim"] = true                          # 手动逐帧(阻止_advance_anim自动推进)
-		_set_anim_sheet(u, _ndsd, "dash", false)
-		u["face_right"] = dir.x > 0.0                      # 朝滑行方向
-		for _wf in range(4):                                # 起手 1-4帧
-			if not u.get("alive", false): break
-			if is_instance_valid(_nspr): _nspr.frame = _wf
-			await _wait_sim(0.045)
-	var traveled := 0.0
-	# ★冲击特效(用户2026-07-11): 角色前方一道疾风拖影伴随滑行(fx-trail·贴地朝行进方向·每帧跟随身前)
-	var lead := Sprite3D.new()
-	lead.texture = load("res://assets/sprites/vfx/fx-trail.png")
-	lead.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
-	lead.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-	lead.axis = Vector3.AXIS_Y
-	lead.shaded = false; lead.transparent = true
-	lead.modulate = Color(0.72, 0.95, 1.0, 0.9)                # 疾风蓝白
-	var _lt := float(maxi(1, int(lead.texture.get_width())))
-	lead.pixel_size = (160.0 * WS) / _lt
-	lead.rotation.y = -atan2(dir.y, dir.x)                      # 朝行进方向
-	lead.position = _world_pos(start + dir * 60.0, 1.0)
-	_world.add_child(lead)
-	while traveled < total and u.get("alive", false) and is_inside_tree():
-		await get_tree().process_frame
-		traveled = minf(total, traveled + 600.0 * get_process_delta_time())   # 恒速 600 码/秒
-		u["pos"] = start + dir * traveled
-		if is_instance_valid(lead): lead.position = _world_pos(u["pos"] + dir * 60.0, 1.0)   # 拖影跟在身前
-		if _ndash and is_instance_valid(_nspr): _nspr.frame = 4 + (int(traveled / 45.0) % 4)   # 滑行 5-8帧循环
-		for h in hits:
-			if not h["done"] and traveled >= float(h["proj"]):
-				h["done"] = true
-				var o: Dictionary = h["o"]
-				if o.get("alive", false):
-					_apply_damage_from(u, o, _atk_dmg(u, 1.3 if is_same(o, target) else 0.8, o), Color("#9fe8ff"))
-					_knockback(u, o, 40.0, 1.468, 1.0)          # 击飞 0.8s 滞空
-					if is_same(o, target): o["_ninja_dash_until"] = _t + 10.0          # 只有【目标】进10s冷却·顺路割到的不占(用户2026-07-11)
-					_burst_vfx("res://assets/sprites/vfx/ninja-slash.png", o["pos"], 88.0, 1.0)
-	u["pos"] = endp
-	u["no_move"] = was_nm
-	u["no_basic"] = was_nb
-	if is_instance_valid(lead):                                # 冲刺结束→拖影淡出
-		var _lw := _reg_tween()
-		_lw.tween_property(lead, "modulate:a", 0.0, 0.14)
-		_lw.tween_callback(lead.queue_free)
-	_burst_vfx("res://assets/sprites/vfx/ninja-slash.png", u["pos"], 98.0, 1.0)   # 落点疾风斩弧
-	if _ndash:
-		for _lf in range(8, 11):                            # 落地 9-11帧
-			if is_instance_valid(_nspr): _nspr.frame = _lf
-			await _wait_sim(0.05)
-		u["_manual_anim"] = false
-		if is_instance_valid(_nspr): _set_anim_sheet(u, u.get("idle_sd", {}), "", true)   # 回idle
-	u["_ninja_gliding"] = false                               # 冲刺(含落地)结束→放开触发
-
-func _sk_ninja_backstab(u: Dictionary, tgt: Dictionary) -> void: # 技三·背刺(1:1回合制 ninjaBackstab): +5穿甲5秒→闪现到【全场最远敌】身后→背刺【3段·每段300ms(hitStaggerMs)】各0.6667A物理(共2.0A)→留该处追砍
-	var far = null
-	var fd := -1.0
-	for o in _pick_enemies_of(u):   # ★单体定向(闪现到最远敌身后)走 _pick_enemies_of: 否则忍者会瞬移到场外训龟大师身后背刺(场外·永远最远); 见 §PICK-TARGET(用户2026-07-24)
-		if not o.get("alive", false): continue
-		var dd: float = u["pos"].distance_to(o["pos"])
-		if dd > fd: fd = dd; far = o
-	if far == null: far = tgt
-	if far == null: return
-	var from2d: Vector2 = u["pos"]
-	u["armor_pen"] = float(u.get("armor_pen", 0.0)) + 15.0       # +15穿甲(5秒后撤销·用户2026-07-11: 5→15)
-	var uu: Dictionary = u
-	_pending_shots.append({"delay": 5.0, "fn": func(): uu["armor_pen"] = float(uu.get("armor_pen", 0.0)) - 15.0, "src": u})
-	_dash_to(u, far, -70.0)                                     # 闪现到最远敌身后
-	u["face_right"] = far["pos"].x > u["pos"].x                # 面向最远敌(背刺sheet已镜像统一朝向)
-	_beam_vfx("res://assets/sprites/vfx/fx-trail.png", from2d, u["pos"], 34.0, Color(0.8, 0.9, 1.0, 0.55), 0.28)   # 闪现刀光拖影(起点→落点)
-	var asd := _resolve_action("pets/animations/ninja/backstab-rt.png", 16.0)   # 忍者背刺18帧全身动作(盖身上·播完回idle)
-	if not asd.is_empty():
-		_set_anim_sheet(u, asd, "backstab", false)                            # action="backstab"→_play_action 里挡普攻/受击换anim
-		u["_anim_lock_until"] = _t + float(asd.get("frames", 18)) / 16.0 + 0.05   # 动作播完前锁出手/移动(用户2026-07-11「动作播完前不打断」)
-	# 背刺三段: 每段 300ms 一刀(hitStaggerMs 300) 各 0.6667A 物理 + 斩弧, 目标死则跳过后续段
-	var far2: Dictionary = far
-	for i in range(3):
-		_pending_shots.append({"delay": 0.30 * float(i), "src": u, "fn": func():
-			if not u.get("alive", false) or not far2.get("alive", false):
-				return
-			_apply_damage_from(u, far2, _atk_dmg(u, 0.6667, far2), Color("#cfd8e8"))
-			_burst_vfx("res://assets/sprites/vfx/ninja-slash.png", far2["pos"], 88.0, 1.0)   # 每刀斩弧
-			_hit_spark(far2)
-		})
-
-func _sk_ninja_shuriken(u: Dictionary, tgt) -> void:           # 技·手里剑(封板·远程·1:1回合制_ninja_shuriken): 掷旋转飞镖·命中1.6A物理; 暴击(按忍者暴击率)=暴击总伤拆两段→红物理(吃减甲)+白真伤(穿甲·占(40+2%/级)%), 同一发跳两个数字
-	if tgt == null: tgt = _nearest_enemy(u)
-	if tgt == null: return
-	var base_dmg: float = float(u["atk"]) * 1.6               # 1.6A 基础(未减甲/未暴击)
-	var is_crit: bool = _battle_rng.randf() < minf(float(u.get("crit", 0.0)), 1.0)   # 暴击=忍者自身暴击率(非固定概率)
-	var phys_raw: float = base_dmg                            # 非暴击: 全物理一发
-	var true_raw: float = 0.0
-	if is_crit:
-		var crit_mult: float = DamageMath.crit_multiplier(float(u.get("crit", 0.0)), float(u.get("crit_dmg", 1.5)))   # 暴击倍率(溢出100%每1%→1.5%·同_resolve_dmg)
-		var crit_total: float = round(base_dmg * crit_mult)  # 暴击总伤(已乘暴击倍率)
-		var lv: int = int(u.get("level", 1))
-		true_raw = round(crit_total * minf(100.0, 40.0 + 2.0 * float(lv)) / 100.0)   # 其中(40+2%/级)%(封顶100%)→真实伤害(穿甲)
-		phys_raw = maxf(0.0, crit_total - true_raw)           # 余下→物理(吃减甲)
-	_fire_shuriken(u, tgt, phys_raw, true_raw, is_crit)
 
 func _fire_shuriken(src: Dictionary, tgt: Dictionary, phys_raw: float, true_raw: float, is_crit: bool) -> void:   # 旋转飞镖弹道(4帧自旋): 命中→物理段(红·减甲)+可选真伤段(白·穿甲)·暴击金染
 	var start2d: Vector2 = src["pos"]
@@ -11377,177 +11221,6 @@ func _screen_flash_light() -> void:                              # 全屏轻白�
 	tw.tween_property(rect, "color:a", 0.28, 0.06)
 	tw.tween_property(rect, "color:a", 0.0, 0.12)
 	tw.tween_callback(cl.queue_free)
-func _sk_candy_hammer(u: Dictionary, tgt) -> void:              # 糖果龟·技能一糖果锤(封板·80龟能): 举糖果锤蓄力→猛砸直线200码·总(1.8A+12%自maxHp)物理由命中敌均分·回血40%(用户2026-07-14做举锤蓄力+落砸)
-	if tgt == null: tgt = _nearest_enemy(u)
-	if tgt == null: return
-	var dir: Vector2 = tgt["pos"] - u["pos"]
-	if dir.length() < 1.0: dir = Vector2.RIGHT
-	dir = dir.normalized()
-	_anticipate(u)                                              # 蹲身蓄力
-	var hammer: Sprite3D = null                                # 举锤→猛砸一气呵成(用户2026-07-15"不连贯"→连续动作·无干等)
-	var htex := load("res://assets/sprites/skills/candy-hammer.png")
-	if htex != null:
-		hammer = Sprite3D.new()
-		hammer.texture = htex; hammer.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-		hammer.billboard = BaseMaterial3D.BILLBOARD_DISABLED; hammer.shaded = false; hammer.transparent = true
-		hammer.pixel_size = (155.0 * WS) / float(maxi(1, htex.get_height()))
-		_candy_hammer_pose(hammer, u["pos"], dir, false, 0.0)
-		_world.add_child(hammer)
-	var uu: Dictionary = u; var d2: Vector2 = dir
-	var tw := _reg_tween()
-	if hammer != null:
-		tw.tween_method(func(p: float) -> void: _candy_hammer_pose(hammer, uu["pos"], d2, false, p), 0.0, 1.0, 0.26).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)   # 举锤上抬后仰
-		tw.tween_method(func(p: float) -> void: _candy_hammer_pose(hammer, uu["pos"], d2, true, p), 0.0, 1.0, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)   # 猛砸下挥
-	else:
-		tw.tween_interval(0.38)
-	tw.tween_callback(func() -> void:   # 砸中: 沿线糖爆冲击+震屏+均分伤+回血
-		if hammer != null and is_instance_valid(hammer):
-			var ht := _reg_tween(); ht.tween_interval(0.06); ht.tween_property(hammer, "modulate:a", 0.0, 0.16); ht.tween_callback(hammer.queue_free)
-		_shake(JUICE_SHAKE_HEAVY)
-		for k in range(4):                                     # 沿线糖爆冲击带(从锤头往前铺·200码)
-			var at: Vector2 = uu["pos"] + d2 * (55.0 + float(k) * 48.0)
-			var bt := _reg_tween(); bt.tween_interval(float(k) * 0.03)
-			bt.tween_callback(func() -> void: _burst_vfx("res://assets/sprites/vfx/candy-burst.png", at, 150.0, 0.35))
-		if not uu.get("alive", false): return
-		var hits: Array = []
-		for o in _enemies_of(uu):
-			if o.get("alive", false) and _on_line(uu["pos"], d2, o["pos"], 70.0) and o["pos"].distance_to(uu["pos"]) <= 200.0:
-				hits.append(o)
-		if hits.is_empty(): return
-		var per_raw: float = (uu["atk"] * 1.8 + uu["maxHp"] * 0.12) / float(hits.size())
-		var dealt: int = 0
-		for o in hits:
-			var dm: int = _mitigate(uu, per_raw, o, false)
-			_apply_damage_from(uu, o, dm, Color("#ff9ed6")); dealt += dm
-		_heal(uu, float(dealt) * 0.40))
-
-func _candy_hammer_pose(hammer: Sprite3D, pos2d: Vector2, dir: Vector2, slamming: bool, p: float) -> void:   # 糖果锤姿态: raise=从身侧升头顶后方后仰 / slam=挥到前方下落
-	if not is_instance_valid(hammer): return
-	var flat: Vector2; var hh: float; var ang: float
-	var back: Vector2 = pos2d - dir * 24.0
-	var front: Vector2 = pos2d + dir * 82.0
-	if not slamming:
-		flat = pos2d.lerp(back, p); hh = lerpf(1.1, 3.1, p); ang = lerpf(0.0, (0.75 if dir.x >= 0.0 else -0.75), p)
-	else:
-		flat = back.lerp(front, p); hh = lerpf(3.1, 0.45, p * p); ang = lerpf((0.75 if dir.x >= 0.0 else -0.75), (-1.2 if dir.x >= 0.0 else 1.2), p)
-	hammer.flip_h = dir.x < 0.0
-	hammer.position = _world_pos(flat, hh)
-	if _cam != null:
-		var tf: Transform3D = hammer.global_transform
-		tf.basis = _cam.global_transform.basis * Basis(Vector3(0, 0, 1), ang)
-		hammer.global_transform = tf
-
-func _sk_candy_barrage(u: Dictionary, tgt) -> void:            # 糖果龟·技能二糖衣炮弹(封板·120龟能): 敌最密集区降糖衣炮弹雨8跳·可见糖弹从天落下·落点局部命中(用户2026-07-14全套标准)·友2%maxHp盾/敌0.2A+2%maxHp魔法+减速20%
-	var es: Array = []
-	for o in _enemies_of(u):
-		if o.get("alive", false): es.append(o)
-	var center: Vector2 = tgt["pos"] if tgt != null else u["pos"]
-	if not es.is_empty():
-		var c := Vector2.ZERO
-		for o in es: c += o["pos"]
-		center = c / float(es.size())                            # 单位最密集区域(简化=敌质心)
-	_skill_ring(center, Color(1.0, 0.62, 0.84, 0.32), 600.0)     # 600码笼罩区淡指示
-	var uu: Dictionary = u; var ctr: Vector2 = center
-	for i in range(8):                                          # 8跳·每跳8颗糖弹密集散落该区·落点局部结算(用户2026-07-15两次加密→3→6→8颗+炮弹/糖爆调大)
-		_pending_shots.append({"delay": float(i) * 0.42, "src": u, "fn": func() -> void:
-			for b in range(8):
-				var ang := randf() * TAU
-				var land: Vector2 = ctr + Vector2(cos(ang), sin(ang)) * randf_range(15.0, 430.0)
-				_candy_shell_drop(land, func() -> void:          # 糖弹落地: 大糖爆+落点120码局部结算
-					_burst_vfx("res://assets/sprites/vfx/candy-burst.png", land, 185.0, 0.3)
-					for o in _units:
-						if not o.get("alive", false): continue
-						if o["pos"].distance_to(land) > 120.0: continue
-						if not _is_hostile(uu, o):
-							_grant_shield(o, uu["maxHp"] * 0.02, 2.0)
-						else:
-							_apply_damage_from(uu, o, _resolve_dmg(uu, uu["atk"] * 0.2 + uu["maxHp"] * 0.02, o, true), Color("#ff9ed6"), 0.0, false, true)
-							o["spd_move_mult"] = 0.8; o["spd_dbf_until"] = _t + 0.5)
-			})
-
-func _candy_shell_drop(land2d: Vector2, on_land: Callable) -> void:   # 糖衣炮弹: 从高空翻滚落下到落点→自销调on_land
-	var tex := load("res://assets/sprites/skills/candy-shell.png")
-	if tex == null:
-		if on_land.is_valid(): on_land.call()
-		return
-	var s := Sprite3D.new()
-	s.texture = tex
-	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED; s.shaded = false; s.transparent = true
-	s.pixel_size = (58.0 * WS) / float(maxi(1, tex.get_height()))   # 炮弹调大(用户2026-07-15)
-	var from_h := 8.5
-	s.position = _world_pos(land2d, from_h)
-	_world.add_child(s)
-	var tw := _reg_tween()
-	tw.tween_method(func(p: float) -> void:
-		if not is_instance_valid(s): return
-		s.position = _world_pos(land2d, maxf(0.2, from_h * (1.0 - p * p)))   # 重力加速下落
-		if _cam != null:
-			var tf := s.global_transform
-			tf.basis = _cam.global_transform.basis * Basis(Vector3(0, 0, 1), p * TAU * 2.0)   # 翻滚
-			s.global_transform = tf
-	, 0.0, 1.0, randf_range(0.42, 0.6)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.tween_callback(func() -> void:
-		if is_instance_valid(s): s.queue_free()
-		if on_land.is_valid(): on_land.call())
-
-func _sk_candy_bomb_feed(u: Dictionary) -> void:               # 糖果龟·技能三糖果炸弹(封板·喂续命): 炸弹活→上限+25%糖果龟maxHp+治疗10%(喂); 炸弹亡→召新HP=20%糖果龟maxHp (登场召唤+死亡爆炸在spawn/summon)
-	var bomb = null
-	for o in _units:
-		if o.get("is_summon", false) and is_same(o.get("summon_owner", null), u) and o.get("summon_kind", "") == "candybomb" and o.get("alive", false):
-			bomb = o; break
-	if bomb != null:
-		bomb["maxHp"] = float(bomb["maxHp"]) + u["maxHp"] * 0.25   # 上限+25%糖果龟maxHp
-		bomb["hp"] = minf(float(bomb["maxHp"]), float(bomb["hp"]) + u["maxHp"] * 0.10)   # 治疗10%(喂续命)
-		_float_text(bomb["pos"] + Vector2(0, -40), "喂!", Color("#ff9ed6"))
-		_gambler_sys._gambler_pop(bomb["pos"], float(bomb.get("height", 0.0)) + 0.4, Color(1.0, 0.7, 0.88, 0.85))   # 喂养涨大糖光
-		_skill_ring(bomb["pos"], Color(1.0, 0.62, 0.84, 0.5), 40.0)
-		for _cb in range(4): _candy_bomb_bubble(bomb)            # 一簇糖泡
-	else:
-		_spawn_summon(u, "candybomb", u["maxHp"] * 0.20, 0.0, {   # 炸弹阵亡→召新(HP=20%糖果龟maxHp)
-			"label": "糖果炸弹", "spr_id": "candy-bomb", "col_size": 20.0, "hp_w": 24.0,
-			"no_basic": true, "no_move": true, "self_decay": 0.08, "death_aoe": 1.5,
-		})
-
-func _candy_sweet_drain(u: Dictionary) -> void:   # 甜蜜掠夺·甜蜜吸取(用户2026-07-15"第8秒生效"): 对最大生命最高敌吸25%maxHp→全回复自己(不杀留1)+粉精华VFX
-	if not u.get("alive", false): return
-	var ce := _enemies_of(u)
-	if ce.is_empty(): return
-	var fat: Dictionary = ce[0]
-	for e in ce:
-		if float(e["maxHp"]) > float(fat["maxHp"]): fat = e
-	var steal: float = minf(fat["maxHp"] * 0.25, fat["hp"] - 1.0)
-	if steal > 0:
-		_apply_damage_from(u, fat, maxi(1, int(round(steal))), Color("#ff9ecb"), 0.0, true, false, true, true)   # 真伤·必中·不暴击
-		_heal(u, steal)
-		_candy_drain_fx(u, fat, int(steal))
-
-func _candy_drain_fx(candy: Dictionary, fat: Dictionary, amt: int) -> void:   # 甜蜜掠夺: 粉色精华从最肥敌流向糖果龟+吸取字
-	if not candy.get("alive", false): return
-	var from2d: Vector2 = fat["pos"]
-	var kp: Vector2 = candy["pos"]
-	for k in range(4):
-		var off := Vector2(randf_range(-18.0, 18.0), randf_range(-14.0, 14.0))
-		var mote := _glow_bb(from2d + off, 0.9, 24.0, Color(1.0, 0.55, 0.82, 0.95))
-		var tw := _reg_tween()
-		tw.tween_interval(float(k) * 0.06)
-		var mv := tw.tween_property(mote, "position", _world_pos(kp, 1.1), 0.5)
-		mv.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		tw.parallel().tween_property(mote, "scale", Vector3(0.4, 0.4, 0.4), 0.5)
-		tw.chain().tween_callback(mote.queue_free)
-	_float_text(from2d + Vector2(0, -50), "甜蜜掠夺 -" + str(amt), Color("#ff6bb0"))
-	_skill_ring(kp, Color(1.0, 0.55, 0.82, 0.55), 46.0)
-
-func _candy_bomb_bubble(u: Dictionary) -> void:   # 糖果炸弹糖泡(粉糖色·上飘·区别中毒绿/酒琥珀)
-	var pos2d: Vector2 = u["pos"] + Vector2(randf_range(-14.0, 14.0), randf_range(-2.0, 8.0))
-	var spr := _glow_bb(pos2d, 0.35, 26.0, Color(1.0, 0.65, 0.86, 0.85))
-	var tw := _reg_tween(); tw.set_parallel(true)
-	tw.tween_property(spr, "position", _world_pos(pos2d, 1.0), 0.55)
-	tw.tween_property(spr, "material_override:albedo_color", Color(1.0, 0.65, 0.86, 0.0), 0.55)
-	tw.chain().tween_callback(spr.queue_free)
-
-# 双头龟·选一套 (demo 默认套1). 每次攒满龟能 → 切形态 + 放新形态这套招.
-# 双头·双生(改造): 切近战形态加成(maxHp+150%ATK·护甲+25%ATK·魔抗+25%ATK·攻-30%ATK·+110%ATK盾), 切远程撤销
 func _two_head_apply_melee(u: Dictionary, on: bool) -> void:
 	var buffed: bool = u.get("two_melee_buffed", false)
 	if on and not buffed:
@@ -11989,68 +11662,6 @@ func _px_ground_sprite(tex: Texture2D, pos2d: Vector2, size_px: float, col: Colo
 	_world.add_child(s)
 	return s
 
-func _sk_cyber_cannon(u: Dictionary, tgt) -> void:              # 赛博龟·能量大炮(用户#15: 对一条直线蓄力后发长激光能量射线·线上敌各1A物理+0.1A×浮游炮数真伤·炮越多越猛)
-	if tgt == null: tgt = _nearest_enemy(u)
-	if tgt == null: return
-	var dir: Vector2 = tgt["pos"] - u["pos"]
-	if dir.length() < 1.0: dir = Vector2.RIGHT
-	dir = dir.normalized()
-	var drones: int = int(u.get("drone_n", 0))   # 浮游炮改纯视觉后从计数取(2026-07-15)
-	var uu := u
-	# ★照Lux R终极闪光重做(用户2026-07-15: 节奏效果全参考·配色换科技青蓝): 蓄力0.9s(能量向心+细瞄准线)→贯屏三层巨柱瞬现→残光衰减+衍射颗粒
-	for i in range(8):                                          # 蓄力: 青色能量向心汇聚
-		var sa: float = TAU * float(i) / 8.0 + _juice_rng.randf_range(-0.3, 0.3)
-		var soff: Vector2 = Vector2(cos(sa), sin(sa)) * _juice_rng.randf_range(60.0, 100.0)
-		var sp := Sprite3D.new()
-		sp.texture = VfxTex._make_fire_glow_tex()
-		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; sp.shaded = false; sp.transparent = true
-		sp.pixel_size = 0.007
-		sp.modulate = Color(0.55, 0.95, 1.0, 0.0)
-		sp.position = _world_pos(u["pos"] + soff, _juice_rng.randf_range(0.5, 1.3))
-		_world.add_child(sp)
-		var st := _reg_tween()
-		st.tween_interval(float(i) * 0.07)
-		st.tween_property(sp, "modulate:a", 0.9, 0.1)
-		st.tween_property(sp, "position", _world_pos(u["pos"], 0.9), 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		st.parallel().tween_property(sp, "modulate:a", 0.0, 0.35)
-		st.tween_callback(sp.queue_free)
-	for k in range(3):                                          # 蓄力期: 细青瞄准线(参考Lux R的细线预警·3段脉冲)
-		_pending_shots.append({"delay": 0.05 + 0.28 * float(k), "fn": func() -> void:
-			if uu.get("alive", false):
-				_bolt_line(uu["pos"], uu["pos"] + dir * 1300.0, Color(0.5, 0.9, 1.0, 0.35))
-		, "src": u})
-	var fire := func() -> void:                                 # 发射: 贯屏巨柱(三层: 白热核心+主青束+外晕)瞬现
-		if not uu.get("alive", false): return
-		for o in _enemies_of(uu):
-			if not o.get("alive", false): continue
-			if not _on_line(uu["pos"], dir, o["pos"], 70.0): continue    # 直线判定带宽±70码
-			if o["pos"].distance_to(uu["pos"]) > 900.0: continue
-			_apply_damage_from(uu, o, _atk_dmg(uu, 1.0, o), Color("#9bf0ff"))                          # 1A物理
-			if drones > 0:
-				_apply_damage_from(uu, o, int(uu["atk"] * 0.1 * drones), Color("#d0ffff"), 0.0, true)  # 0.1A×浮游炮数真伤
-			_hit_spark(o)
-		var endp: Vector2 = uu["pos"] + dir * 1300.0
-		_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", uu["pos"], endp, 90.0, Color(1.0, 1.0, 1.0, 1.0), 0.35)     # ①白热核心束
-		_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", uu["pos"], endp, 200.0, Color(0.55, 0.93, 1.0, 0.85), 0.55) # ②主青束
-		_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", uu["pos"], endp, 340.0, Color(0.4, 0.8, 1.0, 0.4), 0.8)     # ③外晕束(残光最久)
-		_gambler_sys._gambler_pop(uu["pos"] + dir * 30.0, 0.9, Color(0.85, 1.0, 1.0, 0.95))                          # 发射爆闪
-		_shake(JUICE_SHAKE_BIG); _add_hitstop(JUICE_HITSTOP_KNOCK)
-		for j in range(12):                                     # 衍射颗粒沿线散落(参考Lux R残光棱彩颗粒)
-			var pp: Vector2 = uu["pos"] + dir * _juice_rng.randf_range(80.0, 1000.0) + Vector2(-dir.y, dir.x) * _juice_rng.randf_range(-70.0, 70.0)
-			var gk := Sprite3D.new()
-			gk.texture = VfxTex._make_fire_glow_tex()
-			gk.billboard = BaseMaterial3D.BILLBOARD_ENABLED; gk.shaded = false; gk.transparent = true
-			gk.pixel_size = 0.004
-			gk.modulate = Color(_juice_rng.randf_range(0.6, 1.0), 1.0, 1.0, 0.9)
-			gk.position = _world_pos(pp, _juice_rng.randf_range(0.3, 1.2))
-			_world.add_child(gk)
-			var gt := _reg_tween(); gt.set_parallel(true)
-			gt.tween_property(gk, "position", _world_pos(pp, 1.6 + _juice_rng.randf_range(0.0, 0.5)), 0.6)
-			gt.tween_property(gk, "modulate:a", 0.0, 0.6)
-			gt.chain().tween_callback(gk.queue_free)
-	_muzzle_flash(u["pos"], dir, Color("#9bf0ff"))             # 起手枪口闪
-	_pending_shots.append({"delay": 0.9, "fn": fire, "src": u})   # 蓄力0.9s→发射(Lux R节奏)
-
 func _hiding_dome(u: Dictionary, col: Color, dur: float) -> void:   # 缩头·壳护罩: hex-bubble罩身呼吸dur秒→碎裂放大淡出(跟随单位·2026-07-17 Q4草案)
 	var dm := Sprite3D.new()
 	dm.texture = load("res://assets/sprites/vfx/fx-hex-bubble.png")
@@ -12285,71 +11896,6 @@ func _hiding_shell_harden(u: Dictionary) -> void:              # 缩壳(普攻ri
 		_skill_ring(u["pos"], Color(0.85, 0.72, 0.45, 0.55), 56.0)
 
 const NINJA_BOMB_RADIUS := 400.0
-func _sk_ninja_bomb(u: Dictionary, tgt) -> void:
-	if tgt == null: tgt = _nearest_enemy(u)
-	if tgt == null: return
-	var opts := {"phys": 2.0, "defDown": 0.25, "color": Color("#ff9a3c")}   # 伤害2.0A(用户2026-07-11「提升到2ATK」·回合制原1.1·指定偏离)
-	var land: Vector2 = tgt["pos"]            # 落点 = 当前目标位置 (400码爆炸半径中心)
-	_anticipate(u)                            # 短蓄力(掏炸弹)
-	var spr := Sprite3D.new()
-	spr.texture = load("res://assets/sprites/vfx/ninja-bomb.png")
-	spr.hframes = 12                          # 768×64 = 12帧(球0-4→引信5-7→爆闪8→火球9→蘑菇云10-11); 球在帧内小·爆炸填满帧
-	spr.frame = 0
-	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	spr.shaded = false; spr.transparent = true
-	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	spr.pixel_size = (150.0 * WS) / 64.0      # 炸弹/爆炸尺寸(3D里过大会钻地)
-	spr.position = _world_pos(u["pos"], 0.8)
-	_world.add_child(spr)
-	# 抛物线(3段弹跳)0.4s + 12帧动画1.2s播一次 (并行), 全播完(1.2s)销毁
-	var tw := _reg_tween()
-	tw.set_parallel(true)
-	tw.tween_method(_bomb_arc.bind(spr, u["pos"], land), 0.0, 1.0, 0.4)
-	tw.tween_method(_bomb_anim.bind(spr), 0.0, 12.0, 1.2)
-	tw.chain().tween_callback(spr.queue_free)
-	# 引爆 @0.8s: 震屏 + 400码冲击波环 + 半径伤害 (帧动画此刻正到爆炸帧8)
-	var boom := _reg_tween()
-	boom.tween_interval(0.8)
-	boom.tween_callback(_bomb_explode.bind(spr, u, land, opts))
-
-func _bomb_arc(pf: float, spr: Sprite3D, from2d: Vector2, to2d: Vector2) -> void:
-	if not is_instance_valid(spr):
-		return
-	# 3段弹跳抛物线 (1:1 PoC ARC_PEAK -160/-55/-22 → 3D height); 水平线性推进; base 0.6=贴地飞(小炸弹球不钻地)
-	var arc: float
-	var sub: float
-	if pf < 0.5:      sub = pf / 0.5;           arc = 2.6
-	elif pf < 0.75:   sub = (pf - 0.5) / 0.25;  arc = 1.0
-	elif pf < 0.95:   sub = (pf - 0.75) / 0.20; arc = 0.4
-	else:             sub = 1.0;                arc = 0.0
-	spr.position = _world_pos(from2d.lerp(to2d, pf), 0.6 + arc * 4.0 * sub * (1.0 - sub))
-
-func _bomb_anim(fv: float, spr: Sprite3D) -> void:
-	if is_instance_valid(spr):
-		spr.frame = mini(11, int(fv))          # 12帧播一次(0→11 不循环·1:1 PoC repeat:0)
-
-func _bomb_explode(spr, u: Dictionary, at2d: Vector2, opts: Dictionary) -> void:
-	if is_instance_valid(spr):
-		spr.position = _world_pos(at2d, 1.3)   # ★爆炸中心抬到贴地(大火球底边≈地面·防中心太低被地面挡=钻地)
-	_shake(0.16)                               # 1:1 PoC cameras.shake(260)
-	# ★400码爆炸范围可视: 扩张冲击波环到 NINJA_BOMB_RADIUS + 内圈亮闪 → 看清波及范围
-	_skill_ring(at2d, Color(1.0, 0.55, 0.2, 0.9), NINJA_BOMB_RADIUS)
-	_skill_ring(at2d, Color(1.0, 0.82, 0.4, 0.75), NINJA_BOMB_RADIUS * 0.55)
-	# 落点 400码内敌人: 先 -25%护甲(吃在这发上) 再 1.1A 物理; 圈外不受影响
-	var col: Color = opts.get("color", Color("#ff9a3c"))
-	var hit: Array = []
-	for e in _enemies_of(u):
-		if e != null and e.get("alive", false) and e["pos"].distance_to(at2d) <= NINJA_BOMB_RADIUS:
-			hit.append(e)
-	for e in hit:
-		_apply_skill_extras(u, e, opts)        # -25%护甲(defDown 0.25→BUFF_SEC=5秒)
-		_skill_ring(e["pos"], Color(col.r, col.g, col.b, 0.5), 46.0)   # 每敌破甲小环
-	for e in hit:
-		if e.get("alive", false):
-			var dmg := _atk_dmg(u, float(opts.get("phys", 2.0)), e, false)
-			if dmg > 0:
-				_apply_damage_from(u, e, dmg, col)
-
 func _sk_dmg(u: Dictionary, tgt, opts: Dictionary) -> void:
 	var col: Color = opts.get("color", Color("#ffd07a"))
 	var aoe: bool = opts.get("aoe", false)
@@ -12524,64 +12070,6 @@ func _throw_gold_coin(src: Dictionary, tgt: Dictionary) -> void:
 	})
 
 const INK_BOMB_RADIUS := 300.0                                  # 墨水炸弹AOE半径(用户2026-07-15: 原全体→落点300码范围内)
-func _sk_cyber_hijack(u: Dictionary) -> void:                   # 赛博龟·侵入(135龟能·用户2026-07-16: 4秒→5秒/120→135·Botworld黑客): 黑1随机敌5秒倒戈(side改赛博方·标hijacked→打原队友+被原队友打·不算存活数·击杀归赛博·蛋免控·可黑多个)
-	var es: Array = []
-	for o in _pick_enemies_of(u):
-		if o.get("alive", false) and not o.get("_eggImmune", false) and not o.get("hijacked", false):
-			es.append(o)
-	if es.is_empty(): return
-	var v: Dictionary = es[_battle_rng.randi() % es.size()]
-	# ★2026-07-22 重做: 【不再改写 side】。旧实现 v["side"] = u["side"] 把它变成赛博方的"真友军"
-	#   → 赛博全队索敌/技能都跳过它(用户主诉"我方要能打"), 还会给它加治疗; 且衍生出
-	#   死亡不归队 / 跨路串阵营 / 单路瞬间判胜 / 召唤物串队 四类问题。
-	#   现在只挂标记, 敌我关系由 _is_hostile 统一裁决(见 §HOSTILE)。
-	v["_hijack_orig_side"] = str(v["side"])   # 保留: _eff_side / 统计分组 / 归队清标记都读它
-	v["hijacked"] = true
-	v["hijack_until"] = _t + 5.0                                # 5秒(用户2026-07-16: 4→5)
-	v["_hijack_by"] = u                                         # 人头归属: 被侵入者杀的算赛博的(用户2026-07-22, 赛博自己死了也算)
-	v["taunt_until"] = 0.0; v["taunt_by"] = null               # 清嘲讽残留(防倒戈期错误锁定)
-	v["stun_until"] = 0.0                                       # 解控(立即可倒戈行动)
-	_hijack_fx_attach(v)                                        # 全身红光 + 电流环绕(用户2026-07-22)
-	_float_text(v["pos"] + Vector2(0, -56), "侵入!", Color("#3fffd0"))
-	_skill_ring(v["pos"], Color(0.25, 1.0, 0.82, 0.5), 52.0)
-	_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", u["pos"], v["pos"], 30.0, Color(0.25, 1.0, 0.82, 0.75), 0.6)   # 侵入数据链(用户07-07仅给"参考Botworld黑客机器人"·具体视觉无原话)
-
-func _sk_cyber_smart(u: Dictionary) -> void:                   # 赛博龟·智能AI(封板·40龟能·充能型): +1充能→冲刺重定位(kite拉到理想射程·躲贴身); 常驻走位+登场+20%移速 [完整行动脑(躲大招/对齐激光)留F5]
-	u["cyber_ai_charge"] = int(u.get("cyber_ai_charge", 0)) + 1
-	_cyber_smart_dash(u)
-	_skill_ring(u["pos"], Color(0.3, 0.9, 1.0, 0.5), 46.0)
-
-func _cyber_smart_dash(u: Dictionary) -> void:   # 智能走位冲刺核心(主动放技+被动躲避共用·用户2026-07-16): 绕自身200码采样16候选打分(离敌远+离墙远)·800码/s真位移
-	var ne = _nearest_enemy(u)
-	if ne == null: return
-	var best: Vector2 = u["pos"]
-	var best_score := -INF
-	var es := _enemies_of(u)
-	for i in range(16):
-		var aa: float = TAU * float(i) / 16.0
-		var cand: Vector2 = u["pos"] + Vector2(cos(aa), sin(aa)) * 200.0
-		cand.x = clampf(cand.x, ARENA.position.x + 50.0, ARENA.end.x - 50.0)
-		cand.y = clampf(cand.y, ARENA.position.y + 40.0, ARENA.end.y - 40.0)
-		var d_enemy := INF
-		for o in es:
-			if o.get("alive", false): d_enemy = minf(d_enemy, cand.distance_to(o["pos"]))
-		var d_wall: float = minf(minf(cand.x - ARENA.position.x, ARENA.end.x - cand.x), minf(cand.y - ARENA.position.y, ARENA.end.y - cand.y))
-		var score: float = minf(d_enemy, 420.0) + minf(d_wall, 160.0) * 0.8
-		if score > best_score:
-			best_score = score
-			best = cand
-	_beam_vfx("res://assets/sprites/vfx/fx-trail.png", u["pos"], best, 44.0, Color(0.3, 0.9, 1.0, 0.6), 0.28)
-	var from4: Vector2 = u["pos"]
-	var uu4 := u
-	var dur4: float = maxf(0.05, from4.distance_to(best) / 800.0)
-	u["_slam"] = true
-	var dt4 := _reg_tween()
-	dt4.tween_method(func(q: float) -> void:
-		if uu4.get("alive", false): uu4["pos"] = from4.lerp(best, q)
-	, 0.0, 1.0, dur4)
-	dt4.tween_callback(func() -> void: uu4["_slam"] = false)
-
-# 泡泡·束缚: 定身目标 1.5s + 束缚期间每受一段伤害 永久-X护甲/魔抗 (见 _apply_damage_from 钩子)
 func _sk_bubble_bind(u: Dictionary, tgt) -> void:
 	if tgt == null:
 		return
@@ -13044,7 +12532,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 					_burst_vfx("res://assets/sprites/vfx/cannon-blast.png", vv2["pos"], 180.0, 0.4)
 					_shake(0.05))
 		"candy":
-			# 甜蜜掠夺·甜蜜吸取(用户2026-07-15改"第8秒生效"): 登场不触发→改由 _tick_unit 战斗第8秒调 _candy_sweet_drain 一次
+			# 甜蜜掠夺·甜蜜吸取(用户2026-07-15改"第8秒生效"): 登场不触发→改由 _tick_unit 战斗第8秒调 _candy_sys._candy_sweet_drain 一次
 			# 【用户2026纠错】普攻自愈=我自造的(原话普攻只有1.1A+5%maxHp+攻击-15%·无自愈)→删除; 自我回血在焦糖铠/甜蜜吸取
 			if "candyBomb" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 糖果炸弹(技三·选中才召): HP=50%糖果龟maxHp·每秒衰减8%·死亡爆炸150%
 				_spawn_summon(u, "candybomb", u["maxHp"] * 0.50, 0.0, {
@@ -13067,7 +12555,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 			if "cyberSmartAI" in _chosen_skill_types(u["id"], u["side"] == "left"):
 				u["move_spd"] = float(u.get("move_spd", 105.0)) * 1.2   # 智能AI(技三·选中): 登场+20%移速(常驻走位)
 				u["cyber_ai_charge"] = 3   # 用户2026-07-07逐字"赛博龟登场时拥有3层充能" (此前漏做, 从0起算)
-				# ⚠ 充能的【消耗方式与收益】用户从未定义 → 现仅作计数(_sk_cyber_smart 每次释放+1), 不猜、不自造。
+				# ⚠ 充能的【消耗方式与收益】用户从未定义 → 现仅作计数(_cyber_sys._sk_cyber_smart 每次释放+1), 不猜、不自造。
 		"crystal":
 			if "crystalBall" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 水晶球(技三·选中才召): 登场召唤实体水晶球(2026-07-16加大+特效)
 				var _orb = _spawn_summon(u, "crystalball", u["maxHp"] * 0.50, u["atk"], {
@@ -13208,7 +12696,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 				if _t < float(o.get("_ninja_dash_until", 0.0)): continue
 				var _ndd: float = u["pos"].distance_to(o["pos"])
 				if _ndd <= _nbd: _nbd = _ndd; _nbest = o
-			if _nbest != null: _ninja_dash(u, _nbest)
+			if _nbest != null: _ninja_sys._ninja_dash(u, _nbest)
 	# 亡灵怒(补实装 2026-07-19 用户拍板): 无头龟每损失 1% 最大生命 → 攻击力 +1%, 最高 +100%。
 	# 文案(pets.json headless.passive)与权威文档都写了这条, 但代码里【从来没有实现过】——
 	# 只有 _update_headless_flame 的函数头注释提了句"对应+1%攻/1%损血", 函数体却只改紫焰特效。
@@ -13237,7 +12725,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			if _ne5 != null and int(u.get("cyber_ai_charge", 0)) > 0 and (u["pos"] as Vector2).distance_to(_ne5["pos"]) < 130.0 and _t >= float(u.get("_ai_dodge_cd", 0.0)):
 				u["_ai_dodge_cd"] = _t + 2.5
 				u["cyber_ai_charge"] = int(u["cyber_ai_charge"]) - 1
-				_cyber_smart_dash(u)
+				_cyber_sys._cyber_smart_dash(u)
 	# --- 石头坚壁: 每2.5秒永久+开局护甲/6, 上限=开局护甲×2(+100%); 反伤随护甲涨 ---
 	elif u["id"] == "stone":
 		if not u.has("stone_init_def"):
@@ -13369,7 +12857,7 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 		if u.get("summon_kind", "") == "candybomb":   # 糖果炸弹死亡: 大糖爆+震屏+糖泡四溅(用户2026-07-14参照海盗船完整呈现)
 			_burst_vfx("res://assets/sprites/vfx/candy-burst.png", u["pos"], 340.0, 0.4)
 			_shake(JUICE_SHAKE_HEAVY)
-			for _cb in range(10): _candy_bomb_bubble(u)
+			for _cb in range(10): _candy_sys._candy_bomb_bubble(u)
 		_skill_ring(u["pos"], Color(1.0, 0.5, 0.8, 0.6), 130.0)
 	if u.get("boom_pct_true", 0.0) > 0.0:                 # 032骷髅死亡: 200码内敌各受其%最大生命真伤
 		var _br: float = float(u.get("boom_radius", 200.0))
@@ -13386,7 +12874,7 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 	# (删死亡同步·用户2026-07-16反转07-11拍板: 水晶球不随主人阵亡, 继续战斗)
 	# 赛博龟阵亡 → 浮游炮组装成机甲
 	if u["id"] == "cyber":
-		_cyber_assemble_mech(u)
+		_cyber_sys._cyber_assemble_mech(u)
 	# (删: 原"死亡给对面财神+2金币"=不在规格的stray bug; 数据是每2.5s+2深海币meta, 非死亡金币)
 	# 猎人猎杀: 击杀者是猎人 → 窃取属性+叠吸血(含金色精华VFX)
 	if killer != null and killer.get("alive", false) and killer.get("id", "") == "hunter":
@@ -13568,157 +13056,6 @@ func _tick_cyber_drones(u: Dictionary, delta: float) -> void:   # 浮游炮纯�
 					"src": u, "t": 0.0, "dur": clampf((u["pos"] - tgt["pos"]).length() / 900.0, 0.15, 0.5),
 					"basic_onhit": false, "oriented": false, "card_spin": false, "dtype": "physical", "drone_shot": true})
 
-func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07-16理想效果): 本体消散→浮游炮游动集结→各自对最近敌蓄力→贯穿激光0.4A魔法→飞向集结点→机甲5秒组装(血/攻/甲/抗从低涨到设定值·期间不能动)→就位近战
-	var n: int = int(u.get("drone_n", 0))
-	if n <= 0:
-		return
-	_mech_incoming[str(u.get("side", "left"))] = _t + 3.0   # 死→机甲spawn(2.8s)空档桥接: 此侧仍算存活防提前团灭/破蛋(用户2026-07-18)
-	var arr: Array = u.get("_drones", [])
-	u["_drones"] = []
-	u["drone_n"] = 0
-	var cpos: Vector2 = u["pos"]
-	var retreat: float = -1.0 if str(u.get("side", "left")) == "left" else 1.0   # 集结点=尸位向己方后场偏120码
-	var gather: Vector2 = cpos + Vector2(retreat * 120.0, 0.0)
-	gather.x = clampf(gather.x, ARENA.position.x + 60.0, ARENA.end.x - 60.0)
-	gather.y = clampf(gather.y, ARENA.position.y + 40.0, ARENA.end.y - 40.0)
-	var uu: Dictionary = u
-	var live: Array = []
-	for d in arr:
-		if is_instance_valid(d.get("spr")): live.append(d["spr"])
-	# ① 浮游炮自由飞散(用户2026-07-16: 散点=竞技场内任何地方·别密集)·错峰起飞·时长不一
-	var scat: Array = []
-	for i in range(live.size()):
-		var spr = live[i]
-		var fpos := Vector2(randf_range(ARENA.position.x + 40.0, ARENA.end.x - 40.0), randf_range(ARENA.position.y + 30.0, ARENA.end.y - 30.0))
-		scat.append(fpos)
-		var ft := _reg_tween()
-		ft.tween_interval(randf() * 0.35)
-		ft.tween_property(spr, "position", _world_pos(fpos, randf_range(1.1, 1.8)), randf_range(0.6, 1.2)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	# ② 蓄力(0.6s炮身发亮)→各自对最近敌射贯穿激光(0.4×赛博ATK魔法·线上全体)
-	var atk_ref: float = float(u["atk"])
-	_pending_shots.append({"delay": 0.75, "fn": func() -> void:
-		for spr2 in live:
-			if is_instance_valid(spr2):
-				var ch := _reg_tween()
-				ch.tween_property(spr2, "modulate", Color(1.6, 1.9, 2.2), 0.55)
-	, "src": u})
-	_pending_shots.append({"delay": 1.35, "fn": func() -> void:   # ★Gaster Blaster式(认证参考: 官方光束2帧@30fps瞬展全宽·蓄力口部聚能·发射后坐): 每炮蓄力光球0.45s→厚白束瞬展+后坐
-		for i2 in range(live.size()):
-			var spr3 = live[i2]
-			if not is_instance_valid(spr3): continue
-			var dpos: Vector2 = scat[i2] if i2 < scat.size() else gather   # 激光从各自散点发射
-			var best = null
-			var bd := INF
-			for o in _units:
-				if _is_hostile(uu, o) and o.get("alive", false) and not o.get("_egg_fence", false):
-					var dd: float = dpos.distance_to(o["pos"])
-					if dd < bd: bd = dd; best = o
-			if best == null: continue
-			var ldir: Vector2 = (best["pos"] - dpos)
-			if ldir.length() < 1.0: ldir = Vector2.RIGHT
-			ldir = ldir.normalized()
-			var orb := Sprite3D.new()                                # 口部聚能光球(蓄力0.45s膨胀)
-			orb.texture = VfxTex._make_fire_glow_tex()
-			orb.billboard = BaseMaterial3D.BILLBOARD_ENABLED; orb.shaded = false; orb.transparent = true
-			orb.pixel_size = 0.005
-			orb.modulate = Color(0.85, 1.0, 1.0, 0.9)
-			orb.position = _world_pos(dpos + ldir * 16.0, 1.4)
-			_world.add_child(orb)
-			var ot := _reg_tween()
-			ot.tween_property(orb, "scale", Vector3(3.2, 3.2, 3.2), 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-			ot.tween_callback(func() -> void:
-				if is_instance_valid(orb): orb.queue_free()
-				if is_instance_valid(spr3):                          # 后坐: 炮体向后弹再回位(Gaster Blaster标志)
-					var rb := _reg_tween()
-					rb.tween_property(spr3, "position", spr3.position + _world_pos(dpos - ldir * 34.0, 1.4) - _world_pos(dpos, 1.4), 0.08)
-					rb.tween_property(spr3, "position", spr3.position, 0.25)
-				var endp2: Vector2 = dpos + ldir * 1300.0
-				_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", dpos, endp2, 150.0, Color(1.0, 1.0, 1.0, 1.0), 0.7)   # 厚白核心束(用户2026-07-16: 更宽更明显更持久)
-				_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", dpos, endp2, 250.0, Color(0.6, 0.95, 1.0, 0.75), 1.0) # 青晕外束(略久=收细消散感)
-				_shake(0.03)
-				for o2 in _units:
-					if _is_hostile(uu, o2) and o2.get("alive", false) and _on_line(dpos, ldir, o2["pos"], 40.0):
-						_apply_damage_from(uu, o2, _resolve_dmg(uu, atk_ref * 0.4, o2, true), Color("#7ee8ff"))      # 0.4A魔法(蓝字)
-						_hit_spark(o2))
-	, "src": u})
-	# ③ 飞向集结点消失(2.4s起·等激光演出完)
-	_pending_shots.append({"delay": 2.4, "fn": func() -> void:
-		for spr4 in live:
-			if not is_instance_valid(spr4): continue
-			var ct := _reg_tween(); ct.set_parallel(true)
-			ct.tween_property(spr4, "position", _world_pos(gather, 0.8), 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-			ct.tween_property(spr4, "modulate:a", 0.15, 0.3)
-			ct.chain().tween_callback(spr4.queue_free)
-	, "src": u})
-	# ④ 机甲组装(2.8s起·5秒血/攻/甲/抗从10%涨到设定值·期间_slam锁不能动不能打)
-	var _lv: int = int(u.get("level", 1))
-	var final_hp: float = (40.0 + 1.0 * float(_lv)) * float(n)   # 用户2026-07-18定: 生命=(40+1×每级)×炮数
-	var final_atk: float = (4.0 + 0.1 * float(_lv)) * float(n)   # 用户2026-07-18定: 攻击=(4+0.1×每级)×炮数
-	var final_def: float = 60.0 + 2.0 * float(_lv)               # 护甲魔抗=60+2×等级(用户2026-07-16定)
-	_pending_shots.append({"delay": 2.8, "fn": func() -> void:
-		_gambler_sys._gambler_pop(gather, 0.8, Color(0.7, 0.98, 1.0, 0.95))
-		_skill_ring(gather, Color(0.5, 0.9, 1.0, 0.7), 80.0)
-		_shake(JUICE_SHAKE_HEAVY)
-		var mech = _spawn_summon(uu, "mech", final_hp, final_atk, {
-			"label": "机甲", "spr_id": "mech", "col_size": 40.0, "hp_w": 46.0, "melee": true,
-			"move_spd": 130.0, "atk_interval": 1.0, "atk_range": 100.0,   # 近战最低标准100防卡位(用户2026-07-16"70会卡位")
-			"special": "mech_blast", "special_cd": 2.5, "special_scale": 1.5,
-		})
-		if mech == null: return
-		mech["pos"] = gather
-		mech["_slam"] = true                                     # 组装期锁AI(不能移动/攻击)
-		mech["_assembling"] = true                               # 组装期免疫攻击(伤害闸·用户2026-07-16"期间也不能被攻击")
-		mech["untargetable_until"] = _t + 5.05                   # 不可被索敌
-		mech["maxHp"] = final_hp; mech["hp"] = maxf(1.0, final_hp * 0.01)   # ★maxHp固定=满, hp从~0涨→血条0%填到100%(用户2026-07-18: 是血条填充·不是扩maxHp)
-		mech["atk"] = 0.0; mech["base_atk"] = 0.0
-		mech["def"] = 0.0; mech["base_def"] = 0.0; mech["mr"] = 0.0; mech["base_mr"] = 0.0
-		var mref: Dictionary = mech
-		var spr5 = mech.get("sprite", null)
-		if is_instance_valid(spr5):
-			spr5.modulate = Color(1, 1, 1, 0.45)                 # 组装中半透明→逐渐成型
-			var mt := _reg_tween()
-			mt.tween_property(spr5, "modulate:a", 1.0, 5.0)
-		var grow := _reg_tween()                                 # 5秒属性增长(血条0%→100%填充·攻/甲/抗0→满·组装期免伤无扣血)
-		grow.tween_method(func(g: float) -> void:
-			if not mref.get("alive", false): return
-			mref["maxHp"] = final_hp
-			var _seg: float = floorf(g * 10.0) / 10.0             # ★一段段回复(10段·每0.5s一段)从0填到满(用户2026-07-18: 700血就5秒内分段回到700)
-			mref["hp"] = maxf(1.0, final_hp * _seg)
-			mref["atk"] = lerpf(0.0, final_atk, g)
-			mref["base_atk"] = mref["atk"]
-			mref["def"] = lerpf(0.0, final_def, g); mref["base_def"] = mref["def"]
-			mref["mr"] = lerpf(0.0, final_def, g); mref["base_mr"] = mref["mr"]
-		, 0.0, 1.0, 5.0)
-		grow.tween_callback(func() -> void:                      # 就位: 解锁+解除免疫+白闪+环
-			if not mref.get("alive", false): return
-			mref["_slam"] = false
-			mref["_assembling"] = false
-			_flash(mref, Color(1.6, 1.9, 2.2))
-			_skill_ring(mref["pos"], Color(0.6, 0.95, 1.0, 0.8), 64.0)
-			_shake(JUICE_SHAKE_LIGHT))
-		var weld := [0]                                          # 组装特效: 5秒内周期焊接火花+电弧
-		var wt := _reg_tween()
-		wt.tween_method(func(_g: float) -> void:
-			weld[0] += 1
-			if weld[0] % 6 != 0 or not mref.get("alive", false): return
-			var wp: Vector2 = (mref["pos"] as Vector2) + Vector2(randf_range(-28.0, 28.0), randf_range(-16.0, 16.0))
-			var wk := Sprite3D.new()
-			wk.texture = VfxTex._make_fire_glow_tex()
-			wk.billboard = BaseMaterial3D.BILLBOARD_ENABLED; wk.shaded = false; wk.transparent = true
-			wk.pixel_size = 0.006
-			wk.modulate = Color(0.8, 1.0, 1.0, 1.0)
-			wk.position = _world_pos(wp, randf_range(0.3, 1.2))
-			_world.add_child(wk)
-			var wtw := _reg_tween()
-			wtw.tween_property(wk, "modulate:a", 0.0, 0.18)
-			wtw.tween_callback(wk.queue_free)
-		, 0.0, 1.0, 5.0)
-	, "src": u})
-## 该单位的立绘原图是否朝右(需要翻转修正)。
-##
-## ★为什么不能只查 id: 召唤物的 id 是 `"_summon_" + kind`(如 "_summon_mech"), 永远匹配不上
-## ART_FACES_RIGHT 里按龟 id 写的条目 → 2026-07-19 用户报「机甲建模也反了」就是这么来的:
-## mech.png 原图朝右, 但例外表对召唤物根本不生效。所以这里对召唤物再按 summon_kind 查一次。
 func _art_faces_right(u: Dictionary) -> bool:
 	if ART_FACES_RIGHT.has(str(u.get("id", ""))):
 		return true
