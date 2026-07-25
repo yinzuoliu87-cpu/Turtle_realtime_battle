@@ -33,7 +33,7 @@ func _ready() -> void:
 	get_tree().root.add_child(s)
 	for i in 20:
 		await get_tree().process_frame
-	s._dl_build_lane_field()
+	s._dl_sys._dl_build_lane_field()
 	for i in 8:
 		await get_tree().process_frame
 

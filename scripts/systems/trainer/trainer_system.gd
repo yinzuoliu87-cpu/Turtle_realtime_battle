@@ -41,7 +41,7 @@ func _trainer_move_by(u: Dictionary, dir: Vector2, delta: float) -> void:
 ## 摆位阶段能不能拖这个单位: 只拖我方(left)非蛋非召唤非训龟大师(用户2026-07-23 点6)。
 ## ★抽成纯函数便于门禁直接测(不用起 3D 场景)。
 func _trainer_ticks_active() -> bool:
-	return not battle._over and battle._dl_state != "place" and not battle._dl_is_present() and not battle._edit_mode
+	return not battle._over and battle._dl_state != "place" and not battle._dl_sys._dl_is_present() and not battle._edit_mode
 
 
 func _trainer_input_tick(delta: float) -> void:

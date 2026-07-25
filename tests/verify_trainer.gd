@@ -107,7 +107,7 @@ func _ready() -> void:
 
 	# ── ④ 不计团灭/胜负 ──
 	var side := str(tr.get("side", "left"))
-	var alive_before: int = s._dl_side_alive(side)
+	var alive_before: int = s._dl_sys._dl_side_alive(side)
 	var n_normal_alive := 0
 	for o in others:
 		if o.get("alive", false) and str(o.get("side", "")) == side and not o.get("_isEgg", false) and not o.get("is_summon", false):
@@ -137,7 +137,7 @@ func _ready() -> void:
 	if GameState != null and (GameState.dual_survivors is Dictionary):
 		tr["hp"] = 100.0                     # 打成残血
 		GameState.dual_survivors = {"left": [], "right": []}
-		s._dl_snapshot_survivors()
+		s._dl_sys._dl_snapshot_survivors()
 		var n_tr_in_snap := 0
 		var n_snap := 0
 		for sd in ["left", "right"]:

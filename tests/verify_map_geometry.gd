@@ -190,4 +190,9 @@ func _src() -> String:
 		return ""
 	var s := f.get_as_text()
 	f.close()
+	var g := FileAccess.open("res://scripts/scenes/dual_lane_flow.gd", FileAccess.READ)   # _dl_* 已抽到 DualLaneFlow(2026-07-25)
+	if g != null:
+		s += "
+" + g.get_as_text()
+		g.close()
 	return s
