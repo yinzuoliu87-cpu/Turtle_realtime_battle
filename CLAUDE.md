@@ -39,6 +39,7 @@ python tools/data_integrity.py         # json 交叉引用 / 资源路径 / 孤�
 python tools/tri_audit.py              # pets.json ↔ 活代码 ↔ 权威文档
 python tools/tooltip_number_audit.py   # 装备文案数值 ↔ 代码
 python tools/hp_staleness_check.py     # 云端同步新鲜度
+python tools/docs_authority_lint.py    # 单一事实源纪律（进 run-tests 门禁）：三权威在位/消费链活/README无漂移/无冒名
 ```
 
 ---

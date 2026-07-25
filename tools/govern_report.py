@@ -42,6 +42,7 @@ gates = [
     ('tooltip/brief_detail_audit', '文案数值 ↔ 代码'),
     ('verify_*_determinism', '同种子逐字节可复现 + 帧率无关'),
     ('workflow_lint', 'CI 工作流 YAML 可解析'),
+    ('docs_authority_lint', '单一事实源纪律·三权威在位/消费链活/README无漂移/无冒名'),
 ]
 for n, d in gates:
     print('  ✅ %-28s %s' % (n, d))
