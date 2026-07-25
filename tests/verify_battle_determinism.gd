@@ -18,7 +18,7 @@ func _fingerprint(scene) -> String:
 	parts.sort()
 	return "t=%.3f;" % float(scene._t) + "|".join(parts)
 
-func _run_once(frames: int) -> String:
+func _run_once(attacker: String, full_energy: bool, frames: int) -> String:
 	RB.DEBUG_EDIT = true
 	var s = RB.new()
 	add_child(s)
@@ -28,7 +28,8 @@ func _run_once(frames: int) -> String:
 	# 近距: 左攻击龟 + 右可击杀假人(有限血·会掉血→指纹随战斗推进)
 	s._edit_dummy_killable = true
 	s._edit_dummy_hp = 4000.0
-	s._edit_place_unit("basic", "left", Vector2(320, 300))
+	s._edit_full_energy = full_energy   # 满龟能: 主动技即就绪→放技(练更多技能RNG/DoT/时序路径)
+	s._edit_place_unit(attacker, "left", Vector2(320, 300))
 	s._edit_place_unit("basic", "right", Vector2(400, 300))
 	s._edit_start_battle()
 	for _i in range(frames):
@@ -40,19 +41,27 @@ func _run_once(frames: int) -> String:
 	return fp
 
 func _ready() -> void:
+	# 场景A: 2 基础龟普攻(基线)
 	OS.set_environment("TURTLE_SEED", "424242")
-	var fp1: String = await _run_once(200)
-	var fp2: String = await _run_once(200)
+	var fp1: String = await _run_once("basic", false, 200)
+	var fp2: String = await _run_once("basic", false, 200)
 	OS.set_environment("TURTLE_SEED", "77")   # 不同种子
-	var fp3: String = await _run_once(200)
+	var fp3: String = await _run_once("basic", false, 200)
 	OS.set_environment("TURTLE_SEED", "")
-	var same := fp1 == fp2
-	_ok("★同种子(424242)两遍 headless 战斗 → 指纹逐字相同(确定性成立)", same)
-	if not same:
-		print("  run1: ", fp1)
-		print("  run2: ", fp2)
-	# 非 vacuous: 不同种子应给不同结果(否则说明战斗没吃随机=指纹对种子不敏感=白测)
-	_ok("★不同种子(77) → 指纹不同(证明结果真吃种子·同种子match非恒真)", fp3 != fp1, "seed77 vs 424242")
-	_ok("分母: 指纹非空且含单位状态", fp1.length() > 10 and fp1.find("basic:") >= 0, fp1.substr(0, 90))
+	_ok("★A 同种子(424242)两遍普攻战 → 指纹逐字相同(确定性)", fp1 == fp2)
+	if fp1 != fp2:
+		print("  A.run1: ", fp1); print("  A.run2: ", fp2)
+	_ok("★A 不同种子(77) → 指纹不同(结果真吃种子·非vacuous)", fp3 != fp1)
+
+	# 场景B: 满龟能骰子龟放技(命运骰子=_battle_rng随机·练技能RNG/时序路径)
+	OS.set_environment("TURTLE_SEED", "31337")
+	var fpb1: String = await _run_once("dice", true, 260)
+	var fpb2: String = await _run_once("dice", true, 260)
+	OS.set_environment("TURTLE_SEED", "")
+	_ok("★B 满龟能骰子龟放技 同种子两遍 → 指纹逐字相同(技能层也确定)", fpb1 == fpb2)
+	if fpb1 != fpb2:
+		print("  B.run1: ", fpb1); print("  B.run2: ", fpb2)
+
+	_ok("分母: 指纹非空且含单位状态", fp1.length() > 10 and fp1.find("basic:") >= 0, fp1.substr(0, 70))
 	print("ALL PASS — 战斗确定性成立(同种子同结果·Phase2b 固定步长生效)" if _fail == 0 else "FAILED: %d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
