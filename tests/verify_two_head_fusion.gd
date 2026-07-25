@@ -30,23 +30,23 @@ func _ready() -> void:
 	sc._units.append(tgt)
 
 	# ── 物理波 0.8A = 80 ──
-	sc._two_head_fusion_wave_hit(dh, tgt, false, null)
+	sc._two_head_sys._two_head_fusion_wave_hit(dh, tgt, false, null)
 	_ok("物理波段 0.8A = 80", int(tgt["_st_taken"]) == 80, "taken=%d" % int(tgt["_st_taken"]))
 	_ok("物理波附加击飞(airborne)", bool(tgt.get("airborne", false)) == true)
 
 	# ── 真实波 0.8A = 80 ──
 	tgt["_st_taken"] = 0; tgt["airborne"] = false; tgt["vy"] = 0.0; tgt["vx"] = 0.0; tgt["vz"] = 0.0
-	sc._two_head_fusion_wave_hit(dh, tgt, true, null)
+	sc._two_head_sys._two_head_fusion_wave_hit(dh, tgt, true, null)
 	_ok("真实波段 0.8A = 80", int(tgt["_st_taken"]) == 80, "taken=%d" % int(tgt["_st_taken"]))
 
 	# ── 波数量: 基础4·每次释放+1累积 ──
 	dh["two_wave_count"] = 4
 	sc._pending_shots.clear()
-	sc._sk_two_head_fusion(dh, tgt)
+	sc._two_head_sys._sk_two_head_fusion(dh, tgt)
 	_ok("首次释放 = 4 段波", sc._pending_shots.size() == 4, "n=%d" % sc._pending_shots.size())
 	_ok("释放后波数 +1 = 5", int(dh["two_wave_count"]) == 5, "cnt=%d" % int(dh["two_wave_count"]))
 	sc._pending_shots.clear()
-	sc._sk_two_head_fusion(dh, tgt)
+	sc._two_head_sys._sk_two_head_fusion(dh, tgt)
 	_ok("★再释放 = 5 段波(累积)", sc._pending_shots.size() == 5, "n=%d" % sc._pending_shots.size())
 	_ok("波数再 +1 = 6", int(dh["two_wave_count"]) == 6, "cnt=%d" % int(dh["two_wave_count"]))
 

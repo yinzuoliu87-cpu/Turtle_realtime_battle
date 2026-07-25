@@ -42,7 +42,7 @@ func _ready() -> void:
 	_ok("精英小将建出来了(攻击间隔 %.2fs)" % iv, iv > 0.0)
 	_ok("吞噬前无攻速buff", is_equal_approx(_hf_of(scene, elite), 1.0))
 
-	var fired: bool = scene._elite_try_consume(elite, prey)
+	var fired: bool = scene._elite_sys._elite_try_consume(elite, prey)
 	_ok("★濒死目标触发吞噬", fired)
 	_ok("吞噬演出期获得 95% 减伤", absf(float(elite.get("damage_reduction", 0.0)) - 0.95) < 0.01,
 		"damage_reduction=%.2f" % float(elite.get("damage_reduction", 0.0)))

@@ -35,14 +35,14 @@ func _ready() -> void:
 
 	# ── 灵能冲击炮弹爆炸(直接调 boom = 炮弹碰敌后的结算) ──
 	# 每敌 = _atk_dmg(100,1.0,def0)=100 + 10%maxHp(1000)=100 → 200
-	sc._two_head_cannon_boom(dh, land)
+	sc._two_head_sys._two_head_cannon_boom(dh, land)
 	_ok("圈内(≤200码)敌受伤 200(1A+10%maxHp)", int(near1["_st_taken"])==200 and int(near2["_st_taken"])==200, "n1=%d n2=%d"%[int(near1["_st_taken"]),int(near2["_st_taken"])])
 	_ok("★圈外(>200码)敌 0(半径截断)", int(far1["_st_taken"])==0, "far=%d"%int(far1["_st_taken"]))
 
 	# ── 近战锤击落地(直接调 land 结算) ──
 	near1["hp"]=1000.0; near1["_st_taken"]=0
 	dh["shield"]=0.0
-	sc._two_head_hammer_land(dh, near1, near1["pos"], 140)
+	sc._two_head_sys._two_head_hammer_land(dh, near1, near1["pos"], 140)
 	_ok("锤击目标受伤 140", int(near1["_st_taken"])==140, "taken=%d"%int(near1["_st_taken"]))
 	_ok("锤击双头获50%伤害盾(70)", int(round(float(dh["shield"])))==70, "shield=%.0f"%float(dh["shield"]))
 

@@ -39,7 +39,7 @@ func _ready() -> void:
 		if r == "A" or r == "B" or r == "C":
 			want[str(p.get("id", ""))] = true
 
-	var pool: Array = scene._hiding_pool()
+	var pool: Array = scene._hiding_sys._hiding_pool()
 	var got: Dictionary = {}
 	for x in pool:
 		got[str(x)] = true

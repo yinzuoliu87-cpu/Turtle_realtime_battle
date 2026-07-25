@@ -25,7 +25,8 @@ var _fails: Array[String] = []
 
 
 func _ready() -> void:
-	var src := FileAccess.get_file_as_string(SCENE_PATH)
+	var src := FileAccess.get_file_as_string(SCENE_PATH) + "
+" + FileAccess.get_file_as_string("res://scripts/systems/skills/elite_system.gd")   # elite 已抽出(2026-07-25)
 	if src == "":
 		_fail("读不到 %s" % SCENE_PATH)
 		_done()

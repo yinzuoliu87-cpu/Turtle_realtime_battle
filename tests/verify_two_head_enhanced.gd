@@ -31,13 +31,13 @@ func _ready() -> void:
 	sc._units.append(tgt)
 
 	# ── 近战强化普攻: 目标 +0.6A魔法(=60), 双头获 1.1A盾(=110) ──
-	sc._two_head_enhanced_basic(dh, tgt, "melee")
+	sc._two_head_sys._two_head_enhanced_basic(dh, tgt, "melee")
 	_ok("近战强化: 目标受 0.6A魔法 = 60", int(tgt["_st_taken"]) == 60, "taken=%d" % int(tgt["_st_taken"]))
 	_ok("近战强化: 双头获 1.1A护盾 = 110", int(round(float(dh["shield"]))) == 110, "shield=%.0f" % float(dh["shield"]))
 
 	# ── 远程强化普攻: 目标 +1.4A物理(=140, def0无减免) + 施破甲(-25%护甲buff) ──
 	tgt["_st_taken"] = 0
-	sc._two_head_enhanced_basic(dh, tgt, "ranged")
+	sc._two_head_sys._two_head_enhanced_basic(dh, tgt, "ranged")
 	_ok("远程强化: 目标受 1.4A物理 = 140", int(tgt["_st_taken"]) == 140, "taken=%d" % int(tgt["_st_taken"]))
 	var has_break := false
 	for bf in tgt.get("buffs", []):
@@ -47,10 +47,10 @@ func _ready() -> void:
 
 	# ── 切形态挂标(_th_enh): melee→ranged 挂"ranged"; ranged→melee 挂"melee" ──
 	dh["melee"] = true; dh["_th_enh"] = ""
-	sc._two_head_after_cast(dh, tgt)
+	sc._two_head_sys._two_head_after_cast(dh, tgt)
 	_ok("切远程后 _th_enh=ranged 且形态=远程", str(dh.get("_th_enh", "")) == "ranged" and dh["melee"] == false, "enh=%s melee=%s" % [str(dh.get("_th_enh", "")), str(dh["melee"])])
 	dh["melee"] = false; dh["_th_enh"] = ""
-	sc._two_head_after_cast(dh, tgt)
+	sc._two_head_sys._two_head_after_cast(dh, tgt)
 	_ok("切近战后 _th_enh=melee 且形态=近战", str(dh.get("_th_enh", "")) == "melee" and dh["melee"] == true, "enh=%s melee=%s" % [str(dh.get("_th_enh", "")), str(dh["melee"])])
 
 	print("")
