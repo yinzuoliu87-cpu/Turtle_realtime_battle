@@ -635,6 +635,8 @@ var _pending_shots: Array = []            # 依次射出的子弹队列 [{delay,
 # ═══ 沙漏059 JoJo时停 ═══ 冻结全局_t + 只tick active携带者; 其他单位/弹道/依次射击/tween/粒子 全定格
 var _timestop := TimestopSystem.new(self)   # 沙漏时停系统(2026-07-25 从本文件抽出)
 var _equip_sys := EquipSystem.new(self)   # 装备效果系统(2026-07-25 抽出·与技能分开)
+var _equip_tick_sys := EquipTickSystem.new(self)   # 装备周期效果tick系统(2026-07-25 抽出)
+var _audio_sys := AudioSystem.new(self)   # 音效系统(2026-07-25 抽出)
 var _trainer_sys := TrainerSystem.new(self)   # 训龟大师技能系统(2026-07-25 抽出·与龟技能/装备分开)
 var _line_sys := LineSystem.new(self)   # 素描龟技能系统(2026-07-25 抽出)
 var _angel_sys := AngelSystem.new(self)   # 天使龟技能系统(2026-07-25 抽出)
@@ -4382,7 +4384,7 @@ func _render_step(rd: float, frozen: bool, in_ts: bool) -> void:
 		for u in _timestop._ts_active:                # 只推进active立绘帧动画(非active定格)
 			if u.get("alive", false):
 				if u.get("is_big_bear", false):
-					_tick_bear_anim(u, rd)
+					_equip_tick_sys._tick_bear_anim(u, rd)
 				else:
 					_advance_anim(u, rd)
 		_timestop._ts_tick_visual(rd)                 # 时停视觉维持(钟表脉动/暗角等)
@@ -4391,7 +4393,7 @@ func _render_step(rd: float, frozen: bool, in_ts: bool) -> void:
 		for u in _units:           # 立绘帧动画推进 (idle 循环 / 动作一次)
 			if u["alive"] or u.get("anim_action", "") == "death":
 				if u.get("is_big_bear", false):
-					_tick_bear_anim(u, rd)   # 大熊: 状态机(走路/停顿/熊爪拍/砸地)
+					_equip_tick_sys._tick_bear_anim(u, rd)   # 大熊: 状态机(走路/停顿/熊爪拍/砸地)
 				else:
 					_update_run_anim(u, rd)
 					_advance_anim(u, rd)
@@ -4934,25 +4936,25 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 	# 装备周期 tick (每 2.5 秒, EQ_TICK) — A类回合节拍效果
 	if not u.get("equips", []).is_empty():
 		_equip_sys._eq_tick(u, delta)
-		_tick_doll(u, delta)
-		_tick_rustblade(u, delta)
-		_tick_sword_storm(u, delta)
-		_tick_broadsword(u, delta)
-		_tick_coral(u, delta)          # 双穿珊瑚刺008: 修——之前漏挂dispatch→整个珊瑚刺击效果从未触发(用户2026-07-19发现)
-		_tick_laser(u, delta)
-		_tick_jelly(u, delta)
-		_tick_fortress(u, delta)
-		_tick_ironwall(u, delta)
-		_tick_shell(u, delta)
-		_tick_thunder(u, delta)
-		_tick_baton(u, delta)
-		_tick_ice_fissure(u, delta)
-		_tick_gear(u, delta)
+		_equip_tick_sys._tick_doll(u, delta)
+		_equip_tick_sys._tick_rustblade(u, delta)
+		_equip_tick_sys._tick_sword_storm(u, delta)
+		_equip_tick_sys._tick_broadsword(u, delta)
+		_equip_tick_sys._tick_coral(u, delta)          # 双穿珊瑚刺008: 修——之前漏挂dispatch→整个珊瑚刺击效果从未触发(用户2026-07-19发现)
+		_equip_tick_sys._tick_laser(u, delta)
+		_equip_tick_sys._tick_jelly(u, delta)
+		_equip_tick_sys._tick_fortress(u, delta)
+		_equip_tick_sys._tick_ironwall(u, delta)
+		_equip_tick_sys._tick_shell(u, delta)
+		_equip_tick_sys._tick_thunder(u, delta)
+		_equip_tick_sys._tick_baton(u, delta)
+		_equip_tick_sys._tick_ice_fissure(u, delta)
+		_equip_tick_sys._tick_gear(u, delta)
 		_equip_sys._tick_eq_turret(u, delta)   # 058炮台: 双抗随携带者存活 + 携带者近身攻速 + 锁定红线
 		_equip_sys._tick_eq_intervals(u, delta)
-		_tick_anemone(u, delta)
-		_tick_dumbbell(u, delta)
-		_tick_barnacle(u, delta)
+		_equip_tick_sys._tick_anemone(u, delta)
+		_equip_tick_sys._tick_dumbbell(u, delta)
+		_equip_tick_sys._tick_barnacle(u, delta)
 
 func _enemies_of(u: Dictionary) -> Array:
 	var out: Array = []
@@ -5121,27 +5123,6 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		_on_basic_hit(u, tgt)   # 近战命中即时; 远程→弹道命中时触发(审判等与裁决同帧, 数字按规矩同时跳)
 	# (原: 无条件 _on_basic_hit 被动钩子 (竹叶强化/墨迹/结晶/斩杀/审判/多重/彩虹附色 等) — 改 _do_basic 时漏调, 已补
 
-# 数据驱动基础技能: 按 spec 算物/魔/真伤(含加成项)分段打出 + 附带/特殊机制 (1:1 原始 skillPool[0])
-func _tick_doll(u: Dictionary, delta: float) -> void:   # 玩偶小熊: 每4s派小熊+攒层; 满层→蓄力→召大熊(不与末只小熊同帧)
-	var es: Dictionary = u.get("eq_state", {})
-	if not es.has("p2eq_034"): return
-	var stt: Dictionary = es["p2eq_034"]
-	if bool(stt.get("bear_done", false)) or bool(stt.get("bear_charging", false)): return
-	var si: int = int(stt.get("doll_si", 0))
-	var _iv: float = 1.0 if OS.has_environment("EQDEMO_FAST") else 4.0   # FAST=快速看波
-	stt["doll_t"] = float(stt.get("doll_t", 0.0)) + delta
-	if float(stt["doll_t"]) < _iv: return
-	stt["doll_t"] = 0.0
-	var mt = _nearest_enemy(u)
-	if mt == null: return
-	var bdm: int = _resolve_dmg(u, u["atk"] * [1.0, 2.0, 5.0][si] + [100.0, 210.0, 1000.0][si], mt, false)
-	_summon_walking_bear(u, mt, bdm)
-	stt["bear_layers"] = int(stt.get("bear_layers", 0)) + 1
-	var _cap: int = 1 if OS.has_environment("EQDEMO_FAST") else [5, 3, 1][si]
-	if int(stt["bear_layers"]) >= _cap:
-		stt["bear_charging"] = true
-		_big_bear_charge_and_spawn(u, si)
-
 func _big_bear_charge_and_spawn(u: Dictionary, si: int) -> void:   # 满层: 携带者蓄力(金光聚1.2s)→召大熊(与末只小熊错开)
 	var glow := Sprite3D.new()
 	glow.texture = VfxTex._make_fire_glow_tex()
@@ -5203,47 +5184,6 @@ func _set_bear_sheet(spr: Sprite3D, kind: String) -> void:   # 换大熊动画�
 	spr.hframes = maxi(1, int(round(float(tex.get_width()) / 96.0)))
 	spr.frame = 0
 
-func _tick_bear_anim(u: Dictionary, delta: float) -> void:   # 大熊状态机: 移动→走路循环 / 停下→顿住 / 拍击→熊爪 / 冲击波→举手砸地
-	var spr = u.get("sprite", null)
-	if not is_instance_valid(spr): return
-	var ne = _nearest_enemy(u)                     # 朝向最近敌(熊默认朝左→敌在右则flip朝右; 迟滞防抖)
-	if ne != null and absf(float(ne["pos"].x) - float(u["pos"].x)) > 40.0:
-		spr.flip_h = float(ne["pos"].x) > float(u["pos"].x)
-	u["bear_anim_t"] = float(u.get("bear_anim_t", 0.0)) + delta
-	var anim := str(u.get("bear_anim", "walk"))
-	var voff := Vector3.ZERO
-	var ldir: Vector3 = u.get("_bear_ldir", Vector3.ZERO)
-	if anim == "attack" or anim == "slam":
-		if str(u.get("_bear_sheet", "")) != anim:
-			_set_bear_sheet(spr, anim); u["_bear_sheet"] = anim; u["bear_anim_t"] = 0.0
-		var per: float = 0.07 if anim == "attack" else 0.085
-		var total: float = per * float(maxi(1, int(spr.hframes)))
-		var prog: float = clampf(float(u["bear_anim_t"]) / maxf(0.01, total), 0.0, 1.0)
-		var f: int = int(float(u["bear_anim_t"]) / per)
-		if f >= int(spr.hframes):
-			if u.get("_slam_manual", false):
-				spr.frame = int(spr.hframes) - 1   # 手控砸地: 定住末帧(等波传完, 不回走路循环=修漂移)
-			else:
-				u["bear_anim"] = "walk"          # 播完回走路/待机
-		else:
-			spr.frame = f
-		if anim == "attack":
-			voff = ldir * (sin(prog * PI) * 0.55)          # 前扑扑击(前冲再回)
-			voff.y += sin(prog * PI) * 0.14                # 略抬(挥爪)
-		# slam 的位移由 _bear_shockwave 手控(_slam_manual), 这里只推进帧
-	else:   # walk / idle: 移动→循环走路, 停下→站立顿住(frame0)
-		if str(u.get("_bear_sheet", "")) != "walk":
-			_set_bear_sheet(spr, "walk"); u["_bear_sheet"] = "walk"
-		var pv: Vector2 = u.get("_bear_pp", u["pos"])
-		var moving: bool = (u["pos"] - pv).length() > 0.6
-		u["_bear_pp"] = u["pos"]
-		if moving:
-			spr.frame = int(float(u["bear_anim_t"]) * 9.0) % maxi(1, int(spr.hframes))
-		else:
-			spr.frame = 0
-	if not u.get("_slam_manual", false):   # 砸地手控voff期间不覆盖
-		u["_bear_voff"] = voff
-
 func _big_bear_attack(u: Dictionary, tgt: Dictionary) -> void:   # 大熊: <2层→熊掌(前摇抬爪→挥击命中跳数字→后摇收手); 满2层→放冲击波
 	var si: int = int(u.get("bear_star", 0))
 	var d2: Vector2 = (tgt["pos"] - u["pos"]).normalized()
@@ -5268,52 +5208,6 @@ func _bear_paw_hit(u: Dictionary, tgt) -> void:   # 熊掌挥击接触瞬间: �
 	if u.get("melee", false): _on_basic_hit(u, tgt)
 	_bear_claw_fx(tgt["pos"])                    # 金爪三痕+尘
 
-func _tick_fortress(u: Dictionary, delta: float) -> void:   # 深海堡垒甲p2eq_014: 硬化满20层后每8秒汲取全体敌(魔伤0.8/1.0/1.5×(护甲+魔抗))+每敌回血; 满层瞬间立即首次; 每件独立
-	if u.get("equips", []).is_empty(): return
-	for e in u["equips"]:
-		if str(e["id"]) != "p2eq_014": continue
-		var stt: Dictionary = u["eq_state"].get("p2eq_014", {})
-		if int(stt.get("harden_stacks", 0)) < int(stt.get("harden_cap", 25)):
-			e["fortress_t"] = 8.0   # 未叠满→预置8(叠满瞬间立即首次汲取)
-			continue
-		e["fortress_t"] = float(e.get("fortress_t", 0.0)) + delta
-		if float(e["fortress_t"]) < 8.0: continue
-		e["fortress_t"] = 0.0
-		var si: int = _equip_sys._eq_si(int(e.get("star", 1)))
-		var k2: float = [0.9, 1.6, 3.0][si]   # 用户2026-07-19: 0.8/1.0/1.5 -> 1/2/4 -> 0.9/1.6/3
-		for o in _enemies_of(u):
-			_bolt_line(o["pos"], u["pos"], Color("#bfe9ff"))
-			_apply_damage_from(u, o, _resolve_dmg(u, k2 * (u["def"] + u["mr"]), o, true), Color("#bfe9ff"), 0.0, false, true)   # 真·魔法伤害(走魔抗); 原 raw=true 是白字真伤·与文案"魔法伤害"不符(用户2026-07-19指出)
-			_heal(u, [60.0, 110.0, 250.0][si] + maxf(0.0, u["maxHp"] - u["hp"]) * 0.06)   # 用户2026-07-19: 60/110/250 + 已损生命6%(逐敌结算)
-
-func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016: 每5秒放一个总护盾池(100/250/400 + 携带者8%最大生命)由全队(含自己)均分(用户2026-07-19; 原每人固定15/20/25); 每件独立
-	if u.get("equips", []).is_empty(): return
-	for e in u["equips"]:
-		if str(e["id"]) != "p2eq_016": continue
-		e["ironwall_t"] = float(e.get("ironwall_t", 0.0)) + delta
-		if float(e["ironwall_t"]) < 5.0: continue
-		e["ironwall_t"] = 0.0
-		var si: int = _equip_sys._eq_si(int(e.get("star", 1)))
-		var mates: Array = _allies_no_trainer(u)   # ★均分排除大师(不占盾份额·稀释)·用户2026-07-23 点4
-		if mates.is_empty(): continue
-		var pool: float = [100.0, 250.0, 400.0][si] + u["maxHp"] * 0.08   # 总池: 固定 + 携带者8%最大生命
-		var each: float = pool / float(mates.size())                      # 全队(含自己·除大师)均分
-		for o in mates:
-			_grant_shield(o, each)
-
-func _tick_thunder(u: Dictionary, delta: float) -> void:   # 雷鸣贝壳p2eq_025: 每4秒降N道大雷(道间错峰0.3s), 各劈随机敌1×ATK真伤(伤害在闪电中段跳); 每件独立(用户2026-07-02: 原2.5s)
-	if u.get("equips", []).is_empty(): return
-	for e in u["equips"]:
-		if str(e["id"]) != "p2eq_025": continue
-		e["thunder_t"] = float(e.get("thunder_t", 0.0)) + delta
-		if float(e["thunder_t"]) < 4.0: continue
-		e["thunder_t"] = 0.0
-		var si: int = _equip_sys._eq_si(int(e.get("star", 1)))
-		for d in range([1, 2, 3][si]):                # 道间错峰
-			var tw := _reg_tween()
-			tw.tween_interval(float(d) * 0.3)
-			tw.tween_callback(_thunder_bolt.bind(u))
-
 func _thunder_bolt(u: Dictionary) -> void:
 	if not u.get("alive", false): return
 	var es := _pick_enemies_of(u)
@@ -5327,16 +5221,6 @@ func _thunder_bolt(u: Dictionary) -> void:
 func _thunder_hit(u: Dictionary, o: Dictionary) -> void:
 	if not (u.get("alive", false) and o.get("alive", false)): return
 	_apply_damage_from(u, o, int(u["atk"]), Color("#cfefff"), 0.0, true, true)   # 1×ATK真实伤害(白字,飘在2.2=雷中间)
-
-# 029 冰封水母(布隆大招式): 每12秒→自身上盾→砸地→朝最近敌生成冰道(500x90)→命中魔法伤+击飞0.6s+冰封2.5s
-func _tick_ice_fissure(u: Dictionary, delta: float) -> void:
-	if u.get("equips", []).is_empty(): return
-	for e in u["equips"]:
-		if str(e["id"]) != "p2eq_029": continue
-		e["fissure_t"] = float(e.get("fissure_t", 0.0)) + delta
-		if float(e["fissure_t"]) < 12.0: continue
-		e["fissure_t"] = 0.0
-		_equip_sys._eq_ice_fissure(u, _equip_sys._eq_si(int(e.get("star", 1))))
 
 func _spawn_ice_spike(pos2d: Vector2, hscale: float, linger: float) -> void:
 	var tex: Texture2D = load("res://assets/sprites/vfx/ice-spike-vfx.png")
@@ -5802,72 +5686,6 @@ func _ebb_tide_fx(u: Dictionary, rising: bool) -> void:   # 041: 涨潮=水纹�
 		tw.chain().tween_property(m, "modulate:a", 0.0, 0.22)
 		tw.chain().tween_callback(m.queue_free)
 
-func _tick_gear(u: Dictionary, delta: float) -> void:   # 黄铜齿轮035(用户2026-07-18改: 随时间铸币·每6秒左队携带者直接+1/2/3深海币+飘字·跟死亡无关·原"攒齿轮层战斗结束折币"改掉)
-	if u.get("equips", []).is_empty(): return
-	if str(u.get("side", "")) != "left": return   # 深海币=玩家侧meta货币, 只玩家(左队)携带者产币
-	for e in u["equips"]:
-		if str(e["id"]) != "p2eq_035": continue
-		var si: int = _equip_sys._eq_si(int(e.get("star", 1)))
-		var stt: Dictionary = u["eq_state"].get("p2eq_035", {})
-		stt["gear_t"] = float(stt.get("gear_t", 0.0)) + delta
-		if float(stt["gear_t"]) >= 6.0:
-			stt["gear_t"] = float(stt["gear_t"]) - 6.0
-			var coins: int = [1, 2, 3][si]
-			var gs = get_node_or_null("/root/GameState")
-			if gs != null and gs.get("meta_deepsea_coins") != null:
-				gs.set("meta_deepsea_coins", int(gs.get("meta_deepsea_coins")) + coins)
-			_float_text(u["pos"], "+%d💠" % coins, Color("#5fd0e0"))   # 可见反馈(用户: 之前无反馈以为没生效)
-			stt["coins_made"] = int(stt.get("coins_made", 0)) + coins   # 头像装备格徽章显示本局累计产币(用户2026-07-19)
-		u["eq_state"]["p2eq_035"] = stt
-
-func _tick_shell(u: Dictionary, delta: float) -> void:   # 守护贝壳p2eq_018: 每8秒自回(30/45/60+5/9/15%maxHP)生命(受治疗增幅); 每件独立(用户2026-07-02, 原2.5s)
-	if u.get("equips", []).is_empty(): return
-	for e in u["equips"]:
-		if str(e["id"]) != "p2eq_018": continue
-		e["shell_t"] = float(e.get("shell_t", 0.0)) + delta
-		if float(e["shell_t"]) < 8.0: continue
-		e["shell_t"] = 0.0
-		var si: int = _equip_sys._eq_si(int(e.get("star", 1)))
-		_heal(u, [30, 45, 60][si] + u["maxHp"] * [0.05, 0.09, 0.15][si])
-		_shell_sys._shell_guard_fx(u)   # 半壳合拢护罩演出(用户2026-07-19)
-
-func _tick_anemone(u: Dictionary, delta: float) -> void:   # 海葵药膏p2eq_019: 每7秒奶自己+最低血友军(30/45/60+12/14/18%目标已损血)×海葵增幅; 累计200/180/150治疗+1海葵层(治疗&盾强度+8/9/10%/层); 每件独立(用户2026-07-02,原2.5s)
-	if u.get("equips", []).is_empty(): return
-	for e in u["equips"]:
-		if str(e["id"]) != "p2eq_019": continue
-		e["anemone_t"] = float(e.get("anemone_t", 0.0)) + delta
-		if float(e["anemone_t"]) < 7.0: continue
-		e["anemone_t"] = 0.0
-		var si: int = _equip_sys._eq_si(int(e.get("star", 1)))
-		var stt: Dictionary = u["eq_state"].get("p2eq_019", {})
-		# 海葵层的+治疗/护盾强度已经在获得层时真的加进 u.heal_amp/shield_amp (见下), _heal 会自己乘, 这里不能再乘一遍
-		var h1: float = [30, 45, 60][si] + (u["maxHp"] - u["hp"]) * [0.12, 0.14, 0.18][si]
-		var prov19: float = _heal(u, h1)                     # 按【实际】回血计数(同017口径·用户2026-07-19)
-		var low = _lowest_hp_pct_ally(u)                     # 文案是"生命百分比最低"
-		if low != null and not is_same(low, u):              # is_same: 单位字典深比较有卡死风险(同053)
-			var h2: float = [30, 45, 60][si] + (low["maxHp"] - low["hp"]) * [0.12, 0.14, 0.18][si]
-			prov19 += _heal(low, h2)
-		stt["anemone_heal"] = float(stt.get("anemone_heal", 0.0)) + prov19
-		var thr19: float = [200.0, 180.0, 150.0][si]
-		while float(stt["anemone_heal"]) >= thr19:
-			stt["anemone_heal"] = float(stt["anemone_heal"]) - thr19
-			stt["anemone_layers"] = int(stt.get("anemone_layers", 0)) + 1
-			var inc19: float = [0.08, 0.09, 0.10][si]
-			u["heal_amp"] = float(u.get("heal_amp", 0.0)) + inc19       # 海葵层原来只放大019自己的回血, 文案说的"治疗与护盾强度"根本没生效 → 真的加进全局(用户2026-07-19)
-			u["shield_amp"] = float(u.get("shield_amp", 0.0)) + inc19   # 一局内累计不封顶, 单位每场重建 eq_state/heal_amp → 天然重置
-			_skill_ring(u["pos"], Color(0.55, 0.9, 0.7, 0.5), 44.0)
-		u["eq_state"]["p2eq_019"] = stt
-
-func _tick_dumbbell(u: Dictionary, delta: float) -> void:   # 哑铃p2eq_020: 每8秒一套(原地锻炼锁攻锁充能→+锻炼层→蓄力掷哑铃击退); 每件独立
-	if u.get("equips", []).is_empty(): return
-	for e in u["equips"]:
-		if str(e["id"]) != "p2eq_020": continue
-		e["dumbbell_t"] = float(e.get("dumbbell_t", 0.0)) + delta
-		if float(e["dumbbell_t"]) < 8.0: continue   # 每10秒→每8秒(用户2026-07-19)
-		e["dumbbell_t"] = 0.0
-		if u.get("_slam", false): continue   # 正在别的channel中→跳过本次
-		_equip_sys._eq_dumbbell_routine(u, _equip_sys._eq_si(int(e.get("star", 1))))
-
 func _throw_dumbbell(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   # 钢灰哑铃飞向目标→砸中伤害+击退
 	var spr := Sprite3D.new()
 	spr.texture = load("res://assets/sprites/equip/dungeon-dumbbell.png")   # 真哑铃图(020图标)作弹道
@@ -5946,25 +5764,6 @@ func _fuel_splash_step(pf: float, m, from2d: Vector2, dest: Vector2) -> void:   
 	if not is_instance_valid(m): return
 	m.position = _world_pos(from2d.lerp(dest, pf), 0.22 + 0.85 * pf * (1.0 - pf))
 	m.modulate.a = lerpf(0.95, 0.0, pf)
-
-# 027 电棍: 每3s就绪→下次普攻消耗1层(附魔法伤+眩晕); 就绪时身上冒电光
-func _tick_baton(u: Dictionary, delta: float) -> void:
-	if u.get("equips", []).is_empty(): return
-	for e in u["equips"]:
-		if str(e["id"]) != "p2eq_027": continue
-		var bst: Dictionary = u["eq_state"].get("p2eq_027", {})
-		if int(bst.get("baton_charges", 0)) <= 0:
-			bst["baton_ready"] = false; u["eq_state"]["p2eq_027"] = bst; continue
-		if not bst.get("baton_ready", false):
-			bst["baton_cd"] = float(bst.get("baton_cd", 0.0)) + delta
-			if float(bst["baton_cd"]) >= 3.0:
-				bst["baton_ready"] = true
-		else:
-			bst["baton_spark_t"] = float(bst.get("baton_spark_t", 0.0)) + delta
-			if float(bst["baton_spark_t"]) >= 0.16:
-				bst["baton_spark_t"] = 0.0
-				_baton_spark(u)
-		u["eq_state"]["p2eq_027"] = bst
 
 func _baton_spark(u: Dictionary) -> void:
 	var tex: Texture2D = load("res://assets/sprites/vfx/electric-zap.png")
@@ -6273,35 +6072,6 @@ func _mud_mark(pos2d: Vector2) -> void:
 	t.tween_callback(spr.queue_free)
 
 
-func _tick_barnacle(u: Dictionary, delta: float) -> void:   # 守护贝母p2eq_021: 持续绿色绑定线连全队最高攻友军; 每5秒重连并为自己+该友军 +10龟能+10%攻速(叠加/本场/每场重置); 每件独立
-	if u.get("equips", []).is_empty(): return
-	for e in u["equips"]:
-		if str(e["id"]) != "p2eq_021": continue
-		var stt: Dictionary = u["eq_state"].get("p2eq_021", {})
-		e["barnacle_t"] = float(e.get("barnacle_t", 0.0)) + delta
-		if stt.get("link_target", null) == null or float(e["barnacle_t"]) >= 5.0:   # 首次立即连 + 每5秒重连+给buff
-			if float(e["barnacle_t"]) >= 5.0: e["barnacle_t"] = 0.0
-			var si: int = _equip_sys._eq_si(int(e.get("star", 1)))
-			var prev = stt.get("link_target", null)   # 重连前清上个连接对象的伤害转移标记
-			if prev is Dictionary: prev.erase("dmg_redirect_to")
-			var best = null; var ba := -1.0
-			for o in _allies_of(u):
-				if is_same(o, u): continue   # is_same: 单位字典深比较有卡死风险(同053)
-				if float(o["atk"]) > ba: ba = float(o["atk"]); best = o
-			stt["link_target"] = best
-			u["eq_state"]["p2eq_021"] = stt
-			var benef: Array = [u]
-			if best != null: benef.append(best)
-			for o in benef:
-				if _has_energy_system(o): _equip_sys._eq_grant_energy(o, 10.0)   # +10龟能(减冷却)
-				o["aspd_perm"] = float(o.get("aspd_perm", 1.0)) + 0.10   # +10%攻速(永久本场,叠加)
-				_skill_ring(o["pos"], Color(0.55, 1.0, 0.78, 0.5), 44.0)
-			if best != null:   # 连接友军: 盾 + 伤害转移(25/40/60%受伤转给携带者); 不净化(用户)
-				_grant_shield(best, [60.0, 110.0, 180.0][si])   # 用户2026-07-19: 40/60/90→60/110/180
-				best["dmg_redirect_to"] = {"carrier": u, "pct": [0.25, 0.40, 0.60][si], "until": _t + 5.5}
-		_update_barnacle_line(u, stt.get("link_target", null))   # 每帧: 持续绿色绑定线(跟随移动/能量脉动)
-		break   # 只处理一件(共享绑定线)
-
 func _update_barnacle_line(u: Dictionary, target) -> void:   # 守护贝母021: 携带者↔连接友军的持续绿色绑定线(每帧重绘跟随, 能量脉动α)
 	var im = u.get("barnacle_line", null)
 	if not (target is Dictionary) or not target.get("alive", false) or is_same(target, u) or not u.get("alive", false):   # is_same: 同上
@@ -6334,32 +6104,6 @@ func _update_barnacle_line(u: Dictionary, target) -> void:   # 守护贝母021: 
 		imesh.surface_set_color(col); imesh.surface_add_vertex(a + pu * _off)
 		imesh.surface_set_color(col); imesh.surface_add_vertex(b + pu * _off)
 	imesh.surface_end()
-
-func _tick_jelly(u: Dictionary, delta: float) -> void:   # 龟苓膏块p2eq_012: 每4s自护盾(用户2026-07-02, 原走2.5s周期); 每件独立计时
-	if u.get("equips", []).is_empty(): return
-	for e in u["equips"]:
-		if str(e["id"]) != "p2eq_012": continue
-		e["jelly_t"] = float(e.get("jelly_t", 0.0)) + delta
-		if float(e["jelly_t"]) < 4.0: continue
-		e["jelly_t"] = 0.0
-		var si: int = _equip_sys._eq_si(int(e.get("star", 1)))
-		_grant_shield(u, [40.0, 60.0, 90.0][si] + u["maxHp"] * 0.04)   # 用户2026-07-19: 30/40/55 → 40/60/90 + 4%最大生命
-
-func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 锈蚀短剑p2eq_001: 每3s就绪, 射程2000(全场)内最近敌即甩飞斩剑气; 每件独立(多件各自触发)
-	if u.get("equips", []).is_empty(): return
-	var t = null; var got := false; var rng: float = 2000.0   # 射程2000(用户2026-07-19: 近战→远程「裂空飞斩」剑气全场覆盖)
-	for e in u["equips"]:
-		if str(e["id"]) != "p2eq_001": continue
-		e["rust_t"] = float(e.get("rust_t", 0.0)) + delta   # 计时存装备条目→每副本独立就绪
-		if float(e["rust_t"]) < 3.0: continue               # 该件未就绪(每3s就绪一次)
-		if not got:                                          # 目标懒求(多件共用同一最近敌)
-			t = _nearest_enemy(u); got = true
-		if t == null or (t["pos"] - u["pos"]).length() > rng: continue   # 射程内无敌→保持就绪等待
-		e["rust_t"] = 0.0
-		var si: int = _equip_sys._eq_si(int(e.get("star", 1)))
-		var dmg01: int = _resolve_dmg(u, u["atk"] * [0.6, 0.75, 1.0][si] + [40.0, 60.0, 100.0][si] * u["crit"], t, false)
-		_weapon_flyslash(u, t, dmg01, Color("#ffd27a"))   # 剑气飞到目标才结算伤(命中判定在_projectiles arrival)
-
 
 func _weapon_slash(from2d: Vector2, to2d: Vector2, col: Color) -> void:   # 面向镜头的斜砍斩弧(用户选)+命中环
 	var arc := Sprite3D.new()
@@ -6442,20 +6186,6 @@ func _pull_airborne(o: Dictionary, origin: Vector2, dist: float, dur: float) -> 
 
 var _bladewall_tex: ImageTexture = null
 
-func _tick_coral(u: Dictionary, delta: float) -> void:   # 双穿珊瑚刺p2eq_008: 每9秒对最远敌射珊瑚尖刺(用户2026-07-19: 6→9); 命中才结算; 每件独立
-	if u.get("equips", []).is_empty(): return
-	for e in u["equips"]:
-		if str(e["id"]) != "p2eq_008": continue
-		e["coral_t"] = float(e.get("coral_t", 0.0)) + delta
-		if float(e["coral_t"]) < 9.0: continue
-		var far = null; var fd := -1.0
-		for o in _pick_enemies_of(u):   # ★单体定向(挑最远一个)必须走 _pick_enemies_of: 排除训龟大师(场外监视者·永远最远)+不可选中; 见 §PICK-TARGET 铁律。原用 _enemies_of → 珊瑚刺永远锁大师(用户2026-07-24)
-			var dd2: float = (o["pos"] - u["pos"]).length_squared()
-			if dd2 > fd: fd = dd2; far = o
-		if far == null: continue
-		e["coral_t"] = 0.0
-		_fire_coral_spike(u, far, _equip_sys._eq_si(int(e.get("star", 1))))
-
 var _shellhalf_tex: ImageTexture = null
 
 
@@ -6507,26 +6237,6 @@ func _coral_burst(pos2d: Vector2) -> void:   # 珊瑚碎裂: 珊瑚橙中心闪 
 		twd.tween_property(drop, "position", _world_pos(to, h * 0.4), 0.26).set_ease(Tween.EASE_OUT)
 		twd.tween_property(drop, "modulate:a", 0.0, 0.26)
 		twd.chain().tween_callback(drop.queue_free)
-
-func _tick_broadsword(u: Dictionary, delta: float) -> void:   # 锈蚀阔剑p2eq_007: 每6秒触发(用户); 每件独立
-	if u.get("equips", []).is_empty(): return
-	for e in u["equips"]:
-		if str(e["id"]) != "p2eq_007": continue
-		e["bsw_t"] = float(e.get("bsw_t", 0.0)) + delta
-		if float(e["bsw_t"]) < 6.0: continue
-		if _nearest_enemy(u) == null: continue
-		e["bsw_t"] = 0.0
-		_equip_sys._eq_broadsword(u, _equip_sys._eq_si(int(e.get("star", 1))))
-
-func _tick_sword_storm(u: Dictionary, delta: float) -> void:   # 千刃风暴p2eq_006: 每7秒触发; 每件独立计时
-	if u.get("equips", []).is_empty(): return
-	for e in u["equips"]:
-		if str(e["id"]) != "p2eq_006": continue
-		e["storm_t"] = float(e.get("storm_t", 0.0)) + delta
-		if float(e["storm_t"]) < 7.0: continue
-		if _nearest_enemy(u) == null: continue
-		e["storm_t"] = 0.0
-		_equip_sys._eq_sword_storm(u, _equip_sys._eq_si(int(e.get("star", 1))))
 
 func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大熊冲击波(小菊式): 蓄力→直线移动波, 1.5ATK物理+击飞0.8s+拉回70码
 	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
@@ -7443,9 +7153,9 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: Stri
 	# §AUDIO: 无来源伤害也出命中音 (非暴击); 护盾破→shield-break。mute_sfx=诅咒 tick 静音(用户2026-07-23)
 	if not mute_sfx:
 		if shield_before > 0.0 and u["shield"] <= 0.0:
-			_sfx_shield_break()
+			_audio_sys._sfx_shield_break()
 		else:
-			_sfx_hit(false)
+			_audio_sys._sfx_hit(false)
 	if u["hp"] <= 0.0 and u["alive"]:
 		# ★带上 src: 原为 _kill(u) 无凶手 → DOT 击杀【不算击杀数】, 且暴君之牙处决回血这类
 		#   on-kill 装备钩子全不触发(对比另一条路 _kill(u, src))。2026-07-22 修。
@@ -7578,9 +7288,9 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	# §AUDIO: 命中音 (暴击→hit-crit / 否则→hit-physical, 节流防多段刷屏); 护盾刚被打没→shield-break (真伤现在也能打盾→去掉 not raw).
 	if shield_before > 0.0 and u["shield"] <= 0.0:
 		u["shield_until"] = 0.0   # 盾被打空→清限时标记(防陈旧到期误清后续永久盾)
-		_sfx_shield_break()
+		_audio_sys._sfx_shield_break()
 	else:
-		_sfx_hit(was_crit)
+		_audio_sys._sfx_hit(was_crit)
 	# Phase4 打击感: 受击闪白+轻压扁(每段直接命中); 顿帧/震屏/火花按伤害分级(auto: ≥gate=重击).
 	_flash(u)
 	_impact(u, dmg, "auto")
@@ -7753,7 +7463,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 		u["hp"] = u["maxHp"] * pct
 		u["dots"] = []
 		u["dot_stacks"] = {}
-		_sfx_simple("rebirth")              # §AUDIO: 首死复活音 (天使圣光/凤凰涅槃, 低频不节流)
+		_audio_sys._sfx_simple("rebirth")              # §AUDIO: 首死复活音 (天使圣光/凤凰涅槃, 低频不节流)
 		_float_text(u["pos"] + Vector2(0, -64), "复活!", Color("#ffd93d"))
 		if u["id"] == "phoenix":                          # 涅槃: 对全体敌灼烧 + 治疗削减5秒
 			if u.get("_enh_rebirth", false):
@@ -8291,60 +8001,6 @@ func _surf_chain_shoot(from2d: Vector2, fromh: float, to2d: Vector2, col: Color)
 	tw.tween_property(mat, "albedo_color:a", 0.0, 0.2)
 	tw.tween_callback(im.queue_free)
 
-# ============================================================================
-#  §AUDIO 辅助 — 节流封装 (防高频命中音刷屏). 拿不到 Audio autoload 时静默 no-op.
-# ============================================================================
-func _audio() -> Node:
-	return get_node_or_null("/root/Audio")
-
-# 命中音 (普攻/技能/装备直接伤害): 暴击→hit-crit, 否则→hit-physical. 同名音 SFX_HIT_MIN_GAP 内只响一次.
-func _sfx_hit(crit: bool) -> void:
-	var a := _audio()
-	if a == null:
-		return
-	if crit:
-		if _t - _last_crit_sfx_t < SFX_HIT_MIN_GAP:
-			return
-		_last_crit_sfx_t = _t
-		a.play_sfx("hit-crit", 1.0, 1.0, 0.03)
-	else:
-		if _t - _last_hit_sfx_t < SFX_HIT_MIN_GAP:
-			return
-		_last_hit_sfx_t = _t
-		a.play_sfx("hit-physical", 0.85, 1.0, 0.08)   # pitch/vol 抖动由 Audio 自带 → 连段听感有差
-
-func _sfx_heal() -> void:
-	var a := _audio()
-	if a == null: return
-	if _t - _last_heal_sfx_t < SFX_AUX_MIN_GAP: return
-	_last_heal_sfx_t = _t
-	a.play_sfx("heal", 1.0, 1.0, 0.04)
-
-func _sfx_shield_gain() -> void:
-	var a := _audio()
-	if a == null: return
-	if _t - _last_shieldgain_sfx_t < SFX_AUX_MIN_GAP: return
-	_last_shieldgain_sfx_t = _t
-	a.play_sfx("shield-gain", 0.9, 1.0, 0.05)
-
-func _sfx_shield_break() -> void:
-	var a := _audio()
-	if a == null: return
-	if _t - _last_shieldbreak_sfx_t < SFX_AUX_MIN_GAP: return
-	_last_shieldbreak_sfx_t = _t
-	a.play_sfx("shield-break", 1.0, 1.0, 0.06)
-
-func _sfx_simple(name: String) -> void:    # 复活/失败 等低频事件, 不节流
-	var a := _audio()
-	if a != null:
-		a.play_sfx(name)
-
-# ============================================================================
-#  §SKILLVFX 框架 — 技能特效真贴图 (替程序圈). 有匹配贴图才放, 没有静默回退现有程序圈/飘字.
-#  _play_skill_vfx(skill_key, pos2d, [height]) → 在该点放一个朝镜头的 billboard:
-#    单帧贴图按 SKILL_VFX_WORLD_H 归一 → 一次性 "放大入场 → 保持 → 淡出" tween 后 queue_free.
-#  (133 张技能图实测全单帧近方形, 非 spritesheet → 不需逐帧步进; 真要逐帧也能扩 hframes.)
-# ============================================================================
 func _skill_vfx_tex(name: String) -> Texture2D:
 	if name == "":
 		return null
@@ -13134,7 +12790,7 @@ func _grant_shield(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 	if got >= 8:                             # #1 护盾飘字 "+N 盾" (浅蓝); 门槛过滤每帧微盾被动防刷屏
 		_float_text(u["pos"] + Vector2(0, -52), "+%d 盾" % got, Color("#ffffff"), false, "shield")
 	_skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.4), 44.0)
-	_sfx_shield_gain()                       # §AUDIO: 得盾音 (节流; 群体上盾不刷屏)
+	_audio_sys._sfx_shield_gain()                       # §AUDIO: 得盾音 (节流; 群体上盾不刷屏)
 
 
 func _urchin_shield_fx(u: Dictionary) -> void:   # 海胆护盾(013满层): 紫刺放射+紫环+紫字, 与普通金盾区分(用户2026-07-19"特殊颜色")
@@ -13235,7 +12891,7 @@ func _heal(u: Dictionary, amt: float, silent: bool = false) -> float:   # 返回
 		if float(u.get("_heal_acc_start", 0.0)) <= 0.0:
 			u["_heal_acc_start"] = _t
 	if not silent:
-		_sfx_heal()                          # §AUDIO: 治疗音 (节流)
+		_audio_sys._sfx_heal()                          # §AUDIO: 治疗音 (节流)
 	return _act
 
 func _heal_flush(u: Dictionary) -> void:   # LoL式: 治疗累加器→静默0.15s(一波打完)或攒够0.6s→合并弹一个绿字(=实际回血)
@@ -15387,11 +15043,11 @@ func _show_banner(won: bool) -> void:
 	_log("[color=%s]%s[/color]" % ["#ffd93d" if won else "#ff6b6b", "🏆 战斗胜利!" if won else "💀 战斗失败!"])
 	# §AUDIO: 结算 — 败方放 defeat 音; BGM 淡出收尾.
 	# ⚠缺口(2026-07-21 核实): assets/audio/sfx/ 下【只有 defeat.wav, 没有胜利音】,
-	#   所以赢了是静悄悄的。不在这里硬写一个 "victory" —— 文件不存在时 _sfx_simple 是
+	#   所以赢了是静悄悄的。不在这里硬写一个 "victory" —— 文件不存在时 _audio_sys._sfx_simple 是
 	#   静默失败(不报错、只是没声音), 反而更难发现。等补了音频文件再接。
 	if not won:
-		_sfx_simple("defeat")
-	var a := _audio()
+		_audio_sys._sfx_simple("defeat")
+	var a := _audio_sys._audio()
 	if a != null:
 		a.stop_bgm()
 	var gs = get_node_or_null("/root/GameState")
@@ -17053,17 +16709,6 @@ func _laser_blade_sweep(u: Dictionary, origin: Vector2, dir: Vector2, rng: float
 
 func _laser_fan_frame(fr: float, spr: Sprite3D, nfr: int) -> void:
 	if is_instance_valid(spr): spr.frame = clampi(int(fr), 0, nfr - 1)
-
-func _tick_laser(u: Dictionary, delta: float) -> void:   # 激光长刃p2eq_010: 独立计时器(按携带者攻速)每次扇形斩(用户)
-	if u.get("equips", []).is_empty(): return
-	for e in u["equips"]:
-		if str(e["id"]) != "p2eq_010": continue
-		e["laser_t"] = float(e.get("laser_t", 0.0)) + delta
-		if float(e["laser_t"]) < maxf(0.3, float(u.get("atk_interval", 1.0))): continue
-		var t = _nearest_enemy(u)
-		if t == null: continue
-		e["laser_t"] = 0.0
-		_equip_sys._eq_laser_sweep(u, t, _equip_sys._eq_si(int(e.get("star", 1))))
 
 func _sniper_charge_fx(u: Dictionary, tgt: Dictionary) -> void:   # 蓄力1秒: 细红瞄准线由暗渐亮 + 枪口聚能球胀大 + 目标身上三道收缩锁定环
 	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
