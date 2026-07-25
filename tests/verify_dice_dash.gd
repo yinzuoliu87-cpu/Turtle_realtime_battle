@@ -19,7 +19,7 @@ func _run_corner(sc, dpos: Vector2, fpos: Vector2, label: String) -> void:
 	var steps := 0
 	while dice.get("dice_dash_active", false) and steps < 3000:
 		sc._t += 0.05
-		sc._dice_dash_tick(dice, 0.05)
+		sc._dice_sys._dice_dash_tick(dice, 0.05)   # 2026-07-25: 骰子技能已抽到 DiceSystem
 		steps += 1
 	_ok("[%s] ★边界不卡死(连突正常结束)" % label, not dice.get("dice_dash_active", false), "steps=%d" % steps)
 	# 位置始终在场内
