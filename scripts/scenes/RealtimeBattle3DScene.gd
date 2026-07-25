@@ -4799,20 +4799,27 @@ func _process(delta: float) -> void:
 		_sim_step(SIM_DT, frozen, in_ts)
 		_render_alpha = 0.0   # det/headless: 无渲染·不插值
 	else:
-		_sim_accum += rd
-		var steps: int = 0
-		while _sim_accum >= SIM_DT and steps < 8:   # 每帧最多8步(大hitch丢余量防雪崩·手感优先于追偿)
-			_snapshot_render_prev()   # ★切片2b: 存这步前的 pos/height 供渲染插值(最后一次=渲染要的 prev)
-			var frozen: bool = _hitstop > 0.0
-			var in_ts: bool = not _ts_active.is_empty()
-			_sim_step(SIM_DT, frozen, in_ts)
-			_sim_accum -= SIM_DT
-			steps += 1
-		_render_alpha = _sim_accum / SIM_DT   # 余量分数 [0,1) → 立绘在 prev↔当前 间 lerp(高帧率零步/帧时 alpha 渐长→平滑推进)
+		_advance_sim_accum(rd)   # ★切片2: 交互累加器抽成可测种子(verify_interactive_determinism 直接驱动·证帧率无关)
 	# 演出每帧一次(真实时间·立绘动画/相机随真实帧走→平滑)。frozen/in_ts 用 sim 后最新态。
 	var r_frozen: bool = _hitstop > 0.0
 	var r_in_ts: bool = not _ts_active.is_empty()
 	_render_step(rd, r_frozen, r_in_ts)
+
+## Phase4切片2: 交互固定步长累加器。攒够 SIM_DT 就跑一步 sim → 总 sim 时间只取决于 Σ钳制delta,
+## 与"帧被切成多大块"无关(60/144/300fps 落到同样的整步序列)→ 交互游玩帧率无关。
+## 抽成独立函数是为了让 verify_interactive_determinism 直接驱动(不经真实帧率), 用不同分块喂同样总时长,
+## 断言指纹逐字相同——把 v0.15.8「帧率无关」从"靠F5主观感受"变成可反证的门禁。
+func _advance_sim_accum(rd: float) -> void:
+	_sim_accum += rd
+	var steps: int = 0
+	while _sim_accum >= SIM_DT and steps < 8:   # 每帧最多8步(大hitch丢余量防雪崩·手感优先于追偿)
+		_snapshot_render_prev()   # ★切片2b: 存这步前的 pos/height 供渲染插值(最后一次=渲染要的 prev)
+		var frozen: bool = _hitstop > 0.0
+		var in_ts: bool = not _ts_active.is_empty()
+		_sim_step(SIM_DT, frozen, in_ts)
+		_sim_accum -= SIM_DT
+		steps += 1
+	_render_alpha = _sim_accum / SIM_DT   # 余量分数 [0,1) → 立绘在 prev↔当前 间 lerp(高帧率零步/帧时 alpha 渐长→平滑推进)
 
 ## Phase4: 纯模拟推进(决定战斗结果·可被累加器按固定步长跑 N 次/帧)。frozen/in_ts 由调用方在 sim 前捕获传入。
 func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:

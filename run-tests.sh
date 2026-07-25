@@ -34,6 +34,7 @@ frames_for () {
     verify_pirate_hook)  echo 8000 ;;
     verify_eq_hp_grants) echo 8000 ;;
     verify_battle_determinism) echo 4000 ;;   # 3 遍 headless 战斗×200帧顺序跑(同种子比指纹)·500帧只够跑 2 遍多 → 被掐断误判FAIL
+    verify_interactive_determinism) echo 2000 ;;   # 6 次全场景重建(add_child建世界)·驱动是同步喂累加器(不吃帧)·2000 足量兜底
     *)             echo 500  ;;
   esac
 }
