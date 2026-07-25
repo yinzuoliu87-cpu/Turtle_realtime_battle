@@ -113,6 +113,8 @@ run_audit "tools/data_integrity.py"       "ALL OK" "data_integrity (json交叉�
 run_audit "tools/tooltip_number_audit.py" "ALL OK" "tooltip_number_audit (装备文案数值 ↔ 代码)"
 run_audit "tools/brief_detail_audit.py"   "ALL OK" "brief_detail_audit (龟技能 brief ↔ detail 数值)"
 run_audit "tools/workflow_lint.py"        "ALL OK" "workflow_lint (CI 工作流 YAML 语法)"
+run_audit "tools/arch_budget.py"          "ALL OK" "arch_budget (架构预算·不许上帝对象·欠债只减不增)"
+run_audit "tools/style_lint.py"           "ALL OK" "style_lint (代码风格·全tab/snake_case/PascalCase 焊死)"
 
 echo ""
 if [ "$FAIL" -eq 0 ]; then
