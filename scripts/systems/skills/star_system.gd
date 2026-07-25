@@ -192,8 +192,8 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 			if o3.get("airborne", false): continue               # 已滞空不叠加juggle
 			var from3: Vector2 = o3["pos"]
 			var oref3: Dictionary = o3
-			var dest3 := Vector2(clampf(center.x * 2.0 - from3.x, battle.ARENA.position.x, battle.ARENA.end.x), clampf(center.y * 2.0 - from3.y, battle.ARENA.position.y, battle.ARENA.end.y))   # 换位=过奇点镜像落对侧(用户2026-07-16"延中心点到对端": 左右对调, 非聚拢; 镜像保距→落点互不重叠)
-			if o3.has("battle._home_pos"): o3["battle._home_pos"] = dest3      # 评审假人: 落点即新驻点(原归位逻辑会把人走回出生位→用户看到"拖到对端又回去"; 真实对局无_home_pos零影响)
+			var dest3 = Vector2(clampf(center.x * 2.0 - from3.x, battle.ARENA.position.x, battle.ARENA.end.x), clampf(center.y * 2.0 - from3.y, battle.ARENA.position.y, battle.ARENA.end.y))   # 换位=过奇点镜像落对侧(用户2026-07-16"延中心点到对端": 左右对调, 非聚拢; 镜像保距→落点互不重叠)
+			if o3.has("_home_pos"): o3["_home_pos"] = dest3      # 评审假人: 落点即新驻点(原归位逻辑会把人走回出生位→用户看到"拖到对端又回去"; 真实对局无_home_pos零影响)
 			battle._knockback(uu, o3, 0.0, 1.05, 0.0)                   # 起跳vy=6.3(滞空0.57s)+震屏顿帧; 落地juice物理tick自带(压扁+尘+轻震)
 			var mvt = battle._reg_tween()                              # 真抛物线弧: 水平匀速直线(linear无缓动)+竖直重力=被甩飞过中心点(用户2026-07-16"很真实的被重力拖拽·飞过中心点·落到对端后回复行动"→无定身, 落地即自由; airborne期分离/AI本就不生效)
 			mvt.tween_method(func(q: float) -> void:

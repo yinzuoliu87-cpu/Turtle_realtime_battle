@@ -1308,7 +1308,7 @@ func _eq_sniper(u: Dictionary, si: int, depth: int) -> void:
 	battle._muzzle_flash(u["pos"], dir, Color("#ff5a5a"))
 	battle._shake(battle.JUICE_SHAKE_HEAVY)                                                  # 开枪后坐(用户2026-07-19)
 	battle._skill_ring(u["pos"] + dir * 28.0, Color(1.0, 0.42, 0.36, 0.8), 46.0)      # 枪口爆环
-	var _snd: float = 1.5 if OS.has_environment("battle.XDBG") else 0.28
+	var _snd: float = 1.5 if OS.has_environment("XDBG") else 0.28
 	var _tip: Vector2 = low["pos"] + dir * 150.0
 	battle._laser_beam(u["pos"], _tip, Color(1.0, 0.24, 0.28, 0.82), 0.17, _snd, 1.0)          # 粗红外辉(醒目狙击曳光)
 	battle._laser_beam(u["pos"], _tip, Color(1.0, 0.92, 0.86, 0.96), 0.06, _snd * 0.85, 1.02)   # 白热细核(高速弹道感)
@@ -1465,7 +1465,7 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 			"p2eq_040":   # 移到 _tick_eq_intervals(自定义间隔)
 				pass
 			"p2eq_056":   # 飞镖: 每周期向所有带"靶子"(被击飞)的敌各射1镖+流血
-				if OS.has_environment("battle.EQDEMO_EQUIP") and str(OS.get_environment("battle.EQDEMO_EQUIP")) == "p2eq_056":   # demo: 无击飞源→强制标靶看飞镖volley
+				if OS.has_environment("EQDEMO_EQUIP") and str(OS.get_environment("EQDEMO_EQUIP")) == "p2eq_056":   # demo: 无击飞源→强制标靶看飞镖volley
 					for _e in battle._enemies_of(u):
 						if _e.get("alive", false):
 							battle._mark_vfx(_e, 5.0, Color("#ffa040")); _e["eq_target_until"] = battle._t + 5.0
