@@ -26,7 +26,8 @@ func _ready() -> void:
 	# ③ 单一事实源: 战斗脚本引用 turtle_stats.gd(不再各存一份→图鉴不会骗人)
 	var bsrc := FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")
 	_ok("★战斗 STATS 引用 turtle_stats.gd(单源)", bsrc.contains('preload("res://scripts/gamedata/turtle_stats.gd").STATS'))
-	var csrc := FileAccess.get_file_as_string("res://scripts/scenes/CodexScene.gd")
+	var csrc := FileAccess.get_file_as_string("res://scripts/scenes/CodexScene.gd") + "
+" + FileAccess.get_file_as_string("res://scripts/scenes/codex/detail_views.gd")
 	_ok("★图鉴读同一 TurtleStats.STATS", csrc.contains("TurtleStats.STATS"))
 	_ok("★图鉴属性区加了移速", csrc.contains('"移速"'))
 	_ok("★图鉴属性区加了攻击速度", csrc.contains('"攻击速度"'))

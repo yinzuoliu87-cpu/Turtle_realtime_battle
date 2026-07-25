@@ -71,7 +71,8 @@ func _ready() -> void:
 		GameState.get_pet_level("__no_such_pet__") == 1)
 
 	print("=== 3. 图鉴不再有等级解锁残留 ===")
-	var csrc := _src("res://scripts/scenes/CodexScene.gd")
+	var csrc := _src("res://scripts/scenes/CodexScene.gd") + "
+" + _src("res://scripts/scenes/codex/detail_views.gd")
 	_ok("图鉴无「🔒 Lv.4 解锁」文案", csrc.find("Lv.4 解锁") < 0)
 	_ok("图鉴 is_locked 已恒 false", csrc.find("var is_locked: bool = false") >= 0)
 	_ok("图鉴 chip 改成「3选1候选」", csrc.find("3选1候选 · 龟能") >= 0)
