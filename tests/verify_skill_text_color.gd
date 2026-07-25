@@ -105,7 +105,7 @@ func _find_rich(n: Node) -> RichTextLabel:
 
 ## ③ 选龟界面不许再有走 render_plain 的 tooltip —— 那条路径出来的字是灰的
 func _test_no_plain_left() -> void:
-	var src := FileAccess.get_file_as_string(TEAM_SRC)
+	var src := FileAccess.get_file_as_string(TEAM_SRC) + "\n" + FileAccess.get_file_as_string("res://scripts/scenes/team_select/skill_picker.gd")   # 技能选择器(含tooltip render_bbcode)已抽出(2026-07-25)
 	_ok("读得到 TeamSelectScene.gd", src != "")
 	var code := _code_only(src)
 	var n_plain := code.count("render_plain(")

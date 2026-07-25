@@ -57,7 +57,7 @@ func _ready() -> void:
 	var bad: Array = []
 	for p in pets:
 		var sp: Array = p.get("skillPool", [])
-		var avail: Array = ts._available_skill_indices(p)
+		var avail: Array = ts._skill_picker._available_skill_indices(p)
 		if avail.size() != sp.size():
 			bad.append("%s: avail=%d/%d" % [p["id"], avail.size(), sp.size()])
 		elif not (3 in avail) and sp.size() > 3:
