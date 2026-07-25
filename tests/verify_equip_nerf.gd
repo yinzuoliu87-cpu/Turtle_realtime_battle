@@ -14,11 +14,13 @@ func _ready() -> void:
 	var src := FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")
 	# 2026-07-25: 主文件拆分后, 效果代码可能搬到 scripts/systems/(如龙蛋灼烧→dragon_system.gd)。
 	#   把 systems/ 一并读进来对账, 否则拆一个效果出去就误报。
-	var _sysd := DirAccess.open("res://scripts/systems")
-	if _sysd:
-		for _f in _sysd.get_files():
-			if _f.ends_with(".gd"):
-				src += "\n" + FileAccess.get_file_as_string("res://scripts/systems/" + _f)
+	#   2026-07-25b: systems/ 下再分 skills/ 与 equip/ 子目录(角色技能↔装备分开管理)→ 递归一层。
+	for _dir in ["res://scripts/systems", "res://scripts/systems/skills", "res://scripts/systems/equip"]:
+		var _sysd := DirAccess.open(_dir)
+		if _sysd:
+			for _f in _sysd.get_files():
+				if _f.ends_with(".gd"):
+					src += "\n" + FileAccess.get_file_as_string(_dir + "/" + _f)
 	_ok("源码读到(分母)", src.length() > 100000, "%d 字符" % src.length())
 
 	# ── 龙蛋 灼烧固定 30/45/70 ──

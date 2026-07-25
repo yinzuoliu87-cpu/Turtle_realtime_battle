@@ -10,7 +10,7 @@
     "scripts/scenes/RealtimeBattle3DScene.gd": 22812
   },
   "func_ratchet": {
-    "scripts/systems/star_system.gd::_sk_star_wave": 330,
-    "scripts/systems/star_system.gd::_sk_star_gravity_warp": 260
+    "scripts/systems/skills/star_system.gd::_sk_star_wave": 330,
+    "scripts/systems/skills/star_system.gd::_sk_star_gravity_warp": 260
   }
 }

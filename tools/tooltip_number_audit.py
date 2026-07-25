@@ -58,7 +58,7 @@ code = io.open('scripts/scenes/RealtimeBattle3DScene.gd', encoding='utf-8').read
 # 2026-07-25: 主战斗文件拆分后, 效果数组可能搬到 scripts/systems/*.gd(如沙漏 5/10/30 → timestop_system.gd)。
 #   把 systems/ 全体一并纳入对账源, 否则拆一个效果出去就误报"代码里找不到对应数组"。
 import glob as _glob
-for _sysf in sorted(_glob.glob('scripts/systems/*.gd')):
+for _sysf in sorted(_glob.glob('scripts/systems/**/*.gd', recursive=True)):
     code += '\n@@@\n' + io.open(_sysf, encoding='utf-8').read()
 # 2026-07-23: 装备【效果】数值只在 RealtimeBattle3DScene(实时实装)对账; equip_stats 只有属性STATS(无[N,N,N]效果三元组)。
 # 原来还读回合制 phase2_equip_runtime.gd 的效果数组 —— 那是死代码, 让文案能匹配到游戏不用的旧数值(分歧源), 已去掉。
