@@ -48,9 +48,32 @@ func _ready() -> void:
 	var src: String = ""
 	if Battle is GDScript:
 		src = (Battle as GDScript).source_code
-	var n_pick: int = src.count("_pick_enemies_of(")
-	_ok("★分母: _pick_enemies_of 调用点>=15(单取站点已改)", n_pick >= 15, "实际 %d" % n_pick)
+	var n_pick: int = src.count("_pick_enemies_of(") + _count_gd("res://scripts/systems", "_pick_enemies_of(")   # 技能已抽到 skills/*, 单取调用点随之外迁·分母跨场景+系统统计(2026-07-25)
+	_ok("★分母: _pick_enemies_of 调用点>=15(单取站点已改·含抽出系统)", n_pick >= 15, "实际 %d" % n_pick)
 
 	b.free()
 	print("ALL PASS — 训龟大师防误锁(集中闸门)" if _fail == 0 else "FAILED: %d" % _fail)
 	get_tree().quit(0 if _fail == 0 else 1)
+
+
+## 递归统计目录下所有 .gd 里 needle 出现次数(技能抽出后调用点跨文件·分母不能只数场景)
+func _count_gd(dir: String, needle: String) -> int:
+	var total := 0
+	var d := DirAccess.open(dir)
+	if d == null:
+		return 0
+	d.list_dir_begin()
+	var name := d.get_next()
+	while name != "":
+		var p := dir + "/" + name
+		if d.current_is_dir():
+			if name != "." and name != "..":
+				total += _count_gd(p, needle)
+		elif name.ends_with(".gd"):
+			var f := FileAccess.open(p, FileAccess.READ)
+			if f != null:
+				total += f.get_as_text().count(needle)
+				f.close()
+		name = d.get_next()
+	d.list_dir_end()
+	return total
