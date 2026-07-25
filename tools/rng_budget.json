@@ -1,0 +1,8 @@
+{
+  "_doc": "裸全局 RNG 欠债台账。规则见 tools/rng_discipline.py 顶部。数字只许改小(还债·把裸随机路由到命名 rng)。",
+  "max_bare_rng": 336,
+  "scan_roots": [
+    "scripts",
+    "autoload"
+  ]
+}
