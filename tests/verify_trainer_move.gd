@@ -52,24 +52,24 @@ func _test_speed(s) -> void:
 	# 放到场地中间再测, 免得被边界 clamp 干扰
 	u["pos"] = Vector2(900.0, 500.0)
 	var p0: Vector2 = u["pos"]
-	s._trainer_move_by(u, Vector2.RIGHT, 1.0)
+	s._trainer_sys._trainer_move_by(u, Vector2.RIGHT, 1.0)
 	var moved: float = u["pos"].distance_to(p0)
 	print("  [实测] 满推 1 秒移动 %.1f 码" % moved)
 	_ok("★满推 1 秒走 130 码", is_equal_approx(moved, 130.0), "%.2f" % moved)
 	# 摇杆可以半推 —— 长度 0.5 的向量应当只走一半
 	u["pos"] = Vector2(900.0, 500.0)
-	s._trainer_move_by(u, Vector2.RIGHT * 0.5, 1.0)
+	s._trainer_sys._trainer_move_by(u, Vector2.RIGHT * 0.5, 1.0)
 	var half: float = u["pos"].distance_to(Vector2(900.0, 500.0))
 	print("  [实测] 半推 1 秒移动 %.1f 码" % half)
 	_ok("★摇杆半推 = 半速(不是一律满速)", is_equal_approx(half, 65.0), "%.2f" % half)
 	# 零向量不该动(死区/没输入)
 	u["pos"] = Vector2(900.0, 500.0)
-	s._trainer_move_by(u, Vector2.ZERO, 1.0)
+	s._trainer_sys._trainer_move_by(u, Vector2.ZERO, 1.0)
 	_ok("没有输入时不动", u["pos"].is_equal_approx(Vector2(900.0, 500.0)))
 	# 朝向跟着走
-	s._trainer_move_by(u, Vector2.LEFT, 0.1)
+	s._trainer_sys._trainer_move_by(u, Vector2.LEFT, 0.1)
 	_ok("向左走时朝左", not bool(u.get("face_right", true)))
-	s._trainer_move_by(u, Vector2.RIGHT, 0.1)
+	s._trainer_sys._trainer_move_by(u, Vector2.RIGHT, 0.1)
 	_ok("向右走时朝右", bool(u.get("face_right", false)))
 
 
@@ -79,7 +79,7 @@ func _test_clamp(s) -> void:
 	if u == null:
 		return
 	for i in 200:
-		s._trainer_move_by(u, Vector2(1.0, 1.0).normalized(), 0.5)
+		s._trainer_sys._trainer_move_by(u, Vector2(1.0, 1.0).normalized(), 0.5)
 	var a: Rect2 = RTScene.ARENA
 	print("  [实测] 狂推 200 次后位置 %s ; 战场 %s" % [u["pos"], a])
 	_ok("★推到天涯也留在战场内(否则会走出地图)",
@@ -114,27 +114,28 @@ func _test_only_mine(s) -> void:
 	s._units = order
 	var foe_p0: Vector2 = foe["pos"]
 	for i in 10:
-		s._trainer_input_tick(0.1)
+		s._trainer_sys._trainer_input_tick(0.1)
 	print("  [实测] 连跑 10 次输入 tick 后, 敌方训龟大师位移 %.4f" % foe["pos"].distance_to(foe_p0))
 	_ok("★玩家输入动不了对面那个(它是人机)", foe["pos"].is_equal_approx(foe_p0))
 
 
 ## ④ 两条输入源: 有摇杆读摇杆, 没摇杆读键盘
 func _test_input_sources(s) -> void:
-	_ok("PC(无摇杆)且没按键时输入为零", s._trainer_input_vec().is_equal_approx(Vector2.ZERO),
-		"%s" % s._trainer_input_vec())
+	_ok("PC(无摇杆)且没按键时输入为零", s._trainer_sys._trainer_input_vec().is_equal_approx(Vector2.ZERO),
+		"%s" % s._trainer_sys._trainer_input_vec())
 	# 挂一个摇杆上去 → 输入源必须切到摇杆
 	var joy := VirtualJoystick.new()
 	s.add_child(joy)
 	s._joystick = joy
 	joy.value = Vector2(0.5, -0.25)
-	var got: Vector2 = s._trainer_input_vec()
+	var got: Vector2 = s._trainer_sys._trainer_input_vec()
 	print("  [实测] 摇杆 value=%s → _trainer_input_vec()=%s" % [joy.value, got])
 	_ok("★有摇杆时读摇杆(移动端这条路)", got.is_equal_approx(Vector2(0.5, -0.25)))
 	s._joystick = null
 	joy.queue_free()
 	# 结构: PC 那条分支必须真读键盘, 不能是空壳
-	var src := FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")
+	var src := FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd") + "
+" + FileAccess.get_file_as_string("res://scripts/systems/trainer/trainer_system.gd")   # 2026-07-25: 训龟大师技能已抽到 trainer/
 	var body := _code_only(_func_body(src, "_trainer_input_vec"))
 	var n_keys := 0
 	for k in ["KEY_A", "KEY_D", "KEY_W", "KEY_S", "KEY_LEFT", "KEY_RIGHT", "KEY_UP", "KEY_DOWN"]:

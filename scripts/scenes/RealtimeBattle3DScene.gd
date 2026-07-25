@@ -332,7 +332,7 @@ const HOOK_VULN_MULT := 1.25     # 被钩4秒内受到伤害 ×1.25
 
 # ══ 训龟大师【主动技能】注册表(用户2026-07-23 需求: 装配系统·单主动槽·只用Q) ══
 # id → {名/圆盘图标/冷却}。大师单位带 _tr_active(装配的主动 id) + 通用 _active_cd(所有主动共用一个冷却字段)。
-# 施放统一走 _cast_active(u, aim), 按 _tr_active 分派到各技能。圆盘显示已装配技能的图标+冷却。
+# 施放统一走 _trainer_sys._cast_active(u, aim), 按 _tr_active 分派到各技能。圆盘显示已装配技能的图标+冷却。
 const TRAINER_SKILLS := {
 	"hook":        {"name": "钩锁",   "icon": "res://assets/sprites/vfx/hook-skill-icon.png",   "cd": 20.0, "range": 600.0, "aim": "dir"},
 	"fury_potion": {"name": "怒火药水", "icon": "res://assets/sprites/vfx/fury-potion-icon.png",  "cd": 16.0, "range": 700.0, "aim": "point"},
@@ -423,7 +423,7 @@ const ACTION_RUN := {
 	"__minion_elite__": ["pets/animations/elite/run.png", 12.0],
 	"__minion_front__": ["pets/animations/melee/run.png", 12.0],
 	# 训龟大师(2026-07-23): 走路循环。id 是 __trainer__, _anim_key 直接返回 id → 走到这里。
-	#   移动由玩家 _trainer_move_by 驱动, 但立绘照样流经 _update_run_anim(在 for u in _units 里),
+	#   移动由玩家 _trainer_sys._trainer_move_by 驱动, 但立绘照样流经 _update_run_anim(在 for u in _units 里),
 	#   靠"帧间位移>0.8"自动切走路/停回 idle —— 不用另写触发。
 	"__trainer__": ["pets/animations/trainer/run.png", 8.0],
 }
@@ -635,6 +635,7 @@ var _pending_shots: Array = []            # 依次射出的子弹队列 [{delay,
 # ═══ 沙漏059 JoJo时停 ═══ 冻结全局_t + 只tick active携带者; 其他单位/弹道/依次射击/tween/粒子 全定格
 var _timestop := TimestopSystem.new(self)   # 沙漏时停系统(2026-07-25 从本文件抽出)
 var _equip_sys := EquipSystem.new(self)   # 装备效果系统(2026-07-25 抽出·与技能分开)
+var _trainer_sys := TrainerSystem.new(self)   # 训龟大师技能系统(2026-07-25 抽出·与龟技能/装备分开)
 var _dice_sys := DiceSystem.new(self)   # 骰子龟技能系统(2026-07-25 抽出)
 var _bamboo_sys := BambooSystem.new(self)   # 竹龟技能系统(2026-07-25 抽出)
 var _ghost_sys := GhostSystem.new(self)   # 幽灵龟技能系统(2026-07-25 抽出)
@@ -713,7 +714,7 @@ const _VC := preload("res://scripts/systems/visual_constants.gd")   # 飘字配�
 #  assets/sprites/skills/<turtle>-<skill>.png = 逐技能特效图 (实测 133 张全是近方形单帧,
 #  非 spritesheet) → 框架 = 在 cast/命中点放一个 3D billboard, 一次性"放大→保持→淡出"动画后自销,
 #  无需逐帧步进. 有匹配贴图的技能用真 VFX; 没有的保留现有 _skill_ring/飘字 (不强行换).
-#  映射 = pets.json skillPool[].icon 的「候选1」(各龟 _cast_active 实际放的那招), 逐龟人工核对语义.
+#  映射 = pets.json skillPool[].icon 的「候选1」(各龟 _trainer_sys._cast_active 实际放的那招), 逐龟人工核对语义.
 # ============================================================================
 const SKILL_VFX_DIR := "res://assets/sprites/skills/"
 const SKILL_VFX_WORLD_H := 2.2            # VFX billboard 目标世界高度 (米) — 单帧图按此归一, 不论原图多大
@@ -3341,9 +3342,9 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 			"hp": TRAINER_HP, "atk": TRAINER_ATK, "def": 0.0, "mr": 0.0}
 		# ★move_spd 给真值但 no_move 仍为 true —— 两者不矛盾:
 		#   no_move 挡住的是【AI 自动追击】(_do_move)与【分离推挤】(_apply_separation_pass),
-		#   正是"场外监视者不该被战线卷进去"想要的; 玩家操控走的是下面 _trainer_move_by 这条独立路径。
+		#   正是"场外监视者不该被战线卷进去"想要的; 玩家操控走的是下面 _trainer_sys._trainer_move_by 这条独立路径。
 		st = [false, TRAINER_MOVE_SPD, TRAINER_ATK_INTERVAL, TRAINER_RANGE]   # [近战?, 移速, 攻击间隔, 射程]
-		sd = _trainer_sprite_dict()
+		sd = _trainer_sys._trainer_sprite_dict()
 	elif is_egg:   # 龟蛋: 纯血包 fighter(atk/def/mr=0), 不动不攻击, 免控/斩/嘲讽, 走完整伤害管线; 围栏未破不可主动索敌(AoE穿栏)
 		d = {"name": "龟蛋", "rarity": "SSS", "crit": 0.0, "hp": maxf(1.0, float(spec.get("hp_max", spec.get("hp", 2100)))), "atk": 0.0, "def": 60.0, "mr": 60.0}   # maxHp=原始满血; 当前hp在下方按累积受损值覆盖(用户2026-07-12: 跨路掉血要可见); 60双抗
 		st = [true, 0.0, 99.0, 0.0]
@@ -3513,7 +3514,7 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		u["is_trainer"] = true
 		u["no_move"] = true              # 场外监视者: 站着不动
 		u["no_basic"] = true             # ★关掉 AI 默认普攻(BASIC_ATK 发子弹) —— 训龟大师【只】走
-		#   _tick_trainer_attacks 扔石头这一条。不关的话两条并行 = 同时扔石头又发子弹
+		#   _trainer_sys._tick_trainer_attacks 扔石头这一条。不关的话两条并行 = 同时扔石头又发子弹
 		#   (用户 2026-07-23:「为什么同时在扔石头和发射子弹」)。
 		u["active_skills"] = []          # 法术 5 选 1 待设计(用户: "法术技能待制作")
 	if is_egg:
@@ -3553,22 +3554,6 @@ func _minion_sprite_dict(is_elite: bool, is_back: bool) -> Dictionary:
 
 
 ## 本帧的移动输入。移动端读摇杆, PC 读键盘; 返回长度 0..1 的方向量。
-func _trainer_input_vec() -> Vector2:
-	if _joystick != null and is_instance_valid(_joystick):
-		return _joystick.value
-	var v := Vector2.ZERO
-	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
-		v.x -= 1.0
-	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
-		v.x += 1.0
-	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
-		v.y -= 1.0
-	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
-		v.y += 1.0
-	return v.normalized() if v.length() > 1.0 else v
-
-
-## 找我方训龟大师(没有则 null)
 func _my_trainer():
 	for u in _units:
 		if u.get("is_trainer", false) and str(u.get("side", "")) == "left" and u.get("alive", false):
@@ -3578,22 +3563,6 @@ func _my_trainer():
 
 ## 按方向量移动。抽出来是为了【可测】—— 无头跑不了真键盘/真手指, 但能直接喂向量。
 ## dir 长度 0..1(摇杆可以是半推), 所以速度是 130 × 拉杆比例。
-func _trainer_move_by(u: Dictionary, dir: Vector2, delta: float) -> void:
-	if _t < float(u.get("_cast_lock_until", 0.0)):
-		return   # 甩钩/施法前摇+飞行期间站定(锤石Q口径·用户2026-07-24)
-	if dir.length() < 0.001:
-		return
-	var spd: float = float(u.get("move_spd", TRAINER_MOVE_SPD))
-	u["pos"] += dir * spd * delta
-	# ★clamp 进战场 —— 不夹的话摇杆一直推就飞出地图外了
-	u["pos"].x = clampf(u["pos"].x, ARENA.position.x, ARENA.end.x)
-	u["pos"].y = clampf(u["pos"].y, ARENA.position.y, ARENA.end.y)
-	if absf(dir.x) > 0.05:
-		u["face_right"] = dir.x > 0.0
-
-
-## 摆位阶段能不能拖这个单位: 只拖我方(left)非蛋非召唤非训龟大师(用户2026-07-23 点6)。
-## ★抽成纯函数便于门禁直接测(不用起 3D 场景)。
 func _can_place_drag(hit) -> bool:
 	return hit != null and str(hit.get("side", "")) == "left" \
 		and not hit.get("_isEgg", false) and not hit.get("is_summon", false) \
@@ -3601,105 +3570,6 @@ func _can_place_drag(hit) -> bool:
 
 ## 训龟大师的移动/攻击 tick 现在该不该跑: 战斗结束/摆位/呈现/编辑期都不跑(用户2026-07-23 点6)。
 ## ★摆位期投掷石头/被键盘摇杆推动都是 bug —— 移动/攻击是玩法动作, 非战斗期该停。抽成纯函数便于门禁测。
-func _trainer_ticks_active() -> bool:
-	return not _over and _dl_state != "place" and not _dl_is_present() and not _edit_mode
-
-
-func _trainer_input_tick(delta: float) -> void:
-	if not _trainer_ticks_active():
-		return
-	var u = _my_trainer()
-	if u == null:
-		return
-	_trainer_move_by(u, _trainer_input_vec(), delta)
-
-
-## 训龟大师普攻: 站定扔石头, 抛物线飞向最近敌, 命中 1 物理(用户2026-07-22:「射程2000扔石头1物理」)。
-## ★双方的训龟大师都要打(己方玩家操控但攻击自动、敌方人机), 所以对【全体 is_trainer】跑。
-##   它不被主动索敌(见 _nearest_enemy 的跳过), 但【它自己会索敌开火】—— 这两件事不矛盾:
-##   前者是"别人能不能锁它", 后者是"它能不能锁别人"。
-func _tick_trainer_attacks(delta: float) -> void:
-	if not _trainer_ticks_active():
-		return   # ★摆位/呈现/编辑期大师不投掷(用户2026-07-23 点6: 战斗没开始就别扔石头)
-	for u in _units:
-		if not u.get("is_trainer", false) or not u.get("alive", false):
-			continue
-		u["_tr_atk_cd"] = maxf(0.0, float(u.get("_tr_atk_cd", 0.0)) - delta)
-		if float(u["_tr_atk_cd"]) > 0.0:
-			continue
-		var tgt = _nearest_enemy_for_trainer(u)
-		if tgt == null:
-			continue
-		# 魔法石(被动): 每次攻击 +5% 攻速(可叠·本场结束重置) → 攻击间隔按叠层缩短
-		var haste: float = 1.0 + 0.05 * float(u.get("_ms_stacks", 0)) if str(u.get("_tr_passive", "")) == "magic_stone" else 1.0
-		u["_tr_atk_cd"] = TRAINER_ATK_INTERVAL / haste
-		# 朝向目标(扔之前转身), 再播扔石头动作
-		u["face_right"] = tgt["pos"].x > u["pos"].x
-		_trainer_throw_anim(u)
-		_fire_trainer_rock(u, tgt)
-		if str(u.get("_tr_passive", "")) == "magic_stone":
-			_trainer_magicstone_onhit(u, tgt)
-
-
-# ══════════════════════════════════════════════════════════════
-# §HOOK 钩锁技能 (点3·法术圆盘第一个技能, 用户2026-07-23。参考 LoL 锤石Q)
-# 大师朝方向甩出钩锁(射程600), 钩住第一个敌人 → 眩晕4秒 + 4秒内每秒朝大师拖70码 + 期间受伤+25%; CD20秒, 空放返还10秒。
-# ★结算逻辑从演出里抽出可测(照海盗钩索/CLAUDE.md §3.5): _hook_grab 是纯效果, _cast_hook 判命中, 都不依赖 tween。
-# ══════════════════════════════════════════════════════════════
-
-## 从 trainer 沿 dir 方向找【射程内】第一个可钩的敌人(600码内、线上最近)。走 _pick_enemies_of(不含大师/不可选)。
-func _hook_first_target(trainer: Dictionary, dir: Vector2):
-	if dir.length() < 0.01:
-		return null
-	var d := dir.normalized()
-	var best = null
-	var bd: float = HOOK_RANGE * HOOK_RANGE
-	for o in _pick_enemies_of(trainer):
-		if not _on_line(trainer["pos"], d, o["pos"], 80.0):   # 带宽80(视觉留美术, 文案不写)
-			continue
-		var dd: float = (o["pos"] - trainer["pos"]).length_squared()
-		if dd <= bd:
-			bd = dd; best = o
-	return best
-
-## ★主动技能统一入口: 按大师装配的 _tr_active 分派。aim=施法方向/点(相对大师的向量)。返回是否"命中/成功"(供AI/测试)。
-## 冷却门在各技能里自查 _active_cd(所有主动共用这一个冷却字段·单槽)。
-func _cast_active(trainer: Dictionary, aim: Vector2) -> bool:
-	if trainer == null or not trainer.get("alive", false):
-		return false
-	match str(trainer.get("_tr_active", "hook")):
-		"hook":        return _cast_hook(trainer, aim)
-		"fury_potion": return _cast_fury_potion(trainer, aim)
-		"whistle":     return _cast_whistle(trainer, aim)
-		"glacier":     return _cast_glacier(trainer, aim)
-	return false
-
-## 施放钩锁(仔细照锤石Q·2026-07-24返工): 前摇→中速飞→【到达才】钩住(不再瞬间结算)。命中CD20/空放CD10。
-## ★到达才结算走 _pending_shots(delta制·无头也稳), 不是等tween跑完(照 CLAUDE.md §3.5)。返回是否【将】命中。
-func _cast_hook(trainer: Dictionary, dir: Vector2) -> bool:
-	if trainer == null or not trainer.get("alive", false):
-		return false
-	if float(trainer.get("_active_cd", 0.0)) > 0.0:
-		return false
-	var tgt = _hook_first_target(trainer, dir)
-	if tgt != null:
-		trainer["_active_cd"] = HOOK_CD
-		var dist: float = (tgt["pos"] - trainer["pos"]).length()
-		var arrive: float = HOOK_WINDUP + dist / HOOK_MISSILE_SPD   # 前摇 + 中速飞行
-		trainer["_cast_lock_until"] = _t + arrive                  # 甩钩期间大师站定(锤石: 飞行中不能动)
-		var tt: Dictionary = trainer
-		var kk: Dictionary = tgt
-		_pending_shots.append({"delay": arrive, "src": trainer, "fn": func() -> void:
-			if kk.get("alive", false):
-				_hook_grab(tt, kk)})                               # 钩子到达那一刻才钩住
-		_hook_dramatize(trainer, tgt)                              # 演出: 前摇→中速飞→到达
-		return true
-	trainer["_active_cd"] = HOOK_CD_MISS                           # 空放: 只10秒(返还10)
-	trainer["_cast_lock_until"] = _t + HOOK_WINDUP + HOOK_RANGE / HOOK_MISSILE_SPD
-	_hook_dramatize_miss(trainer, dir)
-	return false
-
-## ── 怒火药水(主动·CD16·700码点·用户2026-07-23 需求): 丢药水→落点300码内友军 5秒 +30%攻速 +25%龟能充能 +25%移速 ──
 func _cast_fury_potion(trainer: Dictionary, aim: Vector2) -> bool:
 	if float(trainer.get("_active_cd", 0.0)) > 0.0:
 		return false
@@ -3709,60 +3579,19 @@ func _cast_fury_potion(trainer: Dictionary, aim: Vector2) -> bool:
 	var tt: Dictionary = trainer
 	var throw_t: float = HOOK_WINDUP + trainer["pos"].distance_to(pt) / 800.0   # 前摇 + 抛出飞行
 	_pending_shots.append({"delay": throw_t, "src": trainer, "fn": func() -> void:
-		_fury_apply_buffs(tt, pt)})                                    # 落地才生效(delta定时·无头也稳)
-	_fury_dramatize(trainer, pt)
+		_trainer_sys._fury_apply_buffs(tt, pt)})                                    # 落地才生效(delta定时·无头也稳)
+	_trainer_sys._fury_dramatize(trainer, pt)
 	return true
 
 ## ★纯效果结算(可测): 落点 300码内【友军】获得 5秒 三 buff。返回受益人数。不建 tween。
-func _fury_apply_buffs(trainer: Dictionary, point: Vector2) -> int:
-	var side: String = str(trainer.get("side", ""))
-	var n: int = 0
-	for o in _units:
-		if not o.get("alive", false) or o.get("is_trainer", false):
-			continue
-		if str(o.get("side", "")) != side:
-			continue
-		if o["pos"].distance_to(point) > 300.0:
-			continue
-		o["haste_mult"] = 1.3;      o["haste_until"] = _t + 5.0        # +30% 攻速
-		o["move_buff_mult"] = 1.25; o["move_buff_until"] = _t + 5.0    # +25% 移速
-		o["echarge_mult"] = 1.25;   o["echarge_until"] = _t + 5.0      # +25% 龟能充能速率
-		n += 1
-	return n
-
-## 怒火药水演出: 抛物线飞到落点 → 橙红 splash + 怒火圈(纯观感)。素材(原图)待 R1g, 暂用火光占位。
-func _fury_dramatize(trainer: Dictionary, point: Vector2) -> void:
-	if _world == null:
-		return
-	var from2d: Vector2 = trainer["pos"]
-	var tex := load("res://assets/sprites/vfx/fury-potion.png") if ResourceLoader.exists("res://assets/sprites/vfx/fury-potion.png") else VfxTex._make_fire_glow_tex()
-	var pot := Sprite3D.new()
-	pot.texture = tex; pot.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	pot.billboard = BaseMaterial3D.BILLBOARD_ENABLED; pot.shaded = false; pot.transparent = true
-	pot.pixel_size = (40.0 * WS) / float(maxi(1, tex.get_height()))
-	pot.modulate = Color(1.0, 0.55, 0.25)
-	_world.add_child(pot)
-	var peak: float = 2.4
-	var tw := _reg_tween()
-	tw.tween_interval(HOOK_WINDUP)
-	tw.tween_method(func(p: float) -> void:   # 抛物线飞
-		if not is_instance_valid(pot): return
-		pot.position = _world_pos(from2d.lerp(point, p), 0.9 + peak * sin(PI * p))
-	, 0.0, 1.0, maxf(0.15, from2d.distance_to(point) / 800.0))
-	tw.tween_callback(func() -> void:
-		if is_instance_valid(pot): pot.queue_free()
-		_skill_ring(point, Color(1.0, 0.5, 0.2, 0.75), 300.0)          # 300码怒火圈
-		_burst_vfx("res://assets/sprites/vfx/cannon-blast.png", point, 120.0, 0.4))
-
-## ── 口哨(主动·CD14·无目标·用户2026-07-23): 随机 3 选 1 —— 临时血 / 灵体小龟气波 / 狂暴免死 ──
 func _cast_whistle(trainer: Dictionary, _aim: Vector2) -> bool:
 	if float(trainer.get("_active_cd", 0.0)) > 0.0:
 		return false
 	trainer["_active_cd"] = float(TRAINER_SKILLS["whistle"]["cd"])
 	match _battle_rng.randi() % 3:
-		0: _whistle_temphp(trainer)
-		1: _whistle_spirit_wave(trainer)
-		_: _whistle_berserk(trainer)
+		0: _trainer_sys._whistle_temphp(trainer)
+		1: _trainer_sys._whistle_spirit_wave(trainer)
+		_: _trainer_sys._whistle_berserk(trainer)
 	return true
 
 ## 随机一个我方存活单位(非大师非蛋)。
@@ -3775,15 +3604,6 @@ func _random_ally(trainer: Dictionary):
 	return pool[_battle_rng.randi() % pool.size()] if not pool.is_empty() else null
 
 ## 效果①临时血: 随机友军 +700 临时最大生命(5秒)。到期【按比例削】。可测。
-func _whistle_temphp(trainer: Dictionary):
-	var ally = _random_ally(trainer)
-	if ally == null:
-		return null
-	_apply_temp_maxhp(ally, 700.0, 5.0)
-	_skill_ring(ally["pos"], Color(0.5, 1.0, 0.6, 0.7), 46.0)
-	return ally
-
-## ★临时最大生命(可测·纯函数): +amt maxHp&hp, sec 秒后到期【按比例削】(§2.4: 当前血 × 新上限/旧上限)。
 func _apply_temp_maxhp(u: Dictionary, amt: float, sec: float) -> void:
 	u["maxHp"] = float(u["maxHp"]) + amt
 	u["hp"] = float(u["hp"]) + amt
@@ -3797,73 +3617,6 @@ func _apply_temp_maxhp(u: Dictionary, amt: float, sec: float) -> void:
 		uu["maxHp"] = new_max})
 
 ## 效果②灵体小龟气波: 召蓝幽灵小龟→对最近敌放穿透气波(带宽80·沿途敌): 击飞 + 200物理 + 削甲30%(5秒)。返回命中数。可测。
-func _whistle_spirit_wave(trainer: Dictionary) -> int:
-	var tgt = _nearest_enemy_for_trainer(trainer)
-	if tgt == null:
-		return 0
-	var origin: Vector2 = trainer["pos"]
-	var dir: Vector2 = (tgt["pos"] - origin).normalized()
-	var n: int = 0
-	for o in _pick_enemies_of(trainer):   # 定向(不选大师/组装机甲)
-		if not _on_line(origin, dir, o["pos"], 80.0):
-			continue
-		o["def_shred_until"] = _t + 5.0    # 先削甲(30%·让这一发也吃到)
-		_apply_damage_from(trainer, o, _resolve_dmg(trainer, 200.0, o, false), Color("#8fd0ff"), 0.0, false, false)   # 200物理
-		_knockback(trainer, o, 100.0)      # 击飞
-		n += 1
-	_whistle_spirit_dramatize(trainer, origin, dir)
-	return n
-
-## 效果③狂暴: 随机友军 +20%攻击力 +20%吸血(4秒) + 免疫死亡(4秒·deathfloor血锁不死)。
-func _whistle_berserk(trainer: Dictionary):
-	var ally = _random_ally(trainer)
-	if ally == null:
-		return null
-	_whistle_berserk_on(ally)
-	return ally
-
-## ★狂暴纯效果(可测): 对指定友军上 buff。
-func _whistle_berserk_on(ally: Dictionary) -> void:
-	_buff(ally, "atk", 0.2, true, 4.0)          # +20% 攻击力
-	_buff(ally, "lifesteal", 20, false, 4.0)    # +20% 生命偷取
-	ally["deathfloor_until"] = _t + 4.0         # 4秒免疫死亡(血锁≥1)
-	_skill_ring(ally["pos"], Color(1.0, 0.4, 0.3, 0.75), 46.0)
-
-## 灵体小龟演出: 蓝幽灵小龟入场(spirit-turtle.png·缺图则只放气波不崩) + 蓝气波束(qibo-ball.png 真气波素材)。
-func _whistle_spirit_dramatize(trainer: Dictionary, origin: Vector2, dir: Vector2) -> void:
-	if _world == null:
-		return
-	_spawn_spirit_turtle(origin)
-	var end2d: Vector2 = origin + dir * 500.0
-	_beam_vfx("res://assets/sprites/vfx/qibo-ball.png", origin, end2d, 66.0, Color(0.6, 0.9, 1.0, 0.9), 0.35)
-	_skill_ring(origin, Color(0.5, 0.8, 1.0, 0.6), 40.0)
-
-## 蓝幽灵小龟短暂现身: 幽蓝 billboard 从大师身前淡入上浮再淡出(纯演出·缺图优雅跳过, 不阻塞气波)。
-func _spawn_spirit_turtle(origin: Vector2) -> void:
-	var path := "res://assets/sprites/vfx/spirit-turtle.png"
-	if not ResourceLoader.exists(path):
-		return                                     # 素材未就绪: 只放气波(R1g 前的优雅降级)
-	var tex: Texture2D = load(path)
-	if tex == null:
-		return
-	var spr := Sprite3D.new()
-	spr.texture = tex
-	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	spr.shaded = false
-	spr.transparent = true
-	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	spr.pixel_size = (TARGET_BODY_H * 0.55) / float(maxi(1, tex.get_height()))   # 比正规龟小一号(灵体小龟)
-	spr.modulate = Color(0.7, 0.9, 1.0, 0.0)       # 幽蓝, 从透明淡入
-	var base: Vector3 = _world_pos(origin, 1.1)
-	spr.position = base
-	_world.add_child(spr)
-	var tw := _reg_tween(); tw.set_parallel(true)
-	tw.tween_property(spr, "modulate:a", 0.9, 0.15)
-	tw.parallel().tween_property(spr, "position", base + Vector3(0.0, 0.8, 0.0), 0.75)
-	tw.chain().tween_property(spr, "modulate:a", 0.0, 0.35)
-	tw.chain().tween_callback(spr.queue_free)
-
-## ── 冰川(主动·CD17·方向·用户2026-07-23): 沿方向生成 500码 冰川带(持续6秒); 站带上的敌 -40%移速 + 受伤+20% ──
 func _cast_glacier(trainer: Dictionary, aim: Vector2) -> bool:
 	if float(trainer.get("_active_cd", 0.0)) > 0.0:
 		return false
@@ -3874,134 +3627,15 @@ func _cast_glacier(trainer: Dictionary, aim: Vector2) -> bool:
 		"from": trainer["pos"], "dir": dir, "len": 500.0, "width": 90.0,
 		"until": _t + 6.0, "side": str(trainer.get("side", "")),
 	})
-	_glacier_dramatize(trainer["pos"], dir)
+	_trainer_sys._glacier_dramatize(trainer["pos"], dir)
 	return true
 
 ## 每帧: 站在任一冰川带上的【敌方】单位 → 刷新 -40%移速 + 受伤+20%(0.2秒短窗·每帧续=站着才持续)。到期清带。
-func _tick_glaciers(_delta: float) -> void:
-	if _glacier_zones.is_empty():
-		return
-	var keep: Array = []
-	for z in _glacier_zones:
-		if _t >= float(z["until"]):
-			continue
-		keep.append(z)
-		var from2d: Vector2 = z["from"]
-		var dir: Vector2 = z["dir"]
-		var zlen: float = float(z["len"])
-		var half_w: float = float(z["width"]) * 0.5
-		for o in _units:
-			if not o.get("alive", false) or o.get("is_trainer", false):
-				continue
-			if str(o.get("side", "")) == str(z["side"]):
-				continue   # 只冻【敌方】
-			var rel: Vector2 = o["pos"] - from2d
-			var along: float = rel.dot(dir)
-			if along < 0.0 or along > zlen:
-				continue
-			if (rel - dir * along).length() > half_w:
-				continue
-			o["slow_until"] = _t + 0.2      # -40% 移速(slow_mag 0.6)
-			o["slow_mag"] = 0.6
-			o["glacier_vuln_until"] = _t + 0.2   # 受伤 +20%(见 _mitigate_incoming)
-	_glacier_zones = keep
-
-## 冰川带演出: 从大师沿方向铺一条真冰带(ice-field.png), 铺满整条 500 码带、亮蓝白, 持续 6 秒 = 冰川区判定寿命。
-func _glacier_dramatize(from2d: Vector2, dir: Vector2) -> void:
-	if _world == null:
-		return
-	# 用真冰贴图铺地(160×64 蓝白冰), 而非链束占位; 6 秒常驻(与 _glacier_zones 的 until 对齐, 站上去减速期间一直看得见冰)
-	_beam_vfx("res://assets/sprites/vfx/ice-field.png", from2d, from2d + dir * 500.0, 90.0, Color(0.85, 0.95, 1.0, 0.9), 6.0, 0.12)
-	_skill_ring(from2d, Color(0.7, 0.9, 1.0, 0.6), 46.0)
-
-## ★纯效果结算(可测): 钩住 target → 眩晕(吃韧性) + 标记4秒【一段段拽】 + 4秒受伤放大。不建任何 tween。
-func _hook_grab(trainer: Dictionary, target: Dictionary) -> void:
-	_stun(target, HOOK_STUN, "hook")                          # 眩晕4秒(吃韧性)
-	target["_hook_pull_until"] = _t + HOOK_STUN               # 4秒内被拽
-	target["_hook_pull_by"] = trainer                         # 朝这个大师拽
-	target["_hook_tug_t0"] = _t + HOOK_TUG_DELAY              # 第一下拽的时刻(0.1s后·锤石口径)
-	target["hook_vuln_until"] = _t + HOOK_STUN                # 4秒内受伤 ×1.25(见 _mitigate_incoming)
-	target["_hooked_by"] = trainer                            # 触发证据(同步标记, 非tween)
-
-## 每帧: 大师钩锁冷却扣减; 被钩单位【一段段】朝大师拽(每 HOOK_PULL_INTERVAL 秒里, 前 HOOK_TUG_DUR 秒快速位移一段, 其余停顿)。
-## ★非匀速(用户2026-07-24: 锤石钩住是一下一下拽, 不是匀速)。在 _process 战斗门内调。
-func _tick_hooks(delta: float) -> void:
-	var tug_spd: float = HOOK_TUG_DIST / HOOK_TUG_DUR         # 拽的那一下的速度(码/秒)
-	for u in _units:
-		if u.get("is_trainer", false) and float(u.get("_active_cd", 0.0)) > 0.0:
-			u["_active_cd"] = maxf(0.0, float(u["_active_cd"]) - delta)
-		if _t < float(u.get("_hook_pull_until", 0.0)):
-			var by = u.get("_hook_pull_by", null)
-			if by is Dictionary and by.get("alive", false):
-				var ph: float = _t - float(u.get("_hook_tug_t0", _t))   # 相对第一下拽的相位
-				if ph >= 0.0 and fmod(ph, HOOK_PULL_INTERVAL) < HOOK_TUG_DUR:   # 处在"拽"的窗口内
-					var to: Vector2 = by["pos"] - u["pos"]
-					if to.length() > 24.0:                    # 留 24 码不重叠
-						u["pos"] += to.normalized() * tug_spd * delta
-						u["pos"].x = clampf(u["pos"].x, ARENA.position.x, ARENA.end.x)
-						u["pos"].y = clampf(u["pos"].y, ARENA.position.y, ARENA.end.y)
-
-## 敌方(右侧/快照)训龟大师 AI: 像真人一样来回乱走 + 逮到机会甩钩锁(场外援助·用户2026-07-23 点3)。
-## 左侧大师由玩家操控(WASD 走 + Q 甩); 但 STRESS 无头对练时左侧也交给 AI ——
-## 否则钩锁在无头冒烟流程里从不触发, 等于没测到(照 CLAUDE.md「靠触发的东西冒烟必须真触发」)。
-func _tick_trainer_ai(delta: float) -> void:
-	if not _trainer_ticks_active():
-		return
-	for u in _units:
-		if not u.get("is_trainer", false) or not u.get("alive", false):
-			continue
-		if str(u.get("side", "")) == "left" and not _stress:
-			continue   # 左侧=玩家操控, AI 不接管(无头压测除外)
-		_trainer_ai_step(u, delta)
-
-func _trainer_ai_step(u: Dictionary, delta: float) -> void:
-	var is_left := str(u.get("side", "")) == "left"
-	# ① 乱走: 每隔一小段换一个随机游走点(限在自己半场后方, 不越中线冲进战场), 朝它半速晃
-	u["_ai_wander_cd"] = float(u.get("_ai_wander_cd", 0.0)) - delta
-	if float(u["_ai_wander_cd"]) <= 0.0 or not u.has("_ai_wander_to"):
-		u["_ai_wander_cd"] = _battle_rng.randf_range(0.8, 1.8)
-		var xmin: float = ARENA.position.x if is_left else _arena_center.x + 60.0
-		var xmax: float = _arena_center.x - 60.0 if is_left else ARENA.end.x
-		u["_ai_wander_to"] = Vector2(randf_range(xmin, xmax), randf_range(ARENA.position.y + 50.0, ARENA.end.y - 50.0))
-	var to: Vector2 = u["_ai_wander_to"] - u["pos"]
-	if to.length() > 12.0:
-		_trainer_move_by(u, to.normalized() * 0.6, delta)   # 半速晃(悠着点=真人感)
-	# ② 逮机会放主动: CD 好了 → 朝最近敌人方向放(钩锁在射程/线上则命中, 否则空放; 其余技能各自处理)
-	if float(u.get("_active_cd", 0.0)) <= 0.0:
-		var tgt = _nearest_enemy_for_trainer(u)
-		if tgt != null:
-			_cast_active(u, tgt["pos"] - u["pos"])
-
-## 玩家按 Q: 我方(左侧)大师朝【鼠标方向】甩钩锁(PC·学 LoL 锤石 Q·用户2026-07-23 点3)。
-func _player_cast_hook() -> void:
-	if not _trainer_ticks_active():
-		return
-	var tr = _my_trainer()
-	if tr == null:
-		return
-	var u: Dictionary = tr
-	var mp: Vector2 = get_viewport().get_mouse_position() if get_viewport() != null else Vector2.ZERO
-	var aim: Vector2 = _screen_to_field(mp) - u["pos"]
-	_cast_active(u, aim)
-
-## 移动端点圆盘: 我方大师朝【最近敌人】放主动(触屏没有鼠标方向, 自动瞄准; 拖动瞄准在 spell_disc 内处理)。
-func _player_cast_hook_auto() -> void:
-	if not _trainer_ticks_active():
-		return
-	var tr = _my_trainer()
-	if tr == null:
-		return
-	var u: Dictionary = tr
-	var tgt = _nearest_enemy_for_trainer(u)
-	var aim: Vector2 = (tgt["pos"] - u["pos"]) if tgt != null else (Vector2.LEFT if str(u.get("side","")) == "right" else Vector2.RIGHT)
-	_cast_active(u, aim)
-
-## 每帧刷新法术圆盘: 喂我方大师钩锁冷却(比例+剩余秒); 非战斗期(摆位/呈现/结束)隐藏。
 func _update_spell_disc() -> void:
 	if _spell_disc == null or not is_instance_valid(_spell_disc):
 		return
 	var tr = _my_trainer()
-	var show := tr != null and _trainer_ticks_active()
+	var show := tr != null and _trainer_sys._trainer_ticks_active()
 	_spell_disc.visible = show
 	if not show:
 		return
@@ -4018,15 +3652,15 @@ func _update_spell_disc() -> void:
 func _on_spell_aim(phase: String, screen_off: Vector2) -> void:
 	match phase:
 		"update":
-			_disc_aiming = screen_off.length() > 0.01 and _trainer_ticks_active()
+			_disc_aiming = screen_off.length() > 0.01 and _trainer_sys._trainer_ticks_active()
 			_disc_aim_dir = screen_off
 		"cast":
 			_disc_aiming = false
-			if not _trainer_ticks_active():
+			if not _trainer_sys._trainer_ticks_active():
 				return
 			var tr = _my_trainer()
 			if tr != null:
-				_cast_active(tr, _disc_off_to_field(tr, screen_off))
+				_trainer_sys._cast_active(tr, _disc_off_to_field(tr, screen_off))
 		_:
 			_disc_aiming = false
 
@@ -4059,77 +3693,7 @@ func _draw_aim_indicator() -> void:
 	_beam_vfx("res://assets/sprites/vfx/chain-bolt.png", from2d, to2d, 15.0, Color(1.0, 0.82, 0.4, 0.85), 0.07)
 
 ## 命中演出(2026-07-24 返工·照锤石Q): 前摇蓄力(HOOK_WINDUP·大师站定举钩) → 中速飞行(HOOK_MISSILE_SPD) → 到达。
-## 结算不依赖它跑完(_hook_grab 由 _pending_shots 定时调, 无头也稳)。
-func _hook_dramatize(trainer: Dictionary, target: Dictionary) -> void:
-	if _world == null:
-		return   # 无场景(门禁裸实例)→只跑结算不跑演出
-	var from2d: Vector2 = trainer["pos"]
-	var to2d: Vector2 = target["pos"]
-	var htex := load("res://assets/sprites/vfx/trainer-hook.png")
-	if htex == null:
-		return
-	var hook := Sprite3D.new()
-	hook.texture = htex; hook.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	hook.billboard = BaseMaterial3D.BILLBOARD_DISABLED; hook.shaded = false; hook.transparent = true
-	hook.pixel_size = (46.0 * WS) / float(maxi(1, htex.get_height()))
-	hook.position = _world_pos(from2d, 1.0)
-	hook.modulate.a = 0.0                     # 前摇期钩子还没甩出→先隐形
-	_world.add_child(hook)
-	_skill_ring(from2d, Color(0.55, 0.8, 1.0, 0.5), 30.0)   # 前摇: 大师脚下蓄力环
-	var flight: float = maxf(0.12, from2d.distance_to(to2d) / HOOK_MISSILE_SPD)   # 中速(600码≈0.63s)
-	var ct := [0.0]
-	var tw := _reg_tween()
-	tw.tween_interval(HOOK_WINDUP)            # ① 前摇: 松手/按Q后不立刻丢
-	tw.tween_callback(func() -> void:
-		if is_instance_valid(hook): hook.modulate.a = 1.0)   # ② 甩出: 钩子现身
-	tw.tween_method(func(p: float) -> void:   # ③ 中速飞向目标(带链条)
-		if not is_instance_valid(hook): return
-		var hp2: Vector2 = from2d.lerp(to2d, p)
-		hook.position = _world_pos(hp2, 1.0)
-		_face_screen_dir(hook, from2d, hp2)
-		ct[0] += 0.02
-		if ct[0] >= 0.05:
-			ct[0] = 0.0
-			_pirate_chain(from2d, hp2)
-	, 0.0, 1.0, flight)
-	tw.tween_callback(func() -> void:         # ④ 到达
-		_skill_ring(to2d, Color(0.75, 0.82, 0.95, 0.7), 40.0)
-		if is_instance_valid(hook): hook.queue_free())
-
-## 空放演出: 钩爪飞到射程末端再消失(告诉玩家「没勾到」)。
-func _hook_dramatize_miss(trainer: Dictionary, dir: Vector2) -> void:
-	if _world == null:
-		return   # 无场景(门禁裸实例)→只跑结算不跑演出
-	var from2d: Vector2 = trainer["pos"]
-	var d := dir.normalized() if dir.length() > 0.01 else Vector2.RIGHT
-	var end2d: Vector2 = from2d + d * HOOK_RANGE
-	var htex := load("res://assets/sprites/vfx/trainer-hook.png")
-	if htex == null:
-		return
-	var hook := Sprite3D.new()
-	hook.texture = htex; hook.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	hook.billboard = BaseMaterial3D.BILLBOARD_DISABLED; hook.shaded = false; hook.transparent = true
-	hook.pixel_size = (46.0 * WS) / float(maxi(1, htex.get_height()))
-	hook.position = _world_pos(from2d, 1.0)
-	_world.add_child(hook)
-	var ct := [0.0]
-	var tw := _reg_tween()
-	tw.tween_method(func(p: float) -> void:   # 甩出→末端→(链条)
-		if not is_instance_valid(hook): return
-		var hp2: Vector2 = from2d.lerp(end2d, p if p < 0.5 else 1.0 - (p - 0.5))   # 去程一半+收回一半
-		hook.position = _world_pos(hp2, 1.0)
-		_face_screen_dir(hook, from2d, hp2)
-		ct[0] += 0.02
-		if ct[0] >= 0.05:
-			ct[0] = 0.0
-			_pirate_chain(from2d, hp2)
-	, 0.0, 1.0, 0.34)
-	tw.tween_callback(func() -> void:
-		if is_instance_valid(hook): hook.queue_free())
-
-
-## 训龟大师【自己】的索敌: 射程内最近的敌人。不复用 _nearest_enemy ——
-## 那个会跳过 is_trainer(别人锁不到它), 但没有射程限制、也不该被别的规则牵连。
+## 结算不依赖它跑完(_trainer_sys._hook_grab 由 _pending_shots 定时调, 无头也稳)。
 func _nearest_enemy_for_trainer(u: Dictionary):
 	var best = null
 	var best_d := TRAINER_RANGE * TRAINER_RANGE
@@ -4147,19 +3711,6 @@ func _nearest_enemy_for_trainer(u: Dictionary):
 
 
 ## 播扔石头动作(一次性, 播完自动回 idle/run — 走 anim_action 白名单)
-func _trainer_throw_anim(u: Dictionary) -> void:
-	var spr = u.get("sprite", null)
-	if not is_instance_valid(spr):
-		return
-	if not u.has("_throw_sd"):
-		u["_throw_sd"] = _resolve_action("pets/animations/trainer/throw.png", 10.0)
-	var tsd: Dictionary = u["_throw_sd"]
-	if tsd.is_empty():
-		return
-	_set_anim_sheet(u, tsd, "throw", false)   # anim_action=throw → 播一次到末帧回 idle
-
-
-## 抛物线石头: 从训龟大师胸口飞向目标, 到点命中扣 1 物理(经 _mitigate 后仍是 1)。
 func _fire_trainer_rock(u: Dictionary, tgt: Dictionary) -> void:
 	var p := Sprite3D.new()
 	var rp := "res://assets/sprites/vfx/lava-rock.png"
@@ -4189,17 +3740,6 @@ func _fire_trainer_rock(u: Dictionary, tgt: Dictionary) -> void:
 
 ## ★魔法石(被动·用户2026-07-23): 大师普攻命中→附带 2% 目标最大生命 魔法伤害 + 自己 +5% 攻速(可叠·本场结束重置)。
 ## ★可测纯函数(不依赖演出): 石头是归巢弹→火时即视作命中, 直接结算(数值稳)。攻速叠层是【计数】(_ms_stacks), 换场清零。
-func _trainer_magicstone_onhit(u: Dictionary, tgt: Dictionary) -> void:
-	if not (tgt is Dictionary and tgt.get("alive", false)):
-		return
-	var magic: int = maxi(1, int(_resolve_dmg(u, float(tgt["maxHp"]) * 0.02, tgt, true)))   # 2%目标最大生命·魔法(过魔抗)
-	_apply_damage_from(u, tgt, magic, Color("#c86bff"), 0.0, false, true)
-	u["_ms_stacks"] = int(u.get("_ms_stacks", 0)) + 1                                        # 攻速叠一层(持续到本场结束)
-
-
-## 移动端才建摇杆; PC 上根本不建(不占屏)。
-## ★TRAINER_JOY=1 可在 PC 上强开, 用于自验手感与门禁 —— 否则这段代码在开发机上永远跑不到,
-##   等于没写(EQDEMO 那次的教训: 触发不到的路径看着像"没生效")。
 func _build_trainer_joystick() -> void:
 	if not (SafeArea.is_mobile() or OS.has_environment("TRAINER_JOY")):
 		return
@@ -4271,26 +3811,6 @@ func _build_spell_disc() -> void:
 ## 训龟大师立绘。用户要「像素风的冒险家」, 形象未定 —— 真图放到 TRAINER_SPRITE 即自动生效。
 ## ★没真图时【退回占位并 push_warning】而不是静默兜底: 占位是小龟, 和冒险家长得完全不一样,
 ##   悄悄用会让人(包括我自己)以为形象已经做完了。门禁 verify_trainer 也断言这条 warning 存在。
-func _trainer_sprite_dict() -> Dictionary:
-	var tex: Texture2D = null
-	if ResourceLoader.exists(TRAINER_SPRITE):
-		tex = load(TRAINER_SPRITE)
-	if tex == null:
-		push_warning("[训龟大师] 立绘未就绪 —— 用程序占位图。形象待定(用户要「像素风的冒险家」)")
-		tex = _make_trainer_placeholder_tex()
-	var th: int = tex.get_height() if tex != null else 64
-	return {"tex": tex, "frames": 1, "fps": 1.0, "frame_h": th, "hframes": 1, "vframes": 1, "loop": false}
-
-
-## 造一张【一眼就知道美术还没做】的占位纹理: 洋红/黑棋盘拼的人形。
-##
-## ★为什么不拿现成立绘兜底: 项目里 pets/*.png 【全是精灵表】(bamboo.png 是 4000×800 装 9 帧),
-##   当单帧用会把整张表糊成一坨。
-## ★为什么必须程序生成: 我原来的兜底路径写的是 pets/basic.png —— 那个文件【根本不存在】
-##   (basic 的真立绘是 pets/animations/basic/idle.png), 于是 tex=null, 训龟大师在场上
-##   【完全看不见】, 我还对着窗口跟用户说"长得就是小龟的样子"。
-##   而当时的门禁只断言了"会 push_warning", 没断言"占位图真的能显示" ——
-##   守住了会吭声, 没守住看得见。程序生成没有路径依赖, 不可能再出这种事。
 func _make_trainer_placeholder_tex() -> ImageTexture:
 	# ★尺寸/比例: 游戏按【帧高】把立绘归一到 TARGET_BODY_H(2米), 所以本体必须【填满整帧】,
 	#   否则会被压成细条。初版 24×48 而身子只占中间 14px 宽 → 屏幕上只有 15×44 的一根竖条
@@ -4763,7 +4283,7 @@ func _process(delta: float) -> void:
 	# ★确定性模式(TURTLE_SEED 设): 用固定步长 SIM_DT → 同种子+同帧序=可复现回放/验证(不受帧率抖动影响)。
 	#   交互游玩(无种子): 钳制真实delta防死亡螺旋(2026-07-18)—— 手感/行为与原来完全一致·零风险。
 	var rd: float = minf(delta, 0.1)   # 钳制真实帧delta(防hitch·2026-07-18): 给 INPUT/render; sim 走固定步长累加器
-	_trainer_input_tick(rd)   # INPUT(每帧读一次): 训龟大师 PC键盘/移动端摇杆(用户2026-07-22)
+	_trainer_sys._trainer_input_tick(rd)   # INPUT(每帧读一次): 训龟大师 PC键盘/移动端摇杆(用户2026-07-22)
 	if _audit and _t >= _audit_next:
 		_audit_next = _t + 1.0
 		_audit_tick()
@@ -4810,9 +4330,9 @@ func _advance_sim_accum(rd: float) -> void:
 func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 	_adf_ct = 0   # 每帧(每步)重置伤害调用计数(_apply_damage_from 帧内爆炸=死亡链无限级联→自身截断防卡死)
 	_sd_tick()   # §SUDDEN 战场决胜(40s起治疗-50% + 每5s +25%增伤)
-	_tick_trainer_attacks(dt) # 训龟大师普攻: 站定扔石头抛物线弹道(用户2026-07-23)
-	_tick_trainer_ai(dt)      # 敌方(快照)大师 AI: 乱走 + 逮机会甩钩锁(点3·场外援助·用户2026-07-23)
-	_tick_hooks(dt)           # 钩锁: CD 扣减 + 被钩单位每帧朝大师拖(点3)
+	_trainer_sys._tick_trainer_attacks(dt) # 训龟大师普攻: 站定扔石头抛物线弹道(用户2026-07-23)
+	_trainer_sys._tick_trainer_ai(dt)      # 敌方(快照)大师 AI: 乱走 + 逮机会甩钩锁(点3·场外援助·用户2026-07-23)
+	_trainer_sys._tick_hooks(dt)           # 钩锁: CD 扣减 + 被钩单位每帧朝大师拖(点3)
 	# Phase4 顿帧 hit-stop: 计时 >0 时冻结"模拟"给重量感(镜头震屏照常推进·在 _render_step)。
 	if frozen:
 		_hitstop = maxf(0.0, _hitstop - dt)
@@ -4843,7 +4363,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 				_tick_unit(u, dt)
 			_apply_separation_pass(dt)   # 每帧全单位软分离(攻击/待机也摊开, 根治扎堆遮血条)
 			_lava_sys._tick_lava_zones(dt)         # 持续地面区域 (熔岩龟·岩浆池) 周期结算
-			_tick_glaciers(dt)           # 冰川带(训龟大师): 站带上的敌减速+易伤
+			_trainer_sys._tick_glaciers(dt)           # 冰川带(训龟大师): 站带上的敌减速+易伤
 			_step_projectiles(dt)
 			_step_pending_shots(dt)
 			_check_end()
@@ -17382,7 +16902,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_Q:
-			_player_cast_hook()   # 法术圆盘·钩锁: 朝鼠标方向甩(用户2026-07-23 点3·学 LoL 锤石 Q)
+			_trainer_sys._player_cast_hook()   # 法术圆盘·钩锁: 朝鼠标方向甩(用户2026-07-23 点3·学 LoL 锤石 Q)
 			return
 		if event.keycode == KEY_R:
 			get_tree().reload_current_scene()

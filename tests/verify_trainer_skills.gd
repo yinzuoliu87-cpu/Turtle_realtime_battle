@@ -58,12 +58,12 @@ func _test_magic_stone(scene) -> void:
 	enemy["dodge_bonus"] = 0.0
 	var hp0: float = float(enemy["hp"])
 	var mx: float = float(enemy["maxHp"])
-	scene._trainer_magicstone_onhit(trainer, enemy)
+	scene._trainer_sys._trainer_magicstone_onhit(trainer, enemy)
 	var drop: float = hp0 - float(enemy["hp"])
 	_ok("★魔法石·命中附带魔法伤(≤2%最大生命·过魔抗)", drop > 0.0 and drop <= mx * 0.02 + 3.0,
 		"掉 %.0f 血 (2%%最大生命=%d)" % [drop, int(mx * 0.02)])
 	_ok("★魔法石·攻速叠 1 层", int(trainer.get("_ms_stacks", 0)) == 1)
-	scene._trainer_magicstone_onhit(trainer, enemy)
+	scene._trainer_sys._trainer_magicstone_onhit(trainer, enemy)
 	_ok("★魔法石·可叠加(第2击→2层)", int(trainer.get("_ms_stacks", 0)) == 2)
 	# 无魔法石被动的大师不触发(反向)
 	var t2 = {"is_trainer": true, "side": "left", "alive": true, "_tr_passive": "", "_ms_stacks": 0}
@@ -86,7 +86,7 @@ func _test_fury_potion(scene) -> void:
 	far_ally["pos"] = pt + Vector2(500.0, 0.0)      # 挪出 300 码外
 	for a in [near_ally, far_ally]:
 		a["haste_until"] = 0.0; a["move_buff_until"] = 0.0; a["echarge_until"] = 0.0
-	var n: int = scene._fury_apply_buffs(trainer, pt)
+	var n: int = scene._trainer_sys._fury_apply_buffs(trainer, pt)
 	_ok("★怒火药水·落点300码内友军受益(≥1)", n >= 1, "受益 %d 人" % n)
 	_ok("★近友军 +30%攻速(haste_mult=1.3·5秒)",
 		abs(float(near_ally.get("haste_mult", 1.0)) - 1.3) < 0.01 and float(near_ally.get("haste_until", 0.0)) > scene._t)
@@ -116,7 +116,7 @@ func _test_whistle(scene) -> void:
 	_ok("★口哨·临时血: 当前hp +700", abs(float(ally["hp"]) - (hp0 + 700.0)) < 0.5)
 	# ③ 狂暴: +20%攻击力 + 免疫死亡
 	var atk0: float = float(ally["atk"])
-	scene._whistle_berserk_on(ally)   # 直接对已知友军(绕过随机)
+	scene._trainer_sys._whistle_berserk_on(ally)   # 直接对已知友军(绕过随机)
 	_ok("★口哨·狂暴: 攻击力 +20%", float(ally["atk"]) > atk0 * 1.15,
 		"%.0f → %.0f" % [atk0, float(ally["atk"])])
 	_ok("★口哨·狂暴: 4秒免疫死亡(deathfloor)", float(ally.get("deathfloor_until", 0.0)) > scene._t)
@@ -124,7 +124,7 @@ func _test_whistle(scene) -> void:
 	enemy["pos"] = trainer["pos"] + Vector2(200.0, 0.0)   # 摆到大师正东(线上)
 	enemy["def_shred_until"] = 0.0
 	var ehp0: float = float(enemy["hp"])
-	var n: int = scene._whistle_spirit_wave(trainer)
+	var n: int = scene._trainer_sys._whistle_spirit_wave(trainer)
 	_ok("★口哨·气波: 命中沿途敌(≥1)", n >= 1, "命中 %d" % n)
 	_ok("★口哨·气波: 命中敌掉血", float(enemy["hp"]) < ehp0)
 	_ok("★口哨·气波: 命中敌削甲30%(def_shred_until)", float(enemy.get("def_shred_until", 0.0)) > scene._t)
@@ -153,7 +153,7 @@ func _test_glacier(scene) -> void:
 	_ok("★冰川·施放建带 + CD17", ok and scene._glacier_zones.size() >= 1 and abs(float(trainer.get("_active_cd", 0.0)) - 17.0) < 0.1)
 	# ★冰川带【真的铺出真冰贴图】: _glacier_dramatize 用 ice-field.png 铺地(非 chain-bolt 占位) → _world 有该 Sprite3D
 	_ok("★冰川·铺出真冰贴图(_world 有 ice-field 冰带)", _world_has_sprite(scene, "ice-field.png"))
-	scene._tick_glaciers(0.03)
+	scene._trainer_sys._tick_glaciers(0.03)
 	_ok("★冰川·带上敌减速 -40%(slow_mag 0.6)", abs(float(e_on.get("slow_mag", 1.0)) - 0.6) < 0.01 and float(e_on.get("slow_until", 0.0)) > scene._t)
 	_ok("★冰川·带上敌受伤+20%(glacier_vuln)", float(e_on.get("glacier_vuln_until", 0.0)) > scene._t)
 	_ok("★冰川·偏离带的敌不受影响(有边界)", float(e_off.get("glacier_vuln_until", 0.0)) <= scene._t)
@@ -171,7 +171,8 @@ func _test_glacier(scene) -> void:
 func _test_source(scene) -> void:
 	var src: String = ""
 	if RTScene is GDScript:
-		src = (RTScene as GDScript).source_code
+		src = (RTScene as GDScript).source_code + "
+" + FileAccess.get_file_as_string("res://scripts/systems/trainer/trainer_system.gd")   # 2026-07-25: 大师技能已抽到 trainer/
 	_ok("★攻速按叠层缩短(_ms_stacks 进攻击间隔 / haste)",
 		src.contains("_ms_stacks") and src.contains("TRAINER_ATK_INTERVAL / haste"))
 	_ok("★只在装配了魔法石时才触发被动", src.contains('"magic_stone"'))

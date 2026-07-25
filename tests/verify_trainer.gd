@@ -152,7 +152,8 @@ func _ready() -> void:
 		tr["hp"] = tr["maxHp"]
 
 	# ── ⑧ 立绘未就绪要吭声, 不许静默兜底 ──
-	var src := FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")
+	var src := FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd") + "
+" + FileAccess.get_file_as_string("res://scripts/systems/trainer/trainer_system.gd")   # 2026-07-25: 训龟大师技能已抽到 trainer/
 	var body := _func_body(src, "_trainer_sprite_dict")
 	_ok("★没真图时会 push_warning(形象待定, 不许静默当成做完了)",
 		_code_only(body).contains("push_warning("), "函数体 %d 字符" % body.length())
@@ -161,7 +162,7 @@ func _ready() -> void:
 	#   (basic 的真立绘是 pets/animations/basic/idle.png) → tex=null → 训龟大师【场上完全看不见】,
 	#   而我还对着窗口跟用户说"长得就是小龟的样子"。
 	#   当时门禁只查了"会不会 push_warning" —— 守住了会吭声, 没守住看得见。
-	var sd: Dictionary = s._trainer_sprite_dict()
+	var sd: Dictionary = s._trainer_sys._trainer_sprite_dict()
 	var stex = sd.get("tex")
 	print("  [实测] 训龟大师立绘纹理 = %s" % ("null(场上会隐形!)" if stex == null else "%s" % stex.get_size()))
 	_ok("★★立绘纹理不是 null(null = 单位在场上完全看不见)", stex != null)
@@ -204,7 +205,7 @@ func _ready() -> void:
 		bool(tr.get("no_basic", false)), "no_basic=%s" % str(tr.get("no_basic", "(未设)")))
 
 	# 扔石头动作能触发(anim_action=throw, 播完自动回)
-	s._trainer_throw_anim(tr)
+	s._trainer_sys._trainer_throw_anim(tr)
 	_ok("★普攻播扔石头动作(anim_action=throw)", str(tr.get("anim_action", "")) == "throw")
 	# 训龟大师自己会索敌开火(它不被别人锁, 但能锁别人 —— 两回事)
 	if not rock_foe.is_empty():
@@ -223,7 +224,7 @@ func _ready() -> void:
 	#   要真验, 必须【从像素测出图画的朝向】, 再和代码的登记对账。
 	# 判据: 3/4 侧视角色的头部重心会偏向朝向侧(脸凸出去), 躯干/背包在后。
 	#   判不出时【明确报"测不出"而不是默默通过】—— Q 版大圆盔那种左右对称的头就判不出。
-	var tex2 = s._trainer_sprite_dict().get("tex")
+	var tex2 = s._trainer_sys._trainer_sprite_dict().get("tex")
 	if tex2 != null:
 		var img: Image = tex2.get_image()
 		var W := img.get_width()

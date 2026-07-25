@@ -26,17 +26,17 @@ func _ready() -> void:
 	# ② _trainer_ticks_active: 战斗中才跑, 摆位/呈现/编辑/结束都停
 	b._over = false; b._edit_mode = false
 	b._dl_state = "fight"
-	_ok("战斗中大师 tick 跑", b._trainer_ticks_active() == true)
+	_ok("战斗中大师 tick 跑", b._trainer_sys._trainer_ticks_active() == true)
 	b._dl_state = "place"
-	_ok("★摆位期大师不 tick(不投掷不移动·点6核心)", b._trainer_ticks_active() == false)
+	_ok("★摆位期大师不 tick(不投掷不移动·点6核心)", b._trainer_sys._trainer_ticks_active() == false)
 	b._dl_state = "overview"
-	_ok("呈现(总览)期不 tick", b._trainer_ticks_active() == false)
+	_ok("呈现(总览)期不 tick", b._trainer_sys._trainer_ticks_active() == false)
 	b._dl_state = "preview"
-	_ok("呈现(预览)期不 tick", b._trainer_ticks_active() == false)
+	_ok("呈现(预览)期不 tick", b._trainer_sys._trainer_ticks_active() == false)
 	b._dl_state = "fight"; b._over = true
-	_ok("战斗结束不 tick", b._trainer_ticks_active() == false)
+	_ok("战斗结束不 tick", b._trainer_sys._trainer_ticks_active() == false)
 	b._over = false; b._edit_mode = true
-	_ok("编辑期不 tick", b._trainer_ticks_active() == false)
+	_ok("编辑期不 tick", b._trainer_sys._trainer_ticks_active() == false)
 
 	b.free()
 	print("ALL PASS — 训龟大师摆位(不可拖+不投掷)" if _fail == 0 else "FAILED: %d" % _fail)
