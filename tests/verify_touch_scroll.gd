@@ -19,8 +19,8 @@ var _fails: Array[String] = []
 
 
 func _ready() -> void:
-	_check_source("res://scripts/scenes/RealtimeBattle3DScene.gd", "_edit_grid_card",
-		"调试场选装备/选龟网格卡片")
+	_check_source("res://scripts/scenes/battle_debug_arena.gd", "_edit_grid_card",
+		"调试场选装备/选龟网格卡片")   # _edit_* 已抽到 BattleDebugArena(2026-07-25)
 	_check_source("res://scripts/scenes/TeamSelectScene.gd", "_make_pet_card",
 		"选龟龟池卡片")
 	_check_teamselect_drag()

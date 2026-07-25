@@ -24,14 +24,14 @@ func _run_once(attacker: String, full_energy: bool, frames: int) -> String:
 	add_child(s)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	s._edit_clear()   # ★清掉自动载入/上次遗留的摆位(调试场存盘到disk会跨run泄漏)→ 只留本run摆的2只·隔离
+	s._debug._edit_clear()   # ★清掉自动载入/上次遗留的摆位(调试场存盘到disk会跨run泄漏)→ 只留本run摆的2只·隔离
 	# 近距: 左攻击龟 + 右可击杀假人(有限血·会掉血→指纹随战斗推进)
 	s._edit_dummy_killable = true
 	s._edit_dummy_hp = 4000.0
 	s._edit_full_energy = full_energy   # 满龟能: 主动技即就绪→放技(练更多技能RNG/DoT/时序路径)
-	s._edit_place_unit(attacker, "left", Vector2(320, 300))
-	s._edit_place_unit("basic", "right", Vector2(400, 300))
-	s._edit_start_battle()
+	s._debug._edit_place_unit(attacker, "left", Vector2(320, 300))
+	s._debug._edit_place_unit("basic", "right", Vector2(400, 300))
+	s._debug._edit_start_battle()
 	for _i in range(frames):
 		await get_tree().process_frame
 	var fp := _fingerprint(s)

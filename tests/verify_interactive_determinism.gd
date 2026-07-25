@@ -37,13 +37,13 @@ func _run_chunked(chunks: Array, seed_val: int) -> String:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	s.set_process(false)   # ★关掉 Godot 按真实帧率自动驱动 → 只由本函数手动喂累加器(帧率完全受控)
-	s._edit_clear()        # 清掉自动载入/上次遗留摆位(存盘跨run泄漏)
+	s._debug._edit_clear()        # 清掉自动载入/上次遗留摆位(存盘跨run泄漏)
 	s._edit_dummy_killable = true
 	s._edit_dummy_hp = 4000.0
 	s._edit_full_energy = true   # 满龟能: 主动技就绪→放技(练技能 RNG/DoT/时序路径)
-	s._edit_place_unit("dice", "left", Vector2(320, 300))   # 骰子龟: 命运骰吃 _battle_rng → 有真随机可验
-	s._edit_place_unit("basic", "right", Vector2(400, 300))
-	s._edit_start_battle()
+	s._debug._edit_place_unit("dice", "left", Vector2(320, 300))   # 骰子龟: 命运骰吃 _battle_rng → 有真随机可验
+	s._debug._edit_place_unit("basic", "right", Vector2(400, 300))
+	s._debug._edit_start_battle()
 	# ★固定 RNG + 强制交互(累加器)路径。放在 start 之后 → 两 run 进驱动循环时 RNG 态完全一致。
 	s._deterministic = false
 	s._battle_rng.seed = seed_val

@@ -238,7 +238,7 @@ func _ready() -> void:
 		_ok("调试场面板按钮已建(≥15)", pal_btns.size() >= 15, "共 %d" % pal_btns.size())
 		var bad_c := _offscreen_buttons(cs, vp_real)
 		_ok("调试场面板按钮全在屏内", bad_c.is_empty(), "; ".join(bad_c) if not bad_c.is_empty() else "")
-		cs._edit_open_turtle_grid()                  # 「选龟」二级网格: 28龟全可选
+		cs._debug._edit_open_turtle_grid()                  # 「选龟」二级网格: 28龟全可选
 		await get_tree().process_frame
 		await get_tree().process_frame
 		var texts := _all_texts(cs)
@@ -252,18 +252,18 @@ func _ready() -> void:
 		_ok("选龟网格28龟全可选(含每龟名)", missing.is_empty(), "缺: " + str(missing))
 		var bad_g := _offscreen_buttons(cs, vp_real)
 		_ok("选龟网格全在屏内", bad_g.is_empty(), "; ".join(bad_g.slice(0, 4)) if not bad_g.is_empty() else "")
-		cs._edit_close_popup()
+		cs._debug._edit_close_popup()
 		await get_tree().process_frame
-		var uu = cs._edit_place_unit("basic", "right", Vector2(600.0, 400.0))   # 装备网格: 选中单位→开
+		var uu = cs._debug._edit_place_unit("basic", "right", Vector2(600.0, 400.0))   # 装备网格: 选中单位→开
 		cs._edit_sel_unit = uu
-		cs._edit_open_equip_grid()
+		cs._debug._edit_open_equip_grid()
 		await get_tree().process_frame
 		await get_tree().process_frame
 		var eq_n: int = cs._dbg_equip_ids().size()
 		_ok("装备网格可开且有货(装备数=%d≥10)" % eq_n, eq_n >= 10)
 		var bad_e := _offscreen_buttons(cs, vp_real)
 		_ok("装备网格全在屏内", bad_e.is_empty(), "; ".join(bad_e.slice(0, 4)) if not bad_e.is_empty() else "")
-		cs._edit_close_popup()
+		cs._debug._edit_close_popup()
 		await get_tree().process_frame
 		cs.queue_free()
 		await get_tree().process_frame
