@@ -95,7 +95,7 @@ func _ready() -> void:
 	if Battle is GDScript:
 		src = (Battle as GDScript).source_code
 	_ok("★Q键接了 _player_cast_hook", src.contains("_player_cast_hook") and src.contains("KEY_Q"))
-	_ok("★sim 主循环挂了 _tick_hooks(2026-07-25 Phase4切片1: 移到 _sim_step·_process 每帧调它)", src.contains("_tick_hooks(dt)") and src.contains("_sim_step(delta"))
+	_ok("★sim 主循环挂了 _tick_hooks(2026-07-25 Phase4: 在 _sim_step·_process/累加器调 _sim_step)", src.contains("_tick_hooks(dt)") and src.contains("_sim_step(SIM_DT"))
 	_ok("★敌方大师 AI 放主动已接线(_cast_active分派)", src.contains("_tick_trainer_ai") and src.contains("_cast_active(u,"))
 	_ok("★装配分派入口 _cast_active 存在", src.contains("func _cast_active") and src.contains('"fury_potion":') and src.contains('"glacier":'))
 	_ok("★受伤放大接进 _mitigate_incoming", src.contains("hook_vuln_until"))

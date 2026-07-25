@@ -681,8 +681,10 @@ static var _stress_n := 0                 # 已跑对局数(跨reload累计)
 var _juice_rng := RandomNumberGenerator.new()   # 震屏/粒子专用 rng (演出·永不种子化, 否则回放看着卡)
 var _battle_rng := RandomNumberGenerator.new()  # ★sim 专用受控 PRNG (Phase1·大厂做法): 决定战斗结果的随机走它。默认 randomize()=手感与线上一致; TURTLE_SEED 设时确定→可复现/回放
 var _cast_tok: int = 0                          # 单调计数·多段技命中去重标记(替 randi() token: 确定性+无碰撞·§3.2 不拿字典做key)
-const SIM_DT := 1.0 / 60.0                       # 确定性模式的固定 sim 步长(≈60fps手感·headless回放用)
-var _deterministic := false                      # ★Phase2b: TURTLE_SEED 设时=true → _process 用固定步长 SIM_DT(同种子同帧序→可复现回放/验证)。交互游玩(无种子)仍走可变真实delta·手感不变·零风险
+const SIM_DT := 1.0 / 60.0                       # 固定 sim 步长(交互累加器 + 确定性模式共用·≈60fps手感)
+var _deterministic := false                      # ★Phase2b: TURTLE_SEED 设时=true → det模式每帧恰1个SIM_DT步(同种子同帧序→可复现回放/验证)
+var _sim_accum: float = 0.0                      # ★Phase4切片2: 交互游玩累加器·攒够 SIM_DT 就跑一步 sim(固定步长→帧率无关);余量给切片2b渲染插值
+var _render_alpha: float = 0.0                    # ★Phase4切片2b: 渲染插值分数 = _sim_accum/SIM_DT [0,1)。立绘在【上一步 pos↔当前 pos】间 lerp → 消固定步长在高帧率下的卡顿
 
 # --- §GROUNDING: 立绘底部软渐隐 shader (一份 Shader 共享, 每龟一份 ShaderMaterial 因 texture 不同) ---
 var _ground_fade_shader: Shader = null
@@ -3310,6 +3312,12 @@ func _next_cast_tok() -> int:
 	_cast_tok += 1
 	return _cast_tok
 
+## Phase4切片2b: 每个 sim 步【之前】存 pos/height → 渲染时在 prev↔当前 间按 _render_alpha 插值(消固定步长卡顿)。
+func _snapshot_render_prev() -> void:
+	for u in _units:
+		u["_prev_pos"] = u["pos"]
+		u["_prev_height"] = u.get("height", 0.0)
+
 ## 按【战斗时钟 _t】等待 secs 秒(Phase2·§3.5): 替 create_timer(走未钳制真实时间·CI/慢机偏)。
 ## _t 走钳制后 delta → 效果跟随 sim 时间·暂停时正确停;帧上限防 _t 冻结(_kill 后)时死循环。
 ## 正常 60fps 下 _t≈真实时间 → 手感不变;慢机/CI 下按 sim 时间(这才对)。
@@ -4769,8 +4777,8 @@ func _make_status_bar(side: String, level: int = 0) -> Dictionary:
 func _process(delta: float) -> void:
 	# ★确定性模式(TURTLE_SEED 设): 用固定步长 SIM_DT → 同种子+同帧序=可复现回放/验证(不受帧率抖动影响)。
 	#   交互游玩(无种子): 钳制真实delta防死亡螺旋(2026-07-18)—— 手感/行为与原来完全一致·零风险。
-	delta = SIM_DT if _deterministic else minf(delta, 0.1)
-	_trainer_input_tick(delta)   # INPUT(每帧读一次): 训龟大师 PC键盘/移动端摇杆(用户2026-07-22)
+	var rd: float = minf(delta, 0.1)   # 钳制真实帧delta(防hitch·2026-07-18): 给 INPUT/render; sim 走固定步长累加器
+	_trainer_input_tick(rd)   # INPUT(每帧读一次): 训龟大师 PC键盘/移动端摇杆(用户2026-07-22)
 	if _audit and _t >= _audit_next:
 		_audit_next = _t + 1.0
 		_audit_tick()
@@ -4778,17 +4786,33 @@ func _process(delta: float) -> void:
 		_hb += 1
 		if _dl_state == "place":
 			_dl_start_fight()          # 无头无玩家→自动开打(present阶段自己计时推进)
-		if _over or _dl_state == "done" or _t > 240.0:   # 上限 120→240: 一场三路合法时长可超120s(上路含破蛋窗口+呈现就要60s+), 120s会把正常推进的局误记成僵持(用户2026-07-19决胜机制验收)
+		if _over or _dl_state == "done" or _t > 240.0:   # 上限 240: 一场三路合法时长可超120s(上路含破蛋窗口+呈现就要60s+)
 			_stress_reload(); return
 		_dbg_op = "process"
-	# ═══ Phase4 sim/演出分层(2026-07-25·切片1): sim 走 _sim_step, 演出走 _render_step。 ═══
-	# ★frozen/in_ts 必须在 sim 【之前】捕获一次, sim 与 render 用【同一个】判定 —— 否则 sim 里 _hitstop-=dt
-	#   归零后 render 再读 _hitstop 会翻成"没冻结"→顿帧那帧的演出跑了 = 行为漂移。
-	# 切片1: 仍每帧各调一次(dt=render_dt=delta) → 行为逐字不变。切片2 才把 _sim_step 塞进累加器跑 N 次。
-	var frozen: bool = _hitstop > 0.0
-	var in_ts: bool = not _ts_active.is_empty()
-	_sim_step(delta, frozen, in_ts)
-	_render_step(delta, frozen, in_ts)
+	# ═══ Phase4切片2 累加器: sim 按固定步长 SIM_DT 推进 → 交互游玩帧率无关(根治"逻辑按60fps写死"整类)。 ═══
+	# det模式(TURTLE_SEED设): 恰 1 步/帧(帧数固定→可复现·verify_battle_determinism 靠它)。
+	# 交互: 攒够 SIM_DT 跑一步·总 sim 时间 = Σ钳制delta(与原一致)·只是粒度变成固定块。余量 _sim_accum 给切片2b渲染插值。
+	# ★frozen/in_ts 每步 sim 前重新捕获(顿帧/时停可能跨步变化), sim 与 render 分别用各自最新态。
+	if _deterministic:
+		var frozen: bool = _hitstop > 0.0
+		var in_ts: bool = not _ts_active.is_empty()
+		_sim_step(SIM_DT, frozen, in_ts)
+		_render_alpha = 0.0   # det/headless: 无渲染·不插值
+	else:
+		_sim_accum += rd
+		var steps: int = 0
+		while _sim_accum >= SIM_DT and steps < 8:   # 每帧最多8步(大hitch丢余量防雪崩·手感优先于追偿)
+			_snapshot_render_prev()   # ★切片2b: 存这步前的 pos/height 供渲染插值(最后一次=渲染要的 prev)
+			var frozen: bool = _hitstop > 0.0
+			var in_ts: bool = not _ts_active.is_empty()
+			_sim_step(SIM_DT, frozen, in_ts)
+			_sim_accum -= SIM_DT
+			steps += 1
+		_render_alpha = _sim_accum / SIM_DT   # 余量分数 [0,1) → 立绘在 prev↔当前 间 lerp(高帧率零步/帧时 alpha 渐长→平滑推进)
+	# 演出每帧一次(真实时间·立绘动画/相机随真实帧走→平滑)。frozen/in_ts 用 sim 后最新态。
+	var r_frozen: bool = _hitstop > 0.0
+	var r_in_ts: bool = not _ts_active.is_empty()
+	_render_step(rd, r_frozen, r_in_ts)
 
 ## Phase4: 纯模拟推进(决定战斗结果·可被累加器按固定步长跑 N 次/帧)。frozen/in_ts 由调用方在 sim 前捕获传入。
 func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
@@ -20317,6 +20341,10 @@ func _update_world_transforms() -> void:
 		var ring: Sprite3D = u["ring"]
 		if not is_instance_valid(spr):
 			continue
+		# ★Phase4切片2b 渲染插值: 立绘/影/环用【上一步pos↔当前pos】按 _render_alpha lerp 的位置 → 消固定步长在高帧率下的卡顿。
+		#   _render_alpha=0(det模式/正好整步)时 = 当前 pos, 与不插值一致。朝向/last_x 仍用真 pos(朝向不卡)。
+		var _rpos: Vector2 = (u.get("_prev_pos", u["pos"]) as Vector2).lerp(u["pos"] as Vector2, _render_alpha)
+		var _rh: float = lerpf(float(u.get("_prev_height", u.get("height", 0.0))), float(u.get("height", 0.0)), _render_alpha)
 		# 朝向: 有战斗目标→由_tick_unit锁定朝敌(死区防抖); 无目标→才随移动方向(立绘默认朝左→flip_h=true朝右); 初始左队朝右/右队朝左
 		var _px: float = u["pos"].x
 		var _dx: float = _px - float(u.get("last_x", _px))
@@ -20328,7 +20356,7 @@ func _update_world_transforms() -> void:
 		var sq := _juice_scale_for(u)              # (sx, sy) 形变系数 (base=1,1)
 		var bob := _juice_bob_for(u)               # idle 呼吸 Y 偏移 (米)
 		# 立绘: XZ + Y(高度 + 落地基线抬升 + bob). billboard 自动朝镜头, 不翻 facing.
-		spr.position = _world_pos(u["pos"], u["height"] + GROUND_LIFT + bob) + u.get("_bear_voff", Vector3.ZERO) + u.get("_atk_voff", Vector3.ZERO) + u.get("_slam_voff", Vector3.ZERO)   # 大熊扑击/砸地 + 近战踏步lunge + 过肩摔起跳(#7)
+		spr.position = _world_pos(_rpos, _rh + GROUND_LIFT + bob) + u.get("_bear_voff", Vector3.ZERO) + u.get("_atk_voff", Vector3.ZERO) + u.get("_slam_voff", Vector3.ZERO)   # 大熊扑击/砸地 + 近战踏步lunge + 过肩摔起跳(#7)·pos/height 走渲染插值
 		var bs: Vector3 = u.get("spr_base_scale", Vector3.ONE)
 		var gm: float = float(u.get("size_mult", 1.0))   # 体型倍率(石头岩层+2%/层); 从base起算不累积
 		spr.scale = Vector3(bs.x * sq.x * gm, bs.y * sq.y * gm, bs.z)
@@ -20341,10 +20369,10 @@ func _update_world_transforms() -> void:
 				u["_phase_ai_t"] = _t
 				_spawn_phase_afterimage(spr)
 		# 影/环: 跟 XZ 不跟 Y (贴地), 随高度缩小变淡 (从各自基准 scale 起算, 召唤体影更小)
-		var s: float = 1.0 - clampf(u["height"] / 3.0, 0.0, 0.7)
+		var s: float = 1.0 - clampf(_rh / 3.0, 0.0, 0.7)
 		if is_instance_valid(shadow):
 			var base_sc: Vector3 = u.get("shadow_base_scale", SHADOW_BASE)
-			shadow.position = _world_pos(u["pos"], 0.02)
+			shadow.position = _world_pos(_rpos, 0.02)
 			# 影也随 squash 横向张缩 (压扁→影变宽, 拉长→影变窄) 加重量感
 			shadow.scale = Vector3(base_sc.x * s * sq.x * gm, base_sc.y * s * gm, base_sc.z * s)   # 影随体型一起涨
 			shadow.modulate.a = SHADOW_BASE_A * s
@@ -20352,12 +20380,12 @@ func _update_world_transforms() -> void:
 		var contact = u.get("contact", null)
 		if is_instance_valid(contact):
 			var cbase: Vector3 = u.get("contact_base_scale", CONTACT_BASE)
-			var cs: float = 1.0 - clampf(u["height"] / 1.2, 0.0, 1.0)   # 比外影更快随高度收
-			contact.position = _world_pos(u["pos"], 0.028)
+			var cs: float = 1.0 - clampf(_rh / 1.2, 0.0, 1.0)   # 比外影更快随高度收
+			contact.position = _world_pos(_rpos, 0.028)
 			contact.scale = Vector3(cbase.x * cs * sq.x, cbase.y * cs, cbase.z * cs)
 			contact.modulate.a = 0.0   # 隐藏接触核影(用户"只留影子")
 		if is_instance_valid(ring):
-			ring.position = _world_pos(u["pos"], 0.015)
+			ring.position = _world_pos(_rpos, 0.015)
 
 # ============================================================================
 #  §JUICE — Phase4 商业级打击感 (squash&stretch / 闪白 / 顿帧 / 震屏 / idle bob / 粒子)
