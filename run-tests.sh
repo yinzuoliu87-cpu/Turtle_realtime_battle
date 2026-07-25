@@ -33,6 +33,7 @@ frames_for () {
     #   没打 ALL PASS → 判 FAIL(rc=0、致命报错=0), 看着像断言失败, 其实是预算不足。
     verify_pirate_hook)  echo 8000 ;;
     verify_eq_hp_grants) echo 8000 ;;
+    verify_battle_determinism) echo 4000 ;;   # 3 遍 headless 战斗×200帧顺序跑(同种子比指纹)·500帧只够跑 2 遍多 → 被掐断误判FAIL
     *)             echo 500  ;;
   esac
 }
