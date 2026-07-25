@@ -546,6 +546,8 @@ var _lava_sys := LavaSystem.new(self)   # 熔岩带/火山系统(2026-07-25 从�
 var _smolder_sys := SmolderSystem.new(self)   # 阴燃母火系统(2026-07-25 抽出)
 var _dragon_sys := DragonSystem.new(self)   # 龙烈焰系统(2026-07-25 抽出)
 var _star_sys := StarSystem.new(self)   # 星龟技能系统(2026-07-25 抽出)
+var _phoenix_sys := PhoenixSystem.new(self)   # 凤凰·烈焰扇/灼烧系统(2026-07-25 抽出)
+var _headless_sys := HeadlessSystem.new(self)   # 无头骑士·恐惧/镰刀/触须系统(2026-07-25 抽出)
 var _glacier_zones: Array = []            # 冰川带(训龟大师·用户2026-07-23) {from, dir, len, width, until, side}: 站带上的敌-40%移速+受伤+20%
 
 # --- 暂停 + 战斗日志 (R2b, 用户 2026-07-11) ---
@@ -4988,7 +4990,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 			u["_vfxcast_t"] = 0.0
 			match OS.get_environment("VFXCAST"):
 				"lavawave": _lava_sys._lava_volcano_erupt(u)
-				"headless_scythe": _headless_scythe_sweep(u["pos"], Vector2.RIGHT)   # 隔离验证斩击弧光(2026-07-17临时)
+				"headless_scythe": _headless_sys._headless_scythe_sweep(u["pos"], Vector2.RIGHT)   # 隔离验证斩击弧光(2026-07-17临时)
 				"headless_tendrils": _sk_headless_tendrils(u)
 	# 侵入标识(用户2026-07-22 重定: 全身冒红光 + 电流穿身 + 环绕特效; ★血条【依旧是敌方色】不改)
 	#   原为红/绿故障闪(2026-07-15), 绿色会让人误以为它变成了我方 —— 现在统一成红。
@@ -5136,7 +5138,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 					u["state"] = "windup"; u["state_t"] = CAST_WINDUP
 					_anticipate(u)                       # 蓄力形变(前摇)
 				elif u["id"] == "phoenix":
-					_phoenix_flame_channel(u, tgt, delta)               # 凤凰: 持续喷火(VFX+每0.5s伤害)
+					_phoenix_sys._phoenix_flame_channel(u, tgt, delta)               # 凤凰: 持续喷火(VFX+每0.5s伤害)
 					if not u["melee"] and dist < rng * 0.7:
 						_do_move(u, tgt, dist, rng, spd * 0.5, delta)   # 边喷边走位(kite); 喷火时移速×0.5(寻敌时正常速)(用户)
 				elif u["atk_cd"] <= 0.0:
@@ -5382,7 +5384,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 			_hist.append([_t, (float(_hist[-1][1]) if not _hist.is_empty() else 0.0), 0.0])
 			while _hist.size() > 90: _hist.pop_front()
 			u["phx_hist"] = _hist
-			if not _phoenix_build_flame_mesh(u):
+			if not _phoenix_sys._phoenix_build_flame_mesh(u):
 				_fs.visible = false
 				u["phx_hist"] = []
 		if not u["alive"]:
@@ -5603,9 +5605,9 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 			if tgt.get("alive", false):
 				_apply_damage_from(u, tgt, _atk_dmg(u, 0.5, tgt, true), Color("#9bdcff"))   # 额外0.5A魔法
 				_apply_damage_from(u, tgt, int(tgt["hp"] * 0.10), Color("#9bdcff"))          # 额外10%当前生命魔法
-				_headless_soul_bite(tgt)                            # 像素牙齿闭合命中特效
+				_headless_sys._headless_soul_bite(tgt)                            # 像素牙齿闭合命中特效
 			if int(u["headless_soul_stacks"]) <= 0:
-				_headless_scythe(u)                                 # 第3下打完→蓄力→镰刀横扫
+				_headless_sys._headless_scythe(u)                                 # 第3下打完→蓄力→镰刀横扫
 		_on_basic_hit(u, tgt)
 		return
 	if u["id"] == "diamond":                                          # 钻石普攻·切割: 水晶斩弧闪现(伤害走下方 _do_basic·BASIC_ATK.diamond=0.7A+0.6甲+0.6抗)
@@ -8305,125 +8307,6 @@ const PHX_CONE_HALF_DEG := 35.0     # 凤凰喷火扇形半角(全70°)
 const PHX_FLAME_MAG_COEF := 0.2      # 每0.5s tick 魔法系数 ×ATK
 const PHX_FLAME_BURN_COEF := 0.07     # 每0.5s tick 灼烧层系数 ×ATK ★T3实装默认(从熔岩龟抄来). 用户2026-06-30那句"每次普攻加灼烧层0.07ATK"是【对熔岩龟说的】(上文在谈熔岩攻速0.85), 凤凰这里用户原话写的是"每0.5秒造成？魔法伤害并施加？灼烧层"=没给数 → 见附录A
 
-# 凤凰持续喷火 channel (Botworld Flamer式: 一直喷不脉冲; 每0.5s结算伤害; 边喷边kite; 放技能由状态机打断)
-func _phoenix_flame_channel(u: Dictionary, tgt: Dictionary, delta: float) -> void:
-	u["face_right"] = tgt["pos"].x > u["pos"].x      # 朝向目标(原写的是 u["flip_h"] —— 立绘朝向实际由 face_right 驱动, 那行没人读=死写法·2026-07-19)
-	# ★贴地扇形火焰(用户2026-07-15拍板·照兰博Q官方参考): shader扇形(条纹火舌+暗烟裹边+不透明) + 喷嘴白热星芒闪 + 少量火星
-	var want: float = (tgt["pos"] - u["pos"]).angle() if (tgt["pos"] - u["pos"]).length() > 1.0 else float(u.get("phx_aim", 0.0))
-	if _t - float(u.get("phx_aim_t", -9.9)) > 0.4:   # 停喷过0.4s重开→直接对准(不从旧方向扫)
-		u["phx_aim"] = want
-	u["phx_aim"] = lerp_angle(float(u.get("phx_aim", want)), want, clampf(delta * 5.5, 0.0, 1.0))   # 换目标时锥平滑扫过去(~0.3s·参考: 喷射器有惯性非瞬跳)
-	u["phx_aim_t"] = _t
-	_phoenix_sector_indicator(u, tgt)                # 主视觉: 贴地扇形火焰shader(方向=phx_aim)
-	u["phx_core_t"] = float(u.get("phx_core_t", 0.0)) + delta
-	while u["phx_core_t"] >= 0.06:                   # 喷嘴白热星芒闪(参考: 嘴部一小簇白热放射光·非贴脸大图)
-		u["phx_core_t"] -= 0.06
-		_phoenix_nozzle_flash(u, tgt)
-	u["phx_spark_t"] = float(u.get("phx_spark_t", 0.0)) + delta
-	while u["phx_spark_t"] >= 0.09:                  # 少量飞散火星(细节)
-		u["phx_spark_t"] -= 0.09
-		_phoenix_flame_puff(u, tgt)
-	u["phx_burn_t"] = float(u.get("phx_burn_t", 0.0)) + delta
-	while u["phx_burn_t"] >= 0.5:                    # 每0.5s 伤害结算
-		u["phx_burn_t"] -= 0.5
-		_phoenix_flame_cone(u, tgt)
-
-# 喷火伤害结算: 扇形内全部敌人 0.2ATK×(1+攻速) 魔法 + round(0.07ATK) 灼烧层 (用户2026-06-30)
-func _phoenix_flame_cone(u: Dictionary, tgt: Dictionary) -> void:
-	var atk: float = u["atk"]
-	var aspd: float = 1.0 / maxf(0.05, float(u.get("atk_interval", 0.5)))   # 攻速=1/间隔
-	var mag: float = PHX_FLAME_MAG_COEF * atk * (1.0 + aspd)
-	var burn_stacks: int = maxi(1, roundi(atk * PHX_FLAME_BURN_COEF))
-	var origin: Vector2 = u["pos"]
-	var dir: Vector2 = tgt["pos"] - origin
-	if dir.length() < 1.0:
-		return
-	var aim: float = float(u.get("phx_aim", dir.angle()))   # 伤害锥=平滑瞄准角(与视觉锥一致·扫到哪烧到哪)
-	dir = Vector2(cos(aim), sin(aim))
-	var rng: float = float(u.get("atk_range", 400.0))
-	var half_cos: float = cos(deg_to_rad(PHX_CONE_HALF_DEG))
-	for e in _enemies_of(u):
-		if not e.get("alive", false):
-			continue
-		var to_e: Vector2 = e["pos"] - origin
-		var d: float = to_e.length()
-		if d > rng or d < 1.0:
-			continue
-		if dir.dot(to_e / d) < half_cos:
-			continue
-		_apply_damage_from(u, e, _resolve_dmg(u, mag, e, true), Color("#4dabf7"))
-		_apply_dot_stacks(e, "burn", burn_stacks, u)
-		_flash(e, Color("#ff8a3a"))
-
-# 单颗喷火苗: 嘴部喷出→沿锥角向外冲(火舌位移感), 软发光blob叠成顺滑火流, 黄白→橙→红透+边冲边长大
-func _phoenix_nozzle_flash(u: Dictionary, tgt: Dictionary) -> void:   # 喷嘴白热星芒闪(照兰博Q参考: 嘴部一小簇白热放射光·快闪; 替换原贴脸dragon-flame帧=用户2026-07-15"脸上莫名图片")
-	var origin: Vector2 = u["pos"]
-	var cdir: Vector2 = tgt["pos"] - origin
-	if cdir.length() < 1.0:
-		return
-	var _na: float = float(u.get("phx_aim", cdir.angle()))           # 平滑瞄准角(与锥同步扫)
-	cdir = Vector2(cos(_na), sin(_na))
-	var mouth: Vector2 = origin + cdir * 34.0                        # 嘴前方(不贴脸)
-	var glow := Sprite3D.new()                                       # 白热核心光
-	glow.texture = VfxTex._make_fire_glow_tex()
-	glow.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	glow.shaded = false
-	glow.transparent = true
-	glow.pixel_size = 0.008
-	glow.modulate = Color(1.0, 0.98, 0.9, 0.95)
-	glow.scale = Vector3(0.7, 0.7, 0.7)
-	glow.position = _world_pos(mouth, 0.72)
-	_world.add_child(glow)
-	var tw := _reg_tween()
-	tw.set_parallel(true)
-	tw.tween_property(glow, "scale", Vector3(1.25, 1.25, 1.25), 0.1)
-	tw.tween_property(glow, "modulate:a", 0.0, 0.1)
-	tw.chain().tween_callback(glow.queue_free)
-	for i in range(2):                                               # 2道放射白色小光条(星芒感·锥内前向)
-		var sa: float = cdir.angle() + _juice_rng.randf_range(-0.5, 0.5)
-		var endp: Vector2 = mouth + Vector2(cos(sa), sin(sa)) * _juice_rng.randf_range(26.0, 60.0)
-		_bolt_line(mouth, endp, Color(1.0, 0.97, 0.85, 0.9))
-
-func _phoenix_flame_puff(u: Dictionary, tgt: Dictionary) -> void:   # 飞散火星(dragon-flame小火苗动画·喷流上的细节碎火)
-	var origin: Vector2 = u["pos"]
-	var dir: Vector2 = tgt["pos"] - origin
-	if dir.length() < 1.0:
-		return
-	dir = dir.normalized()
-	var rng: float = float(u.get("atk_range", 400.0))
-	var base_ang: float = float(u.get("phx_aim", dir.angle()))   # 平滑瞄准角(与锥同步扫)
-	var half: float = deg_to_rad(PHX_CONE_HALF_DEG)
-	var ang: float = base_ang + _juice_rng.randf_range(-half, half) * 0.65   # 收紧火锥→定向喷流(非散开)
-	var travel: float = _juice_rng.randf_range(rng * 0.55, rng * 1.0)
-	var mouth: Vector2 = origin + Vector2(cos(base_ang), sin(base_ang)) * 24.0
-	var endp: Vector2 = origin + Vector2(cos(ang), sin(ang)) * travel
-	var start_p: Vector2 = mouth.lerp(endp, _juice_rng.randf_range(0.0, 0.5))   # 沿喷流线随机起点→火流从口到尖铺满(非全堆在口部=散篝火)
-	var spr := Sprite3D.new()
-	spr.texture = load("res://assets/sprites/vfx/dragon-flame.png")   # 8帧动画火焰(烧动感·非静态软光点)
-	spr.hframes = 8
-	spr.frame = _juice_rng.randi() % 8
-	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	spr.shaded = false
-	spr.transparent = true
-	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	spr.pixel_size = 0.006
-	spr.modulate = Color(1.0, 0.95, 0.72, 0.95)
-	spr.scale = Vector3(0.4, 0.4, 0.4)
-	spr.position = _world_pos(start_p, 0.95)
-	_world.add_child(spr)
-	var life: float = _juice_rng.randf_range(0.26, 0.4)
-	var hend: float = 0.95 + _juice_rng.randf_range(0.05, 0.5)   # 火星往上飘散
-	var tw := _reg_tween()
-	tw.set_parallel(true)
-	tw.tween_property(spr, "position", _world_pos(endp, hend), life).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)   # 喷出去(先快后慢)
-	tw.tween_property(spr, "scale", Vector3(1.1, 1.1, 1.1), life)      # 边喷边胀
-	tw.tween_property(spr, "modulate", Color(0.95, 0.3, 0.06, 0.0), life)   # 黄白→暗红透
-	tw.tween_method(func(p: float) -> void:                            # 帧循环=火焰跳动(烧动感)
-		if is_instance_valid(spr): spr.frame = int(p * 18.0) % 8
-	, 0.0, 1.0, life)
-	tw.chain().tween_callback(spr.queue_free)
-
-# 灼烧特效 (自设计, 不用回合制): 燃烧单位身上窜升腾软光小火苗 (黄→红透+缩, 边燃边升)
 func _spawn_burn_ember(u: Dictionary) -> void:
 	var pos2d: Vector2 = u["pos"] + Vector2(_juice_rng.randf_range(-14.0, 14.0), _juice_rng.randf_range(-4.0, 8.0))
 	var spr := Sprite3D.new()
@@ -8462,28 +8345,6 @@ func _spawn_poison_bubble(u: Dictionary) -> void:   # 中毒持续视觉(照灼�
 	tw.tween_property(spr, "modulate", Color(0.45, 0.78, 0.12, 0.0), 0.7)
 	tw.chain().tween_callback(spr.queue_free)
 
-# 喷火扇形AOE指示: 贴地 淡橙填充 + 亮橙边轮廓 (边界明确, 跟伤害扇形一致); 持续刷新跟目标, 停喷由_tick_effects隐藏
-func _phoenix_sector_indicator(u: Dictionary, tgt: Dictionary) -> void:
-	var sect = u.get("flame_sector", null)
-	if sect == null or not is_instance_valid(sect):
-		sect = MeshInstance3D.new()
-		sect.mesh = ImmediateMesh.new()
-		var mat := ShaderMaterial.new()
-		mat.shader = load("res://assets/shaders/flame_cone.gdshader")
-		sect.material_override = mat
-		sect.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		_world.add_child(sect)
-		u["flame_sector"] = sect
-	sect.visible = true
-	u["flame_sector_t"] = _t + 0.05
-	(sect.material_override as ShaderMaterial).set_shader_parameter("intensity", 0.9 + 0.1 * sin(_t * 11.0))   # 强度轻跳(烧动)
-	var hist: Array = u.get("phx_hist", [])                       # 喷射历史[t,角,开]: 分环回放→停喷火飞完才灭/转向拖尾(用户2026-07-15"完整运动")
-	hist.append([_t, float(u.get("phx_aim", 0.0)), 1.0])
-	while hist.size() > 90: hist.pop_front()
-	u["phx_hist"] = hist
-	if not _phoenix_build_flame_mesh(u):
-		sect.visible = false
-
 const PHX_FLIGHT_T := 0.3   # 火从嘴飞到锥远端的时间(秒): 历史回放窗口(停喷/转向的残焰按此飞完)
 
 func _phx_hist_sample(hist: Array, tq: float) -> Array:   # 采样喷射历史→[角,开](线性插值·lerp_angle)
@@ -8497,49 +8358,6 @@ func _phx_hist_sample(hist: Array, tq: float) -> Array:   # 采样喷射历史�
 			var f: float = clampf((tq - float(a[0])) / maxf(0.0001, float(b[0]) - float(a[0])), 0.0, 1.0)
 			return [lerp_angle(float(a[1]), float(b[1]), f), lerpf(float(a[2]), float(b[2]), f)]
 	return [float(hist[0][1]), float(hist[0][2])]
-
-func _phoenix_build_flame_mesh(u: Dictionary) -> bool:   # 分环建扇形mesh: 第r环回放r×飞行时间前的(角,开)→火锋推进/停喷外飘/转向弯流全自然涌现; 返回false=全灭
-	var sect = u.get("flame_sector", null)
-	if sect == null or not is_instance_valid(sect): return false
-	var im: ImmediateMesh = sect.mesh
-	im.clear_surfaces()
-	var hist: Array = u.get("phx_hist", [])
-	if hist.is_empty(): return false
-	var R := 12
-	var N := 12
-	var ring_a: Array = []
-	var ring_on: Array = []
-	var any := false
-	for i in range(R + 1):
-		var s: Array = _phx_hist_sample(hist, _t - (float(i) / float(R)) * PHX_FLIGHT_T)
-		ring_a.append(float(s[0])); ring_on.append(float(s[1]))
-		if float(s[1]) > 0.02: any = true
-	if not any: return false
-	var origin: Vector2 = u["pos"]
-	var half: float = deg_to_rad(PHX_CONE_HALF_DEG)
-	var rng: float = float(u.get("atk_range", 400.0)) * 0.92
-	var mouth: Vector2 = origin + Vector2(cos(ring_a[0]), sin(ring_a[0])) * 18.0
-	im.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
-	for i in range(R):
-		for j in range(N):
-			var f0: float = float(j) / float(N)
-			var f1: float = float(j + 1) / float(N)
-			var v00: Vector2 = _phx_fan_pt(mouth, ring_a[i], half, rng, float(i) / float(R), f0)
-			var v01: Vector2 = _phx_fan_pt(mouth, ring_a[i], half, rng, float(i) / float(R), f1)
-			var v10: Vector2 = _phx_fan_pt(mouth, ring_a[i + 1], half, rng, float(i + 1) / float(R), f0)
-			var v11: Vector2 = _phx_fan_pt(mouth, ring_a[i + 1], half, rng, float(i + 1) / float(R), f1)
-			var c0 := Color(1, 1, 1, ring_on[i])
-			var c1 := Color(1, 1, 1, ring_on[i + 1])
-			var r0: float = float(i) / float(R)
-			var r1: float = float(i + 1) / float(R)
-			im.surface_set_color(c0); im.surface_set_uv(Vector2(f0, r0)); im.surface_add_vertex(_world_pos(v00, 0.12))
-			im.surface_set_color(c1); im.surface_set_uv(Vector2(f0, r1)); im.surface_add_vertex(_world_pos(v10, 0.12))
-			im.surface_set_color(c1); im.surface_set_uv(Vector2(f1, r1)); im.surface_add_vertex(_world_pos(v11, 0.12))
-			im.surface_set_color(c0); im.surface_set_uv(Vector2(f0, r0)); im.surface_add_vertex(_world_pos(v00, 0.12))
-			im.surface_set_color(c1); im.surface_set_uv(Vector2(f1, r1)); im.surface_add_vertex(_world_pos(v11, 0.12))
-			im.surface_set_color(c0); im.surface_set_uv(Vector2(f1, r0)); im.surface_add_vertex(_world_pos(v01, 0.12))
-	im.surface_end()
-	return true
 
 func _phx_fan_pt(mouth: Vector2, center_ang: float, half: float, rng: float, r: float, f: float) -> Vector2:   # 扇形上(径向r,角向f)的2D点(环各自的历史中心角→弯流)
 	var aa: float = center_ang - half + 2.0 * half * f
@@ -8569,45 +8387,8 @@ func _sk_phoenix_scald(u: Dictionary, tgt) -> void:
 	tw.tween_property(fb, "scale", Vector3(1.9, 1.9, 1.9), 0.30)             # 蓄力(火球长大)
 	tw.parallel().tween_property(fb, "modulate", Color(1.0, 0.40, 0.12, 1.0), 0.30)
 	tw.tween_method(_scald_arc.bind(fb, mouth, tgt_pos), 0.0, 1.0, 0.42)        # 投掷
-	tw.tween_callback(_phoenix_scald_hit.bind(u, tgt, fb))
+	tw.tween_callback(_phoenix_sys._phoenix_scald_hit.bind(u, tgt, fb))
 
-func _phoenix_scald_hit(u: Dictionary, tgt, fb) -> void:
-	if is_instance_valid(fb):
-		fb.queue_free()
-	if tgt == null or not tgt.get("alive", false):
-		return
-	# 封板: 火球命中先破50%护盾(破盾碎裂)→再落1.5A魔法穿透→灼烧+攻防抗各-15%+治疗削减
-	_apply_skill_extras(u, tgt, {"shieldBreak": 0.5, "atkDown": 0.15, "defDown": 0.15, "mrDown": 0.15, "healCut": 0.5})
-	_apply_damage_from(u, tgt, _atk_dmg(u, 1.5, tgt, true), Color("#4dabf7"))   # 1.5ATK魔法(打已破的盾, 更多穿透到血)
-	_apply_dot_stacks(tgt, "burn", maxi(1, roundi(float(u["atk"]) * 1.0)), u)   # 1ATK灼烧层
-	_flash(tgt, Color("#ff8a3a"))
-	_phoenix_flame_burst(tgt["pos"])
-
-# 火焰爆发: 命中点炸开一圈软光火苗 + 亮环
-func _phoenix_flame_burst(pos2d: Vector2) -> void:
-	_skill_ring(pos2d, Color(1.0, 0.55, 0.2, 0.7), 52.0)
-	for i in range(12):
-		var ang: float = TAU * float(i) / 12.0 + _juice_rng.randf_range(-0.2, 0.2)
-		var d: float = _juice_rng.randf_range(10.0, 46.0)
-		var p: Vector2 = pos2d + Vector2(cos(ang), sin(ang)) * d
-		var spr := Sprite3D.new()
-		spr.texture = VfxTex._make_fire_glow_tex()
-		spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		spr.shaded = false
-		spr.transparent = true
-		spr.pixel_size = 0.009
-		spr.modulate = Color(1.0, 0.8, 0.4, 0.95)
-		spr.scale = Vector3(0.5, 0.5, 0.5)
-		spr.position = _world_pos(pos2d, 0.7)
-		_world.add_child(spr)
-		var tw := _reg_tween()
-		tw.set_parallel(true)
-		tw.tween_property(spr, "position", _world_pos(p, 0.9 + _juice_rng.randf_range(0.0, 0.4)), 0.34)
-		tw.tween_property(spr, "scale", Vector3(1.3, 1.3, 1.3), 0.34)
-		tw.tween_property(spr, "modulate", Color(0.9, 0.25, 0.05, 0.0), 0.34)
-		tw.chain().tween_callback(spr.queue_free)
-
-# 火球抛物线飞行 (t:0→1; 高度 lerp + sin峰=抛起弧线) + 火焰拖尾
 func _scald_arc(t: float, fb, p0: Vector2, p1: Vector2) -> void:
 	if not is_instance_valid(fb):
 		return
@@ -9446,7 +9227,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	if u["id"] == "headless" and u["hp"] <= 0.0 and not u.get("undead_used", false):
 		u["undead_used"] = true; u["deathfloor_until"] = _t + 5.0
 		_float_text(u["pos"] + Vector2(0, -64), "亡灵!", Color("#9b6bff"))
-		_headless_undead_vfx(u)                                    # 免死金骨光环5秒(2026-07-17)
+		_headless_sys._headless_undead_vfx(u)                                    # 免死金骨光环5秒(2026-07-17)
 	if _t < float(u.get("deathfloor_until", 0.0)):
 		u["hp"] = maxf(1.0, u["hp"])
 	var _dt: String = "true" if raw else _last_dmg_type   # 飘字类型=真实伤害类型(_resolve_dmg设的_last_dmg_type·即时伤害对); 远程弹道在飞时会被别的伤害覆写→弹道在_step_projectiles命中前用捕获的pr.dtype还原(见那里)
@@ -13298,26 +13079,6 @@ func _angel_judgment_pillar(pos2d: Vector2) -> void:
 	tp.chain().tween_property(pil, "modulate:a", 0.0, 0.22)
 	tp.chain().tween_callback(pil.queue_free)
 
-func _headless_fear_mark(o: Dictionary) -> void:               # 恐惧标记: 头顶紫骷髅高频颤抖~3秒(区别幽灵诅咒的静浮·2026-07-17)
-	# 用户2026-07-17: 中招敌头顶留黑紫雾直到控制结束(~3s)才散(废颤抖骷髅标记)
-	var mk := Sprite3D.new()
-	mk.texture = VfxTex._make_fire_glow_tex()
-	mk.billboard = BaseMaterial3D.BILLBOARD_ENABLED; mk.shaded = false; mk.transparent = true
-	mk.pixel_size = (44.0 * WS) / 128.0
-	mk.modulate = Color(0.32, 0.1, 0.5, 0.0)
-	mk.position = _world_pos(o["pos"], 2.1)
-	_world.add_child(mk)
-	var oref: Dictionary = o
-	_follow_vfx.append({"spr": mk, "unit": o, "h": 2.1})        # 跟随单位(死亡自动清)
-	var t := _reg_tween()
-	t.tween_property(mk, "modulate:a", 0.85, 0.15)              # 现身
-	t.tween_method(func(q: float) -> void:                      # 雾团轻缓浮动(控制期一直挂)
-		if is_instance_valid(mk):
-			mk.pixel_size = ((42.0 + sin(q * 6.0) * 4.0) * WS) / 128.0
-	, 0.0, 1.0, 2.55)
-	t.tween_property(mk, "modulate:a", 0.0, 0.35)               # 控制结束->缓散
-	t.tween_callback(mk.queue_free)
-
 func _sk_headless_fear(u: Dictionary, _tgt = null) -> void:      # 无头·恐吓(封板·110龟能): 半径200码内所有敌 定身+缴械+锁技3秒(蛋免控·无伤害); 2026-07-17演出: 咆哮紫黑气爆+三道恐惧波纹+紫雾盘+颤抖恐惧标记(删技能名飘字=UI规矩)
 	var cx: Vector2 = u["pos"]
 	var burst := Sprite3D.new()                                  # 咆哮: 自身紫黑气爆
@@ -13400,104 +13161,7 @@ func _sk_headless_fear(u: Dictionary, _tgt = null) -> void:      # 无头·恐�
 		if o["pos"].distance_to(cx) > 200.0: continue
 		if o.get("_eggImmune", false): continue
 		_stun(o, 3.0, "_sk_headless_fear")
-		_headless_fear_mark(o)
-
-func _headless_tendril_shoot(center: Vector2, dir: Vector2, elev: float, length: float, big: bool, erupt_delay: float, hold_time: float) -> void:   # 万千触须·单根(用户2026-07-17"上半球三维爆发"): 从龟身球心沿三维方向(方位dir+仰角elev)伸出→抽打→缩回; 手动basis让长轴对准三维方向+面朝相机(非billboard)
-	var vn: String = ["tendril-a", "tendril-b", "tendril-c"][randi() % 3]
-	var tex: Texture2D = load("res://assets/sprites/vfx/%s.png" % vn)
-	if tex == null or _cam == null: return
-	var tw_px: int = maxi(1, tex.get_width())
-	var th_px: int = maxi(1, tex.get_height())
-	var thick: float = randf_range(88.0, 128.0) if big else randf_range(60.0, 92.0)   # 粗度×2(用户2026-07-17仅视觉)
-	var ps: float = (thick * WS) / float(tw_px)
-	var dir3d := Vector3(dir.x * cos(elev), sin(elev), dir.y * cos(elev)).normalized()   # 三维朝向(水平dir×cos仰 + 上×sin仰)
-	var start_w := _world_pos(center, 0.55)                             # 球心=龟身
-	var full_len_w: float = length * WS                                 # 触须世界长度
-	var full_yscale: float = full_len_w / maxf(0.001, float(th_px) * ps)   # scale.y伸到full_len
-	# 手动朝向: 局部Y(长轴/尖)对准dir3d, 面朝相机(绕长轴转到正对镜头)
-	var to_cam := (_cam.global_position - start_w).normalized()
-	var xaxis := dir3d.cross(to_cam)
-	if xaxis.length() < 0.02: xaxis = dir3d.cross(Vector3.RIGHT)
-	xaxis = xaxis.normalized()
-	var zaxis := xaxis.cross(dir3d).normalized()
-	var spk := Sprite3D.new()
-	spk.texture = tex
-	spk.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-	spk.shaded = false; spk.transparent = true
-	spk.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	spk.offset = Vector2(0, float(th_px) * 0.5)                         # 底边=根锚在球心(从根往尖伸)
-	spk.flip_h = randf() < 0.5
-	spk.modulate = Color(1.5, 1.25, 1.25, 0.0)
-	spk.pixel_size = ps
-	spk.position = start_w
-	spk.basis = Basis(xaxis, dir3d, zaxis)                             # 列: x宽/ y长轴=朝向/ z法线朝镜头
-	spk.scale = Vector3(1.0, 0.01, 1.0)
-	_world.add_child(spk)
-	var st := _reg_tween()
-	st.tween_interval(erupt_delay)
-	st.tween_callback(func() -> void:                                  # 伸出瞬间根部暗红迸溅(球心)
-		var rg := Sprite3D.new()
-		rg.texture = VfxTex._make_fire_glow_tex()
-		rg.billboard = BaseMaterial3D.BILLBOARD_ENABLED; rg.shaded = false; rg.transparent = true
-		rg.pixel_size = (randf_range(14.0, 24.0) * WS) / 128.0
-		rg.modulate = Color(0.55, 0.12, 0.2, 0.55)
-		rg.position = start_w
-		_world.add_child(rg)
-		var rt := _reg_tween()
-		rt.tween_property(rg, "modulate:a", 0.0, 0.4)
-		rt.tween_callback(rg.queue_free))
-	st.tween_method(func(q: float) -> void:                            # 从球心沿三维方向伸出(scale.y生长·根不动)
-		if not is_instance_valid(spk): return
-		spk.scale.y = maxf(0.01, full_yscale * q)
-		spk.modulate.a = clampf(q / 0.18, 0.0, 1.0)
-	, 0.0, 1.0, 0.26).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	st.tween_interval(maxf(0.1, hold_time))                            # 到位停顿抽打
-	st.tween_method(func(q: float) -> void:                            # 缩回球心
-		if not is_instance_valid(spk): return
-		spk.scale.y = maxf(0.01, full_yscale * (1.0 - q))
-		spk.modulate.a = maxf(0.0, 1.0 - q * 0.5)
-	, 0.0, 1.0, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	st.tween_callback(spk.queue_free)
-
-func _headless_reap_soul(from_pos: Vector2, u: Dictionary) -> void:   # 镰刀收割: 从命中敌扯出灵魂(紫白魂气)飞回无头龟(用户2026-07-17 F收割感)
-	var soul := Sprite3D.new()
-	soul.texture = load("res://assets/sprites/vfx/ghost-wisp.png")
-	if soul.texture == null: soul.texture = VfxTex._make_fire_glow_tex()
-	soul.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	soul.billboard = BaseMaterial3D.BILLBOARD_ENABLED; soul.shaded = false; soul.transparent = true
-	soul.pixel_size = (46.0 * WS) / float(maxi(1, soul.texture.get_height()))
-	soul.modulate = Color(0.85, 0.7, 1.0, 0.0)
-	soul.position = _world_pos(from_pos, 0.6)
-	_world.add_child(soul)
-	var uref: Dictionary = u
-	var start: Vector2 = from_pos
-	var st := _reg_tween()
-	st.tween_property(soul, "modulate:a", 0.95, 0.1)           # 从敌身升起
-	st.parallel().tween_property(soul, "position", _world_pos(from_pos, 1.3), 0.15)
-	st.chain().tween_method(func(q: float) -> void:            # 飞回无头龟(活追踪)
-		if is_instance_valid(soul) and uref.get("alive", false):
-			soul.position = _world_pos(start.lerp(uref["pos"], q), lerpf(1.3, 0.9, q))
-	, 0.0, 1.0, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	st.tween_property(soul, "modulate:a", 0.0, 0.1)
-	st.tween_callback(soul.queue_free)
-
-func _headless_drain_dot(from_pos: Vector2, u: Dictionary) -> void:   # 触须吸血: 红光珠从命中者飞回无头(22%吸血可视)
-	var dot := Sprite3D.new()
-	dot.texture = VfxTex._make_fire_glow_tex()
-	dot.billboard = BaseMaterial3D.BILLBOARD_ENABLED; dot.shaded = false; dot.transparent = true
-	dot.pixel_size = 0.005
-	dot.modulate = Color(1.0, 0.25, 0.35, 0.9)
-	var start: Vector2 = from_pos + Vector2(randf_range(-20.0, 20.0), randf_range(-20.0, 20.0))
-	dot.position = _world_pos(start, 0.6)
-	_world.add_child(dot)
-	var uref: Dictionary = u
-	var dt := _reg_tween()
-	dt.tween_method(func(q: float) -> void:
-		if is_instance_valid(dot) and uref.get("alive", false):
-			dot.position = _world_pos(start.lerp(uref["pos"], q), 0.6)
-	, 0.0, 1.0, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	dt.tween_property(dot, "modulate:a", 0.0, 0.1)
-	dt.tween_callback(dot.queue_free)
+		_headless_sys._headless_fear_mark(o)
 
 func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万千触须(封板·160龟能·虐杀原形毁灭者Q1): 全场无差别触须·伸0.3s→停→收3.0s·自身硬控·+22%吸血; 2026-07-17演出: 起手紫黑气爆+裂纹环→触须8×5网格布满全场(Q9"特效得布满")波前由近及远爆出→痉挛定格→3.0s撕扯缩回+吸血红珠回流
 	_stun(u, 4.0, "_sk_headless_tendrils", true)   # 自身硬控全程(施法动作·亡灵拉全场自己也搭进去)
@@ -13556,7 +13220,7 @@ func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万�
 		var elev: float = deg_to_rad(4.0 + 82.0 * e01)           # 仰角: 大量近平射→少数冲天
 		var L: float = randf_range(340.0, 860.0) * 1.2 * (1.0 - 0.25 * e01)   # 长度: 低角度更长+20%(用户2026-07-17仅视觉·布满竞技场)
 		var dly: float = randf_range(0.0, 0.14)                  # 错峰爆出(炸开感)
-		_headless_tendril_shoot(center, od, elev, L, randf() < 0.4, dly, randf_range(2.0, 2.4))
+		_headless_sys._headless_tendril_shoot(center, od, elev, L, randf() < 0.4, dly, randf_range(2.0, 2.4))
 	var pass_fn := func():                                      # 伸/穿过(≈0.3s铺满): 无差别 敌1A+眩晕 / 友0.5A+眩晕(刷新不叠)
 		for o in _units:
 			if not o.get("alive", false) or is_same(o, uu): continue
@@ -13566,8 +13230,8 @@ func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万�
 			if not o.get("_eggImmune", false):
 				_stun(o, 2.7, "_sk_headless_tendrils", true)   # 眩晕持续到脱离
 				o["_tendril_stun"] = true
-			_headless_tendril_shoot(center, ((o["pos"] as Vector2) - center).normalized() if ((o["pos"] as Vector2) - center).length() > 1.0 else Vector2.RIGHT, deg_to_rad(18.0), maxf(90.0, (o["pos"] as Vector2).distance_to(center)), true, 0.0, 2.4)   # 命中者: 从龟身甩一根粗触须缠住
-			if _is_hostile(uu, o): _headless_drain_dot(o["pos"], uu)   # 吸血红珠回流
+			_headless_sys._headless_tendril_shoot(center, ((o["pos"] as Vector2) - center).normalized() if ((o["pos"] as Vector2) - center).length() > 1.0 else Vector2.RIGHT, deg_to_rad(18.0), maxf(90.0, (o["pos"] as Vector2).distance_to(center)), true, 0.0, 2.4)   # 命中者: 从龟身甩一根粗触须缠住
+			if _is_hostile(uu, o): _headless_sys._headless_drain_dot(o["pos"], uu)   # 吸血红珠回流
 	_pending_shots.append({"delay": 0.3, "fn": pass_fn, "src": u})
 	var detach_fn := func():                                    # 收/脱离(≈3.0s): 无差别 敌1.5A / 友0.5A + 回复行动(解眩晕)
 		_shake(0.12)
@@ -13580,7 +13244,7 @@ func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万�
 			if o.get("_tendril_stun", false):
 				o["_tendril_stun"] = false
 				o["stun_until"] = _t   # 解眩晕→回复行动
-			if _is_hostile(uu, o): _headless_drain_dot(o["pos"], uu)   # 脱离撕扯再吸一口
+			if _is_hostile(uu, o): _headless_sys._headless_drain_dot(o["pos"], uu)   # 脱离撕扯再吸一口
 	_pending_shots.append({"delay": 3.0, "fn": detach_fn, "src": u})
 
 func _sk_headless_soul_charge(u: Dictionary) -> void:           # 无头·灵魂打击(机制大改·用户2026-07-17拍板·80龟能): 触发→下3次攻击强化(射程+60·各额外0.5A+10%当前HP魔法·牙齿闭合)→第3下落地蓄力→镰刀横扫(100°300码击退300+幽灵诅咒5s·Camille W); 全程锁龟能, 扫完解锁清零重充
@@ -13609,156 +13273,7 @@ func _sk_headless_soul_charge(u: Dictionary) -> void:           # 无头·灵魂
 	, 0.0, 1.0, 0.9)
 	_skill_ring(u["pos"], Color(0.6, 0.23, 0.7, 0.5), 44.0)
 	_pending_shots.append({"delay": 7.0, "fn": func():            # 兜底: 7秒内没打完3下(无敌/被控)→强制镰刀收尾防永锁龟能
-		if int(uref.get("headless_soul_stacks", 0)) > 0: _headless_scythe(uref), "src": u})
-
-func _headless_soul_bite(tgt: Dictionary) -> void:              # 灵魂强化命中·像素牙齿闭合(用户2026-07-17"牙齿闭合闭合时为命中"): 张口->竖压咬合(=命中帧)+白紫咬光+牙屑迸溅+轻震
-	var pos: Vector2 = tgt["pos"]
-	var h: float = float(tgt.get("height", 0.0)) + 0.85
-	var jaw := Sprite3D.new()
-	jaw.texture = load("res://assets/sprites/vfx/soul-jaw-open.png")
-	jaw.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	jaw.billboard = BaseMaterial3D.BILLBOARD_ENABLED; jaw.shaded = false; jaw.transparent = true
-	jaw.pixel_size = (96.0 * WS) / 64.0
-	jaw.modulate = Color(1, 1, 1, 0.0)
-	jaw.position = _world_pos(pos, h)
-	jaw.scale = Vector3(1.15, 1.4, 1.0)                          # 张口(竖向拉高)
-	_world.add_child(jaw)
-	var tref: Dictionary = tgt
-	var bite := func() -> void:                                 # 咬合帧=命中: 换合口贴图+咬光+牙屑+火花+震
-		if is_instance_valid(jaw): jaw.texture = load("res://assets/sprites/vfx/soul-jaw-closed.png")
-		_hit_spark(tref)
-		var g := Sprite3D.new()                                 # 白紫咬光
-		g.texture = VfxTex._make_fire_glow_tex()
-		g.billboard = BaseMaterial3D.BILLBOARD_ENABLED; g.shaded = false; g.transparent = true
-		g.pixel_size = (66.0 * WS) / 128.0
-		g.modulate = Color(0.95, 0.85, 1.0, 0.9)
-		g.position = _world_pos(pos, h)
-		g.scale = Vector3.ONE * 0.5
-		_world.add_child(g)
-		var ggt := _reg_tween(); ggt.set_parallel(true)
-		ggt.tween_property(g, "scale", Vector3.ONE * 1.6, 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		ggt.tween_property(g, "modulate:a", 0.0, 0.22)
-		ggt.chain().tween_callback(g.queue_free)
-		var stex := VfxTex._make_star_texture()
-		for si in range(4):                                     # 牙屑迸溅(星屑代牙尖)
-			var sp := Sprite3D.new()
-			sp.texture = stex
-			sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; sp.shaded = false; sp.transparent = true
-			sp.pixel_size = 0.005
-			sp.modulate = Color(0.9, 0.8, 1.0, 1.0)
-			sp.position = _world_pos(pos, h)
-			_world.add_child(sp)
-			var sa: float = TAU * float(si) / 4.0 + 0.5
-			var spt := _reg_tween(); spt.set_parallel(true)
-			spt.tween_property(sp, "position", _world_pos(pos + Vector2(cos(sa), sin(sa)) * 40.0, h + randf_range(-0.2, 0.2)), 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-			spt.tween_property(sp, "modulate:a", 0.0, 0.3)
-			spt.chain().tween_callback(sp.queue_free)
-		_shake(0.04)
-	var t := _reg_tween()
-	t.tween_property(jaw, "modulate:a", 1.0, 0.06)              # 张口现身
-	t.tween_callback(bite)
-	t.tween_property(jaw, "scale", Vector3(0.95, 0.42, 1.0), 0.07).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)   # 竖向压扁=咬死(命中)
-	t.tween_interval(0.08)
-	t.tween_property(jaw, "modulate:a", 0.0, 0.13)
-	t.tween_callback(jaw.queue_free)
-
-func _headless_knock_out(o: Dictionary, dir: Vector2, dist: float) -> void:   # 镰刀击退: 从龟朝外抛飞dist码(抛物+滞空拉·空间换位先例)
-	if not o.get("alive", false): return
-	var from: Vector2 = o["pos"]
-	var dest := Vector2(clampf(from.x + dir.x * dist, ARENA.position.x, ARENA.end.x), clampf(from.y + dir.y * dist, ARENA.position.y, ARENA.end.y))
-	var oref: Dictionary = o
-	if not o.get("airborne", false) and not o.get("_knock_immune", false):   # 免击飞(017不沉之锚): 直接设airborne会绕过_knockback的守卫(用户2026-07-19"修吧")
-		o["airborne"] = true; o["vy"] = 6.0; o["vx"] = 0.0; o["vz"] = 0.0   # 竖直起跳~0.55s
-	var mt := _reg_tween()
-	mt.tween_method(func(q: float) -> void:
-		if oref.get("alive", false) and oref.get("airborne", false): oref["pos"] = from.lerp(dest, q)
-	, 0.0, 1.0, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-
-func _headless_scythe_telegraph(center: Vector2, aim: Vector2, dur: float) -> void:   # 镰刀预警扇形(Camille W式): 100度锥填充+外缘半环高亮(300码/0.25s)
-	var half := deg_to_rad(50.0)
-	var cone := Sprite3D.new()                                 # 实心扇形填充(Camille W式·apex在龟身)
-	cone.texture = VfxTex._make_cone_tex()
-	cone.billboard = BaseMaterial3D.BILLBOARD_DISABLED; cone.axis = Vector3.AXIS_Y
-	cone.shaded = false; cone.transparent = true
-	cone.modulate = Color(0.62, 0.35, 1.0, 0.0)
-	cone.pixel_size = (300.0 * WS) / 128.0                     # apex在贴图中心→半径=c(128px)映射300码
-	cone.rotation.y = -atan2(aim.y, aim.x) - PI * 0.5          # 扇形朝上→转到aim方向
-	cone.position = _world_pos(center, 0.055)
-	_world.add_child(cone)
-	var cnt := _reg_tween()
-	cnt.tween_property(cone, "modulate:a", 0.9, 0.1)
-	cnt.tween_interval(maxf(0.02, dur - 0.2))
-	cnt.tween_property(cone, "modulate:a", 0.0, 0.12)
-	cnt.tween_callback(cone.queue_free)
-	for sgn in [-1.0, 1.0]:                                     # 2道边缘亮线(锥界)
-		var d2 := aim.rotated(half * sgn)
-		_beam_vfx("res://assets/sprites/vfx/fx-trail.png", center, center + d2 * 300.0, 26.0, Color(0.85, 0.55, 1.0, 0.98), dur, 0.07)
-	var glow := VfxTex._make_fire_glow_tex()
-	for i2 in range(19):                                        # 外缘弧线(300码/外圈加成感·连密)
-		var a3: float = -half + 2.0 * half * float(i2) / 18.0
-		var pd := center + aim.rotated(a3) * 300.0
-		var dot := Sprite3D.new()
-		dot.texture = glow
-		dot.billboard = BaseMaterial3D.BILLBOARD_ENABLED; dot.shaded = false; dot.transparent = true
-		dot.pixel_size = 0.012
-		dot.modulate = Color(0.95, 0.7, 1.0, 1.0)
-		dot.position = _world_pos(pd, 0.2)
-		_world.add_child(dot)
-		var dt := _reg_tween()
-		dt.tween_interval(dur)
-		dt.tween_property(dot, "modulate:a", 0.0, 0.12)
-		dt.tween_callback(dot.queue_free)
-
-func _headless_scythe(u: Dictionary) -> void:                  # 镰刀横扫(Camille W式/用户2026-07-17): 撤紫焰+恢复射程->蓄力0.35s->预警扇形0.25s->镰刀扫过+结算(100度300码敌击退300从龟朝外+幽灵诅咒5s)->解锁龟能
-	var uu: Dictionary = u
-	var sspr = u.get("_soul_spr", null)                        # 撤紫焰tell
-	if sspr is Sprite3D and is_instance_valid(sspr): (sspr as Sprite3D).queue_free()
-	u["_soul_spr"] = null
-	u["headless_soul_stacks"] = 0
-	u["atk_range"] = float(u.get("headless_soul_base_range", 100.0))   # 恢复基础射程(强化窗口结束)
-	var tgt = _nearest_enemy(u)
-	var aim: Vector2 = ((tgt["pos"] - u["pos"]) as Vector2).normalized() if tgt != null else (Vector2.RIGHT if u.get("face_right", true) else Vector2.LEFT)
-	if aim.length() < 0.5: aim = Vector2.RIGHT
-	u["_scythe_aim"] = aim
-	u["_slam"] = true                                          # 蓄力期定身(举镰)
-	var raise := Sprite3D.new()                                # 蓄力: 头顶镰刀抬起+紫光聚
-	raise.texture = load("res://assets/sprites/vfx/soul-scythe.png")
-	raise.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	raise.billboard = BaseMaterial3D.BILLBOARD_ENABLED; raise.shaded = false; raise.transparent = true
-	raise.pixel_size = (150.0 * WS) / 96.0
-	raise.modulate = Color(1, 1, 1, 0.0)
-	raise.position = _world_pos(u["pos"], 1.6)
-	_world.add_child(raise)
-	var rt := _reg_tween()
-	raise.pixel_size = (240.0 * WS) / 96.0   # 蓄力镰刀也加大
-	rt.tween_property(raise, "modulate:a", 1.0, 0.3)
-	rt.tween_property(raise, "position", _world_pos(u["pos"], 2.5), 0.35)   # 举起蓄力(放慢)
-	rt.tween_interval(0.4)
-	rt.tween_property(raise, "modulate:a", 0.0, 0.15)
-	rt.tween_callback(raise.queue_free)
-	_pending_shots.append({"delay": 0.55, "fn": func():        # 蓄力后->预警扇形(节奏放慢)
-		if uu.get("alive", false): _headless_scythe_telegraph(uu["pos"], uu.get("_scythe_aim", Vector2.RIGHT), 0.5), "src": u})
-	_pending_shots.append({"delay": 1.05, "fn": func():        # 预警后->镰刀扫过+结算(节奏放慢·蓄力0.55+预警0.5)
-		var aim2: Vector2 = uu.get("_scythe_aim", Vector2.RIGHT)
-		uu["_slam"] = false                                    # 解定身
-		uu["energy_lock_until"] = _t                           # 解锁龟能(清零重充)
-		if not uu.get("alive", false): return
-		_headless_scythe_sweep(uu["pos"], aim2)
-		_shake(0.13); _add_hitstop(JUICE_HITSTOP_KNOCK)
-		var half2 := deg_to_rad(50.0)
-		for o in _enemies_of(uu):
-			if not o.get("alive", false): continue
-			var to: Vector2 = (o["pos"] as Vector2) - (uu["pos"] as Vector2)
-			if to.length() > 300.0: continue
-			if to.length() < 1.0: continue
-			if absf(aim2.angle_to(to.normalized())) > half2: continue   # 100度锥(半角50度)
-			_hit_spark(o)
-			if not o.get("_eggImmune", false):
-				_headless_knock_out(o, to.normalized(), 300.0)     # 击退300码从龟朝外
-				_add_dot(o, "curse", (o["maxHp"] as float) * 0.05, 5.0, uu)   # 幽灵式诅咒5秒(每秒5%maxHp真伤)
-				_headless_fear_mark(o)                             # 紫标记示意中咒
-				_headless_reap_soul(o["pos"], uu)                  # 收割感: 从敌身扯灵魂飞回无头龟(用户2026-07-17 F)
-	, "src": u})
+		if int(uref.get("headless_soul_stacks", 0)) > 0: _headless_sys._headless_scythe(uref), "src": u})
 
 func _scythe_face_screen(scythe: Sprite3D, center: Vector2, aim: Vector2, theta: float) -> void:   # 镰刀朝向·手动basis=面朝相机+刀锋对齐地面径向(用户2026-07-17): billboard会吞掉node旋转→改手动: 法线朝相机(正面可读), 局部up=柄尾→地面径向投影到⊥相机平面(刀锋随θ在屏幕内转=挥砍·且与地面扇形咬合)
 	if not is_instance_valid(scythe) or _cam == null: return
@@ -13772,85 +13287,6 @@ func _scythe_face_screen(scythe: Sprite3D, center: Vector2, aim: Vector2, theta:
 	var xaxis := up.cross(to_cam).normalized()
 	scythe.basis = Basis(xaxis, up, to_cam)                    # 列: x宽 / y刀锋朝向 / z法线朝相机
 	scythe.position = grip
-
-func _headless_scythe_sweep(center: Vector2, aim: Vector2) -> void:   # 镰刀横扫·柄尾钉龟身+刀身billboard绕柄尾转100度(用户2026-07-17终版·Camille W): rotation.z跟随投影后的场内径向→刀锋始终咬合地面扇形当前扫向(非平面乱转)→贴地宽亮刀光累积铺满100度footprint(等距主角)→收势整片白闪+顿帧震
-	if _cam == null: return
-	var half := deg_to_rad(50.0)
-	var a0 := -deg_to_rad(60.0)                                # 起手刀锋后引(蓄势超-50度)
-	var a1 := half                                            # 收势到+50度
-	var grip := _world_pos(center, 0.5)                        # 柄尾支点=龟握持点(全程钉死)
-	var blade_len := 250.0                                     # 镰刀视觉长度(billboard高·大而醒目)
-	var tex: Texture2D = load("res://assets/sprites/vfx/soul-scythe-2.png")
-	if tex == null: tex = load("res://assets/sprites/vfx/soul-scythe.png")
-	var th_px: int = maxi(1, (tex as Texture2D).get_height())
-	var ps: float = (blade_len * WS) / float(th_px)
-	# —— 地面扇形footprint(等距主角·随扫渐亮=扫过区被点亮) ——
-	var cone := Sprite3D.new()
-	cone.texture = VfxTex._make_cone_tex()
-	cone.billboard = BaseMaterial3D.BILLBOARD_DISABLED; cone.axis = Vector3.AXIS_Y
-	cone.shaded = false; cone.transparent = true
-	cone.modulate = Color(0.7, 0.4, 1.1, 0.0)
-	cone.pixel_size = (300.0 * WS) / 128.0
-	cone.rotation.y = -atan2(aim.y, aim.x) - PI * 0.5
-	cone.position = _world_pos(center, 0.05)
-	cone.no_depth_test = true; cone.render_priority = 16
-	_world.add_child(cone)
-	# —— 镰刀本体(billboard·柄尾锚origin·rotation.z绕柄尾扫) ——
-	var scythe := Sprite3D.new()
-	scythe.texture = tex
-	scythe.billboard = BaseMaterial3D.BILLBOARD_DISABLED     # 手动basis控朝向(billboard会吞node旋转→刀不转)
-	scythe.shaded = false; scythe.transparent = true
-	scythe.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	scythe.offset = Vector2(0, float(th_px) * 0.5)           # 底边(柄尾)锚在origin→绕柄尾转
-	scythe.no_depth_test = true; scythe.render_priority = 44
-	scythe.modulate = Color(1.1, 0.95, 1.35, 0.0)
-	scythe.pixel_size = ps
-	scythe.position = grip
-	_scythe_face_screen(scythe, center, aim, a0)            # 现身于后引角(蓄势)
-	_world.add_child(scythe)
-	var trailtex: Texture2D = load("res://assets/sprites/vfx/fx-trail.png")
-	var etw: int = maxi(1, (trailtex as Texture2D).get_width()) if trailtex != null else 1
-	var eth: int = maxi(1, (trailtex as Texture2D).get_height()) if trailtex != null else 1
-	var mt := _reg_tween(); mt.set_parallel(true)
-	mt.tween_property(scythe, "modulate:a", 1.0, 0.05)      # 刀身蓄势现身
-	mt.tween_property(cone, "modulate:a", 0.22, 0.06)       # 扇形起底(预示扫向)
-	# 挥砍: θ从a0快挥到a1(0.16s·慢起加速)·每帧billboard旋转+贴地宽亮刀光累积铺满扇形(footprint为主角)
-	var swt := _reg_tween()
-	swt.tween_method(func(q: float) -> void:
-		if not is_instance_valid(scythe): return
-		var theta: float = lerpf(a0, a1, q)
-		_scythe_face_screen(scythe, center, aim, theta)
-		if is_instance_valid(cone): cone.modulate.a = 0.22 + 0.5 * clampf((theta + half) / (2.0 * half), 0.0, 1.0)   # 扫过区渐亮
-		if trailtex == null or theta < -half: return
-		var d := aim.rotated(clampf(theta, -half, half))    # 贴地宽亮径向刀光(扫过处刷亮·累积成footprint)
-		var edge := Sprite3D.new()
-		edge.texture = trailtex
-		edge.billboard = BaseMaterial3D.BILLBOARD_DISABLED; edge.axis = Vector3.AXIS_Y
-		edge.shaded = false; edge.transparent = true
-		var eps: float = (78.0 * WS) / float(eth)           # 加宽(份量)
-		edge.pixel_size = eps
-		edge.modulate = Color(0.95, 0.72, 1.35, 0.82)       # 紫白刀光(非死白·刀身可读)
-		edge.rotation.y = -atan2(d.y, d.x)
-		edge.scale = Vector3((300.0 * WS) / maxf(0.001, float(etw) * eps), 1.0, 1.0)
-		edge.position = _world_pos(center + d * 150.0, 0.07)
-		edge.no_depth_test = true; edge.render_priority = 24
-		_world.add_child(edge)
-		var et := _reg_tween()
-		et.tween_interval(0.16)
-		et.tween_property(edge, "modulate:a", 0.0, 0.36)
-		et.tween_callback(edge.queue_free)
-	, 0.0, 1.0, 0.16).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)   # 慢起→加速(份量)
-	swt.tween_callback(func() -> void:                        # 收势落地: 扇形整片白闪+顿帧震(收割定格)
-		_scythe_face_screen(scythe, center, aim, a1)
-		_shake(0.22); _add_hitstop(JUICE_HITSTOP_KNOCK)
-		if is_instance_valid(cone):
-			var flt := _reg_tween()
-			flt.tween_property(cone, "modulate", Color(0.95, 0.82, 1.3, 0.8), 0.04)   # 落地整片紫白闪(收割定格)
-			flt.tween_property(cone, "modulate:a", 0.0, 0.34)
-			flt.tween_callback(cone.queue_free))
-	swt.tween_interval(0.1)                                   # 顿(收割定格·脆)
-	swt.tween_property(scythe, "modulate:a", 0.0, 0.2)      # 镰刀化紫气消散(有去处)
-	swt.tween_callback(scythe.queue_free)
 
 func _update_headless_flame(u: Dictionary) -> void:            # 亡灵残血: 越残血龟身紫焰越浓(线性/对应+1%攻/1%损血越残越猛/2026-07-17)
 	if u.get("_undead_demo", false) and u.get("undead_used", false) and _t > float(u.get("deathfloor_until", 0.0)):   # demo循环: 免死窗过→回满+清标记→可再触发
@@ -13875,50 +13311,6 @@ func _update_headless_flame(u: Dictionary) -> void:            # 亡灵残血: �
 	s3.pixel_size = ((44.0 + 66.0 * lvl) * WS) / 128.0         # 越残越大
 	s3.modulate.a = 0.25 + 0.5 * lvl                          # 越残越浓
 	s3.modulate.r = 0.6 + 0.4 * lvl; s3.modulate.b = 1.0 - 0.4 * lvl   # 越残越偏红(暴怒)
-
-func _headless_undead_vfx(u: Dictionary) -> void:               # 亡灵免死: 金白爆闪+紫焰冲柱+顿帧强调+金环跟随5秒(2026-07-17整改: 触发更醒目)
-	_shake(0.14); _add_hitstop(JUICE_HITSTOP_KNOCK)             # 濒死不死=大事件: 顿帧+震
-	var glow := VfxTex._make_fire_glow_tex()
-	for ci in range(3):                                         # 亡灵紫焰冲柱(从脚下窜起·不屈)
-		var col := Sprite3D.new()
-		col.texture = glow
-		col.billboard = BaseMaterial3D.BILLBOARD_ENABLED; col.shaded = false; col.transparent = true
-		col.pixel_size = (float(70 - ci * 14) * WS) / 128.0
-		col.modulate = Color(0.7, 0.35, 1.0, 0.0)
-		col.position = _world_pos(u["pos"], 0.4 + 0.55 * float(ci))
-		_world.add_child(col)
-		var cot := _reg_tween()
-		cot.tween_property(col, "modulate:a", 0.85, 0.1).set_delay(0.05 * float(ci))
-		cot.tween_interval(0.2)
-		cot.tween_property(col, "modulate:a", 0.0, 0.35)
-		cot.tween_callback(col.queue_free)
-	var fb := Sprite3D.new()                                     # 触发瞬间金白闪
-	fb.texture = glow
-	fb.billboard = BaseMaterial3D.BILLBOARD_ENABLED; fb.shaded = false; fb.transparent = true
-	fb.pixel_size = (110.0 * WS) / 128.0
-	fb.modulate = Color(1.0, 0.92, 0.6, 0.95)
-	fb.position = _world_pos(u["pos"], 0.8)
-	fb.scale = Vector3.ONE * 0.4
-	_world.add_child(fb)
-	var ft := _reg_tween(); ft.set_parallel(true)
-	ft.tween_property(fb, "scale", Vector3.ONE * 1.6, 0.3)
-	ft.tween_property(fb, "modulate:a", 0.0, 0.3)
-	ft.chain().tween_callback(fb.queue_free)
-	var ring := Sprite3D.new()                                   # 金环贴地跟随5秒(不死窗口可视)
-	ring.texture = VfxTex._make_thin_ring_tex()
-	ring.billboard = BaseMaterial3D.BILLBOARD_DISABLED; ring.axis = Vector3.AXIS_Y
-	ring.shaded = false; ring.transparent = true
-	ring.modulate = Color(1.0, 0.85, 0.4, 0.9)
-	ring.pixel_size = (110.0 * WS) / 256.0
-	ring.position = _world_pos(u["pos"], 0.065)
-	_world.add_child(ring)
-	_follow_vfx.append({"spr": ring, "unit": u, "h": 0.065})
-	var rt := _reg_tween()
-	for i in range(4):                                           # 呼吸4轮≈4.4s
-		rt.tween_property(ring, "modulate:a", 0.45, 0.55)
-		rt.tween_property(ring, "modulate:a", 0.9, 0.55)
-	rt.tween_property(ring, "modulate:a", 0.0, 0.5)              # 第5秒渐隐(不瞬删)
-	rt.tween_callback(ring.queue_free)
 
 func _sk_fortune_dice(u: Dictionary) -> void:                    # 财神龟·骰子(用户2026-07-12补特效): 掷骰3~8金币+回8%maxHP
 	var g: int = randi_range(3, 8)   # 2~6→3~8 (恢复文本设计值)
@@ -16430,7 +15822,7 @@ func _sk_shell_absorb(u: Dictionary, tgt) -> void:              # 龟壳·吸收
 	var tp: Vector2 = tgt["pos"]                                # 2026-07-17: 4颗红色生命珠鱼贯从目标流向龟壳(删"吸收!"技能名飘字=UI规矩)
 	var uref: Dictionary = u
 	for i in range(4):
-		_pending_shots.append({"delay": 0.08 * float(i), "fn": func(): _headless_drain_dot(tp, uref), "src": u})
+		_pending_shots.append({"delay": 0.08 * float(i), "fn": func(): _headless_sys._headless_drain_dot(tp, uref), "src": u})
 
 func _shell_dark_flame(pos2d: Vector2, size: float, dur: float) -> void:   # 暗焰喷发(起跳/落地/破隐·2026-07-17): 紫芯+黑烟双层胀开渐隐
 	var glow := VfxTex._make_fire_glow_tex()
