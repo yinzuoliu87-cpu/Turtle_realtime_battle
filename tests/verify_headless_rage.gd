@@ -28,10 +28,10 @@ func _ready() -> void:
 	add_child(scene)
 	await get_tree().process_frame
 
-	var u: Dictionary = scene._make_unit("headless", "left", Vector2(0, 0))
+	var u: Dictionary = scene._spawn._make_unit("headless", "left", Vector2(0, 0))
 	scene._units.clear()
 	scene._units.append(u)
-	scene._apply_spawn_passives()
+	scene._spawn._apply_spawn_passives()
 	var base: float = float(u.get("headless_base_atk", 0.0))
 	_ok("登场记下基准攻击 headless_base_atk", base > 0.0, "基准=%.1f" % base)
 	if base <= 0.0:

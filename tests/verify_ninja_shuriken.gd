@@ -32,13 +32,13 @@ func _ready() -> void:
 	scene.set_process(false); scene.set_physics_process(false)
 	scene._units.clear(); scene._t = 0.0; scene._over = false; scene._edit_mode = false
 
-	var ninja: Dictionary = scene._make_unit("ninja", "left", Vector2(600, 400))
+	var ninja: Dictionary = scene._spawn._make_unit("ninja", "left", Vector2(600, 400))
 	ninja["atk"] = 100.0
 	ninja["crit_dmg"] = 1.5
 	ninja["level"] = 1
 	ninja["armor_pen"] = 0.0; ninja["armor_pen_pct"] = 0.0; ninja["damage_amp"] = 0.0
 	scene._units.append(ninja)
-	var dummy: Dictionary = scene._make_unit("basic", "right", Vector2(700, 400))   # 100px 外
+	var dummy: Dictionary = scene._spawn._make_unit("basic", "right", Vector2(700, 400))   # 100px 外
 	dummy["def"] = 0.0                 # 无护甲→物理不减免(隔离拆分数值)
 	dummy["damage_reduction"] = 0.0
 	dummy["shield"] = 0.0

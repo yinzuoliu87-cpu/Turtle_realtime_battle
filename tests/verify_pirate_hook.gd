@@ -41,8 +41,8 @@ func _ready() -> void:
 	# ★用【固定的干净单位】, 不挑随机 spawn 敌当击杀者 —— CI(及本地)每次队伍随机 shuffle, 挑到
 	#   带盾/墨迹/易伤/特殊减伤的龟, 25% 真伤断言就飘: 带盾→真伤被吸 lost=0; 带增伤→got 291>253。
 	#   本测试验的是"钩索=25%击杀者maxHp真伤"这个机制, 与击杀者是谁无关 → 用裸装 basic, 与队伍解耦。
-	var pirate: Dictionary = scene._make_unit("pirate", "left", Vector2(500, 400))
-	var killer: Dictionary = scene._make_unit("basic", "right", Vector2(1100, 400))
+	var pirate: Dictionary = scene._spawn._make_unit("pirate", "left", Vector2(500, 400))
+	var killer: Dictionary = scene._spawn._make_unit("basic", "right", Vector2(1100, 400))
 	scene._units.append(pirate)
 	scene._units.append(killer)
 

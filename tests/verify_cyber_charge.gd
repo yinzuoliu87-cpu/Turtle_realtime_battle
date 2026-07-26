@@ -35,13 +35,13 @@ func _ready() -> void:
 	await get_tree().process_frame
 
 	print("=== 1. 选中智能AI → 登场即 3 层充能 ===")
-	var cy: Dictionary = scene._make_unit("cyber", "left", Vector2(500, 400))
+	var cy: Dictionary = scene._spawn._make_unit("cyber", "left", Vector2(500, 400))
 	scene._units.append(cy)
 	var types: Array = scene._chosen_skill_types("cyber", true)
 	_ok("loadout 解析到 cyberSmartAI", "cyberSmartAI" in types, "types=%s" % [types])
 
 	var spd0: float = float(cy["move_spd"])
-	scene._apply_spawn_passives()
+	scene._spawn._apply_spawn_passives()
 	_ok("登场充能 = 3", int(cy.get("cyber_ai_charge", -1)) == 3,
 		"got=%d" % int(cy.get("cyber_ai_charge", -1)))
 	_ok("登场 +20% 移速", absf(float(cy["move_spd"]) - spd0 * 1.2) < 0.01,
@@ -55,10 +55,10 @@ func _ready() -> void:
 	print("=== 3. 没选智能AI → 不给充能/不给移速 ===")
 	if gs != null:
 		gs.loadouts["cyber"] = 1          # 换成 能量大炮
-	var cy2: Dictionary = scene._make_unit("cyber", "left", Vector2(600, 400))
+	var cy2: Dictionary = scene._spawn._make_unit("cyber", "left", Vector2(600, 400))
 	scene._units.append(cy2)
 	var spd2: float = float(cy2["move_spd"])
-	scene._apply_spawn_passives()
+	scene._spawn._apply_spawn_passives()
 	_ok("未选智能AI → 无充能键", not cy2.has("cyber_ai_charge"))
 	_ok("未选智能AI → 移速不变", absf(float(cy2["move_spd"]) - spd2) < 0.01)
 

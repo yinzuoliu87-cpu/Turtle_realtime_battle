@@ -28,10 +28,10 @@ func _ready() -> void:
 	scene._over = false
 	scene._edit_mode = false
 	scene._dl_state = "fight"
-	var atk: Dictionary = scene._make_unit("stone", "left", Vector2(600, 400))   # 石头=近战
+	var atk: Dictionary = scene._spawn._make_unit("stone", "left", Vector2(600, 400))   # 石头=近战
 	atk["active_skills"] = []          # 只普攻(隔离近战命中)
 	scene._units.append(atk)
-	var dummy: Dictionary = scene._make_unit("basic", "right", Vector2(820, 400))  # 220px 外(近战射程已抬到≥100·站位~85→仍需靠近才打得到)
+	var dummy: Dictionary = scene._spawn._make_unit("basic", "right", Vector2(820, 400))  # 220px 外(近战射程已抬到≥100·站位~85→仍需靠近才打得到)
 	dummy["active_skills"] = []
 	dummy["no_basic"] = true
 	dummy["no_move"] = true

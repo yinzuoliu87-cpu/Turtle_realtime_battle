@@ -135,7 +135,7 @@ func _sk_candy_bomb_feed(u: Dictionary) -> void:               # 糖果龟·技�
 		battle._skill_ring(bomb["pos"], Color(1.0, 0.62, 0.84, 0.5), 40.0)
 		for _cb in range(4): _candy_bomb_bubble(bomb)            # 一簇糖泡
 	else:
-		battle._spawn_summon(u, "candybomb", u["maxHp"] * 0.20, 0.0, {   # 炸弹阵亡→召新(HP=20%糖果龟maxHp)
+		battle._spawn._spawn_summon(u, "candybomb", u["maxHp"] * 0.20, 0.0, {   # 炸弹阵亡→召新(HP=20%糖果龟maxHp)
 			"label": "糖果炸弹", "spr_id": "candy-bomb", "col_size": 20.0, "hp_w": 24.0,
 			"no_basic": true, "no_move": true, "self_decay": 0.08, "death_aoe": 1.5,
 		})

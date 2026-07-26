@@ -219,7 +219,7 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 		battle._gambler_sys._gambler_pop(gather, 0.8, Color(0.7, 0.98, 1.0, 0.95))
 		battle._skill_ring(gather, Color(0.5, 0.9, 1.0, 0.7), 80.0)
 		battle._shake(battle.JUICE_SHAKE_HEAVY)
-		var mech = battle._spawn_summon(uu, "mech", final_hp, final_atk, {
+		var mech = battle._spawn._spawn_summon(uu, "mech", final_hp, final_atk, {
 			"label": "机甲", "spr_id": "mech", "col_size": 40.0, "hp_w": 46.0, "melee": true,
 			"move_spd": 130.0, "atk_interval": 1.0, "atk_range": 100.0,   # 近战最低标准100防卡位(用户2026-07-16"70会卡位")
 			"special": "mech_blast", "special_cd": 2.5, "special_scale": 1.5,

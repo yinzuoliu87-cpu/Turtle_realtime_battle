@@ -18,8 +18,8 @@ func _ready() -> void:
 	sc._t = 10.0
 
 	# ── ① 梭哈用过 → 龟能消耗改80 + allin_used ──
-	var f: Dictionary = sc._make_unit("fortune", "left", Vector2(400, 400))
-	var e: Dictionary = sc._make_unit("basic", "right", Vector2(460, 400))
+	var f: Dictionary = sc._spawn._make_unit("fortune", "left", Vector2(400, 400))
+	var e: Dictionary = sc._spawn._make_unit("basic", "right", Vector2(460, 400))
 	e["maxHp"] = 1e9; e["hp"] = 1e9
 	sc._units.append(f); sc._units.append(e)
 	f["gold"] = 25.0
@@ -51,7 +51,7 @@ func _ready() -> void:
 	_ok("金盾: 盾破后解锁(冷却恢复减少)", float(f["skill_cd"]["fortuneAllIn"]) < 5.0, "cd=%.2f" % float(f["skill_cd"]["fortuneAllIn"]))
 
 	# ── ⑤ 金盾无金币时不放(护盾不为0乱给) ──
-	var f2: Dictionary = sc._make_unit("fortune", "left", Vector2(300, 300))
+	var f2: Dictionary = sc._spawn._make_unit("fortune", "left", Vector2(300, 300))
 	f2["gold"] = 0.0; f2["shield"] = 0.0
 	sc._fortune_sys._sk_fortune_goldshield(f2)
 	_ok("金盾: 0金币→不给护盾(不空放)", is_equal_approx(float(f2.get("shield", 0.0)), 0.0))

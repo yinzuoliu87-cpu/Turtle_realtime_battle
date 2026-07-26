@@ -48,13 +48,13 @@ func _edit_handle_mouse_motion(ev: InputEventMouseMotion) -> void:
 	fp.y = clampf(fp.y, battle.ARENA.position.y, battle.ARENA.end.y)
 	battle._edit_drag_unit["pos"] = fp   # transforms/overlay 下一帧自动跟到新位置
 
-# 摆放一个单位: 复用 battle._make_unit, 右队按调试场设置改成假人 (不动/不打/可设血/可不死).
-# 摆放一个单位: 复用 battle._make_unit, 右队按调试场设置改成假人 (不动/不打/可设血/可不死).
+# 摆放一个单位: 复用 battle._spawn._make_unit, 右队按调试场设置改成假人 (不动/不打/可设血/可不死).
+# 摆放一个单位: 复用 battle._spawn._make_unit, 右队按调试场设置改成假人 (不动/不打/可设血/可不死).
 func _edit_place_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 	var u: Dictionary
 	# ★训龟大师(用户2026-07-24): 调试场【自由摆位】, 不走正式对局"蛋后上方"那套站位(调试场没蛋)。
 	if id == battle.TRAINER_ID:
-		u = battle._make_unit(battle.TRAINER_ID, side, pos, {"trainer": true})
+		u = battle._spawn._make_unit(battle.TRAINER_ID, side, pos, {"trainer": true})
 		u["_tr_active"] = battle._valid_active(battle._edit_trainer_active)
 		u["_tr_passive"] = ""
 		battle._units.append(u)
@@ -69,11 +69,11 @@ func _edit_place_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 		var _elite: bool = (battle._edit_minion_role == "elite")
 		var _spec: Dictionary = {"minion": true, "elite": _elite, "level": _mlvl}
 		if not _elite: _spec["role"] = battle._edit_minion_role   # 精英不分前后排(独立造型)
-		u = battle._make_unit("__minion__", side, pos, _spec)
+		u = battle._spawn._make_unit("__minion__", side, pos, _spec)
 		u["_edit_minion_role"] = battle._edit_minion_role   # 存角色/等级→⏸编辑重生/存盘时按此重建(否则小将退化成默认龟)
 		u["_edit_minion_lvl"] = _mlvl
 	else:
-		u = battle._make_unit(id, side, pos)
+		u = battle._spawn._make_unit(id, side, pos)
 	if side == "right":
 		u["no_basic"] = true
 		u["no_move"] = true
@@ -120,10 +120,10 @@ func _edit_clear() -> void:
 	_edit_set_status("已清空")
 
 # ▶开始: 把当前摆位生效为战斗. 为干净起见 (避免重复 _inject/_apply 叠加), 先快照摆位, 再做开战准备.
-#   注: 编辑态摆放时已逐个 battle._make_unit, 但还没跑过 battle._inject_equipment/battle._apply_spawn_passives/battle._equip_sys._stats._eq_apply_all_stats,
+#   注: 编辑态摆放时已逐个 battle._spawn._make_unit, 但还没跑过 battle._inject_equipment/battle._spawn._apply_spawn_passives/battle._equip_sys._stats._eq_apply_all_stats,
 #   所以这里补跑一次即可 (开战准备), 之后退出编辑态 → 模拟开始推进.
 # ▶开始: 把当前摆位生效为战斗. 为干净起见 (避免重复 _inject/_apply 叠加), 先快照摆位, 再做开战准备.
-#   注: 编辑态摆放时已逐个 battle._make_unit, 但还没跑过 battle._inject_equipment/battle._apply_spawn_passives/battle._equip_sys._stats._eq_apply_all_stats,
+#   注: 编辑态摆放时已逐个 battle._spawn._make_unit, 但还没跑过 battle._inject_equipment/battle._spawn._apply_spawn_passives/battle._equip_sys._stats._eq_apply_all_stats,
 #   所以这里补跑一次即可 (开战准备), 之后退出编辑态 → 模拟开始推进.
 func _edit_start_battle() -> void:
 	if battle._units.is_empty():
@@ -133,7 +133,7 @@ func _edit_start_battle() -> void:
 	_edit_snapshot_setup()
 	_edit_save_setup()   # 存盘: 重开调试场自动恢复上次摆位
 	battle._inject_equipment()
-	battle._apply_spawn_passives()
+	battle._spawn._apply_spawn_passives()
 	battle._equip_sys._stats._eq_apply_all_stats()
 	if battle._edit_full_energy:   # 装备/被动结算后再补满龟能→技能即就绪(不被_eq_apply_all_stats重置回充率覆盖)
 		for u in battle._units:
@@ -151,7 +151,7 @@ func _edit_unit_from_setup(s: Dictionary) -> Dictionary:
 	var u: Dictionary
 	# 训龟大师(用户2026-07-24): 自由摆位·带装配的主动
 	if bool(s.get("trainer", false)) or str(s.get("id", "")) == battle.TRAINER_ID:
-		u = battle._make_unit(battle.TRAINER_ID, side, s.get("pos", Vector2()), {"trainer": true})
+		u = battle._spawn._make_unit(battle.TRAINER_ID, side, s.get("pos", Vector2()), {"trainer": true})
 		u["_tr_active"] = battle._valid_active(str(s.get("tr_active", "hook")))
 		u["_tr_passive"] = ""
 		return u
@@ -161,11 +161,11 @@ func _edit_unit_from_setup(s: Dictionary) -> Dictionary:
 		var _el: bool = (role == "elite")   # 精英小将(用户2026-07-24)
 		var _sp: Dictionary = {"minion": true, "elite": _el, "level": lvl}
 		if not _el: _sp["role"] = role
-		u = battle._make_unit("__minion__", side, s.get("pos", Vector2()), _sp)
+		u = battle._spawn._make_unit("__minion__", side, s.get("pos", Vector2()), _sp)
 		u["_edit_minion_role"] = role
 		u["_edit_minion_lvl"] = lvl
 	else:
-		u = battle._make_unit(str(s.get("id", "basic")), side, s.get("pos", Vector2()))
+		u = battle._spawn._make_unit(str(s.get("id", "basic")), side, s.get("pos", Vector2()))
 	u["_edit_equips"] = s.get("equips", [])
 	if side == "right":
 		u["no_basic"] = true

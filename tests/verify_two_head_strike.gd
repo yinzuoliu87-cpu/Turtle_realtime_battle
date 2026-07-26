@@ -20,14 +20,14 @@ func _ready() -> void:
 	sc.set_process(false); sc.set_physics_process(false)
 	sc._units.clear(); sc._t=0.0; sc._over=false; sc._edit_mode=false
 
-	var dh: Dictionary = sc._make_unit("two_head","left",Vector2(200,400))
+	var dh: Dictionary = sc._spawn._make_unit("two_head","left",Vector2(200,400))
 	dh["atk"]=100.0; dh["crit"]=0.0; dh["armor_pen"]=0.0; dh["armor_pen_pct"]=0.0; dh["damage_amp"]=0.0
 	dh["shield"]=0.0
 	sc._units.append(dh)
 	var land := Vector2(700.0,400.0)
-	var near1: Dictionary = sc._make_unit("basic","right",Vector2(700,400))   # 距land 0
-	var near2: Dictionary = sc._make_unit("basic","right",Vector2(850,400))   # 距land 150 (圈内)
-	var far1: Dictionary = sc._make_unit("basic","right",Vector2(950,400))    # 距land 250 (圈外)
+	var near1: Dictionary = sc._spawn._make_unit("basic","right",Vector2(700,400))   # 距land 0
+	var near2: Dictionary = sc._spawn._make_unit("basic","right",Vector2(850,400))   # 距land 150 (圈内)
+	var far1: Dictionary = sc._spawn._make_unit("basic","right",Vector2(950,400))    # 距land 250 (圈外)
 	for d in [near1,near2,far1]:
 		d["def"]=0.0; d["base_def"]=0.0; d["damage_reduction"]=0.0; d["shield"]=0.0
 		d["maxHp"]=1000.0; d["hp"]=1000.0; d["no_basic"]=true; d["no_move"]=true; d["_st_taken"]=0

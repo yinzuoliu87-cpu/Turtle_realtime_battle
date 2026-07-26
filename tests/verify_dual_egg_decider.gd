@@ -36,12 +36,12 @@ func _ready() -> void:
 	_ok("下路 上路right赢·wiped=right(本路left赢) → 非定局(1-1)", sc._dl_sys._dl_is_decider("right") == false)
 
 	# ── ② 蛋 maxHp=满血 / hp=累积受损值 ──
-	var egg: Dictionary = sc._make_unit("__egg__", "left", Vector2(140, 400), {"egg": true, "egg_side": "left", "hp": 1800.0, "hp_max": 2500.0})
+	var egg: Dictionary = sc._spawn._make_unit("__egg__", "left", Vector2(140, 400), {"egg": true, "egg_side": "left", "hp": 1800.0, "hp_max": 2500.0})
 	_ok("蛋 maxHp=原始满血(2500)", is_equal_approx(float(egg["maxHp"]), 2500.0), "maxHp=%d" % int(egg["maxHp"]))
 	_ok("蛋 当前hp=累积受损值(1800)", is_equal_approx(float(egg["hp"]), 1800.0), "hp=%d" % int(egg["hp"]))
 	_ok("蛋血条比例<满(掉血可见)", float(egg["hp"]) < float(egg["maxHp"]))
 	# hp 超出 hp_max 时 clamp 到 maxHp (满血起手不会溢出)
-	var egg2: Dictionary = sc._make_unit("__egg__", "right", Vector2(1600, 400), {"egg": true, "egg_side": "right", "hp": 9999.0, "hp_max": 2500.0})
+	var egg2: Dictionary = sc._spawn._make_unit("__egg__", "right", Vector2(1600, 400), {"egg": true, "egg_side": "right", "hp": 9999.0, "hp_max": 2500.0})
 	_ok("蛋 hp 溢出被 clamp 到 maxHp", is_equal_approx(float(egg2["hp"]), 2500.0), "hp=%d" % int(egg2["hp"]))
 
 	# ── ③ 结算比分带本路待记结果(赢上路即显1-0, record在5秒后lane_over才调) ──

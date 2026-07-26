@@ -11,7 +11,7 @@ func _ok(name: String, cond: bool, detail: String = "") -> void:
 	else: _fail += 1; print("  [FAIL] ", name, "  ", detail)
 
 func _mk(scene, id: String, side: String, pos: Vector2) -> Dictionary:
-	var u: Dictionary = scene._make_unit(id, side, pos)
+	var u: Dictionary = scene._spawn._make_unit(id, side, pos)
 	u["crit"] = 0.0                              # 隔离暴击→确定值
 	u["maxHp"] = 100000.0; u["hp"] = 100000.0
 	u["shield"] = 0.0

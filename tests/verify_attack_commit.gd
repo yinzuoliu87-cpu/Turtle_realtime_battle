@@ -9,10 +9,10 @@ func _ok(n, c, d=""):
 
 func _run(sc, teleport: bool) -> float:
 	sc._units.clear(); sc._t = 0.0; sc._over = false; sc._edit_mode = false; sc._dl_state = "fight"
-	var m: Dictionary = sc._make_unit("basic", "left", Vector2(400, 400))
+	var m: Dictionary = sc._spawn._make_unit("basic", "left", Vector2(400, 400))
 	m["active_skills"] = []; m["maxHp"] = 1000000.0; m["hp"] = 1000000.0
 	sc._units.append(m)
-	var k: Dictionary = sc._make_unit("angel", "right", Vector2(480, 400))
+	var k: Dictionary = sc._spawn._make_unit("angel", "right", Vector2(480, 400))
 	k["active_skills"] = []; k["no_basic"] = true; k["no_move"] = true; k["move_spd"] = 0.0
 	k["maxHp"] = 1000000.0; k["hp"] = 1000000.0
 	sc._units.append(k)

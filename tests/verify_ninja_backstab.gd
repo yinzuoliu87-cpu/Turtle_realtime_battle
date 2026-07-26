@@ -21,14 +21,14 @@ func _ready() -> void:
 	scene.set_process(false); scene.set_physics_process(false)
 	scene._units.clear(); scene._t = 0.0; scene._over = false; scene._edit_mode = false
 
-	var ninja: Dictionary = scene._make_unit("ninja", "left", Vector2(200, 400))
+	var ninja: Dictionary = scene._spawn._make_unit("ninja", "left", Vector2(200, 400))
 	ninja["atk"] = 100.0
 	ninja["crit"] = 0.0
 	ninja["armor_pen"] = 0.0; ninja["armor_pen_pct"] = 0.0; ninja["damage_amp"] = 0.0
 	scene._units.append(ninja)
-	var near1: Dictionary = scene._make_unit("basic", "right", Vector2(320, 340))   # 近(~140)
-	var near2: Dictionary = scene._make_unit("basic", "right", Vector2(320, 460))   # 近
-	var far1: Dictionary = scene._make_unit("basic", "right", Vector2(670, 400))    # 远(~470=全场最远)
+	var near1: Dictionary = scene._spawn._make_unit("basic", "right", Vector2(320, 340))   # 近(~140)
+	var near2: Dictionary = scene._spawn._make_unit("basic", "right", Vector2(320, 460))   # 近
+	var far1: Dictionary = scene._spawn._make_unit("basic", "right", Vector2(670, 400))    # 远(~470=全场最远)
 	for d in [near1, near2, far1]:
 		d["base_def"] = 15.0; d["def"] = 15.0          # def15 + 背刺+15穿甲 → resist0 → mult1.0(验穿甲=15)
 		d["damage_reduction"] = 0.0; d["shield"] = 0.0

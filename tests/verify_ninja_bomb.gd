@@ -22,16 +22,16 @@ func _ready() -> void:
 	scene.set_process(false); scene.set_physics_process(false)
 	scene._units.clear(); scene._t = 0.0; scene._over = false; scene._edit_mode = false
 
-	var ninja: Dictionary = scene._make_unit("ninja", "left", Vector2(200, 400))
+	var ninja: Dictionary = scene._spawn._make_unit("ninja", "left", Vector2(200, 400))
 	ninja["atk"] = 100.0
 	ninja["crit"] = 0.0                         # 隔离暴击→确定值
 	ninja["armor_pen"] = 0.0; ninja["armor_pen_pct"] = 0.0; ninja["damage_amp"] = 0.0
 	scene._units.append(ninja)
 	# 落点 land = (700,400)。近敌2个(400码内)+远敌1个(500码>400·圈外)
 	var land := Vector2(700.0, 400.0)
-	var near1: Dictionary = scene._make_unit("basic", "right", Vector2(700, 400))     # 距land 0
-	var near2: Dictionary = scene._make_unit("basic", "right", Vector2(900, 400))     # 距land 200 (圈内)
-	var far1: Dictionary = scene._make_unit("basic", "right", Vector2(1200, 400))     # 距land 500 (圈外)
+	var near1: Dictionary = scene._spawn._make_unit("basic", "right", Vector2(700, 400))     # 距land 0
+	var near2: Dictionary = scene._spawn._make_unit("basic", "right", Vector2(900, 400))     # 距land 200 (圈内)
+	var far1: Dictionary = scene._spawn._make_unit("basic", "right", Vector2(1200, 400))     # 距land 500 (圈外)
 	for d in [near1, near2, far1]:
 		d["base_def"] = 40.0; d["def"] = 40.0
 		d["damage_reduction"] = 0.0; d["shield"] = 0.0

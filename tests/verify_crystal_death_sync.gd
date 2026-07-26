@@ -31,15 +31,15 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	var crystal: Dictionary = scene._make_unit("crystal", "left", Vector2(500, 400))
+	var crystal: Dictionary = scene._spawn._make_unit("crystal", "left", Vector2(500, 400))
 	scene._units.append(crystal)
 	# 手工造一颗水晶球随从(仿 spawn gate)
-	var ball = scene._spawn_summon(crystal, "crystalball", 300.0, 40.0, {"label": "水晶球", "no_basic": true})
+	var ball = scene._spawn._spawn_summon(crystal, "crystalball", 300.0, 40.0, {"label": "水晶球", "no_basic": true})
 	_ok("水晶球召唤成功", ball != null and ball is Dictionary)
 	if ball == null:
 		_done(); return
 	scene._units.append(ball)
-	var killer: Dictionary = scene._make_unit("basic", "right", Vector2(600, 400))
+	var killer: Dictionary = scene._spawn._make_unit("basic", "right", Vector2(600, 400))
 	scene._units.append(killer)
 
 	_ok("死前水晶球存活", ball.get("alive", false))
@@ -52,9 +52,9 @@ func _ready() -> void:
 		"ball.alive=%s" % [ball.get("alive")])
 
 	# 对照: 缩头龟死了随从也死(既有行为, 顺带回归)
-	var hiding: Dictionary = scene._make_unit("hiding", "left", Vector2(500, 400))
+	var hiding: Dictionary = scene._spawn._make_unit("hiding", "left", Vector2(500, 400))
 	scene._units.append(hiding)
-	var minion = scene._spawn_summon(hiding, "minion", 300.0, 40.0, {"label": "随从"})
+	var minion = scene._spawn._spawn_summon(hiding, "minion", 300.0, 40.0, {"label": "随从"})
 	if minion != null:
 		scene._units.append(minion)
 		scene._kill(hiding, killer)

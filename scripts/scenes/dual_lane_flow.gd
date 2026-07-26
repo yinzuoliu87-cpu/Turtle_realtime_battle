@@ -423,21 +423,21 @@ func _dl_build_lane_field() -> void:
 	else:
 		mine = GameState.get_dual_lineup().get(lane, [])
 		foe = battle._dual_foe_lane(lane)   # 确定性(读固定 ghost 快照/固定 bot 池) → 与预览显示一致
-	battle._spawn_lane_side(mine, "left", lvl, Vector2(_cx - 420.0, _cy))
-	battle._spawn_lane_side(foe, "right", lvl, Vector2(_cx + 420.0, _cy))
+	battle._spawn._spawn_lane_side(mine, "left", lvl, Vector2(_cx - 420.0, _cy))
+	battle._spawn._spawn_lane_side(foe, "right", lvl, Vector2(_cx + 420.0, _cy))
 	# 两端基地各 spawn 一颗蛋(围栏罩住). egg_hp 跨路累积(缺则按平均等级初始化); hp_max=原始满血→血条显跨路累积伤害.
 	_dl_ensure_egg_hp(lvl)
 	var egg_max: float = 3000.0 + 300.0 * float(lvl)   # 蛋原始满血(用户2026-07-19: 2000+100/级 → 3000+300/级) = maxHp 基准
-	battle._units.append(battle._make_unit("__egg__", "left", Vector2(battle.ARENA.position.x + 70.0, _cy), {"egg": true, "egg_side": "left", "hp": _dl_egg_hp("left"), "hp_max": egg_max}))
-	battle._units.append(battle._make_unit("__egg__", "right", Vector2(battle.ARENA.end.x - 70.0, _cy), {"egg": true, "egg_side": "right", "hp": _dl_egg_hp("right"), "hp_max": egg_max}))
-	battle._spawn_trainers()    # 双方场外监视者。★放在这里 = 每路 spawn 一次, 而 _dl_next_lane 会先
+	battle._units.append(battle._spawn._make_unit("__egg__", "left", Vector2(battle.ARENA.position.x + 70.0, _cy), {"egg": true, "egg_side": "left", "hp": _dl_egg_hp("left"), "hp_max": egg_max}))
+	battle._units.append(battle._spawn._make_unit("__egg__", "right", Vector2(battle.ARENA.end.x - 70.0, _cy), {"egg": true, "egg_side": "right", "hp": _dl_egg_hp("right"), "hp_max": egg_max}))
+	battle._spawn._spawn_trainers()    # 双方场外监视者。★放在这里 = 每路 spawn 一次, 而 _dl_next_lane 会先
 						 #   _dl_clear_units() 再重 spawn → 血量【天然每场重置】(用户要的), 不用另写重置逻辑。
 						 #   另见 _dl_snapshot_survivors: 训龟大师不进幸存名单, 否则会带残血去终极战场+重复 spawn。
 	battle._world_builder._build_map_props()   # 地图障碍(中央大礁+两侧墙)+基地穹顶围栏(幂等, 跨路复用)
 	battle._world_builder._build_navmesh()     # 2D navmesh 避障(幂等; 障碍挖洞→单位绕行)
 	# 装备+登场被动管线(评审流程走的 756-758, 双路早退绕过了→这里补上): leader读persistent_equipped+dual_lineup, 小将读dual_lineup._dl_equips, 双方leader上登场被动
 	battle._inject_equipment()
-	battle._apply_spawn_passives()
+	battle._spawn._apply_spawn_passives()
 	battle._equip_sys._stats._eq_apply_all_stats()
 	battle._build_team_panels()   # ★双路补建左右头像框(装备图标随之显示): 原只在非双路分支L1051调·双路早退绕过→装了装备头像框空白(用户2026-07-11 #5)
 
@@ -455,7 +455,7 @@ func _dl_egg_hp(side_lr: String) -> float:
 		return maxf(1.0, float(GameState.egg_hp.get(side_lr, 2100.0)))
 	return 2100.0
 
-# spawn 一路一侧: leaders 用 battle._make_unit(id); 小将用 minion spec; 0统领路首个小将=精英. 纵向排开.
+# spawn 一路一侧: leaders 用 battle._spawn._make_unit(id); 小将用 minion spec; 0统领路首个小将=精英. 纵向排开.
 # 终极战场我方/敌方阵容 = 上下路累加的幸存(含小将+30%回血). 缺则兜底.
 func _dl_survivor_specs(side_lr: String) -> Array:
 	if GameState != null and GameState.dual_survivors is Dictionary:
@@ -714,7 +714,7 @@ func _dl_next_lane(finished_lane: String = "") -> void:
 	battle._over = false
 	battle._dl_state = ""
 	battle._dl_wiped_side = ""
-	battle._spawn_dual_lane()   # 读推进后的 current_lane; final 从幸存 spawn
+	battle._spawn._spawn_dual_lane()   # 读推进后的 current_lane; final 从幸存 spawn
 
 func _dl_finish(won: bool) -> void:
 	if battle._over:

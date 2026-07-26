@@ -20,11 +20,11 @@ func _ready() -> void:
 	sc.set_process(false); sc.set_physics_process(false)
 	sc._units.clear(); sc._t = 0.0; sc._over = false; sc._edit_mode = false
 
-	var dh: Dictionary = sc._make_unit("two_head", "left", Vector2(200, 400))
+	var dh: Dictionary = sc._spawn._make_unit("two_head", "left", Vector2(200, 400))
 	dh["atk"] = 100.0; dh["crit"] = 0.0; dh["armor_pen"] = 0.0; dh["armor_pen_pct"] = 0.0; dh["damage_amp"] = 0.0
 	dh["shield"] = 0.0
 	sc._units.append(dh)
-	var tgt: Dictionary = sc._make_unit("basic", "right", Vector2(300, 400))
+	var tgt: Dictionary = sc._spawn._make_unit("basic", "right", Vector2(300, 400))
 	tgt["def"] = 0.0; tgt["base_def"] = 0.0; tgt["mr"] = 0.0; tgt["base_mr"] = 0.0
 	tgt["damage_reduction"] = 0.0; tgt["shield"] = 0.0; tgt["maxHp"] = 100000.0; tgt["hp"] = 100000.0
 	tgt["no_basic"] = true; tgt["no_move"] = true; tgt["_st_taken"] = 0

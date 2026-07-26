@@ -29,9 +29,9 @@ func _ready() -> void:
 	scene._t = 100.0
 
 	# 精英小将 + 一个濒死目标(<15%血 → 触发吞噬)
-	var elite: Dictionary = scene._make_unit("__minion__", "left", Vector2(0, 0),
+	var elite: Dictionary = scene._spawn._make_unit("__minion__", "left", Vector2(0, 0),
 		{"minion": true, "role": "front", "elite": true, "level": 1})
-	var prey: Dictionary = scene._make_unit("basic", "right", Vector2(60, 0))
+	var prey: Dictionary = scene._spawn._make_unit("basic", "right", Vector2(60, 0))
 	prey["maxHp"] = 1000.0
 	prey["hp"] = 50.0                       # 5% 血, 低于 15% 吞噬线
 	scene._units.clear()

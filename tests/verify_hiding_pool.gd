@@ -64,7 +64,7 @@ func _ready() -> void:
 	# ── 2. 每只都能当随从 spawn 不崩 ──
 	var crashed: Array = []
 	for pid in want.keys():
-		var m: Dictionary = scene._make_unit(str(pid), "right", Vector2(900, 400))
+		var m: Dictionary = scene._spawn._make_unit(str(pid), "right", Vector2(900, 400))
 		if m.is_empty() or not m.has("hp"):
 			crashed.append(str(pid))
 	_ok("每只 A/B/C 龟都能 _make_unit 当随从", crashed.is_empty(), str(crashed))

@@ -66,7 +66,7 @@ func _ready() -> void:
 	_ok("决胜自损 = 5% 最大生命", is_equal_approx(RTScene.EGG_SELFLOSS_PCT, 0.05), "%.2f" % RTScene.EGG_SELFLOSS_PCT)
 
 	var lvl := 8
-	var egg: Dictionary = s._make_unit("__egg__", "left", Vector2(0, 0),
+	var egg: Dictionary = s._spawn._make_unit("__egg__", "left", Vector2(0, 0),
 		{"egg": true, "egg_side": "left", "level": lvl, "hp": 5400.0, "hp_max": 3000.0 + 300.0 * lvl})
 	var want_res: float = 60.0 + 15.0 * float(lvl) + RTScene.EGG_FENCE_RES
 	_ok("★Lv%d 蛋围栏内双抗 = 60+15×等级+200" % lvl,

@@ -163,7 +163,7 @@ func _pirate_cannonball(from2d: Vector2, from_h: float, to2d: Vector2, on_land: 
 func _sk_pirate_ship(u: Dictionary, tgt) -> void:
 	if not u.get("ship_summoned", false):
 		u["ship_summoned"] = true
-		battle._spawn_pirate_ship(u, tgt)                          # 首次: 召唤船+冲锋撞
+		battle._spawn._spawn_pirate_ship(u, tgt)                          # 首次: 召唤船+冲锋撞
 	else:
 		_pirate_shotgun(u, tgt)                             # 后续: 海盗龟放霰弹
 

@@ -10,8 +10,8 @@ func _ok(n, c, d=""):
 
 func _run_corner(sc, dpos: Vector2, fpos: Vector2, label: String) -> void:
 	sc._units.clear(); sc._t = 5.0
-	var dice: Dictionary = sc._make_unit("dice", "left", dpos)
-	var foe: Dictionary = sc._make_unit("basic", "right", fpos)
+	var dice: Dictionary = sc._spawn._make_unit("dice", "left", dpos)
+	var foe: Dictionary = sc._spawn._make_unit("basic", "right", fpos)
 	foe["maxHp"] = 1.0e9; foe["hp"] = 1.0e9   # 打不死→连突跑满所有段
 	sc._units.append(dice); sc._units.append(foe)
 	sc._dice_sys._sk_dice_flash_strike(dice)

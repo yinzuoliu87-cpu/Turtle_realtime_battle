@@ -46,8 +46,8 @@ func _ready() -> void:
 	_ok("组装期(_assembling) 不可选中", scene._is_untargetable(u_asm))
 
 	# ── B. 猎人处决扫描不选组装期机甲 ──
-	var hunter: Dictionary = scene._make_unit("hunter", "left", Vector2(0, 0))
-	var mech: Dictionary = scene._make_unit("basic", "right", Vector2(100, 0))
+	var hunter: Dictionary = scene._spawn._make_unit("hunter", "left", Vector2(0, 0))
+	var mech: Dictionary = scene._spawn._make_unit("basic", "right", Vector2(100, 0))
 	mech["_assembling"] = true
 	mech["maxHp"] = 1000.0
 	mech["hp"] = 10.0                      # 1% 血, 远低于 14% 处决线
@@ -60,7 +60,7 @@ func _ready() -> void:
 		"_hunt_exec_pending=%s" % [mech.get("_hunt_exec_pending", false)])
 
 	# 对照: 同样残血但【不在组装期】→ 应该被选中(证明测试本身有效, 不是恒过)
-	var normal: Dictionary = scene._make_unit("basic", "right", Vector2(120, 0))
+	var normal: Dictionary = scene._spawn._make_unit("basic", "right", Vector2(120, 0))
 	normal["maxHp"] = 1000.0
 	normal["hp"] = 10.0
 	scene._units.append(normal)
@@ -78,9 +78,9 @@ func _ready() -> void:
 	# 起因(用户 2026-07-24):「双穿珊瑚刺为啥还能锁到训龟大师」。根因: 珊瑚刺/竹击/背刺 这类"挑最远一个"
 	# 的单体定向技原走 _enemies_of(含大师) → 而大师在场外·永远最远 → 每次都锁它(飞去角落/瞬移过去)。
 	# 铁律(§PICK-TARGET): 单体挑选必须走 _pick_enemies_of(排除大师+不可选中); 真 AOE 才用 _enemies_of。
-	var caster: Dictionary = scene._make_unit("basic", "left", Vector2(0, 0))
-	var real_foe: Dictionary = scene._make_unit("basic", "right", Vector2(200, 0))               # 近敌(真目标)
-	var foe_trainer: Dictionary = scene._make_unit("basic", "right", Vector2(3000, 0), {"trainer": true})   # 场外大师·永远最远
+	var caster: Dictionary = scene._spawn._make_unit("basic", "left", Vector2(0, 0))
+	var real_foe: Dictionary = scene._spawn._make_unit("basic", "right", Vector2(200, 0))               # 近敌(真目标)
+	var foe_trainer: Dictionary = scene._spawn._make_unit("basic", "right", Vector2(3000, 0), {"trainer": true})   # 场外大师·永远最远
 	scene._units.clear()
 	scene._units.append(caster); scene._units.append(real_foe); scene._units.append(foe_trainer)
 	_ok("★_enemies_of 含训龟大师(真AOE仍会溅到它·吃1)", scene._arr_has_unit(scene._targeting._enemies_of(caster), foe_trainer))

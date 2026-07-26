@@ -106,7 +106,7 @@ func _eq_crystal_sweep(u: Dictionary, si: int) -> void:
 # 032: 登场召唤亡灵骷髅 (双抗20000近乎免疫, 存活15s自灭, 死亡200码内%最大生命真伤)
 func _eq_summon_turret(u: Dictionary, si: int) -> void:   # 穿甲遗弹058(重做): 登场召唤不可移动的炮台
 	if not u.get("alive", false): return
-	var tr = battle._spawn_summon(u, "turret", [500.0, 1000.0, 1800.0][si], [20.0, 30.0, 45.0][si],
+	var tr = battle._spawn._spawn_summon(u, "turret", [500.0, 1000.0, 1800.0][si], [20.0, 30.0, 45.0][si],
 		{"label": "炮台", "spr_id": "turret", "col_size": 44.0, "hp_w": 32.0,
 		 "atk_interval": 2.0, "atk_range": 2000.0, "move_spd": 0.0, "melee": false})
 	if tr == null: return
@@ -144,7 +144,7 @@ func _tick_eq_turret(u: Dictionary, delta: float) -> void:   # 058: 炮台双抗
 
 func _eq_summon_skeleton(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false): return
-	var sk = battle._spawn_summon(u, "skeleton", [19.0, 21.0, 25.0][si] * battle.HP_MULT, [3.0, 5.0, 8.0][si], {"label": "亡灵骷髅", "spr_id": "skeleton", "col_size": 32.0, "hp_w": 22.0, "atk_interval": 1.0 / 1.2, "atk_range": 70.0, "melee": true, "move_spd": 130.0})
+	var sk = battle._spawn._spawn_summon(u, "skeleton", [19.0, 21.0, 25.0][si] * battle.HP_MULT, [3.0, 5.0, 8.0][si], {"label": "亡灵骷髅", "spr_id": "skeleton", "col_size": 32.0, "hp_w": 22.0, "atk_interval": 1.0 / 1.2, "atk_range": 70.0, "melee": true, "move_spd": 130.0})
 	if sk == null: return
 	sk["base_def"] = 20000.0; sk["base_mr"] = 20000.0; sk["def"] = 20000.0; sk["mr"] = 20000.0
 	sk["summon_life"] = 15.0
@@ -1206,7 +1206,7 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 		match iid:
 			"p2eq_033":   # 复活海螺: 彻底阵亡→原位变形成小虫(通用打法/攻速0.65) + 亡灵变形演出
 				battle._conch_transform(u["pos"])
-				var worm = battle._spawn_summon(u, "worm", [400.0, 900.0, 5000.0][si], [30.0, 55.0, 200.0][si], {"label": "海螺虫", "spr_id": "conch-worm", "col_size": 30.0, "hp_w": 22.0})   # 小虫只有星级无等级(去_lvl_mult), 数值即实际
+				var worm = battle._spawn._spawn_summon(u, "worm", [400.0, 900.0, 5000.0][si], [30.0, 55.0, 200.0][si], {"label": "海螺虫", "spr_id": "conch-worm", "col_size": 30.0, "hp_w": 22.0})   # 小虫只有星级无等级(去_lvl_mult), 数值即实际
 				if worm != null:
 					worm["pos"] = u["pos"]
 					worm["atk_interval"] = 1.0 / 0.65
