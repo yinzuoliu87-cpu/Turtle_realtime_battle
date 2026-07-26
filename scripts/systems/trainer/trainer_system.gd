@@ -200,8 +200,8 @@ func _whistle_spirit_wave(trainer: Dictionary) -> int:
 		if not battle._on_line(origin, dir, o["pos"], 80.0):
 			continue
 		o["def_shred_until"] = battle._t + 5.0    # 先削甲(30%·让这一发也吃到)
-		battle._apply_damage_from(trainer, o, battle._resolve_dmg(trainer, 200.0, o, false), Color("#8fd0ff"), 0.0, false, false)   # 200物理
-		battle._knockback(trainer, o, 100.0)      # 击飞
+		battle._damage._apply_damage_from(trainer, o, battle._resolve_dmg(trainer, 200.0, o, false), Color("#8fd0ff"), 0.0, false, false)   # 200物理
+		battle._damage._knockback(trainer, o, 100.0)      # 击飞
 		n += 1
 	_whistle_spirit_dramatize(trainer, origin, dir)
 	return n
@@ -216,8 +216,8 @@ func _whistle_berserk(trainer: Dictionary):
 
 ## ★狂暴纯效果(可测): 对指定友军上 buff。
 func _whistle_berserk_on(ally: Dictionary) -> void:
-	battle._buff(ally, "atk", 0.2, true, 4.0)          # +20% 攻击力
-	battle._buff(ally, "lifesteal", 20, false, 4.0)    # +20% 生命偷取
+	battle._damage._buff(ally, "atk", 0.2, true, 4.0)          # +20% 攻击力
+	battle._damage._buff(ally, "lifesteal", 20, false, 4.0)    # +20% 生命偷取
 	ally["deathfloor_until"] = battle._t + 4.0         # 4秒免疫死亡(血锁≥1)
 	battle._skill_ring(ally["pos"], Color(1.0, 0.4, 0.3, 0.75), 46.0)
 
@@ -294,7 +294,7 @@ func _glacier_dramatize(from2d: Vector2, dir: Vector2) -> void:
 
 ## ★纯效果结算(可测): 钩住 target → 眩晕(吃韧性) + 标记4秒【一段段拽】 + 4秒受伤放大。不建任何 tween。
 func _hook_grab(trainer: Dictionary, target: Dictionary) -> void:
-	battle._stun(target, battle.HOOK_STUN, "hook")                          # 眩晕4秒(吃韧性)
+	battle._damage._stun(target, battle.HOOK_STUN, "hook")                          # 眩晕4秒(吃韧性)
 	target["_hook_pull_until"] = battle._t + battle.HOOK_STUN               # 4秒内被拽
 	target["_hook_pull_by"] = trainer                         # 朝这个大师拽
 	target["_hook_tug_t0"] = battle._t + battle.HOOK_TUG_DELAY              # 第一下拽的时刻(0.1s后·锤石口径)
@@ -462,7 +462,7 @@ func _trainer_magicstone_onhit(u: Dictionary, tgt: Dictionary) -> void:
 	if not (tgt is Dictionary and tgt.get("alive", false)):
 		return
 	var magic: int = maxi(1, int(battle._resolve_dmg(u, float(tgt["maxHp"]) * 0.02, tgt, true)))   # 2%目标最大生命·魔法(过魔抗)
-	battle._apply_damage_from(u, tgt, magic, Color("#c86bff"), 0.0, false, true)
+	battle._damage._apply_damage_from(u, tgt, magic, Color("#c86bff"), 0.0, false, true)
 	u["_ms_stacks"] = int(u.get("_ms_stacks", 0)) + 1                                        # 攻速叠一层(持续到本场结束)
 
 

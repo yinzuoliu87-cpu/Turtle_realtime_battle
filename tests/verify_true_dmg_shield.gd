@@ -37,9 +37,9 @@ func _ready() -> void:
 	var atk1: Dictionary = _mk(scene, "ninja", "left", Vector2(100, 400))
 	var tgt1: Dictionary = _mk(scene, "ninja", "right", Vector2(300, 400))
 	tgt1["shield"] = 100.0; tgt1["hp"] = 1000.0; tgt1["maxHp"] = 1000.0
-	scene._apply_damage_from(atk1, tgt1, 60, WHITE, 0.0, true)   # 60 真伤
+	scene._damage._apply_damage_from(atk1, tgt1, 60, WHITE, 0.0, true)   # 60 真伤
 	_ok("真伤被护盾吸(盾100→40·血不掉)", int(tgt1["shield"]) == 40 and int(tgt1["hp"]) == 1000, "shield=%d hp=%d" % [int(tgt1["shield"]), int(tgt1["hp"])])
-	scene._apply_damage_from(atk1, tgt1, 60, WHITE, 0.0, true)   # 再60 真伤: 盾40吸40, 余20进血
+	scene._damage._apply_damage_from(atk1, tgt1, 60, WHITE, 0.0, true)   # 再60 真伤: 盾40吸40, 余20进血
 	_ok("真伤打空盾后溢出进血(盾0·血-20)", int(tgt1["shield"]) == 0 and int(tgt1["hp"]) == 980, "shield=%d hp=%d" % [int(tgt1["shield"]), int(tgt1["hp"])])
 
 	# ── ② 反伤(真伤)被攻击者护盾吸收 ──
@@ -47,7 +47,7 @@ func _ready() -> void:
 	atk2["shield"] = 50.0; atk2["hp"] = 1000.0; atk2["maxHp"] = 1000.0
 	var tgt2: Dictionary = _mk(scene, "ninja", "right", Vector2(300, 500))
 	tgt2["reflect"] = 0.5; tgt2["shield"] = 0.0; tgt2["hp"] = 1000.0; tgt2["maxHp"] = 1000.0
-	scene._apply_damage_from(atk2, tgt2, 40, RED, 0.0, false)    # 40物理→tgt2; 反伤50%=20真伤→atk2
+	scene._damage._apply_damage_from(atk2, tgt2, 40, RED, 0.0, false)    # 40物理→tgt2; 反伤50%=20真伤→atk2
 	_ok("反伤(真伤20)被攻击者护盾吸(盾50→30·血不掉)", int(atk2["shield"]) == 30 and int(atk2["hp"]) == 1000, "atk2 shield=%d hp=%d" % [int(atk2["shield"]), int(atk2["hp"])])
 
 	# ── ③ 墨迹真伤仍穿盾 (唯一穿盾例外·线条被动) ──
@@ -55,14 +55,14 @@ func _ready() -> void:
 	var tgt3: Dictionary = _mk(scene, "ninja", "right", Vector2(300, 600))
 	tgt3["shield"] = 100.0; tgt3["hp"] = 1000.0; tgt3["maxHp"] = 1000.0
 	tgt3["stacks"] = {"ink": 4}                                  # 4层墨迹 → 每层额外5%真伤穿盾
-	scene._apply_damage_from(atk3, tgt3, 40, RED, 0.0, false)    # 40物理→盾吸40(盾100→60); 墨迹8(40×5%×4)穿盾进血
+	scene._damage._apply_damage_from(atk3, tgt3, 40, RED, 0.0, false)    # 40物理→盾吸40(盾100→60); 墨迹8(40×5%×4)穿盾进血
 	_ok("墨迹真伤穿盾(盾吸40剩60·墨迹8直接进血)", int(tgt3["shield"]) == 60 and int(tgt3["hp"]) == 992, "shield=%d hp=%d" % [int(tgt3["shield"]), int(tgt3["hp"])])
 
 	# ── ④ 物理照旧被盾吸(回归·没被改坏) ──
 	var atk4: Dictionary = _mk(scene, "ninja", "left", Vector2(100, 700))
 	var tgt4: Dictionary = _mk(scene, "ninja", "right", Vector2(300, 700))
 	tgt4["shield"] = 100.0; tgt4["hp"] = 1000.0; tgt4["maxHp"] = 1000.0
-	scene._apply_damage_from(atk4, tgt4, 40, RED, 0.0, false)    # 40物理→盾吸40
+	scene._damage._apply_damage_from(atk4, tgt4, 40, RED, 0.0, false)    # 40物理→盾吸40
 	_ok("物理被盾吸(盾100→60·血不掉·回归)", int(tgt4["shield"]) == 60 and int(tgt4["hp"]) == 1000, "shield=%d hp=%d" % [int(tgt4["shield"]), int(tgt4["hp"])])
 
 	print("")

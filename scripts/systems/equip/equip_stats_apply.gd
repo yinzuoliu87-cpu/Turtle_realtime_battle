@@ -47,11 +47,11 @@ func _eq_apply_one_stats(u: Dictionary, item_id: String, star: int) -> void:
 	if st.has("_echargePct"):   # 龟能充能速率% → echarge_perm 永久倍率(多件叠加)
 		u["echarge_perm"] = float(u.get("echarge_perm", 1.0)) + float(st["_echargePct"]) / 100.0
 	# ↓ 以下4类原先漏接: 数值表里写了、单位字段也确实被消费, 但从没往里写 → 属性栏骗人(用户2026-07-19发现)
-	if st.has("reflectPct"):    # 反伤% → 通用反伤钩(battle._apply_damage_from 读 u.reflect·真伤反弹)
+	if st.has("reflectPct"):    # 反伤% → 通用反伤钩(battle._damage._apply_damage_from 读 u.reflect·真伤反弹)
 		u["reflect"] = float(u.get("reflect", 0.0)) + float(st["reflectPct"]) / 100.0
-	if st.has("healAmp"):       # 治疗增幅% → battle._heal 读 u.heal_amp (amt *= 1+heal_amp)
+	if st.has("healAmp"):       # 治疗增幅% → battle._damage._heal 读 u.heal_amp (amt *= 1+heal_amp)
 		u["heal_amp"] = float(u.get("heal_amp", 0.0)) + float(st["healAmp"]) / 100.0
-	if st.has("shieldAmp"):     # 护盾增幅% → battle._grant_shield 读 u.shield_amp (amt *= 1+shield_amp)
+	if st.has("shieldAmp"):     # 护盾增幅% → battle._damage._grant_shield 读 u.shield_amp (amt *= 1+shield_amp)
 		u["shield_amp"] = float(u.get("shield_amp", 0.0)) + float(st["shieldAmp"]) / 100.0
 	if st.has("shieldHealPct"): # 「治疗&盾增」% → 同时加治疗增幅与护盾增幅
 		u["heal_amp"] = float(u.get("heal_amp", 0.0)) + float(st["shieldHealPct"]) / 100.0
@@ -96,7 +96,7 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 			var _dg46: float = 0.0
 			if si < _a46.size():
 				_dg46 = float((_a46[si] as Dictionary).get("dodgePct", 0.0)) / 100.0
-			battle._buff(u, "dodge", _dg46, false, 99999.0)
+			battle._damage._buff(u, "dodge", _dg46, false, 99999.0)
 			stt["ghost_shield"] = [30.0, 50.0, 120.0][si]
 		"p2eq_054":   # 瞄准镜: 必中 (无视目标闪避)
 			u["eq_cannot_be_dodged"] = true

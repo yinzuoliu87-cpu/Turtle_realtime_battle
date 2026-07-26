@@ -44,9 +44,9 @@ func _sk_cyber_cannon(u: Dictionary, tgt) -> void:              # 赛博龟·能
 			if not o.get("alive", false): continue
 			if not battle._on_line(uu["pos"], dir, o["pos"], 70.0): continue    # 直线判定带宽±70码
 			if o["pos"].distance_to(uu["pos"]) > 900.0: continue
-			battle._apply_damage_from(uu, o, battle._atk_dmg(uu, 1.0, o), Color("#9bf0ff"))                          # 1A物理
+			battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, 1.0, o), Color("#9bf0ff"))                          # 1A物理
 			if drones > 0:
-				battle._apply_damage_from(uu, o, int(uu["atk"] * 0.1 * drones), Color("#d0ffff"), 0.0, true)  # 0.1A×浮游炮数真伤
+				battle._damage._apply_damage_from(uu, o, int(uu["atk"] * 0.1 * drones), Color("#d0ffff"), 0.0, true)  # 0.1A×浮游炮数真伤
 			battle._vfx._hit_spark(o)
 		var endp: Vector2 = uu["pos"] + dir * 1300.0
 		battle._beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", uu["pos"], endp, 90.0, Color(1.0, 1.0, 1.0, 1.0), 0.35)     # ①白热核心束
@@ -127,7 +127,7 @@ func _cyber_smart_dash(u: Dictionary) -> void:   # 智能走位冲刺核心(主�
 	, 0.0, 1.0, dur4)
 	dt4.tween_callback(func() -> void: uu4["_slam"] = false)
 
-# 泡泡·束缚: 定身目标 1.5s + 束缚期间每受一段伤害 永久-X护甲/魔抗 (见 battle._apply_damage_from 钩子)
+# 泡泡·束缚: 定身目标 1.5s + 束缚期间每受一段伤害 永久-X护甲/魔抗 (见 battle._damage._apply_damage_from 钩子)
 func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07-16理想效果): 本体消散→浮游炮游动集结→各自对最近敌蓄力→贯穿激光0.4A魔法→飞向集结点→机甲5秒组装(血/攻/甲/抗从低涨到设定值·期间不能动)→就位近战
 	var n: int = int(u.get("drone_n", 0))
 	if n <= 0:
@@ -198,7 +198,7 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 				battle._shake(0.03)
 				for o2 in battle._units:
 					if battle._is_hostile(uu, o2) and o2.get("alive", false) and battle._on_line(dpos, ldir, o2["pos"], 40.0):
-						battle._apply_damage_from(uu, o2, battle._resolve_dmg(uu, atk_ref * 0.4, o2, true), Color("#7ee8ff"))      # 0.4A魔法(蓝字)
+						battle._damage._apply_damage_from(uu, o2, battle._resolve_dmg(uu, atk_ref * 0.4, o2, true), Color("#7ee8ff"))      # 0.4A魔法(蓝字)
 						battle._vfx._hit_spark(o2))
 	, "src": u})
 	# ③ 飞向集结点消失(2.4s起·等激光演出完)

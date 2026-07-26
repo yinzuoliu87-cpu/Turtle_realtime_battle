@@ -49,8 +49,8 @@ func _sk_candy_hammer(u: Dictionary, tgt) -> void:              # 糖果龟·技
 		var dealt: int = 0
 		for o in hits:
 			var dm: int = battle._mitigate(uu, per_raw, o, false)
-			battle._apply_damage_from(uu, o, dm, Color("#ff9ed6")); dealt += dm
-		battle._heal(uu, float(dealt) * 0.40))
+			battle._damage._apply_damage_from(uu, o, dm, Color("#ff9ed6")); dealt += dm
+		battle._damage._heal(uu, float(dealt) * 0.40))
 
 func _candy_hammer_pose(hammer: Sprite3D, pos2d: Vector2, dir: Vector2, slamming: bool, p: float) -> void:   # 糖果锤姿态: raise=从身侧升头顶后方后仰 / slam=挥到前方下落
 	if not is_instance_valid(hammer): return
@@ -90,9 +90,9 @@ func _sk_candy_barrage(u: Dictionary, tgt) -> void:            # 糖果龟·技�
 						if not o.get("alive", false): continue
 						if o["pos"].distance_to(land) > 120.0: continue
 						if not battle._is_hostile(uu, o):
-							battle._grant_shield(o, uu["maxHp"] * 0.02, 2.0)
+							battle._damage._grant_shield(o, uu["maxHp"] * 0.02, 2.0)
 						else:
-							battle._apply_damage_from(uu, o, battle._resolve_dmg(uu, uu["atk"] * 0.2 + uu["maxHp"] * 0.02, o, true), Color("#ff9ed6"), 0.0, false, true)
+							battle._damage._apply_damage_from(uu, o, battle._resolve_dmg(uu, uu["atk"] * 0.2 + uu["maxHp"] * 0.02, o, true), Color("#ff9ed6"), 0.0, false, true)
 							o["spd_move_mult"] = 0.8; o["spd_dbf_until"] = battle._t + 0.5)
 			})
 
@@ -149,8 +149,8 @@ func _candy_sweet_drain(u: Dictionary) -> void:   # 甜蜜掠夺·甜蜜吸取(�
 		if float(e["maxHp"]) > float(fat["maxHp"]): fat = e
 	var steal: float = minf(fat["maxHp"] * 0.25, fat["hp"] - 1.0)
 	if steal > 0:
-		battle._apply_damage_from(u, fat, maxi(1, int(round(steal))), Color("#ff9ecb"), 0.0, true, false, true, true)   # 真伤·必中·不暴击
-		battle._heal(u, steal)
+		battle._damage._apply_damage_from(u, fat, maxi(1, int(round(steal))), Color("#ff9ecb"), 0.0, true, false, true, true)   # 真伤·必中·不暴击
+		battle._damage._heal(u, steal)
 		_candy_drain_fx(u, fat, int(steal))
 
 func _candy_drain_fx(candy: Dictionary, fat: Dictionary, amt: int) -> void:   # 甜蜜掠夺: 粉色精华从最肥敌流向糖果龟+吸取字

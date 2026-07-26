@@ -60,7 +60,7 @@ func _dice_dash_tick(u: Dictionary, delta: float) -> void:
 
 func _dice_dash_hit(u: Dictionary, tgt: Dictionary, dir: Vector2) -> void:
 	var scale_i: float = 0.9 * pow(0.9, float(int(u.get("dice_dash_seg", 0))))   # 每段递减10%(回合制falloffPct=10)
-	battle._apply_damage_from(u, tgt, battle._atk_dmg(u, scale_i, tgt), Color("#ff4444"))
+	battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, scale_i, tgt), Color("#ff4444"))
 	_dice_blade_slash(tgt["pos"], dir)   # AI挥剑斩(沿冲刺方向)
 	battle._melee_lunge(u, tgt)
 
@@ -149,7 +149,7 @@ func _sk_dice_allin(u: Dictionary) -> void:                      # 骰子龟·�
 		var d: float = to_o.length()
 		if d > 300.0 or d < 1.0: continue
 		if dir.dot(to_o / d) < half_cos: continue
-		battle._apply_damage_from(u, o, battle._atk_dmg(u, 1.2, o), Color("#ff4444"), 0.30)
+		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 1.2, o), Color("#ff4444"), 0.30)
 	_dice_scythe_sweep(u, u["pos"], dir, 300.0, 60.0)   # 红镰刀贴地弧扫过120°扇形(用户2026-07-13)
 	battle._skill_ring(u["pos"], Color(1.0, 0.3, 0.3, 0.35), 52.0)
 

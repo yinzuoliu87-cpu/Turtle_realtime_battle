@@ -22,7 +22,7 @@ const Backend := preload("res://scripts/net/backend.gd")    # 赛季结算上传
 ##   周期驱动 tick            32     _tick_
 ##   出生/召唤                22     _spawn_ / _summon
 ##   场景/UI 构建             22     _build_
-##   伤害/治疗/护盾结算       18     _apply_damage / _heal / _grant_shield / _resolve_
+##   伤害/治疗/护盾结算       18     _damage._apply_damage / _damage._heal / _damage._grant_shield / _resolve_
 ##   每帧刷新                 17     _update_
 ##   时停系统                 16     _ts_
 ##   工厂(单位/材质/UI件)     14     _make_
@@ -541,6 +541,7 @@ var _ui_layer: CanvasLayer                # 血条/龟能 overlay + 标题 + 结
 var _vfxiso := false                      # 纯特效隔离模式(VFXISO env): 黑底+无地面+藏单位立绘/UI, 只留特效对比参考
 var _render := BattleRender.new(self)   # 战斗渲染/动画显示层(每帧插值/世界变换/跑动画/覆盖/dot飘字/相机抖/技能文案·纯视觉不改战斗态)(2026-07-26 抽出)
 var _targeting := BattleTargeting.new(self)   # 目标选择/敌我查询(最近敌/获取目标/敌方/友方/可选目标·纯确定性查询无RNG)(2026-07-26 抽出)
+var _damage := BattleDamage.new(self)   # 战斗结算: 两伤害路(_apply_damage DoT/真伤 + _apply_damage_from 普攻/技能·§3.3)+治疗/护盾/buff/眩晕/击退/DoT机制(含crit/dodge RNG·确定性核心)(2026-07-26 抽出)
 var _world: Node3D                        # 3D 内容挂载点 (SubViewport 内)
 var _sub: SubViewport
 var _projectiles: Array = []              # 飞行中的 3D 投射物 {node, from, to, tgt, dmg, magic, src, t, dur}
@@ -701,7 +702,7 @@ var _hb := 0                              # 主循环心跳(每帧+1); 看门狗
 var _dbg_op := "-"                        # 最后进入的重操作(冻死时看门狗打出来定位)
 var _burst_depth := 0                     # 泡泡/冰霜盾爆裂级联递归深度(死亡链burst→伤害→死→再burst); 超上限截断防卡死(用户2026-07-19卡死猎手抓 bubbleShield)
 static var _burst_cap_warned := false     # 深度上限只报一次(避免刷屏)
-var _adf_ct := 0                          # 本帧 _apply_damage_from 调用数(每帧重置); 爆炸=死亡链无限级联→截断防卡死
+var _adf_ct := 0                          # 本帧 _damage._apply_damage_from 调用数(每帧重置); 爆炸=死亡链无限级联→截断防卡死
 var _dbg_op2 := "-"                        # 更细粒度定位: 最后经手的伤害/死亡单位(冻死时打出)
 static var _adf_warned := false
 var _wd_thread: Thread = null
@@ -729,7 +730,7 @@ var _last_crit_sfx_t := -1.0
 var _last_heal_sfx_t := -1.0
 var _last_shieldgain_sfx_t := -1.0
 var _last_shieldbreak_sfx_t := -1.0
-var _last_atk_crit := false               # _atk_dmg 最近一次是否暴击 (供 _apply_damage_from 选暴击音)
+var _last_atk_crit := false               # _atk_dmg 最近一次是否暴击 (供 _damage._apply_damage_from 选暴击音)
 var _last_dmg_type := "physical"          # _resolve_dmg 最近一次伤害类型 (physical/magic; 飘字按类型统一取色)
 const _VC := preload("res://scripts/systems/visual_constants.gd")   # 飘字配色单一事实源 (1:1 回合制 VisualConstants)
 
@@ -1669,7 +1670,7 @@ func _tutorial_anchor(anchor: String) -> Rect2:
 #
 # ★计时按【战场】各自算, 不能用 _t: _t 在上路→下路→终极之间是累加不重置的(实测上路53s结束、下路接着跑到120s),
 #   直接用 _t>=40 会让下路一开场就已经过线。所以 _dl_sys._dl_start_fight 每次开打都重置 _sd_t0。
-# ★增伤要在两条伤害路径都乘: _apply_damage 和 _apply_damage_from 是各自独立扣血的, 只改一处会漏掉一半伤害。
+# ★增伤要在两条伤害路径都乘: _damage._apply_damage 和 _damage._apply_damage_from 是各自独立扣血的, 只改一处会漏掉一半伤害。
 # ══════════════════════════════════════════════════════════════
 const SD_START := 40.0        # 本战场开打满 40 秒 → 进入决胜
 const SD_STEP := 5.0          # 之后每 5 秒一档
@@ -2726,7 +2727,7 @@ func _advance_sim_accum(rd: float) -> void:
 
 ## Phase4: 纯模拟推进(决定战斗结果·可被累加器按固定步长跑 N 次/帧)。frozen/in_ts 由调用方在 sim 前捕获传入。
 func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
-	_adf_ct = 0   # 每帧(每步)重置伤害调用计数(_apply_damage_from 帧内爆炸=死亡链无限级联→自身截断防卡死)
+	_adf_ct = 0   # 每帧(每步)重置伤害调用计数(_damage._apply_damage_from 帧内爆炸=死亡链无限级联→自身截断防卡死)
 	_sd_tick()   # §SUDDEN 战场决胜(40s起治疗-50% + 每5s +25%增伤)
 	_trainer_sys._tick_trainer_attacks(dt) # 训龟大师普攻: 站定扔石头抛物线弹道(用户2026-07-23)
 	_trainer_sys._tick_trainer_ai(dt)      # 敌方(快照)大师 AI: 乱走 + 逮机会甩钩锁(点3·场外援助·用户2026-07-23)
@@ -2878,12 +2879,12 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 			_candy_sys._candy_bomb_bubble(u)
 	_update_stun_vfx(u)         # 通用眩晕圈: 眩晕期间头顶火花星绕转(椭圆), 结束即撤
 	_update_bamboo_charge_dots(u)   # 竹叶蓄满: 双手两绿点(强化就绪指示)
-	_heal_flush(u)   # LoL式治疗累加器: 攒一波回血合并成一个绿字(满血=0)
+	_damage._heal_flush(u)   # LoL式治疗累加器: 攒一波回血合并成一个绿字(满血=0)
 	if _t < float(u.get("candle_hot_until", 0.0)):   # 蜡烛光圈037: 圈内逐渐回血(HoT)
-		_heal(u, float(u.get("candle_hot_rate", 0.0)) * delta, true)
+		_damage._heal(u, float(u.get("candle_hot_rate", 0.0)) * delta, true)
 	if _t < float(u.get("rum_until", 0.0)):   # 海盗朗姆酒: 每秒回4%maxHP(分秒HoT·rum_dps=每秒速率)
 		var _rhpb: float = float(u["hp"])
-		_heal(u, float(u.get("rum_dps", 0.0)) * delta, true)
+		_damage._heal(u, float(u.get("rum_dps", 0.0)) * delta, true)
 		u["_rum_heal_acc"] = float(u.get("_rum_heal_acc", 0.0)) + maxf(0.0, float(u["hp"]) - _rhpb)   # 累积实际回血(满血则0)
 		u["_rum_vfx_t"] = float(u.get("_rum_vfx_t", 0.0)) + delta
 		while u["_rum_vfx_t"] >= 0.55:   # 每0.55s: 暖酒气泡 + 实际回血绿字(真回了才显·符合数字规矩)
@@ -3036,7 +3037,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 						u["skill_gcd_until"] = _t + SKILL_GCD
 						_equip_sys._eq_on_cast(u, tgt)
 						if u["id"] == "space" and float(u.get("star_energy", 0.0)) > 0.0:   # 星能: 施法后追加12%当前星能真伤(用户2026-07-16: 30%→12%)
-							_apply_damage_from(u, tgt, int(u["star_energy"] * 0.12), Color("#ffffff"), 0.0, true)
+							_damage._apply_damage_from(u, tgt, int(u["star_energy"] * 0.12), Color("#ffffff"), 0.0, true)
 						if u["id"] == "shell":                   # 潜影: 自己放技能→破隐(下次普攻附破隐bonus)
 							_shell_sys._shell_break_stealth(u)
 					else:
@@ -3140,7 +3141,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 			if float(dot["_acc"]) >= 1.0:
 				var _cd_dmg: int = int(floor(float(dot["_acc"])))
 				dot["_acc"] = float(dot["_acc"]) - float(_cd_dmg)
-				_apply_damage(u, _cd_dmg, Color(UIPalette.TRUE_DMG), dot.get("src", null), "tru", false, true, true)   # col 实际被 dot_accum 按桶色覆盖(tru=白); 这里给白只为不误导
+				_damage._apply_damage(u, _cd_dmg, Color(UIPalette.TRUE_DMG), dot.get("src", null), "tru", false, true, true)   # col 实际被 dot_accum 按桶色覆盖(tru=白); 这里给白只为不误导
 				if not u["alive"]:
 					return
 			keep.append(dot)
@@ -3307,20 +3308,20 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		_cdir = _cdir.normalized()
 		for o in _targeting._enemies_of(u):
 			if o.get("alive", false) and _on_line(u["pos"], _cdir, o["pos"], 55.0):
-				_apply_damage_from(u, o, _atk_dmg(u, 1.0, o), Color("#9bf0ff"))
+				_damage._apply_damage_from(u, o, _atk_dmg(u, 1.0, o), Color("#9bf0ff"))
 				_vfx._hit_spark(o)                                                       # 沿线每个命中点火花(2026-07-15提质)
 		_bolt_line(u["pos"], u["pos"] + _cdir * 1300.0, Color(0.85, 1.0, 1.0))     # 白青亮核心线
 		_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", u["pos"], u["pos"] + _cdir * 1300.0, 44.0, Color(0.5, 0.9, 1.0, 0.55), 0.22)   # 青色辉光束(细·随核心线衰减)
 		_on_basic_hit(u, tgt)
 		return
 	if u["id"] == "headless":       # 撕咬: 1A物理(红) + 3%目标最大生命魔法(蓝·按UI规则); 灵魂强化窗口(用户2026-07-17机制大改): 下3次攻击各额外0.5A魔法+10%当前生命魔法(蓝)+牙齿闭合, 第3下→镰刀横扫
-		_apply_damage_from(u, tgt, _atk_dmg(u, 1.0, tgt), Color("#ff4444"))
-		if tgt.get("alive", false): _apply_damage_from(u, tgt, int(tgt["maxHp"] * 0.03), Color("#9bdcff"))   # 3%maxHp魔法(蓝)
+		_damage._apply_damage_from(u, tgt, _atk_dmg(u, 1.0, tgt), Color("#ff4444"))
+		if tgt.get("alive", false): _damage._apply_damage_from(u, tgt, int(tgt["maxHp"] * 0.03), Color("#9bdcff"))   # 3%maxHp魔法(蓝)
 		if int(u.get("headless_soul_stacks", 0)) > 0:              # 灵魂强化: 下3次攻击各附加(用户2026-07-17)
 			u["headless_soul_stacks"] = int(u["headless_soul_stacks"]) - 1
 			if tgt.get("alive", false):
-				_apply_damage_from(u, tgt, _atk_dmg(u, 0.5, tgt, true), Color("#9bdcff"))   # 额外0.5A魔法
-				_apply_damage_from(u, tgt, int(tgt["hp"] * 0.10), Color("#9bdcff"))          # 额外10%当前生命魔法
+				_damage._apply_damage_from(u, tgt, _atk_dmg(u, 0.5, tgt, true), Color("#9bdcff"))   # 额外0.5A魔法
+				_damage._apply_damage_from(u, tgt, int(tgt["hp"] * 0.10), Color("#9bdcff"))          # 额外10%当前生命魔法
 				_headless_sys._headless_soul_bite(tgt)                            # 像素牙齿闭合命中特效
 			if int(u["headless_soul_stacks"]) <= 0:
 				_headless_sys._headless_scythe(u)                                 # 第3下打完→蓄力→镰刀横扫
@@ -3467,7 +3468,7 @@ func _thunder_bolt(u: Dictionary) -> void:
 
 func _thunder_hit(u: Dictionary, o: Dictionary) -> void:
 	if not (u.get("alive", false) and o.get("alive", false)): return
-	_apply_damage_from(u, o, int(u["atk"]), Color("#cfefff"), 0.0, true, true)   # 1×ATK真实伤害(白字,飘在2.2=雷中间)
+	_damage._apply_damage_from(u, o, int(u["atk"]), Color("#cfefff"), 0.0, true, true)   # 1×ATK真实伤害(白字,飘在2.2=雷中间)
 
 func _spawn_ice_spike(pos2d: Vector2, hscale: float, linger: float) -> void:
 	var tex: Texture2D = load("res://assets/sprites/vfx/ice-spike-vfx.png")
@@ -3948,8 +3949,8 @@ func _throw_dumbbell(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   # 钢�
 func _dumbbell_hit(spr: Sprite3D, u: Dictionary, tgt: Dictionary, dmg: int) -> void:
 	if is_instance_valid(spr): spr.queue_free()
 	if not tgt.get("alive", false): return
-	_apply_damage_from(u, tgt, _resolve_dmg(u, float(dmg), tgt, false), Color("#c8ccd6"), 0.0, false, true)   # 用户2026-07-19: 原裸值不吃护甲
-	_knockback(u, tgt, 0.0, 1.0, 2.0)   # 砸中击退
+	_damage._apply_damage_from(u, tgt, _resolve_dmg(u, float(dmg), tgt, false), Color("#c8ccd6"), 0.0, false, true)   # 用户2026-07-19: 原裸值不吃护甲
+	_damage._knockback(u, tgt, 0.0, 1.0, 2.0)   # 砸中击退
 	_skill_ring(tgt["pos"], Color(0.8, 0.82, 0.9, 0.6), 50.0); _shake(JUICE_SHAKE_HEAVY)
 
 func _fuel_flask_step(pf: float, spr, from2d: Vector2, to2d: Vector2, peak: float) -> void:   # 火瓶飞行帧: 抛物线高度 + 翻滚 + 掉余烬
@@ -3980,9 +3981,9 @@ func _ember_drop(at2d: Vector2, h: float) -> void:   # 火瓶拖尾: 一粒余�
 func _fuel_bottle_hit(spr: Sprite3D, u: Dictionary, t: Dictionary, si: int) -> void:
 	if is_instance_valid(spr): spr.queue_free()
 	if not t.get("alive", false): return
-	_apply_damage_from(u, t, [40, 60, 100][si], Color("#ff7a3c"), 0.0, true, true)   # 火瓶直接火伤(命中即出伤+同帧跳数字, 照028同费档)
+	_damage._apply_damage_from(u, t, [40, 60, 100][si], Color("#ff7a3c"), 0.0, true, true)   # 火瓶直接火伤(命中即出伤+同帧跳数字, 照028同费档)
 	var tf: int = maxi(1, roundi([20, 35, 60][si] + [0.10, 0.15, 0.20][si] * u["atk"]))
-	_apply_dot_stacks(t, "burn", tf, u)
+	_damage._apply_dot_stacks(t, "burn", tf, u)
 	t["true_fire_until"] = _t + 5.0
 	_fuel_shatter_fx(t["pos"])
 
@@ -4487,8 +4488,8 @@ func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大�
 			var proj: float = (o["pos"] - origin).dot(dir)
 			if proj >= -40.0 and proj <= traveled + 30.0 and _on_line(origin, dir, o["pos"], 85.0):
 				hit_arr.append(o)
-				_apply_damage_from(u, o, dmg, Color("#ffd27a"), 0.0, false, true)
-				_knockback(u, o, 0.0, 1.5, 0.0)          # 击飞 ~0.8s (vy×1.5), 无横推(vx/vz=0, 拉回交给_pull_airborne)
+				_damage._apply_damage_from(u, o, dmg, Color("#ffd27a"), 0.0, false, true)
+				_damage._knockback(u, o, 0.0, 1.5, 0.0)          # 击飞 ~0.8s (vy×1.5), 无横推(vx/vz=0, 拉回交给_pull_airborne)
 				_pull_airborne(o, origin, 70.0, 0.45)    # 拉回70码: 滞空(击飞态)期平滑滑向大熊(留24px不重叠)
 				_gold_chunk_erupt(o["pos"])              # 命中点额外炸一簇
 	u["_bear_voff"] = Vector3.ZERO
@@ -4577,7 +4578,7 @@ func _do_basic(u: Dictionary, tgt: Dictionary, spec: Dictionary) -> void:
 			elif alt_magic:
 				_emit_basic(u, tgt, _mitigate(u, raw_m / half, tgt, true), Color("#4dabf7"), i)
 			else:
-				_apply_damage_from(u, tgt, int(raw_t / half), Color("#ffffff"), 0.0, true)
+				_damage._apply_damage_from(u, tgt, int(raw_t / half), Color("#ffffff"), 0.0, true)
 	else:
 		for i in range(vh):
 			if not tgt["alive"]:
@@ -4589,17 +4590,17 @@ func _do_basic(u: Dictionary, tgt: Dictionary, spec: Dictionary) -> void:
 				dmg += _mitigate(u, raw_m / vh, tgt, true)
 			_emit_basic(u, tgt, dmg, col, i)
 			if raw_t > 0.0:
-				_apply_damage_from(u, tgt, int(raw_t / vh), Color("#ffffff"), 0.0, true)   # 真实(穿减伤)
+				_damage._apply_damage_from(u, tgt, int(raw_t / vh), Color("#ffffff"), 0.0, true)   # 真实(穿减伤)
 	# 普攻自愈 (×ATK·每次普攻一次·海盗弯刀0.2A·silent防高频刷绿字)
 	var sh: float = float(spec.get("selfheal", 0.0))
 	if sh > 0.0 and u.get("alive", false):
-		_heal(u, atk * sh, true)
+		_damage._heal(u, atk * sh, true)
 	# 附带效果
 	match str(spec.get("rider", "")):
-		"burn":    _apply_dot_stacks(tgt, "burn", (maxi(1, int(round(float(u["atk"]) * float(spec.get("burnScale", 0.0))))) if spec.has("burnScale") else _default_burn_stacks(u)), u)
-		"atkdn":   _buff(tgt, "atk", -0.15, true)
-		"selfdef": _buff(u, "def", 0.20, true)
-		"bleed":   _apply_dot_stacks(tgt, "bleed", (3 if _last_atk_crit else 2), u)   # 忍者斩击: 2层流血(本次暴击→3层·封板·读_resolve_dmg设的_last_atk_crit)
+		"burn":    _damage._apply_dot_stacks(tgt, "burn", (maxi(1, int(round(float(u["atk"]) * float(spec.get("burnScale", 0.0))))) if spec.has("burnScale") else _default_burn_stacks(u)), u)
+		"atkdn":   _damage._buff(tgt, "atk", -0.15, true)
+		"selfdef": _damage._buff(u, "def", 0.20, true)
+		"bleed":   _damage._apply_dot_stacks(tgt, "bleed", (3 if _last_atk_crit else 2), u)   # 忍者斩击: 2层流血(本次暴击→3层·封板·读_resolve_dmg设的_last_atk_crit)
 		"shrink":  _hiding_sys._hiding_shell_harden(u)                             # 缩头缩壳: 每击+1甲+1抗(永久)+0.1A盾
 	# 特殊机制
 	match str(spec.get("mech", "")):
@@ -4610,7 +4611,7 @@ func _emit_basic(u: Dictionary, tgt: Dictionary, dmg: int, col: Color, i: int) -
 	if dmg <= 0:
 		return
 	if u["melee"]:
-		_apply_damage_from(u, tgt, dmg, col)
+		_damage._apply_damage_from(u, tgt, dmg, col)
 		if i == 0:
 			_vfx._flash(tgt); _melee_lunge(u, tgt)
 	else:
@@ -4626,7 +4627,7 @@ func _splash_adjacent(u: Dictionary, tgt: Dictionary, frac: float) -> void:
 		if is_same(o, tgt) or not o["alive"]:
 			continue
 		if (o["pos"] - tgt["pos"]).length() <= 90.0:
-			_apply_damage_from(u, o, _mitigate(u, u["atk"] * 0.6 * frac, o, false), Color("#cfd8e8"))
+			_damage._apply_damage_from(u, o, _mitigate(u, u["atk"] * 0.6 * frac, o, false), Color("#cfd8e8"))
 	# 普攻 on-hit 被动钩子 (墨迹/电击/结晶叠层 + 猎杀斩杀 等)
 	_on_basic_hit(u, tgt)
 
@@ -4765,7 +4766,7 @@ func _barrage_bolt(u: Dictionary, cloud_h: float) -> void:   # 雷暴单道(用�
 	_barrage_strike(e["pos"])   # 闪电龟自有lightning-0落雷(非被动的common-lightning-strike)
 	_vfx._hit_spark(e)
 	_shake(0.028)
-	_apply_damage_from(u, e, _atk_dmg(u, 2.2 / 20.0, e, true), Color("#7ee8ff"))
+	_damage._apply_damage_from(u, e, _atk_dmg(u, 2.2 / 20.0, e, true), Color("#7ee8ff"))
 	_add_stack(e, "electric", 1, 8)
 
 func _barrage_cloud_fade(cloud: Sprite3D) -> void:
@@ -4945,8 +4946,8 @@ func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   #
 				hit = true
 				if tgt.get("alive", false):
 					_last_dmg_type = "physical"   # 小熊走路期全局类型会被别的伤害覆写→结算前复位(飘字色/统计分桶)
-					_apply_damage_from(u, tgt, dmg, Color("#ffb0c8"), 0.0, false, true)
-					_knockback(u, tgt, 60.0, 1.6, 1.9)   # 踢一脚: 上抛×1.6/横推×1.9
+					_damage._apply_damage_from(u, tgt, dmg, Color("#ffb0c8"), 0.0, false, true)
+					_damage._knockback(u, tgt, 60.0, 1.6, 1.9)   # 踢一脚: 上抛×1.6/横推×1.9
 	# 小熊消失 (淡出)
 	if is_instance_valid(bear):
 		var tw := _reg_tween()
@@ -5017,12 +5018,12 @@ func _step_projectiles(delta: float) -> void:
 			if tgt["alive"]:
 				if pr.has("dtype"): _last_dmg_type = str(pr["dtype"])   # ★弹道命中: 还原发射时捕获的伤害类型(飞行期全局可能被别的伤害覆写→飘字色错·用户2026-07-11)
 				if pr.get("fireball", false):   # 抛物线火球045: 落点火爆+魔法伤(蓝字)+灼烧
-					_apply_damage_from(pr["src"], tgt, _resolve_dmg(pr["src"], float(pr["dmg"]), tgt, true), pr["col"], 0.0, false, true)
+					_damage._apply_damage_from(pr["src"], tgt, _resolve_dmg(pr["src"], float(pr["dmg"]), tgt, true), pr["col"], 0.0, false, true)
 					if pr.get("fire_burst", 0) > 0:
-						_apply_dot_stacks(tgt, "burn", int(pr["fire_burst"]), pr["src"])
+						_damage._apply_dot_stacks(tgt, "burn", int(pr["fire_burst"]), pr["src"])
 					_fire_explosion(tgt["pos"])
 				elif pr.get("bamboo", false):   # 竹枝箭039: 命中演出照抄竹叶龟强化普攻(用户2026-07-19"特效用竹叶龟同款")
-					_apply_damage_from(pr["src"], tgt, _resolve_dmg(pr["src"], float(pr["dmg"]), tgt, true), pr["col"], 0.0, false, true)
+					_damage._apply_damage_from(pr["src"], tgt, _resolve_dmg(pr["src"], float(pr["dmg"]), tgt, true), pr["col"], 0.0, false, true)
 					_hitstop = maxf(_hitstop, 0.06)                                # 顿帧=命中厚重感
 					_shake(0.06)
 					_vfx._impact_particles(tgt["pos"], float(tgt.get("height", 0.0)))   # 命中碎屑迸发
@@ -5033,7 +5034,7 @@ func _step_projectiles(delta: float) -> void:
 					_spawn_bamboo_orb(tgt["pos"], _bsrc["pos"], func() -> void:    # 绿球飞回携带者, 落到身上才吸收
 						if not _bsrc.get("alive", false):
 							return
-						_heal(_bsrc, _bsrc["maxHp"] * 0.06)
+						_damage._heal(_bsrc, _bsrc["maxHp"] * 0.06)
 						if _bgrow > 0.0:
 							_bsrc["maxHp"] += _bgrow; _bsrc["hp"] += _bgrow
 							_recalc_stats(_bsrc)
@@ -5041,52 +5042,52 @@ func _step_projectiles(delta: float) -> void:
 				elif pr.get("shuriken_hit", false):   # 手里剑: 物理段(红·减甲)+暴击时真伤段(白·穿甲)→同发跳两数字(飘字系统按类型自动错开行·不合并)
 					_last_atk_crit = bool(pr.get("is_crit", false))   # 两段都按暴击显示(大字+暴击图标)
 					_last_dmg_type = "physical"
-					_apply_damage_from(pr["src"], tgt, _phys_after_armor(pr["src"], float(pr["nj_phys"]), tgt), Color("#ff4444"), 0.0, false)   # 物理段(红)
+					_damage._apply_damage_from(pr["src"], tgt, _phys_after_armor(pr["src"], float(pr["nj_phys"]), tgt), Color("#ff4444"), 0.0, false)   # 物理段(红)
 					if float(pr.get("nj_true", 0.0)) >= 1.0 and tgt.get("alive", false):
 						_last_atk_crit = bool(pr.get("is_crit", false))   # 物理段hook可能改写→真伤段前重置
-						_apply_damage_from(pr["src"], tgt, int(round(float(pr["nj_true"]))), Color("#ffffff"), 0.0, true, false, true)   # 真伤段(白·pre_crit=已含暴击不再二次掷)
+						_damage._apply_damage_from(pr["src"], tgt, int(round(float(pr["nj_true"]))), Color("#ffffff"), 0.0, true, false, true)   # 真伤段(白·pre_crit=已含暴击不再二次掷)
 				elif pr.get("ghost_touch", false):   # 幽魂触碰: 物理(红·减甲)+真实(白·穿甲) 命中同发跳两数字
 					_last_dmg_type = "physical"
-					_apply_damage_from(pr["src"], tgt, _phys_after_armor(pr["src"], float(pr["gt_phys"]), tgt), Color("#ff4444"), 0.0, false)
+					_damage._apply_damage_from(pr["src"], tgt, _phys_after_armor(pr["src"], float(pr["gt_phys"]), tgt), Color("#ff4444"), 0.0, false)
 					if tgt.get("alive", false):
-						_apply_damage_from(pr["src"], tgt, int(round(float(pr["gt_true"]))), Color("#ffffff"), 0.0, true)
+						_damage._apply_damage_from(pr["src"], tgt, int(round(float(pr["gt_true"]))), Color("#ffffff"), 0.0, true)
 					_ghost_sys._ghost_touch_hit(tgt["pos"])
 				elif pr.get("eq_bolt", false):   # 装备弹道(弩矢/飞镖等): 记为装备物理伤, 命中溅火花
-					_apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], float(pr.get("eq_ls", 0.0)), false, true)
+					_damage._apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], float(pr.get("eq_ls", 0.0)), false, true)
 					if pr.get("eq_bleed", 0) > 0:
-						_apply_dot_stacks(tgt, "bleed", int(pr["eq_bleed"]), pr["src"])
+						_damage._apply_dot_stacks(tgt, "bleed", int(pr["eq_bleed"]), pr["src"])
 					_vfx._hit_spark(tgt)
 				elif pr.get("flyslash", false):   # 锈蚀短剑001飞斩: 命中才结算装备物理伤(红字)+落点炸斩弧+命中环
-					_apply_damage_from(pr["src"], tgt, pr["dmg"], Color("#ff4444"), 0.0, false, true)
+					_damage._apply_damage_from(pr["src"], tgt, pr["dmg"], Color("#ff4444"), 0.0, false, true)
 					_weapon_slash(pr.get("o2d", tgt["pos"]), tgt["pos"], pr["col"])
 				elif pr.get("venom_fang", false):   # 暴君之牙004毒牙: 命中魔法伤(紫)+毒液飞溅+回复携带者100%造成伤害
 					var vd: int = _resolve_dmg(pr["src"], float(pr.get("fang_base", 0.0)), tgt, true)
-					_apply_damage_from(pr["src"], tgt, vd, Color("#c96bff"), 0.0, false, true)
+					_damage._apply_damage_from(pr["src"], tgt, vd, Color("#c96bff"), 0.0, false, true)
 					_venom_splat(tgt["pos"])
 					if pr["src"].get("alive", false):
-						_heal(pr["src"], float(vd))   # 回复100%造成的伤害值
+						_damage._heal(pr["src"], float(vd))   # 回复100%造成的伤害值
 				elif pr.get("coral_spike", false):   # 双穿珊瑚刺008: 命中→物理(红)+ %maxHP魔法(蓝·走魔抗·修原raw白字真伤)+珊瑚碎裂
 					var cs: int = int(pr.get("co_si", 2))
-					_apply_damage_from(pr["src"], tgt, _atk_dmg(pr["src"], [1.0, 1.2, 1.5][cs], tgt), Color("#ff4444"), 0.0, false, true)
-					_apply_damage_from(pr["src"], tgt, _resolve_dmg(pr["src"], float(tgt["maxHp"]) * [0.08, 0.12, 0.18][cs], tgt, true), Color("#bfe9ff"), 0.0, false, true)
+					_damage._apply_damage_from(pr["src"], tgt, _atk_dmg(pr["src"], [1.0, 1.2, 1.5][cs], tgt), Color("#ff4444"), 0.0, false, true)
+					_damage._apply_damage_from(pr["src"], tgt, _resolve_dmg(pr["src"], float(tgt["maxHp"]) * [0.08, 0.12, 0.18][cs], tgt, true), Color("#bfe9ff"), 0.0, false, true)
 					_coral_burst(tgt["pos"])
 				elif pr.get("drone_shot", false):   # 赛博浮游炮弹: 命中→本弹触发的装备充能/叠层减半(只减浮游炮触发·本体不减·用户2026-07-19)
 					_equip_sys._eq_drone_halve = true
-					_apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], 0.0, false)
+					_damage._apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], 0.0, false)
 					_equip_sys._eq_drone_halve = false
 				elif pr["src"] != null:
-					_apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], 0.0, pr.get("raw", false))   # raw=手里剑暴击转真伤等
+					_damage._apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], 0.0, pr.get("raw", false))   # raw=手里剑暴击转真伤等
 				else:
-					_apply_damage(tgt, pr["dmg"], pr["col"])
+					_damage._apply_damage(tgt, pr["dmg"], pr["col"])
 				_vfx._flash(tgt)
 				if pr.get("basic_onhit", false) and pr["src"] != null:
 					_on_basic_hit(pr["src"], tgt)   # 远程普攻附带(审判等)弹道命中时触发→与裁决同帧跳数字
 				if pr.get("freeze_on_hit", 0.0) > 0.0:
 					_freeze(tgt, pr["freeze_on_hit"])   # 冰封: 弹道命中→冻结
 				if pr.get("coin_true", 0) > 0:
-					_apply_damage_from(pr["src"], tgt, int(pr["coin_true"]), Color("#fff0a0"), 0.0, true)   # 金币真实那半
+					_damage._apply_damage_from(pr["src"], tgt, int(pr["coin_true"]), Color("#fff0a0"), 0.0, true)   # 金币真实那半
 				if pr.get("star_true", 0) > 0 and tgt.get("alive", false):
-					_apply_damage_from(pr["src"], tgt, int(pr["star_true"]), Color("#ffffff"), 0.0, true)   # 星能追加真伤(白字·附普攻命中同帧·用户2026-07-16)
+					_damage._apply_damage_from(pr["src"], tgt, int(pr["star_true"]), Color("#ffffff"), 0.0, true)   # 星能追加真伤(白字·附普攻命中同帧·用户2026-07-16)
 			continue
 		keep.append(pr)
 	_projectiles = keep
@@ -5207,14 +5208,14 @@ func _laser_beam(a2d: Vector2, b2d: Vector2, col: Color, half_w: float = 0.16, d
 # ----------------------------------------------------------------------------
 #  §MITIGATE — 受害者侧减伤(两条伤害路径共用, 2026-07-22)
 #
-#  ★为什么抽出来: `_apply_damage`(DoT/真伤) 原本只有 30 行, `_apply_damage_from`(普攻/技能)
+#  ★为什么抽出来: `_damage._apply_damage`(DoT/真伤) 原本只有 30 行, `_damage._apply_damage_from`(普攻/技能)
 #    有 205 行 —— 差的全是减伤与触发链。于是【所有百分比/固定减伤对 DOT 完全无效】:
 #    钻石18% / 岩石之躯-30% / 嘲讽减伤 / 铁壁盾016 flat / 靶向器055+20% / 终极暴露蛋×5
 #    统统挡不住流血中毒灼烧。玩家侧的感受是"我堆了一身减伤，还是被烧死"。
 #    回合制权威 scripts/engine/damage.gd:176-213 的 DOT 是完整吃这些的, 实时版这条链丢了。
 #
 #  ★只放【受害者侧】的减伤。攻击者侧(暴击/护穿/增伤)不在这里 —— 它们两条路的口径不同:
-#    普攻走 _resolve_dmg 预先算好, DOT 走 _dot_after_resist。放进来会重复扣。
+#    普攻走 _resolve_dmg 预先算好, DOT 走 _damage._dot_after_resist。放进来会重复扣。
 # ----------------------------------------------------------------------------
 ## is_self=true: 自损/自然衰减 —— 不吃【增伤类】修正。
 ##   ★否则暴露蛋的自损会被它自己的「×5承伤」放大成 25%/秒(设计是 5%/秒),
@@ -5245,242 +5246,6 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 	return d
 
 
-func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: String = "dot", is_self: bool = false, dot_accum: bool = false, mute_sfx: bool = false) -> void:
-	if u.get("_assembling", false):
-		return   # 机甲组装期免疫一切伤害。★这条路径(DoT/真伤)原先没有这个闸, 只有 _apply_damage_from 有 → DoT 能打穿组装免疫(2026-07-19)
-	if _sd_stacks > 0:
-		dmg = maxi(1, int(round(float(dmg) * (1.0 + _sd_amp()))))   # §SUDDEN 决胜增伤(这条路走 DoT/真伤等)
-	# ★2026-07-22 全量对齐: 过与 _apply_damage_from 同一套受害者减伤(见 §MITIGATE)。
-	#   bucket=="tru" 视为真伤 → 与另一条路的 raw 语义一致(真伤只无视护甲/减伤, 护盾照吸)。
-	var _raw: bool = (bucket == "tru")
-	var d := _mitigate_incoming(u, float(dmg), _raw, is_self)
-	dmg = maxi(1, int(round(d)))                     # 统计/飘字用减伤【后】的值, 否则面板数字与实际掉血对不上
-	var shield_before: float = u["shield"]
-	d = ShieldMath.absorb(u, d)   # 普通盾+aura盾 吸全类型(§3.3 收口·两路共用)
-	u["hp"] = maxf(0.0, u["hp"] - d)
-	# 无头龟·亡灵免死锁血: 另一条路有(deathfloor_until), 这条路没有 → 免死光环亮着人被 DOT 烧死
-	if u["hp"] <= 0.0 and _t < float(u.get("deathfloor_until", 0.0)):
-		u["hp"] = 1.0
-	if u.get("_review_dummy", false): u["hp"] = u["maxHp"]   # 训练靶: 受击即回满, 打不死不结算(看完整)
-	if _audit and dmg > 100000:
-		_audit_flag("huge_hit", "%s 单次承伤 %d (%s)" % [str(u.get("name", "?")), dmg, bucket])
-	u["_st_taken"] = int(u.get("_st_taken", 0)) + dmg
-	_st_add_type(u, "_st_taken_by_type", bucket, dmg)
-	# §STATS 修(用户2026-07-19"统计面板感觉很多伤害没统计"): DoT(灼烧/中毒/流血)此前【只计承受方】,
-	#   施加者的"造成"完全没算 —— 而 dot_src 一直有记来源, 只是结算时没用。这里补上施加者归属。
-	if src is Dictionary and src.get("alive", false) and not is_same(src, u):
-		src["_st_dealt"] = int(src.get("_st_dealt", 0)) + dmg
-		_st_add_type(src, "_st_dealt_by_type", bucket, dmg)
-	# ★DOT 累积模式(点1): 不跳小飘字, 累加进头顶【按伤害类型桶】的常驻数字(灼烧+中毒同 mag 桶)。
-	if dot_accum:
-		_dot_accumulate(u, bucket, dmg)
-	else:
-		_vfx._float_text(u["pos"] + Vector2(randf_range(-26.0, 26.0), -40.0 + randf_range(-10.0, 6.0)), str(dmg), col)   # 抖开: 多段/AOE 出伤飘字不重叠成糊团
-	# §AUDIO: 无来源伤害也出命中音 (非暴击); 护盾破→shield-break。mute_sfx=诅咒 tick 静音(用户2026-07-23)
-	if not mute_sfx:
-		if shield_before > 0.0 and u["shield"] <= 0.0:
-			_audio_sys._sfx_shield_break()
-		else:
-			_audio_sys._sfx_hit(false)
-	if u["hp"] <= 0.0 and u["alive"]:
-		# ★带上 src: 原为 _kill(u) 无凶手 → DOT 击杀【不算击杀数】, 且暴君之牙处决回血这类
-		#   on-kill 装备钩子全不触发(对比另一条路 _kill(u, src))。2026-07-22 修。
-		_kill(u, src if src is Dictionary else null)
-
-# 来源已知的伤害: 闪避 / 吸血 / 伤害统计 / 累积条(怒气/星能/储能) / 受伤被动. extra_ls=技能额外吸血%; raw=真伤穿盾
-func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, extra_ls: float = 0.0, raw: bool = false, from_equip: bool = false, pre_crit: bool = false, no_dodge: bool = false) -> void:
-	_adf_ct += 1
-	if _adf_ct > 20000:                        # 防御: 一帧伤害调用爆炸(死亡链无限级联)→本帧后续伤害丢弃防卡死(用户2026-07-19卡死猎手)
-		if not _adf_warned:
-			_adf_warned = true
-			printerr("[GUARD] _apply_damage_from 一帧调用超2万→截断防卡死 (last=%s src=%s)" % [str(u.get("id", "?")), str(src.get("id", "?"))])
-		return
-	if _stress: _dbg_op2 = str(u.get("id", "?"))   # 卡死猎手诊断: 最后经手的受伤单位
-	# pre_crit=true: 该 raw 段的暴击已在上游算进 dmg(如手里剑真伤段=暴击总伤的一部分)→ 此处不再掷真伤暴击(防二次暴击)
-	if u.get("_assembling", false):   # 机甲组装期免疫一切攻击(用户2026-07-16)
-		return
-	# 闪避 (目标 dodge_bonus); 瞄准镜054: 攻击者伤害无视闪避 (必中)
-	# no_dodge: 吸取类必中(用户2026-07-22「吸取不可以被闪避或暴击」)
-	if not no_dodge and u.get("dodge_bonus", 0.0) > 0.0 and not src.get("eq_cannot_be_dodged", false) and _battle_rng.randf() < u["dodge_bonus"]:
-		_vfx._float_text(u["pos"] + Vector2(0, -40), "闪避", Color("#a0e8ff"))
-		_equip_sys._eq_on_dodge(u)          # on-dodge 钩子 (幽灵墨鱼046: 闪避→永久护盾)
-		return
-	# 小龟·不屈: 造成的任何伤害按目标稀有度增伤 (总闸→普攻/技能/真伤/固定伤全覆盖, 只算一次)
-	if src.get("id", "") == "basic" and not is_same(src, u):
-		dmg = int(round(float(dmg) * (1.0 + _BASIC_RARITY_BONUS.get(str(u.get("rarity", "C")), 0.20))))
-	# 伤害输出乘数 (龟壳复制60%等; 默认1.0=不变): 缩放src本次造成的即时伤害
-	if src.get("dmg_out_mult", 1.0) != 1.0:
-		dmg = int(round(float(dmg) * float(src.get("dmg_out_mult", 1.0))))
-	if _sd_stacks > 0:
-		dmg = maxi(1, int(round(float(dmg) * (1.0 + _sd_amp()))))   # §SUDDEN 决胜增伤(这条路走普攻/技能主线)
-	# 星辉战利品(宝箱传说): 所有伤害转真实=跳过减伤(钻石18%/岩层/铁壁flat) — 完整"绕护甲"局限留F5(伤害多已由_atk_dmg预减)
-	if src.get("chest_starlight", false):
-		raw = true
-	# ★靶向器055(+20%) 与 终极暴露蛋(×5) 已并入 §MITIGATE, 与 _apply_damage 共用同一份实现。
-	#   拆成两半是因为下面的暴击/墨迹要插在中间(它们是攻击者侧, 只有这条路有)。
-	# 真伤暴击 (全局: "暴击全龟通用"; 真伤照旧无视护甲/减伤, 只加暴击判定) (用户)
-	if raw and not pre_crit and src is Dictionary and src.has("crit") and not is_same(src, u):
-		var _trc: float = minf(float(src.get("crit", 0.0)), 1.0)
-		_last_atk_crit = _battle_rng.randf() < _trc
-		if _last_atk_crit:
-			dmg = int(round(float(dmg) * DamageMath.crit_multiplier(float(src.get("crit", 0.0)), float(src.get("crit_dmg", 1.5)))))
-	var was_crit := _last_atk_crit          # §AUDIO: 先抓暴击态 (下方 hook 里嵌套 _atk_dmg 会改写它)
-	# 受伤被动(结算前改 dmg): 线条·墨迹(每层额外5%真实伤害·穿减伤穿盾) / 钻石·结构(受伤减免)
-	var _ink := int((u.get("stacks", {}) as Dictionary).get("ink", 0))
-	var _ink_true: float = 0.0
-	if _ink > 0:
-		_ink_true = float(dmg) * 0.05 * float(_ink)   # 墨迹: 原伤害之外·每层额外承受5%【真实伤害】(穿减伤穿盾·满10层=50%·用户2026-07-10纠正: 非×1.05增伤)
-	# ★受害者侧减伤(靶向器/暴露蛋/钻石/岩层/嘲讽/铁壁盾)全部收口到 §MITIGATE,
-	#   与 _apply_damage 共用 —— 原先这段只在本函数里, 导致 DOT 完全不吃任何减伤。
-	var d := _mitigate_incoming(u, float(dmg), raw)
-	dmg = maxi(1, int(round(d)))
-	# 守护贝母021: 该单位被指向为"伤害转移", 把一部分入伤转给携带者承担 (护盾前分流, 剩余部分仍走本体护盾/血)
-	var _rd = u.get("dmg_redirect_to", null)
-	if _rd is Dictionary and _t < float(_rd.get("until", 0.0)):
-		var carrier = _rd.get("carrier", null)
-		if carrier is Dictionary and carrier.get("alive", false) and not is_same(carrier, u) and d > 0.0:   # is_same: 这里在【中央伤害管线】上, 每次伤害结算都跑 → 深比较风险最高
-			var moved: float = d * float(_rd.get("pct", 0.0))
-			if moved >= 1.0:
-				d -= moved
-				_redirect_damage(carrier, moved, ("true" if raw else _last_dmg_type))   # 按友军所受的同一类型落到携带者+跳数字(用户2026-07-19)
-	var shield_before: float = u["shield"]
-	# 护盾吸收【全类型】伤害(物理/法术/真实): 1:1 回合制 damage.gd「真伤(true)也走护盾」+ 用户2026-07-11「真伤/反伤真伤要被盾档」。
-	#   真伤只无视护甲/魔抗/减伤(见上方 not raw 分支), 但护盾照吸。唯一穿盾=墨迹(_ink_true·在护盾后单独加·由线条被动设计)。
-	d = ShieldMath.absorb(u, d)   # 普通盾+aura盾 吸全类型(§3.3 收口·两路共用)
-	if _ink_true > 0.0: d += _ink_true   # 墨迹真伤: 穿减伤穿盾(唯一穿盾例外·护盾吸收后加), 直接进扣血并计入跳字
-	u["hp"] = maxf(0.0, u["hp"] - d)
-	if u.get("_review_dummy", false): u["hp"] = u["maxHp"]   # 训练靶: 受击即回满, 打不死不结算(看完整)
-	if not from_equip and d > 0.0: _line_sys._ink_link_transfer(u, d)   # 连笔: 受伤30%以真实伤害传导给连接对象(附录B-05)
-	# §STATS: 战斗统计 — 输出归攻击者/承受归目标 (用显示数 dmg); 按伤害类型分桶(战中分段条用) + 暴击计数
-	var _bkt: String = ("tru" if raw else ("mag" if _last_dmg_type == "magic" else "phy"))   # 伤害分桶=真实类型(_last_dmg_type/raw), 非col: col是主题色·大量物理攻击传偏蓝色(忍者冲击#9fe8ff/#cfd8e8等)→原按col.b>col.r误判成法术=统计条+飘字全蓝(用户2026-07-11抓出)
-	if src is Dictionary and src.has("side") and not is_same(src, u):
-		src["_st_dealt"] = int(src.get("_st_dealt", 0)) + dmg
-		_st_add_type(src, "_st_dealt_by_type", _bkt, dmg)
-		if was_crit:
-			src["_st_crit"] = int(src.get("_st_crit", 0)) + 1
-	u["_st_taken"] = int(u.get("_st_taken", 0)) + dmg
-	_st_add_type(u, "_st_taken_by_type", _bkt, dmg)
-	# headless 亡灵: 首次濒死→5秒内HP不降到1以下(免死), 5秒后正常死
-	if u["id"] == "headless" and u["hp"] <= 0.0 and not u.get("undead_used", false):
-		u["undead_used"] = true; u["deathfloor_until"] = _t + 5.0
-		_vfx._float_text(u["pos"] + Vector2(0, -64), "亡灵!", Color("#9b6bff"))
-		_headless_sys._headless_undead_vfx(u)                                    # 免死金骨光环5秒(2026-07-17)
-	if _t < float(u.get("deathfloor_until", 0.0)):
-		u["hp"] = maxf(1.0, u["hp"])
-	var _dt: String = "true" if raw else _last_dmg_type   # 飘字类型=真实伤害类型(_resolve_dmg设的_last_dmg_type·即时伤害对); 远程弹道在飞时会被别的伤害覆写→弹道在_step_projectiles命中前用捕获的pr.dtype还原(见那里)
-	var _ncol: Color = _VC.color_of(_VC.cls_for("damage", _dt, was_crit))   # 飘字按伤害类型统一取色 (物红/魔蓝/真白, 1:1 回合制)
-	var _jdir: float = 0.0
-	if src is Dictionary and not is_same(src, u) and src.has("pos"):
-		_jdir = 1.0 if float(src["pos"].x) < float(u["pos"].x) else -1.0   # 来源在左→数字往右跳, 反之往左(用户规则)
-	_vfx._float_text(u["pos"], str(dmg), _ncol, was_crit, "damage", _dt, _jdir)   # 伤害: 朝远离来源方向弹射
-	if _ink_true >= 0.5:   # ★墨迹(线条被动)真伤单独跳白字+计真伤桶(用户2026-07-18"墨迹真伤没生效"): 原折进d扣血但不跳字不计统计→看着像没生效; 现显式可见=真的在打
-		var _iv := int(round(_ink_true))
-		_vfx._float_text(u["pos"] + Vector2(0.0, -34.0), str(_iv), _VC.color_of(_VC.cls_for("damage", "true", false)), false, "damage", "true", -_jdir)
-		u["_st_taken"] = int(u.get("_st_taken", 0)) + _iv
-		_st_add_type(u, "_st_taken_by_type", "tru", _iv)
-		if src is Dictionary and src.has("side") and not is_same(src, u):
-			src["_st_dealt"] = int(src.get("_st_dealt", 0)) + _iv
-			_st_add_type(src, "_st_dealt_by_type", "tru", _iv)
-	# 泡泡束缚(bubbleBind): 束缚期间每受一段伤害 → 永久 -X 护甲/魔抗 (单次累计上限各30)
-	if _t < u.get("bind_until", 0.0):
-		var _sx: float = float(u.get("bind_shred", 0.0))
-		var _bacc: float = float(u.get("bind_acc", 0.0))
-		if _sx > 0.0 and _bacc < 30.0:
-			var _dec: float = minf(_sx, 30.0 - _bacc)
-			u["base_def"] = maxf(0.0, u["base_def"] - _dec)
-			u["base_mr"] = maxf(0.0, u["base_mr"] - _dec)
-			u["bind_acc"] = _bacc + _dec
-			_recalc_stats(u)
-	# 泡泡·泡沫: 受伤的100%存为泡泡值(上限maxHp) → 周期消耗(见 _tick_periodic_passive)
-	if u["id"] == "bubble":
-		u["bubble_store"] = minf(u["maxHp"], float(u.get("bubble_store", 0.0)) + d)
-	# 反伤(通用): 受击反弹 reflect% × 受到伤害 给攻击者(真实伤害); from_equip守卫防循环; stone坚壁随防御涨(被动)
-	var _refl_pct: float = float(u.get("reflect", 0.0))
-	if u["id"] == "stone": _refl_pct += 0.05 + (u["def"] + u["mr"] * 0.5) * 0.01
-	if u["id"] == "stone" and u.get("stone_rockbody", false) and not from_equip and dmg > 0 and int(u.get("rock_layers", 0)) < 30:
-		u["rock_layers"] = int(u.get("rock_layers", 0)) + 1   # 岩层(岩石之躯被动·选此才有): 每受伤+1层上限30
-		u["size_mult"] = 1.0 + 0.02 * float(u["rock_layers"])   # +2%体型/层(回合制 rockShockwave.rockSizePctPerLayer=2·满30层=+60%)
-	if _refl_pct > 0.0 and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
-		var _refl := int(dmg * _refl_pct)
-		if _refl > 0:
-			_apply_damage_from(u, src, _refl, Color("#c9a36b"), 0.0, true, true)
-	# 凤凰熔岩盾: 5秒内对每段攻击反击 0.14×ATK 魔法 (from_equip守卫防循环)
-	if u["id"] == "phoenix" and _t < float(u.get("lava_shield_until", 0.0)) and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
-		_apply_damage_from(u, src, _atk_dmg(u, 0.14, src, true), Color("#ff7a3c"), 0.0, false, true)
-	# 闪电雷盾: 盾在时对每段攻击反击 0.1×ATK 魔法 + 给攻击者叠1层电击
-	if u["id"] == "lightning" and _t < float(u.get("thunder_shield_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0 and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
-		_apply_damage_from(u, src, _atk_dmg(u, 0.1, src, true), Color("#4dabf7"), 0.0, false, true)
-		_add_stack(src, "electric", 1, 8)
-	# §AUDIO: 命中音 (暴击→hit-crit / 否则→hit-physical, 节流防多段刷屏); 护盾刚被打没→shield-break (真伤现在也能打盾→去掉 not raw).
-	if shield_before > 0.0 and u["shield"] <= 0.0:
-		u["shield_until"] = 0.0   # 盾被打空→清限时标记(防陈旧到期误清后续永久盾)
-		_audio_sys._sfx_shield_break()
-	else:
-		_audio_sys._sfx_hit(was_crit)
-	# Phase4 打击感: 受击闪白+轻压扁(每段直接命中); 顿帧/震屏/火花按伤害分级(auto: ≥gate=重击).
-	_vfx._flash(u)
-	_vfx._impact(u, dmg, "auto")
-	# 来源累积 ----
-	src["dmg_dealt"] += float(dmg)
-	# 吸血 (lifesteal 基础 + buff + 技能 extra) — silent: 高频回血不刷治疗音
-	var ls: float = src.get("lifesteal", 0.0) + src.get("ls_bonus", 0.0) + extra_ls
-	if ls > 0.0 and src["alive"]:
-		_heal(src, float(dmg) * ls, true)
-	# 猎人猎杀(重做·用户2026-07-14): 处决不再在此中央路径逐次判; 改由 _update_hunter_passive 每帧扫场→任一敌<斩杀线→自动射强化箭→命中处决. 窃取仍走 _kill→_on_unit_death 钩子.
-	# 怒气 (熔岩造伤25% / 受伤20%)
-	if src["id"] == "lava" and not src.get("volcano", false):     # 火山形态不获怒气(条=形态倒计时·用户2026-07-15)
-		src["rage"] = minf(RAGE_MAX, src["rage"] + float(dmg) * 0.10)
-	if u["id"] == "lava" and not u.get("volcano", false):
-		u["rage"] = minf(RAGE_MAX, u["rage"] + float(dmg) * 0.10)
-	if src is Dictionary and src.get("has_egg", false) and src.get("alive", false):   # 温泉蛋(036): 造成伤害×0.1进度
-		_egg_add_progress(src, float(dmg) * 0.1)
-	if u.get("has_egg", false):   # 温泉蛋(036): 承受伤害×0.1进度
-		_egg_add_progress(u, float(dmg) * 0.1)
-	# 星能 (星际造伤35%·用户2026-07-16: 62→35; 星波施法期锁定不涨)
-	if src["id"] == "space" and _t >= float(src.get("star_lock_until", 0.0)):
-		src["star_energy"] = minf(src["maxHp"] * 0.40, src["star_energy"] + float(dmg) * 0.35)
-	# 储能 (龟壳受伤转储能, 上限50%最大HP) — 仅"store"相位累积 ("cd"相位不储)
-	if u["id"] == "shell" and u.get("shell_phase", "store") == "store":
-		u["store_energy"] = minf(u["maxHp"] * 0.50, u["store_energy"] + float(dmg))
-		u["_auraEnergy"] = u["store_energy"]   # 镜像给Hp条储能条显示(1:1回合制字段)
-	if u["id"] == "shell" and float(dmg) > 0.0:
-		u["shell_last_dmg_t"] = _t                 # 潜影(暗影被动): 记最后受伤时间(6秒无伤→隐身). AOE命中也计→不误进隐身(设计: AOE吃伤但不破隐, 未说进隐身; 计伤保守=受伤即重置)
-	# 双头坚韧 (融合打包被动·选中融合才有): 每受一段攻击 +1护甲+1魔抗 (各上限20)
-	if u["id"] == "two_head" and u.get("two_fused", false):
-		var th: int = int(u.get("two_tough", 0))
-		if th < 20:
-			th += 1; u["two_tough"] = th
-			u["base_def"] += 1.0; u["base_mr"] += 1.0; _recalc_stats(u)
-			if _t - float(u.get("_tough_glint_t", -1.0)) > 0.35:   # 坚韧变硬微光(节流·用户2026-07-11)
-				u["_tough_glint_t"] = _t
-				_skill_ring(u["pos"], Color(0.55, 0.75, 1.0, 0.5), 46.0)
-	# (反伤已合并到上方通用块, 删除重复的第二处石头反伤)
-	# 装备事件钩子 (on-hit 攻击方 / on-target 防守方 / HP阈值) — 装备自身造的段不再回钩
-	if not from_equip:
-		if src["alive"] and u["alive"]:
-			_equip_sys._eq_on_hit(src, u, dmg)        # on-hit: 攻击者装备 (流血/灼烧/连锁/追击/穿透/标记 等)
-		if u["alive"]:
-			_equip_sys._eq_on_target(u, src, dmg)     # on-target: 防守者装备 (硬化层/冰封反制 等)
-		# 宝箱藏宝图 on-hit 战利品 (火石灼烧/毒箭治疗削减/雷刃金闪电引爆·此块已在not from_equip内→天然防循环)
-		var _cht = src.get("chest_treasures", null)
-		if _cht is Dictionary and not is_same(src, u) and u.get("alive", false):
-			if _cht.has("flint"):    # 火石: 命中→灼烧层=round(0.1×ATK)(用户2026-07-16: 0.67→0.1)
-				_apply_dot_stacks(u, "burn", maxi(1, roundi(float(src["atk"]) * 0.1)), src)
-			if _cht.has("poison"):   # 毒箭: 命中→治疗削减-50%·5秒
-				u["heal_reduce_until"] = maxf(float(u.get("heal_reduce_until", 0.0)), _t + 5.0)
-				u["heal_reduce_pct"] = maxf(float(u.get("heal_reduce_pct", 0.0)), 0.5)
-			if _cht.has("thunder"):  # 雷刃: 命中叠金闪电·满5→引爆1.0A真伤(from_equip=true防循环)
-				var _tl := _add_stack(u, "chest_thunder", 1, 5)
-				if _tl >= 5:
-					_consume_stacks(u, "chest_thunder")
-					_apply_damage_from(src, u, maxi(1, int(float(src["atk"]))), Color("#ffe94d"), 0.0, true, true)
-					_skill_ring(u["pos"], Color(1.0, 0.92, 0.3, 0.6), 40.0)
-	if u["alive"]:
-		_equip_sys._eq_check_hp_threshold(u)          # HP阈值: 首次<50% (深海项链/珍珠耳环)
-	if u["hp"] <= 0.0 and u["alive"]:
-		_kill(u, src)
-
-# DoT 落血 (穿护盾, 不弹字防刷屏; 血条体现)
 func _redirect_damage(carrier: Dictionary, amt: float, dtype: String) -> void:
 	# 守护贝母021 伤害转移: 友军受什么类型就转什么类型(物红/魔蓝/真白), 并在携带者头上跳数字(用户2026-07-19)
 	# 注: amt 是友军【已经吃过自己抗性】之后的那一段, 这里不再吃携带者的抗性(否则同一发减两次伤=021凭空变强)。
@@ -5500,29 +5265,7 @@ func _redirect_damage(carrier: Dictionary, amt: float, dtype: String) -> void:
 # ★_raw_lose 已删(2026-07-22): 它只有 8 行 —— 不进统计/不跳飘字/不过任何减伤/
 #   没有组装期免疫闸/评审训练靶会被它打死。三个调用点(暴露蛋自损 / 糖果龟甜蜜吸取 /
 #   召唤物自然衰减)已全部改走正规伤害路径, 用户 2026-07-22 拍板"三处全改, 要进受伤统计"。
-#   若要加新的"扣血"逻辑, 用 _apply_damage(..., is_self=true) 或 _apply_damage_from。
-
-func _knockback(by: Dictionary, tgt: Dictionary, _dist: float, vy_mult: float = 1.0, push_mult: float = 1.0) -> void:
-	if tgt["airborne"]:
-		return
-	if tgt.get("_knock_immune", false):   # 不沉之锚017免击飞(原flag只写不读=死标记, 用户2026-07-19"说好的免疫呢"补)
-		return
-	var dir: Vector2 = (tgt["pos"] - by["pos"])
-	if dir.length() < 0.1:
-		dir = Vector2.RIGHT
-	dir = dir.normalized()
-	tgt["airborne"] = true
-	tgt["vy"] = KNOCK_VY * vy_mult
-	tgt["vx"] = dir.x * KNOCK_PUSH * push_mult
-	tgt["vz"] = dir.y * KNOCK_PUSH * push_mult
-	# Phase4: 击飞 = 大事件 → 大震屏 + 顿帧 + 起跳火花 (起跳拉长由 _vfx._juice_scale_for 读 airborne/vy 自动)
-	_shake(JUICE_SHAKE_BIG)
-	_add_hitstop(JUICE_HITSTOP_KNOCK)
-	_vfx._impact_particles(tgt["pos"], tgt.get("height", 0.0))
-	# 飞镖056: 任意敌被己方击飞 → 标"靶子", 携带者周期 tick 射镖
-	if _is_hostile(by, tgt) and _side_has_equip(by["side"], "p2eq_056"):
-		tgt["eq_target_until"] = _t + 99999.0
-		_mark_vfx(tgt, 99999.0, Color("#ffa040"))
+#   若要加新的"扣血"逻辑, 用 _damage._apply_damage(..., is_self=true) 或 _damage._apply_damage_from。
 
 func _dash_to(u: Dictionary, tgt: Dictionary, gap: float) -> void:
 	var dir: Vector2 = (u["pos"] - tgt["pos"]).normalized()
@@ -5569,7 +5312,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 			if u.get("_enh_rebirth", false):
 				u["base_atk"] = u["base_atk"] * 1.2; _recalc_stats(u)   # 强化涅槃: 永久+20%攻击
 			for o in _targeting._enemies_of(u):
-				_apply_dot_stacks(o, "burn", _default_burn_stacks(u), u)
+				_damage._apply_dot_stacks(o, "burn", _default_burn_stacks(u), u)
 				o["heal_reduce_until"] = _t + BUFF_SEC
 				o["heal_reduce_pct"] = maxf(float(o.get("heal_reduce_pct", 0.0)), 0.5)
 		return
@@ -5653,75 +5396,6 @@ func _dmg_float_step(el: float, node_fl: Control, base: Vector2, jump_x: float, 
 	node_fl.position = base + Vector2(px, py)
 	node_fl.modulate.a = 1.0 if el < fade_start else maxf(0.0, 1.0 - (el - fade_start) / (total_dur - fade_start))
 
-# ══════════════════════════════════════════════════════════════
-# §DOT-FLOAT 累积伤害数字 (用户2026-07-23 点1)
-# DOT(灼烧/中毒/流血/诅咒)不再每 tick 跳一个小数字, 而是【按伤害类型桶】各维持一个常驻头顶数字,
-# 每 tick 累加(总数越变越大、字号随量·1→2→3→4), 该桶所有 DOT 结束才触发弹射跳走(复用伤害飘字动画)。
-# 分桶=伤害类型: mag(灼烧+中毒同桶·蓝) / phy(流血·红) / tru(诅咒+真火·紫)。多桶并存左右错开。
-# ══════════════════════════════════════════════════════════════
-func _dot_bucket_col(bucket: String) -> Color:
-	# ★语义色走 UIPalette 单一色表(用户2026-07-22「全统一」): 物理红#ff4444 / 法术蓝#4dabf7 / 真实白#ffffff。
-	#   原来这里没跟调色板走, 硬编码 phy#ff6b6b / tru 紫#b48cff —— 与结算面板+调色板「真实=白」不一致
-	#   (用户2026-07-24:「自损和诅咒为什么用紫色」)。诅咒/真火/自损都是 tru 桶 → 现统一为白。
-	match bucket:
-		"mag": return Color(UIPalette.MAGIC)
-		"phy": return Color(UIPalette.PHYS)
-		"tru": return Color(UIPalette.TRUE_DMG)
-	return Color(UIPalette.TRUE_DMG)
-
-## 该桶是否还有活着的 DOT 在供养(结束检测)。mag=灼烧(非真火)或中毒; phy=流血; tru=真火灼烧或任一 flat DoT(诅咒)。
-func _dot_bucket_active(u: Dictionary, bucket: String) -> bool:
-	var ds: Dictionary = u.get("dot_stacks", {})
-	var true_fire: bool = _t < float(u.get("true_fire_until", 0.0))
-	match bucket:
-		"phy":
-			return int(ds.get("bleed", 0)) > 0
-		"mag":
-			return (int(ds.get("burn", 0)) > 0 and not true_fire) or int(ds.get("poison", 0)) > 0
-		"tru":
-			if int(ds.get("burn", 0)) > 0 and true_fire:
-				return true
-			for dot in u.get("dots", []):
-				if _t < float(dot.get("until", 0.0)):
-					return true
-	return false
-
-## 累加一次 DOT 伤害进对应桶的常驻数字。首次建 Label(挂 _ui_layer), 之后每帧由 _render._update_dot_floats 跟头顶。
-func _dot_accumulate(u: Dictionary, bucket: String, dmg: int) -> void:
-	if not (u.get("_dot_float") is Dictionary):
-		u["_dot_float"] = {}
-	var df: Dictionary = u["_dot_float"]
-	var col: Color = _dot_bucket_col(bucket)
-	var st: Dictionary = df.get(bucket, {})
-	if st.is_empty() or not is_instance_valid(st.get("node", null)):
-		var lbl := _make_num_label("0", col, 20)
-		if _ui_layer != null:
-			_ui_layer.add_child(lbl)
-		var used := {}   # 左右错开: 避开其它桶已占的槽
-		for b in df:
-			if b != bucket and is_instance_valid((df[b] as Dictionary).get("node", null)):
-				used[int((df[b] as Dictionary).get("slot", 0))] = true
-		var slot := 0
-		while used.has(slot):
-			slot += 1
-		st = {"node": lbl, "total": 0, "slot": slot}
-	st["total"] = int(st.get("total", 0)) + dmg
-	var lbl2: Label = st["node"]
-	lbl2.text = str(int(st["total"]))
-	lbl2.add_theme_font_size_override("font_size", _vfx._float_size(int(st["total"]), false))
-	lbl2.add_theme_color_override("font_color", col)
-	df[bucket] = st
-
-## 该桶所有 DOT 结束 → 常驻数字弹射跳走(复用伤害飘字 kind=damage), 释放常驻节点。
-func _dot_float_flyaway(u: Dictionary, bucket: String, st: Dictionary) -> void:
-	if is_instance_valid(st.get("node", null)):
-		(st["node"] as Node).queue_free()
-	var total: int = int(st.get("total", 0))
-	if total > 0:
-		var dt: String = {"mag": "magic", "phy": "physical", "tru": "true"}.get(bucket, "true")
-		_vfx._float_text(u["pos"], str(total), _dot_bucket_col(bucket), false, "damage", dt)
-
-## 每帧: 常驻 DOT 数字跟随头顶 + 左右错开; 桶结束(或单位死)→弹射跳走。在 _process 里 _render._update_overlay 之后调。
 func _spawn_bamboo_orb(from_pos: Vector2, to_pos: Vector2, on_land: Callable = Callable()) -> void:
 	var orb_path := "res://assets/sprites/vfx/bamboo-charge-orb.png"
 	if not ResourceLoader.exists(orb_path):
@@ -6457,9 +6131,9 @@ func _basic_shield_impact_hit(u: Dictionary, tgt) -> void:
 	var lost: float = (tgt["maxHp"] - tgt["hp"]) * 0.20
 	var raw: float = u["atk"] * 0.7
 	var dmg := _atk_dmg(u, 0.7, tgt) + int(lost)
-	_apply_damage_from(u, tgt, dmg, Color("#ff4444"))
-	_grant_shield(u, (raw + lost) * 0.80)
-	_knockback(u, tgt, 60.0)
+	_damage._apply_damage_from(u, tgt, dmg, Color("#ff4444"))
+	_damage._grant_shield(u, (raw + lost) * 0.80)
+	_damage._knockback(u, tgt, 60.0)
 	_vfx._play_anim_vfx("res://assets/sprites/vfx/basic-shieldbash-impact.png", tgt["pos"], 130.0, 20.0, 1.05)
 	_skill_ring(u["pos"], Color(1.0, 0.9, 0.45, 0.5), 50.0)
 	_shake(0.1)
@@ -6476,7 +6150,7 @@ func _basic_first_blocker(u: Dictionary, dir: Vector2):          # 可被挡直�
 	return best
 
 func _sk_basic_strike(u: Dictionary, _tgt = null) -> void:      # 小龟·打击(封板·10波序列驱动·80龟能): 全程定身·10波每0.15s·每波随机挑1存活敌当方向·气波可被挡(命中路径第一敌/蛋)·每波0.4A(吃不屈)·[慢飞弹道视觉留F5]
-	_stun(u, 1.65, "_sk_basic_strike", true)   # 全程定身(10波×0.15s)
+	_damage._stun(u, 1.65, "_sk_basic_strike", true)   # 全程定身(10波×0.15s)
 	for i in range(10):
 		var fn := func():
 			var es: Array = _targeting._targetable_enemies(u)   # ★方向只从可主动锁的敌里挑(排围栏未破的蛋); 穿过打到蛋仍算(_basic_first_blocker)
@@ -6495,7 +6169,7 @@ func _sk_basic_strike(u: Dictionary, _tgt = null) -> void:      # 小龟·打击
 				var _h: Dictionary = hit
 				_pending_shots.append({"delay": flight, "fn": func() -> void:
 					if _h.get("alive", false):
-						_apply_damage_from(u, _h, _atk_dmg(u, 0.4, _h), Color("#ff4444"))
+						_damage._apply_damage_from(u, _h, _atk_dmg(u, 0.4, _h), Color("#ff4444"))
 					, "src": u})
 		_pending_shots.append({"delay": float(i) * 0.15, "fn": fn, "src": u})
 
@@ -6557,7 +6231,7 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 	var dir: Vector2 = tgt["pos"] - u["pos"]
 	if dir.length() < 1.0: dir = Vector2.RIGHT
 	dir = dir.normalized()
-	_stun(u, 0.6, "_sk_basic_chiwave", true)   # 掌心聚气 0.6s 定身(生成动画期间)
+	_damage._stun(u, 0.6, "_sk_basic_chiwave", true)   # 掌心聚气 0.6s 定身(生成动画期间)
 	var start2: Vector2 = u["pos"]
 	var uu2: Dictionary = u
 	# ── 生成动画(掌心聚气): 回合制提取 chiwave-spawn 6帧×0.1s=0.6s 播一遍 ──
@@ -6625,8 +6299,8 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 				if not _on_line(launch, dir, o["pos"], 80.0): continue
 				if o["pos"].distance_to(c) > 95.0: continue
 				hit2.append(o)
-				_apply_damage_from(uu2, o, _atk_dmg(uu2, 3.5, o), Color("#7fd0ff"))
-				_knockback(uu2, o, 200.0, 2.752, 2.0)              # 击飞1.5s+击退200
+				_damage._apply_damage_from(uu2, o, _atk_dmg(uu2, 3.5, o), Color("#7fd0ff"))
+				_damage._knockback(uu2, o, 200.0, 2.752, 2.0)              # 击飞1.5s+击退200
 				# ── ⚡命中: 爆闪 + 震屏 + 火星 ──
 				var bg := _glow_bb(o["pos"], FLY_H, 220.0, Color(0.95, 0.62, 0.26, 0.92))
 				var btw3 := _reg_tween(); btw3.set_parallel(true)
@@ -6664,11 +6338,11 @@ func _sk_basic_slam(u: Dictionary, tgt) -> void:  # 小龟·过肩摔(#7重做·
 ## 过肩摔伤害结算(主目标 0.7A+26%maxHp / 周围250码 0.2A+19%主maxHp) — 落地时调.
 func _slam_apply_damage(u: Dictionary, tgt: Dictionary, tmax: float) -> void:
 	if tgt.get("alive", false):
-		_apply_damage_from(u, tgt, _atk_dmg(u, 0.7, tgt) + int(tmax * 0.26), Color("#ff9d5c"))
+		_damage._apply_damage_from(u, tgt, _atk_dmg(u, 0.7, tgt) + int(tmax * 0.26), Color("#ff9d5c"))
 	for o in _targeting._enemies_of(u):
 		if is_same(o, tgt) or not o.get("alive", false): continue
 		if o["pos"].distance_to(tgt["pos"]) <= 350.0:   # 范围 350码(用户2026-07-11: 250→350)
-			_apply_damage_from(u, o, _atk_dmg(u, 0.2, o) + int(tmax * 0.19), Color("#ff9d5c"))
+			_damage._apply_damage_from(u, o, _atk_dmg(u, 0.2, o) + int(tmax * 0.19), Color("#ff9d5c"))
 
 ## 过肩摔完整编排(#7·用户2026-07-11): 擒抱→双方跳空(_slam_voff)→空中反转180°(flip_v)→坠落→落地范围伤+大尘爆+震屏. 双方 _slam 冻结.
 func _basic_slam_run(u: Dictionary, tgt: Dictionary, dir: Vector2, u_start: Vector2, land: Vector2, tmax: float) -> void:
@@ -6717,7 +6391,7 @@ func _basic_slam_run(u: Dictionary, tgt: Dictionary, dir: Vector2, u_start: Vect
 	u["pos"] = land + dir * 45.0
 	if tgt.get("alive", false):
 		tgt["pos"] = land
-		_stun(tgt, 0.5, "_basic_slam_run")   # 砸地眩晕0.5s
+		_damage._stun(tgt, 0.5, "_basic_slam_run")   # 砸地眩晕0.5s
 		_vfx._flash(tgt)
 	_slam_apply_damage(u, tgt, tmax)
 	_shake(JUICE_SHAKE_BIG)                        # 大砸=大震屏(用户2026-07-11: 表现大范围砸击)
@@ -6961,7 +6635,7 @@ func _step_homing_arrow(pr: Dictionary, node: Sprite3D, delta: float) -> bool:  
 		if pr.get("hunt_exec", false):                            # 被动强化箭: 命中处决(<斩杀线)
 			_hunter_sys._hunter_exec_arrow_hit(pr["src"], tgt)
 		else:
-			_apply_damage_from(pr["src"], tgt, int(pr["dmg"]), pr["col"], 0.0, true)   # 弹幕: 白色真伤
+			_damage._apply_damage_from(pr["src"], tgt, int(pr["dmg"]), pr["col"], 0.0, true)   # 弹幕: 白色真伤
 			_vfx._flash(tgt); _vfx._hit_spark(tgt)
 		return false
 	cur2d = cur2d.move_toward(tp, float(pr.get("spd", HUNTER_ARROW_SPD)) * delta)   # 追踪(向当前目标位置移动·spd可覆写)
@@ -7253,7 +6927,7 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 		if not tref.get("alive", false) or not uu.get("alive", false):
 			uu["_slam"] = false
 			return
-		_stun(tref, 0.4, "_tick_elite_whip", true)
+		_damage._stun(tref, 0.4, "_tick_elite_whip", true)
 		_vfx._flash(tref, Color(1.35, 1.2, 1.2))
 		_vfx._hit_spark(tref)
 	, "src": u})
@@ -7277,7 +6951,7 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 		pt5.tween_callback(func() -> void:
 			uu["_slam"] = false
 			if tref.get("alive", false) and uu.get("alive", false):
-				_apply_damage_from(uu, tref, _atk_dmg(uu, 2.0, tref, true), Color("#9bdcff"))   # 铁锁2A魔法(蓝字·用户2026-07-18: 1A→2A)
+				_damage._apply_damage_from(uu, tref, _atk_dmg(uu, 2.0, tref, true), Color("#9bdcff"))   # 铁锁2A魔法(蓝字·用户2026-07-18: 1A→2A)
 				_elite_sys._elite_mist(uu["pos"], 0.6, 3)
 				var dv2: Vector2 = (tref["pos"] as Vector2) - (uu["pos"] as Vector2)
 				_elite_sys._elite_slash_arc(tref["pos"], dv2.normalized() if dv2.length() > 1.0 else Vector2.RIGHT))
@@ -7381,7 +7055,7 @@ func _sk_dmg(u: Dictionary, tgt, opts: Dictionary) -> void:
 		_apply_rider(u, e, str(opts.get("rider", "")))
 		_skill_ring(e["pos"], Color(col.r, col.g, col.b, 0.4), 46.0)
 	if float(opts.get("selfDodge", 0.0)) > 0.0:   # 技能给施法者闪避buff(如ghost幽冥突袭25%)
-		_buff(u, "dodge", float(opts["selfDodge"]), true, float(opts.get("selfDodgeDur", BUFF_SEC)))
+		_damage._buff(u, "dodge", float(opts["selfDodge"]), true, float(opts.get("selfDodgeDur", BUFF_SEC)))
 	var fixed: Array = _targeting._enemies_of(u) if aoe else ([tgt] if tgt != null else [])
 	if stagger > 0.0:
 		var tw := _reg_tween()
@@ -7419,15 +7093,15 @@ func _sk_dmg_wave(u: Dictionary, opts: Dictionary, vh: int, col: Color, random_a
 			dmg += _atk_dmg(u, magic / vh, e, true)
 		dmg += int((hp_flat + mr_flat) / vh)
 		if dmg > 0:
-			_apply_damage_from(u, e, dmg, col, ls)
+			_damage._apply_damage_from(u, e, dmg, col, ls)
 			var spl: float = float(opts.get("splash", 0.0))   # 溅射到次要目标(闪电打击25%)
 			if spl > 0.0:
 				for o in _targeting._enemies_of(u):
 					if not is_same(o, e) and o.get("alive", false):
-						_apply_damage_from(u, o, int(dmg * spl), col)
+						_damage._apply_damage_from(u, o, int(dmg * spl), col)
 						break
 		if tru > 0.0:
-			_apply_damage_from(u, e, int(u["atk"] * tru / vh), col, 0.0, true)
+			_damage._apply_damage_from(u, e, int(u["atk"] * tru / vh), col, 0.0, true)
 		if elec > 0:
 			_add_stack(e, "electric", elec, 8)
 
@@ -7438,13 +7112,13 @@ func _apply_skill_extras(u: Dictionary, e: Dictionary, opts: Dictionary) -> void
 		e["shield"] = float(e["shield"]) * (1.0 - sb)
 	var ad: float = float(opts.get("atkDown", 0.0))
 	if ad > 0.0:
-		_buff(e, "atk", -ad, true)
+		_damage._buff(e, "atk", -ad, true)
 	var dd: float = float(opts.get("defDown", 0.0))
 	if dd > 0.0:
-		_buff(e, "def", -dd, true)
+		_damage._buff(e, "def", -dd, true)
 	var md: float = float(opts.get("mrDown", 0.0))
 	if md > 0.0:
-		_buff(e, "mr", -md, true)
+		_damage._buff(e, "mr", -md, true)
 	var hc: float = float(opts.get("healCut", 0.0))
 	if hc > 0.0:
 		e["heal_reduce_until"] = _t + float(opts.get("healCutDur", BUFF_SEC))
@@ -7454,12 +7128,12 @@ func _apply_rider(u: Dictionary, e: Dictionary, rider: String) -> void:
 	if rider == "" or e == null or not e.get("alive", false):
 		return
 	match rider:
-		"burn":  _apply_dot_stacks(e, "burn", maxi(1, roundi(u["atk"] * 0.5)), u)
-		"stun":  _stun(e, CTRL_SEC, "_cc_apply")
+		"burn":  _damage._apply_dot_stacks(e, "burn", maxi(1, roundi(u["atk"] * 0.5)), u)
+		"stun":  _damage._stun(e, CTRL_SEC, "_cc_apply")
 		"slow":  e["slow_until"] = maxf(float(e.get("slow_until", 0.0)), _t + _cc_dur(e, BUFF_SEC)); e["slow_mag"] = 0.6
 		"curse": _add_dot(e, "curse", e["maxHp"] * 0.05, BUFF_SEC, u)
-		"atkdn": _buff(e, "atk", -0.15, true)
-		"mrdn":  _buff(e, "mr", -0.20, true)
+		"atkdn": _damage._buff(e, "atk", -0.15, true)
+		"mrdn":  _damage._buff(e, "mr", -0.20, true)
 
 
 
@@ -7491,22 +7165,6 @@ func _throw_gold_coin(src: Dictionary, tgt: Dictionary) -> void:
 
 const INK_BOMB_RADIUS := 300.0                                  # 墨水炸弹AOE半径(用户2026-07-15: 原全体→落点300码范围内)
 var _copy_fx_mult: float = 1.0
-
-func _grant_shield(u: Dictionary, amt: float, dur: float = 0.0) -> void:
-	if amt <= 0.0: return
-	amt *= _copy_fx_mult                          # 龟壳复制期: 护盾也按60%(封板"以60%效果释放")
-	amt *= 1.0 + float(u.get("shield_amp", 0.0))   # 护盾加成(受到方,所有来源)
-	var sb: float = u["shield"]
-	u["shield"] = minf(u["shield"] + amt, u["maxHp"] * SHIELD_CAP_MULT)
-	if dur > 0.0:
-		u["shield_until"] = maxf(float(u.get("shield_until", 0.0)), _t + dur)   # 限时盾原语(封板通用护盾=4秒): 记到期(多源取更晚); dur=0=永久(不设→_tick不过期·shell/嘲讽/既有盾全默认永久不变)
-	var got := int(u["shield"] - sb)
-	u["_st_shield"] = int(u.get("_st_shield", 0)) + got   # §STATS: 实际获盾
-	if got >= 8:                             # #1 护盾飘字 "+N 盾" (浅蓝); 门槛过滤每帧微盾被动防刷屏
-		_vfx._float_text(u["pos"] + Vector2(0, -52), "+%d 盾" % got, Color("#ffffff"), false, "shield")
-	_skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.4), 44.0)
-	_audio_sys._sfx_shield_gain()                       # §AUDIO: 得盾音 (节流; 群体上盾不刷屏)
-
 
 func _urchin_shield_fx(u: Dictionary) -> void:   # 海胆护盾(013满层): 紫刺放射+紫环+紫字, 与普通金盾区分(用户2026-07-19"特殊颜色")
 	var col := Color(0.80, 0.32, 0.94)   # 海胆紫
@@ -7578,83 +7236,22 @@ func _egg_add_progress(u: Dictionary, amt: float) -> void:   # 温泉蛋(036): �
 			stt["incub_given"] = true
 			var allies := _targeting._allies_no_trainer(u)   # ★均分排除大师·用户2026-07-23 点4
 			var per: float = float(stt.get("incub_shield", 300.0)) / maxf(1.0, float(allies.size()))
-			for o in allies: _grant_shield(o, per)
+			for o in allies: _damage._grant_shield(o, per)
 			_particle_burst(u["pos"])
 	if int(stt.get("egg_levels", 0)) >= 3: stt["incub"] = minf(float(stt["incub"]), 100.0)
 	u["eq_state"]["p2eq_036"] = stt
-
-# silent=true: 吸血等高频被动回血不出治疗音 (防刷屏), 主动治疗/技能回血出音
-func _heal(u: Dictionary, amt: float, silent: bool = false) -> float:   # 返回【实际】回血(满血=0·溢出转盾不计·用户2026-07-19"按实际治疗算")
-	if amt <= 0.0: return 0.0
-	amt *= _copy_fx_mult                        # 龟壳复制期: 治疗也按60%
-	amt *= 1.0 + float(u.get("heal_amp", 0.0))   # 治疗加成(受到方,所有来源)
-	amt *= _sd_heal_mult()                       # §SUDDEN 决胜期治疗 ×50%
-	if _t < float(u.get("heal_reduce_until", 0.0)):
-		amt *= maxf(0.0, 1.0 - float(u.get("heal_reduce_pct", 0.0)))   # 治疗削减(凤凰涅槃/烫伤等)
-	var hb: float = u["hp"]
-	u["hp"] = minf(u["maxHp"], u["hp"] + amt)
-	u["_st_heal"] = int(u.get("_st_heal", 0)) + int(u["hp"] - hb)   # §STATS: 实际回复(超过满血不计)
-	var _osc: float = float(u.get("overheal2shield_cap", 0.0))   # 饮血护符坠(011): 溢出治疗(超过满血部分)转血护盾, 累积上限
-	if _osc > 0.0:
-		var _ovf: float = amt - float(u["hp"] - hb)   # 请求治疗量 - 实际回复 = 溢出
-		if _ovf > 0.0 and u["shield"] < _osc:
-			u["shield"] = minf(_osc, u["shield"] + _ovf)   # 静默累积(吸血高频不刷飘字), 由携带者护盾条显示
-	var _act: float = float(u["hp"] - hb)   # 实际回血(满血=0, 超出满血/转盾部分不计入绿字)
-	if _act > 0.0:                          # LoL式治疗累加器: 高频/多段/多源回血攒进累加, 短窗后合并成一个绿字(见_heal_flush)
-		u["_heal_acc"] = float(u.get("_heal_acc", 0.0)) + _act
-		u["_heal_acc_t"] = _t
-		if float(u.get("_heal_acc_start", 0.0)) <= 0.0:
-			u["_heal_acc_start"] = _t
-	if not silent:
-		_audio_sys._sfx_heal()                          # §AUDIO: 治疗音 (节流)
-	return _act
-
-func _heal_flush(u: Dictionary) -> void:   # LoL式: 治疗累加器→静默0.15s(一波打完)或攒够0.6s→合并弹一个绿字(=实际回血)
-	var acc: float = float(u.get("_heal_acc", 0.0))
-	if acc <= 0.0:
-		return
-	if _t - float(u.get("_heal_acc_t", 0.0)) >= 0.15 or _t - float(u.get("_heal_acc_start", 0.0)) >= 0.6:
-		if int(round(acc)) >= 1:
-			_vfx._float_text(u["pos"] + Vector2(0, -40), "+" + str(int(round(acc))), Color("#06d6a0"), false, "heal")
-		u["_heal_acc"] = 0.0
-		u["_heal_acc_start"] = 0.0
-
-# 韧性: CC实际时长 = 基础 ×(1-韧性), 最多减90%
-## 眩晕唯一入口(收口自原先分散的 17 处 `X["stun_until"] = maxf(...)`).
-##
-## 为什么收口: 巡检 171 局抓到 2 例单位被连续眩晕 11 秒(彩虹龟/忍者龟), 且每次采样"剩余"都只有 1.7~1.8s
-## —— 不是一次长控, 是 ~2 秒的眩晕被反复续上。原先 17 个施加点各写各的, 既查不出是谁在续,
-## 以后想加递减(DR)也得改 17 处。现在: 韧性(_cc_dur)、来源记录、将来的 DR 规则都只在这里。
-##
-## tenacity=false 用于【自身施法定身】(缩头/亡灵拉全场等), 那是自己给自己上的动作锁, 不该吃自己的韧性。
-func _stun(u: Dictionary, sec: float, src_tag: String, no_tenacity: bool = false) -> void:
-	var d: float = sec if no_tenacity else _cc_dur(u, sec)
-	if _audit:
-		# ★无条件记账. 第一版只在"已晕着又被续"时记, 结果明细恒为空 —— 因为控制是在采样缝隙里
-		# 断开再重上的(每次都是"当前没晕"→不记), 而 1 秒一次的采样看不见那个缝, 于是把
-		# "断续被控 11 秒"误报成"连续眩晕 11 秒"。指标要数【施加次数】, 不是数采样。
-		var ch: Dictionary = u.get("_stun_chain", {})
-		ch[src_tag] = int(ch.get(src_tag, 0)) + 1
-		u["_stun_chain"] = ch
-		u["_stun_n"] = int(u.get("_stun_n", 0)) + 1
-	u["_stun_src"] = src_tag
-	u["stun_until"] = maxf(float(u.get("stun_until", 0.0)), _t + d)
 
 func _cc_dur(u: Dictionary, sec: float) -> float:
 	return sec * (1.0 - clampf(float(u.get("tenacity", 0.0)), 0.0, 0.9))
 
 func _freeze(u: Dictionary, sec: float = CTRL_SEC) -> void:
-	_stun(u, sec, "_freeze")
+	_damage._stun(u, sec, "_freeze")
 	_skill_ring(u["pos"], Color(0.6, 0.9, 1.0, 0.6), 48.0)
 
 func _taunt(by: Dictionary, targets: Array, sec: float = BUFF_SEC) -> void:
 	for o in targets:
 		o["taunt_until"] = _t + sec
 		o["taunt_by"] = by
-
-func _buff(u: Dictionary, stat: String, amount: float, pct: bool, sec: float = BUFF_SEC) -> void:
-	u["buffs"].append({"stat": stat, "amount": amount, "pct": pct, "until": _t + sec})
-	_recalc_stats(u)
 
 func _recalc_stats(u: Dictionary) -> void:
 	var acc := {"atk": [0.0, 0.0], "def": [0.0, 0.0], "mr": [0.0, 0.0]}
@@ -7680,29 +7277,11 @@ func _recalc_stats(u: Dictionary) -> void:
 	u["dodge_bonus"] = dodge
 	u["ls_bonus"] = ls
 
-# flat DoT (诅咒等). dps=每秒落血; 真伤穿护盾. 灼烧/中毒/流血改走 _apply_dot_stacks 层数模型.
+# flat DoT (诅咒等). dps=每秒落血; 真伤穿护盾. 灼烧/中毒/流血改走 _damage._apply_dot_stacks 层数模型.
 func _add_dot(u: Dictionary, tag: String, dps: float, sec: float, src = null) -> void:
 	# src: 施加者。原先不存 → 诅咒伤害永远无主(不进统计、不吃施加者穿甲)。2026-07-22 补。
 	u["dots"].append({"tag": tag, "dps": dps, "until": _t + sec, "src": src, "_acc": 0.0})
 
-# 层数式 DoT 施加 (1:1 dot.gd apply_stacks). type∈[burn,poison,bleed]; 多次施加→累加层数. burn 检免疫.
-func _apply_dot_stacks(u: Dictionary, type: String, stacks: int, src = null) -> void:
-	if u == null or not u.get("alive", false) or stacks <= 0:
-		return
-	if _copy_fx_mult != 1.0:
-		stacks = maxi(1, roundi(float(stacks) * _copy_fx_mult))   # 龟壳复制期: DoT层数也按60%
-	if type == "burn":
-		if u.get("_burnImmune", false):
-			return
-		var passive = u.get("passive", null)
-		if passive is Dictionary and passive.get("burnImmune", false):
-			return
-	var ds: Dictionary = u["dot_stacks"]
-	ds[type] = int(ds.get(type, 0)) + stacks
-	if src != null:
-		u["dot_src"][type] = src
-
-# 灼烧默认层数 = max(1, round(attacker.atk × 0.67))  (1:1 dot.gd default_burn_stacks)
 func _default_burn_stacks(attacker: Dictionary) -> int:
 	return maxi(1, roundi(float(attacker.get("atk", 0.0)) * 0.67))
 
@@ -7714,25 +7293,6 @@ func _has_dot(u: Dictionary, tag: String) -> bool:
 			return true
 	return false
 
-# DoT 抗性减免(用户2026-07-19: 灼烧/中毒=魔法吃魔抗, 流血=物理吃护甲)。
-# ★2026-07-22 用户拍板「DOT 要享受穿甲增伤等」→ 加入施加者的 护穿/法穿 与 damage_amp,
-#   与 _resolve_dmg(7926-7945) 的口径一致。取值方式 = 【每跳实时查施加者】(用户选定,
-#   而非施加时快照)。施加者死后单位字典【不销毁】, 属性仍在 → 继续按它死时的数值算, 不会归零。
-#   ★已知限制(方案书 H19′): dot_src 只存最后一个施加者, 两人叠同种毒时前者的穿甲不生效。
-func _dot_after_resist(u: Dictionary, dmg: float, magic: bool, src = null) -> int:
-	var resist: float = float(u["mr"]) if magic else float(u["def"])
-	if src is Dictionary:
-		if magic:
-			resist = resist * (1.0 - float(src.get("magic_pen_pct", 0.0))) - float(src.get("magic_pen", 0.0))
-		else:
-			resist = resist * (1.0 - float(src.get("armor_pen_pct", 0.0))) - float(src.get("armor_pen", 0.0))
-	var mult: float = DamageMath.resist_multiplier(resist)
-	var out := dmg * mult
-	if src is Dictionary:
-		out *= (1.0 + float(src.get("damage_amp", 0.0)))   # 攻击者增伤(信号放大器038 等)
-	return maxi(1, int(round(out)))
-
-# 层数 DoT 每秒结算 (1:1 dot.gd tick). 固定顺序 burn→poison→bleed; 出伤后层数衰减, ≤0 移除.
 func _tick_dot_stacks(u: Dictionary) -> void:
 	var ds: Dictionary = u.get("dot_stacks", {})
 	if ds.is_empty():
@@ -7749,17 +7309,17 @@ func _tick_dot_stacks(u: Dictionary) -> void:
 				dmg = stacks + roundi(max_hp * stacks * 0.001)
 				new_val = CombatMath.decay_stacks(stacks)   # 衰减80%(用户)
 				if _t < u.get("true_fire_until", 0.0):
-					_apply_damage(u, dmg, Color("#ffffff"), u.get("dot_src", {}).get("burn", null), "tru", false, true)   # 真火: 灼烧转真伤(原走_raw_lose→无飘字无统计·用户2026-07-19)
+					_damage._apply_damage(u, dmg, Color("#ffffff"), u.get("dot_src", {}).get("burn", null), "tru", false, true)   # 真火: 灼烧转真伤(原走_raw_lose→无飘字无统计·用户2026-07-19)
 				else:
-					_apply_damage(u, _dot_after_resist(u, float(dmg), true, u.get("dot_src", {}).get("burn", null)), Color("#4dabf7"), u.get("dot_src", {}).get("burn", null), "mag", false, true)   # 灼烧=魔法伤害·吃魔抗
+					_damage._apply_damage(u, _damage._dot_after_resist(u, float(dmg), true, u.get("dot_src", {}).get("burn", null)), Color("#4dabf7"), u.get("dot_src", {}).get("burn", null), "mag", false, true)   # 灼烧=魔法伤害·吃魔抗
 			"poison":
 				dmg = stacks
 				new_val = CombatMath.decay_stacks(stacks)   # 衰减80%(用户)
-				_apply_damage(u, _dot_after_resist(u, float(dmg), true, u.get("dot_src", {}).get("poison", null)), Color("#7ee87e"), u.get("dot_src", {}).get("poison", null), "mag", false, true)   # 中毒=魔法伤害·吃魔抗
+				_damage._apply_damage(u, _damage._dot_after_resist(u, float(dmg), true, u.get("dot_src", {}).get("poison", null)), Color("#7ee87e"), u.get("dot_src", {}).get("poison", null), "mag", false, true)   # 中毒=魔法伤害·吃魔抗
 			"bleed":
 				dmg = stacks
 				new_val = CombatMath.decay_stacks(stacks)   # 衰减80%(用户)
-				_apply_damage(u, _dot_after_resist(u, float(dmg), false, u.get("dot_src", {}).get("bleed", null)), Color("#ff6b6b"), u.get("dot_src", {}).get("bleed", null), "phy", false, true)   # 流血=物理伤害·吃护甲
+				_damage._apply_damage(u, _damage._dot_after_resist(u, float(dmg), false, u.get("dot_src", {}).get("bleed", null)), Color("#ff6b6b"), u.get("dot_src", {}).get("bleed", null), "phy", false, true)   # 流血=物理伤害·吃护甲
 		ds[type] = maxi(0, new_val)
 		if ds[type] <= 0:
 			ds.erase(type)
@@ -7845,7 +7405,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 		"ninja":
 			u["crit"] += 0.30; u["crit_dmg"] += 0.20; u["armor_pen"] += 8.0   # 忍术(基础被动)
 			if "ninjaShuriken" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 忍者足(技三打包·选中才有): +25%闪避+40%暴击
-				_buff(u, "dodge", 0.25, false, 9999.0); u["crit"] += 0.40
+				_damage._buff(u, "dodge", 0.25, false, 9999.0); u["crit"] += 0.40
 		"ghost":
 			for o in _targeting._enemies_of(u):
 				_add_dot(o, "curse", o["maxHp"] * 0.05, BUFF_SEC, u)
@@ -7886,7 +7446,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 				var uu2: Dictionary = u; var vv2: Dictionary = v
 				_pirate_sys._pirate_cannonball(ps2d, psh, v["pos"], func() -> void:
 					if not vv2.get("alive", false): return
-					_apply_damage_from(uu2, vv2, int(float(vv2["maxHp"]) * 0.25), Color("#ffd07a"), 0.0, true)
+					_damage._apply_damage_from(uu2, vv2, int(float(vv2["maxHp"]) * 0.25), Color("#ffd07a"), 0.0, true)
 					_burst_vfx("res://assets/sprites/vfx/cannon-blast.png", vv2["pos"], 180.0, 0.4)
 					_shake(0.05))
 		"candy":
@@ -7933,11 +7493,11 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 				_two_head_sys._two_head_fusion_onset(u)                      # 融合登场VFX(用户2026-07-11): 合体爆发+持续融合态光环
 		"diamond":                                    # 钻石结构(封板): 全队护甲/魔抗加成+50%(简化=开局全队+50%pct); 选钻石冲撞→强化结构(自身额外+100%·"受击再减20甲10抗"近似折进护甲留F5)
 			for o in _targeting._allies_of(u):
-				_buff(o, "def", 0.5, true, 9999.0)
-				_buff(o, "mr", 0.5, true, 9999.0)
+				_damage._buff(o, "def", 0.5, true, 9999.0)
+				_damage._buff(o, "mr", 0.5, true, 9999.0)
 			if "diamondSmash" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 强化钻石结构(技三打包·选中才有): 自身护甲/魔抗额外+100%
-				_buff(u, "def", 1.0, true, 9999.0)
-				_buff(u, "mr", 1.0, true, 9999.0)
+				_damage._buff(u, "def", 1.0, true, 9999.0)
+				_damage._buff(u, "mr", 1.0, true, 9999.0)
 
 func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 	if not tgt["alive"]:
@@ -7950,15 +7510,15 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 		"lightning":
 			_lightning_sys._lightning_electric(u, tgt)   # 普攻主目标叠电击+可引爆(连锁跳由_lightning_hop叠)
 		"crystal":
-			_apply_damage_from(u, tgt, _mitigate(u, tgt["maxHp"] * 0.015, tgt, true), Color("#9bdcff"), 0.0, false)   # 水晶刺附1.5%目标最大生命魔法(吃魔抗·封板L559·原折进物理=类型错)
+			_damage._apply_damage_from(u, tgt, _mitigate(u, tgt["maxHp"] * 0.015, tgt, true), Color("#9bdcff"), 0.0, false)   # 水晶刺附1.5%目标最大生命魔法(吃魔抗·封板L559·原折进物理=类型错)
 			_crystal_sys._crystal_stack(u, tgt, 1)   # 普攻叠1层结晶(满5引爆·封板)·与水晶球共享层数走同一helper(引爆改吃魔抗)
 		"angel":                                          # 审判: 每段攻击额外 +目标当前HP 8% 魔法(2026-07-22订正: 注释原写11%, 代码一直是 0.08)
-			_apply_damage_from(u, tgt, _mitigate(u, tgt["hp"] * 0.08, tgt, true), Color("#9be7ff"), 0.0, false)   # 魔法(吃魔抗+蓝字), 原flat固定值绕魔抗+错色=bug
+			_damage._apply_damage_from(u, tgt, _mitigate(u, tgt["hp"] * 0.08, tgt, true), Color("#9be7ff"), 0.0, false)   # 魔法(吃魔抗+蓝字), 原flat固定值绕魔抗+错色=bug
 		# gambler 多重打击改云顶剑士式连击(见状态机 _gambler_sys._gambler_multi_cd), 不在这里追加
 		"bamboo":                                         # 生长(改造): 蓄力时下一发普攻强化(追加魔法+回血+永久成长)
 			if u.get("bamboo_charge", false):
 				u["bamboo_charge"] = false
-				_apply_damage_from(u, tgt, _mitigate(u, u["atk"] * (1.0 if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else 0.75) + u["maxHp"] * (0.13 if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else 0.08), tgt, true), Color("#9be7ff"), 0.0, false)   # 追击魔法·选竹击=强化生长(1.0A+13%maxHp)否则基础(0.75A+8%maxHp)·用户核对JS bambooCharged
+				_damage._apply_damage_from(u, tgt, _mitigate(u, u["atk"] * (1.0 if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else 0.75) + u["maxHp"] * (0.13 if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else 0.08), tgt, true), Color("#9be7ff"), 0.0, false)   # 追击魔法·选竹击=强化生长(1.0A+13%maxHp)否则基础(0.75A+8%maxHp)·用户核对JS bambooCharged
 				_melee_lunge(u, tgt, 0.66)                                     # 不灭之握式: 强化发踏步加倍(0.30→0.66)明显扑上去
 				_hitstop = maxf(_hitstop, 0.06)                                # 顿帧=命中厚重感
 				_shake(0.06)
@@ -7969,13 +7529,13 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 				_spawn_bamboo_orb(tgt["pos"], u["pos"], func() -> void:
 					if not u.get("alive", false):
 						return
-					_heal(u, u["maxHp"] * (0.12 if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else 0.08))
+					_damage._heal(u, u["maxHp"] * (0.12 if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else 0.08))
 					var _gr := (1.05 if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else 0.60); u["maxHp"] += u["base_atk"] * _gr; u["hp"] += u["base_atk"] * _gr; _recalc_stats(u); _vfx._flash(u, Color(0.5, 1.7, 0.65)))   # 永久+maxHp=系数×ATK + 吸收瞬间竹叶龟再绿闪(得到生命·不灭之握=绿闪非环)
 		"rainbow":                                        # 棱镜(改造): 普攻附当前颜色效果(红真伤/蓝小盾/绿回血)
 			match int(u.get("prism_color", -1)):
-				0: _apply_damage_from(u, tgt, int(u["atk"] * 0.25), Color("#ff6b6b"), 0.0, true)   # 红: 额外真伤
-				1: _grant_shield(u, u["atk"] * 0.2, 4.0)                                           # 蓝: 每普攻获小盾(通用护盾4秒·封板L74"基础龟被动蓄力普攻的护盾也4秒")
-				2: _heal(u, (u["maxHp"] - u["hp"]) * 0.025, true)                                               # 绿: 回2%最大HP
+				0: _damage._apply_damage_from(u, tgt, int(u["atk"] * 0.25), Color("#ff6b6b"), 0.0, true)   # 红: 额外真伤
+				1: _damage._grant_shield(u, u["atk"] * 0.2, 4.0)                                           # 蓝: 每普攻获小盾(通用护盾4秒·封板L74"基础龟被动蓄力普攻的护盾也4秒")
+				2: _damage._heal(u, (u["maxHp"] - u["hp"]) * 0.025, true)                                               # 绿: 回2%最大HP
 			# 棱镜命中: 喷当前色(每次普攻都带色·醒目·用户2026-07-13)
 			var _rb_hc: Color = _PRISM_COLS[int(u.get("prism_color", -1))] if int(u.get("prism_color", -1)) >= 0 else Color(1, 1, 1)
 			var _rb_hb := _glow_bb(tgt["pos"], float(tgt.get("height", 0.0)) + 0.35, 135.0, Color(_rb_hc.r, _rb_hc.g, _rb_hc.b, 0.95))
@@ -7984,12 +7544,12 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 			_rb_ht.tween_property(_rb_hb, "material_override:albedo_color", Color(_rb_hc.r, _rb_hc.g, _rb_hc.b, 0.0), 0.24)
 			_rb_ht.chain().tween_callback(_rb_hb.queue_free)
 			_vfx._flash(tgt, Color(_rb_hc.r + 0.5, _rb_hc.g + 0.5, _rb_hc.b + 0.5))
-	# 猎人猎杀已移到 _apply_damage_from 中央伤害路径(封板: 普攻/技能/装备任一伤害都处决<斩杀线)
+	# 猎人猎杀已移到 _damage._apply_damage_from 中央伤害路径(封板: 普攻/技能/装备任一伤害都处决<斩杀线)
 	# 猎人·隐蔽翻滚强化: 下次普攻附带0.9A物理(吃吸血), 用后即清
 	if u["id"] == "hunter" and u.get("hunter_roll_buff", false):
 		u["hunter_roll_buff"] = false
 		if tgt.get("alive", false):
-			_apply_damage_from(u, tgt, _atk_dmg(u, 0.9, tgt), Color("#ff4444"))   # 物理红(翻滚强化+0.9A物理·飘字色规范)
+			_damage._apply_damage_from(u, tgt, _atk_dmg(u, 0.9, tgt), Color("#ff4444"))   # 物理红(翻滚强化+0.9A物理·飘字色规范)
 	# 小龟·不屈(龟盾融入): 每6秒强化普攻 → 附0.7A+20%已损物理+击飞+盾(复用_sk_basic_shield)
 	if u["id"] == "basic" and u.get("basic_enh_ready", false):
 		u["basic_enh_ready"] = false
@@ -8118,7 +7678,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	if u["id"] == "chest" and (u.get("chest_treasures", {}) as Dictionary).has("rum"):
 		u["chest_rum_t"] = float(u.get("chest_rum_t", 0.0)) + delta
 		if u["chest_rum_t"] >= 10.0:
-			u["chest_rum_t"] = 0.0; _heal(u, u["maxHp"] * 0.08)
+			u["chest_rum_t"] = 0.0; _damage._heal(u, u["maxHp"] * 0.08)
 	# --- 钻石滚球被动(封板): 选滚球 且 100码内无敌 → 免费自动滚(不耗龟能不充能)撞向最近·0.8s防抖内CD ---
 	if u["id"] == "diamond" and not u.get("roll_active", false) and _t > float(u.get("roll_free_cd", 0.0)) and "diamondPowerball" in _chosen_skill_types(u["id"], u["side"] == "left"):
 		var _dne = _targeting._nearest_enemy(u)
@@ -8151,11 +7711,11 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			u["_bbtimer"] = 0.0
 			var bs: float = float(u.get("bubble_store", 0.0))
 			if bs >= 1.0:
-				_heal(u, bs * 0.10, true)              # 修: 15%→10%(封板)
+				_damage._heal(u, bs * 0.10, true)              # 修: 15%→10%(封板)
 				for _bh in range(2): _bubble_sys._bubble_rise(u["pos"])   # 泡沫被动proc: 自身回血泡泡(用户2026-07-14)
 				var bt = _targeting._nearest_enemy(u)             # 修: 随机敌→最近敌(封板)
 				if bt != null:
-					_apply_damage_from(u, bt, int(_mitigate(u, bs * 0.10, bt, true)), Color("#aef1ff"))   # 修: 35%真伤→10%化魔法(吃魔抗·封板)
+					_damage._apply_damage_from(u, bt, int(_mitigate(u, bs * 0.10, bt, true)), Color("#aef1ff"))   # 修: 35%真伤→10%化魔法(吃魔抗·封板)
 					_fly_vfx("res://assets/sprites/skills/bubble-1.png", u["pos"], bt["pos"], 46.0, 0.34, 1.0)   # 泡泡弹飞向最近敌
 					_bubble_sys._bubble_rise(bt["pos"]); _bubble_sys._bubble_rise(bt["pos"])   # 命中泡沫破
 				u["bubble_store"] = bs * 0.80          # 修: 消耗50%→共消耗20%(10%伤+10%治·封板)
@@ -8167,7 +7727,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			var le := _targeting._pick_enemies_of(u)
 			if not le.is_empty():
 				var lv2 = le[_battle_rng.randi() % le.size()]
-				_apply_damage_from(u, lv2, _shock_dmg(u), Color("#4dabf7"), 0.0, true)
+				_damage._apply_damage_from(u, lv2, _shock_dmg(u), Color("#4dabf7"), 0.0, true)
 				_lightning_sys._lightning_strike(lv2["pos"], Color("#aef0ff"))   # 天降闪电(自动电击)
 
 # ============================================================================
@@ -8211,7 +7771,7 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 		if not es.is_empty():
 			var per: float = u["maxHp"] * u["death_aoe"] / float(es.size())
 			for o in es:
-				_apply_damage_from(u, o, _resolve_dmg(u, per, o, true), Color("#ff8ad8"), 0.0, false, true)   # 魔法伤(蓝字·吃魔抗·封板"魔法"·用户2026-07-15纠错·原raw=true真伤=错)
+				_damage._apply_damage_from(u, o, _resolve_dmg(u, per, o, true), Color("#ff8ad8"), 0.0, false, true)   # 魔法伤(蓝字·吃魔抗·封板"魔法"·用户2026-07-15纠错·原raw=true真伤=错)
 		if u.get("summon_kind", "") == "candybomb":   # 糖果炸弹死亡: 大糖爆+震屏+糖泡四溅(用户2026-07-14参照海盗船完整呈现)
 			_burst_vfx("res://assets/sprites/vfx/candy-burst.png", u["pos"], 340.0, 0.4)
 			_shake(JUICE_SHAKE_HEAVY)
@@ -8221,7 +7781,7 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 		var _br: float = float(u.get("boom_radius", 200.0))
 		for _bo in _targeting._enemies_of(u):
 			if _bo.get("alive", false) and (_bo["pos"] - u["pos"]).length() <= _br:
-				_apply_damage_from(u, _bo, int(float(_bo["maxHp"]) * float(u["boom_pct_true"])), Color("#8affa0"), 0.0, true, true)
+				_damage._apply_damage_from(u, _bo, int(float(_bo["maxHp"]) * float(u["boom_pct_true"])), Color("#8affa0"), 0.0, true, true)
 		_necro_burst(u["pos"], _br)
 	# 缩头本体死亡 → 同步杀掉其随从
 	if u["id"] == "hiding":
@@ -8308,9 +7868,9 @@ func _spawn_pirate_ship(u: Dictionary, tgt = null) -> void:   # 首次: 后方�
 		for e in _targeting._enemies_of(uu):                         # 撞击: 200码内1.0A魔法+击飞2秒(封板)
 			if not e.get("alive", false): continue
 			if e["pos"].distance_to(impact2d) > 200.0: continue
-			_apply_damage_from(src, e, _atk_dmg(uu, 1.0, e, true), Color("#e8c07a"), 0.0, true)
-			_knockback(src, e, 40.0, 3.667, 1.0)
-			_stun(e, 2.0, "_spawn_pirate_ship")
+			_damage._apply_damage_from(src, e, _atk_dmg(uu, 1.0, e, true), Color("#e8c07a"), 0.0, true)
+			_damage._knockback(src, e, 40.0, 3.667, 1.0)
+			_damage._stun(e, 2.0, "_spawn_pirate_ship")
 		if deco != null and is_instance_valid(deco): deco.queue_free()   # 演出船"化作"实体→消失
 		uu["_perf_ship"] = null)
 
@@ -8529,7 +8089,7 @@ func _tick_summon_special(u: Dictionary, delta: float) -> void:
 		if float(u["_decay_acc"]) >= 1.0:
 			var _dv: int = int(floor(float(u["_decay_acc"])))
 			u["_decay_acc"] = float(u["_decay_acc"]) - float(_dv)
-			_apply_damage(u, _dv, Color("#c8b0ff"), null, "tru", true)
+			_damage._apply_damage(u, _dv, Color("#c8b0ff"), null, "tru", true)
 		if not u["alive"]:
 			return
 	if u.get("summon_life", 0.0) > 0.0:                   # 032骷髅: 存活到期→自灭(触发死亡爆炸)
@@ -8575,7 +8135,7 @@ func _tick_summon_special(u: Dictionary, delta: float) -> void:
 			var t = _targeting._nearest_enemy(u)
 			if t == null: return
 			_crystal_sys._crystal_ray_vfx(u, t, func(sr: Dictionary, tr: Dictionary, last: bool) -> void:
-				_apply_damage_from(sr, tr, _atk_dmg(sr, sr.get("special_scale", 1.0), tr, true), Color("#9bdcff"), 0.0, true)
+				_damage._apply_damage_from(sr, tr, _atk_dmg(sr, sr.get("special_scale", 1.0), tr, true), Color("#9bdcff"), 0.0, true)
 				if last: _crystal_sys._crystal_stack(sr, tr, 2))   # 与本体共享满5引爆(引爆改吃魔抗)
 		"random_hit":
 			var es2 := _targeting._pick_enemies_of(u)
@@ -8590,7 +8150,7 @@ func _tick_summon_special(u: Dictionary, delta: float) -> void:
 			_bolt_line(u["pos"], low["pos"], Color("#9bf0ff"))
 			for i in range(2):
 				if not low["alive"]: break
-				_apply_damage_from(u, low, _atk_dmg(u, u.get("special_scale", 1.5) * 0.5, low), Color("#9bf0ff"))
+				_damage._apply_damage_from(u, low, _atk_dmg(u, u.get("special_scale", 1.5) * 0.5, low), Color("#9bf0ff"))
 
 
 func _apply_cam_zoom() -> void:
@@ -9217,7 +8777,7 @@ func _make_result_btn(txt: String, bg: Color, fg: Color, cb: Callable) -> Button
 	b.pressed.connect(cb)
 	return b
 
-# #2 伤害统计面板: 结算时显双方各龟 输出/承受/回复/护盾 (统计在 _apply_damage* / _heal / _grant_shield 累计)
+# #2 伤害统计面板: 结算时显双方各龟 输出/承受/回复/护盾 (统计在 _damage._apply_damage* / _damage._heal / _damage._grant_shield 累计)
 # ══════════════════════════════════════════════════════════════
 # §STATS 类型分桶辅助 + 战中伤害统计面板 (R2c, 1:1 回合制 DmgStatsPanel/battle_stats 样式)
 # ══════════════════════════════════════════════════════════════
@@ -9921,7 +9481,7 @@ func _chain_segment(u: Dictionary, from2d: Vector2, tgt: Dictionary, dmg: int) -
 		return
 	_chain_arc(from2d, tgt["pos"])
 	_chain_zap(tgt["pos"])
-	_apply_damage_from(u, tgt, _resolve_dmg(u, float(dmg), tgt, true), Color("#7ecbff"), 0.0, false, true)   # 魔法伤害(过魔抗+吃魔穿)
+	_damage._apply_damage_from(u, tgt, _resolve_dmg(u, float(dmg), tgt, true), Color("#7ecbff"), 0.0, false, true)   # 魔法伤害(过魔抗+吃魔穿)
 
 # 蓄电前摇: 携带者身上聚一颗青电球(加速涨大变亮)+电环, ~0.4s 后射出连锁
 func _chain_windup(u: Dictionary, si: int) -> void:

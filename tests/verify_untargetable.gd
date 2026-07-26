@@ -70,7 +70,7 @@ func _ready() -> void:
 
 	# ── C. _apply_damage(DoT/真伤路径) 打不动组装期机甲 ──
 	var hp_before: float = float(mech["hp"])
-	scene._apply_damage(mech, 999, Color.WHITE, null, "dot")
+	scene._damage._apply_damage(mech, 999, Color.WHITE, null, "dot")
 	_ok("★组装期机甲 免疫 _apply_damage(DoT/真伤路径)", is_equal_approx(float(mech["hp"]), hp_before),
 		"%.0f → %.0f" % [hp_before, float(mech["hp"])])
 

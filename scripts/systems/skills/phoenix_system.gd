@@ -55,8 +55,8 @@ func _phoenix_flame_cone(u: Dictionary, tgt: Dictionary) -> void:
 			continue
 		if dir.dot(to_e / d) < half_cos:
 			continue
-		battle._apply_damage_from(u, e, battle._resolve_dmg(u, mag, e, true), Color("#4dabf7"))
-		battle._apply_dot_stacks(e, "burn", burn_stacks, u)
+		battle._damage._apply_damage_from(u, e, battle._resolve_dmg(u, mag, e, true), Color("#4dabf7"))
+		battle._damage._apply_dot_stacks(e, "burn", burn_stacks, u)
 		battle._vfx._flash(e, Color("#ff8a3a"))
 
 # 单颗喷火苗: 嘴部喷出→沿锥角向外冲(火舌位移感), 软发光blob叠成顺滑火流, 黄白→橙→红透+边冲边长大
@@ -201,8 +201,8 @@ func _phoenix_scald_hit(u: Dictionary, tgt, fb) -> void:
 		return
 	# 封板: 火球命中先破50%护盾(破盾碎裂)→再落1.5A魔法穿透→灼烧+攻防抗各-15%+治疗削减
 	battle._apply_skill_extras(u, tgt, {"shieldBreak": 0.5, "atkDown": 0.15, "defDown": 0.15, "mrDown": 0.15, "healCut": 0.5})
-	battle._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.5, tgt, true), Color("#4dabf7"))   # 1.5ATK魔法(打已破的盾, 更多穿透到血)
-	battle._apply_dot_stacks(tgt, "burn", maxi(1, roundi(float(u["atk"]) * 1.0)), u)   # 1ATK灼烧层
+	battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.5, tgt, true), Color("#4dabf7"))   # 1.5ATK魔法(打已破的盾, 更多穿透到血)
+	battle._damage._apply_dot_stacks(tgt, "burn", maxi(1, roundi(float(u["atk"]) * 1.0)), u)   # 1ATK灼烧层
 	battle._vfx._flash(tgt, Color("#ff8a3a"))
 	_phoenix_flame_burst(tgt["pos"])
 
@@ -260,7 +260,7 @@ func _sk_phoenix_scald(u: Dictionary, tgt) -> void:
 	tw.tween_callback(_phoenix_scald_hit.bind(u, tgt, fb))
 
 func _sk_phoenix_lavashield(u: Dictionary) -> void:              # 凤凰龟·熔岩盾 (用户2026-07-07: 3.5A护盾4秒+反击0.14A魔法)
-	battle._grant_shield(u, u["atk"] * 3.5, 4.0)   # 凤凰熔岩盾4秒(与反击窗口lava_shield_until同步·封板)
+	battle._damage._grant_shield(u, u["atk"] * 3.5, 4.0)   # 凤凰熔岩盾4秒(与反击窗口lava_shield_until同步·封板)
 	u["lava_shield_until"] = battle._t + 4.0          # 4秒内每受一段攻击反击0.14×ATK魔法(见_apply_damage_from)
 	battle._skill_ring(u["pos"], Color(1.0, 0.5, 0.2, 0.5), 50.0)
 

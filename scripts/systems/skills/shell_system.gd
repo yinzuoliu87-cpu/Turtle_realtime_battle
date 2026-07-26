@@ -44,8 +44,8 @@ func _shell_basic(u: Dictionary, tgt: Dictionary) -> void:
 	_shell_break_stealth(u)                                     # 自己普攻→破隐(设shell_stealth_broke)
 	if u.get("shell_stealth_broke", false):                    # 破隐后第一发普攻: +1A魔法 + 0.5A毒层 + 3秒50%治疗削减
 		u["shell_stealth_broke"] = false
-		battle._apply_damage_from(u, tgt, int(u["atk"] * 1.0), Color("#9b3bff"))
-		battle._apply_dot_stacks(tgt, "poison", maxi(1, int(round(u["atk"] * 0.5))), u)
+		battle._damage._apply_damage_from(u, tgt, int(u["atk"] * 1.0), Color("#9b3bff"))
+		battle._damage._apply_dot_stacks(tgt, "poison", maxi(1, int(round(u["atk"] * 0.5))), u)
 		tgt["heal_reduce_until"] = battle._t + 3.0
 		tgt["heal_reduce_pct"] = maxf(float(tgt.get("heal_reduce_pct", 0.0)), 0.5)
 		battle._vfx._float_text(u["pos"] + Vector2(0, -58), "破隐!", Color("#9b3bff"))
@@ -53,9 +53,9 @@ func _shell_basic(u: Dictionary, tgt: Dictionary) -> void:
 	var is_true: bool = bool(u["basic_alt"])
 	# 主目标命中
 	if is_true:
-		battle._apply_damage_from(u, tgt, int(u["atk"] * 1.0), Color("#ffffff"), 0.0, true)   # 真实(穿减伤)
+		battle._damage._apply_damage_from(u, tgt, int(u["atk"] * 1.0), Color("#ffffff"), 0.0, true)   # 真实(穿减伤)
 	else:
-		battle._apply_damage_from(u, tgt, battle._resolve_dmg(u, u["atk"] * 1.0, tgt, false), Color("#ff4444"))
+		battle._damage._apply_damage_from(u, tgt, battle._resolve_dmg(u, u["atk"] * 1.0, tgt, false), Color("#ff4444"))
 	# 近战打击感: 闪白 + 前冲 (同 _emit_basic 近战分支)
 	battle._vfx._flash(tgt); battle._melee_lunge(u, tgt)
 	# 范围溅射: 主目标120px内其他敌 50%(同类型)
@@ -64,9 +64,9 @@ func _shell_basic(u: Dictionary, tgt: Dictionary) -> void:
 			continue
 		if (e["pos"] - tgt["pos"]).length() <= battle.SHELL_SPLASH_RADIUS:
 			if is_true:
-				battle._apply_damage_from(u, e, int(u["atk"] * 0.5), Color("#ffffff"), 0.0, true)
+				battle._damage._apply_damage_from(u, e, int(u["atk"] * 0.5), Color("#ffffff"), 0.0, true)
 			else:
-				battle._apply_damage_from(u, e, battle._resolve_dmg(u, u["atk"] * 0.5, e, false), Color("#ff4444"))
+				battle._damage._apply_damage_from(u, e, battle._resolve_dmg(u, u["atk"] * 0.5, e, false), Color("#ff4444"))
 
 # 闪电龟·改造普攻(用户2026-06-28逐字"得改造，是一次攻击一道，并有连锁闪电和叠被动"):
 #   一道闪电(魔法 0.6×ATK)命中主目标 → 依次接力连锁2跳(每跳260码内最近敌, 伤害×0.6递减 → 0.36A/0.216A)。
@@ -91,7 +91,7 @@ func _sk_shell_absorb(u: Dictionary, tgt) -> void:              # 龟壳·吸收
 	var _hp_lost: int = int(round(_hp_before - float(tgt["hp"])))
 	if _hp_lost > 0:
 		tgt["hp"] = _hp_before
-		battle._apply_damage_from(u, tgt, _hp_lost, Color("#ffffff"), 0.0, true, false, true, true)   # 真伤·必中·不暴击
+		battle._damage._apply_damage_from(u, tgt, _hp_lost, Color("#ffffff"), 0.0, true, false, true, true)   # 真伤·必中·不暴击
 	u["maxHp"] = float(u["maxHp"]) + steal
 	u["hp"] = float(u["hp"]) + steal                            # 龟壳maxHp+当前同步增
 	battle._vfx._float_text(u["pos"] + Vector2(0, -52), "+%d" % int(steal), Color("#7fe3a0"))
@@ -193,8 +193,8 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影�
 		if not o.get("alive", false): continue
 		if not battle._on_line(start, dir, o["pos"], 75.0): continue
 		if o["pos"].distance_to(start) > 620.0: continue
-		battle._apply_damage_from(u, o, battle._atk_dmg(u, 2.5, o, true), Color("#9b3bff"))
-		battle._knockback(u, o, 60.0, 1.0, 1.4)
+		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 2.5, o, true), Color("#9b3bff"))
+		battle._damage._knockback(u, o, 60.0, 1.0, 1.4)
 	_shell_dark_flame(start, 60.0, 0.5)                         # 起跳点火(Corki官方帧t=1.0起飞喷焰·2026-07-17)
 	battle._burst_vfx("res://assets/sprites/vfx/dust-impact.png", start, 90.0, 0.1)
 	var uu: Dictionary = u
@@ -235,7 +235,7 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影�
 		var fn = func():
 			for o in battle._targeting._enemies_of(u):
 				if o.get("alive", false) and o["pos"].distance_to(zc) <= 150.0:
-					battle._apply_dot_stacks(o, "burn", maxi(1, int(round(u["atk"] * 0.1))), u)   # 0.1A灼烧层
+					battle._damage._apply_dot_stacks(o, "burn", maxi(1, int(round(u["atk"] * 0.1))), u)   # 0.1A灼烧层
 					o["spd_move_mult"] = 0.8
 					o["spd_dbf_until"] = battle._t + 0.5              # 减速20%(0.5s)
 		battle._pending_shots.append({"delay": float(i) * 0.5, "fn": fn, "src": u})
@@ -295,8 +295,8 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:               # 龟壳·复制(
 #  注: 3D 版血条 overlay 每帧统一刷新, 故去掉 2D 版各处的 _update_bars(u) 调用.
 # ============================================================================
 func _shell_apply_awaken(u: Dictionary) -> void:   # 气场觉醒一次(六属性+12%/暴击+25%) + 金光爆发特效
-	battle._buff(u, "atk", 0.12, true, 9999.0); battle._buff(u, "def", 0.12, true, 9999.0); battle._buff(u, "mr", 0.12, true, 9999.0)
-	battle._buff(u, "lifesteal", 0.12, true, 9999.0)   # +12%吸血
+	battle._damage._buff(u, "atk", 0.12, true, 9999.0); battle._damage._buff(u, "def", 0.12, true, 9999.0); battle._damage._buff(u, "mr", 0.12, true, 9999.0)
+	battle._damage._buff(u, "lifesteal", 0.12, true, 9999.0)   # +12%吸血
 	var ah: float = u["maxHp"] * 0.12; u["maxHp"] += ah; u["hp"] += ah   # +12%最大生命
 	u["reflect"] = float(u.get("reflect", 0.0)) + 0.12   # 反伤+12% (回合制 auraAwaken.reflectPct=12; reflect是通用字段·受伤端_apply_damage_from已有反弹钩)
 	u["crit"] += 0.25; battle._recalc_stats(u)
@@ -499,7 +499,7 @@ func _shell_shockwave_tick(u: Dictionary, delta: float) -> void:
 				continue
 			if (e["pos"] - center).length() <= r:
 				hit[eid] = true
-				battle._apply_damage_from(u, e, dmg, Color("#b0ffe0"))
+				battle._damage._apply_damage_from(u, e, dmg, Color("#b0ffe0"))
 	# 结束: 清理节点+状态(node2/stars一并清·不瞬删=波前已淡到0.65alpha自然收)
 	if frac >= 1.0:
 		if spr != null and is_instance_valid(spr):

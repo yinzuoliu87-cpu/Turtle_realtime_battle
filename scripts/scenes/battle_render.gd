@@ -201,8 +201,8 @@ func _update_dot_floats() -> void:
 			var node = st.get("node", null)
 			if not is_instance_valid(node):
 				dead.append(bucket); continue
-			if not u.get("alive", false) or not battle._dot_bucket_active(u, bucket):
-				battle._dot_float_flyaway(u, bucket, st)
+			if not u.get("alive", false) or not battle._damage._dot_bucket_active(u, bucket):
+				battle._damage._dot_float_flyaway(u, bucket, st)
 				dead.append(bucket); continue
 			var head = battle._world_pos(u["pos"], 2.7)   # 比伤害飘字(2.2)高一截, 不挡血条
 			if battle._cam.is_position_behind(head):

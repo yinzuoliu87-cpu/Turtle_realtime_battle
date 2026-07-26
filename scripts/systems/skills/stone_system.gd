@@ -10,11 +10,11 @@ func _init(b) -> void:
 
 func _sk_stone_rock_shield(u: Dictionary) -> void:               # 石头龟·岩石护盾(用户设计: 合并岩石护甲+磐石·100龟能): 全队盾0.2A+5%maxHp + 自身双抗+20%5秒
 	for o in battle._targeting._allies_of(u):
-		battle._grant_shield(o, u["atk"] * 1.0 + u["maxHp"] * 0.06, 4.0)   # 全队盾=1×石头ATK+6%【石头龟】最大生命(用户2026-07-11: 0.2A+5%→1A+6%)·每友军等量·4秒
+		battle._damage._grant_shield(o, u["atk"] * 1.0 + u["maxHp"] * 0.06, 4.0)   # 全队盾=1×石头ATK+6%【石头龟】最大生命(用户2026-07-11: 0.2A+5%→1A+6%)·每友军等量·4秒
 		o["rock_shield_until"] = battle._t + 4.0                          # 标记"石头岩石护盾"来源: LoL式六棱屏障VFX + 锁龟能(持盾期不充能), 盾破/到期即释放(用户2026-07-11)
 		battle._skill_ring(o["pos"], Color(0.79, 0.64, 0.42, 0.45), 46.0)
-	battle._buff(u, "def", 0.2, true, 5.0)   # 自身护甲+20%(pct·5秒)
-	battle._buff(u, "mr", 0.2, true, 5.0)    # 自身魔抗+20%
+	battle._damage._buff(u, "def", 0.2, true, 5.0)   # 自身护甲+20%(pct·5秒)
+	battle._damage._buff(u, "mr", 0.2, true, 5.0)    # 自身魔抗+20%
 
 func _rock_chunk_erupt(pos2d: Vector2) -> void:   # 岩石破土冒起(石棕灰)→短留→碎(仿 _gold_chunk_erupt·换石色)
 	var tex: Texture2D = load("res://assets/sprites/vfx/gold-chunk.png")
@@ -45,7 +45,7 @@ func _sk_stone_taunt(u: Dictionary) -> void:                    # 石头龟·嘲
 		if o.get("alive", false) and o["pos"].distance_to(u["pos"]) <= 500.0:
 			victims.append(o)
 	battle._taunt(u, victims, 4.0)
-	battle._grant_shield(u, u["atk"] * 1.0)          # 1A永久盾(dur=0·不随嘲讽消失)
+	battle._damage._grant_shield(u, u["atk"] * 1.0)          # 1A永久盾(dur=0·不随嘲讽消失)
 	u["stone_dr_until"] = battle._t + 4.0            # 0.5×护甲%减伤4秒
 	u["energy_lock_until"] = battle._t + 3.5        # 砸击(3.5s)之后龟能才重新充能(用户#8"砸击后龟能才重新充能")
 	battle._aura_vfx("res://assets/sprites/vfx/fx-glow-ring.png", u, 500.0, Color(0.86, 0.68, 0.42, 0.42), 4.0)   # 500码仇恨光环(嘲讽4秒·贴地跟随·用户#8)
@@ -55,15 +55,15 @@ func _sk_stone_taunt(u: Dictionary) -> void:                    # 石头龟·嘲
 		battle._burst_vfx("res://assets/sprites/vfx/stone-slam-impact.png", uu["pos"], 220.0)   # 砸地岩石冲击(用户2026-07-06"像地面猛砸")
 		for o in battle._targeting._enemies_of(uu):
 			if o.get("alive", false) and o["pos"].distance_to(uu["pos"]) <= 400.0:
-				battle._apply_damage_from(uu, o, battle._atk_dmg(uu, 1.0, o, true), Color("#c8a878"))
+				battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, 1.0, o, true), Color("#c8a878"))
 				if not o.get("airborne", false):
-						battle._knockback(uu, o, 80.0, 3.6111)   # 击飞【1.2秒·峰高6.5】(用户2026-07-11) — vy=6.0×3.6111=21.667
+						battle._damage._knockback(uu, o, 80.0, 3.6111)   # 击飞【1.2秒·峰高6.5】(用户2026-07-11) — vy=6.0×3.6111=21.667
 						o["knock_g"] = -36.111            # 配重力-36.111→ 滞空=2×21.667/36.111=1.2s·峰高=21.667²/(2×36.111)=6.5(解耦时长与抛高)
 		battle._shake(0.06)
 	battle._pending_shots.append({"delay": 3.5, "fn": slam, "src": u})
 
 func _sk_rock_shockwave(u: Dictionary) -> void:                  # 石头龟·岩石之躯 主动: 前方带状(±90)岩脊向前破土推进, (0.5DEF+0.5MR)×(1+4%岩层)物理 + 【必中眩晕2s】+ 击退60
-#   (2026-07-19订正: 头注释原写"1%×层眩晕1.5s"是旧版, 用户2026-07-11已改成必中2秒, 见下方 battle._stun 那行); 伤害随波前经过逐个同步(用户2026-07-11补VFX·原=只1个130px环)
+#   (2026-07-19订正: 头注释原写"1%×层眩晕1.5s"是旧版, 用户2026-07-11已改成必中2秒, 见下方 battle._damage._stun 那行); 伤害随波前经过逐个同步(用户2026-07-11补VFX·原=只1个130px环)
 	var tgt = battle._targeting._acquire_target(u)
 	var dir: Vector2 = (Vector2.RIGHT if tgt == null else (tgt["pos"] - u["pos"]))
 	if dir.length() < 1.0: dir = Vector2.RIGHT
@@ -112,9 +112,9 @@ func _sk_rock_shockwave(u: Dictionary) -> void:                  # 石头龟·�
 		var hit_delay: float = windup + maxf(0.0, rel.dot(dir)) / wave_spd
 		var hf = func() -> void:
 			if not oo.get("alive", false): return
-			battle._apply_damage_from(uu, oo, dmgv, Color("#c8a878"))
-			battle._stun(oo, 2.0, "_sk_rock_shockwave")   # 命中即眩晕2秒(用户2026-07-11: 除击退外必附2s眩晕·原1%×层概率改必中·头顶通用眩晕圈由_update_stun_vfx画)
-			battle._knockback(uu, oo, 60.0)
+			battle._damage._apply_damage_from(uu, oo, dmgv, Color("#c8a878"))
+			battle._damage._stun(oo, 2.0, "_sk_rock_shockwave")   # 命中即眩晕2秒(用户2026-07-11: 除击退外必附2s眩晕·原1%×层概率改必中·头顶通用眩晕圈由_update_stun_vfx画)
+			battle._damage._knockback(uu, oo, 60.0)
 			_rock_chunk_erupt(oo["pos"])                     # 命中点额外破土
 			battle._vfx._flash(oo)
 		battle._pending_shots.append({"delay": hit_delay, "src": u, "fn": hf})

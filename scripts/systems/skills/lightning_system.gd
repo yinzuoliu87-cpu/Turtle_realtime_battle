@@ -38,7 +38,7 @@ func _lightning_electric(u: Dictionary, target: Dictionary) -> void:   # 叠1层
 	var lv = battle._add_stack(target, "electric", 1, 8)
 	if lv >= 8:
 		battle._consume_stacks(target, "electric")
-		battle._apply_damage_from(u, target, battle._shock_dmg(u), Color("#4dabf7"), 0.0, true)
+		battle._damage._apply_damage_from(u, target, battle._shock_dmg(u), Color("#4dabf7"), 0.0, true)
 		_lightning_strike(target["pos"], Color("#cdfaff"))
 		battle._skill_ring(target["pos"], Color(0.72, 0.95, 1.0, 0.75), 76.0)
 		battle._shake(battle.JUICE_SHAKE_LIGHT)   # 被动8层引爆=目标本地天降落雷+环, 不拉施法者→目标连线(用户2026-07-15)
@@ -47,7 +47,7 @@ func _lightning_hop(u: Dictionary, from_pos: Vector2, target: Dictionary, fr: fl
 	if not target.get("alive", false):
 		return
 	_lightning_arc(from_pos, target["pos"], Color("#aef0ff"))   # 锯齿电弧
-	battle._apply_damage_from(u, target, battle._atk_dmg(u, 0.6 * fr, target, true), Color("#4dabf7"))
+	battle._damage._apply_damage_from(u, target, battle._atk_dmg(u, 0.6 * fr, target, true), Color("#4dabf7"))
 	battle._vfx._hit_spark(target)
 	if hop_i > 0:
 		_lightning_electric(u, target)   # 连锁每跳也叠电击层(主目标由_on_basic_hit叠, 避免重复)
@@ -118,7 +118,7 @@ func _sk_lightning_barrage(u: Dictionary) -> void:             # 闪电龟·雷�
 	tw.tween_callback(battle._barrage_cloud_fade.bind(cloud))
 
 func _sk_lightning_shield(u: Dictionary) -> void:              # 闪电龟·雷盾 (用户2026-07-07: 3ATK护盾5秒, 盾在时反击0.1A魔法叠电击=见_apply_damage_from; 2026-07-15补以雷电包裹自身VFX)
-	battle._grant_shield(u, u["atk"] * 3.0, 5.0)   # 雷盾5秒(与反击窗口thunder_shield_until同步·封板)
+	battle._damage._grant_shield(u, u["atk"] * 3.0, 5.0)   # 雷盾5秒(与反击窗口thunder_shield_until同步·封板)
 	u["thunder_shield_until"] = battle._t + 5.0
 	battle._skill_ring(u["pos"], Color(0.45, 0.85, 1.0, 0.5), 50.0)
 	battle._aura_vfx("res://assets/sprites/skills/lightning-3.png", u, 58.0, Color(0.45, 0.85, 1.0, 0.5), 5.0)   # 脚下电爆光环随身5秒
@@ -143,7 +143,7 @@ func _sk_lightning_shield(u: Dictionary) -> void:              # 闪电龟·雷�
 
 func _sk_lightning_surge(u: Dictionary, tgt: Dictionary) -> void: # 闪电龟·涌动 ✅
 	if tgt != null and tgt.get("alive", false):
-		battle._apply_damage_from(u, tgt, int(u["atk"] * 1.23), Color("#4dabf7"), 0.0, true)   # 立即1次被动电击=真实(原误为魔法)
+		battle._damage._apply_damage_from(u, tgt, int(u["atk"] * 1.23), Color("#4dabf7"), 0.0, true)   # 立即1次被动电击=真实(原误为魔法)
 	u["shock_boost_until"] = battle._t + 5.0      # 5秒内被动电击真伤+50%(窄化; 原误为通用+50%攻击+stray层)
 	u["shock_boost_pct"] = 0.5
 	battle._skill_ring(u["pos"], Color(0.45, 0.85, 1.0, 0.5), 52.0)

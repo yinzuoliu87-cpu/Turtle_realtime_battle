@@ -80,10 +80,10 @@ func _sk_bamboo_smack(u: Dictionary, tgt) -> void:              # 竹叶龟·竹
 	var far_pos0: Vector2 = far["pos"]                          # 拉近前的原位(画竹藤用)
 	battle._bolt_line(u["pos"], far_pos0, Color(0.22, 0.83, 0.33))     # 伸出竹藤(用户2026-07-06"伸出一条竹藤·打最远的敌人")
 	battle._burst_vfx("res://assets/sprites/vfx/bamboo-vine.png", far_pos0, 120.0, 1.0)   # 藤钩勾住
-	battle._apply_damage_from(u, far, battle._atk_dmg(u, 1.0, far), Color("#39d353"))
+	battle._damage._apply_damage_from(u, far, battle._atk_dmg(u, 1.0, far), Color("#39d353"))
 	if not far.get("_eggImmune", false):                        # 蛋/免控只吃伤
-		battle._stun(far, 0.5, "_sk_bamboo_smack")
-		battle._buff(far, "atk", -0.20, true, 4.0)                     # 冰寒-20%攻4秒
+		battle._damage._stun(far, 0.5, "_sk_bamboo_smack")
+		battle._damage._buff(far, "atk", -0.20, true, 4.0)                     # 冰寒-20%攻4秒
 		far["spd_move_mult"] = 0.8; far["spd_dbf_until"] = battle._t + 4.0   # 冰寒-20%移速4秒
 		battle._hitstop = maxf(battle._hitstop, 0.05)                          # 抓住瞬间小顿(用户2026-07-11: 拽住得顿一下)
 		var ff = far
@@ -110,10 +110,10 @@ func _sk_bamboo_spikes(u: Dictionary, tgt) -> void:            # 竹叶龟·竹�
 			battle._spawn_bamboo_spike(c + Vector2(cos(ang), sin(ang)) * rr, randf_range(0.85, 1.3), 0.5)
 		for o in battle._targeting._enemies_of(uu):
 			if o.get("alive", false) and o["pos"].distance_to(c) <= 300.0:
-				battle._apply_damage_from(uu, o, battle._atk_dmg(uu, 0.9, o) + int(uu["maxHp"] * 0.15), Color("#39d353"))
+				battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, 0.9, o) + int(uu["maxHp"] * 0.15), Color("#39d353"))
 				battle._spawn_bamboo_spike(o["pos"], 1.5, 0.5)   # 命中点更粗一根竹刺
 				if not o.get("_eggImmune", false):
-					battle._knockback(uu, o, 70.0, 2.75)                # 击飞【1.5秒】(用户#12"击飞1.5秒"·滞空=2×(6.0×2.75)/22=1.5s·原vy_mult=1.5只给0.82s)
+					battle._damage._knockback(uu, o, 70.0, 2.75)                # 击飞【1.5秒】(用户#12"击飞1.5秒"·滞空=2×(6.0×2.75)/22=1.5s·原vy_mult=1.5只给0.82s)
 		battle._shake(0.06)
 		battle._hitstop = maxf(battle._hitstop, 0.05)
 	battle._skill_ring(c, Color(0.22, 0.83, 0.33, 0.4), 300.0)         # 蓄力预警圈
@@ -123,10 +123,10 @@ func _sk_bamboo_heal(u: Dictionary) -> void:                     # 竹叶龟·�
 	var allies = battle._targeting._allies_of(u, false)
 	battle._vfx._play_heal_glow(u["pos"])
 	if allies.is_empty():
-		battle._heal(u, u["maxHp"] * 0.15)
+		battle._damage._heal(u, u["maxHp"] * 0.15)
 	else:
-		battle._heal(u, u["maxHp"] * 0.10)
+		battle._damage._heal(u, u["maxHp"] * 0.10)
 		for o in allies:
-			battle._grant_shield(o, o["maxHp"] * 0.12, 4.0)   # 竹叶自然恢复·友军护盾(通用护盾4秒·封板L74)·[原注释误标"寒冰团队护盾"→那是ice commonTeamShield另有其函]
+			battle._damage._grant_shield(o, o["maxHp"] * 0.12, 4.0)   # 竹叶自然恢复·友军护盾(通用护盾4秒·封板L74)·[原注释误标"寒冰团队护盾"→那是ice commonTeamShield另有其函]
 			battle._vfx._play_heal_glow(o["pos"])
 

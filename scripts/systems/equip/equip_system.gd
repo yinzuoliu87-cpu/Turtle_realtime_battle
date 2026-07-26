@@ -23,8 +23,8 @@ func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不�
 					ast["anchor_charges"] = int(ast["anchor_charges"]) - 1
 					u["anchor_swing_t"] = battle._t   # 本发普攻算"持有充能"→攻速×2 (用户2026-07-19)
 					var adm: int = battle._resolve_dmg(u, [0.4, 0.6, 3.0][si17] * (u["def"] + u["mr"]) + at["maxHp"] * [0.06, 0.15, 0.70][si17], at, false)   # 用户2026-07-19: 原裸值不吃护甲=真伤, 改走护甲(物理必吃甲)
-					battle._apply_damage_from(u, at, adm, Color("#9be7ff"), 0.0, false, true)
-					battle._knockback(u, at, 60.0); battle._freeze(at, battle.CTRL_SEC)
+					battle._damage._apply_damage_from(u, at, adm, Color("#9be7ff"), 0.0, false, true)
+					battle._damage._knockback(u, at, 60.0); battle._freeze(at, battle.CTRL_SEC)
 					battle._skill_ring(at["pos"], Color(0.6, 0.85, 1.0, 0.6), 60.0)
 					u["eq_state"]["p2eq_017"] = ast
 		if str(e["id"]) == "p2eq_039":   # 竹制弓箭: 每第3段普攻消耗1次生长充能→射强化竹箭(用户2026-07-19)
@@ -46,14 +46,14 @@ func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不�
 				bst["baton_charges"] = int(bst["baton_charges"]) - 1
 				bst["baton_ready"] = false; bst["baton_cd"] = 0.0
 				u["eq_state"]["p2eq_027"] = bst
-				battle._apply_damage_from(u, tgt, battle._resolve_dmg(u, float([30, 40, 50][si27]), tgt, true), Color("#7ecbff"), 0.0, false, true)
+				battle._damage._apply_damage_from(u, tgt, battle._resolve_dmg(u, float([30, 40, 50][si27]), tgt, true), Color("#7ecbff"), 0.0, false, true)
 				battle._freeze(tgt, [2.5, 2.5, 3.0][si27])   # 眩晕 1.5s(CTRL_SEC默认) → 2.5/2.5/3 按星级(用户2026-07-19)
 				battle._chain_zap(tgt["pos"])
 		# 珊瑚刺008: 旧「每5次普攻」计数器已删(与_tick_coral每9秒重复触发·用户2026-07-19)
 
 func _eq_ice_fissure(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false): return
-	battle._grant_shield(u, [100.0, 160.0, 250.0][si])   # 释放即上盾一次
+	battle._damage._grant_shield(u, [100.0, 160.0, 250.0][si])   # 释放即上盾一次
 	battle._shield_bubble(u)
 	var t = battle._targeting._nearest_enemy(u)
 	if t == null:
@@ -233,13 +233,13 @@ func _eq_laser_pistol(u: Dictionary, si: int) -> void:   # 激光手枪051: 每8
 		battle._muzzle_flash(u["pos"], dir4, Color("#ff5a72"))
 		battle._laser_beam(u["pos"], endp51, Color(1.0, 0.24, 0.36, 0.85), 0.22, 0.22)   # 红辉(宽)
 		battle._laser_beam(u["pos"], endp51, Color(1.0, 0.92, 0.94, 0.95), 0.07, 0.14)   # 白核(细)
-		battle._apply_damage_from(u, first, battle._atk_dmg(u, [1.5, 2.0, 2.8][si], first), Color("#ff8aa0"), 0.0, false, true)
-		battle._apply_dot_stacks(first, "bleed", maxi(1, roundi(u["atk"] * [0.5, 0.5, 0.6][si])), u)
+		battle._damage._apply_damage_from(u, first, battle._atk_dmg(u, [1.5, 2.0, 2.8][si], first), Color("#ff8aa0"), 0.0, false, true)
+		battle._damage._apply_dot_stacks(first, "bleed", maxi(1, roundi(u["atk"] * [0.5, 0.5, 0.6][si])), u)
 		battle._vfx._hit_spark(first)
 		for o in battle._targeting._enemies_of(u):
 			if not is_same(o, first) and battle._on_line(first["pos"], dir4, o["pos"], 50.0):
-				battle._apply_damage_from(u, o, battle._atk_dmg(u, [0.75, 1.0, 1.4][si], o), Color("#ff8aa0"), 0.0, false, true)
-				battle._apply_dot_stacks(o, "bleed", maxi(1, roundi(u["atk"] * [0.5, 0.5, 0.6][si] * 0.5)), u)   # 身后50%流血
+				battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, [0.75, 1.0, 1.4][si], o), Color("#ff8aa0"), 0.0, false, true)
+				battle._damage._apply_dot_stacks(o, "bleed", maxi(1, roundi(u["atk"] * [0.5, 0.5, 0.6][si] * 0.5)), u)   # 身后50%流血
 
 func _eq_shotgun_blast(u: Dictionary, si: int) -> void:   # 霰弹贝古053: 朝最近敌扇形散开, 每颗弹珠沿自己的直线飞, 撞到第一个敌人才结算伤害并消失; 被8发及以上命中→眩晕
 	if not u.get("alive", false): return
@@ -265,7 +265,7 @@ func _eq_shotgun_blast(u: Dictionary, si: int) -> void:   # 霰弹贝古053: 朝
 		var _tg: Dictionary = hit53
 		battle._shotgun_pellet(u["pos"], endp, Color(1.0, 0.86, 0.5, 0.95), dur53, func() -> void:
 			if not _tg.get("alive", false): return
-			battle._apply_damage_from(u, _tg, battle._atk_dmg(u, 0.22, _tg), Color("#ffd07a"), 0.0, false, true)
+			battle._damage._apply_damage_from(u, _tg, battle._atk_dmg(u, 0.22, _tg), Color("#ffd07a"), 0.0, false, true)
 			_tg["_sg_hits"] = int(_tg.get("_sg_hits", 0)) + 1)
 	# 全部弹珠落地后再判眩晕(命中计数记在单位自身字段 —— 不拿单位字典当Dict键, 见 2026-07-19 卡死教训)
 	if touched.is_empty(): return
@@ -298,7 +298,7 @@ func _eq_ripple_tick(u: Dictionary, si: int) -> void:
 		if si == 2 and is_same(o, low042): pct042 *= 2.0
 		var amt42: float = (o["maxHp"] - o["hp"]) * pct042
 		if amt42 >= 1.0:
-			battle._heal(o, amt42)
+			battle._damage._heal(o, amt42)
 			battle._ripple_heal_vfx(o["pos"], 105.0)   # AI生成涟漪回血动画
 
 func _eq_revolver_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
@@ -341,8 +341,8 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 		var dmg37: float = float([20, 30, 44][si]) + u["atk"] * [0.5, 0.7, 1.0][si]
 		for o in battle._targeting._enemies_of(u):
 			if o["pos"].distance_to(u["pos"]) <= 500.0:   # 499→500(用户2026-07-19)
-				battle._apply_damage_from(u, o, battle._resolve_dmg(u, dmg37, o, true), Color("#ffb066"), 0.0, false, true)   # 魔法伤(蓝字), 非真伤
-				battle._apply_dot_stacks(o, "burn", [20, 30, 40][si], u)
+				battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, dmg37, o, true), Color("#ffb066"), 0.0, false, true)   # 魔法伤(蓝字), 非真伤
+				battle._damage._apply_dot_stacks(o, "burn", [20, 30, 40][si], u)
 				battle._boom_wave(o["pos"], 110.0)   # 每个被波及敌小爆
 
 func _eq_signal_tick(u: Dictionary, si: int) -> void:
@@ -370,10 +370,10 @@ func _eq_fpga_tick(u: Dictionary, si: int) -> void:
 		var xoff: float = (float(k) - float(n - 1) / 2.0) * 34.0
 		battle._vfx._float_text(u["pos"] + Vector2(xoff, -72.0), codes[pick], ccols[pick])   # 二进制码头顶跳
 		match pick:
-			0: battle._heal(u, u["maxHp"] * 0.05); u["base_def"] += 12; u["base_mr"] += 12; battle._recalc_stats(u)   # 用户2026-07-19: +2 → +12
+			0: battle._damage._heal(u, u["maxHp"] * 0.05); u["base_def"] += 12; u["base_mr"] += 12; battle._recalc_stats(u)   # 用户2026-07-19: +2 → +12
 			1: u["base_atk"] += 15; u["lifesteal"] += 0.07; battle._recalc_stats(u)                            # 用户2026-07-19: +5/+4% → +15/+7%
 			2:
-				u["damage_amp"] = float(u.get("damage_amp", 0.0)) + 0.15   # 10: 真·增伤(放大所有伤害·用户2026-07-19"amp要"); 原 battle._buff(atk,15%) 只放大吃ATK的段, 而040自己不给攻击力
+				u["damage_amp"] = float(u.get("damage_amp", 0.0)) + 0.15   # 10: 真·增伤(放大所有伤害·用户2026-07-19"amp要"); 原 battle._damage._buff(atk,15%) 只放大吃ATK的段, 而040自己不给攻击力
 				battle._pending_shots.append({"delay": 3.5, "fn": func(): u["damage_amp"] = maxf(0.0, float(u.get("damage_amp", 0.0)) - 0.15), "src": u})
 			3:
 				u["damage_reduction"] = float(u.get("damage_reduction", 0.0)) + 0.25   # 11: 受到伤害-25%(真伤除外·用户2026-07-19: 原误做+25%护甲对魔/真伤无效→改真减伤)
@@ -536,8 +536,8 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007(重做�
 			if (o["pos"] - front).dot(dir) <= traveled and battle._on_line(front, dir, o["pos"], 95.0):
 				hit.append(o)
 				var dd: int = battle._resolve_dmg(u, u["atk"] * sc + float(flat), o, false)
-				battle._apply_damage_from(u, o, dd, Color("#dfe8ff"), 0.0, false, true)
-				battle._grant_shield(u, dd * shp)             # 命中一个即给盾(用户)
+				battle._damage._apply_damage_from(u, o, dd, Color("#dfe8ff"), 0.0, false, true)
+				battle._damage._grant_shield(u, dd * shp)             # 命中一个即给盾(用户)
 				battle._weapon_slash(u["pos"], o["pos"], Color(1.0, 0.62, 0.34))   # 命中破甲斩弧(赤金)
 				battle._vfx._hit_spark(o)
 	if is_instance_valid(qi):
@@ -606,7 +606,7 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 			if battle._arr_has_unit(hit, o) or not o.get("alive", false): continue
 			if (o["pos"] - u["pos"]).dot(dir) <= front_along:
 				hit.append(o)
-				battle._apply_damage_from(u, o, battle._resolve_dmg(u, u["atk"] * sc + float(flat), o, false), Color("#dfe8ff"), 0.0, false, true)
+				battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, u["atk"] * sc + float(flat), o, false), Color("#dfe8ff"), 0.0, false, true)
 				battle._skill_ring(o["pos"], Color(0.82, 0.9, 1.0, 0.5), 44.0)
 	for sp2 in swords:
 		if is_instance_valid(sp2):
@@ -658,7 +658,7 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 		var d: float = windup + fwd / tdist * travel
 		var fn := func():
 			if not oo.get("alive", false): return
-			battle._grant_shield(oo, [40.0, 95.0, 120.0][si])
+			battle._damage._grant_shield(oo, [40.0, 95.0, 120.0][si])
 			oo["base_def"] += [2, 3, 5][si]; oo["base_mr"] += [2, 3, 5][si]; battle._recalc_stats(oo)
 			battle._water_splash(oo["pos"], true)
 		battle._pending_shots.append({"delay": d, "fn": fn, "src": u})
@@ -668,7 +668,7 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 		var d2: float = windup + fwd2 / tdist * travel
 		var fn2 := func():
 			if not oo2.get("alive", false): return
-			battle._apply_damage_from(u, oo2, battle._resolve_dmg(u, float([60, 110, 200][si]), oo2, true), Color("#9be7ff"), 0.0, false, true)   # 魔法伤(蓝字)
+			battle._damage._apply_damage_from(u, oo2, battle._resolve_dmg(u, float([60, 110, 200][si]), oo2, true), Color("#9be7ff"), 0.0, false, true)   # 魔法伤(蓝字)
 			oo2["base_def"] = maxf(0.0, oo2["base_def"] - [2, 3, 5][si]); oo2["base_mr"] = maxf(0.0, oo2["base_mr"] - [2, 3, 5][si]); battle._recalc_stats(oo2)
 			battle._water_splash(oo2["pos"], false)
 			battle._knock_up(oo2, oo2["pos"] - dir * 60.0, 6.5)   # 娜美式击飞: 顺浪方向往前推(非直上)
@@ -736,20 +736,20 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 					if was: battle._kill(tgt, src)
 			"p2eq_002":   # 海带卷刀: 命中→施加流血层 (范围技能触发减半; 3★流血层数天然可叠)
 				var bs: int = maxi(1, roundi([0.075, 0.1, 0.15][si] * src["atk"] * (0.5 if is_aoe else 1.0)))
-				battle._apply_dot_stacks(tgt, "bleed", battle._cyeq_n(bs), src)
+				battle._damage._apply_dot_stacks(tgt, "bleed", battle._cyeq_n(bs), src)
 			"p2eq_003":   # 锋利鲨齿: 溅射200码内敌 + 醒目双层冲击环(no_depth_test防地板盖)+每敌立式火花(用户2026-07-19)
 				var frac: float = [0.15, 0.28, 0.50][si]
 				battle._splash_ring_bold(tgt["pos"], Color(1.0, 0.80, 0.36, 0.95), 200.0)   # 醒目双环从命中点扩到200码·恒画在地板之上
 				for o in battle._targeting._enemies_of(src):
 					if not is_same(o, tgt) and (o["pos"] - tgt["pos"]).length() <= 200.0:
-						battle._apply_damage_from(src, o, maxi(1, int(dmg * frac)), Color("#ffd07a"), 0.0, false, true)
+						battle._damage._apply_damage_from(src, o, maxi(1, int(dmg * frac)), Color("#ffd07a"), 0.0, false, true)
 						battle._vfx._hit_spark(o)   # 每个被溅射敌人身上一记立式火花(胸高billboard·地板高度盖不住)
 			"p2eq_005":   # 双生匕首: 命中概率追加一刀双生刺击
 				if battle._battle_rng.randf() < [0.5, 0.75, 1.0][si]:
-					battle._apply_damage_from(src, tgt, battle._atk_dmg(src, [0.7, 0.8, 1.0][si], tgt), Color("#ff4444"), 0.0, false, true)
+					battle._damage._apply_damage_from(src, tgt, battle._atk_dmg(src, [0.7, 0.8, 1.0][si], tgt), Color("#ff4444"), 0.0, false, true)
 			"p2eq_023":   # 灼热火珊瑚(被动): 每段额外灼烧 + 充能
 				var burn: int = maxi(1, roundi([2.0, 5.0, 8.0][si] + [0.07, 0.11, 0.15][si] * src["atk"]))
-				battle._apply_dot_stacks(tgt, "burn", battle._cyeq_n(burn), src)
+				battle._damage._apply_dot_stacks(tgt, "burn", battle._cyeq_n(burn), src)
 				_eq_charge(stt, "fire_mana", 10.0, 100.0, func(): _eq_fire_coral_active(src, si))   # 法力: 每段命中+10, 满100放主动(用户2026-07-19: 原每段+1满8)
 			"p2eq_009":   # 宽刃弯刀: 充刃能, 满100→直线伤害
 				_eq_charge(stt, "blade_energy", [20.0, 20.0, 25.0][si] * (0.5 if is_aoe else 1.0), 100.0, func(): _eq_wide_blade(src, tgt, si))
@@ -822,9 +822,9 @@ func _eq_laser_sweep(u: Dictionary, tgt: Dictionary, si: int) -> void:   # 扇�
 	var tot: int = 0
 	for o in hits:
 		var dd: int = battle._resolve_dmg(u, u["atk"] * [0.6, 1.0, 8.0][si] + [15.0, 32.0, 200.0][si], o, false)
-		battle._apply_damage_from(u, o, dd, Color("#9bf0ff"), 0.0, false, true)
+		battle._damage._apply_damage_from(u, o, dd, Color("#9bf0ff"), 0.0, false, true)
 		tot += dd
-	if tot > 0: battle._heal(u, tot * [0.35, 0.8, 1.0][si])
+	if tot > 0: battle._damage._heal(u, tot * [0.35, 0.8, 1.0][si])
 	if hits.size() == 1:
 		var glow := Sprite3D.new()
 		glow.texture = VfxTex._make_fire_glow_tex()
@@ -887,8 +887,8 @@ func _eq_laser_chop(u: Dictionary, tgt: Dictionary, si: int, base_range: float) 
 			if battle._arr_has_unit(hit, o) or not o.get("alive", false): continue
 			if (o["pos"] - origin).dot(dir) <= traveled and battle._on_line(origin, dir, o["pos"], 80.0):
 				hit.append(o)
-				battle._apply_damage_from(u, o, battle._resolve_dmg(u, u["atk"] * [0.6, 1.0, 8.0][si] + [15.0, 32.0, 200.0][si], o, false), Color("#9bf0ff"), 0.0, false, true)
-				battle._knockback(u, o, 0.0, 0.2, 0.0)
+				battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, u["atk"] * [0.6, 1.0, 8.0][si] + [15.0, 32.0, 200.0][si], o, false), Color("#9bf0ff"), 0.0, false, true)
+				battle._damage._knockback(u, o, 0.0, 0.2, 0.0)
 	if is_instance_valid(wave):
 		var wf = battle._reg_tween(); wf.tween_property(wave, "modulate:a", 0.0, 0.15); wf.tween_callback(wave.queue_free)
 
@@ -950,8 +950,8 @@ func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽�
 		hits.append(o)
 	var mult: float = ([2.0, 2.5, 3.0][si]) if hits.size() <= 1 else 1.0
 	for o in hits:   # 同帧两段同时结算: 物理(红)+真实(白); 飘字各自随机抛物散开(不叠, 无延时)
-		battle._apply_damage_from(src, o, int(battle._atk_dmg(src, [0.5, 0.7, 0.9][si], o) * mult), Color("#ff5a5a"), 0.0, false, true)
-		battle._apply_damage_from(src, o, int([30, 45, 60][si] * mult), Color("#ffffff"), 0.0, true, true)
+		battle._damage._apply_damage_from(src, o, int(battle._atk_dmg(src, [0.5, 0.7, 0.9][si], o) * mult), Color("#ff5a5a"), 0.0, false, true)
+		battle._damage._apply_damage_from(src, o, int([30, 45, 60][si] * mult), Color("#ffffff"), 0.0, true, true)
 # 灼热火珊瑚 023(主动满法力)
 # 灼热火珊瑚 023(主动满法力)
 func _eq_fire_coral_active(src: Dictionary, si: int) -> void:   # 灼热火珊瑚023主动: 蓄力→挥出60°扇形火焰波(缓移550码,边挥边扩)→接触敌施60灼烧
@@ -987,7 +987,7 @@ func _eq_fire_coral_active(src: Dictionary, si: int) -> void:   # 灼热火珊�
 			if absf(rel.angle_to(dir)) > half: continue   # 60°扇形内
 			if absf(rel.length() - traveled) > 65.0: continue   # 波前带
 			hit.append(o)
-			battle._apply_dot_stacks(o, "burn", [40, 60, 90][si], src)   # 用户2026-07-19: 原固定60不吃星级
+			battle._damage._apply_dot_stacks(o, "burn", [40, 60, 90][si], src)   # 用户2026-07-19: 原固定60不吃星级
 			battle._skill_ring(o["pos"], Color(1.0, 0.5, 0.2, 0.6), 46.0)
 	if is_instance_valid(wave):
 		var tw = battle._reg_tween(); tw.tween_property(wave, "modulate:a", 0.0, 0.2); tw.tween_callback(wave.queue_free)
@@ -1017,7 +1017,7 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 					if cur >= hcap and not bool(stt.get("harden_given", false)):
 						if iid == "p2eq_013":   # 013满层: 海胆护盾(特殊紫色) 100/170/250 + 5/12/20%最大生命(用户2026-07-19; 原50/60/80金盾)
 							var _usb: float = float(u.get("shield", 0.0))
-							battle._grant_shield(u, [100.0, 170.0, 250.0][si] + u["maxHp"] * [0.05, 0.12, 0.20][si])
+							battle._damage._grant_shield(u, [100.0, 170.0, 250.0][si] + u["maxHp"] * [0.05, 0.12, 0.20][si])
 							var _ugot: float = float(u.get("shield", 0.0)) - _usb   # 实际获盾(经shield_amp/上限后)
 							u["urchin_sh_left"] = _ugot
 							u["urchin_sh_rate"] = _ugot / 10.0   # 10秒内线性衰减完(用户2026-07-19"慢慢衰减")
@@ -1027,8 +1027,8 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 				if src.get("alive", false) and battle._is_hostile(u, src):
 					var refl: float = float(dmg) * float(stt.get("reflect_pct", 0.10))
 					if refl >= 1.0:
-						battle._apply_damage_from(u, src, int(refl), Color("#c9a36b"), 0.0, true, true)   # 反伤=真实伤害跳白字(原_raw_lose静默不跳数字=bug); from_equip防循环
-					battle._apply_dot_stacks(src, "bleed", maxi(1, roundi(float(stt.get("reflect_bleed", 2.0)))), u)
+						battle._damage._apply_damage_from(u, src, int(refl), Color("#c9a36b"), 0.0, true, true)   # 反伤=真实伤害跳白字(原_raw_lose静默不跳数字=bug); from_equip防循环
+					battle._damage._apply_dot_stacks(src, "bleed", maxi(1, roundi(float(stt.get("reflect_bleed", 2.0)))), u)
 			"p2eq_017":   # 不沉之锚: 每次受伤→治疗生命%最低友军 (1/2/15%自身maxHp), 累积满100→+1沉锚充能
 				var heal_amt: float = u["maxHp"] * [0.01, 0.02, 0.15][si]
 				# 生命百分比最低的友军 (含自己)
@@ -1038,7 +1038,7 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 					if p < lv: lv = p; low = o
 				var done: float = 0.0
 				if low != null:
-					done = battle._heal(low, heal_amt)   # 只按【实际】回进去的血攒锚(满血空奶不攒·用户2026-07-19)
+					done = battle._damage._heal(low, heal_amt)   # 只按【实际】回进去的血攒锚(满血空奶不攒·用户2026-07-19)
 				var acc: float = float(stt.get("anchor_accum", 0.0)) + done
 				while acc >= 250.0:          # 累积治疗满250→+1充能 (用户2026-07-19: 100→250)
 					acc -= 250.0
@@ -1056,7 +1056,7 @@ func _eq_on_dodge(u: Dictionary) -> void:
 	for e in u.get("equips", []):
 		if str(e["id"]) == "p2eq_046":   # 幽灵墨鱼: 闪避→永久护盾
 			var stt: Dictionary = u["eq_state"].get("p2eq_046", {})
-			battle._grant_shield(u, float(stt.get("ghost_shield", 30.0)))
+			battle._damage._grant_shield(u, float(stt.get("ghost_shield", 30.0)))
 			battle._shield_dome(u)   # 专属护盾罩(不复用faint battle._shield_bubble)
 
 # ============================================================================
@@ -1075,7 +1075,7 @@ func _eq_bloodletting(u: Dictionary, si: int) -> void:   # 饮血护符坠(011):
 		var o = es[battle._battle_rng.randi() % es.size()]
 		var decay: float = pow(0.85, k)
 		battle._blood_slash(u["pos"], o["pos"], 0.0)   # 这一刀立即砍
-		battle._apply_damage_from(u, o, int((battle._resolve_dmg(u, u["atk"] * [0.5, 0.7, 1.0][si] + [40.0, 50.0, 70.0][si], o, false)) * decay), Color("#ff8aa0"), 0.33, false, true)
+		battle._damage._apply_damage_from(u, o, int((battle._resolve_dmg(u, u["atk"] * [0.5, 0.7, 1.0][si] + [40.0, 50.0, 70.0][si], o, false)) * decay), Color("#ff8aa0"), 0.33, false, true)
 		await battle._wait_sim(0.3)   # 一段一段: 每0.3s一刀
 	if not is_instance_valid(self): return
 	var shg: int = int(u["shield"] - sh0)   # 连斩吸血溢出转的盾, 结尾汇总一次
@@ -1135,7 +1135,7 @@ func _eq_crystal_stack(src: Dictionary, o: Dictionary, si: int) -> void:
 		battle._consume_stacks(o, "p2crystal")
 		battle._crystal_stack_set(o, 0)
 		battle._crystal_detonate(o["pos"])
-		battle._apply_damage_from(src, o, battle._resolve_dmg(src, float(o["maxHp"]) * [0.14, 0.17, 0.20][si], o, true), Color("#bfa8ff"), 0.0, false, true)
+		battle._damage._apply_damage_from(src, o, battle._resolve_dmg(src, float(o["maxHp"]) * [0.14, 0.17, 0.20][si], o, true), Color("#bfa8ff"), 0.0, false, true)
 	else:
 		battle._crystal_stack_set(o, lv)   # 更新可视层数
 
@@ -1173,7 +1173,7 @@ func _eq_sniper(u: Dictionary, si: int, depth: int) -> void:
 	for o in battle._targeting._enemies_of(u):
 		if battle._on_line(u["pos"], dir, o["pos"], 36.0):
 			var before: bool = o["alive"]
-			battle._apply_damage_from(u, o, battle._atk_dmg(u, [2.0, 3.0, 7.0][si], o), Color("#ff4444"), 0.0, false, true)
+			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, [2.0, 3.0, 7.0][si], o), Color("#ff4444"), 0.0, false, true)
 			if before and not o["alive"]:
 				killed = true
 	if killed:
@@ -1191,7 +1191,7 @@ func _eq_on_kill(killer: Dictionary, _victim: Dictionary) -> void:
 			if battle._has_energy_system(killer):
 				_eq_grant_energy(killer, 20.0)
 			else:
-				battle._heal(killer, 40.0)
+				battle._damage._heal(killer, 40.0)
 
 # ============================================================================
 #  on-death (阵亡者视角) — 复活海螺 / 黄铜齿轮 (+ 左轮052 敌亡补弹)
@@ -1245,10 +1245,10 @@ func _eq_check_hp_threshold(u: Dictionary) -> void:
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
 		match iid:
 			"p2eq_044":   # 深海项链: 首次<50%救命回血(龟上半身绿光脉动, 用户: 简单绿光即可, 不复用037魔法阵)
-				battle._heal(u, u["maxHp"] * [0.12, 0.27, 0.40][si]); fired = true
+				battle._damage._heal(u, u["maxHp"] * [0.12, 0.27, 0.40][si]); fired = true
 				battle._heal_body_glow(u)
 			"p2eq_045":   # 珍珠耳环: 首次<50%救命回血(龟身绿光)+抛物线火球
-				battle._heal(u, u["maxHp"] * [0.15, 0.29, 0.65][si])
+				battle._damage._heal(u, u["maxHp"] * [0.15, 0.29, 0.65][si])
 				battle._heal_ascend(u)   # 绿光环上浮(045专属, 不复用044)
 				var balls: int = [1, 1, 2][si]
 				var es = battle._targeting._pick_enemies_of(u)

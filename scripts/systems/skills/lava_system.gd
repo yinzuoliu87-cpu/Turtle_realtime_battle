@@ -26,9 +26,9 @@ func _tick_lava_zones(_delta: float) -> void:   # 每帧: 周期结算池内敌 
 						continue
 					if o["pos"].distance_to(c) > r:
 						continue
-					battle._apply_damage_from(src, o, battle._atk_dmg(src, 0.06, o, true), Color("#ff7a33"))   # 0.06×ATK魔/0.5s
+					battle._damage._apply_damage_from(src, o, battle._atk_dmg(src, 0.06, o, true), Color("#ff7a33"))   # 0.06×ATK魔/0.5s
 					o["slow_until"] = maxf(float(o.get("slow_until", 0.0)), battle._t + 0.6); o["slow_mag"] = 0.65   # 地裂减速35%(move×0.65·用户2026-07-09"35"·≥0.6s续)
-					battle._buff(o, "mr", -0.30, true, 0.6)                                              # 魔抗-30% (每跳刷新)
+					battle._damage._buff(o, "mr", -0.30, true, 0.6)                                              # 魔抗-30% (每跳刷新)
 		if battle._t >= float(z["until"]):
 			var disc = z.get("disc", null)
 			if disc != null and is_instance_valid(disc):
@@ -233,10 +233,10 @@ func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火�
 				o["vz"] = tdir.y * battle.KNOCK_PUSH * 1.6
 			for i in range(5):
 				if not o["alive"]: break
-				battle._apply_damage_from(u, o, battle._atk_dmg(u, 0.5, o, true), Color("#ff7a33"))
+				battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 0.5, o, true), Color("#ff7a33"))
 			if o["alive"]:
-				battle._apply_dot_stacks(o, "burn", battle._default_burn_stacks(u), u)
-			battle._heal(u, u["maxHp"] * 0.12)
+				battle._damage._apply_dot_stacks(o, "burn", battle._default_burn_stacks(u), u)
+			battle._damage._heal(u, u["maxHp"] * 0.12)
 	battle._gambler_pop(start, 0.6, Color(1.0, 0.85, 0.5, 0.95))         # ★出生爆闪(娜美R观察: 浪在白亮爆闪中诞生·非淡入)
 	battle._skill_ring(start, Color(1.0, 0.6, 0.2, 0.8), 70.0)
 	for bi in range(6):                                           # 放射光条
@@ -323,8 +323,8 @@ func _lava_magma_surge(u: Dictionary, tgt: Dictionary) -> void:  # 小·岩浆�
 		if o["pos"].distance_to(center) > 120.0: continue
 		battle._knock_up(o, center, 9.0)
 	if tgt != null and tgt.get("alive", false):
-		battle._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.5, tgt, true), Color("#ff9d5c"))
-	battle._grant_shield(u, u["atk"] * 0.8)
+		battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.5, tgt, true), Color("#ff9d5c"))
+	battle._damage._grant_shield(u, u["atk"] * 0.8)
 	u["_slam"] = false
 
 func _lava_flame_strike(u: Dictionary, tgt: Dictionary) -> void: # 火山·重击: 蓄力猛砸击飞 1.3ATK+8%自身maxHP物理 + 20%吸血
@@ -359,7 +359,7 @@ func _lava_flame_strike(u: Dictionary, tgt: Dictionary) -> void: # 火山·重�
 		battle._vfx._impact_particles(tgt["pos"], 0.0)
 		_lava_burst_vfx(tgt["pos"])                  # AI生成爆裂火球
 		battle._knock_up(tgt, tgt["pos"] - dir * 10.0, 9.0)
-		battle._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.3, tgt) + int(u["maxHp"] * 0.08), Color("#ff7a33"), 0.20)
+		battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.3, tgt) + int(u["maxHp"] * 0.08), Color("#ff7a33"), 0.20)
 	u["_slam"] = false
 
 
@@ -380,9 +380,9 @@ func _lava_transform(u: Dictionary) -> void:
 	u["_volcano_dur"] = dur
 	u["melee"] = true; u["atk_range"] = 70.0; u["move_spd"] = 175.0   # 火山形态=近战冲脸
 	# 属性提升 (1:1 pets.json: +ATK*2.5 最大HP / +ATK*0.2 攻防魔抗 flat); 用 buff(到期自动撤) + 直接加血上限(到期revert)
-	battle._buff(u, "atk", base_atk * atk_scale, false, dur)
-	battle._buff(u, "def", base_atk * def_scale, false, dur)
-	battle._buff(u, "mr",  base_atk * mr_scale,  false, dur)
+	battle._damage._buff(u, "atk", base_atk * atk_scale, false, dur)
+	battle._damage._buff(u, "def", base_atk * def_scale, false, dur)
+	battle._damage._buff(u, "mr",  base_atk * mr_scale,  false, dur)
 	var hp_gain: float = base_atk * hp_scale
 	u["_volcano_hp_gain"] = hp_gain
 	u["maxHp"] += hp_gain; u["hp"] += hp_gain
@@ -414,8 +414,8 @@ func _lava_pierce_bolt(u: Dictionary, tgt) -> void:             # 熔岩·穿透
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		if is_same(o, tgt) or battle._on_line(u["pos"], dir, o["pos"], 70.0):
-			battle._apply_damage_from(u, o, battle._atk_dmg(u, 0.6, o, true) + int(o["maxHp"] * 0.04), Color("#ff7a3c"))
-			battle._apply_dot_stacks(o, "burn", maxi(1, int(round(float(u["atk"]) * 0.07))), u)
+			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 0.6, o, true) + int(o["maxHp"] * 0.04), Color("#ff7a3c"))
+			battle._damage._apply_dot_stacks(o, "burn", maxi(1, int(round(float(u["atk"]) * 0.07))), u)
 
 func _lava_slam_telegraph(pos2d: Vector2, radius: float, dur: float) -> void:   # 落点预警(像素化·用户2026-07-15): 外硬边像素环+内环倒计时收缩到圆心+中心裂纹微光
 	var outer = battle._px_ground_sprite(VfxTex._make_pixel_ring_tex(), pos2d, radius * 2.0, Color(1.0, 0.32, 0.1, 0.0), 0.045)
@@ -576,9 +576,9 @@ func _lava_slam_impact(u: Dictionary, center: Vector2) -> void:   # 落地: 击�
 			o["vy"] = battle.LAVA_SLAM_KNOCK_VY
 			o["vx"] = dir.x * battle.KNOCK_PUSH * 0.7
 			o["vz"] = dir.y * battle.KNOCK_PUSH * 0.7
-		battle._apply_damage_from(u, o, battle._atk_dmg(u, 1.2, o, true), Color("#ff7a33"))
-		battle._apply_dot_stacks(o, "burn", battle._default_burn_stacks(u), u)
-		battle._heal(u, (o["maxHp"] - o["hp"]) * 0.08)
+		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 1.2, o, true), Color("#ff7a33"))
+		battle._damage._apply_dot_stacks(o, "burn", battle._default_burn_stacks(u), u)
+		battle._damage._heal(u, (o["maxHp"] - o["hp"]) * 0.08)
 
 func _sk_lava_cast(u: Dictionary, tgt: Dictionary, set_id: String = "A") -> void:   # 熔岩龟·按选中技分派(A地裂/B岩浆涌动/C喷射)×形态变体
 	var volcano: bool = u.get("volcano", false)

@@ -33,8 +33,8 @@ func _diamond_roll_impact(u: Dictionary, cp: Vector2, sf: float) -> void:
 		if not o.get("alive", false): continue
 		if o["pos"].distance_to(cp) > 120.0: continue             # 撞击点120码小AOE
 		var dmg: int = int(u["def"] * (0.1 + 0.9 * sf) + u["mr"] * (0.1 + 0.9 * sf) + o["maxHp"] * (0.02 + 0.18 * sf))   # 按速插值(封板: 0速0.1甲0.1抗2%→满速1.0甲1.0抗20%)
-		battle._apply_damage_from(u, o, dmg, Color("#9bdcff"))
-		battle._knockback(u, o, 50.0, 1.8, 1.0)                          # 击飞1秒(vy高)
+		battle._damage._apply_damage_from(u, o, dmg, Color("#9bdcff"))
+		battle._damage._knockback(u, o, 50.0, 1.8, 1.0)                          # 击飞1秒(vy高)
 		battle._freeze(o, 0.5 + 2.5 * sf)                                # 眩晕0.5~3s(随速插值·满速3s)
 	battle._burst_vfx("res://assets/sprites/vfx/diamond-impact.png", cp, 120.0 + 70.0 * sf, 0.5)   # 水晶碎裂撞击(按速插值·越快越大)
 	battle._skill_ring(cp, Color(0.6, 0.86, 1.0, 0.6), 120.0)
@@ -47,11 +47,11 @@ func _diamond_smash_impact(u: Dictionary, tgt) -> void:         # 蓄力结束�
 	if tgt == null: return
 	battle._dash_to(u, tgt, 45.0)
 	var dmg: int = int(u["def"] + u["mr"] + u["atk"] * 0.1)     # 保留原撞击伤害(1.0甲+1.0抗+0.1A物理·用户2026-07-12保留)
-	battle._apply_damage_from(u, tgt, dmg, Color("#9bdcff"))
+	battle._damage._apply_damage_from(u, tgt, dmg, Color("#9bdcff"))
 	var bstacks: int = maxi(1, roundi(0.5 * float(u["atk"]) + 0.1 * float(u["def"]) + 0.1 * float(u["mr"])))   # 流血层数=0.5A+0.1甲+0.1抗(用户2026-07-12·走既有层数式流血)
-	battle._apply_dot_stacks(tgt, "bleed", bstacks, u)
+	battle._damage._apply_dot_stacks(tgt, "bleed", bstacks, u)
 	var prev_slow: float = float(tgt.get("slow_mag", 1.0)) if battle._t < float(tgt.get("slow_until", 0.0)) else 1.0
-	battle._knockback(u, tgt, 0.0, battle.DIAMOND_SMASH_KNOCK_VY, battle.DIAMOND_SMASH_PUSH)   # 击退~300码(顺冲撞方向)+一点点击飞
+	battle._damage._knockback(u, tgt, 0.0, battle.DIAMOND_SMASH_KNOCK_VY, battle.DIAMOND_SMASH_PUSH)   # 击退~300码(顺冲撞方向)+一点点击飞
 	tgt["slow_until"] = maxf(float(tgt.get("slow_until", 0.0)), battle._t + 3.0)   # 3秒50%减速
 	tgt["slow_mag"] = minf(prev_slow, 0.5)
 	battle._burst_vfx("res://assets/sprites/vfx/diamond-impact.png", tgt["pos"], 110.0, 0.5)   # 水晶碎裂撞击
@@ -77,10 +77,10 @@ func _diamond_slash_fx(u: Dictionary, tgt: Dictionary) -> void:   # 钻石普攻
 	t.tween_callback(b.queue_free)
 
 func _sk_diamond_unbreak(u: Dictionary) -> void:                 # 钻石龟·坚不可摧(封板): 20%最大生命护盾(4秒·限时盾原语)+护甲/魔抗各+20%攻击力(flat·5秒)
-	battle._grant_shield(u, u["maxHp"] * 0.20, 4.0)
+	battle._damage._grant_shield(u, u["maxHp"] * 0.20, 4.0)
 	u["diamond_fortify_until"] = battle._t + 4.0   # 持盾期锁龟能+青水晶护罩(与shield同4s·盾破/到期即恢复·用户2026-07-12)
-	battle._buff(u, "def", u["atk"] * 0.2, false, 5.0)
-	battle._buff(u, "mr", u["atk"] * 0.2, false, 5.0)
+	battle._damage._buff(u, "def", u["atk"] * 0.2, false, 5.0)
+	battle._damage._buff(u, "mr", u["atk"] * 0.2, false, 5.0)
 	battle._burst_vfx("res://assets/sprites/vfx/diamond-fortify.png", u["pos"], 100.0, 0.5)   # 水晶护甲成型(蓝晶迸发·此前零特效)
 	battle._skill_ring(u["pos"], Color(0.55, 0.82, 1.0, 0.55), 58.0)
 	battle._shake(battle.JUICE_SHAKE_LIGHT)

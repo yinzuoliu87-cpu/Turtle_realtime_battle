@@ -156,7 +156,7 @@ func _minion_rocket_nuke(u: Dictionary, center: Vector2) -> void:   # 核爆(用
 		if not o.get("alive", false): continue
 		if (o["pos"] as Vector2).distance_to(center) > 400.0: continue
 		battle._vfx._hit_spark(o)
-		battle._apply_damage_from(u, o, battle._atk_dmg(u, 4.0, o, false), Color("#ff4444"))   # 4A物理
+		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 4.0, o, false), Color("#ff4444"))   # 4A物理
 		o["heal_reduce_until"] = maxf(float(o.get("heal_reduce_until", 0.0)), battle._t + 4.0)   # 4秒50%治疗削减
 		o["heal_reduce_pct"] = maxf(float(o.get("heal_reduce_pct", 0.0)), 0.5)
 
@@ -166,7 +166,7 @@ func _sk_minion_bodysurf(u: Dictionary, tgt) -> void:   # 近战小将·人体�
 	var tref: Dictionary = tgt
 	uu["_slam"] = true
 	battle._melee_anim(uu, "leap")                              # 0.00-0.64 蓄力+蹬地起跳
-	battle._heal(uu, float(uu.get("atk", 30.0)) * 2.0)          # 高跳: 回复2ATK生命
+	battle._damage._heal(uu, float(uu.get("atk", 30.0)) * 2.0)          # 高跳: 回复2ATK生命
 	battle._skill_ring(uu["pos"], Color(0.7, 0.85, 1.0, 0.5), 40.0)
 	# ★蓄力→往后上方自然起跳(用户2026-07-18"正常蓄力往高处/后高处跳·别直上直下"): 位移往后+升到峰→悬停(不落)·等拉向目标才俯冲
 	var jstart: Vector2 = uu["pos"]
@@ -187,7 +187,7 @@ func _sk_minion_bodysurf(u: Dictionary, tgt) -> void:   # 近战小将·人体�
 			uu["_slam"] = false; return
 		battle._melee_anim(uu, "throw")                          # 0.68 滞空甩索(与射链同帧)
 		battle._surf_chain_shoot(uu["pos"], float(uu.get("height", 0.0)) + 0.6, tref["pos"], Color(0.6, 0.15, 0.15, 0.95))   # 从小将(空中·当前height)射铁链向目标
-		battle._stun(tref, 1.1, "_sk_minion_bodysurf", true)   # 晕住覆盖整个空中顿+俯冲
+		battle._damage._stun(tref, 1.1, "_sk_minion_bodysurf", true)   # 晕住覆盖整个空中顿+俯冲
 		battle._vfx._hit_spark(tref)
 	, "src": u})
 	battle._pending_shots.append({"delay": 1.28, "fn": func() -> void:   # 空中顿~0.6s(0.68射链→1.28拉)→拉己俯冲向目标→接触→踩滑(coroutine·用户2026-07-18)
@@ -212,7 +212,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 			u["height"] = h0 - (h0 - 0.3) * kk * kk       # 高度按重力加速下落(前段高·末段猛扎)→路径成弧线俯冲, 不直线飞(用户2026-07-18"符合现实")
 	if not (u.get("alive", false) and tref.get("alive", false)):
 		u["_slam"] = false; return
-	battle._apply_damage_from(u, tref, int(float(tref["maxHp"]) * 0.10), Color("#ff4444"))   # 接触: 10%目标最大生命(物理)
+	battle._damage._apply_damage_from(u, tref, int(float(tref["maxHp"]) * 0.10), Color("#ff4444"))   # 接触: 10%目标最大生命(物理)
 	battle._melee_anim(u, "surf")                                # 1.58-2.41 踩在目标身上滑行
 	battle._vfx._hit_spark(tref); battle._shake(0.14)
 	var sdir: Vector2 = ((tref["pos"] as Vector2) - from)
@@ -240,13 +240,13 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 		dot_t += dt
 		if dot_t >= 0.1 and tref.get("alive", false):      # 对被踩目标逐渐2A物理(分摊·敌死则循环退出=自动结束·参考"血见底自动结束")
 			dot_t -= 0.1
-			battle._apply_damage_from(u, tref, battle._atk_dmg(u, 2.0 * 0.1 / slide_dur, tref, false), Color("#ff4444"))
+			battle._damage._apply_damage_from(u, tref, battle._atk_dmg(u, 2.0 * 0.1 / slide_dur, tref, false), Color("#ff4444"))
 		for o in battle._targeting._enemies_of(u):                           # 沿途撞到的其他敌: 1.5A物理+撞飞(参考"撞飞其他敌")
 			if is_same(o, tref) or not o.get("alive", false) or battle._arr_has_unit(hit_others, o): continue
 			if (o["pos"] as Vector2).distance_to(mypos) <= 70.0:
 				hit_others.append(o)
-				battle._apply_damage_from(u, o, battle._atk_dmg(u, 1.5, o, false), Color("#ff4444"))
-				battle._knockback(u, o, 150.0, 1.5, 1.1)          # 撞飞(vy×1.5腾空)
+				battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 1.5, o, false), Color("#ff4444"))
+				battle._damage._knockback(u, o, 150.0, 1.5, 1.1)          # 撞飞(vy×1.5腾空)
 	battle._melee_anim(u, "land")                                # 2.41 侧跳→单膝落地
 	# 完美收尾: 从目标身上跳到【目标周围】(不重叠·用户2026-07-18)→龟能随后正常回充
 	var land_from: Vector2 = u["pos"]
@@ -366,12 +366,12 @@ func _hiding_legacy_vfx(from_pos: Vector2, owner: Dictionary) -> void:   # 遗�
 			battle._skill_ring(oref["pos"], Color(1.0, 0.85, 0.4, 0.7), 70.0))
 
 func _sk_hiding_defend(u: Dictionary) -> void:                   # 缩头乌龟·防御(封板·100龟能): 缩壳20%maxHp盾(4秒)+护甲+20%(5秒)·到期剩余盾20%转生命; 2026-07-17用户: 持盾锁龟能+盾段壳青绿特殊色
-	battle._grant_shield(u, u["maxHp"] * 0.20, 4.0)
+	battle._damage._grant_shield(u, u["maxHp"] * 0.20, 4.0)
 	u["_hidingShellVal"] = u["maxHp"] * 0.20                     # 血条壳青绿特殊盾段(hp_bar照圣盾段收敛)
 	u["hiding_shield_until"] = battle._t + 4.0                          # 持盾锁龟能(石头rock_shield四连判据同款·盾破/到期恢复)
-	battle._buff(u, "def", 0.2, true, 5.0)
+	battle._damage._buff(u, "def", 0.2, true, 5.0)
 	var uu: Dictionary = u
-	battle._pending_shots.append({"delay": 3.95, "fn": func(): battle._heal(uu, float(uu.get("shield", 0.0)) * 0.20), "src": u})   # 到期前读剩余盾×20%转生命
+	battle._pending_shots.append({"delay": 3.95, "fn": func(): battle._damage._heal(uu, float(uu.get("shield", 0.0)) * 0.20), "src": u})   # 到期前读剩余盾×20%转生命
 	battle._pending_shots.append({"delay": 4.0, "fn": func(): uu["_hidingShellVal"] = 0.0, "src": u})   # 到期清特殊段标记
 	_hiding_dome(u, Color(0.55, 0.85, 0.6, 1.0), 4.0)          # 壳青绿护罩4秒呼吸→碎裂(2026-07-17: 原零画面)
 	battle._pending_shots.append({"delay": 4.0, "fn": func(): _hiding_legacy_heal_vfx(uu), "src": u})   # 碎裂后: 绿光点流入(剩盾转血可视)
@@ -408,10 +408,10 @@ func _hiding_minion_of(u: Dictionary):                          # 取该缩头�
 
 func _hiding_apply_buff(o: Dictionary, dur: float) -> void:     # 强化随从增益(dur秒·dur<=0=永久·供随从死亡继承给主人): 攻/甲/抗+10%·吸血+10%·暴击+20%
 	var d: float = dur if dur > 0.0 else 9999.0
-	battle._buff(o, "atk", 0.10, true, d)
-	battle._buff(o, "def", 0.10, true, d)
-	battle._buff(o, "mr", 0.10, true, d)
-	battle._buff(o, "lifesteal", 0.10, false, d)
+	battle._damage._buff(o, "atk", 0.10, true, d)
+	battle._damage._buff(o, "def", 0.10, true, d)
+	battle._damage._buff(o, "mr", 0.10, true, d)
+	battle._damage._buff(o, "lifesteal", 0.10, false, d)
 	o["crit"] = float(o.get("crit", 0.0)) + 0.20
 	if dur > 0.0:
 		var oo: Dictionary = o
@@ -446,7 +446,7 @@ func _sk_hiding_shrink(u: Dictionary) -> void:                  # 缩头(封板�
 		mb.tween_interval(0.35)
 		mb.tween_callback(func() -> void:
 			if mref.get("alive", false): battle._skill_ring(mref["pos"], Color(0.6, 0.9, 1.0, 0.6), 50.0))
-	battle._stun(u, 3.0, "_sk_hiding_shrink", true)   # 缩头3秒: 不能攻击/移动(定身)
+	battle._damage._stun(u, 3.0, "_sk_hiding_shrink", true)   # 缩头3秒: 不能攻击/移动(定身)
 	u["damage_reduction"] = 0.80                                # 80%减伤
 	var uu: Dictionary = u
 	battle._pending_shots.append({"delay": 3.0, "fn": func(): uu["damage_reduction"] = 0.0, "src": u})
@@ -484,7 +484,7 @@ func _hiding_shell_harden(u: Dictionary) -> void:              # 缩壳(普攻ri
 	u["base_def"] = float(u["base_def"]) + 1.0
 	u["base_mr"] = float(u["base_mr"]) + 1.0
 	battle._recalc_stats(u)
-	battle._grant_shield(u, u["atk"] * 0.1)
+	battle._damage._grant_shield(u, u["atk"] * 0.1)
 	u["_harden_n"] = int(u.get("_harden_n", 0)) + 1             # 硬化反馈(2026-07-17·Q12轻量): 每击微光, 每5层一次甲片环
 	var gp = Sprite3D.new()
 	gp.texture = VfxTex._make_fire_glow_tex()

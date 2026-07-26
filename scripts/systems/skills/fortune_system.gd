@@ -40,7 +40,7 @@ func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招�
 		u["energy_cost"]["fortuneBuyEquip"] = 60.0 + [100.0, 180.0, 400.0][clampi(tier - 1, 0, 2)]   # 消耗随抽到费拉长
 		battle._vfx._float_text(u["pos"] + Vector2(0, -72), "招财! " + str(DataRegistry.phase2_equipment_by_id.get(iid, {}).get("name", iid)), Color("#ffd93d"))
 	elif star >= 3:                                             # 3★满: 回复1×ATK生命
-		battle._heal(u, u["atk"])
+		battle._damage._heal(u, u["atk"])
 		battle._vfx._float_text(u["pos"] + Vector2(0, -72), "招财·满! 回血", Color("#ffd93d"))
 	else:                                                       # 升星: 应用精确数值delta(旧星→新星) + 同步equips条目星级
 		var iid2: String = str(u.get("buyequip_id", ""))
@@ -59,7 +59,7 @@ func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招�
 func _sk_fortune_dice(u: Dictionary) -> void:                    # 财神龟·骰子(用户2026-07-12补特效): 掷骰3~8金币+回8%maxHP
 	var g: int = randi_range(3, 8)   # 2~6→3~8 (恢复文本设计值)
 	u["gold"] += g
-	battle._heal(u, u["maxHp"] * 0.08)
+	battle._damage._heal(u, u["maxHp"] * 0.08)
 	battle._burst_vfx("res://assets/sprites/vfx/fortune-coin-burst.png", u["pos"], 120.0, 0.75)   # 金币爆
 	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.55), 52.0)
 	battle._vfx._float_text(u["pos"] + Vector2(0, -66), "掷骰 +%d金币" % g, Color("#ffd93d"))
@@ -72,7 +72,7 @@ func _sk_fortune_goldshield(u: Dictionary) -> void:   # 财神·金盾(梭哈用
 	var amt: float = float(int(u.get("gold", 0)))
 	if amt <= 0.0:
 		return
-	battle._grant_shield(u, amt, 4.0)                 # 通用护盾4s
+	battle._damage._grant_shield(u, amt, 4.0)                 # 通用护盾4s
 	u["gold_shield_until"] = battle._t + 4.0          # 持盾期锁龟能(与shield同4s·盾破/到期即恢复·同钻石坚不可摧节奏)
 	battle._vfx._flash(u, Color(1.6, 1.35, 0.5))
 	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.7), 60.0)

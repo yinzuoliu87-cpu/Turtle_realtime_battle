@@ -17,7 +17,7 @@ func _two_head_apply_melee(u: Dictionary, on: bool) -> void:
 		u["maxHp"] += u["_th_hp"]; u["hp"] += u["_th_hp"]
 		u["base_def"] += u["_th_def"]; u["base_mr"] += u["_th_mr"]
 		u["base_atk"] = maxf(1.0, u["base_atk"] - u["_th_atk"])
-		battle._recalc_stats(u); battle._grant_shield(u, a * 1.1)
+		battle._recalc_stats(u); battle._damage._grant_shield(u, a * 1.1)
 	elif not on and buffed:
 		u["two_melee_buffed"] = false
 		u["maxHp"] = maxf(1.0, u["maxHp"] - float(u.get("_th_hp", 0.0)))
@@ -82,7 +82,7 @@ func _two_head_cannon_boom(u: Dictionary, at2d: Vector2) -> void:
 	battle._skill_ring(at2d, Color(0.86, 0.72, 1.0, 0.7), 110.0)
 	for o in battle._targeting._enemies_of(u):
 		if o.get("alive", false) and at2d.distance_to(o["pos"]) <= 200.0:
-			battle._apply_damage_from(u, o, battle._atk_dmg(u, 1.0, o) + int(o["maxHp"] * 0.10), Color("#c0a0ff"))
+			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 1.0, o) + int(o["maxHp"] * 0.10), Color("#c0a0ff"))
 			battle._vfx._flash(o, Color(0.8, 0.6, 1.0))
 
 # 双头·锤击(近战 技1·用户2026-07-11): 跳起→落在目标身前→地面锤击(1.4A物理+获50%伤害盾4s)+落地震屏/冲击环/尘爆
@@ -108,8 +108,8 @@ func _two_head_hammer_land(u: Dictionary, tgt: Dictionary, at2d: Vector2, dmg: i
 	u["pos"] = at2d
 	_two_head_slam_impact(at2d)                                # 高质量砸地冲击(AI星爆+三层环+尘+岩屑+顿帧+大震屏·用户2026-07-11)
 	if tgt.get("alive", false):
-		battle._apply_damage_from(u, tgt, dmg, Color("#ffb05c"))
-		battle._grant_shield(u, dmg * 0.5, 4.0)                        # 获造成伤害50%护盾(4秒)
+		battle._damage._apply_damage_from(u, tgt, dmg, Color("#ffb05c"))
+		battle._damage._grant_shield(u, dmg * 0.5, 4.0)                        # 获造成伤害50%护盾(4秒)
 		battle._vfx._flash(tgt)
 
 
@@ -147,13 +147,13 @@ func _sk_two_head_disrupt(u: Dictionary, tgt) -> void:           # 双头·技�
 	if tgt == null: return
 	if u["melee"]:
 		var dmg: int = battle._atk_dmg(u, 0.6, tgt) + int(tgt["maxHp"] * 0.08)
-		battle._apply_damage_from(u, tgt, dmg, Color("#c0d0ff"))
-		battle._heal(u, u["atk"] * 0.4 + (u["maxHp"] - u["hp"]) * 0.18)   # 回血40%攻击力+18%已损生命
+		battle._damage._apply_damage_from(u, tgt, dmg, Color("#c0d0ff"))
+		battle._damage._heal(u, u["atk"] * 0.4 + (u["maxHp"] - u["hp"]) * 0.18)   # 回血40%攻击力+18%已损生命
 		_two_head_absorb_vfx(u, tgt)                               # 吸收VFX(用户2026-07-11): 生命虹吸束+微粒回流+回血绿环
 	else:
 		var broke: bool = float(tgt.get("shield", 0.0)) > 0.0
 		if broke: tgt["shield"] = float(tgt["shield"]) * 0.5       # 破盾50%
-		battle._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.0, tgt, true), Color("#c0d0ff"))
+		battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.0, tgt, true), Color("#c0d0ff"))
 		tgt["heal_reduce_until"] = battle._t + 5.0
 		tgt["heal_reduce_pct"] = maxf(float(tgt.get("heal_reduce_pct", 0.0)), 0.5)             # 治疗削减50%5秒
 		_two_head_disrupt_vfx(u, tgt, broke)                       # 精神干扰VFX(用户2026-07-11): 精神波+紫涟漪+(破盾)盾碎裂+裂心标记
@@ -259,12 +259,12 @@ func _two_head_fusion_wave_hit(u: Dictionary, tgt: Dictionary, is_true: bool, wv
 	if not tgt.get("alive", false):
 		return
 	if is_true:
-		battle._apply_damage_from(u, tgt, int(u["atk"] * 0.8), Color("#ffffff"), 0.0, true)   # 真实 0.8A(用户2026-07-11)
+		battle._damage._apply_damage_from(u, tgt, int(u["atk"] * 0.8), Color("#ffffff"), 0.0, true)   # 真实 0.8A(用户2026-07-11)
 		battle._skill_ring(tgt["pos"], Color(1.0, 1.0, 1.0, 0.5), 42.0)
 	else:
-		battle._apply_damage_from(u, tgt, battle._atk_dmg(u, 0.8, tgt), Color("#c39bff"))             # 物理 0.8A(用户2026-07-11)
+		battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 0.8, tgt), Color("#c39bff"))             # 物理 0.8A(用户2026-07-11)
 		battle._skill_ring(tgt["pos"], Color(0.74, 0.46, 1.0, 0.5), 42.0)
-	battle._knockback(u, tgt, 0.0, 0.6, 0.4)                                                  # 附加一点击飞(轻·airborne守卫防过度juggle·用户2026-07-11)
+	battle._damage._knockback(u, tgt, 0.0, 0.6, 0.4)                                                  # 附加一点击飞(轻·airborne守卫防过度juggle·用户2026-07-11)
 
 # 融合登场VFX(用户2026-07-11): 合体能量爆发(fusion-burst AI图) + 持续"融合态"光环(跟随+脉冲, 显示锁定/强化)
 # 融合登场VFX(用户2026-07-11): 合体能量爆发(fusion-burst AI图) + 持续"融合态"光环(跟随+脉冲, 显示锁定/强化)
@@ -333,13 +333,13 @@ func _two_head_retreat(u: Dictionary, et) -> void:
 func _two_head_enhanced_basic(u: Dictionary, tgt: Dictionary, form: String) -> void:
 	if form == "melee":
 		if tgt.get("alive", false):
-			battle._apply_damage_from(u, tgt, battle._atk_dmg(u, 0.6, tgt, true), Color("#ffb05c"))   # 近战强化: +0.6A魔法伤害
-		battle._grant_shield(u, u["atk"] * 1.1, 4.0)                                            # + 自己获 1.1×ATK 护盾(4s)
+			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 0.6, tgt, true), Color("#ffb05c"))   # 近战强化: +0.6A魔法伤害
+		battle._damage._grant_shield(u, u["atk"] * 1.1, 4.0)                                            # + 自己获 1.1×ATK 护盾(4s)
 		battle._skill_ring(u["pos"], Color(0.72, 0.8, 1.0, 0.6), 62.0)
 	else:
 		if tgt.get("alive", false):
-			battle._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.4, tgt), Color("#c0d0ff"))          # 远程强化: +1.4A物理伤害
-			battle._buff(tgt, "def", -0.25, true, 4.0)                                          # + 命中目标 -25% 护甲(4s·破甲)
+			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.4, tgt), Color("#c0d0ff"))          # 远程强化: +1.4A物理伤害
+			battle._damage._buff(tgt, "def", -0.25, true, 4.0)                                          # + 命中目标 -25% 护甲(4s·破甲)
 
 func _two_head_slide_step(pf: float, u: Dictionary, from2d: Vector2, dest: Vector2) -> void:
 	u["pos"] = from2d.lerp(dest, pf)

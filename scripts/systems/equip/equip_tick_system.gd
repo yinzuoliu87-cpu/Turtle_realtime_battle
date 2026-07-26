@@ -85,8 +85,8 @@ func _tick_fortress(u: Dictionary, delta: float) -> void:   # 深海堡垒甲p2e
 		var k2: float = [0.9, 1.6, 3.0][si]   # 用户2026-07-19: 0.8/1.0/1.5 -> 1/2/4 -> 0.9/1.6/3
 		for o in battle._targeting._enemies_of(u):
 			battle._bolt_line(o["pos"], u["pos"], Color("#bfe9ff"))
-			battle._apply_damage_from(u, o, battle._resolve_dmg(u, k2 * (u["def"] + u["mr"]), o, true), Color("#bfe9ff"), 0.0, false, true)   # 真·魔法伤害(走魔抗); 原 raw=true 是白字真伤·与文案"魔法伤害"不符(用户2026-07-19指出)
-			battle._heal(u, [60.0, 110.0, 250.0][si] + maxf(0.0, u["maxHp"] - u["hp"]) * 0.06)   # 用户2026-07-19: 60/110/250 + 已损生命6%(逐敌结算)
+			battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, k2 * (u["def"] + u["mr"]), o, true), Color("#bfe9ff"), 0.0, false, true)   # 真·魔法伤害(走魔抗); 原 raw=true 是白字真伤·与文案"魔法伤害"不符(用户2026-07-19指出)
+			battle._damage._heal(u, [60.0, 110.0, 250.0][si] + maxf(0.0, u["maxHp"] - u["hp"]) * 0.06)   # 用户2026-07-19: 60/110/250 + 已损生命6%(逐敌结算)
 
 func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016: 每5秒放一个总护盾池(100/250/400 + 携带者8%最大生命)由全队(含自己)均分(用户2026-07-19; 原每人固定15/20/25); 每件独立
 	if u.get("equips", []).is_empty(): return
@@ -101,7 +101,7 @@ func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016:
 		var pool: float = [100.0, 250.0, 400.0][si] + u["maxHp"] * 0.08   # 总池: 固定 + 携带者8%最大生命
 		var each: float = pool / float(mates.size())                      # 全队(含自己·除大师)均分
 		for o in mates:
-			battle._grant_shield(o, each)
+			battle._damage._grant_shield(o, each)
 
 func _tick_thunder(u: Dictionary, delta: float) -> void:   # 雷鸣贝壳p2eq_025: 每4秒降N道大雷(道间错峰0.3s), 各劈随机敌1×ATK真伤(伤害在闪电中段跳); 每件独立(用户2026-07-02: 原2.5s)
 	if u.get("equips", []).is_empty(): return
@@ -152,7 +152,7 @@ func _tick_shell(u: Dictionary, delta: float) -> void:   # 守护贝壳p2eq_018:
 		if float(e["shell_t"]) < 8.0: continue
 		e["shell_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
-		battle._heal(u, [30, 45, 60][si] + u["maxHp"] * [0.05, 0.09, 0.15][si])
+		battle._damage._heal(u, [30, 45, 60][si] + u["maxHp"] * [0.05, 0.09, 0.15][si])
 		battle._shell_sys._shell_guard_fx(u)   # 半壳合拢护罩演出(用户2026-07-19)
 
 func _tick_anemone(u: Dictionary, delta: float) -> void:   # 海葵药膏p2eq_019: 每7秒奶自己+最低血友军(30/45/60+12/14/18%目标已损血)×海葵增幅; 累计200/180/150治疗+1海葵层(治疗&盾强度+8/9/10%/层); 每件独立(用户2026-07-02,原2.5s)
@@ -164,13 +164,13 @@ func _tick_anemone(u: Dictionary, delta: float) -> void:   # 海葵药膏p2eq_01
 		e["anemone_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		var stt: Dictionary = u["eq_state"].get("p2eq_019", {})
-		# 海葵层的+治疗/护盾强度已经在获得层时真的加进 u.heal_amp/shield_amp (见下), battle._heal 会自己乘, 这里不能再乘一遍
+		# 海葵层的+治疗/护盾强度已经在获得层时真的加进 u.heal_amp/shield_amp (见下), battle._damage._heal 会自己乘, 这里不能再乘一遍
 		var h1: float = [30, 45, 60][si] + (u["maxHp"] - u["hp"]) * [0.12, 0.14, 0.18][si]
-		var prov19: float = battle._heal(u, h1)                     # 按【实际】回血计数(同017口径·用户2026-07-19)
+		var prov19: float = battle._damage._heal(u, h1)                     # 按【实际】回血计数(同017口径·用户2026-07-19)
 		var low = battle._lowest_hp_pct_ally(u)                     # 文案是"生命百分比最低"
 		if low != null and not is_same(low, u):              # is_same: 单位字典深比较有卡死风险(同053)
 			var h2: float = [30, 45, 60][si] + (low["maxHp"] - low["hp"]) * [0.12, 0.14, 0.18][si]
-			prov19 += battle._heal(low, h2)
+			prov19 += battle._damage._heal(low, h2)
 		stt["anemone_heal"] = float(stt.get("anemone_heal", 0.0)) + prov19
 		var thr19: float = [200.0, 180.0, 150.0][si]
 		while float(stt["anemone_heal"]) >= thr19:
@@ -235,7 +235,7 @@ func _tick_barnacle(u: Dictionary, delta: float) -> void:   # 守护贝母p2eq_0
 				o["aspd_perm"] = float(o.get("aspd_perm", 1.0)) + 0.10   # +10%攻速(永久本场,叠加)
 				battle._skill_ring(o["pos"], Color(0.55, 1.0, 0.78, 0.5), 44.0)
 			if best != null:   # 连接友军: 盾 + 伤害转移(25/40/60%受伤转给携带者); 不净化(用户)
-				battle._grant_shield(best, [60.0, 110.0, 180.0][si])   # 用户2026-07-19: 40/60/90→60/110/180
+				battle._damage._grant_shield(best, [60.0, 110.0, 180.0][si])   # 用户2026-07-19: 40/60/90→60/110/180
 				best["dmg_redirect_to"] = {"carrier": u, "pct": [0.25, 0.40, 0.60][si], "until": battle._t + 5.5}
 		battle._update_barnacle_line(u, stt.get("link_target", null))   # 每帧: 持续绿色绑定线(跟随移动/能量脉动)
 		break   # 只处理一件(共享绑定线)
@@ -248,7 +248,7 @@ func _tick_jelly(u: Dictionary, delta: float) -> void:   # 龟苓膏块p2eq_012:
 		if float(e["jelly_t"]) < 4.0: continue
 		e["jelly_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
-		battle._grant_shield(u, [40.0, 60.0, 90.0][si] + u["maxHp"] * 0.04)   # 用户2026-07-19: 30/40/55 → 40/60/90 + 4%最大生命
+		battle._damage._grant_shield(u, [40.0, 60.0, 90.0][si] + u["maxHp"] * 0.04)   # 用户2026-07-19: 30/40/55 → 40/60/90 + 4%最大生命
 
 func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 锈蚀短剑p2eq_001: 每3s就绪, 射程2000(全场)内最近敌即甩飞斩剑气; 每件独立(多件各自触发)
 	if u.get("equips", []).is_empty(): return

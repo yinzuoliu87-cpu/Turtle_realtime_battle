@@ -29,7 +29,7 @@ func _ready() -> void:
 	u["hp"] = u["maxHp"]
 	u["dot_stacks"] = {}
 	u["true_fire_until"] = 0.0
-	scene.call("_apply_dot_stacks", u, "burn", 100, null)
+	scene._damage.call("_apply_dot_stacks", u, "burn", 100, null)
 	print("[burn] 施加100层. maxHp项每层贡献 round(maxHp*1*0.001)=%d" % roundi(float(u["maxHp"]) * 0.001))
 	var burn_seq: Array = []
 	for i in range(8):
@@ -48,7 +48,7 @@ func _ready() -> void:
 
 	# ---- POISON: 100 层, 衰减 floor(×3/4) ----
 	u["hp"] = u["maxHp"]; u["dot_stacks"] = {}
-	scene.call("_apply_dot_stacks", u, "poison", 100, null)
+	scene._damage.call("_apply_dot_stacks", u, "poison", 100, null)
 	var poison_seq: Array = []
 	for i in range(8):
 		var sb: int = int(u["dot_stacks"].get("poison", 0))
@@ -60,7 +60,7 @@ func _ready() -> void:
 
 	# ---- BLEED: 100 层, 衰减 floor(×3/4) (与 poison 同衰减率) ----
 	u["hp"] = u["maxHp"]; u["dot_stacks"] = {}
-	scene.call("_apply_dot_stacks", u, "bleed", 100, null)
+	scene._damage.call("_apply_dot_stacks", u, "bleed", 100, null)
 	var bleed_seq: Array = []
 	for i in range(8):
 		var sb2: int = int(u["dot_stacks"].get("bleed", 0))
@@ -76,7 +76,7 @@ func _ready() -> void:
 	# 无护盾对比: 真火 burn 与普通 burn 对裸血出伤一致.
 	u["hp"] = u["maxHp"]; u["shield"] = 0.0; u["dot_stacks"] = {}
 	u["true_fire_until"] = 999999.0   # 真火生效
-	scene.call("_apply_dot_stacks", u, "burn", 50, null)
+	scene._damage.call("_apply_dot_stacks", u, "burn", 50, null)
 	var hp0: float = u["hp"]
 	scene.call("_tick_dot_stacks", u)
 	var hp_lost: float = hp0 - u["hp"]
@@ -85,8 +85,8 @@ func _ready() -> void:
 
 	# ---- 多层叠加: 同类再施加 → 累加 ----
 	u["dot_stacks"] = {"burn": 0}
-	scene.call("_apply_dot_stacks", u, "burn", 30, null)
-	scene.call("_apply_dot_stacks", u, "burn", 20, null)
+	scene._damage.call("_apply_dot_stacks", u, "burn", 30, null)
+	scene._damage.call("_apply_dot_stacks", u, "burn", 20, null)
 	print("[stack] 施加30层再施加20层 → %d (期望50)" % int(u["dot_stacks"].get("burn", 0)))
 
 	# ---- _has_dot 走 dot_stacks ----

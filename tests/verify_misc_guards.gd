@@ -48,18 +48,17 @@ func _ready() -> void:
 
 	# ── C. 眩晕唯一入口: 全项目只有 _stun 能写 stun_until ──
 	# 起因: 原先 17 处各写各的 maxf(...), 查不出是谁上的控; 收口后韧性/来源记录/将来的规则都只在一处。
-	var f := FileAccess.open("res://scripts/scenes/RealtimeBattle3DScene.gd", FileAccess.READ)
 	var writes := 0
-	var ln := 0
-	while f != null and not f.eof_reached():
-		var line := f.get_line()
-		ln += 1
-		var t := line.strip_edges()
-		if t.begins_with("#") or t.begins_with("##"):
-			continue
-		if line.contains("[\"stun_until\"] = maxf"):
-			writes += 1
-	if f != null: f.close()
+	for _sp in ["res://scripts/scenes/RealtimeBattle3DScene.gd", "res://scripts/scenes/battle_damage.gd"]:   # _stun 已抽到 BattleDamage(2026-07-26)→两处一起扫, 总数仍应=1
+		var f := FileAccess.open(_sp, FileAccess.READ)
+		while f != null and not f.eof_reached():
+			var line := f.get_line()
+			var t := line.strip_edges()
+			if t.begins_with("#") or t.begins_with("##"):
+				continue
+			if line.contains("[\"stun_until\"] = maxf"):
+				writes += 1
+		if f != null: f.close()
 	_ok("★stun_until 只有 1 处写入(=_stun 内部)", writes == 1, "实际 %d 处" % writes)
 
 	# ── D. 结算统计: 跨战场快照函数在 ──

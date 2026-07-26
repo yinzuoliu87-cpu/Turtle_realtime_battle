@@ -15,7 +15,7 @@ func _crystal_line_seg(u: Dictionary, si: int, dir: Vector2) -> void:
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		if battle._on_line(origin, dir, o["pos"], 55.0):
-			battle._apply_damage_from(u, o, battle._resolve_dmg(u, float([30, 35, 40][si]), o, true), Color("#bfa8ff"), 0.0, false, true)
+			battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, float([30, 35, 40][si]), o, true), Color("#bfa8ff"), 0.0, false, true)
 			battle._equip_sys._eq_crystal_stack(u, o, si)
 
 func _crystal_spark(pos2d: Vector2, h: float = 0.9) -> void:
@@ -206,7 +206,7 @@ func _crystal_sweep_step(ang: float, u: Dictionary, si: int, reach: float, state
 			if not o.get("alive", false): continue
 			var ea: float = atan2(float(o["pos"].y) - center.y, float(o["pos"].x) - center.x)
 			if battle._ang_in(prev, ang, ea):
-				battle._apply_damage_from(u, o, battle._resolve_dmg(u, float([60, 130, 700][si]), o, true), Color("#bfa8ff"), 0.0, false, true)
+				battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, float([60, 130, 700][si]), o, true), Color("#bfa8ff"), 0.0, false, true)
 				var steal: float = maxf(0.0, float(o["mr"])) * [0.10, 0.15, 0.50][si]   # 偷取目标10/15/50%当前魔抗(真偷取:目标-X携带者+X, 永久到战场结束)
 				if steal > 0.01:
 					o["base_mr"] = float(o["base_mr"]) - steal; o["mr"] = float(o["mr"]) - steal
@@ -354,8 +354,8 @@ func _crystal_stack(src: Dictionary, tgt: Dictionary, n: int) -> void:
 	var cv = battle._add_stack(tgt, "crystal", n, 5)
 	if cv >= 5:
 		battle._consume_stacks(tgt, "crystal")
-		battle._apply_damage_from(src, tgt, battle._mitigate(src, tgt["maxHp"] * 0.19, tgt, true), Color("#9bdcff"), 0.0, false)   # 引爆19%最大生命魔法(吃魔抗·封板; 冰蓝2026-07-15)
-		battle._buff(tgt, "mr", -0.2, true)
+		battle._damage._apply_damage_from(src, tgt, battle._mitigate(src, tgt["maxHp"] * 0.19, tgt, true), Color("#9bdcff"), 0.0, false)   # 引爆19%最大生命魔法(吃魔抗·封板; 冰蓝2026-07-15)
+		battle._damage._buff(tgt, "mr", -0.2, true)
 		_crystal_detonate(tgt["pos"])
 
 func _crystal_orb_halo(orb: Dictionary) -> void:   # 水晶球常驻脉动光环(跟随·死亡随_follow_vfx自动清·循环tween必bind_node)
@@ -411,7 +411,7 @@ func _crystal_ray_vfx(src: Dictionary, tgt: Dictionary, seg_dmg_fn: Callable) ->
 # 水晶龟·水晶球 本体主动(封板L571·70龟能): 朝目标射一道水晶光线=2段共1.0A魔法 + 叠2层结晶(与水晶球随从共享满5引爆)·水晶球随从在spawn gate召唤
 
 func _sk_crystal_bulwark(u: Dictionary) -> void:                 # 水晶龟·水晶壁垒(用户2026-07-16改制): 1A+5%maxHp护盾4秒·持盾锁龟能·盾结束/被打破→700码直线水晶刺·全体友军甲抗+15%4秒
-	battle._grant_shield(u, u["atk"] * 1.0 + u["maxHp"] * 0.05, 4.0)
+	battle._damage._grant_shield(u, u["atk"] * 1.0 + u["maxHp"] * 0.05, 4.0)
 	u["bulwark_until"] = battle._t + 4.0
 	u["_bulwark_armed"] = true
 	var dome = Sprite3D.new()                                   # 冰蓝水晶罩(随身4秒)
@@ -432,7 +432,7 @@ func _sk_crystal_bulwark(u: Dictionary) -> void:                 # 水晶龟·�
 		dw.tween_callback(func() -> void:
 			if is_instance_valid(dome): dome.queue_free())
 	for o in battle._targeting._allies_of(u):
-		battle._buff(o, "def", 0.15, true, 4.0); battle._buff(o, "mr", 0.15, true, 4.0)
+		battle._damage._buff(o, "def", 0.15, true, 4.0); battle._damage._buff(o, "mr", 0.15, true, 4.0)
 		battle._skill_ring(o["pos"], Color(0.62, 0.88, 1.0, 0.55), 40.0)   # 友军冰蓝强化环
 
 func _sk_crystal_burst(u: Dictionary, tgt) -> void:   # 碎晶爆破: 目标周围350码内每敌3段错峰碎晶坠落(每段0.233A魔+0.033A真+叠1层结晶·共3层满5引爆)
@@ -464,8 +464,8 @@ func _sk_crystal_burst(u: Dictionary, tgt) -> void:   # 碎晶爆破: 目标周�
 					if is_instance_valid(sh): sh.queue_free()
 					if not oref.get("alive", false): return
 					_crystal_spark(oref["pos"], 0.7)
-					battle._apply_damage_from(uu, oref, battle._atk_dmg(uu, 0.233, oref, true), Color("#9bdcff"))                 # 每段0.233A魔法
-					battle._apply_damage_from(uu, oref, int(maxf(1.0, uu["atk"] * 0.033)), Color("#ffffff"), 0.0, true)   # +0.033A真实
+					battle._damage._apply_damage_from(uu, oref, battle._atk_dmg(uu, 0.233, oref, true), Color("#9bdcff"))                 # 每段0.233A魔法
+					battle._damage._apply_damage_from(uu, oref, int(maxf(1.0, uu["atk"] * 0.033)), Color("#ffffff"), 0.0, true)   # +0.033A真实
 					_crystal_stack(uu, oref, 1))
 			, "src": u})
 
@@ -474,7 +474,7 @@ func _sk_crystal_orb(u: Dictionary, tgt) -> void:
 		return
 	battle._skill_ring(u["pos"], Color(0.72, 0.92, 1.0, 0.6), 34.0)     # 本体施法环
 	_crystal_ray_vfx(u, tgt, func(sr: Dictionary, tr: Dictionary, last: bool) -> void:
-		battle._apply_damage_from(sr, tr, battle._atk_dmg(sr, 0.5, tr, true), Color("#9bdcff"), 0.0, true)   # 每段0.5A魔法(raw避免二次减免·封板)
+		battle._damage._apply_damage_from(sr, tr, battle._atk_dmg(sr, 0.5, tr, true), Color("#9bdcff"), 0.0, true)   # 每段0.5A魔法(raw避免二次减免·封板)
 		if last: _crystal_stack(sr, tr, 2))                      # 末段叠2层结晶(封板)
 
 # 宝箱藏宝图·15件专属战利品池 (封板L592-594·效果取自Phaser chest.js实时适配): 基础/进阶/传说三档

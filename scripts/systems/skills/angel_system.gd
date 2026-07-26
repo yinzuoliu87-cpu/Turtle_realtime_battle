@@ -12,7 +12,7 @@ func _sk_angel_bless(u: Dictionary) -> void:                     # 天使龟·�
 	var ally = battle._lowest_hp_ally(u)
 	if ally == null:
 		ally = u
-	battle._grant_shield(ally, u["atk"] * 1.2, 5.0)   # 天使祝福护盾5秒(封板L145·与攻速/龟能buff同步)
+	battle._damage._grant_shield(ally, u["atk"] * 1.2, 5.0)   # 天使祝福护盾5秒(封板L145·与攻速/龟能buff同步)
 	ally["haste_until"] = battle._t + 5.0; ally["haste_mult"] = 1.5       # +50% 攻速 5秒(用户2026-07-11: 30%→50%)
 	battle._skill_ring(ally["pos"], Color(1.0, 0.9, 0.5, 0.5), 48.0)   # 祝福: 金色圣光环 (用户2026-07-11: 取消原龟能充能+30%buff)
 
@@ -35,8 +35,8 @@ func _sk_angel_equality(u: Dictionary, tgt) -> void:
 			if tgt == null or not tgt.get("alive", false): return
 			battle._bolt_line(u["pos"], tgt["pos"], Color(1.0, 0.92, 0.66))      # 金白斩弧曳光
 			battle._skill_ring(tgt["pos"], Color(1.0, 0.9, 0.6, 0.5), 44.0)
-			battle._apply_damage_from(u, tgt, battle._atk_dmg(u, 0.5, tgt, false), Color("#ffe9a8"), 0.10)   # 100%物理·10%吸血
-			battle._apply_damage_from(u, tgt, battle._mitigate(u, tgt["hp"] * 0.08, tgt, true), Color("#9be7ff"), 0.0, false)   # 审判(每段攻击命中都吃·独立结算不触发其他被动·用户2026-07-10"每次攻击都要吃")
+			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 0.5, tgt, false), Color("#ffe9a8"), 0.10)   # 100%物理·10%吸血
+			battle._damage._apply_damage_from(u, tgt, battle._mitigate(u, tgt["hp"] * 0.08, tgt, true), Color("#9be7ff"), 0.0, false)   # 审判(每段攻击命中都吃·独立结算不触发其他被动·用户2026-07-10"每次攻击都要吃")
 		})
 	# A级及以上→第3段从天而降审判光柱: (50%ATK + 目标已损生命10%)真伤·无视双抗·同10%吸血
 	if int(order.get(str(tgt.get("rarity", "C")), 0)) >= 2:
@@ -45,8 +45,8 @@ func _sk_angel_equality(u: Dictionary, tgt) -> void:
 			_angel_judgment_pillar(tgt["pos"])
 			var lost: float = maxf(0.0, float(tgt["maxHp"]) - float(tgt["hp"]))
 			var tru: int = maxi(1, int(float(u["atk"]) * 0.5 + lost * 0.10))
-			battle._apply_damage_from(u, tgt, tru, Color(1.0, 0.96, 0.76), 0.10, true)   # 真伤无视双抗·10%吸血
-			battle._apply_damage_from(u, tgt, battle._mitigate(u, tgt["hp"] * 0.08, tgt, true), Color("#9be7ff"), 0.0, false)   # 光柱也带审判(用户2026-07-11:附带被动·10%当前HP)
+			battle._damage._apply_damage_from(u, tgt, tru, Color(1.0, 0.96, 0.76), 0.10, true)   # 真伤无视双抗·10%吸血
+			battle._damage._apply_damage_from(u, tgt, battle._mitigate(u, tgt["hp"] * 0.08, tgt, true), Color("#9be7ff"), 0.0, false)   # 光柱也带审判(用户2026-07-11:附带被动·10%当前HP)
 			battle._vfx._flash(tgt, Color(1.0, 0.96, 0.76))
 		})
 

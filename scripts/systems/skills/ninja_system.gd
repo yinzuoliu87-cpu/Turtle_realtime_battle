@@ -101,8 +101,8 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 				h["done"] = true
 				var o: Dictionary = h["o"]
 				if o.get("alive", false):
-					battle._apply_damage_from(u, o, battle._atk_dmg(u, 1.3 if is_same(o, target) else 0.8, o), Color("#9fe8ff"))
-					battle._knockback(u, o, 40.0, 1.468, 1.0)          # 击飞 0.8s 滞空
+					battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 1.3 if is_same(o, target) else 0.8, o), Color("#9fe8ff"))
+					battle._damage._knockback(u, o, 40.0, 1.468, 1.0)          # 击飞 0.8s 滞空
 					if is_same(o, target): o["_ninja_dash_until"] = battle._t + 10.0          # 只有【目标】进10s冷却·顺路割到的不占(用户2026-07-11)
 					battle._burst_vfx("res://assets/sprites/vfx/ninja-slash.png", o["pos"], 88.0, 1.0)
 	u["pos"] = endp
@@ -147,7 +147,7 @@ func _sk_ninja_backstab(u: Dictionary, tgt: Dictionary) -> void: # 技三·背�
 		battle._pending_shots.append({"delay": 0.30 * float(i), "src": u, "fn": func():
 			if not u.get("alive", false) or not far2.get("alive", false):
 				return
-			battle._apply_damage_from(u, far2, battle._atk_dmg(u, 0.6667, far2), Color("#cfd8e8"))
+			battle._damage._apply_damage_from(u, far2, battle._atk_dmg(u, 0.6667, far2), Color("#cfd8e8"))
 			battle._burst_vfx("res://assets/sprites/vfx/ninja-slash.png", far2["pos"], 88.0, 1.0)   # 每刀斩弧
 			battle._vfx._hit_spark(far2)
 		})
@@ -230,4 +230,4 @@ func _bomb_explode(spr, u: Dictionary, at2d: Vector2, opts: Dictionary) -> void:
 		if e.get("alive", false):
 			var dmg = battle._atk_dmg(u, float(opts.get("phys", 2.0)), e, false)
 			if dmg > 0:
-				battle._apply_damage_from(u, e, dmg, col)
+				battle._damage._apply_damage_from(u, e, dmg, col)

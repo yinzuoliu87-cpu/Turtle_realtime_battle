@@ -148,7 +148,7 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 		for o2 in battle._targeting._enemies_of(uu):                               # 爆发帧结算(同帧飘字·封板0.8A魔法)
 			if not o2.get("alive", false): continue
 			if (o2["pos"] as Vector2).distance_to(center) > 500.0: continue
-			battle._apply_damage_from(uu, o2, battle._atk_dmg(uu, 0.8, o2, true), Color("#b09bff"))
+			battle._damage._apply_damage_from(uu, o2, battle._atk_dmg(uu, 0.8, o2, true), Color("#b09bff"))
 			battle._vfx._hit_spark(o2)
 			victims.append(o2)
 		battle._shake(0.12 if charged else 0.08)
@@ -194,7 +194,7 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 			var oref3: Dictionary = o3
 			var dest3 = Vector2(clampf(center.x * 2.0 - from3.x, battle.ARENA.position.x, battle.ARENA.end.x), clampf(center.y * 2.0 - from3.y, battle.ARENA.position.y, battle.ARENA.end.y))   # 换位=过奇点镜像落对侧(用户2026-07-16"延中心点到对端": 左右对调, 非聚拢; 镜像保距→落点互不重叠)
 			if o3.has("_home_pos"): o3["_home_pos"] = dest3      # 评审假人: 落点即新驻点(原归位逻辑会把人走回出生位→用户看到"拖到对端又回去"; 真实对局无_home_pos零影响)
-			battle._knockback(uu, o3, 0.0, 1.05, 0.0)                   # 起跳vy=6.3(滞空0.57s)+震屏顿帧; 落地juice物理tick自带(压扁+尘+轻震)
+			battle._damage._knockback(uu, o3, 0.0, 1.05, 0.0)                   # 起跳vy=6.3(滞空0.57s)+震屏顿帧; 落地juice物理tick自带(压扁+尘+轻震)
 			var mvt = battle._reg_tween()                              # 真抛物线弧: 水平匀速直线(linear无缓动)+竖直重力=被甩飞过中心点(用户2026-07-16"很真实的被重力拖拽·飞过中心点·落到对端后回复行动"→无定身, 落地即自由; airborne期分离/AI本就不生效)
 			mvt.tween_method(func(q: float) -> void:
 				if oref3.get("alive", false) and oref3.get("airborne", false):
@@ -333,7 +333,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				if not o.get("alive", false) or battle._arr_has_unit(hitset, o): continue
 				if (o["pos"] as Vector2).distance_to(origin) > r: continue
 				hitset.append(o)
-				battle._apply_damage_from(uu2, o, battle._atk_dmg(uu2, 1.0, o, true), Color("#c9b0ff"))
+				battle._damage._apply_damage_from(uu2, o, battle._atk_dmg(uu2, 1.0, o, true), Color("#c9b0ff"))
 				battle._vfx._hit_spark(o)
 				for hb in range(2):                                # 命中: 2颗小星从敌身弹出
 					var ha: float = randf() * TAU
@@ -498,7 +498,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				if is_instance_valid(head): head.queue_free()
 				for o2 in battle._targeting._enemies_of(uu2):                        # 伤害撞击帧结算(用户2026-07-16: 100%消耗星能·真实伤害·400码)
 					if o2.get("alive", false) and o2["pos"].distance_to(center) <= 400.0:
-						battle._apply_damage_from(uu2, o2, maxi(1, int(burst)), Color("#ffffff"), 0.0, true)
+						battle._damage._apply_damage_from(uu2, o2, maxi(1, int(burst)), Color("#ffffff"), 0.0, true)
 				if uu2.get("alive", false):
 					uu2["energy_lock_until"] = battle._t                  # 巨彗星造成伤害后才恢复龟能/星能(用户2026-07-16)
 					uu2["star_lock_until"] = battle._t
@@ -702,12 +702,12 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·
 				var ob: Dictionary = cg3["o"]
 				if not ob.get("alive", false): continue
 				boomed.append(ob)
-				battle._apply_damage_from(uu, ob, battle._atk_dmg(uu, mult, ob, true), Color("#c9a0ff"))
+				battle._damage._apply_damage_from(uu, ob, battle._atk_dmg(uu, mult, ob, true), Color("#c9a0ff"))
 				battle._knock_up(ob, c3, 6.6)
 			for o3 in battle._targeting._enemies_of(uu):                               # 爆炸半径150码内其余敌也吃原伤害
 				if not o3.get("alive", false) or boomed.has(o3): continue
 				if (o3["pos"] as Vector2).distance_to(c3) > 150.0: continue
-				battle._apply_damage_from(uu, o3, battle._atk_dmg(uu, mult, o3, true), Color("#c9a0ff"))
+				battle._damage._apply_damage_from(uu, o3, battle._atk_dmg(uu, mult, o3, true), Color("#c9a0ff"))
 			if is_instance_valid(hole): hole.queue_free()
 		var tw = battle._reg_tween()
 		tw.tween_method(step, 0.0, end_d, end_d / 140.0).set_trans(Tween.TRANS_LINEAR)   # 140码/s推进到边界

@@ -12,8 +12,8 @@ func _sk_pirate_rum(u: Dictionary) -> void:                     # 海盗龟·朗
 	u["rum_until"] = battle._t + 6.0; u["rum_dps"] = u["maxHp"] * 0.04   # 每秒回4%maxHP×6秒(分秒HoT·per-frame _heal结算)
 	u["rum_glow_until"] = battle._t + 6.0                               # 暖色酒气护光标记
 	var _rum_dr: float = u["atk"] * 0.15                          # 回合制 pirate·heal defUpAtkPct{pct:15} → +15%×ATK 双抗·6秒
-	battle._buff(u, "def", _rum_dr, false, 6.0); battle._buff(u, "mr", _rum_dr, false, 6.0)
-	battle._buff(u, "def", u["atk"] * 0.5, false, 6.0)                  # +0.5A护甲(用户2026-07-14确认保留·连同上方0.15A=护甲共+0.65A/魔抗+0.15A)
+	battle._damage._buff(u, "def", _rum_dr, false, 6.0); battle._damage._buff(u, "mr", _rum_dr, false, 6.0)
+	battle._damage._buff(u, "def", u["atk"] * 0.5, false, 6.0)                  # +0.5A护甲(用户2026-07-14确认保留·连同上方0.15A=护甲共+0.65A/魔抗+0.15A)
 	var ship = _pirate_get_ship(u)                             # 海盗船扔酒瓶(从持久船抛向海盗)
 	var ship2d: Vector2 = (ship.get_meta("ship2d") if ship != null else u["pos"] + Vector2(0.0, -220.0))
 	var ship_h: float = (ship.get_meta("ship_h") if ship != null else 5.0)
@@ -83,7 +83,7 @@ func _sk_pirate_volley(u: Dictionary, tgt) -> void:              # 海盗龟·�
 				battle._skill_ring(land, Color(1.0, 0.55, 0.3, 0.5), 250.0)   # 落点250码范围环
 				for o in battle._targeting._enemies_of(u):                        # 落点250码内: 0.5A+2%目标maxHp 物理(红)
 					if o.get("alive", false) and o["pos"].distance_to(land) <= 250.0:
-						battle._apply_damage_from(u, o, battle._atk_dmg(u, 0.5, o) + int(o["maxHp"] * 0.02), Color("#ff4444")))
+						battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 0.5, o) + int(o["maxHp"] * 0.02), Color("#ff4444")))
 			})
 
 func _pirate_get_ship(u: Dictionary) -> Sprite3D:   # 该海盗的持久演出船(一只·首次建后驻场·火炮/朗姆/登场轰击共用·不重复生成不淡出·用户2026-07-14"船是一只在的")
@@ -186,7 +186,7 @@ func _pirate_shotgun(u: Dictionary, tgt) -> void:
 		battle._shotgun_pellet(u["pos"], u["pos"] + d * 400.0, Color(1.0, 0.86, 0.5, 0.95), 0.72)   # 弹丸VFX(射程400·慢速用户2026-07-14)
 		var hit = battle._basic_first_blocker(u, d)                # 该方向路径第一敌(含蛋·障碍穿我方不挡)
 		if hit != null and hit["pos"].distance_to(u["pos"]) <= 400.0:
-			battle._apply_damage_from(u, hit, battle._atk_dmg(u, 0.5, hit), Color("#ffd07a"))   # 0.5A物理
+			battle._damage._apply_damage_from(u, hit, battle._atk_dmg(u, 0.5, hit), Color("#ffd07a"))   # 0.5A物理
 			var pd: Vector2 = (hit["pos"] - u["pos"]).normalized()               # 40码轻击退(不用_knockback避免8连击飞震屏)
 			hit["pos"] += pd * 40.0
 			hit["pos"].x = clampf(hit["pos"].x, battle.ARENA.position.x, battle.ARENA.end.x)
@@ -247,7 +247,7 @@ func _pirate_death_grapple(pirate: Dictionary, killer: Dictionary) -> void:
 			return
 		battle._skill_ring(kk["pos"], Color(1.0, 0.85, 0.4, 0.65), 42.0)
 		var dest: Vector2 = _pirate_grapple_dest(from2d, kpos)
-		battle._stun(kk, 0.5, "_pirate_death_grapple", true)   # 拉拽期定身(不乱动)
+		battle._damage._stun(kk, 0.5, "_pirate_death_grapple", true)   # 拉拽期定身(不乱动)
 		var kstart: Vector2 = kk["pos"]
 		var ct2 = [0.0]
 		var pull = battle._reg_tween()
@@ -282,7 +282,7 @@ func _pirate_grapple_dest(pirate_pos: Vector2, killer_pos: Vector2) -> Vector2:
 func _pirate_grapple_hit(pk, kk) -> void:
 	if not (kk is Dictionary and kk.get("alive", false)):
 		return
-	battle._apply_damage_from(pk, kk, int(float(kk["maxHp"]) * 0.25), Color("#ffd07a"), 0.0, true)
+	battle._damage._apply_damage_from(pk, kk, int(float(kk["maxHp"]) * 0.25), Color("#ffd07a"), 0.0, true)
 	battle._burst_vfx("res://assets/sprites/vfx/cannon-blast.png", kk["pos"], 120.0, 0.4)
 	battle._shake(0.06)
 

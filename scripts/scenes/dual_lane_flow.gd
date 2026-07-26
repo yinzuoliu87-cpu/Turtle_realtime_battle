@@ -569,7 +569,7 @@ func _dl_flow_check() -> void:
 	for u in battle._units:
 		if u.get("_egg_final", false) and u.get("alive", false) and battle._t >= float(u.get("_egg_selfloss_next", 1.0e18)):
 			u["_egg_selfloss_next"] = battle._t + battle.EGG_SELFLOSS_IV
-			battle._apply_damage(u, maxi(1, int(round(u["maxHp"] * battle.EGG_SELFLOSS_PCT))), Color(UIPalette.TRUE_DMG), null, "tru", true)   # 自损=真伤 → 白(跟「真实=白」惯例·用户2026-07-24; 原 #ff9a9a 粉)
+			battle._damage._apply_damage(u, maxi(1, int(round(u["maxHp"] * battle.EGG_SELFLOSS_PCT))), Color(UIPalette.TRUE_DMG), null, "tru", true)   # 自损=真伤 → 白(跟「真实=白」惯例·用户2026-07-24; 原 #ff9a9a 粉)
 	# 蛋血同步回 GameState + 蛋破判负(谁蛋先破谁输)
 	for u in battle._units:
 		if u.get("_isEgg", false):

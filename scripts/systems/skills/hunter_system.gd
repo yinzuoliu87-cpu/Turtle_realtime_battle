@@ -40,8 +40,8 @@ func _sk_hunter_hide(u: Dictionary) -> void:                     # 猎人龟·�
 	u["_roll_ghost_t"] = 0.0
 	u["hunter_roll_active"] = true
 	u["hunter_roll_buff"] = true                                # 下次普攻附带0.9A物理(吃吸血)
-	battle._buff(u, "dodge", 0.25, true, 5.0)                          # 25%闪避5秒
-	battle._grant_shield(u, u["atk"] * 0.7)                            # 0.7A护盾
+	battle._damage._buff(u, "dodge", 0.25, true, 5.0)                          # 25%闪避5秒
+	battle._damage._grant_shield(u, u["atk"] * 0.7)                            # 0.7A护盾
 
 func _hunter_roll_best_dest(from2d: Vector2, pref_dir: Vector2) -> Vector2:
 	# 墙感智能翻滚落点(用户2026-07-14"被逼到边界/角落怎么翻滚"): 意图方向撞墙时改沿墙/朝内翻滚,
@@ -132,8 +132,8 @@ func _sk_hunter_shot(u: Dictionary, tgt) -> void:              # 猎人龟·精�
 		battle._shake(0.06)
 		battle._pending_shots.append({"delay": 0.16, "fn": func() -> void:
 			if not tref.get("alive", false): return
-			battle._apply_damage_from(uu, tref, battle._atk_dmg(uu, 2.0, tref), Color("#ff4444"))   # 物理红(2.0A物理狙击·飘字色规范)
-			battle._apply_dot_stacks(tref, "poison", maxi(1, int(round(uu["atk"] * 0.5))), uu)   # 中毒5s
+			battle._damage._apply_damage_from(uu, tref, battle._atk_dmg(uu, 2.0, tref), Color("#ff4444"))   # 物理红(2.0A物理狙击·飘字色规范)
+			battle._damage._apply_dot_stacks(tref, "poison", maxi(1, int(round(uu["atk"] * 0.5))), uu)   # 中毒5s
 			tref["heal_reduce_until"] = battle._t + 5.0                         # 治疗削减50%·5秒
 			tref["heal_reduce_pct"] = maxf(float(tref.get("heal_reduce_pct", 0.0)), 0.5)
 			tref["hunt_mark_until"] = battle._t + 5.0                           # 猎杀印记5秒: <24%即处决(头顶状态图标行贴十字准星·_layout_head_badges·不用文字)
@@ -196,7 +196,7 @@ func _hunter_steal_fx(killer: Dictionary, from2d: Vector2) -> void:   # 被动�
 ## 由 黑洞 / 滞空 / 熔岩腾空 / 赛博机甲组装 等设置。
 ## 后果(用户2026-07-19 实测报告「机甲变身时被猎人龟直接处决」): 组装期机甲血量从 1% 往上爬,
 ## 正卡在 14% 处决线下, 猎人每 0.1s 扫场 → 射处决箭 → `_hunter_exec_arrow_hit` 直接 hp=0 + battle._kill,
-## 完全绕过 `battle._apply_damage_from` 里的 `_assembling` 免疫闸。黑洞中/滞空中的单位同样能被处决。
+## 完全绕过 `battle._damage._apply_damage_from` 里的 `_assembling` 免疫闸。黑洞中/滞空中的单位同样能被处决。
 func _hunter_exec_arrow_hit(src, tgt) -> void:   # 强化箭命中: 目标仍<斩杀线且非免疫→处决+窃取(demo靶不真死复位)
 	if tgt == null or not tgt.get("alive", false): return
 	tgt["_hunt_exec_pending"] = false

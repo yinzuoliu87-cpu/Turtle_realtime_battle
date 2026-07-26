@@ -29,7 +29,7 @@ func _ice_fissure_go(u: Dictionary, si: int, start: Vector2, dir: Vector2) -> vo
 func _ice_fissure_hit(u: Dictionary, o: Dictionary, si: int) -> void:
 	if not o.get("alive", false):
 		return
-	battle._apply_damage_from(u, o, battle._resolve_dmg(u, float([25, 40, 60][si]), o, true), Color("#bfe9ff"), 0.0, false, true)   # 魔法伤
+	battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, float([25, 40, 60][si]), o, true), Color("#bfe9ff"), 0.0, false, true)   # 魔法伤
 	if not o.get("airborne", false) and not o.get("_knock_immune", false):   # 免击飞(017不沉之锚): 直接设airborne会绕过_knockback的守卫(用户2026-07-19"修吧")
 		o["airborne"] = true; o["vy"] = 6.6; o["vx"] = 0.0; o["vz"] = 0.0   # 竖直击飞~0.6s(2*6.6/22)
 	var fz: float = [1.0, 1.8, 2.5][si]   # freeze dur per star (user 2026-07-03)
@@ -136,12 +136,12 @@ func _ice_bottle_arc(pf: float, spr: Sprite3D, from2d: Vector2, to2d: Vector2) -
 func _ice_bottle_hit(spr: Sprite3D, u: Dictionary, t: Dictionary, si: int) -> void:
 	if is_instance_valid(spr): spr.queue_free()
 	if not t.get("alive", false): return
-	battle._apply_damage_from(u, t, battle._resolve_dmg(u, float([40, 60, 100][si]), t, true), Color("#bfe9ff"), 0.0, false, true)
+	battle._damage._apply_damage_from(u, t, battle._resolve_dmg(u, float([40, 60, 100][si]), t, true), Color("#bfe9ff"), 0.0, false, true)
 	t["spd_move_mult"] = 0.8; t["spd_aspd_mult"] = 0.9; t["spd_dbf_until"] = battle._t + 5.0
 	_ice_burst(t["pos"])
 	_frost_puff(t["pos"])
 	battle._shake(0.06)
-	battle._knockback(u, t, 16.0)
+	battle._damage._knockback(u, t, 16.0)
 	battle._skill_ring(t["pos"], Color(0.7, 0.9, 1.0, 0.55), 62.0)
 
 func _ice_burst(pos2d: Vector2) -> void:
@@ -200,8 +200,8 @@ func _ice_frost_tick(u: Dictionary, center: Vector2, radius: float) -> void:
 		if not o.get("alive", false):
 			continue
 		if o["pos"].distance_to(center) <= radius:
-			battle._buff(o, "mr", -0.25, true, 0.65)   # 圈内 -25%魔抗(刷新, 略>0.5s跳间隔)
-			battle._apply_damage_from(u, o, battle._atk_dmg(u, 0.18, o, true), Color("#bfe9ff"))
+			battle._damage._buff(o, "mr", -0.25, true, 0.65)   # 圈内 -25%魔抗(刷新, 略>0.5s跳间隔)
+			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 0.18, o, true), Color("#bfe9ff"))
 
 func _ice_frost_rain(center: Vector2, radius: float) -> void:    # 冰霜场视觉: 范围环 + 几片落冰
 	battle._skill_ring(center, Color(0.55, 0.85, 1.0, 0.4), radius)
@@ -244,7 +244,7 @@ func _sk_ice_team_shield(u: Dictionary) -> void:               # 寒冰龟·团�
 	var boom_mult: float = 5.0 if solo else 1.0                     # 爆炸1×ATK; 独狼5×ATK
 	for o in battle._targeting._allies_of(u):                                    # 含自己=全体友军
 		_frost_shield_burst(o)                                 # 若已挂上一发未爆→先结算(防覆盖丢爆裂)
-		battle._grant_shield(o, shield_amt, 4.0)                      # 冰霜盾·4秒
+		battle._damage._grant_shield(o, shield_amt, 4.0)                      # 冰霜盾·4秒
 		o["frost_shield_until"] = battle._t + 4.0                     # 爆裂追踪(独立通用shield_until): 到期/盾清零/持盾者死 任一→爆
 		o["frost_shield_src"] = u
 		o["frost_shield_boom"] = boom_mult
@@ -269,7 +269,7 @@ func _frost_shield_burst(ally: Dictionary) -> void:
 		var c: Vector2 = ally["pos"]
 		for o in battle._targeting._enemies_of(src):
 			if o.get("alive", false) and o["pos"].distance_to(c) <= 250.0:
-				battle._apply_damage_from(src, o, battle._atk_dmg(src, boom, o, true), Color("#bfe9ff"))   # boom×ATK 魔法(1或5)
+				battle._damage._apply_damage_from(src, o, battle._atk_dmg(src, boom, o, true), Color("#bfe9ff"))   # boom×ATK 魔法(1或5)
 		battle._burst_vfx("res://assets/sprites/vfx/fx-shock-ring.png", c, 520.0, 0.14)   # 冰爆冲击环(≈250码半径)
 		battle._skill_ring(c, Color(0.68, 0.9, 1.0, 0.6), 250.0)
 		battle._vfx._impact_particles(c, 0.0); battle._shake(0.05)

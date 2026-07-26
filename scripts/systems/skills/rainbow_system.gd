@@ -14,12 +14,12 @@ func _rainbow_enh_prism_proc(u: Dictionary) -> void:            # 强化棱镜4�
 	match c:
 		0:
 			for o in battle._targeting._allies_of(u):
-				battle._buff(o, "lifesteal", 0.1, false, 5.0)
+				battle._damage._buff(o, "lifesteal", 0.1, false, 5.0)
 			battle._vfx._float_text(u["pos"] + Vector2(0, -60), "橙·全体吸血", Color("#ff9d3c"))
 		1:
 			if not es.is_empty():
 				var t = es[battle._battle_rng.randi() % es.size()]
-				battle._apply_dot_stacks(t, "burn", maxi(1, int(round(float(u["atk"]) * 0.67))), u)
+				battle._damage._apply_dot_stacks(t, "burn", maxi(1, int(round(float(u["atk"]) * 0.67))), u)
 		2:
 			if not es.is_empty():
 				var t2 = es[battle._battle_rng.randi() % es.size()]
@@ -80,10 +80,10 @@ func _rainbow_storm_tick(u: Dictionary, center: Vector2, radius: float, ti: int)
 		if not o.get("alive", false):
 			continue
 		if o["pos"].distance_to(center) <= radius:
-			battle._buff(o, "def", -0.20, true, 0.65)   # 圈内-20%护甲
-			battle._buff(o, "mr", -0.20, true, 0.65)    # 圈内-20%魔抗
-			battle._apply_damage_from(u, o, battle._atk_dmg(u, 0.1, o, true), Color("#ff8ad8"))
-			battle._apply_damage_from(u, o, int(u["atk"] * 0.05), Color("#fff0a0"), 0.0, true)   # 8跳共0.8魔+0.4真=原值
+			battle._damage._buff(o, "def", -0.20, true, 0.65)   # 圈内-20%护甲
+			battle._damage._buff(o, "mr", -0.20, true, 0.65)    # 圈内-20%魔抗
+			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 0.1, o, true), Color("#ff8ad8"))
+			battle._damage._apply_damage_from(u, o, int(u["atk"] * 0.05), Color("#fff0a0"), 0.0, true)   # 8跳共0.8魔+0.4真=原值
 			battle._storm_shred(o)   # ★碎甲: 把"削护甲魔抗"可视化
 
 # 碎甲: 削防御的可视化(AI棱镜碎片爆在敌人身上)
@@ -105,7 +105,7 @@ func _rainbow_storm_end(u: Dictionary) -> void:
 func _sk_rainbow_shield(u: Dictionary) -> void:                  # 彩虹龟·棱镜护盾 ✅
 	_rainbow_prism_shield_vfx(u)   # 七彩棱镜爆发+每友军护盾罩(用户2026-07-13补施法特效)
 	for o in battle._targeting._allies_of(u):
-		battle._grant_shield(o, u["atk"] * 0.65, 4.0)   # 彩虹棱镜护盾(通用护盾4秒·封板L268)
+		battle._damage._grant_shield(o, u["atk"] * 0.65, 4.0)   # 彩虹棱镜护盾(通用护盾4秒·封板L268)
 
 func _sk_rainbow_storm(u: Dictionary) -> void:                  # 彩虹龟·全色风暴 (重做2026-07-13: AI棱镜漩涡+GPU彩虹粒子+碎甲可视化-20%护甲魔抗+亮边AOE·期间锁龟能)
 	u["storm_until"] = battle._t + 4.0                 # 风暴4秒期间龟能锁定(用户)
@@ -179,10 +179,10 @@ func _sk_rainbow_reflect(u: Dictionary) -> void:               # 彩虹龟·反�
 		tw.tween_callback(func() -> void:
 			battle._beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", from_p, tp, 30.0, Color(_col.r, _col.g, _col.b, 0.9), 0.55, 0.9)   # 棱镜反射光束(当跳色·时长0.3→0.55更慢更看得清)
 			if _ally:
-				if tref.get("alive", false): battle._heal(tref, u["atk"] * 0.5)
+				if tref.get("alive", false): battle._damage._heal(tref, u["atk"] * 0.5)
 				battle._reflect_pop(tp, float(tref.get("height", 0.0)), Color(0.3, 1.0, 0.5, 0.9))    # 治友=绿pop
 			else:
-				if tref.get("alive", false): battle._apply_damage_from(u, tref, battle._atk_dmg(u, 0.5, tref, true), Color("#ff8ad8"))
+				if tref.get("alive", false): battle._damage._apply_damage_from(u, tref, battle._atk_dmg(u, 0.5, tref, true), Color("#ff8ad8"))
 				battle._reflect_pop(tp, float(tref.get("height", 0.0)), Color(_col.r, _col.g, _col.b, 0.95)))   # 伤敌=当跳色pop
 
 # 反射弹射命中pop(加性glow缩放淡出)

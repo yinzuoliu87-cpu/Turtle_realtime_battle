@@ -22,7 +22,7 @@ func _sk_line_link(u: Dictionary) -> void:                       # 线条龟·�
 	foes.sort_custom(func(x, y): return u["pos"].distance_squared_to(x["pos"]) < u["pos"].distance_squared_to(y["pos"]))
 	var picks: Array = foes.slice(0, mini(2, foes.size()))
 	for o in picks:
-		battle._apply_damage_from(u, o, battle._atk_dmg(u, 0.8, o), Color("#dddddd"))
+		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 0.8, o), Color("#dddddd"))
 		battle._add_stack(o, "ink", 1, _ink_cap(u))
 	if picks.size() < 2: return                                  # 只有1个敌人 → 无链路可连
 	battle._make_ink_link(picks[0], picks[1], u)
@@ -50,7 +50,7 @@ func _ink_link_transfer(u: Dictionary, taken: float) -> void:    # 受伤30%以�
 	# src = 施法的线条龟(不是受伤的那只敌人!) — 否则敌人"打了队友"会吃到吸血并被记进输出统计
 	var sc: Dictionary = L["caster"] if L["caster"].get("alive", false) else u
 	battle._ink_link_busy = true
-	battle._apply_damage_from(sc, p, amt, Color("#b0b0c8"), 0.0, true, true)   # raw=真实(墨迹系·速写融入被动) / from_equip=true 防反伤·叠层循环
+	battle._damage._apply_damage_from(sc, p, amt, Color("#b0b0c8"), 0.0, true, true)   # raw=真实(墨迹系·速写融入被动) / from_equip=true 防反伤·叠层循环
 	battle._ink_link_busy = false
 
 
@@ -77,7 +77,7 @@ func _sk_line_ink_bomb(u: Dictionary) -> void:                  # 线条龟·墨
 			if not o.get("alive", false): continue
 			if (o["pos"] as Vector2).distance_to(land) > battle.INK_BOMB_RADIUS: continue   # ★只打落点300码内(用户2026-07-15: 原全体)
 			for i in range(4):
-				battle._apply_damage_from(uu, o, battle._atk_dmg(uu, 0.25, o, true), Color("#c9b0ff"))
+				battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, 0.25, o, true), Color("#c9b0ff"))
 			battle._add_stack(o, "ink", 4, _ink_cap(uu))
 			battle._burst_vfx("res://assets/sprites/vfx/ink-splat.png", o["pos"], 110.0, 0.9)   # 每敌身上墨溅
 		battle._skill_ring(land, Color(0.55, 0.4, 0.75, 0.5), battle.INK_BOMB_RADIUS))   # 环显300码AOE范围
@@ -118,7 +118,7 @@ func _sk_line_finish(u: Dictionary) -> void:
 		return
 	var scale: float = 0.7 + 0.45 * maxi(0, best_ink)   # 基础0.7+每层墨迹0.45×ATK (恢复文本设计值, 原0.8/0.35)
 	battle._weapon_slash(u["pos"], best["pos"], Color(0.32, 0.24, 0.46))   # 画龙点睛·大终笔墨挥(用户2026-07-15做终笔分量)
-	battle._apply_damage_from(u, best, battle._atk_dmg(u, scale, best), Color("#eeeeee"))
+	battle._damage._apply_damage_from(u, best, battle._atk_dmg(u, scale, best), Color("#eeeeee"))
 	battle._burst_vfx("res://assets/sprites/vfx/ink-splat.png", best["pos"], 210.0, 0.7)   # 点睛大墨爆
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
 	battle._skill_ring(best["pos"], Color(0.9, 0.9, 0.9, 0.5), 52.0)   # 画龙点睛不消耗墨迹(用户封板L466·原_consume_stacks已删)

@@ -31,7 +31,7 @@ func _gambler_bet_ch(u: Dictionary) -> float:
 func _gambler_bet_multi(u: Dictionary, tgt: Dictionary, ch: float) -> void:
 	if not u.get("alive", false) or tgt == null or not tgt.get("alive", false): return
 	if battle._battle_rng.randf() >= ch: return
-	battle._heal(u, u["atk"] * 0.3)   # ★每触发一次多重打击回0.3ATK生命(用户2026-07-14·赌注期间回血本)
+	battle._damage._heal(u, u["atk"] * 0.3)   # ★每触发一次多重打击回0.3ATK生命(用户2026-07-14·赌注期间回血本)
 	var bdmg: int = battle._atk_dmg(u, 1.0, tgt)   # 额外一发=普攻1.0A
 	battle._pending_shots.append({"delay": 0.09, "fn": func() -> void:
 		_gambler_throw_hit(u, tgt, bdmg, false, false)   # 甩基础牌(普攻物理红·非穿透·自身不再掷·递归在下句续)
@@ -49,7 +49,7 @@ func _gambler_throw_hit(u: Dictionary, tgt: Dictionary, dmg: int, roll_multi: bo
 	var th: float = float(tgt.get("height", 0.0))
 	var t: Texture2D = load("res://assets/sprites/vfx/gambler-card.png")
 	if t == null:
-		battle._apply_damage_from(u, tgt, dmg, dcol, 0.0, is_true)
+		battle._damage._apply_damage_from(u, tgt, dmg, dcol, 0.0, is_true)
 		if roll_multi: _gambler_bet_multi(u, tgt, _gambler_bet_ch(u))
 		return
 	var card = Sprite3D.new()
@@ -78,7 +78,7 @@ func _gambler_throw_hit(u: Dictionary, tgt: Dictionary, dmg: int, roll_multi: bo
 	ctw.tween_callback(func() -> void:
 		if is_instance_valid(card): card.queue_free()
 		if tgt.get("alive", false):
-			battle._apply_damage_from(u, tgt, dmg, dcol, 0.0, is_true)   # ★命中才跳伤害(穿透金/物理红)
+			battle._damage._apply_damage_from(u, tgt, dmg, dcol, 0.0, is_true)   # ★命中才跳伤害(穿透金/物理红)
 			if roll_multi: _gambler_bet_multi(u, tgt, _gambler_bet_ch(u))  # 每张牌触发多重打击(B)
 		_gambler_pop(tp, th, Color(1.0, 0.85, 0.35, 0.9)))
 
@@ -123,7 +123,7 @@ func _gambler_apply_wheel_suit(u: Dictionary, suit: int) -> void:   # 命运之�
 			u["crit"] = float(u["crit"]) + 0.02; u["armor_pen"] = float(u.get("armor_pen", 0.0)) + 1.0
 			battle._vfx._float_text(u["pos"] + Vector2(0, -64), "♦ 暴击+2% 护穿+1", Color("#ff9f43"))
 		_:
-			battle._buff(u, "lifesteal", 0.005, false, 9999.0); u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + 0.02
+			battle._damage._buff(u, "lifesteal", 0.005, false, 9999.0); u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + 0.02
 			battle._vfx._float_text(u["pos"] + Vector2(0, -64), "♣ 吸血+0.5% 攻速+2%", Color("#5be08a"))
 	battle._recalc_stats(u)
 
@@ -137,7 +137,7 @@ func _gambler_apply_wheel_stacks(u: Dictionary) -> void:   # 命运之轮跨场�
 	for i in range(int(ws.get("diamond", 0))):
 		u["crit"] = float(u["crit"]) + 0.02; u["armor_pen"] = float(u.get("armor_pen", 0.0)) + 1.0
 	for i in range(int(ws.get("club", 0))):
-		battle._buff(u, "lifesteal", 0.005, false, 9999.0); u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + 0.02
+		battle._damage._buff(u, "lifesteal", 0.005, false, 9999.0); u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + 0.02
 	battle._recalc_stats(u)
 
 # 赌神小型glow pop(缩放淡出·放慢放大更明显·用户2026-07-14)
@@ -176,21 +176,21 @@ func _gambler_wild_vfx(u: Dictionary, tgt: Dictionary) -> void:
 		ctw.tween_callback(func() -> void:
 			if is_instance_valid(card): card.queue_free()
 			if tgt.get("alive", false):
-				battle._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.0, tgt), Color("#ff4444"))   # ★命中才跳伤害
-				battle._buff(tgt, "atk", -0.15, true)                                        # 减攻也命中才上
+				battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.0, tgt), Color("#ff4444"))   # ★命中才跳伤害
+				battle._damage._buff(tgt, "atk", -0.15, true)                                        # 减攻也命中才上
 			_gambler_pop(tp, th, Color(1.0, 0.85, 0.35, 0.95))        # 命中金光
 			_gambler_pop(tp, th + 0.25, Color(1.0, 0.30, 0.30, 0.8)))  # 减攻红标
 	else:   # 无牌素材兜底: 即时结算目标伤害+减攻
 		if tgt.get("alive", false):
-			battle._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.0, tgt), Color("#ff4444"))
-			battle._buff(tgt, "atk", -0.15, true)
+			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.0, tgt), Color("#ff4444"))
+			battle._damage._buff(tgt, "atk", -0.15, true)
 	battle._shield_dome(u)                                                   # 护盾罩
 	_gambler_pop(u["pos"], float(u.get("height", 0.0)), Color(0.30, 1.0, 0.5, 0.85))   # 回血绿
 
 func _sk_gambler_bet(u: Dictionary, tgt: Dictionary) -> void:    # 赌神龟·赌注(用户封板·100龟能): 需当前生命>40%; 消耗当前生命40%→7段物理砸目标(共≈0.4×当前生命); 施放3秒多重概率+20%
 	if tgt == null or not tgt.get("alive", false): return
 	if u["hp"] < u["maxHp"] * 0.40:                              # ★低血模式(用户2026-07-14): 血不够押本→转而回8%maxHp + 3秒多重+20%(不甩牌·不消耗血)
-		battle._heal(u, u["maxHp"] * 0.08)
+		battle._damage._heal(u, u["maxHp"] * 0.08)
 		u["gambler_bet_until"] = battle._t + 3.0
 		battle._vfx._flash(u, Color(0.4, 1.7, 0.6))                         # 绿闪(求稳回血)
 		battle._skill_ring(u["pos"], Color(0.3, 1.0, 0.5, 0.55), 54.0)   # 绿环
@@ -222,7 +222,7 @@ func _sk_gambler_fate_wheel(u: Dictionary) -> void:             # 赌神龟·命
 		, "src": u})
 
 func _sk_gambler_wild(u: Dictionary, tgt: Dictionary) -> void:   # 赌神龟·万能牌: 丢1张牌=1段1.0A物理(用户2026-07-09"只造成1段伤害")+自身0.25A护盾+回5%maxHp+目标攻-15%
-	battle._grant_shield(u, u["atk"] * 0.25)   # 自身护盾/回血即时(施法者)
-	battle._heal(u, u["maxHp"] * 0.05)
+	battle._damage._grant_shield(u, u["atk"] * 0.25)   # 自身护盾/回血即时(施法者)
+	battle._damage._heal(u, u["maxHp"] * 0.05)
 	_gambler_wild_vfx(u, tgt)   # 丢小丑牌; ★目标伤害+减攻在牌命中回调里结算(命中才跳伤害·用户2026-07-14)
 

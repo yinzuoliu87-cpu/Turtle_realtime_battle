@@ -478,11 +478,11 @@ func _sk_headless_fear(u: Dictionary, _tgt = null) -> void:      # 无头·恐�
 		if not o.get("alive", false): continue
 		if o["pos"].distance_to(cx) > 200.0: continue
 		if o.get("_eggImmune", false): continue
-		battle._stun(o, 3.0, "_sk_headless_fear")
+		battle._damage._stun(o, 3.0, "_sk_headless_fear")
 		_headless_fear_mark(o)
 
 func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万千触须(封板·160龟能·虐杀原形毁灭者Q1): 全场无差别触须·伸0.3s→停→收3.0s·自身硬控·+22%吸血; 2026-07-17演出: 起手紫黑气爆+裂纹环→触须8×5网格布满全场(Q9"特效得布满")波前由近及远爆出→痉挛定格→3.0s撕扯缩回+吸血红珠回流
-	battle._stun(u, 4.0, "_sk_headless_tendrils", true)   # 自身硬控全程(施法动作·亡灵拉全场自己也搭进去)
+	battle._damage._stun(u, 4.0, "_sk_headless_tendrils", true)   # 自身硬控全程(施法动作·亡灵拉全场自己也搭进去)
 	var center: Vector2 = u["pos"]
 	var uu: Dictionary = u
 	# 用户2026-07-17: 中心一个病毒状黑色球体随触须爆发脉动(变大变小)
@@ -544,9 +544,9 @@ func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万�
 			if not o.get("alive", false) or is_same(o, uu): continue
 			if (o["pos"] as Vector2).distance_to(center) > 1500.0: continue   # 射程1500码(用户2026-07-19; 原为全场无差别)
 			var sc: float = 1.0 if battle._is_hostile(uu, o) else 0.5
-			battle._apply_damage_from(uu, o, battle._atk_dmg(uu, sc, o), Color("#9b3bff"), 0.22)
+			battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, sc, o), Color("#9b3bff"), 0.22)
 			if not o.get("_eggImmune", false):
-				battle._stun(o, 2.7, "_sk_headless_tendrils", true)   # 眩晕持续到脱离
+				battle._damage._stun(o, 2.7, "_sk_headless_tendrils", true)   # 眩晕持续到脱离
 				o["_tendril_stun"] = true
 			_headless_tendril_shoot(center, ((o["pos"] as Vector2) - center).normalized() if ((o["pos"] as Vector2) - center).length() > 1.0 else Vector2.RIGHT, deg_to_rad(18.0), maxf(90.0, (o["pos"] as Vector2).distance_to(center)), true, 0.0, 2.4)   # 命中者: 从龟身甩一根粗触须缠住
 			if battle._is_hostile(uu, o): _headless_drain_dot(o["pos"], uu)   # 吸血红珠回流
@@ -557,7 +557,7 @@ func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万�
 			if not o.get("alive", false) or is_same(o, uu): continue
 			if (o["pos"] as Vector2).distance_to(center) > 1500.0: continue   # 射程1500码(用户2026-07-19; 原为全场无差别)
 			var sc: float = 1.5 if battle._is_hostile(uu, o) else 0.5
-			battle._apply_damage_from(uu, o, battle._atk_dmg(uu, sc, o), Color("#ff3b6b"), 0.22)
+			battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, sc, o), Color("#ff3b6b"), 0.22)
 			battle._vfx._hit_spark(o)
 			if o.get("_tendril_stun", false):
 				o["_tendril_stun"] = false

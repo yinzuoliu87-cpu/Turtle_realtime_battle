@@ -35,8 +35,8 @@ func _dragon_hit_enemy(u: Dictionary, o: Dictionary, si: int, expl: Texture2D, b
 	if not o.get("alive", false):
 		return
 	var base_e: float = u["atk"] * [0.7, 1.0, 2.0][si] + float([50, 120, 1500][si])
-	battle._apply_damage_from(u, o, battle._resolve_dmg(u, base_e, o, true), Color("#c86bff"), 0.0, false, true)   # 魔法伤害
-	battle._apply_dot_stacks(o, "burn", [30, 45, 70][si], u)   # 龙蛋削弱(用户2026-07-23): 灼烧固定30/45/70层(原0.67×ATK)
+	battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, base_e, o, true), Color("#c86bff"), 0.0, false, true)   # 魔法伤害
+	battle._damage._apply_dot_stacks(o, "burn", [30, 45, 70][si], u)   # 龙蛋削弱(用户2026-07-23): 灼烧固定30/45/70层(原0.67×ATK)
 	if expl != null:
 		battle.play_sheet_vfx(o["pos"], expl, 8, 150.0, 0.5, 0.7)
 	battle._ground_fire(o["pos"], burn, 82.0)
@@ -46,7 +46,7 @@ func _dragon_hit_enemy(u: Dictionary, o: Dictionary, si: int, expl: Texture2D, b
 func _dragon_heal_ally(u: Dictionary, o: Dictionary, si: int) -> void:
 	if not o.get("alive", false):
 		return
-	battle._heal(o, u["atk"] * [0.7, 1.0, 2.0][si] + float([70, 150, 1000][si]))
+	battle._damage._heal(o, u["atk"] * [0.7, 1.0, 2.0][si] + float([70, 150, 1000][si]))
 	battle._skill_ring(o["pos"], Color(0.45, 1.0, 0.55, 0.55), 46.0)
 
 # 前摇: 召唤点火球聚大变亮 + 火花从外向内收束 + 脉动环 (蓄力感)

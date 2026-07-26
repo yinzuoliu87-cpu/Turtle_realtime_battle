@@ -25,7 +25,7 @@ func _bubble_shield_burst(ally: Dictionary) -> void:
 		src["energy_lock_until"] = battle._t          # 盾爆裂(到期/打破/对象死)→解锁施法者龟能(可能提前爆·用户2026-07-15)
 		for o in battle._targeting._enemies_of(src):
 			if o.get("alive", false):
-				battle._apply_damage_from(src, o, battle._atk_dmg(src, 2.0, o, true), Color("#cdebff"))
+				battle._damage._apply_damage_from(src, o, battle._atk_dmg(src, 2.0, o, true), Color("#cdebff"))
 		battle._skill_ring(ally["pos"], Color(0.75, 0.92, 1.0, 0.6), 90.0)   # 泡沫破裂冲击波(全体敌)
 		for _bk in range(10): _bubble_rise(ally["pos"] + Vector2(randf_range(-60.0, 60.0), randf_range(-40.0, 40.0)))   # 泡沫爆裂四涌
 	battle._burst_depth -= 1
@@ -77,7 +77,7 @@ func _sk_bubble_shield(u: Dictionary, _tgt: Dictionary) -> void: # 泡泡龟·�
 	var ally = battle._lowest_hp_ally(u)
 	if ally == null: ally = u
 	_bubble_shield_burst(ally)                       # 若该对象已挂着上一发泡泡盾未爆→先结算(防覆盖丢爆裂)
-	battle._grant_shield(ally, u["atk"] * 1.8, 4.0)         # 1.8A泡泡盾·4秒限时(通用护盾原语)
+	battle._damage._grant_shield(ally, u["atk"] * 1.8, 4.0)         # 1.8A泡泡盾·4秒限时(通用护盾原语)
 	ally["bubble_shield_until"] = battle._t + 4.0           # 泡泡爆裂追踪(独立于通用shield_until): 到期/盾清零/对象死 任一→爆裂
 	ally["bubble_shield_src"] = u
 	u["energy_lock_until"] = battle._t + 4.0                # 泡泡盾期间锁龟能(用户2026-07-15·盾在=不充能不放其它·爆裂时解锁·复用energy_lock_until)
@@ -120,12 +120,12 @@ func _sk_bubble_burst(u: Dictionary, tgt) -> void:              # 泡泡龟·泡
 		if not uu.get("alive", false): return
 		for o in battle._targeting._enemies_of(uu):
 			if o.get("alive", false) and o["pos"].distance_to(cc) <= 200.0:   # 门间200码带内敌
-				battle._apply_damage_from(uu, o, int(battle._mitigate(uu, cons, o, true)) + battle._atk_dmg(uu, 0.8, o), Color("#cdebff")))   # 消耗泡泡值魔法(吃魔抗)+0.8A物理(封板L437)
+				battle._damage._apply_damage_from(uu, o, int(battle._mitigate(uu, cons, o, true)) + battle._atk_dmg(uu, 0.8, o), Color("#cdebff")))   # 消耗泡泡值魔法(吃魔抗)+0.8A物理(封板L437)
 
 func _sk_bubble_bind(u: Dictionary, tgt) -> void:
 	if tgt == null:
 		return
-	battle._stun(tgt, 3.0, "_sk_bubble_bind")   # 泡泡束缚定身3秒(用户设计·原CTRL_SEC=1.5)
+	battle._damage._stun(tgt, 3.0, "_sk_bubble_bind")   # 泡泡束缚定身3秒(用户设计·原CTRL_SEC=1.5)
 	tgt["bind_until"] = battle._t + 3.0
 	tgt["bind_shred"] = 1.0 if int(u.get("level", 1)) <= 5 else 2.0   # 减甲量按等级(detail: 1-5级=1/6-10级=2)
 	tgt["bind_acc"] = 0.0

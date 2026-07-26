@@ -60,7 +60,7 @@ func _chest_treasure_tick(u: Dictionary) -> void:
 			it.tween_property(ic, "position", battle._world_pos(u["pos"], 2.9), 0.3)
 			it.parallel().tween_property(ic, "modulate:a", 0.0, 0.3)
 			it.tween_callback(ic.queue_free)
-	battle._heal(u, u["maxHp"] * heal_pct)
+	battle._damage._heal(u, u["maxHp"] * heal_pct)
 	battle._skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.5), 52.0)
 
 func _chest_pick_treasure(u: Dictionary, group: String) -> String:   # 该档随机1件(不重复)·档抽光→退回全池任意未拥有
@@ -79,21 +79,21 @@ func _chest_apply_treasure(u: Dictionary, tid: String) -> void:   # 逐件bespok
 	if not u.has("chest_treasures"): u["chest_treasures"] = {}
 	u["chest_treasures"][tid] = true
 	match tid:
-		"dagger":         battle._buff(u, "atk", 0.25, true, 99999.0)                                              # 短刃: +25%攻
-		"wood_shield":    battle._buff(u, "def", 0.20, true, 99999.0); battle._buff(u, "mr", 0.20, true, 99999.0)          # 木盾: +20%双抗
+		"dagger":         battle._damage._buff(u, "atk", 0.25, true, 99999.0)                                              # 短刃: +25%攻
+		"wood_shield":    battle._damage._buff(u, "def", 0.20, true, 99999.0); battle._damage._buff(u, "mr", 0.20, true, 99999.0)          # 木盾: +20%双抗
 		"rum":            u["chest_rum_t"] = 0.0                                                             # 朗姆酒: 每10秒回8%maxHp(周期tick读flag)
 		"blood_dice":     u["crit"] = float(u.get("crit", 0.0)) + 0.35                                       # 血筛子: +35%暴击
 		"chain":          u["chest_aoe_mult"] = 2.0                                                          # 锁链: 砸击AOE距离/射程翻倍(_chest_basic钩子)
 		"stone":          u["chest_rock_bonus"] = float(u.get("chest_rock_bonus", 0.0)) + 1.0                # 石头: 砸击额外+100%护甲+100%魔抗(_chest_basic钩子)
-		"long_sword":     battle._buff(u, "atk", 0.45, true, 99999.0)                                               # 长剑: +45%攻
+		"long_sword":     battle._damage._buff(u, "atk", 0.45, true, 99999.0)                                               # 长剑: +45%攻
 		"bloodblade":     u["lifesteal"] = float(u.get("lifesteal", 0.0)) + 0.25                             # 嗜血之刃: +25%吸血
 		"flint":          pass                                                                               # 火石: 命中→灼烧(_apply_damage_from钩子·防循环)
-		"gem_armor":      battle._buff(u, "def", 0.25, true, 99999.0); battle._buff(u, "mr", 0.25, true, 99999.0); u["maxHp"] += 60.0; u["hp"] += 60.0   # 宝石甲: +25%双抗+60血
+		"gem_armor":      battle._damage._buff(u, "def", 0.25, true, 99999.0); battle._damage._buff(u, "mr", 0.25, true, 99999.0); u["maxHp"] += 60.0; u["hp"] += 60.0   # 宝石甲: +25%双抗+60血
 		"poison":         pass                                                                               # 毒箭: 命中→治疗削减-50%5秒(_apply_damage_from钩子·防循环)
 		"phoenix_statue": u["_chest_revive"] = true                                                          # 凤凰雕像: 首死25%最大生命复活(_kill钩子)
-		"crown":          battle._buff(u, "atk", 0.40, true, 99999.0); u["crit"] = float(u.get("crit", 0.0)) + 0.40; u["crit_dmg"] = float(u.get("crit_dmg", 1.5)) + 0.25; u["lifesteal"] = float(u.get("lifesteal", 0.0)) + 0.15   # 王冠: +40攻/+40暴/+25爆伤/+15吸血
+		"crown":          battle._damage._buff(u, "atk", 0.40, true, 99999.0); u["crit"] = float(u.get("crit", 0.0)) + 0.40; u["crit_dmg"] = float(u.get("crit_dmg", 1.5)) + 0.25; u["lifesteal"] = float(u.get("lifesteal", 0.0)) + 0.15   # 王冠: +40攻/+40暴/+25爆伤/+15吸血
 		"thunder":        pass                                                                               # 雷刃: 命中叠金闪电满5引爆1.0A真伤(_apply_damage_from钩子·防循环)
-		"starlight":      u["chest_starlight"] = true                                                        # 星辉: 所有伤害转真实(battle._apply_damage_from raw钩子·armor全绕层过局限留F5)
+		"starlight":      u["chest_starlight"] = true                                                        # 星辉: 所有伤害转真实(battle._damage._apply_damage_from raw钩子·armor全绕层过局限留F5)
 
 func _chest_pick_equip(costs: Array) -> String:
 	var pool: Array = []
@@ -125,7 +125,7 @@ func _chest_basic(u: Dictionary, tgt: Dictionary) -> void:       # 普攻·宝�
 		var oref: Dictionary = o
 		battle._pending_shots.append({"delay": wave_t * clampf(along / reach, 0.0, 1.0), "fn": func() -> void:   # 波头扫到才结算(近先远后)
 			if not oref.get("alive", false) or not uu.get("alive", false): return
-			battle._apply_damage_from(uu, oref, battle._atk_dmg(uu, 1.0, oref) + bonus, Color("#ffd93d"))
+			battle._damage._apply_damage_from(uu, oref, battle._atk_dmg(uu, 1.0, oref) + bonus, Color("#ffd93d"))
 			battle._burst_vfx("res://assets/sprites/vfx/treasure-slam.png", oref["pos"], 130.0)                  # 命中放射爆闪(s21·波到才炸)
 		, "src": u})
 	# ① 砸点层(s16): 尘环+金爆+轻震
@@ -232,8 +232,8 @@ func _chest_loot_row(parent: VBoxContainer, tid: String) -> void:
 func _sk_chest_inventory(u: Dictionary) -> void:                 # 宝箱龟·清点财宝(用户2026-07-16改: 每1000财宝→治疗+10%·盾不吃加成; 财宝值=大轮累积)
 	var tv: float = float(GameState.chest_treasure_value) if ((not battle._review_demo()) and str(u.get("side", "")) == "left" and GameState != null) else float(u.get("dmg_dealt", 0.0))
 	var bonus: float = 1.0 + 0.10 * battle.floorf(tv / 1000.0)
-	battle._heal(u, u["maxHp"] * 0.05 * bonus)
-	battle._grant_shield(u, u["atk"] * 0.6)
+	battle._damage._heal(u, u["maxHp"] * 0.05 * bonus)
+	battle._damage._grant_shield(u, u["atk"] * 0.6)
 
 func _sk_chest_cannon(u: Dictionary, tgt) -> void:              # 技三·财宝炮击(封板·120龟能): 蓄力→朝一条直线发长激光→线上所有敌各3A物理+击飞+击退 (贪婪打包被动在登场gate)
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
@@ -247,8 +247,8 @@ func _sk_chest_cannon(u: Dictionary, tgt) -> void:              # 技三·财宝
 		for o in battle._targeting._enemies_of(uu):
 			if not o.get("alive", false): continue
 			if not battle._on_line(uu["pos"], dir, o["pos"], 58.0): continue
-			battle._apply_damage_from(uu, o, battle._atk_dmg(uu, 3.0, o), Color("#ffe066"))
-			battle._knockback(uu, o, 60.0, 1.2, 1.4)                       # 击飞+击退
+			battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, 3.0, o), Color("#ffe066"))
+			battle._damage._knockback(uu, o, 60.0, 1.2, 1.4)                       # 击飞+击退
 			battle._burst_vfx("res://assets/sprites/vfx/fortune-coin-burst.png", o["pos"], 130.0, 0.5)   # 命中金币爆
 		battle._beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", uu["pos"], uu["pos"] + dir * 1300.0, 110.0, Color(1.0, 0.85, 0.35, 0.5), 0.5)   # 金色气浪底
 		battle._shake(battle.JUICE_SHAKE_BIG)
@@ -410,7 +410,7 @@ func _sk_chest_storm(u: Dictionary, tgt) -> void:              # 技二·财宝�
 				disc.modulate.a = minf(0.85, disc.modulate.a + 0.25)   # 风暴脉冲闪亮(驱动器逐帧回落)
 			for o in battle._targeting._enemies_of(uu):
 				if o.get("alive", false) and o["pos"].distance_to(center) <= 400.0:
-					battle._apply_damage_from(uu, o, battle._atk_dmg(uu, 0.2, o), Color("#ffd93d"))
+					battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, 0.2, o), Color("#ffd93d"))
 					battle._burst_vfx("res://assets/sprites/vfx/treasure-slam.png", o["pos"], 74.0)   # 命中金光爆
 					_chest_coin_spray(o["pos"], 2)                                              # 敌身金币被抽飞
 			battle._skill_ring(center, Color(1.0, 0.82, 0.2, 0.35), 400.0)
