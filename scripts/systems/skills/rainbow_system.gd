@@ -10,10 +10,10 @@ func _init(b) -> void:
 
 func _rainbow_enh_prism_proc(u: Dictionary) -> void:            # 强化棱镜4色(用户设计·每5秒抽1): 橙全体友军+10%吸血5s / 黄随机敌灼烧0.67A / 青随机敌冰寒5s / 紫随机敌诅咒5s
 	var c: int = battle._battle_rng.randi() % 4
-	var es: Array = battle._pick_enemies_of(u)
+	var es: Array = battle._targeting._pick_enemies_of(u)
 	match c:
 		0:
-			for o in battle._allies_of(u):
+			for o in battle._targeting._allies_of(u):
 				battle._buff(o, "lifesteal", 0.1, false, 5.0)
 			battle._vfx._float_text(u["pos"] + Vector2(0, -60), "橙·全体吸血", Color("#ff9d3c"))
 		1:
@@ -54,7 +54,7 @@ func _rainbow_prism_shield_vfx(u: Dictionary) -> void:
 			rt.chain().tween_callback(r.queue_free))
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
 	# 每友军: 护盾罩(复用现成)
-	for o in battle._allies_of(u):
+	for o in battle._targeting._allies_of(u):
 		battle._shield_dome(o)
 
 func _rainbow_storm_tick(u: Dictionary, center: Vector2, radius: float, ti: int) -> void:
@@ -76,7 +76,7 @@ func _rainbow_storm_tick(u: Dictionary, center: Vector2, radius: float, ti: int)
 	ptw.tween_property(pulse, "modulate:a", 0.0, 0.5)
 	ptw.chain().tween_callback(pulse.queue_free)
 	# 圈内敌: 削护甲魔抗 + 伤害 + 碎甲可视化
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false):
 			continue
 		if o["pos"].distance_to(center) <= radius:
@@ -104,7 +104,7 @@ func _rainbow_storm_end(u: Dictionary) -> void:
 
 func _sk_rainbow_shield(u: Dictionary) -> void:                  # 彩虹龟·棱镜护盾 ✅
 	_rainbow_prism_shield_vfx(u)   # 七彩棱镜爆发+每友军护盾罩(用户2026-07-13补施法特效)
-	for o in battle._allies_of(u):
+	for o in battle._targeting._allies_of(u):
 		battle._grant_shield(o, u["atk"] * 0.65, 4.0)   # 彩虹棱镜护盾(通用护盾4秒·封板L268)
 
 func _sk_rainbow_storm(u: Dictionary) -> void:                  # 彩虹龟·全色风暴 (重做2026-07-13: AI棱镜漩涡+GPU彩虹粒子+碎甲可视化-20%护甲魔抗+亮边AOE·期间锁龟能)
@@ -158,8 +158,8 @@ func _sk_rainbow_storm(u: Dictionary) -> void:                  # 彩虹龟·全
 
 # 全色风暴 GPU 粒子: 圆盘内发射, 上升, 全光谱彩虹ramp (240颗=暴风能量体积)
 func _sk_rainbow_reflect(u: Dictionary) -> void:               # 彩虹龟·反射弹射 (重做2026-07-13: 棱镜光束敌我间反射弹跳·治友绿/伤敌全色魔法)
-	var allies = battle._allies_of(u)
-	var enemies = battle._enemies_of(u)
+	var allies = battle._targeting._allies_of(u)
+	var enemies = battle._targeting._enemies_of(u)
 	var prev: Vector2 = u["pos"]                # 弹射起点=彩虹龟
 	for i in range(6):
 		var _ally: bool = (i % 2 == 0)

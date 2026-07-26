@@ -66,7 +66,7 @@ func _tick_trainer_attacks(delta: float) -> void:
 		u["_tr_atk_cd"] = maxf(0.0, float(u.get("_tr_atk_cd", 0.0)) - delta)
 		if float(u["_tr_atk_cd"]) > 0.0:
 			continue
-		var tgt = battle._nearest_enemy_for_trainer(u)
+		var tgt = battle._targeting._nearest_enemy_for_trainer(u)
 		if tgt == null:
 			continue
 		# 魔法石(被动): 每次攻击 +5% 攻速(可叠·本场结束重置) → 攻击间隔按叠层缩短
@@ -86,14 +86,14 @@ func _tick_trainer_attacks(delta: float) -> void:
 # ★结算逻辑从演出里抽出可测(照海盗钩索/CLAUDE.md §3.5): _hook_grab 是纯效果, _cast_hook 判命中, 都不依赖 tween。
 # ══════════════════════════════════════════════════════════════
 
-## 从 trainer 沿 dir 方向找【射程内】第一个可钩的敌人(600码内、线上最近)。走 battle._pick_enemies_of(不含大师/不可选)。
+## 从 trainer 沿 dir 方向找【射程内】第一个可钩的敌人(600码内、线上最近)。走 battle._targeting._pick_enemies_of(不含大师/不可选)。
 func _hook_first_target(trainer: Dictionary, dir: Vector2):
 	if dir.length() < 0.01:
 		return null
 	var d = dir.normalized()
 	var best = null
 	var bd: float = battle.HOOK_RANGE * battle.HOOK_RANGE
-	for o in battle._pick_enemies_of(trainer):
+	for o in battle._targeting._pick_enemies_of(trainer):
 		if not battle._on_line(trainer["pos"], d, o["pos"], 80.0):   # 带宽80(视觉留美术, 文案不写)
 			continue
 		var dd: float = (o["pos"] - trainer["pos"]).length_squared()
@@ -190,13 +190,13 @@ func _whistle_temphp(trainer: Dictionary):
 
 ## ★临时最大生命(可测·纯函数): +amt maxHp&hp, sec 秒后到期【按比例削】(§2.4: 当前血 × 新上限/旧上限)。
 func _whistle_spirit_wave(trainer: Dictionary) -> int:
-	var tgt = battle._nearest_enemy_for_trainer(trainer)
+	var tgt = battle._targeting._nearest_enemy_for_trainer(trainer)
 	if tgt == null:
 		return 0
 	var origin: Vector2 = trainer["pos"]
 	var dir: Vector2 = (tgt["pos"] - origin).normalized()
 	var n: int = 0
-	for o in battle._pick_enemies_of(trainer):   # 定向(不选大师/组装机甲)
+	for o in battle._targeting._pick_enemies_of(trainer):   # 定向(不选大师/组装机甲)
 		if not battle._on_line(origin, dir, o["pos"], 80.0):
 			continue
 		o["def_shred_until"] = battle._t + 5.0    # 先削甲(30%·让这一发也吃到)
@@ -346,7 +346,7 @@ func _trainer_ai_step(u: Dictionary, delta: float) -> void:
 		_trainer_move_by(u, to.normalized() * 0.6, delta)   # 半速晃(悠着点=真人感)
 	# ② 逮机会放主动: CD 好了 → 朝最近敌人方向放(钩锁在射程/线上则命中, 否则空放; 其余技能各自处理)
 	if float(u.get("_active_cd", 0.0)) <= 0.0:
-		var tgt = battle._nearest_enemy_for_trainer(u)
+		var tgt = battle._targeting._nearest_enemy_for_trainer(u)
 		if tgt != null:
 			_cast_active(u, tgt["pos"] - u["pos"])
 
@@ -370,7 +370,7 @@ func _player_cast_hook_auto() -> void:
 	if tr == null:
 		return
 	var u: Dictionary = tr
-	var tgt = battle._nearest_enemy_for_trainer(u)
+	var tgt = battle._targeting._nearest_enemy_for_trainer(u)
 	var aim: Vector2 = (tgt["pos"] - u["pos"]) if tgt != null else (Vector2.LEFT if str(u.get("side","")) == "right" else Vector2.RIGHT)
 	_cast_active(u, aim)
 

@@ -15,7 +15,7 @@ func _ice_fissure_go(u: Dictionary, si: int, start: Vector2, dir: Vector2) -> vo
 	var width: float = 90.0
 	var fdur: float = 0.9
 	_ice_fissure_vfx(start, dir, reach, fdur)      # 冰道: 一排冰刺racing forward
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		var along: float = (o["pos"] - start).dot(dir)
 		if along < 0.0 or along > reach:
 			continue
@@ -107,7 +107,7 @@ func _frost_mist(pos2d: Vector2) -> void:
 
 func _ice_throw_go(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false): return
-	var t = battle._nearest_enemy(u)
+	var t = battle._targeting._nearest_enemy(u)
 	if t == null: return
 	var tex: Texture2D = load("res://assets/sprites/vfx/ice-bottle.png")
 	var spr = Sprite3D.new()
@@ -186,7 +186,7 @@ func _sk_ice_frost(u: Dictionary, tgt: Dictionary) -> void:      # 寒冰龟·�
 	if tgt != null and tgt.get("alive", false):
 		center = tgt["pos"]
 	else:
-		var es = battle._pick_enemies_of(u)
+		var es = battle._targeting._pick_enemies_of(u)
 		if not es.is_empty(): center = es[0]["pos"]
 	var radius = 150.0
 	var tw = battle._reg_tween()
@@ -196,7 +196,7 @@ func _sk_ice_frost(u: Dictionary, tgt: Dictionary) -> void:      # 寒冰龟·�
 
 func _ice_frost_tick(u: Dictionary, center: Vector2, radius: float) -> void:
 	_ice_frost_rain(center, radius)
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false):
 			continue
 		if o["pos"].distance_to(center) <= radius:
@@ -238,11 +238,11 @@ func _sk_ice_freeze(u: Dictionary, tgt: Dictionary) -> void:    # 寒冰龟·冰
 	battle._fire_ice_shard(u, tgt, battle._atk_dmg(u, 0.6, tgt, true))
 
 func _sk_ice_team_shield(u: Dictionary) -> void:               # 寒冰龟·团队护盾(用户2026-07-11重设计·120龟能): 全体友军5%施法者maxHp冰霜盾4秒·盾破/到期爆炸250码1×ATK魔法; 独狼(无其他友军)盾×4·爆炸5×ATK
-	var others = battle._allies_of(u, false)                         # 不含自己
+	var others = battle._targeting._allies_of(u, false)                         # 不含自己
 	var solo: bool = others.is_empty()
 	var shield_amt: float = u["maxHp"] * (0.20 if solo else 0.05)   # 5%施法者maxHp; 独狼×4=20%
 	var boom_mult: float = 5.0 if solo else 1.0                     # 爆炸1×ATK; 独狼5×ATK
-	for o in battle._allies_of(u):                                    # 含自己=全体友军
+	for o in battle._targeting._allies_of(u):                                    # 含自己=全体友军
 		_frost_shield_burst(o)                                 # 若已挂上一发未爆→先结算(防覆盖丢爆裂)
 		battle._grant_shield(o, shield_amt, 4.0)                      # 冰霜盾·4秒
 		o["frost_shield_until"] = battle._t + 4.0                     # 爆裂追踪(独立通用shield_until): 到期/盾清零/持盾者死 任一→爆
@@ -267,7 +267,7 @@ func _frost_shield_burst(ally: Dictionary) -> void:
 	ally.erase("frost_shield_src")
 	if src is Dictionary:
 		var c: Vector2 = ally["pos"]
-		for o in battle._enemies_of(src):
+		for o in battle._targeting._enemies_of(src):
 			if o.get("alive", false) and o["pos"].distance_to(c) <= 250.0:
 				battle._apply_damage_from(src, o, battle._atk_dmg(src, boom, o, true), Color("#bfe9ff"))   # boom×ATK 魔法(1或5)
 		battle._burst_vfx("res://assets/sprites/vfx/fx-shock-ring.png", c, 520.0, 0.14)   # 冰爆冲击环(≈250码半径)

@@ -9,7 +9,7 @@ func _init(b) -> void:
 	battle = b
 
 func _sk_stone_rock_shield(u: Dictionary) -> void:               # 石头龟·岩石护盾(用户设计: 合并岩石护甲+磐石·100龟能): 全队盾0.2A+5%maxHp + 自身双抗+20%5秒
-	for o in battle._allies_of(u):
+	for o in battle._targeting._allies_of(u):
 		battle._grant_shield(o, u["atk"] * 1.0 + u["maxHp"] * 0.06, 4.0)   # 全队盾=1×石头ATK+6%【石头龟】最大生命(用户2026-07-11: 0.2A+5%→1A+6%)·每友军等量·4秒
 		o["rock_shield_until"] = battle._t + 4.0                          # 标记"石头岩石护盾"来源: LoL式六棱屏障VFX + 锁龟能(持盾期不充能), 盾破/到期即释放(用户2026-07-11)
 		battle._skill_ring(o["pos"], Color(0.79, 0.64, 0.42, 0.45), 46.0)
@@ -41,7 +41,7 @@ func _rock_chunk_erupt(pos2d: Vector2) -> void:   # 岩石破土冒起(石棕灰
 
 func _sk_stone_taunt(u: Dictionary) -> void:                    # 石头龟·嘲讽(用户设计·120龟能): 500码敌4秒硬嘲讽 + 自身1A永久盾 + 0.5×护甲减伤4秒 + 将结束砸地(400码1A魔法+击飞1.2s)
 	var victims: Array = []
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if o.get("alive", false) and o["pos"].distance_to(u["pos"]) <= 500.0:
 			victims.append(o)
 	battle._taunt(u, victims, 4.0)
@@ -53,7 +53,7 @@ func _sk_stone_taunt(u: Dictionary) -> void:                    # 石头龟·嘲
 	var slam = func() -> void:                # 蓄力3.5s→砸地(在4秒嘲讽内·K'Sante Q3式)
 		if not uu.get("alive", false): return
 		battle._burst_vfx("res://assets/sprites/vfx/stone-slam-impact.png", uu["pos"], 220.0)   # 砸地岩石冲击(用户2026-07-06"像地面猛砸")
-		for o in battle._enemies_of(uu):
+		for o in battle._targeting._enemies_of(uu):
 			if o.get("alive", false) and o["pos"].distance_to(uu["pos"]) <= 400.0:
 				battle._apply_damage_from(uu, o, battle._atk_dmg(uu, 1.0, o, true), Color("#c8a878"))
 				if not o.get("airborne", false):
@@ -64,7 +64,7 @@ func _sk_stone_taunt(u: Dictionary) -> void:                    # 石头龟·嘲
 
 func _sk_rock_shockwave(u: Dictionary) -> void:                  # 石头龟·岩石之躯 主动: 前方带状(±90)岩脊向前破土推进, (0.5DEF+0.5MR)×(1+4%岩层)物理 + 【必中眩晕2s】+ 击退60
 #   (2026-07-19订正: 头注释原写"1%×层眩晕1.5s"是旧版, 用户2026-07-11已改成必中2秒, 见下方 battle._stun 那行); 伤害随波前经过逐个同步(用户2026-07-11补VFX·原=只1个130px环)
-	var tgt = battle._acquire_target(u)
+	var tgt = battle._targeting._acquire_target(u)
 	var dir: Vector2 = (Vector2.RIGHT if tgt == null else (tgt["pos"] - u["pos"]))
 	if dir.length() < 1.0: dir = Vector2.RIGHT
 	dir = dir.normalized()
@@ -103,7 +103,7 @@ func _sk_rock_shockwave(u: Dictionary) -> void:                  # 石头龟·�
 		d += step
 	# ── 伤害: 前方带状(几何不变)·随波前经过逐个同步结算 ──
 	var dmgv: int = int((u["def"] * 0.5 + u["mr"] * 0.5) * (1.0 + 0.04 * layers))
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		var rel: Vector2 = o["pos"] - origin
 		if rel.dot(dir) <= 0.0: continue                     # 只前方

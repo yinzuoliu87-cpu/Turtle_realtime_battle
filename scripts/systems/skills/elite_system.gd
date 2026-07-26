@@ -171,7 +171,7 @@ func _elite_whirl(u: Dictionary) -> void:                        # 被动3·旋�
 			for bl3 in blades:
 				if is_instance_valid(bl3): bl3.queue_free())
 	var total: int = 0
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		if (o["pos"] as Vector2).distance_to(u["pos"]) > 200.0: continue
 		var dmg: int = battle._atk_dmg(u, 1.3, o)
@@ -269,7 +269,7 @@ func _elite_try_consume(u: Dictionary, tgt: Dictionary) -> bool:   # 被动1·�
 		if stype != "":                                            # 以自己属性立即放一次目标主动技(用户拍板: 只放主动)
 			battle._pending_shots.append({"delay": 0.35, "fn": func() -> void:
 				if not uu.get("alive", false): return
-				var et = battle._acquire_target(uu)
+				var et = battle._targeting._acquire_target(uu)
 				if et == null: return
 				_elite_mist(uu["pos"] as Vector2, 0.8, 3)
 				battle._do_skill(uu, et, stype)
@@ -325,7 +325,7 @@ func _elite_spike(pos2d: Vector2, big: bool) -> void:            # 单根黑刺(
 	st.chain().tween_callback(spk.queue_free)
 
 func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁锤(100龟能·Hammerfist·2026-07-16细节轮): 举拳蓄力0.35s→往下砸→碎块+尘环→60°锥500码刺浪; 每第3次跳很高(5.2)空中蓄力1s→下锤700码全域
-	if tgt == null: tgt = battle._nearest_enemy(u)
+	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	if _elite_try_consume(u, tgt):   # 用户2026-07-19: 铁拳也能触发吞噬(目标<15%血时优先吞)
 		return

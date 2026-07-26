@@ -11,7 +11,7 @@ func _init(b) -> void:
 # 滚球位移tick(每帧·在_tick_unit免CC段调): 0→满速4s加速·朝最近敌滚·进120码撞击结算
 func _diamond_roll_tick(u: Dictionary, delta: float) -> void:
 	var sf: float = clampf((battle._t - float(u.get("roll_start", battle._t))) / 4.0, 0.0, 1.0)   # 0→满速4秒线性加速
-	var tgt = battle._nearest_enemy(u)
+	var tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null:   # 无敌可撞→退出滚动 (用户2026-07-12: 取消6秒超时限制, 滚到撞上为止)
 		u["roll_active"] = false; u["state"] = "move"
 		return
@@ -29,7 +29,7 @@ func _diamond_roll_tick(u: Dictionary, delta: float) -> void:
 		battle._skill_ring(u["pos"], Color(0.6, 0.86, 1.0, 0.2 + 0.35 * sf), 28.0 + 22.0 * sf)
 
 func _diamond_roll_impact(u: Dictionary, cp: Vector2, sf: float) -> void:
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		if o["pos"].distance_to(cp) > 120.0: continue             # 撞击点120码小AOE
 		var dmg: int = int(u["def"] * (0.1 + 0.9 * sf) + u["mr"] * (0.1 + 0.9 * sf) + o["maxHp"] * (0.02 + 0.18 * sf))   # 按速插值(封板: 0速0.1甲0.1抗2%→满速1.0甲1.0抗20%)
@@ -43,7 +43,7 @@ func _diamond_roll_impact(u: Dictionary, cp: Vector2, sf: float) -> void:
 func _diamond_smash_impact(u: Dictionary, tgt) -> void:         # 蓄力结束→冲撞落地结算
 	if not u.get("alive", false): return
 	if tgt == null or not tgt.get("alive", false):
-		tgt = battle._nearest_enemy(u)
+		tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	battle._dash_to(u, tgt, 45.0)
 	var dmg: int = int(u["def"] + u["mr"] + u["atk"] * 0.1)     # 保留原撞击伤害(1.0甲+1.0抗+0.1A物理·用户2026-07-12保留)
@@ -86,14 +86,14 @@ func _sk_diamond_unbreak(u: Dictionary) -> void:                 # 钻石龟·�
 	battle._shake(battle.JUICE_SHAKE_LIGHT)
 
 func _sk_diamond_powerball(u: Dictionary, tgt) -> void:          # 钻石龟·钻石滚球(封板·龙龟Q Powerball·100龟能): 进入蜷球滚动位移态(移速0起4s加速满速·朝最近敌·免疫定身沉默打断)·撞击120码AOE(护甲/魔抗/2%maxHp按速插值)+击飞1s+眩晕0.5~3s
-	if battle._nearest_enemy(u) == null:
+	if battle._targeting._nearest_enemy(u) == null:
 		return
 	u["roll_active"] = true
 	u["roll_start"] = battle._t
 	battle._skill_ring(u["pos"], Color(0.6, 0.86, 1.0, 0.5), 44.0)
 
 func _sk_diamond_smash(u: Dictionary, tgt) -> void:             # 钻石龟·钻石冲撞(用户2026-07-12改): 短暂蓄力→撞击(保留1.0甲+1.0抗+0.1A物理)+击退300码顺冲撞方向+一点点击飞+流血(层数=0.5A+0.1甲+0.1抗)+3s50%减速
-	if tgt == null: tgt = battle._nearest_enemy(u)
+	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	u["_anim_lock_until"] = battle._t + battle.DIAMOND_SMASH_CHARGE          # 蓄力期锁定原地聚力(不走不打)
 	battle._anticipate(u)

@@ -540,6 +540,7 @@ var _cam: Camera3D
 var _ui_layer: CanvasLayer                # 血条/龟能 overlay + 标题 + 结算 (贴在 3D 之上)
 var _vfxiso := false                      # 纯特效隔离模式(VFXISO env): 黑底+无地面+藏单位立绘/UI, 只留特效对比参考
 var _render := BattleRender.new(self)   # 战斗渲染/动画显示层(每帧插值/世界变换/跑动画/覆盖/dot飘字/相机抖/技能文案·纯视觉不改战斗态)(2026-07-26 抽出)
+var _targeting := BattleTargeting.new(self)   # 目标选择/敌我查询(最近敌/获取目标/敌方/友方/可选目标·纯确定性查询无RNG)(2026-07-26 抽出)
 var _world: Node3D                        # 3D 内容挂载点 (SubViewport 内)
 var _sub: SubViewport
 var _projectiles: Array = []              # 飞行中的 3D 投射物 {node, from, to, tgt, dmg, magic, src, t, dur}
@@ -2248,23 +2249,6 @@ func _draw_aim_indicator() -> void:
 
 ## 命中演出(2026-07-24 返工·照锤石Q): 前摇蓄力(HOOK_WINDUP·大师站定举钩) → 中速飞行(HOOK_MISSILE_SPD) → 到达。
 ## 结算不依赖它跑完(_trainer_sys._hook_grab 由 _pending_shots 定时调, 无头也稳)。
-func _nearest_enemy_for_trainer(u: Dictionary):
-	var best = null
-	var best_d := TRAINER_RANGE * TRAINER_RANGE
-	for o in _units:
-		if not o.get("alive", false) or not _is_hostile(u, o):
-			continue
-		if o.get("is_trainer", false):
-			continue   # 训龟大师之间不互殴(都是场外监视者)
-		if _t < float(o.get("untargetable_until", 0.0)):
-			continue
-		var dd: float = (o["pos"] - u["pos"]).length_squared()
-		if dd < best_d:
-			best_d = dd; best = o
-	return best
-
-
-## 播扔石头动作(一次性, 播完自动回 idle/run — 走 anim_action 白名单)
 func _fire_trainer_rock(u: Dictionary, tgt: Dictionary) -> void:
 	var p := Sprite3D.new()
 	var rp := "res://assets/sprites/vfx/lava-rock.png"
@@ -2967,7 +2951,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	if int(u.get("allin_coins", 0)) > 0:
 		_fortune_sys._fortune_allin_channel(u, delta)
 		return   # 财神梭哈投币channel: 锁住(不移动/不普攻)
-	var tgt = _acquire_target(u)
+	var tgt = _targeting._acquire_target(u)
 	if tgt == null:
 		u["_has_target"] = false
 		u["_sep_target"] = null
@@ -3024,7 +3008,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 				var p := str(u.get("pending", "B"))
 				if p == "B":
 					if tgt == null or not tgt.get("alive", false):
-						tgt = _nearest_enemy(u)                  # 前摇期目标死→改打最近敌(不浪费已承诺出手·用户2026-07-12)
+						tgt = _targeting._nearest_enemy(u)                  # 前摇期目标死→改打最近敌(不浪费已承诺出手·用户2026-07-12)
 					var _fired := false
 					if tgt != null and tgt.get("alive", false):
 						# 出手承诺: 前摇一旦走完必打出, 不再被射程门丢弃(根治近战被风筝→抬手→目标跑出射程→这一击作废→再追→再空转→伤害完全打不出)
@@ -3094,38 +3078,6 @@ func _tick_skill_cd(u: Dictionary, delta: float) -> void:
 	if float(u.get("energy_bank", 0.0)) > 0.0:   # 龟能银行(贝母021溢出): 冷却能吸就吸(如刚重置), 吸不下继续留着
 		_apply_energy_bank(u)
 
-# --- 索敌: 被嘲讽则强制打嘲讽来源, 否则最近敌 (跳过 untargetable / 缩头护身随从) ---
-func _acquire_target(u: Dictionary):
-	# ★嘲讽分支必须再过一遍 _is_hostile: 它原先绕过一切阵营判定, 于是
-	#   "侵入前嘲讽过赛博方的单位, 被侵入后赛博方仍死锁着它" / "归队瞬间还锁着新队友"
-	#   都会出现同阵营互殴(伤害层没有友伤闸)。见 §HOSTILE
-	if _t < u["taunt_until"] and u["taunt_by"] != null and u["taunt_by"]["alive"] and _is_hostile(u, u["taunt_by"]):
-		return u["taunt_by"]
-	return _nearest_enemy(u)
-
-# ----------------------------------------------------------------------------
-#  §HOSTILE — 统一敌我判定原语 (2026-07-22)
-#
-#  ★为什么必须有这个函数: 在它之前, 全工程【零个敌我原语】, 敌我判断散在 20 处、
-#    清一色只写 `o["side"] != u["side"]`。赛博龟侵入需要【不对称敌我】——
-#    被侵入者对所有人都是敌人, 但它自己只打原队友 —— 用 side 一个字段表达不了,
-#    所以旧实现只能去【改写 side】, 结果把它变成了赛博方的"真友军"(赛博全队打不到它,
-#    还会给它加治疗), 与权威文档 28龟技能设计-权威.md:1467「不算友军·会被打」相反。
-#
-#  ★口径(用户 2026-07-22 拍板, 已用他的例子验算):
-#      我方=赛博+2友军, 敌方仅 1 个被侵入单位 →
-#        赛博/友军1/友军2 → 都打被侵入者 ✅
-#        被侵入者 → 无目标 = 站着发呆 ✅   (它只打原队友, 而原队友已没了)
-#      治疗/护盾: 被侵入者对谁都不是友军 = 孤军
-#
-#  ★side 全程不动。这样"死亡不归队 / 跨路串阵营 / 单路瞬间判胜 / 召唤物串队"
-#    这四类问题根本不会发生 —— 它们全都源于改写 side。
-#
-#  ★注意: 全工程另有 29 处 `side == "left"` 是在判【是不是玩家方】(UI 配色/技能选择/
-#    局外数据), 不是敌我逻辑, 一律不要改成 _is_hostile。
-# ----------------------------------------------------------------------------
-
-## a 会不会攻击 b。★不对称: _is_hostile(a,b) 与 _is_hostile(b,a) 可以不同。
 func _is_hostile(a: Dictionary, b: Dictionary) -> bool:
 	if is_same(a, b):
 		return false          # is_same: 单位字典互引成环, == 会深比较→卡死(项目铁律)
@@ -3166,26 +3118,6 @@ func _hijack_fx_attach(v: Dictionary) -> void:
 	_skill_ring(v["pos"], Color(1.0, 0.22, 0.22, 0.6), 58.0)
 
 
-func _nearest_enemy(u: Dictionary):
-	var best = null
-	var best_d := INF
-	for o in _units:
-		if not _is_hostile(u, o) or not o["alive"]:   # ★原为 o["side"] == u["side"], 见 §HOSTILE
-			continue
-		if _t < o["untargetable_until"]:   # 黑洞 → 不可被选
-			continue
-		if o.get("_egg_fence", false):   # 龟蛋围栏未破 → 不可被主动索敌(但AoE/增益穿栏, 走_enemies_of不受此限)
-			continue
-		if o.get("is_trainer", false):   # 训龟大师: 不被【主动索敌】(用户2026-07-22)
-			# ★只挡这一条路 —— AoE 走 _enemies_of, 那里【故意不跳过】它, 所以照样吃到范围伤害。
-			#   两条路天然分离, 正好对上"不会被主动索敌但会吃到aoe伤害"。
-			continue
-		var dd: float = (o["pos"] - u["pos"]).length_squared()
-		if dd < best_d:
-			best_d = dd; best = o
-	return best
-
-# 每单位每帧: DoT 落血 / buff 到期清理 / 层数DoT结算 / 召唤体周期特殊技 / 周期被动 (1:1 2D _tick_effects)
 func _tick_effects(u: Dictionary, delta: float) -> void:
 	# 信号放大器038: 增伤到期回收(damage_amp 是常驻字段, 需显式撤回本件贡献)
 	if float(u.get("signal_amp", 0.0)) > 0.0 and _t >= float(u.get("signal_until", 0.0)):
@@ -3304,39 +3236,6 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 		_equip_tick_sys._tick_dumbbell(u, delta)
 		_equip_tick_sys._tick_barnacle(u, delta)
 
-func _enemies_of(u: Dictionary) -> Array:
-	var out: Array = []
-	for o in _units:
-		if _is_hostile(u, o) and o["alive"]:   # ★原为 o["side"] != u["side"], 见 §HOSTILE
-			if o.get("_egg_fence", false): continue   # 围栏未破的蛋: 单体+AoE都不锁(用户2026-07-12: 珊瑚刺等别锁蛋)
-			out.append(o)
-	return out
-
-## §PICK-TARGET 集中"可被定向选取"的敌人闸门(用户2026-07-23 点4)。
-## = _enemies_of 再排除【训龟大师(场外监视者: 只吃 AOE 波及、不被单体/定向锁)】+【不可选中(含机甲 5 秒组装期 untargetable_until/_assembling)】。
-## ★用法铁律: 凡"随机挑一个 / 最近一个 / 单体指向"的技能选目标都走【这个】;
-##   真 AOE(龟派气波、激光竖劈 _equip_sys._eq_laser_chop、扇形波及等"范围扫到谁算谁")仍用 _enemies_of —— 那才是"大师只吃 AOE 溅射"的语义。
-## ★非伤害效果(处决/击飞/位移/驱散)也必须走这个 —— 光挡伤害不够(大师"伤害降为1"挡不住处决/击飞)。
-## 机甲死亡激光那类"选一个敌人朝它拉一条线"的定向技: 用这个选目标(不选大师), 但线扫过大师仍在 _apply_damage 里结算(吃1)。
-func _pick_enemies_of(u: Dictionary) -> Array:
-	var out: Array = []
-	for o in _enemies_of(u):
-		if o.get("is_trainer", false):
-			continue
-		if _is_untargetable(o):
-			continue
-		out.append(o)
-	return out
-
-## 均分型护盾/团队份额的受益名单: 排除训龟大师(场外监视者不占份额, 否则稀释盾池、白给监视者)。
-## ★只给【均分/按人头分摊】的效果用(铁壁盾、温泉蛋孵化盾); "给全队罩个盾"之类无所谓不用换。用户2026-07-23 点4。
-func _allies_no_trainer(u: Dictionary) -> Array:
-	var out: Array = []
-	for o in _allies_of(u):
-		if not o.get("is_trainer", false):
-			out.append(o)
-	return out
-
 func _separation(u: Dictionary) -> Vector2:
 	var push := Vector2.ZERO
 	# ★近战修: 对"自己的攻击目标"用缩小的分离半径(射程内), 让近战能贴进去开打; 其余单位照常 SEP_RADIUS 散开.
@@ -3406,7 +3305,7 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		var _cdir: Vector2 = tgt["pos"] - u["pos"]
 		if _cdir.length() < 1.0: _cdir = Vector2.RIGHT
 		_cdir = _cdir.normalized()
-		for o in _enemies_of(u):
+		for o in _targeting._enemies_of(u):
 			if o.get("alive", false) and _on_line(u["pos"], _cdir, o["pos"], 55.0):
 				_apply_damage_from(u, o, _atk_dmg(u, 1.0, o), Color("#9bf0ff"))
 				_vfx._hit_spark(o)                                                       # 沿线每个命中点火花(2026-07-15提质)
@@ -3558,7 +3457,7 @@ func _bear_paw_hit(u: Dictionary, tgt) -> void:   # 熊掌挥击接触瞬间: �
 
 func _thunder_bolt(u: Dictionary) -> void:
 	if not u.get("alive", false): return
-	var es := _pick_enemies_of(u)
+	var es := _targeting._pick_enemies_of(u)
 	if es.is_empty(): return
 	var o = es[_battle_rng.randi() % es.size()]
 	_lightning_sys._lightning_strike(o["pos"], Color("#8fd4ff"), 4.6)   # 大雷(中心≈2.2=飘字高度)
@@ -4583,7 +4482,7 @@ func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大�
 			_gold_chunk_erupt(cp + perp * randf_range(-26.0, 26.0))
 			if randf() < 0.6:
 				_gold_chunk_erupt(cp + perp * randf_range(-55.0, 55.0))
-		for o in _enemies_of(u):
+		for o in _targeting._enemies_of(u):
 			if _arr_has_unit(hit_arr, o) or not o.get("alive", false): continue
 			var proj: float = (o["pos"] - origin).dot(dir)
 			if proj >= -40.0 and proj <= traveled + 30.0 and _on_line(origin, dir, o["pos"], 85.0):
@@ -4723,7 +4622,7 @@ func _mitigate(u: Dictionary, raw: float, tgt: Dictionary, magic: bool) -> int:
 
 # 相邻溅射 (龟壳): 主目标附近敌受 frac 溅射; 若无相邻, 不额外 (主伤已结算)
 func _splash_adjacent(u: Dictionary, tgt: Dictionary, frac: float) -> void:
-	for o in _enemies_of(u):
+	for o in _targeting._enemies_of(u):
 		if is_same(o, tgt) or not o["alive"]:
 			continue
 		if (o["pos"] - tgt["pos"]).length() <= 90.0:
@@ -4857,7 +4756,7 @@ func _barrage_strike(pos2d: Vector2) -> void:   # 雷暴专属落雷(闪电龟�
 		tb.tween_callback(burst.queue_free)
 
 func _barrage_bolt(u: Dictionary, cloud_h: float) -> void:   # 雷暴单道(用户2026-07-15重做: 水平弧→天降竖直落雷·闪电龟自有素材)
-	var es := _pick_enemies_of(u)
+	var es := _targeting._pick_enemies_of(u)
 	if es.is_empty():
 		return
 	var e = es[_juice_rng.randi() % es.size()]
@@ -5641,7 +5540,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 	if u.get("_pdeath_demo", false) and killer is Dictionary and killer.get("alive", false) and not is_same(killer, u):   # 被动死亡钩索demo: 放钩索但不真死→复位血循环看(仅评审)
 		var _gtar: Dictionary = killer   # demo: 抓【最远】的敌(展示钩索拉回距离·真实战斗是抓击杀者)
 		var _fd := 0.0
-		for _go in _enemies_of(u):
+		for _go in _targeting._enemies_of(u):
 			if _go.get("alive", false):
 				var _dd: float = u["pos"].distance_to(_go["pos"])
 				if _dd > _fd: _fd = _dd; _gtar = _go
@@ -5669,7 +5568,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 		if u["id"] == "phoenix":                          # 涅槃: 对全体敌灼烧 + 治疗削减5秒
 			if u.get("_enh_rebirth", false):
 				u["base_atk"] = u["base_atk"] * 1.2; _recalc_stats(u)   # 强化涅槃: 永久+20%攻击
-			for o in _enemies_of(u):
+			for o in _targeting._enemies_of(u):
 				_apply_dot_stacks(o, "burn", _default_burn_stacks(u), u)
 				o["heal_reduce_until"] = _t + BUFF_SEC
 				o["heal_reduce_pct"] = maxf(float(o.get("heal_reduce_pct", 0.0)), 0.5)
@@ -6553,7 +6452,7 @@ func _sk_basic_shield(u: Dictionary, tgt: Dictionary) -> void:   # 小龟·龟�
 
 func _basic_shield_impact_hit(u: Dictionary, tgt) -> void:
 	if not u.get("alive", false): return
-	if not (tgt is Dictionary) or not tgt.get("alive", false): tgt = _nearest_enemy(u)
+	if not (tgt is Dictionary) or not tgt.get("alive", false): tgt = _targeting._nearest_enemy(u)
 	if tgt == null: return
 	var lost: float = (tgt["maxHp"] - tgt["hp"]) * 0.20
 	var raw: float = u["atk"] * 0.7
@@ -6564,20 +6463,10 @@ func _basic_shield_impact_hit(u: Dictionary, tgt) -> void:
 	_vfx._play_anim_vfx("res://assets/sprites/vfx/basic-shieldbash-impact.png", tgt["pos"], 130.0, 20.0, 1.05)
 	_skill_ring(u["pos"], Color(1.0, 0.9, 0.45, 0.5), 50.0)
 	_shake(0.1)
-func _targetable_enemies(u: Dictionary) -> Array:
-	var out: Array = []
-	for o in _enemies_of(u):
-		if not o.get("alive", false): continue
-		if o.get("_egg_fence", false): continue
-		if _t < float(o.get("untargetable_until", 0.0)): continue
-		if o.get("is_trainer", false): continue   # ★大师不可主动锁(用户2026-07-23 点4: 只吃AOE波及)
-		out.append(o)
-	return out
-
 func _basic_first_blocker(u: Dictionary, dir: Vector2):          # 可被挡直线弹道: 返回dir方向路径上第一个"敌/蛋"(障碍穿过·我方不挡·走_enemies_of天然含蛋不含友)
 	var best = null
 	var bestd: float = INF
-	for o in _enemies_of(u):
+	for o in _targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		var rel: Vector2 = o["pos"] - u["pos"]
 		var along: float = rel.dot(dir)
@@ -6590,7 +6479,7 @@ func _sk_basic_strike(u: Dictionary, _tgt = null) -> void:      # 小龟·打击
 	_stun(u, 1.65, "_sk_basic_strike", true)   # 全程定身(10波×0.15s)
 	for i in range(10):
 		var fn := func():
-			var es: Array = _targetable_enemies(u)   # ★方向只从可主动锁的敌里挑(排围栏未破的蛋); 穿过打到蛋仍算(_basic_first_blocker)
+			var es: Array = _targeting._targetable_enemies(u)   # ★方向只从可主动锁的敌里挑(排围栏未破的蛋); 穿过打到蛋仍算(_basic_first_blocker)
 			var dir: Vector2 = Vector2.RIGHT
 			if not es.is_empty():
 				var dt = es[i % es.size()]                       # 随机分布(轮询近似)挑1存活敌当方向
@@ -6616,7 +6505,7 @@ func _chiwave_hits_from(u: Dictionary, from2d: Vector2, tgt: Dictionary) -> int:
 	if d.length() < 1.0: return 0
 	d = d.normalized()
 	var n := 0
-	for o in _enemies_of(u):
+	for o in _targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		if o["pos"].distance_to(from2d) > 900.0: continue
 		if _on_line(from2d, d, o["pos"], 80.0): n += 1
@@ -6624,12 +6513,12 @@ func _chiwave_hits_from(u: Dictionary, from2d: Vector2, tgt: Dictionary) -> int:
 
 # 候选落点是否贴脸(离任一敌 < min_gap) — 用户"不是贴人家脸上·要考虑碰撞体积"
 func _too_close_to_enemy(u: Dictionary, p: Vector2, min_gap: float) -> bool:
-	for o in _enemies_of(u):
+	for o in _targeting._enemies_of(u):
 		if o.get("alive", false) and o["pos"].distance_to(p) < min_gap: return true
 	return false
 
 func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派气波(封板·100龟能): 先自增buff(暴击25%/暴伤20%/吸血10%/护穿0.1A·3秒)→朝当前目标发穿透气波(带宽80·打沿途所有敌+蛋)每命中3.5A物理+击飞1.5s+击退200 [智能位移留F5]
-	if tgt == null: tgt = _nearest_enemy(u)
+	if tgt == null: tgt = _targeting._nearest_enemy(u)
 	if tgt == null: return
 	var ap: float = u["atk"] * 0.1
 	u["crit"] = float(u["crit"]) + 0.25
@@ -6731,7 +6620,7 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 				atw.tween_property(af, "material_override:albedo_color", Color(0.55, 0.32, 0.10, 0.0), 0.32)
 				atw.chain().tween_callback(af.queue_free)
 				_chi_embers(c, FLY_H, 4)                             # 沿途火星
-			for o in _enemies_of(uu2):
+			for o in _targeting._enemies_of(uu2):
 				if not o.get("alive", false) or _arr_has_unit(hit2, o): continue
 				if not _on_line(launch, dir, o["pos"], 80.0): continue
 				if o["pos"].distance_to(c) > 95.0: continue
@@ -6755,7 +6644,7 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 		, "src": u})
 
 func _sk_basic_slam(u: Dictionary, tgt) -> void:  # 小龟·过肩摔(#7重做·Sett R式完整编排): 擒抱→跳空→与敌反转180°→坠落→落地范围伤+尘爆; 蛋免控只吃原地伤
-	if tgt == null: tgt = _nearest_enemy(u)
+	if tgt == null: tgt = _targeting._nearest_enemy(u)
 	if tgt == null: return
 	var tmax: float = float(tgt["maxHp"])
 	if tgt.get("_eggImmune", false):   # 蛋: 不擒抱/不挑空, 只吃原地范围伤
@@ -6776,7 +6665,7 @@ func _sk_basic_slam(u: Dictionary, tgt) -> void:  # 小龟·过肩摔(#7重做·
 func _slam_apply_damage(u: Dictionary, tgt: Dictionary, tmax: float) -> void:
 	if tgt.get("alive", false):
 		_apply_damage_from(u, tgt, _atk_dmg(u, 0.7, tgt) + int(tmax * 0.26), Color("#ff9d5c"))
-	for o in _enemies_of(u):
+	for o in _targeting._enemies_of(u):
 		if is_same(o, tgt) or not o.get("alive", false): continue
 		if o["pos"].distance_to(tgt["pos"]) <= 350.0:   # 范围 350码(用户2026-07-11: 250→350)
 			_apply_damage_from(u, o, _atk_dmg(u, 0.2, o) + int(tmax * 0.19), Color("#ff9d5c"))
@@ -7097,7 +6986,7 @@ func _update_hunter_passive(u: Dictionary) -> void:   # 被动猎杀(重做·用
 	if not u.get("alive", false): return
 	if _t - float(u.get("_hunt_scan_t", -1.0)) < 0.1: return   # 节流0.1s
 	u["_hunt_scan_t"] = _t
-	for o in _pick_enemies_of(u):
+	for o in _targeting._pick_enemies_of(u):
 		if not o.get("alive", false): continue
 		if o.get("egg", false) or o.get("_eggImmune", false) or _is_untargetable(o) or o.get("eq_exec_immune", false): continue   # 免疫处决: 蛋(免控/斩)/不沉之锚(免斩杀)/不可选(含机甲组装期·见 _is_untargetable)
 		if float(o.get("deathfloor_until", 0.0)) > _t and not o.get("_hunt_demo_victim", false): continue   # 临时免死(亡灵等)→不射(免死期间免疫处决·到期再处决)
@@ -7316,7 +7205,7 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 	if not (u.get("is_elite", false) and u.get("alive", false)): return
 	if u.get("_slam", false) or u.get("airborne", false): return
 	if _t < float(u.get("_whip_cd", 0.0)) or _t < float(u.get("stun_until", 0.0)): return
-	var tgt = _acquire_target(u)
+	var tgt = _targeting._acquire_target(u)
 	if tgt == null or not tgt.get("alive", false): return
 	var d: float = (tgt["pos"] as Vector2).distance_to(u["pos"])
 	if d >= 150.0 and d <= 350.0 and _elite_sys._elite_try_consume(u, tgt):
@@ -7447,7 +7336,7 @@ func _knock_up(o: Dictionary, center: Vector2, vy: float) -> void:
 
 func _densest_enemy_point(u: Dictionary, radius: float) -> Vector2:   # 敌最密集处(邻居最多的敌位置)
 	var es: Array = []
-	for e in _pick_enemies_of(u):
+	for e in _targeting._pick_enemies_of(u):
 		if e.get("alive", false): es.append(e)
 	if es.is_empty(): return u["pos"]
 	var best: Vector2 = es[0]["pos"]
@@ -7484,7 +7373,7 @@ func _sk_dmg(u: Dictionary, tgt, opts: Dictionary) -> void:
 	var cap: int = 24 if stagger > 0.0 else 8
 	var vh: int = clampi(int(opts.get("hits", 1)), 1, cap)
 	# 段前一次性: 减益(破盾/各down/治疗削减) + rider + 贴地环
-	var deb_targets: Array = _enemies_of(u) if (aoe or random_aoe) else ([tgt] if tgt != null else [])
+	var deb_targets: Array = _targeting._enemies_of(u) if (aoe or random_aoe) else ([tgt] if tgt != null else [])
 	for e in deb_targets:
 		if e == null or not e.get("alive", false):
 			continue
@@ -7493,7 +7382,7 @@ func _sk_dmg(u: Dictionary, tgt, opts: Dictionary) -> void:
 		_skill_ring(e["pos"], Color(col.r, col.g, col.b, 0.4), 46.0)
 	if float(opts.get("selfDodge", 0.0)) > 0.0:   # 技能给施法者闪避buff(如ghost幽冥突袭25%)
 		_buff(u, "dodge", float(opts["selfDodge"]), true, float(opts.get("selfDodgeDur", BUFF_SEC)))
-	var fixed: Array = _enemies_of(u) if aoe else ([tgt] if tgt != null else [])
+	var fixed: Array = _targeting._enemies_of(u) if aoe else ([tgt] if tgt != null else [])
 	if stagger > 0.0:
 		var tw := _reg_tween()
 		for i in range(vh):
@@ -7507,7 +7396,7 @@ func _sk_dmg(u: Dictionary, tgt, opts: Dictionary) -> void:
 func _sk_dmg_wave(u: Dictionary, opts: Dictionary, vh: int, col: Color, random_aoe: bool, fixed: Array) -> void:
 	var ws: Array
 	if random_aoe:
-		var es := _pick_enemies_of(u)
+		var es := _targeting._pick_enemies_of(u)
 		if es.is_empty():
 			return
 		ws = [es[_juice_rng.randi() % es.size()]]
@@ -7533,7 +7422,7 @@ func _sk_dmg_wave(u: Dictionary, opts: Dictionary, vh: int, col: Color, random_a
 			_apply_damage_from(u, e, dmg, col, ls)
 			var spl: float = float(opts.get("splash", 0.0))   # 溅射到次要目标(闪电打击25%)
 			if spl > 0.0:
-				for o in _enemies_of(u):
+				for o in _targeting._enemies_of(u):
 					if not is_same(o, e) and o.get("alive", false):
 						_apply_damage_from(u, o, int(dmg * spl), col)
 						break
@@ -7687,7 +7576,7 @@ func _egg_add_progress(u: Dictionary, amt: float) -> void:   # 温泉蛋(036): �
 		_egg_level_up_vfx(u, int(u.get("level", 1)) + el)      # 升级特效(金光柱+LV UP)
 		if int(stt["egg_levels"]) >= 3 and not bool(stt.get("incub_given", false)):
 			stt["incub_given"] = true
-			var allies := _allies_no_trainer(u)   # ★均分排除大师·用户2026-07-23 点4
+			var allies := _targeting._allies_no_trainer(u)   # ★均分排除大师·用户2026-07-23 点4
 			var per: float = float(stt.get("incub_shield", 300.0)) / maxf(1.0, float(allies.size()))
 			for o in allies: _grant_shield(o, per)
 			_particle_burst(u["pos"])
@@ -7915,7 +7804,7 @@ func _arr_erase_unit(arr: Array, x) -> void:   # ★引用删除: Array.erase() 
 
 func _lowest_hp_pct_ally(u: Dictionary):   # 生命【百分比】最低的友军(含自己) — 装备文案说的是百分比, _lowest_hp_ally 是绝对值语义
 	var best = null; var bv := INF
-	for o in _allies_of(u):
+	for o in _targeting._allies_of(u):
 		var pct: float = CombatMath.hp_frac(float(o["hp"]), float(o["maxHp"]))
 		if pct < bv:
 			bv = pct; best = o
@@ -7923,30 +7812,11 @@ func _lowest_hp_pct_ally(u: Dictionary):   # 生命【百分比】最低的友�
 
 func _lowest_hp_ally(u: Dictionary):
 	var best = null; var bv := INF
-	for o in _allies_of(u):
+	for o in _targeting._allies_of(u):
 		if o["hp"] < bv:
 			bv = o["hp"]; best = o
 	return best
 
-func _allies_of(u: Dictionary, include_self: bool = true) -> Array:
-	var out: Array = []
-	for o in _units:
-		# ★原为 o["side"] == u["side"]。改用 _is_ally(双向都不敌对) → 被侵入者是孤军:
-		#   赛博方不会给它加治疗/护盾, 它也不给赛博方加。见 §HOSTILE
-		if not o["alive"]:
-			continue
-		if is_same(o, u):          # is_same: 单位字典互引成环, ==/!= 会深比较→卡死(同053教训)
-			if include_self:
-				out.append(o)
-			continue
-		if _is_ally(u, o):
-			out.append(o)
-	return out
-
-# ============================================================================
-#  被动系统: 登场被动 / on-hit / 周期被动 (1:1 搬自 2D 版)
-# ============================================================================
-# 召唤体永远主动平A不放技能; 选被动的龟(暂无)也不放. demo 默认全选主动.
 func _is_passive_pick(u: Dictionary) -> bool:
 	if u.get("minion_kind", null) != null:
 		return false   # 缩头随从=实体完整龟, 自己充能放技(用户2026-07-17"没看到随从放技能他的龟能条呢"; 修前所有召唤体一律不充能=随从技能从未真通)
@@ -7977,14 +7847,14 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 			if "ninjaShuriken" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 忍者足(技三打包·选中才有): +25%闪避+40%暴击
 				_buff(u, "dodge", 0.25, false, 9999.0); u["crit"] += 0.40
 		"ghost":
-			for o in _enemies_of(u):
+			for o in _targeting._enemies_of(u):
 				_add_dot(o, "curse", o["maxHp"] * 0.05, BUFF_SEC, u)
 		"ice":
 			u["_vs_fire_bonus"] = 0.2          # 寒域: 对熔岩/凤凰 +20%伤害
 			u["_burnImmune"] = true            # 极寒(用户设计L162: 改常驻被动): 免疫灼烧
 			_ice_sys._ice_chill_vfx(u["pos"], true)     # 寒冰自身登场寒爆(大)
 			_vfx._flash(u, Color(0.6, 0.86, 1.0))   # 自身蓝闪
-			for o in _enemies_of(u):
+			for o in _targeting._enemies_of(u):
 				o["spd_aspd_mult"] = 0.7        # -30% 攻速
 				o["spd_echarge_mult"] = 0.7     # -30% 龟能充能速度
 				o["spd_move_mult"] = 0.7        # -30% 移速
@@ -8006,7 +7876,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 				_vfx._float_text(u["pos"] + Vector2(0, -64), "命运之轮 -30%HP", Color("#ff5566"))
 				if u["side"] == "left": _gambler_sys._gambler_apply_wheel_stacks(u)   # 跨场累积: 登场套用本大轮已抽花色(切轮重置·方案B·只玩家)
 		"pirate":
-			var es := _pick_enemies_of(u)
+			var es := _targeting._pick_enemies_of(u)
 			if not es.is_empty():
 				var v = es[_battle_rng.randi() % es.size()]
 				var pship := _pirate_sys._pirate_get_ship(u)   # 掠夺·登场轰击: 从海盗船发炮弹弹道→命中才跳25%目标最大生命真实伤害(用户2026-07-14加弹道·2026-07-10订死数值)
@@ -8062,7 +7932,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 				_two_head_sys._two_head_apply_melee(u, true)
 				_two_head_sys._two_head_fusion_onset(u)                      # 融合登场VFX(用户2026-07-11): 合体爆发+持续融合态光环
 		"diamond":                                    # 钻石结构(封板): 全队护甲/魔抗加成+50%(简化=开局全队+50%pct); 选钻石冲撞→强化结构(自身额外+100%·"受击再减20甲10抗"近似折进护甲留F5)
-			for o in _allies_of(u):
+			for o in _targeting._allies_of(u):
 				_buff(o, "def", 0.5, true, 9999.0)
 				_buff(o, "mr", 0.5, true, 9999.0)
 			if "diamondSmash" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 强化钻石结构(技三打包·选中才有): 自身护甲/魔抗额外+100%
@@ -8179,7 +8049,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		if _t - float(u.get("_ninja_last_dash", -99.0)) >= 0.4 and not u.get("_ninja_gliding", false):
 			var _nbest = null
 			var _nbd := 290.0   # 被动冲击触发射程(用户2026-07-11: 500→290码; <冲刺距离300→冲刺会略穿过目标)
-			for o in _pick_enemies_of(u):
+			for o in _targeting._pick_enemies_of(u):
 				if not o.get("alive", false): continue
 				if _t < float(o.get("_ninja_dash_until", 0.0)): continue
 				var _ndd: float = u["pos"].distance_to(o["pos"])
@@ -8209,7 +8079,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			u["drone_n"] = mini(20, int(u.get("drone_n", 0)) + 2)
 		_tick_cyber_drones(u, delta)
 		if not u.get("_slam", false) and "cyberSmartAI" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 常驻走位闪避(用户2026-07-16: 被动冲刺是消耗充能层数的): 敌贴近130码+有层数→消耗1层自动躲避冲刺(冷却2.5s)
-			var _ne5 = _nearest_enemy(u)
+			var _ne5 = _targeting._nearest_enemy(u)
 			if _ne5 != null and int(u.get("cyber_ai_charge", 0)) > 0 and (u["pos"] as Vector2).distance_to(_ne5["pos"]) < 130.0 and _t >= float(u.get("_ai_dodge_cd", 0.0)):
 				u["_ai_dodge_cd"] = _t + 2.5
 				u["cyber_ai_charge"] = int(u["cyber_ai_charge"]) - 1
@@ -8251,7 +8121,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			u["chest_rum_t"] = 0.0; _heal(u, u["maxHp"] * 0.08)
 	# --- 钻石滚球被动(封板): 选滚球 且 100码内无敌 → 免费自动滚(不耗龟能不充能)撞向最近·0.8s防抖内CD ---
 	if u["id"] == "diamond" and not u.get("roll_active", false) and _t > float(u.get("roll_free_cd", 0.0)) and "diamondPowerball" in _chosen_skill_types(u["id"], u["side"] == "left"):
-		var _dne = _nearest_enemy(u)
+		var _dne = _targeting._nearest_enemy(u)
 		if _dne != null and _dne["pos"].distance_to(u["pos"]) > 200.0:   # 200码内无敌=最近敌>200码(用户2026-07-12: 100→200)
 			u["roll_active"] = true; u["roll_start"] = _t; u["roll_free_cd"] = _t + 0.8
 	# --- 财神聚宝盆: 每3秒 +4~7金币 (用户) ---
@@ -8283,7 +8153,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			if bs >= 1.0:
 				_heal(u, bs * 0.10, true)              # 修: 15%→10%(封板)
 				for _bh in range(2): _bubble_sys._bubble_rise(u["pos"])   # 泡沫被动proc: 自身回血泡泡(用户2026-07-14)
-				var bt = _nearest_enemy(u)             # 修: 随机敌→最近敌(封板)
+				var bt = _targeting._nearest_enemy(u)             # 修: 随机敌→最近敌(封板)
 				if bt != null:
 					_apply_damage_from(u, bt, int(_mitigate(u, bs * 0.10, bt, true)), Color("#aef1ff"))   # 修: 35%真伤→10%化魔法(吃魔抗·封板)
 					_fly_vfx("res://assets/sprites/skills/bubble-1.png", u["pos"], bt["pos"], 46.0, 0.34, 1.0)   # 泡泡弹飞向最近敌
@@ -8294,7 +8164,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		u["_ltimer"] = u.get("_ltimer", 0.0) + delta
 		if u["_ltimer"] >= 4.0:
 			u["_ltimer"] = 0.0
-			var le := _pick_enemies_of(u)
+			var le := _targeting._pick_enemies_of(u)
 			if not le.is_empty():
 				var lv2 = le[_battle_rng.randi() % le.size()]
 				_apply_damage_from(u, lv2, _shock_dmg(u), Color("#4dabf7"), 0.0, true)
@@ -8337,7 +8207,7 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 			_hiding_sys._hiding_legacy_vfx(u["pos"], _hm)                    # 遗志: 金光点从随从尸位飞回主人入体(2026-07-17)
 	# 召唤体死亡爆炸 (糖果炸弹: 全体敌均摊魔伤)
 	if u.get("death_aoe", 0.0) > 0.0:
-		var es := _enemies_of(u)
+		var es := _targeting._enemies_of(u)
 		if not es.is_empty():
 			var per: float = u["maxHp"] * u["death_aoe"] / float(es.size())
 			for o in es:
@@ -8349,7 +8219,7 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 		_skill_ring(u["pos"], Color(1.0, 0.5, 0.8, 0.6), 130.0)
 	if u.get("boom_pct_true", 0.0) > 0.0:                 # 032骷髅死亡: 200码内敌各受其%最大生命真伤
 		var _br: float = float(u.get("boom_radius", 200.0))
-		for _bo in _enemies_of(u):
+		for _bo in _targeting._enemies_of(u):
 			if _bo.get("alive", false) and (_bo["pos"] - u["pos"]).length() <= _br:
 				_apply_damage_from(u, _bo, int(float(_bo["maxHp"]) * float(u["boom_pct_true"])), Color("#8affa0"), 0.0, true, true)
 		_necro_burst(u["pos"], _br)
@@ -8369,7 +8239,7 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 		_hunter_sys._hunter_apply_steal(killer, u)
 	# 幽灵强化怨灵: 死亡时再诅咒全体敌一次
 	if u["id"] == "ghost":
-		for o in _enemies_of(u):
+		for o in _targeting._enemies_of(u):
 			_add_dot(o, "curse", o["maxHp"] * 0.05, BUFF_SEC, u)
 	# 海盗掠夺被动已按封板L354/382删除(掠夺去掉→海盗龟无被动·场外船是共用演出载体·待用户确认是否补新被动)
 
@@ -8417,7 +8287,7 @@ func _spawn_hiding_minion(u: Dictionary) -> void:
 		_hiding_sys._hiding_summon_vfx(minion["pos"])                               # 召唤法阵+光柱+星粒+落地尘(2026-07-17·原无演出)
 
 func _spawn_pirate_ship(u: Dictionary, tgt = null) -> void:   # 首次: 后方持久演出船俯冲冲锋→撞击点转变为实体海盗船参战(用户2026-07-14设计)
-	var aim = tgt if (tgt != null and tgt.get("alive", false)) else _nearest_enemy(u)
+	var aim = tgt if (tgt != null and tgt.get("alive", false)) else _targeting._nearest_enemy(u)
 	if aim == null:
 		return
 	var impact2d: Vector2 = aim["pos"]
@@ -8435,7 +8305,7 @@ func _spawn_pirate_ship(u: Dictionary, tgt = null) -> void:   # 首次: 后方�
 		_shake(JUICE_SHAKE_HEAVY)
 		var ship = _spawn_pirate_ship_entity(uu, impact2d)   # 撞击点淡入实体海盗船(pirate-ship.png)
 		var src: Dictionary = ship if ship != null else uu
-		for e in _enemies_of(uu):                         # 撞击: 200码内1.0A魔法+击飞2秒(封板)
+		for e in _targeting._enemies_of(uu):                         # 撞击: 200码内1.0A魔法+击飞2秒(封板)
 			if not e.get("alive", false): continue
 			if e["pos"].distance_to(impact2d) > 200.0: continue
 			_apply_damage_from(src, e, _atk_dmg(uu, 1.0, e, true), Color("#e8c07a"), 0.0, true)
@@ -8510,7 +8380,7 @@ func _tick_cyber_drones(u: Dictionary, delta: float) -> void:   # 浮游炮纯�
 		d["fire_t"] = float(d["fire_t"]) - delta                  # 各自1.6秒射击(错峰)
 		if d["fire_t"] <= 0.0:
 			d["fire_t"] = 1.6 + randf() * 0.2
-			var es := _pick_enemies_of(u)
+			var es := _targeting._pick_enemies_of(u)
 			var tgt = null
 			if not es.is_empty(): tgt = es[_juice_rng.randi() % es.size()]
 			if tgt != null and tgt.get("alive", false):
@@ -8691,30 +8561,30 @@ func _tick_summon_special(u: Dictionary, delta: float) -> void:
 		owner = u
 	match special:
 		"cannon":
-			var es := _pick_enemies_of(u)
+			var es := _targeting._pick_enemies_of(u)
 			if es.is_empty(): return
 			var o = es[_battle_rng.randi() % es.size()]
 			_fire_bolt_from(u, o, _atk_dmg(u, u.get("special_scale", 0.2), o), Color("#ffb05c"))
 			_skill_ring(o["pos"], Color(1.0, 0.6, 0.2, 0.45), 40.0)
 		"ship_shot":                                          # 海盗船普攻: 射最近敌0.4A(封板L379·攻速0.8由special_cd驱动)
-			var st = _nearest_enemy(u)
+			var st = _targeting._nearest_enemy(u)
 			if st == null: return
 			_muzzle_flash(u["pos"], (st["pos"] - u["pos"]).normalized(), Color("#ffd9a0"))
 			_fire_bolt_from(u, st, _atk_dmg(u, u.get("special_scale", 0.4), st), Color("#e8c07a"))
 		"ray":                                            # 水晶球射线(2026-07-16重做): 蓄力聚能→两段厚冰蓝光束·伤害不变(2段×0.5A魔法+2层结晶)
-			var t = _nearest_enemy(u)
+			var t = _targeting._nearest_enemy(u)
 			if t == null: return
 			_crystal_sys._crystal_ray_vfx(u, t, func(sr: Dictionary, tr: Dictionary, last: bool) -> void:
 				_apply_damage_from(sr, tr, _atk_dmg(sr, sr.get("special_scale", 1.0), tr, true), Color("#9bdcff"), 0.0, true)
 				if last: _crystal_sys._crystal_stack(sr, tr, 2))   # 与本体共享满5引爆(引爆改吃魔抗)
 		"random_hit":
-			var es2 := _pick_enemies_of(u)
+			var es2 := _targeting._pick_enemies_of(u)
 			if es2.is_empty(): return
 			var o2 = es2[_battle_rng.randi() % es2.size()]
 			_fire_bolt_from(u, o2, _atk_dmg(u, u.get("special_scale", 0.25), o2), Color("#9bf0ff"))
 		"mech_blast":
 			var low = null; var lv := INF
-			for o in _pick_enemies_of(u):
+			for o in _targeting._pick_enemies_of(u):
 				if o["hp"] < lv: lv = o["hp"]; low = o
 			if low == null: return
 			_bolt_line(u["pos"], low["pos"], Color("#9bf0ff"))
@@ -9840,7 +9710,7 @@ func _build_edit_palette() -> void:
 	_edit_speed_btns = []
 	for si in range(EDIT_SPEEDS.size()):
 		var sidx: int = si
-		var bp := _debug._edit_mk_btn("%g×" % float(EDIT_SPEEDS[si]), func(): _debug._edit_set_speed(sidx), 60)
+		var bp := _debug._edit_mk_btn("%s×" % _fmt_num(float(EDIT_SPEEDS[si])), func(): _debug._edit_set_speed(sidx), 60)   # %g Godot不支持→_fmt_num(2026-07-26修预存bug)
 		_edit_speed_btns.append(bp)
 		row_spd.add_child(bp)
 

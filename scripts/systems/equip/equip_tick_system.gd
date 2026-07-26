@@ -19,7 +19,7 @@ func _tick_doll(u: Dictionary, delta: float) -> void:   # 玩偶小熊: 每4s派
 	stt["doll_t"] = float(stt.get("doll_t", 0.0)) + delta
 	if float(stt["doll_t"]) < _iv: return
 	stt["doll_t"] = 0.0
-	var mt = battle._nearest_enemy(u)
+	var mt = battle._targeting._nearest_enemy(u)
 	if mt == null: return
 	var bdm: int = battle._resolve_dmg(u, u["atk"] * [1.0, 2.0, 5.0][si] + [100.0, 210.0, 1000.0][si], mt, false)
 	battle._summon_walking_bear(u, mt, bdm)
@@ -32,7 +32,7 @@ func _tick_doll(u: Dictionary, delta: float) -> void:   # 玩偶小熊: 每4s派
 func _tick_bear_anim(u: Dictionary, delta: float) -> void:   # 大熊状态机: 移动→走路循环 / 停下→顿住 / 拍击→熊爪 / 冲击波→举手砸地
 	var spr = u.get("sprite", null)
 	if not is_instance_valid(spr): return
-	var ne = battle._nearest_enemy(u)                     # 朝向最近敌(熊默认朝左→敌在右则flip朝右; 迟滞防抖)
+	var ne = battle._targeting._nearest_enemy(u)                     # 朝向最近敌(熊默认朝左→敌在右则flip朝右; 迟滞防抖)
 	if ne != null and absf(float(ne["pos"].x) - float(u["pos"].x)) > 40.0:
 		spr.flip_h = float(ne["pos"].x) > float(u["pos"].x)
 	u["bear_anim_t"] = float(u.get("bear_anim_t", 0.0)) + delta
@@ -83,7 +83,7 @@ func _tick_fortress(u: Dictionary, delta: float) -> void:   # 深海堡垒甲p2e
 		e["fortress_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		var k2: float = [0.9, 1.6, 3.0][si]   # 用户2026-07-19: 0.8/1.0/1.5 -> 1/2/4 -> 0.9/1.6/3
-		for o in battle._enemies_of(u):
+		for o in battle._targeting._enemies_of(u):
 			battle._bolt_line(o["pos"], u["pos"], Color("#bfe9ff"))
 			battle._apply_damage_from(u, o, battle._resolve_dmg(u, k2 * (u["def"] + u["mr"]), o, true), Color("#bfe9ff"), 0.0, false, true)   # 真·魔法伤害(走魔抗); 原 raw=true 是白字真伤·与文案"魔法伤害"不符(用户2026-07-19指出)
 			battle._heal(u, [60.0, 110.0, 250.0][si] + maxf(0.0, u["maxHp"] - u["hp"]) * 0.06)   # 用户2026-07-19: 60/110/250 + 已损生命6%(逐敌结算)
@@ -96,7 +96,7 @@ func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016:
 		if float(e["ironwall_t"]) < 5.0: continue
 		e["ironwall_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
-		var mates: Array = battle._allies_no_trainer(u)   # ★均分排除大师(不占盾份额·稀释)·用户2026-07-23 点4
+		var mates: Array = battle._targeting._allies_no_trainer(u)   # ★均分排除大师(不占盾份额·稀释)·用户2026-07-23 点4
 		if mates.is_empty(): continue
 		var pool: float = [100.0, 250.0, 400.0][si] + u["maxHp"] * 0.08   # 总池: 固定 + 携带者8%最大生命
 		var each: float = pool / float(mates.size())                      # 全队(含自己·除大师)均分
@@ -140,7 +140,7 @@ func _tick_gear(u: Dictionary, delta: float) -> void:   # 黄铜齿轮035(用户
 			var gs = battle.get_node_or_null("/root/GameState")
 			if gs != null and gs.get("meta_deepsea_coins") != null:
 				gs.set("meta_deepsea_coins", int(gs.get("meta_deepsea_coins")) + coins)
-			battle._float_text(u["pos"], "+%d💠" % coins, Color("#5fd0e0"))   # 可见反馈(用户: 之前无反馈以为没生效)
+			battle._vfx._float_text(u["pos"], "+%d💠" % coins, Color("#5fd0e0"))   # 可见反馈(用户: 之前无反馈以为没生效)
 			stt["coins_made"] = int(stt.get("coins_made", 0)) + coins   # 头像装备格徽章显示本局累计产币(用户2026-07-19)
 		u["eq_state"]["p2eq_035"] = stt
 
@@ -223,7 +223,7 @@ func _tick_barnacle(u: Dictionary, delta: float) -> void:   # 守护贝母p2eq_0
 			var prev = stt.get("link_target", null)   # 重连前清上个连接对象的伤害转移标记
 			if prev is Dictionary: prev.erase("dmg_redirect_to")
 			var best = null; var ba = -1.0
-			for o in battle._allies_of(u):
+			for o in battle._targeting._allies_of(u):
 				if is_same(o, u): continue   # is_same: 单位字典深比较有卡死风险(同053)
 				if float(o["atk"]) > ba: ba = float(o["atk"]); best = o
 			stt["link_target"] = best
@@ -258,7 +258,7 @@ func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 锈蚀短剑p2eq_
 		e["rust_t"] = float(e.get("rust_t", 0.0)) + delta   # 计时存装备条目→每副本独立就绪
 		if float(e["rust_t"]) < 3.0: continue               # 该件未就绪(每3s就绪一次)
 		if not got:                                          # 目标懒求(多件共用同一最近敌)
-			t = battle._nearest_enemy(u); got = true
+			t = battle._targeting._nearest_enemy(u); got = true
 		if t == null or (t["pos"] - u["pos"]).length() > rng: continue   # 射程内无敌→保持就绪等待
 		e["rust_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
@@ -273,7 +273,7 @@ func _tick_coral(u: Dictionary, delta: float) -> void:   # 双穿珊瑚刺p2eq_0
 		e["coral_t"] = float(e.get("coral_t", 0.0)) + delta
 		if float(e["coral_t"]) < 9.0: continue
 		var far = null; var fd = -1.0
-		for o in battle._pick_enemies_of(u):   # ★单体定向(挑最远一个)必须走 battle._pick_enemies_of: 排除训龟大师(场外监视者·永远最远)+不可选中; 见 §PICK-TARGET 铁律。原用 battle._enemies_of → 珊瑚刺永远锁大师(用户2026-07-24)
+		for o in battle._targeting._pick_enemies_of(u):   # ★单体定向(挑最远一个)必须走 battle._targeting._pick_enemies_of: 排除训龟大师(场外监视者·永远最远)+不可选中; 见 §PICK-TARGET 铁律。原用 battle._targeting._enemies_of → 珊瑚刺永远锁大师(用户2026-07-24)
 			var dd2: float = (o["pos"] - u["pos"]).length_squared()
 			if dd2 > fd: fd = dd2; far = o
 		if far == null: continue
@@ -286,7 +286,7 @@ func _tick_broadsword(u: Dictionary, delta: float) -> void:   # 锈蚀阔剑p2eq
 		if str(e["id"]) != "p2eq_007": continue
 		e["bsw_t"] = float(e.get("bsw_t", 0.0)) + delta
 		if float(e["bsw_t"]) < 6.0: continue
-		if battle._nearest_enemy(u) == null: continue
+		if battle._targeting._nearest_enemy(u) == null: continue
 		e["bsw_t"] = 0.0
 		battle._equip_sys._eq_broadsword(u, battle._equip_sys._eq_si(int(e.get("star", 1))))
 
@@ -296,7 +296,7 @@ func _tick_sword_storm(u: Dictionary, delta: float) -> void:   # 千刃风暴p2e
 		if str(e["id"]) != "p2eq_006": continue
 		e["storm_t"] = float(e.get("storm_t", 0.0)) + delta
 		if float(e["storm_t"]) < 7.0: continue
-		if battle._nearest_enemy(u) == null: continue
+		if battle._targeting._nearest_enemy(u) == null: continue
 		e["storm_t"] = 0.0
 		battle._equip_sys._eq_sword_storm(u, battle._equip_sys._eq_si(int(e.get("star", 1))))
 
@@ -306,7 +306,7 @@ func _tick_laser(u: Dictionary, delta: float) -> void:   # 激光长刃p2eq_010:
 		if str(e["id"]) != "p2eq_010": continue
 		e["laser_t"] = float(e.get("laser_t", 0.0)) + delta
 		if float(e["laser_t"]) < maxf(0.3, float(u.get("atk_interval", 1.0))): continue
-		var t = battle._nearest_enemy(u)
+		var t = battle._targeting._nearest_enemy(u)
 		if t == null: continue
 		e["laser_t"] = 0.0
 		battle._equip_sys._eq_laser_sweep(u, t, battle._equip_sys._eq_si(int(e.get("star", 1))))

@@ -105,7 +105,7 @@ func _fortune_allin_channel(u: Dictionary, delta: float) -> void:
 		return
 	var tgt = u.get("allin_target", null)
 	if tgt == null or not tgt.get("alive", false):
-		tgt = battle._nearest_enemy(u)
+		tgt = battle._targeting._nearest_enemy(u)
 		u["allin_target"] = tgt
 	if tgt == null:
 		u["allin_coins"] = 0

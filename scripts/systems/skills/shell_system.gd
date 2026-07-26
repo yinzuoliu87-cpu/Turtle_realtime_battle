@@ -59,7 +59,7 @@ func _shell_basic(u: Dictionary, tgt: Dictionary) -> void:
 	# 近战打击感: 闪白 + 前冲 (同 _emit_basic 近战分支)
 	battle._vfx._flash(tgt); battle._melee_lunge(u, tgt)
 	# 范围溅射: 主目标120px内其他敌 50%(同类型)
-	for e in battle._enemies_of(u):
+	for e in battle._targeting._enemies_of(u):
 		if is_same(e, tgt) or not e.get("alive", false):
 			continue
 		if (e["pos"] - tgt["pos"]).length() <= battle.SHELL_SPLASH_RADIUS:
@@ -74,7 +74,7 @@ func _shell_basic(u: Dictionary, tgt: Dictionary) -> void:
 #   0.6 / ×0.6 / 260码 均为实装默认值(用户未指定) → 见权威文档 附录A 调参表。
 #   叠层在 _basic_attack 里走 _on_basic_hit(每攻击+1电击层, 满8引爆雷暴). 原始设计=魔法+跳敌+8层雷暴.
 func _sk_shell_absorb(u: Dictionary, tgt) -> void:              # 龟壳·吸收(封板): 偷目标10%最大生命→转移(目标maxHp&当前同步减·龟壳maxHp&当前同步增)
-	if tgt == null: tgt = battle._nearest_enemy(u)
+	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	var steal: float = tgt["maxHp"] * 0.10
 	var _hp_before: float = float(tgt["hp"])
@@ -180,7 +180,7 @@ func _shell_break_stealth(u: Dictionary) -> void:              # 破隐(自己�
 	_shell_dark_flame(u["pos"], 90.0, 0.4)
 
 func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影俯冲(封板·130龟能·Corki库奇式): 俯冲600码→落地2.5A魔法+击退+路径敌→暗影燃烧区150码5s(每0.5s 0.1A灼烧层+减速20%)→进入隐身
-	if tgt == null: tgt = battle._nearest_enemy(u)
+	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	var start: Vector2 = u["pos"]
 	var dir: Vector2 = tgt["pos"] - start
@@ -189,7 +189,7 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影�
 	var dest: Vector2 = start + dir * 600.0
 	dest.x = clampf(dest.x, battle.ARENA.position.x, battle.ARENA.end.x)
 	dest.y = clampf(dest.y, battle.ARENA.position.y, battle.ARENA.end.y)
-	for o in battle._enemies_of(u):                                    # 落地+路径敌: 2.5A魔法+击退
+	for o in battle._targeting._enemies_of(u):                                    # 落地+路径敌: 2.5A魔法+击退
 		if not o.get("alive", false): continue
 		if not battle._on_line(start, dir, o["pos"], 75.0): continue
 		if o["pos"].distance_to(start) > 620.0: continue
@@ -233,7 +233,7 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影�
 	var zc: Vector2 = dest
 	for i in range(10):                                         # 暗影燃烧区150码·5秒·每0.5秒结算(数值/时机封板不动)
 		var fn = func():
-			for o in battle._enemies_of(u):
+			for o in battle._targeting._enemies_of(u):
 				if o.get("alive", false) and o["pos"].distance_to(zc) <= 150.0:
 					battle._apply_dot_stacks(o, "burn", maxi(1, int(round(u["atk"] * 0.1))), u)   # 0.1A灼烧层
 					o["spd_move_mult"] = 0.8
@@ -252,7 +252,7 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影�
 #     半径=用户指定(回合制原"对全体敌方"无半径·用户2026-07-11「400码半径」)。放技射程2000码(远程扔·见 _SKILL_CAST_RANGE)。
 func _sk_shell_copy(u: Dictionary, tgt) -> void:               # 龟壳·复制(封板·130龟能): 复制2敌方可用技(_COPYABLE白名单)·轮流依次释放(不同帧糊); 60%效果=伤害(dmg_out_mult)+护盾/治疗/DoT(battle._copy_fx_mult)
 	var pool: Array = []
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		for st in o.get("active_skills", []):
 			var s = str(st)
 			if battle._COPYABLE_SKILLS.has(s) and not pool.has(s):
@@ -285,7 +285,7 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:               # 龟壳·复制(
 		var fn = func():
 			uu["dmg_out_mult"] = 0.6
 			battle._copy_fx_mult = 0.6
-			battle._do_skill(uu, battle._nearest_enemy(uu), p1)
+			battle._do_skill(uu, battle._targeting._nearest_enemy(uu), p1)
 			battle._copy_fx_mult = 1.0
 			uu["dmg_out_mult"] = 1.0
 		battle._pending_shots.append({"delay": 0.6, "fn": fn, "src": u})
@@ -490,7 +490,7 @@ func _shell_shockwave_tick(u: Dictionary, delta: float) -> void:
 	var hit: Dictionary = sw["hit"]
 	var dmg: int = int(sw["dmg"])
 	if dmg > 0:
-		for e in battle._enemies_of(u):
+		for e in battle._targeting._enemies_of(u):
 			var spr_e = e.get("sprite", null)        # 用立绘节点实例id当唯一键(每单位唯一; dict不能取instance_id)
 			if spr_e == null or not is_instance_valid(spr_e):
 				continue

@@ -9,7 +9,7 @@ func _init(b) -> void:
 	battle = b
 
 func _sk_cyber_cannon(u: Dictionary, tgt) -> void:              # 赛博龟·能量大炮(用户#15: 对一条直线蓄力后发长激光能量射线·线上敌各1A物理+0.1A×浮游炮数真伤·炮越多越猛)
-	if tgt == null: tgt = battle._nearest_enemy(u)
+	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	var dir: Vector2 = tgt["pos"] - u["pos"]
 	if dir.length() < 1.0: dir = Vector2.RIGHT
@@ -40,7 +40,7 @@ func _sk_cyber_cannon(u: Dictionary, tgt) -> void:              # 赛博龟·能
 		, "src": u})
 	var fire = func() -> void:                                 # 发射: 贯屏巨柱(三层: 白热核心+主青束+外晕)瞬现
 		if not uu.get("alive", false): return
-		for o in battle._enemies_of(uu):
+		for o in battle._targeting._enemies_of(uu):
 			if not o.get("alive", false): continue
 			if not battle._on_line(uu["pos"], dir, o["pos"], 70.0): continue    # 直线判定带宽±70码
 			if o["pos"].distance_to(uu["pos"]) > 900.0: continue
@@ -72,7 +72,7 @@ func _sk_cyber_cannon(u: Dictionary, tgt) -> void:              # 赛博龟·能
 
 func _sk_cyber_hijack(u: Dictionary) -> void:                   # 赛博龟·侵入(135龟能·用户2026-07-16: 4秒→5秒/120→135·Botworld黑客): 黑1随机敌5秒倒戈(side改赛博方·标hijacked→打原队友+被原队友打·不算存活数·击杀归赛博·蛋免控·可黑多个)
 	var es: Array = []
-	for o in battle._pick_enemies_of(u):
+	for o in battle._targeting._pick_enemies_of(u):
 		if o.get("alive", false) and not o.get("_eggImmune", false) and not o.get("hijacked", false):
 			es.append(o)
 	if es.is_empty(): return
@@ -98,11 +98,11 @@ func _sk_cyber_smart(u: Dictionary) -> void:                   # 赛博龟·智�
 	battle._skill_ring(u["pos"], Color(0.3, 0.9, 1.0, 0.5), 46.0)
 
 func _cyber_smart_dash(u: Dictionary) -> void:   # 智能走位冲刺核心(主动放技+被动躲避共用·用户2026-07-16): 绕自身200码采样16候选打分(离敌远+离墙远)·800码/s真位移
-	var ne = battle._nearest_enemy(u)
+	var ne = battle._targeting._nearest_enemy(u)
 	if ne == null: return
 	var best: Vector2 = u["pos"]
 	var best_score = -INF
-	var es = battle._enemies_of(u)
+	var es = battle._targeting._enemies_of(u)
 	for i in range(16):
 		var aa: float = TAU * float(i) / 16.0
 		var cand: Vector2 = u["pos"] + Vector2(cos(aa), sin(aa)) * 200.0

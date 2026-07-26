@@ -86,7 +86,7 @@ func _ts_fire() -> void:
 		_c["_ts_echarge"] = 2.0
 		if battle._has_energy_system(_c):
 			battle._eq_grant_energy(_c, 15.0)
-			battle._float_text(_c["pos"] + Vector2(0, -62), "+15龟能", Color("#8fd4ff"))
+			battle._vfx._float_text(_c["pos"] + Vector2(0, -62), "+15龟能", Color("#8fd4ff"))
 	_ts_begin_freeze()
 	_ts_visual_start()
 

@@ -12,7 +12,7 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 	# 演出重设计照发条R官方逐帧(C:/tmp/ori_burst: b13施放三件套/b13-b24吸入0.37s/b25-27屏息/b28爆发帧/b29-b34拉拽0.2s)·星际×2放慢换算
 	# 用户2026-07-16批准: 伤害挪到爆发帧结算+施法锁(技2先例); 同日整改: ①普通版施法可积攒星能·强化版才锁星能 ②强化换位=重力抛物线甩飞过中心点落对端·落地即恢复行动("延中心点到对端") ③特效范围=伤害范围500码对齐 ④节奏再减慢30%→吸入1.03s/爆发帧1.24s/拉拽0.57s
 	var es: Array = []
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if o.get("alive", false): es.append(o)
 	if es.is_empty(): return
 	var center := Vector2.ZERO
@@ -145,7 +145,7 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 		if not charged:                                          # 普通版: 爆发即恢复龟能(星能本就不锁·可积攒)
 			uu["energy_lock_until"] = battle._t
 		var victims: Array = []
-		for o2 in battle._enemies_of(uu):                               # 爆发帧结算(同帧飘字·封板0.8A魔法)
+		for o2 in battle._targeting._enemies_of(uu):                               # 爆发帧结算(同帧飘字·封板0.8A魔法)
 			if not o2.get("alive", false): continue
 			if (o2["pos"] as Vector2).distance_to(center) > 500.0: continue
 			battle._apply_damage_from(uu, o2, battle._atk_dmg(uu, 0.8, o2, true), Color("#b09bff"))
@@ -329,7 +329,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				var dpt = battle._reg_tween()
 				dpt.tween_property(dp, "modulate:a", 0.0, 0.8)
 				dpt.tween_callback(dp.queue_free)
-			for o in battle._enemies_of(uu2):                            # 波前扫到才结算1.0A魔法(近先远后·封板系数)
+			for o in battle._targeting._enemies_of(uu2):                            # 波前扫到才结算1.0A魔法(近先远后·封板系数)
 				if not o.get("alive", false) or battle._arr_has_unit(hitset, o): continue
 				if (o["pos"] as Vector2).distance_to(origin) > r: continue
 				hitset.append(o)
@@ -372,7 +372,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 	battle._pending_shots.append({"delay": 0.4, "fn": wave, "src": u})
 	if charged:                                                   # ── 强化: 巨彗星「天崩」(逐帧订正asol_hi a30/a38/a44)
 		var es: Array = []
-		for o in battle._enemies_of(u):
+		for o in battle._targeting._enemies_of(u):
 			if o.get("alive", false): es.append(o)
 		if es.is_empty(): return
 		var center := Vector2.ZERO
@@ -496,7 +496,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 			, 0.0, 1.0, 0.5)
 			ct2.tween_callback(func() -> void:
 				if is_instance_valid(head): head.queue_free()
-				for o2 in battle._enemies_of(uu2):                        # 伤害撞击帧结算(用户2026-07-16: 100%消耗星能·真实伤害·400码)
+				for o2 in battle._targeting._enemies_of(uu2):                        # 伤害撞击帧结算(用户2026-07-16: 100%消耗星能·真实伤害·400码)
 					if o2.get("alive", false) and o2["pos"].distance_to(center) <= 400.0:
 						battle._apply_damage_from(uu2, o2, maxi(1, int(burst)), Color("#ffffff"), 0.0, true)
 				if uu2.get("alive", false):
@@ -591,7 +591,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 # (已废弃的 2026-07-09 版说明: 吸经过敌90码+经过即1段伤害。现行实现见下方 _sk_star_wormhole 头注释:
 #  引力150码/捕获100码/伤害只在抵达边界爆炸时结算。留此行仅为标记该段旧描述已作废。)
 func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·虫洞(用户2026-07-16重做): 蓄力→140码/s直线飞到地图边界→引力场150码真重力吸(1/r²加速度·弧线卷入)→捕获100码吸着走(绕洞打转·位移被主导·可攻可被打)→边界爆炸=1.5A×(1+5%每秒·发射时刻定格)魔法+携带者炸开
-	if tgt == null: tgt = battle._nearest_enemy(u)
+	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
 	if dir.length() < 0.1: dir = Vector2.RIGHT
@@ -625,7 +625,7 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·
 			pd[0] = d
 			var c: Vector2 = start + dir * d
 			if is_instance_valid(hole): hole.position = battle._world_pos(c, 0.4)
-			for o in battle._enemies_of(uu):                                # ① 引力场150码: 真重力1/r²加速度(近强远弱·弧线卷入)
+			for o in battle._targeting._enemies_of(uu):                                # ① 引力场150码: 真重力1/r²加速度(近强远弱·弧线卷入)
 				if not o.get("alive", false) or o.get("_eggImmune", false): continue
 				var carried := false
 				for cg in caught:
@@ -704,7 +704,7 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·
 				boomed.append(ob)
 				battle._apply_damage_from(uu, ob, battle._atk_dmg(uu, mult, ob, true), Color("#c9a0ff"))
 				battle._knock_up(ob, c3, 6.6)
-			for o3 in battle._enemies_of(uu):                               # 爆炸半径150码内其余敌也吃原伤害
+			for o3 in battle._targeting._enemies_of(uu):                               # 爆炸半径150码内其余敌也吃原伤害
 				if not o3.get("alive", false) or boomed.has(o3): continue
 				if (o3["pos"] as Vector2).distance_to(c3) > 150.0: continue
 				battle._apply_damage_from(uu, o3, battle._atk_dmg(uu, mult, o3, true), Color("#c9a0ff"))

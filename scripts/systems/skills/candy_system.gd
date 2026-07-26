@@ -9,7 +9,7 @@ func _init(b) -> void:
 	battle = b
 
 func _sk_candy_hammer(u: Dictionary, tgt) -> void:              # 糖果龟·技能一糖果锤(封板·80龟能): 举糖果锤蓄力→猛砸直线200码·总(1.8A+12%自maxHp)物理由命中敌均分·回血40%(用户2026-07-14做举锤蓄力+落砸)
-	if tgt == null: tgt = battle._nearest_enemy(u)
+	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	var dir: Vector2 = tgt["pos"] - u["pos"]
 	if dir.length() < 1.0: dir = Vector2.RIGHT
@@ -41,7 +41,7 @@ func _sk_candy_hammer(u: Dictionary, tgt) -> void:              # 糖果龟·技
 			bt.tween_callback(func() -> void: battle._burst_vfx("res://assets/sprites/vfx/candy-burst.png", at, 150.0, 0.35))
 		if not uu.get("alive", false): return
 		var hits: Array = []
-		for o in battle._enemies_of(uu):
+		for o in battle._targeting._enemies_of(uu):
 			if o.get("alive", false) and battle._on_line(uu["pos"], d2, o["pos"], 70.0) and o["pos"].distance_to(uu["pos"]) <= 200.0:
 				hits.append(o)
 		if hits.is_empty(): return
@@ -70,7 +70,7 @@ func _candy_hammer_pose(hammer: Sprite3D, pos2d: Vector2, dir: Vector2, slamming
 
 func _sk_candy_barrage(u: Dictionary, tgt) -> void:            # 糖果龟·技能二糖衣炮弹(封板·120龟能): 敌最密集区降糖衣炮弹雨8跳·可见糖弹从天落下·落点局部命中(用户2026-07-14全套标准)·友2%maxHp盾/敌0.2A+2%maxHp魔法+减速20%
 	var es: Array = []
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if o.get("alive", false): es.append(o)
 	var center: Vector2 = tgt["pos"] if tgt != null else u["pos"]
 	if not es.is_empty():
@@ -142,7 +142,7 @@ func _sk_candy_bomb_feed(u: Dictionary) -> void:               # 糖果龟·技�
 
 func _candy_sweet_drain(u: Dictionary) -> void:   # 甜蜜掠夺·甜蜜吸取(用户2026-07-15"第8秒生效"): 对最大生命最高敌吸25%maxHp→全回复自己(不杀留1)+粉精华VFX
 	if not u.get("alive", false): return
-	var ce = battle._enemies_of(u)
+	var ce = battle._targeting._enemies_of(u)
 	if ce.is_empty(): return
 	var fat: Dictionary = ce[0]
 	for e in ce:

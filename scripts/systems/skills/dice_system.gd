@@ -97,7 +97,7 @@ func _dice_blade_trail(pos2d: Vector2, dir: Vector2) -> void:   # 冲刺青蓝�
 
 func _dice_pick_strike_target(u: Dictionary):                   # 随机敌(用户2026-07-13:不是最近/残血)·射程2000·_enemies_of已跳围栏内蛋(注意龟蛋)
 	var cand: Array = []
-	for o in battle._pick_enemies_of(u):
+	for o in battle._targeting._pick_enemies_of(u):
 		if not o.get("alive", false): continue
 		if o["pos"].distance_to(u["pos"]) > 2000.0: continue   # 射程2000
 		cand.append(o)
@@ -138,12 +138,12 @@ func _dice_scythe_step(fr: float, blade: Sprite3D, origin: Vector2, base_ang: fl
 	var tt = battle._reg_tween(); tt.tween_property(tr, "modulate:a", 0.0, 0.15); tt.tween_callback(tr.queue_free)
 
 func _sk_dice_allin(u: Dictionary) -> void:                      # 骰子龟·孤注一掷(用户设计: 前方120°/300码镰刀扇形斩·1.2A物理+30%吸血)
-	var tgt = battle._nearest_enemy(u)
+	var tgt = battle._targeting._nearest_enemy(u)
 	var dir: Vector2 = (Vector2.RIGHT if tgt == null else (tgt["pos"] - u["pos"]))
 	if dir.length() < 1.0: dir = Vector2.RIGHT
 	dir = dir.normalized()
 	var half_cos: float = cos(deg_to_rad(60.0))                  # 半角60°=全120°
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		var to_o: Vector2 = o["pos"] - u["pos"]
 		var d: float = to_o.length()

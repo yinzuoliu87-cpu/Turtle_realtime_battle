@@ -12,7 +12,7 @@ func _crystal_line_seg(u: Dictionary, si: int, dir: Vector2) -> void:
 	if not u.get("alive", false): return
 	var origin: Vector2 = u["pos"]
 	_crystal_beam(origin, origin + dir * 1500.0, Color("#c9b0ff"))
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		if battle._on_line(origin, dir, o["pos"], 55.0):
 			battle._apply_damage_from(u, o, battle._resolve_dmg(u, float([30, 35, 40][si]), o, true), Color("#bfa8ff"), 0.0, false, true)
@@ -202,7 +202,7 @@ func _crystal_sweep_step(ang: float, u: Dictionary, si: int, reach: float, state
 		_crystal_spark(center + dir2 * (reach * 0.4))
 	if u.get("alive", false):        # 携带者死亡后仅转完视觉, 不再从尸体结算伤害
 		var prev: float = float(state["prev"])
-		for o in battle._enemies_of(u):
+		for o in battle._targeting._enemies_of(u):
 			if not o.get("alive", false): continue
 			var ea: float = atan2(float(o["pos"].y) - center.y, float(o["pos"].x) - center.x)
 			if battle._ang_in(prev, ang, ea):
@@ -219,7 +219,7 @@ func _crystal_sweep_step(ang: float, u: Dictionary, si: int, reach: float, state
 	state["prev"] = ang
 
 func _crystal_spike_line(u: Dictionary) -> void:   # 照小菊R第三击(2026-07-16逐帧): 砸地爆发→发光波头贴地冲出→波头过处水晶刺依次从地底弹出→碎晶地痕渐隐; 命中+2结晶+击飞0.8s+50%减速3s(纯控制无伤害)
-	var tgt = battle._acquire_target(u)
+	var tgt = battle._targeting._acquire_target(u)
 	var dirv: Vector2 = Vector2.RIGHT if str(u.get("side", "left")) == "left" else Vector2.LEFT
 	if tgt != null:
 		var dv: Vector2 = (tgt["pos"] as Vector2) - (u["pos"] as Vector2)
@@ -431,18 +431,18 @@ func _sk_crystal_bulwark(u: Dictionary) -> void:                 # 水晶龟·�
 		dw.tween_property(dome, "modulate:a", 0.0, 0.4)
 		dw.tween_callback(func() -> void:
 			if is_instance_valid(dome): dome.queue_free())
-	for o in battle._allies_of(u):
+	for o in battle._targeting._allies_of(u):
 		battle._buff(o, "def", 0.15, true, 4.0); battle._buff(o, "mr", 0.15, true, 4.0)
 		battle._skill_ring(o["pos"], Color(0.62, 0.88, 1.0, 0.55), 40.0)   # 友军冰蓝强化环
 
 func _sk_crystal_burst(u: Dictionary, tgt) -> void:   # 碎晶爆破: 目标周围350码内每敌3段错峰碎晶坠落(每段0.233A魔+0.033A真+叠1层结晶·共3层满5引爆)
-	if tgt == null: tgt = battle._nearest_enemy(u)
+	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	var center: Vector2 = tgt["pos"]
 	u["energy_lock_until"] = maxf(float(u.get("energy_lock_until", 0.0)), battle._t + 0.65)   # 释放途中锁龟能·放完自动解锁(用户2026-07-16; 三段0.38s+坠落0.16s≈0.55s)
 	battle._skill_ring(center, Color(0.6, 0.86, 1.0, 0.5), battle.CRYSTAL_BURST_RADIUS)   # 350码范围环
 	var uu = u
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		if (o["pos"] as Vector2).distance_to(center) > battle.CRYSTAL_BURST_RADIUS: continue
 		var oref: Dictionary = o

@@ -23,7 +23,7 @@ func _bubble_shield_burst(ally: Dictionary) -> void:
 	ally.erase("bubble_shield_src")
 	if src is Dictionary:
 		src["energy_lock_until"] = battle._t          # 盾爆裂(到期/打破/对象死)→解锁施法者龟能(可能提前爆·用户2026-07-15)
-		for o in battle._enemies_of(src):
+		for o in battle._targeting._enemies_of(src):
 			if o.get("alive", false):
 				battle._apply_damage_from(src, o, battle._atk_dmg(src, 2.0, o, true), Color("#cdebff"))
 		battle._skill_ring(ally["pos"], Color(0.75, 0.92, 1.0, 0.6), 90.0)   # 泡沫破裂冲击波(全体敌)
@@ -118,7 +118,7 @@ func _sk_bubble_burst(u: Dictionary, tgt) -> void:              # 泡泡龟·泡
 			_bubble_wall_erupt(gg1.lerp(gg2, t), absf(t - 0.5) * 0.12)
 		battle._skill_ring(cc, Color(0.5, 0.9, 1.0, 0.6), 200.0)
 		if not uu.get("alive", false): return
-		for o in battle._enemies_of(uu):
+		for o in battle._targeting._enemies_of(uu):
 			if o.get("alive", false) and o["pos"].distance_to(cc) <= 200.0:   # 门间200码带内敌
 				battle._apply_damage_from(uu, o, int(battle._mitigate(uu, cons, o, true)) + battle._atk_dmg(uu, 0.8, o), Color("#cdebff")))   # 消耗泡泡值魔法(吃魔抗)+0.8A物理(封板L437)
 

@@ -152,7 +152,7 @@ func _minion_rocket_nuke(u: Dictionary, center: Vector2) -> void:   # 核爆(用
 	battle._rocket_sys._rocket_scorch(center)
 	# ⑦ 结算伤害(数值/机制封板不动)
 	battle._skill_ring(center, Color(1.0, 0.7, 0.3, 0.75), 400.0)
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		if (o["pos"] as Vector2).distance_to(center) > 400.0: continue
 		battle._vfx._hit_spark(o)
@@ -241,7 +241,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 		if dot_t >= 0.1 and tref.get("alive", false):      # 对被踩目标逐渐2A物理(分摊·敌死则循环退出=自动结束·参考"血见底自动结束")
 			dot_t -= 0.1
 			battle._apply_damage_from(u, tref, battle._atk_dmg(u, 2.0 * 0.1 / slide_dur, tref, false), Color("#ff4444"))
-		for o in battle._enemies_of(u):                           # 沿途撞到的其他敌: 1.5A物理+撞飞(参考"撞飞其他敌")
+		for o in battle._targeting._enemies_of(u):                           # 沿途撞到的其他敌: 1.5A物理+撞飞(参考"撞飞其他敌")
 			if is_same(o, tref) or not o.get("alive", false) or battle._arr_has_unit(hit_others, o): continue
 			if (o["pos"] as Vector2).distance_to(mypos) <= 70.0:
 				hit_others.append(o)

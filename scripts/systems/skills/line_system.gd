@@ -16,7 +16,7 @@ func _ink_cap(src: Dictionary) -> int:
 
 func _sk_line_link(u: Dictionary) -> void:                       # 线条龟·连笔 ✅(连接+传导+同步已补·附录B-05)
 	var foes: Array = []
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if o.get("alive", false): foes.append(o)
 	if foes.is_empty(): return
 	foes.sort_custom(func(x, y): return u["pos"].distance_squared_to(x["pos"]) < u["pos"].distance_squared_to(y["pos"]))
@@ -57,7 +57,7 @@ func _ink_link_transfer(u: Dictionary, taken: float) -> void:    # 受伤30%以�
 
 func _sk_line_ink_bomb(u: Dictionary) -> void:                  # 线条龟·墨水炸弹(用户设计·120龟能; 用户2026-07-15: 全体→落点300码AOE): 投墨弹至最密集处→落点300码内敌各4段0.25A魔法+叠4墨迹(打包被动=墨迹上限提到10)
 	var es: Array = []                                          # 投掷墨水炸弹→落点大墨爆+命中才溅墨结算(用户2026-07-15做投掷)
-	for o in battle._pick_enemies_of(u):
+	for o in battle._targeting._pick_enemies_of(u):
 		if o.get("alive", false): es.append(o)
 	if es.is_empty(): return
 	var center: Vector2 = es[0]["pos"]                          # 落点=能覆盖最多敌的300码圆心(智能瞄最密集处·非全体质心)
@@ -73,7 +73,7 @@ func _sk_line_ink_bomb(u: Dictionary) -> void:                  # 线条龟·墨
 	_ink_bomb_throw(u["pos"], land, func() -> void:
 		battle._burst_vfx("res://assets/sprites/vfx/ink-splat.png", land, 300.0, 0.6)   # 落点大墨爆(300码)
 		battle._shake(battle.JUICE_SHAKE_HEAVY)
-		for o in battle._enemies_of(uu):
+		for o in battle._targeting._enemies_of(uu):
 			if not o.get("alive", false): continue
 			if (o["pos"] as Vector2).distance_to(land) > battle.INK_BOMB_RADIUS: continue   # ★只打落点300码内(用户2026-07-15: 原全体)
 			for i in range(4):
@@ -106,13 +106,13 @@ func _ink_bomb_throw(from2d: Vector2, to2d: Vector2, on_land: Callable) -> void:
 func _sk_line_finish(u: Dictionary) -> void:
 	var best = null
 	var best_ink = -1
-	for o in battle._pick_enemies_of(u):
+	for o in battle._targeting._pick_enemies_of(u):
 		var ink = int((o.get("stacks", {}) as Dictionary).get("ink", 0))
 		if ink > best_ink:
 			best_ink = ink
 			best = o
 	if best == null:
-		best = battle._nearest_enemy(u)
+		best = battle._targeting._nearest_enemy(u)
 		best_ink = 0
 	if best == null:
 		return

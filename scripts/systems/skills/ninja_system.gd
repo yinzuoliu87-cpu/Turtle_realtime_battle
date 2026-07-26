@@ -45,7 +45,7 @@ func _ninja_dash(u: Dictionary, target: Dictionary) -> void:    # 被动·冲击
 	endp.y = clampf(endp.y, battle.ARENA.position.y, battle.ARENA.end.y)
 	# 路径上的敌 (按沿路投影排序 → 滑到谁割谁)
 	var hits: Array = []
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		if not battle._on_line(start, dir, o["pos"], 62.0): continue
 		var proj: float = (o["pos"] - start).dot(dir)
@@ -124,7 +124,7 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 func _sk_ninja_backstab(u: Dictionary, tgt: Dictionary) -> void: # 技三·背刺(1:1回合制 ninjaBackstab): +5穿甲5秒→闪现到【全场最远敌】身后→背刺【3段·每段300ms(hitStaggerMs)】各0.6667A物理(共2.0A)→留该处追砍
 	var far = null
 	var fd = -1.0
-	for o in battle._pick_enemies_of(u):   # ★单体定向(闪现到最远敌身后)走 battle._pick_enemies_of: 否则忍者会瞬移到场外训龟大师身后背刺(场外·永远最远); 见 §PICK-TARGET(用户2026-07-24)
+	for o in battle._targeting._pick_enemies_of(u):   # ★单体定向(闪现到最远敌身后)走 battle._targeting._pick_enemies_of: 否则忍者会瞬移到场外训龟大师身后背刺(场外·永远最远); 见 §PICK-TARGET(用户2026-07-24)
 		if not o.get("alive", false): continue
 		var dd: float = u["pos"].distance_to(o["pos"])
 		if dd > fd: fd = dd; far = o
@@ -153,7 +153,7 @@ func _sk_ninja_backstab(u: Dictionary, tgt: Dictionary) -> void: # 技三·背�
 		})
 
 func _sk_ninja_shuriken(u: Dictionary, tgt) -> void:           # 技·手里剑(封板·远程·1:1回合制_ninja_shuriken): 掷旋转飞镖·命中1.6A物理; 暴击(按忍者暴击率)=暴击总伤拆两段→红物理(吃减甲)+白真伤(穿甲·占(40+2%/级)%), 同一发跳两个数字
-	if tgt == null: tgt = battle._nearest_enemy(u)
+	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	var base_dmg: float = float(u["atk"]) * 1.6               # 1.6A 基础(未减甲/未暴击)
 	var is_crit: bool = battle._battle_rng.randf() < minf(float(u.get("crit", 0.0)), 1.0)   # 暴击=忍者自身暴击率(非固定概率)
@@ -168,7 +168,7 @@ func _sk_ninja_shuriken(u: Dictionary, tgt) -> void:           # 技·手里剑(
 	battle._fire_shuriken(u, tgt, phys_raw, true_raw, is_crit)
 
 func _sk_ninja_bomb(u: Dictionary, tgt) -> void:
-	if tgt == null: tgt = battle._nearest_enemy(u)
+	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	var opts = {"phys": 2.0, "defDown": 0.25, "color": Color("#ff9a3c")}   # 伤害2.0A(用户2026-07-11「提升到2ATK」·回合制原1.1·指定偏离)
 	var land: Vector2 = tgt["pos"]            # 落点 = 当前目标位置 (400码爆炸半径中心)
@@ -220,7 +220,7 @@ func _bomb_explode(spr, u: Dictionary, at2d: Vector2, opts: Dictionary) -> void:
 	# 落点 400码内敌人: 先 -25%护甲(吃在这发上) 再 1.1A 物理; 圈外不受影响
 	var col: Color = opts.get("color", Color("#ff9a3c"))
 	var hit: Array = []
-	for e in battle._enemies_of(u):
+	for e in battle._targeting._enemies_of(u):
 		if e != null and e.get("alive", false) and e["pos"].distance_to(at2d) <= battle.NINJA_BOMB_RADIUS:
 			hit.append(e)
 	for e in hit:

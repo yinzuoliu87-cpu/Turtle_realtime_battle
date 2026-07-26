@@ -116,7 +116,7 @@ func _chest_basic(u: Dictionary, tgt: Dictionary) -> void:       # 普攻·宝�
 	# 逐帧订正(2026-07-16问责轮): 一段Q=砸地→金波头0.18s推进→扫到谁谁炸(错峰)→贴地燃金痕依次铺→尽头残亮头熄灭
 	var wave_t: float = 0.18                                        # 波头跑完170码用时(s16砸→s21到敌≈0.15-0.2s)
 	var uu: Dictionary = u
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		var rel: Vector2 = o["pos"] - u["pos"]
 		var along: float = rel.dot(dir)
@@ -236,7 +236,7 @@ func _sk_chest_inventory(u: Dictionary) -> void:                 # 宝箱龟·�
 	battle._grant_shield(u, u["atk"] * 0.6)
 
 func _sk_chest_cannon(u: Dictionary, tgt) -> void:              # 技三·财宝炮击(封板·120龟能): 蓄力→朝一条直线发长激光→线上所有敌各3A物理+击飞+击退 (贪婪打包被动在登场gate)
-	if tgt == null: tgt = battle._nearest_enemy(u)
+	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	var dir: Vector2 = tgt["pos"] - u["pos"]
 	if dir.length() < 1.0: dir = Vector2.RIGHT
@@ -244,7 +244,7 @@ func _sk_chest_cannon(u: Dictionary, tgt) -> void:              # 技三·财宝
 	var uu = u
 	var fire = func() -> void:                                     # 蓄力0.4s→喷金币洪流(用户2026-07-15确认换皮: 激光→金币+宝物炮流·机制不动)
 		if not uu.get("alive", false): return
-		for o in battle._enemies_of(uu):
+		for o in battle._targeting._enemies_of(uu):
 			if not o.get("alive", false): continue
 			if not battle._on_line(uu["pos"], dir, o["pos"], 58.0): continue
 			battle._apply_damage_from(uu, o, battle._atk_dmg(uu, 3.0, o), Color("#ffe066"))
@@ -274,7 +274,7 @@ func _sk_chest_cannon(u: Dictionary, tgt) -> void:              # 技三·财宝
 	battle._pending_shots.append({"delay": 0.4, "fn": fire, "src": u})
 
 func _sk_chest_storm(u: Dictionary, tgt) -> void:              # 技二·财宝风暴(2026-07-16重做·照Janna Q龙卷j006形成/j012风柱/j018螺旋盘): 金币龙卷风; 判定不变(400码·5跳各0.2A物理)
-	if tgt == null: tgt = battle._nearest_enemy(u)
+	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	var center: Vector2 = tgt["pos"]
 	var uu = u
@@ -408,7 +408,7 @@ func _sk_chest_storm(u: Dictionary, tgt) -> void:              # 技二·财宝�
 		var fn = func():
 			if is_instance_valid(disc):
 				disc.modulate.a = minf(0.85, disc.modulate.a + 0.25)   # 风暴脉冲闪亮(驱动器逐帧回落)
-			for o in battle._enemies_of(uu):
+			for o in battle._targeting._enemies_of(uu):
 				if o.get("alive", false) and o["pos"].distance_to(center) <= 400.0:
 					battle._apply_damage_from(uu, o, battle._atk_dmg(uu, 0.2, o), Color("#ffd93d"))
 					battle._burst_vfx("res://assets/sprites/vfx/treasure-slam.png", o["pos"], 74.0)   # 命中金光爆

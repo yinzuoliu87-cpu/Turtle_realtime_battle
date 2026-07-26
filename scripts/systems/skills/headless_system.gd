@@ -230,7 +230,7 @@ func _headless_scythe(u: Dictionary) -> void:                  # 镰刀横扫(Ca
 	u["_soul_spr"] = null
 	u["headless_soul_stacks"] = 0
 	u["atk_range"] = float(u.get("headless_soul_base_range", 100.0))   # 恢复基础射程(强化窗口结束)
-	var tgt = battle._nearest_enemy(u)
+	var tgt = battle._targeting._nearest_enemy(u)
 	var aim: Vector2 = ((tgt["pos"] - u["pos"]) as Vector2).normalized() if tgt != null else (Vector2.RIGHT if u.get("face_right", true) else Vector2.LEFT)
 	if aim.length() < 0.5: aim = Vector2.RIGHT
 	u["_scythe_aim"] = aim
@@ -260,7 +260,7 @@ func _headless_scythe(u: Dictionary) -> void:                  # 镰刀横扫(Ca
 		_headless_scythe_sweep(uu["pos"], aim2)
 		battle._shake(0.13); battle._add_hitstop(battle.JUICE_HITSTOP_KNOCK)
 		var half2 := deg_to_rad(50.0)
-		for o in battle._enemies_of(uu):
+		for o in battle._targeting._enemies_of(uu):
 			if not o.get("alive", false): continue
 			var to: Vector2 = (o["pos"] as Vector2) - (uu["pos"] as Vector2)
 			if to.length() > 300.0: continue
@@ -474,7 +474,7 @@ func _sk_headless_fear(u: Dictionary, _tgt = null) -> void:      # 无头·恐�
 	pt.tween_interval(1.8)
 	pt.tween_property(pool, "modulate:a", 0.0, 1.4)
 	pt.tween_callback(pool.queue_free)
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		if o["pos"].distance_to(cx) > 200.0: continue
 		if o.get("_eggImmune", false): continue

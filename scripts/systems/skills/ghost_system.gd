@@ -89,7 +89,7 @@ func _ghost_curse_wisp(at2d: Vector2) -> void:
 # 幽冥突袭·延迟命中(第2帧): 1.5A魔法+80%吸血+25%闪避4s(经_sk_dmg保真)+击退抛飞
 func _ghost_phantom_hit(u: Dictionary, tgt) -> void:
 	if not u.get("alive", false): return
-	if not (tgt is Dictionary) or not tgt.get("alive", false): tgt = battle._nearest_enemy(u)
+	if not (tgt is Dictionary) or not tgt.get("alive", false): tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	battle._sk_dmg(u, tgt, {"magic": 1.5, "hits": 1, "lifesteal": 0.8, "selfDodge": 0.25, "selfDodgeDur": 4.0, "name": "幻影!", "color": Color("#c77dff")})
 	if tgt.get("alive", false):
@@ -97,7 +97,7 @@ func _ghost_phantom_hit(u: Dictionary, tgt) -> void:
 
 # 幽灵·技1 幽冥突袭(用户2026-07-11「用回合制特效」): 1.5A魔法+80%吸血+25%闪避4s(经_sk_dmg保真) + 回合制幻影(ghost-phantom)+触碰(ghost-touch)图 + 击退抛飞juggle
 func _sk_ghost_phantom(u: Dictionary, tgt) -> void:
-	if tgt == null: tgt = battle._nearest_enemy(u)
+	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	battle._vfx._play_anim_vfx("res://assets/sprites/vfx/ghost-phantom.png", tgt["pos"], 155.0, 15.0, 1.5)   # 幻影(回合制vfx/5帧·上移·用户2026-07-11)
 	battle._vfx._play_anim_vfx("res://assets/sprites/vfx/ghost-touch.png", tgt["pos"], 125.0, 17.0, 1.4)      # 触碰(vfx/7帧·上移)

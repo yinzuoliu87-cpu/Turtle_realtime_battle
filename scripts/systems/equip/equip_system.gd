@@ -17,7 +17,7 @@ func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不�
 		if str(e["id"]) == "p2eq_017":   # 不沉之锚: 每次普攻消耗1沉锚充能→击飞最前敌+眩晕(用户2026-07-02)
 			var ast: Dictionary = u["eq_state"].get("p2eq_017", {})
 			if int(ast.get("anchor_charges", 0)) > 0:
-				var at = battle._nearest_enemy(u)
+				var at = battle._targeting._nearest_enemy(u)
 				if at != null:
 					var si17: int = _eq_si(int(e.get("star", 1)))
 					ast["anchor_charges"] = int(ast["anchor_charges"]) - 1
@@ -31,7 +31,7 @@ func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不�
 			var b39: Dictionary = u["eq_state"].get("p2eq_039", {})
 			b39["bamboo_hits"] = int(b39.get("bamboo_hits", 0)) + 1
 			if int(b39["bamboo_hits"]) >= 3 and int(b39.get("bamboo_charges", 0)) > 0:
-				var t39 = battle._nearest_enemy(u)
+				var t39 = battle._targeting._nearest_enemy(u)
 				if t39 != null:
 					b39["bamboo_hits"] = 0
 					b39["bamboo_charges"] = int(b39["bamboo_charges"]) - 1
@@ -55,7 +55,7 @@ func _eq_ice_fissure(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false): return
 	battle._grant_shield(u, [100.0, 160.0, 250.0][si])   # 释放即上盾一次
 	battle._shield_bubble(u)
-	var t = battle._nearest_enemy(u)
+	var t = battle._targeting._nearest_enemy(u)
 	if t == null:
 		return
 	var dir: Vector2 = (t["pos"] - u["pos"]).normalized()
@@ -70,7 +70,7 @@ func _eq_ice_fissure(u: Dictionary, si: int) -> void:
 # 030 单段水晶光束结算: 从携带者当前位置沿 dir 无限直线, 全线敌魔法伤+1层水晶
 func _eq_crystal_line(u: Dictionary, si: int) -> void:   # 迷你水晶球A030: 每7秒朝最近敌方向连发2/2/3段贯穿光束(错峰0.2s)
 	if not u.get("alive", false): return
-	var t4 = battle._nearest_enemy(u)
+	var t4 = battle._targeting._nearest_enemy(u)
 	if t4 == null: return
 	var dir2: Vector2 = (t4["pos"] - u["pos"]).normalized()
 	if dir2 == Vector2.ZERO: dir2 = Vector2.RIGHT
@@ -213,7 +213,7 @@ func _eq_gatling_burst(u: Dictionary, si: int) -> void:   # 幽灵加特林050: 
 	var g_mul: float = [0.1, 0.12, 0.14][si]
 	var fire50 := func():
 		if not u.get("alive", false): return
-		var es50 = battle._pick_enemies_of(u)
+		var es50 = battle._targeting._pick_enemies_of(u)
 		if es50.is_empty(): return
 		var o50 = es50[battle._battle_rng.randi() % es50.size()]
 		battle._muzzle_flash(u["pos"], (o50["pos"] - u["pos"]), Color("#d0ffff"))
@@ -226,7 +226,7 @@ func _eq_gatling_burst(u: Dictionary, si: int) -> void:   # 幽灵加特林050: 
 
 func _eq_laser_pistol(u: Dictionary, si: int) -> void:   # 激光手枪051: 每8秒穿透红激光, 首敌满伤+流血, 身后敌半伤半流血
 	if not u.get("alive", false): return
-	var dir4: Vector2 = (battle._nearest_enemy(u)["pos"] - u["pos"]).normalized() if battle._nearest_enemy(u) != null else Vector2.RIGHT
+	var dir4: Vector2 = (battle._targeting._nearest_enemy(u)["pos"] - u["pos"]).normalized() if battle._targeting._nearest_enemy(u) != null else Vector2.RIGHT
 	var first = _eq_first_in_line(u, dir4, 50.0)
 	if first != null:
 		var endp51: Vector2 = u["pos"] + dir4 * 2600.0   # 无限穿透: 光束画到场外(伤害判定 battle._on_line 本就无距离上限, 原340码只是视觉长度→表现短于实际打击范围·用户2026-07-19"改为无限穿透")
@@ -235,15 +235,15 @@ func _eq_laser_pistol(u: Dictionary, si: int) -> void:   # 激光手枪051: 每8
 		battle._laser_beam(u["pos"], endp51, Color(1.0, 0.92, 0.94, 0.95), 0.07, 0.14)   # 白核(细)
 		battle._apply_damage_from(u, first, battle._atk_dmg(u, [1.5, 2.0, 2.8][si], first), Color("#ff8aa0"), 0.0, false, true)
 		battle._apply_dot_stacks(first, "bleed", maxi(1, roundi(u["atk"] * [0.5, 0.5, 0.6][si])), u)
-		battle._hit_spark(first)
-		for o in battle._enemies_of(u):
+		battle._vfx._hit_spark(first)
+		for o in battle._targeting._enemies_of(u):
 			if not is_same(o, first) and battle._on_line(first["pos"], dir4, o["pos"], 50.0):
 				battle._apply_damage_from(u, o, battle._atk_dmg(u, [0.75, 1.0, 1.4][si], o), Color("#ff8aa0"), 0.0, false, true)
 				battle._apply_dot_stacks(o, "bleed", maxi(1, roundi(u["atk"] * [0.5, 0.5, 0.6][si] * 0.5)), u)   # 身后50%流血
 
 func _eq_shotgun_blast(u: Dictionary, si: int) -> void:   # 霰弹贝古053: 朝最近敌扇形散开, 每颗弹珠沿自己的直线飞, 撞到第一个敌人才结算伤害并消失; 被8发及以上命中→眩晕
 	if not u.get("alive", false): return
-	var t53 = battle._nearest_enemy(u)
+	var t53 = battle._targeting._nearest_enemy(u)
 	var dir53: Vector2 = (t53["pos"] - u["pos"]).normalized() if t53 != null else Vector2.RIGHT
 	battle._muzzle_flash(u["pos"], dir53, Color("#ffe0a0"))
 	battle._skill_ring(u["pos"] + dir53 * 22.0, Color(1.0, 0.85, 0.4, 0.7), 26.0)
@@ -276,7 +276,7 @@ func _eq_shotgun_blast(u: Dictionary, si: int) -> void:   # 霰弹贝古053: 朝
 
 func _eq_pistol_volley(u: Dictionary, si: int) -> void:   # 黄铜手铳048: 每8秒依次射4/5/6发, 每发命中直线首敌(错峰: 枪口闪+子弹+火花)
 	if not u.get("alive", false): return
-	var t48 = battle._nearest_enemy(u)
+	var t48 = battle._targeting._nearest_enemy(u)
 	var dir48: Vector2 = (t48["pos"] - u["pos"]).normalized() if t48 != null else Vector2.RIGHT
 	var mul48: float = [0.5, 0.54, 0.6][si]
 	var fire48 := func():
@@ -290,10 +290,10 @@ func _eq_pistol_volley(u: Dictionary, si: int) -> void:   # 黄铜手铳048: 每
 func _eq_ripple_tick(u: Dictionary, si: int) -> void:
 	var low042 = null; var lv042 := INF
 	if si == 2:
-		for o in battle._allies_of(u):
+		for o in battle._targeting._allies_of(u):
 			var p042: float = CombatMath.hp_frac(o["hp"], o["maxHp"])
 			if p042 < lv042: lv042 = p042; low042 = o
-	for o in battle._allies_of(u):
+	for o in battle._targeting._allies_of(u):
 		var pct042: float = [0.03, 0.06, 0.10][si]
 		if si == 2 and is_same(o, low042): pct042 *= 2.0
 		var amt42: float = (o["maxHp"] - o["hp"]) * pct042
@@ -303,7 +303,7 @@ func _eq_ripple_tick(u: Dictionary, si: int) -> void:
 
 func _eq_revolver_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 	if int(stt.get("revolver_bullets", 0)) > 0:
-		var es3 = battle._pick_enemies_of(u)
+		var es3 = battle._targeting._pick_enemies_of(u)
 		if not es3.is_empty():
 			stt["revolver_bullets"] = int(stt["revolver_bullets"]) - 1
 			var o = es3[battle._battle_rng.randi() % es3.size()]
@@ -326,7 +326,7 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 		battle._heal_circle_vfx(u["pos"], 250.0, 5.0)   # AI生成回血阵动画
 		u["candle_hot_rate"] = hv37 / 5.0
 		u["candle_hot_until"] = battle._t + 5.0
-		for a37 in battle._allies_of(u, false):
+		for a37 in battle._targeting._allies_of(u, false):
 			if a37["pos"].distance_to(u["pos"]) <= 250.0:
 				a37["candle_hot_rate"] = (hv37 * 0.5) / 5.0
 				a37["candle_hot_until"] = battle._t + 5.0
@@ -339,7 +339,7 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 		battle._boom_wave(u["pos"], 260.0)   # AI生成爆炸波动画(原地大爆炸)
 		battle._shake(0.06)
 		var dmg37: float = float([20, 30, 44][si]) + u["atk"] * [0.5, 0.7, 1.0][si]
-		for o in battle._enemies_of(u):
+		for o in battle._targeting._enemies_of(u):
 			if o["pos"].distance_to(u["pos"]) <= 500.0:   # 499→500(用户2026-07-19)
 				battle._apply_damage_from(u, o, battle._resolve_dmg(u, dmg37, o, true), Color("#ffb066"), 0.0, false, true)   # 魔法伤(蓝字), 非真伤
 				battle._apply_dot_stacks(o, "burn", [20, 30, 40][si], u)
@@ -357,7 +357,7 @@ func _eq_signal_tick(u: Dictionary, si: int) -> void:
 	u["signal_amp"] = amp
 	u["signal_until"] = battle._t + 3.5
 	battle._signal_pulse(u["pos"])
-	battle._float_text(u["pos"] + Vector2(0, -58), "增伤+%d%%" % int(amp * 100.0), Color("#ffcf5a"))
+	battle._vfx._float_text(u["pos"] + Vector2(0, -58), "增伤+%d%%" % int(amp * 100.0), Color("#ffcf5a"))
 
 # 信号脉冲(038): 头顶弹出青蓝 signal-wave 广播图标(升起放大淡出, 2个错峰=脉冲广播) + 脚下青光环
 func _eq_fpga_tick(u: Dictionary, si: int) -> void:
@@ -368,7 +368,7 @@ func _eq_fpga_tick(u: Dictionary, si: int) -> void:
 	for k in range(n):
 		var pick: int = battle._battle_rng.randi() % 4
 		var xoff: float = (float(k) - float(n - 1) / 2.0) * 34.0
-		battle._float_text(u["pos"] + Vector2(xoff, -72.0), codes[pick], ccols[pick])   # 二进制码头顶跳
+		battle._vfx._float_text(u["pos"] + Vector2(xoff, -72.0), codes[pick], ccols[pick])   # 二进制码头顶跳
 		match pick:
 			0: battle._heal(u, u["maxHp"] * 0.05); u["base_def"] += 12; u["base_mr"] += 12; battle._recalc_stats(u)   # 用户2026-07-19: +2 → +12
 			1: u["base_atk"] += 15; u["lifesteal"] += 0.07; battle._recalc_stats(u)                            # 用户2026-07-19: +5/+4% → +15/+7%
@@ -389,7 +389,7 @@ func _eq_ebb_surge(u: Dictionary, hp_add: float, atk_add: float, dur: float) -> 
 	u["size_mult"] = float(u.get("size_mult", 1.0)) * 1.3      # 体积+30%(走size_mult, 每帧juice从base起算不会覆盖)
 	battle._recalc_stats(u)
 	battle._ebb_tide_fx(u, true)
-	battle._float_text(u["pos"] + Vector2(0, -70), "涨潮", Color("#5fe0d0"))
+	battle._vfx._float_text(u["pos"] + Vector2(0, -70), "涨潮", Color("#5fe0d0"))
 	battle._pending_shots.append({"delay": dur, "fn": func(): _eq_ebb_recede(u, hp_add, atk_add), "src": u})
 
 func _eq_ebb_recede(u: Dictionary, hp_add: float, atk_add: float) -> void:   # 退潮浊液041: 到期还原
@@ -403,7 +403,7 @@ func _eq_ebb_recede(u: Dictionary, hp_add: float, atk_add: float) -> void:   # �
 	battle._recalc_stats(u)
 	if u.get("alive", false):
 		battle._ebb_tide_fx(u, false)
-		battle._float_text(u["pos"] + Vector2(0, -70), "退潮", Color("#8fb8c8"))
+		battle._vfx._float_text(u["pos"] + Vector2(0, -70), "退潮", Color("#8fb8c8"))
 
 func _eq_dumbbell_routine(u: Dictionary, si: int) -> void:   # 原地锻炼(锁攻+锁充能)→+锻炼层(maxHp,局内每场重置)→蓄力→掷哑铃击退
 	if not u.get("alive", false): return
@@ -423,18 +423,18 @@ func _eq_dumbbell_routine(u: Dictionary, si: int) -> void:   # 原地锻炼(锁�
 	await battle._wait_sim(0.35)
 	u["_slam"] = false
 	if not u.get("alive", false): return
-	var t = battle._nearest_enemy(u)
+	var t = battle._targeting._nearest_enemy(u)
 	if t == null: return
 	var dmg: int = maxi(1, int(u["maxHp"] / battle.HP_MULT * [0.05, 0.07, 0.10][si]))
 	battle._throw_dumbbell(u, t, dmg)
 
 func _eq_fuel_throw(u: Dictionary, si: int) -> void:   # 余烬燃油瓶022: 每8秒→短蓄力→抛物线掷出火瓶(翻滚·余烬拖尾)→碎裂溅火+灼烧+真火5秒
 	if not u.get("alive", false): return
-	if battle._nearest_enemy(u) == null: return
+	if battle._targeting._nearest_enemy(u) == null: return
 	battle._anticipate(u)   # 短蓄力
 	await battle._wait_sim(0.3)
 	if not is_instance_valid(self) or not u.get("alive", false): return
-	var t = battle._nearest_enemy(u)
+	var t = battle._targeting._nearest_enemy(u)
 	if t == null: return
 	var from2d: Vector2 = u["pos"]
 	var to2d: Vector2 = t["pos"]
@@ -455,7 +455,7 @@ func _eq_fuel_throw(u: Dictionary, si: int) -> void:   # 余烬燃油瓶022: 每
 # 028 冰霜冻露瓶: 蓄力→抛物线缓慢扔冰瓶→砸敌魔法伤+冰寒+冰爆
 func _eq_ice_throw(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false): return
-	if battle._nearest_enemy(u) == null: return
+	if battle._targeting._nearest_enemy(u) == null: return
 	battle._anticipate(u)
 	var tw = battle._reg_tween()
 	tw.tween_interval(0.32)
@@ -465,7 +465,7 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007(重做�
 	var flat: int = [20, 35, 60][si]
 	var sc: float = [0.5, 0.8, 1.1][si]
 	var shp: float = [0.5, 0.75, 1.0][si]
-	var t = battle._nearest_enemy(u)
+	var t = battle._targeting._nearest_enemy(u)
 	var dir: Vector2 = ((t["pos"] - u["pos"]).normalized() if t != null else Vector2.RIGHT)
 	if dir.length() < 0.1: dir = Vector2.RIGHT
 	battle._anticipate(u); battle._shake(battle.JUICE_SHAKE_HEAVY)
@@ -527,7 +527,7 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007(重做�
 		if traveled >= trail_next:                    # 贴地冲击带: 沿途撒no_depth_test小环(floor-proof)
 			trail_next += 240.0
 			battle._splash_ring_bold(pos, Color(1.0, 0.46, 0.2, 0.55), 85.0)   # 赤金贴地拖痕
-		for o in battle._enemies_of(u):
+		for o in battle._targeting._enemies_of(u):
 			if not o.get("alive", false): continue
 			var seen := false
 			for h in hit:
@@ -539,7 +539,7 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007(重做�
 				battle._apply_damage_from(u, o, dd, Color("#dfe8ff"), 0.0, false, true)
 				battle._grant_shield(u, dd * shp)             # 命中一个即给盾(用户)
 				battle._weapon_slash(u["pos"], o["pos"], Color(1.0, 0.62, 0.34))   # 命中破甲斩弧(赤金)
-				battle._hit_spark(o)
+				battle._vfx._hit_spark(o)
 	if is_instance_valid(qi):
 		var ft = battle._reg_tween(); ft.tween_property(qi, "modulate:a", 0.0, 0.2); ft.tween_callback(qi.queue_free)
 
@@ -547,7 +547,7 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007(重做�
 func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改造): 蓄力→身后召一排剑→剑阵前移穿过全体敌
 	var flat: int = [70, 100, 400][si]
 	var sc: float = [0.8, 1.3, 4.0][si]
-	var t = battle._nearest_enemy(u)
+	var t = battle._targeting._nearest_enemy(u)
 	var dir: Vector2 = ((t["pos"] - u["pos"]).normalized() if t != null else Vector2.RIGHT)
 	if dir.length() < 0.1: dir = Vector2.RIGHT
 	var perp: Vector2 = Vector2(-dir.y, dir.x)
@@ -602,7 +602,7 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 			if is_instance_valid(sp):
 				var off2: float = (float(i) - float(n - 1) / 2.0) * 85.0
 				sp.position = battle._world_pos(u["pos"] + dir * front_along + perp * off2, 0.4)
-		for o in battle._enemies_of(u):
+		for o in battle._targeting._enemies_of(u):
 			if battle._arr_has_unit(hit, o) or not o.get("alive", false): continue
 			if (o["pos"] - u["pos"]).dot(dir) <= front_along:
 				hit.append(o)
@@ -616,7 +616,7 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 
 # ---- 暴君之牙p2eq_004 主动: 剧毒獠牙(参考LoL蛇女Cassiopeia E「双生毒牙」·用户2026-07-19) ----
 func _eq_tyrantfang_tick(u: Dictionary, si: int) -> void:   # 每6秒(经_EQ_CUSTOM_IV)射毒牙: 魔法伤1/1.8/4×ATK + 回复100%造成伤害(削弱·用户2026-07-23, 原2/3/7)
-	var t = battle._nearest_enemy(u)
+	var t = battle._targeting._nearest_enemy(u)
 	if t == null: return
 	battle._fire_venom_fang(u, t, [1.0, 1.8, 4.0][si] * float(u.get("atk", 0.0)))
 
@@ -629,8 +629,8 @@ func _eq_grant_energy(u: Dictionary, amount: float) -> void:   # 给龟能=存"�
 
 # 娜美式潮浪(海浪护符043): 朝敌人2D方向的对角潮浪 — 从敌人反方向(身后)400码涌起 → 沿"朝敌人"方向慢速推过全场 → 连续宽浪墙(垂直于行进方向铺开)翻涌 → 命中击飞(用户2026-07-04: 全场横扫+2D对角朝敌)
 func _eq_water_wave(u: Dictionary, si: int) -> void:
-	var enemies = battle._enemies_of(u)
-	var allies = battle._allies_of(u)
+	var enemies = battle._targeting._enemies_of(u)
+	var allies = battle._targeting._allies_of(u)
 	var ec: Vector2 = u["pos"] + Vector2(500.0, 0.0)   # 敌人质心(默认右)
 	if not enemies.is_empty():
 		ec = Vector2.ZERO
@@ -672,7 +672,7 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 			oo2["base_def"] = maxf(0.0, oo2["base_def"] - [2, 3, 5][si]); oo2["base_mr"] = maxf(0.0, oo2["base_mr"] - [2, 3, 5][si]); battle._recalc_stats(oo2)
 			battle._water_splash(oo2["pos"], false)
 			battle._knock_up(oo2, oo2["pos"] - dir * 60.0, 6.5)   # 娜美式击飞: 顺浪方向往前推(非直上)
-			battle._hit_spark(oo2)
+			battle._vfx._hit_spark(oo2)
 		battle._pending_shots.append({"delay": d2, "fn": fn2, "src": u})
 
 # 潮浪墙: 沿perp(垂直行进)铺一排大浪crest拼成连续宽墙, 整墙从startc沿dir推进tdist; 翻涌帧循环
@@ -684,14 +684,14 @@ func _eq_si(star: int) -> int:
 
 func _eq_first_in_line(u: Dictionary, dir: Vector2, width: float):
 	var best = null; var bd := INF
-	for o in battle._pick_enemies_of(u):
+	for o in battle._targeting._pick_enemies_of(u):
 		if battle._on_line(u["pos"], dir, o["pos"], width):
 			var dd: float = (o["pos"] - u["pos"]).length_squared()
 			if dd < bd: bd = dd; best = o
 	return best
 
 func _eq_farthest_enemies(u: Dictionary, half: bool) -> Array:
-	var es = battle._enemies_of(u)
+	var es = battle._targeting._enemies_of(u)
 	es.sort_custom(func(a, b): return (a["pos"] - u["pos"]).length_squared() > (b["pos"] - u["pos"]).length_squared())
 	if half:
 		return es.slice(0, maxi(1, es.size() / 2))
@@ -731,7 +731,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 				var line: float = [0.04, 0.06, 0.12][si] * (1.0 + float(src["crit"]))
 				if tgt["alive"] and not tgt.get("eq_exec_immune", false) and tgt["hp"] < tgt["maxHp"] * line:
 					var was: bool = tgt["alive"]
-					battle._float_text(tgt["pos"], "-999999", battle._VC.color_of(battle._VC.cls_for("damage", "true", true)), true, "damage", "true")   # 处决=固定跳-999999真伤大字(实际伤害=剩余血, 用户)
+					battle._vfx._float_text(tgt["pos"], "-999999", battle._VC.color_of(battle._VC.cls_for("damage", "true", true)), true, "damage", "true")   # 处决=固定跳-999999真伤大字(实际伤害=剩余血, 用户)
 					tgt["hp"] = 0.0
 					if was: battle._kill(tgt, src)
 			"p2eq_002":   # 海带卷刀: 命中→施加流血层 (范围技能触发减半; 3★流血层数天然可叠)
@@ -740,10 +740,10 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 			"p2eq_003":   # 锋利鲨齿: 溅射200码内敌 + 醒目双层冲击环(no_depth_test防地板盖)+每敌立式火花(用户2026-07-19)
 				var frac: float = [0.15, 0.28, 0.50][si]
 				battle._splash_ring_bold(tgt["pos"], Color(1.0, 0.80, 0.36, 0.95), 200.0)   # 醒目双环从命中点扩到200码·恒画在地板之上
-				for o in battle._enemies_of(src):
+				for o in battle._targeting._enemies_of(src):
 					if not is_same(o, tgt) and (o["pos"] - tgt["pos"]).length() <= 200.0:
 						battle._apply_damage_from(src, o, maxi(1, int(dmg * frac)), Color("#ffd07a"), 0.0, false, true)
-						battle._hit_spark(o)   # 每个被溅射敌人身上一记立式火花(胸高billboard·地板高度盖不住)
+						battle._vfx._hit_spark(o)   # 每个被溅射敌人身上一记立式火花(胸高billboard·地板高度盖不住)
 			"p2eq_005":   # 双生匕首: 命中概率追加一刀双生刺击
 				if battle._battle_rng.randf() < [0.5, 0.75, 1.0][si]:
 					battle._apply_damage_from(src, tgt, battle._atk_dmg(src, [0.7, 0.8, 1.0][si], tgt), Color("#ff4444"), 0.0, false, true)
@@ -767,7 +767,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 # 雷电法杖 026: 连锁闪电
 # 雷电法杖 026: 连锁闪电
 func _eq_chain_lightning(u: Dictionary, si: int) -> void:
-	var enemies = battle._enemies_of(u)
+	var enemies = battle._targeting._enemies_of(u)
 	if enemies.is_empty():
 		return
 	var hops: int = [4, 5, 6][si]
@@ -812,7 +812,7 @@ func _eq_laser_sweep(u: Dictionary, tgt: Dictionary, si: int) -> void:   # 扇�
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
 	var cos60: float = cos(deg_to_rad(60.0))
 	var hits: Array = []
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		var rel: Vector2 = o["pos"] - u["pos"]
 		var d: float = rel.length()
@@ -857,7 +857,7 @@ func _eq_laser_chop(u: Dictionary, tgt: Dictionary, si: int, base_range: float) 
 	var origin: Vector2 = u["pos"]
 	var reach: float = base_range * 2.0
 	battle._shake(battle.JUICE_SHAKE_BIG)
-	battle._play_anim_vfx("res://assets/sprites/vfx/laser-cleave-anim.png", tgt["pos"], 155.0, 20.0, 1.5, false)   # 竖劈5帧砸向目标(用户素材·斜刃下落→劈地红爆)
+	battle._vfx._play_anim_vfx("res://assets/sprites/vfx/laser-cleave-anim.png", tgt["pos"], 155.0, 20.0, 1.5, false)   # 竖劈5帧砸向目标(用户素材·斜刃下落→劈地红爆)
 	var wave := Sprite3D.new()
 	wave.texture = load("res://assets/sprites/vfx/laser-wave.png")   # 气波·弧形红光墙(用户2026-07-12·横扫新月转90°凸面朝前)
 	wave.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
@@ -883,7 +883,7 @@ func _eq_laser_chop(u: Dictionary, tgt: Dictionary, si: int, base_range: float) 
 			tr.position = wave.position; tr.modulate = Color(1.0, 0.55, 0.55, 0.18)
 			battle._world.add_child(tr)
 			var tt = battle._reg_tween(); tt.tween_property(tr, "modulate:a", 0.0, 0.22); tt.tween_callback(tr.queue_free)
-		for o in battle._enemies_of(u):
+		for o in battle._targeting._enemies_of(u):
 			if battle._arr_has_unit(hit, o) or not o.get("alive", false): continue
 			if (o["pos"] - origin).dot(dir) <= traveled and battle._on_line(origin, dir, o["pos"], 80.0):
 				hit.append(o)
@@ -894,7 +894,7 @@ func _eq_laser_chop(u: Dictionary, tgt: Dictionary, si: int, base_range: float) 
 
 func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽刃弯刀(用户改造·剑魔Q式): 预警环形扇区(500~800码60度)→黄色月光斩→伤害
 	var cen := Vector2.ZERO; var ec := 0   # 方向朝敌方整体(质心), 角度对携带者稳定(用户)
-	for _o in battle._enemies_of(src):
+	for _o in battle._targeting._enemies_of(src):
 		if _o.get("alive", false): cen += _o["pos"]; ec += 1
 	if ec > 0: cen /= float(ec)
 	var aimpt: Vector2 = cen if ec > 0 else tgt["pos"]
@@ -941,7 +941,7 @@ func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽�
 	mf.tween_callback(moon.queue_free)
 	var cos30: float = cos(deg_to_rad(30.0))   # 3) 伤害(斩击命中扇区内敌)
 	var hits: Array = []
-	for o in battle._enemies_of(src):
+	for o in battle._targeting._enemies_of(src):
 		if not o.get("alive", false): continue
 		var rel: Vector2 = o["pos"] - org   # 相对释放点org判定(band中心已对齐敌群→近敌进band)
 		var dist: float = rel.length()
@@ -956,7 +956,7 @@ func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽�
 # 灼热火珊瑚 023(主动满法力)
 func _eq_fire_coral_active(src: Dictionary, si: int) -> void:   # 灼热火珊瑚023主动: 蓄力→挥出60°扇形火焰波(缓移550码,边挥边扩)→接触敌施60灼烧
 	if not src.get("alive", false): return
-	var es = battle._enemies_of(src)
+	var es = battle._targeting._enemies_of(src)
 	var dir := Vector2.RIGHT
 	if not es.is_empty():
 		var cen := Vector2.ZERO
@@ -980,7 +980,7 @@ func _eq_fire_coral_active(src: Dictionary, si: int) -> void:   # 灼热火珊�
 		traveled += 320.0 * battle.get_process_delta_time()   # 缓慢外移
 		wave.position = battle._world_pos(origin + dir * traveled, 0.4)
 		wave.scale = Vector3(2.2 + traveled / 550.0 * 4.5, 3.2, 1.0)   # 边挥边扩
-		for o in battle._enemies_of(src):
+		for o in battle._targeting._enemies_of(src):
 			if battle._arr_has_unit(hit, o): continue
 			var rel: Vector2 = o["pos"] - origin
 			if rel.dot(dir) <= 0.0: continue
@@ -1033,7 +1033,7 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 				var heal_amt: float = u["maxHp"] * [0.01, 0.02, 0.15][si]
 				# 生命百分比最低的友军 (含自己)
 				var low = null; var lv := INF
-				for o in battle._allies_of(u):
+				for o in battle._targeting._allies_of(u):
 					var p: float = CombatMath.hp_frac(o["hp"], o["maxHp"])
 					if p < lv: lv = p; low = o
 				var done: float = 0.0
@@ -1070,7 +1070,7 @@ func _eq_bloodletting(u: Dictionary, si: int) -> void:   # 饮血护符坠(011):
 	var sh0: float = u["shield"]
 	for k in range(n):
 		if not u.get("alive", false): break
-		var es = battle._pick_enemies_of(u)
+		var es = battle._targeting._pick_enemies_of(u)
 		if es.is_empty(): break
 		var o = es[battle._battle_rng.randi() % es.size()]
 		var decay: float = pow(0.85, k)
@@ -1079,7 +1079,7 @@ func _eq_bloodletting(u: Dictionary, si: int) -> void:   # 饮血护符坠(011):
 		await battle._wait_sim(0.3)   # 一段一段: 每0.3s一刀
 	if not is_instance_valid(self): return
 	var shg: int = int(u["shield"] - sh0)   # 连斩吸血溢出转的盾, 结尾汇总一次
-	if shg > 0: battle._float_text(u["pos"] + Vector2(28, -46), "护盾+" + str(shg), Color("#8ad7ff"), false, "shield")
+	if shg > 0: battle._vfx._float_text(u["pos"] + Vector2(28, -46), "护盾+" + str(shg), Color("#8ad7ff"), false, "shield")
 
 func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 	if u.get("equips", []).is_empty():
@@ -1144,7 +1144,7 @@ func _eq_crystal_stack(src: Dictionary, o: Dictionary, si: int) -> void:
 func _eq_sniper_windup(u: Dictionary, si: int) -> void:   # 狙击长管057: 每8秒先蓄力1秒(瞄准线+枪口聚能+锁定环)再开枪(用户2026-07-19)
 	if not u.get("alive", false): return
 	var low = null; var lv := INF
-	for o in battle._pick_enemies_of(u):
+	for o in battle._targeting._pick_enemies_of(u):
 		var p: float = CombatMath.hp_frac(o["hp"], o["maxHp"])
 		if p < lv: lv = p; low = o
 	if low == null: return
@@ -1155,7 +1155,7 @@ func _eq_sniper(u: Dictionary, si: int, depth: int) -> void:
 	if depth >= 12:
 		return
 	var low = null; var lv := INF
-	for o in battle._pick_enemies_of(u):
+	for o in battle._targeting._pick_enemies_of(u):
 		var p: float = o["hp"] / o["maxHp"]
 		if p < lv: lv = p; low = o
 	if low == null:
@@ -1168,9 +1168,9 @@ func _eq_sniper(u: Dictionary, si: int, depth: int) -> void:
 	var _tip: Vector2 = low["pos"] + dir * 150.0
 	battle._laser_beam(u["pos"], _tip, Color(1.0, 0.24, 0.28, 0.82), 0.17, _snd, 1.0)          # 粗红外辉(醒目狙击曳光)
 	battle._laser_beam(u["pos"], _tip, Color(1.0, 0.92, 0.86, 0.96), 0.06, _snd * 0.85, 1.02)   # 白热细核(高速弹道感)
-	battle._hit_spark(low)
+	battle._vfx._hit_spark(low)
 	var killed := false
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if battle._on_line(u["pos"], dir, o["pos"], 36.0):
 			var before: bool = o["alive"]
 			battle._apply_damage_from(u, o, battle._atk_dmg(u, [2.0, 3.0, 7.0][si], o), Color("#ff4444"), 0.0, false, true)
@@ -1251,7 +1251,7 @@ func _eq_check_hp_threshold(u: Dictionary) -> void:
 				battle._heal(u, u["maxHp"] * [0.15, 0.29, 0.65][si])
 				battle._heal_ascend(u)   # 绿光环上浮(045专属, 不复用044)
 				var balls: int = [1, 1, 2][si]
-				var es = battle._pick_enemies_of(u)
+				var es = battle._targeting._pick_enemies_of(u)
 				for b in range(balls):
 					if es.is_empty(): break
 					var o = es[battle._battle_rng.randi() % es.size()]
@@ -1322,10 +1322,10 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 				pass
 			"p2eq_056":   # 飞镖: 每周期向所有带"靶子"(被击飞)的敌各射1镖+流血
 				if OS.has_environment("EQDEMO_EQUIP") and str(OS.get_environment("EQDEMO_EQUIP")) == "p2eq_056":   # demo: 无击飞源→强制标靶看飞镖volley
-					for _e in battle._enemies_of(u):
+					for _e in battle._targeting._enemies_of(u):
 						if _e.get("alive", false):
 							battle._mark_vfx(_e, 5.0, Color("#ffa040")); _e["eq_target_until"] = battle._t + 5.0
-				for o in battle._enemies_of(u):
+				for o in battle._targeting._enemies_of(u):
 					if battle._t < o.get("eq_target_until", 0.0):
 						o["eq_target_until"] = 0.0
 						o["_mark_until"] = battle._t   # 靶子锁定框消失
@@ -1337,7 +1337,7 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 # 龙蛋喷火龙: 沿随机有敌的朝向直线扫射 (同列友回血/敌魔伤+灼烧)
 # 024 喷火龙(定稿场景): 龙低空沿"敌方质心方向的线"掠射, 边飞边点燃 burn-loop 真像素火燃烧带, 命中敌=fx_explosion金爆+着火+魔伤, 掠过友=绿治疗环
 func _eq_dragon_breath(u: Dictionary, si: int) -> void:
-	var es = battle._pick_enemies_of(u)
+	var es = battle._targeting._pick_enemies_of(u)
 	if es.is_empty():
 		return
 	var cen := Vector2.ZERO

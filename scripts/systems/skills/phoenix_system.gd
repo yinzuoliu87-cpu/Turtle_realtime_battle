@@ -46,7 +46,7 @@ func _phoenix_flame_cone(u: Dictionary, tgt: Dictionary) -> void:
 	dir = Vector2(cos(aim), sin(aim))
 	var rng: float = float(u.get("atk_range", 400.0))
 	var half_cos: float = cos(deg_to_rad(battle.PHX_CONE_HALF_DEG))
-	for e in battle._enemies_of(u):
+	for e in battle._targeting._enemies_of(u):
 		if not e.get("alive", false):
 			continue
 		var to_e: Vector2 = e["pos"] - origin

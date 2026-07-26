@@ -12,7 +12,7 @@ func _sk_hunter_hide(u: Dictionary) -> void:                     # 猎人龟·�
 	var dir = Vector2.RIGHT
 	var nm = null
 	var nmd = 150.0
-	for o in battle._enemies_of(u):                                     # ① 近战/刺客贴近(<150码)→朝远离最近近战威胁滚(拉距保远程)
+	for o in battle._targeting._enemies_of(u):                                     # ① 近战/刺客贴近(<150码)→朝远离最近近战威胁滚(拉距保远程)
 		if o.get("alive", false) and o.get("melee", false):
 			var dd: float = u["pos"].distance_to(o["pos"])
 			if dd < nmd: nmd = dd; nm = o
@@ -21,11 +21,11 @@ func _sk_hunter_hide(u: Dictionary) -> void:                     # 猎人龟·�
 	elif u["hp"] < u["maxHp"] * 0.35:                           # ② 残血→朝敌质心反向撤退
 		var cen = Vector2.ZERO
 		var cn = 0
-		for o in battle._enemies_of(u):
+		for o in battle._targeting._enemies_of(u):
 			if o.get("alive", false): cen += o["pos"]; cn += 1
 		if cn > 0: cen /= float(cn); dir = (u["pos"] - cen).normalized()
 	else:                                                       # ③ 安全→朝当前目标最佳射程滚(目标<14%凑近确保处决,否则拉开保持射程)
-		var tg = battle._nearest_enemy(u)
+		var tg = battle._targeting._nearest_enemy(u)
 		if tg != null:
 			if float(tg["hp"]) < float(tg["maxHp"]) * 0.14: dir = (tg["pos"] - u["pos"]).normalized()
 			else: dir = (u["pos"] - tg["pos"]).normalized()
@@ -117,7 +117,7 @@ func _hunter_roll_ghost(u: Dictionary) -> void:                 # 单道灵巧�
 #  · 3D环绕类(眩晕火花/诅咒骷髅/忍者锁定)保持绕身体另一套, 不进此层
 # ============================================================================
 func _sk_hunter_shot(u: Dictionary, tgt) -> void:              # 猎人龟·精准射击(封板·90龟能·射箭+毒箭+猎杀印记三合一): 蓄力狙2.0A物理+中毒5s+治疗削减50%5s+猎杀印记5s(<24%处决)
-	if tgt == null: tgt = battle._nearest_enemy(u)
+	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	var tref: Dictionary = tgt
 	var uu: Dictionary = u
@@ -149,7 +149,7 @@ func _sk_hunter_barrage(u: Dictionary, _tgt) -> void:          # 猎人龟·狩�
 		battle._pending_shots.append({"delay": float(i) * 0.2, "src": u, "fn": func() -> void:   # 每0.2s射一发
 			if not uu.get("alive", false): return
 			var cand: Array = []                                # 随机目标(非最残血): _enemies_of已跳围栏未破的蛋; 破栏后的蛋是合法目标(注意龟蛋)
-			for o in battle._pick_enemies_of(uu):
+			for o in battle._targeting._pick_enemies_of(uu):
 				if o.get("alive", false) and not battle._is_untargetable(o):
 					cand.append(o)
 			if cand.is_empty(): return

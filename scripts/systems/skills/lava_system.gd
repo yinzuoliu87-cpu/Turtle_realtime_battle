@@ -21,7 +21,7 @@ func _tick_lava_zones(_delta: float) -> void:   # 每帧: 周期结算池内敌 
 			if src != null and src.get("alive", false):
 				var c: Vector2 = z["center"]
 				var r: float = float(z["radius"])
-				for o in battle._enemies_of(src):
+				for o in battle._targeting._enemies_of(src):
 					if not o.get("alive", false):
 						continue
 					if o["pos"].distance_to(c) > r:
@@ -212,7 +212,7 @@ func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火�
 				mt.chain().tween_callback(mf.queue_free)
 		if is_instance_valid(tel):
 			tel.modulate.a = lerpf(0.42, 0.12, clampf(d / full_len, 0.0, 1.0))
-		for o in battle._enemies_of(u):
+		for o in battle._targeting._enemies_of(u):
 			if not o.get("alive", false):
 				continue
 			if battle._arr_has_unit(hit, o):
@@ -318,7 +318,7 @@ func _lava_magma_surge(u: Dictionary, tgt: Dictionary) -> void:  # 小·岩浆�
 	# 3) 击飞 目标 + 120px 内敌, 给目标伤害, 给自身护盾
 	battle._shake(battle.JUICE_SHAKE_BIG); battle._add_hitstop(battle.JUICE_HITSTOP_KNOCK)
 	battle._skill_ring(center, Color(1.0, 0.5, 0.18, 0.7), 120.0)
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		if o["pos"].distance_to(center) > 120.0: continue
 		battle._knock_up(o, center, 9.0)
@@ -411,7 +411,7 @@ func _lava_pierce_bolt(u: Dictionary, tgt) -> void:             # 熔岩·穿透
 	var dir: Vector2 = ((tgt["pos"] - u["pos"]).normalized() if (tgt != null) else Vector2.RIGHT)
 	if dir.length() < 0.1: dir = Vector2.RIGHT
 	battle._bolt_line(u["pos"], u["pos"] + dir * 2000.0, Color(1.0, 0.5, 0.2, 0.95))
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		if is_same(o, tgt) or battle._on_line(u["pos"], dir, o["pos"], 70.0):
 			battle._apply_damage_from(u, o, battle._atk_dmg(u, 0.6, o, true) + int(o["maxHp"] * 0.04), Color("#ff7a3c"))
@@ -566,7 +566,7 @@ func _lava_slam_impact(u: Dictionary, center: Vector2) -> void:   # 落地: 击�
 	battle._vfx._flash(u, Color(1.6, 0.7, 0.3))
 	battle._vfx._impact_particles(center, 0.0)
 	_lava_burst_vfx(center)                           # AI生成爆裂火球
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		if (o["pos"] - center).length() > battle.LAVA_SLAM_RADIUS: continue
 		if not o.get("airborne", false) and not o.get("_knock_immune", false):
@@ -607,11 +607,11 @@ func _sk_lava_erupt(u: Dictionary, tgt) -> void:                # 熔岩龟·技
 		return
 	var danger: bool = u["hp"] < u["maxHp"] * 0.35
 	if not danger:
-		for e in battle._enemies_of(u):
+		for e in battle._targeting._enemies_of(u):
 			if e.get("alive", false) and e.get("melee", false) and (e["pos"] - u["pos"]).length() < 110.0:
 				danger = true; break
 	if danger:                                                   # 保命: 背离最近威胁撤220码
-		var threat = battle._nearest_enemy(u)
+		var threat = battle._targeting._nearest_enemy(u)
 		var d: Vector2 = ((u["pos"] - threat["pos"]).normalized() if threat != null else Vector2.RIGHT)
 		if d.length() < 0.1: d = Vector2.RIGHT
 		u["pos"] += d * 220.0

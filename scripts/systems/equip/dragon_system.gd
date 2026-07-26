@@ -16,13 +16,13 @@ func _dragon_unleash(u: Dictionary, si: int, start: Vector2, end: Vector2, dir: 
 	var expl: Texture2D = load("res://assets/sprites/vfx/fx_explosion.png")
 	var burn_tex: Texture2D = load("res://assets/sprites/vfx/dragon-flame.png")
 	# 火柱扫到谁那一刻才对谁结算(非召唤即一次性算完): 延时=火柱沿线到达该单位的时间
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if battle._on_line(start, dir, o["pos"], 88.0):
 			var d_e: float = clampf((o["pos"] - start).dot(dir) / total, 0.0, 1.0) * dur
 			var twe = battle._reg_tween()
 			twe.tween_interval(d_e)
 			twe.tween_callback(_dragon_hit_enemy.bind(u, o, si, expl, burn_tex))
-	for o in battle._allies_of(u):
+	for o in battle._targeting._allies_of(u):
 		if battle._on_line(start, dir, o["pos"], 88.0):
 			var d_a: float = clampf((o["pos"] - start).dot(dir) / total, 0.0, 1.0) * dur
 			var twa = battle._reg_tween()
@@ -102,7 +102,7 @@ func _dragon_summon_burst(pos2d: Vector2) -> void:
 	tw.tween_property(spr, "pixel_size", (255.0 * battle.WS) / tw_w, 0.32)
 	tw.tween_property(spr, "modulate:a", 0.0, 0.32)
 	tw.chain().tween_callback(spr.queue_free)
-	battle._impact_particles(pos2d, 1.0)
+	battle._vfx._impact_particles(pos2d, 1.0)
 
 # 龙嘴喷火: 沿飞行线, 从龙嘴(前方)持续喷真像素火落向地面 = "喷火"读感
 # 龙嘴喷火: 沿飞行线, 从龙嘴(前方)持续喷真像素火落向地面 = "喷火"读感

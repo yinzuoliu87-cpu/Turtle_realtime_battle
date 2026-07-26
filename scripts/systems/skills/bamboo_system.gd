@@ -71,7 +71,7 @@ func _bamboo_burst_step(t: float, b: Sprite3D, nframes: int) -> void:
 func _sk_bamboo_smack(u: Dictionary, tgt) -> void:              # 竹叶龟·竹击(用户封板·120龟能): 钩全场最远敌·1.0A物理·眩晕0.5s·拉贴身·冰寒4秒(-20%攻/-20%移速); 蛋免控只吃伤
 	var far = null
 	var far_d = -1.0
-	for o in battle._pick_enemies_of(u):   # ★单体定向(钩最远一个)走 battle._pick_enemies_of: 不锁训龟大师(场外·永远最远)+不可选中; 见 §PICK-TARGET(与珊瑚刺同类·用户2026-07-24)
+	for o in battle._targeting._pick_enemies_of(u):   # ★单体定向(钩最远一个)走 battle._targeting._pick_enemies_of: 不锁训龟大师(场外·永远最远)+不可选中; 见 §PICK-TARGET(与珊瑚刺同类·用户2026-07-24)
 		if not o.get("alive", false): continue
 		var d: float = o["pos"].distance_to(u["pos"])
 		if d > far_d:
@@ -108,7 +108,7 @@ func _sk_bamboo_spikes(u: Dictionary, tgt) -> void:            # 竹叶龟·竹�
 			var ang: float = TAU * float(i) / 14.0 + randf() * 0.45
 			var rr: float = sqrt(randf()) * 285.0
 			battle._spawn_bamboo_spike(c + Vector2(cos(ang), sin(ang)) * rr, randf_range(0.85, 1.3), 0.5)
-		for o in battle._enemies_of(uu):
+		for o in battle._targeting._enemies_of(uu):
 			if o.get("alive", false) and o["pos"].distance_to(c) <= 300.0:
 				battle._apply_damage_from(uu, o, battle._atk_dmg(uu, 0.9, o) + int(uu["maxHp"] * 0.15), Color("#39d353"))
 				battle._spawn_bamboo_spike(o["pos"], 1.5, 0.5)   # 命中点更粗一根竹刺
@@ -120,7 +120,7 @@ func _sk_bamboo_spikes(u: Dictionary, tgt) -> void:            # 竹叶龟·竹�
 	battle._pending_shots.append({"delay": 0.6, "fn": spikes, "src": u})
 
 func _sk_bamboo_heal(u: Dictionary) -> void:                     # 竹叶龟·自然恢复 ✅
-	var allies = battle._allies_of(u, false)
+	var allies = battle._targeting._allies_of(u, false)
 	battle._vfx._play_heal_glow(u["pos"])
 	if allies.is_empty():
 		battle._heal(u, u["maxHp"] * 0.15)

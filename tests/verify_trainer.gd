@@ -90,13 +90,13 @@ func _ready() -> void:
 		# 把训龟大师挪到敌人脚边 —— 若会被索敌, 它就是最近的那个
 		var saved_pos: Vector2 = tr["pos"]
 		tr["pos"] = foe["pos"] + Vector2(5.0, 0.0)
-		var picked = s._nearest_enemy(foe)
+		var picked = s._targeting._nearest_enemy(foe)
 		var picked_is_trainer: bool = picked is Dictionary and (picked as Dictionary).get("is_trainer", false)
 		print("  [实测] 把训龟大师放到敌人脚边(距离 5 码), _nearest_enemy 选中的是: %s"
 			% ("训龟大师" if picked_is_trainer else str((picked as Dictionary).get("name", "?")) if picked is Dictionary else "null"))
 		_ok("★贴脸也不会被主动索敌(_nearest_enemy 跳过它)", not picked_is_trainer)
 		# AoE 走 _enemies_of —— 那条路必须【能】拿到它
-		var aoe: Array = s._enemies_of(foe)
+		var aoe: Array = s._targeting._enemies_of(foe)
 		var in_aoe := false
 		for o in aoe:
 			if o.get("is_trainer", false):
@@ -210,7 +210,7 @@ func _ready() -> void:
 	# 训龟大师自己会索敌开火(它不被别人锁, 但能锁别人 —— 两回事)
 	if not rock_foe.is_empty():
 		rock_foe["pos"] = tr["pos"] + Vector2(200.0, 0.0)
-		var picked = s._nearest_enemy_for_trainer(tr)
+		var picked = s._targeting._nearest_enemy_for_trainer(tr)
 		_ok("★训龟大师能锁到射程内的敌人开火", picked != null)
 	# 减伤对【普通目标】必须恰好放行 1(之前探针随机挑到钻石龟被动减18%=0.82, 那是目标的锅不是石头的)
 	var plain := {"id": "basic", "def": 0.0, "mr": 0.0, "hp": 100.0, "maxHp": 100.0, "alive": true}

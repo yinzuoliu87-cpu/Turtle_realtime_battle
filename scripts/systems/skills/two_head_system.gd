@@ -28,7 +28,7 @@ func _two_head_apply_melee(u: Dictionary, on: bool) -> void:
 		battle._recalc_stats(u)
 
 func _sk_two_head_strike(u: Dictionary, tgt) -> void:            # 双头·技能一 form-variant(用户2026-07-11重设计): 远程=灵能冲击(大紫炮弹→碰第一敌爆炸200码AOE 1A+10%maxHp物理) / 近战=锤击(跳起落地砸·1.4A物理+50%伤害盾4s)
-	if tgt == null: tgt = battle._nearest_enemy(u)
+	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	if u["melee"]:
 		_two_head_hammer(u, tgt)                                # 近战锤击: 跳起→落在目标→地面锤击
@@ -58,7 +58,7 @@ func _two_head_cannon(u: Dictionary, from2d: Vector2, dir: Vector2) -> void:
 		pos.x = clampf(pos.x, battle.ARENA.position.x, battle.ARENA.end.x)
 		pos.y = clampf(pos.y, battle.ARENA.position.y, battle.ARENA.end.y)
 		if is_instance_valid(spr): spr.position = battle._world_pos(pos, 1.1)
-		for o in battle._enemies_of(u):
+		for o in battle._targeting._enemies_of(u):
 			if o.get("alive", false) and pos.distance_to(o["pos"]) <= 46.0:
 				hit = o; break
 		if hit != null: break
@@ -80,7 +80,7 @@ func _two_head_cannon_boom(u: Dictionary, at2d: Vector2) -> void:
 	tw.chain().tween_callback(sp.queue_free)
 	battle._skill_ring(at2d, Color(0.76, 0.55, 1.0, 0.9), 200.0)       # 200码爆炸范围冲击波
 	battle._skill_ring(at2d, Color(0.86, 0.72, 1.0, 0.7), 110.0)
-	for o in battle._enemies_of(u):
+	for o in battle._targeting._enemies_of(u):
 		if o.get("alive", false) and at2d.distance_to(o["pos"]) <= 200.0:
 			battle._apply_damage_from(u, o, battle._atk_dmg(u, 1.0, o) + int(o["maxHp"] * 0.10), Color("#c0a0ff"))
 			battle._vfx._flash(o, Color(0.8, 0.6, 1.0))
@@ -143,7 +143,7 @@ func _two_head_slam_impact(at2d: Vector2) -> void:
 
 # 砸地岩屑: 灰褐碎块一次性向上+四散迸溅+重力回落(0.75s后回收)
 func _sk_two_head_disrupt(u: Dictionary, tgt) -> void:           # 双头·技能二 form-variant(封板): 远程=精神干扰(1.0A魔法+治疗削减50%5s+破盾50%) / 近战=吸收(0.6A+8%maxHp物理+回血40%A+18%已损)
-	if tgt == null: tgt = battle._nearest_enemy(u)
+	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	if u["melee"]:
 		var dmg: int = battle._atk_dmg(u, 0.6, tgt) + int(tgt["maxHp"] * 0.08)
@@ -217,7 +217,7 @@ func _two_head_absorb_vfx(u: Dictionary, tgt: Dictionary) -> void:
 	battle._skill_ring(u["pos"], Color(0.32, 0.92, 0.5, 0.62), 66.0)
 
 func _sk_two_head_fusion(u: Dictionary, tgt) -> void:            # 双头·技能三融合(封板): 主动魔法波(4段·物理80%+真实80%共1.6A); 锁形态/坚韧/合体近战属性在登场gate
-	if tgt == null: tgt = battle._nearest_enemy(u)
+	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	var n: int = int(u.get("two_wave_count", 4))               # 波数量: 基础4段·每次释放+1累积到战斗结束(用户2026-07-11)
 	for i in range(n):                                          # n段交替弧形魔法波(物理紫/真实白)依次飞向目标·波到结算该段
@@ -307,7 +307,7 @@ func _two_head_after_cast(u: Dictionary, tgt) -> void:          # 被动·双生
 	u["atk_range"] = 400.0 if to_ranged else 70.0
 	u["_th_enh"] = "ranged" if to_ranged else "melee"          # 挂强化: 下1下普攻搬旧切形态那一下的伤害+效果(远程=1.4A物理+破甲 / 近战=0.6A魔法+1.1A盾)
 	if to_ranged:
-		var et = (tgt if (tgt is Dictionary and tgt.get("alive", false)) else battle._nearest_enemy(u))
+		var et = (tgt if (tgt is Dictionary and tgt.get("alive", false)) else battle._targeting._nearest_enemy(u))
 		_two_head_retreat(u, et)                               # 切远程: 纯平滑滑退350码到射程(伤害/破甲已挪到强化普攻)
 	# 切近战: 不单独位移 — 锤击(_two_head_hammer)自带跳跃接近敌人
 

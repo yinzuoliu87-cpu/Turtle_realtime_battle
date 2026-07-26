@@ -63,7 +63,7 @@ func _pirate_rum_bubble(u: Dictionary) -> void:   # 酒气暖泡(HoT期上飘·�
 func _sk_pirate_volley(u: Dictionary, tgt) -> void:              # 海盗龟·火炮齐射(用户2026-07-14补演出): 海盗船高空驶入→对目标800码区降炮弹雨6发·命中才跳伤害·每发0.5A+2%maxHp
 	# 每发 = 0.5×ATK + 2%目标最大生命 → 6发全中共 3.0A + 12%maxHp
 	# (旧注释写 0.17A/1.7% 是回合制口径, 实时版代码里【没有任何 0.17 系数】; 2026-07-22 订正)
-	if tgt == null or not tgt.get("alive", false): tgt = battle._nearest_enemy(u)
+	if tgt == null or not tgt.get("alive", false): tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	var ship = _pirate_get_ship(u)                            # 持久演出船(一只·驻场·各招共用·不淡出)
 	var ship2d: Vector2 = (ship.get_meta("ship2d") if ship != null else Vector2(tgt["pos"].x, battle.ARENA.position.y + 55.0))
@@ -71,7 +71,7 @@ func _sk_pirate_volley(u: Dictionary, tgt) -> void:              # 海盗龟·�
 	for i in range(6):                                          # 6发炮弹·各朝随机敌发射·落点250码AOE(命中打伤害·用户2026-07-14)
 		battle._pending_shots.append({"delay": 0.4 + float(i) * 0.28, "src": u, "fn": func() -> void:
 			var cand: Array = []
-			for o in battle._pick_enemies_of(u):
+			for o in battle._targeting._pick_enemies_of(u):
 				if o.get("alive", false): cand.append(o)
 			if cand.is_empty(): return
 			var aim: Dictionary = cand[battle._battle_rng.randi() % cand.size()]   # 随机敌
@@ -81,7 +81,7 @@ func _sk_pirate_volley(u: Dictionary, tgt) -> void:              # 海盗龟·�
 				battle._burst_vfx("res://assets/sprites/vfx/cannon-blast.png", land, 230.0, 0.3)
 				battle._shake(0.05)
 				battle._skill_ring(land, Color(1.0, 0.55, 0.3, 0.5), 250.0)   # 落点250码范围环
-				for o in battle._enemies_of(u):                        # 落点250码内: 0.5A+2%目标maxHp 物理(红)
+				for o in battle._targeting._enemies_of(u):                        # 落点250码内: 0.5A+2%目标maxHp 物理(红)
 					if o.get("alive", false) and o["pos"].distance_to(land) <= 250.0:
 						battle._apply_damage_from(u, o, battle._atk_dmg(u, 0.5, o) + int(o["maxHp"] * 0.02), Color("#ff4444")))
 			})
@@ -170,7 +170,7 @@ func _sk_pirate_ship(u: Dictionary, tgt) -> void:
 # 海盗龟·霰弹(封板L361·选海盗船后续充能满): 朝目标60度扇面喷8颗弹丸·每颗命中方向第一敌0.5A物理+40码击退·射程400
 # 海盗龟·霰弹(封板L361·选海盗船后续充能满): 朝目标60度扇面喷8颗弹丸·每颗命中方向第一敌0.5A物理+40码击退·射程400
 func _pirate_shotgun(u: Dictionary, tgt) -> void:
-	var aim = tgt if (tgt != null and tgt.get("alive", false)) else battle._nearest_enemy(u)
+	var aim = tgt if (tgt != null and tgt.get("alive", false)) else battle._targeting._nearest_enemy(u)
 	if aim == null:
 		return
 	var base_dir: Vector2 = aim["pos"] - u["pos"]
