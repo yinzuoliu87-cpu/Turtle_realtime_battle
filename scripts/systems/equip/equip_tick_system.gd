@@ -278,7 +278,7 @@ func _tick_coral(u: Dictionary, delta: float) -> void:   # 双穿珊瑚刺p2eq_0
 			if dd2 > fd: fd = dd2; far = o
 		if far == null: continue
 		e["coral_t"] = 0.0
-		battle._fire_coral_spike(u, far, battle._equip_sys._eq_si(int(e.get("star", 1))))
+		battle._ballistics._fire_coral_spike(u, far, battle._equip_sys._eq_si(int(e.get("star", 1))))
 
 func _tick_broadsword(u: Dictionary, delta: float) -> void:   # 锈蚀阔剑p2eq_007: 每6秒触发(用户); 每件独立
 	if u.get("equips", []).is_empty(): return

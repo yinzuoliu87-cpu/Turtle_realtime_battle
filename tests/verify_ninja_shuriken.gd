@@ -18,7 +18,7 @@ func _land_shuriken(scene, ninja: Dictionary, dummy: Dictionary) -> void:
 	dummy["hp"] = dummy["maxHp"]
 	scene._ninja_sys._sk_ninja_shuriken(ninja, dummy)
 	for i in range(20):        # 20×0.05=1s ≥ 弹道dur(≤0.5)
-		scene._step_projectiles(0.05)
+		scene._ballistics._step_projectiles(0.05)
 		if scene._projectiles.is_empty(): break
 
 func _ready() -> void:

@@ -235,7 +235,7 @@ func _ice_frost_rain(center: Vector2, radius: float) -> void:    # 冰霜场视�
 func _sk_ice_freeze(u: Dictionary, tgt: Dictionary) -> void:    # 寒冰龟·冰封 ✅ (冰锥弹道→命中0.6魔法+冻结1.5s)
 	if tgt == null or not tgt.get("alive", false):
 		return
-	battle._fire_ice_shard(u, tgt, battle._atk_dmg(u, 0.6, tgt, true))
+	battle._ballistics._fire_ice_shard(u, tgt, battle._atk_dmg(u, 0.6, tgt, true))
 
 func _sk_ice_team_shield(u: Dictionary) -> void:               # 寒冰龟·团队护盾(用户2026-07-11重设计·120龟能): 全体友军5%施法者maxHp冰霜盾4秒·盾破/到期爆炸250码1×ATK魔法; 独狼(无其他友军)盾×4·爆炸5×ATK
 	var others = battle._targeting._allies_of(u, false)                         # 不含自己

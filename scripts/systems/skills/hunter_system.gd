@@ -154,7 +154,7 @@ func _sk_hunter_barrage(u: Dictionary, _tgt) -> void:          # 猎人龟·狩�
 					cand.append(o)
 			if cand.is_empty(): return
 			var tgt: Dictionary = cand[battle._battle_rng.randi() % cand.size()]   # 随机选一个敌
-			battle._fire_hunter_arrow(uu, tgt, int(round(float(uu["atk"]) * 0.36)))   # 每箭0.36A(共3.6A)
+			battle._ballistics._fire_hunter_arrow(uu, tgt, int(round(float(uu["atk"]) * 0.36)))   # 每箭0.36A(共3.6A)
 			})
 
 func _hunter_execute_fx(u: Dictionary) -> void:   # 被动猎杀·处决瞬间: 金色斩杀爆(环+金光pop+轻震)·配"处决!"金字(用户2026-07-14)

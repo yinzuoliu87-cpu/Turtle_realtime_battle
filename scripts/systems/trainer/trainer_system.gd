@@ -75,7 +75,7 @@ func _tick_trainer_attacks(delta: float) -> void:
 		# 朝向目标(扔之前转身), 再播扔石头动作
 		u["face_right"] = tgt["pos"].x > u["pos"].x
 		_trainer_throw_anim(u)
-		battle._fire_trainer_rock(u, tgt)
+		battle._ballistics._fire_trainer_rock(u, tgt)
 		if str(u.get("_tr_passive", "")) == "magic_stone":
 			_trainer_magicstone_onhit(u, tgt)
 

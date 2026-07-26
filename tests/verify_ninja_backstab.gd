@@ -47,7 +47,7 @@ func _ready() -> void:
 	# 推进 pending_shots ~0.7s → 3段全落 (delay 0/0.3/0.6)
 	for i in range(16):
 		scene._t += 0.05
-		scene._step_pending_shots(0.05)
+		scene._ballistics._step_pending_shots(0.05)
 	var tf: int = int(far1.get("_st_taken", 0))
 	var tn: int = int(near1.get("_st_taken", 0)) + int(near2.get("_st_taken", 0))
 	# 每段 round(100×0.6667×1.0)=67 ×3 = 201 (共≈2.0A)

@@ -189,7 +189,7 @@ func _ready() -> void:
 			break
 	if not rock_foe.is_empty():
 		var n0: int = s._projectiles.size()
-		s._fire_trainer_rock(tr, rock_foe)
+		s._ballistics._fire_trainer_rock(tr, rock_foe)
 		_ok("★扔石头生成了一颗投射物", s._projectiles.size() == n0 + 1)
 		if s._projectiles.size() > n0:
 			var rock: Dictionary = s._projectiles[s._projectiles.size() - 1]

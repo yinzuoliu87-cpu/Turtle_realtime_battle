@@ -50,7 +50,7 @@ func _ready() -> void:
 	# 吞噬完成挂在 1.5s 的 _pending_shots 回调里 → 推进时间让它跑完
 	for i in range(120):
 		scene._t += 0.02
-		scene._step_pending_shots(0.02)
+		scene._ballistics._step_pending_shots(0.02)
 
 	var hm: float = float(elite.get("haste_mult", 1.0))
 	var hu: float = float(elite.get("haste_until", 0.0))

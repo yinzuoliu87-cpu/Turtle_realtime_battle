@@ -165,7 +165,7 @@ func _sk_ninja_shuriken(u: Dictionary, tgt) -> void:           # 技·手里剑(
 		var lv: int = int(u.get("level", 1))
 		true_raw = round(crit_total * minf(100.0, 40.0 + 2.0 * float(lv)) / 100.0)   # 其中(40+2%/级)%(封顶100%)→真实伤害(穿甲)
 		phys_raw = maxf(0.0, crit_total - true_raw)           # 余下→物理(吃减甲)
-	battle._fire_shuriken(u, tgt, phys_raw, true_raw, is_crit)
+	battle._ballistics._fire_shuriken(u, tgt, phys_raw, true_raw, is_crit)
 
 func _sk_ninja_bomb(u: Dictionary, tgt) -> void:
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)

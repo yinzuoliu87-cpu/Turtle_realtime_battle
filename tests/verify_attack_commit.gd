@@ -22,7 +22,7 @@ func _run(sc, teleport: bool) -> float:
 		sc._t += 0.05
 		for u in sc._units.duplicate():
 			if u.get("alive", false): sc._tick_unit(u, 0.05)
-		sc._apply_separation_pass(0.05); sc._step_pending_shots(0.05); sc._step_projectiles(0.05)
+		sc._apply_separation_pass(0.05); sc._ballistics._step_pending_shots(0.05); sc._ballistics._step_projectiles(0.05)
 		if phase == 0 and str(m.get("state", "")) == "windup" and str(m.get("pending", "")) == "B":
 			if teleport: k["pos"] = Vector2(1500, 400)   # 前摇期风筝跑出射程
 			phase = 1; steps_after = 0

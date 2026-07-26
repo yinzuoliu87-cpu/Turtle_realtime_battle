@@ -47,8 +47,8 @@ func _ready() -> void:
 			if u.get("alive", false):
 				scene._tick_unit(u, 0.05)
 		scene._apply_separation_pass(0.05)
-		scene._step_pending_shots(0.05)
-		scene._step_projectiles(0.05)
+		scene._ballistics._step_pending_shots(0.05)
+		scene._ballistics._step_projectiles(0.05)
 	var dmg: float = hp0 - float(dummy["hp"])
 	var d1: float = atk["pos"].distance_to(dummy["pos"])
 	_ok("★近战攻击方靠近了假人(间距缩小)", d1 < d0, "起 %.0f → 终 %.0f" % [d0, d1])

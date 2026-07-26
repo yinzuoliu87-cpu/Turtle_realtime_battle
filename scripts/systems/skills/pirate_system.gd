@@ -183,7 +183,7 @@ func _pirate_shotgun(u: Dictionary, tgt) -> void:
 	for i in range(8):
 		var frac: float = (float(i) / 7.0) * 2.0 - 1.0      # -1..1 均分
 		var d: Vector2 = base_dir.rotated(half * frac)
-		battle._shotgun_pellet(u["pos"], u["pos"] + d * 400.0, Color(1.0, 0.86, 0.5, 0.95), 0.72)   # 弹丸VFX(射程400·慢速用户2026-07-14)
+		battle._ballistics._shotgun_pellet(u["pos"], u["pos"] + d * 400.0, Color(1.0, 0.86, 0.5, 0.95), 0.72)   # 弹丸VFX(射程400·慢速用户2026-07-14)
 		var hit = battle._basic_first_blocker(u, d)                # 该方向路径第一敌(含蛋·障碍穿我方不挡)
 		if hit != null and hit["pos"].distance_to(u["pos"]) <= 400.0:
 			battle._damage._apply_damage_from(u, hit, battle._atk_dmg(u, 0.5, hit), Color("#ffd07a"))   # 0.5A物理
