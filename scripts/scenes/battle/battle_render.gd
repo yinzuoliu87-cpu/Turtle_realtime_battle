@@ -21,8 +21,9 @@ func _update_spell_disc() -> void:
 	var cd_max: float = float(battle.TRAINER_SKILLS.get(sid, {}).get("cd", battle.HOOK_CD))
 	var cd: float = float(u.get("_active_cd", 0.0))
 	battle._spell_disc.set_cd(cd / maxf(0.01, cd_max), cd)
+	battle._update_q_aim()             # PC 按住 Q 瞄准: 刷新方向 + 亮 _disc_aiming
 	if battle._disc_aiming:
-		battle._draw_aim_indicator()   # 拖动瞄准中: 战场上画方向指示器
+		battle._draw_aim_indicator()   # 拖动/按住Q 瞄准中: 战场上画方向指示器
 	elif not battle._aim_ind.is_empty():
 		battle._clear_aim_indicator()  # 瞄准结束: 清掉指示器节点
 

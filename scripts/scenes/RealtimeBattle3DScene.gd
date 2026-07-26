@@ -563,6 +563,7 @@ var _spell_disc: SpellDisc = null         # 法术圆盘(点3): 钩锁钮·右�
 var _disc_aiming: bool = false            # 移动端正按住圆盘拖动瞄准中(Wild Rift 式·用户2026-07-24)
 var _disc_aim_dir: Vector2 = Vector2.ZERO # 当前瞄准方向(战场系·单位向量)
 var _aim_ind: Dictionary = {}             # R2 瞄准指示器持久节点(band/ring/land/tgt·按技能类型建·瞄准结束清)
+var _q_aiming: bool = false               # R2 PC 按住 Q 瞄准中(松开释放·指示器跟随鼠标)
 var _tutorial: Node = null                # 新手引导实例(GameState.tutorial 才建); null=不在教程里
 var _tut_place_shown: bool = false        # 教学 match1: 摆位引导只挂一次(首路), 别每路都弹
 var _pause_panel: Control = null          # 暂停浮层(继续/重开/返回菜单), 默认隐; process_mode ALWAYS 保证暂停中可交互
@@ -1695,8 +1696,9 @@ func _cast_glacier(trainer: Dictionary, aim: Vector2) -> bool:
 func _on_spell_aim(phase: String, screen_off: Vector2) -> void:
 	match phase:
 		"update":
-			_disc_aiming = screen_off.length() > 0.01 and _trainer_sys._trainer_ticks_active()
-			_disc_aim_dir = screen_off
+			var tr0 = _my_trainer()
+			_disc_aiming = screen_off.length() > 0.01 and tr0 != null and _trainer_sys._trainer_ticks_active()
+			_disc_aim_dir = _disc_off_to_field(tr0, screen_off) if tr0 != null else Vector2.ZERO   # 存战场偏移(与PC统一尺度)
 		"cast":
 			_disc_aiming = false
 			if not _trainer_sys._trainer_ticks_active():
@@ -1740,9 +1742,8 @@ func _draw_aim_indicator() -> void:
 		rng = 600.0
 	var from2d: Vector2 = u["pos"]
 	var dir: Vector2 = _disc_aim_dir.normalized() if _disc_aim_dir.length() > 0.01 else Vector2.RIGHT
-	if aim_type == "point":                                 # 怒火: 射程圈 + 落点圈
-		var frac: float = clampf(_disc_aim_dir.length() / (SpellDisc.R * 1.4), 0.0, 1.0)
-		var pt: Vector2 = from2d + dir * rng * frac
+	if aim_type == "point":                                 # 怒火: 射程圈 + 落点圈(战场偏移·夹到射程)
+		var pt: Vector2 = from2d + _disc_aim_dir.limit_length(rng)
 		_aim_ring("ring", from2d, rng, Color(1.0, 0.7, 0.35, 0.45))
 		_aim_ring("land", pt, 300.0, Color(1.0, 0.55, 0.25, 0.85))
 	else:                                                   # 钩锁/冰川: 方向带 + 末端箭头
@@ -1828,6 +1829,38 @@ func _clear_aim_indicator() -> void:
 		var n = _aim_ind[k]
 		if n != null and is_instance_valid(n): n.queue_free()
 	_aim_ind = {}
+
+## R2 PC 按住 Q 瞄准: 按下进入(有主动技才进) / 每帧刷方向(鼠标→大师) / 松开朝鼠标释放。
+func _begin_q_aim() -> void:
+	if not _trainer_sys._trainer_ticks_active():
+		return
+	var tr = _my_trainer()
+	if tr == null:
+		return
+	var u: Dictionary = tr
+	var sid: String = str(u.get("_tr_active", ""))
+	if sid == "" or not TRAINER_SKILLS.has(sid):   # 选了被动(无主动Q)→ 不进瞄准
+		return
+	_q_aiming = true
+
+func _end_q_aim_and_cast() -> void:
+	if not _q_aiming:
+		return
+	_q_aiming = false
+	_disc_aiming = false
+	_clear_aim_indicator()
+	_trainer_sys._player_cast_hook()               # 朝鼠标方向释放(_player_cast_hook 取鼠标向)
+
+func _update_q_aim() -> void:                      # 每帧(battle_render)调: 按住Q时刷新瞄准方向 + 亮指示器
+	if not _q_aiming:
+		return
+	var tr = _my_trainer()
+	if tr == null:
+		_q_aiming = false; _disc_aiming = false; return
+	var u: Dictionary = tr
+	var mp: Vector2 = get_viewport().get_mouse_position() if get_viewport() != null else Vector2.ZERO
+	_disc_aim_dir = _screen_to_field(mp) - u["pos"]
+	_disc_aiming = true
 
 ## 命中演出(2026-07-24 返工·照锤石Q): 前摇蓄力(HOOK_WINDUP·大师站定举钩) → 中速飞行(HOOK_MISSILE_SPD) → 到达。
 ## 结算不依赖它跑完(_trainer_sys._hook_grab 由 _pending_shots 定时调, 无头也稳)。
@@ -7688,10 +7721,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event is InputEventMouseMotion and (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
 			_map_ed_paint(event.position)
 		return
+	if event is InputEventKey and event.keycode == KEY_Q and not event.echo:
+		if event.pressed:
+			_begin_q_aim()          # 按住 Q → 进入瞄准(指示器跟随鼠标·仅有主动技时·用户2026-07-26)
+		else:
+			_end_q_aim_and_cast()   # 松开 Q → 朝鼠标方向释放
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_Q:
-			_trainer_sys._player_cast_hook()   # 法术圆盘·钩锁: 朝鼠标方向甩(用户2026-07-23 点3·学 LoL 锤石 Q)
-			return
 		if event.keycode == KEY_R:
 			get_tree().reload_current_scene()
 		elif event.keycode == KEY_ESCAPE:
