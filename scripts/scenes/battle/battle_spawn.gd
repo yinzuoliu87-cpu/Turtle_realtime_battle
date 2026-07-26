@@ -241,7 +241,8 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		#   no_move 挡住的是【AI 自动追击】(_do_move)与【分离推挤】(_apply_separation_pass),
 		#   正是"场外监视者不该被战线卷进去"想要的; 玩家操控走的是下面 battle._trainer_sys._trainer_move_by 这条独立路径。
 		st = [false, battle.TRAINER_MOVE_SPD, battle.TRAINER_ATK_INTERVAL, battle.TRAINER_RANGE]   # [近战?, 移速, 攻击间隔, 射程]
-		sd = battle._trainer_sys._trainer_sprite_dict()
+		var _appear: String = OS.get_environment("TRAINER_APPEAR") if OS.has_environment("TRAINER_APPEAR") else str(GameState.trainer_appearance)   # dev: TRAINER_APPEAR=mage 可强制预览某形象
+		sd = battle._trainer_sys._trainer_sprite_dict(_appear if side == "left" else "default")   # 玩家侧用配置选的形象; 敌侧用通用立绘
 	elif is_egg:   # 龟蛋: 纯血包 fighter(atk/def/mr=0), 不动不攻击, 免控/斩/嘲讽, 走完整伤害管线; 围栏未破不可主动索敌(AoE穿栏)
 		d = {"name": "龟蛋", "rarity": "SSS", "crit": 0.0, "hp": maxf(1.0, float(spec.get("hp_max", spec.get("hp", 2100)))), "atk": 0.0, "def": 60.0, "mr": 60.0}   # maxHp=原始满血; 当前hp在下方按累积受损值覆盖(用户2026-07-12: 跨路掉血要可见); 60双抗
 		st = [true, 0.0, 99.0, 0.0]

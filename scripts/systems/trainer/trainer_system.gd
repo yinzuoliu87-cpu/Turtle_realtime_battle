@@ -678,12 +678,23 @@ func _trainer_magicstone_onhit(u: Dictionary, tgt: Dictionary) -> void:
 ## 移动端才建摇杆; PC 上根本不建(不占屏)。
 ## ★TRAINER_JOY=1 可在 PC 上强开, 用于自验手感与门禁 —— 否则这段代码在开发机上永远跑不到,
 ##   等于没写(EQDEMO 那次的教训: 触发不到的路径看着像"没生效")。
-func _trainer_sprite_dict() -> Dictionary:
+# 形象 id → 战场立绘(与 TrainerConfigScene.APPEARANCES 对齐; 改一处两处都要动)。
+# R6-A(2026-07-26): 玩家在配置页选的形象【真的进战场】—— 之前 _trainer_sprite_dict 死读 pets/trainer.png, 配置选了也白选。
+const _APPEARANCE_SPRITES := {
+	"villager": "res://assets/sprites/trainer/trainer-villager.png",
+	"mage": "res://assets/sprites/trainer/trainer-mage.png",
+	"girl": "res://assets/sprites/trainer/trainer-girl.png",
+}
+
+func _trainer_sprite_dict(appearance_id: String = "default") -> Dictionary:
 	var tex: Texture2D = null
-	if ResourceLoader.exists(battle.TRAINER_SPRITE):
+	var path: String = str(_APPEARANCE_SPRITES.get(appearance_id, ""))   # 选到三形象之一 → 用它; 否则(含"default"/敌方)回退通用立绘
+	if path != "" and ResourceLoader.exists(path):
+		tex = load(path)
+	if tex == null and ResourceLoader.exists(battle.TRAINER_SPRITE):
 		tex = load(battle.TRAINER_SPRITE)
 	if tex == null:
-		battle.push_warning("[训龟大师] 立绘未就绪 —— 用程序占位图。形象待定(用户要「像素风的冒险家」)")
+		battle.push_warning("[训龟大师] 立绘未就绪 —— 用程序占位图。")
 		tex = battle._make_trainer_placeholder_tex()
 	var th: int = tex.get_height() if tex != null else 64
 	return {"tex": tex, "frames": 1, "fps": 1.0, "frame_h": th, "hframes": 1, "vframes": 1, "loop": false}
