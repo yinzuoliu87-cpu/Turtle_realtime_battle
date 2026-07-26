@@ -133,7 +133,7 @@ func _build_spell_disc() -> void:
 	var ipath: String = str(battle.TRAINER_SKILLS.get(sid, {}).get("icon", battle.HOOK_ICON))
 	var icon: Texture2D = load(ipath) if ResourceLoader.exists(ipath) else null
 	battle._spell_disc = battle.SpellDisc.new()
-	battle._spell_disc.setup(icon, "Q", Callable(self, "_player_cast_hook_auto"), Callable(self, "_on_spell_aim"))
+	battle._spell_disc.setup(icon, "Q", Callable(battle._trainer_sys, "_player_cast_hook_auto"), Callable(battle._aim, "_on_spell_aim"))   # 2026-07-26: 修好回调指向真owner(原 Callable(self=BattleHud,…) 指向不存在的方法·移动端圆盘一直没接上)
 	var vp: Vector2 = Vector2(battle.get_viewport().get_visible_rect().size)
 	var m: Vector4 = SafeArea.margins(vp, 18.0)
 	battle._spell_disc.position = Vector2(vp.x - battle.SpellDisc.R * 2.0 - m.z, vp.y - battle.SpellDisc.R * 2.0 - m.w)

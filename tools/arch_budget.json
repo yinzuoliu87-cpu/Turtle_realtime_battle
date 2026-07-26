@@ -7,9 +7,9 @@
     "autoload"
   ],
   "file_ratchet": {
-    "scripts/scenes/RealtimeBattle3DScene.gd": 8629
+    "scripts/scenes/RealtimeBattle3DScene.gd": 8461
   },
-  "_debt_note": "8476→8629(2026-07-26·增债·已评审): 训龟大师返工把瞄准指示器(_draw_aim_indicator/_aim_band/_aim_ring/_aim_arrow/_begin/_end/_update_q_aim ≈130行·render代码)+施法分派(_cast_fury/whistle/glacier)+_buff_aura/_body_glow 加进了主sim文件。待抽出到 scripts/scenes/battle/battle_aim.gd(RefCounted+battle注入·照拆分模板)→再把档还债下调。见 memory project-god-file-decomposition。",
+  "_debt_note": "8476→8629→8461(2026-07-26·已还债): 训龟大师返工先把瞄准指示器+施法分派+光环加进主文件(8629·超档), 同日把【瞄准指示器整块】(_on_spell_aim/_disc_off_to_field/_draw_aim_indicator/_aim_band/_ring/_arrow/_free/_clear/_begin/_end/_update_q_aim ~168行)抽到 scripts/scenes/battle/battle_aim.gd(RefCounted+battle注入·状态仍挂场景)→档降到8461(反而低于原8476)。仍留主文件的施法分派(_cast_fury/whistle/glacier)+_buff_aura/_body_glow 属sim-adjacent薄封装, 暂不动。见 memory project-god-file-decomposition。",
   "func_ratchet": {
     "scripts/systems/skills/star_system.gd::_sk_star_wave": 330,
     "scripts/systems/skills/star_system.gd::_sk_star_gravity_warp": 260

@@ -540,6 +540,7 @@ var _cam: Camera3D
 var _ui_layer: CanvasLayer                # 血条/龟能 overlay + 标题 + 结算 (贴在 3D 之上)
 var _vfxiso := false                      # 纯特效隔离模式(VFXISO env): 黑底+无地面+藏单位立绘/UI, 只留特效对比参考
 var _render := BattleRender.new(self)   # 战斗渲染/动画显示层(每帧插值/世界变换/跑动画/覆盖/dot飘字/相机抖/技能文案·纯视觉不改战斗态)(2026-07-26 抽出)
+var _aim := BattleAim.new(self)   # 训龟大师战场瞄准子系统(圆盘/按住Q输入 + 按技能类型指示器·状态仍挂本场景)(2026-07-26 抽出还债)
 var _targeting := BattleTargeting.new(self)   # 目标选择/敌我查询(最近敌/获取目标/敌方/友方/可选目标·纯确定性查询无RNG)(2026-07-26 抽出)
 var _damage := BattleDamage.new(self)   # 战斗结算: 两伤害路(_apply_damage DoT/真伤 + _apply_damage_from 普攻/技能·§3.3)+治疗/护盾/buff/眩晕/击退/DoT机制(含crit/dodge RNG·确定性核心)(2026-07-26 抽出)
 var _ballistics := BattleBallistics.new(self)   # 弹道: 发射(_fire_*各弹种)+逐帧推进(_step_projectiles/_step_pending_shots/_step_homing_arrow)+霰弹弹珠·几何确定性无RNG(2026-07-26 抽出)
@@ -1693,175 +1694,6 @@ func _cast_glacier(trainer: Dictionary, aim: Vector2) -> bool:
 	_trainer_sys._glacier_dramatize(trainer["pos"], dir)
 	return true
 
-## 每帧: 站在任一冰川带上的【敌方】单位 → 刷新 -40%移速 + 受伤+20%(0.2秒短窗·每帧续=站着才持续)。到期清带。
-func _on_spell_aim(phase: String, screen_off: Vector2) -> void:
-	match phase:
-		"update":
-			var tr0 = _my_trainer()
-			_disc_aiming = screen_off.length() > 0.01 and tr0 != null and _trainer_sys._trainer_ticks_active()
-			_disc_aim_dir = _disc_off_to_field(tr0, screen_off) if tr0 != null else Vector2.ZERO   # 存战场偏移(与PC统一尺度)
-		"cast":
-			_disc_aiming = false
-			if not _trainer_sys._trainer_ticks_active():
-				return
-			var tr = _my_trainer()
-			if tr != null:
-				_trainer_sys._cast_active(tr, _disc_off_to_field(tr, screen_off))
-		_:
-			_disc_aiming = false
-
-## 圆盘拖动的屏幕偏移 → 战场偏移(target点 = 大师pos + 返回值)。拖满(≈R*1.4像素)=技能射程, 半拖=半射程。
-## 方向技(钩锁/冰川)只用方向, 幅度无所谓; 点目标技(怒火药水)靠幅度定落点距离。
-func _disc_off_to_field(trainer: Dictionary, screen_off: Vector2) -> Vector2:
-	if screen_off.length() < 0.01:
-		return Vector2.RIGHT
-	var sid: String = str(trainer.get("_tr_active", "hook"))
-	var rng: float = float(TRAINER_SKILLS.get(sid, {}).get("range", 600.0))
-	if rng <= 0.0:
-		rng = 600.0
-	var frac: float = clampf(screen_off.length() / (SpellDisc.R * 1.4), 0.0, 1.0)
-	return screen_off.normalized() * rng * frac
-
-## R2 战场瞄准指示器(按技能类型·持久节点·每帧更新·瞄准结束 _clear_aim_indicator 清):
-##   方向技(钩锁/冰川)= 地面方向带(冰川带宽90·钩锁细+高亮会勾到的敌); 点目标技(怒火)= 射程圈 + 落点预览圈。
-func _draw_aim_indicator() -> void:
-	if _world == null:
-		return
-	var tr = _my_trainer()
-	if tr == null:
-		_clear_aim_indicator(); return
-	var u: Dictionary = tr                                  # 显式类型(否则 u["pos"] 下标报"对null下标")
-	var sid: String = str(u.get("_tr_active", ""))
-	if sid == "" or not TRAINER_SKILLS.has(sid):
-		_clear_aim_indicator(); return
-	if str(_aim_ind.get("sid", "")) != sid:                 # 换技能 → 重建
-		_clear_aim_indicator(); _aim_ind["sid"] = sid
-	var info: Dictionary = TRAINER_SKILLS[sid]
-	var aim_type: String = str(info.get("aim", "dir"))
-	var rng: float = float(info.get("range", 600.0))
-	if rng <= 0.0:
-		rng = 600.0
-	var from2d: Vector2 = u["pos"]
-	var dir: Vector2 = _disc_aim_dir.normalized() if _disc_aim_dir.length() > 0.01 else Vector2.RIGHT
-	if aim_type == "point":                                 # 怒火: 射程圈 + 落点圈(战场偏移·夹到射程)
-		var pt: Vector2 = from2d + _disc_aim_dir.limit_length(rng)
-		_aim_ring("ring", from2d, rng, Color(1.0, 0.7, 0.35, 0.45))
-		_aim_ring("land", pt, 300.0, Color(1.0, 0.55, 0.25, 0.85))
-	else:                                                   # 钩锁/冰川: 方向带 + 末端箭头
-		var w: float = 90.0 if sid == "glacier" else 34.0
-		var col: Color = Color(0.55, 0.85, 1.0, 0.30) if sid == "glacier" else Color(0.5, 0.9, 1.0, 0.32)
-		_aim_band("band", from2d, dir, rng, w, col)
-		_aim_arrow("arrow", from2d + dir * rng, dir, maxf(30.0, w * 0.7), Color(col.r, col.g, col.b, 0.92))
-		if sid == "hook":                                   # 高亮会勾到的第一个敌
-			var t = _trainer_sys._hook_first_target(u, dir)
-			if t != null:
-				_aim_ring("tgt", t["pos"], 52.0, Color(1.0, 0.42, 0.42, 0.95))
-			else:
-				_aim_free("tgt")
-
-## 更新/建一个指示环(持久·不淡出·躺平贴地·恒在最上层)。
-func _aim_ring(key: String, center2d: Vector2, radius_px: float, col: Color) -> void:
-	var s = _aim_ind.get(key)
-	if s == null or not is_instance_valid(s):
-		s = Sprite3D.new()
-		s.texture = VfxTex._make_ring_texture(col)
-		s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-		s.axis = Vector3.AXIS_Y
-		s.shaded = false; s.transparent = true; s.no_depth_test = true
-		_world.add_child(s); _aim_ind[key] = s
-	s.modulate = col
-	s.pixel_size = (radius_px * 2.0 * WS) / 96.0
-	s.position = _world_pos(center2d, 0.06)
-
-## 更新/建一个方向带(PlaneMesh·躺平·半透明·恒在最上层)。X=沿方向长, Z=垂直宽。
-func _aim_band(key: String, from2d: Vector2, dir: Vector2, length: float, width: float, col: Color) -> void:
-	var m = _aim_ind.get(key)
-	if m == null or not is_instance_valid(m):
-		m = MeshInstance3D.new()
-		var pm := PlaneMesh.new(); pm.size = Vector2(1.0, 1.0)   # 单位面·靠 scale 定尺寸
-		m.mesh = pm
-		var mat := StandardMaterial3D.new()
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-		mat.no_depth_test = true
-		m.material_override = mat
-		_world.add_child(m); _aim_ind[key] = m
-	(m.material_override as StandardMaterial3D).albedo_color = col
-	var mid: Vector2 = from2d + dir * (length * 0.5)
-	m.position = _world_pos(mid, 0.05)
-	m.scale = Vector3(length * WS, 1.0, width * WS)
-	m.rotation = Vector3(0.0, -atan2(dir.y, dir.x), 0.0)
-
-## 更新/建方向型末端箭头(ArrayMesh 三角·躺平·尖头朝 dir·恒在最上层)。tip2d=箭尖落点。
-func _aim_arrow(key: String, tip2d: Vector2, dir: Vector2, size: float, col: Color) -> void:
-	var m = _aim_ind.get(key)
-	if m == null or not is_instance_valid(m):
-		m = MeshInstance3D.new()
-		var am := ArrayMesh.new()
-		var arrays := []
-		arrays.resize(Mesh.ARRAY_MAX)
-		# 单位三角: 尖头在原点(+X 前), 底边在 -X。scale/rotation 定尺寸朝向。
-		arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array([
-			Vector3(0.0, 0.0, 0.0), Vector3(-1.0, 0.0, 0.6), Vector3(-1.0, 0.0, -0.6)])
-		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-		m.mesh = am
-		var mat := StandardMaterial3D.new()
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-		mat.no_depth_test = true
-		m.material_override = mat
-		_world.add_child(m); _aim_ind[key] = m
-	(m.material_override as StandardMaterial3D).albedo_color = col
-	m.position = _world_pos(tip2d, 0.05)
-	m.scale = Vector3(size * WS, 1.0, size * WS)
-	m.rotation = Vector3(0.0, -atan2(dir.y, dir.x), 0.0)
-
-func _aim_free(key: String) -> void:
-	var n = _aim_ind.get(key)
-	if n != null and is_instance_valid(n): n.queue_free()
-	_aim_ind.erase(key)
-
-## 瞄准结束: 清掉所有指示器节点。
-func _clear_aim_indicator() -> void:
-	for k in _aim_ind.keys():
-		if k == "sid": continue
-		var n = _aim_ind[k]
-		if n != null and is_instance_valid(n): n.queue_free()
-	_aim_ind = {}
-
-## R2 PC 按住 Q 瞄准: 按下进入(有主动技才进) / 每帧刷方向(鼠标→大师) / 松开朝鼠标释放。
-func _begin_q_aim() -> void:
-	if not _trainer_sys._trainer_ticks_active():
-		return
-	var tr = _my_trainer()
-	if tr == null:
-		return
-	var u: Dictionary = tr
-	var sid: String = str(u.get("_tr_active", ""))
-	if sid == "" or not TRAINER_SKILLS.has(sid):   # 选了被动(无主动Q)→ 不进瞄准
-		return
-	_q_aiming = true
-
-func _end_q_aim_and_cast() -> void:
-	if not _q_aiming:
-		return
-	_q_aiming = false
-	_disc_aiming = false
-	_clear_aim_indicator()
-	_trainer_sys._player_cast_hook()               # 朝鼠标方向释放(_player_cast_hook 取鼠标向)
-
-func _update_q_aim() -> void:                      # 每帧(battle_render)调: 按住Q时刷新瞄准方向 + 亮指示器
-	if not _q_aiming:
-		return
-	var tr = _my_trainer()
-	if tr == null:
-		_q_aiming = false; _disc_aiming = false; return
-	var u: Dictionary = tr
-	var mp: Vector2 = get_viewport().get_mouse_position() if get_viewport() != null else Vector2.ZERO
-	_disc_aim_dir = _screen_to_field(mp) - u["pos"]
-	_disc_aiming = true
 
 ## 命中演出(2026-07-24 返工·照锤石Q): 前摇蓄力(HOOK_WINDUP·大师站定举钩) → 中速飞行(HOOK_MISSILE_SPD) → 到达。
 ## 结算不依赖它跑完(_trainer_sys._hook_grab 由 _pending_shots 定时调, 无头也稳)。
@@ -7745,9 +7577,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventKey and event.keycode == KEY_Q and not event.echo:
 		if event.pressed:
-			_begin_q_aim()          # 按住 Q → 进入瞄准(指示器跟随鼠标·仅有主动技时·用户2026-07-26)
+			_aim._begin_q_aim()     # 按住 Q → 进入瞄准(指示器跟随鼠标·仅有主动技时·用户2026-07-26)
 		else:
-			_end_q_aim_and_cast()   # 松开 Q → 朝鼠标方向释放
+			_aim._end_q_aim_and_cast()   # 松开 Q → 朝鼠标方向释放
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_R:
