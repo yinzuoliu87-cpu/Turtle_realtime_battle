@@ -448,8 +448,10 @@ func _spawn_trainers() -> void:
 		if not u.get("is_trainer", false):
 			continue
 		if str(u.get("side", "")) == "left":
-			u["_tr_active"] = battle._valid_active(GameState.trainer_active)
-			u["_tr_passive"] = str(GameState.trainer_passive)
+			# 单技能装配(2026-07-26): GameState.trainer_skill 派生出【主动或空】+【被动或空】。
+			var _act: String = GameState.trainer_active_skill()   # 主动 id, 或 ""(装配的是被动)
+			u["_tr_active"] = battle._valid_active(_act) if _act != "" else ""
+			u["_tr_passive"] = GameState.trainer_passive_skill()  # "magic_stone" 或 ""
 		else:
 			u["_tr_active"] = "hook"
 			u["_tr_passive"] = ""

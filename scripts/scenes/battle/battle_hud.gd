@@ -126,8 +126,10 @@ func _build_spell_disc() -> void:
 		return
 	if battle._ui_layer == null:
 		return
-	# 圆盘显示【我方大师已装配的主动技能】图标(缺图→无图标, 不崩)
-	var sid: String = battle._valid_active(GameState.trainer_active)
+	# 圆盘显示【我方大师已装配的主动技能】图标(缺图→无图标, 不崩)。
+	# 单技能装配(2026-07-26): 装配的是被动(magic_stone)时无主动→ _act 为 ""(R2 再给圆盘加"被动生效中"循环特效)。
+	var _act: String = GameState.trainer_active_skill()
+	var sid: String = battle._valid_active(_act) if _act != "" else ""
 	var ipath: String = str(battle.TRAINER_SKILLS.get(sid, {}).get("icon", battle.HOOK_ICON))
 	var icon: Texture2D = load(ipath) if ResourceLoader.exists(ipath) else null
 	battle._spell_disc = battle.SpellDisc.new()

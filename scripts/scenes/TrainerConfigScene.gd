@@ -1,33 +1,37 @@
 extends Control
 
-## 训龟大师 配置界面 (用户2026-07-23 需求: 主菜单独立入口, 选形象 + 配被动 + 配单个主动技能)。
-## 选择写 GameState.trainer_appearance/passive/active + save(), 战斗时读取。
+## 训龟大师 配置界面 (用户2026-07-26 更正: 主菜单独立入口, 选形象 + 配【全部技能五选一·单个】)。
+## ★设计: 被动+主动放一起, 只能选 1 个。选被动=没有主动Q; 选主动=没有被动。
+## 选择写 GameState.trainer_appearance/trainer_skill + save(), 战斗时读取。
 
-const PASSIVES := [
-	{"id": "", "name": "无", "desc": "不带被动。"},
-	{"id": "magic_stone", "name": "魔法石", "desc": "普攻附带 2% 目标最大生命 魔法伤害；每次攻击自身 +5% 攻速(可叠·持续到本场结束)。"},
-]
-const ACTIVES := [
-	{"id": "hook", "name": "钩锁", "desc": "朝方向甩钩(射程600)勾住第一个敌人：眩晕4秒、一段段拽向大师、受伤+25%。CD20，空放返还。"},
-	{"id": "fury_potion", "name": "怒火药水", "desc": "朝700码内一点丢药水：落点300码内友军5秒 +30%攻速 / +25%龟能充能 / +25%移速。CD16。"},
-	{"id": "whistle", "name": "口哨", "desc": "随机1个：给友军700临时生命 / 召灵体小龟放气波(击飞+200物理+削甲30%) / 友军狂暴(+20%攻+吸血·免死4秒)。CD14。"},
-	{"id": "glacier", "name": "冰川", "desc": "沿方向生成500码冰川(6秒)：站上的敌 -40%移速 + 受伤+20%。CD17。"},
+## 全部技能池(被动 + 主动·五选一)。kind 仅供说明卡显示"被动/主动"。
+const SKILLS := [
+	{"id": "magic_stone", "kind": "被动", "name": "魔法石", "desc": "普攻附带 2% 目标最大生命 魔法伤害；每次攻击自身 +5% 攻速(可叠·持续到本场结束)。"},
+	{"id": "hook", "kind": "主动", "name": "钩锁", "desc": "朝方向甩钩(射程600)勾住第一个敌人：眩晕4秒、一段段拽向大师、受伤+25%。CD20，空放返还。"},
+	{"id": "fury_potion", "kind": "主动", "name": "怒火药水", "desc": "朝700码内一点丢药水：落点300码内友军5秒 +30%攻速 / +25%龟能充能 / +25%移速。CD16。"},
+	{"id": "whistle", "kind": "主动", "name": "口哨", "desc": "随机1个：给友军700临时生命 / 召灵体小龟放气波(击飞+200物理+削甲30%) / 友军狂暴(+20%攻+吸血·免死4秒)。CD14。"},
+	{"id": "glacier", "kind": "主动", "name": "冰川", "desc": "沿方向生成500码冰川(6秒)：站上的敌 -40%移速 + 受伤+20%。CD17。"},
 ]
 const APPEARANCES := [
 	{"id": "default", "name": "默认(冒险家)"},
 ]
 
-var _sel_passive: String = ""
-var _sel_active: String = "hook"
+var _sel_skill: String = "hook"
 var _sel_appearance: String = "default"
 var _desc_label: Label = null
 
 func _ready() -> void:
-	_sel_passive = str(GameState.trainer_passive)
-	_sel_active = str(GameState.trainer_active) if GameState.trainer_active != "" else "hook"
+	_sel_skill = _valid_skill(str(GameState.trainer_skill))
 	_sel_appearance = str(GameState.trainer_appearance)
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_build_ui()
+
+## 校验技能 id 合法(旧档/脏数据兜底为 hook)。
+func _valid_skill(id: String) -> String:
+	for s in SKILLS:
+		if str(s["id"]) == id:
+			return id
+	return "hook"
 
 func _build_ui() -> void:
 	var dim := ColorRect.new()
@@ -49,8 +53,7 @@ func _build_ui() -> void:
 	box.add_child(title)
 
 	box.add_child(_section("形象", APPEARANCES, func(id): _sel_appearance = id, func(): return _sel_appearance))
-	box.add_child(_section("被动技能", PASSIVES, func(id): _sel_passive = id, func(): return _sel_passive))
-	box.add_child(_section("主动技能（单槽·移动端按住圆盘拖动瞄准 / PC 按 Q）", ACTIVES, func(id): _select_active(id), func(): return _sel_active))
+	box.add_child(_section("技能（五选一·被动或主动只能带一样）", SKILLS, func(id): _sel_skill = id, func(): return _sel_skill))
 
 	_desc_label = Label.new()
 	_desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -92,7 +95,7 @@ func _section(title: String, opts: Array, set_cb: Callable, get_cb: Callable) ->
 		var b := Button.new()
 		b.text = str(opt["name"])
 		b.toggle_mode = true
-		b.custom_minimum_size = Vector2(150, 46)
+		b.custom_minimum_size = Vector2(126, 46)
 		var oid: String = str(opt["id"])
 		b.button_pressed = (oid == str(get_cb.call()))
 		b.pressed.connect(func():
@@ -104,26 +107,19 @@ func _section(title: String, opts: Array, set_cb: Callable, get_cb: Callable) ->
 		btns.append([b, oid])
 	return v
 
-func _select_active(id: String) -> void:
-	_sel_active = id
-
 func _refresh_desc() -> void:
 	if _desc_label == null:
 		return
-	var txt := ""
-	for p in PASSIVES:
-		if str(p["id"]) == _sel_passive:
-			txt += "被动 · %s：%s\n" % [p["name"], p["desc"]]
-	for a in ACTIVES:
-		if str(a["id"]) == _sel_active:
-			txt += "主动 · %s：%s" % [a["name"], a["desc"]]
-	_desc_label.text = txt
+	for s in SKILLS:
+		if str(s["id"]) == _sel_skill:
+			_desc_label.text = "%s · %s：%s" % [s["kind"], s["name"], s["desc"]]
+			return
+	_desc_label.text = ""
 
 ## 写回 GameState + 存盘(抽出来便于门禁测, 不含切场景)。
 func _write_loadout() -> void:
 	GameState.trainer_appearance = _sel_appearance
-	GameState.trainer_passive = _sel_passive
-	GameState.trainer_active = _sel_active
+	GameState.trainer_skill = _sel_skill
 	GameState.save()
 
 func _save_and_back() -> void:

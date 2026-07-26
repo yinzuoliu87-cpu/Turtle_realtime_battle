@@ -17,10 +17,17 @@ var foe_loadouts: Dictionary = {}
 ## 最近匹配过的对手ghost_id(保留3个·防连续遇到同一快照·用户2026-07-15真机纠错); 不落盘
 var recent_ghost_ids: Array = []
 
-# 训龟大师 装配(局外持久·用户2026-07-23 需求): 形象 + 被动 + 单个主动技能。主菜单 TrainerConfig 里配, 战斗读。
+# 训龟大师 装配(局外持久·用户2026-07-26 更正): 形象 + 【全部技能五选一·单个】。主菜单 TrainerConfig 里配, 战斗读。
+# ★设计: {magic_stone(被动), hook, fury_potion, whistle, glacier} 里【只选 1 个】。选被动=没有主动Q; 选主动=没有被动。
 var trainer_appearance: String = "default"     # 形象 id(对应一张立绘)
-var trainer_passive: String = ""               # 被动技能 id("" = 无; "magic_stone")
-var trainer_active: String = "hook"            # 主动技能 id(hook/fury_potion/whistle/glacier), 单槽
+var trainer_skill: String = "hook"             # 装配的【唯一】技能 id(被动 magic_stone 或某个主动)
+
+## 派生: 装配的是主动 → 返回该主动 id; 装配的是被动/空 → ""(战斗侧据此知道"没有主动Q")。
+func trainer_active_skill() -> String:
+	return "" if trainer_skill == "magic_stone" else trainer_skill
+## 派生: 装配的是被动 → 返回被动 id; 否则 ""。
+func trainer_passive_skill() -> String:
+	return "magic_stone" if trainer_skill == "magic_stone" else ""
 
 ## "single"  — 自定义单局, 战斗结束回选龟
 ## "dungeon" — 闯关模式, 战斗结束按胜负进下一关 / 回主菜单
@@ -686,8 +693,7 @@ func save() -> void:
 		"dual_lineup": dual_lineup,
 		"onboarded": onboarded,   # 走完首次教学 → 不再触发
 		"trainer_appearance": trainer_appearance,   # 训龟大师装配(局外持久)
-		"trainer_passive": trainer_passive,
-		"trainer_active": trainer_active,
+		"trainer_skill": trainer_skill,
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f == null:
@@ -711,8 +717,8 @@ func _load() -> void:
 	var data: Dictionary = parsed
 	onboarded = data.get("onboarded", false)
 	trainer_appearance = str(data.get("trainer_appearance", "default"))   # 训龟大师装配(缺键=旧档默认)
-	trainer_passive = str(data.get("trainer_passive", ""))
-	trainer_active = str(data.get("trainer_active", "hook"))
+	# 迁移: 新键 trainer_skill 优先; 旧档只有 trainer_active → 用它(旧的两槽合成一个·取旧主动)。
+	trainer_skill = str(data.get("trainer_skill", data.get("trainer_active", "hook")))
 	best_dungeon_stage = data.get("best_dungeon_stage", 0)
 	coins = data.get("coins", 0)
 	battles_won = data.get("battles_won", 0)
@@ -793,9 +799,8 @@ func reset_save() -> void:
 	gambler_wheel_stacks = {}
 	lane_loadout = {}
 	dual_lineup = {}
-	trainer_appearance = "default"   # 训龟大师装配回默认(形象/无被动/钩锁)
-	trainer_passive = ""
-	trainer_active = "hook"
+	trainer_appearance = "default"   # 训龟大师装配回默认(形象/钩锁)
+	trainer_skill = "hook"
 	save()
 
 
