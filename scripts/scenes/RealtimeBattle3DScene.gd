@@ -4933,6 +4933,27 @@ func _aura_vfx(path: String, u: Dictionary, radius_px: float, color: Color, dur:
 	tw.chain().tween_property(s, "modulate:a", 0.0, 0.34)
 	tw.chain().tween_callback(s.queue_free)
 
+## R2-3 训龟大师增益/减益脚下光环(薄封装·复用 fx-glow-ring·守 _world 空→数值测试不依赖演出)。
+##   跟随单位、dur 秒后淡出(_aura_vfx 已挂 _follow_vfx)。怒火/临时血/狂暴/冰川寒气 都用它。
+func _buff_aura(u: Dictionary, col: Color, dur: float, radius_px: float = 52.0) -> void:
+	if _world == null or u == null:
+		return
+	_aura_vfx("res://assets/sprites/vfx/fx-glow-ring.png", u, radius_px, col, dur)
+
+## R2-3 身体自发光(加性 glow billboard·罩住身体·跟随·dur 秒淡出)。怒火"身体发纯红光"用它。
+## ★对准身体中段: 跟随高度 h=1.0(= u.height+1.0·见 _world_pos(pos,height+1.0)"取身体中段")。
+func _body_glow(u: Dictionary, col: Color, dur: float, size_px: float = 84.0) -> void:
+	if _world == null or u == null:
+		return
+	var g := _glow_bb(u["pos"], float(u.get("height", 0.0)) + 1.0, size_px, Color(col.r, col.g, col.b, 0.0))   # 身体中段·透明淡入
+	_follow_vfx.append({"spr": g, "unit": u, "h": 1.0})                          # h=1.0 → 每帧贴身体中段
+	var mat := g.material_override as StandardMaterial3D
+	var tw := _reg_tween()
+	tw.tween_property(mat, "albedo_color", col, 0.22)
+	tw.tween_interval(maxf(0.05, dur - 0.55))
+	tw.tween_property(mat, "albedo_color", Color(col.r, col.g, col.b, 0.0), 0.33)
+	tw.tween_callback(g.queue_free)
+
 # 通用光束VFX(C组半透明): 贴地长条纹理从A拉到B (激光/索线/拖影/残影). width_px=束宽.
 func _beam_vfx(path: String, from2d: Vector2, to2d: Vector2, width_px: float, color: Color, dur: float, height: float = 0.5) -> void:
 	var t: Texture2D = load(path)

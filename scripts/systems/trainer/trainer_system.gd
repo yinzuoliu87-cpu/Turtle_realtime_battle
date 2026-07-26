@@ -152,6 +152,8 @@ func _fury_apply_buffs(trainer: Dictionary, point: Vector2) -> int:
 		o["haste_mult"] = 1.3;      o["haste_until"] = battle._t + 5.0        # +30% 攻速
 		o["move_buff_mult"] = 1.25; o["move_buff_until"] = battle._t + 5.0    # +25% 移速
 		o["echarge_mult"] = 1.25;   o["echarge_until"] = battle._t + 5.0      # +25% 龟能充能速率
+		battle._buff_aura(o, Color(1.0, 0.45, 0.2, 0.55), 5.0)                # R2-3 受益友军红橙脚下光环5秒
+		battle._body_glow(o, Color(1.0, 0.03, 0.03, 0.6), 5.0)               # R2-3 身体发纯红怒火光5秒(纯红·适中alpha防washed成粉·用户2026-07-26)
 		n += 1
 	return n
 
@@ -185,7 +187,8 @@ func _whistle_temphp(trainer: Dictionary):
 	if ally == null:
 		return null
 	battle._apply_temp_maxhp(ally, 700.0, 5.0)
-	battle._skill_ring(ally["pos"], Color(0.5, 1.0, 0.6, 0.7), 46.0)
+	battle._skill_ring(ally["pos"], Color(0.5, 1.0, 0.6, 0.7), 46.0)   # 施加瞬闪
+	battle._buff_aura(ally, Color(0.45, 1.0, 0.55, 0.5), 5.0)          # R2-3 临时血绿光环5秒(持续)
 	return ally
 
 ## ★临时最大生命(可测·纯函数): +amt maxHp&hp, sec 秒后到期【按比例削】(§2.4: 当前血 × 新上限/旧上限)。
@@ -219,7 +222,8 @@ func _whistle_berserk_on(ally: Dictionary) -> void:
 	battle._damage._buff(ally, "atk", 0.2, true, 4.0)          # +20% 攻击力
 	battle._damage._buff(ally, "lifesteal", 20, false, 4.0)    # +20% 生命偷取
 	ally["deathfloor_until"] = battle._t + 4.0         # 4秒免疫死亡(血锁≥1)
-	battle._skill_ring(ally["pos"], Color(1.0, 0.4, 0.3, 0.75), 46.0)
+	battle._skill_ring(ally["pos"], Color(1.0, 0.4, 0.3, 0.75), 46.0)   # 施加瞬闪
+	battle._buff_aura(ally, Color(1.0, 0.32, 0.3, 0.55), 4.0)           # R2-3 狂暴红战意光环4秒(持续)
 
 ## 灵体小龟演出: 蓝幽灵小龟入场(spirit-turtle.png·缺图则只放气波不崩) + 蓝气波束(qibo-ball.png 真气波素材)。
 func _whistle_spirit_dramatize(trainer: Dictionary, origin: Vector2, dir: Vector2) -> void:
