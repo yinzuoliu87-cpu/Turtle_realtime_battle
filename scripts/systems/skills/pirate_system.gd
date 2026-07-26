@@ -191,7 +191,7 @@ func _pirate_shotgun(u: Dictionary, tgt) -> void:
 			hit["pos"] += pd * 40.0
 			hit["pos"].x = clampf(hit["pos"].x, battle.ARENA.position.x, battle.ARENA.end.x)
 			hit["pos"].y = clampf(hit["pos"].y, battle.ARENA.position.y, battle.ARENA.end.y)
-			battle._hit_spark(hit)
+			battle._vfx._hit_spark(hit)
 
 func _pirate_ship_charge(ship, from2d: Vector2, from_h: float, to2d: Vector2, on_impact: Callable) -> void:   # 演出船俯冲: 从后方高空冲向撞击点·边冲边变大·拉水花航迹
 	if ship == null or not is_instance_valid(ship):

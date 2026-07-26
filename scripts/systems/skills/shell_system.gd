@@ -48,7 +48,7 @@ func _shell_basic(u: Dictionary, tgt: Dictionary) -> void:
 		battle._apply_dot_stacks(tgt, "poison", maxi(1, int(round(u["atk"] * 0.5))), u)
 		tgt["heal_reduce_until"] = battle._t + 3.0
 		tgt["heal_reduce_pct"] = maxf(float(tgt.get("heal_reduce_pct", 0.0)), 0.5)
-		battle._float_text(u["pos"] + Vector2(0, -58), "破隐!", Color("#9b3bff"))
+		battle._vfx._float_text(u["pos"] + Vector2(0, -58), "破隐!", Color("#9b3bff"))
 	u["basic_alt"] = not u.get("basic_alt", false)
 	var is_true: bool = bool(u["basic_alt"])
 	# 主目标命中
@@ -57,7 +57,7 @@ func _shell_basic(u: Dictionary, tgt: Dictionary) -> void:
 	else:
 		battle._apply_damage_from(u, tgt, battle._resolve_dmg(u, u["atk"] * 1.0, tgt, false), Color("#ff4444"))
 	# 近战打击感: 闪白 + 前冲 (同 _emit_basic 近战分支)
-	battle._flash(tgt); battle._melee_lunge(u, tgt)
+	battle._vfx._flash(tgt); battle._melee_lunge(u, tgt)
 	# 范围溅射: 主目标120px内其他敌 50%(同类型)
 	for e in battle._enemies_of(u):
 		if is_same(e, tgt) or not e.get("alive", false):
@@ -94,7 +94,7 @@ func _sk_shell_absorb(u: Dictionary, tgt) -> void:              # 龟壳·吸收
 		battle._apply_damage_from(u, tgt, _hp_lost, Color("#ffffff"), 0.0, true, false, true, true)   # 真伤·必中·不暴击
 	u["maxHp"] = float(u["maxHp"]) + steal
 	u["hp"] = float(u["hp"]) + steal                            # 龟壳maxHp+当前同步增
-	battle._float_text(u["pos"] + Vector2(0, -52), "+%d" % int(steal), Color("#7fe3a0"))
+	battle._vfx._float_text(u["pos"] + Vector2(0, -52), "+%d" % int(steal), Color("#7fe3a0"))
 	var tp: Vector2 = tgt["pos"]                                # 2026-07-17: 4颗红色生命珠鱼贯从目标流向龟壳(删"吸收!"技能名飘字=UI规矩)
 	var uref: Dictionary = u
 	for i in range(4):
@@ -305,10 +305,10 @@ func _shell_apply_awaken(u: Dictionary) -> void:   # 气场觉醒一次(六属�
 func _shell_awaken_vfx(u: Dictionary) -> void:   # 觉醒金光爆发: 震屏+微顿帧 + 强金闪 + 双金环 + 金光柱 + 金光上腾 + "觉醒"飘字
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
 	battle._hitstop = maxf(battle._hitstop, 0.06)
-	battle._flash(u, Color(1.0, 0.92, 0.55))
+	battle._vfx._flash(u, Color(1.0, 0.92, 0.55))
 	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.28, 0.9), 132.0)   # 外金环
 	battle._skill_ring(u["pos"], Color(1.0, 0.95, 0.6, 0.9), 76.0)     # 内亮环
-	battle._float_text(u["pos"] + Vector2(0, -88), "觉醒", Color(1.0, 0.86, 0.25))
+	battle._vfx._float_text(u["pos"] + Vector2(0, -88), "觉醒", Color(1.0, 0.86, 0.25))
 	# 金光柱: 竖直上冲一束 (醒目, 不怕被伤害数字盖)
 	var pil = Sprite3D.new()
 	pil.texture = VfxTex._make_fire_glow_tex()

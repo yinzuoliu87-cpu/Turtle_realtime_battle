@@ -94,7 +94,7 @@ func _sk_bamboo_smack(u: Dictionary, tgt) -> void:              # 竹叶龟·竹
 			if pd.length() > 1.0:
 				ff["pos"] = uu["pos"] + pd.normalized() * 60.0     # 竹藤拽到贴身
 			battle._bolt_line(uu["pos"], ff["pos"], Color(0.22, 0.83, 0.33))   # 收藤(收线感)
-			battle._impact_particles(ff["pos"], float(ff.get("height", 0.0)))
+			battle._vfx._impact_particles(ff["pos"], float(ff.get("height", 0.0)))
 			battle._skill_ring(uu["pos"], Color(0.22, 0.83, 0.33, 0.4), 54.0)   # 拉到脸上落点环
 		battle._pending_shots.append({"delay": 0.2, "src": u, "fn": pull_fn})
 
@@ -121,12 +121,12 @@ func _sk_bamboo_spikes(u: Dictionary, tgt) -> void:            # 竹叶龟·竹�
 
 func _sk_bamboo_heal(u: Dictionary) -> void:                     # 竹叶龟·自然恢复 ✅
 	var allies = battle._allies_of(u, false)
-	battle._play_heal_glow(u["pos"])
+	battle._vfx._play_heal_glow(u["pos"])
 	if allies.is_empty():
 		battle._heal(u, u["maxHp"] * 0.15)
 	else:
 		battle._heal(u, u["maxHp"] * 0.10)
 		for o in allies:
 			battle._grant_shield(o, o["maxHp"] * 0.12, 4.0)   # 竹叶自然恢复·友军护盾(通用护盾4秒·封板L74)·[原注释误标"寒冰团队护盾"→那是ice commonTeamShield另有其函]
-			battle._play_heal_glow(o["pos"])
+			battle._vfx._play_heal_glow(o["pos"])
 

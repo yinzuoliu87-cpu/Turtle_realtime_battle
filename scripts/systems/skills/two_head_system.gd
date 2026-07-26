@@ -83,7 +83,7 @@ func _two_head_cannon_boom(u: Dictionary, at2d: Vector2) -> void:
 	for o in battle._enemies_of(u):
 		if o.get("alive", false) and at2d.distance_to(o["pos"]) <= 200.0:
 			battle._apply_damage_from(u, o, battle._atk_dmg(u, 1.0, o) + int(o["maxHp"] * 0.10), Color("#c0a0ff"))
-			battle._flash(o, Color(0.8, 0.6, 1.0))
+			battle._vfx._flash(o, Color(0.8, 0.6, 1.0))
 
 # 双头·锤击(近战 技1·用户2026-07-11): 跳起→落在目标身前→地面锤击(1.4A物理+获50%伤害盾4s)+落地震屏/冲击环/尘爆
 # 双头·锤击(近战 技1·用户2026-07-11): 跳起→落在目标身前→地面锤击(1.4A物理+获50%伤害盾4s)+落地震屏/冲击环/尘爆
@@ -110,7 +110,7 @@ func _two_head_hammer_land(u: Dictionary, tgt: Dictionary, at2d: Vector2, dmg: i
 	if tgt.get("alive", false):
 		battle._apply_damage_from(u, tgt, dmg, Color("#ffb05c"))
 		battle._grant_shield(u, dmg * 0.5, 4.0)                        # 获造成伤害50%护盾(4秒)
-		battle._flash(tgt)
+		battle._vfx._flash(tgt)
 
 
 # 高质量砸地冲击(用户2026-07-11「搞质量高的·AI跑特效」): AI冲击星爆(PixelLab生成) + 三层地面冲击波环 + 大尘爆 + 岩屑迸溅 + 顿帧 + 大震屏
@@ -139,7 +139,7 @@ func _two_head_slam_impact(at2d: Vector2) -> void:
 	rtw.tween_callback(battle._skill_ring.bind(at2d, Color(1.0, 0.58, 0.26, 0.5), 156.0))
 	battle._burst_vfx("res://assets/sprites/vfx/dust-impact.png", at2d, 230.0, 0.35)   # ③ 大尘爆
 	battle._slam_debris(at2d)                                         # ④ 岩屑迸溅
-	battle._impact_particles(at2d, 0.0)                               # ⑤ 冲击尘粒
+	battle._vfx._impact_particles(at2d, 0.0)                               # ⑤ 冲击尘粒
 
 # 砸地岩屑: 灰褐碎块一次性向上+四散迸溅+重力回落(0.75s后回收)
 func _sk_two_head_disrupt(u: Dictionary, tgt) -> void:           # 双头·技能二 form-variant(封板): 远程=精神干扰(1.0A魔法+治疗削减50%5s+破盾50%) / 近战=吸收(0.6A+8%maxHp物理+回血40%A+18%已损)

@@ -272,7 +272,7 @@ func _frost_shield_burst(ally: Dictionary) -> void:
 				battle._apply_damage_from(src, o, battle._atk_dmg(src, boom, o, true), Color("#bfe9ff"))   # boom×ATK 魔法(1或5)
 		battle._burst_vfx("res://assets/sprites/vfx/fx-shock-ring.png", c, 520.0, 0.14)   # 冰爆冲击环(≈250码半径)
 		battle._skill_ring(c, Color(0.68, 0.9, 1.0, 0.6), 250.0)
-		battle._impact_particles(c, 0.0); battle._shake(0.05)
+		battle._vfx._impact_particles(c, 0.0); battle._shake(0.05)
 	battle._burst_depth -= 1
 
 

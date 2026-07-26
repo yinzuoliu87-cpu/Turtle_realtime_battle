@@ -185,7 +185,7 @@ func _hunter_steal_fx(killer: Dictionary, from2d: Vector2) -> void:   # 被动�
 		mv.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		tw.parallel().tween_property(mote, "scale", Vector3(0.4, 0.4, 0.4), 0.45)
 		tw.chain().tween_callback(mote.queue_free)
-	battle._float_text(kp + Vector2(0, -66), "掠夺!", Color("#ffd700"))
+	battle._vfx._float_text(kp + Vector2(0, -66), "掠夺!", Color("#ffd700"))
 	battle._skill_ring(kp, Color(1.0, 0.84, 0.2, 0.55), 46.0)
 
 ## 单位当前是否【不可被选中/锁定】。
@@ -201,19 +201,19 @@ func _hunter_exec_arrow_hit(src, tgt) -> void:   # 强化箭命中: 目标仍<�
 	if tgt == null or not tgt.get("alive", false): return
 	tgt["_hunt_exec_pending"] = false
 	if tgt.get("egg", false) or tgt.get("_eggImmune", false) or tgt.get("eq_exec_immune", false) or battle._is_untargetable(tgt):   # 免疫处决: 蛋/不沉之锚/不可选(含机甲组装期) → 命中但不斩
-		battle._hit_spark(tgt); return
+		battle._vfx._hit_spark(tgt); return
 	var thr: float = 0.24 if battle._t < float(tgt.get("hunt_mark_until", 0.0)) else 0.14
 	if float(tgt["hp"]) >= float(tgt["maxHp"]) * thr:   # 飞行途中被治疗回到斩杀线上→不处决(仅命中火花)
-		battle._hit_spark(tgt); return
+		battle._vfx._hit_spark(tgt); return
 	if tgt.get("_hunt_demo_victim", false):   # 被动demo靶: 处决→窃取+复位残血(循环看·在deathfloor判前, demo也带deathfloor)
 		_hunter_execute_fx(tgt)
-		battle._float_text(tgt["pos"] + Vector2(0, -40), "处决!", Color("#ffd700"))
+		battle._vfx._float_text(tgt["pos"] + Vector2(0, -40), "处决!", Color("#ffd700"))
 		_hunter_apply_steal(src, tgt)
 		tgt["hp"] = float(tgt["maxHp"]) * 0.12
 		return
 	if float(tgt.get("deathfloor_until", 0.0)) > battle._t:   # 临时免死(亡灵等)→免疫处决(命中但不斩)
-		battle._hit_spark(tgt); return
+		battle._vfx._hit_spark(tgt); return
 	_hunter_execute_fx(tgt)
-	battle._float_text(tgt["pos"] + Vector2(0, -40), "处决!", Color("#ffd700"))
+	battle._vfx._float_text(tgt["pos"] + Vector2(0, -40), "处决!", Color("#ffd700"))
 	tgt["hp"] = 0.0
 	battle._kill(tgt, src)

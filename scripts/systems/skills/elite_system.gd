@@ -263,8 +263,8 @@ func _elite_try_consume(u: Dictionary, tgt: Dictionary) -> bool:   # 被动1·�
 			battle._kill(tref, uu)                                        # 正常击杀管线(统计/死亡钩子照走)
 		battle._heal(uu, heal_amt)                                        # 回复=吞噬瞬间目标剩余HP×2(用户2026-07-19)
 		uu["haste_until"] = battle._t + 5.0; uu["haste_mult"] = 1.5       # 吞噬完成: 5秒+50%攻速(用户2026-07-19)
-		battle._float_text(uu["pos"] + Vector2(0, -62), "吞噬! +50%攻速", Color("#ff6a6a"))
-		battle._flash(uu, Color(1.5, 0.95, 0.95))
+		battle._vfx._float_text(uu["pos"] + Vector2(0, -62), "吞噬! +50%攻速", Color("#ff6a6a"))
+		battle._vfx._flash(uu, Color(1.5, 0.95, 0.95))
 		battle._skill_ring(uu["pos"] as Vector2, Color(0.55, 0.08, 0.1, 0.7), 46.0)
 		if stype != "":                                            # 以自己属性立即放一次目标主动技(用户拍板: 只放主动)
 			battle._pending_shots.append({"delay": 0.35, "fn": func() -> void:

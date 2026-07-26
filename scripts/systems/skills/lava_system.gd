@@ -354,9 +354,9 @@ func _lava_flame_strike(u: Dictionary, tgt: Dictionary) -> void: # 火山·重�
 	# 2) 猛砸: 击飞目标 + 震屏顿帧 + (已正确的)伤害
 	battle._shake(battle.JUICE_SHAKE_BIG); battle._add_hitstop(battle.JUICE_HITSTOP_KNOCK)
 	if tgt != null and tgt.get("alive", false):
-		battle._flash(u, Color(1.6, 0.7, 0.3))
+		battle._vfx._flash(u, Color(1.6, 0.7, 0.3))
 		battle._skill_ring(tgt["pos"], Color(1.0, 0.4, 0.1, 0.7), 90.0)
-		battle._impact_particles(tgt["pos"], 0.0)
+		battle._vfx._impact_particles(tgt["pos"], 0.0)
 		_lava_burst_vfx(tgt["pos"])                  # AI生成爆裂火球
 		battle._knock_up(tgt, tgt["pos"] - dir * 10.0, 9.0)
 		battle._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.3, tgt) + int(u["maxHp"] * 0.08), Color("#ff7a33"), 0.20)
@@ -563,8 +563,8 @@ func _lava_slam_impact(u: Dictionary, center: Vector2) -> void:   # 落地: 击�
 		, 0.0, 1.0, life)
 		rw.tween_property(rp, "modulate:a", 0.0, 0.1)
 		rw.tween_callback(rp.queue_free)
-	battle._flash(u, Color(1.6, 0.7, 0.3))
-	battle._impact_particles(center, 0.0)
+	battle._vfx._flash(u, Color(1.6, 0.7, 0.3))
+	battle._vfx._impact_particles(center, 0.0)
 	_lava_burst_vfx(center)                           # AI生成爆裂火球
 	for o in battle._enemies_of(u):
 		if not o.get("alive", false): continue
@@ -603,7 +603,7 @@ func _sk_lava_erupt(u: Dictionary, tgt) -> void:                # 熔岩龟·技
 		var tw = battle._reg_tween()
 		tw.tween_interval(5.0)
 		tw.tween_callback(_lava_ult_revert.bind(u))
-		battle._skill_ring(u["pos"], Color(1.0, 0.4, 0.1, 0.6), 62.0); battle._flash(u, Color(1.6, 0.9, 0.4))
+		battle._skill_ring(u["pos"], Color(1.0, 0.4, 0.1, 0.6), 62.0); battle._vfx._flash(u, Color(1.6, 0.9, 0.4))
 		return
 	var danger: bool = u["hp"] < u["maxHp"] * 0.35
 	if not danger:
@@ -621,5 +621,5 @@ func _sk_lava_erupt(u: Dictionary, tgt) -> void:                # 熔岩龟·技
 		battle._dash_to(u, tgt, 80.0)
 	u["atk_cd"] = 0.0                                            # 重置下次普攻(立刻可放)
 	u["lava_pierce_next"] = true                                # 下一发熔岩弹变穿透
-	battle._skill_ring(u["pos"], Color(1.0, 0.45, 0.15, 0.6), 54.0); battle._flash(u, Color(1.6, 0.9, 0.4))
+	battle._skill_ring(u["pos"], Color(1.0, 0.45, 0.15, 0.6), 54.0); battle._vfx._flash(u, Color(1.6, 0.9, 0.4))
 

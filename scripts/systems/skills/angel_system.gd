@@ -27,7 +27,7 @@ func _sk_angel_ascend(u: Dictionary) -> void:                   # 天使龟·飞
 func _sk_angel_equality(u: Dictionary, tgt) -> void:
 	if tgt == null or not tgt.get("alive", false):
 		return
-	battle._flash(u, Color(1.0, 0.92, 0.6))                            # 举裁蓄力·自身泛淡金吸血光
+	battle._vfx._flash(u, Color(1.0, 0.92, 0.6))                            # 举裁蓄力·自身泛淡金吸血光
 	var order = {"C": 0, "B": 1, "A": 2, "S": 3, "SS": 4, "SSS": 5}
 	# 4道圣光斩弧(远程投射·站原地不突进): 各50%ATK物理·共200%(2ATK)·带10%施法吸血(用户2026-07-11:2道100%→4道50%)
 	for i in range(4):
@@ -47,7 +47,7 @@ func _sk_angel_equality(u: Dictionary, tgt) -> void:
 			var tru: int = maxi(1, int(float(u["atk"]) * 0.5 + lost * 0.10))
 			battle._apply_damage_from(u, tgt, tru, Color(1.0, 0.96, 0.76), 0.10, true)   # 真伤无视双抗·10%吸血
 			battle._apply_damage_from(u, tgt, battle._mitigate(u, tgt["hp"] * 0.08, tgt, true), Color("#9be7ff"), 0.0, false)   # 光柱也带审判(用户2026-07-11:附带被动·10%当前HP)
-			battle._flash(tgt, Color(1.0, 0.96, 0.76))
+			battle._vfx._flash(tgt, Color(1.0, 0.96, 0.76))
 		})
 
 # 天使审判光柱: 从天而降金白光束(强闪骤降) + 命中金环 (平等第3段·A级以上)

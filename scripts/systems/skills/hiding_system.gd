@@ -145,8 +145,8 @@ func _minion_rocket_nuke(u: Dictionary, center: Vector2) -> void:   # 核爆(用
 		var d2: Vector2 = Vector2(cos(ang), sin(ang))
 		battle._bolt_line(center + d2 * 30.0, center + d2 * randf_range(150.0, 240.0), Color(1.0, 0.75, 0.4, 0.8))
 	# ⑥ 火花四溅 + 碎石 + 烟柱 + 焦痕
-	battle._impact_particles(center, 0.4)
-	battle._impact_particles(center, 1.6)
+	battle._vfx._impact_particles(center, 0.4)
+	battle._vfx._impact_particles(center, 1.6)
 	battle._slam_debris(center)
 	battle._rocket_sys._rocket_smoke_plume(center)
 	battle._rocket_sys._rocket_scorch(center)
@@ -155,7 +155,7 @@ func _minion_rocket_nuke(u: Dictionary, center: Vector2) -> void:   # 核爆(用
 	for o in battle._enemies_of(u):
 		if not o.get("alive", false): continue
 		if (o["pos"] as Vector2).distance_to(center) > 400.0: continue
-		battle._hit_spark(o)
+		battle._vfx._hit_spark(o)
 		battle._apply_damage_from(u, o, battle._atk_dmg(u, 4.0, o, false), Color("#ff4444"))   # 4A物理
 		o["heal_reduce_until"] = maxf(float(o.get("heal_reduce_until", 0.0)), battle._t + 4.0)   # 4秒50%治疗削减
 		o["heal_reduce_pct"] = maxf(float(o.get("heal_reduce_pct", 0.0)), 0.5)
@@ -188,7 +188,7 @@ func _sk_minion_bodysurf(u: Dictionary, tgt) -> void:   # 近战小将·人体�
 		battle._melee_anim(uu, "throw")                          # 0.68 滞空甩索(与射链同帧)
 		battle._surf_chain_shoot(uu["pos"], float(uu.get("height", 0.0)) + 0.6, tref["pos"], Color(0.6, 0.15, 0.15, 0.95))   # 从小将(空中·当前height)射铁链向目标
 		battle._stun(tref, 1.1, "_sk_minion_bodysurf", true)   # 晕住覆盖整个空中顿+俯冲
-		battle._hit_spark(tref)
+		battle._vfx._hit_spark(tref)
 	, "src": u})
 	battle._pending_shots.append({"delay": 1.28, "fn": func() -> void:   # 空中顿~0.6s(0.68射链→1.28拉)→拉己俯冲向目标→接触→踩滑(coroutine·用户2026-07-18)
 		if not (uu.get("alive", false) and tref.get("alive", false)):
@@ -214,7 +214,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 		u["_slam"] = false; return
 	battle._apply_damage_from(u, tref, int(float(tref["maxHp"]) * 0.10), Color("#ff4444"))   # 接触: 10%目标最大生命(物理)
 	battle._melee_anim(u, "surf")                                # 1.58-2.41 踩在目标身上滑行
-	battle._hit_spark(tref); battle._shake(0.14)
+	battle._vfx._hit_spark(tref); battle._shake(0.14)
 	var sdir: Vector2 = ((tref["pos"] as Vector2) - from)
 	sdir = sdir.normalized() if sdir.length() > 1.0 else Vector2.RIGHT
 	var slide_from: Vector2 = tref["pos"]

@@ -57,7 +57,7 @@ func _phoenix_flame_cone(u: Dictionary, tgt: Dictionary) -> void:
 			continue
 		battle._apply_damage_from(u, e, battle._resolve_dmg(u, mag, e, true), Color("#4dabf7"))
 		battle._apply_dot_stacks(e, "burn", burn_stacks, u)
-		battle._flash(e, Color("#ff8a3a"))
+		battle._vfx._flash(e, Color("#ff8a3a"))
 
 # 单颗喷火苗: 嘴部喷出→沿锥角向外冲(火舌位移感), 软发光blob叠成顺滑火流, 黄白→橙→红透+边冲边长大
 # 单颗喷火苗: 嘴部喷出→沿锥角向外冲(火舌位移感), 软发光blob叠成顺滑火流, 黄白→橙→红透+边冲边长大
@@ -203,7 +203,7 @@ func _phoenix_scald_hit(u: Dictionary, tgt, fb) -> void:
 	battle._apply_skill_extras(u, tgt, {"shieldBreak": 0.5, "atkDown": 0.15, "defDown": 0.15, "mrDown": 0.15, "healCut": 0.5})
 	battle._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.5, tgt, true), Color("#4dabf7"))   # 1.5ATK魔法(打已破的盾, 更多穿透到血)
 	battle._apply_dot_stacks(tgt, "burn", maxi(1, roundi(float(u["atk"]) * 1.0)), u)   # 1ATK灼烧层
-	battle._flash(tgt, Color("#ff8a3a"))
+	battle._vfx._flash(tgt, Color("#ff8a3a"))
 	_phoenix_flame_burst(tgt["pos"])
 
 # 火焰爆发: 命中点炸开一圈软光火苗 + 亮环

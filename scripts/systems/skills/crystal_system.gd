@@ -213,7 +213,7 @@ func _crystal_sweep_step(ang: float, u: Dictionary, si: int, reach: float, state
 					u["base_mr"] = float(u["base_mr"]) + steal; u["mr"] = float(u["mr"]) + steal
 					var samt: int = int(round(steal))
 					if samt >= 1:
-						battle._float_text(o["pos"] + Vector2(randf_range(-10.0, 10.0), -46.0), "魔抗-%d" % samt, Color("#c9b0ff"))
+						battle._vfx._float_text(o["pos"] + Vector2(randf_range(-10.0, 10.0), -46.0), "魔抗-%d" % samt, Color("#c9b0ff"))
 				battle._equip_sys._eq_crystal_stack(u, o, si)
 				_crystal_spark(o["pos"])
 	state["prev"] = ang

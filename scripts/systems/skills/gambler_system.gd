@@ -115,16 +115,16 @@ func _gambler_apply_wheel_suit(u: Dictionary, suit: int) -> void:   # 命运之�
 	match suit:
 		0:
 			u["base_atk"] = float(u["base_atk"]) + 3.0; u["maxHp"] += 10.0; u["hp"] += 10.0
-			battle._float_text(u["pos"] + Vector2(0, -64), "♠ 攻+3 血+10", Color("#ffd93d"))
+			battle._vfx._float_text(u["pos"] + Vector2(0, -64), "♠ 攻+3 血+10", Color("#ffd93d"))
 		1:
 			u["base_def"] = float(u["base_def"]) + 1.0; u["base_mr"] = float(u["base_mr"]) + 1.0
-			battle._float_text(u["pos"] + Vector2(0, -64), "♥ 护甲+1 魔抗+1", Color("#ff5b6b"))
+			battle._vfx._float_text(u["pos"] + Vector2(0, -64), "♥ 护甲+1 魔抗+1", Color("#ff5b6b"))
 		2:
 			u["crit"] = float(u["crit"]) + 0.02; u["armor_pen"] = float(u.get("armor_pen", 0.0)) + 1.0
-			battle._float_text(u["pos"] + Vector2(0, -64), "♦ 暴击+2% 护穿+1", Color("#ff9f43"))
+			battle._vfx._float_text(u["pos"] + Vector2(0, -64), "♦ 暴击+2% 护穿+1", Color("#ff9f43"))
 		_:
 			battle._buff(u, "lifesteal", 0.005, false, 9999.0); u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + 0.02
-			battle._float_text(u["pos"] + Vector2(0, -64), "♣ 吸血+0.5% 攻速+2%", Color("#5be08a"))
+			battle._vfx._float_text(u["pos"] + Vector2(0, -64), "♣ 吸血+0.5% 攻速+2%", Color("#5be08a"))
 	battle._recalc_stats(u)
 
 func _gambler_apply_wheel_stacks(u: Dictionary) -> void:   # 命运之轮跨场累积(方案B): 登场套用GameState本大轮已抽花色(切轮重置)·只玩家赌神调用
@@ -192,13 +192,13 @@ func _sk_gambler_bet(u: Dictionary, tgt: Dictionary) -> void:    # 赌神龟·�
 	if u["hp"] < u["maxHp"] * 0.40:                              # ★低血模式(用户2026-07-14): 血不够押本→转而回8%maxHp + 3秒多重+20%(不甩牌·不消耗血)
 		battle._heal(u, u["maxHp"] * 0.08)
 		u["gambler_bet_until"] = battle._t + 3.0
-		battle._flash(u, Color(0.4, 1.7, 0.6))                         # 绿闪(求稳回血)
+		battle._vfx._flash(u, Color(0.4, 1.7, 0.6))                         # 绿闪(求稳回血)
 		battle._skill_ring(u["pos"], Color(0.3, 1.0, 0.5, 0.55), 54.0)   # 绿环
 		_gambler_pop(u["pos"], float(u.get("height", 0.0)), Color(0.3, 1.0, 0.5, 0.85))   # 回血绿
 		return
 	var cost: float = u["hp"] * 0.40
 	u["hp"] = maxf(1.0, u["hp"] - cost)
-	battle._flash(u, Color(1.7, 0.4, 0.4))                            # HP牺牲红闪(押上血本)
+	battle._vfx._flash(u, Color(1.7, 0.4, 0.4))                            # HP牺牲红闪(押上血本)
 	var per: int = maxi(1, int(cost / 7.0))
 	u["gambler_bet_until"] = battle._t + 3.0                           # 3秒多重概率+20%(见_gambler_multi_cd·回补钩)
 	battle._skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.55), 54.0)

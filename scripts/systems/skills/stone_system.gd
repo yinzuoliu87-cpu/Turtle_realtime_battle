@@ -82,7 +82,7 @@ func _sk_rock_shockwave(u: Dictionary) -> void:                  # 石头龟·�
 	# ── 踏地瞬间(windup 后): 震屏+顿帧+脚下碎石+起手环 ──
 	var wf = func() -> void:
 		battle._shake(battle.JUICE_SHAKE_HEAVY); battle._hitstop = maxf(battle._hitstop, 0.05)
-		battle._impact_particles(origin, 0.0)
+		battle._vfx._impact_particles(origin, 0.0)
 		battle._burst_vfx("res://assets/sprites/vfx/stone-slam-impact.png", origin, 210.0, 0.06)
 		battle._skill_ring(origin, Color(0.79, 0.64, 0.42, 0.6), 120.0)
 	battle._pending_shots.append({"delay": windup, "src": u, "fn": wf})
@@ -116,6 +116,6 @@ func _sk_rock_shockwave(u: Dictionary) -> void:                  # 石头龟·�
 			battle._stun(oo, 2.0, "_sk_rock_shockwave")   # 命中即眩晕2秒(用户2026-07-11: 除击退外必附2s眩晕·原1%×层概率改必中·头顶通用眩晕圈由_update_stun_vfx画)
 			battle._knockback(uu, oo, 60.0)
 			_rock_chunk_erupt(oo["pos"])                     # 命中点额外破土
-			battle._flash(oo)
+			battle._vfx._flash(oo)
 		battle._pending_shots.append({"delay": hit_delay, "src": u, "fn": hf})
 

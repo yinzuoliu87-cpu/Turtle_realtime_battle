@@ -48,7 +48,7 @@ func _lightning_hop(u: Dictionary, from_pos: Vector2, target: Dictionary, fr: fl
 		return
 	_lightning_arc(from_pos, target["pos"], Color("#aef0ff"))   # 锯齿电弧
 	battle._apply_damage_from(u, target, battle._atk_dmg(u, 0.6 * fr, target, true), Color("#4dabf7"))
-	battle._hit_spark(target)
+	battle._vfx._hit_spark(target)
 	if hop_i > 0:
 		_lightning_electric(u, target)   # 连锁每跳也叠电击层(主目标由_on_basic_hit叠, 避免重复)
 
@@ -148,5 +148,5 @@ func _sk_lightning_surge(u: Dictionary, tgt: Dictionary) -> void: # 闪电龟·�
 	u["shock_boost_pct"] = 0.5
 	battle._skill_ring(u["pos"], Color(0.45, 0.85, 1.0, 0.5), 52.0)
 	battle._aura_vfx("res://assets/sprites/skills/lightning-3.png", u, 54.0, Color(0.3, 0.67, 0.97, 0.5), 5.0)   # 涌动增伤电流光环5秒(标示buff激活期)
-	battle._hit_spark(u)                                                                                          # 自身电流上涌
+	battle._vfx._hit_spark(u)                                                                                          # 自身电流上涌
 

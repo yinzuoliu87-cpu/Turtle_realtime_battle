@@ -369,7 +369,7 @@ func _dl_fight_start_dramatize() -> void:
 	battle._add_hitstop(0.18)                                  # 短定格: 比团灭(0.30)短, 是"起势"不是"收势"
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
 	_dl_flash_screen(Color(1.0, 0.92, 0.55), 0.22)      # 淡金起手闪
-	battle._float_text(battle._arena_center + Vector2(0.0, -120.0), "开 战", Color("#ffd93d"), true, "label")
+	battle._vfx._float_text(battle._arena_center + Vector2(0.0, -120.0), "开 战", Color("#ffd93d"), true, "label")
 	# 两侧战线各炸一圈, 强调"两边同时压上来"
 	var half_w: float = battle.ARENA.size.x * 0.5
 	var cy: float = battle._arena_center.y
@@ -495,7 +495,7 @@ func _dl_is_decider(wiped_side: String) -> bool:
 ## 原来这一刻【只有基地穹顶塌缩 0.7s】—— 团灭这么大的事, 玩家只看到 HUD 多几个字。
 ## 这里全部复用项目已有的 juice helper, 不新造轮子:
 ##   顿帧 → 让"最后一个倒下"这一刻停住；震屏 → 冲击感；全屏闪 → 断章感；
-##   大字 → 明确告诉玩家发生了什么(用 battle._float_text 的 label 模式, 决胜公告也是这么做的)。
+##   大字 → 明确告诉玩家发生了什么(用 battle._vfx._float_text 的 label 模式, 决胜公告也是这么做的)。
 ## ★用裸 battle.create_tween 的地方见 _dl_enter_present 说明(跨路存活不能被 battle._sim_tweens 连坐清掉)。
 func _dl_wipe_dramatize(wiped_lr: String) -> void:
 	var we_lost: bool = (wiped_lr == "left")
@@ -507,12 +507,12 @@ func _dl_wipe_dramatize(wiped_lr: String) -> void:
 	# 全场大字
 	var txt: String = "全军覆没" if we_lost else "敌军覆没"
 	var tcol: Color = Color("#ff6b6b") if we_lost else Color("#ffd93d")
-	battle._float_text(battle._arena_center + Vector2(0.0, -120.0), txt, tcol, true, "label")
+	battle._vfx._float_text(battle._arena_center + Vector2(0.0, -120.0), txt, tcol, true, "label")
 	# 幸存方每个单位身上冒一记火花, 强调"是他们打完的"
 	var survivor: String = "right" if we_lost else "left"
 	for u in battle._units:
 		if u.get("alive", false) and str(u.get("side", "")) == survivor and not u.get("_isEgg", false):
-			battle._hit_spark(u)
+			battle._vfx._hit_spark(u)
 
 ## ★蛋破演出 —— 整场的最高潮, 原来却是【直接跳胜负横幅】, 零过场(横扫/终极路都走这条)。
 ## 比团灭更重: 更长的顿帧 + 最大震屏 + 蛋位置爆冲击环 + 全场大字。
@@ -530,7 +530,7 @@ func _dl_egg_break_dramatize(broken_side_lr: String) -> void:
 			battle._burst_vfx("res://assets/sprites/vfx/boom-wave-anim.png", u.get("pos", battle._arena_center), 260.0, 0.9)
 			break
 	var txt: String = "龟蛋破碎" if we_lost else "击碎敌蛋"
-	battle._float_text(battle._arena_center + Vector2(0.0, -140.0), txt,
+	battle._vfx._float_text(battle._arena_center + Vector2(0.0, -140.0), txt,
 		Color("#ff5c5c") if we_lost else Color("#ffe680"), true, "label")
 
 ## 全屏一次性闪光(仿 _smolder_sys._smolder_flash 的写法; 用于段落切换)

@@ -149,7 +149,7 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 			if not o2.get("alive", false): continue
 			if (o2["pos"] as Vector2).distance_to(center) > 500.0: continue
 			battle._apply_damage_from(uu, o2, battle._atk_dmg(uu, 0.8, o2, true), Color("#b09bff"))
-			battle._hit_spark(o2)
+			battle._vfx._hit_spark(o2)
 			victims.append(o2)
 		battle._shake(0.12 if charged else 0.08)
 		var fl := Sprite3D.new()                                 # 白紫爆闪(白核紫边)
@@ -231,7 +231,7 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 					spt.tween_callback(sp.queue_free)
 			, 0.0, 1.0, 0.6)
 			pt3.tween_callback(func() -> void:                   # 落地: 受击白星+螺旋卷动放大渐隐(不瞬删)
-				if oref3.get("alive", false): battle._hit_spark(oref3)
+				if oref3.get("alive", false): battle._vfx._hit_spark(oref3)
 				if is_instance_valid(swirl):
 					var st2 = battle._reg_tween(); st2.set_parallel(true)
 					st2.tween_property(swirl, "scale", Vector3.ONE * 1.35, 0.5)
@@ -334,7 +334,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				if (o["pos"] as Vector2).distance_to(origin) > r: continue
 				hitset.append(o)
 				battle._apply_damage_from(uu2, o, battle._atk_dmg(uu2, 1.0, o, true), Color("#c9b0ff"))
-				battle._hit_spark(o)
+				battle._vfx._hit_spark(o)
 				for hb in range(2):                                # 命中: 2颗小星从敌身弹出
 					var ha: float = randf() * TAU
 					var hs := Sprite3D.new()

@@ -38,10 +38,10 @@ func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招�
 		u["buyequip_id"] = iid; u["buyequip_star"] = 1
 		var tier: int = int(DataRegistry.phase2_equipment_by_id.get(iid, {}).get("cost", 1))
 		u["energy_cost"]["fortuneBuyEquip"] = 60.0 + [100.0, 180.0, 400.0][clampi(tier - 1, 0, 2)]   # 消耗随抽到费拉长
-		battle._float_text(u["pos"] + Vector2(0, -72), "招财! " + str(DataRegistry.phase2_equipment_by_id.get(iid, {}).get("name", iid)), Color("#ffd93d"))
+		battle._vfx._float_text(u["pos"] + Vector2(0, -72), "招财! " + str(DataRegistry.phase2_equipment_by_id.get(iid, {}).get("name", iid)), Color("#ffd93d"))
 	elif star >= 3:                                             # 3★满: 回复1×ATK生命
 		battle._heal(u, u["atk"])
-		battle._float_text(u["pos"] + Vector2(0, -72), "招财·满! 回血", Color("#ffd93d"))
+		battle._vfx._float_text(u["pos"] + Vector2(0, -72), "招财·满! 回血", Color("#ffd93d"))
 	else:                                                       # 升星: 应用精确数值delta(旧星→新星) + 同步equips条目星级
 		var iid2: String = str(u.get("buyequip_id", ""))
 		battle._equip_sys._stats._eq_star_delta_stats(u, iid2, star, star + 1)          # 精确升星: 加(新星-旧星)属性差量(flag类缩放留F5)
@@ -51,7 +51,7 @@ func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招�
 				break
 		u["buyequip_star"] = star + 1
 		if star + 1 >= 3: u["energy_cost"]["fortuneBuyEquip"] = 60.0   # 满星→价回60
-		battle._float_text(u["pos"] + Vector2(0, -72), "招财·升星 %d★" % (star + 1), Color("#ffd93d"))
+		battle._vfx._float_text(u["pos"] + Vector2(0, -72), "招财·升星 %d★" % (star + 1), Color("#ffd93d"))
 	battle._burst_vfx("res://assets/sprites/vfx/fortune-coin-burst.png", u["pos"], 104.0, 0.7)   # 招财: 金币聚宝爆(用户2026-07-12)
 	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.6), 56.0)
 	battle._refresh_panel_equips(u)   # ★抽到/升星的临时装备图标即时显进左右信息框(用户2026-07-12)
@@ -62,7 +62,7 @@ func _sk_fortune_dice(u: Dictionary) -> void:                    # 财神龟·�
 	battle._heal(u, u["maxHp"] * 0.08)
 	battle._burst_vfx("res://assets/sprites/vfx/fortune-coin-burst.png", u["pos"], 120.0, 0.75)   # 金币爆
 	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.55), 52.0)
-	battle._float_text(u["pos"] + Vector2(0, -66), "掷骰 +%d金币" % g, Color("#ffd93d"))
+	battle._vfx._float_text(u["pos"] + Vector2(0, -66), "掷骰 +%d金币" % g, Color("#ffd93d"))
 	for _k in range(5):   # 金块从脚下冒出(聚财)
 		battle._gold_chunk_erupt(u["pos"] + Vector2(randf_range(-30.0, 30.0), randf_range(-14.0, 14.0)))
 	# (删: "放梭哈后给护盾"=4选1下死逻辑, 不可能同时有骰子+梭哈, 用户指出)
@@ -74,9 +74,9 @@ func _sk_fortune_goldshield(u: Dictionary) -> void:   # 财神·金盾(梭哈用
 		return
 	battle._grant_shield(u, amt, 4.0)                 # 通用护盾4s
 	u["gold_shield_until"] = battle._t + 4.0          # 持盾期锁龟能(与shield同4s·盾破/到期即恢复·同钻石坚不可摧节奏)
-	battle._flash(u, Color(1.6, 1.35, 0.5))
+	battle._vfx._flash(u, Color(1.6, 1.35, 0.5))
 	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.7), 60.0)
-	battle._float_text(u["pos"] + Vector2(0, -66), "金盾 +%d" % int(amt), Color("#ffd93d"))
+	battle._vfx._float_text(u["pos"] + Vector2(0, -66), "金盾 +%d" % int(amt), Color("#ffd93d"))
 	for _k in range(4):                        # 金块绕身聚成盾
 		battle._gold_chunk_erupt(u["pos"] + Vector2(randf_range(-26.0, 26.0), randf_range(-12.0, 12.0)))
 
@@ -93,7 +93,7 @@ func _sk_fortune_allin(u: Dictionary, tgt) -> void:                 # 财神龟�
 	u["allin_throw_t"] = 0.6              # 蓄力(首投前)
 	u["allin_target"] = tgt
 	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.65), 66.0)   # 蓄力金环
-	battle._flash(u, Color(1.5, 1.3, 0.6))
+	battle._vfx._flash(u, Color(1.5, 1.3, 0.6))
 
 # 梭哈 channel: 蓄力后每隔投币间隔朝目标投1金币(0.18ATK物+0.18ATK真), 目标死换最近敌; 投完结束; 眩晕/击飞期暂停
 # 梭哈 channel: 蓄力后每隔投币间隔朝目标投1金币(0.18ATK物+0.18ATK真), 目标死换最近敌; 投完结束; 眩晕/击飞期暂停

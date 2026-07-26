@@ -149,7 +149,7 @@ func _sk_ninja_backstab(u: Dictionary, tgt: Dictionary) -> void: # 技三·背�
 				return
 			battle._apply_damage_from(u, far2, battle._atk_dmg(u, 0.6667, far2), Color("#cfd8e8"))
 			battle._burst_vfx("res://assets/sprites/vfx/ninja-slash.png", far2["pos"], 88.0, 1.0)   # 每刀斩弧
-			battle._hit_spark(far2)
+			battle._vfx._hit_spark(far2)
 		})
 
 func _sk_ninja_shuriken(u: Dictionary, tgt) -> void:           # 技·手里剑(封板·远程·1:1回合制_ninja_shuriken): 掷旋转飞镖·命中1.6A物理; 暴击(按忍者暴击率)=暴击总伤拆两段→红物理(吃减甲)+白真伤(穿甲·占(40+2%/级)%), 同一发跳两个数字

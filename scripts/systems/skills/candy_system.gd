@@ -130,7 +130,7 @@ func _sk_candy_bomb_feed(u: Dictionary) -> void:               # 糖果龟·技�
 	if bomb != null:
 		bomb["maxHp"] = float(bomb["maxHp"]) + u["maxHp"] * 0.25   # 上限+25%糖果龟maxHp
 		bomb["hp"] = minf(float(bomb["maxHp"]), float(bomb["hp"]) + u["maxHp"] * 0.10)   # 治疗10%(喂续命)
-		battle._float_text(bomb["pos"] + Vector2(0, -40), "喂!", Color("#ff9ed6"))
+		battle._vfx._float_text(bomb["pos"] + Vector2(0, -40), "喂!", Color("#ff9ed6"))
 		battle._gambler_sys._gambler_pop(bomb["pos"], float(bomb.get("height", 0.0)) + 0.4, Color(1.0, 0.7, 0.88, 0.85))   # 喂养涨大糖光
 		battle._skill_ring(bomb["pos"], Color(1.0, 0.62, 0.84, 0.5), 40.0)
 		for _cb in range(4): _candy_bomb_bubble(bomb)            # 一簇糖泡
@@ -166,7 +166,7 @@ func _candy_drain_fx(candy: Dictionary, fat: Dictionary, amt: int) -> void:   # 
 		mv.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		tw.parallel().tween_property(mote, "scale", Vector3(0.4, 0.4, 0.4), 0.5)
 		tw.chain().tween_callback(mote.queue_free)
-	battle._float_text(from2d + Vector2(0, -50), "甜蜜掠夺 -" + str(amt), Color("#ff6bb0"))
+	battle._vfx._float_text(from2d + Vector2(0, -50), "甜蜜掠夺 -" + str(amt), Color("#ff6bb0"))
 	battle._skill_ring(kp, Color(1.0, 0.55, 0.82, 0.55), 46.0)
 
 func _candy_bomb_bubble(u: Dictionary) -> void:   # 糖果炸弹糖泡(粉糖色·上飘·区别中毒绿/酒琥珀)

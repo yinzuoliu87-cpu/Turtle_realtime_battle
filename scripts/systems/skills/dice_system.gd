@@ -159,7 +159,7 @@ func _sk_dice_allin(u: Dictionary) -> void:                      # 骰子龟·�
 func _sk_dice_flash_strike(u: Dictionary) -> void:   # 稳定骰子(刀妹Irelia Q·破空斩式·用户2026-07-13): 掷骰(4+点数)段, 每段真冲刺穿到随机敌+挥剑斩·递减10%
 	var pips: int = randi_range(1, 6)
 	var count: int = 4 + pips
-	battle._float_text(u["pos"] + Vector2(0, -64), "稳定骰子! %d点→%d刺" % [pips, count], Color("#ffd93d"))
+	battle._vfx._float_text(u["pos"] + Vector2(0, -64), "稳定骰子! %d点→%d刺" % [pips, count], Color("#ffd93d"))
 	var t0 = _dice_pick_strike_target(u)
 	if t0 == null: return
 	u["dice_dash_active"] = true                    # 进入真冲刺连突态(逐帧穿刺, 见 _dice_dash_tick)
@@ -180,7 +180,7 @@ func _sk_dice_fate(u: Dictionary) -> void:
 	u["crit_fate_until"] = battle._t + 999.0   # 持续到下次放技能(开头撤旧增益自然重掷·用户设计)
 	u["crit_fate_amt"] = add_crit
 	u["crit_dmg_fate_amt"] = add_cd
-	battle._float_text(u["pos"] + Vector2(0, -64), "命运骰子! +%d%%暴击" % int(roll * 100), Color("#ffd93d"))
+	battle._vfx._float_text(u["pos"] + Vector2(0, -64), "命运骰子! +%d%%暴击" % int(roll * 100), Color("#ffd93d"))
 
 # 龟壳·复制: 随机复制 2 个敌方可用技立即释放 (60%效果简化为全效, 留 batch3)
 # 龟壳复制期的"非伤害"效果乘数(护盾/治疗/DoT). 伤害走 src["dmg_out_mult"]. 两者都只覆盖【同步段】:

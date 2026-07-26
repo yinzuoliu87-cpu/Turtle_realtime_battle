@@ -42,7 +42,7 @@ func _chest_treasure_tick(u: Dictionary) -> void:
 		if (not battle._review_demo()) and str(u.get("side", "")) == "left" and GameState != null and not u.get("is_summon", false):
 			GameState.chest_treasures_won.append(tid)              # 大轮常驻装备(用户2026-07-16)+当场落盘防丢
 			GameState.save()
-		battle._float_text(u["pos"] + Vector2(0, -72), "开箱! " + str(battle._CHEST_TREASURE_NAME.get(tid, tid)), Color("#ffd93d"))
+		battle._vfx._float_text(u["pos"] + Vector2(0, -72), "开箱! " + str(battle._CHEST_TREASURE_NAME.get(tid, tid)), Color("#ffd93d"))
 		var ipath: String = "res://assets/sprites/equip/chest-t-%s.png" % tid   # 头顶弹出战利品图标(用户2026-07-15: 看清开了什么)
 		if ResourceLoader.exists(ipath):
 			var ic = Sprite3D.new()

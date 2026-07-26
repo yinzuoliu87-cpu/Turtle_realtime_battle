@@ -47,7 +47,7 @@ func _sk_cyber_cannon(u: Dictionary, tgt) -> void:              # 赛博龟·能
 			battle._apply_damage_from(uu, o, battle._atk_dmg(uu, 1.0, o), Color("#9bf0ff"))                          # 1A物理
 			if drones > 0:
 				battle._apply_damage_from(uu, o, int(uu["atk"] * 0.1 * drones), Color("#d0ffff"), 0.0, true)  # 0.1A×浮游炮数真伤
-			battle._hit_spark(o)
+			battle._vfx._hit_spark(o)
 		var endp: Vector2 = uu["pos"] + dir * 1300.0
 		battle._beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", uu["pos"], endp, 90.0, Color(1.0, 1.0, 1.0, 1.0), 0.35)     # ①白热核心束
 		battle._beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", uu["pos"], endp, 200.0, Color(0.55, 0.93, 1.0, 0.85), 0.55) # ②主青束
@@ -88,7 +88,7 @@ func _sk_cyber_hijack(u: Dictionary) -> void:                   # 赛博龟·侵
 	v["taunt_until"] = 0.0; v["taunt_by"] = null               # 清嘲讽残留(防倒戈期错误锁定)
 	v["stun_until"] = 0.0                                       # 解控(立即可倒戈行动)
 	battle._hijack_fx_attach(v)                                        # 全身红光 + 电流环绕(用户2026-07-22)
-	battle._float_text(v["pos"] + Vector2(0, -56), "侵入!", Color("#3fffd0"))
+	battle._vfx._float_text(v["pos"] + Vector2(0, -56), "侵入!", Color("#3fffd0"))
 	battle._skill_ring(v["pos"], Color(0.25, 1.0, 0.82, 0.5), 52.0)
 	battle._beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", u["pos"], v["pos"], 30.0, Color(0.25, 1.0, 0.82, 0.75), 0.6)   # 侵入数据链(用户07-07仅给"参考Botworld黑客机器人"·具体视觉无原话)
 
@@ -199,7 +199,7 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 				for o2 in battle._units:
 					if battle._is_hostile(uu, o2) and o2.get("alive", false) and battle._on_line(dpos, ldir, o2["pos"], 40.0):
 						battle._apply_damage_from(uu, o2, battle._resolve_dmg(uu, atk_ref * 0.4, o2, true), Color("#7ee8ff"))      # 0.4A魔法(蓝字)
-						battle._hit_spark(o2))
+						battle._vfx._hit_spark(o2))
 	, "src": u})
 	# ③ 飞向集结点消失(2.4s起·等激光演出完)
 	battle._pending_shots.append({"delay": 2.4, "fn": func() -> void:
@@ -253,7 +253,7 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 			if not mref.get("alive", false): return
 			mref["_slam"] = false
 			mref["_assembling"] = false
-			battle._flash(mref, Color(1.6, 1.9, 2.2))
+			battle._vfx._flash(mref, Color(1.6, 1.9, 2.2))
 			battle._skill_ring(mref["pos"], Color(0.6, 0.95, 1.0, 0.8), 64.0)
 			battle._shake(battle.JUICE_SHAKE_LIGHT))
 		var weld = [0]                                          # 组装特效: 5秒内周期焊接火花+电弧

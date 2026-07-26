@@ -15,7 +15,7 @@ func _rainbow_enh_prism_proc(u: Dictionary) -> void:            # 强化棱镜4�
 		0:
 			for o in battle._allies_of(u):
 				battle._buff(o, "lifesteal", 0.1, false, 5.0)
-			battle._float_text(u["pos"] + Vector2(0, -60), "橙·全体吸血", Color("#ff9d3c"))
+			battle._vfx._float_text(u["pos"] + Vector2(0, -60), "橙·全体吸血", Color("#ff9d3c"))
 		1:
 			if not es.is_empty():
 				var t = es[battle._battle_rng.randi() % es.size()]

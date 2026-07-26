@@ -140,7 +140,7 @@ func _headless_soul_bite(tgt: Dictionary) -> void:              # 灵魂强化�
 	var tref: Dictionary = tgt
 	var bite := func() -> void:                                 # 咬合帧=命中: 换合口贴图+咬光+牙屑+火花+震
 		if is_instance_valid(jaw): jaw.texture = load("res://assets/sprites/vfx/soul-jaw-closed.png")
-		battle._hit_spark(tref)
+		battle._vfx._hit_spark(tref)
 		var g := Sprite3D.new()                                 # 白紫咬光
 		g.texture = VfxTex._make_fire_glow_tex()
 		g.billboard = BaseMaterial3D.BILLBOARD_ENABLED; g.shaded = false; g.transparent = true
@@ -266,7 +266,7 @@ func _headless_scythe(u: Dictionary) -> void:                  # 镰刀横扫(Ca
 			if to.length() > 300.0: continue
 			if to.length() < 1.0: continue
 			if absf(aim2.angle_to(to.normalized())) > half2: continue   # 100度锥(半角50度)
-			battle._hit_spark(o)
+			battle._vfx._hit_spark(o)
 			if not o.get("_eggImmune", false):
 				_headless_knock_out(o, to.normalized(), 300.0)     # 击退300码从龟朝外
 				battle._add_dot(o, "curse", (o["maxHp"] as float) * 0.05, 5.0, uu)   # 幽灵式诅咒5秒(每秒5%maxHp真伤)
@@ -558,7 +558,7 @@ func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万�
 			if (o["pos"] as Vector2).distance_to(center) > 1500.0: continue   # 射程1500码(用户2026-07-19; 原为全场无差别)
 			var sc: float = 1.5 if battle._is_hostile(uu, o) else 0.5
 			battle._apply_damage_from(uu, o, battle._atk_dmg(uu, sc, o), Color("#ff3b6b"), 0.22)
-			battle._hit_spark(o)
+			battle._vfx._hit_spark(o)
 			if o.get("_tendril_stun", false):
 				o["_tendril_stun"] = false
 				o["stun_until"] = battle._t   # 解眩晕→回复行动
