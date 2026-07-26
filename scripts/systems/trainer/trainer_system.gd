@@ -304,6 +304,7 @@ func _hook_grab(trainer: Dictionary, target: Dictionary) -> void:
 	target["_hook_tug_t0"] = battle._t + battle.HOOK_TUG_DELAY              # 第一下拽的时刻(0.1s后·锤石口径)
 	target["hook_vuln_until"] = battle._t + battle.HOOK_STUN                # 4秒内受伤 ×1.25(见 _mitigate_incoming)
 	target["_hooked_by"] = trainer                            # 触发证据(同步标记, 非tween)
+	battle._buff_aura(target, Color(1.0, 0.35, 0.35, 0.45), battle.HOOK_STUN, 44.0)   # R3 易伤标记(受伤×1.25期间红环·守_world空)
 
 ## 每帧: 大师钩锁冷却扣减; 被钩单位【一段段】朝大师拽(每 battle.HOOK_PULL_INTERVAL 秒里, 前 battle.HOOK_TUG_DUR 秒快速位移一段, 其余停顿)。
 ## ★非匀速(用户2026-07-24: 锤石钩住是一下一下拽, 不是匀速)。在 _process 战斗门内调。
@@ -315,6 +316,8 @@ func _tick_hooks(delta: float) -> void:
 		if battle._t < float(u.get("_hook_pull_until", 0.0)):
 			var by = u.get("_hook_pull_by", null)
 			if by is Dictionary and by.get("alive", false):
+				if battle._world != null:
+					_hook_chain(by["pos"], u["pos"])   # R3 全程钩链(专属铁链·每帧重画=连续绷紧·连着大师↔被钩目标·补"拖拽4秒里链条断了")
 				var ph: float = battle._t - float(u.get("_hook_tug_t0", battle._t))   # 相对第一下拽的相位
 				if ph >= 0.0 and fmod(ph, battle.HOOK_PULL_INTERVAL) < battle.HOOK_TUG_DUR:   # 处在"拽"的窗口内
 					var to: Vector2 = by["pos"] - u["pos"]
@@ -409,11 +412,39 @@ func _hook_dramatize(trainer: Dictionary, target: Dictionary) -> void:
 		ct[0] += 0.02
 		if ct[0] >= 0.05:
 			ct[0] = 0.0
-			battle._pirate_sys._pirate_chain(from2d, hp2)
+			_hook_chain(from2d, hp2)
 	, 0.0, 1.0, flight)
-	tw.tween_callback(func() -> void:         # ④ 到达
-		battle._skill_ring(to2d, Color(0.75, 0.82, 0.95, 0.7), 40.0)
-		if is_instance_valid(hook): hook.queue_free())
+	tw.tween_callback(func() -> void:         # ④ 到达: 命中爆闪光 + 钩子扎在目标身上(跟随·眩晕结束后消)
+		_hook_hit_fx(to2d)
+		if is_instance_valid(hook):
+			battle._follow_vfx.append({"spr": hook, "unit": target, "h": 0.7})       # R3 钩子扎在目标身上·随目标被拽
+			var ktw = battle._reg_tween()
+			ktw.tween_interval(maxf(0.1, battle.HOOK_STUN - 0.3))
+			ktw.tween_property(hook, "modulate:a", 0.0, 0.3)
+			ktw.tween_callback(hook.queue_free))
+
+## R3 钩子命中特效(LoL 式·用户2026-07-26"像lol一样爆一个闪光"): 爆闪光(亮白青·瞬间炸大→快消) + 醒目冲击环 + 轻震屏。
+func _hook_hit_fx(pos2d: Vector2) -> void:
+	if battle._world == null:
+		return
+	battle._splash_ring_bold(pos2d, Color(0.6, 0.92, 1.0, 0.95), 60.0)          # ① 冲击波环(shockwave)
+	battle._shake(battle.JUICE_SHAKE_BIG)                                       # 重震屏(钩中=大事件)
+	# ② 青光晕(大·扩散慢一点): 外层能量
+	var halo = battle._glow_bb(pos2d, 0.8, 150.0, Color(0.5, 0.86, 1.0, 0.9))
+	var ht = battle._reg_tween(); ht.set_parallel(true)
+	ht.tween_property(halo, "scale", Vector3.ONE * 1.9, 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	ht.tween_property(halo.material_override, "albedo_color", Color(0.5, 0.86, 1.0, 0.0), 0.24)
+	ht.chain().tween_callback(halo.queue_free)
+	# ③ ★白热核(小·极亮·瞬炸快消): LoL 命中那一下的爆闪
+	var core = battle._glow_bb(pos2d, 0.85, 78.0, Color(1.0, 1.0, 1.0, 1.0))
+	var ct = battle._reg_tween(); ct.set_parallel(true)
+	ct.tween_property(core, "scale", Vector3.ONE * 3.4, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	ct.tween_property(core.material_override, "albedo_color", Color(0.8, 0.95, 1.0, 0.0), 0.14)
+	ct.chain().tween_callback(core.queue_free)
+
+## R3 钩链(专属铁链·替海盗电光 chain-bolt·连续调=连续绷紧): 横向铁链贴图从 A 拉到 B。
+func _hook_chain(from2d: Vector2, to2d: Vector2) -> void:
+	battle._beam_vfx("res://assets/sprites/vfx/hook-chain.png", from2d, to2d, 20.0, Color(0.92, 0.94, 0.98, 1.0), 0.13)
 
 ## 空放演出: 钩爪飞到射程末端再消失(告诉玩家「没勾到」)。
 func _hook_dramatize_miss(trainer: Dictionary, dir: Vector2) -> void:
@@ -441,7 +472,7 @@ func _hook_dramatize_miss(trainer: Dictionary, dir: Vector2) -> void:
 		ct[0] += 0.02
 		if ct[0] >= 0.05:
 			ct[0] = 0.0
-			battle._pirate_sys._pirate_chain(from2d, hp2)
+			_hook_chain(from2d, hp2)
 	, 0.0, 1.0, 0.34)
 	tw.tween_callback(func() -> void:
 		if is_instance_valid(hook): hook.queue_free())

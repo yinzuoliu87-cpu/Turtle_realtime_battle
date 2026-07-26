@@ -74,21 +74,32 @@ func _ready() -> void:
 	var Lc := _mk("left", 400.0, 300.0, {"is_trainer": true, "_active_cd": 5.0})
 	var pulled := _mk("right", 700.0, 300.0, {"_hook_pull_until": 10.0, "_hook_pull_by": Lc, "_hook_tug_t0": 0.0})
 	b._units = [Lc, pulled]
-	# 拽窗口内 _t∈[0,0.15): 快速拽一段 ≈ HOOK_TUG_DIST(42码)
+	# 拽窗口内 _t∈[0,0.2): 快速拽一段 ≈ HOOK_TUG_DIST(70码·用户2026-07-26)
 	var d0: float = pulled["pos"].distance_to(Lc["pos"])
-	for step in [0.0, 0.03, 0.06, 0.09, 0.12]:
+	for step in [0.0, 0.03, 0.06, 0.09, 0.12, 0.15, 0.18]:
 		b._t = step
 		b._trainer_sys._tick_hooks(0.03)
 	var d_tug: float = pulled["pos"].distance_to(Lc["pos"])
-	_ok("★一下拽≈42码(分段·非匀速)", abs((d0 - d_tug) - 42.0) < 5.0, "拽了 %.1f 码" % (d0 - d_tug))
+	_ok("★一下拽≈70码(分段·非匀速)", abs((d0 - d_tug) - 70.0) < 12.0, "拽了 %.1f 码" % (d0 - d_tug))
 	_ok("★钩锁CD每帧扣减", float(Lc.get("_active_cd", 0.0)) < 5.0, "%.2f" % float(Lc.get("_active_cd", 0.0)))
-	# 停顿期 _t∈[0.15,0.6): 不拽(证明是一段段, 不是匀速)
+	# 停顿期 _t∈[0.2,1.0): 不拽(每秒才拽一下·证明是一段段)
 	var d_before: float = pulled["pos"].distance_to(Lc["pos"])
-	for step in [0.18, 0.30, 0.45, 0.58]:
+	for step in [0.30, 0.50, 0.75, 0.95]:
 		b._t = step
 		b._trainer_sys._tick_hooks(0.03)
 	var d_after: float = pulled["pos"].distance_to(Lc["pos"])
-	_ok("★停顿期不拽(证明非匀速·是一段段)", abs(d_before - d_after) < 0.5, "停顿期又移了 %.2f 码" % abs(d_before - d_after))
+	_ok("★停顿期不拽(每秒1下·非匀速)", abs(d_before - d_after) < 0.5, "停顿期又移了 %.2f 码" % abs(d_before - d_after))
+	# ★共拖4下·每下70=总≈280码(用户2026-07-26"每秒70码共4秒拖4下"): 起点拉远跑满4秒眩晕, 数总位移
+	var far_u := _mk("right", 900.0, 300.0, {"_hook_pull_until": 4.0, "_hook_pull_by": Lc, "_hook_tug_t0": 0.0})
+	b._units = [Lc, far_u]
+	var dfar0: float = far_u["pos"].distance_to(Lc["pos"])
+	var tt: float = 0.0
+	while tt < 4.0:
+		b._t = tt
+		b._trainer_sys._tick_hooks(0.03)
+		tt += 0.03
+	var moved: float = dfar0 - far_u["pos"].distance_to(Lc["pos"])
+	_ok("★4秒内共拖4下≈280码(4×70·每秒1下)", moved > 250.0 and moved < 320.0, "4秒共拖 %.0f 码" % moved)
 
 	# ═══ ⑥ 接线证据(分母): Q键 / AI / _process tick / mitigate ═══
 	var src: String = ""
