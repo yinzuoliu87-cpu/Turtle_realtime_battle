@@ -7,8 +7,9 @@
     "autoload"
   ],
   "file_ratchet": {
-    "scripts/scenes/RealtimeBattle3DScene.gd": 8476
+    "scripts/scenes/RealtimeBattle3DScene.gd": 8629
   },
+  "_debt_note": "8476→8629(2026-07-26·增债·已评审): 训龟大师返工把瞄准指示器(_draw_aim_indicator/_aim_band/_aim_ring/_aim_arrow/_begin/_end/_update_q_aim ≈130行·render代码)+施法分派(_cast_fury/whistle/glacier)+_buff_aura/_body_glow 加进了主sim文件。待抽出到 scripts/scenes/battle/battle_aim.gd(RefCounted+battle注入·照拆分模板)→再把档还债下调。见 memory project-god-file-decomposition。",
   "func_ratchet": {
     "scripts/systems/skills/star_system.gd::_sk_star_wave": 330,
     "scripts/systems/skills/star_system.gd::_sk_star_gravity_warp": 260
