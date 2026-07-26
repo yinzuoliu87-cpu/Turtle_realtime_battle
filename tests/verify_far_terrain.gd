@@ -21,7 +21,7 @@ var _fails: Array[String] = []
 
 
 func _ready() -> void:
-	var src := FileAccess.get_file_as_string(SCENE_PATH)
+	var src := FileAccess.get_file_as_string(SCENE_PATH) + "\n" + FileAccess.get_file_as_string("res://scripts/scenes/battle_world_builder.gd")   # 远景/世界构建已抽到 BattleWorldBuilder(2026-07-26)
 	if src == "":
 		_fail("读不到 %s" % SCENE_PATH)
 		_done()

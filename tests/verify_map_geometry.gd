@@ -47,7 +47,8 @@ func _test_tile_sink() -> void:
 
 	var src := _src()
 	# 两条建砖路径(json 路径 + fallback 程序化路径)都必须减 TILE_SINK
-	var n_sink := src.count("- TILE_SINK")
+	# 2026-07-26: fallback 路径随 _build_tilemap_ground 抽到 BattleWorldBuilder, 常量被前缀成 battle.TILE_SINK → 两种写法都数
+	var n_sink := src.count("- TILE_SINK") + src.count("- battle.TILE_SINK")
 	_ok("★两条建砖路径都下沉了(json + fallback)", n_sink >= 2,
 		"源码里 `- TILE_SINK` 出现 %d 次(应 >=2)" % n_sink)
 	# 砖厚不许再写死 0.15 魔数(否则改了常量而漏改这里 → 上表面又不在 y=0)
@@ -195,4 +196,9 @@ func _src() -> String:
 		s += "
 " + g.get_as_text()
 		g.close()
+	var w := FileAccess.open("res://scripts/scenes/battle_world_builder.gd", FileAccess.READ)   # _build_map_props/navmesh/地面/障碍 已抽到 BattleWorldBuilder(2026-07-26)
+	if w != null:
+		s += "
+" + w.get_as_text()
+		w.close()
 	return s

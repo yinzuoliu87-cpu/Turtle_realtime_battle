@@ -88,11 +88,11 @@ func _ready() -> void:
 	_ok("「确认清空」后背包空", (gs.persistent_bench as Array).is_empty())
 
 	print("=== 7. perf_lite 不再是死按钮 (源码级) ===")
-	_ok("战斗视口读 perf_lite", _src_has("res://scripts/scenes/RealtimeBattle3DScene.gd", "perf_lite"))
+	_ok("战斗视口读 perf_lite", _src_has("res://scripts/scenes/battle_world_builder.gd", "perf_lite"))   # 视口构建已抽到 BattleWorldBuilder(2026-07-26)
 	_ok("主菜单背景漂移读 perf_lite", _src_has("res://scripts/scenes/MainMenuScene.gd", "perf_lite"))
 	_ok("图鉴背景漂移读 perf_lite", _src_has("res://scripts/scenes/CodexScene.gd", "perf_lite"))
-	_ok("战斗视口低画质关 MSAA", _src_has("res://scripts/scenes/RealtimeBattle3DScene.gd", "MSAA_DISABLED"))
-	_ok("战斗视口低画质降 3D 分辨率", _src_has("res://scripts/scenes/RealtimeBattle3DScene.gd", "scaling_3d_scale"))
+	_ok("战斗视口低画质关 MSAA", _src_has("res://scripts/scenes/battle_world_builder.gd", "MSAA_DISABLED"))
+	_ok("战斗视口低画质降 3D 分辨率", _src_has("res://scripts/scenes/battle_world_builder.gd", "scaling_3d_scale"))
 
 	print("")
 	if _fail == 0:

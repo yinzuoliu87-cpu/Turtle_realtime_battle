@@ -433,8 +433,8 @@ func _dl_build_lane_field() -> void:
 	battle._spawn_trainers()    # 双方场外监视者。★放在这里 = 每路 spawn 一次, 而 _dl_next_lane 会先
 						 #   _dl_clear_units() 再重 spawn → 血量【天然每场重置】(用户要的), 不用另写重置逻辑。
 						 #   另见 _dl_snapshot_survivors: 训龟大师不进幸存名单, 否则会带残血去终极战场+重复 spawn。
-	battle._build_map_props()   # 地图障碍(中央大礁+两侧墙)+基地穹顶围栏(幂等, 跨路复用)
-	battle._build_navmesh()     # 2D navmesh 避障(幂等; 障碍挖洞→单位绕行)
+	battle._world_builder._build_map_props()   # 地图障碍(中央大礁+两侧墙)+基地穹顶围栏(幂等, 跨路复用)
+	battle._world_builder._build_navmesh()     # 2D navmesh 避障(幂等; 障碍挖洞→单位绕行)
 	# 装备+登场被动管线(评审流程走的 756-758, 双路早退绕过了→这里补上): leader读persistent_equipped+dual_lineup, 小将读dual_lineup._dl_equips, 双方leader上登场被动
 	battle._inject_equipment()
 	battle._apply_spawn_passives()
