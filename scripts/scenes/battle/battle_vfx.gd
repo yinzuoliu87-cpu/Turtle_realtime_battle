@@ -528,5 +528,6 @@ func _vfx_preview_loop() -> void:
 			"vortex": battle._burst_vfx("res://assets/sprites/vfx/fx-vortex.png", origin, 240.0, 0.6)
 			"blackhole": battle._burst_vfx("res://assets/sprites/vfx/fx-black-hole.png", origin, 260.0, 0.12)
 			"hexbubble": battle._aura_vfx("res://assets/sprites/vfx/fx-hex-bubble.png", fu, 62.0, Color(0.68, 0.9, 1.0, 0.62), 1.8, 0.9)
+			"glacier": battle._trainer_sys._glacier_dramatize(origin, dir)   # R6 冰川分层演出预览(专属美术·VFXPREVIEW=glacier)
 			_: battle._laser_blade_sweep(fu, origin, dir, 350.0, 60.0)
 		await battle.get_tree().create_timer(period).timeout

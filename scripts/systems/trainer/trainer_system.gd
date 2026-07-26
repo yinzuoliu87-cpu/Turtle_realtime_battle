@@ -364,22 +364,111 @@ func _tick_glaciers(_delta: float) -> void:
 				o["_frost_until"] = battle._t + 1.4
 	battle._glacier_zones = keep
 
-## 冰川带演出: 从大师沿方向铺一条真冰带(ice-field.png), 铺满整条 500 码带、亮蓝白, 持续 6 秒 = 冰川区判定寿命。
+## 冰川带演出【R6·专属美术·分层重做·不复用·用户 2026-07-26「重新设计·别复用」】
+##   旧版糊: ice-field(冰云 blob)硬拉 8 倍成糊带·无结构·瞬现·同青地板色。改成:
+##   ① 冻地冰河(glacier-ground 平铺不拉伸·近→远) ② 冰脊(glacier-crystals 逐根升起·持6s·收尾下沉)
+##   ③ 寒雾(加性图元) ④ 出现冲击(冲击环+震屏)。纯演出·_world==null 直接跳(判定在 _tick_glaciers)。
+##   变化全走【索引确定性】不用裸随机(护 rng_discipline 棘轮 + 演出可复现)。
 func _glacier_dramatize(from2d: Vector2, dir: Vector2) -> void:
 	if battle._world == null:
 		return
-	# 用真冰贴图铺地(160×64 蓝白冰), 而非链束占位; 6 秒常驻(与 battle._glacier_zones 的 until 对齐, 站上去减速期间一直看得见冰)
-	battle._beam_vfx("res://assets/sprites/vfx/ice-field.png", from2d, from2d + dir * 500.0, 90.0, Color(0.85, 0.95, 1.0, 0.9), 6.0, 0.12)
-	battle._shake(battle.JUICE_SHAKE_HEAVY)                       # R4 ② 出现震屏
-	for i in range(3):                                           # 沿方向寒霜由近及远炸开(3点)
-		var pp: Vector2 = from2d + dir * (500.0 * float(i) / 2.0)
-		var g = battle._glow_bb(pp, 0.3, 78.0, Color(0.72, 0.92, 1.0, 0.0))
-		var gt = battle._reg_tween()
-		gt.tween_interval(float(i) * 0.06)                      # 由近及远铺开
-		gt.tween_property(g.material_override, "albedo_color", Color(0.72, 0.92, 1.0, 0.9), 0.08)
-		gt.tween_property(g.material_override, "albedo_color", Color(0.72, 0.92, 1.0, 0.0), 0.26)
-		gt.tween_callback(g.queue_free)
-	battle._skill_ring(from2d, Color(0.7, 0.9, 1.0, 0.6), 46.0)
+	var zlen: float = 500.0
+	var life: float = 6.0
+	var perp: Vector2 = Vector2(-dir.y, dir.x)             # 带的横向单位向量
+	var heavy: bool = battle._glacier_zones.size() <= 2    # 降级: 场上>2条冰川只铺地不长冰晶(护帧)
+
+	# ── ④ 出现冲击(origin) ──
+	battle._shake(battle.JUICE_SHAKE_HEAVY)
+	battle._splash_ring_bold(from2d, Color(0.78, 0.93, 1.0, 0.7), 72.0)
+
+	# ── ① 冻地冰河: 沿方向平铺 6 张(不拉伸·近→远逐张淡入) ──
+	var tiles: int = 6
+	for i in range(tiles):
+		var f: float = float(i) / float(tiles - 1)     # i=0 贴大师脚下·i=末覆盖 500 末端(从脚下起铺·用户 2026-07-26)
+		var gp: Vector2 = from2d + dir * (zlen * f) + perp * (12.0 * float((i % 3) - 1))
+		_glacier_ground_tile(gp, dir, 118.0, life, float(i) * 0.03, i)
+
+	# ── ② 冰脊冰晶: 中线+两侧交错·近→远逐根升起·持 life·收尾下沉 ──
+	if heavy:
+		var spikes: int = 9
+		for i in range(spikes):
+			var f: float = 0.06 + 0.94 * float(i) / float(spikes - 1)   # 从脚下略前(~30码·不戳穿大师身)起, 到 500 末端
+			var lateral: float = 0.0
+			if i % 3 == 1: lateral = 28.0
+			elif i % 3 == 2: lateral = -28.0
+			var sp: Vector2 = from2d + dir * (zlen * f) + perp * lateral
+			var sz: float = 66.0 if i % 3 == 0 else 46.0   # 中线大·两侧小
+			_glacier_spike(sp, sz, life, float(i) * 0.045)
+
+	# ── ③ 寒雾: 沿带 5 团加性蓝白上飘(氛围 + 压过青地板) ──
+	for i in range(5):
+		var f: float = (float(i) + 0.5) / 5.0
+		var mp: Vector2 = from2d + dir * (zlen * f) + perp * (30.0 * float((i % 3) - 1))
+		_glacier_mist(mp, float(i) * 0.09)
+
+## 冻地冰河一张: glacier-ground 躺平贴地·对齐方向·淡入→持 life→淡出。pixel_size 定尺=不拉伸。
+func _glacier_ground_tile(pos2d: Vector2, dir: Vector2, size_px: float, life: float, delay: float, idx: int) -> void:
+	var t: Texture2D = load("res://assets/sprites/vfx/glacier-ground.png")
+	if t == null:
+		return
+	var s := Sprite3D.new()
+	s.texture = t
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	s.axis = Vector3.AXIS_Y                                # 躺平贴地
+	s.shaded = false; s.transparent = true
+	s.pixel_size = (size_px * battle.WS) / float(maxi(1, t.get_height()))
+	s.position = battle._world_pos(pos2d, 0.04 + 0.015 * float(idx % 3))   # 微抬错层防 z-fight
+	var wdir: Vector3 = battle._world_pos(pos2d + dir, 0.0) - battle._world_pos(pos2d, 0.0)   # 对齐方向(照 _beam_vfx 口径)
+	s.rotation.y = -atan2(wdir.z, wdir.x) + 0.18 * float((idx % 3) - 1)    # +索引微扰(冰面不规则)
+	s.modulate = Color(0.85, 0.95, 1.0, 0.0)
+	battle._world.add_child(s)
+	var tw = battle._reg_tween()
+	tw.tween_interval(delay)
+	tw.tween_property(s, "modulate:a", 0.9, 0.12)
+	tw.tween_interval(maxf(0.05, life - 0.62))
+	tw.tween_property(s, "modulate:a", 0.0, 0.4)
+	tw.tween_callback(s.queue_free)
+
+## 冰脊一根: glacier-crystals billboard 立在地上·从地里升起(上移+等比放大+淡入)·持 life·收尾下沉淡出。
+##   用【等比】scale(billboard 非等比 scale 有坑), 靠 position 上移做"冒出地面"。
+func _glacier_spike(pos2d: Vector2, size_px: float, life: float, delay: float) -> void:
+	var t: Texture2D = load("res://assets/sprites/vfx/glacier-crystals.png")
+	if t == null:
+		return
+	var s := Sprite3D.new()
+	s.texture = t
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	s.shaded = false; s.transparent = true
+	s.pixel_size = (size_px * battle.WS) / float(maxi(1, t.get_height()))
+	var world_h: float = size_px * battle.WS * 0.5         # 中心抬半高→底边贴地
+	s.position = battle._world_pos(pos2d, world_h * 0.6)   # 起点略低(半埋感)
+	s.scale = Vector3.ONE * 0.5
+	s.modulate = Color(0.92, 0.98, 1.0, 0.0)
+	battle._world.add_child(s)
+	var tw = battle._reg_tween()
+	tw.tween_interval(delay)
+	tw.tween_property(s, "position", battle._world_pos(pos2d, world_h), 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(s, "scale", Vector3.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(s, "modulate:a", 0.95, 0.15)
+	tw.tween_interval(maxf(0.05, life - 0.65))
+	tw.tween_property(s, "modulate:a", 0.0, 0.42)
+	tw.parallel().tween_property(s, "position", battle._world_pos(pos2d, world_h * 0.7), 0.42)
+	tw.parallel().tween_property(s, "scale", Vector3.ONE * 0.7, 0.42)
+	tw.tween_callback(s.queue_free)
+
+## 寒雾一团: 加性蓝白 glow 图元·淡入→上飘→淡出(氛围层·加性 glow 是通用图元非 themed 复用)。
+func _glacier_mist(pos2d: Vector2, delay: float) -> void:
+	var g = battle._glow_bb(pos2d, 0.3, 62.0, Color(0.72, 0.9, 1.0, 0.0))
+	var mat := g.material_override as StandardMaterial3D
+	var base: Vector3 = g.position
+	var tw = battle._reg_tween()
+	tw.tween_interval(delay)
+	tw.tween_property(mat, "albedo_color", Color(0.72, 0.9, 1.0, 0.6), 0.3)
+	tw.parallel().tween_property(g, "position", base + Vector3(0.0, 0.7, 0.0), 1.2)
+	tw.tween_property(mat, "albedo_color", Color(0.72, 0.9, 1.0, 0.0), 0.5)
+	tw.tween_callback(g.queue_free)
 
 ## ★纯效果结算(可测): 钩住 target → 眩晕(吃韧性) + 标记4秒【一段段拽】 + 4秒受伤放大。不建任何 tween。
 func _hook_grab(trainer: Dictionary, target: Dictionary) -> void:

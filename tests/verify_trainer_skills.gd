@@ -151,8 +151,8 @@ func _test_glacier(scene) -> void:
 	trainer["_active_cd"] = 0.0
 	var ok: bool = scene._cast_glacier(trainer, Vector2(1.0, 0.0))
 	_ok("★冰川·施放建带 + CD17", ok and scene._glacier_zones.size() >= 1 and abs(float(trainer.get("_active_cd", 0.0)) - 17.0) < 0.1)
-	# ★冰川带【真的铺出真冰贴图】: _glacier_dramatize 用 ice-field.png 铺地(非 chain-bolt 占位) → _world 有该 Sprite3D
-	_ok("★冰川·铺出真冰贴图(_world 有 ice-field 冰带)", _world_has_sprite(scene, "ice-field.png"))
+	# ★冰川带【真的铺出专属冰川美术】: _glacier_dramatize(R6 重做·不复用)铺 glacier-ground 冰河 + 立 glacier-crystals 冰脊 → _world 有该 Sprite3D
+	_ok("★冰川·铺出专属冰川美术(_world 有 glacier 冰脊/冰河 Sprite3D)", _world_has_sprite(scene, "glacier-crystals.png") or _world_has_sprite(scene, "glacier-ground.png"))
 	scene._trainer_sys._tick_glaciers(0.03)
 	_ok("★冰川·带上敌减速 -40%(slow_mag 0.6)", abs(float(e_on.get("slow_mag", 1.0)) - 0.6) < 0.01 and float(e_on.get("slow_until", 0.0)) > scene._t)
 	_ok("★冰川·带上敌受伤+20%(glacier_vuln)", float(e_on.get("glacier_vuln_until", 0.0)) > scene._t)
