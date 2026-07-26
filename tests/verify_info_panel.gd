@@ -215,14 +215,14 @@ func _test_placeholder_rendered(s) -> void:
 	var u := {"atk": 100.0, "maxHp": 1000.0, "hp": 1000.0, "def": 10.0, "mr": 10.0,
 			  "crit": 0.0, "level": 1, "id": "basic"}
 	var tpl := "造成 {N:0.7*ATK} 点物理伤害"
-	var out: String = s._render_skill_text(tpl, u, {})
+	var out: String = s._render._render_skill_text(tpl, u, {})
 	_ok("★占位符被算成数字(不再原样漏到界面)",
 		not out.contains("{N:") and not out.contains("{{"), "渲染结果: %s" % out)
 	# ATK=100 → 0.7*ATK = 70, 结果里应出现 70
 	_ok("★算出来的数值正确(ATK=100 → 0.7×ATK=70)", out.contains("70"), "渲染结果: %s" % out)
 	# 属性变了, 渲染结果要跟着变(这就是"实时"的本质)
 	u["atk"] = 200.0
-	var out2: String = s._render_skill_text(tpl, u, {})
+	var out2: String = s._render._render_skill_text(tpl, u, {})
 	_ok("★★属性变化后重渲染的数字跟着变(ATK翻倍→140)",
 		out2.contains("140") and out2 != out, "ATK=200 渲染: %s" % out2)
 
@@ -252,4 +252,5 @@ func _src() -> String:
 	if g != null:
 		s += "
 " + g.get_as_text(); g.close()
+	s += "\n" + FileAccess.get_file_as_string("res://scripts/scenes/battle_render.gd")   # _render_skill_text 已抽到 BattleRender(2026-07-26)
 	return s

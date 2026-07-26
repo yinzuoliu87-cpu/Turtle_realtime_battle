@@ -43,7 +43,7 @@ func _ready() -> void:
 	_ok("真火灼烧→算 tru 桶(不算mag)", b._dot_bucket_active({"dot_stacks": {"burn": 5}, "true_fire_until": 999.0}, "tru") and not b._dot_bucket_active({"dot_stacks": {"burn": 5}, "true_fire_until": 999.0}, "mag"))
 
 	# ④ 源码: 5个DOT tick调用走累积模式; 诅咒静音
-	var src: String = (Battle as GDScript).source_code if Battle is GDScript else ""
+	var src: String = ((Battle as GDScript).source_code if Battle is GDScript else "") + "\n" + FileAccess.get_file_as_string("res://scripts/scenes/battle_render.gd")   # _update_dot_floats 已抽到 BattleRender(2026-07-26)
 	var n_accum: int = src.count(', "mag", false, true)') + src.count(', "phy", false, true)') + src.count(', "tru", false, true)')
 	_ok("★DOT tick 调用走累积模式(dot_accum)>=4", n_accum >= 4, "实际 %d" % n_accum)
 	_ok("★诅咒 tick 静音(mute_sfx)", src.count(', "tru", false, true, true)') >= 1)

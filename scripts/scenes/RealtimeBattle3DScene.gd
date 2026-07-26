@@ -369,7 +369,7 @@ const ACTION_ATTACK := {
 # 近战小将·人体浪板的分段动作(2026-07-22)。时间轴由代码量出, 见 docs/plans/20260722-五需求方案书.md §4:
 #   0.00-0.64 蓄力+起跳 → 0.64-1.28 滞空甩索(0.68 射链) → 1.28-1.58 被拉俯冲(双脚前伸)
 #   → 1.58-2.41 踩滑(0.833s) → 2.41 侧跳落地
-# ★fps 必须让【动画时长 == 代码节拍】, 否则动画先播完 → _advance_anim 立刻回 idle,
+# ★fps 必须让【动画时长 == 代码节拍】, 否则动画先播完 → _render._advance_anim 立刻回 idle,
 #   剩下那段时间角色是【站姿】。2026-07-22 实测(用户追问"时间对不上吗"):
 #     leap/throw 7fps → 0.57s vs 节拍 0.64s, 各早完 0.07s
 #     surf      12fps → 0.33s vs 节拍 0.833s, 【早完 0.50s】—— 踩着敌人滑行的后半程在站着
@@ -387,7 +387,7 @@ const ACTION_MELEE := {
 	"land":  ["pets/animations/melee/land.png", 13.0],    # 4帧 / 0.31s ≈ 落地 0.30s
 }
 # ★fps 让【动画时长 == 技能节拍】。2026-07-22 复查发现精英五段有四段对不上,
-#   动画先播完 → _advance_anim 立刻回 idle → 剩下那段时间角色是站姿:
+#   动画先播完 → _render._advance_anim 立刻回 idle → 剩下那段时间角色是站姿:
 #     whirl      0.333s vs 节拍 0.42s  早完 0.09s
 #     hammer     0.364s vs 节拍 0.43s  早完 0.07s
 #     hammer_big 0.400s vs 节拍 1.47s  【早完 1.07s】= 空中蓄力那 1 秒角色站着悬停
@@ -423,7 +423,7 @@ const ACTION_RUN := {
 	"__minion_elite__": ["pets/animations/elite/run.png", 12.0],
 	"__minion_front__": ["pets/animations/melee/run.png", 12.0],
 	# 训龟大师(2026-07-23): 走路循环。id 是 __trainer__, _anim_key 直接返回 id → 走到这里。
-	#   移动由玩家 _trainer_sys._trainer_move_by 驱动, 但立绘照样流经 _update_run_anim(在 for u in _units 里),
+	#   移动由玩家 _trainer_sys._trainer_move_by 驱动, 但立绘照样流经 _render._update_run_anim(在 for u in _units 里),
 	#   靠"帧间位移>0.8"自动切走路/停回 idle —— 不用另写触发。
 	"__trainer__": ["pets/animations/trainer/run.png", 8.0],
 }
@@ -466,7 +466,7 @@ const VIGNETTE_A := 0.5
 # ============================================================================
 #  Phase 4: 商业级打击感 juice 参数 (全 F5 可调) — 见本文件 §JUICE
 #  设计: 所有单位视觉态(squash/stretch scale · 受击闪白 modulate · idle bob)统一由
-#  _update_world_transforms() 每帧从 per-unit juice 字段重建 → 从 base 精确复原, 不用重叠
+#  _render._update_world_transforms() 每帧从 per-unit juice 字段重建 → 从 base 精确复原, 不用重叠
 #  tween, 杜绝累积漂移/视觉残留 (回归高发区铁律: 共享视觉态别叠 tween, restore 到 base).
 # ============================================================================
 # ① squash & stretch (billboard scale; base=(1,1,1), 各相位叠乘后归一)
@@ -539,6 +539,7 @@ var _last_was_exhibition := false             # 进场已0命=表演赛(无stake
 var _cam: Camera3D
 var _ui_layer: CanvasLayer                # 血条/龟能 overlay + 标题 + 结算 (贴在 3D 之上)
 var _vfxiso := false                      # 纯特效隔离模式(VFXISO env): 黑底+无地面+藏单位立绘/UI, 只留特效对比参考
+var _render := BattleRender.new(self)   # 战斗渲染/动画显示层(每帧插值/世界变换/跑动画/覆盖/dot飘字/相机抖/技能文案·纯视觉不改战斗态)(2026-07-26 抽出)
 var _world: Node3D                        # 3D 内容挂载点 (SubViewport 内)
 var _sub: SubViewport
 var _projectiles: Array = []              # 飞行中的 3D 投射物 {node, from, to, tgt, dmg, magic, src, t, dur}
@@ -684,7 +685,7 @@ var _touch_pts := {}                      # 多点触摸 {index: pos}(移动双�
 var _pinch_prev := -1.0                   # 上帧双指间距(捏合比例基线)
 ## ── 视角平移(用户 2026-07-21:「手机端触屏拖动来移动摄像机位置, 电脑端就按住推动」) ──
 ## ★平移量并进 _cam_zoom_base(见 _apply_cam_zoom), 【不能直接写 _cam.position】——
-##   _update_camera_shake 每帧无条件覆写 position, 直接写会被逐帧抹掉。
+##   _render._update_camera_shake 每帧无条件覆写 position, 直接写会被逐帧抹掉。
 var _cam_pan := Vector3.ZERO
 var _pan_active := false                  # 正在拖动视角
 var _pan_from := Vector2.ZERO             # 按下时的屏幕位置(判定"是拖动还是点选")
@@ -2202,24 +2203,6 @@ func _cast_glacier(trainer: Dictionary, aim: Vector2) -> bool:
 	return true
 
 ## 每帧: 站在任一冰川带上的【敌方】单位 → 刷新 -40%移速 + 受伤+20%(0.2秒短窗·每帧续=站着才持续)。到期清带。
-func _update_spell_disc() -> void:
-	if _spell_disc == null or not is_instance_valid(_spell_disc):
-		return
-	var tr = _my_trainer()
-	var show := tr != null and _trainer_sys._trainer_ticks_active()
-	_spell_disc.visible = show
-	if not show:
-		return
-	var u: Dictionary = tr
-	var sid: String = str(u.get("_tr_active", "hook"))
-	var cd_max: float = float(TRAINER_SKILLS.get(sid, {}).get("cd", HOOK_CD))
-	var cd: float = float(u.get("_active_cd", 0.0))
-	_spell_disc.set_cd(cd / maxf(0.01, cd_max), cd)
-	if _disc_aiming:
-		_draw_aim_indicator()   # 拖动瞄准中: 战场上画方向指示器
-
-## 移动端【按住圆盘拖动瞄准】回调(Wild Rift 式·用户2026-07-24)。phase: update=拖动中 / cast=松手施法 / cancel=取消。
-## screen_dir=圆盘上拖动的屏幕方向; 2.5D 俯视下近似当作战场方向。
 func _on_spell_aim(phase: String, screen_off: Vector2) -> void:
 	match phase:
 		"update":
@@ -2508,65 +2491,6 @@ func _resolve_summon_sprite(spr_id: String) -> Dictionary:
 			return _sprite_dict_from(tex, null, false)
 	return {"tex": null}
 
-# ----------------------------------------------------------------------------
-#  立绘动画驱动: 每帧推进 idle 循环 / 动作一次. 设 Sprite3D.frame 切帧 (原生裁帧).
-#  idle: frame = int(t*fps) % frames (循环). 动作: 播到末帧后回 idle (清 anim_action).
-# ----------------------------------------------------------------------------
-# 移动时播 run 走路动画(循环), 停下回 idle. 攻击/受击/死亡/冲刺手动动画期间不切.
-func _update_run_anim(u: Dictionary, delta: float) -> void:
-	if not u.has("run_sd"):
-		var e = ACTION_RUN.get(_anim_key(u), null)   # ★同 _vfx._play_action: 三种小将共用 id, 要走动画键
-		u["run_sd"] = (_resolve_action(str(e[0]), float(e[1])) if e != null else {})
-	var rsd: Dictionary = u["run_sd"]
-	if rsd.is_empty():
-		return
-	if str(u.get("anim_action", "")) != "" or u.get("_manual_anim", false):
-		return
-	# ★定步长下 pos 只在 sim step 跳, 逐 render 帧测 moved 会在 step 边界狂切 run↔idle(每切复位 frame=0)
-	#   → 高帧率"不动且一直闪"(2026-07-25·4070)。改按 0.1s 时间窗累计位移测速(跨多 step 稳), 窗内不切帧表。
-	u["_run_acc"] = float(u.get("_run_acc", 0.0)) + u["pos"].distance_to(u.get("_run_last_pos", u["pos"]))
-	u["_run_acc_t"] = float(u.get("_run_acc_t", 0.0)) + delta
-	u["_run_last_pos"] = u["pos"]
-	if float(u["_run_acc_t"]) < 0.1:
-		return   # 窗未满: 保持当前帧表(不切=不复位帧), 让 _advance_anim 继续推帧
-	var speed: float = float(u["_run_acc"]) / maxf(0.0001, float(u["_run_acc_t"]))
-	u["_run_acc"] = 0.0
-	u["_run_acc_t"] = 0.0
-	var is_run_now: bool = (u.get("anim_sd", {}) == rsd)
-	if speed > 48.0 and not is_run_now:   # 速度阈值(帧率/步长无关): >48px/s → 播走路
-		_set_anim_sheet(u, rsd, "", true)
-		# ★走动走的是 is_idle=true 分支(直接套 idle_px/idle_offy), 同样绕不过归一问题:
-		#   idle_px 是按 80px 帧算的, 套到 96px 帧上 → 本体只有 1.17m 且悬空 0.43m。
-		if ANIM_NORM.has(_anim_key(u)):
-			_elite_sys._elite_fix_norm(u, rsd)
-	elif speed <= 48.0 and is_run_now:   # 停下 → 回 idle
-		_set_anim_sheet(u, u.get("idle_sd", {}), "", true)   # 回 idle: 该分支会自己还原 idle_px/idle_offy
-
-func _advance_anim(u: Dictionary, delta: float) -> void:
-	if u.get("_manual_anim", false):
-		return   # 手动逐帧动画期(忍者冲刺分段)不自动推进帧
-	var spr = u.get("sprite", null)
-	if not is_instance_valid(spr):
-		return
-	var sd: Dictionary = u.get("anim_sd", {})
-	var frames: int = int(sd.get("frames", 1))
-	var fps: float = float(sd.get("fps", 8.0))
-	if frames <= 1 or fps <= 0.0:
-		spr.frame = 0
-		return
-	u["anim_t"] = float(u.get("anim_t", 0.0)) + delta
-	var idx := int(u["anim_t"] * fps)
-	if u.get("anim_action", "") != "":
-		# 动作播一次: 到末帧 → 回 idle
-		if idx >= frames:
-			_set_anim_sheet(u, u.get("idle_sd", {}), "", true)
-			return
-	else:
-		idx = idx % frames   # idle 循环
-	spr.frame = clampi(idx, 0, frames - 1)
-
-# 切换当前播放的帧表 (idle 或动作): 换 texture + Sprite3D.hframes/vframes/frame + 复位计时/pixel_size/offset.
-#   is_idle=true 时复原 idle 的 px/offy; 动作图帧高可能不同, 按其帧高重算归一.
 func _set_anim_sheet(u: Dictionary, sd: Dictionary, action: String, is_idle: bool) -> void:
 	var spr = u.get("sprite", null)
 	var mat = u.get("grounded_mat", null)
@@ -2609,7 +2533,7 @@ func _anim_key(u: Dictionary) -> String:
 
 ## 精英小将专属动作: 直接换帧表, 不经 _vfx._play_action (它只认 attack/hurt/death).
 ##   action 写进 u["anim_action"] → 被 _vfx._play_action 顶部白名单挡住, 播完前不被普攻/受击换掉;
-##   _advance_anim 走到末帧自动回 idle。
+##   _render._advance_anim 走到末帧自动回 idle。
 ##   ★只对精英小将生效 —— 普通小将共用 "__minion__" id, 不加这道判断会给前后排也套上精英动作。
 const ELITE_ACT_BODY_H := 47.0    # 动作帧里角色本体高(px)
 const ELITE_ACT_FEET_ROW := 71.0  # 动作帧里脚底所在行
@@ -2710,7 +2634,7 @@ func _make_grounded_material(tex: Texture2D, _sd: Dictionary = {}) -> ShaderMate
 
 # 状态条: 复用回合制版 HpBar 组件 (自定义 _draw: 黑边/暗红槽/玻璃高光/逐行渐变填充/护盾段/受击红trail+白闪/刻度).
 #   + 左侧等级牌 (棕底金字 Panel, 回合制 turtle-hud 同款) + 下方龟能条 (实时资源, HpBar 不画).
-#   level: 玩家龟读 GameState.season_level; 召唤体无牌. 返回各组件引用供 _update_overlay 刷新.
+#   level: 玩家龟读 GameState.season_level; 召唤体无牌. 返回各组件引用供 _render._update_overlay 刷新.
 const BAR_W := 66.0      # HpBar 宽 (实时缩小, 用户; turtle-hud原88)
 const BAR_H := 4.0       # HpBar 高 (实时缩小)
 func _make_status_bar(side: String, level: int = 0) -> Dictionary:
@@ -2798,7 +2722,7 @@ func _process(delta: float) -> void:
 	# 演出每帧一次(真实时间·立绘动画/相机随真实帧走→平滑)。frozen/in_ts 用 sim 后最新态。
 	var r_frozen: bool = _hitstop > 0.0
 	var r_in_ts: bool = not _timestop._ts_active.is_empty()
-	_render_step(rd, r_frozen, r_in_ts)
+	_render._render_step(rd, r_frozen, r_in_ts)
 
 ## Phase4切片2: 交互固定步长累加器。攒够 SIM_DT 就跑一步 sim → 总 sim 时间只取决于 Σ钳制delta,
 ## 与"帧被切成多大块"无关(60/144/300fps 落到同样的整步序列)→ 交互游玩帧率无关。
@@ -2823,7 +2747,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 	_trainer_sys._tick_trainer_attacks(dt) # 训龟大师普攻: 站定扔石头抛物线弹道(用户2026-07-23)
 	_trainer_sys._tick_trainer_ai(dt)      # 敌方(快照)大师 AI: 乱走 + 逮机会甩钩锁(点3·场外援助·用户2026-07-23)
 	_trainer_sys._tick_hooks(dt)           # 钩锁: CD 扣减 + 被钩单位每帧朝大师拖(点3)
-	# Phase4 顿帧 hit-stop: 计时 >0 时冻结"模拟"给重量感(镜头震屏照常推进·在 _render_step)。
+	# Phase4 顿帧 hit-stop: 计时 >0 时冻结"模拟"给重量感(镜头震屏照常推进·在 _render._render_step)。
 	if frozen:
 		_hitstop = maxf(0.0, _hitstop - dt)
 	elif in_ts:
@@ -2859,39 +2783,6 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 			_check_end()
 
 ## Phase4: 纯演出(立绘帧动画/相机/overlay·每帧一次)。frozen/in_ts 与 _sim_step 用同一份(sim前捕获)。
-func _render_step(rd: float, frozen: bool, in_ts: bool) -> void:
-	if frozen:
-		pass   # 顿帧: 冻结演出(juice/立绘定格保持冲击姿势), 只下方震屏照常
-	elif in_ts:
-		_vfx._juice_decay(rd)                    # 内部gate: 只衰减active的juice(非active冲击姿势定格)
-		for u in _timestop._ts_active:                # 只推进active立绘帧动画(非active定格)
-			if u.get("alive", false):
-				if u.get("is_big_bear", false):
-					_equip_tick_sys._tick_bear_anim(u, rd)
-				else:
-					_advance_anim(u, rd)
-		_timestop._ts_tick_visual(rd)                 # 时停视觉维持(钟表脉动/暗角等)
-	else:
-		_vfx._juice_decay(rd)        # squash/闪白/挥击 等计时衰减
-		for u in _units:           # 立绘帧动画推进 (idle 循环 / 动作一次)
-			if u["alive"] or u.get("anim_action", "") == "death":
-				if u.get("is_big_bear", false):
-					_equip_tick_sys._tick_bear_anim(u, rd)   # 大熊: 状态机(走路/停顿/熊爪拍/砸地)
-				else:
-					_update_run_anim(u, rd)
-					_advance_anim(u, rd)
-	_update_camera_shake(rd)    # 震屏始终推进 (含冻结期)
-	_update_world_transforms()
-	_tick_follow_vfx()             # 跟随特效(冰块等)贴目标最新世界坐标(含击飞height)
-	_update_ninja_marks()          # 忍者冲击标记(纯视觉·用户2026-07-12)
-	_tick_ink_links()              # 线条·连笔连接线跟随双方脚底(到期/死亡断链)
-	_update_overlay()
-	_update_dot_floats()           # DOT累积数字(点1): 跟随头顶+左右错开; 桶结束→弹射跳走
-	_update_spell_disc()           # 法术圆盘(点3): 刷钩锁冷却指示 + 非战斗期隐藏
-
-# ═══════════════════════════════════════════════════════════════════
-#  沙漏059 JoJo时停 — 触发/蓄力/冻结/恢复/视觉 (登场10s → 蓄力1s → 时停4/10/30s, 一场一次)
-# ═══════════════════════════════════════════════════════════════════
 const _TS_TIMER_FIELDS := [
 	"_anim_lock_until",
 	"_mark_until",
@@ -2945,32 +2836,6 @@ func _reg_tween() -> Tween:
 	if _sim_tweens.size() > 512:
 		_sim_tweens = _sim_tweens.filter(func(x): return x != null and x.is_valid())
 	return t
-
-func _tick_follow_vfx() -> void:
-	for i in range(_follow_vfx.size() - 1, -1, -1):
-		var f: Dictionary = _follow_vfx[i]
-		var spr = f["spr"]
-		if not is_instance_valid(spr):
-			_follow_vfx.remove_at(i)
-			continue
-		var u: Dictionary = f["unit"]
-		if not u.get("alive", true):                # 目标已死 → 跟随特效随之消失
-			spr.queue_free()
-			_follow_vfx.remove_at(i)
-			if f.get("mark", false): u["_mark_spr"] = null
-			continue
-		if f.get("mark", false) and _t > float(u.get("_mark_until", 0.0)):   # 锁定标记到期 → 移除
-			spr.queue_free()
-			_follow_vfx.remove_at(i)
-			u["_mark_spr"] = null
-			continue
-		var base: Vector3 = _world_pos(u["pos"], float(u.get("height", 0.0)) + float(f["h"]))
-		if f.has("orbit_r"):                         # 绕身环绕(水晶叠层)
-			var ang: float = float(f["orbit_a"]) + _t * float(f["orbit_spd"])
-			base += Vector3(cos(ang) * float(f["orbit_r"]), 0.0, sin(ang) * float(f["orbit_r"]))
-		spr.position = base
-		if f.get("pulse", false):
-			spr.modulate.a = 0.32 + 0.16 * sin(_t * 3.2)   # 融合态光环呼吸脉冲
 
 func _tick_unit(u: Dictionary, delta: float) -> void:
 	if _stress: _dbg_op = "tick:" + str(u.get("id", "?"))   # 卡死猎手: 追踪当前tick的单位(冻死时定位)
@@ -4408,48 +4273,6 @@ func _update_gold_barrier(u: Dictionary) -> void:
 		bt.tween_property(s2, "pixel_size", s2.pixel_size * 1.35, 0.2)
 		bt.chain().tween_callback(s2.queue_free)
 
-
-# 通用眩晕圈: 单位眩晕期间头顶 3 颗火花星水平绕转(镜头俯角自然渲成椭圆); 眩晕结束/死亡即撤.
-# 每帧从 _tick_unit 调, 门=_t<stun_until → 任何来源的眩晕都自动带这圈(用户2026-07-11「做个眩晕通用特效」).
-# 忍者冲击标记(用户2026-07-12·纯视觉层, 不改冲击机制): 每个"未被冲击过"(不在_ninja_dash_until 10s冷却里)的敌人头顶挂红色锁定标记; 忍者缩地闪到它→它进10s冷却→标记碎裂; 冷却结束→标记重现. 每帧全局调.
-func _update_ninja_marks() -> void:
-	var ninja_sides := {}
-	for u in _units:
-		if u.get("alive", false) and str(u.get("id", "")) == "ninja":
-			ninja_sides[str(u.get("side", ""))] = true
-	if ninja_sides.is_empty():
-		return
-	for o in _units:
-		var is_enemy := false
-		for ns in ninja_sides.keys():
-			if str(o.get("side", "")) != ns:
-				is_enemy = true; break
-		var eligible: bool = is_enemy and o.get("alive", false) and not o.get("egg", false) and not _is_untargetable(o) and _t >= float(o.get("_ninja_dash_until", 0.0))
-		var spr = o.get("_ninja_mark_spr", null)
-		var valid: bool = spr != null and is_instance_valid(spr)
-		if eligible and not valid:
-			var m := Sprite3D.new()
-			m.texture = load("res://assets/sprites/vfx/ninja-mark.png")
-			m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-			m.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-			m.shaded = false; m.transparent = true
-			m.modulate = Color(1.0, 0.32, 0.32, 0.92)
-			var mtw := float(maxi(1, int(m.texture.get_width())))
-			m.pixel_size = (30.0 * WS) / mtw
-			m.position = _world_pos(o["pos"], float(o.get("height", 0.0)) + 1.9)
-			_world.add_child(m)
-			var pt := create_tween().bind_node(m).set_loops()
-			pt.tween_property(m, "modulate:a", 0.5, 0.6).set_trans(Tween.TRANS_SINE)
-			pt.tween_property(m, "modulate:a", 0.92, 0.6).set_trans(Tween.TRANS_SINE)
-			_follow_vfx.append({"spr": m, "unit": o, "h": 1.9})
-			o["_ninja_mark_spr"] = m
-			o["_ninja_mark_pulse"] = pt
-		elif not eligible and valid:
-			o["_ninja_mark_spr"] = null
-			var pulse = o.get("_ninja_mark_pulse", null)
-			if pulse != null and is_instance_valid(pulse): pulse.kill()
-			o["_ninja_mark_pulse"] = null
-			_ninja_sys._ninja_mark_shatter(spr)
 
 func _update_stun_vfx(u: Dictionary) -> void:
 	var active: bool = _t < float(u.get("stun_until", 0.0))
@@ -5964,7 +5787,7 @@ func _dot_bucket_active(u: Dictionary, bucket: String) -> bool:
 					return true
 	return false
 
-## 累加一次 DOT 伤害进对应桶的常驻数字。首次建 Label(挂 _ui_layer), 之后每帧由 _update_dot_floats 跟头顶。
+## 累加一次 DOT 伤害进对应桶的常驻数字。首次建 Label(挂 _ui_layer), 之后每帧由 _render._update_dot_floats 跟头顶。
 func _dot_accumulate(u: Dictionary, bucket: String, dmg: int) -> void:
 	if not (u.get("_dot_float") is Dictionary):
 		u["_dot_float"] = {}
@@ -5999,39 +5822,7 @@ func _dot_float_flyaway(u: Dictionary, bucket: String, st: Dictionary) -> void:
 		var dt: String = {"mag": "magic", "phy": "physical", "tru": "true"}.get(bucket, "true")
 		_vfx._float_text(u["pos"], str(total), _dot_bucket_col(bucket), false, "damage", dt)
 
-## 每帧: 常驻 DOT 数字跟随头顶 + 左右错开; 桶结束(或单位死)→弹射跳走。在 _process 里 _update_overlay 之后调。
-func _update_dot_floats() -> void:
-	if _cam == null:
-		return
-	for u in _units:
-		if not (u.get("_dot_float") is Dictionary):
-			continue
-		var df: Dictionary = u["_dot_float"]
-		if df.is_empty():
-			continue
-		var dead: Array = []
-		for bucket in df:
-			var st: Dictionary = df[bucket]
-			var node = st.get("node", null)
-			if not is_instance_valid(node):
-				dead.append(bucket); continue
-			if not u.get("alive", false) or not _dot_bucket_active(u, bucket):
-				_dot_float_flyaway(u, bucket, st)
-				dead.append(bucket); continue
-			var head := _world_pos(u["pos"], 2.7)   # 比伤害飘字(2.2)高一截, 不挡血条
-			if _cam.is_position_behind(head):
-				(node as Control).visible = false; continue
-			(node as Control).visible = true
-			var screen: Vector2 = _cam.unproject_position(head)
-			var slot: int = int(st.get("slot", 0))
-			var xoff: float = 0.0 if slot == 0 else (-48.0 if slot == 1 else 48.0)
-			var lbl := node as Label
-			var tsz := _vfx._float_num_font().get_string_size(lbl.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, float(lbl.get_theme_font_size("font_size")))
-			lbl.position = screen - tsz / 2.0 + Vector2(xoff, 0.0)
-		for b in dead:
-			df.erase(b)
-
-# ── 竹叶生命球 (1:1 回合制 _spawn_bamboo_orb 港到2.5D): 绿球从目标抛物线(3D高度弧)飞回竹叶龟 + 绿拖尾 + 落点爆 ──
+## 每帧: 常驻 DOT 数字跟随头顶 + 左右错开; 桶结束(或单位死)→弹射跳走。在 _process 里 _render._update_overlay 之后调。
 func _spawn_bamboo_orb(from_pos: Vector2, to_pos: Vector2, on_land: Callable = Callable()) -> void:
 	var orb_path := "res://assets/sprites/vfx/bamboo-charge-orb.png"
 	if not ResourceLoader.exists(orb_path):
@@ -7367,28 +7158,6 @@ func _drop_ink_link_of(u: Dictionary) -> void:
 		if L["a"] == u or L["b"] == u:
 			if is_instance_valid(L["spr"]): L["spr"].queue_free()
 			_ink_links.remove_at(i)
-
-func _tick_ink_links() -> void:                                  # 每帧: 线跟着两只龟脚底走; 到期/死亡→断
-	for i in range(_ink_links.size() - 1, -1, -1):
-		var L: Dictionary = _ink_links[i]
-		var a: Dictionary = L["a"]; var b: Dictionary = L["b"]
-		if _t >= float(L["until"]) or not a.get("alive", false) or not b.get("alive", false):
-			if is_instance_valid(L["spr"]): L["spr"].queue_free()
-			_ink_links.remove_at(i); continue
-		var spr = L["spr"]
-		if not is_instance_valid(spr): continue
-		var wf: Vector3 = _world_pos(a["pos"], 0.06)             # 贴地(脚底)
-		var wt: Vector3 = _world_pos(b["pos"], 0.06)
-		var seg: Vector3 = wt - wf
-		var Lg: float = seg.length()
-		if Lg < 0.01: continue
-		var th: int = maxi(1, spr.texture.get_height())
-		var tw_px: int = maxi(1, spr.texture.get_width())
-		spr.pixel_size = (10.0 * WS) / float(th)                 # 线宽10码
-		spr.position = wf + seg * 0.5
-		spr.rotation = Vector3.ZERO
-		spr.rotation.y = -atan2(seg.z, seg.x)
-		spr.scale = Vector3(Lg / (float(tw_px) * spr.pixel_size), 1.0, 1.0)
 
 func _storm_particles(center: Vector2, radius: float) -> GPUParticles3D:
 	var ps := GPUParticles3D.new()
@@ -8954,70 +8723,6 @@ func _tick_summon_special(u: Dictionary, delta: float) -> void:
 				_apply_damage_from(u, low, _atk_dmg(u, u.get("special_scale", 1.5) * 0.5, low), Color("#9bf0ff"))
 
 
-# ============================================================================
-#  每帧: 3D 节点世界坐标更新 (XZ + 高度) + 影/环随高缩放淡 + Phase4 squash/闪白/bob
-# ============================================================================
-func _update_world_transforms() -> void:
-	for u in _units:
-		if not u["alive"]:
-			continue
-		var spr: Sprite3D = u["sprite"]
-		var shadow: Sprite3D = u["shadow"]
-		var ring: Sprite3D = u["ring"]
-		if not is_instance_valid(spr):
-			continue
-		# ★Phase4切片2b 渲染插值: 立绘/影/环用【上一步pos↔当前pos】按 _render_alpha lerp 的位置 → 消固定步长在高帧率下的卡顿。
-		#   _render_alpha=0(det模式/正好整步)时 = 当前 pos, 与不插值一致。朝向/last_x 仍用真 pos(朝向不卡)。
-		var _rpos: Vector2 = (u.get("_prev_pos", u["pos"]) as Vector2).lerp(u["pos"] as Vector2, _render_alpha)
-		var _rh: float = lerpf(float(u.get("_prev_height", u.get("height", 0.0))), float(u.get("height", 0.0)), _render_alpha)
-		# 朝向: 有战斗目标→由_tick_unit锁定朝敌(死区防抖); 无目标→才随移动方向(立绘默认朝左→flip_h=true朝右); 初始左队朝右/右队朝左
-		var _px: float = u["pos"].x
-		var _dx: float = _px - float(u.get("last_x", _px))
-		if not bool(u.get("_has_target", false)) and absf(_dx) > 0.3:
-			u["face_right"] = _dx > 0.0
-		u["last_x"] = _px
-		spr.flip_h = bool(u.get("face_right", str(u["side"]) == "left")) != _art_faces_right(u)   # 原图朝右的立绘取反(用户2026-07-17"建模左右反")
-		# --- Phase4: squash/stretch 形变 + idle bob 高度微浮 (全从 base 起算, 不累积) ---
-		var sq := _vfx._juice_scale_for(u)              # (sx, sy) 形变系数 (base=1,1)
-		var bob := _vfx._juice_bob_for(u)               # idle 呼吸 Y 偏移 (米)
-		# 立绘: XZ + Y(高度 + 落地基线抬升 + bob). billboard 自动朝镜头, 不翻 facing.
-		spr.position = _world_pos(_rpos, _rh + GROUND_LIFT + bob) + u.get("_bear_voff", Vector3.ZERO) + u.get("_atk_voff", Vector3.ZERO) + u.get("_slam_voff", Vector3.ZERO)   # 大熊扑击/砸地 + 近战踏步lunge + 过肩摔起跳(#7)·pos/height 走渲染插值
-		var bs: Vector3 = u.get("spr_base_scale", Vector3.ONE)
-		var gm: float = float(u.get("size_mult", 1.0))   # 体型倍率(石头岩层+2%/层); 从base起算不累积
-		spr.scale = Vector3(bs.x * sq.x * gm, bs.y * sq.y * gm, bs.z)
-		# 受击闪白: modulate 由 base 白 → 过曝白线性插值 (flash_t/JUICE_FLASH_SEC); 死亡淡出走 alpha 不冲突
-		var fl: float = clampf(u.get("flash_t", 0.0) / JUICE_FLASH_SEC, 0.0, 1.0)
-		spr.modulate = Color.WHITE.lerp(u.get("flash_col", JUICE_FLASH_COLOR), fl)
-		if str(u.get("id","")) == "ghost" and _t < float(u.get("phase_until", 0.0)):   # 虚化态本体(用户2026-07-11): 半透明+忽隐忽现幽紫 + 残影拖尾
-			spr.modulate = Color(0.78, 0.62, 1.0, 0.34 + 0.14 * sin(_t * 9.0))
-			if _t - float(u.get("_phase_ai_t", -1.0)) >= 0.08:
-				u["_phase_ai_t"] = _t
-				_spawn_phase_afterimage(spr)
-		# 影/环: 跟 XZ 不跟 Y (贴地), 随高度缩小变淡 (从各自基准 scale 起算, 召唤体影更小)
-		var s: float = 1.0 - clampf(_rh / 3.0, 0.0, 0.7)
-		if is_instance_valid(shadow):
-			var base_sc: Vector3 = u.get("shadow_base_scale", SHADOW_BASE)
-			shadow.position = _world_pos(_rpos, 0.02)
-			# 影也随 squash 横向张缩 (压扁→影变宽, 拉长→影变窄) 加重量感
-			shadow.scale = Vector3(base_sc.x * s * sq.x * gm, base_sc.y * s * gm, base_sc.z * s)   # 影随体型一起涨
-			shadow.modulate.a = SHADOW_BASE_A * s
-		# 接触核影: 紧贴脚下, 离地越高越快淡出(腾空=脚离地, 核影该消失) → 强化"踩地"
-		var contact = u.get("contact", null)
-		if is_instance_valid(contact):
-			var cbase: Vector3 = u.get("contact_base_scale", CONTACT_BASE)
-			var cs: float = 1.0 - clampf(_rh / 1.2, 0.0, 1.0)   # 比外影更快随高度收
-			contact.position = _world_pos(_rpos, 0.028)
-			contact.scale = Vector3(cbase.x * cs * sq.x, cbase.y * cs, cbase.z * cs)
-			contact.modulate.a = 0.0   # 隐藏接触核影(用户"只留影子")
-		if is_instance_valid(ring):
-			ring.position = _world_pos(_rpos, 0.015)
-
-# ============================================================================
-#  §JUICE — Phase4 商业级打击感 (squash&stretch / 闪白 / 顿帧 / 震屏 / idle bob / 粒子)
-#  统一态机: 触发函数只置"剩余秒"字段, 每帧 _vfx._juice_decay 自减, 视觉由 _vfx._juice_scale_for/
-#  _vfx._juice_bob_for + _update_world_transforms 重建 → 复原干净(scale/modulate 都回 base, 无漂移).
-# ============================================================================
-
 func _apply_cam_zoom() -> void:
 	if _cam == null or not is_instance_valid(_cam):
 		return
@@ -9027,7 +8732,7 @@ func _apply_cam_zoom() -> void:
 	var anchor: Vector3 = CAM_TARGET + _cam_pan
 	_cam_zoom_base = anchor + (_cam_base - CAM_TARGET) / _cam_zoom
 	if _shake_amp <= 0.0001:
-		_cam.position = _cam_zoom_base   # 不在震屏中→立即应用(震屏中由 _update_camera_shake 每帧应用)
+		_cam.position = _cam_zoom_base   # 不在震屏中→立即应用(震屏中由 _render._update_camera_shake 每帧应用)
 
 ## 按屏幕拖动量平移视角。dx/dy = 本次鼠标/手指的屏幕位移(像素)。
 ## 相机 look_at 后 basis 固定, 所以直接用 basis 的右向量 + 地面上的"屏幕上方"向量组合。
@@ -9065,22 +8770,6 @@ func _pinch_dist() -> float:
 	var ks: Array = _touch_pts.keys()
 	return (_touch_pts[ks[0]] as Vector2).distance_to(_touch_pts[ks[1]] as Vector2)
 
-# 震屏每帧推进: 衰减幅度 + 伪随机偏移镜头, 归零时精确复位到缩放后基准
-func _update_camera_shake(delta: float) -> void:
-	if _cam == null or not is_instance_valid(_cam):
-		return
-	if _shake_amp <= 0.0001:
-		_shake_amp = 0.0
-		_cam.position = _cam_zoom_base
-		return
-	_shake_t += delta
-	_shake_amp = _shake_amp * exp(-JUICE_SHAKE_DECAY * delta)   # 指数衰减
-	# 伪随机偏移 (sin/cos 不同频 → 不规则); 横/竖各一份, 不动深度 z
-	var ox: float = sin(_shake_t * JUICE_SHAKE_FREQ * TAU) * _shake_amp
-	var oy: float = cos(_shake_t * JUICE_SHAKE_FREQ * 0.81 * TAU + 1.3) * _shake_amp
-	_cam.position = _cam_zoom_base + Vector3(ox, oy, 0.0)
-
-# 触发震屏: 取较大幅度叠加(封顶), 重置相位让新事件抖得明显
 func _shake(amp: float) -> void:
 	if amp <= 0.0:
 		return
@@ -9436,64 +9125,6 @@ func _make_glow_quad(size_m: float) -> QuadMesh:
 	qm.material = dm
 	return qm
 
-# 血条/龟能 overlay: 每帧 unproject 单位头顶 → 屏幕像素 (跟随)
-func _update_overlay() -> void:
-	if _cam == null:
-		return
-	if _dl_hud != null and is_instance_valid(_dl_hud):
-		_dl_sys._dl_update_hud()
-	_info_sys._update_team_panels()   # 头像框栏: 每帧刷 HP 条 / 死亡变暗 / 选中高亮
-	for u in _units:
-		var root: Control = u["bar_root"]
-		if not is_instance_valid(root):
-			continue
-		if not u["alive"]:
-			root.visible = false
-			continue
-		# HpBar 组件刷新 (HP/护盾/受击红trail+白闪/刻度全自带, 1:1 回合制血条).
-		#   update_state 读 u 的 maxHp/hp/shield 字段; 召唤体也是同 HpBar (无护盾段则自然不画).
-		var hb = u.get("hp_bar", null)
-		if hb != null and is_instance_valid(hb):
-			u["_auraEnergy"] = u.get("store_energy", 0.0)   # 镜像→Hp条资源条(储能/怒气/星能/泡泡, 字段对齐回合制端口)
-			u["_lavaRage"] = u.get("rage", 0.0)
-			u["_starEnergy"] = u.get("star_energy", 0.0)
-			u["bubbleStore"] = u.get("bubble_store", 0.0)
-			u["_stoneDefGained"] = float(u.get("base_def", 0.0)) - float(u.get("stone_init_def", u.get("base_def", 0.0)))
-			u["_initDef"] = float(u.get("stone_init_def", u.get("base_def", 0.0)))
-			hb.update_state(u)
-			var lvb = u.get("level_badge", null)   # 036温泉蛋临时升级→等级框数字实时跳
-			if lvb != null and is_instance_valid(lvb) and lvb.get_child_count() > 0:
-				(lvb.get_child(0) as Label).text = str(_effective_level(u))
-		# 龟能条 (实时资源; 召唤体的 en_fill 已 hide)
-		var enf = u.get("en_fill", null)
-		if enf != null and is_instance_valid(enf) and enf.visible:
-			# 进度 = 最快要冷却好的那个技的进度 (1 - 剩余/总; 即"下一招"的充能条)
-			var prog := 0.0
-			var cds3: Dictionary = u.get("skill_cd", {})
-			for s in u.get("active_skills", []):
-				var st := str(s)
-				if not _IMPL_SKILLS.has(st):
-					continue
-				var base := _skill_cd(u, st)
-				var p := 1.0 - clampf(float(cds3.get(st, base)) / maxf(0.1, base), 0.0, 1.0)
-				if p > prog:
-					prog = p
-			enf.size.x = BAR_W * prog
-		# 头顶世界坐标 → 屏幕 (bar_head_h 可按单位覆写·大单位如海盗船抬高)
-		var head := _world_pos(u["pos"], u["height"] + float(u.get("bar_head_h", 2.4)))
-		if _cam.is_position_behind(head):
-			root.visible = false
-			continue
-		root.visible = true
-		var screen: Vector2 = _cam.unproject_position(head)
-		var _bx: float = BAR_W * 0.5
-		if u.get("_isEgg", false):
-			_bx -= 8.0   # 蛋: 补偿等级牌左突(bw13+3的一半), 让"牌+血条"整体居中在蛋上(条本身仍对准蛋心)
-		root.position = screen - Vector2(_bx, 8)   # 居中 (条宽 BAR_W)
-
-# ============================================================================
-#  灭队判定 + 结算横幅 (复用 2D _check_end; 赛季结算 Phase 3 接 GameState)
-# ============================================================================
 func _check_end() -> void:
 	if OS.has_environment("VFXPREVIEW"): return   # 预览模式不判胜负
 	if _is_dual_lane_mode():
@@ -11024,19 +10655,6 @@ func _status_signature(u: Dictionary) -> String:
 ## 把技能/被动文案模板按【单位当前属性】渲染成人读文本。
 ## pets.json 里写的是 {N:0.7*ATK} / {{ATK}} 这类占位符, 不渲染就【原样漏到界面】。
 ## 图鉴一直走 SkillText, 战斗详情面板此前漏接 —— 这就是用户在面板上看到 {N:0.7*ATK} 的原因。
-func _render_skill_text(tpl: String, u: Dictionary, sk: Dictionary) -> String:
-	if tpl == "":
-		return ""
-	var out := tpl
-	if SkillText != null:
-		out = SkillText.render_plain(tpl, u, sk if sk is Dictionary else {})
-	return _strip_html(out)
-
-## 详情面板【属性行】的单一事实源 —— 建面板和每帧刷新都走这一个函数,
-## 所以两边不可能漂移(加属性只改这里一处)。返回 [[图标路径, 文本, 颜色], ...]。
-##
-## ★核心 7 项恒显示; 其余"有值才显示"(0 的不占位, 免得面板一片 0)。
-## ★不要用 emoji 当图标 —— 本项目已「全去emoji(根治绿块+跨平台一致)」, 没图标就留空占位。
 func _show_unit_info_panel(u: Dictionary) -> void:
 	# 引导第 2 步等的就是"玩家点开了详情面板"这个动作(advanceOn: info_panel_opened)。
 	if _tutorial != null and is_instance_valid(_tutorial):
@@ -11146,7 +10764,7 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 		# ★统一口径: 原来这里【写死取 desc(详细)】而技能段写死取 brief(缩略),
 		#   同一个面板里两种口径 —— 现在都听 _skill_detail() 的。
 		var _ptpl := SkillText.text_of(passive, _skill_detail())
-		var pdesc := _render_skill_text(_ptpl, u, passive)
+		var pdesc := _render._render_skill_text(_ptpl, u, passive)
 		if pdesc != "":
 			_info_passive_lbl = _add_body_text(vb, pdesc)
 			_info_passive_tpl = _ptpl

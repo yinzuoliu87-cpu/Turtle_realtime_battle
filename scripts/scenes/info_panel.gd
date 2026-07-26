@@ -129,7 +129,7 @@ func _refresh_info_panel() -> void:
 	#   模板里的 {N:0.7*ATK} 按【当前】ATK 重算 —— 吃了增伤/破防 buff 后数字会跟着动。
 	if battle._info_passive_lbl != null and is_instance_valid(battle._info_passive_lbl) and battle._info_passive_tpl != "":
 		var pv: Dictionary = ud.get("passive", {}) if ud.get("passive", null) is Dictionary else {}
-		var ptxt = battle._render_skill_text(battle._info_passive_tpl, ud, pv)
+		var ptxt = battle._render._render_skill_text(battle._info_passive_tpl, ud, pv)
 		if battle._info_passive_lbl.text != ptxt:
 			battle._info_passive_lbl.text = ptxt
 	for ent in battle._info_skill_lbls:
@@ -140,7 +140,7 @@ func _refresh_info_panel() -> void:
 		if stpl == "":
 			continue
 		var sdict = (ent as Dictionary).get("sk", {})
-		var stxt = battle._render_skill_text(stpl, ud, sdict if sdict is Dictionary else {})
+		var stxt = battle._render._render_skill_text(stpl, ud, sdict if sdict is Dictionary else {})
 		if slb.text != stxt:
 			slb.text = stxt
 	# ★状态 chips: 签名变了才整块重建(条目数会变, 改不了单个 Label)
@@ -336,7 +336,7 @@ func _panel_skill_entries(u: Dictionary) -> Array:
 			if sk is Dictionary and str(sk.get("type", "")) == str(t):
 				var _stpl = battle.SkillText.text_of(sk, battle._skill_detail())
 				out.append({"name": str(sk.get("name", t)),
-							"desc": battle._render_skill_text(_stpl, u, sk),
+							"desc": battle._render._render_skill_text(_stpl, u, sk),
 							"tpl": _stpl, "sk": sk})
 				break
 	# 普攻 (skillPool[0] 一般是 physical/magic) — 补一条让面板不空
@@ -346,7 +346,7 @@ func _panel_skill_entries(u: Dictionary) -> Array:
 		if t0 == "physical" or t0 == "magic":
 			var _btpl = battle.SkillText.text_of(s0, battle._skill_detail())
 			out.append({"name": str(s0.get("name", "普攻")) + " (普攻)",
-						"desc": battle._render_skill_text(_btpl, u, s0),
+						"desc": battle._render._render_skill_text(_btpl, u, s0),
 						"tpl": _btpl, "sk": s0})
 	return out
 
