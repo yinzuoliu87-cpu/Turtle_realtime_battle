@@ -59,7 +59,7 @@ func _edit_place_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 		u["_tr_passive"] = ""
 		battle._units.append(u)
 		if str(side) == "left":
-			battle._build_spell_disc()   # 我方大师 → 建法术圆盘(按 Q / 点盘 放主动)
+			battle._hud._build_spell_disc()   # 我方大师 → 建法术圆盘(按 Q / 点盘 放主动)
 		_edit_set_status("摆放 训龟大师·%s (%s) · 我方按 Q 放/敌方自动放 · 共 %d 单位" % [
 			str(battle.TRAINER_SKILLS.get(battle._edit_trainer_active, {}).get("name", battle._edit_trainer_active)),
 			("友军" if side == "left" else "敌方"), battle._units.size()])

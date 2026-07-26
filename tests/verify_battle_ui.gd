@@ -101,7 +101,7 @@ func _ready() -> void:
 	scene._on_dmg_stats_toggle()   # 关
 
 	# ── C. 结算按钮化 (此时 _units 已有 3 单位 → 7 列结算表真渲染) ──
-	scene._show_banner(true)
+	scene._hud._show_banner(true)
 	await get_tree().process_frame
 	var btns := _count_buttons(scene._ui_layer)
 	_ok("结算后 UI 层有操作按钮(再战/返回菜单等 ≥2)", btns >= 2, "共 %d 个 Button" % btns)

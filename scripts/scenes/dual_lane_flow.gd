@@ -439,7 +439,7 @@ func _dl_build_lane_field() -> void:
 	battle._inject_equipment()
 	battle._spawn._apply_spawn_passives()
 	battle._equip_sys._stats._eq_apply_all_stats()
-	battle._build_team_panels()   # ★双路补建左右头像框(装备图标随之显示): 原只在非双路分支L1051调·双路早退绕过→装了装备头像框空白(用户2026-07-11 #5)
+	battle._hud._build_team_panels()   # ★双路补建左右头像框(装备图标随之显示): 原只在非双路分支L1051调·双路早退绕过→装了装备头像框空白(用户2026-07-11 #5)
 
 func _dl_ensure_egg_hp(lvl: int) -> void:   # egg_hp 缺则按 3000+300×平均等级 初始化(两侧·用户2026-07-19)
 	if GameState == null:
@@ -723,7 +723,7 @@ func _dl_finish(won: bool) -> void:
 	battle._over = true
 	battle._dl_state = "done"
 	battle._settle_season(won)    # 结果喂赛季(命/币/胜场/XP/糖果罐/ghost上传), 守卫一次性
-	battle._show_banner(won)
+	battle._hud._show_banner(won)
 
 func _dl_update_hud() -> void:   # 双路 HUD: 当前路 + 双方蛋血 + 破蛋窗口计时
 	var lane = str(GameState.current_lane) if GameState != null else "top"

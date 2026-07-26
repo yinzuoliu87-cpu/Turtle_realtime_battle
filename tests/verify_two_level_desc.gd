@@ -123,7 +123,8 @@ func _test_panel_switches() -> void:
 		if n is Button and str(n.text).begins_with("简明") or (n is Button and str(n.text).begins_with("详细")):
 			found = true
 	# 面板没开时按钮不存在是正常的 —— 这里改为查源码接线点
-	var src := FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")
+	var src := FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd") + "
+" + FileAccess.get_file_as_string("res://scripts/scenes/battle_hud.gd")   # 详情面板已抽到 BattleHud(2026-07-26)
 	_ok("★面板里挂了这个开关", _code_only(src).contains("_add_detail_toggle(vb, u)"),
 		"没接线 = 玩家点不到")
 	if GameState != null:

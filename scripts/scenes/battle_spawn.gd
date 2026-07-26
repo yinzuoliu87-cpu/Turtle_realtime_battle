@@ -15,8 +15,8 @@ func _spawn_teams() -> void:
 	# 🛠 调试场: 空场进编辑模式 (不自动出生; 用户点击摆位). 默认关 → 走正常 spawn.
 	if battle.DEBUG_EDIT:
 		battle._edit_mode = true
-		battle._build_edit_palette()
-		battle._build_brush_bar()   # 底部常驻笔刷栏(取代模态选龟·用户2026-07-24)
+		battle._hud._build_edit_palette()
+		battle._hud._build_brush_bar()   # 底部常驻笔刷栏(取代模态选龟·用户2026-07-24)
 		battle._debug._edit_set_status("编辑模式: 点空地摆兵 · 拖拽挪位 · 右键删")
 		return
 	if battle._is_dual_lane_mode():   # 双路: 读 dual_lineup 当前路 spawn 我方 leaders+小将 + 对手, 绕过评审/EQDEMO
@@ -172,7 +172,7 @@ func _spawn_teams() -> void:
 				_fu["hp"] = _fu["maxHp"] * 0.4
 				battle._equip_sys._eq_check_hp_threshold(_fu)
 	_spawn_trainers()         # 双方场外监视者(用户2026-07-22 需求3)
-	battle._build_team_panels()      # 局内 UI: 左右队头像框栏 (主龟; 召唤体不进) — 须在 equips 注入之后
+	battle._hud._build_team_panels()      # 局内 UI: 左右队头像框栏 (主龟; 召唤体不进) — 须在 equips 注入之后
 
 func _spawn_dual_lane() -> void:
 	# ★战场不在此刻加载 —— 先走呈现(总览/预览), 预览结束才 battle._dl_sys._dl_build_lane_field() 真正 spawn.
@@ -453,8 +453,8 @@ func _spawn_trainers() -> void:
 		else:
 			u["_tr_active"] = "hook"
 			u["_tr_passive"] = ""
-	battle._build_trainer_joystick()
-	battle._build_spell_disc()
+	battle._hud._build_trainer_joystick()
+	battle._hud._build_spell_disc()
 
 ## 校验装配的主动 id 合法(旧档/脏数据兜底为 hook)。
 func _apply_spawn_passives() -> void:

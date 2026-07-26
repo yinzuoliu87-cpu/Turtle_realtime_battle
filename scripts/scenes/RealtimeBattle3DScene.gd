@@ -544,6 +544,7 @@ var _targeting := BattleTargeting.new(self)   # 目标选择/敌我查询(最近
 var _damage := BattleDamage.new(self)   # 战斗结算: 两伤害路(_apply_damage DoT/真伤 + _apply_damage_from 普攻/技能·§3.3)+治疗/护盾/buff/眩晕/击退/DoT机制(含crit/dodge RNG·确定性核心)(2026-07-26 抽出)
 var _ballistics := BattleBallistics.new(self)   # 弹道: 发射(_fire_*各弹种)+逐帧推进(_step_projectiles/_step_pending_shots/_step_homing_arrow)+霰弹弹珠·几何确定性无RNG(2026-07-26 抽出)
 var _spawn := BattleSpawn.new(self)   # 单位生成/生命周期: 造单位(_make_unit)+双路/单路布阵spawn+训龟大师+spawn被动+召唤物(summon/藏身小将/海盗船)(2026-07-26 抽出)
+var _hud := BattleHud.new(self)   # 战斗HUD/面板构建与显示: UI层/暂停/日志/统计/编辑笔刷/队伍头像框/胜负横幅/点龟详情面板/触控盘·纯UI(2026-07-26 抽出)
 var _world: Node3D                        # 3D 内容挂载点 (SubViewport 内)
 var _sub: SubViewport
 var _projectiles: Array = []              # 飞行中的 3D 投射物 {node, from, to, tgt, dmg, magic, src, t, dur}
@@ -811,12 +812,12 @@ func _ready() -> void:
 		_enter_map_editor()
 		if OS.has_environment("SELFSHOT"): _self_screenshot()
 		return
-	_build_ui_layer()
+	_hud._build_ui_layer()
 	_review_console._build_debug_panel()   # 🛠 调试面板(评审demo·技能/装备/星级·用户2026-07-11)
 	if OS.has_environment("STRESS"):   # 卡死猎手: 开局前轮换左队(覆盖全28龟)
 		_stress_pre()
 	_spawn._spawn_teams()
-	# 新手引导: ★存成员变量 —— 后面 _show_unit_info_panel 要调 notify() 推进那一步。
+	# 新手引导: ★存成员变量 —— 后面 _hud._show_unit_info_panel 要调 notify() 推进那一步。
 	#   match1(第一把): "place"摆位引导延到 _dl_sys._dl_enter_place 才挂(那时才有摆位UI, 文案对得上屏幕);
 	#   match2(第二把)/旧路径: 现在就挂"battle"观察引导。
 	if GameState.tutorial:
@@ -831,7 +832,7 @@ func _ready() -> void:
 		_t2.timeout.connect(func() -> void:
 			for _u in _units:
 				if _u.get("alive", false) and str(_u.get("side", "")) == "left" and not _u.get("_isEgg", false) and not _u.get("is_summon", false):
-					_show_unit_info_panel(_u); break)
+					_hud._show_unit_info_panel(_u); break)
 	_audit = OS.has_environment("AUDIT")
 	if OS.has_environment("STRESS"):   # 卡死猎手: 高速无头循环对局 + 看门狗线程(主循环冻结→打最后操作)
 		_stress_start()
@@ -1064,71 +1065,6 @@ void fragment() {
 	mat.set_shader_parameter("max_a", clampf(VIGNETTE_A + 0.35, 0.0, 1.0))
 	return mat
 
-func _build_ui_layer() -> void:
-	_ui_layer = CanvasLayer.new()
-	_ui_layer.name = "UIOverlay"
-	if OS.has_environment("VFXISO"): _ui_layer.visible = false   # 纯特效隔离: 藏UI层(血条/飘字/头顶)
-	_ui_layer.layer = 10
-	add_child(_ui_layer)
-	# 屏幕暗角 (vignette): 铺满屏一张 radial 渐变 (中心透明→四角压暗) → 聚焦中心战斗, 收边氛围.
-	#   作 _ui_layer 首个子 → 在 3D 之上、其余 UI(标题/血条/飘字)之下, 不挡可读性.
-	if not OS.has_environment("NOVIG"):
-		var vig := ColorRect.new()
-		vig.name = "Vignette"
-		vig.set_anchors_preset(Control.PRESET_FULL_RECT)
-		vig.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		vig.material = _make_vignette_material()   # canvas shader: 按 UV 半径算暗角 alpha (RGB 正确, 不露灰)
-		_ui_layer.add_child(vig)
-	var title := Label.new()
-	title.text = "2.5D 实时战斗 · 3v3 (左队 vs 右队)"
-	title.add_theme_font_size_override("font_size", 18)
-	title.add_theme_color_override("font_color", Color("#cfe6ff"))
-	title.position = Vector2(24, 16)
-	_ui_layer.add_child(title)
-	if _is_dual_lane_mode():   # 双路 HUD: 当前路 + 双方蛋血
-		_dl_hud = Label.new()
-		_dl_hud.add_theme_font_size_override("font_size", 17)
-		_dl_hud.add_theme_color_override("font_color", Color("#ffe08a"))
-		_dl_hud.position = Vector2(340, 44); _dl_hud.size = Vector2(700, 24)
-		_dl_hud.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_ui_layer.add_child(_dl_hud)
-	_build_pause_log_ui()   # ⏸ 暂停 + 📜 日志 按钮/面板 (R2b)
-
-
-## ⏸ 暂停 + 📜 日志 顶栏按钮 + 两个默认隐藏面板. 按钮/面板 process_mode=ALWAYS → 暂停中仍可操作.
-func _build_pause_log_ui() -> void:
-	_pause_btn = Button.new()
-	_pause_btn.text = "⏸"
-	_pause_btn.position = Vector2(1208, 12); _pause_btn.size = Vector2(52, 38)
-	_pause_btn.add_theme_font_size_override("font_size", 22)
-	_style_hud_btn(_pause_btn)
-	_pause_btn.process_mode = Node.PROCESS_MODE_ALWAYS
-	_pause_btn.pressed.connect(_toggle_pause)
-	_ui_layer.add_child(_pause_btn)
-
-	var log_btn := Button.new()
-	log_btn.text = "📜"
-	log_btn.position = Vector2(1148, 12); log_btn.size = Vector2(52, 38)
-	log_btn.add_theme_font_size_override("font_size", 20)
-	_style_hud_btn(log_btn)
-	log_btn.process_mode = Node.PROCESS_MODE_ALWAYS
-	log_btn.pressed.connect(_toggle_log)
-	_ui_layer.add_child(log_btn)
-
-	var stats_btn := Button.new()
-	stats_btn.text = "📊"
-	stats_btn.position = Vector2(1088, 12); stats_btn.size = Vector2(52, 38)
-	stats_btn.add_theme_font_size_override("font_size", 20)
-	_style_hud_btn(stats_btn)
-	stats_btn.process_mode = Node.PROCESS_MODE_ALWAYS
-	stats_btn.pressed.connect(_on_dmg_stats_toggle)
-	_ui_layer.add_child(stats_btn)
-
-	_build_pause_panel()
-	_build_log_panel()
-
-
-## HUD 小按钮统一样式: 半透明深底 + 圆角 + hover 高亮.
 func _style_hud_btn(b: Button) -> void:
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	b.add_theme_color_override("font_color", Color("#dfeaf5"))
@@ -1209,38 +1145,6 @@ func _toggle_pause() -> void:
 
 
 ## 战斗日志浮层: 左下角可滚动富文本. 默认隐; process_mode ALWAYS.
-func _build_log_panel() -> void:
-	_log_panel = Panel.new()
-	_log_panel.position = Vector2(24, 300); _log_panel.size = Vector2(440, 380)
-	_log_panel.visible = false
-	_log_panel.process_mode = Node.PROCESS_MODE_ALWAYS
-	var psb := StyleBoxFlat.new()
-	psb.bg_color = Color(0.03, 0.05, 0.08, 0.92)
-	psb.border_color = Color(0.4, 0.55, 0.72, 0.5)
-	psb.set_border_width_all(2)
-	psb.set_corner_radius_all(8)
-	_log_panel.add_theme_stylebox_override("panel", psb)
-	var vb := VBoxContainer.new()
-	vb.set_anchors_preset(Control.PRESET_FULL_RECT)
-	vb.offset_left = 12; vb.offset_top = 10; vb.offset_right = -12; vb.offset_bottom = -12
-	vb.add_theme_constant_override("separation", 6)
-	_log_panel.add_child(vb)
-	var hdr := Label.new()
-	hdr.text = "📜 战斗日志"
-	hdr.add_theme_font_size_override("font_size", 17)
-	hdr.add_theme_color_override("font_color", Color("#cfe6ff"))
-	vb.add_child(hdr)
-	_log_rt = RichTextLabel.new()
-	_log_rt.bbcode_enabled = true
-	_log_rt.scroll_active = true
-	_log_rt.scroll_following = true
-	_log_rt.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_log_rt.add_theme_font_size_override("normal_font_size", 14)
-	vb.add_child(_log_rt)
-	_ui_layer.add_child(_log_panel)
-
-
-## 日志开关: 显/隐面板; 打开时用累积的 _battle_log 重建文本.
 func _toggle_log() -> void:
 	if _log_panel == null or not is_instance_valid(_log_panel):
 		return
@@ -1832,48 +1736,12 @@ func _draw_aim_indicator() -> void:
 
 ## 命中演出(2026-07-24 返工·照锤石Q): 前摇蓄力(HOOK_WINDUP·大师站定举钩) → 中速飞行(HOOK_MISSILE_SPD) → 到达。
 ## 结算不依赖它跑完(_trainer_sys._hook_grab 由 _pending_shots 定时调, 无头也稳)。
-func _build_trainer_joystick() -> void:
-	if not (SafeArea.is_mobile() or OS.has_environment("TRAINER_JOY")):
-		return
-	if _joystick != null and is_instance_valid(_joystick):
-		return
-	_joystick = VirtualJoystick.new()
-	var m: Vector4 = SafeArea.margins(Vector2(get_viewport().get_visible_rect().size), 18.0)
-	_joystick.position = Vector2(m.x, float(get_viewport().get_visible_rect().size.y) - VirtualJoystick.RADIUS * 2.0 - m.w)
-	_ui_layer.add_child(_joystick)
-
-
-## 双方各 spawn 一个训龟大师(用户2026-07-22 需求3: 己方玩家控制, 对面人机)。
-## 站位: 各自基地【后方角落】—— 它射程 2000 够到全场, 不需要靠前; 放角落才像"场外监视者",
-## 也不会挤进战线影响分离/避障。
-## ★幂等: 已经有了就不重复建 —— _spawn._spawn_teams 与 _dl_sys._dl_build_lane_field 都会调, 双路模式下
-##   若两边都跑到会 spawn 两个(实测双路走的是后者, 但留这道闸防将来改动)。
 func _valid_active(sid) -> String:
 	var s := str(sid)
 	return s if TRAINER_SKILLS.has(s) else "hook"
 
 
 ## 法术圆盘(点3): 右下角钩锁钮。PC 端主要靠按 Q(朝鼠标), 圆盘作冷却指示; 移动端点它施法(自动瞄最近敌)。
-func _build_spell_disc() -> void:
-	if _spell_disc != null and is_instance_valid(_spell_disc):
-		return
-	if _ui_layer == null:
-		return
-	# 圆盘显示【我方大师已装配的主动技能】图标(缺图→无图标, 不崩)
-	var sid: String = _valid_active(GameState.trainer_active)
-	var ipath: String = str(TRAINER_SKILLS.get(sid, {}).get("icon", HOOK_ICON))
-	var icon: Texture2D = load(ipath) if ResourceLoader.exists(ipath) else null
-	_spell_disc = SpellDisc.new()
-	_spell_disc.setup(icon, "Q", Callable(self, "_player_cast_hook_auto"), Callable(self, "_on_spell_aim"))
-	var vp: Vector2 = Vector2(get_viewport().get_visible_rect().size)
-	var m: Vector4 = SafeArea.margins(vp, 18.0)
-	_spell_disc.position = Vector2(vp.x - SpellDisc.R * 2.0 - m.z, vp.y - SpellDisc.R * 2.0 - m.w)
-	_ui_layer.add_child(_spell_disc)
-
-
-## 训龟大师立绘。用户要「像素风的冒险家」, 形象未定 —— 真图放到 TRAINER_SPRITE 即自动生效。
-## ★没真图时【退回占位并 push_warning】而不是静默兜底: 占位是小龟, 和冒险家长得完全不一样,
-##   悄悄用会让人(包括我自己)以为形象已经做完了。门禁 verify_trainer 也断言这条 warning 存在。
 func _make_trainer_placeholder_tex() -> ImageTexture:
 	# ★尺寸/比例: 游戏按【帧高】把立绘归一到 TARGET_BODY_H(2米), 所以本体必须【填满整帧】,
 	#   否则会被压成细条。初版 24×48 而身子只占中间 14px 宽 → 屏幕上只有 15×44 的一根竖条
@@ -7390,7 +7258,7 @@ func _check_end() -> void:
 		_over = true
 		var won: bool = right_alive == 0
 		_settle_season(won)        # 结果喂赛季 (命/币/胜场/XP/ghost), 守卫一次性
-		_show_banner(won)
+		_hud._show_banner(won)
 
 # 赛季结算 (1:1 搬自 2D RealtimeBattleScene._settle_season): 闭环把胜负喂回 GameState 养成
 func _settle_season(won: bool) -> void:
@@ -7436,138 +7304,6 @@ func _settle_season(won: bool) -> void:
 		gs.match_history[0]["ts"] = int(Time.get_unix_time_from_system())   # 相对时间戳 (RecordScene _rel_time 用)
 	gs.save()
 
-func _show_banner(won: bool) -> void:
-	if _settled:
-		return
-	_settled = true
-	# 结算: 解除暂停态并禁用暂停按钮(结果屏不可暂停); 记一条日志.
-	if get_tree().paused:
-		get_tree().paused = false
-	if _pause_panel != null and is_instance_valid(_pause_panel):
-		_pause_panel.visible = false
-	if _pause_btn != null and is_instance_valid(_pause_btn):
-		_pause_btn.disabled = true
-	_log("[color=%s]%s[/color]" % ["#ffd93d" if won else "#ff6b6b", "🏆 战斗胜利!" if won else "💀 战斗失败!"])
-	# §AUDIO: 结算 — 败方放 defeat 音; BGM 淡出收尾.
-	# ⚠缺口(2026-07-21 核实): assets/audio/sfx/ 下【只有 defeat.wav, 没有胜利音】,
-	#   所以赢了是静悄悄的。不在这里硬写一个 "victory" —— 文件不存在时 _audio_sys._sfx_simple 是
-	#   静默失败(不报错、只是没声音), 反而更难发现。等补了音频文件再接。
-	if not won:
-		_audio_sys._sfx_simple("defeat")
-	var a := _audio_sys._audio()
-	if a != null:
-		a.stop_bgm()
-	var gs = get_node_or_null("/root/GameState")
-	var accent := Color("#ffd93d") if won else Color("#ff6b6b")
-	# ★2026-07-21 修: 原来这里【全部写死 1280×720 + 绝对 y 坐标】, 只有正好 1280×720 才对,
-	#   手机上(分辨率不同)大字会跑偏甚至出屏。改成锚点自适应 —— 任何分辨率都居中。
-	#   (用户问「结算的页面你放在屏幕中间了吗」时查出来的: 本路结算幕用 CenterContainer 是对的,
-	#    但这个【最终胜负横幅】是另一套写死坐标的代码。)
-	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.0)                    # 从全透明淡入
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)   # ★锚点铺满, 不写死尺寸
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	_ui_layer.add_child(dim)
-	var dtw := create_tween()
-	dtw.tween_property(dim, "color:a", 0.6, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-
-	var big := Label.new()
-	big.text = ("🏆 胜利!" if won else "💀 失败!")
-	big.add_theme_font_size_override("font_size", 56)
-	big.add_theme_color_override("font_color", accent)
-	big.set_anchors_preset(Control.PRESET_CENTER_TOP)  # ★横向锚点居中
-	big.anchor_left = 0.0; big.anchor_right = 1.0
-	big.offset_left = 0.0; big.offset_right = 0.0
-	big.anchor_top = 0.34; big.anchor_bottom = 0.34
-	big.offset_top = -40.0; big.offset_bottom = 40.0
-	big.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	big.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_ui_layer.add_child(big)
-	# 大字入场: 从大缩到正常 + 淡入(原来是瞬间弹出)
-	big.scale = Vector2(1.9, 1.9)
-	big.pivot_offset = Vector2(big.size.x * 0.5, 40.0)
-	big.modulate.a = 0.0
-	var btw := create_tween()
-	btw.set_parallel(true)
-	btw.tween_property(big, "scale", Vector2.ONE, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_delay(0.12)
-	btw.tween_property(big, "modulate:a", 1.0, 0.30).set_delay(0.12)
-	# 双路: 大标题下补「整场比分 X-Y」→ 上下路都输显 0-2 整场失败, 一目了然(用户2026-07-12)
-	if _is_dual_lane_mode() and gs != null and gs.get("lane_results") is Dictionary and not (gs.get("lane_results") as Dictionary).is_empty():
-		var score := Label.new()
-		score.text = _dl_sys._dl_record_line()
-		score.add_theme_font_size_override("font_size", 24)
-		score.add_theme_color_override("font_color", Color("#cfe6ff"))
-		_banner_anchor_row(score, 0.455, 17.0)   # ★锚点自适应(原 position=(0,316) 写死)
-		score.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_ui_layer.add_child(score)
-		_banner_fade_in(score, 0.34)
-	# 奖励/赛季行 (有赛季态才显)
-	var info := ""
-	if _had_season and gs != null:
-		if _last_was_exhibition:
-			info = "表演赛 · +%d 深海币 (已淘汰, 无生命消耗)" % _last_reward
-		else:
-			info = "+%d 深海币    命 %d/8    胜场 %d    Lv.%d" % [_last_reward, int(gs.hearts), int(gs.season_wins), int(gs.get("season_level") if gs.get("season_level") != null else 1)]
-			if not won:
-				info += "    (失一命)"
-			if gs.is_eliminated():
-				info += "  ·  赛季淘汰!"
-	else:
-		info = "(练习赛 · 无赛季奖励)"
-	var rew := Label.new()
-	rew.text = info
-	rew.add_theme_font_size_override("font_size", 22)
-	rew.add_theme_color_override("font_color", Color("#ffe9a8"))
-	_banner_anchor_row(rew, 0.505, 15.0)   # ★锚点自适应(原 position=(0,350) 写死)
-	rew.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_ui_layer.add_child(rew)
-	_banner_fade_in(rew, 0.46)
-	# 结束操作按钮化: 只留「返回菜单」(用户2026-07-18"匹配里不应该有再战": 再战=reload重打同对手, roguelike流程不该原地重战→删).
-	var btn_row := HBoxContainer.new()
-	btn_row.add_theme_constant_override("separation", 28)
-	_banner_anchor_row(btn_row, 0.575, 24.0)   # ★锚点自适应(原 position=(0,392) 写死)
-	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	_ui_layer.add_child(btn_row)
-	# ★教学模式: 结算按钮走导演(战斗1打完→商店, 战斗2打完→结束回菜单), 而不是直接返回菜单。
-	var _td = get_node_or_null("/root/TutorialDirector")
-	if _td != null and _td.is_active():
-		# ★文字用 _peek_next【只读】—— 用 next_scene_after 会在【建按钮时】就推进 stage,
-		#   导致战斗1一结算 stage 就跳到 shop, 玩家还没点。点了才 next_scene_after 真推进。
-		#   (2026-07-23 自动跑一遍抓到: 战斗1→MainMenu、收尾没关沙盒, 就是这个副作用。)
-		var _peek: String = _td._peek_next("battle")
-		var _label: String = "去商店 逛逛 ▶" if _peek.ends_with("Shop.tscn") else ("完成教学 ✓" if _peek.ends_with("MainMenu.tscn") else "继续 ▶")
-		btn_row.add_child(_make_result_btn(_label, Color("#ffc23c"), Color("#3a1f00"),
-			func() -> void: get_tree().change_scene_to_file(_td.next_scene_after("battle"))))
-	else:
-		btn_row.add_child(_make_result_btn("🏠 返回菜单", Color("#5aa0d8"), Color("#04121e"),
-			func() -> void: get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")))
-	_banner_fade_in(btn_row, 0.60)
-	_build_stats_panel()             # #2 战斗统计面板
-
-
-## 结算横幅的一行: 横向铺满 + 纵向按【屏幕比例】定位(而不是写死像素 y)。
-## ★为什么: 原来全是 position=Vector2(0, 316) 这种绝对坐标 + size=Vector2(1280,...),
-##   只有正好 1280×720 才对; 手机分辨率一变, 大字/比分/按钮就会偏甚至跑出屏幕。
-##   frac = 该行中心在屏幕高度的比例; half_h = 行高的一半(像素)。
-func _banner_anchor_row(c: Control, frac: float, half_h: float) -> void:
-	c.anchor_left = 0.0
-	c.anchor_right = 1.0
-	c.offset_left = 0.0
-	c.offset_right = 0.0
-	c.anchor_top = frac
-	c.anchor_bottom = frac
-	c.offset_top = -half_h
-	c.offset_bottom = half_h
-
-## 结算横幅元素逐个淡入(原来整块瞬间弹出, 没有节奏)
-func _banner_fade_in(c: Control, delay: float) -> void:
-	c.modulate.a = 0.0
-	var tw := create_tween()
-	tw.tween_interval(delay)
-	tw.tween_property(c, "modulate:a", 1.0, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-
-
-## 结算按钮 (再战/返回菜单) — 圆角实色底 + 深字 + hover/pressed 态.
 func _make_result_btn(txt: String, bg: Color, fg: Color, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = txt
@@ -7680,89 +7416,6 @@ func _on_dmg_stats_toggle() -> void:
 
 
 
-
-# ══════════════════════════════════════════════════════════════
-# 结算统计表 (1:1 回合制 BattleEndScene._stats_table 7 列样式) — 双队并排, 召唤体单列一行
-# ══════════════════════════════════════════════════════════════
-func _build_stats_panel() -> void:
-	# 结算页要含【前面战场】的总结, 不能只有当前这一路(用户2026-07-19): 已结束的路走 _st_lane_hist 快照,
-	# 当前路直接读活的 _units; 三路以上信息量太大 → 做成分页(默认停在「合计」).
-	var pages: Array = []            # [{lane, title, left:[row], right:[row]}]
-	for snap in _st_lane_hist:
-		pages.append({"lane": snap["lane"], "title": _LANE_CN.get(snap["lane"], str(snap["lane"])),
-			"left": snap["left"], "right": snap["right"]})
-	var cur := {"lane": "cur", "title": "", "left": [], "right": []}
-	for u in _units:
-		var sd := str(u.get("side", ""))
-		if sd == "left" or sd == "right":
-			(cur[sd] as Array).append(_st_row(u))
-	if not ((cur["left"] as Array).is_empty() and (cur["right"] as Array).is_empty()):
-		var cl := str(GameState.current_lane) if GameState != null else ""
-		cur["title"] = _LANE_CN.get(cl, "本场") if not pages.is_empty() else "本场"
-		pages.append(cur)
-	if pages.is_empty():
-		return
-	if pages.size() > 1:             # 只有一路就没有「合计」的必要
-		pages.append({"lane": "all", "title": "合计",
-			"left": _st_merge_all(pages, "left"), "right": _st_merge_all(pages, "right")})
-
-	var panel := PanelContainer.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.05, 0.08, 0.12, 0.92)
-	sb.border_color = Color(0.3, 0.5, 0.7, 0.55)
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(8)
-	sb.content_margin_left = 18; sb.content_margin_right = 18
-	sb.content_margin_top = 12; sb.content_margin_bottom = 14
-	panel.add_theme_stylebox_override("panel", sb)
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 8)
-	panel.add_child(vb)
-	var title := Label.new()
-	title.text = "⚔ 战斗统计"
-	title.add_theme_font_size_override("font_size", 20)
-	title.add_theme_color_override("font_color", Color("#cfe6ff"))
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(title)
-
-	# 页体: 每页一个 HBox(我方|敌方), 同时只显一个; 外面套 ScrollContainer —— 合计页行数可能超屏底
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	var body := Control.new()
-	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(body)
-	var bodies: Array = []
-	for pg in pages:
-		var cols := HBoxContainer.new()
-		cols.add_theme_constant_override("separation", 28)
-		cols.add_child(_stats_column("🔵 我方", pg["left"], Color("#7ec8ff")))
-		cols.add_child(_stats_column("🔴 敌方", pg["right"], Color("#ff9a9a")))
-		cols.visible = false
-		body.add_child(cols)
-		bodies.append(cols)
-
-	# 页签(单路时不显): 点了切页 + 高亮
-	var tab_btns: Array = []
-	if pages.size() > 1:
-		var tabs := HBoxContainer.new()
-		tabs.add_theme_constant_override("separation", 6)
-		tabs.alignment = BoxContainer.ALIGNMENT_CENTER
-		vb.add_child(tabs)
-		for i in range(pages.size()):
-			var b := Button.new()
-			b.text = str(pages[i]["title"])
-			b.add_theme_font_size_override("font_size", 14)
-			b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-			b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-			var idx := i
-			b.pressed.connect(func() -> void: _stats_show_page(bodies, tab_btns, idx))
-			tabs.add_child(b)
-			tab_btns.append(b)
-	vb.add_child(scroll)
-	_stats_show_page(bodies, tab_btns, pages.size() - 1)   # 默认落在最后一页(多路=合计 / 单路=本场)
-	_ui_layer.add_child(panel)
-	panel.position = Vector2(316, 438)
-	_center_panel_deferred(panel)
 
 const _LANE_CN := {"top": "上路", "bottom": "下路", "final": "终极"}
 
@@ -7948,7 +7601,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_tree().reload_current_scene()
 		elif event.keycode == KEY_ESCAPE:
 			if _info_panel != null and is_instance_valid(_info_panel):
-				_close_info_panel()   # 详情面板开着 → ESC 先关面板 (不退场)
+				_hud._close_info_panel()   # 详情面板开着 → ESC 先关面板 (不退场)
 				return
 			DEBUG_EDIT = false   # 离场重置, 不影响下次正常战斗
 			get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
@@ -7961,7 +7614,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				and _info_panel != null and is_instance_valid(_info_panel):
 			var _pp: Vector2 = get_viewport().get_mouse_position() if get_viewport() != null else event.position
 			if _edit_unit_at_screen(_pp) == null:
-				_close_info_panel()
+				_hud._close_info_panel()
 		_dl_sys._dl_handle_place_input(event)
 		return
 	# 普通战斗模式: 点战场单位 (立绘头顶 unproject 命中) → 弹详情面板; 框上的点击由框自己的 gui_input 接.
@@ -7979,9 +7632,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			var _cpos: Vector2 = get_viewport().get_mouse_position() if get_viewport() != null else event.position
 			var hit = _edit_unit_at_screen(_cpos)   # 复用既有 unproject 命中 (dist<64px, 取最近)
 			if hit != null:
-				_show_unit_info_panel(hit)          # 点到单位→开/切详情
+				_hud._show_unit_info_panel(hit)          # 点到单位→开/切详情
 			elif _info_panel != null and is_instance_valid(_info_panel):
-				_close_info_panel()                 # 点空白→关(侧边版无backdrop)
+				_hud._close_info_panel()                 # 点空白→关(侧边版无backdrop)
 		return
 	# 🛠 调试场: 鼠标在战场(非面板)上 → 摆位/拖拽/删除. 面板按钮 mouse_filter=STOP 已在 GUI 层吃掉,
 	#   故到 _unhandled_input 的鼠标事件 = 点在战场空白处 (安全当作摆位操作).
@@ -8021,148 +7674,6 @@ func _edit_unit_at_screen(screen: Vector2):
 			best_d = d
 			best = u
 	return best
-
-func _build_edit_palette() -> void:
-	var ids: Array = STATS.keys()
-	if not ids.is_empty() and not ids.has(_edit_pick_id):
-		_edit_pick_id = str(ids[0])
-	var panel := PanelContainer.new()
-	panel.name = "DebugEditPalette"
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.04, 0.08, 0.13, 0.94)
-	sb.border_color = Color("#ffd93d")
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(12)
-	sb.content_margin_left = 16; sb.content_margin_right = 16
-	sb.content_margin_top = 14; sb.content_margin_bottom = 14
-	panel.add_theme_stylebox_override("panel", sb)
-	panel.position = Vector2(16, 52)
-	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	_ui_layer.add_child(panel)
-	_edit_palette = panel
-
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 10)
-	panel.add_child(vb)
-
-	# 标题栏 + 折叠按钮(用户2026-07-24: 左边大面板要能关) —— 折叠时只留这一行, 释放整个左半场。
-	var titlebar := HBoxContainer.new(); titlebar.add_theme_constant_override("separation", 8); vb.add_child(titlebar)
-	var title := Label.new()
-	title.text = "🛠 调试场"
-	title.add_theme_font_size_override("font_size", 22)
-	title.add_theme_color_override("font_color", Color("#ffd93d"))
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	titlebar.add_child(title)
-	_edit_btn_collapse = _debug._edit_mk_btn("⊟ 折叠", func(): _debug._edit_toggle_collapse(), 84)
-	titlebar.add_child(_edit_btn_collapse)
-	# 可折叠主体: 后续所有设置行都进 _edit_body(把 vb 重指向它)
-	_edit_body = VBoxContainer.new(); _edit_body.add_theme_constant_override("separation", 10); vb.add_child(_edit_body)
-	vb = _edit_body
-
-	# 选龟/选边/小将 → 已移到底部常驻笔刷栏(_build_brush_bar·用户2026-07-24), 这里不再放。
-	var row_min := HBoxContainer.new(); row_min.add_theme_constant_override("separation", 8); vb.add_child(row_min)
-	_edit_btn_energy = _debug._edit_mk_btn("满龟能默认:关", func(): _debug._edit_toggle_full_energy(), 160)
-	row_min.add_child(_edit_btn_energy)
-
-	var row_hp := HBoxContainer.new(); row_hp.add_theme_constant_override("separation", 8); vb.add_child(row_hp)
-	row_hp.add_child(_debug._edit_lbl("假人HP"))
-	row_hp.add_child(_debug._edit_mk_btn("−", func(): _debug._edit_adjust_hp(-100.0), 48))
-	_edit_lbl_hp = _debug._edit_val_lbl(96)
-	row_hp.add_child(_edit_lbl_hp)
-	row_hp.add_child(_debug._edit_mk_btn("+", func(): _debug._edit_adjust_hp(100.0), 48))
-	row_hp.add_child(_debug._edit_mk_btn("掉血/不死", func(): _debug._edit_toggle_killable(), 130))
-
-	var row_star := HBoxContainer.new(); row_star.add_theme_constant_override("separation", 8); vb.add_child(row_star)
-	row_star.add_child(_debug._edit_lbl("装备星级"))
-	_edit_star_btns = []
-	for st in [1, 2, 3]:
-		var stc: int = st
-		var bs := _debug._edit_mk_btn("★%d" % stc, func(): _debug._edit_set_star(stc), 60)
-		_edit_star_btns.append(bs)
-		row_star.add_child(bs)
-
-	var row_spd := HBoxContainer.new(); row_spd.add_theme_constant_override("separation", 8); vb.add_child(row_spd)
-	row_spd.add_child(_debug._edit_lbl("倍速"))
-	_edit_speed_btns = []
-	for si in range(EDIT_SPEEDS.size()):
-		var sidx: int = si
-		var bp := _debug._edit_mk_btn("%s×" % _fmt_num(float(EDIT_SPEEDS[si])), func(): _debug._edit_set_speed(sidx), 60)   # %g Godot不支持→_fmt_num(2026-07-26修预存bug)
-		_edit_speed_btns.append(bp)
-		row_spd.add_child(bp)
-
-	var row_ctl := HBoxContainer.new(); row_ctl.add_theme_constant_override("separation", 8); vb.add_child(row_ctl)
-	_edit_btn_start = _debug._edit_mk_btn("▶ 开始", func(): _debug._edit_start_battle(), 100)
-	row_ctl.add_child(_edit_btn_start)
-	_edit_btn_edit = _debug._edit_mk_btn("⏸ 编辑", func(): _debug._edit_back_to_edit(), 100)
-	_edit_btn_edit.disabled = true
-	row_ctl.add_child(_edit_btn_edit)
-	row_ctl.add_child(_debug._edit_mk_btn("🔁 再来一把", func(): _debug._edit_replay(), 130))
-
-	var row_ctl2 := HBoxContainer.new(); row_ctl2.add_theme_constant_override("separation", 8); vb.add_child(row_ctl2)
-	row_ctl2.add_child(_debug._edit_mk_btn("清空", func(): _debug._edit_clear(), 90))
-	row_ctl2.add_child(_debug._edit_mk_btn("返回菜单", func(): _debug._edit_exit_to_menu(), 120))
-
-	_edit_lbl_status = Label.new()
-	_edit_lbl_status.add_theme_font_size_override("font_size", 15)
-	_edit_lbl_status.add_theme_color_override("font_color", Color("#ffe9a8"))
-	vb.add_child(_edit_lbl_status)
-	var help := Label.new()
-	help.text = "点空地=摆(龟/小将) · 点单位=选中配装 · 拖拽=挪位 · 满龟能开→秒放技看效果"
-	help.add_theme_font_size_override("font_size", 13)
-	help.add_theme_color_override("font_color", Color("#7a8a96"))
-	vb.add_child(help)
-
-	_edit_equip_box = VBoxContainer.new()
-	_edit_equip_box.add_theme_constant_override("separation", 6)
-	vb.add_child(_edit_equip_box)
-
-	_debug._edit_set_speed(_edit_speed_idx)
-	_debug._edit_load_setup()
-	_debug._edit_refresh_labels()
-	_debug._edit_refresh_equip_panel()
-	_debug._edit_apply_collapse()   # 恢复折叠态(跨编辑/开始/再来 重建持久·用户2026-07-24)
-
-func _build_brush_bar() -> void:
-	if _edit_brush_bar != null and is_instance_valid(_edit_brush_bar):
-		_edit_brush_bar.queue_free()
-	_edit_brush_cells = []
-	var bar := PanelContainer.new()
-	bar.name = "DebugBrushBar"
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.03, 0.055, 0.09, 0.95)
-	sb.border_color = Color("#ffd93d"); sb.border_width_top = 2
-	sb.content_margin_left = 8; sb.content_margin_right = 8; sb.content_margin_top = 6; sb.content_margin_bottom = 6
-	bar.add_theme_stylebox_override("panel", sb)
-	bar.mouse_filter = Control.MOUSE_FILTER_STOP
-	bar.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	bar.offset_top = -94
-	_ui_layer.add_child(bar)
-	_edit_brush_bar = bar
-	var root := VBoxContainer.new(); root.add_theme_constant_override("separation", 3); bar.add_child(root)
-	var line := HBoxContainer.new(); line.add_theme_constant_override("separation", 8); root.add_child(line)
-	_edit_btn_side = _debug._edit_mk_btn("左队(友军)", func(): _debug._edit_toggle_side(), 116)
-	line.add_child(_edit_btn_side)
-	var sc := ScrollContainer.new()
-	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	sc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	sc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sc.custom_minimum_size = Vector2(0, 64)
-	line.add_child(sc)
-	var strip := HBoxContainer.new(); strip.add_theme_constant_override("separation", 5); sc.add_child(strip)
-	for id in STATS.keys():
-		var iid := str(id)
-		if iid == "__minion__" or iid == TRAINER_ID: continue
-		strip.add_child(_debug._edit_brush_cell(iid, AVATAR_DIR + iid + ".png", str(_data_by_id.get(iid, {}).get("name", iid))))
-	strip.add_child(_debug._edit_brush_cell("__minion__:front", "", "浪板"))
-	strip.add_child(_debug._edit_brush_cell("__minion__:back", "", "火箭"))
-	strip.add_child(_debug._edit_brush_cell("__minion__:elite", "", "精英"))
-	strip.add_child(_debug._edit_brush_cell(TRAINER_ID, TRAINER_SPRITE, "大师"))
-	var hint := Label.new()
-	hint.text = "点笔刷(下面高亮)→点战场连点连摆 · 点已摆的龟→设置面板出配置(技能/装备/血量/无敌/满龟能)"
-	hint.add_theme_font_size_override("font_size", 12)
-	hint.add_theme_color_override("font_color", Color("#ffe9a8"))
-	root.add_child(hint)
-	_debug._edit_refresh_brush_highlight()
 
 func _self_screenshot() -> void:
 	var delay := 3.0
@@ -8569,9 +8080,9 @@ func _burn_frame(fr: float, spr: Sprite3D) -> void:
 
 # ============================================================================
 #  局内信息 UI — 左右队头像框栏 + 点单位看详情面板 (纯 UI, 不动玩法)
-#    1) _build_team_panels: 左右两竖栏 (主龟; 召唤体不进), 每框=头像+名+等级牌+迷你血条, 可点
+#    1) _hud._build_team_panels: 左右两竖栏 (主龟; 召唤体不进), 每框=头像+名+等级牌+迷你血条, 可点
 #    2) _info_sys._update_team_panels: 每帧刷 HP 条宽 / 死亡变暗 / 选中高亮
-#    3) _show_unit_info_panel: 居中详情面板 (detail_panel_frame 斜面边框), 显等级/属性/被动/技能/装备
+#    3) _hud._show_unit_info_panel: 居中详情面板 (detail_panel_frame 斜面边框), 显等级/属性/被动/技能/装备
 # ============================================================================
 const DetailPanelFrame := preload("res://scripts/scenes/detail_panel_frame.gd")
 const _PANEL_HP_W := 80.0    # 框内迷你血条宽
@@ -8628,113 +8139,6 @@ func _unit_portrait_texture(u: Dictionary) -> Texture2D:
 	at.region = Rect2(0, 0, fw, fh)
 	return at
 
-# ----------------------------------------------------------------------------
-#  1) 左右队头像框栏
-# ----------------------------------------------------------------------------
-func _build_team_panels() -> void:
-	if _ui_layer == null:
-		return
-	# 旧栏清掉 (重生/重开安全)
-	if _team_panel_left != null and is_instance_valid(_team_panel_left):
-		_team_panel_left.queue_free()
-	if _team_panel_right != null and is_instance_valid(_team_panel_right):
-		_team_panel_right.queue_free()
-	_team_panel_left = _info_sys._make_team_column("left")
-	_team_panel_right = _info_sys._make_team_column("right")
-	_ui_layer.add_child(_team_panel_left)
-	_ui_layer.add_child(_team_panel_right)
-
-func _make_team_frame(u: Dictionary) -> Control:
-	var side := str(u.get("side", "left"))
-	var accent := Color("#3fa9ff") if side == "left" else Color("#ff5a5a")
-	var frame := PanelContainer.new()
-	frame.name = "Frame_" + str(u.get("id", ""))
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color("#12161f")
-	sb.set_border_width_all(2)
-	sb.border_color = accent
-	sb.set_corner_radius_all(6)
-	sb.content_margin_left = 6; sb.content_margin_right = 6
-	sb.content_margin_top = 5; sb.content_margin_bottom = 5
-	frame.add_theme_stylebox_override("panel", sb)
-	frame.custom_minimum_size = Vector2(124, 0)
-	frame.mouse_filter = Control.MOUSE_FILTER_STOP   # 吃掉点击 (别穿到战场)
-	frame.tooltip_text = "%s · 点击看详情" % str(u.get("name", u.get("id", "")))
-
-	var main_col := VBoxContainer.new()   # 头像行 + 装备格行
-	main_col.add_theme_constant_override("separation", 5)
-	main_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	frame.add_child(main_col)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	main_col.add_child(row)
-
-	# 头像 (44x44)
-	var portrait := TextureRect.new()
-	portrait.texture = _unit_portrait_texture(u)
-	portrait.custom_minimum_size = Vector2(44, 44)
-	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(portrait)
-
-	# 右侧: 名 + 等级牌 (一行) + 迷你血条
-	var info := VBoxContainer.new()
-	info.add_theme_constant_override("separation", 2)
-	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(info)
-
-	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 4)
-	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	info.add_child(top)
-	var lv_badge := _make_mini_lv_badge(int(u.get("level", 1)))
-	if lv_badge != null:
-		top.add_child(lv_badge)
-	u["panel_lv_badge"] = lv_badge
-	var nm := Label.new()
-	nm.text = str(u.get("name", u.get("id", "")))
-	nm.add_theme_font_size_override("font_size", 12)
-	nm.add_theme_color_override("font_color", Color("#e8f2ff"))
-	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	top.add_child(nm)
-
-	# 迷你血条 (ColorRect bg + fill)
-	var hp_bg := ColorRect.new()
-	hp_bg.color = Color(0, 0, 0, 0.55)
-	hp_bg.custom_minimum_size = Vector2(_PANEL_HP_W, 5)
-	hp_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	info.add_child(hp_bg)
-	var hp_fill := ColorRect.new()
-	hp_fill.color = Color("#4ade80")
-	hp_fill.position = Vector2(0, 0)
-	hp_fill.size = Vector2(_PANEL_HP_W, 5)
-	hp_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hp_bg.add_child(hp_fill)
-	# 头像下方: 至多4个装备格 (图标 + 充能类装备的充能进度条). 常建空行+存引用 → 招财进宝运行时抽装备可刷新(_refresh_panel_equips)
-	var eq_row := HBoxContainer.new()
-	eq_row.add_theme_constant_override("separation", 4)
-	eq_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	eq_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	main_col.add_child(eq_row)
-	u["panel_eq_row"] = eq_row
-	_refresh_panel_equips(u)
-
-	# 整框点击 → 详情面板
-	frame.gui_input.connect(func(ev: InputEvent):
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			_show_unit_info_panel(u))
-
-	# 引用挂在单位字典上, 供 _info_sys._update_team_panels 每帧刷
-	u["panel_frame"] = frame
-	u["panel_hp_fill"] = hp_fill
-	u["panel_stylebox"] = sb
-	return frame
-
-# 重建头像下装备格 (从 u["equips"] 取, 至多4格). spawn时建 + 招财进宝运行时抽/升装备后调 → 图标即时显进左右信息框(用户2026-07-12).
 func _refresh_panel_equips(u: Dictionary) -> void:
 	var row = u.get("panel_eq_row", null)
 	if row == null or not is_instance_valid(row):
@@ -8837,13 +8241,6 @@ func _make_mini_lv_badge(level: int) -> Panel:
 	badge.add_child(lbl)
 	return badge
 
-func _close_info_panel() -> void:
-	if _info_panel != null and is_instance_valid(_info_panel):
-		var _bg := _info_panel.get_parent()   # 老版本有全屏灰底backdrop→连父free; 新侧边版面板直接挂_ui_layer(无backdrop)→只free面板
-		(_bg if _bg != null and _bg is ColorRect else _info_panel).queue_free()
-	_info_panel = null
-	_selected_unit = null
-
 var _info_stat_labels: Array = []      # 属性行的文本 Label(顺序与 _info_sys._info_stat_rows 一一对应)
 var _info_stat_grid: GridContainer = null
 var _info_hp_bar: ProgressBar = null
@@ -8901,160 +8298,6 @@ func _status_signature(u: Dictionary) -> String:
 ## 把技能/被动文案模板按【单位当前属性】渲染成人读文本。
 ## pets.json 里写的是 {N:0.7*ATK} / {{ATK}} 这类占位符, 不渲染就【原样漏到界面】。
 ## 图鉴一直走 SkillText, 战斗详情面板此前漏接 —— 这就是用户在面板上看到 {N:0.7*ATK} 的原因。
-func _show_unit_info_panel(u: Dictionary) -> void:
-	# 引导第 2 步等的就是"玩家点开了详情面板"这个动作(advanceOn: info_panel_opened)。
-	if _tutorial != null and is_instance_valid(_tutorial):
-		_tutorial.notify("info_panel_opened")
-	_close_info_panel()
-	_selected_unit = u
-	if _ui_layer == null:
-		return
-	var id := str(u.get("id", ""))
-	var pet: Dictionary = DataRegistry.pet_by_id.get(id, {})
-	var is_left := str(u.get("side", "")) == "left"
-	var side_col := Color("#4ade80") if is_left else Color("#ff6b6b")
-
-	# ── 侧边面板(右锚·不遮全场·无backdrop·用户2026-07-18「侧边不遮战场」) ──
-	var PW := 400.0
-	var panel := PanelContainer.new()
-	panel.name = "InfoPanel"
-	var psb := StyleBoxFlat.new()
-	psb.bg_color = Color(0.055, 0.086, 0.13, 0.96)
-	psb.set_border_width_all(2); psb.border_color = Color("#ffd93d")   # 金框(与主菜单一致)
-	psb.set_corner_radius_all(14)
-	psb.content_margin_left = 16; psb.content_margin_right = 16
-	psb.content_margin_top = 14; psb.content_margin_bottom = 14
-	panel.add_theme_stylebox_override("panel", psb)
-	panel.anchor_left = 1.0; panel.anchor_right = 1.0; panel.anchor_top = 0.0; panel.anchor_bottom = 1.0
-	panel.offset_left = -(PW + 16.0); panel.offset_right = -16.0
-	panel.offset_top = 56.0; panel.offset_bottom = -16.0
-	panel.mouse_filter = Control.MOUSE_FILTER_STOP   # 吃掉面板内点击(不穿到战场·点空白才关)
-	_ui_layer.add_child(panel)
-	_info_panel = panel
-
-	var scroll := ScrollContainer.new()
-	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	panel.add_child(scroll)
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 8)
-	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(vb)
-
-	# 头部: 头像 + 名 + 阵营/稀有度/Lv + ✖
-	var head := HBoxContainer.new(); head.add_theme_constant_override("separation", 10); vb.add_child(head)
-	var big := TextureRect.new()
-	big.texture = _unit_portrait_texture(u)
-	big.custom_minimum_size = Vector2(64, 64)
-	big.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; big.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	big.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	head.add_child(big)
-	var hi := VBoxContainer.new(); hi.add_theme_constant_override("separation", 2)
-	hi.size_flags_horizontal = Control.SIZE_EXPAND_FILL; head.add_child(hi)
-	var nm := Label.new(); nm.text = str(u.get("name", id)); nm.add_theme_font_size_override("font_size", 21)
-	var rar := str(pet.get("rarity", u.get("rarity", "C")))
-	nm.add_theme_color_override("font_color", _pet_rarity_color(rar)); hi.add_child(nm)
-	var sub := Label.new()
-	sub.text = "%s · %s · Lv %d" % ["友军" if is_left else "敌方", rar, int(u.get("level", 1))]
-	sub.add_theme_font_size_override("font_size", 13); sub.add_theme_color_override("font_color", side_col); hi.add_child(sub)
-	# ★不再放 ✖ 按钮(用户 2026-07-21:「点空白处就直接退出信息面板, 不要那个×」)。
-	#   关闭走两条: ①点面板外空白(_unhandled_input) ②ESC。面板本身 MOUSE_FILTER_STOP,
-	#   所以点在面板【内】不会误关。
-
-	# HP 条(阵营色)
-	var _hpref: Array = _info_sys._info_bar(vb, float(u.get("hp", 0.0)), float(u.get("maxHp", 1.0)), side_col, "HP  %d / %d" % [int(u.get("hp", 0)), int(u.get("maxHp", 0))])
-	_info_hp_bar = _hpref[0]; _info_hp_lbl = _hpref[1]
-	# 龟能条(有主动技才显): 主技充能% = 1 − 剩余冷却/满冷却
-	var acts: Array = u.get("active_skills", [])
-	if not _is_passive_pick(u) and acts.size() > 0:
-		var st0 := str(acts[0])
-		var mxcd := _skill_cd(u, st0)
-		var cd := float((u.get("skill_cd", {}) as Dictionary).get(st0, mxcd))
-		var rdy := CombatMath.cooldown_ready(cd, mxcd)
-		var _enref: Array = _info_sys._info_bar(vb, rdy, 1.0, Color("#ffce4d"), "龟能  %d%%" % int(rdy * 100.0))
-		_info_en_bar = _enref[0]; _info_en_lbl = _enref[1]
-
-	_add_panel_sep(vb)
-
-	# 属性格 (2列·图标)
-	var grid := GridContainer.new(); grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 18); grid.add_theme_constant_override("v_separation", 5)
-	vb.add_child(grid)
-	# ★属性行走 _info_sys._info_stat_rows() 单一事实源(建面板与每帧刷新同源, 不会漂移)。
-	#   图标: 8项有真图标, 其余留空占位 —— 本项目已「全去emoji(根治绿块+跨平台一致)」。
-	_info_stat_labels.clear()
-	for row in _info_sys._info_stat_rows(u):
-		var lb := _info_sys._info_stat_cell(grid, "", str(row[1]), row[2], str(row[0]))
-		_info_stat_labels.append(lb)
-	_info_stat_grid = grid
-
-	_add_panel_sep(vb)
-
-	# 当前状态 chips
-	_add_section_title(vb, "当前状态")
-	# ★状态 chips 也要实时(用户「面板里所有的数值需要实时变化」) —— 护盾/灼烧/眩晕
-	#   在战斗中变得最频繁, 原来却是开面板那一刻建一次就再也不动。
-	#   chips 【条目数会变】(状态来了又走), 只能整块重建, 所以单独存容器 + 节流重建。
-	_info_status_box = VBoxContainer.new()
-	_info_status_box.add_theme_constant_override("separation", 4)
-	vb.add_child(_info_status_box)
-	_info_sys._info_status_chips(_info_status_box, u)
-	_info_status_sig = _status_signature(u)
-
-	# 被动
-	var passive: Dictionary = u.get("passive", {})
-	if passive is Dictionary and not (passive as Dictionary).is_empty():
-		_add_panel_sep(vb)
-		_add_section_title(vb, "被动 · " + str(passive.get("name", "")))
-		# ★走模板渲染: 把 {N:0.7*ATK} 这类占位符按【本龟当前属性】算成真数字
-		# ★统一口径: 原来这里【写死取 desc(详细)】而技能段写死取 brief(缩略),
-		#   同一个面板里两种口径 —— 现在都听 _skill_detail() 的。
-		var _ptpl := SkillText.text_of(passive, _skill_detail())
-		var pdesc := _render._render_skill_text(_ptpl, u, passive)
-		if pdesc != "":
-			_info_passive_lbl = _add_body_text(vb, pdesc)
-			_info_passive_tpl = _ptpl
-
-	# 宝箱龟专属: 财宝值进度 + 已开出的战利品(用户2026-07-19"信息面板得显示当前累计的财宝值/当前抽取的装备和图标/专属装备的描述")
-	if _is_chest_turtle(u):
-		_add_panel_sep(vb)
-		_info_sys._info_chest_section(vb, u)
-
-	# 技能
-	var skills := _info_sys._panel_skill_entries(u)
-	if not skills.is_empty():
-		_add_panel_sep(vb)
-		_add_section_title(vb, "技能")
-		# ★简明/详细开关(用户需求1 两级描述)。放在技能段上方 —— 它同时管被动段与技能段,
-		#   但被动段在上面已经画完了, 放这里是为了【靠近文字最多的地方】, 手够得着。
-		_add_detail_toggle(vb, u)
-		_info_skill_lbls.clear()
-		for sk in skills:
-			_add_section_title(vb, "  " + str(sk["name"]), Color("#9fd0ff"), 14)
-			if str(sk["desc"]) != "":
-				var slb := _add_body_text(vb, str(sk["desc"]))
-				# 存"模板原文+Label+技能字典" → 每帧按当前属性重渲染伤害数值
-				_info_skill_lbls.append({"lbl": slb, "tpl": str(sk.get("tpl", "")), "sk": sk.get("sk", {})})
-
-	# 装备 —— ★也纳入实时(用户「面板里所有的数值需要实时变化」, 我不该给它开例外)。
-	#   战斗中装备会变: 财神招财临时升星、宝箱龟开出新装备。条目数/星级都会变 → 整块重建, 签名节流。
-	_add_panel_sep(vb)
-	var equips: Array = u.get("equips", [])
-	_info_equip_box = VBoxContainer.new()
-	_info_equip_box.add_theme_constant_override("separation", 4)
-	vb.add_child(_info_equip_box)
-	_fill_equip_section(_info_equip_box, u)
-	_info_equip_sig = _equip_signature(u)
-
-	_info_sys._info_passthrough(vb)   # 面板内非按钮控件透传触摸→ScrollContainer可滑(手机·用户2026-07-18「列表滑动考虑手机端」)
-
-	# 从右滑入
-	panel.offset_left += PW + 40.0; panel.offset_right += PW + 40.0
-	var tw := _reg_tween()
-	tw.tween_property(panel, "offset_left", -(PW + 16.0), 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(panel, "offset_right", -16.0, 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-
-## 是不是宝箱龟(藏宝图被动会往 chest_treasures 里塞东西; 用 id 判定最稳)
 func _is_chest_turtle(u: Dictionary) -> bool:
 	return str(u.get("id", "")) == "chest"
 
@@ -9129,9 +8372,9 @@ func _add_detail_toggle(vb: VBoxContainer, u: Dictionary) -> void:
 			GameState.skill_text_detail = not _skill_detail()
 		# 重开同一只龟的面板 = 整块按新模式重建
 		var keep = _selected_unit
-		_close_info_panel()
+		_hud._close_info_panel()
 		if keep is Dictionary and (keep as Dictionary).get("alive", false):
-			_show_unit_info_panel(keep))
+			_hud._show_unit_info_panel(keep))
 	row.add_child(btn)
 
 

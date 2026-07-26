@@ -27,7 +27,7 @@ func _make_team_column(side: String) -> VBoxContainer:
 			continue
 		if u.get("is_summon", false):
 			continue   # 召唤体不进框栏 (只主龟)
-		var frame = battle._make_team_frame(u)
+		var frame = battle._hud._make_team_frame(u)
 		col.add_child(frame)
 	# 居中: VBox 内容会从 anchor 点往下排; 让它真正竖直居中需把它整体上移半高 → 用 pivot 不便,
 	#   改用一个外层 wrapper 也可, 但框少(1-3)时贴边竖直居中已够好 (CENTER_LEFT/RIGHT anchor=屏幕中线).
@@ -116,7 +116,7 @@ func _refresh_info_panel() -> void:
 	var rows: Array = _info_stat_rows(ud)
 	if rows.size() != battle._info_stat_labels.size():
 		# 行数变了(有属性从0变非0) → 引用会错位, 整块重建
-		battle._show_unit_info_panel(ud)
+		battle._hud._show_unit_info_panel(ud)
 		return
 	for i in range(rows.size()):
 		var lb = battle._info_stat_labels[i]
