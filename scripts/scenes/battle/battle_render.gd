@@ -23,6 +23,8 @@ func _update_spell_disc() -> void:
 	battle._spell_disc.set_cd(cd / maxf(0.01, cd_max), cd)
 	if battle._disc_aiming:
 		battle._draw_aim_indicator()   # 拖动瞄准中: 战场上画方向指示器
+	elif not battle._aim_ind.is_empty():
+		battle._clear_aim_indicator()  # 瞄准结束: 清掉指示器节点
 
 ## 移动端【按住圆盘拖动瞄准】回调(Wild Rift 式·用户2026-07-24)。phase: update=拖动中 / cast=松手施法 / cancel=取消。
 ## screen_dir=圆盘上拖动的屏幕方向; 2.5D 俯视下近似当作战场方向。
