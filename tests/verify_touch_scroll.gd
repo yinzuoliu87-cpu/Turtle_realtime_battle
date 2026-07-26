@@ -19,7 +19,7 @@ var _fails: Array[String] = []
 
 
 func _ready() -> void:
-	_check_source("res://scripts/scenes/battle_debug_arena.gd", "_edit_grid_card",
+	_check_source("res://scripts/scenes/battle/battle_debug_arena.gd", "_edit_grid_card",
 		"调试场选装备/选龟网格卡片")   # _edit_* 已抽到 BattleDebugArena(2026-07-25)
 	_check_source("res://scripts/scenes/team_select/pet_grid.gd", "_make_pet_card",
 		"选龟龟池卡片")

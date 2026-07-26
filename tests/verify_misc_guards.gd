@@ -49,7 +49,7 @@ func _ready() -> void:
 	# ── C. 眩晕唯一入口: 全项目只有 _stun 能写 stun_until ──
 	# 起因: 原先 17 处各写各的 maxf(...), 查不出是谁上的控; 收口后韧性/来源记录/将来的规则都只在一处。
 	var writes := 0
-	for _sp in ["res://scripts/scenes/RealtimeBattle3DScene.gd", "res://scripts/scenes/battle_damage.gd"]:   # _stun 已抽到 BattleDamage(2026-07-26)→两处一起扫, 总数仍应=1
+	for _sp in ["res://scripts/scenes/RealtimeBattle3DScene.gd", "res://scripts/scenes/battle/battle_damage.gd"]:   # _stun 已抽到 BattleDamage(2026-07-26)→两处一起扫, 总数仍应=1
 		var f := FileAccess.open(_sp, FileAccess.READ)
 		while f != null and not f.eof_reached():
 			var line := f.get_line()

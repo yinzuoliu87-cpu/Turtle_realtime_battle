@@ -191,12 +191,12 @@ func _src() -> String:
 		return ""
 	var s := f.get_as_text()
 	f.close()
-	var g := FileAccess.open("res://scripts/scenes/dual_lane_flow.gd", FileAccess.READ)   # _dl_* 已抽到 DualLaneFlow(2026-07-25)
+	var g := FileAccess.open("res://scripts/scenes/battle/dual_lane_flow.gd", FileAccess.READ)   # _dl_* 已抽到 DualLaneFlow(2026-07-25)
 	if g != null:
 		s += "
 " + g.get_as_text()
 		g.close()
-	var w := FileAccess.open("res://scripts/scenes/battle_world_builder.gd", FileAccess.READ)   # _build_map_props/navmesh/地面/障碍 已抽到 BattleWorldBuilder(2026-07-26)
+	var w := FileAccess.open("res://scripts/scenes/battle/battle_world_builder.gd", FileAccess.READ)   # _build_map_props/navmesh/地面/障碍 已抽到 BattleWorldBuilder(2026-07-26)
 	if w != null:
 		s += "
 " + w.get_as_text()

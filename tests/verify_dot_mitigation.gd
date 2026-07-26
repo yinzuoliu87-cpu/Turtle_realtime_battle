@@ -23,8 +23,8 @@ var _fails: Array[String] = []
 
 func _ready() -> void:
 	var src := FileAccess.get_file_as_string(SCENE_PATH) + "
-" + FileAccess.get_file_as_string("res://scripts/scenes/info_panel.gd") + "
-" + FileAccess.get_file_as_string("res://scripts/scenes/battle_damage.gd")   # info_panel抽出·两伤害路→BattleDamage(2026-07-26)
+" + FileAccess.get_file_as_string("res://scripts/scenes/battle/info_panel.gd") + "
+" + FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_damage.gd")   # info_panel抽出·两伤害路→BattleDamage(2026-07-26)
 	if src == "":
 		_fail("读不到 %s" % SCENE_PATH)
 		_done()

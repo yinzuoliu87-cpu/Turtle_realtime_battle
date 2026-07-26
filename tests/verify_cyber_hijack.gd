@@ -103,7 +103,7 @@ func _check_user_scenario() -> void:
 func _check_source_has_primitive() -> void:
 	var src := FileAccess.get_file_as_string(SCENE_PATH) + "
 " + FileAccess.get_file_as_string("res://scripts/systems/skills/cyber_system.gd") + "
-" + FileAccess.get_file_as_string("res://scripts/scenes/battle_targeting.gd")   # cyber抽出·_acquire_target/_allies_of→BattleTargeting(2026-07-26)
+" + FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_targeting.gd")   # cyber抽出·_acquire_target/_allies_of→BattleTargeting(2026-07-26)
 	if src == "":
 		_fail("读不到 %s" % SCENE_PATH)
 		return
@@ -147,7 +147,7 @@ func _check_source_has_primitive() -> void:
 func _check_no_unit_dict_eq() -> void:
 	var src := FileAccess.get_file_as_string(SCENE_PATH) + "
 " + FileAccess.get_file_as_string("res://scripts/systems/skills/cyber_system.gd") + "
-" + FileAccess.get_file_as_string("res://scripts/scenes/battle_targeting.gd")   # cyber抽出·_acquire_target/_allies_of→BattleTargeting(2026-07-26)
+" + FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_targeting.gd")   # cyber抽出·_acquire_target/_allies_of→BattleTargeting(2026-07-26)
 	if src == "":
 		return
 	var re := RegEx.new()
@@ -177,7 +177,7 @@ func _check_no_unit_dict_eq() -> void:
 func _check_no_raw_side_targeting():
 	var src := FileAccess.get_file_as_string(SCENE_PATH) + "
 " + FileAccess.get_file_as_string("res://scripts/systems/skills/cyber_system.gd") + "
-" + FileAccess.get_file_as_string("res://scripts/scenes/battle_targeting.gd")   # cyber抽出·_acquire_target/_allies_of→BattleTargeting(2026-07-26)
+" + FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_targeting.gd")   # cyber抽出·_acquire_target/_allies_of→BattleTargeting(2026-07-26)
 	if src == "":
 		return
 	var re := RegEx.new()

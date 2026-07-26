@@ -173,7 +173,7 @@ func _test_source(scene) -> void:
 	if RTScene is GDScript:
 		src = (RTScene as GDScript).source_code + "
 " + FileAccess.get_file_as_string("res://scripts/systems/trainer/trainer_system.gd") \
-			+ "\n" + FileAccess.get_file_as_string("res://scripts/scenes/dual_lane_flow.gd")   # 2026-07-25: 大师技能→trainer/; _dl_start_fight(清_ms_stacks)→DualLaneFlow
+			+ "\n" + FileAccess.get_file_as_string("res://scripts/scenes/battle/dual_lane_flow.gd")   # 2026-07-25: 大师技能→trainer/; _dl_start_fight(清_ms_stacks)→DualLaneFlow
 	_ok("★攻速按叠层缩短(_ms_stacks 进攻击间隔 / haste)",
 		src.contains("_ms_stacks") and src.contains("TRAINER_ATK_INTERVAL / haste"))
 	_ok("★只在装配了魔法石时才触发被动", src.contains('"magic_stone"'))

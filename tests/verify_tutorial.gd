@@ -117,7 +117,7 @@ func _test_wired_in() -> void:
 	print("  [分母] 调用 TutorialGuide.attach 的场景 %d 个: %s" % [refs, str(hits)])
 	_ok("★选龟与战斗两个场景都接上了引导(此前零引用)", refs >= 2, "只有 %d 个" % refs)
 	var bat := _code_only(FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd") + "
-" + FileAccess.get_file_as_string("res://scripts/scenes/battle_hud.gd"))   # 面板/HUD 已抽到 BattleHud(2026-07-26)
+" + FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_hud.gd"))   # 面板/HUD 已抽到 BattleHud(2026-07-26)
 	_ok("★战斗场在开面板处发了推进事件(否则那一步永远卡住)",
 		bat.contains("_tutorial.notify(\"info_panel_opened\")"))
 	_ok("★引导只在 GameState.tutorial 时才建(正常对局不该弹)",

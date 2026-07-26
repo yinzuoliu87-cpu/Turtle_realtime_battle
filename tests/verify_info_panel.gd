@@ -248,9 +248,9 @@ func _src() -> String:
 		return ""
 	var s := f.get_as_text()
 	f.close()
-	var g := FileAccess.open("res://scripts/scenes/info_panel.gd", FileAccess.READ)   # 面板函数已抽到 InfoPanel(2026-07-25)
+	var g := FileAccess.open("res://scripts/scenes/battle/info_panel.gd", FileAccess.READ)   # 面板函数已抽到 InfoPanel(2026-07-25)
 	if g != null:
 		s += "
 " + g.get_as_text(); g.close()
-	s += "\n" + FileAccess.get_file_as_string("res://scripts/scenes/battle_render.gd")   # _render_skill_text 已抽到 BattleRender(2026-07-26)
+	s += "\n" + FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_render.gd")   # _render_skill_text 已抽到 BattleRender(2026-07-26)
 	return s

@@ -27,8 +27,8 @@ var _fails: Array[String] = []
 func _ready() -> void:
 	var src := FileAccess.get_file_as_string(SCENE_PATH) + "
 " + FileAccess.get_file_as_string("res://scripts/systems/skills/elite_system.gd") + "
-" + FileAccess.get_file_as_string("res://scripts/scenes/battle_vfx.gd") + "
-" + FileAccess.get_file_as_string("res://scripts/scenes/battle_render.gd")   # elite 已抽出(2026-07-25)·_play_action→BattleVfx·_advance_anim→BattleRender(2026-07-26)
+" + FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_vfx.gd") + "
+" + FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_render.gd")   # elite 已抽出(2026-07-25)·_play_action→BattleVfx·_advance_anim→BattleRender(2026-07-26)
 	if src == "":
 		_fail("读不到 %s" % SCENE_PATH)
 		_done()

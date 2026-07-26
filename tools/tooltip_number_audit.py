@@ -75,7 +75,7 @@ for _sysf in sorted(_glob.glob('scripts/systems/**/*.gd', recursive=True)):
     code += '\n@@@\n' + io.open(_sysf, encoding='utf-8').read()
 # 2026-07-26: 核心引擎拆分把弹道/伤害等抽到 scripts/scenes/battle_*.gd(如珊瑚刺 8/12/18 → battle_ballistics.gd)。
 #   这些也含装备【效果】数值 → 一并纳入对账源, 否则拆一刀就误报"代码里找不到"(刀6 CI 门禁曾因此红)。
-for _bf in sorted(_glob.glob('scripts/scenes/battle_*.gd')):
+for _bf in sorted(_glob.glob('scripts/scenes/battle/*.gd')):
     code += '\n@@@\n' + io.open(_bf, encoding='utf-8').read()
 # 2026-07-23: 装备【效果】数值只在 RealtimeBattle3DScene(实时实装)对账; equip_stats 只有属性STATS(无[N,N,N]效果三元组)。
 # 原来还读回合制 phase2_equip_runtime.gd 的效果数组 —— 那是死代码, 让文案能匹配到游戏不用的旧数值(分歧源), 已去掉。
