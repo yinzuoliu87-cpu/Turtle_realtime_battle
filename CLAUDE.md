@@ -46,7 +46,7 @@ python tools/docs_authority_lint.py    # 单一事实源纪律（进 run-tests �
 
 ## 2.5 版本号（每次玩家可感知的改动都要 +1）
 
-`大版本.功能版本.改动序号`，当前 `0.12.1`。第 3 位每次改动 +1；第 2 位加新玩法时 +1。
+`大版本.功能版本.改动序号`，当前 `0.15.10`（真值以 `project.godot` `config/version` 为准，别信这行——它会漂）。第 3 位每次改动 +1；第 2 位加新玩法时 +1。
 
 **改版本号要同时改四处**，漏一处 `verify_version` 直接红：
 
@@ -60,7 +60,7 @@ python tools/docs_authority_lint.py    # 单一事实源纪律（进 run-tests �
 游戏内显示（主菜单右下角）**从 `ProjectSettings` 读**，不许写死 —— 门禁会扫硬编码字面量。
 版本号的全部价值在于**测试者报 bug 时能说清是哪个版本**，四处不一致就说不清了。
 
-**每次升版本号后，给那个提交打 git tag**（`git tag -a v0.12.1 <提交> -m "..."` 然后 `git push origin --tags`）。
+**每次升版本号后，给那个提交打 git tag**（`git tag -a v0.15.10 <提交> -m "..."` 然后 `git push origin --tags`）。
 tag 让"回到某个版本"从翻提交号变成 `git checkout v0.11.0`，也是 GitHub Release 的锚点
 （Release 能把 IPA 永久挂上去，不受 artifact 14 天限制）。2026-07-23 补齐了 v0.9.3~v0.12.1 全部 21 个 tag。
 
@@ -172,7 +172,8 @@ while _w < 600 and float(u["hp"]) >= hp0:   # 上限防死循环
 - 缩进 **tab**（80/80 文件，零空格缩进、零混用）
 - 函数名 **snake_case**（1375 个函数零例外）；`class_name` **PascalCase**
 - 类型标注：返回值 **98.4%**、变量 **93.3%** —— 新代码请标注
-- 拆分模板照抄 [`scripts/scenes/dmg_stats_panel.gd`](scripts/scenes/dmg_stats_panel.gd)：`RefCounted` + 构造注入 `CanvasLayer` + `Callable` 取只读数据，主场景侧只剩 3 行
+- 拆分模板照抄 [`scripts/scenes/battle/dmg_stats_panel.gd`](scripts/scenes/battle/dmg_stats_panel.gd)：`RefCounted` + 构造注入 `CanvasLayer` + `Callable` 取只读数据，主场景侧只剩 3 行
+- **战斗上帝文件已拆**（2026-07-26·8刀·`RealtimeBattle3DScene.gd` 25272→8476·−66%）：世界构建/特效/渲染/目标/伤害/弹道/生成/HUD 各成 `scripts/scenes/battle/battle_*.gd`（`battle` 注入·RefCounted·class_name）。剩余主文件≈核心 sim 循环（process/sim_step/tick/do_skill/移动/状态），每帧耦合·**不宜再碎化**。方法论与十九坑见 memory [[project-god-file-decomposition]]、方案书 [docs/plans/20260726-核心引擎拆分.md](docs/plans/20260726-核心引擎拆分.md)。
 
 > **（2026-07-25 修正一处旧文档谎言）** 曾经这里写"`scripts/engine/` 是回合制旧引擎、只借 STATS 表"——**假的**，探针证明那 13 个文件全是活代码。已把 `scripts/engine/` 按真实身份拆成三个诚实的文件夹：<br>
 > · `scripts/gamedata/`（装备/龟/学派**属性表 + 配置**·`EquipStats`/`turtle_stats`/`phase2_*`·被战斗/背包/商店/图鉴/GameState 用）<br>
