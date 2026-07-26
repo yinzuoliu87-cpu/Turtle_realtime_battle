@@ -242,7 +242,7 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 		grow.tween_method(func(g: float) -> void:
 			if not mref.get("alive", false): return
 			mref["maxHp"] = final_hp
-			var _seg: float = battle.floorf(g * 10.0) / 10.0             # ★一段段回复(10段·每0.5s一段)从0填到满(用户2026-07-18: 700血就5秒内分段回到700)
+			var _seg: float = floorf(g * 10.0) / 10.0             # ★一段段回复(10段·每0.5s一段)从0填到满(用户2026-07-18: 700血就5秒内分段回到700)
 			mref["hp"] = maxf(1.0, final_hp * _seg)
 			mref["atk"] = lerpf(0.0, final_atk, g)
 			mref["base_atk"] = mref["atk"]

@@ -231,7 +231,7 @@ func _chest_loot_row(parent: VBoxContainer, tid: String) -> void:
 
 func _sk_chest_inventory(u: Dictionary) -> void:                 # 宝箱龟·清点财宝(用户2026-07-16改: 每1000财宝→治疗+10%·盾不吃加成; 财宝值=大轮累积)
 	var tv: float = float(GameState.chest_treasure_value) if ((not battle._review_demo()) and str(u.get("side", "")) == "left" and GameState != null) else float(u.get("dmg_dealt", 0.0))
-	var bonus: float = 1.0 + 0.10 * battle.floorf(tv / 1000.0)
+	var bonus: float = 1.0 + 0.10 * floorf(tv / 1000.0)
 	battle._damage._heal(u, u["maxHp"] * 0.05 * bonus)
 	battle._damage._grant_shield(u, u["atk"] * 0.6)
 
