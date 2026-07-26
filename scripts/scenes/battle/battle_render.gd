@@ -86,6 +86,83 @@ func _advance_anim(u: Dictionary, delta: float) -> void:
 		idx = idx % frames   # idle 循环
 	spr.frame = clampi(idx, 0, frames - 1)
 
+# ═══ 训龟大师 4方向 directional 立绘更新器 (R6-B·2026-07-26·用户「真4方向渲染·非billboard翻转」) ═══
+#   与 28 龟(billboard + flip_h 两向)隔离: 大师用真4方向(S/E/N/W 各一套帧)。
+#   帧表 trainer-<形象>-{idle(4x1),walk(4x6),throw(4x7)}.png: 行=方向(S0/E1/N2/W3)·列=帧。
+#   方向: 扔石头→朝目标 / 走路→朝移动 / 待机→保持(默认朝敌)。 状态优先级: 扔(一次)>走(循环)>待机(定态)。
+const _TRAINER_ROW := {"south": 0, "east": 1, "north": 2, "west": 3}
+const _TRAINER_ANIM_DIR := "res://assets/sprites/trainer/anim/"
+var _trainer_sheet_cache: Dictionary = {}
+
+func _trainer_sheets(app: String) -> Dictionary:
+	if _trainer_sheet_cache.has(app):
+		return _trainer_sheet_cache[app]
+	var out: Dictionary = {}
+	var walk_p := _TRAINER_ANIM_DIR + "trainer-" + app + "-walk.png"
+	if app != "" and app != "default" and ResourceLoader.exists(walk_p):
+		out = {
+			"idle": load(_TRAINER_ANIM_DIR + "trainer-" + app + "-idle.png"),
+			"walk": load(walk_p),
+			"throw": load(_TRAINER_ANIM_DIR + "trainer-" + app + "-throw.png"),
+		}
+	_trainer_sheet_cache[app] = out
+	return out
+
+func _dir_to_cardinal(v: Vector2) -> String:
+	# field +Y=南(朝镜头) / -Y=北 / +X=东 / -X=西 (见 _world_pos: field.y→world.z)
+	if absf(v.x) >= absf(v.y):
+		return "east" if v.x >= 0.0 else "west"
+	return "south" if v.y >= 0.0 else "north"
+
+func _update_trainer_anim(u: Dictionary, delta: float) -> void:
+	var spr = u.get("sprite", null)
+	if not is_instance_valid(spr):
+		return
+	var sheets: Dictionary = _trainer_sheets(str(u.get("_appearance", "")))
+	if sheets.is_empty():
+		return   # 该形象无4方向帧表(敌方/未量产)→ 保持单帧兜底立绘
+	if spr.material_override != null:
+		spr.material_override = null                       # 关接地shader → 用 Sprite3D 原生裁帧(vframes行=方向)
+		spr.transparent = true
+		spr.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+	# ① 测速: 0.1s 窗累计位移(跨定步长稳·仿 _update_run_anim), 存最近非零移动方向
+	var lp: Vector2 = u.get("_tr_last_pos", u["pos"])
+	var step: float = u["pos"].distance_to(lp)
+	if step > 0.01:
+		u["_tr_move_dir"] = u["pos"] - lp
+	u["_tr_move_acc"] = float(u.get("_tr_move_acc", 0.0)) + step
+	u["_tr_last_pos"] = u["pos"]
+	u["_tr_move_t"] = float(u.get("_tr_move_t", 0.0)) + delta
+	if float(u["_tr_move_t"]) >= 0.1:
+		u["_tr_speed"] = float(u["_tr_move_acc"]) / float(u["_tr_move_t"])
+		u["_tr_move_acc"] = 0.0
+		u["_tr_move_t"] = 0.0
+	var speed: float = float(u.get("_tr_speed", 0.0))
+	# ② 状态 + 方向 (扔 > 走 > 待机)
+	var anim := "idle"; var cols := 1; var fps := 1.0
+	var face: String = str(u.get("_tr_face", "east" if str(u.get("side", "")) == "left" else "west"))
+	if battle._t < float(u.get("_tr_throw_until", 0.0)):
+		anim = "throw"; cols = 7; fps = 11.0
+		face = _dir_to_cardinal(u.get("_tr_throw_vec", Vector2.RIGHT))
+	elif speed > 20.0:
+		anim = "walk"; cols = 6; fps = 9.0
+		face = _dir_to_cardinal(u.get("_tr_move_dir", Vector2.RIGHT))
+	u["_tr_face"] = face
+	# ③ 帧列
+	var col := 0
+	if anim == "throw":
+		col = clampi(int((battle._t - float(u.get("_tr_throw_t0", battle._t))) * fps), 0, cols - 1)
+	elif anim == "walk":
+		u["_tr_anim_t"] = float(u.get("_tr_anim_t", 0.0)) + delta
+		col = int(float(u["_tr_anim_t"]) * fps) % cols
+	else:
+		u["_tr_anim_t"] = 0.0
+	# ④ 应用: 换表 + 行(方向)×列(帧)
+	spr.texture = sheets[anim]
+	spr.hframes = cols
+	spr.vframes = 4
+	spr.frame = int(_TRAINER_ROW.get(face, 0)) * cols + col
+
 # 切换当前播放的帧表 (idle 或动作): 换 texture + Sprite3D.hframes/vframes/frame + 复位计时/pixel_size/offset.
 #   is_idle=true 时复原 idle 的 px/offy; 动作图帧高可能不同, 按其帧高重算归一.
 func _render_step(rd: float, frozen: bool, in_ts: bool) -> void:
@@ -106,6 +183,8 @@ func _render_step(rd: float, frozen: bool, in_ts: bool) -> void:
 			if u["alive"] or u.get("anim_action", "") == "death":
 				if u.get("is_big_bear", false):
 					battle._equip_tick_sys._tick_bear_anim(u, rd)   # 大熊: 状态机(走路/停顿/熊爪拍/砸地)
+				elif u.get("is_trainer", false):
+					_update_trainer_anim(u, rd)                     # 训龟大师: 真4方向(走路/扔石头/待机)·R6-B
 				else:
 					_update_run_anim(u, rd)
 					_advance_anim(u, rd)
@@ -265,7 +344,10 @@ func _update_world_transforms() -> void:
 		if not bool(u.get("_has_target", false)) and absf(_dx) > 0.3:
 			u["face_right"] = _dx > 0.0
 		u["last_x"] = _px
-		spr.flip_h = bool(u.get("face_right", str(u["side"]) == "left")) != battle._art_faces_right(u)   # 原图朝右的立绘取反(用户2026-07-17"建模左右反")
+		if u.get("is_trainer", false) and str(u.get("_appearance", "")) != "" and str(u.get("_appearance", "")) != "default":
+			spr.flip_h = false   # 大师真4方向(帧表已含左右)·不镜像; 兜底单帧形象仍走下面翻转
+		else:
+			spr.flip_h = bool(u.get("face_right", str(u["side"]) == "left")) != battle._art_faces_right(u)   # 原图朝右的立绘取反(用户2026-07-17"建模左右反")
 		# --- Phase4: squash/stretch 形变 + idle bob 高度微浮 (全从 base 起算, 不累积) ---
 		var sq = battle._vfx._juice_scale_for(u)              # (sx, sy) 形变系数 (base=1,1)
 		var bob = battle._vfx._juice_bob_for(u)               # idle 呼吸 Y 偏移 (米)

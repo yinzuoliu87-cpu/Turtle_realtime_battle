@@ -242,7 +242,10 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		#   正是"场外监视者不该被战线卷进去"想要的; 玩家操控走的是下面 battle._trainer_sys._trainer_move_by 这条独立路径。
 		st = [false, battle.TRAINER_MOVE_SPD, battle.TRAINER_ATK_INTERVAL, battle.TRAINER_RANGE]   # [近战?, 移速, 攻击间隔, 射程]
 		var _appear: String = OS.get_environment("TRAINER_APPEAR") if OS.has_environment("TRAINER_APPEAR") else str(GameState.trainer_appearance)   # dev: TRAINER_APPEAR=mage 可强制预览某形象
-		sd = battle._trainer_sys._trainer_sprite_dict(_appear if side == "left" else "default")   # 玩家侧用配置选的形象; 敌侧用通用立绘
+		if side != "left":
+			_appear = "default"   # 敌方大师用通用立绘(敌形象未跟踪)
+		sd = battle._trainer_sys._trainer_sprite_dict(_appear)   # 玩家侧用配置选的形象; 敌侧用通用立绘
+		sd["_appearance"] = _appear   # 传给 u["_appearance"] → battle_render._update_trainer_anim(4方向)
 	elif is_egg:   # 龟蛋: 纯血包 fighter(atk/def/mr=0), 不动不攻击, 免控/斩/嘲讽, 走完整伤害管线; 围栏未破不可主动索敌(AoE穿栏)
 		d = {"name": "龟蛋", "rarity": "SSS", "crit": 0.0, "hp": maxf(1.0, float(spec.get("hp_max", spec.get("hp", 2100)))), "atk": 0.0, "def": 60.0, "mr": 60.0}   # maxHp=原始满血; 当前hp在下方按累积受损值覆盖(用户2026-07-12: 跨路掉血要可见); 60双抗
 		st = [true, 0.0, 99.0, 0.0]
@@ -410,6 +413,7 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 			u["energy_cost"]["minionRocket"] = 120.0
 	if is_trainer:
 		u["is_trainer"] = true
+		u["_appearance"] = str(sd.get("_appearance", "default"))   # R6-B: 4方向渲染器读它选帧表
 		u["no_move"] = true              # 场外监视者: 站着不动
 		u["no_basic"] = true             # ★关掉 AI 默认普攻(BASIC_ATK 发子弹) —— 训龟大师【只】走
 		#   battle._trainer_sys._tick_trainer_attacks 扔石头这一条。不关的话两条并行 = 同时扔石头又发子弹

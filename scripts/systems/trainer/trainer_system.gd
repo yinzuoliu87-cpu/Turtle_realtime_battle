@@ -74,6 +74,9 @@ func _tick_trainer_attacks(delta: float) -> void:
 		u["_tr_atk_cd"] = battle.TRAINER_ATK_INTERVAL / haste
 		# 朝向目标(扔之前转身), 再播扔石头动作
 		u["face_right"] = tgt["pos"].x > u["pos"].x
+		u["_tr_throw_vec"] = tgt["pos"] - u["pos"]   # R6-B 4方向: 扔石头朝向目标
+		u["_tr_throw_t0"] = battle._t
+		u["_tr_throw_until"] = battle._t + 0.64       # 7帧@11fps 扔石头动画时长(_update_trainer_anim 播一次)
 		_trainer_throw_anim(u)
 		battle._ballistics._fire_trainer_rock(u, tgt)
 		if str(u.get("_tr_passive", "")) == "magic_stone":
@@ -687,6 +690,11 @@ const _APPEARANCE_SPRITES := {
 }
 
 func _trainer_sprite_dict(appearance_id: String = "default") -> Dictionary:
+	# R6-B: 有4方向动画帧表 → 用 idle 表(4行 S/E/N/W·48px格)当基准立绘, 战场由 battle_render._update_trainer_anim 逐帧切方向/动作。
+	var anim_idle: String = "res://assets/sprites/trainer/anim/trainer-" + appearance_id + "-idle.png"
+	if _APPEARANCE_SPRITES.has(appearance_id) and ResourceLoader.exists(anim_idle):
+		return {"tex": load(anim_idle), "frames": 1, "fps": 1.0, "frame_h": 48, "hframes": 1, "vframes": 4, "loop": false}
+	# 兜底: 单帧朝南立绘(敌方/未量产动画的形象)
 	var tex: Texture2D = null
 	var path: String = str(_APPEARANCE_SPRITES.get(appearance_id, ""))   # 选到三形象之一 → 用它; 否则(含"default"/敌方)回退通用立绘
 	if path != "" and ResourceLoader.exists(path):
