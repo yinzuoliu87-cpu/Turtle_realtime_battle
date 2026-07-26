@@ -161,6 +161,7 @@ func _fury_apply_buffs(trainer: Dictionary, point: Vector2) -> int:
 func _fury_dramatize(trainer: Dictionary, point: Vector2) -> void:
 	if battle._world == null:
 		return
+	_trainer_throw_anim(trainer)                 # R4 ② 投掷前摇(大师举瓶挥臂·复用扔石头动画)
 	var from2d: Vector2 = trainer["pos"]
 	var tex = load("res://assets/sprites/vfx/fury-potion.png") if ResourceLoader.exists("res://assets/sprites/vfx/fury-potion.png") else VfxTex._make_fire_glow_tex()
 	var pot = Sprite3D.new()
@@ -170,16 +171,46 @@ func _fury_dramatize(trainer: Dictionary, point: Vector2) -> void:
 	pot.modulate = Color(1.0, 0.55, 0.25)
 	battle._world.add_child(pot)
 	var peak: float = 2.4
+	var ct = [0.0]
 	var tw = battle._reg_tween()
 	tw.tween_interval(battle.HOOK_WINDUP)
-	tw.tween_method(func(p: float) -> void:   # 抛物线飞
+	tw.tween_method(func(p: float) -> void:   # R4 ③ 抛物线飞 + 橙红拖尾
 		if not is_instance_valid(pot): return
-		pot.position = battle._world_pos(from2d.lerp(point, p), 0.9 + peak * sin(PI * p))
+		var cp: Vector2 = from2d.lerp(point, p)
+		var ph: float = 0.9 + peak * sin(PI * p)
+		pot.position = battle._world_pos(cp, ph)
+		ct[0] += 0.02
+		if ct[0] >= 0.07:
+			ct[0] = 0.0
+			var tg = battle._glow_bb(cp, ph, 28.0, Color(1.0, 0.5, 0.2, 0.6))   # 拖尾一粒橙火淡出
+			var trt = battle._reg_tween()
+			trt.tween_property(tg.material_override, "albedo_color", Color(1.0, 0.5, 0.2, 0.0), 0.3)
+			trt.tween_callback(tg.queue_free)
 	, 0.0, 1.0, maxf(0.15, from2d.distance_to(point) / 800.0))
-	tw.tween_callback(func() -> void:
+	tw.tween_callback(func() -> void:   # R4 ④ 落地: 怒火圈 + 爆点 + 轻震屏
 		if is_instance_valid(pot): pot.queue_free()
-		battle._skill_ring(point, Color(1.0, 0.5, 0.2, 0.75), 300.0)          # 300码怒火圈
-		battle._burst_vfx("res://assets/sprites/vfx/cannon-blast.png", point, 120.0, 0.4))
+		battle._splash_ring_bold(point, Color(1.0, 0.55, 0.22, 0.85), 300.0)  # 300码怒火冲击环
+		battle._burst_vfx("res://assets/sprites/vfx/cannon-blast.png", point, 120.0, 0.4)
+		battle._shake(battle.JUICE_SHAKE_HEAVY))
+
+## R5 口哨前摇: 大师头顶冒出♪音符, 上浮淡出(施法提示·所有分支共用)。
+func _whistle_note(u: Dictionary) -> void:
+	if battle._world == null:
+		return
+	var lb := Label3D.new()
+	lb.text = "♪"
+	lb.font_size = 110
+	lb.pixel_size = 0.012
+	lb.modulate = Color(1.0, 0.95, 0.55, 1.0)
+	lb.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lb.no_depth_test = true
+	var base: Vector3 = battle._world_pos(u["pos"], float(u.get("height", 0.0)) + 2.1)
+	lb.position = base
+	battle._world.add_child(lb)
+	var tw = battle._reg_tween(); tw.set_parallel(true)
+	tw.tween_property(lb, "position", base + Vector3(0.25, 0.9, 0.0), 0.75).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(lb, "modulate:a", 0.0, 0.75)
+	tw.chain().tween_callback(lb.queue_free)
 
 ## ── 口哨(主动·CD14·无目标·用户2026-07-23): 随机 3 选 1 —— 临时血 / 灵体小龟气波 / 狂暴免死 ──
 func _whistle_temphp(trainer: Dictionary):
@@ -189,6 +220,13 @@ func _whistle_temphp(trainer: Dictionary):
 	battle._apply_temp_maxhp(ally, 700.0, 5.0)
 	battle._skill_ring(ally["pos"], Color(0.5, 1.0, 0.6, 0.7), 46.0)   # 施加瞬闪
 	battle._buff_aura(ally, Color(0.45, 1.0, 0.55, 0.5), 5.0)          # R2-3 临时血绿光环5秒(持续)
+	if battle._world != null:                                          # R5 绿光柱(生命涌入·竖向拉长的glow)
+		var pil = battle._glow_bb(ally["pos"], 1.3, 46.0, Color(0.45, 1.0, 0.55, 0.0))
+		pil.scale = Vector3(0.55, 3.4, 1.0)
+		var pt = battle._reg_tween()
+		pt.tween_property(pil.material_override, "albedo_color", Color(0.45, 1.0, 0.55, 0.9), 0.12)
+		pt.tween_property(pil.material_override, "albedo_color", Color(0.45, 1.0, 0.55, 0.0), 0.5)
+		pt.tween_callback(pil.queue_free)
 	return ally
 
 ## ★临时最大生命(可测·纯函数): +amt maxHp&hp, sec 秒后到期【按比例削】(§2.4: 当前血 × 新上限/旧上限)。
@@ -224,15 +262,50 @@ func _whistle_berserk_on(ally: Dictionary) -> void:
 	ally["deathfloor_until"] = battle._t + 4.0         # 4秒免疫死亡(血锁≥1)
 	battle._skill_ring(ally["pos"], Color(1.0, 0.4, 0.3, 0.75), 46.0)   # 施加瞬闪
 	battle._buff_aura(ally, Color(1.0, 0.32, 0.3, 0.55), 4.0)           # R2-3 狂暴红战意光环4秒(持续)
+	if battle._world != null:                                          # R5 免死金盾闪 + 吸血血滴
+		var sh = battle._glow_bb(ally["pos"], 1.0, 92.0, Color(1.0, 0.85, 0.35, 0.9))   # 金盾闪(免疫死亡)
+		var st = battle._reg_tween(); st.set_parallel(true)
+		st.tween_property(sh, "scale", Vector3.ONE * 1.9, 0.3)
+		st.tween_property(sh.material_override, "albedo_color", Color(1.0, 0.85, 0.35, 0.0), 0.42)
+		st.chain().tween_callback(sh.queue_free)
+		for k in range(5):                                            # 红血滴上溅淡出(吸血)
+			var a: float = float(k) * TAU / 5.0
+			var d = battle._glow_bb(ally["pos"] + Vector2(cos(a), sin(a)) * 18.0, 0.7, 16.0, Color(0.9, 0.12, 0.12, 0.9))
+			var dt = battle._reg_tween(); dt.set_parallel(true)
+			dt.tween_property(d, "position", d.position + Vector3(0.0, 0.5, 0.0), 0.32)
+			dt.tween_property(d.material_override, "albedo_color", Color(0.9, 0.12, 0.12, 0.0), 0.42)
+			dt.chain().tween_callback(d.queue_free)
 
 ## 灵体小龟演出: 蓝幽灵小龟入场(spirit-turtle.png·缺图则只放气波不崩) + 蓝气波束(qibo-ball.png 真气波素材)。
 func _whistle_spirit_dramatize(trainer: Dictionary, origin: Vector2, dir: Vector2) -> void:
 	if battle._world == null:
 		return
 	_spawn_spirit_turtle(origin)
-	var end2d: Vector2 = origin + dir * 500.0
-	battle._beam_vfx("res://assets/sprites/vfx/qibo-ball.png", origin, end2d, 66.0, Color(0.6, 0.9, 1.0, 0.9), 0.35)
 	battle._skill_ring(origin, Color(0.5, 0.8, 1.0, 0.6), 40.0)
+	# R5 真气波(照小龟龟派气波 _sk_basic_chiwave 观感·chiwave-fly 6帧循环动画火球·沿dir恒速300码/秒飞·带青光晕), 替静态 qibo-ball 束
+	var end2d: Vector2 = origin + dir * 500.0
+	var ball = Sprite3D.new()
+	ball.texture = load("res://assets/sprites/vfx/chiwave-fly.png")
+	ball.hframes = 6; ball.frame = 0
+	ball.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	ball.billboard = BaseMaterial3D.BILLBOARD_DISABLED; ball.shaded = false; ball.transparent = true
+	ball.pixel_size = (150.0 * battle.WS) / 128.0
+	ball.position = battle._world_pos(origin, 0.9)
+	battle._world.add_child(ball)
+	battle._orient_billboard_dir(ball, Vector3(dir.x, 0.0, dir.y))
+	var glow = battle._glow_bb(origin, 0.9, 180.0, Color(0.5, 0.86, 1.0, 0.7))   # 青光晕随波
+	var flydur: float = 500.0 / 300.0                                            # 300码/秒(小龟气波口径)
+	var mtw = battle._reg_tween()
+	mtw.tween_method(func(p: float) -> void:
+		if not is_instance_valid(ball): return
+		var cp: Vector2 = origin.lerp(end2d, p)
+		ball.position = battle._world_pos(cp, 0.9)
+		ball.frame = int(p * 18.0) % 6                                          # 6帧循环
+		if is_instance_valid(glow): glow.position = battle._world_pos(cp, 0.9)
+	, 0.0, 1.0, flydur)
+	mtw.tween_callback(func() -> void:
+		if is_instance_valid(ball): ball.queue_free()
+		if is_instance_valid(glow): glow.queue_free())
 
 ## 蓝幽灵小龟短暂现身: 幽蓝 billboard 从大师身前淡入上浮再淡出(纯演出·缺图优雅跳过, 不阻塞气波)。
 func _spawn_spirit_turtle(origin: Vector2) -> void:
@@ -286,6 +359,9 @@ func _tick_glaciers(_delta: float) -> void:
 			o["slow_until"] = battle._t + 0.2      # -40% 移速(slow_mag 0.6)
 			o["slow_mag"] = 0.6
 			o["glacier_vuln_until"] = battle._t + 0.2   # 受伤 +20%(见 _mitigate_incoming)
+			if battle._world != null and battle._t > float(o.get("_frost_until", 0.0)):
+				battle._buff_aura(o, Color(0.55, 0.85, 1.0, 0.5), 1.6, 40.0)   # R4 ⑤ 敌脚蓝寒雾(在区内每~1.4s续=持续寒气)
+				o["_frost_until"] = battle._t + 1.4
 	battle._glacier_zones = keep
 
 ## 冰川带演出: 从大师沿方向铺一条真冰带(ice-field.png), 铺满整条 500 码带、亮蓝白, 持续 6 秒 = 冰川区判定寿命。
@@ -294,6 +370,15 @@ func _glacier_dramatize(from2d: Vector2, dir: Vector2) -> void:
 		return
 	# 用真冰贴图铺地(160×64 蓝白冰), 而非链束占位; 6 秒常驻(与 battle._glacier_zones 的 until 对齐, 站上去减速期间一直看得见冰)
 	battle._beam_vfx("res://assets/sprites/vfx/ice-field.png", from2d, from2d + dir * 500.0, 90.0, Color(0.85, 0.95, 1.0, 0.9), 6.0, 0.12)
+	battle._shake(battle.JUICE_SHAKE_HEAVY)                       # R4 ② 出现震屏
+	for i in range(3):                                           # 沿方向寒霜由近及远炸开(3点)
+		var pp: Vector2 = from2d + dir * (500.0 * float(i) / 2.0)
+		var g = battle._glow_bb(pp, 0.3, 78.0, Color(0.72, 0.92, 1.0, 0.0))
+		var gt = battle._reg_tween()
+		gt.tween_interval(float(i) * 0.06)                      # 由近及远铺开
+		gt.tween_property(g.material_override, "albedo_color", Color(0.72, 0.92, 1.0, 0.9), 0.08)
+		gt.tween_property(g.material_override, "albedo_color", Color(0.72, 0.92, 1.0, 0.0), 0.26)
+		gt.tween_callback(g.queue_free)
 	battle._skill_ring(from2d, Color(0.7, 0.9, 1.0, 0.6), 46.0)
 
 ## ★纯效果结算(可测): 钩住 target → 眩晕(吃韧性) + 标记4秒【一段段拽】 + 4秒受伤放大。不建任何 tween。

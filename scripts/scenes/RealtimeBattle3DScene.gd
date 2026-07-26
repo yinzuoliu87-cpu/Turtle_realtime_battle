@@ -1650,6 +1650,7 @@ func _cast_whistle(trainer: Dictionary, _aim: Vector2) -> bool:
 	if float(trainer.get("_active_cd", 0.0)) > 0.0:
 		return false
 	trainer["_active_cd"] = float(TRAINER_SKILLS["whistle"]["cd"])
+	_trainer_sys._whistle_note(trainer)          # R5 口哨音符前摇(头顶♪冒出上浮)
 	match _battle_rng.randi() % 3:
 		0: _trainer_sys._whistle_temphp(trainer)
 		1: _trainer_sys._whistle_spirit_wave(trainer)
