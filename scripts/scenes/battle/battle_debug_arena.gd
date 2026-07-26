@@ -338,10 +338,19 @@ func _edit_make_popup(title_text: String) -> GridContainer:
 	hdr.add_child(t)
 	hdr.add_child(_edit_mk_btn("✕ 关闭", func(): _edit_close_popup(), 96))
 	var sc = ScrollContainer.new()
-	sc.custom_minimum_size = Vector2(700, 460)
+	# ★"加装备够不到"修(用户2026-07-26): 原写死 700×460 放在 CenterContainer 里 → 小屏/横屏手机上面板比安全区还高,
+	#   居中后顶(✕关闭)和底部卡片溢出到屏幕外够不到。改成【跟随可视区安全区自适应】: 面板永远在屏内, 59件全靠内部滚动够得到。
+	var _vp: Vector2 = Vector2(battle.get_viewport().get_visible_rect().size)
+	var _m: Vector4 = SafeArea.margins(_vp, 18.0)
+	var _availw: float = _vp.x - _m.x - _m.z
+	var _availh: float = _vp.y - _m.y - _m.w
+	var _sw: float = clampf(_availw - 40.0, 300.0, 760.0)   # 滚动区宽(留 panel 内边距·上限760)
+	var _sh: float = clampf(_availh - 96.0, 200.0, 560.0)   # 滚动区高 = 可用高 − 标题栏/边距 → 随屏, 保证面板不超屏
+	sc.custom_minimum_size = Vector2(_sw, _sh)
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vb.add_child(sc)
 	var grid = GridContainer.new()
-	grid.columns = 5
+	grid.columns = clampi(int(_sw / 120.0), 3, 6)   # 列数随宽自适应(每卡~120px)·窄屏少列不挤
 	grid.add_theme_constant_override("h_separation", 8)
 	grid.add_theme_constant_override("v_separation", 8)
 	sc.add_child(grid)
