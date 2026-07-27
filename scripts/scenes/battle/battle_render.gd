@@ -125,6 +125,7 @@ func _update_trainer_anim(u: Dictionary, delta: float) -> void:
 		spr.material_override = null                       # 关接地shader → 用 Sprite3D 原生裁帧(vframes行=方向)
 		spr.transparent = true
 		spr.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+		spr.offset = Vector2(0.0, 48.0 * 0.5 - 6.0)        # 脚底贴地: 48格里角色脚在格底上方~6px, 少抬6px让【脚】而非格底落地(否则悬空~0.29m·实测三形象5~8px padding)
 	# ① 测速: 0.1s 窗累计位移(跨定步长稳·仿 _update_run_anim), 存最近非零移动方向
 	var lp: Vector2 = u.get("_tr_last_pos", u["pos"])
 	var step: float = u["pos"].distance_to(lp)

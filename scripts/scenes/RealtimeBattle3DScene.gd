@@ -634,6 +634,7 @@ var _edit_trainer_active := "hook"         # 摆训龟大师时给它装的主�
 var _edit_brush_bar: PanelContainer = null # 底部常驻笔刷栏(取代模态选龟弹窗)
 var _edit_brush_cells: Array = []          # [ [Button, brush_key], … ] 用于高亮当前笔刷
 var _edit_body: VBoxContainer = null       # 大面板可折叠的主体(折叠时隐它, 只留标题栏)
+var _edit_body_sc: ScrollContainer = null  # 主体外层滚动容器(内容超屏可滚·折叠时隐它·治面板撑出屏外够不到)
 var _edit_btn_collapse: Button = null      # 折叠/展开按钮
 var _edit_btn_edit: Button = null
 

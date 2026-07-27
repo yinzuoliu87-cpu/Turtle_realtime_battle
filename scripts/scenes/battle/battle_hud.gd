@@ -392,7 +392,15 @@ func _build_edit_palette() -> void:
 	battle._edit_btn_collapse = battle._debug._edit_mk_btn("⊟ 折叠", func(): battle._debug._edit_toggle_collapse(), 84)
 	titlebar.add_child(battle._edit_btn_collapse)
 	# 可折叠主体: 后续所有设置行都进 battle._edit_body(把 vb 重指向它)
-	battle._edit_body = VBoxContainer.new(); battle._edit_body.add_theme_constant_override("separation", 10); vb.add_child(battle._edit_body)
+	# 主体套 ScrollContainer: 内容多(尤其选中单位→Inspector追加行)时不撑出屏外够不到(治与"加装备够不到"同类·2026-07-27)
+	var _body_sc = ScrollContainer.new()
+	_body_sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var _evp: Vector2 = Vector2(battle.get_viewport().get_visible_rect().size)
+	var _em: Vector4 = SafeArea.margins(_evp, 18.0)
+	_body_sc.custom_minimum_size = Vector2(0, clampf(_evp.y - _em.y - _em.w - 130.0, 200.0, 640.0))   # 体高上限=可用高−标题/位置留白 → 面板永远在屏内
+	vb.add_child(_body_sc)
+	battle._edit_body_sc = _body_sc
+	battle._edit_body = VBoxContainer.new(); battle._edit_body.add_theme_constant_override("separation", 10); _body_sc.add_child(battle._edit_body)
 	vb = battle._edit_body
 
 	# 选龟/选边/小将 → 已移到底部常驻笔刷栏(_build_brush_bar·用户2026-07-24), 这里不再放。

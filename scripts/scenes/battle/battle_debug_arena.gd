@@ -251,8 +251,9 @@ func _edit_toggle_collapse() -> void:
 	_edit_apply_collapse()
 
 func _edit_apply_collapse() -> void:
-	if battle._edit_body != null and is_instance_valid(battle._edit_body):
-		battle._edit_body.visible = not battle._edit_collapsed
+	var body = battle._edit_body_sc if (battle._edit_body_sc != null and is_instance_valid(battle._edit_body_sc)) else battle._edit_body   # 折叠隐外层滚动容器(否则空滚动区仍占高)
+	if body != null and is_instance_valid(body):
+		body.visible = not battle._edit_collapsed
 	if battle._edit_btn_collapse != null and is_instance_valid(battle._edit_btn_collapse):
 		battle._edit_btn_collapse.text = "▶ 展开" if battle._edit_collapsed else "⊟ 折叠"
 
