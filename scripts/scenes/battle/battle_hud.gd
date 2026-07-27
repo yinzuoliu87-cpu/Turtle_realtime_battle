@@ -479,7 +479,9 @@ func _build_brush_bar() -> void:
 	bar.add_theme_stylebox_override("panel", sb)
 	bar.mouse_filter = Control.MOUSE_FILTER_STOP
 	bar.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	bar.offset_top = -94
+	var _bsb: float = SafeArea.margins(Vector2(battle.get_viewport().get_visible_rect().size), 10.0).w   # 安全区下边距(手机 home 手势条区·用户2026-07-27:「底部怎么滑·横滑撞手势条」)
+	bar.offset_bottom = -_bsb          # 整条抬到安全区内 → 横滑不再撞底部 home 手势条
+	bar.offset_top = -94.0 - _bsb      # 顶边随之上移
 	battle._ui_layer.add_child(bar)
 	battle._edit_brush_bar = bar
 	var root = VBoxContainer.new(); root.add_theme_constant_override("separation", 3); bar.add_child(root)
@@ -502,7 +504,7 @@ func _build_brush_bar() -> void:
 	strip.add_child(battle._debug._edit_brush_cell("__minion__:elite", "", "精英"))
 	strip.add_child(battle._debug._edit_brush_cell(battle.TRAINER_ID, battle.TRAINER_SPRITE, "大师"))
 	var hint = Label.new()
-	hint.text = "点笔刷(下面高亮)→点战场连点连摆 · 点已摆的龟→设置面板出配置(技能/装备/血量/无敌/满龟能)"
+	hint.text = "← 手指横滑挑龟(共28只+小将+大师) →   点一格选笔刷 → 点战场连点连摆 · 点已摆的龟→出配置面板"
 	hint.add_theme_font_size_override("font_size", 12)
 	hint.add_theme_color_override("font_color", Color("#ffe9a8"))
 	root.add_child(hint)

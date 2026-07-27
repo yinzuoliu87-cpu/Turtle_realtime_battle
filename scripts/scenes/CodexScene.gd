@@ -22,12 +22,10 @@ const RARITY_COLOR := {
 # ── 二阶段双路装备 (p2eq) 费用/稀有度配色 (装备 Tab 用) ──
 # 装备 Tab 不再展示旧 e_ 装备(DataRegistry.all_equipment), 改展示上线野生=duallane 实际用的 59 件 p2eq
 #   (DataRegistry.phase2_equipment, data/phase2-equipment.json) 按费用 1→5 分组, 末尾追加 8 件消耗品。
-# 费用分组标题色 (费用越高越亮/暖); 稀有度色用于行描边 + 详情副标 (p2eq rarity = 中文档位)。
+# 费用分组配色 (费用越高越"贵": 灰→绿→蓝→紫→金 · 1:1 常见档位色 · 2费=绿/3费=蓝·用户2026-07-27修): 组标题 + 行描边 都用它。
+#   (装备数据只有 cost、无 rarity 字段, 不按品质分色。原 const P2EQ_RARITY_COLOR 从没被用过 → 删掉的死代码。)
 const COST_COLOR := {
-	1: "#94a3b8", 2: "#4cc9f0", 3: "#06d6a0", 4: "#c77dff", 5: "#ffd93d",
-}
-const P2EQ_RARITY_COLOR := {
-	"普通": "#94a3b8", "精良": "#4cc9f0", "稀有": "#06d6a0", "史诗": "#c77dff", "传说": "#ffd93d",
+	1: "#94a3b8", 2: "#06d6a0", 3: "#4cc9f0", 4: "#c77dff", 5: "#ffd93d",
 }
 # 稀有度倍率取 DataRegistry.rarity_mult (=rarity-mult.json {S:1.09…}, 同战斗引擎 fighter.gd:127 + PoC pets.ts RARITY_MULT)。
 # 原硬编 {S:1.5/SS:1.75/SSS:2.0} 是自创错值 → 图鉴数值全部虚高且与实战/PoC不符 (用户报"数值不太对")。

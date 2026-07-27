@@ -96,7 +96,7 @@ func _add_simple_row(label: String, label_color: String, stroke: Color, icon_pat
 # 装备 Tab 总件数 = p2eq(59) + 消耗品件数 (Tab 计数 / 状态栏共用)
 # ── 装备 Tab 列表: 59 件 p2eq 按费用 1→5 分组 + 末尾 8 件消耗品 (1:1 上线野生=duallane 实际装备池) ──
 #   数据源: DataRegistry.phase2_equipment (data/phase2-equipment.json); 消耗品 = all_equipment 中 category=consumable。
-#   行描边用稀有度色(P2EQ_RARITY_COLOR), 标题用费用色(host.COST_COLOR); p2eq 有 PNG 图标(img·2026-07-18)→图标格+纯名, 无 img 才 emoji 前缀兜底。
+#   行描边 + 标题 都用费用色(host.COST_COLOR·装备无 rarity 字段); p2eq 有 PNG 图标(img·2026-07-18)→图标格+纯名, 无 img 才 emoji 前缀兜底。
 func _add_equip_rows() -> void:
 	# 费用分组 (1→5)
 	for cost in [1, 2, 3, 4, 5]:
