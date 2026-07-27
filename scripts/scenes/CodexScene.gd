@@ -286,10 +286,26 @@ func _ready() -> void:
 	if OS.has_environment("SHOT_TAB"):   # dev: 截图指定 tab (供 diff)
 		start_tab = OS.get_environment("SHOT_TAB")
 	_switch_tab(start_tab)
+	if OS.has_environment("CODEX_SHOT"):   # dev: 图鉴自截图(SHOT_TAB=equips CODEX_SHOT=秒 SHOT_OUT=路径)·验框色等·截完自退
+		_codex_selfshot()
+		return
 	var _td = get_node_or_null("/root/TutorialDirector")
 	if _td != null:
 		_td.attach_guide(self, "codex")        # 分步引导(带高亮: 分类页签)
 		_td.attach_next_button(self, "codex")  # 右上"打第二把"推进钮
+
+## dev 图鉴自截图: 等 CODEX_SHOT 秒(默认1.2·让入场动画落定)→ 抓主视口存 SHOT_OUT → 退。可选滚动到 SHOT_SCROLL 像素。
+func _codex_selfshot() -> void:
+	var s := OS.get_environment("CODEX_SHOT")
+	var delay := s.to_float() if s.is_valid_float() and s.to_float() > 0.1 else 1.2
+	await get_tree().create_timer(delay).timeout
+	if OS.has_environment("SHOT_SCROLL") and is_instance_valid(list_scroll):
+		list_scroll.scroll_vertical = int(OS.get_environment("SHOT_SCROLL"))
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var img: Image = get_viewport().get_texture().get_image()
+	img.save_png(OS.get_environment("SHOT_OUT") if OS.has_environment("SHOT_OUT") else "res://_codex.png")
+	get_tree().quit()
 
 
 ## 新手引导高亮锚点(用户2026-07-23 D)。名字→屏幕矩形; 解析不到返回空 Rect2(本步不挖洞)。
