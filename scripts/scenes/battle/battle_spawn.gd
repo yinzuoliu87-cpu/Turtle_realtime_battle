@@ -458,8 +458,17 @@ func _spawn_trainers() -> void:
 			u["_tr_active"] = battle._valid_active(_act) if _act != "" else ""
 			u["_tr_passive"] = GameState.trainer_passive_skill()  # "magic_stone" 或 ""
 		else:
-			u["_tr_active"] = "hook"
-			u["_tr_passive"] = ""
+			# ★2026-07-27 接上原注释里的「将来接快照 loadout」: 敌方大师读【对手快照】装配的技能。
+			#   原来恒为 "hook" —— 玩家能选五种, 对手永远只会钩锁, 是系统性不对称;
+			#   队列模拟里更致命(左侧用自选技能、右侧恒钩锁 → 左侧系统性占优, 胜负数据失真)。
+			#   老快照没有 trainer_skill 字段 → 仍回落 "hook", 向后兼容。
+			var _gsk := ""
+			if GameState != null and GameState.dual_ghost is Dictionary:
+				_gsk = str((GameState.dual_ghost as Dictionary).get("trainer_skill", ""))
+			if _gsk == "":
+				_gsk = "hook"
+			u["_tr_active"] = "" if _gsk == "magic_stone" else battle._valid_active(_gsk)
+			u["_tr_passive"] = "magic_stone" if _gsk == "magic_stone" else ""
 	battle._hud._build_trainer_joystick()
 	battle._hud._build_spell_disc()
 

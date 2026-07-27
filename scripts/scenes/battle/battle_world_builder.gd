@@ -5,8 +5,42 @@ extends RefCounted
 
 var battle
 
+## ★2026-07-27 修 nav RID 泄漏: NavigationServer2D.map_create()/region_create() 建的是【服务器 RID】,
+## 不归任何节点所有 → 战斗场景 queue_free() 释放不掉, 必须显式 free_rid()。
+## 全仓库原来一处 free_rid 都没有, 战斗场景也没有 _exit_tree/PREDELETE → 每建一个战斗场景
+## 就永久漏 1 个 map + 1 个 region(实测 4 个场景漏 4 个, 完全线性; 队列 30 场退出报告也是 30 个)。
+## 与真机玩家报告同形: tests/probe_leak.gd 注释记着〖2026-07-10〗「打到一半突然黑屏然后闪退」。
+##
+## 为什么挂在这个 RefCounted 上而不是主战斗场景: ①主文件有 arch 预算棘轮(冻结行数), 不宜再加代码
+## ②本类就是 navmesh 的创建者, 谁创建谁释放 ③battle 被 free 时本对象引用计数归零 → PREDELETE 必触发,
+## 且此刻 battle 可能已失效, 所以【RID 要在本地留一份】, 不能回头读 battle._nav_map。
+var _own_nav_map: RID
+var _own_nav_region: RID
+
+
 func _init(b) -> void:
 	battle = b
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		# ★必须【内联】, 不能调 _free_nav_rids() —— PREDELETE 时脚本实例已在析构中,
+		#   对 self 的方法调用会报 "Attempt to call function ... in base 'null instance'"
+		#   (2026-07-27 实测: 第一版就是这么写的, PREDELETE 触发了但 RID 一个没放掉)。
+		if _own_nav_region.is_valid():
+			NavigationServer2D.free_rid(_own_nav_region)
+		if _own_nav_map.is_valid():
+			NavigationServer2D.free_rid(_own_nav_map)
+
+
+## 释放自己建的 nav 服务器 RID。先 region 后 map(region 挂在 map 上)。幂等。
+func _free_nav_rids() -> void:
+	if _own_nav_region.is_valid():
+		NavigationServer2D.free_rid(_own_nav_region)
+		_own_nav_region = RID()
+	if _own_nav_map.is_valid():
+		NavigationServer2D.free_rid(_own_nav_map)
+		_own_nav_map = RID()
 
 # ----------------------------------------------------------------------------
 #  SubViewport 合成: 3D 渲进它 → SubViewportContainer 贴满屏; 2D UI 叠上面.
@@ -689,10 +723,13 @@ func _build_navmesh() -> void:
 		return
 	if battle._obstacles.is_empty():
 		return
+	_free_nav_rids()          # 防御: 万一被重复调用(现在有 _nav_ready 幂等守卫), 先放掉上一份再建
 	battle._nav_map = NavigationServer2D.map_create()
+	_own_nav_map = battle._nav_map          # ★本地留一份: PREDELETE 时 battle 可能已失效
 	NavigationServer2D.map_set_cell_size(battle._nav_map, 1.0)
 	NavigationServer2D.map_set_active(battle._nav_map, true)
 	battle._nav_region = NavigationServer2D.region_create()
+	_own_nav_region = battle._nav_region
 	NavigationServer2D.region_set_map(battle._nav_region, battle._nav_map)
 	NavigationServer2D.region_set_enabled(battle._nav_region, true)
 	var poly = NavigationPolygon.new()

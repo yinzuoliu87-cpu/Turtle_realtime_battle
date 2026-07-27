@@ -64,7 +64,7 @@ func _eq_ice_fissure(u: Dictionary, si: int) -> void:
 	battle._anticipate(u)                                 # 蓄力砸地
 	var tw = battle._reg_tween()
 	tw.tween_interval(0.3)
-	tw.tween_callback(battle._ice_fissure_go.bind(u, si, u["pos"], dir))
+	tw.tween_callback(battle._ice_sys._ice_fissure_go.bind(u, si, u["pos"], dir))
 
 # 水晶碎片火花: 弹出+缓旋+淡出 (光束/引爆/扫射点缀)
 # 030 单段水晶光束结算: 从携带者当前位置沿 dir 无限直线, 全线敌魔法伤+1层水晶
@@ -77,7 +77,10 @@ func _eq_crystal_line(u: Dictionary, si: int) -> void:   # 迷你水晶球A030: 
 	for _seg in range([2, 2, 3][si]):
 		var twc = battle._reg_tween()
 		twc.tween_interval(float(_seg) * 0.2)   # 施加水晶间隔0.2s(用户)
-		twc.tween_callback(battle._crystal_line_seg.bind(u, si, dir2))
+		# ★2026-07-27 修断线: _crystal_line_seg 住在 CrystalSystem(2026-07-25 抽出), 不在主场景上。
+		#   原来写 battle._crystal_line_seg → 每次触发刷 SCRIPT ERROR 且光束【完全不结算】,
+		#   等于迷你水晶球A030 这件装备的主效果一直是死的。自动玩家跑 3 把就撞出 17 条。
+		twc.tween_callback(battle._crystal_sys._crystal_line_seg.bind(u, si, dir2))
 
 # 031: 水晶射线360度扫一圈(1.5s), 射线扫到敌人即结算魔法伤+叠层
 func _eq_crystal_sweep(u: Dictionary, si: int) -> void:
@@ -97,10 +100,10 @@ func _eq_crystal_sweep(u: Dictionary, si: int) -> void:
 	battle._world.add_child(im)
 	var start_a: float = randf() * TAU
 	var state: Dictionary = {"prev": start_a}
-	battle._crystal_spark(center, 1.1)
+	battle._crystal_sys._crystal_spark(center, 1.1)
 	var tw = battle._reg_tween()
 	# 先慢后快再慢(ease-in-out): 匀速被否, 甩动有加速度
-	tw.tween_method(battle._crystal_sweep_step.bind(u, si, reach, state, im, imesh, mat), start_a, start_a + TAU, 1.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_method(battle._crystal_sys._crystal_sweep_step.bind(u, si, reach, state, im, imesh, mat), start_a, start_a + TAU, 1.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 	tw.tween_callback(im.queue_free)
 
 # 032: 登场召唤亡灵骷髅 (双抗20000近乎免疫, 存活15s自灭, 死亡200码内%最大生命真伤)
@@ -459,7 +462,7 @@ func _eq_ice_throw(u: Dictionary, si: int) -> void:
 	battle._anticipate(u)
 	var tw = battle._reg_tween()
 	tw.tween_interval(0.32)
-	tw.tween_callback(battle._ice_throw_go.bind(u, si))
+	tw.tween_callback(battle._ice_sys._ice_throw_go.bind(u, si))
 
 func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007(重做·用户2026-07-19): 朝方向高举斩→宽刃剑气墙沿dir扫2000码(wisp_dir朝向·等距不歪)+贴地冲击带(no_depth_test)·命中给盾
 	var flat: int = [20, 35, 60][si]
@@ -1133,11 +1136,11 @@ func _eq_crystal_stack(src: Dictionary, o: Dictionary, si: int) -> void:
 	var lv = battle._add_stack(o, "p2crystal", 1, 3)
 	if lv >= 3:
 		battle._consume_stacks(o, "p2crystal")
-		battle._crystal_stack_set(o, 0)
-		battle._crystal_detonate(o["pos"])
+		battle._crystal_sys._crystal_stack_set(o, 0)
+		battle._crystal_sys._crystal_detonate(o["pos"])
 		battle._damage._apply_damage_from(src, o, battle._resolve_dmg(src, float(o["maxHp"]) * [0.14, 0.17, 0.20][si], o, true), Color("#bfa8ff"), 0.0, false, true)
 	else:
-		battle._crystal_stack_set(o, lv)   # 更新可视层数
+		battle._crystal_sys._crystal_stack_set(o, lv)   # 更新可视层数
 
 # 狙击长管 057: 递归开枪
 # 狙击长管 057: 递归开枪

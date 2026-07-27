@@ -1,0 +1,678 @@
+extends Node
+## _cohort.gd — N 队机器人【真实队列】模拟 (方案书 docs/plans/20260727b)
+##
+## 用户 2026-07-27:「先跑32个队, 记住要真实的, 打完8条命就直接淘汰了」
+##
+## 与 _autoplay.gd 的区别: 那个是【1 只机器人打静态种子池】; 这个是【N 只机器人互相打】——
+## 每场推进两只, 输光 8 命【直接出局不复活】, 活着的继续。每打完一场, 把该机器人当时的
+## 真实家当存成快照 → 这些快照就是新 ghost 池的原料(用户:「把这个作为快照存入」)。
+##
+## 每只机器人开局随机: 3 只统领(28选3) / 训龟技能(五选一) / 买装策略(三种·造出强中弱三层玩家)
+##                    / 分路与小将前后排。
+## 每场后它自己: 逛商店(买经验/买装备/刷新) → 回背包(三合一/装/换/卖) → 该打碎糖果罐就打碎。
+##
+## 跑法(必须 headless —— 本机开 3D 窗口会蓝屏):
+##   SHIP=1 DL_AUTOFIGHT=1 TURTLE_SEED=20260727 COHORT_BOTS=32 \
+##   <godot> --headless --audio-driver Dummy --path . res://tests/_cohort.tscn
+##
+## 环境变量: COHORT_BOTS(默认32) COHORT_MAX_ROUNDS(默认120) COHORT_OUT(默认 res://tools/autoplay)
+##
+## ★不写玩家存档: GameState.test_mode + save_pool 守卫(backend.gd)。快照只落自己的产物文件。
+
+const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
+const Backend := preload("res://scripts/net/backend.gd")
+const P2 := preload("res://scripts/gamedata/phase2_config.gd")
+const P2EQ := preload("res://scripts/gamedata/phase2_equip.gd")
+
+const SKILLS := ["magic_stone", "hook", "fury_potion", "whistle", "glacier"]
+const STRATEGIES := ["merge_first", "greedy_cost", "random"]
+const FRAME_CAP := 60000
+const SHELF := 10
+const MAX_REFRESH := 2
+
+var _rng := RandomNumberGenerator.new()
+var _bots: Array = []
+var _snapshots: Array = []      # 产出的真实快照(新池原料)
+var _battle_log: Array = []
+var _round := 0
+
+
+# ════════════════════ 入口 ════════════════════
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	await get_tree().process_frame
+	var gs = get_node_or_null("/root/GameState")
+	var dr = get_node_or_null("/root/DataRegistry")
+	if gs == null or dr == null:
+		print("  [FAIL] 缺 autoload"); get_tree().quit(1); return
+	gs.test_mode = true
+
+	var n := int(OS.get_environment("COHORT_BOTS")) if OS.get_environment("COHORT_BOTS").is_valid_int() else 32
+	var max_rounds := int(OS.get_environment("COHORT_MAX_ROUNDS")) if OS.get_environment("COHORT_MAX_ROUNDS").is_valid_int() else 120
+	var st := OS.get_environment("TURTLE_SEED")
+	_rng.seed = int(st) if st.is_valid_int() else 20260727
+
+	var all_ids: Array = []
+	for p in dr.launch_pets:
+		all_ids.append(str((p as Dictionary)["id"]))
+	if all_ids.size() < 3:
+		print("  [FAIL] 龟数据不足"); get_tree().quit(1); return
+
+	for i in range(n):
+		_bots.append(_make_bot(i, all_ids))
+
+	print("=== 队列模拟: %d 只机器人, 全部 0 场 8 命起步, 输光即出局 ===" % n)
+	print("  龟池 %d 只 | 技能五选一 | 策略 %s | 种子 %d" % [all_ids.size(), str(STRATEGIES), int(_rng.seed)])
+	var sc := {}
+	var lm := {}
+	var sk := {}
+	for b in _bots:
+		sc[b["strategy"]] = int(sc.get(b["strategy"], 0)) + 1
+		sk[b["skill"]] = int(sk.get(b["skill"], 0)) + 1
+		var nt := 0
+		var nb := 0
+		for u in ((b["lineup"] as Dictionary)["top"] as Array):
+			if str((u as Dictionary).get("kind", "")) == "leader": nt += 1
+		for u in ((b["lineup"] as Dictionary)["bottom"] as Array):
+			if str((u as Dictionary).get("kind", "")) == "leader": nb += 1
+		var mk := "%d/%d" % [nt, nb]
+		lm[mk] = int(lm.get(mk, 0)) + 1
+	print("  策略分布: %s" % str(sc))
+	print("  分路分布(上路统领/下路统领): %s" % str(lm))
+	print("  技能分布: %s" % str(sk))
+	print("")
+
+	var t0 := Time.get_ticks_msec()
+	while _round < max_rounds and _alive().size() >= 2:
+		_round += 1
+		await _run_round(gs)
+	var elapsed := (Time.get_ticks_msec() - t0) / 1000.0
+
+	_report(elapsed)
+	get_tree().quit(0)
+
+
+func _make_bot(i: int, all_ids: Array) -> Dictionary:
+	var pool: Array = all_ids.duplicate()
+	for k in range(pool.size() - 1, 0, -1):
+		var j: int = _rng.randi() % (k + 1)
+		var t = pool[k]; pool[k] = pool[j]; pool[j] = t
+	var team: Array = pool.slice(0, 3)
+	# ★分路 4 模式 (用户 2026-07-27「可以三小将一条路, 3统领一条路, 上下换位」)。
+	#   权重贴近种子池实际分布: 2/1经典60 · 1/2下重37 · 3统领上路28 · 3统领下路21。
+	#   每路恒 3 格: 统领占前几格, 其余补小将; 空统领路 = 3 小将守(种子池注释的「空统领路小将守」),
+	#   该路首个小将成精英(见 _snapshot_of)。GameState._dl_structure_ok 只要求"共3统领+slot齐0/1/2",
+	#   不要求两路都有统领 → (3,0)/(0,3) 合法。
+	var modes := [[2, 1], [1, 2], [3, 0], [0, 3]]
+	var weights := [60, 37, 28, 21]
+	var tot := 0
+	for w in weights:
+		tot += w
+	var pick: int = _rng.randi() % tot
+	var mode: Array = modes[0]
+	for mo in range(modes.size()):
+		if pick < int(weights[mo]):
+			mode = modes[mo]
+			break
+		pick -= int(weights[mo])
+	var lineup := {"top": [], "bottom": []}
+	var slot := 0
+	for li in range(2):
+		var lane: String = "top" if li == 0 else "bottom"
+		var n_lead: int = int(mode[li])
+		var arr: Array = []
+		for _i in range(n_lead):
+			arr.append({"kind": "leader", "id": team[slot], "slot": slot})
+			slot += 1
+		for mi in range(3 - n_lead):
+			# 首个补位小将偏前排(挡刀), 后面的偏后排(输出); 留随机 —— 真玩家排法本来就不统一
+			var front_bias: float = 0.75 if mi == 0 else 0.35
+			arr.append({"kind": "minion", "role": ("front" if _rng.randf() < front_bias else "back")})
+		lineup[lane] = arr
+	return {
+		"id": i,
+		"name": "机器人%02d" % i,
+		"team": team,
+		"skill": SKILLS[_rng.randi() % SKILLS.size()],
+		"strategy": STRATEGIES[_rng.randi() % STRATEGIES.size()],
+		"lineup": lineup,
+		"battles": 0, "hearts": 8, "coins": 0, "level": 1, "xp": 0, "wins": 0,
+		"bench": [], "equipped": {},
+		"candy": 0, "candy_broken": false, "candy_levels": {},
+		"alive": true, "out_at": -1,
+	}
+
+
+func _alive() -> Array:
+	var a: Array = []
+	for b in _bots:
+		if b["alive"]:
+			a.append(b)
+	return a
+
+
+# ════════════════════ 一轮: 按档配对互打 ════════════════════
+func _run_round(gs) -> void:
+	# 按档分组 (同档才配对; 同档落单 → 往【低】档找, 绝不往上 —— 与 find_opponent 去±1 后同规则)
+	var by_b := {}
+	for b in _alive():
+		var k: int = Backend.bracket_for_battles(int(b["battles"]))
+		if not by_b.has(k):
+			by_b[k] = []
+		(by_b[k] as Array).append(b)
+	var keys: Array = by_b.keys()
+	keys.sort()
+	keys.reverse()      # 从高档往低档配, 落单的往低档并
+
+	var carry: Array = []      # 上一(更高)档落单的
+	var pairs: Array = []
+	for k in keys:
+		var grp: Array = (by_b[k] as Array)
+		grp.append_array(carry)
+		carry = []
+		for i in range(grp.size() - 1, 0, -1):
+			var j: int = _rng.randi() % (i + 1)
+			var t = grp[i]; grp[i] = grp[j]; grp[j] = t
+		while grp.size() >= 2:
+			pairs.append([grp.pop_back(), grp.pop_back()])
+		if grp.size() == 1:
+			carry.append(grp[0])
+
+	var fought := 0
+	for pr in pairs:
+		await _fight(gs, pr[0], pr[1])
+		fought += 1
+	var al := _alive().size()
+	print("  第%2d轮: %d 场 | 存活 %d/%d | 场次分布 %s" % [_round, fought, al, _bots.size(), _battles_hist()])
+
+
+func _battles_hist() -> String:
+	var h := {}
+	for b in _alive():
+		var k: int = Backend.bracket_for_battles(int(b["battles"]))
+		h[k] = int(h.get(k, 0)) + 1
+	var keys: Array = h.keys(); keys.sort()
+	var parts: Array = []
+	for k in keys:
+		parts.append("档%d:%d" % [k, h[k]])
+	return " ".join(PackedStringArray(parts))
+
+
+# ════════════════════ 一场 ════════════════════
+func _fight(gs, a: Dictionary, b: Dictionary) -> void:
+	_load(gs, a)
+	gs.reset_dual_lane()
+	gs.dual_active = true
+	# ★快照在【开打前】存 —— 它要表达的是"这个对手当时长什么样", 不是"他打完又逛了一轮商店之后"。
+	#   存在打完之后会让 档0 出现 7.5 件装备(第1场打完买了一轮), 与"第一大轮第一把没装备"直接矛盾。
+	var snap_a := _snapshot_of(a, a["name"])
+	var snap_b := _snapshot_of(b, b["name"])
+	_snapshots.append(snap_a)
+	_snapshots.append(snap_b)
+	gs.dual_ghost = snap_b
+
+	var s = RB.new()
+	add_child(s)
+	var fr := 0
+	while fr < FRAME_CAP and str(s._dl_state) != "done":
+		await get_tree().process_frame
+		fr += 1
+	var reached: bool = str(s._dl_state) == "done"
+	var a_won: bool = str(gs.dual_lane_winner()) == "left"
+	# ★判完 done 先宽限几帧再释放场景 —— 否则正在飞的演出(大剑下劈/熔岩柱/忍者滑翔…)
+	#   会在 await 之后撞上已释放的 battle, 刷 "Nonexistent function ... on previously freed"。
+	#   实测那类报错都发生在【胜负判定之后】不影响数据, 但会污染致命报错计数。
+	#   真实对局里场景会停在结算横幅上直到切场景, 本来就有这段宽限期; harness 原来一判 done 就腰斩。
+	for _g in range(30):
+		await get_tree().process_frame
+	s.queue_free()
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	_save(gs, a)                      # 引擎已在 _settle_season 里把 a 结算好了
+	_settle_mirror(b, not a_won)      # b 在右侧, 引擎不喂它 → 手工镜像同一套结算
+
+	_battle_log.append({
+		"round": _round, "a": a["id"], "b": b["id"], "a_won": a_won,
+		"a_battles": int(a["battles"]), "b_battles": int(b["battles"]),
+		"a_hearts": int(a["hearts"]), "b_hearts": int(b["hearts"]),
+		"bracket": Backend.bracket_for_battles(int(a["battles"])), "done": reached, "frames": fr,
+	})
+
+	for who in [a, b]:
+		_load(gs, who)
+		_shop(gs, who)
+		_equip(gs)
+		_save(gs, who)
+		if int(who["hearts"]) <= 0 and who["alive"]:
+			who["alive"] = false
+			who["out_at"] = int(who["battles"])
+
+
+## 镜像 RealtimeBattle3DScene._settle_season(:7247) —— 右侧机器人引擎不喂, 这里等效结算。
+## 改那边必须改这里(两处口径必须一致, 否则左右两侧经济不同 = 数据作废)。
+func _settle_mirror(bot: Dictionary, won: bool) -> void:
+	if int(bot["hearts"]) <= 0:
+		bot["coins"] = int(bot["coins"]) + 5      # 表演赛: 不掉命/不计战
+		return
+	if not won:
+		bot["hearts"] = maxi(0, int(bot["hearts"]) - 1)
+	var lost: int = maxi(0, 8 - int(bot["hearts"]))
+	bot["coins"] = int(bot["coins"]) + 8 + int(bot["hearts"]) + 2 * lost + (6 if won else 0)
+	bot["battles"] = int(bot["battles"]) + 1
+	bot["xp"] = int(bot["xp"]) + 2
+	while int(bot["level"]) < P2.MAX_LEVEL and int(bot["xp"]) >= P2.xp_to_next(int(bot["level"])):
+		bot["xp"] = int(bot["xp"]) - P2.xp_to_next(int(bot["level"]))
+		bot["level"] = int(bot["level"]) + 1
+	bot["candy"] = mini(30, int(bot["candy"]) + (1 if won else 4))
+	if won:
+		bot["wins"] = int(bot["wins"]) + 1
+
+
+# ════════════════════ 机器人状态 ↔ GameState ════════════════════
+func _load(gs, bot: Dictionary) -> void:
+	gs.season_leaders = (bot["team"] as Array).duplicate()
+	gs.left_team.assign(bot["team"])
+	gs.dual_lineup = (bot["lineup"] as Dictionary).duplicate(true)
+	gs.season_total_battles = int(bot["battles"])
+	gs.hearts = int(bot["hearts"])
+	gs.meta_deepsea_coins = int(bot["coins"])
+	gs.season_level = int(bot["level"])
+	gs.season_xp = int(bot["xp"])
+	gs.season_wins = int(bot["wins"])
+	gs.persistent_bench = (bot["bench"] as Array).duplicate(true)
+	gs.persistent_equipped = (bot["equipped"] as Dictionary).duplicate(true)
+	gs.candy_jar_count = int(bot["candy"])
+	gs.candy_jar_broken = bool(bot["candy_broken"])
+	gs.candy_temp_levels = (bot["candy_levels"] as Dictionary).duplicate(true)
+	gs.trainer_skill = str(bot["skill"])
+
+
+func _save(gs, bot: Dictionary) -> void:
+	bot["battles"] = int(gs.season_total_battles)
+	bot["hearts"] = int(gs.hearts)
+	bot["coins"] = int(gs.meta_deepsea_coins)
+	bot["level"] = int(gs.season_level)
+	bot["xp"] = int(gs.season_xp)
+	bot["wins"] = int(gs.season_wins)
+	bot["bench"] = (gs.persistent_bench as Array).duplicate(true)
+	bot["equipped"] = (gs.persistent_equipped as Dictionary).duplicate(true)
+	bot["lineup"] = (gs.get_dual_lineup() as Dictionary).duplicate(true)
+	bot["candy"] = int(gs.candy_jar_count)
+	bot["candy_broken"] = bool(gs.candy_jar_broken)
+	bot["candy_levels"] = (gs.candy_temp_levels as Dictionary).duplicate(true)
+
+
+## 把机器人当时的【真实家当】序列化成 ghost 快照 —— 这就是新池的原料。
+## ★不用 Backend.build_ghost_snapshot: 它读的是每局被 reset_dual_lane 清空的 equipped_p2,
+##   产出的 equipped 恒为空(2026-07-27 实测)。这里直接读 persistent_equipped(战斗真正读的那个)。
+func _snapshot_of(bot: Dictionary, label: String) -> Dictionary:
+	var lineup: Dictionary = bot["lineup"]
+	var lane_assign := {"top": [], "bottom": []}
+	var minions := {"top": [], "bottom": []}
+	for lane in ["top", "bottom"]:
+		for u in (lineup.get(lane, []) as Array):
+			var ud: Dictionary = u
+			if str(ud.get("kind", "")) == "leader":
+				(lane_assign[lane] as Array).append(str(ud.get("id", "")))
+			else:
+				(minions[lane] as Array).append({
+					"role": str(ud.get("role", "front")),
+					"elite": (lane_assign[lane] as Array).is_empty() and (minions[lane] as Array).is_empty(),
+					"equips": ((ud.get("equips", []) as Array)).duplicate(true),
+				})
+	var levels := {}
+	for pid in (bot["team"] as Array):
+		levels[str(pid)] = 1 + int((bot["candy_levels"] as Dictionary).get(str(pid), 0))
+	return {
+		"schema_ver": 1,
+		"ghost_id": "coh_%d_b%d" % [int(bot["id"]), int(bot["battles"])],
+		"is_bot": false,
+		"bracket": Backend.bracket_for_battles(int(bot["battles"])),
+		"profile": {"name": label, "avatar": str((bot["team"] as Array)[0]), "id": "COH%02d" % int(bot["id"])},
+		"leaders": (bot["team"] as Array).duplicate(),
+		"lane_assign": lane_assign,
+		"minions": minions,
+		"loadouts": {},
+		"equipped": (bot["equipped"] as Dictionary).duplicate(true),
+		"pet_levels": levels,
+		"trainer_skill": str(bot["skill"]),     # ★2026-07-27 新增: 敌方大师读它(battle_spawn.gd)
+		"season_total_battles": int(bot["battles"]),
+		"season_eggs_killed": 0,
+		"season_level": int(bot["level"]),     # ★门禁用它算全队装备上限 team_equip_cap()
+		"_strategy": str(bot["strategy"]),
+	}
+
+
+# ════════════════════ 商店 / 背包 (与 _autoplay 同口径) ════════════════════
+func _item_strength(item) -> float:
+	if not (item is Dictionary):
+		return 0.0
+	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(str((item as Dictionary).get("id", "")), {})
+	var cost := int(edef.get("cost", 0))
+	if cost <= 0:
+		return 0.0
+	var star: int = maxi(1, int((item as Dictionary).get("star", 1)))
+	var k := {1: 0.85, 2: 0.90, 3: 1.00, 4: 1.15, 5: 1.30}
+	return float(cost) * pow(1.8, float(star - 1)) * float(k.get(cost, 1.0))
+
+
+func _is_equip(item) -> bool:
+	return item is Dictionary and str((item as Dictionary).get("kind", "")) != "item" \
+		and DataRegistry.phase2_equipment_by_id.has(str((item as Dictionary).get("id", "")))
+
+
+func _shop(gs, bot: Dictionary) -> void:
+	# ① 糖果罐: 攒满就砸; 快没命了也砸(用户设计: 输+4→8命输光正好30封顶=逆风补偿)
+	if gs.has_candy_jar() and not bool(gs.candy_jar_broken):
+		if int(gs.candy_jar_count) >= 30 or (int(gs.hearts) <= 1 and int(gs.candy_jar_count) >= 12):
+			gs.break_candy_jar()
+
+	# ② 临时等级器(糖果罐战利品): 给随机一只统领
+	for i in range((gs.persistent_bench as Array).size() - 1, -1, -1):
+		var it = (gs.persistent_bench as Array)[i]
+		if it is Dictionary and str((it as Dictionary).get("kind", "")) == "item":
+			var team: Array = gs.season_leaders
+			if not team.is_empty():
+				gs.apply_temp_leveler(str(team[_rng.randi() % team.size()]))
+				gs.consume_temp_leveler(i)
+
+	# ③ 买经验(照抄项目自己的"像玩家"口径 phase2_config.gd:53)
+	var xp_buys := 0
+	while xp_buys < P2.AI_MAX_XP_BUYS_PER_VISIT and int(gs.season_level) < P2.MAX_LEVEL \
+			and int(gs.meta_deepsea_coins) >= P2.AI_GEAR_RESERVE + P2.BUY_XP_COST:
+		if not gs.buy_season_xp():
+			break
+		xp_buys += 1
+
+	# ④ 买装备 (买不到东西就刷新, 最多 MAX_REFRESH 次 —— 真玩家会刷)
+	var refreshed := 0
+	while true:
+		var bought := _buy_once(gs, str(bot["strategy"]))
+		if bought > 0:
+			break
+		if refreshed >= MAX_REFRESH or int(gs.meta_deepsea_coins) < 2 + 1:
+			break
+		gs.meta_deepsea_coins -= 2      # REFRESH_COST(ShopScene.gd:9)
+		refreshed += 1
+
+
+func _buy_once(gs, strategy: String) -> int:
+	var maxed := {}
+	for it in _all_items(gs):
+		if int((it as Dictionary).get("star", 1)) >= 3:
+			maxed[str((it as Dictionary).get("id", ""))] = true
+	var pool: Array = []
+	for e in DataRegistry.phase2_equipment:
+		if not maxed.has(str((e as Dictionary).get("id", ""))):
+			pool.append(e)
+	var stage: int = clampi(int(gs.season_level), 1, 10)
+	var offer: Array = P2EQ.roll_shop(pool, stage, SHELF, _rng)
+
+	var idxs: Array = []
+	for i in range(offer.size()):
+		if offer[i] != null:
+			idxs.append(i)
+	match strategy:
+		"random":
+			for i in range(idxs.size() - 1, 0, -1):
+				var j: int = _rng.randi() % (i + 1)
+				var t = idxs[i]; idxs[i] = idxs[j]; idxs[j] = t
+		"greedy_cost":
+			idxs.sort_custom(func(a, b): return int(offer[a].get("cost", 1)) > int(offer[b].get("cost", 1)))
+		_:
+			var owned := {}
+			for it in _all_items(gs):
+				if int((it as Dictionary).get("star", 1)) == 1:
+					var kk := str((it as Dictionary).get("id", ""))
+					owned[kk] = int(owned.get(kk, 0)) + 1
+			idxs.sort_custom(func(a, b):
+				var ka: int = int(owned.get(str(offer[a].get("id", "")), 0))
+				var kb: int = int(owned.get(str(offer[b].get("id", "")), 0))
+				var pa: int = (2 if ka == 2 else (1 if ka == 1 else 0))
+				var pb: int = (2 if kb == 2 else (1 if kb == 1 else 0))
+				if pa != pb:
+					return pa > pb
+				return int(offer[a].get("cost", 1)) > int(offer[b].get("cost", 1)))
+
+	var n := 0
+	for i in idxs:
+		var e = offer[i]
+		var price: int = maxi(1, int((e as Dictionary).get("cost", 1)))
+		if int(gs.meta_deepsea_coins) < price:
+			continue
+		gs.meta_deepsea_coins -= price
+		(gs.persistent_bench as Array).append({"id": str((e as Dictionary).get("id", "")), "star": 1})
+		gs.auto_merge_all()
+		n += 1
+	return n
+
+
+func _equip(gs) -> void:
+	# ★装备容量统一规则(2026-07-27): 单只 ≤ UNIT_EQUIP_CAP(3) 且 全队 6 只合计 ≤ team_equip_cap(赛季等级)。
+	#   完全自由分配 → 机器人的策略: 先把统领填满(统领有技能, 装备收益更高), 溢出的才给小将。
+	var slots: int = P2.UNIT_EQUIP_CAP
+	# 统领空槽 → 装背包最强
+	for pid in (gs.season_leaders as Array):
+		var p := str(pid)
+		var eqs: Array = (gs.persistent_equipped as Dictionary).get(p, [])
+		while eqs.size() < slots and gs.team_has_equip_room():
+			var bi := _best_bench(gs)
+			if bi < 0: break
+			eqs.append((gs.persistent_bench as Array)[bi])
+			(gs.persistent_bench as Array).remove_at(bi)
+			(gs.persistent_equipped as Dictionary)[p] = eqs   # 先写回, team_equipped_count 才数得到
+		(gs.persistent_equipped as Dictionary)[p] = eqs
+	# 换装: 背包最强 > 身上最弱 → 换
+	for pid in (gs.season_leaders as Array):
+		var p := str(pid)
+		var eqs: Array = (gs.persistent_equipped as Dictionary).get(p, [])
+		var guard := 0
+		while guard < 8 and not eqs.is_empty():
+			guard += 1
+			var bi := _best_bench(gs)
+			if bi < 0: break
+			var wi := 0
+			for i in range(eqs.size()):
+				if _item_strength(eqs[i]) < _item_strength(eqs[wi]): wi = i
+			var cand = (gs.persistent_bench as Array)[bi]
+			if _item_strength(cand) <= _item_strength(eqs[wi]): break
+			var old = eqs[wi]; eqs[wi] = cand; (gs.persistent_bench as Array)[bi] = old
+		(gs.persistent_equipped as Dictionary)[p] = eqs
+	# 小将
+	var dl: Dictionary = gs.get_dual_lineup()
+	for lane in ["top", "bottom"]:
+		var arr: Array = dl.get(lane, [])
+		for i in range(arr.size()):
+			var u: Dictionary = arr[i]
+			if str(u.get("kind", "")) != "minion": continue
+			var meqs: Array = u.get("equips", []) if u.get("equips", null) is Array else []
+			while meqs.size() < slots and gs.team_has_equip_room():
+				var bi := _best_bench(gs)
+				if bi < 0: break
+				meqs.append((gs.persistent_bench as Array)[bi])
+				(gs.persistent_bench as Array).remove_at(bi)
+				u["equips"] = meqs; arr[i] = u; dl[lane] = arr; gs.dual_lineup = dl   # 先写回再数
+			u["equips"] = meqs
+			arr[i] = u
+		dl[lane] = arr
+	gs.dual_lineup = dl
+	gs.auto_merge_all()
+	_sell_junk(gs)
+
+
+## 卖废品: 只卖【背包里没有同款可凑合成】且【弱于身上最弱一件】的, 且背包 >8 时才卖。
+## (留着同款是为了三合一 —— 卖掉重复件等于自断升星路)
+func _sell_junk(gs) -> void:
+	var weakest := 1e9
+	for p in (gs.persistent_equipped as Dictionary).keys():
+		for it in ((gs.persistent_equipped as Dictionary)[p] as Array):
+			weakest = minf(weakest, _item_strength(it))
+	if weakest > 1e8:
+		return
+	var guard := 0
+	while (gs.persistent_bench as Array).size() > 8 and guard < 20:
+		guard += 1
+		var cnt := {}
+		for it in (gs.persistent_bench as Array):
+			if _is_equip(it):
+				var k := "%s|%d" % [str((it as Dictionary).get("id", "")), int((it as Dictionary).get("star", 1))]
+				cnt[k] = int(cnt.get(k, 0)) + 1
+		var target := -1
+		for i in range((gs.persistent_bench as Array).size()):
+			var it = (gs.persistent_bench as Array)[i]
+			if not _is_equip(it): continue
+			var k := "%s|%d" % [str((it as Dictionary).get("id", "")), int((it as Dictionary).get("star", 1))]
+			if int(cnt.get(k, 0)) > 1: continue          # 有同款 → 留着凑合成
+			if _item_strength(it) >= weakest: continue    # 比身上最弱的还强 → 留着
+			target = i
+			break
+		if target < 0:
+			break
+		var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(
+			str(((gs.persistent_bench as Array)[target] as Dictionary).get("id", "")), {})
+		var cost: int = maxi(1, int(edef.get("cost", 1)))
+		var star: int = maxi(1, int(((gs.persistent_bench as Array)[target] as Dictionary).get("star", 1)))
+		gs.meta_deepsea_coins += int(floor(cost * star * 0.8))    # 同 InvOps._sell_value
+		(gs.persistent_bench as Array).remove_at(target)
+
+
+func _best_bench(gs) -> int:
+	var best := -1
+	var bs := 0.0
+	for i in range((gs.persistent_bench as Array).size()):
+		var it = (gs.persistent_bench as Array)[i]
+		if not _is_equip(it): continue
+		var s := _item_strength(it)
+		if s > bs:
+			bs = s; best = i
+	return best
+
+
+func _all_items(gs) -> Array:
+	var out: Array = []
+	for it in (gs.persistent_bench as Array):
+		if _is_equip(it): out.append(it)
+	for p in (gs.persistent_equipped as Dictionary).keys():
+		for it in ((gs.persistent_equipped as Dictionary)[p] as Array):
+			if _is_equip(it): out.append(it)
+	var dl: Dictionary = gs.get_dual_lineup()
+	for lane in ["top", "bottom"]:
+		for u in (dl.get(lane, []) as Array):
+			for it in ((u as Dictionary).get("equips", []) as Array):
+				if _is_equip(it): out.append(it)
+	return out
+
+
+func _snap_strength(sn: Dictionary) -> float:
+	var t := 0.0
+	for p in (sn.get("equipped", {}) as Dictionary).keys():
+		for it in ((sn["equipped"] as Dictionary)[p] as Array):
+			t += _item_strength(it)
+	for lk in (sn.get("minions", {}) as Dictionary).keys():
+		for m in (sn["minions"][lk] as Array):
+			for it in ((m as Dictionary).get("equips", []) as Array):
+				t += _item_strength(it)
+	return t
+
+
+# ════════════════════ 报告 ════════════════════
+func _report(elapsed: float) -> void:
+	var dir := OS.get_environment("COHORT_OUT")
+	if dir == "":
+		dir = "res://tools/autoplay"
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir) if dir.begins_with("res://") else dir)
+
+	print("")
+	print("=== 队列小结 (%d 轮, %d 场, 墙钟 %.0f 秒) ===" % [_round, _battle_log.size(), elapsed])
+	var done := 0
+	for r in _battle_log:
+		if r["done"]: done += 1
+	print("  跑完整场: %d/%d  (不足=数据有洞)" % [done, _battle_log.size()])
+	print("  ★分母: 机器人 %d 只, 快照 %d 条 (0=空跑)" % [_bots.size(), _snapshots.size()])
+
+	# 存活曲线
+	print("")
+	print("  出局分布(打到第几场被淘汰):")
+	var outs: Array = []
+	for b in _bots:
+		if not b["alive"]:
+			outs.append(int(b["out_at"]))
+	outs.sort()
+	var still: Array = _alive()
+	print("    已出局 %d 只 | 场次: %s" % [outs.size(), str(outs)])
+	print("    仍存活 %d 只 | 场次: %s" % [still.size(), str(still.map(func(x): return int(x["battles"])))])
+	if not outs.is_empty():
+		print("    中位出局场次: %d  最多打到: %d" % [outs[outs.size() / 2], outs[outs.size() - 1]])
+
+	# 各档产出了多少快照 + 强度
+	print("")
+	print("  档  快照数  队均强度  平均件数   ← 这就是新池的真实原料")
+	var by_b := {}
+	for sn in _snapshots:
+		var b: int = int(sn["bracket"])
+		if not by_b.has(b):
+			by_b[b] = {"n": 0, "s": 0.0, "items": 0}
+		by_b[b]["n"] += 1
+		by_b[b]["s"] += _snap_strength(sn)
+		var ni := 0
+		for p in (sn["equipped"] as Dictionary).keys():
+			ni += ((sn["equipped"] as Dictionary)[p] as Array).size()
+		for lk in (sn["minions"] as Dictionary).keys():
+			for m in (sn["minions"][lk] as Array):
+				ni += ((m as Dictionary).get("equips", []) as Array).size()
+		by_b[b]["items"] += ni
+	var keys: Array = by_b.keys(); keys.sort()
+	for b in keys:
+		var d: Dictionary = by_b[b]
+		var n: float = maxf(1.0, float(d["n"]))
+		print("  %2d %7d %9.1f %9.2f" % [b, d["n"], d["s"] / n, float(d["items"]) / n])
+	var missing: Array = []
+	for b in range(0, 9):
+		if not by_b.has(b):
+			missing.append(b)
+	if not missing.is_empty():
+		print("  ★档 %s 一条快照都没产出 —— 没有机器人活到那么远。" % str(missing))
+
+	# 策略胜率 (机器人"水平"= 池子水平, 这条决定新池强弱)
+	print("")
+	print("  策略        只数  总场次  总胜  胜率   中位出局场次")
+	var by_s := {}
+	for b in _bots:
+		var k := str(b["strategy"])
+		if not by_s.has(k):
+			by_s[k] = {"n": 0, "bt": 0, "w": 0, "outs": []}
+		by_s[k]["n"] += 1
+		by_s[k]["bt"] += int(b["battles"])
+		by_s[k]["w"] += int(b["wins"])
+		if not b["alive"]:
+			(by_s[k]["outs"] as Array).append(int(b["out_at"]))
+	for k in by_s.keys():
+		var d: Dictionary = by_s[k]
+		var o: Array = d["outs"]; o.sort()
+		print("  %-12s %4d %7d %5d %5.1f%% %8s" % [k, d["n"], d["bt"], d["w"],
+			100.0 * float(d["w"]) / maxf(1.0, float(d["bt"])),
+			(str(o[o.size() / 2]) if not o.is_empty() else "-")])
+
+	# 落盘: 快照池 + 逐场 CSV
+	var pool := {"_note": "队列模拟产出的真实玩家快照 (tests/_cohort.gd · %d只机器人从0开始互打·8命淘汰)" % _bots.size(),
+		"brackets": {}}
+	for sn in _snapshots:
+		var bk := str(int(sn["bracket"]))
+		if not (pool["brackets"] as Dictionary).has(bk):
+			(pool["brackets"] as Dictionary)[bk] = []
+		((pool["brackets"] as Dictionary)[bk] as Array).append(sn)
+	var pf := FileAccess.open("%s/cohort-snapshots.json" % dir, FileAccess.WRITE)
+	if pf != null:
+		pf.store_string(JSON.stringify(pool, " ")); pf.close()
+		print("")
+		print("  快照池: %s/cohort-snapshots.json" % dir)
+
+	var csv := "轮,档,A,B,A胜,A场次,B场次,A命,B命,帧\n"
+	for r in _battle_log:
+		csv += "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n" % [r["round"], r["bracket"], r["a"], r["b"],
+			(1 if r["a_won"] else 0), r["a_battles"], r["b_battles"], r["a_hearts"], r["b_hearts"], r["frames"]]
+	var cf := FileAccess.open("%s/cohort-battles.csv" % dir, FileAccess.WRITE)
+	if cf != null:
+		cf.store_string(csv); cf.close()
+		print("  逐场 CSV: %s/cohort-battles.csv" % dir)

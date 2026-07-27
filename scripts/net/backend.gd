@@ -17,29 +17,41 @@ const BUCKET_CAP := 50          # 每档桶封顶 (防无限增长, 旧的挤出
 const _P2 = preload("res://scripts/gamedata/phase2_config.gd")
 
 # ─── 进度档 (设计§十三): 总战斗数 → 匹配档 0-8. 低档窄(对齐槽断点)/高档宽(保池子有人) ───
+## ★2026-07-27 用户拍板: 档0 严格 = 【人生第一把】(total==0), 后面各档整体顺延一格。
+##   起因: 原来 total<=1 让档0 同时装下两种人 —— 打过 0 场的(一分钱没有·全裸) 和
+##   打过 1 场的(已逛过一次商店·约 6 件)。于是「档0 无装备」这条锚点与档0 的真实人口自相矛盾
+##   (队列模拟直接暴露: 档0 快照平均 7.5 件装备)。
+##   现在档0 只有真·第一把的人, 双方全裸 = 纯阵容/技能对决。各档宽度不变, 只是断点 -1。
+## ★2026-07-27 二次调整(用户选「微调B」): 把高档间距拉近, 让档7/8 变成【真有人到得了】的档位。
+##   起因(概率+实测双证): 8 条命 + 50% 胜率下, 打满 N 场的概率 = P(前 N-1 场里输 ≤7 次)。
+##   旧断点(档7=30场 / 档8=40场) 下 1000 个玩家里只有 4 人到档7、0 人到档8 ——
+##   档8 要约 28000 个玩家才期望出现 1 个, 而每档池子能装 50 支队。
+##   首轮 32 只队列实测印证: 最远只打到第 29 场, 档7/8 产出快照 0 条。
+##   新断点(档7=22场 / 档8=28场) → 1000 人里档7 有 95 人、档8 有 9.6 人, 池子填得起来。
+##   (备选: 轻=24/31 档8仅2.6人; 再近些=20/25 档8 32人。用户取中档。)
 static func bracket_for_battles(total: int) -> int:
-	if total <= 1: return 0
-	if total <= 3: return 1
-	if total <= 5: return 2
-	if total <= 8: return 3
-	if total <= 14: return 4
-	if total <= 20: return 5
-	if total <= 30: return 6
-	if total <= 40: return 7
+	if total <= 0: return 0
+	if total <= 2: return 1
+	if total <= 4: return 2
+	if total <= 7: return 3
+	if total <= 11: return 4
+	if total <= 16: return 5
+	if total <= 21: return 6
+	if total <= 27: return 7
 	return 8
 
 ## 某档"代表总战斗数"(给 bot 配槽位/等级; 取档上界). 大致反 bracket_for_battles.
 static func battles_for_bracket(bracket: int) -> int:
-	match bracket:
-		0: return 1
-		1: return 3
-		2: return 5
-		3: return 8
-		4: return 14
-		5: return 20
-		6: return 30
-		7: return 40
-		_: return 45
+	match bracket:      # 与 bracket_for_battles 互逆(取档上界); 2026-07-27 随「微调B」同步
+		0: return 0
+		1: return 2
+		2: return 4
+		3: return 7
+		4: return 11
+		5: return 16
+		6: return 21
+		7: return 27
+		_: return 33
 
 # ─── ghost 池 (内存 Dictionary, 结构 {brackets:{"档":[snapshot...]}}) ───
 ## 把 snapshot 加进对应档桶 (新的在前, 封顶挤旧).
@@ -82,8 +94,10 @@ static func pool_find(pool: Dictionary, bracket: int, exclude_ids: Array, rng: R
 ## 按档配资源(槽位/等级)随机一支队. rng 决定随机 → 确定可测. is_bot=true.
 static func make_bot(bracket: int, rng: RandomNumberGenerator) -> Dictionary:
 	var battles := battles_for_bracket(bracket)
-	var slots := _P2.equip_slots_for_battles(battles)
 	var bot_lv := clampi(2 + bracket, 1, 10)   # 档越高 bot 等级越高
+	# ★装备容量统一规则(2026-07-27): 与玩家同一套 —— 全队合计 team_equip_cap(等级), 单只 ≤ UNIT_EQUIP_CAP。
+	#   原来这里走 equip_slots_for_battles(每只固定N件) = 敌我两把尺子, 已废。
+	var budget := _P2.team_equip_cap(bot_lv)
 	# 随机 3 龟
 	var all_ids: Array = []
 	for p in DataRegistry.launch_pets:
@@ -101,12 +115,13 @@ static func make_bot(bracket: int, rng: RandomNumberGenerator) -> Dictionary:
 			shop_ids.append(str((e as Dictionary)["id"]))
 	var equipped := {}
 	var levels := {}
+	# 先给统领分, 每只最多 UNIT_EQUIP_CAP; 分完剩下的留给小将(下面)。总数受 budget 硬约束。
 	for pid in leaders:
 		levels[pid] = bot_lv
 		var eqs: Array = []
-		for _i in range(slots):
-			if shop_ids.size() > 0:
-				eqs.append({"id": shop_ids[rng.randi() % shop_ids.size()], "star": 1})
+		while eqs.size() < _P2.UNIT_EQUIP_CAP and budget > 0 and shop_ids.size() > 0:
+			eqs.append({"id": shop_ids[rng.randi() % shop_ids.size()], "star": 1})
+			budget -= 1
 		if eqs.size() > 0:
 			equipped[pid] = eqs
 	# 小将补位到每路3单位 + 随机装备(用户2026-07-18「快照里对面小将没有装备」根因: make_bot原来根本没minions字段→bot小将全裸; 镜像build_ghost_snapshot补上)
@@ -116,9 +131,9 @@ static func make_bot(bracket: int, rng: RandomNumberGenerator) -> Dictionary:
 		var want: int = clampi(3 - lead_cnt, 0, 3)
 		for mi in range(want):
 			var meqs: Array = []
-			for _j in range(slots):
-				if shop_ids.size() > 0:
-					meqs.append({"id": shop_ids[rng.randi() % shop_ids.size()], "star": 1})
+			while meqs.size() < _P2.UNIT_EQUIP_CAP and budget > 0 and shop_ids.size() > 0:
+				meqs.append({"id": shop_ids[rng.randi() % shop_ids.size()], "star": 1})
+				budget -= 1
 			var m := {"role": "front" if mi == 0 else "back", "elite": (lead_cnt == 0 and mi == 0)}
 			if meqs.size() > 0:
 				m["equips"] = meqs
@@ -184,7 +199,7 @@ static func _load_seed() -> Dictionary:
 		return parsed
 	return {"brackets": {}}
 
-const SEED_VER := 5   # 种子池版本(2026-07-18: 小将minions各带1-3件装备·镜像本队队长星级/费档→敌侧小将不再裸装·共146支438小将); 升版→老档清旧seed_并入新种子(玩家上传的真ghost保留)
+const SEED_VER := 6   # 2026-07-27 v6: 队列模拟(160只机器人从0起互打·8命淘汰)产出的【真实玩家快照】180支/9档各20; 装备是真背包历史(1~5费混搭·便宜的星高贵的星低), 非按目标强度反推。升版→老档清旧seed_并入新种子(玩家上传的真ghost保留)
 ## 种子并入(版本化): 无seed_ 或 池版本<SEED_VER → 清旧seed_+并入新种子+落盘. 修真机bug"老池挡住新种子永不升级"(用户2026-07-15).
 static func _ensure_seeded(pool: Dictionary) -> void:
 	var brackets: Dictionary = pool.get("brackets", {})
@@ -210,7 +225,14 @@ static func _ensure_seeded(pool: Dictionary) -> void:
 	pool["_seed_ver"] = SEED_VER
 	save_pool(pool)                                 # 升级立即落盘(否则要等下次upload才存)
 
+## ★headless(测试/仿真/导出) 绝不写玩家真实池 —— 与 GameState.test_mode 同一条纪律(GameState.gd:570)。
+## 起因(2026-07-27): GameState.save() 早有这个守卫, save_pool 一直没有 → 任何跑战斗的测试赢一把就
+## upload_ghost 污染 user://ghost_pool.json; 更隐蔽的是 load_pool→_ensure_seeded→save_pool(L211),
+## 【光是读池就会写盘】。存档目录里那个 savegame.json.bak-被测试污染 就是同类事故的遗迹。
+## 只挡默认的 user:// 真实池; 显式传 path(自举仿真/离线产池) 照写不误。
 static func save_pool(pool: Dictionary, path: String = POOL_PATH) -> void:
+	if path == POOL_PATH and GameState != null and bool(GameState.test_mode):
+		return
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f == null:
 		return
@@ -247,13 +269,18 @@ static func make_match_rng() -> RandomNumberGenerator:
 	return r
 
 ## 抽对手: 同档 ghost, 没有就 bot. 永远返回一个可打的对手 (永久安全网).
+##
+## ★2026-07-27 用户「±1 这东西去掉」: 改回【只抽本档, 空了只往【低】档回落, 绝不往上】。
+##   废掉的是 2026-07-18 的 [档-1, 档+1] 窗口 —— 它当初是为了治"匹配多了总撞同一阵容"
+##   (那时单档只~7 支种子)。但自动玩家 30 把实测它的代价远大于收益:
+##     · 第 2 把(档0·自己 0 件装备) 撞到档1 带 3 件的队
+##     · 第 7 把 我方强度 43.0 撞到 99.0 (2.3 倍)
+##     · 第 10 把 45.8 撞到 118.6 (2.6 倍)
+##   而多样性问题现在已不成立: 种子池 146 支, 单档 12~20 支, 再排除最近 3 个 → 9~17 个候选够用。
+##   ★不许往上回落是硬约束: "档N 的玩家绝不该遇到 >N 档的对手"(verify_bracket_gear 新增断言守这条)。
 static func find_opponent(bracket: int, exclude_ids: Array, rng: RandomNumberGenerator) -> Dictionary:
 	var pool := load_pool()
-	# ★先在[档-1,档,档+1]窗口里汇总候选随机抽(用户2026-07-18"匹配多了总撞同一阵容"): 老玩家永久钉死档8·单档只~7种子→循环撞同几支. 拉宽到相邻三档~21候选=多样性大增
-	var gw = pool_find_window(pool, bracket - 1, bracket + 1, exclude_ids, rng)
-	if gw != null:
-		return gw
-	for b in range(bracket, -1, -1):                # 窗口全空/全排除 → 就近低档回落, 全空才bot
+	for b in range(bracket, -1, -1):                # 本档优先; 本档空/全排除 → 就近【低】档回落, 全空才 bot
 		var g = pool_find(pool, b, exclude_ids, rng)
 		if g != null: return g
 	return make_bot(bracket, rng)

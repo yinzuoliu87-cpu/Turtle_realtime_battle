@@ -108,6 +108,22 @@ func _rebuild() -> void:
 	coin.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(coin)
 
+	# ★全队装备容量计数器 (2026-07-27 新规则): 单只≤3 且 全队合计≤team_equip_cap(赛季等级)。
+	#   没有这个计数器, 玩家点不上装备时只会觉得"点了没反应" —— 容量是全队共享的, 光看单只格子看不出来。
+	var used := int(GameState.team_equipped_count())
+	var cap := int(GameState.team_equip_cap())
+	var capl := Label.new()
+	capl.text = "⚙ 装备 %d / %d" % [used, cap]
+	capl.add_theme_font_size_override("font_size", 18)
+	capl.add_theme_color_override("font_color", Color("#ffb454") if used >= cap else Color("#9fb6c9"))
+	capl.position = Vector2(_vw - 260, 62); capl.size = Vector2(232, 26)
+	capl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	var _nxt := int(GameState.season_level) + 1
+	capl.tooltip_text = "每只统领/小将最多装 %d 件；全队 6 只合计上限随赛季等级提升。\n当前 Lv%d → %d 件%s" % [
+		P2.UNIT_EQUIP_CAP, int(GameState.season_level), cap,
+		("\n升到 Lv%d → %d 件" % [_nxt, P2.team_equip_cap(_nxt)]) if _nxt <= P2.MAX_LEVEL else "（已满级）"]
+	add_child(capl)
+
 	_inv_jar._build_candy_jar()
 
 	var leaders := _lineup_ids()
@@ -251,8 +267,9 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 				eqs = GameState.persistent_equipped.get(pid, [])
 		elif unit.get("equips", null) is Array:
 			eqs = unit.get("equips", [])
-		var slots := P2.equip_slots_for_level(int(GameState.season_level))
-		_build_equip_cells(box, 60.0, eqs, slots, kind == "leader", pid, lane, idx, rx)
+		# ★格数固定 3 (单只上限), 不再随等级增减 —— 布局稳定, 玩家一眼看出"这只还能装几件"。
+		#   "全队还能不能装"是另一回事, 由空格子的样式 + 右上计数器表达。
+		_build_equip_cells(box, 60.0, eqs, P2.UNIT_EQUIP_CAP, kind == "leader", pid, lane, idx, rx)
 	# 小将 前排/后排 pill (右上·精英小将=统领替身不显·用户2026-07-18)
 	if is_reg_minion:
 		var front := str(unit.get("role", "front")) == "front"
@@ -278,6 +295,7 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, is_leader: bool, pet_id: String, lane: String, idx: int, x_start: float = -1.0) -> void:
 	var cw := 28.0
 	var gap := 5.0
+	var team_full: bool = not GameState.team_has_equip_room()   # 全队预算是否已用尽(空格样式据此区分)
 	var total := float(slots) * cw + maxf(0.0, float(slots - 1)) * gap
 	var x0 := x_start if x_start >= 0.0 else (UBOX_W / 2.0 - total / 2.0)   # x_start≥0=横排卡片右列左对齐, 否则居中
 	for ci in range(slots):
@@ -289,6 +307,10 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, is_leade
 			var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
 			csb.bg_color = _cost_color(int(edef.get("cost", 1)))
 			csb.border_color = Color(1, 1, 1, 0.5)
+		elif team_full:
+			# 空格但【全队预算已满】: 压暗 + 冷边框, 与"空着可以装"明确区分 ——
+			# 不区分的话玩家会对着一个看起来能装的空格反复点, 以为界面坏了。
+			csb.bg_color = Color(0, 0, 0, 0.55); csb.border_color = Color("#2a3340")
 		else:
 			csb.bg_color = Color(0, 0, 0, 0.35); csb.border_color = Color("#3a4452")
 		csb.set_border_width_all(1); csb.set_corner_radius_all(3)
@@ -312,6 +334,9 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, is_leade
 			cell.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: (_inv_ops._unequip_at(pet_id, cci) if is_leader else _inv_ops._unequip_minion_at(lane, idx, cci)))
 		else:
 			cell.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 空格透传
+			cell.tooltip_text = ("全队装备已满 %d / %d · 升赛季等级可再装" % [
+				GameState.team_equipped_count(), GameState.team_equip_cap()]) if team_full \
+				else "空槽 · 先点背包里的装备, 再点这只单位"
 		box.add_child(cell)
 
 ## 卸下统领第 cell_idx 件装备 → 回背包.

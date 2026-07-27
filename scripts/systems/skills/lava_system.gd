@@ -237,7 +237,7 @@ func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火�
 			if o["alive"]:
 				battle._damage._apply_dot_stacks(o, "burn", battle._default_burn_stacks(u), u)
 			battle._damage._heal(u, u["maxHp"] * 0.12)
-	battle._gambler_pop(start, 0.6, Color(1.0, 0.85, 0.5, 0.95))         # ★出生爆闪(娜美R观察: 浪在白亮爆闪中诞生·非淡入)
+	battle._gambler_sys._gambler_pop(start, 0.6, Color(1.0, 0.85, 0.5, 0.95))         # ★出生爆闪(娜美R观察: 浪在白亮爆闪中诞生·非淡入)
 	battle._skill_ring(start, Color(1.0, 0.6, 0.2, 0.8), 70.0)
 	for bi in range(6):                                           # 放射光条
 		var ba: float = TAU * float(bi) / 6.0 + battle._juice_rng.randf_range(-0.2, 0.2)

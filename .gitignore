@@ -78,3 +78,6 @@ __pycache__/
 #   这里只忽略无留痕价值的即时审计输出。
 tooltip_number_audit_report.txt
 data_integrity_report.txt
+
+# 队列模拟产物(可再生·5MB+): 快照池/逐场CSV/报告。种子池成品在 data/ghost_seed.json
+tools/autoplay/

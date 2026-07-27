@@ -327,7 +327,7 @@ func try_merge_all(side: String = "left") -> Array:
 		var merged: Dictionary = {"id": m_id, "star": m_star + 1}
 		var placed: String = ""
 		if dest_pet != "":
-			var cap: int = _P2.equip_slots_for_level(int(dual_level.get(side, 1)))
+			var cap: int = _P2.UNIT_EQUIP_CAP   # 2026-07-27 统一规则: 单只上限固定3
 			if not ne.has(dest_pet):
 				ne[dest_pet] = []
 			if (ne[dest_pet] as Array).size() < cap:
@@ -353,14 +353,14 @@ const _P2EQ_RIGHT_PREFIX := "right::"
 static func p2eq_key(side: String, pet_id: String) -> String:
 	return (_P2EQ_RIGHT_PREFIX + pet_id) if side == "right" else pet_id
 
-## 把备战席第 bench_idx 件装到某龟 (pet_id). 龟槽上限 = 随局内等级开放(1-5, equip_slots_for_level). 成功 true.
+## 把备战席第 bench_idx 件装到某龟 (pet_id). 单只上限 = _P2.UNIT_EQUIP_CAP(3). 成功 true.
 func equip_to_turtle(bench_idx: int, pet_id: String, side: String = "left") -> bool:
 	if bench_idx < 0 or bench_idx >= bench_inventory.size():
 		return false
 	var key := p2eq_key(side, pet_id)
 	if not equipped_p2.has(key):
 		equipped_p2[key] = []
-	if (equipped_p2[key] as Array).size() >= _P2.equip_slots_for_level(int(dual_level.get(side, 1))):
+	if (equipped_p2[key] as Array).size() >= _P2.UNIT_EQUIP_CAP:
 		return false
 	(equipped_p2[key] as Array).append(bench_inventory[bench_idx])
 	bench_inventory.remove_at(bench_idx)
@@ -395,7 +395,7 @@ func ai_dual_shop() -> int:
 		xp_buys += 1
 
 	var lvl: int = int(dual_level.get(side, 1))
-	var cap: int = _P2.equip_slots_for_level(lvl)
+	var cap: int = _P2.UNIT_EQUIP_CAP   # 2026-07-27 统一规则: 单只上限固定3
 
 	# ② 掷货 (AI 自己的货架 RNG; 不碰玩家 dual_shop_offer — 临时换进, 跑完换回)
 	if battle_seed != 0:
@@ -507,6 +507,118 @@ var chest_treasures_won: Array = []                   # 宝箱藏宝图·本大�
 var season_leaders: Array = []                        # 本赛季锁定的 3 统领 id (整轮不可换)
 var persistent_bench: Array = []                      # 持久背包 [{id,star}] (装备永不丢; build 源, 取代局内临时 bench_inventory)
 var persistent_equipped: Dictionary = {}             # 持久 build {pet_key → [{id,star}]} (build 源, 取代局内临时 equipped_p2)
+
+# ═══ 装备容量 (统一规则·用户 2026-07-27) ═════════════════════════════
+# 单只 ≤ _P2.UNIT_EQUIP_CAP(3) 且 全队 6 只合计 ≤ _P2.team_equip_cap(赛季等级)。完全自由分配。
+# 规则定义与来龙去脉见 scripts/gamedata/phase2_config.gd 的「装备容量」段。
+
+## 全队(当前 3 统领 + dual_lineup 里的 3 小将)已装备总件数 —— 新规则的分母。
+## ★只数【当前阵容上】的: persistent_equipped 里可能残留已不在队的老龟, 那些不占容量。
+func team_equipped_count() -> int:
+	var n := 0
+	for pid in (season_leaders if season_leaders is Array else []):
+		n += (persistent_equipped.get(str(pid), []) as Array).size()
+	var dl: Dictionary = get_dual_lineup()
+	for lane in ["top", "bottom"]:
+		for u in (dl.get(lane, []) as Array):
+			if u is Dictionary and str((u as Dictionary).get("kind", "")) == "minion":
+				n += ((u as Dictionary).get("equips", []) as Array).size()
+	return n
+
+
+## 本赛季等级下全队可装总数。
+func team_equip_cap() -> int:
+	return _P2.team_equip_cap(int(season_level))
+
+
+## 还能再装吗(只看全队预算; 单只上限由调用方另判)。
+func team_has_equip_room() -> bool:
+	return team_equipped_count() < team_equip_cap()
+
+
+## ★老存档迁移(2026-07-27 换装备容量规则): 把超出新上限的装备【彻底删除】。
+## ⚠ 破坏性: 用户 2026-07-27 明确「U1要彻底消除」—— 不回背包、不折算深海币, 直接销毁。
+##   (初版是"卸回背包一件不丢", 用户改口径为彻底删除。)
+## 两步, 都优先保留强的(强度 ≈ 费×星, 与门禁同口径的简化) —— 删的永远是最弱的那些:
+##   ① 每只单位裁到 ≤ UNIT_EQUIP_CAP
+##   ② 若全队仍超 team_equip_cap, 从最弱的开始删
+## 幂等: 已合规的存档跑一遍什么也不动。返回【删除】的件数(0 = 无需迁移)。
+func migrate_equip_caps() -> int:
+	var moved := 0
+	var val := func(it) -> int:
+		var e: Dictionary = DataRegistry.phase2_equipment_by_id.get(str((it as Dictionary).get("id", "")), {}) if DataRegistry != null else {}
+		return maxi(1, int(e.get("cost", 1))) * maxi(1, int((it as Dictionary).get("star", 1)))
+
+	# ① 单只裁到 3 (保留最强的 3 件)
+	for pid in (season_leaders if season_leaders is Array else []):
+		var p := str(pid)
+		var arr: Array = persistent_equipped.get(p, [])
+		if arr.size() > _P2.UNIT_EQUIP_CAP:
+			arr.sort_custom(func(a, b): return val.call(a) > val.call(b))
+			while arr.size() > _P2.UNIT_EQUIP_CAP:
+				arr.pop_back()          # 彻底删除(用户口径), 不回背包
+				moved += 1
+			persistent_equipped[p] = arr
+	var dl: Dictionary = get_dual_lineup()
+	for lane in ["top", "bottom"]:
+		var lst: Array = dl.get(lane, [])
+		for i in range(lst.size()):
+			var u: Dictionary = lst[i]
+			if str(u.get("kind", "")) != "minion":
+				continue
+			var me: Array = u.get("equips", []) if u.get("equips", null) is Array else []
+			if me.size() > _P2.UNIT_EQUIP_CAP:
+				me.sort_custom(func(a, b): return val.call(a) > val.call(b))
+				while me.size() > _P2.UNIT_EQUIP_CAP:
+					me.pop_back()       # 彻底删除
+					moved += 1
+				u["equips"] = me
+				lst[i] = u
+		dl[lane] = lst
+	dual_lineup = dl
+
+	# ② 全队超预算 → 从最弱的往回卸
+	var guard := 0
+	while team_equipped_count() > team_equip_cap() and guard < 64:
+		guard += 1
+		var worst_v := 1 << 30
+		var worst_p := ""
+		var worst_lane := ""
+		var worst_i := -1
+		var worst_ci := -1
+		for pid in (season_leaders if season_leaders is Array else []):
+			var p := str(pid)
+			var arr: Array = persistent_equipped.get(p, [])
+			for ci in range(arr.size()):
+				if val.call(arr[ci]) < worst_v:
+					worst_v = val.call(arr[ci]); worst_p = p; worst_lane = ""; worst_ci = ci
+		var dl2: Dictionary = get_dual_lineup()
+		for lane in ["top", "bottom"]:
+			var lst2: Array = dl2.get(lane, [])
+			for i in range(lst2.size()):
+				var u2: Dictionary = lst2[i]
+				if str(u2.get("kind", "")) != "minion":
+					continue
+				var me2: Array = u2.get("equips", []) if u2.get("equips", null) is Array else []
+				for ci in range(me2.size()):
+					if val.call(me2[ci]) < worst_v:
+						worst_v = val.call(me2[ci]); worst_p = ""; worst_lane = lane; worst_i = i; worst_ci = ci
+		if worst_ci < 0:
+			break
+		if worst_p != "":
+			var a3: Array = persistent_equipped[worst_p]
+			a3.remove_at(worst_ci)      # 彻底删除
+			persistent_equipped[worst_p] = a3
+		else:
+			var lst3: Array = dl2.get(worst_lane, [])
+			var u3: Dictionary = lst3[worst_i]
+			var me3: Array = u3.get("equips", [])
+			me3.remove_at(worst_ci)     # 彻底删除
+			u3["equips"] = me3; lst3[worst_i] = u3; dl2[worst_lane] = lst3
+			dual_lineup = dl2
+		moved += 1
+	return moved
+
 # ─── 糖果龟·糖果罐 局外赛季被动 (封板L390-403: 选糖果龟当统领才有·大轮1颗·赢+1输+4封顶30·打碎按档领奖·碎即消失) ───
 var candy_jar_count: int = 0                          # 糖果罐计数 0-30 (赢+1/输+4·逆风快攒翻盘)
 var candy_jar_broken: bool = false                    # 本赛季糖果罐已打碎领奖 (一大轮1颗)
@@ -767,6 +879,11 @@ func _load() -> void:
 	for x in inv_raw:
 		if x is String:
 			inventory.append(x)
+	# ★老存档迁移(2026-07-27 换装备容量规则): 超出新上限的装备卸回背包, 一件不删。
+	#   必须放在 season_leaders / persistent_* / dual_lineup 都读完之后 —— 它要数当前阵容。
+	var _mig := migrate_equip_caps()
+	if _mig > 0:
+		print("[GameState] 装备容量新规则迁移: ★删除 ", _mig, " 件超额装备(单只≤3 且 全队≤", team_equip_cap(), ")")
 
 
 ## 重置所有进度。**不清设置项**(bgm/sfx 音量 · fullscreen · perf_lite) — 那是偏好不是进度。

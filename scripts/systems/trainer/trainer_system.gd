@@ -5,6 +5,15 @@ extends RefCounted
 
 var battle
 
+## ★AI_TRAINER_LEFT=1: 让【我方】大师也交给 AI 托管(游走 + CD 好了自动放主动)。
+## 只给无头仿真用 —— 正式对局里我方大师是玩家操控的, AI 不接管。
+## 起因(2026-07-27 队列模拟): 原来只有右侧大师有 AI, 左侧全程站着不动、一个主动技都不放
+## → 左右两侧系统性不对称, 机器人互打的胜负数据作废, 随机分配的五选一技能对左侧也完全是摆设。
+## ★用 get_environment != "" 而不是 has_environment: 后者对"设了但为空"也返回 true,
+##   会让"关掉开关"的写法(set_environment(name, ""))静默失效 —— 探针第一版就栽在这。
+var _ai_left_trainer := OS.get_environment("AI_TRAINER_LEFT") != ""
+
+
 func _init(b) -> void:
 	battle = b
 
@@ -512,8 +521,8 @@ func _tick_trainer_ai(delta: float) -> void:
 	for u in battle._units:
 		if not u.get("is_trainer", false) or not u.get("alive", false):
 			continue
-		if str(u.get("side", "")) == "left" and not battle._stress:
-			continue   # 左侧=玩家操控, AI 不接管(无头压测除外)
+		if str(u.get("side", "")) == "left" and not battle._stress and not _ai_left_trainer:
+			continue   # 左侧=玩家操控, AI 不接管(无头压测/AI_TRAINER_LEFT 仿真除外)
 		_trainer_ai_step(u, delta)
 
 func _trainer_ai_step(u: Dictionary, delta: float) -> void:

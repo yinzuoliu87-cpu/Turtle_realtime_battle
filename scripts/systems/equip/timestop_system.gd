@@ -85,7 +85,7 @@ func _ts_fire() -> void:
 	for _c in casters:   # 用户2026-07-19: 时停期间+100%龟能充能速度, 且开始瞬间立即+15龟能
 		_c["_ts_echarge"] = 2.0
 		if battle._has_energy_system(_c):
-			battle._eq_grant_energy(_c, 15.0)
+			battle._equip_sys._eq_grant_energy(_c, 15.0)
 			battle._vfx._float_text(_c["pos"] + Vector2(0, -62), "+15龟能", Color("#8fd4ff"))
 	_ts_begin_freeze()
 	_ts_visual_start()
