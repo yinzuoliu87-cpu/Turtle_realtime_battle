@@ -3,6 +3,10 @@ extends RefCounted
 ## 糖果龟技能系统
 ## 类内名不变;外部名加 battle.
 
+## ★糖果数值单一事实源(用户2026-07-28 削弱·整只 81.5%)。文案在 data/pets.json。
+## ★两条召唤路径共用它: 登场召(battle_spawn.gd) / 阵亡补召(本文件) —— 只改一处会造出"第一颗弱、第二颗强"的诡异行为。
+const BOMB_DEATH_AOE := 1.0   # 炸弹死亡爆炸: 总伤 = ×炸弹最大生命 (1.5→1.0)
+
 var battle
 
 func _init(b) -> void:
@@ -137,7 +141,7 @@ func _sk_candy_bomb_feed(u: Dictionary) -> void:               # 糖果龟·技�
 	else:
 		battle._spawn._spawn_summon(u, "candybomb", u["maxHp"] * 0.20, 0.0, {   # 炸弹阵亡→召新(HP=20%糖果龟maxHp)
 			"label": "糖果炸弹", "spr_id": "candy-bomb", "col_size": 20.0, "hp_w": 24.0,
-			"no_basic": true, "no_move": true, "self_decay": 0.08, "death_aoe": 1.5,
+			"no_basic": true, "no_move": true, "self_decay": 0.08, "death_aoe": BOMB_DEATH_AOE,
 		})
 
 func _candy_sweet_drain(u: Dictionary) -> void:   # 甜蜜掠夺·甜蜜吸取(用户2026-07-15"第8秒生效"): 对最大生命最高敌吸25%maxHp→全回复自己(不杀留1)+粉精华VFX

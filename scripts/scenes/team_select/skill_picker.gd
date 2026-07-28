@@ -307,7 +307,12 @@ func _toggle_skill(pid: String, idx: int) -> void:
 		host._flash_status("该候选技开发中, 暂锁默认签名技")
 		return
 	GameState.loadouts[pid] = idx                       # 3选1: 单选, 点哪个就替换成哪个
-	host._refresh_slots()
+	# ★这三行的调用目标在上帝文件拆分时搬过家: _refresh_slots 去了 roster_slots.gd,
+	#   这里却还写着 host._refresh_slots() → 【运行时才炸】的 "Nonexistent function",
+	#   而且炸在第一行 → 后两行(含重建技能图标的 _refresh_detail)根本不执行。
+	#   表现: 点技能【数据改了但图标不高亮】(用户 2026-07-28 报的 bug)。
+	#   GDScript 动态派发, 编译期查不出来; 探针 tests/_probe_skillpick.gd 抓到的。
+	host._slots._refresh_slots()
 	host._refresh_confirm()
 	host._detail._refresh_detail()
 

@@ -3,6 +3,9 @@ extends RefCounted
 ## 双头龟技能系统
 ## 类内名不变;外部名加 battle.
 
+## ★双头数值单一事实源(用户2026-07-28)。文案在 data/pets.json，改这里要同步改那边。
+const DISRUPT_TRUE := 2.0   # 精神干扰(远程形态): ×ATK 真实伤害 (原 1.0×ATK 魔法)
+
 var battle
 
 func _init(b) -> void:
@@ -142,7 +145,7 @@ func _two_head_slam_impact(at2d: Vector2) -> void:
 	battle._vfx._impact_particles(at2d, 0.0)                               # ⑤ 冲击尘粒
 
 # 砸地岩屑: 灰褐碎块一次性向上+四散迸溅+重力回落(0.75s后回收)
-func _sk_two_head_disrupt(u: Dictionary, tgt) -> void:           # 双头·技能二 form-variant(封板): 远程=精神干扰(1.0A魔法+治疗削减50%5s+破盾50%) / 近战=吸收(0.6A+8%maxHp物理+回血40%A+18%已损)
+func _sk_two_head_disrupt(u: Dictionary, tgt) -> void:           # 双头·技能二 form-variant(封板): 远程=精神干扰(2.0A真伤+治疗削减50%5s+破盾50%·用户2026-07-28加强) / 近战=吸收(0.6A+8%maxHp物理+回血40%A+18%已损)
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	if u["melee"]:
@@ -153,7 +156,7 @@ func _sk_two_head_disrupt(u: Dictionary, tgt) -> void:           # 双头·技�
 	else:
 		var broke: bool = float(tgt.get("shield", 0.0)) > 0.0
 		if broke: tgt["shield"] = float(tgt["shield"]) * 0.5       # 破盾50%
-		battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.0, tgt, true), Color("#c0d0ff"))
+		battle._damage._apply_damage_from(u, tgt, int(maxf(1.0, u["atk"] * DISRUPT_TRUE)), Color("#ffffff"), 0.0, true)   # 真伤(raw=true): 无装备对局里治疗削减/破盾常常空转, 伤害本体要立得住
 		tgt["heal_reduce_until"] = battle._t + 5.0
 		tgt["heal_reduce_pct"] = maxf(float(tgt.get("heal_reduce_pct", 0.0)), 0.5)             # 治疗削减50%5秒
 		_two_head_disrupt_vfx(u, tgt, broke)                       # 精神干扰VFX(用户2026-07-11): 精神波+紫涟漪+(破盾)盾碎裂+裂心标记

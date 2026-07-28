@@ -283,7 +283,7 @@ const BASIC_ATK := {
 	"stone":    {"phys": 0.7, "def": 1.5, "mr": 0.8, "hits": 1},                    # +护甲魔抗(坦克)
 	"bamboo":   {"phys": 0.4, "selfhp": 0.03, "hits": 1},                           # 单段 0.4ATK+3%自身HP(用户2026-06-29)
 	"angel":    {"phys": 1.0, "hits": 1},                                          # 远程平A 1.0ATK单段(用户)+审判被动
-	"ice":      {"phys": 0.8, "magic": 0.8, "hits": 1, "alt_each": true},           # 单段逐次交替物/魔 0.8ATK(用户2026-06-29)
+	"ice":      {"phys": 1.0, "magic": 1.0, "hits": 1, "alt_each": true},           # 单段逐次交替物/魔 1.0ATK(用户2026-07-28: 0.8→1.0·配冰柱层加强)
 	"ninja":    {"phys": 1.0, "hits": 1, "rider": "bleed"},                         # 斩击(封板): 近战1A物理+2层流血; 冲击已转被动auto-dash
 	"ghost":    {"phys": 0.4, "true": 0.9, "hits": 1},                             # 物+真 (原0.65 错)
 	"diamond":  {"phys": 0.7, "def": 0.6, "mr": 0.6, "hits": 1},                    # +护甲魔抗
@@ -293,7 +293,7 @@ const BASIC_ATK := {
 	"gambler":  {"phys": 1.0, "hits": 1},                                          # 甩扑克牌(封板L296·用户改): 1.0A物理单段(原3段1.35A=旧值)·多重打击被动复放整发普攻(_gambler_sys._gambler_multi_cd)
 	"hunter":   {"phys": 1.0, "hits": 1},   # 封板: 普攻1.0A物理(残血追猎+50%攻速在atk_cd处)
 	"pirate":   {"phys": 1.0, "hits": 1, "selfheal": 0.2},                          # 弯刀(封板L382·近战): 1.0A物理+自愈0.2A(每击回0.2×ATK生命)·[段数1=单弯刀斩·手感留F5]
-	"candy":    {"phys": 1.1, "selfhp": 0.05, "hits": 1, "rider": "atkdn"},         # +自HP+减攻debuff
+	"candy":    {"phys": 1.1, "selfhp": 0.03, "hits": 1, "rider": "atkdn"},         # +自HP+减攻debuff (用户2026-07-28: 0.05→0.03)
 	"bubble":   {"phys": 1.5, "hits": 3},
 	"line":     {"magic": 1.0, "hits": 1},                                          # 素描:1A魔法单段(叠1墨迹走_on_basic_hit·用户设计)
 	"lava":     {"magic": 0.6, "hp": 0.04, "hits": 1, "rider": "burn", "burnScale": 0.07},   # 熔岩弹: 0.6魔+4%目标HP+0.125ATK灼烧层 (用户2026-06-30)
@@ -2687,7 +2687,7 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		_fortune_sys._fortune_strike_fx(u, tgt)
 	if u["id"] == "pirate":                                         # 海盗普攻·弯刀劈砍: 钢色新月斩弧+命中环(伤害走 _do_basic·1A物理+自愈0.2A)
 		_weapon_slash(u["pos"], tgt["pos"], Color(0.88, 0.93, 1.0))
-	if u["id"] == "candy":                                          # 糖果普攻·糖果拳: 命中糖爆粉星(伤害走 _do_basic·1.1A+5%maxHp物理+减攻15%)
+	if u["id"] == "candy":                                          # 糖果普攻·糖果拳: 命中糖爆粉星(伤害走 _do_basic·1.1A+3%maxHp物理+减攻15%)
 		var _cdir: Vector2 = (tgt["pos"] - u["pos"]).normalized() if (tgt["pos"] - u["pos"]).length() > 1.0 else Vector2.RIGHT
 		_burst_vfx("res://assets/sprites/vfx/candy-burst.png", tgt["pos"] - _cdir * 8.0, 95.0, 0.35)
 	if u["id"] == "bubble":                                         # 泡泡普攻·泡泡三连击: 命中泡泡爆+泡沫(伤害走 _do_basic·0.5A×3物理)
@@ -3898,6 +3898,7 @@ func _do_basic(u: Dictionary, tgt: Dictionary, spec: Dictionary) -> void:
 		# 逐次攻击交替类型(单段): 本次物理→下次魔法→… (寒冰冰锥, 用户)
 		var use_magic: bool = bool(u.get("basic_alt", false))
 		u["basic_alt"] = not use_magic
+		if u["id"] == "ice": _ice_sys._ice_gain_icicle(u)   # 冰柱层(用户2026-07-28): 每段普攻+1·上限20
 		if use_magic:
 			_emit_basic(u, tgt, _mitigate(u, raw_m, tgt, true), Color("#4dabf7"), 0)
 		else:
@@ -4408,7 +4409,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 	# 首死复活钩子 (天使圣光 / 凤凰涅槃) — 仅作为常驻一次, 1:1 2D
 	if not u["reborn_used"] and ((u["id"] == "angel" and u.get("_angel_revive", false)) or u["id"] == "phoenix" or u.get("_chest_revive", false)):
 		u["reborn_used"] = true
-		var pct: float = (1.0 if u.get("_enh_rebirth", false) else 0.30) if u["id"] == "phoenix" else 0.25   # 凤凰100/30% · 天使圣光/宝箱凤凰雕像 25%
+		var pct: float = (PhoenixSystem.NIRVANA_ENH_HP_PCT if u.get("_enh_rebirth", false) else PhoenixSystem.NIRVANA_HP_PCT) if u["id"] == "phoenix" else 0.25   # 凤凰60/25%(用户2026-07-28 100/30→) · 天使圣光/宝箱凤凰雕像 25%
 		u["hp"] = u["maxHp"] * pct
 		u["dots"] = []
 		u["dot_stacks"] = {}
@@ -4418,7 +4419,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 			if u.get("_enh_rebirth", false):
 				u["base_atk"] = u["base_atk"] * 1.2; _recalc_stats(u)   # 强化涅槃: 永久+20%攻击
 			for o in _targeting._enemies_of(u):
-				_damage._apply_dot_stacks(o, "burn", _default_burn_stacks(u), u)
+				_damage._apply_dot_stacks(o, "burn", maxi(1, roundi(float(u["atk"]) * PhoenixSystem.NIRVANA_BURN_COEF)), u)   # ★凤凰专用系数, 不走全局 _default_burn_stacks(0.67) —— 那个熔岩龟也在用
 				o["heal_reduce_until"] = _t + BUFF_SEC
 				o["heal_reduce_pct"] = maxf(float(o.get("heal_reduce_pct", 0.0)), 0.5)
 		return
@@ -5774,9 +5775,9 @@ func _reflect_pop(pos2d: Vector2, h: float, col: Color) -> void:
 	tw.tween_property(g, "material_override:albedo_color", Color(col.r, col.g, col.b, 0.0), 0.45)
 	tw.chain().tween_callback(g.queue_free)
 
-func _shock_dmg(u: Dictionary) -> int:   # 被动电击真伤 0.82×ATK; 涌动期间×(1+50%)
+func _shock_dmg(u: Dictionary) -> int:   # 被动电击真伤 1.0×ATK(用户2026-07-28: 0.82→1.0·自发与满层引爆共用本函数); 涌动期间×(1+50%)
 	var b: float = 1.0 + (float(u.get("shock_boost_pct", 0.0)) if _t < float(u.get("shock_boost_until", 0.0)) else 0.0)
-	return int(u["atk"] * 0.82 * b)
+	return int(u["atk"] * 1.0 * b)
 
 func _scythe_face_screen(scythe: Sprite3D, center: Vector2, aim: Vector2, theta: float) -> void:   # 镰刀朝向·手动basis=面朝相机+刀锋对齐地面径向(用户2026-07-17): billboard会吞掉node旋转→改手动: 法线朝相机(正面可读), 局部up=柄尾→地面径向投影到⊥相机平面(刀锋随θ在屏幕内转=挥砍·且与地面扇形咬合)
 	if not is_instance_valid(scythe) or _cam == null: return
@@ -6121,7 +6122,7 @@ func _apply_rider(u: Dictionary, e: Dictionary, rider: String) -> void:
 		"burn":  _damage._apply_dot_stacks(e, "burn", maxi(1, roundi(u["atk"] * 0.5)), u)
 		"stun":  _damage._stun(e, CTRL_SEC, "_cc_apply")
 		"slow":  e["slow_until"] = maxf(float(e.get("slow_until", 0.0)), _t + _cc_dur(e, BUFF_SEC)); e["slow_mag"] = 0.6
-		"curse": _add_dot(e, "curse", e["maxHp"] * 0.05, BUFF_SEC, u)
+		"curse": _damage._add_curse(e, BUFF_SEC, u)
 		"atkdn": _damage._buff(e, "atk", -0.15, true)
 		"mrdn":  _damage._buff(e, "mr", -0.20, true)
 
@@ -6505,11 +6506,11 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		var _lost: float = clampf(1.0 - u["hp"] / u["maxHp"], 0.0, 1.0)
 		u["crit"] = float(u.get("dice_base_crit", u["crit"])) + minf(_lost / 0.30, 1.0) * 0.50
 		# (暴击率>100%转暴伤由 _resolve_dmg 全局处理, 这里只设暴击率)
-	# --- 赛博浮游炮(用户2026-07-15重构: 非实体·纯视觉跟随+攻击动作·不可被选中/打死): 每3秒+2 上限20 ---
+	# --- 赛博浮游炮(用户2026-07-15重构: 非实体·纯视觉跟随+攻击动作·不可被选中/打死): 每2秒+1 上限20 (用户2026-07-28削弱: 原每3秒+2) ---
 	if u["id"] == "cyber":
-		if u["_ptimer"] >= 3.0:
+		if u["_ptimer"] >= 2.0:
 			u["_ptimer"] = 0.0
-			u["drone_n"] = mini(20, int(u.get("drone_n", 0)) + 2)
+			u["drone_n"] = mini(20, int(u.get("drone_n", 0)) + 1)
 		_tick_cyber_drones(u, delta)
 		if not u.get("_slam", false) and "cyberSmartAI" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 常驻走位闪避(用户2026-07-16: 被动冲刺是消耗充能层数的): 敌贴近130码+有层数→消耗1层自动躲避冲刺(冷却2.5s)
 			var _ne5 = _targeting._nearest_enemy(u)
@@ -6566,6 +6567,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 				_gold_chunk_erupt(u["pos"] + Vector2(randf_range(-24.0, 24.0), randf_range(6.0, 18.0)))
 	# --- 彩虹棱镜(封板L267): 每6秒随机红/蓝/绿·普攻附对应效果(红+0.25A真伤/蓝+0.2A盾4s/绿回2.5%已损·见_on_basic_hit) ---
 	if u["id"] == "rainbow":
+		_rainbow_sys._rainbow_prism_convert(u)   # 棱镜转化(实时·每帧): 10%最大生命→攻击力, 0.3×攻击力%→攻速
 		u["_rbtimer"] = u.get("_rbtimer", 0.0) + delta
 		if u["_rbtimer"] >= 6.0:
 			u["_rbtimer"] = 0.0
@@ -6672,8 +6674,8 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 		_hunter_sys._hunter_apply_steal(killer, u)
 	# 幽灵强化怨灵: 死亡时再诅咒全体敌一次
 	if u["id"] == "ghost":
-		for o in _targeting._enemies_of(u):
-			_add_dot(o, "curse", o["maxHp"] * 0.05, BUFF_SEC, u)
+		var _ce: Array = _targeting._enemies_of(u)   # 死亡诅咒: 全体→随机1个(用户2026-07-28削弱)
+		if not _ce.is_empty(): _damage._add_curse(_ce[_battle_rng.randi() % _ce.size()], BUFF_SEC, u)
 	# 海盗掠夺被动已按封板L354/382删除(掠夺去掉→海盗龟无被动·场外船是共用演出载体·待用户确认是否补新被动)
 
 # ============================================================================

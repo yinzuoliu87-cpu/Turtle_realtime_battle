@@ -13,8 +13,8 @@ extends Node
 ##     · pirate.brief 写着「海盗龟无被动技能(掠夺已移除)」, 与实装的死亡钩索正面冲突 (轮H′)
 ##     · cyber 的技能说明里漏出「F5精修」「kite近似」这类开发术语 (轮H′)
 ##
-## 本测试只做【便宜且不会误伤】的黑名单扫描 + 结构完整性检查。它拦不住"数值写错",
-## 但能拦住"占位符/陈旧模型/开发术语/整块空白"这四类已经真实发生过的事故。
+## 本测试做【便宜且不会误伤】的黑名单扫描 + 结构完整性检查 + 占位符可求值(第5节·2026-07-28补)。
+## 它拦不住"数值写错", 但能拦住"占位符/陈旧模型/开发术语/整块空白/公式印到界面上"这五类已真实发生过的事故。
 
 var _fail := 0
 
@@ -113,9 +113,62 @@ func _ready() -> void:
 			wrong_pool.append("%s=%d" % [str(p.get("id", "?")), (pool as Array).size() if pool is Array else -1])
 	_ok("每只龟 skillPool = 4 格 (普攻 + 3选1)", wrong_pool.is_empty(), str(wrong_pool))
 
+	# ── 5. 占位符可求值 (2026-07-28 新增) ─────────────────────────────────
+	#    图鉴不是直接显示原文, 而是过 SkillText.render_html 把 {N:1.1*ATK} 这类占位符算成数字。
+	#    ★eval_expr 求值失败时返回的是【去掉花括号的原始表达式】(skill_text.gd:70) ——
+	#      所以坏占位符渲染成 "0.8*BADTOKEN" 而不是 "{0.8*BADTOKEN}"。
+	#      判定必须放在【模板层】: 在渲染结果里找 "{…}" 是找不到的, 那样写出来的是假绿灯(实测过)。
+	#    2026-07-28 用它抓到: 石头龟被动的 {D:initDef*maxDefInitPct/100/capTurns} 求不出值,
+	#      玩家在图鉴上直接看到公式原文。
+	var tok := RegEx.create_from_string("\\{([NPHSBDMT]):([^}]+)\\}|\\{([^}]+)\\}")
+	var dr = get_node_or_null("/root/DataRegistry")
+	var gs = get_node_or_null("/root/GameState")
+	var unresolved: Array = []
+	var n_tok := 0
+	if dr != null and gs != null:
+		for p2 in pets:
+			var pet: Dictionary = p2
+			var lv: int = gs.get_pet_level(str(pet.get("id", "")))
+			var m: float = float(dr.rarity_mult.get(pet.get("rarity", "C"), 1.0)) * (1.0 + (lv - 1) * 0.05)
+			var ctx := {
+				"atk": roundi(pet.get("atk", 0) * m), "def": roundi(pet.get("def", 0) * m),
+				"mr": roundi(pet.get("mr", pet.get("def", 0)) * m), "maxHp": roundi(pet.get("hp", 0) * m),
+				"crit": pet.get("crit", 0.0), "lv": lv,
+			}
+			var fields: Array = []
+			var pas2: Dictionary = pet.get("passive", {})
+			for k in ["brief", "desc"]:
+				fields.append(["passive." + k, str(pas2.get(k, "")), pas2])
+			for arr_key in ["skillPool", "volcanoSkills", "meleeSkills"]:
+				var arr2 = pet.get(arr_key, [])
+				if not (arr2 is Array):
+					continue
+				for i in (arr2 as Array).size():
+					var sk2: Dictionary = arr2[i]
+					for k2 in ["brief", "detail"]:
+						fields.append(["%s[%d].%s" % [arr_key, i, k2], str(sk2.get(k2, "")), sk2])
+			for fd in fields:
+				var raw: String = str(fd[1])
+				if raw == "":
+					continue
+				var vars2 := SkillText.build_vars(ctx, fd[2])
+				for mm in tok.search_all(raw):
+					n_tok += 1
+					var expr: String = mm.get_string(2)
+					if expr == "":
+						expr = mm.get_string(3)
+					var v = SkillText.eval_expr(expr, vars2)
+					if not (v is int or v is float):
+						unresolved.append("%s %s %s→印出\"%s\"" % [str(pet.get("id", "?")), str(fd[0]), mm.get_string(), str(v)])
+	else:
+		_fail += 1
+		print("  [FAIL] 缺 autoload, 占位符求值检查没跑")
+	_ok("占位符全部能求出数字 (扫了 %d 个)" % n_tok, unresolved.is_empty(), str(unresolved.slice(0, 4)))
+	_ok("★分母: 占位符数 > 0 (0 个 = 空检查不是通过)", n_tok > 0, "n_tok=%d" % n_tok)
+
 	print("")
 	if _fail == 0:
-		print("ALL PASS — 图鉴文案: 无占位符 / 无回合制陈旧模型 / 无开发术语 / 无空白字段")
+		print("ALL PASS — 图鉴文案: 无占位符残留 / 无回合制陈旧模型 / 无开发术语 / 无空白字段 / 占位符全部可求值")
 	else:
 		print("FAIL x", _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

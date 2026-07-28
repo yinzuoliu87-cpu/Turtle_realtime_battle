@@ -3,6 +3,12 @@ extends RefCounted
 ## 熔岩带/火山系统(从 RealtimeBattle3DScene 抽出·2026-07-25)。持 battle 引用回调场景。
 ## 类内 _lava_*/_tick_lava_zones 名字与主场景一字不差 → 内部互调零改动;只外部名加 battle. 前缀。
 
+## ★移速从 turtle_stats.ROLE 派生 —— 熔岩定位=近战法师(用户2026-07-28「熔岩龟两个形态下也按近战处理」)。
+## 两形态都读这一档: 小形态虽 melee=false/射程400, 移速仍按近战档(见 ROLE_MELEE_EXEMPT)。
+const _TS := preload("res://scripts/gamedata/turtle_stats.gd")
+static var LAVA_SPD: float = float(_TS.STATS["lava"][1])
+const VOLCANO_SPD_MULT := 1.2   # 火山形态相对提速(原 175/145≈1.21 的等效保留)
+
 var battle
 var _lava_zones: Array = []               # 持续熔岩地面区域 (熔岩龟·岩浆池等) {center,...}
 
@@ -378,7 +384,7 @@ func _lava_transform(u: Dictionary) -> void:
 	u["volcano"] = true                                           # 怒气条不清零: 火山15秒内当倒计时条匀速流失(用户2026-07-15)
 	u["volcano_until"] = battle._t + dur
 	u["_volcano_dur"] = dur
-	u["melee"] = true; u["atk_range"] = 70.0; u["move_spd"] = 175.0   # 火山形态=近战冲脸
+	u["melee"] = true; u["atk_range"] = 70.0; u["move_spd"] = LAVA_SPD * VOLCANO_SPD_MULT   # 火山形态=近战冲脸(用户2026-07-28: 两形态都按近战档·冲脸保+20%相对提速)
 	# 属性提升 (1:1 pets.json: +ATK*2.5 最大HP / +ATK*0.2 攻防魔抗 flat); 用 buff(到期自动撤) + 直接加血上限(到期revert)
 	battle._damage._buff(u, "atk", base_atk * atk_scale, false, dur)
 	battle._damage._buff(u, "def", base_atk * def_scale, false, dur)
@@ -392,7 +398,7 @@ func _lava_transform(u: Dictionary) -> void:
 func _lava_revert(u: Dictionary) -> void:                        # 火山形态结束 → 变回小形态 (撤回血上限, 属性buff自然到期)
 	u["volcano"] = false
 	u["rage"] = 0.0                                               # 形态结束怒气正好归零(倒计时条走完·用户2026-07-15)
-	u["melee"] = false; u["atk_range"] = 400.0; u["move_spd"] = 145.0   # 变回远程 (STATS lava range=400)
+	u["melee"] = false; u["atk_range"] = 400.0; u["move_spd"] = LAVA_SPD   # 变回远程射程400, 但移速仍按【近战法师】档(用户2026-07-28拍板·ROLE_MELEE_EXEMPT)
 	var hp_gain: float = float(u.get("_volcano_hp_gain", 0.0))
 	if hp_gain > 0.0:
 		u["maxHp"] = maxf(1.0, u["maxHp"] - hp_gain)

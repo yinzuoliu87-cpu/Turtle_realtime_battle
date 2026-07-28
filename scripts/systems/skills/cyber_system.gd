@@ -221,7 +221,7 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 		battle._shake(battle.JUICE_SHAKE_HEAVY)
 		var mech = battle._spawn._spawn_summon(uu, "mech", final_hp, final_atk, {
 			"label": "机甲", "spr_id": "mech", "col_size": 40.0, "hp_w": 46.0, "melee": true,
-			"move_spd": 130.0, "atk_interval": 1.0, "atk_range": 100.0,   # 近战最低标准100防卡位(用户2026-07-16"70会卡位")
+			"move_spd": 95.0, "atk_interval": 1.0, "atk_range": 100.0,   # 机甲=近战坦克档(用户2026-07-28移速定位化: 原130比全表任何龟都快); 近战最低标准100防卡位(用户2026-07-16"70会卡位")
 			"special": "mech_blast", "special_cd": 2.5, "special_scale": 1.5,
 		})
 		if mech == null: return

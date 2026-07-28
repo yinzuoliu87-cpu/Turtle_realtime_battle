@@ -3,6 +3,11 @@ extends RefCounted
 ## 单位生成/生命周期: 造单位(_make_unit)+双路/单路布阵spawn+训龟大师+spawn被动+召唤物(summon/藏身小将/海盗船)
 ## 类内名不变;外部名加 battle.
 
+## 召唤物默认移速 —— 对齐【近战法师/辅助】档(100)。用户2026-07-28 移速定位化:
+## 原默认 120 会让无名召唤物比大多数龟都快, 与"近战>远程"的结构保证冲突。
+## 有明确设计理由的召唤物照旧各自硬写(水晶球90 / 海盗船40 —— 注释里有出处)。
+const SUMMON_DEFAULT_SPD := 100.0
+
 var battle
 
 func _init(b) -> void:
@@ -499,7 +504,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 				battle._damage._buff(u, "dodge", 0.25, false, 9999.0); u["crit"] += 0.40
 		"ghost":
 			for o in battle._targeting._enemies_of(u):
-				battle._add_dot(o, "curse", o["maxHp"] * 0.05, battle.BUFF_SEC, u)
+				battle._damage._add_curse(o, battle.BUFF_SEC, u)
 		"ice":
 			u["_vs_fire_bonus"] = 0.2          # 寒域: 对熔岩/凤凰 +20%伤害
 			u["_burnImmune"] = true            # 极寒(用户设计L162: 改常驻被动): 免疫灼烧
@@ -543,11 +548,11 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 		"candy":
 			# 甜蜜掠夺·甜蜜吸取(用户2026-07-15改"第8秒生效"): 登场不触发→改由 _tick_unit 战斗第8秒调 _candy_sys._candy_sweet_drain 一次
 			# 【用户2026纠错】普攻自愈=我自造的(原话普攻只有1.1A+5%maxHp+攻击-15%·无自愈)→删除; 自我回血在焦糖铠/甜蜜吸取
-			if "candyBomb" in battle._chosen_skill_types(u["id"], u["side"] == "left"):   # 糖果炸弹(技三·选中才召): HP=50%糖果龟maxHp·每秒衰减8%·死亡爆炸150%
+			if "candyBomb" in battle._chosen_skill_types(u["id"], u["side"] == "left"):   # 糖果炸弹(技三·选中才召): HP=50%糖果龟maxHp·每秒衰减8%·死亡爆炸100%
 				_spawn_summon(u, "candybomb", u["maxHp"] * 0.50, 0.0, {
 					"label": "糖果炸弹", "spr_id": "candy-bomb", "col_size": 20.0, "hp_w": 24.0,
 					"no_basic": true, "no_move": true, "self_decay": 0.08,
-					"death_aoe": 1.5,
+					"death_aoe": battle._candy_sys.BOMB_DEATH_AOE,
 				})
 		"chest":
 			if (not battle._review_demo()) and str(u.get("side", "")) == "left" and GameState != null:
@@ -741,7 +746,7 @@ func _spawn_summon(owner: Dictionary, kind: String, hp: float, atk: float, behav
 		"armor_pen": 0.0, "armor_pen_pct": 0.0, "magic_pen": 0.0, "magic_pen_pct": 0.0,
 		"heal_amp": 0.0, "shield_amp": 0.0, "damage_reduction": 0.0, "damage_amp": 0.0, "reflect": 0.0, "tenacity": 0.0,
 		"melee": bool(behavior.get("melee", kind != "drone")),
-		"move_spd": float(behavior.get("move_spd", 0.0 if behavior.get("no_move", false) else 120.0)),
+		"move_spd": float(behavior.get("move_spd", 0.0 if behavior.get("no_move", false) else SUMMON_DEFAULT_SPD)),
 		"atk_interval": float(behavior.get("atk_interval", 1.2)),
 		"atk_range": float(behavior.get("atk_range", 280.0 if kind == "drone" else 70.0)),
 		"atk_cd": 0.0, "energy": 0.0, "alive": true, "is_summon": true,

@@ -79,7 +79,11 @@ func _show_pet(pet: Dictionary) -> void:
 	host._add_text(mid_x + 60, 75, rarity, 28, rarity_color, 0.0, 0.5, true)
 
 	# ★tag 区已删(用户2026-07-23 点5): 守护/元素/物理/法术等 10 种标签全是凑羁绊的, 龟间羁绊已废 → 全去。
-	#   腾出立绘下方空间给属性/技能区。
+	#   腾出的位置给【定位】(用户2026-07-28: 定位是移速/攻速的权威事实源, 玩家该看得到)。
+	var _role: String = str(host.TurtleStats.ROLE.get(str(pet.get("id", "")), ""))
+	if _role != "":
+		host._add_text(mid_x, 112, "定位", 14, "#888888", 0.0, 0.5)
+		host._add_text(mid_x + 60, 112, _role, 22, "#9ad0ff", 0.0, 0.5, true)
 
 	# 3) 4 属性条 — statColX500 statRowH42; 方块 sqW5 sqH14 gap2 pitch7
 	# m = 稀有度倍率 × 等级加成 (1:1 PoC CodexScene:168 RARITY_MULT×getLevelBonus); rarity_mult 取真值表(原硬编1.5/2.0=bug)

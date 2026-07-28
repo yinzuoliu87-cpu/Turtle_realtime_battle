@@ -181,6 +181,36 @@ func _frost_puff(pos2d: Vector2) -> void:
 	t.tween_callback(spr.queue_free)
 
 # 029 冰封水母: 冰封目标 + 护盾泡
+## ═══ 冰柱层 (用户 2026-07-28 加强) ═══
+## 每段普攻 +1 层, 上限 ICICLE_MAX。每层给【自身】+3% 攻速 / +1% 护甲 / +1% 魔抗,
+## 并让【冰霜】范围 +20%、持续 +0.5 秒。
+## ★"每路战斗结束刷新"是白送的: 换路时 dual_lane_flow._dl_clear_units() 会清场再重 spawn,
+##   单位字典整个重建 → icicle 字段天然归零, 不用另写重置(同 blood 天然每场重置的道理)。
+const ICICLE_MAX := 20
+const ICICLE_ASPD := 0.03      # 每层 +3% 攻速
+const ICICLE_DEFMR := 0.01     # 每层 +1% 护甲 & 魔抗
+const ICICLE_FROST_RADIUS := 0.20   # 每层 冰霜半径 +20%
+const ICICLE_FROST_SEC := 0.5       # 每层 冰霜持续 +0.5 秒
+
+## 攒一层冰柱并把属性差量结算上去(只加增量, 不重复叠)
+func _ice_gain_icicle(u: Dictionary) -> void:
+	var n: int = int(u.get("icicle", 0))
+	if n >= ICICLE_MAX:
+		return
+	u["icicle"] = n + 1
+	# 攻速: atk_interval 越小越快 → 用总层数换算目标间隔, 避免逐层相乘的浮点漂移
+	var base_iv: float = float(u.get("_icicle_base_iv", u.get("atk_interval", 1.0)))
+	u["_icicle_base_iv"] = base_iv
+	u["atk_interval"] = base_iv / (1.0 + ICICLE_ASPD * float(u["icicle"]))
+	# 双抗: 按【开局基准】的百分比加, 同样只算总量
+	var bd: float = float(u.get("_icicle_base_def", u.get("def", 0.0)))
+	var bm: float = float(u.get("_icicle_base_mr", u.get("mr", 0.0)))
+	u["_icicle_base_def"] = bd
+	u["_icicle_base_mr"] = bm
+	u["def"] = bd * (1.0 + ICICLE_DEFMR * float(u["icicle"]))
+	u["mr"] = bm * (1.0 + ICICLE_DEFMR * float(u["icicle"]))
+
+
 func _sk_ice_frost(u: Dictionary, tgt: Dictionary) -> void:      # 寒冰龟·冰霜 ✅ (圆形冰霜场: 5秒/每0.5秒一跳/圈内-25%魔抗)
 	var center: Vector2 = u["pos"]
 	if tgt != null and tgt.get("alive", false):
@@ -188,9 +218,13 @@ func _sk_ice_frost(u: Dictionary, tgt: Dictionary) -> void:      # 寒冰龟·�
 	else:
 		var es = battle._targeting._pick_enemies_of(u)
 		if not es.is_empty(): center = es[0]["pos"]
-	var radius = 150.0
+	# 冰柱层加强(用户2026-07-28): 每层 半径+20% / 持续+0.5秒 → 跳数随持续一起涨(恒每0.5秒一跳)
+	var ic: int = int(u.get("icicle", 0))
+	var radius: float = 150.0 * (1.0 + ICICLE_FROST_RADIUS * float(ic))
+	var secs: float = 5.0 + ICICLE_FROST_SEC * float(ic)
+	var ticks: int = maxi(1, roundi(secs / 0.5))
 	var tw = battle._reg_tween()
-	for i in range(10):   # 5秒 / 每0.5秒 = 10跳
+	for i in range(ticks):
 		tw.tween_callback(_ice_frost_tick.bind(u, center, radius))
 		tw.tween_interval(0.5)
 
@@ -232,10 +266,18 @@ func _ice_frost_rain(center: Vector2, radius: float) -> void:    # 冰霜场视�
 		twr.tween_property(sh, "modulate:a", 0.0, 0.3).set_delay(0.18)
 		twr.chain().tween_callback(sh.queue_free)
 
-func _sk_ice_freeze(u: Dictionary, tgt: Dictionary) -> void:    # 寒冰龟·冰封 ✅ (冰锥弹道→命中0.6魔法+冻结1.5s)
+## 寒冰龟·冰封 (用户 2026-07-28 加强)
+##   常态: 0.6ATK 魔法 + 冻结 2.5 秒(原 1.5)
+##   ★满 ICICLE_MAX 层冰柱后【转形态】: 改为 2.5ATK 魔法 + 回复自身(护甲+魔抗)生命, 不再冻结
+##     ("转而"=替换而非叠加; 同幽灵灵魂风暴"已中咒→改真伤"的写法)
+func _sk_ice_freeze(u: Dictionary, tgt: Dictionary) -> void:
 	if tgt == null or not tgt.get("alive", false):
 		return
-	battle._ballistics._fire_ice_shard(u, tgt, battle._atk_dmg(u, 0.6, tgt, true))
+	if int(u.get("icicle", 0)) >= ICICLE_MAX:
+		battle._ballistics._fire_ice_shard(u, tgt, battle._atk_dmg(u, 2.5, tgt, true), 0.0)
+		battle._damage._heal(u, float(u.get("def", 0.0)) + float(u.get("mr", 0.0)))
+		return
+	battle._ballistics._fire_ice_shard(u, tgt, battle._atk_dmg(u, 0.6, tgt, true), 2.5)
 
 func _sk_ice_team_shield(u: Dictionary) -> void:               # 寒冰龟·团队护盾(用户2026-07-11重设计·120龟能): 全体友军5%施法者maxHp冰霜盾4秒·盾破/到期爆炸250码1×ATK魔法; 独狼(无其他友军)盾×4·爆炸5×ATK
 	var others = battle._targeting._allies_of(u, false)                         # 不含自己

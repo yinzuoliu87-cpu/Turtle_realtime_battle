@@ -304,7 +304,7 @@ func _fire_venom_fang(src: Dictionary, tgt: Dictionary, base: float) -> void:   
 		"venom_fang": true, "wisp_dir": true, "fang_base": base,
 	})
 
-func _fire_ice_shard(src: Dictionary, tgt: Dictionary, dmg: int) -> void:   # 冰锥弹道(水平朝目标, 命中魔伤+冻结1.5s)
+func _fire_ice_shard(src: Dictionary, tgt: Dictionary, dmg: int, freeze_sec: float = 1.5) -> void:   # 冰锥弹道(命中魔伤+冻结; 时长传参·2026-07-28 寒冰改2.5s, 默认值保持旧行为)
 	var start2d: Vector2 = src["pos"]
 	var p = Sprite3D.new()
 	p.texture = VfxTex._make_ice_cone_texture()
@@ -320,7 +320,7 @@ func _fire_ice_shard(src: Dictionary, tgt: Dictionary, dmg: int) -> void:   # �
 	var dur = clampf(start2d.distance_to(tgt["pos"]) / 600.0, 0.35, 0.9)   # 恒速~600px/s, 慢到看得清(原0.2太快)
 	battle._projectiles.append({
 		"node": p, "from": world_from, "tgt": tgt, "dmg": dmg, "col": Color("#4dabf7"),
-		"src": src, "t": 0.0, "dur": dur, "basic_onhit": false, "freeze_on_hit": 1.5, "oriented": true, "dtype": battle._last_dmg_type,
+		"src": src, "t": 0.0, "dur": dur, "basic_onhit": false, "freeze_on_hit": freeze_sec, "oriented": true, "dtype": battle._last_dmg_type,
 	})
 
 func _fire_shuriken(src: Dictionary, tgt: Dictionary, phys_raw: float, true_raw: float, is_crit: bool) -> void:   # 旋转飞镖弹道(4帧自旋): 命中→物理段(红·减甲)+可选真伤段(白·穿甲)·暴击金染

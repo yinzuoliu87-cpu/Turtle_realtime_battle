@@ -3,6 +3,12 @@ extends RefCounted
 ## 水晶龟技能系统
 ## 类内名不变;外部名加 battle.
 
+## ★水晶数值单一事实源(用户2026-07-28 第一轮加强)。文案在 data/pets.json，改这里要同步改那边。
+const BULWARK_ATK := 2.0        # 水晶壁垒: 盾 = ×ATK  (1.0→2.0)
+const BULWARK_HP_PCT := 0.10    # 水晶壁垒: 盾 += ×最大生命 (0.05→0.10)
+const BURST_MAGIC := 0.8        # 碎晶爆破: 三段合计 ×ATK 魔法 (0.7→0.8)
+const BURST_TRUE := 0.3         # 碎晶爆破: 三段合计 ×ATK 真实 (0.1→0.3)
+
 var battle
 
 func _init(b) -> void:
@@ -410,8 +416,8 @@ func _crystal_ray_vfx(src: Dictionary, tgt: Dictionary, seg_dmg_fn: Callable) ->
 
 # 水晶龟·水晶球 本体主动(封板L571·70龟能): 朝目标射一道水晶光线=2段共1.0A魔法 + 叠2层结晶(与水晶球随从共享满5引爆)·水晶球随从在spawn gate召唤
 
-func _sk_crystal_bulwark(u: Dictionary) -> void:                 # 水晶龟·水晶壁垒(用户2026-07-16改制): 1A+5%maxHp护盾4秒·持盾锁龟能·盾结束/被打破→700码直线水晶刺·全体友军甲抗+15%4秒
-	battle._damage._grant_shield(u, u["atk"] * 1.0 + u["maxHp"] * 0.05, 4.0)
+func _sk_crystal_bulwark(u: Dictionary) -> void:                 # 水晶龟·水晶壁垒(用户2026-07-16改制/2026-07-28加强): 2A+10%maxHp护盾4秒·持盾锁龟能·盾结束/被打破→700码直线水晶刺·全体友军甲抗+15%4秒
+	battle._damage._grant_shield(u, u["atk"] * BULWARK_ATK + u["maxHp"] * BULWARK_HP_PCT, 4.0)
 	u["bulwark_until"] = battle._t + 4.0
 	u["_bulwark_armed"] = true
 	var dome = Sprite3D.new()                                   # 冰蓝水晶罩(随身4秒)
@@ -435,7 +441,7 @@ func _sk_crystal_bulwark(u: Dictionary) -> void:                 # 水晶龟·�
 		battle._damage._buff(o, "def", 0.15, true, 4.0); battle._damage._buff(o, "mr", 0.15, true, 4.0)
 		battle._skill_ring(o["pos"], Color(0.62, 0.88, 1.0, 0.55), 40.0)   # 友军冰蓝强化环
 
-func _sk_crystal_burst(u: Dictionary, tgt) -> void:   # 碎晶爆破: 目标周围350码内每敌3段错峰碎晶坠落(每段0.233A魔+0.033A真+叠1层结晶·共3层满5引爆)
+func _sk_crystal_burst(u: Dictionary, tgt) -> void:   # 碎晶爆破: 目标周围350码内每敌3段错峰碎晶坠落(三段共 0.8A魔+0.3A真+每段叠1层结晶·共3层满5引爆·用户2026-07-28加强)
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	var center: Vector2 = tgt["pos"]
@@ -464,8 +470,8 @@ func _sk_crystal_burst(u: Dictionary, tgt) -> void:   # 碎晶爆破: 目标周�
 					if is_instance_valid(sh): sh.queue_free()
 					if not oref.get("alive", false): return
 					_crystal_spark(oref["pos"], 0.7)
-					battle._damage._apply_damage_from(uu, oref, battle._atk_dmg(uu, 0.233, oref, true), Color("#9bdcff"))                 # 每段0.233A魔法
-					battle._damage._apply_damage_from(uu, oref, int(maxf(1.0, uu["atk"] * 0.033)), Color("#ffffff"), 0.0, true)   # +0.033A真实
+					battle._damage._apply_damage_from(uu, oref, battle._atk_dmg(uu, BURST_MAGIC / 3.0, oref, true), Color("#9bdcff"))     # 每段 = 总0.8A魔法/3
+					battle._damage._apply_damage_from(uu, oref, int(maxf(1.0, uu["atk"] * BURST_TRUE / 3.0)), Color("#ffffff"), 0.0, true)   # 每段 = 总0.3A真实/3
 					_crystal_stack(uu, oref, 1))
 			, "src": u})
 

@@ -147,7 +147,8 @@ func _tick_eq_turret(u: Dictionary, delta: float) -> void:   # 058: 炮台双抗
 
 func _eq_summon_skeleton(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false): return
-	var sk = battle._spawn._spawn_summon(u, "skeleton", [19.0, 21.0, 25.0][si] * battle.HP_MULT, [3.0, 5.0, 8.0][si], {"label": "亡灵骷髅", "spr_id": "skeleton", "col_size": 32.0, "hp_w": 22.0, "atk_interval": 1.0 / 1.2, "atk_range": 70.0, "melee": true, "move_spd": 130.0})
+	# 亡灵骷髅移速=近战斗士档110(用户2026-07-28移速定位化: 原 130 比全表任何龟都快)
+	var sk = battle._spawn._spawn_summon(u, "skeleton", [19.0, 21.0, 25.0][si] * battle.HP_MULT, [3.0, 5.0, 8.0][si], {"label": "亡灵骷髅", "spr_id": "skeleton", "col_size": 32.0, "hp_w": 22.0, "atk_interval": 1.0 / 1.2, "atk_range": 70.0, "melee": true, "move_spd": 110.0})
 	if sk == null: return
 	sk["base_def"] = 20000.0; sk["base_mr"] = 20000.0; sk["def"] = 20000.0; sk["mr"] = 20000.0
 	sk["summon_life"] = 15.0

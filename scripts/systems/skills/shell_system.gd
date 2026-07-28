@@ -3,6 +3,12 @@ extends RefCounted
 ## 龟壳龟技能系统
 ## 类内名不变;外部名加 battle.
 
+## ★龟壳数值单一事实源(用户2026-07-28 第一轮削弱·整只 85.5% 全表第三)。文案在 data/pets.json。
+const AWAKEN_PCT := 0.06            # 气场觉醒: 每次六属性 +% (0.12→0.06)
+const AWAKEN_CRIT := 0.125          # 气场觉醒: 每次暴击率 + (0.25→0.125·两次觉醒后暴击 0.25→0.50 而非 0.75)
+const STEALTH_BREAK_MAGIC := 0.5    # 暗影·破隐首发: 额外 ×ATK 魔法 (1.0→0.5)
+const DIVE_MAGIC := 2.0             # 暗影俯冲: 落地 ×ATK 魔法 (2.5→2.0)
+
 var battle
 
 func _init(b) -> void:
@@ -42,9 +48,9 @@ func _shell_guard_fx(u: Dictionary) -> void:   # 守护贝壳018: 双半壳张�
 
 func _shell_basic(u: Dictionary, tgt: Dictionary) -> void:
 	_shell_break_stealth(u)                                     # 自己普攻→破隐(设shell_stealth_broke)
-	if u.get("shell_stealth_broke", false):                    # 破隐后第一发普攻: +1A魔法 + 0.5A毒层 + 3秒50%治疗削减
+	if u.get("shell_stealth_broke", false):                    # 破隐后第一发普攻: +0.5A魔法 + 0.5A毒层 + 3秒50%治疗削减(用户2026-07-28 1.0→0.5)
 		u["shell_stealth_broke"] = false
-		battle._damage._apply_damage_from(u, tgt, int(u["atk"] * 1.0), Color("#9b3bff"))
+		battle._damage._apply_damage_from(u, tgt, int(u["atk"] * STEALTH_BREAK_MAGIC), Color("#9b3bff"))
 		battle._damage._apply_dot_stacks(tgt, "poison", maxi(1, int(round(u["atk"] * 0.5))), u)
 		tgt["heal_reduce_until"] = battle._t + 3.0
 		tgt["heal_reduce_pct"] = maxf(float(tgt.get("heal_reduce_pct", 0.0)), 0.5)
@@ -179,7 +185,7 @@ func _shell_break_stealth(u: Dictionary) -> void:              # 破隐(自己�
 	if is_instance_valid(spr): spr.modulate.a = 1.0
 	_shell_dark_flame(u["pos"], 90.0, 0.4)
 
-func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影俯冲(封板·130龟能·Corki库奇式): 俯冲600码→落地2.5A魔法+击退+路径敌→暗影燃烧区150码5s(每0.5s 0.1A灼烧层+减速20%)→进入隐身
+func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影俯冲(封板·130龟能·Corki库奇式): 俯冲600码→落地2.0A魔法+击退(用户2026-07-28 2.5→2.0)+路径敌→暗影燃烧区150码5s(每0.5s 0.1A灼烧层+减速20%)→进入隐身
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	var start: Vector2 = u["pos"]
@@ -189,11 +195,11 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影�
 	var dest: Vector2 = start + dir * 600.0
 	dest.x = clampf(dest.x, battle.ARENA.position.x, battle.ARENA.end.x)
 	dest.y = clampf(dest.y, battle.ARENA.position.y, battle.ARENA.end.y)
-	for o in battle._targeting._enemies_of(u):                                    # 落地+路径敌: 2.5A魔法+击退
+	for o in battle._targeting._enemies_of(u):                                    # 落地+路径敌: 2.0A魔法+击退
 		if not o.get("alive", false): continue
 		if not battle._on_line(start, dir, o["pos"], 75.0): continue
 		if o["pos"].distance_to(start) > 620.0: continue
-		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 2.5, o, true), Color("#9b3bff"))
+		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, DIVE_MAGIC, o, true), Color("#9b3bff"))
 		battle._damage._knockback(u, o, 60.0, 1.0, 1.4)
 	_shell_dark_flame(start, 60.0, 0.5)                         # 起跳点火(Corki官方帧t=1.0起飞喷焰·2026-07-17)
 	battle._burst_vfx("res://assets/sprites/vfx/dust-impact.png", start, 90.0, 0.1)
@@ -294,12 +300,12 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:               # 龟壳·复制(
 #  效果积木 (可复用) — 治疗/护盾/控制/buff/DoT/吸血/累积/净化/叠层 (1:1 搬自 2D 版).
 #  注: 3D 版血条 overlay 每帧统一刷新, 故去掉 2D 版各处的 _update_bars(u) 调用.
 # ============================================================================
-func _shell_apply_awaken(u: Dictionary) -> void:   # 气场觉醒一次(六属性+12%/暴击+25%) + 金光爆发特效
-	battle._damage._buff(u, "atk", 0.12, true, 9999.0); battle._damage._buff(u, "def", 0.12, true, 9999.0); battle._damage._buff(u, "mr", 0.12, true, 9999.0)
-	battle._damage._buff(u, "lifesteal", 0.12, true, 9999.0)   # +12%吸血
-	var ah: float = u["maxHp"] * 0.12; u["maxHp"] += ah; u["hp"] += ah   # +12%最大生命
-	u["reflect"] = float(u.get("reflect", 0.0)) + 0.12   # 反伤+12% (回合制 auraAwaken.reflectPct=12; reflect是通用字段·受伤端_apply_damage_from已有反弹钩)
-	u["crit"] += 0.25; battle._recalc_stats(u)
+func _shell_apply_awaken(u: Dictionary) -> void:   # 气场觉醒一次(六属性+6%/暴击+12.5%·用户2026-07-28 12%→6%、25%→12.5%) + 金光爆发特效
+	battle._damage._buff(u, "atk", AWAKEN_PCT, true, 9999.0); battle._damage._buff(u, "def", AWAKEN_PCT, true, 9999.0); battle._damage._buff(u, "mr", AWAKEN_PCT, true, 9999.0)
+	battle._damage._buff(u, "lifesteal", AWAKEN_PCT, true, 9999.0)   # +6%吸血
+	var ah: float = u["maxHp"] * AWAKEN_PCT; u["maxHp"] += ah; u["hp"] += ah   # +6%最大生命
+	u["reflect"] = float(u.get("reflect", 0.0)) + AWAKEN_PCT   # 反伤+6% (回合制 auraAwaken.reflectPct=12; reflect是通用字段·受伤端_apply_damage_from已有反弹钩)
+	u["crit"] += AWAKEN_CRIT; battle._recalc_stats(u)
 	_shell_awaken_vfx(u)
 
 func _shell_awaken_vfx(u: Dictionary) -> void:   # 觉醒金光爆发: 震屏+微顿帧 + 强金闪 + 双金环 + 金光柱 + 金光上腾 + "觉醒"飘字

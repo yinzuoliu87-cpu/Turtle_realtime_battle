@@ -3,12 +3,36 @@ extends RefCounted
 ## 彩虹龟技能系统
 ## 类内名不变;外部名加 battle.
 
+## ★彩虹数值单一事实源(用户2026-07-28 第一轮加强·整只 14.1% 倒二)。文案在 data/pets.json，改这里要同步改那边。
+const PRISM_SHIELD_SCALE := 1.0     # 棱镜护盾: 每人 ×ATK 护盾 (0.65→1.0)
+const STORM_RADIUS := 300.0         # 全色风暴: 半径码 (140→300)
+const STORM_ALLY_HEAL := 0.25       # 全色风暴: 每跳圈内友军回 ×ATK 生命 (新增)
+const PRISM_ATK_FROM_HP := 0.10     # 棱镜转化: 获得 =10%最大生命 的攻击力
+const PRISM_ASPD_PER_ATK := 0.003   # 棱镜转化: 获得 =(0.3×攻击力)% 的攻速 → 每1点攻击力 +0.3%
+
 var battle
 
 func _init(b) -> void:
 	battle = b
 
-func _rainbow_enh_prism_proc(u: Dictionary) -> void:            # 强化棱镜4色(用户设计·每5秒抽1): 橙全体友军+10%吸血5s / 黄随机敌灼烧0.67A / 青随机敌冰寒5s / 紫随机敌诅咒5s
+## 棱镜转化(用户2026-07-28「这两条被动我要实时的」「实时变化」): 每帧跟当前最大生命/攻击力走,
+## 中途吃到加血量/加攻的装备或buff立刻反映, 不是登场算死一次。
+## ★写法要点(与冰柱同一套, 别改成累乘):
+##   · 攻击力记【已加量】只补差额 → 别的攻击buff照常叠在上面, 反复调用不翻倍
+##   · 攻速从【无棱镜的基准间隔】整体重算 → 绝不在现值上累除, 累除会随帧数漂移
+func _rainbow_prism_convert(u: Dictionary) -> void:
+	var want: float = float(u["maxHp"]) * PRISM_ATK_FROM_HP
+	var had: float = float(u.get("_prism_atk_add", 0.0))
+	if absf(want - had) > 0.01:
+		u["atk"] = float(u["atk"]) + (want - had)
+		u["base_atk"] = float(u.get("base_atk", 0.0)) + (want - had)
+		u["_prism_atk_add"] = want
+	var iv0: float = float(u.get("_prism_base_iv", 0.0))
+	if iv0 <= 0.0:
+		iv0 = float(u["atk_interval"]); u["_prism_base_iv"] = iv0
+	u["atk_interval"] = iv0 / (1.0 + PRISM_ASPD_PER_ATK * float(u["atk"]))
+
+func _rainbow_enh_prism_proc(u: Dictionary) -> void:          # 强化棱镜4色(用户设计·每5秒抽1): 橙全体友军+10%吸血5s / 黄随机敌灼烧0.67A / 青随机敌冰寒5s / 紫随机敌诅咒5s
 	var c: int = battle._battle_rng.randi() % 4
 	var es: Array = battle._targeting._pick_enemies_of(u)
 	match c:
@@ -27,7 +51,7 @@ func _rainbow_enh_prism_proc(u: Dictionary) -> void:            # 强化棱镜4�
 		3:
 			if not es.is_empty():
 				var t3 = es[battle._battle_rng.randi() % es.size()]
-				battle._add_dot(t3, "curse", t3["maxHp"] * 0.05, 5.0, u)             # 诅咒每秒5%maxHp真伤5秒
+				battle._damage._add_curse(t3, 5.0, u)             # 诅咒每秒5%maxHp真伤5秒
 	battle._skill_ring(u["pos"], Color(0.8, 0.6, 1.0, 0.4), 48.0)
 
 # 棱镜护盾施法特效: 七彩爆发从彩虹龟扩散 + 每友军护盾罩+棱镜色pop (用户2026-07-13补·"棱镜"主题)
@@ -85,6 +109,10 @@ func _rainbow_storm_tick(u: Dictionary, center: Vector2, radius: float, ti: int)
 			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 0.1, o, true), Color("#ff8ad8"))
 			battle._damage._apply_damage_from(u, o, int(u["atk"] * 0.05), Color("#fff0a0"), 0.0, true)   # 8跳共0.8魔+0.4真=原值
 			battle._storm_shred(o)   # ★碎甲: 把"削护甲魔抗"可视化
+	# 圈内友军: 每跳回0.25ATK (用户2026-07-28加强: 风暴从纯AOE→攻防一体的团队站场区)
+	for a in battle._targeting._allies_of(u):
+		if a.get("alive", false) and a["pos"].distance_to(center) <= radius:
+			battle._damage._heal(a, u["atk"] * STORM_ALLY_HEAL)
 
 # 碎甲: 削防御的可视化(AI棱镜碎片爆在敌人身上)
 func _rainbow_storm_end(u: Dictionary) -> void:
@@ -105,12 +133,12 @@ func _rainbow_storm_end(u: Dictionary) -> void:
 func _sk_rainbow_shield(u: Dictionary) -> void:                  # 彩虹龟·棱镜护盾 ✅
 	_rainbow_prism_shield_vfx(u)   # 七彩棱镜爆发+每友军护盾罩(用户2026-07-13补施法特效)
 	for o in battle._targeting._allies_of(u):
-		battle._damage._grant_shield(o, u["atk"] * 0.65, 4.0)   # 彩虹棱镜护盾(通用护盾4秒·封板L268)
+		battle._damage._grant_shield(o, u["atk"] * PRISM_SHIELD_SCALE, 4.0)   # 彩虹棱镜护盾(通用护盾4秒·用户2026-07-28: 0.65→1.0ATK)
 
 func _sk_rainbow_storm(u: Dictionary) -> void:                  # 彩虹龟·全色风暴 (重做2026-07-13: AI棱镜漩涡+GPU彩虹粒子+碎甲可视化-20%护甲魔抗+亮边AOE·期间锁龟能)
 	u["storm_until"] = battle._t + 4.0                 # 风暴4秒期间龟能锁定(用户)
 	var center: Vector2 = u["pos"]              # 固定施法点
-	var radius = 140.0
+	var radius = STORM_RADIUS
 	var nodes: Array = []
 	# ① 旋转棱镜漩涡(AI素材·贴地·加性发光·4s转3圈)
 	var vtex: Texture2D = load("res://assets/sprites/vfx/rainbow-vortex.png")

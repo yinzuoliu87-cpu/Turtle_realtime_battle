@@ -269,7 +269,7 @@ func _headless_scythe(u: Dictionary) -> void:                  # 镰刀横扫(Ca
 			battle._vfx._hit_spark(o)
 			if not o.get("_eggImmune", false):
 				_headless_knock_out(o, to.normalized(), 300.0)     # 击退300码从龟朝外
-				battle._add_dot(o, "curse", (o["maxHp"] as float) * 0.05, 5.0, uu)   # 幽灵式诅咒5秒(每秒5%maxHp真伤)
+				battle._damage._add_curse(o, 5.0, uu)   # 幽灵式诅咒5秒(每秒5%maxHp真伤)
 				_headless_fear_mark(o)                             # 紫标记示意中咒
 				_headless_reap_soul(o["pos"], uu)                  # 收割感: 从敌身扯灵魂飞回无头龟(用户2026-07-17 F)
 	, "src": u})

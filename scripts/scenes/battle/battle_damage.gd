@@ -414,6 +414,33 @@ func _buff(u: Dictionary, stat: String, amount: float, pct: bool, sec: float = b
 	battle._recalc_stats(u)
 
 # 层数式 DoT 施加 (1:1 dot.gd apply_stacks). type∈[burn,poison,bleed]; 多次施加→累加层数. burn 检免疫.
+## 诅咒每秒伤害 = 目标最大生命 × 这个比例(所有诅咒源统一: 幽灵/无头触须/彩虹)
+const CURSE_HP_PCT := 0.05
+
+## ★诅咒统一入口(2026-07-28 用户:「不要层数, 以秒数来, 每秒5%; 重复叠加可以叠加时长, 无限叠加」)
+##
+## 与 battle._add_dot 的区别: 那个是 append —— 重复施加会【并存多条】、伤害成倍
+## (原来 登场诅咒 + 灵魂风暴 + 死亡诅咒 三条同时跑 = 15%/秒)。
+## 诅咒改为: 同一目标【只保留一条】, 每秒固定 5% 最大生命真伤, 重复施加把【时长累加】上去(无上限)。
+## → 总量相近但爆发被拉平成持续, 不会再出现"开局叠三层瞬间蒸发"。
+##
+## ★只对 curse 生效: 灼烧/中毒/流血/装备 DoT 全部照走 battle._add_dot, 行为不变。
+##   (_add_dot 是全局函数, 直接改它会波及所有 DoT, 所以在这一层拦。)
+## ★放在本类: 诅咒是【跨龟的全局状态效果】(幽灵/无头/彩虹共用), 不属于任何单只龟的系统;
+##   本文件头自陈"DoT机制", _apply_dot_stacks 也在这里 —— 同层同家。
+func _add_curse(tgt: Dictionary, sec: float, src = null) -> void:
+	var dps: float = float(tgt.get("maxHp", 0.0)) * CURSE_HP_PCT
+	for d in tgt.get("dots", []):
+		if str(d.get("tag", "")) == "curse":
+			# 已过期的那条从【现在】起算, 否则会把过去的时间也累进去
+			d["until"] = maxf(float(d.get("until", 0.0)), battle._t) + sec
+			d["dps"] = dps                      # 最大生命可能中途变过 → 用当前值
+			if src != null:
+				d["src"] = src
+			return
+	battle._add_dot(tgt, "curse", dps, sec, src)
+
+
 func _apply_dot_stacks(u: Dictionary, type: String, stacks: int, src = null) -> void:
 	if u == null or not u.get("alive", false) or stacks <= 0:
 		return

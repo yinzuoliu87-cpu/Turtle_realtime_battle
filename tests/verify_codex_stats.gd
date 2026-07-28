@@ -9,11 +9,15 @@ func _ok(n: String, c: bool, d: String = "") -> void:
 	if c: print("  [PASS] ", n, ("  " + d) if d != "" else "")
 	else: _fail += 1; print("  [FAIL] ", n, "  ", d)
 
+const TS := preload("res://scripts/gamedata/turtle_stats.gd")
+
 func _ready() -> void:
 	# ① 单一事实源表: 28 龟, 每项 [melee, move_spd, atk_interval, atk_range]
 	_ok("STATS 有 28 龟", TurtleStats.STATS.size() == 28, "实际 %d" % TurtleStats.STATS.size())
 	var basic: Array = TurtleStats.STATS.get("basic", [])
-	_ok("小龟移速=105", basic.size() > 1 and int(basic[1]) == 105)
+	# ★移速期望值不再手写 —— 从 ROLE 派生, 否则改定位就得改测试(2026-07-28 移速定位化)
+	var _want_spd: float = float((TS.ROLE_SPEC[TS.ROLE["basic"]] as Array)[0])
+	_ok("小龟移速=%.0f(近战斗士档)" % _want_spd, basic.size() > 1 and absf(float(basic[1]) - _want_spd) < 0.01)
 	_ok("小龟攻击间隔=1.25", basic.size() > 2 and abs(float(basic[2]) - 1.25) < 0.001)
 
 	# ② 攻速公式 = 1/间隔 × (1+0.02*(lv-1)), Lv1=0.80, Lv10=0.944 (与战斗 _make_unit 同口径)
@@ -21,7 +25,7 @@ func _ready() -> void:
 	var aspd10: float = (1.0 / float(basic[2])) * (1.0 + 0.02 * float(10 - 1))
 	_ok("★攻速 Lv1 = 0.80(base)", abs(aspd1 - 0.80) < 0.01, "%.3f" % aspd1)
 	_ok("★攻速 Lv10 = 0.944(+2%/级)", abs(aspd10 - 0.944) < 0.01, "%.3f" % aspd10)
-	_ok("★移速不随等级(定值)", int(basic[1]) == 105)
+	_ok("★移速不随等级(定值)", absf(float(basic[1]) - _want_spd) < 0.01)
 
 	# ③ 单一事实源: 战斗脚本引用 turtle_stats.gd(不再各存一份→图鉴不会骗人)
 	var bsrc := FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")

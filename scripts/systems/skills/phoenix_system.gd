@@ -3,6 +3,12 @@ extends RefCounted
 ## 凤凰·烈焰扇/灼烧系统(从主场景抽出)
 ## 类内簇函数名不变→内部互调零改动;外部名加 battle. 前缀。
 
+## ★凤凰数值单一事实源(用户2026-07-28 削弱·整只 94.8% 全表第一)。文案在 data/pets.json。
+const SCALD_BURN_COEF := 0.6      # 烫伤: 灼烧层数 = ×ATK (1.0→0.6)
+const NIRVANA_BURN_COEF := 0.3    # 涅槃(首死复活): 对全体敌灼烧层数 = ×ATK (原走全局 _default_burn_stacks 0.67)
+const NIRVANA_HP_PCT := 0.25      # 涅槃: 复活生命 = ×最大生命 (0.30→0.25)
+const NIRVANA_ENH_HP_PCT := 0.60  # 强化涅槃: 复活生命 = ×最大生命 (1.00→0.60)
+
 var battle
 
 func _init(b) -> void:
@@ -202,7 +208,7 @@ func _phoenix_scald_hit(u: Dictionary, tgt, fb) -> void:
 	# 封板: 火球命中先破50%护盾(破盾碎裂)→再落1.5A魔法穿透→灼烧+攻防抗各-15%+治疗削减
 	battle._apply_skill_extras(u, tgt, {"shieldBreak": 0.5, "atkDown": 0.15, "defDown": 0.15, "mrDown": 0.15, "healCut": 0.5})
 	battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.5, tgt, true), Color("#4dabf7"))   # 1.5ATK魔法(打已破的盾, 更多穿透到血)
-	battle._damage._apply_dot_stacks(tgt, "burn", maxi(1, roundi(float(u["atk"]) * 1.0)), u)   # 1ATK灼烧层
+	battle._damage._apply_dot_stacks(tgt, "burn", maxi(1, roundi(float(u["atk"]) * SCALD_BURN_COEF)), u)   # 烫伤灼烧层
 	battle._vfx._flash(tgt, Color("#ff8a3a"))
 	_phoenix_flame_burst(tgt["pos"])
 
