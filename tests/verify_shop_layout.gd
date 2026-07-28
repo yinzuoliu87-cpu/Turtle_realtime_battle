@@ -38,6 +38,10 @@ func _ready() -> void:
 	#   背包塞满会让备战席格子铺开(验它不伸出左栏); 币=0 会走"深海币不足"分支。
 	gs.meta_deepsea_coins = int(OS.get_environment("SHOP_COINS")) if OS.get_environment("SHOP_COINS").is_valid_int() else 999
 	gs.season_level = 5
+	# ★必须显式给战斗数 —— 商店"本大轮打完第一场才开店", 而 CI 是【全新存档】: season_total_battles=0
+	#   → 只建锁定屏 → 控件寥寥 → 第①~⑦条全成空检查。
+	#   本机存档里早有战斗数, 所以这条本地【永远绿】、只在 CI 红(CLAUDE.md: 本地绿≠CI绿)。
+	gs.season_total_battles = 3
 	if OS.get_environment("SHOP_FULLBENCH") != "":
 		var bench: Array = []
 		for i in range(14):

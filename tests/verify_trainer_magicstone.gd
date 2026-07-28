@@ -99,12 +99,18 @@ func _ready() -> void:
 		s._trainer_sys._trainer_magicstone_onhit(tr, dummy)
 		var dealt: float = hp0 - float(dummy["hp"])
 		var want_pct: float = WANT_PCT_BASE + WANT_PCT_PER_LV * float(lv)
-		var got_pct: float = dealt / float(dummy["maxHp"])
+		# ★把【目标自带的受伤修正】显式除掉, 而不是假设它等于 1。
+		#   靶子是从随机 spawn 的敌队里挑的, 而 _mitigate_incoming 里有一堆按龟 id / 按状态
+		#   的分支(钻石 ×0.82、石头岩石之躯、靶向器标记 +20% ……)。我先只中性化了 id,
+		#   CI 上照样红 —— 说明还有没枚举到的分支。与其一个个猜, 不如【量出来再除掉】:
+		#   本条要验的是"魔法伤害公式 = (2+0.1×等级)% 最大生命", 目标挨打后打几折是另一回事。
+		var mit: float = s._mitigate_incoming(dummy, 10000.0, false, false) / 10000.0
+		var got_pct: float = dealt / float(dummy["maxHp"]) / maxf(0.01, mit)
 		var good: bool = absf(got_pct - want_pct) < 0.0006     # 取整误差
 		if not good:
 			ok4 = false
-		print("     Lv%-2d  实扣 %6.1f / %.0f = %.3f%%   期望 %.3f%%  %s" % [
-			lv, dealt, float(dummy["maxHp"]), got_pct * 100.0, want_pct * 100.0, "ok" if good else "★差"])
+		print("     Lv%-2d  实扣 %6.1f / %.0f  目标减伤×%.3f  → 公式 %.3f%%   期望 %.3f%%  %s" % [
+			lv, dealt, float(dummy["maxHp"]), mit, got_pct * 100.0, want_pct * 100.0, "ok" if good else "★差"])
 	gs.season_level = 5
 	_chk("④ 魔法伤害 = (2 + 0.1×大轮等级)% 目标最大生命", ok4)
 
