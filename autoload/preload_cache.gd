@@ -39,11 +39,9 @@ func _warm_cache() -> void:
 		var pimg: String = str(pet.get("img", ""))
 		if pimg.ends_with(".png"):
 			seen["res://assets/sprites/%s" % pimg] = true
-		# 羁绊标签 (图鉴龟详情 tag 区 + 羁绊 tab + 选龟 chip)
-		var tags = pet.get("tags", [])
-		if tags is Array:
-			for tg in tags:
-				seen["res://assets/sprites/tags/%s标签.png" % str(tg)] = true
+		# ★2026-07-28 删: 羁绊标签预加载。用户 2026-07-23 已废龟间羁绊、图鉴 tag 区也删了
+		#   (detail_views.gd:81 有记录), 但这里还在预热 10 张【永远不会被显示】的标签图,
+		#   pets.json 的 tags 字段也一并清了 —— 留着只会让人以为羁绊还在。
 		var pool = pet.get("skillPool", [])
 		if pool is Array:
 			for sk in pool:

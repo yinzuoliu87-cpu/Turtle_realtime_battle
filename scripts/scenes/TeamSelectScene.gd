@@ -12,7 +12,7 @@ extends Node2D
 ##   - 羁绊区 (synergy chip)
 ##   - 6 阵容槽 (前排3 + 后排3) + 前/后排标签
 ##   - 选龟网格 (卡片: 72头像 + 稀有度badge + 被动icon + Lv/名)  + 左侧稀有度竖排
-##   - 右栏详情 上块(立绘/属性/被动) + 下块(技能 5选3)
+##   - 右栏详情 上块(立绘/属性/被动) + 下块(技能 3选1)
 ##   - 开始按钮 (右下)
 
 # ─── PoC regionLayout 原值 (1647×955 设计空间) — 跟 TS 字典 1:1 ──────────────
@@ -101,7 +101,7 @@ var _layout_editor := LayoutEditor.new(self)   # 选龟页·F9布局编辑器(de
 var _detail := DetailPanel.new(self)   # 选龟页·右栏详情面板渲染(立绘/属性/被动·_set_detail_pet协调器留主场景)(2026-07-25 抽出)
 var _slots := RosterSlots.new(self)   # 选龟页·6阵容槽(前3后3·建/刷/拖放·_mark_label和_sync_special_slots跨区共享留主场景)(2026-07-25 抽出)
 var _pet_grid := PetGrid.new(self)   # 选龟页·龟卡片网格(填充/建卡·稀有度badge和立绘helper留主场景共享)(2026-07-25 抽出)
-var _skill_picker := SkillPicker.new(self)   # 选龟页·技能5选1选择器(dev注: 单选)(2026-07-25 抽出)
+var _skill_picker := SkillPicker.new(self)   # 选龟页·技能【普攻固定 + 3选1 主动】选择器(2026-07-25 抽出; 2026-07-28 正名: 原注"3选1"与实现不符)
 var _edit_layer: Control = null
 var _edit_handles: Dictionary = {}    # key → {handle:Panel, label:Label}
 var _drag_key: String = ""

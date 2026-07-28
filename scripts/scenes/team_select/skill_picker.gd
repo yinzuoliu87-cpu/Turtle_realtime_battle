@@ -1,6 +1,6 @@
 class_name SkillPicker
 extends RefCounted
-## 选龟页·技能5选1选择器(dev注: 单选)
+## 选龟页·技能3选1选择器(dev注: 单选)
 ## 类内名不变;外部名加 battle.
 
 var host
@@ -8,7 +8,7 @@ var host
 func _init(b) -> void:
 	host = b
 
-# ─── 技能 5选3 (PoC refreshDetailPanel 下块 1:1) ────────────────
+# ─── 技能 3选1 (PoC refreshDetailPanel 下块 1:1) ────────────────
 func _build_skill_picker(pet: Dictionary) -> void:
 	var pid: String = pet["id"]
 	var pool: Array = pet.get("skillPool", [])
@@ -240,7 +240,7 @@ func _skill_tooltip(pet: Dictionary, sk: Dictionary, idx: int = -1) -> String:
 	return "%s\n%s" % [head, body]
 
 
-# ─── 技能 5选3 逻辑 (PoC getPanelLoadout / toggleSkillInPanel 1:1) ──
+# ─── 技能 3选1 逻辑 (PoC getPanelLoadout / toggleSkillInPanel 1:1) ──
 ## 实时版 = 【3选1】: idx0 普攻常驻, idx1..3 三个候选【全部可选, 无等级门槛】。
 ##
 ## ★2026-07-10 移除了 idx3 需 Lv.4 / idx4 需 Lv.7 的等级解锁 —— 那是回合制 PoC 的

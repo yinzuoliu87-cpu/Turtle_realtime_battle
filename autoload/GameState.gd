@@ -10,7 +10,11 @@ var right_team: Array[String] = []
 # 站位 slotKey ("front-0".."back-2"), 与 *_team 平行. 玩家 TeamSelect 摆放结果; 空=用默认前排
 var left_slots: Array[String] = []
 var right_slots: Array[String] = []
-## 玩家每只龟的 5选3 技能选择 {pet_id → [idx,...]}; TeamSelect 写, BattleScene 读 (空=用 defaultSkills)
+## 玩家每只龟的【3选1】主动技能选择 {pet_id → idx} —— 单个整数(1/2/3)，不是数组。
+## TeamSelect 写；战斗端 _resolve_chosen_index 读，缺键→回落 skillPool[1]（旧档数组格式有兼容分支）。
+## ★ 2026-07-28 正名：原注释四处全错 —— 5→3、选3→选1、数组→单值、
+##   “空=用 defaultSkills”实际是回落 skillPool[1]（与 defaultSkills 无关）。
+##   loadouts 是战斗真读的字段，这种注释比没注释更危险。
 var loadouts: Dictionary = {}
 ## 对手(ghost快照)的技能选择 {pet_id → idx}; 匹配到ghost时战斗场景填, 敌侧_resolve_chosen_index读(用户2026-07-15: ghost带技能配置); 不落盘
 var foe_loadouts: Dictionary = {}

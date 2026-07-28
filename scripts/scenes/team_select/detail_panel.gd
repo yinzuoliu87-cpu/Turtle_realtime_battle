@@ -15,7 +15,7 @@ func _build_detail_region() -> void:
 	host._dt_stats = _make_detail_panel("dtStats")
 	host._dt_passive = _make_detail_panel("dtPassive")
 
-	# 下块 (技能 5选3)
+	# 下块 (技能 3选1)
 	var bot_panel = PanelContainer.new()
 	host.root.add_child(bot_panel)
 	host._place(bot_panel, "detailBottom")
