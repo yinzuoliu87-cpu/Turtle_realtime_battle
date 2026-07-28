@@ -92,6 +92,9 @@ func _ready() -> void:
 	var ok4 := true
 	for lv in [1, 5, 10]:
 		gs.season_level = lv
+		tr["crit"] = 0.0            # ★攻击方暴击也清零: _resolve_dmg 会按 src["crit"] 掷暴击, 暴了就 ×暴伤
+		tr["crit_dmg"] = 0.0
+		tr["magic_pen"] = 0.0; tr["magic_pen_pct"] = 0.0
 		var dummy := _dummy(s, 10000.0)
 		if dummy.is_empty():
 			print("     [FAIL] ★分母: 场上找不到敌方单位当靶子"); ok4 = false; break
@@ -179,6 +182,10 @@ func _dummy(s, hp: float) -> Dictionary:
 		#   本条断言偶发红。全门禁跑的时候正好抽到了, 单跑却次次绿, 极像"帧预算不够"。
 		#   (memory: fb-ci-vs-local-divergence —— 拿随机 spawn 单位测精确数值必偶发红。)
 		u["id"] = "_dummy_target"
+		# ★闪避是【RNG 二值判定】: 命中就整发伤害归零(battle_damage.gd:68 dodge_bonus)。
+		#   除掉"减伤倍率"救不了它 —— 我上一版就是这么栽的: 以为把 _mitigate_incoming
+		#   的倍率除掉就干净了, CI 照样红。闪避不在那条链上, 它在更外面。
+		u["dodge_bonus"] = 0.0
 		u["maxHp"] = hp; u["hp"] = hp
 		return u
 	return {}
