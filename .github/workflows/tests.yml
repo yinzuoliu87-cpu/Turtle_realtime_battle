@@ -43,7 +43,25 @@ jobs:
 
       - name: 导入资源 (注册 class_name / 生成 .godot)
         run: |
+          # ★导两遍。第一遍常常解析不全 —— Godot 在全新 checkout 上要先建 .godot/ 再解 uid,
+          #   两者有先后依赖, 一遍下来会留下"引用得到但导不出"的资源。
+          #   2026-07-29 就栽在这: default_theme.tres 引用的 m6x11.ttf 没导出来 →
+          #   所有用主题的测试连环崩(单次 run 里 40+ 个 FAIL、致命报错上千),
+          #   而同一份代码上一次 run 是好的 = 典型偶发。
           "$GODOT" --headless --import --path . || true
+          "$GODOT" --headless --import --path . || true
+          # ★导完【立刻验关键资源真的导出来了】, 而不是等 40 个测试红了再回头猜。
+          #   原来这步只有 `|| true` —— 导入失败被吞掉, 下游一片红却看不出根因在这。
+          for f in assets/fonts/m6x11.ttf assets/fonts/NotoSansSC-Regular.otf assets/themes/default_theme.tres; do
+            if [ ! -f "$f" ]; then echo "::error::缺文件 $f"; exit 1; fi
+          done
+          if ! ls .godot/imported/ >/dev/null 2>&1; then
+            echo "::error::.godot/imported 不存在 —— 导入根本没跑起来"; exit 1
+          fi
+          echo "导入产物 $(ls .godot/imported/ | wc -l) 个"
+          if [ "$(ls .godot/imported/ | wc -l)" -lt 50 ]; then
+            echo "::error::导入产物过少, 导入没完成"; exit 1
+          fi
 
       - name: 只读数据审计 (不需要 Godot, 先跑=快速失败)
         run: |
