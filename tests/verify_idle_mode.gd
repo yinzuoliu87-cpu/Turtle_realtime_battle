@@ -85,6 +85,18 @@ func _ready() -> void:
 	print("     应落在画布【外】(y<0) —— 否则黑边会误命中界面元素")
 	_chk("⑤ 黑边映射到画布外(不会误命中)", tb.y < 0.0)
 
+	# ── ⑦ ★工程必须【允许竖屏】, 否则 iOS 直接拒绝切换 ──
+	#    这条是拆开 CI 出的真 IPA 读 Info.plist 才发现的:
+	#      UISupportedInterfaceOrientations = ['UIInterfaceOrientationLandscapeLeft']
+	#    只有横屏 → DisplayServer.screen_set_orientation(PORTRAIT) 被系统拒绝 →
+	#    摸鱼模式在真机上【是死的】。而桌面端用"改窗口尺寸"模拟, 本地永远看不出来。
+	#    Godot 从 display/window/handheld/orientation 生成那份列表, 所以焊在这里。
+	var orient := str(ProjectSettings.get_setting("display/window/handheld/orientation", ""))
+	print("")
+	print("  ⑦ display/window/handheld/orientation = \"%s\"" % orient)
+	print("     必须是 \"sensor\"(允许全部方向) —— \"sensor_landscape\" 会让 iOS 只写横屏进 Info.plist")
+	_chk("⑦ ★工程允许竖屏(否则 iOS 拒绝切换, 功能在真机上是死的)", orient == "sensor")
+
 	# ── ⑥ 开关 ──
 	var win := get_window()
 	var was: bool = IdleMode.is_on(win)

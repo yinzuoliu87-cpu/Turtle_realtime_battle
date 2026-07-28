@@ -19,7 +19,7 @@ config/description="斗龟场 实时自走棋版 (Botworld 式实时战斗) — 
 
 2026-05-30 从 Phaser 3 PoC 迁移而来,
 为了上 App Store / Steam / 工业级编辑体验。"
-config/version="0.17.0"
+config/version="0.17.1"
 run/main_scene="res://scenes/MainMenu.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 boot_splash/bg_color=Color(0.0392, 0.0549, 0.0941, 1)
@@ -42,7 +42,13 @@ window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
-window/handheld/orientation="sensor_landscape"
+; ★"sensor" 而不是 "sensor_landscape" —— 这一条【只影响 Info.plist / AndroidManifest 允许哪些方向】,
+; 运行时的实际方向由 IdleMode.apply() 在开机时锁死(GameState 读档后调)。
+; 为什么必须这样: 摸鱼模式要在运行时切竖屏, 而 iOS 只允许切到 UISupportedInterfaceOrientations
+; 里列出的方向。原来是 sensor_landscape → Info.plist 只有 LandscapeLeft →
+; DisplayServer.screen_set_orientation(PORTRAIT) 被系统直接拒绝, 功能在真机上是死的。
+; (本地桌面用"改窗口尺寸"模拟, 永远看不出来 —— 是拆开出好的 IPA 读 Info.plist 才发现的。)
+window/handheld/orientation="sensor"
 
 [gui]
 
