@@ -82,6 +82,7 @@ func _ready() -> void:
 
 	# 受伤放大: 同一发伤害, 有标记 vs 无标记
 	foe["def"] = 0.0; foe["mr"] = 0.0; foe["shield"] = 0.0; foe["flat_dr"] = 0.0
+	foe["id"] = "_dummy_target"
 	var base: float = s._mitigate_incoming(foe, 1000.0, false, false)
 	foe["hunt_until"] = 0.0
 	var plain: float = s._mitigate_incoming(foe, 1000.0, false, false)
@@ -146,6 +147,8 @@ func _ready() -> void:
 	f2["_tame_invuln_until"] = 0.0                          # 跳过演出期
 	f2["hp"] = mx
 	f2["def"] = 0.0; f2["mr"] = 0.0; f2["shield"] = 0.0; f2["flat_dr"] = 0.0
+	f2["id"] = "_dummy_target"      # ★同上: _mitigate_incoming 有按 id 的减伤分支(钻石×0.82/石头岩石之躯),
+	                                #   靶子是随机 spawn 的敌人 → 抽到那几只就偶发红
 	s._trainer_sys._tick_tame_decay(1.0)                    # 模拟整 1 秒
 	var lost: float = (mx - float(f2["hp"])) / mx
 	print("")

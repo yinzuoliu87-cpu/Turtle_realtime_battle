@@ -22,7 +22,8 @@ var foe_loadouts: Dictionary = {}
 var recent_ghost_ids: Array = []
 
 # 训龟大师 装配(局外持久·用户2026-07-26 更正): 形象 + 【全部技能五选一·单个】。主菜单 TrainerConfig 里配, 战斗读。
-# ★设计: {magic_stone(被动), hook, fury_potion, whistle, glacier} 里【只选 1 个】。选被动=没有主动Q; 选主动=没有被动。
+# ★设计: {magic_stone(被动), hook, fury_potion, whistle, glacier, hunt_order, tame} 里【只选 1 个】。
+# 选被动=没有主动Q; 选主动=没有被动。(2026-07-28 加了 猎龟令/驯服, 五选一 → 七选一)
 var trainer_appearance: String = "default"     # 形象 id(对应一张立绘)
 var trainer_skill: String = "hook"             # 装配的【唯一】技能 id(被动 magic_stone 或某个主动)
 
@@ -486,6 +487,7 @@ var match_history: Array = []                          # 对局记录 [{result,l
 var pet_levels: Dictionary = {}                        # 宠物等级 {petId: 1-10} (1:1 PoC petState.levels; 只调试面板改, 默认1)
 var bgm_volume: float = 0.45                           # 设置: BGM 音量
 var sfx_volume: float = 0.8                            # 设置: SFX 音量
+var idle_mode: bool = false                            # 设置: 摸鱼模式(竖持小窗·用户2026-07-28)
 var fullscreen: bool = false                           # 设置: 全屏 (原来切了不存, 重启回窗口)
 var perf_lite: bool = false                            # 设置: 低画质模式 (原来是死按钮, 只改自己的 label)
 
@@ -692,6 +694,13 @@ func _ready() -> void:
 	if Engine.has_singleton("Audio") or get_node_or_null("/root/Audio"):
 		Audio.bgm_volume = bgm_volume
 		Audio.sfx_volume = sfx_volume
+	# ★摸鱼模式要在【读档后】恢复 —— 需求第 6 条"开关状态持久化(重开 App 还在)"。
+	#   只设变量不调 apply 的话, 重开就退回横屏了(全屏那个开关早先就犯过同样的错:
+	#   "只设变量没调 apply → 拖动对正在播的 BGM 无效")。
+	if idle_mode and Engine.get_main_loop() != null:
+		var _w = (Engine.get_main_loop() as SceneTree).root
+		if _w != null:
+			IdleMode.apply(_w, true)
 
 
 ## 全局全屏切换: F11 / Alt+Enter. (画面靠 stretch=canvas_items + aspect=keep 等比放大到任意分辨率/4K.)
@@ -782,6 +791,7 @@ func save() -> void:
 		"pet_levels": pet_levels,
 		"bgm_volume": bgm_volume,
 		"sfx_volume": sfx_volume,
+		"idle_mode": idle_mode,
 		"fullscreen": fullscreen,
 		"perf_lite": perf_lite,
 		"meta_deepsea_coins": meta_deepsea_coins,
@@ -843,6 +853,7 @@ func _load() -> void:
 	pet_levels = data.get("pet_levels", {})
 	bgm_volume = data.get("bgm_volume", 0.45)
 	sfx_volume = data.get("sfx_volume", 0.8)
+	idle_mode = bool(data.get("idle_mode", false))
 	fullscreen = bool(data.get("fullscreen", false))
 	perf_lite = bool(data.get("perf_lite", false))
 	# V2 赛季持久字段

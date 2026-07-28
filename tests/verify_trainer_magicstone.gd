@@ -166,6 +166,13 @@ func _dummy(s, hp: float) -> Dictionary:
 			continue
 		u["def"] = 0.0; u["mr"] = 0.0; u["shield"] = 0.0
 		u["flat_dr"] = 0.0; u["dmg_taken_mult"] = 1.0
+		# ★★ id 也必须中性化 ★★
+		#   _mitigate_incoming 里有【按龟 id 的减伤分支】: 钻石 ×0.82(结构减伤)、
+		#   石头岩石之躯每层 -1%、石头嘲讽期按护甲减免……
+		#   而这个靶子是从场上【随机 spawn 的敌队】里挑的, 抽到钻石那一次伤害就少 18% →
+		#   本条断言偶发红。全门禁跑的时候正好抽到了, 单跑却次次绿, 极像"帧预算不够"。
+		#   (memory: fb-ci-vs-local-divergence —— 拿随机 spawn 单位测精确数值必偶发红。)
+		u["id"] = "_dummy_target"
 		u["maxHp"] = hp; u["hp"] = hp
 		return u
 	return {}
