@@ -87,9 +87,11 @@ func _tick_trainer_attacks(delta: float) -> void:
 		u["_tr_throw_t0"] = battle._t
 		u["_tr_throw_until"] = battle._t + 0.64       # 7帧@11fps 扔石头动画时长(_update_trainer_anim 播一次)
 		_trainer_throw_anim(u)
-		battle._ballistics._fire_trainer_rock(u, tgt)
-		if str(u.get("_tr_passive", "")) == "magic_stone":
-			_trainer_magicstone_onhit(u, tgt)
+		# ★魔法石那段魔法伤害【跟着石头走】, 不在这里立刻结算 ——
+		#   用户 2026-07-28 报"石头命中只看到一个伤害数字": 根因不是少了一段,
+		#   而是两段【在时间上错开】: 魔法在扔出瞬间就跳字, 物理要等石头飞到目标(0.25~0.9秒)。
+		#   现在把魔法标进弹道(ms_onhit), 由 _step_projectiles 在命中那一刻和物理一起结算。
+		battle._ballistics._fire_trainer_rock(u, tgt, str(u.get("_tr_passive", "")) == "magic_stone")
 
 
 # ══════════════════════════════════════════════════════════════
@@ -682,7 +684,10 @@ func _trainer_throw_anim(u: Dictionary) -> void:
 func _trainer_magicstone_onhit(u: Dictionary, tgt: Dictionary) -> void:
 	if not (tgt is Dictionary and tgt.get("alive", false)):
 		return
-	var magic: int = maxi(1, int(battle._resolve_dmg(u, float(tgt["maxHp"]) * 0.02, tgt, true)))   # 2%目标最大生命·魔法(过魔抗)
+	# (2 + 0.1×大轮等级)% 目标最大生命(用户 2026-07-28) → Lv1=2.1% … Lv10=3.0%
+	var lv: int = clampi(int(GameState.season_level), 1, 10)
+	var pct: float = battle.MS_MAXHP_BASE + battle.MS_MAXHP_PER_LV * float(lv)
+	var magic: int = maxi(1, int(battle._resolve_dmg(u, float(tgt["maxHp"]) * pct, tgt, true)))
 	battle._damage._apply_damage_from(u, tgt, magic, Color("#c86bff"), 0.0, false, true)
 	u["_ms_stacks"] = int(u.get("_ms_stacks", 0)) + 1                                        # 攻速叠一层(持续到本场结束)
 

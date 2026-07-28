@@ -8,7 +8,7 @@ var battle
 func _init(b) -> void:
 	battle = b
 
-func _fire_trainer_rock(u: Dictionary, tgt: Dictionary) -> void:
+func _fire_trainer_rock(u: Dictionary, tgt: Dictionary, ms_onhit: bool = false) -> void:
 	var p = Sprite3D.new()
 	var rp = "res://assets/sprites/vfx/lava-rock.png"
 	if ResourceLoader.exists(rp):
@@ -31,7 +31,7 @@ func _fire_trainer_rock(u: Dictionary, tgt: Dictionary) -> void:
 		"node": p, "from": world_from, "tgt": tgt, "dmg": 1, "col": Color("#d9d2c4"),
 		"src": u, "t": 0.0, "dur": pdur, "basic_onhit": false,
 		"arc": clampf(dist * 0.010, 0.8, 3.2),    # ★抛物线拱高(用户2026-07-23:「弹道是抛物线的」): 远则拱高
-		"dtype": "phys", "spin": true,
+		"dtype": "phys", "spin": true, "ms_onhit": ms_onhit,
 	})
 
 
@@ -244,6 +244,8 @@ func _step_projectiles(delta: float) -> void:
 					battle._freeze(tgt, pr["freeze_on_hit"])   # 冰封: 弹道命中→冻结
 				if pr.get("coin_true", 0) > 0:
 					battle._damage._apply_damage_from(pr["src"], tgt, int(pr["coin_true"]), Color("#fff0a0"), 0.0, true)   # 金币真实那半
+				if pr.get("ms_onhit", false) and pr["src"] != null and tgt.get("alive", false):
+					battle._trainer_sys._trainer_magicstone_onhit(pr["src"], tgt)   # 魔法石那段: 与物理【同帧】跳字
 				if pr.get("star_true", 0) > 0 and tgt.get("alive", false):
 					battle._damage._apply_damage_from(pr["src"], tgt, int(pr["star_true"]), Color("#ffffff"), 0.0, true)   # 星能追加真伤(白字·附普攻命中同帧·用户2026-07-16)
 			continue

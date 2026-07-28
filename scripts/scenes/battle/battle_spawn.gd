@@ -191,6 +191,17 @@ func _spawn_dual_lane() -> void:
 	else:
 		battle._dl_sys._dl_enter_present("preview")    # 后续路: 对阵预览→(加载战场)→放置
 
+## 大师攻击力: 装配【魔法石】时 ×10(用户 2026-07-28), 否则 1。
+## ★这里只能看 GameState/ghost —— 单位字典的 _tr_passive 是 spawn 完之后才写的(见 _apply_trainer_loadout),
+##   spawn 当下还没有。两处判据必须一致, 否则会出现"图标是魔法石但攻击力还是1"这种半吊子状态。
+func _trainer_atk_for(side: String) -> float:
+	var is_ms := false
+	if side == "left":
+		is_ms = GameState.trainer_passive_skill() == "magic_stone"
+	elif GameState != null and GameState.dual_ghost is Dictionary:
+		is_ms = str((GameState.dual_ghost as Dictionary).get("trainer_skill", "")) == "magic_stone"
+	return battle.TRAINER_ATK_MAGIC_STONE if is_ms else battle.TRAINER_ATK
+
 func _spawn_lane_side(units: Array, side: String, lvl: int, base: Vector2) -> void:
 	var lead_n = 0
 	for u in units:
@@ -241,7 +252,7 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		sd = battle._hiding_sys._minion_sprite_dict(_me, not _mf)
 	elif is_trainer:   # 训龟大师: 500血/1攻/0双抗; 站着不动(速度0)·射程2000·扔石头1物理
 		d = {"name": "训龟大师", "rarity": "C", "crit": 0.0,
-			"hp": battle.TRAINER_HP, "atk": battle.TRAINER_ATK, "def": 0.0, "mr": 0.0}
+			"hp": battle.TRAINER_HP, "atk": _trainer_atk_for(side), "def": 0.0, "mr": 0.0}
 		# ★move_spd 给真值但 no_move 仍为 true —— 两者不矛盾:
 		#   no_move 挡住的是【AI 自动追击】(_do_move)与【分离推挤】(_apply_separation_pass),
 		#   正是"场外监视者不该被战线卷进去"想要的; 玩家操控走的是下面 battle._trainer_sys._trainer_move_by 这条独立路径。

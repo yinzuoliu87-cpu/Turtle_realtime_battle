@@ -3,6 +3,14 @@ extends RefCounted
 ## 战斗HUD/面板构建与显示: UI层/暂停/日志/统计/编辑笔刷/队伍头像框/胜负横幅/点龟详情面板/触控盘·纯UI
 ## 类内名不变;外部名加 battle.
 
+## 被动技能 id → 圆盘图标。
+## ★为什么单列一张: battle.TRAINER_SKILLS 只收【主动技】, 被动的图标一直只存在
+##   TrainerConfigScene.SKILLS 里 —— 战斗侧取不到, 于是 get("",{}) 回落成钩锁图标,
+##   这就是"选了魔法石局内还是钩锁图标"的根因。门禁 verify_trainer_skills 焊两张表一致。
+const PASSIVE_ICONS := {
+	"magic_stone": "res://assets/sprites/vfx/magic-stone-icon.png",
+}
+
 var battle
 
 func _init(b) -> void:
@@ -126,11 +134,20 @@ func _build_spell_disc() -> void:
 		return
 	if battle._ui_layer == null:
 		return
-	# 圆盘显示【我方大师已装配的主动技能】图标(缺图→无图标, 不崩)。
-	# 单技能装配(2026-07-26): 装配的是被动(magic_stone)时无主动→ _act 为 ""(R2 再给圆盘加"被动生效中"循环特效)。
+	# 圆盘显示【我方大师已装配的技能】图标(缺图→无图标, 不崩)。
+	#
+	# ★用户 2026-07-28 报「选了魔法石, 局内右边图标不是魔法石」——
+	#   根因: 魔法石是【被动】, trainer_active_skill() 返回 "" → sid="" →
+	#   TRAINER_SKILLS.get("", {}) 取不到 → 回落默认值 HOOK_ICON, 于是永远显示钩锁。
+	#   而 TRAINER_SKILLS 里【根本没有 magic_stone 条目】(它只收主动技),
+	#   被动的图标另存在 TrainerConfigScene.SKILLS 里 —— 两张表各存一半, 这本身就是分歧源。
+	#   这里按【装配的那个 id】直接取图, 主动被动一视同仁。
 	var _act: String = GameState.trainer_active_skill()
+	var _pas: String = GameState.trainer_passive_skill()
 	var sid: String = battle._valid_active(_act) if _act != "" else ""
-	var ipath: String = str(battle.TRAINER_SKILLS.get(sid, {}).get("icon", battle.HOOK_ICON))
+	var ipath: String = PASSIVE_ICONS.get(_pas, "") if sid == "" else str(battle.TRAINER_SKILLS.get(sid, {}).get("icon", battle.HOOK_ICON))
+	if ipath == "":
+		ipath = battle.HOOK_ICON
 	var icon: Texture2D = load(ipath) if ResourceLoader.exists(ipath) else null
 	battle._spell_disc = battle.SpellDisc.new()
 	battle._spell_disc.setup(icon, "Q", Callable(battle._trainer_sys, "_player_cast_hook_auto"), Callable(battle._aim, "_on_spell_aim"))   # 2026-07-26: 修好回调指向真owner(原 Callable(self=BattleHud,…) 指向不存在的方法·移动端圆盘一直没接上)
@@ -138,6 +155,33 @@ func _build_spell_disc() -> void:
 	var m: Vector4 = SafeArea.margins(vp, 18.0)
 	battle._spell_disc.position = Vector2(vp.x - battle.SpellDisc.R * 2.0 - m.z, vp.y - battle.SpellDisc.R * 2.0 - m.w)
 	battle._ui_layer.add_child(battle._spell_disc)
+	if sid == "" and _pas != "":
+		_build_passive_ring(battle._spell_disc)
+
+
+## 装配的是【被动】时, 圆盘上加一圈持续旋转的紫色符环 —— 表示"被动生效中"。
+##
+## 由来: 用户 2026-07-28 问"没有循环绕圈的特效"。代码里原本自己写着
+## 「R2 再给圆盘加"被动生效中"循环特效」—— 是当时推迟的待办, 不是坏了。
+##
+## ★被动没有冷却也不能点, 圆盘对它来说本来是【纯状态指示】。转起来是为了让人知道
+##   "它在工作", 而不是"这个键是灰的/坏的"。
+func _build_passive_ring(disc: Control) -> void:
+	var ring := TextureRect.new()
+	ring.texture = VfxTex._make_ring_texture(Color("#c86bff"))
+	ring.modulate = Color("#c86bff")   # 环贴图是白底, 上色靠 modulate(见 _make_ring_texture 注释)
+	ring.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ring.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var d: float = battle.SpellDisc.R * 2.3
+	ring.size = Vector2(d, d)
+	# ★pivot 必须设在中心, 否则 rotation 会绕左上角转 —— 看起来是"在屏幕上画圈跑"而不是"自转"
+	ring.pivot_offset = ring.size * 0.5
+	ring.position = Vector2(battle.SpellDisc.R, battle.SpellDisc.R) - ring.size * 0.5
+	disc.add_child(ring)
+	# 无限循环旋转。用 tween 而不是 _process: 这是纯 UI 演出, 不进战斗时钟, 也不受暂停影响。
+	var tw := ring.create_tween().set_loops()
+	tw.tween_property(ring, "rotation", TAU, 3.2).from(0.0)
 
 
 ## 训龟大师立绘。用户要「像素风的冒险家」, 形象未定 —— 真图放到 battle.TRAINER_SPRITE 即自动生效。
