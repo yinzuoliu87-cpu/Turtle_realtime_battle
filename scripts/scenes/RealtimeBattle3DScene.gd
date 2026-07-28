@@ -349,7 +349,28 @@ const TRAINER_SKILLS := {
 	"fury_potion": {"name": "怒火药水", "icon": "res://assets/sprites/vfx/fury-potion-icon.png",  "cd": 16.0, "range": 700.0, "aim": "point"},
 	"whistle":     {"name": "口哨",   "icon": "res://assets/sprites/vfx/whistle-icon.png",      "cd": 14.0, "range": 0.0,   "aim": "none"},
 	"glacier":     {"name": "冰川",   "icon": "res://assets/sprites/vfx/glacier-icon.png",      "cd": 17.0, "range": 500.0, "aim": "dir"},
+	# ★aim:"target" 是【新增的第四种瞄准模式】(原来只有 dir 方向 / point 落点 / none 无需瞄准)。
+	#   用户 2026-07-28:「这个不是直线发射吧，而是像 lol 安妮的 Q 一样弹道锁头」——
+	#   即指定一个【敌方单位】, 弹道自动跟到它身上, 不会因为它走开而落空。
+	"hunt_order":  {"name": "猎龟令", "icon": "res://assets/sprites/vfx/hunt-order-icon.png",   "cd": 30.0, "range": 600.0, "aim": "target"},
+	"tame":        {"name": "驯服",   "icon": "res://assets/sprites/vfx/tame-icon.png",         "cd": 60.0, "range": 600.0, "aim": "target"},
 }
+
+# ── 猎龟令(用户 2026-07-28) ──
+const HUNT_CD := 30.0
+const HUNT_RANGE := 600.0
+const HUNT_SEC := 15.0            # 标记持续
+const HUNT_TAUNT_R := 400.0       # 以【目标】为圆心的嘲讽半径(圈随目标移动)
+const HUNT_VULN := 1.15           # 被标记者受伤 ×1.15
+const HUNT_MISSILE_SPD := 1400.0  # 锁头弹道飞行速度(码/秒)
+
+# ── 驯服(用户 2026-07-28) ──
+const TAME_CD := 60.0
+const TAME_RANGE := 600.0
+const TAME_REVIVE_PCT := 0.30     # 死后按 30% 最大生命重生
+const TAME_REVIVE_SEC := 2.5      # 重生演出时长(期间无敌不可选中)
+const TAME_DECAY_PCT := 0.02      # 归顺后每秒损失 2% 最大生命
+const TAME_MISSILE_SPD := 1200.0
 const VirtualJoystick := preload("res://scripts/scenes/virtual_joystick.gd")
 const SpellDisc := preload("res://scripts/scenes/spell_disc.gd")
 const HOOK_ICON := "res://assets/sprites/vfx/hook-skill-icon.png"   # 圆盘技能图标(精修·带链条+青芒宝石); 飞行弹体仍用 trainer-hook.png
@@ -2095,6 +2116,8 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 	_adf_ct = 0   # 每帧(每步)重置伤害调用计数(_damage._apply_damage_from 帧内爆炸=死亡链无限级联→自身截断防卡死)
 	_sd_tick()   # §SUDDEN 战场决胜(40s起治疗-50% + 每5s +25%增伤)
 	_trainer_sys._tick_trainer_attacks(dt) # 训龟大师普攻: 站定扔石头抛物线弹道(用户2026-07-23)
+	_trainer_sys._tick_hunt_taunt(dt)      # 猎龟令: 每帧刷新目标周围 400 码我方友军的嘲讽(圈随目标移动)
+	_trainer_sys._tick_tame_decay(dt)      # 驯服: 归顺者每秒损失 2% 最大生命
 	_trainer_sys._tick_trainer_ai(dt)      # 敌方(快照)大师 AI: 乱走 + 逮机会甩钩锁(点3·场外援助·用户2026-07-23)
 	_trainer_sys._tick_hooks(dt)           # 钩锁: CD 扣减 + 被钩单位每帧朝大师拖(点3)
 	# Phase4 顿帧 hit-stop: 计时 >0 时冻结"模拟"给重量感(镜头震屏照常推进·在 _render._render_step)。
@@ -2450,8 +2473,21 @@ func _is_hostile(a: Dictionary, b: Dictionary) -> bool:
 	if bool(b.get("hijacked", false)):
 		return true           # 被侵入者对所有人都是敌人(含侵入它的赛博方)
 	if bool(a.get("hijacked", false)):
-		return str(b.get("side", "")) == str(a.get("_hijack_orig_side", ""))   # 它只打原队友
-	return str(a.get("side", "")) != str(b.get("side", ""))
+		return _tamed_side(b) == str(a.get("_hijack_orig_side", ""))   # 它只打原队友
+	return _tamed_side(a) != _tamed_side(b)
+
+
+## 单位的【实际所属阵营】—— 驯服(训龟大师)会让敌方单位真正归顺我方。
+##
+## ★和 hijacked 是两种不同的语义, 别混:
+##   · hijacked(赛博侵入) = 孤军, 对【所有人】都是敌人, 谁也不给它加治疗
+##   · tamed_side(驯服)   = 真·换队, 用户 2026-07-28 明确「顺归算我方」
+## ★同样【不改写 side】—— 改写 side 会丢掉"它原来是哪边的"这个信息, 而
+##   _dl_snapshot_survivors / 击杀归属 / 复活归属都还要用原 side。
+##   (赛博侵入那次就是因为改写 side, 把被侵入者变成了赛博方的真友军, 与权威文档相反。)
+func _tamed_side(u: Dictionary) -> String:
+	var t := str(u.get("tamed_side", ""))
+	return t if t != "" else str(u.get("side", ""))
 
 
 ## 双向都不敌对才算友军 → 被侵入者是孤军(谁也不给它加治疗/护盾, 它也不给别人加)
@@ -2463,7 +2499,11 @@ func _is_ally(a: Dictionary, b: Dictionary) -> bool:
 
 ## 胜负/存活数用的"有效阵营" —— 被侵入者仍按原阵营计, 免得把原阵营"抹空"提前判胜负
 func _eff_side(u: Dictionary) -> String:
-	return str(u.get("_hijack_orig_side", u.get("side", ""))) if u.get("hijacked", false) else str(u.get("side", ""))
+	if u.get("hijacked", false):
+		return str(u.get("_hijack_orig_side", u.get("side", "")))
+	# ★驯服与侵入在这里【相反】: 被侵入者仍按原阵营计(免得把原阵营抹空提前判胜负),
+	#   而被驯服者是【真的换了队】—— 原队就该少这一个人, 这正是这个技能的价值所在。
+	return _tamed_side(u)
 
 
 ## 击杀归属改写 —— 被侵入者打死的人, 人头算侵入它的赛博龟(用户2026-07-22)。
@@ -4363,6 +4403,11 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 		d *= 1.25                                    # ★钩锁(点3): 被钩住4秒内受到伤害 +25%
 	if not is_self and _t < u.get("glacier_vuln_until", 0.0):
 		d *= 1.2                                     # ★冰川: 站冰川上受到伤害 +20%(用户2026-07-23)
+	if not is_self and _t < u.get("hunt_until", 0.0):
+		d *= HUNT_VULN                               # ★猎龟令: 被标记 15 秒内受到伤害 +15%(用户2026-07-28)
+													 #   ——【必须加在这个唯一入口】, 不许在技能里自己乘:
+													 #   两条伤害路径(_apply_damage / _apply_damage_from)都过这里,
+													 #   在技能里乘只会覆盖其中一条。
 	if not is_self and u.get("_egg_final", false):
 		d *= 5.0                                     # 终极战场暴露蛋: ×5承伤(快速决胜)
 	if u["id"] == "diamond" and not raw:
@@ -4376,6 +4421,8 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 	# ★训龟大师: 受到的【所有类型】伤害降为 1(用户2026-07-22 含真实伤害)。
 	#   必须放在函数【最末尾】且【不看 raw】—— 上面每一项减伤都写着 `not raw`,
 	#   放在中间或加 raw 判断都会让真伤原样打穿。两条伤害路径共用本函数, 所以一处即全覆盖。
+	if _t < float(u.get("_tame_invuln_until", 0.0)):
+		return 0.0                                   # ★驯服重生演出期(2.5秒)无敌(用户 2026-07-28 B7)
 	if u.get("is_trainer", false):
 		return minf(d, 1.0)
 	return d
@@ -4433,6 +4480,12 @@ func _kill(u: Dictionary, killer = null) -> void:
 		if not _have_mech:
 			_cyber_sys._cyber_assemble_mech(u)
 		u["hp"] = float(u["maxHp"]) * 0.6
+		return
+	# ★驯服重生钩(训龟大师·用户 2026-07-28): 被驯服的敌人死亡时不真死, 以 30% 最大生命
+	#   重生并【归顺我方】, 之后每秒损失 2% 最大生命。
+	#   放在自带复活钩【之前】—— 驯服是外部强加的效果, 应当优先于目标自己的涅槃/圣光,
+	#   否则凤凰被驯服后会先走自己的涅槃、归顺永远轮不上。
+	if _trainer_sys._tame_try_revive(u):
 		return
 	# 首死复活钩子 (天使圣光 / 凤凰涅槃) — 仅作为常驻一次, 1:1 2D
 	if not u["reborn_used"] and ((u["id"] == "angel" and u.get("_angel_revive", false)) or u["id"] == "phoenix" or u.get("_chest_revive", false)):

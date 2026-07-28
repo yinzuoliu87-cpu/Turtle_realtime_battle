@@ -12,6 +12,8 @@ const SKILLS := [
 	{"id": "fury_potion", "kind": "主动", "name": "怒火药水", "icon": "res://assets/sprites/vfx/fury-potion-icon.png", "desc": "朝700码内一点丢药水：落点300码内友军5秒 +30%攻速 / +25%龟能充能 / +25%移速。CD16。"},
 	{"id": "whistle", "kind": "主动", "name": "口哨", "icon": "res://assets/sprites/vfx/whistle-icon.png", "desc": "随机1个：给友军700临时生命 / 召灵体小龟放气波(击飞+200物理+削甲30%) / 友军狂暴(+20%攻+吸血·免死4秒)。CD14。"},
 	{"id": "glacier", "kind": "主动", "name": "冰川", "icon": "res://assets/sprites/vfx/glacier-icon.png", "desc": "沿方向生成500码冰川(6秒)：站上的敌 -40%移速 + 受伤+20%。CD17。"},
+	{"id": "hunt_order", "kind": "主动", "name": "猎龟令", "icon": "res://assets/sprites/vfx/hunt-order-icon.png", "desc": "锁定600码内一个敌人15秒：它受到伤害+15%，且以它为圆心400码内的我方友军优先攻击它(圈随它移动)。CD30。"},
+	{"id": "tame", "kind": "主动", "name": "驯服", "icon": "res://assets/sprites/vfx/tame-icon.png", "desc": "标记600码内一个敌人：它死亡时不真死，以30%最大生命重生并归顺我方(重生2.5秒无敌)，此后每秒损失2%最大生命。可跨入终极战场。CD60。"},
 ]
 ## 三形象(2026-07-26 定稿·PixelLab)。sprite = 南向立绘, 用于选择卡缩略 + 大预览。
 const APPEARANCES := [

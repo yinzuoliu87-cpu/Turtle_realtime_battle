@@ -125,6 +125,8 @@ func _cast_active(trainer: Dictionary, aim: Vector2) -> bool:
 		"fury_potion": return battle._cast_fury_potion(trainer, aim)
 		"whistle":     return battle._cast_whistle(trainer, aim)
 		"glacier":     return battle._cast_glacier(trainer, aim)
+		"hunt_order":  return _cast_hunt_order(trainer, aim)
+		"tame":        return _cast_tame(trainer, aim)
 	return false
 
 ## 施放钩锁(仔细照锤石Q·2026-07-24返工): 前摇→中速飞→【到达才】钩住(不再瞬间结算)。命中CD20/空放CD10。
@@ -731,3 +733,319 @@ func _trainer_sprite_dict(appearance_id: String = "default") -> Dictionary:
 ##   【完全看不见】, 我还对着窗口跟用户说"长得就是小龟的样子"。
 ##   而当时的门禁只断言了"会 battle.push_warning", 没断言"占位图真的能显示" ——
 ##   守住了会吭声, 没守住看得见。程序生成没有路径依赖, 不可能再出这种事。
+
+# ══════════════════════════════════════════════════════════════
+# §HUNT 猎龟令 (用户 2026-07-28)
+#
+# CD30 / 射程600 / 指定敌方目标(aim:"target" 锁头弹道, 不是直线发射)。
+# 命中后目标 15 秒内:
+#   · 受到伤害 +15%          → 走【唯一入口】_mitigate_incoming 的 hunt_until 分支
+#   · 以目标为圆心 400 码内的【我方友军优先攻击它】→ 每帧刷新圈内友军的嘲讽
+# 圈跟着目标走(用户: "跟着目标走的, 压的很小没问题的")。
+#
+# ★为什么嘲讽要【每帧刷】而不是施法时刷一次:
+#   现成的 taunt_until/taunt_by 语义是"某个单位被嘲讽 N 秒", 是【打在友军身上】的。
+#   而猎龟令要的是"以目标为圆心的一个区域, 谁进圈谁就被嘲讽" —— 圈会动、人也会动,
+#   施法时刷一次的话, 之后跑进圈的友军不会被嘲讽、跑出圈的却还锁着。
+# ══════════════════════════════════════════════════════════════
+
+## 在 600 码内、离瞄准点最近的敌人。aim 是【相对大师的偏移】(与其他主动技口径一致)。
+## 返回 null = 没锁到人(空放)。
+func _hunt_pick_target(trainer: Dictionary, aim: Vector2):
+	var want: Vector2 = trainer["pos"] + aim.limit_length(battle.HUNT_RANGE)
+	var best = null
+	var bd: float = INF
+	for o in battle._targeting._pick_enemies_of(trainer):
+		if (o["pos"] - trainer["pos"]).length() > battle.HUNT_RANGE:
+			continue                      # 超出射程的不能锁
+		var dd: float = (o["pos"] - want).length_squared()
+		if dd < bd:
+			bd = dd; best = o
+	return best
+
+
+## 标记生效(纯效果·不依赖演出 —— 照 CLAUDE.md §3.5: 测数值的用例不该等 tween)。
+func _hunt_mark(trainer: Dictionary, tgt: Dictionary) -> void:
+	if tgt == null or not tgt.get("alive", false):
+		return
+	tgt["hunt_until"] = battle._t + battle.HUNT_SEC
+	tgt["hunt_by"] = trainer                          # 谁下的令(嘲讽指向用)
+	tgt["_hunt_marked"] = true                        # ★同步的触发证据(供门禁断言, 不看"有没有建 tween")
+
+
+## 施放猎龟令。返回是否锁到目标。
+func _cast_hunt_order(trainer: Dictionary, aim: Vector2) -> bool:
+	if trainer == null or not trainer.get("alive", false):
+		return false
+	if float(trainer.get("_active_cd", 0.0)) > 0.0:
+		return false
+	var tgt = _hunt_pick_target(trainer, aim)
+	if tgt == null:
+		trainer["_active_cd"] = battle.HUNT_CD * 0.5   # 空放返还一半(与钩锁同思路)
+		return false
+	trainer["_active_cd"] = battle.HUNT_CD
+	var dist: float = (tgt["pos"] - trainer["pos"]).length()
+	var arrive: float = dist / battle.HUNT_MISSILE_SPD
+	var tt: Dictionary = trainer
+	var kk: Dictionary = tgt
+	# 到达才生效(走 _pending_shots 的 delta 制, 无头也稳 —— 不是等 tween)
+	battle._pending_shots.append({"delay": arrive, "src": trainer, "fn": func() -> void:
+		if kk.get("alive", false):
+			_hunt_mark(tt, kk)})
+	_hunt_dramatize(trainer, tgt, arrive)
+	return true
+
+
+## 每帧: 刷新【所有被猎龟令标记者】周围 400 码内我方友军的嘲讽。
+## ★在 battle 的 sim tick 里调。标记过期自动停(不用额外清理)。
+func _tick_hunt_taunt(_delta: float) -> void:
+	for m in battle._units:
+		if not m.get("alive", false):
+			continue
+		if battle._t >= float(m.get("hunt_until", 0.0)):
+			continue
+		var by = m.get("hunt_by", null)
+		if not (by is Dictionary):
+			continue
+		for o in battle._units:
+			if not o.get("alive", false) or o.get("is_trainer", false):
+				continue
+			if not battle._is_ally(o, by):        # 只嘲讽【下令方】的友军
+				continue
+			if not battle._is_hostile(o, m):      # 已经归顺我方的不该被嘲讽去打自己人
+				continue
+			if o["pos"].distance_to(m["pos"]) > battle.HUNT_TAUNT_R:
+				continue
+			# 只刷到"下一帧" —— 出圈立刻失效, 不留尾巴
+			o["taunt_until"] = battle._t + 0.2
+			o["taunt_by"] = m
+
+
+## 猎龟令演出。★用户 2026-07-28「不不不，不要复用素材」→ 这里用的是本技能【新生成】的
+## hunt-mark.png(猩红破碎环 + 橙金刻度 + 虚线警戒圈), 不借任何现成 vfx 贴图。
+##
+## 三段: ① 大师身前射出一枚猩红锁头弹 → ② 到达时目标脚下炸开猎龟令印记 →
+##       ③ 印记常驻 15 秒并【跟着目标走】(圈是随目标移动的, 用户已确认)。
+## ★演出全在这里, 数值一点不在这里 —— _hunt_mark 才是效果, 门禁直接调它, 不等 tween。
+func _hunt_dramatize(trainer: Dictionary, tgt: Dictionary, arrive: float) -> void:
+	if battle._world == null:
+		return
+	# ① 锁头弹: 直接用 _pending_shots 的到达时间做 tween 时长, 两者同一个数 → 视觉与结算对齐
+	var bolt := Sprite3D.new()
+	bolt.texture = VfxTex._make_bolt_texture(Color("#ff3b30"))
+	bolt.pixel_size = 0.03
+	bolt.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	bolt.shaded = false; bolt.transparent = true
+	bolt.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	bolt.position = battle._world_pos(trainer["pos"], 1.1)
+	battle._world.add_child(bolt)
+	var kk: Dictionary = tgt
+	var tw = bolt.create_tween()
+	tw.tween_method(func(f: float) -> void:
+		if is_instance_valid(bolt):
+			# ★每帧重新读目标位置 = 真"锁头": 目标跑开也追得到(用户: 像安妮的 Q)
+			bolt.position = bolt.position.lerp(battle._world_pos(kk["pos"], 1.0), minf(1.0, f)),
+		0.35, 1.0, maxf(0.05, arrive))
+	tw.tween_callback(func() -> void:
+		if is_instance_valid(bolt):
+			bolt.queue_free())
+	# ② + ③ 印记: 到达后出现, 跟随目标, 到期自己消失
+	battle._pending_shots.append({"delay": arrive, "src": trainer, "fn": func() -> void:
+		if kk.get("alive", false):
+			_hunt_sigil(kk)})
+
+
+## 猎龟令印记(跟随目标·15秒)。用新素材 hunt-mark.png; 缺图则不画(不静默换别的贴图 —— 
+## 悄悄兜底会让人以为美术已经做完了, 训龟大师立绘那次就是这么发现的)。
+func _hunt_sigil(tgt: Dictionary) -> void:
+	var path := "res://assets/sprites/vfx/hunt-mark.png"
+	if battle._world == null or not ResourceLoader.exists(path):
+		if not ResourceLoader.exists(path):
+			push_warning("[猎龟令] 缺素材 %s —— 印记不画(不复用别的贴图兜底)" % path)
+		return
+	var s := Sprite3D.new()
+	s.texture = load(path)
+	s.pixel_size = (battle.HUNT_TAUNT_R * 2.0 * battle.WS) / 128.0   # 贴图 128px 铺满 400 码直径
+	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	s.axis = Vector3.AXIS_Y                                          # Sprite3D.axis 是枚举(Vector3.Axis)不是向量 —— 写 Vector3.UP 会解析失败
+	s.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
+	s.shaded = false; s.transparent = true
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.modulate = Color(1.0, 1.0, 1.0, 0.85)
+	battle._world.add_child(s)
+	tgt["_hunt_sigil"] = s
+	var kk: Dictionary = tgt
+	# 跟随: 每帧把印记挪到目标脚下; 标记到期(或目标死)自毁
+	var tw = s.create_tween().set_loops()
+	tw.tween_callback(func() -> void:
+		if not is_instance_valid(s):
+			return
+		if not kk.get("alive", false) or battle._t >= float(kk.get("hunt_until", 0.0)):
+			s.queue_free()
+			return
+		s.position = battle._world_pos(kk["pos"], 0.06)).set_delay(0.03)
+
+
+# ══════════════════════════════════════════════════════════════
+# §TAME 驯服 (用户 2026-07-28)
+#
+# CD60 / 射程600 / 指定敌方目标(同 aim:"target" 锁头弹道)。
+# 被驯服的敌人【死亡时不真死】:
+#   · 以 30% 最大生命重生, 2.5 秒演出期间无敌且不可选中
+#   · 重生后【归顺我方】(用户:「顺归算我方」) —— 走 tamed_side, 绝不改写 side
+#   · 归顺后每秒损失 2% 最大生命(永久, 没有解除手段)
+#   · 活到本路结束可跨入终极战场, 掉血 buff 继续
+#
+# ★与赛博侵入(hijacked)是两种语义, 别混:
+#   hijacked = 孤军(对所有人都是敌人); tamed = 真换队(我方给它治疗/护盾都算数)。
+# ══════════════════════════════════════════════════════════════
+
+## 施放驯服。返回是否锁到目标。
+func _cast_tame(trainer: Dictionary, aim: Vector2) -> bool:
+	if trainer == null or not trainer.get("alive", false):
+		return false
+	if float(trainer.get("_active_cd", 0.0)) > 0.0:
+		return false
+	var want: Vector2 = trainer["pos"] + aim.limit_length(battle.TAME_RANGE)
+	var tgt = null
+	var bd: float = INF
+	for o in battle._targeting._pick_enemies_of(trainer):
+		if (o["pos"] - trainer["pos"]).length() > battle.TAME_RANGE:
+			continue
+		if str(o.get("tamed_side", "")) != "" or o.get("tame_pending", false):
+			continue                       # 已经被驯服/已标记的不重复标
+		var dd: float = (o["pos"] - want).length_squared()
+		if dd < bd:
+			bd = dd; tgt = o
+	if tgt == null:
+		trainer["_active_cd"] = battle.TAME_CD * 0.5   # 空放返还一半
+		return false
+	trainer["_active_cd"] = battle.TAME_CD
+	var dist: float = (tgt["pos"] - trainer["pos"]).length()
+	var arrive: float = dist / battle.TAME_MISSILE_SPD
+	var tt: Dictionary = trainer
+	var kk: Dictionary = tgt
+	battle._pending_shots.append({"delay": arrive, "src": trainer, "fn": func() -> void:
+		if kk.get("alive", false):
+			_tame_mark(tt, kk)})
+	_tame_dramatize(trainer, tgt, arrive)
+	return true
+
+
+## 打上驯服标记(纯效果·可直接被门禁调, 不依赖演出)。
+## ★B3: 标记【没有 until】—— 持续到战斗结束或死亡, 不是定时 buff。
+func _tame_mark(trainer: Dictionary, tgt: Dictionary) -> void:
+	if tgt == null or not tgt.get("alive", false):
+		return
+	tgt["tame_pending"] = true
+	tgt["tame_by_side"] = str(trainer.get("side", "left"))
+	tgt["_tamed_marked"] = true                       # 同步的触发证据(供门禁断言)
+
+
+## 死亡时被 _kill 调。返回 true = 已接管(不真死)。
+func _tame_try_revive(u: Dictionary) -> bool:
+	if not u.get("tame_pending", false) or u.get("tame_used", false):
+		return false
+	u["tame_used"] = true
+	u["tame_pending"] = false
+	u["hp"] = float(u["maxHp"]) * battle.TAME_REVIVE_PCT      # B4: 30% 最大生命
+	u["dots"] = []
+	u["dot_stacks"] = {}
+	u["shield"] = 0.0
+	u["tamed_side"] = str(u.get("tame_by_side", "left"))      # B5: 归顺(不改写 side)
+	u["untargetable_until"] = battle._t + battle.TAME_REVIVE_SEC   # B7: 演出期不可选中
+	u["_tame_invuln_until"] = battle._t + battle.TAME_REVIVE_SEC   # B7: 演出期无敌
+	u["taunt_until"] = 0.0                                     # 换队了, 旧嘲讽作废
+	u["taunt_by"] = null
+	u["hunt_until"] = 0.0                                      # 自家人不该还挂着猎龟令
+	battle._vfx._float_text(u["pos"] + Vector2(0, -64), "归顺!", Color("#7de8c8"))
+	_tame_revive_dramatize(u)
+	return true
+
+
+## 每帧: 归顺者每秒损失 2% 最大生命(B8·永久)。演出期不掉。
+## ★走 _apply_damage(...is_self=true): 自损不吃增伤类修正, 否则被靶向器标记之类会把
+##   2%/秒放大 —— 与"固定每秒 2%"的设定不符(暴露蛋那次就是这么踩的)。
+func _tick_tame_decay(delta: float) -> void:
+	for u in battle._units:
+		if not u.get("alive", false):
+			continue
+		if str(u.get("tamed_side", "")) == "":
+			continue
+		if battle._t < float(u.get("_tame_invuln_until", 0.0)):
+			continue                                   # 重生演出期间不掉血
+		var d: float = float(u["maxHp"]) * battle.TAME_DECAY_PCT * delta
+		# ★参数位置: _apply_damage(u, dmg, col, src, bucket, is_self, ...) ——
+		#   第 4 个是 src 不是 is_self。写成 (u, d, col, true) 会把 true 当 src 传进去。
+		battle._damage._apply_damage(u, int(ceilf(d)), Color("#8b2e4a"), null, "dot", true)
+
+
+## 驯服演出: 青碧锁扣弹飞向目标 → 命中后目标脚下亮起符文环(常驻到它死/归顺)。
+## ★素材是本技能【新生成】的 tame-rune.png(青碧双环 + 白金符文 + 锁链), 不复用现成贴图。
+func _tame_dramatize(trainer: Dictionary, tgt: Dictionary, arrive: float) -> void:
+	if battle._world == null:
+		return
+	var bolt := Sprite3D.new()
+	bolt.texture = VfxTex._make_bolt_texture(Color("#4fe0c0"))
+	bolt.pixel_size = 0.028
+	bolt.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	bolt.shaded = false; bolt.transparent = true
+	bolt.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	bolt.position = battle._world_pos(trainer["pos"], 1.1)
+	battle._world.add_child(bolt)
+	var kk: Dictionary = tgt
+	var tw = bolt.create_tween()
+	tw.tween_method(func(f: float) -> void:
+		if is_instance_valid(bolt):
+			bolt.position = bolt.position.lerp(battle._world_pos(kk["pos"], 1.0), minf(1.0, f)),
+		0.35, 1.0, maxf(0.05, arrive))
+	tw.tween_callback(func() -> void:
+		if is_instance_valid(bolt):
+			bolt.queue_free())
+	battle._pending_shots.append({"delay": arrive, "src": trainer, "fn": func() -> void:
+		if kk.get("alive", false):
+			_tame_rune(kk)})
+
+
+## 驯服符文环(跟随目标)。缺图则不画并 push_warning —— 不静默换别的贴图兜底。
+func _tame_rune(tgt: Dictionary) -> void:
+	var path := "res://assets/sprites/vfx/tame-rune.png"
+	if battle._world == null or not ResourceLoader.exists(path):
+		if not ResourceLoader.exists(path):
+			push_warning("[驯服] 缺素材 %s —— 符文环不画(不复用别的贴图兜底)" % path)
+		return
+	var s := Sprite3D.new()
+	s.texture = load(path)
+	s.pixel_size = (150.0 * battle.WS) / 128.0
+	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	s.axis = Vector3.AXIS_Y
+	s.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
+	s.shaded = false; s.transparent = true
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.modulate = Color(1.0, 1.0, 1.0, 0.8)
+	battle._world.add_child(s)
+	var kk: Dictionary = tgt
+	var tw = s.create_tween().set_loops()
+	tw.tween_callback(func() -> void:
+		if not is_instance_valid(s):
+			return
+		if not kk.get("alive", false):
+			s.queue_free()
+			return
+		s.position = battle._world_pos(kk["pos"], 0.05)
+		s.rotate_y(0.06)).set_delay(0.03)
+
+
+## 归顺重生演出(B6): 符文环转青 + 冒字。
+##
+## ★这里【一个数值都不改】—— 血量在 _tame_try_revive 里已经定死为 30% 最大生命。
+##   第一版我写成"hp 先设 0.01, 再用 tween 涨到 30%" 做逐渐回血的观感, 那正是
+##   CLAUDE.md §3.5 明写的坑: 无头 CI 下场景树 tween 推进不稳, tween 跑不完
+##   → 血永远停在 0.01 → 单位一碰就死, 而本地永远复现不出来。
+##   "逐渐回血"的观感交给血条自己的插值, 不拿真实 hp 当动画变量。
+## ★血条颜色按 _eff_side 取而不是 side —— 上面已让 _eff_side 认 tamed_side, 归顺后自动显示我方色。
+func _tame_revive_dramatize(u: Dictionary) -> void:
+	if battle._world == null:
+		return
+	_tame_rune(u)
+	battle._vfx._float_text(u["pos"] + Vector2(0, -40), "+%d" % int(float(u["maxHp"]) * battle.TAME_REVIVE_PCT), Color("#7de8c8"))

@@ -635,7 +635,9 @@ func _dl_snapshot_survivors() -> void:
 	for side in ["left", "right"]:
 		var cur: Array = GameState.dual_survivors.get(side, [])
 		for u in battle._units:
-			if not u.get("alive", false) or str(u.get("side", "")) != side:
+			# ★按【有效阵营】分组, 不是原 side —— 被驯服归顺我方的敌人要进【我方】幸存名单,
+			#   否则它下一路会作为敌人重新 spawn(用户要求"活到本路结束可跨入终极战场")。
+			if not u.get("alive", false) or battle._eff_side(u) != side:
 				continue
 			if u.get("_isEgg", false) or u.get("is_summon", false):
 				continue
@@ -650,6 +652,11 @@ func _dl_snapshot_survivors() -> void:
 			var eq: Array = u.get("equips", [])   # ★带装备进终极战场(用户2026-07-18"到终极战场装备都消失了"): 原survivor spec漏拷equips→_spawn_lane_side走不到_dl_equips→_inject只兜底左leader base装→小将/敌leader/局内获取装全空. 拷equips后双方leader+小将+局内装全带入
 			if eq is Array and not (eq as Array).is_empty():
 				spec["equips"] = (eq as Array).duplicate(true)
+			# ★驯服要跨路持久化: 单位字典在换路时被重建(_dl_clear_units), 不显式写进 spec
+			#   就会丢 —— 归顺状态和每秒掉血 buff 都得跟着过去(用户: "损血 buff 继续存在")。
+			if str(u.get("tamed_side", "")) != "":
+				spec["tamed_side"] = str(u["tamed_side"])
+				spec["tame_used"] = true
 			cur.append(spec)
 		GameState.dual_survivors[side] = cur
 
