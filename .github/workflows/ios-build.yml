@@ -58,32 +58,6 @@ jobs:
           echo "--- exported files ---"
           find build/ios -maxdepth 2 | head -40
 
-      # ★强制 Info.plist 支持全部方向 —— 摸鱼模式(竖持小窗)要在运行时切竖屏,
-      #   而 iOS 只允许切到 UISupportedInterfaceOrientations 里列出的方向。
-      #
-      #   2026-07-29 实测: 把出好的 IPA 拆开读 Info.plist, 里面只有
-      #   ['UIInterfaceOrientationLandscapeLeft'] —— 改 project.godot 的
-      #   display/window/handheld/orientation 为 "sensor" 之后【仍然只有横屏】,
-      #   Godot 的 iOS 导出并不按那个设置展开方向列表。
-      #   与其猜它的映射规则(Windows 上验不了), 不如在这里用 macOS 自带的 plutil 显式写死。
-      #
-      #   ★运行时【默认仍是横屏】: GameState 读档后无条件调 IdleMode.apply(),
-      #     关着摸鱼模式时锁 SCREEN_SENSOR_LANDSCAPE。plist 只是"允许", 不是"默认"。
-      - name: Force all interface orientations in Info.plist (摸鱼模式要竖屏)
-        run: |
-          set -e
-          cd build/ios
-          PL=$(find . -maxdepth 3 -name Info.plist -path "*turtle*" | head -1)
-          [ -n "$PL" ] || PL=$(find . -maxdepth 3 -name Info.plist | head -1)
-          echo "Info.plist = $PL"
-          echo "--- before ---"; plutil -extract UISupportedInterfaceOrientations xml1 -o - "$PL" || true
-          plutil -replace UISupportedInterfaceOrientations -json \
-            '["UIInterfaceOrientationLandscapeLeft","UIInterfaceOrientationLandscapeRight","UIInterfaceOrientationPortrait","UIInterfaceOrientationPortraitUpsideDown"]' "$PL"
-          echo "--- after ---"; plutil -extract UISupportedInterfaceOrientations xml1 -o - "$PL"
-          # ★验它真写进去了 —— 不验的话 plutil 静默失败(比如路径找错)就白改了
-          plutil -extract UISupportedInterfaceOrientations xml1 -o - "$PL" | grep -q "UIInterfaceOrientationPortrait" \
-            || { echo "::error::Info.plist 里没写进竖屏 —— 摸鱼模式在真机上会是死的"; exit 1; }
-
       - name: Build .app without codesign
         run: |
           set -o pipefail
@@ -109,6 +83,29 @@ jobs:
           git add -A
           git -c user.name=ci -c user.email=ci@ci commit -qm "ci logs run#${GITHUB_RUN_NUMBER}"
           git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-logs
+
+      # ★方向必须在【xcodebuild 之后】改 —— 上一版我改在导出后/构建前, CI 那步自检也过了,
+      #   但出来的 IPA 里仍然只有 LandscapeLeft: xcodebuild 会用 Xcode 工程里的
+      #   INFOPLIST_KEY_* build settings【重新生成】Info.plist, 把先前的编辑覆盖掉。
+      #   所以要改【已构建出来的 .app 里那份】, 就在打包成 IPA 之前。
+      #   (IPA 本来就是未签名的, 由 Sideloadly 后签, 改 plist 不影响流程。)
+      - name: Force all interface orientations in built .app (摸鱼模式要竖屏)
+        run: |
+          set -e
+          cd build/ios
+          APP=$(ls -d out/*.app | head -1)
+          PL="$APP/Info.plist"
+          echo "plist = $PL"
+          echo "--- before ---"; plutil -extract UISupportedInterfaceOrientations xml1 -o - "$PL" || true
+          plutil -replace UISupportedInterfaceOrientations -json \
+            '["UIInterfaceOrientationLandscapeLeft","UIInterfaceOrientationLandscapeRight","UIInterfaceOrientationPortrait","UIInterfaceOrientationPortraitUpsideDown"]' "$PL"
+          # iPad 用的是另一个 key, 一并写(targeted_device_family 将来改成通用时才不会漏)
+          plutil -replace UISupportedInterfaceOrientations~ipad -json \
+            '["UIInterfaceOrientationLandscapeLeft","UIInterfaceOrientationLandscapeRight","UIInterfaceOrientationPortrait","UIInterfaceOrientationPortraitUpsideDown"]' "$PL" || true
+          echo "--- after ---"; plutil -extract UISupportedInterfaceOrientations xml1 -o - "$PL"
+          # ★自检: 不验的话 plutil 路径找错会静默失败, 白改一轮还以为修好了(上一版就是这么过的)
+          plutil -extract UISupportedInterfaceOrientations xml1 -o - "$PL" | grep -q "UIInterfaceOrientationPortrait" \
+            || { echo "::error::.app 的 Info.plist 里没写进竖屏 —— 摸鱼模式在真机上会是死的"; exit 1; }
 
       - name: Pack unsigned IPA
         run: |
