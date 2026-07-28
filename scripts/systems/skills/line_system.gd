@@ -3,7 +3,24 @@ extends RefCounted
 ## 素描龟技能系统
 ## 类内名不变;外部名加 battle.
 
+## ★线条数值单一事实源(用户2026-07-28 第三轮加强·整只 20.9%)。文案在 data/pets.json。
+const ASPD_PER_ATK := 0.005   # 被动·墨迹: 自身获得 =(0.5×攻击力)% 的攻速 → 每1点攻击力 +0.5%
+
 var battle
+
+## 被动·墨迹的自身加成 (用户2026-07-28「线条龟自身获得相当于(0.5ATK)%额外的攻击速度, 实时的」)
+##
+## ★为什么给线条加这条: 墨迹是【放大器】不是伤害源 —— 它只让目标"每受到一次伤害"额外吃 5%/层真伤。
+##   而线条攻速 0.70、移速 70 都是最慢档 → 自己产出频率低 = 放大器没东西可放大。攻速直接补这个短板。
+## ★写法与彩虹 _rainbow_prism_convert 同一套(别改成累乘):
+##   从【无本加成的基准间隔】整体重算, 绝不在现值上累除 —— 累除会随帧数漂移。
+##   实时: 中途吃到加攻的装备/buff 会立刻反映在攻速上。
+func _line_aspd_convert(u: Dictionary) -> void:
+	var iv0: float = float(u.get("_line_base_iv", 0.0))
+	if iv0 <= 0.0:
+		iv0 = float(u["atk_interval"])
+		u["_line_base_iv"] = iv0
+	u["atk_interval"] = iv0 / (1.0 + ASPD_PER_ATK * float(u["atk"]))
 
 func _init(b) -> void:
 	battle = b

@@ -487,6 +487,8 @@ func _apply_spawn_passives() -> void:
 			u["_enh_rebirth"] = true   # 强化涅槃: 复活100%血+永久+20%攻击(见_kill)
 		if "angelBless" in battle._chosen_skill_types(u["id"], u["side"] == "left"):
 			u["_angel_revive"] = true  # 天使祝福绑定: 选祝福→自身首死25%复活(见_kill)
+		if "angelAscend" in battle._chosen_skill_types(u["id"], u["side"] == "left"):
+			u["_ascend_growth"] = true  # 天使飞升打包被动(用户2026-07-28): 每次普攻命中 +5龟能 +1%攻击力(见_on_basic_hit)
 		if "rainbowReflect" in battle._chosen_skill_types(u["id"], u["side"] == "left"):
 			u["_enh_prism"] = true      # 彩虹反射打包强化棱镜4色(每5s抽色·见_tick_periodic)
 
@@ -504,7 +506,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 				battle._damage._buff(u, "dodge", 0.25, false, 9999.0); u["crit"] += 0.40
 		"ghost":
 			for o in battle._targeting._enemies_of(u):
-				battle._damage._add_curse(o, battle.BUFF_SEC, u)
+				battle._damage._add_curse(o, GhostSystem.SPAWN_CURSE_SEC, u)   # 登场诅咒(用户2026-07-28: BUFF_SEC 5s → 4s; 死亡诅咒仍 5s)
 		"ice":
 			u["_vs_fire_bonus"] = 0.2          # 寒域: 对熔岩/凤凰 +20%伤害
 			u["_burnImmune"] = true            # 极寒(用户设计L162: 改常驻被动): 免疫灼烧

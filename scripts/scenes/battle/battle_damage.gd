@@ -241,6 +241,8 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 					battle._skill_ring(u["pos"], Color(1.0, 0.92, 0.3, 0.6), 40.0)
 	if u["alive"]:
 		battle._equip_sys._eq_check_hp_threshold(u)          # HP阈值: 首次<50% (深海项链/珍珠耳环)
+		if str(u.get("id", "")) == "fortune" and not u.get("_lowhp_fired", false) and u["hp"] <= u["maxHp"] * FortuneSystem.LOWHP_PCT:
+			battle._fortune_sys._fortune_lowhp_burst(u)       # 财神【通用被动】(用户2026-07-28): 首次跌破20%血 → 立得70龟能(不论带哪个技能)
 	if u["hp"] <= 0.0 and u["alive"]:
 		battle._kill(u, src)
 
@@ -397,6 +399,11 @@ func _heal_flush(u: Dictionary) -> void:   # LoL式: 治疗累加器→静默0.1
 ##
 ## tenacity=false 用于【自身施法定身】(缩头/亡灵拉全场等), 那是自己给自己上的动作锁, 不该吃自己的韧性。
 func _stun(u: Dictionary, sec: float, src_tag: String, no_tenacity: bool = false) -> void:
+	# ★免控窗口(2026-07-28): 单位在 cc_immune_until 之前免疫一切眩晕/冻结。
+	#   加在【唯一入口】而不是各技能自己判 —— 财神梭哈投币期免控是第一个用例, 但这是通用能力,
+	#   写进技能里就等于下一个要用的人再写一遍(眩晕收口前正是 17 处各写各的)。
+	if battle._t < float(u.get("cc_immune_until", 0.0)):
+		return
 	var d: float = sec if no_tenacity else battle._cc_dur(u, sec)
 	if battle._audit:
 		# ★无条件记账. 第一版只在"已晕着又被续"时记, 结果明细恒为空 —— 因为控制是在采样缝隙里

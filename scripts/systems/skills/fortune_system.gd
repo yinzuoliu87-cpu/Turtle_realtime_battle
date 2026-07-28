@@ -3,6 +3,11 @@ extends RefCounted
 ## 财神龟技能系统
 ## 类内名不变;外部名加 battle.
 
+## ★财神数值单一事实源(用户2026-07-28 第三轮加强·梭哈 8.4% 第83)。文案在 data/pets.json。
+const ALLIN_SHIELD_SEC := 6.0   # 梭哈首发金盾持续秒数(不锁龟能·与变身后的金盾区分)
+const LOWHP_PCT := 0.20          # 【通用被动·聚宝盆】: 首次跌破该血量比例触发(不论带哪个技能)
+const LOWHP_ENERGY := 70.0       # 【通用被动·聚宝盆】: 触发时立得的龟能
+
 var battle
 
 func _init(b) -> void:
@@ -80,6 +85,24 @@ func _sk_fortune_goldshield(u: Dictionary) -> void:   # 财神·金盾(梭哈用
 	for _k in range(4):                        # 金块绕身聚成盾
 		battle._gold_chunk_erupt(u["pos"] + Vector2(randf_range(-26.0, 26.0), randf_range(-12.0, 12.0)))
 
+## 财神【通用被动】(用户2026-07-28: 原定为梭哈打包, 同日改为通用 ——
+## 「改为财神的通用被动吧: 当首次血量降低至20%以下时, 立即获得70龟能」)
+## 不论带哪个技能都生效, 所以不走 _chosen_skill_types 绑定, 直接在受伤钩子里认龟 id。
+##
+## ★龟能是【逐技冷却】不是累加值(SkillEnergy.CD_FACTOR=0.075) → "得70龟能" = 各技冷却各减 70×0.075=5.25 秒。
+##   同一换算见 _tick_skill_cd 的 init_energy_bonus、天使飞升的 _ascend_growth_tick。
+## ★只触发一次: _allin_lowhp_fired 标记。触发点在 battle_damage._apply_damage_from 的 HP 阈值钩里,
+##   与装备的"首次<50%"同处 —— 那里是每次受伤后【无条件】查的, 不会漏掉某条伤害路径
+##   (本项目有两条独立伤害路径 _apply_damage / _apply_damage_from, 各自扣血)。
+func _fortune_lowhp_burst(u: Dictionary) -> void:
+	u["_lowhp_fired"] = true
+	var cds: Dictionary = u.get("skill_cd", {})
+	var d: float = LOWHP_ENERGY * battle.SkillEnergy.CD_FACTOR
+	for k in cds:
+		cds[k] = maxf(0.0, float(cds[k]) - d)
+	battle._vfx._float_text(u["pos"] + Vector2(0, -70), "龟能 +%d" % int(LOWHP_ENERGY), Color("#ffd93d"))
+	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.7), 58.0)
+
 func _sk_fortune_allin(u: Dictionary, tgt) -> void:                 # 财神龟·梭哈 ✅ (蓄力→持续投金币, 目标死换下个; 用过后该技变金盾)
 	if tgt == null or u.get("allin_used", false):
 		return
@@ -92,14 +115,21 @@ func _sk_fortune_allin(u: Dictionary, tgt) -> void:                 # 财神龟�
 	u["allin_coins"] = coins              # 待投金币数 = 全部金币
 	u["allin_throw_t"] = 0.6              # 蓄力(首投前)
 	u["allin_target"] = tgt
+	# 用户2026-07-28 加强: 首次梭哈【同时】按当时金币数给金盾 + 投币全程免控。
+	#   原设计梭哈只投币不给盾(盾要等技能变身后再花 80 龟能), 而投币期还会被眩晕/击飞打断 ——
+	#   实测 8.4%(第83/84)、释放仅 1.3 次/场。金盾这里【不锁龟能】(与变身后的金盾不同):
+	#   梭哈一场限一次, 放完就只剩金盾可放, 再锁龟能等于自断后路。
+	battle._damage._grant_shield(u, float(coins), ALLIN_SHIELD_SEC)
+	battle._vfx._float_text(u["pos"] + Vector2(0, -66), "金盾 +%d" % coins, Color("#ffd93d"))
 	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.65), 66.0)   # 蓄力金环
 	battle._vfx._flash(u, Color(1.5, 1.3, 0.6))
 
 # 梭哈 channel: 蓄力后每隔投币间隔朝目标投1金币(0.18ATK物+0.18ATK真), 目标死换最近敌; 投完结束; 眩晕/击飞期暂停
 # 梭哈 channel: 蓄力后每隔投币间隔朝目标投1金币(0.18ATK物+0.18ATK真), 目标死换最近敌; 投完结束; 眩晕/击飞期暂停
 func _fortune_allin_channel(u: Dictionary, delta: float) -> void:
-	if battle._t < float(u.get("stun_until", 0.0)):
-		return
+	# 投币期免控(用户2026-07-28): 每帧把免控窗口往后续一点 —— 投完(allin_coins 归零后不再进本函数)
+	# 窗口自然到期。原先这里是"被眩晕就 return 暂停投币", 现在根本不会被眩晕。
+	u["cc_immune_until"] = battle._t + 0.5
 	u["allin_throw_t"] = float(u.get("allin_throw_t", 0.0)) - delta
 	if u["allin_throw_t"] > 0.0:
 		return

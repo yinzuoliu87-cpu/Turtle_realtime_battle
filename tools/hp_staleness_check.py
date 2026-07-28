@@ -8,26 +8,46 @@
 import io, sys, os, subprocess
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-# 事实源 → (同步脚本, 该脚本运行时写出的报告文件, 标签)
+# 事实源 → (同步脚本, 该脚本运行时写出的报告文件【glob·取最新一份】, 标签)
+#
+# ★2026-07-28 修: 原来每个事实源只认【一个写死的报告文件】(如 hp_s13_report.txt), 但同一份事实源
+#   后来又被 S14/S15/S17 等新批次同步过, 报告文件名不同、还写在 tools/ 而不是 tools/oneoff/ ——
+#   于是"明明刚推完云端"却照报 STALE。这种狼来了会让人以后忽略真警报, 所以改成 glob 取最新。
 # ★路径 2026-07-21 随「常备工具 / 一次性脚本」分离改到 tools/oneoff/。
 #   同步脚本是【一次性批次】(hp_s8..s13), 归 oneoff; 本检查器是【常备】, 留在 tools/。
 #   搬完当场跑这个检查器才发现路径写死了 —— 工具搬家必须逐个跑一遍, 不能只看目录整齐了。
 ONEOFF = 'tools/oneoff'
 PAIRS = [
-    ('docs/design/实时版-系统机制权威.md', ONEOFF + '/hp_s8_systems.py', ONEOFF + '/hp_s8_report.txt',  'S8  系统机制'),
-    ('data/phase2-equipment.json',        ONEOFF + '/hp_s9_equip.py',   ONEOFF + '/hp_s9_report.txt',  'S9  59件装备'),
-    ('docs/design/28龟技能设计-权威.md',    ONEOFF + '/hp_s13_resync.py', ONEOFF + '/hp_s13_report.txt', 'S10/S13 28龟'),
+    ('docs/design/实时版-系统机制权威.md', ONEOFF + '/hp_s8_systems.py',
+     [ONEOFF + '/hp_s8_report.txt', 'tools/hp_s8_report.txt'], 'S8  系统机制'),
+    ('data/phase2-equipment.json',        ONEOFF + '/hp_s9_equip.py',
+     [ONEOFF + '/hp_s9_report.txt', 'tools/hp_s9_report.txt'], 'S9  59件装备'),
+    # 28龟这份被多批同步过(S10/S13/S14/S15/S17…) —— 任何一批跑完都算"云端已同步", 取最新
+    ('docs/design/28龟技能设计-权威.md',    'tools/oneoff/hp_s17_round3.py (或同类最新批次)',
+     ['tools/oneoff/hp_s1*_report.txt', 'tools/hp_s1*_report.txt'], 'S10..S17 28龟'),
 ]
 
 def file_mtime(p):
     return os.path.getmtime(p) if os.path.exists(p) else None
 
+
+def newest_mtime(patterns):
+    """一组 glob 里最新那份报告的 mtime; 都不存在则 None。"""
+    import glob
+    ts = []
+    for pat in patterns:
+        for f in glob.glob(pat):
+            t = file_mtime(f)
+            if t is not None:
+                ts.append(t)
+    return max(ts) if ts else None
+
 stale = 0
 for src, syncer, report, label in PAIRS:
-    t_sync = file_mtime(report)
+    t_sync = newest_mtime(report)
     t_src = file_mtime(src)
     if t_sync is None:
-        print('  [ ?? ] %-16s 没有同步报告 %s → 大概从没同步过' % (label, report)); stale += 1; continue
+        print('  [ ?? ] %-16s 没有任何同步报告 %s → 大概从没同步过' % (label, report)); stale += 1; continue
     if t_src is None:
         print('  [ ?? ] %-16s 事实源不存在: %s' % (label, src)); continue
     if t_src > t_sync + 1.0:      # 1 秒容差

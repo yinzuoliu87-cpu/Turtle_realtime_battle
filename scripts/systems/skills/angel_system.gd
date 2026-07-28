@@ -3,18 +3,39 @@ extends RefCounted
 ## 天使龟技能系统
 ## 类内名不变;外部名加 battle.
 
+## ★天使数值单一事实源(用户2026-07-28 第三轮加强·祝福 14.5% 第76)。文案在 data/pets.json。
+const BLESS_SHIELD := 2.5   # 祝福: 护盾 = ×ATK (1.2→2.5)
+const ASCEND_ENERGY_PER_HIT := 5.0   # 飞升打包被动: 每次普攻命中给自己的龟能
+const ASCEND_ATK_PER_HIT := 0.01     # 飞升打包被动: 每次普攻命中 +1% 攻击力(乘算·持续到战斗结束)
+
 var battle
 
 func _init(b) -> void:
 	battle = b
 
 func _sk_angel_bless(u: Dictionary) -> void:                     # 天使龟·祝福 ✅
-	var ally = battle._lowest_hp_ally(u)
+	# 用户2026-07-28: 「最低血友军」→「当前输出最高的友军」(原设定实测里几乎总是喂给陪跑小将)
+	var ally = battle._targeting._top_dps_ally(u)
 	if ally == null:
 		ally = u
-	battle._damage._grant_shield(ally, u["atk"] * 1.2, 5.0)   # 天使祝福护盾5秒(封板L145·与攻速/龟能buff同步)
+	battle._damage._grant_shield(ally, u["atk"] * BLESS_SHIELD, 5.0)   # 天使祝福护盾5秒(封板L145·与攻速/龟能buff同步)
 	ally["haste_until"] = battle._t + 5.0; ally["haste_mult"] = 1.5       # +50% 攻速 5秒(用户2026-07-11: 30%→50%)
 	battle._skill_ring(ally["pos"], Color(1.0, 0.9, 0.5, 0.5), 48.0)   # 祝福: 金色圣光环 (用户2026-07-11: 取消原龟能充能+30%buff)
+
+## 飞升·打包被动 (用户2026-07-28「天使龟的每次攻击还会为自己提供5点龟能和1%攻击力, 持续到战斗结束」)
+##
+## ★龟能在实时版【不是累加值, 是逐技冷却】(SkillEnergy.CD_FACTOR=0.075 → 充能秒数 = 龟能×0.075),
+##   所以"给5点龟能" = 把每个技能的剩余冷却各减 5×0.075 = 0.375 秒。
+##   同一换算见 _tick_skill_cd 里装备的 init_energy_bonus。别写成 u["energy"] += 5 —— 没有那个字段。
+## ★攻击力走 base_atk 乘算后 _recalc_stats: 与飞升主动的 aspd_perm 同一套"永久成长"写法,
+##   直接改 u["atk"] 会被下一次 _recalc_stats 覆盖掉。
+func _ascend_growth_tick(u: Dictionary) -> void:
+	var cds: Dictionary = u.get("skill_cd", {})
+	var d: float = ASCEND_ENERGY_PER_HIT * battle.SkillEnergy.CD_FACTOR
+	for k in cds:
+		cds[k] = maxf(0.0, float(cds[k]) - d)
+	u["base_atk"] = float(u["base_atk"]) * (1.0 + ASCEND_ATK_PER_HIT)
+	battle._recalc_stats(u)
 
 func _sk_angel_ascend(u: Dictionary) -> void:                   # 天使龟·飞升 (用户2026-07-06: +20%攻速+25码射程·到战斗结束·可叠加无上限; 移速2026-07-11改+5%)
 	u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) * 1.2       # +20%攻速(永久·叠加)

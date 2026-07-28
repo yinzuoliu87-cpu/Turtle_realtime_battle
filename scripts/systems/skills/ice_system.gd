@@ -191,6 +191,8 @@ const ICICLE_ASPD := 0.03      # 每层 +3% 攻速
 const ICICLE_DEFMR := 0.01     # 每层 +1% 护甲 & 魔抗
 const ICICLE_FROST_RADIUS := 0.20   # 每层 冰霜半径 +20%
 const ICICLE_FROST_SEC := 0.5       # 每层 冰霜持续 +0.5 秒
+const FREEZE_DMG := 2.5             # 冰封: ×ATK 魔法(常驻·用户2026-07-28: 原0.6常态/2.5满层→统一2.5)
+const FREEZE_STUN_SEC := 2.5        # 冰封: 满 ICICLE_MAX 层冰柱时额外眩晕秒数
 
 ## 攒一层冰柱并把属性差量结算上去(只加增量, 不重复叠)
 func _ice_gain_icicle(u: Dictionary) -> void:
@@ -266,18 +268,21 @@ func _ice_frost_rain(center: Vector2, radius: float) -> void:    # 冰霜场视�
 		twr.tween_property(sh, "modulate:a", 0.0, 0.3).set_delay(0.18)
 		twr.chain().tween_callback(sh.queue_free)
 
-## 寒冰龟·冰封 (用户 2026-07-28 加强)
-##   常态: 0.6ATK 魔法 + 冻结 2.5 秒(原 1.5)
-##   ★满 ICICLE_MAX 层冰柱后【转形态】: 改为 2.5ATK 魔法 + 回复自身(护甲+魔抗)生命, 不再冻结
-##     ("转而"=替换而非叠加; 同幽灵灵魂风暴"已中咒→改真伤"的写法)
+## 寒冰龟·冰封 (用户 2026-07-28 第三轮: 强形态改【常驻】, 满冰柱转为额外上眩晕)
+##   常驻: FREEZE_DMG(2.5)×ATK 魔法 + 回复自身(护甲+魔抗)生命
+##   满 ICICLE_MAX 层冰柱: 额外眩晕 FREEZE_STUN_SEC 秒
+##
+## ★为什么把强形态改成常驻: 上一轮设计成"满20层才转形态", 实测 19.3%(第73/84) 几乎没救到 ——
+##   冰柱靠普攻攒, 而寒冰攻速 0.65 次/秒是全表最慢, 攒满 20 层要 ≈31 秒, 对局中位才 53 秒。
+##   给攻速最慢的龟设计"靠普攻次数叠层"的成长条件, 本身是自相矛盾的。
+## ★_freeze 内部就是 _damage._stun(见 RealtimeBattle3DScene._freeze), 冻结与眩晕同一套,
+##   所以"满层加眩晕"直接复用 _fire_ice_shard 的 freeze_sec 参数, 不需要另开一条控制链。
 func _sk_ice_freeze(u: Dictionary, tgt: Dictionary) -> void:
 	if tgt == null or not tgt.get("alive", false):
 		return
-	if int(u.get("icicle", 0)) >= ICICLE_MAX:
-		battle._ballistics._fire_ice_shard(u, tgt, battle._atk_dmg(u, 2.5, tgt, true), 0.0)
-		battle._damage._heal(u, float(u.get("def", 0.0)) + float(u.get("mr", 0.0)))
-		return
-	battle._ballistics._fire_ice_shard(u, tgt, battle._atk_dmg(u, 0.6, tgt, true), 2.5)
+	var stun: float = FREEZE_STUN_SEC if int(u.get("icicle", 0)) >= ICICLE_MAX else 0.0
+	battle._ballistics._fire_ice_shard(u, tgt, battle._atk_dmg(u, FREEZE_DMG, tgt, true), stun)
+	battle._damage._heal(u, float(u.get("def", 0.0)) + float(u.get("mr", 0.0)))
 
 func _sk_ice_team_shield(u: Dictionary) -> void:               # 寒冰龟·团队护盾(用户2026-07-11重设计·120龟能): 全体友军5%施法者maxHp冰霜盾4秒·盾破/到期爆炸250码1×ATK魔法; 独狼(无其他友军)盾×4·爆炸5×ATK
 	var others = battle._targeting._allies_of(u, false)                         # 不含自己

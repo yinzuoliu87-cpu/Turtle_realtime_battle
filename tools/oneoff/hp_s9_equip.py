@@ -7,7 +7,7 @@
 - 属性用 baseStats1: 已核实与运行时真实来源 P2RT.STATS 逐星逐字段 0 差异
 """
 import sys, io, os, json, re
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))  # tools/ 在上一级
 from hacknplan_sync import HP
 
 OUT = io.open('tools/hp_s9_report.txt', 'w', encoding='utf-8')

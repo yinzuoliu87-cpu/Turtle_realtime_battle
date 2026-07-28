@@ -11,6 +11,8 @@
     python tools/duel_report.py --dir tools/duel2    # 指定目录(比如换种子跑的第二轮)
     python tools/duel_report.py --by-turtle          # 额外按龟分组, 看"这只龟该带哪个技能"
     python tools/duel_report.py --compare tools/duel2 # 与另一轮对比(检验结论对 RNG 是否稳健)
+    python tools/duel_report.py --by-role            # 按【定位】聚合(近战坦克/远程法师…) — 验移速定位化有没有兑现
+                                                     #   配 --compare 时同时给出两轮的每档差值
 
 自带体检(每次都打, 不用另外记得跑):
     · 左侧总胜率 —— 应 ≈50%，偏离说明位置/先手偏差没消干净，整份数据要打问号
@@ -29,6 +31,59 @@ import sys
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# ★不可用行 —— 跨【大轮】累积的技能, 单场从零开始测不到它们的真实价值, 胜率被严重低估。
+#   用户 2026-07-28:「命运之轮其实应该不参与测试的，这个技能是全大轮成长的」
+#   这类行会在排行榜里标 ⊘ 并【从所有聚合口径里剔除】(平均偏离/按龟/按定位),
+#   否则它们会把所属龟和所属定位一起拖下水 —— 赌神的档次就是这么被拉低的。
+#   ★靠人记住"这几行别看"是不可靠的(2026-07-28 我出报表时就忘了), 所以焊进工具。
+EXCLUDED = {
+    ("gambler", "命运之轮"): "抽中花色本大轮永久叠, 登场套用",
+    ("chest", "清点财宝"): "chest_treasure_value 随大轮累积",
+    ("chest", "财宝风暴"): "大轮已开战利品开局回装",
+}
+
+
+def is_excluded(key):
+    """key = (龟id, 技能名) 或 tally 出来的三元组 (龟id, idx, 技能名)"""
+    if len(key) == 3:
+        return (key[0], key[2]) in EXCLUDED
+    return (key[0], key[1]) in EXCLUDED
+
+
+def load_roles():
+    """从 scripts/gamedata/turtle_stats.gd 读 ROLE —— 它是定位的【权威事实源】。
+    ★不在本文件里再抄一份名单: 抄一份就是又一个会漂的镜像(本项目栽过很多次)。"""
+    import re
+    fp = os.path.join(ROOT, "scripts", "gamedata", "turtle_stats.gd")
+    src = io.open(fp, encoding="utf-8").read()
+    m = re.search(r"const ROLE := \{(.*?)\}", src, re.S)
+    if not m:
+        return {}
+    return dict(re.findall(r'"([a-z_]+)":\s*"([^"]+)"', m.group(1)))
+
+
+def load_role_spec():
+    """档位 → [移速, 攻速]"""
+    import re
+    fp = os.path.join(ROOT, "scripts", "gamedata", "turtle_stats.gd")
+    src = io.open(fp, encoding="utf-8").read()
+    m = re.search(r"const ROLE_SPEC := \{(.*?)\}", src, re.S)
+    if not m:
+        return {}
+    out = {}
+    for name, a, b in re.findall(r'"([^"]+)":\s*\[([\d.]+),\s*([\d.]+)\]', m.group(1)):
+        out[name] = (float(a), float(b))
+    return out
+
+
+def name_to_id(rows):
+    """CSV 里存的是龟【中文名】, 定位表用的是 id → 从 pets.json 建映射。"""
+    import json
+    fp = os.path.join(ROOT, "data", "pets.json")
+    d = json.load(io.open(fp, encoding="utf-8"))
+    pets = d if isinstance(d, list) else d["pets"]
+    return {str(p.get("name", p["id"])): p["id"] for p in pets}
 
 
 def load(dirpath):
@@ -71,6 +126,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", default=os.path.join(ROOT, "tools", "duel"))
     ap.add_argument("--by-turtle", action="store_true", help="额外按龟分组输出")
+    ap.add_argument("--by-role", action="store_true", help="额外按【定位】聚合(读 turtle_stats.ROLE)")
     ap.add_argument("--compare", default="", help="与另一轮结果对比(检验 RNG 稳健性)")
     ap.add_argument("--out", default="", help="同时写出 markdown 文件")
     args = ap.parse_args()
@@ -113,14 +169,30 @@ def main():
         cps = v["casts"] / max(1, v["n"])
         secs = v["frames"] / max(1, v["n"]) / 60.0
         star = "  ★释放≈0" if cps < 0.5 else ""
+        if is_excluded(k):
+            star = "  ⊘ 不可用(%s)" % EXCLUDED[(k[0], k[2])]
         P("  %-4d %-10s %-14s %6.1f%% %6d %8.2f %8.1f%s" % (i, k[0], k[2], wr, v["n"], cps, secs, star))
+
+    # ── 不可用行 + 剔除后的平衡度 ──
+    P("")
+    P("  ── 不可用行(跨大轮累积技能·已从下面所有聚合里剔除) ──")
+    for (tid, nm), why in EXCLUDED.items():
+        hit = [v for k, v in st.items() if k[0] == tid and k[2] == nm]
+        got = ("%.1f%%" % (100.0 * hit[0]["w"] / max(1, hit[0]["n"]))) if hit else "(本轮无此行)"
+        P("  ⊘ %-9s %-8s %7s   %s" % (tid, nm, got, why))
+    usable = {k: v for k, v in st.items() if not is_excluded(k)}
+    def dev(d):
+        xs = [abs(100.0 * v["w"] / max(1, v["n"]) - 50.0) for v in d.values()]
+        return sum(xs) / max(1, len(xs))
+    P("  平均偏离 50%%: 全部 %d 行 = %.1fpp  |  剔除后 %d 行 = %.1fpp  (越小越平衡)"
+      % (len(st), dev(st), len(usable), dev(usable)))
 
     # ── 按龟分组(这只龟该带哪个技能) ──
     if args.by_turtle:
         P("")
         P("  ── 按龟分组：同一只龟三个技能的差距 ──")
         by_t = collections.defaultdict(list)
-        for k, v in st.items():
+        for k, v in usable.items():                       # ⊘ 行已剔除
             by_t[k[0]].append((k[2], 100.0 * v["w"] / max(1, v["n"]), v["casts"] / max(1, v["n"])))
         spread = []
         for t, lst in by_t.items():
@@ -130,6 +202,58 @@ def main():
         P("  (按【三技能胜率极差】降序 —— 极差大 = 该龟内部严重不平衡，有技能没人会选)")
         for gap, t, lst in spread:
             P("  %-10s 极差 %5.1fpp   %s" % (t, gap, "  ".join("%s %.1f%%" % (n, w) for n, w, _ in lst)))
+
+    # ── 按定位聚合 (2026-07-28 移速定位化后加): 验"近战该回升/远程法师该降"有没有兑现 ──
+    if args.by_role:
+        roles = load_roles()
+        spec = load_role_spec()
+        n2i = name_to_id(rows)
+        P("")
+        P("  ── 按定位聚合（定位表读自 scripts/gamedata/turtle_stats.gd 的 ROLE）──")
+        if not roles:
+            P("  ★读不到 ROLE 表 —— 定位可能还没建, 或格式变了")
+        else:
+            def agg(st_):
+                acc = collections.defaultdict(lambda: [0, 0, set()])
+                unknown = set()
+                for k, v in st_.items():
+                    if is_excluded(k):                    # ⊘ 行不进定位聚合
+                        continue
+                    # CSV 的「左龟/右龟」列存的是 id(排行榜里显示 line/angel/hiding 即为证);
+                    # 兼容万一将来改存中文名 → 先直接当 id 用, 不中再过中文名映射。
+                    tid = k[0] if k[0] in roles else n2i.get(k[0])
+                    r = roles.get(tid) if tid else None
+                    if r is None:
+                        unknown.add(k[0]); continue
+                    a = acc[r]
+                    a[0] += v["w"]; a[1] += v["n"]; a[2].add(k[0])
+                return acc, unknown
+            acc, unknown = agg(st)
+            acc2 = None
+            if args.compare:
+                rows2c, _ = load(args.compare)
+                if rows2c:
+                    st2c, _, _, _ = tally(rows2c)
+                    acc2, _ = agg(st2c)
+            hdr = "  %-10s %5s %5s %6s %7s" % ("定位", "移速", "攻速", "龟数", "胜率")
+            if acc2 is not None:
+                hdr += " %9s %8s" % ("对比轮", "差值")
+            P(hdr)
+            order = sorted(acc.keys(), key=lambda r: (-spec.get(r, (0, 0))[0], r))
+            for r in order:
+                w, n, ids = acc[r]
+                wr = 100.0 * w / max(1, n)
+                sp = spec.get(r, (0, 0))
+                line = "  %-10s %5.0f %5.2f %6d %6.1f%%" % (r, sp[0], sp[1], len(ids), wr)
+                if acc2 is not None and r in acc2:
+                    w2, n2, _ = acc2[r]
+                    wr2 = 100.0 * w2 / max(1, n2)
+                    line += " %8.1f%% %+7.1fpp" % (wr2, wr - wr2)
+                P(line)
+                P("       %s" % "、".join(sorted(ids)))
+            if unknown:
+                P("  ★这些龟名在 ROLE 表里找不到(名字对不上?): %s" % ", ".join(sorted(unknown)))
+            P("  ★分母: 每档的场次 = 该档所有龟×所有技能的总场次(不是龟数)")
 
     # ── 两轮对比(RNG 稳健性) ──
     if args.compare:

@@ -3,6 +3,11 @@ extends RefCounted
 ## 幽灵龟技能系统
 ## 类内名不变;外部名加 battle.
 
+## ★幽灵数值单一事实源(用户2026-07-28 第三轮削弱·整只 80.7%·灵魂风暴 94.0% 第4)。文案在 data/pets.json。
+const SPAWN_CURSE_SEC := 4.0   # 被动·登场诅咒秒数 (BUFF_SEC 5.0 → 4.0; 死亡诅咒仍走 BUFF_SEC)
+const STORM_DMG := 2.0         # 灵魂风暴: ×ATK (2.5→2.0·魔法与"已中咒转真伤"两支同值)
+const STORM_CURSE_SEC := 6.0   # 灵魂风暴: 施加的诅咒秒数
+
 var battle
 
 func _init(b) -> void:
@@ -107,11 +112,11 @@ func _sk_ghost_phantom(u: Dictionary, tgt) -> void:
 func _sk_ghost_soulstorm(u: Dictionary, tgt: Dictionary) -> void: # 幽灵龟·灵魂风暴 ✅
 	var cursed: bool = battle._has_dot(tgt, "curse")
 	if cursed:
-		battle._damage._apply_damage_from(u, tgt, int(u["atk"] * 2.5), Color("#e0b0ff"), 0.0, true)   # 有诅咒→2.5A真伤(处决感·用户2026-07-09"打有诅咒是真伤")
+		battle._damage._apply_damage_from(u, tgt, int(u["atk"] * STORM_DMG), Color("#e0b0ff"), 0.0, true)   # 有诅咒→2.0A真伤(处决感·用户2026-07-09"打有诅咒是真伤"·2026-07-28 2.5→2.0)
 	else:
 		for i in range(2):
-			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.25, tgt, true), Color("#c77dff"))   # 无诅咒→2段共2.5A魔法(用户2026-07-09"打无诅咒目标是魔法")
-		battle._damage._add_curse(tgt, 6.0, u)   # 技2诅咒6秒(用户2026-07-28: 10→6·登场/死亡诅咒仍 BUFF_SEC=5s)
+			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, STORM_DMG / 2.0, tgt, true), Color("#c77dff"))   # 无诅咒→2段共2.0A魔法(用户2026-07-09"打无诅咒目标是魔法"·2026-07-28 2.5→2.0)
+		battle._damage._add_curse(tgt, STORM_CURSE_SEC, u)   # 技2诅咒6秒(用户2026-07-28: 10→6)
 	battle._vfx._play_anim_vfx("res://assets/sprites/vfx/ghost-storm.png", tgt["pos"], 135.0, 15.0, 1.1)   # 灵魂风暴(回合制vfx/8帧·逐帧播·用户2026-07-11纠正:原误用skills/单帧图)
 	battle._skill_ring(tgt["pos"], Color(0.78, 0.49, 1.0, 0.6), 92.0)
 	battle._shake(0.1)

@@ -3,6 +3,11 @@ extends RefCounted
 ## 赌徒龟技能系统
 ## 类内名不变;外部名加 battle.
 
+## ★赌神数值单一事实源(用户2026-07-28 第三轮加强)。文案在 data/pets.json。
+const MULTI_ASPD := 0.1667   # 多重打击再打一次的攻击间隔倍率(0.30→0.1667 = ~3.3×→~6×攻速)
+const JOKER_DMG := 2.0       # 万能牌: ×ATK 物理 (1.0→2.0)
+const JOKER_SHIELD := 1.0    # 万能牌: ×ATK 永久护盾 (0.25→1.0)
+
 var battle
 
 func _init(b) -> void:
@@ -16,7 +21,7 @@ func _gambler_multi_cd(u: Dictionary) -> float:
 	var ch: float = float(u.get("multi_chance", base_ch))
 	if battle._battle_rng.randf() < ch:
 		u["multi_chance"] = ch * 0.8                  # 递减: 每次连锁×0.8
-		return maxf(0.12, u["atk_interval"] * 0.30)   # 快攻速再打 (~3.3×攻速; F5可调)
+		return maxf(0.06, u["atk_interval"] * MULTI_ASPD)   # 快攻速再打 (用户2026-07-28: ~3.3×→~6×攻速)
 	u["multi_chance"] = base_ch                       # 没中→重置回基础(含命运之轮0.60/赌注+0.20), 等下一次普攻
 	return u["atk_interval"]
 
@@ -176,13 +181,13 @@ func _gambler_wild_vfx(u: Dictionary, tgt: Dictionary) -> void:
 		ctw.tween_callback(func() -> void:
 			if is_instance_valid(card): card.queue_free()
 			if tgt.get("alive", false):
-				battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.0, tgt), Color("#ff4444"))   # ★命中才跳伤害
+				battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, JOKER_DMG, tgt), Color("#ff4444"))   # ★命中才跳伤害
 				battle._damage._buff(tgt, "atk", -0.15, true)                                        # 减攻也命中才上
 			_gambler_pop(tp, th, Color(1.0, 0.85, 0.35, 0.95))        # 命中金光
 			_gambler_pop(tp, th + 0.25, Color(1.0, 0.30, 0.30, 0.8)))  # 减攻红标
 	else:   # 无牌素材兜底: 即时结算目标伤害+减攻
 		if tgt.get("alive", false):
-			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.0, tgt), Color("#ff4444"))
+			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, JOKER_DMG, tgt), Color("#ff4444"))
 			battle._damage._buff(tgt, "atk", -0.15, true)
 	battle._shield_dome(u)                                                   # 护盾罩
 	_gambler_pop(u["pos"], float(u.get("height", 0.0)), Color(0.30, 1.0, 0.5, 0.85))   # 回血绿
@@ -203,7 +208,10 @@ func _sk_gambler_bet(u: Dictionary, tgt: Dictionary) -> void:    # 赌神龟·�
 	u["gambler_bet_until"] = battle._t + 3.0                           # 3秒多重概率+20%(见_gambler_multi_cd·回补钩)
 	battle._skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.55), 54.0)
 	for i in range(7):                                         # 7张牌barrage(错峰0.11s·命中才跳伤害·每张触发多重打击B·扣'七段')
-		battle._pending_shots.append({"delay": float(i) * 0.11, "fn": func() -> void: _gambler_throw_hit(u, tgt, per, true), "src": u})
+		# ★用户2026-07-28 报的 bug: 这里原来只传了 roll_multi=true, 而 _gambler_throw_hit 的
+		#   is_true 默认值是 true → 七段全走【真实伤害】穿透双抗, 与"七段物理伤害"的设定不符。
+		#   显式传 false 走物理。(另一处调用 :37 本来就显式传了 false,false, 只有这行漏了)
+		battle._pending_shots.append({"delay": float(i) * 0.11, "fn": func() -> void: _gambler_throw_hit(u, tgt, per, true, false), "src": u})
 
 func _sk_gambler_fate_wheel(u: Dictionary) -> void:             # 赌神龟·命运之轮(用户封板·80龟能): 抽1花色永久加属性(♠攻+5&血+30/♥护甲魔抗+2/♦暴击+8%&护穿+2/♣吸血+4%)·跨场累积=存GameState.gambler_wheel_stacks(本大轮累积·切轮重置·方案B·用户2026-07-09)
 	var _suit = battle._battle_rng.randi() % 4
@@ -221,8 +229,8 @@ func _sk_gambler_fate_wheel(u: Dictionary) -> void:             # 赌神龟·命
 		_gambler_apply_wheel_suit(uu, suit)
 		, "src": u})
 
-func _sk_gambler_wild(u: Dictionary, tgt: Dictionary) -> void:   # 赌神龟·万能牌: 丢1张牌=1段1.0A物理(用户2026-07-09"只造成1段伤害")+自身0.25A护盾+回5%maxHp+目标攻-15%
-	battle._damage._grant_shield(u, u["atk"] * 0.25)   # 自身护盾/回血即时(施法者)
+func _sk_gambler_wild(u: Dictionary, tgt: Dictionary) -> void:   # 赌神龟·万能牌: 丢1张牌=1段2.0A物理(用户2026-07-09"只造成1段伤害"·2026-07-28 1.0→2.0)+自身1.0A护盾(0.25→1.0)+回5%maxHp+目标攻-15%
+	battle._damage._grant_shield(u, u["atk"] * JOKER_SHIELD)   # 自身护盾/回血即时(施法者)
 	battle._damage._heal(u, u["maxHp"] * 0.05)
 	_gambler_wild_vfx(u, tgt)   # 丢小丑牌; ★目标伤害+减攻在牌命中回调里结算(命中才跳伤害·用户2026-07-14)
 

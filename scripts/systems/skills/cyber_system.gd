@@ -3,6 +3,9 @@ extends RefCounted
 ## 赛博龟技能系统
 ## 类内名不变;外部名加 battle.
 
+## ★赛博数值单一事实源(用户2026-07-28 第三轮削弱·侵入 94.0% 第5)。文案在 data/pets.json。
+const HIJACK_SEC := 4.0   # 侵入: 倒戈秒数(5→4), 同时也是赛博自身锁龟能的秒数
+
 var battle
 
 func _init(b) -> void:
@@ -83,13 +86,17 @@ func _sk_cyber_hijack(u: Dictionary) -> void:                   # 赛博龟·侵
 	#   现在只挂标记, 敌我关系由 battle._is_hostile 统一裁决(见 §HOSTILE)。
 	v["_hijack_orig_side"] = str(v["side"])   # 保留: _eff_side / 统计分组 / 归队清标记都读它
 	v["hijacked"] = true
-	v["hijack_until"] = battle._t + 5.0                                # 5秒(用户2026-07-16: 4→5)
+	v["hijack_until"] = battle._t + HIJACK_SEC                         # 用户2026-07-16: 4→5; 2026-07-28 削弱回 4
 	v["_hijack_by"] = u                                         # 人头归属: 被侵入者杀的算赛博的(用户2026-07-22, 赛博自己死了也算)
 	v["taunt_until"] = 0.0; v["taunt_by"] = null               # 清嘲讽残留(防倒戈期错误锁定)
 	v["stun_until"] = 0.0                                       # 解控(立即可倒戈行动)
 	battle._hijack_fx_attach(v)                                        # 全身红光 + 电流环绕(用户2026-07-22)
 	battle._vfx._float_text(v["pos"] + Vector2(0, -56), "侵入!", Color("#3fffd0"))
 	battle._skill_ring(v["pos"], Color(0.25, 1.0, 0.82, 0.5), 52.0)
+	# 用户2026-07-28 削弱: 侵入期间【赛博自己】锁龟能不充能 —— 与水晶壁垒/石头岩石护盾/全色风暴
+	# 同一套写法(_tick_skill_cd 读 energy_lock_until)。这条同时压掉"可同时黑多个"的叠加上限:
+	# 原实测 4.8 次/场 × 5 秒 ≈ 全场 39% 时间敌方少人(上路每边只有3个单位)。
+	u["energy_lock_until"] = battle._t + HIJACK_SEC
 	battle._beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", u["pos"], v["pos"], 30.0, Color(0.25, 1.0, 0.82, 0.75), 0.6)   # 侵入数据链(用户07-07仅给"参考Botworld黑客机器人"·具体视觉无原话)
 
 func _sk_cyber_smart(u: Dictionary) -> void:                   # 赛博龟·智能AI(封板·40龟能·充能型): +1充能→冲刺重定位(kite拉到理想射程·躲贴身); 常驻走位+登场+20%移速 [完整行动脑(躲大招/对齐激光)留F5]

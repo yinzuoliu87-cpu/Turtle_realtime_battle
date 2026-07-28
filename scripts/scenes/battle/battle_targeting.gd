@@ -120,6 +120,24 @@ func _targetable_enemies(u: Dictionary) -> Array:
 		out.append(o)
 	return out
 
+## 当前【输出最高】的友军 —— 输出以 攻击力 ÷ 攻击间隔 (=每秒攻击力) 排, 不是裸攻击力:
+## 攻速差在本项目里最大到 0.60 vs 0.85(近1.4倍), 只比攻击力会把慢攻速的坦克误判成输出位。
+## 召唤物/小将也算(它们可能就是当前真输出), 但排除不会普攻的(no_basic: 海盗船/水晶球那类)。
+## 用户 2026-07-28: 天使祝福从「最低血友军」改投这里 —— 原设定在实测里几乎总是把盾和攻速
+## 加成给了没有技能的陪跑小将, 等于浪费。
+func _top_dps_ally(u: Dictionary, include_self: bool = true):
+	var best = null
+	var bv := -1.0
+	for o in _allies_of(u, include_self):
+		if not o.get("alive", false) or bool(o.get("no_basic", false)):
+			continue
+		var iv: float = maxf(0.05, float(o.get("atk_interval", 1.0)))
+		var dps: float = float(o.get("atk", 0.0)) / iv
+		if dps > bv:
+			bv = dps
+			best = o
+	return best
+
 func _allies_of(u: Dictionary, include_self: bool = true) -> Array:
 	var out: Array = []
 	for o in battle._units:

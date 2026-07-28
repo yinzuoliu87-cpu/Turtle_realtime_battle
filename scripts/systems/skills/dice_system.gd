@@ -3,6 +3,14 @@ extends RefCounted
 ## 骰子龟技能系统
 ## 类内名不变;外部名加 battle.
 
+## ★骰子数值单一事实源(用户2026-07-28 第三轮加强·整只 13.3% 全表最弱)。文案在 data/pets.json。
+const ALLIN_DMG := 1.5            # 孤注一掷: ×ATK 物理 (1.2→1.5)
+const ALLIN_LIFESTEAL := 0.30     # 孤注一掷: 生命偷取
+const FLASH_SEG_MIN := 7          # 稳定骰子: 段数下限 (原 4+d6 = 5)
+const FLASH_SEG_MAX := 11         # 稳定骰子: 段数上限 (原 4+d6 = 10)
+const FLASH_SHIELD_PER_HIT := 0.2 # 稳定骰子: 每穿一次获得 ×ATK 护盾
+const FATE_LIFESTEAL := 0.50      # 命运骰子: 释放后首次攻击的生命偷取
+
 var battle
 
 func _init(b) -> void:
@@ -61,6 +69,7 @@ func _dice_dash_tick(u: Dictionary, delta: float) -> void:
 func _dice_dash_hit(u: Dictionary, tgt: Dictionary, dir: Vector2) -> void:
 	var scale_i: float = 0.9 * pow(0.9, float(int(u.get("dice_dash_seg", 0))))   # 每段递减10%(回合制falloffPct=10)
 	battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, scale_i, tgt), Color("#ff4444"))
+	battle._damage._grant_shield(u, float(u["atk"]) * FLASH_SHIELD_PER_HIT, 6.0)   # 每穿一次 +0.2ATK 护盾(用户2026-07-28)
 	_dice_blade_slash(tgt["pos"], dir)   # AI挥剑斩(沿冲刺方向)
 	battle._melee_lunge(u, tgt)
 
@@ -137,7 +146,7 @@ func _dice_scythe_step(fr: float, blade: Sprite3D, origin: Vector2, base_ang: fl
 	battle._world.add_child(tr)
 	var tt = battle._reg_tween(); tt.tween_property(tr, "modulate:a", 0.0, 0.15); tt.tween_callback(tr.queue_free)
 
-func _sk_dice_allin(u: Dictionary) -> void:                      # 骰子龟·孤注一掷(用户设计: 前方120°/300码镰刀扇形斩·1.2A物理+30%吸血)
+func _sk_dice_allin(u: Dictionary) -> void:                      # 骰子龟·孤注一掷(用户设计: 前方120°/300码镰刀扇形斩·1.5A物理+30%吸血·用户2026-07-28 1.2→1.5)
 	var tgt = battle._targeting._nearest_enemy(u)
 	var dir: Vector2 = (Vector2.RIGHT if tgt == null else (tgt["pos"] - u["pos"]))
 	if dir.length() < 1.0: dir = Vector2.RIGHT
@@ -149,7 +158,7 @@ func _sk_dice_allin(u: Dictionary) -> void:                      # 骰子龟·�
 		var d: float = to_o.length()
 		if d > 300.0 or d < 1.0: continue
 		if dir.dot(to_o / d) < half_cos: continue
-		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 1.2, o), Color("#ff4444"), 0.30)
+		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, ALLIN_DMG, o), Color("#ff4444"), ALLIN_LIFESTEAL)
 	_dice_scythe_sweep(u, u["pos"], dir, 300.0, 60.0)   # 红镰刀贴地弧扫过120°扇形(用户2026-07-13)
 	battle._skill_ring(u["pos"], Color(1.0, 0.3, 0.3, 0.35), 52.0)
 
@@ -157,9 +166,10 @@ func _sk_dice_allin(u: Dictionary) -> void:                      # 骰子龟·�
 #   掷骰 1-6 → 冲刺 (4 + 点数) 次; 首段 0.9×ATK 物理(吃暴击), 之后每段递减 10% (0.9 × 0.9^i)
 #   每刺间隔 DICE_STRIKE_GAP 秒【分帧铺开】(原来全部在同一帧解算 → 视觉糊成一坨/飘字堆叠)
 func _sk_dice_flash_strike(u: Dictionary) -> void:   # 稳定骰子(刀妹Irelia Q·破空斩式·用户2026-07-13): 掷骰(4+点数)段, 每段真冲刺穿到随机敌+挥剑斩·递减10%
-	var pips: int = randi_range(1, 6)
-	var count: int = 4 + pips
-	battle._vfx._float_text(u["pos"] + Vector2(0, -64), "稳定骰子! %d点→%d刺" % [pips, count], Color("#ffd93d"))
+	# 用户2026-07-28: 4+d6(5~10段) → 7~11段。直接掷段数而不是"6+d5" —— 后者会让飘字显示 1~5 点,
+	# 与"骰子"的六面设定矛盾; 现在飘字直接报段数, 不再假装是点数。
+	var count: int = randi_range(FLASH_SEG_MIN, FLASH_SEG_MAX)
+	battle._vfx._float_text(u["pos"] + Vector2(0, -64), "稳定骰子! %d刺" % count, Color("#ffd93d"))
 	var t0 = _dice_pick_strike_target(u)
 	if t0 == null: return
 	u["dice_dash_active"] = true                    # 进入真冲刺连突态(逐帧穿刺, 见 _dice_dash_tick)
@@ -180,6 +190,7 @@ func _sk_dice_fate(u: Dictionary) -> void:
 	u["crit_fate_until"] = battle._t + 999.0   # 持续到下次放技能(开头撤旧增益自然重掷·用户设计)
 	u["crit_fate_amt"] = add_crit
 	u["crit_dmg_fate_amt"] = add_cd
+	u["dice_fate_ls"] = true   # 用户2026-07-28: 释放后【首次攻击】附带 50% 生命偷取(在 _on_basic_hit 消费)
 	battle._vfx._float_text(u["pos"] + Vector2(0, -64), "命运骰子! +%d%%暴击" % int(roll * 100), Color("#ffd93d"))
 
 # 龟壳·复制: 随机复制 2 个敌方可用技立即释放 (60%效果简化为全效, 留 batch3)

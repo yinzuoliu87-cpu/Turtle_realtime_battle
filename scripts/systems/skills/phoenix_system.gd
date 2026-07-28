@@ -4,7 +4,7 @@ extends RefCounted
 ## 类内簇函数名不变→内部互调零改动;外部名加 battle. 前缀。
 
 ## ★凤凰数值单一事实源(用户2026-07-28 削弱·整只 94.8% 全表第一)。文案在 data/pets.json。
-const SCALD_BURN_COEF := 0.6      # 烫伤: 灼烧层数 = ×ATK (1.0→0.6)
+const SCALD_BURN_COEF := 0.5      # 烫伤: 灼烧层数 = ×ATK (1.0→0.6→0.5·用户2026-07-28)
 const NIRVANA_BURN_COEF := 0.3    # 涅槃(首死复活): 对全体敌灼烧层数 = ×ATK (原走全局 _default_burn_stacks 0.67)
 const NIRVANA_HP_PCT := 0.25      # 涅槃: 复活生命 = ×最大生命 (0.30→0.25)
 const NIRVANA_ENH_HP_PCT := 0.60  # 强化涅槃: 复活生命 = ×最大生命 (1.00→0.60)

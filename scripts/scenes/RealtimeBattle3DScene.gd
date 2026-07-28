@@ -91,6 +91,8 @@ const SHIELD_CAP_MULT := 1.5
 const RAGE_MAX := 100.0                    # 怒气满 (熔岩变身)
 const STACK_DOT_TICK := 1.0                # 各类层数 DoT 每秒结算一次
 const BUFF_SEC := 5.0                      # buff/控制/DoT 通用秒数 (规格 "N秒", 待 F5 调)
+const DICE_BLOOD_CRIT := 0.70              # 骰子·赌徒之血: 损30%生命时的满额暴击加成(用户2026-07-28: 0.50→0.70)
+const CYBER_LASER_FALLOFF := 0.50          # 赛博贯穿激光: 第一个之后的敌人伤害倍率(用户2026-07-28削弱)
 const CTRL_SEC := 1.5                      # 眩晕/冻结/嘲讽 默认秒数
 
 # 28 龟战斗属性 (1:1 复用): id → [melee, move_spd(px/s), atk_interval(s), atk_range(px)]
@@ -285,7 +287,7 @@ const BASIC_ATK := {
 	"angel":    {"phys": 1.0, "hits": 1},                                          # 远程平A 1.0ATK单段(用户)+审判被动
 	"ice":      {"phys": 1.0, "magic": 1.0, "hits": 1, "alt_each": true},           # 单段逐次交替物/魔 1.0ATK(用户2026-07-28: 0.8→1.0·配冰柱层加强)
 	"ninja":    {"phys": 1.0, "hits": 1, "rider": "bleed"},                         # 斩击(封板): 近战1A物理+2层流血; 冲击已转被动auto-dash
-	"ghost":    {"phys": 0.4, "true": 0.9, "hits": 1},                             # 物+真 (原0.65 错)
+	"ghost":    {"phys": 0.5, "true": 0.7, "hits": 1},                             # 物+真 (用户2026-07-28削弱: 0.4物+0.9真 → 0.5物+0.7真)
 	"diamond":  {"phys": 0.7, "def": 0.6, "mr": 0.6, "hits": 1},                    # +护甲魔抗
 	"fortune":  {"phys": 1.0, "gold": 0.02, "hits": 1},                            # 1下(用户; 回合制原2下)
 	"dice":     {"phys": 0.9, "critflat": 55.0, "hits": 1},                         # 90%物理+5500%暴击率flat·单段近战(对齐回合制 diceAttack critBonusMult=55·无实时原话)
@@ -2656,14 +2658,22 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	if u["id"] == "ghost":          # 幽灵普攻幽魂触碰(封板): 远程灵体触碰·专属幽魂弹道·命中同发0.4A物理(红)+0.9A真实(白)+灵体怨气(用户2026-07-11修:原真实段瞬发/物理段随弹道→不同时跳)
 		_ballistics._fire_ghost_wisp(u, tgt)
 		return
-	if u["id"] == "cyber":          # 贯穿激光(封板): 1A物理·穿透目标飞到射程尽头·打穿一线所有敌(射程450)
+	if u["id"] == "cyber":          # 贯穿激光(封板): 首个1A物理·后续50%(用户2026-07-28削弱)·穿透飞到射程尽头(射程450)
 		var _cdir: Vector2 = tgt["pos"] - u["pos"]
 		if _cdir.length() < 1.0: _cdir = Vector2.RIGHT
 		_cdir = _cdir.normalized()
+		# ★必须按【离赛博的距离】排序才有"穿过的第一个"这个概念 ——
+		#   原实现是遍历全体敌人判在不在线上, 命中顺序取决于 _units 的数组顺序, 没有先后可言。
+		var _hits: Array = []
 		for o in _targeting._enemies_of(u):
 			if o.get("alive", false) and _on_line(u["pos"], _cdir, o["pos"], 55.0):
-				_damage._apply_damage_from(u, o, _atk_dmg(u, 1.0, o), Color("#9bf0ff"))
-				_vfx._hit_spark(o)                                                       # 沿线每个命中点火花(2026-07-15提质)
+				_hits.append(o)
+		_hits.sort_custom(func(a, b): return (a["pos"] - u["pos"]).length() < (b["pos"] - u["pos"]).length())
+		for _i2 in range(_hits.size()):
+			var o: Dictionary = _hits[_i2]
+			var _sc: float = 1.0 if _i2 == 0 else CYBER_LASER_FALLOFF   # 首个满伤, 后续 50%
+			_damage._apply_damage_from(u, o, _atk_dmg(u, _sc, o), Color("#9bf0ff"))
+			_vfx._hit_spark(o)                                                       # 沿线每个命中点火花(2026-07-15提质)
 		_bolt_line(u["pos"], u["pos"] + _cdir * 1300.0, Color(0.85, 1.0, 1.0))     # 白青亮核心线
 		_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", u["pos"], u["pos"] + _cdir * 1300.0, 44.0, Color(0.5, 0.9, 1.0, 0.55), 0.22)   # 青色辉光束(细·随核心线衰减)
 		_on_basic_hit(u, tgt)
@@ -3947,8 +3957,17 @@ func _do_basic(u: Dictionary, tgt: Dictionary, spec: Dictionary) -> void:
 func _emit_basic(u: Dictionary, tgt: Dictionary, dmg: int, col: Color, i: int) -> void:
 	if dmg <= 0:
 		return
+	# 骰子·命运骰子(用户2026-07-28): 释放后【首次攻击】附带50%生命偷取, 打完即消费。
+	# ★走 _apply_damage_from 的 extra_ls 参数 —— 那是本项目既有的"本次伤害额外吸血"通道
+	#   (孤注一掷的30%吸血就走它)。不要在 _on_basic_hit 里事后按伤害值回血: 那里拿不到本次伤害数,
+	#   我第一版就是编了个不存在的 _last_dmg_dealt。
+	var _ls: float = 0.0
+	if u.get("dice_fate_ls", false):
+		_ls = DiceSystem.FATE_LIFESTEAL
+		u["dice_fate_ls"] = false
+		_vfx._float_text(u["pos"] + Vector2(0, -58), "命运吸血!", Color("#ff6b6b"))
 	if u["melee"]:
-		_damage._apply_damage_from(u, tgt, dmg, col)
+		_damage._apply_damage_from(u, tgt, dmg, col, _ls)
 		if i == 0:
 			_vfx._flash(tgt); _melee_lunge(u, tgt)
 	else:
@@ -3972,7 +3991,7 @@ func _splash_adjacent(u: Dictionary, tgt: Dictionary, frac: float) -> void:
 const SHELL_SPLASH_RADIUS := 120.0
 const PHX_CONE_HALF_DEG := 35.0     # 凤凰喷火扇形半角(全70°)
 const PHX_FLAME_MAG_COEF := 0.2      # 每0.5s tick 魔法系数 ×ATK
-const PHX_FLAME_BURN_COEF := 0.07     # 每0.5s tick 灼烧层系数 ×ATK ★T3实装默认(从熔岩龟抄来). 用户2026-06-30那句"每次普攻加灼烧层0.07ATK"是【对熔岩龟说的】(上文在谈熔岩攻速0.85), 凤凰这里用户原话写的是"每0.5秒造成？魔法伤害并施加？灼烧层"=没给数 → 见附录A
+const PHX_FLAME_BURN_COEF := 0.04     # 每0.5s tick 灼烧层系数 ×ATK (用户2026-07-28削弱: 0.07→0.04) ★T3实装默认(从熔岩龟抄来). 用户2026-06-30那句"每次普攻加灼烧层0.07ATK"是【对熔岩龟说的】(上文在谈熔岩攻速0.85), 凤凰这里用户原话写的是"每0.5秒造成？魔法伤害并施加？灼烧层"=没给数 → 见附录A
 
 func _spawn_burn_ember(u: Dictionary) -> void:
 	var pos2d: Vector2 = u["pos"] + Vector2(_juice_rng.randf_range(-14.0, 14.0), _juice_rng.randf_range(-4.0, 8.0))
@@ -6388,6 +6407,8 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 			_crystal_sys._crystal_stack(u, tgt, 1)   # 普攻叠1层结晶(满5引爆·封板)·与水晶球共享层数走同一helper(引爆改吃魔抗)
 		"angel":                                          # 审判: 每段攻击额外 +目标当前HP 8% 魔法(2026-07-22订正: 注释原写11%, 代码一直是 0.08)
 			_damage._apply_damage_from(u, tgt, _mitigate(u, tgt["hp"] * 0.08, tgt, true), Color("#9be7ff"), 0.0, false)   # 魔法(吃魔抗+蓝字), 原flat固定值绕魔抗+错色=bug
+			if u.get("_ascend_growth", false):
+				_angel_sys._ascend_growth_tick(u)   # 飞升打包被动(用户2026-07-28): 每次攻击 +5龟能 +1%攻击力·持续到战斗结束
 		# gambler 多重打击改云顶剑士式连击(见状态机 _gambler_sys._gambler_multi_cd), 不在这里追加
 		"bamboo":                                         # 生长(改造): 蓄力时下一发普攻强化(追加魔法+回血+永久成长)
 			if u.get("bamboo_charge", false):
@@ -6502,9 +6523,9 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 				u["base_atk"] = _want
 				_recalc_stats(u)
 
-	if u["id"] == "dice":   # 赌徒之血: 按已损血加暴击(损30%满+50%); 暴击率>100%部分每1%→1.5%暴伤
+	if u["id"] == "dice":   # 赌徒之血: 按已损血加暴击(损30%满+70%·用户2026-07-28 50→70); 暴击率>100%部分每1%→1.5%暴伤
 		var _lost: float = clampf(1.0 - u["hp"] / u["maxHp"], 0.0, 1.0)
-		u["crit"] = float(u.get("dice_base_crit", u["crit"])) + minf(_lost / 0.30, 1.0) * 0.50
+		u["crit"] = float(u.get("dice_base_crit", u["crit"])) + minf(_lost / 0.30, 1.0) * DICE_BLOOD_CRIT
 		# (暴击率>100%转暴伤由 _resolve_dmg 全局处理, 这里只设暴击率)
 	# --- 赛博浮游炮(用户2026-07-15重构: 非实体·纯视觉跟随+攻击动作·不可被选中/打死): 每2秒+1 上限20 (用户2026-07-28削弱: 原每3秒+2) ---
 	if u["id"] == "cyber":
@@ -6565,6 +6586,9 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			u["_goldtimer"] = 0.0; u["gold"] += _juice_rng.randi_range(4, 7)
 			for _gk in range(2):   # 聚宝盆冒金币: 脚下叮当迸2金块(设计"每隔几秒叮当冒金币")
 				_gold_chunk_erupt(u["pos"] + Vector2(randf_range(-24.0, 24.0), randf_range(6.0, 18.0)))
+	# --- 线条墨迹(用户2026-07-28): 自身实时获得 =(0.5×攻击力)% 攻速 ---
+	if u["id"] == "line":
+		_line_sys._line_aspd_convert(u)
 	# --- 彩虹棱镜(封板L267): 每6秒随机红/蓝/绿·普攻附对应效果(红+0.25A真伤/蓝+0.2A盾4s/绿回2.5%已损·见_on_basic_hit) ---
 	if u["id"] == "rainbow":
 		_rainbow_sys._rainbow_prism_convert(u)   # 棱镜转化(实时·每帧): 10%最大生命→攻击力, 0.3×攻击力%→攻速
