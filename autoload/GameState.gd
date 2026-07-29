@@ -694,8 +694,8 @@ func _ready() -> void:
 	if Engine.has_singleton("Audio") or get_node_or_null("/root/Audio"):
 		Audio.bgm_volume = bgm_volume
 		Audio.sfx_volume = sfx_volume
-	# ★不再在这里改屏幕方向: project.godot 已锁 sensor_landscape, 横屏是唯一形态。
-	#   (摸鱼模式的方向切换路线已废, 见 SettingsScene 里的说明。)
+	# ★摸鱼模式尚未落地(两条路线都被引擎约束否掉, 见 docs/plans/20260729b-摸鱼模式小窗口.md)。
+	#   idle_mode 字段保留(存档已有), 但开机不做任何事。
 
 
 ## 全局全屏切换: F11 / Alt+Enter. (画面靠 stretch=canvas_items + aspect=keep 等比放大到任意分辨率/4K.)

@@ -35,13 +35,14 @@ func _ready() -> void:
 	# 低画质模式 @ (W/2, 490) — 现在是【真开关】: 关 MSAA + 3D 渲染分辨率 ×0.75 + 停菜单背景漂移; 持久化到存档.
 	_perf_btn = _text_button(W / 2.0, 490.0, _perf_label(), _toggle_perf)
 
-	# ★摸鱼模式按钮【暂时撤掉】(2026-07-29)。
-	#   原实现靠切设备方向(竖屏 letterbox), 用户实测 iOS 上"关的时候还是竖着的" ——
-	#   根因: iOS 在【启动那一刻】就按 Info.plist 定方向, plist 一旦允许竖屏,
-	#   竖着拿手机启动就直接竖屏起来; 而代码里锁回横屏跑在启动【之后】,
-	#   iOS 16+ 收窄方向掩码不会自动转回去。→ "允许切竖屏"和"默认必横屏"不可兼得。
-	#   剩下的路是方案书路线 2(整个游戏塞进 SubViewport 再缩小居中), 待用户拍板。
+	# ★摸鱼模式按钮【暂缺】—— 两条实现路线都被引擎约束否掉(2026-07-29):
+	#   ① 切设备方向: iOS 在启动那一刻按 Info.plist 定方向, 允许竖屏就会竖屏启动,
+	#      运行时收窄掩码不会转回来 → 用户实测"关掉也还是竖着的"
+	#   ② 把当前场景搬进 SubViewport: 探针实测【current_scene 会变成 null】,
+	#      于是 reload_current_scene()(6 处在用)与 MainMenu 的 current_scene 守卫全失效
+	#   剩下的只有"自己接管全部场景切换"这一条, 是另一个量级, 待用户拍板。
 	#   ★宁可不放按钮, 也不放一个点了没反应的按钮。
+
 
 	# 重置存档 @ (W/2, 580) — ⚠ 破坏性 → 二次确认
 	_text_button(W / 2.0, 580.0, "⚠ 重置所有存档", _ask_reset)
@@ -60,7 +61,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
 
-func _fullscreen_label() -> String:
+func _fullscreen_labelfunc _fullscreen_label() -> String:
 	var m := DisplayServer.window_get_mode()
 	if m == DisplayServer.WINDOW_MODE_FULLSCREEN or m == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
 		return "退出全屏"
