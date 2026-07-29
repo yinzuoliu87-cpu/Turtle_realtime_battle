@@ -78,6 +78,17 @@ func _shop_selfshot() -> void:
 		if si >= 0 and si < _offer.size() and _offer[si] != null:
 			for _k in range(int(ow)):
 				GameState.persistent_bench.append({"id": str((_offer[si] as Dictionary).get("id", "")), "star": 1})
+			# SHOT_OWNED2=N: 再塞 N 件 ★2 —— 截"买 1 件会一路合成到 ★3"那一态用
+			var ow2 := OS.get_environment("SHOT_OWNED2")
+			if ow2.is_valid_int():
+				for _k2 in range(int(ow2)):
+					GameState.persistent_bench.append({"id": str((_offer[si] as Dictionary).get("id", "")), "star": 2})
+	# SHOT_COINS=N: 强制深海币数(截"买不起"态用) / SHOT_SOLD=i,j: 把这几格置空(截"已购"态)
+	if OS.get_environment("SHOT_COINS").is_valid_int():
+		GameState.meta_deepsea_coins = int(OS.get_environment("SHOT_COINS"))
+	for _si in OS.get_environment("SHOT_SOLD").split(","):
+		if _si.is_valid_int() and int(_si) >= 0 and int(_si) < _offer.size():
+			_offer[int(_si)] = null
 	if OS.get_environment("SHOT_SEL") != "":
 		_sel = int(OS.get_environment("SHOT_SEL"))
 	_rebuild()
@@ -418,13 +429,16 @@ func _owned_count(item_id: String, star: int = 1) -> int:
 						if it3 is Dictionary and str(it3.get("id", "")) == item_id and int(it3.get("star", 1)) == star: n += 1
 	return n
 
+## 1费用灰(用户 2026-07-29「1费不应该是灰色吗」)。#9aa6b4 在卡底 #11202e 上
+## 对比度 6.68, 落在 3费蓝(6.50)与 2费绿(9.49)之间 —— 是灰的, 又不会在五档里显得没做完。
+## (原 #8a96a3 对比度 5.49 其实也够读, 我先前说它"像禁用"是主观判断, 不成立。)
 func _cost_color(cost: int) -> Color:   # 按费用上色(用户2026-07-19: 稀有度字段废弃, 费用才是真档位; 与旧稀有度严格1:1 → 颜色不变)
 	match cost:
 		2: return Color("#4ade80")
 		3: return Color("#60a5fa")
 		4: return Color("#c084fc")
 		5: return Color("#fbbf24")
-		_: return Color("#8a96a3")
+		_: return Color("#9aa6b4")   # 1费 = 灰
 
 func _card(idx: int, pos: Vector2) -> Control:
 	var box := Panel.new()
@@ -441,9 +455,12 @@ func _card(idx: int, pos: Vector2) -> Control:
 	box.add_theme_stylebox_override("panel", sb)
 	box.position = pos; box.size = Vector2(SLOT_W, SLOT_H)
 	if not bought:
-		var fr := _nine(box, CARD_TEX, CARD_MARGIN, Vector2.ZERO, Vector2(SLOT_W, SLOT_H), 1)
-		# 框本身是冷蓝的, 用 modulate 染成该费用档的色相 —— 一眼看出贵贱, 不用读"N费"
-		fr.modulate = Color("#ffd93d") if sel else _cost_color(int((_offer[idx] as Dictionary).get("cost", 1))).lerp(Color(1, 1, 1), 0.35)
+		# ★选中与否【换不同贴图】, 不再 modulate 染色 ——
+		#   modulate 是乘法, 深色贴图乘什么都提不亮: 实测染色版"选中 vs 普通"色差只有 26
+		#   (人眼要 >60), 肉眼分不出。两张独立贴图的边框色差是 135。
+		#   费用档也不再压在框上, 改由【名字颜色】承担。
+		var _c: int = clampi(int((_offer[idx] as Dictionary).get("cost", 1)), 1, 5)
+		_nine(box, CARD_TEX_SEL if sel else CARD_TEX_TIER[_c - 1], CARD_MARGIN, Vector2.ZERO, Vector2(SLOT_W, SLOT_H), 1)
 	if bought:
 		var sold := Label.new(); sold.text = "已购"
 		sold.add_theme_color_override("font_color", Color("#4a5663")); sold.add_theme_font_size_override("font_size", 16)
@@ -463,11 +480,16 @@ func _card(idx: int, pos: Vector2) -> Control:
 		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		# 「N 费」撤掉后顶部空出 17px, 全给图标 —— 卡片上最该被一眼认出的是【这是什么东西】
-		ic.position = Vector2(SLOT_W / 2.0 - 32, 16); ic.size = Vector2(64, 60)
+		# 卡框边 10 → 内容从 18 起, 底部对称留 8。原来上留 12 / 下留 5.5, 差一倍。
+		ic.position = Vector2(SLOT_W / 2.0 - 30, 18); ic.size = Vector2(60, 56)
 		box.add_child(ic)
+	# ★名字按费用档着色(用户 2026-07-29)。撤掉「N 费」文字后费用信息一度是【丢的】——
+	#   我当时说"靠卡框颜色表达", 但实测卡框 modulate 染色的色差只有 6~10(人眼要 >60),
+	#   等于没表达。名字是卡上唯一够大的文字, 由它承担费用档最实在。
 	var nm := Label.new(); nm.text = str(edef.get("name", edef.get("id", "?")))
-	nm.add_theme_font_size_override("font_size", 16); nm.add_theme_color_override("font_color", Color("#e8f2ff"))
-	nm.position = Vector2(11, 80); nm.size = Vector2(SLOT_W - 22, 22)
+	nm.add_theme_font_size_override("font_size", 15)
+	nm.add_theme_color_override("font_color", _cost_color(int(edef.get("cost", 1))))
+	nm.position = Vector2(11, 78); nm.size = Vector2(SLOT_W - 22, 22)
 	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; nm.clip_text = true
 	box.add_child(nm)
 	# ★卡面【不放】效果摘要(用户 2026-07-28:「小卡片内别加摘要」)。
@@ -475,19 +497,48 @@ func _card(idx: int, pos: Vector2) -> Control:
 	#   但卡宽 132 只放得下约 11 个字, 截断句在卡上又小又碎 —— 用户拍板砍掉,
 	#   完整描述【全部交给右侧详情面板】(字号也加大到 18)。
 	#   腾出的 16px 给了图标和名字, 见下面的 y 排布。
-	var owned := _owned_count(str(edef.get("id", "")))   # 已拥有件数(凑3件同款同星→自动升星)
-	if owned > 0:
-		# 卡角也用圆点(与详情面板同一套视觉), 不再写「已有N」——
-		# 一眼看出离三合一还差几颗, 比数字更快。
-		_merge_pips(box, Vector2(SLOT_W - 44, 15), owned, 8.0)
+	var owned := _owned_count(str(edef.get("id", "")))   # 已拥有 ★1 件数
+	var will_star := _purchase_merge_star(str(edef.get("id", "")))   # 这一买会合成到几星(0=不合成)
+	if will_star >= 2:
+		# ★只在「差 1 件就合成」时出现两颗闪光星。1 件不画 ——
+		#   装备自己就有 ★1/★2/★3, 画一颗星会被读成"这是 ★1 装备"(每张卡都是), 等于噪音。
+		# ★星星数 = 这一买会合成到几星(2 或 3), 不是"已有几件"。
+		#   3 星的情形: ★1 已有 2 件【且】★2 也已有 2 件 —— auto_merge_all 是 while 循环,
+		#   会一路级联 3×★1→★2、再 3×★2→★3。这是最值得提示的一刻。
+		# ★右端定在 x=118: 选中框的青色发光边比档位框厚, 实测星星放到 120 会被它切掉半颗。
+		for k in range(will_star):
+			_glint_star(box, Vector2(118.0 - 13.0 - k * 14.0, 13), 13.0, k * 0.3)
 	var price := _price(edef)
 	var afford := int(GameState.meta_deepsea_coins) >= price
-	_coin_icon(box, Vector2(SLOT_W / 2.0 - 25, SLOT_H - 33), 18.0)
+	# ★币 + 数字当【一个整体】水平居中, 且竖直按中线对齐。
+	#   原来是各自绝对定位: 实测竖直差 3.2px、整体偏左 9.5px, 而且价格是【左对齐+固定起点】,
+	#   价格变两位数时会更偏。用 HBoxContainer 交给引擎排, 位数再变也不会跑。
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.position = Vector2(0, 102); row.size = Vector2(SLOT_W, 18)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(row)
+	var ci := TextureRect.new()
+	ci.texture = COIN_TEX
+	ci.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ci.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	ci.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	ci.custom_minimum_size = Vector2(15, 15)
+	ci.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(ci)
 	var pr := Label.new(); pr.text = "%d" % price
-	pr.add_theme_font_size_override("font_size", 16)
-	pr.add_theme_color_override("font_color", Color("#5fd0e0") if afford else Color("#ff6b6b"))
-	pr.position = Vector2(SLOT_W / 2.0 - 2, SLOT_H - 36); pr.size = Vector2(46, 24); pr.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	box.add_child(pr)
+	pr.add_theme_font_size_override("font_size", 15)
+	pr.add_theme_color_override("font_color", Color("#a8cfe0") if afford else Color("#ff6b6b"))
+	pr.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	pr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(pr)
+	# ★买不起 → 【整张卡变灰变暗】(用户 2026-07-29:「云顶的做法是…买不起时整个卡片去变灰」)。
+	#   原来只是价格数字变红 —— 那是个很弱的信号, 要盯着数字看才发现。
+	#   整卡压暗是"这张现在与你无关"的最直白表达, 而且【不干扰】费用框色和选中态:
+	#   modulate 在这里是【压暗】不是提亮, 乘法正好胜任(这也是它唯一擅长的事)。
+	if not afford:
+		box.modulate = Color(0.42, 0.46, 0.52)
 	for ch in box.get_children():
 		ch.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# ★不再用 tooltip 放描述 —— 手机没有 hover, 那是"看不到装备描述"的直接原因(用户2026-07-28)。
@@ -578,14 +629,14 @@ func _build_detail_panel() -> void:
 		ic.position = Vector2(34, 32); ic.size = Vector2(66, 58)
 		box.add_child(ic)
 	var nm := Label.new(); nm.text = str(edef.get("name", "?"))
-	nm.add_theme_font_size_override("font_size", 24)
+	nm.add_theme_font_size_override("font_size", 26)
 	nm.add_theme_color_override("font_color", _cost_color(cost))
 	nm.position = Vector2(112, 36); nm.size = Vector2(PANEL_W - 148, 32)
 	box.add_child(nm)
-	# 「N 费」是云顶黑话, 图鉴和列表用的一直是正式的「费用 N」—— 同一概念两套说法。
-	# 用户 2026-07-29:「1费这种口语词真的给玩家看吗」→ 统一成「费用 N」。
-	var cl := Label.new(); cl.text = "费用 %d" % cost
-	cl.add_theme_font_size_override("font_size", 16)
+	# 直接写清单位: 「2 深海币」比「费用 2」更明确 —— 费用和售价在本作恒等(PRICE_MULT=1),
+	# 与其用一个抽象档位名, 不如告诉玩家【要付多少、付的是什么】。(用户 2026-07-29)
+	var cl := Label.new(); cl.text = "%d 深海币" % _price(edef)
+	cl.add_theme_font_size_override("font_size", 17)
 	cl.add_theme_color_override("font_color", Color("#9fb6c9"))
 	cl.position = Vector2(112, 70); cl.size = Vector2(160, 22)
 	box.add_child(cl)
@@ -598,52 +649,62 @@ func _build_detail_panel() -> void:
 	desc.fit_content = false
 	desc.scroll_active = true
 	# 字号 16 → 18(用户 2026-07-28:「这么小的字?」)。卡面摘要砍掉后, 完整描述全靠这一块。
-	desc.add_theme_font_size_override("normal_font_size", 18)
-	desc.position = Vector2(34, 116); desc.size = Vector2(PANEL_W - 68, 214)
-	desc.text = _rich_desc(edef)
+	desc.add_theme_font_size_override("normal_font_size", 20)
+	desc.position = Vector2(34, 112); desc.size = Vector2(PANEL_W - 68, 264)
+	desc.text = _rich_desc(edef, own_star if own_mode else 1)
 	box.add_child(desc)
 	# ★59 件里有 1 件(玩偶小熊 297px > 框 230)一屏放不下 —— 门禁⑥量出来的。
 	#   不加提示的话, 玩家看到的是"描述断在半句", 会以为是 bug 而不是"可以滚"。
 	_add_scroll_hint(box, desc)
 
-	_panel_sep(box, 344)
+	var _sep_a := _panel_sep(box, 384)
 
 	# ★属性数值 —— 商店原先【一个数字都不显示】: 花钱买之前看不到它加多少攻/血/暴击。
 	#   截图才发现这块本来是 235px 的空白。
 	#   复用 EquipStats.stat_lines(背包/图鉴同一个格式化函数) —— 不自己写第二份会漂的镜像。
-	_build_stat_rows(box, str(edef.get("id", "")), own_star if own_mode else 1)
+	var _stat_hdr := Label.new(); _stat_hdr.text = "属性"
+	_stat_hdr.add_theme_font_size_override("font_size", 15)
+	_stat_hdr.add_theme_color_override("font_color", Color("#58d3ff"))
+	_stat_hdr.position = Vector2(34, 390); _stat_hdr.size = Vector2(80, 18)
+	box.add_child(_stat_hdr)
+	var _stat_nodes: Array = _build_stat_rows(box, str(edef.get("id", "")), own_star if own_mode else 1)
 
-	_panel_sep(box, 424)
 
 	# 合成进度: 「已有 N/3」+ 三颗圆点。
 	# ★原来这里还有一句 _merge_hint()「集齐 3 件同款可合成 ★2」——【删了】。
 	#   用户 2026-07-28:「这 3 合 1 为啥还有提示呢，你不是参考了商业游戏吗」。
 	#   云顶/酒馆战棋都不在每件商品上重复全局规则, 只显示进度。圆点就是进度。
-	var own := Label.new()
-	# 看自己已有的 ★2/★3 时, 进度该按【那一星】数(3 件 ★2 才升 ★3), 不是按 ★1。
-	own.text = "合成进度  %d/3" % owned if not own_mode else "★%d · 已有 %d 件" % [own_star, owned]
-	own.add_theme_font_size_override("font_size", 16)
-	own.add_theme_color_override("font_color", Color("#ffd93d") if owned >= 2 else Color("#9fb6c9"))
-	own.position = Vector2(34, 436); own.size = Vector2(170, 22)
-	box.add_child(own)
-	_merge_pips(box, Vector2(206, 442), owned, 11.0)
-	# ★这里【故意不做】"按文字实际高度把下面几块上移"的收拢。
-	#   我先做了收拢, 探针实测 content_h=135 / 框 214 → 该上移 67px。但购买按钮是【钉死在
-	#   面板底部】的(CTA 位置不该随内容长短跳动, 手机上尤其), 于是那 67px 空洞会从
-	#   "描述框内的段后留白"变成"合成进度与购买按钮之间的悬空洞" —— 反而更难看。
-	#   固定版式下: 空白留在文字后面像留白, 留在两块中间像漏了东西。
+	# ★详情面板【不再显示合成块】(用户 2026-07-29「干脆不要合成了」)。
+	#   卡片右上角那两三颗星仍在 —— 那是"这一买会升到几星"的即时提示, 在做购买决定的
+	#   那一眼就看得到; 面板里再画一遍算式属于重复, 而且占掉的正是描述最缺的高度。
+	#   省下来的 ~76px 全给描述框(字号加大后原本有 7 件要滚, 现在只剩 1 件)。
+	# ★描述短时把下面几块【居中收拢】(用户 2026-07-29 反馈中段空太多)。
+	#   我先前试过"往上顶"并否决了 —— 购买按钮钉死在底部, 上顶会让空洞从"文字后的留白"
+	#   变成"合成进度与按钮之间的悬空洞", 更难看。
+	#   现在改成【把中间那一坨在剩余空间里居中】: 上下各分一半, 看起来像是有意留的,
+	#   而不是某一侧漏了东西。购买按钮仍然不动(CTA 位置不该随内容长短跳)。
+	_center_middle(desc, [_sep_a, _stat_hdr] + _stat_nodes)
+
 
 
 	# ★购买按钮(第二步确认) —— 花钱的按钮做最大
 	var buy := Button.new()
 	buy.add_theme_font_size_override("font_size", 22)
-	buy.position = Vector2(34, PANEL_H - 100); buy.size = Vector2(PANEL_W - 68, 56)
+	# ★按钮加高 56 → 68(用户 2026-07-29「购买按钮你不觉得很扁吗」)。
+	#   372×56 是 6.6:1, 拉得又宽又薄; 68 高后是 5.5:1, 而且它是全页最主要的动作,
+	#   本来就该是最大的那个可点物。
+	# ★y 从 PANEL_H-80(=512) 抬到 PANEL_H-109(=483)。
+	#   原来下沿 580, 而面板框九宫格 margin=25 → 内容安全区下界只有 567 —— 压进下边框 13px,
+	#   看着就是"按钮太低"。现在下沿 551, 距安全区下界留 16px。
+	buy.position = Vector2(34, PANEL_H - 109); buy.size = Vector2(PANEL_W - 68, 68)
 	if own_mode:
 		# 看的是自己已有的那件 —— 商店不做装备/合星/卖, 那些在背包页。这里给一条去路。
 		buy.text = "去 🎒 背包页 装备 / 卖"
 		buy.add_theme_font_size_override("font_size", 19)
 		buy.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Inventory.tscn"))
-		_skin_button(buy); box.add_child(buy)
+		_skin_button(buy, true, BUY_BTN_TEX)
+		_gold_btn_text(buy)
+		box.add_child(buy)
 		return
 	_coin_button_icon(buy, 24)
 	if coins >= price:
@@ -653,7 +714,9 @@ func _build_detail_panel() -> void:
 		# 买不起要说清【原因和差多少】, 不是只把按钮变灰(用户 P1-4)
 		buy.text = "深海币不足 (还差 %d)" % (price - coins)
 		buy.disabled = true
-	_skin_button(buy); box.add_child(buy)
+	_skin_button(buy, true, BUY_BTN_TEX)
+	_gold_btn_text(buy)
+	box.add_child(buy)
 
 
 
@@ -687,8 +750,10 @@ func _add_scroll_hint(box: Control, desc: RichTextLabel) -> void:
 ## ★复用 EquipStats.stat_lines() —— 背包(_stat_block)和图鉴(stat_line_all_stars)用的同一个函数,
 ##   量纲/名称/百分号全在那一处定义。自己在这里再写一遍格式化就是又造一份会漂的镜像。
 ##   (实测量纲不能靠数值范围猜: crit 存 0~1, 而 dodgePct/healAmp 存 0~100, 都是百分比。)
+## 两列 x。★右列 226 + 宽 180 = 406 < 面板框安全区右界 415(PANEL_W 440 - margin 25)。
+## 原来宽 196 → 右端 422, 压进右边框 7px, 是门禁⑧挖出来的(肉眼看不出)。
 const STAT_COL_X := [34.0, 226.0]
-const STAT_ROW_Y := [352.0, 373.0, 394.0]
+const STAT_ROW_Y := [412.0, 431.0, 450.0]   # 紧跟「属性」标题(y390, 高18) —— 隔 4px 不断开
 
 
 func _build_stat_rows(box: Control, eid: String, star: int = 1) -> Array:
@@ -709,12 +774,12 @@ func _build_stat_rows(box: Control, eid: String, star: int = 1) -> Array:
 		var kv: Array = rows[i]
 		var lb := Label.new()
 		lb.text = "%s %s" % [str(kv[0]), str(kv[1])]
-		lb.add_theme_font_size_override("font_size", 15)
+		lb.add_theme_font_size_override("font_size", 17)
 		lb.add_theme_color_override("font_color", Color("#9fe8c4"))
 		lb.clip_text = true      # ★先于 size: 否则 Label 最小尺寸=文字全宽, 会把 size 顶开(踩过)
 		lb.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		lb.position = Vector2(STAT_COL_X[i % 2], STAT_ROW_Y[i / 2])
-		lb.size = Vector2(196, 20)
+		lb.size = Vector2(180, 22)
 		box.add_child(lb); made.append(lb)
 	# ★装不下就明说, 不要静默截断(CLAUDE.md: 无声上限=假装覆盖全了)
 	if rows.size() > cap:
@@ -738,11 +803,15 @@ func _panel_sep(parent: Control, y: float) -> Control:
 ## 完整描述。★实测: 59 件装备的 effectDesc1 【全是纯文本】—— 无 HTML 标签、无方括号
 ## (龟技能才有 <span class="val-atk"> 那套)。所以不需要 html_to_bbcode(空转), 也不怕 BBCode 吃掉 [xxx]。
 ## 保留 bbcode_enabled 只为将来装备文案要上色时不用改结构。
-func _rich_desc(edef: Dictionary) -> String:
+func _rich_desc(edef: Dictionary, star: int = 1) -> String:
 	var raw := str(edef.get("effectDesc1", ""))
 	if raw == "":
 		return "[color=#5b7a92](这件装备还没有效果描述)[/color]"
-	return raw
+	# ★按星级高亮(用户 2026-07-29「上面的效果能按照描述规则渲染吗」)。
+	#   装备描述里的 `1/1.2/1.5` 是【一/二/三星三档值】。商店卖 ★1, 原来三档同色平铺,
+	#   玩家看不出哪个数才是自己买到的。highlight_star 把当前星那档高亮、另两档压暗。
+	#   ★背包页(InventoryScene:507/575)一直在用这个函数, 商店漏了 —— 同一份文案两套渲染。
+	return SkillText.highlight_star(raw, star)
 
 
 func _on_buy(idx: int) -> void:
@@ -805,29 +874,6 @@ func _coin_button_icon(b: Button, px: int) -> void:
 	b.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
 
-## 三合一进度圆点 ●●○ —— 取代原来那句「集齐 3 件同款可合成 ★2」。
-##
-## ★用户 2026-07-28:「这 3 合 1 为啥还有提示呢，你不是参考了商业游戏吗」——
-##   说得对。云顶/酒馆战棋都【不会】在每件商品上写一遍三合一规则: 那是全局通用规则,
-##   写 10 遍是教程噪音。它们只显示【进度】(酒馆的 triple 指示器)。
-##   所以这里只画进度点: 已有几件亮几颗, 满 3 颗自动升星。
-## ★用 Panel+StyleBoxFlat 画圆, 不用 "●" 字符 —— 游戏字体不保证有那个码位,
-##   缺字会渲染成豆腐块(而且是换机器才复现的那种)。
-func _merge_pips(parent: Control, pos: Vector2, owned: int, dot: float = 9.0) -> Array:
-	var made: Array = []
-	for i in range(3):
-		var p := Panel.new()
-		var sb := StyleBoxFlat.new()
-		var lit: bool = i < owned
-		sb.bg_color = Color("#ffd93d") if lit else Color(1, 1, 1, 0.16)
-		sb.set_corner_radius_all(int(dot / 2.0))
-		p.add_theme_stylebox_override("panel", sb)
-		p.position = pos + Vector2(i * (dot + 5.0), 0.0)
-		p.size = Vector2(dot, dot)
-		p.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		parent.add_child(p)
-		made.append(p)
-	return made
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -844,19 +890,46 @@ func _merge_pips(parent: Control, pos: Vector2, owned: int, dot: float = 9.0) ->
 #    九宫格 margin 大于控件一半会把中间压没 —— 按钮最矮 44px, 上下 18+18=36 < 44, 成立。
 # ════════════════════════════════════════════════════════════════════════
 const BTN_TEX = preload("res://assets/sprites/shop/btn-frame.png")
-const CARD_TEX = preload("res://assets/sprites/shop/card-frame.png")
+## 购买按钮专用金框 —— 它是全页最主要的动作, 用和"返回/背包/刷新"一样的灰蓝框
+## 就没有主次(用户 2026-07-29「购买按钮你不觉得很扁吗」的另一半: 不只是矮, 是不够重)。
+const BUY_BTN_TEX = preload("res://assets/sprites/shop/buy-btn.png")
+## ★卡框换新(2026-07-29)。旧的 card-frame.png 是珊瑚/藤壶纹, 两个问题:
+##   ① 132px 下那些碎装饰就是噪点, 十张并排还形成很强的重复图案
+##   ② 它同时背着"费用档"和"选中态"两个颜色职责, 而 modulate 是【乘法】——
+##      深色贴图乘什么都提不亮, 实测色差 6~10 和 26(人眼要 >60), 两个都失效
+## 现在: 卡框只当中性边框; 费用档交给【名字颜色】, 选中态整张换成 CARD_TEX_SEL(不染色)。
+## 风格上向已在用的 btn-frame 看齐(同金属/同青内框/同金铆钉), 至少按钮和卡片是一家人。
+## ★卡框【按费用档 5 张】(用户 2026-07-29:「不是5档吗」/「云顶的做法是框框随费用变化」)。
+## 不是 modulate 染色 —— modulate 是乘法, 深色贴图乘什么都提不亮(实测色差只有 6~10)。
+## 这 5 张是拿中性框【按亮度重上色】画出来的(tools 里那段: 暗端=色×0.20, 亮端向白 15%),
+## 形状逐像素一致、颜色我说了算。实测相邻档色差 92/98/64/163, 全部 >60(人眼可辨门槛)。
+const CARD_TEX_TIER := [
+	preload("res://assets/sprites/shop/card-frame-t1.png"),
+	preload("res://assets/sprites/shop/card-frame-t2.png"),
+	preload("res://assets/sprites/shop/card-frame-t3.png"),
+	preload("res://assets/sprites/shop/card-frame-t4.png"),
+	preload("res://assets/sprites/shop/card-frame-t5.png"),
+]
+const CARD_TEX = preload("res://assets/sprites/shop/card-frame-n.png")
+## 选中态【整张换图】而不是给上面那张染色 —— 实测两框边框色差 135(modulate 版只有 26)。
+const CARD_TEX_SEL = preload("res://assets/sprites/shop/card-frame-s.png")
 const PANEL_TEX = preload("res://assets/sprites/shop/panel-frame.png")
 const BTN_MARGIN := 18
-const CARD_MARGIN := 10
+const CARD_MARGIN := 8       # 量的: 新框 72×72, 边框 7px
+## 合成指示星(像素·12 帧闪光循环)。★只在「已有 2 件、再买 1 件就合成」时出现 ——
+## 装备本身就有 ★1/★2/★3 星级, 画一颗星会被读成"这是 ★1 装备", 而每张货架卡都是 ★1 = 零信息。
+const STAR_TEX = preload("res://assets/sprites/shop/star-glint.png")
+const STAR_FRAMES := 12
+const STAR_FRAME_W := 32
 const PANEL_MARGIN := 25
 
 
 ## 给按钮套上新生成的深海金属框, 取代 Godot 默认灰皮。
 ## 三态用 modulate 区分, 不另外生成贴图: normal / hover 提亮 / pressed 压暗+文字下沉。
-func _skin_button(b: Button, disabled_dim := true) -> void:
+func _skin_button(b: Button, disabled_dim := true, tex: Texture2D = null) -> void:
 	for st in ["normal", "hover", "pressed", "disabled", "focus"]:
 		var sb := StyleBoxTexture.new()
-		sb.texture = BTN_TEX
+		sb.texture = tex if tex != null else BTN_TEX
 		sb.texture_margin_left = BTN_MARGIN
 		sb.texture_margin_right = BTN_MARGIN
 		sb.texture_margin_top = BTN_MARGIN
@@ -895,3 +968,103 @@ func _nine(parent: Control, tex: Texture2D, margin: int, pos: Vector2, sz: Vecto
 	np.z_index = z
 	parent.add_child(np)
 	return np
+
+
+## 会闪的合成指示星。用 AtlasTexture 逐帧切 star-glint.png(12 帧)。
+##
+## ★为什么不用 tween 改 modulate 做"发光": 那是矢量做法, 和满屏像素画混在一起就是
+##   用户说的「网站加游戏风」。这里换的是【真像素帧】, 高光是画出来的不是算出来的。
+## ★phase: 两颗星错开起始相位, 不然齐刷刷同步闪, 像坏了。
+func _glint_star(parent: Control, pos: Vector2, sz: float, phase: float) -> void:
+	var tr := TextureRect.new()
+	var at := AtlasTexture.new()
+	at.atlas = STAR_TEX
+	at.region = Rect2(0, 0, STAR_FRAME_W, STAR_FRAME_W)
+	tr.texture = at
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tr.position = pos
+	tr.size = Vector2(sz, sz)
+	# ★必须比卡框高一层: 卡框是 z_index=1 画在所有内容之上(好让内容不溢出到框上),
+	#   星星不抬 z 就会被选中框那圈更厚的发光边切掉半颗(放大 10 倍才看出来的)。
+	tr.z_index = 2
+	parent.add_child(tr)
+	# 12 帧 × 0.09 秒 ≈ 1.1 秒一轮
+	var tw := tr.create_tween().set_loops()
+	if phase > 0.0:
+		tw.tween_interval(phase)
+	tw.tween_method(func(i: float) -> void:
+		if is_instance_valid(tr):
+			at.region = Rect2(float(int(i)) * STAR_FRAME_W, 0.0, STAR_FRAME_W, STAR_FRAME_W),
+		0.0, float(STAR_FRAMES) - 0.01, float(STAR_FRAMES) * 0.09)
+
+
+## 买【这一件】会合成到几星？返回 0(不合成) / 2 / 3。
+##
+## ★不是"已有几件" —— GameState.auto_merge_all 是 `while changed` 循环, 会【级联】:
+##   3×★1 合成 1×★2 之后, 若 ★2 也够 3 件, 会继续合成 ★3。
+##   所以「★1 已有 2 件 且 ★2 已有 2 件」时, 买 1 件直接到 ★3, 那是最值得提示的一刻。
+## ★这里模拟的是 auto_merge_all 的规则(同 id 同星 3 件进 1 星), 与它是同一套口径;
+##   门禁 verify_shop_merge_pips 焊死"显示口径 = 真实合成规则"。
+func _purchase_merge_star(eid: String) -> int:
+	if eid == "":
+		return 0
+	# 下标 = 星级; [1] 已含这次购买的那一件
+	var n := [0, _owned_count(eid, 1) + 1, _owned_count(eid, 2), _owned_count(eid, 3)]
+	var top := 0
+	for st in [1, 2]:
+		if n[st] >= 3:
+			n[st] -= 3
+			n[st + 1] += 1
+			top = st + 1
+	return top
+
+
+## 描述短时, 把它【下面那一坨】(分隔线/属性/合成进度)在剩余空间里【居中】。
+##
+## 由来: 描述框按最长的那件(玩偶小熊 297px)留高, 而中位数只有 4 行 ≈ 90px ——
+## 短描述下面会空出约 150px(用户 2026-07-29 反馈"中段空太多")。
+##
+## ★为什么是"居中"而不是"上顶": 上顶试过并否决 —— 购买按钮钉死在面板底部(CTA 位置
+##   不该随内容长短跳), 上顶只会把空洞从"文字后的留白"搬到"合成进度与按钮之间",
+##   那更像漏了东西。居中则上下各分一半, 看起来是有意留的。
+## ★必须等一帧再问 get_content_height(): 刚 add_child 时还没排版, 拿到 0 会把这一坨
+##   一路顶到描述正下方、和描述叠在一起(这是 CLAUDE.md §3.5 那类坑的近亲)。
+func _center_middle(desc: RichTextLabel, nodes: Array) -> void:
+	await get_tree().process_frame
+	# ★去重: 同一个节点若在数组里出现两次会被【移两倍】。
+	#   实测踩过 —— _stat_hdr 既被 append 进 _stat_nodes、调用时又单独列了一次,
+	#   于是"属性"标题跑到属性行上方 110px(本该只隔 22px), 看着像布局崩了。
+	var uniq: Array = []
+	for n in nodes:
+		var dup := false
+		for u in uniq:
+			if is_same(u, n):
+				dup = true; break
+		if not dup:
+			uniq.append(n)
+	nodes = uniq
+	if not is_instance_valid(desc):
+		return
+	var ch: float = desc.get_content_height()
+	if ch <= 0.0:
+		return                                  # 还没排版好, 宁可不动也不要算错
+	var slack: float = maxf(0.0, desc.size.y - ch - 12.0)   # 文字没用掉的高度(留 12 呼吸)
+	if slack < 16.0:
+		return                                  # 差得不多就别动, 免得每次选中都轻微跳
+	var shift: float = floorf(slack * 0.5)      # ★只上移一半 = 上下各分一半空白
+	for n in nodes:
+		if is_instance_valid(n) and n is Control:
+			(n as Control).position.y -= shift
+
+
+
+
+## 金底按钮的字色。抽出来是因为它要在两个分支各用一次(可买 / 已拥有跳背包),
+## 而那两处缩进层级不同 —— 直接把四行贴进去撕过一次块结构(CLAUDE.md §3.7 同族)。
+func _gold_btn_text(b: Button) -> void:
+	b.add_theme_color_override("font_color", Color("#3a2a06"))
+	b.add_theme_color_override("font_hover_color", Color("#1e1503"))
+	b.add_theme_color_override("font_pressed_color", Color("#5c4712"))

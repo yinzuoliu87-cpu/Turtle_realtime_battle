@@ -21,8 +21,12 @@ const SCREEN_H := 720.0
 const MIN_TOUCH_H := 44.0     # 移动端触摸目标最低高度
 ## 第⑥条用: 必须与 ShopScene._build_detail_panel 里描述框的口径一致
 const DESC_W := 372.0         # PANEL_W(440) - 左右各 34
-const DESC_H := 214.0
-const DESC_FONT := 18
+const DESC_H := 264.0
+const DESC_FONT := 20
+## 第⑧条用: 必须与 ShopScene 的 PANEL_* 一致
+const PANEL_W := 440.0
+const PANEL_H := 592.0
+const PANEL_MARGIN := 25.0
 
 var _fail := 0
 
@@ -56,6 +60,11 @@ func _ready() -> void:
 	if sc is Control:
 		(sc as Control).set_anchors_preset(Control.PRESET_TOP_LEFT)
 		(sc as Control).size = Vector2(SCREEN_W, SCREEN_H)
+	# ★必须选中一张卡: 不选的话详情面板走"← 点货架卡片看详情"的早退分支,
+	#   购买按钮/属性行/分隔线【全都不存在】—— 第⑧条会变成空检查(实测面板只有 2 个子控件)。
+	if sc.get("_sel") != null:
+		sc._sel = 0
+		sc._rebuild()
 	for _i in range(6):
 		await get_tree().process_frame
 
@@ -237,6 +246,66 @@ func _ready() -> void:
 			print("       …另有 %d 件需滚动" % (over.size() - 6))
 		probe.queue_free()
 		_chk("⑥ 没有描述超出框高 ×3 (超了滚起来太痛苦)", worst <= DESC_H * 3.0)
+
+	# ── ⑧ ★详情面板的内容不许压进面板框的边框 ──
+	#    由来: 购买按钮 y=512 高 68 → 下沿 580, 而面板框九宫格 margin=25,
+	#    内容安全区下界只有 592-25=567 —— 压进下边框 13px, 看着就是"按钮太低"。
+	#    前面几条都在量【屏幕】边界和【控件之间】的重叠, 谁也管不到"控件压到自己父框的边框上"。
+	var panel: Control = null
+	for c in all:
+		if c.get_parent() == sc and absf(c.size.x - PANEL_W) < 1.0 and absf(c.size.y - PANEL_H) < 1.0:
+			panel = c; break
+	print("")
+	if panel == null:
+		print("  [FAIL] ⑧ ★分母: 找不到详情面板(%.0f×%.0f)" % [PANEL_W, PANEL_H]); _fail += 1
+	else:
+		var safe := Rect2(PANEL_MARGIN, PANEL_MARGIN, PANEL_W - PANEL_MARGIN * 2.0, PANEL_H - PANEL_MARGIN * 2.0)
+		print("  ⑧ 面板内容安全区 = x %.0f..%.0f  y %.0f..%.0f (框 margin %d)" % [
+			safe.position.x, safe.end.x, safe.position.y, safe.end.y, PANEL_MARGIN])
+		var nkid := panel.get_children().size()
+		print("     面板子控件 %d 个 (★分母: ≤3 说明没选中卡片, 这条是空检查)" % nkid)
+		if nkid <= 3:
+			print("  [FAIL] ⑧ ★分母不足 —— 详情面板没建全(是不是没选中卡片?)"); _fail += 1
+		var spill: Array = []
+		for c in panel.get_children():
+			if not (c is Control) or not (c as Control).visible:
+				continue
+			var r: Rect2 = Rect2((c as Control).position, (c as Control).size)
+			if r.size.x < 2.0 or r.size.y < 2.0:
+				continue
+			if absf(r.size.x - PANEL_W) < 1.5 and absf(r.size.y - PANEL_H) < 1.5:
+				continue   # 框自己(NinePatchRect 铺满)
+			if r.position.y < safe.position.y - 0.5 or r.end.y > safe.end.y + 0.5 					or r.position.x < safe.position.x - 0.5 or r.end.x > safe.end.x + 0.5:
+				spill.append("%s(%s) @(%.0f,%.0f) %.0f×%.0f → 下沿 %.0f" % [
+					c.get_class(), (c as Button).text.substr(0, 8) if c is Button else "",
+					r.position.x, r.position.y, r.size.x, r.size.y, r.end.y])
+		_chk("⑧ ★面板内容不压到面板框的边框上", spill.is_empty())
+
+		# ── ⑨ ★「属性」标题必须贴着它的内容 ──
+		#    由来: _center_middle 收拢时同一个节点在数组里出现了两次 → 被移了【两倍】,
+		#    标题跑到属性行上方 110px(本该 22px)。这种"位移量翻倍"肉眼看是"布局崩了",
+		#    但越界/重叠检查一条都不会响 —— 两个控件都在安全区内、也不重叠。
+		var hdr: Label = null
+		var first_stat: Label = null
+		for c in panel.get_children():
+			if not (c is Label):
+				continue
+			var lb2: Label = c
+			if str(lb2.text) == "属性":
+				hdr = lb2
+			elif hdr != null and lb2.position.y > hdr.position.y and (first_stat == null or lb2.position.y < first_stat.position.y):
+				first_stat = lb2
+		if hdr == null:
+			print("  [FAIL] ⑨ ★分母: 找不到「属性」标题"); _fail += 1
+		elif first_stat == null:
+			print("     ⑨ (这件装备没有属性行, 跳过)")
+		else:
+			var gap: float = first_stat.position.y - (hdr.position.y + hdr.size.y)
+			print("     ⑨ 「属性」标题底 %.0f → 首条属性顶 %.0f, 间距 %.0f px" % [
+				hdr.position.y + hdr.size.y, first_stat.position.y, gap])
+			_chk("⑨ ★标题与内容间距 ≤ 16px(超了说明位移被重复施加)", gap >= -2.0 and gap <= 16.0)
+		for sp in spill.slice(0, 6):
+			print("       ★压框: " + sp)
 
 	# ── ⑤ 分母自检: 至少要有按钮, 否则第②条是空检查 ──
 	var nbtn := 0
