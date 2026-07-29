@@ -53,7 +53,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
 
-func _fullscreen_labelfunc _fullscreen_label() -> String:
+func _fullscreen_label() -> String:
 	var m := DisplayServer.window_get_mode()
 	if m == DisplayServer.WINDOW_MODE_FULLSCREEN or m == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
 		return "退出全屏"
