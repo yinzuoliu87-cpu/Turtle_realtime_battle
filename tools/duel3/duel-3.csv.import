@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://drkhyr1rqxt6n"
+
+[deps]
+
+files=["res://tools/duel3/duel-3.左技能idx.translation", "res://tools/duel3/duel-3.左技能.translation", "res://tools/duel3/duel-3.右龟.translation", "res://tools/duel3/duel-3.右技能idx.translation", "res://tools/duel3/duel-3.右技能.translation", "res://tools/duel3/duel-3.胜方.translation", "res://tools/duel3/duel-3.帧数.translation", "res://tools/duel3/duel-3.左释放.translation", "res://tools/duel3/duel-3.右释放.translation"]
+
+source_file="res://tools/duel3/duel-3.csv"
+dest_files=["res://tools/duel3/duel-3.左技能idx.translation", "res://tools/duel3/duel-3.左技能.translation", "res://tools/duel3/duel-3.右龟.translation", "res://tools/duel3/duel-3.右技能idx.translation", "res://tools/duel3/duel-3.右技能.translation", "res://tools/duel3/duel-3.胜方.translation", "res://tools/duel3/duel-3.帧数.translation", "res://tools/duel3/duel-3.左释放.translation", "res://tools/duel3/duel-3.右释放.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

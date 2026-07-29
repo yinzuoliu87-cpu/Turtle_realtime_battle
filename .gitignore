@@ -81,3 +81,7 @@ data_integrity_report.txt
 
 # 队列模拟产物(可再生·5MB+): 快照池/逐场CSV/报告。种子池成品在 data/ghost_seed.json
 tools/autoplay/
+
+# 对局CSV被 Godot 当翻译表导入生成的 .translation(可再生·每轮 72 个)。
+# 旧轮次 tools/duel/ 也是这样, 只是从没被跟踪 —— 这里写明, 免得下次又被 git status 刷屏。
+tools/duel*/*.translation

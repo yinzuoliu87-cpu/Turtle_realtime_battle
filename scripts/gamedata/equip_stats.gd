@@ -103,7 +103,9 @@ const STATS := {
 	# ── 杖系/元素 022-025,028,029 (批4) ──
 	"p2eq_022": [{"atk": 8, "_echargePct": 10}, {"atk": 15, "_echargePct": 10}, {"atk": 25, "_echargePct": 10}],
 	"p2eq_023": [{"hp": 40, "atk": 10, "magicPen": 5}, {"hp": 60, "atk": 25, "magicPen": 8}, {"hp": 80, "atk": 40, "magicPen": 13}],
-	"p2eq_024": [{"atk": 30, "magicPen": 15, "_maxEnergy": 20}, {"atk": 55, "magicPen": 25, "_maxEnergy": 20}, {"atk": 300, "magicPen": 50, "_maxEnergy": 20}],
+	# 龙蛋削弱二(用户 2026-07-29): 30/55/300 攻 → 20/45/70; 魔穿 15/25/50 → 8/15/27。
+	# 原 ★3 的 300 攻是全表第三高、只输给两件 5 费装备, 而其他 3 费装备顶天 55 —— 3 费卖 5 费的强度。
+	"p2eq_024": [{"atk": 20, "magicPen": 8, "_maxEnergy": 20}, {"atk": 45, "magicPen": 15, "_maxEnergy": 20}, {"atk": 70, "magicPen": 27, "_maxEnergy": 20}],
 	"p2eq_025": [{"atk": 25}, {"atk": 35}, {"atk": 55}],
 	"p2eq_028": [{"hp": 30, "magicPen": 5}, {"hp": 40, "magicPen": 9}, {"hp": 60, "magicPen": 14}],
 	"p2eq_029": [{"hp": 50, "def": 9}, {"hp": 110, "def": 15}, {"hp": 150, "def": 25}],

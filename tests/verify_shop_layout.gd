@@ -27,6 +27,8 @@ const DESC_FONT := 20
 const PANEL_W := 440.0
 const PANEL_H := 592.0
 const PANEL_MARGIN := 25.0
+## 第⑩条用: 头部右侧三组(币/等级/买经验)共用的竖直中心线
+const HEADER_CY := 48.0
 
 var _fail := 0
 
@@ -306,6 +308,69 @@ func _ready() -> void:
 			_chk("⑨ ★标题与内容间距 ≤ 16px(超了说明位移被重复施加)", gap >= -2.0 and gap <= 16.0)
 		for sp in spill.slice(0, 6):
 			print("       ★压框: " + sp)
+
+	# ── ⑩ ★右上角三组必须坐在同一条水平线上 ──
+	#    由来 (用户 2026-07-29「右上角需要改」): 币 中心 41 / 等级 中心 41 / 买经验 中心 48,
+	#    三组各走各的。这类"差几像素"的错位越界/重叠一条都不会响, 但肉眼一看就是没对齐。
+	#    按 x 区间收三组的【并集矩形】, 不依赖各组内部怎么搭(图标+数字, 或 文字+进度条)。
+	var grp := {"币": Rect2(), "等级": Rect2(), "买经验": Rect2()}
+	var ghit := {"币": 0, "等级": 0, "买经验": 0}
+	for c in all:
+		var cc: Control = c
+		var r := Rect2(cc.global_position, cc.size)
+		if r.position.y >= 96.0 or r.size.x <= 0.0 or r.size.y <= 0.0:
+			continue   # 只看头部行
+		var key := ""
+		if r.position.x >= 740.0 and r.position.x < 880.0:
+			key = "币"
+		elif r.position.x >= 880.0 and r.position.x < 1030.0:
+			key = "等级"
+		elif r.position.x >= 1030.0:
+			key = "买经验"
+		if key == "":
+			continue
+		grp[key] = r if ghit[key] == 0 else (grp[key] as Rect2).merge(r)
+		ghit[key] = int(ghit[key]) + 1
+	var missing: Array = []
+	for k in grp.keys():
+		if int(ghit[k]) == 0:
+			missing.append(k)
+	if not missing.is_empty():
+		print("  [FAIL] ⑩ ★分母: 头部右侧收不到这几组 %s" % [missing]); _fail += 1
+	else:
+		# ★判据是"每组都以 y=48 为中心", 不是"三组中心的极差"。
+		#   反向验证时发现极差是【稀释】过的: 把币图标上移 7px, 并集矩形反而被撑大,
+		#   中心只挪了 2.5px → 极差 ≤4 照样 PASS。拿固定基准线量才抓得住。
+		var off_max := 0.0
+		for k in ["币", "等级", "买经验"]:
+			var r2: Rect2 = grp[k]
+			var cy: float = r2.position.y + r2.size.y * 0.5
+			off_max = maxf(off_max, absf(cy - HEADER_CY))
+			print("     ⑩ %-4s x %.0f..%.0f  y %.0f..%.0f  中心 %.1f (偏离基准 %.1f)  (%d 个控件)" % [
+				k, r2.position.x, r2.end.x, r2.position.y, r2.end.y, cy, cy - HEADER_CY, int(ghit[k])])
+		print("     ⑩ 基准线 y=%.0f, 最大偏离 %.1f px" % [HEADER_CY, off_max])
+		_chk("⑩ ★右上三组都以 y=%.0f 为竖直中心(偏离 ≤ 2px)" % HEADER_CY, off_max <= 2.0)
+
+	# ── ⑪ ★底部两个摘要按钮的外沿要和卡区对齐 ──
+	#    由来: 上一版跨 80..720, 而卡区跨 40..780 —— 中心差 10px, 看着就是歪的。
+	var bmin := INF
+	var bmax := -INF
+	var bn := 0
+	for c in all:
+		if not (c is Button):
+			continue
+		var t := str((c as Button).text)
+		if t.find("我的背包") < 0 and t.find("出战阵容") < 0:
+			continue
+		var cb: Control = c
+		bmin = minf(bmin, cb.global_position.x)
+		bmax = maxf(bmax, cb.global_position.x + cb.size.x)
+		bn += 1
+	if bn != 2:
+		print("  [FAIL] ⑪ ★分母: 底部摘要按钮找到 %d 个(应为 2)" % bn); _fail += 1
+	else:
+		print("     ⑪ 底部按钮跨 %.0f..%.0f  /  卡区跨 40..780" % [bmin, bmax])
+		_chk("⑪ ★底部按钮外沿与卡区对齐(各差 ≤ 2px)", absf(bmin - 40.0) <= 2.0 and absf(bmax - 780.0) <= 2.0)
 
 	# ── ⑤ 分母自检: 至少要有按钮, 否则第②条是空检查 ──
 	var nbtn := 0

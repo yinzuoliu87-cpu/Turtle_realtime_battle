@@ -24,7 +24,8 @@ const PANEL_X := 800.0       # 右侧详情面板
 const PANEL_W := 440.0
 const PANEL_Y := 124.0
 const PANEL_H := 592.0
-const BENCH_Y := 484.0       # 备战席
+const BENCH_Y := 484.0       # 备战席(现只在弹层里用, 主页面是按钮)
+const BOTTOM_BTN_Y := 552.0  # 底部两个摘要按钮
 const LINEUP_Y := 580.0      # 阵容装备(横排)
 const MIN_TOUCH_H := 44.0    # 移动端触摸目标最低高度(用户2026-07-28「买经验按钮很小」: 原36不达标)
 const REFRESH_COST := 2   # 刷新花费。原 phase2_config 那套(SHOP_REFRESH_BASE + shop_refresh_cost())已随死代码清理删除, 现在这里是唯一来源(2026-07-19)
@@ -42,6 +43,7 @@ var _sel: int = -1            # 当前选中的货架格(两步购买: 点卡选
 ##   现在点一下就把详情送进右侧同一块面板, 不新开弹窗。
 var _sel_own: String = ""
 var _sel_own_star: int = 1
+var _popup: Control = null   # 底栏弹层(备战席/出战阵容)
 
 func _ready() -> void:
 	var _td = get_node_or_null("/root/TutorialDirector")
@@ -92,6 +94,9 @@ func _shop_selfshot() -> void:
 	if OS.get_environment("SHOT_SEL") != "":
 		_sel = int(OS.get_environment("SHOT_SEL"))
 	_rebuild()
+	# SHOT_POPUP=bench|lineup: 直接把底栏弹层打开 —— 否则截不到它(不能靠嘴说"点开会显示")
+	if OS.get_environment("SHOT_POPUP") != "":
+		_open_bottom_popup(OS.get_environment("SHOT_POPUP"))
 	await get_tree().create_timer(delay).timeout
 	await RenderingServer.frame_post_draw
 	var img: Image = get_viewport().get_texture().get_image()
@@ -204,37 +209,59 @@ func _rebuild() -> void:
 	# ── 头部 y 0–96 (原 0–130, 压缩 34px 腾给卡区; 币与等级并到同一行) ──
 	var title := Label.new(); title.text = "🛒 深海商店"
 	title.add_theme_font_size_override("font_size", 30); title.add_theme_color_override("font_color", Color("#ffd93d"))
-	title.position = Vector2(W / 2.0 - 160, 16); title.size = Vector2(320, 40)
+	# 框宽 320→200: 文字居中所以视觉不动, 但 320 宽的框右边止于 800、把币图标(起 760)整个圈进去了,
+	# 右上角三组因此挤成一坨。收窄后止于 740, 给右侧留出干净的 40px 间隙。
+	title.position = Vector2(W / 2.0 - 100, 16); title.size = Vector2(200, 40)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; add_child(title)
 
 	var back := Button.new(); back.text = "← 返回"; back.add_theme_font_size_override("font_size", 20)
-	back.position = Vector2(28, 22); back.size = Vector2(120, MIN_TOUCH_H)
+	back.position = Vector2(28, 20); back.size = Vector2(126, 52)
 	back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")); _skin_button(back); add_child(back)
 
 	var inv := Button.new(); inv.text = "🎒 背包"; inv.add_theme_font_size_override("font_size", 20)
-	inv.position = Vector2(160, 22); inv.size = Vector2(120, MIN_TOUCH_H)
+	inv.position = Vector2(166, 20); inv.size = Vector2(126, 52)
 	inv.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Inventory.tscn")); _skin_button(inv); add_child(inv)
 
 	# ★图标在左、数字在右, 两者【不能重叠】——
 	#   第一版我把图标放在 W-424, 而数字标签右对齐正好收在 W-390 → 数字整个被图标盖住,
 	#   截图上只剩一枚币、看不到余额。门禁④当时只查"按钮被压", 压的是 Label 就漏了(已补⑦)。
-	_coin_icon(self, Vector2(W - 520, 25), 32.0)
+	# ★右上三组【统一竖直中心 = 48】(用户 2026-07-29「右上角需要改」)。
+	#   原先币 41 / 等级 41 / 买经验 48, 三个中心各走各的, 看着就是没对齐。
+	#   横向排布: 币 756..874 | 等级 894..1016 | 买经验 1036..1252 (右边距 28), 组间隙 20。
+	_coin_icon(self, Vector2(756, 32), 32.0)
 	var coin := Label.new(); coin.text = "%d" % int(GameState.meta_deepsea_coins)
 	coin.add_theme_font_size_override("font_size", 24); coin.add_theme_color_override("font_color", Color("#5fd0e0"))
-	coin.position = Vector2(W - 482, 24); coin.size = Vector2(96, 34)
-	coin.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT; add_child(coin)
+	coin.position = Vector2(794, 31); coin.size = Vector2(80, 34)
+	coin.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	coin.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; add_child(coin)
 	_tut_coin = coin   # 教学高亮"币"锚点
 
-	var lv := Label.new()
-	lv.text = "Lv%d  XP %d/%d" % [int(GameState.season_level), int(GameState.season_xp), P2.xp_to_next(int(GameState.season_level))]
-	lv.add_theme_font_size_override("font_size", 17); lv.add_theme_color_override("font_color", Color("#ffd93d"))
-	lv.position = Vector2(W - 380, 28); lv.size = Vector2(130, 26)   # 原(W-350,120)止于1050, 与买经验(起1032)重叠18px
-	lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT; add_child(lv)
+	# ★等级从一行小字改成【文字 + 进度条】: 原来只有 "Lv3 XP 6/10" 一行 17 号字,
+	#   离下一级还差多少全靠玩家自己算; 买经验按钮就在旁边, 没有进度反馈等于让人盲买。
+	var _lx := 894.0
+	var _lw := 122.0
+	var _need: int = maxi(1, P2.xp_to_next(int(GameState.season_level)))
+	var _have: int = int(GameState.season_xp)
+	var lv := Label.new(); lv.text = "Lv%d" % int(GameState.season_level)
+	lv.add_theme_font_size_override("font_size", 18); lv.add_theme_color_override("font_color", Color("#ffd93d"))
+	lv.position = Vector2(_lx, 32); lv.size = Vector2(46, 20)
+	lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT; add_child(lv)
 
-	# 买经验: 200×36 字号15 → 220×48 字号18 (用户2026-07-28「买经验按钮很小」·移动端触摸目标 ≥44px)
+	var xpn := Label.new(); xpn.text = "%d/%d" % [_have, _need]
+	xpn.add_theme_font_size_override("font_size", 15); xpn.add_theme_color_override("font_color", Color("#9fb4c8"))
+	xpn.position = Vector2(_lx + 46.0, 34); xpn.size = Vector2(_lw - 46.0, 18)
+	xpn.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT; add_child(xpn)
+
+	var xbg := ColorRect.new(); xbg.color = Color("#16293a")
+	xbg.position = Vector2(_lx, 56); xbg.size = Vector2(_lw, 8); add_child(xbg)
+	var xfl := ColorRect.new(); xfl.color = Color("#ffd93d")
+	xfl.position = Vector2(_lx, 56)
+	xfl.size = Vector2(_lw * clampf(float(_have) / float(_need), 0.0, 1.0), 8); add_child(xfl)
+
+	# 买经验: 200×36 字号15 → 216×60 字号18 (用户2026-07-28「买经验按钮很小」·移动端触摸目标 ≥44px)
 	var bxp := Button.new(); bxp.text = "买经验 4 → +4XP"
 	bxp.add_theme_font_size_override("font_size", 18)
-	bxp.position = Vector2(W - 244, 20); bxp.size = Vector2(216, 48)
+	bxp.position = Vector2(W - 244, 18); bxp.size = Vector2(216, 60)
 	_coin_button_icon(bxp, 20)
 	bxp.pressed.connect(func(): if GameState.buy_season_xp(): _rebuild())
 	_skin_button(bxp); add_child(bxp)
@@ -248,14 +275,14 @@ func _rebuild() -> void:
 		add_child(_card(i, Vector2(GRID_X + col * (SLOT_W + GRID_GAP_X), GRID_Y + row * (SLOT_H + GRID_GAP_Y))))
 
 	var rf := Button.new(); rf.text = "刷新  -%d" % REFRESH_COST
-	rf.add_theme_font_size_override("font_size", 20)
-	rf.position = Vector2(GRID_X + 260, 436); rf.size = Vector2(220, 48)
+	rf.add_theme_font_size_override("font_size", 22)
+	# 纵向节奏: 卡区止于 420 → 刷新 448(隔 28) → 底部按钮 552(隔 28) → 收于 648, 页底留 72
+	rf.position = Vector2(GRID_X + 250, 448); rf.size = Vector2(240, 76)
 	_coin_button_icon(rf, 20)
 	rf.pressed.connect(_on_refresh); _skin_button(rf); add_child(rf)
 
 	_build_detail_panel()   # ★右侧常驻详情面板(本次重设计的核心: 描述不再藏在 tooltip 里)
-	_build_bench_preview()
-	_build_lineup_equips()
+	_build_bottom_buttons()
 
 ## ★#2 出货概率行(云顶式): 当前大轮等级下各费用档(1-5)的出货概率%. 每费用色=对应稀有度色, 0%淡显.
 func _build_odds_row() -> void:
@@ -278,7 +305,11 @@ func _build_odds_row() -> void:
 		row.add_child(chip)
 
 ## 商店下部背包预览 (设计§十一: 显装备管理方便对照/3合1; 详细操作回背包页).
-func _build_bench_preview() -> void:
+## 备战席格子。★host/ox/oy: 既能画在主页面, 也能画进弹层(用户 2026-07-29
+## 「把这两个打包成按钮式的, 点击展示完整的」)。
+func _build_bench_preview(host: Node = null, ox: float = 0.0, oy: float = 0.0) -> void:
+	if host == null:
+		host = self
 	var bench: Array = GameState.persistent_bench
 	var bh := Label.new()
 	# ★原文案是「我的背包 (N 件) — 回 🎒 背包页 装备/合星/卖」——
@@ -287,7 +318,7 @@ func _build_bench_preview() -> void:
 	#   删掉, 改成告诉玩家【这里能点】(因为现在它真的能点了)。
 	bh.text = "我的背包 %d 件%s" % [bench.size(), "   · 点格子看详情" if bench.size() > 0 else ""]
 	bh.add_theme_font_size_override("font_size", 15); bh.add_theme_color_override("font_color", Color("#9fb6c9"))
-	bh.position = Vector2(GRID_X, BENCH_Y); bh.size = Vector2(740, 22); add_child(bh)   # 原(80,560)宽900会伸进详情面板
+	bh.position = Vector2(ox + GRID_X, (oy + BENCH_Y)); bh.size = Vector2(740, 22); host.add_child(bh)   # 原(80,560)宽900会伸进详情面板
 	var n := mini(10, bench.size())   # 14×72=1008 会伸出左栏(740) → 收到 10 件
 	for j in range(n):
 		var it: Dictionary = bench[j]
@@ -297,7 +328,7 @@ func _build_bench_preview() -> void:
 		csb.bg_color = Color("#162230"); csb.border_color = _cost_color(int(edef.get("cost", 1)))
 		csb.set_border_width_all(2); csb.set_corner_radius_all(6)
 		cell.add_theme_stylebox_override("panel", csb)
-		cell.position = Vector2(GRID_X + j * 72, BENCH_Y + 26); cell.size = Vector2(64, 64); add_child(cell)
+		cell.position = Vector2(ox + GRID_X + j * 72, (oy + BENCH_Y) + 26); cell.size = Vector2(64, 64); host.add_child(cell)
 		if str(it.get("id", "")) == _sel_own and int(it.get("star", 1)) == _sel_own_star:
 			csb.border_color = Color("#ffd93d"); csb.set_border_width_all(3)
 		_wire_own_tap(cell, str(it.get("id", "")), int(it.get("star", 1)))
@@ -314,22 +345,27 @@ func _build_bench_preview() -> void:
 	if bench.is_empty():
 		var e := Label.new(); e.text = "（空 — 上面买几件）"
 		e.add_theme_font_size_override("font_size", 14); e.add_theme_color_override("font_color", Color("#5a6675"))
-		e.position = Vector2(GRID_X + 4, BENCH_Y + 28); e.size = Vector2(400, 22); add_child(e)
+		e.position = Vector2(ox + GRID_X + 4, (oy + BENCH_Y) + 28); e.size = Vector2(400, 22); host.add_child(e)
 
 # 右侧只读面板: 出战阵容(上/下路6单位)每个龟/小将身上装了什么(用户2026-07-18「商店里看不到装备在龟身上的东西」)。在🎒背包页调整; 这里只看。
-func _build_lineup_equips() -> void:
+## 出战阵容各单位已装的装备。★同上, 可画进弹层。
+func _build_lineup_equips(host: Node = null, ox: float = 0.0, oy: float = 0.0) -> void:
+	if host == null:
+		host = self
 	var lineup: Dictionary = GameState.get_dual_lineup() if GameState.has_method("get_dual_lineup") else {}
-	# ★竖排 6 行(原 px=730 / y=178+row*56) → 横排 6 列, 挪到底部 LINEUP_Y。
+	# ★竖排 6 行(原 px=730 / y=178+row*56) → 横排 6 列, 挪到底部 (oy + LINEUP_Y)。
 	#   原位置在右侧 x730, 与本次新增的详情面板(x800)和第5列卡片重叠 —— 截图才看出来。
-	var hdr := Label.new(); hdr.text = "🐢 出战阵容 · 已装备（回 🎒 背包页调整）"
+	# 「回背包页调整」那半句删掉 —— 顶部本来就有背包按钮, 那是教程文字不是界面
+	#   (用户 2026-07-28 已就同类文案说过一次)。
+	var hdr := Label.new(); hdr.text = "🐢 出战阵容 · 已装备"
 	hdr.add_theme_font_size_override("font_size", 15); hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
-	hdr.position = Vector2(GRID_X, LINEUP_Y); hdr.size = Vector2(740, 20); add_child(hdr)
+	hdr.position = Vector2(ox + GRID_X, (oy + LINEUP_Y)); hdr.size = Vector2(740, 20); host.add_child(hdr)
 	var row := 0
 	for lk in ["top", "bottom"]:
 		for u in (lineup.get(lk, []) as Array):
 			if not (u is Dictionary): continue
 			var cx := GRID_X + row * 124.0    # 横排: 每格 124px 宽 × 6 = 744 ≈ 左栏宽
-			var y := LINEUP_Y + 24.0
+			var y := (oy + LINEUP_Y) + 24.0
 			row += 1
 			var is_leader := str(u.get("kind", "")) == "leader"
 			var nm := ""
@@ -341,7 +377,7 @@ func _build_lineup_equips() -> void:
 				nm = "近战小将" if str(u.get("role", "front")) == "front" else "远程小将"
 			var nl := Label.new(); nl.text = "%s·%s" % ["上" if lk == "top" else "下", nm]
 			nl.add_theme_font_size_override("font_size", 13); nl.add_theme_color_override("font_color", Color("#e8f2ff"))
-			nl.position = Vector2(cx, y); nl.size = Vector2(118, 20); nl.clip_text = true; add_child(nl)
+			nl.position = Vector2(ox + cx, y); nl.size = Vector2(118, 20); nl.clip_text = true; host.add_child(nl)
 			var eqs: Array = []
 			if is_leader:
 				var pe = GameState.persistent_equipped.get(str(u.get("id", "")), []) if GameState.persistent_equipped is Dictionary else []
@@ -359,9 +395,9 @@ func _build_lineup_equips() -> void:
 					hsb.border_color = Color(1, 1, 1, 0.10)
 					hsb.set_border_width_all(1); hsb.set_corner_radius_all(6)
 					hole.add_theme_stylebox_override("panel", hsb)
-					hole.position = Vector2(cx + ci0 * 40, y + 22); hole.size = Vector2(36, 36)
+					hole.position = Vector2(ox + cx + ci0 * 40, y + 22); hole.size = Vector2(36, 36)
 					hole.mouse_filter = Control.MOUSE_FILTER_IGNORE
-					add_child(hole)
+					host.add_child(hole)
 			else:
 				for ci in range(mini(eqs.size(), 3)):   # 横排每列只放得下 3 格(3×40=120)
 					var it: Dictionary = eqs[ci]
@@ -370,12 +406,12 @@ func _build_lineup_equips() -> void:
 					var csb := StyleBoxFlat.new(); csb.bg_color = Color("#162230")
 					csb.border_color = _cost_color(int(edef.get("cost", 1))); csb.set_border_width_all(2); csb.set_corner_radius_all(6)
 					cell.add_theme_stylebox_override("panel", csb)
-					cell.position = Vector2(cx + ci * 40, y + 22); cell.size = Vector2(36, 36)
+					cell.position = Vector2(ox + cx + ci * 40, y + 22); cell.size = Vector2(36, 36)
 					# ★不要只靠 tooltip —— 手机没有 hover, 这正是本次重设计要根治的坑
 					#   (货架卡片的描述原来就藏在 tooltip 里)。这里补一行常驻的名字。
 					#   tooltip 保留给桌面端当补充, 但不再是【唯一】途径。
 					cell.tooltip_text = "%s ★%d" % [str(edef.get("name", "?")), int(it.get("star", 1))]
-					add_child(cell)
+					host.add_child(cell)
 					if str(it.get("id", "")) == _sel_own and int(it.get("star", 1)) == _sel_own_star:
 						csb.border_color = Color("#ffd93d"); csb.set_border_width_all(3)
 					_wire_own_tap(cell, str(it.get("id", "")), int(it.get("star", 1)))
@@ -386,8 +422,8 @@ func _build_lineup_equips() -> void:
 					enm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 					enm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 					enm.mouse_filter = Control.MOUSE_FILTER_IGNORE
-					enm.position = Vector2(cx + ci * 40, y + 59); enm.size = Vector2(36, 14)
-					add_child(enm)
+					enm.position = Vector2(ox + cx + ci * 40, y + 59); enm.size = Vector2(36, 14)
+					host.add_child(enm)
 					var img := str(edef.get("img", ""))
 					if img != "" and ResourceLoader.exists("res://assets/sprites/" + img):
 						var ic := TextureRect.new(); ic.texture = load("res://assets/sprites/" + img)
@@ -401,7 +437,7 @@ func _build_lineup_equips() -> void:
 	if row == 0:
 		var e2 := Label.new(); e2.text = "（尚未编排出战阵容 · 去背包/选龟）"
 		e2.add_theme_font_size_override("font_size", 14); e2.add_theme_color_override("font_color", Color("#5a6675"))
-		e2.position = Vector2(GRID_X, LINEUP_Y + 24); e2.size = Vector2(400, 22); add_child(e2)
+		e2.position = Vector2(ox + GRID_X, (oy + LINEUP_Y) + 24); e2.size = Vector2(400, 22); host.add_child(e2)
 
 # 已拥有该装备件数(背包+统领已装+小将已装): 商店卡标"已有N"→知道再买几件凑3合1升星(用户2026-07-18"看不到已装备/不知道多少件才2/3星")
 ## 已拥有的【指定星级】件数。★star 参数不是可有可无的 ——
@@ -690,13 +726,12 @@ func _build_detail_panel() -> void:
 	# ★购买按钮(第二步确认) —— 花钱的按钮做最大
 	var buy := Button.new()
 	buy.add_theme_font_size_override("font_size", 22)
-	# ★按钮加高 56 → 68(用户 2026-07-29「购买按钮你不觉得很扁吗」)。
-	#   372×56 是 6.6:1, 拉得又宽又薄; 68 高后是 5.5:1, 而且它是全页最主要的动作,
-	#   本来就该是最大的那个可点物。
-	# ★y 从 PANEL_H-80(=512) 抬到 PANEL_H-109(=483)。
-	#   原来下沿 580, 而面板框九宫格 margin=25 → 内容安全区下界只有 567 —— 压进下边框 13px,
-	#   看着就是"按钮太低"。现在下沿 551, 距安全区下界留 16px。
-	buy.position = Vector2(34, PANEL_H - 109); buy.size = Vector2(PANEL_W - 68, 68)
+	# ★按钮加高 56 → 68 → 78(用户 2026-07-29「购买按钮你不觉得很扁吗」/「按钮重新做吧」)。
+	#   372×56 = 6.6:1 → 68 = 5.5:1 → 78 = 4.8:1。它是全页最主要的动作, 本来就该是最大的可点物,
+	#   所以宽度不收(372 = 面板宽的 85%), 只往上长。
+	# ★下沿焊在 565: 面板框九宫格 margin=25 → 内容安全区下界 567(门禁⑧会查)。
+	#   上沿因此落在 487, 距属性区末行(止于 470)留 17px。再高就压属性了。
+	buy.position = Vector2(34, PANEL_H - 105); buy.size = Vector2(PANEL_W - 68, 78)
 	if own_mode:
 		# 看的是自己已有的那件 —— 商店不做装备/合星/卖, 那些在背包页。这里给一条去路。
 		buy.text = "去 🎒 背包页 装备 / 卖"
@@ -1068,3 +1103,111 @@ func _gold_btn_text(b: Button) -> void:
 	b.add_theme_color_override("font_color", Color("#3a2a06"))
 	b.add_theme_color_override("font_hover_color", Color("#1e1503"))
 	b.add_theme_color_override("font_pressed_color", Color("#5c4712"))
+
+
+# ══════════════════════════════════════════════════════════════
+# §底栏 备战席 / 出战阵容 —— 打包成两个按钮, 点开看全部
+#
+# 用户 2026-07-29:「需要备战席和出战席位的, 但你可以把这两个打包成按钮式的,
+# 点击展示完整的」。
+#
+# 原来这两栏平铺在底部占 190px, 而它们【只读】(真正的装备操作在背包页) ——
+# 常驻这么大面积不划算。改成摘要按钮 + 点开弹层: 信息一条不少, 屏幕还回来了。
+# ══════════════════════════════════════════════════════════════
+
+## 统计出战阵容里已装备的件数 / 总槽位(每单位 3 格)
+func _lineup_equip_count() -> Array:
+	var lineup: Dictionary = GameState.get_dual_lineup() if GameState.has_method("get_dual_lineup") else {}
+	var n := 0
+	var slots := 0
+	for lk in ["top", "bottom"]:
+		for u in (lineup.get(lk, []) as Array):
+			if not (u is Dictionary):
+				continue
+			slots += 3
+			var eqs: Array = []
+			if str(u.get("kind", "")) == "leader":
+				var pe = GameState.persistent_equipped.get(str(u.get("id", "")), []) if GameState.persistent_equipped is Dictionary else []
+				if pe is Array: eqs = pe
+			elif u.get("equips") is Array:
+				eqs = u["equips"]
+			n += eqs.size()
+	return [n, slots]
+
+
+func _build_bottom_buttons() -> void:
+	var bench: Array = GameState.persistent_bench
+	var lc: Array = _lineup_equip_count()
+	# ★宽高比: 原 360×52 = 6.9:1, 是全页最扁的两个(用户 2026-07-29「太扁了」)。
+	#   现 360×96 = 3.75:1。底栏把两个平铺栏收成按钮后腾出 190px, 高度管够。
+	# ★左右边缘【与卡区对齐】: 卡区 x 40..780(5×132 + 4×20 = 740)。
+	#   上一版用 GRID_X+40 起、间距 40, 跨 80..720 → 中心 400 而卡区中心 410, 差 10px 看着就是歪的。
+	#   现在两按钮各 (740-20)/2 = 360, 起 40 与 420, 正好铺满卡区宽度 —— 边缘对齐比居中更稳。
+	var bw := (740.0 - 20.0) * 0.5
+	var bh2 := 96.0
+	var b1 := Button.new()
+	b1.text = "🎒 我的背包  %d 件" % bench.size()
+	b1.add_theme_font_size_override("font_size", 21)
+	b1.position = Vector2(GRID_X, BOTTOM_BTN_Y); b1.size = Vector2(bw, bh2)
+	b1.pressed.connect(func(): _open_bottom_popup("bench"))
+	_skin_button(b1); add_child(b1)
+
+	var b2 := Button.new()
+	b2.text = "🐢 出战阵容  已装 %d / %d" % [int(lc[0]), int(lc[1])]
+	b2.add_theme_font_size_override("font_size", 21)
+	b2.position = Vector2(GRID_X + bw + 20.0, BOTTOM_BTN_Y); b2.size = Vector2(bw, bh2)
+	b2.pressed.connect(func(): _open_bottom_popup("lineup"))
+	_skin_button(b2); add_child(b2)
+
+
+## 弹层: 半透明遮罩 + 面板 + 关闭。点遮罩或按 ESC 都能关。
+func _open_bottom_popup(kind: String) -> void:
+	if _popup != null and is_instance_valid(_popup):
+		_popup.queue_free()
+	var lay := Control.new()
+	lay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	lay.mouse_filter = Control.MOUSE_FILTER_STOP     # ★吃掉点击, 否则会穿透到底下的卡片
+	# ★z_index 必须高过 10 —— 卡框和详情面板框都设了 z_index=1(好让内容不溢出到框上),
+	#   弹层不抬 z 就会被它们【画在上面】: 遮罩盖不住卡片, 卡片从弹层里透出来。
+	lay.z_index = 20
+	add_child(lay)
+	_popup = lay
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.62)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lay.add_child(dim)
+	lay.gui_input.connect(func(ev: InputEvent):
+		if ev is InputEventMouseButton and ev.pressed:
+			lay.queue_free())
+
+	var pw := 820.0
+	var ph := 300.0
+	var px := (W - pw) * 0.5
+	var py := (H - ph) * 0.5
+	var pan := Panel.new()
+	var psb := StyleBoxFlat.new()
+	psb.bg_color = Color("#0e1a26"); psb.set_corner_radius_all(10)
+	pan.add_theme_stylebox_override("panel", psb)
+	pan.position = Vector2(px, py); pan.size = Vector2(pw, ph)
+	pan.mouse_filter = Control.MOUSE_FILTER_STOP     # 面板内点击不关弹层
+	lay.add_child(pan)
+	# ★用 BTN_TEX 而不是 PANEL_TEX: 面板框源图 191×246 是竖长条, 拉成 820×300 的横板会
+	#   把边饰扯变形(截图上很明显)。按钮框 128×64 是 2:1, 与这里的 2.7:1 接近得多。
+	#   ★z 传 0 不是 1: BTN_TEX 是【实心】按钮板(中间不透明), z=1 会把它画在内容之上、
+	#     整块盖住(卡框能透是因为它中间是透明的)。弹层的底板本来就该在内容【后面】。
+	_nine(pan, BTN_TEX, BTN_MARGIN, Vector2.ZERO, Vector2(pw, ph), 0)
+
+	# ★把原来那两个构建函数【原样画进弹层】—— 它们已经改成接受 host/ox/oy,
+	#   所以这里不需要复制一份布局代码(复制就会有两份会漂的实现)。
+	if kind == "bench":
+		_build_bench_preview(pan, 40.0 - GRID_X, 44.0 - BENCH_Y)
+	else:
+		_build_lineup_equips(pan, 40.0 - GRID_X, 44.0 - LINEUP_Y)
+
+	var cl := Button.new()
+	cl.text = "关闭"
+	cl.add_theme_font_size_override("font_size", 18)
+	cl.position = Vector2(pw - 150.0, ph - 66.0); cl.size = Vector2(110, 46)
+	cl.pressed.connect(func(): lay.queue_free())
+	_skin_button(cl); pan.add_child(cl)

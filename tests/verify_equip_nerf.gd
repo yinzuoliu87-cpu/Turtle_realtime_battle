@@ -23,8 +23,21 @@ func _ready() -> void:
 					src += "\n" + FileAccess.get_file_as_string(_dir + "/" + _f)
 	_ok("源码读到(分母)", src.length() > 100000, "%d 字符" % src.length())
 
-	# ── 龙蛋 灼烧固定 30/45/70 ──
-	_ok("★龙蛋灼烧 = [30, 45, 70]", src.contains('_apply_dot_stacks(o, "burn", [30, 45, 70][si], u)'))
+	# ── 龙蛋 削弱二(用户 2026-07-29): 属性 / 伤害 / 治疗 / 灼烧 四处一起削 ──
+	#    ★这里写的是【用户口述的需求值】, 不是从代码常量读回来的 —— 拿代码跟自己比等于没查
+	#    (verify_trainer_magicstone 曾经就是恒真式, 把常量改坏照样 ALL PASS)。
+	_ok("★龙蛋灼烧 = [20, 35, 50]", src.contains('_apply_dot_stacks(o, "burn", [20, 35, 50][si], u)'))
+	_ok("★龙蛋灼烧旧值 30/45/70 已消失", not src.contains('"burn", [30, 45, 70][si]'))
+	_ok("★龙蛋魔法伤害 = 45/80/120 + 1×ATK", src.contains('u["atk"] * 1.0 + float([45, 80, 120][si])'))
+	_ok("★龙蛋治疗 = 45/80/120 + 1×ATK", src.contains('_heal(o, u["atk"] * 1.0 + float([45, 80, 120][si]))'))
+	_ok("★龙蛋旧的 0.7/1.0/2.0×ATK 系数已消失", not src.contains("[0.7, 1.0, 2.0][si]"))
+	_ok("★龙蛋旧的 1500 伤害 / 1000 治疗已消失",
+		not src.contains("[50, 120, 1500][si]") and not src.contains("[70, 150, 1000][si]"))
+	# 属性表(EquipStats 是装备属性的真事实源, 见 CLAUDE.md §1)
+	var st := FileAccess.get_file_as_string("res://scripts/gamedata/equip_stats.gd")
+	_ok("★龙蛋属性 = 攻20/45/70 · 魔穿8/15/27", st.contains(
+		'"p2eq_024": [{"atk": 20, "magicPen": 8, "_maxEnergy": 20}, {"atk": 45, "magicPen": 15, "_maxEnergy": 20}, {"atk": 70, "magicPen": 27, "_maxEnergy": 20}]'))
+	_ok("★龙蛋旧属性 300 攻已消失", not st.contains('"atk": 300, "magicPen": 50'))
 
 	# ── 暴君之牙 毒牙 1/1.8/4 ──
 	_ok("★暴君毒牙 = [1.0, 1.8, 4.0]", src.contains('[1.0, 1.8, 4.0][si] * float(u.get("atk", 0.0))'))
@@ -36,7 +49,9 @@ func _ready() -> void:
 
 	# ── tooltip 同步(effectDesc1 里出现新数字) ──
 	var eq := FileAccess.get_file_as_string("res://data/phase2-equipment.json")
-	_ok("★龙蛋文案含 30/45/70 层灼烧", eq.contains("30/45/70层灼烧"))
+	_ok("★龙蛋文案含 20/35/50 层灼烧", eq.contains("20/35/50层灼烧"))
+	_ok("★龙蛋文案含 45/80/120+1×攻击力", eq.contains("(45/80/120+1×攻击力)魔法伤害"))
+	_ok("★龙蛋 baseStats1 镜像已同步", eq.contains("+攻20/45/70·魔穿8/15/27·+20龟能"))
 	_ok("★暴君文案含 1/1.8/4×攻击力", eq.contains("1/1.8/4×攻击力魔法伤害"))
 	_ok("★暴君文案含 4/6/12% 斩杀线", eq.contains("4/6/12%最大生命值×(1+暴击率)"))   # 2026-07-24 术语补全: 最大生命→最大生命值
 
