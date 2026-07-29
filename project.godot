@@ -19,7 +19,7 @@ config/description="斗龟场 实时自走棋版 (Botworld 式实时战斗) — 
 
 2026-05-30 从 Phaser 3 PoC 迁移而来,
 为了上 App Store / Steam / 工业级编辑体验。"
-config/version="0.17.1"
+config/version="0.17.2"
 run/main_scene="res://scenes/MainMenu.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 boot_splash/bg_color=Color(0.0392, 0.0549, 0.0941, 1)
@@ -42,13 +42,13 @@ window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
-; ★"sensor" 而不是 "sensor_landscape" —— 这一条【只影响 Info.plist / AndroidManifest 允许哪些方向】,
-; 运行时的实际方向由 IdleMode.apply() 在开机时锁死(GameState 读档后调)。
-; 为什么必须这样: 摸鱼模式要在运行时切竖屏, 而 iOS 只允许切到 UISupportedInterfaceOrientations
-; 里列出的方向。原来是 sensor_landscape → Info.plist 只有 LandscapeLeft →
-; DisplayServer.screen_set_orientation(PORTRAIT) 被系统直接拒绝, 功能在真机上是死的。
-; (本地桌面用"改窗口尺寸"模拟, 永远看不出来 —— 是拆开出好的 IPA 读 Info.plist 才发现的。)
-window/handheld/orientation="sensor"
+; ★锁死横屏。曾于 2026-07-29 改成 "sensor" 想让摸鱼模式能切竖屏, 结果是【回归】:
+; iOS 在【启动那一刻】就按 Info.plist 决定方向 —— plist 一旦允许竖屏, 用户竖着拿手机
+; 启动, App 就直接竖屏起来了; 而代码里"锁回横屏"跑得再早也是启动【之后】,
+; iOS 16+ 收窄方向掩码不会自动转回去(要 setNeedsUpdateOfSupportedInterfaceOrientations,
+; 引擎侧的事, GDScript 够不着)。用户实测: "摸鱼模式关的时候, iOS 上还是竖着的"。
+; → 摸鱼模式不能靠切设备方向实现, 必须在【横屏内】把画面缩小居中 + 四周留黑。
+window/handheld/orientation="sensor_landscape"
 
 [gui]
 

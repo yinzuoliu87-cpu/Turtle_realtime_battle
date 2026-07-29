@@ -1,5 +1,10 @@
 extends Node
-## verify_idle_mode.gd — 摸鱼模式（竖持小窗）：留黑版式 + ★输入坐标映射
+## verify_idle_mode.gd — letterbox 几何 + ★输入坐标映射（摸鱼模式的地基）
+##
+## ⚠ 2026-07-29：摸鱼模式的【切设备方向】路线已废（见第⑦条注释与设置页说明），
+##    功能按钮已撤。本文件保留的是 letterbox 几何与屏幕→画布坐标映射这套【数学】——
+##    将来若走方案书路线 2（整个游戏塞进 SubViewport 再缩小居中），这套数学照样要用，
+##    而且那时"点得中点不中"仍然只能靠它来验，不能靠目视。
 ##
 ## 需求（用户 2026-07-28）：设置里一个按钮 → 整个游戏缩成手机中间一条 16:9 小横窗、
 ## 上下留黑、小窗内可正常点击、再点还原、开关持久化。
@@ -85,17 +90,17 @@ func _ready() -> void:
 	print("     应落在画布【外】(y<0) —— 否则黑边会误命中界面元素")
 	_chk("⑤ 黑边映射到画布外(不会误命中)", tb.y < 0.0)
 
-	# ── ⑦ ★工程必须【允许竖屏】, 否则 iOS 直接拒绝切换 ──
-	#    这条是拆开 CI 出的真 IPA 读 Info.plist 才发现的:
-	#      UISupportedInterfaceOrientations = ['UIInterfaceOrientationLandscapeLeft']
-	#    只有横屏 → DisplayServer.screen_set_orientation(PORTRAIT) 被系统拒绝 →
-	#    摸鱼模式在真机上【是死的】。而桌面端用"改窗口尺寸"模拟, 本地永远看不出来。
-	#    Godot 从 display/window/handheld/orientation 生成那份列表, 所以焊在这里。
+	# ── ⑦ ★工程必须【锁死横屏】 ──
+	#    2026-07-29 反转过一次: 原来这条要求 "sensor"(允许竖屏), 好让摸鱼模式切竖屏。
+	#    用户实测 iOS 上"摸鱼模式关的时候还是竖着的" —— 根因是 iOS 在【启动那一刻】
+	#    就按 Info.plist 定方向, plist 一旦允许竖屏, 竖着拿手机启动就直接竖屏起来,
+	#    而代码里锁回横屏跑在启动【之后】, iOS 16+ 收窄掩码不会自动转回去。
+	#    → "允许切竖屏" 和 "默认必横屏" 不可兼得。方向切换这条路已废, 这里改成守住横屏。
 	var orient := str(ProjectSettings.get_setting("display/window/handheld/orientation", ""))
 	print("")
 	print("  ⑦ display/window/handheld/orientation = \"%s\"" % orient)
-	print("     必须是 \"sensor\"(允许全部方向) —— \"sensor_landscape\" 会让 iOS 只写横屏进 Info.plist")
-	_chk("⑦ ★工程允许竖屏(否则 iOS 拒绝切换, 功能在真机上是死的)", orient == "sensor")
+	print("     必须锁横屏 —— 允许竖屏会导致竖持启动时游戏直接变竖屏(用户实测过)")
+	_chk("⑦ ★工程锁死横屏(允许竖屏 = 竖持启动就竖屏, 回归)", orient.find("landscape") >= 0)
 
 	# ── ⑥ 开关 ──
 	var win := get_window()

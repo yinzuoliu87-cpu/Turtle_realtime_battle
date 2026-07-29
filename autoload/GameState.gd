@@ -694,18 +694,8 @@ func _ready() -> void:
 	if Engine.has_singleton("Audio") or get_node_or_null("/root/Audio"):
 		Audio.bgm_volume = bgm_volume
 		Audio.sfx_volume = sfx_volume
-	# ★摸鱼模式在【读档后】恢复 —— 需求第 6 条"开关状态持久化(重开 App 还在)"。
-	#   只设变量不调 apply 的话, 重开就退回横屏了(全屏那个开关早先就犯过同样的错:
-	#   "只设变量没调 apply → 拖动对正在播的 BGM 无效")。
-	# ★★ 【无论开关是开是关都要调】★★
-	#   project.godot 的 handheld/orientation 已改成 "sensor"(为了让 iOS 允许切竖屏),
-	#   而 "sensor" 的含义是【跟着重力感应转】—— 不在这里显式锁回横屏的话,
-	#   正常模式下手机竖着拿, 游戏也会跟着转成竖屏, 那是把默认体验搞坏了。
-	#   apply(false) 会锁 SCREEN_SENSOR_LANDSCAPE, 恢复原行为。
-	if Engine.get_main_loop() != null:
-		var _w = (Engine.get_main_loop() as SceneTree).root
-		if _w != null:
-			IdleMode.apply(_w, idle_mode)
+	# ★不再在这里改屏幕方向: project.godot 已锁 sensor_landscape, 横屏是唯一形态。
+	#   (摸鱼模式的方向切换路线已废, 见 SettingsScene 里的说明。)
 
 
 ## 全局全屏切换: F11 / Alt+Enter. (画面靠 stretch=canvas_items + aspect=keep 等比放大到任意分辨率/4K.)
