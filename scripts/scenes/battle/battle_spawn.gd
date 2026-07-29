@@ -450,7 +450,8 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 	return u
 
 func _spawn_trainers() -> void:
-	if OS.has_environment("VFXPREVIEW") or battle.DEBUG_EDIT:
+	# NO_TRAINER: 胜率对照实验要干净环境(见 RealtimeBattle3DScene.NO_TRAINER 的注释)
+	if OS.has_environment("VFXPREVIEW") or OS.has_environment("NO_TRAINER") or battle.DEBUG_EDIT or battle.NO_TRAINER:
 		return
 	for u in battle._units:
 		if u.get("is_trainer", false):

@@ -134,6 +134,7 @@ func _fight(gs, ia: int, ib: int, k: int) -> void:
 	_setup_left(gs, L)
 	gs.dual_ghost = _ghost_of(R)
 
+	RB.NO_TRAINER = true    # ★关训龟大师(2026-07-29): 本文件第20行一直写着"关训龟大师", 但直到今天都没有代码真的关
 	var s = RB.new()
 	add_child(s)
 	if k == 0:
@@ -247,6 +248,16 @@ func _dump_setup(s) -> void:
 	print("  [体检] 上路结构 左 %d统领+%d小将 / 右 %d统领+%d小将  (应各 1+2)" % [
 		lead["left"], mini["left"], lead["right"], mini["right"]])
 	print("  [体检] 装备件数 左 %d / 右 %d  (应均 0)" % [eq["left"], eq["right"]])
+	# ★大师必须为 0 —— 本文件顶部的"关训龟大师"当了四轮的谎话(没有任何代码关它, 也没有任何检查发现),
+	#   所以现在【每个分片首场都自己证明一次】。注释会骗人, 打出来的数字不会。
+	var tr := 0
+	for u in s._units:
+		if u.get("is_trainer", false):
+			tr += 1
+	print("  [体检] ★训龟大师在场 %d 个 (必须 0; >0 = 对照环境被污染)" % tr)
+	if tr > 0:
+		print("  [FAIL] ★训龟大师没关掉 —— 本轮数据不干净, 停")
+		get_tree().quit(1)
 
 func _write(elapsed: float) -> void:
 	var dir := OS.get_environment("DUEL_OUT")

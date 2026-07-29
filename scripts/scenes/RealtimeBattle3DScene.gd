@@ -377,7 +377,6 @@ const HOOK_ICON := "res://assets/sprites/vfx/hook-skill-icon.png"   # 圆盘技�
 ## 立绘: 用户要「像素风的冒险家」, 形象未定 —— 有真图就用, 没有则退回占位并 warning。
 ## ★不做成静默兜底: 占位图和最终形象长得完全不一样, 悄悄用会让人以为已经做完了。
 const TRAINER_SPRITE := "res://assets/sprites/pets/trainer.png"
-const TRAINER_SPRITE_FALLBACK := "res://assets/sprites/pets/basic.png"
 
 const SPRITE_DIR := "res://assets/sprites/"           # pets.json img 相对此根
 const TARGET_BODY_H := 2.0                 # 立绘目标世界高度 (米) — 龟 ≈ 2.0m (用户2026-06-29: 原2.3大了点)
@@ -635,6 +634,12 @@ var _info_panel: PanelContainer = null        # 详情面板 (居中, 显等级/
 #   DEBUG_EDIT=true 时 _spawn._spawn_teams 跳过自动出生(空场), 进编辑模式: 点空地摆兵/拖拽挪位/右键删,
 #   假人可设血量+不死开关. ▶开始 起战斗(模拟跑), ⏸编辑 回编辑(按摆位重新生成), 清空 全删.
 static var DEBUG_EDIT := false            # ← MainMenu 设 true 后 change_scene 进入; 离场重置 false
+## ★关训龟大师(2026-07-29 用户「训龟大师没关吗」)。
+##   由来: _duel.gd 第20行注释白纸黑字写着「固定条件: …关训龟大师…」, 但代码里【根本没有关它的地方】——
+##   _spawn_trainers() 只在 VFXPREVIEW/DEBUG_EDIT 时跳过, 而 _duel.gd 两个都没设。
+##   于是【前四轮胜率测试每一场都有两个带钩锁的大师在场】(眩晕4秒 + 受伤+25%)。
+##   对称所以不偏向某边, 但绝不中性: 它打断技能、改变站位, 对需要站桩的龟伤害更大 = 结构性偏差。
+static var NO_TRAINER := false            # ← 对照实验用: true 则不生成训龟大师
 var _edit_mode := false                   # 当前是否在编辑(暂停模拟)态
 var _edit_paused_setup: Array = []        # ⏸编辑 重生用的摆位快照 [{id,side,pos,hp,killable}]
 var _edit_pick_id := "basic"              # 当前选中要摆的龟 id (◀▶ 循环 STATS keys)
@@ -1322,35 +1327,6 @@ func _far_terrain_height(x: float, z: float) -> float:
 	return h * w
 
 
-func _make_ridge_texture(seed_v: int, rough: float) -> ImageTexture:
-	# ★宽高比决定世界尺寸: pixel_size 按【高】算, 所以世界宽 = w/h × 高。
-	#   要在 z≈-20 处铺满画面需要约 70m 宽; h=64、高 1.5m → 每米约 43px → w 至少 64×(70/1.5)≈3000。
-	#   第二版 w=512 → 只有 10m 宽, 两边留着大豁口(截图里山脊没到屏幕边)。
-	var w := 3072
-	var h := 64
-	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	var rng := RandomNumberGenerator.new()
-	rng.seed = seed_v
-	# 三层不同频率的正弦叠加 = 起伏有大有小, 比纯随机更像地貌
-	var ph := [rng.randf() * TAU, rng.randf() * TAU, rng.randf() * TAU]
-	for x in range(w):
-		var fx := float(x) / float(w)
-		var t: float = 0.50
-		t += 0.26 * sin(fx * TAU * 1.7 + ph[0]) * rough
-		t += 0.14 * sin(fx * TAU * 4.3 + ph[1]) * rough
-		t += 0.07 * sin(fx * TAU * 9.1 + ph[2]) * rough
-		var top := int(clampf(1.0 - t, 0.06, 0.96) * float(h))   # 轮廓线所在行 (越小越高)
-		for y in range(top, h):
-			# 内部竖向渐变: 顶沿略亮(水面来的散射), 往下沉暗。
-			#   第二版整块填纯白再 modulate → 平得像剪纸, 这是"贴图感"的一大来源。
-			var fy: float = float(y - top) / float(maxi(1, h - top))
-			# 收窄到 1.10→0.85: 原来底部乘 0.62, 经 tonemap 压暗后山脊下半截直接沉成黑块
-			var v: float = lerpf(1.10, 0.85, pow(fy, 0.75))
-			img.set_pixel(x, y, Color(v, v, v, 1.0))
-	return ImageTexture.create_from_image(img)
-
-
 ## 小鱼剪影贴图 (远景只需要轮廓: 椭圆身 + 三角尾).
 func _make_fish_texture() -> ImageTexture:
 	var w := 22
@@ -1908,7 +1884,6 @@ func _anim_key(u: Dictionary) -> String:
 ##   ★只对精英小将生效 —— 普通小将共用 "__minion__" id, 不加这道判断会给前后排也套上精英动作。
 const ELITE_ACT_BODY_H := 47.0    # 动作帧里角色本体高(px)
 const ELITE_ACT_FEET_ROW := 71.0  # 动作帧里脚底所在行
-const ELITE_IDLE_BODY_H := 71.0   # idle 图 minion-elite.png 的角色本体高(px, 帧高 80)
 
 # ★归一表(2026-07-22 泛化): 动画键 → [动作图本体高, 动作图脚底行, idle 图本体高]
 #   PixelLab 出的图四周留白很多, 本体只占帧高的一半左右; 而 _set_anim_sheet 的通用归一
@@ -5493,7 +5468,7 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 				if not _on_line(launch, dir, o["pos"], 80.0): continue
 				if o["pos"].distance_to(c) > 95.0: continue
 				hit2.append(o)
-				_damage._apply_damage_from(uu2, o, _atk_dmg(uu2, 3.0, o), Color("#7fd0ff"))   # 气波 3.5A→3.0A(用户2026-07-29 第四轮)
+				_damage._apply_damage_from(uu2, o, _atk_dmg(uu2, 2.0, o), Color("#7fd0ff"))   # 气波 3.5→3.0→2.0A(用户2026-07-29 第五轮)
 				_damage._knockback(uu2, o, 200.0, 2.752, 2.0)              # 击飞1.5s+击退200
 				# ── ⚡命中: 爆闪 + 震屏 + 火星 ──
 				var bg := _glow_bb(o["pos"], FLY_H, 220.0, Color(0.95, 0.62, 0.26, 0.92))
@@ -5532,11 +5507,11 @@ func _sk_basic_slam(u: Dictionary, tgt) -> void:  # 小龟·过肩摔(#7重做·
 ## 过肩摔伤害结算(主目标 0.7A+26%maxHp / 周围250码 0.2A+19%主maxHp) — 落地时调.
 func _slam_apply_damage(u: Dictionary, tgt: Dictionary, tmax: float) -> void:
 	if tgt.get("alive", false):
-		_damage._apply_damage_from(u, tgt, _atk_dmg(u, 0.7, tgt) + int(tmax * 0.23), Color("#ff9d5c"))   # 过肩摔主目标 26%→23%最大生命(用户2026-07-29 第四轮·0.7A 不动)
+		_damage._apply_damage_from(u, tgt, _atk_dmg(u, 1.0, tgt) + int(u["atk"] * 0.002 * tmax), Color("#ff9d5c"))   # 过肩摔主目标(用户2026-07-29 第五轮): 0.7A+23%最大生命 → 1.0A + 0.2%×ATK×最大生命
 	for o in _targeting._enemies_of(u):
 		if is_same(o, tgt) or not o.get("alive", false): continue
 		if o["pos"].distance_to(tgt["pos"]) <= 350.0:   # 范围 350码(用户2026-07-11: 250→350)
-			_damage._apply_damage_from(u, o, _atk_dmg(u, 0.2, o) + int(tmax * 0.18), Color("#ff9d5c"))   # 过肩摔周围 19%→18%主目标最大生命(用户2026-07-29 第四轮·0.2A 不动)
+			_damage._apply_damage_from(u, o, _atk_dmg(u, 0.3, o) + int(u["atk"] * 0.0013 * tmax), Color("#ff9d5c"))   # 过肩摔周围(用户2026-07-29 第五轮): 0.2A+18% → 0.3A + 0.13%×ATK×主目标最大生命
 
 ## 过肩摔完整编排(#7·用户2026-07-11): 擒抱→双方跳空(_slam_voff)→空中反转180°(flip_v)→坠落→落地范围伤+大尘爆+震屏. 双方 _slam 冻结.
 func _basic_slam_run(u: Dictionary, tgt: Dictionary, dir: Vector2, u_start: Vector2, land: Vector2, tmax: float) -> void:
@@ -6233,9 +6208,12 @@ func _throw_gold_coin(src: Dictionary, tgt: Dictionary) -> void:
 	_world.add_child(p)
 	var dur := clampf(start2d.distance_to(tgt["pos"]) / 650.0, 0.18, 0.6)
 	_projectiles.append({
-		"node": p, "from": world_from, "tgt": tgt, "dmg": _atk_dmg(src, 0.18, tgt, false),
+		"node": p, "from": world_from, "tgt": tgt, "dmg": _atk_dmg(src, 0.30, tgt, false),
 		"col": Color("#ff4444"), "src": src, "t": 0.0, "dur": dur, "basic_onhit": false,
-		"coin_true": int(src["atk"] * 0.18),
+		"coin_true": int(src["atk"] * 0.30),   # 梭哈每枚 0.18+0.18 → 0.3+0.3(用户2026-07-29 第五轮)
+		# ★这一改顺带修掉一个隐藏缺陷: 财神普攻 = 1.0A + 2%×ATK×金币数, 而梭哈【清空金币】。
+		#   每枚金币"留着"值 0.66 伤害/秒(持续到死); 旧值 17.1 点一次性 → 打平需剩余 25.7 秒,
+		#   而它只活 33 秒 → t=7.3 秒后放梭哈还不如留着普攻。改到 0.3+0.3(28.4点)后打平点 42.9 秒 > 33, 任何时候放都划算。
 	})
 
 const INK_BOMB_RADIUS := 300.0                                  # 墨水炸弹AOE半径(用户2026-07-15: 原全体→落点300码范围内)

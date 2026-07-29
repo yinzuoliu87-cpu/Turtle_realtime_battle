@@ -225,13 +225,14 @@ func _sk_ice_frost(u: Dictionary, tgt: Dictionary) -> void:      # 寒冰龟·�
 	var radius: float = 150.0 * (1.0 + ICICLE_FROST_RADIUS * float(ic))
 	var secs: float = 5.0 + ICICLE_FROST_SEC * float(ic)
 	var ticks: int = maxi(1, roundi(secs / 0.5))
+	_ice_frost_field(center, radius, secs)   # ★领域底层只建【一次】(旧版每跳重画范围环 → 闪烁)
 	var tw = battle._reg_tween()
 	for i in range(ticks):
 		tw.tween_callback(_ice_frost_tick.bind(u, center, radius))
 		tw.tween_interval(0.5)
 
 func _ice_frost_tick(u: Dictionary, center: Vector2, radius: float) -> void:
-	_ice_frost_rain(center, radius)
+	_ice_frost_rain(center, radius)   # 落冰(范围环已由 _ice_frost_field 常驻, 这里不再每跳重画)
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false):
 			continue
@@ -239,44 +240,172 @@ func _ice_frost_tick(u: Dictionary, center: Vector2, radius: float) -> void:
 			battle._damage._buff(o, "mr", -0.25, true, 0.65)   # 圈内 -25%魔抗(刷新, 略>0.5s跳间隔)
 			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 0.18, o, true), Color("#bfe9ff"))
 
-func _ice_frost_rain(center: Vector2, radius: float) -> void:    # 冰霜场视觉: 范围环 + 几片落冰
-	battle._skill_ring(center, Color(0.55, 0.85, 1.0, 0.4), radius)
-	var tex = "res://assets/sprites/skills/ice-spike.png"
-	var has_tex = ResourceLoader.exists(tex)
-	for i in range(5):
-		var off = Vector2(battle._juice_rng.randf_range(-radius, radius), battle._juice_rng.randf_range(-radius, radius))
-		if off.length() > radius:
-			continue
-		var sh = Sprite3D.new()
-		if has_tex:
-			sh.texture = load(tex)
-			sh.pixel_size = 0.016
-			sh.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-		else:
-			sh.texture = VfxTex._make_bolt_texture(Color(0.6, 0.85, 1.0))
-			sh.pixel_size = 0.01
-		sh.modulate = Color(0.7, 0.9, 1.0, 0.95)
-		sh.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		sh.shaded = false
-		sh.transparent = true
-		var ground = battle._world_pos(center + off, 0.05)
-		sh.position = ground + Vector3(0.0, 2.2, 0.0)
-		battle._world.add_child(sh)
-		var twr = battle._reg_tween()
-		twr.set_parallel(true)
-		twr.tween_property(sh, "position", ground, 0.35)
-		twr.tween_property(sh, "modulate:a", 0.0, 0.3).set_delay(0.18)
-		twr.chain().tween_callback(sh.queue_free)
-
-## 寒冰龟·冰封 (用户 2026-07-28 第三轮: 强形态改【常驻】, 满冰柱转为额外上眩晕)
-##   常驻: FREEZE_DMG(2.5)×ATK 魔法 + 回复自身(护甲+魔抗)生命
-##   满 ICICLE_MAX 层冰柱: 额外眩晕 FREEZE_STUN_SEC 秒
+## ══ 冰霜领域视觉 (2026-07-29 重做·用户「那种冰霜砸下来怎么做」) ══
 ##
-## ★为什么把强形态改成常驻: 上一轮设计成"满20层才转形态", 实测 19.3%(第73/84) 几乎没救到 ——
-##   冰柱靠普攻攒, 而寒冰攻速 0.65 次/秒是全表最慢, 攒满 20 层要 ≈31 秒, 对局中位才 53 秒。
-##   给攻速最慢的龟设计"靠普攻次数叠层"的成长条件, 本身是自相矛盾的。
-## ★_freeze 内部就是 _damage._stun(见 RealtimeBattle3DScene._freeze), 冻结与眩晕同一套,
-##   所以"满层加眩晕"直接复用 _fire_ice_shard 的 freeze_sec 参数, 不需要另开一条控制链。
+## 旧版的问题(五条, 逐条对着改的):
+##   ① 不是"砸"是"平移" —— tween 没设 EASE_IN, 匀速下滑, 没有重力感
+##   ② 冰锥尖朝上 —— 用的 skills/ice-spike.png 是向上的水晶, 掉下来屁股朝地
+##   ③ 落地什么都没有 —— 只是淡出, 没有碎裂/霜痕/震动
+##   ④ 固定 5 片 —— 满 20 层冰柱半径 750 码时, 5 片撒在 5 倍大的圈里基本看不见
+##   ⑤ 范围环每 0.5 秒重画 —— 闪烁, 不像一个稳定存在的"领域"
+##
+## 新版分五层(素材全新生成·未复用):
+##   ① 领域底层 frost-field-ground.png —— 只在【首跳】建一次, 缓慢自转+呼吸, 跟着持续时长活
+##   ② 预警      落点先出现小霜圈, 0.15 秒后冰锥才到
+##   ③ 下落      frost-icicle-fall.png (尖朝下) 从 3.5 高加速坠落 (TRANS_QUAD/EASE_IN)
+##   ④ 命中      GPU 冰屑粒子爆散 + 白蓝闪光 + 地面冲击环 + 极轻震屏
+##   ⑤ 残留      地面霜痕渐隐
+const FROST_ICICLE := "res://assets/sprites/vfx/frost-icicle-fall.png"
+const FROST_FIELD := "res://assets/sprites/vfx/frost-field-ground.png"
+const FROST_CHIP := "res://assets/sprites/vfx/frost-chip.png"
+
+## 一跳的视觉: 按半径决定落几根, 每根独立预警→坠落→命中→残留.
+func _ice_frost_rain(center: Vector2, radius: float) -> void:
+	# ④ 片数跟半径走(旧版恒 5): 150码→5 根, 750码→16 根. 上限 16 防帧率.
+	var n: int = clampi(3 + int(radius / 60.0), 5, 16)
+	for i in range(n):
+		# 极坐标均匀采样(旧版是方形取样再 continue 掉圈外的, 实际根数经常不足)
+		var a: float = battle._juice_rng.randf() * TAU
+		var r: float = sqrt(battle._juice_rng.randf()) * radius
+		var at: Vector2 = center + Vector2(cos(a), sin(a)) * r
+		var delay: float = battle._juice_rng.randf() * 0.30      # 错峰, 不要齐刷刷一起落
+		battle._pending_shots.append({"delay": delay, "fn": _frost_icicle_drop.bind(at)})
+
+## 领域底层(只在首跳建一次): 地面霜盘, 缓慢自转 + 呼吸, secs 秒后淡出.
+func _ice_frost_field(center: Vector2, radius: float, secs: float) -> void:
+	var tex: Texture2D = load(FROST_FIELD)
+	if tex == null or battle._world == null:
+		return
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.billboard = BaseMaterial3D.BILLBOARD_DISABLED           # ★贴地不朝相机 —— 它是"地面上的一层霜"
+	spr.shaded = false
+	spr.transparent = true
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	spr.pixel_size = (radius * 2.0 * battle.WS) / float(maxi(1, tex.get_width()))
+	spr.position = battle._world_pos(center, 0.02)
+	spr.rotation_degrees = Vector3(-90.0, 0.0, 0.0)             # 平铺到地面
+	spr.modulate = Color(0.72, 0.92, 1.0, 0.0)
+	battle._world.add_child(spr)
+	var tin = battle._reg_tween()
+	tin.tween_property(spr, "modulate:a", 0.42, 0.35)
+	# 缓慢自转(整个持续时长转 40 度) + 呼吸
+	var trot = battle._reg_tween()
+	trot.tween_property(spr, "rotation_degrees:y", 40.0, secs)
+	var tbr = battle._reg_tween()
+	tbr.set_loops(maxi(1, int(secs / 1.6)))
+	tbr.tween_property(spr, "modulate:a", 0.30, 0.8)
+	tbr.tween_property(spr, "modulate:a", 0.42, 0.8)
+	var tout = battle._reg_tween()
+	tout.tween_interval(maxf(0.1, secs - 0.4))
+	tout.tween_property(spr, "modulate:a", 0.0, 0.4)
+	tout.tween_callback(spr.queue_free)
+
+## 一根冰锥的完整生命: 预警圈 → 加速坠落 → 命中(粒子+闪光+环+震) → 霜痕残留.
+func _frost_icicle_drop(at: Vector2) -> void:
+	if battle._world == null:
+		return
+	# ② 预警: 落点先出现一个小霜圈(0.15 秒), 给"要被砸了"的预期
+	battle._skill_ring(at, Color(0.55, 0.85, 1.0, 0.30), 34.0)
+	var tex: Texture2D = load(FROST_ICICLE)
+	if tex == null:
+		return
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.shaded = false
+	spr.transparent = true
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	spr.pixel_size = (54.0 * battle.WS) / float(maxi(1, tex.get_height()))
+	spr.modulate = Color(0.85, 0.96, 1.0, 0.95)
+	var ground: Vector3 = battle._world_pos(at, 0.06)
+	spr.position = ground + Vector3(0.0, 3.5, 0.0)              # ③ 起点抬高(旧版 2.2)
+	battle._world.add_child(spr)
+	var tw = battle._reg_tween()
+	tw.tween_interval(0.15)                                     # 等预警圈
+	# ★重力感: TRANS_QUAD + EASE_IN, 0.22 秒(旧版线性 0.35 秒)
+	tw.tween_property(spr, "position", ground, 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func() -> void:
+		if is_instance_valid(spr):
+			spr.queue_free()
+		_frost_impact(at))
+
+## ④ 命中三件套: GPU 冰屑粒子 + 白蓝闪光 + 地面冲击环 + 极轻震屏; ⑤ 再留一小片霜痕.
+func _frost_impact(at: Vector2) -> void:
+	if battle._world == null:
+		return
+	_frost_chips(at)                                            # 粒子
+	var g = battle._glow_bb(at, 0.35, 46.0, Color(0.80, 0.95, 1.0, 0.85))   # 闪光
+	if g != null:
+		var tg = battle._reg_tween()
+		tg.set_parallel(true)
+		tg.tween_property(g, "scale", Vector3.ONE * 2.1, 0.14)
+		tg.tween_property(g.material_override, "albedo_color", Color(0.80, 0.95, 1.0, 0.0), 0.16)
+		tg.chain().tween_callback(g.queue_free)
+	battle._skill_ring(at, Color(0.70, 0.92, 1.0, 0.55), 58.0)  # 地面冲击环
+	battle._shake(0.012)                                        # 极轻(一跳最多 16 根, 不能重)
+	_frost_scar(at)                                             # 残留霜痕
+
+## GPU 冰屑粒子: 向上+外扩, 重力回落. 照 battle_vfx._impact_particles 的结构改配色/形状.
+func _frost_chips(at: Vector2) -> void:
+	var ps := GPUParticles3D.new()
+	ps.amount = 9
+	ps.lifetime = 0.42
+	ps.one_shot = true
+	ps.explosiveness = 1.0
+	ps.local_coords = false
+	var mat := ParticleProcessMaterial.new()
+	mat.direction = Vector3(0, 1, 0)
+	mat.spread = 78.0
+	mat.initial_velocity_min = 1.8
+	mat.initial_velocity_max = 4.2
+	mat.gravity = Vector3(0, -11.0, 0)
+	mat.scale_min = 0.5
+	mat.scale_max = 1.25
+	mat.angular_velocity_min = -220.0
+	mat.angular_velocity_max = 220.0
+	mat.color = Color(0.82, 0.95, 1.0, 1.0)
+	ps.process_material = mat
+	var dm := StandardMaterial3D.new()
+	dm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	dm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	dm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	dm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	var chip: Texture2D = load(FROST_CHIP)
+	if chip != null:
+		dm.albedo_texture = chip
+	dm.albedo_color = Color(0.88, 0.97, 1.0, 1.0)
+	var qm := QuadMesh.new()
+	qm.size = Vector2(0.13, 0.13)
+	qm.material = dm
+	ps.draw_pass_1 = qm
+	ps.position = battle._world_pos(at, 0.35)
+	battle._world.add_child(ps)
+	ps.emitting = true
+	var tw = battle._reg_tween()
+	tw.tween_interval(ps.lifetime + 0.15)
+	tw.tween_callback(ps.queue_free)
+
+## ⑤ 残留: 落点一小片霜痕, 0.9 秒渐隐(复用领域那张图缩小).
+func _frost_scar(at: Vector2) -> void:
+	var tex: Texture2D = load(FROST_FIELD)
+	if tex == null:
+		return
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	spr.shaded = false
+	spr.transparent = true
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	spr.pixel_size = (72.0 * battle.WS) / float(maxi(1, tex.get_width()))
+	spr.position = battle._world_pos(at, 0.03)
+	spr.rotation_degrees = Vector3(-90.0, battle._juice_rng.randf() * 360.0, 0.0)
+	spr.modulate = Color(0.80, 0.94, 1.0, 0.55)
+	battle._world.add_child(spr)
+	var tw = battle._reg_tween()
+	tw.tween_interval(0.25)
+	tw.tween_property(spr, "modulate:a", 0.0, 0.65)
+	tw.tween_callback(spr.queue_free)
 func _sk_ice_freeze(u: Dictionary, tgt: Dictionary) -> void:
 	if tgt == null or not tgt.get("alive", false):
 		return

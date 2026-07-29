@@ -42,7 +42,9 @@ func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招�
 		battle._equip_sys._stats._eq_apply_one_stats(u, iid, 1)
 		u["buyequip_id"] = iid; u["buyequip_star"] = 1
 		var tier: int = int(DataRegistry.phase2_equipment_by_id.get(iid, {}).get("cost", 1))
-		u["energy_cost"]["fortuneBuyEquip"] = 60.0 + [60.0, 120.0, 240.0][clampi(tier - 1, 0, 2)]   # 消耗随抽到费拉长(用户2026-07-29 第四轮: 首释 160/240/460 → 120/180/300)
+		u["energy_cost"]["fortuneBuyEquip"] = 60.0 + [60.0, 120.0, 240.0][clampi(tier - 1, 0, 2)]   # 消耗随抽到费拉长(用户2026-07-29 第四轮: 160/240/460 → 120/180/300)
+		# ★注意这是【抽完之后】才改写 energy_cost —— 首次释放本身花的是 skill_energy 里的基准 60。
+		#   我 2026-07-29 一度把这组数说成"首释价", 是错的; 它是【第2、3次(升星)】的价。
 		battle._vfx._float_text(u["pos"] + Vector2(0, -72), "招财! " + str(DataRegistry.phase2_equipment_by_id.get(iid, {}).get("name", iid)), Color("#ffd93d"))
 	elif star >= 3:                                             # 3★满: 回复1×ATK生命
 		battle._damage._heal(u, u["atk"])
@@ -62,9 +64,9 @@ func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招�
 	battle._refresh_panel_equips(u)   # ★抽到/升星的临时装备图标即时显进左右信息框(用户2026-07-12)
 
 func _sk_fortune_dice(u: Dictionary) -> void:                    # 财神龟·骰子(用户2026-07-12补特效): 掷骰3~8金币+回8%maxHP
-	var g: int = randi_range(3, 8)   # 2~6→3~8 (恢复文本设计值)
+	var g: int = randi_range(5, 8)   # 2~6→3~8→5~8 (用户2026-07-29 第五轮)
 	u["gold"] += g
-	battle._damage._heal(u, u["maxHp"] * 0.10)   # 骰子回血 8%→10% 最大生命(用户2026-07-29 第四轮)
+	battle._damage._heal(u, u["maxHp"] * 0.15)   # 骰子回血 8%→10%→15% 最大生命(用户2026-07-29 第五轮·财神实测33秒就死, 回血=活久点)
 	battle._burst_vfx("res://assets/sprites/vfx/fortune-coin-burst.png", u["pos"], 120.0, 0.75)   # 金币爆
 	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.55), 52.0)
 	battle._vfx._float_text(u["pos"] + Vector2(0, -66), "掷骰 +%d金币" % g, Color("#ffd93d"))

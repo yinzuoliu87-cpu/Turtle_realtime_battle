@@ -2,6 +2,10 @@ extends Node
 ## verify_turtle_balance_r4.gd — 第四轮龟平衡·五只 (用户 2026-07-29)
 ##
 ## 方案书: docs/plans/20260729-第四轮龟平衡.md
+##
+## ★2026-07-30 第五轮移交: 骰子回血 / 龟派气波 / 过肩摔 这四条的数值已被第五轮改掉,
+##   对应检查已移到 verify_turtle_balance_r5。这里【故意不把期望值改成第五轮的】——
+##   改了就毁掉第四轮的留痕(它记录的是"第四轮当时改成了什么")。保留的是仍然成立的部分。
 ## 闪电单独一个门禁 (verify_lightning_buff)，这里管其余五只。
 ##
 ## ★期望值一律写【用户口述的字面需求值】，不从代码常量读回来 ——
@@ -99,9 +103,9 @@ func _fortune() -> void:
 		fs.contains("%.1f + [%.1f, %.1f, %.1f]" % [WANT_BUYEQUIP_BASE,
 			WANT_BUYEQUIP_ADD[0], WANT_BUYEQUIP_ADD[1], WANT_BUYEQUIP_ADD[2]]))
 	_chk("财神·招财进宝旧值 100/180/400 已消失", not fs.contains("[100.0, 180.0, 400.0]"))
-	_chk("财神·骰子回血 = %d%% 最大生命" % int(WANT_DICE_HEAL * 100.0),
-		fs.contains('u["maxHp"] * %.2f' % WANT_DICE_HEAL))
-	_chk("财神·骰子回血旧值 8% 已消失", not fs.contains('u["maxHp"] * 0.08'))
+	# ⇢ 第五轮把骰子回血 10%→15%、金币 3~8→5~8 —— 已移交 verify_turtle_balance_r5。
+	#   ★这里【不改成 15%】: 改了就毁掉第四轮的留痕(第四轮确实是 10%)。删掉这条, 由 r5 接管。
+	_chk("财神·骰子回血旧值 8% 已消失(第四轮起就不是 8%)", not fs.contains('u["maxHp"] * 0.08'))
 
 
 func _two_head(P: Dictionary) -> void:
@@ -164,13 +168,9 @@ func _basic() -> void:
 		and rb.contains('_atk_dmg(u, %.1f, tgt) + int(lost)' % WANT_SHIELD_ATK))
 	_chk("普通龟·龟盾旧值 0.7A/20%已损 已消失",
 		not rb.contains('(tgt["maxHp"] - tgt["hp"]) * 0.20'))
-	_chk("普通龟·龟派气波 = %.1f×ATK" % WANT_CHIWAVE,
-		rb.contains("_atk_dmg(uu2, %.1f, o)" % WANT_CHIWAVE))
+	# ⇢ 第五轮把气波 3.0→2.0 —— 已移交 r5。这里只保留"第四轮砍掉的 3.5 没回来"。
 	_chk("普通龟·气波旧值 3.5 已消失", not rb.contains("_atk_dmg(uu2, 3.5, o)"))
-	_chk("普通龟·过肩摔主目标 = 0.7A + %d%%目标最大生命" % int(WANT_SLAM_MAIN * 100.0),
-		rb.contains("_atk_dmg(u, 0.7, tgt) + int(tmax * %.2f)" % WANT_SLAM_MAIN))
-	_chk("普通龟·过肩摔周围 = 0.2A + %d%%主目标最大生命" % int(WANT_SLAM_SPLASH * 100.0),
-		rb.contains("_atk_dmg(u, 0.2, o) + int(tmax * %.2f)" % WANT_SLAM_SPLASH))
+	# ⇢ 第五轮把过肩摔改成【乘法结构】(1.0A + 0.2%×ATK×最大生命), 不再是纯 %最大生命 —— 已移交 r5。
 	_chk("普通龟·过肩摔旧值 0.26/0.19 已消失",
 		not rb.contains("int(tmax * 0.26)") and not rb.contains("int(tmax * 0.19)"))
 	# 龟盾改的是【构成】不是单纯削弱 —— 打三档血量出来给人复核

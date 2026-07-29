@@ -120,7 +120,8 @@ func _sk_bubble_burst(u: Dictionary, tgt) -> void:              # 泡泡龟·泡
 		if not uu.get("alive", false): return
 		for o in battle._targeting._enemies_of(uu):
 			if o.get("alive", false) and o["pos"].distance_to(cc) <= 200.0:   # 门间200码带内敌
-				battle._damage._apply_damage_from(uu, o, int(battle._mitigate(uu, cons, o, true)) + battle._atk_dmg(uu, 0.8, o), Color("#cdebff")))   # 消耗泡泡值魔法(吃魔抗)+0.8A物理(封板L437)
+				battle._damage._apply_damage_from(uu, o, int(battle._mitigate(uu, cons * 1.5, o, true)) + battle._atk_dmg(uu, 1.5, o), Color("#cdebff")))   # 魔法=消耗量×1.5(吃魔抗) + 物理1.5A(用户2026-07-29 第五轮·原 ×1.0 + 0.8A)
+				# ★物理段【不吃泡泡值】, 是开局(泡泡值=0)唯一稳定的伤害 —— 从 38 翻到 71, 第一发不再是空技能。
 
 func _sk_bubble_bind(u: Dictionary, tgt) -> void:
 	if tgt == null:

@@ -170,7 +170,7 @@ func _sk_ninja_shuriken(u: Dictionary, tgt) -> void:           # 技·手里剑(
 func _sk_ninja_bomb(u: Dictionary, tgt) -> void:
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
-	var opts = {"phys": 2.0, "defDown": 0.25, "color": Color("#ff9a3c")}   # 伤害2.0A(用户2026-07-11「提升到2ATK」·回合制原1.1·指定偏离)
+	var opts = {"phys": 2.0, "defDown": 0.20, "color": Color("#ff9a3c")}   # 伤害2.0A(用户2026-07-11)·破甲25%→20%(用户2026-07-29 第五轮·龟能同时 100→120)
 	var land: Vector2 = tgt["pos"]            # 落点 = 当前目标位置 (400码爆炸半径中心)
 	battle._anticipate(u)                            # 短蓄力(掏炸弹)
 	var spr = Sprite3D.new()

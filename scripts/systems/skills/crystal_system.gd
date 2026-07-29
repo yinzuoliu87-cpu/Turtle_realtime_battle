@@ -6,8 +6,8 @@ extends RefCounted
 ## ★水晶数值单一事实源(用户2026-07-28 第一轮加强)。文案在 data/pets.json，改这里要同步改那边。
 const BULWARK_ATK := 2.0        # 水晶壁垒: 盾 = ×ATK  (1.0→2.0)
 const BULWARK_HP_PCT := 0.10    # 水晶壁垒: 盾 += ×最大生命 (0.05→0.10)
-const BURST_MAGIC := 0.8        # 碎晶爆破: 三段合计 ×ATK 魔法 (0.7→0.8)
-const BURST_TRUE := 0.3         # 碎晶爆破: 三段合计 ×ATK 真实 (0.1→0.3)
+const BURST_MAGIC := 1.2        # 碎晶爆破: 三段合计 ×ATK 魔法 (0.7→0.8→1.2·用户2026-07-29 第五轮: 每段 0.4)
+const BURST_TRUE := 1.2         # 碎晶爆破: 三段合计 ×ATK 真实 (0.1→0.3→1.2·用户2026-07-29 第五轮: 每段 0.4)
 
 var battle
 
@@ -224,7 +224,7 @@ func _crystal_sweep_step(ang: float, u: Dictionary, si: int, reach: float, state
 				_crystal_spark(o["pos"])
 	state["prev"] = ang
 
-func _crystal_spike_line(u: Dictionary) -> void:   # 照小菊R第三击(2026-07-16逐帧): 砸地爆发→发光波头贴地冲出→波头过处水晶刺依次从地底弹出→碎晶地痕渐隐; 命中+2结晶+击飞0.8s+50%减速3s(纯控制无伤害)
+func _crystal_spike_line(u: Dictionary) -> void:   # 照小菊R第三击(2026-07-16逐帧): 砸地爆发→发光波头贴地冲出→波头过处水晶刺依次从地底弹出→碎晶地痕渐隐; 命中 1.5A真伤+2结晶+击飞0.8s+50%减速3s
 	var tgt = battle._targeting._acquire_target(u)
 	var dirv: Vector2 = Vector2.RIGHT if str(u.get("side", "left")) == "left" else Vector2.LEFT
 	if tgt != null:
@@ -346,21 +346,24 @@ func _crystal_spike_line(u: Dictionary) -> void:   # 照小菊R第三击(2026-07
 				if int(o.get("_spike_tok", -1)) == tok: continue
 				if (o["pos"] as Vector2).distance_to(pref) > 52.0: continue
 				o["_spike_tok"] = tok
+				# ★水晶刺从【纯控制零伤害】改成带 1.5A 真实伤害(用户2026-07-29 第五轮)。
+				#   壁垒 80 龟能 + 持盾4秒锁龟能, 而唯一输出是"+2层印记" —— 一个技能的伤害部分完全是 0。
+				battle._damage._apply_damage_from(uu, o, int(maxf(1.0, uu["atk"] * 1.5)), Color("#ffffff"), 0.0, true)
 				_crystal_stack(uu, o, 2)                              # +2层结晶
 				battle._knock_up(o, pref, 8.8)                               # 击飞0.8s(滞空=2×8.8/22)
 				o["spd_move_mult"] = 0.5
 				o["spd_dbf_until"] = battle._t + 3.0                         # 50%减速3秒
 		, "src": u})
 
-# 水晶结晶叠层+满5引爆 (普攻/水晶球ray/本体主动共享·同一目标"crystal"层→天然共享层数): 叠n层(上限5)·满5→清零+19%目标最大生命魔法(吃魔抗·封板)+削魔抗-20%+紫辉爆
-# 水晶结晶叠层+满5引爆 (普攻/水晶球ray/本体主动共享·同一目标"crystal"层→天然共享层数): 叠n层(上限5)·满5→清零+19%目标最大生命魔法(吃魔抗·封板)+削魔抗-20%+紫辉爆
+# 水晶结晶叠层+满5引爆 (普攻/水晶球ray/本体主动共享·同一目标"crystal"层→天然共享层数): 叠n层(上限5)·满5→清零+22%目标最大生命魔法(吃魔抗·封板)+削魔抗-20%+紫辉爆
+# 水晶结晶叠层+满5引爆 (普攻/水晶球ray/本体主动共享·同一目标"crystal"层→天然共享层数): 叠n层(上限5)·满5→清零+22%目标最大生命魔法(吃魔抗·封板)+削魔抗-20%+紫辉爆
 func _crystal_stack(src: Dictionary, tgt: Dictionary, n: int) -> void:
 	if tgt == null or not tgt.get("alive", false):
 		return
 	var cv = battle._add_stack(tgt, "crystal", n, 5)
 	if cv >= 5:
 		battle._consume_stacks(tgt, "crystal")
-		battle._damage._apply_damage_from(src, tgt, battle._mitigate(src, tgt["maxHp"] * 0.19, tgt, true), Color("#9bdcff"), 0.0, false)   # 引爆19%最大生命魔法(吃魔抗·封板; 冰蓝2026-07-15)
+		battle._damage._apply_damage_from(src, tgt, battle._mitigate(src, tgt["maxHp"] * 0.22, tgt, true), Color("#9bdcff"), 0.0, false)   # 引爆22%最大生命魔法(吃魔抗·19%→22% 用户2026-07-29 第五轮)
 		battle._damage._buff(tgt, "mr", -0.2, true)
 		_crystal_detonate(tgt["pos"])
 

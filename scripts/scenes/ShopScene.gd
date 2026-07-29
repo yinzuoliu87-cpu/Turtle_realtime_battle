@@ -945,7 +945,6 @@ const CARD_TEX_TIER := [
 	preload("res://assets/sprites/shop/card-frame-t4.png"),
 	preload("res://assets/sprites/shop/card-frame-t5.png"),
 ]
-const CARD_TEX = preload("res://assets/sprites/shop/card-frame-n.png")
 ## 选中态【整张换图】而不是给上面那张染色 —— 实测两框边框色差 135(modulate 版只有 26)。
 const CARD_TEX_SEL = preload("res://assets/sprites/shop/card-frame-s.png")
 const PANEL_TEX = preload("res://assets/sprites/shop/panel-frame.png")

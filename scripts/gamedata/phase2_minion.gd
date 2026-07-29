@@ -6,17 +6,27 @@ extends RefCounted
 ##   const Minion = preload("res://scripts/gamedata/phase2_minion.gd")
 ##
 ## 规则: 每条战场开打前自动补小将, 使该路双方单位各达 3 名(前3+后3共6位).
-##   Lv1 基础: 基数 250生命×3=750 / 30攻×1.5=45 / 7护甲 / 7魔抗 (×3/×1.5=用户2026-06-25补丁); 每级全属性 ×1.05 复利.
+##   Lv1 基础(2026-07-29 起写最终值·前后排分开): 前排 850生命/45攻/13甲/13抗 · 后排 770生命/55攻/9甲/9抗; 每级 ×1.05 复利.
 ##   前排挥砍 1.4×ATK, 后排射击 1.5×ATK.
 ##   某路放 0 统领 → 随机一前排小将升「深海小将精英」(整排均摊伤害). (用户 2026-06-14: 去掉"概率击杀1敌统领")
 ## 现状(壳): 生成【小将 fighter dict】可测; 还没接 BattleScene(补位入场/小将出手AI=基础攻击, 下一步).
 
-const BASE_HP := 250
-const BASE_ATK := 30
-const BASE_DEF := 7
-const BASE_MR := 7
+## ★2026-07-29 用户「别搞这种补丁倍率，直接以最终值」+ 小将加强(前排变肉/后排变凶)。
+##   旧写法是 BASE_HP 250 【×3】、BASE_ATK 30 【×1.5】—— 补丁倍率藏在 make_minion 的表达式尾部,
+##   正是 CLAUDE.md 记过的坑(读表达式漏掉尾部倍率 → 文案和代码各错各的)。现在一律写最终值。
+##   同时前/后排拆开: 旧版两者共用同一套基数, 只靠 atkScale(1.4/1.5) 区分, 给不了不同的生命/双抗。
+# 前排(近战·肉盾定位): 生命 750→850 / 双抗 7→13 / 攻击不变
+const FRONT_HP := 850
+const FRONT_ATK := 45
+const FRONT_DEF := 13
+const FRONT_MR := 13
+# 后排(远程·输出定位): 生命 750→770 / 攻击 45→55 / 双抗 7→9
+const BACK_HP := 770
+const BACK_ATK := 55
+const BACK_DEF := 9
+const BACK_MR := 9
 const LEVEL_MULT := 1.05       # 每级全属性 ×1.05 复利
-const FRONT_ATK_MULT := 1.4    # 前排挥砍
+const FRONT_ATK_MULT := 1.4    # 前排挥砍(普攻系数·技能定义里的正经参数, 不是补丁倍率)
 const BACK_ATK_MULT := 1.5     # 后排射击
 # (删 ELITE_KILL_CHANCE: 用户 2026-06-14 定 — "概率击杀1敌统领"这个机制不要)
 
@@ -39,10 +49,11 @@ static func minion_img(is_elite: bool, is_back: bool) -> String:
 static func make_minion(level: int, side: String, slot_key: String, is_elite: bool = false) -> Dictionary:
 	var m := level_mult(level)
 	var is_front := slot_key.begins_with("front")
-	var hp := int(round(BASE_HP * m)) * 3        # 小将血量×3 (用户2026-06-25补丁)
-	var atk := int(round(BASE_ATK * m * 1.5))    # 小将攻击力×1.5 (用户2026-06-25补丁)
-	var def_ := int(round(BASE_DEF * m))
-	var mr := int(round(BASE_MR * m))
+	# 最终值 × 等级复利。前/后排各一套(用户2026-07-29)。
+	var hp := int(round(float(FRONT_HP if is_front else BACK_HP) * m))
+	var atk := int(round(float(FRONT_ATK if is_front else BACK_ATK) * m))
+	var def_ := int(round(float(FRONT_DEF if is_front else BACK_DEF) * m))
+	var mr := int(round(float(FRONT_MR if is_front else BACK_MR) * m))
 	var atk_mult := FRONT_ATK_MULT if is_front else BACK_ATK_MULT
 	# 基础攻击 = 复用 physical 技能类型 (单体物理, dmg = atk × atkScale). 前砍1.4 / 后射1.5.
 	# 精英: 整排均摊伤害 (设计§3, 用户2026-06-14定均摊式=总÷人数). type仍physical→目标选取/AI不变(单选敌),

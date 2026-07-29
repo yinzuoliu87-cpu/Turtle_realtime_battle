@@ -719,10 +719,6 @@ func record_match(result: String, lineup: Array, mode_str: String, turn_num: int
 
 # ─── 当前对局 ────────────────────────────────────────────────
 
-func has_team() -> bool:
-	return left_team.size() == 3 and right_team.size() == 3
-
-
 func clear_team() -> void:
 	left_team = []
 	right_team = []
