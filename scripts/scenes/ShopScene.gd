@@ -260,7 +260,7 @@ func _build_odds_row() -> void:
 	for c in range(5):
 		var pct: int = int(odds[c]) if c < odds.size() else 0
 		var chip := Label.new()
-		chip.text = "%d费 %d%%" % [c + 1, pct]
+		chip.text = "费用%d %d%%" % [c + 1, pct]
 		chip.add_theme_font_size_override("font_size", 16)
 		var cc := Color(cost_cols[c])
 		chip.add_theme_color_override("font_color", cc if pct > 0 else Color(cc.r, cc.g, cc.b, 0.28))
@@ -452,20 +452,22 @@ func _card(idx: int, pos: Vector2) -> Control:
 		sold.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(sold)
 		return box
 	var edef: Dictionary = _offer[idx]
-	var cost := Label.new(); cost.text = "%d 费" % int(edef.get("cost", 1))
-	cost.add_theme_font_size_override("font_size", 12); cost.add_theme_color_override("font_color", Color("#9fb6c9"))
-	cost.position = Vector2(0, 13); cost.size = Vector2(SLOT_W, 17); cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(cost)
+	# ★卡上【不再写「N 费」】(用户 2026-07-29:「1费和1图标都存在」)。
+	#   实测 PRICE_MULT = 1 → 售价恒等于费用, 59/59 件都相等 ——
+	#   卡上同时写「1 费」和「◎ 1」等于把同一个数字显示两遍。
+	#   保留下面那个带币图标的价格(购买决策要看的是它); 费用档由【卡框颜色】表达
+	#   (灰/绿/蓝/紫/金 = 1~5 费, 与出货概率行同一套色)。
 	var img := str(edef.get("img", ""))
 	if img != "" and ResourceLoader.exists("res://assets/sprites/" + img):
 		var ic := TextureRect.new(); ic.texture = load("res://assets/sprites/" + img)
 		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		ic.position = Vector2(SLOT_W / 2.0 - 27, 32); ic.size = Vector2(54, 50)
+		# 「N 费」撤掉后顶部空出 17px, 全给图标 —— 卡片上最该被一眼认出的是【这是什么东西】
+		ic.position = Vector2(SLOT_W / 2.0 - 32, 16); ic.size = Vector2(64, 60)
 		box.add_child(ic)
 	var nm := Label.new(); nm.text = str(edef.get("name", edef.get("id", "?")))
-	nm.add_theme_font_size_override("font_size", 15); nm.add_theme_color_override("font_color", Color("#e8f2ff"))
-	nm.position = Vector2(11, 84); nm.size = Vector2(SLOT_W - 22, 20)
+	nm.add_theme_font_size_override("font_size", 16); nm.add_theme_color_override("font_color", Color("#e8f2ff"))
+	nm.position = Vector2(11, 80); nm.size = Vector2(SLOT_W - 22, 22)
 	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; nm.clip_text = true
 	box.add_child(nm)
 	# ★卡面【不放】效果摘要(用户 2026-07-28:「小卡片内别加摘要」)。
@@ -580,7 +582,9 @@ func _build_detail_panel() -> void:
 	nm.add_theme_color_override("font_color", _cost_color(cost))
 	nm.position = Vector2(112, 36); nm.size = Vector2(PANEL_W - 148, 32)
 	box.add_child(nm)
-	var cl := Label.new(); cl.text = "%d 费" % cost
+	# 「N 费」是云顶黑话, 图鉴和列表用的一直是正式的「费用 N」—— 同一概念两套说法。
+	# 用户 2026-07-29:「1费这种口语词真的给玩家看吗」→ 统一成「费用 N」。
+	var cl := Label.new(); cl.text = "费用 %d" % cost
 	cl.add_theme_font_size_override("font_size", 16)
 	cl.add_theme_color_override("font_color", Color("#9fb6c9"))
 	cl.position = Vector2(112, 70); cl.size = Vector2(160, 22)
