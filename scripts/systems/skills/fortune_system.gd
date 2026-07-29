@@ -32,7 +32,7 @@ func _fortune_strike_fx(u: Dictionary, tgt: Dictionary) -> void:   # 财神金�
 	t.tween_callback(b.queue_free)
 	battle._gold_chunk_erupt(tgt["pos"] + Vector2(8.0, -4.0))              # 目标迸金
 
-func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招财进宝(封板·60龟能起): 首抽1件1/2/3费临时装备(1★·战后消失不占槽)→消耗变160/240/460; 后续释放升1星(精确数值delta) → 3★后消耗回60且每次释放回复1×ATK生命
+func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招财进宝(封板·60龟能起): 首抽1件1/2/3费临时装备(1★·战后消失不占槽)→消耗变120/180/300(用户2026-07-29 第四轮·原160/240/460); 后续释放升1星(精确数值delta) → 3★后消耗回60且每次释放回复1×ATK生命
 	var star: int = int(u.get("buyequip_star", 0))
 	if star == 0:                                               # 首抽临时装备
 		var iid: String = battle._chest_sys._chest_pick_equip([1, 2, 3])
@@ -42,7 +42,7 @@ func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招�
 		battle._equip_sys._stats._eq_apply_one_stats(u, iid, 1)
 		u["buyequip_id"] = iid; u["buyequip_star"] = 1
 		var tier: int = int(DataRegistry.phase2_equipment_by_id.get(iid, {}).get("cost", 1))
-		u["energy_cost"]["fortuneBuyEquip"] = 60.0 + [100.0, 180.0, 400.0][clampi(tier - 1, 0, 2)]   # 消耗随抽到费拉长
+		u["energy_cost"]["fortuneBuyEquip"] = 60.0 + [60.0, 120.0, 240.0][clampi(tier - 1, 0, 2)]   # 消耗随抽到费拉长(用户2026-07-29 第四轮: 首释 160/240/460 → 120/180/300)
 		battle._vfx._float_text(u["pos"] + Vector2(0, -72), "招财! " + str(DataRegistry.phase2_equipment_by_id.get(iid, {}).get("name", iid)), Color("#ffd93d"))
 	elif star >= 3:                                             # 3★满: 回复1×ATK生命
 		battle._damage._heal(u, u["atk"])
@@ -64,7 +64,7 @@ func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招�
 func _sk_fortune_dice(u: Dictionary) -> void:                    # 财神龟·骰子(用户2026-07-12补特效): 掷骰3~8金币+回8%maxHP
 	var g: int = randi_range(3, 8)   # 2~6→3~8 (恢复文本设计值)
 	u["gold"] += g
-	battle._damage._heal(u, u["maxHp"] * 0.08)
+	battle._damage._heal(u, u["maxHp"] * 0.10)   # 骰子回血 8%→10% 最大生命(用户2026-07-29 第四轮)
 	battle._burst_vfx("res://assets/sprites/vfx/fortune-coin-burst.png", u["pos"], 120.0, 0.75)   # 金币爆
 	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.55), 52.0)
 	battle._vfx._float_text(u["pos"] + Vector2(0, -66), "掷骰 +%d金币" % g, Color("#ffd93d"))

@@ -4,7 +4,9 @@ extends RefCounted
 ## 类内名不变;外部名加 battle.
 
 ## ★幽灵数值单一事实源(用户2026-07-28 第三轮削弱·整只 80.7%·灵魂风暴 94.0% 第4)。文案在 data/pets.json。
-const SPAWN_CURSE_SEC := 4.0   # 被动·登场诅咒秒数 (BUFF_SEC 5.0 → 4.0; 死亡诅咒仍走 BUFF_SEC)
+const SPAWN_CURSE_SEC := 2.5   # 被动·登场诅咒秒数 (5.0 → 4.0 → 2.5·用户2026-07-29 第四轮)
+## ★本轮【只削登场时长, 不动 CURSE_HP_PCT】—— 那个 5% 是 battle_damage.gd:425 的共享常量,
+##   无头(64.3%)与彩虹(45.0%)也吃它, 而彩虹上一轮刚被砍 52.2pp 已经在位, 再挨一刀会掉出合理区。
 const STORM_DMG := 2.0         # 灵魂风暴: ×ATK (2.5→2.0·魔法与"已中咒转真伤"两支同值)
 const STORM_CURSE_SEC := 6.0   # 灵魂风暴: 施加的诅咒秒数
 

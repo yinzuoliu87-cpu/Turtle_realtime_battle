@@ -171,9 +171,9 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	# 凤凰熔岩盾: 5秒内对每段攻击反击 0.14×ATK 魔法 (from_equip守卫防循环)
 	if u["id"] == "phoenix" and battle._t < float(u.get("lava_shield_until", 0.0)) and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
 		_apply_damage_from(u, src, battle._atk_dmg(u, 0.14, src, true), Color("#ff7a3c"), 0.0, false, true)
-	# 闪电雷盾: 盾在时对每段攻击反击 0.1×ATK 魔法 + 给攻击者叠1层电击
+	# 闪电雷盾: 盾在时对每段攻击反击 0.3×ATK 魔法(用户2026-07-29 平衡四轮: 0.1→0.3) + 给攻击者叠1层电击
 	if u["id"] == "lightning" and battle._t < float(u.get("thunder_shield_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0 and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
-		_apply_damage_from(u, src, battle._atk_dmg(u, 0.1, src, true), Color("#4dabf7"), 0.0, false, true)
+		_apply_damage_from(u, src, battle._atk_dmg(u, 0.3, src, true), Color("#4dabf7"), 0.0, false, true)
 		battle._add_stack(src, "electric", 1, 8)
 	# §AUDIO: 命中音 (暴击→hit-crit / 否则→hit-physical, 节流防多段刷屏); 护盾刚被打没→shield-break (真伤现在也能打盾→去掉 not raw).
 	if shield_before > 0.0 and u["shield"] <= 0.0:

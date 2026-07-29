@@ -47,7 +47,7 @@ func _lightning_hop(u: Dictionary, from_pos: Vector2, target: Dictionary, fr: fl
 	if not target.get("alive", false):
 		return
 	_lightning_arc(from_pos, target["pos"], Color("#aef0ff"))   # 锯齿电弧
-	battle._damage._apply_damage_from(u, target, battle._atk_dmg(u, 0.6 * fr, target, true), Color("#4dabf7"))
+	battle._damage._apply_damage_from(u, target, battle._atk_dmg(u, 0.9 * fr, target, true), Color("#4dabf7"))
 	battle._vfx._hit_spark(target)
 	if hop_i > 0:
 		_lightning_electric(u, target)   # 连锁每跳也叠电击层(主目标由_on_basic_hit叠, 避免重复)
@@ -143,10 +143,13 @@ func _sk_lightning_shield(u: Dictionary) -> void:              # 闪电龟·雷�
 
 func _sk_lightning_surge(u: Dictionary, tgt: Dictionary) -> void: # 闪电龟·涌动 ✅
 	if tgt != null and tgt.get("alive", false):
-		battle._damage._apply_damage_from(u, tgt, int(u["atk"] * 1.23), Color("#4dabf7"), 0.0, true)   # 立即1次被动电击=真实(原误为魔法)
-	u["shock_boost_until"] = battle._t + 5.0      # 5秒内被动电击真伤+50%(窄化; 原误为通用+50%攻击+stray层)
+		battle._damage._apply_damage_from(u, tgt, int(u["atk"] * 1.5), Color("#4dabf7"), 0.0, true)   # 立即1次被动电击=真实(原误为魔法)
+	# ★1.23 → 1.5(2026-07-29 修): 1.23 = 0.82 × 1.5, 是【被动电击 0.82×ATK 时代】的遗留常量。
+	#   2026-07-28 被动已改成 1.0×ATK(见 _shock_dmg), 这里没跟着改 → 文案承诺 1.5×ATK、实发 1.23×ATK, 少 18%。
+	#   现在与 _shock_dmg 的 1.0×ATK × 1.5 口径一致。
+	u["shock_boost_until"] = battle._t + 8.0      # 5秒内被动电击真伤+50%(窄化; 原误为通用+50%攻击+stray层)
 	u["shock_boost_pct"] = 0.5
 	battle._skill_ring(u["pos"], Color(0.45, 0.85, 1.0, 0.5), 52.0)
-	battle._aura_vfx("res://assets/sprites/skills/lightning-3.png", u, 54.0, Color(0.3, 0.67, 0.97, 0.5), 5.0)   # 涌动增伤电流光环5秒(标示buff激活期)
+	battle._aura_vfx("res://assets/sprites/skills/lightning-3.png", u, 54.0, Color(0.3, 0.67, 0.97, 0.5), 8.0)   # 涌动增伤电流光环5秒(标示buff激活期)
 	battle._vfx._hit_spark(u)                                                                                          # 自身电流上涌
 

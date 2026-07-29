@@ -4171,7 +4171,7 @@ func _barrage_bolt(u: Dictionary, cloud_h: float) -> void:   # 雷暴单道(用�
 	_barrage_strike(e["pos"])   # 闪电龟自有lightning-0落雷(非被动的common-lightning-strike)
 	_vfx._hit_spark(e)
 	_shake(0.028)
-	_damage._apply_damage_from(u, e, _atk_dmg(u, 2.2 / 20.0, e, true), Color("#7ee8ff"))
+	_damage._apply_damage_from(u, e, _atk_dmg(u, 3.0 / 20.0, e, true), Color("#7ee8ff"))
 	_add_stack(e, "electric", 1, 8)
 
 func _barrage_cloud_fade(cloud: Sprite3D) -> void:
@@ -5319,9 +5319,12 @@ func _basic_shield_impact_hit(u: Dictionary, tgt) -> void:
 	if not u.get("alive", false): return
 	if not (tgt is Dictionary) or not tgt.get("alive", false): tgt = _targeting._nearest_enemy(u)
 	if tgt == null: return
-	var lost: float = (tgt["maxHp"] - tgt["hp"]) * 0.20
-	var raw: float = u["atk"] * 0.7
-	var dmg := _atk_dmg(u, 0.7, tgt) + int(lost)
+	# 龟盾强化普攻(用户2026-07-29 第四轮): 0.7A + 20%已损 → 1.5A + 13%已损。
+	# ★不是单纯削弱, 是把重心从"敌人已损生命"挪到"自己的攻击力":
+	#   敌 90%血 47→72(更强) / 50%血 122→121(持平) / 10%血 198→170(更弱) —— 削掉滚雪球, 前期更稳。
+	var lost: float = (tgt["maxHp"] - tgt["hp"]) * 0.13
+	var raw: float = u["atk"] * 1.5
+	var dmg := _atk_dmg(u, 1.5, tgt) + int(lost)
 	_damage._apply_damage_from(u, tgt, dmg, Color("#ff4444"))
 	_damage._grant_shield(u, (raw + lost) * 0.80)
 	_damage._knockback(u, tgt, 60.0)
@@ -5490,7 +5493,7 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 				if not _on_line(launch, dir, o["pos"], 80.0): continue
 				if o["pos"].distance_to(c) > 95.0: continue
 				hit2.append(o)
-				_damage._apply_damage_from(uu2, o, _atk_dmg(uu2, 3.5, o), Color("#7fd0ff"))
+				_damage._apply_damage_from(uu2, o, _atk_dmg(uu2, 3.0, o), Color("#7fd0ff"))   # 气波 3.5A→3.0A(用户2026-07-29 第四轮)
 				_damage._knockback(uu2, o, 200.0, 2.752, 2.0)              # 击飞1.5s+击退200
 				# ── ⚡命中: 爆闪 + 震屏 + 火星 ──
 				var bg := _glow_bb(o["pos"], FLY_H, 220.0, Color(0.95, 0.62, 0.26, 0.92))
@@ -5529,11 +5532,11 @@ func _sk_basic_slam(u: Dictionary, tgt) -> void:  # 小龟·过肩摔(#7重做·
 ## 过肩摔伤害结算(主目标 0.7A+26%maxHp / 周围250码 0.2A+19%主maxHp) — 落地时调.
 func _slam_apply_damage(u: Dictionary, tgt: Dictionary, tmax: float) -> void:
 	if tgt.get("alive", false):
-		_damage._apply_damage_from(u, tgt, _atk_dmg(u, 0.7, tgt) + int(tmax * 0.26), Color("#ff9d5c"))
+		_damage._apply_damage_from(u, tgt, _atk_dmg(u, 0.7, tgt) + int(tmax * 0.23), Color("#ff9d5c"))   # 过肩摔主目标 26%→23%最大生命(用户2026-07-29 第四轮·0.7A 不动)
 	for o in _targeting._enemies_of(u):
 		if is_same(o, tgt) or not o.get("alive", false): continue
 		if o["pos"].distance_to(tgt["pos"]) <= 350.0:   # 范围 350码(用户2026-07-11: 250→350)
-			_damage._apply_damage_from(u, o, _atk_dmg(u, 0.2, o) + int(tmax * 0.19), Color("#ff9d5c"))
+			_damage._apply_damage_from(u, o, _atk_dmg(u, 0.2, o) + int(tmax * 0.18), Color("#ff9d5c"))   # 过肩摔周围 19%→18%主目标最大生命(用户2026-07-29 第四轮·0.2A 不动)
 
 ## 过肩摔完整编排(#7·用户2026-07-11): 擒抱→双方跳空(_slam_voff)→空中反转180°(flip_v)→坠落→落地范围伤+大尘爆+震屏. 双方 _slam 冻结.
 func _basic_slam_run(u: Dictionary, tgt: Dictionary, dir: Vector2, u_start: Vector2, land: Vector2, tmax: float) -> void:

@@ -21,7 +21,7 @@ const SKILL_COST := {
 	"bambooHeal": 110.0, "angelBless": 80.0, "angelAscend": 80.0, "stoneRockShield": 100.0, "rockShockwave": 80.0, "stoneTaunt": 120.0, "iceFrost": 100.0, "iceFreeze": 80.0, "commonTeamShield": 120.0,
 	"ninjaBackstab": 110.0, "ghostStorm": 80.0, "ghostPhase": 80.0, "diamondFortify": 60.0, "diceAllIn": 80.0, "diceFlashStrike": 80.0,
 	"gamblerBet": 100.0, "hunterStealth": 80.0, "pirateCannonBarrage": 80.0, "pirateRum": 120.0, "pirateShipPassive": 120.0, "bubbleShield": 80.0, "bubbleBurst": 100.0,
-	"lineLink": 90.0, "lineInkBomb": 120.0, "lightningSurgeBuff": 120.0, "phoenixShield": 90.0, "phoenixEnhancedRebirth": 120.0, "headlessFear": 110.0,
+	"lineLink": 90.0, "lineInkBomb": 120.0, "lightningSurgeBuff": 110.0, "phoenixShield": 90.0, "phoenixEnhancedRebirth": 120.0, "headlessFear": 110.0,
 	"fortuneDice": 70.0, "fortuneBuyEquip": 60.0, "crystalBarrier": 80.0, "chestCount": 100.0, "starWave": 100.0, "starGravityWarp": 120.0,
 	"twoHeadStrike": 100.0, "twoHeadDisrupt": 95.0, "twoHeadFusion": 125.0, "lavaSurge": 150.0, "cyberBeam": 100.0, "hidingDefend": 100.0, "shellAbsorb": 90.0,
 	# 通用
@@ -32,11 +32,11 @@ const SKILL_COST := {
 	"ghostPhantom": 95.0, "diamondPowerball": 100.0, "diamondSmash": 80.0, 
 	"rainbowStorm": 80.0, "gamblerDraw": 80.0, "gamblerFateWheel": 110.0,
 	"hunterShot": 90.0, "hunterBarrage": 100.0, "candyBarrage": 120.0, "candyHammer": 80.0, "candyBomb": 100.0, 
-	"lightningBarrage": 120.0, "lightningShield": 120.0, "phoenixScald": 100.0,
+	"lightningBarrage": 110.0, "lightningShield": 90.0, "phoenixScald": 100.0,
 	"lavaQuake": 115.0, "lavaErupt": 80.0, "crystalBurst": 100.0, "crystalBall": 70.0,
 	"chestStorm": 100.0, "headlessTendrils": 160.0, "headlessSoulStrike": 80.0, 
 	# Batch2 特殊
-	"chestCannon": 120.0, "fortuneAllIn": 340.0, "starWormhole": 100.0, "lineFinish": 120.0,
+	"chestCannon": 120.0, "fortuneAllIn": 210.0, "starWormhole": 100.0, "lineFinish": 120.0,
 	# ★与 pets.json 同步(2026-07-19): 侵入 120→135 是 08d2d41「侵入改制·用户2026-07-16过」定的,
 	# 当时只改了 pets.json+文案, 漏了这张兜底表 → verify_skill_energy 报冲突。
 	"cyberHijack": 135.0, "cyberSmartAI": 110.0, "bubbleBind": 70.0, "hidingShrink": 100.0, "hidingBuffSummon": 80.0, "shellCopy": 130.0, "shellShadow": 130.0, "diceFate": 80.0,

@@ -69,5 +69,42 @@ for e in eq:
         pass
 chk('装备文案无未闭合占位符', [e['id'] for e in eq if str(e.get('effectDesc1','')).count('{')!=str(e.get('effectDesc1','')).count('}')])
 
+
+print('')
+print('=== 自称"由 json 直接生成"的表, 是不是真的还一致 ===')
+# 由来 (2026-07-29): docs/design/装备逐件审查进度.md 开头写着「本表由 phase2-equipment.json
+#   直接生成, 是当前权威状态」, 但仓库里【根本没有生成它的脚本】—— 生成过一次就再没重跑。
+#   龙蛋削弱后那一行还挂着旧数值(攻30/55/300 / 1500伤害 / 30/45/70层灼烧), 而它自称权威 ——
+#   这比一份老老实实标"历史文档"的文件危险得多: 它在【主动声称自己是对的】。
+#   焊进门禁: 59 行随便哪行漂了都红, 不用再靠人想起来去看。
+REV = 'docs/design/装备逐件审查进度.md'
+try:
+    revtxt = io.open(REV, encoding='utf-8').read()
+except Exception:
+    revtxt = ''
+if not revtxt:
+    chk('装备评审表读得到(读不到 = 下面是空检查)', ['缺 ' + REV])
+else:
+    rows = {}
+    for L in revtxt.split(chr(10)):
+        if '| p2eq_' not in L:
+            continue
+        for c in [x.strip() for x in L.split('|')]:
+            if c.startswith('p2eq_'):
+                rows[c] = L
+                break
+    drift = []
+    for e in eq:
+        L = rows.get(e['id'])
+        if L is None:
+            drift.append('%s 不在评审表里' % e['id'])
+            continue
+        for field, label in (('baseStats1', '属性'), ('effectDesc1', '效果')):
+            v = str(e.get(field, '')).strip()
+            if v and v not in L:
+                drift.append('%s %s 与 json 不一致' % (e['id'], label))
+    print('  [分母] 评审表 %d 行 / json %d 件' % (len(rows), len(eq)))
+    chk('★装备评审表与 phase2-equipment.json 一致(它自称"当前权威状态")', sorted(drift)[:8])
+
 print('\n%s' % ('ALL OK — 数据完整性' if fail[0]==0 else 'FAILED: %d 项' % fail[0]))
 sys.exit(1 if fail[0] else 0)

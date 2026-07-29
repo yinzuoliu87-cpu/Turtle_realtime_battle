@@ -16,7 +16,7 @@ func _two_head_apply_melee(u: Dictionary, on: bool) -> void:
 	if on and not buffed:
 		var a: float = u["base_atk"]
 		u["two_melee_buffed"] = true
-		u["_th_hp"] = a * 1.5; u["_th_def"] = a * 0.25; u["_th_mr"] = a * 0.25; u["_th_atk"] = a * 0.30
+		u["_th_hp"] = a * 2.5; u["_th_def"] = a * 0.25; u["_th_mr"] = a * 0.25; u["_th_atk"] = a * 0.30   # 近战生命加成 1.5→2.5×ATK(用户2026-07-29 第四轮·攻击惩罚 0.30 不动)
 		u["maxHp"] += u["_th_hp"]; u["hp"] += u["_th_hp"]
 		u["base_def"] += u["_th_def"]; u["base_mr"] += u["_th_mr"]
 		u["base_atk"] = maxf(1.0, u["base_atk"] - u["_th_atk"])
