@@ -487,7 +487,6 @@ var match_history: Array = []                          # 对局记录 [{result,l
 var pet_levels: Dictionary = {}                        # 宠物等级 {petId: 1-10} (1:1 PoC petState.levels; 只调试面板改, 默认1)
 var bgm_volume: float = 0.45                           # 设置: BGM 音量
 var sfx_volume: float = 0.8                            # 设置: SFX 音量
-var idle_mode: bool = false                            # 设置: 摸鱼模式(竖持小窗·用户2026-07-28)
 var fullscreen: bool = false                           # 设置: 全屏 (原来切了不存, 重启回窗口)
 var perf_lite: bool = false                            # 设置: 低画质模式 (原来是死按钮, 只改自己的 label)
 
@@ -694,8 +693,6 @@ func _ready() -> void:
 	if Engine.has_singleton("Audio") or get_node_or_null("/root/Audio"):
 		Audio.bgm_volume = bgm_volume
 		Audio.sfx_volume = sfx_volume
-	# ★摸鱼模式尚未落地(两条路线都被引擎约束否掉, 见 docs/plans/20260729b-摸鱼模式小窗口.md)。
-	#   idle_mode 字段保留(存档已有), 但开机不做任何事。
 
 
 ## 全局全屏切换: F11 / Alt+Enter. (画面靠 stretch=canvas_items + aspect=keep 等比放大到任意分辨率/4K.)
@@ -786,7 +783,6 @@ func save() -> void:
 		"pet_levels": pet_levels,
 		"bgm_volume": bgm_volume,
 		"sfx_volume": sfx_volume,
-		"idle_mode": idle_mode,
 		"fullscreen": fullscreen,
 		"perf_lite": perf_lite,
 		"meta_deepsea_coins": meta_deepsea_coins,
@@ -848,7 +844,6 @@ func _load() -> void:
 	pet_levels = data.get("pet_levels", {})
 	bgm_volume = data.get("bgm_volume", 0.45)
 	sfx_volume = data.get("sfx_volume", 0.8)
-	idle_mode = bool(data.get("idle_mode", false))
 	fullscreen = bool(data.get("fullscreen", false))
 	perf_lite = bool(data.get("perf_lite", false))
 	# V2 赛季持久字段
