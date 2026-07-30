@@ -74,24 +74,12 @@ func _build_topright_btns() -> void:
 		log_btn.pressed.connect(battle._toggle_log)
 		battle._ui_layer.add_child(log_btn)
 
-	var stats_btn = Button.new()
-	stats_btn.text = "📊"
-	stats_btn.position = Vector2(_x, 12); stats_btn.size = Vector2(52, 38)
-	stats_btn.add_theme_font_size_override("font_size", 20)
-	battle._style_hud_btn(stats_btn)
-	stats_btn.process_mode = Node.PROCESS_MODE_ALWAYS
+	var stats_btn = _mk_icon_btn(ICON_STATS, Vector2(_x, 12), "伤害统计")
 	stats_btn.pressed.connect(battle._on_dmg_stats_toggle)
 	battle._ui_layer.add_child(stats_btn)
 
 	# 🏳 投降: 放在原暂停位(最右) —— 肌肉记忆上"最右是退出类操作", 也不用重算安全区.
-	battle._surrender_btn = Button.new()
-	battle._surrender_btn.text = "🏳"
-	battle._surrender_btn.position = Vector2(1208, 12); battle._surrender_btn.size = Vector2(52, 38)
-	battle._surrender_btn.add_theme_font_size_override("font_size", 20)
-	battle._style_hud_btn(battle._surrender_btn)
-	battle._surrender_btn.add_theme_color_override("font_color", Color("#ff9a9a"))   # 红字=危险操作
-	battle._surrender_btn.tooltip_text = "投降认输"
-	battle._surrender_btn.process_mode = Node.PROCESS_MODE_ALWAYS
+	battle._surrender_btn = _mk_icon_btn(ICON_SURRENDER, Vector2(1208, 12), "投降认输")
 	battle._surrender_btn.pressed.connect(battle._show_surrender_confirm)
 	battle._ui_layer.add_child(battle._surrender_btn)
 
@@ -274,6 +262,11 @@ const PK_SLANT := 10.0       # 斜切量(px)。整条切成平行四边形 —�
 ##   参照: 街霸的可恢复伤害用黄、怪猎/黑魂用橙红; 白色只是图省事。
 const PK_TRAIL_COL := Color("#8b2f2f")
 const PK_VS_EMBLEM := "res://assets/sprites/ui/pk-vs-emblem.png"   # 中央 VS 徽章(全新生成)
+## 顶栏按钮图标(全新生成·2026-07-30)。★原来是系统 emoji 字符("📊"/"🏳") ——
+##   用户问「图标有新弄美术吗」时才对上号: 在像素风游戏里塞两个彩色系统 emoji,
+##   字形还随系统字体变, 风格本来就是脱节的。
+const ICON_STATS := "res://assets/sprites/ui/hud-stats.png"
+const ICON_SURRENDER := "res://assets/sprites/ui/hud-surrender.png"
 ## ★配色: 我方【绿】/ 敌方【紫】, 不用全项目的"我方蓝/敌方红"(用户 2026-07-30 拍板「只换 PK 条」)。
 ## 理由(用户先看出来的): 战场背景是【深蓝海底】, 蓝条打在深蓝上对比度天然差 ——
 ##   实拍里蓝段边框与背景的区分明显不如红段。绿/紫在这个背景上都不撞。
@@ -327,6 +320,34 @@ func _pk_slant_size(n: CanvasItem, size: Vector2) -> void:
 	var m := n.material as ShaderMaterial
 	if m != null:
 		m.set_shader_parameter("rsize", size)
+
+
+## 顶栏图标按钮: 统一尺寸/样式 + 居中的像素图标。
+## ★图标用 TextureRect 子节点而不是 Button.icon —— Button.icon 会跟着主题缩放/加内边距,
+##   像素图标被插值成糊; 自己放一个 NEAREST 的 TextureRect 可控且不糊。
+## ★缺图会 push_warning + 退回文字, 不静默(同 TRAINER_SPRITE 的规矩)。
+func _mk_icon_btn(icon_path: String, pos: Vector2, tip: String) -> Button:
+	var b := Button.new()
+	b.position = pos
+	b.size = Vector2(52, 38)
+	b.tooltip_text = tip
+	battle._style_hud_btn(b)
+	b.process_mode = Node.PROCESS_MODE_ALWAYS
+	if ResourceLoader.exists(icon_path):
+		var ic := TextureRect.new()
+		ic.texture = load(icon_path)
+		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE      # ★否则被贴图最小尺寸钳住(VS 徽章踩过)
+		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE        # 点击穿到按钮上
+		ic.set_anchors_preset(Control.PRESET_FULL_RECT)
+		ic.offset_left = 9; ic.offset_right = -9
+		ic.offset_top = 6; ic.offset_bottom = -6
+		b.add_child(ic)
+	else:
+		push_warning("[HUD] 按钮图标缺失: %s → 退回文字" % icon_path)
+		b.text = "?"
+	return b
 
 
 ## 建 PK 条。★锚点自适应(顶部居中), 不写死 1280×720 ——

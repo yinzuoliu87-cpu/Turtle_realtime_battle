@@ -35,7 +35,28 @@ func toggle() -> void:
 		build()
 	panel.visible = not panel.visible
 	if panel.visible:
+		_to_front()
 		render()
+
+
+## ★每次显示都把面板提到 _ui_layer 最前。
+##
+## 为什么必须这么做(探针实测, 不是防御性写法):
+##   同一 CanvasLayer 内【树序 = 绘制层级】, 后 add_child 的画在上面。
+##   而 _spawn_dual_lane 【每一路】都会重建左右队头像栏(battle_spawn.gd:180)、
+##   摇杆、法术盘, 它们 add_child 后落到子节点列表末尾 →
+##   本面板(首次点开时才建, 更早)就被压到下面去了。
+##   探针数字: 开局 面板 index=21 / 左队栏 15(面板在上);
+##             换一次路后 面板 19 / 左队栏 20(面板被盖住), 且两者几何真重叠。
+##   用户 2026-07-30 报的正是「在下半战场统计面板还会被遮住」。
+##   ★同一个根因也解释了"面板半透"的错觉 —— 底板其实 alpha 0.97 几乎不透明,
+##     是【三路对阵总览幕布】后 add_child 画在了它上面。
+func _to_front() -> void:
+	if panel == null or not is_instance_valid(panel):
+		return
+	var par := panel.get_parent()
+	if par != null:
+		par.move_child(panel, par.get_child_count() - 1)
 
 ## 当前 Tab 的标量值 (排序/显示)
 static func val(u: Dictionary, tab: String) -> int:
@@ -116,7 +137,9 @@ func make_row(u: Dictionary, side: String, col_max: int) -> Control:
 ## 浮层骨架: 暗底+金棕边 / 4Tab / 双列 rows / 0.4s 自刷.
 func build() -> void:
 	panel = Panel.new()
-	panel.position = Vector2(12, 56)
+	# ★y 56→100: 顶部 PK 条 2026-07-30 加宽加厚后占到 y≈67, 双路文字行到 94 ——
+	#   原来的 56 会让面板标题栏钻到血条下面。100 是"贴着 HUD 下沿"。
+	panel.position = Vector2(12, 100)
 	panel.size = Vector2(540, 430)
 	panel.visible = false
 	panel.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -148,6 +171,24 @@ func build() -> void:
 	var cols := HBoxContainer.new()
 	cols.add_theme_constant_override("separation", 20)
 	cols.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# ★关闭按钮(用户 2026-07-30 报"交互很奇怪"): 原来只能【再点右上角那个统计按钮】关,
+	#   而面板在左上角、按钮在右上角 —— 鼠标要横跨整屏才关得掉。这里就近放一个 ✕。
+	# ★必须放在 TABS 循环【之后】—— 我第一版插在循环前, ✕ 跑到了 Tab 行最左边(实拍才看出来)。
+	var close := Button.new()
+	close.text = "✕"
+	close.add_theme_font_size_override("font_size", 16)
+	close.add_theme_color_override("font_color", Color("#c9d4e0"))
+	close.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	close.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	close.process_mode = Node.PROCESS_MODE_ALWAYS
+	close.custom_minimum_size = Vector2(30, 26)
+	close.pressed.connect(func() -> void: panel.visible = false)
+	var sp := Control.new()                      # 弹性占位: 把 ✕ 顶到最右
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tabs.add_child(sp)
+	tabs.add_child(close)
+
 	vb.add_child(cols)
 	_cols = []
 	for side_label in [["我方", "left"], ["敌方", "right"]]:
@@ -177,6 +218,10 @@ func build() -> void:
 func render() -> void:
 	if _cols.size() < 2:
 		return
+	# ★每次自刷(0.4s)都重新提到最前 —— 只在"点开时"提是不够的:
+	#   【面板开着的时候换路】, 新建的头像栏/摇杆/法术盘会盖上来, 而那时不会再调 toggle()。
+	#   放在 render 里让它自愈, 最多 0.4 秒就回到最前。
+	_to_front()
 	for tb in _tab_btns:
 		var active: bool = tb["key"] == _tab
 		(tb["btn"] as Button).add_theme_color_override("font_color", Color("#ffffff") if active else Color("#8b949e"))
