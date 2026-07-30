@@ -154,7 +154,79 @@ func _build_tilemap_decor() -> void:
 					root.add_child(spr)
 			px += step
 		py += step
+	_build_midground(root)      # P2: 中距离地标(补远景与边框装饰带之间那段空白)
 	_build_tilemap_ambient(root)
+
+
+## ═══ P2 · 中景地标 (用户 2026-07-30「地图再度需要提升」· 拍板 U7 顺序 P1→P2→P4→P3) ═══
+##
+## ★为什么要这一层: 现在只有【远景三层】(渐变水幕/远礁剪影/水面光柱, 在 z≈-19)
+##   和【边框装饰带】(ARENA 外 0~200px 的小水草珊瑚)。两者之间是空的 ——
+##   画面上从"贴着场地的小装饰"直接跳到"很远的剪影", 中间没有过渡, 纵深断层。
+##   本层补的就是那段: ARENA 外 200~520px 的环带, 放少量【大件】地标。
+##
+## ★别往边框装饰带里加密度 —— 2026-07-23 测试反馈「太密 + 很多相同装饰」已经调稀过一轮
+##   (概率 0.58→0.30、步长 80→120、带宽 288→200)。所以这里是【另起一层】且数量很少。
+##
+## ★大气透视: 越远 → 越暗、越偏背景蓝、alpha 越低。这是"读出距离"的关键 ——
+##   远景礁石那边的注释也记着同一条(前景尺度的礁石拉到远处会因细节密度不对而读不出距离)。
+##
+## ★确定性: 用【播种】RNG。裸随机会被 rng_discipline 门禁拦(护确定性回放)。
+const MID_OBJS := [
+	{"img": "mid_shipwreck", "h": 3.9, "w": 1.25},      # 沉船船体(宽扁)
+	{"img": "mid_coral_pillar", "h": 5.4, "w": 0.55},   # 珊瑚礁柱(高瘦·尖端微发光)
+	{"img": "mid_stone_column", "h": 5.0, "w": 0.45},   # 断裂石柱(高瘦)
+]
+const MID_BAND_IN := 280.0     # 环带内沿(留在边框装饰带外沿之外一截, 不重叠也不挤)
+## ★环带宽度调过两轮: 200~520 时沉船在画面上沿又大又黑抢戏; 推到 260~640 又太远,
+##   珊瑚礁柱/石柱全跑出画面, 只剩两个船体剪影。280~480 是"看得见但不抢戏"的那一档。
+const MID_BAND_OUT := 480.0    # 环带外沿
+const MID_COUNT := 13          # 总件数。少而大 = 地标; 多了就变回"装饰刷屏"
+const MID_MIN_GAP := 260.0     # 两件之间最小间距(码), 防扎堆
+
+func _build_midground(root: Node3D) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20260730                       # 播种(不用裸随机·护 rng_discipline 棘轮)
+	var A: Rect2 = battle.ARENA      # ★不能用 := —— battle 是无类型变量, 推不出 A 的类型(编译直接红)
+	var cx: float = A.position.x + A.size.x * 0.5
+	var cy: float = A.position.y + A.size.y * 0.5
+	var placed: Array = []
+	var tries := 0
+	while placed.size() < MID_COUNT and tries < 400:
+		tries += 1
+		# 极坐标撒点: 角度均匀, 半径落在环带内(按椭圆缩放, 贴合场地长宽比)
+		var a: float = rng.randf() * TAU
+		var t: float = rng.randf()
+		var band: float = MID_BAND_IN + (MID_BAND_OUT - MID_BAND_IN) * t
+		var p := Vector2(cx + cos(a) * (A.size.x * 0.5 + band),
+						cy + sin(a) * (A.size.y * 0.5 + band))
+		var too_close := false
+		for q in placed:
+			if (q as Vector2).distance_to(p) < MID_MIN_GAP:
+				too_close = true
+				break
+		if too_close:
+			continue
+		placed.append(p)
+		var ob: Dictionary = MID_OBJS[rng.randi() % MID_OBJS.size()]
+		var path: String = "res://assets/sprites/map/%s.png" % str(ob["img"])
+		if not ResourceLoader.exists(path):
+			push_warning("[midground] 中景素材缺失: %s" % path)
+			continue
+		# 远近: t=0 贴场地(大而清), t=1 最远(小而暗)。★同时缩尺寸和压色, 只压色会显得"贴纸"
+		var far: float = t
+		var hh: float = float(ob["h"]) * lerpf(1.0, 0.72, far)
+		var spr: Sprite3D = battle._map_billboard(path, p, hh)
+		if spr.texture == null:
+			continue
+		# 大气透视: 往背景蓝里压, 越远越狠; alpha 也降(让远景水幕透一点上来)
+		# ★第一版压得不够: 沉船在画面上沿又大又黑, 抢戏且贴着 HUD 带, 读起来像"悬在水中"
+		#   而不是远处地标。往外推 + 压小 + 再压暗一档后才退回背景层。
+		var k: float = lerpf(0.50, 0.24, far)
+		spr.modulate = Color(k * 0.72, k * 0.86, k * 1.12, lerpf(0.80, 0.45, far))
+		if rng.randf() < 0.5:
+			spr.scale = Vector3(-1.0, 1.0, 1.0)   # 随机水平镜像, 破"一模一样"
+		root.add_child(spr)
 
 func _build_tilemap_ambient(root: Node3D) -> void:   # 氛围辉光粒子: 覆盖场地·冰蓝→白·缓上飘·ADD发光
 	var p = GPUParticles3D.new()
