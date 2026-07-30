@@ -3,6 +3,27 @@ extends RefCounted
 ## 训龟大师·场外技能系统(钩锁/冰川/怒火/口哨/AI/普攻·从主场景抽出·2026-07-25)。
 ## 【训龟大师技能与龟技能/装备分开·用户定向】类内名不变;外部名加 battle.
 
+## ★训龟大师数值常量(2026-07-30 需求3 大师技能审核时补的)。
+## 原来这个文件【一个 const 都没有】, 数值全是散在函数里的字面量 ——
+## 后果有两个: ①pet_effect_dump 抽不到(它靠展开具名常量) ②verify_trainer_desc
+## 没法从常量推期望值, 于是怒火药水/口哨/冰川三个技能的实质数值【门禁一个都不查】,
+## 只查了射程和 CD。补成常量后这些数字才进得了门禁。值一律不变, 纯口径修正。
+const MS_HASTE_PER_STACK := 0.05  # 魔法石: 每次普攻命中自身 +5% 攻速(可叠·每路开打清零)
+const FURY_RADIUS := 300.0       # 怒火药水: 落点生效半径(码)
+const FURY_SEC := 5.0            # 怒火药水: buff 持续(秒)
+const FURY_HASTE := 1.3          # 怒火药水: 攻速 ×1.3 (+30%)
+const FURY_MOVE := 1.25          # 怒火药水: 移速 ×1.25 (+25%)
+const FURY_ECHARGE := 1.25       # 怒火药水: 龟能充能 ×1.25 (+25%)
+const WHISTLE_TEMPHP := 700.0    # 口哨①: 临时最大生命
+const WHISTLE_TEMPHP_SEC := 5.0  # 口哨①: 临时生命持续(到期按比例削)  ★文案没写这个时长
+const WHISTLE_WAVE_DMG := 200.0  # 口哨②: 灵体气波物理伤害
+const WHISTLE_WAVE_KB := 100.0   # 口哨②: 击飞距离
+const WHISTLE_SHRED_SEC := 5.0   # 口哨②: 削甲持续(秒)  ★文案没写这个时长
+const WHISTLE_BERSERK_ATK := 0.2 # 口哨③: 攻击力 +20%
+const WHISTLE_BERSERK_LS := 20   # 口哨③: 生命偷取 +20(定值)
+const WHISTLE_BERSERK_SEC := 4.0 # 口哨③: 狂暴/免死 持续(秒)
+const GLACIER_SLOW_MAG := 0.6    # 冰川: 移速 ×0.6 (-40%)
+
 var battle
 
 ## ★AI_TRAINER_LEFT=1: 让【我方】大师也交给 AI 托管(游走 + CD 好了自动放主动)。
@@ -79,7 +100,7 @@ func _tick_trainer_attacks(delta: float) -> void:
 		if tgt == null:
 			continue
 		# 魔法石(被动): 每次攻击 +5% 攻速(可叠·本场结束重置) → 攻击间隔按叠层缩短
-		var haste: float = 1.0 + 0.05 * float(u.get("_ms_stacks", 0)) if str(u.get("_tr_passive", "")) == "magic_stone" else 1.0
+		var haste: float = 1.0 + MS_HASTE_PER_STACK * float(u.get("_ms_stacks", 0)) if str(u.get("_tr_passive", "")) == "magic_stone" else 1.0
 		u["_tr_atk_cd"] = battle.TRAINER_ATK_INTERVAL / haste
 		# 朝向目标(扔之前转身), 再播扔石头动作
 		u["face_right"] = tgt["pos"].x > u["pos"].x
@@ -163,11 +184,11 @@ func _fury_apply_buffs(trainer: Dictionary, point: Vector2) -> int:
 			continue
 		if str(o.get("side", "")) != side:
 			continue
-		if o["pos"].distance_to(point) > 300.0:
+		if o["pos"].distance_to(point) > FURY_RADIUS:
 			continue
-		o["haste_mult"] = 1.3;      o["haste_until"] = battle._t + 5.0        # +30% 攻速
-		o["move_buff_mult"] = 1.25; o["move_buff_until"] = battle._t + 5.0    # +25% 移速
-		o["echarge_mult"] = 1.25;   o["echarge_until"] = battle._t + 5.0      # +25% 龟能充能速率
+		o["haste_mult"] = FURY_HASTE;      o["haste_until"] = battle._t + FURY_SEC   # +30% 攻速
+		o["move_buff_mult"] = FURY_MOVE;   o["move_buff_until"] = battle._t + FURY_SEC   # +25% 移速
+		o["echarge_mult"] = FURY_ECHARGE;  o["echarge_until"] = battle._t + FURY_SEC   # +25% 龟能充能速率
 		battle._buff_aura(o, Color(1.0, 0.45, 0.2, 0.55), 5.0)                # R2-3 受益友军红橙脚下光环5秒
 		battle._body_glow(o, Color(1.0, 0.03, 0.03, 0.6), 5.0)               # R2-3 身体发纯红怒火光5秒(纯红·适中alpha防washed成粉·用户2026-07-26)
 		n += 1
@@ -233,7 +254,7 @@ func _whistle_temphp(trainer: Dictionary):
 	var ally = battle._random_ally(trainer)
 	if ally == null:
 		return null
-	battle._apply_temp_maxhp(ally, 700.0, 5.0)
+	battle._apply_temp_maxhp(ally, WHISTLE_TEMPHP, WHISTLE_TEMPHP_SEC)
 	battle._skill_ring(ally["pos"], Color(0.5, 1.0, 0.6, 0.7), 46.0)   # 施加瞬闪
 	battle._buff_aura(ally, Color(0.45, 1.0, 0.55, 0.5), 5.0)          # R2-3 临时血绿光环5秒(持续)
 	if battle._world != null:                                          # R5 绿光柱(生命涌入·竖向拉长的glow)
@@ -256,9 +277,9 @@ func _whistle_spirit_wave(trainer: Dictionary) -> int:
 	for o in battle._targeting._pick_enemies_of(trainer):   # 定向(不选大师/组装机甲)
 		if not battle._on_line(origin, dir, o["pos"], 80.0):
 			continue
-		o["def_shred_until"] = battle._t + 5.0    # 先削甲(30%·让这一发也吃到)
-		battle._damage._apply_damage_from(trainer, o, battle._resolve_dmg(trainer, 200.0, o, false), Color("#8fd0ff"), 0.0, false, false)   # 200物理
-		battle._damage._knockback(trainer, o, 100.0)      # 击飞
+		o["def_shred_until"] = battle._t + WHISTLE_SHRED_SEC   # 先削甲(30%·让这一发也吃到)
+		battle._damage._apply_damage_from(trainer, o, battle._resolve_dmg(trainer, WHISTLE_WAVE_DMG, o, false), Color("#8fd0ff"), 0.0, false, false)   # 200物理
+		battle._damage._knockback(trainer, o, WHISTLE_WAVE_KB)   # 击飞
 		n += 1
 	_whistle_spirit_dramatize(trainer, origin, dir)
 	return n
@@ -273,9 +294,9 @@ func _whistle_berserk(trainer: Dictionary):
 
 ## ★狂暴纯效果(可测): 对指定友军上 buff。
 func _whistle_berserk_on(ally: Dictionary) -> void:
-	battle._damage._buff(ally, "atk", 0.2, true, 4.0)          # +20% 攻击力
-	battle._damage._buff(ally, "lifesteal", 20, false, 4.0)    # +20% 生命偷取
-	ally["deathfloor_until"] = battle._t + 4.0         # 4秒免疫死亡(血锁≥1)
+	battle._damage._buff(ally, "atk", WHISTLE_BERSERK_ATK, true, WHISTLE_BERSERK_SEC)   # +20% 攻击力
+	battle._damage._buff(ally, "lifesteal", WHISTLE_BERSERK_LS, false, WHISTLE_BERSERK_SEC)   # +20% 生命偷取
+	ally["deathfloor_until"] = battle._t + WHISTLE_BERSERK_SEC   # 4秒免疫死亡(血锁≥1)
 	battle._skill_ring(ally["pos"], Color(1.0, 0.4, 0.3, 0.75), 46.0)   # 施加瞬闪
 	battle._buff_aura(ally, Color(1.0, 0.32, 0.3, 0.55), 4.0)           # R2-3 狂暴红战意光环4秒(持续)
 	if battle._world != null:                                          # R5 免死金盾闪 + 吸血血滴
@@ -373,7 +394,7 @@ func _tick_glaciers(_delta: float) -> void:
 			if (rel - dir * along).length() > half_w:
 				continue
 			o["slow_until"] = battle._t + 0.2      # -40% 移速(slow_mag 0.6)
-			o["slow_mag"] = 0.6
+			o["slow_mag"] = GLACIER_SLOW_MAG
 			o["glacier_vuln_until"] = battle._t + 0.2   # 受伤 +20%(见 _mitigate_incoming)
 			if battle._world != null and battle._t > float(o.get("_frost_until", 0.0)):
 				battle._buff_aura(o, Color(0.55, 0.85, 1.0, 0.5), 1.6, 40.0)   # R4 ⑤ 敌脚蓝寒雾(在区内每~1.4s续=持续寒气)

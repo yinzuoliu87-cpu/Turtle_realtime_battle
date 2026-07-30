@@ -339,7 +339,12 @@ const HOOK_TUG_DELAY := 0.1      # 钩住后第一下拽的延迟(t≈0.1)
 const HOOK_PULL_INTERVAL := 1.0  # 两下拽之间的间隔(每 1.0s 拽一下 → 4秒眩晕内 t≈0.1/1.1/2.1/3.1 共4下)
 const HOOK_TUG_DUR := 0.2        # 每一下"拽"的快速位移时长(0.2s猛滑·其余停顿=一下一下拽感)
 const HOOK_TUG_DIST := 70.0      # 每一下拽把目标朝大师拽近的距离(码·4下×70=280码)
-const HOOK_VULN_MULT := 1.25     # 被钩4秒内受到伤害 ×1.25
+const HOOK_VULN_MULT := 1.25     # 被钩4秒内受到伤害 ×1.25  ★真事实源: _mitigate_incoming 读它(2026-07-30 修好前那里是硬编码 1.25, 本常量【游戏代码零读者】)
+const WHISTLE_SHRED_MULT := 0.7   # 口哨②灵体气波削甲: 护甲 ×0.7 (-30%)
+const GLACIER_LEN := 500.0       # 冰川长度(码)
+const GLACIER_WIDTH := 90.0      # 冰川判定带宽(码·文案没写这一项)
+const GLACIER_SEC := 6.0         # 冰川持续(秒)
+const GLACIER_VULN_MULT := 1.2   # 站冰川上受到伤害 ×1.2  ★同上: 原来也是硬编码在 _mitigate_incoming, 连常量都没有
 
 # ══ 训龟大师【主动技能】注册表(用户2026-07-23 需求: 装配系统·单主动槽·只用Q) ══
 # id → {名/圆盘图标/冷却}。大师单位带 _tr_active(装配的主动 id) + 通用 _active_cd(所有主动共用一个冷却字段)。
@@ -1713,8 +1718,8 @@ func _cast_glacier(trainer: Dictionary, aim: Vector2) -> bool:
 	var dir: Vector2 = aim.normalized() if aim.length() > 0.01 else Vector2.RIGHT
 	trainer["_cast_lock_until"] = _t + HOOK_WINDUP
 	_glacier_zones.append({
-		"from": trainer["pos"], "dir": dir, "len": 500.0, "width": 90.0,
-		"until": _t + 6.0, "side": str(trainer.get("side", "")),
+		"from": trainer["pos"], "dir": dir, "len": GLACIER_LEN, "width": GLACIER_WIDTH,
+		"until": _t + GLACIER_SEC, "side": str(trainer.get("side", "")),
 	})
 	_trainer_sys._glacier_dramatize(trainer["pos"], dir)
 	return true
@@ -4187,7 +4192,7 @@ func _resolve_dmg(u: Dictionary, base: float, tgt: Dictionary, magic: bool) -> i
 	if magic:
 		resist = DamageMath.effective_resist(float(tgt["mr"]), float(u.get("magic_pen_pct", 0.0)), float(u.get("magic_pen", 0.0)))
 	else:
-		var tdef: float = float(tgt["def"]) * (0.7 if _t < float(tgt.get("def_shred_until", 0.0)) else 1.0)   # 削甲通道(口哨灵体小龟气波 -30%护甲·用户2026-07-23)
+		var tdef: float = float(tgt["def"]) * (WHISTLE_SHRED_MULT if _t < float(tgt.get("def_shred_until", 0.0)) else 1.0)   # 削甲通道(口哨灵体小龟气波 -30%护甲·用户2026-07-23)
 		resist = DamageMath.effective_resist(tdef, float(u.get("armor_pen_pct", 0.0)), float(u.get("armor_pen", 0.0)))
 	var mult: float = DamageMath.resist_multiplier(resist)
 	base *= mult
@@ -4390,10 +4395,16 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 	var d := dmg
 	if not is_self and _t < u.get("eq_marked_until", 0.0):
 		d *= 1.2                                     # 靶向器055: 被标记目标受伤 +20%
+	# ★2026-07-30(需求3 大师技能审核抓到的): 这两行原本是【硬编码字面量】1.25 / 1.2,
+	#   而 HOOK_VULN_MULT 那个常量【在游戏代码里零读者】—— 它唯一的读者是门禁
+	#   verify_trainer_desc, 拿它推出文案该写"+25%"。两个 1.25 只是碰巧相等:
+	#   把常量改成 1.5, 门禁会要求文案写"+50%", 改完文案门禁就绿了, 而游戏里仍是 +25%
+	#   —— 门禁会把【错误的文案判成正确的】。改成读常量后它才真是事实源。
+	#   冰川那条连常量都没有, 一并补上 GLACIER_VULN_MULT(值不变, 纯口径修正)。
 	if not is_self and _t < u.get("hook_vuln_until", 0.0):
-		d *= 1.25                                    # ★钩锁(点3): 被钩住4秒内受到伤害 +25%
+		d *= HOOK_VULN_MULT                          # ★钩锁(点3): 被钩住4秒内受到伤害 +25%
 	if not is_self and _t < u.get("glacier_vuln_until", 0.0):
-		d *= 1.2                                     # ★冰川: 站冰川上受到伤害 +20%(用户2026-07-23)
+		d *= GLACIER_VULN_MULT                       # ★冰川: 站冰川上受到伤害 +20%(用户2026-07-23)
 	if not is_self and _t < u.get("hunt_until", 0.0):
 		d *= HUNT_VULN                               # ★猎龟令: 被标记 15 秒内受到伤害 +15%(用户2026-07-28)
 													 #   ——【必须加在这个唯一入口】, 不许在技能里自己乘:

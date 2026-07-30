@@ -29,6 +29,14 @@ func _ready() -> void:
 	if K.is_empty():
 		print("  [FAIL] ★分母: 读不到战斗脚本常量表"); get_tree().quit(1); return
 	var SK: Dictionary = K["TRAINER_SKILLS"]
+	# ★2026-07-30(需求3 大师技能审核): 也读 trainer_system 的常量表。
+	#   原来只读战斗主文件, 而怒火药水/口哨/冰川的实质数值全是散在 trainer_system 函数里的
+	#   【字面量】(那个文件一个 const 都没有) → 没法从常量推期望值 → 于是这三个技能
+	#   下面的 want 表里【只有射程和 CD】, 实质数值一个都不查。已把它们提成常量。
+	var ts: Script = load(TRAINER_SYS_PATH)
+	var TK: Dictionary = ts.get_script_constant_map()
+	if TK.is_empty():
+		print("  [FAIL] ★分母: 读不到 trainer_system 常量表"); get_tree().quit(1); return
 
 	# id → [[人话标签, 该出现在描述里的子串(由代码常量算出来)], ...]
 	# ★右边一律【从常量算】。写死字面量就变成拿文案跟文案比, 等于没查。
@@ -38,6 +46,8 @@ func _ready() -> void:
 			["每级增幅", "0.%d×大轮等级" % int(K["MS_MAXHP_PER_LV"] * 1000.0)],
 			["Lv1 实际值", "%.1f%%" % ((K["MS_MAXHP_BASE"] + K["MS_MAXHP_PER_LV"] * 1.0) * 100.0)],
 			["Lv10 实际值", "%.1f%%" % ((K["MS_MAXHP_BASE"] + K["MS_MAXHP_PER_LV"] * 10.0) * 100.0)],
+			# ↓2026-07-30 补: 每层攻速原来是 trainer_system 里的裸 0.05, 门禁不查
+			["每层攻速", "+%d%%攻速" % int(round(TK["MS_HASTE_PER_STACK"] * 100.0))],
 		],
 		"hook": [
 			["射程", "%d" % int(K["HOOK_RANGE"])],
@@ -45,15 +55,30 @@ func _ready() -> void:
 			["受伤加成", "+%d%%" % int(round((K["HOOK_VULN_MULT"] - 1.0) * 100.0))],
 			["冷却", "CD%d" % int(SK["hook"]["cd"])],
 		],
+		# ↓2026-07-30 补: 原来这三个技能【只查射程和 CD】, 实质数值一个都不查 ——
+		#   因为数值是 trainer_system 里的裸字面量, 没有常量可以推。现已提成常量。
 		"fury_potion": [
 			["射程", "%d" % int(SK["fury_potion"]["range"])],
+			["生效半径", "%d码" % int(TK["FURY_RADIUS"])],
+			["持续", "%d秒" % int(TK["FURY_SEC"])],
+			["攻速", "+%d%%攻速" % int(round((TK["FURY_HASTE"] - 1.0) * 100.0))],
+			["龟能充能", "+%d%%龟能充能" % int(round((TK["FURY_ECHARGE"] - 1.0) * 100.0))],
+			["移速", "+%d%%移速" % int(round((TK["FURY_MOVE"] - 1.0) * 100.0))],
 			["冷却", "CD%d" % int(SK["fury_potion"]["cd"])],
 		],
 		"whistle": [
+			["临时生命", "%d临时生命" % int(TK["WHISTLE_TEMPHP"])],
+			["气波伤害", "%d物理" % int(TK["WHISTLE_WAVE_DMG"])],
+			["削甲", "削甲%d%%" % int(round((1.0 - K["WHISTLE_SHRED_MULT"]) * 100.0))],
+			["狂暴攻击力", "+%d%%攻" % int(round(TK["WHISTLE_BERSERK_ATK"] * 100.0))],
+			["免死时长", "免死%d秒" % int(TK["WHISTLE_BERSERK_SEC"])],
 			["冷却", "CD%d" % int(SK["whistle"]["cd"])],
 		],
 		"glacier": [
 			["长度", "%d码" % int(SK["glacier"]["range"])],
+			["持续", "(%d秒)" % int(K["GLACIER_SEC"])],
+			["减速", "-%d%%移速" % int(round((1.0 - TK["GLACIER_SLOW_MAG"]) * 100.0))],
+			["受伤加成", "+%d%%" % int(round((K["GLACIER_VULN_MULT"] - 1.0) * 100.0))],
 			["冷却", "CD%d" % int(SK["glacier"]["cd"])],
 		],
 		"hunt_order": [
