@@ -20,6 +20,13 @@ var _on_aim: Callable = Callable()    # 瞄准过程: call(phase:String, dir:Vec
 var _aiming: bool = false
 var _aim_off: Vector2 = Vector2.ZERO  # 拖动偏移(相对圆盘中心·屏幕像素)
 
+## 叠层角标(用户 2026-07-30:「魔法石，我希望图标上有层数显示」)。
+## 0 = 不画 —— 开局没层数时不给圆盘加噪点。
+## ★放【右上角】: 圆盘下方 y≈R*0.86 已被键位提示"Q"占着, 中心被冷却读秒占着。
+##   右上是 LoL/Dota 叠层数的常规位置, 也不会被冷却扇形(从顶部顺时针扫)第一时间盖住。
+var _stacks: int = 0
+var _stack_font: Font = null
+
 func setup(icon: Texture2D, hint: String, tap: Callable, aim: Callable = Callable()) -> void:
 	_icon = icon
 	_key_hint = hint
@@ -28,6 +35,14 @@ func setup(icon: Texture2D, hint: String, tap: Callable, aim: Callable = Callabl
 	custom_minimum_size = Vector2(R * 2.0, R * 2.0)
 	size = Vector2(R * 2.0, R * 2.0)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+
+## 每帧喂当前叠层。只在变化时重绘 —— set_cd 同理(圆盘是自绘 Control, 每帧 queue_redraw 是浪费)。
+func set_stacks(n: int) -> void:
+	n = maxi(0, n)
+	if n != _stacks:
+		_stacks = n
+		queue_redraw()
+
 
 func set_cd(frac: float, secs: float) -> void:
 	frac = clampf(frac, 0.0, 1.0)
@@ -103,3 +118,16 @@ func _draw() -> void:
 	var hf := ThemeDB.fallback_font                                        # 键位提示(PC 端有意义)
 	draw_string(hf, c + Vector2(R * 0.34, R * 0.86), _key_hint,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color(0.75, 0.82, 1.0, 0.92))
+	if _stacks > 0:                                                       # 叠层角标(魔法石攻速层数)
+		if _stack_font == null:
+			_stack_font = load("res://assets/fonts/m6x11.ttf")             # 全局数字字体(与飘字/血条一致·像素风)
+		var bc := c + Vector2(R * 0.70, -R * 0.70)
+		var br := 15.0
+		draw_circle(bc, br, Color(0.08, 0.05, 0.14, 0.94))                # 深底(盖住图标, 数字才读得清)
+		draw_arc(bc, br - 1.0, 0.0, TAU, 24, Color("#c86bff"), 2.0)       # 紫环 = 与"被动生效中"那圈同色, 一眼归因
+		var txt := str(_stacks)
+		var fs := 22 if _stacks < 10 else (18 if _stacks < 100 else 14)   # 三位数也塞得下(每层+5%, 上不封顶)
+		var f2: Font = _stack_font if _stack_font != null else ThemeDB.fallback_font
+		var tw2: float = f2.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		draw_string(f2, bc + Vector2(-tw2 * 0.5, fs * 0.36), txt,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.98))

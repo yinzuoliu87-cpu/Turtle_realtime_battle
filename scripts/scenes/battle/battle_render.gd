@@ -21,6 +21,14 @@ func _update_spell_disc() -> void:
 	var cd_max: float = float(battle.TRAINER_SKILLS.get(sid, {}).get("cd", battle.HOOK_CD))
 	var cd: float = float(u.get("_active_cd", 0.0))
 	battle._spell_disc.set_cd(cd / maxf(0.01, cd_max), cd)
+	# 叠层角标(用户 2026-07-30:「魔法石，我希望图标上有层数显示」)。
+	# ★只有装了魔法石【被动】才有层 —— _ms_stacks 只在 _trainer_magicstone_onhit 里累加。
+	#   GameState.trainer_skill 是【七选一】(选被动就没有主动Q), 所以装了魔法石时
+	#   圆盘画的一定是被动图标 + 那圈紫色"被动生效中"符环 —— 角标用同一个紫(#c86bff)
+	#   就能让人一眼归因到"这是被动在攒的层"。
+	# ★不满足就喂 0 而不是"不喂" —— 换路清零/换装后必须把角标撤掉, 否则会留个旧数字在那。
+	var stacks: int = int(u.get("_ms_stacks", 0)) if str(u.get("_tr_passive", "")) == "magic_stone" else 0
+	battle._spell_disc.set_stacks(stacks)
 	battle._aim._update_q_aim()             # PC 按住 Q 瞄准: 刷新方向 + 亮 _disc_aiming
 	if battle._disc_aiming:
 		battle._aim._draw_aim_indicator()   # 拖动/按住Q 瞄准中: 战场上画方向指示器

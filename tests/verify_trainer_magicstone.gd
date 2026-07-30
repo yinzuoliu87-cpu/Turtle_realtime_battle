@@ -131,7 +131,40 @@ func _ready() -> void:
 	print("     出 bug 时这里就会掉血(魔法提前结算), 修好后应【一点不掉】")
 	_chk("⑤ ★石头飞行途中目标不掉血(两段同帧, 不错开)", absf(mid - before) < 0.01)
 
+	await _stack_badge(s, tr)
 	_done(s)
+
+
+## ⑥ 圆盘上的叠层角标(用户 2026-07-30:「魔法石，我希望图标上有层数显示」)。
+##
+## ★判据落在【圆盘真的收到了这个数】上, 不是"代码里有 set_stacks 这个函数" ——
+##   后者是符号存在断言, 守不住"每帧到底有没有人喂它"(这正是 _hook_dramatize 那个坑的形态)。
+##   所以这里走 battle_render._update_spell_disc() 真实每帧链路, 再读圆盘内部的 _stacks。
+## ★带一条反向断言: 换掉被动 → 角标必须撤回 0。少了它, 换路/换装后会留个旧数字挂在屏幕上。
+func _stack_badge(s, tr: Dictionary) -> void:
+	print("")
+	print("  ⑥ 圆盘叠层角标:")
+	if s._spell_disc == null or not is_instance_valid(s._spell_disc):
+		print("     [FAIL] ★分母: 没有法术圆盘 —— ⑥ 全是空检查"); _fail += 1; return
+	var save_p: String = str(tr.get("_tr_passive", ""))
+	tr["_tr_passive"] = "magic_stone"
+	for n in [0, 3, 17, 142]:
+		tr["_ms_stacks"] = n
+		s._render._update_spell_disc()            # 走真实每帧链路
+		await get_tree().process_frame
+		var got: int = int(s._spell_disc._stacks)
+		print("     _ms_stacks=%3d → 角标 %3d  (攻速 ×%.2f)" % [n, got, 1.0 + 0.05 * float(n)])
+		_chk("⑥ 层数 %d 传到圆盘" % n, got == n)
+	# 反向: 不是魔法石被动就必须撤回 0
+	tr["_tr_passive"] = ""
+	s._render._update_spell_disc()
+	await get_tree().process_frame
+	_chk("⑥ ★换掉魔法石被动后角标撤回 0(不许留旧数字)", int(s._spell_disc._stacks) == 0)
+	tr["_tr_passive"] = save_p
+	# 0 层不画 —— 开局别给圆盘加噪点
+	var src := FileAccess.get_file_as_string("res://scripts/scenes/spell_disc.gd")
+	_chk("⑥ 0 层不画角标(if _stacks > 0)", src.contains("if _stacks > 0:"))
+	_chk("⑥ 角标用与'被动生效中'符环同一个紫(#c86bff·一眼归因)", src.contains('Color("#c86bff")'))
 
 
 ## 圆盘子树里第一个 TextureRect 的贴图路径
