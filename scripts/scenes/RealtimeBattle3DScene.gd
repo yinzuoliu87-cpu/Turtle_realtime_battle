@@ -338,6 +338,7 @@ const HOOK_MISSILE_SPD := 570.0  # 钩子飞行速度(码/秒·用户2026-07-26 
 const HOOK_TUG_DELAY := 0.1      # 钩住后第一下拽的延迟(t≈0.1)
 const HOOK_PULL_INTERVAL := 1.0  # 两下拽之间的间隔(每 1.0s 拽一下 → 4秒眩晕内 t≈0.1/1.1/2.1/3.1 共4下)
 const HOOK_TUG_DUR := 0.2        # 每一下"拽"的快速位移时长(0.2s猛滑·其余停顿=一下一下拽感)
+const HOOK_HIT_R := 70.0         # ★钩头【飞行中】的碰撞半径(码) —— 真 skillshot 靠这个每帧判, 不再出手就锁定
 const HOOK_TUG_DIST := 70.0      # 每一下拽把目标朝大师拽近的距离(码·4下×70=280码)
 const HOOK_VULN_MULT := 1.25     # 被钩4秒内受到伤害 ×1.25  ★真事实源: _mitigate_incoming 读它(2026-07-30 修好前那里是硬编码 1.25, 本常量【游戏代码零读者】)
 const WHISTLE_SHRED_MULT := 0.7   # 口哨②灵体气波削甲: 护甲 ×0.7 (-30%)

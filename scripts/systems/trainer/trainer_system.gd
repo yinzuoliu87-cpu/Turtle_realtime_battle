@@ -26,6 +26,9 @@ const GLACIER_SLOW_MAG := 0.6    # 冰川: 移速 ×0.6 (-40%)
 
 var battle
 
+## 在飞的钩子(真 skillshot 逐帧推进; 见 _cast_hook 的注释)。
+var _flights: Array = []
+
 ## ★AI_TRAINER_LEFT=1: 让【我方】大师也交给 AI 托管(游走 + CD 好了自动放主动)。
 ## 只给无头仿真用 —— 正式对局里我方大师是玩家操控的, AI 不接管。
 ## 起因(2026-07-27 队列模拟): 原来只有右侧大师有 AI, 左侧全程站着不动、一个主动技都不放
@@ -150,30 +153,123 @@ func _cast_active(trainer: Dictionary, aim: Vector2) -> bool:
 		"tame":        return _cast_tame(trainer, aim)
 	return false
 
-## 施放钩锁(仔细照锤石Q·2026-07-24返工): 前摇→中速飞→【到达才】钩住(不再瞬间结算)。命中CD20/空放CD10。
-## ★到达才结算走 battle._pending_shots(delta制·无头也稳), 不是等tween跑完(照 CLAUDE.md §3.5)。返回是否【将】命中。
+## 施放钩锁 —— 真 skillshot(2026-07-30 重做)。
+##
+## ★★ 改前是【出手瞬间就判定命中】的假 skillshot:
+##   _hook_first_target 在出手那一刻沿方向选定目标, 算好 arrive, 然后 _pending_shots
+##   定时到点【必钩】(唯一条件只是"还活着")。飞行期间目标走出路径/跑出射程/绕到背后
+##   都无效。代码注释自己都写着「返回是否【将】命中」。
+##
+##   决定性的一条: HOOK_MISSILE_SPD 那行注释是
+##   「用户2026-07-26 再−40%: 950→570·【更像可躲skillshot】」——
+##   用户当时降速 40% 就是为了让它可躲, 而命中判定在出手瞬间, 那次降速【根本没让它变可躲】,
+##   只是让钩子飞得更慢、看起来像能躲。飞得越慢, 这个"假可躲窗口"越长(现在整整 1.05 秒)。
+##   用户 2026-07-30:「lol锤石的Q哪有这么锁的？」
+##
+## ★成因推测: 注释写「结算逻辑从演出里抽出可测(照海盗钩索/CLAUDE.md §3.5)」——
+##   §3.5 的目标是【别让数值结算依赖演出 tween】(海盗钩索那次连红三次的教训), 这是对的;
+##   但实现时把【命中判定】也一起挪到了出手瞬间, 过头了。
+##   正确做法两者兼得: 钩头位置按 delta 逐帧推进(不用 tween → 无头也稳、可测),
+##   每帧做碰撞检测(真 skillshot → 能躲)。推进挂在 _tick_hooks, 它本来就在 sim tick 里。
+##
+## 出手时【不知道会不会命中】, 所以:
+##   · 返回值语义改成「是否成功放出去」(原来是"是否将命中")。★游戏内三处调用都不看返回值,
+##     只有 verify_hook 断言它 —— 已同步改。
+##   · CD 出手即进 HOOK_CD(锤石 Q 同); 飞满射程未命中才【返还】成 HOOK_CD_MISS。
+##   · 甩钩站定按"飞满射程"算, 命中时提前解锁。
 func _cast_hook(trainer: Dictionary, dir: Vector2) -> bool:
 	if trainer == null or not trainer.get("alive", false):
 		return false
 	if float(trainer.get("_active_cd", 0.0)) > 0.0:
 		return false
-	var tgt = _hook_first_target(trainer, dir)
-	if tgt != null:
-		trainer["_active_cd"] = battle.HOOK_CD
-		var dist: float = (tgt["pos"] - trainer["pos"]).length()
-		var arrive: float = battle.HOOK_WINDUP + dist / battle.HOOK_MISSILE_SPD   # 前摇 + 中速飞行
-		trainer["_cast_lock_until"] = battle._t + arrive                  # 甩钩期间大师站定(锤石: 飞行中不能动)
-		var tt: Dictionary = trainer
-		var kk: Dictionary = tgt
-		battle._pending_shots.append({"delay": arrive, "src": trainer, "fn": func() -> void:
-			if kk.get("alive", false):
-				_hook_grab(tt, kk)})                               # 钩子到达那一刻才钩住
-		_hook_dramatize(trainer, tgt)                              # 演出: 前摇→中速飞→到达
-		return true
-	trainer["_active_cd"] = battle.HOOK_CD_MISS                           # 空放: 只10秒(返还10)
-	trainer["_cast_lock_until"] = battle._t + battle.HOOK_WINDUP + battle.HOOK_RANGE / battle.HOOK_MISSILE_SPD
-	_hook_dramatize_miss(trainer, dir)
-	return false
+	var d: Vector2 = dir.normalized() if dir.length() > 0.01 else Vector2.RIGHT
+	trainer["_active_cd"] = battle.HOOK_CD                     # 出手即进 CD; 空放到底再返还
+	var full_t: float = battle.HOOK_WINDUP + battle.HOOK_RANGE / battle.HOOK_MISSILE_SPD
+	trainer["_cast_lock_until"] = battle._t + full_t           # 甩钩期站定(命中时提前解)
+	var hook: Sprite3D = _hook_head_node(trainer["pos"])
+	_flights.append({"src": trainer, "dir": d, "from": trainer["pos"],
+		"t": 0.0, "node": hook})
+	return true
+
+
+## 钩头节点(纯演出容器; 位置由 _tick_hook_flights 每帧更新 —— 不用 tween)。
+func _hook_head_node(from2d: Vector2) -> Sprite3D:
+	if battle._world == null:
+		return null
+	var hook := Sprite3D.new()
+	var hp := "res://assets/sprites/vfx/trainer-hook.png"
+	if ResourceLoader.exists(hp):
+		hook.texture = load(hp)
+		hook.pixel_size = (44.0 * battle.WS) / float(maxi(1, hook.texture.get_height()))
+	else:
+		push_warning("[钩锁] 钩头素材缺失: %s" % hp)
+		hook.texture = VfxTex._make_bolt_texture(Color("#9fd8ff"))
+		hook.pixel_size = 0.02
+	hook.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	hook.shaded = false; hook.transparent = true
+	hook.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	hook.position = battle._world_pos(from2d, 1.0)
+	battle._world.add_child(hook)
+	return hook
+
+
+## 钩头【当前位置】周围 HOOK_HIT_R 内的敌人(最近的那个)。这就是真 skillshot 的碰撞判定。
+## ★与旧的 _hook_first_target 的区别: 那个是【出手瞬间沿整条射线】扫; 这个是【钩头此刻在哪】。
+##   前者=锁定, 后者=能躲。
+func _hook_hit_at(src: Dictionary, pos: Vector2):
+	var best = null
+	var bd: float = battle.HOOK_HIT_R * battle.HOOK_HIT_R
+	for o in battle._targeting._pick_enemies_of(src):
+		var dd: float = (o["pos"] - pos).length_squared()
+		if dd <= bd:
+			bd = dd; best = o
+	return best
+
+
+## 每帧推进所有在飞的钩子。★delta 制、不依赖 tween → 无头可测(CLAUDE.md §3.5)。
+## 由 _tick_hooks 调用(后者已在 RealtimeBattle3DScene._sim_step 的 sim tick 里)。
+func _tick_hook_flights(delta: float) -> void:
+	if _flights.is_empty():
+		return
+	var keep: Array = []
+	for f in _flights:
+		var src: Dictionary = f["src"]
+		if not src.get("alive", false):                        # 大师死了 → 钩子作废
+			_hook_head_free(f)
+			continue
+		f["t"] = float(f["t"]) + delta
+		if float(f["t"]) < battle.HOOK_WINDUP:                 # ① 前摇: 钩子还没出手
+			keep.append(f)
+			continue
+		var flown: float = (float(f["t"]) - battle.HOOK_WINDUP) * battle.HOOK_MISSILE_SPD
+		if flown >= battle.HOOK_RANGE:                         # ③ 飞满射程未命中 → 空放返还
+			src["_active_cd"] = battle.HOOK_CD_MISS
+			src["_cast_lock_until"] = battle._t
+			_hook_head_free(f)
+			continue
+		var p: Vector2 = (f["from"] as Vector2) + (f["dir"] as Vector2) * flown
+		var nd = f.get("node", null)
+		if nd is Sprite3D and is_instance_valid(nd):
+			(nd as Sprite3D).position = battle._world_pos(p, 1.0)
+		if battle._world != null:
+			_hook_chain(src["pos"], p)                         # 链条: 大师 ↔ 钩头当前位置
+		# ② ★每帧碰撞 —— 这一行就是"能躲"的全部: 判的是钩头此刻的位置, 不是出手时选的人
+		var v = _hook_hit_at(src, p)
+		if v != null:
+			_hook_grab(src, v)
+			src["_cast_lock_until"] = battle._t                # 命中即解锁(不用站到飞满)
+			_hook_hit_fx(p)
+			_hook_head_free(f)
+			continue
+		keep.append(f)
+	_flights = keep
+
+
+## 回收钩头节点。
+func _hook_head_free(f: Dictionary) -> void:
+	var nd = f.get("node", null)
+	if nd is Sprite3D and is_instance_valid(nd):
+		(nd as Sprite3D).queue_free()
 
 ## ── 怒火药水(主动·CD16·700码点·用户2026-07-23 需求): 丢药水→落点300码内友军 5秒 +30%攻速 +25%龟能充能 +25%移速 ──
 func _fury_apply_buffs(trainer: Dictionary, point: Vector2) -> int:
@@ -520,6 +616,7 @@ func _hook_grab(trainer: Dictionary, target: Dictionary) -> void:
 ## 每帧: 大师钩锁冷却扣减; 被钩单位【一段段】朝大师拽(每 battle.HOOK_PULL_INTERVAL 秒里, 前 battle.HOOK_TUG_DUR 秒快速位移一段, 其余停顿)。
 ## ★非匀速(用户2026-07-24: 锤石钩住是一下一下拽, 不是匀速)。在 _process 战斗门内调。
 func _tick_hooks(delta: float) -> void:
+	_tick_hook_flights(delta)      # ★真 skillshot: 钩头逐帧推进 + 每帧碰撞(见 _cast_hook 注释)
 	var tug_spd: float = battle.HOOK_TUG_DIST / battle.HOOK_TUG_DUR         # 拽的那一下的速度(码/秒)
 	for u in battle._units:
 		if u.get("is_trainer", false) and float(u.get("_active_cd", 0.0)) > 0.0:

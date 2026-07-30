@@ -1,9 +1,16 @@
 extends Node
 
 ## verify_hook.gd — 法术圆盘·钩锁 核心机制门禁 (用户 2026-07-23; 2026-07-24 照锤石Q返工手感)
-## 规则(仔细照 Wild Rift 锤石Q): 大师朝方向甩钩(射程600·线上第一个可选敌)→ 眩晕4秒(吃韧性)
+## 规则(仔细照 Wild Rift 锤石Q): 大师朝方向甩钩(射程600)→ 眩晕4秒(吃韧性)
 ##   + 4秒内【一段段拽】(非匀速·每0.6s拽一下·每下42码) + 期间受伤×1.25; 命中CD20 / 空放CD只10(返还10)。
-##   手感: 前摇HOOK_WINDUP + 中速飞行HOOK_MISSILE_SPD + 到达才结算(_pending_shots定时·无头也稳)。
+##
+## ★★2026-07-30 重做成【真 skillshot】。改前是【出手瞬间就判定命中】的假 skillshot:
+##   出手那一刻沿方向选定目标, 到点必钩, 飞行期间目标走开/跑出射程/绕背后全无效。
+##   而 HOOK_MISSILE_SPD 的注释写着「用户2026-07-26 再−40%: 950→570·更像可躲skillshot」
+##   —— 那次降速的意图就是让它可躲, 但判定在出手瞬间, 降速【根本没让它变可躲】。
+##   用户 2026-07-30:「lol锤石的Q哪有这么锁的？」
+##   现在: 钩头按 delta 逐帧推进(不用 tween → 无头可测), 每帧 HOOK_HIT_R 碰撞检测。
+##   ★本门禁 ③ 组的核心是【飞行中走开躲得掉】—— 那是这次改动唯一的行为判据。
 ## ★结算全是纯函数(不依赖演出 tween), 直接 .new() 战斗脚本测(照 verify_pirate_hook 教训)。
 
 const Battle := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
@@ -51,17 +58,86 @@ func _ready() -> void:
 	b._trainer_sys._hook_grab(L, vTen)
 	_ok("★眩晕吃韧性(0.5韧性→4×0.5=2秒)", abs(float(vTen.get("stun_until", 0.0)) - 2.0) < 0.01, "%.2f" % float(vTen.get("stun_until", 0.0)))
 
-	# ═══ ③ _cast_hook: CD 门 + 命中CD20 / 空放CD10 ═══
+	# ═══ ③ ★真 skillshot: 出手不锁定 / 飞行中能躲 / 空放要飞满才返还 ═══
+	# 推进钩子飞行的小工具: 按固定步长喂 delta(delta 制 → 无头也稳, 不依赖 tween)
+	var fly := func(bb, t: float) -> void:
+		var n := int(t / 0.02)
+		for _i in range(n):
+			bb._t += 0.02
+			bb._trainer_sys._tick_hook_flights(0.02)
+
+	# ── ③-a 出手: 不预选目标, 返回"是否成功放出", CD 立刻进 20 ──
 	var L2 := _mk("left", 0.0, 0.0, {"is_trainer": true})
 	var e2 := _mk("right", 300.0, 0.0)
 	b._units = [L2, e2]
-	_ok("★命中→返回true", b._trainer_sys._cast_hook(L2, Vector2(1, 0)) == true)
-	_ok("★命中→CD=20", abs(float(L2.get("_active_cd", 0.0)) - 20.0) < 0.01, "%.1f" % float(L2.get("_active_cd", 0.0)))
+	b._t = 0.0
+	b._trainer_sys._flights = []
+	_ok("★出手→返回true(语义=成功放出, 不再是'将命中')",
+		b._trainer_sys._cast_hook(L2, Vector2(1, 0)) == true)
+	_ok("★出手即进 CD=20(命中/空放只决定要不要返还)",
+		abs(float(L2.get("_active_cd", 0.0)) - 20.0) < 0.01, "%.1f" % float(L2.get("_active_cd", 0.0)))
+	_ok("★出手时还没钩到人(不再是出手就判定)", not e2.has("_hooked_by"))
+	_ok("★场上多了一个在飞的钩子", b._trainer_sys._flights.size() == 1)
 	_ok("CD未好→不能再放(返回false)", b._trainer_sys._cast_hook(L2, Vector2(1, 0)) == false)
+
+	# ── ③-b 站着不动 → 钩子飞到就该钩住 ──
+	fly.call(b, 0.35 + 300.0 / 570.0 + 0.10)
+	_ok("★站着不动→被钩住(_hooked_by 是那个大师)", is_same(e2.get("_hooked_by", null), L2))
+	_ok("★命中后飞行结束(钩子已回收)", b._trainer_sys._flights.is_empty())
+	_ok("★命中→提前解除甩钩站定", float(L2.get("_cast_lock_until", 9e9)) <= b._t + 0.001)
+
+	# ── ③-c ★★核心: 出手后【走开】必须躲得掉 ──
+	var L4 := _mk("left", 0.0, 0.0, {"is_trainer": true})
+	var e4 := _mk("right", 300.0, 0.0)
+	b._units = [L4, e4]
+	b._t = 0.0
+	b._trainer_sys._flights = []
+	b._trainer_sys._cast_hook(L4, Vector2(1, 0))
+	fly.call(b, 0.35 + 0.10)              # 前摇过 + 刚出手一点
+	e4["pos"] = Vector2(300.0, 400.0)      # ★目标横向闪开(远超 HOOK_HIT_R=70)
+	fly.call(b, 300.0 / 570.0 + 0.60)     # 让钩子飞满射程
+	_ok("★★飞行中走开→躲掉了(没有 _hooked_by)", not e4.has("_hooked_by"),
+		"实际 %s" % str(e4.get("_hooked_by", null)))
+	_ok("★躲掉后按空放返还 CD=10", abs(float(L4.get("_active_cd", 0.0)) - 10.0) < 0.01,
+		"%.1f" % float(L4.get("_active_cd", 0.0)))
+	_ok("★躲掉后钩子已回收", b._trainer_sys._flights.is_empty())
+
+	# ── ③-d 反过来: 出手时线上没人, 飞行中【走进来】要能钩到 ──
+	var L5 := _mk("left", 0.0, 0.0, {"is_trainer": true})
+	var e5 := _mk("right", 300.0, 500.0)   # 出手时远离钩子路径
+	b._units = [L5, e5]
+	b._t = 0.0
+	b._trainer_sys._flights = []
+	b._trainer_sys._cast_hook(L5, Vector2(1, 0))
+	fly.call(b, 0.35 + 0.10)
+	e5["pos"] = Vector2(260.0, 0.0)        # ★走进钩子路径
+	fly.call(b, 300.0 / 570.0 + 0.20)
+	_ok("★★出手时不在线上、飞行中走进来→钩得到(旧实现永远钩不到)",
+		is_same(e5.get("_hooked_by", null), L5))
+
+	# ── ③-e 空放: 全场无敌 → 要【飞满射程】才返还, 出手那一刻仍是 20 ──
 	var L3 := _mk("left", 0.0, 0.0, {"is_trainer": true})
-	b._units = [L3]   # 场上无敌 → 空放
-	_ok("★空放→返回false", b._trainer_sys._cast_hook(L3, Vector2(1, 0)) == false)
-	_ok("★空放→CD只10(返还10)", abs(float(L3.get("_active_cd", 0.0)) - 10.0) < 0.01, "%.1f" % float(L3.get("_active_cd", 0.0)))
+	b._units = [L3]
+	b._t = 0.0
+	b._trainer_sys._flights = []
+	_ok("★空放也返回true(放出去了)", b._trainer_sys._cast_hook(L3, Vector2(1, 0)) == true)
+	_ok("★空放【出手瞬间】CD 仍是 20(还没飞完, 不知道会不会中)",
+		abs(float(L3.get("_active_cd", 0.0)) - 20.0) < 0.01, "%.1f" % float(L3.get("_active_cd", 0.0)))
+	fly.call(b, 0.35 + 600.0 / 570.0 + 0.10)
+	_ok("★飞满射程未命中→返还成 CD=10", abs(float(L3.get("_active_cd", 0.0)) - 10.0) < 0.01,
+		"%.1f" % float(L3.get("_active_cd", 0.0)))
+
+	# ── ③-f 大师死了 → 在飞的钩子作废 ──
+	var L6 := _mk("left", 0.0, 0.0, {"is_trainer": true})
+	var e6 := _mk("right", 300.0, 0.0)
+	b._units = [L6, e6]
+	b._t = 0.0
+	b._trainer_sys._flights = []
+	b._trainer_sys._cast_hook(L6, Vector2(1, 0))
+	L6["alive"] = false
+	fly.call(b, 0.35 + 300.0 / 570.0 + 0.10)
+	_ok("★大师死了→钩子作废(不会隔着尸体钩人)", not e6.has("_hooked_by"))
+	_ok("★大师死了→钩子已回收", b._trainer_sys._flights.is_empty())
 
 	# ═══ ④ _mitigate_incoming: 被钩4秒内受伤 ×1.25 ═══
 	var hv := _mk("right", 0.0, 0.0, {"hook_vuln_until": 5.0})   # _t=0 < 5 → 生效

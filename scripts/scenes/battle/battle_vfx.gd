@@ -528,6 +528,69 @@ func _vfx_preview_loop() -> void:
 			"vortex": battle._burst_vfx("res://assets/sprites/vfx/fx-vortex.png", origin, 240.0, 0.6)
 			"blackhole": battle._burst_vfx("res://assets/sprites/vfx/fx-black-hole.png", origin, 260.0, 0.12)
 			"hexbubble": battle._aura_vfx("res://assets/sprites/vfx/fx-hex-bubble.png", fu, 62.0, Color(0.68, 0.9, 1.0, 0.62), 1.8, 0.9)
-			"glacier": battle._trainer_sys._glacier_dramatize(origin, dir)   # R6 冰川分层演出预览(专属美术·VFXPREVIEW=glacier)
+			# ── 训龟大师 7 技演出预览(2026-07-30 补齐; 原来只有 glacier 一条) ──
+			# ★"trainer" = 一轮过 7 技(每 period 换一个), 用于需求3 的【逐技目视】。
+			#   单看某一技: VFXPREVIEW=tr_hook / tr_fury / tr_whistle / tr_glacier /
+			#               tr_hunt / tr_tame / tr_stone
+			"trainer": _vfx_preview_trainer(origin, dir, -1)
+			"tr_hook": _vfx_preview_trainer(origin, dir, 0)
+			"tr_fury": _vfx_preview_trainer(origin, dir, 1)
+			"tr_whistle": _vfx_preview_trainer(origin, dir, 2)
+			"glacier", "tr_glacier": _vfx_preview_trainer(origin, dir, 3)
+			"tr_hunt": _vfx_preview_trainer(origin, dir, 4)
+			"tr_tame": _vfx_preview_trainer(origin, dir, 5)
+			"tr_stone": _vfx_preview_trainer(origin, dir, 6)
 			_: battle._laser_blade_sweep(fu, origin, dir, 350.0, 60.0)
 		await battle.get_tree().create_timer(period).timeout
+
+## 训龟大师技能演出预览。idx<0 = 每次调用轮换一个(一轮过 7 技)。
+##
+## ★为什么每技都要单独喂 trainer/target 字典: 这些演出函数是从真实施放路径里抽出来的,
+##   签名各不相同(有的收 Dictionary, 有的收 Vector2 + arrive 时长)。审核报告 §4 那张
+##   "7 技全部有专属演出函数"的表就是按这些签名列的。
+## ★这里【只跑演出】不跑判定 —— 判定归 _cast_* / _tick_*, 有各自的门禁在验数值。
+##   所以看到的就是纯美术, 不会因为没有真敌人而出不来。
+var _tr_prev_i: int = 0
+var _tr_prev_tr = null            # 预览用的大师/靶子(真实 _make_unit 建的, 只建一次)
+var _tr_prev_tgt = null
+func _vfx_preview_trainer(origin: Vector2, dir: Vector2, idx: int) -> void:
+	var i: int = idx
+	if i < 0:
+		i = _tr_prev_i % 7
+		_tr_prev_i += 1
+	# ★★ 用【真实的单位构造函数】建大师与靶子, 不要手搓字典 ——
+	#   血泪: 魔法石那一技(idx 6)的演出是 _fire_trainer_rock, 它建的是【真弹道】,
+	#   石头落地照样走 _apply_damage_from(石头本身 1 点物理), 与 ms_onhit 开关无关。
+	#   我先手搓了个精简 tgt, 结果缺 shield 刷 17 条报错; 补上 shield 又缺 dmg_dealt……
+	#   ——【手搓字典喂进伤害管线是个无底洞】。伤害管线读几十个字段, 一个个补是打地鼠。
+	#   用 _make_unit 走真实构造路径, 所有字段一次到位。
+	#   _review_dummy=true: 受击即回满血(见 battle_damage.gd:116), 预览可以一直打不死。
+	if _tr_prev_tr == null:
+		_tr_prev_tr = battle._spawn._make_unit(battle.TRAINER_ID, "left",
+			origin - dir * 260.0, {"trainer": true})
+		_tr_prev_tgt = battle._spawn._make_unit("basic", "right", origin + dir * 300.0, {})
+		_tr_prev_tgt["_review_dummy"] = true
+		battle._units.append(_tr_prev_tr)
+		battle._units.append(_tr_prev_tgt)
+	var tr: Dictionary = _tr_prev_tr
+	var tgt: Dictionary = _tr_prev_tgt
+	tr["pos"] = origin - dir * 260.0
+	tgt["pos"] = origin + dir * 300.0
+	tr["_active_cd"] = 0.0
+	var names := ["钩锁", "怒火药水", "口哨·灵体气波", "冰川", "猎龟令", "驯服", "魔法石·投石"]
+	print("[VFXPREVIEW·大师] %d/7 %s" % [i + 1, names[i]])
+	match i:
+		0: battle._trainer_sys._hook_dramatize(tr, tgt)
+		1: battle._trainer_sys._fury_dramatize(tr, origin + dir * 200.0)
+		2:
+			battle._trainer_sys._whistle_note(tr)
+			battle._trainer_sys._whistle_spirit_dramatize(tr, tr["pos"], dir)
+		3: battle._trainer_sys._glacier_dramatize(origin - dir * 120.0, dir)
+		4: battle._trainer_sys._hunt_dramatize(tr, tgt, 0.45)
+		5: battle._trainer_sys._tame_dramatize(tr, tgt, 0.45)
+		# ★ms_onhit 必须 false —— 传 true 会让石头落地时触发【真判定】
+		#   _trainer_magicstone_onhit → _resolve_dmg / _apply_damage_from,
+		#   而这里的 tr/tgt 是【只够演出用】的精简字典, 缺一堆战斗字段 → 报错刷屏
+		#   (实测 18 条 SCRIPT ERROR)。我在上面注释里写了"只跑演出不跑判定",
+		#   结果自己在这一行违背了。预览要的是弹道的样子, 不是伤害。
+		6: battle._ballistics._fire_trainer_rock(tr, tgt, false)
