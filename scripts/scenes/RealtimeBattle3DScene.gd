@@ -1726,20 +1726,11 @@ func _random_ally(trainer: Dictionary):
 			pool.append(o)
 	return pool[_battle_rng.randi() % pool.size()] if not pool.is_empty() else null
 
-## 效果①临时血: 随机友军 +700 临时最大生命(5秒)。到期【按比例削】。可测。
-func _apply_temp_maxhp(u: Dictionary, amt: float, sec: float) -> void:
-	u["maxHp"] = float(u["maxHp"]) + amt
-	u["hp"] = float(u["hp"]) + amt
-	var uu: Dictionary = u
-	_pending_shots.append({"delay": sec, "src": u, "fn": func() -> void:
-		if not uu.get("alive", false):
-			return
-		var old_max: float = float(uu["maxHp"])
-		var new_max: float = maxf(1.0, old_max - amt)
-		uu["hp"] = float(uu["hp"]) * (new_max / old_max)   # 按比例削
-		uu["maxHp"] = new_max})
-
-## 效果②灵体小龟气波: 召蓝幽灵小龟→对最近敌放穿透气波(带宽80·沿途敌): 击飞 + 200物理 + 削甲30%(5秒)。返回命中数。可测。
+## (_apply_temp_maxhp 已搬到 trainer_system —— 它是口哨①的纯效果, 不属于战斗主循环。
+##  搬家动机: arch_budget 把本文件冻结在 8600 行, 口哨②加了一行 _tick_wave_flights 调用 → 8601 红;
+##  规矩是"往上帝文件加代码=违规, 先拆出去", 所以搬走一个本来就不属于它的函数, 而不是把台账调高。
+##  顺带删掉了一句【已过时的旧注释】: 它写着"气波…击飞 + 200物理 + 削甲30%", 而 2026-07-30
+##  已改成 100+15%最大生命真实伤害, 且改成命中才结算 —— 而且它挂在 _cast_glacier 头上, 本来就串位了。)
 func _cast_glacier(trainer: Dictionary, aim: Vector2) -> bool:
 	if float(trainer.get("_active_cd", 0.0)) > 0.0:
 		return false
@@ -2156,6 +2147,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 	_trainer_sys._tick_tame_decay(dt)      # 驯服: 归顺者每秒损失 2% 最大生命
 	_trainer_sys._tick_trainer_ai(dt)      # 敌方(快照)大师 AI: 乱走 + 逮机会甩钩锁(点3·场外援助·用户2026-07-23)
 	_trainer_sys._ms_tick_aura(dt)         # 魔法石: 按叠层阈值(10/25/50)建撤大师本体特效 + 推进绕转
+	_trainer_sys._tick_wave_flights(dt)     # 口哨②: 灵体气波蓄力/逐帧飞行/每帧碰撞(真 skillshot·命中才结算)
 	_trainer_sys._tick_hooks(dt)           # 钩锁: CD 扣减 + 被钩单位每帧朝大师拖(点3)
 	# Phase4 顿帧 hit-stop: 计时 >0 时冻结"模拟"给重量感(镜头震屏照常推进·在 _render._render_step)。
 	if frozen:

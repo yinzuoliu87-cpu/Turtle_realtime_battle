@@ -36,12 +36,40 @@ const FURY_MOVE := 1.25          # 怒火药水: 移速 ×1.25 (+25%)
 const FURY_ECHARGE := 1.25       # 怒火药水: 龟能充能 ×1.25 (+25%)
 const WHISTLE_TEMPHP := 700.0    # 口哨①: 临时最大生命
 const WHISTLE_TEMPHP_SEC := 5.0  # 口哨①: 临时生命持续(到期按比例削)  ★文案没写这个时长
-const WHISTLE_WAVE_DMG := 200.0  # 口哨②: 灵体气波物理伤害
+const WHISTLE_WAVE_DMG := 100.0  # 口哨②: 灵体气波【真实伤害】的定值段(用户 2026-07-30: 200物理 → 100+15%最大生命真伤)
+const WHISTLE_WAVE_MAXHP_PCT := 0.15  # 口哨②: 真实伤害的百分比段 = 15% 目标最大生命
 const WHISTLE_WAVE_KB := 100.0   # 口哨②: 击飞距离
 const WHISTLE_SHRED_SEC := 5.0   # 口哨②: 削甲持续(秒)  ★文案没写这个时长
 const WHISTLE_BERSERK_ATK := 0.2 # 口哨③: 攻击力 +20%
 const WHISTLE_BERSERK_LS := 20   # 口哨③: 生命偷取 +20(定值)
 const WHISTLE_BERSERK_SEC := 4.0 # 口哨③: 狂暴/免死 持续(秒)
+## ── 口哨②灵体气波: 真 skillshot(2026-07-30 重做) ──
+##
+## ★★改前是【出手瞬间就把线上所有敌人全打完】, 而气波要飞 1.67 秒:
+##   探针实测 —— 敌人放在 400 码处(气波 300 码/秒 → 视觉上 1.33 秒后才到),
+##   出手【同一帧】hp 就从 100000 掉到 99924, 游戏时间 +0.000 秒。
+##   玩家看到的是「血掉完了, 波还在半路」。用户原话:「不是命中才造成伤害吗」。
+##   ★这与 2026-07-30 修掉的钩锁是【同一类 bug】: 判定与演出脱钩、出手即判定。
+##
+## ★同时修另两条(用户同一句话里提的):
+##   ⓐ「这灵体小龟我都没看到啊」—— 气波世界宽 3.60 m vs 小龟 1.10 m(3.3 倍),
+##     且两者【同一帧同一位置】建出 → 波从生成那刻就把小龟整个盖住。
+##     现在: 气波缩到 WAVE_D_M(小龟的两倍, 还是"小龟放的大波", 但不糊满屏),
+##     且从小龟【身前 WAVE_MUZZLE 码】生成, 不从它身上长出来。
+##   ⓑ「不要蓄力放的吗」—— 原来没有任何前摇: _whistle_spirit_dramatize 里
+##     先 _spawn_spirit_turtle 紧接着就建气波。现在小龟先单独出场蓄力 WAVE_WINDUP 秒。
+const WAVE_WINDUP := 0.55        # 小龟召出后的蓄力时长(秒·比钩锁 0.35 长, 要蓄力感)
+const WAVE_SPD := 300.0          # 气波飞行速度(码/秒·沿用小龟龟派气波口径·慢=可躲)
+const WAVE_RANGE := 2000.0       # 气波射程(码·用户 2026-07-30: 500→2000)
+##   ★2000 码 ÷ 300 码/秒 = 【6.67 秒】飞行, 而战场只有 1596 码宽 —— 这一发是"横穿全场的慢波":
+##     贯穿路上所有敌人(同一个只吃一次), 飞得慢所以躲得开。若嫌太慢就调 WAVE_SPD, 不是调射程。
+const WAVE_HIT_R := 90.0         # ★气波【飞行中】的碰撞半径(码) —— 真 skillshot 靠这个每帧判
+const WAVE_D_M := 2.2            # 气波世界直径(米·小龟 1.10 m 的两倍; 原来 3.60 m 盖住小龟)
+const WAVE_MUZZLE := 70.0        # 气波从小龟身前多远处生成(码·别从它身上长出来)
+## ★灵体小龟【召在大师身前】而不是大师身上 —— 目视抓到: 原来传的 origin 就是 trainer["pos"],
+##   小龟(1.10 m)整个压在大师立绘上, 读起来像"大师身上有层蓝影"而不是"召出来一只"。
+const SPIRIT_OFFSET := 95.0      # 小龟落在大师身前多远(码·朝施法方向)
+const SPIRIT_H_M := 1.45         # 小龟世界高度(米·原来 TARGET_BODY_H*0.55=1.10 太小; 龟 2.0 → 这是"小一号"而非"缩一半")
 const GLACIER_SLOW_MAG := 0.6    # 冰川: 移速 ×0.6 (-40%)
 ## ★地面印记/符文环的【世界直径·米】—— 与"效果半径"是两码事, 千万别再用效果半径当尺寸。
 ##   踩过的坑(2026-07-30 目视审核抓到): 猎龟令印记原本写
@@ -60,6 +88,7 @@ var battle
 
 ## 在飞的钩子(真 skillshot 逐帧推进; 见 _cast_hook 的注释)。
 var _flights: Array = []
+var _wave_flights: Array = []   # 口哨②灵体气波的在途弹(逐帧推进·真 skillshot)
 
 ## ★AI_TRAINER_LEFT=1: 让【我方】大师也交给 AI 托管(游走 + CD 好了自动放主动)。
 ## 只给无头仿真用 —— 正式对局里我方大师是玩家操控的, AI 不接管。
@@ -378,11 +407,32 @@ func _whistle_note(u: Dictionary) -> void:
 	tw.chain().tween_callback(lb.queue_free)
 
 ## ── 口哨(主动·CD14·无目标·用户2026-07-23): 随机 3 选 1 —— 临时血 / 灵体小龟气波 / 狂暴免死 ──
+## 效果①临时血: 随机友军 +700 临时最大生命(5秒)。到期【按比例削】。可测。
+
+## ★纯效果(门禁可直接调): +amt 到 maxHp【与 hp 两者】—— 只抬上限的话这层血立刻用不上。
+##   sec 秒后到期【按比例削】: hp × (新上限/旧上限), 所以"打到 50% 再到期"仍然是 50%。
+##   探针实测(干净不参战单位): 1000 血 → 加 700 → 打到 850/1700(比例 0.5000) →
+##   到期 500/1000(比例 0.5000) ✓。★第一次测时我拿的是场上正在战斗的单位, 血量一直在变,
+##   量出比例 0.340 差点当成 bug —— 测到期类效果必须用【不参战的隔离单位】。
+## ★2026-07-30 从上帝文件搬来(见那边留痕): 它是口哨①的纯效果, 本该跟另两支住一起。
+func _apply_temp_maxhp(u: Dictionary, amt: float, sec: float) -> void:
+	u["maxHp"] = float(u["maxHp"]) + amt
+	u["hp"] = float(u["hp"]) + amt
+	var uu: Dictionary = u
+	battle._pending_shots.append({"delay": sec, "src": u, "fn": func() -> void:
+		if not uu.get("alive", false):
+			return
+		var old_max: float = float(uu["maxHp"])
+		var new_max: float = maxf(1.0, old_max - amt)
+		uu["hp"] = float(uu["hp"]) * (new_max / old_max)   # 按比例削
+		uu["maxHp"] = new_max})
+
+
 func _whistle_temphp(trainer: Dictionary):
 	var ally = battle._random_ally(trainer)
 	if ally == null:
 		return null
-	battle._apply_temp_maxhp(ally, WHISTLE_TEMPHP, WHISTLE_TEMPHP_SEC)
+	_apply_temp_maxhp(ally, WHISTLE_TEMPHP, WHISTLE_TEMPHP_SEC)   # ★2026-07-30 从上帝文件搬进本类
 	battle._skill_ring(ally["pos"], Color(0.5, 1.0, 0.6, 0.7), 46.0)   # 施加瞬闪
 	battle._buff_aura(ally, Color(0.45, 1.0, 0.55, 0.5), 5.0)          # R2-3 临时血绿光环5秒(持续)
 	if battle._world != null:                                          # R5 绿光柱(生命涌入·竖向拉长的glow)
@@ -401,16 +451,152 @@ func _whistle_spirit_wave(trainer: Dictionary) -> int:
 		return 0
 	var origin: Vector2 = trainer["pos"]
 	var dir: Vector2 = (tgt["pos"] - origin).normalized()
-	var n: int = 0
-	for o in battle._targeting._pick_enemies_of(trainer):   # 定向(不选大师/组装机甲)
-		if not battle._on_line(origin, dir, o["pos"], 80.0):
+	# ★这里【只定方向、只召小龟】—— 一点伤害都不结算。
+	#   方向仍按"出手时最近的敌人"取(小龟是自动放的, 不是玩家瞄), 但【打到谁】由
+	#   _tick_wave_flights 每帧的碰撞决定 —— 目标跑开就打空, 这才是"命中才造成伤害"。
+	var spirit_at: Vector2 = origin + dir * SPIRIT_OFFSET   # ★小龟落在大师【身前】, 不压在他身上
+	_spawn_spirit_turtle(spirit_at)
+	battle._skill_ring(spirit_at, Color(0.5, 0.8, 1.0, 0.6), 40.0)
+	_wave_charge_fx(spirit_at)
+	_wave_flights.append({
+		"src": trainer, "dir": dir, "from": origin, "t": 0.0,
+		"node": null, "glow": null, "hit": [], "fired": false})
+	return 1                       # ★返回值语义变了: 1=已发起(不再是"命中了几个")
+
+
+## 蓄力表现: 小龟身上聚能 —— 由暗到亮的青光缩紧, 持续到 WAVE_WINDUP 结束。
+## ★纯程序绘制(_glow_bb 是项目通用原语, 不是贴图素材) —— 不违反"素材不许复用"。
+func _wave_charge_fx(origin: Vector2) -> void:
+	if battle._world == null:
+		return
+	var g = battle._glow_bb(origin, 1.1, 30.0, Color(0.5, 0.86, 1.0, 0.0))
+	var tw = battle._reg_tween()
+	tw.tween_property(g.material_override, "albedo_color", Color(0.6, 0.92, 1.0, 0.95), WAVE_WINDUP * 0.8)
+	tw.parallel().tween_property(g, "scale", Vector3.ONE * 2.2, WAVE_WINDUP * 0.8)   # 由小涨大 = 聚能
+	tw.chain().tween_property(g.material_override, "albedo_color", Color(0.6, 0.92, 1.0, 0.0), 0.14)
+	tw.chain().tween_callback(g.queue_free)
+
+
+## 每帧推进气波: ①蓄力 ②到点发射(建气波节点) ③逐帧碰撞 ④飞满射程消失。
+## ★照钩锁 _tick_hook_flights 的模板 —— 逐帧推进【不用 tween】:
+##   CLAUDE.md §3.5 明写场景树 tween 在无头 CI 下推进不稳, 伤害结算绝不能挂在 tween 末尾。
+func _tick_wave_flights(delta: float) -> void:
+	if _wave_flights.is_empty():
+		return
+	var keep: Array = []
+	for f in _wave_flights:
+		var src: Dictionary = f["src"]
+		if not src.get("alive", false):                        # 大师死了 → 气波作废
+			_wave_free(f)
 			continue
-		o["def_shred_until"] = battle._t + WHISTLE_SHRED_SEC   # 先削甲(30%·让这一发也吃到)
-		battle._damage._apply_damage_from(trainer, o, battle._resolve_dmg(trainer, WHISTLE_WAVE_DMG, o, false), Color("#8fd0ff"), 0.0, false, false)   # 200物理
-		battle._damage._knockback(trainer, o, WHISTLE_WAVE_KB)   # 击飞
-		n += 1
-	_whistle_spirit_dramatize(trainer, origin, dir)
-	return n
+		f["t"] = float(f["t"]) + delta
+		if float(f["t"]) < WAVE_WINDUP:                        # ① 蓄力: 小龟已现身, 气波还没出
+			keep.append(f)
+			continue
+		var from2d: Vector2 = f["from"]
+		var dir: Vector2 = f["dir"]
+		if not bool(f["fired"]):                               # ② 蓄力结束 → 建气波节点
+			f["fired"] = true
+			_wave_build_node(f)
+		var flown: float = (float(f["t"]) - WAVE_WINDUP) * WAVE_SPD
+		if flown >= WAVE_RANGE:                                # ④ 飞满射程 → 收尾
+			_wave_free(f)
+			continue
+		var p: Vector2 = from2d + dir * (SPIRIT_OFFSET + WAVE_MUZZLE + flown)
+		var nd = f.get("node", null)
+		if nd is Sprite3D and is_instance_valid(nd):
+			var sp: Sprite3D = nd
+			sp.position = battle._world_pos(p, 0.9)
+			# 单帧素材: 用轻微脉动代替帧动画(按【飞行距离】推, 不看帧率 —— §3.5)
+			var pulse: float = 1.0 + 0.09 * sin(flown / 26.0)
+			sp.scale = Vector3(pulse, pulse, 1.0)
+		var gl = f.get("glow", null)
+		if gl != null and is_instance_valid(gl):
+			gl.position = battle._world_pos(p, 0.9)
+		# ③ ★每帧碰撞 —— 这就是"命中才造成伤害"的全部。气波【贯穿】, 但同一个敌人只吃一次。
+		for o in _wave_hit_at(src, p, f["hit"] as Array):
+			(f["hit"] as Array).append(o)
+			_wave_apply(src, o)
+		keep.append(f)
+	_wave_flights = keep
+
+
+## 此刻碰到的、还没打过的敌人。
+## ★已命中名单用 is_same 比对、绝不拿单位字典当 Dictionary 的键(CLAUDE.md §3.2:
+##   Godot 会递归哈希整个字典, 单位之间互相引用成环 → 无限递归卡死)。
+func _wave_hit_at(src: Dictionary, pos: Vector2, already: Array) -> Array:
+	var out: Array = []
+	var r2: float = WAVE_HIT_R * WAVE_HIT_R
+	for o in battle._targeting._pick_enemies_of(src):
+		if (o["pos"] - pos).length_squared() > r2:
+			continue
+		var dup := false
+		for h in already:
+			if is_same(h, o):
+				dup = true
+				break
+		if not dup:
+			out.append(o)
+	return out
+
+
+## 气波命中一个敌人的【纯效果】: 先削甲(让这一发也吃到) → 200 物理 → 击飞。
+## ★抽成独立函数, 门禁直接调它验数值, 不用等气波飞到(钩锁 _pirate_grapple_hit 同思路)。
+func _wave_apply(src: Dictionary, o: Dictionary) -> void:
+	if not o.get("alive", false):
+		return
+	o["def_shred_until"] = battle._t + WHISTLE_SHRED_SEC   # 先削甲(30%·让这一发也吃到)
+	# ★用户 2026-07-30:「伤害改为 100+15%目标最大生命值的真实伤害」(原来是 200 物理)
+	#   真伤在本项目的写法(照忍者手里剑真伤段 battle_ballistics.gd:206):
+	#     raw=true → 无视护甲/减伤(护盾仍照吸·既有语义) · Color("#ffffff") → 白字(真实伤害的惯例色)
+	#     pre_crit=true → 【不再二次掷暴击】: 文案写的是定额"100+15%", 就该是定额, 不该有暴击方差
+	#   ★也【不过 _resolve_dmg】—— 那条会按施法者 ATK/暴击/穿透缩放, 而这是个固定式子。
+	var amt: int = maxi(1, int(round(WHISTLE_WAVE_DMG + float(o["maxHp"]) * WHISTLE_WAVE_MAXHP_PCT)))
+	battle._damage._apply_damage_from(src, o, amt, Color("#ffffff"), 0.0, true, false, true)
+	battle._damage._knockback(src, o, WHISTLE_WAVE_KB)     # 击飞
+	o["_wave_hit_n"] = int(o.get("_wave_hit_n", 0)) + 1    # 同步的触发证据(供门禁·不看"有没有建 tween")
+
+
+## 建气波节点(蓄力结束那一帧)。
+func _wave_build_node(f: Dictionary) -> void:
+	if battle._world == null:
+		return
+	# ★★2026-07-30 换成本技能【专属新素材】spirit-wave.png(青蓝灵体气波)。
+	#   原来用的是 chiwave-fly.png —— 那是【小龟龟派气波的素材】, 用在训龟大师身上
+	#   就是"复用素材"(用户铁律: 不许复用, 只有背包/商店图标可复用)。
+	#   而且目视抓到它【本体是橙红火球】(不透明部分平均 RGB 213,135,56):
+	#   代码注释一路写着"蓝气波""青光晕", 还额外挂了个青色 glow 想救 ——
+	#   ★注释说蓝、贴图是橙, 这种分歧只有【真看一眼画面】才发现得了。
+	#   新素材平均 RGB 87,193,236 = 真青蓝, 与灵体小龟同色系。
+	var path := "res://assets/sprites/vfx/spirit-wave.png"
+	if not ResourceLoader.exists(path):
+		push_warning("[口哨] 缺素材 %s —— 气波不画(判定照走·不复用别的贴图兜底)" % path)
+		return
+	var from2d: Vector2 = f["from"]
+	var dir: Vector2 = f["dir"]
+	var tex: Texture2D = load(path)
+	var ball := Sprite3D.new()
+	ball.texture = tex
+	ball.hframes = 1        # ★新素材是单帧(不是 6 帧精灵表) —— 动感靠飞行本身 + 尾迹形状
+	ball.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	ball.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	ball.shaded = false
+	ball.transparent = true
+	# ★世界直径按 WAVE_D_M 定, 【不再】写 (150*WS)/128 那个魔数(它出来是 3.60 m = 小龟的 3.3 倍)
+	ball.pixel_size = WAVE_D_M / float(maxi(1, tex.get_height()))
+	ball.position = battle._world_pos(from2d + dir * (SPIRIT_OFFSET + WAVE_MUZZLE), 0.9)   # ★从小龟身前, 不从它身上
+	battle._world.add_child(ball)
+	battle._orient_billboard_dir(ball, Vector3(dir.x, 0.0, dir.y))
+	f["node"] = ball
+	f["glow"] = battle._glow_bb(from2d + dir * (SPIRIT_OFFSET + WAVE_MUZZLE), 0.9, 120.0, Color(0.5, 0.86, 1.0, 0.62))
+
+
+func _wave_free(f: Dictionary) -> void:
+	for k in ["node", "glow"]:
+		var n = f.get(k, null)
+		if n != null and is_instance_valid(n):
+			(n as Node).queue_free()
+		f[k] = null
 
 ## 效果③狂暴: 随机友军 +20%攻击力 +20%吸血(4秒) + 免疫死亡(4秒·deathfloor血锁不死)。
 func _whistle_berserk(trainer: Dictionary):
@@ -441,37 +627,12 @@ func _whistle_berserk_on(ally: Dictionary) -> void:
 			dt.tween_property(d.material_override, "albedo_color", Color(0.9, 0.12, 0.12, 0.0), 0.42)
 			dt.chain().tween_callback(d.queue_free)
 
-## 灵体小龟演出: 蓝幽灵小龟入场(spirit-turtle.png·缺图则只放气波不崩) + 蓝气波束(qibo-ball.png 真气波素材)。
-func _whistle_spirit_dramatize(trainer: Dictionary, origin: Vector2, dir: Vector2) -> void:
-	if battle._world == null:
-		return
-	_spawn_spirit_turtle(origin)
-	battle._skill_ring(origin, Color(0.5, 0.8, 1.0, 0.6), 40.0)
-	# R5 真气波(照小龟龟派气波 _sk_basic_chiwave 观感·chiwave-fly 6帧循环动画火球·沿dir恒速300码/秒飞·带青光晕), 替静态 qibo-ball 束
-	var end2d: Vector2 = origin + dir * 500.0
-	var ball = Sprite3D.new()
-	ball.texture = load("res://assets/sprites/vfx/chiwave-fly.png")
-	ball.hframes = 6; ball.frame = 0
-	ball.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	ball.billboard = BaseMaterial3D.BILLBOARD_DISABLED; ball.shaded = false; ball.transparent = true
-	ball.pixel_size = (150.0 * battle.WS) / 128.0
-	ball.position = battle._world_pos(origin, 0.9)
-	battle._world.add_child(ball)
-	battle._orient_billboard_dir(ball, Vector3(dir.x, 0.0, dir.y))
-	var glow = battle._glow_bb(origin, 0.9, 180.0, Color(0.5, 0.86, 1.0, 0.7))   # 青光晕随波
-	var flydur: float = 500.0 / 300.0                                            # 300码/秒(小龟气波口径)
-	var mtw = battle._reg_tween()
-	mtw.tween_method(func(p: float) -> void:
-		if not is_instance_valid(ball): return
-		var cp: Vector2 = origin.lerp(end2d, p)
-		ball.position = battle._world_pos(cp, 0.9)
-		ball.frame = int(p * 18.0) % 6                                          # 6帧循环
-		if is_instance_valid(glow): glow.position = battle._world_pos(cp, 0.9)
-	, 0.0, 1.0, flydur)
-	mtw.tween_callback(func() -> void:
-		if is_instance_valid(ball): ball.queue_free()
-		if is_instance_valid(glow): glow.queue_free())
-
+## (已删 _whistle_spirit_dramatize —— 口哨②2026-07-30 改真 skillshot 后它是死代码:
+##  小龟召出在 _whistle_spirit_wave、气波建节点在 _wave_build_node、推进在 _tick_wave_flights。
+##  ★它的头注还写着"蓝气波束(qibo-ball.png 真气波素材)", 而函数体里早就换成了 chiwave-fly ——
+##    陈旧头注留着比没有更坏: 我第一轮审口哨时就是照它判断的, 报了个错结论。
+##  ★同批教训(钩锁那次): 死演出函数留着会让 VFXPREVIEW 指过去, 于是"目视确认新实现"
+##    看的其实是旧实现 = 无效验证。所以直接删, 并在门禁里加"不许回来"的反向断言。)
 ## 蓝幽灵小龟短暂现身: 幽蓝 billboard 从大师身前淡入上浮再淡出(纯演出·缺图优雅跳过, 不阻塞气波)。
 func _spawn_spirit_turtle(origin: Vector2) -> void:
 	var path = "res://assets/sprites/vfx/spirit-turtle.png"
@@ -486,7 +647,7 @@ func _spawn_spirit_turtle(origin: Vector2) -> void:
 	spr.shaded = false
 	spr.transparent = true
 	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	spr.pixel_size = (battle.TARGET_BODY_H * 0.55) / float(maxi(1, tex.get_height()))   # 比正规龟小一号(灵体小龟)
+	spr.pixel_size = SPIRIT_H_M / float(maxi(1, tex.get_height()))   # 比正规龟小一号(灵体小龟·常量见头部)
 	spr.modulate = Color(0.7, 0.9, 1.0, 0.0)       # 幽蓝, 从透明淡入
 	var base: Vector3 = battle._world_pos(origin, 1.1)
 	spr.position = base

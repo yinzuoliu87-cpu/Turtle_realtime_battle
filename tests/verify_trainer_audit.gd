@@ -35,7 +35,8 @@ const CHAINS := {
 	"hook":        ["_cast_hook", "_hook_grab", "_tick_hooks"],
 	"fury_potion": ["_cast_fury_potion", "_fury_apply_buffs"],
 	"whistle":     ["_cast_whistle", "_whistle_temphp", "_apply_temp_maxhp",
-					"_whistle_spirit_wave", "_whistle_berserk", "_whistle_berserk_on"],
+					"_whistle_spirit_wave", "_tick_wave_flights", "_wave_apply",
+					"_whistle_berserk", "_whistle_berserk_on"],
 	"glacier":     ["_cast_glacier", "_tick_glaciers"],
 	"hunt_order":  ["_cast_hunt_order", "_hunt_mark", "_tick_hunt_taunt"],
 	"tame":        ["_cast_tame", "_tame_mark", "_tick_tame_decay"],
@@ -49,7 +50,9 @@ const DRAMATIZE := {
 	#     断言照样绿。「断言函数存在」守不住「这个函数还有没有人用」。
 	"hook":        ["_hook_head_node", "_tick_hook_flights", "_hook_hit_fx"],
 	"fury_potion": ["_fury_dramatize"],
-	"whistle":     ["_whistle_note", "_whistle_spirit_dramatize", "_spawn_spirit_turtle"],
+	# ★_whistle_spirit_dramatize 已删(口哨②改真 skillshot 后是死代码) —— 演出现在是
+	#   小龟召出(_spawn_spirit_turtle) + 蓄力光(_wave_charge_fx) + 气波节点(_wave_build_node)。
+	"whistle":     ["_whistle_note", "_spawn_spirit_turtle", "_wave_charge_fx", "_wave_build_node"],
 	"glacier":     ["_glacier_dramatize"],
 	"hunt_order":  ["_hunt_dramatize"],
 	"tame":        ["_tame_dramatize"],
@@ -66,9 +69,12 @@ const TS_CONSTS_USED := {
 	"FURY_ECHARGE":       "_fury_apply_buffs",
 	"WHISTLE_TEMPHP":     "_whistle_temphp",
 	"WHISTLE_TEMPHP_SEC": "_whistle_temphp",
-	"WHISTLE_WAVE_DMG":   "_whistle_spirit_wave",
-	"WHISTLE_WAVE_KB":    "_whistle_spirit_wave",
-	"WHISTLE_SHRED_SEC":  "_whistle_spirit_wave",
+	# ★2026-07-30 口哨②改真 skillshot: 伤害/击飞/削甲从"出手即结算"搬到【命中才结算】的
+	#   _wave_apply 里(_whistle_spirit_wave 现在只定方向+召小龟+登记飞行)。
+	"WHISTLE_WAVE_DMG":      "_wave_apply",
+	"WHISTLE_WAVE_MAXHP_PCT": "_wave_apply",
+	"WHISTLE_WAVE_KB":       "_wave_apply",
+	"WHISTLE_SHRED_SEC":     "_wave_apply",
 	"WHISTLE_BERSERK_ATK": "_whistle_berserk_on",
 	"WHISTLE_BERSERK_LS":  "_whistle_berserk_on",
 	"WHISTLE_BERSERK_SEC": "_whistle_berserk_on",
@@ -201,6 +207,8 @@ func _chain_sync() -> void:
 	_chk("④ ★旧的 _hook_dramatize 已删(它曾让目视验证指向死代码)",
 		not ts_src.contains("func _hook_dramatize("))
 	_chk("④ ★旧的 _hook_dramatize_miss 已删", not ts_src.contains("func _hook_dramatize_miss("))
+	_chk("④ ★旧的 _whistle_spirit_dramatize 已删(口哨②改真 skillshot 后是死代码)",
+		not ts_src.contains("func _whistle_spirit_dramatize("))
 	var vfx_src := FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_vfx.gd")
 	# ★六个主动技必须都走玩家真入口 _cast_active(经 _cast_real 装 _tr_active 再分派),
 	#   不许任何一技直接点自己的演出函数 —— 那正是"目视验证指向死代码"的成因。

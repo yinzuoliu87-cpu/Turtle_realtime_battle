@@ -76,8 +76,11 @@ TRAINER_SKILLS = {
     # 怒火药水: 入口(主文件·薄包装) → 落地回调施三 buff(trainer_system)
     'fury_potion': ['_cast_fury_potion', '_fury_apply_buffs'],
     # 口哨: 入口三选一 → 临时血 / 灵体气波 / 狂暴
+    # 口哨②气波 2026-07-30 改真 skillshot: 入口只定方向+召小龟+登记飞行 →
+    #   _tick_wave_flights 每帧推进+碰撞 → _wave_apply 命中才结算(削甲/真伤/击飞)
     'whistle':     ['_cast_whistle', '_whistle_temphp', '_apply_temp_maxhp',
-                    '_whistle_spirit_wave', '_whistle_berserk', '_whistle_berserk_on'],
+                    '_whistle_spirit_wave', '_tick_wave_flights', '_wave_apply',
+                    '_whistle_berserk', '_whistle_berserk_on'],
     # 冰川: 入口只登记区域 → 效果全在逐帧 _tick_glaciers
     'glacier':     ['_cast_glacier', '_tick_glaciers'],
     # 猎龟令: 入口只发锁头弹道 → 到达回调 _hunt_mark 打标记 → 逐帧 _hunt_taunt_tick 刷嘲讽

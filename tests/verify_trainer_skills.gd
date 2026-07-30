@@ -111,7 +111,7 @@ func _test_whistle(scene) -> void:
 	# ① 临时血: _apply_temp_maxhp 直接测
 	var mx0: float = float(ally["maxHp"])
 	var hp0: float = float(ally["hp"])
-	scene._apply_temp_maxhp(ally, 700.0, 5.0)
+	scene._trainer_sys._apply_temp_maxhp(ally, 700.0, 5.0)   # ★2026-07-30 该函数已从上帝文件搬进 trainer_system
 	_ok("★口哨·临时血: maxHp +700", abs(float(ally["maxHp"]) - (mx0 + 700.0)) < 0.5)
 	_ok("★口哨·临时血: 当前hp +700", abs(float(ally["hp"]) - (hp0 + 700.0)) < 0.5)
 	# ③ 狂暴: +20%攻击力 + 免疫死亡
@@ -124,9 +124,16 @@ func _test_whistle(scene) -> void:
 	enemy["pos"] = trainer["pos"] + Vector2(200.0, 0.0)   # 摆到大师正东(线上)
 	enemy["def_shred_until"] = 0.0
 	var ehp0: float = float(enemy["hp"])
+	# ★2026-07-30 口哨②改真 skillshot: 返回值语义变了(1=已发起, 不再是"命中了几个"),
+	#   而且【出手那一帧一点血都不该掉】—— 气波要蓄力 + 飞过去才结算。
+	#   完整时间线/伤害公式/能否躲开 归 verify_whistle_wave 专测; 这里只守"发起成功 + 不即时掉血"。
 	var n: int = scene._trainer_sys._whistle_spirit_wave(trainer)
-	_ok("★口哨·气波: 命中沿途敌(≥1)", n >= 1, "命中 %d" % n)
-	_ok("★口哨·气波: 命中敌掉血", float(enemy["hp"]) < ehp0)
+	_ok("★口哨·气波: 发起成功(返回 1)", n == 1, "返回 %d" % n)
+	_ok("★口哨·气波: ★出手那一帧不掉血(判定不再与演出脱钩)", absf(float(enemy["hp"]) - ehp0) < 0.5,
+		"%.0f → %.0f" % [ehp0, float(enemy["hp"])])
+	# 纯效果函数可以直接调 —— 不用等气波飞到(钩锁 _pirate_grapple_hit 同思路)
+	scene._trainer_sys._wave_apply(trainer, enemy)
+	_ok("★口哨·气波: _wave_apply 直调 → 掉血", float(enemy["hp"]) < ehp0)
 	_ok("★口哨·气波: 命中敌削甲30%(def_shred_until)", float(enemy.get("def_shred_until", 0.0)) > scene._t)
 	# ★灵体小龟【真的现身】: 素材 spirit-turtle.png 已就绪 → _world 里应生成一只幽蓝 billboard(不止判定命中)
 	_ok("★口哨·灵体小龟真的现身(_world 有 spirit-turtle billboard)", _world_has_sprite(scene, "spirit-turtle.png"))

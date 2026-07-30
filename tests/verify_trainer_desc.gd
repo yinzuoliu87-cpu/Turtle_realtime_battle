@@ -70,8 +70,16 @@ func _ready() -> void:
 		],
 		"whistle": [
 			["临时生命", "%d临时生命" % int(TK["WHISTLE_TEMPHP"])],
-			["气波伤害", "%d物理" % int(TK["WHISTLE_WAVE_DMG"])],
+			# ★2026-07-30 用户改数值: 200 物理 → 100 + 15% 目标最大生命【真实伤害】
+			["气波定值段", "%d+" % int(TK["WHISTLE_WAVE_DMG"])],
+			["气波百分比段", "%d%%目标最大生命真实伤害" % int(round(TK["WHISTLE_WAVE_MAXHP_PCT"] * 100.0))],
+			["气波射程", "%d码" % int(TK["WAVE_RANGE"])],
 			["削甲", "削甲%d%%" % int(round((1.0 - K["WHISTLE_SHRED_MULT"]) * 100.0))],
+			# ↓2026-07-30 补: 这两个时长原来【文案里根本没写】(常量注释自己标着"★文案没写这个时长")
+			["临时血时长", "%d秒" % int(TK["WHISTLE_TEMPHP_SEC"])],
+			["削甲时长", "持续%d秒" % int(TK["WHISTLE_SHRED_SEC"])],
+			# ★反面: 旧的"200物理"说法不许残留(玩家会按旧文案理解)
+			["不许留旧口径", "!200物理"],
 			["狂暴攻击力", "+%d%%攻" % int(round(TK["WHISTLE_BERSERK_ATK"] * 100.0))],
 			["免死时长", "免死%d秒" % int(TK["WHISTLE_BERSERK_SEC"])],
 			["冷却", "CD%d" % int(SK["whistle"]["cd"])],
