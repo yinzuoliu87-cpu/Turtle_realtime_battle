@@ -27,6 +27,12 @@ var _aim_off: Vector2 = Vector2.ZERO  # 拖动偏移(相对圆盘中心·屏幕�
 var _stacks: int = 0
 var _stack_font: Font = null
 
+## 角标环色随阈值档位(0/1/2/3) —— 与大师【本体】那圈符文环/晶石的分档配色对齐,
+## 让"到第几档了"在 UI 上也看得出, 不用去数场上的晶石。tier3 转金 = 到顶。
+var _tier: int = 0
+const TIER_RING := [
+	Color("#c86bff"), Color("#c86bff"), Color("#dd9bff"), Color("#ffd35c")]
+
 func setup(icon: Texture2D, hint: String, tap: Callable, aim: Callable = Callable()) -> void:
 	_icon = icon
 	_key_hint = hint
@@ -41,6 +47,14 @@ func set_stacks(n: int) -> void:
 	n = maxi(0, n)
 	if n != _stacks:
 		_stacks = n
+		queue_redraw()
+
+
+## 每帧喂当前档位(0~3)。同 set_stacks: 只在变化时重绘。
+func set_tier(t: int) -> void:
+	t = clampi(t, 0, 3)
+	if t != _tier:
+		_tier = t
 		queue_redraw()
 
 
@@ -115,16 +129,19 @@ func _draw() -> void:
 		var f := ThemeDB.fallback_font
 		draw_string(f, c + Vector2(0.0, 9.0), "%d" % int(ceil(_cd_secs)),
 			HORIZONTAL_ALIGNMENT_CENTER, R * 1.6, 28, Color(1, 1, 1, 0.96))
-	var hf := ThemeDB.fallback_font                                        # 键位提示(PC 端有意义)
-	draw_string(hf, c + Vector2(R * 0.34, R * 0.86), _key_hint,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color(0.75, 0.82, 1.0, 0.92))
+	# ★不画键位提示(用户 2026-07-30:「不要显示Q」)。
+	#   本作主要跑手机(iOS/Android 出包·圆盘本身就是为触屏做的"按住拖动瞄准"),
+	#   触屏上"Q"没有任何意义; 装了【被动】时更是错的 —— 按 Q 什么也不会发生,
+	#   却摆着个键位提示暗示"这键能按"。_key_hint 字段与 setup() 签名保留(调用方不动),
+	#   只是不再绘制 —— 将来若要按平台区分, 在这里加 OS.has_feature("pc") 即可。
 	if _stacks > 0:                                                       # 叠层角标(魔法石攻速层数)
 		if _stack_font == null:
 			_stack_font = load("res://assets/fonts/m6x11.ttf")             # 全局数字字体(与飘字/血条一致·像素风)
 		var bc := c + Vector2(R * 0.70, -R * 0.70)
 		var br := 15.0
 		draw_circle(bc, br, Color(0.08, 0.05, 0.14, 0.94))                # 深底(盖住图标, 数字才读得清)
-		draw_arc(bc, br - 1.0, 0.0, TAU, 24, Color("#c86bff"), 2.0)       # 紫环 = 与"被动生效中"那圈同色, 一眼归因
+		# 环色随档位: 紫 → 亮紫 → 金(到顶)。与大师本体的分档配色对齐。
+		draw_arc(bc, br - 1.0, 0.0, TAU, 24, TIER_RING[clampi(_tier, 0, 3)], 2.0)
 		var txt := str(_stacks)
 		var fs := 22 if _stacks < 10 else (18 if _stacks < 100 else 14)   # 三位数也塞得下(每层+5%, 上不封顶)
 		var f2: Font = _stack_font if _stack_font != null else ThemeDB.fallback_font

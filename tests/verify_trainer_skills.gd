@@ -177,5 +177,11 @@ func _test_source(scene) -> void:
 	_ok("★攻速按叠层缩短(_ms_stacks 进攻击间隔 / haste)",
 		src.contains("_ms_stacks") and src.contains("TRAINER_ATK_INTERVAL / haste"))
 	_ok("★只在装配了魔法石时才触发被动", src.contains('"magic_stone"'))
-	_ok("★攻速叠层【本场结束重置】(_dl_start_fight 清 _ms_stacks·§3.4按本场计)",
-		src.contains('_ms_stacks"] = 0'))
+	# ★2026-07-30 行为反转(用户拍板): 攻速叠层从「每路开打清零」改成【跨路保留】。
+	#   由来: 0.17.17 把层数做成圆盘角标后, 玩家会【亲眼看见】它换路归零, 而
+	#   trainer_system 的注释一直写着"持续到本场结束" → 口径分歧从文档问题变成可见行为。
+	#   用户选了改行为对齐文案。原来这里断言的正是那个清零, 所以本条必须一起反过来。
+	#   ★真正的行为断言在 verify_trainer_magicstone ⑦ 组(走真实换路入口 _dl_start_fight()
+	#     喂 23 层, 验换路后还是 23) —— 这里只做源码层的"清零不许回来"。
+	_ok("★攻速叠层【跨路保留】(换路不清零·上路攒的层带进下路与决胜)",
+		not src.contains('_ms_stacks"] = 0'))

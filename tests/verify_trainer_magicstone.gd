@@ -132,7 +132,32 @@ func _ready() -> void:
 	_chk("⑤ ★石头飞行途中目标不掉血(两段同帧, 不错开)", absf(mid - before) < 0.01)
 
 	await _stack_badge(s, tr)
+	await _cross_lane(s, tr)
 	_done(s)
+
+
+## ⑦ 叠层【跨路保留】(用户 2026-07-30 拍板) + 圆盘不画键位提示。
+##
+## 原本 _dl_start_fight 每路开打把大师的 _ms_stacks 清零, 而 trainer_system 的注释写着
+## "持续到本场结束" —— 口径分歧。0.17.17 把层数做成圆盘角标后, 玩家会【亲眼看见】它换路归零,
+## 于是分歧从"文档问题"变成"可见行为"。用户选了改行为对齐文案。
+## ★这里【走真实换路入口 _dl_start_fight()】而不是只 grep 源码 —— 只 grep 的话,
+##   有人在别处(比如 _dl_build_lane_field)加一遍清零, 断言照样绿。
+func _cross_lane(s, tr: Dictionary) -> void:
+	print("")
+	print("  ⑦ 叠层跨路保留 + 圆盘不画 Q:")
+	tr["_ms_stacks"] = 23
+	s._dl_sys._dl_start_fight()                  # 真实换路入口
+	await get_tree().process_frame
+	var kept: int = int(tr.get("_ms_stacks", -1))
+	print("     换路前 23 层 → 换路后 %d 层 (需求: 保留 23)" % kept)
+	_chk("⑦ ★换路不清零(跨上路/下路/决胜一路带着)", kept == 23)
+	var src := FileAccess.get_file_as_string("res://scripts/scenes/battle/dual_lane_flow.gd")
+	_chk("⑦ 源码里也没有残留的清零(别在另一处又清一遍)",
+		not src.contains('_tu["_ms_stacks"] = 0'))
+	var ds := FileAccess.get_file_as_string("res://scripts/scenes/spell_disc.gd")
+	_chk("⑦ ★圆盘不画键位提示(触屏上 Q 无意义·装被动时更是错的)",
+		not ds.contains("draw_string(hf,") and not ds.contains(", _key_hint,"))
 
 
 ## ⑥ 圆盘上的叠层角标(用户 2026-07-30:「魔法石，我希望图标上有层数显示」)。
@@ -164,7 +189,15 @@ func _stack_badge(s, tr: Dictionary) -> void:
 	# 0 层不画 —— 开局别给圆盘加噪点
 	var src := FileAccess.get_file_as_string("res://scripts/scenes/spell_disc.gd")
 	_chk("⑥ 0 层不画角标(if _stacks > 0)", src.contains("if _stacks > 0:"))
-	_chk("⑥ 角标用与'被动生效中'符环同一个紫(#c86bff·一眼归因)", src.contains('Color("#c86bff")'))
+	_chk("⑥ 角标环色从'被动生效中'那个紫起步(#c86bff·一眼归因)", src.contains('Color("#c86bff")'))
+	# 角标环色随阈值档位 —— 判据落在【圆盘真的收到了 tier】上, 不是"源码里有 set_tier"
+	for pr in [[0, 0], [10, 1], [25, 2], [50, 3]]:
+		tr["_tr_passive"] = "magic_stone"
+		tr["_ms_stacks"] = int(pr[0])
+		s._render._update_spell_disc()
+		await get_tree().process_frame
+		_chk("⑥ %d 层 → 圆盘档位 %d(环色紫→亮紫→金)" % [pr[0], pr[1]],
+			int(s._spell_disc._tier) == int(pr[1]))
 
 
 ## 圆盘子树里第一个 TextureRect 的贴图路径

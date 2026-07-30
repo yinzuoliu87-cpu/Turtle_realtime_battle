@@ -8,7 +8,27 @@ extends RefCounted
 ## 后果有两个: ①pet_effect_dump 抽不到(它靠展开具名常量) ②verify_trainer_desc
 ## 没法从常量推期望值, 于是怒火药水/口哨/冰川三个技能的实质数值【门禁一个都不查】,
 ## 只查了射程和 CD。补成常量后这些数字才进得了门禁。值一律不变, 纯口径修正。
-const MS_HASTE_PER_STACK := 0.05  # 魔法石: 每次普攻命中自身 +5% 攻速(可叠·每路开打清零)
+const MS_HASTE_PER_STACK := 0.05  # 魔法石: 每次普攻命中自身 +5% 攻速(可叠·★跨路保留不清零·用户 2026-07-30)
+
+## -- 魔法石叠层【阈值特效】(用户 2026-07-30:「层数到几个阈值的时候你加个精美的特效吧」) --
+##
+## ★阈值不是拍脑袋: 探针实测大师基础攻击间隔 1.500 秒, 每层 +5% 攻速 → 叠层是【对数收敛】的
+##   (sum 1.5/(1+0.05n)): 10 层第 12.4 秒 / 25 层第 24.7 秒 / 50 层第 38.1 秒 / 60 层第 42.2 秒。
+##   取 10/25/50 → 三档落在约 12s/25s/38s, 节奏均匀且一路战斗内都可达;
+##   攻速对应 x1.50 / x2.25 / x3.50 —— 玩家手上能感觉到三个台阶。
+const MS_TIER_STACKS := [10, 25, 50]   # 三档阈值(层)
+const MS_MOTES := [0, 3, 3, 6]         # 各 tier 绕转晶石数(下标=tier)
+const MS_ORBIT_R := 78.0               # 晶石绕大师半径(码)
+const MS_ORBIT_HZ := 0.42              # 绕转圈/秒 (tier3 x2)
+const MS_MOTE_H_M := 0.42              # 晶石世界高度(米: 龟身高 2.0 → 约五分之一)
+const MS_MOTE_Y := 1.15                # 晶石离地高度(米: 大师腰胸之间)
+const MS_RING_D_M := 2.4               # 脚下符文环世界直径(米)
+const MS_RING_Y := 0.07                # 环离地高度(米: 地砖顶面 y=0)
+const MS_TIER_TINT := [                # tier 越高越亮(白得多 = 过载感)
+	Color(1, 1, 1, 1), Color("#c86bff"), Color("#dd9bff"), Color("#f4e0ff")]
+const MS_MOTE_TEX := "res://assets/sprites/vfx/ms-mote.png"
+const MS_RING_TEX := "res://assets/sprites/vfx/ms-rune-ring.png"
+const MS_BURST_TEX := "res://assets/sprites/vfx/ms-resonance-burst.png"
 const FURY_RADIUS := 300.0       # 怒火药水: 落点生效半径(码)
 const FURY_SEC := 5.0            # 怒火药水: buff 持续(秒)
 const FURY_HASTE := 1.3          # 怒火药水: 攻速 ×1.3 (+30%)
@@ -753,7 +773,141 @@ func _trainer_magicstone_onhit(u: Dictionary, tgt: Dictionary) -> void:
 	var pct: float = battle.MS_MAXHP_BASE + battle.MS_MAXHP_PER_LV * float(lv)
 	var magic: int = maxi(1, int(battle._resolve_dmg(u, float(tgt["maxHp"]) * pct, tgt, true)))
 	battle._damage._apply_damage_from(u, tgt, magic, Color("#c86bff"), 0.0, false, true)
-	u["_ms_stacks"] = int(u.get("_ms_stacks", 0)) + 1                                        # 攻速叠一层(持续到本场结束)
+	var tier0: int = _ms_tier(int(u.get("_ms_stacks", 0)))
+	u["_ms_stacks"] = int(u.get("_ms_stacks", 0)) + 1   # 攻速叠一层。★跨路保留(用户 2026-07-30): 上路攒的层带进下路与决胜, 全程不清零
+	var tier1: int = _ms_tier(int(u["_ms_stacks"]))
+	if tier1 > tier0:
+		_ms_tier_burst(u, tier1)                        # ★只在【跨过那一刻】放一次(比较前后 tier, 不是每帧看层数)
+
+
+## 层数 → tier(0=无 / 1 / 2 / 3)。纯函数, 门禁直接逐点验边界。
+func _ms_tier(n: int) -> int:
+	var t := 0
+	for i in range(MS_TIER_STACKS.size()):
+		if n >= int(MS_TIER_STACKS[i]):
+			t = i + 1
+	return t
+
+
+## 每帧: 按当前 tier 建/撤大师身上的常驻特效, 并推进绕转。
+##
+## ★节点挂 battle._world 而【不是】挂大师 sprite 的子节点 —— 大师立绘是 billboard,
+##   pixel_size/scale 会随动作帧变(_set_anim_sheet / _elite_fix_norm), 挂子节点会被父级缩放带歪。
+##   挂 _world + 每帧写 position 是本项目跟随类特效的既有做法(_tame_rune / _hunt_sigil 同)。
+## ★tier 变了才重建(建/撤都贵), 没变只推进绕转角。
+## ★大师死亡 / 换掉魔法石被动 → want=0 → 撤干净, 不留孤儿节点。
+func _ms_tick_aura(delta: float) -> void:
+	for u in battle._units:
+		if not u.get("is_trainer", false):
+			continue
+		var on: bool = u.get("alive", false) and str(u.get("_tr_passive", "")) == "magic_stone"
+		var want: int = _ms_tier(int(u.get("_ms_stacks", 0))) if on else 0
+		if want != int(u.get("_ms_aura_tier", -1)):
+			_ms_build_aura(u, want)
+			u["_ms_aura_tier"] = want
+		if want > 0:
+			var hz: float = MS_ORBIT_HZ * (2.0 if want >= 3 else 1.0)
+			u["_ms_orbit_t"] = float(u.get("_ms_orbit_t", 0.0)) + delta * hz
+			_ms_place_aura(u, want)
+
+
+## 建(或撤)某 tier 的常驻特效。tier=0 = 全撤。
+func _ms_build_aura(u: Dictionary, tier: int) -> void:
+	for n in (u.get("_ms_motes", []) as Array):
+		if is_instance_valid(n):
+			(n as Node).queue_free()
+	u["_ms_motes"] = []
+	var old_ring = u.get("_ms_ring", null)
+	if is_instance_valid(old_ring):
+		(old_ring as Node).queue_free()
+	u["_ms_ring"] = null
+	if tier <= 0 or battle._world == null:
+		return
+	var tint: Color = MS_TIER_TINT[clampi(tier, 0, 3)]
+	if ResourceLoader.exists(MS_MOTE_TEX):
+		var tex: Texture2D = load(MS_MOTE_TEX)
+		var arr: Array = []
+		for _i in range(int(MS_MOTES[clampi(tier, 0, 3)])):
+			var m := Sprite3D.new()
+			m.texture = tex
+			m.pixel_size = MS_MOTE_H_M / float(maxi(1, tex.get_height()))
+			m.billboard = BaseMaterial3D.BILLBOARD_ENABLED       # 晶石是立着的小物件 → 朝镜头
+			m.shaded = false
+			m.transparent = true
+			m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			m.modulate = tint
+			battle._world.add_child(m)
+			arr.append(m)
+		u["_ms_motes"] = arr
+	else:
+		push_warning("[魔法石] 缺素材 %s —— 晶石不画(不复用别的贴图兜底)" % MS_MOTE_TEX)
+	if tier >= 2 and ResourceLoader.exists(MS_RING_TEX):
+		var rt: Texture2D = load(MS_RING_TEX)
+		var r := Sprite3D.new()
+		r.texture = rt
+		r.pixel_size = MS_RING_D_M / float(maxi(1, rt.get_height()))
+		r.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+		# ★只给 axis, 【不要】再加 rotation.x=-90 —— 两者相互抵消会把环掰竖起来。
+		#   2026-07-30 猎龟令印记/驯服符文环两圈就是这么立了一整场(|世界法线·上| 实测 0.000)。
+		r.axis = Vector3.AXIS_Y
+		r.shaded = false
+		r.transparent = true
+		r.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		r.modulate = Color(tint.r, tint.g, tint.b, 0.9)
+		r.position = battle._world_pos(u["pos"], MS_RING_Y)   # ★入树前先摆到位, 否则头几帧在世界原点闪
+		battle._world.add_child(r)
+		u["_ms_ring"] = r
+
+
+## 每帧把晶石摆到绕转位、把环摆到脚下。
+func _ms_place_aura(u: Dictionary, tier: int) -> void:
+	var motes: Array = u.get("_ms_motes", []) as Array
+	var n: int = motes.size()
+	var base: float = float(u.get("_ms_orbit_t", 0.0)) * TAU
+	for i in range(n):
+		var m = motes[i]
+		if not is_instance_valid(m):
+			continue
+		var a: float = base + TAU * float(i) / float(maxi(1, n))
+		var off := Vector2(cos(a), sin(a) * 0.42) * MS_ORBIT_R   # y 压扁 0.42 = 俯视下的椭圆轨道
+		var bob: float = sin(base * 1.7 + float(i)) * 0.10       # 上下小幅浮动 + 错开相位 → 不像僵硬转盘
+		(m as Sprite3D).position = battle._world_pos(u["pos"] + off, MS_MOTE_Y + bob)
+	var ring = u.get("_ms_ring", null)
+	if is_instance_valid(ring):
+		var rs: Sprite3D = ring
+		rs.position = battle._world_pos(u["pos"], MS_RING_Y)
+		rs.rotate_y(0.035 * (2.0 if tier >= 3 else 1.0))   # axis=AXIS_Y 平铺后 rotate_y 才是"在自己平面内转"
+
+
+## 跨过一个阈值的那一下: 晶石迸裂 + 飘字 + 轻微震屏。
+## ★只由 _trainer_magicstone_onhit 在【tier 变大】时调 —— 不是每帧看层数, 否则会连放。
+func _ms_tier_burst(u: Dictionary, tier: int) -> void:
+	var roman := ["", "I", "II", "III"]
+	battle._vfx._float_text(u["pos"] + Vector2(0, -78),
+		"魔法石·共鸣 %s" % roman[clampi(tier, 0, 3)], MS_TIER_TINT[clampi(tier, 0, 3)])
+	# ★JUICE_SHAKE_SMALL 不存在 —— 本项目只有 LIGHT(0.0)/HEAVY(0.10)/BIG(0.22)/MAX(0.30)。
+	battle._shake(minf(battle.JUICE_SHAKE_BIG, battle.JUICE_SHAKE_HEAVY * float(tier)))   # tier1 0.10 / tier2 0.20 / tier3 封顶 0.22
+	u["_ms_burst_n"] = int(u.get("_ms_burst_n", 0)) + 1   # 同步的触发证据(供门禁断言, 不看"有没有建 tween")
+	if battle._world == null or not ResourceLoader.exists(MS_BURST_TEX):
+		if not ResourceLoader.exists(MS_BURST_TEX):
+			push_warning("[魔法石] 缺素材 %s —— 共鸣迸裂不画" % MS_BURST_TEX)
+		return
+	var tex: Texture2D = load(MS_BURST_TEX)
+	var b := Sprite3D.new()
+	b.texture = tex
+	b.pixel_size = (1.5 + 0.5 * float(tier)) / float(maxi(1, tex.get_height()))   # tier 越高炸得越大
+	b.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	b.shaded = false
+	b.transparent = true
+	b.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	b.modulate = MS_TIER_TINT[clampi(tier, 0, 3)]
+	b.position = battle._world_pos(u["pos"], 1.1)
+	battle._world.add_child(b)
+	# 纯演出: 放大 + 淡出。数值一点不在这里(层数早在 onhit 里加完了) —— 见 CLAUDE.md §3.5
+	var tw = battle._reg_tween()
+	tw.tween_property(b, "scale", Vector3.ONE * 1.9, 0.42).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(b, "modulate:a", 0.0, 0.46)
+	tw.tween_callback(b.queue_free)
 
 
 ## 移动端才建摇杆; PC 上根本不建(不占屏)。

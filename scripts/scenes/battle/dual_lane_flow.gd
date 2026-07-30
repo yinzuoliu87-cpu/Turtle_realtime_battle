@@ -352,9 +352,12 @@ func _dl_enter_place() -> void:
 func _dl_start_fight() -> void:
 	battle._sd_t0 = battle._t          # ★每个战场各自计时(battle._t 跨路累加, 见 §SUDDEN)
 	battle._sd_stacks = 0
-	for _tu in battle._units:   # 魔法石攻速叠层【本场结束重置】(§3.4: 按本场计, 不用全局_t) —— 每路开打清零
-		if _tu.get("is_trainer", false):
-			_tu["_ms_stacks"] = 0
+	# ★魔法石攻速叠层【跨路保留】(用户 2026-07-30 拍板) —— 这里原本每路开打清零。
+	#   由来: 0.17.17 把层数做成圆盘角标后, 玩家会【亲眼看见】它换路归零, 而
+	#   trainer_system.gd 那边的注释一直写着"持续到本场结束" → 口径分歧从文档变成可见行为。
+	#   用户选了"改行为对齐文案"而不是"改文案对齐行为"。
+	#   ★平衡影响: 层数不再回落, 决胜战场会带着上路+下路攒的全部层进场(每层 +5% 攻速)。
+	#     verify_trainer_magicstone ⑦ 组焊死这条, 谁再加回清零就红。
 	battle._edit_drag_unit = null
 	battle._dl_state = "fight"
 	if is_instance_valid(battle._dl_go_btn): battle._dl_go_btn.visible = false

@@ -29,6 +29,7 @@ func _update_spell_disc() -> void:
 	# ★不满足就喂 0 而不是"不喂" —— 换路清零/换装后必须把角标撤掉, 否则会留个旧数字在那。
 	var stacks: int = int(u.get("_ms_stacks", 0)) if str(u.get("_tr_passive", "")) == "magic_stone" else 0
 	battle._spell_disc.set_stacks(stacks)
+	battle._spell_disc.set_tier(battle._trainer_sys._ms_tier(stacks))   # 角标环色随阈值档位(紫→亮紫→金)
 	battle._aim._update_q_aim()             # PC 按住 Q 瞄准: 刷新方向 + 亮 _disc_aiming
 	if battle._disc_aiming:
 		battle._aim._draw_aim_indicator()   # 拖动/按住Q 瞄准中: 战场上画方向指示器

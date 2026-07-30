@@ -2148,6 +2148,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 	_trainer_sys._tick_hunt_taunt(dt)      # 猎龟令: 每帧刷新目标周围 400 码我方友军的嘲讽(圈随目标移动)
 	_trainer_sys._tick_tame_decay(dt)      # 驯服: 归顺者每秒损失 2% 最大生命
 	_trainer_sys._tick_trainer_ai(dt)      # 敌方(快照)大师 AI: 乱走 + 逮机会甩钩锁(点3·场外援助·用户2026-07-23)
+	_trainer_sys._ms_tick_aura(dt)         # 魔法石: 按叠层阈值(10/25/50)建撤大师本体特效 + 推进绕转
 	_trainer_sys._tick_hooks(dt)           # 钩锁: CD 扣减 + 被钩单位每帧朝大师拖(点3)
 	# Phase4 顿帧 hit-stop: 计时 >0 时冻结"模拟"给重量感(镜头震屏照常推进·在 _render._render_step)。
 	if frozen:
