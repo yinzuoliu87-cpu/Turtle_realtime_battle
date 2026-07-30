@@ -31,8 +31,9 @@ const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 ##   「普攻附带(2+0.1每大轮等级)%目标最大生命值魔法伤害」→ Lv1=2.1% … Lv10=3.0%
 ## 实现改了而需求没改 → 这条就该红。
 const WANT_ATK := 10.0
-const WANT_PCT_BASE := 0.02
-const WANT_PCT_PER_LV := 0.001
+## ★2026-07-30 用户拍板:「附带的魔法伤害削弱为常驻2%」—— 不再随大轮等级涨。
+##   原需求是「(2+0.1每大轮等级)%」(Lv1 2.1%…Lv10 3.0%), 现在恒 2%。
+const WANT_PCT := 0.02
 const HUD := preload("res://scripts/scenes/battle/battle_hud.gd")
 
 var _fail := 0
@@ -101,7 +102,7 @@ func _ready() -> void:
 		var hp0: float = float(dummy["hp"])
 		s._trainer_sys._trainer_magicstone_onhit(tr, dummy)
 		var dealt: float = hp0 - float(dummy["hp"])
-		var want_pct: float = WANT_PCT_BASE + WANT_PCT_PER_LV * float(lv)
+		var want_pct: float = WANT_PCT      # ★逐级都是同一个数 —— 这才是"常驻"的判据
 		# ★把【目标自带的受伤修正】显式除掉, 而不是假设它等于 1。
 		#   靶子是从随机 spawn 的敌队里挑的, 而 _mitigate_incoming 里有一堆按龟 id / 按状态
 		#   的分支(钻石 ×0.82、石头岩石之躯、靶向器标记 +20% ……)。我先只中性化了 id,
@@ -115,7 +116,26 @@ func _ready() -> void:
 		print("     Lv%-2d  实扣 %6.1f / %.0f  目标减伤×%.3f  → 公式 %.3f%%   期望 %.3f%%  %s" % [
 			lv, dealt, float(dummy["maxHp"]), mit, got_pct * 100.0, want_pct * 100.0, "ok" if good else "★差"])
 	gs.season_level = 5
-	_chk("④ 魔法伤害 = (2 + 0.1×大轮等级)% 目标最大生命", ok4)
+	_chk("④ ★魔法伤害恒 %.0f%% 目标最大生命(Lv1/5/10 都一样·不随大轮等级涨)" % (WANT_PCT * 100.0), ok4)
+	# ★结构断言: 代码里不许再出现"按等级算"的形态。只验数值不够 —— 若有人改回
+	#   base+per_lv 而恰好某一级等于 2%, 只测那一级就漏了。数值(逐级) + 结构(不读 season_level) 都要。
+	var ts_src := FileAccess.get_file_as_string("res://scripts/systems/trainer/trainer_system.gd")
+	var body_i := ts_src.find("func _trainer_magicstone_onhit(")
+	var body := ts_src.substr(body_i, 900) if body_i >= 0 else ""
+	_chk("④ ★分母: 读到 _trainer_magicstone_onhit 函数体", body.length() > 100)
+	# ★★断言要匹配【代码形态】, 不能匹配裸标识符 —— 我第一版写
+	#     not body.contains("season_level")  /  not rb_src.contains("MS_MAXHP_PER_LV")
+	#   两条都红了, 而代码完全正确: 命中的是【我自己写的解释性注释】
+	#   (函数体里那句"★不再读 GameState.season_level"、常量头注里提到的旧常量名)。
+	#   源码里越是把改动理由写清楚, 裸标识符 grep 就越容易反过来咬自己。
+	#   所以: 正向断言用【完整代码行】, 负向断言用【声明形态 const X】。
+	_chk("④ ★pct 直接取常量(不再按等级算)",
+		body.contains("var pct: float = battle.MS_MAXHP_PCT"))
+	var rb_src := FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")
+	_chk("④ ★新常量 MS_MAXHP_PCT 在位", rb_src.contains("const MS_MAXHP_PCT :="))
+	_chk("④ ★死常量没留下(MS_MAXHP_PER_LV 的【声明】已删, 不是设成 0)",
+		not rb_src.contains("const MS_MAXHP_PER_LV"))
+	_chk("④ ★旧的 MS_MAXHP_BASE 声明也已删", not rb_src.contains("const MS_MAXHP_BASE"))
 
 	# ── ⑤ ★物理与魔法同帧 ──
 	#    出 bug 时: 魔法在【扔出瞬间】就扣, 物理要等石头飞到 → 石头在空中时目标已经掉了一次血。

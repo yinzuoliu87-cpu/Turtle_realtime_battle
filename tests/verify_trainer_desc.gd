@@ -43,9 +43,11 @@ func _ready() -> void:
 	var want := {
 		"magic_stone": [
 			["攻击力倍数", "×%d" % int(K["TRAINER_ATK_MAGIC_STONE"] / K["TRAINER_ATK"])],
-			["每级增幅", "0.%d×大轮等级" % int(K["MS_MAXHP_PER_LV"] * 1000.0)],
-			["Lv1 实际值", "%.1f%%" % ((K["MS_MAXHP_BASE"] + K["MS_MAXHP_PER_LV"] * 1.0) * 100.0)],
-			["Lv10 实际值", "%.1f%%" % ((K["MS_MAXHP_BASE"] + K["MS_MAXHP_PER_LV"] * 10.0) * 100.0)],
+			# ★2026-07-30 削弱成【常驻 2%】(不随大轮等级涨) —— 原来这里三行验的是
+			#   每级增幅 / Lv1 / Lv10 三个不同的值。现在只有一个数, 文案里也只该出现一个数。
+			["附带魔法伤害", "%d%% 目标最大生命" % int(round(K["MS_MAXHP_PCT"] * 100.0))],
+			# ★反面: 文案里不许再留"随等级涨"的说法(否则玩家按旧文案理解)
+			["不许提大轮等级", "!大轮等级"],
 			# ↓2026-07-30 补: 每层攻速原来是 trainer_system 里的裸 0.05, 门禁不查
 			["每层攻速", "+%d%%攻速" % int(round(TK["MS_HASTE_PER_STACK"] * 100.0))],
 		],
@@ -119,13 +121,24 @@ func _ready() -> void:
 			var label: String = str(pair[0])
 			var frag: String = str(pair[1]).replace(" ", "")
 			_checked += 1
-			var ok: bool = d.find(frag) >= 0
+			# ★"!" 前缀 = 【否定断言】: 这个片段【不许】出现在文案里(2026-07-30 加)。
+			#   由来: 魔法石从"(2+0.1×大轮等级)%"削弱成"常驻 2%", 光断言"文案里有 2%"不够 ——
+			#   旧文案里也有"2"; 真正要守的是【旧说法不许残留】, 否则玩家按旧文案理解。
+			#   只有正向断言的门禁抓不到"多写了一句过时的话"。
+			var neg: bool = frag.begins_with("!")
+			if neg:
+				frag = frag.substr(1)
+			var found: bool = d.find(frag) >= 0
+			var ok: bool = (not found) if neg else found
 			if not ok:
-				print("  [FAIL] ② %s·%s: 描述里找不到「%s」" % [nm, label, frag])
+				if neg:
+					print("  [FAIL] ② %s·%s: 描述里【不该】出现「%s」却出现了" % [nm, label, frag])
+				else:
+					print("  [FAIL] ② %s·%s: 描述里找不到「%s」" % [nm, label, frag])
 				print("         描述原文: %s" % descs[sid])
 				_fail += 1
 			else:
-				print("     ② %-4s %-6s → 「%s」 ✓" % [nm, label, frag])
+				print("     ② %-4s %-6s → %s「%s」 ✓" % [nm, label, "不含" if neg else "", frag])
 
 	# ── ③ 分母自检: 比对过的片段数 ──
 	print("  比对片段数 = %d" % _checked)

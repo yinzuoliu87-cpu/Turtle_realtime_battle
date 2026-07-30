@@ -768,9 +768,9 @@ func _trainer_throw_anim(u: Dictionary) -> void:
 func _trainer_magicstone_onhit(u: Dictionary, tgt: Dictionary) -> void:
 	if not (tgt is Dictionary and tgt.get("alive", false)):
 		return
-	# (2 + 0.1×大轮等级)% 目标最大生命(用户 2026-07-28) → Lv1=2.1% … Lv10=3.0%
-	var lv: int = clampi(int(GameState.season_level), 1, 10)
-	var pct: float = battle.MS_MAXHP_BASE + battle.MS_MAXHP_PER_LV * float(lv)
+	# 常驻 2% 目标最大生命(用户 2026-07-30 削弱; 原来是 (2+0.1×大轮等级)% = Lv1 2.1%…Lv10 3.0%)。
+	# ★不再读 GameState.season_level —— 与大轮等级彻底解耦, 所以门禁可以逐级验"它不变"。
+	var pct: float = battle.MS_MAXHP_PCT
 	var magic: int = maxi(1, int(battle._resolve_dmg(u, float(tgt["maxHp"]) * pct, tgt, true)))
 	battle._damage._apply_damage_from(u, tgt, magic, Color("#c86bff"), 0.0, false, true)
 	var tier0: int = _ms_tier(int(u.get("_ms_stacks", 0)))

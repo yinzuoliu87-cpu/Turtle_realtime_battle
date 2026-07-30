@@ -320,9 +320,16 @@ const TRAINER_ATK := 1.0
 ##   物理只从 1 涨到 10, 总输出约 21 → 31~40。方案书 §5.6 已写明。
 const TRAINER_ATK_MAGIC_STONE := 10.0
 ## 魔法石普攻附带的魔法伤害 = (MS_BASE + MS_PER_LV × 大轮等级) × 目标最大生命
-## 用户 2026-07-28:「(2+0.1每大轮等级)%目标最大生命值魔法伤害」→ Lv1=2.1% … Lv10=3.0%
-const MS_MAXHP_BASE := 0.02
-const MS_MAXHP_PER_LV := 0.001
+## 魔法石普攻附带的魔法伤害 = 目标最大生命的固定百分比。
+## ★2026-07-30 用户拍板削弱:「附带的魔法伤害削弱为常驻2%」——
+##   原来是 (2 + 0.1×大轮等级)%(MS_MAXHP_BASE 0.02 + MS_MAXHP_PER_LV 0.001×lv),
+##   Lv1 2.1% … Lv10 3.0%。现在【不随大轮等级涨】, 恒 2%。
+##   Lv5 2.5%→2.0%(−20%) · Lv10 3.0%→2.0%(−33%)。
+##   动机: 同一轮把攻速叠层改成【跨路保留且不封顶】(见 trainer_system MS_TIER_STACKS 头注),
+##   攻速上界抬高后, 再叠一个"随等级涨的按最大生命百分比"就双重放大了。
+## ★删掉 MS_MAXHP_PER_LV 而不是把它设成 0 —— 零读者的死常量正是本项目栽过的坑
+##   (HOOK_VULN_MULT 曾在游戏代码里零读者, 唯一读者是门禁, 于是门禁会把错文案判成正确)。
+const MS_MAXHP_PCT := 0.02
 const TRAINER_RANGE := 2000.0
 const TRAINER_ATK_INTERVAL := 1.5
 const TRAINER_MOVE_SPD := 130.0                       # 移速(码/秒), 用户 2026-07-22 拍板
