@@ -155,7 +155,75 @@ func _ready() -> void:
 	print("  ⑧ 1 秒掉血 %.2f%% (需求 %.0f%%)" % [lost * 100.0, WANT_TAME_DECAY * 100.0])
 	_chk("⑧ 归顺后每秒损失 %.0f%% 最大生命" % (WANT_TAME_DECAY * 100.0), absf(lost - WANT_TAME_DECAY) < 0.004)
 
+	await _sigil_geometry(s)
 	_done(s)
+
+
+## ⑨ 地面印记/符文环的【几何】—— 2026-07-30 逐技目视审核抓到的两个问题, 焊死不许回来。
+##
+## ★问题①: 猎龟令印记原本 pixel_size = HUNT_TAUNT_R*2*WS/128 → 直径 19.20 m,
+##    而战场 ARENA 只有 38.3×17.5 m —— 圈占战场宽 50%、【比纵深还长 110%】。
+##    两层后果: ⓐ这一技的核心信息"哪只龟被标了"完全读不出;
+##              ⓑ128px 铺 19.2m = 0.150 m/texel = 龟像素格(≈0.05)的 3 倍粗 → 糊成红板砖。
+##    ★根因是【把"效果半径"当成了"贴片尺寸"】。这两个概念必须分开, 所以下面既验尺寸在
+##      合理带内, 也验它【不再由 HUNT_TAUNT_R 推导】—— 只验数字的话, 有人换个半径就又崩。
+##
+## ★问题②: 两个环建节点时【没设初始 position】, 靠 .set_delay(0.03) 的循环 tween 归位
+##    → 探针实测头 2 帧待在世界原点、与目标脚下偏差 16.21 m = 地图正中先闪一下再跳过来。
+##    ★这条【必须在建出的同一帧就验】(第 0 帧偏差=0), 隔几帧再看就被 tween 补上了 = 假绿灯。
+func _sigil_geometry(s) -> void:
+	print("")
+	print("  ⑨ 地面印记几何(尺寸 / 首帧位置):")
+	var src := FileAccess.get_file_as_string("res://scripts/systems/trainer/trainer_system.gd")
+	_chk("⑨ ★印记尺寸不再由嘲讽半径推导(效果半径 ≠ 贴片尺寸)",
+		not src.contains("battle.HUNT_TAUNT_R * 2.0 * battle.WS"))
+	_chk("⑨ 尺寸走显式常量 SIGIL_D_M / TAME_RUNE_D_M",
+		src.contains("const SIGIL_D_M :=") and src.contains("const TAME_RUNE_D_M :="))
+
+	var ts = s._trainer_sys
+	var tr = _my_trainer(s)
+	var tgt: Dictionary = _foe(s)
+	if tr == null or tgt.is_empty():
+		print("     [FAIL] ★分母: 没有大师或可用敌人 —— ⑨ 是空检查"); _fail += 1; return
+	# ── 印记: 直接调 _hunt_sigil(不等锁头弹), 建出【同一帧】就验位置 ──
+	tgt["hunt_until"] = s._t + 99.0
+	ts._hunt_sigil(tgt)
+	var sig = tgt.get("_hunt_sigil", null)
+	_chk("⑨ ★分母: 印记节点真的建出来了(缺素材会静默不画)", sig is Sprite3D)
+	if not (sig is Sprite3D):
+		return
+	var sp: Sprite3D = sig
+	var d: float = sp.texture.get_width() * sp.pixel_size
+	var mpt: float = sp.pixel_size          # 每贴图像素多少米
+	var turtle_px: float = s.TARGET_BODY_H / 48.0   # 龟立绘 ≈48px 高 → 约 0.042 m/texel
+	print("     印记直径 %.2f m (龟身高 %.2f m·战场 %.1f×%.1f m) / %.3f m per texel (龟 ≈%.3f)" % [
+		d, s.TARGET_BODY_H, s.ARENA.size.x * s.WS, s.ARENA.size.y * s.WS, mpt, turtle_px])
+	# 带内: 0.75×~2× 龟身高。原来的 19.20 m 会红(9.6 倍), 缩得看不见也会红。
+	_chk("⑨ ★印记直径在 [1.5, 4.0] m 内(原来 19.20 m = 比战场纵深还长)",
+		d >= 1.5 and d <= 4.0, )
+	_chk("⑨ ★印记像素密度不比龟粗(否则破坏全局像素单位·糊成板砖)", mpt <= turtle_px)
+	var want: Vector3 = s._world_pos(tgt["pos"], 0.06)
+	var off: float = (sp.position - want).length()
+	print("     首帧偏差 %.2f m (原来 16.21 m = 在世界原点闪一下)" % off)
+	_chk("⑨ ★★印记建出的【同一帧】就在目标脚下(不许先在世界原点闪)", off < 0.01)
+	# ── 符文环: 同一批修的同一个毛病 ──
+	var tgt2: Dictionary = _foe(s)
+	if tgt2.is_empty():
+		print("     [FAIL] ★分母: 找不到第二个敌人验符文环"); _fail += 1; return
+	ts._tame_rune(tgt2)
+	var rune: Sprite3D = null
+	for c in s._world.get_children():
+		if c is Sprite3D and (c as Sprite3D).texture != null \
+			and str((c as Sprite3D).texture.resource_path).ends_with("tame-rune.png"):
+			rune = c
+	_chk("⑨ ★分母: 符文环节点真的建出来了", rune != null)
+	if rune == null:
+		return
+	var rd: float = rune.texture.get_width() * rune.pixel_size
+	var roff: float = (rune.position - s._world_pos(tgt2["pos"], 0.05)).length()
+	print("     符文环直径 %.2f m / 首帧偏差 %.2f m" % [rd, roff])
+	_chk("⑨ 符文环直径在 [1.5, 4.5] m 内", rd >= 1.5 and rd <= 4.5)
+	_chk("⑨ ★符文环建出的同一帧就在目标脚下(与印记同一个毛病·同批修)", roff < 0.01)
 
 
 func _my_trainer(s):

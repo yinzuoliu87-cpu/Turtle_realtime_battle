@@ -85,3 +85,11 @@ tools/autoplay/
 # 对局CSV被 Godot 当翻译表导入生成的 .translation(可再生·每轮 72 个)。
 # 旧轮次 tools/duel/ 也是这样, 只是从没被跟踪 —— 这里写明, 免得下次又被 git status 刷屏。
 tools/duel*/*.translation
+
+# ★对局模拟的【原始产物本身】也不跟踪(可再生·每轮 12 shard × CSV + log)。
+#   原来只忽略了 .translation, CSV/log 是"未跟踪但未忽略" —— 于是 `git add -A`
+#   会把它们一把扫进提交(我 2026-07-30 就这么污染了一次提交, 145 个无关文件)。
+#   留痕价值在【结论】(平衡表/CHANGELOG/方案书), 不在逐场 CSV。
+tools/duel*/duel-*.csv
+tools/duel*/duel-*.csv.import
+tools/duel*-log/

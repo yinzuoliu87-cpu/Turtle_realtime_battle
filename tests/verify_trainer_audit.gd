@@ -44,7 +44,10 @@ const CHAINS := {
 ## 每技的演出函数(至少一个) + 图标常量里的素材
 const DRAMATIZE := {
 	"magic_stone": ["_fire_trainer_rock"],
-	"hook":        ["_hook_dramatize", "_hook_dramatize_miss"],
+	# ★钩锁改真 skillshot 后, 演出在飞行推进里(钩头节点逐帧更新), 不再有独立的 dramatize 函数。
+	#   ★教训: 原来这里断言 "_hook_dramatize 存在" —— 而那个函数已经【没人调了】,
+	#     断言照样绿。「断言函数存在」守不住「这个函数还有没有人用」。
+	"hook":        ["_hook_head_node", "_tick_hook_flights", "_hook_hit_fx"],
 	"fury_potion": ["_fury_dramatize"],
 	"whistle":     ["_whistle_note", "_whistle_spirit_dramatize", "_spawn_spirit_turtle"],
 	"glacier":     ["_glacier_dramatize"],
@@ -191,6 +194,24 @@ func _chain_sync() -> void:
 			_chk("④ py 链里有 %s (%s)" % [f, sid], py.contains("'%s'" % f))
 	_chk("④ py 有跨文件常量展开(expand_cross·大师数值全是 battle.CONST 形式)",
 		py.contains("def expand_cross("))
+
+	# ★死演出函数不许回来(反向断言): 钩锁的旧 tween 演出已删, 若有人加回来,
+	#   VFXPREVIEW 又可能指过去 → 又会出现"目视确认的是旧实现"这种无效验证。
+	var ts_src := FileAccess.get_file_as_string(TS_PATH)
+	_chk("④ ★旧的 _hook_dramatize 已删(它曾让目视验证指向死代码)",
+		not ts_src.contains("func _hook_dramatize("))
+	_chk("④ ★旧的 _hook_dramatize_miss 已删", not ts_src.contains("func _hook_dramatize_miss("))
+	var vfx_src := FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_vfx.gd")
+	# ★六个主动技必须都走玩家真入口 _cast_active(经 _cast_real 装 _tr_active 再分派),
+	#   不许任何一技直接点自己的演出函数 —— 那正是"目视验证指向死代码"的成因。
+	_chk("④ ★VFXPREVIEW 经 _cast_real 走真入口 _cast_active",
+		vfx_src.contains("battle._trainer_sys._cast_active(tr, aim)")
+		and vfx_src.contains('tr["_tr_active"] = sid'))
+	for sid in ["hook", "fury_potion", "whistle", "glacier", "hunt_order", "tame"]:
+		_chk("④ ★预览 %s 走真入口(不是直点演出函数)" % sid,
+			vfx_src.contains('_cast_real(tr, "%s"' % sid))
+	_chk("④ ★_cast_real 打印施放成功/被拒(否则分不清'没施放'与'看不见')",
+		vfx_src.contains("★被拒(未施放)"))
 
 
 ## 取 needle 之后的 n 个字符。找不到返回空串 —— 空串不含任何东西, 所以

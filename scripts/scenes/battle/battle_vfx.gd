@@ -545,14 +545,26 @@ func _vfx_preview_loop() -> void:
 
 ## 训龟大师技能演出预览。idx<0 = 每次调用轮换一个(一轮过 7 技)。
 ##
-## ★为什么每技都要单独喂 trainer/target 字典: 这些演出函数是从真实施放路径里抽出来的,
-##   签名各不相同(有的收 Dictionary, 有的收 Vector2 + arrive 时长)。审核报告 §4 那张
-##   "7 技全部有专属演出函数"的表就是按这些签名列的。
-## ★这里【只跑演出】不跑判定 —— 判定归 _cast_* / _tick_*, 有各自的门禁在验数值。
-##   所以看到的就是纯美术, 不会因为没有真敌人而出不来。
+## ★★这里跑【真判定】(2026-07-30 改) —— 六个主动技走玩家真入口 _cast_active,
+##   而不是各自的演出函数。所以画面里看到的是真射程/真朝向/真命中/真冷却, 不只是美术。
+##   (旧注释曾写"只跑演出不跑判定" —— 现在说反了, 已改。)
+## ★代价: 施放【可能被拒】(射程外/无目标) → 画面什么都不出。_cast_real 会打印
+##   "成功 / ★被拒(未施放)" 区分这两种, 否则会把"没施放"错当成"特效不可见"去查。
+## ★大师与靶子必须用 _make_unit 真实构造(见下), 因为真判定会走完整伤害管线。
 var _tr_prev_i: int = 0
 var _tr_prev_tr = null            # 预览用的大师/靶子(真实 _make_unit 建的, 只建一次)
 var _tr_prev_tgt = null
+## 预览用: 装上这一技再走玩家真入口 _cast_active(冷却先清零, 预览不受 CD 限制)。
+## ★装 _tr_active 是必须的 —— _cast_active 按这个字段分派, 不设就永远只放 hook(默认值)。
+func _cast_real(tr: Dictionary, sid: String, aim: Vector2) -> void:
+	tr["_tr_active"] = sid
+	tr["_active_cd"] = 0.0
+	var hit: bool = battle._trainer_sys._cast_active(tr, aim)
+	# ★打印返回值: 预览里"什么都没发生"分两种 —— 施放被拒(false·射程/冷却/无目标)
+	#   与 施放了但看不见(true·纯特效问题)。不打这一行就分不清, 会去错的方向查。
+	print("      _cast_active(%s) → %s" % [sid, "成功" if hit else "★被拒(未施放)"])
+
+
 func _vfx_preview_trainer(origin: Vector2, dir: Vector2, idx: int) -> void:
 	var i: int = idx
 	if i < 0:
@@ -579,15 +591,22 @@ func _vfx_preview_trainer(origin: Vector2, dir: Vector2, idx: int) -> void:
 	tr["_active_cd"] = 0.0
 	var names := ["钩锁", "怒火药水", "口哨·灵体气波", "冰川", "猎龟令", "驯服", "魔法石·投石"]
 	print("[VFXPREVIEW·大师] %d/7 %s" % [i + 1, names[i]])
+	# ★★六个主动技【全部】走玩家真入口 _cast_active(设 _tr_active 再分派), 不再直接点演出函数。
+	#   血泪由来: 钩锁 2026-07-30 改成真 skillshot 后, 飞行/命中都搬进了 _tick_hook_flights,
+	#   旧的 _hook_dramatize 变成【零调用者的死代码】—— 而预览还指着它。于是我
+	#   "目视确认新实现" 看到的其实是【旧实现】= 无效验证, 白跑一轮截图。
+	#   更阴的是 verify_trainer_audit 有条 "_hook_dramatize 存在" 的断言, 全套门禁照样绿:
+	#   【断言函数存在, 守不住这个函数还有没有人调】。
+	#   所以预览要能当验证用, 就必须跑玩家真正会跑的那条路 —— 法术盘按下去走的正是 _cast_active。
+	#   顺带白送: 冷却/射程/朝向/命中判定这些"真逻辑"也一起进画面了, 不只看特效。
+	var aim: Vector2 = dir * battle.HOOK_RANGE
 	match i:
-		0: battle._trainer_sys._hook_dramatize(tr, tgt)
-		1: battle._trainer_sys._fury_dramatize(tr, origin + dir * 200.0)
-		2:
-			battle._trainer_sys._whistle_note(tr)
-			battle._trainer_sys._whistle_spirit_dramatize(tr, tr["pos"], dir)
-		3: battle._trainer_sys._glacier_dramatize(origin - dir * 120.0, dir)
-		4: battle._trainer_sys._hunt_dramatize(tr, tgt, 0.45)
-		5: battle._trainer_sys._tame_dramatize(tr, tgt, 0.45)
+		0: _cast_real(tr, "hook", aim)
+		1: _cast_real(tr, "fury_potion", dir * 200.0)
+		2: _cast_real(tr, "whistle", dir)
+		3: _cast_real(tr, "glacier", dir * 120.0)
+		4: _cast_real(tr, "hunt_order", tgt["pos"] - tr["pos"])
+		5: _cast_real(tr, "tame", tgt["pos"] - tr["pos"])
 		# ★ms_onhit 必须 false —— 传 true 会让石头落地时触发【真判定】
 		#   _trainer_magicstone_onhit → _resolve_dmg / _apply_damage_from,
 		#   而这里的 tr/tgt 是【只够演出用】的精简字典, 缺一堆战斗字段 → 报错刷屏

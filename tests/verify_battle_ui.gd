@@ -122,6 +122,32 @@ func _ready() -> void:
 		dsp._tab = tb; dsp.render()
 	dsp._tab = "dealt"
 	_ok("4 Tab 切换渲染不崩", true)
+
+	# ── D2. ★统计面板必须回到最上层("换路后被头像栏盖住"那个 bug) ──
+	# 探针实测的数字: 开局 面板 index=21 / 左队头像栏 15 (面板在上, 正常);
+	#   换一次路后 面板 19 / 左队栏 20 → 【被盖住】。根因是 _build_team_panels()
+	#   在换路时重建左右队头像栏, add_child 让它们落到 _ui_layer 末尾, 把先建的面板压下去。
+	# ★只在 toggle() 里提到最前【不够】: 面板【开着的时候换路】不会再调 toggle(),
+	#   所以 render() 里也提一次(每 0.4s 自刷 = 自愈)。下面三条分别验:
+	#   ①提得动 ②这个 bug 真的存在(否则是空检查) ③自刷能治。
+	var lay: CanvasLayer = scene._ui_layer
+	dsp._to_front()
+	await get_tree().process_frame
+	_ok("D2 面板能提到 _ui_layer 最上层",
+		lay.get_child(lay.get_child_count() - 1) == dsp.panel,
+		"面板 index=%d / 共 %d 个子节点" % [dsp.panel.get_index(), lay.get_child_count()])
+	scene._hud._build_team_panels()      # 模拟换路: 重建头像栏 → 追加到末尾
+	await get_tree().process_frame
+	_ok("D2 ★换路后面板确实被压下去(证明这个 bug 是真的·不是空检查)",
+		lay.get_child(lay.get_child_count() - 1) != dsp.panel,
+		"面板 index=%d / 共 %d" % [dsp.panel.get_index(), lay.get_child_count()])
+	dsp.render()                         # 模拟 0.4s 一次的自刷
+	await get_tree().process_frame
+	_ok("D2 ★★自刷把面板顶回最上层(面板开着换路也能自愈)",
+		lay.get_child(lay.get_child_count() - 1) == dsp.panel,
+		"面板 index=%d / 共 %d" % [dsp.panel.get_index(), lay.get_child_count()])
+	_ok("D2 面板自带 ✕ 关闭键(不用跑到屏幕另一头再点统计键)",
+		FileAccess.get_file_as_string("res://scripts/scenes/battle/dmg_stats_panel.gd").contains('"✕"'))
 	scene._on_dmg_stats_toggle()   # 关
 
 	# ── C. 结算按钮化 (此时 _units 已有 3 单位 → 7 列结算表真渲染) ──

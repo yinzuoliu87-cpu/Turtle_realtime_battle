@@ -23,6 +23,18 @@ const WHISTLE_BERSERK_ATK := 0.2 # 口哨③: 攻击力 +20%
 const WHISTLE_BERSERK_LS := 20   # 口哨③: 生命偷取 +20(定值)
 const WHISTLE_BERSERK_SEC := 4.0 # 口哨③: 狂暴/免死 持续(秒)
 const GLACIER_SLOW_MAG := 0.6    # 冰川: 移速 ×0.6 (-40%)
+## ★地面印记/符文环的【世界直径·米】—— 与"效果半径"是两码事, 千万别再用效果半径当尺寸。
+##   踩过的坑(2026-07-30 目视审核抓到): 猎龟令印记原本写
+##     pixel_size = HUNT_TAUNT_R * 2 * WS / 128   → 直径 19.20 m
+##   而战场 ARENA 只有 38.3 × 17.5 m —— 圈占战场宽的 50%、【比纵深还长 110%】。
+##   后果有两层, 两层都致命:
+##     ①读不出信息: 这一技的核心信息是"哪只龟被标了", 圈大到看不出圆心在谁身上;
+##     ②像素崩了: 128px 贴图铺 19.2 m = 0.150 m/texel, 是龟像素格(≈0.05)的 3 倍粗,
+##       "猩红破碎环 + 橙金刻度"糊成红板砖 + 黄色块, 破坏全局像素单位。
+##   ★嘲讽半径(400码)【不画】—— 用户 2026-07-30 拍板: 范围本不需精确告知玩家,
+##     画它就必然要一张 19 m 尺度的专用低频素材(细虚线环), 现在不做。
+const SIGIL_D_M := 2.6           # 猎龟令印记: 略大于龟(龟身高 2.0 m) → 128px 铺 2.6m = 0.020 m/texel(比龟还细·锐利)
+const TAME_RUNE_D_M := 3.6       # 驯服符文环: 原值(150码×WS)换算过来就是 3.6 m, 尺度本来就对, 只是改成显式常量
 
 var battle
 
@@ -689,48 +701,12 @@ func _player_cast_hook_auto() -> void:
 	var aim: Vector2 = (tgt["pos"] - u["pos"]) if tgt != null else (Vector2.LEFT if str(u.get("side","")) == "right" else Vector2.RIGHT)
 	_cast_active(u, aim)
 
-## 每帧刷新法术圆盘: 喂我方大师钩锁冷却(比例+剩余秒); 非战斗期(摆位/呈现/结束)隐藏。
-func _hook_dramatize(trainer: Dictionary, target: Dictionary) -> void:
-	if battle._world == null:
-		return   # 无场景(门禁裸实例)→只跑结算不跑演出
-	var from2d: Vector2 = trainer["pos"]
-	var to2d: Vector2 = target["pos"]
-	var htex = load("res://assets/sprites/vfx/trainer-hook.png")
-	if htex == null:
-		return
-	var hook = Sprite3D.new()
-	hook.texture = htex; hook.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	hook.billboard = BaseMaterial3D.BILLBOARD_DISABLED; hook.shaded = false; hook.transparent = true
-	hook.pixel_size = (46.0 * battle.WS) / float(maxi(1, htex.get_height()))
-	hook.position = battle._world_pos(from2d, 1.0)
-	hook.modulate.a = 0.0                     # 前摇期钩子还没甩出→先隐形
-	battle._world.add_child(hook)
-	battle._skill_ring(from2d, Color(0.55, 0.8, 1.0, 0.5), 30.0)   # 前摇: 大师脚下蓄力环
-	var flight: float = maxf(0.12, from2d.distance_to(to2d) / battle.HOOK_MISSILE_SPD)   # 中速(600码≈0.63s)
-	var ct = [0.0]
-	var tw = battle._reg_tween()
-	tw.tween_interval(battle.HOOK_WINDUP)            # ① 前摇: 松手/按Q后不立刻丢
-	tw.tween_callback(func() -> void:
-		if is_instance_valid(hook): hook.modulate.a = 1.0)   # ② 甩出: 钩子现身
-	tw.tween_method(func(p: float) -> void:   # ③ 中速飞向目标(带链条)
-		if not is_instance_valid(hook): return
-		var hp2: Vector2 = from2d.lerp(to2d, p)
-		hook.position = battle._world_pos(hp2, 1.0)
-		battle._face_screen_dir(hook, from2d, hp2)
-		ct[0] += 0.02
-		if ct[0] >= 0.05:
-			ct[0] = 0.0
-			_hook_chain(from2d, hp2)
-	, 0.0, 1.0, flight)
-	tw.tween_callback(func() -> void:         # ④ 到达: 命中爆闪光 + 钩子扎在目标身上(跟随·眩晕结束后消)
-		_hook_hit_fx(to2d)
-		if is_instance_valid(hook):
-			battle._follow_vfx.append({"spr": hook, "unit": target, "h": 0.7})       # R3 钩子扎在目标身上·随目标被拽
-			var ktw = battle._reg_tween()
-			ktw.tween_interval(maxf(0.1, battle.HOOK_STUN - 0.3))
-			ktw.tween_property(hook, "modulate:a", 0.0, 0.3)
-			ktw.tween_callback(hook.queue_free))
-
+## (已删 _hook_dramatize —— 钩锁 2026-07-30 改真 skillshot 后它就是死代码:
+##  飞行/命中演出全在 _cast_hook + _tick_hook_flights 里(钩头节点逐帧更新位置, 不用 tween)。
+##  ★它留着害过人: VFXPREVIEW 还指着它, 于是我"目视确认新实现"看的其实是旧实现 = 无效验证。
+##  而 verify_trainer_audit 有一条"_hook_dramatize 存在"的断言, 于是全套门禁照样绿 ——
+##  【断言函数存在, 守不住"这个函数还有没有人调"】。同批删掉的还有 _hook_dramatize_miss:
+##  空放现在由 _tick_hook_flights 飞满射程时收尾。)
 ## R3 钩子命中特效(LoL 式·用户2026-07-26"像lol一样爆一个闪光"): 爆闪光(亮白青·瞬间炸大→快消) + 醒目冲击环 + 轻震屏。
 func _hook_hit_fx(pos2d: Vector2) -> void:
 	if battle._world == null:
@@ -753,38 +729,6 @@ func _hook_hit_fx(pos2d: Vector2) -> void:
 ## R3 钩链(专属铁链·替海盗电光 chain-bolt·连续调=连续绷紧): 横向铁链贴图从 A 拉到 B。
 func _hook_chain(from2d: Vector2, to2d: Vector2) -> void:
 	battle._beam_vfx("res://assets/sprites/vfx/hook-chain.png", from2d, to2d, 20.0, Color(0.92, 0.94, 0.98, 1.0), 0.13)
-
-## 空放演出: 钩爪飞到射程末端再消失(告诉玩家「没勾到」)。
-func _hook_dramatize_miss(trainer: Dictionary, dir: Vector2) -> void:
-	if battle._world == null:
-		return   # 无场景(门禁裸实例)→只跑结算不跑演出
-	var from2d: Vector2 = trainer["pos"]
-	var d = dir.normalized() if dir.length() > 0.01 else Vector2.RIGHT
-	var end2d: Vector2 = from2d + d * battle.HOOK_RANGE
-	var htex = load("res://assets/sprites/vfx/trainer-hook.png")
-	if htex == null:
-		return
-	var hook = Sprite3D.new()
-	hook.texture = htex; hook.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	hook.billboard = BaseMaterial3D.BILLBOARD_DISABLED; hook.shaded = false; hook.transparent = true
-	hook.pixel_size = (46.0 * battle.WS) / float(maxi(1, htex.get_height()))
-	hook.position = battle._world_pos(from2d, 1.0)
-	battle._world.add_child(hook)
-	var ct = [0.0]
-	var tw = battle._reg_tween()
-	tw.tween_method(func(p: float) -> void:   # 甩出→末端→(链条)
-		if not is_instance_valid(hook): return
-		var hp2: Vector2 = from2d.lerp(end2d, p if p < 0.5 else 1.0 - (p - 0.5))   # 去程一半+收回一半
-		hook.position = battle._world_pos(hp2, 1.0)
-		battle._face_screen_dir(hook, from2d, hp2)
-		ct[0] += 0.02
-		if ct[0] >= 0.05:
-			ct[0] = 0.0
-			_hook_chain(from2d, hp2)
-	, 0.0, 1.0, 0.34)
-	tw.tween_callback(func() -> void:
-		if is_instance_valid(hook): hook.queue_free())
-
 
 ## 训龟大师【自己】的索敌: 射程内最近的敌人。不复用 _nearest_enemy ——
 ## 那个会跳过 is_trainer(别人锁不到它), 但没有射程限制、也不该被别的规则牵连。
@@ -983,13 +927,19 @@ func _hunt_sigil(tgt: Dictionary) -> void:
 		return
 	var s := Sprite3D.new()
 	s.texture = load(path)
-	s.pixel_size = (battle.HUNT_TAUNT_R * 2.0 * battle.WS) / 128.0   # 贴图 128px 铺满 400 码直径
+	# ★按【印记该有多大】定尺寸, 不是按嘲讽半径(见 SIGIL_D_M 头注: 原来 19.20 m 比战场纵深还长)
+	s.pixel_size = SIGIL_D_M / float(maxi(1, s.texture.get_height()))
 	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
 	s.axis = Vector3.AXIS_Y                                          # Sprite3D.axis 是枚举(Vector3.Axis)不是向量 —— 写 Vector3.UP 会解析失败
 	s.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
 	s.shaded = false; s.transparent = true
 	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	s.modulate = Color(1.0, 1.0, 1.0, 0.85)
+	# ★★入树前【先摆到位】—— 不设初始 position 的话节点生在世界原点 (0,0,0),
+	#   要等下面那个 .set_delay(0.03) 的循环 tween 第一次回调才归位。
+	#   探针实测: 头 2 帧待在原点, 与目标脚下偏差 16.21 m → 【地图正中先闪一下红环】再跳到目标身上。
+	#   (驯服的 _tame_rune 同一个毛病, 同批修。)
+	s.position = battle._world_pos(tgt["pos"], 0.06)
 	battle._world.add_child(s)
 	tgt["_hunt_sigil"] = s
 	var kk: Dictionary = tgt
@@ -1134,13 +1084,14 @@ func _tame_rune(tgt: Dictionary) -> void:
 		return
 	var s := Sprite3D.new()
 	s.texture = load(path)
-	s.pixel_size = (150.0 * battle.WS) / 128.0
+	s.pixel_size = TAME_RUNE_D_M / float(maxi(1, s.texture.get_height()))
 	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
 	s.axis = Vector3.AXIS_Y
 	s.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
 	s.shaded = false; s.transparent = true
 	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	s.modulate = Color(1.0, 1.0, 1.0, 0.8)
+	s.position = battle._world_pos(tgt["pos"], 0.05)   # ★同 _hunt_sigil: 先摆到位, 否则头 2 帧在世界原点闪
 	battle._world.add_child(s)
 	var kk: Dictionary = tgt
 	var tw = s.create_tween().set_loops()
