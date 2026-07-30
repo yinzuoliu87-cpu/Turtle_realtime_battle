@@ -931,7 +931,16 @@ func _hunt_sigil(tgt: Dictionary) -> void:
 	s.pixel_size = SIGIL_D_M / float(maxi(1, s.texture.get_height()))
 	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
 	s.axis = Vector3.AXIS_Y                                          # Sprite3D.axis 是枚举(Vector3.Axis)不是向量 —— 写 Vector3.UP 会解析失败
-	s.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
+	# ★★不要再加 rotation_degrees.x = -90 —— axis=AXIS_Y 本身【就已经是平铺】了。
+	#   Sprite3D.axis 的语义是"面【垂直于】该轴": AXIS_Y → 面在 XZ 平面、法线 +Y = 躺在地上。
+	#   再绕 X 转 -90° 会把局部 Y 掰到全局 -Z → 法线 (0,0,-1) = 【竖立起来】, 两者相互抵消。
+	#   探针实测(改之前): 两个环的 |世界法线·上| 都是 0.000(平铺该是 1.000) —— 也就是说
+	#   这两圈"贴地印记"一直是【立在地上的竖环】。它同时解释了两个此前想不通的现象:
+	#     ⓐ 驯服符文环在画面上"看不见" —— 竖环被龟立绘挡掉大半, 只剩几道弧;
+	#     ⓑ 猎龟令印记"横穿龟的腿" —— 竖环当然会跟立绘重叠, 不是排序问题。
+	#   ★别照抄 ice_system 那两处的 `rotation_degrees = Vector3(-90,0,0)`: 它们【没有设 axis】,
+	#     默认 AXIS_Z(面在 XY 平面·竖着), 所以那个 -90 才是对的。抄一半就正好抄反。
+	#   另: axis=AXIS_Y 平铺后 rotate_y() 才是"在自己平面内转圈"(符文环的自转), 之前是立着打转。
 	s.shaded = false; s.transparent = true
 	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	s.modulate = Color(1.0, 1.0, 1.0, 0.85)
@@ -1023,6 +1032,7 @@ func _tame_try_revive(u: Dictionary) -> bool:
 	u["tamed_side"] = str(u.get("tame_by_side", "left"))      # B5: 归顺(不改写 side)
 	u["untargetable_until"] = battle._t + battle.TAME_REVIVE_SEC   # B7: 演出期不可选中
 	u["_tame_invuln_until"] = battle._t + battle.TAME_REVIVE_SEC   # B7: 演出期无敌
+	u["_tame_decay_next"] = -1.0                              # 掉血节拍重置: 演出期结束后整 1 秒才第一次掉
 	u["taunt_until"] = 0.0                                     # 换队了, 旧嘲讽作废
 	u["taunt_by"] = null
 	u["hunt_until"] = 0.0                                      # 自家人不该还挂着猎龟令
@@ -1031,10 +1041,30 @@ func _tame_try_revive(u: Dictionary) -> bool:
 	return true
 
 
-## 每帧: 归顺者每秒损失 2% 最大生命(B8·永久)。演出期不掉。
-## ★走 _apply_damage(...is_self=true): 自损不吃增伤类修正, 否则被靶向器标记之类会把
-##   2%/秒放大 —— 与"固定每秒 2%"的设定不符(暴露蛋那次就是这么踩的)。
-func _tick_tame_decay(delta: float) -> void:
+## 归顺者每秒损失 2% 最大生命(B8·永久)。演出期不掉。
+##
+## ★★【每秒跳一次】, 不是每帧摊薄 —— 用户 2026-07-30 定。
+##   原来写的是每帧 `int(ceilf(maxHp * 0.02 * delta))`, 而 ceilf 让【每帧至少扣 1 点】,
+##   于是真实速率变成 max(2%/秒, 帧率 ÷ maxHp)。探针实测(60fps / 600fps):
+##       maxHp  200 →  30%/秒(×15)   /  100%/秒(×50)
+##       maxHp  600 →  10%/秒(×5)    /  100%/秒(×50)
+##       maxHp 2000 →   3%/秒(×1.5)  /   30%/秒(×15)
+##       maxHp 6000 →   2%/秒 ✓      /   10%/秒(×5)
+##   两层错: ⓐ小血量单位几秒就融化(200 血 3.3 秒死, 而不是 50 秒);
+##           ⓑ【跟帧率绑死】—— 同一技能在 30fps 手机 / 60fps / 高刷屏上速度完全不同。
+##   ★门禁 ⑧ 当时是绿的: 它调 `_tick_tame_decay(1.0)`(一次·delta=1秒), 那正好是
+##     取整误差唯一消失的调用方式 —— 它模拟的是游戏里【永不发生】的情形。
+##     现在门禁改成逐帧喂 + 两种帧率对比(见 verify_trainer_hunt_tame ⑧)。
+##   每秒一跳的另一个好处: 数字看得清 —— 一秒一个飘字, 而不是每帧一个 1。
+##
+## ★★【真实伤害】(bucket="tru"), 用户 2026-07-30 指出 —— 原来是 "dot" 桶。
+##   _apply_damage 里 `_raw = (bucket == "tru")`, 所以 "dot" 会过完整减伤链:
+##   钻石 ×0.82 / 石头岩石之躯 ×最多0.7 / 石头嘲讽期减免 / 铁壁盾016 flat_dr 固定减。
+##   文案写的是「每秒损失 2% 最大生命」= 归顺的固定代价, 不该被对方的护甲天赋打折。
+##   (护盾照吸 —— 那是本项目真伤的既有语义, 不改。)
+## ★is_self=true 保留: 自损不吃增伤类修正(靶向器标记 ×1.2 之类), 否则 2% 会被放大。
+##   raw + is_self 两个都给, _mitigate_incoming 每一项减伤才全部跳过 = 精确 2%。
+func _tick_tame_decay(_delta: float) -> void:
 	for u in battle._units:
 		if not u.get("alive", false):
 			continue
@@ -1042,10 +1072,22 @@ func _tick_tame_decay(delta: float) -> void:
 			continue
 		if battle._t < float(u.get("_tame_invuln_until", 0.0)):
 			continue                                   # 重生演出期间不掉血
-		var d: float = float(u["maxHp"]) * battle.TAME_DECAY_PCT * delta
+		# 首跳基准: 归顺(或演出期结束)之后整 1 秒才掉第一次
+		var nxt: float = float(u.get("_tame_decay_next", -1.0))
+		if nxt < 0.0:
+			u["_tame_decay_next"] = battle._t + 1.0
+			continue
+		if battle._t < nxt:
+			continue
+		# ★补跳(掉帧/暂停后一次性追上): while 而不是 if, 否则卡一下就白赚几秒不掉血
+		var ticks := 0
+		while battle._t >= float(u["_tame_decay_next"]) and ticks < 10:
+			u["_tame_decay_next"] = float(u["_tame_decay_next"]) + 1.0
+			ticks += 1
+		var amt: int = maxi(1, int(round(float(u["maxHp"]) * battle.TAME_DECAY_PCT))) * ticks
 		# ★参数位置: _apply_damage(u, dmg, col, src, bucket, is_self, ...) ——
 		#   第 4 个是 src 不是 is_self。写成 (u, d, col, true) 会把 true 当 src 传进去。
-		battle._damage._apply_damage(u, int(ceilf(d)), Color("#8b2e4a"), null, "dot", true)
+		battle._damage._apply_damage(u, amt, Color("#8b2e4a"), null, "tru", true)
 
 
 ## 驯服演出: 青碧锁扣弹飞向目标 → 命中后目标脚下亮起符文环(常驻到它死/归顺)。
@@ -1087,11 +1129,31 @@ func _tame_rune(tgt: Dictionary) -> void:
 	s.pixel_size = TAME_RUNE_D_M / float(maxi(1, s.texture.get_height()))
 	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
 	s.axis = Vector3.AXIS_Y
-	s.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
+	# ★★不要再加 rotation_degrees.x = -90 —— axis=AXIS_Y 本身【就已经是平铺】了。
+	#   Sprite3D.axis 的语义是"面【垂直于】该轴": AXIS_Y → 面在 XZ 平面、法线 +Y = 躺在地上。
+	#   再绕 X 转 -90° 会把局部 Y 掰到全局 -Z → 法线 (0,0,-1) = 【竖立起来】, 两者相互抵消。
+	#   探针实测(改之前): 两个环的 |世界法线·上| 都是 0.000(平铺该是 1.000) —— 也就是说
+	#   这两圈"贴地印记"一直是【立在地上的竖环】。它同时解释了两个此前想不通的现象:
+	#     ⓐ 驯服符文环在画面上"看不见" —— 竖环被龟立绘挡掉大半, 只剩几道弧;
+	#     ⓑ 猎龟令印记"横穿龟的腿" —— 竖环当然会跟立绘重叠, 不是排序问题。
+	#   ★别照抄 ice_system 那两处的 `rotation_degrees = Vector3(-90,0,0)`: 它们【没有设 axis】,
+	#     默认 AXIS_Z(面在 XY 平面·竖着), 所以那个 -90 才是对的。抄一半就正好抄反。
+	#   另: axis=AXIS_Y 平铺后 rotate_y() 才是"在自己平面内转圈"(符文环的自转), 之前是立着打转。
 	s.shaded = false; s.transparent = true
 	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	s.modulate = Color(1.0, 1.0, 1.0, 0.8)
 	s.position = battle._world_pos(tgt["pos"], 0.05)   # ★同 _hunt_sigil: 先摆到位, 否则头 2 帧在世界原点闪
+	# ★第二道闸: 清掉这只身上已有的环(防御性)。
+	#   ★注意别把功劳记错 —— 双环的【真正修复】是 _tame_revive_dramatize 改成
+	#   "已有环就染青"而不是"再调一次 _tame_rune"。反向验证证过: 只去掉这三行、
+	#   保留那边的改动, 环数仍是 1。这三行守的是"以后有人再从别处调 _tame_rune"。
+	#   (原始 bug: 施放落地建 1 个, 重生又建 1 个 → 2 个。旧环自毁条件是 alive==false,
+	#    而 _kill 在驯服钩之前【根本没置 alive=false】就 return 了 → 旧环永远等不到。
+	#    两环创建时间不同 → rotate_y 相位不同 → 叠成一团。)
+	var prev = tgt.get("_tame_rune", null)
+	if is_instance_valid(prev):
+		(prev as Node).queue_free()
+	tgt["_tame_rune"] = s
 	battle._world.add_child(s)
 	var kk: Dictionary = tgt
 	var tw = s.create_tween().set_loops()
@@ -1116,5 +1178,12 @@ func _tame_rune(tgt: Dictionary) -> void:
 func _tame_revive_dramatize(u: Dictionary) -> void:
 	if battle._world == null:
 		return
-	_tame_rune(u)
+	# ★本函数头注写着"符文环转青" —— 而原来它只是【再调一次 _tame_rune】, 既没转青、
+	#   还叠出第二个环。现在: 已有环就染青碧(归顺色), 没有(比如漏了施放演出)才新建。
+	var rune = u.get("_tame_rune", null)
+	if not is_instance_valid(rune):
+		_tame_rune(u)
+		rune = u.get("_tame_rune", null)
+	if is_instance_valid(rune):
+		(rune as Sprite3D).modulate = Color("#7de8c8")   # 与"归顺!"飘字同色
 	battle._vfx._float_text(u["pos"] + Vector2(0, -40), "+%d" % int(float(u["maxHp"]) * battle.TAME_REVIVE_PCT), Color("#7de8c8"))
