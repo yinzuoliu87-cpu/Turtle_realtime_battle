@@ -21,6 +21,7 @@ const WANT_FLAT := 100.0        # 「伤害改为100+…」
 const WANT_MAXHP_PCT := 0.15    # 「…+15%目标最大生命值的真实伤害」
 const WANT_SHRED_SEC := 5.0     # 削甲持续
 const WANT_KB := 100.0          # 击飞距离
+const WANT_SPIRIT_LIFE := 5.0   # 「活5秒」(用户 2026-07-30)
 
 var _fail := 0
 
@@ -153,7 +154,54 @@ func _ready() -> void:
 	_chk("⑤ 气波尺寸走常量 WAVE_D_M(不再是 (150*WS)/128 那个魔数=3.60m 盖住小龟)",
 		src.contains("WAVE_D_M / float(") and not src.contains("(150.0 * battle.WS) / 128.0"))
 
+	await _spirit_life(s, ts, tr)
 	_done(s)
+
+
+## ⑥ 灵体小龟在屏幕上活多久(用户 2026-07-30:「活5秒」)。
+##
+## ★原来是 1.08 秒 —— 那是【射程 500 时代】留下的数(气波飞 1.67 秒, 小龟陪 65%)。
+##   射程改 2000 后气波要飞 6.67 秒, 小龟只陪 0.53 秒 = 8%,
+##   剩下 6.14 秒画面上只剩一颗孤零零的波、召唤者早没了。
+##
+## ★★用【墙钟】量, 不用帧数也不用战斗时钟 _t:
+##   · 帧数不行 —— 无头帧率远高于窗口(实测窗口 ~156fps), 同样的时间帧数差好几倍;
+##     我 2026-07-30 抓图就栽在这: 按帧数判时机, 75 帧只有 0.42 秒、蓄力都没结束。
+##   · 战斗时钟 _t 不行 —— 它走【钳制后】的 delta(minf(delta,0.1) 防卡死);
+##   · 而这个寿命是 tween 驱动的, tween 走【未钳制】delta = 真实墙钟 → 墙钟才是对的尺子。
+func _spirit_life(s, ts, tr: Dictionary) -> void:
+	print("")
+	print("  ⑥ 灵体小龟寿命(需求 %.1f 秒):" % WANT_SPIRIT_LIFE)
+	# 清掉上一组可能残留的小龟, 免得量到旧的
+	for c in s._world.get_children():
+		if c is Sprite3D and (c as Sprite3D).texture != null 			and str((c as Sprite3D).texture.resource_path).ends_with("spirit-turtle.png"):
+			(c as Node).queue_free()
+	await get_tree().process_frame
+	_chk("⑥ ★分母: 起量前场上没有残留小龟", not _has(s, "spirit-turtle.png"))
+	ts._whistle_spirit_wave(tr)
+	var t0: int = Time.get_ticks_msec()
+	var born := -1.0
+	var gone := -1.0
+	var w := 0
+	while w < 20000 and gone < 0.0:
+		await get_tree().process_frame
+		w += 1
+		var el: float = float(Time.get_ticks_msec() - t0) / 1000.0
+		if _has(s, "spirit-turtle.png"):
+			if born < 0.0:
+				born = el
+		elif born >= 0.0:
+			gone = el
+	var life: float = gone - born
+	print("     出现 %.2fs → 消失 %.2fs = 活 %.2f 秒 (等了 %d 帧)" % [born, gone, life, w])
+	print("     气波飞 %.2f 秒 → 小龟陪完 %.0f%%(原来只有 8%%)" % [
+		ts.WAVE_RANGE / ts.WAVE_SPD, life / (ts.WAVE_RANGE / ts.WAVE_SPD) * 100.0])
+	_chk("⑥ ★★小龟在屏幕上活 %.1f 秒(墙钟实测)" % WANT_SPIRIT_LIFE,
+		absf(life - WANT_SPIRIT_LIFE) < 0.4, "实测 %.2f" % life)
+	# 结构: 停留段必须【由总时长减出来】, 不许另写一个数(改总时长时会漏改)
+	var src := FileAccess.get_file_as_string("res://scripts/systems/trainer/trainer_system.gd")
+	_chk("⑥ 停留段由总时长减出来(不是另写一个常量)",
+		src.contains("SPIRIT_LIFE_SEC - SPIRIT_RISE_SEC - SPIRIT_OUT_SEC"))
 
 
 func _has(s, f: String) -> bool:

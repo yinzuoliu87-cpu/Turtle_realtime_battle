@@ -70,6 +70,16 @@ const WAVE_MUZZLE := 70.0        # 气波从小龟身前多远处生成(码·别
 ##   小龟(1.10 m)整个压在大师立绘上, 读起来像"大师身上有层蓝影"而不是"召出来一只"。
 const SPIRIT_OFFSET := 95.0      # 小龟落在大师身前多远(码·朝施法方向)
 const SPIRIT_H_M := 1.45         # 小龟世界高度(米·原来 TARGET_BODY_H*0.55=1.10 太小; 龟 2.0 → 这是"小一号"而非"缩一半")
+## ★灵体小龟在屏幕上活多久(秒·用户 2026-07-30 定 5 秒)。
+##   由来: 原来是 1.08 秒(墙钟实测·淡入0.15 ∥ 上浮0.75 → 淡出0.35), 那是【射程 500 时代】
+##   留下的数 —— 当时气波飞 1.67 秒, 小龟还能陪 65%。射程改 2000 后气波要飞 6.67 秒,
+##   小龟只陪了 0.53 秒 = 8%, 剩下 6.14 秒画面上只有一颗孤零零的波、召唤者早没了。
+##   5 秒 = 陪完 75% 的飞行, 读得出"是它放的"又不长期占画面。
+## ★纯演出时长, 不碰任何判定(伤害全在 _tick_wave_flights 逐帧算) —— 改它零风险。
+const SPIRIT_LIFE_SEC := 5.0
+const SPIRIT_IN_SEC := 0.15      # 淡入
+const SPIRIT_RISE_SEC := 0.75    # 上浮(与淡入并行)
+const SPIRIT_OUT_SEC := 0.5      # 淡出
 const GLACIER_SLOW_MAG := 0.6    # 冰川: 移速 ×0.6 (-40%)
 ## ★地面印记/符文环的【世界直径·米】—— 与"效果半径"是两码事, 千万别再用效果半径当尺寸。
 ##   踩过的坑(2026-07-30 目视审核抓到): 猎龟令印记原本写
@@ -652,10 +662,14 @@ func _spawn_spirit_turtle(origin: Vector2) -> void:
 	var base: Vector3 = battle._world_pos(origin, 1.1)
 	spr.position = base
 	battle._world.add_child(spr)
+	# 时长构成(总和 = SPIRIT_LIFE_SEC): [淡入 ∥ 上浮] → 停留 → 淡出 → 自毁
+	# ★停留段由总时长【减出来】而不是另写一个常量 —— 否则改总时长时会漏改, 两个数各说各话。
+	var hold: float = maxf(0.0, SPIRIT_LIFE_SEC - SPIRIT_RISE_SEC - SPIRIT_OUT_SEC)
 	var tw = battle._reg_tween(); tw.set_parallel(true)
-	tw.tween_property(spr, "modulate:a", 0.9, 0.15)
-	tw.parallel().tween_property(spr, "position", base + Vector3(0.0, 0.8, 0.0), 0.75)
-	tw.chain().tween_property(spr, "modulate:a", 0.0, 0.35)
+	tw.tween_property(spr, "modulate:a", 0.9, SPIRIT_IN_SEC)
+	tw.parallel().tween_property(spr, "position", base + Vector3(0.0, 0.8, 0.0), SPIRIT_RISE_SEC)
+	tw.chain().tween_interval(hold)                                  # 停留: 目送气波飞出去
+	tw.chain().tween_property(spr, "modulate:a", 0.0, SPIRIT_OUT_SEC)
 	tw.chain().tween_callback(spr.queue_free)
 
 ## ── 冰川(主动·CD17·方向·用户2026-07-23): 沿方向生成 500码 冰川带(持续6秒); 站带上的敌 -40%移速 + 受伤+20% ──
