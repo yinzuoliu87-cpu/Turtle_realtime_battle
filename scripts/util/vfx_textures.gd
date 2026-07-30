@@ -20,6 +20,38 @@ static func _make_tile_texture() -> ImageTexture:   # 斜网格weave(菱形地�
 	_tile_tex_cache = ImageTexture.create_from_image(img)
 	return _tile_tex_cache
 
+# 龟蛋小图标(PK 条副条的行标签)。★程序生成而非复用现有素材 ——
+# 用户铁律「不要复用素材」; 这么小的一个 UI 标签没必要去生成图片资源, 逐像素画即可。
+# 画法: 蛋形 = 上窄下宽的椭圆(y 方向偏心), 壳色米黄 + 两点更暗的斑, 1px 深色描边。
+static var _egg_icon_cache: ImageTexture = null
+static func _make_egg_icon_texture() -> ImageTexture:
+	if _egg_icon_cache != null: return _egg_icon_cache
+	var W := 12
+	var H := 16
+	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
+	var shell := Color(0.949, 0.886, 0.769, 1.0)     # 壳色 #f2e2c4
+	var spot := Color(0.788, 0.702, 0.545, 1.0)      # 斑点(略暗)
+	var line := Color(0.16, 0.13, 0.10, 1.0)         # 描边
+	for y in range(H):
+		for x in range(W):
+			# 蛋形: 归一到 [-1,1], 上半更瘦(ry 小) 下半更胖 → 经典蛋轮廓
+			var nx := (float(x) + 0.5) / float(W) * 2.0 - 1.0
+			var ny := (float(y) + 0.5) / float(H) * 2.0 - 1.0
+			var rx: float = 0.72 + 0.24 * clampf(ny, 0.0, 1.0)   # 下半加宽
+			var d: float = (nx * nx) / (rx * rx) + (ny * ny) / (0.98 * 0.98)
+			if d > 1.0:
+				img.set_pixel(x, y, Color(0, 0, 0, 0))
+			elif d > 0.72:
+				img.set_pixel(x, y, line)                          # 边缘一圈描边
+			elif (x == 4 and y == 6) or (x == 7 and y == 10) or (x == 3 and y == 11):
+				img.set_pixel(x, y, spot)                          # 三点斑
+			elif x == 4 and y >= 3 and y <= 5:
+				img.set_pixel(x, y, Color(1.0, 0.98, 0.92, 1.0))   # 左上一道高光 → 小尺寸也读得出是【蛋】不是圆点
+			else:
+				img.set_pixel(x, y, shell)
+	_egg_icon_cache = ImageTexture.create_from_image(img)
+	return _egg_icon_cache
+
 # 环贴图: 中空软环 (radial: 内透明→环带亮→外淡出)
 static func _make_arena_ring_texture() -> GradientTexture2D:
 	var grad := Gradient.new()

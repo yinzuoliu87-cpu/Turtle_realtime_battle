@@ -1,38 +1,36 @@
 extends Node
 ## verify_battle_hud_r1.gd — 顶部双方总血量 PK 条 (用户 2026-07-30 需求1)
 ##
-## 方案书: docs/plans/20260730b-局内HUD改造+大师审核+地图提升.md §4.1 / §6
+## 方案书: docs/plans/20260730b-局内HUD改造+大师审核+地图提升.md §4.1 / §6 / §8
 ##
-## 用户逐字:「对局内的顶部左右新加一个双方血条的pk，表示双方总血量实时变化，需要详细设计下」
-##   拍板 U1 =【小将和龟统领的】(比我建议的更窄 —— 训龟大师也排除)
-##   拍板 U2 =【中央对撞条】
+## ★第二版(用户逐条审核后重做)。本门禁焊死的是审核里改掉的那六条 ——
+##   尤其【① 那个真 bug】: 排除龟蛋原本写的是 u.get("egg"), 而单位字典上【没有这个键】,
+##   蛋带的是 _isEgg(battle_spawn.gd:439)。所以"不含龟蛋"根本没生效, 蛋的 3300 血
+##   (有围栏 +200 双抗、早期几乎不掉血)占了条里约 56% 的【不动的血】。
 ##
 ## ★全程用【干净合成单位】, 不 spawn 真队伍 ——
-##   memory fb-ci-vs-local-divergence: 拿随机 spawn 的单位测精确数值会 CI 偶发红
-##   (队伍未播种 RNG / CI 默认队 vs 本地存档队 / 敌带盾或 flat_dr 破坏预期)。
+##   memory fb-ci-vs-local-divergence: 拿随机 spawn 的单位测精确数值会 CI 偶发红。
 ##
-## 版式: 蓝占左半从左端往中间长, 红占右半从右端往中间长, 中间暗缝 = 双方已损失总量。
-##   ★每侧长度按【自己的开场基线】归一化 —— 不是按"双方当前血之和"的相对比。
-##   我第一版写成纯相对比, 结果基线字段存了没人用, 且双方都剩 10% 血时条和满血长得一样,
-##   丢掉了"总血量"这个绝对信息(需求原文要的正是它)。相对优势改由中间的百分比读。
-##
-## 查五组:
-##   ① 条建起来了; 两段长度各不超过半宽, 且 0/1 两个端点精确
-##   ② 计入口径: 龟 ✓ / 小将 ✓ / 龟蛋 ✗ / 训龟大师 ✗ / 召唤体 ✗
-##   ③ 分母是【本路开场基线】且死人不改它(否则比例会反向回升) + 中间百分比是相对优势
-##   ④ 换路重算基线(全局 _t 跨路累加, 按本场计的东西必须自己存基线·CLAUDE.md §3.4)
-##   ⑤ 平滑收敛: 逐帧向目标插值, 且收敛后【吸附】不留半像素缝
+## 查八组:
+##   ① 几何: 两段【各贴自己外端】、不越中线、端点精确、"都剩10%"必须比满血明显短
+##   ② ★计入口径: 龟✓ 小将✓ / 龟蛋✗(用 _isEgg 不是 egg) 大师✗ 召唤体✗
+##   ③ 分母 = 本路开场基线, 死人不改它(否则比例反向回升)
+##   ④ 换路重算基线 + 两条回满
+##   ⑤ 平滑 + damage trail(残影不低于填充; 掉血瞬间高于填充)
+##   ⑥ 读数: 百分比【开场 100%】(用户最初的疑问就是这个) + 绝对血量小字
+##   ⑦ VS 徽标: 在位 + 染色随优势变(不用数字也读得出谁占优) + 受伤脉冲
+##   ⑧ 副条: 按龟蛋自己的 hp/maxHp, 与主条口径独立
 ##
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_battle_hud_r1.tscn
 
 const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 
 var _fail := 0
-var _n_chk := 0
+var _n := 0
 
 
 func _ok(name: String, cond: bool, detail: String = "") -> void:
-	_n_chk += 1
+	_n += 1
 	if cond:
 		print("  [PASS] ", name, ("  " + detail) if detail != "" else "")
 	else:
@@ -50,7 +48,7 @@ func _mk(side: String, hp: float, mx: float, extra: Dictionary = {}) -> Dictiona
 
 
 func _ready() -> void:
-	print("=== 顶部双方总血量 PK 条 (需求1) ===")
+	print("=== 顶部双方总血量 PK 条 (需求1·第二版) ===")
 	await get_tree().process_frame
 	var gs = get_node_or_null("/root/GameState")
 	if gs != null:
@@ -62,13 +60,16 @@ func _ready() -> void:
 	s.set_process(false)          # 停战斗 tick: 本测试自己喂 _units 并手动调 _pk_*
 	s.set_physics_process(false)
 
-	_built(s)
+	_geometry(s)
 	_scope(s)
 	_denominator(s)
 	_lane_reset(s)
-	_smooth(s)
+	_smooth_and_trail(s)
+	_readout(s)
+	_vs_badge(s)
+	_egg_bar(s)
 
-	print("  ★分母: 本测试共 %d 条断言" % _n_chk)
+	print("  ★分母: 本测试共 %d 条断言" % _n)
 	if _fail == 0:
 		print("ALL PASS — 顶部双方总血量 PK 条")
 		get_tree().quit(0)
@@ -77,89 +78,85 @@ func _ready() -> void:
 		get_tree().quit(1)
 
 
-## ① 条本体 + 接缝无缝隙
-func _built(s) -> void:
-	print("  ── ① 条已建 + 接缝无缝隙 ──")
+## ① 几何: 两段各贴自己外端, 掉血从内端往外退
+func _geometry(s) -> void:
+	print("  ── ① 两段各贴自己外端 + 不越中线 ──")
 	var h = s._hud
-	_ok("① PK 条节点已建", s._pk_bar != null and is_instance_valid(s._pk_bar))
-	_ok("① 两段填充都在", s._pk_fill_l != null and s._pk_fill_r != null)
+	_ok("① PK 条节点已建", s._hud._pk_bar != null and is_instance_valid(s._hud._pk_bar))
+	_ok("① 两段填充 + 两段残影都在",
+		s._hud._pk_fill_l != null and s._hud._pk_fill_r != null
+		and s._hud._pk_trail_l != null and s._hud._pk_trail_r != null)
 	_ok("① 条是【顶部居中锚点】不是写死坐标(手机分辨率不同不会跑偏出屏)",
-		absf(s._pk_bar.anchor_left - 0.5) < 0.001 and absf(s._pk_bar.anchor_right - 0.5) < 0.001)
+		absf(s._hud._pk_bar.anchor_left - 0.5) < 0.001 and absf(s._hud._pk_bar.anchor_right - 0.5) < 0.001)
 	_ok("① 条不吃鼠标事件(纯显示·别挡战场点击)",
-		s._pk_bar.mouse_filter == Control.MOUSE_FILTER_IGNORE)
-	# ★几何不变量(任何比例组合下都要成立):
-	#   · 蓝段从左端(x=2)起, 红段右缘紧贴右端 → 两段都贴自己那一端, 中间才是缝
-	#   · 两段各不超过半宽 → 永不越过中线互相重叠
-	var inner: float = h.PK_W - 4.0
-	var half: float = inner * 0.5
+		s._hud._pk_bar.mouse_filter == Control.MOUSE_FILTER_IGNORE)
+	# ★核心不变量: 左段左缘恒定贴 x=2; 右段【右缘】恒定贴总宽-2; 两段都不超过自己那半
+	var inner: float = h.PK_SEG - 4.0
 	var worst_l := 0.0
 	var worst_r := 0.0
 	var worst_over := 0.0
 	for fl in [0.0, 0.001, 0.5, 0.999, 1.0]:
 		for fr in [0.0, 0.001, 0.5, 0.999, 1.0]:
-			h._pk_apply(float(fl), float(fr))
-			worst_l = maxf(worst_l, absf(s._pk_fill_l.position.x - 2.0))
-			var r_right: float = s._pk_fill_r.position.x + s._pk_fill_r.size.x
-			worst_r = maxf(worst_r, absf(r_right - (2.0 + inner)))
-			worst_over = maxf(worst_over, maxf(s._pk_fill_l.size.x - half, s._pk_fill_r.size.x - half))
-	_ok("① ★25 组比例下蓝段恒贴左端(最大偏差 %.4f px)" % worst_l, worst_l < 0.001)
-	_ok("① ★25 组比例下红段右缘恒贴右端(最大偏差 %.4f px)" % worst_r, worst_r < 0.001,
-		"内宽 %.1f" % inner)
-	_ok("① ★两段都不越过中线(最大超出 %.4f px)" % worst_over, worst_over < 0.001,
-		"半宽 %.1f" % half)
-	# 端点精确
-	h._pk_apply(1.0, 1.0)
-	_ok("① 双方满血 → 两段各吃满半宽(条看起来是满的)",
-		absf(s._pk_fill_l.size.x - half) < 0.001 and absf(s._pk_fill_r.size.x - half) < 0.001)
-	h._pk_apply(0.0, 0.0)
-	_ok("① 双方全灭 → 两段都是 0(条全空)",
-		s._pk_fill_l.size.x < 0.001 and s._pk_fill_r.size.x < 0.001)
-	# ★这条是第一版设计缺陷的回归守卫: 纯相对比会让"都剩10%"和"都满血"画得一样
-	h._pk_apply(1.0, 1.0)
-	var full_l: float = s._pk_fill_l.size.x
-	h._pk_apply(0.1, 0.1)
-	_ok("① ★双方都剩 10% 时条【明显更短】(不是纯相对比 —— 那样会和满血长得一样)",
-		s._pk_fill_l.size.x < full_l * 0.2,
-		"满血 %.1f px vs 都剩10%% %.1f px" % [full_l, s._pk_fill_l.size.x])
+			s._hud._pk_shown_l = float(fl); s._hud._pk_shown_r = float(fr)
+			s._hud._pk_trail_vl = float(fl); s._hud._pk_trail_vr = float(fr)
+			h._pk_apply()
+			worst_l = maxf(worst_l, absf(s._hud._pk_fill_l.position.x - 2.0))
+			var r_right: float = s._hud._pk_fill_r.position.x + s._hud._pk_fill_r.size.x
+			worst_r = maxf(worst_r, absf(r_right - (h.PK_SEG + h.PK_VS + 2.0 + inner)))
+			worst_over = maxf(worst_over,
+				maxf(s._hud._pk_fill_l.size.x - inner, s._hud._pk_fill_r.size.x - inner))
+	_ok("① ★25 组比例下左段恒贴左端(最大偏差 %.4f px)" % worst_l, worst_l < 0.001)
+	_ok("① ★25 组比例下右段右缘恒贴右端(最大偏差 %.4f px)" % worst_r, worst_r < 0.001)
+	_ok("① ★两段都不超出自己那一段的内宽(最大超出 %.4f px)" % worst_over, worst_over < 0.001,
+		"段内宽 %.1f" % inner)
+	# ★两段【不许重叠】: 左段右缘 ≤ 右段左缘(中间至少隔着 VS 槽)
+	s._hud._pk_shown_l = 1.0; s._hud._pk_shown_r = 1.0
+	s._hud._pk_trail_vl = 1.0; s._hud._pk_trail_vr = 1.0
+	h._pk_apply()
+	var l_right: float = s._hud._pk_fill_l.position.x + s._hud._pk_fill_l.size.x
+	_ok("① ★两段满血也不重叠(中间留着 VS 槽)", l_right <= s._hud._pk_fill_r.position.x + 0.001,
+		"左缘至 %.1f, 右段起 %.1f" % [l_right, s._hud._pk_fill_r.position.x])
+	var full_l: float = s._hud._pk_fill_l.size.x
+	s._hud._pk_shown_l = 0.1; s._hud._pk_shown_r = 0.1
+	h._pk_apply()
+	_ok("① ★双方都剩 10% 时明显更短(不是纯相对比 —— 那样会和满血一样长)",
+		s._hud._pk_fill_l.size.x < full_l * 0.2,
+		"满血 %.1f px vs 都剩10%% %.1f px" % [full_l, s._hud._pk_fill_l.size.x])
 
 
-## ② 计入口径 —— 用户拍板"小将和龟统领的"
+## ② ★计入口径 —— 这一组守的是那个真 bug
 func _scope(s) -> void:
 	print("  ── ② 计入口径: 龟+小将; 蛋/大师/召唤体都不算 ──")
 	var h = s._hud
 	_ok("② 龟本体计入", h._pk_counts(_mk("left", 100, 100)))
 	_ok("② 小将计入", h._pk_counts(_mk("left", 100, 100, {"is_minion": true, "minion": true})))
-	_ok("② ★龟蛋不计入(egg)", not h._pk_counts(_mk("left", 100, 100, {"egg": true})))
-	_ok("② ★龟蛋不计入(has_egg)", not h._pk_counts(_mk("left", 100, 100, {"has_egg": true})))
+	# ★真 bug 的回归守卫: 单位字典上蛋的键是 _isEgg / _eggImmune, 【不是】egg
+	_ok("② ★龟蛋不计入(_isEgg —— 这是单位字典上真实存在的键)",
+		not h._pk_counts(_mk("left", 3300, 3300, {"_isEgg": true})))
+	_ok("② ★龟蛋不计入(_eggImmune 兜一层)",
+		not h._pk_counts(_mk("left", 3300, 3300, {"_eggImmune": true})))
 	_ok("② ★训龟大师不计入(用户口径比【含大师】更窄)",
 		not h._pk_counts(_mk("left", 500, 500, {"is_trainer": true})))
 	_ok("② ★召唤体不计入(与 _check_over 胜负判定同口径)",
 		not h._pk_counts(_mk("left", 100, 100, {"is_summon": true})))
 
-	# 端到端: 蛋满血 + 龟全死 → 条必须是 0(而不是被蛋撑成半满)
+	# 端到端: 蛋满血 + 龟全死 → 主条必须是 0(而不是被蛋撑成半满)
 	s._units.clear()
-	s._units.append(_mk("left", 0, 1000))                         # 我方龟死光
-	s._units.append(_mk("left", 9000, 9000, {"egg": true}))       # 我方蛋满血
-	s._units.append(_mk("left", 500, 500, {"is_trainer": true}))  # 我方大师满血
-	s._units.append(_mk("right", 800, 1000))                      # 敌方龟还活着
-	s._pk_count = -1
+	s._units.append(_mk("left", 0, 1000))                              # 我方龟死光
+	s._units.append(_mk("left", 3300, 3300, {"_isEgg": true, "egg_side_lr": "left"}))
+	s._units.append(_mk("left", 500, 500, {"is_trainer": true}))       # 我方大师满血
+	s._units.append(_mk("right", 800, 1000))
+	s._hud._pk_count = -1
 	h._pk_refresh()
-	_ok("② ★龟死光但蛋/大师满血 → 我方段长 0(不是被蛋撑起来)",
-		absf(s._pk_target_l - 0.0) < 0.0001, "实际 %.4f" % s._pk_target_l)
+	_ok("② ★龟死光但蛋/大师满血 → 我方主条 0(不是被蛋撑起来)",
+		absf(s._hud._pk_target_l) < 0.0001, "实际 %.4f" % s._hud._pk_target_l)
 	_ok("② ★基线也没把蛋/大师算进去(左基线应为 1000 只算那只龟)",
-		absf(s._pk_base_l - 1000.0) < 0.01, "实际 %.0f" % s._pk_base_l)
-	_ok("② 左端数字显 0(算的是龟不是蛋)", s._pk_lab_l.text == "0", "实际 %s" % s._pk_lab_l.text)
-	_ok("② 右端数字显 800", s._pk_lab_r.text == "800", "实际 %s" % s._pk_lab_r.text)
-
-	# 千分位
-	_ok("② 千分位: 12480 → 12,480", h._pk_num(12480.0) == "12,480", h._pk_num(12480.0))
-	_ok("② 千分位: 999 → 999", h._pk_num(999.0) == "999")
-	_ok("② 千分位: 1000000 → 1,000,000", h._pk_num(1000000.0) == "1,000,000", h._pk_num(1000000.0))
+		absf(s._hud._pk_base_l - 1000.0) < 0.01, "实际 %.0f" % s._hud._pk_base_l)
 
 
 ## ③ 分母 = 开场基线, 死人不改它
 func _denominator(s) -> void:
-	print("  ── ③ 分母是开场基线(死人不让百分比反向回升) ──")
+	print("  ── ③ 分母是开场基线(死人不让比例反向回升) ──")
 	var h = s._hud
 	s._units.clear()
 	var a := _mk("left", 1000, 1000)
@@ -168,49 +165,28 @@ func _denominator(s) -> void:
 	var d := _mk("right", 1000, 1000)
 	for u in [a, b, c, d]:
 		s._units.append(u)
-	s._pk_count = -1
+	s._hud._pk_count = -1
 	h._pk_refresh()
 	_ok("③ 开场 4 只满血 → 两侧比例都是 1.0",
-		absf(s._pk_target_l - 1.0) < 0.0001 and absf(s._pk_target_r - 1.0) < 0.0001,
-		"左 %.4f 右 %.4f" % [s._pk_target_l, s._pk_target_r])
+		absf(s._hud._pk_target_l - 1.0) < 0.0001 and absf(s._hud._pk_target_r - 1.0) < 0.0001)
 	_ok("③ 基线记下了左 2000 / 右 2000",
-		absf(s._pk_base_l - 2000.0) < 0.01 and absf(s._pk_base_r - 2000.0) < 0.01,
-		"左 %.0f 右 %.0f" % [s._pk_base_l, s._pk_base_r])
-	_ok("③ 开场中间百分比 = 50%(势均力敌)", s._pk_lab_mid.text.contains("50%"),
-		s._pk_lab_mid.text)
-	# ★我方死一只 → 我方比例必须降到 0.5, 且【右侧比例一动不动】。
-	#   这是"分母若跟着当前存活缩会反向回升"的反例: 若分母是"当前存活 maxHp 之和",
-	#   死一只后左边会变成 1000/1000 = 1.0, 条反而涨回满 —— 完全反直觉。
+		absf(s._hud._pk_base_l - 2000.0) < 0.01 and absf(s._hud._pk_base_r - 2000.0) < 0.01,
+		"左 %.0f 右 %.0f" % [s._hud._pk_base_l, s._hud._pk_base_r])
 	a["hp"] = 0.0; a["alive"] = false
 	h._pk_refresh()
 	_ok("③ ★我方死一只 → 我方比例降到 0.5(不是回升到 1.0)",
-		absf(s._pk_target_l - 0.5) < 0.0001, "%.4f" % s._pk_target_l)
-	_ok("③ ★对方比例一动不动(仍 1.0)", absf(s._pk_target_r - 1.0) < 0.0001,
-		"%.4f" % s._pk_target_r)
-	_ok("③ ★基线没被死亡改动(仍 2000/2000)",
-		absf(s._pk_base_l - 2000.0) < 0.01 and absf(s._pk_base_r - 2000.0) < 0.01,
-		"左 %.0f 右 %.0f" % [s._pk_base_l, s._pk_base_r])
-	# ★直接断言载荷属性: _pk_sum 的分母项必须把【已死单位】也算进去。
-	#   固定基线这个行为其实被【两道独立机制】保护 —— ①换路才重算的守卫 ②分母含已死单位。
-	#   任一单独破坏都被另一道兜住, 所以上面那条"基线没被死亡改动"单点破坏抓不到。
-	#   这条直接量 _pk_sum 的返回值, 让"改成只算存活"这个具体退化一次就红。
+		absf(s._hud._pk_target_l - 0.5) < 0.0001, "%.4f" % s._hud._pk_target_l)
+	_ok("③ ★对方比例一动不动(仍 1.0)", absf(s._hud._pk_target_r - 1.0) < 0.0001)
+	# ★直接量载荷属性: _pk_sum 的分母项必须含【已死单位】
 	var sum_l: Vector2 = h._pk_sum("left")
 	_ok("③ ★_pk_sum 的分母项含已死单位(死了 1 只仍报 2000)",
 		absf(sum_l.y - 2000.0) < 0.01, "分母 %.0f (当前血 %.0f)" % [sum_l.y, sum_l.x])
-	_ok("③ _pk_sum 的分子项只算存活(1000)", absf(sum_l.x - 1000.0) < 0.01,
-		"%.0f" % sum_l.x)
-	_ok("③ 中间百分比变成相对劣势 33%(1000 : 2000)",
-		s._pk_lab_mid.text.contains("33%") and s._pk_lab_mid.text.contains("▼"),
-		s._pk_lab_mid.text)
-	# 双方全灭 → 不许除零/NaN
+	_ok("③ _pk_sum 的分子项只算存活(1000)", absf(sum_l.x - 1000.0) < 0.01)
 	for u in [b, c, d]:
 		u["hp"] = 0.0; u["alive"] = false
 	h._pk_refresh()
 	_ok("③ 双方全灭 → 两侧比例都是 0(不除零/不 NaN)",
-		absf(s._pk_target_l) < 0.0001 and absf(s._pk_target_r) < 0.0001,
-		"左 %.4f 右 %.4f" % [s._pk_target_l, s._pk_target_r])
-	_ok("③ 双方全灭 → 中间百分比回 50%(不 NaN)", s._pk_lab_mid.text.contains("50%"),
-		s._pk_lab_mid.text)
+		absf(s._hud._pk_target_l) < 0.0001 and absf(s._hud._pk_target_r) < 0.0001)
 
 
 ## ④ 换路重算基线
@@ -220,49 +196,164 @@ func _lane_reset(s) -> void:
 	s._units.clear()
 	s._units.append(_mk("left", 1000, 1000))
 	s._units.append(_mk("right", 1000, 1000))
-	s._pk_count = -1
+	s._hud._pk_count = -1
 	h._pk_refresh()
-	var base1_l: float = s._pk_base_l
-	_ok("④ 第一路基线 = 1000", absf(base1_l - 1000.0) < 0.01, "%.0f" % base1_l)
-	# 模拟换路: _dl_clear_units() 会清空 _units 再重新 spawn(dual_lane_flow:719-724),
-	# 所以"计入 PK 的单位数变了"是可靠的换路信号 —— 死亡不会改这个数(只置 alive=false)。
+	_ok("④ 第一路基线 = 1000", absf(s._hud._pk_base_l - 1000.0) < 0.01)
+	# 模拟换路: _dl_clear_units() 清空 _units 再重新 spawn → 计入单位数必变
+	s._hud._pk_shown_l = 0.3; s._hud._pk_shown_r = 0.4    # 上一路残留状态
 	s._units.clear()
 	s._units.append(_mk("left", 3000, 3000))
 	s._units.append(_mk("left", 3000, 3000))
 	s._units.append(_mk("right", 3000, 3000))
 	h._pk_refresh()
 	_ok("④ ★换路后基线重算成 6000(没沿用上一路的 1000)",
-		absf(s._pk_base_l - 6000.0) < 0.01, "%.0f" % s._pk_base_l)
+		absf(s._hud._pk_base_l - 6000.0) < 0.01, "%.0f" % s._hud._pk_base_l)
 	_ok("④ ★换路后两段复位到满(不从上一路的长度滑过来)",
-		absf(s._pk_shown_l - 1.0) < 0.0001 and absf(s._pk_shown_r - 1.0) < 0.0001,
-		"左 %.4f 右 %.4f" % [s._pk_shown_l, s._pk_shown_r])
-	_ok("④ 换路计数已更新", s._pk_count == 3, "%d" % s._pk_count)
+		absf(s._hud._pk_shown_l - 1.0) < 0.0001 and absf(s._hud._pk_shown_r - 1.0) < 0.0001,
+		"左 %.4f 右 %.4f" % [s._hud._pk_shown_l, s._hud._pk_shown_r])
+	_ok("④ ★换路后残影也复位(否则会留一截上一路的亮条)",
+		absf(s._hud._pk_trail_vl - 1.0) < 0.0001 and absf(s._hud._pk_trail_vr - 1.0) < 0.0001)
+	_ok("④ 换路计数已更新", s._hud._pk_count == 3, "%d" % s._hud._pk_count)
 
 
-## ⑤ 平滑收敛
-func _smooth(s) -> void:
-	print("  ── ⑤ 逐帧平滑 + 收敛吸附 ──")
+## ⑤ 平滑 + damage trail
+func _smooth_and_trail(s) -> void:
+	print("  ── ⑤ 平滑收敛 + damage trail ──")
 	var h = s._hud
 	s._units.clear()
 	s._units.append(_mk("left", 1000, 1000))
 	s._units.append(_mk("right", 200, 1000))
-	s._pk_count = -1
+	s._hud._pk_count = -1
 	h._pk_refresh()
-	_ok("⑤ 左满血 → 目标 1.0", absf(s._pk_target_l - 1.0) < 0.0001, "%.4f" % s._pk_target_l)
-	_ok("⑤ 右剩 200/1000 → 目标 0.2", absf(s._pk_target_r - 0.2) < 0.0001,
-		"%.4f" % s._pk_target_r)
-	# 一次 tick 不该直接跳到目标(否则群伤瞬间会抽搐)
-	s._pk_shown_r = 1.0
-	s._pk_acc = 0.0
+	_ok("⑤ 右剩 200/1000 → 目标 0.2", absf(s._hud._pk_target_r - 0.2) < 0.0001)
+	s._hud._pk_shown_r = 1.0
+	s._hud._pk_trail_vr = 1.0
+	s._hud._pk_acc = 0.0
 	h._pk_tick(1.0 / 60.0)
 	_ok("⑤ ★单帧不直接跳到目标(有平滑)",
-		s._pk_shown_r < 1.0 and s._pk_shown_r > s._pk_target_r + 0.001,
-		"一帧后 %.4f (目标 %.4f)" % [s._pk_shown_r, s._pk_target_r])
-	# 跑够帧数必须收敛并【吸附】
-	for _i in range(240):
+		s._hud._pk_shown_r < 1.0 and s._hud._pk_shown_r > s._hud._pk_target_r + 0.001,
+		"一帧后 %.4f (目标 %.4f)" % [s._hud._pk_shown_r, s._hud._pk_target_r])
+	# ★残影: 必须【落后于】填充 —— 这才看得出"刚掉了这一段"
+	_ok("⑤ ★掉血瞬间残影高于填充(看得出刚掉的那一段)",
+		s._hud._pk_trail_vr > s._hud._pk_shown_r + 0.001,
+		"残影 %.4f vs 填充 %.4f" % [s._hud._pk_trail_vr, s._hud._pk_shown_r])
+	for _i in range(600):
 		h._pk_tick(1.0 / 60.0)
-	_ok("⑤ ★跑 240 帧后精确吸附到目标(不留半像素缝)",
-		s._pk_shown_r == s._pk_target_r and s._pk_shown_l == s._pk_target_l,
-		"右 %.8f vs %.8f" % [s._pk_shown_r, s._pk_target_r])
+	_ok("⑤ ★跑够帧数填充精确吸附到目标(不留半像素缝)",
+		s._hud._pk_shown_r == s._hud._pk_target_r and s._hud._pk_shown_l == s._hud._pk_target_l,
+		"右 %.8f vs %.8f" % [s._hud._pk_shown_r, s._hud._pk_target_r])
+	_ok("⑤ ★残影最终追上填充(不会永远留一截亮条)",
+		absf(s._hud._pk_trail_vr - s._hud._pk_shown_r) < 0.002,
+		"残影 %.6f vs 填充 %.6f" % [s._hud._pk_trail_vr, s._hud._pk_shown_r])
+	_ok("⑤ ★残影永不低于填充(低了就会露出填充边缘外的亮边)",
+		s._hud._pk_trail_vr >= s._hud._pk_shown_r - 0.0001)
 	_ok("⑤ 采样间隔 0.1s(别每帧扫 _units·主文件热路径预算 <0.2%)",
 		absf(h.PK_SAMPLE - 0.1) < 0.0001, "%.3f" % h.PK_SAMPLE)
+	_ok("⑤ 残影追赶【慢于】填充(否则看不出残影)", h.PK_TRAIL_SMOOTH < h.PK_SMOOTH,
+		"trail %.1f vs fill %.1f" % [h.PK_TRAIL_SMOOTH, h.PK_SMOOTH])
+
+
+## ⑥ 读数: 百分比开场 100% + 绝对血量小字
+func _readout(s) -> void:
+	print("  ── ⑥ 读数: 百分比(开场100%) + 绝对血量小字 ──")
+	var h = s._hud
+	s._units.clear()
+	s._units.append(_mk("left", 3448, 3448))
+	s._units.append(_mk("right", 2857, 2857))
+	s._hud._pk_count = -1
+	h._pk_refresh()
+	# ★用户最初的疑问就是这个: 第一版中间显示相对占比, 开场必然是 50%, 被读成"我只有一半血"
+	_ok("⑥ ★开场双方读数都是 100%(不是 50%)",
+		s._hud._pk_lab_l.text == "100%" and s._hud._pk_lab_r.text == "100%",
+		"左 %s 右 %s" % [s._hud._pk_lab_l.text, s._hud._pk_lab_r.text])
+	_ok("⑥ ★绝对血量小字带千分位", s._hud._pk_lab_l2.text == "3,448" and s._hud._pk_lab_r2.text == "2,857",
+		"左 %s 右 %s" % [s._hud._pk_lab_l2.text, s._hud._pk_lab_r2.text])
+	_ok("⑥ ★中间那个会被读错的相对百分比已移除", not ("_pk_lab_mid" in s._hud))
+	# 掉一半血 → 50%
+	(s._units[0] as Dictionary)["hp"] = 1724.0
+	h._pk_refresh()
+	_ok("⑥ 掉一半 → 50%", s._hud._pk_lab_l.text == "50%", s._hud._pk_lab_l.text)
+	_ok("⑥ 小字跟着走", s._hud._pk_lab_l2.text == "1,724", s._hud._pk_lab_l2.text)
+	_ok("⑥ 千分位: 1000000 → 1,000,000", h._pk_num(1000000.0) == "1,000,000", h._pk_num(1000000.0))
+	_ok("⑥ 千分位: 999 → 999", h._pk_num(999.0) == "999")
+
+
+## ⑦ VS 徽标
+func _vs_badge(s) -> void:
+	print("  ── ⑦ VS 徽标: 在位 + 染色随优势变 + 受伤脉冲 ──")
+	var h = s._hud
+	_ok("⑦ VS 徽标三件都在", s._hud._pk_vs != null and s._hud._pk_vs_bg != null and s._hud._pk_vs_lab != null)
+	_ok("⑦ 徽标写的是 VS(不是数字)", s._hud._pk_vs_lab.text == "VS")
+	# 我方大优 → 底片偏我方色; 敌方大优 → 偏敌方色
+	s._hud._pk_shown_l = 1.0; s._hud._pk_shown_r = 0.05
+	s._hud._pk_hit_l = 0.0; s._hud._pk_hit_r = 0.0
+	h._pk_vs_tick(0.016)
+	var sb_a: StyleBoxFlat = s._hud._pk_vs_bg.get_theme_stylebox("panel") as StyleBoxFlat
+	var col_adv := sb_a.bg_color
+	s._hud._pk_shown_l = 0.05; s._hud._pk_shown_r = 1.0
+	h._pk_vs_tick(0.016)
+	var col_dis := (s._hud._pk_vs_bg.get_theme_stylebox("panel") as StyleBoxFlat).bg_color
+	_ok("⑦ ★优劣两态的底片颜色明显不同(不用数字也读得出谁占优)",
+		col_adv.r != col_dis.r or col_adv.g != col_dis.g or col_adv.b != col_dis.b)
+	_ok("⑦ ★我方大优时底片偏绿(g 分量更高)", col_adv.g > col_dis.g,
+		"优势 g=%.3f 劣势 g=%.3f" % [col_adv.g, col_dis.g])
+	_ok("⑦ ★敌方大优时底片偏紫(b 分量更高)", col_dis.b > col_adv.b,
+		"优势 b=%.3f 劣势 b=%.3f" % [col_adv.b, col_dis.b])
+	# 受伤脉冲: 掉血会置 1.0 并随时间衰减
+	s._hud._pk_shown_l = 1.0; s._hud._pk_target_l = 0.5
+	s._hud._pk_hit_l = 0.0
+	s._hud._pk_acc = 0.0
+	h._pk_tick(1.0 / 60.0)
+	_ok("⑦ ★掉血触发受伤脉冲", s._hud._pk_hit_l > 0.5, "%.3f" % s._hud._pk_hit_l)
+	var before: float = s._hud._pk_hit_l
+	# ★不能只设 _pk_target_l —— _pk_tick 每 PK_SAMPLE 秒会 _pk_refresh() 从 _units 重算它,
+	#   于是一直在掉血、脉冲被反复重置成 1.0(我第一版测试就是这么写的, 报"0.963 → 0.963")。
+	#   要让它【真的】停止掉血: 把显示值直接放到目标上。
+	s._hud._pk_shown_l = s._hud._pk_target_l
+	for _i in range(30):
+		h._pk_tick(1.0 / 60.0)
+	_ok("⑦ ★脉冲会衰减(不会一直亮着)", s._hud._pk_hit_l < before, "%.3f → %.3f" % [before, s._hud._pk_hit_l])
+	# 徽标缩放: 呼吸让它不是死的
+	var s1: float = s._hud._pk_vs.scale.x
+	for _i in range(40):
+		h._pk_tick(1.0 / 60.0)
+	_ok("⑦ 徽标在呼吸(缩放会变)", absf(s._hud._pk_vs.scale.x - s1) > 0.001,
+		"%.4f → %.4f" % [s1, s._hud._pk_vs.scale.x])
+
+
+## ⑧ 副条(龟蛋): 口径与主条独立
+func _egg_bar(s) -> void:
+	print("  ── ⑧ 副条: 龟蛋按自己的 hp/maxHp ──")
+	var h = s._hud
+	_ok("⑧ 副条两段都在", s._hud._pk_egg_l != null and s._hud._pk_egg_r != null)
+	s._units.clear()
+	s._units.append(_mk("left", 1000, 1000))            # 龟(只进主条)
+	s._units.append(_mk("right", 1000, 1000))
+	s._units.append(_mk("left", 1650, 3300, {"_isEgg": true, "egg_side_lr": "left"}))
+	s._units.append(_mk("right", 3300, 3300, {"_isEgg": true, "egg_side_lr": "right"}))
+	s._hud._pk_count = -1
+	h._pk_refresh()
+	_ok("⑧ ★我方蛋掉一半 → 副条 0.5", absf(s._hud._pk_egg_tl - 0.5) < 0.0001, "%.4f" % s._hud._pk_egg_tl)
+	_ok("⑧ 敌方蛋满血 → 副条 1.0", absf(s._hud._pk_egg_tr - 1.0) < 0.0001, "%.4f" % s._hud._pk_egg_tr)
+	# ★口径独立: 蛋掉血【不影响主条】
+	_ok("⑧ ★蛋掉一半不影响主条(主条仍 1.0)",
+		absf(s._hud._pk_target_l - 1.0) < 0.0001, "%.4f" % s._hud._pk_target_l)
+	# 无蛋模式(单路/评审): 不许除零
+	s._units.clear()
+	s._units.append(_mk("left", 1000, 1000))
+	s._units.append(_mk("right", 1000, 1000))
+	s._hud._pk_count = -1
+	h._pk_refresh()
+	_ok("⑧ 无蛋模式 → 副条 0(不除零/不 NaN)",
+		absf(s._hud._pk_egg_tl) < 0.0001 and absf(s._hud._pk_egg_tr) < 0.0001)
+	# 副条颜色必须与主条明显不同(用户: 原来同色"像装饰下划线")
+	var src := FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_hud.gd")
+	_ok("⑧ ★副条用蛋壳色而不是队色", src.contains("PK_EGG_COL"))
+	_ok("⑧ ★副条两端有蛋图标", src.contains("_make_egg_icon_texture()") and src.contains("_pk_egg_icon("))
+	_ok("⑧ 蛋图标是程序生成的(不复用现有素材)",
+		FileAccess.get_file_as_string("res://scripts/util/vfx_textures.gd").contains("func _make_egg_icon_texture"))
+	# 配色: 我方绿 / 敌方紫(用户 2026-07-30 拍板"只换 PK 条")
+	_ok("⑦⑧ ★我方色是绿(不是全局那套蓝)", h.PK_BLUE.g > h.PK_BLUE.b and h.PK_BLUE.g > h.PK_BLUE.r,
+		str(h.PK_BLUE))
+	_ok("⑦⑧ ★敌方色是紫(不是全局那套红)", h.PK_RED.b > h.PK_RED.g,
+		str(h.PK_RED))

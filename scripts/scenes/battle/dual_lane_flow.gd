@@ -732,23 +732,19 @@ func _dl_finish(won: bool) -> void:
 	battle._settle_season(won)    # 结果喂赛季(命/币/胜场/XP/糖果罐/ghost上传), 守卫一次性
 	battle._hud._show_banner(won)
 
-func _dl_update_hud() -> void:   # 双路 HUD: 当前路 + 双方蛋血 + 破蛋窗口计时
+func _dl_update_hud() -> void:   # 双路 HUD: 当前路 + 破蛋窗口计时 + 决胜档位
+	## ★2026-07-30: 双方蛋血【已挪到顶部 PK 条下方的副条】(用户:「你就下面加个副血条
+	##   表示龟蛋的」)。原因: 这行文字和上面那条龟血 PK 条都是"双方对比", 上下叠着看起来
+	##   像两条血条却没有任何标签区分。所以这里只留【路名 + 破蛋窗口计时 + 决胜档位】——
+	##   那三项是文字才说得清的, 血量交给条。
 	var lane = str(GameState.current_lane) if GameState != null else "top"
 	var lane_cn: String = {"top": "上半场", "bottom": "下半场", "final": "终极战场", "done": "结算"}.get(lane, lane)
-	var lhp = 0
-	var rhp = 0
-	for u in battle._units:
-		if u.get("_isEgg", false):
-			if str(u.get("egg_side_lr", "")) == "left":
-				lhp = int(u["hp"])
-			else:
-				rhp = int(u["hp"])
 	var st = ""
 	if battle._dl_state == "eggwindow":
 		var rem = battle._dl_window_until - battle._t
 		st = ("  ·  破蛋窗口 %.0fs" % maxf(0.0, rem)) if rem < 1.0e17 else "  ·  破蛋(决胜)"
 	if battle._sd_stacks > 0:   # §SUDDEN 决胜档位: 不显玩家会莫名其妙"怎么突然打得动了/奶不住了"
 		st += "  ·  ⚔决胜 +%d%%增伤 · 治疗-50%%" % int(battle._sd_amp() * 100.0)
-	battle._dl_hud.text = "【%s】   我方蛋 %d   vs   敌方蛋 %d%s" % [lane_cn, lhp, rhp, st]
+	battle._dl_hud.text = "【%s】%s" % [lane_cn, st]
 
 ## 匹配对手快照的首领 id (Matchmaking 写 GameState.dual_ghost). 过滤到 STATS 已知龟, 上限 3.

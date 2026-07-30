@@ -605,24 +605,6 @@ var _tutorial: Node = null                # 新手引导实例(GameState.tutoria
 var _tut_place_shown: bool = false        # 教学 match1: 摆位引导只挂一次(首路), 别每路都弹
 var _surrender_panel: Control = null      # 投降确认浮层(取消/确认认输), 默认隐; 取代原暂停浮层(用户2026-07-30)
 var _surrender_btn: Button = null          # 🏳 投降按钮(原 ⏸ 暂停位); 结算后 disabled
-# ── 顶部双方总血量 PK 条(用户2026-07-30 需求1·方案书 20260730b·中央对撞版式) ──
-# ★计入口径由用户拍板: 【龟统领 + 小将】—— 不含龟蛋(atk/def/mr 全 0 的纯血包·算进去
-#   会让"龟死光了条还是满的")、不含训龟大师(500血/1攻/站着不动·是噪声)、不含召唤体
-#   (与 _check_over 的胜负判定同口径, 见 7348 行)。判据焊死在 verify_battle_hud_r1。
-var _pk_bar: Control = null
-var _pk_fill_l: ColorRect = null           # 蓝(左队)从左往右涨
-var _pk_fill_r: ColorRect = null           # 红(右队)从右往左涨; 接缝位置 = 左方血量占比
-var _pk_lab_l: Label = null
-var _pk_lab_r: Label = null
-var _pk_lab_mid: Label = null
-var _pk_base_l: float = 0.0                # 本路【开场】基线(固定分母·死人不改它)
-var _pk_base_r: float = 0.0
-var _pk_count: int = -1                    # 上次计入 PK 的单位数 —— 变化=换路(见 _pk_refresh 注释)
-var _pk_acc: float = 0.0                   # 采样累加器(0.1s 扫一次 _units, 别每帧扫)
-var _pk_target_l: float = 1.0              # 左侧【占自己开场基线】的比例 → 决定蓝段长度
-var _pk_target_r: float = 1.0              # 右侧同理 → 红段长度
-var _pk_shown_l: float = 1.0               # 逐帧向 target 平滑(群伤瞬间不抽搐)
-var _pk_shown_r: float = 1.0
 var _battle_log: Array = []               # 战斗日志 bbcode 行, 封顶 _LOG_CAP(参 soak 教训防无限增长)
 var _log_panel: Control = null            # 日志浮层(可滚动), 默认隐
 var _log_rt: RichTextLabel = null         # 日志文本(面板开着才实时追加)

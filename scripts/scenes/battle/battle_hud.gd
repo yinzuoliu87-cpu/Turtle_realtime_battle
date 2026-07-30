@@ -31,19 +31,16 @@ func _build_ui_layer() -> void:
 		vig.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		vig.material = battle._make_vignette_material()   # canvas shader: 按 UV 半径算暗角 alpha (RGB 正确, 不露灰)
 		battle._ui_layer.add_child(vig)
-	var title = Label.new()
-	title.text = "2.5D 实时战斗 · 3v3 (左队 vs 右队)"
-	title.add_theme_font_size_override("font_size", 18)
-	title.add_theme_color_override("font_color", Color("#cfe6ff"))
-	title.position = Vector2(24, 16)
-	battle._ui_layer.add_child(title)
+	# ★左上角那行开发期标题「2.5D 实时战斗 · 3v3(左队 vs 右队)」已删(用户 2026-07-30)。
+	#   它是开发期自证用的, 正式对局里没信息量, 而且【正是它把 PK 条限死在 600 宽】——
+	#   条要避开它才能不重叠。删掉后条才有空间加宽到格斗游戏那个比例。
 	_build_pk_bar()   # 顶部双方总血量 PK 条 (用户2026-07-30 需求1)
 	if battle._is_dual_lane_mode():   # 双路 HUD: 当前路 + 双方蛋血
 		battle._dl_hud = Label.new()
 		battle._dl_hud.add_theme_font_size_override("font_size", 17)
 		battle._dl_hud.add_theme_color_override("font_color", Color("#ffe08a"))
-		# ★y 44→50: PK 条占了 16..42, 给它腾位(用户2026-07-30)
-		battle._dl_hud.position = Vector2(340, 50); battle._dl_hud.size = Vector2(700, 24)
+		# ★y 44→64: PK 主条占 16..42, 龟蛋副条占 46..60(第三版副条加高到 14 塞蛋图标)
+		battle._dl_hud.position = Vector2(290, 70); battle._dl_hud.size = Vector2(700, 24)
 		battle._dl_hud.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		battle._ui_layer.add_child(battle._dl_hud)
 	_build_topright_btns()   # 📊 统计 + 🏳 投降 (原 ⏸暂停/📜日志 已移除·用户2026-07-30)
@@ -160,40 +157,169 @@ func _build_surrender_panel() -> void:
 	battle._ui_layer.add_child(battle._surrender_panel)
 
 
+## ── PK 条状态(2026-07-30 从主战斗文件搬进来) ──
+## ★为什么住这儿: 这些字段【只有本文件用】。原本放在主场景纯粹是我图省事,
+##   而主文件有 arch_budget 行数警戒线 —— 加这 20 多行直接把它顶红了(8616>8600)。
+##   规则是"先拆出去"不是抬台账, 而这里本来就是它们该在的地方。
+var _pk_bar: Control = null
+var _pk_fill_l: ColorRect = null           # 蓝(左队)从左往右涨
+var _pk_fill_r: ColorRect = null           # 红(右队)从右往左涨; 接缝位置 = 左方血量占比
+var _pk_lab_l: Label = null
+var _pk_lab_r: Label = null
+var _pk_base_l: float = 0.0                # 本路【开场】基线(固定分母·死人不改它)
+var _pk_base_r: float = 0.0
+var _pk_count: int = -1                    # 上次计入 PK 的单位数 —— 变化=换路(见 _pk_refresh 注释)
+var _pk_acc: float = 0.0                   # 采样累加器(0.1s 扫一次 _units, 别每帧扫)
+var _pk_target_l: float = 1.0              # 左侧【占自己开场基线】的比例 → 决定蓝段长度
+var _pk_target_r: float = 1.0              # 右侧同理 → 红段长度
+var _pk_shown_l: float = 1.0               # 逐帧向 target 平滑(群伤瞬间不抽搐)
+var _pk_shown_r: float = 1.0
+var _pk_trail_l: ColorRect = null          # damage trail 残影: 掉血时旧位置留一段亮色再慢慢收
+var _pk_trail_r: ColorRect = null
+var _pk_trail_vl: float = 1.0
+var _pk_trail_vr: float = 1.0
+var _pk_egg_row: Control = null            # 副条整行容器(无蛋时隐藏整行)
+var _pk_egg_icons: Array = []              # 两端的蛋图标(围栏未破时跟着压暗)
+var _pk_egg_l: ColorRect = null            # 副条: 龟蛋 PK(取代原来那行"我方蛋N vs 敌方蛋N"文字)
+var _pk_egg_r: ColorRect = null
+var _pk_egg_tl: float = 1.0
+var _pk_egg_tr: float = 1.0
+var _pk_egg_sl: float = 1.0
+var _pk_egg_sr: float = 1.0
+var _pk_lab_l2: Label = null               # 绝对血量小字(百分比是主读数)
+var _pk_lab_r2: Label = null
+var _pk_vs: Control = null                 # 中间 VS 徽标(取代第一版那个会被读错的相对百分比)
+var _pk_vs_bg: Panel = null
+var _pk_vs_lab: Label = null
+var _pk_phase: float = 0.0                 # VS 呼吸相位
+var _pk_hit_l: float = 0.0                 # 受伤脉冲(0..1, 按 PK_HIT_DECAY 衰减)
+var _pk_hit_r: float = 0.0
+
+
 # ════════════════════════════════════════════════════════════════════════════
 #  顶部双方总血量 PK 条 (用户 2026-07-30 需求1 · 方案书 docs/plans/20260730b-*.md)
 #
 #  「对局内的顶部左右新加一个双方血条的pk，表示双方总血量实时变化」
 #
-#  版式 = 用户拍板的【中央对撞条】: 一条横在顶部中央, 蓝(左队)占左半从左端往中间长、
-#    红(右队)占右半从右端往中间长; 中间露出的暗缝 = 双方已损失的总量。
-#    (备选"左右分列两条"被否: 两条各自看, 看不出【相对】强弱, PK 就没意义了)
+#  ★2026-07-30 第二版(用户逐条审核后重做)。第一版的问题与修法:
 #
-#  ★每侧长度按【自己的开场基线】归一化, 不是按"双方当前血之和"的相对比。
-#    我第一版就写成了纯相对比(seam = l.hp/(l.hp+r.hp)), 结果 _pk_base_l/r 存了却没人用,
-#    而且【双方都剩 10% 血时条看起来和双方满血一模一样】—— 丢掉了"总血量"这个绝对信息,
-#    而需求原文是「表示双方【总血量】实时变化」。相对优势改由中间那个百分比读。
+#  【① 真 bug: 龟蛋一直被算进去了】
+#     排除条件写的是 u.get("egg") —— 而单位字典上【没有这个键】, 蛋带的是 _isEgg
+#     (battle_spawn.gd:439 写的 u["_isEgg"] = true)。所以"不含龟蛋"根本没生效。
+#     后果不只是口径错: 蛋有围栏 +200 双抗、早期几乎不掉血, 占了条里 3300/5900≈56%
+#     的【不动的血】—— 条看着迟钝就是这么来的。已改用 _isEgg。
 #
-#  ★计入口径 = 【龟统领 + 小将】(用户逐字「小将和龟统领的」):
-#    · 不含龟蛋 —— 它 atk/def/mr 全 0, 是纯血包; 算进去会让"龟死光了条还是满的"
-#    · 不含训龟大师 —— 500血/1攻/站着不动, 是噪声
-#    · 不含召唤体 —— 与 _check_over 的胜负判定同口径(那里也 skip is_summon)
+#  【② 中间那个百分比会被【读错】】
+#     它是 我方/(我方+敌方) 的相对占比 → 开场必然是 50%,
+#     用户第一反应就是「为啥一开始血量百分比不都是满的」。
+#     语义和"血量百分比"完全不是一回事。用户拍板:「不要，你就弄vs的特效不行吗」
+#     → 中间不放任何数字, 改成 VS 徽标 + 特效(优势方染色 + 受伤脉冲 + 呼吸)。
 #
-#  ★分母固定为【本路开场基线】, 不用"当前存活单位 maxHp 之和" ——
-#    后者会让死一只时分子分母同缩、百分比反而【回升】, 条往回涨, 完全反直觉。
+#  【③ "看着像从中心开始掉血"】
+#     用户:「那不是在中心开始掉血吗，别的游戏咋做的」。
+#     格斗游戏(街霸/拳皇)确实是"各自从【内端】往自己那侧退", 但它画的是
+#     【两条明显分开、各有边框】的条, 中间隔开一段。我第一版做成了
+#     【一条连续长条中间开缝】, 所以读起来像"这条从中间断了"。
+#     → 拆成左右两段【各自带边框】+ 中间固定 VS 槽。满血时两段各自顶满自己的框,
+#       掉血时该侧从内端往外退, 露出【自己框内】的暗槽 —— 语义就清楚了。
 #
-#  ★两条独立伤害路径(_apply_damage / _apply_damage_from, CLAUDE.md §3.3)在这里【不需要各改一遍】:
-#    本条不在伤害路径里记账, 而是定时扫 _units 求和 —— 天然免疫"漏改一条路径", 也免疫
-#    护盾/回血/复活没走伤害钩这类漏记。代价是有 ≤0.1s 的延迟, 对一条 UI 条完全可接受。
+#  【④ 缝会透出背景】第一版中间是"空", 沉船/鱼/气泡从缝里穿过去比数字还显眼。
+#     → 每段自己有【不透明暗底】, 空掉的部分是槽不是窗。
+#
+#  【⑤ 掉血没有任何反馈】掉 800 和掉 80 在条上只有位置差别。
+#     → 加 damage trail: 掉血时旧位置留一段亮色残影, 再慢速追上来。
+#       ★这不是我自造的风格 —— 本项目【单位血条 HpBar 组件本来就有】"受击红trail+白闪",
+#       顶部这条没有反而是风格不统一。
+#
+#  【⑥ 和「我方蛋 N vs 敌方蛋 N」那行撞车】上下两条都是"双方对比", 没有标签区分。
+#     用户拍板:「你就下面加个副血条表示龟蛋的」
+#     → 蛋改成主条下方一条【细副条】(同样左右分段), dl_hud 文字里的蛋血数字撤掉,
+#       只留路名 + 破蛋窗口计时 + 决胜档位。
+#
+#  ★计入口径(用户逐字「小将和龟统领的」): 主条 = 龟统领 + 小将; 不含龟蛋(有专属副条)、
+#    不含训龟大师(500血/1攻/站着不动=噪声)、不含召唤体(与 _check_over 胜负判定同口径)。
+#
+#  ★每侧按【自己的开场基线】归一化, 每路重算(_t 跨路累加·CLAUDE.md §3.4)。
+#  ★不在伤害路径里记账, 改为每 0.1s 扫 _units 求和 → 天然免疫"漏改一条伤害路径"
+#    (两条独立路径 _apply_damage / _apply_damage_from·CLAUDE.md §3.3)和
+#    "护盾/回血/复活没走伤害钩"两类漏记。
 # ════════════════════════════════════════════════════════════════════════════
 
-const PK_W := 600.0          # 条宽; 600 而非 680 → 左端 x=340 让开标题文字(24..~324)
-const PK_H := 26.0
-const PK_Y := 16.0           # 占 16..42; 双路 HUD 已下移到 50
+## ★尺寸参照格斗游戏(街霸/拳皇/Guilty Gear —— 同样是 1v1 双方总量对撞, 最贴这个场景):
+##   它们的血条【几乎横跨整屏】(约占屏宽 85~90%)、厚度约占屏高 5~6%。
+##   第一版 600/1280 = 47% 宽、26/720 = 3.6% 厚 —— 太小气, 撑不起"主读数"的地位。
+##   现在 960/1280 = 75% 宽(右上两个按钮在 1148.., 左右对称留白后到 1120)、32/720 = 4.4% 厚。
+const PK_SEG := 440.0        # 单段宽(左/右各一段)
+const PK_VS := 80.0          # 中间 VS 槽宽
+const PK_W := PK_SEG * 2.0 + PK_VS      # 总宽 600
+const PK_H := 32.0           # 主条高
+const PK_EGG_H := 15.0       # 副条(龟蛋)高。★要塞得下两端的蛋图标(9×12 太小看不出是蛋)
+const PK_EGG_GAP := 4.0      # 主条与副条间距
+const PK_Y := 16.0           # 主条顶。占 16..42; 副条 46..55; 双路 HUD 文字下移到 60
 const PK_SAMPLE := 0.1       # 扫 _units 的采样间隔(秒)。别每帧扫: 主文件热路径预算 <0.2%
-const PK_SMOOTH := 6.0       # 接缝平滑速率(越大越快跟上); 逐帧插值, 群伤瞬间不抽搐
-const PK_BLUE := Color("#3fa9ff")   # 与左队头像框描边同色(info_panel._make_team_frame)
-const PK_RED := Color("#ff5a5a")    # 与右队头像框描边同色
+const PK_SMOOTH := 6.0       # 填充平滑速率
+const PK_TRAIL_SMOOTH := 2.6 # 残影追赶速率(慢于填充 → 才看得出"刚掉了这一段")
+                             # ★1.6 太慢: 残影常态很宽, 看起来像"第三种颜色的段"而不是"刚掉的"
+const PK_HIT_DECAY := 2.2    # 受伤脉冲衰减速率
+const PK_LOW := 0.25         # 低血量阈值: 低于它开始警示闪烁(血条的标准语言)
+const PK_LOW_HZ := 3.2       # 警示闪烁频率
+const PK_SLANT := 10.0       # 斜切量(px)。整条切成平行四边形 —— 格斗游戏(尤其 Guilty Gear)
+                             # 的做法, 给静止的横条一点速度感/对抗感。
+const PK_TRAIL_COL := Color("#fff3c4")   # 残影用【暖白】而不是队色提亮 ——
+                                         # "刚失去的那一段"用中性亮色, 在绿和紫上都醒目
+## ★配色: 我方【绿】/ 敌方【紫】, 不用全项目的"我方蓝/敌方红"(用户 2026-07-30 拍板「只换 PK 条」)。
+## 理由(用户先看出来的): 战场背景是【深蓝海底】, 蓝条打在深蓝上对比度天然差 ——
+##   实拍里蓝段边框与背景的区分明显不如红段。绿/紫在这个背景上都不撞。
+##   顺带解掉一个混淆: 红原本【既是敌方色又是伤害数字色】(#ff4444 物理 / #ff5a5a 装备伤害)。
+## ★已知代价(我提出、用户接受): 侧边头像框/单位脚下队色环/召唤物归属色仍是蓝/红,
+##   所以"我方"在顶部是绿、在侧边是蓝 —— 敌我识别成了两套编码。要统一得全局换 4 处。
+## 绿=生命 这层语义不算冲突: 这条本来就是血条, 单位血条也是绿的。
+const PK_BLUE := Color("#4ade80")   # 我方(绿)
+const PK_RED := Color("#a855f7")    # 敌方(紫)·比魔法伤害紫字 #c86bff 深一档以作区分
+## 副条=蛋壳色。★用【偏暖偏黄】的 #f5d29a 而不是低饱和的 #f2e2c4:
+##   围栏未破时要把它压暗一档, 而低饱和色一压暗就直接塌成灰(实拍验证过两轮),
+##   暖黄压暗后仍是暖色, 认得出是蛋壳。★不用队色 —— 用户: 原来和主条同色"像装饰下划线"。
+const PK_EGG_COL := Color("#f5d29a")
+
+
+## 平行四边形遮罩 shader。
+##
+## ★为什么要 shader 而不是换节点类型: ColorRect/Panel 都是矩形绘制, Godot 的 Control
+##   没有 skew; 换 Polygon2D 又要把整棵 Control 树(锚点/布局)改成 Node2D 手算坐标。
+##   给 CanvasItem 挂 material + discard 是改动最小且对齐/锚点全保留的做法。
+##
+## ★上宽下窄地【整体右移】= 真平行四边形(宽度不变), 不是梯形:
+##   顶边 x∈[slant, w], 底边 x∈[0, w-slant]。四条边等长, 两侧同角度。
+## ★rsize 必须由调用方喂 —— canvas shader 拿不到 Control 的 rect 尺寸,
+##   而填充宽度每帧在变, 不喂就会歪(这是这套写法唯一的坑)。
+const PK_SLANT_SHADER := """shader_type canvas_item;
+uniform vec2 rsize = vec2(100.0, 20.0);
+uniform float slant = 10.0;
+void fragment() {
+	vec2 pp = UV * rsize;
+	float off = slant * (1.0 - pp.y / max(rsize.y, 1.0));
+	if (pp.x < off || pp.x > rsize.x - (slant - off)) discard;
+}"""
+
+static var _pk_slant_shader: Shader = null
+func _pk_slant_mat(size: Vector2) -> ShaderMaterial:
+	if _pk_slant_shader == null:
+		_pk_slant_shader = Shader.new()
+		_pk_slant_shader.code = PK_SLANT_SHADER
+	var m := ShaderMaterial.new()
+	m.shader = _pk_slant_shader
+	m.set_shader_parameter("rsize", size)
+	m.set_shader_parameter("slant", PK_SLANT)
+	return m
+
+
+## 更新某节点遮罩用的尺寸(填充宽度每帧在变, 不更新斜边角度就会跟着变形)。
+func _pk_slant_size(n: CanvasItem, size: Vector2) -> void:
+	if n == null or not is_instance_valid(n):
+		return
+	var m := n.material as ShaderMaterial
+	if m != null:
+		m.set_shader_parameter("rsize", size)
 
 
 ## 建 PK 条。★锚点自适应(顶部居中), 不写死 1280×720 ——
@@ -204,65 +330,185 @@ func _build_pk_bar() -> void:
 	bar.anchor_left = 0.5; bar.anchor_right = 0.5
 	bar.anchor_top = 0.0; bar.anchor_bottom = 0.0
 	bar.offset_left = -PK_W * 0.5; bar.offset_right = PK_W * 0.5
-	bar.offset_top = PK_Y; bar.offset_bottom = PK_Y + PK_H
+	# ★走安全区: iPhone 横屏的刘海/灵动岛就在顶部, 写死 y=16 会被挡。
+	#   项目里训龟大师摇杆和调试笔刷条都用了 SafeArea, 这里同办。
+	var _top: float = PK_Y + SafeArea.margins(Vector2(battle.get_viewport().get_visible_rect().size), 0.0).y
+	bar.offset_top = _top
+	bar.offset_bottom = _top + PK_H + PK_EGG_GAP + PK_EGG_H
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 纯显示, 别吃战场点击
 	battle._ui_layer.add_child(bar)
-	battle._pk_bar = bar
+	_pk_bar = bar
 
-	var bg := Panel.new()                            # 底 + 边框
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.04, 0.06, 0.10, 0.88)
-	sb.set_border_width_all(2)
-	sb.border_color = Color(0.45, 0.58, 0.75, 0.55)
-	sb.set_corner_radius_all(5)
-	bg.add_theme_stylebox_override("panel", sb)
-	bar.add_child(bg)
+	# ── 主条: 左右两段, 各自带边框 + 不透明暗底 ──
+	var res: Array = _pk_seg(bar, true, 0.0, PK_H, PK_BLUE)
+	_pk_fill_l = res[0]; _pk_trail_l = res[1]
+	res = _pk_seg(bar, false, 0.0, PK_H, PK_RED)
+	_pk_fill_r = res[0]; _pk_trail_r = res[1]
 
-	battle._pk_fill_l = ColorRect.new()
-	battle._pk_fill_l.color = PK_BLUE
-	battle._pk_fill_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	battle._pk_fill_l.position = Vector2(2, 2)
-	bar.add_child(battle._pk_fill_l)
+	# ── 副条: 龟蛋(细), 同样左右分段 ──
+	var ey: float = PK_H + PK_EGG_GAP
+	# ★副条整行挂在一个容器上 —— 无蛋时整行隐藏(见 _pk_refresh)
+	var row := Control.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bar.add_child(row)
+	_pk_egg_row = row
+	res = _pk_seg(row, true, ey, PK_EGG_H, PK_EGG_COL, false)
+	_pk_egg_l = res[0]
+	res = _pk_seg(row, false, ey, PK_EGG_H, PK_EGG_COL, false)
+	_pk_egg_r = res[0]
+	_pk_egg_icon(row, ey)      # 副条行标签: 两端各一个蛋图标
 
-	battle._pk_fill_r = ColorRect.new()
-	battle._pk_fill_r.color = PK_RED
-	battle._pk_fill_r.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bar.add_child(battle._pk_fill_r)
+	# ── 读数: 【百分比】大字 + 绝对血量小字, 百分比放外端(左右对称) ──
+	# ★用户 2026-07-30:「按百分比来表示血条」。而且这直接解掉他最初那个疑问
+	#   「为啥一开始血量百分比不都是满的」—— 现在开场两边都是 100%。
+	#   绝对血量降为小字跟在内侧: 百分比说"还剩几成", 绝对值说"本钱多大"(两边满血时
+	#   条一样长但绝对值不同, 那个差只能靠这个数字体现)。
+	_pk_lab_l = _pk_mk_label(HORIZONTAL_ALIGNMENT_LEFT, 18)
+	_pk_lab_l.position = Vector2(8.0 + PK_SLANT, 0.0)      # ★内缩一个斜切量, 否则字左侧被斜边切掉
+	_pk_lab_l.size = Vector2(66.0, PK_H)
+	bar.add_child(_pk_lab_l)
+	_pk_lab_l2 = _pk_mk_label(HORIZONTAL_ALIGNMENT_LEFT, 13)
+	_pk_lab_l2.add_theme_color_override("font_color", Color(1, 1, 1, 0.66))
+	_pk_lab_l2.position = Vector2(80.0, 2.0)
+	_pk_lab_l2.size = Vector2(PK_SEG - 86.0, PK_H)
+	bar.add_child(_pk_lab_l2)
+	_pk_lab_r = _pk_mk_label(HORIZONTAL_ALIGNMENT_RIGHT, 18)
+	_pk_lab_r.position = Vector2(PK_W - 74.0 - PK_SLANT, 0.0)   # ★同上, 右侧对称
+	_pk_lab_r.size = Vector2(66.0, PK_H)
+	bar.add_child(_pk_lab_r)
+	_pk_lab_r2 = _pk_mk_label(HORIZONTAL_ALIGNMENT_RIGHT, 13)
+	_pk_lab_r2.add_theme_color_override("font_color", Color(1, 1, 1, 0.66))
+	_pk_lab_r2.position = Vector2(PK_SEG + PK_VS + 6.0, 2.0)
+	_pk_lab_r2.size = Vector2(PK_SEG - 86.0, PK_H)
+	bar.add_child(_pk_lab_r2)
 
-	# 数字压在条【内】(左端左对齐 / 右端右对齐 / 中间百分比) —— 放条外要再占一行,
-	# 会撞到已经下移的双路 HUD。
-	battle._pk_lab_l = _pk_mk_label(HORIZONTAL_ALIGNMENT_LEFT)
-	battle._pk_lab_l.offset_left = 8
-	bar.add_child(battle._pk_lab_l)
-	battle._pk_lab_r = _pk_mk_label(HORIZONTAL_ALIGNMENT_RIGHT)
-	battle._pk_lab_r.offset_right = -8
-	bar.add_child(battle._pk_lab_r)
-	battle._pk_lab_mid = _pk_mk_label(HORIZONTAL_ALIGNMENT_CENTER)
-	bar.add_child(battle._pk_lab_mid)
+	_pk_build_vs(bar)
 
-	battle._pk_count = -1        # 逼下一次 _pk_refresh 重算基线
+	_pk_count = -1        # 逼下一次 _pk_refresh 重算基线
 	_pk_refresh()
-	_pk_apply(battle._pk_shown_l, battle._pk_shown_r)
+	_pk_apply()
 
 
-func _pk_mk_label(align: int) -> Label:
+## 建一段(带边框 + 暗底 + 残影 + 填充)。→ [填充, 残影]
+## left=true 时填充贴【外侧左端】往右长(空槽露在靠中间那侧); false 时贴外侧右端往左长。
+func _pk_seg(bar: Control, left: bool, y: float, h: float, col: Color, gloss_on: bool = true) -> Array:
+	var x0: float = 0.0 if left else (PK_SEG + PK_VS)
+	var frame := Panel.new()
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.position = Vector2(x0, y)
+	frame.size = Vector2(PK_SEG, h)
+	var sb := StyleBoxFlat.new()
+	# ★真不透明(1.0 不是 0.95): 0.95 仍透 5%, 放大截图里暗槽还能看到背景游过去的鱼。
+	#   空掉的部分要是【槽】不是【窗】。
+	sb.bg_color = Color(0.05, 0.07, 0.11, 1.0)
+	sb.set_border_width_all(2)
+	sb.border_color = col.lerp(Color(0.10, 0.13, 0.19), 0.45)
+	sb.set_corner_radius_all(4)
+	frame.add_theme_stylebox_override("panel", sb)
+	frame.material = _pk_slant_mat(Vector2(PK_SEG, h))
+	bar.add_child(frame)
+	# 残影(damage trail): 压在填充【下面】, 掉血时旧位置留一段亮色再慢慢收
+	var trail := ColorRect.new()
+	trail.color = PK_TRAIL_COL
+	trail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	trail.material = _pk_slant_mat(Vector2(PK_SEG, h))
+	bar.add_child(trail)
+	var fill := ColorRect.new()
+	fill.color = col
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fill.material = _pk_slant_mat(Vector2(PK_SEG, h))
+	bar.add_child(fill)
+	# ★体积感: 填充【上半】叠一条白色低 alpha 高光, 让纯色平涂变成"管状"。
+	#   做成 fill 的子节点 → 宽度跟着 fill 走, 不用在 _pk_apply 里再算一遍。
+	# ★副条不加(gloss_on=false): 13px 的细条上高光占比太大, 会把它变成一根塑料管。
+	if not gloss_on:
+		return [fill, trail]
+	var gloss := ColorRect.new()
+	gloss.color = Color(1, 1, 1, 0.16)
+	gloss.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	gloss.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	gloss.anchor_bottom = 0.46
+	fill.add_child(gloss)
+	return [fill, trail]
+
+
+## 副条行标签: 两端各一个蛋图标(用户 2026-07-30:「换成蛋壳色 + 两端加蛋图标」)。
+## ★放在各段【外端之内】而不是条外 —— 放条外会顶出总宽, 左端只差 16px 就撞到标题文字。
+##   放外端还有个好处: 副条是从内端往外退的, 所以图标始终压在【还剩的那截】上, 不会悬空。
+## ★图标自带 1px 深色描边, 所以压在同为蛋壳色的填充上仍读得出。
+func _pk_egg_icon(bar: Control, ey: float) -> void:
+	var tex := VfxTex._make_egg_icon_texture()
+	if tex == null:
+		return
+	for left in [true, false]:
+		var ic := TextureRect.new()
+		ic.texture = tex
+		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		var x: float = 4.0 + PK_SLANT if left else (PK_W - 15.0 - PK_SLANT)   # ★避开斜边
+		ic.position = Vector2(x, ey + 1.0)
+		ic.size = Vector2(11.0, 14.0)
+		bar.add_child(ic)
+		_pk_egg_icons.append(ic)
+
+
+func _pk_mk_label(align: int, fs: int = 15) -> Label:
 	var l := Label.new()
-	l.set_anchors_preset(Control.PRESET_FULL_RECT)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	l.horizontal_alignment = align
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	l.add_theme_font_size_override("font_size", 15)
+	l.add_theme_font_size_override("font_size", fs)
 	l.add_theme_color_override("font_color", Color("#ffffff"))
 	l.add_theme_constant_override("outline_size", 4)          # 描边: 压在蓝/红上要读得清
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 	return l
 
 
-## 这个单位算不算进 PK 条。见本节顶部注释的口径说明。
+## 中间 VS 徽标(取代第一版那个会被读错的百分比)。
+## 三种动态, 都不用 tween(免生命周期/跨路被 kill 的问题), 全在 _pk_tick 里按相位算:
+##   ① 呼吸: 常态轻微缩放脉动, 让它"活着"
+##   ② 优势方染色: 底片颜色在蓝↔红之间按优势插值 → 不用数字也读得出谁占优
+##   ③ 受伤脉冲: 任一方掉血 → 亮度闪一下
+func _pk_build_vs(bar: Control) -> void:
+	var holder := Control.new()
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.position = Vector2(PK_SEG, 0.0)
+	holder.size = Vector2(PK_VS, PK_H)
+	holder.pivot_offset = Vector2(PK_VS * 0.5, PK_H * 0.5)
+	bar.add_child(holder)
+	_pk_vs = holder
+	var bg := Panel.new()
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.offset_left = 5; bg.offset_right = -5
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.10, 0.16, 0.96)
+	sb.set_border_width_all(2)
+	sb.border_color = Color(0.55, 0.62, 0.78, 0.8)
+	sb.set_corner_radius_all(5)
+	bg.add_theme_stylebox_override("panel", sb)
+	holder.add_child(bg)
+	_pk_vs_bg = bg
+	var lab := Label.new()
+	lab.text = "VS"
+	lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lab.set_anchors_preset(Control.PRESET_FULL_RECT)
+	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lab.add_theme_font_size_override("font_size", 20)
+	lab.add_theme_color_override("font_color", Color("#ffe9a8"))
+	lab.add_theme_constant_override("outline_size", 4)
+	lab.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	holder.add_child(lab)
+	_pk_vs_lab = lab
+
+
+## 这个单位算不算进【主条】。见本节顶部注释的口径说明。
+## ★用 _isEgg 不是 egg —— 单位字典上没有 egg 这个键(见顶部注释①那个 bug)。
 func _pk_counts(u: Dictionary) -> bool:
-	if u.get("egg", false) or u.get("has_egg", false):
+	if u.get("_isEgg", false) or u.get("_eggImmune", false):
 		return false
 	if u.get("is_trainer", false):
 		return false
@@ -271,9 +517,9 @@ func _pk_counts(u: Dictionary) -> bool:
 	return true
 
 
-## 一侧的 (当前血, 开场基线用的最大生命) 之和。
-## ★用【有效阵营】_eff_side —— 赛博侵入后的单位仍按原阵营计, 与 _check_over 一致(见 7349 注释)。
-## ★禁止拿单位字典当 key / 用 == 比较(CLAUDE.md §3.2), 这里只读字段, 安全。
+## 一侧【主条】的 (当前血, 分母用的最大生命) 之和。
+## ★分母项含【已死单位】—— 死人不许改分母, 否则分子分母同缩、比例反而回升, 条往回涨。
+## ★用有效阵营 _eff_side —— 赛博侵入后仍按原阵营计, 与 _check_over 一致(见 7349 注释)。
 func _pk_sum(side: String) -> Vector2:
 	var cur := 0.0
 	var mx := 0.0
@@ -288,15 +534,30 @@ func _pk_sum(side: String) -> Vector2:
 	return Vector2(cur, mx)
 
 
-## 重扫 _units → 更新目标占比与两端数字。每 PK_SAMPLE 秒一次。
+## 一侧【龟蛋】的 (当前血, 最大生命)。蛋按 egg_side_lr 归属, 不走 _eff_side。
+## ★蛋的 hp 是【跨路累积受损值】而 maxHp 保持原始满血(见 battle_spawn 蛋段注释),
+##   所以这里直接用 hp/maxHp 就是"蛋还剩多少", 不需要自己存基线。
+func _pk_egg_sum(side: String) -> Vector2:
+	var cur := 0.0
+	var mx := 0.0
+	for u in battle._units:
+		if not u.get("_isEgg", false):
+			continue
+		if str(u.get("egg_side_lr", "")) != side:
+			continue
+		mx += maxf(0.0, float(u.get("maxHp", 0)))
+		cur += maxf(0.0, float(u.get("hp", 0)))
+	return Vector2(cur, mx)
+
+
+## 重扫 _units → 更新两条的目标比例与主条两端数字。每 PK_SAMPLE 秒一次。
 ##
-## ★换路检测: 用"计入 PK 的单位数变了"当信号。为什么可靠 ——
-##   单位死亡【不会】从 battle._units 里移除(只把 alive 置 false), 所以一路之内这个数是恒定的;
-##   而换路时 _dl_clear_units() 会清空 _units 再重新 spawn(见 dual_lane_flow:719-724), 数必然变。
-##   ★不能只在场景初始化时算一次基线 —— 全局时钟 _t 跨上路→下路→决胜一直累加(CLAUDE.md §3.4),
-##   任何"按本场"计的东西都得自己存基线, 这里同理。
+## ★换路检测: 用"计入主条的单位数变了"当信号。为什么可靠 ——
+##   单位死亡【不会】从 battle._units 里移除(只把 alive 置 false), 所以一路之内这个数恒定;
+##   换路时 _dl_clear_units() 清空 _units 再重新 spawn(dual_lane_flow:719-724), 数必然变。
+##   ★不能只在场景初始化时算一次基线 —— _t 跨上路→下路→决胜累加(CLAUDE.md §3.4)。
 func _pk_refresh() -> void:
-	if battle._pk_bar == null or not is_instance_valid(battle._pk_bar):
+	if _pk_bar == null or not is_instance_valid(_pk_bar):
 		return
 	var n := 0
 	for u in battle._units:
@@ -304,26 +565,53 @@ func _pk_refresh() -> void:
 			n += 1
 	var l := _pk_sum("left")
 	var r := _pk_sum("right")
-	if n != battle._pk_count:                  # 换路(或首次) → 重算固定分母
-		battle._pk_count = n
-		battle._pk_base_l = l.y
-		battle._pk_base_r = r.y
-		battle._pk_shown_l = 1.0               # 新一路两边都从满开始, 别从上一路的长度滑过来
-		battle._pk_shown_r = 1.0
-	# ★分母是【开场基线】而不是"当前存活单位 maxHp 之和" ——
-	#   后者会让死一只时分子分母同缩、比例反而【回升】, 条往回涨, 完全反直觉。
-	battle._pk_target_l = 0.0 if battle._pk_base_l <= 0.0 else clampf(l.x / battle._pk_base_l, 0.0, 1.0)
-	battle._pk_target_r = 0.0 if battle._pk_base_r <= 0.0 else clampf(r.x / battle._pk_base_r, 0.0, 1.0)
-	# 数字 = 当前血量绝对值(千分位); 中间 = 相对优势(谁在赢) —— 这一项才是"PK"的读数
-	battle._pk_lab_l.text = _pk_num(l.x)
-	battle._pk_lab_r.text = _pk_num(r.x)
-	var tot: float = l.x + r.x
-	var adv: float = 0.5 if tot <= 0.0 else clampf(l.x / tot, 0.0, 1.0)
-	var pct: int = int(round(adv * 100.0))
-	var arrow := "▲" if pct > 50 else ("▼" if pct < 50 else "＝")
-	battle._pk_lab_mid.text = "%s %d%%" % [arrow, pct]
-	battle._pk_lab_mid.add_theme_color_override("font_color",
-		PK_BLUE if pct > 50 else (PK_RED if pct < 50 else Color("#ffffff")))
+	if n != _pk_count:                  # 换路(或首次) → 重算固定分母 + 两条回满
+		_pk_count = n
+		_pk_base_l = l.y
+		_pk_base_r = r.y
+		_pk_shown_l = 1.0
+		_pk_shown_r = 1.0
+		_pk_trail_vl = 1.0
+		_pk_trail_vr = 1.0
+		_pk_egg_sl = 1.0
+		_pk_egg_sr = 1.0
+	_pk_target_l = 0.0 if _pk_base_l <= 0.0 else clampf(l.x / _pk_base_l, 0.0, 1.0)
+	_pk_target_r = 0.0 if _pk_base_r <= 0.0 else clampf(r.x / _pk_base_r, 0.0, 1.0)
+	_pk_lab_l.text = "%d%%" % int(round(_pk_target_l * 100.0))
+	_pk_lab_r.text = "%d%%" % int(round(_pk_target_r * 100.0))
+	_pk_lab_l2.text = _pk_num(l.x)
+	_pk_lab_r2.text = _pk_num(r.x)
+	# ── 副条: 龟蛋 ──
+	var el := _pk_egg_sum("left")
+	var er := _pk_egg_sum("right")
+	_pk_egg_tl = 0.0 if el.y <= 0.0 else clampf(el.x / el.y, 0.0, 1.0)
+	_pk_egg_tr = 0.0 if er.y <= 0.0 else clampf(er.x / er.y, 0.0, 1.0)
+	# ★没有蛋的模式(单路/评审/决胜战场)整场都不会有蛋 → 整行【隐藏】。
+	#   原来留着两条空槽挂在那儿是纯噪声。不怕"布局跳": 有没有蛋是【整路】固定的,
+	#   不会打到一半才变。
+	var has_egg: bool = (el.y > 0.0 or er.y > 0.0)
+	if _pk_egg_row != null and is_instance_valid(_pk_egg_row):
+		_pk_egg_row.visible = has_egg
+	# ★围栏未破 → 副条压暗: 此时蛋【打不到】(battle_targeting 里单体+AoE 都不锁它),
+	#   副条会一直满着不动。压暗就把"现在还打不到蛋"这个状态说出来了, 破栏后恢复全亮
+	#   —— 副条从"静止的装饰"变成有信息量的状态指示。
+	var fenced := false
+	for u in battle._units:
+		if u.get("_isEgg", false) and u.get("_egg_fence", false):
+			fenced = true
+			break
+	# ★压暗要【调暗颜色】不能用 alpha ——
+	#   半透的米黄压在深色背景上会被背景拉成【灰管子】(0.38 时最明显, 0.62 仍偏灰):
+	#   看不出蛋壳色, 也读不出"暂时打不到"。改成把 modulate 的 RGB 压到 0.58、alpha 保持 1.0,
+	#   壳色的色相就还在, 只是暗一档。
+	var k: float = 0.58 if fenced else 1.0
+	var mod := Color(k, k, k, 1.0)
+	if _pk_egg_l != null and is_instance_valid(_pk_egg_l):
+		_pk_egg_l.modulate = mod
+		_pk_egg_r.modulate = mod
+	for ic in _pk_egg_icons:
+		if is_instance_valid(ic):
+			ic.modulate = mod
 
 
 ## 千分位。1234 → "1,234"
@@ -339,34 +627,116 @@ func _pk_num(v: float) -> String:
 	return out
 
 
-## 把两侧比例画成两段填充: 蓝占左半从左端往中间长, 红占右半从右端往中间长。
-## 中间露出的暗缝(底 Panel) = 双方已损失的总量, 缝的中点偏向哪边说明哪边吃亏更多。
-func _pk_apply(fl: float, fr: float) -> void:
-	if battle._pk_fill_l == null or not is_instance_valid(battle._pk_fill_l):
+## 把当前显示值画成两段的填充宽度(含残影)。
+## ★左段贴【外侧左端】往右长, 右段贴【外侧右端】往左长 —— 掉血时从【内端】(靠中间那侧)
+##   往外退, 露出自己框内的暗槽。这是格斗游戏的读法; 第一版是"一条长条中间开缝",
+##   会被读成"从中心掉血"(用户 2026-07-30 指出)。
+func _pk_apply() -> void:
+	if _pk_fill_l == null or not is_instance_valid(_pk_fill_l):
 		return
-	var inner: float = maxf(0.0, PK_W - 4.0)      # 减掉 2px 边框×2
-	var half: float = inner * 0.5
-	var lw: float = clampf(fl, 0.0, 1.0) * half
-	var rw: float = clampf(fr, 0.0, 1.0) * half
+	var inner: float = PK_SEG - 4.0        # 减掉 2px 边框×2
 	var h: float = PK_H - 4.0
-	battle._pk_fill_l.position = Vector2(2, 2)
-	battle._pk_fill_l.size = Vector2(lw, h)
-	battle._pk_fill_r.position = Vector2(2.0 + inner - rw, 2)
-	battle._pk_fill_r.size = Vector2(rw, h)
+	_pk_put(_pk_trail_l, true, _pk_trail_vl, inner, h, 2.0)
+	_pk_put(_pk_fill_l, true, _pk_shown_l, inner, h, 2.0)
+	_pk_put(_pk_trail_r, false, _pk_trail_vr, inner, h, 2.0)
+	_pk_put(_pk_fill_r, false, _pk_shown_r, inner, h, 2.0)
+	var eh: float = PK_EGG_H - 4.0
+	var ey: float = PK_H + PK_EGG_GAP + 2.0
+	_pk_put(_pk_egg_l, true, _pk_egg_sl, inner, eh, ey)
+	_pk_put(_pk_egg_r, false, _pk_egg_sr, inner, eh, ey)
 
 
-## 每帧驱动: 逐帧平滑两侧长度 + 每 PK_SAMPLE 秒重扫一次 _units。
+## 放一条填充。left=true 贴外侧左端; false 贴外侧右端。
+func _pk_put(cr: ColorRect, left: bool, frac: float, inner: float, h: float, y: float) -> void:
+	if cr == null or not is_instance_valid(cr):
+		return
+	var w: float = clampf(frac, 0.0, 1.0) * inner
+	if left:
+		cr.position = Vector2(2.0, y)
+	else:
+		cr.position = Vector2(PK_SEG + PK_VS + 2.0 + (inner - w), y)
+	cr.size = Vector2(w, h)
+	_pk_slant_size(cr, cr.size)     # ★宽度变了要重喂, 否则斜边角度跟着宽度变形
+
+
+## 每帧驱动: 平滑两条填充 + 残影追赶 + VS 徽标三种动态 + 每 PK_SAMPLE 秒重扫 _units。
 ## 由 battle_render._render_step 调用(渲染路, 不进 sim → 不影响确定性)。
 func _pk_tick(delta: float) -> void:
-	if battle._pk_bar == null or not is_instance_valid(battle._pk_bar):
+	if _pk_bar == null or not is_instance_valid(_pk_bar):
 		return
-	battle._pk_acc += delta
-	if battle._pk_acc >= PK_SAMPLE:
-		battle._pk_acc = 0.0
+	_pk_acc += delta
+	if _pk_acc >= PK_SAMPLE:
+		_pk_acc = 0.0
 		_pk_refresh()
-	battle._pk_shown_l = _pk_ease(battle._pk_shown_l, battle._pk_target_l, delta)
-	battle._pk_shown_r = _pk_ease(battle._pk_shown_r, battle._pk_target_r, delta)
-	_pk_apply(battle._pk_shown_l, battle._pk_shown_r)
+	# 主条填充 + 残影。掉血瞬间: 填充先退, 残影留在原位再慢慢追 → 看得出"刚掉了这一段"
+	var pl: float = _pk_shown_l
+	var pr: float = _pk_shown_r
+	_pk_shown_l = _pk_ease(_pk_shown_l, _pk_target_l, delta)
+	_pk_shown_r = _pk_ease(_pk_shown_r, _pk_target_r, delta)
+	if _pk_shown_l < pl - 0.0001:
+		_pk_hit_l = 1.0                   # 左方掉血 → 触发脉冲
+	if _pk_shown_r < pr - 0.0001:
+		_pk_hit_r = 1.0
+	_pk_trail_vl = maxf(_pk_shown_l,
+		_pk_lerp_to(_pk_trail_vl, _pk_shown_l, delta * PK_TRAIL_SMOOTH))
+	_pk_trail_vr = maxf(_pk_shown_r,
+		_pk_lerp_to(_pk_trail_vr, _pk_shown_r, delta * PK_TRAIL_SMOOTH))
+	_pk_egg_sl = _pk_ease(_pk_egg_sl, _pk_egg_tl, delta)
+	_pk_egg_sr = _pk_ease(_pk_egg_sr, _pk_egg_tr, delta)
+	_pk_apply()
+	# 脉冲衰减
+	_pk_hit_l = maxf(0.0, _pk_hit_l - delta * PK_HIT_DECAY)
+	_pk_hit_r = maxf(0.0, _pk_hit_r - delta * PK_HIT_DECAY)
+	_pk_low_tick()
+	_pk_vs_tick(delta)
+
+
+## 低血量警示: 低于 PK_LOW 时该侧填充开始明暗闪烁, 越低闪得越狠。
+## ★为什么要有: 第一版 5% 和 95% 除了【长度】没有任何区别 —— 而血条的标准语言
+##   就是"快没了要喊一声"。闪烁用相位算(不用 tween), 结算后停(和 VS 呼吸同理)。
+func _pk_low_tick() -> void:
+	if _pk_fill_l == null or not is_instance_valid(_pk_fill_l):
+		return
+	_pk_fill_l.modulate = _pk_low_mod(_pk_shown_l)
+	_pk_fill_r.modulate = _pk_low_mod(_pk_shown_r)
+
+
+func _pk_low_mod(frac: float) -> Color:
+	if battle._settled or frac >= PK_LOW or frac <= 0.0:
+		return Color.WHITE
+	# 越接近 0 闪得越狠(幅度 0.18 → 0.42)
+	var sev: float = 1.0 - clampf(frac / PK_LOW, 0.0, 1.0)
+	var amp: float = lerpf(0.18, 0.42, sev)
+	var k: float = 1.0 + sin(_pk_phase * TAU * PK_LOW_HZ) * amp
+	return Color(k, k, k, 1.0)
+
+
+## VS 徽标: ①呼吸 ②优势方染色 ③受伤脉冲。全按相位算, 不用 tween。
+func _pk_vs_tick(delta: float) -> void:
+	if _pk_vs == null or not is_instance_valid(_pk_vs):
+		return
+	# ★结算后停掉呼吸: _pk_tick 走的是渲染路, 结算屏上它照跑 —— 那个 VS 会在结果画面上
+	#   一直一呼一吸, 很吵。停在中性尺寸(而不是停在某个呼吸相位上)。
+	if battle._settled:
+		_pk_vs.scale = Vector2.ONE
+		return
+	_pk_phase = fmod(_pk_phase + delta, 1000.0)
+	var hit: float = maxf(_pk_hit_l, _pk_hit_r)
+	# ① 呼吸(±3%) + ③ 受伤时额外弹一下
+	var s: float = 1.0 + sin(_pk_phase * 2.4) * 0.03 + hit * 0.16
+	_pk_vs.scale = Vector2(s, s)
+	# ② 优势方染色: 谁的剩余比例高就往谁的颜色偏 (不用数字也读得出谁占优)
+	# ★染色系数第一版给太小: 蓝方只剩 111、紫方 1,719 时徽标才微微偏色, 读不出优势方。
+	#   ×0.5 → ×1.4 并钳到 [0,1], 差 0.36 就能吃满 → 优势明显时徽标就明显偏色。
+	var adv: float = clampf(0.5 + (_pk_shown_l - _pk_shown_r) * 1.4, 0.0, 1.0)
+	var tint: Color = PK_RED.lerp(PK_BLUE, adv)
+	var sb: StyleBoxFlat = _pk_vs_bg.get_theme_stylebox("panel") as StyleBoxFlat
+	if sb != null:
+		# 受伤脉冲: 边框与底片亮一下
+		sb.border_color = tint.lerp(Color.WHITE, 0.10 + hit * 0.55)
+		sb.bg_color = Color(0.08, 0.10, 0.16, 0.96).lerp(tint, 0.38 + hit * 0.34)
+	_pk_vs_lab.add_theme_color_override("font_color",
+		Color("#ffe9a8").lerp(Color.WHITE, hit))
 
 
 ## 向目标平滑一步; 收敛就【吸附】—— 否则无限逼近会永远留半像素缝。
@@ -375,6 +745,11 @@ func _pk_ease(cur: float, target: float, delta: float) -> float:
 	if absf(d) < 0.0008:
 		return target
 	return cur + d * clampf(delta * PK_SMOOTH, 0.0, 1.0)
+
+
+## 残影专用: 只朝目标靠近(不吸附), 由调用方用 maxf 保证不低于填充。
+func _pk_lerp_to(cur: float, target: float, k: float) -> float:
+	return cur + (target - cur) * clampf(k, 0.0, 1.0)
 
 
 ## HUD 小按钮统一样式: 半透明深底 + 圆角 + hover 高亮.
