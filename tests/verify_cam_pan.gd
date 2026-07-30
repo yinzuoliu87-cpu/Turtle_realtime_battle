@@ -38,8 +38,8 @@ func _ready() -> void:
 	_test_zoom_anchor_follows_pan(s)
 	_test_no_direct_position_write()
 	_test_drag_vs_click()
-	await _test_pan_while_paused(s)
-	_test_pause_clears_drag_state(s)
+	_test_pause_path_gone(s)
+	_test_dialog_clears_drag_state(s)
 	await _test_touch_not_doubled(s)
 	await _test_no_pan_without_button(s)
 	await _test_pinch_release_resets_anchor(s)
@@ -176,48 +176,49 @@ func _assert_not_saturated(what: String, v: float) -> void:
 		"%.4f (上限 %.1f)" % [v, RTScene.PAN_LIMIT])
 
 
-## ★暂停中必须还能拖动看战场
-func _test_pan_while_paused(s) -> void:
-	var vp := get_viewport()
-	s._cam_pan_reset()
-	_mouse_drag(vp)
-	await get_tree().process_frame
-	var run: float = s._cam_pan.length()
-	_assert_not_saturated("基准拖动量", run)
-	s._toggle_pause()
-	await get_tree().process_frame
-	_ok("暂停确实生效(主场景 can_process=false)", not s.can_process(),
-		"若这条是 true, 下面那条就是假绿灯")
-	s._cam_pan_reset()
-	_mouse_drag(vp)
-	await get_tree().process_frame
-	var pau: float = s._cam_pan.length()
-	_ok("★暂停中仍能拖动镜头(测试人员:「点暂停键鼠标似乎也无法拖动」)",
-		pau > 0.001, "暂停中拖动量 %.4f (未暂停 %.4f)" % [pau, run])
-	_ok("★暂停中的平移速度与平时一致(中继不能与主路双份处理→2倍速)",
-		absf(pau - run) < 0.001, "暂停 %.4f vs 平时 %.4f" % [pau, run])
-	get_tree().paused = false
-	await get_tree().process_frame
-	s._cam_pan_reset()
-	_mouse_drag(vp)
-	await get_tree().process_frame
-	_ok("★恢复后速度也没被中继翻倍",
-		absf(s._cam_pan.length() - run) < 0.001,
-		"恢复后 %.4f vs 平时 %.4f" % [s._cam_pan.length(), run])
+## ★暂停路径整条消失(用户 2026-07-30:「局内不再有退出去或暂停的按钮了」)。
+##
+## 原来这里是 `_test_pan_while_paused` —— 守"暂停中仍能拖镜头"(测试人员 2026-07-22
+## 「点暂停键鼠标似乎也无法拖动」), 靠一个 ALWAYS 的 _CamInputRelay 转发实现。
+## 暂停移除后那个中继成了死代码、已删, 于是这条测试的【前提】不存在了。
+##
+## ★不是删掉了断言, 而是换成反向断言 —— 删掉的话, 以后谁把暂停/中继加回来都没人知道。
+## 同时守住"没有用错方式修复"这件事: 主场景 process_mode 必须仍是 INHERIT。
+## 若哪天为了别的原因把整场景改成 ALWAYS, 战斗 tick 在暂停中照跑, 暂停就彻底失效。
+func _test_pause_path_gone(s) -> void:
+	var src := _src()
+	_ok("★_toggle_pause 已移除", not s.has_method("_toggle_pause"))
+	_ok("★_CamInputRelay 内部类已移除(它只为暂停存在)",
+		not src.contains("class _CamInputRelay extends Node:"))
+	_ok("★主场景 process_mode 仍是 INHERIT(没有为了绕暂停而整场改 ALWAYS)",
+		s.process_mode == Node.PROCESS_MODE_INHERIT,
+		"实际 %d" % s.process_mode)
+	# _cam_handle_input 保持独立函数 —— 中继虽删, 拆分要留着, 将来加回暂停能直接接上
+	_ok("★相机输入仍是独立函数 _cam_handle_input(将来加回暂停可直接接中继)",
+		s.has_method("_cam_handle_input"))
 
 
-## ★暂停要清掉拖动脏态: 暂停若发生在拖动中途, release 永远收不到
-func _test_pause_clears_drag_state(s) -> void:
+## ★"打断"发生在拖动中途时要清掉拖动脏态: release 事件永远收不到, _pan_active 会
+##   带着 true 活到之后 → 表现为【手指松开了镜头还在跑】。
+##
+## 原来的打断源是【暂停】(_toggle_pause 里清); 2026-07-30 暂停移除后, 新的打断源是
+## 【投降确认框的暗幕】—— 它 MOUSE_FILTER_STOP 会吃掉 release, 与暂停完全同形。
+## 所以那段清脏态逻辑没有随暂停消失, 只是搬成了 _clear_input_dirty() 并换了调用者。
+## 这条测试的判据一个都没丢, 只是换了触发方式。
+func _test_dialog_clears_drag_state(s) -> void:
 	s._pan_active = true
 	s._pan_moved = true
 	s._touch_pts[0] = Vector2(10, 10)
 	s._pinch_prev = 123.0
-	s._toggle_pause()
-	_ok("★暂停清掉 _pan_active(否则恢复后不按键镜头也在跑)", not s._pan_active)
-	_ok("★暂停清掉 _pan_moved", not s._pan_moved)
-	_ok("★暂停清掉多点触摸表", s._touch_pts.is_empty(), "剩 %d 点" % s._touch_pts.size())
-	_ok("★暂停重置捏合基线", s._pinch_prev < 0.0, "%.1f" % s._pinch_prev)
-	s._toggle_pause()
+	s._show_surrender_confirm()      # 弹投降确认框 = 新的"打断"
+	_ok("★开投降框清掉 _pan_active(否则松手后镜头还在跑)", not s._pan_active)
+	_ok("★开投降框清掉 _pan_moved", not s._pan_moved)
+	_ok("★开投降框清掉多点触摸表", s._touch_pts.is_empty(), "剩 %d 点" % s._touch_pts.size())
+	_ok("★开投降框重置捏合基线", s._pinch_prev < 0.0, "%.1f" % s._pinch_prev)
+	# 收框也要清(点取消时可能又在拖)
+	s._pan_active = true
+	s._hide_surrender_confirm()
+	_ok("★收投降框也清脏态", not s._pan_active)
 	get_tree().paused = false
 
 

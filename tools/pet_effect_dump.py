@@ -15,6 +15,7 @@
     python tools/pet_effect_dump.py ice                  # 单只龟
     python tools/pet_effect_dump.py headless:灵魂打击      # 单个技能
     python tools/pet_effect_dump.py --diff               # 只列【代码有但文案没写】的
+    python tools/pet_effect_dump.py --trainer            # 训龟大师 7 技(魔法石+6主动)
 
 输出里 ⚠ 标记的 = 该效果在玩家文案里【找不到对应关键词】。
   它可能是"忘了写"(该补), 也可能是"故意不给玩家看"(实现细节)——
@@ -38,6 +39,9 @@ def P(x=''):
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     only_diff = '--diff' in sys.argv
+    if '--trainer' in sys.argv:
+        _trainer_main()
+        return
 
     d = json.load(io.open('data/pets.json', encoding='utf-8'))
     arr = d if isinstance(d, list) else next(v for v in d.values() if isinstance(v, list))
@@ -108,6 +112,86 @@ def main():
       % (n_eff, n_warn, n_skip))
     P('   ⚠ = 玩家文案里找不到对应关键词。是"该补"还是"故意隐藏", 见'
       ' pet_number_audit.py 的 HIDDEN 表。')
+    OUT.flush()
+
+
+def _trainer_desc(cfg, sid):
+    """从 TrainerConfigScene.SKILLS 里取某技的玩家文案。
+    ★按 id 切块再找 desc, 不用跨字段的大正则 —— 那个正则要同时处理转义引号和
+      跨行, 我第一版写出来七个技能全部匹配失败(而且失败得很安静)。"""
+    key = '{"id": "%s"' % sid
+    i = cfg.find(key)
+    if i < 0:
+        return ''
+    j = cfg.find('},', i)
+    chunk = cfg[i: j if j > i else len(cfg)]
+    k = chunk.find('"desc":')
+    if k < 0:
+        return ''
+    seg = chunk[k + len('"desc":'):].strip()
+    if not seg.startswith('"'):
+        return ''
+    out = []
+    esc = False
+    for ch in seg[1:]:
+        if esc:
+            out.append(ch); esc = False; continue
+        if ch == chr(92):
+            esc = True; continue
+        if ch == '"':
+            break
+        out.append(ch)
+    return ''.join(out)
+
+
+def _trainer_main():
+    """训龟大师 7 技的代码真实效果清单 (用户 2026-07-30 需求3)。
+
+    ★口径与 28 龟那边一致: 【读代码不读文案】。文案在 TrainerConfigScene.SKILLS[].desc;
+      方向①(文案里的数字能不能从代码常量推出来)已由 verify_trainer_desc 守着,
+      这里产出的是方向②的输入 —— 代码里到底有哪些效果。
+    """
+    src = S.load_src()
+    cfg = src.get('scripts/scenes/TrainerConfigScene.gd', '')
+    n_eff = 0
+    n_warn = 0
+    n_missing = 0
+    for sid, chain in S.TRAINER_SKILLS.items():
+        text = _trainer_desc(cfg, sid)
+        P('== %s (%s)' % (S.TRAINER_CN.get(sid, sid), sid))
+        if text == '':
+            P('   [!] TrainerConfigScene.SKILLS 里找不到 id=%s 的 desc(或为空)' % sid)
+        effs = []
+        seen_line = set()
+        for fname in chain:
+            path, e = S.effects_of(src, fname)
+            if path is None:
+                n_missing += 1
+                P('   [!] 链上的函数 %s() 不存在 -- 改名/搬家了, TRAINER_SKILLS 该改' % fname)
+                continue
+            P('   %-24s %s' % (fname + '()', path))
+            for row in e:
+                if row[1] in seen_line:
+                    continue
+                seen_line.add(row[1])
+                effs.append((fname, row[1], row[2]))
+        cur = None
+        for fn, line, cat in effs:
+            words = S.CATEGORY_WORDS.get(cat)
+            shown = True if words is None else any(w in text for w in words)
+            n_eff += 1
+            if not shown:
+                n_warn += 1
+            if fn != cur:
+                P('   -- %s()' % fn)
+                cur = fn
+            P('      %s %s' % ('  ' if shown else 'X ', line))
+        if not effs:
+            P('   (抽不到效果 -- 效果多在延时回调/逐帧状态机里, 见 pet_code_scope 局限)')
+        P('')
+    P('-- 合计: %d 技 / 效果 %d 条 / 文案未提 %d 条 / 链上函数失踪 %d 个'
+      % (len(S.TRAINER_SKILLS), n_eff, n_warn, n_missing))
+    P('   X = 玩家文案(TrainerConfigScene.SKILLS[].desc)里找不到对应关键词')
     OUT.flush()
 
 

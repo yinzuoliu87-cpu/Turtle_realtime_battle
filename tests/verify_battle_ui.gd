@@ -1,11 +1,15 @@
 extends Node
-## verify_battle_ui.gd — 守卫 R2a/R2b: 战斗内 UX (结束按钮化 / 暂停 / 战斗日志)
+## verify_battle_ui.gd — 守卫 R2a/R2b: 战斗内 UX (结束按钮化 / 投降 / 战斗日志)
 ## 用户〖2026-07-11〗:「战斗结束不要什么点R/ESC, 要按钮的形式, 暂停, ...日志等都通吗」
+## 用户〖2026-07-30〗:「战斗日志按钮移除掉，暂停按钮移除掉，局内不再有退出去或暂停的按钮了，
+##   新增投降按钮，点击后有确认认输的提示框」→ A 组从"暂停"改为"投降 + 暂停不许回来"。
 ##
 ## 断言(功能层, 像素布局仍需 F5 眼验):
-##   A. 暂停按钮/面板已建; _toggle_pause 切 get_tree().paused + 面板显隐; _settled 后不响应。
+##   A. ★暂停按钮/面板/开关【必须不存在】(反向断言 —— 不是删掉旧断言, 否则谁加回来都没人知道);
+##      投降按钮/确认框已建; 弹框→取消不结算 / 弹框→确认走判负三件套; _settled 后不响应。
 ##   B. 战斗日志 _log 追加 + 封顶 _LOG_CAP(200); _toggle_log 显隐面板且开时重建文本。
-##   C. 结算 _show_banner 生成 2 个操作 Button(再战/返回菜单), 且结算后暂停按钮被禁。
+##      （U3: 只删了 📜 按钮, _log()/面板/_toggle_log 全保留 —— 所以本组照旧。）
+##   C. 结算 _show_banner 生成 2 个操作 Button(再战/返回菜单), 且结算后【投降】按钮被禁。
 ##
 ## ★注意: 测试根节点 process_mode=ALWAYS, 且结尾复位 paused=false(否则暂停态会冻住后续 await)。
 
@@ -45,20 +49,40 @@ func _ready() -> void:
 	scene.set_process(false)
 	scene.set_physics_process(false)
 
-	# ── A. 暂停 ──
-	_ok("暂停按钮已建", scene._pause_btn != null)
-	_ok("暂停面板已建且默认隐藏", scene._pause_panel != null and not scene._pause_panel.visible)
-	scene._toggle_pause()
-	_ok("暂停开: get_tree().paused=true", get_tree().paused == true)
-	_ok("暂停开: 面板显示", scene._pause_panel.visible == true)
-	scene._toggle_pause()
-	_ok("暂停关: get_tree().paused=false", get_tree().paused == false)
-	_ok("暂停关: 面板隐藏", scene._pause_panel.visible == false)
+	# ── A. 投降(取代暂停) ──
+	# ★反向断言: 暂停的三件东西【一个都不许再出现】。
+	#   写成"不存在"而不是把旧断言删掉 —— 删掉的话, 以后谁把暂停加回来, 门禁一声不响。
+	_ok("★暂停按钮字段不存在", not ("_pause_btn" in scene))
+	_ok("★暂停面板字段不存在", not ("_pause_panel" in scene))
+	_ok("★_toggle_pause 已移除", not scene.has_method("_toggle_pause"))
+	_ok("★_CamInputRelay 内部类已移除(它只为暂停存在)",
+		not FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd").contains("class _CamInputRelay extends Node:"))
+	# 投降按钮 + 确认框
+	_ok("投降按钮已建", scene._surrender_btn != null)
+	_ok("投降确认框已建且默认隐藏",
+		scene._surrender_panel != null and not scene._surrender_panel.visible)
+	scene._show_surrender_confirm()
+	_ok("点投降: 确认框弹出", scene._surrender_panel.visible == true)
+	# ★弹框【不暂停】战斗(U6: 用户说"不再有暂停")
+	_ok("★弹框期间战斗没被暂停", get_tree().paused == false)
+	# 取消 = 什么都不发生
+	scene._hide_surrender_confirm()
+	_ok("点取消: 确认框收起", scene._surrender_panel.visible == false)
+	_ok("★点取消【不】结算(_over 仍 false)", scene._over == false)
+	_ok("★点取消【不】结算(_settled 仍 false)", scene._settled == false)
+	# 确认认输 = 判负三件套(_over / 喂赛季 / 显横幅)
+	scene._show_surrender_confirm()
+	scene._do_surrender()
+	await get_tree().process_frame
+	_ok("★点确认认输: _over=true(判负)", scene._over == true)
+	_ok("★点确认认输: 确认框已收起", scene._surrender_panel.visible == false)
+	_ok("★点确认认输: 走了横幅路径(_settled=true)", scene._settled == true)
 	# _settled 后不响应
-	scene._settled = true
-	scene._toggle_pause()
-	_ok("结算后暂停按钮不响应(paused 仍 false)", get_tree().paused == false)
+	scene._surrender_panel.visible = false
+	scene._show_surrender_confirm()
+	_ok("★结算后点投降不响应(框不弹)", scene._surrender_panel.visible == false)
 	scene._settled = false
+	scene._over = false
 
 	# ── B. 战斗日志 ──
 	scene._battle_log.clear()
@@ -105,7 +129,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	var btns := _count_buttons(scene._ui_layer)
 	_ok("结算后 UI 层有操作按钮(再战/返回菜单等 ≥2)", btns >= 2, "共 %d 个 Button" % btns)
-	_ok("结算后暂停按钮被禁", scene._pause_btn.disabled == true)
+	_ok("结算后投降按钮被禁", scene._surrender_btn.disabled == true)
 
 	# 复位, 防暂停态影响
 	get_tree().paused = false
@@ -116,7 +140,7 @@ func _done() -> void:
 	get_tree().paused = false
 	print("")
 	if _fail == 0:
-		print("ALL PASS — 战斗内 UX(结束按钮/暂停/日志) 功能守卫通过")
+		print("ALL PASS — 战斗内 UX(结束按钮/投降/日志) 功能守卫通过")
 	else:
 		print("FAIL x", _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

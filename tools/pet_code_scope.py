@@ -50,6 +50,48 @@ def dispatch_map(src):
             for m in re.finditer(r'"([a-zA-Z]+)":\s*(?:_[a-z_0-9]+\.)?(_sk_[a-z_0-9]+)', rb)}
 
 
+## 训龟大师技能 → 实现入口函数(2026-07-30 需求3「训龟大师的每一个技能效果和特效需要审核一边」)。
+##
+## ★为什么要手写这张表, 不像龟那样从 match 分派表自动抓 ——
+##   大师的分派是 trainer_system._cast_active 里的 match, 但六个主动【分散在两个文件】:
+##   hook/hunt_order/tame 在 trainer_system.gd, fury_potion/whistle/glacier 在主文件
+##   (battle._cast_*)。func_scope 只跟【同文件】的 _xxx 子函数, 跨文件跟不进去,
+##   所以入口必须显式指定, 才不会把三个漏成"效果 0 条"。
+##
+## ★魔法石是【被动】不是主动: 它不进 _cast_active, 走的是普攻路径
+##   (trainer_system._tick_trainer_attacks 里判 _tr_passive == "magic_stone")。
+##
+## ★值是【一条函数链】而不是单个入口。为什么(探针实测出来的, 不是设计洁癖):
+##   六个主动里有三个的入口是主文件里的【薄包装】—— 例如 _cast_glacier 只往
+##   _glacier_zones 塞一个区域字典就返回了, 真正的"-40%移速 / 受伤+20%"在
+##   trainer_system._tick_glaciers 里逐帧施加。func_scope 只跟【同文件】子函数,
+##   所以只给入口的话这三个技能会显示"效果 0 条" —— 我第一版正是这样, 七个技能
+##   抽出来一共 0 条效果, 看着像"大师没有任何效果"。
+##   链里每一环都由 verify_trainer_audit 断言【函数真的存在】, 改名/搬家会红。
+TRAINER_SKILLS = {
+    # 被动: 普攻钩里判 _tr_passive → 石头弹道(battle_ballistics) → 到点 _trainer_magicstone_onhit 结算
+    'magic_stone': ['_tick_trainer_attacks', '_fire_trainer_rock', '_trainer_magicstone_onhit'],
+    # 钩锁: 入口→到达回调 _hook_grab(眩晕/易伤) + 逐帧 _tick_hooks(一段段拽)
+    'hook':        ['_cast_hook', '_hook_grab', '_tick_hooks'],
+    # 怒火药水: 入口(主文件·薄包装) → 落地回调施三 buff(trainer_system)
+    'fury_potion': ['_cast_fury_potion', '_fury_apply_buffs'],
+    # 口哨: 入口三选一 → 临时血 / 灵体气波 / 狂暴
+    'whistle':     ['_cast_whistle', '_whistle_temphp', '_apply_temp_maxhp',
+                    '_whistle_spirit_wave', '_whistle_berserk', '_whistle_berserk_on'],
+    # 冰川: 入口只登记区域 → 效果全在逐帧 _tick_glaciers
+    'glacier':     ['_cast_glacier', '_tick_glaciers'],
+    # 猎龟令: 入口只发锁头弹道 → 到达回调 _hunt_mark 打标记 → 逐帧 _hunt_taunt_tick 刷嘲讽
+    'hunt_order':  ['_cast_hunt_order', '_hunt_mark', '_tick_hunt_taunt'],
+    # 驯服: 入口发弹道 → _tame_mark 打标记 → 死亡时改判归顺 → 逐帧 _tick_tame_decay 掉血
+    'tame':        ['_cast_tame', '_tame_mark', '_tick_tame_decay'],
+}
+
+TRAINER_CN = {
+    'magic_stone': '魔法石(被动)', 'hook': '钩锁', 'fury_potion': '怒火药水',
+    'whistle': '口哨', 'glacier': '冰川', 'hunt_order': '猎龟令', 'tame': '驯服',
+}
+
+
 def _one_body(s, fname):
     m = re.search(r'^func ' + re.escape(fname) + r'\(', s, re.M)
     if not m:
@@ -99,6 +141,32 @@ def expand_consts(text, consts):
     return text
 
 
+def battle_consts(src):
+    """主战斗文件里的数值常量表。给下面 expand_cross 用。"""
+    rb = src.get('scripts/scenes/RealtimeBattle3DScene.gd', '')
+    return {m.group(1): m.group(2)
+            for m in re.finditer(r'^const ([A-Z][A-Z0-9_]*)\s*:?=\s*([\d.]+)', rb, re.M)}
+
+
+def expand_cross(text, bc):
+    """把 `battle.CONST` 形式的【跨文件】常量替换成数值。
+
+    ★2026-07-30 加这个的原因(探针实测, 不是猜的): 训龟大师 7 技的 dump 一开始
+      【七个全是"效果 0 条"】。探针打出 _hook_grab 的函数体, 看到的是
+        battle._damage._stun(target, battle.HOOK_STUN, "hook")
+      —— 数值是 battle.HOOK_STUN, 常量定义在主文件, 而 trainer_system.gd 自己
+      【一个 const 都没有】, 所以 expand_consts(只展开同文件)什么也换不掉,
+      EFFECT_RULES 里要求数字字面量的规则就全部落空。
+      这正是本模块注释里写着的"跨文件常量抽不到"那条局限, 现在补掉。
+
+    ★只替换带 `battle.` 前缀的形式, 不做裸名替换 —— 裸名替换会把主文件的常量
+      名字硬塞进各龟系统文件的文本里, 可能误改到同名的局部标识符。
+    """
+    for k, v in bc.items():
+        text = text.replace('battle.' + k, v)
+    return text
+
+
 ## 代码效果 → 人话。每条 = (正则, 格式化函数, 效果类别)
 ## 类别用于「代码→文案」对账: 文案里必须出现该类别的任一关键词, 或登记进 HIDDEN。
 EFFECT_RULES = [
@@ -141,6 +209,26 @@ EFFECT_RULES = [
          '(百分比)' if m.group(3) == 'true' else '(定值)', m.group(4)), 'buff'),
     (r'_add_stack\([^,]+,\s*"([a-z]+)",\s*([\d]+),\s*([\d]+)',
      lambda m: '叠层 %s +%s (上限 %s)' % (m.group(1), m.group(2), m.group(3)), 'stack'),
+    # ── 以下是【训龟大师】那套写法(2026-07-30 需求3 加的) ───────────────────────
+    # ★大师的效果基本【不走 _stun/_buff 这些函数】, 而是直接写单位字段, 数值再由
+    #   _mitigate_incoming / 移动结算 那边读。所以龟那套规则一条都对不上 ——
+    #   第一版七技抽出来一共 0 条效果, 看着像"大师没有任何效果"。
+    (r'haste_mult"\]\s*=\s*([\d.]+)',
+     lambda m: '攻速 ×%s' % m.group(1), 'aspd'),
+    (r'move_buff_mult"\]\s*=\s*([\d.]+)',
+     lambda m: '移速 ×%s' % m.group(1), 'haste'),
+    (r'echarge_mult"\]\s*=\s*([\d.]+)',
+     lambda m: '龟能充能 ×%s' % m.group(1), 'echarge'),
+    (r'slow_mag"\]\s*=\s*([\d.]+)',
+     lambda m: '减速至 ×%s' % m.group(1), 'slow'),
+    # 易伤: 只写"到什么时候", 倍率是另一个常量(HOOK_VULN/HUNT_VULN/…), 在 _mitigate_incoming 读。
+    # 所以这里只报"有易伤", 具体倍率靠人工/verify_trainer_desc 核 —— 不假装抽到了倍率。
+    (r'([a-z_]*)vuln_until"\]\s*=',
+     lambda m: '易伤(受伤加成·倍率在 _mitigate_incoming 里读)', 'vuln'),
+    (r'hunt_until"\]\s*=\s*[^+]*\+\s*([\d.]+)',
+     lambda m: '猎龟令标记 %s 秒' % m.group(1), 'mark'),
+    (r'tame_pending"\]\s*=\s*true',
+     lambda m: '驯服标记(死亡时改判归顺而非真死)', 'tame'),
 ]
 
 ## 效果类别 → 文案里应出现的任一关键词
@@ -164,6 +252,12 @@ CATEGORY_WORDS = {
     'ccimm': ['免疫控制', '免控', '霸体'],
     'slow':  ['减速', '移速', '移动速度'],
     'stack': ['层', '印记', '标记'],
+    # ── 训龟大师那几类(2026-07-30) ──
+    'aspd':    ['攻速', '攻击速度'],
+    'echarge': ['龟能充能', '充能', '龟能'],
+    'vuln':    ['受伤', '易伤', '承受', '受到伤害'],
+    'mark':    ['锁定', '标记', '猎'],
+    'tame':    ['归顺', '驯服', '重生', '不真死'],
 }
 
 
@@ -172,10 +266,11 @@ def effects_of(src, fname, depth=2):
     path, bodies, consts = func_scope(src, fname, depth)
     if bodies is None:
         return None, []
+    bc = battle_consts(src)
     out = []
     seen = set()
     for fn, body in bodies:
-        t = expand_consts(body, consts)
+        t = expand_consts(expand_cross(body, bc), consts)
         for pat, fmt, cat in EFFECT_RULES:
             for m in re.finditer(pat, t):
                 try:

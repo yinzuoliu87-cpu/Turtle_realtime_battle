@@ -279,7 +279,7 @@ func _ready() -> void:
 	bt.set_physics_process(false)
 	var bad_d := _offscreen_buttons(bt, vp_real)
 	_ok("战斗HUD按钮全在屏内", bad_d.is_empty(), "; ".join(bad_d) if not bad_d.is_empty() else "")
-	_ok("暂停按钮已建", bt._pause_btn != null)
+	_ok("投降按钮已建(原暂停位·用户2026-07-30 移除暂停)", bt._surrender_btn != null)
 	bt.queue_free()
 	await get_tree().process_frame
 

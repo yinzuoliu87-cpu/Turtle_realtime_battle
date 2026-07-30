@@ -598,8 +598,26 @@ var _aim_ind: Dictionary = {}             # R2 瞄准指示器持久节点(band/
 var _q_aiming: bool = false               # R2 PC 按住 Q 瞄准中(松开释放·指示器跟随鼠标)
 var _tutorial: Node = null                # 新手引导实例(GameState.tutorial 才建); null=不在教程里
 var _tut_place_shown: bool = false        # 教学 match1: 摆位引导只挂一次(首路), 别每路都弹
-var _pause_panel: Control = null          # 暂停浮层(继续/重开/返回菜单), 默认隐; process_mode ALWAYS 保证暂停中可交互
-var _pause_btn: Button = null
+var _surrender_panel: Control = null      # 投降确认浮层(取消/确认认输), 默认隐; 取代原暂停浮层(用户2026-07-30)
+var _surrender_btn: Button = null          # 🏳 投降按钮(原 ⏸ 暂停位); 结算后 disabled
+# ── 顶部双方总血量 PK 条(用户2026-07-30 需求1·方案书 20260730b·中央对撞版式) ──
+# ★计入口径由用户拍板: 【龟统领 + 小将】—— 不含龟蛋(atk/def/mr 全 0 的纯血包·算进去
+#   会让"龟死光了条还是满的")、不含训龟大师(500血/1攻/站着不动·是噪声)、不含召唤体
+#   (与 _check_over 的胜负判定同口径, 见 7348 行)。判据焊死在 verify_battle_hud_r1。
+var _pk_bar: Control = null
+var _pk_fill_l: ColorRect = null           # 蓝(左队)从左往右涨
+var _pk_fill_r: ColorRect = null           # 红(右队)从右往左涨; 接缝位置 = 左方血量占比
+var _pk_lab_l: Label = null
+var _pk_lab_r: Label = null
+var _pk_lab_mid: Label = null
+var _pk_base_l: float = 0.0                # 本路【开场】基线(固定分母·死人不改它)
+var _pk_base_r: float = 0.0
+var _pk_count: int = -1                    # 上次计入 PK 的单位数 —— 变化=换路(见 _pk_refresh 注释)
+var _pk_acc: float = 0.0                   # 采样累加器(0.1s 扫一次 _units, 别每帧扫)
+var _pk_target_l: float = 1.0              # 左侧【占自己开场基线】的比例 → 决定蓝段长度
+var _pk_target_r: float = 1.0              # 右侧同理 → 红段长度
+var _pk_shown_l: float = 1.0               # 逐帧向 target 平滑(群伤瞬间不抽搐)
+var _pk_shown_r: float = 1.0
 var _battle_log: Array = []               # 战斗日志 bbcode 行, 封顶 _LOG_CAP(参 soak 教训防无限增长)
 var _log_panel: Control = null            # 日志浮层(可滚动), 默认隐
 var _log_rt: RichTextLabel = null         # 日志文本(面板开着才实时追加)
@@ -1123,66 +1141,64 @@ func _style_hud_btn(b: Button) -> void:
 	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 
 
-## 暂停浮层: 半透明黑幕 + 居中盒(继续/重开/返回菜单). 默认隐; process_mode ALWAYS(暂停中可点).
-func _build_pause_panel() -> void:
-	_pause_panel = Control.new()
-	_pause_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_pause_panel.size = Vector2(1280, 720)
-	_pause_panel.visible = false
-	_pause_panel.process_mode = Node.PROCESS_MODE_ALWAYS
-	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.62)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.size = Vector2(1280, 720)
-	# ★暗幕只做视觉, 不吃事件。原为 STOP —— 那是"别穿到战斗"的过度手段:
-	#   暂停时战斗点击本来就该被 paused 挡住, 面板上的按钮自己是 STOP 不会被误穿。
-	# ★澄清(别再照抄旧说法): 我一度以为这是"点暂停后拖不动"的第二个根因, 2026-07-22 的
-	#   2×2 探针把它证伪了 —— 单改这里【无效】, 单改 process_mode 就够。真根因只有一个:
-	#   主场景 INHERIT→PAUSABLE, 暂停时 _unhandled_input 根本不被调用(见 _CamInputRelay)。
-	#   这条改动本身仍然正确(暗幕不该吃事件), 但它不背那个锅。
-	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_pause_panel.add_child(dim)
-	var title := Label.new()
-	title.text = "⏸ 已暂停"
-	title.add_theme_font_size_override("font_size", 46)
-	title.add_theme_color_override("font_color", Color("#ffe9a8"))
-	title.size = Vector2(1280, 70); title.position = Vector2(0, 236)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_pause_panel.add_child(title)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 24)
-	row.position = Vector2(0, 340); row.size = Vector2(1280, 50)
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	_pause_panel.add_child(row)
-	row.add_child(_make_result_btn("▶ 继续", Color("#7fe39a"), Color("#06301a"),
-		func() -> void: _toggle_pause()))
-	row.add_child(_make_result_btn("⚔ 重开", Color("#ffd93d"), Color("#3a2a00"),
-		func() -> void: get_tree().paused = false; get_tree().reload_current_scene()))
-	row.add_child(_make_result_btn("🏠 返回菜单", Color("#5aa0d8"), Color("#04121e"),
-		func() -> void: get_tree().paused = false; get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")))
-	_ui_layer.add_child(_pause_panel)
-	# ★暂停中也要能缩放/拖动看战场(测试人员 2026-07-22:「点暂停键鼠标似乎也无法拖动」)。
-	#   根节点 INHERIT→PAUSABLE, 暂停时 _unhandled_input 不被调用, 所以挂个 ALWAYS 中继顶上。
-	var _relay := _CamInputRelay.new()
-	_relay.host = self
-	_relay.process_mode = Node.PROCESS_MODE_ALWAYS
-	add_child(_relay)
+## (投降确认浮层的【构建】已搬到 scripts/scenes/battle/battle_hud.gd::_build_surrender_panel ——
+##  它只建 Control/ColorRect/Label/Button, 是纯 UI, 本来就该在 HUD 侧;
+##  而且主文件有 arch_budget 行数棘轮(欠债只减不增), 往这里加代码=违规。
+##  开/收/确认那三个【行为】函数留在本文件, 因为它们要动 _settled/_over/_dl_sys。)
 
-
-## 暂停开关: 切 get_tree().paused + 显/隐暂停浮层. 结算后不响应.
-func _toggle_pause() -> void:
-	if _settled:
-		return
-	var p: bool = not get_tree().paused
-	get_tree().paused = p
-	# ★进出暂停都要清拖动/捏合的脏态: 暂停若发生在拖动【中途】, release 永远收不到,
-	#   _pan_active 会带着 true 活到恢复之后 → 恢复后不按键镜头也在跑。
+## 清掉拖动/捏合的脏态。
+##
+## ★这段原来长在 _toggle_pause 里, 是【搬过来的不是新写的】——
+##   verify_cam_pan 有一条 _test_pause_clears_drag_state 专门守着它, 所以它有实测价值:
+##   若"打断"发生在拖动【中途】, release 事件永远收不到, _pan_active 会带着 true 活到之后,
+##   表现为【手指松开了镜头还在跑】。
+##
+## 原来的"打断"是暂停; 暂停移除后, 新的打断源是**投降确认框的暗幕**(MOUSE_FILTER_STOP
+## 会吃掉 release), 完全同形。所以这段逻辑没有随暂停一起消失, 只是换了调用者。
+func _clear_input_dirty() -> void:
 	_pan_active = false
 	_pan_moved = false
 	_touch_pts.clear()
 	_pinch_prev = -1.0
-	if _pause_panel != null and is_instance_valid(_pause_panel):
-		_pause_panel.visible = p
+
+
+## 弹出投降确认框。结算后不响应(已经分出胜负了, 没什么可投降的)。
+func _show_surrender_confirm() -> void:
+	if _settled:
+		return
+	_clear_input_dirty()      # ★见该函数注释: 暗幕会吃掉 release, 不清就会"松手后镜头还在跑"
+	if _surrender_panel != null and is_instance_valid(_surrender_panel):
+		_surrender_panel.visible = true
+
+
+## 收起投降确认框(点"取消"或战斗已结算)。★不做任何结算 —— 取消就是什么都不发生。
+func _hide_surrender_confirm() -> void:
+	_clear_input_dirty()
+	if _surrender_panel != null and is_instance_valid(_surrender_panel):
+		_surrender_panel.visible = false
+
+
+## 确认认输 → 判【整场】负并进结算屏。
+##
+## ★用户 2026-07-30 拍板"整场负，直接进结算屏"(不是只判本路负, 也不是直接回主菜单):
+##   · 只判本路负 = 可以刷掉不利的那一路保留阵容 → 新的策略后门
+##   · 直接回主菜单 = 拿不到本场奖励/记录, 也看不到自己输在哪
+##
+## ★不能只调 _settle_season(false) —— 它只做赛季记账(命/币/胜场/XP/ghost上传), 不显结算屏。
+##   正常判负是【三件套】: _over=true → _settle_season(won) → _hud._show_banner(won)
+##   (单路见 _check_over: 7353-7357; 双路见 dual_lane_flow._dl_finish: 726-733)。
+##   双路还要额外置 _dl_state="done", 所以双路直接走 _dl_finish(false) 复用它, 别自己拼。
+func _do_surrender() -> void:
+	if _settled or _over:
+		return
+	_hide_surrender_confirm()
+	_log("[color=#ff6b6b]🏳 投降认输 —— 本场判负[/color]")
+	if _is_dual_lane_mode():
+		_dl_sys._dl_finish(false)      # 双路: 内部会置 _over/_dl_state/喂赛季/显横幅
+	else:
+		_over = true
+		_settle_season(false)
+		_hud._show_banner(false)
 
 
 ## 战斗日志浮层: 左下角可滚动富文本. 默认隐; process_mode ALWAYS.
@@ -7552,12 +7568,15 @@ func _stats_column(header: String, units: Array, hc: Color) -> Control:
 			grid.add_child(l)
 	return grid
 
-## 相机输入(滚轮缩放 / 双指捏合 / 拖动平移)。抽成独立函数是为了【暂停中也能用】——
-## 根节点 process_mode=INHERIT, 跟着 root 的 PAUSABLE 走 → 暂停时 can_process()=false,
-## _unhandled_input 压根不会被调用。这才是测试人员说的"点暂停后鼠标无法拖动"的真根因
-## (2026-07-22 的 2×2 探针实测: 单改暂停幕 mouse_filter 无效, process_mode 是唯一阻断点)。
-## 整场改 ALWAYS 会让暂停彻底失效(_process 里的战斗 tick 照跑), 所以只把相机输入抽出来,
-## 由 _CamInputRelay(ALWAYS) 在暂停期间转发。
+## 相机输入(滚轮缩放 / 双指捏合 / 拖动平移)。
+##
+## 历史(留着, 因为它解释了为什么这段是【独立函数】而不是内联在 _unhandled_input 里):
+##   抽出来原本是为了"暂停中也能拖镜头" —— 根节点 process_mode=INHERIT 跟 root 的 PAUSABLE 走,
+##   暂停时 can_process()=false, _unhandled_input 压根不被调用。这是测试人员 2026-07-22 说的
+##   "点暂停后鼠标无法拖动"的真根因(2×2 探针实测: 单改暂停幕 mouse_filter 无效,
+##   process_mode 是唯一阻断点)。当时用一个 ALWAYS 的 _CamInputRelay 转发进来。
+##   2026-07-30 暂停按钮按用户要求移除, 那个中继随之删掉 —— 但本函数保持独立,
+##   ★若将来又加回任何暂停机制, 只要把中继加回来指向这里即可, 不用重新拆。
 ## 返回 true = 事件已被相机消费, 调用方不要再往下走。
 func _cam_handle_input(event: InputEvent) -> bool:
 	# ── 战场缩放(用户2026-07-18): PC滚轮 / 移动双指捏合 · 各模式通用, 最先处理 ──
@@ -8522,13 +8541,8 @@ func _fmt_num(v: float) -> String:
 		s = s.substr(0, s.length() - 1)
 	return s
 
-class _CamInputRelay extends Node:
-	var host: Node = null
-
-	func _unhandled_input(event: InputEvent) -> void:
-		if host == null or not is_instance_valid(host):
-			return
-		if not get_tree().paused:
-			return
-		if host._cam_handle_input(event):
-			get_viewport().set_input_as_handled()
+# （已删 class _CamInputRelay ——它是【纯粹为暂停而存在】的 PROCESS_MODE_ALWAYS 中继:
+#   主场景 INHERIT→PAUSABLE, get_tree().paused 时 _unhandled_input 根本不被调用,
+#   所以当年挂了它让"暂停中也能拖镜头"(测试人员 2026-07-22:「点暂停键鼠标似乎也无法拖动」)。
+#   2026-07-30 暂停按钮按用户要求移除后, 局内不再有进入 paused 的路径 → 它成了死代码。
+#   ★如果将来又加回任何"暂停"机制, 这个中继要一起加回来, 否则那个 bug 会原样复现。）

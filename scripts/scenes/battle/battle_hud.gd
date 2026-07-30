@@ -37,47 +37,344 @@ func _build_ui_layer() -> void:
 	title.add_theme_color_override("font_color", Color("#cfe6ff"))
 	title.position = Vector2(24, 16)
 	battle._ui_layer.add_child(title)
+	_build_pk_bar()   # 顶部双方总血量 PK 条 (用户2026-07-30 需求1)
 	if battle._is_dual_lane_mode():   # 双路 HUD: 当前路 + 双方蛋血
 		battle._dl_hud = Label.new()
 		battle._dl_hud.add_theme_font_size_override("font_size", 17)
 		battle._dl_hud.add_theme_color_override("font_color", Color("#ffe08a"))
-		battle._dl_hud.position = Vector2(340, 44); battle._dl_hud.size = Vector2(700, 24)
+		# ★y 44→50: PK 条占了 16..42, 给它腾位(用户2026-07-30)
+		battle._dl_hud.position = Vector2(340, 50); battle._dl_hud.size = Vector2(700, 24)
 		battle._dl_hud.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		battle._ui_layer.add_child(battle._dl_hud)
-	_build_pause_log_ui()   # ⏸ 暂停 + 📜 日志 按钮/面板 (R2b)
+	_build_topright_btns()   # 📊 统计 + 🏳 投降 (原 ⏸暂停/📜日志 已移除·用户2026-07-30)
 
 
-## ⏸ 暂停 + 📜 日志 顶栏按钮 + 两个默认隐藏面板. 按钮/面板 process_mode=ALWAYS → 暂停中仍可操作.
-func _build_pause_log_ui() -> void:
-	battle._pause_btn = Button.new()
-	battle._pause_btn.text = "⏸"
-	battle._pause_btn.position = Vector2(1208, 12); battle._pause_btn.size = Vector2(52, 38)
-	battle._pause_btn.add_theme_font_size_override("font_size", 22)
-	battle._style_hud_btn(battle._pause_btn)
-	battle._pause_btn.process_mode = Node.PROCESS_MODE_ALWAYS
-	battle._pause_btn.pressed.connect(battle._toggle_pause)
-	battle._ui_layer.add_child(battle._pause_btn)
-
-	var log_btn = Button.new()
-	log_btn.text = "📜"
-	log_btn.position = Vector2(1148, 12); log_btn.size = Vector2(52, 38)
-	log_btn.add_theme_font_size_override("font_size", 20)
-	battle._style_hud_btn(log_btn)
-	log_btn.process_mode = Node.PROCESS_MODE_ALWAYS
-	log_btn.pressed.connect(battle._toggle_log)
-	battle._ui_layer.add_child(log_btn)
+## 右上角顶栏按钮.
+##
+## ★用户 2026-07-30:「战斗日志按钮移除掉，暂停按钮移除掉，局内不再有退出去或暂停的按钮了，
+##   新增投降按钮，点击后有确认认输的提示框」。
+##   方案书 docs/plans/20260730b-局内HUD改造+大师审核+地图提升.md
+##
+## 移除的连带影响(不只是"删两个按钮" —— 方案书 §4.2 穷举了 11 处):
+##   · "退出去"原本【只存在于暂停面板里】(🏠返回菜单 / ⚔重开) → 一并消失, 逃生口改为投降
+##   · _CamInputRelay 是【纯粹为暂停而存在】的 ALWAYS 中继(暂停时根节点 PAUSABLE 收不到
+##     _unhandled_input) → 暂停没了它就是死代码, 已删
+##   · _toggle_pause 里"清拖动/捏合脏态"那段【不能删只能搬】—— verify_cam_pan 有专门的
+##     _test_pause_clears_drag_state 守着它。已搬成 battle._clear_input_dirty(),
+##     由投降确认框接管: 弹框遮罩 MOUSE_FILTER_STOP 会吃掉 release, 与暂停打断拖动同形。
+##
+## 日志(U3): 只删按钮, _log()/_log_panel/_toggle_log 全保留 —— _log() 被战斗各处调用,
+##   且 verify_battle_ui B 组守着它。📜 按钮只在调试场(DEBUG_EDIT)下出现, 正式对局没有。
+func _build_topright_btns() -> void:
+	var _x := 1148.0                                   # 统计按钮补上原日志按钮的位
+	if battle.DEBUG_EDIT:                              # 调试场保留 📜(我自己排查要用·U8: 开发工具不属"局内")
+		var log_btn = Button.new()
+		log_btn.text = "📜"
+		log_btn.position = Vector2(1088, 12); log_btn.size = Vector2(52, 38)
+		log_btn.add_theme_font_size_override("font_size", 20)
+		battle._style_hud_btn(log_btn)
+		log_btn.process_mode = Node.PROCESS_MODE_ALWAYS
+		log_btn.pressed.connect(battle._toggle_log)
+		battle._ui_layer.add_child(log_btn)
 
 	var stats_btn = Button.new()
 	stats_btn.text = "📊"
-	stats_btn.position = Vector2(1088, 12); stats_btn.size = Vector2(52, 38)
+	stats_btn.position = Vector2(_x, 12); stats_btn.size = Vector2(52, 38)
 	stats_btn.add_theme_font_size_override("font_size", 20)
 	battle._style_hud_btn(stats_btn)
 	stats_btn.process_mode = Node.PROCESS_MODE_ALWAYS
 	stats_btn.pressed.connect(battle._on_dmg_stats_toggle)
 	battle._ui_layer.add_child(stats_btn)
 
-	battle._build_pause_panel()
+	# 🏳 投降: 放在原暂停位(最右) —— 肌肉记忆上"最右是退出类操作", 也不用重算安全区.
+	battle._surrender_btn = Button.new()
+	battle._surrender_btn.text = "🏳"
+	battle._surrender_btn.position = Vector2(1208, 12); battle._surrender_btn.size = Vector2(52, 38)
+	battle._surrender_btn.add_theme_font_size_override("font_size", 20)
+	battle._style_hud_btn(battle._surrender_btn)
+	battle._surrender_btn.add_theme_color_override("font_color", Color("#ff9a9a"))   # 红字=危险操作
+	battle._surrender_btn.tooltip_text = "投降认输"
+	battle._surrender_btn.process_mode = Node.PROCESS_MODE_ALWAYS
+	battle._surrender_btn.pressed.connect(battle._show_surrender_confirm)
+	battle._ui_layer.add_child(battle._surrender_btn)
+
+	_build_surrender_panel()
 	_build_log_panel()
+
+
+## 投降确认浮层: 半透明黑幕 + 居中盒(取消 / 确认认输). 默认隐.
+##
+## ★取代原来的暂停浮层(用户 2026-07-30:「局内不再有退出去或暂停的按钮了，新增投降按钮，
+##   点击后有确认认输的提示框」)。原暂停浮层里的 ▶继续/⚔重开/🏠返回菜单 一并移除 ——
+##   "退出去"原本【只存在于那个面板里】, 现在唯一的离场路径就是投降。
+##
+## ★暗幕【必须 STOP】(与原暂停浮层相反): 这个框弹出时战斗【仍在跑】(U6: 不暂停),
+##   所以暗幕不吃事件的话点击会穿到战场上去选龟/放技能。
+##   代价是 release 事件被暗幕吃掉 → 开框时必须调 _clear_input_dirty(), 见该函数注释。
+func _build_surrender_panel() -> void:
+	battle._surrender_panel = Control.new()
+	battle._surrender_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	battle._surrender_panel.visible = false
+	battle._surrender_panel.process_mode = Node.PROCESS_MODE_ALWAYS   # 将来若有别处暂停, 这框仍要能点
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.66)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP               # ★吃掉点击: 战斗没暂停, 不吃就会穿到战场
+	battle._surrender_panel.add_child(dim)
+	# ★锚点自适应, 不写死 1280×720 —— 手机分辨率不同, 写死会跑偏出屏
+	#   (2026-07-21 结算横幅就是踩了这个, 见 _show_banner 注释)
+	var box := VBoxContainer.new()
+	box.set_anchors_preset(Control.PRESET_CENTER)
+	box.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	box.grow_vertical = Control.GROW_DIRECTION_BOTH
+	box.custom_minimum_size = Vector2(520, 0)
+	box.add_theme_constant_override("separation", 14)
+	box.alignment = BoxContainer.ALIGNMENT_CENTER
+	battle._surrender_panel.add_child(box)
+	var title := Label.new()
+	title.text = "确认认输？"
+	title.add_theme_font_size_override("font_size", 40)
+	title.add_theme_color_override("font_color", Color("#ffb3b3"))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(title)
+	var tip := Label.new()
+	tip.text = "投降将直接判定本场失败，不可撤销。"
+	tip.add_theme_font_size_override("font_size", 19)
+	tip.add_theme_color_override("font_color", Color("#cfe6ff"))
+	tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(tip)
+	var tip2 := Label.new()
+	tip2.text = "（确认后进入结算，本场奖励与记录仍会结算）"
+	tip2.add_theme_font_size_override("font_size", 15)
+	tip2.add_theme_color_override("font_color", Color("#8a93a0"))
+	tip2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(tip2)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 24)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_child(row)
+	row.add_child(battle._make_result_btn("取消", Color("#8a93a0"), Color("#12161f"),
+		func() -> void: battle._hide_surrender_confirm()))
+	row.add_child(battle._make_result_btn("确认认输", Color("#ff6b6b"), Color("#3a0000"),
+		func() -> void: battle._do_surrender()))
+	battle._ui_layer.add_child(battle._surrender_panel)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  顶部双方总血量 PK 条 (用户 2026-07-30 需求1 · 方案书 docs/plans/20260730b-*.md)
+#
+#  「对局内的顶部左右新加一个双方血条的pk，表示双方总血量实时变化」
+#
+#  版式 = 用户拍板的【中央对撞条】: 一条横在顶部中央, 蓝(左队)占左半从左端往中间长、
+#    红(右队)占右半从右端往中间长; 中间露出的暗缝 = 双方已损失的总量。
+#    (备选"左右分列两条"被否: 两条各自看, 看不出【相对】强弱, PK 就没意义了)
+#
+#  ★每侧长度按【自己的开场基线】归一化, 不是按"双方当前血之和"的相对比。
+#    我第一版就写成了纯相对比(seam = l.hp/(l.hp+r.hp)), 结果 _pk_base_l/r 存了却没人用,
+#    而且【双方都剩 10% 血时条看起来和双方满血一模一样】—— 丢掉了"总血量"这个绝对信息,
+#    而需求原文是「表示双方【总血量】实时变化」。相对优势改由中间那个百分比读。
+#
+#  ★计入口径 = 【龟统领 + 小将】(用户逐字「小将和龟统领的」):
+#    · 不含龟蛋 —— 它 atk/def/mr 全 0, 是纯血包; 算进去会让"龟死光了条还是满的"
+#    · 不含训龟大师 —— 500血/1攻/站着不动, 是噪声
+#    · 不含召唤体 —— 与 _check_over 的胜负判定同口径(那里也 skip is_summon)
+#
+#  ★分母固定为【本路开场基线】, 不用"当前存活单位 maxHp 之和" ——
+#    后者会让死一只时分子分母同缩、百分比反而【回升】, 条往回涨, 完全反直觉。
+#
+#  ★两条独立伤害路径(_apply_damage / _apply_damage_from, CLAUDE.md §3.3)在这里【不需要各改一遍】:
+#    本条不在伤害路径里记账, 而是定时扫 _units 求和 —— 天然免疫"漏改一条路径", 也免疫
+#    护盾/回血/复活没走伤害钩这类漏记。代价是有 ≤0.1s 的延迟, 对一条 UI 条完全可接受。
+# ════════════════════════════════════════════════════════════════════════════
+
+const PK_W := 600.0          # 条宽; 600 而非 680 → 左端 x=340 让开标题文字(24..~324)
+const PK_H := 26.0
+const PK_Y := 16.0           # 占 16..42; 双路 HUD 已下移到 50
+const PK_SAMPLE := 0.1       # 扫 _units 的采样间隔(秒)。别每帧扫: 主文件热路径预算 <0.2%
+const PK_SMOOTH := 6.0       # 接缝平滑速率(越大越快跟上); 逐帧插值, 群伤瞬间不抽搐
+const PK_BLUE := Color("#3fa9ff")   # 与左队头像框描边同色(info_panel._make_team_frame)
+const PK_RED := Color("#ff5a5a")    # 与右队头像框描边同色
+
+
+## 建 PK 条。★锚点自适应(顶部居中), 不写死 1280×720 ——
+##   2026-07-21 结算横幅就是踩了写死绝对坐标, 手机分辨率不同会跑偏出屏(见 _show_banner 注释)。
+func _build_pk_bar() -> void:
+	var bar := Control.new()
+	bar.name = "PkBar"
+	bar.anchor_left = 0.5; bar.anchor_right = 0.5
+	bar.anchor_top = 0.0; bar.anchor_bottom = 0.0
+	bar.offset_left = -PK_W * 0.5; bar.offset_right = PK_W * 0.5
+	bar.offset_top = PK_Y; bar.offset_bottom = PK_Y + PK_H
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 纯显示, 别吃战场点击
+	battle._ui_layer.add_child(bar)
+	battle._pk_bar = bar
+
+	var bg := Panel.new()                            # 底 + 边框
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.04, 0.06, 0.10, 0.88)
+	sb.set_border_width_all(2)
+	sb.border_color = Color(0.45, 0.58, 0.75, 0.55)
+	sb.set_corner_radius_all(5)
+	bg.add_theme_stylebox_override("panel", sb)
+	bar.add_child(bg)
+
+	battle._pk_fill_l = ColorRect.new()
+	battle._pk_fill_l.color = PK_BLUE
+	battle._pk_fill_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	battle._pk_fill_l.position = Vector2(2, 2)
+	bar.add_child(battle._pk_fill_l)
+
+	battle._pk_fill_r = ColorRect.new()
+	battle._pk_fill_r.color = PK_RED
+	battle._pk_fill_r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_child(battle._pk_fill_r)
+
+	# 数字压在条【内】(左端左对齐 / 右端右对齐 / 中间百分比) —— 放条外要再占一行,
+	# 会撞到已经下移的双路 HUD。
+	battle._pk_lab_l = _pk_mk_label(HORIZONTAL_ALIGNMENT_LEFT)
+	battle._pk_lab_l.offset_left = 8
+	bar.add_child(battle._pk_lab_l)
+	battle._pk_lab_r = _pk_mk_label(HORIZONTAL_ALIGNMENT_RIGHT)
+	battle._pk_lab_r.offset_right = -8
+	bar.add_child(battle._pk_lab_r)
+	battle._pk_lab_mid = _pk_mk_label(HORIZONTAL_ALIGNMENT_CENTER)
+	bar.add_child(battle._pk_lab_mid)
+
+	battle._pk_count = -1        # 逼下一次 _pk_refresh 重算基线
+	_pk_refresh()
+	_pk_apply(battle._pk_shown_l, battle._pk_shown_r)
+
+
+func _pk_mk_label(align: int) -> Label:
+	var l := Label.new()
+	l.set_anchors_preset(Control.PRESET_FULL_RECT)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.horizontal_alignment = align
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", 15)
+	l.add_theme_color_override("font_color", Color("#ffffff"))
+	l.add_theme_constant_override("outline_size", 4)          # 描边: 压在蓝/红上要读得清
+	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	return l
+
+
+## 这个单位算不算进 PK 条。见本节顶部注释的口径说明。
+func _pk_counts(u: Dictionary) -> bool:
+	if u.get("egg", false) or u.get("has_egg", false):
+		return false
+	if u.get("is_trainer", false):
+		return false
+	if u.get("is_summon", false):
+		return false
+	return true
+
+
+## 一侧的 (当前血, 开场基线用的最大生命) 之和。
+## ★用【有效阵营】_eff_side —— 赛博侵入后的单位仍按原阵营计, 与 _check_over 一致(见 7349 注释)。
+## ★禁止拿单位字典当 key / 用 == 比较(CLAUDE.md §3.2), 这里只读字段, 安全。
+func _pk_sum(side: String) -> Vector2:
+	var cur := 0.0
+	var mx := 0.0
+	for u in battle._units:
+		if not _pk_counts(u):
+			continue
+		if battle._eff_side(u) != side:
+			continue
+		mx += maxf(0.0, float(u.get("maxHp", 0)))
+		if u.get("alive", false):
+			cur += maxf(0.0, float(u.get("hp", 0)))
+	return Vector2(cur, mx)
+
+
+## 重扫 _units → 更新目标占比与两端数字。每 PK_SAMPLE 秒一次。
+##
+## ★换路检测: 用"计入 PK 的单位数变了"当信号。为什么可靠 ——
+##   单位死亡【不会】从 battle._units 里移除(只把 alive 置 false), 所以一路之内这个数是恒定的;
+##   而换路时 _dl_clear_units() 会清空 _units 再重新 spawn(见 dual_lane_flow:719-724), 数必然变。
+##   ★不能只在场景初始化时算一次基线 —— 全局时钟 _t 跨上路→下路→决胜一直累加(CLAUDE.md §3.4),
+##   任何"按本场"计的东西都得自己存基线, 这里同理。
+func _pk_refresh() -> void:
+	if battle._pk_bar == null or not is_instance_valid(battle._pk_bar):
+		return
+	var n := 0
+	for u in battle._units:
+		if _pk_counts(u):
+			n += 1
+	var l := _pk_sum("left")
+	var r := _pk_sum("right")
+	if n != battle._pk_count:                  # 换路(或首次) → 重算固定分母
+		battle._pk_count = n
+		battle._pk_base_l = l.y
+		battle._pk_base_r = r.y
+		battle._pk_shown_l = 1.0               # 新一路两边都从满开始, 别从上一路的长度滑过来
+		battle._pk_shown_r = 1.0
+	# ★分母是【开场基线】而不是"当前存活单位 maxHp 之和" ——
+	#   后者会让死一只时分子分母同缩、比例反而【回升】, 条往回涨, 完全反直觉。
+	battle._pk_target_l = 0.0 if battle._pk_base_l <= 0.0 else clampf(l.x / battle._pk_base_l, 0.0, 1.0)
+	battle._pk_target_r = 0.0 if battle._pk_base_r <= 0.0 else clampf(r.x / battle._pk_base_r, 0.0, 1.0)
+	# 数字 = 当前血量绝对值(千分位); 中间 = 相对优势(谁在赢) —— 这一项才是"PK"的读数
+	battle._pk_lab_l.text = _pk_num(l.x)
+	battle._pk_lab_r.text = _pk_num(r.x)
+	var tot: float = l.x + r.x
+	var adv: float = 0.5 if tot <= 0.0 else clampf(l.x / tot, 0.0, 1.0)
+	var pct: int = int(round(adv * 100.0))
+	var arrow := "▲" if pct > 50 else ("▼" if pct < 50 else "＝")
+	battle._pk_lab_mid.text = "%s %d%%" % [arrow, pct]
+	battle._pk_lab_mid.add_theme_color_override("font_color",
+		PK_BLUE if pct > 50 else (PK_RED if pct < 50 else Color("#ffffff")))
+
+
+## 千分位。1234 → "1,234"
+func _pk_num(v: float) -> String:
+	var s := str(int(round(v)))
+	var out := ""
+	var c := 0
+	for i in range(s.length() - 1, -1, -1):
+		out = s[i] + out
+		c += 1
+		if c % 3 == 0 and i > 0:
+			out = "," + out
+	return out
+
+
+## 把两侧比例画成两段填充: 蓝占左半从左端往中间长, 红占右半从右端往中间长。
+## 中间露出的暗缝(底 Panel) = 双方已损失的总量, 缝的中点偏向哪边说明哪边吃亏更多。
+func _pk_apply(fl: float, fr: float) -> void:
+	if battle._pk_fill_l == null or not is_instance_valid(battle._pk_fill_l):
+		return
+	var inner: float = maxf(0.0, PK_W - 4.0)      # 减掉 2px 边框×2
+	var half: float = inner * 0.5
+	var lw: float = clampf(fl, 0.0, 1.0) * half
+	var rw: float = clampf(fr, 0.0, 1.0) * half
+	var h: float = PK_H - 4.0
+	battle._pk_fill_l.position = Vector2(2, 2)
+	battle._pk_fill_l.size = Vector2(lw, h)
+	battle._pk_fill_r.position = Vector2(2.0 + inner - rw, 2)
+	battle._pk_fill_r.size = Vector2(rw, h)
+
+
+## 每帧驱动: 逐帧平滑两侧长度 + 每 PK_SAMPLE 秒重扫一次 _units。
+## 由 battle_render._render_step 调用(渲染路, 不进 sim → 不影响确定性)。
+func _pk_tick(delta: float) -> void:
+	if battle._pk_bar == null or not is_instance_valid(battle._pk_bar):
+		return
+	battle._pk_acc += delta
+	if battle._pk_acc >= PK_SAMPLE:
+		battle._pk_acc = 0.0
+		_pk_refresh()
+	battle._pk_shown_l = _pk_ease(battle._pk_shown_l, battle._pk_target_l, delta)
+	battle._pk_shown_r = _pk_ease(battle._pk_shown_r, battle._pk_target_r, delta)
+	_pk_apply(battle._pk_shown_l, battle._pk_shown_r)
+
+
+## 向目标平滑一步; 收敛就【吸附】—— 否则无限逼近会永远留半像素缝。
+func _pk_ease(cur: float, target: float, delta: float) -> float:
+	var d: float = target - cur
+	if absf(d) < 0.0008:
+		return target
+	return cur + d * clampf(delta * PK_SMOOTH, 0.0, 1.0)
 
 
 ## HUD 小按钮统一样式: 半透明深底 + 圆角 + hover 高亮.
@@ -191,13 +488,15 @@ func _show_banner(won: bool) -> void:
 	if battle._settled:
 		return
 	battle._settled = true
-	# 结算: 解除暂停态并禁用暂停按钮(结果屏不可暂停); 记一条日志.
+	# 结算: 收掉投降确认框并禁用投降按钮(已经结算了, 没什么可投降的); 记一条日志.
+	# ★仍然解除 get_tree().paused —— 暂停按钮虽已移除(用户2026-07-30), 但树可能被别处暂停,
+	#   结算屏必须能动。这里不假设"没人会暂停"。
 	if battle.get_tree().paused:
 		battle.get_tree().paused = false
-	if battle._pause_panel != null and is_instance_valid(battle._pause_panel):
-		battle._pause_panel.visible = false
-	if battle._pause_btn != null and is_instance_valid(battle._pause_btn):
-		battle._pause_btn.disabled = true
+	if battle._surrender_panel != null and is_instance_valid(battle._surrender_panel):
+		battle._surrender_panel.visible = false
+	if battle._surrender_btn != null and is_instance_valid(battle._surrender_btn):
+		battle._surrender_btn.disabled = true
 	battle._log("[color=%s]%s[/color]" % ["#ffd93d" if won else "#ff6b6b", "🏆 战斗胜利!" if won else "💀 战斗失败!"])
 	# §AUDIO: 结算 — 败方放 defeat 音; BGM 淡出收尾.
 	# ⚠缺口(2026-07-21 核实): assets/audio/sfx/ 下【只有 defeat.wav, 没有胜利音】,

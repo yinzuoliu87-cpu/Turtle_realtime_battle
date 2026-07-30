@@ -195,6 +195,7 @@ func _render_step(rd: float, frozen: bool, in_ts: bool) -> void:
 	_update_ninja_marks()          # 忍者冲击标记(纯视觉·用户2026-07-12)
 	_tick_ink_links()              # 线条·连笔连接线跟随双方脚底(到期/死亡断链)
 	_update_overlay()
+	battle._hud._pk_tick(rd)       # 顶部双方总血量 PK 条(用户2026-07-30): 逐帧平滑接缝 + 每0.1s重扫_units
 	_update_dot_floats()           # DOT累积数字(点1): 跟随头顶+左右错开; 桶结束→弹射跳走
 	_update_spell_disc()           # 法术圆盘(点3): 刷钩锁冷却指示 + 非战斗期隐藏
 
