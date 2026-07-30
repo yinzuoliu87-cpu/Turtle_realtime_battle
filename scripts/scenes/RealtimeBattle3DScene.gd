@@ -5360,19 +5360,22 @@ func _too_close_to_enemy(u: Dictionary, p: Vector2, min_gap: float) -> bool:
 		if o.get("alive", false) and o["pos"].distance_to(p) < min_gap: return true
 	return false
 
-func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派气波(封板·100龟能): 先自增buff(暴击25%/暴伤20%/吸血10%/护穿0.1A·3秒)→朝当前目标发穿透气波(带宽80·打沿途所有敌+蛋)每命中3.5A物理+击飞1.5s+击退200 [智能位移留F5]
+func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派气波(100龟能): 先自增buff(暴击25%/吸血20%/护穿0.1A·3秒·第六轮删暴伤)→朝当前目标发穿透气波(带宽80·打沿途所有敌+蛋)每命中2.0A物理+击飞1.5s+击退200 [智能位移留F5]
 	if tgt == null: tgt = _targeting._nearest_enemy(u)
 	if tgt == null: return
 	var ap: float = u["atk"] * 0.1
+	# ★用户2026-07-30 第六轮: 【删掉暴伤 +20%】, 吸血 10%→20%。
+	#   为什么这么改有效: 暴伤是【乘算】, 会放大它自己刚上的暴击(期望倍数 1.125→1.350),
+	#   等于自己吃自己的加成 —— 而吸血只让它更耐久, 不进伤害乘法链。
+	#   我此前两轮把系数从 3.5A 砍到 2.0A(−43%), 胜率反而 88.0→92.8% —— 证明砍系数没用,
+	#   它的强度在【穿透全场 + 1.5秒群体击飞 + 自增buff + 智能位移】这套组合上。
 	u["crit"] = float(u["crit"]) + 0.25
-	u["crit_dmg"] = float(u["crit_dmg"]) + 0.20
-	u["lifesteal"] = float(u["lifesteal"]) + 0.10
+	u["lifesteal"] = float(u["lifesteal"]) + 0.20
 	u["armor_pen"] = float(u.get("armor_pen", 0.0)) + ap
 	var uu: Dictionary = u
 	_pending_shots.append({"delay": 3.0, "fn": func():          # 3秒后撤销自增buff
 		uu["crit"] = float(uu["crit"]) - 0.25
-		uu["crit_dmg"] = float(uu["crit_dmg"]) - 0.20
-		uu["lifesteal"] = float(uu["lifesteal"]) - 0.10
+		uu["lifesteal"] = float(uu["lifesteal"]) - 0.20
 		uu["armor_pen"] = float(uu.get("armor_pen", 0.0)) - ap, "src": u})
 	# 蓄力时的智能位移冲刺 ≤300码 (用户2026-07-05"小龟可以选择一次300码内的位移冲刺·奔向能打到更多人的位置·但不是贴人家脸上·要考虑碰撞体积")
 	var _bp: Vector2 = u["pos"]

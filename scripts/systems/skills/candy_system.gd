@@ -94,7 +94,9 @@ func _sk_candy_barrage(u: Dictionary, tgt) -> void:            # 糖果龟·技�
 						if not o.get("alive", false): continue
 						if o["pos"].distance_to(land) > 120.0: continue
 						if not battle._is_hostile(uu, o):
-							battle._damage._grant_shield(o, uu["maxHp"] * 0.02, 2.0)
+							battle._damage._grant_shield(o, uu["maxHp"] * 0.015, 2.0)   # 友军护盾 2%→1.5% 自身最大生命/跳(用户2026-07-30 第六轮)
+							# ★削的是它"同时当辅助"那一半: 一场送出的护盾 2378→1647(−31%), 输出身份保留。
+							#   龟能同时 120→130 → 释放 4.22→3.90 次, 伤害也跟着 −8%。
 						else:
 							battle._damage._apply_damage_from(uu, o, battle._resolve_dmg(uu, uu["atk"] * 0.2 + uu["maxHp"] * 0.02, o, true), Color("#ff9ed6"), 0.0, false, true)
 							o["spd_move_mult"] = 0.8; o["spd_dbf_until"] = battle._t + 0.5)

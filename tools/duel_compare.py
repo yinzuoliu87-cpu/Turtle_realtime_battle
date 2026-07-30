@@ -29,8 +29,24 @@ CN = {'basic': '普通龟', 'ninja': '忍者', 'ghost': '幽灵', 'cyber': '赛�
 STRONG, WEAK = 65.0, 35.0
 
 
+## ★跨大轮累积技能: 单场对局测不准, 必须【整场剔除】——【连对手那半边一起剔】。
+##
+## 两次修正的经过(值得留档, 因为第一次修得不彻底):
+##   ① 2026-07-30 用户「不是有技能不参与测试吗」→ 发现本脚本没剔, 赌神被命运之轮(0.0%)
+##      拖低 16pp、宝箱被拖低 10pp。于是改成"剔掉它自己那半边"。
+##   ② 用户紧接着问「那别人与这个技能对打的赢局不去掉吗」→ ★这才是对的口径。
+##      命运之轮 83 场全输, 意味着【83 个对手每人白捡一个胜场】; 只剔它自己等于把它的
+##      弱势平摊成所有人的虚高。整场剔要去掉 246/3486 场(7%), 受影响最大的正是弱龟
+##      (双头 −2.8 / 财神 −2.1 / 寒冰 −1.6), 强龟几乎不动(忍者 −0.3) —— 因为强龟本来就赢,
+##      白捡那一场对它们无关紧要。
+##
+## 逐技能表【不剔】(那里本来就分开列, 且要能看到这三个技能自己的数字)。
+EXCLUDE = {('gambler', '命运之轮'), ('chest', '清点财宝'), ('chest', '财宝风暴')}
+
+
 def load(d):
-    """→ (按龟: {id: (胜,场)}, 按技能: {(id,技名): (胜,场,释放数)})"""
+    """→ (按龟: {id: (胜,场)}, 按技能: {(id,技名): (胜,场,释放数)})
+    按龟聚合【剔除】EXCLUDE 里的组合; 按技能保留全部(便于单独查看)。"""
     tw, tn = collections.Counter(), collections.Counter()
     sw, sn, sc = collections.Counter(), collections.Counter(), collections.Counter()
     files = sorted(glob.glob(os.path.join(d, 'duel-*.csv')))
@@ -38,19 +54,27 @@ def load(d):
         print('[FAIL] %s 下没有 duel-*.csv' % d)
         sys.exit(1)
     n_rows = 0
+    n_excl = 0
     for f in files:
         for r in csv.DictReader(io.open(f, encoding='utf-8')):
             n_rows += 1
+            ex_battle = ((r['左龟'], r['左技能']) in EXCLUDE) or ((r['右龟'], r['右技能']) in EXCLUDE)
             for side, t, s, rel in (('L', r['左龟'], r['左技能'], r['左释放']),
                                     ('R', r['右龟'], r['右技能'], r['右释放'])):
-                tn[t] += 1
                 sn[(t, s)] += 1
                 sc[(t, s)] += int(rel)
                 if r['胜方'] == side:
-                    tw[t] += 1
                     sw[(t, s)] += 1
+            # ★按龟聚合: 只要这一场【任一方】是跨大轮技能, 整场都不算 —— 见上面 EXCLUDE 的注释②
+            if ex_battle:
+                n_excl += 1
+                continue
+            for side, t, s in (('L', r['左龟'], r['左技能']), ('R', r['右龟'], r['右技能'])):
+                tn[t] += 1
+                if r['胜方'] == side:
+                    tw[t] += 1
     return ({k: (tw[k], tn[k]) for k in tn},
-            {k: (sw[k], sn[k], sc[k]) for k in sn}, n_rows, len(files))
+            {k: (sw[k], sn[k], sc[k]) for k in sn}, n_rows, len(files), n_excl)
 
 
 def pct(w_n):
@@ -65,13 +89,13 @@ def main():
     ap.add_argument('--focus', default='', help='逗号分隔的龟 id, 额外打逐技能明细')
     a = ap.parse_args()
 
-    nt, ns, nrows, nfiles = load(a.new)
-    ot, os_, orows, ofiles = (None, None, 0, 0)
+    nt, ns, nrows, nfiles, nexcl = load(a.new)
+    ot, os_, orows, ofiles, oexcl = (None, None, 0, 0, 0)
     if a.old:
-        ot, os_, orows, ofiles = load(a.old)
+        ot, os_, orows, ofiles, oexcl = load(a.old)
 
     print('=== 胜率对照 ===')
-    print('  新: %s  %d 场 / %d 分片' % (a.new, nrows, nfiles))
+    print('  新: %s  %d 场 / %d 分片  (按龟聚合剔除含跨大轮技能的 %d 场)' % (a.new, nrows, nfiles, nexcl))
     if a.old:
         print('  旧: %s  %d 场 / %d 分片' % (a.old, orows, ofiles))
         if nrows != orows:

@@ -111,6 +111,10 @@ run_audit () {   # $1=脚本 $2=判定通过的关键字 $3=显示名
 echo "=== 只读数据审计 ==="
 run_audit "tools/data_integrity.py"       "ALL OK" "data_integrity (json交叉引用/资源路径/孤儿字段)"
 run_audit "tools/tooltip_number_audit.py" "ALL OK" "tooltip_number_audit (装备文案数值 ↔ 代码)"
+# ★龟技能文案 ↔ 代码 (2026-07-30 新增)。由来: 用户「不只是无头龟有这问题啊，所有龟、装备、
+#   训龟大师技能都有问题怎么办呢」—— 装备有 tooltip_number_audit、大师有 verify_trainer_desc,
+#   但【龟技能一直没有】。无头·灵魂打击文案写 0.9A+20%当前生命, 代码是 0.5A+10%, 四轮门禁全绿没发现。
+run_audit "tools/pet_number_audit.py" "ALL OK" "pet_number_audit (龟技能文案数值 ↔ 代码)"
 run_audit "tools/brief_detail_audit.py"   "ALL OK" "brief_detail_audit (龟技能 brief ↔ detail 数值)"
 run_audit "tools/workflow_lint.py"        "ALL OK" "workflow_lint (CI 工作流 YAML 语法)"
 run_audit "tools/arch_budget.py"          "ALL OK" "arch_budget (架构预算·不许上帝对象·欠债只减不增)"

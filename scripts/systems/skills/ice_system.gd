@@ -182,12 +182,12 @@ func _frost_puff(pos2d: Vector2) -> void:
 
 # 029 冰封水母: 冰封目标 + 护盾泡
 ## ═══ 冰柱层 (用户 2026-07-28 加强) ═══
-## 每段普攻 +1 层, 上限 ICICLE_MAX。每层给【自身】+3% 攻速 / +1% 护甲 / +1% 魔抗,
+## 每段普攻 +1 层, 上限 ICICLE_MAX。每层给【自身】+5% 攻速 / +1% 护甲 / +1% 魔抗,
 ## 并让【冰霜】范围 +20%、持续 +0.5 秒。
 ## ★"每路战斗结束刷新"是白送的: 换路时 dual_lane_flow._dl_clear_units() 会清场再重 spawn,
 ##   单位字典整个重建 → icicle 字段天然归零, 不用另写重置(同 blood 天然每场重置的道理)。
 const ICICLE_MAX := 20
-const ICICLE_ASPD := 0.03      # 每层 +3% 攻速
+const ICICLE_ASPD := 0.05      # 每层 +5% 攻速(3%→5%·用户2026-07-30 第六轮: 攒满20层 24.4→21.7 秒, 33秒内普攻 28→34 次)
 const ICICLE_DEFMR := 0.01     # 每层 +1% 护甲 & 魔抗
 const ICICLE_FROST_RADIUS := 0.20   # 每层 冰霜半径 +20%
 const ICICLE_FROST_SEC := 0.5       # 每层 冰霜持续 +0.5 秒
@@ -238,7 +238,7 @@ func _ice_frost_tick(u: Dictionary, center: Vector2, radius: float) -> void:
 			continue
 		if o["pos"].distance_to(center) <= radius:
 			battle._damage._buff(o, "mr", -0.25, true, 0.65)   # 圈内 -25%魔抗(刷新, 略>0.5s跳间隔)
-			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 0.18, o, true), Color("#bfe9ff"))
+			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 0.25, o, true), Color("#bfe9ff"))   # 每跳 0.18→0.25A(用户2026-07-30 第六轮·寒冰整只 10.8% 垫底)
 
 ## ══ 冰霜领域视觉 (2026-07-29 重做·用户「那种冰霜砸下来怎么做」) ══
 ##

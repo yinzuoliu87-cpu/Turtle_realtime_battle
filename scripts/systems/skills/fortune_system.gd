@@ -74,7 +74,7 @@ func _sk_fortune_dice(u: Dictionary) -> void:                    # 财神龟·�
 		battle._gold_chunk_erupt(u["pos"] + Vector2(randf_range(-30.0, 30.0), randf_range(-14.0, 14.0)))
 	# (删: "放梭哈后给护盾"=4选1下死逻辑, 不可能同时有骰子+梭哈, 用户指出)
 
-# 财神·梭哈: 一场限一次, 消耗全部金币, 每枚 0.18×ATK物理 + 0.18×ATK真实 (cd999)
+# 财神·梭哈: 一场限一次, 消耗全部金币, 每枚 0.30×ATK物理 + 0.30×ATK真实 (cd999·数值在 RealtimeBattle3DScene 的 coin_true/coin_phys)
 func _sk_fortune_goldshield(u: Dictionary) -> void:   # 财神·金盾(梭哈用过后该技变身·用户2026-07-12): 80龟能·护盾=当前金币数(不消耗金币)·持盾期锁龟能(盾破/4s到期解锁)
 	var amt: float = float(int(u.get("gold", 0)))
 	if amt <= 0.0:
@@ -126,8 +126,7 @@ func _sk_fortune_allin(u: Dictionary, tgt) -> void:                 # 财神龟�
 	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.65), 66.0)   # 蓄力金环
 	battle._vfx._flash(u, Color(1.5, 1.3, 0.6))
 
-# 梭哈 channel: 蓄力后每隔投币间隔朝目标投1金币(0.18ATK物+0.18ATK真), 目标死换最近敌; 投完结束; 眩晕/击飞期暂停
-# 梭哈 channel: 蓄力后每隔投币间隔朝目标投1金币(0.18ATK物+0.18ATK真), 目标死换最近敌; 投完结束; 眩晕/击飞期暂停
+# 梭哈 channel: 蓄力后每隔投币间隔朝目标投1金币(0.30ATK物+0.30ATK真), 目标死换最近敌; 投完结束; 眩晕/击飞期暂停
 func _fortune_allin_channel(u: Dictionary, delta: float) -> void:
 	# 投币期免控(用户2026-07-28): 每帧把免控窗口往后续一点 —— 投完(allin_coins 归零后不再进本函数)
 	# 窗口自然到期。原先这里是"被眩晕就 return 暂停投币", 现在根本不会被眩晕。
@@ -148,4 +147,4 @@ func _fortune_allin_channel(u: Dictionary, delta: float) -> void:
 	if int(u["allin_coins"]) <= 0:
 		u["allin_target"] = null
 
-# 投1枚金币弹道 (命中→0.18ATK物理+0.18ATK真实)
+# 投1枚金币弹道 (命中→0.30ATK物理+0.30ATK真实)

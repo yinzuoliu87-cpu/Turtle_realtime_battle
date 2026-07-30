@@ -23,8 +23,11 @@ OUT="$DESKTOP/斗龟场-v$VER-unsigned.ipa"
 echo "=== 取 iOS 包 v$VER ==="
 echo "  源  $URL"
 echo "  目标 $OUT"
-rm -f "$OUT"
-curl -fL --retry 3 -o "$OUT" "$URL" || { echo "[FAIL] 下载失败"; exit 1; }
+# ★ -C - 断点续传 + --progress-bar: 上次这包下了 30 分钟(131MB·国内到 GitHub 慢),
+#   没有 -C - 的话中途断一次就得从头再来。--retry-delay 让重试别打空转。
+#   ⚠ 续传要求本地文件是【同一个包】的前半截 —— 版本变了必须先删, 否则拼出来的是坏文件。
+#   所以这里按"本地已有大小 < 目标大小"才续, 且最后一律验 zip + 读 Info.plist 版本号兜底。
+curl -fL -C - --retry 5 --retry-delay 3 --progress-bar -o "$OUT" "$URL" || { echo "[FAIL] 下载失败"; exit 1; }
 
 SZ=$(stat -c %s "$OUT")
 echo "  大小 $((SZ / 1024 / 1024)) MB"

@@ -269,7 +269,7 @@ func _headless_scythe(u: Dictionary) -> void:                  # 镰刀横扫(Ca
 			battle._vfx._hit_spark(o)
 			if not o.get("_eggImmune", false):
 				_headless_knock_out(o, to.normalized(), 300.0)     # 击退300码从龟朝外
-				battle._damage._add_curse(o, 5.0, uu)   # 幽灵式诅咒5秒(每秒5%maxHp真伤)
+				battle._damage._add_curse(o, 3.0, uu)   # 幽灵式诅咒3秒(5→3·用户2026-07-30 第六轮·总量 288→173)
 				_headless_fear_mark(o)                             # 紫标记示意中咒
 				_headless_reap_soul(o["pos"], uu)                  # 收割感: 从敌身扯灵魂飞回无头龟(用户2026-07-17 F)
 	, "src": u})
@@ -565,7 +565,7 @@ func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万�
 			if battle._is_hostile(uu, o): _headless_drain_dot(o["pos"], uu)   # 脱离撕扯再吸一口
 	battle._pending_shots.append({"delay": 3.0, "fn": detach_fn, "src": u})
 
-func _sk_headless_soul_charge(u: Dictionary) -> void:           # 无头·灵魂打击(机制大改·用户2026-07-17拍板·80龟能): 触发→下3次攻击强化(射程+60·各额外0.5A+10%当前HP魔法·牙齿闭合)→第3下落地蓄力→镰刀横扫(100°300码击退300+幽灵诅咒5s·Camille W); 全程锁龟能, 扫完解锁清零重充
+func _sk_headless_soul_charge(u: Dictionary) -> void:           # 无头·灵魂打击(机制大改·用户2026-07-17拍板·80龟能): 触发→下3次攻击强化(射程+60·各额外0.5A+10%当前HP魔法·牙齿闭合)→第3下落地蓄力→镰刀横扫(100°300码击退300+幽灵诅咒3s·Camille W); 全程锁龟能, 扫完解锁清零重充
 	u["headless_soul_stacks"] = 3
 	u["headless_soul_base_range"] = float(u.get("atk_range", 100.0))
 	u["atk_range"] = float(u["headless_soul_base_range"]) + 60.0   # 强化窗口+60射程(用户"60+基础射程")

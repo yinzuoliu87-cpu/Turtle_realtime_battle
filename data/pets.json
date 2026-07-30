@@ -81,8 +81,8 @@
     "pierce": 0,
     "cd": 0,
     "atkScale": 3.5,
-    "brief": "小龟灌注气劲，打出一道贯穿气波，对沿途所有敌人造成 {N:2.0*ATK} 物理伤害并将其<span class=\"val-atk\">击飞</span> 1.5 秒。施法期间小龟获得 <span class=\"val-atk\">25% 暴击率</span>、<span class=\"val-atk\">20% 暴击伤害</span>、<span class=\"val-heal\">10% 生命偷取</span> 和 {N:0.1*ATK} 护甲穿透，持续 3 秒。\n<span style=\"color:#8a93a0\">发波前，小龟会先冲向能让气波贯穿最多敌人的位置（≤300 码）。</span>",
-    "detail": "小龟短时间(3秒)获得 <span class=\"val-atk\">+25%</span>暴击率、<span class=\"val-atk\">+20%</span>暴击伤害、<span class=\"val-heal\">+10%</span>生命偷取、+（10%×攻击力 = {N:0.1*ATK}）护甲穿透；随后朝当前目标发射一道青白气功波，穿透打击沿途所有敌人(含龟蛋)，每命中造成（200%×攻击力({ATK}) = {N:2.0*ATK}）物理伤害并将其击飞1.5秒+击退。\n\n<span style=\"color:#8a93a0\">蓄力时小龟会做一次 ≤300码 的智能位移冲刺：采样 12 方向 × 3 档距离，冲向能让气波直线命中最多敌人的落点；距任一敌 &lt;120码 的落点排除（不贴脸、考虑碰撞体积）。</span>",
+    "brief": "小龟灌注气劲，打出一道贯穿气波，对沿途所有敌人造成 {N:2.0*ATK} 物理伤害并将其<span class=\"val-atk\">击飞</span> 1.5 秒。施法期间小龟获得 <span class=\"val-atk\">25% 暴击率</span>、<span class=\"val-heal\">20% 生命偷取</span> 和 {N:0.1*ATK} 护甲穿透，持续 3 秒。\n<span style=\"color:#8a93a0\">发波前，小龟会先冲向能让气波贯穿最多敌人的位置（≤300 码）。</span>",
+    "detail": "小龟短时间(3秒)获得 <span class=\"val-atk\">+25%</span>暴击率、<span class=\"val-heal\">+20%</span>生命偷取、+（10%×攻击力 = {N:0.1*ATK}）护甲穿透；随后朝当前目标发射一道青白气功波，穿透打击沿途所有敌人(含龟蛋)，每命中造成（200%×攻击力({ATK}) = {N:2.0*ATK}）物理伤害并将其击飞1.5秒+击退。\n\n<span style=\"color:#8a93a0\">蓄力时小龟会做一次 ≤300码 的智能位移冲刺：采样 12 方向 × 3 档距离，冲向能让气波直线命中最多敌人的落点；距任一敌 &lt;120码 的落点排除（不贴脸、考虑碰撞体积）。</span>",
     "energyCost": 100
    },
    {
@@ -400,8 +400,8 @@
     "pierce": 0,
     "cd": 0,
     "totalScale": 1.4,
-    "brief": "寒冰龟的普攻交替造成 {P:1.0*ATK} 物理与魔法伤害，每段使自己获得 1 层<span class=\"val-normal\">冰柱</span>。\n每层冰柱：+3% 攻速、+1% 护甲、+1% 魔抗，并使【冰霜】范围 +20%、持续 +0.5 秒（上限 <span class=\"val-atk\">20 层</span>，每路战斗结束刷新）。",
-    "detail": "寒冰龟射出冰锥，单段造成（100%×攻击力({ATK}) = {P:1.0*ATK}）伤害，伤害类型逐次交替：本次物理、下次魔法。\n每段攻击使自己获得 1 层<span class=\"val-normal\">冰柱</span>，上限 <span class=\"val-atk\">20 层</span>，每路战斗结束刷新。\n每层冰柱：<span class=\"val-atk\">+3% 攻击速度</span>、<span class=\"val-def\">+1% 护甲</span>、<span class=\"val-def\">+1% 魔抗</span>，并使【冰霜】<span class=\"val-magic\">范围 +20%</span>、<span class=\"val-magic\">持续 +0.5 秒</span>。",
+    "brief": "寒冰龟的普攻交替造成 {P:1.0*ATK} 物理与魔法伤害，每段使自己获得 1 层<span class=\"val-normal\">冰柱</span>。\n每层冰柱：+5% 攻速、+1% 护甲、+1% 魔抗，并使【冰霜】范围 +20%、持续 +0.5 秒（上限 <span class=\"val-atk\">20 层</span>，每路战斗结束刷新）。",
+    "detail": "寒冰龟射出冰锥，单段造成（100%×攻击力({ATK}) = {P:1.0*ATK}）伤害，伤害类型逐次交替：本次物理、下次魔法。\n每段攻击使自己获得 1 层<span class=\"val-normal\">冰柱</span>，上限 <span class=\"val-atk\">20 层</span>，每路战斗结束刷新。\n每层冰柱：<span class=\"val-atk\">+5% 攻击速度</span>、<span class=\"val-def\">+1% 护甲</span>、<span class=\"val-def\">+1% 魔抗</span>，并使【冰霜】<span class=\"val-magic\">范围 +20%</span>、<span class=\"val-magic\">持续 +0.5 秒</span>。",
     "energyCost": 0,
     "atkScale": 0.8
    },
@@ -419,8 +419,8 @@
      "pct": 25,
      "turns": 4
     },
-    "brief": "寒冰龟在目标处降下一片冰霜领域：基础半径 150 码、持续 5 秒，<span class=\"val-normal\">每层冰柱使半径 +20%、持续 +0.5 秒</span>；领域内的敌人魔抗降低 25%，并每 0.5 秒受到 {M:0.18*ATK} 魔法伤害。",
-    "detail": "寒冰龟在当前目标处降下一片圆形冰霜领域：基础<span class=\"val-magic\">半径 150 码</span>、基础持续 <span class=\"val-magic\">5秒</span>，<span class=\"val-normal\">每层冰柱使半径 +20%、持续 +0.5 秒</span>（满 20 层 = 半径 750 码 / 持续 15 秒）。\n领域内敌方 <span class=\"val-def\">-25% 魔抗</span>；每 0.5 秒一跳（跳数跟着持续时长走：0 层 10 跳、满层 30 跳），每跳造成（18%×攻击力({ATK}) = {M:0.18*ATK}）魔法伤害。",
+    "brief": "寒冰龟在目标处降下一片冰霜领域：基础半径 150 码、持续 5 秒，<span class=\"val-normal\">每层冰柱使半径 +20%、持续 +0.5 秒</span>；领域内的敌人魔抗降低 25%，并每 0.5 秒受到 {M:0.25*ATK} 魔法伤害。",
+    "detail": "寒冰龟在当前目标处降下一片圆形冰霜领域：基础<span class=\"val-magic\">半径 150 码</span>、基础持续 <span class=\"val-magic\">5秒</span>，<span class=\"val-normal\">每层冰柱使半径 +20%、持续 +0.5 秒</span>（满 20 层 = 半径 750 码 / 持续 15 秒）。\n领域内敌方 <span class=\"val-def\">-25% 魔抗</span>；每 0.5 秒一跳（跳数跟着持续时长走：0 层 10 跳、满层 30 跳），每跳造成（25%×攻击力({ATK}) = {M:0.25*ATK}）魔法伤害。",
     "energyCost": 100
    },
    {
@@ -1443,8 +1443,8 @@
     "power": 0,
     "pierce": 0,
     "cd": 0,
-    "brief": "糖果龟在敌方最密集处降下糖衣炮弹雨，<span class=\"val-atk\">持续 4 秒</span>、每 0.5 秒一跳共 <span class=\"val-atk\">8 跳</span>。每一跳为友军提供相当于其 2% 最大生命值的护盾，并对敌军造成（0.2A+2%自身最大生命值）魔法伤害 和 <span class=\"val-atk\">20% 减速</span>。\n<span style=\"color:#8a93a0\">减速效果每 0.5 秒刷新。</span>",
-    "detail": "糖果龟指挥在敌方最密集区域降下糖衣炮弹雨（参考英雄联盟船长R Cannon Barrage）：半径600码，持续4秒，每 <b>0.42 秒</b>一跳（共8跳，合计约 3.4 秒）。每跳：范围内友军获得糖果龟2%最大生命值的护盾；范围内敌军受到（20%×攻击力({ATK}) = {N:0.2*ATK}）+ 2%糖果龟最大生命值 魔法伤害，并被减速20%（每次受击刷新0.5秒）。"
+    "brief": "糖果龟在敌方最密集处降下糖衣炮弹雨，<span class=\"val-atk\">持续 4 秒</span>、每 0.5 秒一跳共 <span class=\"val-atk\">8 跳</span>。每一跳为友军提供相当于其 1.5% 最大生命值的护盾，并对敌军造成（0.2A+2%自身最大生命值）魔法伤害 和 <span class=\"val-atk\">20% 减速</span>。\n<span style=\"color:#8a93a0\">减速效果每 0.5 秒刷新。</span>",
+    "detail": "糖果龟指挥在敌方最密集区域降下糖衣炮弹雨（参考英雄联盟船长R Cannon Barrage）：半径600码，持续4秒，每 <b>0.42 秒</b>一跳（共8跳，合计约 3.4 秒）。每跳：范围内友军获得糖果龟1.5%最大生命值的护盾；范围内敌军受到（20%×攻击力({ATK}) = {N:0.2*ATK}）+ 2%糖果龟最大生命值 魔法伤害，并被减速20%（每次受击刷新0.5秒）。"
    },
    {
     "name": "糖果炸弹",
@@ -2416,8 +2416,8 @@
     "pierce": 0,
     "cd": 0,
     "atkScale": 0.9,
-    "brief": "无头龟的龟能充满后（约 6秒），下一次普攻会得到强化，额外附带 {N:0.9*ATK} 物理伤害和 <span class=\"val-magic\">20% 当前生命值</span> 的魔法伤害。\n<span style=\"color:#8a93a0\">触发后龟能清零、重新充能。</span>",
-    "detail": "无头龟蓄积灵魂之力（充能型）：龟能充满（80龟能≈6秒）后，接下来 <b>3 次</b>普攻额外附带（90%×攻击力({ATK}) = {N:0.9*ATK}）物理伤害 + 20%目标当前生命值 魔法伤害（叠加在撕咬的1×攻击力物理+3%最大生命值之上·单体），触发后龟能清零重新充能。\n\n<span style=\"color:#8a93a0\">靠龟能充能速率控制频率，故20%当前生命的原始数值不失衡。</span>"
+    "brief": "无头龟的龟能充满后（约 6秒），接下来 <b>3 次</b>普攻额外附带 {M:0.5*ATK} 魔法伤害和 <span class=\"val-magic\">10% 目标当前生命值</span> 的魔法伤害；第 3 下落地后挥出<span class=\"val-atk\">镰刀横扫</span>。\n<span style=\"color:#8a93a0\">强化窗口全程锁龟能，镰刀扫完才重新充能。</span>",
+    "detail": "无头龟蓄积灵魂之力（充能型）：龟能充满（80龟能≈6秒）后，接下来 <b>3 次</b>普攻额外附带（50%×攻击力({ATK}) = {M:0.5*ATK}）<span class=\"val-magic\">魔法</span>伤害 + <span class=\"val-magic\">10%目标当前生命值</span> 魔法伤害（叠加在撕咬的 1×攻击力物理 + 3%最大生命值之上·单体），射程额外 +60。\n第 <b>3</b> 下命中落地后，无头龟挥出<span class=\"val-atk\">镰刀横扫</span>：正面 100° 锥形、300 码内的敌人被<span class=\"val-atk\">击退 300 码</span>，并被施加 <span class=\"val-magic\">3 秒诅咒</span>（每秒造成其最大生命值 5% 的真实伤害，无视双抗）。\n<span class=\"val-normal\">强化窗口全程锁龟能</span>，镰刀扫完才解锁并清零重新充能。\n\n<span style=\"color:#8a93a0\">★2026-07-30 订正: 此前文案写「0.9×攻击力 物理 + 20%目标当前生命值」，而代码一直是「0.5×攻击力 魔法 + 10%当前生命」—— 伤害差一倍、类型也错；而且镰刀横扫（击退 + 诅咒）与锁龟能这两段【完全没写】。已按代码真值改正并补全。</span>"
    }
   ],
   "defaultSkills": [
