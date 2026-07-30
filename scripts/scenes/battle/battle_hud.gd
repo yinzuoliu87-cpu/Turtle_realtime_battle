@@ -186,11 +186,13 @@ var _pk_egg_tl: float = 1.0
 var _pk_egg_tr: float = 1.0
 var _pk_egg_sl: float = 1.0
 var _pk_egg_sr: float = 1.0
+var _pk_tag_l: PanelContainer = null       # 读数标签底板(百分比+绝对值合成一组)
+var _pk_tag_r: PanelContainer = null
 var _pk_lab_l2: Label = null               # 绝对血量小字(百分比是主读数)
 var _pk_lab_r2: Label = null
 var _pk_vs: Control = null                 # 中间 VS 徽标(取代第一版那个会被读错的相对百分比)
-var _pk_vs_bg: Panel = null
-var _pk_vs_lab: Label = null
+var _pk_vs_em: TextureRect = null          # 中央 VS 徽章(像素画·取代原来那个圆角方框)
+var _pk_vs_glow: TextureRect = null        # 徽章背后的染色光晕(优势方染色搬到这儿)
 var _pk_phase: float = 0.0                 # VS 呼吸相位
 var _pk_hit_l: float = 0.0                 # 受伤脉冲(0..1, 按 PK_HIT_DECAY 衰减)
 var _pk_hit_r: float = 0.0
@@ -265,8 +267,13 @@ const PK_LOW := 0.25         # 低血量阈值: 低于它开始警示闪烁(血�
 const PK_LOW_HZ := 3.2       # 警示闪烁频率
 const PK_SLANT := 10.0       # 斜切量(px)。整条切成平行四边形 —— 格斗游戏(尤其 Guilty Gear)
                              # 的做法, 给静止的横条一点速度感/对抗感。
-const PK_TRAIL_COL := Color("#fff3c4")   # 残影用【暖白】而不是队色提亮 ——
-                                         # "刚失去的那一段"用中性亮色, 在绿和紫上都醒目
+## 残影(damage trail)色。★暗砖红, 不是暖白 ——
+##   暖白【太亮】: 血量低时残影比血条主体还显眼(连拍 6 帧实拍看出来的)。
+##   暗砖红三个好处: ①语义准("刚失去的血"就该是伤口色, 且与本作"红=伤害数字"一致)
+##   ②亮度低于填充 → 不抢戏 ③在绿上是互补色、在紫上有明度差, 两种底色都分得开。
+##   参照: 街霸的可恢复伤害用黄、怪猎/黑魂用橙红; 白色只是图省事。
+const PK_TRAIL_COL := Color("#8b2f2f")
+const PK_VS_EMBLEM := "res://assets/sprites/ui/pk-vs-emblem.png"   # 中央 VS 徽章(全新生成)
 ## ★配色: 我方【绿】/ 敌方【紫】, 不用全项目的"我方蓝/敌方红"(用户 2026-07-30 拍板「只换 PK 条」)。
 ## 理由(用户先看出来的): 战场背景是【深蓝海底】, 蓝条打在深蓝上对比度天然差 ——
 ##   实拍里蓝段边框与背景的区分明显不如红段。绿/紫在这个背景上都不撞。
@@ -359,29 +366,19 @@ func _build_pk_bar() -> void:
 	_pk_egg_r = res[0]
 	_pk_egg_icon(row, ey)      # 副条行标签: 两端各一个蛋图标
 
-	# ── 读数: 【百分比】大字 + 绝对血量小字, 百分比放外端(左右对称) ──
-	# ★用户 2026-07-30:「按百分比来表示血条」。而且这直接解掉他最初那个疑问
-	#   「为啥一开始血量百分比不都是满的」—— 现在开场两边都是 100%。
-	#   绝对血量降为小字跟在内侧: 百分比说"还剩几成", 绝对值说"本钱多大"(两边满血时
-	#   条一样长但绝对值不同, 那个差只能靠这个数字体现)。
-	_pk_lab_l = _pk_mk_label(HORIZONTAL_ALIGNMENT_LEFT, 18)
-	_pk_lab_l.position = Vector2(8.0 + PK_SLANT, 0.0)      # ★内缩一个斜切量, 否则字左侧被斜边切掉
-	_pk_lab_l.size = Vector2(66.0, PK_H)
-	bar.add_child(_pk_lab_l)
-	_pk_lab_l2 = _pk_mk_label(HORIZONTAL_ALIGNMENT_LEFT, 13)
-	_pk_lab_l2.add_theme_color_override("font_color", Color(1, 1, 1, 0.66))
-	_pk_lab_l2.position = Vector2(80.0, 2.0)
-	_pk_lab_l2.size = Vector2(PK_SEG - 86.0, PK_H)
-	bar.add_child(_pk_lab_l2)
-	_pk_lab_r = _pk_mk_label(HORIZONTAL_ALIGNMENT_RIGHT, 18)
-	_pk_lab_r.position = Vector2(PK_W - 74.0 - PK_SLANT, 0.0)   # ★同上, 右侧对称
-	_pk_lab_r.size = Vector2(66.0, PK_H)
-	bar.add_child(_pk_lab_r)
-	_pk_lab_r2 = _pk_mk_label(HORIZONTAL_ALIGNMENT_RIGHT, 13)
-	_pk_lab_r2.add_theme_color_override("font_color", Color(1, 1, 1, 0.66))
-	_pk_lab_r2.position = Vector2(PK_SEG + PK_VS + 6.0, 2.0)
-	_pk_lab_r2.size = Vector2(PK_SEG - 86.0, PK_H)
-	bar.add_child(_pk_lab_r2)
+	# ── 读数: 百分比 + 绝对血量【合成一组】, 压在一块深色标签底板上 ──
+	# ★为什么要底板(用户 2026-07-30 审核后定): 格斗游戏基本【不在血条上放数字】——
+	#   街霸/GG 中间只有条, 名字在条外。而这里屏幕两侧已被头像栏占死(x<160 / x>1120),
+	#   条外没空间, 只能条内。条内放数字的真问题不是"压在填充上"(白字+黑描边读得清),
+	#   而是【低血量时填充退走, 字就孤零零飘在暗槽上】。加底板后它是一块清晰的"标签",
+	#   无论压在填充还是暗槽上都成立, 也顺带解掉"字比血条还宽"的观感。
+	# ★两个数字原来隔了半条距离, 看起来不像一组 —— 现在贴在一起。
+	_pk_tag_l = _pk_mk_tag(bar, true)
+	_pk_tag_r = _pk_mk_tag(bar, false)
+	_pk_lab_l = _pk_tag_l.get_meta("pct")
+	_pk_lab_l2 = _pk_tag_l.get_meta("abs")
+	_pk_lab_r = _pk_tag_r.get_meta("pct")
+	_pk_lab_r2 = _pk_tag_r.get_meta("abs")
 
 	_pk_build_vs(bar)
 
@@ -404,7 +401,10 @@ func _pk_seg(bar: Control, left: bool, y: float, h: float, col: Color, gloss_on:
 	sb.bg_color = Color(0.05, 0.07, 0.11, 1.0)
 	sb.set_border_width_all(2)
 	sb.border_color = col.lerp(Color(0.10, 0.13, 0.19), 0.45)
-	sb.set_corner_radius_all(4)
+	# ★不要圆角: 斜切端和圆角是两种【互斥】的造型语言, 同时用必然打架 ——
+	#   圆角+描边被斜切 shader 一刀切掉角后会留下残留像素(实拍里左端那个"灰三角脏点")。
+	#   去掉后斜边成为端部唯一造型, 脏点自然消失, 也更硬朗、更贴格斗游戏那套。
+	sb.set_corner_radius_all(0)
 	frame.add_theme_stylebox_override("panel", sb)
 	frame.material = _pk_slant_mat(Vector2(PK_SEG, h))
 	bar.add_child(frame)
@@ -454,6 +454,35 @@ func _pk_egg_icon(bar: Control, ey: float) -> void:
 		_pk_egg_icons.append(ic)
 
 
+## 读数标签: 深色底板 + [百分比大字][绝对血量小字] 紧挨成一组。
+## 底板宽度随内容自适应(HBox), 贴自己那一侧的外端(内缩一个斜切量, 否则被斜边切掉)。
+func _pk_mk_tag(bar: Control, left: bool) -> PanelContainer:
+	var pc := PanelContainer.new()
+	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.02, 0.03, 0.05, 0.62)     # 半透深底: 压住背后的填充但不挡死
+	sb.content_margin_left = 7; sb.content_margin_right = 7
+	sb.content_margin_top = 1; sb.content_margin_bottom = 1
+	sb.set_corner_radius_all(0)                      # 与条同语言: 不用圆角
+	pc.add_theme_stylebox_override("panel", sb)
+	var hb := HBoxContainer.new()
+	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hb.add_theme_constant_override("separation", 6)
+	pc.add_child(hb)
+	var pct := _pk_mk_label(HORIZONTAL_ALIGNMENT_LEFT, 18)
+	var abs_l := _pk_mk_label(HORIZONTAL_ALIGNMENT_LEFT, 13)
+	abs_l.add_theme_color_override("font_color", Color(1, 1, 1, 0.70))
+	if left:
+		hb.add_child(pct); hb.add_child(abs_l)     # 左段: 百分比在外(左)
+	else:
+		hb.add_child(abs_l); hb.add_child(pct)     # 右段镜像
+	pc.set_meta("pct", pct)
+	pc.set_meta("abs", abs_l)
+	bar.add_child(pc)
+	pc.position = Vector2(6.0 + PK_SLANT, 3.0) if left else Vector2(0.0, 3.0)
+	return pc
+
+
 func _pk_mk_label(align: int, fs: int = 15) -> Label:
 	var l := Label.new()
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -479,30 +508,39 @@ func _pk_build_vs(bar: Control) -> void:
 	holder.pivot_offset = Vector2(PK_VS * 0.5, PK_H * 0.5)
 	bar.add_child(holder)
 	_pk_vs = holder
-	var bg := Panel.new()
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.offset_left = 5; bg.offset_right = -5
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.08, 0.10, 0.16, 0.96)
-	sb.set_border_width_all(2)
-	sb.border_color = Color(0.55, 0.62, 0.78, 0.8)
-	sb.set_corner_radius_all(5)
-	bg.add_theme_stylebox_override("panel", sb)
-	holder.add_child(bg)
-	_pk_vs_bg = bg
-	var lab := Label.new()
-	lab.text = "VS"
-	lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	lab.set_anchors_preset(Control.PRESET_FULL_RECT)
-	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	lab.add_theme_font_size_override("font_size", 20)
-	lab.add_theme_color_override("font_color", Color("#ffe9a8"))
-	lab.add_theme_constant_override("outline_size", 4)
-	lab.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	holder.add_child(lab)
-	_pk_vs_lab = lab
+	# ── 背后光晕: 优势方染色搬到这儿(原来染的是方框底片, 太闷) ──
+	var gl := TextureRect.new()
+	gl.texture = VfxTex._make_glow_texture()
+	gl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	gl.stretch_mode = TextureRect.STRETCH_SCALE
+	# ★2.1×2.6 太大: 实拍里它不是"徽章背后一点光", 而是中间一大团雾,
+	#   把两侧血条的内端都染了色、盖住了。收到 1.35×1.7 才是"衬托徽章"而不是"糊住中段"。
+	gl.size = Vector2(PK_VS * 1.35, PK_H * 1.7)
+	gl.position = Vector2(PK_VS * 0.5, PK_H * 0.5) - gl.size * 0.5
+	holder.add_child(gl)
+	_pk_vs_glow = gl
+	# ── 徽章: 像素画 VS(全新生成·assets/sprites/ui/pk-vs-emblem.png) ──
+	# ★这里给贴图不违反"血条不上美术素材"那条: 我反对的是给【可伸缩的条】上 9-slice
+	#   (斜切端和平铺天然冲突), 而 VS 是【固定尺寸的单点元素】, 没有伸缩问题,
+	#   它又是整条的视觉焦点, 值得特殊对待(用户 2026-07-30:「不要这框呢，或者设计好点的」)。
+	var em := TextureRect.new()
+	if ResourceLoader.exists(PK_VS_EMBLEM):
+		em.texture = load(PK_VS_EMBLEM)
+	else:
+		push_warning("[PK] VS 徽章素材缺失: %s" % PK_VS_EMBLEM)
+	em.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	em.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	em.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	# ★必须 EXPAND_IGNORE_SIZE: TextureRect 默认 EXPAND_KEEP_SIZE, 最小尺寸被【贴图本身】
+	#   顶住(这张 76×56), 我下面设的 size 会被无声地钳上去 —— 等于设了个寂寞。
+	#   (是门禁反向验证时发现的: "徽章高度超出条高"那条断言把高度改成 PK_H 也不红,
+	#    因为贴图 56 > 32 恒成立 —— 恒真式。)
+	em.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	# ★故意【超出条高】: 格斗游戏的中央徽章都是破出血条框的, 这样它才是焦点而不是条的一格
+	em.size = Vector2(PK_VS - 4.0, PK_H + 12.0)   # ★仍超出条高(破框=焦点), 但别压到下面的副条
+	em.position = Vector2(PK_VS * 0.5, PK_H * 0.5) - em.size * 0.5
+	holder.add_child(em)
+	_pk_vs_em = em
 
 
 ## 这个单位算不算进【主条】。见本节顶部注释的口径说明。
@@ -581,6 +619,9 @@ func _pk_refresh() -> void:
 	_pk_lab_r.text = "%d%%" % int(round(_pk_target_r * 100.0))
 	_pk_lab_l2.text = _pk_num(l.x)
 	_pk_lab_r2.text = _pk_num(r.x)
+	# 右侧标签宽度随内容变 → 每次刷新后重新贴右端(内缩一个斜切量)
+	if _pk_tag_r != null and is_instance_valid(_pk_tag_r):
+		_pk_tag_r.position.x = PK_W - _pk_tag_r.size.x - 6.0 - PK_SLANT
 	# ── 副条: 龟蛋 ──
 	var el := _pk_egg_sum("left")
 	var er := _pk_egg_sum("right")
@@ -719,24 +760,25 @@ func _pk_vs_tick(delta: float) -> void:
 	#   一直一呼一吸, 很吵。停在中性尺寸(而不是停在某个呼吸相位上)。
 	if battle._settled:
 		_pk_vs.scale = Vector2.ONE
+		if _pk_vs_glow != null and is_instance_valid(_pk_vs_glow):
+			_pk_vs_glow.modulate = Color(1, 1, 1, 0.0)
 		return
 	_pk_phase = fmod(_pk_phase + delta, 1000.0)
 	var hit: float = maxf(_pk_hit_l, _pk_hit_r)
-	# ① 呼吸(±3%) + ③ 受伤时额外弹一下
-	var s: float = 1.0 + sin(_pk_phase * 2.4) * 0.03 + hit * 0.16
-	_pk_vs.scale = Vector2(s, s)
-	# ② 优势方染色: 谁的剩余比例高就往谁的颜色偏 (不用数字也读得出谁占优)
-	# ★染色系数第一版给太小: 蓝方只剩 111、紫方 1,719 时徽标才微微偏色, 读不出优势方。
-	#   ×0.5 → ×1.4 并钳到 [0,1], 差 0.36 就能吃满 → 优势明显时徽标就明显偏色。
+	# ① 呼吸(±3%) + ③ 受伤时徽章弹一下
+	var sc: float = 1.0 + sin(_pk_phase * 2.4) * 0.03 + hit * 0.16
+	_pk_vs.scale = Vector2(sc, sc)
+	# ② 优势方染色 —— 染【光晕】不是染方框(方框已删)。
+	#   染色系数 ×1.4: 差 0.36 就吃满, 优势明显时一眼读得出偏哪边。
 	var adv: float = clampf(0.5 + (_pk_shown_l - _pk_shown_r) * 1.4, 0.0, 1.0)
 	var tint: Color = PK_RED.lerp(PK_BLUE, adv)
-	var sb: StyleBoxFlat = _pk_vs_bg.get_theme_stylebox("panel") as StyleBoxFlat
-	if sb != null:
-		# 受伤脉冲: 边框与底片亮一下
-		sb.border_color = tint.lerp(Color.WHITE, 0.10 + hit * 0.55)
-		sb.bg_color = Color(0.08, 0.10, 0.16, 0.96).lerp(tint, 0.38 + hit * 0.34)
-	_pk_vs_lab.add_theme_color_override("font_color",
-		Color("#ffe9a8").lerp(Color.WHITE, hit))
+	if _pk_vs_glow != null and is_instance_valid(_pk_vs_glow):
+		# 光晕强度: 常态随呼吸微动; 掉血时炸亮一下
+		var amp: float = 0.20 + sin(_pk_phase * 2.4) * 0.04 + hit * 0.45   # ★基础强度也收一档
+		_pk_vs_glow.modulate = Color(tint.r, tint.g, tint.b, clampf(amp, 0.0, 1.0))
+		var gs: float = 1.0 + hit * 0.35
+		_pk_vs_glow.scale = Vector2(gs, gs)
+		_pk_vs_glow.pivot_offset = _pk_vs_glow.size * 0.5
 
 
 ## 向目标平滑一步; 收敛就【吸附】—— 否则无限逼近会永远留半像素缝。

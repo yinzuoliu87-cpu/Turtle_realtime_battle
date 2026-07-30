@@ -280,45 +280,67 @@ func _readout(s) -> void:
 
 ## ⑦ VS 徽标
 func _vs_badge(s) -> void:
-	print("  ── ⑦ VS 徽标: 在位 + 染色随优势变 + 受伤脉冲 ──")
+	print("  ── ⑦ VS 徽章: 像素画 + 光晕随优势染色 + 受伤脉冲 ──")
 	var h = s._hud
-	_ok("⑦ VS 徽标三件都在", s._hud._pk_vs != null and s._hud._pk_vs_bg != null and s._hud._pk_vs_lab != null)
-	_ok("⑦ 徽标写的是 VS(不是数字)", s._hud._pk_vs_lab.text == "VS")
-	# 我方大优 → 底片偏我方色; 敌方大优 → 偏敌方色
+	# ★第二版把"圆角方框 + VS 文字"换成了【像素徽章 + 背后染色光晕】
+	#   (用户 2026-07-30:「不要这框呢，或者设计好点的」)。所以这组断言的是徽章与光晕。
+	_ok("⑦ VS 容器 + 徽章 + 光晕都在",
+		s._hud._pk_vs != null and s._hud._pk_vs_em != null and s._hud._pk_vs_glow != null)
+	_ok("⑦ ★原来那个圆角方框已删(不再有 Panel 底片)", not ("_pk_vs_bg" in s._hud))
+	_ok("⑦ ★徽章素材在磁盘上", FileAccess.file_exists(h.PK_VS_EMBLEM), h.PK_VS_EMBLEM)
+	_ok("⑦ ★徽章真的拿到了贴图(不是空 TextureRect)",
+		s._hud._pk_vs_em != null and s._hud._pk_vs_em.texture != null)
+	_ok("⑦ 徽章用 NEAREST(像素画不许插值成糊)",
+		s._hud._pk_vs_em.texture_filter == CanvasItem.TEXTURE_FILTER_NEAREST)
+	# ★徽章故意超出条高 —— 格斗游戏的中央徽章都是破出血条框的, 这样才是焦点。
+	#   ★这条曾经是【恒真式】: TextureRect 默认 EXPAND_KEEP_SIZE, 最小尺寸被贴图(76×56)顶住,
+	#     代码里设的 size 被无声钳上去 → 56 > 32 永远成立, 把高度改成 PK_H 也不红。
+	#     现在代码设了 EXPAND_IGNORE_SIZE, 这条才真的在量【配置的】高度。
+	_ok("⑦ ★徽章按配置尺寸渲染(expand_mode 必须 IGNORE_SIZE, 否则被贴图最小尺寸钳住)",
+		s._hud._pk_vs_em.expand_mode == TextureRect.EXPAND_IGNORE_SIZE,
+		"expand_mode=%d" % s._hud._pk_vs_em.expand_mode)
+	_ok("⑦ ★徽章高度超出主条(破框 = 视觉焦点)", s._hud._pk_vs_em.size.y > h.PK_H,
+		"徽章 %.0f vs 条高 %.0f" % [s._hud._pk_vs_em.size.y, h.PK_H])
+	# 优势方染色: 染的是【光晕】
 	s._hud._pk_shown_l = 1.0; s._hud._pk_shown_r = 0.05
 	s._hud._pk_hit_l = 0.0; s._hud._pk_hit_r = 0.0
 	h._pk_vs_tick(0.016)
-	var sb_a: StyleBoxFlat = s._hud._pk_vs_bg.get_theme_stylebox("panel") as StyleBoxFlat
-	var col_adv := sb_a.bg_color
+	var col_adv: Color = s._hud._pk_vs_glow.modulate
 	s._hud._pk_shown_l = 0.05; s._hud._pk_shown_r = 1.0
 	h._pk_vs_tick(0.016)
-	var col_dis := (s._hud._pk_vs_bg.get_theme_stylebox("panel") as StyleBoxFlat).bg_color
-	_ok("⑦ ★优劣两态的底片颜色明显不同(不用数字也读得出谁占优)",
+	var col_dis: Color = s._hud._pk_vs_glow.modulate
+	_ok("⑦ ★优劣两态光晕颜色明显不同(不用数字也读得出谁占优)",
 		col_adv.r != col_dis.r or col_adv.g != col_dis.g or col_adv.b != col_dis.b)
-	_ok("⑦ ★我方大优时底片偏绿(g 分量更高)", col_adv.g > col_dis.g,
+	_ok("⑦ ★我方大优时光晕偏绿(g 更高)", col_adv.g > col_dis.g,
 		"优势 g=%.3f 劣势 g=%.3f" % [col_adv.g, col_dis.g])
-	_ok("⑦ ★敌方大优时底片偏紫(b 分量更高)", col_dis.b > col_adv.b,
+	_ok("⑦ ★敌方大优时光晕偏紫(b 更高)", col_dis.b > col_adv.b,
 		"优势 b=%.3f 劣势 b=%.3f" % [col_adv.b, col_dis.b])
-	# 受伤脉冲: 掉血会置 1.0 并随时间衰减
+	_ok("⑦ 光晕常态可见(alpha>0)", col_adv.a > 0.05, "a=%.3f" % col_adv.a)
+	# 受伤脉冲
 	s._hud._pk_shown_l = 1.0; s._hud._pk_target_l = 0.5
 	s._hud._pk_hit_l = 0.0
 	s._hud._pk_acc = 0.0
 	h._pk_tick(1.0 / 60.0)
 	_ok("⑦ ★掉血触发受伤脉冲", s._hud._pk_hit_l > 0.5, "%.3f" % s._hud._pk_hit_l)
 	var before: float = s._hud._pk_hit_l
-	# ★不能只设 _pk_target_l —— _pk_tick 每 PK_SAMPLE 秒会 _pk_refresh() 从 _units 重算它,
-	#   于是一直在掉血、脉冲被反复重置成 1.0(我第一版测试就是这么写的, 报"0.963 → 0.963")。
-	#   要让它【真的】停止掉血: 把显示值直接放到目标上。
-	s._hud._pk_shown_l = s._hud._pk_target_l
+	s._hud._pk_shown_l = s._hud._pk_target_l    # 真正停止掉血(只设 target 会被 _pk_refresh 覆写)
 	for _i in range(30):
 		h._pk_tick(1.0 / 60.0)
-	_ok("⑦ ★脉冲会衰减(不会一直亮着)", s._hud._pk_hit_l < before, "%.3f → %.3f" % [before, s._hud._pk_hit_l])
-	# 徽标缩放: 呼吸让它不是死的
+	_ok("⑦ ★脉冲会衰减(不会一直亮着)", s._hud._pk_hit_l < before,
+		"%.3f → %.3f" % [before, s._hud._pk_hit_l])
+	# 呼吸 + 结算后停
 	var s1: float = s._hud._pk_vs.scale.x
 	for _i in range(40):
 		h._pk_tick(1.0 / 60.0)
-	_ok("⑦ 徽标在呼吸(缩放会变)", absf(s._hud._pk_vs.scale.x - s1) > 0.001,
+	_ok("⑦ 徽章在呼吸(缩放会变)", absf(s._hud._pk_vs.scale.x - s1) > 0.001,
 		"%.4f → %.4f" % [s1, s._hud._pk_vs.scale.x])
+	s._settled = true
+	h._pk_vs_tick(0.016)
+	_ok("⑦ ★结算后停呼吸(停在中性尺寸·结果屏上别一直动)",
+		is_equal_approx(s._hud._pk_vs.scale.x, 1.0), "%.4f" % s._hud._pk_vs.scale.x)
+	_ok("⑦ ★结算后光晕收掉", s._hud._pk_vs_glow.modulate.a < 0.01,
+		"a=%.3f" % s._hud._pk_vs_glow.modulate.a)
+	s._settled = false
 
 
 ## ⑧ 副条(龟蛋): 口径与主条独立
