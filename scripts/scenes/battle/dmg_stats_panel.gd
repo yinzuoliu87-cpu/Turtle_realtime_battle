@@ -140,6 +140,8 @@ func build() -> void:
 	# ★y 56→100: 顶部 PK 条 2026-07-30 加宽加厚后占到 y≈67, 双路文字行到 94 ——
 	#   原来的 56 会让面板标题栏钻到血条下面。100 是"贴着 HUD 下沿"。
 	panel.position = Vector2(12, 100)
+	# ★高度按内容自适应(见 render 末尾): 固定 430 时只有 5 行数据, 下半截一片空白(实拍看出来的)。
+	#   这里给个初值, render 每次按真实行数收紧。
 	panel.size = Vector2(540, 430)
 	panel.visible = false
 	panel.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -240,3 +242,18 @@ func render() -> void:
 			col_max = maxi(col_max, val(u, tab))
 		for u in list:
 			rows_vb.add_child(make_row(u, side, col_max))
+
+	# ★按内容收紧高度: 固定 430 时只有 5 行数据、下半截一片空白。
+	#   Control 不会自己撑高/收缩, 得手算: 取两列里较高的一列 + 上下留白。
+	var need := 0.0
+	for c in _cols:
+		var col := c as VBoxContainer
+		if col == null:
+			continue
+		var hh := 0.0
+		for ch in col.get_children():
+			if ch is Control and (ch as Control).visible:
+				hh += (ch as Control).get_combined_minimum_size().y + 4.0
+		need = maxf(need, hh)
+	if need > 0.0:
+		panel.size.y = clampf(need + 96.0, 150.0, 430.0)   # +96 = Tab 行 + 列头 + 上下内边距

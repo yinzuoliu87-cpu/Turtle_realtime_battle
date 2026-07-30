@@ -1804,7 +1804,18 @@ func _resolve_pet_sprite(id: String) -> Dictionary:
 	if ResourceLoader.exists(av):
 		push_warning("RealtimeBattle3D: %s 无全身图, 退回头像 (占位)" % id)
 		return _sprite_dict_from(load(av), null, true)
-	push_warning("RealtimeBattle3D: 立绘缺失 %s (占位空)" % id)
+	# ★空 id 单独说清楚 —— 它不是"这只龟的图丢了", 而是【统领槽位没配】:
+	#   season_leaders 为空 → GameState.default_dual_lineup() 用空串填 id(GameState.gd:640-648)
+	#   → _spawn_lane_side 照样为空 id 建单位 → 空框 + 无名统计行 + 本条 warning。
+	#   ★正常玩家碰不到: TeamSelect 的出战按钮在选满 3 只前是 disabled 的
+	#     (TeamSelectScene.gd:646「请选择 3 只龟」)。直接加载 RealtimeBattle3D.tscn
+	#     (截图/测试路径)才会走到这。
+	#   ★故意【不做静默跳过】—— 同 TRAINER_SPRITE 那条规矩: 悄悄兜底会让人以为数据是好的。
+	#     真有存档数据出问题时, "空框 + 这条 warning" 比"少两只龟"好排查得多。
+	if id == "":
+		push_warning("RealtimeBattle3D: ★统领槽位为空(season_leaders 没配够) —— 该位置会出现无名无立绘的空单位。正常流程不会发生(TeamSelect 强制选满 3 只); 直接加载战斗场景时属预期。")
+	else:
+		push_warning("RealtimeBattle3D: 立绘缺失 %s (占位空)" % id)
 	return {"tex": null, "frames": 1, "fps": 8.0, "frame_h": 64, "hframes": 1, "vframes": 1, "loop": true}
 
 # 由 texture + sprite 元数据算帧布局/帧率 (1:1 回合制: declared 帧丢最后一帧, fps=max(4,round(frames*1000/max(200,dur)))).
