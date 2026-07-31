@@ -253,6 +253,17 @@ func _smooth_and_trail(s) -> void:
 	_ok("⑤ ★掉血瞬间残影高于填充(看得出刚掉的那一段)",
 		s._hud._pk_trail_vr > s._hud._pk_shown_r + 0.001,
 		"残影 %.4f vs 填充 %.4f" % [s._hud._pk_trail_vr, s._hud._pk_shown_r])
+	# ★★残影【先停顿再收】(2026-07-31 打磨): 没有停顿的话小额掉血会被瞬间追上,
+	#   "刚掉了这一截"来不及看见。这里验停顿真的存在 —— 停顿期内残影【原地不动】。
+	# ★★循环次数写【固定帧数】, 不许用 h.PK_TRAIL_HOLD 算 —— 我第一版那么写, 反向验证时
+	#   把常量改成 0 → range(0) 一次都不循环 → 断言空转通过 = 恒真式, 抓不到任何东西。
+	#   15 帧 = 0.25 秒: 短于需求的停顿(0.45s)、长到足以让"没有停顿"的实现露馅。
+	var t_before: float = s._hud._pk_trail_vr
+	for _i in range(15):
+		h._pk_tick(1.0 / 60.0)
+	_ok("⑤ ★★停顿期内残影原地不动(否则小额掉血看不见)",
+		absf(s._hud._pk_trail_vr - t_before) < 0.0005,
+		"停顿中 %.6f (停顿前 %.6f)" % [s._hud._pk_trail_vr, t_before])
 	for _i in range(600):
 		h._pk_tick(1.0 / 60.0)
 	_ok("⑤ ★跑够帧数填充精确吸附到目标(不留半像素缝)",

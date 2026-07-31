@@ -182,6 +182,10 @@ var _pk_shown_l: float = 1.0               # 逐帧向 target 平滑(群伤瞬�
 var _pk_shown_r: float = 1.0
 var _pk_trail_l: ColorRect = null          # damage trail 残影: 掉血时旧位置留一段亮色再慢慢收
 var _pk_trail_r: ColorRect = null
+var _pk_prev_shown_l: float = 1.0          # 上一帧的填充值 —— 用来判"这一帧掉血了"(见 PK_TRAIL_HOLD)
+var _pk_prev_shown_r: float = 1.0
+var _pk_trail_hold_l: float = 0.0          # 残影停顿计时(见 PK_TRAIL_HOLD)
+var _pk_trail_hold_r: float = 0.0
 var _pk_trail_vl: float = 1.0
 var _pk_trail_vr: float = 1.0
 var _pk_egg_row: Control = null            # 副条整行容器(无蛋时隐藏整行)
@@ -258,7 +262,8 @@ var _pk_hit_r: float = 0.0
 ##   第一版 600/1280 = 47% 宽、26/720 = 3.6% 厚 —— 太小气, 撑不起"主读数"的地位。
 ##   现在 960/1280 = 75% 宽(右上两个按钮在 1148.., 左右对称留白后到 1120)、32/720 = 4.4% 厚。
 const PK_SEG := 440.0        # 单段宽(左/右各一段)
-const PK_VS := 80.0          # 中间 VS 槽宽
+const PK_VS := 68.0          # 中间 VS 槽宽。★80 → 68: 徽章本身会【破框】(比槽宽/条高都大),
+                             #   槽只需要给它一个"断口", 留太宽反而像两条中间空了一段。
 const PK_W := PK_SEG * 2.0 + PK_VS      # 总宽 600
 const PK_H := 32.0           # 主条高
 const PK_EGG_H := 15.0       # 副条(龟蛋)高。★要塞得下两端的蛋图标(9×12 太小看不出是蛋)
@@ -266,7 +271,9 @@ const PK_EGG_GAP := 4.0      # 主条与副条间距
 const PK_Y := 16.0           # 主条顶。占 16..42; 副条 46..55; 双路 HUD 文字下移到 60
 const PK_SAMPLE := 0.1       # 扫 _units 的采样间隔(秒)。别每帧扫: 主文件热路径预算 <0.2%
 const PK_SMOOTH := 6.0       # 填充平滑速率
-const PK_TRAIL_SMOOTH := 2.6 # 残影追赶速率(慢于填充 → 才看得出"刚掉了这一段")
+const PK_TRAIL_SMOOTH := 2.0 # 残影追赶速率(慢于填充 → 才看得出"刚掉了这一段"; 2.6→2.0 再慢一点)
+const PK_TRAIL_HOLD := 0.45  # ★掉血后残影【原地停顿】多久才开始收 —— 没有这个停顿,
+                             #   小额掉血会被瞬间追上, 残影等于白做。连续挨打会不断刷新它。
                              # ★1.6 太慢: 残影常态很宽, 看起来像"第三种颜色的段"而不是"刚掉的"
 const PK_HIT_DECAY := 2.2    # 受伤脉冲衰减速率
 const PK_LOW := 0.25         # 低血量阈值: 低于它开始警示闪烁(血条的标准语言)
@@ -278,7 +285,8 @@ const PK_SLANT := 10.0       # 斜切量(px)。整条切成平行四边形 —�
 ##   暗砖红三个好处: ①语义准("刚失去的血"就该是伤口色, 且与本作"红=伤害数字"一致)
 ##   ②亮度低于填充 → 不抢戏 ③在绿上是互补色、在紫上有明度差, 两种底色都分得开。
 ##   参照: 街霸的可恢复伤害用黄、怪猎/黑魂用橙红; 白色只是图省事。
-const PK_TRAIL_COL := Color("#8b2f2f")
+const PK_TRAIL_COL := Color("#b04141")   # ★#8b2f2f 太暗, 压在绿/紫填充边上几乎看不出;
+                                        #   提亮到 #b04141 仍是"旧伤"的暗红, 但读得出来了
 ## 右上按钮区宽度(投降+统计+间距+安全区) —— PK 条要给它让出这么多, 否则窄屏会盖住。
 const PK_BTN_ZONE := 140.0
 const PK_MIN_W := 420.0      # 条最窄也不小于这个(再窄就读不出双方血量了)
@@ -545,11 +553,20 @@ func _pk_mk_tag(bar: Control, left: bool) -> PanelContainer:
 	pc.add_theme_stylebox_override("panel", sb)
 	var hb := HBoxContainer.new()
 	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hb.add_theme_constant_override("separation", 6)
+	# ★间距 6 → 10: 去掉底板后两个数字失去了"同一块板上"的归属感, 挨太近会读成一个数
+	#   ("91%2,792")。拉开一点, 它们就是【主 + 副】两个信息。
+	hb.add_theme_constant_override("separation", 10)
 	pc.add_child(hb)
-	var pct := _pk_mk_label(HORIZONTAL_ALIGNMENT_LEFT, 18)
-	var abs_l := _pk_mk_label(HORIZONTAL_ALIGNMENT_LEFT, 13)
-	abs_l.add_theme_color_override("font_color", Color(1, 1, 1, 0.70))
+	# ★层级: 百分比是主角(19号·纯白), 绝对血量是配角(12号·半透)。
+	#   原来 18/13 且配角 0.70 不透明 —— 两者体量太接近, 眼睛不知道先看哪个。
+	var pct := _pk_mk_label(HORIZONTAL_ALIGNMENT_LEFT, 19)
+	var abs_l := _pk_mk_label(HORIZONTAL_ALIGNMENT_LEFT, 12)
+	# ★配角 = 【小 + 淡】, 不能靠"加粗描边"来降级 —— 12px 像素字配 3px 黑描边, 描边占了
+	#   字身 1/4, 0.55 的白被黑边挤成一坨灰; 抓图实测 "2,049" 的千分位逗号直接糊没了,
+	#   四个数字读成一个色块 = 配角信息【完全失效】。描边 2 + 0.76 白: 仍明显轻于纯白主角,
+	#   但每一位数(含逗号)都数得出来。
+	abs_l.add_theme_color_override("font_color", Color(1, 1, 1, 0.76))
+	abs_l.add_theme_constant_override("outline_size", 2)
 	if left:
 		hb.add_child(pct); hb.add_child(abs_l)     # 左段: 百分比在外(左)
 	else:
@@ -615,7 +632,9 @@ func _pk_build_vs(bar: Control) -> void:
 	#    因为贴图 56 > 32 恒成立 —— 恒真式。)
 	em.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	# ★故意【超出条高】: 格斗游戏的中央徽章都是破出血条框的, 这样它才是焦点而不是条的一格
-	em.size = Vector2(PK_VS - 4.0, PK_H + 12.0)   # ★仍超出条高(破框=焦点), 但别压到下面的副条
+	# ★槽收窄后徽章反而要【更大】: 破框幅度 = 焦点强度。
+	#   宽 PK_VS+16(左右各溢出 8px 压住两条内端的斜边) · 高 PK_H+16(仍不压到副条: 副条从 y=36 起)
+	em.size = Vector2(PK_VS + 16.0, PK_H + 16.0)
 	em.position = Vector2(PK_VS * 0.5, PK_H * 0.5) - em.size * 0.5
 	holder.add_child(em)
 	_pk_vs_em = em
@@ -822,10 +841,28 @@ func _pk_tick(delta: float) -> void:
 		_pk_hit_l = 1.0                   # 左方掉血 → 触发脉冲
 	if _pk_shown_r < pr - 0.0001:
 		_pk_hit_r = 1.0
-	_pk_trail_vl = maxf(_pk_shown_l,
-		_pk_lerp_to(_pk_trail_vl, _pk_shown_l, delta * PK_TRAIL_SMOOTH))
-	_pk_trail_vr = maxf(_pk_shown_r,
-		_pk_lerp_to(_pk_trail_vr, _pk_shown_r, delta * PK_TRAIL_SMOOTH))
+	# ★★残影【先停顿再收】(2026-07-31 打磨)。
+	#   原来掉血那一刻残影就开始以 PK_TRAIL_SMOOTH 追填充 —— 一小段掉血几乎瞬间被追上,
+	#   "刚掉了这一截"根本来不及看见, 等于白做。
+	#   现在: 检测到填充下降 → 把停顿计时器顶到 PK_TRAIL_HOLD; 停顿期间残影【原地不动】,
+	#   停顿走完才开始收。连续挨打会不断刷新停顿 = 残影一直挂着, 正是想要的"血亏了多少"。
+	#   ★触发条件必须是【填充这一帧下降了】, 不能写成"残影高于填充" ——
+	#     后者在整个收拢过程中一直成立, 停顿会被每帧刷新 → 残影【永远不收】。
+	#     (我第一版就这么写的, 门禁 ⑤"残影最终追上填充"当场抓到: 跑满 600 帧仍停在 1.000。)
+	if _pk_shown_l < _pk_prev_shown_l - 0.0005:
+		_pk_trail_hold_l = PK_TRAIL_HOLD
+	if _pk_shown_r < _pk_prev_shown_r - 0.0005:
+		_pk_trail_hold_r = PK_TRAIL_HOLD
+	_pk_prev_shown_l = _pk_shown_l
+	_pk_prev_shown_r = _pk_shown_r
+	_pk_trail_hold_l = maxf(0.0, _pk_trail_hold_l - delta)
+	_pk_trail_hold_r = maxf(0.0, _pk_trail_hold_r - delta)
+	if _pk_trail_hold_l <= 0.0:
+		_pk_trail_vl = maxf(_pk_shown_l,
+			_pk_lerp_to(_pk_trail_vl, _pk_shown_l, delta * PK_TRAIL_SMOOTH))
+	if _pk_trail_hold_r <= 0.0:
+		_pk_trail_vr = maxf(_pk_shown_r,
+			_pk_lerp_to(_pk_trail_vr, _pk_shown_r, delta * PK_TRAIL_SMOOTH))
 	_pk_egg_sl = _pk_ease(_pk_egg_sl, _pk_egg_tl, delta)
 	_pk_egg_sr = _pk_ease(_pk_egg_sr, _pk_egg_tr, delta)
 	_pk_apply()
