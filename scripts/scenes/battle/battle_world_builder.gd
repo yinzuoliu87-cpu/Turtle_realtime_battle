@@ -12,6 +12,82 @@ extends RefCounted
 ##   这个常量本来就属于"建地面"这一层 —— 下面三处 fallback 地面也用它。
 const TILE_GAP_M := 0.030
 
+## ═══ 地砖调色板 / 细节贴图 / 每 type 材质 ═══════════════════════════════
+## ★2026-07-31 从 RealtimeBattle3DScene 搬来: 主场景被 arch_budget 冻结在 8600 行,
+##   而这三样(调色板/贴图表/材质)本来就属于【建地面】这一层。搬完主场景 8549 行。
+##   做成 static —— 主场景侧 BattleWorldBuilder.tile_material(ti) 直接调, 不用拿实例。
+const TILE_COLS := {0: Color(0.102, 0.137, 0.251), 1: Color(0.122, 0.722, 0.769), 2: Color(0.227, 0.247, 0.361), 3: Color(0.149, 0.188, 0.337)}   # 暗深海夜调色板(锁死·场景地图方案.md§4): grass#1a2340/water#1fb8c4/stone#3a3f5c/sand=shore#263056
+
+## 每 tile type 的地砖细节贴图(P1·用户 2026-07-30「地图再度需要提升」)。
+##
+## ★这是【灰度亮度细节图】不是彩色图。原因: 本函数的既有管线就是
+##   albedo_color(TILE_COLS = 锁死的暗深海夜调色板·场景地图方案.md§4)
+##   × 灰度贴图, VfxTex._make_tile_texture() 的注释原文是「灰度→材质albedo_color上色」。
+##   直接塞彩色图会 ①和锁死调色板相乘变成一团黑 ②等于偷偷换掉那套锁死的配色。
+##   转灰度后色相仍由锁死调色板给, 新增的只是【真实的像素细节】。
+##
+## ★素材是 PixelLab 全新生成的(用户铁律「不要复用素材」), 16 张 best-of-N 里挑的 4 张,
+##   挑选时【避开带独立道具的】(珊瑚/海星/贝壳) —— 一格图要重复 80~150 次,
+##   带个珊瑚就等于满地一模一样的珊瑚(同 2026-07-23「太密+很多相同装饰」的教训)。
+##   源图与挑选依据见 docs/plans/20260730b-*.md §8。
+const TILE_TEX := {
+	0: "res://assets/sprites/map/tile-silt.png",    # grass=深海淤泥(细颗粒)
+	1: "res://assets/sprites/map/tile-water.png",   # water=水纹网(叠在滚动波纹 shader 上)
+	2: "res://assets/sprites/map/tile-stone.png",   # stone=卵石铺面石台
+	3: "res://assets/sprites/map/tile-sand.png",    # sand=沙纹
+}
+
+## 取某 type 的细节贴图; 文件缺了退回程序生成的斜网格(而不是崩/白图)。
+## ★不做静默兜底以外的事: 缺图会 push_warning, 免得"看着像做完了"(同 TRAINER_SPRITE 的规矩)。
+static var _tile_tex_cache: Dictionary = {}
+static func tile_detail_tex(ti: int) -> Texture2D:
+	if _tile_tex_cache.has(ti):
+		return _tile_tex_cache[ti]
+	var p: String = str(TILE_TEX.get(ti, ""))
+	var t: Texture2D = null
+	if p != "" and ResourceLoader.exists(p):
+		t = load(p)
+	if t == null:
+		push_warning("[tile] 地砖细节贴图缺失: %s → 退回程序生成斜网格" % p)
+		t = VfxTex._make_tile_texture()
+	_tile_tex_cache[ti] = t
+	return t
+
+static func tile_material(ti: int) -> Material:    # 每type材质: 水=滚动波纹shader发光×水纹贴图; 其余=锁死调色板×地砖细节贴图
+	if ti == 1:
+		# ★水保留原来的【滚动波纹 shader】(静态贴图给不了这个动), 只把新水纹贴图
+		#   作为细节【乘】进去 —— 两者叠加: 大尺度的波在动, 小尺度的纹在。
+		# ★★2026-07-31 波纹与细节纹全部改用【世界坐标】采样, 不再用 UV。
+		#   原来 sin(UV.x*6.0+TIME): UV 是【每格 0..1】⇒ 波在【每一格里重新开始】,
+		#   于是整片水面是同一个印章排成的方阵 —— 近景放大 3 倍一眼看穿, 这比砖缝更强地
+		#   在喊"这是网格", 而且网格加密后重复频率还翻了倍。
+		#   世界坐标采样后整片潟湖是【一整块水】, 波纹跨格连续, 与格子大小彻底解耦。
+		var sm := ShaderMaterial.new()
+		var sh := Shader.new()
+		sh.code = "shader_type spatial;\nrender_mode unshaded, cull_disabled;\nuniform vec4 base_col : source_color = vec4(0.075,0.42,0.48,1.0);\nuniform vec4 hi_col : source_color = vec4(0.25,0.91,0.88,1.0);\nuniform sampler2D detail_tex : filter_nearest, source_color;\nuniform float detail_amt = 0.55;\nvoid fragment(){\n	vec2 wp = (INV_VIEW_MATRIX * vec4(VERTEX,1.0)).xz;\n	float w = sin(wp.x*2.2 + TIME*1.2)*0.5+0.5;\n	w = mix(w, sin(wp.y*1.8 - TIME*0.9)*0.5+0.5, 0.5);\n	vec3 c = mix(base_col.rgb, hi_col.rgb, w*0.55);\n	float d = texture(detail_tex, wp*0.32).r;\n	c *= mix(1.0, d, detail_amt);\n	ALBEDO = c;\n	EMISSION = c*0.3;\n}"
+		sm.shader = sh
+		sm.set_shader_parameter("detail_tex", tile_detail_tex(1))
+		return sm
+	# ★★非水地砖也改【世界坐标】采样(2026-07-31)。
+	#   原来是 StandardMaterial3D: albedo_texture 按 mesh 自带 UV = 每格 0..1
+	#   ⇒ 同一个 64×64 印章在每一格上盖一次、排成完美方阵。近景放大一眼看穿,
+	#     而这比砖缝更强地在喊"这是网格"(水那边同一个病, 已先改掉)。
+	#   世界坐标采样 = 贴图【画在世界上】而不是画在每块砖上, 与格子大小/位置彻底脱钩。
+	#   ★★tex_scale 0.32 是【量出来的】不是拍的: 相机 51° 俯角下战场中心 27.8 屏幕像素/米,
+	#     0.32 ⇒ 一张 64px 贴图铺 3.1 米 ⇒ 一个纹素 ≈ 2.7 屏幕像素。
+	#     为什么要 ≥2 像素: 原来 0.55(纹素 0.8 像素)是【亚像素】—— 一个源像素占不到一个屏幕像素,
+	#     块状边缘被重采样成糊, 读起来是噪点不是"画出来的细节"。
+	#     实测三档 0.55/0.32/0.20: 0.55 糊、0.20 太稀发空、0.32 能看清一颗颗卵石与沉积笔触。
+	#   ★不写 unshaded: 只改 ALBEDO, 光照照常吃 —— 水那条是特意 unshaded(自发光), 别抄。
+	var sm2 := ShaderMaterial.new()
+	var sh2 := Shader.new()
+	sh2.code = "shader_type spatial;\nuniform vec4 base_col : source_color = vec4(0.1,0.14,0.25,1.0);\nuniform sampler2D detail_tex : filter_nearest;\nuniform float tex_scale = 0.32;\nvoid fragment(){\n\tvec2 wp = (INV_VIEW_MATRIX * vec4(VERTEX,1.0)).xz;\n\tALBEDO = base_col.rgb * texture(detail_tex, wp * tex_scale).r;\n}"
+	sm2.shader = sh2
+	sm2.set_shader_parameter("base_col", TILE_COLS.get(ti, Color(0.2, 0.2, 0.2)))
+	sm2.set_shader_parameter("detail_tex", tile_detail_tex(ti))
+	return sm2
+
+
 var battle
 
 ## ★2026-07-27 修 nav RID 泄漏: NavigationServer2D.map_create()/region_create() 建的是【服务器 RID】,

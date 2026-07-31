@@ -914,61 +914,6 @@ func _load_pets() -> void:
 					if sk is Dictionary and sk.has("type") and not _skill_meta.has(str(sk["type"])):
 						_skill_meta[str(sk["type"])] = sk
 
-const TILE_COLS := {0: Color(0.102, 0.137, 0.251), 1: Color(0.122, 0.722, 0.769), 2: Color(0.227, 0.247, 0.361), 3: Color(0.149, 0.188, 0.337)}   # 暗深海夜调色板(锁死·场景地图方案.md§4): grass#1a2340/water#1fb8c4/stone#3a3f5c/sand=shore#263056
-
-## 每 tile type 的地砖细节贴图(P1·用户 2026-07-30「地图再度需要提升」)。
-##
-## ★这是【灰度亮度细节图】不是彩色图。原因: 本函数的既有管线就是
-##   albedo_color(TILE_COLS = 锁死的暗深海夜调色板·场景地图方案.md§4)
-##   × 灰度贴图, VfxTex._make_tile_texture() 的注释原文是「灰度→材质albedo_color上色」。
-##   直接塞彩色图会 ①和锁死调色板相乘变成一团黑 ②等于偷偷换掉那套锁死的配色。
-##   转灰度后色相仍由锁死调色板给, 新增的只是【真实的像素细节】。
-##
-## ★素材是 PixelLab 全新生成的(用户铁律「不要复用素材」), 16 张 best-of-N 里挑的 4 张,
-##   挑选时【避开带独立道具的】(珊瑚/海星/贝壳) —— 一格图要重复 80~150 次,
-##   带个珊瑚就等于满地一模一样的珊瑚(同 2026-07-23「太密+很多相同装饰」的教训)。
-##   源图与挑选依据见 docs/plans/20260730b-*.md §8。
-const TILE_TEX := {
-	0: "res://assets/sprites/map/tile-silt.png",    # grass=深海淤泥(细颗粒)
-	1: "res://assets/sprites/map/tile-water.png",   # water=水纹网(叠在滚动波纹 shader 上)
-	2: "res://assets/sprites/map/tile-stone.png",   # stone=卵石铺面石台
-	3: "res://assets/sprites/map/tile-sand.png",    # sand=沙纹
-}
-
-## 取某 type 的细节贴图; 文件缺了退回程序生成的斜网格(而不是崩/白图)。
-## ★不做静默兜底以外的事: 缺图会 push_warning, 免得"看着像做完了"(同 TRAINER_SPRITE 的规矩)。
-static var _tile_tex_cache: Dictionary = {}
-func _tile_detail_tex(ti: int) -> Texture2D:
-	if _tile_tex_cache.has(ti):
-		return _tile_tex_cache[ti]
-	var p: String = str(TILE_TEX.get(ti, ""))
-	var t: Texture2D = null
-	if p != "" and ResourceLoader.exists(p):
-		t = load(p)
-	if t == null:
-		push_warning("[tile] 地砖细节贴图缺失: %s → 退回程序生成斜网格" % p)
-		t = VfxTex._make_tile_texture()
-	_tile_tex_cache[ti] = t
-	return t
-
-func _tile_material(ti: int) -> Material:    # 每type材质: 水=滚动波纹shader发光×水纹贴图; 其余=锁死调色板×地砖细节贴图
-	if ti == 1:
-		# ★水保留原来的【滚动波纹 shader】(静态贴图给不了这个动), 只把新水纹贴图
-		#   作为细节【乘】进去 —— 两者叠加: 大尺度的波在动, 小尺度的纹在。
-		#   detail 采样用 UV(每格 0..1), 所以纹理跟着格子走, 不会因为格子多而被拉伸。
-		var sm := ShaderMaterial.new()
-		var sh := Shader.new()
-		sh.code = "shader_type spatial;\nrender_mode unshaded, cull_disabled;\nuniform vec4 base_col : source_color = vec4(0.075,0.42,0.48,1.0);\nuniform vec4 hi_col : source_color = vec4(0.25,0.91,0.88,1.0);\nuniform sampler2D detail_tex : filter_nearest, source_color;\nuniform float detail_amt = 0.55;\nvoid fragment(){\n\tfloat w = sin((UV.x*6.0)+TIME*1.2)*0.5+0.5;\n\tw = mix(w, sin((UV.y*5.0)-TIME*0.9)*0.5+0.5, 0.5);\n\tvec3 c = mix(base_col.rgb, hi_col.rgb, w*0.55);\n\tfloat d = texture(detail_tex, UV).r;\n\tc *= mix(1.0, d, detail_amt);\n\tALBEDO = c;\n\tEMISSION = c*0.3;\n}"
-		sm.shader = sh
-		sm.set_shader_parameter("detail_tex", _tile_detail_tex(1))
-		return sm
-	var m := StandardMaterial3D.new()
-	m.albedo_color = TILE_COLS.get(ti, Color(0.2, 0.2, 0.2))
-	m.albedo_texture = _tile_detail_tex(ti)
-	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	return m
-
-var _tile_nodes: Array = []             # 当前tile MultiMesh节点(编辑器重绘时先清)
 func _load_tilemap() -> bool:           # 数据驱动: 读 data/maps/arena.json → _tilemap_from_data
 	var f := FileAccess.open("res://data/maps/arena.json", FileAccess.READ)
 	if f == null: return false
@@ -1002,7 +947,7 @@ func _tilemap_from_data(meta: Dictionary, grid: Array, height: Array) -> void:  
 			if not buckets.has(ti): buckets[ti] = []
 			buckets[ti].append(Transform3D(Basis(), _world_pos(Vector2(px, py), hh - TILE_SINK)))
 	for ti in buckets:
-		_tilemap_add(buckets[ti], Vector3(maxf(0.02, tw_m - BattleWorldBuilder.TILE_GAP_M), TILE_THICK, maxf(0.02, tw_m - BattleWorldBuilder.TILE_GAP_M)), TILE_COLS.get(ti, Color(0.2, 0.2, 0.2)), _tile_material(ti))
+		_tilemap_add(buckets[ti], Vector3(maxf(0.02, tw_m - BattleWorldBuilder.TILE_GAP_M), TILE_THICK, maxf(0.02, tw_m - BattleWorldBuilder.TILE_GAP_M)), BattleWorldBuilder.TILE_COLS.get(ti, Color(0.2, 0.2, 0.2)), BattleWorldBuilder.tile_material(ti))
 
 # ═══ 局内地图刷子编辑器 (MAPEDIT=1 开 · 开发工具不进正式对局 · 纯视觉不改玩法) ═══
 ## 地砖厚度(米)。★BoxMesh 以 transform 为【几何中心】, 所以砖体占 y∈[-厚/2, +厚/2]。
@@ -1011,6 +956,8 @@ func _tilemap_from_data(meta: Dictionary, grid: Array, height: Array) -> void:  
 ## 这就是用户 2026-07-21 报的「地砖有了高度导致特效被藏到地板下方」。
 ## 解法: 建砖时统一下沉 TILE_THICK*0.5, 让【上表面落在 y=0】=== 贴地特效的基准面。
 ## 这样一次修好全部, 不用逐个去抬那 40+ 处的 y 值(逐个抬还会引出穿模)。
+var _tile_nodes: Array = []             # 当前tile MultiMesh节点(编辑器重绘时先清)
+
 const TILE_THICK := 0.15
 const TILE_SINK := TILE_THICK * 0.5   # 砖心下沉量 → 上表面 y=0
 

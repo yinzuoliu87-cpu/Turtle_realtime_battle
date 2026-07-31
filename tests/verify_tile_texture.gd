@@ -22,6 +22,7 @@ extends Node
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_tile_texture.tscn
 
 const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
+const BWB := preload("res://scripts/scenes/battle/battle_world_builder.gd")   # ★TILE_COLS/TILE_TEX/tile_material 2026-07-31 从主场景搬来(arch_budget 冻结 8600 行)
 const VfxTex := preload("res://scripts/util/vfx_textures.gd")
 
 ## 每种 type 的最低结构标准差。★不是拍脑袋: 淤泥用 t1(sd 0.023)时屏幕上隐形,
@@ -60,7 +61,7 @@ func _ready() -> void:
 ## ①②③ 四张图在位 + 是灰度 + 最亮=255 + 有结构
 func _files_and_gray(s) -> void:
 	print("  ── ①②③ 四张贴图: 在位 / 灰度 / 最亮=255 / 有结构 ──")
-	var tex_map: Dictionary = RTScene.TILE_TEX
+	var tex_map: Dictionary = BWB.TILE_TEX
 	_chk("★分母: TILE_TEX 登记了 4 种 type", tex_map.size() == 4, "%d 种" % tex_map.size())
 	for ti in [0, 1, 2, 3]:
 		var p: String = str(tex_map.get(ti, ""))
@@ -111,24 +112,35 @@ func _wiring(s) -> void:
 	var fallback: Texture2D = VfxTex._make_tile_texture()
 	_chk("④ ★分母: 程序斜网格 fallback 能取到(用于对比)", fallback != null)
 	for ti in [0, 2, 3]:
-		var m = s._tile_material(ti)
-		_chk("④ type %d 是 StandardMaterial3D" % ti, m is StandardMaterial3D)
-		if not (m is StandardMaterial3D):
+		var m = BWB.tile_material(ti)
+		# ★★2026-07-31: 非水材质从 StandardMaterial3D 改成【世界坐标采样的 ShaderMaterial】。
+		#   原因: StandardMaterial3D 的 albedo_texture 走 mesh 自带 UV = 每格 0..1,
+		#   同一个 64×64 印章在每格上盖一次、排成完美方阵 —— 近景放大一眼看穿,
+		#   比砖缝更强地在喊"这是网格"(网格加密后重复频率还翻倍)。
+		_chk("④ type %d 是世界坐标 ShaderMaterial(不是按格 UV 的 StandardMaterial3D)" % ti,
+			m is ShaderMaterial)
+		if not (m is ShaderMaterial):
 			continue
-		var sm := m as StandardMaterial3D
-		_chk("④ ★type %d 拿到了贴图(不是 null)" % ti, sm.albedo_texture != null)
-		# ★不是退回程序斜网格 —— 缺图时 _tile_detail_tex 会 fallback, 那种情况必须红
-		_chk("④ ★type %d 不是退回程序斜网格(缺图会静默退化)" % ti,
-			sm.albedo_texture != fallback)
-		_chk("④ type %d 用 NEAREST 过滤(像素画不许插值成糊)" % ti,
-			sm.texture_filter == BaseMaterial3D.TEXTURE_FILTER_NEAREST)
-		# 调色板没动: albedo_color 必须仍等于 TILE_COLS 里锁死的值
-		var want: Color = RTScene.TILE_COLS.get(ti, Color.BLACK)
+		var sm := m as ShaderMaterial
+		var dtex = sm.get_shader_parameter("detail_tex")
+		_chk("④ ★type %d 拿到了贴图(不是 null)" % ti, dtex != null)
+		_chk("④ ★type %d 不是退回程序斜网格(缺图会静默退化)" % ti, dtex != fallback)
+		_chk("④ ★type %d 用 NEAREST 过滤(像素画不许插值成糊)" % ti,
+			sm.shader != null and sm.shader.code.contains("filter_nearest"))
+		# ★★贴图必须按【世界坐标】采样, 不能用 mesh UV —— 否则又变回每格一个印章。
+		_chk("④ ★★type %d 按世界坐标采样(shader 里出现 INV_VIEW_MATRIX * vec4(VERTEX)" % ti,
+			sm.shader != null and sm.shader.code.contains("INV_VIEW_MATRIX * vec4(VERTEX"))
+		_chk("④ ★type %d shader 不读 mesh 的 UV(读了就等于按格贴)" % ti,
+			sm.shader != null and not sm.shader.code.contains("UV)")
+				and not sm.shader.code.contains("UV."))
+		# 调色板没动: base_col 必须仍等于 TILE_COLS 里锁死的值
+		var want: Color = BWB.TILE_COLS.get(ti, Color.BLACK)
+		var got = sm.get_shader_parameter("base_col")
 		_chk("④ ★type %d 调色板未动(TILE_COLS 是锁死的·场景地图方案.md§4)" % ti,
-			sm.albedo_color.is_equal_approx(want),
-			"%s vs 期望 %s" % [str(sm.albedo_color), str(want)])
+			got != null and (got as Color).is_equal_approx(want),
+			"%s vs 期望 %s" % [str(got), str(want)])
 	# 水: 保留滚动波纹 shader, 且把新水纹作为 detail 乘进去
-	var wm = s._tile_material(1)
+	var wm = BWB.tile_material(1)
 	_chk("④ 水仍是 ShaderMaterial(静态贴图给不了滚动波纹)", wm is ShaderMaterial)
 	if wm is ShaderMaterial:
 		var shm := wm as ShaderMaterial
@@ -137,14 +149,19 @@ func _wiring(s) -> void:
 		_chk("④ ★水的 detail 不是退回程序斜网格", dt != fallback)
 		var code: String = shm.shader.code if shm.shader != null else ""
 		_chk("④ 水 shader 里真的用了 detail(不是设了参数不采样)",
-			code.contains("texture(detail_tex, UV)") and code.contains("detail_amt"))
+			code.contains("texture(detail_tex,") and code.contains("detail_amt"))
 		_chk("④ 水 shader 仍保留滚动波纹(TIME 驱动)", code.contains("TIME"))
+		# ★★水也必须按【世界坐标】算波纹 —— 原来是 sin(UV.x*6.0+TIME), UV 是每格 0..1,
+		#   波在【每一格里重新开始】, 整片水面成了同一个印章排成的方阵(2026-07-31 实拍确认)。
+		_chk("④ ★★水的波纹按世界坐标算(不是按格 UV → 否则每格重新开始)",
+			code.contains("INV_VIEW_MATRIX * vec4(VERTEX") and not code.contains("UV."))
 	# 数据驱动那条路径真的把材质传下去了(arena.json 存在 → 走的是它)
 	var src := FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")
-	_chk("④ ★_tilemap_from_data 把 _tile_material(ti) 传给 _tilemap_add",
-		src.contains("_tile_material(ti))"))
+	_chk("④ ★_tilemap_from_data 把材质传给 _tilemap_add(材质 2026-07-31 搬到 BattleWorldBuilder)",
+		src.contains("BattleWorldBuilder.tile_material(ti))"))
+	var bsrc := FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_world_builder.gd")
 	_chk("④ 缺图时会 push_warning(不做静默兜底·同 TRAINER_SPRITE 的规矩)",
-		src.contains("地砖细节贴图缺失"))
+		bsrc.contains("地砖细节贴图缺失"))
 
 
 func _chk(name: String, ok: bool, detail: String = "") -> void:
