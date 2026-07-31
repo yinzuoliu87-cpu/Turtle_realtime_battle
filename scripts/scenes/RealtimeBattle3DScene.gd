@@ -1002,7 +1002,7 @@ func _tilemap_from_data(meta: Dictionary, grid: Array, height: Array) -> void:  
 			if not buckets.has(ti): buckets[ti] = []
 			buckets[ti].append(Transform3D(Basis(), _world_pos(Vector2(px, py), hh - TILE_SINK)))
 	for ti in buckets:
-		_tilemap_add(buckets[ti], Vector3(tw_m * 0.94, TILE_THICK, tw_m * 0.94), TILE_COLS.get(ti, Color(0.2, 0.2, 0.2)), _tile_material(ti))
+		_tilemap_add(buckets[ti], Vector3(maxf(0.02, tw_m - BattleWorldBuilder.TILE_GAP_M), TILE_THICK, maxf(0.02, tw_m - BattleWorldBuilder.TILE_GAP_M)), TILE_COLS.get(ti, Color(0.2, 0.2, 0.2)), _tile_material(ti))
 
 # ═══ 局内地图刷子编辑器 (MAPEDIT=1 开 · 开发工具不进正式对局 · 纯视觉不改玩法) ═══
 ## 地砖厚度(米)。★BoxMesh 以 transform 为【几何中心】, 所以砖体占 y∈[-厚/2, +厚/2]。

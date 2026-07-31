@@ -60,7 +60,8 @@ def render(path, out):
     w, h = m['w'], m['h']
     im = Image.new('RGB', (SW, SH), (6, 14, 26))
     dr = ImageDraw.Draw(im, 'RGBA')
-    g = tile * 0.03                                     # 砖缝(引擎里是 tw*0.94, 这里近似)
+    g = 0.055 / 0.024 / 2.0                             # 砖缝: 与引擎的 TILE_GAP_M(绝对宽度)对齐
+                                                        #   0.055m ÷ WS ÷ 2 = 单边 1.15px
     for r in range(h):                                  # 远→近画, 近的盖远的
         for c in range(w):
             ti = int(m['grid'][r][c])

@@ -3,6 +3,15 @@ extends RefCounted
 ## 战场世界构建(viewport/tilemap/相机/环境/地面/竞技场/装饰/远景/光柱/气泡/navmesh·开局一次)
 ## 类内名不变;外部名加 battle.
 
+## 地砖之间的缝隙【绝对宽度】(米)。★不能写成"格宽 × 0.94" 那种比例式:
+## 2026-07-31 把网格加密一倍(76.8→38.4px)时, 比例式让缝【条数翻倍而单条只减半】
+## → 整块地面读作"灯芯绒", 而这正是原地图被吐槽成"一块瓷砖地板"的根由。
+## 给绝对值: 格子越密, 缝占的比例越小, 地面越接近一整片"画出来的海底", 让颜色区块自己说话。
+## 实测三档(0.055/0.030/0.014)后取 0.030 ≈ 1.25 像素: 0.055 仍偏吵、0.014 太平且出摩尔纹。
+## ★放在这里而不是主场景: 主场景被 arch_budget 冻结在 8600 行, 加常量会红(实测 8605)。
+##   这个常量本来就属于"建地面"这一层 —— 下面三处 fallback 地面也用它。
+const TILE_GAP_M := 0.030
+
 var battle
 
 ## ★2026-07-27 修 nav RID 泄漏: NavigationServer2D.map_create()/region_create() 建的是【服务器 RID】,
@@ -112,9 +121,9 @@ func _build_tilemap_ground() -> void:
 				"water": xf_water.append(xf)
 				"stone": xf_stone.append(xf)
 				_: xf_grass.append(xf)
-	battle._tilemap_add(xf_grass, Vector3(tw_m * 0.94, battle.TILE_THICK, tw_m * 0.94), Color(0.10, 0.14, 0.26))   # 暗蓝主地面
-	battle._tilemap_add(xf_water, Vector3(tw_m * 0.94, battle.TILE_THICK, tw_m * 0.94), Color(0.12, 0.72, 0.78))   # 青水(凹)
-	battle._tilemap_add(xf_stone, Vector3(tw_m * 0.94, battle.TILE_THICK, tw_m * 0.94), Color(0.24, 0.26, 0.38))   # 石台(凸)
+	battle._tilemap_add(xf_grass, Vector3(maxf(0.02, tw_m - TILE_GAP_M), battle.TILE_THICK, maxf(0.02, tw_m - TILE_GAP_M)), Color(0.10, 0.14, 0.26))   # 暗蓝主地面
+	battle._tilemap_add(xf_water, Vector3(maxf(0.02, tw_m - TILE_GAP_M), battle.TILE_THICK, maxf(0.02, tw_m - TILE_GAP_M)), Color(0.12, 0.72, 0.78))   # 青水(凹)
+	battle._tilemap_add(xf_stone, Vector3(maxf(0.02, tw_m - TILE_GAP_M), battle.TILE_THICK, maxf(0.02, tw_m - TILE_GAP_M)), Color(0.24, 0.26, 0.38))   # 石台(凸)
 
 # 阶段4: 边框密植发光水草/珊瑚(确定性种子·只非战斗区=ARENA外) + 氛围辉光粒子
 func _build_tilemap_decor() -> void:
