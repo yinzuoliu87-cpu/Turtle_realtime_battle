@@ -82,11 +82,25 @@ func _tick_fortress(u: Dictionary, delta: float) -> void:   # 深海堡垒甲p2e
 		if float(e["fortress_t"]) < 8.0: continue
 		e["fortress_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
-		var k2: float = [0.9, 1.6, 3.0][si]   # 用户2026-07-19: 0.8/1.0/1.5 -> 1/2/4 -> 0.9/1.6/3
+		# ★用户 2026-07-30 削弱: 汲取倍率 0.9/1.6/3.0 → 0.8/1/2.5;
+		#   每汲取一个敌人回血 60/110/250 + 已损6% → 50/100/250 + 已损5%。
+		#   (三星回复 250 是用户 2026-07-31 亲口确认的 —— 他原话写的是"25", 我判断是笔误并问了他。)
+		# ★数组【就近声明】而不是提到文件顶部 —— tooltip_number_audit 要求文案里的
+		#   "0.8/1/2.5" 这类三元组能在【装备 id 锚点附近】找到同样的数组; 放文件顶部会判"太远"。
+		#   (这也和本文件其它效果的写法一致, 见铁壁盾的 [100.0, 250.0, 400.0]。)
+		var k2: float = [0.8, 1.0, 2.5][si]                    # 用户2026-07-30 削弱: 0.9/1.6/3.0 →
+		var heal_flat: float = [50.0, 100.0, 250.0][si]        # 用户2026-07-30 削弱: 60/110/250 →
 		for o in battle._targeting._enemies_of(u):
+			# ★★汲取【排除训龟大师与屏障里的龟蛋】(用户 2026-07-30)。
+			#   大师是"场外监视者"(不计团灭·见 _dl_side_alive), 拿它当汲取目标既能白嫖回血、
+			#   又会把伤害打在一个本不该参战的单位上; 蛋在屏障里更不该被隔空汲。
+			if o.get("is_trainer", false):
+				continue
+			if o.get("_isEgg", false) or o.get("_eggImmune", false):
+				continue
 			battle._bolt_line(o["pos"], u["pos"], Color("#bfe9ff"))
 			battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, k2 * (u["def"] + u["mr"]), o, true), Color("#bfe9ff"), 0.0, false, true)   # 真·魔法伤害(走魔抗); 原 raw=true 是白字真伤·与文案"魔法伤害"不符(用户2026-07-19指出)
-			battle._damage._heal(u, [60.0, 110.0, 250.0][si] + maxf(0.0, u["maxHp"] - u["hp"]) * 0.06)   # 用户2026-07-19: 60/110/250 + 已损生命6%(逐敌结算)
+			battle._damage._heal(u, heal_flat + maxf(0.0, u["maxHp"] - u["hp"]) * 0.05)   # 已损生命 6% → 5%
 
 func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016: 每5秒放一个总护盾池(100/250/400 + 携带者8%最大生命)由全队(含自己)均分(用户2026-07-19; 原每人固定15/20/25); 每件独立
 	if u.get("equips", []).is_empty(): return

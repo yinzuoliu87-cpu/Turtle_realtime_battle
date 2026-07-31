@@ -2834,10 +2834,17 @@ func _big_bear_charge_and_spawn(u: Dictionary, si: int) -> void:   # 满层: 携
 	if is_instance_valid(glow): glow.queue_free()
 	var stt: Dictionary = u.get("eq_state", {}).get("p2eq_034", {})
 	stt["bear_done"] = true
-	var bear = _spawn._spawn_summon(u, "bear", [650.0, 1100.0, 10000.0][si], [70.0, 120.0, 2000.0][si], {"label": "大熊", "spr_id": "doll-bear", "col_size": 48.0, "hp_w": 36.0, "melee": true, "atk_interval": 2.0, "atk_range": 70.0})
+	# ★用户 2026-07-30 加强大熊:
+	#   · 攻速 0.5 → 0.7 次/秒  → atk_interval = 1/0.7 = 1.4286(原来 2.0)
+	#     ★他先问"代码上是不是 0.5, 还是文案不对" —— 实测代码就是 2.0 秒 = 0.5 次/秒, 文案没错。
+	#   · 最大生命 650/1100/10000 → 1600/3000/15000
+	#   · 双抗 20 → 70(护甲与魔抗各 70)
+	#   ★攻击力用户没提 → 不动(70/120/2000)。
+	var bear = _spawn._spawn_summon(u, "bear", [1600.0, 3000.0, 15000.0][si], [70.0, 120.0, 2000.0][si], {"label": "大熊", "spr_id": "doll-bear", "col_size": 48.0, "hp_w": 36.0, "melee": true, "atk_interval": 1.0 / 0.7, "atk_range": 70.0})
 	if bear != null:
 		bear["eq_state"] = {}; bear["equips"] = []
-		bear["base_def"] = 20.0; bear["def"] = 20.0; bear["base_mr"] = 20.0; bear["mr"] = 20.0
+		bear["base_def"] = 70.0; bear["def"] = 70.0
+		bear["base_mr"] = 70.0; bear["mr"] = 70.0        # 双抗 20 → 70(用户2026-07-30)
 		bear["is_big_bear"] = true; bear["bear_stacks"] = 0; bear["bear_star"] = si
 		if OS.has_environment("EQDEMO_FAST"): bear["atk_interval"] = 0.6   # FAST=快速攒层看波
 	_skill_ring(u["pos"], Color(1.0, 0.82, 0.4, 0.6), 90.0); _shake(JUICE_SHAKE_BIG)

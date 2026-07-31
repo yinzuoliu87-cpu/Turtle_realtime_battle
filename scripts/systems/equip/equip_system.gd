@@ -717,6 +717,47 @@ func _eq_charge(stt: Dictionary, key: String, amt: float, cap: float, on_full: C
 # ============================================================================
 #  on-hit (每段命中后, attacker 视角)
 # ============================================================================
+## ── 飞镖056(用户 2026-07-30 新效果) ──
+const DART_EVERY := 5              # 每 5 下普攻强化一次
+const DART_KNOCKUP_SEC := 1.0      # 强化那一击把目标击飞 1 秒(= 位移 + 同时长 stun)
+const DART_KNOCKUP_DIST := 120.0   # 击飞位移距离(码)
+
+
+## ── 荆棘海胆015(用户 2026-07-30 效果重做) ──
+## 原来: 每次反伤直接给攻击者 2/2.5/3 层流血。
+## 现在: 反伤【累计】到阈值 → ①给自己护盾 ②强化下一次普攻(命中施加大量流血)。
+## ★阈值随星级【递减】(300→270→230) = 星级越高触发越快, 与"加强"方向一致。
+const THORN_REFLECT := [0.12, 0.25, 0.40]     # 反伤比例(原 0.10/0.17/0.25)
+const THORN_THRESHOLD := [300.0, 270.0, 230.0]  # 每累计反伤这么多点触发一次
+const THORN_SHIELD := [50.0, 70.0, 200.0]     # 触发时给自己的护盾
+const THORN_BLEED := [30, 50, 90]             # 强化的那一击命中时施加的流血层数
+
+
+## 复活海螺033: 小虫诞生时【带 3 件随机装备】(用户 2026-07-30)。
+##
+## ★星级按【携带者的星级】走 1/2/3 —— 与本项目所有"1/2/3"三档值同一口径。
+## ★池子 = 费用 4 或 5 的装备(DataRegistry 的 cost 字段)。允许重复抽(池子只有十几件,
+##   强制不重复会在小池子里失败; 而且"随机 3 件"没说不许重复)。
+## ★用 battle._battle_rng 抽 —— 裸 randi() 会破坏确定性(rng_discipline 门禁会红)。
+func _conch_grant_equips(worm: Dictionary, si: int) -> void:
+	var pool: Array = []
+	for it in DataRegistry.phase2_equipment:
+		var c: int = int(it.get("cost", 0))
+		if c == 4 or c == 5:
+			pool.append(str(it.get("id", "")))
+	if pool.is_empty():
+		push_warning("[复活海螺] 4/5 费装备池为空 —— 小虫不带装备(不静默塞别的费用)")
+		return
+	var star: int = [1, 2, 3][si]   # ★写成三元数组而不是 si+1: 文案里的"1/2/3星"要能在代码里找到同样的数组(tooltip_number_audit)
+	for _i in range(3):
+		var eid: String = str(pool[battle._battle_rng.randi() % pool.size()])
+		worm["equips"].append({"id": eid, "star": star})
+		# ★装备要真的生效必须走这两步(spawn 期的既有做法, 见 EquipStatsApply):
+		#   ①属性(hp/atk/护甲…) ②flag/初始状态(eq_state 里的层数、阈值等)
+		_stats._eq_apply_one_stats(worm, eid, star)
+		_stats._eq_apply_flags(worm, eid, star)
+
+
 func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 	if src.get("equips", []).is_empty():
 		return
@@ -738,6 +779,28 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 					battle._vfx._float_text(tgt["pos"], "-999999", battle._VC.color_of(battle._VC.cls_for("damage", "true", true)), true, "damage", "true")   # 处决=固定跳-999999真伤大字(实际伤害=剩余血, 用户)
 					tgt["hp"] = 0.0
 					if was: battle._kill(tgt, src)
+			"p2eq_056":   # 飞镖(用户2026-07-30): 每 5 下普攻, 下一击强化 → 击飞目标 1 秒
+				# ★计数【每 5 下触发一次】—— 用取模而不是"攒到 5 再清零", 两者等价但取模不会
+				#   因为中途有别的分支 return 而漏清。第 5/10/15… 下命中即触发。
+				var dh: int = int(stt.get("dart_hits", 0)) + 1
+				stt["dart_hits"] = dh
+				src["eq_state"][iid] = stt
+				if dh % DART_EVERY == 0 and tgt.get("alive", false):
+					# ★本项目没有独立的"击飞"函数 —— 击飞 = _knockback(位移+抛物演出) + stun_until(期间不能动不能打)。
+					#   我一开始写了 _knockup 并用 has_method 兜底 —— 那是【假设 API 存在】, 查了才知道只有 _knockback。
+					battle._damage._knockback(src, tgt, DART_KNOCKUP_DIST)
+					tgt["stun_until"] = maxf(float(tgt.get("stun_until", 0.0)), battle._t + DART_KNOCKUP_SEC)
+					tgt["_dart_kb_n"] = int(tgt.get("_dart_kb_n", 0)) + 1   # 同步触发证据(供门禁)
+					battle._skill_ring(tgt["pos"], Color(1.0, 0.85, 0.4, 0.8), 52.0)
+			"p2eq_015":   # 荆棘海胆: 消费"强化下一次普攻" → 命中施加大量流血(用户2026-07-30 重做)
+				# ★强化是【攒着的次数】而不是布尔 —— 一发巨额反伤可能一次攒出好几次,
+				#   用布尔会把多出来的吞掉。每次普攻消费一层。
+				var emp: int = int(stt.get("thorn_empower", 0))
+				if emp > 0 and tgt.get("alive", false):
+					stt["thorn_empower"] = emp - 1
+					src["eq_state"][iid] = stt
+					battle._damage._apply_dot_stacks(tgt, "bleed", THORN_BLEED[si], src)
+					battle._skill_ring(tgt["pos"], Color(0.9, 0.35, 0.35, 0.75), 46.0)
 			"p2eq_002":   # 海带卷刀: 命中→施加流血层 (范围技能触发减半; 3★流血层数天然可叠)
 				var bs: int = maxi(1, roundi([0.075, 0.1, 0.15][si] * src["atk"] * (0.5 if is_aoe else 1.0)))
 				battle._damage._apply_dot_stacks(tgt, "bleed", battle._cyeq_n(bs), src)
@@ -1027,12 +1090,29 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 							u["urchin_sh_rate"] = _ugot / 10.0   # 10秒内线性衰减完(用户2026-07-19"慢慢衰减")
 							battle._urchin_shield_fx(u)   # 紫刺环+紫字, 与普通金盾区分
 						stt["harden_given"] = true
-			"p2eq_015":   # 荆棘海胆: 反伤真伤 + 施流血给攻击者
+			"p2eq_015":   # 荆棘海胆(用户2026-07-30 重做): 反伤真伤 + 【累计到阈值】→ 护盾 + 强化下一次普攻
 				if src.get("alive", false) and battle._is_hostile(u, src):
-					var refl: float = float(dmg) * float(stt.get("reflect_pct", 0.10))
+					var refl: float = float(dmg) * float(stt.get("reflect_pct", THORN_REFLECT[0]))
 					if refl >= 1.0:
 						battle._damage._apply_damage_from(u, src, int(refl), Color("#c9a36b"), 0.0, true, true)   # 反伤=真实伤害跳白字(原_raw_lose静默不跳数字=bug); from_equip防循环
-					battle._damage._apply_dot_stacks(src, "bleed", maxi(1, roundi(float(stt.get("reflect_bleed", 2.0)))), u)
+					# ★★重做: 原来是"每次反伤都给攻击者 2/2.5/3 层流血"。
+					#   现在改成【累计制】—— 反伤总量每满 THORN_THRESHOLD 点:
+					#     ① 给【自己】THORN_SHIELD 点护盾
+					#     ② 强化下一次普攻, 命中时施加 THORN_BLEED 层流血(见 _eq_on_hit 的同 id 分支)
+					#   ★累计的是【反伤出去的量】refl, 不是"挨了多少打" —— 文案写的是"每反伤 N 点伤害"。
+					#   ★用 while 不用 if: 一发巨额反伤应当一次结算多层, 否则会吞掉溢出部分。
+					var acc: float = float(stt.get("thorn_accum", 0.0)) + maxf(0.0, refl)
+					var thr: float = THORN_THRESHOLD[si]
+					var fired := 0
+					while acc >= thr and fired < 20:
+						acc -= thr
+						fired += 1
+					if fired > 0:
+						battle._damage._grant_shield(u, THORN_SHIELD[si] * float(fired))
+						stt["thorn_empower"] = int(stt.get("thorn_empower", 0)) + fired   # 攒着的强化次数
+						battle._skill_ring(u["pos"], Color(0.86, 0.72, 0.45, 0.7), 54.0)
+					stt["thorn_accum"] = acc
+					u["eq_state"][iid] = stt
 			"p2eq_017":   # 不沉之锚: 每次受伤→治疗生命%最低友军 (1/2/15%自身maxHp), 累积满100→+1沉锚充能
 				var heal_amt: float = u["maxHp"] * [0.01, 0.02, 0.15][si]
 				# 生命百分比最低的友军 (含自己)
@@ -1210,7 +1290,8 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 		match iid:
 			"p2eq_033":   # 复活海螺: 彻底阵亡→原位变形成小虫(通用打法/攻速0.65) + 亡灵变形演出
 				battle._conch_transform(u["pos"])
-				var worm = battle._spawn._spawn_summon(u, "worm", [400.0, 900.0, 5000.0][si], [30.0, 55.0, 200.0][si], {"label": "海螺虫", "spr_id": "conch-worm", "col_size": 30.0, "hp_w": 22.0})   # 小虫只有星级无等级(去_lvl_mult), 数值即实际
+				# ★用户 2026-07-30 加强: 小虫 生命 400/900/5000 → 100/1500/10000, 攻击 30/55/200 → 50/80/200
+				var worm = battle._spawn._spawn_summon(u, "worm", [100.0, 1500.0, 10000.0][si], [50.0, 80.0, 200.0][si], {"label": "海螺虫", "spr_id": "conch-worm", "col_size": 30.0, "hp_w": 22.0})   # 小虫只有星级无等级(去_lvl_mult), 数值即实际
 				if worm != null:
 					worm["pos"] = u["pos"]
 					worm["atk_interval"] = 1.0 / 0.65
@@ -1222,6 +1303,7 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 						wtw.tween_interval(0.12)
 						wtw.tween_property(worm["sprite"], "scale", wsc, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 					worm["eq_state"] = {}; worm["equips"] = []
+					_conch_grant_equips(worm, si)   # ★用户 2026-07-30: 小虫诞生时带 3 件随机装备
 					if si == 2:   # 3★: 标记每周期分裂
 						worm["worm_split"] = true
 			"p2eq_035":   # 黄铜齿轮: 死亡不销毁不结算(产币走 _tick_gear 每6秒实时到账, 与死亡无关)

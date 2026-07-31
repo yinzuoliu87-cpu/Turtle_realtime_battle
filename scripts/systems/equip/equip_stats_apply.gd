@@ -106,8 +106,16 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 			stt["harden_stacks"] = 0
 			stt["harden_given"] = false
 		"p2eq_015":   # 荆棘海胆: 反伤转真伤+施流血
-			stt["reflect_pct"] = [10.0, 17.0, 25.0][si] / 100.0
-			stt["reflect_bleed"] = [2.0, 2.5, 3.0][si]
+			# ★用户 2026-07-30 效果重做: 反伤比例提到 12/25/40%;
+			#   流血【不再每次反伤都给】, 改成"累计反伤到阈值 → 护盾 + 强化下一次普攻"。
+			#   (reflect_bleed 这个每击流血字段已废除 —— 留着会是死字段。)
+			stt["reflect_pct"] = EquipSystem.THORN_REFLECT[si]
+			stt["thorn_accum"] = 0.0
+		"p2eq_056":   # 飞镖(用户2026-07-30 加新效果): 提供 40/80/150% 攻击速度
+			# ★aspd_perm 是本项目的"永久攻速乘子"字段(贝母021 等也用它),
+			#   在主循环算 atk_cd 时除进去 —— 见 RealtimeBattle3DScene 的 atk_cd 那一行。
+			u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) * (1.0 + [0.40, 0.80, 1.50][si])
+			stt["dart_hits"] = 0        # 普攻计数(每 5 下强化一次)
 		"p2eq_016":   # 铁壁盾: 每段非真实伤害固定减 3/6/10 (flat_dr, 叠加多件取和·用户2026-07-19)
 			u["flat_dr"] = float(u.get("flat_dr", 0.0)) + [3.0, 6.0, 10.0][si]
 		"p2eq_024":   # 龙蛋: 装备即3层吐息
