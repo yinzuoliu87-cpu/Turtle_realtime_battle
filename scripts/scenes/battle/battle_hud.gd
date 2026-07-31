@@ -164,8 +164,9 @@ func _build_surrender_panel() -> void:
 ##   而主文件有 arch_budget 行数警戒线 —— 加这 20 多行直接把它顶红了(8616>8600)。
 ##   规则是"先拆出去"不是抬台账, 而这里本来就是它们该在的地方。
 var _pk_bar: Control = null
-var _pk_fill_l: ColorRect = null           # 蓝(左队)从左往右涨
-var _pk_fill_r: ColorRect = null           # 红(右队)从右往左涨; 接缝位置 = 左方血量占比
+var _pk_fill_l: Control = null             # 我方填充(绿)。★类型是 Control 不是 ColorRect ——
+                                           #   主条现在是 TextureRect(竖向渐变·体积感做进斜切四边形里), 副条仍是 ColorRect
+var _pk_fill_r: Control = null             # 敌方填充(紫)。同上: 主条 TextureRect / 副条 ColorRect
 var _pk_lab_l: Label = null
 var _pk_lab_r: Label = null
 var _pk_base_l: float = 0.0                # 当前分母(=该侧计数单位 maxHp 之和·含已死)。留给门禁/调试看
@@ -462,23 +463,47 @@ func _pk_seg(bar: Control, left: bool, y: float, h: float, col: Color, gloss_on:
 	trail.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	trail.material = _pk_slant_mat(Vector2(PK_SEG, h))
 	bar.add_child(trail)
-	var fill := ColorRect.new()
-	fill.color = col
+	# ★★体积感做进【填充本身】的竖向渐变, 不再叠一块白方块。
+	#
+	#   由来(用户 2026-07-31:「为什么血条上半部分有个白色的长方形？跟现在的切面不合适啊」):
+	#   原来是给 fill 加了个白色 ColorRect 子节点盖住上半 46%。而【Godot 里子 CanvasItem
+	#   不继承父节点的 ShaderMaterial】—— frame/trail/fill 三层都挂了斜切 shader,
+	#   唯独那块高光没有 → 它是整条上唯一一块【直角矩形】, 端部直边就露在斜边外面。
+	#
+	#   现在: fill 换成 TextureRect + 竖向 GradientTexture2D(上浅下深),
+	#   渐变是【同一块四边形的贴图】→ 被同一个斜切 shader 一起切, 永远不可能对不上。
+	#   ★副条(gloss_on=false)仍用纯色: 13px 的细条上渐变看不出来, 平涂更干净。
+	var fill: Control
+	if gloss_on:
+		var tr2 := TextureRect.new()
+		tr2.texture = _pk_grad_tex(col)
+		tr2.expand_mode = TextureRect.EXPAND_IGNORE_SIZE     # 忽略贴图原尺寸, 完全按 size 拉伸
+		tr2.stretch_mode = TextureRect.STRETCH_SCALE
+		fill = tr2
+	else:
+		var cr := ColorRect.new()
+		cr.color = col
+		fill = cr
 	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	fill.material = _pk_slant_mat(Vector2(PK_SEG, h))
 	bar.add_child(fill)
-	# ★体积感: 填充【上半】叠一条白色低 alpha 高光, 让纯色平涂变成"管状"。
-	#   做成 fill 的子节点 → 宽度跟着 fill 走, 不用在 _pk_apply 里再算一遍。
-	# ★副条不加(gloss_on=false): 13px 的细条上高光占比太大, 会把它变成一根塑料管。
-	if not gloss_on:
-		return [fill, trail]
-	var gloss := ColorRect.new()
-	gloss.color = Color(1, 1, 1, 0.16)
-	gloss.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	gloss.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	gloss.anchor_bottom = 0.46
-	fill.add_child(gloss)
 	return [fill, trail]
+
+
+## 填充用的竖向渐变: 上浅下深, 幅度小(只做体积感, 不改变本色)。
+## ★上端提亮 0.22、下端压暗 0.10 —— 这个幅度约等于原来那块 alpha 0.16 白方块的观感,
+##   但它是【贴图】, 会跟着斜切 shader 一起被切。
+func _pk_grad_tex(col: Color) -> GradientTexture2D:
+	var g := Gradient.new()
+	g.set_color(0, col.lightened(0.22))
+	g.set_color(1, col.darkened(0.10))
+	var t := GradientTexture2D.new()
+	t.gradient = g
+	t.width = 4
+	t.height = 64
+	t.fill_from = Vector2(0.0, 0.0)      # 竖向: 上 → 下
+	t.fill_to = Vector2(0.0, 1.0)
+	return t
 
 
 ## 副条行标签: 两端各一个蛋图标(用户 2026-07-30:「换成蛋壳色 + 两端加蛋图标」)。
@@ -507,11 +532,16 @@ func _pk_egg_icon(bar: Control, ey: float) -> void:
 func _pk_mk_tag(bar: Control, left: bool) -> PanelContainer:
 	var pc := PanelContainer.new()
 	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# ★★去掉深色底板(用户 2026-07-31:「那个数字你办法，别这么放」)。
+	#   原来是块 alpha 0.62 的深色板压在条上 —— 它把血条【左端连同斜边一起盖住】,
+	#   看起来像贴了张标签而不是条的一部分。
+	#   现在: 只留字, 靠字自己的 4px 黑描边在填充上读(_pk_mk_label 已有描边),
+	#   条从头到尾不被打断。
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.02, 0.03, 0.05, 0.62)     # 半透深底: 压住背后的填充但不挡死
-	sb.content_margin_left = 7; sb.content_margin_right = 7
-	sb.content_margin_top = 1; sb.content_margin_bottom = 1
-	sb.set_corner_radius_all(0)                      # 与条同语言: 不用圆角
+	sb.bg_color = Color(0, 0, 0, 0)                  # 全透明: 不再有底板
+	sb.content_margin_left = 2; sb.content_margin_right = 2
+	sb.content_margin_top = 0; sb.content_margin_bottom = 0
+	sb.set_corner_radius_all(0)
 	pc.add_theme_stylebox_override("panel", sb)
 	var hb := HBoxContainer.new()
 	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -761,7 +791,8 @@ func _pk_apply() -> void:
 
 
 ## 放一条填充。left=true 贴外侧左端; false 贴外侧右端。
-func _pk_put(cr: ColorRect, left: bool, frac: float, inner: float, h: float, y: float) -> void:
+## ★参数类型 Control 而不是 ColorRect —— 主条填充现在是 TextureRect(竖向渐变), 副条仍是 ColorRect。
+func _pk_put(cr: Control, left: bool, frac: float, inner: float, h: float, y: float) -> void:
 	if cr == null or not is_instance_valid(cr):
 		return
 	var w: float = clampf(frac, 0.0, 1.0) * inner
