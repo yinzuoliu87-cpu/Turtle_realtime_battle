@@ -94,6 +94,38 @@ func _test_fury_potion(scene) -> void:
 	_ok("★近友军 +25%龟能充能(echarge_mult=1.25)", abs(float(near_ally.get("echarge_mult", 1.0)) - 1.25) < 0.01)
 	_ok("★落点300码外友军不受益(有范围)", float(far_ally.get("haste_until", 0.0)) <= scene._t)
 
+	# ══ ★★经【真施放入口】再验一遍(2026-07-31 补) ══════════════════════════
+	# 上面那组调的是内层 _fury_apply_buffs —— 它只证明"效果函数算得对",
+	# 【不证明玩家按下去这个函数还跑不跑得到】。六技里只有怒火药水缺这一环:
+	# 其余五技(钩锁/冰川/口哨/猎龟令/驯服)的门禁都是从 _cast_* 进的。
+	# ★verify_trainer_audit 有一张 CHAINS 表查"_cast_fury_potion → _fury_apply_buffs",
+	#   但那是【源码文本】审计 —— 钩锁那次证明过它守不住: _hook_dramatize 已经没人调了,
+	#   "断言函数存在"照样全绿。所以这里从入口真放一次。
+	# ★落地生效走 _pending_shots(delta 定时·不是 tween), 所以要推进 sim 才结算。
+	for a in [near_ally, far_ally]:
+		a["haste_until"] = 0.0; a["move_buff_until"] = 0.0; a["echarge_until"] = 0.0
+		a["haste_mult"] = 1.0; a["move_buff_mult"] = 1.0; a["echarge_mult"] = 1.0
+	near_ally["pos"] = trainer["pos"] + Vector2(320.0, 0.0)     # 射程 700 内
+	far_ally["pos"] = trainer["pos"] + Vector2(320.0, 520.0)    # 落点 300 码外
+	trainer["_active_cd"] = 0.0
+	var cast_ok: bool = scene._cast_fury_potion(trainer, Vector2(320.0, 0.0))
+	_ok("★★怒火·经真入口 _cast_fury_potion 放得出去 + CD16",
+		cast_ok and abs(float(trainer.get("_active_cd", 0.0)) - 16.0) < 0.1,
+		"ok=%s cd=%.1f" % [cast_ok, float(trainer.get("_active_cd", 0.0))])
+	_ok("★★怒火·出手瞬间【还没生效】(落地才结算, 不是出手即判定)",
+		float(near_ally.get("haste_until", 0.0)) <= scene._t,
+		"haste_until=%.2f  _t=%.2f" % [float(near_ally.get("haste_until", 0.0)), scene._t])
+	var w := 0
+	while w < 400 and float(near_ally.get("haste_until", 0.0)) <= scene._t:
+		scene._sim_step(1.0 / 60.0, false, false)               # 推进 sim 让 _pending_shots 到点(签名是 dt/frozen/in_ts)
+		w += 1
+	_ok("★★怒火·推进 sim 后落地生效(整条链 入口→pending→_fury_apply_buffs 真的通)",
+		abs(float(near_ally.get("haste_mult", 1.0)) - 1.3) < 0.01
+			and float(near_ally.get("haste_until", 0.0)) > scene._t,
+		"推了 %d 帧, haste_mult=%.2f" % [w, float(near_ally.get("haste_mult", 1.0))])
+	_ok("★★怒火·经真入口时范围仍然管用(300码外不受益)",
+		float(far_ally.get("haste_until", 0.0)) <= scene._t)
+
 func _test_whistle(scene) -> void:
 	var trainer = null
 	var ally = null

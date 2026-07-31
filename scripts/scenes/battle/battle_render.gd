@@ -434,6 +434,15 @@ func _update_overlay() -> void:
 		#   update_state 读 u 的 maxHp/hp/shield 字段; 召唤体也是同 HpBar (无护盾段则自然不画).
 		var hb = u.get("hp_bar", null)
 		if hb != null and is_instance_valid(hb):
+			# ★★敌我配色跟随【有效阵营】, 不是 spawn 时那一下。
+			#   HpBar.setup(side == "left") 只在 _make_unit 里调过一次, 之后再没人改 ——
+			#   于是被驯服归顺我方的龟, 血条【一直是敌方红】。逻辑上它已经是我方
+			#   (不打我方、打原队、进我方幸存名单), 唯独玩家看到的还是敌人色。
+			#   探针实测: tamed_side=left / _eff_side=left, 而 hp_bar.is_ally 仍是 false。
+			var _ally_now: bool = (battle._eff_side(u) == "left")
+			if hb.is_ally != _ally_now:
+				hb.is_ally = _ally_now
+				hb.queue_redraw()      # is_ally 只在 _draw 里读, 不主动重绘就要等下一次脏才变色
 			u["_auraEnergy"] = u.get("store_energy", 0.0)   # 镜像→Hp条资源条(储能/怒气/星能/泡泡, 字段对齐回合制端口)
 			u["_lavaRage"] = u.get("rage", 0.0)
 			u["_starEnergy"] = u.get("star_energy", 0.0)

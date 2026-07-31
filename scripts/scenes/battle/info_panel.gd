@@ -23,7 +23,12 @@ func _make_team_column(side: String) -> VBoxContainer:
 		col.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	col.grow_vertical = Control.GROW_DIRECTION_BOTH
 	for u in battle._units:
-		if str(u.get("side", "")) != side:
+		# ★按【有效阵营】分栏 —— 被驯服归顺我方的龟要出现在【我方】头像栏里。
+		#   改前用原 side, 于是归顺的龟逻辑上已经是我方(不打我方/打原队/算我方存活/血条我方色),
+		#   头像框却还挂在敌方栏 —— 玩家看到的"阵营"是矛盾的。
+		#   ★这一栏是 spawn 时建一次、整局不重建的, 所以还要在归顺那一刻主动重建
+		#   (见 trainer_system._tame_try_revive 末尾的 _build_team_panels)。
+		if battle._eff_side(u) != side:
 			continue
 		if u.get("is_summon", false):
 			continue   # 召唤体不进框栏 (只主龟)
@@ -64,7 +69,12 @@ func _update_team_panels() -> void:
 		if sb != null and sb is StyleBoxFlat:
 			var selected: bool = (battle._selected_unit != null and is_same(u, battle._selected_unit))
 			(sb as StyleBoxFlat).set_border_width_all(3 if selected else 2)
-			var base_accent = Color("#3fa9ff") if str(u.get("side", "")) == "left" else Color("#ff5a5a")
+			# ★★用【有效阵营】—— 这一行是【每帧】跑的, 会把 _make_team_frame 建框时设对的
+			#   颜色又刷回原阵营色。实拍抓到: 归顺的石头龟框已经挪进我方栏, 边框却还是敌方红,
+			#   左栏里就它一个红框。
+			#   ★这是同一形状的第三次(前两次: _dl_side_alive 手写阵营判断、_make_team_column 按原 side)
+			#     —— "同一个语义在两处各写各的", 而【每帧重刷的那一处】总是赢。
+			var base_accent = Color("#3fa9ff") if battle._eff_side(u) == "left" else Color("#ff5a5a")
 			(sb as StyleBoxFlat).border_color = (Color("#ffd93d") if selected else base_accent)
 		for cb in u.get("panel_charge_bars", []):   # 装备格充能进度条
 			var cf = cb.get("fill", null)

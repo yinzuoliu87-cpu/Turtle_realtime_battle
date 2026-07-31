@@ -1264,7 +1264,9 @@ func _build_stats_panel() -> void:
 			"left": snap["left"], "right": snap["right"]})
 	var cur = {"lane": "cur", "title": "", "left": [], "right": []}
 	for u in battle._units:
-		var sd = str(u.get("side", ""))
+		# ★同上: 按【有效阵营】归栏 —— 归顺的龟在打原队, 战绩该记在我方这一列。
+		#   (这是"同一语义两处各写各的"的第四处。全工程判敌我一律走 battle._eff_side。)
+		var sd = battle._eff_side(u)
 		if sd == "left" or sd == "right":
 			(cur[sd] as Array).append(battle._st_row(u))
 	if not ((cur["left"] as Array).is_empty() and (cur["right"] as Array).is_empty()):
@@ -1494,17 +1496,24 @@ func _build_team_panels() -> void:
 	if battle._ui_layer == null:
 		return
 	# 旧栏清掉 (重生/重开安全)
-	if battle._team_panel_left != null and is_instance_valid(battle._team_panel_left):
-		battle._team_panel_left.queue_free()
-	if battle._team_panel_right != null and is_instance_valid(battle._team_panel_right):
-		battle._team_panel_right.queue_free()
+	# ★必须 remove_child 之后再 queue_free —— queue_free 是【延迟到帧末】的:
+	#   光 queue_free 的话, 旧栏这一帧还挂在树上, 于是
+	#   ① 名字 "TeamPanel_left" 还被占着 → 新栏被 Godot 自动改名(实测变成 @VBoxContainer@566),
+	#      任何按名字找它的地方都失效;
+	#   ② 旧栏那一帧照样渲染 → 画面上会闪一下【两栏重叠】。
+	#   (2026-07-31 加驯服归顺时重建头像栏才暴露出来 —— 以前只在换路时调, 一帧的重影看不见。)
+	for _old in [battle._team_panel_left, battle._team_panel_right]:
+		if _old != null and is_instance_valid(_old):
+			if _old.get_parent() != null:
+				_old.get_parent().remove_child(_old)
+			_old.queue_free()
 	battle._team_panel_left = battle._info_sys._make_team_column("left")
 	battle._team_panel_right = battle._info_sys._make_team_column("right")
 	battle._ui_layer.add_child(battle._team_panel_left)
 	battle._ui_layer.add_child(battle._team_panel_right)
 
 func _make_team_frame(u: Dictionary) -> Control:
-	var side = str(u.get("side", "left"))
+	var side = battle._eff_side(u)   # ★有效阵营(驯服归顺的龟按新阵营配色), 不是原 side
 	var accent = Color("#3fa9ff") if side == "left" else Color("#ff5a5a")
 	var frame = PanelContainer.new()
 	frame.name = "Frame_" + str(u.get("id", ""))

@@ -1397,6 +1397,12 @@ func _tame_try_revive(u: Dictionary) -> bool:
 	u["taunt_until"] = 0.0                                     # 换队了, 旧嘲讽作废
 	u["taunt_by"] = null
 	u["hunt_until"] = 0.0                                      # 自家人不该还挂着猎龟令
+	# ★头像栏按有效阵营分栏, 但它是 spawn 时建一次、整局不重建的 —— 归顺这一刻要主动重建,
+	#   否则这只龟会一直挂在敌方栏里(逻辑全换了, 唯独玩家看到的阵营没换)。
+	#   重建是安全的: 框引用(panel_frame/panel_hp_fill/panel_lv_badge)挂在单位字典上,
+	#   _update_team_panels 每帧从单位读, 重建时会被重新赋值。
+	if battle._hud != null:
+		battle._hud._build_team_panels()
 	battle._vfx._float_text(u["pos"] + Vector2(0, -64), "归顺!", Color("#7de8c8"))
 	_tame_revive_dramatize(u)
 	return true

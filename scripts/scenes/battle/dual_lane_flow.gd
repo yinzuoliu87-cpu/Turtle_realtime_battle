@@ -474,9 +474,15 @@ func _dl_side_alive(side: String) -> int:   # 一侧存活非蛋·非惰性召�
 			continue
 		if u.get("is_trainer", false):
 			continue   # 训龟大师不计团灭(用户: "训龟大师不算, 其实就是个场外监视者")
-		# 赛博侵入被黑单位: 按【原阵营】计存活数(临时倒戈不算赛博方·也别把原阵营"抹空"→防提前判胜负)
-		var _eff_side: String = str(u.get("_hijack_orig_side", u.get("side", ""))) if u.get("hijacked", false) else str(u.get("side", ""))
-		if _eff_side == side:
+		# ★★用【有效阵营】而不是原 side —— battle._eff_side 已经把两种语义都办了:
+		#   · 赛博侵入(hijacked): 按【原阵营】计(临时倒戈不算赛博方, 也别把原阵营"抹空"→防提前判胜负)
+		#   · 驯服(tamed_side)  : 按【新阵营】计(真·换队, 原队就该少这一个人)
+		#
+		# ★改前这里是自己手写的一份"只认 hijacked"的判断, 于是【被驯服的龟一直给原队顶着一个存活数】:
+		#   敌方其余人全死光, _dl_side_alive("right") 仍返回 1 → 团灭永远不触发 → 蛋阶段开不了,
+		#   本路卡住直到那只归顺龟也死。探针实测: 敌方只剩一只被驯服的龟时返回 1(应为 0)。
+		#   典型的"同一个语义在两处各写各的" —— 主场景那份用的是 _eff_side, 这份没跟上。
+		if battle._eff_side(u) == side:
 			n += 1
 	# 赛博机甲组装过渡(用户2026-07-18「组装期/召唤都算存活」): 本体死→机甲2.8s后才spawn, 中间空档若此侧其他单位也死会被误判团灭→提前开破蛋。此侧有机甲在路上(死亡演出→组装)就当还有1个存活, 桥接到机甲spawn。
 	if n == 0 and battle._t < float(battle._mech_incoming.get(side, 0.0)):
