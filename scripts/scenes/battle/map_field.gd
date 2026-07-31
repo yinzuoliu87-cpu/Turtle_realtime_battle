@@ -39,11 +39,16 @@ static func get_field(map_path: String, ws: float, cx: float, cy: float) -> Dict
 	var h: int = int(meta["h"])
 	var grid: Array = meta["grid"]
 	var d: Array = _chamfer(grid, w, h)
+	# G 通道 = 到【板子外沿(void)】的距离。用来给岛缘做压暗 ——
+	# ★改前板子就那么硬生生停在黑色里, 是画面上最"没做完"的信号:
+	#   现实里没有哪块地会在半空中被裁一刀, 边上总该更暗(照不到光)。
+	var dv: Array = _dist_to_void(grid, w, h)
 	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
 	for r in range(h):
 		for c in range(w):
 			var v: float = clampf(float(d[r][c]), -FIELD_R, FIELD_R)
-			img.set_pixel(c, r, Color(0.5 + v / (2.0 * FIELD_R), 0.0, 0.0, 1.0))
+			var e: float = clampf(float(dv[r][c]), 0.0, FIELD_R) / FIELD_R
+			img.set_pixel(c, r, Color(0.5 + v / (2.0 * FIELD_R), e, 0.0, 1.0))
 	_cache_tex = ImageTexture.create_from_image(img)
 	_cache_key = map_path
 	var tile: float = float(meta["tile"])
@@ -57,6 +62,45 @@ static func get_field(map_path: String, ws: float, cx: float, cy: float) -> Dict
 static func invalidate() -> void:      # MAPEDIT 刷完格子要重烘
 	_cache_key = ""
 	_cache_tex = null
+
+
+## 到最近 void 格的 chamfer 距离(格)。void 自己是 0。
+static func _dist_to_void(grid: Array, w: int, h: int) -> Array:
+	var BIG := 9999.0
+	var d: Array = []
+	for r in range(h):
+		var row: Array = []
+		for c in range(w):
+			row.append(0.0 if int(grid[r][c]) == 4 else BIG)
+		d.append(row)
+	# ★板子四条外边界也当 void —— 否则贴着网格边缘的格子会以为自己在内陆, 不压暗。
+	for r in range(h):
+		d[r][0] = minf(d[r][0], 1.0)
+		d[r][w - 1] = minf(d[r][w - 1], 1.0)
+	for c in range(w):
+		d[0][c] = minf(d[0][c], 1.0)
+		d[h - 1][c] = minf(d[h - 1][c], 1.0)
+	var D1 := 1.0
+	var D2 := 1.4142135
+	for r in range(h):
+		for c in range(w):
+			var v: float = d[r][c]
+			if r > 0:
+				v = minf(v, d[r - 1][c] + D1)
+				if c > 0: v = minf(v, d[r - 1][c - 1] + D2)
+				if c < w - 1: v = minf(v, d[r - 1][c + 1] + D2)
+			if c > 0: v = minf(v, d[r][c - 1] + D1)
+			d[r][c] = v
+	for r in range(h - 1, -1, -1):
+		for c in range(w - 1, -1, -1):
+			var v: float = d[r][c]
+			if r < h - 1:
+				v = minf(v, d[r + 1][c] + D1)
+				if c > 0: v = minf(v, d[r + 1][c - 1] + D2)
+				if c < w - 1: v = minf(v, d[r + 1][c + 1] + D2)
+			if c < w - 1: v = minf(v, d[r][c + 1] + D1)
+			d[r][c] = v
+	return d
 
 
 static func _load(p: String) -> Dictionary:

@@ -45,6 +45,17 @@ void fragment() {
 	float det = texture(detail_tex, wp * tex_scale).r;
 	c *= mix(1.0, det, detail_amt * (1.0 - depth * 0.4));
 
+	// ── 焦散: 浅水最亮, 深水几乎没有(光透不下去) ──────────────────
+	float ca = dither_steps(caustics(wp * 0.5, TIME * caustic_speed), 3.0, FRAGCOORD.xy);
+	c += caustic_col.rgb * ca * caustic_amt * (1.0 - depth * 0.8);
+
+	// ── 岛缘压暗: 越靠板子外沿越暗(照不到光) ────────────────────
+	// 同样过抖动分级, 免得出现一圈羽化的模糊晕。
+	float ef = dither_steps(smoothstep(0.02, 0.60, edge_fade(wp)), 4.0, FRAGCOORD.xy);
+	// ★系数 0.18 而不是 0.34: 场景开着雾, 而【雾是叠加的】——
+	// 乘性压暗会被雾底冲淡, 探针实测 0.34 只做到 13% 的实际压暗(30→26)。
+	c *= mix(0.18, 1.0, ef);
+
 	ALBEDO = c;
 	// ★自发光按【泡沫之前】的颜色算 —— 否则泡沫会被二次放大成光晕。
 	EMISSION = c_pre_foam * 0.26;

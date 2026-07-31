@@ -416,6 +416,16 @@ func _build_environment() -> void:
 	#     "地砖以外的远处地面", 而 fog_density=0.022 + 近黑雾色把它刷成了纯黑。
 	#   对策: ①雾密度大幅下调并把雾色提到深海青(远处读作"水深"而不是"虚空")
 	#         ②另加远景背景层 _build_far_backdrop()(渐变水幕 + 远礁剪影 + 光柱)
+	# ★辉光(bloom): 水下场景的标配 —— 亮青的水与岸线泡沫会向周围渗出一点光晕,
+	#   画面立刻从"平涂色块"变成"有介质的水体"。阈值调高 ⇒ 只有【最亮的那一档】发光
+	#   (水/泡沫/技能特效), 暗地与立绘不受影响, 不会整体发糊。
+	#   ★移动端与低画质关掉: glow 是全屏多次降采样, 是这套画面里最贵的一项。
+	env.glow_enabled = not battle._is_mobile()
+	env.glow_intensity = 0.26
+	env.glow_strength = 0.95
+	env.glow_bloom = 0.02
+	env.glow_hdr_threshold = 0.92
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.035, 0.105, 0.150)   # 提亮 + 偏青: 远处是海水不是黑洞
 	env.fog_light_energy = 0.55
@@ -431,6 +441,7 @@ func _build_environment() -> void:
 	if OS.has_environment("BLACKMAP") or OS.has_environment("VFXISO"):   # 临时黑地图/纯特效隔离(验证VFX·弄完删env)
 		env.background_mode = Environment.BG_COLOR
 		env.background_color = Color(0, 0, 0)
+		env.glow_enabled = false
 		env.fog_enabled = false
 		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 		env.ambient_light_color = Color(0.6, 0.6, 0.6)

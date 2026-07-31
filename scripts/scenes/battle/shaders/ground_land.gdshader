@@ -31,5 +31,20 @@ void fragment() {
 	wet = dither_steps(wet, 3.0, FRAGCOORD.xy);           // 分级抖动 → 像素画的湿痕, 不是羽化模糊
 	c = mix(c, c * wet_tint.rgb, wet);
 
+	// ── 焦散: 海面折射的光纹爬过海底 ──────────────────────────────
+	// ★靠水的地方更强(那儿水浅、光透得下来), 深入内陆逐渐消失。
+	// 同样过抖动分级 —— 平滑的光纹在像素风里会显得"太 3D"。
+	float ca = caustics(wp * 0.5, TIME * caustic_speed);
+	ca = dither_steps(ca, 3.0, FRAGCOORD.xy);
+	float near_water = 1.0 - smoothstep(0.0, 5.0, -d);
+	c += caustic_col.rgb * ca * caustic_amt * (0.35 + 0.65 * near_water);
+
+	// ── 岛缘压暗: 越靠板子外沿越暗(照不到光) ────────────────────
+	// 同样过抖动分级, 免得出现一圈羽化的模糊晕。
+	float ef = dither_steps(smoothstep(0.02, 0.60, edge_fade(wp)), 4.0, FRAGCOORD.xy);
+	// ★系数 0.18 而不是 0.34: 场景开着雾, 而【雾是叠加的】——
+	// 乘性压暗会被雾底冲淡, 探针实测 0.34 只做到 13% 的实际压暗(30→26)。
+	c *= mix(0.18, 1.0, ef);
+
 	ALBEDO = c;
 }

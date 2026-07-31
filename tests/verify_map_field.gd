@@ -91,6 +91,33 @@ func _ready() -> void:
 	_ok("③ ★紧贴水的陆格 |d| ≈ 1 格 (分母 %d 格)" % edge_vals.size(),
 		edge_vals.size() > 20 and absf(avg - 1.0) < 0.25, "实测均值 %.3f" % avg)
 
+	# ── ③b G 通道 = 到板子外沿(void)的归一距离, 给岛缘压暗用 ──
+	# ★这个通道的失效方式同样是静默的: 全 1 → 边缘不压暗(退回"板子硬生生停在黑色里"),
+	#   全 0 → 整块地被压暗成一团。所以两头都要断言。
+	var g_edge := 0
+	var g_mid := 0
+	var g_bad := 0
+	for r in range(h):
+		for c in range(w):
+			if int(grid[r][c]) == 4:
+				continue
+			var gv: float = img.get_pixel(c, r).g
+			if gv < 0.0 or gv > 1.0: g_bad += 1
+			# 紧贴 void 或紧贴网格外框的格子, 归一距离应当很小
+			var near := (r <= 1 or c <= 1 or r >= h - 2 or c >= w - 2)
+			if not near:
+				for dr in [-1, 0, 1]:
+					for dc in [-1, 0, 1]:
+						if int(grid[clampi(r + dr, 0, h - 1)][clampi(c + dc, 0, w - 1)]) == 4:
+							near = true
+			if near:
+				if gv < 0.45: g_edge += 1
+			elif gv > 0.45:
+				g_mid += 1
+	_ok("③b ★贴边的格子 G 小(会被压暗) —— 分母 %d" % g_edge, g_edge > 100)
+	_ok("③b ★内部的格子 G 大(不该被压暗) —— 分母 %d" % g_mid, g_mid > 100)
+	_ok("③b G 全在 0..1 内", g_bad == 0, "%d 个越界" % g_bad)
+
 	# ── ④ 世界坐标映射对: 把某格的世界坐标喂回去应当落在该格的 texel 上 ──
 	var tile: float = float(meta["tile"])
 	var org: Vector2 = f["org"]
@@ -127,6 +154,10 @@ func _ready() -> void:
 	_ok("⑥ ★水 shader 用距离场做了【水深】和【岸线泡沫】",
 		wsrc.contains("shore_sdf") and wsrc.contains("foam") and wsrc.contains("depth"))
 	_ok("⑥ ★陆 shader 用距离场做了【湿沙带】", lsrc.contains("shore_sdf") and lsrc.contains("wet"))
+	_ok("⑥ ★两个 shader 都做了【岛缘压暗】(板子不能硬生生停在黑色里)",
+		wsrc.contains("edge_fade") and lsrc.contains("edge_fade"))
+	_ok("⑥ ★焦散接回真正在用的地面 shader(旧的那份写在跑不到的分支里)",
+		inc.contains("float caustics") and wsrc.contains("caustics(") and lsrc.contains("caustics("))
 	_ok("⑥ 梯度都过了抖动量化(平滑渐变在低色数下必出条带)",
 		wsrc.contains("dither_steps") and lsrc.contains("dither_steps"))
 	# ★★必须【先剥掉注释行】再查 —— 我第一版直接 contains("UV.") 当场红, 因为撞上了
