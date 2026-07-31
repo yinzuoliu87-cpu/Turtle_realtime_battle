@@ -1,0 +1,207 @@
+# -*- coding: utf-8 -*-
+"""data/maps/arena.json 的【生成器】——「沉岛斗场」构图。
+
+★为什么是脚本生成而不是用 MAPEDIT 手刷:
+  ① 手刷 493 格没法保证左右对称/边缘平滑, 刷出来必然是台阶状;
+  ② MAPEDIT 的 save() 用 JSON.stringify 无缩进 —— 一点保存 json 就被压成一整行, 再也读不了 diff;
+  ③ 构图要迭代好几轮, 每轮都手刷一遍不现实。生成器改一个数就能重出。
+
+★调色板是【锁死】的(RealtimeBattle3DScene.TILE_COLS), 只有 5 档而且四档都是深蓝灰:
+    void(不渲染) < grass淤泥 #1a2340 < sand沙 #263056 < stone石 #3a3f5c < water水 #1fb8c4
+  【只有水是亮的】, 其余四档明度差极小。所以构图的全部功夫在"亮青画成什么形状、放在哪"。
+
+★构图依据 —— 全是量出来的, 不是拍脑袋(投影计算见 tools/map_screen_probe.py):
+  · 战场 ARENA  : dx∈[-798,+798] dy∈[-364,+364] → 行 3~12 / 列 4~24
+  · 两队站位    : dx = ±420 (dual_lane_flow 的 _cx±420), 接战区在正中 dx∈[-200,+200]
+  · 可见不被遮  : 列 5~22(dx∈[-673,+632]) / 行 0~14(dy∈[-594,+481])
+    —— 行 15-16 【永远看不见】; 列 0-1/27-28 屏外; 列 2-4 被左队伍面板挡、23-26 被右面板挡
+  · ★关键: 战场【比可见窗口还宽】(±798 vs -673..+632), 但上下各富余约 200px
+    ——「可见但打不到」的带 = 行 0~2 与行 13~14。亮水就该放这儿。
+
+★改前(v0)的问题: 亮青水池正好铺满 dx∈[-450,+450]、dy∈[-290,+290]
+  = 【所有战斗都发生在最亮的地方】, 深色龟压在高亮青上; 而画面上除了那块青什么都没有,
+  地砖缝均匀铺开, 整体读作"一块瓷砖地板"而不是海底。
+
+改法三条:
+  ① 岛心(战场)留暗 —— 单位立绘最好读;
+  ② 亮水挪到环岛潟湖, 主要落在上下两条"看得见打不到"的带上 → 眼睛看外圈、打架看中间;
+  ③ 把两队站位与场心【画进地面】(基地石台 + 场心徽记), 让地面自己说明这局在哪儿打。
+
+跑法: python tools/gen_arena_map.py [--out data/maps/arena.json]
+"""
+import argparse
+import io
+import json
+import math
+
+# ── 地图几何(必须与现有 arena.json 一致: 门禁 verify_map_geometry 断言覆盖范围包住 ARENA) ──
+TILE = 76.80000000000001
+OX, OY = -227.6, -158.8
+W, H = 29, 17
+CX, CY = 868.0, 474.0          # ARENA 中心(像素)
+
+GRASS, WATER, STONE, SAND, VOID = 0, 1, 2, 3, 4
+
+# ── 战场与接战区(硬约束, 见文件头) ──
+PLAY_DX, PLAY_DY = 798.0, 364.0
+CLASH_DX, CLASH_DY = 330.0, 260.0     # 这个矩形内【不许出现水/void】: 两条线真正绞在一起的地方
+#   ★别把它开太大(我先写的 520×300): 梭形岛在 dx±520 处只有 dy±218 厚, 于是"接战区不许有水"
+#     会把斜角水湾【咬掉一块】→ 环上出现莫名其妙的缺口。侧翼单位脚下有水本来就没问题
+#     (浅水滩), 要保的只是【两队真正绞杀的那一小块】。
+
+# ══ 三层轮廓: 各用一条独立超椭圆, 【不共用一个 t 场】 ══════════════════════════
+# ★v1 用一个 t 场分四层, 结果垂直方向被压死: 上下总共只有 505px(6.5格)要塞下
+#   沙滩+潟湖+浅滩三条带, 每条不到 1 格 → 全成了毛边。分开定义才能让
+#   "岛横向铺满战场(±830)" 与 "潟湖纵向够厚(2格)" 同时成立。
+ISLE = (760.0, 318.0, 1.7)      # 岛心(暗淤泥) —— ★★【梭形】, 不是矩形也不是椭圆。
+RING = (900.0, 500.0, 1.9)      # 潟湖外沿(亮青)
+SHELF = (1150.0, 560.0, 2.4)    # 浅滩(暗)外沿 = 板子边缘; 再外面 void
+#
+# ★★为什么是梭形(N=1.7 < 2) —— 这是量出来的, 不是审美偏好:
+#   目标本来是"闭合的环岛潟湖"。但可见不被遮的窗口只到 dx∈[-673,+632],
+#   而岛必须装下最外单位(实测 dx≈±555) ⇒ 留给环【左右两臂】的只有 ~88px = 1.1 格。
+#   ⇒ 【完整可见的闭合环在这个相机+面板布局下几何上做不出来】(v3 试过, 两臂只剩 1~2 格)。
+#   梭形绕开这条: N<1.7 时岛在两侧【收尖】, 水就从四个斜角扫进来 —— 眼睛自己会把环补完,
+#   不需要看得见的侧臂。实测: 列21 处岛只到 dy±184, 于是行 3~5 / 11~13 全是水 = 斜角水湾。
+#
+# ★不设沙滩过渡带: v3 试过"暗岛→蓝沙→青水", 蓝挨着青对比太弱, 两圈叠成"双环"很吵。
+#   暗淤泥(32)【直接】接亮水(98) 才是这张图能拿到的最大对比。沙(蓝)因此成了场心专用色。
+#
+# 纵向落点(dx=0): 行0-1 void/浅滩 · 行2-3 水 · 行4-11 岛 · 行12-14 水 · 行15-16 void
+#   ★岛的半高定 318 而不是 350: 350 会让【行12(dy=327)】在正中仍算岛, 而两侧因梭形早已收成水
+#     ⇒ 底边水带正中被顶出一个缺口, 读作"一条伸下来的暗舌头"。318 让行12 整行是水, 带子才连贯。
+# 横向落点(dy=0): 岛到 dx±760(列 6.7~22.6, 铺满可见窗口) —— 板子从左右两侧跑出画面 = "一大板"
+
+BASE_DX = 420.0                                  # 两队站位(dual_lane_flow: _cx ± 420)
+BASE = (128.0, 272.0, 6.0)                       # 基地石台(灰·次焦点)。不加沙边框 —— v1 那样像 UI 相框
+#   ★半高 272 是【算出来的, 不是看着定的】: 梭形岛在站位列(dx=±420)处只有 dy±246 厚,
+#     而 4 人编队最外一位在 dy=±231 → 落到行 11, 那一格恰好是水(差 4px)。
+#     石台盖到 ±272 = 把站位列的整段岛高吃满, 无论编几个人都站在实地上。
+#     (map_composition_audit ② 就是抓这个的 —— 我第一版 218 被它逮住。)
+#   ★N=6(几乎是方块)不是审美选择: 一个特征只有 3 列×6 行, 曲线边被网格量化后会掉出
+#     单格的凸起/凹口(N=3 时 row10 少一列、还偏了半格), 读作毛刺而不是形状。
+#     格子这么少的时候, 方块边反而是唯一干净的选择。
+CORE = (128.0, 190.0, 6.0)
+SPINE_DY = 62.0                                  # 中轴石道半高(行 7~8 两行)
+#   ★为什么要这条轴: 岛心只有"两座台 + 一个场心"三个孤立地标, 台与场心之间是两大片空地。
+#     一条横轴把三者串起来, 地面自己就说明了"这局是左右对打、在正中绞杀"。
+#     高度取行 7-8 —— 正是两条前排真正接上的那一行。                       # 场心沙台(蓝·全场唯一的蓝 = 主焦点)
+#   明度阶(实测·正式对局光照): 水98 > 沙61 > 石49 > 淤泥32 > void20
+#   ⇒ 焦点顺序 = 潟湖 → 场心 → 基地石台 → 场地。三个地标之间各留 1~2 列淤泥喘气。
+
+# ══ 试过并【否掉】的做法(别再试一遍) ══════════════════════════════════════
+#  ① 岸线(贴着水的内缘铺 1 格石, 给岛一条轮廓): 想法没错(在 淤泥32 与 水98 之间插一档中间值),
+#     但 29×17 这个格数下, 1 格宽的【曲线】边会被量化成断断续续的点, 还跟基地石台连成一片
+#     —— 石从 50 格涨到 72 格, 岛心读作"散落的灰斑"。比不加更吵。要做轮廓得先加密网格。
+#  ② 沙滩过渡带(暗岛→蓝沙→青水): 蓝挨着青对比太弱, 两圈叠成"双环", 而且吃掉了内缘的锐度。
+#  ③ 圆角矩形岛(N=3): 水的内缘成两条水平直线 → 整幅读作"两条青色横条", 完全没有环岛感。
+#  ④ 特征加沙边框(v1): 3 格的小台子外面再包一圈, 读起来像 UI 相框, 不像地形。
+#
+# 潟湖里的礁岩小岛(石): 亮青里嵌一块灰 = 全图对比最强处。只放 4 块【大的】, 摆在四个斜角。
+ISLETS = [(-590.0, -430.0, 130.0, 92.0), (650.0, -420.0, 125.0, 88.0),
+          (-545.0, 425.0, 128.0, 94.0), (615.0, 432.0, 135.0, 96.0)]
+
+
+def sup(dx, dy, p):
+    a, b, n = p
+    return ((abs(dx) / a) ** n + (abs(dy) / b) ** n) ** (1.0 / n)
+
+
+def wobble(th, a1, f1, p1, a2, f2, p2):
+    """按极角给分界半径加两层正弦扰动 —— 完美椭圆看着像 CAD 不像海底。
+    ★振幅上限 0.035: v1 用了 0.055, 换算到上下方向 = 0.055*548 ≈ 30px, 不到半格,
+      但叠在网格量化上就变成"1格进1格出"的毛边。低频(2~3)大幅、高频只留一丝。
+    ★用确定性正弦而不是 random: 生成器要能重跑出同一张图。"""
+    return 1.0 + a1 * math.sin(f1 * th + p1) + a2 * math.sin(f2 * th + p2)
+
+
+def classify(dx, dy):
+    th = math.atan2(dy, dx)
+    in_play = abs(dx) <= PLAY_DX and abs(dy) <= PLAY_DY
+
+    if sup(dx, dy, SHELF) > wobble(th, 0.032, 2.0, 0.4, 0.018, 3.0, 2.7):
+        return GRASS if in_play else VOID        # ★战场内绝不留 void(单位被 clamp 进来, 脚下不能是黑洞)
+
+    # ★★基地石台的判定必须在【水之前】—— 它是伸进水里的栈桥, 不是岛内的一块地。
+    #   我第一版把它放在岛心内部那段, 于是站位列最外那格一旦落到岛的椭圆外就先 return WATER,
+    #   石台那行【根本跑不到】(map_composition_audit ② 抓到 (11,8) 是水)。
+    #   典型的"顺序即语义": 同样的常量, 判定放前放后是两个完全不同的地图。
+    for _sgn in (-1.0, 1.0):
+        if sup(dx - _sgn * BASE_DX, dy, BASE) < 1.0:
+            return STONE                         # 基地石台(灰) = 我方/敌方半场, 站位列整段吃满
+
+    if sup(dx, dy, RING) > wobble(th, 0.024, 3.0, 1.1, 0.013, 5.0, 2.4):
+        return GRASS                             # 潟湖外的浅滩(暗) —— 亮环外面还得有一圈地, 环才立得住
+
+    if sup(dx, dy, ISLE) > wobble(th, 0.026, 2.0, 1.5, 0.012, 3.0, 0.2):
+        for ix, iy, irx, iry in ISLETS:          # 潟湖里的礁岩小岛
+            if ((dx - ix) / irx) ** 2 + ((dy - iy) / iry) ** 2 < 1.0:
+                return STONE
+        # ★★亮青只活在这一圈。万一有格子落进接战区就退回淤泥 —— 那里单位最密, 不跟立绘抢明度。
+        return GRASS if (abs(dx) <= CLASH_DX and abs(dy) <= CLASH_DY) else WATER
+
+    # ── 岛心内部: 只留 3 个大地标, 其余全是最暗的淤泥(单位立绘最好读) ──
+    if sup(dx, dy, CORE) < 1.0:
+        return SAND                              # 场心(蓝) = 争夺点
+    if abs(dy) <= SPINE_DY and abs(dx) <= BASE_DX:
+        return STONE                             # 中轴石道: 把两座石台与场心串成一条横轴
+    return GRASS
+
+
+def build():
+    return [[classify(OX + (c + 0.5) * TILE - CX, OY + (r + 0.5) * TILE - CY)
+             for c in range(W)] for r in range(H)]
+
+
+def report(grid):
+    ch = ['.', '~', '#', ':', ' ']
+    n = W * H
+    cnt = [sum(row.count(k) for row in grid) for k in range(5)]
+    nm = ['淤泥', '水', '石', '沙', 'void']
+    print("分布: " + "  ".join("%s %d(%.0f%%)" % (nm[k], cnt[k], 100.0 * cnt[k] / n) for k in range(5)))
+    bad_v = [1 for r in range(H) for c in range(W) if grid[r][c] == VOID
+             and abs(OX + (c + .5) * TILE - CX) <= PLAY_DX and abs(OY + (r + .5) * TILE - CY) <= PLAY_DY]
+    bad_w = [1 for r in range(H) for c in range(W) if grid[r][c] == WATER
+             and abs(OX + (c + .5) * TILE - CX) <= CLASH_DX and abs(OY + (r + .5) * TILE - CY) <= CLASH_DY]
+    print("硬约束: 战场内 void %d(要0) / 接战区内水 %d(要0) / void占比 %.0f%%(门禁要 5~60%%)"
+          % (len(bad_v), len(bad_w), 100.0 * cnt[VOID] / n))
+    print("列号: " + "".join(str(c % 10) for c in range(W)))
+    for r in range(H):
+        tag = '  ← 战场上/下沿' if r in (3, 12) else ('  ← 屏外(永远看不见)' if r >= 15 else '')
+        print("%2d |%s|%s" % (r, "".join(ch[v] for v in grid[r]), tag))
+    print("    " + "".join('^' if 5 <= c <= 22 else ' ' for c in range(W)) + "  (^=不被队伍面板遮的列)")
+    print("    " + "".join('B' if c in (8, 9, 19, 20) else ' ' for c in range(W)) + "  (B=两队站位列)")
+    return not bad_v and not bad_w and 0.05 < cnt[VOID] / n < 0.60
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--out', default='data/maps/arena.json')
+    a = ap.parse_args()
+    grid = build()
+    ok = report(grid)
+    # ★逐行拼再一次写出 —— 不用 json.dump(默认无缩进, 会把 493 格压成一整行, diff 没法看;
+    #   也不用 indent=2, 那样每个格子占一行 = 900 多行)。每行地图 = 文件里的一行, 正好能读。
+    nl = chr(10)
+    out = ['{']
+    out.append('  "tile": %r,' % TILE)
+    out.append('  "origin_x": %r,' % OX)
+    out.append('  "origin_y": %r,' % OY)
+    out.append('  "w": %d,' % W)
+    out.append('  "h": %d,' % H)
+    out.append('  "types": ["grass", "water", "stone", "sand", "void"],')
+    out.append('  "grid": [')
+    out.append((',' + nl).join('    ' + json.dumps(row) for row in grid))
+    out.append('  ],')
+    out.append('  "height": [')
+    out.append((',' + nl).join('    ' + json.dumps([0.0] * W) for _ in range(H)))
+    out.append('  ]')
+    out.append('}')
+    with io.open(a.out, 'w', encoding='utf-8', newline=nl) as f:
+        f.write(nl.join(out) + nl)
+    json.load(io.open(a.out, encoding='utf-8'))          # ★写盘后立刻回读一次, 确认不是坏 json
+    print(nl + "写出 %s   %s" % (a.out, "✓ 硬约束通过" if ok else "✗ 硬约束没过"))
+
+
+if __name__ == '__main__':
+    main()
