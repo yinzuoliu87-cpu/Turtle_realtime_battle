@@ -228,6 +228,16 @@ func _spawn_lane_side(units: Array, side: String, lvl: int, base: Vector2) -> vo
 			made["hp"] = maxf(1.0, made["maxHp"] * clampf(float(u["hp_frac"]), 0.05, 1.0))
 		if u.has("equips") and u["equips"] is Array and not (u["equips"] as Array).is_empty():
 			made["_dl_equips"] = (u["equips"] as Array).duplicate(true)   # 局外dual_lineup配的装(leader/小将), battle._inject_equipment 优先用
+		# ★★驯服归顺状态要【跟着进终极战场】(用户 2026-07-28:"可跨入终极战场, 掉血 buff 继续")。
+		#   dual_lane_flow._dl_snapshot_survivors 早就把 tamed_side/tame_used 写进 spec 了,
+		#   但【这里从来没读过】—— 归顺者会作为普通我方单位重生, 每秒 2% 的掉血 buff 整个丢掉
+		#   (_tick_tame_decay 要求 tamed_side != "")。
+		#   ★探针实测才发现: 光看快照那侧的代码(注释还写着"要跨路持久化")会以为是对的 ——
+		#     写进去了没人读, 和没写一样。这就是"读代码以为对"的典型。
+		if str(u.get("tamed_side", "")) != "":
+			made["tamed_side"] = str(u["tamed_side"])
+			made["tame_used"] = bool(u.get("tame_used", true))   # 已用掉复活机会, 别在决胜里再复活一次
+			made["_tame_decay_next"] = -1.0                      # 掉血节拍重新起算(进场后整 1 秒才掉第一次)
 		battle._units.append(made)
 
 func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -> Dictionary:

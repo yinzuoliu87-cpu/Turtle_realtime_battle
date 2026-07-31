@@ -151,6 +151,30 @@ func _ready() -> void:
 		src.contains("vfx/spirit-wave.png") and not src.contains("vfx/chiwave-fly.png"))
 	_chk("⑤ ★分母: 该素材真在磁盘上(缺图会 push_warning 后不画 → 下面全是空检查)",
 		ResourceLoader.exists("res://assets/sprites/vfx/spirit-wave.png"))
+	# ★灵体小龟形象(用户 2026-07-30:「用现在小龟统领的形象加一点灵体感」):
+	#   spirit-turtle.png 由小龟统领 idle 首帧【灵体化处理】另存 —— 形象同源、文件全新。
+	#   判据是【轮廓一致】(alpha 掩膜重合度), 不是"看着像"。
+	var lead := Image.load_from_file("res://assets/sprites/pets/animations/basic/idle.png")
+	var sp_img := Image.load_from_file("res://assets/sprites/vfx/spirit-turtle.png")
+	_chk("⑤ ★分母: 两张图都读得到", lead != null and sp_img != null)
+	if lead != null and sp_img != null:
+		var same := 0
+		var tot := 0
+		for y in range(64):
+			for x in range(64):
+				var la: float = lead.get_pixel(x, y).a
+				var sa: float = sp_img.get_pixel(x, y).a
+				if la > 0.5 or sa > 0.5:
+					tot += 1
+					if (la > 0.5) == (sa > 0.5):
+						same += 1
+		var overlap: float = float(same) / float(maxi(1, tot))
+		print("     灵体小龟 vs 小龟统领首帧: 轮廓重合 %.0f%% (光晕会让灵体的略大)" % (overlap * 100.0))
+		_chk("⑤ ★灵体小龟用的是【小龟统领的形象】(轮廓重合 ≥70%)", overlap >= 0.70,
+			"%.0f%%" % (overlap * 100.0))
+		var c := sp_img.get_pixel(32, 32)
+		_chk("⑤ ★而且是【灵体化】的配色(偏青蓝: b>r)", c.b > c.r,
+			"中心色 %s" % c.to_html(false))
 	_chk("⑤ 气波尺寸走常量 WAVE_D_M(不再是 (150*WS)/128 那个魔数=3.60m 盖住小龟)",
 		src.contains("WAVE_D_M / float(") and not src.contains("(150.0 * battle.WS) / 128.0"))
 

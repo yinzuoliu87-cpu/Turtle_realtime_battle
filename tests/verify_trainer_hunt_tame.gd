@@ -213,7 +213,69 @@ func _ready() -> void:
 			.contains("battle.TAME_DECAY_PCT * delta"))
 
 	await _sigil_geometry(s)
+	await _tame_into_final(s)
 	_done(s)
+
+
+## ⑩ 驯服归顺者【跨进终极战场】(用户 2026-07-28:「可跨入终极战场, 掉血 buff 继续」)。
+##
+## ★★这条原来是【真 bug 而且看代码看不出来】: dual_lane_flow._dl_snapshot_survivors
+##   早就把 tamed_side/tame_used 写进幸存 spec 了(注释还写着"要跨路持久化"),
+##   但 battle_spawn._spawn_lane_side【从来没读过】—— 写进去了没人读, 和没写一样。
+##   后果: 归顺者作为普通我方单位重生, 每秒 2% 的掉血 buff 整个丢掉
+##   (_tick_tame_decay 要求 tamed_side != "")。
+##   ★我此前"读了两边代码觉得没问题"就是这么栽的 —— 必须端到端跑一遍真实换路。
+func _tame_into_final(s) -> void:
+	print("")
+	print("  ⑩ 归顺者跨进终极战场:")
+	var tr = _my_trainer(s)
+	var foe: Dictionary = _foe(s)
+	if tr == null or foe.is_empty():
+		print("     [FAIL] ★分母: 没有大师或可用敌人 —— ⑩ 是空检查"); _fail += 1; return
+	var fid: String = str(foe.get("id", ""))
+	s._trainer_sys._tame_mark(tr, foe)
+	foe["hp"] = 1.0
+	s._kill(foe)
+	_chk("⑩ ★分母: 已归顺(tamed_side 非空 · side 未改写)",
+		str(foe.get("tamed_side", "")) != "" and str(foe.get("side", "")) == "right")
+	# 走真实幸存快照
+	s._dl_sys._dl_snapshot_survivors()
+	var in_ours := false
+	for sp in (GameState.dual_survivors.get("left", []) as Array):
+		if str(sp.get("id", "")) == fid and str(sp.get("tamed_side", "")) != "":
+			in_ours = true
+	_chk("⑩ 归顺者进【我方】幸存名单且带着 tamed_side", in_ours)
+	# 走真实换路重建到决胜
+	GameState.current_lane = "final"
+	s._dl_sys._dl_clear_units()
+	s._dl_sys._dl_build_lane_field()
+	await get_tree().process_frame
+	var rb = null
+	for u in s._units:
+		if str(u.get("id", "")) == fid and str(u.get("side", "")) == "left":
+			rb = u; break
+	_chk("⑩ ★分母: 决胜战场里找得到归顺者", rb != null)
+	if rb == null:
+		return
+	print("     决胜后: side=%s tamed_side=%s _eff_side=%s tame_used=%s" % [
+		str(rb.get("side", "")), str(rb.get("tamed_side", "")), s._eff_side(rb), str(rb.get("tame_used", false))])
+	_chk("⑩ ★★归顺状态跟过去了(tamed_side 非空)", str(rb.get("tamed_side", "")) != "")
+	_chk("⑩ 已用掉的复活机会也跟过去(tame_used·别在决胜里再复活一次)",
+		bool(rb.get("tame_used", false)))
+	# 掉血 buff 真的还在跑
+	var h0: float = float(rb["hp"])
+	var mx: float = float(rb["maxHp"])
+	rb["_tame_invuln_until"] = 0.0
+	rb["_tame_decay_next"] = -1.0
+	var t0: float = s._t
+	for f in range(180):
+		s._t = t0 + float(f + 1) / 60.0
+		s._trainer_sys._tick_tame_decay(1.0 / 60.0)
+	var lost: float = (h0 - float(rb["hp"])) / mx / 2.0
+	s._t = t0
+	print("     决胜里每秒掉 %.2f%% 最大生命 (需求 %.0f%%)" % [lost * 100.0, WANT_TAME_DECAY * 100.0])
+	_chk("⑩ ★★掉血 buff 在决胜里【继续】(每秒 %.0f%%)" % (WANT_TAME_DECAY * 100.0),
+		absf(lost - WANT_TAME_DECAY) < 0.002)
 
 
 ## ⑨ 地面印记/符文环的【几何】—— 2026-07-30 逐技目视审核抓到的两个问题, 焊死不许回来。
