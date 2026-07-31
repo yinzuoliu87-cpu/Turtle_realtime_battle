@@ -3231,7 +3231,7 @@ func _conch_transform(pos2d: Vector2) -> void:
 	for k in range(6):
 		_bone_speck(pos2d + Vector2(randf_range(-30, 30), randf_range(-30, 30)))
 
-const _EQ_CUSTOM_IV := {"p2eq_004": 6.0, "p2eq_048": 8.0, "p2eq_049": 8.0, "p2eq_050": 8.0, "p2eq_051": 8.0, "p2eq_053": 8.0, "p2eq_057": 8.0, "p2eq_022": 8.0, "p2eq_028": 6.0, "p2eq_030": 7.0, "p2eq_031": 8.0, "p2eq_037": 5.0, "p2eq_038": 6.0, "p2eq_040": 6.0, "p2eq_042": 8.0, "p2eq_052": 4.0}
+const _EQ_CUSTOM_IV := {"p2eq_004": 6.0, "p2eq_048": 8.0, "p2eq_049": 8.0, "p2eq_050": 8.0, "p2eq_051": 8.0, "p2eq_053": 8.0, "p2eq_057": 8.0, "p2eq_022": 8.0, "p2eq_028": 6.0, "p2eq_030": 7.0, "p2eq_031": 8.0, "p2eq_037": 5.0, "p2eq_040": 6.0, "p2eq_042": 8.0, "p2eq_052": 4.0}
 func _ripple_heal_vfx(pos2d: Vector2, size_px: float) -> void:
 	var tex: Texture2D = load("res://assets/sprites/vfx/ripple-heal-anim.png")
 	var fh: int = maxi(1, tex.get_height())

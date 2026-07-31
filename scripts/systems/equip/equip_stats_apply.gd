@@ -111,6 +111,12 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 			#   (reflect_bleed 这个每击流血字段已废除 —— 留着会是死字段。)
 			stt["reflect_pct"] = EquipSystem.THORN_REFLECT[si]
 			stt["thorn_accum"] = 0.0
+		"p2eq_038":   # 信号放大器(用户2026-07-30 重做): 固定 30% 攻速(不分星) + 放大层数从 0 起
+			u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) * (1.0 + SignalWaveSystem.ASPD_FLAT)
+			stt["sig_stacks"] = 0
+			stt["sig_arc_deg"] = 0.0      # 张角从 0 起, 第一次释放变 90°
+			stt["sig_amp_given"] = 0.0
+			stt["sig_aspd_given"] = 0.0
 		"p2eq_056":   # 飞镖(用户2026-07-30 加新效果): 提供 40/80/150% 攻击速度
 			# ★aspd_perm 是本项目的"永久攻速乘子"字段(贝母021 等也用它),
 			#   在主循环算 atk_cd 时除进去 —— 见 RealtimeBattle3DScene 的 atk_cd 那一行。

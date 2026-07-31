@@ -4,12 +4,14 @@ extends RefCounted
 ## 【装备与角色技能分开管理·用户定向】所有 _eq_/_tick_eq_ 效果在此; 类内名字不变, 外部名加 battle.
 
 var battle
+var _sigwave: SignalWaveSystem   # 信号放大器038 的弧形电磁波(2026-07-31 重做·单独成文件: 上帝文件已卡在 arch_budget 8600)
 var _stats: EquipStatsApply   # 被动属性/flag 应用子系统(2026-07-26 从本文件分出·spawn期·区别于主动效果)
 var _eq_drone_halve: bool = false   # 无人机减半标记(随本系统)
 
 func _init(b) -> void:
 	battle = b
 	_stats = EquipStatsApply.new(b)
+	_sigwave = SignalWaveSystem.new(b)
 
 func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不算多段): 008珊瑚刺计数 / 017不沉之锚普攻消耗充能锚击
 	if u.get("equips", []).is_empty(): return
@@ -189,7 +191,6 @@ func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 				"p2eq_030": _eq_crystal_line(u, si)
 				"p2eq_031": _eq_crystal_sweep(u, si)
 				"p2eq_037": _eq_candle_tick(u, si, stt)
-				"p2eq_038": _eq_signal_tick(u, si)
 				"p2eq_040": _eq_fpga_tick(u, si)
 				"p2eq_042": _eq_ripple_tick(u, si)
 				"p2eq_052": _eq_revolver_tick(u, si, stt)
@@ -349,20 +350,9 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 				battle._damage._apply_dot_stacks(o, "burn", [20, 30, 40][si], u)
 				battle._boom_wave(o["pos"], 110.0)   # 每个被波及敌小爆
 
-func _eq_signal_tick(u: Dictionary, si: int) -> void:
-	var lo: Array = [0.10, 0.25, 0.70]; var hi: Array = [0.16, 0.40, 0.80]
-	var amp: float = randf_range(lo[si], hi[si])
-	# 真·增伤(damage_amp): 放大所有伤害, 不再是 +%攻击力(那样只放大吃ATK的段·用户2026-07-19"38要是amp")
-	var contributed: float = float(u.get("signal_amp", 0.0))
-	u["damage_amp"] = maxf(0.0, float(u.get("damage_amp", 0.0)) - contributed)      # 先撤掉本件的旧贡献
-	var cur: float = (contributed if battle._t < float(u.get("signal_until", 0.0)) else 0.0)  # 已过期则不参与"取较大者"
-	amp = maxf(cur, amp)
-	u["damage_amp"] = float(u.get("damage_amp", 0.0)) + amp
-	u["signal_amp"] = amp
-	u["signal_until"] = battle._t + 3.5
-	battle._signal_pulse(u["pos"])
-	battle._vfx._float_text(u["pos"] + Vector2(0, -58), "增伤+%d%%" % int(amp * 100.0), Color("#ffcf5a"))
-
+## (已删 _eq_signal_tick —— 信号放大器 2026-07-31 效果重做后它是死代码:
+##  原来是"每 6 秒随机一段 3.5 秒增伤", 现在改成"普攻叠层 + 每 5 层放弧形波"(SignalWaveSystem)。
+##  ★死代码留着会被门禁的"函数存在"断言保护住, 也可能被 VFXPREVIEW 指过去 = 无效目视验证。)
 # 信号脉冲(038): 头顶弹出青蓝 signal-wave 广播图标(升起放大淡出, 2个错峰=脉冲广播) + 脚下青光环
 func _eq_fpga_tick(u: Dictionary, si: int) -> void:
 	battle._skill_ring(u["pos"], Color(0.4, 0.9, 1.0, 0.42), 46.0)
@@ -779,6 +769,11 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 					battle._vfx._float_text(tgt["pos"], "-999999", battle._VC.color_of(battle._VC.cls_for("damage", "true", true)), true, "damage", "true")   # 处决=固定跳-999999真伤大字(实际伤害=剩余血, 用户)
 					tgt["hp"] = 0.0
 					if was: battle._kill(tgt, src)
+			"p2eq_038":   # 信号放大器(用户2026-07-30 效果重做): 每次普攻叠一层放大; 每满 5 层放一道弧形电磁波
+				# ★整套(层数/增伤/攻速/发波/张角递增/魔抗穿透)在 SignalWaveSystem。
+				#   原来的实现是"每 6 秒随机一段 3.5 秒增伤", 已整个替换。
+				_sigwave.on_hit(src, tgt, si, stt)
+				src["eq_state"][iid] = stt
 			"p2eq_056":   # 飞镖(用户2026-07-30): 每 5 下普攻, 下一击强化 → 击飞目标 1 秒
 				# ★计数【每 5 下触发一次】—— 用取模而不是"攒到 5 再清零", 两者等价但取模不会
 				#   因为中途有别的分支 return 而漏清。第 5/10/15… 下命中即触发。
@@ -1353,7 +1348,17 @@ func _eq_check_hp_threshold(u: Dictionary) -> void:
 # ============================================================================
 #  周期 tick (每 2.5 秒) — A类回合节拍效果
 # ============================================================================
+var _sig_tick_fr: int = -1   # 上次推进弧形波的帧号(_eq_tick 每单位调一次, 波是全局的 → 按帧号去重)
+
+
 func _eq_tick(u: Dictionary, delta: float) -> void:
+	# ★弧形波是【全局在途列表】而 _eq_tick 是【每单位】调 —— 不去重会一帧推进 N 次(N=单位数),
+	#   波会飞得比 WAVE_SPD 快好几倍。用帧号去重(本文件 _onhit_fr 同款做法)。
+	#   ★放在这里而不是主循环: arch_budget 把 RealtimeBattle3DScene 冻在 8600 行, 已到顶。
+	var _fr_now: int = Engine.get_process_frames()
+	if _fr_now != _sig_tick_fr:
+		_sig_tick_fr = _fr_now
+		_sigwave.tick(delta)
 	u["eq_timer"] = u.get("eq_timer", 0.0) + delta
 	if u["eq_timer"] < battle.EQ_TICK:
 		return
