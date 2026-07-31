@@ -12,9 +12,9 @@ func _ready() -> void:
 	s._dl_sys._dl_clear_units(); s._dl_sys._dl_build_lane_field()
 	await get_tree().process_frame
 	s._dl_sys._dl_start_fight()
-	for _i in range(120): await get_tree().process_frame     # 预热
+	for _i in range(90): await get_tree().process_frame      # 预热
 	var fps: Array[float] = []
-	for _i in range(600):
+	for _i in range(360):
 		await get_tree().process_frame
 		fps.append(Engine.get_frames_per_second())
 	fps.sort()

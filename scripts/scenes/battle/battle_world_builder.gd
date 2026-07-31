@@ -84,6 +84,12 @@ static func tile_material(ti: int, ws: float, cx: float, cy: float) -> Material:
 		sm.set_shader_parameter("field_r", MapField.FIELD_R)
 	else:
 		push_warning("[tile] 地图距离场烘不出来 → 岸线/水深退化成平涂")
+	# ★低画质/移动端: 关掉焦散与沉积起伏(约 13 个正弦/片元)。
+	#   ★桌面 A/B/A 背对背实测【差值在噪声内】(开179.5 关179.6 再开179.6), 别引用"省 21%"那种数字 ——
+	#     那是我一度被热降频骗出来的。这个开关是给低端移动设备的安全阀, 不是桌面实测收益。
+	#   ★放在 if/else 【外面】—— 它跟距离场烘没烘出来无关, 任何情况都该设。
+	sm.set_shader_parameter("rich_fx",
+		not (GameState != null and GameState.perf_lite))
 	return sm
 
 

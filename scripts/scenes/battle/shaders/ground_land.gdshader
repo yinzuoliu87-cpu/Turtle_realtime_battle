@@ -23,6 +23,13 @@ void fragment() {
 	float det = texture(detail_tex, wp * tex_scale).r;
 	vec3 c = base_col.rgb * det;
 
+	// ── 大尺度沉积起伏: 让大片平地有"地形"而不是一块底色 ────────────
+	// 同样过抖动分级(6 级) —— 平滑的明暗起伏在像素风里会显得像 3D 渲染的脏。
+	if (rich_fx) {
+		float sed = dither_steps(sediment(wp) * 0.5 + 0.5, 6.0, FRAGCOORD.xy);
+		c *= mix(0.92, 1.08, sed);
+	}
+
 	// ── 湿沙带: 靠水的这一圈地压暗并偏向水色 ────────────────────────
 	// ★这是"岸线"的陆地那一半。改前水陆是硬切, 陆地一侧没有任何"被水浸过"的痕迹,
 	//   于是青色像是被贴在地上而不是漫上来的。
@@ -36,10 +43,11 @@ void fragment() {
 	// ── 焦散: 海面折射的光纹爬过海底 ──────────────────────────────
 	// ★靠水的地方更强(那儿水浅、光透得下来), 深入内陆逐渐消失。
 	// 同样过抖动分级 —— 平滑的光纹在像素风里会显得"太 3D"。
-	float ca = caustics(wp * 0.5, TIME * caustic_speed);
-	ca = dither_steps(ca, 3.0, FRAGCOORD.xy);
-	float near_water = 1.0 - smoothstep(0.0, 5.0, -d);
-	c += caustic_col.rgb * ca * caustic_amt * (0.35 + 0.65 * near_water);
+	if (rich_fx) {
+		float ca = dither_steps(caustics(wp * 0.5, TIME * caustic_speed), 3.0, FRAGCOORD.xy);
+		float near_water = 1.0 - smoothstep(0.0, 5.0, -d);
+		c += caustic_col.rgb * ca * caustic_amt * (0.35 + 0.65 * near_water);
+	}
 
 	// ── ★★岸线【切角】: 边界跟着插值后的距离场走, 不跟着砖块的直角走 ─────
 	// 砖是方的, 所以水陆交界原本是一级 26 屏幕像素的台阶; 而距离场是双线性插值的,

@@ -48,8 +48,10 @@ void fragment() {
 	c *= mix(1.0, det, detail_amt * (1.0 - depth * 0.4));
 
 	// ── 焦散: 浅水最亮, 深水几乎没有(光透不下去) ──────────────────
-	float ca = dither_steps(caustics(wp * 0.5, TIME * caustic_speed), 3.0, FRAGCOORD.xy);
-	c += caustic_col.rgb * ca * caustic_amt * (1.0 - depth * 0.8);
+	if (rich_fx) {
+		float ca = dither_steps(caustics(wp * 0.5, TIME * caustic_speed), 3.0, FRAGCOORD.xy);
+		c += caustic_col.rgb * ca * caustic_amt * (1.0 - depth * 0.8);
+	}
 
 	// ── ★★岸线【切角】(与 ground_land 对称) ────────────────────────
 	// 砖的直角边被距离场的零等值线斜切掉; 两个 shader 各画自己那一半, 拼起来就是一条平滑岸线。
