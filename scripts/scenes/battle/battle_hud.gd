@@ -186,6 +186,12 @@ var _pk_prev_shown_l: float = 1.0          # 上一帧的填充值 —— 用来
 var _pk_prev_shown_r: float = 1.0
 var _pk_trail_hold_l: float = 0.0          # 残影停顿计时(见 PK_TRAIL_HOLD)
 var _pk_trail_hold_r: float = 0.0
+var _pk_gain_l: Control = null             # 回血带节点(画在填充【上面】的独立窄带)
+var _pk_gain_r: Control = null
+var _pk_gain_vl: float = 1.0               # 回血【低水位】: 上涨时滞后于填充, 两者之差 = 高亮的那一段
+var _pk_gain_vr: float = 1.0
+var _pk_gain_hold_l: float = 0.0
+var _pk_gain_hold_r: float = 0.0
 var _pk_trail_vl: float = 1.0
 var _pk_trail_vr: float = 1.0
 var _pk_egg_row: Control = null            # 副条整行容器(无蛋时隐藏整行)
@@ -285,6 +291,14 @@ const PK_SLANT := 10.0       # 斜切量(px)。整条切成平行四边形 —�
 ##   暗砖红三个好处: ①语义准("刚失去的血"就该是伤口色, 且与本作"红=伤害数字"一致)
 ##   ②亮度低于填充 → 不抢戏 ③在绿上是互补色、在紫上有明度差, 两种底色都分得开。
 ##   参照: 街霸的可恢复伤害用黄、怪猎/黑魂用橙红; 白色只是图省事。
+const PK_GAIN_COL := Color("#8dffc0")    # ★回血带(2026-07-31·用户「血条有考虑回血吗」)。
+                                        #   改前只处理【掉血】: 残影那行 maxf(_pk_shown, …) 把上升
+                                        #   那一侧整个吃掉了, 于是治疗/复活/临时血量在 PK 条上【一点反馈都没有】,
+                                        #   一大口奶只是让条悄悄变长。这里做残影的镜像: 涨上去的那一段
+                                        #   先用薄荷绿高亮 PK_GAIN_HOLD 秒, 再被本色追平。
+                                        #   薄荷绿在【绿方和紫方】上都读得出, 且是治疗的通用色。
+const PK_GAIN_SMOOTH := 2.4  # 回血带被本色追平的速率(略快于残影 —— 亏血比回血更值得盯)
+const PK_GAIN_HOLD := 0.40   # 回血带原地停顿多久才开始被追平(同 PK_TRAIL_HOLD 的道理)
 const PK_TRAIL_COL := Color("#b04141")   # ★#8b2f2f 太暗, 压在绿/紫填充边上几乎看不出;
                                         #   提亮到 #b04141 仍是"旧伤"的暗红, 但读得出来了
 ## 右上按钮区宽度(投降+统计+间距+安全区) —— PK 条要给它让出这么多, 否则窄屏会盖住。
@@ -405,9 +419,9 @@ func _build_pk_bar() -> void:
 
 	# ── 主条: 左右两段, 各自带边框 + 不透明暗底 ──
 	var res: Array = _pk_seg(bar, true, 0.0, PK_H, PK_BLUE)
-	_pk_fill_l = res[0]; _pk_trail_l = res[1]
+	_pk_fill_l = res[0]; _pk_trail_l = res[1]; _pk_gain_l = res[2]
 	res = _pk_seg(bar, false, 0.0, PK_H, PK_RED)
-	_pk_fill_r = res[0]; _pk_trail_r = res[1]
+	_pk_fill_r = res[0]; _pk_trail_r = res[1]; _pk_gain_r = res[2]
 
 	# ── 副条: 龟蛋(细), 同样左右分段 ──
 	var ey: float = PK_H + PK_EGG_GAP
@@ -495,7 +509,17 @@ func _pk_seg(bar: Control, left: bool, y: float, h: float, col: Color, gloss_on:
 	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	fill.material = _pk_slant_mat(Vector2(PK_SEG, h))
 	bar.add_child(fill)
-	return [fill, trail]
+	# 回血带(heal gain): 画在填充【上面】的一条独立窄带, 只覆盖 [低水位, 当前值] 这一段。
+	# ★第一版是"填充只画到低水位, 让底下的绿露出来" —— 结果【填充节点的宽度不再等于显示血量】,
+	#   门禁①(量 fill.size.x 判"都剩10%时更短")当场被测糊: 满血 433.2 vs 都剩10% 433.2。
+	#   条的长度是 HUD 最基本的语义, 不该为了一个特效被偷换。改成盖在上面的独立带,
+	#   fill 永远等于当前值, 谁读它都不会被骗。
+	var gain := ColorRect.new()
+	gain.color = PK_GAIN_COL
+	gain.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	gain.material = _pk_slant_mat(Vector2(PK_SEG, h))
+	bar.add_child(gain)
+	return [fill, trail, gain]
 
 
 ## 填充用的竖向渐变: 上浅下深, 幅度小(只做体积感, 不改变本色)。
@@ -731,6 +755,8 @@ func _pk_refresh() -> void:
 		_pk_shown_r = 1.0
 		_pk_trail_vl = 1.0
 		_pk_trail_vr = 1.0
+		_pk_gain_vl = 1.0
+		_pk_gain_vr = 1.0
 		_pk_egg_sl = 1.0
 		_pk_egg_sr = 1.0
 	_pk_base_l = l.y                    # 留着给门禁/调试看当前分母
@@ -799,14 +825,35 @@ func _pk_apply() -> void:
 		return
 	var inner: float = PK_SEG - 4.0        # 减掉 2px 边框×2
 	var h: float = PK_H - 4.0
+	# ★三层宽度: 残影 ≥ 当前值 ≥ 低水位。
+	#   掉血时 低水位=当前值 → 回血带宽度为 0(完全看不见), 露出的是残影;
+	#   回血时 残影=当前值 → 残影宽度为 0, 露出的是回血带。两者天然互斥, 不会同时出现。
 	_pk_put(_pk_trail_l, true, _pk_trail_vl, inner, h, 2.0)
 	_pk_put(_pk_fill_l, true, _pk_shown_l, inner, h, 2.0)
+	_pk_put_band(_pk_gain_l, true, _pk_gain_vl, _pk_shown_l, inner, h, 2.0)
 	_pk_put(_pk_trail_r, false, _pk_trail_vr, inner, h, 2.0)
 	_pk_put(_pk_fill_r, false, _pk_shown_r, inner, h, 2.0)
+	_pk_put_band(_pk_gain_r, false, _pk_gain_vr, _pk_shown_r, inner, h, 2.0)
 	var eh: float = PK_EGG_H - 4.0
 	var ey: float = PK_H + PK_EGG_GAP + 2.0
 	_pk_put(_pk_egg_l, true, _pk_egg_sl, inner, eh, ey)
 	_pk_put(_pk_egg_r, false, _pk_egg_sr, inner, eh, ey)
+
+
+## 放一条【区间带】: 只覆盖 [a, b] 这一段(a<b), 用于回血带。a>=b 时宽度为 0(等于隐形)。
+## ★左段从外侧左端往右长, 所以区间 [a,b] 的左沿在 a; 右段镜像, 左沿在 (1-b)。
+func _pk_put_band(cr: Control, left: bool, a: float, b: float, inner: float, h: float, y: float) -> void:
+	if cr == null or not is_instance_valid(cr):
+		return
+	a = clampf(a, 0.0, 1.0)
+	b = clampf(b, 0.0, 1.0)
+	var w: float = maxf(0.0, (b - a) * inner)
+	if left:
+		cr.position = Vector2(2.0 + a * inner, y)
+	else:
+		cr.position = Vector2(PK_SEG + PK_VS + 2.0 + (inner - b * inner), y)
+	cr.size = Vector2(w, h)
+	_pk_slant_size(cr, cr.size)
 
 
 ## 放一条填充。left=true 贴外侧左端; false 贴外侧右端。
@@ -853,6 +900,14 @@ func _pk_tick(delta: float) -> void:
 		_pk_trail_hold_l = PK_TRAIL_HOLD
 	if _pk_shown_r < _pk_prev_shown_r - 0.0005:
 		_pk_trail_hold_r = PK_TRAIL_HOLD
+	# ★★回血带的上涨触发必须和掉血触发【并排】写在这儿 —— 不能挪到下面。
+	#   下面两行会把 _pk_prev_shown 刷成当前值, 之后再判 `shown > prev` 就【永远不成立】,
+	#   停顿一次都触发不了 → 回血带被瞬间追平 = 等于没做。
+	#   我第一版就写在下面, 门禁「停顿期内低水位原地不动」当场抓到(停顿中 0.2397 vs 停顿前 0.2199)。
+	if _pk_shown_l > _pk_prev_shown_l + 0.0005:
+		_pk_gain_hold_l = PK_GAIN_HOLD
+	if _pk_shown_r > _pk_prev_shown_r + 0.0005:
+		_pk_gain_hold_r = PK_GAIN_HOLD
 	_pk_prev_shown_l = _pk_shown_l
 	_pk_prev_shown_r = _pk_shown_r
 	_pk_trail_hold_l = maxf(0.0, _pk_trail_hold_l - delta)
@@ -863,6 +918,22 @@ func _pk_tick(delta: float) -> void:
 	if _pk_trail_hold_r <= 0.0:
 		_pk_trail_vr = maxf(_pk_shown_r,
 			_pk_lerp_to(_pk_trail_vr, _pk_shown_r, delta * PK_TRAIL_SMOOTH))
+	# ★回血带 = 残影的【镜像】。低水位用 minf(当前值, …) 夹住: 掉血时它跟着当前值瞬间下来
+	#   (回血带宽度归零), 只有【涨】的时候才滞后 → 露出刚回的那一段。
+	#   触发同样必须是"填充这一帧上升了"(跟上一帧比), 不能写成"低水位低于填充" ——
+	#   后者在整个追平过程中一直成立, 停顿被每帧刷新 → 回血带永远不收。(残影那条栽过, 见上。)
+	_pk_gain_hold_l = maxf(0.0, _pk_gain_hold_l - delta)
+	_pk_gain_hold_r = maxf(0.0, _pk_gain_hold_r - delta)
+	# (原来这儿还有一行"停顿期也把低水位夹到 <= 填充"。反向验证证明它【冗余】——
+	#  删掉后门禁照样全绿: 下面 lerp 那两行自带 minf 已经夹住了; 而停顿期内即使
+	#  低水位高于填充, _pk_put_band 的 maxf(0, b-a) 也会把带子宽度算成 0 = 隐形。
+	#  验证不到的代码不留 —— 留着就是"看起来在防什么但其实没人证明过"。)
+	if _pk_gain_hold_l <= 0.0:
+		_pk_gain_vl = minf(_pk_shown_l,
+			_pk_lerp_to(_pk_gain_vl, _pk_shown_l, delta * PK_GAIN_SMOOTH))
+	if _pk_gain_hold_r <= 0.0:
+		_pk_gain_vr = minf(_pk_shown_r,
+			_pk_lerp_to(_pk_gain_vr, _pk_shown_r, delta * PK_GAIN_SMOOTH))
 	_pk_egg_sl = _pk_ease(_pk_egg_sl, _pk_egg_tl, delta)
 	_pk_egg_sr = _pk_ease(_pk_egg_sr, _pk_egg_tr, delta)
 	_pk_apply()

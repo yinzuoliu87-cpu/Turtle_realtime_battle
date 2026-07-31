@@ -279,6 +279,67 @@ func _smooth_and_trail(s) -> void:
 	_ok("⑤ 残影追赶【慢于】填充(否则看不出残影)", h.PK_TRAIL_SMOOTH < h.PK_SMOOTH,
 		"trail %.1f vs fill %.1f" % [h.PK_TRAIL_SMOOTH, h.PK_SMOOTH])
 
+	# ══ 回血带(用户 2026-07-31:「血条有考虑回血吗」) ══════════════════════════
+	# ★改前只做了掉血: 残影那行 maxf(_pk_shown, …) 把上升那一侧整个吃掉,
+	#   于是治疗/复活/临时血量在 PK 条上一点反馈都没有 —— 一大口奶只是让条悄悄变长。
+	# 回血带是残影的镜像: 填充只画到【低水位】, 露出的那段薄荷绿 = 刚回的血。
+	#
+	# ★★这里【改单位的 hp】而不是钉 _pk_target_r —— _pk_tick 内每 PK_SAMPLE(0.1s) 会调
+	#   _pk_refresh 按真实血量把 target 覆写回去。我第一版在循环里钉 target, 于是
+	#   刷新帧用真值、其余帧用钉的值, 填充在两者之间来回飘, 跑满 600 帧也到不了目标
+	#   (实测停在 0.4534/0.5)。改单位 hp 走的是真路径, 顺带把 _pk_sum 也一起验了。
+	_ok("⑤回 ★分母: 掉完血后低水位已跟平(此时回血带宽度=0)",
+		absf(s._hud._pk_gain_vr - s._hud._pk_shown_r) < 0.002,
+		"低水位 %.6f vs 填充 %.6f" % [s._hud._pk_gain_vr, s._hud._pk_shown_r])
+	var heal_from: float = s._hud._pk_shown_r
+	s._units[1]["hp"] = 700.0                              # 200 → 700: 灌一大口奶(真血量)
+	s._hud._pk_acc = 999.0                                 # 逼下一帧就重扫
+	for _i in range(6):
+		h._pk_tick(1.0 / 60.0)
+	_ok("⑤回 ★回血瞬间填充只画到低水位(露出的那段就是刚回的血)",
+		s._hud._pk_gain_vr < s._hud._pk_shown_r - 0.005,
+		"低水位 %.4f vs 填充 %.4f (差 %.4f)" % [s._hud._pk_gain_vr, s._hud._pk_shown_r,
+			s._hud._pk_shown_r - s._hud._pk_gain_vr])
+	# ★停顿: 循环写【固定帧数】不许引用 h.PK_GAIN_HOLD —— 引用了常量归零就 range(0) = 恒真式
+	var g_before: float = s._hud._pk_gain_vr
+	for _i in range(12):
+		h._pk_tick(1.0 / 60.0)
+	_ok("⑤回 ★★停顿期内低水位原地不动(否则一口奶瞬间被追平, 看不见)",
+		absf(s._hud._pk_gain_vr - g_before) < 0.0005,
+		"停顿中 %.6f (停顿前 %.6f)" % [s._hud._pk_gain_vr, g_before])
+	for _i in range(600):
+		h._pk_tick(1.0 / 60.0)
+	_ok("⑤回 ★分母: 血确实涨上去了(否则下面两条是空检查)",
+		s._hud._pk_shown_r > heal_from + 0.2 and absf(s._hud._pk_shown_r - 0.7) < 0.01,
+		"从 %.4f 涨到 %.4f (700/1000 应为 0.70)" % [heal_from, s._hud._pk_shown_r])
+	_ok("⑤回 ★最终追平(不会永远留一截绿条)",
+		absf(s._hud._pk_gain_vr - s._hud._pk_shown_r) < 0.002,
+		"低水位 %.6f vs 填充 %.6f" % [s._hud._pk_gain_vr, s._hud._pk_shown_r])
+	# ★★掉血与回血【互斥】: 掉稳之后回血带必须归零, 否则填充边缘会常年挂一条绿边
+	s._units[1]["hp"] = 450.0
+	s._hud._pk_acc = 999.0
+	for _i in range(120):
+		h._pk_tick(1.0 / 60.0)
+	_ok("⑤回 ★★掉血后回血带宽度归 0(低水位跟着填充一起下来, 不留绿边)",
+		absf(s._hud._pk_gain_vr - s._hud._pk_shown_r) < 0.0005,
+		"低水位 %.6f vs 填充 %.6f" % [s._hud._pk_gain_vr, s._hud._pk_shown_r])
+	_ok("⑤回 ★同时残影仍在(掉血/回血两套反馈各管各的·不会互相吃掉)",
+		s._hud._pk_trail_vr > s._hud._pk_shown_r + 0.001,
+		"残影 %.4f vs 填充 %.4f" % [s._hud._pk_trail_vr, s._hud._pk_shown_r])
+	# 节点层级: 残影 → 回血带 → 填充。顺序错了回血带会盖住填充本色。
+	# 层级: 残影 < 填充 < 回血带(回血带盖在最上面的一条独立窄带)
+	_ok("⑤回 ★节点层级 残影 < 填充 < 回血带",
+		s._hud._pk_trail_r.get_index() < s._hud._pk_fill_r.get_index()
+			and s._hud._pk_fill_r.get_index() < s._hud._pk_gain_r.get_index(),
+		"trail=%d fill=%d gain=%d" % [s._hud._pk_trail_r.get_index(),
+			s._hud._pk_fill_r.get_index(), s._hud._pk_gain_r.get_index()])
+	# ★★填充节点的宽度必须【永远等于当前显示血量】—— 这是条的基本语义, 不许被特效偷换。
+	#   (第一版让 fill 只画到低水位, 门禁①"都剩10%时更短"当场被测糊: 满血433.2 vs 剩10% 433.2。)
+	var inner_w: float = h.PK_SEG - 4.0
+	_ok("⑤回 ★★填充宽度 == 当前血量 × 内宽(特效不许偷换条的长度)",
+		absf(s._hud._pk_fill_r.size.x - s._hud._pk_shown_r * inner_w) < 0.6,
+		"fill %.1f px vs 应为 %.1f px" % [s._hud._pk_fill_r.size.x, s._hud._pk_shown_r * inner_w])
+
 
 ## ⑥ 读数: 百分比开场 100% + 绝对血量小字
 func _readout(s) -> void:
