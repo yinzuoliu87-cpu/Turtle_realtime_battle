@@ -197,13 +197,12 @@ func _spawn_dual_lane() -> void:
 ## 大师攻击力: 装配【魔法石】时 ×10(用户 2026-07-28), 否则 1。
 ## ★这里只能看 GameState/ghost —— 单位字典的 _tr_passive 是 spawn 完之后才写的(见 _apply_trainer_loadout),
 ##   spawn 当下还没有。两处判据必须一致, 否则会出现"图标是魔法石但攻击力还是1"这种半吊子状态。
-func _trainer_atk_for(side: String) -> float:
-	var is_ms := false
-	if side == "left":
-		is_ms = GameState.trainer_passive_skill() == "magic_stone"
-	elif GameState != null and GameState.dual_ghost is Dictionary:
-		is_ms = str((GameState.dual_ghost as Dictionary).get("trainer_skill", "")) == "magic_stone"
-	return battle.TRAINER_ATK_MAGIC_STONE if is_ms else battle.TRAINER_ATK
+## 大师攻击力。★2026-07-31 用户拍板:「训龟大师的魔法石不再提供19倍攻击力」——
+## 魔法石不再给攻击力倍率, 收益全部回到"每层攻速"上(见 trainer_system.MS_HASTE_PER_STACK)。
+## (代码与文案原本写的是 ×10 不是 ×19; 按用户意图执行 = 取消倍率。)
+## ★整个函数留着而不是内联成常量 —— 将来若有别的被动要改攻击力, 分派点在这儿。
+func _trainer_atk_for(_side: String) -> float:
+	return battle.TRAINER_ATK
 
 func _spawn_lane_side(units: Array, side: String, lvl: int, base: Vector2) -> void:
 	var lead_n = 0

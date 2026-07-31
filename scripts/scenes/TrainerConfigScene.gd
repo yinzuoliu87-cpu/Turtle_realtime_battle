@@ -7,7 +7,7 @@ extends Control
 
 ## 全部技能池(被动 + 主动·五选一)。icon 供卡片显示; kind 显示"被动/主动"。
 const SKILLS := [
-	{"id": "magic_stone", "kind": "被动", "name": "魔法石", "icon": "res://assets/sprites/vfx/magic-stone-icon.png", "desc": "装配后大师攻击力 ×10。普攻附带 2% 目标最大生命 魔法伤害；每次攻击自身 +5% 攻速(可叠·不封顶·整局不清零)。攒到 10/25/50 层时身上会亮起共鸣特效。"},
+	{"id": "magic_stone", "kind": "被动", "name": "魔法石", "icon": "res://assets/sprites/vfx/magic-stone-icon.png", "desc": "普攻附带 2% 目标最大生命 魔法伤害；每次攻击自身 +3% 攻速(可叠·不封顶·整局不清零)。攒到 10/25/50 层时身上会亮起共鸣特效。"},
 	{"id": "hook", "kind": "主动", "name": "钩锁", "icon": "res://assets/sprites/vfx/hook-skill-icon.png", "desc": "朝方向甩钩(射程600)勾住第一个敌人：眩晕4秒、一段段拽向大师、受伤+25%。CD20，空放返还。"},
 	{"id": "fury_potion", "kind": "主动", "name": "怒火药水", "icon": "res://assets/sprites/vfx/fury-potion-icon.png", "desc": "朝700码内一点丢药水：落点300码内友军5秒 +30%攻速 / +25%龟能充能 / +25%移速。CD16。"},
 	{"id": "whistle", "kind": "主动", "name": "口哨", "icon": "res://assets/sprites/vfx/whistle-icon.png", "desc": "随机1个：给友军700临时生命(5秒·到期按比例削) / 召灵体小龟蓄力放气波(2000码贯穿·命中扣100+15%目标最大生命真实伤害+击飞+削甲30%持续5秒) / 友军狂暴4秒(+20%攻击力·+20点吸血·免疫死亡)。CD14。"},

@@ -30,7 +30,8 @@ const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 ##   「选择魔法石攻击力时, 训龟大师获得 10 倍攻击力」→ 1 × 10 = 10
 ##   「普攻附带(2+0.1每大轮等级)%目标最大生命值魔法伤害」→ Lv1=2.1% … Lv10=3.0%
 ## 实现改了而需求没改 → 这条就该红。
-const WANT_ATK := 10.0
+const WANT_ATK := 1.0     # 需求字面值: 魔法石【不再】提供攻击力倍率(2026-07-31 用户拍板),
+                          # 所以装魔法石时大师攻击力 = 基础 TRAINER_ATK = 1
 ## ★2026-07-30 用户拍板:「附带的魔法伤害削弱为常驻2%」—— 不再随大轮等级涨。
 ##   原需求是「(2+0.1每大轮等级)%」(Lv1 2.1%…Lv10 3.0%), 现在恒 2%。
 const WANT_PCT := 0.02
@@ -84,8 +85,13 @@ func _ready() -> void:
 	print("")
 	if tr == null:
 		print("  [FAIL] ★分母: 场上没有我方训龟大师 —— 后面全是空检查"); _fail += 1; _done(s); return
-	print("  ③ 我方大师 ATK = %.1f  (需求 %.1f; 装主动技时应为 1.0)" % [float(tr["atk"]), WANT_ATK])
-	_chk("③ 装魔法石 → ATK = %.0f (需求: 1 的 10 倍)" % WANT_ATK, absf(float(tr["atk"]) - WANT_ATK) < 0.01)
+	# ★★2026-07-31 用户拍板:「训龟大师的魔法石不再提供19倍攻击力」——
+	#   魔法石不再给攻击力倍率(原 TRAINER_ATK_MAGIC_STONE ×10, 常量已删),
+	#   收益全部集中到"每层攻速"那一条线上。这里从"验 10 倍"翻成【验没有倍率】。
+	print("  ③ 我方大师 ATK = %.1f  (需求 %.1f = 与装主动技时相同, 魔法石不再加倍)"
+		% [float(tr["atk"]), WANT_ATK])
+	_chk("③ ★装魔法石【不再】改攻击力(= 基础 %.0f)" % WANT_ATK,
+		absf(float(tr["atk"]) - WANT_ATK) < 0.01)
 
 	# ── ④ 魔法那段 = (2 + 0.1×等级)% 目标最大生命, 逐级验 ──
 	print("")

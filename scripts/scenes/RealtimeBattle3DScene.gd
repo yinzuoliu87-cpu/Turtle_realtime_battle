@@ -314,11 +314,9 @@ const AVATAR_DIR := "res://assets/sprites/avatars/"   # 头像兜底 (全身图�
 const TRAINER_ID := "__trainer__"
 const TRAINER_HP := 500.0
 const TRAINER_ATK := 1.0
-## ★选【魔法石】时大师的攻击力(用户 2026-07-28: "选择魔法石攻击力时, 训龟大师获得10倍攻击力")。
-## 只在装配魔法石时生效; 装主动技仍是 TRAINER_ATK=1。
-## ⚠ 实际收益比"十倍"小得多 —— 大师伤害的大头是【按目标最大生命百分比】那段魔法(20~30点),
-##   物理只从 1 涨到 10, 总输出约 21 → 31~40。方案书 §5.6 已写明。
-const TRAINER_ATK_MAGIC_STONE := 10.0
+## (原 TRAINER_ATK_MAGIC_STONE := 10.0 已删 —— 用户 2026-07-31 拍板「魔法石不再提供攻击力倍率」,
+##  删掉而不是设成 1.0: 零读者的死常量正是本项目栽过的坑。魔法石的收益现在只在
+##  trainer_system.MS_HASTE_PER_STACK 那一条线上。)
 ## 魔法石普攻附带的魔法伤害 = (MS_BASE + MS_PER_LV × 大轮等级) × 目标最大生命
 ## 魔法石普攻附带的魔法伤害 = 目标最大生命的固定百分比。
 ## ★2026-07-30 用户拍板削弱:「附带的魔法伤害削弱为常驻2%」——
@@ -4981,7 +4979,9 @@ const _SELF_CAST_SKILLS := {
 }
 
 # 远程敌向技的专属放技射程(码): 有这条的技能"够得着就放"·不被近战射程卡着(用户2026-07-11: 手里剑是远程技·改2000)
-const _SKILL_CAST_RANGE := {"ninjaShuriken": 2000.0, "ninjaBomb": 2000.0, "ninjaBackstab": 2000.0, "lineInkBomb": 2000.0, "eliteHammer": 500.0, "minionBodysurf": 2000.0, "minionRocket": 2000.0, "chestStorm": 2000.0}   # chestStorm=宝箱龟财宝风暴(用户2026-07-19: 射程改2000)   # 墨水炸弹/精英铁锤/小将浪板+火箭 各自射程(用户2026-07-18: 小将两技射程2000)
+const _SKILL_CAST_RANGE := {"ninjaShuriken": 2000.0, "ninjaBomb": 2000.0, "ninjaBackstab": 2000.0, "lineInkBomb": 2000.0, "eliteHammer": 500.0, "minionBodysurf": 2000.0, "minionRocket": 2000.0, "chestStorm": 2000.0,
+	"fortuneAllIn": 2000.0,   # 财神·梭哈(用户 2026-07-31): 原来回落到攻击射程 70 → 得贴脸才撒币
+	"basicSlam": 150.0}       # 小龟·过肩摔(用户 2026-07-31): 擒抱技, 给一点起手余量而不是必须贴到 70   # chestStorm=宝箱龟财宝风暴(用户2026-07-19: 射程改2000)   # 墨水炸弹/精英铁锤/小将浪板+火箭 各自射程(用户2026-07-18: 小将两技射程2000)
 func _skill_cast_range(u: Dictionary, stype: String) -> float:
 	if _SELF_CAST_SKILLS.has(stype): return 99999.0                       # 自/友向: 任意距离即放
 	return float(_SKILL_CAST_RANGE.get(stype, u.get("atk_range", 70.0)))  # 远程敌向技用专属射程; 否则=攻击射程(近战贴身放)
@@ -5189,9 +5189,15 @@ func _do_move(u: Dictionary, tgt: Dictionary, dist: float, rng: float, spd: floa
 func _cast_skill(u: Dictionary, tgt: Dictionary, stype: String) -> bool:
 	if not _IMPL_SKILLS.has(stype):
 		return false
-	if stype == "fortuneAllIn" and u.get("allin_used", false):
-		# 梭哈一场限一次·用过后该技变「金盾」(80龟能·护盾=金币数·持盾锁龟能·用户2026-07-12): 有金币才放(护盾=金币数, 0金币不空放)
-		return int(u.get("gold", 0)) > 0
+	# 梭哈一场限一次·用过后该技变「金盾」(80龟能·护盾=金币数·持盾锁龟能·用户2026-07-12)。
+	# ★★这里原本写的是 `return int(u.get("gold",0)) > 0` —— 本意是"0 金币不空放"的【前置检查】,
+	#   却写成了 return, 于是 allin_used 之后【整个 _do_skill 都跑不到】, 金盾从来没生效过;
+	#   更糟的是它返回 true, 调用方照样扣冷却 → 80 龟能白花。
+	#   用户 2026-07-31:「财神龟的金盾压根没生效吗」「实战里面金盾就是没生效」——
+	#   探针实证: 走 _cast_skill 护盾=0/gold_shield_until=0, 直接调 _sk_fortune_goldshield 则 40/4.37。
+	#   现在只在【不满足前置】时 return false, 满足就落到下面正常施放。
+	if stype == "fortuneAllIn" and u.get("allin_used", false) and int(u.get("gold", 0)) <= 0:
+		return false
 	_anticipate(u)                  # 放大招前预备(缩)→挥出(伸) 形变
 	_shake(JUICE_SHAKE_HEAVY)       # 大招释放 = 轻震屏
 	# 施法技能不用飘空图标 (用户定): 技能视觉靠各自 _skill_ring/投射物/形变, 不浮贴图 billboard
