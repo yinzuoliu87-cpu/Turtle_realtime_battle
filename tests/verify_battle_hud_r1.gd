@@ -39,6 +39,18 @@ func _ok(name: String, cond: bool, detail: String = "") -> void:
 
 
 ## 干净合成单位。只带 PK 条真正读的字段 —— 多余字段会引入噪声。
+## 残影在接下来 n 帧里【动过没有】—— 用来证明"停顿"没被加回来。
+func _trail_moves(h, s, n: int) -> bool:
+	var t0: float = s._hud._pk_trail_vr
+	for _i in range(n):
+		h._pk_tick(1.0 / 60.0)
+	return absf(s._hud._pk_trail_vr - t0) > 0.0005
+
+
+func _lum(c: Color) -> float:
+	return 0.299 * c.r + 0.587 * c.g + 0.114 * c.b
+
+
 func _mk(side: String, hp: float, mx: float, extra: Dictionary = {}) -> Dictionary:
 	var u := {"id": "basic", "name": "合成", "side": side,
 		"alive": hp > 0.0, "hp": hp, "maxHp": mx}
@@ -253,17 +265,11 @@ func _smooth_and_trail(s) -> void:
 	_ok("⑤ ★掉血瞬间残影高于填充(看得出刚掉的那一段)",
 		s._hud._pk_trail_vr > s._hud._pk_shown_r + 0.001,
 		"残影 %.4f vs 填充 %.4f" % [s._hud._pk_trail_vr, s._hud._pk_shown_r])
-	# ★★残影【先停顿再收】(2026-07-31 打磨): 没有停顿的话小额掉血会被瞬间追上,
-	#   "刚掉了这一截"来不及看见。这里验停顿真的存在 —— 停顿期内残影【原地不动】。
-	# ★★循环次数写【固定帧数】, 不许用 h.PK_TRAIL_HOLD 算 —— 我第一版那么写, 反向验证时
-	#   把常量改成 0 → range(0) 一次都不循环 → 断言空转通过 = 恒真式, 抓不到任何东西。
-	#   15 帧 = 0.25 秒: 短于需求的停顿(0.45s)、长到足以让"没有停顿"的实现露馅。
-	var t_before: float = s._hud._pk_trail_vr
-	for _i in range(15):
-		h._pk_tick(1.0 / 60.0)
-	_ok("⑤ ★★停顿期内残影原地不动(否则小额掉血看不见)",
-		absf(s._hud._pk_trail_vr - t_before) < 0.0005,
-		"停顿中 %.6f (停顿前 %.6f)" % [s._hud._pk_trail_vr, t_before])
+	# ★（这里原来有一条"停顿期内残影原地不动"的断言。用户 2026-07-31 看实机后否掉了停顿:
+	#   「掉血特效停0.45秒的这个不好, 不如之前的渐退」—— 功能删了, 断言随之删。
+	#   残影的正确性改由下面三条守: 最终追上填充 / 永不低于填充 / 追赶速率慢于填充。）
+	_ok("⑤ ★残影【没有】停顿(用户否掉的行为不许回来: 连推 15 帧必须已经在收)",
+		_trail_moves(h, s, 15), "15 帧内残影没动过 = 停顿又被加回来了")
 	for _i in range(600):
 		h._pk_tick(1.0 / 60.0)
 	_ok("⑤ ★跑够帧数填充精确吸附到目标(不留半像素缝)",
@@ -328,6 +334,20 @@ func _smooth_and_trail(s) -> void:
 		"残影 %.4f vs 填充 %.4f" % [s._hud._pk_trail_vr, s._hud._pk_shown_r])
 	# 节点层级: 残影 → 回血带 → 填充。顺序错了回血带会盖住填充本色。
 	# 层级: 残影 < 填充 < 回血带(回血带盖在最上面的一条独立窄带)
+	# ★★回血带颜色 = 【该侧本色的提亮版】(用户:「我方回血用绿色, 敌方回血你得适配个颜色」)。
+	#   第一版两边写死同一个薄荷绿 —— 敌方(紫)那侧就是一条绿带糊在紫条上。
+	var gl: Color = (s._hud._pk_gain_l as ColorRect).color
+	var gr: Color = (s._hud._pk_gain_r as ColorRect).color
+	_ok("⑤回 ★★两侧回血带【不是同一个颜色】(敌方要适配自己的队色)",
+		not gl.is_equal_approx(gr), "我方 %s / 敌方 %s" % [str(gl), str(gr)])
+	_ok("⑤回 ★我方回血带是【绿】的(绿分量最大)", gl.g > gl.r and gl.g > gl.b,
+		"rgb=%.2f,%.2f,%.2f" % [gl.r, gl.g, gl.b])
+	_ok("⑤回 ★敌方回血带偏紫(与敌方队色同色系: 蓝 > 绿)", gr.b > gr.g,
+		"rgb=%.2f,%.2f,%.2f" % [gr.r, gr.g, gr.b])
+	_ok("⑤回 ★★回血带比本侧填充亮(不亮就读不出是刚回的)",
+		_lum(gl) > _lum(h.PK_BLUE) + 0.10 and _lum(gr) > _lum(h.PK_RED) + 0.10,
+		"我方 %.2f vs 填充 %.2f / 敌方 %.2f vs 填充 %.2f"
+			% [_lum(gl), _lum(h.PK_BLUE), _lum(gr), _lum(h.PK_RED)])
 	_ok("⑤回 ★节点层级 残影 < 填充 < 回血带",
 		s._hud._pk_trail_r.get_index() < s._hud._pk_fill_r.get_index()
 			and s._hud._pk_fill_r.get_index() < s._hud._pk_gain_r.get_index(),

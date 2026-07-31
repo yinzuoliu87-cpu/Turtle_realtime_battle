@@ -182,10 +182,8 @@ var _pk_shown_l: float = 1.0               # 逐帧向 target 平滑(群伤瞬�
 var _pk_shown_r: float = 1.0
 var _pk_trail_l: ColorRect = null          # damage trail 残影: 掉血时旧位置留一段亮色再慢慢收
 var _pk_trail_r: ColorRect = null
-var _pk_prev_shown_l: float = 1.0          # 上一帧的填充值 —— 用来判"这一帧掉血了"(见 PK_TRAIL_HOLD)
+var _pk_prev_shown_l: float = 1.0          # 上一帧的填充值 —— 用来判"这一帧回血了"(见 PK_GAIN_HOLD)
 var _pk_prev_shown_r: float = 1.0
-var _pk_trail_hold_l: float = 0.0          # 残影停顿计时(见 PK_TRAIL_HOLD)
-var _pk_trail_hold_r: float = 0.0
 var _pk_gain_l: Control = null             # 回血带节点(画在填充【上面】的独立窄带)
 var _pk_gain_r: Control = null
 var _pk_gain_vl: float = 1.0               # 回血【低水位】: 上涨时滞后于填充, 两者之差 = 高亮的那一段
@@ -277,9 +275,10 @@ const PK_EGG_GAP := 4.0      # 主条与副条间距
 const PK_Y := 16.0           # 主条顶。占 16..42; 副条 46..55; 双路 HUD 文字下移到 60
 const PK_SAMPLE := 0.1       # 扫 _units 的采样间隔(秒)。别每帧扫: 主文件热路径预算 <0.2%
 const PK_SMOOTH := 6.0       # 填充平滑速率
-const PK_TRAIL_SMOOTH := 2.0 # 残影追赶速率(慢于填充 → 才看得出"刚掉了这一段"; 2.6→2.0 再慢一点)
-const PK_TRAIL_HOLD := 0.45  # ★掉血后残影【原地停顿】多久才开始收 —— 没有这个停顿,
-                             #   小额掉血会被瞬间追上, 残影等于白做。连续挨打会不断刷新它。
+const PK_TRAIL_SMOOTH := 2.2 # 残影追赶速率(慢于填充 → 才看得出"刚掉了这一段")。
+                             # ★★不要再加"停顿"了: 2026-07-31 试过"掉血后原地停 0.45 秒再收",
+                             #   用户看实机后【否掉】——「掉血特效停0.45秒的这个不好, 不如之前的渐退」。
+                             #   停顿的观感是一顿一顿的, 不如慢速渐退连贯。这是看过实机的结论, 不是没想到。
                              # ★1.6 太慢: 残影常态很宽, 看起来像"第三种颜色的段"而不是"刚掉的"
 const PK_HIT_DECAY := 2.2    # 受伤脉冲衰减速率
 const PK_LOW := 0.25         # 低血量阈值: 低于它开始警示闪烁(血条的标准语言)
@@ -291,14 +290,23 @@ const PK_SLANT := 10.0       # 斜切量(px)。整条切成平行四边形 —�
 ##   暗砖红三个好处: ①语义准("刚失去的血"就该是伤口色, 且与本作"红=伤害数字"一致)
 ##   ②亮度低于填充 → 不抢戏 ③在绿上是互补色、在紫上有明度差, 两种底色都分得开。
 ##   参照: 街霸的可恢复伤害用黄、怪猎/黑魂用橙红; 白色只是图省事。
-const PK_GAIN_COL := Color("#8dffc0")    # ★回血带(2026-07-31·用户「血条有考虑回血吗」)。
+## 回血带颜色 = 【该侧本色的提亮版】(用户 2026-07-31:「我方回血用绿色, 敌方回血你得适配个颜色」)。
+## ★不写死一个色: 第一版两边都用薄荷绿 —— 我方(绿)那侧还说得过去, 敌方(紫)那侧就是
+##   一条绿带糊在紫条上, 既不像"敌方在回血"也和整条配色打架。
+##   按本色提亮: 语义天然对(这一侧涨的血)、两边自动适配、以后改队色不用再来改这儿。
+## 提亮 0.55 实测: 我方 (74,222,128)→(174,240,198) 亮度差 49; 敌方 (168,85,247)→(216,179,251) 差 71。
+const PK_GAIN_LIGHTEN := 0.55
+# (原 PK_GAIN_COL 写死的薄荷绿已删 —— 改成按队色提亮, 见 PK_GAIN_LIGHTEN)
                                         #   改前只处理【掉血】: 残影那行 maxf(_pk_shown, …) 把上升
                                         #   那一侧整个吃掉了, 于是治疗/复活/临时血量在 PK 条上【一点反馈都没有】,
                                         #   一大口奶只是让条悄悄变长。这里做残影的镜像: 涨上去的那一段
                                         #   先用薄荷绿高亮 PK_GAIN_HOLD 秒, 再被本色追平。
                                         #   薄荷绿在【绿方和紫方】上都读得出, 且是治疗的通用色。
 const PK_GAIN_SMOOTH := 2.4  # 回血带被本色追平的速率(略快于残影 —— 亏血比回血更值得盯)
-const PK_GAIN_HOLD := 0.40   # 回血带原地停顿多久才开始被追平(同 PK_TRAIL_HOLD 的道理)
+const PK_GAIN_HOLD := 0.40   # 回血带原地停顿多久才开始被追平。
+                             # ★掉血那边的停顿已被用户否掉(见 PK_TRAIL_SMOOTH), 这边【暂时保留】——
+                             #   用户只点名了"掉血特效"。回血是瞬间事件(一口奶), 不像掉血那样连绵,
+                             #   停顿在这儿更像"闪一下"而不是"卡一下"。要是看着也别扭就一并删掉。
 const PK_TRAIL_COL := Color("#b04141")   # ★#8b2f2f 太暗, 压在绿/紫填充边上几乎看不出;
                                         #   提亮到 #b04141 仍是"旧伤"的暗红, 但读得出来了
 ## 右上按钮区宽度(投降+统计+间距+安全区) —— PK 条要给它让出这么多, 否则窄屏会盖住。
@@ -515,7 +523,7 @@ func _pk_seg(bar: Control, left: bool, y: float, h: float, col: Color, gloss_on:
 	#   条的长度是 HUD 最基本的语义, 不该为了一个特效被偷换。改成盖在上面的独立带,
 	#   fill 永远等于当前值, 谁读它都不会被骗。
 	var gain := ColorRect.new()
-	gain.color = PK_GAIN_COL
+	gain.color = col.lightened(PK_GAIN_LIGHTEN)   # 见 PK_GAIN_LIGHTEN: 按本侧队色提亮
 	gain.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	gain.material = _pk_slant_mat(Vector2(PK_SEG, h))
 	bar.add_child(gain)
@@ -888,18 +896,9 @@ func _pk_tick(delta: float) -> void:
 		_pk_hit_l = 1.0                   # 左方掉血 → 触发脉冲
 	if _pk_shown_r < pr - 0.0001:
 		_pk_hit_r = 1.0
-	# ★★残影【先停顿再收】(2026-07-31 打磨)。
-	#   原来掉血那一刻残影就开始以 PK_TRAIL_SMOOTH 追填充 —— 一小段掉血几乎瞬间被追上,
-	#   "刚掉了这一截"根本来不及看见, 等于白做。
-	#   现在: 检测到填充下降 → 把停顿计时器顶到 PK_TRAIL_HOLD; 停顿期间残影【原地不动】,
-	#   停顿走完才开始收。连续挨打会不断刷新停顿 = 残影一直挂着, 正是想要的"血亏了多少"。
-	#   ★触发条件必须是【填充这一帧下降了】, 不能写成"残影高于填充" ——
-	#     后者在整个收拢过程中一直成立, 停顿会被每帧刷新 → 残影【永远不收】。
-	#     (我第一版就这么写的, 门禁 ⑤"残影最终追上填充"当场抓到: 跑满 600 帧仍停在 1.000。)
-	if _pk_shown_l < _pk_prev_shown_l - 0.0005:
-		_pk_trail_hold_l = PK_TRAIL_HOLD
-	if _pk_shown_r < _pk_prev_shown_r - 0.0005:
-		_pk_trail_hold_r = PK_TRAIL_HOLD
+	# ★★残影就是【平滑渐退】, 不做停顿。
+	#   我一度加过"掉血后原地停 0.45 秒再收"(出发点: 小额掉血会被瞬间追上),
+	#   用户看实机后否掉 ——「掉血特效停0.45秒的这个不好, 不如之前的渐退」。整段已删。
 	# ★★回血带的上涨触发必须和掉血触发【并排】写在这儿 —— 不能挪到下面。
 	#   下面两行会把 _pk_prev_shown 刷成当前值, 之后再判 `shown > prev` 就【永远不成立】,
 	#   停顿一次都触发不了 → 回血带被瞬间追平 = 等于没做。
@@ -910,14 +909,10 @@ func _pk_tick(delta: float) -> void:
 		_pk_gain_hold_r = PK_GAIN_HOLD
 	_pk_prev_shown_l = _pk_shown_l
 	_pk_prev_shown_r = _pk_shown_r
-	_pk_trail_hold_l = maxf(0.0, _pk_trail_hold_l - delta)
-	_pk_trail_hold_r = maxf(0.0, _pk_trail_hold_r - delta)
-	if _pk_trail_hold_l <= 0.0:
-		_pk_trail_vl = maxf(_pk_shown_l,
-			_pk_lerp_to(_pk_trail_vl, _pk_shown_l, delta * PK_TRAIL_SMOOTH))
-	if _pk_trail_hold_r <= 0.0:
-		_pk_trail_vr = maxf(_pk_shown_r,
-			_pk_lerp_to(_pk_trail_vr, _pk_shown_r, delta * PK_TRAIL_SMOOTH))
+	_pk_trail_vl = maxf(_pk_shown_l,
+		_pk_lerp_to(_pk_trail_vl, _pk_shown_l, delta * PK_TRAIL_SMOOTH))
+	_pk_trail_vr = maxf(_pk_shown_r,
+		_pk_lerp_to(_pk_trail_vr, _pk_shown_r, delta * PK_TRAIL_SMOOTH))
 	# ★回血带 = 残影的【镜像】。低水位用 minf(当前值, …) 夹住: 掉血时它跟着当前值瞬间下来
 	#   (回血带宽度归零), 只有【涨】的时候才滞后 → 露出刚回的那一段。
 	#   触发同样必须是"填充这一帧上升了"(跟上一帧比), 不能写成"低水位低于填充" ——
