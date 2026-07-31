@@ -1006,6 +1006,11 @@ func _build_spell_disc() -> void:
 	var icon: Texture2D = load(ipath) if ResourceLoader.exists(ipath) else null
 	battle._spell_disc = battle.SpellDisc.new()
 	battle._spell_disc.setup(icon, "Q", Callable(battle._trainer_sys, "_player_cast_hook_auto"), Callable(battle._aim, "_on_spell_aim"))   # 2026-07-26: 修好回调指向真owner(原 Callable(self=BattleHud,…) 指向不存在的方法·移动端圆盘一直没接上)
+	# ★能不能拖动瞄准由技能的 aim 字段决定(唯一判定在 BattleAim._aim_type_of)。
+	#   口哨 aim="none" → 圆盘退化成纯点击键: 按下不出方向轮盘, 松手即放。
+	#   用户 2026-07-30:「3种情况都是点击就放, 不应该有拖动」
+	battle._spell_disc.set_aimable(
+		sid != "" and str(battle.TRAINER_SKILLS.get(sid, {}).get("aim", "none")) != "none")
 	var vp: Vector2 = Vector2(battle.get_viewport().get_visible_rect().size)
 	var m: Vector4 = SafeArea.margins(vp, 18.0)
 	battle._spell_disc.position = Vector2(vp.x - battle.SpellDisc.R * 2.0 - m.z, vp.y - battle.SpellDisc.R * 2.0 - m.w)

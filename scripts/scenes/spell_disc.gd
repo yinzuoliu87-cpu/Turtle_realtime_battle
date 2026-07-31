@@ -18,6 +18,12 @@ var _on_tap: Callable = Callable()    # 轻点(自动瞄准)
 var _on_aim: Callable = Callable()    # 瞄准过程: call(phase:String, dir:Vector2) phase=update/cast/cancel
 
 var _aiming: bool = false
+## ★这个技能【能不能拖动瞄准】(由 TRAINER_SKILLS 的 aim 字段决定, battle_hud 建盘时喂)。
+##   口哨 aim="none" —— 三种效果(临时血量/灵体小龟气波/狂暴)全都不吃方向, 小龟自己找最近的敌人,
+##   给它一个拖动轮盘是【假的可操作性】: 玩家拖了半天没有任何影响, 还得多一步松手。
+##   装了被动(sid=="")同理: 根本没有主动技可放。
+var _aimable: bool = true
+var _tap_armed: bool = false          # 不可瞄准的技能: 按下先武装, 松手才放(和轻点语义一致)
 var _aim_off: Vector2 = Vector2.ZERO  # 拖动偏移(相对圆盘中心·屏幕像素)
 
 ## 叠层角标(用户 2026-07-30:「魔法石，我希望图标上有层数显示」)。
@@ -32,6 +38,16 @@ var _stack_font: Font = null
 var _tier: int = 0
 const TIER_RING := [
 	Color("#c86bff"), Color("#c86bff"), Color("#dd9bff"), Color("#ffd35c")]
+
+## 喂"能不能拖动瞄准"。默认 true(方向/点目标技); 口哨与被动喂 false → 退化成纯点击键。
+func set_aimable(v: bool) -> void:
+	if v == _aimable:
+		return
+	_aimable = v
+	if not v:
+		_aiming = false
+		_aim_off = Vector2.ZERO
+	queue_redraw()
 
 func setup(icon: Texture2D, hint: String, tap: Callable, aim: Callable = Callable()) -> void:
 	_icon = icon
@@ -70,11 +86,22 @@ func _gui_input(e: InputEvent) -> void:
 	# 按下: 就绪时进入瞄准态
 	if (e is InputEventScreenTouch or e is InputEventMouseButton) and e.pressed:
 		if ready:
-			_aiming = true
-			_aim_off = e.position - Vector2(R, R)
-			_emit_aim("update")
+			if _aimable:
+				_aiming = true
+				_aim_off = e.position - Vector2(R, R)
+				_emit_aim("update")
+			else:
+				_tap_armed = true          # 不可瞄准: 不进瞄准态(不出轮盘/不画战场方向带), 松手直接放
 			queue_redraw()
 			accept_event()
+		return
+	# 不可瞄准的技能: 松手就放。★放在拖动分支【之前】—— 否则手指抖一下产生 drag 事件也无所谓,
+	#   但顺序错了会让 _tap_armed 一直挂着。
+	if _tap_armed and (e is InputEventScreenTouch or e is InputEventMouseButton) and not e.pressed:
+		_tap_armed = false
+		if _on_tap.is_valid(): _on_tap.call()
+		queue_redraw()
+		accept_event()
 		return
 	# 拖动: 更新方向
 	if _aiming and (e is InputEventScreenDrag or e is InputEventMouseMotion):
@@ -105,8 +132,8 @@ func _draw() -> void:
 	var ready := _cd_frac <= 0.004
 	draw_circle(c, R, Color(0.10, 0.12, 0.18, 0.86))                       # 底盘
 	var border := Color(0.45, 0.85, 1.0, 0.95) if ready else Color(0.4, 0.46, 0.6, 0.9)
-	if _aiming:
-		border = Color(1.0, 0.78, 0.35, 1.0)                              # 瞄准中=橙亮
+	if _aiming or _tap_armed:
+		border = Color(1.0, 0.78, 0.35, 1.0)                              # 瞄准中/已按下=橙亮
 	draw_arc(c, R - 2.0, 0.0, TAU, 52, border, 3.0)
 	if _icon != null:                                                     # 技能图标
 		var isz := Vector2(R * 1.15, R * 1.15)

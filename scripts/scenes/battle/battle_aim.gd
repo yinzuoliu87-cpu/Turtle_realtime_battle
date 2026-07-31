@@ -11,12 +11,28 @@ var battle
 func _init(b) -> void:
 	battle = b
 
+## 这个大师当前主动技的瞄准方式 —— 【唯一判定处】, 圆盘/指示器/PC按Q 三条路都问它。
+##   "dir"=方向技(钩锁/冰川) · "point"=点目标(怒火药水) · "target"=选敌(猎龟令/驯服·拖动决定选谁)
+##   "none"=不吃方向(口哨: 三种效果都是小龟自动找最近的敌人) · 装了被动也是 "none"(没主动技可放)
+## ★别在别处再写一遍 `TRAINER_SKILLS.get(sid).get("aim")` —— 口哨这个 bug 就是因为
+##   _draw_aim_indicator 里写的是 `if aim_type == "point" … else 画方向带`, "none" 掉进 else,
+##   于是不吃方向的技能被画了一条方向带, 看着像"能瞄"。
+func _aim_type_of(u) -> String:
+	if u == null:
+		return "none"
+	var sid: String = str(u.get("_tr_active", ""))
+	if sid == "" or not battle.TRAINER_SKILLS.has(sid):
+		return "none"
+	return str(battle.TRAINER_SKILLS[sid].get("aim", "dir"))
+
 ## 移动端圆盘回调(battle_hud 里 Callable(battle._aim, "_on_spell_aim") 接): 拖动=瞄准 / 松手=施放。
 func _on_spell_aim(phase: String, screen_off: Vector2) -> void:
 	match phase:
 		"update":
 			var tr0 = battle._my_trainer()
-			battle._disc_aiming = screen_off.length() > 0.01 and tr0 != null and battle._trainer_sys._trainer_ticks_active()
+			# ★不吃方向的技能永不进瞄准态(圆盘那边也已闸住, 这里是第二道 —— 调试场/未来别的
+			#   入口若绕过圆盘直接调这个回调, 不该冒出一条方向带)。
+			battle._disc_aiming = screen_off.length() > 0.01 and tr0 != null 				and battle._trainer_sys._trainer_ticks_active() and _aim_type_of(tr0) != "none"
 			battle._disc_aim_dir = _disc_off_to_field(tr0, screen_off) if tr0 != null else Vector2.ZERO   # 存战场偏移(与PC统一尺度)
 		"cast":
 			battle._disc_aiming = false
@@ -55,7 +71,9 @@ func _draw_aim_indicator() -> void:
 	if str(battle._aim_ind.get("sid", "")) != sid:          # 换技能 → 重建
 		_clear_aim_indicator(); battle._aim_ind["sid"] = sid
 	var info: Dictionary = battle.TRAINER_SKILLS[sid]
-	var aim_type: String = str(info.get("aim", "dir"))
+	var aim_type: String = _aim_type_of(u)
+	if aim_type == "none":                                  # ★口哨: 不吃方向 → 一条指示器都不画
+		_clear_aim_indicator(); return
 	var rng: float = float(info.get("range", 600.0))
 	if rng <= 0.0:
 		rng = 600.0
@@ -157,8 +175,10 @@ func _begin_q_aim() -> void:
 	if tr == null:
 		return
 	var u: Dictionary = tr
-	var sid: String = str(u.get("_tr_active", ""))
-	if sid == "" or not battle.TRAINER_SKILLS.has(sid):   # 选了被动(无主动Q)→ 不进瞄准
+	if _aim_type_of(u) == "none":
+		# ★口哨/被动: 没有方向可瞄 → 按下 Q 就【立刻放】, 不进瞄准态、不等松手。
+		#   (被动时 _player_cast_hook_auto 里 _cast_active 会因为没主动技而返回 false, 无副作用)
+		battle._trainer_sys._player_cast_hook_auto()
 		return
 	battle._q_aiming = true
 
