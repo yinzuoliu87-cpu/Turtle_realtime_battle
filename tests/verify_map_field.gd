@@ -158,6 +158,10 @@ func _ready() -> void:
 		wsrc.contains("edge_fade") and lsrc.contains("edge_fade"))
 	_ok("⑥ ★焦散接回真正在用的地面 shader(旧的那份写在跑不到的分支里)",
 		inc.contains("float caustics") and wsrc.contains("caustics(") and lsrc.contains("caustics("))
+	# ★岸线【切角】: 砖是方的, 水陆交界原本是一级约 26 屏幕像素的台阶;
+	#   距离场是双线性插值的, 它的零等值线会把凸角斜切掉。两个 shader 各画自己那一半。
+	_ok("⑥ ★两个 shader 都做了岸线切角(边界跟插值后的场走, 不跟砖的直角走)",
+		lsrc.contains("shore_water_col") and wsrc.contains("shore_land_col"))
 	_ok("⑥ 梯度都过了抖动量化(平滑渐变在低色数下必出条带)",
 		wsrc.contains("dither_steps") and lsrc.contains("dither_steps"))
 	# ★★必须【先剥掉注释行】再查 —— 我第一版直接 contains("UV.") 当场红, 因为撞上了

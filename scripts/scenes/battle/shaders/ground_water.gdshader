@@ -12,7 +12,9 @@ uniform vec4 foam_col : source_color = vec4(0.78, 1.0, 0.98, 1.0);      // 岸�
 uniform sampler2D detail_tex : filter_nearest, source_color;
 uniform float detail_amt = 0.45;
 uniform float tex_scale = 0.32;
-uniform float depth_steps = 4.0;    // 水深量化成几级(级数少=像素画; 多=糊成渐变)
+uniform float depth_steps = 4.0;    // placeholder
+// 岸线切角用的陆色(取淤泥/石的中间调 —— 岸边多半是这两种)
+uniform vec4 shore_land_col : source_color = vec4(0.135, 0.175, 0.29, 1.0);    // 水深量化成几级(级数少=像素画; 多=糊成渐变)
 
 void fragment() {
 	vec2 wp = world_xz(INV_VIEW_MATRIX, VERTEX);
@@ -48,6 +50,11 @@ void fragment() {
 	// ── 焦散: 浅水最亮, 深水几乎没有(光透不下去) ──────────────────
 	float ca = dither_steps(caustics(wp * 0.5, TIME * caustic_speed), 3.0, FRAGCOORD.xy);
 	c += caustic_col.rgb * ca * caustic_amt * (1.0 - depth * 0.8);
+
+	// ── ★★岸线【切角】(与 ground_land 对称) ────────────────────────
+	// 砖的直角边被距离场的零等值线斜切掉; 两个 shader 各画自己那一半, 拼起来就是一条平滑岸线。
+	float lmask = dither_steps(1.0 - smoothstep(-0.06, 0.14, d), 2.0, FRAGCOORD.xy);
+	c = mix(c, shore_land_col.rgb, lmask);
 
 	// ── 岛缘压暗: 越靠板子外沿越暗(照不到光) ────────────────────
 	// 同样过抖动分级, 免得出现一圈羽化的模糊晕。

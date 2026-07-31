@@ -15,6 +15,8 @@ uniform vec4 wet_tint : source_color = vec4(0.42, 0.60, 0.98, 1.0);
 // 在 1.25 的衰减下只剩 0.10 —— 湿带基本只覆盖到格子边缘、进不到格心, 探针量出来是平的
 // (离水 1/2/3 格亮度 46/44/44, 无梯度)。2.2 让第一圈格心还有约 0.57。
 uniform float wet_width = 2.2;
+// 岸线切角用的水色(与 ground_water 的 shallow_col 对齐)
+uniform vec4 shore_water_col : source_color = vec4(0.30, 0.93, 0.90, 1.0);
 
 void fragment() {
 	vec2 wp = world_xz(INV_VIEW_MATRIX, VERTEX);
@@ -38,6 +40,13 @@ void fragment() {
 	ca = dither_steps(ca, 3.0, FRAGCOORD.xy);
 	float near_water = 1.0 - smoothstep(0.0, 5.0, -d);
 	c += caustic_col.rgb * ca * caustic_amt * (0.35 + 0.65 * near_water);
+
+	// ── ★★岸线【切角】: 边界跟着插值后的距离场走, 不跟着砖块的直角走 ─────
+	// 砖是方的, 所以水陆交界原本是一级 26 屏幕像素的台阶; 而距离场是双线性插值的,
+	// 它的零等值线会把凸角【斜切】掉。这一段就是把"其实已经在水侧"的那部分像素画成水色。
+	// 过渡带只有 ±0.35 格并且过抖动 —— 要的是切角, 不是把岸线糊成渐变。
+	float wmask = dither_steps(smoothstep(-0.14, 0.06, d), 2.0, FRAGCOORD.xy);
+	c = mix(c, shore_water_col.rgb * 0.92, wmask);
 
 	// ── 岛缘压暗: 越靠板子外沿越暗(照不到光) ────────────────────
 	// 同样过抖动分级, 免得出现一圈羽化的模糊晕。
