@@ -154,9 +154,11 @@ var _pk_fill_l: ColorRect = null           # 蓝(左队)从左往右涨
 var _pk_fill_r: ColorRect = null           # 红(右队)从右往左涨; 接缝位置 = 左方血量占比
 var _pk_lab_l: Label = null
 var _pk_lab_r: Label = null
-var _pk_base_l: float = 0.0                # 本路【开场】基线(固定分母·死人不改它)
+var _pk_base_l: float = 0.0                # 当前分母(=该侧计数单位 maxHp 之和·含已死)。留给门禁/调试看
 var _pk_base_r: float = 0.0
-var _pk_count: int = -1                    # 上次计入 PK 的单位数 —— 变化=换路(见 _pk_refresh 注释)
+var _pk_lane: String = ""                  # 上一次采样时的路 id —— 换路才把两条拉回 100%(原来按"计数单位数变了"判, 会被中途增减单位误触发)
+## (已删 _pk_count —— 原来靠"计数单位数变了"判换路, 会被【任何中途增减计数单位】误触发,
+##  表现就是两条莫名满格。改用 _pk_lane 按路 id 判, 见 _pk_refresh。)
 var _pk_acc: float = 0.0                   # 采样累加器(0.1s 扫一次 _units, 别每帧扫)
 var _pk_target_l: float = 1.0              # 左侧【占自己开场基线】的比例 → 决定蓝段长度
 var _pk_target_r: float = 1.0              # 右侧同理 → 红段长度
@@ -403,7 +405,7 @@ func _build_pk_bar() -> void:
 
 	_pk_build_vs(bar)
 
-	_pk_count = -1        # 逼下一次 _pk_refresh 重算基线
+	_pk_lane = ""         # 逼下一次 _pk_refresh 当作换路处理(两条回满)
 	_pk_refresh()
 	_pk_apply()
 
@@ -578,17 +580,29 @@ func _pk_counts(u: Dictionary) -> bool:
 
 ## 一侧【主条】的 (当前血, 分母用的最大生命) 之和。
 ## ★分母项含【已死单位】—— 死人不许改分母, 否则分子分母同缩、比例反而回升, 条往回涨。
-## ★用有效阵营 _eff_side —— 赛博侵入后仍按原阵营计, 与 _check_over 一致(见 7349 注释)。
+## ★分母按【原 side】、分子按【_eff_side】—— 见函数体里那段, 这是"归顺不让条跳"的关键。
 func _pk_sum(side: String) -> Vector2:
 	var cur := 0.0
 	var mx := 0.0
 	for u in battle._units:
 		if not _pk_counts(u):
 			continue
-		if battle._eff_side(u) != side:
-			continue
-		mx += maxf(0.0, float(u.get("maxHp", 0)))
-		if u.get("alive", false):
+		# ★★分母按【原阵容 side】、分子按【现在为谁而战 _eff_side】—— 两者【故意不同】。
+		#
+		#   由来(用户 2026-07-30「怎么有时候莫名增加或减少」): 原来两者都用 _eff_side,
+		#   于是驯服归顺时那只龟【整只】从敌方的分子分母里消失、又整只出现在我方 ——
+		#   实测敌方 0.630 → 1.000(+0.370)、我方 0.993 → 0.811(−0.182), 两条同时硬跳,
+		#   而且方向还反了(我方"多了个帮手"条却掉下来 = 被那只残血龟稀释)。
+		#
+		#   现在: 分母 = 双方【带进这一路的阵容】的最大生命之和(归顺不改它);
+		#         分子 = 当前【为该方而战】的存活血量。
+		#   → 归顺 = 血量搬边、分母不动 → 我方涨 / 敌方跌, 方向都对, 幅度就是那只龟的血占比。
+		#   → 临时血 +700 会同时抬这只龟【原方】的分母与分子, 幅度小(实测 +0.023)。
+		#   → 死亡只减分子不减分母(已死单位仍计入 mx), 条只降不升。
+		var born: String = str(u.get("side", ""))
+		if born == side:
+			mx += maxf(0.0, float(u.get("maxHp", 0)))
+		if battle._eff_side(u) == side and u.get("alive", false):
 			cur += maxf(0.0, float(u.get("hp", 0)))
 	return Vector2(cur, mx)
 
@@ -618,24 +632,37 @@ func _pk_egg_sum(side: String) -> Vector2:
 func _pk_refresh() -> void:
 	if _pk_bar == null or not is_instance_valid(_pk_bar):
 		return
-	var n := 0
-	for u in battle._units:
-		if _pk_counts(u):
-			n += 1
 	var l := _pk_sum("left")
 	var r := _pk_sum("right")
-	if n != _pk_count:                  # 换路(或首次) → 重算固定分母 + 两条回满
-		_pk_count = n
-		_pk_base_l = l.y
-		_pk_base_r = r.y
+	# ★★2026-07-30 修「条会莫名增减」(用户报)。改了两处, 各解一个跳变源:
+	#
+	# ①【分母改成"活的总量"】(原来是开场冻结的 _pk_base_l/r)。
+	#    冻结分母下, 任何"分子变了而分母没变"的事件都会让条【瞬跳】:
+	#      · 驯服归顺 —— 那只龟的血整只从敌方分子搬到我方分子, 两边基线都不动 → 两条同时跳
+	#      · 口哨①临时血 +700 —— 我方分子凭空 +700(甚至顶到 100% 被截断)
+	#      · 驯服重生 30% 最大生命 —— 分子凭空回血
+	#    改成活分母后, 这些事件【分子分母一起动】, 比例连续。
+	#    ★原注释担心的"死人改分母 → 条往回涨"【不成立】: _pk_sum 的 mx 本来就
+	#      把已死单位算进去(见那边注释), 所以死亡不会缩分母。冻结对死亡是多余的。
+	#
+	# ②【重置改成按"路 id"】(原来是按"计数单位数 n 变了")。
+	#    按 n 判等于说"场上计数单位数一变就把两条拉回 100%" —— 换路当然会变,
+	#    但【任何中途增减计数单位】也会触发, 表现就是条莫名满格。改成只认换路。
+	var lane: String = str(GameState.current_lane) if GameState != null and GameState.current_lane != null else "top"
+	if lane == "":
+		lane = "top"     # ★空串归一成 "top" —— 否则 _pk_lane 的哨兵值 "" 会跟它相等, 逼不出重置
+	if lane != _pk_lane:                # 换路(或首次) → 两条回满
+		_pk_lane = lane
 		_pk_shown_l = 1.0
 		_pk_shown_r = 1.0
 		_pk_trail_vl = 1.0
 		_pk_trail_vr = 1.0
 		_pk_egg_sl = 1.0
 		_pk_egg_sr = 1.0
-	_pk_target_l = 0.0 if _pk_base_l <= 0.0 else clampf(l.x / _pk_base_l, 0.0, 1.0)
-	_pk_target_r = 0.0 if _pk_base_r <= 0.0 else clampf(r.x / _pk_base_r, 0.0, 1.0)
+	_pk_base_l = l.y                    # 留着给门禁/调试看当前分母
+	_pk_base_r = r.y
+	_pk_target_l = 0.0 if l.y <= 0.0 else clampf(l.x / l.y, 0.0, 1.0)
+	_pk_target_r = 0.0 if r.y <= 0.0 else clampf(r.x / r.y, 0.0, 1.0)
 	_pk_lab_l.text = "%d%%" % int(round(_pk_target_l * 100.0))
 	_pk_lab_r.text = "%d%%" % int(round(_pk_target_r * 100.0))
 	_pk_lab_l2.text = _pk_num(l.x)

@@ -81,7 +81,11 @@ func _ready() -> void:
 			# ★反面: 旧的"200物理"说法不许残留(玩家会按旧文案理解)
 			["不许留旧口径", "!200物理"],
 			["狂暴攻击力", "+%d%%攻" % int(round(TK["WHISTLE_BERSERK_ATK"] * 100.0))],
-			["免死时长", "免死%d秒" % int(TK["WHISTLE_BERSERK_SEC"])],
+			# ★审核 §3-d: 那 4 秒【同时】是 攻/吸血/免死 三项的时长, 原文案只把它挂在"免死"上,
+			#   读起来像"攻和吸血是永久的、只有免死 4 秒"。改成"狂暴4秒(三项)"。
+			["狂暴时长(三项共用)", "狂暴%d秒" % int(TK["WHISTLE_BERSERK_SEC"])],
+			["吸血是定值不是百分比", "+%d点吸血" % int(TK["WHISTLE_BERSERK_LS"])],
+			["不许把4秒只挂免死上", "!免死4秒"],
 			["冷却", "CD%d" % int(SK["whistle"]["cd"])],
 		],
 		"glacier": [
@@ -91,7 +95,10 @@ func _ready() -> void:
 			["受伤加成", "+%d%%" % int(round((K["GLACIER_VULN_MULT"] - 1.0) * 100.0))],
 			["冷却", "CD%d" % int(SK["glacier"]["cd"])],
 		],
+		# ★审核 §3-e: 钩锁写了"空放返还"而猎龟令/驯服没写 → 三技口径不一致。已补齐。
+		#   (空放返还: 钩锁 HOOK_CD_MISS 10 秒; 猎龟令/驯服 各自 CD × 0.5)
 		"hunt_order": [
+			["空放返还(与钩锁口径一致)", "空放返还一半"],
 			["射程", "%d码" % int(K["HUNT_RANGE"])],
 			["持续", "%d秒" % int(K["HUNT_SEC"])],
 			["受伤加成", "+%d%%" % int(round((K["HUNT_VULN"] - 1.0) * 100.0))],
@@ -99,6 +106,7 @@ func _ready() -> void:
 			["冷却", "CD%d" % int(K["HUNT_CD"])],
 		],
 		"tame": [
+			["空放返还(与钩锁口径一致)", "空放返还一半"],
 			["射程", "%d码" % int(K["TAME_RANGE"])],
 			["重生血量", "%d%%最大生命" % int(K["TAME_REVIVE_PCT"] * 100.0)],
 			["无敌时长", "%.1f秒无敌" % K["TAME_REVIVE_SEC"]],

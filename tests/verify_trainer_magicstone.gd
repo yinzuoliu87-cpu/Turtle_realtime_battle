@@ -166,15 +166,43 @@ func _ready() -> void:
 func _cross_lane(s, tr: Dictionary) -> void:
 	print("")
 	print("  ⑦ 叠层跨路保留 + 圆盘不画 Q:")
-	tr["_ms_stacks"] = 23
-	s._dl_sys._dl_start_fight()                  # 真实换路入口
+	# ★★这一组原来是【假绿灯】: 我喂 23 层给一个 dict, 调 _dl_start_fight() 再验它还是 23 ——
+	#   而玩家换路走的是 _dl_build_lane_field(), 它会调 _spawn_trainers() 把大师【整个重建】,
+	#   单位字典都换了, 层数天然归零。删掉 _dl_start_fight 里那句显式清零【根本不够】。
+	#   实测(修之前): 走真实换路后 0 层。同 memory fb-verify-must-run-the-real-path。
+	# ★所以现在: ①用【真实加层路径】攒层(不手写 _ms_stacks) ②走【真实换路入口】重建战场
+	#   ③断言 is_same(旧,新)==false —— 证明确实重建过, 否则这条测试又会靠"同一个字典"蒙混过关。
+	var dummy0 := _dummy(s, 100000.0)
+	if dummy0.is_empty():
+		print("     [FAIL] ★分母: 找不到靶子 —— ⑦ 是空检查"); _fail += 1; return
+	tr["_ms_stacks"] = 0
+	for _i in range(23):
+		s._trainer_sys._trainer_magicstone_onhit(tr, dummy0)
+	print("     换路前: %d 层 (真实加层路径攒的)  跨路存档=%s" % [
+		int(tr.get("_ms_stacks", 0)), str(GameState.dual_ms_stacks)])
+	_chk("⑦ ★分母: 攒到 23 层", int(tr.get("_ms_stacks", 0)) == 23)
+	_chk("⑦ 加层时同步写进跨路存档", int(GameState.dual_ms_stacks.get("left", -1)) == 23)
+	s._dl_sys._dl_clear_units()
+	s._dl_sys._dl_build_lane_field()              # ★真实换路: 内部会 _spawn_trainers 重建大师
 	await get_tree().process_frame
-	var kept: int = int(tr.get("_ms_stacks", -1))
-	print("     换路前 23 层 → 换路后 %d 层 (需求: 保留 23)" % kept)
-	_chk("⑦ ★换路不清零(跨上路/下路/决胜一路带着)", kept == 23)
+	var tr2 = null
+	for u in s._units:
+		if u.get("is_trainer", false) and str(u.get("side", "")) == "left":
+			tr2 = u; break
+	_chk("⑦ ★分母: 换路后场上有我方大师", tr2 != null)
+	if tr2 == null:
+		return
+	_chk("⑦ ★★大师确实被重建了(不是同一个字典 —— 否则这条测试是蒙混过关的)",
+		not is_same(tr, tr2))
+	var kept: int = int(tr2.get("_ms_stacks", -1))
+	print("     换路后: %d 层 (需求 23)" % kept)
+	_chk("⑦ ★★走【真实换路入口】后层数仍在(跨上路/下路/决胜)", kept == 23)
 	var src := FileAccess.get_file_as_string("res://scripts/scenes/battle/dual_lane_flow.gd")
 	_chk("⑦ 源码里也没有残留的清零(别在另一处又清一遍)",
 		not src.contains('_tu["_ms_stacks"] = 0'))
+	_chk("⑦ 回填发生在重建大师的地方(_spawn_trainers)",
+		FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_spawn.gd")
+			.contains("battle._trainer_sys._ms_restore_stacks(u)"))
 	var ds := FileAccess.get_file_as_string("res://scripts/scenes/spell_disc.gd")
 	_chk("⑦ ★圆盘不画键位提示(触屏上 Q 无意义·装被动时更是错的)",
 		not ds.contains("draw_string(hf,") and not ds.contains(", _key_hint,"))

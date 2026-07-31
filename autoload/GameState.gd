@@ -100,6 +100,11 @@ var dual_shop_visits: int = 0
 var dual_level: Dictionary = {"left": 1, "right": 1}
 var dual_avg_level: Dictionary = {"left": 1, "right": 1}   # 选龟时队伍平均等级(固定不随局内升级涨); 深海小将等级用此
 var dual_xp: Dictionary = {"left": 0, "right": 0}
+## 魔法石攻速叠层的【跨路存档】(用户 2026-07-30 拍板"跨路保留")。
+## ★为什么非得存在这里: 换路时 _dl_build_lane_field() 会调 _spawn_trainers() 重建大师,
+##   单位字典整个换掉 —— 只在 _dl_start_fight 里"不清零"是没用的, 层数照样归零。
+##   双方各存一份: 对面大师也在攒层, 它的层数同样要跟过去。
+var dual_ms_stacks: Dictionary = {"left": 0, "right": 0}
 ## 整局首回合已发被动XP? (TFT风: 第1回合在 Lv1 开打, 被动XP从第2回合起累计 → 不在玩家行动前就跳到 Lv2).
 ##   每路是独立 BattleScene(turn 各自从1起), 故此旗标必须按【整局】计(reset_dual_lane 重置), 不能按 turn==1.
 var dual_passive_xp_started: bool = false

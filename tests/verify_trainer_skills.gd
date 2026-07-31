@@ -190,5 +190,13 @@ func _test_source(scene) -> void:
 	#   用户选了改行为对齐文案。原来这里断言的正是那个清零, 所以本条必须一起反过来。
 	#   ★真正的行为断言在 verify_trainer_magicstone ⑦ 组(走真实换路入口 _dl_start_fight()
 	#     喂 23 层, 验换路后还是 23) —— 这里只做源码层的"清零不许回来"。
-	_ok("★攻速叠层【跨路保留】(换路不清零·上路攒的层带进下路与决胜)",
-		not src.contains('_ms_stacks"] = 0'))
+	# ★2026-07-31 判据改了: 原来是"全文不许出现 _ms_stacks = 0", 但【跨路继承的实现本身】
+	#   就需要 _ms_restore_stacks 在"不是魔法石被动"时把它归零 —— 我自己的新代码把这条打红了。
+	#   真正要守的是【dual_lane_flow 里不许有清零】+【_spawn_trainers 里有回填】。
+	#   端到端断言(走真实 _dl_build_lane_field 重建大师后层数仍在)在 verify_trainer_magicstone ⑦。
+	var dl_src := FileAccess.get_file_as_string("res://scripts/scenes/battle/dual_lane_flow.gd")
+	_ok("★攻速叠层【跨路保留】: 换路流程里没有清零",
+		not dl_src.contains('_ms_stacks"] = 0'))
+	_ok("★攻速叠层【跨路保留】: 重建大师处有回填 _ms_restore_stacks",
+		FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_spawn.gd")
+			.contains("battle._trainer_sys._ms_restore_stacks(u)"))

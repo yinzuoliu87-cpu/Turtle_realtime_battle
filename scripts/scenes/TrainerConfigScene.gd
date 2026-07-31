@@ -10,10 +10,10 @@ const SKILLS := [
 	{"id": "magic_stone", "kind": "被动", "name": "魔法石", "icon": "res://assets/sprites/vfx/magic-stone-icon.png", "desc": "装配后大师攻击力 ×10。普攻附带 2% 目标最大生命 魔法伤害；每次攻击自身 +5% 攻速(可叠·不封顶·整局不清零)。攒到 10/25/50 层时身上会亮起共鸣特效。"},
 	{"id": "hook", "kind": "主动", "name": "钩锁", "icon": "res://assets/sprites/vfx/hook-skill-icon.png", "desc": "朝方向甩钩(射程600)勾住第一个敌人：眩晕4秒、一段段拽向大师、受伤+25%。CD20，空放返还。"},
 	{"id": "fury_potion", "kind": "主动", "name": "怒火药水", "icon": "res://assets/sprites/vfx/fury-potion-icon.png", "desc": "朝700码内一点丢药水：落点300码内友军5秒 +30%攻速 / +25%龟能充能 / +25%移速。CD16。"},
-	{"id": "whistle", "kind": "主动", "name": "口哨", "icon": "res://assets/sprites/vfx/whistle-icon.png", "desc": "随机1个：给友军700临时生命(5秒·到期按比例削) / 召灵体小龟蓄力放气波(2000码贯穿·命中扣100+15%目标最大生命真实伤害+击飞+削甲30%持续5秒) / 友军狂暴(+20%攻击力·+20点吸血·免死4秒)。CD14。"},
+	{"id": "whistle", "kind": "主动", "name": "口哨", "icon": "res://assets/sprites/vfx/whistle-icon.png", "desc": "随机1个：给友军700临时生命(5秒·到期按比例削) / 召灵体小龟蓄力放气波(2000码贯穿·命中扣100+15%目标最大生命真实伤害+击飞+削甲30%持续5秒) / 友军狂暴4秒(+20%攻击力·+20点吸血·免疫死亡)。CD14。"},
 	{"id": "glacier", "kind": "主动", "name": "冰川", "icon": "res://assets/sprites/vfx/glacier-icon.png", "desc": "沿方向生成500码冰川(6秒)：站上的敌 -40%移速 + 受伤+20%。CD17。"},
-	{"id": "hunt_order", "kind": "主动", "name": "猎龟令", "icon": "res://assets/sprites/vfx/hunt-order-icon.png", "desc": "锁定600码内一个敌人15秒：它受到伤害+15%，且以它为圆心400码内的我方友军优先攻击它(圈随它移动)。CD30。"},
-	{"id": "tame", "kind": "主动", "name": "驯服", "icon": "res://assets/sprites/vfx/tame-icon.png", "desc": "标记600码内一个敌人：它死亡时不真死，以30%最大生命重生并归顺我方(重生2.5秒无敌)，此后每秒损失2%最大生命。可跨入终极战场。CD60。"},
+	{"id": "hunt_order", "kind": "主动", "name": "猎龟令", "icon": "res://assets/sprites/vfx/hunt-order-icon.png", "desc": "锁定600码内一个敌人15秒：它受到伤害+15%，且以它为圆心400码内的我方友军优先攻击它(圈随它移动)。CD30(空放返还一半)。"},
+	{"id": "tame", "kind": "主动", "name": "驯服", "icon": "res://assets/sprites/vfx/tame-icon.png", "desc": "标记600码内一个敌人：它死亡时不真死，以30%最大生命重生并归顺我方(重生2.5秒无敌)，此后每秒损失2%最大生命。可跨入终极战场。CD60(空放返还一半)。"},
 ]
 ## 三形象(2026-07-26 定稿·PixelLab)。sprite = 南向立绘, 用于选择卡缩略 + 大预览。
 const APPEARANCES := [

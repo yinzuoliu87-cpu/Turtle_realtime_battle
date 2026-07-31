@@ -31,6 +31,9 @@ func _spawn_teams() -> void:
 				GameState.egg_hp = {"left": 0.0, "right": 0.0}
 			if GameState.dual_survivors is Dictionary:
 				GameState.dual_survivors = {"left": [], "right": []}
+			# 魔法石叠层的跨路存档同样【每局重置】—— 跨的是"路"不是"局"
+			if GameState.dual_ms_stacks is Dictionary:
+				GameState.dual_ms_stacks = {"left": 0, "right": 0}
 			GameState.lane_results = {}
 		_spawn_dual_lane()
 		return
@@ -486,6 +489,13 @@ func _spawn_trainers() -> void:
 				_gsk = "hook"
 			u["_tr_active"] = "" if _gsk == "magic_stone" else battle._valid_active(_gsk)
 			u["_tr_passive"] = "magic_stone" if _gsk == "magic_stone" else ""
+	# ★★回填魔法石叠层(用户 2026-07-30"跨路保留")。
+	#   本函数【每路都被 _dl_build_lane_field 调一次】, 大师是全新字典 → 层数天然归零。
+	#   0.17.18 只删掉了 _dl_start_fight 里的显式清零, 根本不够 —— 真正的丢失点在这里。
+	#   双方都回填: 对面大师也在攒层。
+	for u in battle._units:
+		if u.get("is_trainer", false):
+			battle._trainer_sys._ms_restore_stacks(u)
 	battle._hud._build_trainer_joystick()
 	battle._hud._build_spell_disc()
 

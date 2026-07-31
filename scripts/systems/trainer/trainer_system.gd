@@ -320,7 +320,10 @@ func _tick_hook_flights(delta: float) -> void:
 			continue
 		var p: Vector2 = (f["from"] as Vector2) + (f["dir"] as Vector2) * flown
 		var nd = f.get("node", null)
-		if nd is Sprite3D and is_instance_valid(nd):
+		# ★is_instance_valid 必须【在前】—— 对已释放实例做 `is` 会直接报
+		#   "Left operand of 'is' is a previously freed instance"(实测 6 条/局)。
+		#   换路 _dl_clear_units 把节点清了、而飞行记录还在, 就会走到这。
+		if is_instance_valid(nd) and nd is Sprite3D:
 			(nd as Sprite3D).position = battle._world_pos(p, 1.0)
 		if battle._world != null:
 			_hook_chain(src["pos"], p)                         # 链条: 大师 ↔ 钩头当前位置
@@ -339,7 +342,9 @@ func _tick_hook_flights(delta: float) -> void:
 ## 回收钩头节点。
 func _hook_head_free(f: Dictionary) -> void:
 	var nd = f.get("node", null)
-	if nd is Sprite3D and is_instance_valid(nd):
+	# ★is_instance_valid 必须【在前】—— 对已释放实例做 `is` 会报
+	#   "Left operand of 'is' is a previously freed instance"。
+	if is_instance_valid(nd) and nd is Sprite3D:
 		(nd as Sprite3D).queue_free()
 
 ## ── 怒火药水(主动·CD16·700码点·用户2026-07-23 需求): 丢药水→落点300码内友军 5秒 +30%攻速 +25%龟能充能 +25%移速 ──
@@ -514,7 +519,10 @@ func _tick_wave_flights(delta: float) -> void:
 			continue
 		var p: Vector2 = from2d + dir * (SPIRIT_OFFSET + WAVE_MUZZLE + flown)
 		var nd = f.get("node", null)
-		if nd is Sprite3D and is_instance_valid(nd):
+		# ★is_instance_valid 必须【在前】—— 对已释放实例做 `is` 会直接报
+		#   "Left operand of 'is' is a previously freed instance"(实测 6 条/局)。
+		#   换路 _dl_clear_units 把节点清了、而飞行记录还在, 就会走到这。
+		if is_instance_valid(nd) and nd is Sprite3D:
 			var sp: Sprite3D = nd
 			sp.position = battle._world_pos(p, 0.9)
 			# 单帧素材: 用轻微脉动代替帧动画(按【飞行距离】推, 不看帧率 —— §3.5)
@@ -950,9 +958,33 @@ func _trainer_magicstone_onhit(u: Dictionary, tgt: Dictionary) -> void:
 	battle._damage._apply_damage_from(u, tgt, magic, Color("#c86bff"), 0.0, false, true)
 	var tier0: int = _ms_tier(int(u.get("_ms_stacks", 0)))
 	u["_ms_stacks"] = int(u.get("_ms_stacks", 0)) + 1   # 攻速叠一层。★跨路保留(用户 2026-07-30): 上路攒的层带进下路与决胜, 全程不清零
+	_ms_save_stacks(u)                                  # ★同步写进跨路存档(换路重建大师后靠它回填)
 	var tier1: int = _ms_tier(int(u["_ms_stacks"]))
 	if tier1 > tier0:
 		_ms_tier_burst(u, tier1)                        # ★只在【跨过那一刻】放一次(比较前后 tier, 不是每帧看层数)
+
+
+## 把某个大师当前层数写进【跨路存档】。
+## ★叠层只有 _trainer_magicstone_onhit 一个写点, 所以这里就是唯一同步点。
+func _ms_save_stacks(u: Dictionary) -> void:
+	if GameState == null or not (GameState.dual_ms_stacks is Dictionary):
+		return
+	var side: String = str(u.get("side", ""))
+	if side == "":
+		return
+	GameState.dual_ms_stacks[side] = int(u.get("_ms_stacks", 0))
+
+
+## 换路重建大师后回填层数(由 battle_spawn._spawn_trainers 调)。
+## ★没有存档 / 不是魔法石被动 → 回填 0, 不留脏数。
+func _ms_restore_stacks(u: Dictionary) -> void:
+	if str(u.get("_tr_passive", "")) != "magic_stone":
+		u["_ms_stacks"] = 0
+		return
+	var n := 0
+	if GameState != null and GameState.dual_ms_stacks is Dictionary:
+		n = int(GameState.dual_ms_stacks.get(str(u.get("side", "")), 0))
+	u["_ms_stacks"] = maxi(0, n)
 
 
 ## 层数 → tier(0=无 / 1 / 2 / 3)。纯函数, 门禁直接逐点验边界。

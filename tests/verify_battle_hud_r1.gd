@@ -146,7 +146,7 @@ func _scope(s) -> void:
 	s._units.append(_mk("left", 3300, 3300, {"_isEgg": true, "egg_side_lr": "left"}))
 	s._units.append(_mk("left", 500, 500, {"is_trainer": true}))       # 我方大师满血
 	s._units.append(_mk("right", 800, 1000))
-	s._hud._pk_count = -1
+	s._hud._pk_lane = ""     # ★2026-07-31: 换路判据从"计数单位数变了"改成"路 id 变了"(见 _pk_refresh)
 	h._pk_refresh()
 	_ok("② ★龟死光但蛋/大师满血 → 我方主条 0(不是被蛋撑起来)",
 		absf(s._hud._pk_target_l) < 0.0001, "实际 %.4f" % s._hud._pk_target_l)
@@ -165,7 +165,7 @@ func _denominator(s) -> void:
 	var d := _mk("right", 1000, 1000)
 	for u in [a, b, c, d]:
 		s._units.append(u)
-	s._hud._pk_count = -1
+	s._hud._pk_lane = ""     # ★2026-07-31: 换路判据从"计数单位数变了"改成"路 id 变了"(见 _pk_refresh)
 	h._pk_refresh()
 	_ok("③ 开场 4 只满血 → 两侧比例都是 1.0",
 		absf(s._hud._pk_target_l - 1.0) < 0.0001 and absf(s._hud._pk_target_r - 1.0) < 0.0001)
@@ -196,15 +196,27 @@ func _lane_reset(s) -> void:
 	s._units.clear()
 	s._units.append(_mk("left", 1000, 1000))
 	s._units.append(_mk("right", 1000, 1000))
-	s._hud._pk_count = -1
+	# ★★2026-07-31 换路判据改了: 原来是"计入 PK 的单位数变了"(_pk_count), 现在是"路 id 变了"。
+	#   由来(用户「怎么有时候莫名增加或减少」): 按单位数判会被【任何中途增减计数单位】误触发,
+	#   一触发两条就拉回 100% —— 玩家看到的就是血条莫名满格。
+	#   所以本组也要跟着改: 换路必须【真的改 GameState.current_lane】, 光换单位不算换路
+	#   (换单位不换路【本来就不该重置】—— 这正是新设计要的)。
+	GameState.current_lane = "top"
+	s._hud._pk_lane = ""     # 哨兵: 逼下一次 refresh 当作换路
 	h._pk_refresh()
 	_ok("④ 第一路基线 = 1000", absf(s._hud._pk_base_l - 1000.0) < 0.01)
-	# 模拟换路: _dl_clear_units() 清空 _units 再重新 spawn → 计入单位数必变
-	s._hud._pk_shown_l = 0.3; s._hud._pk_shown_r = 0.4    # 上一路残留状态
+	# 反向: 只换单位【不换路】→ 不该重置(否则就是老 bug 的形态)
+	s._hud._pk_shown_l = 0.3; s._hud._pk_shown_r = 0.4
+	s._units.append(_mk("left", 500, 500))
+	h._pk_refresh()
+	_ok("④ ★只增减单位而不换路 → 【不】重置(老 bug: 一增减就满格)",
+		absf(s._hud._pk_shown_l - 0.3) < 0.0001, "左 %.4f" % s._hud._pk_shown_l)
+	# 真换路: 改 lane id + 重建单位
 	s._units.clear()
 	s._units.append(_mk("left", 3000, 3000))
 	s._units.append(_mk("left", 3000, 3000))
 	s._units.append(_mk("right", 3000, 3000))
+	GameState.current_lane = "bot"          # ★真的换路
 	h._pk_refresh()
 	_ok("④ ★换路后基线重算成 6000(没沿用上一路的 1000)",
 		absf(s._hud._pk_base_l - 6000.0) < 0.01, "%.0f" % s._hud._pk_base_l)
@@ -213,7 +225,10 @@ func _lane_reset(s) -> void:
 		"左 %.4f 右 %.4f" % [s._hud._pk_shown_l, s._hud._pk_shown_r])
 	_ok("④ ★换路后残影也复位(否则会留一截上一路的亮条)",
 		absf(s._hud._pk_trail_vl - 1.0) < 0.0001 and absf(s._hud._pk_trail_vr - 1.0) < 0.0001)
-	_ok("④ 换路计数已更新", s._hud._pk_count == 3, "%d" % s._hud._pk_count)
+	# ★原来这条验的是"计数单位数 _pk_count 更新成 3"。那个字段已删 ——
+	#   按单位数判换路会被【任何中途增减计数单位】误触发, 表现就是两条莫名满格。
+	#   现在按路 id 判, 所以这里改验"路 id 已记下"。
+	_ok("④ 换路后已记下当前路 id", s._hud._pk_lane != "", "lane=%s" % s._hud._pk_lane)
 
 
 ## ⑤ 平滑 + damage trail
@@ -223,7 +238,7 @@ func _smooth_and_trail(s) -> void:
 	s._units.clear()
 	s._units.append(_mk("left", 1000, 1000))
 	s._units.append(_mk("right", 200, 1000))
-	s._hud._pk_count = -1
+	s._hud._pk_lane = ""     # ★2026-07-31: 换路判据从"计数单位数变了"改成"路 id 变了"(见 _pk_refresh)
 	h._pk_refresh()
 	_ok("⑤ 右剩 200/1000 → 目标 0.2", absf(s._hud._pk_target_r - 0.2) < 0.0001)
 	s._hud._pk_shown_r = 1.0
@@ -260,7 +275,7 @@ func _readout(s) -> void:
 	s._units.clear()
 	s._units.append(_mk("left", 3448, 3448))
 	s._units.append(_mk("right", 2857, 2857))
-	s._hud._pk_count = -1
+	s._hud._pk_lane = ""     # ★2026-07-31: 换路判据从"计数单位数变了"改成"路 id 变了"(见 _pk_refresh)
 	h._pk_refresh()
 	# ★用户最初的疑问就是这个: 第一版中间显示相对占比, 开场必然是 50%, 被读成"我只有一半血"
 	_ok("⑥ ★开场双方读数都是 100%(不是 50%)",
@@ -353,7 +368,7 @@ func _egg_bar(s) -> void:
 	s._units.append(_mk("right", 1000, 1000))
 	s._units.append(_mk("left", 1650, 3300, {"_isEgg": true, "egg_side_lr": "left"}))
 	s._units.append(_mk("right", 3300, 3300, {"_isEgg": true, "egg_side_lr": "right"}))
-	s._hud._pk_count = -1
+	s._hud._pk_lane = ""     # ★2026-07-31: 换路判据从"计数单位数变了"改成"路 id 变了"(见 _pk_refresh)
 	h._pk_refresh()
 	_ok("⑧ ★我方蛋掉一半 → 副条 0.5", absf(s._hud._pk_egg_tl - 0.5) < 0.0001, "%.4f" % s._hud._pk_egg_tl)
 	_ok("⑧ 敌方蛋满血 → 副条 1.0", absf(s._hud._pk_egg_tr - 1.0) < 0.0001, "%.4f" % s._hud._pk_egg_tr)
@@ -364,7 +379,7 @@ func _egg_bar(s) -> void:
 	s._units.clear()
 	s._units.append(_mk("left", 1000, 1000))
 	s._units.append(_mk("right", 1000, 1000))
-	s._hud._pk_count = -1
+	s._hud._pk_lane = ""     # ★2026-07-31: 换路判据从"计数单位数变了"改成"路 id 变了"(见 _pk_refresh)
 	h._pk_refresh()
 	_ok("⑧ 无蛋模式 → 副条 0(不除零/不 NaN)",
 		absf(s._hud._pk_egg_tl) < 0.0001 and absf(s._hud._pk_egg_tr) < 0.0001)
