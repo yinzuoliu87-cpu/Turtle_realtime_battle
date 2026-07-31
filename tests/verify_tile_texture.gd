@@ -112,7 +112,7 @@ func _wiring(s) -> void:
 	var fallback: Texture2D = VfxTex._make_tile_texture()
 	_chk("④ ★分母: 程序斜网格 fallback 能取到(用于对比)", fallback != null)
 	for ti in [0, 2, 3]:
-		var m = BWB.tile_material(ti)
+		var m = BWB.tile_material(ti, 0.024, 868.0, 474.0)
 		# ★★2026-07-31: 非水材质从 StandardMaterial3D 改成【世界坐标采样的 ShaderMaterial】。
 		#   原因: StandardMaterial3D 的 albedo_texture 走 mesh 自带 UV = 每格 0..1,
 		#   同一个 64×64 印章在每格上盖一次、排成完美方阵 —— 近景放大一眼看穿,
@@ -128,11 +128,12 @@ func _wiring(s) -> void:
 		_chk("④ ★type %d 用 NEAREST 过滤(像素画不许插值成糊)" % ti,
 			sm.shader != null and sm.shader.code.contains("filter_nearest"))
 		# ★★贴图必须按【世界坐标】采样, 不能用 mesh UV —— 否则又变回每格一个印章。
-		_chk("④ ★★type %d 按世界坐标采样(shader 里出现 INV_VIEW_MATRIX * vec4(VERTEX)" % ti,
-			sm.shader != null and sm.shader.code.contains("INV_VIEW_MATRIX * vec4(VERTEX"))
-		_chk("④ ★type %d shader 不读 mesh 的 UV(读了就等于按格贴)" % ti,
-			sm.shader != null and not sm.shader.code.contains("UV)")
-				and not sm.shader.code.contains("UV."))
+		# ★shader 2026-07-31 搬进独立 .gdshader 文件, 世界坐标换算收进 ground_common.gdshaderinc
+		#   的 world_xz(); 这里断言【调用点在】。矩阵乘法本身与"不读 mesh UV"由
+		#   verify_map_field 断言(那边有剥注释的处理)。
+		_chk("④ ★★type %d 按世界坐标采样(调了 world_xz(INV_VIEW_MATRIX, VERTEX))" % ti,
+			sm.shader != null and sm.shader.code.contains("world_xz(INV_VIEW_MATRIX, VERTEX)"))
+
 		# 调色板没动: base_col 必须仍等于 TILE_COLS 里锁死的值
 		var want: Color = BWB.TILE_COLS.get(ti, Color.BLACK)
 		var got = sm.get_shader_parameter("base_col")
@@ -140,7 +141,7 @@ func _wiring(s) -> void:
 			got != null and (got as Color).is_equal_approx(want),
 			"%s vs 期望 %s" % [str(got), str(want)])
 	# 水: 保留滚动波纹 shader, 且把新水纹作为 detail 乘进去
-	var wm = BWB.tile_material(1)
+	var wm = BWB.tile_material(1, 0.024, 868.0, 474.0)
 	_chk("④ 水仍是 ShaderMaterial(静态贴图给不了滚动波纹)", wm is ShaderMaterial)
 	if wm is ShaderMaterial:
 		var shm := wm as ShaderMaterial
@@ -154,11 +155,11 @@ func _wiring(s) -> void:
 		# ★★水也必须按【世界坐标】算波纹 —— 原来是 sin(UV.x*6.0+TIME), UV 是每格 0..1,
 		#   波在【每一格里重新开始】, 整片水面成了同一个印章排成的方阵(2026-07-31 实拍确认)。
 		_chk("④ ★★水的波纹按世界坐标算(不是按格 UV → 否则每格重新开始)",
-			code.contains("INV_VIEW_MATRIX * vec4(VERTEX") and not code.contains("UV."))
+			code.contains("world_xz(INV_VIEW_MATRIX, VERTEX)") and code.contains("wp.x"))
 	# 数据驱动那条路径真的把材质传下去了(arena.json 存在 → 走的是它)
 	var src := FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")
 	_chk("④ ★_tilemap_from_data 把材质传给 _tilemap_add(材质 2026-07-31 搬到 BattleWorldBuilder)",
-		src.contains("BattleWorldBuilder.tile_material(ti))"))
+		src.contains("BattleWorldBuilder.tile_material(ti,"))
 	var bsrc := FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_world_builder.gd")
 	_chk("④ 缺图时会 push_warning(不做静默兜底·同 TRAINER_SPRITE 的规矩)",
 		bsrc.contains("地砖细节贴图缺失"))

@@ -53,39 +53,33 @@ static func tile_detail_tex(ti: int) -> Texture2D:
 	_tile_tex_cache[ti] = t
 	return t
 
-static func tile_material(ti: int) -> Material:    # 每type材质: 水=滚动波纹shader发光×水纹贴图; 其余=锁死调色板×地砖细节贴图
-	if ti == 1:
-		# ★水保留原来的【滚动波纹 shader】(静态贴图给不了这个动), 只把新水纹贴图
-		#   作为细节【乘】进去 —— 两者叠加: 大尺度的波在动, 小尺度的纹在。
-		# ★★2026-07-31 波纹与细节纹全部改用【世界坐标】采样, 不再用 UV。
-		#   原来 sin(UV.x*6.0+TIME): UV 是【每格 0..1】⇒ 波在【每一格里重新开始】,
-		#   于是整片水面是同一个印章排成的方阵 —— 近景放大 3 倍一眼看穿, 这比砖缝更强地
-		#   在喊"这是网格", 而且网格加密后重复频率还翻了倍。
-		#   世界坐标采样后整片潟湖是【一整块水】, 波纹跨格连续, 与格子大小彻底解耦。
-		var sm := ShaderMaterial.new()
-		var sh := Shader.new()
-		sh.code = "shader_type spatial;\nrender_mode unshaded, cull_disabled;\nuniform vec4 base_col : source_color = vec4(0.075,0.42,0.48,1.0);\nuniform vec4 hi_col : source_color = vec4(0.25,0.91,0.88,1.0);\nuniform sampler2D detail_tex : filter_nearest, source_color;\nuniform float detail_amt = 0.55;\nvoid fragment(){\n	vec2 wp = (INV_VIEW_MATRIX * vec4(VERTEX,1.0)).xz;\n	float w = sin(wp.x*2.2 + TIME*1.2)*0.5+0.5;\n	w = mix(w, sin(wp.y*1.8 - TIME*0.9)*0.5+0.5, 0.5);\n	vec3 c = mix(base_col.rgb, hi_col.rgb, w*0.55);\n	float d = texture(detail_tex, wp*0.32).r;\n	c *= mix(1.0, d, detail_amt);\n	ALBEDO = c;\n	EMISSION = c*0.3;\n}"
-		sm.shader = sh
-		sm.set_shader_parameter("detail_tex", tile_detail_tex(1))
-		return sm
-	# ★★非水地砖也改【世界坐标】采样(2026-07-31)。
-	#   原来是 StandardMaterial3D: albedo_texture 按 mesh 自带 UV = 每格 0..1
-	#   ⇒ 同一个 64×64 印章在每一格上盖一次、排成完美方阵。近景放大一眼看穿,
-	#     而这比砖缝更强地在喊"这是网格"(水那边同一个病, 已先改掉)。
-	#   世界坐标采样 = 贴图【画在世界上】而不是画在每块砖上, 与格子大小/位置彻底脱钩。
-	#   ★★tex_scale 0.32 是【量出来的】不是拍的: 相机 51° 俯角下战场中心 27.8 屏幕像素/米,
-	#     0.32 ⇒ 一张 64px 贴图铺 3.1 米 ⇒ 一个纹素 ≈ 2.7 屏幕像素。
-	#     为什么要 ≥2 像素: 原来 0.55(纹素 0.8 像素)是【亚像素】—— 一个源像素占不到一个屏幕像素,
-	#     块状边缘被重采样成糊, 读起来是噪点不是"画出来的细节"。
-	#     实测三档 0.55/0.32/0.20: 0.55 糊、0.20 太稀发空、0.32 能看清一颗颗卵石与沉积笔触。
-	#   ★不写 unshaded: 只改 ALBEDO, 光照照常吃 —— 水那条是特意 unshaded(自发光), 别抄。
-	var sm2 := ShaderMaterial.new()
-	var sh2 := Shader.new()
-	sh2.code = "shader_type spatial;\nuniform vec4 base_col : source_color = vec4(0.1,0.14,0.25,1.0);\nuniform sampler2D detail_tex : filter_nearest;\nuniform float tex_scale = 0.32;\nvoid fragment(){\n\tvec2 wp = (INV_VIEW_MATRIX * vec4(VERTEX,1.0)).xz;\n\tALBEDO = base_col.rgb * texture(detail_tex, wp * tex_scale).r;\n}"
-	sm2.shader = sh2
-	sm2.set_shader_parameter("base_col", TILE_COLS.get(ti, Color(0.2, 0.2, 0.2)))
-	sm2.set_shader_parameter("detail_tex", tile_detail_tex(ti))
-	return sm2
+const SH_WATER := preload("res://scripts/scenes/battle/shaders/ground_water.gdshader")
+const SH_LAND := preload("res://scripts/scenes/battle/shaders/ground_land.gdshader")
+const MAP_PATH := "res://data/maps/arena.json"
+
+## 每 type 的地面材质。ws/cx/cy = 主场景的 WS 与 ARENA 中心 —— 由调用方传, 【不在这里复制一份常量】
+## (同一个数值在两处各写各的, 是这个项目今天已经栽过四次的坑)。
+##
+## ★★2026-07-31「做一板大的」: 水与陆共用一张【地图距离场】(见 map_field.gd)。
+##   改前每块砖只知道自己是什么类型 ⇒ 水陆交界只能是硬切: 亮青(98)直接怼上暗淤泥(32),
+##   中间零过渡, 近景放大一眼看穿, 是全图最不"精美"的地方。
+##   有了距离场, 岸线泡沫 / 水深分级 / 湿沙带 全在 shader 里一次拿到。
+##   所有梯度都过 4×4 Bayer 抖动再量化 —— 像素画表现渐变靠有序抖动, 不靠平滑插值。
+static func tile_material(ti: int, ws: float, cx: float, cy: float) -> Material:
+	var f: Dictionary = MapField.get_field(MAP_PATH, ws, cx, cy)
+	var sm := ShaderMaterial.new()
+	sm.shader = SH_WATER if ti == 1 else SH_LAND
+	sm.set_shader_parameter("detail_tex", tile_detail_tex(ti))
+	if ti != 1:
+		sm.set_shader_parameter("base_col", TILE_COLS.get(ti, Color(0.2, 0.2, 0.2)))
+	if not f.is_empty():
+		sm.set_shader_parameter("map_field", f["tex"])
+		sm.set_shader_parameter("map_org", f["org"])
+		sm.set_shader_parameter("map_size", f["size"])
+		sm.set_shader_parameter("field_r", MapField.FIELD_R)
+	else:
+		push_warning("[tile] 地图距离场烘不出来 → 岸线/水深退化成平涂")
+	return sm
 
 
 var battle
