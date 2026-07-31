@@ -121,20 +121,27 @@ func _ready() -> void:
 
 	# ── ④ 波真的会飞、命中才结算、伤害与眩晕对 ──
 	print("")
-	var tgt: Dictionary = s._spawn._make_unit("basic", "right", Vector2(-8600, -8000), {})
+	# ★★合成单位必须放在【ARENA 之内】—— 我原来放 (-9000,…), 那在战场外, 会被钳到边缘,
+	#   施法者和目标挤到同一点(实测距离 0) → 波一出生就已经"越过"目标, 永远打不中。
+	#   而且钳到哪儿跟跑了多少帧有关 → 【同一个测试 500 帧红、1500 帧绿】= 假门禁。
+	var _ac: Vector2 = s.ARENA.position + s.ARENA.size * 0.5
+	var tgt: Dictionary = s._spawn._make_unit("basic", "right", _ac + Vector2(200.0, 0.0), {})
 	tgt["maxHp"] = 200000.0; tgt["hp"] = 200000.0
 	tgt["def"] = 0.0; tgt["mr"] = 0.0; tgt["flat_dr"] = 0.0; tgt["shield"] = 0.0
 	tgt["dodge_bonus"] = 0.0; tgt["stun_until"] = 0.0; tgt["_sig_hit_n"] = 0
 	tgt["id"] = "_dummy_target"
 	s._units.append(tgt)
-	var u3: Dictionary = s._spawn._make_unit("basic", "left", Vector2(-9000, -7000), {})
+	var u3: Dictionary = s._spawn._make_unit("basic", "left", _ac + Vector2(-200.0, 0.0), {})
 	u3["equips"] = []; u3["eq_state"] = {}
 	u3["damage_amp"] = 0.0; u3["aspd_perm"] = 1.0; u3["magic_pen"] = 0.0
 	u3["crit"] = 0.0; u3["crit_dmg"] = 0.0
 	var st3: Dictionary = {"sig_stacks": 0, "sig_arc_deg": 0.0, "sig_amp_given": 0.0, "sig_aspd_given": 0.0}
 	u3["eq_state"]["p2eq_038"] = st3
 	s._units.append(u3)
-	tgt["pos"] = u3["pos"] + Vector2(400.0, 0.0)
+	u3["pos"] = _ac + Vector2(-200.0, 0.0)
+	tgt["pos"] = _ac + Vector2(200.0, 0.0)
+	u3["move_spd"] = 0.0    # 施法者也别动(方向是开火那刻定的)
+	tgt["move_spd"] = 0.0
 	var hp0: float = float(tgt["hp"])
 	for _i in range(WANT_EVERY):
 		sw.on_hit(u3, tgt, si, st3)
@@ -151,7 +158,15 @@ func _ready() -> void:
 	var hit_at: float = -1.0
 	var stun_left: float = -1.0     # ★眩晕要在【命中当刻】记 —— 跑完 400 帧(6.67 秒)它早过期了,
 	                                #   事后再看 stun_until > _t 必然为假(我第一版就这么判红了)。
+	var pin: Vector2 = _ac + Vector2(200.0, 0.0)
+	var pin_src: Vector2 = _ac + Vector2(-200.0, 0.0)
 	for step in range(400):
+		# ★★每帧【钉住目标位置】—— 它是活单位, 真实 sim 会把它挪走。
+		#   我第一版只在开火前摆一次, 然后 await 了一帧 → sim 挪动它;
+		#   于是【同一个测试在 500 帧预算下红、1500 帧下绿】(位置不同)。
+		#   门禁必须与帧预算无关, 否则就是个会随机红的假门禁。
+		tgt["pos"] = pin
+		u3["pos"] = pin_src
 		s._t = t0 + float(step + 1) * (1.0 / 60.0)
 		sw.tick(1.0 / 60.0)
 		if hit_at < 0.0 and int(tgt.get("_sig_hit_n", 0)) > 0:
@@ -167,7 +182,7 @@ func _ready() -> void:
 	#   我先猜是"施法者增伤 + 小龟不屈", 隔离后仍差 ×1.2 —— 说明还有没枚举到的分支。
 	#   与其继续猜, 不如拿【同一条管线】打一发已知值量出总倍率 f, 再验 wave 的基数:
 	#   本条要验的是"弧形波把 500 送进了管线", 管线自己再乘什么是别处的事。
-	var twin: Dictionary = s._spawn._make_unit("basic", "right", u3["pos"] + Vector2(400.0, 0.0), {})
+	var twin: Dictionary = s._spawn._make_unit("basic", "right", _ac + Vector2(260.0, 0.0), {})
 	twin["maxHp"] = 200000.0; twin["hp"] = 200000.0
 	twin["def"] = 0.0; twin["mr"] = 0.0; twin["flat_dr"] = 0.0; twin["shield"] = 0.0
 	twin["dodge_bonus"] = 0.0; twin["id"] = "_dummy_target"

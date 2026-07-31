@@ -63,7 +63,6 @@ func _build_ui_layer() -> void:
 ## 日志(U3): 只删按钮, _log()/_log_panel/_toggle_log 全保留 —— _log() 被战斗各处调用,
 ##   且 verify_battle_ui B 组守着它。📜 按钮只在调试场(DEBUG_EDIT)下出现, 正式对局没有。
 func _build_topright_btns() -> void:
-	var _x := 1148.0                                   # 统计按钮补上原日志按钮的位
 	if battle.DEBUG_EDIT:                              # 调试场保留 📜(我自己排查要用·U8: 开发工具不属"局内")
 		var log_btn = Button.new()
 		log_btn.text = "📜"
@@ -74,12 +73,27 @@ func _build_topright_btns() -> void:
 		log_btn.pressed.connect(battle._toggle_log)
 		battle._ui_layer.add_child(log_btn)
 
-	var stats_btn = _mk_icon_btn(ICON_STATS, Vector2(_x, 12), "伤害统计")
+	# ★★2026-07-31 修「手机上投降键重合在血条上」(用户报)。
+	#   原来两个键写死 x=1148 / 1208 —— 而 project.godot 是 stretch/aspect="expand":
+	#   【视口宽度随手机宽高比变】(高固定 720, 宽 = 720×比例), 而 PK 条是【顶部居中·宽 960】。
+	#   实算重叠量:
+	#       16:9  视口 1280 → PK 右缘 1120, 键左缘 1148 → 不重叠(所以我在 PC 上看不出来)
+	#     19.5:9 视口 1560 → PK 右缘 1260, 键左缘 1148 → ★重叠 112 px
+	#       20:9 视口 1600 → PK 右缘 1280, 键左缘 1148 → ★重叠 132 px
+	#   → 改成【按右边缘 + 安全区反算】, 与法术圆盘同一套做法(SafeArea.margins)。
+	var _vp: Vector2 = Vector2(battle.get_viewport().get_visible_rect().size)
+	var _m: Vector4 = SafeArea.margins(_vp, 12.0)
+	var _bw: float = 52.0
+	var _sur_x: float = _vp.x - _bw - _m.z            # 最右 = 投降
+	var _sta_x: float = _sur_x - _bw - 8.0            # 其左 = 统计
+	var _by: float = _m.y                             # 顶部也走安全区(刘海/灵动岛)
+
+	var stats_btn = _mk_icon_btn(ICON_STATS, Vector2(_sta_x, _by), "伤害统计")
 	stats_btn.pressed.connect(battle._on_dmg_stats_toggle)
 	battle._ui_layer.add_child(stats_btn)
 
-	# 🏳 投降: 放在原暂停位(最右) —— 肌肉记忆上"最右是退出类操作", 也不用重算安全区.
-	battle._surrender_btn = _mk_icon_btn(ICON_SURRENDER, Vector2(1208, 12), "投降认输")
+	# 🏳 投降: 最右 —— 肌肉记忆上"最右是退出类操作"。
+	battle._surrender_btn = _mk_icon_btn(ICON_SURRENDER, Vector2(_sur_x, _by), "投降认输")
 	battle._surrender_btn.pressed.connect(battle._show_surrender_confirm)
 	battle._ui_layer.add_child(battle._surrender_btn)
 
@@ -156,6 +170,7 @@ var _pk_lab_l: Label = null
 var _pk_lab_r: Label = null
 var _pk_base_l: float = 0.0                # 当前分母(=该侧计数单位 maxHp 之和·含已死)。留给门禁/调试看
 var _pk_base_r: float = 0.0
+var _pk_w_cur: float = PK_W                # 本次建条时的实际宽度(窄屏会小于 PK_W)
 var _pk_lane: String = ""                  # 上一次采样时的路 id —— 换路才把两条拉回 100%(原来按"计数单位数变了"判, 会被中途增减单位误触发)
 ## (已删 _pk_count —— 原来靠"计数单位数变了"判换路, 会被【任何中途增减计数单位】误触发,
 ##  表现就是两条莫名满格。改用 _pk_lane 按路 id 判, 见 _pk_refresh。)
@@ -263,6 +278,10 @@ const PK_SLANT := 10.0       # 斜切量(px)。整条切成平行四边形 —�
 ##   ②亮度低于填充 → 不抢戏 ③在绿上是互补色、在紫上有明度差, 两种底色都分得开。
 ##   参照: 街霸的可恢复伤害用黄、怪猎/黑魂用橙红; 白色只是图省事。
 const PK_TRAIL_COL := Color("#8b2f2f")
+## 右上按钮区宽度(投降+统计+间距+安全区) —— PK 条要给它让出这么多, 否则窄屏会盖住。
+const PK_BTN_ZONE := 140.0
+const PK_MIN_W := 420.0      # 条最窄也不小于这个(再窄就读不出双方血量了)
+
 const PK_VS_EMBLEM := "res://assets/sprites/ui/pk-vs-emblem.png"   # 中央 VS 徽章(全新生成)
 ## 顶栏按钮图标(全新生成·2026-07-30)。★原来是系统 emoji 字符("📊"/"🏳") ——
 ##   用户问「图标有新弄美术吗」时才对上号: 在像素风游戏里塞两个彩色系统 emoji,
@@ -359,7 +378,13 @@ func _build_pk_bar() -> void:
 	bar.name = "PkBar"
 	bar.anchor_left = 0.5; bar.anchor_right = 0.5
 	bar.anchor_top = 0.0; bar.anchor_bottom = 0.0
-	bar.offset_left = -PK_W * 0.5; bar.offset_right = PK_W * 0.5
+	# ★宽度【自适应】: 窄比例(iPad 4:3 → 视口只有 960 宽)下 960 的固定宽会占满全屏、
+	#   把右上两个键也盖住。给两侧各留出"按钮区"(2×52 + 间距 + 安全区)后再取较小者。
+	var _vpw: float = float(battle.get_viewport().get_visible_rect().size.x)
+	var _reserve: float = PK_BTN_ZONE * 2.0
+	var _w: float = minf(PK_W, maxf(PK_MIN_W, _vpw - _reserve))
+	bar.offset_left = -_w * 0.5; bar.offset_right = _w * 0.5
+	_pk_w_cur = _w
 	# ★走安全区: iPhone 横屏的刘海/灵动岛就在顶部, 写死 y=16 会被挡。
 	#   项目里训龟大师摇杆和调试笔刷条都用了 SafeArea, 这里同办。
 	var _top: float = PK_Y + SafeArea.margins(Vector2(battle.get_viewport().get_visible_rect().size), 0.0).y

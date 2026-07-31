@@ -68,6 +68,7 @@ func _ready() -> void:
 	_readout(s)
 	_vs_badge(s)
 	_egg_bar(s)
+	_btn_vs_bar(s)
 
 	print("  ★分母: 本测试共 %d 条断言" % _n)
 	if _fail == 0:
@@ -394,3 +395,55 @@ func _egg_bar(s) -> void:
 		str(h.PK_BLUE))
 	_ok("⑦⑧ ★敌方色是紫(不是全局那套红)", h.PK_RED.b > h.PK_RED.g,
 		str(h.PK_RED))
+
+
+## ⑨ 右上按钮 与 PK 条【不许相交】(用户 2026-07-30:「手机上看的投降键重合在血条上了」)。
+##
+## ★根因是 project.godot 的 stretch/aspect="expand": 高固定 720, 【宽随手机宽高比变】。
+##   而原来两个键写死 x=1148/1208、PK 条却是"顶部居中·宽 960" —— 比例一宽, 居中的条
+##   向右扩、写死的键不动 → 撞上。实算: 19.5:9 视口 1560 → 重叠 112 px; 20:9 → 132 px。
+##   ★16:9(我在 PC 上看的那个) 恰好不重叠 —— 所以【本机永远复现不出来】, 只有手机上看得见。
+##
+## ★判据是【矩形相交】这个几何事实, 不是"看着不重叠"。多个宽高比各验一次。
+func _btn_vs_bar(s) -> void:
+	print("")
+	print("  ⑨ 右上按钮 vs PK 条(多宽高比):")
+	var h = s._hud
+	var src := FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_hud.gd")
+	_ok("⑨ ★按钮不再写死坐标(改按右边缘+安全区反算)",
+		not src.contains("Vector2(1208, 12)") and not src.contains("var _x := 1148.0"))
+	_ok("⑨ 按钮走 SafeArea", src.contains("SafeArea.margins(_vp, 12.0)"))
+	_ok("⑨ PK 条宽度自适应(给按钮区让位)", src.contains("PK_BTN_ZONE"))
+	# ★★先读【真实按钮】的位置, 再验公式 —— 否则下面那圈多宽高比只是在"模拟公式",
+	#   改了代码里的坐标它看不见。我第一版就是这样: 把按钮改回写死 1208, 门禁【照样绿】。
+	#   现在: ①量真实矩形不相交 ②证明真实 x 就是"右边缘-按钮宽-安全区" → 模拟才站得住。
+	var vp0: Vector2 = Vector2(s.get_viewport().get_visible_rect().size)
+	var sb = s._surrender_btn
+	_ok("⑨ ★分母: 投降键真的建出来了", sb != null and is_instance_valid(sb))
+	if sb != null and is_instance_valid(sb):
+		var real_sur := Rect2(sb.position, sb.size)
+		# ★用 get_global_rect() 而不是自己按 position+offset 拼 —— PK 条是【锚定居中】的 Control,
+		#   position 已经含了锚点解算, 我第一版又加了一次 offset_left+vp/2 → 算出 x[320..1280](错的),
+		#   把一条本来不相交的判成相交。要量就量引擎给的最终矩形。
+		var real_bar := (h._pk_bar as Control).get_global_rect()
+		print("     [真实测量] 视口 %.0f  投降键 x[%.0f..%.0f]  PK条 x[%.0f..%.0f]" % [
+			vp0.x, real_sur.position.x, real_sur.end.x, real_bar.position.x, real_bar.end.x])
+		_ok("⑨ ★★真实按钮与真实 PK 条不相交(当前视口)", not real_bar.intersects(real_sur))
+		var m0: Vector4 = SafeArea.margins(vp0, 12.0)
+		var want_x: float = vp0.x - sb.size.x - m0.z
+		_ok("⑨ ★★投降键 x 就是「右边缘-按钮宽-安全区」(证明下面的公式模拟站得住)",
+			absf(sb.position.x - want_x) < 0.5, "实际 %.0f / 公式 %.0f" % [sb.position.x, want_x])
+	var bw := 52.0
+	var gap := 8.0
+	for pair in [["16:9", 16.0 / 9.0], ["18:9", 2.0], ["19.5:9", 19.5 / 9.0], ["20:9", 20.0 / 9.0], ["4:3", 4.0 / 3.0]]:
+		var vw: float = 720.0 * float(pair[1])
+		var w: float = minf(h.PK_W, maxf(h.PK_MIN_W, vw - h.PK_BTN_ZONE * 2.0))
+		var bar := Rect2(vw * 0.5 - w * 0.5, h.PK_Y, w, h.PK_H + h.PK_EGG_GAP + h.PK_EGG_H)
+		var sur := Rect2(vw - bw - 12.0, 12.0, bw, 38.0)
+		var sta := Rect2(sur.position.x - bw - gap, 12.0, bw, 38.0)
+		var hit: bool = bar.intersects(sur) or bar.intersects(sta)
+		print("     %-7s 视口 %6.0f  条 x[%.0f..%.0f]  统计 x[%.0f..%.0f]  投降 x[%.0f..%.0f]  %s" % [
+			str(pair[0]), vw, bar.position.x, bar.end.x,
+			sta.position.x, sta.end.x, sur.position.x, sur.end.x,
+			"★相交" if hit else "ok"])
+		_ok("⑨ %s 按钮与 PK 条不相交" % str(pair[0]), not hit)
