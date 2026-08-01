@@ -2125,6 +2125,10 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 		if _dl_sys._dl_is_present():
 			_dl_present_t += dt
 			if _dl_present_t >= DL_PRESENT_SEC: _dl_sys._dl_present_advance()
+		# ★靶向器"抽搐→引爆"的延时【放在 _over 门控之外】推进: 被炸的若是最后一个敌人,
+		#   杀掉它战斗就结束(_over=true), 挂在 _pending_shots 里的引爆就永远兑现不了 ——
+		#   最高潮那一下的画面会凭空消失(伤害无所谓, 但演出没了)。
+		_hookbomb_sys.tick_pending(dt)
 		if not _over and not _edit_mode and _dl_state != "place" and not _dl_sys._dl_is_present():
 			_t += dt
 			_timestop._ts_update_trigger(dt)   # 沙漏: 第10秒触发时停蓄力 → 蓄力满释放
@@ -5176,7 +5180,13 @@ func _pick_ready_skill(u: Dictionary) -> String:
 		var st := str(s)
 		if not _IMPL_SKILLS.has(st):
 			continue
-		if st == "fortuneAllIn" and u.get("allin_used", false):
+		# ★★2026-08-01 修「金盾实战永远放不出来」(用户:「放金盾的条件到底是什么」)。
+		#   fortuneAllIn 这一技【用过之后会变成金盾】(见 _do_skill 的 allin_used 分派),
+		#   而这里原来把它【整个排除出选技】→ 金盾根本进不到"被选中"这一步。
+		#   我 2026-07-31 修的是下面 _cast_skill 里的早退, 那是【更靠后的一层】——
+		#   门禁直接调 _cast_skill 所以绿, 实战走 _pick_ready_skill 所以坏。同一个 bug 修了两层才对。
+		#   现在只在【用过 且 没金币】时跳过(放出来也是 0 盾, 白花龟能)。与 _cast_skill 的闸同口径。
+		if st == "fortuneAllIn" and u.get("allin_used", false) and int(u.get("gold", 0)) <= 0:
 			continue
 		if float(cds.get(st, 0.0)) > 0.0:
 			continue

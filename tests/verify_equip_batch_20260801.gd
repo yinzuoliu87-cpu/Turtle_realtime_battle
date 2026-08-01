@@ -297,22 +297,42 @@ func _t5_hookbomb() -> void:
 	var v1: Dictionary = _mk("basic", "right", Vector2(280.0, -220.0), 1000.0)
 	var v2: Dictionary = _mk("basic", "right", Vector2(300.0, -180.0), 1000.0)
 	var vtr: Dictionary = _mk("basic", "right", Vector2(320.0, -140.0), 1000.0); vtr["is_trainer"] = true
-	var far0: float = (v1["pos"] as Vector2).distance_to(car2["pos"] as Vector2)
 	var hp_v1: float = float(v1["hp"])
 	var trhp: float = float(vtr["hp"])
-	var got: int = _s._hookbomb_sys._hb_detonate(car2, 0)
+	# ★震中 = 【宿主倒地处】, 不是携带者(用户 2026-08-01 指参考《虐杀原型2》人体炸弹:
+	#   触须从被植入者体内爆出、把周围拖向【那个人】)。这里显式传一个远离携带者的震中来验。
+	var epi: Vector2 = (v1["pos"] as Vector2) + Vector2(40.0, 0.0)
+	var pos_before: Vector2 = v1["pos"]
+	var got: int = _s._hookbomb_sys._hb_detonate(car2, 0, epi)
 	_ok("⑤ ★分母: 引爆卷入了 N>0 个敌人", got > 0, "N=%d" % got)
-	_ok("⑤ ★被眩晕 0.5 秒", float(v1.get("stun_until", 0.0)) > _s._t, "stun_until-_t=%.2f" % (float(v1.get("stun_until", 0.0)) - _s._t))
-	var far1: float = (v1["pos"] as Vector2).distance_to(car2["pos"] as Vector2)
-	_ok("⑤ ★真的被拉近了(不是只放了个特效)", far1 < far0 - 50.0, "%.0f → %.0f 码" % [far0, far1])
-	_ok("⑤ ★聚拢落点 = 携带者周围一圈(纯几何, 不等 tween)",
-		absf(far1 - 60.0) < 1.0, "距携带者 %.1f 码" % far1)
+	_ok("⑤ ★被眩晕(抓住→拖回整段都晕住)", float(v1.get("stun_until", 0.0)) > _s._t,
+		"stun_until-_t=%.2f" % (float(v1.get("stun_until", 0.0)) - _s._t))
+	# ★★"拉拽有速度, 不是瞬移"(用户原话:「瞬移并不是拉拽，拉拽是有速度的吗」)——
+	#   判据: 引爆【当帧】位置不能变。瞬移实现会立刻改 pos, 一测就露。
+	_ok("⑤ ★★不是瞬移: 引爆当帧位置没变(位移走 PULL_DUR 秒的插值)",
+		(v1["pos"] as Vector2).distance_to(pos_before) < 0.01,
+		"当帧位移 %.2f 码" % (v1["pos"] as Vector2).distance_to(pos_before))
+	_ok("⑤ ★拉拽时长 > 0(有速度这件事写在常量里)",
+		float(_s._hookbomb_sys.PULL_DUR) > 0.05, "PULL_DUR=%.2f 秒" % float(_s._hookbomb_sys.PULL_DUR))
+	# 聚拢落点: 纯几何, 围绕【震中】而不是携带者
+	var d0: Vector2 = _s._hookbomb_sys._hb_pull_dest_at(epi, 0, 4)
+	_ok("⑤ ★聚拢落点围绕【震中】一圈(半径 = PULL_GATHER_R)",
+		absf(d0.distance_to(epi) - float(_s._hookbomb_sys.PULL_GATHER_R)) < 0.5,
+		"距震中 %.1f 码 (期望 %.0f)" % [d0.distance_to(epi), float(_s._hookbomb_sys.PULL_GATHER_R)])
+	# 爆炸: 直接调纯结算函数(不等演出 —— CLAUDE.md §3.5)
+	var blast_list: Array = [v1]
+	var nb: int = _s._hookbomb_sys._hb_blast(car2, blast_list, 0, epi)
+	_ok("⑤ ★分母: 爆炸真的结算到了 %d 个目标" % nb, nb > 0)
 	_ok("⑤ ★爆炸伤害 = 200 + 10%%maxHp = 300(1★需求字面值)",
 		absf(hp_v1 - float(v1["hp"]) - 300.0) < 1.01, "实掉 %.1f" % (hp_v1 - float(v1["hp"])))
 	_ok("⑤ ★大师没被卷入(不掉血/不被拉)", absf(float(vtr["hp"]) - trhp) < 0.01,
 		"大师掉了 %.1f" % (trhp - float(vtr["hp"])))
-	_ok("⑤ 位移后写回了 _home_pos(否则归位逻辑当场把人拽回去)",
-		(v1.get("_home_pos", Vector2.ZERO) as Vector2).distance_to(v1["pos"] as Vector2) < 0.01)
+	# ★挂弹【不看免控】(用户:「挂炸弹不包括免控的因为这不是控制技能」), 但拉拽仍排除免控
+	var immu: Dictionary = _mk("basic", "right", Vector2(300.0, -260.0), 1000.0)
+	immu["cc_immune_until"] = _s._t + 60.0
+	_ok("⑤ ★免控单位【可以】被挂弹(挂弹不是控制)", _s._hookbomb_sys._hb_can_bomb(immu))
+	_ok("⑤ ★免控单位【不会】被拉/被晕(那才是控制)", not _s._hookbomb_sys._hb_can_grab(immu))
+
 
 
 # ─────────────────────────────────────────────────────────────

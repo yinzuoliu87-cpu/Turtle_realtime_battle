@@ -164,28 +164,110 @@ func _apply(src: Dictionary, o: Dictionary, dmg: float) -> void:
 
 ## 演出: 沿弧线摆一串发光片, 随波前外推。
 ## ★节点数按张角算(每 ARC_SEG_DEG 一片) —— 360° 时约 20 片, 不会爆。
+## 画一道【实心环形扇带】—— 这才是"扇形波"。
+##
+## ★★2026-08-01 重做(用户:「什么是扇形波你不懂吗」)。原来是沿弧线摆一串发光公告板 ——
+##   那是【虚线】不是扇形波: 没有厚度、没有实体感、张角变大只是点变多。
+##   现在用 ImmediateMesh 画真几何(与水晶扫描 _crystal_sweep_step 同一套技术):
+##     · 内外两条弧(r-BAND .. r+BAND)之间连三角带 = 有厚度的扇带
+##     · 颜色从内缘暗、外缘(波前)亮白 = 冲击波该有的"前沿最烈"
+##     · 张角 90°→360° 时它就是一整圈实心环, 而不是一圈点
+## ★每帧重建 surface(顶点数随张角变), 与水晶扫描同代价; 波是短命的(≤2.7秒), 不做池化。
 func _place_nodes(w: Dictionary, r: float) -> void:
 	if battle._world == null:
 		return
-	var deg: float = float(w["deg"])
-	var n: int = maxi(3, int(deg / ARC_SEG_DEG))
-	var nodes: Array = w["nodes"]
-	while nodes.size() < n:
-		nodes.append(battle._glow_bb(w["from"], 0.85, 46.0, Color(0.45, 0.9, 1.0, 0.75)))
+	var im: MeshInstance3D = w.get("mesh", null)
+	var imesh: ImmediateMesh = w.get("imesh", null)
+	if not is_instance_valid(im):
+		im = MeshInstance3D.new()
+		imesh = ImmediateMesh.new()
+		im.mesh = imesh
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD       # 加色 = 能量波该有的发光
+		mat.vertex_color_use_as_albedo = true
+		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		mat.no_depth_test = true
+		im.material_override = mat
+		im.set_meta("mat", mat)
+		battle._world.add_child(im)
+		w["mesh"] = im
+		w["imesh"] = imesh
+	var mat2: StandardMaterial3D = im.get_meta("mat")
 	var from2d: Vector2 = w["from"]
 	var base: float = (w["dir"] as Vector2).angle()
 	var half: float = float(w["half"])
-	for i in range(nodes.size()):
-		var nd = nodes[i]
-		if not is_instance_valid(nd):
-			continue
-		var f: float = (float(i) / float(maxi(1, nodes.size() - 1))) * 2.0 - 1.0   # -1..1
-		var a: float = base + half * f
-		var p: Vector2 = from2d + Vector2(cos(a), sin(a)) * r
-		nd.position = battle._world_pos(p, 0.9)
-		var fade: float = clampf(1.0 - r / WAVE_RANGE, 0.15, 1.0)
-		if nd.material_override != null:
-			nd.material_override.albedo_color = Color(0.45, 0.9, 1.0, 0.75 * fade)
+	var segs: int = clampi(int(float(w["deg"]) / 6.0), 8, 90)    # 6° 一段 → 弧看着是圆的不是折线
+	var fade: float = clampf(1.0 - r / WAVE_RANGE, 0.12, 1.0)
+	# ★视觉厚度【比判定厚度薄】: 判定是 ±WAVE_BAND(70码), 但画满 140 码宽会糊成一坨云。
+	#   画 0.62 倍 → 看着是"一道冲击波"而不是"一片雾"。判定不变(不是改玩法)。
+	var r_in: float = maxf(2.0, r - WAVE_BAND * 0.62)
+	var r_out: float = r + WAVE_BAND * 0.22                      # 前沿更薄 = 冲得更利
+	# 配色迭代二: 第一版 c_out 近纯白 + 高 alpha, 加色叠出来是一块【白板】, 不像电磁波。
+	#   现在压低整体不透明度、把主体推向青蓝, 只有最外一条crest保留近白 → 读起来是"电"不是"墙"。
+	# 配色迭代三: 二版还是偏灰白(加色下低饱和会被背景冲淡)。现在把主体推到高饱和青,
+	#   靠"蓝绿差"而不是靠亮度来立住 —— 暗海底背景上青色才跳得出来。
+	var c_in := Color(0.02, 0.34, 0.90, 0.04 * fade)             # 内缘: 几乎透明(拖尾)
+	var c_mid := Color(0.06, 0.78, 1.00, 0.16 * fade)   # 迭代四: 再压薄内部, 让波前+电弧主导(原来像一块平板)
+	var c_out := Color(0.24, 0.96, 1.00, 0.52 * fade)            # 波前: 高饱和青
+	imesh.clear_surfaces()
+	imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat2)
+	for i in range(segs):
+		var t0: float = float(i) / float(segs) * 2.0 - 1.0
+		var t1: float = float(i + 1) / float(segs) * 2.0 - 1.0
+		var a0: float = base + half * t0
+		var a1: float = base + half * t1
+		var d0 := Vector2(cos(a0), sin(a0))
+		var d1 := Vector2(cos(a1), sin(a1))
+		# ★波前【锯齿脉动】= 电磁的"炸毛"感。用角度+时间的确定性函数, 不用随机 ——
+		#   本项目有 rng_discipline 门禁(裸随机会破坏对局确定性), 演出也一并守这条。
+		var j0: float = sin(a0 * 17.0 + float(w["t"]) * 34.0) * 7.0
+		var j1: float = sin(a1 * 17.0 + float(w["t"]) * 34.0) * 7.0
+		var vi0: Vector3 = battle._world_pos(from2d + d0 * r_in, 0.55)
+		var vi1: Vector3 = battle._world_pos(from2d + d1 * r_in, 0.55)
+		var vo0: Vector3 = battle._world_pos(from2d + d0 * (r_out + j0), 0.55)
+		var vo1: Vector3 = battle._world_pos(from2d + d1 * (r_out + j1), 0.55)
+		# 内→外两个三角(带渐变: 内暗外亮)
+		imesh.surface_set_color(c_in);  imesh.surface_add_vertex(vi0)
+		imesh.surface_set_color(c_in);  imesh.surface_add_vertex(vi1)
+		imesh.surface_set_color(c_out); imesh.surface_add_vertex(vo1)
+		imesh.surface_set_color(c_in);  imesh.surface_add_vertex(vi0)
+		imesh.surface_set_color(c_out); imesh.surface_add_vertex(vo1)
+		imesh.surface_set_color(c_out); imesh.surface_add_vertex(vo0)
+	imesh.surface_end()
+	# 波前那条亮线(让"边缘"读得出来, 不然实心块看不出在推进)
+	imesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP, mat2)
+	for i in range(segs + 1):
+		var tt: float = float(i) / float(segs) * 2.0 - 1.0
+		var aa: float = base + half * tt
+		var jj: float = sin(aa * 17.0 + float(w["t"]) * 34.0) * 7.0
+		imesh.surface_set_color(Color(0.86, 0.99, 1.00, 0.92 * fade))   # crest 只有这一条近白
+		imesh.surface_add_vertex(battle._world_pos(from2d + Vector2(cos(aa), sin(aa)) * (r_out + jj), 0.6))
+	imesh.surface_end()
+	# ★径向电弧: 沿张角每隔几段拉一条内→外的亮线, 是"电磁"而不是"水波"的关键特征。
+	#   条数随张角走(90°约4条, 360°约16条), 相位随时间滚动 → 看着在噼啪窜。
+	var spokes: int = clampi(int(float(w["deg"]) / 22.0), 3, 18)
+	imesh.surface_begin(Mesh.PRIMITIVE_LINES, mat2)
+	for k in range(spokes):
+		var ts: float = (float(k) + 0.5) / float(spokes) * 2.0 - 1.0
+		var as_: float = base + half * ts
+		var ds := Vector2(cos(as_), sin(as_))
+		var flick: float = 0.45 + 0.55 * absf(sin(float(k) * 2.3 + float(w["t"]) * 26.0))
+		var cs := Color(0.55, 0.98, 1.00, 0.80 * fade * flick)
+		imesh.surface_set_color(Color(cs.r, cs.g, cs.b, 0.0))
+		imesh.surface_add_vertex(battle._world_pos(from2d + ds * r_in, 0.58))
+		imesh.surface_set_color(cs)
+		imesh.surface_add_vertex(battle._world_pos(from2d + ds * (r_out + sin(as_ * 17.0 + float(w["t"]) * 34.0) * 7.0), 0.58))
+	imesh.surface_end()
+	# 中段稍暗的一条, 给扇带一点"体积"
+	imesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP, mat2)
+	for i in range(segs + 1):
+		var tm: float = float(i) / float(segs) * 2.0 - 1.0
+		var am: float = base + half * tm
+		imesh.surface_set_color(c_mid)
+		imesh.surface_add_vertex(battle._world_pos(from2d + Vector2(cos(am), sin(am)) * ((r_in + r_out) * 0.5), 0.57))
+	imesh.surface_end()
 
 
 func _free_nodes(w: Dictionary) -> void:
@@ -193,3 +275,8 @@ func _free_nodes(w: Dictionary) -> void:
 		if is_instance_valid(nd):
 			(nd as Node).queue_free()
 	w["nodes"] = []
+	var im = w.get("mesh", null)
+	if is_instance_valid(im):
+		(im as Node).queue_free()
+	w["mesh"] = null
+	w["imesh"] = null

@@ -90,6 +90,7 @@ func _ready() -> void:
 		var tiny_worst := ""
 		var center_bad := ""
 		var block_bad := ""
+		var after_bad := ""
 		var tab_bad := ""
 		var nodes_min := 999999
 		for v in VIEWS:
@@ -104,6 +105,8 @@ func _ready() -> void:
 				tiny_worst = str(res["tiny"])
 			if block_bad == "" and str(res.get("blocker", "")) != "":
 				block_bad = str(res["blocker"])
+			if after_bad == "" and str(res.get("after", "")) != "":
+				after_bad = str(res["after"])
 			nodes_min = mini(nodes_min, int(res["n"]))
 			# 图鉴页签行必须居中于【真实视口】(它挂在全宽锚的 TabBar 上)
 			var toff = res.get("tab_off", null)
@@ -140,6 +143,12 @@ func _ready() -> void:
 		#   实测 PASS 会让它【下面】的按钮一次都点不到 → 整屏点不动, 玩家看到的就是"卡死"。
 		#   ①②③ 全是几何量测, 一条都抓不到"能不能点" —— 门禁必须真派发一次点击。
 		_ok("④ %s 没有铺满视口又挡命中的控件(点得动)" % scn, block_bad == "", block_bad)
+		# ★⑤【点一下之后】界面还对不对 —— 这一层缺失放过了两次同类事故:
+		#   商店和背包点击都会【重建整屏】(把所有子节点 queue_free, 设计框也在里面),
+		#   而 attach 只在 _ready 调过一次 → 点完就没框 → 内容整体退回原始设计坐标。
+		#   用户 2026-08-01:「背包点一下后整个屏幕左移」, 实测宽屏下左移 140px = 框的偏移量。
+		#   ①②③④ 全是【刚进屏那一刻】的快照, 一条都抓不到"用了之后才坏"。
+		_ok("⑤ %s 点一下之后内容层仍在且仍居中" % scn, after_bad == "", after_bad)
 		if scn == "Codex":
 			_ok("②b 图鉴页签行居中于真实视口(补 SCALING 豁免留下的洞)", tab_bad == "", tab_bad)
 
@@ -234,11 +243,12 @@ func _measure(path: String, w: int, h: int) -> Dictionary:
 	#   "blocker" 键 → 消费侧 res.get("blocker","") 恒为空 → ④ 恒绿。反向验证(两条突变同时加、
 	#   还原真事故)报 0 条红才暴露出来。"写了没人读"这个坑我这天踩了第二次。
 	var blocker: String = _blocker_check(inst, vp)
+	var after: String = await _after_click_check(inst, w, h)
 	sv.queue_free()
 	await get_tree().process_frame
 	var bbc: float = ((bb.position.x + bb.end.x) * 0.5 - vp.x * 0.5) if have_bb else 9999.0
 	return {"over": over, "n": counted, "tiny": tiny, "worst": over_worst,
-		"frame": frame_pos, "tab_off": tab_off, "bbc": bbc, "blocker": blocker}
+		"frame": frame_pos, "tab_off": tab_off, "bbc": bbc, "blocker": blocker, "after": after}
 
 
 func _walk(n: Node, out: Array) -> void:
@@ -329,3 +339,47 @@ func _walk_all(n: Node, out: Array) -> void:
 		out.append(n)
 	for ch in n.get_children():
 		_walk_all(ch, out)
+
+
+## ⑤ 【重建一次之后】内容层是否还在、还居中。
+##
+## ★为什么是"调重建函数"而不是"随便点个按钮":
+##   我第一版是真点一个按钮 + 按文案过滤掉"返回/取消/开始战斗/重置"。结果主菜单的
+##   【背包/图鉴/排行榜】这类导航键照样 change_scene_to_file —— 整个测试节点被连根换掉,
+##   下一行 get_tree() 直接是 null(实测报 "Parameter data.tree is null")。
+##   按钮文案是【猜不完】的, 而这一条要守的缺陷本体很明确: 「重建整屏时把设计框一起清掉了」。
+##   所以直接调重建函数, 既精确又不会把自己导航走。
+##
+## ★覆盖边界(诚实标注): 只认 _rebuild / _build_ui 这两个名字。哪天有屏用别的名字重建 UI,
+##   这条就守不住它 —— 加新的重建入口时要把名字补进 REBUILD_FUNCS。
+const REBUILD_FUNCS := ["_rebuild", "_build_ui"]
+
+func _after_click_check(inst: Node, w: int, h: int) -> String:
+	var want := Vector2(roundf((float(w) - 1280.0) * 0.5), roundf((float(h) - 720.0) * 0.5))
+	var before = _frame_of(inst)
+	if before == null:
+		return ""                     # 本来就没框(自居中屏) → 这条不适用
+	var called := ""
+	for fn in REBUILD_FUNCS:
+		if inst.has_method(fn):
+			inst.call(fn)
+			called = fn
+			break
+	if called == "":
+		return ""                     # 这屏没有重建入口 → 不存在"重建丢框"的问题
+	for _i in range(40):
+		await get_tree().process_frame
+	var after = _frame_of(inst)
+	if after == null:
+		return "调 %s() 重建之后【内容层没了】(被 queue_free 却没重新 attach) → 内容会整体退回设计坐标" % called
+	if (after as Vector2).distance_to(want) > CENTER_TOL:
+		return "调 %s() 重建之后内容层跑到 %s (应在 %s)" % [called, str(after), str(want)]
+	return ""
+
+
+func _frame_of(inst: Node):
+	for ch in inst.get_children():
+		if ch is UIFrame and is_instance_valid(ch) and not (ch as Node).is_queued_for_deletion():
+			return (ch as Control).position
+	return null
+

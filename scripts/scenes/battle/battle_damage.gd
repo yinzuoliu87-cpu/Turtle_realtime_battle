@@ -52,7 +52,10 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: Stri
 
 # 来源已知的伤害: 闪避 / 吸血 / 伤害统计 / 累积条(怒气/星能/储能) / 受伤被动. extra_ls=技能额外吸血%; raw=真伤穿盾
 # 来源已知的伤害: 闪避 / 吸血 / 伤害统计 / 累积条(怒气/星能/储能) / 受伤被动. extra_ls=技能额外吸血%; raw=真伤穿盾
-func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, extra_ls: float = 0.0, raw: bool = false, from_equip: bool = false, pre_crit: bool = false, no_dodge: bool = false) -> void:
+## ★no_popup: 不跳通用伤害飘字。给【自己维护一个常驻数字】的效果用 ——
+##   靶向器钩索炸弹的 DoT 是"宿主头上一个累加滚动数字"(用户 2026-08-01 指定),
+##   再叠一串通用红字就是两个数字打架。伤害/统计/护盾一切照旧, 只是不弹那个字。
+func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, extra_ls: float = 0.0, raw: bool = false, from_equip: bool = false, pre_crit: bool = false, no_dodge: bool = false, no_popup: bool = false) -> void:
 	battle._adf_ct += 1
 	if battle._adf_ct > 20000:                        # 防御: 一帧伤害调用爆炸(死亡链无限级联)→本帧后续伤害丢弃防卡死(用户2026-07-19卡死猎手)
 		if not battle._adf_warned:
@@ -136,7 +139,8 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	var _jdir: float = 0.0
 	if src is Dictionary and not is_same(src, u) and src.has("pos"):
 		_jdir = 1.0 if float(src["pos"].x) < float(u["pos"].x) else -1.0   # 来源在左→数字往右跳, 反之往左(用户规则)
-	battle._vfx._float_text(u["pos"], str(dmg), _ncol, was_crit, "damage", _dt, _jdir)   # 伤害: 朝远离来源方向弹射
+	if not no_popup:
+		battle._vfx._float_text(u["pos"], str(dmg), _ncol, was_crit, "damage", _dt, _jdir)   # 伤害: 朝远离来源方向弹射
 	if _ink_true >= 0.5:   # ★墨迹(线条被动)真伤单独跳白字+计真伤桶(用户2026-07-18"墨迹真伤没生效"): 原折进d扣血但不跳字不计统计→看着像没生效; 现显式可见=真的在打
 		var _iv = int(round(_ink_true))
 		battle._vfx._float_text(u["pos"] + Vector2(0.0, -34.0), str(_iv), battle._VC.color_of(battle._VC.cls_for("damage", "true", false)), false, "damage", "true", -_jdir)

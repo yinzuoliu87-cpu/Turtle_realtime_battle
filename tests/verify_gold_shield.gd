@@ -88,6 +88,31 @@ func _ready() -> void:
 	_ok("④ ★0 金币时也没上盾", float(u.get("shield", 0.0)) <= 0.0,
 		"护盾 = %.0f" % float(u.get("shield", 0.0)))
 
+	# ── ⑥ ★★选技层: 实战是 _pick_ready_skill 先选技、再 _cast_skill —— 门禁只测后者
+	#     等于放过了前者。2026-08-01 用户实测「金盾到底什么条件」, 探针查出 _pick_ready_skill
+	#     里有 `if allin_used: continue` 把这一技【整个排除】→ 金盾永远选不到,
+	#     而 ②③④ 全绿。修一层不够, 两层都得守。 ──
+	u["active_skills"] = ["fortuneAllIn"]
+	u["skill_cd"] = {"fortuneAllIn": 0.0}
+	u["skill_gcd_until"] = 0.0
+	u["energy"] = 999.0
+	u["allin_used"] = false
+	u["gold"] = 40.0
+	_ok("⑥ 梭哈未用过 → 选技层选得到", s._pick_ready_skill(u) == "fortuneAllIn",
+		"选到「%s」" % s._pick_ready_skill(u))
+	u["allin_used"] = true
+	u["gold"] = 40.0
+	u["skill_cd"] = {"fortuneAllIn": 0.0}
+	u["skill_gcd_until"] = 0.0
+	u["energy"] = 999.0
+	_ok("⑥ ★★梭哈用过+有金币 → 选技层【仍然】选得到(否则金盾实战放不出来)",
+		s._pick_ready_skill(u) == "fortuneAllIn", "选到「%s」" % s._pick_ready_skill(u))
+	u["gold"] = 0.0
+	u["skill_cd"] = {"fortuneAllIn": 0.0}
+	u["skill_gcd_until"] = 0.0
+	_ok("⑥ 梭哈用过+0 金币 → 不选(放出来也是 0 盾, 白花龟能)",
+		s._pick_ready_skill(u) != "fortuneAllIn", "选到「%s」" % s._pick_ready_skill(u))
+
 	# ── ⑤ 分母: 效果函数本身是好的(证明 ③ 测的是【接线】不是效果) ──
 	u["shield"] = 0.0
 	u["gold_shield_until"] = 0.0

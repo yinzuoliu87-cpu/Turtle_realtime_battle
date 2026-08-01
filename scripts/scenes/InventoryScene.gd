@@ -141,6 +141,12 @@ func _rebuild() -> void:
 	_inv_synergy._build_synergy_panel(leaders)
 	_build_bench()
 	_build_op_bar()
+	# ★★UIFrame 必须在【每次重建之后】重挂(用户 2026-08-01:「背包点一下后整个屏幕左移」)。
+	#   本函数开头把所有子节点 queue_free —— 设计框也在里面。而 attach 原来只在 _ready 调过一次,
+	#   于是点一下之后【一个框都没有】, 内容退回原始设计坐标 → 整体左移(实测宽屏下左移 140px,
+	#   正好等于框的居中偏移量)。attach 是幂等的, 重复调只重新收编+居中。
+	#   ★同样的坑商店踩过一次(见 ShopScene._rebuild 末尾), 当时没横向查其它屏 —— 这次补齐。
+	UIFrame.attach(self)
 
 ## 取出战 3 统领: season_leaders 优先, 空则 lastLineup.json.
 func _lineup_ids() -> Array:

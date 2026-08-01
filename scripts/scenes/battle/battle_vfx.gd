@@ -532,6 +532,10 @@ func _vfx_preview_loop() -> void:
 			# ★"trainer" = 一轮过 7 技(每 period 换一个), 用于需求3 的【逐技目视】。
 			#   单看某一技: VFXPREVIEW=tr_hook / tr_fury / tr_whistle / tr_glacier /
 			#               tr_hunt / tr_tame / tr_stone
+			# 靶向器 055 钩索炸弹(2026-08-01 用户:「打开窗口给我看看靶向器的特效」)
+			"hookbomb": _vfx_preview_hookbomb(origin, si)
+			# 信号放大器 038 弧形电磁波(2026-08-01 用户:「什么是扇形波你不懂吗」→ 重做成实心扇带)
+			"sigwave": _vfx_preview_sigwave(origin, dir, si)
 			"trainer": _vfx_preview_trainer(origin, dir, -1)
 			"tr_hook": _vfx_preview_trainer(origin, dir, 0)
 			"tr_fury": _vfx_preview_trainer(origin, dir, 1)
@@ -542,6 +546,108 @@ func _vfx_preview_loop() -> void:
 			"tr_stone": _vfx_preview_trainer(origin, dir, 6)
 			_: battle._laser_blade_sweep(fu, origin, dir, 350.0, 60.0)
 		await battle.get_tree().create_timer(period).timeout
+
+## 信号放大器 038 弧形电磁波预览: 每次调用发一道, 张角 90→180→270→360 递增(看张角变化)。
+## ★单位钉住(移速0/不普攻) —— 演示台的单位是给人看的道具, 不该让 AI 动它们。
+var _sw_prev_src = null
+var _sw_prev_foes: Array = []
+var _sw_prev_stt: Dictionary = {}
+
+func _vfx_preview_sigwave(origin: Vector2, dir: Vector2, si: int) -> void:
+	if _sw_prev_src == null or not (_sw_prev_src is Dictionary):
+		_sw_prev_src = battle._spawn._make_unit("hunter", "left", origin + Vector2(-120.0, 0.0))
+		(_sw_prev_src as Dictionary)["maxHp"] = 9999.0
+		(_sw_prev_src as Dictionary)["hp"] = 9999.0
+		# ★必须真给它装上 038 —— 波的推进(_sigwave.tick)挂在 _eq_tick 里, 而 _eq_tick 只对
+		#   【带装备的单位】跑。不装的话波建出来了但一帧都不推进, 画面上什么都没有
+		#   (我第一版就是这样, 只看到"电磁波 90°"的飘字, 波本身根本没画)。
+		(_sw_prev_src as Dictionary)["equips"] = [{"id": "p2eq_038", "star": si + 1}]
+		(_sw_prev_src as Dictionary)["eq_state"] = {}
+		_hb_pin(_sw_prev_src)
+		battle._units.append(_sw_prev_src)
+		for i in range(7):
+			var a: float = TAU * float(i) / 7.0
+			var e: Dictionary = battle._spawn._make_unit("basic", "right",
+				origin + Vector2(-120.0, 0.0) + Vector2(cos(a), sin(a)) * 380.0)
+			e["maxHp"] = 9999.0
+			e["hp"] = 9999.0
+			_hb_pin(e)
+			battle._units.append(e)
+			_sw_prev_foes.append(e)
+	for e in _sw_prev_foes:
+		(e as Dictionary)["hp"] = 9999.0
+		(e as Dictionary)["alive"] = true
+		(e as Dictionary)["stun_until"] = 0.0
+	var tgt: Dictionary = _sw_prev_foes[0]
+	battle._equip_sys._sigwave._fire(_sw_prev_src, tgt, si, _sw_prev_stt)
+
+
+## 靶向器 055 钩索炸弹预览: 挂弹 → 每秒跳伤 → 宿主死亡 → 甩钩/眩晕/拉拢 → 聚爆。
+## ★走【真函数】(_hb_attach / _hb_tick / _hb_detonate), 不是另画一套演出 ——
+##   照 _cast_real 那条先例: 预览里看到的就是实战里发生的。
+## ★单位用 _make_unit 真实构造(真判定要走完整伤害管线); 只建一次, 之后每轮复位血量重播。
+var _hb_prev_car = null
+var _hb_prev_foes: Array = []
+var _hb_prev_phase: int = 0
+
+## 把预览单位【钉住】: 移速 0 + 不普攻 + 不索敌。
+## ★不钉住的话它们会自己走位靠拢, 我摆得再开也会挪成一坨(用户 2026-08-01:「都挤在一起」
+##   「你不能把4个假人移速设为0吗」)。演示台的单位是【给人看的道具】, 不该让 AI 动它们。
+func _hb_pin(u) -> void:
+	var d: Dictionary = u
+	d["move_spd"] = 0.0
+	d["no_basic"] = true          # 不发普攻(演示不需要它们互殴)
+	d["_pinned"] = true
+
+
+func _vfx_preview_hookbomb(origin: Vector2, si: int) -> void:
+	if _hb_prev_car == null or not (_hb_prev_car is Dictionary):
+		# ★摆位是给【人看】的: 原来敌人挤在半径 130 的小圈里, 拉拢后又聚到半径 60 ——
+		#   用户 2026-08-01:「你这样我怎么看呢，都挤在一起？」。现在摊到半径 330 的大圈,
+		#   钩索飞出去和拖回来都有足够行程能看清。
+		_hb_prev_car = battle._spawn._make_unit("hunter", "left", origin + Vector2(-430.0, -30.0))
+		(_hb_prev_car as Dictionary)["maxHp"] = 9999.0
+		(_hb_prev_car as Dictionary)["hp"] = 9999.0
+		_hb_pin(_hb_prev_car)
+		battle._units.append(_hb_prev_car)
+		for i in range(5):
+			var a: float = TAU * float(i) / 5.0 - PI * 0.5
+			var e: Dictionary = battle._spawn._make_unit("basic", "right",
+				origin + Vector2(150.0, 0.0) + Vector2(cos(a), sin(a)) * 330.0)
+			e["maxHp"] = 3000.0
+			e["hp"] = 3000.0
+			_hb_pin(e)
+			battle._units.append(e)
+			_hb_prev_foes.append(e)
+	var car: Dictionary = _hb_prev_car
+	match _hb_prev_phase:
+		0:   # 复位 + 挂弹(位置也复位 —— 上一轮被拉到震中去了)
+			for i in range(_hb_prev_foes.size()):
+				var e: Dictionary = _hb_prev_foes[i]
+				var a2: float = TAU * float(i) / float(maxi(1, _hb_prev_foes.size())) - PI * 0.5
+				e["pos"] = origin + Vector2(150.0, 0.0) + Vector2(cos(a2), sin(a2)) * 330.0
+				e["_home_pos"] = e["pos"]
+				e["hp"] = 3000.0
+				e["alive"] = true
+				e["hookbomb_pct"] = 0.0
+				e["stun_until"] = 0.0
+				_hb_pin(e)
+			car["eq_state"] = {}
+			car["_st_dealt"] = 400
+			car["equips"] = [{"id": "p2eq_055", "star": si + 1}]
+			battle._equip_tick_sys._tick_targeter(car, 0.1)
+		1, 2:   # 每秒跳伤(看炸弹脉动 + 掉血飘字)
+			for e in _hb_prev_foes:
+				if float((e as Dictionary).get("hookbomb_pct", 0.0)) > 0.0:
+					battle._hookbomb_sys._hb_tick(e, 1.05)
+		3:   # 宿主死亡 → 甩钩 + 拉拢 + 聚爆
+			for e in _hb_prev_foes:
+				if float((e as Dictionary).get("hookbomb_pct", 0.0)) > 0.0:
+					(e as Dictionary)["hp"] = 1.0
+					battle._kill(e)      # _kill → _hb_on_death → 以【宿主倒地处】为震中引爆
+					break
+	_hb_prev_phase = (_hb_prev_phase + 1) % 4
+
 
 ## 训龟大师技能演出预览。idx<0 = 每次调用轮换一个(一轮过 7 技)。
 ##

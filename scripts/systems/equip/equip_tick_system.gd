@@ -185,14 +185,16 @@ func _tick_targeter(u: Dictionary, _delta: float) -> void:
 	if not u.get("alive", false): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_055": continue
-		var stt: Dictionary = u["eq_state"].get("p2eq_055", {})
-		if bool(stt.get("hb_fired", false)): continue          # "首次" —— 一局一次
+		# ★★"每件独立": 触发标记存在【装备条目 e】上, 不是 u["eq_state"]["p2eq_055"]。
+		#   后者是按【装备 id】的槽 —— 带两件靶向器时两件共用一个标记, 第一件放完置 true,
+		#   第二件永远被跳过 = 第二件完全不生效(探针实测: 带两件的挂弹数与带一件一样都是 1)。
+		#   项目里多件装备一律"每件独立"(铁壁盾 e["ironwall_t"] / 激光 e["laser_t"] / 沉锚 e["anchor_t"])。
+		if bool(e.get("hb_fired", false)): continue             # "首次" —— 每件一局一次
 		if int(u.get("_st_dealt", 0)) < battle._hookbomb_sys.TRIGGER_DMG: continue
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		var tg: Array = battle._hookbomb_sys._hb_targets(u, battle._hookbomb_sys.BOMB_COUNT[si])
 		if tg.is_empty(): continue                              # 没有合法目标 → 不标 fired, 下帧再试
-		stt["hb_fired"] = true
-		u["eq_state"]["p2eq_055"] = stt
+		e["hb_fired"] = true
 		for o in tg:
 			battle._hookbomb_sys._hb_attach(u, o, si)
 
