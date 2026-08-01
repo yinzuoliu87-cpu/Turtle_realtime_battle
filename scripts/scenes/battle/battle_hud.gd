@@ -75,25 +75,25 @@ func _build_topright_btns() -> void:
 
 	# ★★2026-07-31 修「手机上投降键重合在血条上」(用户报)。
 	#   原来两个键写死 x=1148 / 1208 —— 而 project.godot 是 stretch/aspect="expand":
-	#   【视口宽度随手机宽高比变】(高固定 720, 宽 = 720×比例), 而 PK 条是【顶部居中·宽 960】。
+	#   【视口尺寸随窗口宽高比变】, 而 PK 条是【顶部居中·宽 960】。
+	#   ★2026-08-01 修正这条注释里的模型: 原文写"高固定 720, 宽 = 720×比例" —— 只对了一半。
+	#     expand 锁的是【受限的那一轴】: 比 16:9 宽才锁高 720 让宽变大(手机横屏是这种);
+	#     比 16:9 窄则【锁宽 1280 让高变大】(iPad 4:3 → 1280×960, 折叠屏 1:1 → 1280×1280)。
+	#     所以视口宽【永远 ≥1280】, 下面那句"iPad 4:3 视口只有 960 宽"也是同一个误解 ——
+	#     实测(tests/_probe_ui_layout.gd)是 1280×960。按错模型推理会把适配方向做反。
 	#   实算重叠量:
 	#       16:9  视口 1280 → PK 右缘 1120, 键左缘 1148 → 不重叠(所以我在 PC 上看不出来)
 	#     19.5:9 视口 1560 → PK 右缘 1260, 键左缘 1148 → ★重叠 112 px
 	#       20:9 视口 1600 → PK 右缘 1280, 键左缘 1148 → ★重叠 132 px
 	#   → 改成【按右边缘 + 安全区反算】, 与法术圆盘同一套做法(SafeArea.margins)。
-	var _vp: Vector2 = Vector2(battle.get_viewport().get_visible_rect().size)
-	var _m: Vector4 = SafeArea.margins(_vp, 12.0)
-	var _bw: float = 52.0
-	var _sur_x: float = _vp.x - _bw - _m.z            # 最右 = 投降
-	var _sta_x: float = _sur_x - _bw - 8.0            # 其左 = 统计
-	var _by: float = _m.y                             # 顶部也走安全区(刘海/灵动岛)
+	var _pos: Dictionary = _topright_positions()
 
-	var stats_btn = _mk_icon_btn(ICON_STATS, Vector2(_sta_x, _by), "伤害统计")
-	stats_btn.pressed.connect(battle._on_dmg_stats_toggle)
-	battle._ui_layer.add_child(stats_btn)
+	_stats_btn = _mk_icon_btn(ICON_STATS, _pos["stats"], "伤害统计")
+	_stats_btn.pressed.connect(battle._on_dmg_stats_toggle)
+	battle._ui_layer.add_child(_stats_btn)
 
 	# 🏳 投降: 最右 —— 肌肉记忆上"最右是退出类操作"。
-	battle._surrender_btn = _mk_icon_btn(ICON_SURRENDER, Vector2(_sur_x, _by), "投降认输")
+	battle._surrender_btn = _mk_icon_btn(ICON_SURRENDER, _pos["surrender"], "投降认输")
 	battle._surrender_btn.pressed.connect(battle._show_surrender_confirm)
 	battle._ui_layer.add_child(battle._surrender_btn)
 
@@ -164,6 +164,7 @@ func _build_surrender_panel() -> void:
 ##   而主文件有 arch_budget 行数警戒线 —— 加这 20 多行直接把它顶红了(8616>8600)。
 ##   规则是"先拆出去"不是抬台账, 而这里本来就是它们该在的地方。
 var _pk_bar: Control = null
+var _stats_btn: Control = null      # 右上"伤害统计"键 —— 存起来是为了 on_viewport_resized 能重摆它
 var _pk_fill_l: Control = null             # 我方填充(绿)。★类型是 Control 不是 ColorRect ——
                                            #   主条现在是 TextureRect(竖向渐变·体积感做进斜切四边形里), 副条仍是 ColorRect
 var _pk_fill_r: Control = null             # 敌方填充(紫)。同上: 主条 TextureRect / 副条 ColorRect
@@ -1766,3 +1767,42 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	tw.parallel().tween_property(panel, "offset_right", -16.0, 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 ## 是不是宝箱龟(藏宝图被动会往 chest_treasures 里塞东西; 用 id 判定最稳)
+
+
+# ============================================================================
+#  窗口尺寸变化时重排 (用户 2026-08-01:「pc端要随便拉，支持全屏」)
+# ============================================================================
+## 战斗场景是全项目【唯一不接 size_changed 的场景】(主菜单/匹配/选龟都接)。
+## 后果: PC 上拉窗口或切全屏后, HUD 还按【进场那一刻】的视口摆 —— PK 条宽度和右上两个键
+## 停在旧位置, 而战场画面已经跟着新视口重画了。
+##
+## ★PK 条【重建】: 它的宽度/安全区逻辑全写在 _build_pk_bar 里, 另写一套"resize 时怎么挪"
+##   等于同一份布局知识存两处, 迟早对不上。它有单一根节点 _pk_bar, 重建干净。
+## ★右上两键【只重摆不重建】: _build_topright_btns 末尾还会建【投降确认框和日志面板】,
+##   整个重建会把那两个面板再建一份(我第一版就是这么写的)。摆位算式抽成 _topright_positions(),
+##   建的时候和重摆的时候读同一处, 不会分叉。
+func on_viewport_resized() -> void:
+	if battle == null or not is_instance_valid(battle):
+		return
+	if is_instance_valid(_pk_bar):
+		var par := (_pk_bar as Node).get_parent()
+		if par != null:
+			par.remove_child(_pk_bar)
+		(_pk_bar as Node).queue_free()
+		_pk_bar = null
+		_build_pk_bar()
+	var pos: Dictionary = _topright_positions()
+	if is_instance_valid(_stats_btn):
+		(_stats_btn as Control).position = pos["stats"]
+	if is_instance_valid(battle._surrender_btn):
+		(battle._surrender_btn as Control).position = pos["surrender"]
+
+
+## 右上角两个键的摆位(按右边缘 + 安全区反算)。★建与重摆共用这一处, 别在两边各算一遍。
+func _topright_positions() -> Dictionary:
+	var vp: Vector2 = Vector2(battle.get_viewport().get_visible_rect().size)
+	var m: Vector4 = SafeArea.margins(vp, 12.0)
+	var bw := 52.0
+	var sur_x: float = vp.x - bw - m.z          # 最右 = 投降
+	var sta_x: float = sur_x - bw - 8.0         # 其左 = 统计
+	return {"surrender": Vector2(sur_x, m.y), "stats": Vector2(sta_x, m.y)}

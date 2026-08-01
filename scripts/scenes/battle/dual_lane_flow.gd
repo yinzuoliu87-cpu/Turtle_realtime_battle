@@ -454,6 +454,8 @@ func _dl_build_lane_field() -> void:
 	battle._inject_equipment()
 	battle._spawn._apply_spawn_passives()
 	battle._equip_sys._stats._eq_apply_all_stats()
+	_dl_restore_eq_carry()   # ★跨路保留的装备层数写回(竹弓/哑铃/温泉蛋, 用户2026-08-01)。
+						  #   必须在 _eq_apply_all_stats 之【后】: 它会把 eq_state 重置成初始值, 放前面会被它盖掉。
 	battle._hud._build_team_panels()   # ★双路补建左右头像框(装备图标随之显示): 原只在非双路分支L1051调·双路早退绕过→装了装备头像框空白(用户2026-07-11 #5)
 
 func _dl_ensure_egg_hp(lvl: int) -> void:   # egg_hp 缺则按 3000+300×平均等级 初始化(两侧·用户2026-07-19)
@@ -681,8 +683,110 @@ func _dl_snapshot_survivors() -> void:
 			cur.append(spec)
 		GameState.dual_survivors[side] = cur
 
+# ============================================================================
+#  跨路保留的装备层数 (用户 2026-08-01 第 8 / 9 / 3 条)
+# ============================================================================
+## 用户原话(第8条):「是本一局对局去重置，也就是上下和终极战场内都是一直消耗层数并获得最大生命值的，
+##   在3个战场都不会重置，只有开新的对局才重置」; 第9条「哑铃同」; 第3条「温泉蛋重置问题同竹枝弓箭」。
+##
+## ★为什么不能只改 tick 逻辑: 换路时 `_dl_build_lane_field` 是【重建单位字典】的
+##   (`battle_spawn.gd` 里 `"eq_state": {}`), 层数存在单位身上 → 必然归零。
+##   所以"不重置"必须把层数搬到【活过换路的载体】上 —— 就是这张表。
+## ★"只有开新对局才重置" 天然成立: 这张表挂在战斗场景实例上, 新对局 = 新场景 = 新的空表。
+##   不需要、也【不要】另写清空逻辑(多一处清空就多一处会在错误时机清空的地方)。
+## ★同类先例: 魔法石攻速叠层跨路保留(_dl_start_fight 上方注释, 用户 2026-07-30 拍板)。
+##
+## 载体键 = "阵营|龟id|同名序号"。带序号是因为一侧理论上可能有同 id 的两只(小将),
+## 不带的话它们会互相覆盖 —— 这种 bug 只在特定阵容下出现, 极难查。
+const EQ_CARRY: Dictionary = {
+	"p2eq_039": ["bamboo_charges", "bamboo_hits"],          # 竹制弓箭: 剩余生长充能
+	"p2eq_020": ["exercise"],                               # 哑铃: 锻炼层
+	"p2eq_036": ["incub", "egg_levels", "incub_given", "egg_cap", "heal_ps", "incub_shield"],   # 温泉蛋
+}
+const BAMBOO_INIT := [6, 10, 15]      # 与 equip_stats_apply.gd 的初始充能同源
+const BAMBOO_GROW := [50.0, 70.0, 90.0]   # 每消耗 1 充能永久 +maxHp (battle_ballistics.gd:191)
+const DUMBBELL_GAIN := [40.0, 75.0, 110.0]  # 每锻炼层永久 +maxHp (equip_system.gd 掷哑铃编排)
+
+
+## 单位的跨路身份键。★不拿单位字典本身做键(Godot 会递归哈希互引成环的单位字典 → 卡死, CLAUDE.md §3.2)。
+func _eq_carry_key(u: Dictionary, seen: Dictionary) -> String:
+	var base: String = "%s|%s" % [str(u.get("side", "left")), str(u.get("id", ""))]
+	var n: int = int(seen.get(base, 0))
+	seen[base] = n + 1
+	return "%s|%d" % [base, n]
+
+
+## 换路清场【之前】把层数抄进 battle._eq_carry。
+func _dl_save_eq_carry() -> void:
+	var seen: Dictionary = {}
+	for u in battle._units:
+		if u.get("_isEgg", false) or u.get("is_trainer", false):
+			continue
+		if not (u.get("eq_state", null) is Dictionary):
+			continue
+		var key: String = _eq_carry_key(u, seen)
+		for iid in EQ_CARRY.keys():
+			var stt = u["eq_state"].get(iid, null)
+			if not (stt is Dictionary):
+				continue
+			var rec: Dictionary = {}
+			for f in EQ_CARRY[iid]:
+				if (stt as Dictionary).has(f):
+					rec[f] = (stt as Dictionary)[f]
+			if not rec.is_empty():
+				battle._eq_carry["%s|%s" % [key, iid]] = rec
+
+
+## 重建单位并跑完装备管线【之后】把层数写回, 并把层数换来的永久属性一起补上。
+## ★只写 eq_state 不补属性 = 典型的"生产侧写了消费侧没读": 圆盘上层数是对的、
+##   血量却每路打回原形, 玩家看到的是"层数没用"。memory [[fb-write-without-reader-and-fake-gates]]。
+func _dl_restore_eq_carry() -> void:
+	if battle._eq_carry.is_empty():
+		return
+	var seen: Dictionary = {}
+	for u in battle._units:
+		if u.get("_isEgg", false) or u.get("is_trainer", false):
+			continue
+		if not (u.get("eq_state", null) is Dictionary):
+			continue
+		var key: String = _eq_carry_key(u, seen)
+		for e in u.get("equips", []):
+			var iid: String = str(e.get("id", ""))
+			if not EQ_CARRY.has(iid):
+				continue
+			var rec = battle._eq_carry.get("%s|%s" % [key, iid], null)
+			if not (rec is Dictionary):
+				continue
+			var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
+			var stt: Dictionary = u["eq_state"].get(iid, {})
+			for f in (rec as Dictionary).keys():
+				stt[f] = (rec as Dictionary)[f]
+			u["eq_state"][iid] = stt
+			_eq_carry_reapply(u, iid, si, stt)
+
+
+## 把"层数换来的永久属性"按层数重放到新单位上。
+## ★用【层数反推】而不是另存一个属性增量: 少一份会漂的副本。消耗数 = 初始 − 剩余。
+func _eq_carry_reapply(u: Dictionary, iid: String, si: int, stt: Dictionary) -> void:
+	match iid:
+		"p2eq_039":
+			var used: int = maxi(0, BAMBOO_INIT[si] - int(stt.get("bamboo_charges", BAMBOO_INIT[si])))
+			var g: float = float(used) * BAMBOO_GROW[si]
+			if g > 0.0:
+				u["maxHp"] += g; u["hp"] += g
+				battle._recalc_stats(u)
+		"p2eq_020":
+			var g2: float = float(int(stt.get("exercise", 0))) * DUMBBELL_GAIN[si]
+			if g2 > 0.0:
+				u["maxHp"] += g2; u["hp"] += g2
+				battle._recalc_stats(u)
+		"p2eq_036":
+			battle._equip_tick_sys._egg_replay_levels(u, int(stt.get("egg_levels", 0)))
+
+
 # 清当前路所有单位/弹道/特效节点 → 供重开下一路
 func _dl_clear_units() -> void:
+	_dl_save_eq_carry()   # ★必须在清 battle._units 之前 —— 清完就没得抄了
 	for u in battle._units:
 		for k in ["sprite", "shadow", "contact", "ring", "flame_sector"]:   # +flame_sector: 凤凰喷火扇形常驻MeshInstance3D·换路不清会残留下半场(用户2026-07-18"换到下半场没清掉")
 			var n = u.get(k, null)

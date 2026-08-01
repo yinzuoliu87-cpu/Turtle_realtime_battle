@@ -137,7 +137,9 @@ func _persist_offer() -> void:
 
 ## 商店上锁屏 (大轮开局·未打第一场): 提示 + 返回, 不出货架
 func _build_locked() -> void:
-	var vw := maxf(W, get_viewport_rect().size.x)
+	# ★2026-08-01: 同背包 —— 内容锁设计宽, 居中交给 UIFrame(原来这里取真实视口宽,
+	#   但本屏其余元素按 1280 摆, 半适配反而让整体在宽屏上偏得更远)。
+	var vw := W
 	var bg := ColorRect.new()
 	bg.color = Color("#0a1622")
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -156,6 +158,10 @@ func _build_locked() -> void:
 	back.position = Vector2(28, 26); back.size = Vector2(120, 44)
 	back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
 	_skin_button(back); add_child(back)
+	# ★上锁屏也要套设计框 —— _ready 在这条分支上是 `_build_locked(); return`,
+	#   末尾那句 UIFrame.attach 【根本走不到】。我第一版就漏了这条路径, 于是量出来
+	#   "商店完全没居中", 实际量的是这一屏。有 early return 的地方就要各自收口。
+	UIFrame.attach(self)
 
 func _shop_level() -> int:
 	return clampi(int(GameState.season_level), 1, 10)   # 大轮等级驱动出货档 (用户 2026-06-27)
@@ -283,6 +289,10 @@ func _rebuild() -> void:
 
 	_build_detail_panel()   # ★右侧常驻详情面板(本次重设计的核心: 描述不再藏在 tooltip 里)
 	_build_bottom_buttons()
+	# ★UI 双端适配(用户2026-08-01「有些画面都没有居中」): 内容装进 1280×720 设计框并居中于真实视口。
+	# ★放在 _rebuild 末尾而不是 _ready 末尾 —— 本函数开头会 free 掉【所有】子节点(买一件装备
+	#   就触发一次), 框和框里的内容会被一起清掉。attach 是幂等的, 重复调只重新收编+居中。
+	UIFrame.attach(self)
 
 ## ★#2 出货概率行(云顶式): 当前大轮等级下各费用档(1-5)的出货概率%. 每费用色=对应稀有度色, 0%淡显.
 func _build_odds_row() -> void:

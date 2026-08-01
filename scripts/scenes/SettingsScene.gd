@@ -45,6 +45,11 @@ func _ready() -> void:
 
 
 ## ESC 返回主菜单 (原来只能点左上角箭头)
+	# ★UI 双端适配(用户2026-08-01「有些画面都没有居中」): 把内容装进 1280×720 设计框并居中于真实视口。
+	#   本屏原先直接按设计坐标画在视口(0,0) → 21:9 上内容整体坐在左边 200px(审计器实测)。
+	#   ★必须放在 _ready 最后 —— UIFrame 收编的是【已经建出来的】子节点。
+	#   (异步晚建的节点由 UIFrame._process 的孤儿收编兜住。)
+	UIFrame.attach(self)
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		if _confirm_layer != null and is_instance_valid(_confirm_layer):
@@ -185,7 +190,9 @@ func _slider(cx: float, cy: float, label: String, init: float, cb: Callable, on_
 	# 圆 handle r14 (用 HSlider 隐藏轨道, 自绘圆) — 用 Button 圆形 grabber
 	var handle := _circle(14.0, Color("#ffd93d"))
 	handle.position = Vector2(left + track_w * init - 14.0, cy - 14.0)
-	handle.mouse_filter = Control.MOUSE_FILTER_STOP
+	# ★2026-08-01: handle 不再自己吃事件 —— 它只有 28×28(手机上 15pt), 是个点不中的把手。
+	#   拖拽统一交给下面那条 48px 高的透明命中条(整行都能拖), 视觉不变、可拖范围大得多。
+	handle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(handle)
 
 	var apply := func(px: float):
@@ -196,18 +203,27 @@ func _slider(cx: float, cy: float, label: String, init: float, cb: Callable, on_
 		pct.text = "%d%%" % int(round(v * 100.0))
 		cb.call(v)
 
-	# 拖拽 handle (拖动中只实时应用; 松手才 on_release)
-	handle.gui_input.connect(func(ev: InputEvent):
-		if ev is InputEventMouseMotion and (ev.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
-			apply.call(handle.global_position.x + 14.0 + ev.relative.x)
-		elif ev is InputEventMouseButton and not ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			if on_release.is_valid(): on_release.call())
+	# (原来挂在 handle 上的拖拽已删: handle 现在 mouse_filter=IGNORE, 那段代码永远收不到事件 ——
+	#  留着就是一段"看起来在工作"的死代码。拖拽全走下面的命中条。)
 	# 点轨道跳 (即刻应用 + 一次 on_release)
-	track.mouse_filter = Control.MOUSE_FILTER_STOP
-	track.gui_input.connect(func(ev: InputEvent):
+	# ★手机板触控热区(用户2026-08-01): 轨道本体只有 8px 高 = 手机上【4pt】, 手指绝无可能点中;
+	#   handle 也只有 28px(15pt)。所以另铺一条【透明命中条】盖住整行(48px 高 = 26pt),
+	#   点/拖它都等价于点轨道 —— 视觉一点没变, 可点范围从 4pt 变成 26pt。
+	#   ★命中条要在 handle 【之前】加(add_child 顺序=绘制/命中顺序), 否则它会盖住 handle 的拖拽。
+	var hit := Control.new()
+	hit.size = Vector2(track_w, 48.0)
+	hit.position = Vector2(left, cy - 24.0)
+	hit.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(hit)
+	move_child(hit, handle.get_index())   # 排到 handle 前面
+	hit.gui_input.connect(func(ev: InputEvent):
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			apply.call(track.global_position.x + ev.position.x)
-			if on_release.is_valid(): on_release.call())
+			apply.call(hit.global_position.x + ev.position.x)
+			if on_release.is_valid(): on_release.call()
+		elif ev is InputEventMouseMotion and (ev.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+			apply.call(hit.global_position.x + ev.position.x))
+	track.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 命中交给 hit, 轨道只负责显示
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 func _circle(r: float, col: Color) -> Control:
@@ -269,8 +285,10 @@ func _text_button(cx: float, cy: float, label: String, cb: Callable) -> Label:
 
 
 # ── icon 圆按钮 (PoC makeIconButton: r18, 黑0.55, 边#58d3ff→hover#ffd93d) ──
+## ★手机板触控热区(2026-08-01): 半径 18(=36×36 视口像素=20pt) → 24(=48×48=26pt)。
+##   视觉圆环仍按原比例画, 只是可点范围变大 —— 图标按钮加内边距不影响构图。
 func _icon_button(cx: float, cy: float, icon: String, cb: Callable) -> void:
-	var r := 18.0
+	var r := 24.0
 	var btn := Control.new()
 	btn.size = Vector2(r * 2.0, r * 2.0)
 	btn.pivot_offset = Vector2(r, r)

@@ -20,9 +20,11 @@ const POC_W := 1647.0
 const POC_H := 955.0
 const RL := {
 	"title":      {"x": 588,  "y": 78,  "w": 330, "h": 30},
-	"back":       {"x": 431,  "y": 74,  "w": 96,  "h": 36},
-	"clear":      {"x": 1022, "y": 83,  "w": 78,  "h": 29},
-	"last":       {"x": 1110, "y": 82,  "w": 94,  "h": 29},
+	# ★手机板触控热区(2026-08-01): h 36 → 58。设计空间 1647 宽映射到视口 1280 = ×0.777,
+	#   36×0.777 = 28 视口像素 = 手机上仅 15pt(HIG 要 44pt)。58×0.777 = 45px ≈ 24pt。
+	"back":       {"x": 431,  "y": 63,  "w": 96,  "h": 58},
+	"clear":      {"x": 1022, "y": 68,  "w": 78,  "h": 58},   # 同 back: 29 → 58
+	"last":       {"x": 1110, "y": 67,  "w": 94,  "h": 58},   # 同 back: 29 → 58
 	"synergy":    {"x": 183,  "y": 114, "w": 407, "h": 262},
 	# 实时 3v3：3 格阵容居中(去回合制 6 格前/后排, 实时自由走位定位无意义, 战斗只读 3 龟 id)
 	#   背景图 select-bg.png 烤了 6 格+前/后排横幅 → slotBay 暗托盘盖住它, 上面画 3 格 (代码绘, 居中对齐托盘)
@@ -750,7 +752,10 @@ func _build_grid_region() -> void:
 	for r in ["all", "SSS", "SS", "S", "A", "B", "C"]:
 		var b := Button.new()
 		b.text = "全部" if r == "all" else r
-		b.custom_minimum_size = Vector2(_sp(46), _sp(30))
+		# ★手机板触控热区(用户2026-08-01「手机加pc」): 46×30 视口像素 = 手机上仅 25×16pt,
+		#   iOS HIG 最小 44pt / Material 48dp —— 这是全项目最小的一组可点元素, 手指基本点不中。
+		#   加到 52×52(28pt): 竖排 7 个共 400px, 网格区放得下; 再大就要重排整屏了。
+		b.custom_minimum_size = Vector2(_sp(52), _sp(52))
 		b.add_theme_font_size_override("font_size", _sf(13))
 		_style_rarity_btn(b, false)
 		var key: String = r

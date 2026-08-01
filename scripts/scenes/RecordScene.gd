@@ -93,6 +93,11 @@ func _ready() -> void:
 
 
 # 总览统计块: 数值 30px bold + 标签 12px #9ab
+	# ★UI 双端适配(用户2026-08-01「有些画面都没有居中」): 把内容装进 1280×720 设计框并居中于真实视口。
+	#   本屏原先直接按设计坐标画在视口(0,0) → 21:9 上内容整体坐在左边 200px(审计器实测)。
+	#   ★必须放在 _ready 最后 —— UIFrame 收编的是【已经建出来的】子节点。
+	#   (异步晚建的节点由 UIFrame._process 的孤儿收编兜住。)
+	UIFrame.attach(self)
 func _stat(label: String, value: String, color: String) -> Control:
 	var box := VBoxContainer.new()
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -233,8 +238,9 @@ func _stroked_label(t: String, size: int, color: String, stroke: String, thick: 
 	return l
 
 
+## ★手机板触控热区(2026-08-01): 半径 18(36×36=20pt) → 24(48×48=26pt), 同 SettingsScene。
 func _icon_button(cx: float, cy: float, icon: String, cb: Callable) -> void:
-	var r := 18.0
+	var r := 24.0
 	var btn := Control.new()
 	btn.size = Vector2(r * 2.0, r * 2.0)
 	btn.pivot_offset = Vector2(r, r)

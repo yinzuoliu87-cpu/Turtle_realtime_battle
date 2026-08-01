@@ -255,7 +255,15 @@ func _ready() -> void:
 	#    前面几条都在量【屏幕】边界和【控件之间】的重叠, 谁也管不到"控件压到自己父框的边框上"。
 	var panel: Control = null
 	for c in all:
-		if c.get_parent() == sc and absf(c.size.x - PANEL_W) < 1.0 and absf(c.size.y - PANEL_H) < 1.0:
+		# ★2026-08-01: 原判据是 `c.get_parent() == sc`(必须是场景根的直接子节点)。
+		#   UI 双端适配后内容装进了 UIFrame 的 DesignFrame(见 scripts/util/ui_frame.gd),
+		#   面板就多隔了一层, 这条会红 —— 而版式一点没变。判据的本意是"找那个 440×592 的面板",
+		#   不是"找直接子节点", 所以认【根 或 设计框】两层。
+		var par: Node = c.get_parent()
+		# ★按【类型】认框, 不按名字: 旧框 queue_free 后仍占着 "DesignFrame" 这个名字, Godot 会把
+		#   新框改名成 @Control@NNN —— 按名字认会认不出来(实测就是这么红的)。
+		var par_ok: bool = (par == sc) or (par is UIFrame and par.get_parent() == sc)
+		if par_ok and absf(c.size.x - PANEL_W) < 1.0 and absf(c.size.y - PANEL_H) < 1.0:
 			panel = c; break
 	print("")
 	if panel == null:

@@ -38,8 +38,8 @@ func _ready() -> void:
 	_ok("AOE 仍波及普通敌", _has(enem, "en"))
 	_ok("★AOE 仍波及训龟大师(龟派气波等溅射·点4)", _has(enem, "tr"))
 
-	# ③ _allies_no_trainer: 护盾均分 —— 排除大师、含自己/普通友军
-	var al: Array = b._targeting._allies_no_trainer(att)
+	# ③ _allies_share_pool: 护盾均分 —— 排除大师与龟蛋、含自己/普通友军
+	var al: Array = b._targeting._allies_share_pool(att)
 	_ok("均分含自己", _has(al, "att"))
 	_ok("均分含普通友军", _has(al, "ally"))
 	_ok("★护盾均分排除大师(不占份额·点4)", not _has(al, "trAlly"))

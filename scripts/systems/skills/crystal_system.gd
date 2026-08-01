@@ -212,8 +212,10 @@ func _crystal_sweep_step(ang: float, u: Dictionary, si: int, reach: float, state
 			if not o.get("alive", false): continue
 			var ea: float = atan2(float(o["pos"].y) - center.y, float(o["pos"].x) - center.x)
 			if battle._ang_in(prev, ang, ea):
-				battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, float([60, 130, 700][si]), o, true), Color("#bfa8ff"), 0.0, false, true)
-				var steal: float = maxf(0.0, float(o["mr"])) * [0.10, 0.15, 0.50][si]   # 偷取目标10/15/50%当前魔抗(真偷取:目标-X携带者+X, 永久到战场结束)
+				# 伤害 60/130/250 (用户2026-08-01: 3★由 700 削到 250 —— 一次扫过全场敌人, 700 是全表最粗的一根)
+				battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, float([60, 130, 250][si]), o, true), Color("#bfa8ff"), 0.0, false, true)
+				# 偷魔抗【固定10%】(用户2026-08-01: 原 10/15/50% 随星级 → 3★一扫走对面一半魔抗, 且可叠)
+				var steal: float = maxf(0.0, float(o["mr"])) * 0.10   # 真偷取: 目标-X 携带者+X, 永久到战场结束
 				if steal > 0.01:
 					o["base_mr"] = float(o["base_mr"]) - steal; o["mr"] = float(o["mr"]) - steal
 					u["base_mr"] = float(u["base_mr"]) + steal; u["mr"] = float(u["mr"]) + steal

@@ -37,6 +37,12 @@ frames_for () {
     verify_whistle_wave) echo 12000 ;;
     verify_battle_determinism) echo 4000 ;;   # 3 遍 headless 战斗×200帧顺序跑(同种子比指纹)·500帧只够跑 2 遍多 → 被掐断误判FAIL
     verify_interactive_determinism) echo 2000 ;;   # 6 次全场景重建(add_child建世界)·驱动是同步喂累加器(不吃帧)·2000 足量兜底
+    # UI 双端适配: 10 屏 × 4 比例 = 40 次场景实例化, 每次等 150 帧让入场 tween 落定 → ≥6000 帧。
+    #   ★等 150 帧不是拍脑袋: 主菜单左栏键从 x=-560 滑入(延迟 0.5+0.08i 秒), 90 帧会抓到滑一半,
+    #   把"按钮跑到屏外"报成 bug(2026-08-01 实际误判过一次)。
+    verify_ui_layout) echo 20000 ;;
+    # 装备批次13条: 建一次战斗场景 + 100+ 条同步断言, 不等游戏内时间, 但建场本身要几百帧
+    verify_equip_batch_20260801) echo 3000 ;;
     *)             echo 500  ;;
   esac
 }

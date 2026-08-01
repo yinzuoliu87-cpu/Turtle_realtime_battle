@@ -113,7 +113,9 @@ const STATS := {
 	"p2eq_041": [{"hp": 40, "shieldHealPct": 10}, {"hp": 90, "shieldHealPct": 15}, {"hp": 170, "shieldHealPct": 20}],
 	"p2eq_042": [{"hp": 60, "shieldHealPct": 20}, {"hp": 100, "shieldHealPct": 25}, {"hp": 180, "shieldHealPct": 30}],
 	"p2eq_044": [{"hp": 40, "def": 5}, {"hp": 60, "def": 12}, {"hp": 90, "def": 20}],
-	"p2eq_047": [{"hp": 100}, {"hp": 200}, {"hp": 700}],
+	# 重击锤: 3★ hp 700→400 (用户2026-08-01)。★连带: 它的 hammer_pct 是 ATK += maxHp×15%,
+	#   砍血等于连攻一起砍 —— 这是按字面执行的已知副作用, 见 docs/plans/20260801-装备批次13条.md R4。
+	"p2eq_047": [{"hp": 100}, {"hp": 200}, {"hp": 400}],
 	"p2eq_055": [{"atk": 9, "_maxEnergy": 20}, {"atk": 15, "_maxEnergy": 20}, {"atk": 21, "_maxEnergy": 20}],
 	"p2eq_058": [{"atk": 17, "_maxEnergy": 20}, {"atk": 29, "_maxEnergy": 20}, {"atk": 41, "_maxEnergy": 20}],
 	# ── 召唤系 037/038/040 + 潮汐 045 (批7) ──

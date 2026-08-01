@@ -274,6 +274,12 @@ func _ready() -> void:
 		Phase2Schools.SCHOOLS.size(), DataRegistry.status_defs.size(), DataRegistry.battle_rules.size()]
 	# 视口比例由项目级 EXPAND(window/stretch/aspect)保证, 场景切换不翻转 aspect → 入场丝滑(同 TeamSelect)。
 	#   同步建完(无 await), 首帧即完整布局, 无半成品/撕裂帧。背景铺满+居中见 _fill_bg_and_center。
+	# ★详情面板裁剪(2026-08-01): Detail 是固定 900×550 的框(UI/DetailBg 画着边框), 但里面的
+	#   RichTextLabel 用 fit_content=true 自动长高 —— 长条目会穿出边框继续往下画, 一直画到
+	#   屏幕外(门禁实测 1280×720 下溢出底边 14px)。裁到框内: 既对上那圈边框, 也不再溢出。
+	#   ★已知限制: 极长条目会被裁掉尾部。要完整阅读需把 Detail 换成 ScrollContainer,
+	#   记在 docs/plans/20260801-UI双端适配.md 未决点里 —— 但"看不全"总好过"画到屏幕外"。
+	detail.clip_contents = true
 	_fill_bg_and_center()
 	_build_tab_bar()
 	_add_back_button()   # ← 返回主菜单 (1:1 PoC CodexScene.ts:68) — 原漏了→图鉴出不去
@@ -395,8 +401,13 @@ func _build_tab_bar() -> void:
 		c.queue_free()
 	var tab_w := 170.0
 	var tab_gap := 8.0
+	# ★手机板触控热区: 页签高 36 视口像素 = 手机上 20pt, 远低于 iOS HIG 44pt。
+	#   页签是主导航, 点不中的代价最大 → 加到 56(30pt)。宽 170 本来就够。
+	var tab_h := 56.0
 	var total_w := TABS.size() * tab_w + (TABS.size() - 1) * tab_gap
-	var start_x := (1280.0 - total_w) / 2.0
+	# ★2026-08-01 门禁抓到: 这里写死 1280 —— 而 TabBar 是全宽锚(跟着视口长),
+	#   于是 21:9(视口 1680)上整条页签坐在中心【左边 200px】。用真实视口宽算。
+	var start_x := (float(get_viewport().get_visible_rect().size.x) - total_w) / 2.0
 	# PoC makeTab label 带数量计数: 🐢 龟 (N) / ⚔ 装备 (N) / 🔗 羁绊 (N) / 💫 状态 (N) / 📜 规则 (N)
 	# 装备 Tab 计数 = 59 件 p2eq + 消耗品件数 (上线野生=duallane 实际装备池, 非旧 e_ 装备)
 	var tab_counts := {
@@ -410,8 +421,8 @@ func _build_tab_bar() -> void:
 		var b := Button.new()
 		b.text = "%s (%d)" % [t[1], int(tab_counts.get(t[0], 0))]
 		b.position = Vector2(start_x + i * (tab_w + tab_gap), 0)
-		b.custom_minimum_size = Vector2(tab_w, 36)
-		b.size = Vector2(tab_w, 36)
+		b.custom_minimum_size = Vector2(tab_w, tab_h)
+		b.size = Vector2(tab_w, tab_h)
 		b.add_theme_font_size_override("font_size", 15)
 		_style_tab(b, active)
 		var tid: String = t[0]

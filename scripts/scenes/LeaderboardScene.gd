@@ -50,6 +50,11 @@ func _ready() -> void:
 		var hint := Label.new(); hint.text = "（打几局上传阵容后, 这里会出现更多对手排名）"
 		hint.add_theme_font_size_override("font_size", 15); hint.add_theme_color_override("font_color", Color("#5a6675"))
 		hint.position = Vector2(24, y + 12); hint.size = Vector2(680, 24); panel.add_child(hint)
+	# ★UI 双端适配(用户2026-08-01「有些画面都没有居中」): 把内容装进 1280×720 设计框并居中于真实视口。
+	#   本屏原先直接按设计坐标画在视口(0,0) → 21:9 上内容整体坐在左边 200px(审计器实测)。
+	#   ★必须放在 _ready 最后 —— UIFrame 收编的是【已经建出来的】子节点。
+	#   (异步晚建的节点由 UIFrame._process 的孤儿收编兜住。)
+	UIFrame.attach(self)
 
 func _row_labels(parent: Control, y: int, color: String, c1: String, c2: String, c3: String, header: bool) -> void:
 	var fs := 15 if header else 18

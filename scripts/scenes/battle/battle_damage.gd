@@ -197,9 +197,9 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	if u["id"] == "lava" and not u.get("volcano", false):
 		u["rage"] = minf(battle.RAGE_MAX, u["rage"] + float(dmg) * 0.10)
 	if src is Dictionary and src.get("has_egg", false) and src.get("alive", false):   # 温泉蛋(036): 造成伤害×0.1进度
-		battle._egg_add_progress(src, float(dmg) * 0.1)
+		battle._equip_tick_sys._egg_add_progress(src, float(dmg) * 0.1)
 	if u.get("has_egg", false):   # 温泉蛋(036): 承受伤害×0.1进度
-		battle._egg_add_progress(u, float(dmg) * 0.1)
+		battle._equip_tick_sys._egg_add_progress(u, float(dmg) * 0.1)
 	# 星能 (星际造伤35%·用户2026-07-16: 62→35; 星波施法期锁定不涨)
 	if src["id"] == "space" and battle._t >= float(src.get("star_lock_until", 0.0)):
 		src["star_energy"] = minf(src["maxHp"] * 0.40, src["star_energy"] + float(dmg) * 0.35)

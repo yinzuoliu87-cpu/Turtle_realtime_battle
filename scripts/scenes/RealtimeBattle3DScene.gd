@@ -709,6 +709,7 @@ var _cyber_sys := CyberSystem.new(self)   # 赛博龟技能系统(2026-07-25 抽
 var _ninja_sys := NinjaSystem.new(self)   # 忍者龟技能系统(2026-07-25 抽出)
 var _pirate_sys := PirateSystem.new(self)   # 海盗龟技能系统(2026-07-25 抽出)
 var _equip_tick_sys := EquipTickSystem.new(self)   # 装备周期效果tick系统(2026-07-25 抽出)
+var _hookbomb_sys := HookBombSystem.new(self)   # 靶向器055 钩索炸弹(2026-08-01 用户整条重做)
 var _audio_sys := AudioSystem.new(self)   # 音效系统(2026-07-25 抽出)
 var _trainer_sys := TrainerSystem.new(self)   # 训龟大师技能系统(2026-07-25 抽出·与龟技能/装备分开)
 var _line_sys := LineSystem.new(self)   # 素描龟技能系统(2026-07-25 抽出)
@@ -865,6 +866,12 @@ func _ready() -> void:
 		if OS.has_environment("SELFSHOT"): _self_screenshot()
 		return
 	_hud._build_ui_layer()
+	# ★PC 板(用户2026-08-01:「pc端要随便拉，支持全屏」): 战斗场景是全项目【唯一不接 size_changed
+	#   的场景】—— 主菜单/匹配/选龟都接。不接的后果是拉窗口/切全屏后 HUD 还按进场那一刻的视口摆:
+	#   PK 条宽度、右上投降/统计键停在旧位置, 而战场画面已经跟着新视口重画了。
+	#   重排逻辑见 battle_hud.on_viewport_resized(PK 条重建 · 右上两键重摆)。
+	if not get_viewport().size_changed.is_connected(_hud.on_viewport_resized):
+		get_viewport().size_changed.connect(_hud.on_viewport_resized)
 	_review_console._build_debug_panel()   # 🛠 调试面板(评审demo·技能/装备/星级·用户2026-07-11)
 	if OS.has_environment("STRESS"):   # 卡死猎手: 开局前轮换左队(覆盖全28龟)
 		_stress_pre()
@@ -1425,6 +1432,9 @@ const SD_AMP_PER := 0.25      # 每档 +25% 增伤(累计, 持续到本战场结
 const SD_HEAL_MULT := 0.5     # 决胜期治疗效果 ×50%
 var _sd_t0 := 0.0             # 本战场开打时刻
 var _sd_stacks := 0           # 已获得的增伤档数(0=未进入决胜)
+## 跨路保留的装备层数(竹弓039/哑铃020/温泉蛋036·用户2026-08-01)。键/存取见 dual_lane_flow.EQ_CARRY。
+## ★挂在场景实例上 = "只有开新对局才重置" 天然成立(新对局=新场景=新空表), 不要另写清空。
+var _eq_carry: Dictionary = {}
 
 func _sd_amp() -> float:
 	return SD_AMP_PER * float(_sd_stacks)
@@ -2144,6 +2154,7 @@ const _TS_TIMER_FIELDS := [
 	"dice_dash_pause_until",
 	"echarge_until",
 	"energy_lock_until",
+	"eq_hot_until",
 	"eq_marked_until",
 	"eq_target_until",
 	"frost_shield_until",
@@ -2244,6 +2255,15 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	_damage._heal_flush(u)   # LoL式治疗累加器: 攒一波回血合并成一个绿字(满血=0)
 	if _t < float(u.get("candle_hot_until", 0.0)):   # 蜡烛光圈037: 圈内逐渐回血(HoT)
 		_damage._heal(u, float(u.get("candle_hot_rate", 0.0)) * delta, true)
+	# 装备救命回血 HoT (044深海项链6秒 / 045珍珠耳环8秒; 用户2026-08-01「改为在N秒内回复X%最大生命值」)。
+	# ★用【固定速率×delta】而不是"每帧 maxHp×比例": 携带者在回复期间可能被温泉蛋/升级顶高 maxHp,
+	#   按当前 maxHp 现算会让总量随之膨胀 —— 触发瞬间锁死 rate, 总量才等于文案写的那个数。
+	# ★死亡即停(方案书 §4·F): 本函数只在 alive 单位上跑, 不需要额外判定。
+	if _t < float(u.get("eq_hot_until", 0.0)):
+		_damage._heal(u, float(u.get("eq_hot_rate", 0.0)) * delta, true)
+	# 靶向器055 钩索炸弹: 挂在宿主身上, 每秒对宿主造成其 maxHp 的 1/2/2% 物理伤害, 直到宿主死亡
+	if float(u.get("hookbomb_pct", 0.0)) > 0.0:
+		_hookbomb_sys._hb_tick(u, delta)
 	if _t < float(u.get("rum_until", 0.0)):   # 海盗朗姆酒: 每秒回4%maxHP(分秒HoT·rum_dps=每秒速率)
 		var _rhpb: float = float(u["hp"])
 		_damage._heal(u, float(u.get("rum_dps", 0.0)) * delta, true)
@@ -2615,6 +2635,9 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 		_equip_tick_sys._tick_anemone(u, delta)
 		_equip_tick_sys._tick_dumbbell(u, delta)
 		_equip_tick_sys._tick_barnacle(u, delta)
+		_equip_tick_sys._tick_anchor(u, delta)      # 017沉锚: 每0.25秒回血(用户2026-08-01, 原挂 on-hurt)
+		_equip_tick_sys._tick_targeter(u, delta)    # 055靶向器: 首次累计400伤害→挂钩索炸弹(用户2026-08-01)
+		_equip_tick_sys._tick_hotspring(u, delta)   # 036温泉蛋: 携带者每秒回血 5/7/10(用户2026-08-01)
 
 func _separation(u: Dictionary) -> Vector2:
 	var push := Vector2.ZERO
@@ -4412,6 +4435,12 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 		return 0.0                                   # ★驯服重生演出期(2.5秒)无敌(用户 2026-07-28 B7)
 	if u.get("is_trainer", false):
 		return minf(d, 1.0)
+	# ★"受到的任何攻击(含真实伤害)降为 1" 的通用闸(用户2026-08-01 给亡灵骷髅 032 用)。
+	#   与大师同一条口径、同一个位置 —— 放这儿是因为本函数是【两条伤害路径唯一的共用收口】,
+	#   在别处拦只会拦住其中一条(CLAUDE.md §3.3 那类"只在某种伤害下出现的诡异行为")。
+	#   用 flag 而不是判 id: 骷髅是召唤物, 将来还会有别的"血量即命数"单位。
+	if u.get("_dmg_cap_one", false):
+		return minf(d, 1.0)
 	return d
 
 
@@ -4515,7 +4544,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 	_on_unit_death(u, killer)
 	for _egc in _units:   # 温泉蛋(036): 任意单位阵亡→持蛋者加进度(己方死+15/敌死+10)
 		if _egc.get("has_egg", false) and _egc.get("alive", false):
-			_egg_add_progress(_egc, 15.0 if str(_egc.get("side", "")) == str(u.get("side", "")) else 10.0)
+			_equip_tick_sys._egg_add_progress(_egc, 15.0 if str(_egc.get("side", "")) == str(u.get("side", "")) else 10.0)
 	# 有死亡帧的龟(basic/ghost/ninja)播 death 动画 → 影/环/血条立即淡, 立绘延后淡(让动画演完)
 	_vfx._play_action(u, "death")
 	var has_death_anim: bool = (u.get("anim_action", "") == "death")
@@ -6319,32 +6348,8 @@ func _effective_level(u: Dictionary) -> int:
 	var st = u.get("eq_state", {}).get("p2eq_036", {})
 	return lv + int(st.get("egg_levels", 0))
 
-func _egg_add_progress(u: Dictionary, amt: float) -> void:   # 温泉蛋(036): 累积孵化进度→每100+1临时等级(线性+5%基础+攻速2%/级,同统领,上限+3)→孵满(+3)全队均摊护盾一次
-	if amt <= 0.0 or not u.get("has_egg", false) or not u.get("alive", false): return
-	var stt: Dictionary = u["eq_state"].get("p2eq_036", {})
-	stt["incub"] = float(stt.get("incub", 0.0)) + amt
-	while float(stt["incub"]) >= 100.0 and int(stt.get("egg_levels", 0)) < 3:
-		stt["incub"] = float(stt["incub"]) - 100.0
-		if not stt.has("ref_atk"):   # 首次升级锁基准 → 线性+5%/级(同统领 1+0.05×级, 非复利)
-			stt["ref_atk"] = u["base_atk"]; stt["ref_def"] = u["base_def"]; stt["ref_mr"] = u["base_mr"]
-			stt["ref_hp"] = u["maxHp"]; stt["ref_iv"] = float(u.get("atk_interval", 1.0))
-		stt["egg_levels"] = int(stt.get("egg_levels", 0)) + 1
-		var el: int = int(stt["egg_levels"])
-		u["base_atk"] += float(stt["ref_atk"]) * 0.05          # 线性+5%基础属性/级
-		u["base_def"] += float(stt["ref_def"]) * 0.05
-		u["base_mr"] += float(stt["ref_mr"]) * 0.05
-		var hpg: float = float(stt["ref_hp"]) * 0.05; u["maxHp"] += hpg; u["hp"] += hpg
-		u["atk_interval"] = maxf(0.1, float(stt["ref_iv"]) / (1.0 + 0.02 * float(el)))   # 攻速+2%/级(同统领)
-		_recalc_stats(u)
-		_egg_level_up_vfx(u, int(u.get("level", 1)) + el)      # 升级特效(金光柱+LV UP)
-		if int(stt["egg_levels"]) >= 3 and not bool(stt.get("incub_given", false)):
-			stt["incub_given"] = true
-			var allies := _targeting._allies_no_trainer(u)   # ★均分排除大师·用户2026-07-23 点4
-			var per: float = float(stt.get("incub_shield", 300.0)) / maxf(1.0, float(allies.size()))
-			for o in allies: _damage._grant_shield(o, per)
-			_particle_burst(u["pos"])
-	if int(stt.get("egg_levels", 0)) >= 3: stt["incub"] = minf(float(stt["incub"]), 100.0)
-	u["eq_state"]["p2eq_036"] = stt
+
+
 
 func _cc_dur(u: Dictionary, sec: float) -> float:
 	return sec * (1.0 - clampf(float(u.get("tenacity", 0.0)), 0.0, 0.9))
@@ -6771,6 +6776,9 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 			_shake(JUICE_SHAKE_HEAVY)
 			for _cb in range(10): _candy_sys._candy_bomb_bubble(u)
 		_skill_ring(u["pos"], Color(1.0, 0.5, 0.8, 0.6), 130.0)
+	# 靶向器055: 带弹宿主死亡 → 朝所有敌方发钩 → 眩晕0.5s → 拉向携带者 → 聚拢一次爆炸(用户2026-08-01)。
+	# ★放在这里(与骷髅爆炸同一段死亡结算)而不是塞进演出 tween 里 —— 见 hookbomb_system.gd 文件头。
+	_hookbomb_sys._hb_on_death(u)
 	if u.get("boom_pct_true", 0.0) > 0.0:                 # 032骷髅死亡: 200码内敌各受其%最大生命真伤
 		var _br: float = float(u.get("boom_radius", 200.0))
 		for _bo in _targeting._enemies_of(u):

@@ -504,7 +504,16 @@ func _btn_vs_bar(s) -> void:
 	var src := FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_hud.gd")
 	_ok("⑨ ★按钮不再写死坐标(改按右边缘+安全区反算)",
 		not src.contains("Vector2(1208, 12)") and not src.contains("var _x := 1148.0"))
-	_ok("⑨ 按钮走 SafeArea", src.contains("SafeArea.margins(_vp, 12.0)"))
+	# ★2026-08-01: 原断言写死 `SafeArea.margins(_vp, 12.0)` —— 连【局部变量名】都焊进去了。
+	#   把摆位算式抽成 _topright_positions() 时变量名从 _vp 变成 vp, 这条就红了, 而行为一个字没改。
+	#   这正是 CLAUDE.md §2 说的"审计器读源码找符号 → 函数外迁=误报"。改成断言
+	#   【摆位函数体内用了 SafeArea】—— 守的是"有没有走安全区"这件事, 不是变量叫什么。
+	var _tp_i: int = src.find("func _topright_positions")
+	var _tp_e: int = src.find("
+func ", _tp_i + 1) if _tp_i >= 0 else -1
+	var _tp_body: String = src.substr(_tp_i, (_tp_e - _tp_i) if _tp_e > _tp_i else 400) if _tp_i >= 0 else ""
+	_ok("⑨ 右上键摆位走 SafeArea(在 _topright_positions 里)",
+		_tp_body.contains("SafeArea.margins("), "找到函数=%s" % str(_tp_i >= 0))
 	_ok("⑨ PK 条宽度自适应(给按钮区让位)", src.contains("PK_BTN_ZONE"))
 	# ★★先读【真实按钮】的位置, 再验公式 —— 否则下面那圈多宽高比只是在"模拟公式",
 	#   改了代码里的坐标它看不见。我第一版就是这样: 把按钮改回写死 1208, 门禁【照样绿】。

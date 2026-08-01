@@ -161,10 +161,15 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 			stt["anchor_charges"] = 0    # 沉锚充能 (施法时消耗)
 		"p2eq_011":   # 饮血护符坠: 溢出治疗转血护盾 (累积上限200/350/500, 多件取最大上限)
 			u["overheal2shield_cap"] = maxf(float(u.get("overheal2shield_cap", 0.0)), [200.0, 350.0, 500.0][si])
-		"p2eq_036":   # 温泉蛋: 孵化进度 → 满级全队护盾(一次)
+		"p2eq_036":   # 温泉蛋: 孵化进度 → 临时等级(上限随星级) → 满级全队均摊护盾(一次) + 携带者每秒回血
 			stt["incub"] = 0.0
 			stt["incub_given"] = false
 			stt["egg_levels"] = 0
 			stt["incub_shield"] = [300.0, 400.0, 600.0][si]
+			# ★等级上限 3 → 3/4/5 随星级(用户 2026-08-01)。原来写死 3 → 1★和3★的成长天花板一模一样,
+			#   升星只多给护盾数字, 玩家感受不到"这颗蛋更强"。上限存进 eq_state 而不是每次现算,
+			#   因为 _egg_add_progress(u, amt) 拿不到 si(它只有单位和增量)。
+			stt["egg_cap"] = [3, 4, 5][si]
+			stt["heal_ps"] = [5.0, 7.0, 10.0][si]   # 携带者每秒回血(用户 2026-08-01 新效果)
 			u["has_egg"] = true
 	u["eq_state"][item_id] = stt

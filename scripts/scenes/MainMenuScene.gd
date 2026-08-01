@@ -502,8 +502,17 @@ func _version_stamp() -> void:
 	if v == "":
 		return
 	var l := _menu_label("v%s" % v, 16, Color("#7f8a99"))
+	# ★★2026-08-01 修「版本号在主菜单上根本看不见」(审计器量出来的, 不是看像素猜的):
+	#   _menu_label 里设了 set_anchors_preset(PRESET_FULL_RECT) —— 锚点 right/bottom = 1,
+	#   于是【下一帧布局会按父容器重算 size】, 把这里设的 (200,22) 冲掉, 实测变成 1480×744。
+	#   再叠上 HORIZONTAL_ALIGNMENT_RIGHT, 文字被画到那个巨框的右端 ≈ x 2544 —— 屏幕外。
+	#   审计器 tests/_probe_ui_layout.gd 报: @Label@42 超出右 1064~1264 · 尺寸 1480x744。
+	#   ★修法是把锚点先掰回 TOP_LEFT, 再设 size/position; 只改 size 不改锚点是没用的。
+	#   版本号的全部价值 = 测试者报 bug 时能说清是哪个版本(CLAUDE.md §2.5), 看不见 = 等于没有。
+	l.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	l.size = Vector2(200, 22)
+	l.custom_minimum_size = Vector2(200, 22)
 	l.position = Vector2(W - WALL - 200, H - WALL - 22)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content_root.add_child(l)

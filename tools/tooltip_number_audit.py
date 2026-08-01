@@ -32,9 +32,6 @@ VERIFIED_FAR = {
     ('p2eq_015', '300/270/230'): 'THORN_THRESHOLD 反伤累计阈值 [300,270,230]',
     ('p2eq_015', '50/70/200'):   'THORN_SHIELD 触发时给自己的护盾 [50,70,200]',
     ('p2eq_015', '30/50/90'):    'THORN_BLEED 强化那一击的流血层数 [30,50,90]',
-    ('p2eq_031', '10/15/50'):   '_eq_crystal_b 扫射偷魔抗 [0.10,0.15,0.50]',
-    ('p2eq_031', '60/130/700'): '_eq_crystal_b 扫射魔法伤 [60,130,700]',
-    ('p2eq_032', '19/21/25'):   '_eq_summon_skeleton 骷髅生命 [19,21,25]*HP_MULT(文案写"×成长")',
     ('p2eq_032', '3/5/8'):      '_eq_summon_skeleton 骷髅攻击 [3,5,8]',
     ('p2eq_032', '8/13/20'):    'sk["boom_pct_true"]=[0.08,0.13,0.20] 死亡爆炸%最大生命真伤',
     ('p2eq_058', '500/1000/1800'): '_eq_summon_turret 炮台生命(不乘HP_MULT·文案也没写×成长)',
@@ -75,6 +72,13 @@ VERIFIED_FAR = {
     ('p2eq_030', '30/35/40'):     '迷你水晶球A p2eq_030(reorg远)',
     ('p2eq_029', '1/1.8/2.5'):    '冰封水母 p2eq_029 冰效果[1.0,1.8,2.5](随_ice_搬到ice_system·reorg远·数值未改)',
     ('p2eq_029', '25/40/60'):     '冰封水母 p2eq_029 冰效果[25,40,60](随_ice_搬到ice_system·reorg远·数值未改)',
+    # ── 2026-08-01 装备批次13条(用户): 逐条核实数值在对应效果码里 ──
+    ('p2eq_031', '60/130/250'):  '_crystal_sweep_step 迷你水晶球B 伤害 [60,130,250](crystal_system.gd·reorg远)',
+    ('p2eq_032', '16/31/55'):    '_eq_summon_skeleton 骷髅最大生命 [16.0,31.0,55.0](equip_system.gd·id 在 stats_apply 侧→远)',
+    ('p2eq_032', '13/17/23'):    '_eq_summon_skeleton 骷髅存活时长 [13.0,17.0,23.0]',
+    ('p2eq_055', '1/1/2'):       'HookBombSystem.BOMB_COUNT [1,1,2] 挂弹敌人数(独立文件→远)',
+    ('p2eq_055', '1/2/2'):       'HookBombSystem.BOMB_DPS_PCT [0.01,0.02,0.02] 每秒%maxHp',
+    ('p2eq_055', '200/400/500'): 'HookBombSystem.BLAST_FLAT [200.0,400.0,500.0] 聚爆固定段',
 }
 WIN = 2500
 

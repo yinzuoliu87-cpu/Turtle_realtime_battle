@@ -36,6 +36,11 @@ func _ready() -> void:
 	_sel_appearance = _valid_appearance(str(GameState.trainer_appearance))
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_build_ui()
+	# ★UI 双端适配(用户2026-08-01「有些画面都没有居中」): 把内容装进 1280×720 设计框并居中于真实视口。
+	#   本屏原先直接按设计坐标画在视口(0,0) → 21:9 上内容整体坐在左边 200px(审计器实测)。
+	#   ★必须放在 _ready 最后 —— UIFrame 收编的是【已经建出来的】子节点。
+	#   (异步晚建的节点由 UIFrame._process 的孤儿收编兜住。)
+	UIFrame.attach(self)
 
 func _valid_skill(id: String) -> String:
 	for s in SKILLS:

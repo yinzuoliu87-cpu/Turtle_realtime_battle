@@ -150,10 +150,16 @@ func _tick_eq_turret(u: Dictionary, delta: float) -> void:   # 058: 炮台双抗
 func _eq_summon_skeleton(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false): return
 	# 亡灵骷髅移速=近战斗士档110(用户2026-07-28移速定位化: 原 130 比全表任何龟都快)
-	var sk = battle._spawn._spawn_summon(u, "skeleton", [19.0, 21.0, 25.0][si] * battle.HP_MULT, [3.0, 5.0, 8.0][si], {"label": "亡灵骷髅", "spr_id": "skeleton", "col_size": 32.0, "hp_w": 22.0, "atk_interval": 1.0 / 1.2, "atk_range": 70.0, "melee": true, "move_spd": 110.0})
+	# ★2026-08-01 用户重定义: 血 16/31/55 · 攻 3/5/8 · 双抗 0 · 受任何伤害(含真伤)恒为 1 · 存活 13/17/23 秒。
+	#   ★血【不乘 HP_MULT】: 用户给的是"拥有 16/31/55 最大生命值", 那是游戏里能看见的最终值。
+	#     旧写法 [19,21,25]×3 = 57/63/75, 属于 CLAUDE.md §3.1 那类"多乘一次"的旧账 —— 顺手清掉。
+	#   ★双抗 20000 → 0: 免伤改由 _dmg_cap_one 走减伤收口实现。用双抗堆到 20000 的老办法【拦不住真伤】,
+	#     而用户点名"包括真实伤害"。两者并存还会让"受 1 点"变成"受 0 点"(被抗性吃光后再钳)。
+	var sk = battle._spawn._spawn_summon(u, "skeleton", [16.0, 31.0, 55.0][si], [3.0, 5.0, 8.0][si], {"label": "亡灵骷髅", "spr_id": "skeleton", "col_size": 32.0, "hp_w": 22.0, "atk_interval": 1.0 / 1.2, "atk_range": 70.0, "melee": true, "move_spd": 110.0})
 	if sk == null: return
-	sk["base_def"] = 20000.0; sk["base_mr"] = 20000.0; sk["def"] = 20000.0; sk["mr"] = 20000.0
-	sk["summon_life"] = 15.0
+	sk["base_def"] = 0.0; sk["base_mr"] = 0.0; sk["def"] = 0.0; sk["mr"] = 0.0
+	sk["_dmg_cap_one"] = true             # 收到的任何攻击(含真伤)降为 1 —— 闸在 _mitigate_incoming 末尾, 两条伤害路径共用
+	sk["summon_life"] = [13.0, 17.0, 23.0][si]
 	sk["boom_pct_true"] = [0.08, 0.13, 0.20][si]
 	sk["boom_radius"] = 200.0
 	battle._skill_ring(sk["pos"], Color(0.4, 1.0, 0.55, 0.6), 40.0)
@@ -821,9 +827,12 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 					pass
 			"p2eq_054":   # 瞄准镜: 必中→命中时目标身上一瞬锁定框(表现无视闪避)
 				battle._reticle_flash(tgt, Color("#ff6a5a"))
-			"p2eq_055":   # 靶向器: 命中标记目标 (+20% 受伤) 2回合
-				tgt["eq_marked_until"] = battle._t + 5.0
-				battle._mark_vfx(tgt, 5.0, Color("#ff4d4d"))
+			"p2eq_055":   # 靶向器: 效果已整条替换为【钩索炸弹】(用户2026-08-01), 触发在 _tick_targeter, 命中不再处理
+				# ★这里【曾经】是旧效果"命中标记目标 +20% 受伤 5 秒"(写 tgt["eq_marked_until"])。
+				#   删掉之后 eq_marked_until 就【零写入】了 —— _mitigate_incoming:4393 那个 ×1.2 的读者
+				#   从此恒不成立(死代码, 但留着无害: 它是通用易伤字段, 将来别的效果可以直接写它)。
+				#   ★要加新的易伤来源就写 eq_marked_until; 别在这里把旧效果加回来 —— 会和新效果叠着生效。
+				pass
 		src["eq_state"][iid] = stt
 
 # 雷电法杖 026: 连锁闪电
@@ -863,12 +872,19 @@ func _eq_chain_lightning(u: Dictionary, si: int) -> void:
 		tw.tween_callback(battle._chain_segment.bind(u, prev_pos, tgt, dmg))
 		prev_pos = tgt["pos"]
 
-func _eq_laser_sweep(u: Dictionary, tgt: Dictionary, si: int) -> void:   # 扇形斩(120度/半径=射程,3★2×/朝目标)+回血; 只命中1→蓄力→竖劈冲击波
+const LASER_MELEE_BONUS := 250.0   # 激光长刃 010: 近战携带者额外 +250 码半径(用户 2026-08-01)
+
+func _eq_laser_sweep(u: Dictionary, tgt: Dictionary, si: int) -> void:   # 扇形斩(120度/半径=射程,3★2×/朝目标·近战+250)+回血; 只命中1→蓄力→竖劈冲击波
 	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
 	if dir.length() < 0.1: dir = Vector2.RIGHT
 	var ang: float = -atan2(dir.y, dir.x)
 	var base_rng: float = float(u.get("atk_range", 70.0))
 	var rng: float = base_rng * (2.0 if si == 2 else 1.0)
+	# ★近战携带者 +250 码半径(用户 2026-08-01)。由来: 半径 = 携带者射程, 而近战射程只有 ~70~95,
+	#   于是这把"长刃"在近战手里的扇形还没龟自己身位大 —— 远程龟拿它反而横扫全场, 定位完全反了。
+	#   ★加在 ×2 之后 = 对最终半径的加法, 不被 3★ 倍率放大(否则近战 3★ 会变成 +500)。
+	if bool(u.get("melee", false)):
+		rng += LASER_MELEE_BONUS
 	battle._anticipate(u)   # 预备
 	battle._laser_blade_sweep(u, u["pos"], dir, rng, 60.0)   # 笔直红激光长刃平滑扫过扇形(带拖尾)
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
@@ -1108,21 +1124,10 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 						battle._skill_ring(u["pos"], Color(0.86, 0.72, 0.45, 0.7), 54.0)
 					stt["thorn_accum"] = acc
 					u["eq_state"][iid] = stt
-			"p2eq_017":   # 不沉之锚: 每次受伤→治疗生命%最低友军 (1/2/15%自身maxHp), 累积满100→+1沉锚充能
-				var heal_amt: float = u["maxHp"] * [0.01, 0.02, 0.15][si]
-				# 生命百分比最低的友军 (含自己)
-				var low = null; var lv := INF
-				for o in battle._targeting._allies_of(u):
-					var p: float = CombatMath.hp_frac(o["hp"], o["maxHp"])
-					if p < lv: lv = p; low = o
-				var done: float = 0.0
-				if low != null:
-					done = battle._damage._heal(low, heal_amt)   # 只按【实际】回进去的血攒锚(满血空奶不攒·用户2026-07-19)
-				var acc: float = float(stt.get("anchor_accum", 0.0)) + done
-				while acc >= 250.0:          # 累积治疗满250→+1充能 (用户2026-07-19: 100→250)
-					acc -= 250.0
-					stt["anchor_charges"] = int(stt.get("anchor_charges", 0)) + 1
-				stt["anchor_accum"] = acc
+			"p2eq_017":   # 不沉之锚: 回血移到 _tick_anchor(每0.25秒, 用户2026-08-01); on-hurt 不再处理
+				# ★别在这里加回"受伤即回血" —— 那会变成"定时 + 受伤"双份触发。
+				#   verify_equip_batch_20260801 ⑫组焊死: on-hurt 不得产生任何治疗。
+				pass
 		u["eq_state"][iid] = stt
 
 # ============================================================================
@@ -1220,15 +1225,25 @@ func _eq_crystal_stack(src: Dictionary, o: Dictionary, si: int) -> void:
 
 # 狙击长管 057: 递归开枪
 # 狙击长管 057: 递归开枪
-func _eq_sniper_windup(u: Dictionary, si: int) -> void:   # 狙击长管057: 每8秒先蓄力1秒(瞄准线+枪口聚能+锁定环)再开枪(用户2026-07-19)
+const SNIPER_WINDUP := 1.0    # 每一枪的蓄力时长(秒)
+
+func _eq_sniper_windup(u: Dictionary, si: int) -> void:   # 狙击长管057: 每8秒一轮, 每枪先蓄力1秒(瞄准线+枪口聚能+锁定环)再开(用户2026-07-19 / 2026-08-01)
+	_eq_sniper_charge_then_fire(u, si, 0)
+
+
+## 一枪 = 蓄力 SNIPER_WINDUP 秒 → 开火。★用户 2026-08-01「重新开枪需要蓄力」:
+##   原来只有本轮【第一枪】蓄力, 击杀后递归追加的后续枪是【立即】开的 —— 一轮下来能瞬间连狙好几个,
+##   看上去像"一枪扫掉半个队"。现在把蓄力包进这一层, 首枪与连狙走同一条路径, 不存在"某种枪不蓄力"。
+func _eq_sniper_charge_then_fire(u: Dictionary, si: int, depth: int) -> void:
 	if not u.get("alive", false): return
+	if depth >= 12: return                      # 与 _eq_sniper 同一上限, 防连狙无限递归
 	var low = null; var lv := INF
 	for o in battle._targeting._pick_enemies_of(u):
 		var p: float = CombatMath.hp_frac(o["hp"], o["maxHp"])
 		if p < lv: lv = p; low = o
 	if low == null: return
 	battle._sniper_charge_fx(u, low)
-	battle._pending_shots.append({"delay": 1.0, "fn": func(): _eq_sniper(u, si, 0), "src": u})   # 递归追加的后续枪仍是"立即", 不再各蓄1秒
+	battle._pending_shots.append({"delay": SNIPER_WINDUP, "fn": func(): _eq_sniper(u, si, depth), "src": u})
 
 func _eq_sniper(u: Dictionary, si: int, depth: int) -> void:
 	if depth >= 12:
@@ -1256,7 +1271,7 @@ func _eq_sniper(u: Dictionary, si: int, depth: int) -> void:
 			if before and not o["alive"]:
 				killed = true
 	if killed:
-		_eq_sniper(u, si, depth + 1)
+		_eq_sniper_charge_then_fire(u, si, depth + 1)   # ★连狙也要蓄力(用户2026-08-01), 不再直接 _eq_sniper
 
 # ============================================================================
 #  on-kill (击杀者视角) — 暴君之牙
@@ -1318,6 +1333,25 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 # ============================================================================
 #  HP阈值 (首次<50%) — 深海项链 / 珍珠耳环
 # ============================================================================
+const NECKLACE_HOT_SEC := 6.0    # 深海项链 044: 回复摊在 6 秒内(用户2026-08-01)
+const EARRING_HOT_SEC := 8.0     # 珍珠耳环 045: 回复摊在 8 秒内(用户2026-08-01)
+
+## 开一段【固定总量 / 固定时长】的持续回血。消费侧在 RealtimeBattle3DScene._tick_unit 的
+## `if _t < u["eq_hot_until"]` 那两行(与蜡烛 037 的 candle_hot 同一惯例)。
+## ★写这里的时候把速率【锁死】: rate = 总量 / 时长, 之后 maxHp 涨了也不重算 ——
+##   否则温泉蛋/临时升级顶高 maxHp 时, 实发总量会超过文案写的百分比。
+## ★两件同时触发时【取总量更大的那一段】而不是相加: 相加会让速率叠成一条巨额瞬回,
+##   把"改成持续回复"这次削弱整个抵消掉。
+func _eq_start_hot(u: Dictionary, total: float, secs: float) -> void:
+	if total <= 0.0 or secs <= 0.0: return
+	var rate: float = total / secs
+	var cur_left: float = maxf(0.0, float(u.get("eq_hot_until", 0.0)) - battle._t) * float(u.get("eq_hot_rate", 0.0))
+	if total <= cur_left:
+		return
+	u["eq_hot_rate"] = rate
+	u["eq_hot_until"] = battle._t + secs
+
+
 func _eq_check_hp_threshold(u: Dictionary) -> void:
 	if u.get("hp50_fired", false) or u["hp"] > u["maxHp"] * 0.5 or not u["alive"]:
 		return
@@ -1325,11 +1359,11 @@ func _eq_check_hp_threshold(u: Dictionary) -> void:
 	for e in u.get("equips", []):
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
 		match iid:
-			"p2eq_044":   # 深海项链: 首次<50%救命回血(龟上半身绿光脉动, 用户: 简单绿光即可, 不复用037魔法阵)
-				battle._damage._heal(u, u["maxHp"] * [0.12, 0.27, 0.40][si]); fired = true
+			"p2eq_044":   # 深海项链: 首次<50%触发, 【6秒内】回复 20/40/80% maxHp(用户2026-08-01, 原为瞬回12/27/40%)
+				_eq_start_hot(u, u["maxHp"] * [0.20, 0.40, 0.80][si], NECKLACE_HOT_SEC); fired = true
 				battle._heal_body_glow(u)
-			"p2eq_045":   # 珍珠耳环: 首次<50%救命回血(龟身绿光)+抛物线火球
-				battle._damage._heal(u, u["maxHp"] * [0.15, 0.29, 0.65][si])
+			"p2eq_045":   # 珍珠耳环: 首次<50%触发, 【8秒内】回复 30/60/100% maxHp(用户2026-08-01, 原为瞬回15/29/65%) + 抛物线火球
+				_eq_start_hot(u, u["maxHp"] * [0.30, 0.60, 1.00][si], EARRING_HOT_SEC)
 				battle._heal_ascend(u)   # 绿光环上浮(045专属, 不复用044)
 				var balls: int = [1, 1, 2][si]
 				var es = battle._targeting._pick_enemies_of(u)
@@ -1395,7 +1429,7 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 			"p2eq_034":   # 玩偶小熊: 移到每帧 _tick_doll(4s派小熊 + 满层蓄力召大熊); 周期tick不处理
 				pass
 			"p2eq_036":   # 温泉蛋: 孵化进度, 满100→全队均摊护盾(一次)
-				battle._egg_add_progress(u, 5.0)   # 每周期+5 (其余源: 敌死+10/己死+15/造成×0.1/承受×0.1)
+				battle._equip_tick_sys._egg_add_progress(u, 5.0)   # 每周期+5 (其余源: 敌死+10/己死+15/造成×0.1/承受×0.1)
 			"p2eq_042":   # 移到 _tick_eq_intervals(自定义间隔)
 				pass
 			"p2eq_043":   # 海浪护符: 每周期+1巨浪层, 满→横排扫敌我

@@ -34,6 +34,11 @@ func _ready() -> void:
 	if _td != null:
 		_td.attach_guide(self, "inventory")        # 分步引导(带高亮: 战场/背包)
 		_td.attach_next_button(self, "inventory")  # 右上"看看图鉴"推进钮
+	# ★UI 双端适配(用户2026-08-01「有些画面都没有居中」): 把内容装进 1280×720 设计框并居中于真实视口。
+	#   本屏原先直接按设计坐标画在视口(0,0) → 21:9 上内容整体坐在左边 200px(审计器实测)。
+	#   ★必须放在 _ready 最后 —— UIFrame 收编的是【已经建出来的】子节点。
+	#   (异步晚建的节点由 UIFrame._process 的孤儿收编兜住。)
+	UIFrame.attach(self)
 
 func _inject_demo_inventory() -> void:   # 仅 INV_DEMO 环境: 填装备看满仓布局(不调 save)
 	GameState.season_level = 8
@@ -57,7 +62,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
 func _rebuild() -> void:
-	_vw = maxf(W, get_viewport_rect().size.x)   # 真实视口宽(手机expand后~1560)→顶栏/背包按此铺开
+	# ★2026-08-01 改回设计宽(用户「有些画面都没有居中」「pc端做一板，手机端做一板」):
+	#   原来这里取【真实视口宽】(手机 expand 后 ~1560)让顶栏/背包铺满, 但页面里其余元素
+	#   仍按 1280 设计坐标摆 —— 于是宽屏上"一半跟着屏幕走、一半不动", 审计器实测
+	#   1280→1680 时内容包围盒整体漂 +200(比不适配还乱)。
+	#   现在统一走 UIFrame 设计框(内容锁 1280×720 居中·背景铺满整窗), 全屏一个口径。
+	_vw = W
 	for c in get_children():
 		if c.is_in_group("tut_overlay"):
 			continue   # ★教学浮层(引导/下一站按钮)不随重建销毁 —— 装/卸装备会触发 _rebuild
@@ -161,7 +171,8 @@ func _build_lineup(_leaders: Array) -> void:
 	hsb.set_border_width_all(1); hsb.set_corner_radius_all(14)
 	help.add_theme_stylebox_override("normal", hsb); help.add_theme_stylebox_override("hover", hsb); help.add_theme_stylebox_override("pressed", hsb)
 	help.add_theme_color_override("font_color", Color("#9fc0dd"))
-	help.position = Vector2(_vw - 304.0, 30.0); help.size = Vector2(28, 28)   # 顶栏右·深海币左侧
+	# ★手机板触控热区(2026-08-01): 28×28 = 手机上 15pt, 点不中 → 48×48(26pt)。
+	help.position = Vector2(_vw - 314.0, 20.0); help.size = Vector2(48, 48)   # 顶栏右·深海币左侧
 	help.pressed.connect(func(): _show_lineup_help())
 	add_child(help)
 	# 两条"战场带"(染色圆角底 + 战场名 + 编成计数) → 一眼看出上/下是两个各自开打的战场
@@ -285,7 +296,9 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		tgl.add_theme_stylebox_override("hover", tsb)
 		tgl.add_theme_stylebox_override("pressed", tsb)
 		tgl.add_theme_color_override("font_color", Color("#ffdba8") if front else Color("#b8e8ff"))
-		tgl.position = Vector2(UBOX_W - 56.0, 10.0); tgl.size = Vector2(50, 22)
+		# ★手机板触控热区(2026-08-01): 50×22 = 手机上 27×12pt, 是这屏最难点的一个 →
+		#   加到 56×44(30×24pt)。宽只加 6 是因为右边就是单位框边缘, 再宽会溢出框。
+		tgl.position = Vector2(UBOX_W - 62.0, 8.0); tgl.size = Vector2(56, 44)
 		tgl.pressed.connect(func(): _dl_toggle_role(lane, idx))
 		box.add_child(tgl)
 	box.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _dl_click(lane, idx))

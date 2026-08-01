@@ -101,13 +101,19 @@ func _pick_enemies_of(u: Dictionary) -> Array:
 		out.append(o)
 	return out
 
-## 均分型护盾/团队份额的受益名单: 排除训龟大师(场外监视者不占份额, 否则稀释盾池、白给监视者)。
-## ★只给【均分/按人头分摊】的效果用(铁壁盾、温泉蛋孵化盾); "给全队罩个盾"之类无所谓不用换。用户2026-07-23 点4。
-func _allies_no_trainer(u: Dictionary) -> Array:
+## 均分型护盾/团队份额的受益名单: 排除【训龟大师】与【龟蛋】——
+##   两者都是"占着人头却把盾摊薄"的非战斗单位: 大师是场外监视者、龟蛋不动不攻击且已自带围栏 200 双抗。
+## ★只给【均分/按人头分摊】的效果用(铁壁盾 016、温泉蛋孵化盾 036); "给全队罩个盾"之类无所谓不用换。
+## 用户 2026-07-23 点4 先排了大师; 2026-08-01 补排龟蛋(原话:「铁壁盾分摊不应该包括龟蛋和训龟大师，温泉蛋也是」)。
+## ★改名自 _allies_no_trainer: 名字得说实话 —— 现在排的不只大师, 叫 no_trainer 会误导下一个改它的人。
+func _allies_share_pool(u: Dictionary) -> Array:
 	var out: Array = []
 	for o in _allies_of(u):
-		if not o.get("is_trainer", false):
-			out.append(o)
+		if o.get("is_trainer", false):
+			continue
+		if o.get("_isEgg", false):
+			continue
+		out.append(o)
 	return out
 
 func _targetable_enemies(u: Dictionary) -> Array:

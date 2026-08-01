@@ -110,12 +110,91 @@ func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016:
 		if float(e["ironwall_t"]) < 5.0: continue
 		e["ironwall_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
-		var mates: Array = battle._targeting._allies_no_trainer(u)   # ★均分排除大师(不占盾份额·稀释)·用户2026-07-23 点4
+		var mates: Array = battle._targeting._allies_share_pool(u)   # ★均分排除大师+龟蛋(都不占盾份额·稀释)·用户2026-07-23 点4 / 2026-08-01
 		if mates.is_empty(): continue
 		var pool: float = [100.0, 250.0, 400.0][si] + u["maxHp"] * 0.08   # 总池: 固定 + 携带者8%最大生命
-		var each: float = pool / float(mates.size())                      # 全队(含自己·除大师)均分
+		var each: float = pool / float(mates.size())                      # 全队(含自己·除大师/龟蛋)均分
 		for o in mates:
 			battle._damage._grant_shield(o, each)
+
+
+const ANCHOR_IV := 0.25                # 不沉之锚回血节拍(秒) —— 用户 2026-08-01「恢复触发改为每0.25秒去回复生命值」
+const ANCHOR_ACC_PER_CHARGE := 250.0   # 累积治疗满这么多 → +1 沉锚充能(用户2026-07-19: 100→250)
+
+## 不沉之锚 p2eq_017: 治疗【生命百分比最低的友军(含自己)】1/2/15% 携带者maxHp; 累积治疗满250→+1充能。
+## ★★2026-08-01 把触发从【每次受伤】改成【每 0.25 秒】(用户点名)。
+##   原来挂在 on-hurt 上 → 回血量与"挨了几下"绑定: 被一群小兵点死的场面奶得飞快,
+##   被一发大招秒的场面一次都没回 —— 同一件装备在两种局里完全是两个东西。
+##   ★只按【实际回进去的血】攒充能(满血空奶不攒·用户2026-07-19) —— 改成定时后这条更要紧,
+##   否则全队满血时每 0.25 秒都白攒一次, 充能会自己涨满。
+func _tick_anchor(u: Dictionary, delta: float) -> void:
+	if u.get("equips", []).is_empty(): return
+	if not u.get("alive", false): return
+	for e in u["equips"]:
+		if str(e["id"]) != "p2eq_017": continue
+		e["anchor_t"] = float(e.get("anchor_t", 0.0)) + delta
+		if float(e["anchor_t"]) < ANCHOR_IV: continue
+		e["anchor_t"] = 0.0
+		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
+		var stt: Dictionary = u["eq_state"].get("p2eq_017", {})
+		var heal_amt: float = u["maxHp"] * [0.01, 0.02, 0.15][si]
+		var low = null
+		var lv := INF
+		for o in battle._targeting._allies_of(u):
+			if not o.get("alive", false): continue
+			var p: float = CombatMath.hp_frac(o["hp"], o["maxHp"])
+			if p < lv: lv = p; low = o
+		if low == null: continue
+		var done: float = battle._damage._heal(low, heal_amt)
+		var acc: float = float(stt.get("anchor_accum", 0.0)) + done
+		while acc >= ANCHOR_ACC_PER_CHARGE:
+			acc -= ANCHOR_ACC_PER_CHARGE
+			stt["anchor_charges"] = int(stt.get("anchor_charges", 0)) + 1
+		stt["anchor_accum"] = acc
+		u["eq_state"]["p2eq_017"] = stt
+
+
+const HOTSPRING_IV := 1.0    # 温泉蛋回血节拍(秒) —— 用户 2026-08-01「携带者每秒回复 5/7/10 生命值」
+
+## 温泉蛋 p2eq_036: 携带者每秒回血 5/7/10(用户 2026-08-01 新效果)。
+## ★只回【携带者自己】—— 用户同批的 11b「温泉蛋也是(排龟蛋和大师)」指的是它【孵满时的全队均摊护盾】,
+##   不是这条回血(见 docs/plans/20260801-装备批次13条.md §4·C, 已按代码事实落实)。
+## ★每秒回血【不】攒孵化进度: 孵化只吃"造成/承受伤害/敌我死亡", 让站桩回血也攒进度等于自己给自己充能。
+func _tick_hotspring(u: Dictionary, delta: float) -> void:
+	if u.get("equips", []).is_empty(): return
+	if not u.get("alive", false): return
+	for e in u["equips"]:
+		if str(e["id"]) != "p2eq_036": continue
+		e["hotspring_t"] = float(e.get("hotspring_t", 0.0)) + delta
+		if float(e["hotspring_t"]) < HOTSPRING_IV: continue
+		e["hotspring_t"] = 0.0
+		var stt: Dictionary = u["eq_state"].get("p2eq_036", {})
+		var ps: float = float(stt.get("heal_ps", 0.0))
+		if ps <= 0.0:
+			# 缺省兜底: 老存档/合成单位没走 apply → 按星级现算, 免得这条效果静默不生效
+			ps = [5.0, 7.0, 10.0][battle._equip_sys._eq_si(int(e.get("star", 1)))]
+		battle._damage._heal(u, ps)
+
+
+## 靶向器 p2eq_055: 携带者【首次】累计造成 TRIGGER_DMG(400) 伤害 → 向最近 1/1/2 名敌人挂钩索炸弹。
+## ★用现成的 `_st_dealt`(伤害统计面板的累计造成量, battle_damage.gd 两条路径都在记) 当计数器,
+##   不另起一个自己的累加器 —— 多一个累加器就多一处会和面板对不上的地方, 且新累加器必须两条
+##   伤害路径都挂钩(CLAUDE.md §3.3), 漏一条就变成"某些伤害不算数"。
+func _tick_targeter(u: Dictionary, _delta: float) -> void:
+	if u.get("equips", []).is_empty(): return
+	if not u.get("alive", false): return
+	for e in u["equips"]:
+		if str(e["id"]) != "p2eq_055": continue
+		var stt: Dictionary = u["eq_state"].get("p2eq_055", {})
+		if bool(stt.get("hb_fired", false)): continue          # "首次" —— 一局一次
+		if int(u.get("_st_dealt", 0)) < battle._hookbomb_sys.TRIGGER_DMG: continue
+		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
+		var tg: Array = battle._hookbomb_sys._hb_targets(u, battle._hookbomb_sys.BOMB_COUNT[si])
+		if tg.is_empty(): continue                              # 没有合法目标 → 不标 fired, 下帧再试
+		stt["hb_fired"] = true
+		u["eq_state"]["p2eq_055"] = stt
+		for o in tg:
+			battle._hookbomb_sys._hb_attach(u, o, si)
 
 func _tick_thunder(u: Dictionary, delta: float) -> void:   # 雷鸣贝壳p2eq_025: 每4秒降N道大雷(道间错峰0.3s), 各劈随机敌1×ATK真伤(伤害在闪电中段跳); 每件独立(用户2026-07-02: 原2.5s)
 	if u.get("equips", []).is_empty(): return
@@ -324,3 +403,58 @@ func _tick_laser(u: Dictionary, delta: float) -> void:   # 激光长刃p2eq_010:
 		if t == null: continue
 		e["laser_t"] = 0.0
 		battle._equip_sys._eq_laser_sweep(u, t, battle._equip_sys._eq_si(int(e.get("star", 1))))
+
+# ============================================================================
+#  温泉蛋 036 的孵化进度与临时等级 —— 2026-08-01 从 RealtimeBattle3DScene 搬来。
+#  搬家理由: arch_budget 焊死了上帝文件的行数(欠债只减不增), 而这两个函数本就是【装备逻辑】,
+#  住在主场景里只是历史遗留。调用方改成 battle._equip_tick_sys._egg_*。
+# ============================================================================
+## 跨路重放温泉蛋已获得的临时等级(用户2026-08-01「重置问题同竹枝弓箭」)。
+## 新单位的属性是干净的基线, 所以直接拿它当 ref 连加 n 级 —— 与 _egg_add_progress 里逐级加同一套公式。
+## ★不复用 _egg_add_progress: 那条要吃"孵化进度"且会重复触发满级护盾(incub_given 虽拦着, 但依赖它就脆)。
+func _egg_replay_levels(u: Dictionary, n: int) -> void:
+	if n <= 0 or not u.get("alive", false):
+		return
+	var stt: Dictionary = u["eq_state"].get("p2eq_036", {})
+	if not stt.has("ref_atk"):
+		stt["ref_atk"] = u["base_atk"]; stt["ref_def"] = u["base_def"]; stt["ref_mr"] = u["base_mr"]
+		stt["ref_hp"] = u["maxHp"]; stt["ref_iv"] = float(u.get("atk_interval", 1.0))
+	u["base_atk"] += float(stt["ref_atk"]) * 0.05 * float(n)
+	u["base_def"] += float(stt["ref_def"]) * 0.05 * float(n)
+	u["base_mr"] += float(stt["ref_mr"]) * 0.05 * float(n)
+	var hpg: float = float(stt["ref_hp"]) * 0.05 * float(n)
+	u["maxHp"] += hpg; u["hp"] += hpg
+	u["atk_interval"] = maxf(0.1, float(stt["ref_iv"]) / (1.0 + 0.02 * float(n)))
+	stt["egg_levels"] = n
+	u["eq_state"]["p2eq_036"] = stt
+	battle._recalc_stats(u)
+
+
+func _egg_add_progress(u: Dictionary, amt: float) -> void:   # 温泉蛋(036): 累积孵化进度→每100+1临时等级(线性+5%基础+攻速2%/级,同统领,上限3/4/5随星级)→孵满全队均摊护盾一次
+	if amt <= 0.0 or not u.get("has_egg", false) or not u.get("alive", false): return
+	var stt: Dictionary = u["eq_state"].get("p2eq_036", {})
+	# 等级上限随星级 3/4/5(用户2026-08-01); 缺省 3 = 老存档/未走 apply 的合成单位仍按原行为
+	var cap: int = int(stt.get("egg_cap", 3))
+	stt["incub"] = float(stt.get("incub", 0.0)) + amt
+	while float(stt["incub"]) >= 100.0 and int(stt.get("egg_levels", 0)) < cap:
+		stt["incub"] = float(stt["incub"]) - 100.0
+		if not stt.has("ref_atk"):   # 首次升级锁基准 → 线性+5%/级(同统领 1+0.05×级, 非复利)
+			stt["ref_atk"] = u["base_atk"]; stt["ref_def"] = u["base_def"]; stt["ref_mr"] = u["base_mr"]
+			stt["ref_hp"] = u["maxHp"]; stt["ref_iv"] = float(u.get("atk_interval", 1.0))
+		stt["egg_levels"] = int(stt.get("egg_levels", 0)) + 1
+		var el: int = int(stt["egg_levels"])
+		u["base_atk"] += float(stt["ref_atk"]) * 0.05          # 线性+5%基础属性/级
+		u["base_def"] += float(stt["ref_def"]) * 0.05
+		u["base_mr"] += float(stt["ref_mr"]) * 0.05
+		var hpg: float = float(stt["ref_hp"]) * 0.05; u["maxHp"] += hpg; u["hp"] += hpg
+		u["atk_interval"] = maxf(0.1, float(stt["ref_iv"]) / (1.0 + 0.02 * float(el)))   # 攻速+2%/级(同统领)
+		battle._recalc_stats(u)
+		battle._egg_level_up_vfx(u, int(u.get("level", 1)) + el)      # 升级特效(金光柱+LV UP)
+		if int(stt["egg_levels"]) >= cap and not bool(stt.get("incub_given", false)):
+			stt["incub_given"] = true
+			var allies: Array = battle._targeting._allies_share_pool(u)   # ★均分排除大师+龟蛋·用户2026-07-23 点4 / 2026-08-01
+			var per: float = float(stt.get("incub_shield", 300.0)) / maxf(1.0, float(allies.size()))
+			for o in allies: battle._damage._grant_shield(o, per)
+			battle._particle_burst(u["pos"])
+	if int(stt.get("egg_levels", 0)) >= cap: stt["incub"] = minf(float(stt["incub"]), 100.0)
+	u["eq_state"]["p2eq_036"] = stt
