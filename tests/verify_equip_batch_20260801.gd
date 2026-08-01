@@ -309,16 +309,53 @@ func _t5_hookbomb() -> void:
 		"stun_until-_t=%.2f" % (float(v1.get("stun_until", 0.0)) - _s._t))
 	# ★★"拉拽有速度, 不是瞬移"(用户原话:「瞬移并不是拉拽，拉拽是有速度的吗」)——
 	#   判据: 引爆【当帧】位置不能变。瞬移实现会立刻改 pos, 一测就露。
-	_ok("⑤ ★★不是瞬移: 引爆当帧位置没变(位移走 PULL_DUR 秒的插值)",
+	_ok("⑤ ★★不是瞬移: 引爆当帧位置没变(位移走各自的拉拽时长插值)",
 		(v1["pos"] as Vector2).distance_to(pos_before) < 0.01,
 		"当帧位移 %.2f 码" % (v1["pos"] as Vector2).distance_to(pos_before))
-	_ok("⑤ ★拉拽时长 > 0(有速度这件事写在常量里)",
-		float(_s._hookbomb_sys.PULL_DUR) > 0.05, "PULL_DUR=%.2f 秒" % float(_s._hookbomb_sys.PULL_DUR))
 	# 聚拢落点: 纯几何, 围绕【震中】而不是携带者
-	var d0: Vector2 = _s._hookbomb_sys._hb_pull_dest_at(epi, 0, 4)
-	_ok("⑤ ★聚拢落点围绕【震中】一圈(半径 = PULL_GATHER_R)",
-		absf(d0.distance_to(epi) - float(_s._hookbomb_sys.PULL_GATHER_R)) < 0.5,
-		"距震中 %.1f 码 (期望 %.0f)" % [d0.distance_to(epi), float(_s._hookbomb_sys.PULL_GATHER_R)])
+	# ★落点必须【沿目标自己相对震中的方位】—— 不能按序号把人摆到圈上的固定槽位,
+	#   那会让站在左边的敌人被"拽"到右边去(用户 2026-08-01 指出)。
+	var west: Vector2 = epi + Vector2(-300.0, 0.0)      # 一个在震中【西侧】的目标
+	var dw: Vector2 = _s._hookbomb_sys._hb_pull_dest_at(epi, west)
+	_ok("⑤ ★聚拢距离 = PULL_GATHER_R", absf(dw.distance_to(epi) - float(_s._hookbomb_sys.PULL_GATHER_R)) < 0.5,
+		"距震中 %.1f 码" % dw.distance_to(epi))
+	_ok("⑤ ★★西侧的目标拖完仍在【西侧】(不是被摆到对面)", dw.x < epi.x - 1.0,
+		"落点 x=%.0f 震中 x=%.0f" % [dw.x, epi.x])
+	var north: Vector2 = epi + Vector2(0.0, -300.0)
+	var dn: Vector2 = _s._hookbomb_sys._hb_pull_dest_at(epi, north)
+	_ok("⑤ ★北侧的目标拖完仍在【北侧】", dn.y < epi.y - 1.0,
+		"落点 y=%.0f 震中 y=%.0f" % [dn.y, epi.y])
+
+	# ★★触须只拽近、不顶开: 已经比聚拢半径【更近】的目标, 落点必须原地不动。
+	#   反例(我第一版): 无条件摆到半径 85 的圈上 → 站在 40 码的会被往外推 45 码。
+	var near_p: Vector2 = epi + Vector2(40.0, 0.0)
+	var dnear: Vector2 = _s._hookbomb_sys._hb_pull_dest_at(epi, near_p)
+	_ok("⑤ ★★比聚拢半径更近的目标【原地不动】(不被触须往外顶)",
+		dnear.distance_to(near_p) < 0.01 and dnear.distance_to(epi) <= 40.5,
+		"原距 40 码 → 落点距震中 %.1f 码, 位移 %.2f 码" % [dnear.distance_to(epi), dnear.distance_to(near_p)])
+
+	# ★★恒定收缩速度: 拉得远 ⇒ 拉得久。定长实现(所有人 0.42 秒)在这里会红。
+	# ★取样点必须落在【未钳位区间】: PULL_DUR 夹在 [MIN,MAX] 之间, 贴脸的被抬到 MIN、
+	#   极远的被压到 MAX —— 在钳位区里比速度, 比的是钳位不是恒速(200 码只需走 55 码,
+	#   0.039 秒被抬到 0.08 ⇒ 688 码/秒, 门禁因此红过一次)。1000/400 码两点都在区间内。
+	var far_p: Vector2 = epi + Vector2(1000.0, 0.0)
+	var t_far: float = _s._hookbomb_sys._hb_pull_dur(far_p, _s._hookbomb_sys._hb_pull_dest_at(epi, far_p))
+	var mid_p: Vector2 = epi + Vector2(400.0, 0.0)
+	var t_mid: float = _s._hookbomb_sys._hb_pull_dur(mid_p, _s._hookbomb_sys._hb_pull_dest_at(epi, mid_p))
+	_ok("⑤ ★★触须收缩【恒速】: 远的拉得久, 不是所有人同一个时长",
+		t_far > t_mid + 0.05 and t_mid > 0.05,
+		"1000 码 → %.2f 秒 / 400 码 → %.2f 秒" % [t_far, t_mid])
+	# 钳位下限单独守: 贴脸的目标也不能一帧到位
+	var hug: Vector2 = epi + Vector2(float(_s._hookbomb_sys.PULL_GATHER_R) + 8.0, 0.0)
+	var t_hug: float = _s._hookbomb_sys._hb_pull_dur(hug, _s._hookbomb_sys._hb_pull_dest_at(epi, hug))
+	_ok("⑤ ★贴脸拉拽也不瞬移(钳在 PULL_DUR_MIN)",
+		t_hug >= float(_s._hookbomb_sys.PULL_DUR_MIN) - 0.001,
+		"仅需走 8 码 → %.3f 秒 (下限 %.2f)" % [t_hug, float(_s._hookbomb_sys.PULL_DUR_MIN)])
+	var v_far: float = far_p.distance_to(_s._hookbomb_sys._hb_pull_dest_at(epi, far_p)) / maxf(0.001, t_far)
+	var v_mid: float = mid_p.distance_to(_s._hookbomb_sys._hb_pull_dest_at(epi, mid_p)) / maxf(0.001, t_mid)
+	_ok("⑤ ★两条触须的实际收缩速度一致(±15%)",
+		absf(v_far - v_mid) / maxf(1.0, v_mid) < 0.15,
+		"远 %.0f 码/秒 vs 中 %.0f 码/秒" % [v_far, v_mid])
 	# 爆炸: 直接调纯结算函数(不等演出 —— CLAUDE.md §3.5)
 	var blast_list: Array = [v1]
 	var nb: int = _s._hookbomb_sys._hb_blast(car2, blast_list, 0, epi)

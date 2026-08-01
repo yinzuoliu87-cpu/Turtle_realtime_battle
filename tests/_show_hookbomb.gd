@@ -75,11 +75,13 @@ func _one_round() -> void:
 		if float(e.get("hookbomb_pct", 0.0)) > 0.0: host = e; break
 	host["hp"] = 1.0
 	_s._kill(host)
-	await _wait(0.35)
-	await _shot("2_甩钩")
-	await _wait(0.9)
-	await _shot("3_拉拢")
-	await _wait(1.3)
+	# ★HB_SHOT 下: 引爆窗口内【密集连拍】(抽搐→甩须→缠住→收缩→炸开), 逐帧自查触手
+	if OS.has_environment("HB_SHOT"):
+		for k in range(30):
+			await _wait(0.075)
+			await _shot("f%02d" % k)
+	else:
+		await _wait(2.55)
 	_say("④ 聚拢引爆: (500 + 10% 目标最大生命) 物理伤害 —— 一轮结束, 重播")
 	await _wait(2.2)
 
