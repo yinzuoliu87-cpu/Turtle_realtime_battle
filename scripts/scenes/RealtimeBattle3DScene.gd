@@ -4976,12 +4976,41 @@ const _SELF_CAST_SKILLS := {
 	"fortuneBuyEquip": true, "phoenixPurify": true, "lightningSurge": true, "lightningShield": true, "rainbowReflect": true,
 	"rainbowStorm": true,
 	"gamblerBet": true, "stoneTaunt": true, "stoneRockShield": true,
+	# ══ 2026-08-01 补: 这四个【效果完全不碰敌人】, 却因为没登记而被要求贴到 70 码才放 ══
+	#   一个纯自身增益要求"离敌人 70 码以内"显然是错的 —— 它们和护盾/治疗是同一类。
+	"diceFate": true,          # 命运骰子: 纯自身改暴击/暴伤(_sk_dice_fate 全程只写 u 自己)
+	"pirateRum": true,         # 朗姆酒: 纯自身 HoT 回血 + 加护甲魔抗
+	"diamondPowerball": true,  # 钻石滚球: 进入自身滚球位移态(roll_active)
+	"shellCopy": true,         # 复制: 遍历全场敌复制技能名, 与距离无关
 }
 
 # 远程敌向技的专属放技射程(码): 有这条的技能"够得着就放"·不被近战射程卡着(用户2026-07-11: 手里剑是远程技·改2000)
 const _SKILL_CAST_RANGE := {"ninjaShuriken": 2000.0, "ninjaBomb": 2000.0, "ninjaBackstab": 2000.0, "lineInkBomb": 2000.0, "eliteHammer": 500.0, "minionBodysurf": 2000.0, "minionRocket": 2000.0, "chestStorm": 2000.0,
 	"fortuneAllIn": 2000.0,   # 财神·梭哈(用户 2026-07-31): 原来回落到攻击射程 70 → 得贴脸才撒币
-	"basicSlam": 150.0}       # 小龟·过肩摔(用户 2026-07-31): 擒抱技, 给一点起手余量而不是必须贴到 70   # chestStorm=宝箱龟财宝风暴(用户2026-07-19: 射程改2000)   # 墨水炸弹/精英铁锤/小将浪板+火箭 各自射程(用户2026-07-18: 小将两技射程2000)
+	"basicSlam": 150.0,       # 小龟·过肩摔(用户 2026-07-31): 擒抱技, 给一点起手余量而不是必须贴到 70
+	# ══ 2026-08-01 一次性补齐(用户:「很多角色的技能为啥一定要贴脸才去放？有很大问题」) ══
+	#   排查发现: 87 个实装技能里【只有 8 个】登记过专属放技射程, 其余全部回落到该龟的攻击射程,
+	#   近战龟就是 70 码 —— 于是"火炮齐射""财宝炮击""龟派气波"这种明摆着的远程技也得贴脸才放。
+	#   ★下面每个数字都【取自该技能自己的实现】(逐个查过), 不是拍的; 依据写在各行后面。
+	#   唯一例外是 crystalBall, 代码里没有任何距离限制 —— 那个是拍的, 已注明。
+	"bambooSmack": 2000.0,          # 竹击: 实现是遍历全场敌【钩最远那个】→ 全场技
+	"bambooSpikes": 300.0,          # 竹刺阵: distance_to(c) <= 300.0
+	"basicBarrage": 420.0,          # 打击: 每波沿方向飞 end_pos = pos + dir*420(打到人就停)
+	"basicChiWave": 2000.0,         # 龟派气波: 实现注释「穿透全场」, 落点判定 95 码
+	"candyBarrage": 600.0,          # 糖衣炮弹: _skill_ring(center, …, 600.0) 笼罩区
+	"candyHammer": 200.0,           # 糖果锤: 直线宽 70、长 200
+	"chestCannon": 2000.0,          # 财宝炮击: _on_line 无长度上限 = 全场直线激光
+	"crystalBall": 600.0,           # ★水晶球: 代码里【没有】距离限制, 600 是拍的(法师射线)
+	"crystalBurst": 350.0,          # 碎晶爆破: CRYSTAL_BURST_RADIUS = 350
+	"diamondSmash": 400.0,          # 钻石冲撞: _dash_to 冲过去撞 → 给冲刺距离
+	"diceAllIn": 300.0,             # 孤注一掷: 前方 120°/300 码扇形
+	"diceFlashStrike": 2000.0,      # 稳定骰子: _dice_pick_strike_target 里写着「射程2000」
+	"headlessFear": 200.0,          # 恐吓: distance_to(cx) > 200.0 跳过
+	"headlessTendrils": 1500.0,     # 万千触须: 实现里写着「射程1500码」
+	"pirateCannonBarrage": 2000.0,  # 火炮齐射: 从【船上】齐射, 落点 250 码环
+	"pirateShipPassive": 400.0,     # 海盗船: 后续霰弹实现注释「射程400」
+	"rockShockwave": 820.0,         # 磐石之躯: 岩脊 reach = 820.0
+	"shellShadow": 620.0}           # 暗影: distance_to(start) > 620.0 跳过   # chestStorm=宝箱龟财宝风暴(用户2026-07-19: 射程改2000)   # 墨水炸弹/精英铁锤/小将浪板+火箭 各自射程(用户2026-07-18: 小将两技射程2000)
 func _skill_cast_range(u: Dictionary, stype: String) -> float:
 	if _SELF_CAST_SKILLS.has(stype): return 99999.0                       # 自/友向: 任意距离即放
 	return float(_SKILL_CAST_RANGE.get(stype, u.get("atk_range", 70.0)))  # 远程敌向技用专属射程; 否则=攻击射程(近战贴身放)

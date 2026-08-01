@@ -171,7 +171,13 @@ var _pk_lab_l: Label = null
 var _pk_lab_r: Label = null
 var _pk_base_l: float = 0.0                # 当前分母(=该侧计数单位 maxHp 之和·含已死)。留给门禁/调试看
 var _pk_base_r: float = 0.0
-var _pk_w_cur: float = PK_W                # 本次建条时的实际宽度(窄屏会小于 PK_W)
+var _pk_w_cur: float = PK_W                # 本次建条时的实际【总宽】(窄屏会小于 PK_W)
+## 本次建条时的实际【单段宽】。★★2026-08-01: 原来条内 11 处全在用常量 PK_SEG/PK_W 摆位,
+## 而外框已经会随窄屏收缩(见 _build_pk_bar 的 _w) —— 于是【框缩了、内容没缩】:
+##   iPad 10 (4:3·视口 960) 外框 680 / 内容 948 → 溢出 268px;  折叠屏 1:1 (720) 溢出 508px。
+##   16:9 及更宽的手机恰好都 ≥1280 ⇒ 外框正好等于 PK_W, 所以这个 bug 一直没暴露。
+## 现在条内一律用这两个运行时值, 常量只当"上限"。
+var _pk_seg_cur: float = PK_SEG
 var _pk_lane: String = ""                  # 上一次采样时的路 id —— 换路才把两条拉回 100%(原来按"计数单位数变了"判, 会被中途增减单位误触发)
 ## (已删 _pk_count —— 原来靠"计数单位数变了"判换路, 会被【任何中途增减计数单位】误触发,
 ##  表现就是两条莫名满格。改用 _pk_lane 按路 id 判, 见 _pk_refresh。)
@@ -268,7 +274,7 @@ var _pk_hit_r: float = 0.0
 const PK_SEG := 440.0        # 单段宽(左/右各一段)
 const PK_VS := 68.0          # 中间 VS 槽宽。★80 → 68: 徽章本身会【破框】(比槽宽/条高都大),
                              #   槽只需要给它一个"断口", 留太宽反而像两条中间空了一段。
-const PK_W := PK_SEG * 2.0 + PK_VS      # 总宽 600
+const PK_W := PK_SEG * 2.0 + PK_VS      # 总宽上限 948(★注释原写"600"是陈的; 窄屏实际宽见 _pk_w_cur)
 const PK_H := 32.0           # 主条高
 const PK_EGG_H := 15.0       # 副条(龟蛋)高。★要塞得下两端的蛋图标(9×12 太小看不出是蛋)
 const PK_EGG_GAP := 4.0      # 主条与副条间距
@@ -416,6 +422,7 @@ func _build_pk_bar() -> void:
 	var _w: float = minf(PK_W, maxf(PK_MIN_W, _vpw - _reserve))
 	bar.offset_left = -_w * 0.5; bar.offset_right = _w * 0.5
 	_pk_w_cur = _w
+	_pk_seg_cur = (_w - PK_VS) * 0.5   # VS 槽宽固定, 剩下的两侧平分
 	# ★走安全区: iPhone 横屏的刘海/灵动岛就在顶部, 写死 y=16 会被挡。
 	#   项目里训龟大师摇杆和调试笔刷条都用了 SafeArea, 这里同办。
 	var _top: float = PK_Y + SafeArea.margins(Vector2(battle.get_viewport().get_visible_rect().size), 0.0).y
@@ -469,11 +476,11 @@ func _build_pk_bar() -> void:
 ## 建一段(带边框 + 暗底 + 残影 + 填充)。→ [填充, 残影]
 ## left=true 时填充贴【外侧左端】往右长(空槽露在靠中间那侧); false 时贴外侧右端往左长。
 func _pk_seg(bar: Control, left: bool, y: float, h: float, col: Color, gloss_on: bool = true) -> Array:
-	var x0: float = 0.0 if left else (PK_SEG + PK_VS)
+	var x0: float = 0.0 if left else (_pk_seg_cur + PK_VS)
 	var frame := Panel.new()
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	frame.position = Vector2(x0, y)
-	frame.size = Vector2(PK_SEG, h)
+	frame.size = Vector2(_pk_seg_cur, h)
 	var sb := StyleBoxFlat.new()
 	# ★真不透明(1.0 不是 0.95): 0.95 仍透 5%, 放大截图里暗槽还能看到背景游过去的鱼。
 	#   空掉的部分要是【槽】不是【窗】。
@@ -485,13 +492,13 @@ func _pk_seg(bar: Control, left: bool, y: float, h: float, col: Color, gloss_on:
 	#   去掉后斜边成为端部唯一造型, 脏点自然消失, 也更硬朗、更贴格斗游戏那套。
 	sb.set_corner_radius_all(0)
 	frame.add_theme_stylebox_override("panel", sb)
-	frame.material = _pk_slant_mat(Vector2(PK_SEG, h))
+	frame.material = _pk_slant_mat(Vector2(_pk_seg_cur, h))
 	bar.add_child(frame)
 	# 残影(damage trail): 压在填充【下面】, 掉血时旧位置留一段亮色再慢慢收
 	var trail := ColorRect.new()
 	trail.color = PK_TRAIL_COL
 	trail.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	trail.material = _pk_slant_mat(Vector2(PK_SEG, h))
+	trail.material = _pk_slant_mat(Vector2(_pk_seg_cur, h))
 	bar.add_child(trail)
 	# ★★体积感做进【填充本身】的竖向渐变, 不再叠一块白方块。
 	#
@@ -515,7 +522,7 @@ func _pk_seg(bar: Control, left: bool, y: float, h: float, col: Color, gloss_on:
 		cr.color = col
 		fill = cr
 	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	fill.material = _pk_slant_mat(Vector2(PK_SEG, h))
+	fill.material = _pk_slant_mat(Vector2(_pk_seg_cur, h))
 	bar.add_child(fill)
 	# 回血带(heal gain): 画在填充【上面】的一条独立窄带, 只覆盖 [低水位, 当前值] 这一段。
 	# ★第一版是"填充只画到低水位, 让底下的绿露出来" —— 结果【填充节点的宽度不再等于显示血量】,
@@ -525,7 +532,7 @@ func _pk_seg(bar: Control, left: bool, y: float, h: float, col: Color, gloss_on:
 	var gain := ColorRect.new()
 	gain.color = col.lightened(PK_GAIN_LIGHTEN)   # 见 PK_GAIN_LIGHTEN: 按本侧队色提亮
 	gain.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	gain.material = _pk_slant_mat(Vector2(PK_SEG, h))
+	gain.material = _pk_slant_mat(Vector2(_pk_seg_cur, h))
 	bar.add_child(gain)
 	return [fill, trail, gain]
 
@@ -560,7 +567,7 @@ func _pk_egg_icon(bar: Control, ey: float) -> void:
 		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		var x: float = 4.0 + PK_SLANT if left else (PK_W - 15.0 - PK_SLANT)   # ★避开斜边
+		var x: float = 4.0 + PK_SLANT if left else (_pk_w_cur - 15.0 - PK_SLANT)   # ★避开斜边(用运行时宽)
 		ic.position = Vector2(x, ey + 1.0)
 		ic.size = Vector2(11.0, 14.0)
 		bar.add_child(ic)
@@ -630,7 +637,7 @@ func _pk_mk_label(align: int, fs: int = 15) -> Label:
 func _pk_build_vs(bar: Control) -> void:
 	var holder := Control.new()
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.position = Vector2(PK_SEG, 0.0)
+	holder.position = Vector2(_pk_seg_cur, 0.0)
 	holder.size = Vector2(PK_VS, PK_H)
 	holder.pivot_offset = Vector2(PK_VS * 0.5, PK_H * 0.5)
 	bar.add_child(holder)
@@ -777,7 +784,7 @@ func _pk_refresh() -> void:
 	_pk_lab_r2.text = _pk_num(r.x)
 	# 右侧标签宽度随内容变 → 每次刷新后重新贴右端(内缩一个斜切量)
 	if _pk_tag_r != null and is_instance_valid(_pk_tag_r):
-		_pk_tag_r.position.x = PK_W - _pk_tag_r.size.x - 6.0 - PK_SLANT
+		_pk_tag_r.position.x = _pk_w_cur - _pk_tag_r.size.x - 6.0 - PK_SLANT
 	# ── 副条: 龟蛋 ──
 	var el := _pk_egg_sum("left")
 	var er := _pk_egg_sum("right")
@@ -831,7 +838,7 @@ func _pk_num(v: float) -> String:
 func _pk_apply() -> void:
 	if _pk_fill_l == null or not is_instance_valid(_pk_fill_l):
 		return
-	var inner: float = PK_SEG - 4.0        # 减掉 2px 边框×2
+	var inner: float = _pk_seg_cur - 4.0   # 减掉 2px 边框×2 (★运行时段宽, 窄屏才不会溢出)
 	var h: float = PK_H - 4.0
 	# ★三层宽度: 残影 ≥ 当前值 ≥ 低水位。
 	#   掉血时 低水位=当前值 → 回血带宽度为 0(完全看不见), 露出的是残影;
@@ -859,7 +866,7 @@ func _pk_put_band(cr: Control, left: bool, a: float, b: float, inner: float, h: 
 	if left:
 		cr.position = Vector2(2.0 + a * inner, y)
 	else:
-		cr.position = Vector2(PK_SEG + PK_VS + 2.0 + (inner - b * inner), y)
+		cr.position = Vector2(_pk_seg_cur + PK_VS + 2.0 + (inner - b * inner), y)
 	cr.size = Vector2(w, h)
 	_pk_slant_size(cr, cr.size)
 
@@ -873,7 +880,7 @@ func _pk_put(cr: Control, left: bool, frac: float, inner: float, h: float, y: fl
 	if left:
 		cr.position = Vector2(2.0, y)
 	else:
-		cr.position = Vector2(PK_SEG + PK_VS + 2.0 + (inner - w), y)
+		cr.position = Vector2(_pk_seg_cur + PK_VS + 2.0 + (inner - w), y)
 	cr.size = Vector2(w, h)
 	_pk_slant_size(cr, cr.size)     # ★宽度变了要重喂, 否则斜边角度跟着宽度变形
 

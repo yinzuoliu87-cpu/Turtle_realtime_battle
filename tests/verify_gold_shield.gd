@@ -68,9 +68,11 @@ func _ready() -> void:
 	var ok2: bool = s._cast_skill(u, e, "fortuneAllIn")
 	_ok("③ ★★经 _cast_skill 真的上了护盾(不是只返回 true 就完事)",
 		float(u.get("shield", 0.0)) > 0.0,
-		"护盾 = %.0f (期望 = 金币数 40)" % float(u.get("shield", 0.0)))
-	_ok("③ ★护盾量 = 金币数", absf(float(u.get("shield", 0.0)) - 40.0) < 0.5,
-		"%.0f vs 40" % float(u.get("shield", 0.0)))
+		"护盾 = %.0f (期望 = 金币数40 × 5 = 200)" % float(u.get("shield", 0.0)))
+	# ★需求字面值写在这里(不引用 GOLD_SHIELD_MULT) —— 引用常量就是拿代码跟它自己比。
+	#   用户 2026-08-01:「盾量改为金币数乘5」⇒ 40 金 × 5 = 200。
+	_ok("③ ★护盾量 = 金币数 × 5(需求字面值)", absf(float(u.get("shield", 0.0)) - 200.0) < 0.5,
+		"%.0f vs 200" % float(u.get("shield", 0.0)))
 	_ok("③ ★持盾期已开(gold_shield_until > 当前时钟) —— 持盾锁龟能靠它判",
 		float(u.get("gold_shield_until", 0.0)) > t0,
 		"until=%.2f  _t=%.2f" % [float(u.get("gold_shield_until", 0.0)), t0])
@@ -92,7 +94,7 @@ func _ready() -> void:
 	u["gold"] = 25.0
 	s._fortune_sys._sk_fortune_goldshield(u)
 	_ok("⑤ ★分母: 直接调效果函数也能上盾(③ 若红说明是【接线】断了, 不是效果坏了)",
-		absf(float(u.get("shield", 0.0)) - 25.0) < 0.5,
+		absf(float(u.get("shield", 0.0)) - 125.0) < 0.5,
 		"护盾 = %.0f" % float(u.get("shield", 0.0)))
 
 	s.queue_free()

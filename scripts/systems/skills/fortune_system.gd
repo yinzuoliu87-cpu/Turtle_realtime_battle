@@ -75,8 +75,14 @@ func _sk_fortune_dice(u: Dictionary) -> void:                    # 财神龟·�
 	# (删: "放梭哈后给护盾"=4选1下死逻辑, 不可能同时有骰子+梭哈, 用户指出)
 
 # 财神·梭哈: 一场限一次, 消耗全部金币, 每枚 0.30×ATK物理 + 0.30×ATK真实 (cd999·数值在 RealtimeBattle3DScene 的 coin_true/coin_phys)
+const GOLD_SHIELD_MULT := 5.0   # 金盾盾量 = 金币数 × 这个倍率(用户 2026-08-01: 1 → 5)
+
 func _sk_fortune_goldshield(u: Dictionary) -> void:   # 财神·金盾(梭哈用过后该技变身·用户2026-07-12): 80龟能·护盾=当前金币数(不消耗金币)·持盾期锁龟能(盾破/4s到期解锁)
-	var amt: float = float(int(u.get("gold", 0)))
+	# ★盾量 = 金币数 ×5(用户 2026-08-01 拍板加强; 原来是 ×1)。
+	#   背景: 修好"金盾压根没生效"之后, 梭哈这一路仍是全表倒数第 4(16.9%),
+	#   而且"放技/场 1.99"是全表最低 —— 一场只放两次(梭哈限一次 + 金盾)。
+	#   ★这一轮的胜率数据【不含】本次加强(金盾在那轮还是刚修好的 ×1)。
+	var amt: float = float(int(u.get("gold", 0))) * GOLD_SHIELD_MULT
 	if amt <= 0.0:
 		return
 	battle._damage._grant_shield(u, amt, 4.0)                 # 通用护盾4s

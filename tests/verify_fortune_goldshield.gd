@@ -1,5 +1,12 @@
 extends Node
 ## verify_fortune_goldshield.gd — 财神「梭哈后技能变金盾」(用户2026-07-12)
+##
+## ★★与 verify_gold_shield.gd 的分工(2026-08-01 澄清, 两条都要留):
+##   · 本文件走 _do_skill  → 验【效果】: 龟能消耗80 / 护盾量 / 不消耗金币 / 持盾锁龟能 / 盾破解锁 / 0金币不空放
+##   · verify_gold_shield  走 _cast_skill → 验【接线】: 施法入口真的能走到效果函数
+##   ★正因为本文件【不走 _cast_skill】, 它才漏掉了那个让金盾从来没生效过的 return bug
+##     (施法入口早退, 效果函数一次都没被调到, 而本文件直接调效果函数所以一直全绿)。
+##     这是"测了效果没测接线"的典型 —— 两层都要有人守。
 ##   梭哈(一场限一次)用过后, 该技能槽变「金盾」: 80龟能·护盾=当前金币数(不消耗金币)·持盾期锁龟能(盾破/4s到期解锁)
 const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 var _fail := 0
@@ -30,13 +37,14 @@ func _ready() -> void:
 	# ── ② 分派: 梭哈用过后 _do_skill("fortuneAllIn") 路由到金盾(而非再放梭哈) ──
 	f["gold"] = 15.0; f["shield"] = 0.0
 	sc._do_skill(f, e, "fortuneAllIn")
-	_ok("梭哈用过→_do_skill 路由到金盾(护盾=金币15)", is_equal_approx(float(f.get("shield", 0.0)), 15.0), "shield=%d" % int(f.get("shield", 0)))
+	_ok("梭哈用过→_do_skill 路由到金盾(护盾=金币15×5=75)", is_equal_approx(float(f.get("shield", 0.0)), 75.0), "shield=%d" % int(f.get("shield", 0)))
 
 	# ── ③ 金盾: 护盾=金币数 · 不消耗金币 · 锁龟能标记 ──
 	f["gold"] = 20.0
 	f["shield"] = 0.0
 	sc._fortune_sys._sk_fortune_goldshield(f)
-	_ok("金盾: 护盾量=当前金币数(20)", is_equal_approx(float(f.get("shield", 0.0)), 20.0), "shield=%d" % int(f.get("shield", 0)))
+	# ★用户 2026-08-01:「盾量改为金币数乘5」⇒ 20 金 × 5 = 100(需求字面值, 不引用 GOLD_SHIELD_MULT)
+	_ok("金盾: 护盾量=当前金币数×5 (20×5=100)", is_equal_approx(float(f.get("shield", 0.0)), 100.0), "shield=%d" % int(f.get("shield", 0)))
 	_ok("金盾: 金币不消耗(仍20)", int(f["gold"]) == 20, "gold=%d" % int(f["gold"]))
 	_ok("金盾: gold_shield_until 设了(>当前t=10)", float(f.get("gold_shield_until", 0.0)) > sc._t)
 
