@@ -63,13 +63,13 @@ func _one_round() -> void:
 	await _shot("1_挂弹")
 	await _wait(1.2)
 
-	_say("② 炸弹附在敌人身上, 每秒扣其最大生命 2%")
+	_say("② 炸弹附在敌人身上, 每秒扣其最大生命 4% (★3) —— 累计伤害在宿主【头顶】滚动")
 	for t in range(4):
 		for e in foes:
 			if float(e.get("hookbomb_pct", 0.0)) > 0.0: _s._hookbomb_sys._hb_tick(e, 1.05)
 		await _wait(0.75)
 		await _shot("dot%d" % t)
-	_say("③ 带弹的敌人死亡 → 朝【全部】敌人甩钩索, 眩晕 0.5 秒后拉向携带者")
+	_say("③ 宿主 0 血 → 抽搐 2 秒 → 尸体撑开, 病毒触手抽出抓住全部敌人, 定住 1.1 秒")
 	var host: Dictionary = foes[0]
 	for e in foes:
 		if float(e.get("hookbomb_pct", 0.0)) > 0.0: host = e; break
@@ -81,8 +81,8 @@ func _one_round() -> void:
 			await _wait(0.16)
 			await _shot("f%02d" % k)
 	else:
-		await _wait(2.55)
-	_say("④ 聚拢引爆: (500 + 10% 目标最大生命) 物理伤害 —— 一轮结束, 重播")
+		await _wait(3.55)   # 抽搐 2.0 + 甩须 0.2 + 定住 1.1 + 拖拽 ≈ 3.7 秒才炸, 解说要对得上
+	_say("④ 拖回聚拢 → 尸体消失 → 引爆 (500 + 10% 目标最大生命) 物理伤害 —— 重播")
 	await _wait(2.2)
 
 func _shot(tag: String) -> void:
