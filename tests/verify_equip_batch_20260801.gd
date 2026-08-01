@@ -58,7 +58,10 @@ func _ready() -> void:
 	_t2_necklace()
 	_t3_hotspring()
 	_t4_earring()
-	_t5_hookbomb()
+	# ★★必须 await —— _t5 里有 await(等死亡淡出那几帧)。不 await 的话它一让出,
+	#   _ready 就直接跑到末尾打总结, 后面的断言全被甩掉且【不报错】:
+	#   表现是断言总数悄悄从 110 掉到 97、"ALL PASS" 照打。这种缺口比 FAIL 危险。
+	await _t5_hookbomb()
 	_t6_sniper()
 	_t7_laser()
 	_t89_carry()
@@ -282,6 +285,32 @@ func _t5_hookbomb() -> void:
 		absf(float(_s._hookbomb_sys.CONVULSE_SEC) - 2.0) < 0.001, "CONVULSE_SEC=%.2f" % float(_s._hookbomb_sys.CONVULSE_SEC))
 	_ok("⑤ ★缠住定身 1.1 秒(用户指定「定住的时间还要久点」)",
 		absf(float(_s._hookbomb_sys.PULL_STUN) - 1.1) < 0.001, "PULL_STUN=%.2f" % float(_s._hookbomb_sys.PULL_STUN))
+	# ★★"尸体全程在场"(用户 2026-08-02:「爆开的时候尸体也在那啊，拉回来聚在一块后尸体才消失」)。
+	#   这条不能靠看截图判 —— 我上一轮就把【病毒巢】当成"尸体在场"了, 判错了自己的产出。
+	#   ★走真入口: 用单位【自己的】立绘 + 真 _kill(那条独立的死亡淡出 modulate:a→0 后 hide()
+	#   就是从 _kill 里来的)。自己 new 一个 Sprite3D 塞进 unit 是行不通的 —— 渲染层会把
+	#   这个它不认识的孤儿立绘回收掉, 测出来的是脚手架的毛病不是产品的。
+	var corpse: Dictionary = _mk("fortune", "right", Vector2(300.0, 60.0), 1000.0)   # ★用真实存在的龟 id, "green" 没有立绘
+	_s._units.append(corpse)
+	for _w0 in range(4):
+		await get_tree().process_frame          # 等 spawn 把立绘建出来
+	var csp = corpse.get("sprite", null)
+	_ok("⑤ ★分母: 尸体用例真的拿到了单位自己的立绘", is_instance_valid(csp),
+		"sprite=%s" % ("有效" if is_instance_valid(csp) else "无"))
+	if is_instance_valid(csp):
+		corpse["hp"] = 1.0
+		_s._kill(corpse)                        # 真入口: 触发 _kill 里的死亡淡出
+		_s._hookbomb_sys._convulse(corpse)      # 抽搐 CONVULSE_SEC=2.0 秒
+		var cw := 0
+		while cw < 200 and is_instance_valid(csp):
+			await get_tree().process_frame      # 给死亡淡出足够时间去 hide()
+			cw += 1
+		var still: bool = is_instance_valid(csp) and (csp as Node3D).visible
+		_ok("⑤ ★★抽搐期间尸体不被【_kill 的死亡淡出】收走(跑了 %d 帧)" % cw, still,
+			"有效=%s visible=%s alpha=%.2f" % [str(is_instance_valid(csp)),
+				str((csp as Node3D).visible) if is_instance_valid(csp) else "-",
+				(csp as Sprite3D).modulate.a if is_instance_valid(csp) else -1.0])
+
 	_ok("⑤ ★DoT 三档 = 2/4/4% maxHp",
 		absf(float(_s._hookbomb_sys.BOMB_DPS_PCT[0]) - 0.02) < 0.0001
 		and absf(float(_s._hookbomb_sys.BOMB_DPS_PCT[1]) - 0.04) < 0.0001

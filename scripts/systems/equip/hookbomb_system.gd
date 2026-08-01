@@ -348,7 +348,10 @@ func _convulse(o: Dictionary) -> void:
 		#   人体炸弹的来源就是【那具尸体】: 现在留下一具深紫色的瘪壳, 触手从它身上抽出去,
 		#   它一路抽动到爆炸才和它一起没。
 		if is_instance_valid(spr):
-			(spr as Sprite3D).modulate = Color(0.42, 0.16, 0.56)      # 病毒化: 整只染成紫黑
+			# ★★别染成【和触手同色】的紫黑 —— 实拍上尸体整个糊进那蓬触手里, 看不出还有具尸体
+			#   (用户要的是"尸体在那", 不是"那儿有团紫"）。改成【失血褪色】: 明度压下去、
+			#   往灰紫偏一点, 但仍读得出是只龟, 和近黑的触手拉开对比。
+			(spr as Sprite3D).modulate = Color(0.66, 0.46, 0.56)
 			(spr as Node3D).scale = Vector3(base_sc.x * 1.16, base_sc.y * 0.60, base_sc.z)  # 泄了气的壳
 			(spr as Node3D).position = base_pos)
 
@@ -464,7 +467,7 @@ func _husk_writhe(spr, life: float) -> void:
 		var jolt: float = sin(t * 21.0) * 0.09 + sin(t * 7.0) * 0.05     # 一颤一颤
 		var deflate: float = lerpf(1.0, 0.88, q)   # 轻微泄气 —— 用户要"尸体还在那", 瘪成 0.72 就不像尸体了
 		(spr as Node3D).scale = Vector3(base_sc.x * (deflate + jolt * 0.6), base_sc.y * (deflate - jolt), base_sc.z)
-		(spr as Sprite3D).modulate = Color(0.42, 0.16, 0.56).lerp(Color(0.16, 0.05, 0.22), q)
+		(spr as Sprite3D).modulate = Color(0.66, 0.46, 0.56).lerp(Color(0.44, 0.27, 0.36), q)   # 一路失血变暗, 但不变成触手色
 		(spr as Node3D).visible = true        # ★同上: 压住死亡淡出的 hide(), 尸体要留到聚拢引爆
 	, 0.0, 1.0, maxf(0.1, life))
 	tw.tween_callback(func() -> void:
