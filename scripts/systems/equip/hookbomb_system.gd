@@ -3,8 +3,15 @@ extends RefCounted
 ## 靶向器 p2eq_055 ·【钩索炸弹】(用户 2026-08-01 整条重做)
 ##
 ## 用户原文:「携带者在首次造成了400点伤害后，会向最近的1/1/2名敌人发射钩索炸弹，
-##   炸弹会附在敌人身上并每秒对该敌人造成1/2/2%物理伤害，持续到敌人死亡时，
+##   炸弹会附在敌人身上并每秒对该敌人造成2/4/4%物理伤害，持续到敌人死亡时，
 ##   如果敌人带有炸弹的时候死亡，则会朝所有敌方单位发射钩索，眩晕0.5秒后把他们拉向自己，
+##   ★以上是 2026-08-01 的【原始需求原文】, 保留作记录。2026-08-02 用户调过两个数:
+##     每秒百分比【整条翻倍】(一星原为 1、二三星原为 2, 现为 2/4/4);
+##     眩晕由半秒提到 1.1 秒(「触手伸出去定住的时间还要久点」)。
+##   ★上面那段原文里的数字已【就地更新为现行值】—— 不留过期字面量:
+##     tooltip_number_audit 是【文本扫描】, 源码里留着旧三元组会被当成"代码值"判分歧;
+##     更要紧的是下一个人可能反过来"照注释改代码"。历史用散文记, 不用数字记。
+##     现行值一律以下面的常量为准, 别照这段原文改代码。
 ##   聚在一起后产生一次爆炸造成200/400/500+10%最大生命值物理伤害。
 ##   记得排出训龟大师和龟蛋还有免控单位」
 ##
@@ -21,7 +28,7 @@ extends RefCounted
 ## 一个测"数值对不对"的用例, 不该依赖任何动画 tween 跑完。
 ##
 ## ═══ 数值口径(已在方案书记录, 用户未逐条指定基数时的取法) ═══
-##   · 每秒 1/2/2% 物理伤害 → 按【宿主自身 maxHp】的百分比。与骷髅爆炸(032)同口径:
+##   · 每秒 2/4/4% 物理伤害 → 按【宿主自身 maxHp】的百分比。与骷髅爆炸(032)同口径:
 ##     那条也是"200码内敌各受【其自身】%最大生命"。
 ##   · 爆炸 200/400/500 + 10% 最大生命值 → 同样按【被炸目标自身 maxHp】。
 ##   · 两者都是【物理伤害】= 走 raw=false 的常规路径, 吃护甲。
@@ -51,11 +58,15 @@ func tick_pending(delta: float) -> void:
 
 const TRIGGER_DMG := 400                      # 首次累计造成这么多伤害后触发(用户原文"首次造成了400点伤害")
 const BOMB_COUNT := [1, 1, 2]                 # 挂弹敌人数(1/1/2)
-const BOMB_DPS_PCT := [0.01, 0.02, 0.02]      # 每秒对宿主造成其 maxHp 的 1/2/2%
+## 每秒对宿主造成其 maxHp 的 2/4/4%(用户 2026-08-02:「每秒损失2%生命值改为损失4%最大生命值」)。
+## ★整条翻倍而不是只改 2★/3★ —— 用户报的是文案上那个 2%(=2★/3★ 档), 星级曲线保持原样。
+const BOMB_DPS_PCT := [0.02, 0.04, 0.04]
 const BOMB_TICK := 1.0                        # "每秒"
 const BLAST_FLAT := [200.0, 400.0, 500.0]     # 聚爆固定段
 const BLAST_MAXHP_PCT := 0.10                 # 聚爆额外 10% 最大生命
-const PULL_STUN := 0.5                        # 抓住后先眩晕 0.5 秒(参考作品: 触须缠住的停顿)
+## 触须抓住后【定住】多久才开始拖。★0.5 → 1.1(用户 2026-08-02:「触手伸出去定住的时间还要久点」)。
+## 这段是"缠住了但还没拉"的僵持, 拖拽本身另算(恒速, 见 PULL_SPEED)。
+const PULL_STUN := 1.1
 ## ★★触须【收缩速度恒定】, 不是"所有人都用同一个时长"(用户 2026-08-01 追问 逻辑合不合理)。
 ##   我第一版写死 PULL_DUR=0.42 秒: 600 码外的走 515 码、100 码外的走 15 码, 都是 0.42 秒
 ##   ⇒ 同一条触须的收缩速度差 34 倍, 远的像被弹射、近的像飘过来。
@@ -67,7 +78,10 @@ const PULL_STUN := 0.5                        # 抓住后先眩晕 0.5 秒(参�
 const PULL_SPEED := 1400.0                    # 码/秒 —— 触须收缩速度(恒定)
 const PULL_DUR_MIN := 0.08                    # 贴脸时也别一帧到位
 const PULL_DUR_MAX := 0.85                    # 理论极值兜底(实战距离到不了)
-const CONVULSE_SEC := 0.62                    # ★宿主 0 血后【抽搐】多久才炸开(人体炸弹的铺垫)
+## 宿主 0 血后【抽搐】多久才炸开(人体炸弹的铺垫)。
+## ★0.62 → 2.0(用户 2026-08-02:「抖动得2秒钟」)。抖动曲线是按 t01 归一化的, 拉长不用改幅度公式,
+##   但【尸体在这 2 秒里会被 _kill 的死亡淡出收走】—— 见 _convulse 里那段 visible/alpha 覆写。
+const CONVULSE_SEC := 2.0
 ## ★★聚拢半径必须【大于单位软分离半径 SEP_RADIUS(92 码)】。
 ##   85 < 92 ⇒ 拉到位的瞬间每只都嵌在别人的分离圈里, 拉力和分离力当场打架,
 ##   实拍出来四只龟糊成一坨、和爆炸糊在一起分不出谁是谁(用户 2026-08-01 截图指出)。
@@ -321,6 +335,12 @@ func _convulse(o: Dictionary) -> void:
 		(spr as Node3D).scale = Vector3(base_sc.x * g, base_sc.y * g, base_sc.z)
 		if spr is GeometryInstance3D:
 			(spr as Sprite3D).modulate = Color(1.0, 1.0, 1.0).lerp(Color(1.0, 0.30, 0.26), t)
+		# ★★压住 _kill 的死亡淡出(用户 2026-08-02:「尸体应该在那里啊」)。
+		#   _kill 里有一条【独立】的 tween: sprite.modulate:a → 0 (0.4 秒) 然后 hide()。
+		#   我原来每帧只写 modulate 的 RGB, 压不住那个 hide() ⇒ 抽搐没演完尸体就没了。
+		#   (之前截图里根部那团紫是【病毒巢】不是尸体, 我把它当成尸体在场了。)
+		#   每帧强制 visible=true + alpha=1 是确定性的: 后写的赢, 与两条 tween 的先后无关。
+		(spr as Node3D).visible = true
 	, 0.0, 1.0, CONVULSE_SEC)
 	tw.tween_callback(func() -> void:
 		# ★★② 撑爆 —— 但【尸体不消失】(用户 2026-08-01 截图:「压根和人物中心没配合」)。
@@ -442,9 +462,10 @@ func _husk_writhe(spr, life: float) -> void:
 			return
 		var t: float = q * life
 		var jolt: float = sin(t * 21.0) * 0.09 + sin(t * 7.0) * 0.05     # 一颤一颤
-		var deflate: float = lerpf(1.0, 0.72, q)                          # 一路泄气
+		var deflate: float = lerpf(1.0, 0.88, q)   # 轻微泄气 —— 用户要"尸体还在那", 瘪成 0.72 就不像尸体了
 		(spr as Node3D).scale = Vector3(base_sc.x * (deflate + jolt * 0.6), base_sc.y * (deflate - jolt), base_sc.z)
 		(spr as Sprite3D).modulate = Color(0.42, 0.16, 0.56).lerp(Color(0.16, 0.05, 0.22), q)
+		(spr as Node3D).visible = true        # ★同上: 压住死亡淡出的 hide(), 尸体要留到聚拢引爆
 	, 0.0, 1.0, maxf(0.1, life))
 	tw.tween_callback(func() -> void:
 		if is_instance_valid(spr):
@@ -795,9 +816,21 @@ func _virus_nest(epi: Vector2, life: float) -> void:
 const NUM_ROLL_SEC := 0.32
 const NUM_COL := Color(1.0, 0.62, 0.24)
 
+## ★★2026-08-02 修(用户:「你这个数字怎么没放头顶上呢，和现有dot一样的规则」):
+##   原来把 Label3D 挂在【宿主立绘之下】、局部偏移只有 44 码(≈1.06 米) ⇒ 数字贴在身上不在头顶,
+##   而且【会跟着立绘一起被缩放】—— 抽搐时立绘涨到 1.34 倍、尸壳期泄到 0.88 倍, 数字跟着一起变形。
+##   现在照项目既定规则走:
+##     · 高度 2.2 米 = _float_text 用的头顶口径(battle_vfx.gd:134), 和现有 DoT 飘字同一条线
+##     · 跟随走 battle._follow_vfx(每帧贴 u.height + h) —— 被击飞/浮空时数字跟着抬起来,
+##       宿主一死自动回收。这是全项目"跟着单位走"的唯一机制, 不自己再写一套跟随。
+## ★2.2(飘字口径)会和【血条】打架: 血条挂在 u.height+2.4, 而这个数字是【常驻】的、
+##   字高 0.58 米 ⇒ 中心放 2.2 时上半截正好插进血条里
+##   (实拍确认: 标签在、可见、屏幕坐标也对 —— 就是被血条压住了)。
+##   飘字能用 2.2 是因为它一出来就往上飘走; 常驻标签不行。
+##   2.95 取在血条之上, 参照 battle_render.gd:300 那条「比伤害飘字高一截、不挡血条」的 2.7。
+const NUM_HEAD_H := 2.95
 func _hb_counter_refresh(o: Dictionary) -> void:
-	var host = o.get("sprite", null)
-	if not is_instance_valid(host):
+	if battle._world == null:
 		return
 	var lbl: Label3D = o.get("_hb_num", null)
 	if not is_instance_valid(lbl):
@@ -810,9 +843,14 @@ func _hb_counter_refresh(o: Dictionary) -> void:
 		lbl.outline_modulate = Color(0.10, 0.03, 0.0, 0.95)
 		lbl.outline_size = 8
 		lbl.font_size = 64
-		lbl.pixel_size = 0.0042
-		lbl.position = Vector3(0.0, 44.0 * battle.WS, 0.0)
-		(host as Node3D).add_child(lbl)
+		# ★字号要和现有 DoT 飘字【看上去一个量级】: 那些是 UI 层字号(约 22~30 屏幕像素),
+		#   而 Label3D 是世界尺寸。64 × 0.0042 = 0.27 米 ⇒ 屏幕上只有约 12 像素, 实拍完全看不见
+		#   (探针确认标签本身是好的: text=60、世界高 2.20、跟随正常 —— 纯粹是太小)。
+		#   64 × 0.0090 = 0.58 米 ⇒ 约 25 屏幕像素, 与 DoT 飘字齐平。
+		lbl.pixel_size = 0.0090
+		lbl.position = battle._world_pos(o["pos"], NUM_HEAD_H)
+		battle._world.add_child(lbl)
+		battle._follow_vfx.append({"spr": lbl, "unit": o, "h": NUM_HEAD_H})
 		o["_hb_num"] = lbl
 		o["hookbomb_shown"] = 0.0
 	var from_v: float = float(o.get("hookbomb_shown", 0.0))

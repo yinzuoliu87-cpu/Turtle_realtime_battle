@@ -2266,7 +2266,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	# ★死亡即停(方案书 §4·F): 本函数只在 alive 单位上跑, 不需要额外判定。
 	if _t < float(u.get("eq_hot_until", 0.0)):
 		_damage._heal(u, float(u.get("eq_hot_rate", 0.0)) * delta, true)
-	# 靶向器055 钩索炸弹: 挂在宿主身上, 每秒对宿主造成其 maxHp 的 1/2/2% 物理伤害, 直到宿主死亡
+	# 靶向器055 钩索炸弹: 挂在宿主身上, 每秒对宿主造成其 maxHp 的 2/4/4% 物理伤害, 直到宿主死亡
 	if float(u.get("hookbomb_pct", 0.0)) > 0.0:
 		_hookbomb_sys._hb_tick(u, delta)
 	if _t < float(u.get("rum_until", 0.0)):   # 海盗朗姆酒: 每秒回4%maxHP(分秒HoT·rum_dps=每秒速率)

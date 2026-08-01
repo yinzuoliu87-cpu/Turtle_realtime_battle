@@ -68,7 +68,7 @@ func _one_round() -> void:
 		for e in foes:
 			if float(e.get("hookbomb_pct", 0.0)) > 0.0: _s._hookbomb_sys._hb_tick(e, 1.05)
 		await _wait(0.75)
-
+		await _shot("dot%d" % t)
 	_say("③ 带弹的敌人死亡 → 朝【全部】敌人甩钩索, 眩晕 0.5 秒后拉向携带者")
 	var host: Dictionary = foes[0]
 	for e in foes:
@@ -78,7 +78,7 @@ func _one_round() -> void:
 	# ★HB_SHOT 下: 引爆窗口内【密集连拍】(抽搐→甩须→缠住→收缩→炸开), 逐帧自查触手
 	if OS.has_environment("HB_SHOT"):
 		for k in range(30):
-			await _wait(0.075)
+			await _wait(0.16)
 			await _shot("f%02d" % k)
 	else:
 		await _wait(2.55)

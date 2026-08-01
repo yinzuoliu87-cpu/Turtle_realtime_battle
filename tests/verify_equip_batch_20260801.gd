@@ -270,13 +270,23 @@ func _t5_hookbomb() -> void:
 	_ok("⑤ 大师/龟蛋/免控身上没有被挂弹",
 		float(tr.get("hookbomb_pct", 0.0)) <= 0.0 and float(eg.get("hookbomb_pct", 0.0)) <= 0.0 and float(im.get("hookbomb_pct", 0.0)) <= 0.0)
 
-	# 每秒 1% 宿主 maxHp 物理伤害
+	# 每秒 2% 宿主 maxHp 物理伤害(1★; 用户 2026-08-02 从 1/2/2% 提到 2/4/4%)
 	e1["hp"] = 1000.0
 	_s._hookbomb_sys._hb_tick(e1, 0.5)
 	_ok("⑤ 不满 1 秒不跳伤", absf(float(e1["hp"]) - 1000.0) < 0.01, "hp=%.1f" % float(e1["hp"]))
 	_s._hookbomb_sys._hb_tick(e1, 0.6)
-	_ok("⑤ ★满 1 秒 → 掉 1% maxHp = 10 点(1★需求字面值)",
-		absf(1000.0 - float(e1["hp"]) - 10.0) < 1.01, "掉了 %.1f" % (1000.0 - float(e1["hp"])))
+	_ok("⑤ ★满 1 秒 → 掉 2% maxHp = 20 点(1★需求字面值)",
+		absf(1000.0 - float(e1["hp"]) - 20.0) < 1.01, "掉了 %.1f" % (1000.0 - float(e1["hp"])))
+	# ★★节奏常量也焊进来 —— 用户 2026-08-02 逐条定的, 不写门禁就会被下一次"顺手调一下"改掉
+	_ok("⑤ ★抽搐 2.0 秒(用户指定「抖动得2秒钟」)",
+		absf(float(_s._hookbomb_sys.CONVULSE_SEC) - 2.0) < 0.001, "CONVULSE_SEC=%.2f" % float(_s._hookbomb_sys.CONVULSE_SEC))
+	_ok("⑤ ★缠住定身 1.1 秒(用户指定「定住的时间还要久点」)",
+		absf(float(_s._hookbomb_sys.PULL_STUN) - 1.1) < 0.001, "PULL_STUN=%.2f" % float(_s._hookbomb_sys.PULL_STUN))
+	_ok("⑤ ★DoT 三档 = 2/4/4% maxHp",
+		absf(float(_s._hookbomb_sys.BOMB_DPS_PCT[0]) - 0.02) < 0.0001
+		and absf(float(_s._hookbomb_sys.BOMB_DPS_PCT[1]) - 0.04) < 0.0001
+		and absf(float(_s._hookbomb_sys.BOMB_DPS_PCT[2]) - 0.04) < 0.0001,
+		"%s" % str(_s._hookbomb_sys.BOMB_DPS_PCT))
 
 	# 3★ 挂 2 个
 	var car3: Dictionary = _mk("fortune", "left", Vector2(-320.0, 200.0), 2000.0)

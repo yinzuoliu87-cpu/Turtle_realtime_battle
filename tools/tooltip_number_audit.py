@@ -77,7 +77,7 @@ VERIFIED_FAR = {
     ('p2eq_032', '16/31/55'):    '_eq_summon_skeleton 骷髅最大生命 [16.0,31.0,55.0](equip_system.gd·id 在 stats_apply 侧→远)',
     ('p2eq_032', '13/17/23'):    '_eq_summon_skeleton 骷髅存活时长 [13.0,17.0,23.0]',
     ('p2eq_055', '1/1/2'):       'HookBombSystem.BOMB_COUNT [1,1,2] 挂弹敌人数(独立文件→远)',
-    ('p2eq_055', '1/2/2'):       'HookBombSystem.BOMB_DPS_PCT [0.01,0.02,0.02] 每秒%maxHp',
+    ('p2eq_055', '2/4/4'):       'HookBombSystem.BOMB_DPS_PCT [0.02,0.04,0.04] 每秒%maxHp (2026-08-02 用户上调, 原 1/2/2)',
     ('p2eq_055', '200/400/500'): 'HookBombSystem.BLAST_FLAT [200.0,400.0,500.0] 聚爆固定段',
 }
 WIN = 2500
