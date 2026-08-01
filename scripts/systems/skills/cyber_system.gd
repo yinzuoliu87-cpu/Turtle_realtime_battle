@@ -174,12 +174,13 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 			var spr3 = live[i2]
 			if not is_instance_valid(spr3): continue
 			var dpos: Vector2 = scat[i2] if i2 < scat.size() else gather   # 激光从各自散点发射
-			var best = null
-			var bd = INF
-			for o in battle._units:
-				if battle._is_hostile(uu, o) and o.get("alive", false) and not o.get("_egg_fence", false):
-					var dd: float = dpos.distance_to(o["pos"])
-					if dd < bd: bd = dd; best = o
+			# ★走标准选靶(排除 大师/黑洞/龟蛋围栏) —— 原先是就地手写的循环, 漏了「大师不被主动索敌」
+			#   ⇒ 浮游炮会锁训龟大师(用户 2026-08-02 报)。下面那条【线上全体】的伤害结算不变:
+			#   大师站在光束线上照样吃 AOE, 那是设计, 不是漏。
+			var best = battle._targeting._nearest_enemy_from(uu, dpos)
+			# ★同步触发证据(照 _pirate_grapple 那套): 记下【每门炮实际锁了谁】。
+			#   门禁靠它判"有没有锁到训龟大师" —— 而不是去断言某个函数存在(那守不住"还有没有人调它")。
+			battle._dbg_salvo_picks.append("trainer" if (best != null and best.get("is_trainer", false)) else "unit")
 			if best == null: continue
 			var ldir: Vector2 = (best["pos"] - dpos)
 			if ldir.length() < 1.0: ldir = Vector2.RIGHT

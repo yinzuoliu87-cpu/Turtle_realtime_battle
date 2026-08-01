@@ -76,6 +76,32 @@ func _nearest_enemy(u: Dictionary):
 			best_d = dd; best = o
 	return best
 
+## 从【任意一点】找最近敌 —— 排除规则与 _nearest_enemy 完全一致(大师/黑洞/龟蛋围栏)。
+##
+## ★★为什么要有这个函数(2026-08-02 用户:「赛博龟被动浮球跑在死亡时射击为什么会锁训龟大师？」):
+##   赛博死亡齐射的每门浮游炮是从【自己散开后的位置】各自找最近敌, 不是从龟身找,
+##   `_nearest_enemy(u)` 用不了 ⇒ 当时就地手写了一段循环, 只判了 敌对/存活/龟蛋围栏,
+##   把「大师不被主动索敌」和「黑洞期不可选」两条规则漏了 ⇒ 浮游炮锁上了训龟大师。
+##   ★根因是【手写选靶】这件事本身: 排除规则会随需求增加, 抄一次就永远落后一次。
+##   凡是"挑一个目标瞄准"一律走这里; 按半径结算的 AOE 不走(大师照吃 AOE, 那是设计)。
+func _nearest_enemy_from(u: Dictionary, from_pos: Vector2):
+	var best = null
+	var best_d = INF
+	for o in battle._units:
+		if not battle._is_hostile(u, o) or not o.get("alive", false):
+			continue
+		if battle._t < float(o.get("untargetable_until", 0.0)):
+			continue
+		if o.get("_egg_fence", false):
+			continue
+		if o.get("is_trainer", false):
+			continue   # 训龟大师: 不被【主动索敌】(用户2026-07-22) —— AOE 仍然照吃
+		var dd: float = (o["pos"] as Vector2).distance_squared_to(from_pos)
+		if dd < best_d:
+			best_d = dd; best = o
+	return best
+
+
 # 每单位每帧: DoT 落血 / buff 到期清理 / 层数DoT结算 / 召唤体周期特殊技 / 周期被动 (1:1 2D _tick_effects)
 func _enemies_of(u: Dictionary) -> Array:
 	var out: Array = []

@@ -1435,6 +1435,7 @@ var _sd_stacks := 0           # 已获得的增伤档数(0=未进入决胜)
 ## 跨路保留的装备层数(竹弓039/哑铃020/温泉蛋036·用户2026-08-01)。键/存取见 dual_lane_flow.EQ_CARRY。
 ## ★挂在场景实例上 = "只有开新对局才重置" 天然成立(新对局=新场景=新空表), 不要另写清空。
 var _eq_carry: Dictionary = {}
+var _dbg_salvo_picks: Array = []   # 赛博死亡齐射每门炮实际锁到的目标类别(仅门禁读; 见 cyber_system)
 
 func _sd_amp() -> float:
 	return SD_AMP_PER * float(_sd_stacks)
@@ -7564,12 +7565,7 @@ func _stats_fit_body(bodies: Array, idx: int) -> void:
 	(scroll as ScrollContainer).custom_minimum_size = Vector2(c.size.x, minf(c.size.y, avail))
 	var panel: Node = scroll.get_parent()
 	if is_instance_valid(panel) and panel.get_parent() is Control:
-		_center_panel_deferred(panel.get_parent() as Control)
-
-func _center_panel_deferred(panel: Control) -> void:
-	await get_tree().process_frame
-	if is_instance_valid(panel):
-		panel.position = Vector2(640.0 - panel.size.x * 0.5, 438.0)   # 别改成"放不下就上顶": 会盖住上方的「返回菜单」钮; 放不下由页体内部滚动兜(见 _stats_fit_body)
+		await _hud._center_stats_panel(panel.get_parent() as Control)   # 纯 UI 定位, 实现在 HUD 层
 
 ## 一队 7 列表 (1:1 回合制 _stats_table): 龟/出伤/受伤/治疗/暴击/击杀/剩余; 金表头 / 稀有度点 / 存活白·阵亡灰(阵亡).
 func _stats_column(header: String, units: Array, hc: Color) -> Control:

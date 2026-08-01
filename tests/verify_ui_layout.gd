@@ -154,10 +154,51 @@ func _ready() -> void:
 
 	_ok("★分母: 真的量到了 %d 组(屏×比例)" % measured, measured >= SCREENS.size() * VIEWS.size(),
 		"measured=%d" % measured)
+
+	await _check_battle_result()
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — UI 双端适配" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+## ⑥ 战后结算屏。★它不在 SCREENS 里 —— 它是【战斗场景里的覆盖层】, 不是独立场景,
+##   所以上面那圈按场景文件跑的检查【一条都覆盖不到它】。
+##   用户 2026-08-02:「战斗结束后的总结画面，手机上ui偏移还是没解决吗」——
+##   实测 1560×720 手机视口下统计面板中心停在 x=640(写死的 1280 的一半), 真中心 780, 左偏 140。
+##   2026-07-21 修过一次结算 UI, 修的是【胜负横幅】; 同一屏的另一套定位代码没在里面。
+func _check_battle_result() -> void:
+	var worst: String = ""
+	var n_measured: int = 0
+	for v in [Vector2i(1280, 720), Vector2i(1560, 720), Vector2i(1280, 960)]:
+		var sv := SubViewport.new()
+		sv.size = v
+		sv.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		add_child(sv)
+		var inst = load("res://scenes/RealtimeBattle3D.tscn").instantiate()
+		sv.add_child(inst)
+		for i in range(50):
+			await get_tree().process_frame
+		inst._hud._show_banner(true)
+		for i in range(8):
+			await get_tree().process_frame
+		var cx: float = float(v.x) * 0.5
+		for ch in inst._ui_layer.get_children():
+			if not (ch is PanelContainer) or not (ch as Control).visible:
+				continue
+			var r: Rect2 = (ch as Control).get_global_rect()
+			if r.size.x < 200.0 or r.size.x > float(v.x) * 0.95:
+				continue                       # 只认那块宽结算表
+			n_measured += 1
+			var mid: float = r.position.x + r.size.x * 0.5
+			if absf(mid - cx) > 2.0:
+				worst = "%dx%d 结算表中心 x=%.0f 真中心 %.0f 偏 %+.0f" % [v.x, v.y, mid, cx, mid - cx]
+			if r.position.y + r.size.y > float(v.y) + 1.0:
+				worst = "%dx%d 结算表底边 %.0f 超出视口高 %d" % [v.x, v.y, r.position.y + r.size.y, v.y]
+		sv.queue_free()
+		await get_tree().process_frame
+	_ok("★分母: 结算表在 3 个视口下都量到了", n_measured >= 3, "量到 %d 块" % n_measured)
+	_ok("⑥ 战后结算表居中于【真实视口】且不出下边界", worst == "", worst)
 
 
 ## 在指定视口尺寸下实例化一屏, 量真实 get_global_rect()。

@@ -40,7 +40,10 @@ func _build_ui_layer() -> void:
 		battle._dl_hud.add_theme_font_size_override("font_size", 17)
 		battle._dl_hud.add_theme_color_override("font_color", Color("#ffe08a"))
 		# ★y 44→64: PK 主条占 16..42, 龟蛋副条占 46..60(第三版副条加高到 14 塞蛋图标)
-		battle._dl_hud.position = Vector2(290, 70); battle._dl_hud.size = Vector2(700, 24)
+		# ★宽度 700 居中于【真实视口】: 原来写死 x=290(=(1280-700)/2), 手机 1560 宽时左偏 140
+		var _vw0: float = float(battle.get_viewport().get_visible_rect().size.x)
+		battle._dl_hud.size = Vector2(700, 24)
+		battle._dl_hud.position = Vector2(_vw0 * 0.5 - 350.0, 70)
 		battle._dl_hud.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		battle._ui_layer.add_child(battle._dl_hud)
 	_build_topright_btns()   # 📊 统计 + 🏳 投降 (原 ⏸暂停/📜日志 已移除·用户2026-07-30)
@@ -66,7 +69,9 @@ func _build_topright_btns() -> void:
 	if battle.DEBUG_EDIT:                              # 调试场保留 📜(我自己排查要用·U8: 开发工具不属"局内")
 		var log_btn = Button.new()
 		log_btn.text = "📜"
-		log_btn.position = Vector2(1088, 12); log_btn.size = Vector2(52, 38)
+		log_btn.size = Vector2(52, 38)
+		# ★贴【真实视口】右缘(原写死 1088 = 1280-192, 宽屏上会浮在屏幕中间)
+		log_btn.position = Vector2(float(battle.get_viewport().get_visible_rect().size.x) - 192.0, 12)
 		log_btn.add_theme_font_size_override("font_size", 20)
 		battle._style_hud_btn(log_btn)
 		log_btn.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -1258,6 +1263,23 @@ func _banner_fade_in(c: Control, delay: float) -> void:
 # ══════════════════════════════════════════════════════════════
 # 结算统计表 (1:1 回合制 BattleEndScene._stats_table 7 列样式) — 双队并排, 召唤体单列一行
 # ══════════════════════════════════════════════════════════════
+## ★★2026-08-02 修(用户:「战斗结束后的总结画面，手机上ui偏移还是没解决吗」):
+##   原来是 `Vector2(640.0 - panel.size.x*0.5, 438.0)` —— 640 是【写死的 1280 的一半】,
+##   438 是【写死的像素 y】。探针实测 1560×720 手机视口下面板中心仍停在 x=640,
+##   而真中心是 780 ⇒ 整块结算表【左偏 140 像素】。
+##   (2026-07-21 修过一次结算 UI, 修的是【胜负横幅】那套 —— 横幅改成锚点了, 这块没在里面。
+##    "同一屏两套定位代码, 只修了看得见的那套" 是这个 bug 能活到今天的原因。)
+## ★y 同样改成【按屏幕高度的比例】(438/720 = 0.6083), 否则 iPad 的 960 高视口上表会浮在上半屏。
+##   仍然不做"放不下就上顶": 那会盖住上方的「返回菜单」钮; 放不下由页体内部滚动兜(见 _stats_fit_body)。
+const STATS_PANEL_Y_FRAC := 0.6083     # = 438/720, 保住 1280×720 上的原观感不变
+func _center_stats_panel(panel: Control) -> void:
+	await battle.get_tree().process_frame
+	if is_instance_valid(panel):
+		var vp: Vector2 = battle.get_viewport().get_visible_rect().size
+		var py: float = vp.y * STATS_PANEL_Y_FRAC
+		py = minf(py, vp.y - panel.size.y - 8.0)          # 再高的视口也不许被底边切掉
+		panel.position = Vector2(vp.x * 0.5 - panel.size.x * 0.5, maxf(8.0, py))
+
 func _build_stats_panel() -> void:
 	# 结算页要含【前面战场】的总结, 不能只有当前这一路(用户2026-07-19): 已结束的路走 battle._st_lane_hist 快照,
 	# 当前路直接读活的 battle._units; 三路以上信息量太大 → 做成分页(默认停在「合计」).
@@ -1338,7 +1360,7 @@ func _build_stats_panel() -> void:
 	battle._stats_show_page(bodies, tab_btns, pages.size() - 1)   # 默认落在最后一页(多路=合计 / 单路=本场)
 	battle._ui_layer.add_child(panel)
 	panel.position = Vector2(316, 438)
-	battle._center_panel_deferred(panel)
+	_center_stats_panel(panel)
 
 func _build_edit_palette() -> void:
 	var ids: Array = battle.STATS.keys()
