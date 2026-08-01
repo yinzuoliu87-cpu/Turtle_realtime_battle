@@ -12,7 +12,19 @@ func _init(b) -> void:
 func _dl_is_present() -> bool:
 	return battle._dl_state == "overview" or battle._dl_state == "preview" or battle._dl_state == "lane_settle"
 
+## ★对照实验快路径(2026-08-01): 胜率统计器一场要建一次全场景, 而开场的
+##   「对阵总览 5 秒 + 预览 5 秒」是【纯演出】, 对胜负没有任何影响, 却占掉每场约 1300 帧。
+##   实测: 建场等到上路出现要 1297 帧, 而一场战斗本身才 ~2600 帧 —— 演出占了三分之一。
+##   NO_PRESENT=true 时直接推进到下一阶段, 不建幕布、不做淡入。
+##   ★只给离线统计用; 正式对局绝不会设它(默认 false)。
+static var NO_PRESENT := false
+
 func _dl_enter_present(mode: String) -> void:
+	if NO_PRESENT:
+		battle._dl_state = mode
+		battle._dl_present_t = 0.0
+		_dl_present_advance()
+		return
 	battle._dl_state = mode
 	battle._dl_present_t = 0.0
 	if is_instance_valid(battle._dl_go_btn): battle._dl_go_btn.visible = false

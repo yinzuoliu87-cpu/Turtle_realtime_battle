@@ -41,6 +41,7 @@ extends Node
 ## ★不写玩家存档: GameState.test_mode + backend.save_pool 守卫
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
+const DLF := preload("res://scripts/scenes/battle/dual_lane_flow.gd")   # NO_PRESENT 快路径
 const P2 := preload("res://scripts/gamedata/phase2_config.gd")
 
 const FRAME_CAP := 40000        # 单场帧上限(det模式 1帧=1/60秒 → 667游戏秒, 远超单路)
@@ -134,12 +135,30 @@ func _fight(gs, ia: int, ib: int, k: int) -> void:
 	_setup_left(gs, L)
 	gs.dual_ghost = _ghost_of(R)
 
+	# ★★加速: 游戏时间 == 实时, 所以一场 43 游戏秒就要跑 43 实秒 —— 解帧率上限【没用】,
+	#   因为每帧只推进它自己的真实 delta。必须用 time_scale 才能压缩墙钟。
+	#   5.0 这个值抄 _stress_start(项目里跑了很久的现成做法): delta≈0.08, 未撞 sim 的 0.1 钳制,
+	#   粒度仍够细。★两侧对局用同一设置 ⇒ 前后对照是公平的。
+	Engine.max_fps = 0
+	Engine.time_scale = 5.0
+	DLF.NO_PRESENT = true   # ★跳过开场"对阵总览/预览"两段纯演出(每场约 1300 帧 = 总耗时的三分之一)
 	RB.NO_TRAINER = true    # ★关训龟大师(2026-07-29): 本文件第20行一直写着"关训龟大师", 但直到今天都没有代码真的关
 	var s = RB.new()
 	add_child(s)
 	if k == 0:
+		# ★★体检必须等【上路真的建出来】再数 —— 原来只 await 两帧就数, 那时双路战场还没搭,
+		#   s._units 是空的, 于是永远打印"左 0统领+0小将", 而它自称在验"阵容有没有被静默打回成 2 统领"
+		#   —— 一个永远数到 0 的检查, 什么都发现不了。这个文件已经因为"注释写了没人做"栽过一次
+		#   (顶部"关训龟大师"当了四轮的谎话), 同一个坑不该再踩。
+		# ★上限要给足: 无头下一帧只有 ~1ms, 而双路开场有【5 秒对阵总览】——
+		#   600 帧只是 0.6 秒游戏时间, 根本还没开打(我第一版就卡在这儿, 误以为工具坏了)。
+		#   20000 帧 ≈ 20 秒游戏时间, 足够跨过总览 + 建场。
+		var _w := 0
+		while _w < 20000 and s._units.is_empty():
+			await get_tree().process_frame
+			_w += 1
 		await get_tree().process_frame
-		await get_tree().process_frame
+		print("  [体检] 等了 %d 帧才等到上路建好(0 帧 = 又在数空场)" % _w)
 		_dump_setup(s)     # 首场体检: 上路结构与无装备必须属实(阵容被校验打回会静默变 2 统领)
 	var fr := 0
 	# 技能释放计数: 放技时会写 u["skill_cd"][stype] = 满冷却(主文件 2383/2390/2398),
@@ -247,6 +266,10 @@ func _dump_setup(s) -> void:
 		eq[sd] = int(eq[sd]) + ((u.get("equips", []) as Array).size() if u.get("equips", null) is Array else 0)
 	print("  [体检] 上路结构 左 %d统领+%d小将 / 右 %d统领+%d小将  (应各 1+2)" % [
 		lead["left"], mini["left"], lead["right"], mini["right"]])
+	# ★数出 0 就是【空检查】, 直接停 —— 空跑出来的胜率比没有更糟(它看着像数据)。
+	if lead["left"] + mini["left"] + lead["right"] + mini["right"] == 0:
+		print("  [FAIL] ★上路一个单位都没数到 —— 体检在空场上跑, 本轮数据不可信, 停")
+		get_tree().quit(1)
 	print("  [体检] 装备件数 左 %d / 右 %d  (应均 0)" % [eq["left"], eq["right"]])
 	# ★大师必须为 0 —— 本文件顶部的"关训龟大师"当了四轮的谎话(没有任何代码关它, 也没有任何检查发现),
 	#   所以现在【每个分片首场都自己证明一次】。注释会骗人, 打出来的数字不会。
