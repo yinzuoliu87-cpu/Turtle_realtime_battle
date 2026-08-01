@@ -5,6 +5,56 @@ extends RefCounted
 
 var host
 
+## ★★图标贴图缓存(2026-08-01 修「点装备那里会卡一下」, 用户报)。
+## 实测: 切到"装备"页签一次阻塞 179~208 ms(其余页签只要 6~38 ms) —— 60fps 下卡住十几帧。
+## 根因: 装备页 67 行每行 load() 一张 PNG 图标; 而【行被 free 后贴图引用归零 → 被逐出 Godot 的
+##   资源缓存 → 下次切回来 67 张全部重新从盘上读】, 所以第二次切也照样慢(实测第2轮 179ms)。
+## ★用 static 常驻持有引用, 贴图就不会被逐出。67 张 UI 小图, 内存代价可忽略。
+static var _tex_cache: Dictionary = {}
+
+static func _icon(path: String) -> Texture2D:
+	if path == "":
+		return null
+	if _tex_cache.has(path):
+		return _tex_cache[path]
+	var t: Texture2D = null
+	if ResourceLoader.exists(path):
+		t = load(path)
+	_tex_cache[path] = t      # ★不存在也记下来 —— 否则每次都要再问一次文件系统
+	return t
+
+
+## 预热图标缓存: 把"首次进装备页要读 67 张 PNG"那 200ms 摊到开图鉴之后的若干帧里。
+## ★缓存解决的是【第二次以后】(206→13ms), 第一次该读的盘还是要读 —— 只能提前、分帧读, 不能省。
+## ★每帧只读 PER_FRAME 张: 读满一帧就让出去, 保证任何一帧都不会明显变长。
+## ★每帧读几张: 实测每张 PNG 约 3ms。6 张/帧时预热期最大单帧 47ms(60fps 一帧只有 16.7ms)——
+##   那只是把卡顿从"点装备那一下"挪到了"刚进图鉴那几帧", 没解决问题。2 张/帧才压得住。
+const WARM_PER_FRAME := 2
+
+func warm_icons(tree: SceneTree) -> void:
+	var paths: Array = []
+	for eq in DataRegistry.phase2_equipment:
+		if not (eq is Dictionary):
+			continue
+		var img: String = str(eq.get("img", ""))
+		if img.ends_with(".png"):
+			paths.append("res://assets/sprites/%s" % img)
+	for eq in DataRegistry.all_equipment:
+		if eq is Dictionary and str(eq.get("icon", "")).ends_with(".png"):
+			paths.append("res://assets/sprites/%s" % str(eq["icon"]))
+	for pet in DataRegistry.all_pets:
+		if pet is Dictionary:
+			paths.append("res://assets/sprites/avatars/%s.png" % str(pet.get("id", "")))
+	var n := 0
+	for pp in paths:
+		if _tex_cache.has(pp):
+			continue
+		_icon(pp)
+		n += 1
+		if n % WARM_PER_FRAME == 0:
+			await tree.process_frame
+
+
 func _init(b) -> void:
 	host = b
 
@@ -20,8 +70,7 @@ func _add_pet_row(pet: Dictionary) -> void:
 	av.custom_minimum_size = Vector2(40, 40); av.size = Vector2(40, 40)
 	av.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	av.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	if ResourceLoader.exists(idx_path):
-		av.texture = load(idx_path)
+	av.texture = _icon(idx_path)      # 走缓存(同上: 行被 free 会把贴图逐出缓存 → 每次切页签重读盘)
 	p.add_child(av)
 	# 名字 15px (PoC #fff bold)
 	var name_lbl = Label.new()
@@ -74,13 +123,14 @@ func _add_group_header(title: String) -> void:
 func _add_simple_row(label: String, label_color: String, stroke: Color, icon_path: String, idx: int) -> void:
 	var col = stroke; col.a = 0.7
 	var p = host._make_row(52, 0.85, col)
-	if icon_path != "" and ResourceLoader.exists(icon_path):
+	var _ictex: Texture2D = _icon(icon_path)
+	if _ictex != null:
 		var ic = TextureRect.new()
 		ic.position = Vector2(6, 8)
 		ic.custom_minimum_size = Vector2(36, 36); ic.size = Vector2(36, 36)
 		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		ic.texture = load(icon_path)
+		ic.texture = _ictex
 		p.add_child(ic)
 	var lbl = Label.new()
 	lbl.text = label

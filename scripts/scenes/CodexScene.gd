@@ -292,6 +292,9 @@ func _ready() -> void:
 	if OS.has_environment("SHOT_TAB"):   # dev: 截图指定 tab (供 diff)
 		start_tab = OS.get_environment("SHOT_TAB")
 	_switch_tab(start_tab)
+	# ★分帧预热图标缓存(2026-08-01 修「点装备那里会卡一下」): 首次进装备页要读 67 张 PNG(~200ms),
+	#   提前摊到进图鉴之后的若干帧里, 点页签那一下就不会卡。call_deferred 免得挡住 _ready。
+	_codex_list.warm_icons.call_deferred(get_tree())
 	if OS.has_environment("CODEX_SHOT"):   # dev: 图鉴自截图(SHOT_TAB=equips CODEX_SHOT=秒 SHOT_OUT=路径)·验框色等·截完自退
 		_codex_selfshot()
 		return
@@ -305,6 +308,19 @@ func _codex_selfshot() -> void:
 	var s := OS.get_environment("CODEX_SHOT")
 	var delay := s.to_float() if s.is_valid_float() and s.to_float() > 0.1 else 1.2
 	await get_tree().create_timer(delay).timeout
+	# SHOT_SEL=N: 先选中第 N 条再抓 —— 照 ShopScene._shop_selfshot 的同名开关。
+	#   没它就只能抓到"默认选中第 0 条", 想验精英小将(在列表末尾)的详情排版根本抓不到。
+	#   SHOT_SEL=-1 表示【最后一条】。
+	if OS.has_environment("SHOT_SEL"):
+		var _sv := OS.get_environment("SHOT_SEL")
+		if _sv.is_valid_int():
+			var _si := int(_sv)
+			if _si < 0:
+				_si = _items.size() + _si
+			if _si >= 0 and _si < _items.size():
+				_select(_si)
+				await get_tree().process_frame
+				await get_tree().process_frame
 	if OS.has_environment("SHOT_SCROLL") and is_instance_valid(list_scroll):
 		list_scroll.scroll_vertical = int(OS.get_environment("SHOT_SCROLL"))
 		await get_tree().process_frame
@@ -498,10 +514,20 @@ func _switch_tab(tab: String) -> void:
 
 
 # ─── 列表行 (PoC: 行高52 gap4, bg 0x1a2740@0.85, 描边稀有度色@0.7) ───
+## ★★缓存(2026-08-01 修「点装备那里会卡一下」, 用户报):
+##   原来【每调用一次就 new 一个 SystemFont】—— 而 SystemFont 要去系统字体库里按名查找,
+##   实测每次约 3ms。左栏每一行的稀有度标签都调它一次 → 装备页 67 行 ≈ 200ms 的【单次阻塞】,
+##   60fps 下就是卡住十几帧。实测: 切"装备"页签 208ms, 而其余页签只要 6~38ms。
+##   ★字体是不可变资源, 全场景共用一个实例即可; 用 static 让跨场景实例也只查一次。
+static var _mono_cached: Font = null
+
 func _mono_font() -> Font:
+	if _mono_cached != null:
+		return _mono_cached
 	var f := SystemFont.new()
 	f.font_names = PackedStringArray(["monospace", "Consolas", "Courier New"])
 	f.fallbacks = [load("res://assets/fonts/NotoSansSC-Regular.otf")]   # CJK 网页/iOS 兜底 (SystemFont 在 web 取不到系统字体→中文乱码)
+	_mono_cached = f
 	return f
 
 

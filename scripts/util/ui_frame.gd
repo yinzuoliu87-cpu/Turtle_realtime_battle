@@ -72,10 +72,25 @@ func _setup(host: Node) -> Control:
 	_frame = self
 	size = DESIGN
 	custom_minimum_size = DESIGN
-	# ★PASS 不是 IGNORE: 框自己不吃点击(让背景/空白处的点击照旧穿过去),
-	#   但【子节点必须还能收到点击】—— IGNORE 会连子节点一起放行, 按钮就点不着了。
-	mouse_filter = Control.MOUSE_FILTER_PASS
+	# ★★必须是 IGNORE, 【不能】是 PASS —— 这条我第一版写反了, 直接把训龟大师整屏点死
+	#   (用户 2026-08-01:「为啥点进训龟大师直接卡死」)。
+	#   实测(tests/_probe_hit.gd, 派发真 InputEventMouseButton 数回调次数):
+	#     上层框 PASS   → 它【下面】的按钮被点到 0 次   ← 整屏点不动 = 看着像卡死
+	#     上层框 IGNORE → 它【下面】的按钮被点到 1 次   ✔
+	#     框 IGNORE 时, 框【里】的按钮被点到 1 次       ✔ 收编进来的内容照常能点
+	#   即: IGNORE 只让【这个控件自己】不参与命中, 子节点完全不受影响。
+	#   而框是最后 add_child 的(画在最上层)又铺满 1280×720 —— 用 PASS 就是一块透明挡板。
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_adopt()
+	# ★一个都没收编 = 这屏的内容全是【铺满/锚定视口】的(训龟大师就是: dim + CenterContainer 各自
+	#   FULL_RECT, 靠 CenterContainer 自己居中)。那种屏本来就已经居中, 不需要设计框 ——
+	#   留一个空框在最上层只有坏处(挡命中、污染节点树、让门禁误以为"这屏做了适配")。
+	#   ★这也是第二个教训: 门禁只断言了"框的位置对不对", 没断言"框里到底有没有东西",
+	#     于是一个【空框】照样能让 ② 全绿。现在直接不留空框。
+	if get_child_count() == 0:
+		_host.remove_child(self)
+		queue_free()
+		return null
 	_center()
 	var vp := _host.get_viewport()
 	if vp != null and not vp.size_changed.is_connected(_on_resize):

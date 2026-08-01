@@ -56,7 +56,13 @@ func _minion_body(txt: String, y: float) -> float:
 	rt.text = txt
 	host.detail.add_child(rt)
 	# fit_content 的真实高度要等一帧才有 → 按字数估行, 够用且不抖(每行约 62 个全角字)
-	var lines: float = host.ceilf(float(txt.length()) / 62.0)
+	# ★2026-08-01 修「图鉴里精英小将的描述都挤在一块」(用户报):
+	#   这里原本是 host.ceilf(...) —— ceilf 是【全局内建函数】, 不是节点上的方法,
+	#   调用直接 SCRIPT ERROR("Nonexistent function 'ceilf' in base Node2D"),
+	#   于是下面那句 return 【永远执行不到】→ 每一段正文都拿到同一个 y → 全叠在一起。
+	#   来历: 2026-07-26 图鉴拆分那刀把函数搬进本文件时, 机械地给所有调用加了 host. 前缀。
+	#   ★同类坑见 memory[[project-god-file-decomposition]] 十九坑 #15(float 内建 floorf)。
+	var lines: float = ceilf(float(txt.length()) / 62.0)
 	return y + maxf(20.0, lines * 19.0)
 
 
