@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c4jy5npomlk34"
-path="res://.godot/imported/hookbomb-blast.png-6fdcd2090b4b44ce4945c5b7976c9556.ctex"
+uid="uid://d04fw62k85h65"
+path="res://.godot/imported/hookbomb-viralburst.png-9a81187c9dfc38b7f4a3d4af93b6770c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/hookbomb-blast.png"
-dest_files=["res://.godot/imported/hookbomb-blast.png-6fdcd2090b4b44ce4945c5b7976c9556.ctex"]
+source_file="res://assets/sprites/vfx/hookbomb-viralburst.png"
+dest_files=["res://.godot/imported/hookbomb-viralburst.png-9a81187c9dfc38b7f4a3d4af93b6770c.ctex"]
 
 [params]
 

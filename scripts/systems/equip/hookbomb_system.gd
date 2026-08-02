@@ -198,7 +198,7 @@ func _hb_detonate(carrier: Dictionary, si: int, epicenter_in = null, husk_in = n
 	#   0.14 秒: 比团灭(0.30)短、比开打起势(0.18)略短 —— 这是"一次装备触发"该有的量级, 不能喧宾夺主。
 	battle._add_hitstop(0.14)
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
-	battle._skill_ring(epi, Color(1.0, 0.55, 0.22, 0.9), 90.0)
+	battle._skill_ring(epi, Color(0.80, 0.25, 0.95, 0.9), 90.0)        # 触手爆出的那一圈也是紫的
 	for i in range(n):
 		var o: Dictionary = list[i]
 		var dest: Vector2 = _hb_pull_dest_at(epi, o["pos"] as Vector2)   # ★沿它自己的方位拖近
@@ -252,11 +252,12 @@ func _hb_blast(carrier: Dictionary, list: Array, si: int, epi: Vector2) -> int:
 	#   三层叠: ①主爆火球(大·快胀快消) ②滞后半拍的第二团(错位=有体积) ③冲击环+震屏。
 	# ★火球半径盖住整个聚拢圈(聚拢半径 145)。程序化, 不是贴图 —— 理由见 _fireball 头注。
 	_fireball(epi, 228.0, 0.58)
+	_biomass_spray(epi)          # ★同一帧甩出肉刺 —— 爆炸与触手是同一种东西的两个阶段
 	_pending.append({"t": 0.10, "fn": func(): _fireball(epi + Vector2(58.0, -40.0), 152.0, 0.42)})  # 错位第二团 = 有体积
 	# 小尺寸的手绘火花贴在最亮那一刻 —— 尺寸小(110码≈2.6米)不会被地板切, 补一点像素颗粒感
 	battle._burst_vfx(TEX_BLAST, epi, 110.0, 1.35)
-	battle._skill_ring(epi, Color(1.0, 0.45, 0.2, 0.95), 250.0)
-	_pending.append({"t": 0.13, "fn": func(): battle._skill_ring(epi, Color(1.0, 0.85, 0.45, 0.7), 340.0)})
+	battle._skill_ring(epi, Color(0.85, 0.20, 0.95, 0.95), 250.0)      # 病毒紫冲击环(原橙)
+	_pending.append({"t": 0.13, "fn": func(): battle._skill_ring(epi, Color(0.98, 0.70, 1.00, 0.7), 340.0)})
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
 	battle._particle_burst(epi)
 	return hit
@@ -356,6 +357,32 @@ func _convulse(o: Dictionary) -> void:
 			(spr as Node3D).position = base_pos)
 
 
+## ★★炸开时甩出去的【生物质肉刺】(2026-08-02 用户:「这是病毒的拉在一起, 这个爆炸颜色和样式合适吗」)。
+## 光把火球染成紫的还不够 —— 火球的【运动方式】仍是"一团气体膨胀"。生物质炸开是
+## 【碎肉往外飞】: 一圈短触手从震中猛地甩出去、越甩越细、末端一顿再软下来。
+## 直接复用触手那套管状带(_tendril_draw) ⇒ 爆炸和触手在观众眼里是【同一种东西】的两个阶段,
+## 而不是"紫色的火"。这是"颜色对了但样式不对"与"整套统一"的分界。
+const SPRAY_N := 11              # 甩出的肉刺条数
+const SPRAY_LEN := 175.0         # 甩出距离(码)
+const SPRAY_SEC := 0.34
+func _biomass_spray(epi: Vector2) -> void:
+	if battle._world == null:
+		return
+	for i in range(SPRAY_N):
+		# 角度确定性错开(不是 randf —— rng_discipline 门禁: sim/演出里不许裸随机)
+		var a: float = TAU * float(i) / float(SPRAY_N) + sin(float(i) * 2.7) * 0.22
+		var reach: float = SPRAY_LEN * (0.62 + absf(sin(float(i) * 1.9)) * 0.55)
+		var tip: Vector2 = epi + Vector2(cos(a), sin(a)) * reach
+		var idx2: int = i
+		var tw = battle._reg_tween()
+		tw.tween_interval(0.012 * float(i))         # 逐条错峰 = 一蓬炸开, 不是齐刷刷
+		tw.tween_method(func(p: float) -> void:
+			# 前 70% 甩出去, 后 30% 缩回(生物质抽搐了一下又塌回去)
+			var ext: float = (p / 0.7) if p < 0.7 else (1.0 - (p - 0.7) / 0.3 * 0.45)
+			_tendril_draw(epi, tip, clampf(ext, 0.0, 1.0), battle._t * 13.0 + float(idx2) * 1.3, TENT_ANCHOR_H, 11)
+		, 0.0, 1.0, SPRAY_SEC)
+
+
 ## ★★程序化火球(2026-08-01 实拍换掉贴图版)。
 ## 换掉的理由是【实拍量出来的】, 不是审美偏好:
 ##   `_burst_vfx(TEX_BLAST, epi, 320.0, 0.55)` 把一张 320 码(=7.68 米)的竖直公告板挂在 y=0.55 米,
@@ -377,12 +404,28 @@ func _fireball(epi: Vector2, r_yards: float, life: float) -> void:
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD      # 加色: 火是发光的, 不是不透明颜料
+	# ★★分两层画(2026-08-02 实拍第二轮): 全用加色的话, 品红+白心一叠就冲成【棉花糖粉】,
+	#   读作"发光气体"而不是"血肉"。血肉要有【质量】——
+	#     · 外层肉块 = MIX(不透明混合) ⇒ 暗紫压得住底下的地面, 有体积
+	#     · 内核     = ADD(加色)      ⇒ 只有那一点在发光
+	#   同一份几何画两遍, 只换材质与半径。
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_MIX
+	var mat_glow := StandardMaterial3D.new()
+	mat_glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat_glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat_glow.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat_glow.vertex_color_use_as_albedo = true
+	mat_glow.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat_glow.no_depth_test = true
+	mat_glow.render_priority = 10
 	mat.vertex_color_use_as_albedo = true
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	mat.no_depth_test = true                             # ★不参与深度 = 不会被地板/台阶切掉
 	mat.render_priority = 9
-	im.material_override = mat
+	# ★★不能用 material_override —— 它会【覆盖所有 surface 的材质】, 我传给 surface_begin 的
+	#   发光材质会被静默忽略, 两层拆分等于白做(实拍表现: 怎么调都看不见高热核心, 因为核心
+	#   也在按 MIX 画)。ImmediateMesh 的 surface_begin(primitive, material) 本来就是【逐 surface】
+	#   指定材质的正路, 这里什么都不设即可。
 	battle._world.add_child(im)
 	var R: float = r_yards * battle.WS
 	var tw = battle._reg_tween()
@@ -402,30 +445,39 @@ func _fireball(epi: Vector2, r_yards: float, life: float) -> void:
 			ax = Vector3.RIGHT
 		ax = ax.normalized()
 		var ay: Vector3 = to_cam.cross(ax).normalized() * FIRE_SQUASH
-		# 由外向内画: 暗烟 → 橙 → 黄 → 白心 (后画的盖在前面 = 层次)
+		# 由外向内画: 暗紫肉 → 品红 → 炽白紫心 (后画的盖在前面 = 层次)
 		for li in range(FIRE_LOBES + 1):
 			var inner: bool = li == FIRE_LOBES
 			var la: float = TAU * float(li) / float(FIRE_LOBES) + t * 0.9
 			var lr: float = 0.0 if inner else R * grow * 0.44
 			var lc: Vector3 = c0 + (ax * cos(la) + ay * sin(la)) * lr
-			var rad: float = R * grow * (0.30 if inner else lerpf(0.62, 0.50, q))
-			# 颜色: 内核最亮最久, 外圈先冷
+			var rad: float = R * grow * (0.42 if inner else lerpf(0.50, 0.44, q))   # 肉块收小(别连成饼)/核放大(要看得见)
+			# ★★2026-08-02 改配色(用户:「这是病毒的拉在一起，这个爆炸颜色和样式合适吗」):
+			#   整套设定是【病毒】—— 触手紫黑、尸壳病毒化、病毒巢紫肉, 唯独高潮炸出一团
+			#   汽油味的橙色火球, 观感是断的。这是我照搬"爆炸=火"的惯性, 没跟自己的设定走。
+			#   改成【生物质迸发】: 炽白紫心 → 品红血肉 → 暗紫黑腐坏。参数与火球版一致,
+			#   只换颜色曲线 —— 节奏(0.12 涨开 / 1.35 收尾)你已经说过没问题, 不动。
 			var col: Color
 			if inner:
-				col = Color(1.0, 0.97, 0.80).lerp(Color(1.0, 0.62, 0.16), clampf(q * 1.6, 0.0, 1.0))
+				# 核(加色层): 炽紫白 → 品红。范围小 ⇒ 只有中心一点在发光, 不糊满整团
+				col = Color(0.96, 0.74, 1.00).lerp(Color(0.88, 0.14, 0.72), clampf(q * 1.6, 0.0, 1.0))
 			else:
 				var heat: float = clampf(q * 1.25 + float(li) * 0.045, 0.0, 1.0)
-				col = Color(1.0, 0.52, 0.09).lerp(Color(0.40, 0.08, 0.02), heat)   # 更橙: 加色下才不会一叠就白
+				# 外层(不透明层): 深品红血肉 → 紫黑腐坏。★压暗压饱和 —— 上一版 0.78/0.62
+				#   在加色下冲成了粉。现在走 MIX, 深色才有肉的分量。
+				col = Color(0.46, 0.05, 0.34).lerp(Color(0.13, 0.02, 0.17), heat)
 			# ★★径向剖面分三层, 不是"中心不透明→边缘 0"的线性衰减。
 			#   线性衰减(我第一版)= 亮度铺得又宽又淡 ⇒ 实拍只看得见中间那颗白心, 外层火舌全是
 			#   一层薄雾, 还把底下的紫色触手加色染成了粉红(截图确认)。
 			#   现在: 0~62% 满亮(实心火) / 62~86% 半亮 / 86~100% 收到 0(软边)。
 			# ★alpha 要按"6 团加色会互相叠加"来定, 不是单团好看就行。
 			#   0.80 那版实拍整片过曝成白, 把龟都冲没了(截图确认)。
-			var a_core: float = fade * (0.82 if inner else 0.42)
+			# ★MIX 层 0.88 太实: 它 no_depth_test ⇒ 恒盖在龟前面, 实拍整片把敌人全糊没了。
+			#   0.58 = 看得出是块暗紫肉、又透得出后面的龟。发光核反过来给足(它面积小)。
+			var a_core: float = fade * (1.00 if inner else 0.58)
 			var BANDS := [0.0, 0.62, 0.86, 1.0]
 			var ALPHA := [a_core, a_core, a_core * 0.55, 0.0]
-			imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat)
+			imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat_glow if inner else mat)
 			for bi in range(BANDS.size() - 1):
 				var r0: float = float(BANDS[bi])
 				var r1: float = float(BANDS[bi + 1])
@@ -436,7 +488,9 @@ func _fireball(epi: Vector2, r_yards: float, life: float) -> void:
 				for k in range(FIRE_SIDES + 1):
 					var a: float = TAU * float(k) / float(FIRE_SIDES)
 					# 极径扰动: 火舌。相位随时间滚 ⇒ 在翻滚, 不是一个静止的圆
-					var wob: float = 1.0 + sin(a * 3.0 + t * 5.5 + float(li)) * 0.26 						+ sin(a * 6.0 - t * 3.4 + float(li) * 2.1) * 0.13
+						# ★轮廓也要改: 火舌是【圆润翻滚】的, 生物质是【尖锐撕裂】的。
+					#   加一条高频谐波(11 次)并抬高振幅 ⇒ 边缘长出肉刺, 不再是一团圆火。
+					var wob: float = 1.0 + sin(a * 3.0 + t * 5.5 + float(li)) * 0.30 						+ sin(a * 6.0 - t * 3.4 + float(li) * 2.1) * 0.17 						+ absf(sin(a * 11.0 + float(li) * 0.7)) * 0.22
 					var dirv: Vector3 = ax * cos(a) + ay * sin(a)
 					var q0: Vector3 = lc + dirv * (rad * wob * r0)
 					var q1: Vector3 = lc + dirv * (rad * wob * r1)
@@ -482,7 +536,11 @@ func _husk_writhe(spr, life: float) -> void:
 ##   那三张分别属于海盗钩索、训龟大师钩锁、忍者炸弹(用户定的规矩: 只有背包/商店图标可复用)。
 const TEX_MINE := "res://assets/sprites/vfx/hookbomb-mine.png"
 const TEX_CHAIN := "res://assets/sprites/vfx/hookbomb-chain.png"
-const TEX_BLAST := "res://assets/sprites/vfx/hookbomb-blast.png"   # 聚爆(新生成, 不复用 fx_explosion)
+## 聚爆(新生成, 不复用任何现有素材)。★2026-08-02 从橙色火球换成【生物质迸溅】:
+## 整套是病毒(触手紫黑/尸壳病毒化/病毒巢紫肉), 唯独高潮是汽油味的橙色爆炸, 观感是断的
+## (用户:「这是病毒的拉在一起, 这个爆炸颜色和样式合适吗」)。旧的 hookbomb-blast.png 已删,
+## 不留孤儿素材(data_integrity 会查资源路径/孤儿)。
+const TEX_BLAST := "res://assets/sprites/vfx/hookbomb-viralburst.png"
 
 ## 挂在宿主身上的炸弹: 贴图跟着宿主走 + 呼吸脉动, 宿主一死就撤。
 ## ★挂在【宿主的 sprite 之下】而不是自己每帧同步位置 —— 少一条要维护的跟随逻辑,
@@ -578,7 +636,7 @@ func _tendril_shoot(from2d: Vector2, tgt: Dictionary, idx: int, hold: float) -> 
 			_tendril_draw(from2d, to2d, p, battle._t * 9.0 + float(idx), tip_h)
 	, 0.0, 1.0, dur)
 	tw.tween_callback(func() -> void:
-		battle._skill_ring(to2d, Color(1.0, 0.72, 0.30, 0.75), 34.0))  # 抓住的一下
+		battle._skill_ring(to2d, Color(0.88, 0.35, 0.98, 0.75), 34.0))  # 抓住的一下
 	# ★缠住期 + 收缩期: 始终画到目标的【实时位置】。钩头钉在目标身上一起被拖回来。
 	var tt: Dictionary = tgt
 	tw.tween_method(func(p: float) -> void:
@@ -651,7 +709,7 @@ const TENT_RIM := Color(0.70, 0.28, 0.95)       # 梢部/钩头辉光
 ## 画一条从 from2d 抽向 to2d 的触手。t01 = 触手伸出的进度(0..1), 用来做"正在抽出去"。
 ## tip_h: 梢部锚定高度(米)。★要带上目标自己的 height —— 被击飞/浮空的单位若按 0 算,
 ##   触手会连到它【脚底下的空气】里。锚定高度取值遵循项目既定口径(打在身上 = 0.6~1.0 米)。
-func _tendril_draw(from2d: Vector2, to2d: Vector2, t01: float, phase: float, tip_h: float = TENT_ANCHOR_H) -> void:
+func _tendril_draw(from2d: Vector2, to2d: Vector2, t01: float, phase: float, tip_h: float = TENT_ANCHOR_H, prio: int = 6) -> void:
 	if battle._world == null or battle._cam == null:
 		return
 	var d: Vector2 = to2d - from2d
@@ -669,7 +727,8 @@ func _tendril_draw(from2d: Vector2, to2d: Vector2, t01: float, phase: float, tip
 	mat.vertex_color_use_as_albedo = true
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	mat.no_depth_test = true
-	mat.render_priority = 6      # ★render_priority 在【材质】上, MeshInstance3D 没有这个属性
+	mat.render_priority = prio   # ★render_priority 在【材质】上, MeshInstance3D 没有这个属性
+	                             #   爆炸时甩出的肉刺要传 11(压在火球两层之上), 否则被盖住看不见
 	im.material_override = mat
 	battle._world.add_child(im)
 	var reach: float = dist * clampf(t01, 0.0, 1.0)
