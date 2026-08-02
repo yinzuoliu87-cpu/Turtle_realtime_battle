@@ -70,6 +70,35 @@ func _ready() -> void:
 	_ok("★快照存了 大师", kinds["trainer"])
 	_ok("★快照存了 精英(role=elite)", kinds["elite"])
 
+	# ── ⑦ ★方案书 20260727 承诺、但一直没建的两条 ───────────────────────
+	#   (docs/plans/20260727-图鉴装备框色+调试场手机选龟.md 验收清单最后一行)
+	# ⑦-A 28 只龟【逐 id】都在笔刷栏。上面那条只数了"≥30 格" ——
+	#      少一只龟同时多一个小将, 格数照样 30, 它一点都看不出来。
+	var pet_ids: Array = []
+	for id in scene.STATS.keys():
+		var iid := str(id)
+		if iid == "__minion__" or iid == scene.TRAINER_ID:
+			continue
+		pet_ids.append(iid)
+	var missing: Array = []
+	for iid in pet_ids:
+		if not _keys.has(iid):
+			missing.append(iid)
+	_ok("⑦A ★龟逐 id 全在笔刷栏(分母 %d 只)" % pet_ids.size(),
+		missing.is_empty() and pet_ids.size() >= 28, "缺 %d 只: %s" % [missing.size(), str(missing)])
+
+	# ⑦-B 笔刷栏抬进安全区(手机 home 手势条会挡住贴底的栏子)。
+	#   桌面/无头下 SafeArea.insets 恒 0, 但 margins(size, 10.0) 的 base=10 仍是真值 ——
+	#   所以这条在无头下量的是"栏底离屏底至少 10px", 不是空检查(把 offset_bottom 那行删掉会红)。
+	for _i in range(3):
+		await get_tree().process_frame
+	var vpz: Vector2 = scene.get_viewport().get_visible_rect().size
+	var bsb: float = SafeArea.margins(vpz, 10.0).w
+	var brect: Rect2 = scene._edit_brush_bar.get_global_rect()
+	_ok("⑦B ★笔刷栏底边抬进安全区(离屏底 %.1f, 应 ≥ %.1f)" % [vpz.y - brect.end.y, bsb],
+		bsb > 0.0 and (vpz.y - brect.end.y) >= bsb - 0.5,
+		"栏底 %.1f / 视口高 %.1f" % [brect.end.y, vpz.y])
+
 	scene.queue_free()
 	print("ALL PASS — 调试场重做(笔刷栏/大师/精英/逐只配/折叠)" if _fail == 0 else "FAILED: %d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

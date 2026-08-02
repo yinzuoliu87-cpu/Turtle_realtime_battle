@@ -109,6 +109,9 @@ func _ready() -> void:
 				after_bad = str(res["after"])
 			nodes_min = mini(nodes_min, int(res["n"]))
 			# 图鉴页签行必须居中于【真实视口】(它挂在全宽锚的 TabBar 上)
+			var stg = res.get("stage", null)
+			if stg != null:
+				_stages.append(stg)
 			var toff = res.get("tab_off", null)
 			if tab_bad == "" and toff != null and absf(float(toff)) > 8.0:
 				tab_bad = "@%dx%d 页签行中心偏离视口中心 %.0fpx" % [w, h, float(toff)]
@@ -151,6 +154,8 @@ func _ready() -> void:
 		_ok("⑤ %s 点一下之后内容层仍在且仍居中" % scn, after_bad == "", after_bad)
 		if scn == "Codex":
 			_ok("②b 图鉴页签行居中于真实视口(补 SCALING 豁免留下的洞)", tab_bad == "", tab_bad)
+		if scn == "TeamSelect":
+			_check_teamselect_stage()
 
 	_ok("★分母: 真的量到了 %d 组(屏×比例)" % measured, measured >= SCREENS.size() * VIEWS.size(),
 		"measured=%d" % measured)
@@ -284,6 +289,26 @@ func _measure(path: String, w: int, h: int) -> Dictionary:
 		if cr != null and is_instance_valid(cr) and cr is Control:
 			frame_pos = (cr as Control).position
 
+	# 选龟屏舞台构图 —— ② 对它豁免(按视口缩放), 和图鉴一样得单独补断言。
+	#   量两样: 舞台原点/缩放(→"盖得住就不许留缝"这条硬不变式), 3 个阵容格的包围盒中心
+	#   (→ 构图有没有随视口比例漂移; 把 vp.x 写死成 1280 正是靠这条露馅)。
+	var stage = null
+	if inst.has_method("_stage_to_screen"):
+		var sc0: float = float(inst._content_scale())
+		var org: Vector2 = inst._stage_to_screen(Vector2.ZERO)
+		var slots = inst.get("_slot_nodes")
+		var lo := Vector2(INF, INF)
+		var hi := Vector2(-INF, -INF)
+		if slots is Array:
+			for sn in slots:
+				if sn is Control and (sn as Control).visible:
+					var rr: Rect2 = (sn as Control).get_global_rect()
+					lo = Vector2(minf(lo.x, rr.position.x), minf(lo.y, rr.position.y))
+					hi = Vector2(maxf(hi.x, rr.end.x), maxf(hi.y, rr.end.y))
+		if lo.x < INF:
+			stage = {"s": sc0, "org": org, "slotc": (lo + hi) * 0.5,
+				"size": Vector2(float(inst.POC_W), float(inst.POC_H)) * sc0, "vp": vp}
+
 	# ★★必须在 sv.queue_free() 【之前】算 —— 释放后 inst 已不在树上, get_global_rect 全是 0。
 	#   而且这一行 2026-08-01 漏过一次: _blocker_check 写好了却【没人调】, 返回字典里也没有
 	#   "blocker" 键 → 消费侧 res.get("blocker","") 恒为空 → ④ 恒绿。反向验证(两条突变同时加、
@@ -294,7 +319,57 @@ func _measure(path: String, w: int, h: int) -> Dictionary:
 	await get_tree().process_frame
 	var bbc: float = ((bb.position.x + bb.end.x) * 0.5 - vp.x * 0.5) if have_bb else 9999.0
 	return {"over": over, "n": counted, "tiny": tiny, "worst": over_worst,
-		"frame": frame_pos, "tab_off": tab_off, "bbc": bbc, "blocker": blocker, "after": after}
+		"frame": frame_pos, "tab_off": tab_off, "bbc": bbc, "blocker": blocker, "after": after,
+		"stage": stage}
+
+
+## 选龟屏构图 —— ② 对 TeamSelect 豁免(它按视口缩放, 问"内容层在哪"没意义),
+## 于是这一屏【一条针对性断言都没有】。图鉴当年补了 ②b, 选龟屏一直空着。
+## 守两条(都是 TeamSelectScene._stage_to_screen 里写死的契约):
+##   c1 舞台某轴盖得住视口时【不许留缝】—— 这条不变式是 2026-07-22 用户"一眼看出顶部黑缝"
+##      逼出来的(只夹内容带余量不够: PC 上余量 85 > 76 → 顶部露 103px)。
+##   c2 3 个阵容格相对【舞台原点】的位置, 除以缩放后四个比例必须一致。
+##
+## ★反向验证实测(2026-08-03), 记下来省得下次重做:
+##   · 舞台原点写死 1280×720   → c1 红 / c2 绿(格子和原点一起偏, 相对量不变)
+##   · 删掉"盖得住不留缝"不变式 → c1 红 / c2 绿
+##   · 阵容格改用写死屏幕坐标   → c2 红 (这才是 c2 守的那类故障: 元素不跟舞台走)
+##   两条守的是【不同的东西】: c1 守舞台本身怎么摆, c2 守元素有没有跟着舞台。
+##   ——别看到 c2 在前两个变异下不红就以为它是恒真式, 也别指望 c1 能替它兜。
+var _stages: Array = []
+
+func _check_teamselect_stage() -> void:
+	_ok("★分母: 选龟屏四个比例都量到舞台", _stages.size() == VIEWS.size(),
+		"量到 %d 组" % _stages.size())
+	var seam := ""
+	for g in _stages:
+		var org: Vector2 = g["org"]
+		var siz: Vector2 = g["size"]
+		var vpz: Vector2 = g["vp"]
+		for ax in [0, 1]:
+			if siz[ax] >= vpz[ax] - 0.5:
+				if org[ax] > 0.5 or org[ax] + siz[ax] < vpz[ax] - 0.5:
+					seam = "@%.0fx%.0f 轴%d 舞台盖得住(%.0f≥%.0f)却留了缝(原点 %.1f, 末端 %.1f)" % [
+						vpz.x, vpz.y, ax, siz[ax], vpz[ax], org[ax], org[ax] + siz[ax]]
+			else:
+				var mid: float = org[ax] + siz[ax] * 0.5
+				if absf(mid - vpz[ax] * 0.5) > 1.5:
+					seam = "@%.0fx%.0f 轴%d 舞台盖不住却没居中(中心 %.1f, 应 %.1f)" % [
+						vpz.x, vpz.y, ax, mid, vpz[ax] * 0.5]
+	_ok("②c 选龟屏舞台: 盖得住不留缝 / 盖不住才居中", seam == "", seam)
+
+	# 3 格阵容相对【舞台原点】的位置, 换算回设计坐标 —— 四个比例必须是同一个数。
+	var drift := ""
+	var ref := Vector2.ZERO
+	for i in range(_stages.size()):
+		var g = _stages[i]
+		var d: Vector2 = (Vector2(g["slotc"]) - Vector2(g["org"])) / float(g["s"])
+		if i == 0:
+			ref = d
+		elif d.distance_to(ref) > 2.0:
+			drift = "@%s 阵容格在设计坐标 %s, 基准比例是 %s" % [str(g["vp"]), str(d.round()), str(ref.round())]
+	_ok("②c ★阵容 3 格构图不随视口比例漂移(换算回设计坐标应恒定 %s)" % str(ref.round()),
+		drift == "" and _stages.size() == VIEWS.size(), drift)
 
 
 func _walk(n: Node, out: Array) -> void:

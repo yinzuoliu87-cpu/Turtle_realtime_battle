@@ -12,7 +12,13 @@ var _row_press_pos := Vector2.ZERO   # 触屏点选/滑动判定: 记按下位�
 var _codex_list := CodexList.new(self)   # 图鉴·左栏列表行构建(龟/装备/状态/分组头/简单行·back_button和共享_add_text/image/portrait/rect留主场景)(2026-07-25 抽出)
 var _codex_detail := CodexDetail.new(self)   # 图鉴·右栏详情视图(龟/装备/学派/状态/规则/小将 13渲染函数)(2026-07-25 抽出)
 @onready var detail_bg: ColorRect = $UI/DetailBg
-@onready var detail: Control = $UI/Detail
+# ★2026-08-03 详情改可滚动。这里【故意】做了一次换名:
+#   detail_frame = 场景里那个固定 900×550 的框(UI/DetailBg 画着边框)——入场 tween / 居中偏移打它;
+#   detail       = 框内新建的【内容层】——所有 detail.add_child(…) 的绝对坐标语义完全不变。
+#   这样 20 处 host.detail.add_child 一行都不用改, 而内容超高时能滚到底(原来直接裁尾)。
+@onready var detail_frame: Control = $UI/Detail
+var detail: Control                       # 内容层(ScrollContainer 的子)——在 _ready 里建
+var _detail_scroll: ScrollContainer
 @onready var status_bar: Label = $UI/StatusBar
 
 const RARITY_COLOR := {
@@ -274,12 +280,7 @@ func _ready() -> void:
 		Phase2Schools.SCHOOLS.size(), DataRegistry.status_defs.size(), DataRegistry.battle_rules.size()]
 	# 视口比例由项目级 EXPAND(window/stretch/aspect)保证, 场景切换不翻转 aspect → 入场丝滑(同 TeamSelect)。
 	#   同步建完(无 await), 首帧即完整布局, 无半成品/撕裂帧。背景铺满+居中见 _fill_bg_and_center。
-	# ★详情面板裁剪(2026-08-01): Detail 是固定 900×550 的框(UI/DetailBg 画着边框), 但里面的
-	#   RichTextLabel 用 fit_content=true 自动长高 —— 长条目会穿出边框继续往下画, 一直画到
-	#   屏幕外(门禁实测 1280×720 下溢出底边 14px)。裁到框内: 既对上那圈边框, 也不再溢出。
-	#   ★已知限制: 极长条目会被裁掉尾部。要完整阅读需把 Detail 换成 ScrollContainer,
-	#   记在 docs/plans/20260801-UI双端适配.md 未决点里 —— 但"看不全"总好过"画到屏幕外"。
-	detail.clip_contents = true
+	_build_detail_scroll()
 	_fill_bg_and_center()
 	_build_tab_bar()
 	_add_back_button()   # ← 返回主菜单 (1:1 PoC CodexScene.ts:68) — 原漏了→图鉴出不去
@@ -381,7 +382,7 @@ func _fill_bg_and_center() -> void:
 	var dx := maxf(0.0, (vp.x - 1280.0) / 2.0)
 	var dy := maxf(0.0, (vp.y - 720.0) / 2.0)
 	if dx > 0.5 or dy > 0.5:
-		for n in [list_bg, list_scroll, detail_bg, detail]:
+		for n in [list_bg, list_scroll, detail_bg, detail_frame]:
 			if n != null:
 				n.position += Vector2(dx, dy)
 
@@ -395,7 +396,7 @@ func _play_list_detail_intro() -> void:
 	# 列表从左 (-360), 详情从右 (+360); [节点, 起点偏移, 延迟]
 	var specs := [
 		[list_bg, -360.0, 0.15], [list_scroll, -360.0, 0.15],
-		[detail_bg, 360.0, 0.25], [detail, 360.0, 0.25],
+		[detail_bg, 360.0, 0.25], [detail_frame, 360.0, 0.25],
 	]
 	for s in specs:
 		var n: Control = s[0]
@@ -608,6 +609,46 @@ func _select(idx: int) -> void:
 # ══════════════════════════════════════════════════════════
 # 详情面板 helper (在 detail 容器内绝对定位; PoC Phaser 坐标=Godot 同坐标)
 # ══════════════════════════════════════════════════════════
+## ── 详情可滚动 (2026-08-03) ────────────────────────────────────────────
+## 原来是 detail.clip_contents=true 直接【裁尾】: 长条目(熔岩双形态/多技能龟)后半截看不见。
+## 现在框内套一层 ScrollContainer, 内容层仍是绝对定位 Control → 调用侧零改动。
+const DETAIL_SCROLL_PAD := 14.0   # 底部留白, 免得最后一行贴着边框
+
+func _build_detail_scroll() -> void:
+	detail_frame.clip_contents = true       # 框仍然裁: 滚动内容不许画出边框
+	_detail_scroll = ScrollContainer.new()
+	_detail_scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_detail_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_detail_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_detail_scroll.follow_focus = false
+	detail_frame.add_child(_detail_scroll)
+	detail = Control.new()
+	detail.name = "DetailContent"
+	detail.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 自己不吃事件→滚轮/拖滑落到 ScrollContainer
+	_detail_scroll.add_child(detail)
+
+
+## 每帧重算内容底边 —— 【不能只算一次】:
+##   RichTextLabel(fit_content=true) 的高度是【布局之后】才定的, 建完当帧读 size.y 拿到 0;
+##   技能卡展开/收起(_codex_skill_detail)也会改高度, 一次性算完立刻过期。
+## 顺带把纯展示的 RichTextLabel 设成 PASS: 它默认 STOP, 会把滚轮/触屏拖动吃掉
+##   (同 list_vbox / 列表行的既有做法, 见 _ready 与列表构建)。可点的 hit 区仍是 STOP, 不动。
+func _process(_dt: float) -> void:
+	if detail == null:
+		return
+	var bottom := 0.0
+	for c in detail.get_children():
+		if not (c is Control):
+			continue
+		var ctl := c as Control
+		if c is RichTextLabel and ctl.mouse_filter == Control.MOUSE_FILTER_STOP:
+			ctl.mouse_filter = Control.MOUSE_FILTER_PASS
+		bottom = maxf(bottom, ctl.position.y + ctl.size.y)
+	var want := bottom + DETAIL_SCROLL_PAD
+	if absf(detail.custom_minimum_size.y - want) > 0.5:
+		detail.custom_minimum_size.y = want
+
+
 func _clear_detail() -> void:
 	for c in detail.get_children():
 		c.queue_free()

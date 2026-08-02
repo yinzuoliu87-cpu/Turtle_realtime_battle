@@ -25,6 +25,16 @@ func _ok(name: String, cond: bool, detail: String = "") -> void:
 		print("  [FAIL] ", name, "  ", detail)
 
 
+## 按【文案】数按钮 —— 结算页会叠加多层, 只数总数看不出"这一层有没有多长一个"。
+func _count_btn_text(n: Node, txt: String) -> int:
+	var c := 0
+	for ch in n.get_children():
+		if ch is Button and (ch as Button).text == txt:
+			c += 1
+		c += _count_btn_text(ch, txt)
+	return c
+
+
 func _count_buttons(n: Node) -> int:
 	var c := 0
 	for ch in n.get_children():
@@ -156,6 +166,38 @@ func _ready() -> void:
 	var btns := _count_buttons(scene._ui_layer)
 	_ok("结算后 UI 层有操作按钮(再战/返回菜单等 ≥2)", btns >= 2, "共 %d 个 Button" % btns)
 	_ok("结算后投降按钮被禁", scene._surrender_btn.disabled == true)
+
+	# ── C2. ★结算页「前往商店」(2026-08-03) ──────────────────────────────
+	# 自走棋的循环是【打 → 买 → 再打】, 而原来结算页只有"返回主菜单":
+	#   玩家得自己想起来去商店、再自己回主菜单点开始战斗 —— 循环是断的。
+	#   (教学模式分支早就给了"前往商店", 只是正式对局没用上。)
+	# ⚠ 赛季淘汰(hearts<=0)时【商店是锁的】(MainMenuScene 里锁匹配+商店),
+	#   所以那时不能给这个按钮 —— 否则点进去是个锁死的页面。
+	# 下面三条: ①按钮在 ②它指的场景真存在 ③★淘汰时不长出来(差分, 不是空检查)。
+	# ★用【差分】不用总数: 这个测试前面已经结算过一次(_do_surrender), UI 层里本来就躺着
+	#   一张旧结算卡 —— 数总数会把它算进来(实测 2 个, 而每张卡只有 1 个)。
+	#   差分 = "再建一张卡, 这张卡里多长出几个" —— 与历史残留无关。
+	var gs2 = get_node_or_null("/root/GameState")
+	var hearts0: int = int(gs2.hearts)
+	var base_n := _count_btn_text(scene._ui_layer, BattleHud.SHOP_BTN_TEXT)
+	gs2.hearts = maxi(1, hearts0)        # 未淘汰
+	scene._settled = false               # _show_banner 开头有 `if _settled: return`
+	scene._hud._show_banner(true)
+	await get_tree().process_frame
+	var live_n := _count_btn_text(scene._ui_layer, BattleHud.SHOP_BTN_TEXT)
+	_ok("C2 结算页给【%s】按钮" % BattleHud.SHOP_BTN_TEXT,
+		live_n - base_n == 1, "这一张卡新增 %d 个" % (live_n - base_n))
+	_ok("C2 按钮指向的场景真存在(%s)" % BattleHud.SHOP_SCENE,
+		ResourceLoader.exists(BattleHud.SHOP_SCENE))
+	# 淘汰态再结算一次: 这一张卡【一个都不该多】。
+	gs2.hearts = 0                       # → is_eliminated() = true
+	scene._settled = false
+	scene._hud._show_banner(false)
+	await get_tree().process_frame
+	var elim_n := _count_btn_text(scene._ui_layer, BattleHud.SHOP_BTN_TEXT)
+	_ok("C2 ★淘汰(0命)时不给商店按钮 —— 商店此时是锁的",
+		elim_n - live_n == 0, "淘汰那张卡新增 %d 个(应 0)" % (elim_n - live_n))
+	gs2.hearts = hearts0
 
 	# 复位, 防暂停态影响
 	get_tree().paused = false

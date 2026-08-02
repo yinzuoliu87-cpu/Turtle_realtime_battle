@@ -3,6 +3,13 @@ extends RefCounted
 ## 战斗HUD/面板构建与显示: UI层/暂停/日志/统计/编辑笔刷/队伍头像框/胜负横幅/点龟详情面板/触控盘·纯UI
 ## 类内名不变;外部名加 battle.
 
+# ★结算页「前往商店」(2026-08-03)。抽成常量【不是为了复用】——是为了让门禁能验:
+#   按钮回调是个 lambda, 从外面看不见它跳去哪; 路径写错(改名/挪目录)时按钮照样长出来,
+#   点下去才发现是空的。常量让门禁能 ResourceLoader.exists() 真去查这个场景在不在。
+const SHOP_SCENE := "res://scenes/Shop.tscn"
+const SHOP_BTN_TEXT := "前往商店"
+
+
 ## 被动技能 id → 圆盘图标。
 ## ★为什么单列一张: battle.TRAINER_SKILLS 只收【主动技】, 被动的图标一直只存在
 ##   TrainerConfigScene.SKILLS 里 —— 战斗侧取不到, 于是 get("",{}) 回落成钩锁图标,
@@ -1260,6 +1267,19 @@ func _show_banner(won: bool) -> void:
 		btn_row.add_child(battle._make_result_btn(_label, Color("#ffc23c"), Color("#3a1f00"),
 			func() -> void: battle.get_tree().change_scene_to_file(_td.next_scene_after("battle"))))
 	else:
+		# ★★2026-08-02 补【前往商店】主按钮。
+		#   自走棋的核心节奏是「打 → 买 → 再打」, 而原来结算页【只有返回主菜单】——
+		#   玩家得自己想起来去商店、再自己回主菜单点开始战斗, 循环是断的。
+		#   ★有意思的是【教学模式早就有正确做法】(上面那个分支会给"前往商店"),
+		#     只是正式对局没用上。这里把它变成常规流程。
+		#   ⚠ 赛季淘汰时【商店是锁的】(GameState.is_eliminated() → 锁匹配+商店,
+		#     见 MainMenuScene.gd:169/739/770, 用户 2026-07-24 拍板"淘汰锁定"),
+		#     所以淘汰后不给这个按钮 —— 否则点进去是个锁死的页面。
+		var _gs2 = battle.get_node_or_null("/root/GameState")
+		var _elim: bool = _gs2 != null and _gs2.is_eliminated()
+		if not _elim:
+			btn_row.add_child(battle._make_result_btn(SHOP_BTN_TEXT, Color("#ffc23c"), Color("#3a1f00"),
+				func() -> void: battle.get_tree().change_scene_to_file(SHOP_SCENE)))
 		btn_row.add_child(battle._make_result_btn("返回主菜单", Color("#5aa0d8"), Color("#04121e"),
 			func() -> void: battle.get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")))
 	_banner_fade_in(btn_row, 0.58)
@@ -1641,6 +1661,11 @@ func _build_brush_bar() -> void:
 	hint.add_theme_font_size_override("font_size", 12)
 	hint.add_theme_color_override("font_color", Color("#ffe9a8"))
 	root.add_child(hint)
+	# ★栏高必须【跟着内容走】, 不能写死 94 (2026-08-03 门禁探针查出来的):
+	#   内容(按钮行 64 + 提示行 + 上下 margin)最小高实测 97 > 94 —— PanelContainer 会守住自己的
+	#   最小高、【向下】撑破底部锚点(实测栏底 1273 而不是 1270), 于是上面那句"抬进安全区"
+	#   抬了个寂寞, 手机 home 手势条照样压着最后 3px。取 max 让底边严格落在安全区内。
+	bar.offset_top = -maxf(94.0, bar.get_combined_minimum_size().y) - _bsb
 	battle._debug._edit_refresh_brush_highlight()
 
 # ----------------------------------------------------------------------------
