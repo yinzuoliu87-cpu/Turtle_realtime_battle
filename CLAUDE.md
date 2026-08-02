@@ -176,6 +176,23 @@ while _w < 600 and float(u["hp"]) >= hp0:   # 上限防死循环
 - 拆分模板照抄 [`scripts/scenes/battle/dmg_stats_panel.gd`](scripts/scenes/battle/dmg_stats_panel.gd)：`RefCounted` + 构造注入 `CanvasLayer` + `Callable` 取只读数据，主场景侧只剩 3 行
 - **战斗上帝文件已拆**（2026-07-26·8刀·`RealtimeBattle3DScene.gd` 25272→8555·−66%）：世界构建/特效/渲染/目标/伤害/弹道/生成/HUD 各成 `scripts/scenes/battle/battle_*.gd`（`battle` 注入·RefCounted·class_name）。剩余主文件≈核心 sim 循环（process/sim_step/tick/do_skill/移动/状态），每帧耦合·**不宜再碎化**。方法论与十九坑见 memory [[project-god-file-decomposition]]、方案书 [docs/plans/20260726-核心引擎拆分.md](docs/plans/20260726-核心引擎拆分.md)。
 
+**★新代码放哪：判据只有一条 —— 不在 `_sim_step` 调用链上的，不进主文件。**
+（用户 2026-08-02：「可以涨行数，但不能乱，要规范」。行数预算已放宽到 9000，
+但**约束从"行数"移到了"放对位置"**：余量的作用是"正常改动不必绕路"，不是"可以随便往主文件加"。）
+
+| 要写的东西 | 去哪 |
+|---|---|
+| UI / 面板 / 结算表 | `scripts/scenes/battle/battle_hud.gd` 或对应 Scene |
+| 特效演出 | `scripts/scenes/battle/battle_vfx.gd` |
+| 单龟技能 | `scripts/systems/skills/<x>_system.gd` |
+| 装备效果 | `scripts/systems/equip/` |
+| 纯数据 / 常量表 | `scripts/gamedata/` |
+| 通用工具 | `scripts/util/` |
+| **每帧耦合的核心 sim** | 才留主文件（process / sim_step / tick_unit / 移动 / 状态机 / 伤害分派） |
+
+> 历史教训：零余量那阵子**逼着把代码放错地方** —— 跨龟全局的诅咒效果差点为了不涨行数塞进 `ghost_system`。
+> 所以给余量；但余量不是免检通行证，判据仍是上面那一条。
+
 > **（2026-07-25 修正一处旧文档谎言）** 曾经这里写"`scripts/engine/` 是回合制旧引擎、只借 STATS 表"——**假的**，探针证明那 13 个文件全是活代码。已把 `scripts/engine/` 按真实身份拆成三个诚实的文件夹：<br>
 > · `scripts/gamedata/`（装备/龟/学派**属性表 + 配置**·`EquipStats`/`turtle_stats`/`phase2_*`·被战斗/背包/商店/图鉴/GameState 用）<br>
 > · `scripts/util/`（**共享工具**·`VfxTex` 特效纹理/`SkillText` 技能文案/`UIPalette` 配色/`SafeArea`）<br>
