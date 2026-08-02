@@ -31,7 +31,7 @@ bash run-tests.sh          # 自证测试(自动发现) + 全流程冒烟 + 三�
 - 判定不只看退出码，还过一条**致命报错正则**（`run-tests.sh` 顶部 `FATAL`）。
   **漏一个模式就等于把 bug 判成绿灯** —— 历史上 `Max recursion` 曾不在名单里，24 组压测全报"0 errors"，而真实对局每秒刷几百条错误。新报错形态往这条正则里加。
 - 慢测试的帧预算在 `frames_for()` 里登记。`--quit-after` 单位是**帧**不是毫秒；帧数不够会让测试跑到一半被掐断，表现为"没打 ALL PASS"而**不是**某条断言 FAIL —— 极易误判成真失败。
-- **★`run-tests.sh` = 83 自证测试 + 冒烟 + 审计器三合一；只跑 83 扫描（`sweep.sh`）≠ 门禁。** 2026-07-26 核心引擎拆分：`sweep.sh` 83/83 全绿就 push，CI 提交门禁却红——`tooltip_number_audit` 等审计器读战斗源码找装备数值，函数外迁到新文件后它找不到=误报，而 `sweep.sh` 不跑审计器。**push 前除 83 扫描，下面这些审计器也各跑一遍**（或直接 `bash run-tests.sh` 全套）。移含装备数值/龟数据/源码符号的函数尤其要跑 tooltip/tri/brief_detail。
+- **★`run-tests.sh` = 111 个自证测试 + 冒烟 + 审计器三合一，共 123 项；只跑自证扫描（`sweep.sh`）≠ 门禁。** 2026-07-26 核心引擎拆分：`sweep.sh` 全绿就 push，CI 提交门禁却红——`tooltip_number_audit` 等审计器读战斗源码找装备数值，函数外迁到新文件后它找不到=误报，而 `sweep.sh` 不跑审计器。**push 前除自证扫描，下面这些审计器也各跑一遍**（或直接 `bash run-tests.sh` 全套）。移含装备数值/龟数据/源码符号的函数尤其要跑 tooltip/tri/brief_detail。
 
 只读审计器（可反复跑）：
 
@@ -47,7 +47,7 @@ python tools/docs_authority_lint.py    # 单一事实源纪律（进 run-tests �
 
 ## 2.5 版本号（每次玩家可感知的改动都要 +1）
 
-`大版本.功能版本.改动序号`，当前 `0.15.10`（真值以 `project.godot` `config/version` 为准，别信这行——它会漂）。第 3 位每次改动 +1；第 2 位加新玩法时 +1。
+`大版本.功能版本.改动序号`，当前 `0.18.7`（真值以 `project.godot` `config/version` 为准，别信这行——它会漂）。第 3 位每次改动 +1；第 2 位加新玩法时 +1。
 
 **改版本号要同时改四处**，漏一处 `verify_version` 直接红：
 
@@ -61,9 +61,9 @@ python tools/docs_authority_lint.py    # 单一事实源纪律（进 run-tests �
 游戏内显示（主菜单右下角）**从 `ProjectSettings` 读**，不许写死 —— 门禁会扫硬编码字面量。
 版本号的全部价值在于**测试者报 bug 时能说清是哪个版本**，四处不一致就说不清了。
 
-**每次升版本号后，给那个提交打 git tag**（`git tag -a v0.15.10 <提交> -m "..."` 然后 `git push origin --tags`）。
+**每次升版本号后，给那个提交打 git tag**（`git tag -a v0.18.7 <提交> -m "..."` 然后 `git push origin --tags`）。
 tag 让"回到某个版本"从翻提交号变成 `git checkout v0.11.0`，也是 GitHub Release 的锚点
-（Release 能把 IPA 永久挂上去，不受 artifact 14 天限制）。2026-07-23 补齐了 v0.9.3~v0.12.1 全部 21 个 tag。
+（Release 能把 IPA 永久挂上去，不受 artifact 14 天限制）。2026-07-23 补齐了 v0.9.3~v0.12.1 全部 21 个 tag；现共 72 个。
 
 ---
 
@@ -170,11 +170,11 @@ while _w < 600 and float(u["hp"]) >= hp0:   # 上限防死循环
 
 实测已高度统一，跟着现状写即可：
 
-- 缩进 **tab**（80/80 文件，零空格缩进、零混用）
-- 函数名 **snake_case**（1375 个函数零例外）；`class_name` **PascalCase**
-- 类型标注：返回值 **98.4%**、变量 **93.3%** —— 新代码请标注
+- 缩进 **tab**（112/112 文件，零空格缩进、零混用）
+- 函数名 **snake_case**（1669 个函数零例外）；`class_name` **PascalCase**
+- 类型标注：返回值 **98.0%**（1636/1669）；变量以 `:=` 推断为主，显式写类型的约 46%（旧版这里写"93.3%"是把 `:=` 也算进去了，口径不同）—— 新代码请标注返回值
 - 拆分模板照抄 [`scripts/scenes/battle/dmg_stats_panel.gd`](scripts/scenes/battle/dmg_stats_panel.gd)：`RefCounted` + 构造注入 `CanvasLayer` + `Callable` 取只读数据，主场景侧只剩 3 行
-- **战斗上帝文件已拆**（2026-07-26·8刀·`RealtimeBattle3DScene.gd` 25272→8476·−66%）：世界构建/特效/渲染/目标/伤害/弹道/生成/HUD 各成 `scripts/scenes/battle/battle_*.gd`（`battle` 注入·RefCounted·class_name）。剩余主文件≈核心 sim 循环（process/sim_step/tick/do_skill/移动/状态），每帧耦合·**不宜再碎化**。方法论与十九坑见 memory [[project-god-file-decomposition]]、方案书 [docs/plans/20260726-核心引擎拆分.md](docs/plans/20260726-核心引擎拆分.md)。
+- **战斗上帝文件已拆**（2026-07-26·8刀·`RealtimeBattle3DScene.gd` 25272→8555·−66%）：世界构建/特效/渲染/目标/伤害/弹道/生成/HUD 各成 `scripts/scenes/battle/battle_*.gd`（`battle` 注入·RefCounted·class_name）。剩余主文件≈核心 sim 循环（process/sim_step/tick/do_skill/移动/状态），每帧耦合·**不宜再碎化**。方法论与十九坑见 memory [[project-god-file-decomposition]]、方案书 [docs/plans/20260726-核心引擎拆分.md](docs/plans/20260726-核心引擎拆分.md)。
 
 > **（2026-07-25 修正一处旧文档谎言）** 曾经这里写"`scripts/engine/` 是回合制旧引擎、只借 STATS 表"——**假的**，探针证明那 13 个文件全是活代码。已把 `scripts/engine/` 按真实身份拆成三个诚实的文件夹：<br>
 > · `scripts/gamedata/`（装备/龟/学派**属性表 + 配置**·`EquipStats`/`turtle_stats`/`phase2_*`·被战斗/背包/商店/图鉴/GameState 用）<br>
@@ -191,7 +191,7 @@ while _w < 600 and float(u["hp"]) >= hp0:   # 上限防死循环
 | 目标 | 怎么做 | 产物 |
 |---|---|---|
 | **iOS 装机包** | push 到 `main`（或手动 dispatch）→ **`.github/workflows/ios-build.yml`** | Actions artifact `turtle-ios-unsigned`（unsigned .ipa，留 14 天） |
-| 提交门禁 | push 自动跑 `.github/workflows/tests.yml` | 47 项，ubuntu |
+| 提交门禁 | push 自动跑 `.github/workflows/tests.yml` | 123 项，ubuntu |
 | Web（手机浏览器直接玩） | `SHIP=1 bash build-web.sh` | `build/turtle-realtime-web.zip` |
 | Android APK | 见 [实时版APK打包.md](docs/实时版APK打包.md) | `build/android/*.apk` |
 

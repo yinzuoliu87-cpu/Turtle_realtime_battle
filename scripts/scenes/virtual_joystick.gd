@@ -2,7 +2,8 @@ extends Control
 
 ## virtual_joystick.gd — 移动端虚拟摇杆 (用户 2026-07-22:「移动要遥感」)
 ##
-## 只在移动端出现(PC 走键盘, 见 RealtimeBattle3DScene._trainer_input_vec)。
+## 只在移动端出现(PC 走键盘, 见 scripts/systems/trainer/trainer_system.gd 的 _trainer_input_vec
+## —— 2026-08-02 更正指路: 拆分后已不在 RealtimeBattle3DScene)。
 ## 输出 `value`: 归一化方向 × 拉杆比例(0..1), 静止时为 Vector2.ZERO。
 ##
 ## ★手势隔离: 本控件 mouse_filter = STOP, 落在它上面的按下/拖动【不会】继续冒泡到

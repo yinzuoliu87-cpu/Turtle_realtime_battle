@@ -9,7 +9,15 @@ import io, json, re
 
 PETS = json.load(io.open("data/pets.json", encoding="utf-8"))
 pets = PETS["pets"] if isinstance(PETS, dict) else PETS
-CODE = io.open("scripts/scenes/RealtimeBattle3DScene.gd", encoding="utf-8").read()
+# ★★2026-08-02 修扫描面: 原来只读 RealtimeBattle3DScene.gd 一个文件。
+# 2026-07-26 核心引擎拆成 battle_*.gd、技能拆进 systems/skills/ 之后, _knockback(...) 的调用
+# 大量搬了出去 ⇒ 审计器在老路径找不到, 报「文档 vy_mult=2.75/3.667 在代码里找不到」——
+# 实际代码里两个值都在, 是【误报】。这与 tooltip_number_audit 当年踩的是同一个坑
+# (CLAUDE.md §2 已记: "函数外迁到新文件后它找不到=误报")。
+# 凡是"在代码里找某个字面量/符号"的审计, 扫描面必须跟着拆分走。
+import glob as _glob
+_CODE_FILES = ["scripts/scenes/RealtimeBattle3DScene.gd"]     + sorted(_glob.glob("scripts/scenes/battle/*.gd"))     + sorted(_glob.glob("scripts/systems/**/*.gd", recursive=True))
+CODE = chr(10).join(io.open(f, encoding="utf-8").read() for f in _CODE_FILES)   # ★用 chr(10) 不写字面反斜杠n(heredoc 会把它变成真换行, 撑断字符串)
 SE = io.open("scripts/systems/skill_energy.gd", encoding="utf-8").read()
 DOC = io.open("docs/design/28龟技能设计-权威.md", encoding="utf-8").read()
 
@@ -35,9 +43,13 @@ j = CODE.index("\n}", i)
 basic_block = CODE[i:j]
 basic_ids = set(re.findall(r'\n\t"([a-z_]+)":', basic_block))
 pet_ids = {p["id"] for p in pets}
+# ★显式豁免: 训龟大师有普攻(站定扔石头)但它不是龟, 按设计就不在 pets.json 里。
+#   不豁免的话报告里会常驻一条"已知差异" —— 而常驻的已知差异会训练人【忽略整份报告】,
+#   下次真出问题也看不见。豁免要写清理由, 不能默默过滤。
+B_EXEMPT = {"__trainer__": "训龟大师(场外单位, 非龟, 设计如此)"}
 b_issue = []
 for bid in sorted(basic_ids):
-    if bid not in pet_ids:
+    if bid not in pet_ids and bid not in B_EXEMPT:
         b_issue.append("BASIC_ATK 有 %s 但不是龟 id" % bid)
 rows.append(("B. BASIC_ATK id ⊂ 龟 id", b_issue))
 

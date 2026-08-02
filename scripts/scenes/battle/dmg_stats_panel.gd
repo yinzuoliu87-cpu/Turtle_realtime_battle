@@ -4,8 +4,10 @@
 ## 与战斗场的耦合全部走【依赖注入】: 构造时传入 ui_layer 和「取某方单位列表」的回调,
 ## 本类不认识 _units / _world / 战斗状态。
 ##
-## 注意: 结算统计表(_build_stats_panel / _stats_column)【不在此文件】——
-## 它用了 await get_tree() 需要 Node 上下文, 且是另一套(7列表格)样式, 仍留在战斗场里。
+## 注意: 结算统计表【不在此文件】—— 它在 battle_hud.gd 里
+## (_build_stats_panel 建面板 / _stats_column 建一队一列), 是另一套 5 列样式
+## (龟/造成伤害/承受伤害/治疗量/击杀)。★2026-08-02 更正: 原注释写"仍留在战斗场里"
+## 且写"7列表格" —— 两处都过期了(表已搬进 HUD 层, 列也在 2026-08-02 从 7 列减到 5 列)。
 class_name DmgStatsPanel
 extends RefCounted
 

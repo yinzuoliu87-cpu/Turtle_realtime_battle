@@ -14,7 +14,8 @@ extends RefCounted
 # ── 逐星基础属性 (idx 0=1★ / 1=2★ / 2=3★)。crit=小数。_lifestealPct=整数%。──
 ## 把某件装备某星级的属性表, 格式化成人能读的一行/多行(背包、图鉴共用)。
 ##
-## ★字段与实装口径【一一对应】—— 见 RealtimeBattle3DScene._eq_apply_one_stats 里同名的 14 个分支。
+## ★字段与实装口径【一一对应】—— 见 scripts/systems/equip/equip_stats_apply.gd 的
+## _eq_apply_one_stats 里同名的 14 个分支。(2026-08-02 更正指路: 拆分后已不在 RealtimeBattle3DScene)
 ## 加新字段时两边都要改, 否则背包会漏显示(用户2026-07-19「背包里我要看到每件装备提供的属性, 必须写完整」)。
 ## 百分比类字段在实装里是 /100 后加到单位上的, 这里按【玩家看到的百分比】显示。
 static func stat_lines(item_id: String, star: int) -> Array:
