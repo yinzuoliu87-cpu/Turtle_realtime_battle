@@ -45,6 +45,15 @@ frames_for () {
     verify_codex_browse) echo 3000 ;;
     # 装备批次13条: 建一次战斗场景 + 100+ 条同步断言, 不等游戏内时间, 但建场本身要几百帧
     verify_equip_batch_20260801) echo 3000 ;;
+    # 装备平衡7项(20260730d 补的门禁): 三只大熊各要【墙钟】等 1.2 秒蓄力演出(真入口
+    #   _big_bear_charge_and_spawn 里 await _wait_sim(1.2)) → 无头高帧率下帧数很多。
+    #   ★第一次跑全套就撞了这个: 单跑 ALL PASS, 全套里 rc=0/致命0 却判 FAIL —— 正是被掐断。
+    verify_equip_batch_20260730d) echo 12000 ;;
+    # 闪避上限/施加: 只建一次场 + 同步断言, 但建场本身要几百帧
+    verify_dodge_cap) echo 2000 ;;
+    verify_thorn_reflect) echo 3000 ;;
+    verify_vfx_frames) echo 2000 ;;
+    verify_salvo_trainer) echo 3000 ;;
     *)             echo 500  ;;
   esac
 }
