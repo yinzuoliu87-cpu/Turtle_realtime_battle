@@ -7560,60 +7560,19 @@ func _stats_fit_body(bodies: Array, idx: int) -> void:
 	body.custom_minimum_size = c.size
 	var scroll := body.get_parent()
 	if not (scroll is ScrollContainer): return
-	# 面板顶=438, 减去标题/页签/内边距 ≈ 96, 屏底再留 10 → 页体可用高
-	var avail: float = maxf(120.0, get_viewport().get_visible_rect().size.y - 438.0 - 96.0 - 10.0)
+	# ★★2026-08-02 结算页改成【居中卡片】后, 这里【绝不能再给面板设绝对坐标】——
+	#   旧版末尾会调 _center_stats_panel(panel) 把面板摆到写死的 y, 而它现在是
+	#   VBoxContainer 的子节点 ⇒ 两套定位打架, 实拍表现是【「返回主菜单」按钮画在表格中间】。
+	#   位置一律交给容器算, 这里只负责"页体多高、滚动区裁到多高"。
+	# 可用高 = 视口高 − 卡片其余部分(标题54+副标题20+数据块50+按钮46+间距/内边距 ≈ 320)
+	var avail: float = maxf(120.0, get_viewport().get_visible_rect().size.y - 320.0)
 	(scroll as ScrollContainer).custom_minimum_size = Vector2(c.size.x, minf(c.size.y, avail))
-	var panel: Node = scroll.get_parent()
-	if is_instance_valid(panel) and panel.get_parent() is Control:
-		await _hud._center_stats_panel(panel.get_parent() as Control)   # 纯 UI 定位, 实现在 HUD 层
 
-## 一队 7 列表 (1:1 回合制 _stats_table): 龟/出伤/受伤/治疗/暴击/击杀/剩余; 金表头 / 稀有度点 / 存活白·阵亡灰(阵亡).
+## 结算表的一队一列 —— 实现搬到 battle_hud.gd(纯 UI 表格构建, 属 HUD 层)。
+## ★搬的理由不是好看: 留在这里会把上帝文件顶破 arch_budget(8600 行)。
 func _stats_column(header: String, units: Array, hc: Color) -> Control:
-	var grid := GridContainer.new()
-	grid.columns = 7
-	grid.add_theme_constant_override("h_separation", 10)
-	grid.add_theme_constant_override("v_separation", 5)
-	var hdrs := [header, "出伤", "受伤", "治疗", "暴击", "击杀", "剩余"]
-	for i in range(7):
-		var l := Label.new()
-		l.text = hdrs[i]
-		l.add_theme_font_size_override("font_size", 14)
-		l.add_theme_color_override("font_color", hc if i == 0 else Color("#ffd93d"))   # 金表头(回合制)
-		if i == 0:
-			l.custom_minimum_size = Vector2(126, 0)
-		else:
-			l.custom_minimum_size = Vector2(44, 0)
-			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		grid.add_child(l)
-	for u in units:
-		var dead: bool = not u.get("alive", true)
-		var is_sm: bool = u.get("is_summon", false)
-		# col0: 稀有度色点 + 名(阵亡后缀)
-		var name_cell := HBoxContainer.new()
-		name_cell.add_theme_constant_override("separation", 5)
-		name_cell.custom_minimum_size = Vector2(126, 0)
-		var dot := ColorRect.new()
-		dot.custom_minimum_size = Vector2(8, 8)
-		dot.color = Color("#7a8a96") if is_sm else _pet_rarity_color(str(u.get("rarity", "C")))
-		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		name_cell.add_child(dot)
-		var nml := Label.new()
-		nml.text = ("↳ " if is_sm else "") + _st_name(u) + ("(阵亡)" if dead else "")
-		nml.add_theme_font_size_override("font_size", 13)
-		nml.add_theme_color_override("font_color", Color("#888888") if dead else (Color("#cdd9c2") if is_sm else Color("#ffffff")))
-		name_cell.add_child(nml)
-		grid.add_child(name_cell)
-		var rem := "%d/%d" % [int(maxf(0.0, float(u.get("hp", 0)))), int(u.get("maxHp", 0))]
-		var vals := [str(int(u.get("_st_dealt", 0))), str(int(u.get("_st_taken", 0))), str(int(u.get("_st_heal", 0))), str(int(u.get("_st_crit", 0))), str(int(u.get("_st_kills", 0))), rem]
-		for i in range(6):
-			var l := Label.new()
-			l.text = vals[i]
-			l.add_theme_font_size_override("font_size", 13)
-			l.add_theme_color_override("font_color", Color("#888888") if dead else Color("#e8f0f6"))
-			l.custom_minimum_size = Vector2(44, 0)
-			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-			grid.add_child(l)
-	return grid
+	return _hud._stats_column(header, units, hc)
+
 
 ## 相机输入(滚轮缩放 / 双指捏合 / 拖动平移)。
 ##

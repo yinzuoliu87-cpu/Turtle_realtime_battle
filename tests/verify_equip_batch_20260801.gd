@@ -414,6 +414,29 @@ func _t5_hookbomb() -> void:
 # ─────────────────────────────────────────────────────────────
 # ⑥ 狙击长管 057: 每一枪都要蓄力(不只第一枪)
 # ─────────────────────────────────────────────────────────────
+	# ★★放在 _t5 【最末尾】: 它要等 2.2 秒墙钟, 而这 2.2 秒里 sim 一直在跑,
+	#   夹在中间会把后面用例依赖的敌人状态搅乱(第一版就让「3★挂 2 个」变成挂了 1 个)。
+	# 拉拽【绝不能给单位凭空创建 _home_pos】(用户 2026-08-02:「拉过来后位置卡住不动」)。
+	#   RealtimeBattle3DScene 里有一段每帧无条件生效的归位:
+	#     if u.has("_home_pos") ... pos = pos.move_toward(_home_pos, 220*delta)
+	#   它只服务评审假人 —— 真实对局的单位没这个键, 那段是惰性的。一旦写进去,
+	#   被拉的敌人就被永久钉在聚拢点上, 眩晕早过期也走不掉(探针实测: 2.5 秒只挪 0~2 码)。
+	# ★不要 append 进 _units —— 多一只敌人会把后面「3★挂 2 个」那条用例的最近敌算错
+	#   (第一版就这么污染了, 表现是"挂了 1 个"而不是 2 个)。_pull_over_time 不需要它在 _units 里。
+	var nohome: Dictionary = _mk("green", "right", Vector2(360.0, -40.0), 1000.0)
+	_ok("⑤ ★分母: 这只本来【没有】_home_pos", not nohome.has("_home_pos"))
+	_s._hookbomb_sys._pull_over_time(nohome, (nohome["pos"] as Vector2) + Vector2(-120.0, 0.0), 0.3)
+	# ★★等【墙钟】不等帧数(CLAUDE.md §3.5): 拉拽前有 PULL_STUN+0.08 ≈ 1.18 秒的绷紧等待,
+	#   而无头下帧率极高 —— 我第一版等了 90 帧, 实际只过去 0.1 秒, 位移根本没开始,
+	#   于是【把 bug 改回去门禁照样绿】(反向验证当场抓到这个假绿灯)。
+	var _t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - _t0 < 2200:
+		await get_tree().process_frame
+	_ok("⑤ ★★拉拽后仍然没有 _home_pos(否则会被归位逻辑永久钉住)",
+		not nohome.has("_home_pos"),
+		"_home_pos=%s" % str(nohome.get("_home_pos", "无")))
+
+
 func _t6_sniper() -> void:
 	print("── ⑥ 狙击长管 · 每枪蓄力 ──")
 	var u: Dictionary = _mk("basic", "left", Vector2(-360.0, -60.0), 2000.0)

@@ -655,7 +655,8 @@ func _tendril_shoot(from2d: Vector2, tgt: Dictionary, idx: int, hold: float) -> 
 
 
 ## ② 带速度把目标拖回震中(照 _pirate_death_grapple: QUAD/EASE_IN = 越拉越快)。
-## ★位移写回 _home_pos —— 不写的话归位逻辑会当场把人拽回原位(memory: fb-review-dummy-homing)。
+## ★位移【有条件】写回 _home_pos: 评审假人有这个键 → 不更新的话归位逻辑会把人拽回原位;
+##   真实对局的单位【没有】这个键 → 一旦写进去就等于永久钉住(见函数体里的长注释)。
 func _pull_over_time(o: Dictionary, dest: Vector2, dur: float) -> void:
 	var start: Vector2 = o["pos"]
 	var uu: Dictionary = o
@@ -667,7 +668,16 @@ func _pull_over_time(o: Dictionary, dest: Vector2, dur: float) -> void:
 		if not uu.get("alive", false):
 			return
 		uu["pos"] = start.lerp(dest, q)
-		uu["_home_pos"] = uu["pos"]
+		# ★★只在【本来就有】_home_pos 时才更新 —— 绝不能凭空创建。
+		#   RealtimeBattle3DScene.gd 里有一段每帧无条件生效的归位:
+		#     if u.has("_home_pos") ... u["pos"] = pos.move_toward(_home_pos, 220*delta)
+		#   它只服务【评审假人】(真实对局的单位没有这个键, 所以那段是惰性的)。
+		#   我原来无条件写 uu["_home_pos"] = uu["pos"] ⇒ 给真实对局的单位【凭空造了个锚点】,
+		#   从此它们每帧被以 220 码/秒拖回聚拢点, 永远走不掉
+		#   —— 用户 2026-08-02 报的「拉过来后位置卡住不动」就是这个。
+		#   正确写法 star_system.gd:196 早就有: `if o3.has("_home_pos"): o3["_home_pos"] = dest3`。
+		if uu.has("_home_pos"):
+			uu["_home_pos"] = uu["pos"]
 		if int(q * 100.0) % 10 == 0:
 			_tendril_draw(dest, uu["pos"], 1.0, battle._t * 9.0)   # 拖拽途中触手持续连着
 	, 0.0, 1.0, dur).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)

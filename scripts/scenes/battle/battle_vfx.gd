@@ -56,31 +56,106 @@ func _play_action(u: Dictionary, kind: String) -> void:
 #    原 ALPHA_CUT_DISCARD 的硬切, 既不闪烁又保软边). vertex() 重建 upright billboard (朝相机不翻 Y).
 #  material_override 接管 Sprite3D 渲染 → 闪白(flash)经 Sprite3D.modulate→COLOR 仍生效.
 # ----------------------------------------------------------------------------
-# 龟蛋碎裂死亡: 裂纹帧(瞬)→碎壳爆开(放大+淡出)+白闪+震屏. 帧缺→只淡出.
+## 龟蛋碎裂死亡。★★2026-08-02 重做(用户:「龟蛋爆炸的时候用的什么特效, 到底有没有用对」——
+## 答: 没用对)。旧版第二帧用 `assets/sprites/map/egg_shards.png`, 那张画的是
+## 【白壳磕开 + 黄色蛋黄流出来】= 打鸡蛋下锅的图; 而龟蛋本体是【米白带绿斑 + 棕色底座】。
+## 同一颗蛋碎前碎后换了个颜色, 一眼穿帮; "流蛋黄"的语义也不是"蛋被打爆"。
+##
+## 现在【不用任何碎片贴图】: 碎壳直接从【蛋本体的贴图上切下来】——
+##   Sprite3D 的 region_rect 在 egg.png 第 0 帧上切 3×3 小块, 每块朝外抛飞 + 重力下落 + 自旋 + 淡出。
+##   ★颜色永远对得上, 因为那【就是】那颗蛋的像素。而且静态碎片图本来就是偷懒版:
+##     一张图放大淡出 ≠ 蛋炸开。破蛋是决胜时刻, 该有真的碎壳飞散。
+const EGG_SHARD_GRID := 3
+const EGG_SHARD_SEC := 0.85
 func _play_egg_shatter(u: Dictionary) -> void:
 	var spr = u.get("sprite", null)
 	if not is_instance_valid(spr):
 		return
-	var crack: Texture2D = load("res://assets/sprites/map/egg_crack.png") if ResourceLoader.exists("res://assets/sprites/map/egg_crack.png") else null
-	var shards: Texture2D = load("res://assets/sprites/map/egg_shards.png") if ResourceLoader.exists("res://assets/sprites/map/egg_shards.png") else null
 	_flash(u, Color(1, 1, 1))
 	battle._shake(battle.JUICE_SHAKE_BIG)
-	if crack != null:
+	var crack: Texture2D = load("res://assets/sprites/map/egg_crack.png") if ResourceLoader.exists("res://assets/sprites/map/egg_crack.png") else null
+	if crack != null:                       # 裂纹帧是对的(米白+绿斑+裂纹), 保留
 		spr.texture = crack; spr.hframes = 1; spr.vframes = 1; spr.frame = 0
 		spr.material_override = null
 		spr.pixel_size = battle.TARGET_BODY_H / float(maxi(1, crack.get_height()))
 		spr.offset = Vector2(0.0, crack.get_height() * 0.5)
+	var pos2d: Vector2 = u["pos"]
+	var uu: Dictionary = u
 	var tw = battle._reg_tween()
-	tw.tween_interval(0.12)
-	if shards != null:
-		tw.tween_callback(func():
-			if is_instance_valid(spr):
-				spr.texture = shards
-				spr.pixel_size = (battle.TARGET_BODY_H * 1.25) / float(maxi(1, shards.get_height()))
-				spr.offset = Vector2(0.0, shards.get_height() * 0.5))
-	tw.tween_property(spr, "scale", spr.scale * 1.7, 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(spr, "modulate:a", 0.0, 0.55)
-	tw.tween_callback(spr.hide)
+	tw.tween_interval(0.14)                 # 裂一下 → 才炸
+	tw.tween_callback(func() -> void:
+		if is_instance_valid(spr):
+			(spr as Node3D).visible = false  # 本体没了, 交给碎壳
+		_egg_shards_burst(pos2d)
+		battle._shake(battle.JUICE_SHAKE_BIG)
+		# ★尘环两道(内快外慢)。★不用 _particle_burst —— 那是【橙色火星】的通用粒子,
+		#   蛋壳崩裂不该有火(实拍确认: 中间炸出一团橙色, 和米白碎壳完全不搭)。
+		battle._skill_ring(pos2d, Color(1.00, 0.96, 0.82, 0.90), 120.0)
+		_dust_ring_later(pos2d))   # ★本文件自己的函数, 别加 battle. 前缀
+
+
+## 破蛋的第二道尘环: 晚半拍、更大更淡 = 冲击波扩散出去。
+func _dust_ring_later(pos2d: Vector2) -> void:
+	var tw = battle._reg_tween()
+	tw.tween_interval(0.10)
+	tw.tween_callback(func() -> void: battle._skill_ring(pos2d, Color(0.94, 0.90, 0.76, 0.45), 210.0))
+
+
+## 从 egg.png 第 0 帧切 3×3 小块当碎壳, 抛物线飞散。
+func _egg_shards_burst(pos2d: Vector2) -> void:
+	if battle._world == null:
+		return
+	var tex: Texture2D = load("res://assets/sprites/pets/egg.png") if ResourceLoader.exists("res://assets/sprites/pets/egg.png") else null
+	if tex == null:
+		return
+	var fw: float = float(tex.get_width()) / 3.0     # egg.png = 3 帧横排
+	var fh: float = float(tex.get_height())
+	var cw: float = fw / float(EGG_SHARD_GRID)
+	var ch: float = fh / float(EGG_SHARD_GRID)
+	var idx: int = 0
+	for gy in range(EGG_SHARD_GRID):
+		for gx in range(EGG_SHARD_GRID):
+			var sh := Sprite3D.new()
+			sh.texture = tex
+			sh.region_enabled = true
+			sh.region_rect = Rect2(cw * float(gx), ch * float(gy), cw, ch)
+			sh.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			sh.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			sh.shaded = false
+			sh.transparent = true
+			sh.no_depth_test = true
+			sh.render_priority = 8
+			sh.pixel_size = battle.TARGET_BODY_H / fh
+			battle._world.add_child(sh)
+			# 方向: 按它在蛋上的【原始位置】往外飞(左上角的碎片就往左上飞) —— 比随机方向像"炸开"
+			var ox: float = float(gx) - 1.0
+			var oy: float = float(gy) - 1.0
+			# ★三个维度都要给, 不能只给横向 —— 只给 vx 的话九片全贴着一条水平线飞出去,
+			#   看着像"被推开"不像"炸开"(实拍确认)。
+			#   · vx  横向: 左边的碎片往左、右边往右
+			#   · vz  纵深: 上排往画面里、下排往画面外 —— 散开成一片而不是一条线
+			#   · vy0 起跳: 上排飞得最高, 底座那排几乎贴地弹开
+			var vx: float = ox * 195.0 + (22.0 if (idx % 2) == 0 else -22.0)
+			var vz: float = oy * 74.0 + 16.0
+			var vy0: float = 4.2 - 1.5 * oy
+			if absf(ox) < 0.01 and absf(oy) < 0.01:
+				vy0 = 5.6                              # 正中那片直接冲天
+			var spin: float = (1.0 if (idx % 2) == 0 else -1.0) * (7.0 + float(idx))
+			var s2 := sh
+			var t2 = battle._reg_tween()
+			t2.tween_method(func(q: float) -> void:
+				if not is_instance_valid(s2):
+					return
+				var t: float = q * EGG_SHARD_SEC
+				var h: float = maxf(0.02, vy0 * t - 6.4 * t * t)          # 抛物线(重力 12.8)
+				var p: Vector2 = pos2d + Vector2(vx * t, vz * t)
+				(s2 as Node3D).position = battle._world_pos(p, h + 0.25)
+				(s2 as Node3D).rotation.z = spin * t
+				(s2 as Sprite3D).modulate.a = clampf(1.0 - pow(q, 2.2), 0.0, 1.0)
+			, 0.0, 1.0, EGG_SHARD_SEC)
+			t2.tween_callback(s2.queue_free)
+			idx += 1
+
 
 func _float_num_font() -> Font:
 	if battle._num_font == null:

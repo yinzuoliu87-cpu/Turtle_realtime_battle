@@ -183,7 +183,12 @@ func _check_battle_result() -> void:
 		for i in range(8):
 			await get_tree().process_frame
 		var cx: float = float(v.x) * 0.5
-		for ch in inst._ui_layer.get_children():
+		# ★★结算页 2026-08-02 改成【居中卡片】后, 数据表不再是 _ui_layer 的直接子节点
+		#   (卡片壳 PanelContainer → VBox → 数据表 PanelContainer)。只看直接子节点会量到 0 块,
+		#   而"分母=0"正是空检查 —— 遍历整棵树。
+		var panels: Array = []
+		_walk_all(inst._ui_layer, panels)
+		for ch in panels:
 			if not (ch is PanelContainer) or not (ch as Control).visible:
 				continue
 			var r: Rect2 = (ch as Control).get_global_rect()

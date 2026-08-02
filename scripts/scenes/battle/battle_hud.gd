@@ -1155,101 +1155,159 @@ func _show_banner(won: bool) -> void:
 	#   手机上(分辨率不同)大字会跑偏甚至出屏。改成锚点自适应 —— 任何分辨率都居中。
 	#   (用户问「结算的页面你放在屏幕中间了吗」时查出来的: 本路结算幕用 CenterContainer 是对的,
 	#    但这个【最终胜负横幅】是另一套写死坐标的代码。)
+	# ═══════════════════════════════════════════════════════════════════════
+	# ★★2026-08-02 整页重做(用户:「整个结算页也需要重做, UI什么的, 文字都非常口语化,
+	#   玩家压根不知道在说什么」)。
+	#
+	# 旧版的两个毛病:
+	#   ① 文案: `+12 深海币    命 5/8    胜场 3    Lv.4` —— 四项用【空格】挤成一行、
+	#      没有标签层级、"命"是口语; 还有 `(练习赛 · 无赛季奖励)` `(失一命)` `去商店 逛逛`
+	#      这类括号口语, 读起来像开发者备注不像游戏界面。
+	#   ② 布局: 标题/比分/奖励/按钮/统计表【五行各自按屏高比例硬摆】(0.34/0.455/0.505/0.575/0.61),
+	#      行距靠手调, 换个分辨率就得重调; 而且【按钮排在数据表上面】, 阅读顺序是反的。
+	#
+	# 现在: 整页是【一张居中的卡片】(CenterContainer + VBoxContainer) ——
+	#   结果标题 → 一句后果说明 → 战果比分 → 数据块 → 战斗数据表 → 主按钮。
+	#   垂直居中由容器算, 不再有一个比例常量; 任何分辨率自动成立(iPad 的 1280×960 也是)。
+	# ═══════════════════════════════════════════════════════════════════════
 	var dim = ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.0)                    # 从全透明淡入
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)   # ★锚点铺满, 不写死尺寸
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	battle._ui_layer.add_child(dim)
 	var dtw = battle.create_tween()
-	dtw.tween_property(dim, "color:a", 0.6, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	dtw.tween_property(dim, "color:a", 0.72, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 自己不吃点击, 让按钮收到(见 ui_frame 的同款教训)
+	battle._ui_layer.add_child(center)
+	# ★整张卡有自己的底: 不然标题/后果/数据块是【浮在战场上的散件】, 和下面那块有边框的
+	#   数据表分成两坨。一个底把它们收成一张"结算单"。
+	var shell := PanelContainer.new()
+	var shell_sb := StyleBoxFlat.new()
+	shell_sb.bg_color = Color(0.035, 0.055, 0.085, 0.90)
+	shell_sb.border_color = Color(0.28, 0.44, 0.62, 0.50)
+	shell_sb.set_border_width_all(2)
+	shell_sb.set_corner_radius_all(14)
+	shell_sb.content_margin_left = 34; shell_sb.content_margin_right = 34
+	shell_sb.content_margin_top = 22; shell_sb.content_margin_bottom = 24
+	shell.add_theme_stylebox_override("panel", shell_sb)
+	center.add_child(shell)
+	var card := VBoxContainer.new()
+	card.add_theme_constant_override("separation", 12)
+	card.alignment = BoxContainer.ALIGNMENT_CENTER
+	shell.add_child(card)
+
+	# ── ① 结果标题
 	var big = Label.new()
-	big.text = ("🏆 胜利!" if won else "💀 失败!")
-	big.add_theme_font_size_override("font_size", 56)
+	big.text = ("胜利" if won else "失败")
+	big.add_theme_font_size_override("font_size", 54)
 	big.add_theme_color_override("font_color", accent)
-	big.set_anchors_preset(Control.PRESET_CENTER_TOP)  # ★横向锚点居中
-	big.anchor_left = 0.0; big.anchor_right = 1.0
-	big.offset_left = 0.0; big.offset_right = 0.0
-	big.anchor_top = 0.34; big.anchor_bottom = 0.34
-	big.offset_top = -40.0; big.offset_bottom = 40.0
 	big.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	big.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	battle._ui_layer.add_child(big)
-	# 大字入场: 从大缩到正常 + 淡入(原来是瞬间弹出)
-	big.scale = Vector2(1.9, 1.9)
-	big.pivot_offset = Vector2(big.size.x * 0.5, 40.0)
+	card.add_child(big)
+	big.pivot_offset = Vector2(big.size.x * 0.5, 30.0)
+	big.scale = Vector2(1.7, 1.7)
 	big.modulate.a = 0.0
 	var btw = battle.create_tween()
 	btw.set_parallel(true)
 	btw.tween_property(big, "scale", Vector2.ONE, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_delay(0.12)
 	btw.tween_property(big, "modulate:a", 1.0, 0.30).set_delay(0.12)
-	# 双路: 大标题下补「整场比分 X-Y」→ 上下路都输显 0-2 整场失败, 一目了然(用户2026-07-12)
+
+	# ── ② 一句【后果说明】: 玩家最想知道的是"这一场对我意味着什么"
+	var sub := Label.new()
+	sub.text = _result_subtitle(won, gs)
+	sub.add_theme_font_size_override("font_size", 17)
+	sub.add_theme_color_override("font_color", Color("#93a4b8"))
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	card.add_child(sub)
+	_banner_fade_in(sub, 0.26)
+
+	# ── ③ 战果比分(双路才有)
 	if battle._is_dual_lane_mode() and gs != null and gs.get("lane_results") is Dictionary and not (gs.get("lane_results") as Dictionary).is_empty():
 		var score = Label.new()
 		score.text = battle._dl_sys._dl_record_line()
-		score.add_theme_font_size_override("font_size", 24)
+		score.add_theme_font_size_override("font_size", 22)
 		score.add_theme_color_override("font_color", Color("#cfe6ff"))
-		_banner_anchor_row(score, 0.455, 17.0)   # ★锚点自适应(原 position=(0,316) 写死)
 		score.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		battle._ui_layer.add_child(score)
+		card.add_child(score)
 		_banner_fade_in(score, 0.34)
-	# 奖励/赛季行 (有赛季态才显)
-	var info = ""
-	if battle._had_season and gs != null:
-		if battle._last_was_exhibition:
-			info = "表演赛 · +%d 深海币 (已淘汰, 无生命消耗)" % battle._last_reward
-		else:
-			info = "+%d 深海币    命 %d/8    胜场 %d    Lv.%d" % [battle._last_reward, int(gs.hearts), int(gs.season_wins), int(gs.get("season_level") if gs.get("season_level") != null else 1)]
-			if not won:
-				info += "    (失一命)"
-			if gs.is_eliminated():
-				info += "  ·  赛季淘汰!"
-	else:
-		info = "(练习赛 · 无赛季奖励)"
-	var rew = Label.new()
-	rew.text = info
-	rew.add_theme_font_size_override("font_size", 22)
-	rew.add_theme_color_override("font_color", Color("#ffe9a8"))
-	_banner_anchor_row(rew, 0.505, 15.0)   # ★锚点自适应(原 position=(0,350) 写死)
-	rew.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	battle._ui_layer.add_child(rew)
-	_banner_fade_in(rew, 0.46)
-	# 结束操作按钮化: 只留「返回菜单」(用户2026-07-18"匹配里不应该有再战": 再战=reload重打同对手, roguelike流程不该原地重战→删).
+
+	# ── ④ 数据块: 标签(小字灰) + 数值(大字亮), 一项一块, 不再用空格挤成一行
+	var chips := _build_reward_chips(gs)
+	if chips != null:
+		card.add_child(chips)
+		_banner_fade_in(chips, 0.42)
+
+	# ── ⑤ 战斗数据表
+	var stats := _build_stats_panel()
+	if stats != null:
+		card.add_child(stats)
+		_banner_fade_in(stats, 0.50)
+
+	# ── ⑥ 主按钮(★排在数据【下面】—— 旧版排在上面, 阅读顺序是反的)
 	var btn_row = HBoxContainer.new()
 	btn_row.add_theme_constant_override("separation", 28)
-	_banner_anchor_row(btn_row, 0.575, 24.0)   # ★锚点自适应(原 position=(0,392) 写死)
 	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	battle._ui_layer.add_child(btn_row)
+	card.add_child(btn_row)
 	# ★教学模式: 结算按钮走导演(战斗1打完→商店, 战斗2打完→结束回菜单), 而不是直接返回菜单。
 	var _td = battle.get_node_or_null("/root/TutorialDirector")
 	if _td != null and _td.is_active():
 		# ★文字用 _peek_next【只读】—— 用 next_scene_after 会在【建按钮时】就推进 stage,
 		#   导致战斗1一结算 stage 就跳到 shop, 玩家还没点。点了才 next_scene_after 真推进。
-		#   (2026-07-23 自动跑一遍抓到: 战斗1→MainMenu、收尾没关沙盒, 就是这个副作用。)
 		var _peek: String = _td._peek_next("battle")
-		var _label: String = "去商店 逛逛 ▶" if _peek.ends_with("Shop.tscn") else ("完成教学 ✓" if _peek.ends_with("MainMenu.tscn") else "继续 ▶")
+		var _label: String = "前往商店" if _peek.ends_with("Shop.tscn") else ("完成新手教学" if _peek.ends_with("MainMenu.tscn") else "继续")
 		btn_row.add_child(battle._make_result_btn(_label, Color("#ffc23c"), Color("#3a1f00"),
 			func() -> void: battle.get_tree().change_scene_to_file(_td.next_scene_after("battle"))))
 	else:
-		btn_row.add_child(battle._make_result_btn("🏠 返回菜单", Color("#5aa0d8"), Color("#04121e"),
+		btn_row.add_child(battle._make_result_btn("返回主菜单", Color("#5aa0d8"), Color("#04121e"),
 			func() -> void: battle.get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")))
-	_banner_fade_in(btn_row, 0.60)
-	_build_stats_panel()             # #2 战斗统计面板
+	_banner_fade_in(btn_row, 0.58)
 
 
-## 结算横幅的一行: 横向铺满 + 纵向按【屏幕比例】定位(而不是写死像素 y)。
-## ★为什么: 原来全是 position=Vector2(0, 316) 这种绝对坐标 + size=Vector2(1280,...),
-##   只有正好 1280×720 才对; 手机分辨率一变, 大字/比分/按钮就会偏甚至跑出屏幕。
-##   frac = 该行中心在屏幕高度的比例; half_h = 行高的一半(像素)。
-func _banner_anchor_row(c: Control, frac: float, half_h: float) -> void:
-	c.anchor_left = 0.0
-	c.anchor_right = 1.0
-	c.offset_left = 0.0
-	c.offset_right = 0.0
-	c.anchor_top = frac
-	c.anchor_bottom = frac
-	c.offset_top = -half_h
-	c.offset_bottom = half_h
+## 结果标题下面那一句 —— 说【这一场对玩家意味着什么】, 而不是罗列数字。
+## 旧版把它和奖励数字塞在同一行、还用括号写成 "(练习赛 · 无赛季奖励)" "(失一命)"。
+func _result_subtitle(won: bool, gs) -> String:
+	if not battle._had_season or gs == null:
+		return "练习赛 · 不计入赛季进度"
+	if gs.is_eliminated():
+		return "生命已耗尽 · 本赛季结束"
+	if battle._last_was_exhibition:
+		return "表演赛 · 不消耗生命"
+	return "赛季胜场 +1" if won else "消耗 1 点生命"
+
+
+## 数据块一排: 每块 = 标签(小字灰) + 数值(大字亮)。练习赛没有赛季数据 → 返回 null 不占位。
+func _build_reward_chips(gs) -> Control:
+	if not battle._had_season or gs == null:
+		return null
+	var lv: int = int(gs.get("season_level")) if gs.get("season_level") != null else 1
+	var items: Array = [["深海币", "+%d" % battle._last_reward, Color("#ffd93d")]]
+	if not battle._last_was_exhibition:
+		items.append(["剩余生命", "%d / 8" % int(gs.hearts), Color("#ff8a8a") if int(gs.hearts) <= 2 else Color("#e8f0f6")])
+	items.append(["赛季胜场", "%d" % int(gs.season_wins), Color("#e8f0f6")])
+	items.append(["赛季等级", "Lv.%d" % lv, Color("#e8f0f6")])
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 30)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	for it in items:
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 1)
+		var cap := Label.new()
+		cap.text = str(it[0])
+		cap.add_theme_font_size_override("font_size", 13)
+		cap.add_theme_color_override("font_color", Color("#7d8b9c"))
+		cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(cap)
+		var val := Label.new()
+		val.text = str(it[1])
+		val.add_theme_font_size_override("font_size", 24)
+		val.add_theme_color_override("font_color", it[2])
+		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(val)
+		row.add_child(col)
+	return row
+
 
 ## 结算横幅元素逐个淡入(原来整块瞬间弹出, 没有节奏)
 func _banner_fade_in(c: Control, delay: float) -> void:
@@ -1271,16 +1329,82 @@ func _banner_fade_in(c: Control, delay: float) -> void:
 ##    "同一屏两套定位代码, 只修了看得见的那套" 是这个 bug 能活到今天的原因。)
 ## ★y 同样改成【按屏幕高度的比例】(438/720 = 0.6083), 否则 iPad 的 960 高视口上表会浮在上半屏。
 ##   仍然不做"放不下就上顶": 那会盖住上方的「返回菜单」钮; 放不下由页体内部滚动兜(见 _stats_fit_body)。
-const STATS_PANEL_Y_FRAC := 0.6083     # = 438/720, 保住 1280×720 上的原观感不变
-func _center_stats_panel(panel: Control) -> void:
-	await battle.get_tree().process_frame
-	if is_instance_valid(panel):
-		var vp: Vector2 = battle.get_viewport().get_visible_rect().size
-		var py: float = vp.y * STATS_PANEL_Y_FRAC
-		py = minf(py, vp.y - panel.size.y - 8.0)          # 再高的视口也不许被底边切掉
-		panel.position = Vector2(vp.x * 0.5 - panel.size.x * 0.5, maxf(8.0, py))
+## 一队 5 列表: 龟 / 造成伤害 / 承受伤害 / 治疗量 / 击杀; 金表头 / 稀有度点 / 存活白·阵亡灰(阵亡).
+func _stats_column(header: String, units: Array, hc: Color) -> Control:
+	var grid := GridContainer.new()
+	grid.columns = 5
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 5)
+	# ★★2026-08-02 用户定: 去掉「暴击」与「剩余血量」, 保留「承受伤害」。
+	#   「受伤」本来就是承受伤害(_st_taken 在两条伤害路径里累加的都是实扣血量),
+	#   只是名字容易读成"受伤状态" —— 改名【承伤】, 不是新增一列。
+	#   ★数据字段 _st_crit 保留(battle_damage 仍在累加、_st_merge_all 仍在合并),
+	#     只是不再显示 —— 删字段会连带动到战中统计面板与合计页, 收益为零。
+	# ★★表头用【全称】(用户 2026-08-02:「文字都非常口语化, 玩家压根不知道在说什么」)。
+	#   "出伤/承伤" 是开发者行话缩写, 玩家看不懂; 列宽相应放宽。
+	var hdrs := [header, "造成伤害", "承受伤害", "治疗量", "击杀"]
+	for i in range(5):
+		var l := Label.new()
+		l.text = hdrs[i]
+		l.add_theme_font_size_override("font_size", 14)
+		l.add_theme_color_override("font_color", hc if i == 0 else Color("#ffd93d"))   # 金表头(回合制)
+		if i == 0:
+			l.custom_minimum_size = Vector2(126, 0)
+		else:
+			l.custom_minimum_size = Vector2(72, 0)   # ★容得下"造成伤害"四字表头 + 五位数值
+			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		grid.add_child(l)
+	# ★★MVP: 本队【造成伤害最高】的那只(不含召唤体)。一张全是数字的表, 玩家扫一眼
+	#   得不出任何结论; 标出"这场谁扛的"才让数据变成信息。
+	var mvp_dmg: int = 0
+	var mvp_name: String = ""
+	for u in units:
+		if u.get("is_summon", false):
+			continue
+		var d: int = int(u.get("_st_dealt", 0))
+		if d > mvp_dmg:
+			mvp_dmg = d; mvp_name = battle._st_name(u)
+	for u in units:
+		var dead: bool = not u.get("alive", true)
+		var is_sm: bool = u.get("is_summon", false)
+		var is_mvp: bool = mvp_dmg > 0 and not is_sm and battle._st_name(u) == mvp_name
+		# col0: 稀有度色点 + 名(阵亡后缀)
+		var name_cell := HBoxContainer.new()
+		name_cell.add_theme_constant_override("separation", 5)
+		name_cell.custom_minimum_size = Vector2(126, 0)
+		var dot := ColorRect.new()
+		dot.custom_minimum_size = Vector2(8, 8)
+		dot.color = Color("#7a8a96") if is_sm else battle._pet_rarity_color(str(u.get("rarity", "C")))
+		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		name_cell.add_child(dot)
+		var nml := Label.new()
+		nml.text = ("↳ " if is_sm else "") + battle._st_name(u) + ("  阵亡" if dead else "")
+		nml.add_theme_font_size_override("font_size", 13)
+		nml.add_theme_color_override("font_color", Color("#888888") if dead else (Color("#cdd9c2") if is_sm else Color("#ffffff")))
+		name_cell.add_child(nml)
+		if is_mvp:
+			var tag := Label.new()
+			tag.text = "MVP"
+			tag.add_theme_font_size_override("font_size", 10)
+			tag.add_theme_color_override("font_color", Color("#ffd93d"))
+			tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			name_cell.add_child(tag)
+		grid.add_child(name_cell)
+		var vals := [str(int(u.get("_st_dealt", 0))), str(int(u.get("_st_taken", 0))), str(int(u.get("_st_heal", 0))), str(int(u.get("_st_kills", 0)))]
+		for i in range(4):
+			var l := Label.new()
+			l.text = vals[i]
+			l.add_theme_font_size_override("font_size", 13)
+			l.add_theme_color_override("font_color", Color("#888888") if dead else (Color("#ffd93d") if is_mvp else Color("#e8f0f6")))
+			l.custom_minimum_size = Vector2(72, 0)
+			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			grid.add_child(l)
+	return grid
 
-func _build_stats_panel() -> void:
+## 返回战斗数据表面板(调用方决定放哪)。★2026-08-02 改成返回值 ——
+## 旧版自己 add_child 到 _ui_layer 再摆绝对坐标, 结算页因此必须用比例硬摆五行。
+## 现在它是结算卡片里的一个子节点, 位置由容器算。
+func _build_stats_panel() -> Control:
 	# 结算页要含【前面战场】的总结, 不能只有当前这一路(用户2026-07-19): 已结束的路走 battle._st_lane_hist 快照,
 	# 当前路直接读活的 battle._units; 三路以上信息量太大 → 做成分页(默认停在「合计」).
 	var pages: Array = []            # [{lane, title, left:[row], right:[row]}]
@@ -1299,16 +1423,17 @@ func _build_stats_panel() -> void:
 		cur["title"] = battle._LANE_CN.get(cl, "本场") if not pages.is_empty() else "本场"
 		pages.append(cur)
 	if pages.is_empty():
-		return
+		return null
 	if pages.size() > 1:             # 只有一路就没有「合计」的必要
 		pages.append({"lane": "all", "title": "合计",
 			"left": battle._st_merge_all(pages, "left"), "right": battle._st_merge_all(pages, "right")})
 
 	var panel = PanelContainer.new()
 	var sb = StyleBoxFlat.new()
-	sb.bg_color = Color(0.05, 0.08, 0.12, 0.92)
-	sb.border_color = Color(0.3, 0.5, 0.7, 0.55)
-	sb.set_border_width_all(2)
+	# ★它现在嵌在结算卡里 —— 再来一圈 2px 亮边就是"框中框"。改成淡底 + 极细边做分区。
+	sb.bg_color = Color(0.09, 0.13, 0.19, 0.55)
+	sb.border_color = Color(0.30, 0.48, 0.66, 0.28)
+	sb.set_border_width_all(1)
 	sb.set_corner_radius_all(8)
 	sb.content_margin_left = 18; sb.content_margin_right = 18
 	sb.content_margin_top = 12; sb.content_margin_bottom = 14
@@ -1317,7 +1442,7 @@ func _build_stats_panel() -> void:
 	vb.add_theme_constant_override("separation", 8)
 	panel.add_child(vb)
 	var title = Label.new()
-	title.text = "⚔ 战斗统计"
+	title.text = "战斗数据"
 	title.add_theme_font_size_override("font_size", 20)
 	title.add_theme_color_override("font_color", Color("#cfe6ff"))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1333,8 +1458,14 @@ func _build_stats_panel() -> void:
 	for pg in pages:
 		var cols = HBoxContainer.new()
 		cols.add_theme_constant_override("separation", 28)
-		cols.add_child(battle._stats_column("🔵 我方", pg["left"], Color("#7ec8ff")))
-		cols.add_child(battle._stats_column("🔴 敌方", pg["right"], Color("#ff9a9a")))
+		cols.add_child(_stats_column("我方", pg["left"], Color("#7ec8ff")))
+		# ★竖分隔: 两队并排时数字会连成一片, 分不清左边最后一列和右边第一列
+		var sep := ColorRect.new()
+		sep.color = Color(0.30, 0.48, 0.66, 0.30)
+		sep.custom_minimum_size = Vector2(1, 0)
+		sep.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		cols.add_child(sep)
+		cols.add_child(_stats_column("对方", pg["right"], Color("#ff9a9a")))
 		cols.visible = false
 		body.add_child(cols)
 		bodies.append(cols)
@@ -1358,9 +1489,7 @@ func _build_stats_panel() -> void:
 			tab_btns.append(b)
 	vb.add_child(scroll)
 	battle._stats_show_page(bodies, tab_btns, pages.size() - 1)   # 默认落在最后一页(多路=合计 / 单路=本场)
-	battle._ui_layer.add_child(panel)
-	panel.position = Vector2(316, 438)
-	_center_stats_panel(panel)
+	return panel
 
 func _build_edit_palette() -> void:
 	var ids: Array = battle.STATS.keys()

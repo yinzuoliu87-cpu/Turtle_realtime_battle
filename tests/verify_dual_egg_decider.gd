@@ -46,11 +46,11 @@ func _ready() -> void:
 
 	# ── ③ 结算比分带本路待记结果(赢上路即显1-0, record在5秒后lane_over才调) ──
 	gs.lane_results = {}
-	_ok("赢上路(lane_results空)+待记top=left → 显1-0", sc._dl_sys._dl_record_line("top", "left") == "本场比分   我方 1 - 0 对方", sc._dl_sys._dl_record_line("top", "left"))
+	_ok("赢上路(lane_results空)+待记top=left → 显1-0", sc._dl_sys._dl_record_line("top", "left") == "各路战果    我方 1 : 0 对方", sc._dl_sys._dl_record_line("top", "left"))
 	gs.lane_results = {"top": "left"}
-	_ok("已记top=left + 下路待记left → 2-0", sc._dl_sys._dl_record_line("bottom", "left") == "本场比分   我方 2 - 0 对方")
-	_ok("已记top=left, 待记又传top(不重复计) → 仍1-0", sc._dl_sys._dl_record_line("top", "left") == "本场比分   我方 1 - 0 对方")
-	_ok("无待记(结束横幅口径)读纯lane_results → 1-0", sc._dl_sys._dl_record_line() == "本场比分   我方 1 - 0 对方")
+	_ok("已记top=left + 下路待记left → 2-0", sc._dl_sys._dl_record_line("bottom", "left") == "各路战果    我方 2 : 0 对方")
+	_ok("已记top=left, 待记又传top(不重复计) → 仍1-0", sc._dl_sys._dl_record_line("top", "left") == "各路战果    我方 1 : 0 对方")
+	_ok("无待记(结束横幅口径)读纯lane_results → 1-0", sc._dl_sys._dl_record_line() == "各路战果    我方 1 : 0 对方")
 
 	print("")
 	print(("ALL PASS — 定局判定(终极/横扫) + 蛋跨路掉血可见" if _fail == 0 else "FAIL x%d" % _fail))

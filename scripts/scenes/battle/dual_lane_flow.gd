@@ -182,7 +182,7 @@ func _dl_record_line(extra_lane: String = "", extra_winner: String = "") -> Stri
 	if extra_lane != "" and not seen.has(extra_lane):   # 补上本路待记结果(结算幕布用)
 		if extra_winner == "left": lw += 1
 		else: rw += 1
-	return "本场比分   我方 %d - %d 对方" % [lw, rw]
+	return "各路战果    我方 %d : %d 对方" % [lw, rw]   # ★"本场比分…-…"改成冒号比分, 与结算页口径一致
 
 # 对阵预览一行: [我方阵容列]  VS  [对方阵容列] (各带头像/等级/名字/装备图+星级)
 # 对阵预览一行: [我方阵容列]  VS  [对方阵容列] (各带头像/等级/名字/装备图+星级)
