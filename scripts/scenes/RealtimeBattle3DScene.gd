@@ -4803,6 +4803,13 @@ func _skill_vfx_tex(name: String) -> Texture2D:
 	_skill_vfx_cache[name] = tex          # 缓存 null 也存 (避免反复 exists 探测)
 	return tex
 
+## 通用爆点 VFX。★★2026-08-02 补【横排帧动画识别】(用户:「龟蛋碎裂…那几个贴图还是啥序列图应该用错了」):
+##   `_fly_vfx` 一直会按 nf=宽/高 自动识别横排帧, 而本函数【不识别】—— 于是横条序列图丢进来
+##   会被当成一张画, 5 帧【并排同时显示】、横着摊开。实拍受害两处:
+##     · boom-wave-anim.png (480×96 = 5 帧) —— 破蛋冲击波, 破一次蛋出现 5 个并排爆炸
+##     · electric-zap.png   (480×96 = 5 帧) —— 赛博侵入的电流
+##   两处都不是"调用方写错了", 是【同类助手函数行为不一致】造成的陷阱: 同样传一张横条图,
+##   _fly_vfx 对、_burst_vfx 错, 调用方没理由知道这个区别。所以修在【助手函数】里, 不是修调用点。
 func _burst_vfx(path: String, pos2d: Vector2, size_px: float, height: float = 0.4) -> void:
 	var t: Texture2D = load(path)
 	if t == null: return
@@ -4810,11 +4817,25 @@ func _burst_vfx(path: String, pos2d: Vector2, size_px: float, height: float = 0.
 	b.texture = t
 	b.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	b.billboard = BaseMaterial3D.BILLBOARD_ENABLED; b.shaded = false; b.transparent = true
-	b.pixel_size = (size_px * WS) / float(maxi(1, t.get_height()))
+	# ★与 _fly_vfx 同一条判据: 宽是高的整数倍(≥2) → 横排帧动画
+	var fh: int = maxi(1, t.get_height())
+	var nf: int = 1
+	if t.get_width() > fh and t.get_width() % fh == 0:
+		nf = t.get_width() / fh
+	if nf > 1:
+		b.hframes = nf
+		b.frame = 0
+	b.pixel_size = (size_px * WS) / float(fh)
 	b.position = _world_pos(pos2d, height)
 	_world.add_child(b)
 	var tw := _reg_tween()
 	tw.tween_property(b, "scale", Vector3.ONE, 0.12).from(Vector3.ONE * 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if nf > 1:
+		# 帧在"起势+停留"这 0.26 秒里播完(与原来的节奏一致, 只是现在真的在播)
+		tw.parallel().tween_method(func(fv: float) -> void:
+			if is_instance_valid(b):
+				b.frame = mini(nf - 1, int(fv))
+		, 0.0, float(nf), 0.26)
 	tw.tween_interval(0.14)
 	tw.tween_property(b, "modulate:a", 0.0, 0.3)
 	tw.tween_callback(b.queue_free)
