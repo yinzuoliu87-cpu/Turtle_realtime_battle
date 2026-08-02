@@ -47,8 +47,24 @@ func _eq_apply_one_stats(u: Dictionary, item_id: String, star: int) -> void:
 	if st.has("_echargePct"):   # 龟能充能速率% → echarge_perm 永久倍率(多件叠加)
 		u["echarge_perm"] = float(u.get("echarge_perm", 1.0)) + float(st["_echargePct"]) / 100.0
 	# ↓ 以下4类原先漏接: 数值表里写了、单位字段也确实被消费, 但从没往里写 → 属性栏骗人(用户2026-07-19发现)
-	if st.has("reflectPct"):    # 反伤% → 通用反伤钩(battle._damage._apply_damage_from 读 u.reflect·真伤反弹)
+	# ★★2026-08-02 修【反伤发两次】: p2eq_015 荆棘海胆必须【跳过】这个通用钩。
+	#   它在 equip_system.gd:1104 有【专属分支】自己发反伤(而且要把伤害累计进 thorn_accum
+	#   才能触发"满阈值 → 护盾 + 强化下一次普攻")。两条路都在 battle_damage.gd 的同一个
+	#   `if not from_equip` 块里触发, 无互斥 ⇒ 实际反伤是名义值的【两倍】,
+	#   而累计器只统计其中一半 ⇒ 阈值触发速率也只有名义的一半。
+	#   探针实测(1★ 名义 12%): 打 1000 → 反伤 240(应 120), thorn_accum 只记 120。倍率 2.00×。
+	#   ★别改成"删掉专属分支": 累计/护盾/流血那套只有专属分支有。
+	#   ★也别改成"删掉通用钩": p2eq_013(海胆壳 8/11/15%)与灵龟觉醒(shell_system.gd:307)
+	#     都靠它, 它们【没有】专属反伤分支, 删了会让那两处反伤直接归零。
+	const REFLECT_OWNED_BY_BRANCH := ["p2eq_015"]
+	if st.has("reflectPct") and not (item_id in REFLECT_OWNED_BY_BRANCH):
 		u["reflect"] = float(u.get("reflect", 0.0)) + float(st["reflectPct"]) / 100.0
+	# ★★2026-08-02 补: dodgePct 一直【只在图鉴显示、从不施加】——
+	#   equip_stats.gd:38 有展示分支, 而本文件从来没有对应的施加分支,
+	#   全靠 p2eq_046 的专属分支兜着(现已删, 见下)。图鉴写着"闪避 +15%"是假的。
+	#   ★生效值被 DODGE_CAP(75%) 钳在 _recalc_stats 里, 这里只管加。
+	if st.has("dodgePct"):
+		battle._damage._buff(u, "dodge", float(st["dodgePct"]) / 100.0, false, 99999.0)
 	if st.has("healAmp"):       # 治疗增幅% → battle._damage._heal 读 u.heal_amp (amt *= 1+heal_amp)
 		u["heal_amp"] = float(u.get("heal_amp", 0.0)) + float(st["healAmp"]) / 100.0
 	if st.has("shieldAmp"):     # 护盾增幅% → battle._damage._grant_shield 读 u.shield_amp (amt *= 1+shield_amp)
@@ -92,11 +108,9 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 		"p2eq_046":   # 幽灵墨鱼: 永久闪避 buff (复用 dodge 系统)
 			# 闪避率改从 battle.EquipStats.STATS 取 —— 它此前是这里的内联字面量, 而图鉴/背包读 STATS,
 			# 于是闪避在两处 UI 里都不显示(用户2026-07-19「必须写完整」的漏网)。现在同源。
-			var _a46: Array = battle.EquipStats.STATS.get("p2eq_046", [])
-			var _dg46: float = 0.0
-			if si < _a46.size():
-				_dg46 = float((_a46[si] as Dictionary).get("dodgePct", 0.0)) / 100.0
-			battle._damage._buff(u, "dodge", _dg46, false, 99999.0)
+			# ★★2026-08-02: 闪避改走【通用 dodgePct 分支】(见本文件上方), 这里不再自己 _buff ——
+			#   否则同一件装备的闪避会【发两次】, 与 p2eq_015 荆棘海胆"反伤发两次"是同一个形状
+			#   (那次实测 2.00× 名义)。专属分支只留它独有的东西: 闪避触发的永久护盾。
 			stt["ghost_shield"] = [30.0, 50.0, 120.0][si]
 		"p2eq_054":   # 瞄准镜: 必中 (无视目标闪避)
 			u["eq_cannot_be_dodged"] = true

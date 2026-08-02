@@ -147,7 +147,8 @@ func _sk_lightning_surge(u: Dictionary, tgt: Dictionary) -> void: # 闪电龟·�
 	# ★1.23 → 1.5(2026-07-29 修): 1.23 = 0.82 × 1.5, 是【被动电击 0.82×ATK 时代】的遗留常量。
 	#   2026-07-28 被动已改成 1.0×ATK(见 _shock_dmg), 这里没跟着改 → 文案承诺 1.5×ATK、实发 1.23×ATK, 少 18%。
 	#   现在与 _shock_dmg 的 1.0×ATK × 1.5 口径一致。
-	u["shock_boost_until"] = battle._t + 8.0      # 5秒内被动电击真伤+50%(窄化; 原误为通用+50%攻击+stray层)
+	u["shock_boost_until"] = battle._t + 8.0      # 8秒内被动电击真伤+50%(窄化; 原误为通用+50%攻击+stray层)
+	                                              # ★2026-08-02 更正注释: 值早已是 8.0(第四轮 5→8), 注释还写着"5秒内"
 	u["shock_boost_pct"] = 0.5
 	battle._skill_ring(u["pos"], Color(0.45, 0.85, 1.0, 0.5), 52.0)
 	battle._aura_vfx("res://assets/sprites/skills/lightning-3.png", u, 54.0, Color(0.3, 0.67, 0.97, 0.5), 8.0)   # 涌动增伤电流光环5秒(标示buff激活期)

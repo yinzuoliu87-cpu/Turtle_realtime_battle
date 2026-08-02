@@ -217,7 +217,7 @@ const REVIEW_DEMO_CFG := {
 	"lightning:0": [ {"dx": 220.0, "dy": 0.0, "fixed": true}, {"dx": 400.0, "dy": -70.0, "fixed": true}, {"dx": 560.0, "dy": 50.0, "fixed": true} ],   # 闪电普攻: 3假人成链→看一道锯齿电弧劈主目标+依次接力连锁2跳(×0.6递减)+各叠电击层徽章
 	"lightning:1": [ {"dx": 240.0, "dy": -60.0, "fixed": true}, {"dx": 240.0, "dy": 60.0, "fixed": true} ],   # 涌动: 2假人→看自身涌起电流增伤光环5秒+立即对目标1次真伤电击(期间被动电击真伤+50%)
 	"lightning:2": [ {"dx": 200.0, "dy": -120.0, "fixed": true}, {"dx": 200.0, "dy": 120.0, "fixed": true}, {"dx": 340.0, "dy": -55.0, "fixed": true}, {"dx": 340.0, "dy": 55.0, "fixed": true}, {"dx": 290.0, "dy": 0.0, "fixed": true} ],   # 雷暴: 5假人聚拢居中(原推到右边缘→云和落雷被裁)→敌上空生大风暴云→20道天降竖直落雷(闪电龟自有lightning-0/3·非被动落雷)随机轰击+各叠电击层
-	"lightning:3": [ {"dx": 150.0, "dy": -70.0}, {"dx": 150.0, "dy": 70.0}, {"dx": 230.0, "dy": 0.0} ],   # 雷盾: 3假人贴近还手→看以雷电包裹自身(脚下电爆环+3道电弧环绕5秒)+护盾在时每挨一段反击0.1A魔法叠电击
+	"lightning:3": [ {"dx": 150.0, "dy": -70.0}, {"dx": 150.0, "dy": 70.0}, {"dx": 230.0, "dy": 0.0} ],   # 雷盾: 3假人贴近还手→看以雷电包裹自身(脚下电爆环+3道电弧环绕5秒)+护盾在时每挨一段反击0.3A魔法叠电击(2026-08-02 更正: 第四轮已 0.1→0.3, 见 battle_damage.gd:178)
 	"lightning:-1": [ {"dx": 180.0, "dy": -60.0}, {"dx": 180.0, "dy": 60.0} ],   # 雷电被动: 2假人贴近→每4秒自动电击随机敌(common落雷)+普攻/电击叠电击层徽章→满8层引爆(清零·区别于雷暴的自有落雷)
 	"phoenix:0": [ {"dx": 150.0, "dy": -45.0, "fixed": true}, {"dx": 150.0, "dy": 45.0, "fixed": true} ],   # 灼烧普攻: 2假人在喷火锥前→看持续喷火(70°扇形)+每0.5s伤害+灼烧层
 	"phoenix:1": [ {"dx": 140.0, "dy": -70.0}, {"dx": 140.0, "dy": 70.0}, {"dx": 220.0, "dy": 0.0} ],   # 熔岩盾: 3假人贴近还手→看3.5A熔岩护盾4秒+每挨一段反击0.14A魔法
@@ -6395,6 +6395,13 @@ func _taunt(by: Dictionary, targets: Array, sec: float = BUFF_SEC) -> void:
 		o["taunt_until"] = _t + sec
 		o["taunt_by"] = by
 
+## 闪避硬上限 75%。★★出处不是我拍的 —— 规格里早就写了, 只是【从没实装】:
+##   · docs/specs/类型效果-实装规格.md:134「灵物类装备额外提供 5%/10% 闪避率(宠物闪避率上限 75%)」
+##   · phase2_types.gd:97 灵物档位文案同样写着「上限 75%」
+##   又一例写了没人读(同 apply_team_start 零调用)。2026-08-02 补上实装。
+## 想改这个数只改这里 —— 它是 dodge_bonus 的唯一钳制点。
+const DODGE_CAP := 0.75
+
 func _recalc_stats(u: Dictionary) -> void:
 	var acc := {"atk": [0.0, 0.0], "def": [0.0, 0.0], "mr": [0.0, 0.0]}
 	var dodge := 0.0
@@ -6416,7 +6423,13 @@ func _recalc_stats(u: Dictionary) -> void:
 		u["atk"] += u["maxHp"] / HP_MULT * float(u["hammer_pct"])   # 重击锤(047): ATK随maxHp动态成长
 	u["def"] = maxf(0.0, u["base_def"] * (1.0 + acc["def"][0]) + acc["def"][1])
 	u["mr"]  = maxf(0.0, u["base_mr"]  * (1.0 + acc["mr"][0])  + acc["mr"][1])
-	u["dodge_bonus"] = dodge
+	# ★★闪避上限(2026-08-02 用户问「每个角色我记得有闪避上限做了吗」——答: 没有, 现在加)。
+	#   判定是 `randf() < dodge_bonus`(battle_damage.gd:71), randf 取值 [0,1)
+	#   ⇒ dodge_bonus ≥ 1.0 就是【永远打不中】。
+	#   ★这不是接通用 dodgePct 才有的风险, 探针实测【今天就已经是 bug】:
+	#     单只装备上限 3 件, 带 2 件 3★ 幽灵墨鱼(各 50%) → dodge_bonus = 1.00 = 100% 免疫。
+	#   上限加在这个【唯一写入点】, 不是加在判定处 —— 这样属性面板显示的也是真实生效值, 不骗人。
+	u["dodge_bonus"] = minf(dodge, DODGE_CAP)
 	u["ls_bonus"] = ls
 
 # flat DoT (诅咒等). dps=每秒落血; 真伤穿护盾. 灼烧/中毒/流血改走 _damage._apply_dot_stacks 层数模型.

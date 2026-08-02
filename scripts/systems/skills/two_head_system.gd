@@ -311,11 +311,13 @@ func _two_head_after_cast(u: Dictionary, tgt) -> void:          # 被动·双生
 	u["_th_enh"] = "ranged" if to_ranged else "melee"          # 挂强化: 下1下普攻搬旧切形态那一下的伤害+效果(远程=1.4A物理+破甲 / 近战=0.6A魔法+1.1A盾)
 	if to_ranged:
 		var et = (tgt if (tgt is Dictionary and tgt.get("alive", false)) else battle._targeting._nearest_enemy(u))
-		_two_head_retreat(u, et)                               # 切远程: 纯平滑滑退350码到射程(伤害/破甲已挪到强化普攻)
+		_two_head_retreat(u, et)                               # 切远程: 纯平滑滑退200码到射程(伤害/破甲已挪到强化普攻)
 	# 切近战: 不单独位移 — 锤击(_two_head_hammer)自带跳跃接近敌人
 
-# 双头·切远程纯滑退(用户2026-07-11 B案: 伤害/破甲挪到强化普攻, 这里只位移): 向远离目标方向平滑滑退350码
-# 双头·切远程纯滑退(用户2026-07-11 B案: 伤害/破甲挪到强化普攻, 这里只位移): 向远离目标方向平滑滑退350码
+# 双头·切远程纯滑退(用户2026-07-11 B案: 伤害/破甲挪到强化普攻, 这里只位移): 向远离目标方向平滑滑退200码
+# ★2026-08-02 更正注释: 实参早就是 200(见函数体里 away * 200.0 那行, 它自己也标了 350→200), 注释还写 350
+# 双头·切远程纯滑退(用户2026-07-11 B案: 伤害/破甲挪到强化普攻, 这里只位移): 向远离目标方向平滑滑退200码
+# ★2026-08-02 更正注释: 实参早就是 200(见函数体里 away * 200.0 那行, 它自己也标了 350→200), 注释还写 350
 func _two_head_retreat(u: Dictionary, et) -> void:
 	var from2d: Vector2 = u["pos"]
 	var away: Vector2 = Vector2.RIGHT

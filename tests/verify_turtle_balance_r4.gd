@@ -97,7 +97,10 @@ func _fortune() -> void:
 	_chk("财神·梭哈龟能 = %d" % int(WANT_ALLIN_ENERGY), se.contains('"fortuneAllIn": %.1f' % WANT_ALLIN_ENERGY))
 	_chk("财神·梭哈旧值 340 已消失", not se.contains('"fortuneAllIn": 340.0'))
 	# 首释 = 基础 60 + [60,120,240] → 120/180/300
-	_chk("财神·招财进宝首释 = %d + %s = %d/%d/%d" % [int(WANT_BUYEQUIP_BASE),
+	# ★标签更正(2026-08-02): 这组数【不是首释价】—— fortune_system.gd:46-48 自己写明了
+	#   "我 2026-07-29 一度把这组数说成首释价, 是错的; 它是第2、3次(升星)的价"。断言值一直是对的,
+	#   错的只是这行标签, 而错标签会把下一个人引到改错地方。
+	_chk("财神·招财进宝升星价 = %d + %s = %d/%d/%d" % [int(WANT_BUYEQUIP_BASE),
 			str(WANT_BUYEQUIP_ADD), int(WANT_BUYEQUIP_BASE + WANT_BUYEQUIP_ADD[0]),
 			int(WANT_BUYEQUIP_BASE + WANT_BUYEQUIP_ADD[1]), int(WANT_BUYEQUIP_BASE + WANT_BUYEQUIP_ADD[2])],
 		fs.contains("%.1f + [%.1f, %.1f, %.1f]" % [WANT_BUYEQUIP_BASE,
