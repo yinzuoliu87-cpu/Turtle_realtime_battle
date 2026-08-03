@@ -878,7 +878,7 @@ func _eq_laser_sweep(u: Dictionary, tgt: Dictionary, si: int) -> void:   # 扇�
 	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
 	if dir.length() < 0.1: dir = Vector2.RIGHT
 	var ang: float = -atan2(dir.y, dir.x)
-	var base_rng: float = float(u.get("atk_range", 70.0))
+	var base_rng: float = battle._eff_range(u)
 	var rng: float = base_rng * (2.0 if si == 2 else 1.0)
 	# ★近战携带者 +250 码半径(用户 2026-08-01)。由来: 半径 = 携带者射程, 而近战射程只有 ~70~95,
 	#   于是这把"长刃"在近战手里的扇形还没龟自己身位大 —— 远程龟拿它反而横扫全场, 定位完全反了。

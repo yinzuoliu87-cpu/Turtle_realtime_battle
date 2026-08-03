@@ -50,7 +50,7 @@ func _phoenix_flame_cone(u: Dictionary, tgt: Dictionary) -> void:
 		return
 	var aim: float = float(u.get("phx_aim", dir.angle()))   # 伤害锥=平滑瞄准角(与视觉锥一致·扫到哪烧到哪)
 	dir = Vector2(cos(aim), sin(aim))
-	var rng: float = float(u.get("atk_range", 400.0))
+	var rng: float = battle._eff_range(u)
 	var half_cos: float = cos(deg_to_rad(battle.PHX_CONE_HALF_DEG))
 	for e in battle._targeting._enemies_of(u):
 		if not e.get("alive", false):
@@ -101,7 +101,7 @@ func _phoenix_flame_puff(u: Dictionary, tgt: Dictionary) -> void:   # 飞散火�
 	if dir.length() < 1.0:
 		return
 	dir = dir.normalized()
-	var rng: float = float(u.get("atk_range", 400.0))
+	var rng: float = battle._eff_range(u)
 	var base_ang: float = float(u.get("phx_aim", dir.angle()))   # 平滑瞄准角(与锥同步扫)
 	var half: float = deg_to_rad(battle.PHX_CONE_HALF_DEG)
 	var ang: float = base_ang + battle._juice_rng.randf_range(-half, half) * 0.65   # 收紧火锥→定向喷流(非散开)
@@ -176,7 +176,7 @@ func _phoenix_build_flame_mesh(u: Dictionary) -> bool:   # 分环建扇形mesh: 
 	if not any: return false
 	var origin: Vector2 = u["pos"]
 	var half: float = deg_to_rad(battle.PHX_CONE_HALF_DEG)
-	var rng: float = float(u.get("atk_range", 400.0)) * 0.92
+	var rng: float = battle._eff_range(u) * 0.92
 	var mouth: Vector2 = origin + Vector2(cos(ring_a[0]), sin(ring_a[0])) * 18.0
 	im.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
 	for i in range(R):

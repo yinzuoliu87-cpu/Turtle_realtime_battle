@@ -2354,8 +2354,8 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 		return
 	var to_t: Vector2 = tgt["pos"] - u["pos"]
 	var dist := to_t.length()
-	var rng: float = u["atk_range"]
-	var spd: float = u["move_spd"] * (float(u.get("slow_mag", 0.6)) if _t < u["slow_until"] else 1.0) * (float(u.get("spd_move_mult", 1.0)) if _t < float(u.get("spd_dbf_until", 0.0)) else 1.0) * (float(u.get("move_buff_mult", 1.0)) if _t < float(u.get("move_buff_until", 0.0)) else 1.0)   # ×移速buff通道(怒火药水等·独立于减速debuff防冲突)
+	var rng: float = _eff_range(u)
+	var spd: float = u["move_spd"] * float(u.get("move_perm", 1.0)) * (float(u.get("slow_mag", 0.6)) if _t < u["slow_until"] else 1.0) * (float(u.get("spd_move_mult", 1.0)) if _t < float(u.get("spd_dbf_until", 0.0)) else 1.0) * (float(u.get("move_buff_mult", 1.0)) if _t < float(u.get("move_buff_until", 0.0)) else 1.0)   # ×移速buff通道(怒火药水等·独立于减速debuff防冲突)
 
 	# ═══ AI 状态机: 移动 ↔ 前摇 → 出手 → 后摇 (移动与攻击/施法互斥 = 施法锁; 根治"边走边放") ═══
 	match str(u.get("state", "move")):
@@ -2649,7 +2649,7 @@ func _separation(u: Dictionary) -> Vector2:
 	# ★近战修: 对"自己的攻击目标"用缩小的分离半径(射程内), 让近战能贴进去开打; 其余单位照常 SEP_RADIUS 散开.
 	var mt = u.get("_sep_target", null)
 	var mt_valid: bool = bool(u.get("melee", false)) and mt is Dictionary and (mt as Dictionary).get("alive", false)
-	var tgt_radius: float = minf(SEP_RADIUS, float(u.get("atk_range", 70.0)) * 0.85)
+	var tgt_radius: float = minf(SEP_RADIUS, _eff_range(u) * 0.85)
 	for o in _units:
 		if is_same(o, u) or not o["alive"]:
 			continue
@@ -5068,7 +5068,7 @@ const _SKILL_CAST_RANGE := {"ninjaShuriken": 2000.0, "ninjaBomb": 2000.0, "ninja
 	"shellShadow": 620.0}           # 暗影: distance_to(start) > 620.0 跳过   # chestStorm=宝箱龟财宝风暴(用户2026-07-19: 射程改2000)   # 墨水炸弹/精英铁锤/小将浪板+火箭 各自射程(用户2026-07-18: 小将两技射程2000)
 func _skill_cast_range(u: Dictionary, stype: String) -> float:
 	if _SELF_CAST_SKILLS.has(stype): return 99999.0                       # 自/友向: 任意距离即放
-	return float(_SKILL_CAST_RANGE.get(stype, u.get("atk_range", 70.0)))  # 远程敌向技用专属射程; 否则=攻击射程(近战贴身放)
+	return float(_SKILL_CAST_RANGE.get(stype, _eff_range(u)))  # 远程敌向技用专属射程; 否则=攻击射程(近战贴身放·含装备射程%)
 
 # ═══ 选3 多技能轮转 (用户2026-06-28拍板: 保留选3, 让3技在战斗真生效) ═══
 # 被动型技 (开局生效, 不进主动轮转; 在 _spawn._apply_spawn_passives 里按是否被选施加)
@@ -5225,7 +5225,7 @@ func _apply_separation_pass(delta: float) -> void:   # 每帧全单位软分离:
 		# ★用户2026-07-11「近战靠近后应停止移动、定身攻击、收手, 别一直挤」:
 		#   已进攻击射程(交战)的近战 → 完全不被分离推 → 贴脸定身开打(根治"打起来一直挤")。
 		var _mt = u.get("_sep_target")
-		if bool(u.get("melee", false)) and _mt is Dictionary and (_mt as Dictionary).get("alive", false) and u["pos"].distance_to((_mt as Dictionary)["pos"]) <= float(u.get("atk_range", 70.0)) + 10.0:
+		if bool(u.get("melee", false)) and _mt is Dictionary and (_mt as Dictionary).get("alive", false) and u["pos"].distance_to((_mt as Dictionary)["pos"]) <= _eff_range(u) + 10.0:
 			continue
 		var _st := str(u.get("state", "move"))
 		var _sepmul: float = 0.4 if _st == "windup" else 1.0   # 前摇大体钉住(不挤着冲)但给40%分离→防完全叠一起; 后摇(orb-walk自由)/移动=全分离
@@ -7460,6 +7460,16 @@ func _settle_season(won: bool) -> void:
 	if not gs.match_history.is_empty():
 		gs.match_history[0]["ts"] = int(Time.get_unix_time_from_system())   # 相对时间戳 (RecordScene _rel_time 用)
 	gs.save()
+
+## ★装备给的【永久射程%】取值口 (2026-08-03 批2·方案书 D7)。
+## 为什么不直接把倍率乘进 u["atk_range"]:
+##   atk_range 全库有 11 个写入点(双生/熔岩/机甲的形态切换、无头强化窗口、破浪矛 ±50 …),
+##   每一次形态切换都会把 atk_range 整个覆盖掉 —— 就地乘进去的加成会被【静默抹掉】,
+##   而且升星/换路重建单位时会【重复乘】。所以基础值仍归 atk_range, 加成走独立的 range_perm,
+##   在【判定的那一刻】才相乘。同理移速走 move_perm(既有的 move_buff_mult 是限时通道, 装备要永久)。
+func _eff_range(u: Dictionary) -> float:
+	return float(u.get("atk_range", 70.0)) * float(u.get("range_perm", 1.0))
+
 
 func _make_result_btn(txt: String, bg: Color, fg: Color, cb: Callable) -> Button:
 	var b := Button.new()

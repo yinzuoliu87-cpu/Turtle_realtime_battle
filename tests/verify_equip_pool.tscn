@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/verify_equip_pool.gd" id="1_eqpool"]
+
+[node name="VerifyEquipPool" type="Node"]
+script = ExtResource("1_eqpool")

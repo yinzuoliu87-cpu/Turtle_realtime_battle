@@ -120,6 +120,13 @@ func _test_source_no_unconditional_roll() -> void:
 		"必须先 _restore_offer() 才 _roll()")
 	_ok("掷货后落盘", src.contains("_persist_offer()"))
 	# 买入分支也要落盘, 否则买走的位子会复活
+	# ★2026-08-03: 原来是 substr(buy_idx, 600) —— 【按固定字符数】截函数体。
+	#   批2 给 _on_buy 加了 4 行私人池注释, _persist_offer() 就被挤出了那 600 字符 → 这条当场误红,
+	#   而函数本身一点问题都没有。改成【截到下一个 func 为止】: 加多少注释都不影响。
 	var buy_idx := src.find("func _on_buy")
-	var buy_body := src.substr(buy_idx, 600) if buy_idx >= 0 else ""
+	var buy_end := src.find("
+func ", buy_idx + 10) if buy_idx >= 0 else -1
+	if buy_end < 0:
+		buy_end = src.length()
+	var buy_body := src.substr(buy_idx, buy_end - buy_idx) if buy_idx >= 0 else ""
 	_ok("★买入后落盘(买走的位子不复活)", buy_body.contains("_persist_offer()"))

@@ -114,7 +114,12 @@ func _sell_value(item: Dictionary) -> int:
 func _sell_selected() -> void:
 	if host._sel_bench < 0 or host._sel_bench >= GameState.persistent_bench.size():
 		return
-	GameState.meta_deepsea_coins += _sell_value(GameState.persistent_bench[host._sel_bench])
+	var _it: Dictionary = GameState.persistent_bench[host._sel_bench]
+	GameState.meta_deepsea_coins += _sell_value(_it)
+	# ★私人池(2026-08-03 批2·D22): 卖出【按份数退】—— 1★退1 / 2★退3 / 3★退9。
+	#   守恒律: 买 9 张合出 3★ 再卖掉, 池子恰好回到原样。退 1 张的话池子会漏水,
+	#   而漏水是玩家永远看不见的 bug —— 所以 verify_equip_pool 专门有一条守恒断言。
+	GameState.pool_give_back(str(_it.get("id", "")), int(_it.get("star", 1)))
 	GameState.persistent_bench.remove_at(host._sel_bench)
 	host._sel_bench = -1
 	GameState.save()

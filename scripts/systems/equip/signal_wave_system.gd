@@ -69,11 +69,13 @@ func _reapply_stack_bonus(u: Dictionary, stacks: int, si: int, stt: Dictionary) 
 	var old_asp: float = float(stt.get("sig_aspd_given", 0.0))
 	u["damage_amp"] = maxf(0.0, float(u.get("damage_amp", 0.0)) - old_amp)
 	if old_asp > 0.0:
-		u["aspd_perm"] = maxf(0.01, float(u.get("aspd_perm", 1.0)) / (1.0 + old_asp))
+		# ★2026-08-03 D16: 撤旧贡献也从"除以(1+x)"改成"减 x"(与下面的加法配对)。
+		#   撤法必须与给法【严格镜像】, 否则每次重算都会漂一点点 —— 这类漂移玩家看不见。
+		u["aspd_perm"] = maxf(0.01, float(u.get("aspd_perm", 1.0)) - old_asp)
 	var new_amp: float = AMP_PER_STACK[si] * float(stacks)
 	var new_asp: float = ASPD_PER_STACK * float(stacks)
 	u["damage_amp"] = float(u.get("damage_amp", 0.0)) + new_amp
-	u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) * (1.0 + new_asp)
+	u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + new_asp   # ★D16: 乘→加
 	stt["sig_amp_given"] = new_amp
 	stt["sig_aspd_given"] = new_asp
 

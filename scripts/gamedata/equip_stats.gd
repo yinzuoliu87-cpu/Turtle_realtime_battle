@@ -23,7 +23,14 @@ static func stat_lines(item_id: String, star: int) -> Array:
 	var i: int = clampi(star, 1, 3) - 1
 	if i < 0 or i >= arr.size():
 		return []
-	var st: Dictionary = arr[i]
+	return lines_of(arr[i])
+
+
+## ★2026-08-03 抽出的纯函数: 属性 dict → [[标签, 显示值], …]。
+## 为什么要抽: 原来只能按 item_id 查表, 于是【还没有任何装备用的新字段】没法测 ——
+## 而那正是 dodgePct 烂掉的原因(展示分支写了、施加分支从来没有, 图鉴上的数字是假的,
+## 活了很久到 v0.18.9 才修)。抽出来之后, 门禁可以直接喂一个 {"_aspdPct": 20} 验两侧成对。
+static func lines_of(st: Dictionary) -> Array:
 	var out: Array = []
 	# 顺序 = 玩家最关心的在前(攻→生命→双抗→暴击→穿透→吸血→增幅→龟能)
 	if st.has("atk"):            out.append(["攻击力", "+%d" % int(st["atk"])])
@@ -42,6 +49,11 @@ static func stat_lines(item_id: String, star: int) -> Array:
 	if st.has("shieldHealPct"):  out.append(["治疗与护盾增幅", "+%d%%" % int(st["shieldHealPct"])])
 	if st.has("_maxEnergy"):     out.append(["初始龟能", "+%d" % int(st["_maxEnergy"])])
 	if st.has("_echargePct"):    out.append(["龟能充能速率", "+%d%%" % int(st["_echargePct"])])
+	# ★2026-08-03 批2 新增三个属性字段(方案书 D7)。龟能充能速率(_echargePct)本来就有。
+	#   ⚠ 多件叠加一律【加】不是【乘】(D16, 用户原话「u4加吧」) —— 施加侧见 equip_stats_apply.gd。
+	if st.has("_aspdPct"):       out.append(["攻击速度", "+%d%%" % int(st["_aspdPct"])])
+	if st.has("_mspdPct"):       out.append(["移动速度", "+%d%%" % int(st["_mspdPct"])])
+	if st.has("_rangePct"):      out.append(["攻击射程", "+%d%%" % int(st["_rangePct"])])
 	return out
 
 ## 单行紧凑版(给 tooltip / 一行标签用): "攻击力+20 · 暴击率+25%"

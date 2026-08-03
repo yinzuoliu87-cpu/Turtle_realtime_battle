@@ -22,7 +22,15 @@ func _eq_apply_one_stats(u: Dictionary, item_id: String, star: int) -> void:
 	if i < 0 or i >= arr.size():
 		_eq_apply_flags(u, item_id, star)
 		return
-	var st: Dictionary = arr[i]
+	apply_stat_dict(u, arr[i], item_id)
+	_eq_apply_flags(u, item_id, star)
+
+
+## ★2026-08-03 抽出的纯函数: 把一份属性 dict 施加到单位上。
+## 抽它的理由同 EquipStats.lines_of —— 让【还没有装备在用的新字段】也能被门禁验到,
+## 而不是等某件装备用上了才发现"展示写了、施加没写"(dodgePct 的教训)。
+## item_id 仍要传: 有一处按 id 排除(p2eq_015 反伤走专属分支, 见下面那段血泪注释)。
+func apply_stat_dict(u: Dictionary, st: Dictionary, item_id: String) -> void:
 	if st.has("atk"):
 		u["base_atk"] += float(st["atk"])
 	if st.has("hp"):
@@ -46,6 +54,16 @@ func _eq_apply_one_stats(u: Dictionary, item_id: String, star: int) -> void:
 		u["init_energy_bonus"] = float(u.get("init_energy_bonus", 0.0)) + float(st["_maxEnergy"])
 	if st.has("_echargePct"):   # 龟能充能速率% → echarge_perm 永久倍率(多件叠加)
 		u["echarge_perm"] = float(u.get("echarge_perm", 1.0)) + float(st["_echargePct"]) / 100.0
+	# ★2026-08-03 批2 三个新字段(方案书 D7)。★★多件叠加一律【加】(D16「u4加吧」):
+	#   单件时加法与乘法同值(1.0×(1+x) == 1.0+x), 差异只在同一只龟叠多件时出现。
+	#   加法的好处是【可预测、不指数爆炸】—— 乘算是本项目翻车过的形状
+	#   (memory fb-verify-magnitude-not-just-correctness: 彩虹五条探针全绿仍把胜率从 14% 推到 97%)。
+	if st.has("_aspdPct"):      # 攻速% → aspd_perm(战斗侧 atk_cd 除以它)
+		u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + float(st["_aspdPct"]) / 100.0
+	if st.has("_mspdPct"):      # 移速% → move_perm(★新通道: 既有的 move_buff_mult 是【限时】的, 装备要永久)
+		u["move_perm"] = float(u.get("move_perm", 1.0)) + float(st["_mspdPct"]) / 100.0
+	if st.has("_rangePct"):     # 射程% → range_perm(★新通道; atk_range 被 34 处直接读, 不能就地乘)
+		u["range_perm"] = float(u.get("range_perm", 1.0)) + float(st["_rangePct"]) / 100.0
 	# ↓ 以下4类原先漏接: 数值表里写了、单位字段也确实被消费, 但从没往里写 → 属性栏骗人(用户2026-07-19发现)
 	# ★★2026-08-02 修【反伤发两次】: p2eq_015 荆棘海胆必须【跳过】这个通用钩。
 	#   它在 equip_system.gd:1104 有【专属分支】自己发反伤(而且要把伤害累计进 thorn_accum
@@ -73,7 +91,6 @@ func _eq_apply_one_stats(u: Dictionary, item_id: String, star: int) -> void:
 		u["heal_amp"] = float(u.get("heal_amp", 0.0)) + float(st["shieldHealPct"]) / 100.0
 		u["shield_amp"] = float(u.get("shield_amp", 0.0)) + float(st["shieldHealPct"]) / 100.0
 	battle._recalc_stats(u)
-	_eq_apply_flags(u, item_id, star)
 
 # 财神招财临时装备升星: STATS[item]每星是绝对值→只加(新星-旧星)数值差量(不重跑_eq_apply_flags,避免dodge/harden/on-hit等flag类重复叠加·flag类逐星缩放留F5)
 # 财神招财临时装备升星: STATS[item]每星是绝对值→只加(新星-旧星)数值差量(不重跑_eq_apply_flags,避免dodge/harden/on-hit等flag类重复叠加·flag类逐星缩放留F5)
@@ -126,7 +143,13 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 			stt["reflect_pct"] = EquipSystem.THORN_REFLECT[si]
 			stt["thorn_accum"] = 0.0
 		"p2eq_038":   # 信号放大器(用户2026-07-30 重做): 固定 30% 攻速(不分星) + 放大层数从 0 起
-			u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) * (1.0 + SignalWaveSystem.ASPD_FLAT)
+			# ★2026-08-03 D16: 乘 → 加(统一口径)。单件时两者同值, 多件/叠层时加法更弱。
+			#   ⚠ 这是一次【静默的削弱】, 而 tooltip_number_audit 抓不到(它只比三元组字面量,
+			#   D16 只改运算符不改字面量; 038 的"30%""每层5%"还是单值, 根本不在它视野内)。
+			#   ⇒ verify_aspd_stack_add 专门守这个组合, 反向验证过改回乘法会红。
+			#   ★意外收获: 现有文案在乘法口径下【本来就是错的】(038 文案读作 +130%、实发 +160%),
+			#   改成加法后文案变对了, 不需要改文案。
+			u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + SignalWaveSystem.ASPD_FLAT
 			stt["sig_stacks"] = 0
 			stt["sig_arc_deg"] = 0.0      # 张角从 0 起, 第一次释放变 90°
 			stt["sig_amp_given"] = 0.0
@@ -134,7 +157,7 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 		"p2eq_056":   # 飞镖(用户2026-07-30 加新效果): 提供 40/80/150% 攻击速度
 			# ★aspd_perm 是本项目的"永久攻速乘子"字段(贝母021 等也用它),
 			#   在主循环算 atk_cd 时除进去 —— 见 RealtimeBattle3DScene 的 atk_cd 那一行。
-			u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) * (1.0 + [0.40, 0.80, 1.50][si])
+			u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + [0.40, 0.80, 1.50][si]   # ★D16: 乘→加(同上)
 			stt["dart_hits"] = 0        # 普攻计数(每 5 下强化一次)
 		"p2eq_016":   # 铁壁盾: 每段非真实伤害固定减 3/6/10 (flat_dr, 叠加多件取和·用户2026-07-19)
 			u["flat_dr"] = float(u.get("flat_dr", 0.0)) + [3.0, 6.0, 10.0][si]

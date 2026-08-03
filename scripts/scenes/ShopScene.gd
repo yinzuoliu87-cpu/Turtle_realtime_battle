@@ -175,6 +175,11 @@ func _roll() -> void:
 		for e in DataRegistry.phase2_equipment:
 			if not maxed.has(str((e as Dictionary).get("id", ""))):
 				pool.append(e)
+	# ★2026-08-03 批2 私人池: 只掷【池里还有张】的件。抽空(0)与满3★冻结(-1)都不出。
+	#   注意上面的 _maxed_item_ids 过滤【仍然保留】—— 它管的是"背包里已满星", 池冻结管的是"池子里的张",
+	#   两者在正常流程下同时发生, 但存档损坏/调试快进时可能只有一边成立, 各守各的。
+	GameState.ensure_equip_pool()
+	pool = EquipPool.available(GameState.equip_pool, pool)
 	_offer = Phase2Equip.roll_shop(pool, _shop_level(), 10, _rng)
 	_persist_offer()   # 掷完立刻落盘, 否则退出重进又变了
 
@@ -866,8 +871,13 @@ func _on_buy(idx: int) -> void:
 	var price := _price(edef)
 	if int(GameState.meta_deepsea_coins) < price:
 		return   # 买不起
+	# ★私人池: 先扣张再扣钱 —— 扣不到张就整笔不成交(货架是异步持久化的, 极端情况下
+	#   可能出现"货架上还挂着、池子已被别的路径抽空"; 那时宁可这一次点击无效, 也不能凭空造张)。
+	var _eid: String = str(edef.get("id", ""))
+	if not GameState.pool_take(_eid, 1):
+		return
 	GameState.meta_deepsea_coins -= price
-	GameState.persistent_bench.append({"id": str(edef.get("id", "")), "star": 1})
+	GameState.persistent_bench.append({"id": _eid, "star": 1})
 	GameState.auto_merge_all()   # 买后自动 3 合 1 (背包+龟身一起算)
 	_offer[idx] = null
 	_persist_offer()   # 买走的位子要留空, 不能退出重进又长回来

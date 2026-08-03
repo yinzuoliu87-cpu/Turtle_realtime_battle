@@ -29,7 +29,12 @@ func _ready() -> void:
 	var inside := false
 	while f != null and not f.eof_reached():
 		var line := f.get_line()
-		if line.begins_with("func _eq_apply_one_stats"): inside = true; continue
+		# ★2026-08-03: 主体从 _eq_apply_one_stats 抽到了 apply_stat_dict(纯函数, 收 st dict)——
+		#   抽它是为了让【还没有装备在用的新字段】也能被门禁验到(dodgePct 的教训)。
+		#   这条解析【当场红了】(共 0 个字段), 正是 CLAUDE.md 记的"函数外迁 → 按函数名解析的审计器找不到 = 误报"。
+		#   ⇒ 认两个函数名, 谁在都行; 下次再搬也先看这里。
+		if line.begins_with("func apply_stat_dict") or line.begins_with("func _eq_apply_one_stats"):
+			inside = true; continue
 		if inside and line.begins_with("func "): break
 		if not inside: continue
 		var m := RegEx.new()
@@ -44,7 +49,10 @@ func _ready() -> void:
 	var ins2 := false
 	while f2 != null and not f2.eof_reached():
 		var line := f2.get_line()
-		if line.begins_with("static func stat_lines"): ins2 = true; continue
+		# ★同上: 展示侧的主体也抽成了纯函数 lines_of(st)。两边【成对抽出】不是巧合 ——
+		#   门禁要能在"还没有装备用这个字段"的时候就验两侧成对, 两边就都得能直接喂 dict。
+		if line.begins_with("static func lines_of") or line.begins_with("static func stat_lines"):
+			ins2 = true; continue
 		if ins2 and line.begins_with("static func "): break
 		if not ins2: continue
 		var m2 := RegEx.new()

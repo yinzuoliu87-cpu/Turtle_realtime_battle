@@ -510,6 +510,12 @@ var season_total_battles: int = 0                     # 本赛季总战斗数 �
 var season_eggs_killed: int = 0                       # 本赛季击杀龟蛋数 (排行榜口径)
 var season_wins: int = 0                              # 本赛季胜场数 (实时战斗赢一场+1; 排行指标候选)
 var season_level: int = 1                             # 大轮等级 1-10 (每场+2经验累积, 可买经验; 驱动商店出货档 + 装备槽; 用户 2026-06-27)
+# ★装备私人池 (2026-08-03 批2, 方案书 §4.6·D6/D20~D23): {装备id: 剩余张数}, -1 = 已满3★冻结。
+#   在此之前商店是【无限张有放回】—— 想要几件同款就有几件, 3★ 只受钱和运气限制。
+#   池只在【买 / 卖 / 满星冻结 / 赛季重置】四个时刻变, 与货架无关(D23: 成交才扣) ——
+#   这让存档不必和 meta_shop_offer 成对回滚, 也是选 D23 的第三条理由。
+var equip_pool: Dictionary = {}
+const _EquipPool := preload("res://scripts/gamedata/equip_pool.gd")
 var debug_level: int = 0                              # 调试器: >0 强制全体战斗单位等级(测试用, 正式版用外部快照); 0=用真实等级
 var season_xp: int = 0                                # 大轮等级当前经验 (满 xp_to_next(level) 升级)
 var chest_treasure_value: float = 0.0                 # 宝箱藏宝图·财宝值(随一大轮累积·用户2026-07-16)
@@ -821,6 +827,7 @@ func save() -> void:
 		"chest_treasures_won": chest_treasures_won,
 		"season_leaders": season_leaders,
 		"loadouts": loadouts,                 # 大轮内各龟 3选1 技能选择, 随赛季持久(跨场景/重启不丢)
+		"equip_pool": equip_pool,
 		"persistent_bench": persistent_bench,
 		"persistent_equipped": persistent_equipped,
 		"candy_jar_count": candy_jar_count,
@@ -878,6 +885,8 @@ func _load() -> void:
 	season_eggs_killed = int(data.get("season_eggs_killed", 0))
 	season_wins = int(data.get("season_wins", 0))
 	season_level = int(data.get("season_level", 1))
+	# ★老存档没有这个键 → 空字典, 由 ensure_equip_pool() 在下次用到时补满(D12: 不做旧档兜底)。
+	equip_pool = data.get("equip_pool", {})
 	season_xp = int(data.get("season_xp", 0))
 	chest_treasure_value = float(data.get("chest_treasure_value", 0.0))
 	chest_treasures_won = data.get("chest_treasures_won", [])
@@ -936,6 +945,7 @@ func reset_save() -> void:
 	season_leaders = []
 	persistent_bench = []
 	persistent_equipped = {}
+	equip_pool = {}                   # 池随之清空, 下次用到时补满(D6: 赛季重置)
 	candy_jar_count = 0
 	candy_jar_broken = false
 	candy_temp_levels = {}
@@ -1187,7 +1197,44 @@ func auto_merge_all() -> void:
 			else:
 				persistent_bench.append({"id": iid, "star": star + 1})
 			changed = true
+			# ★D21「满 3★ 后剩下的张不再流通」这里【不做任何事】—— 不是漏了。
+			#   ShopScene._maxed_item_ids() 早就把 star>=3 的 id 排除出掷货池了, 且它是【库存驱动】:
+			#   卖掉 3★ 之后自动不再排除。若在这里再写一个冻结状态, 就会与 D22 的守恒律直接打架
+			#   (冻结后卖出退不回张 ⇒ 池子永久少 31 张)。完整推导见 equip_pool.gd 末尾。
 			break
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  装备私人池 (2026-08-03 批2 · 方案书 §4.6)
+#  ★池只在这四个地方变: 买(pool_take) / 卖(pool_give_back) / 满星冻结(auto_merge_all)
+#    / 赛季重置(start_new_season)。★货架不动池(D23: 成交才扣)。
+# ══════════════════════════════════════════════════════════════════════
+
+## 池空 → 补满。★不在 _ready 里初始化, 因为 DataRegistry 的载入顺序不保证;
+## 改成"用到时确保", 所有入口(掷货/买/卖)都先调它。
+func ensure_equip_pool() -> void:
+	if not equip_pool.is_empty():
+		return
+	equip_pool = _EquipPool.full_pool(DataRegistry.phase2_equipment)
+
+
+## 买走 1 张。返回是否成功 —— 张数不够时【不扣、返回 false】, 调用方要据此拒绝这笔交易。
+func pool_take(eid: String, n: int = 1) -> bool:
+	ensure_equip_pool()
+	return _EquipPool.take(equip_pool, eid, n)
+
+
+## 卖出退回。★按【份数】退(D22): 1★退1 / 2★退3 / 3★退9 ——
+## 守恒律: 买 9 张合出 3★ 再卖掉, 池子必须恰好回到原样。这是门禁最好写的一条断言。
+func pool_give_back(eid: String, star: int) -> void:
+	ensure_equip_pool()
+	_EquipPool.give_back(equip_pool, eid, _EquipPool.shares_of(star))
+
+
+func pool_left(eid: String) -> int:
+	ensure_equip_pool()
+	return _EquipPool.left(equip_pool, eid)
+
 
 ## 开新一大轮赛季: 命/币/局内等级/总战斗数/蛋数/背包build 全重置 (设计§五). pet_levels(养龟站)不动.
 func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试快进)负责 save
@@ -1208,6 +1255,7 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	chest_treasures_won = []
 	persistent_bench = []
 	persistent_equipped = {}
+	equip_pool = {}                   # 池随之清空, 下次用到时补满(D6: 赛季重置)
 	candy_jar_count = 0
 	candy_jar_broken = false
 	candy_temp_levels = {}
