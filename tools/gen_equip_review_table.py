@@ -20,6 +20,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 JSON = os.path.join(ROOT, 'data', 'phase2-equipment.json')
+TYPES_JSON = os.path.join(ROOT, 'data', 'p2eq-types.json')
 DOC = os.path.join(ROOT, 'docs', 'design', '装备逐件审查进度.md')
 
 
@@ -31,9 +32,21 @@ def load_items():
     return {it['id']: it for it in items}
 
 
+def load_types():
+    """id → 类型。★2026-08-03 起【类型列也由脚本生成】。
+
+    原来类型列是"人维护的分档口径"、脚本不碰 —— 于是批1 把 9 件装备从「护符/饰品」
+    改归类之后，表里那 9 行还写着两个【已经不存在的类型】，而两个审计器都不看这一列。
+    事实源是 data/p2eq-types.json，让它直接生成，这一列就再也漂不了
+    （同 memory fb-self-claiming-authority-docs-rot：手改一行 = 必漂）。
+    """
+    return json.load(io.open(TYPES_JSON, encoding='utf-8'))
+
+
 def main():
     check_only = '--check' in sys.argv
     items = load_items()
+    types = load_types()
     src = io.open(DOC, encoding='utf-8').read()
     lines = src.split('\n')
     out = []
@@ -51,19 +64,29 @@ def main():
             continue
         seen += 1
         it = items[eid]
-        # 表列: | # | id | 名称 | 费用 | 类型 | 学派 | 属性 | 效果 |
-        # 前六列(编号/类型/学派)是人维护的分档口径, json 里没有 → 原样保留;
+        # 表列: | # | id | 名称 | 费用 | 类型 | 属性 | 效果 |
+        # 前五列(编号/名称/费用/类型)是人维护的分档口径, json 里没有 → 原样保留;
         # 只把【属性】【效果】两列换成 json 的值(它们正是 data_integrity 逐行对账的两列)。
+        #
+        # ★★2026-08-03 删学派列时【必须同步改的下标】—— 这是方案书 R1 点名的假绿灯, 已实测复现:
+        #   删掉「学派」列后 len(parts) 从 10 变 9, 而原来的守卫写的是 `len(parts) < 9` —— 【拦不住】,
+        #   于是 parts[7]/parts[8] 整体错位一格, 把【属性】写进了原本是【效果】的位置。
+        #   实测后果: 表变成 "…| 属性 | 属性 | 效果" (属性列出现两次、效果被挤到末尾),
+        #   而 gen_equip_review_table 照样报"改写 59 行"、data_integrity 直接报【ALL OK】——
+        #   因为 data_integrity 的对账是【整行子串匹配】(v not in L), 与列位置无关, 抓不到错位。
+        #   ⇒ 列数变了就必须同时改这里的下标与守卫, 两者【只改一边就是静默写坏数据】。
         parts = L.split('|')
-        if len(parts) < 9:
+        if len(parts) < 8:
             out.append(L)
             continue
+        new_type = ' %s ' % str(types.get(eid, '?')).strip()
         new_stats = ' %s ' % str(it.get('baseStats1', '')).strip()
         new_eff = ' %s ' % str(it.get('effectDesc1', '')).strip()
-        if parts[7] != new_stats or parts[8] != new_eff:
+        if parts[5] != new_type or parts[6] != new_stats or parts[7] != new_eff:
             changed.append(eid)
-            parts[7] = new_stats
-            parts[8] = new_eff
+            parts[5] = new_type
+            parts[6] = new_stats
+            parts[7] = new_eff
         out.append('|'.join(parts))
 
     print('[分母] 表内匹配到 %d 行 / json %d 件' % (seen, len(items)))

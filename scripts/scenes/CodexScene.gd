@@ -10,7 +10,7 @@ extends Node2D
 @onready var list_vbox: VBoxContainer = $UI/ListScroll/ListVBox
 var _row_press_pos := Vector2.ZERO   # 触屏点选/滑动判定: 记按下位置, 松开位移小才算点选(手机2026-07-18)
 var _codex_list := CodexList.new(self)   # 图鉴·左栏列表行构建(龟/装备/状态/分组头/简单行·back_button和共享_add_text/image/portrait/rect留主场景)(2026-07-25 抽出)
-var _codex_detail := CodexDetail.new(self)   # 图鉴·右栏详情视图(龟/装备/学派/状态/规则/小将 13渲染函数)(2026-07-25 抽出)
+var _codex_detail := CodexDetail.new(self)   # 图鉴·右栏详情视图(龟/装备/羁绊(类型)/状态/规则/小将 13渲染函数)(2026-07-25 抽出)
 @onready var detail_bg: ColorRect = $UI/DetailBg
 # ★2026-08-03 详情改可滚动。这里【故意】做了一次换名:
 #   detail_frame = 场景里那个固定 900×550 的框(UI/DetailBg 画着边框)——入场 tween / 居中偏移打它;
@@ -43,10 +43,9 @@ const TABS := [
 const DETAIL_W := 900.0
 const LIST_W := 280.0
 
-# ── 二阶段双路「装备学派」羁绊 (替代旧的 10 龟羁绊; 上线版野生=duallane 用此 11 学派) ──
-# 学派定义(名/tag/tiers)取自 Phase2Schools.SCHOOLS; 成员装备由 p2eq-schools.json 反查; 效果文案=学派效果-实装规格.md 逐字转录。
-const Phase2Schools := preload("res://scripts/gamedata/phase2_schools.gd")
-const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")   # 类型(12)映射: p2eq-types.json
+# ── 羁绊 = 装备【类型】(10 个)。2026-08-03 批1: 学派系统已删除, 类型成为唯一羁绊维度(方案书 D1/D2) ──
+# 类型定义(阈值/逐档文案)取自 Phase2Types; 成员装备由 p2eq-types.json 反查。
+const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")   # 类型(10)映射: p2eq-types.json
 const SkillEnergy := preload("res://scripts/systems/skill_energy.gd")   # 龟能花费 单一事实源 (跟战斗同口径)
 const EquipStats := preload("res://scripts/gamedata/equip_stats.gd")   # 装备属性 单一事实源 STATS (跟战斗/背包同口径; 2026-07-23 从回合制P2RT抽出)
 const TurtleStats := preload("res://scripts/gamedata/turtle_stats.gd")    # 龟战斗属性 单一事实源(移速/攻速/射程, 跟战斗同源·点5)
@@ -68,87 +67,22 @@ func _skill_energy(sk: Dictionary) -> int:
 		return int(round(float(sk["energyCost"])))
 	return int(round(SkillEnergy.cost_of(str(sk.get("type", "")))))
 
-# 各学派强调色 + emoji 图标 (无 tag PNG → 用 emoji 占位; 颜色用于列表描边/标题). 11 学派.
-const SCHOOL_STYLE := {
-	"血牙帮":     {"color": "#ff6b6b", "emoji": "🩸"},
-	"深渊议会":   {"color": "#9d4edd", "emoji": "🦠"},
-	"玄甲卫队":   {"color": "#94a3b8", "emoji": "🛡"},
-	"珊瑚学院":   {"color": "#ff7ab8", "emoji": "🪸"},
-	"深海军械库": {"color": "#fb923c", "emoji": "💣"},
-	"黑礁猎团":   {"color": "#22d3ee", "emoji": "🎯"},
-	"极地小队":   {"color": "#60a5fa", "emoji": "❄"},
-	"潮汐议会":   {"color": "#34d399", "emoji": "🌊"},
-	"圣甲议会":   {"color": "#ffd93d", "emoji": "✨"},
-	"唤灵学会":   {"color": "#c084fc", "emoji": "💀"},
-	"远古遗迹":   {"color": "#a3e635", "emoji": "🗿"},
-}
-# 各档效果文案 (1:1 学派效果-实装规格.md). 每学派 = {common: 通用/全档文案, tiers: [按档增量文案...]}。
-#   common 先渲染; tiers[i] 非空则标"N档"(N=SCHOOLS.tiers[i])增量行。阈值数值真值仍以 Phase2Schools.SCHOOLS 为准。
-const SCHOOL_EFFECTS := {
-	"血牙帮": {
-		"common": "全体友方根据已损失生命获得攻击力:每损失 1% 最大生命 → +0.6 / 1 / 1.5 攻击力。\n每个友方单位生命首次跌至 30% 以下时,获得相当于其 100% 攻击力的护盾(每单位每场一次)。",
-		"tiers": [],
-	},
-	"深渊议会": {
-		"common": "全队攻击无视目标 12% / 22% / 40% 护甲和魔抗(腐蚀穿透)。\n每2.5秒,所有敌方单位 +1 层腐蚀(每层使目标受到的伤害 +3% / 4% / 6%,最多叠 5 层)。\n腐蚀满 5 层的敌人,其受到的伤害中 30% 转化为真实伤害(无视护甲、护盾)。",
-		"tiers": [],
-	},
-	"玄甲卫队": {
-		"common": "每2.5秒,随机将 1/1/2 件「费用 ≤2/3/4 且非3星」的装备临时玄甲化:短时间内按高一星级结算其效果(若场上无符合条件装备则不触发)。\n每2.5秒,玄甲卫队为全队提供 10/15/20 护盾值。",
-		"tiers": [],
-	},
-	"珊瑚学院": {
-		"common": "队伍获得 90/100/110 最大生命值。\n激活时获得 1/2/4 枚珊瑚碎片(潜能)。每件珊瑚学院装备的效果中都含有「×碎片数」的强化项——碎片越多,该装备的效果越强(多一段攻击、多叠几层、多覆盖一个目标等)。碎片为全体珊瑚装备共享的潜能值。",
-		"tiers": [],
-	},
-	"深海军械库": {
-		"common": "",
-		"tiers": [
-			"我方阵营最前方生成第一座炮台:每2.5秒选一名敌人轰击,对炮台↔该敌直线上所有命中单位造成 80 物理伤害,并为最低血友军回复(30%×造成伤害)的生命。",
-			"+ 中心生成第二座炮台:每2.5秒固定产 100 能量(每持一件军械库装备额外 +20)。第1次能量→转护盾均摊全队;第2次能量→化弹幕向敌全体(敌均摊该能量值魔法);此后两次循环(护盾↔弹幕)。",
-			"+ 后方生成第三座炮台:为军械库携带者接通火控,使携带者额外造成 (10 + 每件军械库装备×5)% 真实伤害。",
-		],
-	},
-	"黑礁猎团": {
-		"common": "战斗开始获得一张猎杀卡片,玩家拖拽到一个敌方单位指定为猎物(卡片附着于该敌)。\n全队对猎物造成的伤害 +15%/25%/40%。\n猎物被击杀后,卡片自动脱落回收,可再次指定新猎物;每击杀一个猎物 → 全队攻击力永久 +14/26/38(本场累积)。",
-		"tiers": [
-			"",
-			"",
-			"【质变·处决】攻击猎物时,若其生命低于 20% → 直接处决(斩首)。",
-		],
-	},
-	"极地小队": {
-		"common": "",
-		"tiers": [
-			"【冻结】全队攻击 15%/25%/40% 概率冻结目标 1.5秒(无法行动)。同一目标每2.5秒最多被冻结 1 次,且解冻后 1.5秒内免疫冻结(防永冻)。",
-			"【僵硬】全队每段攻击额外为目标叠 1 层僵硬(持续5秒,叠加刷新时长),每层攻击力 -2%,最多 20 层(满层 -40% 攻)。",
-			"【易碎】被冻结/眩晕的敌人,受到的伤害 +25%。",
-		],
-	},
-	"潮汐议会": {
-		"common": "【潮涌·每2.5秒回血】每2.5秒,全队回复已损失生命的 4%/7%/10%/12%。\n【退潮·治疗留盾】友军受到治疗时,额外获得等于治疗量 15%/25%/35%/50% 的护盾。\n【大潮·质变·净化】每 7.5 秒掀起一次大潮:全队每个友军回复 15% 最大生命,并净化 1/1/2/3 个减益(冰冻/灼烧/腐蚀/僵硬等)。",
-		"tiers": [],
-	},
-	"圣甲议会": {
-		"common": "",
-		"tiers": [
-			"获得一个圣盾装备(+150最大生命)。圣盾:每5秒为携带者生成 45 点圣光护盾。圣光护盾存在时,反击敌人的每段伤害造成 2 点真实伤害。该反击伤害与护盾值,团队每有一件圣甲议会装备 +50%。",
-			"再获得一个圣盾装备。此外,敌方单位阵亡时,圣盾立即为携带者提供相当于该阵亡单位 30% 最大生命的圣光护盾。",
-			"此外,圣甲装备为携带者提供治疗/护盾时,额外提供 20% 治疗量/护盾量 的圣光护盾。圣盾提供的所有圣盾值 +20%。",
-		],
-	},
-	"唤灵学会": {
-		"common": "友方单位阵亡时,在原地召唤一只亡魂,继承该单位 20%/30%/45%/65%/100% 攻击力和生命,自动攻击最近的敌人。\n亡魂阵亡时,再召唤一只更弱的亡魂(每次属性 ×0.9 递减),每个单位最多循环复活 0/1/2/3/4 次,之后彻底死亡。",
-		"tiers": [],
-	},
-	"远古遗迹": {
-		"common": "龟蛋获得 500/750/1500 最大生命值。\n【远古之力】激活后战斗每过 2.5 秒,全队永久 +3/+6/+10 攻击力(本场累积,软上限 +300)。\n【觉醒】激活满 20 秒后全队进入「觉醒」:已累积远古之力 +50%,之后每2.5秒获得的远古之力翻倍。",
-		"tiers": [
-			"",
-			"",
-			"【质变·远古降临】觉醒后每2.5秒触发一道远古能量爆发,对全体敌人造成已累积远古之力 150% 的真实伤害。",
-		],
-	},
+# 各类型强调色 + emoji (无 tag PNG → 用 emoji 占位; 颜色用于列表描边/标题)。★2026-08-03 批1:
+#   原来这里是 11 学派的 SCHOOL_STYLE + 66 行 SCHOOL_EFFECTS 文案。学派系统已整体删除(方案书 D1),
+#   羁绊只剩【类型】这一维。逐档效果文案的事实源改为 Phase2Types.TIER_DESCS ——
+#   ★不再在图鉴里手抄一份: 原来 SCHOOL_EFFECTS 是"实时版口径"、phase2_schools.gd 是"回合制口径",
+#   两份互相矛盾且都自称权威(方案书 §4.1 表格第 3 行点名了这件事)。现在只有一份。
+const TYPE_STYLE := {
+	"剑":   {"color": "#ff6b6b", "emoji": "🗡️"},
+	"奇械": {"color": "#60a5fa", "emoji": "⚙️"},
+	"食物": {"color": "#ff7ab8", "emoji": "🍖"},
+	"盾":   {"color": "#ffd93d", "emoji": "🛡️"},
+	"药水": {"color": "#22d3ee", "emoji": "🧪"},
+	"枪":   {"color": "#fb923c", "emoji": "🔫"},
+	"弓箭": {"color": "#9d4edd", "emoji": "🏹"},
+	"法器": {"color": "#34d399", "emoji": "🔮"},
+	"灵物": {"color": "#c084fc", "emoji": "🐙"},
+	"遗物": {"color": "#a3e635", "emoji": "🏺"},
 }
 
 var current_tab: String = "pets"
@@ -277,7 +211,7 @@ func _ready() -> void:
 		return
 	status_bar.text = "✓ %d 龟 / %d 装备 / %d 羁绊 / %d 状态 / %d 规则" % [
 		DataRegistry.all_pets.size(), _equip_tab_count(),
-		Phase2Schools.SCHOOLS.size(), DataRegistry.status_defs.size(), DataRegistry.battle_rules.size()]
+		Phase2Types.TYPES.size(), DataRegistry.status_defs.size(), DataRegistry.battle_rules.size()]
 	# 视口比例由项目级 EXPAND(window/stretch/aspect)保证, 场景切换不翻转 aspect → 入场丝滑(同 TeamSelect)。
 	#   同步建完(无 await), 首帧即完整布局, 无半成品/撕裂帧。背景铺满+居中见 _fill_bg_and_center。
 	_build_detail_scroll()
@@ -429,7 +363,7 @@ func _build_tab_bar() -> void:
 	# 装备 Tab 计数 = 59 件 p2eq + 消耗品件数 (上线野生=duallane 实际装备池, 非旧 e_ 装备)
 	var tab_counts := {
 		"pets": DataRegistry.launch_pets.size(), "equips": _equip_tab_count(),
-		"synergies": Phase2Schools.SCHOOLS.size(), "status": DataRegistry.status_defs.size(),
+		"synergies": Phase2Types.TYPES.size(), "status": DataRegistry.status_defs.size(),
 		"rules": DataRegistry.battle_rules.size(),
 	}
 	for i in TABS.size():
@@ -490,10 +424,10 @@ func _switch_tab(tab: String) -> void:
 		"equips":
 			_codex_list._add_equip_rows()
 		"synergies":
-			# 11 装备学派 (替代旧 10 龟羁绊; 上线野生=duallane 用此). 名序按 Phase2Schools.SCHOOLS 声明序.
-			for sname in Phase2Schools.SCHOOLS.keys():
-				_items.append({"_school": sname})
-				var style: Dictionary = SCHOOL_STYLE.get(sname, {})
+			# 10 装备类型羁绊 (2026-08-03 批1 取代 11 学派). 名序按 Phase2Types.TYPES 声明序.
+			for sname in Phase2Types.TYPES.keys():
+				_items.append({"_type": sname})
+				var style: Dictionary = TYPE_STYLE.get(sname, {})
 				var emoji: String = str(style.get("emoji", "🔗"))
 				var col: String = str(style.get("color", "#4cc9f0"))
 				# 无 tag PNG → emoji 前缀进名字; 描边用学派色 (列表行 _codex_list._add_simple_row 复用)
@@ -601,7 +535,7 @@ func _select(idx: int) -> void:
 			if item.has("_minion"): _codex_detail._show_minion(str(item["_minion"]))
 			else: _codex_detail._show_pet(item)
 		"equips": _codex_detail._show_equip(item)
-		"synergies": _codex_detail._show_school(item)
+		"synergies": _codex_detail._show_type(item)
 		"status": _codex_detail._show_status(item)
 		"rules": _codex_detail._show_rule(item)
 

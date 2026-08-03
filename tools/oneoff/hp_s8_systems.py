@@ -3,7 +3,7 @@
 本地新增 §7决胜/§8硬控/§9巡检, 且原「§7 REVIEW_DEMO」重编号为 §10 →
 先把云端那个旧 §7 改名成 §10(保住同一元素, 不产生孤儿), 再全量 upsert。"""
 import sys, io, re, os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from hacknplan_sync import HP
 
 DOC = io.open('docs/design/实时版-系统机制权威.md', encoding='utf-8').read()

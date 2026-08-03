@@ -194,7 +194,7 @@ while _w < 600 and float(u["hp"]) >= hp0:   # 上限防死循环
 > 所以给余量；但余量不是免检通行证，判据仍是上面那一条。
 
 > **（2026-07-25 修正一处旧文档谎言）** 曾经这里写"`scripts/engine/` 是回合制旧引擎、只借 STATS 表"——**假的**，探针证明那 13 个文件全是活代码。已把 `scripts/engine/` 按真实身份拆成三个诚实的文件夹：<br>
-> · `scripts/gamedata/`（装备/龟/学派**属性表 + 配置**·`EquipStats`/`turtle_stats`/`phase2_*`·被战斗/背包/商店/图鉴/GameState 用）<br>
+> · `scripts/gamedata/`（装备/龟/羁绊**属性表 + 配置**·`EquipStats`/`turtle_stats`/`phase2_*`·被战斗/背包/商店/图鉴/GameState 用）<br>
 > · `scripts/util/`（**共享工具**·`VfxTex` 特效纹理/`SkillText` 技能文案/`UIPalette` 配色/`SafeArea`）<br>
 > · `scripts/net/`（**云后端/匹配**·`backend.gd` 排行榜/bot对手/bracket）<br>
 > 它们**不是**行为层拆分模板（那是 `dmg_stats_panel.gd`），是被全项目复用的基础层。回合制**战斗逻辑**早已删净（见 `equip_stats.gd` 头注）。

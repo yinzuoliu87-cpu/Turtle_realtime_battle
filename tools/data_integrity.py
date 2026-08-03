@@ -14,7 +14,7 @@ def chk(name, bad, detail=''):
 
 pets = J('data/pets.json'); pets = pets if isinstance(pets, list) else pets['pets']
 eq   = J('data/phase2-equipment.json'); eq = eq if isinstance(eq, list) else eq.get('equipment', eq.get('items'))
-types= J('data/p2eq-types.json'); schools = J('data/p2eq-schools.json')
+types= J('data/p2eq-types.json')
 picons = J('data/passive-icons.json'); status = J('data/status.json'); rules = J('data/battle-rules.json')
 cons = J('data/equipment.json'); cons = cons if isinstance(cons,list) else cons.get('equipment',cons.get('items'))
 src = io.open('scripts/scenes/RealtimeBattle3DScene.gd', encoding='utf-8').read()
@@ -31,7 +31,9 @@ chk('被动图标文件存在', [k for k,v in picons.items() if str(v).endswith(
 print('\n=== 交叉引用 ===')
 eqids = {e['id'] for e in eq}
 chk('p2eq-types 键 == 装备id', sorted(set(types)^eqids))
-chk('p2eq-schools 键 == 装备id', sorted(set(schools)^eqids))
+TYPESET = {'剑','奇械','食物','盾','药水','枪','弓箭','法器','灵物','遗物'}
+chk('p2eq-types 的值恰好落在这 10 个类型里(学派已删·护符/饰品已解散)', sorted(set(types.values()) - TYPESET))
+chk('10 个类型每个都至少有 1 件装备(分母, 防打错字造出空类型)', sorted(TYPESET - set(types.values())))
 ptypes = {str(p.get('passive',{}).get('type','')) for p in pets}
 chk('每只龟的被动都有图标', sorted(ptypes - set(picons)))
 chk('被动图标无孤儿键', sorted(set(picons) - ptypes))

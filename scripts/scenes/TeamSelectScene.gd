@@ -638,7 +638,7 @@ func _build_ui() -> void:
 
 	# 实时 3v3：去掉回合制「前排/后排」标签 (自由走位下定位无意义)
 
-	# _build_synergy_region()   # 删: 老宠物标签羁绊已弃用 (用户 2026-06-23 "删掉老羁绊"), 改用 11 学派装备系统
+	# _build_synergy_region()   # 删: 老宠物标签羁绊已弃用 (用户 2026-06-23 "删掉老羁绊"), 改用 10 类型装备羁绊系统
 	_slots._build_slots()
 	_build_grid_region()
 	_detail._build_detail_region()

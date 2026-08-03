@@ -1,6 +1,6 @@
 class_name CodexDetail
 extends RefCounted
-## 图鉴·右栏详情视图(龟/装备/学派/状态/规则/小将 13渲染函数)
+## 图鉴·右栏详情视图(龟/装备/羁绊(类型)/状态/规则/小将 13渲染函数)
 ## 类内名不变;外部名加 battle.
 
 var host
@@ -402,9 +402,9 @@ func _show_equip(eq: Dictionary) -> void:
 
 
 # ── p2eq 装备详情 (data/phase2-equipment.json 字段) ──
-#   头图: PNG 图标(img·2026-07-18装备图标)→无 img 才 emoji 徽章兜底。名 + 费用 + 类型(p2eq-types) + 学派(p2eq-schools) + 属性(baseStats1) + 效果(effectDesc1/3)。
+#   头图: PNG 图标(img·2026-07-18装备图标)→无 img 才 emoji 徽章兜底。名 + 费用 + 类型(p2eq-types) + 类型(p2eq-types) + 属性(EquipStats.STATS) + 效果(effectDesc1/3)。
 # ── p2eq 装备详情 (data/phase2-equipment.json 字段) ──
-#   头图: PNG 图标(img·2026-07-18装备图标)→无 img 才 emoji 徽章兜底。名 + 费用 + 类型(p2eq-types) + 学派(p2eq-schools) + 属性(baseStats1) + 效果(effectDesc1/3)。
+#   头图: PNG 图标(img·2026-07-18装备图标)→无 img 才 emoji 徽章兜底。名 + 费用 + 类型(p2eq-types) + 类型(p2eq-types) + 属性(EquipStats.STATS) + 效果(effectDesc1/3)。
 func _show_p2eq(eq: Dictionary) -> void:
 	host._clear_detail()
 	var cost: int = int(eq.get("cost", 0))
@@ -426,27 +426,27 @@ func _show_p2eq(eq: Dictionary) -> void:
 	var _tp: String = host.Phase2Types.type_of(str(eq.get("id", "")))
 	var type_str: String = ("%s %s" % [host.Phase2Types.emoji_of(_tp), host.Phase2Types.display_name(_tp)]) if _tp != "" else "—"
 	host._add_text(130, 92, type_str, 13, "#888888", 0.0, 0.5)
-	# 学派 (可多个, p2eq-schools.json → schools_of); 无 → "—"
-	var schools: Array = host.Phase2Schools.schools_of(str(eq.get("id", "")))
-	var school_str = "  /  ".join(PackedStringArray(schools)) if not schools.is_empty() else "—"
-	host._add_text(130, 116, "学派: %s" % school_str, 13, "#c084fc", 0.0, 0.5, true)
+	# ★2026-08-03 批1: 原来这里还有一行 y=116 的「学派: …」。学派系统已删(D1) ⇒ 整行删除。
+	#   ⚠ 这块排版是【绝对 y 坐标】, 光删行会在 y=92(类型) 与 y=158("属性"标题)之间留 24px 空白,
+	#   而【没有任何门禁抓得到】(verify_codex_browse 只走 Tab、不量间距 —— 方案书 R5)。
+	#   ⇒ 下方各块统一上移 24px: 属性 158→134 / 值 184→160 / 后续块同理(见下)。
 
 	# 属性 —— 取自 host.EquipStats.STATS(战斗实装的同一张表), 不再打印 data 里手写的 baseStats1。
 	# baseStats1 只是 STATS 的人工镜像, 无机制保证一致; 走这里则图鉴与实装天然同源。
-	host._add_text(20, 158, "属性", 14, "#58d3ff", 0.0, 0.0, true)
+	host._add_text(20, 134, "属性", 14, "#58d3ff", 0.0, 0.0, true)
 	var _eid: String = str(eq.get("id", ""))
 	var _stat_str: String = host.EquipStats.stat_line_all_stars(_eid)
-	host._add_text(20, 184, _stat_str, 16, "#ffd93d", 0.0, 0.0, true)
+	host._add_text(20, 160, _stat_str, 16, "#ffd93d", 0.0, 0.0, true)
 
 	# 效果 (effectDesc1 = 1星基础 / effectDesc3 = 3星升级)
-	host._add_text(20, 224, "效果", 14, "#58d3ff", 0.0, 0.0, true)
+	host._add_text(20, 200, "效果", 14, "#58d3ff", 0.0, 0.0, true)   # ★上移 24: 学派行删除(见上)
 	var bb = str(eq.get("effectDesc1", ""))
 	var d3: String = str(eq.get("effectDesc3", ""))
 	if d3.strip_edges() != "":
 		bb += "\n\n[color=%s][b]%s[/b][/color]" % [rcol, d3]
 	var rt = RichTextLabel.new()
 	rt.bbcode_enabled = true; rt.fit_content = true; rt.scroll_active = false
-	rt.position = Vector2(20, 248)
+	rt.position = Vector2(20, 224)   # ★上移 24: 同上
 	rt.custom_minimum_size = Vector2(host.DETAIL_W - 40, 0)
 	rt.add_theme_font_size_override("normal_font_size", 14)
 	rt.add_theme_color_override("default_color", Color("#ffffff"))
@@ -481,49 +481,44 @@ func _show_consumable(eq: Dictionary) -> void:
 	host.detail.add_child(rt)
 
 
-# ─── 学派(装备套装羁绊) 详情 — 替代旧龟羁绊. 名+tag+档阈值+成员装备+逐档效果文案 ───
-#   数据: 学派定义 host.Phase2Schools.SCHOOLS / 成员装备 p2eq-schools.json(经 _school_members) / 文案 host.SCHOOL_EFFECTS.
-#   沿用龟羁绊详情排版骨架(头图区 + 名/副标 + 下方文本区 + 底部成员清单), 仅换数据源.
-# ─── 学派(装备套装羁绊) 详情 — 替代旧龟羁绊. 名+tag+档阈值+成员装备+逐档效果文案 ───
-#   数据: 学派定义 host.Phase2Schools.SCHOOLS / 成员装备 p2eq-schools.json(经 _school_members) / 文案 host.SCHOOL_EFFECTS.
-#   沿用龟羁绊详情排版骨架(头图区 + 名/副标 + 下方文本区 + 底部成员清单), 仅换数据源.
-func _show_school(item: Dictionary) -> void:
+# ─── 类型羁绊详情 (2026-08-03 批1 取代学派详情) — 名 + 档阈值 + 成员装备 + 逐档效果文案 ───
+#   数据: 类型定义 host.Phase2Types.TYPES(阈值) / 逐档文案 Phase2Types.TIER_DESCS / 成员装备 p2eq-types.json。
+#   ★逐档文案【不再在图鉴里手抄一份】: 旧版 CodexScene.SCHOOL_EFFECTS 与 phase2_schools.gd 是两份
+#   互相矛盾的口径(一份写"每2.5秒"、一份写"每回合开始")且都自称权威。现在只有 TIER_DESCS 一份。
+#   排版骨架 1:1 沿用旧 _show_school, 只换数据源。
+func _show_type(item: Dictionary) -> void:
 	host._clear_detail()
-	var sname: String = str(item.get("_school", ""))
-	var def: Dictionary = host.Phase2Schools.SCHOOLS.get(sname, {})
-	var style: Dictionary = host.SCHOOL_STYLE.get(sname, {})
+	var tname: String = str(item.get("_type", ""))
+	var def: Dictionary = host.Phase2Types.TYPES.get(tname, {})
+	var style: Dictionary = host.TYPE_STYLE.get(tname, {})
 	var color: String = str(style.get("color", "#4cc9f0"))
 	var emoji: String = str(style.get("emoji", "🔗"))
-	var tag: String = str(def.get("tag", ""))
 	var tiers: Array = def.get("tiers", [])
-	var members: Array = _school_members(sname)   # [{id,name,emoji}], 该学派全部装备
+	var members: Array = _type_members(tname)   # [{id,name,emoji}], 该类型全部装备
 
-	# 头图区: 无 tag PNG → 学派色框 + emoji 徽章 (中心锚 @(60,70) 同旧龟羁绊头图位)
+	# 头图区: 无 tag PNG → 类型色框 + emoji 徽章
 	host._add_rect(60, 70, 90, 90, "#12202a", 0.55, color, 2.0, 0.9)
 	host._add_text(60, 70, emoji, 44, color, 0.5, 0.5, true)
-	# 名 32px 学派色 + 副标 "羁绊 · [tag]" + 成员件数
-	host._add_text(130, 36, sname, 32, color, 0.0, 0.5, true)
-	host._add_text(130, 72, "羁绊 · [%s]" % tag, 14, "#888888", 0.0, 0.5)
-	# 档阈值行 (e.g. "激活 3 / 6 / 9 件")
-	var thresh = ""
+	# 名 32px 类型色 + 副标(全称) + 档阈值 / 成员件数
+	host._add_text(130, 36, tname, 32, color, 0.0, 0.5, true)
+	host._add_text(130, 72, "羁绊 · %s" % host.Phase2Types.display_name(tname), 14, "#888888", 0.0, 0.5)
+	var thresh := ""
 	for i in range(tiers.size()):
 		thresh += ("" if i == 0 else " / ") + str(int(tiers[i]))
-	host._add_text(130, 98, "激活 %s 件   ·   成员装备 %d 件" % [thresh, members.size()], 14, color, 0.0, 0.5, true)
+	# ★顶档 == 该类型【最终】件数是有意设计(方案书 D5)。批 3 加完 35 件之前顶档够不到,
+	#   这里如实显示"现有 N 件", 玩家自己看得出还差几件, 不写"不可达"这种开发者口吻的字。
+	host._add_text(130, 98, "激活 %s 件   ·   现有装备 %d 件" % [thresh, members.size()], 14, color, 0.0, 0.5, true)
 
-	# 效果文案 (1:1 学派效果-实装规格.md): common 块 + 逐档(若有). RichTextLabel 自动换行(同 _show_status).
+	# 逐档效果文案 (事实源 Phase2Types.TIER_DESCS, 与背包羁绊面板同一份)
 	host._add_text(20, 150, "羁绊效果", 14, "#58d3ff", 0.0, 0.0, true)
-	var fx: Dictionary = host.SCHOOL_EFFECTS.get(sname, {})
-	var bb = ""
-	var common: String = str(fx.get("common", ""))
-	if common != "":
-		bb += common + "\n"
-	var fx_tiers: Array = fx.get("tiers", [])
-	for i in range(fx_tiers.size()):
-		var txt: String = str(fx_tiers[i])
+	var descs: Array = host.Phase2Types.TIER_DESCS.get(tname, [])
+	var bb := ""
+	for i in range(descs.size()):
+		var txt: String = str(descs[i])
 		if txt.strip_edges() == "":
 			continue
 		var th: int = int(tiers[i]) if i < tiers.size() else 0
-		bb += "\n[color=%s][b]%d档[/b][/color]  %s" % [color, th, txt]
+		bb += ("" if bb == "" else "\n\n") + "[color=%s][b]%d 件[/b][/color]  %s" % [color, th, txt]
 	var rt = RichTextLabel.new()
 	rt.bbcode_enabled = true
 	rt.fit_content = false   # 固定 260px 框 + 超长滚动, 不撑高(防压到下方成员清单 y446)
@@ -537,32 +532,32 @@ func _show_school(item: Dictionary) -> void:
 	rt.text = bb.strip_edges()
 	host.detail.add_child(rt)
 
-	# 成员装备清单 (从 p2eq-schools.json 反查; 名取 phase2_equipment_by_id; emoji 前缀). 多列流式网格.
-	var list_y = 446.0
-	host._add_text(20, list_y, "学派成员装备 (%d):" % members.size(), 14, "#58d3ff", 0.0, 0.0, true)
-	# 3 列, 每列宽 (host.DETAIL_W-40)/3; 行高 24; emoji + 名字 13px
-	var cols = 3
-	var col_w = (host.DETAIL_W - 40.0) / float(cols)
+	# 成员装备清单 (从 p2eq-types.json 反查). 3 列流式网格。
+	var list_y := 446.0
+	host._add_text(20, list_y, "该类型装备 (%d):" % members.size(), 14, "#58d3ff", 0.0, 0.0, true)
+	var cols := 3
+	var col_w: float = (host.DETAIL_W - 40.0) / float(cols)
 	for i in range(members.size()):
 		var m: Dictionary = members[i]
-		var col = i % cols
-		var row = int(i / cols)
-		var mx = 24.0 + col * col_w
-		var my = list_y + 28.0 + row * 24.0
+		var col: int = i % cols
+		var row: int = int(i / cols)
+		var mx: float = 24.0 + col * col_w
+		var my: float = list_y + 28.0 + row * 24.0
 		host._add_text(mx, my, "%s %s" % [str(m.get("emoji", "📦")), str(m.get("name", "?"))], 13, "#cdd6e0", 0.0, 0.0)
 
 
-## 某学派的成员装备 [{id,name,emoji}], 反查 p2eq-schools.json(经 host.Phase2Schools.schools_of) + 名/emoji 取 phase2_equipment_by_id.
+## 某类型的成员装备 [{id,name,emoji}], 反查 p2eq-types.json(经 host.Phase2Types.type_of)。
 ## 按 p2eq id 升序(= phase2_equipment 声明序), 与设计表一致。
-func _school_members(sname: String) -> Array:
+func _type_members(tname: String) -> Array:
 	var out: Array = []
 	for eq in DataRegistry.phase2_equipment:
 		if not (eq is Dictionary):
 			continue
 		var eid: String = str(eq.get("id", ""))
-		if sname in host.Phase2Schools.schools_of(eid):
+		if host.Phase2Types.type_of(eid) == tname:
 			out.append({"id": eid, "name": str(eq.get("name", eid)), "emoji": str(eq.get("emoji", "📦"))})
 	return out
+
 
 
 func _show_status(st: Dictionary) -> void:
