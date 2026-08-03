@@ -51,7 +51,10 @@ const FIRST_HI := 1.70
 ##   所以先不列 —— 这个名单的意义就在于"谁签过字", 提前塞进去等于伪造签名。
 const USER_REVIEWED := ["剑", "盾", "弓箭", "枪", "法器"]
 ## 不换算成倍率的（依赖敌方属性），只卡绝对上限
-const ABS_CAP := {"armorPen": 40.0, "magicPen": 50.0, "_lifestealPct": 35.0, "_maxEnergy": 70.0}
+## ★治疗强度/护盾强度和吸血同类: 收益完全取决于"队里有没有治疗与护盾来源",
+##   没有来源时它是 0 —— 换算不成倍率, 只卡绝对上限。
+const ABS_CAP := {"armorPen": 40.0, "magicPen": 50.0, "_lifestealPct": 35.0, "_maxEnergy": 70.0,
+	"healAmp": 70.0, "shieldAmp": 70.0}
 
 var _n := 0
 var _fail := 0

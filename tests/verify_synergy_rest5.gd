@@ -1,7 +1,7 @@
 extends Node
 ## verify_synergy_rest5.gd — 剩下五个类型的羁绊机制真的生效（2026-08-03）
 ##
-## 药水【猎物/猎获/斩首】· 奇械【铸币/冰封/僵硬/易碎】· 食物【成长/学院】
+## 药水【猎物/战利品/斩首】· 奇械【铸币/冰封/僵硬/易碎】· 食物【成长/学院】
 ## 灵物【触手/闪避追击/亡灵】· 遗物【生死界/远古之力/龟蛋加固/觉醒】
 ##
 ## ★这五个类型之前**只有属性生效**，十条主动机制一条都没实装。
@@ -68,17 +68,41 @@ func _ready() -> void:
 		"×%.3f" % _s._potion_syn.amp_for(pa[0], pa[2]))
 	_ok("★非猎物不增伤 ×1.00", absf(_s._potion_syn.amp_for(pa[0], pa[1]) - 1.0) < 0.001)
 
-	# 猎获: 档2(6 件) 击杀猎物 → 全队 +22 攻
+	# ── 属性: 治疗强度 / 护盾强度 + 一点点初始龟能(用户 2026-08-04 定) ──
+	# ★原来这栏是纯 `_maxEnergy` 5/11/20。但龟能在实时版【不是资源, 是逐技冷却】——
+	#   它唯一的作用是开局把各技冷却各减 `龟能 × 0.075` 秒, 【一次性】。
+	#   顶档 3 件 = 4.5 秒, 之后再无影响; 而玩家看文案写着"+20 最大龟能",
+	#   根本不知道那等于 1.5 秒。⇒ 主属性换成治疗/护盾强度, 龟能只留一点点。
+	var pe: Dictionary = _run([_mk("left", po.slice(0, 3))])[0]
+	_ok("药水属性: 带 3 件(首档) → 治疗强度 +18%(每件 6%)",
+		absf(float(pe.get("heal_amp", 0.0)) - 0.18) < 0.001, "heal_amp=%.3f" % float(pe.get("heal_amp", 0.0)))
+	_ok("药水属性: 护盾强度 +18%(每件 6%)",
+		absf(float(pe.get("shield_amp", 0.0)) - 0.18) < 0.001, "shield_amp=%.3f" % float(pe.get("shield_amp", 0.0)))
+	_ok("药水属性: 仍留一点点初始龟能(每件 2 → 带 3 件 = 6 ≈ 开局各技冷却 -0.45 秒)",
+		absf(float(pe.get("init_energy_bonus", 0.0)) - 6.0) < 0.001,
+		"init_energy_bonus=%.1f" % float(pe.get("init_energy_bonus", 0.0)))
+	# ★真的作用在【结算】上, 不只是字段好看
+	pe["hp"] = float(pe["maxHp"]) * 0.5
+	pe["shield"] = 0.0
+	var _hb: float = float(pe["hp"])
+	_s._damage._heal(pe, 100.0)
+	_ok("治疗强度真的生效: 回 100 → 实收 118", absf(float(pe["hp"]) - _hb - 118.0) < 1.0,
+		"实收 %.1f" % (float(pe["hp"]) - _hb))
+	_s._damage._grant_shield(pe, 100.0)
+	_ok("护盾强度真的生效: 给 100 盾 → 实得 118", absf(float(pe["shield"]) - 118.0) < 1.0,
+		"实得 %.1f" % float(pe["shield"]))
+
+	# 战利品: 档2(6 件) 击杀猎物 → 全队 +5 攻
 	var pb := _run([_mk("left", po.slice(0, 3)), _mk("left", po.slice(3, 6)), _mk("right", [])])
 	_s._potion_syn._t_mark = 0.0
 	_s._potion_syn.tick(2.6)
 	var atk_b: float = float(pb[0]["base_atk"])
 	_s._potion_syn.on_death(pb[2])
-	_ok("猎获(档2): 猎物阵亡 → 全队 base_atk +22(不要求击杀者带药水)",
-		absf(float(pb[0]["base_atk"]) - atk_b - 22.0) < 0.01
-		and absf(float(pb[1]["base_atk"]) - atk_b - 22.0) < 0.01,
+	_ok("战利品(档2): 猎物阵亡 → 全队 base_atk +5(不要求击杀者带药水)",
+		absf(float(pb[0]["base_atk"]) - atk_b - 5.0) < 0.01
+		and absf(float(pb[1]["base_atk"]) - atk_b - 5.0) < 0.01,
 		"%.0f → %.0f / %.0f" % [atk_b, float(pb[0]["base_atk"]), float(pb[1]["base_atk"])])
-	_ok("★档1 没有猎获(HARVEST_ATK[0]=0)", _potion_harvest_tier1(po))
+	_ok("★档1 没有战利品(HARVEST_ATK[0]=0)", _potion_harvest_tier1(po))
 
 	# 斩首: 顶档(9 件) 猎物 <20% 血 → 处决
 	var pc := _run([_mk("left", po.slice(0, 3)), _mk("left", po.slice(3, 6)),
@@ -372,7 +396,7 @@ func _ready() -> void:
 	get_tree().quit(1 if _fail > 0 else 0)
 
 
-## 药水首档没有猎获：3 件时击杀猎物不涨攻
+## 药水首档没有战利品：3 件时击杀猎物不涨攻
 func _potion_harvest_tier1(po: Array) -> bool:
 	var u := _run([_mk("left", po.slice(0, 3)), _mk("right", [])])
 	_s._potion_syn._t_mark = 0.0

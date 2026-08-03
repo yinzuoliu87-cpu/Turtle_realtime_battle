@@ -27,10 +27,11 @@ const LABEL := {
 	"atk": "攻击力", "def": "护甲", "mr": "魔法抗性", "crit": "暴击率",
 	"critDmg": "暴击伤害", "armorPen": "护甲穿透", "magicPen": "法术穿透",
 	"_lifestealPct": "生命偷取", "_maxEnergy": "最大龟能", "dodgePct": "闪避率",
-	"_aspdPct": "攻击速度",
+	"_aspdPct": "攻击速度", "healAmp": "治疗强度", "shieldAmp": "护盾强度",
 }
 ## 这些 key 在文案里带 % 号
-const PCT_KEYS := ["crit", "critDmg", "dodgePct", "_lifestealPct", "_aspdPct", "_mspdPct", "_rangePct"]
+const PCT_KEYS := ["crit", "critDmg", "dodgePct", "_lifestealPct", "_aspdPct", "_mspdPct", "_rangePct",
+	"healAmp", "shieldAmp"]
 ## 这些 key 在 stats 里是小数（0.09），文案里是百分数（9）
 const X100_KEYS := ["crit", "critDmg"]
 ## ★负向前瞻：有的标签是另一个标签的前缀 ——「护甲」会匹配到「护甲穿透」里去，

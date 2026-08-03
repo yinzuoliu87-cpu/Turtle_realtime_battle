@@ -187,6 +187,14 @@ func _add(u: Dictionary, k: String, v: float) -> void:
 			u["lifesteal"] = float(u.get("lifesteal", 0.0)) + v / 100.0
 		"_maxEnergy":
 			u["init_energy_bonus"] = float(u.get("init_energy_bonus", 0.0)) + v
+		"healAmp":
+			# 药水。★`heal_amp` 是【已被消费、羁绊侧零写入】的通道 ——
+			#   消费点 `battle_damage._heal`(amt *= 1 + heal_amp), 信息面板也早就在显示"治疗强度"。
+			#   ⇒ 只需要往里写, 消费侧一行都不用改(同弓箭的 armor_pen_pct)。
+			u["heal_amp"] = float(u.get("heal_amp", 0.0)) + v / 100.0
+		"shieldAmp":
+			# 同上, 消费点 `battle_damage._grant_shield`(amt *= 1 + shield_amp)。
+			u["shield_amp"] = float(u.get("shield_amp", 0.0)) + v / 100.0
 		"hp":
 			# ★装备/羁绊给的 hp 已是最终值, 不乘 HP_MULT(CLAUDE.md §3.1)
 			u["maxHp"] = float(u.get("maxHp", 0.0)) + v
