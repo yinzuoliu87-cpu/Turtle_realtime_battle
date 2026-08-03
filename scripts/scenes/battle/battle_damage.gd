@@ -79,6 +79,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	if not no_dodge and u.get("dodge_bonus", 0.0) > 0.0 and not src.get("eq_cannot_be_dodged", false) and battle._battle_rng.randf() < u["dodge_bonus"]:
 		battle._vfx._float_text(u["pos"] + Vector2(0, -40), "闪避", Color("#a0e8ff"))
 		battle._equip_sys._eq_on_dodge(u)          # on-dodge 钩子 (幽灵墨鱼046: 闪避→永久护盾)
+		battle._spirit_syn.on_dodge(u)             # 灵物【闪避追击】: 触手立即追击 1 次(25% 伤害, 每周期上限队伍共用)
 		return
 	# 小龟·不屈: 造成的任何伤害按目标稀有度增伤 (总闸→普攻/技能/真伤/固定伤全覆盖, 只算一次)
 	if src.get("id", "") == "basic" and not is_same(src, u):
@@ -107,6 +108,11 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		_ink_true = float(dmg) * 0.05 * float(_ink)   # 墨迹: 原伤害之外·每层额外承受5%【真实伤害】(穿减伤穿盾·满10层=50%·用户2026-07-10纠正: 非×1.05增伤)
 	# ★受害者侧减伤(靶向器/暴露蛋/钻石/岩层/嘲讽/铁壁盾)全部收口到 §MITIGATE,
 	#   与 _apply_damage 共用 —— 原先这段只在本函数里, 导致 DOT 完全不吃任何减伤。
+	# 药水羁绊【猎物】: 全队对猎物造成的伤害 +15/25/40%。
+	# ★攻击者侧(要 src) ⇒ 只在这条路加; DoT 那条 `_apply_damage` 根本没有 src。
+	var _prey_amp: float = battle._potion_syn.amp_for(src, u)
+	if _prey_amp != 1.0:
+		dmg = maxi(1, int(round(float(dmg) * _prey_amp)))
 	var d = battle._mitigate_incoming(u, float(dmg), raw)
 	dmg = maxi(1, int(round(d)))
 	# 守护贝母021: 该单位被指向为"伤害转移", 把一部分入伤转给携带者承担 (护盾前分流, 剩余部分仍走本体护盾/血)
@@ -254,6 +260,8 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		if src["alive"] and u["alive"]:
 			battle._equip_sys._eq_on_hit(src, u, dmg)        # on-hit: 攻击者装备 (流血/灼烧/连锁/追击/穿透/标记 等)
 			battle._bow_syn.on_hit(src, u)                   # 弓箭【处决】: 全队(用户2026-08-03改), 斩杀线按各自暴击率
+			battle._potion_syn.try_behead(src, u)            # 药水顶档【斩首】: 攻击猎物且其 <20% 血 → 直接处决
+			battle._gadget_syn.on_hit(src, u)                # 奇械【冰封】掷骰冻结 + 【僵硬】叠 1 层
 			battle._staff_syn.add_mana(src, float(dmg) * StaffSynergySystem.MANA_FROM_DMG)   # 法器: 造成伤害 ×0.1 涨法力
 		if u["alive"]:
 			battle._equip_sys._eq_on_target(u, src, dmg)     # on-target: 防守者装备 (硬化层/冰封反制 等)

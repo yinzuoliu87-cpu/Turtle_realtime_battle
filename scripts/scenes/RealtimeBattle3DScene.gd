@@ -700,6 +700,11 @@ var _shield_syn := ShieldSynergySystem.new(self)   # 盾羁绊【怒气冲击波
 var _bow_syn := BowSynergySystem.new(self)   # 弓箭羁绊【处决/腐蚀穿透/腐蚀叠层】(2026-08-03)
 var _gun_syn := GunSynergySystem.new(self)   # 枪羁绊【三座炮台 + 火控】(2026-08-03)
 var _staff_syn := StaffSynergySystem.new(self)   # 法器羁绊【法力条/灵泉/余韵/共鸣】(2026-08-03)
+var _potion_syn := PotionSynergySystem.new(self)   # 药水羁绊【猎物/猎获/斩首】(2026-08-03)
+var _gadget_syn := GadgetSynergySystem.new(self)   # 奇械羁绊【铸币/冰封/僵硬/易碎】(2026-08-03)
+var _food_syn := FoodSynergySystem.new(self)       # 食物羁绊【永久成长/学院】(2026-08-03)
+var _spirit_syn := SpiritSynergySystem.new(self)   # 灵物羁绊【触手/闪避追击/亡灵】(2026-08-03)
+var _relic_syn := RelicSynergySystem.new(self)     # 遗物羁绊【生死界/远古之力/龟蛋/觉醒】(2026-08-03)
 ## ★"当前正在执行哪件装备的效果" —— 盾羁绊 9 档要判断"这次护盾/治疗是不是盾类装备给的"。
 ##   护盾/治疗管线本来【不记录来源】, 给每个调用点加参数要碰几十处;
 ##   而装备效果的分发本来就在几个 `for e in u["equips"]` 循环里, 在那里设一下最省。
@@ -2118,6 +2123,11 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 	_bow_syn.tick(dt)     # 弓箭顶档【腐蚀叠层】: 每 2.5 秒给全场敌人 +1 层
 	_gun_syn.tick(dt)     # 枪羁绊: 第一座炮台轰击 / 第二座能量循环(每 2.5 秒)
 	_staff_syn.tick(dt)   # 法器: 法力自然增长 + 灵泉(2.5s) + 共鸣(7.5s)
+	_potion_syn.tick(dt)  # 药水: 每 2.5 秒重选猎物(敌方血量最高者)
+	_gadget_syn.tick(dt)  # 奇械: 铸币累计 + 僵硬到期清理
+	_food_syn.tick(dt)    # 食物: 每 2.5 秒每件食物为携带者永久 +最大生命
+	_spirit_syn.tick(dt)  # 灵物: 触手拍击(每 2.5 秒) + 追击次数重置
+	_relic_syn.tick(dt)   # 遗物: 远古之力累积(每 2.5 秒) + 觉醒判定
 	_trainer_sys._tick_trainer_attacks(dt) # 训龟大师普攻: 站定扔石头抛物线弹道(用户2026-07-23)
 	_trainer_sys._tick_hunt_taunt(dt)      # 猎龟令: 每帧刷新目标周围 400 码我方友军的嘲讽(圈随目标移动)
 	_trainer_sys._tick_tame_decay(dt)      # 驯服: 归顺者每秒损失 2% 最大生命
@@ -4462,6 +4472,8 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 		d *= 1.2                                     # 靶向器055: 被标记目标受伤 +20%
 	if not is_self and int(u.get("corrode_stacks", 0)) > 0:
 		d *= BowSynergySystem.vuln_mult(u)           # 弓箭顶档【腐蚀叠层】: 每层受伤 +5%(最多 5 层)
+	if not is_self and _t < float(u.get("stun_until", 0.0)):
+		d *= _gadget_syn.brittle_mult(u)             # 奇械顶档【易碎】: 被冻结/眩晕的敌人受伤 +25%
 	# ★2026-07-30(需求3 大师技能审核抓到的): 这两行原本是【硬编码字面量】1.25 / 1.2,
 	#   而 HOOK_VULN_MULT 那个常量【在游戏代码里零读者】—— 它唯一的读者是门禁
 	#   verify_trainer_desc, 拿它推出文案该写"+25%"。两个 1.25 只是碰巧相等:
@@ -4601,6 +4613,8 @@ func _kill(u: Dictionary, killer = null) -> void:
 		_equip_sys._eq_on_kill(killer, u)             # on-kill: 击杀者装备 (暴君之牙处决回血 等)
 	_equip_sys._eq_on_death(u, killer)                # on-death: 阵亡者装备 (复活海螺变虫 / 齿轮折币 / 玩偶熊)
 	_shield_syn.on_enemy_died(u)                      # 盾羁绊【收殓】: 最近的携带盾者获得死者 30% 最大生命的护盾
+	_potion_syn.on_death(u)                           # 药水羁绊【猎获】: 死的是猎物 → 那一方全队攻击力永久 +22/38
+	_spirit_syn.on_death(u)                           # 灵物羁绊【亡灵】: 友方阵亡 → 原地召唤亡魂(继承 20/38/65/100%)
 	_on_unit_death(u, killer)
 	for _egc in _units:   # 温泉蛋(036): 任意单位阵亡→持蛋者加进度(己方死+15/敌死+10)
 		if _egc.get("has_egg", false) and _egc.get("alive", false):
@@ -6499,6 +6513,12 @@ func _recalc_stats(u: Dictionary) -> void:
 	if float(u.get("_blood_rite", 0.0)) > 0.0 and float(u.get("maxHp", 0.0)) > 0.0:
 		var lost_pct: float = clampf(1.0 - float(u.get("hp", 0.0)) / float(u["maxHp"]), 0.0, 1.0) * 100.0
 		u["atk"] += u["base_atk"] * lost_pct * float(u["_blood_rite"]) / 100.0
+	# ★遗物【生死界】(羁绊·2026-08-03): 血量 >50% 时 +3/5/8/12% 攻击力。
+	#   与血祭同一个乘区(都乘在 base_atk 上), 不是独立乘区 —— 避免 R8 那种"多个乘区连乘"。
+	u["atk"] *= RelicSynergySystem.atk_mult(u)
+	# ★奇械【僵硬】(羁绊·2026-08-03): 每层 -2% 攻击力, 最多 20 层(= ×0.60)。
+	#   ⚠ 放在【这个唯一写入点】—— 在各处攻击计算里自己乘必然漏掉一半路径。
+	u["atk"] *= GadgetSynergySystem.stiff_mult(u)
 	u["def"] = maxf(0.0, u["base_def"] * (1.0 + acc["def"][0]) + acc["def"][1])
 	u["mr"]  = maxf(0.0, u["base_mr"]  * (1.0 + acc["mr"][0])  + acc["mr"][1])
 	# ★★闪避上限(2026-08-02 用户问「每个角色我记得有闪避上限做了吗」——答: 没有, 现在加)。
@@ -6508,7 +6528,9 @@ func _recalc_stats(u: Dictionary) -> void:
 	#     单只装备上限 3 件, 带 2 件 3★ 幽灵墨鱼(各 50%) → dodge_bonus = 1.00 = 100% 免疫。
 	#   上限加在这个【唯一写入点】, 不是加在判定处 —— 这样属性面板显示的也是真实生效值, 不骗人。
 	u["dodge_bonus"] = minf(dodge, DODGE_CAP)
-	u["ls_bonus"] = ls
+	# ★遗物【生死界】另一半: 血量 <50% 时生命偷取【翻倍】(原文括号里那串 10/20/40/64
+	#   四个档四种倍率、既不是翻倍也没规律, 见 relic_synergy_system.gd 文件头)。
+	u["ls_bonus"] = ls + RelicSynergySystem.lifesteal_bonus(u)
 
 # flat DoT (诅咒等). dps=每秒落血; 真伤穿护盾. 灼烧/中毒/流血改走 _damage._apply_dot_stacks 层数模型.
 func _add_dot(u: Dictionary, tag: String, dps: float, sec: float, src = null) -> void:
@@ -7529,6 +7551,13 @@ func _settle_season(won: bool) -> void:
 			var _gid := "g_%d" % int(gs.season_id)   # ★稳定id(用户2026-07-18"同一对手连续2把匹配到"): 原带_t战斗秒数→每场upload都是新id但同阵→池里同队堆几十个id→排除最近3个没用. 改按大轮id稳定=同一玩家阵容恒为1个ghost_id, 配pool_add去重→排除最近3场真生效
 			var _av := str(gs.season_leaders[0]) if (gs.season_leaders as Array).size() > 0 else "basic"
 			Backend.upload_ghost(Backend.build_ghost_snapshot(_gid, {"name": "玩家阵容", "avatar": _av, "id": _gid}))
+	# 奇械羁绊【铸币】: 本场累积的深海币(有硬上限, 见 gadget_synergy_system.gd)一次性进账。
+	# ★加在 `_last_reward` 上而不是直接加 meta —— 结算屏显示的就是 _last_reward,
+	#   直接加 meta 会出现"钱多了但结算屏没说是哪来的", 玩家看不到因果。
+	var _minted: int = _gadget_syn.minted("left")
+	if _minted > 0:
+		_last_reward += _minted
+	_gadget_syn.reset_match()
 	gs.meta_deepsea_coins += _last_reward
 	# #7 战绩同步: 实时战斗原来不写战绩 → RecordScene 永远空。这里补记本场(总场/胜计数 + match_history 一条)。
 	gs.battles_total += 1

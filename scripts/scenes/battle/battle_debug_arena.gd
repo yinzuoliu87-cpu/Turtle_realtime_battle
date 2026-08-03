@@ -138,6 +138,8 @@ func _edit_start_battle() -> void:
 	battle._synergy.apply_all()   # ★类型羁绊(批4-1): 必须在单件属性【之后】—— 羁绊是加在单件属性上面的
 	battle._bow_syn.apply_all()   # 弓箭【腐蚀·穿透】写进 armor_pen_pct/magic_pen_pct(休眠通道, 消费侧零改动)
 	battle._gun_syn.apply_all()   # 枪【火控】(第三座炮台): 给带枪者标 _fire_ctrl
+	battle._food_syn.apply_all()  # 食物【学院】: 队伍全体额外 +100/220 最大生命(只加一次)
+	battle._relic_syn.apply_all() # 遗物【生死界】系数 + 龟蛋加固(+500/900/1500)
 	if battle._edit_full_energy:   # 装备/被动结算后再补满龟能→技能即就绪(不被_eq_apply_all_stats重置回充率覆盖)
 		for u in battle._units:
 			if u.get("side", "") == "left": _edit_apply_full_energy(u)

@@ -174,6 +174,8 @@ func _spawn_teams() -> void:
 	battle._synergy.apply_all()   # ★类型羁绊(批4-1): 必须在单件属性【之后】—— 羁绊是加在单件属性上面的
 	battle._bow_syn.apply_all()   # 弓箭【腐蚀·穿透】写进 armor_pen_pct/magic_pen_pct(休眠通道, 消费侧零改动)
 	battle._gun_syn.apply_all()   # 枪【火控】(第三座炮台): 给带枪者标 _fire_ctrl
+	battle._food_syn.apply_all()  # 食物【学院】: 队伍全体额外 +100/220 最大生命(只加一次)
+	battle._relic_syn.apply_all() # 遗物【生死界】系数 + 龟蛋加固(+500/900/1500)
 	for _pu in battle._units:        # 海盗: 开战即在后方显示持久海盗船(用户2026-07-14"战斗开始就在位置上")
 		if str(_pu.get("id", "")) == "pirate" and not _pu.get("is_summon", false):
 			battle._pirate_sys._pirate_get_ship(_pu)

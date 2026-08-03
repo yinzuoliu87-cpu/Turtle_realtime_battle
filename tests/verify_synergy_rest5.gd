@@ -1,0 +1,417 @@
+extends Node
+## verify_synergy_rest5.gd — 剩下五个类型的羁绊机制真的生效（2026-08-03）
+##
+## 药水【猎物/猎获/斩首】· 奇械【铸币/冰封/僵硬/易碎】· 食物【成长/学院】
+## 灵物【触手/闪避追击/亡灵】· 遗物【生死界/远古之力/龟蛋加固/觉醒】
+##
+## ★这五个类型之前**只有属性生效**，十条主动机制一条都没实装。
+##   所以本门禁一条都不验"函数在不在"，全部验**单位字典/场上状态真的变了**
+##   （memory [[fb-verify-must-run-the-real-path]]）。
+##
+## ★期望值一律**写死字面数**，不读被测常量 —— 读常量就是恒真式，
+##   改数值时两边一起变、门禁照样全绿（法器那次实测变异 0 FAIL，见 verify_staff_synergy 注释）。
+##
+## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_synergy_rest5.tscn
+
+const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
+const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")
+
+var _n := 0
+var _fail := 0
+var _s
+
+
+func _ok(name: String, cond: bool, detail: String = "") -> void:
+	_n += 1
+	if cond:
+		print("  [PASS] ", name, ("  " + detail) if detail != "" else "")
+	else:
+		_fail += 1
+		print("  [FAIL] ", name, "  ", detail)
+
+
+func _ready() -> void:
+	await get_tree().process_frame
+	print("=== 剩下五个类型的羁绊机制 ===")
+	RB.DEBUG_EDIT = true
+	_s = RB.new()
+	add_child(_s)
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var po: Array = _ids("药水", 9)
+	var ga: Array = _ids("奇械", 10)
+	var fo: Array = _ids("食物", 9)
+	var sp: Array = _ids("灵物", 10)
+	var re: Array = _ids("遗物", 10)
+	_ok("★分母: 药水%d 奇械%d 食物%d 灵物%d 遗物%d(各需 9/10/9/10/10 件才验得了顶档)"
+		% [po.size(), ga.size(), fo.size(), sp.size(), re.size()],
+		po.size() >= 9 and ga.size() >= 10 and fo.size() >= 9 and sp.size() >= 10 and re.size() >= 10)
+
+	# ═══════════════ 药水 ═══════════════
+	print("── 药水 ──")
+	# 对照: 未激活(2 件, 首档 3) → 不选猎物
+	var p0 := _run([_mk("left", po.slice(0, 2)), _mk("right", [])])
+	_s._potion_syn._t_mark = 0.0
+	_s._potion_syn.tick(2.6)
+	_ok("★对照: 药水未激活(2 件) → 不选猎物", not _s._potion_syn.is_prey_of("left", p0[1]))
+
+	# 首档: 敌方血最高的那只被标为猎物
+	var pa := _run([_mk("left", po.slice(0, 3)), _mk("right", []), _mk("right", [])])
+	pa[1]["hp"] = 1000.0
+	pa[2]["hp"] = 2500.0                          # 这只血最高
+	_s._potion_syn._t_mark = 0.0
+	_s._potion_syn.tick(2.6)
+	_ok("猎物 = 敌方【当前生命值最高】的那只(2500 那只, 不是 1000 那只)",
+		_s._potion_syn.is_prey_of("left", pa[2]) and not _s._potion_syn.is_prey_of("left", pa[1]))
+	_ok("猎物增伤 ×1.15(首档 +15%)", absf(_s._potion_syn.amp_for(pa[0], pa[2]) - 1.15) < 0.001,
+		"×%.3f" % _s._potion_syn.amp_for(pa[0], pa[2]))
+	_ok("★非猎物不增伤 ×1.00", absf(_s._potion_syn.amp_for(pa[0], pa[1]) - 1.0) < 0.001)
+
+	# 猎获: 档2(6 件) 击杀猎物 → 全队 +22 攻
+	var pb := _run([_mk("left", po.slice(0, 3)), _mk("left", po.slice(3, 6)), _mk("right", [])])
+	_s._potion_syn._t_mark = 0.0
+	_s._potion_syn.tick(2.6)
+	var atk_b: float = float(pb[0]["base_atk"])
+	_s._potion_syn.on_death(pb[2])
+	_ok("猎获(档2): 猎物阵亡 → 全队 base_atk +22(不要求击杀者带药水)",
+		absf(float(pb[0]["base_atk"]) - atk_b - 22.0) < 0.01
+		and absf(float(pb[1]["base_atk"]) - atk_b - 22.0) < 0.01,
+		"%.0f → %.0f / %.0f" % [atk_b, float(pb[0]["base_atk"]), float(pb[1]["base_atk"])])
+	_ok("★档1 没有猎获(HARVEST_ATK[0]=0)", _potion_harvest_tier1(po))
+
+	# 斩首: 顶档(9 件) 猎物 <20% 血 → 处决
+	var pc := _run([_mk("left", po.slice(0, 3)), _mk("left", po.slice(3, 6)),
+		_mk("left", po.slice(6, 9)), _mk("right", [])])
+	_s._potion_syn._t_mark = 0.0
+	_s._potion_syn.tick(2.6)
+	pc[3]["hp"] = float(pc[3]["maxHp"]) * 0.15
+	var beheaded: bool = _s._potion_syn.try_behead(pc[0], pc[3])
+	_ok("斩首(顶档): 猎物血 15% < 20% → 直接处决", beheaded and float(pc[3]["hp"]) <= 0.0,
+		"beheaded=%s hp=%.0f" % [str(beheaded), float(pc[3]["hp"])])
+	var pd := _run([_mk("left", po.slice(0, 3)), _mk("left", po.slice(3, 6)),
+		_mk("left", po.slice(6, 9)), _mk("right", [])])
+	_s._potion_syn._t_mark = 0.0
+	_s._potion_syn.tick(2.6)
+	pd[3]["hp"] = float(pd[3]["maxHp"]) * 0.25
+	_ok("★斩首不越线: 血 25% > 20% → 不处决", not _s._potion_syn.try_behead(pd[0], pd[3]))
+
+	# ═══════════════ 奇械 ═══════════════
+	print("── 奇械 ──")
+	var g0 := _run([_mk("left", ga.slice(0, 1))])
+	_s._gadget_syn.reset_match()
+	_s._gadget_syn._t_coin = 0.0
+	_s._gadget_syn.tick(2.6)
+	_ok("★对照: 奇械未激活(1 件, 首档 2) → 一枚都不铸", _s._gadget_syn.minted("left") == 0,
+		"铸了 %d 枚" % _s._gadget_syn.minted("left"))
+
+	var g1 := _run([_mk("left", ga.slice(0, 2))])
+	_s._gadget_syn.reset_match()
+	for i in range(9):
+		_s._gadget_syn._t_coin = 0.0
+		_s._gadget_syn.tick(2.6)
+	_ok("铸币(首档): 每跳 1 枚, 跳 9 次但【本场上限 5 枚】→ 停在 5",
+		_s._gadget_syn.minted("left") == 5, "铸了 %d 枚" % _s._gadget_syn.minted("left"))
+	var g2 := _run([_mk("left", ga.slice(0, 5))])
+	_s._gadget_syn.reset_match()
+	for i2 in range(20):
+		_s._gadget_syn._t_coin = 0.0
+		_s._gadget_syn.tick(2.6)
+	_ok("铸币(档2): 每跳 2 枚, 上限 9 枚", _s._gadget_syn.minted("left") == 9,
+		"铸了 %d 枚" % _s._gadget_syn.minted("left"))
+
+	# 僵硬: 档3(8 件) 每次命中叠 1 层, 20 层 = ×0.60 攻击力
+	var g3 := _run([_mk("left", ga.slice(0, 8)), _mk("right", [])])
+	var foe: Dictionary = g3[1]
+	var fa0: float = float(foe["atk"])
+	for i3 in range(25):
+		_s._gadget_syn.on_hit(g3[0], foe)
+	_ok("僵硬(档3): 叠到 20 层封顶(打了 25 次)", int(foe.get("stiff_stacks", 0)) == 20,
+		"%d 层" % int(foe.get("stiff_stacks", 0)))
+	_ok("僵硬 20 层 → 攻击力 ×0.60", absf(float(foe["atk"]) - fa0 * 0.60) < 0.5,
+		"%.1f → %.1f (期望 %.1f)" % [fa0, float(foe["atk"]), fa0 * 0.60])
+	_s._gadget_syn._expire_stiff()
+	_ok("★僵硬未到期不清(5 秒内)", int(foe.get("stiff_stacks", 0)) == 20)
+	foe["stiff_until"] = _s._t - 1.0
+	_s._gadget_syn._expire_stiff()
+	_ok("僵硬到期 → 层数清零且攻击力还原",
+		int(foe.get("stiff_stacks", 0)) == 0 and absf(float(foe["atk"]) - fa0) < 0.5,
+		"atk=%.1f (原 %.1f)" % [float(foe["atk"]), fa0])
+	# 档2(5 件) 没有僵硬
+	var g4 := _run([_mk("left", ga.slice(0, 5)), _mk("right", [])])
+	for i4 in range(5):
+		_s._gadget_syn.on_hit(g4[0], g4[1])
+	_ok("★档2 没有僵硬(STIFF_TIER=3)", int(g4[1].get("stiff_stacks", 0)) == 0,
+		"%d 层" % int(g4[1].get("stiff_stacks", 0)))
+
+	# 易碎: 顶档(10 件) 对被眩晕的敌人 ×1.25
+	var g5 := _run([_mk("left", ga.slice(0, 10)), _mk("right", [])])
+	_ok("★易碎: 敌人【没被控】时不增伤 ×1.00",
+		absf(_s._gadget_syn.brittle_mult(g5[1]) - 1.0) < 0.001)
+	g5[1]["stun_until"] = _s._t + 5.0
+	_ok("易碎(顶档): 被眩晕/冻结的敌人受伤 ×1.25",
+		absf(_s._gadget_syn.brittle_mult(g5[1]) - 1.25) < 0.001,
+		"×%.3f" % _s._gadget_syn.brittle_mult(g5[1]))
+	var g6 := _run([_mk("left", ga.slice(0, 8)), _mk("right", [])])
+	g6[1]["stun_until"] = _s._t + 5.0
+	_ok("★档3 没有易碎(BRITTLE_TIER=4)", absf(_s._gadget_syn.brittle_mult(g6[1]) - 1.0) < 0.001)
+
+	# ═══════════════ 食物 ═══════════════
+	print("── 食物 ──")
+	var f0 := _run([_mk("left", fo.slice(0, 2))])
+	_s._food_syn.apply_all()
+	var mh0: float = float(f0[0]["maxHp"])
+	_s._food_syn._t_grow = 0.0
+	_s._food_syn.tick(2.6)
+	_ok("★对照: 食物未激活(2 件, 首档 3) → 不长血",
+		absf(float(f0[0]["maxHp"]) - mh0) < 0.01)
+
+	# 首档 3 件: 每件食物每跳 +8 → 带 3 件 = +24
+	var f1 := _run([_mk("left", fo.slice(0, 3))])
+	var mh1: float = float(f1[0]["maxHp"])
+	var hp1: float = float(f1[0]["hp"])
+	_s._food_syn._t_grow = 0.0
+	_s._food_syn.tick(2.6)
+	_ok("成长(首档): 带 3 件食物, 一跳 +24 最大生命(8 × 3)",
+		absf(float(f1[0]["maxHp"]) - mh1 - 24.0) < 0.01,
+		"%.0f → %.0f" % [mh1, float(f1[0]["maxHp"])])
+	_ok("★成长同时加【当前生命】(否则每跳血条百分比往下掉)",
+		absf(float(f1[0]["hp"]) - hp1 - 24.0) < 0.01)
+	# 不带食物的队友不长血
+	var f2 := _run([_mk("left", fo.slice(0, 3)), _mk("left", [])])
+	var mh2: float = float(f2[1]["maxHp"])
+	_s._food_syn._t_grow = 0.0
+	_s._food_syn.tick(2.6)
+	_ok("★成长是【携带者】: 不带食物的队友一点不长",
+		absf(float(f2[1]["maxHp"]) - mh2) < 0.01)
+
+	# 学院(档2, 6 件): 全队 +100, 不带食物的也吃
+	var f3 := _run([_mk("left", fo.slice(0, 3)), _mk("left", fo.slice(3, 6)), _mk("left", [])])
+	var a_before: float = float(f3[2]["maxHp"])
+	_s._food_syn.apply_all()
+	_ok("学院(档2): 全队 +100 最大生命(不带食物的队友也吃)",
+		absf(float(f3[2]["maxHp"]) - a_before - 100.0) < 0.01,
+		"%.0f → %.0f" % [a_before, float(f3[2]["maxHp"])])
+	var a_mid: float = float(f3[2]["maxHp"])
+	_s._food_syn.apply_all()
+	_ok("★学院只加【一次】(apply_all 调两遍不叠)",
+		absf(float(f3[2]["maxHp"]) - a_mid) < 0.01, "%.0f" % float(f3[2]["maxHp"]))
+
+	# ═══════════════ 灵物 ═══════════════
+	print("── 灵物 ──")
+	var s0 := _run([_mk("left", sp.slice(0, 1)), _mk("right", [])])
+	var sh0: float = float(s0[1]["hp"])
+	_s._spirit_syn._t_slap = 0.0
+	_s._spirit_syn.tick(2.6)
+	_ok("★对照: 灵物未激活(1 件, 首档 2) → 触手不拍",
+		absf(float(s0[1]["hp"]) - sh0) < 0.01)
+
+	# 首档(2 件): 1 个触手, 伤害 = 4% 目标 maxHp + 55 = 0.04×3000+55 = 175
+	var s1 := _run([_mk("left", sp.slice(0, 2)), _mk("right", [])])
+	var sh1: float = float(s1[1]["hp"])
+	_s._spirit_syn._t_slap = 0.0
+	_s._spirit_syn.tick(2.6)
+	var dealt: float = sh1 - float(s1[1]["hp"])
+	# ★期望值写死 175(= 4%×3000 + 55)。原来写的是"100~260 之间"——太松:
+	#   把基数 55 改成 5 时实伤 125 仍落在区间内, 变异实测 0 FAIL。区间断言必须紧到能抓住改动。
+	_ok("触手(首档): 拍击伤害 = 4%%×3000 + 55 = 175", absf(dealt - 175.0) < 2.0,
+		"实掉 %.0f" % dealt)
+	_ok("★触手数(首档 1 / 档2 起 2)",
+		_s._spirit_syn.TENTACLES[0] == 1 and _s._spirit_syn.TENTACLES[1] == 2)
+
+	# 闪避追击: 档2(5 件) 每周期上限 3 次, 队伍共用
+	var s2 := _run([_mk("left", sp.slice(0, 3)), _mk("left", sp.slice(3, 5)), _mk("right", [])])
+	_s._spirit_syn._chase_used = {"left": 0, "right": 0}
+	var ch0: float = float(s2[2]["hp"])
+	for i5 in range(8):
+		_s._spirit_syn.on_dodge(s2[0] if i5 % 2 == 0 else s2[1])
+	_ok("闪避追击(档2): 8 次闪避只追 3 次(每周期上限【全队共用】)",
+		int(_s._spirit_syn._chase_used.get("left", 0)) == 3,
+		"用了 %d 次" % int(_s._spirit_syn._chase_used.get("left", 0)))
+	_ok("★追击真的打出伤害了", float(s2[2]["hp"]) < ch0, "%.0f → %.0f" % [ch0, float(s2[2]["hp"])])
+	# 档1 没有追击
+	var s3 := _run([_mk("left", sp.slice(0, 2)), _mk("right", [])])
+	_s._spirit_syn._chase_used = {"left": 0, "right": 0}
+	_s._spirit_syn.on_dodge(s3[0])
+	_ok("★首档没有闪避追击(CHASE_CAP[0]=0)",
+		int(_s._spirit_syn._chase_used.get("left", 0)) == 0)
+
+	# 亡灵: 首档(2 件) 阵亡 → 召唤亡魂, 继承 20%
+	var s4 := _run([_mk("left", sp.slice(0, 2)), _mk("left", [])])
+	var dead: Dictionary = s4[1]
+	dead["maxHp"] = 1000.0
+	dead["base_atk"] = 200.0
+	dead["alive"] = false
+	var n_before: int = _s._units.size()
+	_s._spirit_syn.on_death(dead)
+	_ok("亡灵(首档): 友方阵亡 → 场上多一只亡魂", _s._units.size() == n_before + 1,
+		"%d → %d" % [n_before, _s._units.size()])
+	var wr = _s._units[_s._units.size() - 1] if _s._units.size() > n_before else null
+	_ok("亡魂继承 20%% 攻击力与生命(200→40 / 1000→200)",
+		wr is Dictionary and absf(float(wr.get("maxHp", 0.0)) - 200.0) < 1.0,
+		"maxHp=%.0f" % (float(wr.get("maxHp", 0.0)) if wr is Dictionary else -1.0))
+	_ok("★首档亡魂死了【不再循环】(WRAITH_LOOPS[0]=0)",
+		wr is Dictionary and int(wr.get("_wraith_loops", -1)) == 0,
+		"loops=%d" % (int(wr.get("_wraith_loops", -1)) if wr is Dictionary else -1))
+	var n_after: int = _s._units.size()
+	if wr is Dictionary:
+		wr["alive"] = false
+		_s._spirit_syn.on_death(wr)
+	_ok("★亡魂阵亡不再生新亡魂(首档) —— 否则是无限循环",
+		_s._units.size() == n_after, "%d → %d" % [n_after, _s._units.size()])
+	# 龟蛋不召唤
+	var s5 := _run([_mk("left", sp.slice(0, 2)), _mk("left", [])])
+	s5[1]["_isEgg"] = true
+	s5[1]["alive"] = false
+	var n2: int = _s._units.size()
+	_s._spirit_syn.on_death(s5[1])
+	_ok("★龟蛋阵亡不召唤亡魂(那一路已经结束了)", _s._units.size() == n2)
+
+	# ═══════════════ 遗物 ═══════════════
+	print("── 遗物 ──")
+	var r0 := _run([_mk("left", re.slice(0, 1))])
+	_s._relic_syn.apply_all()
+	_ok("★对照: 遗物未激活(1 件, 首档 2) → 不加攻",
+		absf(float(r0[0]["atk"]) - 100.0) < 0.01, "atk=%.1f" % float(r0[0]["atk"]))
+
+	# 生死界: 首档(2 件) 满血 → +3% 攻
+	var r1 := _run([_mk("left", re.slice(0, 2))])
+	_s._relic_syn.apply_all()
+	_ok("生死界(首档): 满血(>50%%) → 攻击力 ×1.03 = 103",
+		absf(float(r1[0]["atk"]) - 103.0) < 0.01, "atk=%.2f" % float(r1[0]["atk"]))
+	r1[0]["hp"] = float(r1[0]["maxHp"]) * 0.3
+	_s._recalc_stats(r1[0])
+	_ok("生死界: 掉到 30%% 血(<50%%) → 攻击力加成【消失】(回 100)",
+		absf(float(r1[0]["atk"]) - 100.0) < 0.01, "atk=%.2f" % float(r1[0]["atk"]))
+	# ★实际吸血 = `lifesteal + ls_bonus`(battle_damage.gd:226) —— 断言按【这个和】算,
+	#   只看 ls_bonus 会漏掉羁绊给的那一份(第一版就漏了, 两边都读到 0)。
+	var ls_low: float = float(r1[0]["lifesteal"]) + float(r1[0]["ls_bonus"])
+	r1[0]["hp"] = float(r1[0]["maxHp"])
+	_s._recalc_stats(r1[0])
+	var ls_hi: float = float(r1[0]["lifesteal"]) + float(r1[0]["ls_bonus"])
+	# 首档每件 +3%, 带 2 件 = 6% ⇒ 满血 0.06 / 残血 0.12(期望值写死, 不读常量)
+	_ok("生死界: 满血吸血 6%%(2 件 × 3%%)", absf(ls_hi - 0.06) < 0.0001, "%.4f" % ls_hi)
+	_ok("生死界: <50%% 时生命偷取【翻倍】→ 12%%", absf(ls_low - 0.12) < 0.0001, "%.4f" % ls_low)
+
+	# 远古之力: 档2(5 件) 每跳全队 +4 攻, 上限 +150
+	var r2 := _run([_mk("left", re.slice(0, 3)), _mk("left", re.slice(3, 5))])
+	_s._relic_syn.apply_all()
+	var ra0: float = float(r2[1]["base_atk"])
+	_s._relic_syn._t_acc = 0.0
+	_s._relic_syn.tick(2.6)
+	_ok("远古之力(档2): 一跳全队 base_atk +4(不带遗物的队友也吃)",
+		absf(float(r2[1]["base_atk"]) - ra0 - 4.0) < 0.01,
+		"%.0f → %.0f" % [ra0, float(r2[1]["base_atk"])])
+	for i6 in range(60):
+		_s._relic_syn._t_acc = 0.0
+		_s._relic_syn.tick(2.6)
+	_ok("远古之力上限 +150(跳 60 次也停在 150)",
+		absf(float(r2[1]["_ancient"]) - 150.0) < 0.01, "累计 %.1f" % float(r2[1]["_ancient"]))
+
+	# 龟蛋加固: 档2 +500
+	var r3 := _run([_mk("left", re.slice(0, 3)), _mk("left", re.slice(3, 5))])
+	r3[1]["_isEgg"] = true
+	var eh0: float = float(r3[1]["maxHp"])
+	_s._relic_syn.apply_all()
+	_ok("龟蛋加固(档2): 本方龟蛋 +500 最大生命",
+		absf(float(r3[1]["maxHp"]) - eh0 - 500.0) < 0.01,
+		"%.0f → %.0f" % [eh0, float(r3[1]["maxHp"])])
+	var em: float = float(r3[1]["maxHp"])
+	_s._relic_syn.apply_all()
+	_ok("★龟蛋加固只加一次", absf(float(r3[1]["maxHp"]) - em) < 0.01)
+
+	# 觉醒(顶档 10 件): 本路开打【满 20 秒】才触发 —— 且必须自存 t0(_t 跨路累加)
+	var r4 := _run([_mk("left", re.slice(0, 3)), _mk("left", re.slice(3, 6)),
+		_mk("left", re.slice(6, 10))])
+	_s._relic_syn.apply_all()          # 这里会把 _t0 设成【当前】_t
+	_s._relic_syn._t_acc = 0.0
+	_s._relic_syn.tick(2.6)
+	_ok("★觉醒不在开局触发(本路刚开打, 即使全局时钟 _t 已经很大)",
+		not bool(_s._relic_syn._awakened.get("left", false)),
+		"_t=%.1f _t0=%.1f" % [_s._t, _s._relic_syn._t0])
+	_s._relic_syn._t0 = _s._t - 25.0    # 假装本路已经打了 25 秒
+	var anc_before: float = float(r4[0]["_ancient"])
+	_s._relic_syn._t_acc = 0.0
+	_s._relic_syn.tick(2.6)
+	_ok("觉醒(顶档 · 本路满 20 秒): 已累积的远古之力 +50%% 且当跳翻倍(11→22)",
+		bool(_s._relic_syn._awakened.get("left", false))
+		and float(r4[0]["_ancient"]) - anc_before > 22.0,
+		"%.1f → %.1f" % [anc_before, float(r4[0]["_ancient"])])
+
+	# ═══════════════ 接线: 真的挂在战斗上了 ═══════════════
+	print("── 接线 ──")
+	var src_main: String = FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")
+	var src_dmg: String = FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_damage.gd")
+	for pair in [["_potion_syn.tick(", src_main], ["_gadget_syn.tick(", src_main],
+			["_food_syn.tick(", src_main], ["_spirit_syn.tick(", src_main],
+			["_relic_syn.tick(", src_main],
+			["_potion_syn.on_death(", src_main], ["_spirit_syn.on_death(", src_main],
+			["RelicSynergySystem.atk_mult(", src_main], ["GadgetSynergySystem.stiff_mult(", src_main],
+			["RelicSynergySystem.lifesteal_bonus(", src_main], ["_gadget_syn.brittle_mult(", src_main],
+			["_gadget_syn.minted(", src_main],
+			["_potion_syn.amp_for(", src_dmg], ["_potion_syn.try_behead(", src_dmg],
+			["_gadget_syn.on_hit(", src_dmg], ["_spirit_syn.on_dodge(", src_dmg]]:
+		_ok("★接线: %s 在活代码里" % str(pair[0]), str(pair[1]).find(str(pair[0])) >= 0)
+	# 三个 apply_all 入口都补齐了(开战 / 换路 / 调试场) —— 少一个就是"某条路上羁绊不生效"
+	var n_apply := 0
+	for f in ["res://scripts/scenes/battle/battle_spawn.gd",
+			"res://scripts/scenes/battle/dual_lane_flow.gd",
+			"res://scripts/scenes/battle/battle_debug_arena.gd"]:
+		var t: String = FileAccess.get_file_as_string(f)
+		if t.find("_food_syn.apply_all()") >= 0 and t.find("_relic_syn.apply_all()") >= 0:
+			n_apply += 1
+	_ok("★三个 apply_all 入口(开战/换路/调试场)都接了食物学院与遗物", n_apply == 3, "只有 %d 处" % n_apply)
+
+	_s._units.clear()
+	_s.set_process(false)
+	await get_tree().process_frame
+	_s.queue_free()
+	print("")
+	print("  (共 %d 条断言)" % _n)
+	print("ALL PASS — 剩下五个类型的羁绊机制" if _fail == 0 else "FAIL x%d" % _fail)
+	get_tree().quit(1 if _fail > 0 else 0)
+
+
+## 药水首档没有猎获：3 件时击杀猎物不涨攻
+func _potion_harvest_tier1(po: Array) -> bool:
+	var u := _run([_mk("left", po.slice(0, 3)), _mk("right", [])])
+	_s._potion_syn._t_mark = 0.0
+	_s._potion_syn.tick(2.6)
+	var a0: float = float(u[0]["base_atk"])
+	_s._potion_syn.on_death(u[1])
+	return absf(float(u[0]["base_atk"]) - a0) < 0.01
+
+
+func _ids(t: String, n: int) -> Array:
+	var out: Array = []
+	for e in DataRegistry.phase2_equipment:
+		if Phase2Types.type_of(str((e as Dictionary).get("id", ""))) == t:
+			out.append(str((e as Dictionary).get("id", "")))
+		if out.size() >= n:
+			break
+	return out
+
+
+## 干净合成单位。★用 "green" 不用 "basic"（小龟「不屈」按稀有度增伤会弄脏精确数值）。
+func _mk(side: String, ids: Array) -> Dictionary:
+	var eqs: Array = []
+	for i in ids:
+		eqs.append({"id": str(i), "star": 1})
+	# ★位置分开: 合成单位挤在同一点会让"直线上所有敌人"之类的判定退化
+	var px: float = 200.0 if side == "left" else 600.0
+	return {"id": "green", "name": "合成", "side": side, "alive": true,
+		"hp": 3000.0, "maxHp": 3000.0, "shield": 0.0, "equips": eqs, "eq_state": {},
+		"base_atk": 100.0, "atk": 100.0, "base_def": 0.0, "def": 0.0,
+		"base_mr": 0.0, "mr": 0.0, "crit": 0.0, "crit_dmg": 1.5,
+		"armor_pen": 0.0, "magic_pen": 0.0, "lifesteal": 0.0, "buffs": [],
+		"dots": [], "dot_stacks": {}, "stacks": {}, "dmg_dealt": 0.0,
+		"untargetable_until": 0.0, "summons": [], "pos": Vector2(px, 300.0)}
+
+
+func _run(units: Array) -> Array:
+	_s._potion_syn.clear()      # 门禁在同一个场景实例里跑很多组, 显式清猎物标记(生产里换路会调)
+	_s._units.clear()
+	_s._units.append_array(units)
+	_s._synergy._by_side = {"left": {}, "right": {}}
+	_s._synergy.apply_all()
+	return units

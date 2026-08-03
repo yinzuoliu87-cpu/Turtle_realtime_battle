@@ -459,9 +459,16 @@ func _dl_build_lane_field() -> void:
 	battle._bow_syn.clear()       # 换路: 腐蚀层数归零
 	battle._gun_syn.clear()       # 换路: 炮台节拍与护盾/弹幕相位归零
 	battle._staff_syn.clear()     # 换路: 法力/灵泉/共鸣 节拍归零
+	battle._potion_syn.clear()    # 换路: 猎物标记与节拍归零
+	battle._gadget_syn.clear()    # 换路: 僵硬/冰封CD归零(铸币【不清】—— 一场 = 上路+下路+决胜)
+	battle._food_syn.clear()      # 换路: 成长节拍归零
+	battle._spirit_syn.clear()    # 换路: 触手节拍与追击次数归零
+	battle._relic_syn.clear()     # 换路: 觉醒 t0 重置(远古之力【不清】—— 同上)
 	battle._synergy.apply_all()   # ★类型羁绊(批4-1): 必须在单件属性【之后】—— 羁绊是加在单件属性上面的
 	battle._bow_syn.apply_all()   # 弓箭【腐蚀·穿透】写进 armor_pen_pct/magic_pen_pct(休眠通道, 消费侧零改动)
 	battle._gun_syn.apply_all()   # 枪【火控】(第三座炮台): 给带枪者标 _fire_ctrl
+	battle._food_syn.apply_all()  # 食物【学院】: 队伍全体额外 +100/220 最大生命(只加一次)
+	battle._relic_syn.apply_all() # 遗物【生死界】系数 + 龟蛋加固(+500/900/1500)
 	_dl_restore_eq_carry()   # ★跨路保留的装备层数写回(竹弓/哑铃/温泉蛋, 用户2026-08-01)。
 						  #   必须在 _eq_apply_all_stats 之【后】: 它会把 eq_state 重置成初始值, 放前面会被它盖掉。
 	battle._hud._build_team_panels()   # ★双路补建左右头像框(装备图标随之显示): 原只在非双路分支L1051调·双路早退绕过→装了装备头像框空白(用户2026-07-11 #5)
