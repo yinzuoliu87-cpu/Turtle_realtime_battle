@@ -20,6 +20,12 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: Stri
 	dmg = maxi(1, int(round(d)))                     # 统计/飘字用减伤【后】的值, 否则面板数字与实际掉血对不上
 	var shield_before: float = u["shield"]
 	d = ShieldMath.absorb(u, d)   # 普通盾+aura盾 吸全类型(§3.3 收口·两路共用)
+	# 弓箭顶档【腐蚀满 5 层】: 受到伤害的 25% 转成真实伤害(无视护甲与护盾)。
+	# ⚠ 两条伤害路径【都要加】—— _apply_damage(DoT/真伤) 与 _apply_damage_from(普攻/技能)
+	#   各自独立扣血(CLAUDE.md §3.3), 只改一条会产生"只在某类伤害下才转真伤"的诡异行为。
+	var _cor: float = BowSynergySystem.true_share(u)
+	if _cor > 0.0 and bucket != "tru":   # ★这条路(_apply_damage)没有 raw 参数, 用 bucket 判真伤
+		d += float(dmg) * _cor                       # 名义伤害的 25% 直接加进扣血(不经护甲/护盾)
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	battle._blood_rite_refresh(u)   # 剑【血祭】: 血量百分比整数位变了才重算攻击力(无血祭的单位零开销)
 	# 无头龟·亡灵免死锁血: 另一条路有(deathfloor_until), 这条路没有 → 免死光环亮着人被 DOT 烧死
@@ -116,6 +122,12 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	#   真伤只无视护甲/魔抗/减伤(见上方 not raw 分支), 但护盾照吸。唯一穿盾=墨迹(_ink_true·在护盾后单独加·由线条被动设计)。
 	d = ShieldMath.absorb(u, d)   # 普通盾+aura盾 吸全类型(§3.3 收口·两路共用)
 	if _ink_true > 0.0: d += _ink_true   # 墨迹真伤: 穿减伤穿盾(唯一穿盾例外·护盾吸收后加), 直接进扣血并计入跳字
+	# 弓箭顶档【腐蚀满 5 层】: 受到伤害的 25% 转成真实伤害(无视护甲与护盾)。
+	# ⚠ 两条伤害路径【都要加】—— _apply_damage(DoT/真伤) 与 _apply_damage_from(普攻/技能)
+	#   各自独立扣血(CLAUDE.md §3.3), 只改一条会产生"只在某类伤害下才转真伤"的诡异行为。
+	var _cor: float = BowSynergySystem.true_share(u)
+	if _cor > 0.0 and not raw:
+		d += float(dmg) * _cor                       # 名义伤害的 25% 直接加进扣血(不经护甲/护盾)
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	battle._blood_rite_refresh(u)   # 剑【血祭】: 血量百分比整数位变了才重算攻击力(无血祭的单位零开销)
 	if u.get("_review_dummy", false): u["hp"] = u["maxHp"]   # 训练靶: 受击即回满, 打不死不结算(看完整)
@@ -229,6 +241,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	if not from_equip:
 		if src["alive"] and u["alive"]:
 			battle._equip_sys._eq_on_hit(src, u, dmg)        # on-hit: 攻击者装备 (流血/灼烧/连锁/追击/穿透/标记 等)
+			battle._bow_syn.on_hit(src, u)                   # 弓箭【处决】: 全队(用户2026-08-03改), 斩杀线按各自暴击率
 		if u["alive"]:
 			battle._equip_sys._eq_on_target(u, src, dmg)     # on-target: 防守者装备 (硬化层/冰封反制 等)
 			battle._shield_syn.on_damaged(u, src, dmg)       # 盾羁绊: 怒气累计(全队·满400放冲击波) + 顶档反击
