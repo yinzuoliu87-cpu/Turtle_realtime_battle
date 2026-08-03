@@ -458,6 +458,7 @@ func _dl_build_lane_field() -> void:
 	battle._shield_syn.clear()    # 换路: 怒气累计归零
 	battle._bow_syn.clear()       # 换路: 腐蚀层数归零
 	battle._gun_syn.clear()       # 换路: 炮台节拍与护盾/弹幕相位归零
+	battle._staff_syn.clear()     # 换路: 法力/灵泉/共鸣 节拍归零
 	battle._synergy.apply_all()   # ★类型羁绊(批4-1): 必须在单件属性【之后】—— 羁绊是加在单件属性上面的
 	battle._bow_syn.apply_all()   # 弓箭【腐蚀·穿透】写进 armor_pen_pct/magic_pen_pct(休眠通道, 消费侧零改动)
 	battle._gun_syn.apply_all()   # 枪【火控】(第三座炮台): 给带枪者标 _fire_ctrl

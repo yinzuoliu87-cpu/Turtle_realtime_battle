@@ -699,6 +699,7 @@ var _swordsman := SwordsmanSystem.new(self)   # 剑羁绊【剑士】追打(2026
 var _shield_syn := ShieldSynergySystem.new(self)   # 盾羁绊【怒气冲击波/反击/收殓】(2026-08-03)
 var _bow_syn := BowSynergySystem.new(self)   # 弓箭羁绊【处决/腐蚀穿透/腐蚀叠层】(2026-08-03)
 var _gun_syn := GunSynergySystem.new(self)   # 枪羁绊【三座炮台 + 火控】(2026-08-03)
+var _staff_syn := StaffSynergySystem.new(self)   # 法器羁绊【法力条/灵泉/余韵/共鸣】(2026-08-03)
 ## ★"当前正在执行哪件装备的效果" —— 盾羁绊 9 档要判断"这次护盾/治疗是不是盾类装备给的"。
 ##   护盾/治疗管线本来【不记录来源】, 给每个调用点加参数要碰几十处;
 ##   而装备效果的分发本来就在几个 `for e in u["equips"]` 循环里, 在那里设一下最省。
@@ -2116,6 +2117,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 	_shield_syn.tick(dt)  # 圣光护盾装备: 每 3 秒 55 点护盾
 	_bow_syn.tick(dt)     # 弓箭顶档【腐蚀叠层】: 每 2.5 秒给全场敌人 +1 层
 	_gun_syn.tick(dt)     # 枪羁绊: 第一座炮台轰击 / 第二座能量循环(每 2.5 秒)
+	_staff_syn.tick(dt)   # 法器: 法力自然增长 + 灵泉(2.5s) + 共鸣(7.5s)
 	_trainer_sys._tick_trainer_attacks(dt) # 训龟大师普攻: 站定扔石头抛物线弹道(用户2026-07-23)
 	_trainer_sys._tick_hunt_taunt(dt)      # 猎龟令: 每帧刷新目标周围 400 码我方友军的嘲讽(圈随目标移动)
 	_trainer_sys._tick_tame_decay(dt)      # 驯服: 归顺者每秒损失 2% 最大生命

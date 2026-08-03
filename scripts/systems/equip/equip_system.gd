@@ -184,22 +184,7 @@ func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 		stt["iv_t"] = float(stt.get("iv_t", 0.0)) + delta
 		if float(stt["iv_t"]) >= iv:
 			stt["iv_t"] = float(stt["iv_t"]) - iv
-			match iid:
-				"p2eq_004": _eq_tyrantfang_tick(u, si)
-				"p2eq_048": _eq_pistol_volley(u, si)
-				"p2eq_049": _eq_crossbow_volley(u, si)
-				"p2eq_050": _eq_gatling_burst(u, si)
-				"p2eq_051": _eq_laser_pistol(u, si)
-				"p2eq_053": _eq_shotgun_blast(u, si)
-				"p2eq_057": _eq_sniper_windup(u, si)
-				"p2eq_022": _eq_fuel_throw(u, si)
-				"p2eq_028": _eq_ice_throw(u, si)
-				"p2eq_030": _eq_crystal_line(u, si)
-				"p2eq_031": _eq_crystal_sweep(u, si)
-				"p2eq_037": _eq_candle_tick(u, si, stt)
-				"p2eq_040": _eq_fpga_tick(u, si)
-				"p2eq_042": _eq_ripple_tick(u, si)
-				"p2eq_052": _eq_revolver_tick(u, si, stt)
+			fire_equip_effect(u, iid, int(e.get("star", 1)), stt)
 		u["eq_state"][iid] = stt
 
 # 涟漪回血特效(AI生成动画): 青绿涟漪水波躺平贴地, 帧播一次扩散淡出. 用于涟漪药剂042每个受益友军
@@ -1508,3 +1493,29 @@ func _eq_dragon_breath(u: Dictionary, si: int) -> void:
 	var twd = battle._reg_tween()
 	twd.tween_interval(0.55)
 	twd.tween_callback(battle._dragon_sys._dragon_unleash.bind(u, si, start, end, dir, total, dur))
+
+
+## 触发【某一件装备】的周期效果。
+## ★2026-08-03 从 _tick_eq_intervals 里抽出来 —— 法器羁绊的【法力条】满了也要触发同一件事:
+##   规格原话是"满 100 → 触发这件法器的效果", 那就必须和它【自然到点时走同一条路】,
+##   否则会长出两套行为(一套走 tick、一套走法力), 数值与特效各不一样, 而且只有一套会被门禁覆盖。
+func fire_equip_effect(u: Dictionary, iid: String, star: int, stt = null) -> void:
+	var si: int = _eq_si(star)
+	if stt == null:
+		stt = u["eq_state"].get(iid, {})
+	match iid:
+		"p2eq_004": _eq_tyrantfang_tick(u, si)
+		"p2eq_048": _eq_pistol_volley(u, si)
+		"p2eq_049": _eq_crossbow_volley(u, si)
+		"p2eq_050": _eq_gatling_burst(u, si)
+		"p2eq_051": _eq_laser_pistol(u, si)
+		"p2eq_053": _eq_shotgun_blast(u, si)
+		"p2eq_057": _eq_sniper_windup(u, si)
+		"p2eq_022": _eq_fuel_throw(u, si)
+		"p2eq_028": _eq_ice_throw(u, si)
+		"p2eq_030": _eq_crystal_line(u, si)
+		"p2eq_031": _eq_crystal_sweep(u, si)
+		"p2eq_037": _eq_candle_tick(u, si, stt)
+		"p2eq_040": _eq_fpga_tick(u, si)
+		"p2eq_042": _eq_ripple_tick(u, si)
+		"p2eq_052": _eq_revolver_tick(u, si, stt)

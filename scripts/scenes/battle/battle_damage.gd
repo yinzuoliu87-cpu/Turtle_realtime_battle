@@ -28,6 +28,7 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: Stri
 		d += float(dmg) * _cor                       # 名义伤害的 25% 直接加进扣血(不经护甲/护盾)
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	battle._blood_rite_refresh(u)   # 剑【血祭】: 血量百分比整数位变了才重算攻击力(无血祭的单位零开销)
+	battle._staff_syn.add_mana(u, float(dmg) * StaffSynergySystem.MANA_FROM_TAKEN)   # 法器: 受伤 ×0.1 涨法力
 	# 无头龟·亡灵免死锁血: 另一条路有(deathfloor_until), 这条路没有 → 免死光环亮着人被 DOT 烧死
 	if u["hp"] <= 0.0 and battle._t < float(u.get("deathfloor_until", 0.0)):
 		u["hp"] = 1.0
@@ -140,6 +141,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		d += float(dmg) * _cor                       # 名义伤害的 25% 直接加进扣血(不经护甲/护盾)
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	battle._blood_rite_refresh(u)   # 剑【血祭】: 血量百分比整数位变了才重算攻击力(无血祭的单位零开销)
+	battle._staff_syn.add_mana(u, float(dmg) * StaffSynergySystem.MANA_FROM_TAKEN)   # 法器: 受伤 ×0.1 涨法力
 	if u.get("_review_dummy", false): u["hp"] = u["maxHp"]   # 训练靶: 受击即回满, 打不死不结算(看完整)
 	if not from_equip and d > 0.0: battle._line_sys._ink_link_transfer(u, d)   # 连笔: 受伤30%以真实伤害传导给连接对象(附录B-05)
 	# §STATS: 战斗统计 — 输出归攻击者/承受归目标 (用显示数 dmg); 按伤害类型分桶(战中分段条用) + 暴击计数
@@ -252,6 +254,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		if src["alive"] and u["alive"]:
 			battle._equip_sys._eq_on_hit(src, u, dmg)        # on-hit: 攻击者装备 (流血/灼烧/连锁/追击/穿透/标记 等)
 			battle._bow_syn.on_hit(src, u)                   # 弓箭【处决】: 全队(用户2026-08-03改), 斩杀线按各自暴击率
+			battle._staff_syn.add_mana(src, float(dmg) * StaffSynergySystem.MANA_FROM_DMG)   # 法器: 造成伤害 ×0.1 涨法力
 		if u["alive"]:
 			battle._equip_sys._eq_on_target(u, src, dmg)     # on-target: 防守者装备 (硬化层/冰封反制 等)
 			battle._shield_syn.on_damaged(u, src, dmg)       # 盾羁绊: 怒气累计(全队·满400放冲击波) + 顶档反击
@@ -422,6 +425,7 @@ func _heal(u: Dictionary, amt: float, silent: bool = false) -> float:   # 返回
 	_holy_convert(u, float(u["hp"] - hb))   # 盾羁绊9档: 盾类装备给的治疗, 额外 20% 转圣光护盾
 	battle._blood_rite_refresh(u)   # 剑【血祭】: 回血也要刷(血量涨回去攻击力要跌回去)
 	var _act: float = float(u["hp"] - hb)   # 实际回血(满血=0, 超出满血/转盾部分不计入绿字)
+	battle._staff_syn.on_healed(u, _act)   # 法器【余韵】: 受到治疗时额外获得治疗量 N% 的护盾
 	if _act > 0.0:                          # LoL式治疗累加器: 高频/多段/多源回血攒进累加, 短窗后合并成一个绿字(见_heal_flush)
 		u["_heal_acc"] = float(u.get("_heal_acc", 0.0)) + _act
 		u["_heal_acc_t"] = battle._t

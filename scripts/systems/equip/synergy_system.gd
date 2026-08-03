@@ -30,14 +30,15 @@ var battle
 var tier_of: Dictionary = {}
 ## 各方各自的档位：left / right 各一份（对手的羁绊当然按对手的装备算）。
 var _by_side: Dictionary = {"left": {}, "right": {}}
-var _t_pulse := 0.0          # 潮涌 / 盛宴 的 2.5 秒节拍
+var _t_pulse := 0.0          # 盛宴 的 2.5 秒节拍
 var _t_light := 0.0          # 圣光的 5 秒节拍
 
 const PULSE := 2.5           # = RealtimeBattle3DScene.EQ_TICK（装备周期 = 1 回合 ≈ 2.5 秒）
 const LIGHT := 5.0
 
-## 法器【潮涌】每档回复「已损失生命」的比例（档1 无此效果）
-const TIDE_PCT := [0.0, 0.05, 0.08, 0.12]
+## ★法器【潮涌】已于 2026-08-03 从这里【移走】—— 用户把潮水系的名字换成了法器向的
+##   （潮涌→灵泉 / 退潮→余韵 / 大潮→共鸣），三条连同法力条一起归 staff_synergy_system.gd 管。
+##   **一个类型的机制只能有一个主人**：留在两处就会两边各发一次（同一个 _heal 调两遍）。
 ## 食物【盛宴】每档回复「已损失生命」的比例（只有档3 有）
 const FEAST_PCT := [0.0, 0.0, 0.03]
 ## 盾【圣光】每档基数（档1 无）；实发 = 基数 × (1 + 0.4 × 携带者身上盾件数)
@@ -215,7 +216,7 @@ func tick(delta: float) -> void:
 		_t_light -= LIGHT
 
 
-## 法器【潮涌】+ 食物【盛宴】：每 2.5 秒全队回复「已损失生命」的 N%。
+## 食物【盛宴】：每 2.5 秒全队回复「已损失生命」的 N%。（法器灵泉已移出，见上）
 ## ★回复的是【已损失】不是【最大】—— 满血时回 0，`_heal` 返回实际回血量。
 func _pulse() -> void:
 	for u in battle._units:
@@ -223,8 +224,6 @@ func _pulse() -> void:
 			continue
 		var tiers: Dictionary = _by_side.get(str(u.get("side", "left")), {})
 		var pct := 0.0
-		if tiers.has("法器"):
-			pct += float(TIDE_PCT[clampi(int(tiers["法器"]) - 1, 0, 3)])
 		if tiers.has("食物"):
 			pct += float(FEAST_PCT[clampi(int(tiers["食物"]) - 1, 0, 2)])
 		if pct <= 0.0:

@@ -13,7 +13,7 @@ extends Node
 ##      （`base_atk` 而不是回合制的 `baseAtk` —— 那正是 apply_team_start 写了没人读的原因）
 ##   ③ ★per-piece 是「携带者身上几件」不是「全队几件」：同队另一只带 3 件，本只带 1 件 → 只吃 1 件的量
 ##   ④ ★档位越高每件给得越多（凸梯度），且**没激活的类型一点不给**
-##   ⑤ 周期效果：法器潮涌 / 食物盛宴 真的回血，盾圣光真的给盾
+##   ⑤ 周期效果：法器灵泉 / 食物盛宴 真的回血
 ##   ⑥ ★计数域是【全队】不是【本路】（D11）：两只不同 side 的单位各自按自己那方算
 ##
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_synergy_live.tscn
@@ -90,9 +90,9 @@ func _ready() -> void:
 	var u5: Dictionary = _run([_mk("left", staffs.slice(0, 3)), _mk("left", staffs.slice(3, 5))])[0]
 	u5["hp"] = float(u5["maxHp"]) * 0.5          # 掉一半血, 才有"已损失"可回
 	var hp_before: float = float(u5["hp"])
-	_s._synergy._t_pulse = 0.0
-	_s._synergy.tick(2.6)                        # 推过一个 2.5 秒节拍
-	_ok("⑤ 法器潮涌: 掉血后过一个节拍会回血(回 已损失的 5%%)",
+	_s._staff_syn._t_tick = 0.0
+	_s._staff_syn.tick(2.6)                      # 推过一个 2.5 秒节拍(灵泉已归 staff_synergy_system 管)
+	_ok("⑤ 法器灵泉: 掉血后过一个节拍会回血(回 已损失的 5%%)",
 		float(u5["hp"]) > hp_before + 1.0,
 		"%.0f → %.0f (已损失 %.0f)" % [hp_before, float(u5["hp"]), float(u5["maxHp"]) - hp_before])
 	# ★盾【圣光】已于 2026-08-03 从档位被动改成一件【羁绊赠送的装备】(3档送1件/6档送2件),
