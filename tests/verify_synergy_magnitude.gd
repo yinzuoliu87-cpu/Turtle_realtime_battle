@@ -34,9 +34,18 @@ const CRIT_DMG := 1.5
 const CAP := 3                       # UNIT_EQUIP_CAP：一只龟最多带 3 件
 
 const TOP_LO := 1.8
-const TOP_HI := 2.6
+const TOP_HI := 3.0
 const FIRST_LO := 1.05
-const FIRST_HI := 1.45
+const FIRST_HI := 1.70
+
+## ★★用户正在【逐类型评审并亲自定数】(2026-08-03 起, 从剑开始)。
+##   用户定的数就是准 —— 上面那条带是我从 §4.5.3 推的**参考**, 不是他拍的。
+##   ⇒ 已评审过的类型【不参与倍率带】, 只打印实测值备查;
+##     没评审的仍然卡带, 因为那些还是我重标定出来的、需要有人盯着。
+##   评审完一个就把它加进来。全部评审完之后, 这张表就该按用户的最终值重定带宽、清空豁免。
+##   ⚠ 这不是"给例外开口子": 豁免的类型仍然被 verify_synergy_live(逐档数值)
+##     与 verify_synergy_text(文案==实装) 两条门禁焊着, 只是不卡"合不合理"这一条。
+const USER_REVIEWED := ["剑"]
 ## 不换算成倍率的（依赖敌方属性），只卡绝对上限
 const ABS_CAP := {"armorPen": 40.0, "magicPen": 50.0, "_lifestealPct": 35.0, "_maxEnergy": 70.0}
 
@@ -120,13 +129,16 @@ func _ready() -> void:
 							bad_abs.append("%s 档%d %s +%.0f 超上限 %.0f" % [t, ti + 1, k, total, float(ABS_CAP[k])])
 			var is_top: bool = ti == stats.size() - 1
 			var tag: String = "顶档" if is_top else ("首档" if ti == 0 else "中档")
-			print("  %-5s %-7s ×%.2f   %s" % [t, "%s(%d件)" % [tag, int(tiers[ti])], mult,
+			print("  %-5s %-7s ×%.2f %s  %s" % [t, "%s(%d件)" % [tag, int(tiers[ti])], mult,
+				"[用户已定]" if t in USER_REVIEWED else "         ",
 				" ".join(PackedStringArray(notes))])
 			if mult <= 1.001:
 				# 纯"绝对量"类型(枪的破甲 / 法器的法穿 / 遗物的吸血 / 药水的龟能)：
 				# 它们的收益取决于敌方属性或技能构成, 换算成"倍率"会得出一个骗人的数
 				# ⇒ 不参与倍率带, 只由上面的 ABS_CAP 卡绝对上限。★这不是漏检, 是口径。
 				continue
+			if t in USER_REVIEWED:
+				continue          # 用户亲自定的数, 不卡带(见 USER_REVIEWED 上面那段)
 			if is_top and (mult < TOP_LO or mult > TOP_HI):
 				bad_top.append("%s 顶档 ×%.2f 不在 [%.1f, %.1f]" % [t, mult, TOP_LO, TOP_HI])
 			if ti == 0 and (mult < FIRST_LO or mult > FIRST_HI):

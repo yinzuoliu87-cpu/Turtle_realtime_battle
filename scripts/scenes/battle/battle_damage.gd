@@ -21,6 +21,7 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: Stri
 	var shield_before: float = u["shield"]
 	d = ShieldMath.absorb(u, d)   # 普通盾+aura盾 吸全类型(§3.3 收口·两路共用)
 	u["hp"] = maxf(0.0, u["hp"] - d)
+	battle._blood_rite_refresh(u)   # 剑【血祭】: 血量百分比整数位变了才重算攻击力(无血祭的单位零开销)
 	# 无头龟·亡灵免死锁血: 另一条路有(deathfloor_until), 这条路没有 → 免死光环亮着人被 DOT 烧死
 	if u["hp"] <= 0.0 and battle._t < float(u.get("deathfloor_until", 0.0)):
 		u["hp"] = 1.0
@@ -116,6 +117,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	d = ShieldMath.absorb(u, d)   # 普通盾+aura盾 吸全类型(§3.3 收口·两路共用)
 	if _ink_true > 0.0: d += _ink_true   # 墨迹真伤: 穿减伤穿盾(唯一穿盾例外·护盾吸收后加), 直接进扣血并计入跳字
 	u["hp"] = maxf(0.0, u["hp"] - d)
+	battle._blood_rite_refresh(u)   # 剑【血祭】: 血量百分比整数位变了才重算攻击力(无血祭的单位零开销)
 	if u.get("_review_dummy", false): u["hp"] = u["maxHp"]   # 训练靶: 受击即回满, 打不死不结算(看完整)
 	if not from_equip and d > 0.0: battle._line_sys._ink_link_transfer(u, d)   # 连笔: 受伤30%以真实伤害传导给连接对象(附录B-05)
 	# §STATS: 战斗统计 — 输出归攻击者/承受归目标 (用显示数 dmg); 按伤害类型分桶(战中分段条用) + 暴击计数
@@ -229,6 +231,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 			battle._equip_sys._eq_on_hit(src, u, dmg)        # on-hit: 攻击者装备 (流血/灼烧/连锁/追击/穿透/标记 等)
 		if u["alive"]:
 			battle._equip_sys._eq_on_target(u, src, dmg)     # on-target: 防守者装备 (硬化层/冰封反制 等)
+			battle._shield_syn.on_damaged(u, src, dmg)       # 盾羁绊: 怒气累计(全队·满400放冲击波) + 顶档反击
 		# 宝箱藏宝图 on-hit 战利品 (火石灼烧/毒箭治疗削减/雷刃金闪电引爆·此块已在not from_equip内→天然防循环)
 		var _cht = src.get("chest_treasures", null)
 		if _cht is Dictionary and not is_same(src, u) and u.get("alive", false):
@@ -374,6 +377,7 @@ func _heal(u: Dictionary, amt: float, silent: bool = false) -> float:   # 返回
 		var _ovf: float = amt - float(u["hp"] - hb)   # 请求治疗量 - 实际回复 = 溢出
 		if _ovf > 0.0 and u["shield"] < _osc:
 			u["shield"] = minf(_osc, u["shield"] + _ovf)   # 静默累积(吸血高频不刷飘字), 由携带者护盾条显示
+	battle._blood_rite_refresh(u)   # 剑【血祭】: 回血也要刷(血量涨回去攻击力要跌回去)
 	var _act: float = float(u["hp"] - hb)   # 实际回血(满血=0, 超出满血/转盾部分不计入绿字)
 	if _act > 0.0:                          # LoL式治疗累加器: 高频/多段/多源回血攒进累加, 短窗后合并成一个绿字(见_heal_flush)
 		u["_heal_acc"] = float(u.get("_heal_acc", 0.0)) + _act

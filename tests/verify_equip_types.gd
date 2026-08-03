@@ -180,18 +180,27 @@ func _ready() -> void:
 		unreach.size() == _want_unreachable(),
 		str(unreach))
 
-	# ── ⑦ 计数口径不变: 每件 +1, 不看星、不去重 ──────────────────
-	# 走宽/走高互斥这条设计(§4.5.2)完全建立在这个口径上, 谁改了它整套强度模型就塌了。
+	# ── ⑦ ★计数口径: 按装备 id【去重】、不看星（用户 2026-08-03 拍板）────
+	# 带两件一模一样的剑只算 1 个羁绊数 ⇒ 顶档 == 集齐该类型的全部装备。
+	# ★重要后果: **合成 3★ 不再扣羁绊数**（去重前 3 件同款算 3、合成后剩 1 算 1 ⇒ −2;
+	#   去重后本来就算 1 ⇒ ±0）。这推翻了方案书 §4.5.2「走宽与走高互斥」的论点 ——
+	#   但那个设计等于"升星要罚你掉羁绊", 玩家会觉得憋屈。
+	# ★背包面板(calc_active)与战斗侧(synergy_system._calc_tiers)【必须同口径】,
+	#   否则面板亮着顶档而打起来不是 —— 那是最难查的一类 bug。这条守的就是面板侧。
+	var a1: String = _first_of("剑")
+	var a2: String = _second_of("剑")
+	var a3: String = _third_of("剑")
+	# 5 个条目 / 但只有 3 个不同 id ⇒ 应记 3
 	var team := [{"_p2_equips": [
-		{"id": _first_of("剑"), "star": 1}, {"id": _first_of("剑"), "star": 3},
-		{"id": _second_of("剑"), "star": 1},
+		{"id": a1, "star": 1}, {"id": a1, "star": 3}, {"id": a1, "star": 1},
+		{"id": a2, "star": 1}, {"id": a3, "star": 1},
 	]}]
 	var act: Array = Phase2Types.calc_active(team)
 	var sword := 0
 	for a in act:
 		if str(a.get("type", "")) == "剑":
 			sword = int(a.get("count", 0))
-	_ok("⑦ ★计数口径: 3 件剑(含 1 件重复 + 1 件3★) 记作 3, 不去重不看星", sword == 3,
+	_ok("⑦ ★计数口径: 5 个条目但只有 3 个不同 id → 记作 3(按 id 去重, 不看星)", sword == 3,
 		"实得 %d" % sword)
 
 	print("")
@@ -218,6 +227,23 @@ func _first_of(t: String) -> String:
 	for iid in map:
 		if str(map[iid]) == t:
 			return str(iid)
+	return ""
+
+
+func _third_of(t: String) -> String:
+	return _nth_of(t, 3)
+
+
+func _nth_of(t: String, n: int) -> String:
+	var f := FileAccess.open(TYPES_JSON, FileAccess.READ)
+	var map: Dictionary = JSON.parse_string(f.get_as_text())
+	f.close()
+	var seen := 0
+	for iid in map:
+		if str(map[iid]) == t:
+			seen += 1
+			if seen == n:
+				return str(iid)
 	return ""
 
 

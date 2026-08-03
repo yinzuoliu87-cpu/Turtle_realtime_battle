@@ -44,7 +44,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	# 剑 = [3,6,9]，每档每件 +4 / +9 / +16 攻击力（2026-08-03 按实时版基础属性重标定，见 v0.19.3）
+	# 剑 = [3,6,9]，每档每件 +8 / +15 / +25 攻击力（用户 2026-08-03 定）
 	var swords: Array = _ids_of_type("剑", 9)
 	_ok("★分母: 找到 %d 件剑类装备(需要 ≥9 件才验得了顶档)" % swords.size(), swords.size() >= 9)
 
@@ -55,29 +55,29 @@ func _ready() -> void:
 
 	# ── ② 首档：3 件剑，全在一只身上 ⇒ 每件 +15 × 3 = +45 ──────
 	var u1: Dictionary = _run([_mk("left", swords.slice(0, 3))])[0]
-	_ok("② 剑首档(3件): 携带者 base_atk = 100 + 4×3 = 112",
-		absf(float(u1["base_atk"]) - 112.0) < 0.01, "实得 %.1f" % float(u1["base_atk"]))
+	_ok("② 剑首档(3件): 携带者 base_atk = 100 + 8×3 = 124",
+		absf(float(u1["base_atk"]) - 124.0) < 0.01, "实得 %.1f" % float(u1["base_atk"]))
 	_ok("② ★用的是战斗字段 base_atk, 不是回合制的 baseAtk(那是 apply_team_start 写了没人读的原因)",
 		not u1.has("baseAtk"), "baseAtk 存在=%s" % str(u1.has("baseAtk")))
 
 	# ── ③ per-piece 是「携带者身上几件」不是「全队几件」 ────────
 	# A 带 3 件、B 带 1 件 ⇒ 队伍共 4 件(仍是首档), A 吃 3 件的量、B 只吃 1 件的量。
 	var us := _run([_mk("left", swords.slice(0, 3)), _mk("left", swords.slice(3, 4))])
-	_ok("③ 队友带 3 件时, 本只只带 1 件 → 只吃 1 件的量(+4)",
-		absf(float(us[1]["base_atk"]) - 104.0) < 0.01, "实得 %.1f" % float(us[1]["base_atk"]))
-	_ok("③ ★同一队里带 3 件的那只吃 3 件的量(+12) —— per-piece 不是全队均分",
-		absf(float(us[0]["base_atk"]) - 112.0) < 0.01, "实得 %.1f" % float(us[0]["base_atk"]))
+	_ok("③ 队友带 3 件时, 本只只带 1 件 → 只吃 1 件的量(+8)",
+		absf(float(us[1]["base_atk"]) - 108.0) < 0.01, "实得 %.1f" % float(us[1]["base_atk"]))
+	_ok("③ ★同一队里带 3 件的那只吃 3 件的量(+24) —— per-piece 不是全队均分",
+		absf(float(us[0]["base_atk"]) - 124.0) < 0.01, "实得 %.1f" % float(us[0]["base_atk"]))
 
 	# ── ④ 档位梯度 + 未激活类型不给 ────────────────────────────
 	# 6 件剑分给两只(各 3 件) ⇒ 全队 6 件 = 第 2 档, 每件 +38
 	var us2 := _run([_mk("left", swords.slice(0, 3)), _mk("left", swords.slice(3, 6))])
-	_ok("④ 剑二档(全队 6 件): 每件 9 → 带 3 件者 100 + 27 = 127",
-		absf(float(us2[0]["base_atk"]) - 127.0) < 0.01, "实得 %.1f" % float(us2[0]["base_atk"]))
+	_ok("④ 剑二档(全队 6 件): 每件 15 → 带 3 件者 100 + 45 = 145",
+		absf(float(us2[0]["base_atk"]) - 145.0) < 0.01, "实得 %.1f" % float(us2[0]["base_atk"]))
 	var us3 := _run([_mk("left", swords.slice(0, 3)), _mk("left", swords.slice(3, 6)),
 		_mk("left", swords.slice(6, 9))])
-	_ok("④ 剑顶档(全队 9 件): 每件 16 → 带 3 件者 100 + 48 = 148",
-		absf(float(us3[0]["base_atk"]) - 148.0) < 0.01, "实得 %.1f" % float(us3[0]["base_atk"]))
-	_ok("④ ★梯度是凸的(4 → 9 → 16, 每档增量递增)", 9 - 4 < 16 - 9)
+	_ok("④ 剑顶档(全队 9 件): 每件 25 → 带 3 件者 100 + 75 = 175",
+		absf(float(us3[0]["base_atk"]) - 175.0) < 0.01, "实得 %.1f" % float(us3[0]["base_atk"]))
+	_ok("④ ★梯度是凸的(8 → 15 → 25, 每档增量递增)", 15 - 8 < 25 - 15)
 	# 未激活的类型: 盾没凑够 3 件 ⇒ 护甲不加
 	var shields: Array = _ids_of_type("盾", 2)
 	var u4: Dictionary = _run([_mk("left", swords.slice(0, 3) + shields.slice(0, 2))])[0]
@@ -110,7 +110,7 @@ func _ready() -> void:
 	var mix := _run([_mk("left", swords.slice(0, 3)), _mk("right", swords.slice(0, 1))])
 	_ok("⑥ ★敌方按敌方自己的件数算(1 件剑不到首档 → 不加)",
 		absf(float(mix[1]["base_atk"]) - 100.0) < 0.01, "敌 base_atk=%.1f" % float(mix[1]["base_atk"]))
-	_ok("⑥ 我方仍然吃到首档", absf(float(mix[0]["base_atk"]) - 112.0) < 0.01,
+	_ok("⑥ 我方仍然吃到首档", absf(float(mix[0]["base_atk"]) - 124.0) < 0.01,
 		"我 base_atk=%.1f" % float(mix[0]["base_atk"]))
 
 	# ★收尾必须先清空 _units 再释放场景: 合成单位没有 sprite / bar_root(渲染节点),

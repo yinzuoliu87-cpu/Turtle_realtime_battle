@@ -695,6 +695,8 @@ var _timestop := TimestopSystem.new(self)   # 沙漏时停系统(2026-07-25 从�
 var _equip_sys := EquipSystem.new(self)   # 装备效果系统(2026-07-25 抽出·与技能分开)
 const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")   # 类型羁绊: 阈值/逐档文案/type_of
 var _synergy := SynergySystem.new(self)   # ★类型羁绊【战斗侧实装】(2026-08-03 批4-1) —— 在此之前羁绊零效果
+var _swordsman := SwordsmanSystem.new(self)   # 剑羁绊【剑士】追打(2026-08-03·取代原设计的"回响")
+var _shield_syn := ShieldSynergySystem.new(self)   # 盾羁绊【怒气冲击波/反击/收殓】(2026-08-03)
 var _world_builder := BattleWorldBuilder.new(self)   # 战场世界构建(viewport/tilemap/相机/环境/地面/竞技场/装饰/远景/光柱/气泡/navmesh·开局一次)(2026-07-26 抽出)
 var _vfx := BattleVfx.new(self)   # 战斗视觉特效(飘字/命中火花/冲击/挥击juice/技能vfx·纯表现·不改战斗态)(2026-07-26 抽出)
 var _review_console := ReviewConsole.new(self)   # 评审台控制台(REVIEW·dev-only: 面板+切龟/切技/切装/星级按钮)(2026-07-25 抽出)
@@ -2101,6 +2103,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 	_adf_ct = 0   # 每帧(每步)重置伤害调用计数(_damage._apply_damage_from 帧内爆炸=死亡链无限级联→自身截断防卡死)
 	_sd_tick()   # §SUDDEN 战场决胜(40s起治疗-50% + 每5s +25%增伤)
 	_synergy.tick(dt)   # ★类型羁绊的周期效果(批4-1: 法器潮涌 / 食物盛宴 / 盾圣光) —— 走 dt 不走墙钟
+	_swordsman.tick(dt)   # 剑士追打队列(以 5 倍攻速依次打出)
 	_trainer_sys._tick_trainer_attacks(dt) # 训龟大师普攻: 站定扔石头抛物线弹道(用户2026-07-23)
 	_trainer_sys._tick_hunt_taunt(dt)      # 猎龟令: 每帧刷新目标周围 400 码我方友军的嘲讽(圈随目标移动)
 	_trainer_sys._tick_tame_decay(dt)      # 驯服: 归顺者每秒损失 2% 最大生命
@@ -2681,6 +2684,7 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	_anticipate(u)                  # Phase4: 普攻预备(缩)+挥出(伸) 前后摇形变
 	_vfx._play_action(u, "attack")       # 有动作帧的龟(basic/ghost/ninja)播普攻动画, 其余靠 juice 形变
 	_equip_sys._eq_on_basic_attack(u, tgt)   # 普攻计数装备(008每5次普攻射珊瑚刺, 不算多段)
+	_swordsman.on_basic_attack(u, tgt)       # 剑士: 排 1/1/2 次追打(★追打自己不走这里, 防自递归与赌神连击互喂)
 	if u.get("_eq_turret", false):   # 058炮台: 每次普攻自身永久+护穿+暴击(到本场战斗结束)
 		_turret_on_shot(u, tgt)
 	if u.get("is_big_bear", false):  # 大熊: 熊掌攒层, 满2层→放冲击波(小菊式)
@@ -4549,6 +4553,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 	if killer != null and killer.get("alive", false):
 		_equip_sys._eq_on_kill(killer, u)             # on-kill: 击杀者装备 (暴君之牙处决回血 等)
 	_equip_sys._eq_on_death(u, killer)                # on-death: 阵亡者装备 (复活海螺变虫 / 齿轮折币 / 玩偶熊)
+	_shield_syn.on_enemy_died(u)                      # 盾羁绊【收殓】: 最近的携带盾者获得死者 30% 最大生命的护盾
 	_on_unit_death(u, killer)
 	for _egc in _units:   # 温泉蛋(036): 任意单位阵亡→持蛋者加进度(己方死+15/敌死+10)
 		if _egc.get("has_egg", false) and _egc.get("alive", false):
@@ -6405,6 +6410,21 @@ func _taunt(by: Dictionary, targets: Array, sec: float = BUFF_SEC) -> void:
 ## 想改这个数只改这里 —— 它是 dodge_bonus 的唯一钳制点。
 const DODGE_CAP := 0.75
 
+## 血祭节流: 只有【损失百分比的整数位】变了才重算。
+## ★为什么要节流: 血祭随当前血量连续变化, 而 _recalc_stats 是每次挨打都调就太贵了。
+##   血量只有 100 个整数桶 ⇒ 每只龟每场最多重算 100 次, 而误差被锁在 1% 生命以内
+##   (即最多 0.1/0.3/0.5% 攻击力的偏差, 肉眼与数值上都无意义)。
+##   ⚠ 没有血祭的单位【一次都不会重算】—— 这条 if 是热路径的守门员, 别去掉。
+func _blood_rite_refresh(u: Dictionary) -> void:
+	if float(u.get("_blood_rite", 0.0)) <= 0.0 or float(u.get("maxHp", 0.0)) <= 0.0:
+		return
+	var bucket: int = int((1.0 - float(u.get("hp", 0.0)) / float(u["maxHp"])) * 100.0)
+	if int(u.get("_blood_rite_bucket", -999)) == bucket:
+		return
+	u["_blood_rite_bucket"] = bucket
+	_recalc_stats(u)
+
+
 func _recalc_stats(u: Dictionary) -> void:
 	var acc := {"atk": [0.0, 0.0], "def": [0.0, 0.0], "mr": [0.0, 0.0]}
 	var dodge := 0.0
@@ -6424,6 +6444,14 @@ func _recalc_stats(u: Dictionary) -> void:
 	u["atk"] = maxf(0.0, u["base_atk"] * (1.0 + acc["atk"][0]) + acc["atk"][1])
 	if float(u.get("hammer_pct", 0.0)) > 0.0:
 		u["atk"] += u["maxHp"] / HP_MULT * float(u["hammer_pct"])   # 重击锤(047): ATK随maxHp动态成长
+	# ★剑【血祭】(羁绊·用户 2026-08-03 定): 本体每损失 1% 生命 → +0.1/0.3/0.5% 攻击力。
+	#   · 按【本体自己】的血量, 不是全队平均 —— 残血反打这件事要发生在那只残血的龟身上, 玩家看得见因果。
+	#   · 是【百分比】不是固定值: 剩 1% 血时 +9.9/29.7/49.5% 攻击力。
+	#     (原方案书那版是固定 +0.6/1.0/1.5 攻击力/1%, 满损失 = +148 固定攻 ≈ ×4.7, 量级失控。)
+	#   · 乘在 base_atk 上、和 buff 的百分比同区 —— 不是独立乘区, 避免 R8 那种"多个乘区连乘"。
+	if float(u.get("_blood_rite", 0.0)) > 0.0 and float(u.get("maxHp", 0.0)) > 0.0:
+		var lost_pct: float = clampf(1.0 - float(u.get("hp", 0.0)) / float(u["maxHp"]), 0.0, 1.0) * 100.0
+		u["atk"] += u["base_atk"] * lost_pct * float(u["_blood_rite"]) / 100.0
 	u["def"] = maxf(0.0, u["base_def"] * (1.0 + acc["def"][0]) + acc["def"][1])
 	u["mr"]  = maxf(0.0, u["base_mr"]  * (1.0 + acc["mr"][0])  + acc["mr"][1])
 	# ★★闪避上限(2026-08-02 用户问「每个角色我记得有闪避上限做了吗」——答: 没有, 现在加)。

@@ -21,8 +21,16 @@ func _gambler_multi_cd(u: Dictionary) -> float:
 	var ch: float = float(u.get("multi_chance", base_ch))
 	if battle._battle_rng.randf() < ch:
 		u["multi_chance"] = ch * 0.8                  # 递减: 每次连锁×0.8
+		# ★★2026-08-03 用户拍板:【连击不触发剑士】。
+		#   赌神本身就是"云顶剑士式连击", 而剑羁绊的【剑士】也是连击 ——
+		#   两者相乘会让赌神拿满剑达到普通龟的 2.1 倍(实测 576% vs 272%)。
+		#   这里标记"下一次普攻是连击产生的", swordsman_system.on_basic_attack 读它并跳过。
+		#   ⚠ 只跳过【连击那几发】—— 赌神正常节奏的第一发照常触发剑士, 它不该被开除出剑队。
+		#   ⚠ 赌注 barrage(_gambler_bet_multi) 不走 _basic_attack(直接结算伤害) ⇒ 本来就不触发, 无需处理。
+		u["_chained_atk"] = true
 		return maxf(0.06, u["atk_interval"] * MULTI_ASPD)   # 快攻速再打 (用户2026-07-28: ~3.3×→~6×攻速)
 	u["multi_chance"] = base_ch                       # 没中→重置回基础(含命运之轮0.60/赌注+0.20), 等下一次普攻
+	u["_chained_atk"] = false                         # 链断了 → 下一次是正常普攻, 照常触发剑士
 	return u["atk_interval"]
 
 # 当前多重打击概率(命运之轮0.60/否则0.40 + 赌注放技3秒内+0.20)

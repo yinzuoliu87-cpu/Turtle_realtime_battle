@@ -42,6 +42,9 @@ const TIDE_PCT := [0.0, 0.05, 0.08, 0.12]
 const FEAST_PCT := [0.0, 0.0, 0.03]
 ## 盾【圣光】每档基数（档1 无）；实发 = 基数 × (1 + 0.4 × 携带者身上盾件数)
 const LIGHT_BASE := [0.0, 50.0, 90.0]
+## 剑【血祭】: 本体每损失 1% 生命 → +N% 攻击力（用户 2026-08-03 定）。
+## 全队每只都吃, 不要求身上带剑 —— 这是从血牙帮原样搬来的"全队"口径。
+const BLOOD_RITE := [0.1, 0.3, 0.5]
 
 
 func _init(b) -> void:
@@ -62,10 +65,20 @@ func apply_all() -> void:
 
 
 ## 统计某一方【全队】的类型件数 → 激活档。
-## ★口径与 `Phase2Types.calc_active` 一致：**每件 +1，不看星、不去重**。
-## 走宽（凑满一个类型）与走高（合 3★）因此互斥 —— 合一次 3★ 会让羁绊计数 −2。
+##
+## ★★口径（用户 2026-08-03 拍板）：**按装备 id 去重** ——
+##   带两件一模一样的剑，只算 1 个羁绊数。⇒ 顶档 9 件 = **集齐这个类型的全部 9 种装备**，
+##   这才是「顶档 == 件数」最自然的读法（方案书 D5）。
+##   ★去重带来一个重要后果：**合成 3★ 不再扣羁绊数**。
+##     去重前 3 件同款算 3、合成后剩 1 件算 1 ⇒ −2；去重后 3 件同款本来就算 1 ⇒ ±0。
+##     这推翻了方案书 §4.5.2「走宽与走高互斥」的论点 —— 但那个设计等于"升星要罚你掉羁绊",
+##     玩家会觉得憋屈。现在两条路可以同时走。
+##   ⚠ 只有【阈值计数】去重；**每件属性（per-piece）不去重** ——
+##     「每个剑装备额外提供 X 攻击力」说的是你身上带几件就吃几份，带 3 件同款照样吃 3 份。
+##     两者口径不同是有意的：去重防的是"刷同一件凑档位", 不是"限制你堆属性"。
 func _calc_tiers(side: String) -> Dictionary:
 	var cnt: Dictionary = {}
+	var seen: Dictionary = {}      # 该方已经数过的装备 id（去重用）
 	for u in battle._units:
 		if not (u is Dictionary) or str(u.get("side", "")) != side:
 			continue
@@ -74,7 +87,11 @@ func _calc_tiers(side: String) -> Dictionary:
 		for e in u.get("equips", []):
 			if not (e is Dictionary):
 				continue
-			var t: String = battle.Phase2Types.type_of(str(e.get("id", "")))
+			var eid: String = str(e.get("id", ""))
+			if seen.has(eid):
+				continue          # ★同一件装备只算一次（不看星、不看带了几份）
+			seen[eid] = true
+			var t: String = battle.Phase2Types.type_of(eid)
 			if t != "":
 				cnt[t] = int(cnt.get(t, 0)) + 1
 	var out: Dictionary = {}
@@ -102,6 +119,13 @@ func _apply_to(u: Dictionary, tiers: Dictionary) -> void:
 		var t: String = battle.Phase2Types.type_of(str(e.get("id", "")))
 		if t != "":
 			mine[t] = int(mine.get(t, 0)) + 1
+	# ── 剑【血祭】: 全队每一只都吃, 【不要求身上带剑】(用户 2026-08-03 定) ──
+	#   数值是"每损失 1% 生命 → +N% 攻击力", 实际计算在 RealtimeBattle3DScene._recalc_stats
+	#   (那里能拿到实时血量), 这里只负责把档位对应的系数写到单位上。
+	if tiers.has("剑"):
+		u["_blood_rite"] = BLOOD_RITE[clampi(int(tiers["剑"]) - 1, 0, 2)]
+		u["_blood_rite_bucket"] = -999      # 强制下一次 _blood_rite_refresh 真的算一遍
+
 	# ── 食物是全表【唯一】数"携带者身上全部装备"而不是"本类型件数"的效果 ──
 	#   §5.10: 队伍每件装备为其携带者 +N 最大生命, 食物类装备【双倍】。
 	#   ⇒ 它与"走宽"天然协同(装备位塞满就有血), 也是唯一一条随装备位线性增长的属性。
@@ -134,6 +158,12 @@ func _apply_to(u: Dictionary, tiers: Dictionary) -> void:
 		for k in per:
 			_add(u, str(k), float(per[k]) * float(n))
 	battle._recalc_stats(u)
+
+
+## 某只单位所属阵营的某类型激活档（0 = 未激活）。给别的系统查档位用。
+func tier_for(u: Dictionary, t: String) -> int:
+	var tiers: Dictionary = _by_side.get(str(u.get("side", "left")), {})
+	return int(tiers.get(t, 0))
 
 
 ## 单条属性 → 实时战斗的字段名。★与 `EquipStatsApply.apply_stat_dict` 用同一套字段，
