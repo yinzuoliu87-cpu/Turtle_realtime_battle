@@ -168,4 +168,39 @@ const STATS := {
 	# ── 召唤032唤灵骨符(纯属性) + 033复活海螺(复用e_conch死亡变虫) (批16) ──
 	"p2eq_032": [{"hp": 50}, {"hp": 60}, {"hp": 70}],
 	"p2eq_033": [{"hp": 110}, {"hp": 270}, {"hp": 3000}],
+	"p2eq_060": [{"hp": 40, "dodgePct": 5}, {"hp": 90, "dodgePct": 9}, {"hp": 180, "dodgePct": 15}],   # 灵物 · 1费 · 磷光水母伞
+	"p2eq_061": [{"_mspdPct": 5, "dodgePct": 6}, {"_mspdPct": 9, "dodgePct": 11}, {"_mspdPct": 15, "dodgePct": 18}],   # 灵物 · 2费 · 游魂贝铃
+	"p2eq_062": [{"hp": 60, "dodgePct": 6}, {"hp": 140, "dodgePct": 11}, {"hp": 300, "dodgePct": 18}],   # 灵物 · 2费 · 雾行海葵
+	"p2eq_063": [{"_mspdPct": 6, "dodgePct": 8}, {"_mspdPct": 11, "dodgePct": 14}, {"_mspdPct": 18, "dodgePct": 24}],   # 灵物 · 3费 · 幽影墨囊
+	"p2eq_064": [{"hp": 100, "dodgePct": 12}, {"hp": 260, "dodgePct": 22}, {"hp": 600, "dodgePct": 38}],   # 灵物 · 4费 · 深渊招魂螺
+	"p2eq_065": [{"_maxEnergy": 20, "_echargePct": 8}, {"_maxEnergy": 35, "_echargePct": 14}, {"_maxEnergy": 60, "_echargePct": 24}],   # 药水 · 3费 · 涌泉苔药剂
+	"p2eq_066": [{"_maxEnergy": 25, "_echargePct": 10}, {"_maxEnergy": 45, "_echargePct": 18}, {"_maxEnergy": 80, "_echargePct": 30}],   # 药水 · 4费 · 狂潮浓缩液
+	"p2eq_067": [{"atk": 15, "_maxEnergy": 20}, {"atk": 40, "_maxEnergy": 35}, {"atk": 95, "_maxEnergy": 60}],   # 药水 · 4费 · 猎人的酒囊
+	"p2eq_068": [{"atk": 25, "_maxEnergy": 40, "_echargePct": 12}, {"atk": 70, "_maxEnergy": 70, "_echargePct": 22}, {"atk": 220, "_maxEnergy": 120, "_echargePct": 38}],   # 药水 · 5费 · 万灵龟血
+	"p2eq_069": [{"hp": 90, "healAmp": 10}, {"hp": 200, "healAmp": 18}, {"hp": 420, "healAmp": 30}],   # 食物 · 3费 · 珊瑚糖糕
+	"p2eq_070": [{"hp": 120, "def": 8}, {"hp": 300, "def": 18}, {"hp": 700, "def": 40}],   # 食物 · 4费 · 深海龟粮砖
+	"p2eq_071": [{"hp": 110, "healAmp": 14}, {"hp": 280, "healAmp": 26}, {"hp": 650, "healAmp": 45}],   # 食物 · 4费 · 暖流海带汤
+	"p2eq_072": [{"hp": 200, "def": 10, "healAmp": 18}, {"hp": 550, "def": 24, "healAmp": 32}, {"hp": 1400, "def": 55, "healAmp": 55}],   # 食物 · 5费 · 百年龟苓宴
+	"p2eq_073": [{"crit": 0.1, "_rangePct": 5}, {"crit": 0.18, "_rangePct": 9}, {"crit": 0.3, "_rangePct": 15}],   # 弓箭 · 1费 · 藤蔓短弓
+	"p2eq_074": [{"atk": 8, "crit": 0.1}, {"atk": 18, "crit": 0.18}, {"atk": 38, "crit": 0.3}],   # 弓箭 · 1费 · 骨簇箭袋
+	"p2eq_075": [{"crit": 0.12, "_rangePct": 6}, {"crit": 0.22, "_rangePct": 11}, {"crit": 0.38, "_rangePct": 18}],   # 弓箭 · 2费 · 鹰眼镜片
+	"p2eq_076": [{"crit": 0.2, "critDmg": 0.15, "_rangePct": 8}, {"crit": 0.35, "critDmg": 0.28, "_rangePct": 14}, {"crit": 0.58, "critDmg": 0.5, "_rangePct": 24}],   # 弓箭 · 4费 · 腐蚀重弩
+	"p2eq_077": [{"armorPen": 4, "_aspdPct": 5}, {"armorPen": 9, "_aspdPct": 9}, {"armorPen": 18, "_aspdPct": 15}],   # 枪 · 1费 · 铜管手铳
+	"p2eq_078": [{"armorPen": 5, "_aspdPct": 6}, {"armorPen": 11, "_aspdPct": 11}, {"armorPen": 22, "_aspdPct": 18}],   # 枪 · 2费 · 双管贝壳枪
+	"p2eq_079": [{"armorPen": 7, "_aspdPct": 8}, {"armorPen": 15, "_aspdPct": 15}, {"armorPen": 30, "_aspdPct": 25}],   # 枪 · 3费 · 军械库连射机
+	"p2eq_080": [{"atk": 30, "armorPen": 14, "_aspdPct": 10}, {"atk": 90, "armorPen": 30, "_aspdPct": 18}, {"atk": 260, "armorPen": 55, "_aspdPct": 30}],   # 枪 · 5费 · 穿甲重炮
+	"p2eq_081": [{"hp": 50, "def": 6}, {"hp": 120, "def": 13}, {"hp": 260, "def": 22}],   # 盾 · 1费 · 藤编圆盾
+	"p2eq_082": [{"hp": 70, "def": 7}, {"hp": 170, "def": 15}, {"hp": 380, "def": 26}],   # 盾 · 2费 · 砗磲护心甲
+	"p2eq_083": [{"atk": 18, "crit": 0.1}, {"atk": 42, "crit": 0.18}, {"atk": 92, "crit": 0.3}],   # 剑 · 3费 · 潮汐细剑
+	"p2eq_084": [{"atk": 22, "crit": 0.12}, {"atk": 55, "crit": 0.22}, {"atk": 125, "crit": 0.38}],   # 剑 · 4费 · 血牙巨剑
+	"p2eq_085": [{"mr": 9, "_echargePct": 5}, {"mr": 19, "_echargePct": 9}, {"mr": 34, "_echargePct": 15}],   # 奇械 · 1费 · 铜齿护符
+	"p2eq_086": [{"def": 12, "mr": 18, "_echargePct": 10}, {"def": 30, "mr": 45, "_echargePct": 18}, {"def": 80, "mr": 130, "_echargePct": 30}],   # 奇械 · 5费 · 极地反冲装置
+	"p2eq_087": [{"hp": 150, "mr": 20, "_echargePct": 8}, {"hp": 420, "mr": 50, "_echargePct": 14}, {"hp": 1200, "mr": 145, "_echargePct": 24}],   # 奇械 · 5费 · 深渊铸币机
+	"p2eq_088": [{"magicPen": 5, "_maxEnergy": 12}, {"magicPen": 11, "_maxEnergy": 22}, {"magicPen": 20, "_maxEnergy": 40}],   # 法器 · 1费 · 潮汐骨杖
+	"p2eq_089": [{"magicPen": 5, "_echargePct": 6}, {"magicPen": 11, "_echargePct": 11}, {"magicPen": 20, "_echargePct": 18}],   # 法器 · 1费 · 蚀月符纸
+	"p2eq_090": [{"magicPen": 18, "_maxEnergy": 45, "_echargePct": 12}, {"magicPen": 42, "_maxEnergy": 80, "_echargePct": 22}, {"magicPen": 110, "_maxEnergy": 150, "_echargePct": 38}],   # 法器 · 5费 · 万潮法典
+	"p2eq_091": [{"hp": 50, "_lifestealPct": 4}, {"hp": 120, "_lifestealPct": 8}, {"hp": 260, "_lifestealPct": 14}],   # 遗物 · 1费 · 远古龟甲片
+	"p2eq_092": [{"atk": 12, "_lifestealPct": 5}, {"atk": 30, "_lifestealPct": 10}, {"atk": 66, "_lifestealPct": 17}],   # 遗物 · 2费 · 沉船罗盘
+	"p2eq_093": [{"def": 6, "_lifestealPct": 5}, {"def": 14, "_lifestealPct": 10}, {"def": 30, "_lifestealPct": 17}],   # 遗物 · 2费 · 祭坛残石
+	"p2eq_094": [{"atk": 25, "hp": 120, "_lifestealPct": 9}, {"atk": 62, "hp": 300, "_lifestealPct": 18}, {"atk": 140, "hp": 700, "_lifestealPct": 30}],   # 遗物 · 4费 · 觉醒之核
 }

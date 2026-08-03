@@ -29,8 +29,8 @@ const TYPES_JSON := "res://data/p2eq-types.json"
 ## 方案书 §4.4.2「现→后」列 —— ★写【字面值】不引用被测常量，否则是恒真式
 ## （本项目 verify_trainer_magicstone 第一版真栽过：引用被测常量，改掉常量测试照样全绿）。
 const WANT_COUNT := {
-	"奇械": 7, "法器": 7, "灵物": 5, "遗物": 6, "剑": 7,
-	"弓箭": 5, "枪": 5, "盾": 7, "药水": 5, "食物": 5,
+	"奇械": 10, "法器": 10, "灵物": 10, "遗物": 10, "剑": 9,
+	"弓箭": 9, "枪": 9, "盾": 9, "药水": 9, "食物": 9,
 }
 ## 方案书 §4.5.1 新阈值
 const WANT_TIERS := {
@@ -53,7 +53,7 @@ const WANT_FINAL := {
 const GONE := ["护符", "饰品"]
 ## 批 1 不加装备, 件数仍是 59（批 3 会逐子批改成 71/82/94, 那时这条要跟着改 —— 方案书 R6 同款设计:
 ## 它逼你显式确认件数变了, 而不是让件数悄悄漂）
-const WANT_ITEMS := 59
+const WANT_ITEMS := 94
 
 var _n := 0
 var _fail := 0
@@ -175,9 +175,9 @@ func _ready() -> void:
 	#   现在是 59 件态 ⇒ 十个类型的顶档都够不到, 就该是 10 个;
 	#   批 3 每加一个子批, WANT_COUNT 跟着改, 这个数自然往下掉, 全加完应为 0。
 	#   哪天它对不上, 说明件数与阈值有一边改漏了。
-	_ok("⑧ 顶档可达性记账: 当前 %d 件态下有 %d 个类型顶档不可达(59件态应为 10, 94件态应为 0)"
-			% [WANT_ITEMS, unreach.size()],
-		(unreach.size() == 10) if WANT_ITEMS == 59 else (unreach.size() == 0),
+	_ok("⑧ 顶档可达性记账: %d 件态下有 %d 个类型顶档不可达(应 %d)"
+			% [WANT_ITEMS, unreach.size(), _want_unreachable()],
+		unreach.size() == _want_unreachable(),
 		str(unreach))
 
 	# ── ⑦ 计数口径不变: 每件 +1, 不看星、不去重 ──────────────────
@@ -198,6 +198,17 @@ func _ready() -> void:
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 装备类型羁绊结构(批1)" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+## 当前件数态下【应有】几个类型顶档够不到 —— 从 WANT_COUNT/WANT_TIERS 直接算,
+## 不写死。批3 每加一个子批这个数自然往下掉, 全加完是 0。
+func _want_unreachable() -> int:
+	var n := 0
+	for t in WANT_TIERS:
+		var tt: Array = WANT_TIERS[t]
+		if int(tt[tt.size() - 1]) > int(WANT_COUNT[t]):
+			n += 1
+	return n
 
 
 func _first_of(t: String) -> String:

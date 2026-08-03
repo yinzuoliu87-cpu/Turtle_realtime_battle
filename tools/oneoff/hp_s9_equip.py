@@ -16,12 +16,14 @@ def log(*a): OUT.write(' '.join(str(x) for x in a) + '\n')
 eq = json.load(io.open('data/phase2-equipment.json', encoding='utf-8'))
 eq = eq if isinstance(eq, list) else eq.get('equipment', [])
 types = json.load(io.open('data/p2eq-types.json', encoding='utf-8'))
-schools = json.load(io.open('data/p2eq-schools.json', encoding='utf-8'))
+# ★2026-08-03 批1: 学派系统整体删除, p2eq-schools.json 已不存在 —— 这行不删脚本直接崩(方案书 R2 同款)。
 
 hp = HP()
-FOLDER = hp.upsert(556, "🛠️ 装备 · 实时版 (59件 · phase2-equipment)",
-                   "59 件实时版装备。事实源: data/phase2-equipment.json(名/费/文案) + scripts/gamedata/equip_stats.gd 的 P2RT.STATS(逐星属性, 已核实与 baseStats1 零差异)。"
-                   "★不含「稀有度/setTag/series/category」—— 这些字段已废弃并从数据删除。", 13)
+# ★件数从数据【算出来】不写死 —— 原来标题写死 "59件", 批3 加到 94 件后就成了假标题。
+FOLDER = hp.upsert(556, "🛠️ 装备 · 实时版 (%d件 · phase2-equipment)" % len(eq),
+                   ("%d 件实时版装备。事实源: data/phase2-equipment.json(名/费/文案) + scripts/gamedata/equip_stats.gd 的 STATS(逐星属性)。" % len(eq)) +
+                   "★不含「稀有度/setTag/series/category」—— 这些字段已废弃并从数据删除。"
+                   "★学派维度已于 2026-08-03 批1 整体删除, 羁绊只剩【类型】这一维。", 13)
 log("装备文件夹 =", FOLDER)
 
 kids = hp.children(FOLDER)
@@ -35,9 +37,8 @@ renamed = updated = created = 0
 for e in eq:
     eid = e['id']
     name = "%s %s (%s)" % (e.get('emoji', ''), e['name'], eid)
-    sch = schools.get(eid, [])
-    desc = "💰费用%s · 类型[%s] · 学派[%s]\n加成(1★/2★/3★): %s\n\n效果: %s" % (
-        e.get('cost', '?'), types.get(eid, '?'), '/'.join(sch) if sch else '-',
+    desc = "💰费用%s · 类型[%s]\n加成(1★/2★/3★): %s\n\n效果: %s" % (
+        e.get('cost', '?'), types.get(eid, '?'),
         e.get('baseStats1', ''), e.get('effectDesc1', ''))
     d3 = str(e.get('effectDesc3', '')).strip()
     if d3:

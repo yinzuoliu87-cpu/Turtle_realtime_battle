@@ -89,6 +89,39 @@ def main():
             parts[7] = new_eff
         out.append('|'.join(parts))
 
+    # ★2026-08-03 批3: 生成器原来【只会重写已有行、不会新增】—— 加了 35 件之后
+    #   表里还是 59 行, 而 data_integrity 的逐行对账当场判红("p2eq_060 不在评审表里")。
+    #   审计器抓到了是好事; 但正确的修法是让生成器把新件补进去, 而不是手写 35 行
+    #   (memory fb-self-claiming-authority-docs-rot: 手改一行 = 必漂)。
+    #   新行插在【最后一条数据行之后】, 编号接着排。
+    in_table = {}
+    last_row = -1
+    for i, L in enumerate(out):
+        for c in L.split('|'):
+            if c.strip().startswith('p2eq_'):
+                in_table[c.strip()] = True
+                last_row = i
+    missing = [k for k in items if k not in in_table]
+    if missing and last_row >= 0:
+        # 按 id 排序, 编号从表里已有的最大号往后接
+        nums = []
+        for L in out:
+            parts = L.split('|')
+            if len(parts) > 1 and parts[1].strip().isdigit():
+                nums.append(int(parts[1].strip()))
+        nxt = (max(nums) + 1) if nums else 1
+        add = []
+        for k in sorted(missing):
+            it = items[k]
+            add.append('| %02d | %s | %s | %d | %s | %s | %s |' % (
+                nxt, k, str(it.get('name', '')), int(it.get('cost', 1)),
+                str(types.get(k, '?')), str(it.get('baseStats1', '')).strip(),
+                str(it.get('effectDesc1', '')).strip()))
+            nxt += 1
+        out[last_row + 1:last_row + 1] = add
+        changed.extend(missing)
+        seen += len(missing)
+
     print('[分母] 表内匹配到 %d 行 / json %d 件' % (seen, len(items)))
     if seen == 0:
         print('[FAIL] 一行都没匹配到 —— 表格式变了? 这是空检查, 不是通过')

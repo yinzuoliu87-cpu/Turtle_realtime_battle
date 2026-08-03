@@ -11,6 +11,9 @@ const P2RT := preload("res://scripts/gamedata/equip_stats.gd")   # 2026-07-23: s
 const QUOTE := "\""
 var _fail := 0
 
+## 装备总件数。批3 分三个子批: 59 → 72(3a) → 84(3b) → 94(3c)。
+const WANT_EQUIP_N := 94
+
 func _ok(n: String, c: bool, d: String = "") -> void:
 	if c: print("  [PASS] ", n, ("  " + d) if d != "" else "")
 	else:
@@ -98,9 +101,12 @@ func _ready() -> void:
 		ghost.is_empty() and not alt_path.is_empty(),
 		"登记 %d 个, 取不到的: %s" % [alt_path.size(), ghost])
 
-	# ── B. 59 件 × 3 星 全部能出结果, 无空白无异常 ──
+	# ── B. 全部装备 × 3 星 都能出结果, 无空白无异常 ──
+	# ★件数写成常量而不是字面量 59: 批3 会分三个子批加到 94 件(59→72→84→94)。
+	#   这条断言【故意保留】—— 它逼你在加装备时显式确认件数变了(方案书 R6),
+	#   而不是让件数悄悄漂。改件数时只改这一处。
 	var eqs: Array = DataRegistry.phase2_equipment
-	_ok("装备 59 件", eqs.size() == 59, "%d" % eqs.size())
+	_ok("装备 %d 件" % WANT_EQUIP_N, eqs.size() == WANT_EQUIP_N, "%d" % eqs.size())
 	var empty: Array = []
 	var bad: Array = []
 	for e in eqs:
@@ -110,7 +116,7 @@ func _ready() -> void:
 			for kv in rows:
 				if str(kv[0]).strip_edges() == "" or str(kv[1]).strip_edges() == "":
 					bad.append("%s★%d %s" % [e.get("id"), star, kv])
-	_ok("★59件×3星 无空标签/空数值", bad.is_empty(), "%s" % [bad.slice(0, 4)])
+	_ok("★%d件×3星 无空标签/空数值" % WANT_EQUIP_N, bad.is_empty(), "%s" % [bad.slice(0, 4)])
 	_ok("无属性的装备数量合理(应为0或极少)", empty.size() <= 3, "无属性: %s" % [empty.slice(0, 6)])
 
 	# ── C. 按星级取值(不是恒取1星) ──

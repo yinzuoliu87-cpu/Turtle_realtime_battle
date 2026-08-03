@@ -71,19 +71,33 @@ func _test_real_equipment_coverage() -> void:
 				eq = parsed[k]
 				break
 	var n_total := eq.size()
-	var n_tri := 0
-	var n_changed := 0
+	var n_has_tri := 0      # 文案里【真的含】a/b/c 三元组的件
+	var n_changed := 0      # 高亮函数确实改动了文案的件
+	var missed: Array = []
+	var tri_re := RegEx.new()
+	tri_re.compile("\\d+(\\.\\d+)?/\\d+(\\.\\d+)?/\\d+(\\.\\d+)?")
 	for e in eq:
 		var d := str((e as Dictionary).get("effectDesc1", ""))
 		if d == "":
 			continue
+		var has_tri: bool = tri_re.search(d) != null
+		if has_tri:
+			n_has_tri += 1
 		var hl := SkillTextC.highlight_star(d, 2)
 		if hl != d:
 			n_changed += 1
-			n_tri += 1
-	print("  [分母] 装备 %d 件, 其中含三元组能被高亮的 %d 件" % [n_total, n_tri])
+		elif has_tri:
+			missed.append(str((e as Dictionary).get("id", "")))
+	print("  [分母] 装备 %d 件, 文案含三元组的 %d 件, 被高亮的 %d 件" % [n_total, n_has_tri, n_changed])
 	_ok("装备分母非 0(N=0 是空检查不是通过)", n_total > 0)
-	_ok("★大多数装备的文案能被高亮", n_tri >= int(n_total * 0.8), "%d/%d" % [n_tri, n_total])
+	# ★2026-08-03 批3 改口径: 原来断言的是"≥80% 的【全部装备】文案能被高亮" ——
+	#   那句话默认了"几乎每件装备都有星级缩放的效果文案"。批3 加的 35 件是【纯属性装备】,
+	#   文案只有风味句、一个数字都没有 ⇒ 58/94 = 62%, 这条当场红, 而高亮功能一点毛病没有。
+	#   ★改成【含三元组的件必须全部能被高亮】: 分母是"该被高亮的", 断言反而比原来强
+	#   (原来允许 20% 漏网, 现在一件都不许漏)。同时保留一条分母断言防它变成空检查。
+	_ok("★分母: 至少 40 件装备的文案含三元组", n_has_tri >= 40, "%d 件" % n_has_tri)
+	_ok("★★含三元组的文案【全部】能被高亮(一件都不许漏)", missed.is_empty(),
+		"漏 %d 件: %s" % [missed.size(), str(missed.slice(0, 5))])
 
 
 ## ③ 数据格式没被动过 —— 这是本次改动最容易顺手做错的事
