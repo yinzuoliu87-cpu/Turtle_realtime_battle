@@ -171,6 +171,7 @@ func _spawn_teams() -> void:
 	battle._inject_equipment()       # 装备注入 (玩家队读 persistent_equipped; demo队塞测试装备) — 须在被动之前
 	_apply_spawn_passives()   # 登场被动 (开战即生效: 忍术暴击/怨灵诅咒/冰寒减攻/召唤等)
 	battle._equip_sys._stats._eq_apply_all_stats()     # 开战: 全装备纯属性 / 永久 flag 加到携带者 (spawn 被动之后, 不被覆盖)
+	battle._synergy.apply_all()   # ★类型羁绊(批4-1): 必须在单件属性【之后】—— 羁绊是加在单件属性上面的
 	for _pu in battle._units:        # 海盗: 开战即在后方显示持久海盗船(用户2026-07-14"战斗开始就在位置上")
 		if str(_pu.get("id", "")) == "pirate" and not _pu.get("is_summon", false):
 			battle._pirate_sys._pirate_get_ship(_pu)

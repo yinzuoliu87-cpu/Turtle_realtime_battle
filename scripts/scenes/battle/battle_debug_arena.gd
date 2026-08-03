@@ -135,6 +135,7 @@ func _edit_start_battle() -> void:
 	battle._inject_equipment()
 	battle._spawn._apply_spawn_passives()
 	battle._equip_sys._stats._eq_apply_all_stats()
+	battle._synergy.apply_all()   # ★类型羁绊(批4-1): 必须在单件属性【之后】—— 羁绊是加在单件属性上面的
 	if battle._edit_full_energy:   # 装备/被动结算后再补满龟能→技能即就绪(不被_eq_apply_all_stats重置回充率覆盖)
 		for u in battle._units:
 			if u.get("side", "") == "left": _edit_apply_full_energy(u)
