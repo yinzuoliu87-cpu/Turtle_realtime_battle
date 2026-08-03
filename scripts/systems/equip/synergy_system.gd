@@ -102,7 +102,27 @@ func _apply_to(u: Dictionary, tiers: Dictionary) -> void:
 		var t: String = battle.Phase2Types.type_of(str(e.get("id", "")))
 		if t != "":
 			mine[t] = int(mine.get(t, 0)) + 1
+	# ── 食物是全表【唯一】数"携带者身上全部装备"而不是"本类型件数"的效果 ──
+	#   §5.10: 队伍每件装备为其携带者 +N 最大生命, 食物类装备【双倍】。
+	#   ⇒ 它与"走宽"天然协同(装备位塞满就有血), 也是唯一一条随装备位线性增长的属性。
+	if tiers.has("食物"):
+		var fs: Array = (battle.Phase2Types.TYPES.get("食物", {}) as Dictionary).get("stats", [])
+		var fi: int = clampi(int(tiers["食物"]) - 1, 0, maxi(0, fs.size() - 1))
+		var per_eq: float = float((fs[fi] as Dictionary).get("_foodPerEquip", 0.0))
+		if per_eq > 0.0:
+			var add := 0.0
+			for e in u.get("equips", []):
+				if not (e is Dictionary):
+					continue
+				var et: String = battle.Phase2Types.type_of(str(e.get("id", "")))
+				add += per_eq * (2.0 if et == "食物" else 1.0)
+			if add > 0.0:
+				u["maxHp"] = float(u.get("maxHp", 0.0)) + add
+				u["hp"] = float(u.get("hp", 0.0)) + add
+
 	for t in mine:
+		if t == "食物":
+			continue               # 上面单独处理过了, 别再按 per-piece 走一遍
 		if not tiers.has(t):
 			continue               # 该类型没激活 → 一点都不给
 		var stats: Array = (battle.Phase2Types.TYPES.get(t, {}) as Dictionary).get("stats", [])
@@ -140,8 +160,12 @@ func _add(u: Dictionary, k: String, v: float) -> void:
 			# ★装备/羁绊给的 hp 已是最终值, 不乘 HP_MULT(CLAUDE.md §3.1)
 			u["maxHp"] = float(u.get("maxHp", 0.0)) + v
 			u["hp"] = float(u.get("hp", 0.0)) + v
+		"dodgePct":
+			# 灵物。★上限【不在这里钳】—— DODGE_CAP(0.75) 钳在 _recalc_stats 的唯一写入点,
+			#   两处各钳一次必然漂移(v0.18.9 修"带 2 件 3★ 幽灵墨鱼永远打不中"时定的规矩)。
+			u["dodge"] = float(u.get("dodge", 0.0)) + v / 100.0
 		_:
-			pass          # 其余字段本批不给（灵物闪避走它自己的档位表, 见 §5.3 的双份警告）
+			pass
 
 
 ## 每帧节拍（挂主循环）。本批三条周期效果全部是 🟢：现成的 _heal / _grant_shield。
