@@ -24,6 +24,7 @@ const EquipStats := preload("res://scripts/gamedata/equip_stats.gd")
 const EquipPoolS := preload("res://scripts/gamedata/equip_pool.gd")
 const Phase2Config := preload("res://scripts/gamedata/phase2_config.gd")
 
+## 上架 94 件(不含羁绊赠送的 p2eq_095, 它 shopAvailable=0)
 const WANT_TOTAL := 94
 ## 方案书 §4.4.2 最终态（写字面值，不引用被测数据）
 const WANT_BY_TYPE := {
@@ -56,7 +57,12 @@ func _ok(name: String, cond: bool, detail: String = "") -> void:
 func _ready() -> void:
 	await get_tree().process_frame
 	print("=== 35 件新装备 (批3) ===")
-	var eqs: Array = DataRegistry.phase2_equipment
+	# ★只数【上架】的件 —— 羁绊赠送的圣光护盾(p2eq_095, shopAvailable=0)不属于装备池,
+	#   它既不参与费用分布、也没有类型, 混进来会让下面每一条分布断言都错。
+	var eqs: Array = []
+	for _e in DataRegistry.phase2_equipment:
+		if _e is Dictionary and int((_e as Dictionary).get("shopAvailable", 0)) == 1:
+			eqs.append(_e)
 	var f := FileAccess.open("res://data/p2eq-types.json", FileAccess.READ)
 	var ty: Dictionary = JSON.parse_string(f.get_as_text())
 	f.close()
@@ -108,7 +114,7 @@ func _ready() -> void:
 	_ok("② ★分母: 新增 %d 件(p2eq_%03d 起)" % [new_n, NEW_FIRST], new_n == 35, "实得 %d" % new_n)
 	_ok("② 新件三档属性 / emoji / 名字 / 类型 / 属性串 全都齐", incomplete.is_empty(),
 		str(incomplete.slice(0, 5)))
-	_ok("② 全表 94 件名字不重复", dup.is_empty(), str(dup))
+	_ok("② 上架 %d 件名字不重复" % eqs.size(), dup.is_empty(), str(dup))
 
 	# ── ③ ★曝光拉平（这一批的真正收益） ────────────────────────
 	# E_type(Lv) = Σ(该类型每费用的件数 × 该费用出货率 / 该费用总件数) × 每次刷新格数(10)

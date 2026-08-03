@@ -766,6 +766,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 	var is_aoe: bool = _otl.size() >= 2
 	for e in src["equips"]:
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
+		battle._cur_eq_item = iid   # 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
 		var stt: Dictionary = src["eq_state"].get(iid, {})
 		match iid:
 			"p2eq_004":   # 暴君之牙: 处决<斩杀线敌 (削弱·用户2026-07-23: 斩杀线 4/6/12% ×(1+暴击率), 原 5/7/10%+10/15/40%×暴击)
@@ -834,6 +835,8 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 				#   ★要加新的易伤来源就写 eq_marked_until; 别在这里把旧效果加回来 —— 会和新效果叠着生效。
 				pass
 		src["eq_state"][iid] = stt
+	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
+	                           #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
 
 # 雷电法杖 026: 连锁闪电
 # 雷电法杖 026: 连锁闪电
@@ -1081,6 +1084,7 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 		return
 	for e in u["equips"]:
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
+		battle._cur_eq_item = iid   # 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
 		var stt: Dictionary = u["eq_state"].get(iid, {})
 		match iid:
 			"p2eq_013", "p2eq_014":   # 受击硬化: +def/mr (cap20层); 013满层给护盾
@@ -1129,6 +1133,8 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 				#   verify_equip_batch_20260801 ⑫组焊死: on-hurt 不得产生任何治疗。
 				pass
 		u["eq_state"][iid] = stt
+	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
+	                           #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
 
 # ============================================================================
 #  on-dodge (闪避后)
@@ -1170,6 +1176,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 		return
 	for e in u["equips"]:
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
+		battle._cur_eq_item = iid   # 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
 		if battle._stress: battle._dbg_op = "eqcast:" + iid   # 卡死猎手: 定位是哪件装备on-cast卡住(用户2026-07-19)
 		match iid:
 			"p2eq_027":   # 电棍: 电击已移到 _eq_on_basic_attack(普攻命中消耗1层, 用户2026-07-03); on_cast不处理
@@ -1210,6 +1217,8 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 				pass
 			"p2eq_010":   # 激光长刃: 移到独立计时器 _tick_laser(第二普攻扇形斩); on_cast不处理
 				pass
+	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
+	                           #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
 
 # 水晶叠层 (A/B共用); splash=true(B 3★): 引爆范围扩大50%波及邻格敌
 # 水晶叠层 (A/B共用); splash=true(B 3★): 引爆范围扩大50%波及邻格敌
@@ -1296,6 +1305,7 @@ func _eq_on_kill(killer: Dictionary, _victim: Dictionary) -> void:
 func _eq_on_death(u: Dictionary, _killer) -> void:
 	for e in u.get("equips", []):
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
+		battle._cur_eq_item = iid   # 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
 		var stt: Dictionary = u["eq_state"].get(iid, {})
 		match iid:
 			"p2eq_033":   # 复活海螺: 彻底阵亡→原位变形成小虫(通用打法/攻速0.65) + 亡灵变形演出
@@ -1326,6 +1336,8 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 					var rst: Dictionary = o["eq_state"].get("p2eq_052", {})
 					rst["revolver_bullets"] = mini(6, int(rst.get("revolver_bullets", 0)) + 1)
 					o["eq_state"]["p2eq_052"] = rst
+	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
+	                           #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
 
 # ============================================================================
 #  HP阈值 (首次<50%) — 深海项链 / 珍珠耳环
@@ -1358,6 +1370,7 @@ func _eq_check_hp_threshold(u: Dictionary) -> void:
 	var fired := false
 	for e in u.get("equips", []):
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
+		battle._cur_eq_item = iid   # 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
 		match iid:
 			"p2eq_044":   # 深海项链: 首次<50%触发, 【6秒内】回复 20/40/80% maxHp(用户2026-08-01, 原为瞬回12/27/40%)
 				_eq_start_hot(u, u["maxHp"] * [0.20, 0.40, 0.80][si], NECKLACE_HOT_SEC); fired = true
@@ -1375,6 +1388,8 @@ func _eq_check_hp_threshold(u: Dictionary) -> void:
 				fired = true
 	if fired:
 		u["hp50_fired"] = true
+	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
+	                           #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
 
 # ============================================================================
 #  周期 tick (每 2.5 秒) — A类回合节拍效果
@@ -1399,6 +1414,7 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 	u["eq_timer"] = 0.0
 	for e in u["equips"]:
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
+		battle._cur_eq_item = iid   # 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
 		var stt: Dictionary = u["eq_state"].get(iid, {})
 		match iid:
 			"p2eq_001":   # 锈蚀短剑: 移到每帧 _tick_rustblade (每3s就绪 + 100码射程内有敌即劈); 周期tick不处理
@@ -1456,6 +1472,8 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 						o["_mark_until"] = battle._t   # 靶子锁定框消失
 						battle._spawn_eq_bolt(u, o, battle._resolve_dmg(u, u["atk"] * [1.5, 3.0, 9.0][si] + [130.0, 190.0, 600.0][si], o, false), "res://assets/sprites/vfx/dart.png", Color("#ffe0b0"), true, maxi(1, roundi(u["atk"] * 0.1)))
 		u["eq_state"][iid] = stt
+	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
+	                           #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
 
 # 龙蛋喷火龙: 沿随机有敌的朝向直线扫射 (同列友回血/敌魔伤+灼烧)
 # 024 喷火龙(定稿场景): 龙低空沿"敌方质心方向的线"掠射, 边飞边点燃 burn-loop 真像素火燃烧带, 命中敌=fx_explosion金爆+着火+魔伤, 掠过友=绿治疗环

@@ -697,6 +697,11 @@ const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")   # 类�
 var _synergy := SynergySystem.new(self)   # ★类型羁绊【战斗侧实装】(2026-08-03 批4-1) —— 在此之前羁绊零效果
 var _swordsman := SwordsmanSystem.new(self)   # 剑羁绊【剑士】追打(2026-08-03·取代原设计的"回响")
 var _shield_syn := ShieldSynergySystem.new(self)   # 盾羁绊【怒气冲击波/反击/收殓】(2026-08-03)
+## ★"当前正在执行哪件装备的效果" —— 盾羁绊 9 档要判断"这次护盾/治疗是不是盾类装备给的"。
+##   护盾/治疗管线本来【不记录来源】, 给每个调用点加参数要碰几十处;
+##   而装备效果的分发本来就在几个 `for e in u["equips"]` 循环里, 在那里设一下最省。
+##   ⚠ 用完必须清空 —— 留着会让后续非装备来源的护盾被误判成"盾装备给的"。
+var _cur_eq_item := ""
 var _world_builder := BattleWorldBuilder.new(self)   # 战场世界构建(viewport/tilemap/相机/环境/地面/竞技场/装饰/远景/光柱/气泡/navmesh·开局一次)(2026-07-26 抽出)
 var _vfx := BattleVfx.new(self)   # 战斗视觉特效(飘字/命中火花/冲击/挥击juice/技能vfx·纯表现·不改战斗态)(2026-07-26 抽出)
 var _review_console := ReviewConsole.new(self)   # 评审台控制台(REVIEW·dev-only: 面板+切龟/切技/切装/星级按钮)(2026-07-25 抽出)
@@ -2101,9 +2106,12 @@ func _advance_sim_accum(rd: float) -> void:
 ## Phase4: 纯模拟推进(决定战斗结果·可被累加器按固定步长跑 N 次/帧)。frozen/in_ts 由调用方在 sim 前捕获传入。
 func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 	_adf_ct = 0   # 每帧(每步)重置伤害调用计数(_damage._apply_damage_from 帧内爆炸=死亡链无限级联→自身截断防卡死)
+	_cur_eq_item = ""   # ★每帧重置"当前装备效果来源"(同 _adf_ct 的模式) —— 不清会让下一帧
+	                    #   非装备来源的护盾/治疗被误判成"盾装备给的"而白拿 20% 圣光护盾
 	_sd_tick()   # §SUDDEN 战场决胜(40s起治疗-50% + 每5s +25%增伤)
 	_synergy.tick(dt)   # ★类型羁绊的周期效果(批4-1: 法器潮涌 / 食物盛宴 / 盾圣光) —— 走 dt 不走墙钟
 	_swordsman.tick(dt)   # 剑士追打队列(以 5 倍攻速依次打出)
+	_shield_syn.tick(dt)  # 圣光护盾装备: 每 3 秒 55 点护盾
 	_trainer_sys._tick_trainer_attacks(dt) # 训龟大师普攻: 站定扔石头抛物线弹道(用户2026-07-23)
 	_trainer_sys._tick_hunt_taunt(dt)      # 猎龟令: 每帧刷新目标周围 400 码我方友军的嘲讽(圈随目标移动)
 	_trainer_sys._tick_tame_decay(dt)      # 驯服: 归顺者每秒损失 2% 最大生命

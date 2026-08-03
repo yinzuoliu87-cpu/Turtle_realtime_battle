@@ -347,6 +347,7 @@ func _dot_float_flyaway(u: Dictionary, bucket: String, st: Dictionary) -> void:
 ## 每帧: 常驻 DOT 数字跟随头顶 + 左右错开; 桶结束(或单位死)→弹射跳走。在 _process 里 _render._update_overlay 之后调。
 func _grant_shield(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 	if amt <= 0.0: return
+	_holy_convert(u, amt)      # 盾羁绊9档: 盾类装备给的护盾, 额外 20% 转成圣光护盾
 	amt *= battle._copy_fx_mult                          # 龟壳复制期: 护盾也按60%(封板"以60%效果释放")
 	amt *= 1.0 + float(u.get("shield_amp", 0.0))   # 护盾加成(受到方,所有来源)
 	var sb: float = u["shield"]
@@ -362,6 +363,24 @@ func _grant_shield(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 
 
 # silent=true: 吸血等高频被动回血不出治疗音 (防刷屏), 主动治疗/技能回血出音
+## 盾羁绊【圣光·强化】(9 档): 盾类装备为携带者提供护盾或治疗时, 额外给其 20% 的圣光护盾值。
+## ★为什么要 reentrancy 守卫: 这里自己也调 _grant_shield, 不拦就是无限递归。
+##   ★为什么用 _cur_eq_item 而不是给管线加"来源"参数: 护盾/治疗的调用点有几十处,
+##     加参数要全改一遍; 而装备效果的分发本来就在几个 for 循环里, 在那里标一下最省。
+var _holy_busy := false
+func _holy_convert(u: Dictionary, amt: float) -> void:
+	if _holy_busy or amt <= 0.0:
+		return
+	var iid: String = str(battle._cur_eq_item)
+	if iid == "" or battle.Phase2Types.type_of(iid) != "盾":
+		return                                  # 只认【盾类装备】给的
+	if int(battle._synergy.tier_for(u, "盾")) < 3:
+		return                                  # 9 档才有
+	_holy_busy = true
+	_grant_shield(u, amt * battle._shield_syn.T3_CONVERT)
+	_holy_busy = false
+
+
 func _heal(u: Dictionary, amt: float, silent: bool = false) -> float:   # 返回【实际】回血(满血=0·溢出转盾不计·用户2026-07-19"按实际治疗算")
 	if amt <= 0.0: return 0.0
 	amt *= battle._copy_fx_mult                        # 龟壳复制期: 治疗也按60%
@@ -377,6 +396,7 @@ func _heal(u: Dictionary, amt: float, silent: bool = false) -> float:   # 返回
 		var _ovf: float = amt - float(u["hp"] - hb)   # 请求治疗量 - 实际回复 = 溢出
 		if _ovf > 0.0 and u["shield"] < _osc:
 			u["shield"] = minf(_osc, u["shield"] + _ovf)   # 静默累积(吸血高频不刷飘字), 由携带者护盾条显示
+	_holy_convert(u, float(u["hp"] - hb))   # 盾羁绊9档: 盾类装备给的治疗, 额外 20% 转圣光护盾
 	battle._blood_rite_refresh(u)   # 剑【血祭】: 回血也要刷(血量涨回去攻击力要跌回去)
 	var _act: float = float(u["hp"] - hb)   # 实际回血(满血=0, 超出满血/转盾部分不计入绿字)
 	if _act > 0.0:                          # LoL式治疗累加器: 高频/多段/多源回血攒进累加, 短窗后合并成一个绿字(见_heal_flush)

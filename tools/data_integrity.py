@@ -29,7 +29,11 @@ chk('龟 img 全部存在', [p['id'] for p in pets if not os.path.exists('assets
 chk('被动图标文件存在', [k for k,v in picons.items() if str(v).endswith('.png') and not os.path.exists('assets/sprites/'+str(v))])
 
 print('\n=== 交叉引用 ===')
-eqids = {e['id'] for e in eq}
+# ★只对【上架的件】要求有类型/进评审表 —— 羁绊赠送的装备(shopAvailable=0, 如 p2eq_095 圣光护盾)
+#   既不进商店/私人池, 也【故意没有类型】(给它"盾"就会 送盾→盾数+1→档位涨→再送盾 无限循环)。
+SHOP_EQ = [e for e in eq if int(e.get('shopAvailable', 0)) == 1]
+GRANT_EQ = [e for e in eq if int(e.get('shopAvailable', 0)) != 1]
+eqids = {e['id'] for e in SHOP_EQ}
 chk('p2eq-types 键 == 装备id', sorted(set(types)^eqids))
 TYPESET = {'剑','奇械','食物','盾','药水','枪','弓箭','法器','灵物','遗物'}
 chk('p2eq-types 的值恰好落在这 10 个类型里(学派已删·护符/饰品已解散)', sorted(set(types.values()) - TYPESET))
@@ -96,7 +100,7 @@ else:
                 rows[c] = L
                 break
     drift = []
-    for e in eq:
+    for e in SHOP_EQ:          # ★只对账【上架件】: 羁绊赠送的装备不进评审表(它不是装备池的一部分)
         L = rows.get(e['id'])
         if L is None:
             drift.append('%s 不在评审表里' % e['id'])
@@ -105,7 +109,7 @@ else:
             v = str(e.get(field, '')).strip()
             if v and v not in L:
                 drift.append('%s %s 与 json 不一致' % (e['id'], label))
-    print('  [分母] 评审表 %d 行 / json %d 件' % (len(rows), len(eq)))
+    print('  [分母] 评审表 %d 行 / 上架 %d 件 (另有 %d 件羁绊赠送, 不进表)' % (len(rows), len(SHOP_EQ), len(GRANT_EQ)))
     chk('★装备评审表与 phase2-equipment.json 一致(它自称"当前权威状态")', sorted(drift)[:8])
 
 print('\n%s' % ('ALL OK — 数据完整性' if fail[0]==0 else 'FAILED: %d 项' % fail[0]))

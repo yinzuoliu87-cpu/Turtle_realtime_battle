@@ -11,8 +11,9 @@ const P2RT := preload("res://scripts/gamedata/equip_stats.gd")   # 2026-07-23: s
 const QUOTE := "\""
 var _fail := 0
 
-## 装备总件数。批3 分三个子批: 59 → 72(3a) → 84(3b) → 94(3c)。
-const WANT_EQUIP_N := 94
+## 装备总件数 = 94 件上架 + 1 件【羁绊赠送】(p2eq_095 圣光护盾, shopAvailable=0)。
+## 批3 分三个子批: 59 → 72(3a) → 84(3b) → 94(3c); 2026-08-03 盾羁绊赠送 +1 = 95。
+const WANT_EQUIP_N := 95
 
 func _ok(n: String, c: bool, d: String = "") -> void:
 	if c: print("  [PASS] ", n, ("  " + d) if d != "" else "")

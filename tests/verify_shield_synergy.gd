@@ -48,8 +48,11 @@ func _ready() -> void:
 		"一次 %.0f / 十次 %.0f" % [d_one, d_many])
 	_ok("★冲击波伤害 = 自身maxHp/HP_MULT×8%% = %.0f" % (2000.0 / 3.0 * 0.08),
 		absf(d_one - int(2000.0 / 3.0 * 0.08)) < 1.5, "实得 %.0f" % d_one)
-	_ok("★冲击波给自己等量护盾(护盾不除HP_MULT: 2000×8% = 160)",
-		absf(float(me["shield"]) - 160.0) < 1.0, "实得 %.0f" % float(me["shield"]))
+	# ★2026-08-03 用户改: 护盾 = 【冲击波伤害的 20%】, 不再是"等量最大生命百分比"。
+	#   原写法伤害除 HP_MULT、护盾不除 ⇒ 护盾是伤害的 3 倍, 而文案写"等量" —— 玩家看不出来。
+	#   现在两者同源, 文案与实装天然一致。
+	_ok("★冲击波护盾 = 伤害 × 20%% = %.0f" % (d_one * 0.2),
+		absf(float(me["shield"]) - float(int(d_one)) * 0.2) < 1.0, "实得 %.0f" % float(me["shield"]))
 	# 攒不满不放
 	foe["hp"] = 100000.0; me["_shield_rage"] = 0.0; me["shield"] = 0.0
 	s._shield_syn._rage(me, 3, 399.0)
@@ -75,20 +78,34 @@ func _ready() -> void:
 	foe["hp"] = 100000.0; me["_shield_rage"] = 0.0; me["shield"] = 0.0
 	s._shield_syn.on_damaged(me, foe, 400)
 	var full: float = 100000.0 - float(foe["hp"])
-	_ok("★完整路径: 一次 on_damaged(400) = 冲击波 53 + 反击 7 = 60",
-		absf(full - (d_one + 7.0)) < 1.5, "实得 %.0f (冲击波 %.0f + 反击 7)" % [full, d_one])
+	_ok("★完整路径: 一次 on_damaged(400) 只有冲击波(没装圣光护盾 ⇒ 无反击)",
+		absf(full - d_one) < 1.5, "实得 %.0f (冲击波 %.0f)" % [full, d_one])
 
 	# ── 反击: 有护盾才反, 顶档才有 ──
+	# ★反击现在来自【圣光护盾装备】, 不是档位: 没装就没有(用户 2026-08-03 重定)
 	foe["hp"] = 100000.0
 	me["shield"] = 500.0; me["_shield_rage"] = 0.0
 	s._shield_syn._riposte(me, foe)
-	var rip: float = 100000.0 - float(foe["hp"])
-	_ok("反击: 带3件盾 → 3×(1+0.5×3) = 7 真伤", absf(rip - 7.0) < 0.5, "实得 %.0f" % rip)
-	foe["hp"] = 100000.0
-	me["shield"] = 0.0
-	s._shield_syn._riposte(me, foe)
-	_ok("★对照: 没有护盾时【不反击】(圣光护盾存在时才反)",
+	_ok("★没装圣光护盾装备 → 就算有护盾也【不反击】",
 		absf(100000.0 - float(foe["hp"])) < 0.5, "敌掉 %.0f" % (100000.0 - float(foe["hp"])))
+	me["equips"] = [{"id": "p2eq_095", "star": 1}]     # 装上圣光护盾
+	foe["hp"] = 100000.0; me["shield"] = 500.0
+	s._shield_syn._riposte(me, foe)
+	var rip: float = 100000.0 - float(foe["hp"])
+	_ok("反击: 装了圣光护盾且有护盾 → 2 点真伤(固定, 不随件数放大)",
+		absf(rip - 2.0) < 0.5, "实得 %.0f" % rip)
+	foe["hp"] = 100000.0; me["shield"] = 0.0
+	s._shield_syn._riposte(me, foe)
+	_ok("★对照: 装了但当前没有护盾值 → 不反击(「圣光护盾存在时」)",
+		absf(100000.0 - float(foe["hp"])) < 0.5, "敌掉 %.0f" % (100000.0 - float(foe["hp"])))
+	# 圣光护盾装备的周期护盾
+	me["shield"] = 0.0
+	s._shield_syn._t_holy = 0.0
+	s._shield_syn.tick(3.1)
+	_ok("圣光护盾装备: 每 3 秒生成 55 点(顶档 +20%% ⇒ 66)",
+		absf(float(me["shield"]) - 66.0) < 1.0, "实得 %.0f" % float(me["shield"]))
+	# ★把盾装回去 —— 下面的【收殓】要最近的携带盾者, 清空了就找不到人。
+	me["equips"] = [{"id": "p2eq_018", "star": 1}, {"id": "p2eq_081", "star": 1}, {"id": "p2eq_082", "star": 1}]
 
 	# ── 收殓: 敌人死 → 最近的携带盾者得盾 ──
 	me["shield"] = 0.0
@@ -110,6 +127,23 @@ func _ready() -> void:
 	s._units.clear(); s.set_process(false)
 	await get_tree().process_frame
 	s.queue_free()
+	# ── 9档【圣光·强化】: 盾类装备给的护盾/治疗, 额外 20% 转圣光护盾 ──
+	me["shield"] = 0.0
+	s._cur_eq_item = "p2eq_016"          # 铁壁盾(盾类)
+	s._damage._grant_shield(me, 100.0)
+	_ok("9档【圣光·强化】: 盾类装备给 100 护盾 → 实得 120(额外 20%%)",
+		absf(float(me["shield"]) - 120.0) < 1.0, "实得 %.0f" % float(me["shield"]))
+	me["shield"] = 0.0
+	s._cur_eq_item = "p2eq_001"          # 锈蚀短剑(剑类)
+	s._damage._grant_shield(me, 100.0)
+	_ok("★对照: 【非盾类】装备给的护盾不转化(100 就是 100)",
+		absf(float(me["shield"]) - 100.0) < 1.0, "实得 %.0f" % float(me["shield"]))
+	me["shield"] = 0.0
+	s._cur_eq_item = ""                  # 非装备来源(技能/羁绊)
+	s._damage._grant_shield(me, 100.0)
+	_ok("★对照: 【非装备来源】的护盾不转化 —— _cur_eq_item 用完必须清",
+		absf(float(me["shield"]) - 100.0) < 1.0, "实得 %.0f" % float(me["shield"]))
+
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 盾羁绊三条主动" if _fail == 0 else "FAIL x%d" % _fail)

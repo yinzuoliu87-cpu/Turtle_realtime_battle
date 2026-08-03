@@ -203,13 +203,12 @@ func tick(delta: float) -> void:
 	if _by_side["left"].is_empty() and _by_side["right"].is_empty():
 		return
 	_t_pulse += delta
-	_t_light += delta
+	_t_light += delta   # (保留计时器: 未来若有别的 5 秒周期效果可复用)
 	if _t_pulse >= PULSE:
 		_t_pulse -= PULSE
 		_pulse()
 	if _t_light >= LIGHT:
 		_t_light -= LIGHT
-		_holy_light()
 
 
 ## 法器【潮涌】+ 食物【盛宴】：每 2.5 秒全队回复「已损失生命」的 N%。
@@ -231,21 +230,6 @@ func _pulse() -> void:
 			battle._damage._heal(u, lost * pct)
 
 
-## 盾【圣光】：每 5 秒为**携带盾的人**生成护盾，量随他身上的盾件数放大。
-func _holy_light() -> void:
-	for u in battle._units:
-		if not (u is Dictionary) or not u.get("alive", false):
-			continue
-		var tiers: Dictionary = _by_side.get(str(u.get("side", "left")), {})
-		if not tiers.has("盾"):
-			continue
-		var base: float = float(LIGHT_BASE[clampi(int(tiers["盾"]) - 1, 0, 2)])
-		if base <= 0.0:
-			continue
-		var n := 0
-		for e in u.get("equips", []):
-			if e is Dictionary and battle.Phase2Types.type_of(str(e.get("id", ""))) == "盾":
-				n += 1
-		if n <= 0:
-			continue
-		battle._damage._grant_shield(u, base * (1.0 + 0.4 * float(n)))
+## ★盾【圣光】已于 2026-08-03 从这里【移走】—— 用户重定为一件【羁绊赠送的装备】
+## （3 档送 1 件 / 6 档送 2 件，可自由装配、不占容量），实装在 shield_synergy_system.gd。
+## 原来那版是"档位直接给携带盾者护盾"，是我实施方案书时简化掉的，与原设计不符。

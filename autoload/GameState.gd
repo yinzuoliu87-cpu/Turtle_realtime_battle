@@ -516,6 +516,7 @@ var season_level: int = 1                             # 大轮等级 1-10 (每�
 #   这让存档不必和 meta_shop_offer 成对回滚, 也是选 D23 的第三条理由。
 var equip_pool: Dictionary = {}
 const _EquipPool := preload("res://scripts/gamedata/equip_pool.gd")
+const _P2T := preload("res://scripts/gamedata/phase2_types.gd")   # 类型映射(圣光护盾按盾件数发)
 var debug_level: int = 0                              # 调试器: >0 强制全体战斗单位等级(测试用, 正式版用外部快照); 0=用真实等级
 var season_xp: int = 0                                # 大轮等级当前经验 (满 xp_to_next(level) 升级)
 var chest_treasure_value: float = 0.0                 # 宝箱藏宝图·财宝值(随一大轮累积·用户2026-07-16)
@@ -528,18 +529,112 @@ var persistent_equipped: Dictionary = {}             # 持久 build {pet_key →
 # 单只 ≤ _P2.UNIT_EQUIP_CAP(3) 且 全队 6 只合计 ≤ _P2.team_equip_cap(赛季等级)。完全自由分配。
 # 规则定义与来龙去脉见 scripts/gamedata/phase2_config.gd 的「装备容量」段。
 
+# ══════════════════════════════════════════════════════════════════════
+#  ★羁绊赠送的装备【不占任何容量】(2026-08-03 · 盾羁绊 3/6 档送「圣光护盾」)
+#  · 不占全队 team_equip_cap, 也不占单只 UNIT_EQUIP_CAP
+#  · 不进商店、不进私人池(shopAvailable=0)、不参与三合一
+#  · 羁绊掉档就【收回】—— 它是羁绊的一部分, 不是你买来的东西
+#  ⇒ 所有"数装备件数"的地方都要跳过它, 漏一处就会出现"明明没满却装不上"。
+# ══════════════════════════════════════════════════════════════════════
+const SYNERGY_GRANT_IDS := ["p2eq_095"]        # 圣光护盾
+
+static func is_synergy_grant(item) -> bool:
+	return item is Dictionary and str((item as Dictionary).get("id", "")) in SYNERGY_GRANT_IDS
+
+
+## 一个装备数组里【占容量】的件数(跳过羁绊赠送的)。
+static func _cap_count(arr) -> int:
+	if not (arr is Array):
+		return 0
+	var n := 0
+	for it in (arr as Array):
+		if not is_synergy_grant(it):
+			n += 1
+	return n
+
+
 ## 全队(当前 3 统领 + dual_lineup 里的 3 小将)已装备总件数 —— 新规则的分母。
 ## ★只数【当前阵容上】的: persistent_equipped 里可能残留已不在队的老龟, 那些不占容量。
+## ★羁绊赠送的装备不计入(见上)。
 func team_equipped_count() -> int:
 	var n := 0
 	for pid in (season_leaders if season_leaders is Array else []):
-		n += (persistent_equipped.get(str(pid), []) as Array).size()
+		n += _cap_count(persistent_equipped.get(str(pid), []))
 	var dl: Dictionary = get_dual_lineup()
 	for lane in ["top", "bottom"]:
 		for u in (dl.get(lane, []) as Array):
 			if u is Dictionary and str((u as Dictionary).get("kind", "")) == "minion":
-				n += ((u as Dictionary).get("equips", []) as Array).size()
+				n += _cap_count((u as Dictionary).get("equips", []))
 	return n
+
+
+## 盾羁绊档位 → 该发几个圣光护盾(3档1个 / 6档2个 / 9档2个)。
+## ★数的是【当前阵容全队】的盾件数, 按装备 id 去重(与战斗侧同口径)。
+func shield_grant_count() -> int:
+	var seen: Dictionary = {}
+	var n := 0
+	var arrs: Array = []
+	for pid in (season_leaders if season_leaders is Array else []):
+		arrs.append(persistent_equipped.get(str(pid), []))
+	var dl: Dictionary = get_dual_lineup()
+	for lane in ["top", "bottom"]:
+		for u in (dl.get(lane, []) as Array):
+			if u is Dictionary:
+				arrs.append((u as Dictionary).get("equips", []))
+	arrs.append(persistent_bench)
+	for a in arrs:
+		if not (a is Array):
+			continue
+		for it in (a as Array):
+			if not (it is Dictionary):
+				continue
+			var iid := str((it as Dictionary).get("id", ""))
+			if seen.has(iid):
+				continue
+			seen[iid] = true
+			if _P2T.type_of(iid) == "盾":
+				n += 1
+	if n >= 6:
+		return 2
+	if n >= 3:
+		return 1
+	return 0
+
+
+## 按当前盾羁绊档位【补发 / 收回】圣光护盾。任何会改变盾件数的操作之后都要调。
+## ★收回时【装在龟身上的也要拿走】—— 掉档就该消失, 留着等于白嫖一件永久装备。
+func sync_synergy_grants() -> void:
+	var want: int = shield_grant_count()
+	var have: Array = []          # [[容器数组, 下标], …]
+	for pid in persistent_equipped.keys():
+		var arr: Array = persistent_equipped[pid]
+		for i in range(arr.size()):
+			if is_synergy_grant(arr[i]):
+				have.append([arr, i])
+	var dl: Dictionary = get_dual_lineup()
+	for lane in ["top", "bottom"]:
+		for u in (dl.get(lane, []) as Array):
+			if u is Dictionary and (u as Dictionary).get("equips") is Array:
+				var ea: Array = (u as Dictionary)["equips"]
+				for i in range(ea.size()):
+					if is_synergy_grant(ea[i]):
+						have.append([ea, i])
+	for i in range(persistent_bench.size()):
+		if is_synergy_grant(persistent_bench[i]):
+			have.append([persistent_bench, i])
+	if have.size() == want:
+		return
+	if have.size() < want:
+		for _i in range(want - have.size()):
+			persistent_bench.append({"id": "p2eq_095", "star": 1})
+	else:
+		# 多了就收回。★从后往前删, 否则删了前面的会让后面记录的下标全部错位。
+		have.reverse()
+		for k in range(have.size() - want):
+			var arr2: Array = have[k][0]
+			var idx: int = int(have[k][1])
+			if idx >= 0 and idx < arr2.size() and is_synergy_grant(arr2[idx]):
+				arr2.remove_at(idx)
 
 
 ## 本赛季等级下全队可装总数。

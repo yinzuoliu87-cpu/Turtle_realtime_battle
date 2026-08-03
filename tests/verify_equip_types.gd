@@ -53,6 +53,8 @@ const WANT_FINAL := {
 const GONE := ["护符", "饰品"]
 ## 批 1 不加装备, 件数仍是 59（批 3 会逐子批改成 71/82/94, 那时这条要跟着改 —— 方案书 R6 同款设计:
 ## 它逼你显式确认件数变了, 而不是让件数悄悄漂）
+## p2eq-types.json 只映射【上架的 94 件】—— 羁绊赠送的圣光护盾(p2eq_095)【故意没有类型】:
+## 给它"盾"就会【送盾 → 盾件数+1 → 档位涨 → 再送盾】无限循环。
 const WANT_ITEMS := 94
 
 var _n := 0
@@ -103,9 +105,11 @@ func _ready() -> void:
 	_ok("② ★没有指向已删类型的装备(9 件重新归类的判据)", orphan.is_empty(),
 		"孤儿 %d 件: %s" % [orphan.size(), str(orphan.slice(0, 6))])
 	# 装备表里的每件都要有类型（反过来: json 里不能有表里没有的 id）
+	# ★只对【上架】的件要求"必须有类型" —— 羁绊赠送的圣光护盾(p2eq_095)故意没有类型
+	#   (给它"盾"会造成 送盾→盾数+1→档位涨→再送盾 的无限循环)。
 	var eq_ids: Array = []
 	for e in DataRegistry.phase2_equipment:
-		if e is Dictionary:
+		if e is Dictionary and int((e as Dictionary).get("shopAvailable", 0)) == 1:
 			eq_ids.append(str(e.get("id", "")))
 	var missing: Array = []
 	for iid in eq_ids:
@@ -115,7 +119,7 @@ func _ready() -> void:
 	for iid in map:
 		if not (str(iid) in eq_ids):
 			extra.append(str(iid))
-	_ok("② 装备表 %d 件全都有类型 · json 里也没有多余 id" % eq_ids.size(),
+	_ok("② 上架 %d 件全都有类型 · json 里也没有多余 id" % eq_ids.size(),
 		missing.is_empty() and extra.is_empty(),
 		"缺 %s / 多 %s" % [str(missing), str(extra)])
 

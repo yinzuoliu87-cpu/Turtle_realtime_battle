@@ -25,9 +25,10 @@ extends RefCounted
 ##
 ## ★冲击波伤害口径：`maxHp / HP_MULT × pct`（**要除 HP_MULT**）。
 ##   先例是哑铃 `equip_system.gd:428`，也是 CLAUDE.md §3.1 说的"装备百分比回收"。
-##   ⚠ 护盾**不除** —— 护盾和生命在同一个刻度上，除了就只有名义值的三分之一。
-##   （所以"造成 X% 真伤并获得等量护盾"这句话里的"等量"，在代码里**不是同一个数**。
-##     这是刻度差造成的，不是笔误；照字面写一样的表达式反而会错。）
+##   ★护盾不再按最大生命算 —— 2026-08-03 用户改成【冲击波伤害的 20%】。
+##   原写法「伤害 = maxHp/HP_MULT×pct，护盾 = maxHp×pct」差了整整 3 倍，
+##   而文案写的是"等量" ⇒ 玩家看到的和实际拿到的对不上，且**看不出来**（刻度差，不是笔误）。
+##   按伤害算之后文案与实装天然一致。
 
 var battle
 
@@ -35,14 +36,27 @@ var battle
 const WAVE_PCT := [0.04, 0.06, 0.08]
 ## 累计受到多少伤害放一次（用户 2026-08-03 定：400，固定值不随血量缩放）
 const RAGE_THRESHOLD := 400.0
-## 反击：圣光护盾存在时，受到每段伤害对来源造成 `BASE × (1 + PER × 身上盾件数)` 真伤
-const RIPOSTE_BASE := 3.0
-const RIPOSTE_PER := 0.5
+## 冲击波转护盾的比例（用户 2026-08-03 定：造成伤害的 20%）
+const SHIELD_FROM_DMG := 0.20
+## ★★2026-08-03 用户重定：**圣光护盾是一件【羁绊赠送的装备】**，不是档位上的被动。
+##   · 3 档送 1 件、6 档送 2 件（`GameState.shield_grant_count`）
+##   · 在背包里自由装配，**不占全队容量、也不占单只 3 件上限**（`GameState._cap_count` 跳过它）
+##   · 属性 **+250 最大生命**
+##   · **每 3 秒**为携带者生成 **55** 点圣光护盾值
+##   · 圣光护盾存在时，**反击敌人的每段伤害造成 2 点真实伤害**
+##   · **羁绊掉档就收回**（连装在龟身上的一起拿走）—— 它是羁绊的一部分，不是买来的
+##   ⚠ 它**故意不给类型**：给"盾"就会「送盾 → 盾件数 +1 → 档位涨 → 再送盾」无限循环。
+const HOLY_ITEM := "p2eq_095"
+const HOLY_PERIOD := 3.0        # 每 3 秒
+const HOLY_AMOUNT := 55.0       # 生成 55 点
+const RIPOSTE_FLAT := 2.0       # 反击 2 点真伤（固定，不随件数放大）
+## 9 档：盾在提供护盾/治疗时额外转成圣光护盾的比例 + 所有圣盾值加成
+const T3_CONVERT := 0.20
+const T3_SHIELD_BONUS := 0.20
 ## 收殓：敌方阵亡 → 最近的携带盾者获得该单位 N% 最大生命的护盾
 const REAP_PCT := 0.30
-## 反击/收殓只在顶档（档 3）生效
-const RIPOSTE_TIER := 3
-const REAP_TIER := 3
+## 收殓（敌亡给盾）从 6 档起（用户 2026-08-03：「6档时获得第二个圣光护盾且有敌人死亡给盾」）
+const REAP_TIER := 2
 
 
 func _init(b) -> void:
@@ -58,8 +72,7 @@ func on_damaged(u: Dictionary, src, dmg: int) -> void:
 	if tier <= 0:
 		return
 	_rage(u, tier, float(dmg))
-	if tier >= RIPOSTE_TIER:
-		_riposte(u, src)
+	_riposte(u, src)          # ★反击的条件是"身上有圣光护盾【装备】且当前有护盾值", 与档位无关
 
 
 ## 怒气：累计伤害到阈值 → 冲击波。
@@ -81,12 +94,18 @@ func _shockwave(u: Dictionary, tier: int) -> void:
 	# ★选最近的敌人 —— 确定性选取, 不用随机。
 	#   同 §5.7 炮台/§5.8 猎物的规矩: 确定性利于门禁与确定性回放, 也避免"目标闪来闪去"的观感。
 	var t = battle._targeting._nearest_enemy(u)
-	if t is Dictionary and (t as Dictionary).get("alive", false):
-		# ★除 HP_MULT: "自身 X% 最大生命 → 打给别人的伤害"(先例 equip_system.gd:428 哑铃)
-		var dmg: int = maxi(1, int(float(u.get("maxHp", 0.0)) / battle.HP_MULT * pct))
-		battle._damage._apply_damage_from(u, t, dmg, Color("#ffd93d"), 0.0, true)   # raw=true → 真实伤害
-	# ★护盾【不除】HP_MULT: 护盾与生命同刻度
-	battle._damage._grant_shield(u, float(u.get("maxHp", 0.0)) * pct)
+	if not (t is Dictionary) or not (t as Dictionary).get("alive", false):
+		return                    # ★没打出去就没有护盾 —— 护盾现在是【伤害的副产品】(见下)
+	# ★除 HP_MULT: "自身 X% 最大生命 → 打给别人的伤害"(先例 equip_system.gd:428 哑铃)
+	var dmg: int = maxi(1, int(float(u.get("maxHp", 0.0)) / battle.HP_MULT * pct))
+	battle._damage._apply_damage_from(u, t, dmg, Color("#ffd93d"), 0.0, true)   # raw=true → 真实伤害
+	# ★★2026-08-03 用户改: 护盾从「等量最大生命百分比」改成【冲击波伤害的 20%】。
+	#   原写法 `maxHp × pct` 与伤害 `maxHp / HP_MULT × pct` 差了整整 HP_MULT(=3) 倍 ——
+	#   文案说"等量"、实际护盾是伤害的 3 倍, 而玩家【完全看不出来】(刻度差造成的, 不是笔误)。
+	#   改成按伤害算之后, 文案与实装天然一致, 也不再有那个隐形的 3 倍。
+	#   ⚠ 取的是【算出来的伤害值】不是"实际扣掉的血": 目标带盾/免伤时实扣会更少,
+	#     但那时护盾也跟着缩水会很难解释("我打满了却没盾")。按名义值走, 可预期。
+	battle._damage._grant_shield(u, float(dmg) * SHIELD_FROM_DMG)
 
 
 ## 反击：圣光护盾存在时，对伤害来源打真伤。
@@ -99,14 +118,42 @@ func _shockwave(u: Dictionary, tier: int) -> void:
 func _riposte(u: Dictionary, src) -> void:
 	if not (src is Dictionary) or not (src as Dictionary).get("alive", false):
 		return
+	if holy_count(u) <= 0:
+		return                                      # 反击来自【圣光护盾装备】, 没装就没有
 	if float(u.get("shield", 0.0)) <= 0.0:
 		return                                      # 「圣光护盾存在时」—— 没盾不反击
+	battle._damage._apply_damage_from(u, src, int(RIPOSTE_FLAT), Color("#ffe9a8"), 0.0, true)
+
+
+## 身上装了几件【圣光护盾】装备
+func holy_count(u: Dictionary) -> int:
 	var n := 0
 	for e in u.get("equips", []):
-		if e is Dictionary and battle.Phase2Types.type_of(str(e.get("id", ""))) == "盾":
+		if e is Dictionary and str((e as Dictionary).get("id", "")) == HOLY_ITEM:
 			n += 1
-	var dmg: int = maxi(1, int(RIPOSTE_BASE * (1.0 + RIPOSTE_PER * float(n))))
-	battle._damage._apply_damage_from(u, src, dmg, Color("#ffe9a8"), 0.0, true)
+	return n
+
+
+## 圣光护盾装备的周期护盾（每 3 秒 55 点 × 件数）。
+## 9 档时所有圣盾值 +20%（用户 2026-08-03）。
+var _t_holy := 0.0
+func tick(delta: float) -> void:
+	_t_holy += delta
+	if _t_holy < HOLY_PERIOD:
+		return
+	_t_holy -= HOLY_PERIOD
+	for u in battle._units:
+		if not (u is Dictionary) or not u.get("alive", false):
+			continue
+		var n: int = holy_count(u)
+		if n <= 0:
+			continue
+		battle._damage._grant_shield(u, HOLY_AMOUNT * float(n) * holy_bonus(u))
+
+
+## 9 档「圣盾值 +20%」
+func holy_bonus(u: Dictionary) -> float:
+	return 1.0 + (T3_SHIELD_BONUS if int(battle._synergy.tier_for(u, "盾")) >= 3 else 0.0)
 
 
 ## 收殓：敌方单位阵亡 → 最近的携带盾者获得该单位 30% 最大生命的护盾。

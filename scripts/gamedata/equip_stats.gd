@@ -203,4 +203,5 @@ const STATS := {
 	"p2eq_092": [{"atk": 12, "_lifestealPct": 5}, {"atk": 30, "_lifestealPct": 10}, {"atk": 66, "_lifestealPct": 17}],   # 遗物 · 2费 · 沉船罗盘
 	"p2eq_093": [{"def": 6, "_lifestealPct": 5}, {"def": 14, "_lifestealPct": 10}, {"def": 30, "_lifestealPct": 17}],   # 遗物 · 2费 · 祭坛残石
 	"p2eq_094": [{"atk": 25, "hp": 120, "_lifestealPct": 9}, {"atk": 62, "hp": 300, "_lifestealPct": 18}, {"atk": 140, "hp": 700, "_lifestealPct": 30}],   # 遗物 · 4费 · 觉醒之核
+	"p2eq_095": [{"hp": 250}, {"hp": 250}, {"hp": 250}],   # 圣光护盾(盾羁绊3档赠送·不占容量·三星同值: 它不参与合成)
 }

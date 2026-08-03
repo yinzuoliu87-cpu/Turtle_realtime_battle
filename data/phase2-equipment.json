@@ -1032,5 +1032,16 @@
   "effectDesc1": "贴着它的时候，心跳会和它同步。",
   "effectDesc3": "",
   "img": ""
+ },
+ {
+  "id": "p2eq_095",
+  "name": "圣光护盾",
+  "cost": 0,
+  "baseStats1": "+生命250",
+  "shopAvailable": 0,
+  "emoji": "✨",
+  "effectDesc1": "每 3 秒为携带者生成 55 点圣光护盾值; 圣光护盾存在时, 反击敌人的每段伤害造成 2 点真实伤害。",
+  "effectDesc3": "",
+  "img": ""
  }
 ]

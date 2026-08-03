@@ -16,6 +16,7 @@ func _unequip_at(pet_id: String, cell_idx: int) -> void:
 	eqs.remove_at(cell_idx)
 	GameState.persistent_equipped[pet_id] = eqs
 	GameState.auto_merge_all()
+	GameState.sync_synergy_grants()   # 盾件数可能变了 → 补发/收回圣光护盾
 	GameState.save()
 	host._rebuild()
 
@@ -34,6 +35,7 @@ func _unequip_minion_at(lane: String, idx: int, cell_idx: int) -> void:
 	a[lane][idx] = u
 	GameState.dual_lineup = a
 	GameState.auto_merge_all()
+	GameState.sync_synergy_grants()   # 盾件数可能变了 → 补发/收回圣光护盾
 	GameState.save()
 	host._rebuild()
 
@@ -51,7 +53,9 @@ func _equip_to(pet_id: String, bench_idx: int) -> void:
 	var eqs: Array = GameState.persistent_equipped.get(pet_id, [])
 	# ★装备容量统一规则(2026-07-27): 单只≤3 且 全队合计≤team_equip_cap(赛季等级)。两条都要过。
 	#   两种"装不了"的原因必须分别告诉玩家 —— 否则只会觉得"点了没反应"。
-	if eqs.size() >= host.P2.UNIT_EQUIP_CAP:
+	# ★羁绊赠送的装备(圣光护盾)不占单只上限 —— 数的时候要跳过它,
+	#   漏了这一处就会出现"明明只装了 2 件却说已装满"。
+	if GameState._cap_count(eqs) >= host.P2.UNIT_EQUIP_CAP:
 		host._sel_bench = -1
 		host._toast("这只已装满 %d 件（单只上限）" % host.P2.UNIT_EQUIP_CAP)
 		host._rebuild(); return
@@ -65,6 +69,7 @@ func _equip_to(pet_id: String, bench_idx: int) -> void:
 	GameState.persistent_equipped[pet_id] = eqs
 	host._sel_bench = -1
 	GameState.auto_merge_all()   # 装上后若凑够3件(背包+龟身)自动合星
+	GameState.sync_synergy_grants()   # 盾件数可能变了 → 补发/收回圣光护盾
 	GameState.save()
 	host._rebuild()
 
@@ -87,7 +92,9 @@ func _equip_minion(lane: String, idx: int, bench_idx: int) -> void:
 		host._sel_bench = -1; host._rebuild(); return
 	var eqs: Array = u.get("equips", []) if u.get("equips", null) is Array else []
 	# 小将与统领【同一套容量规则】(用户 2026-07-27:「单只统领或小将的上限固定为3」)
-	if eqs.size() >= host.P2.UNIT_EQUIP_CAP:
+	# ★羁绊赠送的装备(圣光护盾)不占单只上限 —— 数的时候要跳过它,
+	#   漏了这一处就会出现"明明只装了 2 件却说已装满"。
+	if GameState._cap_count(eqs) >= host.P2.UNIT_EQUIP_CAP:
 		host._sel_bench = -1
 		host._toast("这个小将已装满 %d 件（单只上限）" % host.P2.UNIT_EQUIP_CAP)
 		host._rebuild(); return
@@ -102,6 +109,7 @@ func _equip_minion(lane: String, idx: int, bench_idx: int) -> void:
 	GameState.dual_lineup = a
 	host._sel_bench = -1
 	GameState.auto_merge_all()   # 整理背包(小将装的不进合成池, 但背包其余照常3合1)
+	GameState.sync_synergy_grants()   # 盾件数可能变了 → 补发/收回圣光护盾
 	GameState.save()
 	host._rebuild()
 
@@ -122,6 +130,7 @@ func _sell_selected() -> void:
 	GameState.pool_give_back(str(_it.get("id", "")), int(_it.get("star", 1)))
 	GameState.persistent_bench.remove_at(host._sel_bench)
 	host._sel_bench = -1
+	GameState.sync_synergy_grants()   # 盾件数可能变了 → 补发/收回圣光护盾
 	GameState.save()
 	host._rebuild()
 

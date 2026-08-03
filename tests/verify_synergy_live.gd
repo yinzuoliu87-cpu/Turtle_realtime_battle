@@ -95,15 +95,8 @@ func _ready() -> void:
 	_ok("⑤ 法器潮涌: 掉血后过一个节拍会回血(回 已损失的 5%%)",
 		float(u5["hp"]) > hp_before + 1.0,
 		"%.0f → %.0f (已损失 %.0f)" % [hp_before, float(u5["hp"]), float(u5["maxHp"]) - hp_before])
-	# 盾圣光: 档2(6 件) → 基数 50 ×(1+0.4×身上件数)
-	var shields9: Array = _ids_of_type("盾", 9)
-	var u6: Dictionary = _run([_mk("left", shields9.slice(0, 3)), _mk("left", shields9.slice(3, 6))])[0]
-	var sh_before: float = float(u6.get("shield", 0.0))
-	_s._synergy._t_light = 0.0
-	_s._synergy.tick(5.1)
-	_ok("⑤ 盾圣光: 过一个 5 秒节拍后携带者获得护盾(基数 50 × (1+0.4×3) = 110)",
-		float(u6.get("shield", 0.0)) > sh_before + 1.0,
-		"%.0f → %.0f" % [sh_before, float(u6.get("shield", 0.0))])
+	# ★盾【圣光】已于 2026-08-03 从档位被动改成一件【羁绊赠送的装备】(3档送1件/6档送2件),
+	#   实装移到 shield_synergy_system.gd, 由 verify_shield_synergy 守着 —— 这里不再验。
 
 	# ── ⑥ 计数域按【全队】且两方各算各的 ──────────────────────
 	# 我方 3 件剑(激活) / 敌方 1 件剑(不激活) ⇒ 敌方那只一点不加。
