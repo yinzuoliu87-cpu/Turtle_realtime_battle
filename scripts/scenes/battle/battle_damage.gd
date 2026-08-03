@@ -117,6 +117,16 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 			if moved >= 1.0:
 				d -= moved
 				battle._redirect_damage(carrier, moved, ("true" if raw else battle._last_dmg_type))   # 按友军所受的同一类型落到携带者+跳数字(用户2026-07-19)
+	# 枪羁绊【金弹】: 这一发是金弹时, 额外补一段真实伤害(60/80/100% × 本段伤害)。
+	# ★真伤直接进扣血, 不走护甲/魔抗 —— 与原规格"额外造成 N% 的真实伤害"一致。
+	# ⚠ 只在 _apply_damage_from(普攻/技能路)加 —— 金弹是枪打出去的子弹, 不走 DoT 那条路。
+	var _gold: float = float(src.get("_golden_pct", 0.0)) if src is Dictionary else 0.0
+	# 枪羁绊【火控】(第三座炮台): 带枪者额外造成 (10 + 身上枪件数×10)% 真实伤害。
+	# ★与金弹【叠加】—— 一发金弹 + 火控 = 两段额外真伤, 这是原设计的意思(两条来源不同)。
+	if src is Dictionary:
+		_gold += float(src.get("_fire_ctrl", 0.0))
+	if _gold > 0.0 and not raw:
+		d += float(dmg) * _gold
 	var shield_before: float = u["shield"]
 	# 护盾吸收【全类型】伤害(物理/法术/真实): 1:1 回合制 damage.gd「真伤(true)也走护盾」+ 用户2026-07-11「真伤/反伤真伤要被盾档」。
 	#   真伤只无视护甲/魔抗/减伤(见上方 not raw 分支), 但护盾照吸。唯一穿盾=墨迹(_ink_true·在护盾后单独加·由线条被动设计)。

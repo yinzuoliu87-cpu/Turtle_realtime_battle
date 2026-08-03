@@ -47,7 +47,7 @@ const FIRST_HI := 1.70
 ##     与 verify_synergy_text(文案==实装) 两条门禁焊着, 只是不卡"合不合理"这一条。
 ## 弓箭: 用户明确【不给暴伤】⇒ 属性档 ×1.14/1.24/1.33, 远低于带宽。
 ##   这是有意的 —— 弓箭的强度压在三条机制(处决/腐蚀穿透/腐蚀叠层)上, 不在属性。
-const USER_REVIEWED := ["剑", "盾", "弓箭"]
+const USER_REVIEWED := ["剑", "盾", "弓箭", "枪"]
 ## 不换算成倍率的（依赖敌方属性），只卡绝对上限
 const ABS_CAP := {"armorPen": 40.0, "magicPen": 50.0, "_lifestealPct": 35.0, "_maxEnergy": 70.0}
 
@@ -115,6 +115,10 @@ func _ready() -> void:
 						# 等效生命 = 基础承伤 ÷ 加成后承伤
 						mult *= DamageMath.resist_multiplier(BASE_RES) / DamageMath.resist_multiplier(BASE_RES + total)
 						notes.append("%s+%.0f" % [k, total])
+					"_aspdPct":
+						# 攻速是【干净的 DPS 乘数】: atk_cd 直接除以 aspd_perm
+						mult *= 1.0 + total / 100.0
+						notes.append("攻速+%.0f%%" % total)
 					"dodgePct":
 						# 闪避的等效生命 = 1/(1−闪避)，且被 DODGE_CAP 钳在 0.75
 						var dg: float = minf(total / 100.0, 0.75)

@@ -215,7 +215,7 @@ func _eq_crossbow_volley(u: Dictionary, si: int) -> void:   # 连发弩049: 每8
 		var lost49: float = clampf((1.0 - ft49["hp"] / ft49["maxHp"]) / 0.3, 0.0, 1.0)
 		battle._muzzle_flash(u["pos"], dir49, Color("#d8f0a8"))
 		battle._spawn_eq_bolt(u, ft49, battle._atk_dmg(u, lerpf(0.8, 1.3, lost49), ft49), "res://assets/sprites/vfx/crossbow-bolt.png", Color("#eaffd0"))
-	battle._queue_shots([1, 2, 3][si], 0.12, fire49, u)
+	battle._queue_shots([1, 2, 3][si], 0.12, fire49, u, "p2eq_049")
 
 func _eq_gatling_burst(u: Dictionary, si: int) -> void:   # 幽灵加特林050: 每8秒连打20/30/60发随机分布+永久减甲(单目标累计上限)
 	if not u.get("alive", false): return
@@ -233,7 +233,7 @@ func _eq_gatling_burst(u: Dictionary, si: int) -> void:   # 幽灵加特林050: 
 		if g_acc < g_cap:
 			var g_dec: float = minf(g_shred, g_cap - g_acc)
 			o50["base_def"] = maxf(0.0, o50["base_def"] - g_dec); o50["gatling_shred_acc"] = g_acc + g_dec; battle._recalc_stats(o50)
-	battle._queue_shots([20, 30, 60][si], 0.03, fire50, u)
+	battle._queue_shots([20, 30, 60][si], 0.03, fire50, u, "p2eq_050")
 
 func _eq_laser_pistol(u: Dictionary, si: int) -> void:   # 激光手枪051: 每8秒穿透红激光, 首敌满伤+流血, 身后敌半伤半流血
 	if not u.get("alive", false): return
@@ -296,7 +296,7 @@ func _eq_pistol_volley(u: Dictionary, si: int) -> void:   # 黄铜手铳048: 每
 		if ft48 == null: return
 		battle._muzzle_flash(u["pos"], dir48, Color("#ffe08a"))
 		battle._spawn_eq_bolt(u, ft48, battle._atk_dmg(u, mul48, ft48), "res://assets/sprites/vfx/bullet.png", Color("#fff0b0"), false, 0, 0.026)
-	battle._queue_shots([4, 5, 6][si], 0.08, fire48, u)
+	battle._queue_shots([4, 5, 6][si], 0.08, fire48, u, "p2eq_048")
 
 func _eq_ripple_tick(u: Dictionary, si: int) -> void:
 	var low042 = null; var lv042 := INF

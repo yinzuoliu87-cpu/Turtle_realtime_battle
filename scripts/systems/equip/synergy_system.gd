@@ -190,6 +190,10 @@ func _add(u: Dictionary, k: String, v: float) -> void:
 			# ★装备/羁绊给的 hp 已是最终值, 不乘 HP_MULT(CLAUDE.md §3.1)
 			u["maxHp"] = float(u.get("maxHp", 0.0)) + v
 			u["hp"] = float(u.get("hp", 0.0)) + v
+		"_aspdPct":
+			# 枪。★aspd_perm 是【加算】通道(D16: 多件叠加统一用加) —— 与 038 信号放大器 /
+			#   056 飞镖 同一个字段, 用乘会把那两件的口径也带偏。
+			u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + v / 100.0
 		"dodgePct":
 			# 灵物。★上限【不在这里钳】—— DODGE_CAP(0.75) 钳在 _recalc_stats 的唯一写入点,
 			#   两处各钳一次必然漂移(v0.18.9 修"带 2 件 3★ 幽灵墨鱼永远打不中"时定的规矩)。

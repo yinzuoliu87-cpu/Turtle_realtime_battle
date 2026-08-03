@@ -698,6 +698,7 @@ var _synergy := SynergySystem.new(self)   # ★类型羁绊【战斗侧实装】
 var _swordsman := SwordsmanSystem.new(self)   # 剑羁绊【剑士】追打(2026-08-03·取代原设计的"回响")
 var _shield_syn := ShieldSynergySystem.new(self)   # 盾羁绊【怒气冲击波/反击/收殓】(2026-08-03)
 var _bow_syn := BowSynergySystem.new(self)   # 弓箭羁绊【处决/腐蚀穿透/腐蚀叠层】(2026-08-03)
+var _gun_syn := GunSynergySystem.new(self)   # 枪羁绊【三座炮台 + 火控】(2026-08-03)
 ## ★"当前正在执行哪件装备的效果" —— 盾羁绊 9 档要判断"这次护盾/治疗是不是盾类装备给的"。
 ##   护盾/治疗管线本来【不记录来源】, 给每个调用点加参数要碰几十处;
 ##   而装备效果的分发本来就在几个 `for e in u["equips"]` 循环里, 在那里设一下最省。
@@ -2114,6 +2115,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 	_swordsman.tick(dt)   # 剑士追打队列(以 5 倍攻速依次打出)
 	_shield_syn.tick(dt)  # 圣光护盾装备: 每 3 秒 55 点护盾
 	_bow_syn.tick(dt)     # 弓箭顶档【腐蚀叠层】: 每 2.5 秒给全场敌人 +1 层
+	_gun_syn.tick(dt)     # 枪羁绊: 第一座炮台轰击 / 第二座能量循环(每 2.5 秒)
 	_trainer_sys._tick_trainer_attacks(dt) # 训龟大师普攻: 站定扔石头抛物线弹道(用户2026-07-23)
 	_trainer_sys._tick_hunt_taunt(dt)      # 猎龟令: 每帧刷新目标周围 400 码我方友军的嘲讽(圈随目标移动)
 	_trainer_sys._tick_tame_decay(dt)      # 驯服: 归顺者每秒损失 2% 最大生命
@@ -4328,9 +4330,40 @@ func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   #
 		tw.tween_property(bear, "modulate:a", 0.0, 0.2)
 		tw.tween_callback(bear.queue_free)
 
-func _queue_shots(count: int, interval: float, fn: Callable, src = null) -> void:
+## ★2026-08-03 加了 `gun_id` —— 枪羁绊【金弹】挂在这里。
+##   五把枪(黄铜手铳/激光手枪/加特林/狙击/左轮)的齐射【共用这一个出口】,
+##   所以金弹只需要在这里数一次, 不用去改五套各不相同的开火逻辑。
+##   金弹规格(类型原生): 每把枪【射满 4/3/2 发】额外射出一发, 效果与原子弹完全相同
+##   (伤害/流血/减甲/击杀连锁全继承), 并额外造成 60/80/100% 真实伤害; 金弹本身不计入计数。
+##   ⇒ 实现: 复用同一个 fn(所以"效果完全相同"是天然的), 期间把 _golden_pct 标在单位上,
+##     伤害管线读它加一段真伤。★不递归: 金弹那一发不再累加计数(下面 _gun_shot_ct 只在正常发数)。
+func _queue_shots(count: int, interval: float, fn: Callable, src = null, gun_id: String = "") -> void:
+	var per := 0
+	var gpct := 0.0
+	if gun_id != "" and src is Dictionary:
+		var tier: int = int(_synergy.tier_for(src, "枪"))
+		if tier > 0:
+			per = [4, 3, 2][clampi(tier - 1, 0, 2)]
+			gpct = [0.60, 0.80, 1.00][clampi(tier - 1, 0, 2)]
+	if not (src is Dictionary) or not src.has("_gun_shot_ct"):
+		if src is Dictionary:
+			src["_gun_shot_ct"] = {}
 	for k in range(count):
 		_pending_shots.append({"delay": float(k) * interval, "fn": fn, "src": src})
+		if per <= 0:
+			continue
+		var ct: Dictionary = src["_gun_shot_ct"]
+		ct[gun_id] = int(ct.get(gun_id, 0)) + 1
+		if int(ct[gun_id]) < per:
+			continue
+		ct[gun_id] = 0
+		# 金弹紧跟在那一发之后(半个间隔), 复用同一个 fn ⇒ 效果完全继承
+		var gp := gpct
+		_pending_shots.append({"delay": float(k) * interval + interval * 0.5, "src": src,
+			"fn": func() -> void:
+				src["_golden_pct"] = gp
+				fn.call()
+				src["_golden_pct"] = 0.0})
 
 # 枪口闪: 在 pos2d 沿 dir 前方一点爆一小簇火光(胸口高度), 表现开火
 func _muzzle_flash(pos2d: Vector2, dir: Vector2, col: Color) -> void:
