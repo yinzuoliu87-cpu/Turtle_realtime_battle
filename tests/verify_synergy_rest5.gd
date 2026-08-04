@@ -104,6 +104,27 @@ func _ready() -> void:
 		"%.0f → %.0f / %.0f" % [atk_b, float(pb[0]["base_atk"]), float(pb[1]["base_atk"])])
 	_ok("★档1 没有战利品(HARVEST_ATK[0]=0)", _potion_harvest_tier1(po))
 
+	# ── ★战利品【以场重置】(用户 2026-08-04:「改」) ──────────────
+	# 和食物成长同一件事: 只写单位字典的话每换一路都打回原形。
+	# 这里【真的模拟一次换路】: 丢掉旧字典、造一批全新的同名单位, 再看攻击力在不在。
+	_s._potion_syn.reset_match()
+	var hv := _run([_mk("left", po.slice(0, 3)), _mk("left", po.slice(3, 6)), _mk("right", [])])
+	_s._potion_syn._t_mark = 0.0
+	_s._potion_syn.tick(2.6)
+	_s._potion_syn.on_death(hv[2])                 # 杀 1 只猎物 → 全队 +5
+	_ok("★换路前: 上路杀 1 猎物 → +5 攻", absf(float(hv[0]["base_atk"]) - 105.0) < 0.01,
+		"base_atk=%.0f" % float(hv[0]["base_atk"]))
+	var hv2 := _run([_mk("left", po.slice(0, 3)), _mk("left", po.slice(3, 6))])
+	var hb_fresh: float = float(hv2[0]["base_atk"])
+	_s._potion_syn.restore()
+	_ok("★换路后: 上一路攒的 +5 真的重放回来了(以场重置)",
+		absf(float(hv2[0]["base_atk"]) - hb_fresh - 5.0) < 0.01,
+		"%.0f → %.0f" % [hb_fresh, float(hv2[0]["base_atk"])])
+	_s._potion_syn.restore()
+	_ok("★同一路里 restore 调两次不叠", absf(float(hv2[0]["base_atk"]) - hb_fresh - 5.0) < 0.01,
+		"base_atk=%.0f" % float(hv2[0]["base_atk"]))
+	_ok("★整场结束 reset_match() 后清零", _harvest_reset_clears(po))
+
 	# 斩首: 顶档(9 件) 猎物 <20% 血 → 处决
 	var pc := _run([_mk("left", po.slice(0, 3)), _mk("left", po.slice(3, 6)),
 		_mk("left", po.slice(6, 9)), _mk("right", [])])
@@ -363,6 +384,28 @@ func _ready() -> void:
 		absf(float(r2[1].get("damage_amp", 0.0)) - 0.15) < 0.0001,
 		"damage_amp=%.4f" % float(r2[1].get("damage_amp", 0.0)))
 
+	# ── ★远古之力【以场重置】(用户 2026-08-04:「改」) ────────────
+	_s._relic_syn.reset_match()
+	var an := _run([_mk("left", re.slice(0, 3)), _mk("left", re.slice(3, 5))])
+	_s._relic_syn.apply_all()
+	for _k in range(3):
+		_s._relic_syn._t_acc = 0.0
+		_s._relic_syn.tick(2.6)                    # 档2 每跳 +1% → 攒到 3%
+	_ok("★换路前: 上路攒了 3% 增伤", absf(float(an[0]["_ancient"]) - 0.03) < 0.0001,
+		"_ancient=%.4f" % float(an[0]["_ancient"]))
+	var an2 := _run([_mk("left", re.slice(0, 3)), _mk("left", re.slice(3, 5))])
+	_s._relic_syn.apply_all()
+	var da_fresh: float = float(an2[0].get("damage_amp", 0.0))
+	_s._relic_syn.restore()
+	_ok("★换路后: 上一路攒的 3% 增伤真的重放回来了",
+		absf(float(an2[0].get("damage_amp", 0.0)) - da_fresh - 0.03) < 0.0001,
+		"%.4f → %.4f" % [da_fresh, float(an2[0].get("damage_amp", 0.0))])
+	_s._relic_syn.restore()
+	_ok("★同一路里 restore 调两次不叠",
+		absf(float(an2[0].get("damage_amp", 0.0)) - da_fresh - 0.03) < 0.0001)
+	# ★这条是变异测出来缺的: 只验"能跨路"不验"换场会清", `reset_match` 改成 pass 照样全绿。
+	_ok("★整场结束 reset_match() 后清零(下一场重新开始)", _ancient_reset_clears(re))
+
 	# 龟蛋加固: 档2 +500
 	var r3 := _run([_mk("left", re.slice(0, 3)), _mk("left", re.slice(3, 5))])
 	r3[1]["_isEgg"] = true
@@ -425,7 +468,8 @@ func _ready() -> void:
 			["_potion_syn.on_death(", src_main], ["_spirit_syn.on_death(", src_main],
 			["RelicSynergySystem.atk_mult(", src_main], ["GadgetSynergySystem.stiff_mult(", src_main],
 			["RelicSynergySystem.lifesteal_bonus(", src_main], ["_gadget_syn.brittle_mult(", src_main],
-			["_gadget_syn.minted(", src_main],
+			["_gadget_syn.minted(", src_main], ["_potion_syn.reset_match(", src_main],
+			["_relic_syn.reset_match(", src_main],
 			["_potion_syn.amp_for(", src_dmg], ["_potion_syn.try_behead(", src_dmg],
 			["_gadget_syn.on_hit(", src_dmg], ["_spirit_syn.on_dodge(", src_dmg]]:
 		_ok("★接线: %s 在活代码里" % str(pair[0]), str(pair[1]).find(str(pair[0])) >= 0)
@@ -456,6 +500,25 @@ func _food_reset_clears(fo: Array) -> bool:
 	var mh: float = float(u[0]["maxHp"])
 	_s._food_syn.restore()
 	return absf(float(u[0]["maxHp"]) - mh) < 0.01
+
+
+## 整场结束后远古之力归零：reset_match 之后再 restore，一点增伤都不该补
+func _ancient_reset_clears(re: Array) -> bool:
+	_s._relic_syn.reset_match()
+	var u := _run([_mk("left", re.slice(0, 3)), _mk("left", re.slice(3, 5))])
+	_s._relic_syn.apply_all()
+	var d0: float = float(u[0].get("damage_amp", 0.0))
+	_s._relic_syn.restore()
+	return absf(float(u[0].get("damage_amp", 0.0)) - d0) < 0.0001
+
+
+## 整场结束后战利品归零：reset_match 之后再 restore，一点攻击力都不该补
+func _harvest_reset_clears(po: Array) -> bool:
+	_s._potion_syn.reset_match()
+	var u := _run([_mk("left", po.slice(0, 3))])
+	var a0: float = float(u[0]["base_atk"])
+	_s._potion_syn.restore()
+	return absf(float(u[0]["base_atk"]) - a0) < 0.01
 
 
 ## 药水首档没有战利品：3 件时击杀猎物不涨攻

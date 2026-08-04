@@ -35,6 +35,13 @@ const PERIOD := 2.5
 var _t_mark := 0.0
 ## 各方当前的猎物（是敌方的单位）。★存单位字典本身，比较一律用 `is_same`（CLAUDE.md §3.2）
 var _prey := {"left": null, "right": null}
+## 本场累计的战利品攻击力（各方一份）。
+## ★【存在系统对象上，不是单位字典上】—— 用户 2026-08-04 定"以场重置"。
+##   换路 `_dl_clear_units()` 会把 `battle._units` 连字典一起清掉、`_make_unit()` 重建，
+##   只写单位字典的话每一路都会打回原形。
+## ★战利品是**全队同量**的（"全队攻击力永久 +N"），所以按【方】记一个总数就够，
+##   不用像食物那样按单位身份键存 —— 食物的成长是每只各不相同（看它带几件食物）。
+var _harvest := {"left": 0.0, "right": 0.0}
 
 
 func _init(b) -> void:
@@ -117,6 +124,7 @@ func on_death(dead) -> void:
 			u["base_atk"] = float(u.get("base_atk", 0.0)) + add
 			u["_harvest_atk"] = float(u.get("_harvest_atk", 0.0)) + add   # 记账, 给门禁与面板看
 			battle._recalc_stats(u)
+		_harvest[side] = float(_harvest.get(side, 0.0)) + add   # 跨路存档
 
 
 ## 每 2.5 秒重选猎物：敌方当前【生命值最高】的那一名。
@@ -157,6 +165,28 @@ func tick(delta: float) -> void:
 			battle._vfx._float_text(best["pos"], "猎物", Color("#ff9f43"), false, "buff", "mark")
 
 
+## 换路重建单位【之后】调：把本场已累计的战利品攻击力重放到新的一批单位上。
+## ★必须在装备/羁绊管线跑完之后 —— 否则会被后来的属性重算冲掉。
+func restore() -> void:
+	for u in battle._units:
+		if not (u is Dictionary) or u.get("_isEgg", false) or u.get("is_trainer", false):
+			continue
+		if u.get("_harvest_restored", false):
+			continue                              # 同一路里 apply 多次不叠
+		var had: float = float(_harvest.get(str(u.get("side", "")), 0.0))
+		if had <= 0.0:
+			continue
+		u["_harvest_restored"] = true
+		u["base_atk"] = float(u.get("base_atk", 0.0)) + had
+		u["_harvest_atk"] = had
+		battle._recalc_stats(u)
+
+
 func clear() -> void:
 	_t_mark = 0.0
 	_prey = {"left": null, "right": null}
+
+
+## 整场结束（不是换路）：战利品归零，下一场重新开始。
+func reset_match() -> void:
+	_harvest = {"left": 0.0, "right": 0.0}

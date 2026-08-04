@@ -7575,6 +7575,8 @@ func _settle_season(won: bool) -> void:
 		_last_reward += _minted
 	_gadget_syn.reset_match()
 	_food_syn.reset_match()      # 食物成长: 以【场】重置(用户 2026-08-04) —— 跨路保留, 换场清零
+	_potion_syn.reset_match()    # 药水战利品: 同上
+	_relic_syn.reset_match()     # 遗物远古之力: 同上
 	gs.meta_deepsea_coins += _last_reward
 	# #7 战绩同步: 实时战斗原来不写战绩 → RecordScene 永远空。这里补记本场(总场/胜计数 + match_history 一条)。
 	gs.battles_total += 1

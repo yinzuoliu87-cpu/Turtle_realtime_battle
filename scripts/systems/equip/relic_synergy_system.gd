@@ -72,6 +72,9 @@ var _t_acc := 0.0
 var _t0 := 0.0
 var _t0_set := false
 var _awakened := {"left": false, "right": false}
+## 本场累计的远古之力增伤（各方一份）。存系统对象上, 理由同药水战利品:
+## 换路会重建单位字典, 只写字典的话每路打回原形(用户 2026-08-04 定"以场重置")。
+var _ancient_total := {"left": 0.0, "right": 0.0}
 
 
 func _init(b) -> void:
@@ -198,6 +201,7 @@ func tick(delta: float) -> void:
 			#   两处消费点(battle_damage.gd:546 / RealtimeBattle3DScene.gd:4243)已在用,
 			#   信息面板也早就显示"增伤 N%"。消费侧零改动。
 			u["damage_amp"] = float(u.get("damage_amp", 0.0)) + add
+			_ancient_total[s] = float(u["_ancient"])   # 跨路存档(全队同量, 记一个数就够)
 
 
 ## 觉醒的一次性提升：把【已累积的】远古之力 ×(1+pct)，仍受上限约束。
@@ -213,6 +217,25 @@ func _bump_all(side: String, pct: float, cap: float) -> void:
 			continue
 		u["_ancient"] = cur + add
 		u["damage_amp"] = float(u.get("damage_amp", 0.0)) + add
+
+
+## 换路重建单位【之后】调：把本场已累计的远古之力重放到新的一批单位上。
+func restore() -> void:
+	for u in battle._units:
+		if not (u is Dictionary) or u.get("_ancient_restored", false):
+			continue
+		var had: float = float(_ancient_total.get(str(u.get("side", "")), 0.0))
+		if had <= 0.0:
+			continue
+		u["_ancient_restored"] = true
+		u["_ancient"] = had
+		u["damage_amp"] = float(u.get("damage_amp", 0.0)) + had
+
+
+## 整场结束（不是换路）：远古之力归零，下一场重新开始。
+func reset_match() -> void:
+	_ancient_total = {"left": 0.0, "right": 0.0}
+	_awakened = {"left": false, "right": false}
 
 
 ## 换路：重置本路的 t0 与觉醒态。
