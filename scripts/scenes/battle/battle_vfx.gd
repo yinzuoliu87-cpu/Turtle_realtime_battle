@@ -654,7 +654,25 @@ func _vfx_preview_tentacle(origin: Vector2, dir: Vector2) -> void:
 		(_tt_prev_src as Dictionary)["equips"] = eq
 		(_tt_prev_src as Dictionary)["eq_state"] = {}
 		battle._units.append(_tt_prev_src)
-		_tt_prev_foe = battle._spawn._make_unit("basic", "right", origin + dir * 260.0)
+		# ★靶子必须站在【触手射程内】—— 否则触手伸到射程边就停，够不到目标，
+		#   命中爆闪也炸在半路：**这个预览就不再反映真实战斗**（真实战斗里逻辑侧
+		#   只会选射程内的敌人）。时间对齐对比第一次做完全无效，就是栽在这。
+		#   ★靶子放在【两根触手的中间那条线上】—— 官方 W 预览里目标就站在两根之间，
+		#     两条攻击线收敛成 V、白闪在 V 的顶点。靶子偏向其中一根的话，
+		#     另一根要么够不着(探针实测会一直 IDL)、要么夹角小到看着还是"两条平行板"。
+		#   ★★放置方式必须是"**离两根都恰好 0.88 倍射程**"，不能写成
+		#     "根部 x + 0.90×射程"：后者只算了 x 方向，忘了两根还差了半个场高的 y，
+		#     实际直线距离超出射程 ⇒ 探针实测**两根全程 IDL、一次都没出手**
+		#     （截图上看着像"特效没做出来"，其实是逻辑侧根本没选中目标）。
+		var _r0: Vector2 = battle._tentacle_vfx.root_pos("left", 0)
+		var _r1: Vector2 = battle._tentacle_vfx.root_pos("left", 1)
+		var _trng: float = float(battle._tentacle_vfx.attack_range_2d)
+		var _half: float = absf(_r1.y - _r0.y) * 0.5
+		var _want: float = _trng * 0.88
+		var _dx: float = sqrt(maxf(_want * _want - _half * _half, 400.0))
+		print("[tt-preview] range=%.0f 半间距=%.0f → 靶子前推 %.0f" % [_trng, _half, _dx])
+		_tt_prev_foe = battle._spawn._make_unit("basic", "right",
+			Vector2(_r0.x + _dx, (_r0.y + _r1.y) * 0.5))
 		(_tt_prev_foe as Dictionary)["maxHp"] = 999999.0
 		(_tt_prev_foe as Dictionary)["hp"] = 999999.0
 		(_tt_prev_foe as Dictionary)["no_move"] = true
@@ -664,9 +682,13 @@ func _vfx_preview_tentacle(origin: Vector2, dir: Vector2) -> void:
 		battle._synergy._by_side = {"left": {}, "right": {}}
 		battle._synergy.apply_all()
 		return                      # 头一轮只登场, 让人看清 2 秒出土
-	# 之后每个周期拍一次（走真实入口：档位决定根数，这里只是催它出手）
-	for _i in range(battle._tentacle_vfx.count("left")):
-		battle._tentacle_vfx.strike("left", _i, Vector2((_tt_prev_foe as Dictionary)["pos"]), 1.0)
+	# ★★★这里【不再自己 strike】——
+	#   `spirit_synergy_system.tick()` 每 `SLAP_PERIOD`(5 秒) 就走真实路径拍一次；
+	#   预览再拍一次 = 两个 5 秒周期错开 0.2 秒互相打断。
+	#   探针实测：`SLAM/0.15` 时被第二条指令打回 `REAR/0.00`，
+	#   **拍击动作只演了 0.15 秒就被砍掉**，而截图上看着像"动作本来就这么短"。
+	#   ⇒ 预览只负责【摆好台子】，出手交给真实入口（memory [[fb-verify-must-run-the-real-path]]）。
+	pass
 
 
 ## `TENT_ISO=1`：把场景里【除了触手以外】的一切藏掉，黑底只看触手。
@@ -678,7 +700,11 @@ func _tt_isolate() -> void:
 	for c in battle._world.get_children():
 		if c is Camera3D or c is DirectionalLight3D or c is OmniLight3D:
 			continue
-		if str(c.name).begins_with("Tentacle_"):
+		# ★★白名单必须是 `Tentacle`（不带下划线）—— 外发光壳叫 `TentacleHalo_left_0`，
+		#   `begins_with("Tentacle_")` 对它是 **false**，于是【隔离模式把辉光藏了】。
+		#   探针实测（`SHOT_PROBE`）：第二次进 `_tt_isolate` 之后每一帧都是 `ha0`，
+		#   我却一直对着"没有辉光的截图"调辉光参数 —— 三轮全废在这。
+		if str(c.name).begins_with("Tentacle"):
 			continue
 		if c is Node3D or c is Sprite3D or c is MeshInstance3D:
 			(c as Node3D).visible = false

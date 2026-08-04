@@ -158,8 +158,12 @@ func _ready() -> void:
 		tris.append(m.surface_get_array_len(0) / 3)
 	_ok("⑤ ★三个姿态都建出网格(面数 %s)" % str(tris),
 		tris[0] > 100 and tris[1] > 100 and tris[2] > 100, str(tris))
-	_ok("⑤ ★面数恒定(= SEG × RING × 2 = %d) —— 不随姿态变" % (TV.SEG * TV.RING * 2),
-		tris[0] == tris[1] and tris[1] == tris[2] and tris[0] == TV.SEG * TV.RING * 2, str(tris))
+	# ★★2026-08-04：截面从【闭合圆环管】改成【朝向相机的开放扁带】——
+	#   开放带不回绕，每段三角数 = (RING-1) × 2 而不是 RING × 2。
+	#   这条断言守的是"恒定"（不随姿态变），常数本身随几何走。
+	var want: int = TV.SEG * (TV.RING - 1) * 2
+	_ok("⑤ ★面数恒定(开放扁带 = SEG × (RING-1) × 2 = %d) —— 不随姿态变" % want,
+		tris[0] == tris[1] and tris[1] == tris[2] and tris[0] == want, str(tris))
 	# ★长度守恒 —— 口径 2026-08-04 修正：
 	#   逐帧看官方 W 技能后，攻击那一下触手会**大幅伸长**（扑出去够到目标），
 	#   所以"任何姿态都撑不出 ARC_LEN"这条**不再成立**，而且它不该成立 ——
@@ -168,7 +172,10 @@ func _ready() -> void:
 	#   （这不是放宽标准 —— 上限仍然存在，只是分状态。没有上限才是真的没守。）
 	var over: Array = []
 	# 攻击时按【到目标的真实距离】伸长（不再是固定倍率），上限是 REACH_MAX
-	var caps := [TV.ARC_LEN, TV.ARC_LEN, TV.ATTACK_LEN * 1.1]          # IDLE / REAR / SLAM
+	# ★★2026-08-04：REAR 上限从 ARC_LEN 提到 ARC_LEN × REAR_GROW ——
+	#   逐帧对齐官方后，前摇改成【长大 + 立起】（官方那 5 帧面积涨 76%），
+	#   旧上限挡住的是一个**参考里就有、我有意加的**行为。量的仍是真实弧长。
+	var caps := [TV.ARC_LEN, TV.ARC_LEN * TV.REAR_GROW, TV.ATTACK_LEN * 1.1]   # IDLE / REAR / SLAM
 	for i2 in range(lens.size()):
 		if float(lens[i2]) > float(caps[i2]) * 1.06:
 			over.append("姿态%d 包围盒对角 %.1fm > 上限 %.1fm" % [i2, float(lens[i2]), float(caps[i2])])

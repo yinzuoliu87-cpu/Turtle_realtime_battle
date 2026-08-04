@@ -4593,7 +4593,12 @@ func _kill(u: Dictionary, killer = null) -> void:
 	if _trainer_sys._tame_try_revive(u):
 		return
 	# 首死复活钩子 (天使圣光 / 凤凰涅槃) — 仅作为常驻一次, 1:1 2D
-	if not u["reborn_used"] and ((u["id"] == "angel" and u.get("_angel_revive", false)) or u["id"] == "phoenix" or u.get("_chest_revive", false)):
+	# ★`get` 不是 `[]` —— 合成单位（门禁里手搓的、召唤物某些路径）不一定带这个键，
+	#   直读会抛 `Invalid access to property or key 'reborn_used'`。
+	#   ⚠ 这条错**不会让断言变红**（`verify_synergy_rest5` 一直是 ALL PASS），
+	#     是 `run-tests.sh` 的致命报错正则把它捞出来的 —— CLAUDE.md §2 说的就是这种：
+	#     只看退出码/断言的话，它能一直躺在那儿。
+	if not bool(u.get("reborn_used", false)) and ((u["id"] == "angel" and u.get("_angel_revive", false)) or u["id"] == "phoenix" or u.get("_chest_revive", false)):
 		u["reborn_used"] = true
 		var pct: float = (PhoenixSystem.NIRVANA_ENH_HP_PCT if u.get("_enh_rebirth", false) else PhoenixSystem.NIRVANA_HP_PCT) if u["id"] == "phoenix" else 0.25   # 凤凰60/25%(用户2026-07-28 100/30→) · 天使圣光/宝箱凤凰雕像 25%
 		u["hp"] = u["maxHp"] * pct
@@ -4654,7 +4659,9 @@ func _kill(u: Dictionary, killer = null) -> void:
 			stw.tween_interval(0.55)        # 等 death 帧演完 (~7-13帧 @11-12fps) 再淡出
 		stw.tween_property(spr_n, "modulate:a", 0.0, 0.4)
 		stw.tween_callback(spr_n.hide)
-	if is_instance_valid(u["bar_root"]):
+	# ★同 `reborn_used`：合成单位不一定带这个键，直读会抛错。
+	#   （7065 行早就写成 `get` 了，这里漏了一处 —— 同一个坑的两半。）
+	if is_instance_valid(u.get("bar_root", null)):
 		u["bar_root"].visible = false
 
 # (Phase4: 旧 tween 版 _vfx._flash 已移除, 改为状态驱动 _vfx._flash → 见 §JUICE; 与 squash/bob 统一从 base 重建)
@@ -7948,6 +7955,11 @@ func _self_screenshot() -> void:
 			await RenderingServer.frame_post_draw
 			var im: Image = get_viewport().get_texture().get_image()
 			im.save_png("%s_%d.png" % [base, i])
+			# SHOT_PROBE=1: 每张连拍旁边打一行【游戏时钟】——
+			# 做"时间对齐对比图"时，必须知道两张相邻截图之间真的隔了多少【游戏】秒。
+			# `create_timer` 走的是未钳制的真实时间(CLAUDE.md §3.5)，靠它推时间轴会错。
+			if OS.has_environment("SHOT_PROBE"):
+				print("[shot] i=%d t=%.4f %s" % [i, _t, _tentacle_vfx.probe()])
 			await get_tree().create_timer(step).timeout
 		get_tree().quit()
 		return

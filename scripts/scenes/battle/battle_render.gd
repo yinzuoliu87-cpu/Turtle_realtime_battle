@@ -424,7 +424,7 @@ func _update_overlay() -> void:
 		battle._dl_sys._dl_update_hud()
 	battle._info_sys._update_team_panels()   # 头像框栏: 每帧刷 HP 条 / 死亡变暗 / 选中高亮
 	for u in battle._units:
-		var root: Control = u["bar_root"]
+		var root = u.get("bar_root", null)     # ★合成单位可能没这个键
 		if not is_instance_valid(root):
 			continue
 		if not u["alive"]:

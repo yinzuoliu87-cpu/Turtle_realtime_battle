@@ -32,6 +32,8 @@ frames_for () {
     #   2026-07-23: verify_pirate_hook 本地 93 帧落地, CI 上 500 帧不够 → 被掐断 →
     #   没打 ALL PASS → 判 FAIL(rc=0、致命报错=0), 看着像断言失败, 其实是预算不足。
     verify_pirate_hook)  echo 8000 ;;
+    # 触手节奏: 建战斗场景 + 走完 2 秒出土 + 20 次强制重建网格并量几何(同步断言, 不等演出)
+    verify_tentacle_rhythm) echo 3000 ;;
     verify_eq_hp_grants) echo 8000 ;;
     # 口哨②要【墙钟】等灵体小龟活满 5 秒(tween 驱动·走未钳制 delta) → 无头高帧率下帧数很多
     verify_whistle_wave) echo 12000 ;;

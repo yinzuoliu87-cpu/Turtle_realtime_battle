@@ -747,6 +747,50 @@ static func _make_laser_beam_tex(col: Color) -> ImageTexture:   # 激光束(白�
 ##   ③ 半透明（这一条由材质的 alpha 管，不在贴图里）
 ##
 ## U = 绕截面一圈（0..1），V = 沿长度（0..1，平铺）。
+## 触手【流纹】—— 只当【亮度倍率】用，不带自己的颜色、不带自己的 alpha。
+##
+## ★★为什么要新做一张而不是接着用 `_make_tentacle_skin`：
+##   那张是给**圆管**画的（伪圆柱明暗 + 环纹），贴到朝向相机的扁带上，
+##   那几条丝会变成【接缝线】—— 放大对比图里最假的一处，所以上一版我把贴图整个关了。
+##   关了之后并排看又暴露新问题：官方那条带**内部有流动的丝缕、亮芯是不均匀的白热线**，
+##   我的是一片纯色渐变 ⇒ 读起来是「霓虹灯管」不是「能量体」。
+##   ⇒ 这张只做一件事：沿长度方向给出**明暗不均的丝**，横向不画任何明暗
+##     （横向渐隐已由顶点 alpha 负责，贴图再画一遍就是"假边缘光和真几何各画各的"）。
+##
+## ★Y 方向**无缝平铺**（相位用整数周期），这样 `uv1_offset.y` 一直滚也不会看到接缝。
+static func _make_tentacle_flow() -> ImageTexture:
+	var W := 48
+	var H := 96
+	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
+	# 丝: [中心x, 半宽, 强度, 沿长度的周期数, 相位]
+	var strands := [
+		[5.0, 2.2, 0.16, 3.0, 0.00],
+		[13.0, 1.6, 0.26, 5.0, 0.37],
+		[21.0, 3.0, 0.34, 2.0, 0.62],
+		[27.0, 1.4, 0.30, 6.0, 0.11],
+		[34.0, 2.4, 0.22, 4.0, 0.83],
+		[43.0, 1.8, 0.14, 3.0, 0.45],
+	]
+	for y in range(H):
+		var v := float(y) / float(H)
+		for x in range(W):
+			# 基底压到 0.62：留出空间让丝把局部推回 1.0，整体均值 ≈0.78
+			var g := 0.62
+			for st in strands:
+				# ★丝要【蜿蜒】——中心沿长度左右游走。不加这一项就是三条平行的公路线，
+				#   并排比对时官方那几缕是拧着走的（能量在流，不是灯管里的灯丝）。
+				var wander: float = sin(TAU * (float(st[3]) * 0.5 * v + float(st[4]) * 1.7)) * 2.6
+				var d: float = absf(float(x) - float(st[0]) - wander) / float(st[1])
+				if d >= 1.0:
+					continue
+				var falloff: float = 1.0 - d * d                       # 软边的丝
+				var wave: float = 0.5 + 0.5 * sin(TAU * (float(st[3]) * v + float(st[4])))
+				g += float(st[2]) * falloff * (0.45 + 0.55 * wave)     # 沿长度明暗不均 = 流动
+			g = clampf(g, 0.0, 1.0)
+			img.set_pixel(x, y, Color(g, g, g, 1.0))
+	return ImageTexture.create_from_image(img)
+
+
 static func _make_tentacle_skin() -> ImageTexture:
 	var W := 64
 	var H := 128
@@ -755,33 +799,37 @@ static func _make_tentacle_skin() -> ImageTexture:
 	var mid := Color(0.12, 0.48, 0.50)           # 主体青
 	var lit := Color(0.50, 0.94, 0.95)           # 亮芯 / 边缘光
 	## ★回纹在【实机】上几乎看不见（原画那种醒目刻纹是艺术加工）——
-	##   压到只比主体亮一点点, 近看有质感、远看不抢戏。
-	var glyph := Color(0.28, 0.68, 0.60)         # 回纹刻痕（很弱, 近看才见）
+	##   这一版直接不画了：逐帧看官方，表面读到的是**顺长度的流动丝**，不是刻纹。
+	# ★★★2026-08-04【时间对齐对比之后的关键修正】：
+	#   贴图**不再画伪圆柱明暗**。原来这里沿 U 画了一条"中间亮两边暗 + 边缘光"，
+	#   可是 U 是【绕截面一圈】的参数，它的"两边"是管子上**固定的某一侧**，
+	#   跟屏幕上真正的轮廓边**根本不重合** —— 假边缘光和真几何各画各的，
+	#   并排看就是一根「均匀塑料管」。真边缘光已改由网格顶点的**菲涅尔**给
+	#   （`tentacle_vfx._rebuild`：rim = 1 − |n·v|）。
+	#   ⇒ 贴图这里只留【很轻的横向起伏 + 顺长度的流动丝】，把明暗让给几何。
 	for y in range(H):
 		for x in range(W):
-			# 绕圈方向：中间亮、两边暗（伪圆柱明暗），再在最边上补一道边缘光
 			var u := float(x) / float(W - 1)
-			var lam := sin(u * PI)                       # 0..1..0
-			var c: Color = core.lerp(mid, clampf(lam * 1.35, 0.0, 1.0))
-			c = c.lerp(lit, pow(clampf(lam, 0.0, 1.0), 6.0) * 0.9)
-			var rim: float = pow(1.0 - absf(u - 0.5) * 2.0, 0.35)
-			c = c.lerp(lit, (1.0 - rim) * 0.55)
+			var lam := sin(u * PI)                       # 0..1..0，只当极轻的起伏
+			var c: Color = mid.lerp(core, (1.0 - lam) * 0.22)
 			img.set_pixel(x, y, c)
 	# ── 表面纹理 ──
-	# ★★★【并排比对官方被动看出来的】：我把环纹画成每 9 像素一道 + UV 还平铺 3 遍，
-	#   结果是一件**毛线织物** —— 官方是**光滑的半透明能量体**，表面只有极淡的流动感。
-	#   ⇒ 环纹间距拉到 3 倍、对比度压到几乎看不见，只留"这东西在流动"的暗示。
 	var put = func(x0: int, y0: int, w: int, h: int, c: Color) -> void:
 		for yy in range(maxi(0, y0), mini(H, y0 + h)):
 			for xx in range(maxi(0, x0), mini(W, x0 + w)):
 				img.set_pixel(xx, yy, c)
-	var step := 26                                   # 9 → 26：稀疏得多
+	# ★环纹（横向）压到几乎没有 —— 官方那条光带上看不到一圈一圈的箍。
+	var step := 42
 	for n in range(H / step):
-		var y0: int = n * step
-		# 只比主体亮一丁点 —— 近看有质感，远看是光滑的
-		put.call(0, y0, W, 2, mid.lerp(lit, 0.22))
-	# 顺长度的中央高光：给圆柱感（这一条要保留，是"体积"的来源）
-	put.call(27, 0, 5, H, mid.lerp(lit, 0.42))
+		put.call(0, n * step, W, 1, mid.lerp(lit, 0.14))
+	# ★★顺长度的【流动丝】—— 官方逐帧最明显的表面特征就是几条沿着长度跑的亮丝
+	#   （像水流里的线），不是环箍。宽窄/明暗各不相同才像"流动"而不是"条纹"。
+	#   ⚠ 亮度上限是**量出来的**：官方光带最亮处 ≈205（G+B 均值口径）。
+	#     0.72 那一档的丝乘上攻击态顶点色后直接溢出到 255 = 一片死白，
+	#     "流动丝"反而看不见了 —— 压到 0.40 才既亮得起来又保得住细节。
+	var strands := [[6, 2, 0.18], [17, 3, 0.30], [29, 4, 0.40], [41, 2, 0.23], [52, 3, 0.15]]
+	for s in strands:
+		put.call(int(s[0]), 0, int(s[1]), H, mid.lerp(lit, float(s[2])))
 	var t := ImageTexture.create_from_image(img)
 	return t
 

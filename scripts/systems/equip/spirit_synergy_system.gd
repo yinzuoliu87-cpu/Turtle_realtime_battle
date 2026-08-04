@@ -63,13 +63,12 @@ func _side_tier(side: String) -> int:
 
 
 ## 触手的位置（逻辑实体，只是一个坐标）。idx 0/1 分列上下。
+## ★★2026-08-04：这里原来是 `TentacleVfx.root_pos` 的**手抄副本**（同一条公式写两遍）。
+##   手抄的副本必然落后（memory [[fb-hand-rolled-copies-drift]]）—— 这一轮为了让两根
+##   触手在攻击时**收敛成 V 形**要挪根部位置，一改就是两处，漏一处就变成
+##   「伤害沿 A 线结算、演出画在 B 线」。⇒ 改成直接问演出侧要坐标，只留一份公式。
 func tentacle_pos(side: String, idx: int) -> Vector2:
-	var a: Rect2 = battle.ARENA
-	var y: float = a.position.y + a.size.y * (0.35 if idx == 0 else 0.65)
-	var x: float = a.position.x + a.size.x * 0.18
-	if side != "left":
-		x = a.position.x + a.size.x * 0.82
-	return Vector2(x, y)
+	return battle._tentacle_vfx.root_pos(side, idx)
 
 
 func tick(delta: float) -> void:
