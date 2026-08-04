@@ -112,10 +112,16 @@ func _slap(side: String, idx: int, share: float) -> int:
 	if foes.is_empty():
 		return 0
 	# ★确定性选取: 最近的那个(同炮台/收殓的规矩)
+	# ⚠ 且**必须在触手的固定射程内** —— 用户 2026-08-04:「俄洛伊触手的攻击长度是固定的」。
+	#   固定长度意味着有明确的攻击范围；范围外的敌人不该被选中(否则演出伸不到、
+	#   或者为了够到而拉长，两种都会让"安全距离"这条规则失效)。
+	var rng: float = float(battle._tentacle_vfx.attack_range_2d)
 	var aim = null
 	var best := INF
 	for f in foes:
 		var d: float = origin.distance_squared_to(Vector2(f["pos"]))
+		if d > rng * rng:
+			continue                      # 射程外
 		if d < best:
 			best = d
 			aim = f

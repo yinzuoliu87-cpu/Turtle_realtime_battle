@@ -77,7 +77,7 @@ const T_EMERGE := 2.0
 ## ⇒ **不是"抬起来砸下去"，是【蜷缩 → 瞬间弹射成直光带 → 保持 → 收回】。**
 ##   我原来做的 0.25 前摇 + 0.5 砸下是慢动作，跟实机的爆发感完全不是一回事。
 const T_REAR := 0.10                 # 前摇极短：只是微微后缩蓄力
-const T_SLAM := 0.40                 # 伸直(前 0.07s 完成) + 保持
+const T_SLAM := 0.55                 # 伸直(前 0.07s 完成) + 保持 —— 官方保持 500ms+
 const T_RECOVER := 0.30              # 收回
 const T_RETRACT := 0.6
 ## 闪避追击用的短促点刺（不立起、不预告）
@@ -108,10 +108,17 @@ const R_BASE := 0.62                 # 根部半径 —— 粗（但 0.78 配 4.
 const R_TIP := 0.10                  # 梢端半径（卷起来的钩仍有体积，不是针尖）
 ## ★总弧长固定 —— 不随目标距离变。这是"它是一根实体"的关键。
 const ARC_LEN := 6.2                 # 待机时的弧长（实机被动"粗但有高度"）
-## ★攻击时的**伸长倍率** —— 逐帧看官方 W：攻击那一下触手会**伸得很长**，
-##   从根部一直插到目标身上（跨越大半个屏幕），不是原地"变直"。
-##   我原来弧长恒定 6.2，所以攻击只是"直了一点"，读不出扑出去的力道。
-const REACH_MULT := 2.35
+## ★★攻击伸长到的长度 —— **固定值**（用户 2026-08-04：
+##   「俄洛伊触手的攻击长度是固定的，不会随目标距离改动」）。
+##
+##   我中途做过一版"按到目标的实际距离伸长"，那是错的：
+##   固定长度意味着触手有**明确的攻击范围** —— 玩家能学会"站在这条线外就安全"，
+##   而"够多远伸多远"等于没有范围，也就没有博弈。
+##   ⇒ 攻击时一律伸到 `ATTACK_LEN`，够不够得着由**逻辑侧的选靶**决定
+##     （范围外的敌人根本不该被选为目标）。
+const ATTACK_LEN := 14.0
+## 同一个范围换算成【战场 2D 码】给逻辑侧用（在 `_init` 里按真实缩放量一次）
+var attack_range_2d := 520.0
 ## 各态的切角（度）：[根部角, 梢端角]。90° = 竖直向上，0° = 水平向前，负 = 朝下
 const ANG_IDLE := [86.0, 18.0]       # 待机: 升起后大幅弧过去（牧羊杖形，靠角度不靠螺旋）
 const ANG_REAR := [104.0, 88.0]      # 蓄势: 立直 + 后仰
@@ -192,6 +199,13 @@ static func _skin() -> ImageTexture:
 
 func _init(b) -> void:
 	battle = b
+	# ★量一次"1 个战场 2D 码 = 多少世界米"，把固定攻击长度换算成逻辑侧能用的 2D 范围。
+	#   不写死数字 —— 相机/缩放改了这里会自动跟上。
+	var a3: Vector3 = battle._world_pos(Vector2.ZERO, 0.0)
+	var b3: Vector3 = battle._world_pos(Vector2(100.0, 0.0), 0.0)
+	var per_yard: float = a3.distance_to(b3) / 100.0
+	if per_yard > 0.0001:
+		attack_range_2d = ATTACK_LEN / per_yard
 
 
 func _key(side: String, idx: int) -> String:
@@ -290,6 +304,7 @@ func strike(side: String, idx: int, aim2: Vector2, share: float = 1.0) -> void:
 	t["state"] = ST_SLAM if share < 0.9 else ST_REAR
 	t["ts"] = 0.0
 	t["hit"] = false
+	t["warned"] = false
 
 
 func tick(delta: float) -> void:
@@ -305,6 +320,9 @@ func tick(delta: float) -> void:
 					t["state"] = ST_IDLE; t["ts"] = 0.0
 					_base_glow(t)          # 出土落定：根部溅一圈光
 			ST_REAR:
+				if not bool(t.get("warned", true)):
+					t["warned"] = true
+					_telegraph(t)          # ★预警区：蓄势一开始就把落点线画出来
 				if ts >= T_REAR:
 					t["state"] = ST_SLAM; t["ts"] = 0.0
 			ST_SLAM:
@@ -372,6 +390,44 @@ func _rebuild_halo(t: Dictionary, pts: Array, rs: Array) -> void:
 	st.commit(hmesh)
 
 
+## 命中爆闪：一个朝向相机的发光球，瞬间放大到最亮再收掉。
+## ★用 billboard 而不是贴地环 —— 本作是 2.5D 俯角，贴地的东西会被压扁到看不见。
+func _flash(pos2: Vector2, scale: float) -> void:
+	var sp := Sprite3D.new()
+	sp.texture = VfxTex._make_glow_texture()
+	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sp.shaded = false
+	sp.modulate = Color(0.88, 1.0, 1.0, 0.95)
+	sp.pixel_size = 0.010 * scale
+	sp.position = battle._world_pos(pos2, battle.GROUND_LIFT + 0.6)
+	battle._world.add_child(sp)
+	var tw: Tween = battle._reg_tween()
+	tw.tween_property(sp, "scale", Vector3(1.9, 1.9, 1.9), 0.09).from(Vector3(0.35, 0.35, 0.35))
+	tw.tween_property(sp, "modulate:a", 0.0, 0.46)
+	tw.tween_callback(sp.queue_free)
+
+
+## 预警区：蓄势那 0.10 秒里，在地面画出【即将被扫到的那条直线】。
+## ★用户 2026-08-04 点名要的（「应该有前摇，预警区，拍下去，命中特效，后摇回到idel」）——
+##   我前几版一条都没做。机制上打的是"根部到目标直线上的所有敌人"，
+##   没有预警区的话，站在那条线上的玩家没有任何机会反应。
+## ★预警区是**以触手为原点、固定长度**的一条线（用户 2026-08-04 两条都点到了：
+##   「预警区是根据触手的位置来对吧」「攻击长度是固定的」）——
+##   不是"从触手画到目标"。画到目标的话，范围会随目标远近伸缩 = 玩家学不会安全距离。
+func _telegraph(t: Dictionary) -> void:
+	var from2: Vector2 = root_pos(str(t["side"]), int(t["idx"]))
+	var to2: Vector2 = t["aim"]
+	if to2 == Vector2.ZERO:
+		return
+	var dir: Vector2 = (to2 - from2)
+	if dir.length() < 1.0:
+		return
+	# ★终点 = 根部 + 固定射程 × 方向（与目标实际距离无关）
+	var end2: Vector2 = from2 + dir.normalized() * attack_range_2d
+	battle._bolt_line(from2, end2, Color(1.0, 0.88, 0.42, 0.32))
+	battle._skill_ring(end2, Color(1.0, 0.86, 0.35, 0.40), 70.0)
+
+
 ## 落地冲击：贴地冲击环 + 一撮碎屑。
 ## ★只是演出 —— 伤害早就在逻辑侧结完了（CLAUDE.md §3.5：测数值的用例不该依赖动画）。
 func _impact(t: Dictionary) -> void:
@@ -383,10 +439,23 @@ func _impact(t: Dictionary) -> void:
 	if d.length() < 1.0:
 		return
 	# 落点：朝目标方向、触手弧长够得到的地方（总长固定，够不着就落在最远处）
-	var hit2: Vector2 = from2 + d.normalized() * minf(d.length(), 520.0)
+	# ★命中点 = **目标身上**（不是"触手够得到的地方"）——
+	#   时间对齐对比里，官方的爆闪是在【目标身上】炸的，而我原来炸在半路。
+	# 命中点：目标位置，但**钳在固定射程内**（射程外不该被选为目标，这里只是兜底）
+	var hit2: Vector2 = from2 + d.normalized() * minf(d.length(), attack_range_2d)
 	var big: bool = float(t["share"]) >= 0.9
-	battle._skill_ring(hit2, Color(0.36, 1.0, 0.72, 0.62), 70.0 if big else 34.0)
+	# 大爆闪：三层环 + 两撮粒子。官方那一下持续 0.5 秒以上、亮到发白，
+	# 我原来只有一个小环 + 一撮粒子，对比时几乎看不见。
+	# ★★爆闪必须是【朝向相机的】—— 探针实测贴地环确实建出来了(+6 节点)，
+	#   但这个俯角下它压成一条缝，画面上根本看不见。官方那一下是正对镜头的大白闪。
+	_flash(hit2, 3.4 if big else 1.6)
+	battle._skill_ring(hit2, Color(0.55, 0.96, 1.0, 0.45), 110.0 if big else 50.0)
 	battle._vfx._impact_particles(hit2, 0.0)
+	if big:
+		battle._vfx._impact_particles(hit2, 0.6)
+	# ★沿途那条【直线命中范围】也画出来 —— 机制上打的是"根部到目标直线上所有敌人"，
+	#   不画的话玩家永远不知道被扫到的是一条线。
+	battle._bolt_line(from2, hit2, Color(0.62, 1.0, 0.96, 0.55))
 
 
 ## 触手的根部坐标（场边固定位，idx 0/1 分上下）。
@@ -471,11 +540,13 @@ func _rebuild(t: Dictionary) -> void:
 	# ★攻击时弧长拉长（扑出去够到目标），其余状态用待机弧长
 	var arc: float = ARC_LEN
 	var stt: int = int(t["state"])
+	# 攻击/回位时按【到目标的真实世界距离】伸长
+	var reach_arc: float = ATTACK_LEN          # ★固定长度，不随目标距离变
 	if stt == ST_SLAM:
 		var d2p: float = clampf(float(t["ts"]) / 0.07, 0.0, 1.0)
-		arc = ARC_LEN * lerpf(1.0, REACH_MULT, 1.0 - pow(1.0 - d2p, 2.0))
+		arc = lerpf(ARC_LEN, reach_arc, 1.0 - pow(1.0 - d2p, 2.0))
 	elif stt == ST_RECOVER:
-		arc = ARC_LEN * lerpf(REACH_MULT, 1.0,
+		arc = lerpf(reach_arc, ARC_LEN,
 			smoothstep(0.0, 1.0, clampf(float(t["ts"]) / T_RECOVER, 0.0, 1.0)))
 	var ds: float = arc * emerge / float(SEG)     # 出土 = 露出的弧长在长
 

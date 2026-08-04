@@ -167,16 +167,50 @@ func _ready() -> void:
 	#   ⇒ 改成：待机/蓄势守 ARC_LEN；攻击守 ARC_LEN × REACH_MULT。
 	#   （这不是放宽标准 —— 上限仍然存在，只是分状态。没有上限才是真的没守。）
 	var over: Array = []
-	var caps := [TV.ARC_LEN, TV.ARC_LEN, TV.ARC_LEN * TV.REACH_MULT]   # IDLE / REAR / SLAM
+	# 攻击时按【到目标的真实距离】伸长（不再是固定倍率），上限是 REACH_MAX
+	var caps := [TV.ARC_LEN, TV.ARC_LEN, TV.ATTACK_LEN * 1.1]          # IDLE / REAR / SLAM
 	for i2 in range(lens.size()):
 		if float(lens[i2]) > float(caps[i2]) * 1.06:
 			over.append("姿态%d 包围盒对角 %.1fm > 上限 %.1fm" % [i2, float(lens[i2]), float(caps[i2])])
-	_ok("⑤ ★长度有上限: 待机 ≤%.1fm / 攻击 ≤%.1fm(伸长是参考里就有的，但不能无限长)"
-		% [TV.ARC_LEN, TV.ARC_LEN * TV.REACH_MULT], over.is_empty(), str(over))
+	_ok("⑤ ★攻击长度是【固定】的 ≤%.1fm(用户: 不随目标距离改动 —— 有固定范围才有安全距离)"
+		% TV.ATTACK_LEN, over.is_empty(), str(over))
 	# ★攻击真的比待机长（不长就是伸长没生效）
 	_ok("⑤ ★攻击姿态确实比待机长(扑出去够目标, 不是原地变直)",
 		float(lens[2]) > float(lens[0]) * 1.25,
 		"待机 %.1fm → 攻击 %.1fm" % [float(lens[0]), float(lens[2])])
+
+	# ★★攻击长度【不随目标距离变】—— 用户 2026-08-04 点名纠正的（我中途做过一版
+	#   "按到目标的实际距离伸长"，那样就没有"安全距离"这条规则了）。
+	var lens_by_dist: Array = []
+	for far in [400.0, 1400.0]:
+		_v.clear(); _v.ensure("left", 1); _v.tick(2.1)
+		var tt: Dictionary = _v._tents["left|0"]
+		tt["state"] = 3; tt["ts"] = 0.30; tt["share"] = 1.0; tt["acc"] = 99.0
+		tt["aim"] = _v.root_pos("left", 0) + Vector2(far, 0.0)
+		_v.tick(0.001)
+		lens_by_dist.append((tt["mi"] as MeshInstance3D).mesh.get_aabb().size.length())
+	_ok("★攻击长度固定: 目标 400 码 vs 1400 码，触手长度一样(%.1f vs %.1f)"
+		% [float(lens_by_dist[0]), float(lens_by_dist[1])],
+		absf(float(lens_by_dist[0]) - float(lens_by_dist[1])) < 0.6, str(lens_by_dist))
+
+	# ══ ⑤b ★预警区 与 命中特效【真的建出节点】═══════════════════
+	# 用户 2026-08-04 点名的三件（预警区 / 直线命中范围 / 命中特效）——
+	# ★数【场景树上真的多了几个节点】，不是断言函数存在：
+	#   探针实测过一次"函数在、但 `warned` 一直是 null 所以从没放过"
+	#   （替换时用错缩进，2 tab vs 1 tab）——【断言函数存在守不住这个】。
+	_v.clear()
+	_v.ensure("left", 1)
+	_v.tick(2.1)                                  # 到待机
+	var n0: int = _s._world.get_child_count()
+	_v.strike("left", 0, Vector2(900, 300), 1.0)
+	_v.tick(TV.T_REAR + 0.01)                     # 过完蓄势 → 预警区该出来了
+	var n1: int = _s._world.get_child_count()
+	_ok("⑤b ★预警区真的建出节点(落点圈 + 沿途直线)", n1 - n0 >= 2,
+		"只多了 %d 个节点" % (n1 - n0))
+	_v.tick(TV.T_SLAM * 0.65)                     # 过 60% → 命中特效
+	var n2: int = _s._world.get_child_count()
+	_ok("⑤b ★命中特效真的建出节点(爆闪 + 环 + 粒子 + 直线)", n2 - n1 >= 4,
+		"只多了 %d 个节点" % (n2 - n1))
 
 	# ══ ⑥ 接线：真的挂在战斗上 ═════════════════════════════════
 	var src_sp: String = FileAccess.get_file_as_string("res://scripts/systems/equip/spirit_synergy_system.gd")
