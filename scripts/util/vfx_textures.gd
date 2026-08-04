@@ -751,9 +751,9 @@ static func _make_tentacle_skin() -> ImageTexture:
 	var W := 64
 	var H := 128
 	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
-	var core := Color(0.05, 0.26, 0.23)          # 暗侧（压暗 —— 本作背景是亮青，见 tentacle_vfx 配色注）
-	var mid := Color(0.13, 0.50, 0.43)           # 主体青绿
-	var lit := Color(0.52, 0.96, 0.86)           # 亮芯 / 边缘光
+	var core := Color(0.05, 0.25, 0.26)          # 暗侧（偏青）
+	var mid := Color(0.12, 0.48, 0.50)           # 主体青
+	var lit := Color(0.50, 0.94, 0.95)           # 亮芯 / 边缘光
 	## ★回纹在【实机】上几乎看不见（原画那种醒目刻纹是艺术加工）——
 	##   压到只比主体亮一点点, 近看有质感、远看不抢戏。
 	var glyph := Color(0.28, 0.68, 0.60)         # 回纹刻痕（很弱, 近看才见）
@@ -768,27 +768,20 @@ static func _make_tentacle_skin() -> ImageTexture:
 			c = c.lerp(lit, (1.0 - rim) * 0.55)
 			img.set_pixel(x, y, c)
 	# ── 表面纹理 ──
-	# ★★【并排对比看出来的】：实机触手的高光是**沿长度的一条纵向亮线**，
-	#   而我做的回纹是**一节一节的横纹**，并排一看就是两种东西。
-	#   ⇒ 主体改成纵向亮线（顺着触手走），回纹降级成很淡的点缀（近看才见）。
-	var TH := 3
+	# ★★★【并排比对官方被动看出来的】：我把环纹画成每 9 像素一道 + UV 还平铺 3 遍，
+	#   结果是一件**毛线织物** —— 官方是**光滑的半透明能量体**，表面只有极淡的流动感。
+	#   ⇒ 环纹间距拉到 3 倍、对比度压到几乎看不见，只留"这东西在流动"的暗示。
 	var put = func(x0: int, y0: int, w: int, h: int, c: Color) -> void:
 		for yy in range(maxi(0, y0), mini(H, y0 + h)):
 			for xx in range(maxi(0, x0), mini(W, x0 + w)):
 				img.set_pixel(xx, yy, c)
-	# 纵向亮线：贯穿全长的两条（一主一副），顺着触手方向
-	put.call(26, 0, 4, H, lit)
-	put.call(38, 0, 2, H, lit.lerp(mid, 0.45))
-	# 方折回纹：保留母题但压得很淡，只做点缀
-	var UNIT := 22
-	for n in range(H / UNIT):
-		var y0: int = n * UNIT
-		if n % 2 == 0:
-			put.call(12, y0 + 4, 12, TH, glyph)
-			put.call(12, y0 + 4, TH, 8, glyph)
-		else:
-			put.call(44, y0 + 4, 12, TH, glyph)
-			put.call(53, y0 + 4, TH, 8, glyph)
+	var step := 26                                   # 9 → 26：稀疏得多
+	for n in range(H / step):
+		var y0: int = n * step
+		# 只比主体亮一丁点 —— 近看有质感，远看是光滑的
+		put.call(0, y0, W, 2, mid.lerp(lit, 0.22))
+	# 顺长度的中央高光：给圆柱感（这一条要保留，是"体积"的来源）
+	put.call(27, 0, 5, H, mid.lerp(lit, 0.42))
 	var t := ImageTexture.create_from_image(img)
 	return t
 

@@ -91,28 +91,38 @@ const T_JAB := 0.30
 ##      θ(u) 由状态机给：待机前倾下垂、蓄势竖直后仰、砸下整条前倒。
 ##      这样长度天然守恒，看起来才像一根真的触手在动。
 const SEG := 36
-const RING := 8                      # 锥体截面的边数（不是扁带了）
-const R_BASE := 0.30                 # 根部半径（世界米）★实机很细：宽约长的 1/15
-const R_TIP := 0.006                 # 梢端半径 ★实机梢端是【尖】的, 0.035 那版是平口截断
+## 截面边数。★8 那版并排比对时**看得见多边形棱面**（轮廓是折的不是圆的）。
+const RING := 14
+## ★★★【官方被动预览 `ref-tentacle-passive.png` 逐帧看出来的】体型完全反了 ——
+##   我做的是**细长鞭子**，实机被动是**粗壮矮胖**：根部占很大面积、总高约等于总宽。
+##   （之前照的是 Q 技能与原画 —— 那两个确实是细长的鞭状能量体；**被动不是**，
+##     被动是一根有体积的实体触手。同一个英雄，三种形态，我一直在照错的那两种。）
+const R_BASE := 0.62                 # 根部半径 —— 粗（但 0.78 配 4.6 长度太墩）
+const R_TIP := 0.10                  # 梢端半径（卷起来的钩仍有体积，不是针尖）
 ## ★总弧长固定 —— 不随目标距离变。这是"它是一根实体"的关键。
-const ARC_LEN := 9.0
+const ARC_LEN := 6.2                 # 实机被动触手是"粗但有高度"，4.6 太矮
 ## 各态的切角（度）：[根部角, 梢端角]。90° = 竖直向上，0° = 水平向前，负 = 朝下
-const ANG_IDLE := [76.0, 14.0]       # 待机: ★平缓单弧(实机), 不是 S 形
-const ANG_REAR := [104.0, 76.0]      # 蓄势: 整条更直立 + 后仰
+const ANG_IDLE := [86.0, 18.0]       # 待机: 升起后大幅弧过去（牧羊杖形，靠角度不靠螺旋）
+const ANG_REAR := [104.0, 88.0]      # 蓄势: 立直 + 后仰
 ## ★砸下：根部保持较立（58°）、梢端扎到地里（−80°）——
 ##   【自截图看出来的】根部倒到 30° 时整条【平躺】在地上，像一条海带，
 ##   而参考里是"根立着、梢抽下来"的一道弧。差别就在根部这个角。
 const ANG_SLAM := [58.0, -80.0]
-const ANG_EMERGE := [88.0, 62.0]     # 出土: 竖着顶出来
+const ANG_EMERGE := [90.0, 86.0]     # 出土: ★近乎竖直的一道光柱（实机就是这样起的）
 ## 梢端打卷：最后这一段额外多转的角度（度）
 ## ★★【探针算出来的 bug】: 原来 CURL_EXTRA 是恒定 210°，于是砸下时
 ##   梢端 = −78° − 210° = **−288° ≡ +72°**，又转回朝上 —— 卷曲和砸下互相抵消，
 ##   12 帧自截图看下来姿态几乎没变。
 ##   ⇒ 卷曲量改成**随状态变**：待机卷紧(蓄势)、砸下时【松开甩直】。
 ##     这也符合参考：俄洛伊触手蛰伏时卷着，砸下去是抽直的。
-const CURL_FROM := 0.66
-const CURL_IDLE := 85.0              # 待机/蓄势: ★只是向下弯回收细, 不卷成整圈(实机)
-const CURL_SLAM := 15.0              # 砸下: 几乎抽直
+## ★卷曲起点：0.42 那一版【自截图实测】从中段就卷，整条没机会长高，
+##   看着像只虾。实机是**先立起来一段、再在上半段卷成钩**。
+const CURL_FROM := 0.68              # 上段三分之一才开始回勾
+## ★待机的卷曲量：并排比对官方被动预览后定为 **120°** ——
+##   它是个【牧羊杖 / 问号】形（升起 → 弧过去 → 梢端回勾），
+##   不是螺旋。250° 那版卷成一圈，读起来像海马不像触手。
+const CURL_IDLE := 120.0
+const CURL_SLAM := 40.0              # 砸下: 松开甩出（仍留一点弯，不是直棍）
 ## 待机摇曳的横向摆幅（度）
 const S_AMP := 3.5                   # ★实机摆得很轻, 原画那种 S 形是艺术加工
 ## 梢端相位滞后（鞭子感 —— 整条一起动就是根棍子）
@@ -128,8 +138,8 @@ const SWAY_AMP := 0.30
 ##     而本作战场是一大片**亮青色**，同样一条淡青绿在上面直接糊掉。
 ##   ⇒ 参考给的是【色相与关系】（青绿、边缘微亮、待机暗出手亮），
 ##     不是能照抄的 RGB。压暗主体 + 提高与背景的明度差，才读得出轮廓。
-const C_CORE := Color(0.10, 0.42, 0.36)      # 主体：压暗的青绿（对着亮青背景才有轮廓）
-const C_EDGE := Color(0.45, 0.95, 0.82)      # 边缘亮青
+const C_CORE := Color(0.09, 0.40, 0.42)      # 主体：压暗的【青】（官方偏 cyan，我原来偏绿）
+const C_EDGE := Color(0.42, 0.92, 0.94)      # 边缘亮青
 const C_GLYPH := Color(0.34, 0.72, 0.64)     # 回纹（弱，近看才见）
 
 ## 回纹：1 = 亮刻痕。BAND 列 × 8 行一循环，沿长度平铺。
@@ -183,6 +193,13 @@ func ensure(side: String, n: int) -> void:
 				t["ts"] = 0.0
 
 
+## 根部的光花：官方被动里触手立在地上时，根部一直有一圈溅开的微光。
+## 没有它，触手看着像"插在地上的棍子"而不是"从地里钻出来的活物"。
+func _base_glow(t: Dictionary) -> void:
+	var p2: Vector2 = root_pos(str(t["side"]), int(t["idx"]))
+	battle._skill_ring(p2, Color(0.42, 0.95, 0.86, 0.22), 46.0)
+
+
 func _spawn(side: String, idx: int) -> void:
 	var mi := MeshInstance3D.new()
 	mi.name = "Tentacle_%s_%d" % [side, idx]
@@ -204,10 +221,11 @@ func _spawn(side: String, idx: int) -> void:
 	#   贴图是逐像素画的（`VfxTex._make_tentacle_skin`），不复用任何现成图。
 	mat.albedo_texture = _skin()
 	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素风：不做双线性
-	mat.uv1_scale = Vector3(1.0, 3.0, 1.0)                       # 沿长度平铺 3 遍
-	# 实机是半透明的（抽帧里能看到背后地形），但**本作背景太亮**，
-	# 0.72 那一版实测几乎糊掉 ⇒ 折中到 0.90：仍透，但轮廓读得出。
-	mat.albedo_color = Color(1, 1, 1, 0.90)
+	# ★不再平铺 —— 平铺 3 遍 + 密环纹 = 毛线织物（并排比对时最刺眼的问题）
+	mat.uv1_scale = Vector3(1.0, 1.0, 1.0)
+	# 实机是半透明的能量体。本作背景亮 ⇒ 不能照抄实机的 0.72（那版糊掉），
+	# 但 0.90 又太"实"（并排比对像塑料）。0.80 + 更强的边缘光是折中点。
+	mat.albedo_color = Color(1, 1, 1, 0.80)
 	mi.material_override = mat
 	battle._world.add_child(mi)
 	# ★外发光壳：实机触手裹着一层辉光雾，并排对比时我的显得"干"。
@@ -265,6 +283,7 @@ func tick(delta: float) -> void:
 			ST_EMERGE:
 				if ts >= T_EMERGE:
 					t["state"] = ST_IDLE; t["ts"] = 0.0
+					_base_glow(t)          # 出土落定：根部溅一圈光
 			ST_REAR:
 				if ts >= T_REAR:
 					t["state"] = ST_SLAM; t["ts"] = 0.0
@@ -312,14 +331,15 @@ func _rebuild_halo(t: Dictionary, pts: Array, rs: Array) -> void:
 		var c: Vector3 = pts[i][0]
 		var sv: Vector3 = pts[i][1]
 		var uv: Vector3 = pts[i][2]
-		var r: float = float(rs[i]) * 2.6 + 0.05
+		var r: float = float(rs[i]) * 1.55 + 0.08
 		var ring: Array = []
 		for k in range(RN):
 			var a: float = TAU * float(k) / float(RN)
 			ring.append(c + (sv * cos(a) + uv * sin(a)) * r)
 		if not prev.is_empty():
 			var f: float = float(i) / float(pts.size())
-			var col := Color(0.30, 0.86, 0.74).lerp(Color(0.62, 1.0, 0.92), f)
+			# ★梢端不再往白里提 —— 那是并排比对时那个突兀的白点的来源
+			var col := Color(0.26, 0.78, 0.76).lerp(Color(0.40, 0.88, 0.90), f * 0.45)
 			for k2 in range(RN):
 				var k3: int = (k2 + 1) % RN
 				st.set_color(col); st.add_vertex(prev[k2])
@@ -437,7 +457,7 @@ func _rebuild(t: Dictionary) -> void:
 		# ★切角沿长度插值；梢端那一段额外多转 → 卷成钩
 		# ★弯曲集中在【中后段】—— 实机根部一截是相对直的，弧度往梢端堆。
 		#   原来用 smoothstep(0,1,u) 是对称的，从根就开始弯。
-		var ang: float = lerpf(a0, a1, pow(u, 1.55))
+		var ang: float = lerpf(a0, a1, pow(u, 1.05))
 		if u > CURL_FROM:
 			var cu: float = (u - CURL_FROM) / (1.0 - CURL_FROM)
 			ang -= curl * cu * cu
@@ -453,7 +473,12 @@ func _rebuild(t: Dictionary) -> void:
 		var up2: Vector3 = sidev.cross(tan).normalized()
 		# ★收细曲线 0.72 → 0.42：实机是【根粗、迅速变细、梢端成尖】，
 		#   0.72 那条几乎是等粗的一根管子（并排对比时最明显的差异之一）。
-		var r: float = lerpf(R_BASE, R_TIP, pow(u, 0.42))
+		# 粗壮体型：收细放缓（0.42 是细长鞭子的曲线，粗触手要更饱满）
+		var r: float = lerpf(R_BASE, R_TIP, pow(u, 0.85))
+		# ★最底下那一小段【快速收窄】—— 官方是"从地里钻出来"，
+		#   等粗到底会变成一只方底的脚（并排比对时很假）。
+		if u < 0.10:
+			r *= 0.42 + 0.58 * (u / 0.10)
 		if int(t["state"]) == ST_SLAM:
 			r *= 1.15
 		var ring: Array = []
@@ -474,7 +499,8 @@ func _rebuild(t: Dictionary) -> void:
 				col = col.lerp(Color(0.85, 1.0, 0.98), 0.55 * clampf(float(t["ts"]) / T_REAR, 0.0, 1.0))
 			elif st2 == ST_SLAM:
 				col = col.lerp(Color(0.92, 1.0, 1.0), 0.75)
-			cols.append(col.lerp(Color(0.80, 1.0, 0.92), u * 0.25))
+			# ★梢端别再往白里提 —— 比对时那是个突兀的白点。改成【边缘】亮、梢端只是稍亮。
+			cols.append(col.lerp(Color(0.62, 0.94, 0.88), u * 0.12))
 		if not prev.is_empty():
 			any = true
 			for k2 in range(RING):
