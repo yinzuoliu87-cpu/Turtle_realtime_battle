@@ -766,8 +766,8 @@ static func _make_tentacle_flow() -> ImageTexture:
 	var strands := [
 		[5.0, 2.2, 0.16, 3.0, 0.00],
 		[13.0, 1.6, 0.26, 5.0, 0.37],
-		[21.0, 3.0, 0.34, 2.0, 0.62],
-		[27.0, 1.4, 0.30, 6.0, 0.11],
+		[21.0, 2.0, 0.22, 2.0, 0.62],
+		[27.0, 1.1, 0.20, 6.0, 0.11],
 		[34.0, 2.4, 0.22, 4.0, 0.83],
 		[43.0, 1.8, 0.14, 3.0, 0.45],
 	]
@@ -779,7 +779,9 @@ static func _make_tentacle_flow() -> ImageTexture:
 			for st in strands:
 				# ★丝要【蜿蜒】——中心沿长度左右游走。不加这一项就是三条平行的公路线，
 				#   并排比对时官方那几缕是拧着走的（能量在流，不是灯管里的灯丝）。
-				var wander: float = sin(TAU * (float(st[3]) * 0.5 * v + float(st[4]) * 1.7)) * 2.6
+				# ★★幅度从 2.6 砍到 1.1 —— 归一化裁切放大后那条蜿蜒变成很假的【锯齿】，
+				#   官方表面是细碎的水/黏液纹理，不是折线。
+				var wander: float = sin(TAU * (float(st[3]) * 0.5 * v + float(st[4]) * 1.7)) * 1.1
 				var d: float = absf(float(x) - float(st[0]) - wander) / float(st[1])
 				if d >= 1.0:
 					continue

@@ -392,7 +392,7 @@ func _spawn(side: String, idx: int) -> void:
 	# 实机是半透明的能量体。本作背景亮 ⇒ 不能照抄实机的 0.72（那版糊掉），
 	# 但 0.90 又太"实"（并排比对像塑料）。0.80 + 更强的边缘光是折中点。
 	# ★RGB 抬到 1.3：流纹贴图均值 ≈0.78，直接乘上去整条会暗一档。
-	mat.albedo_color = Color(1.3, 1.3, 1.3, 0.80)
+	mat.albedo_color = Color(1.3, 1.3, 1.3, 0.72)
 	mi.material_override = mat
 	battle._world.add_child(mi)
 	# ★外发光壳：实机触手裹着一层辉光雾，并排对比时我的显得"干"。
@@ -511,7 +511,7 @@ func tick(delta: float) -> void:
 				# ★0.99 那版等于"不透明白板"；官方那条光带**能看到背后的地面和英雄**。
 				mm.albedo_color = Color(1.3, 1.3, 1.3,
 					0.84 if sN == ST_SLAM else (0.82 if sN == ST_REAR else
-					(0.97 if sN == ST_IDLE else 0.80)))
+					(0.70 if (sN == ST_IDLE or sN == ST_WARN) else 0.80)))
 				# ★能量沿长度往梢端流 —— 攻击时流得快（爆发感），待机时缓慢蠕动。
 				mm.uv1_offset = Vector3(0.0,
 					-battle._t * (1.35 if sN == ST_SLAM else 0.28), 0.0)
@@ -520,7 +520,7 @@ func tick(delta: float) -> void:
 			var hmm: StandardMaterial3D = (ha as MeshInstance3D).material_override
 			if hmm != null:
 				# 0.30 那档实测把本体推到 253（官方 ~205）——辉光是"托轮廓"的，不是"加亮度"的
-				hmm.albedo_color = Color(1, 1, 1, 0.30 if int(t["state"]) == ST_SLAM else 0.36)
+				hmm.albedo_color = Color(1, 1, 1, 0.26 if int(t["state"]) == ST_SLAM else 0.20)
 
 
 ## 外发光壳：同一条曲线放大 2.6 倍再画一遍，加色混合、很淡。
@@ -551,7 +551,9 @@ func _rebuild_halo(t: Dictionary, pts: Array, rs: Array) -> void:
 		#   逐帧量官方 `wfull/041` 的横截面：R 18~108 / G 170~202 / B 140~224 ——
 		#   **它整条都是青的**，只有命中点那一小团是白的。
 		#   ⇒ 辉光退回"薄薄一层雾"：倍率 1.9、偏移 0.14，只把轮廓托出来，不吃掉本体。
-		var hk: float = 1.52 if _halo_hot else 1.62
+		# ★★2026-08-04【归一化裁切逐帧对照看出来的】：辉光壳占了包围盒一半以上、
+		#   糊成一片，官方的辉光是**贴着本体**的一薄层。收敛。
+		var hk: float = 1.34 if _halo_hot else 1.16
 		# ★★2026-08-04：本体加粗到 R_BASE 0.94 之后，`hk=2.9` 让根部辉光宽到
 		#   **4.1 世界单位** ⇒ 截图上是一大片【扇形淡雾】(官方根部是紧凑一团, 没有这个)。
 		#   辉光倍率必须跟着本体粗细走 —— 本体越粗, 倍率越要小。
@@ -843,23 +845,32 @@ func _phase(t: Dictionary) -> Array:
 				lerpf(ANG_IDLE[1], ANG_IDLE[1] + 7.0, br),
 				lerpf(CURL_TIGHT, CURL_LOOSE, br)]
 		ST_WARN:
-			# ★★官方 f009~f039 这 1 秒里触手【不是静止的】(我原来完全没有这一段)：
-			#   f009~f013 长大 + 立成一根柱子
-			#   f014~f017 梢端【卷成钩】("?" 形)
-			#   f018~f039 回落、蜷缩贴地(带子还亮着)
+			# ★★★2026-08-04【第四次改，这次以【图】为准 —— 前一次的数字是脏的】
+			#   我拿"左下角小窗"量宽高比，得出 1.5→0.82 判成"越来越竖"，
+			#   **裁切窗把摊平时横向超出的部分切掉了** ⇒ 摊平被量成"变竖"。
+			#   放大看图才是对的，官方预警这 1 秒是【两次起伏】：
+			#     +0        贴地一坨青团（趴着）
+			#     **+8**    立起成一个大 **C 形钩**（梢端朝斜上勾回来，最显眼的姿态）
+			#     +16~+24   **塌下去摊平**成一片横躺的雾
+			#     **+28**   **再立起卷成环**（蓄力，接前摇）
+			#   我前一版是"全程同一个钩"，两次起伏一个都没有。
 			var wp: float = clampf(ts / T_WARN, 0.0, 1.0)
-			if wp < 0.17:
-				var q: float = smoothstep(0.0, 1.0, wp / 0.17)
-				return [1.0, lerpf(ANG_IDLE[0], 96.0, q), lerpf(ANG_IDLE[1], 72.0, q),
-					lerpf(CURL_TIGHT, 120.0, q)]
-			elif wp < 0.32:
-				var q2: float = smoothstep(0.0, 1.0, (wp - 0.17) / 0.15)
-				return [1.0, lerpf(96.0, 92.0, q2), lerpf(72.0, 128.0, q2),
-					lerpf(120.0, 300.0, q2)]
-			else:
-				var q3: float = smoothstep(0.0, 1.0, (wp - 0.32) / 0.68)
-				return [1.0, lerpf(92.0, ANG_IDLE[0], q3), lerpf(128.0, ANG_IDLE[1] + 30.0, q3),
-					lerpf(300.0, CURL_TIGHT, q3)]
+			if wp < 0.27:                                   # 趴 → 立成 C 钩
+				var q: float = smoothstep(0.0, 1.0, wp / 0.27)
+				return [1.0, lerpf(ANG_IDLE[0], 98.0, q), lerpf(ANG_IDLE[1], 104.0, q),
+					lerpf(CURL_TIGHT, 248.0, q)]
+			elif wp < 0.53:                                 # 塌下去摊平
+				var q2: float = smoothstep(0.0, 1.0, (wp - 0.27) / 0.26)
+				return [1.0, lerpf(98.0, 34.0, q2), lerpf(104.0, -12.0, q2),
+					lerpf(248.0, 300.0, q2)]
+			elif wp < 0.80:                                 # 保持摊平（只轻微起伏）
+				var q3: float = sin(TAU * (wp - 0.53) / 0.27) * 0.5 + 0.5
+				return [1.0, lerpf(34.0, 40.0, q3), lerpf(-12.0, -4.0, q3),
+					lerpf(300.0, 312.0, q3)]
+			else:                                           # 再立起卷环（蓄力）
+				var q4: float = smoothstep(0.0, 1.0, (wp - 0.80) / 0.20)
+				return [1.0, lerpf(34.0, 96.0, q4), lerpf(-12.0, 96.0, q4),
+					lerpf(300.0, 214.0, q4)]
 		ST_REAR:
 			# ★★★2026-08-04【整条曲线逐帧对齐之后的重做】
 			#   官方前摇 5 帧（−5→−1）：青覆盖 **1.55 → 2.73（+76%）**、
@@ -906,6 +917,45 @@ func _phase(t: Dictionary) -> Array:
 	return [1.0, ANG_IDLE[0], ANG_IDLE[1], CURL_TIGHT]
 
 
+## 当前状态下的【弧长】。从 `_rebuild` 拆出来 —— 那个函数长到 277 行，
+## 撞了架构预算的 250 行上限（`tools/arch_budget.py`）。
+##
+## ★★★逐帧曲线对齐（长度包络照官方投影臂长走）：
+##     前摇 −5→−1  0.097 → 0.167  （**长大 72%**）
+##     +0          0.435            （**一帧到最长，且过冲**）
+##     +1/+2       0.354 / 0.417    （回弹一下 = 鞭子的余振）
+##     +3→+9       0.405→0.329      （持续回缩，不停）
+##     +10→+20     0.327→0.166      （长尾收回）
+##   我做过的错版：前摇缩短、+0 只到 0.251、+1~+9 恒定 0.521（**定格 8 帧**）。
+func _arc_for(t: Dictionary, stt: int) -> float:
+	var reach_arc: float = ATTACK_LEN          # ★固定长度，不随目标距离变
+	match stt:
+		ST_WARN:
+			# ★弧长跟着【两次起伏】走：立钩 ×1.45 → 摊平 ×1.10 → 再立起卷环 ×1.55
+			var wq: float = clampf(float(t["ts"]) / T_WARN, 0.0, 1.0)
+			if wq < 0.27:
+				return ARC_LEN * lerpf(1.00, 1.45, smoothstep(0.0, 1.0, wq / 0.27))
+			if wq < 0.53:
+				return ARC_LEN * lerpf(1.45, 1.10, smoothstep(0.0, 1.0, (wq - 0.27) / 0.26))
+			if wq < 0.80:
+				return ARC_LEN * 1.10
+			return ARC_LEN * lerpf(1.10, 1.55, smoothstep(0.0, 1.0, (wq - 0.80) / 0.20))
+		ST_REAR:
+			# 前摇【长大】：不是缩，官方那 5 帧面积涨了 76%
+			var rp: float = clampf(float(t["ts"]) / T_REAR, 0.0, 1.0)
+			return lerpf(ARC_LEN, ARC_LEN * REAR_GROW, smoothstep(0.0, 1.0, rp))
+		ST_SLAM:
+			# ★查官方包络表：峰值锚在 reach_arc，形状(含 +2 的余振二次峰)照抄
+			return maxf(reach_arc * _env(SLAM_LEN_CURVE, float(t["ts"])), ARC_LEN)
+		ST_RECOVER:
+			# ★同一条曲线继续走（偏移 T_SLAM），末段并到待机弧长
+			var te: float = T_SLAM + float(t["ts"])
+			var blend: float = clampf(float(t["ts"]) / T_RECOVER, 0.0, 1.0)
+			return lerpf(maxf(reach_arc * _env(SLAM_LEN_CURVE, te), ARC_LEN),
+				ARC_LEN, pow(blend, 4.5))
+	return ARC_LEN
+
+
 func _rebuild(t: Dictionary) -> void:
 	var mi: MeshInstance3D = t["mi"]
 	if not is_instance_valid(mi):
@@ -941,26 +991,7 @@ func _rebuild(t: Dictionary) -> void:
 	var arc: float = ARC_LEN
 	var stt: int = int(t["state"])
 	# 攻击/回位时按【到目标的真实世界距离】伸长
-	var reach_arc: float = ATTACK_LEN          # ★固定长度，不随目标距离变
-	# ★★★2026-08-04【逐帧曲线对齐】—— 长度包络照官方投影臂长走：
-	#     前摇 −5→−1  0.097 → 0.167  （**长大 72%**）
-	#     +0          0.435            （**一帧到最长，且过冲**）
-	#     +1/+2       0.354 / 0.417    （回弹一下 = 鞭子的余振）
-	#     +3→+9       0.405→0.329      （持续回缩，不停）
-	#     +10→+20     0.327→0.166      （长尾收回）
-	#   我上一版：前摇缩短、+0 只到 0.251、+1~+9 恒定 0.521（定格）。
-	if stt == ST_REAR:
-		# 前摇【长大】：不是缩，官方那 5 帧面积涨了 76%
-		var rp: float = clampf(float(t["ts"]) / T_REAR, 0.0, 1.0)
-		arc = lerpf(ARC_LEN, ARC_LEN * REAR_GROW, smoothstep(0.0, 1.0, rp))
-	elif stt == ST_SLAM:
-		# ★查官方包络表：峰值锚在 reach_arc，形状(含 +2 的余振二次峰)照抄
-		arc = maxf(reach_arc * _env(SLAM_LEN_CURVE, float(t["ts"])), ARC_LEN)
-	elif stt == ST_RECOVER:
-		# ★同一条曲线继续走（偏移 T_SLAM），末段并到待机弧长
-		var te: float = T_SLAM + float(t["ts"])
-		var blend: float = clampf(float(t["ts"]) / T_RECOVER, 0.0, 1.0)
-		arc = lerpf(maxf(reach_arc * _env(SLAM_LEN_CURVE, te), ARC_LEN), ARC_LEN, pow(blend, 4.5))
+	arc = _arc_for(t, stt)
 	var ds: float = arc * emerge / float(SEG)     # 出土 = 露出的弧长在长
 
 	# 菲涅尔边缘光要用相机位置。无头门禁里没有相机 ⇒ 退化成"全边缘"（不影响几何断言）。
@@ -1020,7 +1051,18 @@ func _rebuild(t: Dictionary) -> void:
 		# ★收细曲线 0.72 → 0.42：实机是【根粗、迅速变细、梢端成尖】，
 		#   0.72 那条几乎是等粗的一根管子（并排对比时最明显的差异之一）。
 		# 粗壮体型：收细放缓（0.42 是细长鞭子的曲线，粗触手要更饱满）
-		var r: float = lerpf(R_BASE, R_TIP, pow(u, 0.85))
+		# ★★★2026-08-04【归一化裁切逐帧对照看出来的形状核心差异】
+		#   官方**待机/预警**的触手是【中间鼓、两头收】的纺锤/团（像水母、像一坨），
+		#   **拍击**才是【根粗梢细】的锥（那时它是抽出去的能量带）。
+		#   我原来全程都用锥形剖面 ⇒ 待机看着像根上尖下宽的萝卜，不是团。
+		var r: float
+		var stt0: int = int(t["state"])
+		if stt0 == ST_IDLE or stt0 == ST_WARN:
+			# 纺锤：0 和 1 两端收到 0.42，中段 (u≈0.45) 鼓到 1.0
+			var bulge: float = 0.42 + 0.58 * pow(sin(PI * clampf(u, 0.0, 1.0)), 0.72)
+			r = R_BASE * bulge
+		else:
+			r = lerpf(R_BASE, R_TIP, pow(u, 0.85))
 		# ★最底下那一小段【快速收窄】—— 官方是"从地里钻出来"，
 		#   等粗到底会变成一只方底的脚（并排比对时很假）。
 		if u < 0.10:
@@ -1036,6 +1078,15 @@ func _rebuild(t: Dictionary) -> void:
 		#   我一路眼看着"我的好像更胖"，实测却是 **0.18 —— 反而太细**：
 		#   截图里显胖只是因为两条臂张成 V 之后包围盒变宽，每条臂被缩得又短又粗。
 		#   （memory [[fb-probe-before-claiming-rootcause]]：推理出来的不算根因。）
+		# ★★待机与预警期本体要【厚】—— 官方那是个圆钝饱满的半透明团/粗钩，
+		#   我原来是根细弯钩。只有【拍击】才该细而亮（那时它是能量不是肉）。
+		if int(t["state"]) == ST_IDLE:
+			r *= 1.75
+		if int(t["state"]) == ST_WARN:
+			# ★★★官方 f016~f021 是一个**有明显钩口的 C 形钩**；
+			#   我加粗 + 纺锤剖面之后钩口被**填满**了，变成一根实心柱。
+			#   ⇒ 预警期反而要【比待机细】，卷曲更紧，钩口才露得出来。
+			r *= 0.92
 		if int(t["state"]) == ST_RECOVER:
 			# ★收细【延续到恢复期】—— 官方 +12 带宽仍在 0.0288 一路细下去，
 			#   我上一版恢复期恒定 0.0354 ⇒ 收回来的是一根还很粗的棍子。
@@ -1110,7 +1161,11 @@ func _rebuild(t: Dictionary) -> void:
 			# ★★2026-08-04 放大对比：官方【待机】是一坨**不透明的圆润青团**（像果冻），
 			#   我是一根半透明发光带（边缘透）。量出来我反而比官方粗 33% ——
 			#   所以差的不是宽度，是**实心度**。待机时把横向渐隐压平（边缘也不透）。
-			var soft: float = pow(1.0 - rimf, 0.34 if st2 == ST_IDLE else 0.85)
+			# ★★预警期也要【有体积】—— 放大对比官方那个 C 钩是粗壮饱满的半透明实体，
+			#   我原来在 WARN 期用 0.85（细发光带），看着像根发丝。
+			#   只有【拍击】才该是细而亮的光带（那时它是"能量"不是"肉"）。
+			var soft: float = pow(1.0 - rimf,
+				0.34 if (st2 == ST_IDLE or st2 == ST_WARN) else 0.85)
 			var fin: Color = col.lerp(Color(0.62, 0.94, 0.88), u * 0.12)
 			cols.append(Color(fin.r, fin.g, fin.b, soft))
 		if not prev.is_empty():
