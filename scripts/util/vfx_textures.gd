@@ -736,3 +736,58 @@ static func _make_laser_beam_tex(col: Color) -> ImageTexture:   # 激光束(白�
 			c.a = clampf((core + glow * 0.55) * taper, 0.0, 1.0)
 			img.set_pixel(x, y, c)
 	return ImageTexture.create_from_image(img)
+
+
+## 灵物触手的表皮贴图（沿长度平铺）。★逐像素画，**不是复用任何现成图**
+## （用户铁律：素材一律不复用；程序化生成不产出可复用的图，天然合规 —— 同本文件其余生成器）。
+##
+## 参考 `docs/plans/ref-tentacle-illaoi.png` 逐像素读出来的三件事：
+##   ① 主体饱和翠绿、**中央有更亮的芯**、**两侧边缘发亮**（不是均匀纯色）
+##   ② 表面刻着**方折的阶梯/迷宫回纹**（直角折线，中美洲风），是**比主体亮**的刻痕
+##   ③ 半透明（这一条由材质的 alpha 管，不在贴图里）
+##
+## U = 绕截面一圈（0..1），V = 沿长度（0..1，平铺）。
+static func _make_tentacle_skin() -> ImageTexture:
+	var W := 64
+	var H := 128
+	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
+	var core := Color(0.07, 0.62, 0.26)          # 暗侧
+	var mid := Color(0.13, 0.86, 0.36)           # 主体翠绿
+	var lit := Color(0.42, 1.0, 0.72)            # 亮芯 / 边缘光
+	var glyph := Color(0.78, 1.0, 0.90)          # 回纹刻痕（最亮）
+	for y in range(H):
+		for x in range(W):
+			# 绕圈方向：中间亮、两边暗（伪圆柱明暗），再在最边上补一道边缘光
+			var u := float(x) / float(W - 1)
+			var lam := sin(u * PI)                       # 0..1..0
+			var c: Color = core.lerp(mid, clampf(lam * 1.35, 0.0, 1.0))
+			c = c.lerp(lit, pow(clampf(lam, 0.0, 1.0), 6.0) * 0.9)
+			var rim: float = pow(1.0 - absf(u - 0.5) * 2.0, 0.35)
+			c = c.lerp(lit, (1.0 - rim) * 0.55)
+			img.set_pixel(x, y, c)
+	# ── 方折回纹 ──
+	# ★★【自截图看出来的】：第一版画的是几个零散的 Γ，屏幕上读起来像**随机字符**。
+	#   参考图上是**连续的方折带**（一条线不断地"进—拐—回—拐"，中美洲/希腊回纹那种），
+	#   有节奏、连得上。⇒ 改成"一条主脊 + 交替左右伸出的方钩"，这个在小尺寸下也读得出。
+	var TH := 3
+	var put = func(x0: int, y0: int, w: int, h: int) -> void:
+		for yy in range(maxi(0, y0), mini(H, y0 + h)):
+			for xx in range(maxi(0, x0), mini(W, x0 + w)):
+				img.set_pixel(xx, yy, glyph)
+	var UNIT := 16                                   # 一个回纹单元的长度(像素)
+	var spine := 30                                  # 主脊所在的 U 位置
+	put.call(spine, 0, TH, H)                        # 主脊：贯穿全长的一条线
+	for n in range(H / UNIT):
+		var y0: int = n * UNIT
+		var left: bool = (n % 2 == 0)
+		if left:
+			put.call(spine - 18, y0 + 3, 18 + TH, TH)        # 横臂伸左
+			put.call(spine - 18, y0 + 3, TH, 9)              # 折回(向下)
+			put.call(spine - 12, y0 + 9, 6 + TH, TH)         # 小回勾
+		else:
+			put.call(spine, y0 + 3, 20, TH)                  # 横臂伸右
+			put.call(spine + 20 - TH, y0 + 3, TH, 9)         # 折回
+			put.call(spine + 12, y0 + 9, 8, TH)              # 小回勾
+	var t := ImageTexture.create_from_image(img)
+	return t
+

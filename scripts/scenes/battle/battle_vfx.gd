@@ -608,6 +608,8 @@ func _vfx_preview_loop() -> void:
 			#   单看某一技: VFXPREVIEW=tr_hook / tr_fury / tr_whistle / tr_glacier /
 			#               tr_hunt / tr_tame / tr_stone
 			# 靶向器 055 钩索炸弹(2026-08-01 用户:「打开窗口给我看看靶向器的特效」)
+			# 灵物【触手拍击】程序化 3D 网格(2026-08-04 用户:「等下直接打开窗口给我看拍击动作」)
+			"tentacle": _vfx_preview_tentacle(origin, dir)
 			"hookbomb": _vfx_preview_hookbomb(origin, si)
 			# 信号放大器 038 弧形电磁波(2026-08-01 用户:「什么是扇形波你不懂吗」→ 重做成实心扇带)
 			"sigwave": _vfx_preview_sigwave(origin, dir, si)
@@ -621,6 +623,77 @@ func _vfx_preview_loop() -> void:
 			"tr_stone": _vfx_preview_trainer(origin, dir, 6)
 			_: battle._laser_blade_sweep(fu, origin, dir, 350.0, 60.0)
 		await battle.get_tree().create_timer(period).timeout
+
+## 灵物【触手】预览：左边放一只**真的带 5 件灵物装备**的龟，右边放一个假人当靶。
+##
+## ★★为什么必须给真装备，而不是直接 `ensure(2)`：
+##   `spirit_synergy_system.tick()` **每帧**都在跑 `ensure(side, 该档位应有的根数)`。
+##   预览里如果没有带灵物的单位，档位 = 0 ⇒ 它每帧把我生的触手 `ensure(…, 0)` 撤掉。
+##   **自截图实测**：16 帧里 14 帧画面上一根触手都没有，我第一版就是这么错的。
+##   ⇒ 给真装备 = 走真实路径（memory [[fb-verify-must-run-the-real-path]]），
+##     顺带也验证了"档位 → 根数"这条链是通的。
+var _tt_prev_foe = null
+var _tt_prev_src = null
+
+func _vfx_preview_tentacle(origin: Vector2, dir: Vector2) -> void:
+	if _tt_prev_src == null or not (_tt_prev_src is Dictionary):
+		# 找 5 件灵物装备 → 灵物档 2（2 根触手）
+		var eq: Array = []
+		for e in DataRegistry.phase2_equipment:
+			if battle.Phase2Types.type_of(str((e as Dictionary).get("id", ""))) == "灵物":
+				eq.append({"id": str((e as Dictionary)["id"]), "star": 1})
+			if eq.size() >= 5:
+				break
+		_tt_prev_src = battle._spawn._make_unit("basic", "left", origin - dir * 320.0)
+		(_tt_prev_src as Dictionary)["maxHp"] = 999999.0
+		(_tt_prev_src as Dictionary)["hp"] = 999999.0
+		(_tt_prev_src as Dictionary)["no_move"] = true
+		(_tt_prev_src as Dictionary)["no_basic"] = true
+		(_tt_prev_src as Dictionary)["move_spd"] = 0.0
+		(_tt_prev_src as Dictionary)["equips"] = eq
+		(_tt_prev_src as Dictionary)["eq_state"] = {}
+		battle._units.append(_tt_prev_src)
+		_tt_prev_foe = battle._spawn._make_unit("basic", "right", origin + dir * 260.0)
+		(_tt_prev_foe as Dictionary)["maxHp"] = 999999.0
+		(_tt_prev_foe as Dictionary)["hp"] = 999999.0
+		(_tt_prev_foe as Dictionary)["no_move"] = true
+		(_tt_prev_foe as Dictionary)["no_basic"] = true
+		(_tt_prev_foe as Dictionary)["move_spd"] = 0.0
+		battle._units.append(_tt_prev_foe)
+		battle._synergy._by_side = {"left": {}, "right": {}}
+		battle._synergy.apply_all()
+		return                      # 头一轮只登场, 让人看清 2 秒出土
+	_tt_isolate()
+	# 之后每个周期拍一次（走真实入口：档位决定根数，这里只是催它出手）
+	for _i in range(battle._tentacle_vfx.count("left")):
+		battle._tentacle_vfx.strike("left", _i, Vector2((_tt_prev_foe as Dictionary)["pos"]), 1.0)
+
+
+## `TENT_ISO=1`：把场景里【除了触手以外】的一切藏掉，黑底只看触手。
+## 用户 2026-08-04：「验证你可以把周围所有场景都关掉，只看触手相关特效」
+## ★做法是"白名单"而不是"逐个点名藏"—— 逐个点名的话以后加了新装饰又会漏。
+func _tt_isolate() -> void:
+	if not OS.has_environment("TENT_ISO"):
+		return
+	for c in battle._world.get_children():
+		if c is Camera3D or c is DirectionalLight3D or c is OmniLight3D:
+			continue
+		if str(c.name).begins_with("Tentacle_"):
+			continue
+		if c is Node3D or c is Sprite3D or c is MeshInstance3D:
+			(c as Node3D).visible = false
+	# 黑底 + 关雾
+	if battle._sub != null:
+		battle._sub.transparent_bg = false
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.04, 0.05, 0.07)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(1, 1, 1)
+	env.ambient_light_energy = 1.0
+	if battle._cam != null:
+		battle._cam.environment = env
+
 
 ## 信号放大器 038 弧形电磁波预览: 每次调用发一道, 张角 90→180→270→360 递增(看张角变化)。
 ## ★单位钉住(移速0/不普攻) —— 演示台的单位是给人看的道具, 不该让 AI 动它们。

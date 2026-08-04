@@ -73,6 +73,13 @@ func tentacle_pos(side: String, idx: int) -> Vector2:
 
 
 func tick(delta: float) -> void:
+	# ★每帧让场上的触手数量 == 本档位应有的数量（多了撤场、少了出土）。
+	#   文案写的是「N 个无敌触手【登场】」——"登场"意味着它在场上；
+	#   不常驻的话玩家永远读不到这四个字（用户 2026-08-04 指出的正是这件事：
+	#   「整个触手在这个羁绊里是什么流程」）。
+	for sd in ["left", "right"]:
+		var tt: int = _side_tier(str(sd))
+		battle._tentacle_vfx.ensure(str(sd), TENTACLES[clampi(tt - 1, 0, 3)] if tt > 0 else 0)
 	# 追击次数窗口(2.5 秒)与拍击周期(5 秒)【各走各的】
 	_t_chase += delta
 	if _t_chase >= CHASE_WINDOW:
@@ -133,8 +140,9 @@ func _slap(side: String, idx: int, share: float) -> int:
 		else:
 			battle._damage._apply_damage(f, dmg, Color("#b388ff"))
 		hits += 1
-	if hits > 0:
-		battle._bolt_line(origin, Vector2(aim["pos"]), Color(0.70, 0.53, 1.0, 0.8))
+	# ★演出与结算【解耦】: 伤害上面已经结算完了, 这里只是好看。
+	#   一个测数值的用例不该依赖任何动画跑完(CLAUDE.md §3.5)。
+	battle._tentacle_vfx.strike(side, idx, Vector2(aim["pos"]), share)
 	return hits
 
 

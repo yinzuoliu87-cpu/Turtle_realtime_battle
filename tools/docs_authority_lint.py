@@ -117,6 +117,34 @@ print('  [分母] 冒名扫描 %d 篇活树 .md(排除 archive/ 与三权威)' %
 if n_scan == 0:
 	fail('一篇都没扫 —— 空检查不是通过')
 
+# ── ⑤ 路线图的最新条目 == project.godot 的 config/version ──
+#
+# ★这条 2026-08-04 才补上, 而路线图【从 2026-07-31 起就写着"由本脚本焊死"】——
+#   实际本脚本此前只查"在不在位/有没有人读", 根本没查内容新不新。
+#   于是同一个病复发了第二次: 路线图停在 v0.17.38, 而实际已经 v0.19.11(漂了 21 个版本),
+#   而门禁全绿。**文档声称有个门禁、那个门禁却不存在** —— 正是本脚本要治的病，
+#   却发生在本脚本自己身上。现在让那句话变成真的。
+#
+# 判据: 路线图正文里出现的最大版本号, 必须 == project.godot 的 config/version。
+#   取"最大"而不是"第一个" —— 路线图是倒序记账, 但历史条目里也会引用旧版本号。
+ROADMAP = 'docs/实时版-路线图与待办.md'
+_pg = io.open('project.godot', encoding='utf-8').read()
+_m = re.search(r'config/version\s*=\s*"([0-9]+)\.([0-9]+)\.([0-9]+)"', _pg)
+if _m is None:
+	fail('project.godot 里读不到 config/version —— 这条检查的地基没了')
+else:
+	cur = tuple(int(x) for x in _m.groups())
+	txt = io.open(ROADMAP, encoding='utf-8', errors='replace').read()
+	vers = [tuple(int(x) for x in t) for t in re.findall(r'v?([0-9]+)\.([0-9]+)\.([0-9]+)', txt)]
+	print('  [分母] 路线图里解析到 %d 个版本号' % len(vers))
+	if not vers:
+		fail('路线图里一个版本号都没解析到 —— 空检查不是通过')
+	else:
+		top = max(vers)
+		if top != cur:
+			fail('路线图最新版本 v%d.%d.%d ≠ project.godot 的 v%d.%d.%d —— '
+				'又漂了。记账跟不上就等于"三份权威"里有一份在骗人。' % (top + cur))
+
 print()
-print('ALL OK — 事实源纪律通过(三权威在位·消费链活·README 无漂移·无冒名)' if bad == 0 else 'NEEDS FIX: %d 项' % bad)
+print('ALL OK — 事实源纪律通过(三权威在位·消费链活·README 无漂移·无冒名·路线图不漂)' if bad == 0 else 'NEEDS FIX: %d 项' % bad)
 sys.exit(1 if bad else 0)
