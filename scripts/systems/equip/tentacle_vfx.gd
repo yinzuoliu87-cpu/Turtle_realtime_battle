@@ -487,7 +487,9 @@ func tick(delta: float) -> void:
 				#   ⇒ 0.33 秒才响，观感是"打完了才有反馈"。
 				#   伸直只要 0.07 秒，所以 0.08 秒就该炸。
 				_telegraph_hide(t)                 # 拍下去了，带子撤
-				if not bool(t.get("hit", true)) and ts >= 0.08:
+				# ★★官方 **f040（拍击第一帧）白像素就是峰值 700** ⇒ 抽直与爆闪【同一帧】。
+				#   我设在 0.08 秒 ⇒ 实测 +0~+2 帧一个白像素都没有，慢了 3 帧。
+				if not bool(t.get("hit", true)) and ts >= 0.0:
 					t["hit"] = true
 					_impact(t)
 				if ts >= dur:
@@ -627,29 +629,56 @@ func _rebuild_halo(t: Dictionary, pts: Array, rs: Array) -> void:
 
 ## 命中爆闪：一个朝向相机的发光球，瞬间放大到最亮再收掉。
 ## ★用 billboard 而不是贴地环 —— 本作是 2.5D 俯角，贴地的东西会被压扁到看不见。
+## 命中爆闪。
+##
+## ★★★2026-08-04【量出来的形态，和我做的完全不是一回事】
+##   我做的是**一个实心圆球**（billboard + 径向渐变贴图）。
+##   官方逐帧量白区(>200 三通道)：
+##     包围盒 **36×84 / 29×83 / 30×93** ⇒ **高是宽的 2.8 倍的【竖长条】**
+##     填充率只有 **5~23%**、由 **7~15 个连通碎块**组成 ⇒ 是**破碎的**不是实心的
+##     持续 f040~f051 共 **12 帧 ≈ 0.4 秒**，碎块数从 13 缓降到 6
+##   —— 触手是从下往上抽过来的，命中点的光**沿垂直方向溅开**，所以是竖条不是球。
+##   ⇒ 主体拉成竖长条 + 几片错开的碎光；碎片位置用**确定性**派生（不用随机，
+##     保住 determinism —— 换路重放要一样）。
 func _flash(pos2: Vector2, scale: float) -> void:
+	var base3: Vector3 = battle._world_pos(pos2, battle.GROUND_LIFT + 0.6)
+	# ── 主体：竖长条（高/宽 ≈ 2.8，量出来的）──────────────────
 	var sp := Sprite3D.new()
 	sp.texture = VfxTex._make_glow_texture()
 	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	# ★★2026-08-04：上一版是【黑底上一个灰球】——柔和径向渐变 + alpha 0.72，
-	#   官方那团是**紧凑的白热爆点**（101×84 框里只有 589 个 >195 的白像素，
-	#   即"小而极亮"，不是"大而灰"）。⇒ 尺寸砍到 62%、modulate 抬过 1.0 打到过曝、
-	#   总时长 0.66→0.47 秒（闪要快）。
 	sp.render_priority = 4
 	sp.shaded = false
-	sp.modulate = Color(1.06, 1.12, 1.14, 0.96)
+	sp.modulate = Color(1.34, 1.42, 1.44, 1.0)
 	sp.pixel_size = 0.0039 * scale
-	sp.position = battle._world_pos(pos2, battle.GROUND_LIFT + 0.6)
+	sp.position = base3
 	battle._world.add_child(sp)
 	var tw: Tween = battle._reg_tween()
-	# ★★时间对齐对比实测：官方那团白闪从 +2 帧一直亮到 +14 帧（≈0.4 秒）才淡；
-	#   我原来 0.09 涨 + 0.46 淡，看起来只是"闪了一下"，命中的分量完全不够。
-	#   ⇒ 快涨(0.06) → **保持 0.26 秒** → 再淡 0.34 秒。
-	tw.tween_property(sp, "scale", Vector3(1.30, 1.30, 1.30), 0.05).from(Vector3(0.25, 0.25, 0.25))
-	tw.tween_property(sp, "scale", Vector3(1.62, 1.62, 1.62), 0.20)
-	tw.parallel().tween_property(sp, "modulate:a", 0.62, 0.20)
-	tw.tween_property(sp, "modulate:a", 0.0, 0.22)
+	tw.tween_property(sp, "scale", Vector3(0.62, 1.74, 1.0), 0.05).from(Vector3(0.18, 0.34, 1.0))
+	tw.tween_property(sp, "scale", Vector3(0.78, 2.18, 1.0), 0.26)
+	tw.parallel().tween_property(sp, "modulate:a", 0.74, 0.26)
+	tw.tween_property(sp, "modulate:a", 0.0, 0.30)
 	tw.tween_callback(sp.queue_free)
+	# ── 碎光：沿竖直方向散开的几片（官方 7~15 个连通块）────────
+	#   ★位置/大小全部由 i 确定性派生 —— 不用 randf()，换路重放必须一致。
+	for i in range(11):
+		var fi: float = float(i)
+		var frag := Sprite3D.new()
+		frag.texture = VfxTex._make_glow_texture()
+		frag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		frag.render_priority = 5
+		frag.shaded = false
+		frag.modulate = Color(1.38, 1.46, 1.48, 0.98)
+		frag.pixel_size = 0.0039 * scale * (0.34 + 0.16 * sin(fi * 2.7))
+		# 竖直方向散得远、横向散得近（官方包围盒 30×85）
+		frag.position = base3 + Vector3(
+			sin(fi * 5.3) * 0.30 * scale, cos(fi * 3.1) * 0.86 * scale, 0.0)
+		battle._world.add_child(frag)
+		var ft: Tween = battle._reg_tween()
+		var dly: float = 0.02 * fi
+		ft.tween_interval(dly)
+		ft.tween_property(frag, "scale", Vector3(1.0, 1.0, 1.0), 0.05).from(Vector3(0.2, 0.2, 0.2))
+		ft.tween_property(frag, "modulate:a", 0.0, 0.40 + 0.05 * fi)
+		ft.tween_callback(frag.queue_free)
 
 
 ## 预警区：蓄势那 0.10 秒里，在地面画出【即将被扫到的那条直线】。
@@ -992,10 +1021,13 @@ func _arc_for(t: Dictionary, stt: int) -> float:
 			return maxf(reach_arc * _env(SLAM_LEN_CURVE, float(t["ts"])), ARC_LEN)
 		ST_RECOVER:
 			# ★同一条曲线继续走（偏移 T_SLAM），末段并到待机弧长
+			# ★★2026-08-04：原来这里有个 `maxf(..., ARC_LEN)` 钳制 ——
+			#   官方包络末尾降到 0.284×峰值，而 `ARC_LEN/reach = 0.34` 就是地板，
+			#   于是收回段**系统性偏高 +0.05**（实测形状误差 0.045 全是这么来的）。
+			#   去掉钳制让它跟表走；并入待机的指数也从 4.5 收到 2.8（原来在高位待太久）。
 			var te: float = T_SLAM + float(t["ts"])
 			var blend: float = clampf(float(t["ts"]) / T_RECOVER, 0.0, 1.0)
-			return lerpf(maxf(reach_arc * _env(SLAM_LEN_CURVE, te), ARC_LEN),
-				ARC_LEN, pow(blend, 4.5))
+			return lerpf(reach_arc * _env(SLAM_LEN_CURVE, te), ARC_LEN, pow(blend, 2.8))
 	return ARC_LEN
 
 
