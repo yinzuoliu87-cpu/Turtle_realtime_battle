@@ -44,6 +44,13 @@ const WRAITH_INHERIT := [0.20, 0.38, 0.65, 1.00]
 const WRAITH_LOOPS := [0, 1, 2, 3]
 const WRAITH_DECAY := 0.9
 
+## 【转移阵地】每根触手"射程内无敌人"已持续多久（key = "side|idx"）。
+## 用户 2026-08-04：「触手攻击范围内没有敌人持续一秒后，触手会钻入地下消失，
+##   然后从可攻击的目标附近再重新破土而出」。
+const RELOC_IDLE_T := 1.0            # 空转多久开始搬家
+const RELOC_NEAR := 0.70             # 搬到"距目标 0.70×射程"处（留出余量，别贴脸）
+var _dry: Dictionary = {}
+
 var _t_slap := 0.0
 var _t_chase := 0.0
 ## 各方本周期已用掉的追击次数
@@ -84,6 +91,7 @@ func tick(delta: float) -> void:
 	if _t_chase >= CHASE_WINDOW:
 		_t_chase -= CHASE_WINDOW
 		_chase_used = {"left": 0, "right": 0}
+	_reloc_tick(delta)
 	_t_slap += delta
 	if _t_slap < SLAP_PERIOD:
 		return
@@ -95,6 +103,61 @@ func tick(delta: float) -> void:
 			continue
 		for i in range(TENTACLES[clampi(ti - 1, 0, 3)]):
 			_slap(s, i, 1.0)
+
+
+## 【转移阵地】每帧看每根触手射程内有没有敌人；连续 `RELOC_IDLE_T` 秒没有 → 搬家。
+## ★这条以前**写了 `relocate()` 但零调用者** —— 典型的"写进去了没人读"
+##   （memory [[fb-write-without-reader-and-fake-gates]]）。现在接上。
+func _reloc_tick(delta: float) -> void:
+	var tv = battle._tentacle_vfx
+	var rng: float = float(tv.attack_range_2d)
+	for side in ["left", "right"]:
+		var s2: String = str(side)
+		var ti: int = _side_tier(s2)
+		if ti <= 0:
+			continue
+		# 本方能打的敌人（活着的对方单位）
+		var foes: Array = []
+		for u in battle._units:
+			if u is Dictionary and u.get("alive", false) and str(u.get("side", "")) != s2:
+				foes.append(u)
+		for i in range(TENTACLES[clampi(ti - 1, 0, 3)]):
+			var k: String = "%s|%d" % [s2, i]
+			if tv.state_of(s2, i) != 1:          # 只有【待机】中的才考虑搬家
+				_dry[k] = 0.0
+				continue
+			var origin: Vector2 = tv.root_pos(s2, i)
+			var has_target := false
+			for f in foes:
+				if origin.distance_squared_to(Vector2(f["pos"])) <= rng * rng:
+					has_target = true
+					break
+			if has_target:
+				_dry[k] = 0.0
+				continue
+			_dry[k] = float(_dry.get(k, 0.0)) + delta
+			if float(_dry[k]) < RELOC_IDLE_T:
+				continue
+			_dry[k] = 0.0
+			# 搬到"离最近的敌人 0.70×射程"处，方向朝我方一侧（不贴脸）
+			var best = null
+			var bd := INF
+			for f in foes:
+				var d: float = origin.distance_squared_to(Vector2(f["pos"]))
+				if d < bd:
+					bd = d; best = f
+			if best == null:
+				continue                          # 全场没敌人了，别瞎搬
+			var fp: Vector2 = Vector2(best["pos"])
+			var back: Vector2 = (origin - fp)
+			if back.length() < 1.0:
+				back = Vector2.LEFT if s2 == "left" else Vector2.RIGHT
+			var to2: Vector2 = fp + back.normalized() * (rng * RELOC_NEAR)
+			to2.x = clampf(to2.x, battle.ARENA.position.x + 40.0,
+				battle.ARENA.position.x + battle.ARENA.size.x - 40.0)
+			to2.y = clampf(to2.y, battle.ARENA.position.y + 40.0,
+				battle.ARENA.position.y + battle.ARENA.size.y - 40.0)
+			tv.relocate(s2, i, to2)
 
 
 ## 一次拍击：朝一名敌人拍下去，**沿途**（触手↔目标直线上）的敌人都吃伤害。
@@ -223,4 +286,5 @@ func _any_carrier(side: String):
 func clear() -> void:
 	_t_slap = 0.0
 	_t_chase = 0.0
+	_dry.clear()
 	_chase_used = {"left": 0, "right": 0}

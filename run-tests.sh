@@ -34,6 +34,8 @@ frames_for () {
     verify_pirate_hook)  echo 8000 ;;
     # 触手节奏: 建战斗场景 + 走完 2 秒出土 + 20 次强制重建网格并量几何(同步断言, 不等演出)
     verify_tentacle_rhythm) echo 3000 ;;
+    # 转移阵地: 建战斗场景 + 造携带者走真实档位链路 + 喂完钻地/破土动画
+    verify_tentacle_relocate) echo 3000 ;;
     verify_eq_hp_grants) echo 8000 ;;
     # 口哨②要【墙钟】等灵体小龟活满 5 秒(tween 驱动·走未钳制 delta) → 无头高帧率下帧数很多
     verify_whistle_wave) echo 12000 ;;
