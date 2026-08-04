@@ -69,9 +69,16 @@ enum { ST_EMERGE, ST_IDLE, ST_REAR, ST_SLAM, ST_RECOVER, ST_RETRACT }
 
 ## 各态时长（秒）。EMERGE / REAR / SLAM 三个取自官方数值，见文件头。
 const T_EMERGE := 2.0
-const T_REAR := 0.25
-const T_SLAM := 0.5
-const T_RECOVER := 0.35
+## ★★★以下三个时长【逐帧量出来的】(W 技能预览 `ImiPef9gzoE` 2.2~4.2s @30fps)：
+##   2.80s  爆发 —— **2 帧内(≈0.07s)猛地伸直** + 命中点白色爆闪
+##   2.87~3.20s  **保持一条笔直的粗光带**(0.33s)，亮度是待机的好几倍
+##   3.20~3.40s  变细变淡
+##   3.40~3.53s  收回弯曲 → 回 idle
+## ⇒ **不是"抬起来砸下去"，是【蜷缩 → 瞬间弹射成直光带 → 保持 → 收回】。**
+##   我原来做的 0.25 前摇 + 0.5 砸下是慢动作，跟实机的爆发感完全不是一回事。
+const T_REAR := 0.10                 # 前摇极短：只是微微后缩蓄力
+const T_SLAM := 0.40                 # 伸直(前 0.07s 完成) + 保持
+const T_RECOVER := 0.30              # 收回
 const T_RETRACT := 0.6
 ## 闪避追击用的短促点刺（不立起、不预告）
 const T_JAB := 0.30
@@ -100,14 +107,21 @@ const RING := 14
 const R_BASE := 0.62                 # 根部半径 —— 粗（但 0.78 配 4.6 长度太墩）
 const R_TIP := 0.10                  # 梢端半径（卷起来的钩仍有体积，不是针尖）
 ## ★总弧长固定 —— 不随目标距离变。这是"它是一根实体"的关键。
-const ARC_LEN := 6.2                 # 实机被动触手是"粗但有高度"，4.6 太矮
+const ARC_LEN := 6.2                 # 待机时的弧长（实机被动"粗但有高度"）
+## ★攻击时的**伸长倍率** —— 逐帧看官方 W：攻击那一下触手会**伸得很长**，
+##   从根部一直插到目标身上（跨越大半个屏幕），不是原地"变直"。
+##   我原来弧长恒定 6.2，所以攻击只是"直了一点"，读不出扑出去的力道。
+const REACH_MULT := 2.35
 ## 各态的切角（度）：[根部角, 梢端角]。90° = 竖直向上，0° = 水平向前，负 = 朝下
 const ANG_IDLE := [86.0, 18.0]       # 待机: 升起后大幅弧过去（牧羊杖形，靠角度不靠螺旋）
 const ANG_REAR := [104.0, 88.0]      # 蓄势: 立直 + 后仰
 ## ★砸下：根部保持较立（58°）、梢端扎到地里（−80°）——
 ##   【自截图看出来的】根部倒到 30° 时整条【平躺】在地上，像一条海带，
 ##   而参考里是"根立着、梢抽下来"的一道弧。差别就在根部这个角。
-const ANG_SLAM := [58.0, -80.0]
+## ★攻击姿态：**整条笔直地指向目标**（不是弧）。
+##   逐帧看到的就是"一条从根部斜插到目标身上的粗光带"。
+##   根部略抬、梢端略低 = 一条几乎直的斜线。
+const ANG_SLAM := [26.0, 14.0]
 const ANG_EMERGE := [90.0, 86.0]     # 出土: ★近乎竖直的一道光柱（实机就是这样起的）
 ## 梢端打卷：最后这一段额外多转的角度（度）
 ## ★★【探针算出来的 bug】: 原来 CURL_EXTRA 是恒定 210°，于是砸下时
@@ -118,11 +132,17 @@ const ANG_EMERGE := [90.0, 86.0]     # 出土: ★近乎竖直的一道光柱（
 ## ★卷曲起点：0.42 那一版【自截图实测】从中段就卷，整条没机会长高，
 ##   看着像只虾。实机是**先立起来一段、再在上半段卷成钩**。
 const CURL_FROM := 0.68              # 上段三分之一才开始回勾
-## ★待机的卷曲量：并排比对官方被动预览后定为 **120°** ——
-##   它是个【牧羊杖 / 问号】形（升起 → 弧过去 → 梢端回勾），
-##   不是螺旋。250° 那版卷成一圈，读起来像海马不像触手。
-const CURL_IDLE := 120.0
-const CURL_SLAM := 40.0              # 砸下: 松开甩出（仍留一点弯，不是直棍）
+## ★★★待机的卷曲量 —— 【逐帧看 idle 段】之后的第三次修正：
+##   它不是一个固定值，而是**周期性呼吸**的。
+##   官方 idle（`baYW1HaSbRU` 5.6s~9.5s，30fps 逐帧看完）里触手在：
+##     **卷成 "9" 字环（≈330°）** ⇄ **舒展成向上斜伸的波浪长条（≈70°）**
+##   之间来回，周期约 2.4 秒。这是个**大幅度**的动作，不是我原来做的"轻微摇曳"。
+##   （我先做 250° → 看单张静止图改成 120° → 看动画才发现两个都不对：
+##     它两个姿态都会经过。静止图只能告诉你某一瞬间。）
+const CURL_TIGHT := 330.0            # 蜷缩到底：梢端卷成一个完整的环
+const CURL_LOOSE := 70.0             # 舒展到底：几乎抻开
+const BREATH_PERIOD := 2.4           # 一次完整呼吸的秒数
+const CURL_SLAM := 6.0               # 攻击: ★完全抻直（逐帧看是一条直光带）
 ## 待机摇曳的横向摆幅（度）
 const S_AMP := 3.5                   # ★实机摆得很轻, 原画那种 S 形是艺术加工
 ## 梢端相位滞后（鞭子感 —— 整条一起动就是根棍子）
@@ -389,25 +409,32 @@ func _phase(t: Dictionary) -> Array:
 		ST_EMERGE:
 			var e: float = clampf(ts / T_EMERGE, 0.0, 1.0)
 			var k: float = smoothstep(0.0, 1.0, e)
-			return [e, lerpf(ANG_EMERGE[0], ANG_IDLE[0], k), lerpf(ANG_EMERGE[1], ANG_IDLE[1], k), CURL_IDLE * k]
+			return [e, lerpf(ANG_EMERGE[0], ANG_IDLE[0], k), lerpf(ANG_EMERGE[1], ANG_IDLE[1], k), CURL_TIGHT * k]
 		ST_IDLE:
-			return [1.0, ANG_IDLE[0], ANG_IDLE[1], CURL_IDLE]
+			# ★呼吸：卷成环 ⇄ 舒展。用触手自己的相位错开，两根不同步。
+			var br: float = 0.5 - 0.5 * cos(TAU * (battle._t + float(t["phase"])) / BREATH_PERIOD)
+			# 舒展时不只是松卷，整条也会更斜地伸出去（逐帧看到的）
+			return [1.0, lerpf(ANG_IDLE[0], ANG_IDLE[0] - 14.0, br),
+				lerpf(ANG_IDLE[1], ANG_IDLE[1] + 26.0, br),
+				lerpf(CURL_TIGHT, CURL_LOOSE, br)]
 		ST_REAR:
 			var r: float = smoothstep(0.0, 1.0, clampf(ts / T_REAR, 0.0, 1.0))
-			return [1.0, lerpf(ANG_IDLE[0], ANG_REAR[0], r), lerpf(ANG_IDLE[1], ANG_REAR[1], r), CURL_IDLE]
+			return [1.0, lerpf(ANG_IDLE[0], ANG_REAR[0], r), lerpf(ANG_IDLE[1], ANG_REAR[1], r), CURL_TIGHT]
 		ST_SLAM:
 			var dur: float = T_JAB if float(t["share"]) < 0.9 else T_SLAM
-			# ★砸下用【前快后慢】的缓动：0.3 秒内甩到底，剩下的时间压在地上
+			# ★★伸直是【瞬间的】—— 逐帧看是 2 帧(0.07s)内完成，之后【保持】。
+			#   原来的三次缓动是"0.3 秒内甩到底"，那是慢动作。
 			var s2: float = clampf(ts / dur, 0.0, 1.0)
-			var e2: float = 1.0 - pow(1.0 - s2, 3.0)
-			return [1.0, lerpf(ANG_REAR[0], ANG_SLAM[0], e2), lerpf(ANG_REAR[1], ANG_SLAM[1], e2), lerpf(CURL_IDLE, CURL_SLAM, e2)]
+			var e2: float = clampf(ts / 0.07, 0.0, 1.0)          # 0.07 秒抽直，然后钉住
+			e2 = 1.0 - pow(1.0 - e2, 2.0)
+			return [1.0, lerpf(ANG_REAR[0], ANG_SLAM[0], e2), lerpf(ANG_REAR[1], ANG_SLAM[1], e2), lerpf(CURL_TIGHT, CURL_SLAM, e2)]
 		ST_RECOVER:
 			var c: float = smoothstep(0.0, 1.0, clampf(ts / T_RECOVER, 0.0, 1.0))
-			return [1.0, lerpf(ANG_SLAM[0], ANG_IDLE[0], c), lerpf(ANG_SLAM[1], ANG_IDLE[1], c), lerpf(CURL_SLAM, CURL_IDLE, c)]
+			return [1.0, lerpf(ANG_SLAM[0], ANG_IDLE[0], c), lerpf(ANG_SLAM[1], ANG_IDLE[1], c), lerpf(CURL_SLAM, CURL_TIGHT, c)]
 		ST_RETRACT:
 			var q: float = clampf(ts / T_RETRACT, 0.0, 1.0)
-			return [1.0 - q, ANG_IDLE[0], ANG_IDLE[1], CURL_IDLE]
-	return [1.0, ANG_IDLE[0], ANG_IDLE[1], CURL_IDLE]
+			return [1.0 - q, ANG_IDLE[0], ANG_IDLE[1], CURL_TIGHT]
+	return [1.0, ANG_IDLE[0], ANG_IDLE[1], CURL_TIGHT]
 
 
 func _rebuild(t: Dictionary) -> void:
@@ -441,7 +468,16 @@ func _rebuild(t: Dictionary) -> void:
 	var up := Vector3.UP
 
 	var swayt: float = battle._t * SWAY_SPEED + float(t["phase"])
-	var ds: float = ARC_LEN * emerge / float(SEG)     # 出土 = 露出的弧长在长
+	# ★攻击时弧长拉长（扑出去够到目标），其余状态用待机弧长
+	var arc: float = ARC_LEN
+	var stt: int = int(t["state"])
+	if stt == ST_SLAM:
+		var d2p: float = clampf(float(t["ts"]) / 0.07, 0.0, 1.0)
+		arc = ARC_LEN * lerpf(1.0, REACH_MULT, 1.0 - pow(1.0 - d2p, 2.0))
+	elif stt == ST_RECOVER:
+		arc = ARC_LEN * lerpf(REACH_MULT, 1.0,
+			smoothstep(0.0, 1.0, clampf(float(t["ts"]) / T_RECOVER, 0.0, 1.0)))
+	var ds: float = arc * emerge / float(SEG)     # 出土 = 露出的弧长在长
 
 	var stool := SurfaceTool.new()
 	stool.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -463,6 +499,9 @@ func _rebuild(t: Dictionary) -> void:
 			ang -= curl * cu * cu
 		# 横向摆（待机摇曳 + S 形）
 		var yaw: float = deg_to_rad(S_AMP * sin(u * TAU * 0.6 + swayt))
+		# ★主干的波浪起伏 —— 逐帧看官方 idle，主干【不是光滑的弧】，
+		#   沿长度有明显的一波一波（像水流）。叠在切角上，幅度不大但读得出来。
+		ang += 7.0 * sin(u * TAU * 2.1 + swayt * 1.7)
 		var ar: float = deg_to_rad(ang)
 		var tan: Vector3 = (fwd * cos(ar) * cos(yaw) + lat * sin(yaw) * cos(ar) + up * sin(ar)).normalized()
 		# 截面
@@ -480,7 +519,7 @@ func _rebuild(t: Dictionary) -> void:
 		if u < 0.10:
 			r *= 0.42 + 0.58 * (u / 0.10)
 		if int(t["state"]) == ST_SLAM:
-			r *= 1.15
+			r *= 1.55                     # ★攻击时明显变粗（逐帧看是一条【粗】光带）
 		var ring: Array = []
 		var cols: Array = []
 		var uvs: Array = []
@@ -494,11 +533,13 @@ func _rebuild(t: Dictionary) -> void:
 			var col: Color = Color(1, 1, 1).lerp(Color(0.72, 1.0, 0.86), lit * 0.30)
 			# ★实机: **待机是暗的、出手才爆亮** —— 明暗对比是这条特效的力量感来源。
 			#   我之前全程都在发亮, 所以看着"一直很闪"却没有节奏。
+			# ★待机暗 / 攻击【爆亮】—— 逐帧看攻击时亮度是待机的好几倍，
+			#   这个明暗落差就是"力量感"的全部来源。
 			var st2: int = int(t["state"])
 			if st2 == ST_REAR:
-				col = col.lerp(Color(0.85, 1.0, 0.98), 0.55 * clampf(float(t["ts"]) / T_REAR, 0.0, 1.0))
+				col = col.lerp(Color(0.80, 1.0, 1.0), 0.40 * clampf(float(t["ts"]) / T_REAR, 0.0, 1.0))
 			elif st2 == ST_SLAM:
-				col = col.lerp(Color(0.92, 1.0, 1.0), 0.75)
+				col = col.lerp(Color(0.96, 1.0, 1.0), 0.88)
 			# ★梢端别再往白里提 —— 比对时那是个突兀的白点。改成【边缘】亮、梢端只是稍亮。
 			cols.append(col.lerp(Color(0.62, 0.94, 0.88), u * 0.12))
 		if not prev.is_empty():

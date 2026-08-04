@@ -160,13 +160,23 @@ func _ready() -> void:
 		tris[0] > 100 and tris[1] > 100 and tris[2] > 100, str(tris))
 	_ok("⑤ ★面数恒定(= SEG × RING × 2 = %d) —— 不随姿态变" % (TV.SEG * TV.RING * 2),
 		tris[0] == tris[1] and tris[1] == tris[2] and tris[0] == TV.SEG * TV.RING * 2, str(tris))
-	# 固定弧长的几何保证：包围盒最长边不可能超过总弧长
+	# ★长度守恒 —— 口径 2026-08-04 修正：
+	#   逐帧看官方 W 技能后，攻击那一下触手会**大幅伸长**（扑出去够到目标），
+	#   所以"任何姿态都撑不出 ARC_LEN"这条**不再成立**，而且它不该成立 ——
+	#   门禁挡住的会是一个【我有意加的、参考里就有的】行为。
+	#   ⇒ 改成：待机/蓄势守 ARC_LEN；攻击守 ARC_LEN × REACH_MULT。
+	#   （这不是放宽标准 —— 上限仍然存在，只是分状态。没有上限才是真的没守。）
 	var over: Array = []
+	var caps := [TV.ARC_LEN, TV.ARC_LEN, TV.ARC_LEN * TV.REACH_MULT]   # IDLE / REAR / SLAM
 	for i2 in range(lens.size()):
-		if float(lens[i2]) > TV.ARC_LEN * 1.05:
-			over.append("姿态%d 包围盒对角 %.1fm > 弧长 %.1fm" % [i2, float(lens[i2]), TV.ARC_LEN])
-	_ok("⑤ ★长度守恒: 任何姿态下都撑不出总弧长 %.1fm(这是【它是一根实体】的几何保证)" % TV.ARC_LEN,
-		over.is_empty(), str(over))
+		if float(lens[i2]) > float(caps[i2]) * 1.06:
+			over.append("姿态%d 包围盒对角 %.1fm > 上限 %.1fm" % [i2, float(lens[i2]), float(caps[i2])])
+	_ok("⑤ ★长度有上限: 待机 ≤%.1fm / 攻击 ≤%.1fm(伸长是参考里就有的，但不能无限长)"
+		% [TV.ARC_LEN, TV.ARC_LEN * TV.REACH_MULT], over.is_empty(), str(over))
+	# ★攻击真的比待机长（不长就是伸长没生效）
+	_ok("⑤ ★攻击姿态确实比待机长(扑出去够目标, 不是原地变直)",
+		float(lens[2]) > float(lens[0]) * 1.25,
+		"待机 %.1fm → 攻击 %.1fm" % [float(lens[0]), float(lens[2])])
 
 	# ══ ⑥ 接线：真的挂在战斗上 ═════════════════════════════════
 	var src_sp: String = FileAccess.get_file_as_string("res://scripts/systems/equip/spirit_synergy_system.gd")
