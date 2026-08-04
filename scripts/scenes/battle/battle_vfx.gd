@@ -637,58 +637,39 @@ var _tt_prev_src = null
 
 func _vfx_preview_tentacle(origin: Vector2, dir: Vector2) -> void:
 	_tt_isolate()                      # ★第一轮就要藏, 否则出土那 2 秒还带着整张地图
-	if _tt_prev_src == null or not (_tt_prev_src is Dictionary):
-		# 找 5 件灵物装备 → 灵物档 2（2 根触手）
-		var eq: Array = []
-		for e in DataRegistry.phase2_equipment:
-			if battle.Phase2Types.type_of(str((e as Dictionary).get("id", ""))) == "灵物":
-				eq.append({"id": str((e as Dictionary)["id"]), "star": 1})
-			if eq.size() >= 5:
-				break
-		_tt_prev_src = battle._spawn._make_unit("basic", "left", origin - dir * 320.0)
-		(_tt_prev_src as Dictionary)["maxHp"] = 999999.0
-		(_tt_prev_src as Dictionary)["hp"] = 999999.0
-		(_tt_prev_src as Dictionary)["no_move"] = true
-		(_tt_prev_src as Dictionary)["no_basic"] = true
-		(_tt_prev_src as Dictionary)["move_spd"] = 0.0
-		(_tt_prev_src as Dictionary)["equips"] = eq
-		(_tt_prev_src as Dictionary)["eq_state"] = {}
-		battle._units.append(_tt_prev_src)
-		# ★靶子必须站在【触手射程内】—— 否则触手伸到射程边就停，够不到目标，
-		#   命中爆闪也炸在半路：**这个预览就不再反映真实战斗**（真实战斗里逻辑侧
-		#   只会选射程内的敌人）。时间对齐对比第一次做完全无效，就是栽在这。
-		#   ★靶子放在【两根触手的中间那条线上】—— 官方 W 预览里目标就站在两根之间，
-		#     两条攻击线收敛成 V、白闪在 V 的顶点。靶子偏向其中一根的话，
-		#     另一根要么够不着(探针实测会一直 IDL)、要么夹角小到看着还是"两条平行板"。
-		#   ★★放置方式必须是"**离两根都恰好 0.88 倍射程**"，不能写成
-		#     "根部 x + 0.90×射程"：后者只算了 x 方向，忘了两根还差了半个场高的 y，
-		#     实际直线距离超出射程 ⇒ 探针实测**两根全程 IDL、一次都没出手**
-		#     （截图上看着像"特效没做出来"，其实是逻辑侧根本没选中目标）。
-		var _r0: Vector2 = battle._tentacle_vfx.root_pos("left", 0)
-		var _r1: Vector2 = battle._tentacle_vfx.root_pos("left", 1)
-		var _trng: float = float(battle._tentacle_vfx.attack_range_2d)
-		var _half: float = absf(_r1.y - _r0.y) * 0.5
-		var _want: float = _trng * 0.88
-		var _dx: float = sqrt(maxf(_want * _want - _half * _half, 400.0))
-		print("[tt-preview] range=%.0f 半间距=%.0f → 靶子前推 %.0f" % [_trng, _half, _dx])
-		_tt_prev_foe = battle._spawn._make_unit("basic", "right",
-			Vector2(_r0.x + _dx, (_r0.y + _r1.y) * 0.5))
+	if _tt_prev_foe == null or not (_tt_prev_foe is Dictionary):
+		# ★★2026-08-04 用户：「你调试做干净点啊，友军为什么带装备？用一个触手一个假人就好了」
+		#   ——对。原来这里为了"走真实羁绊链"给友军塞 5 件灵物装备，
+		#   再等 `spirit_synergy_system` 每 5 秒拍一次。结果：
+		#   ① 台上两根触手 + 一个带装备的假人，看谁是谁都费劲
+		#   ② 出手时机被 5 秒周期绑死，自截图的时间窗一错开就 240 帧全是待机
+		#   ⇒ 现在只摆【一根触手 + 一个靶子】，节拍自己控（仍走 `strike()` 真实入口，
+		#     memory [[fb-verify-must-run-the-real-path]]：预览不能绕过真实分派）。
+		battle._tentacle_vfx.preview_lock = true
+		battle._tentacle_vfx.clear()
+		battle._tentacle_vfx.ensure_forced("left", 1)
+		# ★★触手根部直接摆到【相机中心】—— 预览相机是对着 `origin` 的，
+		#   而 `root_pos` 的默认点在 ARENA 18% 处：两者不重合 ⇒ **触手演在画面外**
+		#   （实测抓了 150 帧才发现右边一片空，动作全对但看不见）。
+		var rng: float = float(battle._tentacle_vfx.attack_range_2d)
+		var r0: Vector2 = origin - dir * (rng * 0.42)      # 根部退后一点，让整条都进画面
+		battle._tentacle_vfx.set_root("left", 0, r0)
+		print("[tt-preview] 一根触手 + 一个靶子: 射程 %.0f  根部 %s  靶子前推 %.0f"
+			% [rng, str(r0), rng * 0.8])
+		_tt_prev_foe = battle._spawn._make_unit("basic", "right", r0 + dir * (rng * 0.8))
 		(_tt_prev_foe as Dictionary)["maxHp"] = 999999.0
 		(_tt_prev_foe as Dictionary)["hp"] = 999999.0
 		(_tt_prev_foe as Dictionary)["no_move"] = true
 		(_tt_prev_foe as Dictionary)["no_basic"] = true
 		(_tt_prev_foe as Dictionary)["move_spd"] = 0.0
 		battle._units.append(_tt_prev_foe)
-		battle._synergy._by_side = {"left": {}, "right": {}}
-		battle._synergy.apply_all()
 		return                      # 头一轮只登场, 让人看清 2 秒出土
-	# ★★★这里【不再自己 strike】——
-	#   `spirit_synergy_system.tick()` 每 `SLAP_PERIOD`(5 秒) 就走真实路径拍一次；
-	#   预览再拍一次 = 两个 5 秒周期错开 0.2 秒互相打断。
-	#   探针实测：`SLAM/0.15` 时被第二条指令打回 `REAR/0.00`，
-	#   **拍击动作只演了 0.15 秒就被砍掉**，而截图上看着像"动作本来就这么短"。
-	#   ⇒ 预览只负责【摆好台子】，出手交给真实入口（memory [[fb-verify-must-run-the-real-path]]）。
-	pass
+	# ★节拍：只在【待机】时才下指令 —— 免得打断正在演的动作。
+	#   （原来预览和 spirit 各拍各的、错开 0.2 秒互相打断：
+	#     探针实测 `SLAM/0.15` 被打回 `REAR/0.00`，动作只演了 0.15 秒。）
+	if battle._tentacle_vfx.state_of("left", 0) == 1:
+		battle._tentacle_vfx.strike("left", 0,
+			Vector2((_tt_prev_foe as Dictionary)["pos"]), 1.0)
 
 
 ## `TENT_ISO=1`：把场景里【除了触手以外】的一切藏掉，黑底只看触手。

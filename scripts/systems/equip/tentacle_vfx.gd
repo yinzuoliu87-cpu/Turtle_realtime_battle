@@ -65,7 +65,8 @@ const VfxTex := preload("res://scripts/util/vfx_textures.gd")
 var battle
 
 # ── 状态 ──────────────────────────────────────────────────────────
-enum { ST_EMERGE, ST_IDLE, ST_REAR, ST_SLAM, ST_RECOVER, ST_RETRACT }
+## ★ST_WARN 追加在【末尾】(=6)，不插进中间 —— 现有门禁按数字比状态(0..5)，插中间全错位。
+enum { ST_EMERGE, ST_IDLE, ST_REAR, ST_SLAM, ST_RECOVER, ST_RETRACT, ST_WARN }
 
 ## 各态时长（秒）。EMERGE / REAR / SLAM 三个取自官方数值，见文件头。
 const T_EMERGE := 2.0
@@ -76,10 +77,37 @@ const T_EMERGE := 2.0
 ##   3.40~3.53s  收回弯曲 → 回 idle
 ## ⇒ **不是"抬起来砸下去"，是【蜷缩 → 瞬间弹射成直光带 → 保持 → 收回】。**
 ##   我原来做的 0.25 前摇 + 0.5 砸下是慢动作，跟实机的爆发感完全不是一回事。
-const T_REAR := 0.167                 # 前摇极短：只是微微后缩蓄力
-const T_SLAM := 0.33                 # 伸直(前 0.07s 完成) + 保持 —— 官方保持 500ms+
-const T_RECOVER := 0.40              # 收回
+## ══════════════════════════════════════════════════════════════════
+##  ★★★2026-08-04【第二次逐帧重看，用户指出我漏了整整一大段】
+## ══════════════════════════════════════════════════════════════════
+## 用户：「08 的时候 W 命中，09 出现预警，一直到 075 才回到 idle，不是吗？」——**是的**。
+##
+## 我前一版只看了 f035~f062 那 0.9 秒，把 f040 当成动作起点。
+## 把 f001~f080 全铺开才看到：**动作从 f008 就开始了，全长 2.23 秒**。
+## 而且我两次说过"LoL 这里没有地面预警区"，**两次都是错的** ——
+## f009 起有一条宽的淡青斜带，从触手一直穿过目标，亮到 f040 拍击为止。
+##
+## 用干净采样窗（预警带路径上、避开两根触手）量出来的包络：
+##   f001~f008  基线（−20.7，草地暖色）
+##   **f009     +26.9  ← 亮起那一帧【闪一下】，是稳定值的 2 倍**
+##   f010~f039  +12.5~+15.7 稳定持续（±12% 起伏 = 有流动感）
+##   f040       +72.2  ← 拍击
+##   f042       +93.6  峰值
+##   f060 之后  回基线
+##
+## ── 完整时间轴（30fps，以 W 命中 = t0）───────────────────────────
+## | 预警 | f009~f039 | **1.00 秒** | 带亮起(首帧闪) + 触手长大→立柱→梢端卷钩→回落 |
+## | 前摇 | f036~f039 | 0.13 秒 | 触手再次长大（叠在预警末尾） |
+## | 拍击 | f040~f055 | 0.50 秒 | 一帧抽直 + 余振 + 淡出 |
+## | 收回 | f056~f075 | 0.67 秒 | 长尾回 idle |
+const T_WARN := 1.00
+const T_REAR := 0.13                 # 前摇极短：只是微微后缩蓄力
+const T_SLAM := 0.50                 # 伸直(前 0.07s 完成) + 保持 —— 官方保持 500ms+
+const T_RECOVER := 0.67              # 收回
 const T_RETRACT := 0.6
+## 【转移阵地】重新破土的时长。比【登场】的 2 秒短 —— 登场那 2 秒是一次性预告，
+## 搬家每局要发生好几次，2 秒会让触手大半时间待在地里。
+const T_EMERGE_MOVE := 1.0
 ## 闪避追击用的短促点刺（不立起、不预告）
 const T_JAB := 0.30
 
@@ -112,10 +140,12 @@ const RING := 7                      # 扁带横向的采样点数（不再是�
 ##   官方 SLAM+3 帧 `wfull/041` 横切带宽归一 **0.0286×画面宽**、青像素覆盖 **7.18%**；
 ##   我上一版 0.0195 / 4.48% —— **窄了 32%**。
 ##   （上上版是"太粗的白管"，这一版矫枉过正成了"发丝"。两次都是没量就调。）
-const R_BASE := 1.13
-const R_TIP := 0.282                 # 梢端半径
+## ★★2026-08-04 射程 583→400 之后粗细没跟着缩，实测粗细比 0.138 vs 官方 0.103
+##   ⇒ 触手变"矮胖"。R_BASE/R_TIP 同比 ×0.75。
+const R_BASE := 0.85
+const R_TIP := 0.212                 # 梢端半径
 ## ★总弧长固定 —— 不随目标距离变。这是"它是一根实体"的关键。
-const ARC_LEN := 5.8                 # 待机时的弧长（实机被动"粗但有高度"）
+const ARC_LEN := 3.25                 # 待机时的弧长（实机被动"粗但有高度"）
 ## ★前摇【长大】的倍率 —— 官方前摇 5 帧投影臂长 0.097→0.167（+72%）、青覆盖 +76%。
 ##   做成常量是为了让门禁上限跟着它走（门禁量的仍是**真实网格弧长**，不是这个数）。
 const REAR_GROW := 2.15
@@ -143,14 +173,16 @@ const SLAM_LEN_CURVE := [
 	1.000, 0.813, 0.958, 0.932, 0.806, 0.791, 0.799, 0.795,
 	0.807, 0.756, 0.751, 0.564, 0.557, 0.501, 0.511, 0.536,
 	0.516, 0.475, 0.448, 0.406, 0.381, 0.377, 0.351, 0.346,
-	0.335, 0.323, 0.313, 0.306, 0.292, 0.286,
+	0.335, 0.323, 0.313, 0.306, 0.292, 0.286, 0.284, 0.290,
+	0.303, 0.313, 0.319, 0.321,
 ]
 ## 带宽包络。★注意 [0] < [2] —— 官方**甩出去那一瞬间是细的，之后才鼓起来**。
 const SLAM_W_CURVE := [
 	0.780, 0.953, 1.000, 0.996, 0.827, 0.742, 0.582, 0.567,
 	0.570, 0.538, 0.518, 0.553, 0.567, 0.581, 0.589, 0.590,
 	0.564, 0.588, 0.556, 0.548, 0.545, 0.532, 0.506, 0.507,
-	0.489, 0.467, 0.454, 0.456, 0.431, 0.414,
+	0.489, 0.467, 0.454, 0.456, 0.431, 0.414, 0.410, 0.418,
+	0.412, 0.398, 0.392, 0.405,
 ]
 ## 表是 30fps 一格；ts 是【从拍击起始算起】的秒数（RECOVER 要加上 T_SLAM）
 static func _env(c: Array, ts: float) -> float:
@@ -167,11 +199,22 @@ static func _env(c: Array, ts: float) -> float:
 ##   而"够多远伸多远"等于没有范围，也就没有博弈。
 ##   ⇒ 攻击时一律伸到 `ATTACK_LEN`，够不够得着由**逻辑侧的选靶**决定
 ##     （范围外的敌人根本不该被选为目标）。
-const ATTACK_LEN := 14.0
+## ★★2026-08-04 用户拍板缩短：原 14.0 → 战场 2D 码 **583**，实测
+##   = 战场【高度】的 80% / 比全场最远的远程龟(450)还远 30% / 中位近战龟(70)的 8.3 倍。
+##   那个数是我按"演出好看"反推的，从没按玩法平衡定过。缩到 ~400 ≈ 远程龟档位。
+## ⚠ `ARC_LEN` 必须同比缩 —— 不缩的话恢复期包络尾巴(0.29×peak)会被
+##   `maxf(reach*env, ARC_LEN)` 钳掉，长尾就没了。
+const ATTACK_LEN := 9.6
 ## 同一个范围换算成【战场 2D 码】给逻辑侧用（在 `_init` 里按真实缩放量一次）
 var attack_range_2d := 520.0
 ## 各态的切角（度）：[根部角, 梢端角]。90° = 竖直向上，0° = 水平向前，负 = 朝下
-const ANG_IDLE := [79.0, 14.0]       # 待机: 升起后大幅弧过去（牧羊杖形，靠角度不靠螺旋）
+## ★★★2026-08-04【逐帧量官方 f001~f007 之后推翻重做】
+##   我原来做的是"卷成环 ⇄ 舒展成波浪长条、周期 2.4 秒的大幅呼吸" —— **编的**。
+##   官方真待机实测：**矮而扁的小土堆**，宽高比 **1.3~1.5（宽 > 高）**、
+##   最高点只到画面 **0.149**、而且**几乎不动**（7 帧标准差 < 1.5%）。
+##   （之前当成 idle 的 f076~f105 其实是"回收动作的收尾"——
+##     钩子→炸开→摊平水洼，一次性阻尼过冲，不是循环。）
+const ANG_IDLE := [66.0, 12.0]       # 待机: 升起后大幅弧过去（牧羊杖形，靠角度不靠螺旋）
 ## ★★2026-08-04【逐帧曲线抓到的】：[104, 88] = 近乎【笔直站立】，
 ##   而本作是俯角相机 ⇒ 竖直方向被压扁，**越立投影越短**：
 ##   实测前摇 −3→−2 投影臂长 0.134 → 0.085（塌了 37%），而官方是 0.167（在长）。
@@ -201,9 +244,11 @@ const CURL_FROM := 0.68              # 上段三分之一才开始回勾
 ##   之间来回，周期约 2.4 秒。这是个**大幅度**的动作，不是我原来做的"轻微摇曳"。
 ##   （我先做 250° → 看单张静止图改成 120° → 看动画才发现两个都不对：
 ##     它两个姿态都会经过。静止图只能告诉你某一瞬间。）
-const CURL_TIGHT := 330.0            # 蜷缩到底：梢端卷成一个完整的环
-const CURL_LOOSE := 70.0             # 舒展到底：几乎抻开
-const BREATH_PERIOD := 2.4           # 一次完整呼吸的秒数
+## ★呼吸幅度砍到 1/6 —— 官方待机 7 帧标准差 < 1.5%，肉眼几乎看不出在动。
+##   原来 330 ⇄ 70 那种大幅摆动是我编的，画面上像条活鳗鱼。
+const CURL_TIGHT := 318.0            # 蜷缩到底：梢端卷成环
+const CURL_LOOSE := 272.0            # 舒展到底：只松一点点（官方待机基本不动）
+const BREATH_PERIOD := 3.6           # 一次完整呼吸的秒数（慢而轻）
 const CURL_SLAM := 6.0               # 攻击: ★完全抻直（逐帧看是一条直光带）
 ## 待机摇曳的横向摆幅（度）
 const S_AMP := 3.5                   # ★实机摆得很轻, 原画那种 S 形是艺术加工
@@ -244,6 +289,9 @@ const IDLE_REBUILD_HZ := 12.0
 var _tents: Dictionary = {}
 ## 本帧正在重建的这根触手是不是攻击态 —— 攻击时辉光放大 2 倍(官方整条在发光)
 var _halo_hot := false
+## 【调试台专用】锁住根数：预览自己 ensure 之后，别让 `spirit_synergy_system` 每帧
+## 按真实档位把它撤掉（真实档位在调试台里是 0）。只有 VFXPREVIEW 会打开它。
+var preview_lock := false
 ## 表皮贴图（只生成一次，全部触手共用同一张 —— 这是【同一个东西的同一张皮】，不是复用别的素材）
 static var _skin_tex: ImageTexture = null
 
@@ -271,7 +319,24 @@ func _key(side: String, idx: int) -> String:
 
 ## 让某方场上恰好有 n 根触手（多了撤场、少了出土）。每帧由 spirit 系统调。
 ## ★这是"登场"那一段 —— 不调它，触手永远不存在。
+## 【调试台专用】把某根触手的根部直接挪到指定点（不走钻地演出）。
+func set_root(side: String, idx: int, to2: Vector2) -> void:
+	var k: String = _key(side, idx)
+	if _tents.has(k):
+		(_tents[k] as Dictionary)["root"] = to2
+
+
+## 【调试台专用】绕过 preview_lock 强制摆一根 —— 只有预览会调。
+func ensure_forced(side: String, n: int) -> void:
+	var lk: bool = preview_lock
+	preview_lock = false
+	ensure(side, n)
+	preview_lock = lk
+
+
 func ensure(side: String, n: int) -> void:
+	if preview_lock:
+		return
 	for idx in range(4):
 		var k: String = _key(side, idx)
 		var has: bool = _tents.has(k)
@@ -369,7 +434,8 @@ func strike(side: String, idx: int, aim2: Vector2, share: float = 1.0) -> void:
 	t["share"] = share
 	# ★追击走【点刺】（不立起、不预告），正常拍击走【蓄势】——
 	#   只有触手常驻，玩家才看得出"是它反应了一下"，所以追击不该复用整套拍击。
-	t["state"] = ST_SLAM if share < 0.9 else ST_REAR
+	# ★正常拍击先进【预警】(1 秒)，再蓄势 → 拍击。追击(share<0.9)仍走点刺、不预告。
+	t["state"] = ST_SLAM if share < 0.9 else ST_WARN
 	t["ts"] = 0.0
 	t["hit"] = false
 	t["warned"] = false
@@ -387,10 +453,14 @@ func tick(delta: float) -> void:
 				if ts >= T_EMERGE:
 					t["state"] = ST_IDLE; t["ts"] = 0.0
 					_base_glow(t)          # 出土落定：根部溅一圈光
+			ST_WARN:
+				# ★预警带在这 1 秒里【一直存在】(官方 f009~f039)，每帧刷亮度包络。
+				#   原来是"蓄势开始时画一条线"= 0.13 秒的一闪，等于没有。
+				_telegraph_tick(t, ts)
+				if ts >= T_WARN:
+					t["state"] = ST_REAR; t["ts"] = 0.0
 			ST_REAR:
-				if not bool(t.get("warned", true)):
-					t["warned"] = true
-					_telegraph(t)          # ★预警区：蓄势一开始就把落点线画出来
+				_telegraph_tick(t, T_WARN + ts)     # 前摇叠在预警末尾，带子还亮着
 				if ts >= T_REAR:
 					t["state"] = ST_SLAM; t["ts"] = 0.0
 			ST_SLAM:
@@ -399,6 +469,7 @@ func tick(delta: float) -> void:
 				#   时间对齐对比实测：官方是【命中即炸】(0.03s)，我原来放在动作 60%
 				#   ⇒ 0.33 秒才响，观感是"打完了才有反馈"。
 				#   伸直只要 0.07 秒，所以 0.08 秒就该炸。
+				_telegraph_hide(t)                 # 拍下去了，带子撤
 				if not bool(t.get("hit", true)) and ts >= 0.08:
 					t["hit"] = true
 					_impact(t)
@@ -409,7 +480,16 @@ func tick(delta: float) -> void:
 					t["state"] = ST_IDLE; t["ts"] = 0.0
 			ST_RETRACT:
 				if ts >= T_RETRACT:
-					for kk in ["mi", "halo"]:
+					# ★分两种撤场：搬家(有 relocate_to) vs 掉档真撤。
+					#   共用同一段钻地演出，只在这里分叉。
+					if t.has("relocate_to"):
+						t["root"] = t["relocate_to"]
+						t.erase("relocate_to")
+						t["state"] = ST_EMERGE
+						t["ts"] = T_EMERGE - T_EMERGE_MOVE   # 搬家的破土比【登场】快
+						t["acc"] = 99.0
+						continue
+					for kk in ["mi", "halo", "warn_mi"]:
 						var n = t.get(kk, null)
 						if is_instance_valid(n):
 							n.queue_free()
@@ -430,7 +510,8 @@ func tick(delta: float) -> void:
 				var sN: int = int(t["state"])
 				# ★0.99 那版等于"不透明白板"；官方那条光带**能看到背后的地面和英雄**。
 				mm.albedo_color = Color(1.3, 1.3, 1.3,
-					0.84 if sN == ST_SLAM else (0.82 if sN == ST_REAR else 0.80))
+					0.84 if sN == ST_SLAM else (0.82 if sN == ST_REAR else
+					(0.97 if sN == ST_IDLE else 0.80)))
 				# ★能量沿长度往梢端流 —— 攻击时流得快（爆发感），待机时缓慢蠕动。
 				mm.uv1_offset = Vector3(0.0,
 					-battle._t * (1.35 if sN == ST_SLAM else 0.28), 0.0)
@@ -545,28 +626,123 @@ func _flash(pos2: Vector2, scale: float) -> void:
 ## ★预警区是**以触手为原点、固定长度**的一条线（用户 2026-08-04 两条都点到了：
 ##   「预警区是根据触手的位置来对吧」「攻击长度是固定的」）——
 ##   不是"从触手画到目标"。画到目标的话，范围会随目标远近伸缩 = 玩家学不会安全距离。
-func _telegraph(t: Dictionary) -> void:
+## ══════════════════════════════════════════════════════════════════
+##  预警带 —— 持续 1 秒的贴地扫描带
+## ══════════════════════════════════════════════════════════════════
+## ★★★2026-08-04 重做。我做过两版，两版都是错的：
+##   ① 第一版：`_bolt_line` 一条 alpha 0.32 的发丝，只在蓄势那 0.13 秒画一次 ⇒ 等于没有
+##   ② 第二版：三条线拼出宽度，仍然只有 0.13 秒
+##   而且我两次断言"官方没有地面预警区" —— **两次都错**。
+##   干净采样窗量出来：官方 f009 亮起（**闪一下**，是稳定值的 2 倍）、
+##   f010~f039 稳定持续、**整整 1.00 秒**，到 f040 拍击才消失。
+##
+## ★宽度 = **真实命中通道**（`spirit_synergy_system._slap` 的 `cross(dir) > 40.0`，
+##   即半宽 40 码 / 全宽 80）。预警区画得比命中范围宽或窄都是骗人的。
+## ★长度 = 固定射程（不是"到目标的距离"）—— 用户 2026-08-04 点过：
+##   攻击长度固定，玩家才学得会安全距离。
+const WARN_HALF_W := 40.0            # ＝ _slap 的命中半宽，改一处要改两处
+## ★★★2026-08-04【逐帧量出来的，推翻了我原来的"闪一下"】
+##   官方 f009 起**不是**单帧闪光后立刻稳态，而是一条 **0.8 秒(24 帧)的指数衰减**：
+##   从 **7.66×** 稳态值一路降到 1.0×，f033 才真正拉平，之后稳态到 f039。
+##   我原来做的是 0.09 秒内衰减完 —— **短了 9 倍**，观感就是"闪一下"而不是"亮着慢慢暗下去"。
+##   （值 = (偏青度 − 基线) ÷ 稳态均值，30fps 一格，f009 起 31 帧。）
+const WARN_ENV := [
+	7.659, 7.649, 7.318, 6.963, 6.653, 6.620, 6.581, 6.700,
+	6.735, 6.851, 7.068, 7.070, 7.027, 6.745, 6.605, 5.562,
+	4.426, 3.422, 2.350, 1.392, 1.274, 1.039, 0.931, 0.964,
+	0.991, 0.991, 0.991, 0.991, 0.991, 0.991, 1.052,
+]
+## 亮核半宽（归一 0.008×630 ≈ 5px）与外圈软光半宽（0.03~0.04）的比值 —— 官方是
+## **极细的亮核 + 很宽很淡的软光**，不是一整条均匀渐隐的宽带。
+const WARN_CORE_FRAC := 0.20
+
+
+func _telegraph_tick(t: Dictionary, ts: float) -> void:
 	var from2: Vector2 = root_pos(str(t["side"]), int(t["idx"]))
 	var to2: Vector2 = t["aim"]
 	if to2 == Vector2.ZERO:
+		_telegraph_hide(t)
 		return
-	var dir: Vector2 = (to2 - from2)
+	var dir: Vector2 = to2 - from2
 	if dir.length() < 1.0:
+		_telegraph_hide(t)
 		return
-	# ★终点 = 根部 + 固定射程 × 方向（与目标实际距离无关）
-	var end2: Vector2 = from2 + dir.normalized() * attack_range_2d
-	# ★★2026-08-04【自截图看出来的】：上一版 alpha 0.32 的一条发丝，
-	#   在 0.10 秒的蓄势里【等于没画】—— 用户点名要的东西做了却看不见，
-	#   跟没做是一回事（memory [[fb-write-without-reader-and-fake-gates]] 的同类：
-	#   "写了没人读" 的视觉版）。
-	#   ⇒ 画成【一条有宽度的扫描带】：中线亮 + 两侧各偏移一条淡的，
-	#     三条一起构成"这一条会被扫到"的面，而不是一根线。
-	var perp: Vector2 = Vector2(-dir.normalized().y, dir.normalized().x)
-	for k in [-1.0, 1.0]:
-		battle._bolt_line(from2 + perp * (34.0 * k), end2 + perp * (34.0 * k),
-			Color(1.0, 0.84, 0.34, 0.30))
-	battle._bolt_line(from2, end2, Color(1.0, 0.92, 0.52, 0.80))
-	battle._skill_ring(end2, Color(1.0, 0.86, 0.35, 0.72), 70.0)
+	dir = dir.normalized()
+	var perp := Vector2(-dir.y, dir.x)
+	# ★官方实测：带子**到目标身上就停**，没有穿过去（往远处延伸信号回落到噪声）。
+	#   但长度仍**钳在固定射程内** —— 够不着的目标本来就不该被选中。
+	var end2: Vector2 = from2 + dir * minf((to2 - from2).length(), attack_range_2d)
+	var mi = t.get("warn_mi", null)
+	if not is_instance_valid(mi):
+		mi = MeshInstance3D.new()
+		mi.name = "TentacleWarn_%s_%d" % [str(t["side"]), int(t["idx"])]
+		mi.mesh = ArrayMesh.new()
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD    # 贴地淡带，加色才不挡住地面
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		m.vertex_color_use_as_albedo = true
+		# ★官方实测【贴地】：带子穿过目标腿部时**被腿挡住**，是正常深度排序的地面 decal。
+		#   原来开 no_depth_test 会画在最上层 = 浮空贴图，穿帮。
+		m.no_depth_test = false
+		mi.material_override = m
+		mi.sorting_offset = 0.6
+		battle._world.add_child(mi)
+		t["warn_mi"] = mi
+	mi.visible = true
+	# 亮度包络：查官方逐帧表（0.8 秒指数衰减 → 稳态）
+	var amp: float = _env(WARN_ENV, ts)
+	var mm: StandardMaterial3D = mi.material_override
+		# 稳态时 amp≈1.0；起始 7.66× 会被 clampf 顶住 → 那正是"一开始很亮然后暗下去"
+	mm.albedo_color = Color(1, 1, 1, clampf(0.105 * amp, 0.0, 1.0))
+	# 网格：沿方向分 10 段的贴地长条，横向 alpha 渐隐（中间亮、两侧化开）
+	var mesh: ArrayMesh = mi.mesh
+	mesh.clear_surfaces()
+	var stool := SurfaceTool.new()
+	stool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	# ★★2026-08-04 重写：上一版的 lane 循环写错了（第二片从 HALF_W 画到 0，
+	#   和第一片重叠）⇒ **横向根本没有渐隐**，出来是一块边界很硬的实心梯形。
+	#   官方那条是【淡淡的、边缘化开的青雾】。
+	#   ⇒ 横向按 LAT 段插值，alpha 从中心 1.0 平滑落到边缘 0；
+	#     纵向也渐隐（远端更淡 = 能量从根部涌出去）。
+	var N := 12          # 沿长度分段
+	var LAT := 7         # 横向采样（含中心与两侧边缘）
+	var col := Color(0.38, 0.86, 0.94)
+	var prev_row: Array = []
+	for i in range(N + 1):
+		var u: float = float(i) / float(N)
+		var pc: Vector2 = from2.lerp(end2, u)
+		var fade_u: float = (1.0 - u * 0.55)                    # 越远越淡
+		var row: Array = []
+		for j in range(LAT):
+			var f: float = float(j) / float(LAT - 1) * 2.0 - 1.0   # -1..1
+			var pos2: Vector2 = pc + perp * (f * WARN_HALF_W)
+			# ★官方横向剖面：**亮核半宽只有 ~0.008 归一(≈5px)**，外面才是
+			#   0.03~0.04 的一圈很淡软光 —— 不是一整条均匀渐隐的宽带。
+			var af: float = absf(f)
+			var core: float = clampf(1.0 - af / WARN_CORE_FRAC, 0.0, 1.0)
+			var av: float = (pow(core, 0.9) * 0.82 + pow(1.0 - af, 2.6) * 0.18) * fade_u
+			row.append([battle._world_pos(pos2, battle.GROUND_LIFT + 0.04),
+				Color(col.r, col.g, col.b, av)])
+		if not prev_row.is_empty():
+			for j2 in range(LAT - 1):
+				var a00 = prev_row[j2]; var a01 = prev_row[j2 + 1]
+				var a10 = row[j2]; var a11 = row[j2 + 1]
+				stool.set_color(a00[1]); stool.add_vertex(a00[0])
+				stool.set_color(a01[1]); stool.add_vertex(a01[0])
+				stool.set_color(a10[1]); stool.add_vertex(a10[0])
+				stool.set_color(a01[1]); stool.add_vertex(a01[0])
+				stool.set_color(a11[1]); stool.add_vertex(a11[0])
+				stool.set_color(a10[1]); stool.add_vertex(a10[0])
+		prev_row = row
+	stool.commit(mesh)
+
+
+func _telegraph_hide(t: Dictionary) -> void:
+	var mi = t.get("warn_mi", null)
+	if is_instance_valid(mi):
+		mi.visible = false
 
 
 ## 落地冲击：贴地冲击环 + 一撮碎屑。
@@ -614,12 +790,39 @@ const ROOT_Y_HI := 0.24
 const ROOT_Y_LO := 0.76
 
 func root_pos(side: String, idx: int) -> Vector2:
+	# ★搬过家之后根部就不在默认点了 —— 每根触手自己存一个 `root`。
+	var tt = _tents.get("%s|%d" % [side, idx], null)
+	if tt is Dictionary and (tt as Dictionary).has("root"):
+		return (tt as Dictionary)["root"]
+	return default_root(side, idx)
+
+
+## 默认出生点（还没搬过家时用它）
+func default_root(side: String, idx: int) -> Vector2:
 	var a: Rect2 = battle.ARENA
 	var y: float = a.position.y + a.size.y * (ROOT_Y_HI if idx == 0 else ROOT_Y_LO)
 	var x: float = a.position.x + a.size.x * 0.18
 	if side != "left":
 		x = a.position.x + a.size.x * 0.82
 	return Vector2(x, y)
+
+
+## 【转移阵地】钻回地下 → 在 `to2` 重新破土。
+## 用户 2026-08-04：「触手攻击范围内没有敌人持续一秒后，触手会钻入地下消失，
+##   然后从可攻击的目标附近再重新破土而出」。
+## ★只搬**待机中**的（正在出土/预警/拍击/撤场的不打断）。返回是否受理。
+func relocate(side: String, idx: int, to2: Vector2) -> bool:
+	var k: String = _key(side, idx)
+	if not _tents.has(k):
+		return false
+	var t: Dictionary = _tents[k]
+	if int(t["state"]) != ST_IDLE:
+		return false
+	t["state"] = ST_RETRACT
+	t["ts"] = 0.0
+	t["relocate_to"] = to2
+	_telegraph_hide(t)
+	return true
 
 
 ## 当前这根触手的「动作进度」→ [露出比例 emerge, 根部切角(度), 梢端切角(度), 卷曲量(度)]
@@ -636,9 +839,27 @@ func _phase(t: Dictionary) -> Array:
 			# ★呼吸：卷成环 ⇄ 舒展。用触手自己的相位错开，两根不同步。
 			var br: float = 0.5 - 0.5 * cos(TAU * (battle._t + float(t["phase"])) / BREATH_PERIOD)
 			# 舒展时不只是松卷，整条也会更斜地伸出去（逐帧看到的）
-			return [1.0, lerpf(ANG_IDLE[0], ANG_IDLE[0] - 14.0, br),
-				lerpf(ANG_IDLE[1], ANG_IDLE[1] + 26.0, br),
+			return [1.0, lerpf(ANG_IDLE[0], ANG_IDLE[0] - 4.0, br),
+				lerpf(ANG_IDLE[1], ANG_IDLE[1] + 7.0, br),
 				lerpf(CURL_TIGHT, CURL_LOOSE, br)]
+		ST_WARN:
+			# ★★官方 f009~f039 这 1 秒里触手【不是静止的】(我原来完全没有这一段)：
+			#   f009~f013 长大 + 立成一根柱子
+			#   f014~f017 梢端【卷成钩】("?" 形)
+			#   f018~f039 回落、蜷缩贴地(带子还亮着)
+			var wp: float = clampf(ts / T_WARN, 0.0, 1.0)
+			if wp < 0.17:
+				var q: float = smoothstep(0.0, 1.0, wp / 0.17)
+				return [1.0, lerpf(ANG_IDLE[0], 96.0, q), lerpf(ANG_IDLE[1], 72.0, q),
+					lerpf(CURL_TIGHT, 120.0, q)]
+			elif wp < 0.32:
+				var q2: float = smoothstep(0.0, 1.0, (wp - 0.17) / 0.15)
+				return [1.0, lerpf(96.0, 92.0, q2), lerpf(72.0, 128.0, q2),
+					lerpf(120.0, 300.0, q2)]
+			else:
+				var q3: float = smoothstep(0.0, 1.0, (wp - 0.32) / 0.68)
+				return [1.0, lerpf(92.0, ANG_IDLE[0], q3), lerpf(128.0, ANG_IDLE[1] + 30.0, q3),
+					lerpf(300.0, CURL_TIGHT, q3)]
 		ST_REAR:
 			# ★★★2026-08-04【整条曲线逐帧对齐之后的重做】
 			#   官方前摇 5 帧（−5→−1）：青覆盖 **1.55 → 2.73（+76%）**、
@@ -886,7 +1107,10 @@ func _rebuild(t: Dictionary) -> void:
 			# ★★2026-08-04【放大对比】：扁带解决了"空心管/多边棱"，但芯变成了一条
 			#   **硬边白条** —— 边界是切出来的。官方那条是【亮芯往两侧化开】，
 			#   边界糊的。色梯度做不到这件事，得靠**顶点 alpha 横向渐隐**。
-			var soft: float = pow(1.0 - rimf, 0.85)
+			# ★★2026-08-04 放大对比：官方【待机】是一坨**不透明的圆润青团**（像果冻），
+			#   我是一根半透明发光带（边缘透）。量出来我反而比官方粗 33% ——
+			#   所以差的不是宽度，是**实心度**。待机时把横向渐隐压平（边缘也不透）。
+			var soft: float = pow(1.0 - rimf, 0.34 if st2 == ST_IDLE else 0.85)
 			var fin: Color = col.lerp(Color(0.62, 0.94, 0.88), u * 0.12)
 			cols.append(Color(fin.r, fin.g, fin.b, soft))
 		if not prev.is_empty():
@@ -936,13 +1160,16 @@ func count(side: String = "") -> int:
 ## ★做时间对齐对比图时**必须有它** —— 只看截图会把"状态切换"和"演出被藏了"
 ##   两种完全不同的原因看成同一个现象（CLAUDE.md：断根因先写探针打数值）。
 func probe() -> String:
-	var names := ["EM", "IDL", "REAR", "SLAM", "REC", "RET"]
+	# ★★ST_WARN 追加在末尾(=6)，这张表也必须跟着补 ——
+	#   漏补的话越界，探针把整整 33 帧的【预警】显示成 "IDL"，
+	#   看着像"预警根本没做出来"（实测被这条骗过一次）。
+	var names := ["EM", "IDL", "REAR", "SLAM", "REC", "RET", "WARN"]
 	var out: Array = []
 	for k in _tents:
 		var t: Dictionary = _tents[k]
 		var mi = t.get("mi", null)
 		var ha = t.get("halo", null)
-		out.append("%s=%s/%.2f/mi%s/ha%s" % [k, names[int(t["state"])], float(t["ts"]),
+		out.append("%s=%s/%.2f/mi%s/ha%s" % [k, (names[int(t["state"])] if int(t["state"]) < names.size() else "?%d" % int(t["state"])), float(t["ts"]),
 			"1" if (is_instance_valid(mi) and (mi as MeshInstance3D).visible) else "0",
 			"1" if (is_instance_valid(ha) and (ha as MeshInstance3D).visible) else "0"])
 	return " ".join(out)
@@ -956,7 +1183,12 @@ func state_of(side: String, idx: int) -> int:
 ## 换路 / 战斗结束：立刻撤干净（不走 RETRACT 动画 —— 场景要清空了）
 func clear() -> void:
 	for k in _tents:
-		for kk in ["mi", "halo"]:
+		# ★★2026-08-04：这里原来漏了 `warn_mi` ⇒ **换路/清场每次泄漏一个预警带节点**。
+		#   症状极隐蔽：泄漏的节点占着 "TentacleWarn_left_0" 这个名字，
+		#   下一根触手新建的同名节点被 Godot 自动改名成 `@TentacleWarn_left_0@…`，
+		#   于是按名字找节点的代码（门禁）**找到的是那个已隐藏的旧节点** ——
+		#   报出来是"预警带没建出来"，实际是建了两个、找错了一个。
+		for kk in ["mi", "halo", "warn_mi"]:
 			var n = (_tents[k] as Dictionary).get(kk, null)
 			if is_instance_valid(n):
 				n.queue_free()

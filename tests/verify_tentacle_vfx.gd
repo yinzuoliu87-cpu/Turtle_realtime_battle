@@ -24,7 +24,7 @@ const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")
 const TV := preload("res://scripts/systems/equip/tentacle_vfx.gd")
 
-const NAMES := ["EMERGE", "IDLE", "REAR", "SLAM", "RECOVER", "RETRACT"]
+const NAMES := ["EMERGE", "IDLE", "REAR", "SLAM", "RECOVER", "RETRACT", "WARN"]
 
 var _n := 0
 var _fail := 0
@@ -48,6 +48,25 @@ func _node_count() -> int:
 		if str(c.name).begins_with("Tentacle_"):
 			n += 1
 	return n
+
+
+## 沿中线积真实弧长。★顶点布局：三角带**非索引化**，每段 (RING-1)×6 个顶点。
+##   （按 RING 切片当截面是错的 —— verify_tentacle_rhythm 里踩过一次。）
+func _arc_len(m: ArrayMesh) -> float:
+	if m.get_surface_count() == 0:
+		return 0.0
+	var vs: PackedVector3Array = m.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	var qps: int = (TV.RING - 1) * 6
+	var mids: Array = []
+	for j in range(vs.size() / qps):
+		var c := Vector3.ZERO
+		for kk in range(qps):
+			c += vs[j * qps + kk]
+		mids.append(c / float(qps))
+	var L := 0.0
+	for j2 in range(1, mids.size()):
+		L += (mids[j2] - mids[j2 - 1]).length()
+	return L
 
 
 func _nm(i: int) -> String:
@@ -107,13 +126,18 @@ func _ready() -> void:
 	_ok("② ★待机是【常驻】的(过 3 秒还在待机，不会自己消失)",
 		_v.state_of("left", 0) == 1 and _v.count("left") == 1, _nm(_v.state_of("left", 0)))
 	_v.strike("left", 0, Vector2(900, 300), 1.0)
-	_ok("② 拍击指令 → 蓄势", _v.state_of("left", 0) == 2, _nm(_v.state_of("left", 0)))
+	# ★★2026-08-04 流程变了：正常拍击先进【预警】1 秒（官方 f009~f039 那条带子），
+	#   再蓄势 → 拍击。原来是 strike 直接进蓄势，预警只有 0.13 秒的一闪。
+	_ok("② 拍击指令 → 【预警】(不是直接蓄势)", _v.state_of("left", 0) == 6,
+		_nm(_v.state_of("left", 0)))
+	_v.tick(TV.T_WARN + 0.01)
+	_ok("② 预警 %.2f 秒 → 蓄势" % TV.T_WARN, _v.state_of("left", 0) == 2, _nm(_v.state_of("left", 0)))
 	_v.tick(TV.T_REAR + 0.01)
-	_ok("② 蓄势 0.25 秒 → 拍击", _v.state_of("left", 0) == 3, _nm(_v.state_of("left", 0)))
+	_ok("② 蓄势 %.2f 秒 → 拍击" % TV.T_REAR, _v.state_of("left", 0) == 3, _nm(_v.state_of("left", 0)))
 	_v.tick(TV.T_SLAM + 0.01)
-	_ok("② 拍击 0.5 秒 → 回位", _v.state_of("left", 0) == 4, _nm(_v.state_of("left", 0)))
+	_ok("② 拍击 %.2f 秒 → 回位" % TV.T_SLAM, _v.state_of("left", 0) == 4, _nm(_v.state_of("left", 0)))
 	_v.tick(TV.T_RECOVER + 0.01)
-	_ok("② 回位 0.35 秒 → 回到待机(闭环)", _v.state_of("left", 0) == 1, _nm(_v.state_of("left", 0)))
+	_ok("② 回位 %.2f 秒 → 回到待机(闭环)" % TV.T_RECOVER, _v.state_of("left", 0) == 1, _nm(_v.state_of("left", 0)))
 
 	# ══ ③ 追击走点刺：不经蓄势、更短 ═══════════════════════════
 	_v.strike("left", 0, Vector2(900, 300), 0.25)
@@ -152,9 +176,11 @@ func _ready() -> void:
 		var m: ArrayMesh = mi.mesh
 		if m.get_surface_count() == 0:
 			lens.append(-1.0); tris.append(0); continue
-		var bb: AABB = m.get_aabb()
-		# 沿曲线走一遍量真实弧长（不是包围盒对角线 —— 那个会随姿态变）
-		lens.append(bb.size.length())
+		# ★★2026-08-04 修脏判据：这里【注释说的和代码做的不是一回事】——
+		#   注释写"沿曲线量真实弧长"，代码却是 `bb.size.length()` = **包围盒对角**，
+		#   它把触手的【粗细】(R_BASE)也算进去了：IDLE 弧长 4.0 但对角 4.3，
+		#   于是加粗触手就会让长度门禁莫名其妙地红。改成真的沿中线积弧长。
+		lens.append(_arc_len(m))
 		tris.append(m.surface_get_array_len(0) / 3)
 	_ok("⑤ ★三个姿态都建出网格(面数 %s)" % str(tris),
 		tris[0] > 100 and tris[1] > 100 and tris[2] > 100, str(tris))
@@ -210,11 +236,55 @@ func _ready() -> void:
 	_v.tick(2.1)                                  # 到待机
 	var n0: int = _s._world.get_child_count()
 	_v.strike("left", 0, Vector2(900, 300), 1.0)
-	_v.tick(TV.T_REAR + 0.01)                     # 过完蓄势 → 预警区该出来了
+	_v.tick(0.05)                                 # 一进【预警】带子就该在了
 	var n1: int = _s._world.get_child_count()
-	_ok("⑤b ★预警区真的建出节点(落点圈 + 沿途直线)", n1 - n0 >= 2,
-		"只多了 %d 个节点" % (n1 - n0))
-	_v.tick(TV.T_SLAM * 0.65)                     # 过 60% → 命中特效
+	# ★★2026-08-04 预警区重做：从"几条 bolt_line"改成【持续 1 秒的贴地扫描带】(一个常驻 mesh)。
+	#   所以判据从"多了几个节点"换成"那条带子真的有面、真的可见、宽度==命中通道"。
+	#   数节点数在这里已经守不住了（只多 1 个节点，但那 1 个才是正主）。
+	# ★★判据用【产品代码自己持有的引用】(`t["warn_mi"]`)，不靠遍历场景树按名字找：
+	#   ⚠ 探针实测两个坑叠在一起 ——
+	#   ① `queue_free()` 是延迟的：前面段落 `clear()` 掉的节点这一帧还挂在树上；
+	#   ② 僵尸占着 "TentacleWarn_left_0" 这个名字，新节点被 Godot 自动改名，
+	#      按名字遍历**逮到的是那个已隐藏的僵尸** ⇒ 报"预警带没建出来"，
+	#      而探针显示新节点 id=…790 明明 visible=true。
+	#   （顺带查出真 bug：`clear()` 原来漏了 `warn_mi`，换路/清场每次泄漏一个节点。）
+	var _t0: Dictionary = _v._tents["left|0"]
+	var wm = _t0.get("warn_mi", null)
+	_ok("⑤b ★预警带真的建出来了且可见(节点 +%d)" % (n1 - n0),
+		is_instance_valid(wm) and wm.visible and wm.is_inside_tree()
+			and (wm.mesh as ArrayMesh).get_surface_count() > 0,
+		"valid=%s visible=%s 面=%d" % [is_instance_valid(wm),
+			(wm.visible if is_instance_valid(wm) else false),
+			((wm.mesh as ArrayMesh).get_surface_count() if is_instance_valid(wm) else -1)])
+	# ★宽度必须 == `_slap` 的真实命中通道(半宽 40 码)。画宽了/窄了都是骗玩家。
+	if is_instance_valid(wm) and (wm.mesh as ArrayMesh).get_surface_count() > 0:
+		var wvs: PackedVector3Array = (wm.mesh as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+		var wbb := AABB(wvs[0], Vector3.ZERO)
+		for v in wvs:
+			wbb = wbb.expand(v)
+		# ★★期望值【写死字面数 40.0】，不读 `TV.WARN_HALF_W` ——
+		#   反向验证实测：用常量做期望值时，把 `WARN_HALF_W` 改成 160 两边一起变，
+		#   **0 条 FAIL** = 恒真式（CLAUDE.md §2）。
+		var oo: Vector2 = _v.root_pos("left", 0)
+		var one: float = (_s._world_pos(oo + Vector2(0, 40.0), 0.0)
+			- _s._world_pos(oo, 0.0)).length()
+		var lat: float = minf(wbb.size.x, wbb.size.z)
+		_ok("⑤b ★预警带宽度 == 真实命中通道(半宽 40 码 = %.2fm)" % one,
+			lat > one * 1.2 and lat < one * 3.4, "带宽 %.2fm" % lat)
+		# ★两头都焊住：`_slap` 的命中半宽改了、这边没跟，也要红。
+		var src_sl: String = FileAccess.get_file_as_string(
+			"res://scripts/systems/equip/spirit_synergy_system.gd")
+		_ok("⑤b ★预警宽度与 _slap 的命中判定同源(两处都是 40)",
+			absf(float(TV.WARN_HALF_W) - 40.0) < 0.01 and src_sl.find("cross(dir)) > 40.0") >= 0,
+			"WARN_HALF_W=%.1f / _slap 源码里没找到 `> 40.0`" % float(TV.WARN_HALF_W))
+	# ★预警带【持续整整 T_WARN】—— 原来那版只有蓄势那 0.13 秒的一闪，等于没有。
+	_v.tick(TV.T_WARN * 0.9)
+	_ok("⑤b ★预警带在 %.2f 秒后仍然亮着(官方 f009~f039 持续 1 秒)" % (TV.T_WARN * 0.9),
+		is_instance_valid(wm) and wm.visible,
+			"visible=%s" % (wm.visible if is_instance_valid(wm) else false))
+	_v.tick(TV.T_WARN + 0.02)                     # 预警 → 蓄势
+	_v.tick(TV.T_REAR + 0.02)                     # 蓄势 → 拍击
+	_v.tick(TV.T_SLAM * 0.4)                      # 过 0.08s → 命中特效
 	var n2: int = _s._world.get_child_count()
 	_ok("⑤b ★命中特效真的建出节点(爆闪 + 环 + 粒子 + 直线)", n2 - n1 >= 4,
 		"只多了 %d 个节点" % (n2 - n1))
