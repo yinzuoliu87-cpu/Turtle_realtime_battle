@@ -214,7 +214,12 @@ var attack_range_2d := 520.0
 ##   最高点只到画面 **0.149**、而且**几乎不动**（7 帧标准差 < 1.5%）。
 ##   （之前当成 idle 的 f076~f105 其实是"回收动作的收尾"——
 ##     钩子→炸开→摊平水洼，一次性阻尼过冲，不是循环。）
-const ANG_IDLE := [66.0, 12.0]       # 待机: 升起后大幅弧过去（牧羊杖形，靠角度不靠螺旋）
+## ★★★2026-08-04【用户提醒"上面那根一起看"之后的再修正】
+##   官方画面里有两根：**下方那根被俯角压扁**（宽高比 1.4~1.7，看着像一坨），
+##   **上方那根离相机远、畸变小，宽高比 0.55~1.14（接近方/偏立）**——
+##   它才反映真实 3D 形状。我上一版照的是被压扁那根 ⇒ 把"投影的假象"当成了形状。
+##   （用户原话：「这样在下面触手以俯视角缩成一团时可以看上面吊顶」。）
+const ANG_IDLE := [79.0, 30.0]       # 待机: 升起后大幅弧过去（牧羊杖形，靠角度不靠螺旋）
 ## ★★2026-08-04【逐帧曲线抓到的】：[104, 88] = 近乎【笔直站立】，
 ##   而本作是俯角相机 ⇒ 竖直方向被压扁，**越立投影越短**：
 ##   实测前摇 −3→−2 投影臂长 0.134 → 0.085（塌了 37%），而官方是 0.167（在长）。
@@ -236,7 +241,14 @@ const ANG_EMERGE := [90.0, 86.0]     # 出土: ★近乎竖直的一道光柱（
 ##     这也符合参考：俄洛伊触手蛰伏时卷着，砸下去是抽直的。
 ## ★卷曲起点：0.42 那一版【自截图实测】从中段就卷，整条没机会长高，
 ##   看着像只虾。实机是**先立起来一段、再在上半段卷成钩**。
-const CURL_FROM := 0.68              # 上段三分之一才开始回勾
+## ★★★2026-08-04【卷不出 C 形钩的根因】
+##   官方预警期 f016~f023 是一个**开口很大的 C 形钩**（顶端弯回来接近根部高度）。
+##   0.68 意味着**只有上段 32% 参与卷曲** —— 剩下 68% 是直的，
+##   再大的 `curl` 也只能在梢端勾一小下，弯不出一个 C。
+##   ⇒ 改成【按状态分】：待机/预警从 0.30 就开始卷（大半条参与，才成 C）；
+##     拍击仍是 0.68（那时它要绷直，只有梢端稍勾）。
+const CURL_FROM := 0.68              # 拍击：上段三分之一才回勾
+const CURL_FROM_CURLY := 0.30        # 待机/预警：大半条参与卷曲，才能弯成 C
 ## ★★★待机的卷曲量 —— 【逐帧看 idle 段】之后的第三次修正：
 ##   它不是一个固定值，而是**周期性呼吸**的。
 ##   官方 idle（`baYW1HaSbRU` 5.6s~9.5s，30fps 逐帧看完）里触手在：
@@ -246,8 +258,13 @@ const CURL_FROM := 0.68              # 上段三分之一才开始回勾
 ##     它两个姿态都会经过。静止图只能告诉你某一瞬间。）
 ## ★呼吸幅度砍到 1/6 —— 官方待机 7 帧标准差 < 1.5%，肉眼几乎看不出在动。
 ##   原来 330 ⇄ 70 那种大幅摆动是我编的，画面上像条活鳗鱼。
-const CURL_TIGHT := 318.0            # 蜷缩到底：梢端卷成环
-const CURL_LOOSE := 272.0            # 舒展到底：只松一点点（官方待机基本不动）
+## ★★★重标定：`CURL_FROM` 从 0.68 降到 0.30 之后，参与卷曲的长度从 32% 变成 70%，
+##   **同样的数值卷曲量翻了一倍多** —— 原来的 318/299 在新口径下会把整条盘成蚊香
+##   （实测 +13~+22 那几帧就是一坨旋涡）。整条曲线的 curl 值全部按新口径重定。
+const CURL_TIGHT := 116.0            # 待机：细长立柱 + 梢端弯钩
+## ★立起来(ANG_IDLE 66→79)之后，同样的摆幅在投影上被放大：实测波动
+## 从 1.2% 跳到 10.6%（官方 <1.5%）⇒ 摆幅再砍一半。
+const CURL_LOOSE := 101.0            # 舒展到底：只松一点点（官方待机基本不动）
 const BREATH_PERIOD := 3.6           # 一次完整呼吸的秒数（慢而轻）
 const CURL_SLAM := 6.0               # 攻击: ★完全抻直（逐帧看是一条直光带）
 ## 待机摇曳的横向摆幅（度）
@@ -511,7 +528,8 @@ func tick(delta: float) -> void:
 				# ★0.99 那版等于"不透明白板"；官方那条光带**能看到背后的地面和英雄**。
 				mm.albedo_color = Color(1.3, 1.3, 1.3,
 					0.84 if sN == ST_SLAM else (0.82 if sN == ST_REAR else
-					(0.70 if (sN == ST_IDLE or sN == ST_WARN) else 0.80)))
+					(_warn_alpha(t) if sN == ST_WARN else
+					(0.70 if sN == ST_IDLE else 0.80))))
 				# ★能量沿长度往梢端流 —— 攻击时流得快（爆发感），待机时缓慢蠕动。
 				mm.uv1_offset = Vector3(0.0,
 					-battle._t * (1.35 if sN == ST_SLAM else 0.28), 0.0)
@@ -525,6 +543,19 @@ func tick(delta: float) -> void:
 
 ## 外发光壳：同一条曲线放大 2.6 倍再画一遍，加色混合、很淡。
 ## ★便宜（面数只有本体的 1/2，六边截面）且效果立竿见影 —— 并排对比时"干不干"就差这一层。
+## 预警期的不透明度：立钩时最实，**摊平时淡下去**（官方那几帧画面上几乎看不见），
+## 蓄力时再回来。
+func _warn_alpha(t: Dictionary) -> float:
+	var wq: float = clampf(float(t["ts"]) / T_WARN, 0.0, 1.0)
+	if wq < 0.27:
+		return lerpf(0.70, 0.78, wq / 0.27)
+	if wq < 0.53:
+		return lerpf(0.78, 0.40, (wq - 0.27) / 0.26)
+	if wq < 0.80:
+		return 0.40
+	return lerpf(0.40, 0.80, (wq - 0.80) / 0.20)
+
+
 func _rebuild_halo(t: Dictionary, pts: Array, rs: Array) -> void:
 	var halo = t.get("halo", null)
 	if not is_instance_valid(halo) or pts.size() < 2:
@@ -841,8 +872,8 @@ func _phase(t: Dictionary) -> Array:
 			# ★呼吸：卷成环 ⇄ 舒展。用触手自己的相位错开，两根不同步。
 			var br: float = 0.5 - 0.5 * cos(TAU * (battle._t + float(t["phase"])) / BREATH_PERIOD)
 			# 舒展时不只是松卷，整条也会更斜地伸出去（逐帧看到的）
-			return [1.0, lerpf(ANG_IDLE[0], ANG_IDLE[0] - 4.0, br),
-				lerpf(ANG_IDLE[1], ANG_IDLE[1] + 7.0, br),
+			return [1.0, lerpf(ANG_IDLE[0], ANG_IDLE[0] - 1.8, br),
+				lerpf(ANG_IDLE[1], ANG_IDLE[1] + 3.0, br),
 				lerpf(CURL_TIGHT, CURL_LOOSE, br)]
 		ST_WARN:
 			# ★★★2026-08-04【第四次改，这次以【图】为准 —— 前一次的数字是脏的】
@@ -858,19 +889,19 @@ func _phase(t: Dictionary) -> Array:
 			if wp < 0.27:                                   # 趴 → 立成 C 钩
 				var q: float = smoothstep(0.0, 1.0, wp / 0.27)
 				return [1.0, lerpf(ANG_IDLE[0], 98.0, q), lerpf(ANG_IDLE[1], 104.0, q),
-					lerpf(CURL_TIGHT, 248.0, q)]
+					lerpf(CURL_TIGHT, 232.0, q)]
 			elif wp < 0.53:                                 # 塌下去摊平
 				var q2: float = smoothstep(0.0, 1.0, (wp - 0.27) / 0.26)
 				return [1.0, lerpf(98.0, 34.0, q2), lerpf(104.0, -12.0, q2),
-					lerpf(248.0, 300.0, q2)]
+					lerpf(232.0, 62.0, q2)]
 			elif wp < 0.80:                                 # 保持摊平（只轻微起伏）
 				var q3: float = sin(TAU * (wp - 0.53) / 0.27) * 0.5 + 0.5
 				return [1.0, lerpf(34.0, 40.0, q3), lerpf(-12.0, -4.0, q3),
-					lerpf(300.0, 312.0, q3)]
+					lerpf(62.0, 78.0, q3)]
 			else:                                           # 再立起卷环（蓄力）
 				var q4: float = smoothstep(0.0, 1.0, (wp - 0.80) / 0.20)
 				return [1.0, lerpf(34.0, 96.0, q4), lerpf(-12.0, 96.0, q4),
-					lerpf(300.0, 214.0, q4)]
+					lerpf(62.0, 205.0, q4)]
 		ST_REAR:
 			# ★★★2026-08-04【整条曲线逐帧对齐之后的重做】
 			#   官方前摇 5 帧（−5→−1）：青覆盖 **1.55 → 2.73（+76%）**、
@@ -882,7 +913,7 @@ func _phase(t: Dictionary) -> Array:
 			var r: float = smoothstep(0.0, 1.0, clampf(ts / T_REAR, 0.0, 1.0))
 			return [1.0, lerpf(ANG_IDLE[0], ANG_REAR[0], r), lerpf(ANG_IDLE[1], ANG_REAR[1], r),
 				# 前摇要【张开】不是卷死 —— 卷死 = 缩成一团 = 投影塌(实测 −3→−2 掉 24%)
-				lerpf(CURL_TIGHT, 150.0, r)]
+				lerpf(CURL_TIGHT, 196.0, r)]
 		ST_SLAM:
 			# ★★★官方拍击【一帧都没有停过】：
 			#     覆盖 +0 7.06 → +2 峰值 8.53 → +6 5.47 → +9 4.11（**每帧都在降**）
@@ -933,13 +964,15 @@ func _arc_for(t: Dictionary, stt: int) -> float:
 		ST_WARN:
 			# ★弧长跟着【两次起伏】走：立钩 ×1.45 → 摊平 ×1.10 → 再立起卷环 ×1.55
 			var wq: float = clampf(float(t["ts"]) / T_WARN, 0.0, 1.0)
+			# ★官方摊平段(f024~f036)面积**回落到待机的 0.72~0.75 倍** —— 是缩小不是涨。
+			#   我原来给 ×1.10 ⇒ 摊平时反而是一大团胖云朵，画面上比待机还显眼。
 			if wq < 0.27:
 				return ARC_LEN * lerpf(1.00, 1.45, smoothstep(0.0, 1.0, wq / 0.27))
 			if wq < 0.53:
-				return ARC_LEN * lerpf(1.45, 1.10, smoothstep(0.0, 1.0, (wq - 0.27) / 0.26))
+				return ARC_LEN * lerpf(1.45, 0.86, smoothstep(0.0, 1.0, (wq - 0.27) / 0.26))
 			if wq < 0.80:
-				return ARC_LEN * 1.10
-			return ARC_LEN * lerpf(1.10, 1.55, smoothstep(0.0, 1.0, (wq - 0.80) / 0.20))
+				return ARC_LEN * 0.86
+			return ARC_LEN * lerpf(0.86, 1.55, smoothstep(0.0, 1.0, (wq - 0.80) / 0.20))
 		ST_REAR:
 			# 前摇【长大】：不是缩，官方那 5 帧面积涨了 76%
 			var rp: float = clampf(float(t["ts"]) / T_REAR, 0.0, 1.0)
@@ -1016,8 +1049,10 @@ func _rebuild(t: Dictionary) -> void:
 		# ★弯曲集中在【中后段】—— 实机根部一截是相对直的，弧度往梢端堆。
 		#   原来用 smoothstep(0,1,u) 是对称的，从根就开始弯。
 		var ang: float = lerpf(a0, a1, pow(u, 1.05))
-		if u > CURL_FROM:
-			var cu: float = (u - CURL_FROM) / (1.0 - CURL_FROM)
+		var cfrom: float = (CURL_FROM_CURLY
+			if (stt == ST_IDLE or stt == ST_WARN) else CURL_FROM)
+		if u > cfrom:
+			var cu: float = (u - cfrom) / (1.0 - cfrom)
 			ang -= curl * cu * cu
 		# 横向摆（待机摇曳 + S 形）
 		# ★★攻击时【摆动与波浪都要压掉】——
@@ -1063,6 +1098,9 @@ func _rebuild(t: Dictionary) -> void:
 			r = R_BASE * bulge
 		else:
 			r = lerpf(R_BASE, R_TIP, pow(u, 0.85))
+		# ★★官方轮廓是【毛的】(不规则起伏)，我是光滑的数学曲线 ——
+		#   沿长度给半径加一点点确定性起伏（不用随机：确定性演出，换路可复现）。
+		r *= 1.0 + 0.055 * sin(u * 21.0 + float(t["phase"]) * 3.1) 			+ 0.032 * sin(u * 47.0 + float(t["phase"]))
 		# ★最底下那一小段【快速收窄】—— 官方是"从地里钻出来"，
 		#   等粗到底会变成一只方底的脚（并排比对时很假）。
 		if u < 0.10:
