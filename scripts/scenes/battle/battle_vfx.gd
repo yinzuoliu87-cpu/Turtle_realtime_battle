@@ -636,6 +636,7 @@ var _tt_prev_foe = null
 var _tt_prev_src = null
 
 func _vfx_preview_tentacle(origin: Vector2, dir: Vector2) -> void:
+	_tt_isolate()                      # ★第一轮就要藏, 否则出土那 2 秒还带着整张地图
 	if _tt_prev_src == null or not (_tt_prev_src is Dictionary):
 		# 找 5 件灵物装备 → 灵物档 2（2 根触手）
 		var eq: Array = []
@@ -663,7 +664,6 @@ func _vfx_preview_tentacle(origin: Vector2, dir: Vector2) -> void:
 		battle._synergy._by_side = {"left": {}, "right": {}}
 		battle._synergy.apply_all()
 		return                      # 头一轮只登场, 让人看清 2 秒出土
-	_tt_isolate()
 	# 之后每个周期拍一次（走真实入口：档位决定根数，这里只是催它出手）
 	for _i in range(battle._tentacle_vfx.count("left")):
 		battle._tentacle_vfx.strike("left", _i, Vector2((_tt_prev_foe as Dictionary)["pos"]), 1.0)

@@ -29,10 +29,27 @@ extends RefCounted
 ##   照搬 2 秒出土会占掉 40% 周期 ⇒ **2 秒出土只在【登场】用一次**，
 ##   之后每次拍击走 `0.25 立起 + 0.5 出手`。
 ##
-## ── 外观（★逐像素看过参考图，`docs/plans/ref-tentacle-illaoi.png`）──────
-## 翠绿半透明发光带（`#20c050` 主体 / `#5effc8` 亮边）· 扁带状截面 · S 形 ·
-## 梢端向内打卷成钩 · 表面方折回纹 · **没有吸盘**。
-## （我凭记忆说的"紫色/实体/有吸盘/圆管/收尖"六条**全错**，看图后逐条推翻。）
+## ── 外观 ────────────────────────────────────────────────────────────
+##
+## ★★★2026-08-04【下载视频逐帧看之后的第 N 次修正 —— 也是最重要的一次】
+##
+## 用户：「我老早跟你说去抓视频，下载一帧帧看，你还要等我干什么」
+## —— 我一直卡在"我解码不了视频"这句话上，**却没试过下载 + 抽帧**。
+##    装 `yt-dlp` + `imageio-ffmpeg`，抽成 PNG，我就能看。这条路我早该走。
+##
+## 抽帧看完发现：**原画和实机是两个东西**，我之前照着原画做的方向是偏的。
+##
+## | | 原画 `ref-tentacle-illaoi.png` | **实机** `ref-tentacle-ingame.png` |
+## |---|---|---|
+## | 颜色 | 饱和翠绿 `#20c050` | **淡青绿、半透明**，能看到背后地形 |
+## | 回纹 | 醒目的方折刻纹 | **几乎看不见**（那是原画的艺术加工） |
+## | 形状 | S 形 + 梢端卷成整圈 | **平缓单弧**，梢端只是向下弯回收细 |
+## | 粗细 | 较粗 | **很细**（宽约长的 1/15） |
+##
+## ⇒ 用户要的是「**参考视频**」，所以按**实机**来：淡青绿半透明 · 细 · 平缓单弧 ·
+##   回纹极弱（只在近处隐约可见）· 攻击时才爆发亮光（实机待机是暗的、出手才亮）。
+##
+## 原画那份仍然有用 —— 它给了**回纹这个母题**与配色的方向；只是强度要按实机压下来。
 ##
 ## ── 技术路线 ────────────────────────────────────────────────────────
 ## 程序化 `ArrayMesh`（`SurfaceTool` 现算），不导 `.glb`：实跑核实本仓库
@@ -75,12 +92,12 @@ const T_JAB := 0.30
 ##      这样长度天然守恒，看起来才像一根真的触手在动。
 const SEG := 36
 const RING := 8                      # 锥体截面的边数（不是扁带了）
-const R_BASE := 0.42                 # 根部半径（世界米）
-const R_TIP := 0.055                 # 梢端半径
+const R_BASE := 0.30                 # 根部半径（世界米）★实机很细：宽约长的 1/15
+const R_TIP := 0.006                 # 梢端半径 ★实机梢端是【尖】的, 0.035 那版是平口截断
 ## ★总弧长固定 —— 不随目标距离变。这是"它是一根实体"的关键。
 const ARC_LEN := 9.0
 ## 各态的切角（度）：[根部角, 梢端角]。90° = 竖直向上，0° = 水平向前，负 = 朝下
-const ANG_IDLE := [80.0, 26.0]       # 待机: 立着、梢端前倾
+const ANG_IDLE := [76.0, 14.0]       # 待机: ★平缓单弧(实机), 不是 S 形
 const ANG_REAR := [104.0, 76.0]      # 蓄势: 整条更直立 + 后仰
 ## ★砸下：根部保持较立（58°）、梢端扎到地里（−80°）——
 ##   【自截图看出来的】根部倒到 30° 时整条【平躺】在地上，像一条海带，
@@ -94,10 +111,10 @@ const ANG_EMERGE := [88.0, 62.0]     # 出土: 竖着顶出来
 ##   ⇒ 卷曲量改成**随状态变**：待机卷紧(蓄势)、砸下时【松开甩直】。
 ##     这也符合参考：俄洛伊触手蛰伏时卷着，砸下去是抽直的。
 const CURL_FROM := 0.66
-const CURL_IDLE := 170.0             # 待机/蓄势: 卷成钩
+const CURL_IDLE := 85.0              # 待机/蓄势: ★只是向下弯回收细, 不卷成整圈(实机)
 const CURL_SLAM := 15.0              # 砸下: 几乎抽直
 ## 待机摇曳的横向摆幅（度）
-const S_AMP := 9.0
+const S_AMP := 3.5                   # ★实机摆得很轻, 原画那种 S 形是艺术加工
 ## 梢端相位滞后（鞭子感 —— 整条一起动就是根棍子）
 const LAG := 0.26
 ## 待机摇曳
@@ -105,9 +122,15 @@ const SWAY_SPEED := 1.15
 const SWAY_AMP := 0.30
 
 # ── 配色（★参考图逐像素统计，不是我挑的）────────────────────────────
-const C_CORE := Color(0.125, 0.75, 0.31)     # #20c050 主体
-const C_EDGE := Color(0.37, 1.0, 0.78)       # #5effc8 亮边
-const C_GLYPH := Color(0.62, 1.0, 0.85)      # 回纹（比主体亮）
+## ★色相取自【实机视频】抽帧（`#205040`~`#408070` 那一带的青绿），
+##   但**明度/饱和度按【我们自己的背景】调过** ——
+##   ⚠ 照搬实机数值那一版【自截图实测几乎看不见】：LoL 的场景是暗绿褐色，
+##     而本作战场是一大片**亮青色**，同样一条淡青绿在上面直接糊掉。
+##   ⇒ 参考给的是【色相与关系】（青绿、边缘微亮、待机暗出手亮），
+##     不是能照抄的 RGB。压暗主体 + 提高与背景的明度差，才读得出轮廓。
+const C_CORE := Color(0.10, 0.42, 0.36)      # 主体：压暗的青绿（对着亮青背景才有轮廓）
+const C_EDGE := Color(0.45, 0.95, 0.82)      # 边缘亮青
+const C_GLYPH := Color(0.34, 0.72, 0.64)     # 回纹（弱，近看才见）
 
 ## 回纹：1 = 亮刻痕。BAND 列 × 8 行一循环，沿长度平铺。
 ## ★方折的阶梯/迷宫纹（参考图上那种直角折线纹样），不是随便的亮条。
@@ -182,11 +205,27 @@ func _spawn(side: String, idx: int) -> void:
 	mat.albedo_texture = _skin()
 	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素风：不做双线性
 	mat.uv1_scale = Vector3(1.0, 3.0, 1.0)                       # 沿长度平铺 3 遍
-	mat.albedo_color = Color(1, 1, 1, 0.93)
+	# 实机是半透明的（抽帧里能看到背后地形），但**本作背景太亮**，
+	# 0.72 那一版实测几乎糊掉 ⇒ 折中到 0.90：仍透，但轮廓读得出。
+	mat.albedo_color = Color(1, 1, 1, 0.90)
 	mi.material_override = mat
 	battle._world.add_child(mi)
+	# ★外发光壳：实机触手裹着一层辉光雾，并排对比时我的显得"干"。
+	#   做法是同一条曲线再画一遍、半径放大、加色混合、很淡 —— 便宜且有效。
+	var halo := MeshInstance3D.new()
+	halo.name = "TentacleHalo_%s_%d" % [side, idx]
+	halo.mesh = ArrayMesh.new()
+	var hm := StandardMaterial3D.new()
+	hm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	hm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	hm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	hm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	hm.vertex_color_use_as_albedo = true
+	hm.albedo_color = Color(1, 1, 1, 0.20)
+	halo.material_override = hm
+	battle._world.add_child(halo)
 	_tents[_key(side, idx)] = {
-		"mi": mi, "side": side, "idx": idx,
+		"mi": mi, "halo": halo, "side": side, "idx": idx,
 		"state": ST_EMERGE, "ts": 0.0,
 		"aim": Vector2.ZERO, "share": 1.0,
 		"phase": float(idx) * 1.7,          # 相位错开 → 两根不同步摇
@@ -243,9 +282,10 @@ func tick(delta: float) -> void:
 					t["state"] = ST_IDLE; t["ts"] = 0.0
 			ST_RETRACT:
 				if ts >= T_RETRACT:
-					var n = t["mi"]
-					if is_instance_valid(n):
-						n.queue_free()
+					for kk in ["mi", "halo"]:
+						var n = t.get(kk, null)
+						if is_instance_valid(n):
+							n.queue_free()
 					_tents.erase(k)
 					continue
 		# ── 重建网格（待机降频）────────────────────────
@@ -254,6 +294,42 @@ func tick(delta: float) -> void:
 			continue
 		t["acc"] = 0.0
 		_rebuild(t)
+
+
+## 外发光壳：同一条曲线放大 2.6 倍再画一遍，加色混合、很淡。
+## ★便宜（面数只有本体的 1/2，六边截面）且效果立竿见影 —— 并排对比时"干不干"就差这一层。
+func _rebuild_halo(t: Dictionary, pts: Array, rs: Array) -> void:
+	var halo = t.get("halo", null)
+	if not is_instance_valid(halo) or pts.size() < 2:
+		return
+	var hmesh: ArrayMesh = halo.mesh
+	hmesh.clear_surfaces()
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var RN := 6
+	var prev: Array = []
+	for i in range(pts.size()):
+		var c: Vector3 = pts[i][0]
+		var sv: Vector3 = pts[i][1]
+		var uv: Vector3 = pts[i][2]
+		var r: float = float(rs[i]) * 2.6 + 0.05
+		var ring: Array = []
+		for k in range(RN):
+			var a: float = TAU * float(k) / float(RN)
+			ring.append(c + (sv * cos(a) + uv * sin(a)) * r)
+		if not prev.is_empty():
+			var f: float = float(i) / float(pts.size())
+			var col := Color(0.30, 0.86, 0.74).lerp(Color(0.62, 1.0, 0.92), f)
+			for k2 in range(RN):
+				var k3: int = (k2 + 1) % RN
+				st.set_color(col); st.add_vertex(prev[k2])
+				st.set_color(col); st.add_vertex(prev[k3])
+				st.set_color(col); st.add_vertex(ring[k2])
+				st.set_color(col); st.add_vertex(prev[k3])
+				st.set_color(col); st.add_vertex(ring[k3])
+				st.set_color(col); st.add_vertex(ring[k2])
+		prev = ring
+	st.commit(hmesh)
 
 
 ## 落地冲击：贴地冲击环 + 一撮碎屑。
@@ -353,11 +429,15 @@ func _rebuild(t: Dictionary) -> void:
 	var prev: Array = []
 	var prev_cols: Array = []
 	var prev_uvs: Array = []
+	var halo_pts: Array = []      # 外发光壳用: 每段的环心 + 切/侧/上
+	var halo_r: Array = []
 	var any := false
 	for sidx in range(SEG + 1):
 		var u: float = float(sidx) / float(SEG)
 		# ★切角沿长度插值；梢端那一段额外多转 → 卷成钩
-		var ang: float = lerpf(a0, a1, smoothstep(0.0, 1.0, u))
+		# ★弯曲集中在【中后段】—— 实机根部一截是相对直的，弧度往梢端堆。
+		#   原来用 smoothstep(0,1,u) 是对称的，从根就开始弯。
+		var ang: float = lerpf(a0, a1, pow(u, 1.55))
 		if u > CURL_FROM:
 			var cu: float = (u - CURL_FROM) / (1.0 - CURL_FROM)
 			ang -= curl * cu * cu
@@ -371,7 +451,9 @@ func _rebuild(t: Dictionary) -> void:
 			sidev = lat
 		sidev = sidev.normalized()
 		var up2: Vector3 = sidev.cross(tan).normalized()
-		var r: float = lerpf(R_BASE, R_TIP, pow(u, 0.72))
+		# ★收细曲线 0.72 → 0.42：实机是【根粗、迅速变细、梢端成尖】，
+		#   0.72 那条几乎是等粗的一根管子（并排对比时最明显的差异之一）。
+		var r: float = lerpf(R_BASE, R_TIP, pow(u, 0.42))
 		if int(t["state"]) == ST_SLAM:
 			r *= 1.15
 		var ring: Array = []
@@ -385,8 +467,13 @@ func _rebuild(t: Dictionary) -> void:
 			var lit: float = 0.5 + 0.5 * sin(aa)
 			# 顶点色只做【整体调制】—— 回纹交给贴图（见材质那段的说明）
 			var col: Color = Color(1, 1, 1).lerp(Color(0.72, 1.0, 0.86), lit * 0.30)
-			if int(t["state"]) == ST_REAR:
-				col = col.lerp(C_EDGE, 0.4 * clampf(float(t["ts"]) / T_REAR, 0.0, 1.0))
+			# ★实机: **待机是暗的、出手才爆亮** —— 明暗对比是这条特效的力量感来源。
+			#   我之前全程都在发亮, 所以看着"一直很闪"却没有节奏。
+			var st2: int = int(t["state"])
+			if st2 == ST_REAR:
+				col = col.lerp(Color(0.85, 1.0, 0.98), 0.55 * clampf(float(t["ts"]) / T_REAR, 0.0, 1.0))
+			elif st2 == ST_SLAM:
+				col = col.lerp(Color(0.92, 1.0, 1.0), 0.75)
 			cols.append(col.lerp(Color(0.80, 1.0, 0.92), u * 0.25))
 		if not prev.is_empty():
 			any = true
@@ -402,6 +489,8 @@ func _rebuild(t: Dictionary) -> void:
 				stool.set_color(prev_cols[k3]); stool.set_uv(u3b); stool.add_vertex(prev[k3])
 				stool.set_color(cols[k3]);      stool.set_uv(u3d); stool.add_vertex(ring[k3])
 				stool.set_color(cols[k2]);      stool.set_uv(u3c); stool.add_vertex(ring[k2])
+		halo_pts.append([pos, sidev, up2])
+		halo_r.append(r)
 		prev = ring
 		prev_cols = cols
 		prev_uvs = uvs
@@ -412,6 +501,7 @@ func _rebuild(t: Dictionary) -> void:
 	if any:
 		stool.generate_normals()
 		stool.commit(mesh)
+	_rebuild_halo(t, halo_pts, halo_r)
 
 
 ## 场上现有几根（给门禁与调试用）
@@ -433,7 +523,8 @@ func state_of(side: String, idx: int) -> int:
 ## 换路 / 战斗结束：立刻撤干净（不走 RETRACT 动画 —— 场景要清空了）
 func clear() -> void:
 	for k in _tents:
-		var n = (_tents[k] as Dictionary)["mi"]
-		if is_instance_valid(n):
-			n.queue_free()
+		for kk in ["mi", "halo"]:
+			var n = (_tents[k] as Dictionary).get(kk, null)
+			if is_instance_valid(n):
+				n.queue_free()
 	_tents.clear()

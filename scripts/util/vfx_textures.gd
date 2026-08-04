@@ -751,10 +751,12 @@ static func _make_tentacle_skin() -> ImageTexture:
 	var W := 64
 	var H := 128
 	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
-	var core := Color(0.07, 0.62, 0.26)          # 暗侧
-	var mid := Color(0.13, 0.86, 0.36)           # 主体翠绿
-	var lit := Color(0.42, 1.0, 0.72)            # 亮芯 / 边缘光
-	var glyph := Color(0.78, 1.0, 0.90)          # 回纹刻痕（最亮）
+	var core := Color(0.05, 0.26, 0.23)          # 暗侧（压暗 —— 本作背景是亮青，见 tentacle_vfx 配色注）
+	var mid := Color(0.13, 0.50, 0.43)           # 主体青绿
+	var lit := Color(0.52, 0.96, 0.86)           # 亮芯 / 边缘光
+	## ★回纹在【实机】上几乎看不见（原画那种醒目刻纹是艺术加工）——
+	##   压到只比主体亮一点点, 近看有质感、远看不抢戏。
+	var glyph := Color(0.28, 0.68, 0.60)         # 回纹刻痕（很弱, 近看才见）
 	for y in range(H):
 		for x in range(W):
 			# 绕圈方向：中间亮、两边暗（伪圆柱明暗），再在最边上补一道边缘光
@@ -765,29 +767,28 @@ static func _make_tentacle_skin() -> ImageTexture:
 			var rim: float = pow(1.0 - absf(u - 0.5) * 2.0, 0.35)
 			c = c.lerp(lit, (1.0 - rim) * 0.55)
 			img.set_pixel(x, y, c)
-	# ── 方折回纹 ──
-	# ★★【自截图看出来的】：第一版画的是几个零散的 Γ，屏幕上读起来像**随机字符**。
-	#   参考图上是**连续的方折带**（一条线不断地"进—拐—回—拐"，中美洲/希腊回纹那种），
-	#   有节奏、连得上。⇒ 改成"一条主脊 + 交替左右伸出的方钩"，这个在小尺寸下也读得出。
+	# ── 表面纹理 ──
+	# ★★【并排对比看出来的】：实机触手的高光是**沿长度的一条纵向亮线**，
+	#   而我做的回纹是**一节一节的横纹**，并排一看就是两种东西。
+	#   ⇒ 主体改成纵向亮线（顺着触手走），回纹降级成很淡的点缀（近看才见）。
 	var TH := 3
-	var put = func(x0: int, y0: int, w: int, h: int) -> void:
+	var put = func(x0: int, y0: int, w: int, h: int, c: Color) -> void:
 		for yy in range(maxi(0, y0), mini(H, y0 + h)):
 			for xx in range(maxi(0, x0), mini(W, x0 + w)):
-				img.set_pixel(xx, yy, glyph)
-	var UNIT := 16                                   # 一个回纹单元的长度(像素)
-	var spine := 30                                  # 主脊所在的 U 位置
-	put.call(spine, 0, TH, H)                        # 主脊：贯穿全长的一条线
+				img.set_pixel(xx, yy, c)
+	# 纵向亮线：贯穿全长的两条（一主一副），顺着触手方向
+	put.call(26, 0, 4, H, lit)
+	put.call(38, 0, 2, H, lit.lerp(mid, 0.45))
+	# 方折回纹：保留母题但压得很淡，只做点缀
+	var UNIT := 22
 	for n in range(H / UNIT):
 		var y0: int = n * UNIT
-		var left: bool = (n % 2 == 0)
-		if left:
-			put.call(spine - 18, y0 + 3, 18 + TH, TH)        # 横臂伸左
-			put.call(spine - 18, y0 + 3, TH, 9)              # 折回(向下)
-			put.call(spine - 12, y0 + 9, 6 + TH, TH)         # 小回勾
+		if n % 2 == 0:
+			put.call(12, y0 + 4, 12, TH, glyph)
+			put.call(12, y0 + 4, TH, 8, glyph)
 		else:
-			put.call(spine, y0 + 3, 20, TH)                  # 横臂伸右
-			put.call(spine + 20 - TH, y0 + 3, TH, 9)         # 折回
-			put.call(spine + 12, y0 + 9, 8, TH)              # 小回勾
+			put.call(44, y0 + 4, 12, TH, glyph)
+			put.call(53, y0 + 4, TH, 8, glyph)
 	var t := ImageTexture.create_from_image(img)
 	return t
 
