@@ -7,8 +7,8 @@ extends RefCounted
 ##
 ## ── 四条的作用域 ─────────────────────────────────────────────────────
 ## | 生死界     | **携带者**（>50% 加攻 / <50% 吸血翻倍，按本体血量）|
-## | 远古之力   | **全队**（每 2.5 秒全队永久涨攻，本场累积）        |
-## | 龟蛋加固   | **本方龟蛋**                                      |
+## | 远古之力   | **全队**（每 2.5 秒全队永久涨【增伤%】，本路累积）  |
+## | 龟蛋加固   | **本方龟蛋**（加血 + 让蛋自己也能攻击）           |
 ## | 觉醒       | **全队**（顶档，开打满 20 秒后远古之力提速）       |
 ##
 ## ══════════════════════════════════════════════════════════════════════
@@ -35,17 +35,36 @@ const HP_GATE := 0.5
 const ATK_BONUS := [0.03, 0.05, 0.08, 0.12]
 ## <50% 时生命偷取的倍率（原文"翻倍"）
 const LIFESTEAL_MULT := 2.0
-## 【远古之力】每 2.5 秒全队永久 +N 攻击力（档1 无）
-const ANCIENT_PER_TICK := [0.0, 4.0, 7.0, 11.0]
-## 累积上限（原文"软上限"，实装成硬上限，见文件头）
-const ANCIENT_CAP := [0.0, 150.0, 250.0, 350.0]
-## 【龟蛋加固】本方龟蛋 +N 最大生命（档1 无）
-const EGG_HP := [0.0, 500.0, 900.0, 1500.0]
-## 【觉醒】顶档：本路开打满 N 秒后，已累积的远古之力 +50%，之后每跳翻倍
+## 【远古之力】每 2.5 秒全队永久 +N% **增伤**（档1 无）。
+## ★用户 2026-08-04：「远古之力改为获得增伤」—— 原来是 +4/7/11 **攻击力**。
+##   换掉的理由本身也成立：龟基础攻击力中位只有 40，+350 是 ×9.75，
+##   一条羁绊把平A打成主伤害来源；而 `damage_amp` 是**乘在所有伤害上**的通道
+##   （`battle_damage.gd:546` 与 `RealtimeBattle3DScene.gd:4243` 两处消费点，
+##   平A/技能/DoT 全吃），量小得多但覆盖全，正是"古老力量缓慢渗透"该有的形状。
+const ANCIENT_PER_TICK := [0.0, 0.01, 0.015, 0.02]
+## 累积上限（原文"软上限"没定义 ⇒ 硬上限，见文件头）
+const ANCIENT_CAP := [0.0, 0.15, 0.25, 0.35]
+## 【龟蛋加固】本方龟蛋 +N 最大生命（档1 无）。
+## ★用户 2026-08-04：「龟蛋加固要加强」—— 原 500/900/1500 → **1200/2200/3600**。
+##   蛋的原始满血是 `3000 + 300×大轮等级`，顶档 +3600 ≈ 让蛋多扛一倍。
+const EGG_HP := [0.0, 1200.0, 2200.0, 3600.0]
+## 【龟蛋反击】用户 2026-08-04：「并使龟蛋也开始释放攻击」。
+## 蛋原本是**纯血包**（`atk/range = 0`、`no_basic = true`，见 `battle_spawn.gd:283`），
+## 遗物激活后给它攻击力与射程，让它自己也打。
+const EGG_ATK := [0.0, 40.0, 80.0, 140.0]
+## ⚠ 字段名【必须是 `atk_range` / `atk_interval`】——
+##   `range` 和 `atk_cd` 都存在但意思不同: `atk_cd` 是"距下次普攻还剩多久"的倒计时
+##   (每帧被覆写), `range` 压根不是单位字段。写错这两个 = 蛋照样一动不动,
+##   而门禁如果只读自己写进去的键就会是恒真式、全绿。
+##   真消费点: `_eff_range()` 读 `atk_range`(RealtimeBattle3DScene.gd:7579)。
+const EGG_RANGE := 420.0
+const EGG_ATK_INTERVAL := 2.0
+## 【觉醒】顶档：本路开打满 N 秒后，已累积的远古之力 +50%。
+## ★用户 2026-08-04：「觉醒10档有每跳翻倍这个吗，去掉吧」⇒ **每跳翻倍已删**，
+##   只保留一次性的 +50%。（原来那条是"之后每跳也翻倍"，两条叠着涨得太快。）
 const AWAKEN_TIER := 4
 const AWAKEN_SEC := 20.0
 const AWAKEN_BOOST := 0.50
-const AWAKEN_RATE := 2.0
 
 var _t_acc := 0.0
 ## ★本路的 t0。`battle._t` 跨路累加永不重置（CLAUDE.md §3.4），
@@ -88,13 +107,24 @@ func apply_all() -> void:
 		var rs: Array = (battle.Phase2Types.TYPES.get("遗物", {}) as Dictionary).get("stats", [])
 		var per: float = float((rs[clampi(ti - 1, 0, rs.size() - 1)] as Dictionary).get("_lifestealPct", 0.0))
 		u["_relic_ls"] = per * float(mine) / 100.0
-		# 龟蛋加固: 只加一次
+		# 龟蛋加固 + 龟蛋反击: 只加一次
 		if u.get("_isEgg", false) and not u.get("_relic_egg_done", false):
 			var add: float = EGG_HP[clampi(ti - 1, 0, 3)]
 			if add > 0.0:
 				u["_relic_egg_done"] = true
 				u["maxHp"] = float(u.get("maxHp", 0.0)) + add
 				u["hp"] = float(u.get("hp", 0.0)) + add
+			var eatk: float = EGG_ATK[clampi(ti - 1, 0, 3)]
+			if eatk > 0.0:
+				# ★三个字段【缺一不可】: 蛋出厂是 atk=0 / range=0 / no_basic=true
+				#   （`battle_spawn.gd:283,456`）。只给攻击力它照样不打 —— 射程 0 选不到人、
+				#   no_basic 直接把 AI 普攻整条关掉。这正是"写了没人读"最容易犯的地方。
+				u["no_basic"] = false
+				u["base_atk"] = float(u.get("base_atk", 0.0)) + eatk
+				u["atk_range"] = maxf(float(u.get("atk_range", 0.0)), EGG_RANGE)
+				u["atk_interval"] = EGG_ATK_INTERVAL
+				u["melee"] = false
+				battle._recalc_stats(u)
 		battle._recalc_stats(u)
 
 
@@ -151,15 +181,11 @@ func tick(delta: float) -> void:
 		var cap: float = ANCIENT_CAP[clampi(ti - 1, 0, 3)]
 		if per <= 0.0:
 			continue
-		# ── 觉醒(顶档): 本路开打满 20 秒 → 已累积的 +50%, 之后每跳翻倍 ──
-		var awake := false
-		if ti >= AWAKEN_TIER and (battle._t - _t0) >= AWAKEN_SEC:
-			awake = true
-			if not bool(_awakened.get(s, false)):
-				_awakened[s] = true
-				_bump_all(s, AWAKEN_BOOST, cap)     # 一次性: 已累积的 +50%
-		if awake:
-			per *= AWAKEN_RATE
+		# ── 觉醒(顶档): 本路开打满 20 秒 → 已累积的 +50%【一次性】 ──
+		# ★"之后每跳翻倍"已按用户 2026-08-04 删掉。
+		if ti >= AWAKEN_TIER and (battle._t - _t0) >= AWAKEN_SEC 				and not bool(_awakened.get(s, false)):
+			_awakened[s] = true
+			_bump_all(s, AWAKEN_BOOST, cap)
 		for u in battle._units:
 			if not (u is Dictionary) or str(u.get("side", "")) != s:
 				continue
@@ -168,8 +194,10 @@ func tick(delta: float) -> void:
 				continue
 			var add: float = minf(per, cap - cur)
 			u["_ancient"] = cur + add
-			u["base_atk"] = float(u.get("base_atk", 0.0)) + add
-			battle._recalc_stats(u)
+			# ★写 `damage_amp` 不写 `base_atk` —— 增伤是【乘在所有伤害上】的通道,
+			#   两处消费点(battle_damage.gd:546 / RealtimeBattle3DScene.gd:4243)已在用,
+			#   信息面板也早就显示"增伤 N%"。消费侧零改动。
+			u["damage_amp"] = float(u.get("damage_amp", 0.0)) + add
 
 
 ## 觉醒的一次性提升：把【已累积的】远古之力 ×(1+pct)，仍受上限约束。
@@ -184,8 +212,7 @@ func _bump_all(side: String, pct: float, cap: float) -> void:
 		if add <= 0.0:
 			continue
 		u["_ancient"] = cur + add
-		u["base_atk"] = float(u.get("base_atk", 0.0)) + add
-		battle._recalc_stats(u)
+		u["damage_amp"] = float(u.get("damage_amp", 0.0)) + add
 
 
 ## 换路：重置本路的 t0 与觉醒态。

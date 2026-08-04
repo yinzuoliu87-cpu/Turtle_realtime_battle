@@ -33,6 +33,13 @@ const GROW_PER_FOOD := [8.0, 16.0, 30.0]
 const ACADEMY := [0.0, 100.0, 220.0]
 
 var _t_grow := 0.0
+## ★【以场重置, 不是以路重置】(用户 2026-08-04 明确)。
+##   换路 `_dl_clear_units()` 会把 `battle._units` 连字典一起清掉、`_make_unit()` 重建,
+##   所以成长量【不能只写在单位字典上】—— 那样每一路都会打回原形。
+##   存一份在本系统对象里, 换路后由 `restore()` 重放。
+##   身份键照抄 `dual_lane_flow._eq_carry_key` 的口径(side|id|序号): 不拿单位字典做键
+##   —— Godot 会递归哈希互引成环的单位字典 → 卡死(CLAUDE.md §3.2)。
+var _carry := {}
 
 
 func _init(b) -> void:
@@ -77,10 +84,52 @@ func tick(delta: float) -> void:
 		if mine <= 0:
 			continue          # ★是【每件食物为携带者】—— 不带食物的队友不长血(那是学院的活)
 		var add: float = GROW_PER_FOOD[clampi(ti - 1, 0, 2)] * float(mine)
-		u["maxHp"] = float(u.get("maxHp", 0.0)) + add
-		u["hp"] = float(u.get("hp", 0.0)) + add
-		u["_food_grown"] = float(u.get("_food_grown", 0.0)) + add   # 记账, 给门禁与面板看
+		_grow(u, add)
 
 
 func clear() -> void:
 	_t_grow = 0.0
+
+
+## 给某只单位长 add 点最大生命，并把累计量同步进跨路存档。
+func _grow(u: Dictionary, add: float) -> void:
+	if add <= 0.0:
+		return
+	u["maxHp"] = float(u.get("maxHp", 0.0)) + add
+	u["hp"] = float(u.get("hp", 0.0)) + add
+	u["_food_grown"] = float(u.get("_food_grown", 0.0)) + add
+	var k: String = str(u.get("_food_key", ""))
+	if k != "":
+		_carry[k] = float(u["_food_grown"])
+
+
+## 单位的跨路身份键。★口径与 `dual_lane_flow._eq_carry_key` 一致（side|id|同名序号）。
+func _key_of(u: Dictionary, seen: Dictionary) -> String:
+	var base: String = "%s|%s" % [str(u.get("side", "left")), str(u.get("id", ""))]
+	var n: int = int(seen.get(base, 0))
+	seen[base] = n + 1
+	return "%s|%d" % [base, n]
+
+
+## 换路重建单位【之后】调：给每只单位贴上身份键，并把上一路攒的成长量重放回去。
+## ★必须在装备管线跑完之后 —— 否则 maxHp 会被后来的属性重算冲掉。
+func restore() -> void:
+	var seen: Dictionary = {}
+	for u in battle._units:
+		if not (u is Dictionary) or u.get("_isEgg", false) or u.get("is_trainer", false):
+			continue
+		var k: String = _key_of(u, seen)
+		u["_food_key"] = k
+		var had: float = float(_carry.get(k, 0.0))
+		if had <= 0.0:
+			continue
+		# ★直接补 had 这么多，而不是"重跑一遍成长"——
+		#   重跑要知道上一路跳了几次、当时几件食物，那是一份会漂的副本。
+		u["maxHp"] = float(u.get("maxHp", 0.0)) + had
+		u["hp"] = float(u.get("hp", 0.0)) + had
+		u["_food_grown"] = had
+
+
+## 整场结束（不是换路）：成长归零，下一场重新开始。
+func reset_match() -> void:
+	_carry.clear()

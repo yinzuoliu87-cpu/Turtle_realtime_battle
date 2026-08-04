@@ -22,7 +22,13 @@ extends RefCounted
 
 var battle
 
-const PERIOD := 2.5
+## 拍击周期。★用户 2026-08-04 定为 **5 秒**（原 2.5）——
+##   触手是常驻 AOE，2.5 秒一次在 6 只对 6 只的场面上刷得太密。
+const SLAP_PERIOD := 5.0
+## 闪避追击的**次数窗口**仍是 2.5 秒（规格原文），**不跟着拍击周期走** ——
+## 共用一个计时器的话，追击上限就被动砍半了，而那不是用户改的那件事。
+## （同枪的两座炮台各走各的节拍。）
+const CHASE_WINDOW := 2.5
 ## 触手数量（逐档）
 const TENTACLES := [1, 2, 2, 2]
 ## 拍击伤害 = 目标最大生命 × HIT_HP_PCT + HIT_FLAT，再乘档位系数
@@ -39,6 +45,7 @@ const WRAITH_LOOPS := [0, 1, 2, 3]
 const WRAITH_DECAY := 0.9
 
 var _t_slap := 0.0
+var _t_chase := 0.0
 ## 各方本周期已用掉的追击次数
 var _chase_used := {"left": 0, "right": 0}
 
@@ -66,11 +73,15 @@ func tentacle_pos(side: String, idx: int) -> Vector2:
 
 
 func tick(delta: float) -> void:
+	# 追击次数窗口(2.5 秒)与拍击周期(5 秒)【各走各的】
+	_t_chase += delta
+	if _t_chase >= CHASE_WINDOW:
+		_t_chase -= CHASE_WINDOW
+		_chase_used = {"left": 0, "right": 0}
 	_t_slap += delta
-	if _t_slap < PERIOD:
+	if _t_slap < SLAP_PERIOD:
 		return
-	_t_slap -= PERIOD
-	_chase_used = {"left": 0, "right": 0}      # 追击次数按 2.5 秒周期重置
+	_t_slap -= SLAP_PERIOD
 	for side in ["left", "right"]:
 		var s: String = str(side)
 		var ti: int = _side_tier(s)
@@ -198,4 +209,5 @@ func _any_carrier(side: String):
 
 func clear() -> void:
 	_t_slap = 0.0
+	_t_chase = 0.0
 	_chase_used = {"left": 0, "right": 0}

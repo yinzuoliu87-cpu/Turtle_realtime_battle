@@ -175,6 +175,7 @@ func _spawn_teams() -> void:
 	battle._bow_syn.apply_all()   # 弓箭【腐蚀·穿透】写进 armor_pen_pct/magic_pen_pct(休眠通道, 消费侧零改动)
 	battle._gun_syn.apply_all()   # 枪【火控】(第三座炮台): 给带枪者标 _fire_ctrl
 	battle._food_syn.apply_all()  # 食物【学院】: 队伍全体额外 +100/220 最大生命(只加一次)
+	battle._food_syn.restore()    # 食物【成长】: 上一路攒的最大生命重放回来(以场重置, 不是以路)
 	battle._relic_syn.apply_all() # 遗物【生死界】系数 + 龟蛋加固(+500/900/1500)
 	for _pu in battle._units:        # 海盗: 开战即在后方显示持久海盗船(用户2026-07-14"战斗开始就在位置上")
 		if str(_pu.get("id", "")) == "pirate" and not _pu.get("is_summon", false):

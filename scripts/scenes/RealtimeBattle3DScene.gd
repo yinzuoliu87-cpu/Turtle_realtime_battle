@@ -3109,6 +3109,22 @@ func _stress_start() -> void:
 	_wd_thread = Thread.new()
 	_wd_thread.start(_stress_watchdog)
 
+## ★节点被销毁时收掉看门狗线程。
+## 原来 `_wd_thread` **只在 `_stress_reload()` 里 join**（一局打完才收），
+## 而 `--quit-after` 如果落在【一局中途】，线程从没被 join → `Thread` 析构时它还在跑
+## → "A Thread object is being destroyed without its completion having been realized"
+## → 退出时 **Segmentation fault**。
+## 实测: 一次压测正好停在 `battle #2 begin`（局中）就段错误了，另外三次落在两局之间就干净。
+## ⚠ 这条只影响 STRESS 无头压测的【退出阶段】，不影响对局逻辑 —— 但它会让人误判成
+##   "我刚改的东西把压测跑崩了"，所以补掉。
+func _exit_tree() -> void:
+	if _wd_thread != null:
+		_stress = false                      # 让 while 循环自己退出(它每秒醒一次)
+		if _wd_thread.is_started():
+			_wd_thread.wait_to_finish()
+		_wd_thread = null
+
+
 func _stress_watchdog() -> void:   # 独立线程: 主循环>4s无心跳=冻死→打最后操作+崩溃退出(外层读日志FROZEN行定位)
 	var last_hb := -1
 	var stall := 0
@@ -7558,6 +7574,7 @@ func _settle_season(won: bool) -> void:
 	if _minted > 0:
 		_last_reward += _minted
 	_gadget_syn.reset_match()
+	_food_syn.reset_match()      # 食物成长: 以【场】重置(用户 2026-08-04) —— 跨路保留, 换场清零
 	gs.meta_deepsea_coins += _last_reward
 	# #7 战绩同步: 实时战斗原来不写战绩 → RecordScene 永远空。这里补记本场(总场/胜计数 + match_history 一条)。
 	gs.battles_total += 1

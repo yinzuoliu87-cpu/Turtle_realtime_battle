@@ -468,6 +468,7 @@ func _dl_build_lane_field() -> void:
 	battle._bow_syn.apply_all()   # 弓箭【腐蚀·穿透】写进 armor_pen_pct/magic_pen_pct(休眠通道, 消费侧零改动)
 	battle._gun_syn.apply_all()   # 枪【火控】(第三座炮台): 给带枪者标 _fire_ctrl
 	battle._food_syn.apply_all()  # 食物【学院】: 队伍全体额外 +100/220 最大生命(只加一次)
+	battle._food_syn.restore()    # 食物【成长】: 上一路攒的最大生命重放回来(以场重置, 不是以路)
 	battle._relic_syn.apply_all() # 遗物【生死界】系数 + 龟蛋加固(+500/900/1500)
 	_dl_restore_eq_carry()   # ★跨路保留的装备层数写回(竹弓/哑铃/温泉蛋, 用户2026-08-01)。
 						  #   必须在 _eq_apply_all_stats 之【后】: 它会把 eq_state 重置成初始值, 放前面会被它盖掉。

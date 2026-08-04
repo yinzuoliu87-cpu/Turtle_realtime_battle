@@ -209,6 +209,30 @@ func _ready() -> void:
 	_ok("★成长是【携带者】: 不带食物的队友一点不长",
 		absf(float(f2[1]["maxHp"]) - mh2) < 0.01)
 
+	# ── ★成长【以场重置, 不是以路重置】(用户 2026-08-04) ────────────
+	# 换路会 `_dl_clear_units()` + `_make_unit()` 重建单位字典 ⇒ 只写在字典上的累积
+	# 连字典一起没了。这里【真的模拟一次换路】: 丢掉旧字典、造全新的同名单位, 再看血在不在。
+	# ⚠ 断言"restore 函数存在"守不住这件事 —— 那是 memory [[fb-verify-must-run-the-real-path]]
+	#   反复踩过的坑; 必须量重建【之后】的 maxHp。
+	_s._food_syn.reset_match()
+	var fc := _run([_mk("left", fo.slice(0, 3))])
+	_s._food_syn.restore()                     # 贴身份键(开战时那一步)
+	for _i in range(5):
+		_s._food_syn._t_grow = 0.0
+		_s._food_syn.tick(2.6)                 # 上路攒 5 跳 = 5 × 24 = 120
+	var grown: float = float(fc[0]["_food_grown"])
+	_ok("★换路前: 上路攒了 120 最大生命(5 跳 × 24)", absf(grown - 120.0) < 0.01, "攒了 %.0f" % grown)
+	# ★真·换路: 旧字典整个丢掉, 造一批【全新的】同名单位(和 _dl_build_lane_field 一样)
+	var fd := _run([_mk("left", fo.slice(0, 3))])
+	_ok("★对照: 新建的单位本身是干净的(没带任何成长)",
+		absf(float(fd[0].get("_food_grown", 0.0))) < 0.01)
+	var mh_fresh: float = float(fd[0]["maxHp"])
+	_s._food_syn.restore()
+	_ok("★换路后: 上一路攒的 120 真的重放回来了(以场重置, 不是以路)",
+		absf(float(fd[0]["maxHp"]) - mh_fresh - 120.0) < 0.01,
+		"%.0f → %.0f" % [mh_fresh, float(fd[0]["maxHp"])])
+	_ok("★整场结束 reset_match() 后清零(下一场重新开始)", _food_reset_clears(fo))
+
 	# 学院(档2, 6 件): 全队 +100, 不带食物的也吃
 	var f3 := _run([_mk("left", fo.slice(0, 3)), _mk("left", fo.slice(3, 6)), _mk("left", [])])
 	var a_before: float = float(f3[2]["maxHp"])
@@ -226,7 +250,7 @@ func _ready() -> void:
 	var s0 := _run([_mk("left", sp.slice(0, 1)), _mk("right", [])])
 	var sh0: float = float(s0[1]["hp"])
 	_s._spirit_syn._t_slap = 0.0
-	_s._spirit_syn.tick(2.6)
+	_s._spirit_syn.tick(5.1)              # 拍击周期是 5 秒(用户 2026-08-04 定), 不是 2.5
 	_ok("★对照: 灵物未激活(1 件, 首档 2) → 触手不拍",
 		absf(float(s0[1]["hp"]) - sh0) < 0.01)
 
@@ -234,7 +258,7 @@ func _ready() -> void:
 	var s1 := _run([_mk("left", sp.slice(0, 2)), _mk("right", [])])
 	var sh1: float = float(s1[1]["hp"])
 	_s._spirit_syn._t_slap = 0.0
-	_s._spirit_syn.tick(2.6)
+	_s._spirit_syn.tick(5.1)              # 拍击周期是 5 秒(用户 2026-08-04 定), 不是 2.5
 	var dealt: float = sh1 - float(s1[1]["hp"])
 	# ★期望值写死 175(= 4%×3000 + 55)。原来写的是"100~260 之间"——太松:
 	#   把基数 55 改成 5 时实伤 125 仍落在区间内, 变异实测 0 FAIL。区间断言必须紧到能抓住改动。
@@ -323,23 +347,44 @@ func _ready() -> void:
 	var ra0: float = float(r2[1]["base_atk"])
 	_s._relic_syn._t_acc = 0.0
 	_s._relic_syn.tick(2.6)
-	_ok("远古之力(档2): 一跳全队 base_atk +4(不带遗物的队友也吃)",
-		absf(float(r2[1]["base_atk"]) - ra0 - 4.0) < 0.01,
-		"%.0f → %.0f" % [ra0, float(r2[1]["base_atk"])])
+	# ★用户 2026-08-04:「远古之力改为获得增伤」⇒ 写的是 damage_amp 不是 base_atk。
+	_ok("远古之力(档2): 一跳全队【增伤】+1%(不带遗物的队友也吃)",
+		absf(float(r2[1].get("damage_amp", 0.0)) - 0.01) < 0.0001,
+		"damage_amp=%.4f" % float(r2[1].get("damage_amp", 0.0)))
+	_ok("★远古之力【不再动 base_atk】(改增伤后攻击力应原封不动)",
+		absf(float(r2[1]["base_atk"]) - ra0) < 0.01,
+		"base_atk %.1f → %.1f" % [ra0, float(r2[1]["base_atk"])])
 	for i6 in range(60):
 		_s._relic_syn._t_acc = 0.0
 		_s._relic_syn.tick(2.6)
-	_ok("远古之力上限 +150(跳 60 次也停在 150)",
-		absf(float(r2[1]["_ancient"]) - 150.0) < 0.01, "累计 %.1f" % float(r2[1]["_ancient"]))
+	_ok("远古之力上限 +15%(跳 60 次也停在 0.15)",
+		absf(float(r2[1]["_ancient"]) - 0.15) < 0.0001, "累计 %.4f" % float(r2[1]["_ancient"]))
+	_ok("★增伤真的作用在伤害上(damage_amp 是两处消费点在读的字段)",
+		absf(float(r2[1].get("damage_amp", 0.0)) - 0.15) < 0.0001,
+		"damage_amp=%.4f" % float(r2[1].get("damage_amp", 0.0)))
 
 	# 龟蛋加固: 档2 +500
 	var r3 := _run([_mk("left", re.slice(0, 3)), _mk("left", re.slice(3, 5))])
 	r3[1]["_isEgg"] = true
 	var eh0: float = float(r3[1]["maxHp"])
 	_s._relic_syn.apply_all()
-	_ok("龟蛋加固(档2): 本方龟蛋 +500 最大生命",
-		absf(float(r3[1]["maxHp"]) - eh0 - 500.0) < 0.01,
+	_ok("龟蛋加固(档2): 本方龟蛋 +1200 最大生命(用户 2026-08-04 加强, 原 500)",
+		absf(float(r3[1]["maxHp"]) - eh0 - 1200.0) < 0.01,
 		"%.0f → %.0f" % [eh0, float(r3[1]["maxHp"])])
+	# ★「并使龟蛋也开始释放攻击」—— 三个字段缺一不可: 蛋出厂 atk=0 / range=0 / no_basic=true
+	# ★断【增量】不断绝对值: 合成单位的 base_atk 基线是 100(不是 0)。
+	_ok("龟蛋反击(档2): 攻击力 +40", absf(float(r3[1]["base_atk"]) - 100.0 - 40.0) < 0.01,
+		"base_atk=%.0f (基线 100)" % float(r3[1]["base_atk"]))
+	_ok("★龟蛋反击: no_basic 关掉了(不关的话 AI 普攻整条不跑, 给了攻击力也不打)",
+		not bool(r3[1].get("no_basic", false)))
+	# ★★字段名必须是 `atk_range` —— 第一版我写的是 `range`(不存在的键), 蛋照样不打,
+	#   而门禁读的也是同一个自造键 ⇒ 全绿。这里改成【量真正的消费点】: `battle._eff_range(u)`
+	#   (RealtimeBattle3DScene.gd:7579 读 atk_range × range_perm), 写错键它就是 0。
+	_ok("★龟蛋反击: 【真消费点】_eff_range 量到 420(出厂 0, 不给射程连人都选不到)",
+		absf(_s._eff_range(r3[1]) - 420.0) < 0.01, "_eff_range=%.0f" % _s._eff_range(r3[1]))
+	_ok("★龟蛋反击: 攻击间隔 2 秒(字段是 atk_interval, 不是每帧被覆写的 atk_cd)",
+		absf(float(r3[1].get("atk_interval", 0.0)) - 2.0) < 0.01,
+		"atk_interval=%.1f" % float(r3[1].get("atk_interval", 0.0)))
 	var em: float = float(r3[1]["maxHp"])
 	_s._relic_syn.apply_all()
 	_ok("★龟蛋加固只加一次", absf(float(r3[1]["maxHp"]) - em) < 0.01)
@@ -357,10 +402,18 @@ func _ready() -> void:
 	var anc_before: float = float(r4[0]["_ancient"])
 	_s._relic_syn._t_acc = 0.0
 	_s._relic_syn.tick(2.6)
-	_ok("觉醒(顶档 · 本路满 20 秒): 已累积的远古之力 +50%% 且当跳翻倍(11→22)",
+	# 顶档一跳 +2%; 觉醒把【已累积的】+50% ⇒ 0.02 → 0.02×1.5 + 0.02 = 0.05
+	# ★"之后每跳翻倍"已按用户 2026-08-04 删掉, 所以当跳仍是 +2% 不是 +4%。
+	_ok("觉醒(顶档 · 本路满 20 秒): 已累积的 +50% 【一次性】(0.02 → 0.05)",
 		bool(_s._relic_syn._awakened.get("left", false))
-		and float(r4[0]["_ancient"]) - anc_before > 22.0,
-		"%.1f → %.1f" % [anc_before, float(r4[0]["_ancient"])])
+		and absf(float(r4[0]["_ancient"]) - 0.05) < 0.0001,
+		"%.4f → %.4f" % [anc_before, float(r4[0]["_ancient"])])
+	var anc_awake: float = float(r4[0]["_ancient"])
+	_s._relic_syn._t_acc = 0.0
+	_s._relic_syn.tick(2.6)
+	_ok("★觉醒后【不再每跳翻倍】: 下一跳仍是 +2%(不是 +4%)",
+		absf(float(r4[0]["_ancient"]) - anc_awake - 0.02) < 0.0001,
+		"这一跳涨了 %.4f" % (float(r4[0]["_ancient"]) - anc_awake))
 
 	# ═══════════════ 接线: 真的挂在战斗上了 ═══════════════
 	print("── 接线 ──")
@@ -394,6 +447,15 @@ func _ready() -> void:
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 剩下五个类型的羁绊机制" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+## 整场结束后成长归零：reset_match 之后再 restore，一点血都不该补
+func _food_reset_clears(fo: Array) -> bool:
+	_s._food_syn.reset_match()
+	var u := _run([_mk("left", fo.slice(0, 3))])
+	var mh: float = float(u[0]["maxHp"])
+	_s._food_syn.restore()
+	return absf(float(u[0]["maxHp"]) - mh) < 0.01
 
 
 ## 药水首档没有战利品：3 件时击杀猎物不涨攻
