@@ -145,7 +145,14 @@ const RING := 7                      # 扁带横向的采样点数（不再是�
 const R_BASE := 0.85
 const R_TIP := 0.212                 # 梢端半径
 ## ★总弧长固定 —— 不随目标距离变。这是"它是一根实体"的关键。
-const ARC_LEN := 3.25                 # 待机时的弧长（实机被动"粗但有高度"）
+## ★★★2026-08-05【用户："拍击应该以 idle 的模型来拍，像一个鞭子一样高高抬起
+##   然后打下去，再回到 idle"】—— 这句点破了一个根本错误。
+##   我原来是 **idle 弧长 4.3 → 拍击 9.6，翻了 2.2 倍** = 触手在"变长"，
+##   观感必然是【戳出去】。
+##   鞭子的物理：**绳子长度恒定**，卷起来端点近、甩直了端点远。
+##   ⇒ 弧长统一 = `ATTACK_LEN`；待机靠**大卷曲**蜷成一团（投影短），
+##     攻击靠**松开卷曲**抻直（投影长）。这才是"同一根东西抬起来打下去"。
+const ARC_LEN := 9.60                 # ＝ ATTACK_LEN，恒定不变
 ## ★前摇【长大】的倍率 —— 官方前摇 5 帧投影臂长 0.097→0.167（+72%）、青覆盖 +76%。
 ##   做成常量是为了让门禁上限跟着它走（门禁量的仍是**真实网格弧长**，不是这个数）。
 const REAR_GROW := 2.15
@@ -231,7 +238,13 @@ const ANG_REAR := [92.0, 108.0]      # 蓄势: 后仰 + 梢端回勾成【张开
 ## ★攻击姿态：**整条笔直地指向目标**（不是弧）。
 ##   逐帧看到的就是"一条从根部斜插到目标身上的粗光带"。
 ##   根部略抬、梢端略低 = 一条几乎直的斜线。
-const ANG_SLAM := [26.0, 14.0]
+## ★★★2026-08-05【用户："整体感觉是戳出去的不是拍下去的"】
+##   [26, 14] 两个角都接近水平 ⇒ 整条**沿地面平推出去** = 戳。
+##   官方是从立起的姿态**向下抽**：根部保持较立、梢端扎向目标下方。
+##   ⇒ 根部 46°（立着）、梢端 −18°（向下扎），形成一道**自上而下**的抽击弧。
+##   （早期我写过"根部倒到 30° 会整条平躺像海带"，于是压到 26 —— 压过头了，
+##     平躺和平推是两个毛病，我拿治平躺的药治了平推。）
+const ANG_SLAM := [46.0, -18.0]
 const ANG_EMERGE := [90.0, 86.0]     # 出土: ★近乎竖直的一道光柱（实机就是这样起的）
 ## 梢端打卷：最后这一段额外多转的角度（度）
 ## ★★【探针算出来的 bug】: 原来 CURL_EXTRA 是恒定 210°，于是砸下时
@@ -261,12 +274,29 @@ const CURL_FROM_CURLY := 0.30        # 待机/预警：大半条参与卷曲，�
 ## ★★★重标定：`CURL_FROM` 从 0.68 降到 0.30 之后，参与卷曲的长度从 32% 变成 70%，
 ##   **同样的数值卷曲量翻了一倍多** —— 原来的 318/299 在新口径下会把整条盘成蚊香
 ##   （实测 +13~+22 那几帧就是一坨旋涡）。整条曲线的 curl 值全部按新口径重定。
-const CURL_TIGHT := 116.0            # 待机：细长立柱 + 梢端弯钩
+const CURL_TIGHT := 262.0            # 待机：弧长恒定后靠【大卷曲】蜷成团（原 116×2.2）
 ## ★立起来(ANG_IDLE 66→79)之后，同样的摆幅在投影上被放大：实测波动
 ## 从 1.2% 跳到 10.6%（官方 <1.5%）⇒ 摆幅再砍一半。
-const CURL_LOOSE := 101.0            # 舒展到底：只松一点点（官方待机基本不动）
+const CURL_LOOSE := 240.0            # 舒展到底：只松一点点（官方待机基本不动）
 const BREATH_PERIOD := 3.6           # 一次完整呼吸的秒数（慢而轻）
-const CURL_SLAM := 6.0               # 攻击: ★完全抻直（逐帧看是一条直光带）
+## 前摇末的卷曲量 —— 抽直波前"尚未扫到"的段保持这个值
+const REAR_END_CURL := 68.0
+## 抽直波前从梢端扫到根部要多久。官方 f040→f042 约 2 帧完成 ⇒ 0.07 秒。
+## ★0.075 那档太快(2.25 帧)：波前扫过时端点距离剧烈跳（实测 8.99→6.27→8.49），
+##   节奏门禁的"不许定格"反被这种抖动带红。放缓到 0.13 秒(≈4 帧)。
+const WHIP_PROPAGATE := 0.13
+const CURL_SLAM := 6.0
+## 拍击/收回期的**卷曲量**由官方【投影臂长包络】反向驱动。
+##
+## ★★★2026-08-05【弧长恒定之后必须做的配套修正】
+##   `SLAM_LEN_CURVE` 量的是**投影臂长**（屏幕上根到梢有多远），
+##   我原来拿它去乘 `arc`（弧长）—— **口径用错了**：
+##   弧长恒定的鞭子，投影变短是因为**卷回来**，不是因为绳子缩短。
+##   实测症状：收回段触手变得又短又细（弧长被包络压到 0.28×）。
+##   ⇒ 包络值高(抻直) → curl 小；包络值低(卷起) → curl 大。
+static func _slam_curl_of(e: float) -> float:
+	var k: float = clampf((e - 0.28) / 0.72, 0.0, 1.0)
+	return lerpf(CURL_TIGHT, CURL_SLAM, k)               # 攻击: ★完全抻直（逐帧看是一条直光带）
 ## 待机摇曳的横向摆幅（度）
 const S_AMP := 3.5                   # ★实机摆得很轻, 原画那种 S 形是艺术加工
 ## 梢端相位滞后（鞭子感 —— 整条一起动就是根棍子）
@@ -967,7 +997,11 @@ func _phase(t: Dictionary) -> Array:
 			var r: float = smoothstep(0.0, 1.0, clampf(ts / T_REAR, 0.0, 1.0))
 			return [1.0, lerpf(ANG_IDLE[0], ANG_REAR[0], r), lerpf(ANG_IDLE[1], ANG_REAR[1], r),
 				# 前摇要【张开】不是卷死 —— 卷死 = 缩成一团 = 投影塌(实测 −3→−2 掉 24%)
-				lerpf(CURL_TIGHT, 196.0, r)]
+				# ★★2026-08-05：196 那档 ⇒ 前摇末 196° 一帧跳到拍击的 6°，
+				#   帧间形状差异率 **0.923**（官方同处只有 0.208）。
+				#   官方是**在前摇里就抬起大部分**，抽直只是最后一小段。
+				#   ⇒ 前摇末直接松到 68°，把 190° 的跳变拆成 194→68→6 两步。
+				lerpf(CURL_TIGHT, 68.0, r)]
 		ST_SLAM:
 			# ★★★官方拍击【一帧都没有停过】：
 			#     覆盖 +0 7.06 → +2 峰值 8.53 → +6 5.47 → +9 4.11（**每帧都在降**）
@@ -987,7 +1021,7 @@ func _phase(t: Dictionary) -> Array:
 			var settle: float = clampf((ts - 0.033) / maxf(dur - 0.033, 0.01), 0.0, 1.0)
 			var a0v: float = lerpf(ANG_REAR[0], ANG_SLAM[0], e2) - 10.0 * settle
 			var a1v: float = lerpf(ANG_REAR[1], ANG_SLAM[1], e2) - 8.0 * settle
-			return [1.0, a0v, a1v, lerpf(CURL_TIGHT, CURL_SLAM, e2)]
+			return [1.0, a0v, a1v, _slam_curl_of(_env(SLAM_LEN_CURVE, ts))]
 		ST_RECOVER:
 			# ★官方恢复是 **19 帧的长尾**（+10 3.91 缓降到 +28 1.72），
 			#   我上一版 8 帧就掉回基线 = 收得太干脆。T_RECOVER 已拉长，这里用
@@ -995,7 +1029,8 @@ func _phase(t: Dictionary) -> Array:
 			var c: float = clampf(ts / T_RECOVER, 0.0, 1.0)
 			c = pow(c, 2.2)
 			return [1.0, lerpf(ANG_SLAM[0] - 10.0, ANG_IDLE[0], c),
-				lerpf(ANG_SLAM[1] - 8.0, ANG_IDLE[1], c), lerpf(CURL_SLAM, CURL_TIGHT, c)]
+				lerpf(ANG_SLAM[1] - 8.0, ANG_IDLE[1], c),
+				lerpf(_slam_curl_of(_env(SLAM_LEN_CURVE, T_SLAM + ts)), CURL_TIGHT, c)]
 		ST_RETRACT:
 			var q: float = clampf(ts / T_RETRACT, 0.0, 1.0)
 			return [1.0 - q, ANG_IDLE[0], ANG_IDLE[1], CURL_TIGHT]
@@ -1013,37 +1048,53 @@ func _phase(t: Dictionary) -> Array:
 ##     +10→+20     0.327→0.166      （长尾收回）
 ##   我做过的错版：前摇缩短、+0 只到 0.251、+1~+9 恒定 0.521（**定格 8 帧**）。
 func _arc_for(t: Dictionary, stt: int) -> float:
-	var reach_arc: float = ATTACK_LEN          # ★固定长度，不随目标距离变
+	var reach_arc: float = ARC_LEN            # ★弧长恒定（= ATTACK_LEN），鞭子不会变长
 	match stt:
 		ST_WARN:
 			# ★弧长跟着【两次起伏】走：立钩 ×1.45 → 摊平 ×1.10 → 再立起卷环 ×1.55
 			var wq: float = clampf(float(t["ts"]) / T_WARN, 0.0, 1.0)
 			# ★官方摊平段(f024~f036)面积**回落到待机的 0.72~0.75 倍** —— 是缩小不是涨。
 			#   我原来给 ×1.10 ⇒ 摊平时反而是一大团胖云朵，画面上比待机还显眼。
-			if wq < 0.27:
-				return ARC_LEN * lerpf(1.00, 1.45, smoothstep(0.0, 1.0, wq / 0.27))
-			if wq < 0.53:
-				return ARC_LEN * lerpf(1.45, 0.86, smoothstep(0.0, 1.0, (wq - 0.27) / 0.26))
-			if wq < 0.80:
-				return ARC_LEN * 0.86
-			return ARC_LEN * lerpf(0.86, 1.55, smoothstep(0.0, 1.0, (wq - 0.80) / 0.20))
+			# ★弧长恒定之后这里【不再放大长度】——原倍率(×1.0~1.55)是基于短 ARC_LEN 定的，
+			#   现在 ARC_LEN 已经等于攻击长度，再乘就超出射程了。
+			#   预警期的"长大/摊平"改由**卷曲量**表达（见 `_phase` 的 ST_WARN）。
+			return ARC_LEN
 		ST_REAR:
 			# 前摇【长大】：不是缩，官方那 5 帧面积涨了 76%
-			var rp: float = clampf(float(t["ts"]) / T_REAR, 0.0, 1.0)
-			return lerpf(ARC_LEN, ARC_LEN * REAR_GROW, smoothstep(0.0, 1.0, rp))
+			return ARC_LEN          # ★弧长恒定 —— 前摇的"长大"同样改由卷曲量表达
 		ST_SLAM:
-			# ★查官方包络表：峰值锚在 reach_arc，形状(含 +2 的余振二次峰)照抄
-			return maxf(reach_arc * _env(SLAM_LEN_CURVE, float(t["ts"])), ARC_LEN)
+			return ARC_LEN          # ★弧长恒定（投影长度的变化由卷曲量产生，见 _slam_curl）
 		ST_RECOVER:
-			# ★同一条曲线继续走（偏移 T_SLAM），末段并到待机弧长
-			# ★★2026-08-04：原来这里有个 `maxf(..., ARC_LEN)` 钳制 ——
-			#   官方包络末尾降到 0.284×峰值，而 `ARC_LEN/reach = 0.34` 就是地板，
-			#   于是收回段**系统性偏高 +0.05**（实测形状误差 0.045 全是这么来的）。
-			#   去掉钳制让它跟表走；并入待机的指数也从 4.5 收到 2.8（原来在高位待太久）。
-			var te: float = T_SLAM + float(t["ts"])
-			var blend: float = clampf(float(t["ts"]) / T_RECOVER, 0.0, 1.0)
-			return lerpf(reach_arc * _env(SLAM_LEN_CURVE, te), ARC_LEN, pow(blend, 2.8))
+			return ARC_LEN          # ★同上 —— 收回是"卷回来"不是"变短"
 	return ARC_LEN
+
+
+## 本体的顶点色。从 `_rebuild` 拆出来 —— 那个函数第二次撞架构预算的 250 行上限。
+##
+## ★实机：**待机是暗的、出手才爆亮** —— 明暗对比是这条特效的力量感来源。
+## ★`rimf` = 横向到边的距离（扁带上所有点法线相同，菲涅尔失效，只能用它）。
+##   芯部(f=0) rim=0、边缘(|f|=1) rim=1 —— 正是"暗芯 + 亮边"那条梯度。
+## ★★颜色的两条教训都写在这：
+##   ① 官方 `wfull/041` 横截面实测 (31,185,188)/(108,197,182)/(27,202,224) ——
+##      **明暗差在、白不在**；我曾写死成一片近白 ⇒「实心板」。
+##   ② 真正把它变白的是 **R 通道**：官方 R 只有 G·B 的 1/6~1/2，
+##      我写过 0.80 ≈ G ⇒ 必然是白。量了却没照着用。
+func _body_color(t: Dictionary, st2: int, u: float, rimf: float) -> Color:
+	var col: Color
+	if st2 == ST_SLAM:
+		col = Color(0.52, 1.06, 1.10).lerp(Color(0.10, 0.60, 0.62), pow(rimf, 1.3))
+	elif st2 == ST_REAR:
+		var kk: float = clampf(float(t["ts"]) / T_REAR, 0.0, 1.0)
+		col = Color(0.46, 1.00, 1.04).lerp(Color(0.09, 0.56, 0.58), pow(rimf, 1.4))
+		col = col.lerp(Color(0.70, 1.26, 1.32), 0.5 * kk)
+	else:
+		col = Color(0.34, 0.86, 0.90).lerp(Color(0.08, 0.48, 0.52), pow(rimf, 1.5))
+	# ★官方那条光带【越靠近命中端越亮】(能量往目标涌)，我原来是均匀的。
+	#   梢端不再往白里提 —— 比对时那是个突兀的白点。
+	if st2 == ST_SLAM:
+		var g: float = 0.84 + 0.30 * u
+		col = Color(col.r * g, col.g * g, col.b * g)
+	return col
 
 
 func _rebuild(t: Dictionary) -> void:
@@ -1108,6 +1159,14 @@ func _rebuild(t: Dictionary) -> void:
 		var ang: float = lerpf(a0, a1, pow(u, 1.05))
 		var cfrom: float = (CURL_FROM_CURLY
 			if (stt == ST_IDLE or stt == ST_WARN) else CURL_FROM)
+		# ⚠【已试过并回退】抽直波前（从梢端向根部传播）：
+		#   放大官方 f039→f040 确实是"根部还保持环、只有梢端甩出去"，
+		#   所以两帧掩膜大面积重叠、差异率只有 0.208，而我整条同时变直 = 0.92。
+		#   但我实现的波前**破坏了已经对齐好的端点包络**：
+		#   端点距离变得不单调（8.86→6.78→7.18），节奏门禁的
+		#   "不许定格 / 余振二次峰"两条直接红，全周期平均跳变 0.200→0.217。
+		#   ⇒ 回退。这条记为**已知差距**，正确做法应该是让波前只改姿态、
+		#     同时保住端点包络（需要重新推导，不是调两个参数的事）。
 		if u > cfrom:
 			var cu: float = (u - cfrom) / (1.0 - cfrom)
 			ang -= curl * cu * cu
@@ -1116,7 +1175,11 @@ func _rebuild(t: Dictionary) -> void:
 		#   官方 `wfull` +2~+14 那几帧是**一条绷直的光带**；
 		#   我把待机的 ±7° 起伏一直留着，攻击态就变成一根【一节一节鼓起来的胖香肠】
 		#   （时间对齐对比 v2 最刺眼的问题）。绷直才有"抽出去"的力量感。
-		var wavy: float = 0.14 if int(t["state"]) == ST_SLAM else 1.0
+		# ★★★2026-08-05【用户："拍击的时候触手在那里不自然的乱抖"】—— 根因在这。
+		#   拍击时我留了 **14%** 的待机摆动，而下面两行的相位是 `swayt = battle._t * …`
+		#   ——**全局时钟**。拍击那 0.5 秒里相位转了近 1 弧度，沿 36 段累加 ⇒ 整条在抖。
+		#   官方拍击是**一条绷直的光带**，一点摆动都没有。⇒ 彻底压到 0。
+		var wavy: float = 0.0 if int(t["state"]) == ST_SLAM else 1.0
 		var yaw: float = deg_to_rad(S_AMP * sin(u * TAU * 0.6 + swayt) * wavy)
 		# ★主干的波浪起伏 —— 逐帧看官方 idle，主干【不是光滑的弧】，
 		#   沿长度有明显的一波一波（像水流）。叠在切角上，幅度不大但读得出来。
@@ -1147,14 +1210,17 @@ func _rebuild(t: Dictionary) -> void:
 		#   官方**待机/预警**的触手是【中间鼓、两头收】的纺锤/团（像水母、像一坨），
 		#   **拍击**才是【根粗梢细】的锥（那时它是抽出去的能量带）。
 		#   我原来全程都用锥形剖面 ⇒ 待机看着像根上尖下宽的萝卜，不是团。
-		var r: float
-		var stt0: int = int(t["state"])
-		if stt0 == ST_IDLE or stt0 == ST_WARN:
-			# 纺锤：0 和 1 两端收到 0.42，中段 (u≈0.45) 鼓到 1.0
-			var bulge: float = 0.42 + 0.58 * pow(sin(PI * clampf(u, 0.0, 1.0)), 0.72)
-			r = R_BASE * bulge
-		else:
-			r = lerpf(R_BASE, R_TIP, pow(u, 0.85))
+		# ★★★2026-08-05【用户："整套动作都用的相同建模对吗，都是 idle 的变化里的吗"】
+		#   原来这里是 `if 待机/预警 → 纺锤 else → 锥` 的**硬切换**：
+		#   状态一变剖面就跳，等于"两个模型"，而不是同一个模型的变化。
+		#   （很可能就是拍击 +9 帧那次 0.395 异常跳变的来源。）
+		#   ⇒ 改成【连续插值】：用"抻直度"在纺锤与锥之间平滑过渡。
+		#     抻直度由**卷曲量**派生 —— 卷得紧=团(纺锤)、抻直了=鞭(锥)，
+		#     和整套动作同一个驱动源，不再有额外的状态分支。
+		var straight: float = clampf(1.0 - curl / CURL_TIGHT, 0.0, 1.0)
+		var spindle: float = R_BASE * (0.42 + 0.58 * pow(sin(PI * clampf(u, 0.0, 1.0)), 0.72))
+		var taper: float = lerpf(R_BASE, R_TIP, pow(u, 0.85))
+		var r: float = lerpf(spindle, taper, smoothstep(0.0, 1.0, straight))
 		# ★★官方轮廓是【毛的】(不规则起伏)，我是光滑的数学曲线 ——
 		#   沿长度给半径加一点点确定性起伏（不用随机：确定性演出，换路可复现）。
 		r *= 1.0 + 0.055 * sin(u * 21.0 + float(t["phase"]) * 3.1) 			+ 0.032 * sin(u * 47.0 + float(t["phase"]))
@@ -1175,13 +1241,11 @@ func _rebuild(t: Dictionary) -> void:
 		#   （memory [[fb-probe-before-claiming-rootcause]]：推理出来的不算根因。）
 		# ★★待机与预警期本体要【厚】—— 官方那是个圆钝饱满的半透明团/粗钩，
 		#   我原来是根细弯钩。只有【拍击】才该细而亮（那时它是能量不是肉）。
-		if int(t["state"]) == ST_IDLE:
-			r *= 1.75
-		if int(t["state"]) == ST_WARN:
-			# ★★★官方 f016~f021 是一个**有明显钩口的 C 形钩**；
-			#   我加粗 + 纺锤剖面之后钩口被**填满**了，变成一根实心柱。
-			#   ⇒ 预警期反而要【比待机细】，卷曲更紧，钩口才露得出来。
-			r *= 0.92
+		# ★粗细倍数同样改成【跟抻直度连续变】：蜷着的时候厚(是"肉")、
+		#   抻直的时候细(是"能量")。不再按状态分支。
+		r *= lerpf(1.75, 1.00, smoothstep(0.0, 1.0, straight))
+		# （原来这里还有一句"预警期 ×0.92"的状态分支，现已并入上面那条连续插值：
+		#   预警期卷得比待机松 ⇒ 抻直度更高 ⇒ 自动更细，钩口自然露得出来。）
 		if int(t["state"]) == ST_RECOVER:
 			# ★收细【延续到恢复期】—— 官方 +12 带宽仍在 0.0288 一路细下去，
 			#   我上一版恢复期恒定 0.0354 ⇒ 收回来的是一根还很粗的棍子。
@@ -1226,30 +1290,7 @@ func _rebuild(t: Dictionary) -> void:
 			# ★扁带上所有点法线相同 ⇒ 菲涅尔失效。改用【横向到边的距离】：
 			#   芯部(f=0) rim=0、边缘(|f|=1) rim=1 —— 这正是"暗芯 + 亮边"的那条梯度。
 			var rimf: float = clampf(absf(f), 0.0, 1.0)
-			# ★实机: **待机是暗的、出手才爆亮** —— 明暗对比是这条特效的力量感来源。
-			var col: Color
-			if st2 == ST_SLAM:
-				# ★★上一版写死成常数 `Color(0.86,1,1)` = 一片均匀的近白 ⇒「实心板」。
-				#   官方 `wfull/041` 横截面实测：暗侧 (31,185,188)、亮边 (108,197,182)、
-				#   热条 (27,202,224) —— **明暗差在，白不在**。
-				#   顶点色允许 >1（乘在贴图上当增益），这样芯部才够亮又不吃掉梯度。
-				#   ★亮度也量过：官方那条光带**最亮处只有 ~205**（G+B 均值口径），
-				#     我上一版顶到 255 = 溢出成白。整体压 ~20% 才落回官方那一档。
-				#   ★★2026-08-04 补：压亮度还不够——真正把它变白的是 **R 通道**。
-				#     官方横截面 (31,185,188) / (108,197,182) / (27,202,224)：
-				#     **R 只有 G·B 的 1/6 ~ 1/2**，而我写的是 0.80 ≈ G ⇒ 必然是白。
-				#     量了却没照着用，是这次"完全不像"里最好修的一条。
-				col = Color(0.52, 1.06, 1.10).lerp(Color(0.10, 0.60, 0.62), pow(rimf, 1.3))
-			elif st2 == ST_REAR:
-				var kk: float = clampf(float(t["ts"]) / T_REAR, 0.0, 1.0)
-				col = Color(0.46, 1.00, 1.04).lerp(Color(0.09, 0.56, 0.58), pow(rimf, 1.4))
-				col = col.lerp(Color(0.70, 1.26, 1.32), 0.5 * kk)
-			else:
-				col = Color(0.34, 0.86, 0.90).lerp(Color(0.08, 0.48, 0.52), pow(rimf, 1.5))
-			# ★梢端别再往白里提 —— 比对时那是个突兀的白点。改成【边缘】亮、梢端只是稍亮。
-			# ★官方那条光带【越靠近命中端越亮】(能量往目标涌)，我原来是均匀的。
-			if st2 == ST_SLAM:
-				col = Color(col.r * (0.84 + 0.30 * u), col.g * (0.84 + 0.30 * u), col.b * (0.84 + 0.30 * u))
+			var col: Color = _body_color(t, st2, u, rimf)
 			# ★★2026-08-04【放大对比】：扁带解决了"空心管/多边棱"，但芯变成了一条
 			#   **硬边白条** —— 边界是切出来的。官方那条是【亮芯往两侧化开】，
 			#   边界糊的。色梯度做不到这件事，得靠**顶点 alpha 横向渐隐**。

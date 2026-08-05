@@ -69,6 +69,24 @@ func _arc_len(m: ArrayMesh) -> float:
 	return L
 
 
+## 端点到根部的【直线距离】。★这才是"甩直"的判据 ——
+##   弧长恒定的鞭子，卷起来端点近、甩直了端点远。
+func _tip_dist(m: ArrayMesh) -> float:
+	if m.get_surface_count() == 0:
+		return 0.0
+	var vs: PackedVector3Array = m.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	var qps: int = (TV.RING - 1) * 6
+	var segs: int = vs.size() / qps
+	if segs < 2:
+		return 0.0
+	var a := Vector3.ZERO
+	var b := Vector3.ZERO
+	for kk in range(qps):
+		a += vs[kk]
+		b += vs[(segs - 1) * qps + kk]
+	return (b / float(qps) - a / float(qps)).length()
+
+
 func _nm(i: int) -> String:
 	return NAMES[i] if i >= 0 and i < NAMES.size() else "(不存在)"
 
@@ -164,6 +182,7 @@ func _ready() -> void:
 	_v.ensure("left", 1)
 	_v.tick(2.1)                              # 到待机
 	var lens: Array = []
+	var tips: Array = []
 	var tris: Array = []
 	for st in [1, 2, 3]:                      # IDLE / REAR / SLAM 三个姿态
 		var t: Dictionary = _v._tents["left|0"]
@@ -175,12 +194,13 @@ func _ready() -> void:
 		var mi: MeshInstance3D = t["mi"]
 		var m: ArrayMesh = mi.mesh
 		if m.get_surface_count() == 0:
-			lens.append(-1.0); tris.append(0); continue
+			lens.append(-1.0); tips.append(-1.0); tris.append(0); continue
 		# ★★2026-08-04 修脏判据：这里【注释说的和代码做的不是一回事】——
 		#   注释写"沿曲线量真实弧长"，代码却是 `bb.size.length()` = **包围盒对角**，
 		#   它把触手的【粗细】(R_BASE)也算进去了：IDLE 弧长 4.0 但对角 4.3，
 		#   于是加粗触手就会让长度门禁莫名其妙地红。改成真的沿中线积弧长。
 		lens.append(_arc_len(m))
+		tips.append(_tip_dist(m))
 		tris.append(m.surface_get_array_len(0) / 3)
 	_ok("⑤ ★三个姿态都建出网格(面数 %s)" % str(tris),
 		tris[0] > 100 and tris[1] > 100 and tris[2] > 100, str(tris))
@@ -207,10 +227,18 @@ func _ready() -> void:
 			over.append("姿态%d 包围盒对角 %.1fm > 上限 %.1fm" % [i2, float(lens[i2]), float(caps[i2])])
 	_ok("⑤ ★攻击长度是【固定】的 ≤%.1fm(用户: 不随目标距离改动 —— 有固定范围才有安全距离)"
 		% TV.ATTACK_LEN, over.is_empty(), str(over))
-	# ★攻击真的比待机长（不长就是伸长没生效）
-	_ok("⑤ ★攻击姿态确实比待机长(扑出去够目标, 不是原地变直)",
-		float(lens[2]) > float(lens[0]) * 1.25,
-		"待机 %.1fm → 攻击 %.1fm" % [float(lens[0]), float(lens[2])])
+	# ★★2026-08-05 判据换了：以前量【弧长】"攻击比待机长"，
+	#   但弧长恒定是**有意为之**（用户："像一个鞭子一样"——绳子长度不变，
+	#   卷起来端点近、甩直了端点远）。旧判据挡住的是我要的行为。
+	#   ⇒ 改量【端点到根部的直线距离】：甩直后必须显著变远，否则"甩"没生效。
+	#   （弧长恒定另有一条守：⑤ 的 caps 上限。）
+	_ok("⑤ ★弧长【恒定】—— 鞭子不会变长(待机 %.1fm / 攻击 %.1fm)"
+		% [float(lens[0]), float(lens[2])],
+		absf(float(lens[2]) - float(lens[0])) < float(lens[0]) * 0.12,
+		"差了 %.1fm" % absf(float(lens[2]) - float(lens[0])))
+	_ok("⑤ ★但【端点距离】要显著变远(甩直了才够得到目标)",
+		float(tips[2]) > float(tips[0]) * 1.6,
+		"待机端点 %.1fm → 攻击端点 %.1fm" % [float(tips[0]), float(tips[2])])
 
 	# ★★攻击长度【不随目标距离变】—— 用户 2026-08-04 点名纠正的（我中途做过一版
 	#   "按到目标的实际距离伸长"，那样就没有"安全距离"这条规则了）。

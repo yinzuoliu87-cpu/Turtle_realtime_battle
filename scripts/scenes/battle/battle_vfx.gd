@@ -633,6 +633,9 @@ func _vfx_preview_loop() -> void:
 ##   ⇒ 给真装备 = 走真实路径（memory [[fb-verify-must-run-the-real-path]]），
 ##     顺带也验证了"档位 → 根数"这条链是通的。
 var _tt_prev_foe = null
+## 预览台的待机间隔 —— 对齐真实对局：拍击周期 5 秒 − 动作 2.2 秒 ≈ 2.8 秒待机
+const TT_IDLE_GAP := 2.8
+var _tt_idle_t := 0.0
 var _tt_prev_src = null
 
 func _vfx_preview_tentacle(origin: Vector2, dir: Vector2) -> void:
@@ -667,9 +670,23 @@ func _vfx_preview_tentacle(origin: Vector2, dir: Vector2) -> void:
 	# ★节拍：只在【待机】时才下指令 —— 免得打断正在演的动作。
 	#   （原来预览和 spirit 各拍各的、错开 0.2 秒互相打断：
 	#     探针实测 `SLAM/0.15` 被打回 `REAR/0.00`，动作只演了 0.15 秒。）
-	if battle._tentacle_vfx.state_of("left", 0) == 1:
-		battle._tentacle_vfx.strike("left", 0,
-			Vector2((_tt_prev_foe as Dictionary)["pos"]), 1.0)
+	# ★`TENT_IDLE_ONLY=1`：只保持待机、不下拍击指令 ——
+	#   审待机形态时不想每 2 秒被一次拍击打断（用户 2026-08-05：「等下你就把 idle 打开给我看」）。
+	if OS.has_environment("TENT_IDLE_ONLY"):
+		return
+	# ★★2026-08-05【用户："为什么完整的没有出现刚刚的 idle"】—— 因为这里是
+	#   **一进待机就立刻拍**，触手根本没有停留在待机的时间。
+	#   真实对局是 `SLAP_PERIOD = 5 秒`：动作 2.2 秒 + **待机 2.8 秒**。
+	#   预览台不模拟这个间隔，看到的就是"一个动作接一个动作"，审不了待机。
+	if battle._tentacle_vfx.state_of("left", 0) != 1:
+		_tt_idle_t = 0.0
+		return
+	_tt_idle_t += float(OS.get_environment("VFXPREVIEW_PERIOD")) if OS.has_environment("VFXPREVIEW_PERIOD") else 1.2
+	if _tt_idle_t < TT_IDLE_GAP:
+		return
+	_tt_idle_t = 0.0
+	battle._tentacle_vfx.strike("left", 0,
+		Vector2((_tt_prev_foe as Dictionary)["pos"]), 1.0)
 
 
 ## `TENT_ISO=1`：把场景里【除了触手以外】的一切藏掉，黑底只看触手。

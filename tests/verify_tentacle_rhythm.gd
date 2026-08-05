@@ -70,11 +70,19 @@ func _sample(st: int, ts: float) -> Dictionary:
 	var L := 0.0
 	for j2 in range(1, mids.size()):
 		L += (mids[j2] - mids[j2 - 1]).length()
+	# ★★2026-08-05：本文件原来全部拿【弧长】当节奏的载体。
+	#   用户："拍击应该以 idle 的模型来拍，像一个鞭子一样高高抬起然后打下去" ⇒
+	#   弧长改成**恒定**（鞭子不会变长），投影长度靠卷曲量变。
+	#   于是"弧长在变"这个判据整个失效（三条一起红）——
+	#   **判据要换成【端点到根部的直线距离】**：那才是鞭子甩出去/收回来的量。
+	var tip: float = 0.0
+	if mids.size() >= 2:
+		tip = (mids[mids.size() - 1] - mids[0]).length()
 	# 取中段带宽（根/梢是锥形两端，不代表整体）
 	var w := 0.0
 	if widths.size() > 4:
 		w = float(widths[int(widths.size() * 0.45)])
-	return {"len": L, "w": w}
+	return {"len": L, "w": w, "tip": tip}
 
 
 func _ready() -> void:
@@ -96,7 +104,7 @@ func _ready() -> void:
 	#   ★反向验证：把 `arc` 改成常数 `reach_arc` 后本条立刻 FAIL（实测）。
 	var lens: Array = []
 	for i in range(12):
-		lens.append(float(_sample(3, TV.T_SLAM * float(i) / 11.0)["len"]))
+		lens.append(float(_sample(3, TV.T_SLAM * float(i) / 11.0)["tip"]))
 	var frozen := 0
 	var run := 1
 	for i in range(1, lens.size()):
@@ -105,16 +113,16 @@ func _ready() -> void:
 			frozen = maxi(frozen, run)
 		else:
 			run = 1
-	_ok("① ★拍击期间【一帧都不许定格】(官方每帧都在变; 我曾恒定 8 帧)",
-		frozen < 3, "最长连续 %d 个采样点弧长不变: %s" % [frozen, str(lens.slice(0, 6))])
+	_ok("① ★拍击期间【端点一帧都不许定格】(官方每帧都在变; 我曾恒定 8 帧)",
+		frozen < 3, "最长连续 %d 个采样点端点距离不变: %s" % [frozen, str(lens.slice(0, 6))])
 
 	# ── ② 长度包络有【二次峰】(鞭子余振) ────────────────────
 	#   官方 +0 0.435 → +1 0.354 → +2 **0.417**(回弹)。任何单调缓动都做不出来。
 	#   判据：0~0.12s 内存在 a>b<c 的谷（先降后升）。
 	#   ★反向验证：把 SLAM_LEN_CURVE 换成单调递减序列后本条 FAIL。
-	var e0: float = float(_sample(3, 0.005)["len"])
-	var e1: float = float(_sample(3, 0.040)["len"])
-	var e2: float = float(_sample(3, 0.075)["len"])
+	var e0: float = float(_sample(3, 0.005)["tip"])
+	var e1: float = float(_sample(3, 0.040)["tip"])
+	var e2: float = float(_sample(3, 0.075)["tip"])
 	_ok("② ★甩出去有【余振二次峰】(先回缩再涨回来, 像鞭子; 官方 0.435→0.354→0.417)",
 		e1 < e0 * 0.995 and e2 > e1 * 1.02,
 		"%.2f → %.2f → %.2f" % [e0, e1, e2])
@@ -122,10 +130,10 @@ func _ready() -> void:
 	# ── ③ 前摇是【长大】不是缩小 ────────────────────────────
 	#   官方前摇 5 帧覆盖 +76%、投影臂长 0.097→0.167。我曾是 1.52→1.17（反的）。
 	#   ★反向验证：把 REAR 的 arc 改回 ARC_LEN 常数后本条 FAIL。
-	var r0: float = float(_sample(2, 0.005)["len"])
-	var r1: float = float(_sample(2, TV.T_REAR * 0.95)["len"])
-	_ok("③ ★前摇在【长大】(官方 5 帧涨 76%; 我曾是缩小 —— 方向反的)",
-		r1 > r0 * 1.35, "前摇 %.2f → %.2f (×%.2f)" % [r0, r1, r1 / maxf(r0, 0.01)])
+	var r0: float = float(_sample(2, 0.005)["tip"])
+	var r1: float = float(_sample(2, TV.T_REAR * 0.95)["tip"])
+	_ok("③ ★前摇【抬起来】(端点抬高/拉远; 官方 5 帧涨 76%)",
+		r1 > r0 * 1.18, "前摇端点 %.2f → %.2f (×%.2f)" % [r0, r1, r1 / maxf(r0, 0.01)])
 
 	# ── ④ 带宽：甩出去时【细】→ 鼓起来 → 再收细 ──────────────
 	#   官方 +0 0.0396 → +2 **0.0508(峰)** → +6 0.0296。我曾是起点最粗一路细。
@@ -136,6 +144,18 @@ func _ready() -> void:
 	_ok("④ ★带宽先细后鼓再收(官方 .0396→.0508→.0296; 我曾是起点最粗一路细)",
 		w0 < wp * 0.92 and w6 < wp * 0.80,
 		"甩出 %.3f → 峰 %.3f → 收 %.3f" % [w0, wp, w6])
+
+	# ── ④b ★弧长【恒定】—— 鞭子不会变长 ─────────────────────
+	#   ★反向验证：把 `_arc_for` 的 ST_SLAM 改回 `reach*_env(...)` 后本条 FAIL。
+	var al: Array = []
+	for i3 in range(6):
+		al.append(float(_sample(3, TV.T_SLAM * float(i3) / 5.0)["len"]))
+	var amin: float = al[0]
+	var amax: float = al[0]
+	for v in al:
+		amin = minf(amin, float(v)); amax = maxf(amax, float(v))
+	_ok("④b ★弧长在整个拍击里【恒定】—— 鞭子不会变长(投影变化靠卷曲)",
+		amax - amin < amin * 0.06, "弧长 %.2f ~ %.2f" % [amin, amax])
 
 	# ── ⑤ 分母自证：上面四条量到的是【真实几何】不是 0 ─────────
 	_ok("⑤ ★分母: 量到的弧长/带宽都是真数(不是空网格)",
