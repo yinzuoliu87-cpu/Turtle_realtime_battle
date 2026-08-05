@@ -5,8 +5,14 @@ extends RefCounted
 
 var battle
 
+## 十条羁绊演出层的共用原语 (方案书 docs/plans/20260804-羁绊特效批.md · 批 A · A1)。
+## ★接在这里而不是主场景: CLAUDE.md §5「不在 _sim_step 调用链上的不进主文件」。
+##   批 B/C 的每条羁绊只写一行 `battle._vfx._syn.xxx(...)`。
+var _syn: SynergyVfx = null
+
 func _init(b) -> void:
 	battle = b
+	_syn = SynergyVfx.new(b)
 
 func _play_action(u: Dictionary, kind: String) -> void:
 	if u == null or not is_instance_valid(u.get("sprite", null)):

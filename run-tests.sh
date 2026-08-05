@@ -38,6 +38,11 @@ frames_for () {
     verify_tentacle_relocate) echo 3000 ;;
     # 状态边界连续性: 建战斗场景 + 逐个转移取两侧参数(纯同步, 不等演出)
     verify_tentacle_continuity) echo 2500 ;;
+    # 羁绊演出层共用基建: 建战斗场景 + 78 条同步断言(不等任何 tween), 但建场本身就吃几百帧。
+    #   ★实测本机 500 帧【跑不完】(被掐断 → 没打 ALL PASS → 看着像断言失败), 800 帧够 ⇒ 给 2500 兜 CI。
+    verify_synergy_vfx) echo 2500 ;;
+    # 头顶徽章几何: 需要【真实相机】做屏幕投影(量单位间距) ⇒ 不能无头, 帧数给足
+    verify_head_badges) echo 1500 ;;
     verify_eq_hp_grants) echo 8000 ;;
     # 口哨②要【墙钟】等灵体小龟活满 5 秒(tween 驱动·走未钳制 delta) → 无头高帧率下帧数很多
     verify_whistle_wave) echo 12000 ;;
@@ -51,6 +56,9 @@ frames_for () {
     verify_codex_browse) echo 3000 ;;
     # 装备批次13条: 建一次战斗场景 + 100+ 条同步断言, 不等游戏内时间, 但建场本身要几百帧
     verify_equip_batch_20260801) echo 3000 ;;
+    # 新装备批①周期类 15 件: 同上 —— 建一次战斗场景 + 150+ 条【同步】断言(效果全靠直调
+    #   fire_equip_effect 触发, 不等演出/不等游戏内时间), 预算给建场用。
+    verify_equip_periodic_batch1) echo 3000 ;;
     # 装备平衡7项(20260730d 补的门禁): 三只大熊各要【墙钟】等 1.2 秒蓄力演出(真入口
     #   _big_bear_charge_and_spawn 里 await _wait_sim(1.2)) → 无头高帧率下帧数很多。
     #   ★第一次跑全套就撞了这个: 单跑 ALL PASS, 全套里 rc=0/致命0 却判 FAIL —— 正是被掐断。
