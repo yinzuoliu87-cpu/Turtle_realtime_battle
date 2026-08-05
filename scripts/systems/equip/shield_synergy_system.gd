@@ -85,17 +85,32 @@ func _rage(u: Dictionary, tier: int, dmg: float) -> void:
 		acc -= RAGE_THRESHOLD
 		fired += 1
 	u["_shield_rage"] = acc
+	## ★★演出侧【合并连发】—— 方案书未决点 U2, 用户 2026-08-05 拍板 **B「同帧合并成一个更大的」**。
+	##   伤害与护盾一次不少地照发 fired 次(下面的 for 一行没动);
+	##   变的只有【放几次特效】: 5 个一样的环叠在同一帧同一点会糊成一团, 合成一个更大的。
+	##   放大倍率走 Hopkinson–Cranz 立方根定律(shockwave_vfx.gd 文件头 ④), 不是拍脑袋。
+	## ⚠ hits 只数【真的打出去了】的那几次 —— 场上没有活敌人时 _shockwave 会空转,
+	##   那时不该放特效(否则"没打出去却炸了一下")。
+	var hits := 0
+	var last_tgt := Vector2.ZERO
 	for _i in range(fired):
-		_shockwave(u, tier)
+		var t = _shockwave(u, tier)
+		if t is Dictionary:
+			hits += 1
+			last_tgt = Vector2((t as Dictionary).get("pos", Vector2.ZERO))
+	if hits > 0 and battle._vfx != null and battle._vfx._syn != null:
+		battle._vfx._syn.rage_shockwave(Vector2(u.get("pos", Vector2.ZERO)), last_tgt, hits)
 
 
-func _shockwave(u: Dictionary, tier: int) -> void:
+## 返回打中的那个敌人(没打出去返回 null) —— 调用方靠它判断"要不要放演出"。
+## ⚠ 返回值只喂演出, **不参与任何数值**。
+func _shockwave(u: Dictionary, tier: int):
 	var pct: float = WAVE_PCT[clampi(tier - 1, 0, 2)]
 	# ★选最近的敌人 —— 确定性选取, 不用随机。
 	#   同 §5.7 炮台/§5.8 猎物的规矩: 确定性利于门禁与确定性回放, 也避免"目标闪来闪去"的观感。
 	var t = battle._targeting._nearest_enemy(u)
 	if not (t is Dictionary) or not (t as Dictionary).get("alive", false):
-		return                    # ★没打出去就没有护盾 —— 护盾现在是【伤害的副产品】(见下)
+		return null               # ★没打出去就没有护盾 —— 护盾现在是【伤害的副产品】(见下)
 	# ★除 HP_MULT: "自身 X% 最大生命 → 打给别人的伤害"(先例 equip_system.gd:428 哑铃)
 	var dmg: int = maxi(1, int(float(u.get("maxHp", 0.0)) / battle.HP_MULT * pct))
 	battle._damage._apply_damage_from(u, t, dmg, Color("#ffd93d"), 0.0, true)   # raw=true → 真实伤害
@@ -106,6 +121,7 @@ func _shockwave(u: Dictionary, tier: int) -> void:
 	#   ⚠ 取的是【算出来的伤害值】不是"实际扣掉的血": 目标带盾/免伤时实扣会更少,
 	#     但那时护盾也跟着缩水会很难解释("我打满了却没盾")。按名义值走, 可预期。
 	battle._damage._grant_shield(u, float(dmg) * SHIELD_FROM_DMG)
+	return t
 
 
 ## 反击：圣光护盾存在时，对伤害来源打真伤。
@@ -138,6 +154,13 @@ func holy_count(u: Dictionary) -> int:
 ## 9 档时所有圣盾值 +20%（用户 2026-08-03）。
 var _t_holy := 0.0
 func tick(delta: float) -> void:
+	## ★★接线(批 B·B2): 羁绊演出层的【每帧驱动】。必须在下面那个提前 return 之【前】——
+	##   `_t_holy < HOLY_PERIOD` 会把这个函数 99% 的调用挡掉, 放在后面 = 冲击波每 3 秒才动一帧。
+	##   为什么挂在盾这里: 目前唯一需要每帧推进的羁绊演出就是盾的冲击波
+	##   (RealtimeBattle3DScene 是禁改区, 不能像 _tentacle_vfx 那样在 _sim_step 里单开一行)。
+	##   ⇒ 以后别的羁绊也要每帧驱动时, **仍然走这一处**, 不要再加第二个 tick 源(会双倍推进)。
+	if battle._vfx != null and battle._vfx._syn != null:
+		battle._vfx._syn.tick(delta)
 	_t_holy += delta
 	if _t_holy < HOLY_PERIOD:
 		return
@@ -192,3 +215,8 @@ func clear() -> void:
 	for u in battle._units:
 		if u is Dictionary:
 			u["_shield_rage"] = 0.0
+	## ★接线(批 B·B2·方案书 R7): 换路时 `_dl_clear_units()` 只 free 单位、`_reg_tween` 只 kill tween,
+	##   **不会**动挂在 _world 上的演出节点。这一行是羁绊演出层唯一的撤场入口
+	##   (dual_lane_flow.gd:458 每次换路都调本函数)。
+	if battle._vfx != null and battle._vfx._syn != null:
+		battle._vfx._syn.clear()

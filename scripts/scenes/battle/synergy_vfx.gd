@@ -44,9 +44,16 @@ var battle
 ## 本层建出来、还没自销的节点 (R7 撤场用)。存节点不存单位字典 —— CLAUDE.md §3.2。
 var _owned: Array = []
 
+## 【批 B·B2】怒气冲击波的爆轰模型 (Sedov–Taylor + Friedlander)。见 shockwave_vfx.gd。
+var _shock: ShockwaveVfx = null
+## 正在播的冲击波句柄。每帧由 tick() 推进 —— **不用 tween**:
+##   ① 无头 CI 下 create_tween 推进不稳(CLAUDE.md §3.5), ② 走 sim 的 delta 才跟时停/换路同步。
+var _shocks: Array = []
+
 
 func _init(b) -> void:
 	battle = b
+	_shock = ShockwaveVfx.new(b)
 
 
 ## 世界在不在 (R2)。所有对外入口的第一行都是它。
@@ -217,6 +224,58 @@ func spark_burst(pos2d: Vector2, col: Color, height: float = 0.6, amount: int = 
 
 
 # ============================================================================
+#  §批 B·B2 —— 盾【怒气冲击波】
+# ============================================================================
+
+## 怒气冲击波的伤害数字色 (shield_synergy_system.gd:101 用的就是这个)。
+## 演出与数字同色, 玩家才能把"这个波"和"那个数"连起来。
+const RAGE_COL := Color(1.0, 0.851, 0.239, 0.95)      # #ffd93d
+
+## 放一发怒气冲击波。**羁绊系统侧只写这一行。**
+##
+## ★fired = 本次 `_rage` 里连发了几次 —— 未决点 U2 用户拍板 **B「同帧合并成一个更大的」**。
+##   合并倍率不是拍的: Hopkinson–Cranz 立方根定律 R ∝ W^(1/3)(见 shockwave_vfx.gd 文件头 ④)。
+##   ⚠ **合并的只有演出**: 伤害与护盾照旧一次不少地发 fired 次。
+##
+## src2 = 施放者位置; tgt2 = 被打的那个敌人的位置 (用来画"是谁挨了这一下")。
+func rage_shockwave(src2: Vector2, tgt2: Vector2, fired: int) -> Dictionary:
+	if not _has_world():
+		return {}
+	var h: Dictionary = _shock.make_blast(src2, RAGE_COL, fired)
+	if h.is_empty():
+		return {}
+	_adopt(h["shock"], "shockwave")
+	_adopt(h["ring"], "shockwave_ring")
+	_adopt(h["dust"], "shockwave_dust")
+	_shocks.append(h)
+	# 从施放者到被打者的一道能量带 —— 冲击波本身是全向的, 这条带才说明"命中的是他"。
+	if tgt2.distance_squared_to(src2) > 1.0:
+		energy_band(src2, tgt2, RAGE_COL, 22.0, 0.26)
+		spark_burst(tgt2, RAGE_COL, 0.5, 14)
+	# 轻震: 5 连发也只到 0.077 < JUICE_SHAKE_HEAVY(0.10), 见 SHAKE_BASE 注释
+	battle._shake(ShockwaveVfx.SHAKE_BASE * ShockwaveVfx.energy_scale(fired))
+	return h
+
+
+## 每帧推进正在播的冲击波。接线在 `shield_synergy_system.tick()` 第一行。
+## ★不走 tween: 无头 CI 下 tween 推进不稳(CLAUDE.md §3.5), 而且走 sim 的 delta
+##   才能跟时停/换路同步 —— 同 `_tentacle_vfx.tick(dt)` 的做法。
+func tick(delta: float) -> void:
+	if _shocks.is_empty():
+		return
+	var keep: Array = []
+	for h in _shocks:
+		if _shock.advance(h, delta):
+			keep.append(h)
+			continue
+		for k in ShockwaveVfx.NODE_KEYS:
+			var n = h[k]
+			if is_instance_valid(n):
+				n.queue_free()
+	_shocks = keep
+
+
+# ============================================================================
 #  §跨阈值只放一次 —— 纯函数, 不烘任何数字
 # ============================================================================
 
@@ -258,6 +317,9 @@ func clear() -> int:
 			n.queue_free()
 			freed += 1
 	_owned.clear()
+	## ★句柄表也要清 —— 只 free 节点不清表, 下一帧 tick() 会拿着已 free 的句柄
+	##   继续 advance(), 那是"写了没人清"的另一半 (memory [[fb-write-without-reader-and-fake-gates]])。
+	_shocks.clear()
 	return freed
 
 
