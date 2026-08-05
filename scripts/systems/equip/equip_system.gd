@@ -171,12 +171,37 @@ func _eq_summon_skeleton(u: Dictionary, si: int) -> void:
 		var tw = battle._reg_tween()
 		tw.tween_property(sk["sprite"], "scale", base_sc, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
+## 批① 周期类新装备(2026-08-04)的触发间隔(秒)。
+## ★为什么另开一张表而不是往主场景的 `_EQ_CUSTOM_IV` 里加:
+##   那张表住在 RealtimeBattle3DScene.gd —— 上帝文件, 且【间隔本身就是装备效果的一部分】,
+##   放在效果代码旁边比放在主场景里更贴。两张表【只影响"多久触发一次"】,
+##   分发口仍然只有 `fire_equip_effect` 一个(方案书 §1.3 铁律: 不许再造周期分发)。
+## ★法器三件(088/089/090)【不在表里】—— 它们的触发时机是"法力条满", 由 StaffSynergySystem
+##   走同一个 `fire_equip_effect`。给它们排周期就会变成"既定时又法力满"两套行为。
+const EQ_IV_BATCH1 := {
+	"p2eq_062": 2.5,   # 雾行海葵: 每 2.5 秒判"3 秒未受伤"→ 叠雾隐
+	"p2eq_069": 2.5,   # 珊瑚糖糕: 每 2.5 秒回已损失生命
+	"p2eq_070": 2.5,   # 深海龟粮砖: 每 2.5 秒永久 +最大生命
+	"p2eq_072": 2.5,   # 百年龟苓宴: 每 2.5 秒为全队回已损失生命
+	"p2eq_077": 8.0,   # 铜管手铳: 枪件固定 8 秒(★不吃攻速, 同 048~057)
+	"p2eq_079": 8.0,   # 军械库连射机
+	"p2eq_080": 8.0,   # 穿甲重炮
+	"p2eq_081": 2.5,   # 藤编圆盾: 每 2.5 秒护盾(覆盖式)
+	"p2eq_087": 2.5,   # 深渊铸币机: 每 2.5 秒铸币
+	"p2eq_091": 2.5,   # 远古龟甲片: 每 2.5 秒永久 +最大生命(有上限)
+	"p2eq_092": 2.5,   # 沉船罗盘: 每 2.5 秒永久 +攻击力(有上限)
+	"p2eq_094": 2.5,   # 觉醒之核: 每 2.5 秒查"本路开打满 N 秒"
+}
+
+
 # 亡灵爆: 绿冲击环 + 绿辉爆闪 + 骨渣四射 (骷髅自灭/被杀 + 海螺变形共用基元)
 func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
 		var iid: String = str(e["id"])
 		var iv: float = float(battle._EQ_CUSTOM_IV.get(iid, 0.0))
+		if iv <= 0.0:
+			iv = float(EQ_IV_BATCH1.get(iid, 0.0))
 		if iv <= 0.0: continue
 		var si: int = _eq_si(int(e.get("star", 1)))
 		if iid == "p2eq_037": battle._ensure_candle(u)   # 蜡烛从开局就悬在头顶(不等首次tick)
@@ -184,7 +209,11 @@ func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 		stt["iv_t"] = float(stt.get("iv_t", 0.0)) + delta
 		if float(stt["iv_t"]) >= iv:
 			stt["iv_t"] = float(stt["iv_t"]) - iv
+			# ★盾羁绊 9 档要认"这次护盾/治疗是哪件装备给的"(_holy_convert 读 _cur_eq_item,
+			#   且它自己只认【盾类】装备)。原来这条路没标 → 藤编圆盾 081 拿不到圣光转化。
+			battle._cur_eq_item = iid
 			fire_equip_effect(u, iid, int(e.get("star", 1)), stt)
+			battle._cur_eq_item = ""   # 用完立刻清: 不清会让紧随其后的护盾/治疗被误判成这件装备给的
 		u["eq_state"][iid] = stt
 
 # 涟漪回血特效(AI生成动画): 青绿涟漪水波躺平贴地, 帧播一次扩散淡出. 用于涟漪药剂042每个受益友军
@@ -1495,6 +1524,266 @@ func _eq_dragon_breath(u: Dictionary, si: int) -> void:
 	twd.tween_callback(battle._dragon_sys._dragon_unleash.bind(u, si, start, end, dir, total, dur))
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+#  批① 周期类新装备 15 件 (方案书 docs/plans/20260804-新装备35件效果.md · 2026-08-04)
+#  全部经 fire_equip_effect 的 match 分发 —— 不另起周期分发(方案书 §1.3 / R3)。
+#  ★数值一律【就近声明】成三元数组: tooltip_number_audit 要求文案里的 "a/b/c"
+#    能在【该装备的效果函数体内】找到同样的数组, 提到文件顶部会被判"远处命中"。
+# ═══════════════════════════════════════════════════════════════════════════
+
+## 062 雾行海葵(灵物·2费): 每 2.5 秒, 若 3 秒内未受伤 → +1 层【雾隐】(最多 3 层),
+## 每层 +4/6/9% 闪避; 受伤清空。
+## ★"有没有受伤"用 `_st_taken`(伤害统计的累计承受量, 两条伤害路径都在记) 做快照差分 ——
+##   不另起一个"最后受伤时刻"字段: 那要挂进中央伤害管线的【两条】路径(CLAUDE.md §3.3),
+##   漏一条就变成"某类伤害不算受伤"。差分的代价是判定粒度 = 一个 tick(2.5 秒),
+##   所以实际是"连续两个 tick 都没挨打"才开始叠 —— 比文案的 3 秒更保守, 不会多给。
+## ★闪避写进 `buffs`(唯一写入点, `_recalc_stats` 从这里求和并钳 DODGE_CAP);
+##   层数变了就补一个【差量】buff, 不重复 append 同一份。
+func _eq_mist_anemone(u: Dictionary, si: int, stt: Dictionary) -> void:
+	if not u.get("alive", false): return
+	var per: float = [0.04, 0.06, 0.09][si]        # 每层闪避 4/6/9%
+	var taken: int = int(u.get("_st_taken", 0))
+	var layers: int = int(stt.get("mist_layers", 0))
+	if taken > int(stt.get("mist_taken", 0)):
+		stt["mist_taken"] = taken
+		layers = 0                                  # 受伤 → 清空
+	elif layers < 3:
+		layers += 1
+	stt["mist_layers"] = layers
+	var want: float = per * float(layers)
+	var given: float = float(stt.get("mist_given", 0.0))
+	if absf(want - given) > 0.0001:
+		battle._damage._buff(u, "dodge", want - given, false, 99999.0)
+		stt["mist_given"] = want
+		if layers > 0:
+			battle._skill_ring(u["pos"], Color(0.72, 0.82, 0.95, 0.45), 40.0)
+	u["eq_state"]["p2eq_062"] = stt
+
+
+## 069 珊瑚糖糕(食物·3费): 每 2.5 秒回复 2/3.5/5% 已损失生命。
+func _eq_coral_cake(u: Dictionary, si: int) -> void:
+	if not u.get("alive", false): return
+	var pct: float = [0.02, 0.035, 0.05][si]
+	var lost: float = maxf(0.0, float(u["maxHp"]) - float(u["hp"]))
+	if lost < 1.0: return
+	battle._damage._heal(u, lost * pct)
+
+
+## 070 深海龟粮砖(食物·4费): 每 2.5 秒永久 +10/18/30 最大生命(本场累积, 无上限)。
+## ★装备的 hp 数值【已是最终值】, 不乘 HP_MULT(CLAUDE.md §3.1)。
+func _eq_ration_brick(u: Dictionary, si: int, stt: Dictionary) -> void:
+	if not u.get("alive", false): return
+	var add: float = [10.0, 18.0, 30.0][si]
+	u["maxHp"] = float(u["maxHp"]) + add
+	u["hp"] = float(u["hp"]) + add
+	stt["ration_total"] = float(stt.get("ration_total", 0.0)) + add
+	u["eq_state"]["p2eq_070"] = stt
+	battle._recalc_stats(u)
+
+
+## 072 百年龟苓宴(食物·5费): 本体每 2.5 秒为【全队】回复 1/1.5/2.5% 已损失生命。
+## (开战时给全队 +60/110/180 最大生命的那一半在 EquipStatsApply.apply_feast_hp —— 那是开战一次性,
+##  不是周期效果; 两半分开写, 免得"开战送血"跟着周期跳一遍。)
+func _eq_feast_pulse(u: Dictionary, si: int) -> void:
+	if not u.get("alive", false): return
+	var pct: float = [0.01, 0.015, 0.025][si]
+	for o in battle._targeting._allies_of(u):
+		var lost: float = maxf(0.0, float(o["maxHp"]) - float(o["hp"]))
+		if lost >= 1.0:
+			battle._damage._heal(o, lost * pct)
+
+
+## 077 铜管手铳(枪·1费): 每 8 秒射出一轮 2/3/4 发小弹, 每发 12/20/32 物理伤害。
+## ★枪件走固定 8 秒(不吃攻速), 同 048~057。
+## ★弹着结算是【命中扫描 + 曳光】不是飞行弹道: 数值测试不该依赖演出跑完(CLAUDE.md §3.5),
+##   所以每一发都由具名函数 _derringer_shot 同步结算, 门禁直接调它量掉血。
+func _eq_derringer_volley(u: Dictionary, si: int) -> void:
+	if not u.get("alive", false): return
+	var n: int = [2, 3, 4][si]
+	battle._queue_shots(n, 0.09, func() -> void: _derringer_shot(u, si), u, "p2eq_077")
+
+
+func _derringer_shot(u: Dictionary, si: int) -> void:
+	if not u.get("alive", false): return
+	var t = battle._targeting._nearest_enemy(u)
+	if t == null: return
+	var dir: Vector2 = (t["pos"] - u["pos"]).normalized()
+	if dir == Vector2.ZERO: dir = Vector2.RIGHT
+	var ft = _eq_first_in_line(u, dir, 36.0)
+	if ft == null: ft = t
+	var dmg: float = [12.0, 20.0, 32.0][si]        # 每发固定物理(走护甲)
+	battle._muzzle_flash(u["pos"], dir, Color("#ffe08a"))
+	battle._bolt_line(u["pos"], ft["pos"], Color("#fff0b0"))
+	battle._damage._apply_damage_from(u, ft, battle._resolve_dmg(u, dmg, ft, false), Color("#fff0b0"), 0.0, false, true)
+
+
+## 079 军械库连射机(枪·3费): 每 8 秒射出 5/7/10 发连射, 每发 10/16/26 物理伤害。
+## ★每发都经 `_queue_shots(..., gun_id)` ⇒ 每发都算入枪羁绊【金弹】计数(方案书 §2.5)。
+func _eq_armory_burst(u: Dictionary, si: int) -> void:
+	if not u.get("alive", false): return
+	var n: int = [5, 7, 10][si]
+	battle._queue_shots(n, 0.06, func() -> void: _armory_shot(u, si), u, "p2eq_079")
+
+
+func _armory_shot(u: Dictionary, si: int) -> void:
+	if not u.get("alive", false): return
+	var t = battle._targeting._nearest_enemy(u)
+	if t == null: return
+	var dir: Vector2 = (t["pos"] - u["pos"]).normalized()
+	if dir == Vector2.ZERO: dir = Vector2.RIGHT
+	var ft = _eq_first_in_line(u, dir, 36.0)
+	if ft == null: ft = t
+	var dmg: float = [10.0, 16.0, 26.0][si]
+	battle._muzzle_flash(u["pos"], dir, Color("#cfe8ff"))
+	battle._bolt_line(u["pos"], ft["pos"], Color("#cfe8ff"))
+	battle._damage._apply_damage_from(u, ft, battle._resolve_dmg(u, dmg, ft, false), Color("#cfe8ff"), 0.0, false, true)
+
+
+## 080 穿甲重炮(枪·5费): 每 8 秒朝【最远的敌人】轰一发 120/220/400 物理,
+## 贯穿这条直线上所有敌人, 并无视 30/45/60% 护甲。
+## ★瞄准走 `_pick_enemies_of`(§PICK-TARGET: 排训龟大师/不可选中 —— 大师永远是"最远的那个"),
+##   贯穿扫到谁算谁走 `_enemies_of`(真 AOE 语义, 大师照吃溅射)。珊瑚刺踩过这个坑。
+## ★"无视 N% 护甲" = 临时抬高攻击者的 `armor_pen_pct`(`_resolve_dmg` 的消费点), 结算完立刻还原。
+func _eq_breacher_cannon(u: Dictionary, si: int) -> void:
+	if not u.get("alive", false): return
+	var picks: Array = battle._targeting._pick_enemies_of(u)
+	if picks.is_empty(): return
+	var far = picks[0]
+	var fd := -1.0
+	for o in picks:
+		var dd: float = (o["pos"] - u["pos"]).length_squared()
+		if dd > fd: fd = dd; far = o
+	var dir: Vector2 = (far["pos"] - u["pos"]).normalized()
+	if dir == Vector2.ZERO: dir = Vector2.RIGHT
+	var dmg: float = [120.0, 220.0, 400.0][si]
+	var pen: float = [0.30, 0.45, 0.60][si]        # 无视护甲比例
+	var prev: float = float(u.get("armor_pen_pct", 0.0))
+	u["armor_pen_pct"] = prev + pen
+	battle._muzzle_flash(u["pos"], dir, Color("#ffbb66"))
+	battle._bolt_line(u["pos"], u["pos"] + dir * 1600.0, Color(1.0, 0.72, 0.35, 0.85))
+	for o in battle._targeting._enemies_of(u):
+		if not battle._on_line(u["pos"], dir, o["pos"], 46.0): continue
+		battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, dmg, o, false), Color("#ffbb66"), 0.0, false, true)
+		battle._vfx._hit_spark(o)
+	u["armor_pen_pct"] = prev
+
+
+## 081 藤编圆盾(盾·1费): 每 2.5 秒为本体生成 25/45/75 护盾 ——【不叠加, 覆盖】。
+## ★"覆盖"的实装口径: 只把护盾【补到】这个值, 已经不低于就不给。
+##   写成无条件 `_grant_shield(25)` 就是每 2.5 秒 +25 一路堆到护盾上限, 那是"叠加"不是"覆盖"。
+func _eq_wicker_shield(u: Dictionary, si: int) -> void:
+	if not u.get("alive", false): return
+	var want: float = [25.0, 45.0, 75.0][si]
+	var cur: float = float(u.get("shield", 0.0))
+	if cur >= want: return
+	battle._damage._grant_shield(u, want - cur)
+
+
+## 087 深渊铸币机(奇械·5费): 每 2.5 秒额外铸 1/2/3 枚深海币,
+## 与羁绊【铸币】**共用本场上限**(记账在 GadgetSynergySystem._coins, 不自己另记一本)。
+## ★无奇械羁绊时的上限 = 6/10/15(按星级); 有羁绊时取"羁绊上限 / 星级上限"两者较大 ——
+##   用户 2026-08-04 拍板未决点 U4 取建议 A。
+func _eq_abyss_mint(u: Dictionary, si: int) -> void:
+	if not u.get("alive", false): return
+	var n: int = [1, 2, 3][si]
+	var solo_cap: int = [6, 10, 15][si]            # 无羁绊时的本场上限
+	var got: int = battle._gadget_syn.mint_extra(str(u.get("side", "left")), n, solo_cap)
+	if got <= 0: return
+	if str(u.get("side", "")) == "left":
+		battle._vfx._float_text(u["pos"], "+%d💠" % got, Color("#5fd0e0"))   # 玩家侧才看得见收益
+	battle._skill_ring(u["pos"], Color(0.37, 0.82, 0.88, 0.5), 42.0)
+
+
+## 088 潮汐骨杖(法器·1费): 【法力条满】时对最近的敌人造成 30/55/95 魔法伤害。
+## ★法器件没有周期表项 —— 触发时机就是法力条满(StaffSynergySystem._fire → fire_equip_effect)。
+func _eq_tide_scepter(u: Dictionary, si: int) -> void:
+	if not u.get("alive", false): return
+	var t = battle._targeting._nearest_enemy(u)
+	if t == null: return
+	var dmg: float = [30.0, 55.0, 95.0][si]
+	battle._bolt_line(u["pos"], t["pos"], Color(0.45, 0.85, 1.0, 0.9))
+	battle._damage._apply_damage_from(u, t, battle._resolve_dmg(u, dmg, t, true), Color("#7ecbff"), 0.0, false, true)
+
+
+## 089 蚀月符纸(法器·1费): 【法力条满】时为全队回复 1.5/2.5/4% 已损失生命。
+func _eq_eclipse_talisman(u: Dictionary, si: int) -> void:
+	if not u.get("alive", false): return
+	var pct: float = [0.015, 0.025, 0.04][si]
+	for o in battle._targeting._allies_of(u):
+		var lost: float = maxf(0.0, float(o["maxHp"]) - float(o["hp"]))
+		if lost >= 1.0:
+			battle._damage._heal(o, lost * pct)
+	battle._skill_ring(u["pos"], Color(0.72, 0.66, 1.0, 0.5), 60.0)
+
+
+## 090 万潮法典(法器·5费): 【法力条满】时 —— 对全场敌人 50/90/160 魔法伤害
+## + 为全队回复 3/5/8% 已损失生命 + 为全队各净化 1 种减益。
+## ★净化复用 StaffSynergySystem.dispel(固定顺序, 可断言可回放), 不另写一套清 buff 的代码。
+func _eq_tide_codex(u: Dictionary, si: int) -> void:
+	if not u.get("alive", false): return
+	var dmg: float = [50.0, 90.0, 160.0][si]
+	var pct: float = [0.03, 0.05, 0.08][si]
+	for o in battle._targeting._enemies_of(u):
+		battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, dmg, o, true), Color("#9bdcff"), 0.0, false, true)
+	for a in battle._targeting._allies_of(u):
+		var lost: float = maxf(0.0, float(a["maxHp"]) - float(a["hp"]))
+		if lost >= 1.0:
+			battle._damage._heal(a, lost * pct)
+		battle._staff_syn.dispel(a, 1)
+	battle._skill_ring(u["pos"], Color(0.6, 0.9, 1.0, 0.55), 90.0)
+
+
+## 091 远古龟甲片(遗物·1费): 每 2.5 秒永久 +3/5/8 最大生命(本场累积, 上限 +120/220/360)。
+func _eq_ancient_scute(u: Dictionary, si: int, stt: Dictionary) -> void:
+	if not u.get("alive", false): return
+	var add: float = [3.0, 5.0, 8.0][si]
+	var cap: float = [120.0, 220.0, 360.0][si]
+	var acc: float = float(stt.get("scute_total", 0.0))
+	if acc >= cap: return
+	add = minf(add, cap - acc)
+	u["maxHp"] = float(u["maxHp"]) + add
+	u["hp"] = float(u["hp"]) + add
+	stt["scute_total"] = acc + add
+	u["eq_state"]["p2eq_091"] = stt
+	battle._recalc_stats(u)
+
+
+## 092 沉船罗盘(遗物·2费): 每 2.5 秒永久 +1/2/3 攻击力(本场累积, 上限 +30/60/100)。
+## ★写 `base_atk` 不写 `atk` —— `atk` 每次 `_recalc_stats` 都由 base_atk 重算, 写它等于白写。
+func _eq_wreck_compass(u: Dictionary, si: int, stt: Dictionary) -> void:
+	if not u.get("alive", false): return
+	var add: float = [1.0, 2.0, 3.0][si]
+	var cap: float = [30.0, 60.0, 100.0][si]
+	var acc: float = float(stt.get("compass_total", 0.0))
+	if acc >= cap: return
+	add = minf(add, cap - acc)
+	u["base_atk"] = float(u.get("base_atk", 0.0)) + add
+	stt["compass_total"] = acc + add
+	u["eq_state"]["p2eq_092"] = stt
+	battle._recalc_stats(u)
+
+
+## 094 觉醒之核(遗物·4费): 【本路】开打满 15/12/10 秒后, 本体 +8/14/22% 增伤(一次性)。
+## ★★必须【自存 t0】—— `battle._t` 跨上路/下路/决胜累加、永不重置(CLAUDE.md §3.4)。
+##   直接判 `_t >= 15` 会让下路一开场就觉醒(遗物羁绊的觉醒已经踩过这个坑)。
+##   t0 存在 `eq_state`: 单位在换路时被整体重建 ⇒ eq_state 天然是"本路"的。
+##   开战时由 EquipStatsApply 预置(见 `_eq_apply_flags` 的 p2eq_094 分支), 这里只兜底。
+func _eq_awaken_core(u: Dictionary, si: int, stt: Dictionary) -> void:
+	if not u.get("alive", false): return
+	if bool(stt.get("awk_done", false)): return
+	if not stt.has("awk_t0"):
+		stt["awk_t0"] = battle._t
+	var need: float = [15.0, 12.0, 10.0][si]
+	if battle._t - float(stt["awk_t0"]) < need:
+		u["eq_state"]["p2eq_094"] = stt
+		return
+	stt["awk_done"] = true
+	u["damage_amp"] = float(u.get("damage_amp", 0.0)) + [0.08, 0.14, 0.22][si]
+	u["eq_state"]["p2eq_094"] = stt
+	battle._skill_ring(u["pos"], Color(1.0, 0.86, 0.35, 0.6), 56.0)
+	battle._vfx._float_text(u["pos"] + Vector2(0, -78), "觉醒", Color(1.0, 0.86, 0.25))
+
+
 ## 触发【某一件装备】的周期效果。
 ## ★2026-08-03 从 _tick_eq_intervals 里抽出来 —— 法器羁绊的【法力条】满了也要触发同一件事:
 ##   规格原话是"满 100 → 触发这件法器的效果", 那就必须和它【自然到点时走同一条路】,
@@ -1519,3 +1808,28 @@ func fire_equip_effect(u: Dictionary, iid: String, star: int, stt = null) -> voi
 		"p2eq_040": _eq_fpga_tick(u, si)
 		"p2eq_042": _eq_ripple_tick(u, si)
 		"p2eq_052": _eq_revolver_tick(u, si, stt)
+		# ── 批①(2026-08-04) 周期类新装备 · 按类型分组 ────────────────────────
+		#    ★不拆成多个分发函数(方案书 R3): 抽出 fire_equip_effect 本来就是为了
+		#      "周期到点"与"法器法力满"走同一条路; 再拆一遍等于把它抽掉的问题请回来。
+		# 灵物
+		"p2eq_062": _eq_mist_anemone(u, si, stt)
+		# 食物
+		"p2eq_069": _eq_coral_cake(u, si)
+		"p2eq_070": _eq_ration_brick(u, si, stt)
+		"p2eq_072": _eq_feast_pulse(u, si)
+		# 枪(固定 8 秒 · 不吃攻速)
+		"p2eq_077": _eq_derringer_volley(u, si)
+		"p2eq_079": _eq_armory_burst(u, si)
+		"p2eq_080": _eq_breacher_cannon(u, si)
+		# 盾
+		"p2eq_081": _eq_wicker_shield(u, si)
+		# 奇械
+		"p2eq_087": _eq_abyss_mint(u, si)
+		# 法器(触发时机 = 法力条满, 不排周期)
+		"p2eq_088": _eq_tide_scepter(u, si)
+		"p2eq_089": _eq_eclipse_talisman(u, si)
+		"p2eq_090": _eq_tide_codex(u, si)
+		# 遗物
+		"p2eq_091": _eq_ancient_scute(u, si, stt)
+		"p2eq_092": _eq_wreck_compass(u, si, stt)
+		"p2eq_094": _eq_awaken_core(u, si, stt)

@@ -13,6 +13,38 @@ func _eq_apply_all_stats() -> void:
 	for u in battle._units:
 		for e in u.get("equips", []):
 			_eq_apply_one_stats(u, str(e["id"]), int(e.get("star", 1)))
+	_apply_feast_hp()
+
+
+## 072 百年龟苓宴(食物·5费) 的【开战一次性】那一半: 给携带者的全队 +60/110/180 最大生命。
+## (它的另一半"每 2.5 秒为全队回已损失生命"是周期效果, 在 EquipSystem._eq_feast_pulse。)
+##
+## ★放在 `_eq_apply_all_stats` 的【末尾】而不是 `_eq_apply_flags` 里 —— 这一条给的是"全队",
+##   而 flags 是逐单位跑的: 轮到第一只龟时后面的龟还没拿到自己的装备属性,
+##   那一刻的"全队"是个半成品。等全部单件属性落地再统一加, 才是文案说的"开战时给全队"。
+## ★"只给一次"的标记放在【携带者自己的 eq_state】上, 不是一个全局 bool ——
+##   两只龟各带一件应该各给一次。换路会整体重建单位 ⇒ eq_state 是空的 ⇒ 新的一路重新给,
+##   这正好等于"每一路开战时给一次"。
+func _apply_feast_hp() -> void:
+	for u in battle._units:
+		if not (u is Dictionary):
+			continue
+		if not (u.get("eq_state", null) is Dictionary):
+			continue
+		for e in u.get("equips", []):
+			if not (e is Dictionary) or str((e as Dictionary).get("id", "")) != "p2eq_072":
+				continue
+			var stt: Dictionary = u["eq_state"].get("p2eq_072", {})
+			if bool(stt.get("feast_given", false)):
+				continue
+			stt["feast_given"] = true
+			u["eq_state"]["p2eq_072"] = stt
+			var si: int = clampi(int((e as Dictionary).get("star", 1)), 1, 3) - 1
+			var add: float = [60.0, 110.0, 180.0][si]   # 装备 hp 已是最终值, 不乘 HP_MULT(CLAUDE.md §3.1)
+			for o in battle._targeting._allies_of(u):
+				o["maxHp"] = float(o["maxHp"]) + add
+				o["hp"] = float(o["hp"]) + add
+				battle._recalc_stats(o)
 
 # 单件逐星属性 → 实时单位字段 (复用 battle.EquipStats.STATS; 字段口径换到实时引擎).
 # 单件逐星属性 → 实时单位字段 (复用 battle.EquipStats.STATS; 字段口径换到实时引擎).
@@ -198,6 +230,12 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 			stt["anchor_charges"] = 0    # 沉锚充能 (施法时消耗)
 		"p2eq_011":   # 饮血护符坠: 溢出治疗转血护盾 (累积上限200/350/500, 多件取最大上限)
 			u["overheal2shield_cap"] = maxf(float(u.get("overheal2shield_cap", 0.0)), [200.0, 350.0, 500.0][si])
+		"p2eq_094":   # 觉醒之核: 预置【本路】开打时刻
+			# ★battle._t 跨上路/下路/决胜累加、永不重置(CLAUDE.md §3.4) ⇒ 必须自存 t0,
+			#   否则下路一开场 _t 就已经 >15, 觉醒会在开场瞬间白送。
+			#   这段跑在【每一路的开战管线】里, 所以它记的正好是"本路开打"。
+			stt["awk_t0"] = battle._t
+			stt["awk_done"] = false
 		"p2eq_036":   # 温泉蛋: 孵化进度 → 临时等级(上限随星级) → 满级全队均摊护盾(一次) + 携带者每秒回血
 			stt["incub"] = 0.0
 			stt["incub_given"] = false

@@ -73,6 +73,31 @@ func minted(side: String = "left") -> int:
 	return int(_coins.get(side, 0))
 
 
+## 装备侧【额外铸币】入口 —— 深渊铸币机 087 用(方案书 2026-08-04 批①)。
+##
+## ★为什么装备要调这里而不是自己记一本账: 规格是"与羁绊【铸币】**共用本场上限**"。
+##   自己记账 = 两本账各自封顶 ⇒ 实际上限翻倍, 而且结算时还要有人把两本合起来。
+##   `_coins` 是唯一的那本账(`minted()` 是它的唯一出口), 所以装备也写它。
+##
+## 上限口径(用户 2026-08-04 拍板未决点 U4, 取建议 A):
+##   · 没有奇械羁绊时 → 上限 = `solo_cap`(按装备星级 6/10/15, 由调用方传入)
+##   · 有奇械羁绊时   → 上限 = max(羁绊档位上限, solo_cap)
+## 返回【实际铸进去的枚数】(被上限截断时会小于 n, 到顶时是 0) —— 调用方据此决定要不要飘字。
+func mint_extra(side: String, n: int, solo_cap: int) -> int:
+	if n <= 0:
+		return 0
+	var cap: int = solo_cap
+	var ti: int = _side_tier(side)
+	if ti > 0:
+		cap = maxi(cap, COIN_CAP[clampi(ti - 1, 0, 3)])
+	var cur: int = int(_coins.get(side, 0))
+	if cur >= cap:
+		return 0
+	var add: int = mini(n, cap - cur)
+	_coins[side] = cur + add
+	return add
+
+
 func tick(delta: float) -> void:
 	_t_coin += delta
 	if _t_coin < PERIOD:

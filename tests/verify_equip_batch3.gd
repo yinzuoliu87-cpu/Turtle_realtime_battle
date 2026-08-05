@@ -160,14 +160,64 @@ func _ready() -> void:
 		if idx2 < NEW_FIRST:
 			continue
 		var txt: String = str(d2.get("effectDesc1", "")) + str(d2.get("effectDesc3", ""))
+		var eid2: String = str(d2.get("id", ""))
+		if _has_effect_impl(eid2):
+			continue        # 已实装的件, 文案【就该】写机制 —— 见下方 _has_effect_impl 的说明
 		for w in MECH_WORDS:
 			if txt.contains(w):
-				lying.append("%s 文案含「%s」" % [str(d2.get("id", "")), w])
+				lying.append("%s 文案含「%s」但效果层里没有它" % [eid2, w])
 				break
-	_ok("⑤ ★纯属性件的文案里不出现机制词(防'文案说得到、实装做不到')", lying.is_empty(),
+	_ok("⑤ ★没实装的件文案里不出现机制词(防'文案说得到、实装做不到')", lying.is_empty(),
 		str(lying.slice(0, 5)))
+	# ★★反过来也要守: 已实装的件【必须】把逐星数值写进文案, 否则玩家买了不知道买了什么
+	#   (方案书 20260804 R6:「不写文案 = 玩家买了不知道买了什么」, 这条不是可选项)。
+	# ★判据取【文案里有没有 a/b/c 三元组】而不是"有没有某几个关键词" ——
+	#   关键词表是给"没实装"那一半用的黑名单, 拿它当白名单会漏(实测漏掉 p2eq_089:
+	#   "法力条集满时为全队回复 1.5/2.5/4% 已损失生命" 一个关键词都不含, 但它显然写了效果)。
+	#   而三元组是硬判据, 且写下去之后 tools/tooltip_number_audit.py 会逐个去代码里对账。
+	var trip := RegEx.new()
+	trip.compile("\\d+(\\.\\d+)?/\\d+(\\.\\d+)?/\\d+(\\.\\d+)?")
+	var silent: Array = []
+	var impl := 0
+	for e3 in eqs:
+		var d3: Dictionary = e3
+		var eid3: String = str(d3.get("id", ""))
+		if int(eid3.replace("p2eq_", "")) < NEW_FIRST:
+			continue
+		if not _has_effect_impl(eid3):
+			continue
+		impl += 1
+		var txt3: String = str(d3.get("effectDesc1", "")) + str(d3.get("effectDesc3", ""))
+		if trip.search(txt3) == null:
+			silent.append(eid3)
+	_ok("⑤ ★★分母: 批3 里已实装效果的件 = %d 件(0 件的话下面那条是空检查)" % impl, impl > 0,
+		"impl=%d" % impl)
+	_ok("⑤ ★★已实装的件必须把逐星数值写进文案(反过来的那一半)", silent.is_empty(),
+		str(silent.slice(0, 5)))
 
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 35 件新装备(批3)" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+var _impl_src := ""
+
+## 这件装备在【效果层】里有没有实装分支。
+##
+## ★2026-08-04: 批 3 的 35 件原本【全部是纯属性】, 所以 ⑤ 本来写成"一个机制词都不许出现"。
+##   批①(方案书 20260804-新装备35件效果) 实装了其中 15 件的周期效果, 它们的文案当然
+##   必须写出机制 —— 于是这条断言从"全体禁言"升级成【双向对账】:
+##     · 效果层里【没有】这件 ⇒ 文案一个机制词都不许写(原来的那一半, 一字未松)
+##     · 效果层里【有】这件   ⇒ 文案【必须】写出机制(新加的那一半)
+##   判据是"效果层源码里出现这个 id 字面量"(先剥注释, 免得命中说明文字) ——
+##   比维护一张手写白名单强: 白名单会漂, 而漂了以后这条门禁就会保护一个谎言。
+func _has_effect_impl(eid: String) -> bool:
+	if _impl_src == "":
+		for p in ["res://scripts/systems/equip/equip_system.gd",
+				"res://scripts/systems/equip/equip_stats_apply.gd",
+				"res://scripts/systems/equip/equip_tick_system.gd"]:
+			for ln in FileAccess.get_file_as_string(p).split("\n"):
+				var hi: int = ln.find("#")
+				_impl_src += (ln if hi < 0 else ln.substr(0, hi)) + "\n"
+	return _impl_src.contains("\"%s\"" % eid)
