@@ -833,9 +833,14 @@ func _telegraph_tick(t: Dictionary, ts: float) -> void:
 		return
 	dir = dir.normalized()
 	var perp := Vector2(-dir.y, dir.x)
-	# ★官方实测：带子**到目标身上就停**，没有穿过去（往远处延伸信号回落到噪声）。
-	#   但长度仍**钳在固定射程内** —— 够不着的目标本来就不该被选中。
-	var end2: Vector2 = from2 + dir * minf((to2 - from2).length(), attack_range_2d)
+	# ★★2026-08-05【预警带 = 伤害带，焊死】
+	#   原来这里是 `minf((to2-from2).length(), attack_range_2d)` —— 带子**到目标身上就停**
+	#   （那是照官方那一段量的）。但本作的触手**攻击时一律伸到全长**（见 ATTACK_LEN 注释），
+	#   而 `_slap` 的伤害带也是按射程算的 ⇒ **目标离得近时，目标之后那一段会打到人却没有预警**。
+	#   预警区存在的唯一意义就是"这里危险"，打得到却不画 = 骗玩家。
+	#   ⇒ 带子一律画到固定射程，与 `_slap` 的长度上限**同一个值**。
+	#   门禁 `verify_spirit_slap_range` 第 ⑤ 条焊住这件事（两边分别量、不许再漂）。
+	var end2: Vector2 = from2 + dir * attack_range_2d
 	var mi = t.get("warn_mi", null)
 	if not is_instance_valid(mi):
 		mi = MeshInstance3D.new()
