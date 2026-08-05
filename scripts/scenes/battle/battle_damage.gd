@@ -62,6 +62,11 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: Stri
 			battle._audio_sys._sfx_shield_break()
 		else:
 			battle._audio_sys._sfx_hit(false)
+	# ★2026-08-06 窄口: 068 深海气压罐的充能条要吃【所有】伤害(用户原文"将收到的...伤害储存"),
+	#   而 `_eq_on_target` 只挂在另一条路上。不给那个钩子补全路是因为它还挂着硬化层/冰封反制,
+	#   让它们从每一跳灼烧触发是行为变更。详见 eq_potion_batch.store_from_any_damage 的头注。
+	if u.get("_potion_tick", false):
+		battle._equip_sys._potion_sys.store_from_any_damage(u, dmg)
 	# ★★2026-08-06 补: 这条路(DoT/真伤)原先【完全没有 HP 阈值检查】——
 	#   `_eq_check_hp_threshold` 与血线只挂在 _apply_damage_from(普攻/技能)上。
 	#   后果: 044 深海项链 / 045 珍珠耳环 的"首次<50%保命"在被**灼烧/中毒/流血/诅咒/真伤**
@@ -470,11 +475,11 @@ func _heal(u: Dictionary, amt: float, silent: bool = false) -> float:   # 返回
 	_holy_convert(u, float(u["hp"] - hb))   # 盾羁绊9档: 盾类装备给的治疗, 额外 20% 转圣光护盾
 	battle._blood_rite_refresh(u)   # 剑【血祭】: 回血也要刷(血量涨回去攻击力要跌回去)
 	var _act: float = float(u["hp"] - hb)   # 实际回血(满血=0, 超出满血/转盾部分不计入绿字)
-	# ★新钩子【受到治疗时】(装备 071 暖流海带汤): 把实际回血量的一部分转给血量最低的友军。
-	#   ★用 _act(实际)不是 amt(请求): 满血时请求 100 实回 0, 拿请求量算就是凭空造治疗。
-	#   ★重入由 EquipSystem._kelp_busy 守 —— 分出去那一发也走本函数。
-	if _act > 0.0 and float(u.get("_kelp_share", 0.0)) > 0.0:
-		battle._equip_sys._eq_kelp_share(u, _act)
+	# ★【受到治疗时】这个钩子位置保留(它是批③为旧 071 建的中央钩), 但 2026-08-06 起
+	#   **没有任何装备挂在上面** —— 071 已被用户整条重做成【炼乳罐】(全队奶油护盾 + 破盾 AOE),
+	#   不再需要"把回血分给友军"。原来的 `_kelp_share` 守卫恒不成立、`_eq_kelp_share` 零调用者,
+	#   两边一起删掉(实装那路如实报了这条死码, 并指出调用点在本文件、要主会话连着收)。
+	#   ⚠ 留着这段注释是因为**钩子位置本身有价值**: 以后再有"受到治疗时"的装备, 挂这里。
 	battle._staff_syn.on_healed(u, _act)   # 法器【余韵】: 受到治疗时额外获得治疗量 N% 的护盾
 	if _act > 0.0:                          # LoL式治疗累加器: 高频/多段/多源回血攒进累加, 短窗后合并成一个绿字(见_heal_flush)
 		u["_heal_acc"] = float(u.get("_heal_acc", 0.0)) + _act

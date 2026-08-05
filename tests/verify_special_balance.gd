@@ -107,6 +107,26 @@ func _ready() -> void:
 	_ok("⑥ ★decay_sec=0 ⇒ 永不衰减(走 60 秒后仍是 %.0f)" % sp.val(u6, "perm"),
 		absf(sp.val(u6, "perm") - 100.0) < 0.51)
 
+	# ── ⑧ ★absorb:false = 只记账不挡伤害(070 灰色血条) ──
+	# 用户对 070 写的是「将受到的伤害储存起来, 每秒把 5% 转化为生命回复」——
+	# 那是【挨打之后能回收一部分】, 不是挡伤害。若也参与 absorb 就成了**又减伤又回血**,
+	# 比文案强一档。食物那路实装时主动报了这一点, 2026-08-06 补开关修掉。
+	# ⚠ 没有这条断言的话, 谁把 `{"absorb": false}` 拿掉都不会有任何报错。
+	var u8 := _dummy("left")
+	sp.grant(u8, "ledger", 500.0, {"absorb": false})
+	var thru: float = sp.absorb(u8, 100.0)
+	_ok("⑧ ★absorb:false 的余额【不吃】伤害(穿透 %.0f, 期望 100)" % thru,
+		absf(thru - 100.0) < 0.51,
+		"它挡下了伤害 ⇒ 070 灰条会变成又减伤又回血")
+	_ok("⑧b ★而且余额一点没少(实测 %.0f, 期望 500)" % sp.val(u8, "ledger"),
+		absf(sp.val(u8, "ledger") - 500.0) < 0.51)
+	# 同一单位上再挂一条正常的, 确认两者能共存且互不干扰
+	sp.grant(u8, "real", 60.0)
+	var thru2: float = sp.absorb(u8, 100.0)
+	_ok("⑧c ★与普通余额共存: 正常那条扛掉 60、记账那条不动(穿透 %.0f 期望 40 / 记账 %.0f 期望 500)"
+		% [thru2, sp.val(u8, "ledger")],
+		absf(thru2 - 40.0) < 0.51 and absf(sp.val(u8, "ledger") - 500.0) < 0.51)
+
 	# ── ⑦ 两条伤害路径都接了 ──
 	var src: String = FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_damage.gd")
 	var cnt: int = src.count("_spec.absorb(")

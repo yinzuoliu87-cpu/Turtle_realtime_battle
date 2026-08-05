@@ -165,6 +165,14 @@ static func lifesteal_bonus(u: Dictionary) -> float:
 
 
 func tick(delta: float) -> void:
+	# ── 092【剧毒飞行物】的每帧驱动(2026-08-05·E 路) ───────────────────────────
+	# ★为什么挂这里: 它需要一个【每帧只跑一次、且携带者死后照样跑】的入口 ——
+	#   `_tick_eq_intervals` 是逐单位的, 携带者一死那条路就不跑了, 而已经落地的毒雾
+	#   必须继续活满 4 秒; 主场景 `_sim_step` 是别人的地盘。遗物羁绊的 tick 正好两条都满足,
+	#   而 092 本来就是遗物。★放在下面那些提前 return 之【前】——
+	#   挪到后面它就变成每 2.5 秒才动一帧(memory [[fb-write-without-reader-and-fake-gates]])。
+	if battle != null and battle._equip_sys != null and battle._equip_sys._venom != null:
+		battle._equip_sys._venom.tick(delta)
 	# ★"有没有设过"必须用【独立的 bool】，不能拿 `_t0 < 0` 当哨兵 ——
 	#   `_t0` 是从 `battle._t` 拷来的时刻，本身就可以是 0 甚至(在测试里)是负数，
 	#   拿数值当哨兵会把一个【合法的 t0】判成"没设过"然后覆盖掉，觉醒永远不触发。
@@ -245,3 +253,7 @@ func clear() -> void:
 	_t0 = battle._t
 	_t0_set = true
 	_awakened = {"left": false, "right": false}
+	# 092【剧毒飞行物】: 换路把飞行物 + 所有毒雾 + 所有单位身上的剧毒缓速层一次清干净。
+	# ★这就是它的换路【真入口】(dual_lane_flow.gd:467 调的就是本函数)。
+	if battle != null and battle._equip_sys != null and battle._equip_sys._venom != null:
+		battle._equip_sys._venom.clear_all()

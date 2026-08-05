@@ -50,7 +50,13 @@ var _next_uid: int = 1
 
 
 ## 给 u 挂一条特殊余额。同一个 key 再给一次 = **叠加到现有余额上**（并刷新衰减起点与峰值）。
-## opts: { decay_sec: float=0, on_break: Callable, order: int=0 }
+## opts: { decay_sec: float=0, on_break: Callable, order: int=0, absorb: bool=true }
+##
+## ★`absorb: false` —— **只记账、不挡伤害**的余额。
+##   070 压舱咸鱼砖的【灰色血条】就是这种：用户写的是「将受到的伤害储存起来，
+##   每秒把 5% 转化为生命回复」—— 是**挨打之后能回收一部分**，不是挡伤害。
+##   若也参与 absorb 就成了**又减伤又回血**的双重收益，比文案强一档。
+##   （食物那路实装时主动报了这一点，2026-08-06 补开关修掉。）
 func grant(u: Dictionary, key: String, amount: float, opts: Dictionary = {}) -> void:
 	if amount <= 0.0 or not u.get("alive", false):
 		return
@@ -68,6 +74,7 @@ func grant(u: Dictionary, key: String, amount: float, opts: Dictionary = {}) -> 
 		"t0": battle._t,
 		"on_break": opts.get("on_break", Callable()),
 		"order": int(opts.get("order", 0)),
+		"absorb": bool(opts.get("absorb", true)),
 	}
 
 
@@ -117,6 +124,8 @@ func absorb(u: Dictionary, d: float) -> float:
 		if d <= 0.0:
 			break
 		var e: Dictionary = slot[k]
+		if not bool(e.get("absorb", true)):
+			continue                                   # 只记账不挡伤害(070 灰色血条)
 		var cur: float = float(e["val"])
 		if cur <= EPS:
 			continue

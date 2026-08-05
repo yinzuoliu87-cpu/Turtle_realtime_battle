@@ -461,6 +461,19 @@ func _dl_build_lane_field() -> void:
 	battle._staff_syn.clear()     # 换路: 法力/灵泉/共鸣 节拍归零
 	battle._spec.clear_all()      # 换路: 所有特殊余额(幽灵/法力/灰条/奶油/终极盾)归零
 	battle._hpl.clear_all()       # 换路: 血线阈值重置 ⇒ 这就是用户定的「每路一次」口径
+	# ★2026-08-06 五路重做装备的换路撤场统一接在这里。
+	#   各路暴露的入口名字不一(clear_all / clear / 无), 而 dual_lane_flow.gd 在并行分工里
+	#   是禁改文件 ⇒ 它们只能在自己文件里"自扫"或干脆没接。现在由主会话统一接一次。
+	#   ★用 has_method 而不是硬调: 明天还要接着实装剩下 17 件, 那时可能又多几路,
+	#     硬调会让"某一路还没写 clear"变成崩溃而不是"少清一次"。
+	for _sysref in [battle._equip_sys._spirit_sys, battle._equip_sys._potion_sys,
+			battle._equip_sys._food_sys, battle._equip_sys._bow_sys, battle._equip_sys._venom]:
+		if _sysref == null:
+			continue
+		if _sysref.has_method("clear_all"):
+			_sysref.clear_all()
+		elif _sysref.has_method("clear"):
+			_sysref.clear()
 	battle._potion_syn.clear()    # 换路: 猎物标记与节拍归零
 	battle._gadget_syn.clear()    # 换路: 僵硬/冰封CD归零(铸币【不清】—— 一场 = 上路+下路+决胜)
 	battle._food_syn.clear()      # 换路: 成长节拍归零

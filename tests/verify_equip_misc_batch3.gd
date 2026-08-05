@@ -2,7 +2,8 @@ extends Node
 ## verify_equip_misc_batch3.gd — 新装备【批③·其余 10 件】逐件焊死 + 两个新钩子的 R2 门禁
 ##
 ## 方案书: docs/plans/20260804-新装备35件效果.md (用户拍板 U1=C 按钩子分 3 批 · U6=A)
-## 覆盖: 063(新钩子·致命伤害) 064(on-death) 065 066(on-cast) 071(新钩子·受到治疗)
+## 覆盖: 063(新钩子·致命伤害) 064(on-death) 065 066(on-cast)
+##   (071 已由用户 2026-08-05 重做成【炼乳罐】→ 门禁搬去 tests/verify_eq_food_batch.gd)
 ##       082(两条伤害路径·护盾减伤) 084(常驻·残血涨攻) 085 086(受法术伤害) 093(开战给龟蛋)
 ##
 ## ★件数是 10 不是方案书 U1-C 那句"其余 13 件" —— 那个 13 是拆批时的估算, 与 §6 的
@@ -142,11 +143,10 @@ func _ready() -> void:
 	_s._sd_stacks = 0        # 决胜增伤会给【所有】伤害再乘一次, 关掉才量得准
 
 	_t_dispatch()
-	_t063_ink_sac()
-	_t064_abyss_conch()
-	_t065_spring_moss()
-	_t066_surge_brew()
-	_t071_warm_kelp()
+	# ★065/066 两件已由用户整条重写(2026-08-05 §0.5): 065 涌泉苔药剂→【鲨肝油】
+	#   (每次普攻叠攻速 + 5 龟能)、066 狂潮浓缩液→【鲸涎浓浆】(本路第 11 秒喝药变身)。
+	#   旧效果函数 _eq_spring_moss / _eq_surge_brew 均已删除 ⇒ 这两段用例搬到
+	#   tests/verify_eq_potion_batch.gd(逐件重写, 含分发纪律那一组)。
 	_t082_clam_plate()
 	_t084_blood_fang()
 	_t085_brass_ward()
@@ -183,14 +183,9 @@ func _t_dispatch() -> void:
 		and eq_tick.length() > 100 and flags.length() > 500,
 		"cast=%d death=%d tick=%d flags=%d" % [on_cast.length(), on_death.length(), eq_tick.length(), flags.length()])
 	var miss: Array = []
-	for iid in ["p2eq_065", "p2eq_066"]:
-		if not on_cast.contains("\"%s\": _eq_" % iid):
-			miss.append("%s 不在 _eq_on_cast 的 match 里(或没写成 \"id\": _fn( 形状)" % iid)
-	if not on_death.contains("_eq_abyss_conch_on_death("):
-		miss.append("064 没接进 _eq_on_death")
 	if not eq_tick.contains("_eq_fang_refresh("):
 		miss.append("084 没接进 _eq_tick")
-	for iid in ["p2eq_063", "p2eq_071", "p2eq_082", "p2eq_084", "p2eq_085", "p2eq_086"]:
+	for iid in ["p2eq_082", "p2eq_084", "p2eq_085", "p2eq_086"]:
 		if not flags.contains("\"%s\"" % iid):
 			miss.append("%s 的常驻字段没在 _eq_apply_flags 里写" % iid)
 	if not all_stats.contains("_apply_altar_egg_hp("):
@@ -198,21 +193,38 @@ func _t_dispatch() -> void:
 	_ok("⓪ 10 件各自落在指定的钩子上", miss.is_empty(), str(miss))
 
 	# ── ★★§3.3: 两个新钩子 + 082 必须在【两条】伤害路径上各挂一次 ──
-	_ok("⓪ ★★§3.3 新钩子【致命伤害】063: battle_damage 里 _eq_ink_sac 正好 2 处(两条伤害路径各一)",
+	# ★2026-08-05: 063 已被用户整条重做成【白鲸气环】, `_ink_sac` 因此**零写入者**,
+	#   这条免死通道进入休眠(函数与两条伤害路径上的挂点都保留, 见 EquipSystem._eq_ink_sac 头注)。
+	#   这里守的是"通道还在且仍然两条路各挂 1 处", 不再宣称"063 在用它"。
+	_ok("⓪ 中央免死通道 _ink_sac 仍在两条伤害路径上各挂 1 处(063 已不再用它)",
 		dmg_src.count("_eq_ink_sac(u, d)") == 2,
 		"实得 %d 处 —— 1 处 = 只有某类伤害才救得回来" % dmg_src.count("_eq_ink_sac(u, d)"))
 	_ok("⓪ ★★§3.3 082 护盾减伤: battle_damage 里 _eq_clam_mitigate 正好 2 处",
 		dmg_src.count("_eq_clam_mitigate(u, d)") == 2,
 		"实得 %d 处" % dmg_src.count("_eq_clam_mitigate(u, d)"))
-	_ok("⓪ ★★新钩子【受到治疗】071: 挂在 _heal 这个唯一入口上(正好 1 处)",
-		dmg_src.count("_eq_kelp_share(u, _act)") == 1,
-		"实得 %d 处" % dmg_src.count("_eq_kelp_share(u, _act)"))
+	# ★2026-08-06 更新: 071 被用户整条重做成【炼乳罐】(全队奶油护盾)后, `_eq_kelp_share`
+	#   变成**零写入者 + 零调用者的死码**。上一版这里守的是"调用仍在 1 处", 于是
+	#   **死码被门禁保护住了** —— 那正是本项目栽过的形状(零调用者的死函数看起来一切正常)。
+	#   ⇒ 主会话已把函数与 `battle_damage.gd` 的调用点**一起删掉**。
+	#   现在守的是另一件事:【受到治疗】这个中央钩子的**位置**还在(注释锚点),
+	#   因为它是批③为中央管线新建的、位置本身有价值(以后再有"受到治疗时"的装备就挂那儿)。
+	# ★判据不能用注释 —— `dmg_src` 是 `_strip()` 剥掉注释后的源码, 而且"注释还在"
+	#   本来也守不住任何东西(谁都能删)。守两件真的:
+	#   ① 死码清干净了(`_eq_kelp_share` 零残留)
+	#   ② `_heal` 里那个【实际回血量】仍然被算出来且有消费者(法器余韵 `on_healed(u, _act)`)
+	#      —— 只要这条还在, "受到治疗时"这个位置就仍然是可挂钩的。
+	#      它比注释硬: 谁把 `_act` 或那次调用删了, 这条立刻红。
+	_ok("⓪ 【受到治疗】这个位置仍可挂钩(实际回血量 _act 算得出且有消费者)·死码已清零",
+		dmg_src.contains("on_healed(u, _act)") and dmg_src.count("_eq_kelp_share(") == 0,
+		"_act 消费者在=%s / `_eq_kelp_share` 残留 %d 处(应为 0)"
+			% [str(dmg_src.contains("on_healed(u, _act)")), dmg_src.count("_eq_kelp_share(")])
 	_ok("⓪ 085/086 挂在普攻/技能路的 on-target 旁(正好 1 处) 且传的是算好的伤害桶",
 		dmg_src.count("_eq_on_magic_hurt(u, src, dmg, _bkt)") == 1,
 		"实得 %d 处" % dmg_src.count("_eq_on_magic_hurt(u, src, dmg, _bkt)"))
 	# ★新钩子必须【带常驻字段守卫】—— 没守卫 = 95 件装备共同承担开销/副作用
 	var guards := {
-		"_ink_sac": 2, "_clam_dr": 2, "_kelp_share": 1, "_b3_gadget": 1,
+		# ★2026-08-06: `_kelp_share` 已随 071 重做整条删除(死码, 见上), 从守卫名单摘掉。
+		"_ink_sac": 2, "_clam_dr": 2, "_b3_gadget": 1,
 	}
 	var noguard: Array = []
 	for g in guards:
@@ -221,8 +233,16 @@ func _t_dispatch() -> void:
 	_ok("⓪ ★★零开销: 四个中央管线分支各自都由常驻字段守卫(不遍历 equips)", noguard.is_empty(), str(noguard))
 
 	# ── 真账: 35 件 = 15 + 10 + 10, 一件不重不漏 ──
+	# ★092 剧毒飞行物(2026-08-05)整件单独成文件 `eq_venom_drone.gd`, 且【故意没有】
+	#   fire_equip_effect 的 match 分支(它不是"周期到点触发一次"的形状, 驱动挂在
+	#   RelicSynergySystem.tick)。不把它这份源码纳进来, 这条真账会把一件真装了的装备
+	#   算成"没实装"(实测 34/35) —— 与 memory [[project-god-file-decomposition]] 坑16
+	#   「审计器的文件名单跟不上拆分」同形。
+	var venom: String = _strip("res://scripts/systems/equip/eq_venom_drone.gd")
+	_ok("⓪ ★分母: 092 的效果层源码非空(%d 字符)" % venom.length(), venom.length() > 2000,
+		"len=%d" % venom.length())
 	var impl := {}
-	for src in [code, apply]:
+	for src in [code, apply, venom]:
 		for i in range(60, 95):
 			if src.contains("\"p2eq_%03d\"" % i):
 				impl["p2eq_%03d" % i] = true
@@ -234,269 +254,16 @@ func _t_dispatch() -> void:
 		b3.size() == 10, "b3=%d" % b3.size())
 
 
-# ─────────────────────────────────────────────────────────────
-# 063 幽影墨囊 · ★新钩子①【受到致命伤害时】留 1 血 + 1.5/2/2.5 秒不可选中
-# ─────────────────────────────────────────────────────────────
-func _t063_ink_sac() -> void:
-	print("── 063 幽影墨囊 · 新钩子【受到致命伤害时】 ──")
-	for si in range(3):
-		var want_sec: float = [1.5, 2.0, 2.5][si]
-		# ① 普攻/技能路 (_apply_damage_from)
-		_s._units.clear()
-		var u: Dictionary = _equip_flags(_mk("fortune", "left", Vector2(-300.0, -300.0), 1000.0), "p2eq_063", si + 1)
-		var atkr: Dictionary = _mk("fortune", "right", Vector2(-100.0, -300.0), 9000.0)
-		_ok("063 si=%d ★分母: _eq_apply_flags 真的写了常驻守卫字段 _ink_sac" % si,
-			bool(u.get("_ink_sac", false)), "_ink_sac=%s" % str(u.get("_ink_sac", null)))
-		var t0: float = _s._t
-		_s._damage._apply_damage_from(atkr, u, 5000, Color("#ffffff"))
-		_ok("063 si=%d 【普攻路】致命 5000 → 留 1 点血(不是 0)" % si,
-			absf(float(u["hp"]) - 1.0) < 0.01, "hp=%.2f" % float(u["hp"]))
-		_ok("063 si=%d 【普攻路】没死" % si, bool(u["alive"]), "alive=%s" % str(u["alive"]))
-		_ok("063 si=%d 不可选中到 现在+%.1f 秒(需求 1.5/2/2.5)" % [si, want_sec],
-			absf(float(u["untargetable_until"]) - (t0 + want_sec)) < 0.02,
-			"until-_t=%.3f 期望 %.2f" % [float(u["untargetable_until"]) - t0, want_sec])
-		# ② DoT/真伤路 (_apply_damage) —— ★★§3.3 只挂一条就会在这里红
-		_s._units.clear()
-		var v: Dictionary = _equip_flags(_mk("fortune", "left", Vector2(-300.0, -260.0), 1000.0), "p2eq_063", si + 1)
-		_s._damage._apply_damage(v, 5000, Color("#ffffff"), null, "dot")
-		_ok("063 si=%d ★★【DoT/真伤路】同样留 1 点血(§3.3: 两条路都挂了)" % si,
-			absf(float(v["hp"]) - 1.0) < 0.01, "hp=%.2f" % float(v["hp"]))
-		_ok("063 si=%d ★★【DoT/真伤路】也拿到不可选中" % si,
-			float(v["untargetable_until"]) > _s._t + want_sec - 0.02,
-			"until-_t=%.3f" % (float(v["untargetable_until"]) - _s._t))
-	# ★分母: 不带 063 的同一发 5000 → 死透
-	_s._units.clear()
-	var bare: Dictionary = _mk("fortune", "left", Vector2(-300.0, -220.0), 1000.0)
-	var a2: Dictionary = _mk("fortune", "right", Vector2(-100.0, -220.0), 9000.0)
-	_s._damage._apply_damage_from(a2, bare, 5000, Color("#ffffff"))
-	_ok("063 ★分母: 不带 063 的同一发 5000 → 血归零且死亡(证明上面那些不是恒真)",
-		absf(float(bare["hp"])) < 0.01 and not bool(bare["alive"]),
-		"hp=%.2f alive=%s" % [float(bare["hp"]), str(bare["alive"])])
-	# ★每路一次: 第二次致命就真死
-	_s._units.clear()
-	var once: Dictionary = _equip_flags(_mk("fortune", "left", Vector2(-300.0, -180.0), 1000.0), "p2eq_063", 3)
-	var a3: Dictionary = _mk("fortune", "right", Vector2(-100.0, -180.0), 9000.0)
-	_s._damage._apply_damage_from(a3, once, 5000, Color("#ffffff"))
-	_s._damage._apply_damage_from(a3, once, 5000, Color("#ffffff"))
-	_ok("063 ★每路一次: 第二次致命伤害不再救(血归零)",
-		absf(float(once["hp"])) < 0.01, "hp=%.2f" % float(once["hp"]))
-	# ★换路重置: 重跑一次 flags(= 换路重建单位的那条路) → 又能救一次
-	once["hp"] = 1000.0
-	once["alive"] = true
-	once["_dead_done"] = false
-	_equip_flags(once, "p2eq_063", 3)
-	_s._damage._apply_damage_from(a3, once, 5000, Color("#ffffff"))
-	_ok("063 ★换路重置: _eq_apply_flags 重跑后又能救一次(eq_state 按路重建)",
-		absf(float(once["hp"]) - 1.0) < 0.01, "hp=%.2f" % float(once["hp"]))
-	# ★护盾先扛: 盾扛得住就不算"致命", 不该消耗这一次
-	_s._units.clear()
-	var sh: Dictionary = _equip_flags(_mk("fortune", "left", Vector2(-300.0, -140.0), 1000.0), "p2eq_063", 3)
-	sh["shield"] = 6000.0
-	var a4: Dictionary = _mk("fortune", "right", Vector2(-100.0, -140.0), 9000.0)
-	_s._damage._apply_damage_from(a4, sh, 5000, Color("#ffffff"))
-	_ok("063 ★护盾扛住就不算致命: 血一点没掉, 且没消耗掉这一次机会",
-		absf(float(sh["hp"]) - 1000.0) < 0.01
-		and not bool((sh["eq_state"].get("p2eq_063", {}) as Dictionary).get("ink_used", false)),
-		"hp=%.1f ink_used=%s" % [float(sh["hp"]), str((sh["eq_state"].get("p2eq_063", {}) as Dictionary).get("ink_used", false))])
-	_s._units.clear()
+# ─────────────────────────────
+# ★065/066 两件的用例已搬走
+#   用户 2026-08-05 逐件亲手重写(方案书 §0.5 定稿): 065 →【鲨肝油】
+#   (每次普攻 +1/2/4% 叠加攻速不设上限 + 5 龟能; 射程走 flat +50)、
+#   066 →【鲸涎浓浆】(登场第 11 秒喝药: 免控五条通道 + 十项属性 + 体型 +40%)。
+#   新效果与它们的门禁在 tests/verify_eq_potion_batch.gd。
+#   ★是整段删而不是把旧断言改成新数字 —— 旧用例量的是旧机制
+#   (放技能回已损血 / 放技能减下一次冷却), 改数字保不住它们。
 
 
-# ─────────────────────────────────────────────────────────────
-# 064 深渊招魂螺: 友方阵亡 → 额外召 1 只亡魂(继承 20/30/45%)
-# ─────────────────────────────────────────────────────────────
-func _n_conch() -> int:
-	var k := 0
-	for o in _s._units:
-		if o is Dictionary and (o as Dictionary).get("_conch_wraith", false):
-			k += 1
-	return k
-
-
-func _t064_abyss_conch() -> void:
-	print("── 064 深渊招魂螺 · 友方阵亡额外召亡魂 ──")
-	for si in range(3):
-		var inh: float = [0.20, 0.30, 0.45][si]
-		_s._units.clear()
-		var carrier: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, -100.0), 3000.0), "p2eq_064", si + 1)
-		var dead: Dictionary = _mk("basic", "left", Vector2(-200.0, -100.0), 1000.0)
-		dead["base_atk"] = 100.0
-		_ok("064 si=%d ★分母: 触发前场上没有招魂螺亡魂" % si, _n_conch() == 0, "n=%d" % _n_conch())
-		_s._equip_sys._eq_abyss_conch_on_death(dead)
-		_ok("064 si=%d 阵亡 → 正好多出 1 只亡魂" % si, _n_conch() == 1, "n=%d" % _n_conch())
-		var w = null
-		for o in _s._units:
-			if o is Dictionary and (o as Dictionary).get("_conch_wraith", false):
-				w = o
-		_ok("064 si=%d 继承 %.0f%% 最大生命 = %.0f(死者 1000)" % [si, inh * 100.0, 1000.0 * inh],
-			w != null and absf(float(w["maxHp"]) - 1000.0 * inh) < 0.51,
-			"maxHp=%.1f" % (float(w["maxHp"]) if w != null else -1.0))
-		_ok("064 si=%d 继承 %.0f%% 攻击力 = %.0f(死者 base_atk 100)" % [si, inh * 100.0, 100.0 * inh],
-			w != null and absf(float(w["base_atk"]) - 100.0 * inh) < 0.51,
-			"base_atk=%.1f" % (float(w["base_atk"]) if w != null else -1.0))
-		_ok("064 si=%d ★不接力循环: 生出来的亡魂 _wraith_loops = 0" % si,
-			w != null and int(w.get("_wraith_loops", -1)) == 0,
-			"loops=%d" % (int(w.get("_wraith_loops", -1)) if w != null else -1))
-	# ★分母: 没有携带者 → 一只都不召
-	_s._units.clear()
-	var d2: Dictionary = _mk("basic", "left", Vector2(-200.0, -60.0), 1000.0)
-	d2["base_atk"] = 100.0
-	_mk("fortune", "left", Vector2(-300.0, -60.0), 3000.0)
-	_s._equip_sys._eq_abyss_conch_on_death(d2)
-	_ok("064 ★分母: 队里没人带 064 → 一只亡魂都不召", _n_conch() == 0, "n=%d" % _n_conch())
-	# ★三道闸: 龟蛋 / 亡魂 / 别的召唤物 阵亡都不召
-	_s._units.clear()
-	var c3: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, -20.0), 3000.0), "p2eq_064", 3)
-	var gate_bad: Array = []
-	for tag in ["_isEgg", "_is_wraith", "summon"]:
-		var dd: Dictionary = _mk("basic", "left", Vector2(-200.0, -20.0), 1000.0)
-		dd["base_atk"] = 100.0
-		if tag == "summon":
-			dd["summon_kind"] = "turret"
-		else:
-			dd[tag] = true
-		_s._equip_sys._eq_abyss_conch_on_death(dd)
-		if _n_conch() != 0:
-			gate_bad.append(tag)
-	_ok("064 ★三道闸: 龟蛋/亡魂/其它召唤物阵亡都不召(否则无限刷)", gate_bad.is_empty(), str(gate_bad))
-	_ok("064 ★分母: 上面三次里携带者一直在场(闸不是靠'没人带'过的)",
-		c3.get("alive", false) and str(c3["equips"][0]["id"]) == "p2eq_064")
-	# ★★真入口: 经 battle._kill 触发
-	_s._units.clear()
-	var c4: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, 20.0), 3000.0), "p2eq_064", 3)
-	var victim: Dictionary = _mk("basic", "left", Vector2(-200.0, 20.0), 1000.0)
-	victim["base_atk"] = 100.0
-	var killer: Dictionary = _mk("basic", "right", Vector2(100.0, 20.0), 9000.0)
-	victim["hp"] = 0.0
-	_s._kill(victim, killer)
-	_ok("064 ★★真入口: 经 battle._kill → _eq_on_death 真的召出 1 只(继承 45% = 450 血)",
-		_n_conch() == 1, "n=%d" % _n_conch())
-	_ok("064 ★分母: c4 就是那个携带者", str(c4["equips"][0]["id"]) == "p2eq_064")
-	_s._units.clear()
-
-
-# ─────────────────────────────────────────────────────────────
-# 065 涌泉苔药剂: 放技能后回复 6/10/16% 已损失生命
-# ─────────────────────────────────────────────────────────────
-func _t065_spring_moss() -> void:
-	print("── 065 涌泉苔药剂 · 放技能回血 ──")
-	for si in range(3):
-		var pct: float = [0.06, 0.10, 0.16][si]
-		_s._units.clear()
-		var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, 60.0), 1000.0), "p2eq_065", si + 1)
-		u["hp"] = 400.0                                   # 已损失 600
-		var tgt: Dictionary = _mk("basic", "right", Vector2(-100.0, 60.0), 9000.0)
-		var h0: float = float(u["hp"])
-		_s._equip_sys._eq_on_cast(u, tgt)
-		_ok("065 si=%d 放技能回 %.0f(已损失 600 的 6/10/16%%)" % [si, 600.0 * pct],
-			absf(float(u["hp"]) - h0 - 600.0 * pct) < 0.51,
-			"实回 %.2f 期望 %.1f" % [float(u["hp"]) - h0, 600.0 * pct])
-	# ★分母: 满血时不回(也不该冒出负数/溢出)
-	_s._units.clear()
-	var full: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, 100.0), 1000.0), "p2eq_065", 3)
-	var t2: Dictionary = _mk("basic", "right", Vector2(-100.0, 100.0), 9000.0)
-	_s._equip_sys._eq_on_cast(full, t2)
-	_ok("065 ★分母: 满血放技能 → 血量一点不变(不是恒定给一份)",
-		absf(float(full["hp"]) - 1000.0) < 0.01, "hp=%.2f" % float(full["hp"]))
-	_s._units.clear()
-
-
-# ─────────────────────────────────────────────────────────────
-# 066 狂潮浓缩液: 放技能后下一次技能冷却 -18/28/40%(4 秒内置冷却)
-# ─────────────────────────────────────────────────────────────
-func _t066_surge_brew() -> void:
-	print("── 066 狂潮浓缩液 · 放技能减下一次冷却 ──")
-	for si in range(3):
-		var cut: float = [0.18, 0.28, 0.40][si]
-		_s._units.clear()
-		var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, 140.0), 3000.0), "p2eq_066", si + 1)
-		u["skill_cd"] = {"far": 10.0, "next": 4.0}        # "next" 是剩余最短的 = 下一次要放的那个
-		var tgt: Dictionary = _mk("basic", "right", Vector2(-100.0, 140.0), 9000.0)
-		_s._equip_sys._eq_on_cast(u, tgt)
-		_ok("066 si=%d 下一次技能冷却 4.0 → %.2f(减 18/28/40%%)" % [si, 4.0 * (1.0 - cut)],
-			absf(float(u["skill_cd"]["next"]) - 4.0 * (1.0 - cut)) < 0.005,
-			"实得 %.4f 期望 %.4f" % [float(u["skill_cd"]["next"]), 4.0 * (1.0 - cut)])
-		_ok("066 si=%d ★分母: 另一技(10.0)一点没动(只削'下一次'那一技)" % si,
-			absf(float(u["skill_cd"]["far"]) - 10.0) < 0.005, "far=%.4f" % float(u["skill_cd"]["far"]))
-		# ★4 秒内置冷却: 立刻再放一次不生效
-		var before: float = float(u["skill_cd"]["next"])
-		_s._equip_sys._eq_on_cast(u, tgt)
-		_ok("066 si=%d ★内置冷却: 立刻再放一次 → 冷却不再减(仍是 %.2f)" % [si, before],
-			absf(float(u["skill_cd"]["next"]) - before) < 0.005,
-			"实得 %.4f" % float(u["skill_cd"]["next"]))
-		# ★4 秒之后又能触发
-		var tsave: float = _s._t
-		_s._t = tsave + 4.1
-		_s._equip_sys._eq_on_cast(u, tgt)
-		_ok("066 si=%d ★4.1 秒后又能触发(内置冷却是 4 秒不是永久)" % si,
-			absf(float(u["skill_cd"]["next"]) - before * (1.0 - cut)) < 0.005,
-			"实得 %.4f 期望 %.4f" % [float(u["skill_cd"]["next"]), before * (1.0 - cut)])
-		_s._t = tsave
-	_s._units.clear()
-
-
-# ─────────────────────────────────────────────────────────────
-# 071 暖流海带汤 · ★新钩子②【受到治疗时】把 25/40/60% 分给血量最低的友军
-# ─────────────────────────────────────────────────────────────
-func _t071_warm_kelp() -> void:
-	print("── 071 暖流海带汤 · 新钩子【受到治疗时】 ──")
-	for si in range(3):
-		var pct: float = [0.25, 0.40, 0.60][si]
-		_s._units.clear()
-		var u: Dictionary = _equip_flags(_mk("fortune", "left", Vector2(-300.0, 180.0), 1000.0), "p2eq_071", si + 1)
-		u["hp"] = 500.0
-		var low: Dictionary = _mk("basic", "left", Vector2(-200.0, 180.0), 1000.0)
-		low["hp"] = 200.0                                  # 20% —— 最低
-		var high: Dictionary = _mk("basic", "left", Vector2(-100.0, 180.0), 1000.0)
-		high["hp"] = 800.0                                 # 80%
-		_ok("071 si=%d ★分母: _eq_apply_flags 真的写了 _kelp_share = %.2f" % [si, pct],
-			absf(float(u.get("_kelp_share", 0.0)) - pct) < 0.0005,
-			"_kelp_share=%.4f" % float(u.get("_kelp_share", 0.0)))
-		var l0: float = float(low["hp"])
-		var h0: float = float(high["hp"])
-		var s0: float = float(u["hp"])
-		_s._damage._heal(u, 100.0)
-		_ok("071 si=%d 本体回满 100(分出去的那份【不从自己身上扣】)" % si,
-			absf(float(u["hp"]) - s0 - 100.0) < 0.51, "本体实回 %.2f" % (float(u["hp"]) - s0))
-		_ok("071 si=%d 血量最低的友军额外回 %.0f(100 的 25/40/60%%)" % [si, 100.0 * pct],
-			absf(float(low["hp"]) - l0 - 100.0 * pct) < 0.51,
-			"实回 %.2f 期望 %.1f" % [float(low["hp"]) - l0, 100.0 * pct])
-		_ok("071 si=%d ★分母: 血量高的那个一点没回(证明是'最低的那个')" % si,
-			absf(float(high["hp"]) - h0) < 0.01, "高血友军回了 %.2f" % (float(high["hp"]) - h0))
-	# ★分母: 不带 071 → 友军一点回血都没有
-	_s._units.clear()
-	var bare: Dictionary = _mk("fortune", "left", Vector2(-300.0, 220.0), 1000.0)
-	bare["hp"] = 500.0
-	var ally: Dictionary = _mk("basic", "left", Vector2(-200.0, 220.0), 1000.0)
-	ally["hp"] = 200.0
-	var b0: float = float(ally["hp"])
-	_s._damage._heal(bare, 100.0)
-	_ok("071 ★分母: 不带 071 的同一次治疗 → 友军 0 回血(证明上面那些是 071 给的)",
-		absf(float(ally["hp"]) - b0) < 0.01, "友军回了 %.2f" % (float(ally["hp"]) - b0))
-	# ★重入守卫: 最低血那个也带 071 时不再往下传(否则互喂无限递归)
-	_s._units.clear()
-	var a: Dictionary = _equip_flags(_mk("fortune", "left", Vector2(-300.0, 260.0), 1000.0), "p2eq_071", 3)
-	a["hp"] = 500.0
-	var b: Dictionary = _equip_flags(_mk("fortune", "left", Vector2(-200.0, 260.0), 1000.0), "p2eq_071", 3)
-	b["hp"] = 200.0
-	var c: Dictionary = _mk("basic", "left", Vector2(-100.0, 260.0), 1000.0)
-	c["hp"] = 300.0
-	var c0: float = float(c["hp"])
-	var bb0: float = float(b["hp"])
-	_s._damage._heal(a, 100.0)
-	_ok("071 ★重入守卫: b 收到 60, 但【不再】往 c 传(c 一点没回)",
-		absf(float(b["hp"]) - bb0 - 60.0) < 0.51 and absf(float(c["hp"]) - c0) < 0.01,
-		"b 回 %.2f / c 回 %.2f" % [float(b["hp"]) - bb0, float(c["hp"]) - c0])
-	# ★★用【实际】回血量算, 不是请求量: 本体快满血时只按实回的那一点分
-	_s._units.clear()
-	var nearfull: Dictionary = _equip_flags(_mk("fortune", "left", Vector2(-300.0, 300.0), 1000.0), "p2eq_071", 3)
-	nearfull["hp"] = 990.0                                 # 只回得进 10 点
-	var poor: Dictionary = _mk("basic", "left", Vector2(-200.0, 300.0), 1000.0)
-	poor["hp"] = 100.0
-	var p0: float = float(poor["hp"])
-	_s._damage._heal(nearfull, 100.0)
-	_ok("071 ★★按【实际回血 10】算而不是请求的 100 → 友军只拿 6(不是 60)",
-		absf(float(poor["hp"]) - p0 - 6.0) < 0.51, "友军回 %.2f 期望 6" % (float(poor["hp"]) - p0))
-	_s._units.clear()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -848,12 +615,14 @@ func _t_r2_no_side_effect() -> void:
 	_ok("⑪ ★★零副作用: 三只不带批③ 装备的单位身上, 10 个新字段一个都没长出来", leaked.is_empty(), str(leaked))
 	# ★分母: 同一批字段在【带】装备的单位上确实会出现(证明上面那条不是空检查)
 	var carrier: Dictionary = _mk("fortune", "left", Vector2(-300.0, 100.0), 1000.0)
-	for iid in ["p2eq_063", "p2eq_071", "p2eq_082", "p2eq_084", "p2eq_085"]:
+	for iid in ["p2eq_082", "p2eq_084", "p2eq_085"]:
 		_s._equip_sys._stats._eq_apply_flags(carrier, iid, 3)
 	var got: Array = []
-	for k in ["_ink_sac", "_clam_dr", "_kelp_share", "_b3_gadget", "_fang_pct"]:
+	# ★_kelp_share 已从这张名单拿掉: 071 重做后 `_eq_apply_flags` 不再写它(零写入者)。
+	# ★_ink_sac 同理: 063 重做成白鲸气环后不再写它。
+	for k in ["_clam_dr", "_b3_gadget", "_fang_pct"]:
 		if carrier.has(k):
 			got.append(k)
-	_ok("⑪ ★分母: 带上这五件后 5 个字段【全都】出现了(证明上面那条会 FAIL)",
-		got.size() == 5, "出现 %d/5: %s" % [got.size(), str(got)])
+	_ok("⑪ ★分母: 带上这几件后 3 个字段【全都】出现了(证明上面那条会 FAIL)",
+		got.size() == 3, "出现 %d/3: %s" % [got.size(), str(got)])
 	_s._units.clear()

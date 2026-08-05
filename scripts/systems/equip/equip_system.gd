@@ -6,12 +6,25 @@ extends RefCounted
 var battle
 var _sigwave: SignalWaveSystem   # 信号放大器038 的弧形电磁波(2026-07-31 重做·单独成文件: 上帝文件已卡在 arch_budget 8600)
 var _stats: EquipStatsApply   # 被动属性/flag 应用子系统(2026-07-26 从本文件分出·spawn期·区别于主动效果)
+var _spirit_sys: EqSpiritBatch   # 灵物 5 件(060~064)用户重做版(2026-08-05·效果本体在 eq_spirit_batch.gd)
+var _potion_sys: EqPotionBatch   # 药水 4 件(065~068)用户重做版(2026-08-05·效果本体在 eq_potion_batch.gd)
+var _food_sys: EqFoodBatch   # 食物 4 件(069~072)用户重做版(2026-08-05·效果本体在 eq_food_batch.gd)
+var _bow_sys: EqBowBatch   # 弓箭 4 件(073~076)用户重做版(2026-08-05·效果本体在 eq_bow_batch.gd·演出在 battle/bow_eq_vfx.gd)
+## 092 剧毒飞行物(2026-08-05·遗物·2费): 常驻召唤飞行体 + 地面毒雾场 + 剧毒缓速叠层, 单独成文件。
+## ★每帧驱动接在 RelicSynergySystem.tick()、撤场接在它的 clear() —— 理由见 eq_venom_drone.gd 文件头判断 ③。
+const VENOM_DRONE := preload("res://scripts/systems/equip/eq_venom_drone.gd")
+var _venom
 var _eq_drone_halve: bool = false   # 无人机减半标记(随本系统)
 
 func _init(b) -> void:
 	battle = b
 	_stats = EquipStatsApply.new(b)
 	_sigwave = SignalWaveSystem.new(b)
+	_spirit_sys = EqSpiritBatch.new(b)
+	_potion_sys = EqPotionBatch.new(b)
+	_food_sys = EqFoodBatch.new(b, self)
+	_bow_sys = EqBowBatch.new(b)
+	_venom = VENOM_DRONE.new(b)
 
 func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不算多段): 008珊瑚刺计数 / 017不沉之锚普攻消耗充能锚击
 	if u.get("equips", []).is_empty(): return
@@ -58,6 +71,22 @@ func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不�
 			#   能在该装备 id 字面量附近(±2500 字符)找到同样的数组, 提到文件顶部会被判"远处命中"。
 			if battle._battle_rng.randf() < [0.25, 0.35, 0.50][si78]:
 				_double_barrel_shot(u, tgt, [0.40, 0.50, 0.60][si78])
+		# ── 药水 3 件(2026-08-05 用户逐件重做·§0.5 定稿) ─────────────────────
+		#    ★效果本体在 eq_potion_batch.gd, 这里只留一行分派(同批②的口径:
+		#      tooltip_number_audit 认 `"id": _fn(` 这种分派并把函数定义处也当锚点)。
+		match str(e["id"]):
+			"p2eq_065": _potion_sys._eq_shark_oil(u, _eq_si(int(e.get("star", 1))))
+			"p2eq_068": _potion_sys._eq_pressure_sip(u, _eq_si(int(e.get("star", 1))))
+		if str(e["id"]) == "p2eq_067" and tgt != null and tgt is Dictionary and tgt.get("alive", false):
+			_potion_sys._eq_poison_touch(u, tgt, _eq_si(int(e.get("star", 1))))
+		# ── 弓箭 3 件(2026-08-05 用户逐件重做·§0.5 定稿) ─────────────────────
+		#    ★三件的触发时机都是【普攻】不是【命中】(用户原文都写"每次普攻") ⇒ 挂这个钩,
+		#      不挂 _eq_on_hit: 一次普攻只算一下, 多段技/DoT 不算。
+		#    ★效果本体在 eq_bow_batch.gd, 这里只留一行分派。
+		match str(e["id"]):
+			"p2eq_073": _bow_sys.on_basic_073(u, _eq_si(int(e.get("star", 1))))
+			"p2eq_074": _bow_sys.on_basic_074(u, tgt, _eq_si(int(e.get("star", 1))))
+			"p2eq_076": _bow_sys.on_basic_076(u, tgt, _eq_si(int(e.get("star", 1))))
 		# 珊瑚刺008: 旧「每5次普攻」计数器已删(与_tick_coral每9秒重复触发·用户2026-07-19)
 
 
@@ -206,17 +235,28 @@ func _eq_summon_skeleton(u: Dictionary, si: int) -> void:
 ## ★法器三件(088/089/090)【不在表里】—— 它们的触发时机是"法力条满", 由 StaffSynergySystem
 ##   走同一个 `fire_equip_effect`。给它们排周期就会变成"既定时又法力满"两套行为。
 const EQ_IV_BATCH1 := {
-	"p2eq_062": 2.5,   # 雾行海葵: 每 2.5 秒判"3 秒未受伤"→ 叠雾隐
-	"p2eq_069": 2.5,   # 珊瑚糖糕: 每 2.5 秒回已损失生命
-	"p2eq_070": 2.5,   # 深海龟粮砖: 每 2.5 秒永久 +最大生命
-	"p2eq_072": 2.5,   # 百年龟苓宴: 每 2.5 秒为全队回已损失生命
+	# ★p2eq_062 原来在这里(旧「雾行海葵」每 2.5 秒叠雾隐)。2026-08-05 用户把 062 整条重做成
+	#   【螳螂虾钳】(闪避后蓄一发强化普攻), 它不再是周期类 ⇒ 从这张表里摘掉。
+	#   摘掉而不是留个 0: 留 0 会让 `_tick_eq_intervals` 每帧多查一次永远不成立的分支。
+	# ★食物三件(069/070/072)原来也在这里(旧"每 2.5 秒回血 / +最大生命 / 全队回血")。
+	#   2026-08-05 用户把食物四件整条重做(三块糖糕 / on-hit+灰条 / 变身礼盒),
+	#   全部不再是周期类 ⇒ 一并摘掉。效果本体在 eq_food_batch.gd, 走每帧 `_eq_tick` 的常驻守卫。
+	"p2eq_067": 6.0,   # 毒药瓶(药水·4费): 每 6 秒朝敌人最密集处投一个瓶子(用户规格「每 6 秒」)
+	# ── 弓箭(2026-08-05·§0.5 定稿)。效果本体在 eq_bow_batch.gd ──
+	#   ★四件里只有 075 是【周期到点触发一次】这个形状。073 的攻速 buff 到期与
+	#   076 的 0.25 秒逐发连射都要【比 0.25 秒更细的精度】, 走 EqBowBatch.tick() 每帧推进
+	#   (自带 t_next 累加器, 帧率无关) —— 给它们排周期反而把精度降到 0.25 秒。
+	"p2eq_075": 6.0,   # 测距绳结: 每 6 秒一轮箭雨(用户原文「每 6 秒」)
 	"p2eq_077": 8.0,   # 铜管手铳: 枪件固定 8 秒(★不吃攻速, 同 048~057)
 	"p2eq_079": 8.0,   # 军械库连射机
 	"p2eq_080": 8.0,   # 穿甲重炮
 	"p2eq_081": 2.5,   # 藤编圆盾: 每 2.5 秒护盾(覆盖式)
 	"p2eq_087": 2.5,   # 深渊铸币机: 每 2.5 秒铸币
 	"p2eq_091": 2.5,   # 远古龟甲片: 每 2.5 秒永久 +最大生命(有上限)
-	"p2eq_092": 2.5,   # 沉船罗盘: 每 2.5 秒永久 +攻击力(有上限)
+	# ★p2eq_092 原来在这里(旧「沉船罗盘」每 2.5 秒永久 +攻击力)。2026-08-05 用户把 092 整条重做成
+	#   【剧毒飞行物】—— 它是常驻召唤体, 节拍 0.25 秒且要每帧推进飞行 ⇒ 不是"周期到点触发一次"
+	#   这个形状, 从这张表里摘掉(留个 0 会让 `_tick_eq_intervals` 每帧多查一次永远不成立的分支)。
+	#   驱动改挂 RelicSynergySystem.tick() → VenomDroneSystem.tick(), 见 eq_venom_drone.gd 文件头。
 	"p2eq_094": 2.5,   # 觉醒之核: 每 2.5 秒查"本路开打满 N 秒"
 }
 
@@ -916,15 +956,24 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 			#         数值数组写在函数体里才不会被判"远处命中";
 			#      ② 把 40 行效果码塞进 match 会把【已有的 023/026 数组】挤出它们自己的
 			#         ±2500 字符锚点窗口 —— 实测确实挤出去了(1545→4046), 那是纯误报但会红门禁。
-			# 药水
-			"p2eq_067": _eq_hunter_flask(src, tgt, dmg, si)
-			# 弓箭
-			"p2eq_073": _eq_vine_bow(src, tgt, dmg, si)
-			"p2eq_074": _eq_bone_quiver(src, tgt, si, was_crit)
-			"p2eq_075": _eq_eagle_lens(src, tgt, dmg, si)
-			"p2eq_076": _eq_corroder(src, tgt, si, int(e.get("star", 1)), was_crit)
+			# 药水 —— ★067 已由用户整条重做成【毒药瓶】(2026-08-05 §0.5): 效果改成
+			#   "每 6 秒投瓶 + 普攻叠中毒 + 中毒者治疗/护盾减半", 落点是【周期】与【普攻】两个钩子,
+			#   on-hit 上不再有它。别把旧的"打猎物额外真伤"加回来。
+			# 弓箭 —— ★073/074/076 已由用户整条重做(2026-08-05 §0.5): 触发时机从【命中】改成
+			#   【普攻】(原文都写"每次普攻") ⇒ 落点搬去 _eq_on_basic_attack, on-hit 上不再有它们。
+			#   别把旧的"打健康目标加伤 / 暴击追真伤 / 暴击喂腐蚀"加回来 —— 会和新效果叠着生效。
+			#   留在 on-hit 的只有 075 的【距离增伤】: 它是"携带者对该目标"的通用增伤, 本就按次命中算。
+			"p2eq_075": _bow_sys.on_hit_075(src, tgt, dmg, si)
 			# 剑
 			"p2eq_083": _eq_tide_rapier(src, tgt, dmg, si, stt)
+			# ══ 灵物 3 件(2026-08-05 用户逐件重做·§0.5 定稿) ═════════════════
+			#    ★效果本体在 scripts/systems/equip/eq_spirit_batch.gd; 分派仍写成
+			#      `"id": _fn(` 形状 —— tooltip_number_audit 靠它把效果函数定义处也当锚点。
+			"p2eq_061": _spirit_sys._eq_drill_snail(src, tgt, si)
+			"p2eq_062": _spirit_sys._eq_mantis_strike(src, tgt, dmg, si)
+			"p2eq_063": _spirit_sys._eq_whale_ring(src, tgt, si)
+			# 食物(本体在 eq_food_batch.gd)
+			"p2eq_070": _food_sys._eq_ballast_brick(src, tgt, si)
 		src["eq_state"][iid] = stt
 	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
 	                           #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
@@ -1223,6 +1272,8 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 				# ★别在这里加回"受伤即回血" —— 那会变成"定时 + 受伤"双份触发。
 				#   verify_equip_batch_20260801 ⑫组焊死: on-hurt 不得产生任何治疗。
 				pass
+			# ── 药水 068 深海气压罐(2026-08-05 用户重做): 受到的伤害存进专属充能条 ──
+			"p2eq_068": _potion_sys._eq_pressure_store(u, dmg, si)
 		u["eq_state"][iid] = stt
 	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
 	                           #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
@@ -1239,23 +1290,12 @@ func _eq_on_dodge(u: Dictionary) -> void:
 			var stt: Dictionary = u["eq_state"].get("p2eq_046", {})
 			battle._damage._grant_shield(u, float(stt.get("ghost_shield", 30.0)))
 			battle._shield_dome(u)   # 专属护盾罩(不复用faint battle._shield_bubble)
-		# ── 批②(2026-08-05) 闪避类新装备 ──────────────────────────────────
-		var si_d: int = _eq_si(int(e.get("star", 1)))
-		if str(e["id"]) == "p2eq_060":   # 磷光水母伞(灵物·1费): 闪避成功 → 对最近的敌人 20/35/60 魔法伤害
-			var t60 = battle._targeting._nearest_enemy(u)
-			if t60 != null and t60.get("alive", false):
-				battle._bolt_line(u["pos"], t60["pos"], Color(0.55, 0.92, 1.0, 0.85))
-				battle._damage._apply_damage_from(u, t60, battle._resolve_dmg(u, [20.0, 35.0, 60.0][si_d], t60, true), Color("#9be7ff"), 0.0, false, true)
-				battle._skill_ring(u["pos"], Color(0.55, 0.92, 1.0, 0.5), 44.0)
-		if str(e["id"]) == "p2eq_061":   # 游魂贝铃(灵物·2费): 闪避成功 → 本体 +12/20/32% 移速, 持续 2 秒(可刷新)
-			# ★`move_buff_mult` 是【单槽·限时】通道(训龟大师怒吼 FURY_MOVE 也写它) ⇒ 直接赋值会互相盖。
-			#   取"倍率更大的那个 + 到期更晚的那个", 既不吞掉别人的强 buff, 也不会被别人吞掉。
-			var want61: float = 1.0 + [0.12, 0.20, 0.32][si_d]
-			var live61: bool = battle._t < float(u.get("move_buff_until", 0.0))
-			if not live61 or want61 >= float(u.get("move_buff_mult", 1.0)):
-				u["move_buff_mult"] = want61
-			u["move_buff_until"] = maxf(float(u.get("move_buff_until", 0.0)), battle._t + 2.0)
-			battle._skill_ring(u["pos"], Color(0.72, 0.86, 1.0, 0.45), 38.0)
+		# ── 灵物 5 件(2026-08-05 用户逐件重做·§0.5 定稿) ──────────────────
+		#    ★060/061 原来挂在这个钩子上的旧效果(闪避→魔法伤 / 闪避→移速)
+		#      已整条作废: 060 改成 7 秒周期开伞、061 改成 on-hit 破损。
+		#      现在挂闪避钩的是 062 螳螂虾钳(闪避后蓄一发强化普攻)。
+		match str(e["id"]):
+			"p2eq_062": _spirit_sys._eq_mantis_ready(u, _eq_si(int(e.get("star", 1))))
 
 # ============================================================================
 #  on-cast (放主动技后)
@@ -1325,11 +1365,15 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 				pass
 			"p2eq_010":   # 激光长刃: 移到独立计时器 _tick_laser(第二普攻扇形斩); on_cast不处理
 				pass
-			# ══ 批③(2026-08-05) 放技能后的两件药水 ═════════════════════════════
-			#    ★写成一行 `"id": _fn(` —— tooltip_number_audit 靠这个形状把效果函数
-			#      也当成该装备的锚点; 拆成两行 + 行尾注释会让它锚不到(批② 同款约束)。
-			"p2eq_065": _eq_spring_moss(u, si)
-			"p2eq_066": _eq_surge_brew(u, si)
+			# ★065/066 已由用户整条重做(2026-08-05 §0.5): 065 改成"每次普攻叠攻速 + 5 龟能"、
+			#   066 改成"本路第 11 秒喝药变身", 两件都不再挂 on-cast。别把旧效果加回来。
+			# ══ 灵物(2026-08-05 用户逐件重做·§0.5 定稿) ═══════════════════════
+			#    063 白鲸气环第①段: 放技能后 +30/60/100% 攻速, 持续【本次消耗龟能 ×0.03】秒
+			"p2eq_063": _spirit_sys._eq_whale_haste(u, si)
+			# ══ 弓箭(2026-08-05 用户逐件重做·§0.5 定稿) ══════════════════
+			#    076 连发弩机主动: 放完技能起一轮连射, 发数 = 本次技能消耗龟能 ÷ 5。
+			#    ★消耗查 `battle._skill_cost(u, stype)`, 不在任何地方抄一份消耗表。
+			"p2eq_076": _bow_sys.on_cast_076(u, si)
 	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
 	                           #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
 
@@ -1404,31 +1448,17 @@ func _eq_sniper(u: Dictionary, si: int, depth: int) -> void:
 func _eq_on_kill(killer: Dictionary, victim: Dictionary) -> void:
 	for e in killer.get("equips", []):
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
+		if battle._stress: battle._dbg_op = "eqkill:%s:%d:%d" % [iid, si, 1 if victim.get("alive", false) else 0]   # 卡死猎手: 定位是哪件装备on-kill卡住(同 _eq_on_cast)
 		match iid:
 			"p2eq_004":   # 暴君之牙: 处决后回20龟能 (无龟能单位改回40血)
 				if battle._has_energy_system(killer):
 					_eq_grant_energy(killer, 20.0)
 				else:
 					battle._damage._heal(killer, 40.0)
-			# ══ 批②(2026-08-05) 击杀类新装备 ═════════════════════════════════
-			# 药水
-			"p2eq_068":   # 万灵龟血(药水·5费): 击杀任意敌 → 永久 +4/7/12 攻击力(本场累积, 上限 +60/110/180); 杀的是【猎物】则双倍
-				# ★调用点在 `_kill` 里、【在 `_potion_syn.on_death` 之前】—— 那一句会把猎物槽清空,
-				#   所以"死的这只是不是猎物"必须在这里问, 换个顺序就永远问不到了。
-				# ★写 `base_atk` 不写 `atk`: `atk` 每次 `_recalc_stats` 都由 base_atk 重算, 写它等于白写。
-				var stt68: Dictionary = killer["eq_state"].get(iid, {})
-				var acc68: float = float(stt68.get("elixir_total", 0.0))
-				var cap68: float = [60.0, 110.0, 180.0][si]
-				if acc68 < cap68:
-					var add68: float = [4.0, 7.0, 12.0][si]
-					if victim is Dictionary and battle._potion_syn.is_prey_of(str(killer.get("side", "")), victim):
-						add68 *= 2.0
-					add68 = minf(add68, cap68 - acc68)
-					killer["base_atk"] = float(killer.get("base_atk", 0.0)) + add68
-					stt68["elixir_total"] = acc68 + add68
-					killer["eq_state"][iid] = stt68
-					battle._recalc_stats(killer)
-					battle._vfx._float_text(killer["pos"] + Vector2(0, -72), "+%d 攻" % int(round(add68)), Color("#ff8aa0"))
+			# ★068 已由用户整条重做成【深海气压罐】(2026-08-05 §0.5): 旧的"击杀永久+攻"
+			#   是全表用滥的模板(远古之力/战利品/旧092 同形状), 用户点名作废。
+			#   新效果落在【受伤充能 + 每 12 秒释放】上, on-kill 不再有它。
+			#   ⚠ 这里原来有一个 `var victim` 的唯一使用点; 参数保留是因为 004 之外将来还会用到。
 
 # ============================================================================
 #  on-death (阵亡者视角) — 复活海螺 / 黄铜齿轮 (+ 左轮052 敌亡补弹)
@@ -1462,6 +1492,13 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 						worm["worm_split"] = true
 			"p2eq_035":   # 黄铜齿轮: 死亡不销毁不结算(产币走 _tick_gear 每6秒实时到账, 与死亡无关)
 				pass
+			# 067 毒药瓶: 携带者阵亡 → 立刻撤掉它挂在中毒者身上的【护盾强度减半】。
+			# ★必须有: shield_amp 不像 heal_reduce_until 自带到期, 写进去没人撤就是永久减半。
+			"p2eq_067": _potion_sys._eq_vial_cleanse(u)
+			# 072 铁皮蛋糕盒: 携带者阵亡 → 分裂出【两个】蛋糕礼盒(20/40/100% 携带者最大生命)。
+			# ★分裂盒自己也带着 p2eq_072 条目(为的是吃到每帧 _eq_tick), 所以它们死了也会走到这里 ——
+			#   `_eq_cake_split` 头一行就用 `_cake_is_box` 挡住, 链条到此终止, 不会无限分裂。
+			"p2eq_072": _food_sys._eq_cake_split(u, si, int(e.get("star", 1)))
 	# 左轮052: 任何敌人阵亡 → 对方(u的敌方)持左轮的存活单位 +1发子弹 (上限6)
 	for o in battle._units:
 		if o["alive"] and battle._eff_side(o) != battle._eff_side(u):
@@ -1470,8 +1507,9 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 					var rst: Dictionary = o["eq_state"].get("p2eq_052", {})
 					rst["revolver_bullets"] = mini(6, int(rst.get("revolver_bullets", 0)) + 1)
 					o["eq_state"]["p2eq_052"] = rst
-	# 批③ 064 深渊招魂螺: 【全队监听】友方阵亡 → 该方每个活着的 064 携带者各额外召一只亡魂
-	_eq_abyss_conch_on_death(u)
+	# ★这里原来是「064 深渊招魂螺: 友方阵亡 → 额外召一只亡魂」。2026-08-05 用户把 064
+	#   整条重做成【溺者的浮囊】(残血幽灵护盾 + 破盾诅咒爆炸), 新设计里**没有亡魂** ——
+	#   用户原话「064 亡魂立绘到时候再重做」那条待办也随之作废。效果本体见 eq_spirit_batch.gd。
 	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
 	                           #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
 
@@ -1544,11 +1582,28 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 	if _fr_now != _sig_tick_fr:
 		_sig_tick_fr = _fr_now
 		_sigwave.tick(delta)
+		_bow_sys.tick(delta)   # 弓箭 4 件: 箭雨/连射的在途表 + 演出层 —— 同样是【全局】的, 跟弧形波共用这个帧号闸
 	# 批③ 084 血牙巨剑: 每帧看一眼"是不是跌破 50% 血"→ 开关那两条常驻 buff。
 	# ★守卫是【常驻字段】而不是遍历 equips ⇒ 不带 084 的单位这里只多一次 dict.get。
 	#   放在 EQ_TICK 计时闸【之前】: 残血加攻不能等 2.5 秒才生效。
 	if float(u.get("_fang_pct", 0.0)) > 0.0:
 		_eq_fang_refresh(u)
+	# 灵物 060 磷光水母伞(7 秒/2.5 秒两相自管计时) + 064 溺者的浮囊(首次跌破 35% 血线)
+	# + 这两件的演出推进。同样放在 EQ_TICK 闸【之前】—— 相位切换与血线判定都要每帧精度。
+	# ★守卫在 tick_unit 内部, 是两个常驻字段(_parasol_si / _bladder_si), 不遍历 equips。
+	_spirit_sys.tick_unit(u, delta)
+	# 药水 066(本路第 11 秒喝药 + 免疫维持 + 过冲回稳的体型曲线) / 068(充能条 + 激光泄放 +
+	# 每 12 秒释放) / 065 油膜光晕 / 067 中毒场。同样在 EQ_TICK 闸【之前】——
+	# 「第 11 秒」「每 12 秒」要秒级精度, 2.5 秒的节拍会把触发时刻甩出去 2 秒多。
+	# ★守卫是常驻字段 `_potion_tick`(EquipStatsApply 写), 不遍历 equips。
+	if bool(u.get("_potion_tick", false)):
+		_potion_sys.tick_unit(u, delta)
+	# 食物 069(三块糖糕的 80/55/30% 血线 + 两条并存的每秒回血) / 070(灰条逐帧差分 + 每秒 5% 转回
+	# + 随最大生命实时变的攻速) / 071(累计损失 50% 补盾) / 072(嘲讽刷新 + 按锁定人数实时算双抗)。
+	# 同样在 EQ_TICK 闸【之前】—— 血线与"实时双抗"都要每帧精度, 2.5 秒的节拍会把它们变成一卡一卡的。
+	# ★守卫是常驻字段 `_food_eq`(EquipStatsApply 写 / 分裂礼盒自己写), 不遍历 equips。
+	if bool(u.get("_food_eq", false)):
+		_food_sys.tick_unit(u, delta)
 	u["eq_timer"] = u.get("eq_timer", 0.0) + delta
 	if u["eq_timer"] < battle.EQ_TICK:
 		return
@@ -1658,66 +1713,13 @@ func _eq_dragon_breath(u: Dictionary, si: int) -> void:
 #    能在【该装备的效果函数体内】找到同样的数组, 提到文件顶部会被判"远处命中"。
 # ═══════════════════════════════════════════════════════════════════════════
 
-## 062 雾行海葵(灵物·2费): 每 2.5 秒, 若 3 秒内未受伤 → +1 层【雾隐】(最多 3 层),
-## 每层 +4/6/9% 闪避; 受伤清空。
-## ★"有没有受伤"用 `_st_taken`(伤害统计的累计承受量, 两条伤害路径都在记) 做快照差分 ——
-##   不另起一个"最后受伤时刻"字段: 那要挂进中央伤害管线的【两条】路径(CLAUDE.md §3.3),
-##   漏一条就变成"某类伤害不算受伤"。差分的代价是判定粒度 = 一个 tick(2.5 秒),
-##   所以实际是"连续两个 tick 都没挨打"才开始叠 —— 比文案的 3 秒更保守, 不会多给。
-## ★闪避写进 `buffs`(唯一写入点, `_recalc_stats` 从这里求和并钳 DODGE_CAP);
-##   层数变了就补一个【差量】buff, 不重复 append 同一份。
-func _eq_mist_anemone(u: Dictionary, si: int, stt: Dictionary) -> void:
-	if not u.get("alive", false): return
-	var per: float = [0.04, 0.06, 0.09][si]        # 每层闪避 4/6/9%
-	var taken: int = int(u.get("_st_taken", 0))
-	var layers: int = int(stt.get("mist_layers", 0))
-	if taken > int(stt.get("mist_taken", 0)):
-		stt["mist_taken"] = taken
-		layers = 0                                  # 受伤 → 清空
-	elif layers < 3:
-		layers += 1
-	stt["mist_layers"] = layers
-	var want: float = per * float(layers)
-	var given: float = float(stt.get("mist_given", 0.0))
-	if absf(want - given) > 0.0001:
-		battle._damage._buff(u, "dodge", want - given, false, 99999.0)
-		stt["mist_given"] = want
-		if layers > 0:
-			battle._skill_ring(u["pos"], Color(0.72, 0.82, 0.95, 0.45), 40.0)
-	u["eq_state"]["p2eq_062"] = stt
-
-
-## 069 珊瑚糖糕(食物·3费): 每 2.5 秒回复 2/3.5/5% 已损失生命。
-func _eq_coral_cake(u: Dictionary, si: int) -> void:
-	if not u.get("alive", false): return
-	var pct: float = [0.02, 0.035, 0.05][si]
-	var lost: float = maxf(0.0, float(u["maxHp"]) - float(u["hp"]))
-	if lost < 1.0: return
-	battle._damage._heal(u, lost * pct)
-
-
-## 070 深海龟粮砖(食物·4费): 每 2.5 秒永久 +10/18/30 最大生命(本场累积, 无上限)。
-## ★装备的 hp 数值【已是最终值】, 不乘 HP_MULT(CLAUDE.md §3.1)。
-func _eq_ration_brick(u: Dictionary, si: int, stt: Dictionary) -> void:
-	if not u.get("alive", false): return
-	var add: float = [10.0, 18.0, 30.0][si]
-	u["maxHp"] = float(u["maxHp"]) + add
-	u["hp"] = float(u["hp"]) + add
-	stt["ration_total"] = float(stt.get("ration_total", 0.0)) + add
-	u["eq_state"]["p2eq_070"] = stt
-	battle._recalc_stats(u)
-
-
-## 072 百年龟苓宴(食物·5费): 本体每 2.5 秒为【全队】回复 1/1.5/2.5% 已损失生命。
-## (开战时给全队 +60/110/180 最大生命的那一半在 EquipStatsApply.apply_feast_hp —— 那是开战一次性,
-##  不是周期效果; 两半分开写, 免得"开战送血"跟着周期跳一遍。)
-func _eq_feast_pulse(u: Dictionary, si: int) -> void:
-	if not u.get("alive", false): return
-	var pct: float = [0.01, 0.015, 0.025][si]
-	for o in battle._targeting._allies_of(u):
-		var lost: float = maxf(0.0, float(o["maxHp"]) - float(o["hp"]))
-		if lost >= 1.0:
-			battle._damage._heal(o, lost * pct)
+## ★食物 069/070/072 的旧周期效果(_eq_coral_cake / _eq_ration_brick / _eq_feast_pulse)
+##   已于 2026-08-05 随用户逐件重做【整条删除】, 不是搬走:
+##     · 069 旧「每 2.5 秒回已损失生命」→ 新【三块糖糕】(80/55/30% 三道阈值线)
+##     · 070 旧「每 2.5 秒永久 +最大生命」→ 新【on-hit + 250 码溅射 + 灰色血条】
+##     · 072 旧「开战送血 + 全队回已损」→ 新【变身蛋糕礼盒】
+##   新的效果本体全在 scripts/systems/equip/eq_food_batch.gd, 走每帧 `_eq_tick` 的
+##   常驻字段守卫 `_food_eq`(不是周期分发) ⇒ 它们也从 EQ_IV_BATCH1 里摘掉了。
 
 
 ## 077 铜管手铳(枪·1费): 每 8 秒射出一轮 2/3/4 发小弹, 每发 12/20/32 物理伤害。
@@ -1875,19 +1877,9 @@ func _eq_ancient_scute(u: Dictionary, si: int, stt: Dictionary) -> void:
 	battle._recalc_stats(u)
 
 
-## 092 沉船罗盘(遗物·2费): 每 2.5 秒永久 +1/2/3 攻击力(本场累积, 上限 +30/60/100)。
-## ★写 `base_atk` 不写 `atk` —— `atk` 每次 `_recalc_stats` 都由 base_atk 重算, 写它等于白写。
-func _eq_wreck_compass(u: Dictionary, si: int, stt: Dictionary) -> void:
-	if not u.get("alive", false): return
-	var add: float = [1.0, 2.0, 3.0][si]
-	var cap: float = [30.0, 60.0, 100.0][si]
-	var acc: float = float(stt.get("compass_total", 0.0))
-	if acc >= cap: return
-	add = minf(add, cap - acc)
-	u["base_atk"] = float(u.get("base_atk", 0.0)) + add
-	stt["compass_total"] = acc + add
-	u["eq_state"]["p2eq_092"] = stt
-	battle._recalc_stats(u)
+## ★092 旧【沉船罗盘】(每 2.5 秒永久 +攻击力)的 `_eq_wreck_compass` 在 2026-08-05 整条删掉 ——
+##   用户把 092 重做成【剧毒飞行物】(常驻召唤体 + 毒雾场 + 剧毒缓速叠层, 见 eq_venom_drone.gd)。
+##   删而不留: 留着就是零调用者的死函数, 而 deadcode_audit 抓不到"只被自己的注释提到"的那种。
 
 
 ## 094 觉醒之核(遗物·4费): 【本路】开打满 15/12/10 秒后, 本体 +8/14/22% 增伤(一次性)。
@@ -1938,12 +1930,19 @@ func fire_equip_effect(u: Dictionary, iid: String, star: int, stt = null) -> voi
 		# ── 批①(2026-08-04) 周期类新装备 · 按类型分组 ────────────────────────
 		#    ★不拆成多个分发函数(方案书 R3): 抽出 fire_equip_effect 本来就是为了
 		#      "周期到点"与"法器法力满"走同一条路; 再拆一遍等于把它抽掉的问题请回来。
-		# 灵物
-		"p2eq_062": _eq_mist_anemone(u, si, stt)
-		# 食物
-		"p2eq_069": _eq_coral_cake(u, si)
-		"p2eq_070": _eq_ration_brick(u, si, stt)
-		"p2eq_072": _eq_feast_pulse(u, si)
+		# 灵物: 2026-08-05 用户逐件重做后, 060~064 五件【一件都不是周期类】——
+		#   060 走自管两相计时(_spirit_sys.tick_unit), 061/062/063 走 on-hit/on-dodge/on-cast,
+		#   064 走血线 + SpecialBalance。所以这里现在一条灵物分支都没有, 这是对的。
+		# 食物: 2026-08-05 用户逐件重做后, 069~072 四件【一件都不是周期类】——
+		#   069 走三道血量阈值线, 070 走 on-hit + 每帧灰条, 071 走开局/损失阈值 + SpecialBalance,
+		#   072 走变身。全部在 _food_sys(eq_food_batch.gd) 的每帧 tick_unit 里,
+		#   所以这里现在一条食物分支都没有, 这是对的。
+		# 药水(2026-08-05 用户逐件重做): 067 毒药瓶每 6 秒投一个瓶子
+		"p2eq_067": _potion_sys._eq_poison_vial(u, si)
+		# 弓箭(2026-08-05 用户逐件重做·§0.5 定稿) —— 效果本体在 eq_bow_batch.gd
+		#   只有 075 在这里: 每 6 秒一轮箭雨(落点取敌人最密集处)。
+		#   073(攻速 buff 到期) 与 076(0.25 秒逐发连射) 走 EqBowBatch.tick() 每帧推进, 不占周期口。
+		"p2eq_075": _bow_sys.rain_start(u, si)
 		# 枪(固定 8 秒 · 不吃攻速)
 		"p2eq_077": _eq_derringer_volley(u, si)
 		"p2eq_079": _eq_armory_burst(u, si)
@@ -1958,7 +1957,8 @@ func fire_equip_effect(u: Dictionary, iid: String, star: int, stt = null) -> voi
 		"p2eq_090": _eq_tide_codex(u, si)
 		# 遗物
 		"p2eq_091": _eq_ancient_scute(u, si, stt)
-		"p2eq_092": _eq_wreck_compass(u, si, stt)
+		# ★092【剧毒飞行物】没有分支 —— 它不是"周期到点触发一次"的形状(0.25 秒节拍 + 每帧飞行),
+		#   驱动挂在 RelicSynergySystem.tick() → _venom.tick(delta)。见 eq_venom_drone.gd 文件头。
 		"p2eq_094": _eq_awaken_core(u, si, stt)
 
 
@@ -1971,58 +1971,19 @@ func fire_equip_effect(u: Dictionary, iid: String, star: int, stt = null) -> voi
 #    能在【该装备分派到的效果函数体内】找到同样的数组, 提到文件顶部会被判"远处命中"。
 # ═══════════════════════════════════════════════════════════════════════════
 
-## 067 猎人的酒囊(药水·4费): 攻击【猎物】时, 额外造成本次伤害 10/16/25% 的真实伤害。
-## ★"猎物"是药水羁绊(PotionSynergySystem)打的标记 ⇒ 没有药水羁绊时场上根本没有猎物,
-##   这件就只剩属性。这是方案书 §2.2 设计的直接后果, 已在交付报告里列为待拍板项。
-func _eq_hunter_flask(src: Dictionary, tgt: Dictionary, dmg: int, si: int) -> void:
-	if not battle._potion_syn.is_prey_of(str(src.get("side", "")), tgt):
-		return
-	_eq_bonus_hit(src, tgt, float(dmg) * [0.10, 0.16, 0.25][si], Color("#ffd08a"))
+## ★这里原来是 `_eq_hunter_flask`(067 猎人的酒囊·打猎物额外真伤)。2026-08-05 用户把 067
+##   整条重做成【毒药瓶】, 效果本体搬到 eq_potion_batch.gd。**函数整体删除**而不是留个空壳 ——
+##   零调用者的死函数会被"断言函数存在"这类门禁保护住, 还可能被 VFXPREVIEW 指过去当成
+##   有效目视验证(memory [[fb-verify-must-run-the-real-path]] 那次就栽在这个形状上)。
 
 
-## 073 藤蔓短弓(弓箭·1费): 命中生命高于 70% 的目标 → 本次伤害 +8/14/22%。
-## ★判的是【这一击落下之后】的血量(on-hit 在扣血之后才调) —— 取保守的一侧:
-##   按扣血前判会让"刚好把目标打到 70% 线以下"的那一击也吃加成, 触发次数更多。
-func _eq_vine_bow(src: Dictionary, tgt: Dictionary, dmg: int, si: int) -> void:
-	if float(tgt.get("maxHp", 0.0)) <= 0.0:
-		return
-	if float(tgt["hp"]) <= float(tgt["maxHp"]) * 0.70:
-		return
-	_eq_bonus_hit(src, tgt, float(dmg) * [0.08, 0.14, 0.22][si], Color("#a8e063"))
-
-
-## 074 骨簇箭袋(弓箭·1费): 暴击时额外造成 10/18/30 真实伤害。
-func _eq_bone_quiver(src: Dictionary, tgt: Dictionary, si: int, was_crit: bool) -> void:
-	if not was_crit:
-		return
-	_eq_bonus_hit(src, tgt, [10.0, 18.0, 30.0][si], Color("#ffffff"))
-
-
-## 075 鹰眼镜片(弓箭·2费): 攻击距离每满 100 码 → 本次伤害 +2/3.5/5%, 最多 +10/18/28%。
-## ★"每 100 码"按【满 100 码才算一档】(floorf): 连续插值在 150 码给 3%, 分档只给 2%,
-##   方案书没写清是哪种, 取更保守的那个。
-func _eq_eagle_lens(src: Dictionary, tgt: Dictionary, dmg: int, si: int) -> void:
-	var step75: float = floorf(float((src["pos"] as Vector2).distance_to(tgt["pos"])) / 100.0)
-	var amp75: float = minf(step75 * [0.02, 0.035, 0.05][si], [0.10, 0.18, 0.28][si])
-	if amp75 <= 0.0:
-		return
-	_eq_bonus_hit(src, tgt, float(dmg) * amp75, Color("#ffd166"))
-
-
-## 076 腐蚀重弩(弓箭·4费): 暴击时为目标额外叠 1/1/2 层【腐蚀】——
-## 复用弓箭羁绊的 `corrode_stacks`(消费点在 BowSynergySystem.vuln_mult / true_share,
-## 两条伤害路径都读它), 仍受 5 层上限。
-## ★用户拍板 U2-B: 带弓箭羁绊时用羁绊档位; 不带羁绊时【按装备星级】当档位。
-func _eq_corroder(src: Dictionary, tgt: Dictionary, si: int, star: int, was_crit: bool) -> void:
-	if not was_crit or not tgt.get("alive", false):
-		return
-	var tier76: int = int(battle._synergy.tier_for(src, "弓箭"))
-	if tier76 <= 0:
-		tier76 = clampi(star, 1, 3)
-	tgt["corrode_stacks"] = mini(BowSynergySystem.CORRODE_MAX, int(tgt.get("corrode_stacks", 0)) + [1, 1, 2][si])
-	# ★取 max 不是直接赋值: 直接赋值会在"1★ 076 + 弓箭 3 档"时把目标身上羁绊打的
-	#   3 档腐蚀【降成 1 档】, 等于自己削自己队伍的腐蚀增伤。
-	tgt["corrode_tier"] = maxi(int(tgt.get("corrode_tier", 0)), tier76)
+## ★073 藤蔓弓弦 / 074 鲸骨胸甲 / 075 测距绳结 / 076 连发弩机 ——
+##   四件已由用户逐件亲手重写(2026-08-05 §0.5 定稿), 效果本体搬到
+##   `scripts/systems/equip/eq_bow_batch.gd`(EqBowBatch), 演出在 `scripts/scenes/battle/bow_eq_vfx.gd`。
+##   原来住在这里的 `_eq_vine_bow` / `_eq_bone_quiver` / `_eq_eagle_lens` / `_eq_corroder`
+##   是 AI 编的旧效果(打健康目标加伤 / 暴击追真伤 / 距离分档加伤 / 暴击喂腐蚀),
+##   已整段删除 —— **不是搬家而是作废**。别把它们加回来: 新效果已占着同一批钩子,
+##   加回来就是两套效果叠着生效。
 
 
 ## 083 潮汐细剑(剑·3费): 连续命中同一目标, 每层使伤害 +4/7/11%(最多 5 层, 换目标清空)。
@@ -2060,7 +2021,18 @@ func _eq_tide_rapier(src: Dictionary, tgt: Dictionary, dmg: int, si: int, stt: D
 #    会被判"远处命中"而要人工白名单。
 # ═══════════════════════════════════════════════════════════════════════════
 
-## 063 幽影墨囊(灵物·3费): 受到【致命】伤害时改为留 1 点血, 并获得 1.5/2/2.5 秒不可选中。
+## ★★2026-08-05 状态: **本函数当前零触发, 是一条【休眠的通用免死通道】。**
+##   原主人 063 幽影墨囊已被用户整条重做成【白鲸气环】(见 eq_spirit_batch.gd),
+##   写 `u["_ink_sac"]` 的那一处(EquipStatsApply._eq_apply_flags)随之删掉 ⇒ 守卫恒不成立。
+##   **函数留着不删**, 理由与 `eq_marked_until` 那条完全一样:
+##     ① 调用点在 battle_damage.gd 的两条伤害路径上(那是主会话的地盘, 本批不许碰),
+##        删函数会让静态类型的 `battle._equip_sys._eq_ink_sac(...)` 直接解析失败;
+##     ② 它是一条**写好且两路都挂对了**的通用"免死"通道 —— 将来哪件装备要免死,
+##        写 `u["_ink_sac"] = true` + `_ink_sac_si` 即可, 不必重新在两条路上各挂一次。
+##   ⚠ 要加新的免死来源就写这两个字段; **别把 063 的旧效果加回来** —— 那件已经是别的东西了。
+##
+## ── 以下是它原来(063 幽影墨囊)的设计说明, 留作这条通道的行为文档 ──
+## 受到【致命】伤害时改为留 1 点血, 并获得 1.5/2/2.5 秒不可选中。
 ##
 ## ★★用户拍板 U6-A: 判定挂在 `_mitigate_incoming` 之后、【扣血之前】——
 ##   而且 **两条伤害路径都要挂**(CLAUDE.md §3.3: `_apply_damage` DoT/真伤 与
@@ -2086,130 +2058,17 @@ func _eq_ink_sac(u: Dictionary, d: float) -> float:
 	return maxf(0.0, float(u["hp"]) - 1.0)
 
 
-## 064 深渊招魂螺(灵物·4费): 友方单位阵亡时, 额外召唤 1 只亡魂(继承阵亡者 20/30/45% 属性)。
-##
-## ★与羁绊【亡灵】叠加 —— 羁绊那只由 `SpiritSynergySystem.on_death` 生成, 这一只是【另加的】。
-## ★三道闸照抄羁绊亡灵(缺一个就无限刷): 龟蛋不召 / 亡魂自己死了不召 / 别的召唤物死了不召。
-##   生出来的亡魂标 `_wraith_loops = 0` ⇒ 它死时羁绊那边算出 -1 直接 return, 不会接力循环。
-## ★"友方阵亡"包含携带者自己吗? —— 调用点在 `_kill` 里, 那时死者 `alive` 已置 false,
-##   而这里只认【活着的】携带者 ⇒ 自己阵亡不给自己召。取保守的一侧。
-func _eq_abyss_conch_on_death(dead: Dictionary) -> void:
-	if dead.get("_isEgg", false) or dead.get("_is_wraith", false):
-		return
-	if str(dead.get("summon_kind", "")) != "":
-		return
-	var side: String = str(dead.get("side", ""))
-	for o in battle._units:
-		if not (o is Dictionary) or not o.get("alive", false):
-			continue
-		if str(o.get("side", "")) != side:
-			continue
-		for e in o.get("equips", []):
-			if not (e is Dictionary) or str((e as Dictionary).get("id", "")) != "p2eq_064":
-				continue
-			var si: int = _eq_si(int((e as Dictionary).get("star", 1)))
-			var inh: float = [0.20, 0.30, 0.45][si]
-			var hp: float = float(dead.get("maxHp", 0.0)) * inh
-			var atk: float = float(dead.get("base_atk", dead.get("atk", 0.0))) * inh
-			if hp < 1.0 or atk < 1.0:
-				continue
-			var w = battle._spawn._spawn_summon(dead, "wraith", hp, atk, {"col_size": 20.0})
-			if w is Dictionary:
-				w["_is_wraith"] = true
-				w["_wraith_loops"] = 0        # 0 ⇒ 它死时羁绊那边 loops-1 <0 → 不再接力
-				w["_wraith_inherit"] = inh
-				w["_conch_wraith"] = true     # 同步触发证据(门禁数它, 不等任何演出)
-				w["pos"] = Vector2(dead["pos"])
-				battle._skill_ring(Vector2(dead["pos"]), Color(0.55, 0.42, 0.85, 0.6), 52.0)
+## ★这里原来是 `_eq_spring_moss`(065 涌泉苔药剂·放技能回已损血) 与 `_eq_surge_brew`
+##   (066 狂潮浓缩液·放技能减下一次冷却) 两个函数 + 常量 SURGE_ICD。
+##   2026-08-05 用户把 065/066 整条重做成【鲨肝油】与【鲸涎浓浆】, 效果本体搬到
+##   eq_potion_batch.gd。**整体删除**而不是留空壳, 理由同上面 067 那段。
 
 
-## 065 涌泉苔药剂(药水·3费): 放技能后回复 6/10/16% 已损失生命。
-func _eq_spring_moss(u: Dictionary, si: int) -> void:
-	if not u.get("alive", false):
-		return
-	var pct: float = [0.06, 0.10, 0.16][si]
-	var lost: float = maxf(0.0, float(u["maxHp"]) - float(u["hp"]))
-	if lost < 1.0:
-		return
-	battle._damage._heal(u, lost * pct)
-	battle._skill_ring(u["pos"], Color(0.42, 0.95, 0.72, 0.5), 44.0)
-
-
-## 066 狂潮浓缩液(药水·4费): 放技能后, 下一次技能的冷却减少 18/28/40%(4 秒内置冷却)。
-##
-## ★"下一次技能" = 【当前剩余冷却最短的那一技】。理由有两条:
-##   ① 语义: 剩得最少的那个就是你接下来会放的那个;
-##   ② 保守: 只削一技而不是全技, 且削的是绝对值最小的那份。
-##   (刚放完的这一技冷却已被调用点重置成满格, 所以它几乎不会是最短的那个。)
-## ★内置冷却存绝对时刻。`battle._t` 跨路累加不影响"不早于某时刻"这种判断,
-##   且 eq_state 本身就是按路重建的。
-const SURGE_ICD := 4.0
-
-func _eq_surge_brew(u: Dictionary, si: int) -> void:
-	if not u.get("alive", false):
-		return
-	var stt: Dictionary = u["eq_state"].get("p2eq_066", {})
-	if battle._t < float(stt.get("surge_ready_t", 0.0)):
-		return
-	var cds: Dictionary = u.get("skill_cd", {})
-	if cds.is_empty():
-		return
-	var best := ""
-	var bv := INF
-	for k in cds:
-		if float(cds[k]) < bv:
-			bv = float(cds[k]); best = str(k)
-	if best == "" or bv <= 0.0:
-		return
-	cds[best] = bv * (1.0 - [0.18, 0.28, 0.40][si])
-	stt["surge_ready_t"] = battle._t + SURGE_ICD
-	u["eq_state"]["p2eq_066"] = stt
-	battle._vfx._float_text(u["pos"] + Vector2(0, -66), "冷却-%d%%" % int(round([18.0, 28.0, 40.0][si])), Color(0.55, 0.85, 1.0))
-
-
-## 071 暖流海带汤(食物·4费): 本体受到治疗时, 把治疗量的 25/40/60% 分给【当前血量最低的友军】。
-##
-## ★★这是【新钩子②】—— 挂 `battle_damage._heal` 的唯一入口, 用【实际回血量】(_act)算,
-##   不是请求量: 满血时请求 100 实回 0, 拿请求量算就是凭空造治疗。
-## ★"分给" 取【额外给】的口径, 本体的回血不减 —— 方案书 §2.3 写这件的目的是
-##   "把治疗强度这条属性变成团队价值", 自扣的话它就只是把自己的治疗挪走, 没有增量。
-##   (这一条方案书没写死, 已列进待拍板。)
-## ★"血量最低" 取【百分比最低】(与狙击长管 057 选靶同口径), 且【不含自己】——
-##   含自己的话本体残血时这件就退化成"自己再回一次"。
-## ★必须有重入守卫: 分出去的那一发也走 `_heal`, 对面若也带 071 就是无限互喂。
-##   (同 `_holy_convert` 的 `_holy_busy`。)
-var _kelp_busy := false
-
-func _eq_kelp_share(u: Dictionary, healed: float) -> void:
-	if _kelp_busy or healed <= 0.0:
-		return
-	var amt: float = healed * float(u.get("_kelp_share", 0.0))
-	if amt < 1.0:
-		return
-	var low = null
-	var lv := INF
-	for o in battle._targeting._allies_of(u, false):
-		if not o.get("alive", false) or float(o.get("maxHp", 0.0)) <= 0.0:
-			continue
-		var f: float = float(o["hp"]) / float(o["maxHp"])
-		if f < lv:
-			lv = f; low = o
-	if low == null:
-		return
-	_kelp_busy = true
-	battle._damage._heal(low, amt)
-	_kelp_busy = false
-	u["_kelp_shared"] = float(u.get("_kelp_shared", 0.0)) + amt   # 同步触发证据(门禁读它)
-	battle._skill_ring(low["pos"], Color(1.0, 0.78, 0.45, 0.5), 40.0)
-
-
-## 082 砗磲护心甲(盾·2费): 本体【护盾存在时】受到的伤害额外减少 8/14/22%。
-##
-## ★常驻修正, 值由 `EquipStatsApply._eq_apply_flags` 写进 `_clam_dr`(换路重建单位会重写)。
-## ★挂在两条伤害路径【调完 `_mitigate_incoming` 的紧后面】而不是塞进那个函数本体 ——
-##   那个函数住在 RealtimeBattle3DScene(上帝文件, arch_budget 冻结)。两条路各调它一次,
-##   所以"紧后面"与"在里面"覆盖面完全相同; 差别只是它落在 flat_dr(铁壁盾 016 的减法)之后。
-## ★多件同带取【较大的那个】不是相加: 相加时 3 件 3★ = -66%, 那是另一个量级。
+## (2026-08-06 删除 `_eq_kelp_share`) —— 071 已被用户整条重做成【炼乳罐】,
+## 该函数自那时起【零写入者、零调用者】。实装那路如实报了这条死码但不敢删
+## (调用点在 battle_damage.gd, 归主会话), 现已两边一起收掉。
+## ★为什么要删而不是留着: 零调用者的死函数会被"断言函数存在"这类门禁保护住,
+##   看起来一切正常, 实际那条路早就走不到了 —— 本项目栽过这个跟头。
 func _eq_clam_mitigate(u: Dictionary, d: float) -> float:
 	return d * (1.0 - float(u.get("_clam_dr", 0.0)))
 

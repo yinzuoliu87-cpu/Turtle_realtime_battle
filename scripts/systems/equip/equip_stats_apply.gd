@@ -13,39 +13,13 @@ func _eq_apply_all_stats() -> void:
 	for u in battle._units:
 		for e in u.get("equips", []):
 			_eq_apply_one_stats(u, str(e["id"]), int(e.get("star", 1)))
-	_apply_feast_hp()
 	_apply_altar_egg_hp()
 
 
-## 072 百年龟苓宴(食物·5费) 的【开战一次性】那一半: 给携带者的全队 +60/110/180 最大生命。
-## (它的另一半"每 2.5 秒为全队回已损失生命"是周期效果, 在 EquipSystem._eq_feast_pulse。)
-##
-## ★放在 `_eq_apply_all_stats` 的【末尾】而不是 `_eq_apply_flags` 里 —— 这一条给的是"全队",
-##   而 flags 是逐单位跑的: 轮到第一只龟时后面的龟还没拿到自己的装备属性,
-##   那一刻的"全队"是个半成品。等全部单件属性落地再统一加, 才是文案说的"开战时给全队"。
-## ★"只给一次"的标记放在【携带者自己的 eq_state】上, 不是一个全局 bool ——
-##   两只龟各带一件应该各给一次。换路会整体重建单位 ⇒ eq_state 是空的 ⇒ 新的一路重新给,
-##   这正好等于"每一路开战时给一次"。
-func _apply_feast_hp() -> void:
-	for u in battle._units:
-		if not (u is Dictionary):
-			continue
-		if not (u.get("eq_state", null) is Dictionary):
-			continue
-		for e in u.get("equips", []):
-			if not (e is Dictionary) or str((e as Dictionary).get("id", "")) != "p2eq_072":
-				continue
-			var stt: Dictionary = u["eq_state"].get("p2eq_072", {})
-			if bool(stt.get("feast_given", false)):
-				continue
-			stt["feast_given"] = true
-			u["eq_state"]["p2eq_072"] = stt
-			var si: int = clampi(int((e as Dictionary).get("star", 1)), 1, 3) - 1
-			var add: float = [60.0, 110.0, 180.0][si]   # 装备 hp 已是最终值, 不乘 HP_MULT(CLAUDE.md §3.1)
-			for o in battle._targeting._allies_of(u):
-				o["maxHp"] = float(o["maxHp"]) + add
-				o["hp"] = float(o["hp"]) + add
-				battle._recalc_stats(o)
+## ★这里原来是 `_apply_feast_hp()` ——「072 百年龟苓宴: 开战给全队 +60/110/180 最大生命」。
+##   2026-08-05 用户把 072 整条重做成【铁皮蛋糕盒】(终极护盾 + 变身礼盒 + 阵亡分裂),
+##   新设计里【没有"开战送血"这一半】⇒ 整段删掉, 不是搬走。
+##   效果本体见 scripts/systems/equip/eq_food_batch.gd 的 §072 段。
 
 
 ## 093 祭坛残石(遗物·2费·批③ 2026-08-05): 本方【龟蛋】额外 +200/400/700 最大生命。
@@ -131,6 +105,8 @@ func apply_stat_dict(u: Dictionary, st: Dictionary, item_id: String) -> void:
 		u["move_perm"] = float(u.get("move_perm", 1.0)) + float(st["_mspdPct"]) / 100.0
 	if st.has("_rangePct"):     # 射程% → range_perm(★新通道; atk_range 被 34 处直接读, 不能就地乘)
 		u["range_perm"] = float(u.get("range_perm", 1.0)) + float(st["_rangePct"]) / 100.0
+	if st.has("_rangeAdd"):     # 射程 flat(码) → range_add(2026-08-05·065 鲨肝油)。同理不能就地写 atk_range
+		u["range_add"] = float(u.get("range_add", 0.0)) + float(st["_rangeAdd"])
 	# ↓ 以下4类原先漏接: 数值表里写了、单位字段也确实被消费, 但从没往里写 → 属性栏骗人(用户2026-07-19发现)
 	# ★★2026-08-02 修【反伤发两次】: p2eq_015 荆棘海胆必须【跳过】这个通用钩。
 	#   它在 equip_system.gd:1104 有【专属分支】自己发反伤(而且要把伤害累计进 thorn_accum
@@ -270,10 +246,33 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 		#      伤害管线每帧跑成百上千次, 遍历 equips 是【所有 95 件装备的公共开销】;
 		#      写成字段后, 不带这几件的单位在管线上只多一次 `dict.get` 且拿到默认值。
 		#    ★换路会整体重建单位字典 → 本函数在每一路的开战管线里重跑 → 字段自动重写(方案书 R5)。
-		"p2eq_063":   # 幽影墨囊: 受到致命伤害时留 1 血 + 不可选中(每路一次) —— 效果本体 EquipSystem._eq_ink_sac
-			u["_ink_sac"] = true
-			u["_ink_sac_si"] = si
-			stt["ink_used"] = false
+		# ══ 灵物 5 件(2026-08-05 用户逐件重做·§0.5 定稿) ══════════════════════
+		#    ★p2eq_063 原来在这里写 `_ink_sac`(幽影墨囊·致命伤留 1 血)。063 已整条重做成
+		#      【白鲸气环】, 那两行随之删掉 ⇒ `_ink_sac` 通道进入休眠(函数留着, 见
+		#      EquipSystem._eq_ink_sac 的头注: 调用点在 battle_damage 两条路上, 删不得)。
+		#    ★下面两件只写【常驻字段】: 消费点是 EqSpiritBatch.tick_unit(每帧, 在
+		#      EquipSystem._eq_tick 的 EQ_TICK 闸之前)。不带这两件的单位每帧只多两次 dict.get。
+		#    ★多件同带取【星级更高的那一件】: 两件 060 各跑一套 7 秒计时会让减伤几乎常驻,
+		#      那是另一个量级 —— 取 max 与 082/084/071 的口径一致。
+		"p2eq_060":   # 磷光水母伞: 每 7 秒开伞 2.5 秒(减伤 + 闪避 + 结束回血), 自管两相计时
+			u["_parasol_si"] = maxi(int(u.get("_parasol_si", -1)), si)
+			stt["pa_t"] = 0.0
+			stt["pa_open"] = false
+			stt["pa_units"] = []
+			stt["pa_dr"] = 0.0
+		"p2eq_062":   # 螳螂虾钳: 闪避蓄一发强化普攻(2 秒 CD 卡触发) —— 效果本体 EqSpiritBatch
+			# ★★这里【必须】把 eq_state 的槽先建出来, 哪怕两个值都是默认值:
+			#   `_eq_on_hit` 的循环是 `var stt = src["eq_state"].get(iid, {})` … 末尾
+			#   `src["eq_state"][iid] = stt`。槽不存在时外层拿到的是一个**新的空字典**,
+			#   而效果函数里写进去的是**另一个**字典 ⇒ 循环末尾那一行会把效果写的东西整个盖掉。
+			#   槽存在时两边拿到的是同一个对象(Godot 的 Dictionary 是引用), 才不会互相覆盖。
+			stt["emp_ready"] = false
+			stt["emp_cd_until"] = 0.0
+		"p2eq_064":   # 溺者的浮囊: 首次跌破 35% 血 → 幽灵护盾(每路一次, eq_state 换路重建)
+			u["_bladder_si"] = maxi(int(u.get("_bladder_si", -1)), si)
+			stt["ghost_fired"] = false
+			stt["ghost_res"] = 0.0
+			stt["ghost_vfx"] = null
 		"p2eq_082":   # 砗磲护心甲: 护盾存在时额外减伤 8/14/22%
 			# ★多件同带取【较大值】不是相加: 相加时 3 件 3★ = -66%, 那是另一个量级。
 			u["_clam_dr"] = maxf(float(u.get("_clam_dr", 0.0)), [0.08, 0.14, 0.22][si])
@@ -281,8 +280,17 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 			u["_fang_pct"] = maxf(float(u.get("_fang_pct", 0.0)), [0.12, 0.20, 0.32][si])
 			u["_fang_ls"] = maxf(float(u.get("_fang_ls", 0.0)), [0.06, 0.10, 0.16][si])
 			u["_fang_on"] = false      # 重建后从"没开"起算, 下一帧 _eq_fang_refresh 会按真实血量补上
-		"p2eq_071":   # 暖流海带汤: 受到治疗时把 25/40/60% 分给血量最低的友军
-			u["_kelp_share"] = maxf(float(u.get("_kelp_share", 0.0)), [0.25, 0.40, 0.60][si])
+		# ══ 食物 4 件(2026-08-05 用户逐件重做·§0.5 定稿) ══════════════════════
+		#    效果本体全在 scripts/systems/equip/eq_food_batch.gd。这里只立【一个常驻守卫字段】,
+		#    让每帧的 `EquipSystem._eq_tick` 认得出"这只龟身上有食物件"而不必遍历 equips
+		#    (伤害/tick 是全 95 件装备的公共热路径, 不带这四件的单位只多一次 dict.get)。
+		#    ★换路会整体重建单位 ⇒ 本函数在每一路的开战管线里重跑 ⇒ 字段自动重写(每路重置)。
+		#    ★★071 这里原来是「暖流海带汤: 受到治疗时把 25/40/60% 分给血量最低的友军」——
+		#      用户已把它整条重做成【炼乳罐】(全队奶油护盾 + 破盾 AOE + 整路 buff), 旧效果作废。
+		#      ⚠ 诚实记录: `battle_damage.gd:465` 那个 `_kelp_share > 0` 的调用点仍在
+		#      (那个文件归主会话), 但 `_kelp_share` 从此【零写入】⇒ 那条守卫恒不成立、永不进入。
+		"p2eq_069", "p2eq_070", "p2eq_071", "p2eq_072":
+			u["_food_eq"] = true
 		"p2eq_085", "p2eq_086":   # 铜齿护符 / 极地反冲装置: 受到法术伤害时的反应(掷骰充能 / 减速+反弹)
 			u["_b3_gadget"] = true
 		"p2eq_094":   # 觉醒之核: 预置【本路】开打时刻
@@ -302,4 +310,27 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 			stt["egg_cap"] = [3, 4, 5][si]
 			stt["heal_ps"] = [5.0, 7.0, 10.0][si]   # 携带者每秒回血(用户 2026-08-01 新效果)
 			u["has_egg"] = true
+		# ══ 药水四件(2026-08-05 用户逐件重做·§0.5 定稿) ═══════════════════
+		#    效果本体在 scripts/systems/equip/eq_potion_batch.gd。这里只做两件事:
+		#    ① 点亮每帧守卫 `_potion_tick`(EquipSystem._eq_tick 靠它决定要不要调 tick_unit,
+		#       不带这四件的单位只多一次 dict.get);
+		#    ② 预置【本路】的起算时刻 —— 066「第 11 秒」/ 068「第 12 秒」都是
+		#       CLAUDE.md §3.4 那颗地雷: battle._t 跨上路/下路/决胜累加、永不重置,
+		#       直接判 `_t >= 11` 会让**下路一开场就触发**。本函数跑在【每一路的开战管线】里,
+		#       所以它记的正好是"本路开打"(同 094 觉醒之核)。
+		"p2eq_065":   # 鲨肝油: 每次普攻叠攻速(不设上限·换路重置=单位重建天然带来的)
+			u["_potion_tick"] = true
+			stt["oil_stacks"] = 0
+		"p2eq_066":   # 鲸涎浓浆: 本路第 11 秒喝药 → 免疫控制 + 十项属性 + 体型 +40%
+			u["_potion_tick"] = true
+			stt["brew_t0"] = battle._t
+			stt["brew_done"] = false
+		"p2eq_067":   # 毒药瓶: 每 6 秒投瓶(周期表) + 中毒者治疗/护盾减半(每帧)
+			u["_potion_tick"] = true
+			stt["vial_thrown"] = 0
+		"p2eq_068":   # 深海气压罐: 受伤充能, 本路第 12 秒起每 12 秒释放法力护盾 + 法力激光
+			u["_potion_tick"] = true
+			stt["can_t0"] = battle._t
+			stt["can_charge"] = 0.0
+			stt["can_fired"] = 0
 	u["eq_state"][item_id] = stt

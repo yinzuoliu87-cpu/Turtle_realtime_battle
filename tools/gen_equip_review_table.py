@@ -79,11 +79,24 @@ def main():
         if len(parts) < 8:
             out.append(L)
             continue
+        # ★★2026-08-05 补【名称】与【费用】两列 —— 它们原来【不同步】, 上面那段注释写的
+        #   "名称/费用是人维护的分档口径, json 里没有" **是错的**: json 里就有 name / cost。
+        #   后果实测: 用户 2026-08-05 逐件重做时改了一批名字(游魂贝铃→钻孔螺、雾行海葵→
+        #   螳螂虾钳、幽影墨囊→白鲸气环、深渊招魂螺→溺者的浮囊…), 表里仍是旧名,
+        #   而这张表开头自称"由 phase2-equipment.json 直接生成、当前权威状态" ⇒ 它在说谎。
+        #   ⚠ data_integrity 的逐行对账只比【属性】【效果】两列, 抓不到名字漂 ——
+        #     所以这不是"审计器会兜住"的漏, 是真的会一直烂下去
+        #     (memory fb-self-claiming-authority-docs-rot: 自称"由X生成"的文档一定已经烂了)。
+        new_name = ' %s ' % str(it.get('name', '')).strip()
+        new_cost = ' %d ' % int(it.get('cost', 1))
         new_type = ' %s ' % str(types.get(eid, '?')).strip()
         new_stats = ' %s ' % str(it.get('baseStats1', '')).strip()
         new_eff = ' %s ' % str(it.get('effectDesc1', '')).strip()
-        if parts[5] != new_type or parts[6] != new_stats or parts[7] != new_eff:
+        if (parts[3] != new_name or parts[4] != new_cost or parts[5] != new_type
+                or parts[6] != new_stats or parts[7] != new_eff):
             changed.append(eid)
+            parts[3] = new_name
+            parts[4] = new_cost
             parts[5] = new_type
             parts[6] = new_stats
             parts[7] = new_eff

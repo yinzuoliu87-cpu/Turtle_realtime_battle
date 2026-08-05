@@ -109,14 +109,13 @@ func _ready() -> void:
 	_s._sd_stacks = 0        # 决胜增伤会给【所有】伤害再乘一次, 关掉才量得准
 
 	_t_dispatch()
-	_t060_jelly_parasol()
-	_t061_wraith_bell()
-	_t067_hunter_flask()
-	_t068_elixir()
-	_t073_vine_bow()
-	_t074_bone_quiver()
-	_t075_eagle_lens()
-	_t076_corroder()
+	# ★067/068 两件已由用户整条重写(2026-08-05 §0.5): 067 猎人的酒囊→毒药瓶(周期投瓶 +
+	#   普攻叠中毒 + 中毒者治疗/护盾减半)、068 万灵龟血→深海气压罐(受伤充能 → 法力护盾 + 法力激光)。
+	#   旧效果函数 _eq_hunter_flask / 旧的 on-kill 分支均已删除 ⇒ 这两段用例搬到
+	#   tests/verify_eq_potion_batch.gd(逐件重写, 含分发纪律那一组)。
+	# ★073/074/075/076 四件已由用户整条重写(2026-08-05 §0.5),
+	#   旧效果与旧效果函数均已删除 ⇒ 这四段用例搬到 tests/verify_eq_bow_batch.gd。
+	#   这里不是"删了没人接" —— 新门禁逐件重写了它们, 包括分发纪律那一组。
 	_t078_double_barrel()
 	_t083_tide_rapier()
 	_t_r4_no_chain()
@@ -140,10 +139,17 @@ func _t_dispatch() -> void:
 	#   (20260801 / 批① 两份门禁的作者都因此吃过亏)。
 	var code: String = _strip("res://scripts/systems/equip/equip_system.gd")
 	var groups := {
-		"func _eq_on_hit": ["p2eq_067", "p2eq_073", "p2eq_074", "p2eq_075", "p2eq_076", "p2eq_083"],
-		"func _eq_on_basic_attack": ["p2eq_078"],
-		"func _eq_on_dodge": ["p2eq_060", "p2eq_061"],
-		"func _eq_on_kill": ["p2eq_068"],
+		# ★073/074/076 的触发时机已从【命中】改成【普攻】(2026-08-05 §0.5 定稿,
+		#   用户原文都写"每次普攻") ⇒ 它们在下面那一行。075 的【距离增伤】仍在 on-hit。
+		# ★067 也不在这里了: 它被用户重做成【毒药瓶】(周期投瓶 + 普攻叠中毒),
+		#   落点是 fire_equip_effect 与 _eq_on_basic_attack, 由 tests/verify_eq_potion_batch.gd 守。
+		"func _eq_on_hit": ["p2eq_075", "p2eq_083"],
+		"func _eq_on_basic_attack": ["p2eq_073", "p2eq_074", "p2eq_076", "p2eq_078"],
+		# ★_eq_on_dodge 这一行整条删掉: 060/061 已被用户重做(060 → 7 秒开伞周期,
+		#   061 → on-hit 破损), 都不再挂闪避钩。现在挂闪避钩的是 062 螳螂虾钳,
+		#   由 tests/verify_eq_spirit_batch.gd 守。
+		# ★_eq_on_kill 这一行也整条删掉: 068 已被用户重做成【深海气压罐】(受伤充能 →
+		#   法力护盾 + 法力激光), 不再挂击杀钩。由 tests/verify_eq_potion_batch.gd 守。
 	}
 	var total := 0
 	for hdr in groups:
@@ -161,7 +167,7 @@ func _t_dispatch() -> void:
 				dup.append("%s×%d" % [iid, cnt])
 		_ok("⓪ %s 挂着 %s" % [str(hdr), str(groups[hdr])], miss.is_empty(), "缺 %s" % str(miss))
 		_ok("⓪ %s 里没有重复 id" % str(hdr), dup.is_empty(), str(dup))
-	_ok("⓪ ★分母: 本批一共查了 %d 件(应为 10)" % total, total == 10, "total=%d" % total)
+	_ok("⓪ ★分母: 本批一共查了 %d 件(应为 6 —— 060/061 见 verify_eq_spirit_batch, 067/068 见 verify_eq_potion_batch)" % total, total == 6, "total=%d" % total)
 	# ★★接线: 这四个钩子【真的被中央管线调】—— 否则上面全绿而游戏里一件都不触发
 	var dmg_src: String = _strip("res://scripts/scenes/battle/battle_damage.gd")
 	var rb_src: String = _strip("res://scripts/scenes/RealtimeBattle3DScene.gd")
@@ -175,13 +181,14 @@ func _t_dispatch() -> void:
 		rb_src.contains("_eq_on_kill(killer, u)"))
 	# 加伤/额外真伤五件共用同一个投递口 —— 不许各写各的扣血(1 处定义 + 5 处调用)
 	_ok("⓪ 加伤/额外真伤五件都走同一个 _eq_bonus_hit 投递口(不各写各的)",
-		code.count("_eq_bonus_hit(") == 6,
-		"出现 %d 次(期望 6 = 1 定义 + 5 调用: 067/073/074/075/083)" % code.count("_eq_bonus_hit("))
+		code.count("_eq_bonus_hit(") == 2,
+		"出现 %d 次(期望 2 = 1 定义 + 1 调用: 083。067 与弓箭四件已由用户重写, 075 改从 eq_bow_batch.gd 里调这个投递口)" % code.count("_eq_bonus_hit("))
 	# 六件 on-hit 的效果体都外迁成具名函数, 且分派写成 `"id": _fn(` —— 少一条,
 	# tooltip_number_audit 就拿不到函数锚点, 数值会被判"远处命中"
 	var hit_body: String = _fn_body(code, "func _eq_on_hit")
-	var fns := {"p2eq_067": "_eq_hunter_flask", "p2eq_073": "_eq_vine_bow", "p2eq_074": "_eq_bone_quiver",
-		"p2eq_075": "_eq_eagle_lens", "p2eq_076": "_eq_corroder", "p2eq_083": "_eq_tide_rapier"}
+	# ★弓箭四件不在这里: 它们的效果本体搬到了 EqBowBatch(分派写成 `"id": _bow_sys.xxx(`),
+	#   不再是本文件里的 `_eq_*` 具名函数 ⇒ 改由 tests/verify_eq_bow_batch.gd 守。
+	var fns := {"p2eq_083": "_eq_tide_rapier"}
 	var nowire: Array = []
 	for k in fns:
 		if not hit_body.contains("\"%s\": %s(" % [k, fns[k]]):
@@ -190,329 +197,27 @@ func _t_dispatch() -> void:
 			nowire.append("缺 func %s" % fns[k])
 	_ok("⓪ 六件 on-hit 的分派写成 \"id\": _fn( 且函数真的存在(tooltip 审计靠这个锚点)",
 		nowire.is_empty(), str(nowire))
+# ★2026-08-05: 这一段守的是【已被用户整条重做掉】的旧效果, 随效果一并删除。
+#   新效果与它的门禁在 tests/verify_eq_spirit_batch.gd(灵物 5 件·§0.5 定稿)。
 
 
-# ─────────────────────────────────────────────────────────────
-# 060 磷光水母伞: 闪避成功 → 对最近的敌人 20/35/60 魔法伤害
-# ─────────────────────────────────────────────────────────────
-func _t060_jelly_parasol() -> void:
-	print("── 060 磷光水母伞 · 闪避反击 ──")
-	for si in range(3):
-		var want: float = [20.0, 35.0, 60.0][si]
-		_s._units.clear()
-		var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, -260.0), 3000.0), "p2eq_060", si + 1)
-		var near: Dictionary = _mk("basic", "right", Vector2(-120.0, -260.0), 9000.0)
-		var far: Dictionary = _mk("basic", "right", Vector2(360.0, -260.0), 9000.0)
-		var h0: float = float(near["hp"])
-		var f0: float = float(far["hp"])
-		_s._equip_sys._eq_on_dodge(u)
-		_ok("060 si=%d 最近敌吃 %.0f 魔法(需求 20/35/60, 魔抗 0)" % [si, want],
-			absf(h0 - float(near["hp"]) - want) < 0.51, "实掉 %.1f" % (h0 - float(near["hp"])))
-		_ok("060 si=%d ★分母: 远处那个没吃到(证明是单体最近敌)" % si,
-			absf(f0 - float(far["hp"])) < 0.01, "远处掉 %.1f" % (f0 - float(far["hp"])))
-	# ★★真入口: 走【中央伤害管线的闪避分支】—— 不是直接调钩子
-	_s._units.clear()
-	var d: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, -300.0), 3000.0), "p2eq_060", 3)
-	d["dodge_bonus"] = 1.0                       # randf() ∈ [0,1) 恒 < 1.0 ⇒ 必闪
-	var atkr: Dictionary = _mk("basic", "right", Vector2(-120.0, -300.0), 9000.0)
-	var a0: float = float(atkr["hp"])
-	var d0: float = float(d["hp"])
-	_s._damage._apply_damage_from(atkr, d, 500, Color("#ffffff"))
-	_ok("060 ★★真入口: 被打时真的闪避了(自己一点血没掉)",
-		absf(d0 - float(d["hp"])) < 0.01, "携带者掉 %.1f" % (d0 - float(d["hp"])))
-	_ok("060 ★★真入口: 闪避成功 → 攻击者吃到 60 魔法(3★)",
-		absf(a0 - float(atkr["hp"]) - 60.0) < 0.51, "攻击者掉 %.1f 期望 60" % (a0 - float(atkr["hp"])))
-	_s._units.clear()
+# ─────────────────────────────
+# ★067/068 两件的用例已搬走
+#   用户 2026-08-05 逐件亲手重写了这两件(方案书 §0.5 定稿):
+#   067 猎人的酒囊(打猎物额外真伤) → 【毒药瓶】每 6 秒投瓶 + 普攻叠中毒 + 中毒者治疗/护盾减半;
+#   068 万灵龟血(击杀永久+攻) → 【深海气压罐】受伤充能 → 法力护盾 + 2000 码法力激光。
+#   新效果与它们的门禁在 tests/verify_eq_potion_batch.gd。
+#   ★是整段删而不是"把旧断言改成新数字" —— 旧用例量的是旧机制
+#   (如"只对【猎物】生效"), 改数字保不住它们。
 
 
-# ─────────────────────────────────────────────────────────────
-# 061 游魂贝铃: 闪避成功 → 本体 +12/20/32% 移速, 持续 2 秒(可刷新)
-# ─────────────────────────────────────────────────────────────
-func _t061_wraith_bell() -> void:
-	print("── 061 游魂贝铃 · 闪避加移速 ──")
-	for si in range(3):
-		var want: float = 1.0 + [0.12, 0.20, 0.32][si]
-		var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-260.0 + 20.0 * float(si), -200.0)), "p2eq_061", si + 1)
-		u["move_buff_mult"] = 1.0
-		u["move_buff_until"] = 0.0
-		_ok("061 si=%d ★分母: 起手没有移速 buff(倍率 1.0)" % si,
-			absf(float(u.get("move_buff_mult", 1.0)) - 1.0) < 0.0001,
-			"mult=%.3f" % float(u.get("move_buff_mult", 1.0)))
-		_s._equip_sys._eq_on_dodge(u)
-		_ok("061 si=%d 闪避后移速倍率 = %.2f(需求 +12/20/32%%)" % [si, want],
-			absf(float(u["move_buff_mult"]) - want) < 0.0005,
-			"实测 %.3f 期望 %.3f" % [float(u["move_buff_mult"]), want])
-		_ok("061 si=%d 持续 2 秒(到期时刻 = 现在 +2)" % si,
-			absf(float(u["move_buff_until"]) - (_s._t + 2.0)) < 0.02,
-			"until-_t=%.3f" % (float(u["move_buff_until"]) - _s._t))
-	# ★可刷新: 时钟往前推 1.5 秒后再闪一次, 到期时刻要跟着往后走
-	var r: Dictionary = _equip(_mk("fortune", "left", Vector2(-200.0, -160.0)), "p2eq_061", 3)
-	r["move_buff_mult"] = 1.0
-	r["move_buff_until"] = 0.0
-	var tsave: float = _s._t
-	_s._equip_sys._eq_on_dodge(r)
-	var u1: float = float(r["move_buff_until"])
-	_s._t = tsave + 1.5
-	_s._equip_sys._eq_on_dodge(r)
-	_ok("061 ★可刷新: 1.5 秒后再闪 → 到期时刻从 %.2f 推到 %.2f" % [u1, float(r["move_buff_until"])],
-		float(r["move_buff_until"]) > u1 + 1.4, "Δ=%.2f" % (float(r["move_buff_until"]) - u1))
-	# ★不吞掉更强的 buff: move_buff_mult 是【单槽】通道(训龟大师怒吼也写它)
-	r["move_buff_mult"] = 1.50
-	r["move_buff_until"] = _s._t + 8.0
-	_equip(r, "p2eq_061", 1)                     # 1★ 只想给 1.12
-	_s._equip_sys._eq_on_dodge(r)
-	_ok("061 ★不把别人给的 1.50 移速盖成 1.12(单槽通道取更强的那个)",
-		absf(float(r["move_buff_mult"]) - 1.50) < 0.0005, "mult=%.3f" % float(r["move_buff_mult"]))
-	_s._t = tsave
-	_s._units.clear()
-
-
-# ─────────────────────────────────────────────────────────────
-# 067 猎人的酒囊: 攻击【猎物】时额外造成 10/16/25% 真实伤害
-# ─────────────────────────────────────────────────────────────
-func _t067_hunter_flask() -> void:
-	print("── 067 猎人的酒囊 · 打猎物额外真伤 ──")
-	for si in range(3):
-		var want: float = [20.0, 32.0, 50.0][si]   # 200 × 10/16/25%
-		_s._units.clear()
-		_s._potion_syn.clear()
-		var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, -120.0), 3000.0), "p2eq_067", si + 1)
-		var prey: Dictionary = _mk("basic", "right", Vector2(-100.0, -120.0), 9000.0)
-		var other: Dictionary = _mk("basic", "right", Vector2(100.0, -120.0), 9000.0)
-		_s._potion_syn._prey["left"] = prey        # 药水羁绊打的标记(这里直接置, 不依赖档位)
-		var p0: float = float(prey["hp"])
-		var o0: float = float(other["hp"])
-		_s._equip_sys._eq_on_hit(u, prey, 200)
-		_s._equip_sys._eq_on_hit(u, other, 200)
-		_ok("067 si=%d 打猎物额外 %.0f 真伤(200 的 10/16/25%%)" % [si, want],
-			absf(p0 - float(prey["hp"]) - want) < 0.51, "实掉 %.1f" % (p0 - float(prey["hp"])))
-		_ok("067 si=%d ★分母: 打【非猎物】一点额外伤害都没有" % si,
-			absf(o0 - float(other["hp"])) < 0.01, "非猎物掉 %.1f" % (o0 - float(other["hp"])))
-	_s._potion_syn.clear()
-	_s._units.clear()
-
-
-# ─────────────────────────────────────────────────────────────
-# 068 万灵龟血: 击杀任意敌 → 永久 +4/7/12 攻击(上限 +60/110/180); 杀猎物则双倍
-# ─────────────────────────────────────────────────────────────
-func _t068_elixir() -> void:
-	print("── 068 万灵龟血 · 击杀涨攻 ──")
-	for si in range(3):
-		var per: float = [4.0, 7.0, 12.0][si]
-		var cap: float = [60.0, 110.0, 180.0][si]
-		_s._units.clear()
-		_s._potion_syn.clear()
-		var k: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, -60.0), 3000.0), "p2eq_068", si + 1)
-		var v: Dictionary = _mk("basic", "right", Vector2(-100.0, -60.0), 9000.0)
-		var a0: float = float(k["base_atk"])
-		var atk0: float = float(k["atk"])
-		_s._equip_sys._eq_on_kill(k, v)
-		_ok("068 si=%d 一次击杀 +%.0f 攻击力(需求 4/7/12)" % [si, per],
-			absf(float(k["base_atk"]) - a0 - per) < 0.01,
-			"base_atk %.1f→%.1f" % [a0, float(k["base_atk"])])
-		_ok("068 si=%d ★写的是 base_atk 且 atk 真的跟着涨(写 atk 会被 _recalc_stats 冲掉)" % si,
-			float(k["atk"]) > atk0 + per - 0.51, "atk %.1f→%.1f" % [atk0, float(k["atk"])])
-		for _j in range(200):
-			_s._equip_sys._eq_on_kill(k, v)
-		_ok("068 si=%d ★封顶 +%.0f(需求 60/110/180; 灌 200 次击杀也不超)" % [si, cap],
-			absf(float(k["base_atk"]) - a0 - cap) < 0.01,
-			"base_atk +%.1f 期望 +%.0f" % [float(k["base_atk"]) - a0, cap])
-	# ★猎物双倍
-	_s._units.clear()
-	_s._potion_syn.clear()
-	var k3: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, -20.0), 3000.0), "p2eq_068", 3)
-	var prey: Dictionary = _mk("basic", "right", Vector2(-100.0, -20.0), 9000.0)
-	_s._potion_syn._prey["left"] = prey
-	var b0: float = float(k3["base_atk"])
-	_s._equip_sys._eq_on_kill(k3, prey)
-	_ok("068 ★杀的是【猎物】→ 双倍(3★ 12 → 24)",
-		absf(float(k3["base_atk"]) - b0 - 24.0) < 0.01,
-		"base_atk +%.1f 期望 +24" % (float(k3["base_atk"]) - b0))
-	# ★分母: 同一只 3★ 杀非猎物只 +12(证明双倍不是恒定给的)
-	var k4: Dictionary = _equip(_mk("fortune", "left", Vector2(-260.0, -20.0), 3000.0), "p2eq_068", 3)
-	var norm: Dictionary = _mk("basic", "right", Vector2(-60.0, -20.0), 9000.0)
-	var c0: float = float(k4["base_atk"])
-	_s._equip_sys._eq_on_kill(k4, norm)
-	_ok("068 ★分母: 杀非猎物只 +12(不是每次都双倍)",
-		absf(float(k4["base_atk"]) - c0 - 12.0) < 0.01,
-		"base_atk +%.1f 期望 +12" % (float(k4["base_atk"]) - c0))
-	# ★★真入口: 走 _kill —— 而且 _eq_on_kill 必须排在 _potion_syn.on_death(清空猎物槽)【之前】
-	_s._units.clear()
-	_s._potion_syn.clear()
-	var k5: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, 20.0), 3000.0), "p2eq_068", 3)
-	var dying: Dictionary = _mk("basic", "right", Vector2(-100.0, 20.0), 9000.0)
-	_s._potion_syn._prey["left"] = dying
-	var e0: float = float(k5["base_atk"])
-	dying["hp"] = 0.0
-	_s._kill(dying, k5)
-	_ok("068 ★★真入口: 经 _kill 触发, 且此时猎物槽还没被清 → 拿到双倍 24",
-		absf(float(k5["base_atk"]) - e0 - 24.0) < 0.01,
-		"base_atk +%.1f 期望 +24" % (float(k5["base_atk"]) - e0))
-	_s._potion_syn.clear()
-	_s._units.clear()
-
-
-# ─────────────────────────────────────────────────────────────
-# 073 藤蔓短弓: 命中生命 >70% 的目标 → 本次伤害 +8/14/22%
-# ─────────────────────────────────────────────────────────────
-func _t073_vine_bow() -> void:
-	print("── 073 藤蔓短弓 · 打健康目标加伤 ──")
-	for si in range(3):
-		var want: float = [8.0, 14.0, 22.0][si]   # 100 × 8/14/22%
-		_s._units.clear()
-		var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, 60.0), 3000.0), "p2eq_073", si + 1)
-		var full: Dictionary = _mk("basic", "right", Vector2(-100.0, 60.0), 1000.0)
-		var hurt: Dictionary = _mk("basic", "right", Vector2(100.0, 60.0), 1000.0)
-		hurt["hp"] = 600.0                          # 60% < 70% → 不该加伤
-		var f0: float = float(full["hp"])
-		var h0: float = float(hurt["hp"])
-		_s._equip_sys._eq_on_hit(u, full, 100)
-		_s._equip_sys._eq_on_hit(u, hurt, 100)
-		_ok("073 si=%d 满血目标额外 %.0f(本次 100 的 8/14/22%%)" % [si, want],
-			absf(f0 - float(full["hp"]) - want) < 0.51, "实掉 %.1f" % (f0 - float(full["hp"])))
-		_ok("073 si=%d ★分母: 60%% 血的目标一点加伤都没有(阈值是 70%%)" % si,
-			absf(h0 - float(hurt["hp"])) < 0.01, "残血目标掉 %.1f" % (h0 - float(hurt["hp"])))
-	# ★★端到端: 经【中央伤害管线】打一发 100, 目标总共该掉 122(100 本体 + 22 加成)
-	_s._units.clear()
-	var e2e: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, 100.0), 3000.0), "p2eq_073", 3)
-	var tgt: Dictionary = _mk("basic", "right", Vector2(-100.0, 100.0), 9000.0)
-	var t0: float = float(tgt["hp"])
-	_s._damage._apply_damage_from(e2e, tgt, 100, Color("#ffffff"))
-	_ok("073 ★★端到端: 经 _apply_damage_from 打 100 → 实掉 122(on-hit 真的在管线上)",
-		absf(t0 - float(tgt["hp"]) - 122.0) < 0.51, "实掉 %.1f 期望 122" % (t0 - float(tgt["hp"])))
-	# ★分母: 同一发, 换成不带 073 的攻击者 → 就是 100
-	var bare: Dictionary = _mk("fortune", "left", Vector2(-260.0, 100.0), 3000.0)
-	bare["equips"] = [{"id": "p2eq_073", "star": 3}]
-	bare["equips"] = []
-	var t1: float = float(tgt["hp"])
-	_s._damage._apply_damage_from(bare, tgt, 100, Color("#ffffff"))
-	_ok("073 ★分母: 不带装备的同一发只掉 100(证明上面那 22 是 073 加的)",
-		absf(t1 - float(tgt["hp"]) - 100.0) < 0.51, "实掉 %.1f" % (t1 - float(tgt["hp"])))
-	_s._units.clear()
-
-
-# ─────────────────────────────────────────────────────────────
-# 074 骨簇箭袋: 暴击时额外造成 10/18/30 真实伤害
-# ─────────────────────────────────────────────────────────────
-func _t074_bone_quiver() -> void:
-	print("── 074 骨簇箭袋 · 暴击追真伤 ──")
-	for si in range(3):
-		var want: float = [10.0, 18.0, 30.0][si]
-		_s._units.clear()
-		var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, 140.0), 3000.0), "p2eq_074", si + 1)
-		var t: Dictionary = _mk("basic", "right", Vector2(-100.0, 140.0), 9000.0)
-		_s._last_atk_crit = false
-		var n0: float = float(t["hp"])
-		_s._equip_sys._eq_on_hit(u, t, 100)
-		_ok("074 si=%d ★分母: 没暴击 → 一点额外伤害都没有" % si,
-			absf(n0 - float(t["hp"])) < 0.01, "非暴击掉 %.1f" % (n0 - float(t["hp"])))
-		_s._last_atk_crit = true
-		var c0: float = float(t["hp"])
-		_s._equip_sys._eq_on_hit(u, t, 100)
-		_ok("074 si=%d 暴击 → 额外 %.0f 真伤(需求 10/18/30)" % [si, want],
-			absf(c0 - float(t["hp"]) - want) < 0.51, "实掉 %.1f" % (c0 - float(t["hp"])))
-	# ★★真暴击: 让攻击者暴击率 100% 走 _atk_dmg → _apply_damage_from, 不手工置标志
-	_s._units.clear()
-	var u2: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, 180.0), 3000.0), "p2eq_074", 3)
-	u2["atk"] = 100.0
-	u2["base_atk"] = 100.0
-	u2["crit"] = 1.0
-	u2["crit_dmg"] = 1.5
-	var t2: Dictionary = _mk("basic", "right", Vector2(-100.0, 180.0), 9000.0)
-	var b0: float = float(t2["hp"])
-	var d2: int = _s._atk_dmg(u2, 1.0, t2)        # 暴击率 100% ⇒ 必暴, 且它会置 _last_atk_crit
-	_s._damage._apply_damage_from(u2, t2, d2, Color("#ffffff"))
-	_ok("074 ★★真暴击(不手工置标志): 150 暴击伤 + 30 真伤 = 180",
-		absf(b0 - float(t2["hp"]) - 180.0) < 0.51,
-		"本体段 %d · 实掉 %.1f 期望 180" % [d2, b0 - float(t2["hp"])])
-	_s._units.clear()
-
-
-# ─────────────────────────────────────────────────────────────
-# 075 鹰眼镜片: 每满 100 码 +2/3.5/5% 伤害, 最多 +10/18/28%
-# ─────────────────────────────────────────────────────────────
-func _t075_eagle_lens() -> void:
-	print("── 075 鹰眼镜片 · 越远越疼 ──")
-	for si in range(3):
-		var per: float = [0.02, 0.035, 0.05][si]
-		var cap: float = [0.10, 0.18, 0.28][si]
-		_s._units.clear()
-		var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-400.0, 220.0), 3000.0), "p2eq_075", si + 1)
-		# 300 码 → 3 档
-		var t3: Dictionary = _mk("basic", "right", Vector2(-100.0, 220.0), 9000.0)
-		var a0: float = float(t3["hp"])
-		_s._equip_sys._eq_on_hit(u, t3, 1000)
-		var want3: float = round(1000.0 * minf(3.0 * per, cap))
-		_ok("075 si=%d 300 码 → 额外 %.0f(每满 100 码 +2/3.5/5%%)" % [si, want3],
-			absf(a0 - float(t3["hp"]) - want3) < 0.51, "实掉 %.1f 期望 %.0f" % [a0 - float(t3["hp"]), want3])
-		# 0 码(贴脸) → 一点都不加
-		var t0d: Dictionary = _mk("basic", "right", Vector2(-400.0, 220.0), 9000.0)
-		var z0: float = float(t0d["hp"])
-		_s._equip_sys._eq_on_hit(u, t0d, 1000)
-		_ok("075 si=%d ★分母: 贴脸(0 码) → 一点加伤都没有" % si,
-			absf(z0 - float(t0d["hp"])) < 0.01, "贴脸掉 %.1f" % (z0 - float(t0d["hp"])))
-		# 2000 码 → 封顶
-		var tf: Dictionary = _mk("basic", "right", Vector2(-400.0, 2220.0), 9000.0)
-		tf["pos"] = u["pos"] + Vector2(2000.0, 0.0)      # 直接摆坐标, 不受 ARENA 钳制影响
-		var c0: float = float(tf["hp"])
-		_s._equip_sys._eq_on_hit(u, tf, 1000)
-		_ok("075 si=%d ★封顶 +%.0f%%(2000 码远也不超)" % [si, cap * 100.0],
-			absf(c0 - float(tf["hp"]) - round(1000.0 * cap)) < 0.51,
-			"实掉 %.1f 期望 %.0f" % [c0 - float(tf["hp"]), round(1000.0 * cap)])
-	_s._units.clear()
-
-
-# ─────────────────────────────────────────────────────────────
-# 076 腐蚀重弩: 暴击时为目标额外叠 1/1/2 层【腐蚀】(共用 corrode_stacks, 上限 5)
-# ─────────────────────────────────────────────────────────────
-func _t076_corroder() -> void:
-	print("── 076 腐蚀重弩 · 暴击喂腐蚀 ──")
-	for si in range(3):
-		var per: int = [1, 1, 2][si]
-		_s._units.clear()
-		var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, 260.0), 3000.0), "p2eq_076", si + 1)
-		var t: Dictionary = _mk("basic", "right", Vector2(-100.0, 260.0), 9000.0)
-		_s._last_atk_crit = false
-		_s._equip_sys._eq_on_hit(u, t, 100)
-		_ok("076 si=%d ★分母: 没暴击 → 一层都不叠" % si,
-			int(t.get("corrode_stacks", 0)) == 0, "stacks=%d" % int(t.get("corrode_stacks", 0)))
-		_s._last_atk_crit = true
-		_s._equip_sys._eq_on_hit(u, t, 100)
-		_ok("076 si=%d 一次暴击叠 %d 层(需求 1/1/2)" % [si, per],
-			int(t["corrode_stacks"]) == per, "stacks=%d" % int(t["corrode_stacks"]))
-		_ok("076 si=%d ★U2-B 用户拍板: 无弓箭羁绊时 corrode_tier = 装备星级 %d" % [si, si + 1],
-			int(t["corrode_tier"]) == si + 1, "tier=%d" % int(t["corrode_tier"]))
-		for _j in range(20):
-			_s._equip_sys._eq_on_hit(u, t, 100)
-		_ok("076 si=%d ★仍受 5 层上限(灌 20 次暴击也是 5)" % si,
-			int(t["corrode_stacks"]) == 5, "stacks=%d" % int(t["corrode_stacks"]))
-	# ★带弓箭羁绊时用【羁绊档位】, 且不把已有的高档位降下去
-	_s._units.clear()
-	var saved = _s._synergy._by_side
-	_s._synergy._by_side = {"left": {"弓箭": 3}, "right": {}}
-	var w: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, 300.0), 3000.0), "p2eq_076", 1)
-	var wt: Dictionary = _mk("basic", "right", Vector2(-100.0, 300.0), 9000.0)
-	_s._last_atk_crit = true
-	_s._equip_sys._eq_on_hit(w, wt, 100)
-	_ok("076 ★1★ 装备 + 弓箭 3 档 → tier 取【羁绊的 3】不是星级的 1",
-		int(wt["corrode_tier"]) == 3, "tier=%d" % int(wt["corrode_tier"]))
-	wt["corrode_tier"] = 3
-	_s._synergy._by_side = {"left": {}, "right": {}}
-	_s._equip_sys._eq_on_hit(w, wt, 100)
-	_ok("076 ★不把目标身上已有的 3 档腐蚀降成 1 档(取 max, 否则等于自己削自己队伍)",
-		int(wt["corrode_tier"]) == 3, "tier=%d" % int(wt["corrode_tier"]))
-	# ★★真的接上羁绊的消费侧: 满 5 层的目标受伤会被放大(vuln_mult) —— 不是写了没人读
-	var vic: Dictionary = _mk("basic", "right", Vector2(0.0, 300.0), 9000.0)
-	vic["corrode_stacks"] = 5
-	vic["corrode_tier"] = 1                      # 每层 +2% ⇒ ×1.10
-	var v0: float = float(vic["hp"])
-	var plain: Dictionary = _mk("fortune", "left", Vector2(-200.0, 300.0), 3000.0)
-	_s._damage._apply_damage_from(plain, vic, 100, Color("#ffffff"))
-	_ok("076 ★★共用的是羁绊那套 corrode_stacks(满 5 层·1 档 → 100 打成 110, 再 +10% 转真伤 = 121)",
-		absf(v0 - float(vic["hp"]) - 121.0) < 0.51, "实掉 %.1f 期望 121" % (v0 - float(vic["hp"])))
-	_s._synergy._by_side = saved
-	_s._last_atk_crit = false
-	_s._units.clear()
+# ─────────────────────────────
+# ★弓箭四件(073 074 075 076)的用例已搬走
+#   用户 2026-08-05 逐件亲手重写了这四件(方案书 §0.5 定稿), 旧效果
+#   (打健康目标加伤 / 暴击追真伤 / 距离分档加伤 / 暴击喂腐蚀)整段作废。
+#   新效果与它们的门禁在 tests/verify_eq_bow_batch.gd。
+#   ★是整段删而不是"把旧断言改成新数字" —— 旧用例量的是旧机制
+#   (如"满血目标才加伤"), 改数字保不住它们, 只会留下测不到东西的空断言。
 
 
 # ─────────────────────────────────────────────────────────────

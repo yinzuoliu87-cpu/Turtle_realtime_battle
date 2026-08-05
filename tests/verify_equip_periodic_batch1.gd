@@ -2,7 +2,8 @@ extends Node
 ## verify_equip_periodic_batch1.gd — 新装备【批①·周期类 15 件】逐件焊死 + 量级门禁
 ##
 ## 方案书: docs/plans/20260804-新装备35件效果.md (批 A「周期类」, 用户拍板 U1=C 分 3 批)
-## 覆盖: 062 069 070 072 077 079 080 081 087 088 089 090 091 092 094
+## 覆盖: 062 077 079 080 081 087 088 089 090 091 094
+##   (069/070/071/072 食物四件已由用户 2026-08-05 逐件重做 → 门禁整体搬去 tests/verify_eq_food_batch.gd)
 ##
 ## ★本文件的规矩(这个项目吃过亏才立的, 逐条对应 CLAUDE.md / memory):
 ##   · 全部用【干净合成单位】, 不用随机 spawn 的敌 —— 随机敌带盾/flat_dr/未播种 RNG
@@ -90,10 +91,6 @@ func _ready() -> void:
 		await get_tree().process_frame
 
 	_t_dispatch()
-	_t062_mist()
-	_t069_cake()
-	_t070_ration()
-	_t072_feast()
 	_t077_derringer()
 	_t079_armory()
 	_t080_cannon()
@@ -103,7 +100,6 @@ func _ready() -> void:
 	_t089_talisman()
 	_t090_codex()
 	_t091_scute()
-	_t092_compass()
 	_t094_awaken()
 	_t_magnitude()
 
@@ -121,9 +117,12 @@ func _ready() -> void:
 # ─────────────────────────────────────────────────────────────
 func _t_dispatch() -> void:
 	print("── ⓪ 分发纪律 ──")
-	var ids := ["p2eq_062", "p2eq_069", "p2eq_070", "p2eq_072", "p2eq_077", "p2eq_079",
+	var ids := ["p2eq_077", "p2eq_079",
 		"p2eq_080", "p2eq_081", "p2eq_087", "p2eq_088", "p2eq_089", "p2eq_090",
-		"p2eq_091", "p2eq_092", "p2eq_094"]
+		# ★p2eq_092 已从这份名单里摘掉: 2026-08-05 用户把 092 整条重做成【剧毒飞行物】,
+		#   它不再是"周期到点触发一次"的形状(0.25 秒节拍 + 常驻飞行体), 不进 fire_equip_effect。
+		#   它自己的门禁在 tests/verify_eq_venom_drone.gd。
+		"p2eq_091", "p2eq_094"]
 	# ★读源码找 match 分支 —— 但先剥掉注释, 否则会命中我自己写的说明文字
 	#   (20260801 那份门禁的作者已经因此吃过两次亏)。
 	var raw: String = FileAccess.get_file_as_string("res://scripts/systems/equip/equip_system.gd")
@@ -154,15 +153,18 @@ func _t_dispatch() -> void:
 		and absf(float(iv.get("p2eq_080", 0.0)) - 8.0) < 0.001,
 		"077=%s 079=%s 080=%s" % [str(iv.get("p2eq_077", "缺")), str(iv.get("p2eq_079", "缺")), str(iv.get("p2eq_080", "缺"))])
 	_ok("⓪ 其余九件的周期 = 2.5 秒",
-		absf(float(iv.get("p2eq_062", 0.0)) - 2.5) < 0.001
-		and absf(float(iv.get("p2eq_069", 0.0)) - 2.5) < 0.001
-		and absf(float(iv.get("p2eq_070", 0.0)) - 2.5) < 0.001
-		and absf(float(iv.get("p2eq_072", 0.0)) - 2.5) < 0.001
-		and absf(float(iv.get("p2eq_081", 0.0)) - 2.5) < 0.001
+		absf(float(iv.get("p2eq_081", 0.0)) - 2.5) < 0.001
 		and absf(float(iv.get("p2eq_087", 0.0)) - 2.5) < 0.001
 		and absf(float(iv.get("p2eq_091", 0.0)) - 2.5) < 0.001
-		and absf(float(iv.get("p2eq_092", 0.0)) - 2.5) < 0.001
 		and absf(float(iv.get("p2eq_094", 0.0)) - 2.5) < 0.001)
+	# ★092 不再排周期(重做成【剧毒飞行物】) —— 反过来守: 它必须【不在】这张表里,
+	#   留在表里就等于每帧多查一次永远不成立的分支。
+	_ok("⓪ ★092 已从周期表摘掉(重做成常驻召唤体, 不走周期分发)", not iv.has("p2eq_092"))
+	# ★食物 069/070/072 同理: 2026-08-05 用户逐件重做后它们都不是周期类了(三块糖糕 /
+	#   on-hit+灰条 / 变身礼盒), 效果全在 eq_food_batch.gd 的每帧 tick_unit。
+	#   它们的门禁整体搬去 tests/verify_eq_food_batch.gd, 这里反过来守"不许再回到周期表"。
+	_ok("⓪ ★食物 069/070/072 已从周期表摘掉(重做成非周期类·门禁见 verify_eq_food_batch)",
+		not iv.has("p2eq_069") and not iv.has("p2eq_070") and not iv.has("p2eq_072"))
 	_ok("⓪ ★法器三件不排周期(触发时机 = 法力条满, 排了就成两套行为)",
 		not iv.has("p2eq_088") and not iv.has("p2eq_089") and not iv.has("p2eq_090"))
 	# ★接线: _tick_eq_intervals 真的会查这张新表(不查 = 12 件永远不触发, 而上面的断言照样全绿)
@@ -170,13 +172,15 @@ func _t_dispatch() -> void:
 	_ok("⓪ ★★接线: _tick_eq_intervals 真的读了 EQ_IV_BATCH1", tick_body.contains("EQ_IV_BATCH1"),
 		"len=%d" % tick_body.length())
 	# 真的跑一遍每帧节拍: 攒够 2.5 秒必须触发(这条是"函数被调用"的直接证据)
-	var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, -260.0), 1000.0), "p2eq_070", 3)
+	# ★探针从 070 换成 091: 070 已重做成非周期件(2026-08-05), 091 远古龟甲片仍是
+	#   "每 2.5 秒永久 +最大生命", 与原探针同形状。
+	var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, -260.0), 1000.0), "p2eq_091", 3)
 	var hp0: float = float(u["maxHp"])
 	_s._equip_sys._tick_eq_intervals(u, 2.0)
 	var mid: float = float(u["maxHp"])
 	_s._equip_sys._tick_eq_intervals(u, 0.6)
-	_ok("⓪ ★★节拍接线: 不满 2.5 秒不触发, 满了就触发(拿 070 当探针)",
-		absf(mid - hp0) < 0.01 and float(u["maxHp"]) > hp0 + 29.0,
+	_ok("⓪ ★★节拍接线: 不满 2.5 秒不触发, 满了就触发(拿 091 当探针)",
+		absf(mid - hp0) < 0.01 and float(u["maxHp"]) > hp0 + 7.0,
 		"2.0秒后 %.0f / 2.6秒后 %.0f (起点 %.0f)" % [mid, float(u["maxHp"]), hp0])
 
 
@@ -187,132 +191,10 @@ func _fn_body(code: String, header: String) -> String:
 		return ""
 	var e: int = code.find("\nfunc ", i + 1)
 	return code.substr(i, (e - i) if e > i else -1)
+# ★2026-08-05: 这一段守的是【已被用户整条重做掉】的旧效果, 随效果一并删除。
+#   新效果与它的门禁在 tests/verify_eq_spirit_batch.gd(灵物 5 件·§0.5 定稿)。
 
 
-# ─────────────────────────────────────────────────────────────
-# 062 雾行海葵: 3 秒未受伤 → +1 层雾隐(最多 3), 每层 +4/6/9% 闪避, 受伤清空
-# ─────────────────────────────────────────────────────────────
-func _t062_mist() -> void:
-	print("── 062 雾行海葵 · 雾隐层 ──")
-	for si in range(3):
-		var per: float = [0.04, 0.06, 0.09][si]   # 需求字面值 4/6/9%
-		var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-340.0 + 20.0 * float(si), -200.0)), "p2eq_062", si + 1)
-		_s._recalc_stats(u)
-		_ok("062 si=%d ★分母: 起手闪避 = 0(不是本来就有)" % si,
-			absf(float(u["dodge_bonus"])) < 0.0001, "dodge=%.4f" % float(u["dodge_bonus"]))
-		_fire(u, "p2eq_062", si + 1)
-		_ok("062 si=%d 一层 = +%.0f%% 闪避" % [si, per * 100.0],
-			absf(float(u["dodge_bonus"]) - per) < 0.0005,
-			"实测 %.4f 期望 %.4f" % [float(u["dodge_bonus"]), per])
-		_fire(u, "p2eq_062", si + 1)
-		_fire(u, "p2eq_062", si + 1)
-		_ok("062 si=%d 三层 = +%.0f%% 闪避" % [si, per * 3.0 * 100.0],
-			absf(float(u["dodge_bonus"]) - per * 3.0) < 0.0005,
-			"实测 %.4f 期望 %.4f" % [float(u["dodge_bonus"]), per * 3.0])
-		_fire(u, "p2eq_062", si + 1)
-		_fire(u, "p2eq_062", si + 1)
-		_ok("062 si=%d ★层数封顶 3(再跳两次还是三层)" % si,
-			absf(float(u["dodge_bonus"]) - per * 3.0) < 0.0005,
-			"实测 %.4f" % float(u["dodge_bonus"]))
-		# 受伤 → 清空。★用真实的承伤统计字段 _st_taken(两条伤害路径都在记)驱动
-		u["_st_taken"] = int(u.get("_st_taken", 0)) + 137
-		_fire(u, "p2eq_062", si + 1)
-		_ok("062 si=%d ★受伤清空(闪避回到 0)" % si,
-			absf(float(u["dodge_bonus"])) < 0.0005, "实测 %.4f" % float(u["dodge_bonus"]))
-		_fire(u, "p2eq_062", si + 1)
-		_ok("062 si=%d 清空后能重新叠(又回到一层)" % si,
-			absf(float(u["dodge_bonus"]) - per) < 0.0005, "实测 %.4f" % float(u["dodge_bonus"]))
-
-
-# ─────────────────────────────────────────────────────────────
-# 069 珊瑚糖糕: 每 2.5 秒回复 2/3.5/5% 已损失生命
-# ─────────────────────────────────────────────────────────────
-func _t069_cake() -> void:
-	print("── 069 珊瑚糖糕 · 回已损失生命 ──")
-	for si in range(3):
-		var want: float = [20.0, 35.0, 50.0][si]   # 1000 血、损失 1000×?  见下: 已损 1000-?
-		var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0 + 20.0 * float(si), -160.0), 2000.0), "p2eq_069", si + 1)
-		u["hp"] = 1000.0                              # 已损失 1000 → 2/3.5/5% = 20/35/50
-		_fire(u, "p2eq_069", si + 1)
-		_s._damage._heal_flush(u)
-		_ok("069 si=%d 已损 1000 → 回 %.0f 点(需求 2/3.5/5%%)" % [si, want],
-			absf(float(u["hp"]) - (1000.0 + want)) < 1.0,
-			"hp=%.1f 期望 %.1f" % [float(u["hp"]), 1000.0 + want])
-	# ★分母: 满血时不该凭空回(证明量的是"已损失生命"不是固定值)
-	var f: Dictionary = _equip(_mk("fortune", "left", Vector2(-240.0, -160.0), 2000.0), "p2eq_069", 3)
-	_fire(f, "p2eq_069", 3)
-	_s._damage._heal_flush(f)
-	_ok("069 ★分母: 满血时回 0(按已损失生命算, 不是固定值)",
-		absf(float(f["hp"]) - 2000.0) < 0.01, "hp=%.1f" % float(f["hp"]))
-
-
-# ─────────────────────────────────────────────────────────────
-# 070 深海龟粮砖: 每 2.5 秒永久 +10/18/30 最大生命(本场累积, 无上限)
-# ─────────────────────────────────────────────────────────────
-func _t070_ration() -> void:
-	print("── 070 深海龟粮砖 · 永久 +最大生命 ──")
-	for si in range(3):
-		var per: float = [10.0, 18.0, 30.0][si]
-		var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-200.0 + 20.0 * float(si), -160.0), 1000.0), "p2eq_070", si + 1)
-		_fire(u, "p2eq_070", si + 1)
-		_ok("070 si=%d 一跳 +%.0f 最大生命(★不乘 HP_MULT · CLAUDE.md §3.1)" % [si, per],
-			absf(float(u["maxHp"]) - (1000.0 + per)) < 0.01,
-			"maxHp=%.1f 期望 %.1f" % [float(u["maxHp"]), 1000.0 + per])
-		_ok("070 si=%d 当前生命同步涨(不是只涨上限)" % si,
-			absf(float(u["hp"]) - (1000.0 + per)) < 0.01, "hp=%.1f" % float(u["hp"]))
-		for _k in range(9):
-			_fire(u, "p2eq_070", si + 1)
-		_ok("070 si=%d 十跳 = +%.0f(线性累积, 无上限)" % [si, per * 10.0],
-			absf(float(u["maxHp"]) - (1000.0 + per * 10.0)) < 0.01,
-			"maxHp=%.1f 期望 %.1f" % [float(u["maxHp"]), 1000.0 + per * 10.0])
-
-
-# ─────────────────────────────────────────────────────────────
-# 072 百年龟苓宴: 开战给全队 +60/110/180 最大生命 + 每 2.5 秒全队回 1/1.5/2.5% 已损
-# ─────────────────────────────────────────────────────────────
-func _t072_feast() -> void:
-	print("── 072 百年龟苓宴 · 开战送血 + 全队回血 ──")
-	# (a) 开战一次性 +最大生命(走真入口 _eq_apply_all_stats)
-	_s._units.clear()
-	var car: Dictionary = _mk("fortune", "left", Vector2(-120.0, -100.0), 1000.0)
-	car["equips"] = [{"id": "p2eq_072", "star": 3}]
-	var mate: Dictionary = _mk("basic", "left", Vector2(-60.0, -100.0), 1000.0)   # 不带任何装备的队友
-	var foe: Dictionary = _mk("basic", "right", Vector2(200.0, -100.0), 1000.0)
-	_s._equip_sys._stats._eq_apply_all_stats()
-	_ok("072 ★队友(不带装备)拿到 +180 最大生命(3★需求字面值)",
-		absf(float(mate["maxHp"]) - 1180.0) < 0.01, "maxHp=%.1f 期望 1180" % float(mate["maxHp"]))
-	_ok("072 携带者拿到 1400(属性表 3★ hp) + 180(开战送血) = +1580",
-		absf(float(car["maxHp"]) - 2580.0) < 0.01, "maxHp=%.1f 期望 2580" % float(car["maxHp"]))
-	_ok("072 ★敌方不吃(只给自己这一队)",
-		absf(float(foe["maxHp"]) - 1000.0) < 0.01, "敌 maxHp=%.1f" % float(foe["maxHp"]))
-	var mate_hp: float = float(mate["maxHp"])
-	_s._equip_sys._stats._eq_apply_all_stats()
-	_ok("072 ★只给一次(再跑一遍开战管线, 队友血量不再涨)",
-		absf(float(mate["maxHp"]) - mate_hp) < 0.01,
-		"maxHp %.0f → %.0f" % [mate_hp, float(mate["maxHp"])])
-	# (b) 周期: 全队回已损失生命
-	_s._units.clear()
-	var c2: Dictionary = _equip(_mk("fortune", "left", Vector2(-120.0, -60.0), 2000.0), "p2eq_072", 3)
-	var m2: Dictionary = _mk("basic", "left", Vector2(-60.0, -60.0), 2000.0)
-	var e2: Dictionary = _mk("basic", "right", Vector2(200.0, -60.0), 2000.0)
-	c2["hp"] = 1000.0
-	m2["hp"] = 1000.0
-	e2["hp"] = 1000.0
-	_fire(c2, "p2eq_072", 3)
-	_s._damage._heal_flush(c2)
-	_s._damage._heal_flush(m2)
-	_ok("072 ★周期: 队友也回(已损 1000 × 2.5% = 25)",
-		absf(float(m2["hp"]) - 1025.0) < 1.0, "队友 hp=%.1f 期望 1025" % float(m2["hp"]))
-	_ok("072 周期: 携带者自己也回 25",
-		absf(float(c2["hp"]) - 1025.0) < 1.0, "本体 hp=%.1f 期望 1025" % float(c2["hp"]))
-	_ok("072 ★分母: 敌人一点都没回(证明作用域是全队不是全场)",
-		absf(float(e2["hp"]) - 1000.0) < 0.01, "敌 hp=%.1f" % float(e2["hp"]))
-	_s._units.clear()
-
-
-# ─────────────────────────────────────────────────────────────
-# 077 铜管手铳: 每 8 秒射 2/3/4 发, 每发 12/20/32 物理
-# ─────────────────────────────────────────────────────────────
 func _t077_derringer() -> void:
 	print("── 077 铜管手铳 · 小弹连射 ──")
 	for si in range(3):
@@ -594,29 +476,9 @@ func _t091_scute() -> void:
 			"maxHp=%.1f 期望 %.1f" % [float(u["maxHp"]), 1000.0 + cap])
 
 
-# ─────────────────────────────────────────────────────────────
-# 092 沉船罗盘: 每 2.5 秒永久 +1/2/3 攻击力(上限 +30/60/100)
-# ─────────────────────────────────────────────────────────────
-func _t092_compass() -> void:
-	print("── 092 沉船罗盘 · 永久 +攻击力(有上限) ──")
-	for si in range(3):
-		var per: float = [1.0, 2.0, 3.0][si]
-		var cap: float = [30.0, 60.0, 100.0][si]
-		var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-100.0 + 20.0 * float(si), -420.0), 1000.0), "p2eq_092", si + 1)
-		var a0: float = float(u["base_atk"])
-		var atk0: float = float(u["atk"])
-		_fire(u, "p2eq_092", si + 1)
-		_ok("092 si=%d 一跳 +%.0f 攻击力(需求 1/2/3)" % [si, per],
-			absf(float(u["base_atk"]) - a0 - per) < 0.01,
-			"base_atk %.1f→%.1f" % [a0, float(u["base_atk"])])
-		_ok("092 si=%d ★写的是 base_atk 且 atk 真的跟着涨(写 atk 会被 _recalc_stats 冲掉)" % si,
-			float(u["atk"]) > atk0 + per - 0.51,
-			"atk %.1f→%.1f" % [atk0, float(u["atk"])])
-		for _k in range(200):
-			_fire(u, "p2eq_092", si + 1)
-		_ok("092 si=%d ★封顶 +%.0f(需求 30/60/100)" % [si, cap],
-			absf(float(u["base_atk"]) - a0 - cap) < 0.01,
-			"base_atk %.1f→%.1f 期望 +%.0f" % [a0, float(u["base_atk"]), cap])
+# ★旧 092【沉船罗盘】(每 2.5 秒永久 +攻击力)的 `_t092_compass` 在 2026-08-05 整段删掉 ——
+#   用户把 092 重做成【剧毒飞行物】(常驻召唤体 + 毒雾场 + 剧毒缓速叠层)。
+#   它的门禁搬到 tests/verify_eq_venom_drone.gd; 本文件只留上面 ⓪ 那条"092 不在周期表里"的反向守卫。
 
 
 # ─────────────────────────────────────────────────────────────
@@ -682,7 +544,7 @@ func _t094_awaken() -> void:
 # ═════════════════════════════════════════════════════════════
 #  R1 量级门禁: 「本场永久累积」四件跑满一路的总增益要落在设计带内
 #
-#  ★为什么要有它(方案书 R1): 070/091/092/094 都是【本场永久累积】, 互相叠加且没有统一账本。
+#  ★为什么要有它(方案书 R1): 070/091/094 都是【本场永久累积】, 互相叠加且没有统一账本。
 #    memory [[fb-verify-magnitude-not-just-correctness]]: 数值"对不对"和"合不合理"是两件事 ——
 #    彩虹那次五条探针全绿(含反向验证)仍把胜率从 14% 推到 97%。
 #
@@ -702,27 +564,19 @@ const BAND_HI := 1.60
 func _t_magnitude() -> void:
 	print("── R1 量级: 本场累积类跑满一路(24 跳) ──")
 	_s._units.clear()
-	# 070 深海龟粮砖 3★: 面板 +700 生命
-	var a: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, 420.0), 1000.0), "p2eq_070", 3)
-	for _k in range(REF_TICKS):
-		_fire(a, "p2eq_070", 3)
-	var g070: float = float(a["maxHp"]) - 1000.0
+	# ★070 已从本表移除: 2026-08-05 用户把它重做成【压舱咸鱼砖】(on-hit + 溅射 + 灰色血条),
+	#   不再是"每 2.5 秒永久 +最大生命"的累积类, 拿累积口径量它没有意义。
+	#   它自己的量级线(自我放大回路的放大指数)在 tests/verify_eq_food_batch.gd 的 ⑤ 段。
 	# 091 远古龟甲片 3★: 面板 +260 生命
 	var b: Dictionary = _equip(_mk("fortune", "left", Vector2(-240.0, 420.0), 1000.0), "p2eq_091", 3)
 	for _k2 in range(REF_TICKS):
 		_fire(b, "p2eq_091", 3)
 	var g091: float = float(b["maxHp"]) - 1000.0
-	# 092 沉船罗盘 3★: 面板 +66 攻击力
-	var c: Dictionary = _equip(_mk("fortune", "left", Vector2(-180.0, 420.0), 1000.0), "p2eq_092", 3)
-	var c0: float = float(c["base_atk"])
-	for _k3 in range(REF_TICKS):
-		_fire(c, "p2eq_092", 3)
-	var g092: float = float(c["base_atk"]) - c0
+	# ★092 已从本表移除: 重做成【剧毒飞行物】后它不再是"本场永久累积"类
+	#   (毒雾/叠层都是会掉的), 拿累积口径量它没有意义。它自己的量级在 verify_eq_venom_drone.gd。
 
 	var rows := [
-		["070 深海龟粮砖", g070, 700.0, 720.0],   # 24×30 = 720(无上限)
 		["091 远古龟甲片", g091, 260.0, 192.0],   # 24×8 = 192(未触顶, 上限 360)
-		["092 沉船罗盘  ", g092, 66.0, 72.0],     # 24×3 = 72(未触顶, 上限 100)
 	]
 	print("  %-16s %-10s %-10s %s" % ["装备", "一路增益", "面板三星值", "倍率"])
 	var bad: Array = []
@@ -736,7 +590,7 @@ func _t_magnitude() -> void:
 		_ok("R1 %s 24 跳增益 = %.0f(硬写期望)" % [str(r2[0]).strip_edges(), float(r2[3])],
 			absf(float(r2[1]) - float(r2[3])) < 0.51,
 			"实测 %.1f" % float(r2[1]))
-	_ok("R1 ★★三件累积类的一路增益全部落在 [%.2f, %.2f] × 自身面板值" % [BAND_LO, BAND_HI],
+	_ok("R1 ★★累积类的一路增益全部落在 [%.2f, %.2f] × 自身面板值" % [BAND_LO, BAND_HI],
 		bad.is_empty(), str(bad))
 	# 094 是【增伤%】不换算成倍率, 单卡绝对上限
 	var d: Dictionary = _equip(_mk("fortune", "left", Vector2(-120.0, 420.0), 1000.0), "p2eq_094", 3)

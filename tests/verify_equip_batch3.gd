@@ -216,7 +216,12 @@ func _has_effect_impl(eid: String) -> bool:
 	if _impl_src == "":
 		for p in ["res://scripts/systems/equip/equip_system.gd",
 				"res://scripts/systems/equip/equip_stats_apply.gd",
-				"res://scripts/systems/equip/equip_tick_system.gd"]:
+				"res://scripts/systems/equip/equip_tick_system.gd",
+				# ★092 剧毒飞行物(2026-08-05)整件单独成文件, 且【故意没有】match 分支
+				#   (它不是"周期到点触发一次"的形状, 驱动挂在 RelicSynergySystem.tick)。
+				#   不把它加进这张名单, 这条门禁就会把一件真装了的装备判成"文案说得到做不到" ——
+				#   与 memory [[project-god-file-decomposition]] 坑16「审计器的文件名单跟不上拆分」同形。
+				"res://scripts/systems/equip/eq_venom_drone.gd"]:
 			for ln in FileAccess.get_file_as_string(p).split("\n"):
 				var hi: int = ln.find("#")
 				_impl_src += (ln if hi < 0 else ln.substr(0, hi)) + "\n"

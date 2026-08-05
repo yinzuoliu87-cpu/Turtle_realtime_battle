@@ -47,6 +47,10 @@ frames_for () {
     verify_head_badges) echo 1500 ;;
     # 灵物拍击命中带: 第⑤条要【二分探测 24 轮】真实 _slap 行为来量伤害长度, 每轮都重建敌人
     verify_spirit_slap_range) echo 3000 ;;
+    # 食物 4 件(069/070/071/072): 建一次战斗场景 + 150+ 条【同步】断言(效果直调具名入口,
+    #   演出形态直调纯函数, 不等任何 tween)。额外吃帧的是 072 的分裂礼盒(每只都建 Sprite3D)
+    #   与三处上千点的闭式解扫描, 建场 + 这些一起给 4000 帧兜 CI。
+    verify_eq_food_batch) echo 4000 ;;
     verify_eq_hp_grants) echo 8000 ;;
     # 口哨②要【墙钟】等灵体小龟活满 5 秒(tween 驱动·走未钳制 delta) → 无头高帧率下帧数很多
     verify_whistle_wave) echo 12000 ;;
@@ -71,10 +75,28 @@ frames_for () {
     #   ★额外吃帧的是 085 的概率测量(播种 RNG × 1000 次/星级)与 064 的召唤物生成
     #   (每只都建 Sprite3D 节点), 建场 + 这两段一起给 4000 帧兜 CI。
     verify_equip_misc_batch3) echo 4000 ;;
+    # 灵物 5 件(用户逐件重做·060~064): 建一次战斗场景 + 167 条【同步】断言
+    #   (效果全靠直调 tick_unit / _eq_on_hit / _eq_on_dodge / _eq_on_cast / _spec 触发,
+    #   演出形态由纯函数 + apply_at 同步写, 不等任何 tween), 预算主要给建场用。
+    verify_eq_spirit_batch) echo 3000 ;;
     # 装备平衡7项(20260730d 补的门禁): 三只大熊各要【墙钟】等 1.2 秒蓄力演出(真入口
     #   _big_bear_charge_and_spawn 里 await _wait_sim(1.2)) → 无头高帧率下帧数很多。
     #   ★第一次跑全套就撞了这个: 单跑 ALL PASS, 全套里 rc=0/致命0 却判 FAIL —— 正是被掐断。
     verify_equip_batch_20260730d) echo 12000 ;;
+    # 092 剧毒飞行物: 建一次战斗场景 + 130 条【同步】断言。★额外吃帧的是几段"真模拟"——
+    #   ③ 一整段航程(最多 3000 步)、⑥⑯ 同步喂满 4.5 秒毒雾(各 270 步)、⑯ 600 帧性能采样。
+    #   这些都是【同步喂 tick】不吃帧, 真正吃帧的仍是建场 + 每组之间的 process_frame ⇒ 3000 兜 CI。
+    verify_eq_venom_drone) echo 3000 ;;
+    # 弓箭 4 件(073~076·2026-08-05 用户逐件重写): 建一次战斗场景 + 120+ 条【同步】断言。
+    #   ★额外吃帧的是两段统计量: 箭雨落点的 Rayleigh 分布(播种 RNG × 4000 个点)
+    #   与 073 暴击率的经验频率(× 1200 发) —— 两段都是同步循环不吃帧,
+    #   真正吃帧的仍是建场 + 组间 process_frame ⇒ 3000 兜 CI。
+    verify_eq_bow_batch) echo 3000 ;;
+    # 药水 4 件(065~068·2026-08-05 用户逐件重写): 建一次战斗场景 + 174 条【同步】断言。
+    #   ★额外吃帧的是演出物理模型那几段【纯函数扫描】: 薄膜干涉 14 万点找暗纹、
+    #   阻尼振子 5500 点找极值、毒云质量守恒三次 2 万步数值积分 —— 全是同步循环不吃帧,
+    #   真正吃帧的仍是建场 + 组间 process_frame ⇒ 3000 兜 CI。
+    verify_eq_potion_batch) echo 3000 ;;
     # 闪避上限/施加: 只建一次场 + 同步断言, 但建场本身要几百帧
     verify_dodge_cap) echo 2000 ;;
     verify_thorn_reflect) echo 3000 ;;
