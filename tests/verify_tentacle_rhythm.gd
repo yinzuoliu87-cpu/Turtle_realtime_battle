@@ -82,7 +82,9 @@ func _sample(st: int, ts: float) -> Dictionary:
 	var w := 0.0
 	if widths.size() > 4:
 		w = float(widths[int(widths.size() * 0.45)])
-	return {"len": L, "w": w, "tip": tip}
+	# ★梢端高度（世界 Y）—— "拍下去"的正确度量
+	var tip_h: float = float(mids[mids.size() - 1].y) if mids.size() >= 1 else 0.0
+	return {"len": L, "w": w, "tip": tip, "tip_h": tip_h}
 
 
 func _ready() -> void:
@@ -157,10 +159,13 @@ func _ready() -> void:
 	# ── ③ 前摇是【长大】不是缩小 ────────────────────────────
 	#   官方前摇 5 帧覆盖 +76%、投影臂长 0.097→0.167。我曾是 1.52→1.17（反的）。
 	#   ★反向验证：把 REAR 的 arc 改回 ARC_LEN 常数后本条 FAIL。
-	var r0: float = float(_sample(2, 0.005)["tip"])
-	var r1: float = float(_sample(2, TV.T_REAR * 0.95)["tip"])
-	_ok("③ ★前摇【抬起来】(端点抬高/拉远; 官方 5 帧涨 76%)",
-		r1 > r0 * 1.18, "前摇端点 %.2f → %.2f (×%.2f)" % [r0, r1, r1 / maxf(r0, 0.01)])
+	# ★★2026-08-05 判据改了阶段：动作重新设计后（用户："先高高举起并有点后仰
+	#   然后直接拍下去"），**抬起发生在【预警期】**，前摇只是举到位之后再压一点点。
+	#   原判据量前摇的端点变化 ⇒ 现在本来就不该变远，是判据过时不是实现退步。
+	var r0: float = float(_sample(6, 0.005)["tip"])
+	var r1: float = float(_sample(6, TV.T_WARN * 0.6)["tip"])
+	_ok("③ ★【预警期】把触手抬起来(端点拉远; 前摇只是举到位后再压一点)",
+		r1 > r0 * 1.18, "预警端点 %.2f → %.2f (×%.2f)" % [r0, r1, r1 / maxf(r0, 0.01)])
 
 	# ── ④ 带宽：甩出去时【细】→ 鼓起来 → 再收细 ──────────────
 	#   官方 +0 0.0396 → +2 **0.0508(峰)** → +6 0.0296。我曾是起点最粗一路细。
@@ -176,13 +181,36 @@ func _ready() -> void:
 	#   ★反向验证：把 `_arc_for` 的 ST_SLAM 改回 `reach*_env(...)` 后本条 FAIL。
 	var al: Array = []
 	for i3 in range(6):
-		al.append(float(_sample(3, TV.T_SLAM * float(i3) / 5.0)["len"]))
+		# ⚠ 采样点必须【避开状态边界】：`_sample` 内部会 `tick(0.001)`，
+		#   ts 正好等于 T_SLAM 时这一下就把状态推进到【收回】，
+		#   量到的是收回态第一帧的姿态（角 54/−10 卷 221）而不是拍击末 ⇒ 假 FAIL。
+		al.append(float(_sample(3, TV.T_SLAM * 0.94 * float(i3) / 5.0)["len"]))
 	var amin: float = al[0]
 	var amax: float = al[0]
 	for v in al:
 		amin = minf(amin, float(v)); amax = maxf(amax, float(v))
 	_ok("④b ★弧长在整个拍击里【恒定】—— 鞭子不会变长(投影变化靠卷曲)",
 		amax - amin < amin * 0.06, "弧长 %.2f ~ %.2f" % [amin, amax])
+
+	# ── ④c ★【梢端高度】：举起 → 拍下，各一次 ────────────────
+	#   ★★★2026-08-05 用户："你这自己骗自己吗，明明我看到了两次拍击"——他是对的。
+	#     我之前拿【投影臂长】当尺子，全程报"0 次回涨"；
+	#     但那把尺子**根本测不到"拍下去"**：触手抻直时臂长最长，与高度无关。
+	#     换成【梢端高度】一量，真相是 0.840 → 0.657 → **0.767** → 0.714
+	#     = 拍下、抬起、又拍下 —— 确确实实两次。
+	#   ⇒ 这条守的就是"拍下去的过程里梢端不许回抬"。
+	#   ★反向验证：把 `_curvature` 的行波条件改回 `SLAM or RECOVER` 后本条 FAIL
+	#     （脉冲经过中段会把梢端顶高，实测 0.681 → 0.771）。
+	var hs: Array = []
+	for i4 in range(10):
+		var d4: Dictionary = _sample(3, TV.T_SLAM * (0.06 + 0.9 * float(i4) / 9.0))
+		hs.append(float(d4["tip_h"]))
+	var rebound := 0
+	for i5 in range(1, hs.size()):
+		if float(hs[i5]) > float(hs[i5 - 1]) + 0.06:
+			rebound += 1
+	_ok("④c ★拍下去的过程中梢端【不许回抬】(回抬 = 第二次拍击)",
+		rebound == 0, "回抬 %d 次: %s" % [rebound, str(hs.slice(0, 6))])
 
 	# ── ⑤ 分母自证：上面四条量到的是【真实几何】不是 0 ─────────
 	_ok("⑤ ★分母: 量到的弧长/带宽都是真数(不是空网格)",
