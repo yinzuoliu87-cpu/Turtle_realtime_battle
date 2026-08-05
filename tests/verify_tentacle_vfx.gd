@@ -266,17 +266,17 @@ func _ready() -> void:
 		#   反向验证实测：用常量做期望值时，把 `WARN_HALF_W` 改成 160 两边一起变，
 		#   **0 条 FAIL** = 恒真式（CLAUDE.md §2）。
 		var oo: Vector2 = _v.root_pos("left", 0)
-		var one: float = (_s._world_pos(oo + Vector2(0, 40.0), 0.0)
+		var one: float = (_s._world_pos(oo + Vector2(0, 120.0), 0.0)
 			- _s._world_pos(oo, 0.0)).length()
 		var lat: float = minf(wbb.size.x, wbb.size.z)
-		_ok("⑤b ★预警带宽度 == 真实命中通道(半宽 40 码 = %.2fm)" % one,
+		_ok("⑤b ★预警带宽度 == 真实命中通道(半宽 120 码 = %.2fm)" % one,
 			lat > one * 1.2 and lat < one * 3.4, "带宽 %.2fm" % lat)
 		# ★两头都焊住：`_slap` 的命中半宽改了、这边没跟，也要红。
 		var src_sl: String = FileAccess.get_file_as_string(
 			"res://scripts/systems/equip/spirit_synergy_system.gd")
-		_ok("⑤b ★预警宽度与 _slap 的命中判定同源(两处都是 40)",
-			absf(float(TV.WARN_HALF_W) - 40.0) < 0.01 and src_sl.find("cross(dir)) > 40.0") >= 0,
-			"WARN_HALF_W=%.1f / _slap 源码里没找到 `> 40.0`" % float(TV.WARN_HALF_W))
+		_ok("⑤b ★预警宽度与 _slap 的命中判定同源(两处都是 120)",
+			absf(float(TV.WARN_HALF_W) - 120.0) < 0.01 and src_sl.find("cross(dir)) > 120.0") >= 0,
+			"WARN_HALF_W=%.1f / _slap 源码里没找到 `> 120.0`" % float(TV.WARN_HALF_W))
 	# ★预警带【持续整整 T_WARN】—— 原来那版只有蓄势那 0.13 秒的一闪，等于没有。
 	_v.tick(TV.T_WARN * 0.9)
 	_ok("⑤b ★预警带在 %.2f 秒后仍然亮着(官方 f009~f039 持续 1 秒)" % (TV.T_WARN * 0.9),

@@ -702,7 +702,10 @@ func _flash(pos2: Vector2, scale: float) -> void:
 ##   即半宽 40 码 / 全宽 80）。预警区画得比命中范围宽或窄都是骗人的。
 ## ★长度 = 固定射程（不是"到目标的距离"）—— 用户 2026-08-04 点过：
 ##   攻击长度固定，玩家才学得会安全距离。
-const WARN_HALF_W := 40.0            # ＝ _slap 的命中半宽，改一处要改两处
+## ★★2026-08-05 用户拍板 ×3：「参考里面是这个 3 倍吧，我要实际攻击范围也是这 3 倍」。
+##   ⚠ 这个数**必须**和 `spirit_synergy_system._slap` 的命中半宽一模一样 ——
+##   预警区画得比命中范围宽或窄都是骗玩家。门禁两头都焊住（改一处另一处会红）。
+const WARN_HALF_W := 120.0           # ＝ _slap 的命中半宽（原 40，用户要求 ×3）
 ## ★★★2026-08-04【第三次重做预警带 —— 前两次的量法都不对】
 ##   用户：「现在这预警区压根和参考的不沾边」。放大 3.8× 一看确实：
 ##   官方是**一层极淡的、完全羽化的、偏蓝的雾**（石板缝和草完整可见），
@@ -765,8 +768,14 @@ func _telegraph_tick(t: Dictionary, ts: float) -> void:
 	var amp: float = _env(WARN_ENV, ts)
 	var mm: StandardMaterial3D = mi.material_override
 		# 稳态时 amp≈1.0；起始 7.66× 会被 clampf 顶住 → 那正是"一开始很亮然后暗下去"
-	# ★标定：顶点色 B=0.95、ADD 混合 ⇒ 屏幕 ΔB ≈ 0.20×0.95×255 ≈ 48（官方 52）。
-	mm.albedo_color = Color(1, 1, 1, clampf(0.20 * amp, 0.0, 1.0))
+	# ★★2026-08-05【隔离测之后重新标定】
+	#   0.20 那档是在**黑底**(TENT_ISO)上标的，看着对；但**真实战场是亮背景**，
+	#   隔离窗实测（背景亮度 59.4，与官方草地 ~60 可比）：
+	#     我的 ΔG+7.4 ΔB+13.7 → 对比度 **9~12%**
+	#     官方 ΔG+26  ΔB+52   → 对比度 **43%**
+	#   ⇒ **淡了 3.8 倍**。用户也说"看的不够宽"（宽度已按要求 ×3）。
+	#   按亮背景的实测值重新标定，不再拿黑底当基准。
+	mm.albedo_color = Color(1, 1, 1, clampf(0.72 * amp, 0.0, 1.0))
 	# 网格：沿方向分 10 段的贴地长条，横向 alpha 渐隐（中间亮、两侧化开）
 	var mesh: ArrayMesh = mi.mesh
 	mesh.clear_surfaces()
@@ -784,7 +793,12 @@ func _telegraph_tick(t: Dictionary, ts: float) -> void:
 	for i in range(N + 1):
 		var u: float = float(i) / float(N)
 		var pc: Vector2 = from2.lerp(end2, u)
-		var fade_u: float = (1.0 - u * 0.55)                    # 越远越淡
+		# ★★2026-08-05：原来只有 `1 - u*0.55`，**远端是被 `end2` 硬截断的** ——
+		#   实机截图上能看到一条清晰的横向直边，像贴了张图。
+		#   官方那条是渐隐到目标处的，没有边。⇒ 首尾各加一段淡入淡出。
+		var head: float = smoothstep(0.0, 0.10, u)              # 根部淡入（别从触手身上硬起）
+		var tail: float = 1.0 - smoothstep(0.86, 1.0, u)        # 远端淡出（去掉硬截断，但要够到目标）
+		var fade_u: float = (1.0 - u * 0.42) * head * tail
 		var row: Array = []
 		for j in range(LAT):
 			var f: float = float(j) / float(LAT - 1) * 2.0 - 1.0   # -1..1
@@ -794,7 +808,8 @@ func _telegraph_tick(t: Dictionary, ts: float) -> void:
 			var af: float = absf(f)
 			var core: float = clampf(1.0 - af / WARN_CORE_FRAC, 0.0, 1.0)
 			# 亮核(±48% 半宽) + 一路羽化到边缘 —— 官方没有硬边界
-			var av: float = (pow(core, 1.1) * 0.62 + pow(1.0 - af, 1.5) * 0.38) * fade_u
+			# ★横向也再软一档 —— 加宽 ×3 之后中心区域饱和成实心块，读起来是"贴图"不是"雾"
+			var av: float = (pow(core, 1.5) * 0.52 + pow(1.0 - af, 2.0) * 0.48) * fade_u
 			row.append([battle._world_pos(pos2, battle.GROUND_LIFT + 0.04),
 				Color(col.r, col.g, col.b, av)])
 		if not prev_row.is_empty():

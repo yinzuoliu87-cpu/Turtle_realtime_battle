@@ -200,7 +200,9 @@ func _slap(side: String, idx: int, share: float) -> int:
 		var rel: Vector2 = Vector2(f["pos"]) - origin
 		if rel.dot(dir) < 0.0:
 			continue
-		if absf(rel.cross(dir)) > 40.0:
+		# ★★2026-08-05 用户拍板 ×3（40→120）：「我要实际攻击范围也是这 3 倍」。
+		#   ⚠ 与 `tentacle_vfx.WARN_HALF_W` 必须一致 —— 那是画给玩家看的预警区。
+		if absf(rel.cross(dir)) > 120.0:
 			continue
 		var dmg: int = maxi(1, int((float(f.get("maxHp", 0.0)) * HIT_HP_PCT + HIT_FLAT) * mult))
 		if shooter is Dictionary:
