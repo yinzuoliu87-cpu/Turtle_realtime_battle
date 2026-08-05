@@ -280,6 +280,9 @@ const CURL_TIGHT := 262.0            # 待机：弧长恒定后靠【大卷曲�
 const CURL_LOOSE := 240.0            # 舒展到底：只松一点点（官方待机基本不动）
 const BREATH_PERIOD := 3.6           # 一次完整呼吸的秒数（慢而轻）
 ## 前摇末的卷曲量 —— 抽直波前"尚未扫到"的段保持这个值
+## 抽直过渡时长。★0.033 那档正好等于 30fps 的一帧 = **采样步长**，
+## 于是逐帧截图永远采不到中间态（看起来永远是瞬间跳变）。拉到 0.07（≈2 帧）。
+const SNAP_T := 0.07
 const REAR_END_CURL := 68.0
 ## 抽直波前从梢端扫到根部要多久。官方 f040→f042 约 2 帧完成 ⇒ 0.07 秒。
 ## ★0.075 那档太快(2.25 帧)：波前扫过时端点距离剧烈跳（实测 8.99→6.27→8.49），
@@ -294,13 +297,45 @@ const CURL_SLAM := 6.0
 ##   弧长恒定的鞭子，投影变短是因为**卷回来**，不是因为绳子缩短。
 ##   实测症状：收回段触手变得又短又细（弧长被包络压到 0.28×）。
 ##   ⇒ 包络值高(抻直) → curl 小；包络值低(卷起) → curl 大。
+## ★★★2026-08-05【用户："拍击的时候为什么触手会拍下去两次"】的真正解法。
+##   官方投影臂长的余振只有 **18%**（0.435→0.354→0.417），
+##   但**线性**映射到卷曲量之后变成 **6° → 72° → 21°** ——
+##   抽直、卷回一大截、再抽直 ⇒ 视觉上就是拍了两下。
+##   （弦长对卷曲量是强非线性的：curl 小时投影几乎不变，curl 大时才快速缩。）
+##   ⇒ 映射在高值区(接近抻直)压平：同样 18% 的投影余振只让卷曲摆 6°→42°→14°，
+##     读起来是"甩出去的回弹"，不是第二次拍击。
 static func _slam_curl_of(e: float) -> float:
-	var k: float = clampf((e - 0.28) / 0.72, 0.0, 1.0)
-	return lerpf(CURL_TIGHT, CURL_SLAM, k)               # 攻击: ★完全抻直（逐帧看是一条直光带）
+	var k: float = pow(clampf((e - 0.28) / 0.72, 0.0, 1.0), 0.62)
+	return lerpf(CURL_TIGHT, CURL_SLAM, k)
+
+
+## 拍击期的卷曲量（带**抽直阶段单向化**）。
+##
+## ★★★2026-08-05【用户："在拍击的时候为什么触手会拍下去两次"】—— 是我引入的。
+##   官方投影臂长的余振只有 **18%**（0.435 → 0.354 → 0.417），
+##   但我把它**线性映射**到卷曲量之后变成 **6° → 72° → 21°** ——
+##   触手抽直、卷回一大截、再抽直，视觉上就是**拍了两下**。
+##   （长度上 18% 的余振 ≠ 卷曲上 18% 的余振：弦长对卷曲量是强非线性的。）
+##   ⇒ 抽直阶段(`SNAP_HOLD` 内)**只准变直不准回卷**：curl 从前摇末单调降到最直；
+##     之后才交给包络表（那时余振幅度小，读起来是余振而不是第二次拍击）。
+## ★抽直用时。官方 f039→f040 **一帧**完成、余振紧跟在 +1/+2 帧。
+## 0.16 那档(4.8 帧)把余振推到了动作中段，读起来不再是甩出去的回弹。
+func _slam_curl(ts: float) -> float:
+	# ⚠【已试过并撤回】"抽直阶段单向化 + 人造余振"：
+	#   它确实消掉了"拍两次"，但把官方那条真实的余振也一起压没了，
+	#   节奏门禁的"余振二次峰/不许定格/带宽先细后鼓"三条一起红。
+	#   真正的解法在 `_slam_curl_of` 的**非线性映射**上（见那里的注释）。
+	return _slam_curl_of(_env(SLAM_LEN_CURVE, ts))               # 攻击: ★完全抻直（逐帧看是一条直光带）
 ## 待机摇曳的横向摆幅（度）
 const S_AMP := 3.5                   # ★实机摆得很轻, 原画那种 S 形是艺术加工
 ## 梢端相位滞后（鞭子感 —— 整条一起动就是根棍子）
 const LAG := 0.26
+## ★逐段发力滞后（秒）：梢端比根部晚这么久收到动作。
+##   这是"中下部发力带动全身"的实现 —— 0 就退化成整条同相位的单调弯曲。
+## ⚠ 这个值和【余振周期】是同量级的（余振约 2~3 帧 = 0.07~0.10 秒）——
+## 0.085 那档会让不同段的余振互相抵消，端点上的二次峰被抹平（门禁 ② 直接红）。
+## 0.035（约 1 帧）既做得出 S 形，又不吃掉余振。
+const WHIP_LAG := 0.035
 ## 待机摇曳
 const SWAY_SPEED := 1.15
 const SWAY_AMP := 0.30
@@ -945,8 +980,18 @@ func relocate(side: String, idx: int, to2: Vector2) -> bool:
 ## 当前这根触手的「动作进度」→ [露出比例 emerge, 根部切角(度), 梢端切角(度), 卷曲量(度)]
 ## ★不再返回"高度/前伸" —— 那套做出来是"沿地面伸长"，不是砸下。见形状常量那节。
 func _phase(t: Dictionary) -> Array:
+	return _phase_at(t, float(t["ts"]))
+
+
+## 指定时刻的动作参数。★拆出 `ts` 是为了做【逐段时间滞后】——
+## 用户 2026-08-05：「为什么你这个触手始终像一个方向弯曲？真正的触手是有真实物理的，
+##   不应该是中下部发力带动全身吗」。
+## 对：我原来整条共用同一个时刻的参数，`ang = lerp(根部角, 梢端角, u)` 是**单调弯曲**，
+## 那是一根被掰弯的棍子。真实鞭子是**发力沿长度传播、梢端因惯性滞后**，
+## 于是同一时刻不同段处在动作的**不同阶段** ⇒ 自然出现 S 形。
+func _phase_at(t: Dictionary, ts: float) -> Array:
 	var st: int = int(t["state"])
-	var ts: float = float(t["ts"])
+	ts = maxf(ts, 0.0)
 	match st:
 		ST_EMERGE:
 			var e: float = clampf(ts / T_EMERGE, 0.0, 1.0)
@@ -1015,13 +1060,20 @@ func _phase(t: Dictionary) -> Array:
 			#   投影几乎为零（实测那帧青覆盖 1.48%，官方同帧 7.06%）。
 			#   官方 f039→f040 是**一帧之内从蜷缩直接到伸展**，姿态没有插值过程。
 			#   ⇒ 角度【瞬时到位】；"鞭子感"由长度包络表的 +2 二次峰给，不由角度缓动给。
-			var e2: float = 1.0
+			# ★★★2026-08-05【用户："从 idle 切换到拍击的第一帧按理来说不应该完全一样吗"】
+			#   —— 对。**跳变本身就证明参数是断的**，那就不算"同一个模型的连续变化"。
+			#   我为了"一帧到位"把 e2 写成**常数 1.0** ⇒ ts=0 那一刻角度直接是终点值，
+			#   与前摇末的 [92°,108°] 断开（梢端一帧转 126°），实测帧间差异率 0.92。
+			#   ⇒ e2 从 0 开始、一帧(0.033s)内走完：起点与前摇末**完全连续**，
+			#     观感照样是"一帧到位"。
+			var e2: float = clampf(ts / SNAP_T, 0.0, 1.0)
+			e2 = e2 * e2 * (3.0 - 2.0 * e2)          # smoothstep，避免速度突变
 			# 甩到位之后【继续往下压】—— 官方最高点 +0 0.93 → +4 0.77，是压下来的
 			var dur: float = T_JAB if float(t["share"]) < 0.9 else T_SLAM
 			var settle: float = clampf((ts - 0.033) / maxf(dur - 0.033, 0.01), 0.0, 1.0)
 			var a0v: float = lerpf(ANG_REAR[0], ANG_SLAM[0], e2) - 10.0 * settle
 			var a1v: float = lerpf(ANG_REAR[1], ANG_SLAM[1], e2) - 8.0 * settle
-			return [1.0, a0v, a1v, _slam_curl_of(_env(SLAM_LEN_CURVE, ts))]
+			return [1.0, a0v, a1v, _slam_curl(ts)]
 		ST_RECOVER:
 			# ★官方恢复是 **19 帧的长尾**（+10 3.91 缓降到 +28 1.72），
 			#   我上一版 8 帧就掉回基线 = 收得太干脆。T_RECOVER 已拉长，这里用
@@ -1030,7 +1082,12 @@ func _phase(t: Dictionary) -> Array:
 			c = pow(c, 2.2)
 			return [1.0, lerpf(ANG_SLAM[0] - 10.0, ANG_IDLE[0], c),
 				lerpf(ANG_SLAM[1] - 8.0, ANG_IDLE[1], c),
-				lerpf(_slam_curl_of(_env(SLAM_LEN_CURVE, T_SLAM + ts)), CURL_TIGHT, c)]
+				# ★★★2026-08-05【用户："那同样拍完回到 idle 呢"】—— 量出来有真问题：
+				#   收回期原本查包络表（`_slam_curl(T_SLAM+ts)`），而**表在收回段本身有波动**
+				#   ⇒ 实测投影臂长 0.269 →【回涨】0.294 → 卡住 0.5 秒不收 →
+				#     进待机后才【突然】缩到 0.248。观感就是"收一半、顿住、再啪一下"。
+				#   ⇒ 收回改成**单调**：卷曲量从拍击末一路增到待机的蜷缩量，中间不回头。
+				lerpf(CURL_SLAM, CURL_TIGHT, smoothstep(0.0, 1.0, clampf(ts / T_RECOVER, 0.0, 1.0)))]
 		ST_RETRACT:
 			var q: float = clampf(ts / T_RETRACT, 0.0, 1.0)
 			return [1.0 - q, ANG_IDLE[0], ANG_IDLE[1], CURL_TIGHT]
@@ -1097,6 +1154,40 @@ func _body_color(t: Dictionary, st2: int, u: float, rimf: float) -> Color:
 	return col
 
 
+## 某一段的【切角】。从 `_rebuild` 拆出来 —— 那个函数第三次撞架构预算 250 行上限。
+##
+## ★★★这里集中了三条"真实物理"的实现，每条都是量出来才发现做错的：
+##   ① **逐段时间滞后**（用户："真正的触手不应该是中下部发力带动全身吗"）——
+##      整条共用同一时刻的参数只能弯出单调曲线，那是被掰弯的棍子。
+##      让每段比根部晚 `u × WHIP_LAG` 秒收到发力，同一时刻不同段处在不同阶段 ⇒ S 形。
+##      ⚠ **只在非拍击态生效**：官方拍击时是一条绷直的光带（实测曲率变号 0 次），
+##        且滞后的时间尺度与**余振周期**同量级，开在拍击上会把端点的余振抹平。
+##   ② **`cfrom` 连续化** —— 原来是 `0.30 if 待机/预警 else 0.68` 的硬切，
+##      实测收回期投影卡在 0.294 不收、**进待机那一刻突然掉到 0.247**。
+##   ③ **`wavy` 连续化** —— 原来 `0.0 if SLAM else 1.0`，摆动一帧内从有到无，
+##      7° 扰动沿 36 段累加，是 REAR→SLAM 跳变的真凶之一。
+func _seg_angle(t: Dictionary, stt: int, u: float, ts_now: float, swayt: float) -> Array:
+	var lag_u: float = 0.0 if stt == ST_SLAM else (u * WHIP_LAG)
+	var ph_u: Array = _phase_at(t, ts_now - lag_u)
+	var a0u: float = float(ph_u[1])
+	var a1u: float = float(ph_u[2])
+	var curl_u: float = float(ph_u[3])
+	var ang: float = lerpf(a0u, a1u, pow(u, 1.05))
+	var cfrom: float = lerpf(CURL_FROM_CURLY, CURL_FROM,
+		clampf(1.0 - curl_u / CURL_TIGHT, 0.0, 1.0))
+	if u > cfrom:
+		var cu: float = (u - cfrom) / (1.0 - cfrom)
+		ang -= curl_u * cu * cu
+	var wavy: float = 1.0
+	if stt == ST_SLAM:
+		wavy = 1.0 - clampf(float(t["ts"]) / SNAP_T, 0.0, 1.0)
+	var yaw: float = deg_to_rad(S_AMP * sin(u * TAU * 0.6 + swayt) * wavy)
+	# ★主干的波浪起伏 —— 逐帧看官方 idle，主干【不是光滑的弧】，
+	#   沿长度有明显的一波一波（像水流）。叠在切角上，幅度不大但读得出来。
+	ang += 7.0 * wavy * sin(u * TAU * 2.1 + swayt * 1.7)
+	return [ang, yaw, curl_u]
+
+
 func _rebuild(t: Dictionary) -> void:
 	var mi: MeshInstance3D = t["mi"]
 	if not is_instance_valid(mi):
@@ -1108,6 +1199,7 @@ func _rebuild(t: Dictionary) -> void:
 	var to2: Vector2 = t["aim"]
 	if to2 == Vector2.ZERO:
 		to2 = from2 + Vector2(1.0 if side == "left" else -1.0, 0.0) * 400.0
+	var ts_now: float = float(t["ts"])
 	var ph: Array = _phase(t)
 	var emerge: float = float(ph[0])
 	var a0: float = float(ph[1])       # 根部切角(度)
@@ -1156,34 +1248,17 @@ func _rebuild(t: Dictionary) -> void:
 		# ★切角沿长度插值；梢端那一段额外多转 → 卷成钩
 		# ★弯曲集中在【中后段】—— 实机根部一截是相对直的，弧度往梢端堆。
 		#   原来用 smoothstep(0,1,u) 是对称的，从根就开始弯。
-		var ang: float = lerpf(a0, a1, pow(u, 1.05))
-		var cfrom: float = (CURL_FROM_CURLY
-			if (stt == ST_IDLE or stt == ST_WARN) else CURL_FROM)
-		# ⚠【已试过并回退】抽直波前（从梢端向根部传播）：
-		#   放大官方 f039→f040 确实是"根部还保持环、只有梢端甩出去"，
-		#   所以两帧掩膜大面积重叠、差异率只有 0.208，而我整条同时变直 = 0.92。
-		#   但我实现的波前**破坏了已经对齐好的端点包络**：
-		#   端点距离变得不单调（8.86→6.78→7.18），节奏门禁的
-		#   "不许定格 / 余振二次峰"两条直接红，全周期平均跳变 0.200→0.217。
-		#   ⇒ 回退。这条记为**已知差距**，正确做法应该是让波前只改姿态、
-		#     同时保住端点包络（需要重新推导，不是调两个参数的事）。
-		if u > cfrom:
-			var cu: float = (u - cfrom) / (1.0 - cfrom)
-			ang -= curl * cu * cu
-		# 横向摆（待机摇曳 + S 形）
-		# ★★攻击时【摆动与波浪都要压掉】——
-		#   官方 `wfull` +2~+14 那几帧是**一条绷直的光带**；
-		#   我把待机的 ±7° 起伏一直留着，攻击态就变成一根【一节一节鼓起来的胖香肠】
-		#   （时间对齐对比 v2 最刺眼的问题）。绷直才有"抽出去"的力量感。
-		# ★★★2026-08-05【用户："拍击的时候触手在那里不自然的乱抖"】—— 根因在这。
-		#   拍击时我留了 **14%** 的待机摆动，而下面两行的相位是 `swayt = battle._t * …`
-		#   ——**全局时钟**。拍击那 0.5 秒里相位转了近 1 弧度，沿 36 段累加 ⇒ 整条在抖。
-		#   官方拍击是**一条绷直的光带**，一点摆动都没有。⇒ 彻底压到 0。
-		var wavy: float = 0.0 if int(t["state"]) == ST_SLAM else 1.0
-		var yaw: float = deg_to_rad(S_AMP * sin(u * TAU * 0.6 + swayt) * wavy)
-		# ★主干的波浪起伏 —— 逐帧看官方 idle，主干【不是光滑的弧】，
-		#   沿长度有明显的一波一波（像水流）。叠在切角上，幅度不大但读得出来。
-		ang += 7.0 * wavy * sin(u * TAU * 2.1 + swayt * 1.7)
+		# ★★★逐段滞后：这一段比根部晚 `u × WHIP_LAG` 秒才收到发力。
+		#   同一时刻根部已经甩过去、梢端还在上一阶段 ⇒ 中段被"带"出 S 形。
+		# ★★★滞后只在【非拍击】态生效：
+		#   官方拍击时触手是**一条绷直的光带**（我量过曲率变号 0 次）—— 不该有 S 形；
+		#   而滞后的时间尺度(0.035~0.085s)和**余振周期**(2~3 帧)同量级，
+		#   开在拍击上会让不同段的余振互相抵消，端点二次峰被抹平（门禁 ② 直接红）。
+		#   ⇒ 待机/预警/收回要 S 形（中下部发力带动全身），拍击要绷直。
+		var seg: Array = _seg_angle(t, stt, u, ts_now, swayt)
+		var ang: float = float(seg[0])
+		var yaw: float = float(seg[1])
+		var curl_u: float = float(seg[2])
 		var ar: float = deg_to_rad(ang)
 		var tan: Vector3 = (fwd * cos(ar) * cos(yaw) + lat * sin(yaw) * cos(ar) + up * sin(ar)).normalized()
 		# ══ 截面：★★★2026-08-04【放大看图之后的路线更换】═════════════
