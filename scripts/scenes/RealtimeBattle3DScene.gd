@@ -5843,8 +5843,20 @@ const HUNTER_ROLL_SPD := 1050.0   # 隐蔽平滑翻滚速度 px/s (250码约0.24
 
 const HEAD_STACK_DY := -34.0      # 叠层计数行 Y(血条正上方)
 const HEAD_STATUS_DY := -74.0     # 状态图标行 Y(叠层行上方)
-const HEAD_ITEM_STEP := 40.0      # 行内每项水平间距
-const HEAD_ROW_CAP := 4           # 每行最多项数(超出截断)
+## ★★★2026-08-05【扩容前先量，量出一个本来就存在的问题】
+##   用户 2026-08-04：「头顶徽章加就行」。但直接把 CAP 从 4 调到 6 是不行的 ——
+##   实测：**相邻单位在屏幕上只隔 64.7 px**（分离半径 92 码），
+##   而 4 项 × 间距 40 的一行已经宽 **154 px** = 单位间距的 2.4 倍
+##   ⇒ **现在 4 项就已经在跟邻居的徽章互相覆盖**，6 项(234px)只会更糟。
+##   ⇒ 改成【紧凑网格】：3 列 × 2 行，把行宽压到 80px（接近 64.7 的单位间距），
+##     同时容量从 4 提到 6。
+const HEAD_ITEM_STEP := 27.0      # 网格列距
+const HEAD_ROW_STEP := 28.0       # 网格行距
+const HEAD_COLS := 3              # 每行列数
+const HEAD_ROW_CAP := 6           # 最多项数(3 列 × 2 行)
+const HEAD_ITEM_SZ := 24.0        # 网格里每项的边长(原来 32~44 摆不下)·★24 而不是 26: 弹入过冲峰值 1.12 倍 → 26.9px, 必须仍 < 列距 27
+const HEAD_POP_T := 0.20          # 徽章出现的弹入时长(秒)
+const HEAD_POP_BACK := 1.70158    # 弹入回弹系数(标准 easeOutBack)·峰值约 1.099 倍 → 24*1.099=26.4 < 列距 27
 
 func _layout_head_badges(u: Dictionary) -> void:
 	var st: Dictionary = u.get("stacks", {})
@@ -5867,7 +5879,12 @@ func _layout_head_badges(u: Dictionary) -> void:
 		if _cam.is_position_behind(head): vis = false
 		else: anchor = _cam.unproject_position(head)
 	_layout_head_row(u, "_hbrow_stack", stacks, anchor, HEAD_STACK_DY, vis, false)
-	_layout_head_row(u, "_hbrow_status", status, anchor, HEAD_STATUS_DY, vis, true)
+	# ★状态行的 Y 必须【跟着叠层行的实际高度走】，不能写死 —— 叠层行改成网格后会向上长：
+	#   3 项以内还是 1 行(底 -34)，4 项起变 2 行(顶跑到 -62)，而状态行钉在 -74、
+	#   图标 26px 高 ⇒ 两行**重叠 12px**。改成按叠层行真实行数下推。
+	var st_rows: int = int(ceil(float(mini(stacks.size(), HEAD_ROW_CAP)) / float(HEAD_COLS)))
+	var status_dy: float = HEAD_STATUS_DY - float(maxi(st_rows - 1, 0)) * HEAD_ROW_STEP
+	_layout_head_row(u, "_hbrow_status", status, anchor, status_dy, vis, true)
 
 func _layout_head_row(u: Dictionary, store: String, items: Array, anchor: Vector2, dy: float, vis: bool, pulse: bool) -> void:
 	var pool: Array = u.get(store, [])
@@ -5884,14 +5901,15 @@ func _layout_head_row(u: Dictionary, store: String, items: Array, anchor: Vector
 		for b in pool:
 			if is_instance_valid(b): b.visible = false
 		return
-	var total_w: float = float(count - 1) * HEAD_ITEM_STEP
-	var cx: float = anchor.x - total_w * 0.5     # ★行以头顶为中心(随角色·单个正中不左右偏·透视下也居中)
+	# ★网格：每行最多 HEAD_COLS 列，整体仍以头顶为中心
+	var rows: int = int(ceil(float(count) / float(HEAD_COLS)))
 	var pa: float = (0.55 + 0.45 * sin(_t * 5.0)) if pulse else 1.0
 	for i in range(count):
 		var b = pool[i]
 		if not is_instance_valid(b): continue
 		var it: Dictionary = items[i]
-		var sz: float = float(it.get("sz", 34.0))
+		# ★尺寸统一到网格边长 —— 原来每项自带 32~44，网格里摆不下也不齐
+		var sz: float = HEAD_ITEM_SZ
 		var icon := b.get_node("icon") as TextureRect
 		icon.custom_minimum_size = Vector2(sz, sz); icon.size = Vector2(sz, sz)
 		var path: String = str(it.get("icon", ""))
@@ -5905,7 +5923,31 @@ func _layout_head_row(u: Dictionary, store: String, items: Array, anchor: Vector
 		lbl.position = Vector2(sz - 15.0, sz - 20.0)   # 数字挂图标右下角(叠加数样式)→图标+数字紧凑居中一体·不外扩偏心
 		b.visible = true
 		b.modulate.a = pa
-		b.position = Vector2(cx + float(i) * HEAD_ITEM_STEP - sz * 0.5, anchor.y + dy)
+		# 网格坐标：本行的列数可能少于 HEAD_COLS（最后一行），要按本行自己居中
+		var ri: int = i / HEAD_COLS
+		var ci: int = i % HEAD_COLS
+		var row_n: int = mini(count - ri * HEAD_COLS, HEAD_COLS)
+		var row_w: float = float(row_n - 1) * HEAD_ITEM_STEP
+		var rx: float = anchor.x - row_w * 0.5
+		# 多行时整体上移，让网格仍以原来那条基线为底
+		var ry: float = anchor.y + dy - float(rows - 1 - ri) * HEAD_ROW_STEP
+		b.position = Vector2(rx + float(ci) * HEAD_ITEM_STEP - sz * 0.5, ry)
+		# ★出现时弹一下(用户 2026-08-04 问「你觉得怎么动」)
+		#   刻意【不用 tween】: 徽章每帧重排、还会被回收复用, tween 会和重排打架、
+		#   且 CLAUDE.md §3.5 记着无头 CI 下 tween 推进不稳。用纯函数按时间算缩放, 可即时判定。
+		#   判据是【这一格换了内容】(图标或数字变了) —— 复用同一个节点显示新东西也算"出现"。
+		var sig: String = path + "|" + lbl.text
+		if str(b.get_meta("sig", "")) != sig:
+			b.set_meta("sig", sig)
+			b.set_meta("pop_t0", _t)
+		var pk: float = clampf((_t - float(b.get_meta("pop_t0", -9.0))) / HEAD_POP_T, 0.0, 1.0)
+		# 0→1 的回弹(标准 easeOutBack): 从 0 涨上去、冲过 1 再落回。
+		# ★别用 `lerp(0.4,1,pk) + sin(pk*PI)*k` —— 那个**根本不过冲**:
+		#   sin 的峰在 pk=0.5, 而那时基底才 0.7, 合起来 0.86 < 1, 白写。
+		var q: float = pk - 1.0
+		var scl: float = 1.0 if pk >= 1.0 else 1.0 + (HEAD_POP_BACK + 1.0) * q * q * q + HEAD_POP_BACK * q * q
+		b.pivot_offset = Vector2(sz * 0.5, sz * 0.5)
+		b.scale = Vector2(scl, scl)
 
 func _make_head_badge() -> Control:
 	var root := Control.new()
