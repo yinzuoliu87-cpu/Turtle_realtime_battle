@@ -87,7 +87,6 @@ const EGG_FENCE_RES := 200.0    # 围栏未破时蛋额外获得的双抗(原 80
 const EGG_SELFLOSS_IV := 1.0    # 决胜期自损间隔秒(原 2.5)
 const EGG_SELFLOSS_PCT := 0.05  # 每次自损占最大生命比例(原 0.25) → 净速率 10%/秒 → 5%/秒
 const HP_MULT := 3.0                       # base↔final比率: 龟/装备hp已写最终值; 仅召唤raw值(×)与装备%回收(maxHp/)用它
-const SHIELD_CAP_MULT := 1.5
 const RAGE_MAX := 100.0                    # 怒气满 (熔岩变身)
 const STACK_DOT_TICK := 1.0                # 各类层数 DoT 每秒结算一次
 const BUFF_SEC := 5.0                      # buff/控制/DoT 通用秒数 (规格 "N秒", 待 F5 调)
@@ -704,6 +703,13 @@ var _potion_syn := PotionSynergySystem.new(self)   # 药水羁绊【猎物/猎�
 var _gadget_syn := GadgetSynergySystem.new(self)   # 奇械羁绊【铸币/冰封/僵硬/易碎】(2026-08-03)
 var _food_syn := FoodSynergySystem.new(self)       # 食物羁绊【永久成长/学院】(2026-08-03)
 var _spirit_syn := SpiritSynergySystem.new(self)   # 灵物羁绊【触手/闪避追击/亡灵】(2026-08-03)
+## ★特殊余额基建(2026-08-05): 独立于 u["shield"] 的第二条余额, 带各自的衰减曲线与破盾回调。
+##   由来: 用户重做装备时一口气出现五件都要它(064幽灵/068法力/070灰条/071奶油/072终极),
+##   而普通 shield 归零【不通知任何人】。不抽这层就会写出五套互不认识的护盾。
+var _spec := SpecialBalance.new(self)
+## ★多条血线阈值(2026-08-05): 既有 _eq_check_hp_threshold 是写死一条 50% 线的,
+##   而 069 要三道(80/55/30%)、064 要一道(35%)。再往那边塞 hpXX_fired 标记就是灾难。
+var _hpl := HpLines.new(self)
 var _relic_syn := RelicSynergySystem.new(self)     # 遗物羁绊【生死界/远古之力/龟蛋/觉醒】(2026-08-03)
 var _tentacle_vfx := TentacleVfx.new(self)         # 灵物【触手拍击】程序化 3D 网格演出(2026-08-04)
 ## ★"当前正在执行哪件装备的效果" —— 盾羁绊 9 档要判断"这次护盾/治疗是不是盾类装备给的"。
@@ -2128,6 +2134,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 	_gadget_syn.tick(dt)  # 奇械: 铸币累计 + 僵硬到期清理
 	_food_syn.tick(dt)    # 食物: 每 2.5 秒每件食物为携带者永久 +最大生命
 	_spirit_syn.tick(dt)  # 灵物: 触手拍击(每 2.5 秒) + 追击次数重置
+	_spec.tick(dt)        # ★特殊余额: 线性衰减 + 耗尽回调(自然衰减完也算"被打破")
 	_relic_syn.tick(dt)   # 遗物: 远古之力累积(每 2.5 秒) + 觉醒判定
 	_tentacle_vfx.tick(dt)  # 触手拍击: 每帧重算网格(甩动)
 	_trainer_sys._tick_trainer_attacks(dt) # 训龟大师普攻: 站定扔石头抛物线弹道(用户2026-07-23)
@@ -7644,8 +7651,14 @@ func _settle_season(won: bool) -> void:
 ##   每一次形态切换都会把 atk_range 整个覆盖掉 —— 就地乘进去的加成会被【静默抹掉】,
 ##   而且升星/换路重建单位时会【重复乘】。所以基础值仍归 atk_range, 加成走独立的 range_perm,
 ##   在【判定的那一刻】才相乘。同理移速走 move_perm(既有的 move_buff_mult 是限时通道, 装备要永久)。
+## ★2026-08-05 加 flat 通道 `range_add`(码), 与 `range_perm`(倍率) 并存 ——
+##   用户给 065 鲨肝油 写的是"提供 50 射程"这样的**绝对值**, 而原来只有百分比字段。
+##   顺序是【先加后乘】: 基础 + 加成码数, 再整体乘百分比。理由同上面那段注释 ——
+##   两条都不能就地写进 atk_range(会被形态切换覆盖、被换路重建重复累加)。
+##   ⚠ flat 对近战收益远大于远程: 近战基础 70(战斗里抬到 >=100), 远程 400~450,
+##     所以 +50 码 = 近战约 +50% / 远程约 +12%。这是有意的, 不是没注意到。
 func _eff_range(u: Dictionary) -> float:
-	return float(u.get("atk_range", 70.0)) * float(u.get("range_perm", 1.0))
+	return (float(u.get("atk_range", 70.0)) + float(u.get("range_add", 0.0))) * float(u.get("range_perm", 1.0))
 
 
 func _make_result_btn(txt: String, bg: Color, fg: Color, cb: Callable) -> Button:

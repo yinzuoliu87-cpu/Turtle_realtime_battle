@@ -459,6 +459,8 @@ func _dl_build_lane_field() -> void:
 	battle._bow_syn.clear()       # 换路: 腐蚀层数归零
 	battle._gun_syn.clear()       # 换路: 炮台节拍与护盾/弹幕相位归零
 	battle._staff_syn.clear()     # 换路: 法力/灵泉/共鸣 节拍归零
+	battle._spec.clear_all()      # 换路: 所有特殊余额(幽灵/法力/灰条/奶油/终极盾)归零
+	battle._hpl.clear_all()       # 换路: 血线阈值重置 ⇒ 这就是用户定的「每路一次」口径
 	battle._potion_syn.clear()    # 换路: 猎物标记与节拍归零
 	battle._gadget_syn.clear()    # 换路: 僵硬/冰封CD归零(铸币【不清】—— 一场 = 上路+下路+决胜)
 	battle._food_syn.clear()      # 换路: 成长节拍归零

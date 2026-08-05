@@ -24,6 +24,7 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: Stri
 	dmg = maxi(1, int(round(d)))                     # 统计/飘字用减伤【后】的值, 否则面板数字与实际掉血对不上
 	var shield_before: float = u["shield"]
 	d = ShieldMath.absorb(u, d)   # 普通盾+aura盾 吸全类型(§3.3 收口·两路共用)
+	d = battle._spec.absorb(u, d)  # ★特殊余额(幽灵/法力/灰条/奶油/终极盾)在普通盾之后扛; §3.3 两路都接
 	# 弓箭顶档【腐蚀满 5 层】: 受到伤害的 25% 转成真实伤害(无视护甲与护盾)。
 	# ⚠ 两条伤害路径【都要加】—— _apply_damage(DoT/真伤) 与 _apply_damage_from(普攻/技能)
 	#   各自独立扣血(CLAUDE.md §3.3), 只改一条会产生"只在某类伤害下才转真伤"的诡异行为。
@@ -61,6 +62,14 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: Stri
 			battle._audio_sys._sfx_shield_break()
 		else:
 			battle._audio_sys._sfx_hit(false)
+	# ★★2026-08-06 补: 这条路(DoT/真伤)原先【完全没有 HP 阈值检查】——
+	#   `_eq_check_hp_threshold` 与血线只挂在 _apply_damage_from(普攻/技能)上。
+	#   后果: 044 深海项链 / 045 珍珠耳环 的"首次<50%保命"在被**灼烧/中毒/流血/诅咒/真伤**
+	#   打到半血时【不触发】, 要等再挨一次普攻才补上。这是 CLAUDE.md §3.3 那一类的既有 bug。
+	#   (我加多条血线时先只接了一条路, 自己又踩了一次同样的坑, 所以两条一起补。)
+	if u["alive"]:
+		battle._equip_sys._eq_check_hp_threshold(u)
+		battle._hpl.check(u)
 	if u["hp"] <= 0.0 and u["alive"]:
 		# ★带上 src: 原为 battle._kill(u) 无凶手 → DOT 击杀【不算击杀数】, 且暴君之牙处决回血这类
 		#   on-kill 装备钩子全不触发(对比另一条路 battle._kill(u, src))。2026-07-22 修。
@@ -149,6 +158,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	# 护盾吸收【全类型】伤害(物理/法术/真实): 1:1 回合制 damage.gd「真伤(true)也走护盾」+ 用户2026-07-11「真伤/反伤真伤要被盾档」。
 	#   真伤只无视护甲/魔抗/减伤(见上方 not raw 分支), 但护盾照吸。唯一穿盾=墨迹(_ink_true·在护盾后单独加·由线条被动设计)。
 	d = ShieldMath.absorb(u, d)   # 普通盾+aura盾 吸全类型(§3.3 收口·两路共用)
+	d = battle._spec.absorb(u, d)  # ★特殊余额(幽灵/法力/灰条/奶油/终极盾)在普通盾之后扛; §3.3 两路都接
 	if _ink_true > 0.0: d += _ink_true   # 墨迹真伤: 穿减伤穿盾(唯一穿盾例外·护盾吸收后加), 直接进扣血并计入跳字
 	# 弓箭顶档【腐蚀满 5 层】: 受到伤害的 25% 转成真实伤害(无视护甲与护盾)。
 	# ⚠ 两条伤害路径【都要加】—— _apply_damage(DoT/真伤) 与 _apply_damage_from(普攻/技能)
@@ -301,6 +311,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 					battle._skill_ring(u["pos"], Color(1.0, 0.92, 0.3, 0.6), 40.0)
 	if u["alive"]:
 		battle._equip_sys._eq_check_hp_threshold(u)          # HP阈值: 首次<50% (深海项链/珍珠耳环)
+		battle._hpl.check(u)                                 # ★多条血线(069 三块糕 80/55/30% · 064 <35%); 与上面那条 50% 线并存
 		if str(u.get("id", "")) == "fortune" and not u.get("_lowhp_fired", false) and u["hp"] <= u["maxHp"] * FortuneSystem.LOWHP_PCT:
 			battle._fortune_sys._fortune_lowhp_burst(u)       # 财神【通用被动】(用户2026-07-28): 首次跌破20%血 → 立得70龟能(不论带哪个技能)
 	if u["hp"] <= 0.0 and u["alive"]:
@@ -404,7 +415,14 @@ func _grant_shield(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 	amt *= battle._copy_fx_mult                          # 龟壳复制期: 护盾也按60%(封板"以60%效果释放")
 	amt *= 1.0 + float(u.get("shield_amp", 0.0))   # 护盾加成(受到方,所有来源)
 	var sb: float = u["shield"]
-	u["shield"] = minf(u["shield"] + amt, u["maxHp"] * battle.SHIELD_CAP_MULT)
+	# ★★2026-08-05 用户拍板【删掉护盾上限】。
+	#   原来这里是 `minf(u["shield"] + amt, u["maxHp"] * SHIELD_CAP_MULT)`, 封顶在最大生命的 150%。
+	#   那个常量是 2026-06-27「阶段2/3雏形」那次提交里**随手写下的一行, 没有任何注释说明理由**,
+	#   一年多没人回头看过, 却静默地封着全游戏 44 个给盾点。
+	#   用户看到时的原话:「哪来的上限啊, 不应该有啊」——> 确认不是设计决定, 是遗留值。
+	#   ⚠ 删掉之后 068 深海气压罐(3★ 法力护盾 = 300% 充能值)、072 铁皮蛋糕盒(3★ 终极护盾
+	#     = 120% 最大生命) 这类新设计才拿得到设计值; 原来会被静默砍掉一半。
+	u["shield"] = u["shield"] + amt
 	if dur > 0.0:
 		u["shield_until"] = maxf(float(u.get("shield_until", 0.0)), battle._t + dur)   # 限时盾原语(封板通用护盾=4秒): 记到期(多源取更晚); dur=0=永久(不设→_tick不过期·shell/嘲讽/既有盾全默认永久不变)
 	var got = int(u["shield"] - sb)
