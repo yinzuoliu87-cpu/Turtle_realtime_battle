@@ -15,7 +15,9 @@ extends RefCounted
 ##     （`gambler_system.gd:17` `_gambler_multi_cd`，40/60/80% 概率、连锁 ×0.8 递减、~6 倍攻速）。
 ##     它的每一发连击都是一次完整 `_basic_attack` ⇒ 若追打也走那条路，
 ##     赌神会为每一次追打【再掷一次连击骰】，两个"云顶剑士式连击"互相喂 ⇒ 组合爆炸。
-##   ⇒ 追打直接调 `_apply_damage_from` + `_eq_on_hit`，绕开 `_basic_attack` 与 `_eq_on_basic_attack`。
+##   ⇒ 追打直接调 `_apply_damage_from`，绕开 `_basic_attack` 与 `_eq_on_basic_attack`。
+##     （on-hit 由 `_apply_damage_from` 内部回钩，**不要在外面再调一次** ——
+##       2026-08-05 前这里多调了一次，导致每发追打把 on-hit 点了两次。详见 tick() 里的注释）
 ##
 ## **② 追打触发的 onhit【不再触发剑士】。**
 ##   `双生匕首(005)` 3★ 是「每段伤害命中后 **100%** 追加一刀」——
@@ -94,11 +96,18 @@ func tick(_delta: float) -> void:
 			continue                            # 谁死了就作废，不补刀
 		src["_sw_busy"] = true                  # ★进入追打：期间产生的普攻钩一律不点燃剑士
 		var dmg: int = battle._atk_dmg(src, float(p["pct"]), tgt)
-		battle._damage._apply_damage_from(src, tgt, dmg, Color("#ffd27f"))
-		# ★触发 onhit（用户明确要）：流血/溅射/连锁/标记这些照常吃。
+		# ★追打【照常吃 on-hit】（用户明确要）：流血/溅射/连锁/标记这些都吃。
 		#   ⚠ 但它【不】触发 _eq_on_basic_attack —— 那条是"每普攻一次"的计数钩
 		#   （008 珊瑚刺每 5 次普攻、017 不沉之锚每普攻消耗充能），追打不该给它们刷次数。
-		battle._equip_sys._eq_on_hit(src, tgt, dmg)
+		#   ⇒ 靠 `_sw_busy` 挡住, 不是靠绕开这条伤害路径。
+		#
+		# ★★2026-08-05 删掉了这行后面原本显式的 `_eq_on_hit(src, tgt, dmg)` ——
+		#   它是**重复的**: `_apply_damage_from` 的 `from_equip` 默认 false,
+		#   内部那段(battle_damage.gd:259) 已经调过 _eq_on_hit 了。
+		#   ⇒ 一次追打把 on-hit 点了【两次】, 一次普攻 = 1 + 2x2 = **5 次 on-hit 事件**(应为 3)。
+		#   影响的不止某一件装备, 是**所有 on-hit 装备**(流血叠层/005 双刃/各种充能计数)
+		#   在剑阵容里全部按双倍速率跑。弓/药水/奇械/法器没这问题(它们只在内部那段挂了一次)。
+		battle._damage._apply_damage_from(src, tgt, dmg, Color("#ffd27f"))
 		src["_sw_busy"] = false
 	_pending = keep
 

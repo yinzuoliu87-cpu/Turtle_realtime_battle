@@ -17,6 +17,10 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: Stri
 	#   bucket=="tru" 视为真伤 → 与另一条路的 raw 语义一致(真伤只无视护甲/减伤, 护盾照吸)。
 	var _raw: bool = (bucket == "tru")
 	var d = battle._mitigate_incoming(u, float(dmg), _raw, is_self)
+	# 装备 082 砗磲护心甲: 本体护盾存在时额外减伤(常驻字段 _clam_dr 由 EquipStatsApply 写)。
+	# ⚠ 两条伤害路径【都要加】(CLAUDE.md §3.3) —— 另一半在 _apply_damage_from 的同一位置。
+	if not _raw and float(u.get("_clam_dr", 0.0)) > 0.0 and float(u.get("shield", 0.0)) > 0.0:
+		d = battle._equip_sys._eq_clam_mitigate(u, d)
 	dmg = maxi(1, int(round(d)))                     # 统计/飘字用减伤【后】的值, 否则面板数字与实际掉血对不上
 	var shield_before: float = u["shield"]
 	d = ShieldMath.absorb(u, d)   # 普通盾+aura盾 吸全类型(§3.3 收口·两路共用)
@@ -26,6 +30,10 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: Stri
 	var _cor: float = BowSynergySystem.true_share(u)
 	if _cor > 0.0 and bucket != "tru":   # ★这条路(_apply_damage)没有 raw 参数, 用 bucket 判真伤
 		d += float(dmg) * _cor                       # 名义伤害的 25% 直接加进扣血(不经护甲/护盾)
+	# ★新钩子【受到致命伤害时】(装备 063 幽影墨囊 · 用户拍板 U6-A): 减伤之后、扣血之前判。
+	# ⚠ 两条伤害路径【都要挂】(CLAUDE.md §3.3) —— 只挂一条 = "只有被普攻打死才救得回来"。
+	if u.get("_ink_sac", false) and d > 0.0 and float(u["hp"]) - d <= 0.0:
+		d = battle._equip_sys._eq_ink_sac(u, d)
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	battle._blood_rite_refresh(u)   # 剑【血祭】: 血量百分比整数位变了才重算攻击力(无血祭的单位零开销)
 	battle._staff_syn.add_mana(u, float(dmg) * StaffSynergySystem.MANA_FROM_TAKEN)   # 法器: 受伤 ×0.1 涨法力
@@ -114,6 +122,9 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	if _prey_amp != 1.0:
 		dmg = maxi(1, int(round(float(dmg) * _prey_amp)))
 	var d = battle._mitigate_incoming(u, float(dmg), raw)
+	# 装备 082 砗磲护心甲: 本体护盾存在时额外减伤 —— 与 _apply_damage 同一位置的另一半(§3.3)
+	if not raw and float(u.get("_clam_dr", 0.0)) > 0.0 and float(u.get("shield", 0.0)) > 0.0:
+		d = battle._equip_sys._eq_clam_mitigate(u, d)
 	dmg = maxi(1, int(round(d)))
 	# 守护贝母021: 该单位被指向为"伤害转移", 把一部分入伤转给携带者承担 (护盾前分流, 剩余部分仍走本体护盾/血)
 	var _rd = u.get("dmg_redirect_to", null)
@@ -145,6 +156,9 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	var _cor: float = BowSynergySystem.true_share(u)
 	if _cor > 0.0 and not raw:
 		d += float(dmg) * _cor                       # 名义伤害的 25% 直接加进扣血(不经护甲/护盾)
+	# ★新钩子【受到致命伤害时】(装备 063 幽影墨囊 · 用户拍板 U6-A) —— 与 _apply_damage 同一位置的另一半(§3.3)
+	if u.get("_ink_sac", false) and d > 0.0 and float(u["hp"]) - d <= 0.0:
+		d = battle._equip_sys._eq_ink_sac(u, d)
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	battle._blood_rite_refresh(u)   # 剑【血祭】: 血量百分比整数位变了才重算攻击力(无血祭的单位零开销)
 	battle._staff_syn.add_mana(u, float(dmg) * StaffSynergySystem.MANA_FROM_TAKEN)   # 法器: 受伤 ×0.1 涨法力
@@ -265,6 +279,11 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 			battle._staff_syn.add_mana(src, float(dmg) * StaffSynergySystem.MANA_FROM_DMG)   # 法器: 造成伤害 ×0.1 涨法力
 		if u["alive"]:
 			battle._equip_sys._eq_on_target(u, src, dmg)     # on-target: 防守者装备 (硬化层/冰封反制 等)
+			# 装备 085 铜齿护符 / 086 极地反冲装置: 受到【法术】伤害时的反应(掷骰充能 / 减速+反弹)。
+			# ★传算好的伤害桶 _bkt 而不是让它自己读 battle._last_dmg_type —— 那个全局在
+			#   上一行的 on-hit 链里会被嵌套的 _atk_dmg 覆写(见本函数 was_crit 那段注释)。
+			if u.get("_b3_gadget", false):
+				battle._equip_sys._eq_on_magic_hurt(u, src, dmg, _bkt)
 			battle._shield_syn.on_damaged(u, src, dmg)       # 盾羁绊: 怒气累计(全队·满400放冲击波) + 顶档反击
 		# 宝箱藏宝图 on-hit 战利品 (火石灼烧/毒箭治疗削减/雷刃金闪电引爆·此块已在not from_equip内→天然防循环)
 		var _cht = src.get("chest_treasures", null)
@@ -433,6 +452,11 @@ func _heal(u: Dictionary, amt: float, silent: bool = false) -> float:   # 返回
 	_holy_convert(u, float(u["hp"] - hb))   # 盾羁绊9档: 盾类装备给的治疗, 额外 20% 转圣光护盾
 	battle._blood_rite_refresh(u)   # 剑【血祭】: 回血也要刷(血量涨回去攻击力要跌回去)
 	var _act: float = float(u["hp"] - hb)   # 实际回血(满血=0, 超出满血/转盾部分不计入绿字)
+	# ★新钩子【受到治疗时】(装备 071 暖流海带汤): 把实际回血量的一部分转给血量最低的友军。
+	#   ★用 _act(实际)不是 amt(请求): 满血时请求 100 实回 0, 拿请求量算就是凭空造治疗。
+	#   ★重入由 EquipSystem._kelp_busy 守 —— 分出去那一发也走本函数。
+	if _act > 0.0 and float(u.get("_kelp_share", 0.0)) > 0.0:
+		battle._equip_sys._eq_kelp_share(u, _act)
 	battle._staff_syn.on_healed(u, _act)   # 法器【余韵】: 受到治疗时额外获得治疗量 N% 的护盾
 	if _act > 0.0:                          # LoL式治疗累加器: 高频/多段/多源回血攒进累加, 短窗后合并成一个绿字(见_heal_flush)
 		u["_heal_acc"] = float(u.get("_heal_acc", 0.0)) + _act
