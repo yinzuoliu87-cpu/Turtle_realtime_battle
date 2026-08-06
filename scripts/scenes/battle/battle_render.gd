@@ -171,7 +171,9 @@ func _update_trainer_anim(u: Dictionary, delta: float) -> void:
 	spr.texture = sheets[anim]
 	spr.hframes = cols
 	spr.vframes = 4
-	spr.frame = int(_TRAINER_ROW.get(face, 0)) * cols + col
+	# ★2026-08-07: 同族钳制 —— 换表那一瞬 texture 与 hframes/vframes 可能错开一帧
+	spr.frame = clampi(int(_TRAINER_ROW.get(face, 0)) * cols + col,
+		0, maxi(0, int(spr.hframes) * int(spr.vframes) - 1))
 
 # 切换当前播放的帧表 (idle 或动作): 换 texture + Sprite3D.hframes/vframes/frame + 复位计时/pixel_size/offset.
 #   is_idle=true 时复原 idle 的 px/offy; 动作图帧高可能不同, 按其帧高重算归一.

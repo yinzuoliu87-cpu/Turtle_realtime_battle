@@ -78,16 +78,38 @@ const OWNED_CAP := 256
 
 ## ── ① 甲片环(091) ────────────────────────────────────────────────
 ## 甲片的外接圆半径(场地像素)。密铺关系把环半径完全定死, 不另设参数。
-const PLATE_R_PX := 13.0
+## ★2026-08-07 从 13 提到 21 —— 实战默认视角标尺(1280×720·相机 (0,28,22) look_at (0,0.6,0)·fov 40):
+##   横向 0.6755 屏幕像素/码、贴地纵深 0.5267 px/码。13 码外接圆 ⇒ 单片只有 17.6×13.7 px、
+##   整环跨度 (2·√3·13 + 26) 码 = 30 px, 挤在龟脚底下一团。
+##   21 码 ⇒ 单片 **28.4×22.1 px**、整环跨度 (2·√3·21 + 42) = 114.7 码 = **77.5×60.4 px**,
+##   环真的"围着"44 px 高的龟立绘, 而不是垫在它脚下。
+const PLATE_R_PX := 21.0
 ## 甲片数 = 正六边形密铺里"中心那片的邻居数", 是 6 —— 不是可调的美术数。
 const PLATE_N := 6
 ## 甲片贴地高度(米)。略高于地面, 免得被地板 z-fighting 吃掉。
 const GROUND_Y := 0.06
-## 甲片的基准亮度(mult=1 那一跳)。★上限校核: ×√6 = 0.735 < 1.0 ⇒ **量程内不会被钳**,
+## 甲片的基准亮度(mult=1 那一跳)。★**上限校核**: ×√6 = 0.980 < 1.0 ⇒ **量程内不会被钳**,
 ##   门禁量到的 alpha 比值才是真的 √6 而不是"两边都撞上限所以相等"。
-const PLATE_A := 0.30
+##   ⇒ PLATE_A 的**硬天花板是 1/√6 = 0.4082**, 想再提亮只能走描边/本色, 不能动这个数。
+const PLATE_A := 0.40
+## 甲片内芯 / 外沿的**顶点色 alpha**。总亮度 = PLATE_A(材质) × 顶点 alpha ⇒
+## ★描边不占 alpha 量程: 提亮外沿不会把 ×√6 那条比值断言变成"两边都撞上限"。
+## ⚠ 写了顶点色还得有人读 —— 材质必须开 `vertex_color_use_as_albedo`
+##   (memory [[fb-write-without-reader-and-fake-gates]]: 生产侧写了消费侧没读, 一天踩三次)。门禁 G6 守这条。
+const PLATE_VA_CORE := 0.42
+const PLATE_VA_RIM := 1.00
+## 外沿描边带的内边界(占外接圆半径的比例)
+const PLATE_RIM_IN := 0.80
 ## 甲片亮度的指数衰减时间常数(秒)。= 一个回复节拍, 于是"上一片还没暗完下一片就亮"。
-const PLATE_TAU := 0.25
+## ★2026-08-07 0.25 → 0.42: 节拍也是 0.25 秒 ⇒ 旧值让每片在下一跳之前刚好衰到 1/e = 37%,
+##   随手截一帧十有八九落在低谷(改后实拍 `_vfxlab_af091_*.png` 三张全是暗的就是这么来的)。
+const PLATE_TAU := 0.42
+## 甲片亮度的**下限**(占 PLATE_A 的比例)。★这条是"甲片环随时看得见"的结构保证:
+##   指数衰减的终点是 0, 意味着只要采样落在两跳之间的低谷, 甲片就是不存在的。
+##   加了地板之后甲片环是一个**常驻**的玉青六边形环, 脉冲只是在它上面加亮。
+## ⚠ 地板只作用在 `tick()` 的衰减上, **不碰 `scute_pulse` 写下的峰值** ——
+##   否则 ×√6 那条比值断言会变成 (floor+a)/(floor+b) ≠ √6。
+const PLATE_FLOOR_FRAC := 0.45
 
 ## ── ② 回复脉冲波(091) ────────────────────────────────────────────
 ## 柱面波振幅公式的起算半径(归一)。a(x) = √(X0/x), 在 x = X0 处恰为 1。
@@ -101,16 +123,37 @@ const WAVE_LIFE := 0.42
 ## 碑破土升起的时长(秒)。
 const RISE_SEC := 0.85
 ## 碑体总高(米)、碑座半宽/半深(米)、碑身底/顶半宽(米)、碑身半深(米)。
-const STELE_H := 1.90
-const PLINTH_H := 0.20
-const PLINTH_HW := 0.40
-const PLINTH_HD := 0.22
-const SHAFT_HW_BOT := 0.30
-const SHAFT_HW_TOP := 0.22
-const SHAFT_HD := 0.10
+## ★2026-08-07 整体放大 ×1.55 —— 旧尺寸(H 1.90 / 半宽 0.30)在实战默认视角下
+##   只有 **22.5 宽 × 43 高 屏幕像素**(竖直方向 17.62 px/米、横向 28.15 px/米),
+##   碑面上再刻什么都只有 2~3 px。放大后 **35 × 66 px**, 刻纹才有地方站。
+const STELE_H := 2.95
+const PLINTH_H := 0.30
+const PLINTH_HW := 0.62
+const PLINTH_HD := 0.34
+const SHAFT_HW_BOT := 0.46
+const SHAFT_HW_TOP := 0.34
+const SHAFT_HD := 0.15
 ## 碑脚符环(贴地)的半径(场地像素)与转速(弧度/秒)。
-const RUNE_R_PX := 46.0
+const RUNE_R_PX := 58.0
 const RUNE_SPIN := 0.55
+
+## ── ③b 碑面琥珀刻纹(094 唯一的分星信息) ──────────────────────────
+## ★2026-08-07 重做 —— 旧版**一条都看不出来**, 两个根因叠在一起:
+##   ① 碑身 `SHADING_MODE_UNSHADED` + albedo 0.62~0.66 ⇒ 碑身本身就是一块自发光的亮灰,
+##      刻纹又是 **BLEND_ADD** ⇒ 0.64 + 0.85×0.79 直接饱和成纯白, 刻纹与碑身糊成一块。
+##      干净台 4.2 倍实拍(改前图 `_vfxlab_bf094_1.png`)就是一块纯白板。
+##   ② 分星靠的是刻纹**宽度** 0.13/0.17/0.22 —— 换算到屏幕是 7.3 / 9.6 / 12.4 px 的
+##      竖条宽度差, 就算不烧白, 肉眼也分不出"这条比那条宽 2 px"。
+## ⇒ 现在: 碑身压暗(见 COL_STONE) + 刻纹改 **BLEND_MIX**(是刻上去的漆, 不是打上去的光)
+##   + **分星改成数条数**: 星级 si ⇒ si+1 道横向刻纹。"数得清"永远比"比得出宽度"可靠。
+const GLYPH_N_BASE := 1
+## 单条刻纹的半高(米)与半宽占碑身半宽的比例。
+const GLYPH_HH := 0.13
+const GLYPH_W_FRAC := 0.86
+## 相邻两条刻纹的中心间距(米)
+const GLYPH_PITCH := 0.46
+## 刻纹组的中心高度(从碑座顶面往上算, 占碑身高的比例)
+const GLYPH_MID_FRAC := 0.68
 
 ## ── ④ 石雷(094) ──────────────────────────────────────────────────
 ## 石块的起落高度(米)与重力(米/秒²)。★两者一起把落时定死成 T = √(2H/g) = 0.5 秒,
@@ -120,9 +163,12 @@ const BOLT_G := 42.0
 ## 石块的世界尺寸(米)。
 const BOLT_R := 0.30
 
-## 配色。碑=青灰石 + 琥珀刻纹; 甲片=玉青; 石雷=暖岩。
-const COL_SCUTE := Color(0.42, 0.92, 0.68, 1.0)
-const COL_STONE := Color(0.62, 0.64, 0.66, 1.0)
+## 配色。碑=**暗**青灰石 + 琥珀刻纹; 甲片=玉青; 石雷=暖岩。
+## ★COL_STONE 从 (0.62,0.64,0.66) 压到 (0.26,0.28,0.31): 材质是 UNSHADED ⇒ albedo 就是自发光,
+##   0.64 的灰在纯黑场里已经是"亮白板", 刻纹再画什么都被它顶掉。压暗之后
+##   刻纹(luma 0.79) / 碑身(luma 0.28) 的亮度比 = **2.8 倍**, 一眼分得出。
+const COL_SCUTE := Color(0.48, 1.00, 0.74, 1.0)
+const COL_STONE := Color(0.26, 0.28, 0.31, 1.0)
 const COL_GLYPH := Color(1.00, 0.78, 0.34, 1.0)
 const COL_BOLT := Color(0.86, 0.62, 0.36, 1.0)
 
@@ -212,6 +258,28 @@ static func pulse_amp(mult: float) -> float:
 	return sqrt(maxf(mult, 0.0))
 
 
+## 094 碑面刻纹的几何(★门禁直接调, 不建节点)。
+##
+## 返回 `si + 1` 条横向刻纹, 每条 `{y, hw, hh}`(单位: 米, y 从**碑座顶面**往上算):
+##   · **条数 = si + 1** —— 分星信息落在"数得清的条数"上, 不是"比得出的宽度差"
+##   · 半宽 = 该高度处碑身半宽 × GLYPH_W_FRAC ⇒ 刻纹**恒在碑面内**(不会挑出碑外), 且
+##     碑身是下宽上窄的锥台 ⇒ 越靠上的刻纹越短, 跟着碑走
+##   · 组整体以 GLYPH_MID_FRAC 处为中心上下均分 ⇒ 1/2/3 条时视觉重心都在同一高度
+static func glyph_bands(si: int, shaft_h: float) -> Array:
+	var n: int = GLYPH_N_BASE + clampi(si, 0, 2)
+	var mid: float = shaft_h * GLYPH_MID_FRAC
+	var out: Array = []
+	for k in range(n):
+		var y: float = mid + (float(k) - float(n - 1) * 0.5) * GLYPH_PITCH
+		var f: float = clampf(y / maxf(shaft_h, 1e-6), 0.0, 1.0)
+		out.append({
+			"y": y,
+			"hw": lerpf(SHAFT_HW_BOT, SHAFT_HW_TOP, f) * GLYPH_W_FRAC,
+			"hh": GLYPH_HH,
+		})
+	return out
+
+
 ## 匀减速上升的归一高度 ĥ(τ) = 2τ − τ²(τ ∈ [0,1])。
 ## ★ĥ(1) = 1 且 ĥ′(1) = 0 ⇒ 到位那一刻速度恰为 0(软着陆的唯一解); ĥ(0.5) = 0.75。
 static func rise_profile(tau: float) -> float:
@@ -254,15 +322,38 @@ static func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector
 
 ## 单位外接圆半径的正六边形甲片(贴地·顶点在 0°/60°/…/300°)。
 ## ★顶点角必须是这六个 —— `hex_ring_centers` 的 30° 偏移是**相对它们**成立的。
+##
+## ★2026-08-07 加**描边**: 内芯顶点 alpha PLATE_VA_CORE、外沿一圈 PLATE_VA_RIM。
+##   原因是 PLATE_A 的天花板被 ×√6 那条比值断言焊死在 1/√6 = 0.408 —— 整片一起提亮
+##   最多只能提 1.33 倍, 提不到"看得见"。描边走**顶点色**这条独立通道:
+##   最终 alpha = 材质 alpha × 顶点 alpha, 比值断言只看材质那一半, 不受影响。
 static func _build_hex() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var c := Vector3.ZERO
+	var rin: float = PLATE_RIM_IN
 	for k in range(PLATE_N):
 		var t0: float = TAU * float(k) / float(PLATE_N)
 		var t1: float = TAU * float(k + 1) / float(PLATE_N)
-		_tri(st, c, Vector3(cos(t0), 0.0, sin(t0)), Vector3(cos(t1), 0.0, sin(t1)))
+		var i0 := Vector3(rin * cos(t0), 0.0, rin * sin(t0))
+		var i1 := Vector3(rin * cos(t1), 0.0, rin * sin(t1))
+		var o0 := Vector3(cos(t0), 0.0, sin(t0))
+		var o1 := Vector3(cos(t1), 0.0, sin(t1))
+		# 内芯扇形(暗)
+		_tri_c(st, Vector3.ZERO, i0, i1, PLATE_VA_CORE)
+		# 外沿描边带(亮)
+		_tri_c(st, i0, o0, o1, PLATE_VA_RIM)
+		_tri_c(st, i0, o1, i1, PLATE_VA_RIM)
 	return st.commit()
+
+
+## 带顶点 alpha 的三角面(RGB 恒白 —— 本色由材质 albedo 给, 顶点色只管明暗)。
+static func _tri_c(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, va: float) -> void:
+	var n: Vector3 = (b - a).cross(c - a)
+	n = n.normalized() if n.length() > 1e-9 else Vector3.UP
+	for v in [a, b, c]:
+		st.set_normal(n)
+		st.set_color(Color(1.0, 1.0, 1.0, va))
+		st.add_vertex(v)
 
 
 ## 单位外半径的贴地圆环带(内半径 inner)。
@@ -317,7 +408,10 @@ static func _build_box() -> ArrayMesh:
 	return st.commit()
 
 
-static func _mat(col: Color, additive: bool, no_depth: bool, prio: int) -> StandardMaterial3D:
+## `use_vcol` = 让**顶点色**参与 albedo(甲片描边靠它; 见 `_build_hex`)。
+## ⚠ 默认关: `_m_ring` / `_m_rock` / `_m_box` 都没有顶点色数组, 全局打开会让它们吃到未定义的默认值。
+static func _mat(col: Color, additive: bool, no_depth: bool, prio: int,
+		use_vcol: bool = false) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -326,6 +420,7 @@ static func _mat(col: Color, additive: bool, no_depth: bool, prio: int) -> Stand
 	m.albedo_color = col
 	m.no_depth_test = no_depth
 	m.render_priority = prio
+	m.vertex_color_use_as_albedo = use_vcol
 	return m
 
 
@@ -364,7 +459,7 @@ func ensure_scutes(u: Dictionary) -> Dictionary:
 	var alphas: Array = []
 	var ps: float = PLATE_R_PX * float(battle.WS)
 	for c in hex_ring_centers(PLATE_R_PX):
-		var mi := _mesh_node(_m_hex, _mat(Color(COL_SCUTE.r, COL_SCUTE.g, COL_SCUTE.b, 0.0), true, true, 8))
+		var mi := _mesh_node(_m_hex, _mat(Color(COL_SCUTE.r, COL_SCUTE.g, COL_SCUTE.b, 0.0), true, true, 8, true))
 		mi.scale = Vector3(ps, 1.0, ps)
 		mi.position = Vector3(float(c.x) * float(battle.WS), 0.0, float(c.y) * float(battle.WS))
 		root.add_child(mi)
@@ -472,13 +567,16 @@ func raise_stele(pos2d: Vector2, si: int) -> Dictionary:
 		seg.scale = Vector3(hw, shaft_h * (f1 - f0) * 0.5, SHAFT_HD)
 		seg.position = Vector3(0.0, PLINTH_H + shaft_h * (f0 + f1) * 0.5, 0.0)
 		root.add_child(seg)
-	# 碑面刻纹(两面各一条, 星级越高越宽 —— 12/22/35% 那三档的可见对应物)
-	var band_w: float = [0.13, 0.17, 0.22][clampi(si, 0, 2)]
+	# 碑面刻纹: 两面各 **si+1 道横纹**(条数 = 分星信息), 琥珀 MIX 漆色, 不是加法光
+	## ★MIX 不是 ADD: ADD 会把刻纹加进已经很亮的碑身里烧成白, 那正是改前的样子。
+	##   而 MIX 是"刻上去的漆" —— 无论碑身多亮, 刻纹处显示的就是琥珀色本身。
+	var bands: Array = glyph_bands(si, shaft_h)
 	for sgn in [1.0, -1.0]:
-		var band := _mesh_node(_m_box, _mat(Color(gl.r, gl.g, gl.b, 0.85), true, false, 6))
-		band.scale = Vector3(band_w, shaft_h * 0.34, 0.012)
-		band.position = Vector3(0.0, PLINTH_H + shaft_h * 0.52, sgn * (SHAFT_HD + 0.012))
-		root.add_child(band)
+		for gb in bands:
+			var band := _mesh_node(_m_box, _mat(Color(gl.r, gl.g, gl.b, 1.0), false, false, 6))
+			band.scale = Vector3(float(gb["hw"]), float(gb["hh"]), 0.012)
+			band.position = Vector3(0.0, PLINTH_H + float(gb["y"]), sgn * (SHAFT_HD + 0.014))
+			root.add_child(band)
 	# 碑脚符环(贴地·缓慢自转)
 	var rune := _mesh_node(_m_ring, _mat(Color(gl.r, gl.g, gl.b, 0.42), true, true, 7))
 	var rr: float = RUNE_R_PX * float(battle.WS)
@@ -640,9 +738,11 @@ func tick(delta: float) -> void:
 			continue
 		root.position = battle._world_pos(u["pos"], GROUND_Y)
 		var decay: float = exp(-d / PLATE_TAU)
+		var floor_a: float = PLATE_A * PLATE_FLOOR_FRAC
 		var alphas: Array = h["a"]
 		for k in range(alphas.size()):
-			alphas[k] = float(alphas[k]) * decay
+			## ★衰减到地板为止, 不衰到 0 —— 甲片环是常驻物件, 脉冲只是往上加亮
+			alphas[k] = maxf(floor_a, float(alphas[k]) * decay)
 			var mi = (h["plates"] as Array)[k]
 			if is_instance_valid(mi):
 				(mi.material_override as StandardMaterial3D).albedo_color = Color(

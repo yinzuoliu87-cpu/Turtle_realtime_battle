@@ -192,14 +192,9 @@ func _run_all() -> void:
 				if _s._vfx._syn.alive_count("polygon_ring") > 0:
 					break)
 
-	# ── 奇械·僵硬跨阈值 ───────────────────────────────────────────
-	await _case("gadget_stiff", Vector2(right["pos"]), 3.0,
-		func():
-			_tiers({"奇械": 4})
-			right["stiff_stacks"] = 0
-			right["_stiff_vfx"] = 0
-			for i in range(5):
-				_s._gadget_syn.add_stiff(right, 1))
+	# ⛔ 原本这里还有一个 `gadget_stiff`(僵硬跨 5/10/20 层) 的取景 ——
+	#    用户 2026-08-07 拍板【不做阈值特效】, 那条效果连同遗物·远古之力 / 食物·成长
+	#    一起拆净了, 取景也跟着删 (留着只会拍出一张空图, 看着像"特效失效了")。别加回来。
 
 	# ══ ★对照组: 同一条真入口, 只把羁绊档位改成 0 ══════════════════
 	#    它们应该只剩噪声底 —— 这是把"我画的"与"地图装饰/别的特效"分开的硬办法。

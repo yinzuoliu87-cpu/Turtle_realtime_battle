@@ -12,12 +12,20 @@ extends RefCounted
 ##   门禁验的是那个模型的**性质**(恒等式 / 尺度律 / 极值), 手调出来的曲线一条都过不了。
 ##   **这不是"逐帧量参考"的等价物**, 是它的替代品。
 ##
-## ── ① 085 压电火花: 面能量密度守恒 ⇒ 半径 ∝ √E ────────────────────
+## ── ① 085 压电火花: 常明陶瓷芯 + 面能量密度守恒的辉光冕 ────────────────
 ##   压电材料受力放电, 放出的能量摊在一片辉光上。若**面能量密度恒定**(材料属性),
-##   则 E ∝ 面积 ∝ r² ⇒ **r ∝ √E**。
-##   ★可验证性质(门禁): `spark_radius(4E) / spark_radius(E) ≡ 2`, 与 E 无关(纯尺度律)。
-##     线性半径(r ∝ E)会给出 4, 一测就分开。
-##   ⇒ "转的龟能越多火花越大"这句话变成一条尺度律, 而不是一句美术形容。
+##   则 E ∝ 面积 ∝ r² ⇒ 辉光冕 **r_halo ∝ √E**。
+##   而陶瓷片**本身是一个有尺寸的实体**, 不管放多少电它都在那儿 ⇒ 总半径
+##       r(E) = R0 + K·√E          `spark_radius()`
+##   ★可验证性质(门禁): `(r(4E) − R0) / (r(E) − R0) ≡ 2`, 与 E 无关(冕的纯尺度律);
+##     且 `r(0) ≡ R0 > 0`(芯常明)。线性半径会给 4, 没有 R0 的旧式在 E→0 时给 0。
+##
+##   ★★2026-08-07 为什么加 R0 —— 旧式 `r = 0.08·√E` 把**常态压进了不可见区**:
+##     常态每下挨打 8~36 伤害 ⇒ E = 0.15×伤害 = 1.2~5.4 ⇒ r = 0.088~0.186 米 ⇒
+##     实战默认视角(28.148 屏幕像素/米)下**直径只有 4.9~10.5 屏幕像素**, 比头顶徽章(16 px)还小。
+##     纯 √ 律的毛病在于: 想把常态顶上去只能整体放大 K, 而 3★ 每秒上限 E=60 会跟着放大到爆屏。
+##     R0 + K√E 把"下限"和"增速"拆成两个独立旋钮 ⇒ 常态 20~29 px、上限 E=60 仍只有 67 px。
+##     ⇒ 尺度律没丢, 只是**移到冕上**(它本来就只对冕成立 —— 芯不是放电产物)。
 ##
 ## ── ② 086 浮游炮环绕: 正 n 边形排布(最大最小间距) ────────────────────
 ##   n 门炮环绕, 唯一让**最小两两角距最大化**的排布是正 n 边形(角度 2πk/n)。
@@ -62,10 +70,18 @@ extends RefCounted
 #  §物理常数 —— 全部来自上面的闭式解
 # ══════════════════════════════════════════════════════════════════
 
-## 085 火花: r = SPARK_K·√E (米)。E=60(3★ 每秒封顶)时 r ≈ 0.62 米, 约半只龟宽。
-const SPARK_K := 0.08
+## 085 火花: r = SPARK_R0 + SPARK_K·√E (米)。
+## ★三个设计点(实战默认视角 28.148 屏幕像素/米, 直径 = 2r):
+##     E =  1.2 (挨 8 伤害)  → r 0.360 米 → 直径 **20.3 px**   ← 常态下限, 已高于徽章 16 px
+##     E =  5.4 (挨 36 伤害) → r 0.515 米 → 直径 **29.0 px**
+##     E = 60.0 (3★ 每秒封顶·硬上限) → r 1.196 米 → 直径 **67.3 px** ← 约 1.5 只龟高, 不爆屏
+const SPARK_R0 := 0.22
+const SPARK_K := 0.126
 const SPARK_LIFE := 0.30
 const SPARK_COLOR := Color(0.62, 0.95, 1.0)
+## 辉光的不透明度。★从 0.85 降下来: 半径放大 3~6 倍之后, 0.85 的加法混合会盖成一坨实心白球
+##   把携带者整只糊住 —— 这是"治好看不见"顺手造出的反向问题。0.60 仍是明确的青白辉光。
+const SPARK_ALPHA := 0.60
 
 ## 086 浮游炮
 const DRONE_R_M := 0.16          ## 炮体半径(米)
@@ -116,9 +132,14 @@ func _alive() -> bool:
 #  §纯函数 —— 上面五条物理性质的实现。门禁直接调, 不需要任何节点/场景。
 # ══════════════════════════════════════════════════════════════════
 
-## ① 面能量密度守恒: 半径 ∝ √E
-static func spark_radius(energy: float) -> float:
+## ① 辉光冕: 面能量密度守恒 ⇒ 冕半径 ∝ √E(不含常明的陶瓷芯)
+static func spark_halo(energy: float) -> float:
 	return SPARK_K * sqrt(maxf(0.0, energy))
+
+
+## ① 火花总半径 = 常明陶瓷芯 + 辉光冕。`spark_radius(0) ≡ SPARK_R0`。
+static func spark_radius(energy: float) -> float:
+	return SPARK_R0 + spark_halo(energy)
 
 
 ## ② 第 k 门炮的环绕角(正 n 边形): 2πk/n + phase
@@ -217,7 +238,7 @@ func piezo_spark(u: Dictionary, energy: float) -> MeshInstance3D:
 	if not _alive() or energy <= 0.0:
 		return null
 	var r: float = spark_radius(energy)
-	var n := _mi(SphereMesh.new(), Color(SPARK_COLOR.r, SPARK_COLOR.g, SPARK_COLOR.b, 0.85), "piezo")
+	var n := _mi(SphereMesh.new(), Color(SPARK_COLOR.r, SPARK_COLOR.g, SPARK_COLOR.b, SPARK_ALPHA), "piezo")
 	(n.mesh as SphereMesh).radius = 1.0
 	(n.mesh as SphereMesh).height = 2.0
 	n.position = battle._world_pos(u["pos"], 0.85)

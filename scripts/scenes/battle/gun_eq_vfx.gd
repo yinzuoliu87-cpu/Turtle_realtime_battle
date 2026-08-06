@@ -75,6 +75,24 @@ const BEAM_SLACK := 1.15
 const ARC_DEPTH := 4
 const ARC_ROUGH := 0.16
 
+## ── 078 的两个已确认问题(用户 2026-08-07 实拍)与改法 ─────────────────
+## ①【电弧是白的不是电色】。根因**不是"没上色"**, 是两件事叠加:
+##    · 原色 `COL_MAGIC #9bdcff` 明度 100%、饱和度只有 39% —— 在近黑场上本来就读作白;
+##    · 折线有 2^4=16 段, 每段一块 **BLEND_MODE_ADD** 的带, 段与段在拐点重叠 ⇒ 直接加爆成白。
+##    ⇒ 改成**双层**: 外层宽带用高饱和电紫(MIX 混合, 不会越叠越白),
+##      内层窄带才用白热芯(ADD)。这样"芯是白的、身是紫的" = 闪电该有的样子,
+##      而且**越叠越白在结构上被堵死**(叠的是 MIX 层)。
+const COL_ARC := Color(0.47, 0.34, 1.0)        # 电紫(身)
+const COL_ARC_CORE := Color(0.80, 0.95, 1.0)   # 白热芯
+## ②【左右两管的相位读不出来】。原来两管**共用携带者中心一个出膛点**, 且右管(电击)
+##    根本没画"从枪口打出去"这一段(只画目标之间的连锁) ⇒ 玩家看不到是哪一管在响。
+##    ⇒ 左管从**上管口**出、右管从**下管口**出(垂直瞄准线各偏 BARREL_OFF 码),
+##      并各自补一记**管口闪**; 右管再补一条"枪口 → 首目标"的电束。
+const BARREL_OFF := 22.0
+## 管口闪的长度/宽度(码)
+const BARREL_FLASH_LEN := 34.0
+const BARREL_FLASH_W := 7.0
+
 var battle
 ## 自管生命周期的瞬时效果: [{node, t, life, kind, ...}]
 var _fx: Array = []
@@ -206,7 +224,8 @@ func _adopt(n: Node3D, life: float, kind: String, extra: Dictionary = {}) -> Nod
 
 ## 贴地(或指定高度)的一条**平面带**: 沿 a→b 的矩形, 宽 half_w×2 码。
 ## 用 ArrayMesh 直接建 —— 零素材, 且朝向由几何决定(不靠 billboard 猜)。
-func _band(a2: Vector2, b2: Vector2, h: float, half_w: float, col: Color) -> MeshInstance3D:
+func _band(a2: Vector2, b2: Vector2, h: float, half_w: float, col: Color,
+		blend_add: bool = true) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var dir: Vector2 = b2 - a2
 	if dir.length() < 0.001:
@@ -223,7 +242,9 @@ func _band(a2: Vector2, b2: Vector2, h: float, half_w: float, col: Color) -> Mes
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	# ★ADD 让重叠处越叠越亮 —— 折线拐点重叠 16 次就会加爆成白(078 电弧的旧账)。
+	#   要"身"保持颜色的地方一律传 blend_add=false。
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD if blend_add else BaseMaterial3D.BLEND_MODE_MIX
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	mat.albedo_color = col
 	mi.material_override = mat
@@ -296,36 +317,75 @@ func blast(pos: Vector2, radius: float, col: Color) -> void:
 #  §078 左管锥形霰弹 / 右管连锁电弧
 # ══════════════════════════════════════════════════════════════════
 
+## 某一管的**管口位置**(纯几何, 门禁直接验): 左管在瞄准线上侧、右管在下侧, 各偏 BARREL_OFF 码。
+## ★这是"两管相位"的唯一信息载体 —— 两管出膛点必须**真的分开**, 不是靠颜色暗示。
+static func barrel_muzzle(origin: Vector2, dir: Vector2, left: bool) -> Vector2:
+	var d: Vector2 = dir.normalized() if dir.length() > 0.001 else Vector2.RIGHT
+	var perp: Vector2 = Vector2(-d.y, d.x)
+	return origin + perp * (-BARREL_OFF if left else BARREL_OFF) + d * 12.0
+
+
+## 管口闪: 出膛点朝射向的一小道亮条。左管铜橙、右管电紫 ⇒ 相位一眼分得出。
+func barrel_flash(origin: Vector2, dir: Vector2, left: bool) -> Vector2:
+	var m: Vector2 = barrel_muzzle(origin, dir, left)
+	if not _has_world():
+		return m
+	var d: Vector2 = dir.normalized() if dir.length() > 0.001 else Vector2.RIGHT
+	var c: Color = Color(1.0, 0.80, 0.38) if left else COL_ARC_CORE
+	var mi := _band(m, m + d * BARREL_FLASH_LEN, 1.0, BARREL_FLASH_W * 0.5, Color(c.r, c.g, c.b, 0.95))
+	_adopt(mi, 0.12, "band", {"a0": 0.95})
+	return m
+
+
 ## 锥形霰弹: 扇形底光 + 若干弹丸。弹丸半径按 ③ 取 r = R√u(面积均匀)。
+## ★从**左管口**出膛(不是携带者中心) —— 见 BARREL_OFF 那段注释。
 func cone_blast(origin: Vector2, dir: Vector2, range_px: float, half_deg: float,
 		col: Color, gold_pct: float = 0.0, pellets: int = 14) -> int:
 	if not _has_world():
 		return 0
 	var g: float = gold_glow(gold_pct)
 	var rng: RandomNumberGenerator = battle._juice_rng
+	var muz: Vector2 = barrel_flash(origin, dir, true)
 	var n := 0
 	for i in range(pellets):
 		var r: float = cone_r(rng.randf(), range_px)
 		var th: float = deg_to_rad(half_deg) * (rng.randf() * 2.0 - 1.0)
 		var d: Vector2 = dir.rotated(th)
-		var mi := _band(origin, origin + d * r, 0.9, 2.5 + 3.0 * g,
+		var mi := _band(muz, muz + d * r, 0.9, 2.5 + 3.0 * g,
 			Color(col.r, col.g + 0.15 * g, col.b, 0.55 + 0.35 * g))
 		_adopt(mi, 0.14, "band", {"a0": 0.55 + 0.35 * g})
 		n += 1
-	_ring(origin, Color(col.r, col.g, col.b, 0.5), range_px * 0.35, 0.22)
+	_ring(muz, Color(col.r, col.g, col.b, 0.5), range_px * 0.35, 0.22)
 	return n
 
 
+## 右管出膛的那一束电: 从**右管口**打到首目标。返回管口位置(门禁验两管真的分开)。
+## ★原来右管一发都没画"从枪口出去"这一段, 只画目标之间的连锁 ⇒ 玩家读不出是右管在响。
+func eel_bolt(origin: Vector2, first: Vector2, gold_pct: float = 0.0) -> Vector2:
+	var m: Vector2 = barrel_flash(origin, first - origin, false)
+	chain_arc(m, first, COL_ARC, gold_pct)
+	return m
+
+
 ## 连锁电弧: 中点位移分形(④)。端点精确落在两个目标身上。
-func chain_arc(a: Vector2, b: Vector2, col: Color, gold_pct: float = 0.0) -> int:
+## ★双层画法(见 COL_ARC 那段注释): 外层电紫用 **MIX**(重叠不加爆), 内层白热芯才用 ADD。
+##   原来 16 段全是 ADD 的浅蓝带, 拐点一叠就成白线 —— 这正是"电弧是白的"的根因。
+func chain_arc(a: Vector2, b: Vector2, _col: Color, gold_pct: float = 0.0) -> int:
 	if not _has_world():
 		return 0
 	var g: float = gold_glow(gold_pct)
 	var pts: Array = arc_points(a, b, ARC_DEPTH, battle._battle_rng)
 	for i in range(pts.size() - 1):
-		var mi := _band(Vector2(pts[i]), Vector2(pts[i + 1]), 1.0, 2.0 + 3.0 * g,
-			Color(col.r + 0.3 * g, col.g, col.b, 0.9))
-		_adopt(mi, 0.18, "band", {"a0": 0.9})
+		var p0: Vector2 = pts[i]
+		var p1: Vector2 = pts[i + 1]
+		# 身: 高饱和电紫的宽带, MIX ⇒ 越叠越白在结构上不可能发生
+		var body := _band(p0, p1, 1.0, 6.0 + 3.0 * g,
+			Color(COL_ARC.r + 0.35 * g, COL_ARC.g, COL_ARC.b, 0.92), false)
+		_adopt(body, 0.18, "band", {"a0": 0.92})
+		# 芯: 细白热带, ADD(只有它会发亮, 且宽度只有身的三分之一)
+		var core := _band(p0, p1, 1.02, 2.4 + 1.2 * g,
+			Color(COL_ARC_CORE.r, COL_ARC_CORE.g, COL_ARC_CORE.b, 1.0))
+		_adopt(core, 0.16, "band", {"a0": 1.0})
 	return pts.size()
 
 

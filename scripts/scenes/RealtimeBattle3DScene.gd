@@ -714,6 +714,9 @@ var _relic_syn := RelicSynergySystem.new(self)     # 遗物羁绊【生死界/�
 ## 093 香火石的演出层(2026-08-06·批④)。效果本体在 scripts/systems/equip/incense_stone_system.gd,
 ## 走 EquipSystem 的批④统一路由; 这里只持演出, 与结算完全分开(CLAUDE.md §3.5)。
 var _incense_vfx := IncenseVfx.new(self)
+## 枪羁绊【金弹】的可辨演出(2026-08-07)。★挂点只有一个: `_queue_shots` 的金弹分支
+##   (九把枪的共用出口)。菱形族剪影, 与场上一切圆环/直条弹迹遮住颜色也分得开。
+var _gold_vfx := GoldenShotVfx.new(self)
 var _tentacle_vfx := TentacleVfx.new(self)         # 灵物【触手拍击】程序化 3D 网格演出(2026-08-04)
 ## ★"当前正在执行哪件装备的效果" —— 盾羁绊 9 档要判断"这次护盾/治疗是不是盾类装备给的"。
 ##   护盾/治疗管线本来【不记录来源】, 给每个调用点加参数要碰几十处;
@@ -2193,6 +2196,8 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 					_tick_unit(u, dt)        # active携带者自由行动(移动/普攻/放技/命中即时结算)
 				_ballistics._step_projectiles(dt)        # 内部gate: 只推进active的弹道; 其余悬空
 				_ballistics._step_pending_shots(dt)      # 内部gate: 只active的依次射击
+				_gold_vfx.tick(dt)                       # 金弹演出自推进(不用 tween, §3.5)
+				_incense_vfx.tick(dt)                    # 093 香火石演出自推进(同上)
 				_check_end()
 	else:
 		if _dl_sys._dl_is_present():
@@ -2214,6 +2219,8 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 			_trainer_sys._tick_glaciers(dt)           # 冰川带(训龟大师): 站带上的敌减速+易伤
 			_ballistics._step_projectiles(dt)
 			_ballistics._step_pending_shots(dt)
+			_gold_vfx.tick(dt)                       # 金弹演出自推进(不用 tween, §3.5)
+			_incense_vfx.tick(dt)                    # 093 香火石演出自推进(同上)
 			_check_end()
 
 ## Phase4: 纯演出(立绘帧动画/相机/overlay·每帧一次)。frozen/in_ts 与 _sim_step 用同一份(sim前捕获)。
@@ -4280,9 +4287,13 @@ func _barrage_cloud_fade(cloud: Sprite3D) -> void:
 	tw.tween_callback(cloud.queue_free)
 
 
+## ★★2026-08-07 修(同族第三处): 这里把外部算好的帧号【原样】写进去,
+##   表一换(帧数变少)就越界刷 `Index p_frame = N is out of bounds`。
+##   前两处是忍者冲刺(写死 8~10 帧)与玩偶熊换图(用 hframes 判、引擎按 hframes×vframes 校验)。
+##   ⇒ 统一按【贴图当下的真实总帧数】钳制。
 func _lstrike_frame(spr: Sprite3D, f: int) -> void:
 	if is_instance_valid(spr):
-		spr.frame = f
+		spr.frame = clampi(f, 0, maxi(0, int(spr.hframes) * int(spr.vframes) - 1))
 
 func _resolve_dmg(u: Dictionary, base: float, tgt: Dictionary, magic: bool) -> int:
 	_last_dmg_type = "magic" if magic else "physical"   # 记类型供飘字取色
@@ -4428,11 +4439,17 @@ func _queue_shots(count: int, interval: float, fn: Callable, src = null, gun_id:
 			continue
 		ct[gun_id] = 0
 		# 金弹紧跟在那一发之后(半个间隔), 复用同一个 fn ⇒ 效果完全继承
+		# ★2026-08-07【金弹可辨】: 演出也只挂在这一处 —— 九把枪全从这个出口出去,
+		#   往每件装备里各写一份就是"手抄的副本必然落后"。`arm/resolve` 是**快照差分**:
+		#   开火前记一遍全场 hp+shield, 开火后掉了的就是这一发打中的 ⇒ 不必往
+		#   `battle_damage` 这条最热的共用管线里加钩子。详见 golden_shot_vfx.gd 文件头。
 		var gp := gpct
 		_pending_shots.append({"delay": float(k) * interval + interval * 0.5, "src": src,
 			"fn": func() -> void:
 				src["_golden_pct"] = gp
+				_gold_vfx.arm(src)
 				fn.call()
+				_gold_vfx.resolve(gp)
 				src["_golden_pct"] = 0.0})
 
 # 枪口闪: 在 pos2d 沿 dir 前方一点爆一小簇火光(胸口高度), 表现开火
@@ -4817,25 +4834,50 @@ func play_sheet_vfx(pos2d: Vector2, sheet: Texture2D, frames: int, world_px: flo
 	t.tween_method(func(fr): spr.frame = clampi(int(fr), 0, frames - 1), 0.0, float(frames), dur)   # 逐帧推进
 	t.tween_callback(spr.queue_free)
 
+## ── `_skill_ring` 的两条曲线 ────────────────────────────────────────────────
+## ★2026-08-07 修的 bug(方案书 docs/plans/20260807-表现层方案书.md §1.3):
+##   原来【尺寸和 alpha 走同一条 0.35 秒曲线】—— 环从 40% 扩到 100% 的**同时**
+##   alpha 从 1 拉到 0 ⇒ **环放到最大的那一帧正好完全透明**, 肉眼只看得到 40~70% 那一段。
+##   用户报的"083 潮汐细剑的叠层环 / 093 香火石 / 081 藤编圆盾 / 目标环都看不出来"根因就是它:
+##   **不是做小了, 是画到最显眼的时候被自己抹掉了**。
+##   ⇒ 拆成两条曲线: 【先长大(这一整段 alpha 保持峰值) → 长满【之后】才淡出】。
+##   ⚠ 它是公共原语, 全仓 60+ 个调用点共用 —— 改的只有【时间轴】,
+##     半径/颜色/峰值亮度一个都没动, 所以别的调用者只会"看得见了", 不会变形变色。
+const RING_PS0 := 0.4          # 起始尺寸(占目标的比例)。环从这里扩到 100%
+const RING_GROW_T := 0.26      # ①扩张段: 这一整段 alpha 保持峰值 ⇒ 长到最大那一帧【最亮】
+const RING_FADE_T := 0.22      # ②淡出段: 长满之后才开始淡出(总时长 0.48s, 原来是 0.35s)
+## 峰值 modulate alpha。★贴图 `_make_ring_texture` 自带 0.6 的 alpha 剖面且【被缓存、忽略入参】,
+##   所以屏幕上的峰值 = 0.6 × 这个数; 入参 `col.a` 一直是没人读的 —— 这次不动它(动了就是全仓变暗)。
+const RING_PEAK_A := 1.0
+
 # 技能光圈: 地面上一个躺平的环, 扩散淡出 (2D 接口对齐 _skill_ring(pos, col, radius))
-func _skill_ring(pos2d: Vector2, col: Color, radius: float) -> void:
+func _skill_ring(pos2d: Vector2, col: Color, radius: float) -> Sprite3D:
 	var r := Sprite3D.new()
 	r.texture = VfxTex._make_ring_texture(col)
 	r.billboard = BaseMaterial3D.BILLBOARD_DISABLED
 	r.axis = Vector3.AXIS_Y          # 躺平贴地
 	r.shaded = false
 	r.transparent = true
-	r.modulate = Color(col.r, col.g, col.b, 1.0)
+	r.modulate = Color(col.r, col.g, col.b, RING_PEAK_A)
 	r.position = _world_pos(pos2d, 0.05)
 	# pixel_size 让环直径 ≈ radius(px) × WS(米/px); ring 贴图 96px 宽
 	var target_ps: float = (radius * 2.0 * WS) / 96.0
-	r.pixel_size = target_ps * 0.4
+	r.pixel_size = target_ps * RING_PS0
+	r.set_meta("ring_target_ps", target_ps)   # 门禁/量尺拿它当分母(不重算一遍曲线)
 	_world.add_child(r)
 	var tw := _reg_tween()
 	tw.set_parallel(true)
-	tw.tween_property(r, "pixel_size", target_ps, 0.35)
-	tw.tween_property(r, "modulate:a", 0.0, 0.35)
+	# ①扩张段(0 → RING_GROW_T): 尺寸 40%→100%, 【alpha 同时保持在峰值】。
+	#   那条等值的 alpha tween 不是废话 —— 它占住这一段时间, 让下面 chain() 的淡出
+	#   真的排在"长满之后"; 少了它, chain() 会紧跟着尺寸那条一起排, 又变回同步淡出。
+	tw.tween_property(r, "pixel_size", target_ps, RING_GROW_T) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(r, "modulate:a", RING_PEAK_A, RING_GROW_T)
+	# ②淡出段: 长满【之后】才开始, 所以"最大的那一帧"是最亮的一帧。
+	tw.chain().tween_property(r, "modulate:a", 0.0, RING_FADE_T)
 	tw.chain().tween_callback(r.queue_free)
+	r.set_meta("ring_tw", tw)                 # 门禁 custom_step 手推这条 tween(无头 CI 下 tween 自走不稳)
+	return r
 
 func _splash_ring_bold(pos2d: Vector2, col: Color, radius: float) -> void:   # 醒目冲击环: 双层贴地环 + no_depth_test(恒画在地板/地形/立绘之上·不被高度吞·用户2026-07-19)
 	var target_ps: float = (radius * 2.0 * WS) / 96.0
@@ -8166,8 +8208,13 @@ func _inject_equipment() -> void:
 			#   EQDEMO_COUNT 塞的是同一个 id, 而羁绊档位【按 id 去重】(synergy_system._calc_tiers)
 			#   ⇒ 塞 9 件同款仍然只算 1 件、法器档位恒为 0、法力条一点都不涨。
 			#   088/089/090 三件法器全靠法力条触发 ⇒ 没有这一行就永远看不到效果, 而且不报错。
+			# ★2026-08-07 改成【逗号分隔的多件】: 枪羁绊 1 档要 **3 件不同 id**(法器只要 2 件),
+			#   只塞一件 eq2 永远够不到枪档 ⇒ 金弹一发都出不来, 而且不报错。
+			#   单件写法 `EQDEMO_EQUIP2=p2eq_089` 照旧生效(split 后就是一个元素)。
 			if OS.has_environment("EQDEMO_EQUIP2"):
-				list.append({"id": OS.get_environment("EQDEMO_EQUIP2"), "star": _est})
+				for _e2 in OS.get_environment("EQDEMO_EQUIP2").split(","):
+					if str(_e2).strip_edges() != "":
+						list.append({"id": str(_e2).strip_edges(), "star": _est})
 			u["equips"] = list
 		for e in list:
 			u["eq_state"][str(e["id"])] = {}

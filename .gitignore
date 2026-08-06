@@ -96,3 +96,5 @@ tools/duel*-log/
 
 # 🔬 特效调试台 VFXLAB 的自截图输出
 _vfxlab_*
+# VFXLAB 改前/改后对比图(2026-08-07 表现层那一轮) —— 工作产物, 不进仓
+_vfxshots/

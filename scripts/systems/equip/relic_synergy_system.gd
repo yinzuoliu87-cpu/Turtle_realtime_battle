@@ -66,12 +66,11 @@ const AWAKEN_TIER := 4
 const AWAKEN_SEC := 20.0
 const AWAKEN_BOOST := 0.50
 
-## ── 以下三个常量【只喂演出, 一点数值都不改】(批 B3·2026-08-06) ──────────────
-## 【远古之力】跨阈值提示的档位, 写成【上限的比例】而不是绝对值 ——
-## 上限本身逐档不同(15/25/35%), 写绝对值就得为每一档各配一组。
-## ⚠ 这三个数是我定的: 方案书未决点 U4「静默滚雪球用什么节奏提示」用户尚未拍板,
-##   我取的是它的建议 A(跨阈值才放)+C(常驻环) 里的 A 那半; 要调就调这一行。
-const ANCIENT_VFX_STEPS := [0.34, 0.67, 1.0]
+## ⛔【远古之力】跨 34%/67%/100% 的阈值提示：**用户 2026-08-07 拍板不做，别加回来**
+##   （方案书 docs/plans/20260807-表现层方案书.md §5 U4）。曾在 18379ba 实装过一版
+##   （`ANCIENT_VFX_STEPS` + `_ancient_step_vfx()` + `SynergyVfx.relic_ancient_step()`），
+##   本次连常量、调用、演出函数、门禁断言一起拆净 —— 不留空壳。
+##   理由: 远古之力是每 2.5 秒 +1~2% 的静默滚雪球，跨档闪一下既解释不了收益、又是噪音。
 ## 【生死界】演出侧的滞回带(±2 个百分点)。
 ## ★只影响"要不要放特效", **不影响** `atk_mult` / `lifesteal_bonus` 的 50% 判定 ——
 ##   血量正好在 50% 附近抖动时(吸血 + 挨打交替)会来回跨线, 没有滞回就是每帧闪一下。
@@ -223,9 +222,8 @@ func tick(delta: float) -> void:
 				continue
 			var add: float = minf(per, cap - cur)
 			u["_ancient"] = cur + add
-			# ★演出(批 B3): 每 2.5 秒 +1~2% 是【静默滚雪球】—— 每跳都跳字 = 每 2.5 秒 6 个字。
-			#   ⇒ 只在跨阈值时放一次。阈值由【本文件】算好传进去, 演出层一个数字都不烘。
-			_ancient_step_vfx(u, cap)
+			# ⛔ 这里曾经有一句跨阈值提示 `_ancient_step_vfx(u, cap)` ——
+			#   用户 2026-08-07 拍板不做，已拆净，别加回来（见文件头 ANCIENT 那段注释）。
 			# ★写 `damage_amp` 不写 `base_atk` —— 增伤是【乘在所有伤害上】的通道,
 			#   两处消费点(battle_damage.gd:546 / RealtimeBattle3DScene.gd:4243)已在用,
 			#   信息面板也早就显示"增伤 N%"。消费侧零改动。
@@ -249,20 +247,6 @@ func _awaken_vfx(side: String) -> int:
 	if lit.is_empty():
 		return 0
 	return int(battle._vfx._syn.relic_awaken(lit))
-
-
-## 【远古之力】跨阈值才放一次。阈值 = 上限 × ANCIENT_VFX_STEPS(见常量处的说明)。
-func _ancient_step_vfx(u: Dictionary, cap: float) -> void:
-	if cap <= 0.0 or battle == null or battle._vfx == null or battle._vfx._syn == null:
-		return
-	var sv = battle._vfx._syn
-	var th: Array = []
-	for fr in ANCIENT_VFX_STEPS:
-		th.append(cap * float(fr))
-	var step: int = sv.tier_of(float(u.get("_ancient", 0.0)), th)
-	# tier_advance: 同档反复喂返回 false ⇒ 每 2.5 秒调一次也只在跨档那一次放。
-	if sv.tier_advance(u, "_ancient_vfx", step):
-		sv.relic_ancient_step(Vector2(u.get("pos", Vector2.ZERO)), step)
 
 
 ## 【生死界】每帧看有没有跨 50% 线。★带滞回, 且**第一次观测只记状态不放特效**

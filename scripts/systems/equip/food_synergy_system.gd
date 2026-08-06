@@ -31,11 +31,10 @@ const PERIOD := 2.5
 const GROW_PER_FOOD := [8.0, 16.0, 30.0]
 ## 【学院】队伍全体额外 +N 最大生命（档1 无）
 const ACADEMY := [0.0, 100.0, 220.0]
-## ── 只喂演出, 一点数值都不改 (批 B3·2026-08-06) ──────────────────────────
-## 【永久成长】跨阈值提示的三档(累计涨了多少最大生命)。
-## ⚠ 这三个数是我定的: 方案书未决点 U4 用户尚未拍板 —— 取它建议的 A(跨阈值才放)。
-##   量级参考: 档1 每 2.5 秒 +8×件数 ⇒ 带 3 件食物约 24/跳, 100 ≈ 4 跳(10 秒)后第一次提示。
-const GROW_VFX_STEPS := [100.0, 300.0, 600.0]
+## ⛔【成长】跨 100/300/600 的阈值提示：**用户 2026-08-07 拍板不做，别加回来**
+##   （方案书 docs/plans/20260807-表现层方案书.md §5 U4）。曾在 18379ba 实装过一版
+##   （`GROW_VFX_STEPS` + `_grow()` 里的三行 + `SynergyVfx.food_growth_step()`），
+##   本次连常量、调用、演出函数、门禁断言一起拆净 —— 不留空壳。
 
 var _t_grow := 0.0
 ## ★【以场重置, 不是以路重置】(用户 2026-08-04 明确)。
@@ -114,13 +113,8 @@ func _grow(u: Dictionary, add: float) -> void:
 	var k: String = str(u.get("_food_key", ""))
 	if k != "":
 		_carry[k] = float(u["_food_grown"])
-	# ★演出(批 B3): 成长是【静默滚雪球】—— 每 2.5 秒偷偷 +8/16/30×件数, 血条慢慢变长。
-	#   每跳都放 = 每 2.5 秒全队闪一圈 ⇒ 只在跨阈值时放一次(阈值在本文件, 演出层不烘数字)。
-	if battle._vfx != null and battle._vfx._syn != null:
-		var sv = battle._vfx._syn
-		var step: int = sv.tier_of(float(u["_food_grown"]), GROW_VFX_STEPS)
-		if sv.tier_advance(u, "_food_vfx", step):
-			sv.food_growth_step(Vector2(u.get("pos", Vector2.ZERO)), step)
+	# ⛔ 这里曾经有一段跨阈值提示(100/300/600 各闪一次绿环) ——
+	#   用户 2026-08-07 拍板不做，已拆净，别加回来（见文件头 GROW 那段注释）。
 
 
 ## 单位的跨路身份键。★口径与 `dual_lane_flow._eq_carry_key` 一致（side|id|同名序号）。

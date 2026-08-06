@@ -24,6 +24,14 @@ extends Node
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 
+## ★2026-08-07 表现层放大后的【设计值】—— 写字面值, **不引用 RelicEqVfx 的常量**
+##   (引用就是拿代码跟它自己比 = 恒真式)。改了演出层的尺寸就要同步改这两行, 这正是本门禁的作用。
+##   · 甲片外接圆 13 → 21 码: 13 码在实战默认视角只有 17.6×13.7 屏幕像素, 整环跨度 30 px
+##   · 碑高 1.90 → 2.95 米:   1.90 米只有 22.5×33.5 屏幕像素, 碑面上刻什么都是 2~3 px
+##   两条的可见性判据由 tests/verify_eq_vfx_visibility.gd 单独守。
+const WANT_PLATE_R_PX := 21.0
+const WANT_STELE_H := 2.95
+
 var _n := 0
 var _fail := 0
 var _s = null
@@ -838,9 +846,9 @@ func _t_vfx_geometry() -> void:
 			continue
 		var lp: Vector3 = mi.position
 		var r_px: float = Vector2(lp.x, lp.z).length() / float(_s.WS)
-		if _near(r_px, sqrt(3.0) * 13.0, 1e-2):
+		if _near(r_px, sqrt(3.0) * WANT_PLATE_R_PX, 1e-2):
 			rp_ok += 1
-	_ok("真实节点的环半径 = √3 × 甲片半径", rp_ok == 6, "%d/6" % rp_ok)
+	_ok("真实节点的环半径 = √3 × 甲片半径(21 码)", rp_ok == 6, "%d/6" % rp_ok)
 
 	# ⑯-c 柱面波振幅: a(4x)/a(x) ≡ 1/2(能量守恒), 与 x 无关
 	var w_ok := 0
@@ -881,11 +889,11 @@ func _t_vfx_geometry() -> void:
 	_ok("碑真的进了 _world", not sh.is_empty() and is_instance_valid(sh["root"]) and sh["root"].get_parent() == _s._world)
 	var y_ground: float = _s._world_pos(carrier["pos"], 0.0).y
 	var y0: float = (sh["root"] as Node3D).position.y
-	_ok("τ=0 时整座碑埋在地下(−碑高)", _near(y0 - y_ground, -1.90, 1e-3), "Δy=%.4f" % (y0 - y_ground))
+	_ok("τ=0 时整座碑埋在地下(−碑高)", _near(y0 - y_ground, -WANT_STELE_H, 1e-3), "Δy=%.4f" % (y0 - y_ground))
 	vfx.apply_stele(sh, 0.5)
 	var y_half: float = (sh["root"] as Node3D).position.y
 	_ok("★τ=0.5 时真实节点已升到 75%(量真实对象不是抄公式)",
-		_near(y_half - y_ground, -1.90 * 0.25, 1e-3), "Δy=%.4f (期望 %.4f)" % [y_half - y_ground, -1.90 * 0.25])
+		_near(y_half - y_ground, -WANT_STELE_H * 0.25, 1e-3), "Δy=%.4f (期望 %.4f)" % [y_half - y_ground, -WANT_STELE_H * 0.25])
 	vfx.apply_stele(sh, 1.0)
 	_ok("τ=1 时碑面恰好落在地面", _near((sh["root"] as Node3D).position.y - y_ground, 0.0, 1e-4),
 		"Δy=%.5f" % ((sh["root"] as Node3D).position.y - y_ground))

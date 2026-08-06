@@ -859,16 +859,29 @@ func _t_vfx_physics() -> void:
 	print("── ⑤ 演出物理模型 ──")
 	var vf = GVfx.new(_s)
 
-	# ① 面能量密度守恒: r ∝ √E ⇒ 4 倍能量 = 2 倍半径(与 E 无关的纯尺度律)
+	# ① 面能量密度守恒 ⇒ **辉光冕** r_halo ∝ √E(4 倍能量 = 2 倍冕半径, 与 E 无关的纯尺度律)
+	#    ★2026-08-07 尺度律从"总半径"移到"冕": 总半径多了一个常明的陶瓷芯 R0
+	#      (`r = R0 + K√E`), 芯不是放电产物, 本来就不该吃这条律。
 	var ratios: Array = []
 	for e in [1.0, 7.5, 60.0]:
-		ratios.append(GVfx.spark_radius(e * 4.0) / maxf(1e-9, GVfx.spark_radius(e)))
+		ratios.append(GVfx.spark_halo(e * 4.0) / maxf(1e-9, GVfx.spark_halo(e)))
 	var ok1: bool = true
 	for r in ratios:
 		if absf(float(r) - 2.0) > 0.0005:
 			ok1 = false
-	_ok("⑤① 085 火花: 面能量密度守恒 ⇒ 半径 ∝ √E, 4 倍能量恰好 2 倍半径(线性会给 4)",
+	_ok("⑤① 085 火花: 面能量密度守恒 ⇒ 冕半径 ∝ √E, 4 倍能量恰好 2 倍冕(线性会给 4)",
 		ok1 and ratios.size() == 3, "三点比值 %s 期望 [2, 2, 2]" % str(ratios))
+	# ①b 总半径 = 芯 + 冕, 且芯【常明】(E=0 时仍有半径) —— 这条正是"常态可见"的结构保证
+	var r_ratio_ok: bool = true
+	for e in [1.0, 7.5, 60.0]:
+		var num: float = GVfx.spark_radius(float(e) * 4.0) - GVfx.spark_radius(0.0)
+		var den: float = maxf(1e-9, GVfx.spark_radius(float(e)) - GVfx.spark_radius(0.0))
+		if absf(num / den - 2.0) > 0.0005:
+			r_ratio_ok = false
+	_ok("⑤①b 085 火花: 总半径 = 常明芯 + 冕 ⇒ (r(4E)−r(0)) / (r(E)−r(0)) ≡ 2",
+		r_ratio_ok, "r(0)=%.4f 米(芯半径, 必须 > 0)" % GVfx.spark_radius(0.0))
+	_ok("⑤①b 085 火花: 芯常明 ⇒ spark_radius(0) > 0(旧式纯 √E 在这里给 0)",
+		GVfx.spark_radius(0.0) > 0.05, "r(0)=%.6f" % GVfx.spark_radius(0.0))
 
 	# ② 正 n 边形排布: 最小两两角距 ≡ 2π/n, 且每门到中心距离全等
 	var n: int = 6

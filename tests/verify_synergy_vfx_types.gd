@@ -13,7 +13,12 @@ extends Node
 ##  ⑤ ★母题可分辨          —— 三个多边形边数互不相同 + 十类的主色两两色距够大
 ##     (装备那边的教训: 四件召唤物共用一个白光球, 玩家分不出谁是谁)
 ##  ⑥ ★演出不参与结算      —— 调完每个演出入口, 单位的 hp/shield/base_atk/damage_amp 一个字节都没变
-##  ⑦ 跨阈值只放一次 + 撤场干净 + 守 _world==null
+##  ⑦ 撤场干净 + 守 _world==null
+##
+## ⛔ 2026-08-07: 三条【阈值提示】(遗物·远古之力 34/67/100% · 食物·成长 100/300/600 ·
+##    奇械·僵硬 5/10/20 层) 已按用户拍板【整条拆掉】。④ 里对应位置换成了**反向守卫**
+##    (跑真入口 → 断"一个演出节点都不建"), 外加一组"演出函数/常量都没留空壳"。
+##    别把它们加回来。
 ##
 ## ⚠ 铁律 (CLAUDE.md §3.5 / 方案书 R1): **全部同步断言, 不等任何 tween。**
 ##    原语的参数在函数返回时就是最终值, tween 只负责放大/淡出。
@@ -284,22 +289,25 @@ func _g4_real_paths() -> void:
 	print("     回到 90% → %d 个 (需求 > %d)" % [_count("polygon_ring"), after_down])
 	_ok("④ ★★回到线上又放一次(证明上面不是「永远不放」)", _count("polygon_ring") > after_down)
 
-	# ── 遗物·远古之力跨阈值 ────────────────────────────────────────
+	# ── 遗物·远古之力【不再有任何演出】(用户 2026-08-07 拍板拆掉阈值特效) ──
+	#    ★这是【反向守卫】而不是"删掉一组断言": 只删断言的话, 谁把演出加回来都不会红。
+	#    ★用档 3 不用档 4 —— 档 4 有【觉醒】(20 秒那一下, 那条留着), 会自己建节点, 就分不清了。
 	await _reset()
-	left.erase("_ancient_vfx")
-	left["_ancient"] = 0.0
-	_s._relic_syn._ancient_step_vfx(left, 0.30)
-	_ok("④ 遗物·远古之力: 还没到第一档 → 不放", _count("polygon_ring") == 0)
-	left["_ancient"] = 0.12                       # > 0.30 × 0.34
-	_s._relic_syn._ancient_step_vfx(left, 0.30)
-	var anc1: int = _count("polygon_ring")
-	_s._relic_syn._ancient_step_vfx(left, 0.30)
-	print("     跨第一档 → %d 个; 同档再喂一次 → %d 个" % [anc1, _count("polygon_ring")])
-	_ok("④ 遗物·远古之力: 跨档放一次", anc1 == 1)
-	_ok("④ ★同档再喂不重放", _count("polygon_ring") == anc1)
-	left["_ancient"] = 0.30
-	_s._relic_syn._ancient_step_vfx(left, 0.30)
-	_ok("④ ★★跨到满档又放一次(反面)", _count("polygon_ring") == anc1 + 1)
+	_set_tiers("left", {"遗物": 3})
+	for u in _s._units:
+		if u is Dictionary:
+			u["_ancient"] = 0.0
+			u.erase("_ancient_vfx")
+			u.erase("_relic_gate_vfx")
+	_s._relic_syn._t_acc = 0.0
+	for i in range(12):                            # 12 跳足够跨完原来的 34/67/100% 三档
+		_s._relic_syn._t_acc = 0.0
+		_s._relic_syn.tick(_s._relic_syn.PERIOD)
+	var anc_grown: float = float(left.get("_ancient", 0.0))
+	print("     ⛔ 遗物档3 跑 12 跳(远古之力涨到 %.3f) → 本层节点 %d 个 (需求 0)" % [
+		anc_grown, _count()])
+	_ok("④ ⛔遗物·远古之力: 拆掉后【一个演出节点都不建】", _count() == 0)
+	_ok("④ ★分母: 远古之力确实在涨(证明上面不是「tick 根本没跑」)", anc_grown > 0.0)
 
 	# ── 食物·学院(开场一次性) ──────────────────────────────────────
 	await _reset()
@@ -317,17 +325,16 @@ func _g4_real_paths() -> void:
 		_count("ground_ring"), aca])
 	_ok("④ ★反面: 重调不白闪(没加血就不该有特效)", _count("ground_ring") == aca)
 
-	# ── 食物·永久成长跨阈值 ────────────────────────────────────────
+	# ── 食物·成长【不再有任何演出】(用户 2026-08-07 拍板拆掉阈值特效) ────
+	#    ★这一条是【反向守卫】: 不是"少写一组断言"就完了 —— 那样把演出加回来也不会红。
 	await _reset()
 	left.erase("_food_vfx")
 	left["_food_grown"] = 0.0
-	_s._food_syn._grow(left, 50.0)
-	_ok("④ 食物·成长: 累计 50 < 第一档 100 → 不放", _count("ground_ring") == 0)
-	_s._food_syn._grow(left, 60.0)                # 累计 110 > 100
-	print("     累计涨到 110 → 绿环 %d 个 (需求 1)" % _count("ground_ring"))
-	_ok("④ 食物·成长: 跨第一档放一次", _count("ground_ring") == 1)
-	_s._food_syn._grow(left, 10.0)                # 累计 120, 还在同一档
-	_ok("④ ★同档再涨不重放", _count("ground_ring") == 1)
+	_s._food_syn._grow(left, 700.0)               # 一口气跨过原来的 100/300/600 三档
+	print("     ⛔ 一次涨 700(原本会跨完三档) → 本层节点 %d 个 (需求 0)" % _count())
+	_ok("④ ⛔食物·成长: 拆掉后【一个演出节点都不建】", _count() == 0)
+	_ok("④ ★分母: 数值照常涨(证明上面不是「函数没跑」)",
+		float(left.get("_food_grown", 0.0)) >= 700.0)
 
 	# ── 药水·战利品 ────────────────────────────────────────────────
 	await _reset()
@@ -400,23 +407,19 @@ func _g4_real_paths() -> void:
 	_ok("④ ★分母: 档 2 确实一层僵硬都没叠(证明上面那个环是冻结画的)",
 		int(right.get("stiff_stacks", 0)) == 0)
 
-	# ── 奇械·僵硬跨阈值 ────────────────────────────────────────────
+	# ── 奇械·僵硬【不再有任何演出】(用户 2026-08-07 拍板拆掉阈值特效) ──
+	#    ★同样是【反向守卫】: 走 add_stiff 的真入口, 一路叠满 20 层, 断"一个节点都不建"。
 	await _reset()
 	_set_tiers("left", {"奇械": 4})
 	right["stiff_stacks"] = 0
-	right["_stiff_vfx"] = 0
-	for i in range(4):
+	right.erase("_stiff_vfx")
+	for i in range(25):                            # 叠到封顶, 原来会跨完 5/10/20 三档
 		_s._gadget_syn.add_stiff(right, 1)
-	print("     叠到 4 层 → 六边环 %d 个 (需求 0 —— 第一档是 5 层)" % _count("polygon_ring"))
-	_ok("④ 奇械·僵硬: 没跨档不放(高频效果必须节流)", _count("polygon_ring") == 0)
-	_s._gadget_syn.add_stiff(right, 1)
-	print("     第 5 层 → %d 个 (需求 1)" % _count("polygon_ring"))
-	_ok("④ 奇械·僵硬: 跨第一档放一次", _count("polygon_ring") == 1)
-	_s._gadget_syn.add_stiff(right, 1)
-	_s._gadget_syn.add_stiff(right, 1)
-	_ok("④ ★同档继续叠不重放", _count("polygon_ring") == 1)
-	_s._gadget_syn.add_stiff(right, 5)          # 到 12 层, 跨第二档
-	_ok("④ ★★跨第二档又放一次(反面)", _count("polygon_ring") == 2)
+	print("     ⛔ add_stiff ×25(僵硬 %d 层, 原本会跨完三档) → 本层节点 %d 个 (需求 0)" % [
+		int(right.get("stiff_stacks", 0)), _count()])
+	_ok("④ ⛔奇械·僵硬: 拆掉后【一个演出节点都不建】", _count() == 0)
+	_ok("④ ★分母: 层数确实叠满了(证明上面不是「函数没跑」)",
+		int(right.get("stiff_stacks", 0)) == _s._gadget_syn.STIFF_MAX)
 
 	# ── 法器·法力条满 ──────────────────────────────────────────────
 	await _reset()
@@ -428,6 +431,31 @@ func _g4_real_paths() -> void:
 	_s._staff_syn.add_mana(left, 999.0)          # 一口气灌满 ⇒ 真的 _fire
 	print("     _staff_syn.add_mana(灌满) → 光柱 %d 根 (需求 ≥1)" % _count("light_pillar"))
 	_ok("④ 法器·法力条满: 触发那一瞬有闪光", _count("light_pillar") >= 1)
+
+	# ── ⛔ 三条阈值特效【拆干净了没】(用户 2026-08-07 拍板不做) ─────
+	#    上面三条反向守卫管"跑真入口时不建节点"; 这一条管"演出层/常量层没留空壳" ——
+	#    留空壳比留着更糟: 零调用者的死代码会被"断言函数存在"型门禁保护住
+	#    (memory [[fb-verify-must-run-the-real-path]])。
+	for m in ["relic_ancient_step", "food_growth_step", "gadget_stiff_step", "tier_of"]:
+		_ok("④ ⛔ SynergyVfx 里没有 %s()(不留空壳)" % str(m), not _syn.has_method(str(m)))
+	_ok("④ ⛔ relic_synergy_system 里没有 _ancient_step_vfx()",
+		not _s._relic_syn.has_method("_ancient_step_vfx"))
+	# ★常量用 `get_script_constant_map()` 查, 不用 `"X" in obj` —— `in` 查的是【属性】,
+	#   const 不在属性表里, 那么写会永远返回 false = 恒真式(下面的反面组就是防这个的)。
+	var kc: Dictionary = _s._relic_syn.get_script().get_script_constant_map()
+	var kf: Dictionary = _s._food_syn.get_script().get_script_constant_map()
+	var kg: Dictionary = _s._gadget_syn.get_script().get_script_constant_map()
+	print("     ⛔ 三档常量还在不在 → ANCIENT=%s / GROW=%s / STIFF=%s (需求 全 false)" % [
+		str(kc.has("ANCIENT_VFX_STEPS")), str(kf.has("GROW_VFX_STEPS")),
+		str(kg.has("STIFF_VFX_STEPS"))])
+	_ok("④ ⛔ 三个阈值常量都删了", not kc.has("ANCIENT_VFX_STEPS")
+		and not kf.has("GROW_VFX_STEPS") and not kg.has("STIFF_VFX_STEPS"))
+	# ★反面: 证明上面两组不是恒真式 —— 拿【留着的】那几条同名检查一遍, 必须全部还在。
+	_ok("④ ★反面: 留着的演出入口确实还在(证明 has_method 检查有效)",
+		_syn.has_method("relic_awaken") and _syn.has_method("food_academy")
+		and _syn.has_method("gadget_freeze") and _syn.has_method("tier_advance"))
+	_ok("④ ★反面: 留着的常量确实还在(证明常量表查得到东西)",
+		kg.has("STIFF_MAX") and kf.has("GROW_PER_FOOD") and kc.has("GATE_DEADBAND"))
 
 
 # ── ⑤ ★母题可分辨 ───────────────────────────────────────────────────────────
@@ -513,22 +541,19 @@ func _g6_no_side_effects() -> void:
 	_syn.relic_awaken([p])
 	_syn.relic_gate(p, true)
 	_syn.relic_gate(p, false)
-	_syn.relic_ancient_step(p, 2)
 	_syn.food_academy([p])
-	_syn.food_growth_step(p, 1)
 	_syn.potion_harvest(q, [p])
 	_syn.potion_prey_mark(q)
 	_syn.shield_reap(q, p)
 	_syn.bow_corrode_full(q)
 	_syn.gadget_freeze(q)
-	_syn.gadget_stiff_step(q, 2)
-	print("     18 次演出调用后: hp %.2f→%.2f  shield %.2f→%.2f  base_atk %.2f→%.2f  增伤 %.4f→%.4f" % [
+	print("     15 次演出调用后: hp %.2f→%.2f  shield %.2f→%.2f  base_atk %.2f→%.2f  增伤 %.4f→%.4f" % [
 		snap["hp"], float(u.get("hp", 0.0)), snap["shield"], float(u.get("shield", 0.0)),
 		snap["base_atk"], float(u.get("base_atk", 0.0)),
 		snap["damage_amp"], float(u.get("damage_amp", 0.0))])
 	for k in snap:
 		_ok("⑥ ★演出没动 %s" % str(k), absf(float(u.get(k, 0.0)) - float(snap[k])) < 0.0001)
-	_ok("⑥ ★分母: 这 18 次真的建出了节点(不是「什么都没调所以什么都没变」)", _count() > 18)
+	_ok("⑥ ★分母: 这 15 次真的建出了节点(不是「什么都没调所以什么都没变」)", _count() > 15)
 
 
 # ── ⑦ 撤场干净 + 守 _world == null ──────────────────────────────────────────
@@ -555,13 +580,10 @@ func _g7_teardown_and_guard() -> void:
 		_syn.staff_dispel(P_A, 2),
 		_syn.staff_mana_full(P_A),
 		_syn.relic_gate(P_A, true),
-		_syn.relic_ancient_step(P_A, 1),
-		_syn.food_growth_step(P_A, 1),
 		_syn.potion_prey_mark(P_A),
 		_syn.shield_reap(P_A, P_B),
 		_syn.bow_corrode_full(P_A),
 		_syn.gadget_freeze(P_A),
-		_syn.gadget_stiff_step(P_A, 1),
 	]
 	var ints := [
 		_syn.radial_spokes(P_A, [P_B], Color(1, 1, 1, 1)),
@@ -580,9 +602,9 @@ func _g7_teardown_and_guard() -> void:
 	for i in ints:
 		if int(i) != 0:
 			all_zero = false
-	print("     _world=null 时: 12 个返回节点的入口全 null=%s / 6 个返回计数的全 0=%s" % [
-		str(all_null), str(all_zero)])
-	_ok("⑨ ★R2: 12 个返回节点的新入口全部守空", all_null)
+	print("     _world=null 时: %d 个返回节点的入口全 null=%s / 6 个返回计数的全 0=%s" % [
+		res.size(), str(all_null), str(all_zero)])
+	_ok("⑨ ★R2: %d 个返回节点的新入口全部守空" % res.size(), all_null)
 	_ok("⑨ ★R2: 6 个返回计数的新入口全部返回 0", all_zero)
 	_ok("⑨ 一个节点都没偷偷记账", _syn.alive_count() == n0)
 	var e = _syn.polygon_ring(P_A, Color(1, 1, 1, 1), 40.0, 6)

@@ -436,6 +436,11 @@ func _eel_right(u: Dictionary, si: int) -> void:
 	var decay: float = [0.20, 0.15, 0.10][si]
 	var gold_pct: float = [0.60, 0.80, 1.00][clampi(int(battle._synergy.tier_for(u, "枪")) - 1, 0, 2)]
 	battle._damage._apply_damage_from(u, first, battle._atk_dmg(u, 0.5, first), COL_PHYS, 0.0, false, true)
+	# ★纯演出(2026-08-07): 右管出膛的那一束电。原来右管只画"目标之间的连锁", 完全没有
+	#   "从枪口打出去"这一段 ⇒ 玩家读不出是左管还是右管在响(用户:「左右两管的相位读不出来」)。
+	#   一个数都没动: 伤害在上一行就结算完了, 这里只画。
+	vfx.eel_bolt(Vector2(u["pos"]), Vector2(first["pos"]),
+		(gold_pct if float(u.get("_golden_pct", 0.0)) > 0.0 else 0.0))
 	var chain: Array = [first]
 	var cur: Dictionary = first
 	var amt: float = mag

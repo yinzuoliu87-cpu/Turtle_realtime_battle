@@ -46,13 +46,20 @@ func _tick_bear_anim(u: Dictionary, delta: float) -> void:   # 大熊状态机: 
 		var total: float = per * float(maxi(1, int(spr.hframes)))
 		var prog: float = clampf(float(u["bear_anim_t"]) / maxf(0.01, total), 0.0, 1.0)
 		var f: int = int(float(u["bear_anim_t"]) / per)
-		if f >= int(spr.hframes):
+		# ★★2026-08-07 修: 这里原来只按 `spr.hframes` 判越界, 但引擎校验的是
+		#   **hframes × vframes**, 而 `_set_bear_sheet` 换 texture 与写 hframes 之间有一帧窗口
+		#   ⇒ 那一帧拿到的是【新表的 hframes + 旧表的贴图】, 于是刷
+		#   `ERROR: Index p_frame = 17 is out of bounds (vframes*hframes = 7)`。
+		#   与忍者冲刺那处(2026-08-07 同日修)是同一族: **表换了、取帧的代码没跟**。
+		#   ⇒ 一律按【贴图当下的真实总帧数】钳制, 表以后再换也不会越界。
+		var _bmax: int = maxi(0, int(spr.hframes) * int(spr.vframes) - 1)
+		if f > _bmax:
 			if u.get("_slam_manual", false):
-				spr.frame = int(spr.hframes) - 1   # 手控砸地: 定住末帧(等波传完, 不回走路循环=修漂移)
+				spr.frame = _bmax   # 手控砸地: 定住末帧(等波传完, 不回走路循环=修漂移)
 			else:
 				u["bear_anim"] = "walk"          # 播完回走路/待机
 		else:
-			spr.frame = f
+			spr.frame = mini(f, _bmax)
 		if anim == "attack":
 			voff = ldir * (sin(prog * PI) * 0.55)          # 前扑扑击(前冲再回)
 			voff.y += sin(prog * PI) * 0.14                # 略抬(挥爪)

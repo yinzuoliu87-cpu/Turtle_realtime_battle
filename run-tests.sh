@@ -50,6 +50,11 @@ frames_for () {
     verify_synergy_vfx) echo 2500 ;;
     # 十类羁绊的视觉母题(批 B3): 同上, 建战斗场景 + 107 条同步断言(走羁绊系统真入口, 不等 tween)
     verify_synergy_vfx_types) echo 2500 ;;
+    # _skill_ring 两条曲线: 建战斗场景 + 手推 tween 取 265 个采样点(custom_step, 不等真实时间)
+    verify_skill_ring_curve) echo 2500 ;;
+    # 金弹可辨 + 七件演出可读性: 建战斗场景 + 111 条同步断言(逐像素读程序化贴图/量真实节点,
+    #   不等任何 tween)。建场本身就吃几百帧 ⇒ 给 2500 兜 CI。
+    verify_vfx_readability) echo 2500 ;;
     # 怒气冲击波爆轰演出: 建战斗场景 + 6 次重建合成单位队伍 + 上万点闭式解数值扫描(全同步)
     verify_shockwave_vfx) echo 3000 ;;
     # 头顶徽章几何: 需要【真实相机】做屏幕投影(量单位间距) ⇒ 不能无头, 帧数给足
@@ -119,6 +124,10 @@ frames_for () {
     #   091/094 的节拍全靠同步喂 tick_unit/tick(不等墙钟、不等 tween), 真正吃帧的只有建场
     #   与组间 process_frame ⇒ 本机 500 帧就够, 给 3000 兜 CI。
     verify_eq_relic_batch) echo 3000 ;;
+    # 四件"看不见"的演出可见性(085/089/091/094·2026-08-07): 建一次战斗场景 +
+    #   逐帧推进真实符纸 720 帧(同步喂 delta, 不等 tween)+ 6000 像素级纹理扫描 + 几何断言。
+    #   ★720 次 tick 是【同步循环】不吃引擎帧, 吃帧的仍是建场 ⇒ 给 3000 兜 CI。
+    verify_eq_vfx_visibility) echo 3000 ;;
     # 闪避上限/施加: 只建一次场 + 同步断言, 但建场本身要几百帧
     verify_dodge_cap) echo 2000 ;;
     verify_thorn_reflect) echo 3000 ;;

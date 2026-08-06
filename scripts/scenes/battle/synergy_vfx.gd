@@ -534,13 +534,9 @@ func relic_gate(pos2d: Vector2, down: bool) -> Node3D:
 	return polygon_ring(pos2d, col, 44.0, SIDES_RELIC, true, 0.44)
 
 
-## 遗物·远古之力跨阈值(每 2.5 秒静默 +1~2% 增伤, 逐步逼近上限)。
-## ★阈值【由调用方传】—— 本层不烘数字(U4 的具体档位仍未拍板)。
-func relic_ancient_step(pos2d: Vector2, step: int) -> Node3D:
-	if not _has_world():
-		return null
-	return polygon_ring(pos2d, COL_RELIC, 26.0 + 8.0 * float(clampi(step, 1, 3)),
-		SIDES_RELIC, false, 0.40)
+# ⛔ 这里曾经有 `relic_ancient_step()`(远古之力跨 34/67/100% 的八边环) ——
+#   **用户 2026-08-07 拍板不做阈值特效，别加回来**(方案书 §5 U4)。
+#   连同 `relic_synergy_system.ANCIENT_VFX_STEPS` / `_ancient_step_vfx()` 一起拆净。
 
 
 # ── 食物 ─────────────────────────────────────────────────────────────────────
@@ -561,12 +557,9 @@ func food_academy(positions: Array) -> int:
 	return n
 
 
-## 食物·永久成长跨阈值(累计 maxHp 每涨过一档放一次)。★阈值由调用方传, 本层不烘数字。
-func food_growth_step(pos2d: Vector2, step: int) -> Node3D:
-	if not _has_world():
-		return null
-	spark_burst(pos2d, COL_FOOD, 0.3, 8)
-	return ground_ring(pos2d, COL_FOOD, 26.0 + 9.0 * float(clampi(step, 1, 3)), false, 0.44)
+# ⛔ 这里曾经有 `food_growth_step()`(成长跨 100/300/600 的绿环) ——
+#   **用户 2026-08-07 拍板不做阈值特效，别加回来**(方案书 §5 U4)。
+#   连同 `food_synergy_system.GROW_VFX_STEPS` 与 `_grow()` 里的调用一起拆净。
 
 
 # ── 药水 ─────────────────────────────────────────────────────────────────────
@@ -630,28 +623,20 @@ func gadget_freeze(pos2d: Vector2) -> Node3D:
 	return polygon_ring(pos2d, COL_GADGET, 40.0, SIDES_GADGET, true, 0.44)
 
 
-## 奇械·僵硬跨阈值(每层 -2% 攻击力, 最多 20 层 = ×0.60)。
-## ★僵硬是**每段攻击都叠**的高频效果(无节流) ⇒ 每层都放特效必刷屏,
-##   只在跨阈值时放一次(阈值由调用方传)。
-func gadget_stiff_step(pos2d: Vector2, step: int) -> Node3D:
-	if not _has_world():
-		return null
-	return polygon_ring(pos2d, COL_GADGET, 22.0 + 7.0 * float(clampi(step, 1, 3)),
-		SIDES_GADGET, false, 0.36)
+# ⛔ 这里曾经有 `gadget_stiff_step()`(僵硬跨 5/10/20 层的六边环) ——
+#   **用户 2026-08-07 拍板不做阈值特效，别加回来**(方案书 §5 U4)。
+#   连同 `gadget_synergy_system.STIFF_VFX_STEPS` 与 `add_stiff()` 里的调用一起拆净。
 
 
 # ============================================================================
-#  §跨阈值只放一次 —— 纯函数, 不烘任何数字
+#  §"只放一次" —— 纯函数, 不烘任何数字
 # ============================================================================
 
-## value 跨过了几个阈值 (thresholds 必须升序)。0 = 一个都没跨。
-## ★阈值【由调用方传】, 本层不烘数字 —— 四条滚雪球的具体档位是方案书 U4, 用户还没拍板。
-func tier_of(value: float, thresholds: Array) -> int:
-	var t := 0
-	for x in thresholds:
-		if value >= float(x):
-			t += 1
-	return t
+# ⛔ 这里曾经还有一个 `tier_of(value, thresholds)`(算跨过几个阈值)。
+#   三个阈值提示拆掉后它【只剩测试在调】—— 零业务调用者的死代码被"断言函数存在"型
+#   门禁保护着，正是 memory [[fb-verify-must-run-the-real-path]] 那个坑 ⇒ 一并删。
+#   下面的 `tier_advance` 【不能删】: 弓箭腐蚀满 5 层(bow_synergy_system.gd:130)还在用它当
+#   "这一轮放过了没"的闸，那不是阈值提示、是单次事件去重。
 
 
 ## 档位是否【刚刚涨上去】。同档反复喂返回 false, 跨进下一档返回 true。
