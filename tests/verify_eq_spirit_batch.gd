@@ -208,9 +208,12 @@ func _t_wiring() -> void:
 	_ok("⓪ ★旧 062 已从周期表 EQ_IV_BATCH1 摘掉(它不再是周期类)",
 		not EquipSystem.EQ_IV_BATCH1.has("p2eq_062"),
 		"表里现有 %d 件" % EquipSystem.EQ_IV_BATCH1.size())
+	# ★分母口径 2026-08-06 改: 原来点名 077 当"还活着的周期件", 但批④ 已把 077 改成
+	#   【登场召唤小手枪】、从这张表摘掉了 ⇒ 换成点名 067/075 这两件仍是真周期件的。
 	_ok("⓪ ★分母: EQ_IV_BATCH1 里其余周期件还在(证明上面那条不是因为表空了)",
-		EquipSystem.EQ_IV_BATCH1.has("p2eq_077") and EquipSystem.EQ_IV_BATCH1.size() >= 5,
-		"表里 %d 件" % EquipSystem.EQ_IV_BATCH1.size())
+		EquipSystem.EQ_IV_BATCH1.has("p2eq_067") and EquipSystem.EQ_IV_BATCH1.has("p2eq_075")
+			and EquipSystem.EQ_IV_BATCH1.size() >= 2,
+		"表里 %d 件: %s" % [EquipSystem.EQ_IV_BATCH1.size(), str(EquipSystem.EQ_IV_BATCH1.keys())])
 	_ok("⓪ ★旧 063 的免死标记 _ink_sac 已零写入(063 现在是白鲸气环)",
 		not applyc.contains("u[\"_ink_sac\"] = true"))
 

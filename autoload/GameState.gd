@@ -211,11 +211,45 @@ func buy_shop_item(idx: int, side: String = "left") -> bool:
 	if bench_inventory.size() >= _P2.BENCH_CAP and not _buy_would_merge(item_id, 1, side):
 		return false
 	dual_coins[side] = int(dual_coins[side]) - cost
-	bench_inventory.append({"id": item_id, "star": 1})
+	bench_inventory.append(mk_eq(item_id, 1))   # ★装备 dict 一律走 mk_eq(093 的 chg 靠它带)
 	# 三合一升星: 战中由 BattleScene._battle_merge_p2eq(扫龟身_p2_equips+备战席,可见) 处理;
 	#   持久流(大地图)由 equip_to_turtle/unequip 的 try_merge_all 处理。此处只入席。
 	dual_shop_offer[idx] = null
 	return true
+
+# ══════════════════════════════════════════════════════════════════════
+#  093 香火石: 每件装备实例自己的【香火充能条】—— 全表唯一落进存档的装备实例状态
+# ══════════════════════════════════════════════════════════════════════
+# 用户 2026-08-06 原话:「充能条是跟着这件香火石走的, 比如跨对局, 上个对局打完是 20/4000,
+# 在你背包里就应该是 20/4000, 如果卖掉了就丢失这 20, 如果升星就合并 20 和其他的」。
+#
+# ★★为什么必须收口成下面两个函数:
+#   装备 dict 在本文件里被【重建】的地方有 8 处 —— 买入 / 战中三合一 / try_merge_all 的
+#   扁平化·重建·合成件 / 持久流升星 3 处 / 糖果罐奖励。每一处重建都写死 `{"id":…, "star":…}`,
+#   **额外字段直接丢**。漏一处 = 充能静默清零, 不报错、不崩、没人会发现。
+#   ⇒ 本文件里【不许】再手写 `{"id": …, "star": …}` 造装备, 一律走 `mk_eq`。
+#   门禁 tests/verify_incense_stone.gd 把"全链路 chg 不丢"焊死(买→装→攒→升星→存档→读档→卖)。
+#
+# ★刻痕数【不在这里】: 它是队伍级 + 赛季级的(卖掉一件不减已投的痕), 存 `incense_marks`,
+#   随 start_new_season() 清零。充能条是每件自己的, 刻痕池是全队共用的 —— 两者存法不同。
+const INCENSE_ID := "p2eq_093"
+
+## 取一件装备的香火充能(不是香火石恒为 0)。
+static func eq_chg(it) -> int:
+	if not (it is Dictionary):
+		return 0
+	if str((it as Dictionary).get("id", "")) != INCENSE_ID:
+		return 0
+	return int((it as Dictionary).get("chg", 0))
+
+## 造一件装备 dict。★本文件里所有"新建/重建装备"都必须经过它。
+## 非香火石不写 `chg` 字段 —— 免得给另外 94 件装备的存档凭空加一个永远是 0 的键。
+static func mk_eq(id: String, star: int, chg: int = 0) -> Dictionary:
+	var d: Dictionary = {"id": id, "star": star}
+	if id == INCENSE_ID and chg > 0:
+		d["chg"] = chg
+	return d
+
 
 ## 满席凑合一预判: 买入一张 (id, star) 后是否会立刻触发三合一 (= 本 side 已有 ≥2 件同 id+同星 → 第3张合1).
 ##   数【备战席 + 本 side 龟身 equipped_p2 (left=裸键 / right="right::"前缀键)】里同 id+star 的件数, ≥(MERGE_COUNT-1)=2 即放行。
@@ -256,10 +290,15 @@ func try_merge_bench() -> int:
 			if idxs.size() >= 3 and star < _Equip.MAX_STAR:
 				var item_id: String = str(k).split("|")[0]
 				var rm: Array = [int(idxs[0]), int(idxs[1]), int(idxs[2])]
+				# ★093 香火石: 升星前先把三件的香火充能加起来(用户「升星就合并 20 和其他的」)。
+				#   必须在 remove_at 之前取 —— 删完就拿不到了。
+				var chg_sum: int = 0
+				for ri0 in rm:
+					chg_sum += eq_chg(bench_inventory[int(ri0)])
 				rm.sort(); rm.reverse()   # 降序删, 防索引错位
 				for ri in rm:
 					bench_inventory.remove_at(ri)
-				bench_inventory.append({"id": item_id, "star": star + 1})
+				bench_inventory.append(mk_eq(item_id, star + 1, chg_sum))
 				merges += 1
 				changed = true
 				break   # 备战席变了, 重新统计
@@ -282,7 +321,7 @@ func try_merge_all(side: String = "left") -> Array:
 		_other_kept = {}
 		for b in bench_inventory:
 			if b is Dictionary:
-				flat.append({"id": str(b.get("id", "")), "star": int(b.get("star", 1)), "pet": ""})
+				flat.append({"id": str(b.get("id", "")), "star": int(b.get("star", 1)), "pet": "", "chg": eq_chg(b)})
 		for pet in equipped_p2:
 			var _pet_is_right := str(pet).begins_with(_P2EQ_RIGHT_PREFIX)
 			if _pet_is_right != _is_right:
@@ -290,7 +329,7 @@ func try_merge_all(side: String = "left") -> Array:
 				continue
 			for it in equipped_p2[pet]:
 				if it is Dictionary:
-					flat.append({"id": str(it.get("id", "")), "star": int(it.get("star", 1)), "pet": str(pet)})
+					flat.append({"id": str(it.get("id", "")), "star": int(it.get("star", 1)), "pet": str(pet), "chg": eq_chg(it)})
 		# 按 id|star 分组, 找一组 ≥3 (star<MAX)
 		var groups: Dictionary = {}
 		for fi in range(flat.size()):
@@ -329,12 +368,16 @@ func try_merge_all(side: String = "left") -> Array:
 				continue
 			var it: Dictionary = flat[fi]
 			if str(it["pet"]) == "":
-				nb.append({"id": str(it["id"]), "star": int(it["star"])})
+				nb.append(mk_eq(str(it["id"]), int(it["star"]), int(it.get("chg", 0))))
 			else:
 				if not ne.has(it["pet"]):
 					ne[it["pet"]] = []
-				(ne[it["pet"]] as Array).append({"id": str(it["id"]), "star": int(it["star"])})
-		var merged: Dictionary = {"id": m_id, "star": m_star + 1}
+				(ne[it["pet"]] as Array).append(mk_eq(str(it["id"]), int(it["star"]), int(it.get("chg", 0))))
+		# ★093: 被合掉的三件的香火充能相加进新件(用户「升星就合并」)
+		var m_chg: int = 0
+		for mi2 in pick:
+			m_chg += int((flat[mi2] as Dictionary).get("chg", 0))
+		var merged: Dictionary = mk_eq(m_id, m_star + 1, m_chg)
 		var placed: String = ""
 		if dest_pet != "":
 			var cap: int = _P2.UNIT_EQUIP_CAP   # 2026-07-27 统一规则: 单只上限固定3
@@ -509,6 +552,13 @@ var hearts: int = 8                                   # 命数 (8起, 输-1, 0=�
 var season_total_battles: int = 0                     # 本赛季总战斗数 → 决定装备槽 0/1/2/3/4
 var season_eggs_killed: int = 0                       # 本赛季击杀龟蛋数 (排行榜口径)
 var season_wins: int = 0                              # 本赛季胜场数 (实时战斗赢一场+1; 排行指标候选)
+## 093 香火石【香火刻痕】的刻痕池 —— 队伍级 + 赛季级(用户 2026-08-06「一大轮重置」,
+## 而代码里「一大轮」就是赛季, 见上面 season_id 的注释「5天一轮, 切轮全重置」)。
+## ★为什么刻痕存这里、而充能条存在装备实例上(见 mk_eq / eq_chg):
+##   用户原话「如果卖掉了就丢失这 20」——**只有那 20 点充能会丢**, 已经投进羁绊的刻痕不退。
+##   ⇒ 刻痕是全队共用的一个池(多件香火石各自攒充能、共投这一个池), 与某一件的存亡无关。
+## ★上限 300(用户原文)。上限判定在写入侧(IncenseStoneSystem), 这里只负责存。
+var incense_marks: int = 0                            # 093 香火石: 本赛季已刻的香火刻痕数 (0~300)
 var season_level: int = 1                             # 大轮等级 1-10 (每场+2经验累积, 可买经验; 驱动商店出货档 + 装备槽; 用户 2026-06-27)
 # ★装备私人池 (2026-08-03 批2, 方案书 §4.6·D6/D20~D23): {装备id: 剩余张数}, -1 = 已满3★冻结。
 #   在此之前商店是【无限张有放回】—— 想要几件同款就有几件, 3★ 只受钱和运气限制。
@@ -916,6 +966,7 @@ func save() -> void:
 		"season_total_battles": season_total_battles,
 		"season_eggs_killed": season_eggs_killed,
 		"season_wins": season_wins,
+		"incense_marks": incense_marks,   # 093 香火石: 赛季级刻痕池
 		"season_level": season_level,
 		"season_xp": season_xp,
 		"chest_treasure_value": chest_treasure_value,
@@ -979,6 +1030,7 @@ func _load() -> void:
 	season_total_battles = int(data.get("season_total_battles", 0))
 	season_eggs_killed = int(data.get("season_eggs_killed", 0))
 	season_wins = int(data.get("season_wins", 0))
+	incense_marks = int(data.get("incense_marks", 0))   # 093 香火石: 赛季级刻痕池
 	season_level = int(data.get("season_level", 1))
 	# ★老存档没有这个键 → 空字典, 由 ensure_equip_pool() 在下次用到时补满(D12: 不做旧档兜底)。
 	equip_pool = data.get("equip_pool", {})
@@ -1035,6 +1087,7 @@ func reset_save() -> void:
 	season_total_battles = 0
 	season_eggs_killed = 0
 	season_wins = 0
+	incense_marks = 0                 # 093 香火石: 刻痕随大轮(赛季)清零 —— 用户「一大轮重置」
 	season_level = 1
 	season_xp = 0
 	season_leaders = []
@@ -1135,7 +1188,7 @@ func break_candy_jar() -> Dictionary:
 	var eq_id: String = _candy_jar_pick_equip(spec["cost"])   # 装备按档费抽1 → 进持久背包(指定星)
 	var star: int = int(spec["star"])
 	if eq_id != "":
-		persistent_bench.append({"id": eq_id, "star": star})
+		persistent_bench.append(mk_eq(eq_id, star))
 	var got_leveler: bool = false   # 临时等级器按档概率给1个(字符串消耗品进背包)
 	if float(spec["leveler"]) > 0.0 and randf() < float(spec["leveler"]):
 		persistent_bench.append(TEMP_LEVELER_ITEM.duplicate())   # 消耗品(非装备): kind="item" → 不参与3合1/不当装备渲染
@@ -1238,6 +1291,9 @@ func auto_merge_all() -> void:
 			if star >= 3:
 				continue
 			var removed := 0
+			# ★093 香火石: 被合掉的三件的香火充能要加进升星件(用户 2026-08-06「升星就合并」)。
+			#   在【每个 remove 点之前】累加 —— 删完就取不到了。
+			var chg_sum: int = 0
 			var host_pet := ""                            # 有统领件被合 → 记第一只龟(升星件放回它)
 			var host_lane := ""                           # 或有小将件被合 → 记第一只小将(升星件放回它)
 			var host_idx := -1
@@ -1247,6 +1303,7 @@ func auto_merge_all() -> void:
 					bi += 1; continue                       # 跳过消耗品
 				var bit: Dictionary = persistent_bench[bi]
 				if str(bit.get("id", "")) == iid and int(bit.get("star", 1)) == star:
+					chg_sum += eq_chg(persistent_bench[bi])   # ★093: 删之前先取充能
 					persistent_bench.remove_at(bi); removed += 1
 				else:
 					bi += 1
@@ -1257,6 +1314,7 @@ func auto_merge_all() -> void:
 					while ei < eqs.size() and removed < 3:
 						var eit2: Dictionary = eqs[ei]
 						if str(eit2.get("id", "")) == iid and int(eit2.get("star", 1)) == star:
+							chg_sum += eq_chg(eqs[ei])   # ★093: 删之前先取充能
 							eqs.remove_at(ei); removed += 1
 							if host_pet == "": host_pet = str(pet2)
 						else:
@@ -1276,6 +1334,7 @@ func auto_merge_all() -> void:
 						while mei < meqs.size() and removed < 3:
 							var mit = meqs[mei]
 							if mit is Dictionary and str(mit.get("id", "")) == iid and int(mit.get("star", 1)) == star:
+								chg_sum += eq_chg(meqs[mei])   # ★093: 删之前先取充能
 								meqs.remove_at(mei); removed += 1
 								if host_pet == "" and host_lane == "": host_lane = lane2; host_idx = midx
 							else:
@@ -1283,14 +1342,14 @@ func auto_merge_all() -> void:
 						(mu2 as Dictionary)["equips"] = meqs
 					if removed >= 3: break
 			if host_pet != "":                              # 升星件优先装回统领
-				persistent_equipped[host_pet].append({"id": iid, "star": star + 1})
+				persistent_equipped[host_pet].append(mk_eq(iid, star + 1, chg_sum))
 			elif host_lane != "" and host_idx >= 0:         # 否则装回小将
 				var hu: Dictionary = (dual_lineup[host_lane] as Array)[host_idx]
 				var heq: Array = hu.get("equips", []) if hu.get("equips") is Array else []
-				heq.append({"id": iid, "star": star + 1})
+				heq.append(mk_eq(iid, star + 1, chg_sum))
 				hu["equips"] = heq
 			else:
-				persistent_bench.append({"id": iid, "star": star + 1})
+				persistent_bench.append(mk_eq(iid, star + 1, chg_sum))
 			changed = true
 			# ★D21「满 3★ 后剩下的张不再流通」这里【不做任何事】—— 不是漏了。
 			#   ShopScene._maxed_item_ids() 早就把 star>=3 的 id 排除出掷货池了, 且它是【库存驱动】:
@@ -1341,6 +1400,7 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	season_total_battles = 0
 	season_eggs_killed = 0
 	season_wins = 0
+	incense_marks = 0                 # 093 香火石: 刻痕随大轮(赛季)清零 —— 用户「一大轮重置」
 	season_level = 1
 	season_xp = 0
 	meta_deepsea_coins = 0

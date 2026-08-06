@@ -711,6 +711,9 @@ var _spec := SpecialBalance.new(self)
 ##   而 069 要三道(80/55/30%)、064 要一道(35%)。再往那边塞 hpXX_fired 标记就是灾难。
 var _hpl := HpLines.new(self)
 var _relic_syn := RelicSynergySystem.new(self)     # 遗物羁绊【生死界/远古之力/龟蛋/觉醒】(2026-08-03)
+## 093 香火石的演出层(2026-08-06·批④)。效果本体在 scripts/systems/equip/incense_stone_system.gd,
+## 走 EquipSystem 的批④统一路由; 这里只持演出, 与结算完全分开(CLAUDE.md §3.5)。
+var _incense_vfx := IncenseVfx.new(self)
 var _tentacle_vfx := TentacleVfx.new(self)         # 灵物【触手拍击】程序化 3D 网格演出(2026-08-04)
 ## ★"当前正在执行哪件装备的效果" —— 盾羁绊 9 档要判断"这次护盾/治疗是不是盾类装备给的"。
 ##   护盾/治疗管线本来【不记录来源】, 给每个调用点加参数要碰几十处;
@@ -2135,6 +2138,8 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 	_food_syn.tick(dt)    # 食物: 每 2.5 秒每件食物为携带者永久 +最大生命
 	_spirit_syn.tick(dt)  # 灵物: 触手拍击(每 2.5 秒) + 追击次数重置
 	_spec.tick(dt)        # ★特殊余额: 线性衰减 + 耗尽回调(自然衰减完也算"被打破")
+	_equip_sys.tick_global(dt)   # ★装备的【全局】在途表(弧形波/箭雨/连射 + 批④ 的召唤物·区域·碑)
+								 #   —— 与"某只龟身上有没有装备"无关: 携带者死后碑/直升机/炮台还要继续动
 	_relic_syn.tick(dt)   # 遗物: 远古之力累积(每 2.5 秒) + 觉醒判定
 	_tentacle_vfx.tick(dt)  # 触手拍击: 每帧重算网格(甩动)
 	_trainer_sys._tick_trainer_attacks(dt) # 训龟大师普攻: 站定扔石头抛物线弹道(用户2026-07-23)
@@ -4537,6 +4542,14 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 	#   用 flag 而不是判 id: 骷髅是召唤物, 将来还会有别的"血量即命数"单位。
 	if u.get("_dmg_cap_one", false):
 		return minf(d, 1.0)
+	# ★2026-08-06 泛化成【带值】的封顶: 077 铜管手铳的小手枪要"受到的所有伤害(含真伤)降为 2 点,
+	#   携带者阵亡后降为 5 点" —— 布尔版只能降到 1, 而这两个值还会在战斗中变(携带者一死就换)。
+	#   ⚠ 为什么必须放在这里而不是让 077 自己在效果里补差额: 本函数是**两条伤害路径唯一的共用收口**
+	#   (CLAUDE.md §3.3), 在别处拦就只拦得住其中一条; 而"含真伤"要求它在真伤也走的这条收口上生效。
+	#   `_dmg_cap_one` 保留不动 —— 亡灵骷髅 032 用的是它, 语义是"命数式单位", 与带值封顶不是一回事。
+	var _capv: float = float(u.get("_dmg_cap_val", 0.0))
+	if _capv > 0.0:
+		return minf(d, _capv)
 	return d
 
 
@@ -5235,6 +5248,10 @@ const _IMPL_SKILLS := {
 	"twoHeadStrike": true, "twoHeadDisrupt": true, "twoHeadFusion": true, "lavaSurge": true, "cyberBeam": true, "hidingDefend": true, "shellAbsorb": true,
 	"eliteHammer": true,   # 精英小将·铁锤(虐杀原形改造2026-07-16)
 	"minionBodysurf": true, "minionRocket": true,   # 近战小将·人体浪板 / 远程小将·追踪火箭筒(用户2026-07-18)
+	# ★装备换来的技能(2026-08-06·批④): 084 手半剑【近战携带】时把携带者的技能整个换成
+	#   80 龟能的【后撤十字斩】。这一行与下面 `_do_skill` 的分支**必须成对存在** ——
+	#   只加这一行会让引擎选中它、而 `_do_skill` 没分支 ⇒ 技能静默变哑(不报错、只是永远不发)。
+	"eqCrossSlash": true,
 	# 通用 (多龟共享 type)
 	"shield": true, # 数据驱动伤害技 (系数取自 pets.json detail 公式 {N/M/T:...})
 	"basicBarrage": true, "basicChiWave": true, "basicSlam": true, "bambooSmack": true, "bambooSpikes": true, "angelEquality": true,
@@ -5401,6 +5418,8 @@ func _cast_skill(u: Dictionary, tgt: Dictionary, stype: String) -> bool:
 func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 	if _stress: _dbg_op = "skill:" + stype + ":" + str(u.get("id", "?"))   # 卡死猎手: 追踪当前放的技(冻死时定位)
 	match stype:
+		# ★装备换来的技能(084 手半剑·近战携带)。与 `_IMPL_SKILLS` 里那一行成对, 见那边的注释。
+		"eqCrossSlash":         _equip_sys._blade_sys.cast_cross_slash(u, tgt)
 		# ── 各龟签名招 (既有实装, 按 type 分派) ──
 		"bambooHeal":           _bamboo_sys._sk_bamboo_heal(u)
 		"angelBless":           _angel_sys._sk_angel_bless(u)
@@ -6593,8 +6612,17 @@ func _recalc_stats(u: Dictionary) -> void:
 	# ★奇械【僵硬】(羁绊·2026-08-03): 每层 -2% 攻击力, 最多 20 层(= ×0.60)。
 	#   ⚠ 放在【这个唯一写入点】—— 在各处攻击计算里自己乘必然漏掉一半路径。
 	u["atk"] *= GadgetSynergySystem.stiff_mult(u)
-	u["def"] = maxf(0.0, u["base_def"] * (1.0 + acc["def"][0]) + acc["def"][1])
-	u["mr"]  = maxf(0.0, u["base_mr"]  * (1.0 + acc["mr"][0])  + acc["mr"][1])
+	# ★★2026-08-06 加【削甲/削抗】通道 `def_shred` / `mr_shred`(089 蚀月符纸「每秒削减 1 魔抗」)。
+	#   背景: `DamageMath.resist_multiplier` 对**负**抗性是增伤(`1+|r|/(|r|+40)`, 上限 2.0),
+	#   `damage_math.gd:28` 注明这是**有意设计** —— 而这两行的 `maxf(0.0, …)` 把负值抹平了,
+	#   于是"削穿之后开始增伤"这条机制**在这里被静默吃掉**。
+	#   ★为什么是"钳完再减"而不是"去掉钳":
+	#     钳是为了拦住百分比 debuff 把抗性算成负数(冰寒减攻那一类, 它们不该变增伤)。
+	#     去掉钳会让那些一起变成增伤 = 改掉已上线机制。所以只给【显式削减】开一条口子:
+	#     谁写了 `mr_shred` 谁才拿得到负抗性, 别的路径行为一个字节都没变。
+	#   ⚠ 削减量是**单位字段** ⇒ 换路整体重建单位时自动清零(= 用户定的「削掉的魔抗本路不恢复、换路重置」)。
+	u["def"] = maxf(0.0, u["base_def"] * (1.0 + acc["def"][0]) + acc["def"][1]) - float(u.get("def_shred", 0.0))
+	u["mr"]  = maxf(0.0, u["base_mr"]  * (1.0 + acc["mr"][0])  + acc["mr"][1]) - float(u.get("mr_shred", 0.0))
 	# ★★闪避上限(2026-08-02 用户问「每个角色我记得有闪避上限做了吗」——答: 没有, 现在加)。
 	#   判定是 `randf() < dodge_bonus`(battle_damage.gd:71), randf 取值 [0,1)
 	#   ⇒ dodge_bonus ≥ 1.0 就是【永远打不中】。
@@ -8082,15 +8110,19 @@ func _inject_equipment() -> void:
 			continue
 		var key: String = str(u["id"])
 		var list: Array = []
+		# ★★这两处是【第 9 / 第 10 个】重建装备 dict 的点(前 8 个在 GameState 里)。
+		#   093 香火石的香火充能 `chg` 跟着装备实例走、要跨对局保留 ⇒ 这里也必须带过去,
+		#   否则"背包里是 20/4000"进了战斗就变成 0/4000, 而且不报错、没人会发现。
+		#   取值走 GameState.eq_chg(非香火石恒为 0), 不手写字段名。
 		if u.has("_dl_equips") and u["_dl_equips"] is Array and not (u["_dl_equips"] as Array).is_empty():
 			for it in (u["_dl_equips"] as Array):   # 双路: leader/小将局外配的装(dual_lineup)优先 — 小将id共享__minion__, 只能走这里
 				if it is Dictionary and it.has("id"):
-					list.append({"id": str(it["id"]), "star": int(it.get("star", 1))})
+					list.append({"id": str(it["id"]), "star": int(it.get("star", 1)), "chg": (gs.eq_chg(it) if gs != null else 0)})
 		elif not use_demo and pe.has(key):
 			if u["side"] == "left":
 				for it in (pe[key] as Array):
 					if it is Dictionary and it.has("id"):
-						list.append({"id": str(it["id"]), "star": int(it.get("star", 1))})
+						list.append({"id": str(it["id"]), "star": int(it.get("star", 1)), "chg": (gs.eq_chg(it) if gs != null else 0)})
 		if use_demo and DEMO_EQUIP.has(key):
 			list = (DEMO_EQUIP[key] as Array).duplicate(true)
 		u["equips"] = list

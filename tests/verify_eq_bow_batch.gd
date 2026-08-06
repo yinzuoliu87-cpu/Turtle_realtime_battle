@@ -418,24 +418,30 @@ func _t073_random_and_nochain() -> void:
 	_ok("①c ★★同种子两遍的命中序列【逐个相同】(60 发) = 真的走了 _battle_rng",
 		runs[0] == runs[1] and (runs[0] as Array).size() == 60,
 		"len=%d/%d" % [(runs[0] as Array).size(), (runs[1] as Array).size()])
-	## ★不触发 on-hit: 拿 083 潮汐细剑当同步探针(它每次 on-hit 必叠一层)
+	## ★不触发 on-hit 的探针 —— 2026-08-06 换掉了原来的做法。
+	##   原来拿【083 潮汐细剑每次 on-hit 必叠一层】当同步探针, 但 083 已被用户整条重做
+	##   (批④·EqBladeBatch), 旧的 `tide_layers` 字段随之消失 ⇒ 探针恒为 0, 那条分母直接红。
+	##   ★换成 `_eq_on_hit` 自己的入口标记 `_onhit_fr`: 函数一进来就无条件写当前帧号
+	##   (见 EquipSystem._eq_on_hit 开头的 AoE 判定)。**它不依赖任何一件装备** ——
+	##   以后谁被重做都不会再把这个探针弄坏, 而且它量的正是"这个钩子到底进没进"。
 	_s._units.clear()
 	var w: Dictionary = _mk("fortune", "left", Vector2(-300.0, -20.0))
-	w["equips"] = [{"id": "p2eq_073", "star": 3}, {"id": "p2eq_083", "star": 3}]
+	w["equips"] = [{"id": "p2eq_073", "star": 3}]
 	w["eq_state"] = {}
 	w["atk"] = 100.0
 	w["base_atk"] = 100.0
 	w["crit"] = 0.0
 	var wt: Dictionary = _mk("basic", "right", Vector2(-100.0, -20.0), 1.0e9)
+	w["_onhit_fr"] = -999   # 先抹掉标记, 免得读到本帧更早的别的 on-hit
 	_s._equip_sys._eq_on_basic_attack(w, wt)
-	var lay: int = int((w["eq_state"].get("p2eq_083", {}) as Dictionary).get("tide_layers", 0))
-	_ok("①c ★★藤蔓箭【不触发 on-hit】(083 一层都没叠)", lay == 0, "tide_layers=%d" % lay)
-	## ★分母: 同一对单位走【正常伤害路】必须真的叠 1 层 —— 证明探针有效, 不是空检查
-	w["eq_state"] = {}
+	_ok("①c ★★藤蔓箭【不触发 on-hit】(_eq_on_hit 的入口标记没被写)",
+		int(w.get("_onhit_fr", -999)) == -999, "_onhit_fr=%d" % int(w.get("_onhit_fr", -999)))
+	## ★分母: 同一对单位走【正常伤害路】必须真的进 on-hit —— 证明探针有效, 不是空检查
+	w["_onhit_fr"] = -999
 	_s._damage._apply_damage_from(w, wt, 100, Color("#ffffff"))
-	var lay2: int = int((w["eq_state"].get("p2eq_083", {}) as Dictionary).get("tide_layers", 0))
-	_ok("①c ★★分母: 同一对单位走正常伤害路 → 083 确实叠了 1 层(探针有效)",
-		lay2 == 1, "tide_layers=%d" % lay2)
+	_ok("①c ★★分母: 同一对单位走正常伤害路 → _eq_on_hit 确实进了(探针有效)",
+		int(w.get("_onhit_fr", -999)) == Engine.get_process_frames(),
+		"_onhit_fr=%d 当前帧=%d" % [int(w.get("_onhit_fr", -999)), Engine.get_process_frames()])
 	_s._units.clear()
 
 
@@ -481,16 +487,17 @@ func _t074_bone_cuirass() -> void:
 	_ok("② 074 ★分母: eq_state 记了 60 层(演出的甲片数就读它)",
 		int((g["eq_state"].get("p2eq_074", {}) as Dictionary).get("bone_layers", 0)) == 60,
 		"layers=%d" % int((g["eq_state"].get("p2eq_074", {}) as Dictionary).get("bone_layers", 0)))
-	## ★附带魔伤【不触发 on-hit】(083 探针)
+	## ★附带魔伤【不触发 on-hit】—— 同上, 探针换成 `_eq_on_hit` 的入口标记 `_onhit_fr`
+	##   (原来靠 083 叠层, 083 已被重做)。分母在 ①c 那段已经证明过探针有效。
 	_s._units.clear()
 	var w: Dictionary = _mk("fortune", "left", Vector2(-300.0, 140.0), 5000.0)
-	w["equips"] = [{"id": "p2eq_074", "star": 3}, {"id": "p2eq_083", "star": 3}]
+	w["equips"] = [{"id": "p2eq_074", "star": 3}]
 	w["eq_state"] = {}
 	var wt: Dictionary = _mk("basic", "right", Vector2(-100.0, 140.0))
+	w["_onhit_fr"] = -999
 	_s._equip_sys._eq_on_basic_attack(w, wt)
-	_ok("② 074 ★★附带魔伤【不触发 on-hit】(083 一层都没叠)",
-		int((w["eq_state"].get("p2eq_083", {}) as Dictionary).get("tide_layers", 0)) == 0,
-		"tide_layers=%d" % int((w["eq_state"].get("p2eq_083", {}) as Dictionary).get("tide_layers", 0)))
+	_ok("② 074 ★★附带魔伤【不触发 on-hit】(入口标记没被写)",
+		int(w.get("_onhit_fr", -999)) == -999, "_onhit_fr=%d" % int(w.get("_onhit_fr", -999)))
 	_s._units.clear()
 
 

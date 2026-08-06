@@ -190,25 +190,25 @@ const STATS := {
 	"p2eq_074": [{"hp": 50, "_aspdPct": 6}, {"hp": 120, "_aspdPct": 11}, {"hp": 260, "_aspdPct": 18}],   # 弓箭 · 1费 · 鲸骨胸甲(2026-08-05 用户亲手重写·§0.5)
 	"p2eq_075": [{"atk": 12, "_rangeAdd": 40}, {"atk": 30, "_rangeAdd": 60}, {"atk": 68, "_rangeAdd": 90}],   # 弓箭 · 2费 · 测距绳结(2026-08-05 用户亲手重写·§0.5)
 	"p2eq_076": [{"atk": 20, "_lifestealPct": 6, "critDmg": 0.15}, {"atk": 50, "_lifestealPct": 11, "critDmg": 0.28}, {"atk": 115, "_lifestealPct": 18, "critDmg": 0.5}],   # 弓箭 · 4费 · 连发弩机(2026-08-05 用户亲手重写·§0.5: 属性类别改成攻击力/吸血/暴伤, 原案的暴击与射程作废)
-	"p2eq_077": [{"armorPen": 4, "_aspdPct": 5}, {"armorPen": 9, "_aspdPct": 9}, {"armorPen": 18, "_aspdPct": 15}],   # 枪 · 1费 · 铜管手铳
-	"p2eq_078": [{"armorPen": 5, "_aspdPct": 6}, {"armorPen": 11, "_aspdPct": 11}, {"armorPen": 22, "_aspdPct": 18}],   # 枪 · 2费 · 双管贝壳枪
-	"p2eq_079": [{"armorPen": 7, "_aspdPct": 8}, {"armorPen": 15, "_aspdPct": 15}, {"armorPen": 30, "_aspdPct": 25}],   # 枪 · 3费 · 军械库连射机
-	"p2eq_080": [{"atk": 30, "armorPen": 14, "_aspdPct": 10}, {"atk": 90, "armorPen": 30, "_aspdPct": 18}, {"atk": 260, "armorPen": 55, "_aspdPct": 30}],   # 枪 · 5费 · 穿甲重炮
+	"p2eq_077": [{"crit": 0.1, "armorPen": 4}, {"crit": 0.18, "armorPen": 9}, {"crit": 0.3, "armorPen": 18}],   # 枪 · 1费 · 铜管手铳
+	"p2eq_078": [{"atk": 12, "armorPen": 5}, {"atk": 30, "armorPen": 11}, {"atk": 68, "armorPen": 22}],   # 枪 · 2费 · 电鳗双管铳
+	"p2eq_079": [{"hp": 90, "shieldHealPct": 10, "_aspdPct": 8}, {"hp": 200, "shieldHealPct": 18, "_aspdPct": 15}, {"hp": 420, "shieldHealPct": 30, "_aspdPct": 25}],   # 枪 · 3费 · 珊瑚急救塔
+	"p2eq_080": [{"atk": 30, "def": 12, "mr": 12}, {"atk": 90, "def": 28, "mr": 28}, {"atk": 260, "def": 60, "mr": 60}],   # 枪 · 5费 · 打捞旋翼机
 	"p2eq_081": [{"hp": 50, "def": 6}, {"hp": 120, "def": 13}, {"hp": 260, "def": 22}],   # 盾 · 1费 · 藤编圆盾
-	"p2eq_082": [{"hp": 70, "def": 7}, {"hp": 170, "def": 15}, {"hp": 380, "def": 26}],   # 盾 · 2费 · 砗磲护心甲
+	"p2eq_082": [{"hp": 70, "mr": 8}, {"hp": 170, "mr": 17}, {"hp": 380, "mr": 30}],   # 盾 · 2费 · 砗磲护心甲
 	"p2eq_083": [{"atk": 18, "crit": 0.1}, {"atk": 42, "crit": 0.18}, {"atk": 92, "crit": 0.3}],   # 剑 · 3费 · 潮汐细剑
-	"p2eq_084": [{"atk": 22, "crit": 0.12}, {"atk": 55, "crit": 0.22}, {"atk": 125, "crit": 0.38}],   # 剑 · 4费 · 血牙巨剑
-	"p2eq_085": [{"mr": 9, "_echargePct": 5}, {"mr": 19, "_echargePct": 9}, {"mr": 34, "_echargePct": 15}],   # 奇械 · 1费 · 铜齿护符
-	"p2eq_086": [{"def": 12, "mr": 18, "_echargePct": 10}, {"def": 30, "mr": 45, "_echargePct": 18}, {"def": 80, "mr": 130, "_echargePct": 30}],   # 奇械 · 5费 · 极地反冲装置
-	"p2eq_087": [{"hp": 150, "mr": 20, "_echargePct": 8}, {"hp": 420, "mr": 50, "_echargePct": 14}, {"hp": 1200, "mr": 145, "_echargePct": 24}],   # 奇械 · 5费 · 深渊铸币机
-	"p2eq_088": [{"magicPen": 5, "_maxEnergy": 12}, {"magicPen": 11, "_maxEnergy": 22}, {"magicPen": 20, "_maxEnergy": 40}],   # 法器 · 1费 · 潮汐骨杖
-	"p2eq_089": [{"magicPen": 5, "_echargePct": 6}, {"magicPen": 11, "_echargePct": 11}, {"magicPen": 20, "_echargePct": 18}],   # 法器 · 1费 · 蚀月符纸
-	"p2eq_090": [{"magicPen": 18, "_maxEnergy": 45, "_echargePct": 12}, {"magicPen": 42, "_maxEnergy": 80, "_echargePct": 22}, {"magicPen": 110, "_maxEnergy": 150, "_echargePct": 38}],   # 法器 · 5费 · 万潮法典
-	"p2eq_091": [{"hp": 50, "_lifestealPct": 4}, {"hp": 120, "_lifestealPct": 8}, {"hp": 260, "_lifestealPct": 14}],   # 遗物 · 1费 · 远古龟甲片
+	"p2eq_084": [{"_aspdPct": 10, "_mspdPct": 7}, {"_aspdPct": 18, "_mspdPct": 13}, {"_aspdPct": 30, "_mspdPct": 22}],   # 剑 · 4费 · 手半剑
+	"p2eq_085": [{"hp": 50, "crit": 0.1}, {"hp": 120, "crit": 0.18}, {"hp": 260, "crit": 0.3}],   # 奇械 · 1费 · 压电陶瓷片
+	"p2eq_086": [{"atk": 30, "_echargePct": 12}, {"atk": 90, "_echargePct": 22}, {"atk": 260, "_echargePct": 38}],   # 奇械 · 5费 · 六分仪浮游炮
+	"p2eq_087": [{"def": 25, "hp": 150}, {"def": 60, "hp": 420}, {"def": 150, "hp": 1200}],   # 奇械 · 5费 · 盗令潜水钟
+	"p2eq_088": [{"magicPen": 5, "_maxEnergy": 12}, {"magicPen": 11, "_maxEnergy": 22}, {"magicPen": 20, "_maxEnergy": 40}],   # 法器 · 1费 · 涨潮碑
+	"p2eq_089": [{"_echargePct": 6, "def": 6}, {"_echargePct": 11, "def": 13}, {"_echargePct": 18, "def": 22}],   # 法器 · 1费 · 蚀月符纸
+	"p2eq_090": [{"magicPen": 18, "hp": 150, "_maxEnergy": 45}, {"magicPen": 42, "hp": 420, "_maxEnergy": 80}, {"magicPen": 110, "hp": 1200, "_maxEnergy": 150}],   # 法器 · 5费 · 镇海杵
+	"p2eq_091": [{"atk": 5, "_rangeAdd": 50, "def": 6}, {"atk": 12, "_rangeAdd": 50, "def": 13}, {"atk": 20, "_rangeAdd": 50, "def": 22}],   # 遗物 · 1费 · 远古龟甲片
 	# 2026-08-05 用户重做: 属性原话「提供 50/70/100 生命值和 10/22/40 魔抗」——
 	# 就这两项, 所以原来的 atk/_lifestealPct 一并换掉(不是加在它们之上)。
 	"p2eq_092": [{"hp": 50, "mr": 10}, {"hp": 70, "mr": 22}, {"hp": 100, "mr": 40}],   # 遗物 · 2费 · 毒蛾茧
-	"p2eq_093": [{"def": 6, "_lifestealPct": 5}, {"def": 14, "_lifestealPct": 10}, {"def": 30, "_lifestealPct": 17}],   # 遗物 · 2费 · 祭坛残石
-	"p2eq_094": [{"atk": 25, "hp": 120, "_lifestealPct": 9}, {"atk": 62, "hp": 300, "_lifestealPct": 18}, {"atk": 140, "hp": 700, "_lifestealPct": 30}],   # 遗物 · 4费 · 觉醒之核
+	"p2eq_093": [{"atk": 10, "armorPen": 3, "magicPen": 3}, {"atk": 20, "armorPen": 7, "magicPen": 7}, {"atk": 36, "armorPen": 11, "magicPen": 11}],   # 遗物 · 2费 · 香火石
+	"p2eq_094": [{"atk": 25, "armorPen": 6, "hp": 120, "_mspdPct": 5}, {"atk": 62, "armorPen": 13, "hp": 300, "_mspdPct": 9}, {"atk": 140, "armorPen": 22, "hp": 700, "_mspdPct": 14}],   # 遗物 · 4费 · 祖龟碑
 	"p2eq_095": [{"hp": 250}, {"hp": 250}, {"hp": 250}],   # 圣光护盾(盾羁绊3档赠送·不占容量·三星同值: 它不参与合成)
 }

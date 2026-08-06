@@ -474,6 +474,13 @@ func _dl_build_lane_field() -> void:
 			_sysref.clear_all()
 		elif _sysref.has_method("clear"):
 			_sysref.clear()
+	# ★批④(2026-08-06·077~094 十七件)的换路撤场 —— 六个系统统一走 `_b4_all()`。
+	#   这一批里有大量【会活过一路】的东西: 077 的小手枪 / 079 的医疗炮台 / 080 的直升机 /
+	#   086 的六个浮游炮 / 088 的潮汐碑 / 089 的符纸 / 094 的祖龟碑。
+	#   漏清就是把上一路的召唤物与光环整个带进下一路 —— 而且**不会报错**, 只会让下路莫名其妙。
+	for _b4ref in battle._equip_sys._b4_all():
+		if _b4ref != null:
+			_b4ref.clear_all()
 	battle._potion_syn.clear()    # 换路: 猎物标记与节拍归零
 	battle._gadget_syn.clear()    # 换路: 僵硬/冰封CD归零(铸币【不清】—— 一场 = 上路+下路+决胜)
 	battle._food_syn.clear()      # 换路: 成长节拍归零

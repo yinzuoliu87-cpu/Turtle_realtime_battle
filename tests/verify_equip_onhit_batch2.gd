@@ -116,10 +116,12 @@ func _ready() -> void:
 	# ★073/074/075/076 四件已由用户整条重写(2026-08-05 §0.5),
 	#   旧效果与旧效果函数均已删除 ⇒ 这四段用例搬到 tests/verify_eq_bow_batch.gd。
 	#   这里不是"删了没人接" —— 新门禁逐件重写了它们, 包括分发纪律那一组。
-	_t078_double_barrel()
-	_t083_tide_rapier()
-	_t_r4_no_chain()
-	_t_r1_tide_magnitude()
+	# ★078/083 两件已由用户整条重写(2026-08-06 §0.5·批④): 078 双管贝壳枪→电鳗双管铳
+	#   (左右管每 2 秒交替 + 电流连锁), 083 潮汐细剑改成 20 层叠加 + 残血攻速。
+	#   旧效果函数 _double_barrel_shot / _eq_tide_rapier 均已删除 ⇒ 四段用例
+	#   (_t078_double_barrel / _t083_tide_rapier / _t_r4_no_chain / _t_r1_tide_magnitude)
+	#   随之删除, 新门禁在 tests/verify_eq_gun_batch.gd 与 tests/verify_eq_blade_batch.gd。
+	#   接线结构由 tests/verify_b4_wiring.gd 统一守。
 
 	_s.queue_free()
 	await get_tree().process_frame
@@ -143,8 +145,11 @@ func _t_dispatch() -> void:
 		#   用户原文都写"每次普攻") ⇒ 它们在下面那一行。075 的【距离增伤】仍在 on-hit。
 		# ★067 也不在这里了: 它被用户重做成【毒药瓶】(周期投瓶 + 普攻叠中毒),
 		#   落点是 fire_equip_effect 与 _eq_on_basic_attack, 由 tests/verify_eq_potion_batch.gd 守。
-		"func _eq_on_hit": ["p2eq_075", "p2eq_083"],
-		"func _eq_on_basic_attack": ["p2eq_073", "p2eq_074", "p2eq_076", "p2eq_078"],
+		# ★083 与 078 已于 2026-08-06(批④)被用户整条重做 ⇒ 从这两行摘掉。
+		#   它们现在走 EquipSystem 的批④统一路由(`_b4(iid).on_hit/on_basic`),
+		#   结构由 tests/verify_b4_wiring.gd 守、数值由各路自己的门禁守。
+		"func _eq_on_hit": ["p2eq_075"],
+		"func _eq_on_basic_attack": ["p2eq_073", "p2eq_074", "p2eq_076"],
 		# ★_eq_on_dodge 这一行整条删掉: 060/061 已被用户重做(060 → 7 秒开伞周期,
 		#   061 → on-hit 破损), 都不再挂闪避钩。现在挂闪避钩的是 062 螳螂虾钳,
 		#   由 tests/verify_eq_spirit_batch.gd 守。
@@ -167,7 +172,7 @@ func _t_dispatch() -> void:
 				dup.append("%s×%d" % [iid, cnt])
 		_ok("⓪ %s 挂着 %s" % [str(hdr), str(groups[hdr])], miss.is_empty(), "缺 %s" % str(miss))
 		_ok("⓪ %s 里没有重复 id" % str(hdr), dup.is_empty(), str(dup))
-	_ok("⓪ ★分母: 本批一共查了 %d 件(应为 6 —— 060/061 见 verify_eq_spirit_batch, 067/068 见 verify_eq_potion_batch)" % total, total == 6, "total=%d" % total)
+	_ok("⓪ ★分母: 本批一共查了 %d 件(应为 4 —— 060/061 见 verify_eq_spirit_batch, 067/068 见 verify_eq_potion_batch, 078/083 见批④)" % total, total == 4, "total=%d" % total)
 	# ★★接线: 这四个钩子【真的被中央管线调】—— 否则上面全绿而游戏里一件都不触发
 	var dmg_src: String = _strip("res://scripts/scenes/battle/battle_damage.gd")
 	var rb_src: String = _strip("res://scripts/scenes/RealtimeBattle3DScene.gd")
@@ -180,23 +185,32 @@ func _t_dispatch() -> void:
 	_ok("⓪ ★★接线: 主场景的 _kill 真的调 _eq_on_kill",
 		rb_src.contains("_eq_on_kill(killer, u)"))
 	# 加伤/额外真伤五件共用同一个投递口 —— 不许各写各的扣血(1 处定义 + 5 处调用)
-	_ok("⓪ 加伤/额外真伤五件都走同一个 _eq_bonus_hit 投递口(不各写各的)",
-		code.count("_eq_bonus_hit(") == 2,
-		"出现 %d 次(期望 2 = 1 定义 + 1 调用: 083。067 与弓箭四件已由用户重写, 075 改从 eq_bow_batch.gd 里调这个投递口)" % code.count("_eq_bonus_hit("))
+	# ★2026-08-06(批④): 083 是 equip_system.gd 里最后一个调这个投递口的件, 它被重做后
+	#   这里只剩【1 处定义、0 处调用】。**函数不删** —— 它是"加伤/额外真伤统一投递"的公共口,
+	#   eq_bow_batch.gd 等外部文件仍在用(见下面那条分母)。这里守的是"没人在本文件里另写一套扣血"。
+	_ok("⓪ _eq_bonus_hit 仍是唯一投递口(equip_system.gd 内 1 处定义, 无就地重写)",
+		code.count("_eq_bonus_hit(") == 1,
+		"出现 %d 次(期望 1 = 只剩定义; 调用方已全部外迁到各批系统)" % code.count("_eq_bonus_hit("))
+	# ★分母: 投递口真的还有人用 —— 否则上面那条会在"函数变成死代码"时照样绿
+	var _users := 0
+	for _f in ["res://scripts/systems/equip/eq_bow_batch.gd", "res://scripts/systems/equip/eq_potion_batch.gd",
+			"res://scripts/systems/equip/eq_spirit_batch.gd", "res://scripts/systems/equip/eq_food_batch.gd"]:
+		if _strip(_f).contains("_eq_bonus_hit("):
+			_users += 1
+	_ok("⓪ ★分母: _eq_bonus_hit 至少还有 1 个外部调用者(不是死代码)", _users >= 1, "调用它的批系统 %d 个" % _users)
 	# 六件 on-hit 的效果体都外迁成具名函数, 且分派写成 `"id": _fn(` —— 少一条,
 	# tooltip_number_audit 就拿不到函数锚点, 数值会被判"远处命中"
 	var hit_body: String = _fn_body(code, "func _eq_on_hit")
 	# ★弓箭四件不在这里: 它们的效果本体搬到了 EqBowBatch(分派写成 `"id": _bow_sys.xxx(`),
 	#   不再是本文件里的 `_eq_*` 具名函数 ⇒ 改由 tests/verify_eq_bow_batch.gd 守。
-	var fns := {"p2eq_083": "_eq_tide_rapier"}
-	var nowire: Array = []
-	for k in fns:
-		if not hit_body.contains("\"%s\": %s(" % [k, fns[k]]):
-			nowire.append("%s→%s" % [k, fns[k]])
-		if not code.contains("func %s(" % fns[k]):
-			nowire.append("缺 func %s" % fns[k])
-	_ok("⓪ 六件 on-hit 的分派写成 \"id\": _fn( 且函数真的存在(tooltip 审计靠这个锚点)",
-		nowire.is_empty(), str(nowire))
+	# ★2026-08-06(批④): 这张表原来只剩 083→_eq_tide_rapier 一条, 083 已被整条重做 ⇒ 表空了。
+	#   **空表 + for 循环 = 恒真断言**, 那比没有断言更糟(它会一直绿着假装守着东西)。
+	#   ⇒ 改成守【本文件仍然负责的那一件】: 075 的分派必须是 `"id": _sys.fn(` 形状,
+	#   否则 tooltip_number_audit 拿不到函数锚点, 它的数值会被判"远处命中"。
+	_ok("⓪ 075 的 on-hit 分派写成 \"id\": _fn( 形状(tooltip 审计靠这个锚点)",
+		hit_body.contains("\"p2eq_075\": _bow_sys.on_hit_075("), "hit_body len=%d" % hit_body.length())
+	_ok("⓪ ★分母: on_hit_075 这个函数真的存在于 eq_bow_batch.gd",
+		_strip("res://scripts/systems/equip/eq_bow_batch.gd").contains("func on_hit_075("), "")
 # ★2026-08-05: 这一段守的是【已被用户整条重做掉】的旧效果, 随效果一并删除。
 #   新效果与它的门禁在 tests/verify_eq_spirit_batch.gd(灵物 5 件·§0.5 定稿)。
 
@@ -227,201 +241,11 @@ func _t_dispatch() -> void:
 const TRIALS := 1000
 const SEED := 20260805
 
-
-func _t078_double_barrel() -> void:
-	print("── 078 双管贝壳枪 · 概率追加一发 ──")
-	for si in range(3):
-		var want_p: float = [0.25, 0.35, 0.50][si]
-		var want_pct: float = [0.40, 0.50, 0.60][si]
-		_s._units.clear()
-		var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, 340.0), 3000.0), "p2eq_078", si + 1)
-		u["atk"] = 100.0
-		u["base_atk"] = 100.0
-		u["crit"] = 0.0
-		var t: Dictionary = _mk("basic", "right", Vector2(-100.0, 340.0), 90000000.0)
-		t["hp"] = 90000000.0
-		t["_dbarrel_n"] = 0
-		_s._battle_rng.seed = SEED
-		var h0: float = float(t["hp"])
-		for _k in range(TRIALS):
-			_s._equip_sys._eq_on_basic_attack(u, t)
-		var fired: int = int(t.get("_dbarrel_n", 0))
-		var rate: float = float(fired) / float(TRIALS)
-		_ok("078 si=%d 追加概率 ≈ %.0f%%(播种 RNG · %d 次实测 %.1f%%)" % [si, want_p * 100.0, TRIALS, rate * 100.0],
-			absf(rate - want_p) < 0.03, "实测 %.4f 期望 %.2f" % [rate, want_p])
-		_ok("078 si=%d ★分母: 这一轮确实追加过(fired=%d > 0)" % [si, fired], fired > 0)
-		var per: float = (h0 - float(t["hp"])) / maxf(1.0, float(fired))
-		_ok("078 si=%d 每发伤害 = %.0f%% × 攻击力 100 = %.0f(需求 40/50/60%%)" % [si, want_pct * 100.0, want_pct * 100.0],
-			absf(per - want_pct * 100.0) < 0.51, "实测每发 %.2f" % per)
-	_s._units.clear()
-
-
-# ─────────────────────────────────────────────────────────────
-# 083 潮汐细剑: 连续命中同一目标每层 +4/7/11%(最多 5 层, 换目标清空)
-# ─────────────────────────────────────────────────────────────
-func _t083_tide_rapier() -> void:
-	print("── 083 潮汐细剑 · 连击叠层 ──")
-	for si in range(3):
-		var per: float = [0.04, 0.07, 0.11][si]
-		_s._units.clear()
-		var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, 380.0), 3000.0), "p2eq_083", si + 1)
-		var a: Dictionary = _mk("basic", "right", Vector2(-100.0, 380.0), 900000.0)
-		var b: Dictionary = _mk("basic", "right", Vector2(100.0, 380.0), 900000.0)
-		# 第 1 击: 建立目标, 不吃加成
-		var h1: float = float(a["hp"])
-		_s._equip_sys._eq_on_hit(u, a, 1000)
-		_ok("083 si=%d ★第一击不吃加成(层数在这一击之后才 +1)" % si,
-			absf(h1 - float(a["hp"])) < 0.01, "第一击额外 %.1f" % (h1 - float(a["hp"])))
-		# 第 2 击: 1 层
-		var h2: float = float(a["hp"])
-		_s._equip_sys._eq_on_hit(u, a, 1000)
-		_ok("083 si=%d 第二击吃 1 层 = +%.0f(需求 4/7/11%%)" % [si, round(1000.0 * per)],
-			absf(h2 - float(a["hp"]) - round(1000.0 * per)) < 0.51,
-			"实掉 %.1f 期望 %.0f" % [h2 - float(a["hp"]), round(1000.0 * per)])
-		# 再打 4 下 → 层数封顶 5
-		for _k in range(4):
-			_s._equip_sys._eq_on_hit(u, a, 1000)
-		var h6: float = float(a["hp"])
-		_s._equip_sys._eq_on_hit(u, a, 1000)
-		_ok("083 si=%d ★封顶 5 层 = +%.0f(第 7 击也还是 5 层)" % [si, round(1000.0 * per * 5.0)],
-			absf(h6 - float(a["hp"]) - round(1000.0 * per * 5.0)) < 0.51,
-			"实掉 %.1f 期望 %.0f" % [h6 - float(a["hp"]), round(1000.0 * per * 5.0)])
-		_ok("083 si=%d ★分母: eq_state 里真的是 5 层" % si,
-			int((u["eq_state"]["p2eq_083"] as Dictionary).get("tide_layers", 0)) == 5,
-			"layers=%d" % int((u["eq_state"]["p2eq_083"] as Dictionary).get("tide_layers", 0)))
-		# 换目标 → 清空
-		var hb: float = float(b["hp"])
-		_s._equip_sys._eq_on_hit(u, b, 1000)
-		_ok("083 si=%d ★换目标清空(打 b 的第一下没有任何加成)" % si,
-			absf(hb - float(b["hp"])) < 0.01, "换靶第一击额外 %.1f" % (hb - float(b["hp"])))
-		var ha: float = float(a["hp"])
-		_s._equip_sys._eq_on_hit(u, a, 1000)
-		_ok("083 si=%d ★换回 a 也是从零开始(不是各存各的)" % si,
-			absf(ha - float(a["hp"])) < 0.01, "换回额外 %.1f" % (ha - float(a["hp"])))
-	_s._units.clear()
-
-
-# ═════════════════════════════════════════════════════════════
-#  R4 (方案书): 078 追加的那一发【不触发 on-hit】—— 必须焊死
-#  不焊的话它会与剑士追打 / 冰封掷骰 / 僵硬叠层形成连锁自激。
-# ═════════════════════════════════════════════════════════════
-func _t_r4_no_chain() -> void:
-	print("── R4 078 追加那发不触发 on-hit / 不喂剑士 ──")
-	_s._units.clear()
-	var saved = _s._synergy._by_side
-	_s._synergy._by_side = {"left": {"剑": 3, "枪": 1}, "right": {}}
-	_s._swordsman.clear()
-	# 携带者同时带 078(枪) + 083(剑): 083 是本批唯一"每次 on-hit 必叠一层"的件,
-	# 拿它当【on-hit 到底有没有被触发】的同步探针 —— 比"数 tween 变多了"那种假断言硬
-	# (CLAUDE.md §3.5: _kill 里别的效果也建 tween, 反向验证时不会红)。
-	var u: Dictionary = _mk("fortune", "left", Vector2(-300.0, 420.0), 3000.0)
-	u["equips"] = [{"id": "p2eq_078", "star": 3}, {"id": "p2eq_083", "star": 3}]
-	u["eq_state"] = {}
-	u["atk"] = 100.0
-	u["base_atk"] = 100.0
-	u["crit"] = 0.0
-	u["atk_interval"] = 1.25
-	var t: Dictionary = _mk("basic", "right", Vector2(-100.0, 420.0), 90000000.0)
-	t["hp"] = 90000000.0
-	_ok("R4 ★分母: 剑羁绊 3 档已激活(不激活就没有追打, 下面那条会恒真)",
-		int(_s._synergy.tier_for(u, "剑")) == 3, "tier=%d" % int(_s._synergy.tier_for(u, "剑")))
-	# ★★① 追加那一发【不触发 on-hit】: 直接把那一发打出去, 083 一层都不该叠
-	_s._swordsman._pending.clear()
-	u["eq_state"] = {}
-	_s._equip_sys._double_barrel_shot(u, t, 0.60)
-	var lay_after: int = int((u["eq_state"].get("p2eq_083", {}) as Dictionary).get("tide_layers", 0))
-	_ok("R4 ★★追加的那一发【不触发 on-hit】(083 一层都没叠)",
-		lay_after == 0, "tide_layers=%d" % lay_after)
-	# ★★② 追加那一发【不给剑士排追打】(它不经 _basic_attack / _eq_on_basic_attack)
-	_ok("R4 ★★追加的那一发不给剑士排追打(pending 仍为空)",
-		_s._swordsman._pending.is_empty(), "pending=%d" % _s._swordsman._pending.size())
-	# ★★③ 反向证明上面两条不是空检查: 同一对单位走【正常那条路】必须两样都发生
-	u["eq_state"] = {}
-	_s._damage._apply_damage_from(u, t, 100, Color("#ffffff"))
-	var lay_norm: int = int((u["eq_state"].get("p2eq_083", {}) as Dictionary).get("tide_layers", 0))
-	_ok("R4 ★★分母: 同一对单位走正常伤害路 → 083 确实叠了 1 层(证明探针有效)",
-		lay_norm == 1, "tide_layers=%d" % lay_norm)
-	_s._swordsman.on_basic_attack(u, t)
-	_ok("R4 ★★分母: 同一只走剑士普攻钩 → 确实排了 2 发追打(证明探针有效)",
-		_s._swordsman._pending.size() == 2, "pending=%d" % _s._swordsman._pending.size())
-	_s._swordsman.clear()
-	_s._synergy._by_side = saved
-	_s._units.clear()
-
-
-# ═════════════════════════════════════════════════════════════
-#  R1 量级(方案书 §4 R1 · 用户点名要实测): 剑阵容里 083 的层数涨多快?
-#
-#  ★口径: 剑士【追打会触发 on-hit】(SwordsmanSystem.tick 里显式调 _eq_on_hit),
-#    用户拍板 U3-A「会喂」。⇒ 一次普攻在 3 档下产生 1(普攻) + 2(追打) = 3 次 on-hit。
-#    本节【只测量并打印】, 不自己砍数值 —— 数字交给用户拍板。
-#  ★用真的 SwordsmanSystem 跑(排队 + tick 推进), 不手工调 3 次 on-hit 假装。
-# ═════════════════════════════════════════════════════════════
-func _t_r1_tide_magnitude() -> void:
-	print("── R1 量级: 剑阵容里 083 层数涨多快 ──")
-	_s._units.clear()
-	var saved = _s._synergy._by_side
-	_s._synergy._by_side = {"left": {"剑": 3}, "right": {}}
-	_s._swordsman.clear()
-	var u: Dictionary = _mk("fortune", "left", Vector2(-300.0, 460.0), 3000.0)
-	u["equips"] = [{"id": "p2eq_083", "star": 3}, {"id": "p2eq_084", "star": 3}]
-	u["eq_state"] = {}
-	u["atk"] = 100.0
-	u["base_atk"] = 100.0
-	u["crit"] = 0.0
-	u["atk_interval"] = 1.25
-	var t: Dictionary = _mk("basic", "right", Vector2(-100.0, 460.0), 90000000.0)
-	t["hp"] = 90000000.0
-	_ok("R1 ★分母: 剑 3 档已激活 + 身上 2 件剑(追打倍率按件数算)",
-		int(_s._synergy.tier_for(u, "剑")) == 3 and u["equips"].size() == 2,
-		"tier=%d 件数=%d" % [int(_s._synergy.tier_for(u, "剑")), u["equips"].size()])
-	var tsave: float = _s._t
-	var atk_n := 0
-	var layers := 0
-	while atk_n < 8 and layers < 5:
-		atk_n += 1
-		# 一次普攻: on-hit(本体) + 剑士排 2 发追打, 推时钟让追打落地
-		_s._equip_sys._eq_on_hit(u, t, 1000)
-		_s._swordsman.on_basic_attack(u, t)
-		for _st in range(3):
-			_s._t += 0.5
-			_s._swordsman.tick(0.5)
-		layers = int((u["eq_state"].get("p2eq_083", {}) as Dictionary).get("tide_layers", 0))
-		print("    普攻第 %d 下之后 → 083 层数 = %d (加成 +%d%%)" % [atk_n, layers, layers * 11])
-	print("  ⇒ 剑 3 档 + 2 件剑: 第 %d 下普攻就满 5 层(+55%% 伤害)" % atk_n)
-	# ★★细分记账: 一次普攻里"剑士追打"这一路到底喂了几次 on-hit。
-	#   3 档剑士排 2 发追打 ⇒ 应该是 **2 次** on-hit。
-	#
-	# ★★2026-08-05【这里原来是 4，是个双发 bug，已修】
-	#   `SwordsmanSystem.tick` 先调 `_apply_damage_from(...)`(from_equip 默认 false
-	#   ⇒ battle_damage.gd:259 内部就会回钩一次 on-hit), 紧接着又【显式】调了一次
-	#   `battle._equip_sys._eq_on_hit(...)` ⇒ 每发追打把 on-hit 点了两次,
-	#   一次普攻 = 1 + 2x2 = **5 次 on-hit 事件**(应为 3)。
-	#   影响的不止 083, 是**所有 on-hit 装备**(流血叠层/005 双刃/各种充能计数)
-	#   在剑阵容里全部按双倍速率跑。弓/药水/奇械/法器没这问题(只在内部那段挂了一次)。
-	#   ⇒ 删掉 swordsman_system.gd 里那行重复调用。实证: 本行实测值 4 → 2, 正好减半。
-	#
-	#   ★这条断言把【修好之后】的事实钉住: 谁再把那行加回去, 本条立刻红。
-	u["eq_state"] = {}
-	_s._swordsman.clear()
-	_s._swordsman.on_basic_attack(u, t)
-	for _st2 in range(3):
-		_s._t += 0.5
-		_s._swordsman.tick(0.5)
-	var only_chase: int = int((u["eq_state"].get("p2eq_083", {}) as Dictionary).get("tide_layers", 0))
-	print("    细分: 只走剑士追打(3 档 = 2 发) → 083 涨了 %d 层" % only_chase)
-	_ok("R1 ★★记账: 3 档剑士的 2 发追打【正好】喂 2 次 on-hit(双发 bug 已修)",
-		only_chase == 2,
-		"实测 %d 层。期望 2 —— 若是 4, 说明 swordsman_system 那行重复的 _eq_on_hit 又回来了" % only_chase)
-	_ok("R1 ★★实测: 剑阵容里 083 在 %d 下普攻内满层(不带剑士需要 6 下 on-hit)" % atk_n,
-		atk_n >= 1 and atk_n <= 8 and layers == 5,
-		"atk_n=%d layers=%d" % [atk_n, layers])
-	# ★上限本身是硬的: 无论怎么喂, 加成不超过 5 层 × 11% = 55%
-	for _k in range(50):
-		_s._equip_sys._eq_on_hit(u, t, 1000)
-	var final_l: int = int((u["eq_state"].get("p2eq_083", {}) as Dictionary).get("tide_layers", 0))
-	_ok("R1 ★喂爆也不超 5 层(3★ 封顶 = +55% 伤害)", final_l == 5, "layers=%d" % final_l)
-	_s._t = tsave
-	_s._swordsman.clear()
-	_s._synergy._by_side = saved
-	_s._units.clear()
+# ★★2026-08-06(批④): 这里原有四段逐件用例 —— _t078_double_barrel / _t083_tide_rapier /
+#   _t_r4_no_chain(078 追加那一发不触发 on-hit) / _t_r1_tide_magnitude(083 层数量级)。
+#   078 与 083 已由用户整条重做(078 双管贝壳枪→电鳗双管铳: 左右管每 2 秒交替 + 电流连锁;
+#   083 潮汐细剑: 20 层叠加 + 残血攻速), 旧效果函数 _double_barrel_shot / _eq_tide_rapier
+#   均已从 equip_system.gd 删除 ⇒ 四段整段删除。
+#   ★是整段删而不是"把旧断言改成新数字" —— 旧用例量的是旧机制(如"25% 概率追加一发"、
+#   "最多 5 层"), 改数字保不住它们。新门禁: tests/verify_eq_gun_batch.gd(078) 与
+#   tests/verify_eq_blade_batch.gd(083); 接线结构由 tests/verify_b4_wiring.gd 守。

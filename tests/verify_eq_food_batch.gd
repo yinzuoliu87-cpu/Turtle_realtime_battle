@@ -140,8 +140,12 @@ func _t_wiring() -> void:
 	_ok("⓪ EQ_IV_BATCH1 里已没有 069/070/072(四件都不是周期类了)",
 		not iv.has("p2eq_069") and not iv.has("p2eq_070") and not iv.has("p2eq_072"),
 		"实测 keys=%d" % iv.size())
-	_ok("⓪ ★分母: EQ_IV_BATCH1 不是空表(还有别件在用, 证明上一条不是空检查)",
-		iv.size() >= 5, "size=%d" % iv.size())
+	# ★分母口径 2026-08-06 从 ">=5" 收到 ">=2 且含 067/075":
+	#   批④ 把 077/079/080/081/087/091/094 七件全从这张表摘掉了(它们改成了召唤/触发式,
+	#   见 EQ_IV_BATCH1 的注释) ⇒ 表里只剩 067 毒药瓶与 075 测距绳结两件真周期件。
+	#   点名两件而不是只比 size: 只比 size 的话下次再摘件又要改一次, 而且摘到只剩 1 件也能过。
+	_ok("⓪ ★分母: EQ_IV_BATCH1 不是空表(067/075 两件真周期件还在, 证明上一条不是空检查)",
+		iv.has("p2eq_067") and iv.has("p2eq_075") and iv.size() >= 2, "size=%d keys=%s" % [iv.size(), str(iv.keys())])
 	# ★分母: 不带食物件的单位不会被交给本系统
 	var plain: Dictionary = _mk("fortune", "left", Vector2(-460.0, -300.0), 1000.0)
 	_ok("⓪ ★分母: 不带食物件的单位 `_food_eq` 为 false", not bool(plain.get("_food_eq", false)), "")

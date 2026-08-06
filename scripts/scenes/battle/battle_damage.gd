@@ -17,10 +17,10 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: Stri
 	#   bucket=="tru" 视为真伤 → 与另一条路的 raw 语义一致(真伤只无视护甲/减伤, 护盾照吸)。
 	var _raw: bool = (bucket == "tru")
 	var d = battle._mitigate_incoming(u, float(dmg), _raw, is_self)
-	# 装备 082 砗磲护心甲: 本体护盾存在时额外减伤(常驻字段 _clam_dr 由 EquipStatsApply 写)。
-	# ⚠ 两条伤害路径【都要加】(CLAUDE.md §3.3) —— 另一半在 _apply_damage_from 的同一位置。
-	if not _raw and float(u.get("_clam_dr", 0.0)) > 0.0 and float(u.get("shield", 0.0)) > 0.0:
-		d = battle._equip_sys._eq_clam_mitigate(u, d)
+	# ★这里原来是 082 砗磲护心甲的「护盾存在时额外减伤 8/14/22%」(`_clam_dr`)。
+	#   2026-08-06 用户把 082 整条重做成【护心反伤】(每受一段攻击反伤魔法伤害 + 攒充能
+	#   + 普攻消耗一层回血) —— 新设计里**没有减伤这一半** ⇒ 两条路的消费点一并撤掉。
+	#   ⚠ 撤要两条路一起撤(CLAUDE.md §3.3), 另一半在 _apply_damage_from 的同一位置。
 	dmg = maxi(1, int(round(d)))                     # 统计/飘字用减伤【后】的值, 否则面板数字与实际掉血对不上
 	var shield_before: float = u["shield"]
 	d = ShieldMath.absorb(u, d)   # 普通盾+aura盾 吸全类型(§3.3 收口·两路共用)
@@ -67,6 +67,13 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: Stri
 	#   让它们从每一跳灼烧触发是行为变更。详见 eq_potion_batch.store_from_any_damage 的头注。
 	if u.get("_potion_tick", false):
 		battle._equip_sys._potion_sys.store_from_any_damage(u, dmg)
+	# ★★2026-08-06 批④ 同款窄口(§3.3 的另一半): 081 的举盾充能条 / 085 的受伤转龟能 /
+	#   087 的压载舱, 按 §0.5 规格都要吃【所有】伤害, 而 `_eq_on_target` 只挂在
+	#   `_apply_damage_from`(普攻/技能)那一条路上。理由与做法见 EquipSystem._b4_on_damaged_any 的头注 ——
+	#   不给 `_eq_on_target` 补全路, 是因为它还挂着 013/014 硬化层与 015 荆棘反伤等已上线装备,
+	#   让它们从每一跳灼烧触发是【行为变更】。
+	if u.get("_b4_eq", false):
+		battle._equip_sys._b4_on_damaged_any(u, src, dmg)
 	# ★★2026-08-06 补: 这条路(DoT/真伤)原先【完全没有 HP 阈值检查】——
 	#   `_eq_check_hp_threshold` 与血线只挂在 _apply_damage_from(普攻/技能)上。
 	#   后果: 044 深海项链 / 045 珍珠耳环 的"首次<50%保命"在被**灼烧/中毒/流血/诅咒/真伤**
@@ -136,9 +143,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	if _prey_amp != 1.0:
 		dmg = maxi(1, int(round(float(dmg) * _prey_amp)))
 	var d = battle._mitigate_incoming(u, float(dmg), raw)
-	# 装备 082 砗磲护心甲: 本体护盾存在时额外减伤 —— 与 _apply_damage 同一位置的另一半(§3.3)
-	if not raw and float(u.get("_clam_dr", 0.0)) > 0.0 and float(u.get("shield", 0.0)) > 0.0:
-		d = battle._equip_sys._eq_clam_mitigate(u, d)
+	# ★082 的旧减伤消费点已撤 —— 与 _apply_damage 同一位置的另一半(§3.3), 理由见那边。
 	dmg = maxi(1, int(round(d)))
 	# 守护贝母021: 该单位被指向为"伤害转移", 把一部分入伤转给携带者承担 (护盾前分流, 剩余部分仍走本体护盾/血)
 	var _rd = u.get("dmg_redirect_to", null)
@@ -294,10 +299,12 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 			battle._staff_syn.add_mana(src, float(dmg) * StaffSynergySystem.MANA_FROM_DMG)   # 法器: 造成伤害 ×0.1 涨法力
 		if u["alive"]:
 			battle._equip_sys._eq_on_target(u, src, dmg)     # on-target: 防守者装备 (硬化层/冰封反制 等)
-			# 装备 085 铜齿护符 / 086 极地反冲装置: 受到【法术】伤害时的反应(掷骰充能 / 减速+反弹)。
+			# 批④(2026-08-06) 后 17 件里吃【法术伤害】的那几件走这条钩。
+			# ★守卫从 `_b3_gadget`(085/086 旧效果专用)换成批④统一的 `_b4_eq` ——
+			#   085/086 已整条重做, 旧标记随之作废(见 EquipStatsApply._b4_on_spawn_all)。
 			# ★传算好的伤害桶 _bkt 而不是让它自己读 battle._last_dmg_type —— 那个全局在
 			#   上一行的 on-hit 链里会被嵌套的 _atk_dmg 覆写(见本函数 was_crit 那段注释)。
-			if u.get("_b3_gadget", false):
+			if u.get("_b4_eq", false):
 				battle._equip_sys._eq_on_magic_hurt(u, src, dmg, _bkt)
 			battle._shield_syn.on_damaged(u, src, dmg)       # 盾羁绊: 怒气累计(全队·满400放冲击波) + 顶档反击
 		# 宝箱藏宝图 on-hit 战利品 (火石灼烧/毒箭治疗削减/雷刃金闪电引爆·此块已在not from_equip内→天然防循环)

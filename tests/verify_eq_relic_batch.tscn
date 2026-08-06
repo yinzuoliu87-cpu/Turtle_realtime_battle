@@ -1,4 +1,4 @@
 [gd_scene load_steps=2 format=3]
-[ext_resource type="Script" path="res://tests/verify_equip_periodic_batch1.gd" id="1"]
+[ext_resource type="Script" path="res://tests/verify_eq_relic_batch.gd" id="1"]
 [node name="Verify" type="Node"]
 script = ExtResource("1")

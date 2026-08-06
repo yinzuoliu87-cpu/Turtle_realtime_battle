@@ -24,6 +24,33 @@ func _nearest_enemy_for_trainer(u: Dictionary):
 	return best
 
 
+## 【最远】的敌人 —— 与 `_nearest_enemy` 同一套选靶闸门, 只把比较方向反过来。
+##
+## ★2026-08-06 收编进标准层(C 路 agent 报的): 087 盗令潜水钟的水柱要打最远的敌人,
+##   它原来在自己文件里手写了一份。memory [[fb-hand-rolled-copies-drift]]:
+##   就地手写选靶 = 抄一次永远落后一次 —— 以后给 `_nearest_enemy` 加的任何闸门
+##   (黑洞 untargetable / 龟蛋围栏 / 训龟大师不被主动索敌)都不会同步到那一份。
+##   "签名不合用"是给标准层加重载的信号, 不是自己抄一份的理由。
+## ★闸门与 `_nearest_enemy` 逐条一致, 改那边**必须同步改这边** —— 两个函数并列摆着,
+##   比藏在别的文件里的副本容易发现得多。
+func _farthest_enemy(u: Dictionary):
+	var best = null
+	var best_d: float = -1.0
+	for o in battle._units:
+		if not battle._is_hostile(u, o) or not o["alive"]:
+			continue
+		if battle._t < o["untargetable_until"]:   # 黑洞 → 不可被选
+			continue
+		if o.get("_egg_fence", false):            # 龟蛋围栏未破 → 不可被主动索敌
+			continue
+		if o.get("is_trainer", false):            # 训龟大师: 不被【主动索敌】(AoE 仍能波及)
+			continue
+		var dd: float = (o["pos"] - u["pos"]).length_squared()
+		if dd > best_d:
+			best_d = dd; best = o
+	return best
+
+
 ## 播扔石头动作(一次性, 播完自动回 idle/run — 走 anim_action 白名单)
 # --- 索敌: 被嘲讽则强制打嘲讽来源, 否则最近敌 (跳过 untargetable / 缩头护身随从) ---
 func _acquire_target(u: Dictionary):
