@@ -93,3 +93,6 @@ tools/duel*/*.translation
 tools/duel*/duel-*.csv
 tools/duel*/duel-*.csv.import
 tools/duel*-log/
+
+# 🔬 特效调试台 VFXLAB 的自截图输出
+_vfxlab_*

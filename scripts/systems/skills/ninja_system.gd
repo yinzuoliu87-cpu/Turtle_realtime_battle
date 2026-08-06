@@ -95,7 +95,14 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 		traveled = minf(total, traveled + 600.0 * battle.get_process_delta_time())   # 恒速 600 码/秒
 		u["pos"] = start + dir * traveled
 		if is_instance_valid(lead): lead.position = battle._world_pos(u["pos"] + dir * 60.0, 1.0)   # 拖影跟在身前
-		if _ndash and is_instance_valid(_nspr): _nspr.frame = 4 + (int(traveled / 45.0) % 4)   # 滑行 5-8帧循环
+		# ★★2026-08-07 修: 这里原来写死 `4 + (…% 4)` = 取第 4~7 帧, 落地那段写死 range(8, 11) = 第 8~10 帧,
+		#   两处都按【≥11 帧的精灵表】算。而真实的忍者冲刺表只有 **7 帧(0~6)**
+		#   ⇒ 每次冲刺都刷 `ERROR: Index p_frame = 7/8/9/10 is out of bounds (…= 7)`。
+		#   注释写着"滑行 5-8帧""落地 9-11帧" —— **表换过、代码没跟上**, 而这条报错原先不在
+		#   run-tests.sh 的 FATAL 正则里 ⇒ 一直红着没人看见(补了 `is out of bounds` 才暴露)。
+		#   改成**按表的真实帧数钳制**: 表以后再换也不会越界。
+		if _ndash and is_instance_valid(_nspr):
+			_nspr.frame = mini(4 + (int(traveled / 45.0) % 4), _nspr_last(_nspr))
 		for h in hits:
 			if not h["done"] and traveled >= float(h["proj"]):
 				h["done"] = true
@@ -114,7 +121,9 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 		_lw.tween_callback(lead.queue_free)
 	battle._burst_vfx("res://assets/sprites/vfx/ninja-slash.png", u["pos"], 98.0, 1.0)   # 落点疾风斩弧
 	if _ndash:
-		for _lf in range(8, 11):                            # 落地 9-11帧
+		# 落地三帧: 取表的最后三帧(原来写死 8/9/10, 越界; 理由见上面滑行那段的注释)
+		var _nlast: int = _nspr_last(_nspr) if is_instance_valid(_nspr) else 0
+		for _lf in [maxi(0, _nlast - 2), maxi(0, _nlast - 1), _nlast]:
 			if is_instance_valid(_nspr): _nspr.frame = _lf
 			await battle._wait_sim(0.05)
 		u["_manual_anim"] = false
@@ -231,3 +240,12 @@ func _bomb_explode(spr, u: Dictionary, at2d: Vector2, opts: Dictionary) -> void:
 			var dmg = battle._atk_dmg(u, float(opts.get("phys", 2.0)), e, false)
 			if dmg > 0:
 				battle._damage._apply_damage_from(u, e, dmg, col)
+
+
+## 某个 Sprite3D 精灵表的【最后一帧下标】。★不要写死帧号 ——
+## 忍者冲刺表就因为"表从 11 帧换成 7 帧、代码没跟"每次冲刺刷 4 条越界报错,
+## 而那条报错当时不在 FATAL 正则里, 红了很久没人看见。
+static func _nspr_last(spr) -> int:
+	if spr == null or not is_instance_valid(spr):
+		return 0
+	return maxi(0, int(spr.hframes) * int(spr.vframes) - 1)

@@ -121,6 +121,14 @@ func tick(delta: float) -> void:
 		if foe_tier <= 0:
 			continue
 		u["corrode_stacks"] = mini(CORRODE_MAX, int(u.get("corrode_stacks", 0)) + 1)
+		# ★演出(批 B3): 腐蚀叠层现状【零显示】。叠到满 5 层是**规则级切换** ——
+		#   此后它受到的伤害有 10/20/35% 转成真实伤害(无视护甲与护盾)。
+		#   只在【刚满】那一次放(tier_advance 挡住之后每 2.5 秒的重复喂)。
+		#   ⚠ 逐层的显示做不到 —— 那该是头顶徽章, 而 HEAD_ROW_CAP=4 已满(方案书 U5 未拍板)。
+		if int(u["corrode_stacks"]) >= CORRODE_MAX and battle._vfx != null and battle._vfx._syn != null:
+			var sv = battle._vfx._syn
+			if sv.tier_advance(u, "_corrode_vfx", 1):
+				sv.bow_corrode_full(Vector2(u.get("pos", Vector2.ZERO)))
 		# ★把【施加方的档位】记在目标身上 —— 每层增伤与满层转真伤都随档位变,
 		#   而受伤结算那一刻只拿得到目标自己的字典(_mitigate_incoming(u, …)),
 		#   拿不到"谁给它上的腐蚀"。不记的话就只能写死一个档位的数。
@@ -151,3 +159,6 @@ func clear() -> void:
 		if u is Dictionary:
 			u["corrode_stacks"] = 0
 			u["corrode_tier"] = 0
+			# ★演出侧的"放过了没"标记也要跟着清 —— 不清的话下一路重新叠满 5 层时
+			#   tier_advance 认为"还在同一档"而不放, 那条演出就永远只出现一次。
+			u["_corrode_vfx"] = 0

@@ -883,6 +883,18 @@ func _notification(what: int) -> void:
 func _ready() -> void:
 	_load_pets()
 	_vfxiso = OS.has_environment("VFXISO")
+	# 🔬 特效调试台(VFXLAB=1·dev-only·用法见 battle_vfx_lab.gd 文件头)。
+	# ★必须在建场之前 —— 它把逐件配置表翻译成 EQDEMO_*/BLACKMAP 等环境变量,
+	#   而 _build_environment / _spawn_teams 是【读 env】的, 晚一步就全都读不到。
+	if OS.has_environment("VFXLAB"):
+		_vfxlab = VfxLabMod.new(self)
+		add_child(_vfxlab)
+		if not _vfxlab.pre_build():
+			# VFXLAB_CASE=list: 只打一份 case 清单就退, 不建场。
+			# ★还要 set_process(false) —— quit() 之后本帧还会跑完, 而 _process→_check_end
+			#   会看到"左队 0 人存活"去弹胜负横幅, 那时 _ui_layer 根本还没建 → 空指针报错。
+			set_process(false)
+			return
 	_world_builder._build_viewport()
 	_world_builder._build_camera()
 	_world_builder._build_environment()
@@ -903,6 +915,8 @@ func _ready() -> void:
 	if OS.has_environment("STRESS"):   # 卡死猎手: 开局前轮换左队(覆盖全28龟)
 		_stress_pre()
 	_spawn._spawn_teams()
+	if _vfxlab != null:
+		_vfxlab.post_spawn()   # 🔬 调试台: 清 UI/铺暗地板/改携带者/摆相机/开拍(单位摆放已由 EQDEMO 那条路走完)
 	# 新手引导: ★存成员变量 —— 后面 _hud._show_unit_info_panel 要调 notify() 推进那一步。
 	#   match1(第一把): "place"摆位引导延到 _dl_sys._dl_enter_place 才挂(那时才有摆位UI, 文案对得上屏幕);
 	#   match2(第二把)/旧路径: 现在就挂"battle"观察引导。
@@ -1004,6 +1018,14 @@ const OBSTACLE_MARGIN := 28.0
 const MapEditorMod := preload("res://scripts/scenes/map_editor.gd")
 var _map_editor := false        # ★模式开关(不是编辑器状态) —— 拆分时差点被我连坐删掉
 var _map_ed = null              # MapEditor 实例; 不写成 : MapEditor 是因为 class_name 需 --import 注册后才可用
+
+## 🔬 特效调试台(VFXLAB=1·dev-only): 干净黑场 + 可控相机 + 逐件配置 + 定时自截图。
+## ★整套逻辑在 scripts/scenes/battle/battle_vfx_lab.gd(不在 _sim_step 调用链上 ⇒ 不进主文件),
+##   这里只有【两个钩子】: _ready 建场前 pre_build()、spawn 后 post_spawn()。
+## ★它是 Node(不是 RefCounted) —— 相机跟随/压 UI 要每帧做, 让它自己有 _process,
+##   这样主文件的 _process 一行都不用加。未开 VFXLAB 时恒为 null, 连实例都不建。
+const VfxLabMod := preload("res://scripts/scenes/battle/battle_vfx_lab.gd")
+var _vfxlab = null
 
 ## 刷格入口: 模块没建好时安全跳过(编辑器未开时 _unhandled_input 也可能走到)
 func _map_ed_paint(mpos: Vector2) -> void:
@@ -1274,8 +1296,14 @@ func _resolve_right() -> Array:
 	var _td = get_node_or_null("/root/TutorialDirector")
 	if _td != null and _td.is_active():   # ★新手教学: 弱对手(必赢, 让新手两把都稳过)
 		return _td.WEAK_FOE.duplicate()
-	if OS.has_environment("EQDEMO_EQUIP"):   # 装备演示: 2个固定假人(相距500码)
-		return ["basic", "basic"]
+	if OS.has_environment("EQDEMO_EQUIP"):   # 装备演示: 默认2个固定假人(相距500码); EQDEMO_ENEMIES=N 改个数
+		# ★个数可调是 VFXLAB 调试台加的: 078 电击连锁要 3 个才看得出跳跃, 089 符纸只要 1 个(多了抢镜)。
+		#   缺省仍是 2 ⇒ 老的 EQDEMO 命令行行为一字不变。
+		var _en: int = maxi(1, int(OS.get_environment("EQDEMO_ENEMIES"))) if OS.has_environment("EQDEMO_ENEMIES") else 2
+		var _el: Array = []
+		for _i in range(_en):
+			_el.append("basic")
+		return _el
 	if _review_demo():
 		if not REVIEW_SHOWCASE.is_empty():
 			var arr: Array = []
@@ -8134,6 +8162,12 @@ func _inject_equipment() -> void:
 			list = []
 			for _ci in range(_ecnt):
 				list.append({"id": OS.get_environment("EQDEMO_EQUIP"), "star": _est})
+			# ★EQDEMO_EQUIP2 = 再塞一件【不同 id】的装备(VFXLAB 调试台加的)。
+			#   EQDEMO_COUNT 塞的是同一个 id, 而羁绊档位【按 id 去重】(synergy_system._calc_tiers)
+			#   ⇒ 塞 9 件同款仍然只算 1 件、法器档位恒为 0、法力条一点都不涨。
+			#   088/089/090 三件法器全靠法力条触发 ⇒ 没有这一行就永远看不到效果, 而且不报错。
+			if OS.has_environment("EQDEMO_EQUIP2"):
+				list.append({"id": OS.get_environment("EQDEMO_EQUIP2"), "star": _est})
 			u["equips"] = list
 		for e in list:
 			u["eq_state"][str(e["id"])] = {}

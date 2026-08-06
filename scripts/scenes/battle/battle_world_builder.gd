@@ -464,6 +464,11 @@ func _build_environment() -> void:
 
 func _build_ground() -> void:
 	if OS.has_environment("VFXISO"): return   # 纯特效隔离: 不建地面/装饰(只留特效对比参考·弄完删env)
+	# 🔬 特效调试台(VFXLAB): 同样一张地图都不建 —— tile/装饰海草/远景/光柱/氛围粒子全跳过。
+	# ★"关的方式要可靠"= 真的不建, 不是调暗/移出屏幕。上一轮把地图上的绿色海草
+	#   误判成 091 的甲片, 根因就是场上有太多和特效同色同尺度的东西。
+	#   台子自己会铺一张暗地板(battle_vfx_lab._build_dark_floor)当参照面。
+	if OS.has_environment("VFXLAB"): return
 	# ★远景背景层("天空")在所有模式都建 —— 不像障碍物那样只在双路(用户 2026-07-21)
 	if not OS.has_environment("MAPEDIT"):
 		_build_far_backdrop(battle._world)

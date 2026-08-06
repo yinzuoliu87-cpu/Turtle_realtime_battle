@@ -134,6 +134,7 @@ func _turret_one(side: String) -> void:
 	dir = dir.normalized()
 	var total := 0.0
 	var shooter = _any_carrier(side)
+	var hit_pos: Array = []
 	for f in foes:
 		# 点到射线的距离 —— 直线上(半宽内)且在正方向才算命中
 		var rel: Vector2 = Vector2(f["pos"]) - origin
@@ -147,11 +148,17 @@ func _turret_one(side: String) -> void:
 		else:
 			battle._damage._apply_damage(f, dmg, Color("#ffb74d"))
 		total += float(dmg)
+		hit_pos.append(Vector2(f["pos"]))
 	if total > 0.0:
 		var low = _lowest_ally(side)
 		if low is Dictionary:
 			battle._damage._heal(low, total * T1_HEAL_SHARE)
 	battle._bolt_line(origin, origin + dir * 900.0, Color(1.0, 0.72, 0.3, 0.75))
+	# ★演出(批 B3): 伤害与治疗上面已经结算完了, 这一行【只是好看】——
+	#   现状那条 900 码的橙线是从"看不见的地方"射出来的, 玩家读不到"有一座炮台"。
+	#   炮位一根矮光柱 = 标出炮台在哪; 命中点火花 = 标出这一线打到了谁。
+	if battle._vfx != null and battle._vfx._syn != null:
+		battle._vfx._syn.gun_turret_one(origin, hit_pos)
 
 
 ## 第二座：每周期产能量，交替【转护盾均摊全队】/【化弹幕敌方全体均摊魔法】。
@@ -166,11 +173,14 @@ func _turret_two(side: String) -> void:
 			allies.append(u)
 		else:
 			foes.append(u)
-	if bool(_t2_shield_phase.get(side, true)):
+	var is_shield: bool = bool(_t2_shield_phase.get(side, true))
+	var lit: Array = []          # 这一发【辐射到谁】—— 只喂演出, 不参与任何结算
+	if is_shield:
 		if not allies.is_empty():
 			var each: float = energy / float(allies.size())
 			for a in allies:
 				battle._damage._grant_shield(a, each)
+				lit.append(Vector2(a["pos"]))
 	else:
 		if not foes.is_empty():
 			var each2: int = maxi(1, int(energy / float(foes.size())))
@@ -180,7 +190,13 @@ func _turret_two(side: String) -> void:
 					battle._damage._apply_damage_from(shooter2, f, each2, Color("#9bdcff"))
 				else:
 					battle._damage._apply_damage(f, each2, Color("#9bdcff"))
-	_t2_shield_phase[side] = not bool(_t2_shield_phase.get(side, true))
+				lit.append(Vector2(f["pos"]))
+	# ★演出(批 B3): 这条效果唯一要传达的是【相位可辨】——
+	#   现状护盾靠通用金环、弹幕靠伤害数字, "这次是给盾还是打人"完全看不出。
+	#   蓝=护盾辐射给全队 / 橙=弹幕射向敌方全体, 颜色与辐射对象两条一起分。
+	if battle._vfx != null and battle._vfx._syn != null:
+		battle._vfx._syn.gun_turret_two(_turret_pos(side, 1), lit, is_shield)
+	_t2_shield_phase[side] = not is_shield
 
 
 ## 炮台位置：按阵营的场地方向排在后方（idx 0=最前 1=中 2=后）。

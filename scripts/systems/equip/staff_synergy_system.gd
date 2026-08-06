@@ -104,6 +104,11 @@ func _fire(u: Dictionary, iid: String, star: int) -> void:
 	u["_staff_busy"] = true         # 期间产生的伤害不再涨法力（防自激循环）
 	battle._equip_sys.fire_equip_effect(u, iid, star)
 	u["_staff_busy"] = false
+	# ★演出(批 B3): 法力条【玩家没有任何途径看到进度】—— 只会突然看到某件装备效果放了。
+	#   U3 用户未拍板 ⇒ 按方案书建议 C: 先只做"响了"这一下的闪光, 进度条另议。
+	#   放在 fire 之【后】: 那件装备自己的演出先出, 这根柱子是"为什么它响了"的注脚。
+	if battle._vfx != null and battle._vfx._syn != null:
+		battle._vfx._syn.staff_mana_full(Vector2(u.get("pos", Vector2.ZERO)))
 
 
 ## 每帧节拍：法力自然增长（每 2.5 秒 +25）+ 灵泉（每 2.5 秒）+ 共鸣（每 7.5 秒）。
@@ -132,6 +137,7 @@ func tick(delta: float) -> void:
 
 ## 共鸣：全队回 15% 最大生命 + 净化 N 个减益（仅顶档）
 func _resonance() -> void:
+	var lit: Array = []          # 这一次共鸣【谁被引动了】—— 只喂演出, 不参与任何结算
 	for u in battle._units:
 		if not (u is Dictionary) or not u.get("alive", false):
 			continue
@@ -140,6 +146,11 @@ func _resonance() -> void:
 			continue
 		battle._damage._heal(u, float(u.get("maxHp", 0.0)) * RESONANCE_HEAL)
 		dispel(u, RESONANCE_DISPEL[clampi(ti - 1, 0, 3)])
+		lit.append(Vector2(u.get("pos", Vector2.ZERO)))
+	# ★演出(批 B3): 7.5 秒才一次 ⇒ 方案书 §2.3 判定"可以做重的"。全队【同时】一道蓝紫光柱。
+	#   现状只有 _heal 的绿字, 而"全队同时被引动"这件事只有同时性才表达得出来。
+	if not lit.is_empty() and battle._vfx != null and battle._vfx._syn != null:
+		battle._vfx._syn.staff_resonance(lit)
 
 
 ## 净化 n 种减益（按 DISPEL_KINDS 的固定顺序）。返回实际清掉几种。
@@ -151,6 +162,11 @@ func dispel(u: Dictionary, n: int) -> int:
 			break
 		if _remove_one(u, str(kind)):
 			done += 1
+	# ★演出(批 B3): 净化【清掉眩晕/减速/灼烧/中毒/诅咒, 零提示】—— 缺的正是"清掉了什么"。
+	#   放在这里而不是 _resonance 里: dispel 是净化的唯一出口, 将来别的来源调它也一样有表现。
+	#   ⚠ 只在【真的清掉了】时才放 —— done==0 时放特效就是"什么都没净化却闪了一下"。
+	if done > 0 and battle._vfx != null and battle._vfx._syn != null:
+		battle._vfx._syn.staff_dispel(Vector2(u.get("pos", Vector2.ZERO)), done)
 	return done
 
 

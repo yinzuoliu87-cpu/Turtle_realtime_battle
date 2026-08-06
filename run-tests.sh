@@ -18,7 +18,14 @@ fi
 #   而真实对局里 _eq_chain_lightning 正在每秒刷几百条 "ERROR: Max recursion reached"
 #   (拿单位字典当 Dictionary 的 key → recursive_hash 无限递归), 60 秒战斗刷了 26564 条,
 #   并且把帧率拖到 60 秒战斗跑不完。过滤器漏一个模式, 就等于把 bug 判成绿灯。新增模式往这里加。
-FATAL='Infinite loop detected|SCRIPT ERROR|Parse Error|Max recursion|freed instance|null instance|Cannot call|Invalid (get|set|call|index)|Trying to (assign|call)|Nonexistent'
+# ★2026-08-06 补三条(压测拿真实日志逐条对着现有正则试出来的漏网形态):
+#   · `Index p_frame = 7 is out of bounds`      —— ninja_system 每 11 局刷 17 条, 旧正则不认
+#   · `Lambda capture at index 0 was freed`     —— 旧正则写的是 `freed instance`, 这条是 `was freed`
+#   · `Condition "!is_inside_tree()" is true`   —— candy_system 的姿态函数
+#   假阳性已量过: 这三个模式在干净的 166/166 全套日志与两份探针日志里命中 0/0/0。
+#   ★CLAUDE.md §2:「漏一个模式就等于把 bug 判成绿灯」—— 历史上 `Max recursion` 曾不在名单里,
+#     24 组压测全报"0 errors", 而真实对局每秒刷几百条错误。新报错形态一律往这条加。
+FATAL='Infinite loop detected|SCRIPT ERROR|Parse Error|Max recursion|freed instance|null instance|Cannot call|Invalid (get|set|call|index)|Trying to (assign|call)|Nonexistent|is out of bounds|Lambda capture|Condition ".*" is true'
 
 PASS=0; FAIL=0
 
@@ -41,6 +48,8 @@ frames_for () {
     # 羁绊演出层共用基建: 建战斗场景 + 78 条同步断言(不等任何 tween), 但建场本身就吃几百帧。
     #   ★实测本机 500 帧【跑不完】(被掐断 → 没打 ALL PASS → 看着像断言失败), 800 帧够 ⇒ 给 2500 兜 CI。
     verify_synergy_vfx) echo 2500 ;;
+    # 十类羁绊的视觉母题(批 B3): 同上, 建战斗场景 + 107 条同步断言(走羁绊系统真入口, 不等 tween)
+    verify_synergy_vfx_types) echo 2500 ;;
     # 怒气冲击波爆轰演出: 建战斗场景 + 6 次重建合成单位队伍 + 上万点闭式解数值扫描(全同步)
     verify_shockwave_vfx) echo 3000 ;;
     # 头顶徽章几何: 需要【真实相机】做屏幕投影(量单位间距) ⇒ 不能无头, 帧数给足
@@ -75,6 +84,11 @@ frames_for () {
     # 批④ 接线门禁(077~094 十七件): 建一次战斗场景 + 34 条【同步】断言
     #   (源码扫描 + 真走两条伤害路径, 不等演出/不等游戏内时间), 预算给建场用。
     verify_b4_wiring) echo 3000 ;;
+    # 批④ 跨路泄漏专项: 建一次战斗场景 + 走真的 _dl_build_lane_field 换两次路 + 8 条同步断言。
+    #   ★它守的是 verify_b4_wiring 结构上看不见的那一半 ——
+    #   那份验的是"换路【会调】clear_all"(源码扫描), 这份验的是"clear_all 到底【清干净没有】"。
+    #   一个只写 pass 的 clear_all 能让前者全绿, 而上一路的召唤物与光环会整个带进下一路。
+    verify_b4_lane_leak) echo 3000 ;;
     # 093 香火石全链路(存储收口 / 三条升星入口 / 存档往返 / 进战斗注入 / 刻痕 / 加成 / 主动 / 赛季重置):
     #   62 条【同步】断言 + 建一次战斗场景。★额外吃帧的是 ⑦ 那组(三个星级各建一对单位并打 5 次普攻),
     #   建场 + 这一段一起给 4000 帧兜 CI。

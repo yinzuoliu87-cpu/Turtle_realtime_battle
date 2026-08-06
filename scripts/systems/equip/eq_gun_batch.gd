@@ -143,6 +143,12 @@ const PISTOL_IV := 0.5
 const PISTOL_RANGE := 700.0
 ## 077 小手枪的暴击率(规格原文 50%)
 const PISTOL_CRIT := 0.5
+## 077 小手枪的固定站位(2026-08-06 用户看图后要求): 携带者【斜后方】——
+## 后退 PISTOL_BACK 码 + 抬高 PISTOL_SIDE_Y 码。规格没给站位, 这两个数是我定的:
+## · 后退 70 码 ≈ 一个龟身多一点 —— 够分得开、又还在"跟着主人"的读感里(079 炮台是 150, 那是建筑)
+## · 抬高 -34 码 = 斜后方而不是正后方, 免得与携带者的血条上下叠在一起
+const PISTOL_BACK := 70.0
+const PISTOL_SIDE_Y := -34.0
 ## 077 每次攻击给自己 +1 护甲穿透(规格原文), 每路重置 —— 换路重建召唤物即天然重置
 const PISTOL_PEN_PER_SHOT := 1.0
 ## 079 炮台: 生成在携带者【后方】这么远(规格原文 150 码) · 射程见 D4
@@ -314,6 +320,16 @@ func _spawn_pistol(owner: Dictionary, si: int, hp: float, atk: float) -> void:
 	#   携带者阵亡后 `on_death` 把它改成 5.0(规格原文)。
 	p["_dmg_cap_val"] = 2.0
 	p["_g077"] = true
+	# ★★2026-08-06 用户看图后拍板: 小手枪原来生成在携带者【随机偏移】处, 经常直接压在龟身上
+	#   ⇒ 读不出"这是一个独立的、会被打死的单位"(它是"需要保护的资产", 那是这件的设计核心)。
+	#   改成与 079 炮台同一套定位: **携带者斜后方固定位**, side-aware + 战场边界/障碍钳制。
+	#   ★复用 `tower_pos` 而不是另写一份 —— 它已经处理好了"左右阵营的后方是反的"
+	#   与"落点非法要推出去"两件事(memory [[fb-hand-rolled-copies-drift]]: 手抄的副本必然落后)。
+	p["pos"] = tower_pos(Vector2(owner["pos"]), str(owner.get("side", "left")),
+		battle.ARENA, battle._obstacles if battle.get("_obstacles") != null else [],
+		22.0, PISTOL_BACK, 30.0) + Vector2(0.0, PISTOL_SIDE_Y)
+	if p.has("sprite") and is_instance_valid(p["sprite"]):
+		p["sprite"].position = battle._world_pos(p["pos"], battle.GROUND_LIFT)
 	_pistols.append({"u": p, "owner": owner, "si": si, "acc": 0.0})
 	vfx.pistol_deploy(Vector2(p["pos"]))
 

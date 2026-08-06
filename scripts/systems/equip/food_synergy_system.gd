@@ -31,6 +31,11 @@ const PERIOD := 2.5
 const GROW_PER_FOOD := [8.0, 16.0, 30.0]
 ## 【学院】队伍全体额外 +N 最大生命（档1 无）
 const ACADEMY := [0.0, 100.0, 220.0]
+## ── 只喂演出, 一点数值都不改 (批 B3·2026-08-06) ──────────────────────────
+## 【永久成长】跨阈值提示的三档(累计涨了多少最大生命)。
+## ⚠ 这三个数是我定的: 方案书未决点 U4 用户尚未拍板 —— 取它建议的 A(跨阈值才放)。
+##   量级参考: 档1 每 2.5 秒 +8×件数 ⇒ 带 3 件食物约 24/跳, 100 ≈ 4 跳(10 秒)后第一次提示。
+const GROW_VFX_STEPS := [100.0, 300.0, 600.0]
 
 var _t_grow := 0.0
 ## ★【以场重置, 不是以路重置】(用户 2026-08-04 明确)。
@@ -49,6 +54,7 @@ func _init(b) -> void:
 ## 开战 / 换路后：把【学院】的固定血一次性加上。
 ## ⚠ 只能加【一次】—— `apply_all` 每场调一次，重复调会叠。用标记挡住。
 func apply_all() -> void:
+	var lit: Array = []          # 真的吃到学院加成的那几只 —— 只喂演出, 不参与任何结算
 	for u in battle._units:
 		if not (u is Dictionary):
 			continue
@@ -61,6 +67,13 @@ func apply_all() -> void:
 		u["_academy_done"] = true
 		u["maxHp"] = float(u.get("maxHp", 0.0)) + add
 		u["hp"] = float(u.get("hp", 0.0)) + add
+		lit.append(Vector2(u.get("pos", Vector2.ZERO)))
+	# ★演出(批 B3): 学院是【开场一次性】给全队 +100/220 最大生命, 现状零表现 ——
+	#   血条悄悄变长, 玩家不知道发生过什么。一次性事件 ⇒ 可以放, 不会刷屏。
+	#   ⚠ lit 只装【真的加到血的】那几只(已 _academy_done 的会被上面 continue 掉),
+	#     否则换路重调 apply_all 会白闪一次(而那次一点血都没加)。
+	if not lit.is_empty() and battle._vfx != null and battle._vfx._syn != null:
+		battle._vfx._syn.food_academy(lit)
 
 
 ## 每 2.5 秒：每件食物为【它的携带者】永久 +N 最大生命。
@@ -101,6 +114,13 @@ func _grow(u: Dictionary, add: float) -> void:
 	var k: String = str(u.get("_food_key", ""))
 	if k != "":
 		_carry[k] = float(u["_food_grown"])
+	# ★演出(批 B3): 成长是【静默滚雪球】—— 每 2.5 秒偷偷 +8/16/30×件数, 血条慢慢变长。
+	#   每跳都放 = 每 2.5 秒全队闪一圈 ⇒ 只在跨阈值时放一次(阈值在本文件, 演出层不烘数字)。
+	if battle._vfx != null and battle._vfx._syn != null:
+		var sv = battle._vfx._syn
+		var step: int = sv.tier_of(float(u["_food_grown"]), GROW_VFX_STEPS)
+		if sv.tier_advance(u, "_food_vfx", step):
+			sv.food_growth_step(Vector2(u.get("pos", Vector2.ZERO)), step)
 
 
 ## 单位的跨路身份键。★口径与 `dual_lane_flow._eq_carry_key` 一致（side|id|同名序号）。

@@ -117,6 +117,7 @@ func on_death(dead) -> void:
 		var add: float = HARVEST_ATK[clampi(ti - 1, 0, 2)]
 		if add <= 0.0:
 			continue
+		var lit: Array = []      # 分到这份战利品的人 —— 只喂演出, 不参与任何结算
 		for u in battle._units:
 			if not (u is Dictionary) or str(u.get("side", "")) != str(side):
 				continue
@@ -124,7 +125,13 @@ func on_death(dead) -> void:
 			u["base_atk"] = float(u.get("base_atk", 0.0)) + add
 			u["_harvest_atk"] = float(u.get("_harvest_atk", 0.0)) + add   # 记账, 给门禁与面板看
 			battle._recalc_stats(u)
+			if u.get("alive", false):
+				lit.append(Vector2(u.get("pos", Vector2.ZERO)))
 		_harvest[side] = float(_harvest.get(side, 0.0)) + add   # 跨路存档
+		# ★演出(批 B3): 现状全队 base_atk 悄悄 +5/8, 零表现。
+		#   击杀是【离散事件】⇒ 可以放。缺的信息是"这份收益从哪来" ⇒ 从尸体向全队辐射。
+		if not lit.is_empty() and battle._vfx != null and battle._vfx._syn != null:
+			battle._vfx._syn.potion_harvest(Vector2(dead.get("pos", Vector2.ZERO)), lit)
 
 
 ## 每 2.5 秒重选猎物：敌方当前【生命值最高】的那一名。
@@ -162,7 +169,15 @@ func tick(delta: float) -> void:
 				best = u
 		_prey[s] = best
 		if best is Dictionary:
-			battle._vfx._float_text(best["pos"], "猎物", Color("#ff9f43"), false, "buff", "mark")
+			# ★颜色跟着药水的母题色走(#e64bd0 品红) —— 原来是 #ff9f43 橙,
+			#   而枪羁绊的弹幕辐射也是橙、形状还同为"辐射带"(门禁 verify_synergy_vfx_types ⑤ 抓出来的)。
+			#   飘字与环同色, 玩家才能把"猎物"这两个字和那个圈连起来。
+			battle._vfx._float_text(best["pos"], "猎物", Color("#e64bd0"), false, "buff", "mark")
+			# ★演出(批 B3): 现状只有这一次飘字, 之后【完全看不出谁是猎物】(全队对它增伤 15~40%)。
+			#   ⚠ 常驻标记做不到 —— 它该是头顶状态徽章, 而 HEAD_ROW_CAP=4 已满、
+			#     超出会【静默截断】(方案书 U5, 用户未拍板)。⇒ 只把"被选中那一下"做重(准星双环)。
+			if battle._vfx._syn != null:
+				battle._vfx._syn.potion_prey_mark(Vector2(best["pos"]))
 
 
 ## 换路重建单位【之后】调：把本场已累计的战利品攻击力重放到新的一批单位上。

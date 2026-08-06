@@ -66,6 +66,17 @@ const AWAKEN_TIER := 4
 const AWAKEN_SEC := 20.0
 const AWAKEN_BOOST := 0.50
 
+## ── 以下三个常量【只喂演出, 一点数值都不改】(批 B3·2026-08-06) ──────────────
+## 【远古之力】跨阈值提示的档位, 写成【上限的比例】而不是绝对值 ——
+## 上限本身逐档不同(15/25/35%), 写绝对值就得为每一档各配一组。
+## ⚠ 这三个数是我定的: 方案书未决点 U4「静默滚雪球用什么节奏提示」用户尚未拍板,
+##   我取的是它的建议 A(跨阈值才放)+C(常驻环) 里的 A 那半; 要调就调这一行。
+const ANCIENT_VFX_STEPS := [0.34, 0.67, 1.0]
+## 【生死界】演出侧的滞回带(±2 个百分点)。
+## ★只影响"要不要放特效", **不影响** `atk_mult` / `lifesteal_bonus` 的 50% 判定 ——
+##   血量正好在 50% 附近抖动时(吸血 + 挨打交替)会来回跨线, 没有滞回就是每帧闪一下。
+const GATE_DEADBAND := 0.02
+
 var _t_acc := 0.0
 ## ★本路的 t0。`battle._t` 跨路累加永不重置（CLAUDE.md §3.4），
 ##   拿它直接判"开打满 20 秒"会让下路一开场就觉醒。
@@ -179,6 +190,10 @@ func tick(delta: float) -> void:
 	if not _t0_set:
 		_t0 = battle._t
 		_t0_set = true
+	# ★【生死界】的跨线检查必须【每帧】跑 —— 血量是连续变化的, 挂在下面 2.5 秒的节拍上
+	#   就会漏掉"2.5 秒内掉下去又被奶回来"的那一次(而那正是玩家最需要知道的一次)。
+	#   ⇒ 和 092 同一条规矩: 放在提前 return 之【前】。
+	_gate_tick()
 	_t_acc += delta
 	if _t_acc < PERIOD:
 		return
@@ -197,6 +212,9 @@ func tick(delta: float) -> void:
 		if ti >= AWAKEN_TIER and (battle._t - _t0) >= AWAKEN_SEC 				and not bool(_awakened.get(s, false)):
 			_awakened[s] = true
 			_bump_all(s, AWAKEN_BOOST, cap)
+			# ★演出(批 B3): 觉醒是【一次性 + 全场级】的, 方案书判定"值得最重的一个"。
+			#   数值上面 _bump_all 已经结算完了, 下面这行只画不算。
+			_awaken_vfx(s)
 		for u in battle._units:
 			if not (u is Dictionary) or str(u.get("side", "")) != s:
 				continue
@@ -205,11 +223,74 @@ func tick(delta: float) -> void:
 				continue
 			var add: float = minf(per, cap - cur)
 			u["_ancient"] = cur + add
+			# ★演出(批 B3): 每 2.5 秒 +1~2% 是【静默滚雪球】—— 每跳都跳字 = 每 2.5 秒 6 个字。
+			#   ⇒ 只在跨阈值时放一次。阈值由【本文件】算好传进去, 演出层一个数字都不烘。
+			_ancient_step_vfx(u, cap)
 			# ★写 `damage_amp` 不写 `base_atk` —— 增伤是【乘在所有伤害上】的通道,
 			#   两处消费点(battle_damage.gd:546 / RealtimeBattle3DScene.gd:4243)已在用,
 			#   信息面板也早就显示"增伤 N%"。消费侧零改动。
 			u["damage_amp"] = float(u.get("damage_amp", 0.0)) + add
 			_ancient_total[s] = float(u["_ancient"])   # 跨路存档(全队同量, 记一个数就够)
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  §演出侧 (批 B3·2026-08-06) —— 三个函数【一点数值都不改】
+#  ★每个都能被门禁单独调用(CLAUDE.md §3.5: 数值测试不许依赖 tween 跑完)。
+# ══════════════════════════════════════════════════════════════════════════
+
+## 【觉醒】那一下: 该方全队同时一道金柱 + 脚下八边古纹环 + 中震。
+func _awaken_vfx(side: String) -> int:
+	if battle == null or battle._vfx == null or battle._vfx._syn == null:
+		return 0
+	var lit: Array = []
+	for u in battle._units:
+		if u is Dictionary and u.get("alive", false) and str(u.get("side", "")) == side:
+			lit.append(Vector2(u.get("pos", Vector2.ZERO)))
+	if lit.is_empty():
+		return 0
+	return int(battle._vfx._syn.relic_awaken(lit))
+
+
+## 【远古之力】跨阈值才放一次。阈值 = 上限 × ANCIENT_VFX_STEPS(见常量处的说明)。
+func _ancient_step_vfx(u: Dictionary, cap: float) -> void:
+	if cap <= 0.0 or battle == null or battle._vfx == null or battle._vfx._syn == null:
+		return
+	var sv = battle._vfx._syn
+	var th: Array = []
+	for fr in ANCIENT_VFX_STEPS:
+		th.append(cap * float(fr))
+	var step: int = sv.tier_of(float(u.get("_ancient", 0.0)), th)
+	# tier_advance: 同档反复喂返回 false ⇒ 每 2.5 秒调一次也只在跨档那一次放。
+	if sv.tier_advance(u, "_ancient_vfx", step):
+		sv.relic_ancient_step(Vector2(u.get("pos", Vector2.ZERO)), step)
+
+
+## 【生死界】每帧看有没有跨 50% 线。★带滞回, 且**第一次观测只记状态不放特效**
+##   —— 否则开局(或换路重建单位)那一帧全队都会闪一下, 而那时什么都没发生。
+func _gate_tick() -> void:
+	if battle == null or battle._vfx == null or battle._vfx._syn == null:
+		return
+	for u in battle._units:
+		if not (u is Dictionary) or not u.get("alive", false):
+			continue
+		if float(u.get("_relic_atk_bonus", 0.0)) <= 0.0:
+			continue                      # 没吃到遗物羁绊的不看(生死界只给携带者)
+		var mx: float = float(u.get("maxHp", 0.0))
+		if mx <= 0.0:
+			continue
+		var r: float = float(u.get("hp", 0.0)) / mx
+		var prev: int = int(u.get("_relic_gate_vfx", 0))     # 0=还没观测过 1=线上 2=线下
+		var now: int = prev
+		if r <= HP_GATE - GATE_DEADBAND:
+			now = 2
+		elif r >= HP_GATE + GATE_DEADBAND:
+			now = 1
+		if now == 0 or now == prev:
+			continue
+		u["_relic_gate_vfx"] = now
+		if prev == 0:
+			continue                      # 第一次只记状态
+		battle._vfx._syn.relic_gate(Vector2(u.get("pos", Vector2.ZERO)), now == 2)
 
 
 ## 觉醒的一次性提升：把【已累积的】远古之力 ×(1+pct)，仍受上限约束。

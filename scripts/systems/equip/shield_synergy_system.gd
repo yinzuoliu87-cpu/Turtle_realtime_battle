@@ -208,6 +208,12 @@ func on_enemy_died(victim: Dictionary) -> void:
 			best = u
 	if best is Dictionary:
 		battle._damage._grant_shield(best, float(victim.get("maxHp", 0.0)) * REAP_PCT)
+		# ★演出(批 B3): 现状只有 _grant_shield 的通用金环 —— **看不出是从那具尸体收来的**,
+		#   而"从哪来"正是收殓这条唯一要传达的信息。⇒ 尸体 → 受益者的一道灵魂流。
+		#   ⚠ 护盾上面已经结算完了, 这一行只画不算。
+		if battle._vfx != null and battle._vfx._syn != null:
+			battle._vfx._syn.shield_reap(Vector2(victim.get("pos", Vector2.ZERO)),
+				Vector2(best.get("pos", Vector2.ZERO)))
 
 
 ## 换路 / 重开：怒气累计器归零（单位字典会被整个重建，但显式清一次更稳）。

@@ -223,6 +223,105 @@ func spark_burst(pos2d: Vector2, col: Color, height: float = 0.6, amount: int = 
 	return ps
 
 
+## 【批 B3】多边形轮廓环 —— **本层第二个形状**。
+##
+## ★为什么不是"再加一个圆环就够了"：十类羁绊里有四类都要"脚下一圈"
+##   (弓箭腐蚀 / 奇械僵硬 / 遗物古纹 / 食物成长)。全用 `ground_ring` 的话，
+##   同场时它们只差一个颜色 —— 这正是装备那边踩过的坑
+##   (四件召唤物共用一个白光球，玩家分不出谁是谁)。
+##   多边形给的是**剪影级**的区分：3 边(弓箭·尖锐啃噬) / 6 边(奇械·结晶) / 8 边(遗物·石阵)，
+##   缩到 30 像素也还能一眼分开，而四个同心圆不能。
+##
+## ★仍然零素材：贴图是本函数逐像素现算的(同 VfxTex 的立场)，`resource_path` 是空串。
+## ★贴地规矩同 `ground_ring`：只设 `axis = AXIS_Y`，**不加 rotation**(R10)。
+static var _poly_tex_cache: Dictionary = {}
+static func _make_poly_ring_tex(sides: int) -> ImageTexture:
+	var n: int = clampi(sides, 3, 12)
+	if _poly_tex_cache.has(n):
+		return _poly_tex_cache[n]
+	var N := 96
+	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
+	var c := float(N - 1) * 0.5
+	var rmax := c - 3.0
+	var step := TAU / float(n)
+	var apo: float = cos(PI / float(n))       # 外接圆 → 内切圆(边中点)的比
+	# ★线宽是【看图定的】不是拍的: 第一版 half_w=2.0, 实拍(shots/bow_corrode_full_hit1.png)
+	#   在 zoom=3 下只有约 3.4 屏幕像素, 酸绿细线压在青蓝地图上几乎读不出。加粗 30%。
+	var half_w := 2.6                          # 线半宽(纹理像素)
+	var soft := 2.0                            # 软边宽度
+	for y in range(N):
+		for x in range(N):
+			var dx := float(x) - c
+			var dy := float(y) - c
+			var r := sqrt(dx * dx + dy * dy)
+			if r < 0.5:
+				continue
+			# 该极角上多边形边界的半径 (正 n 边形的极坐标方程)
+			var k: float = fposmod(atan2(dy, dx) + step * 0.5, step) - step * 0.5
+			var rb: float = rmax * apo / maxf(0.2, cos(k))
+			var d: float = absf(r - rb)
+			if d > half_w + soft:
+				continue
+			var a: float = clampf(1.0 - maxf(0.0, d - half_w) / soft, 0.0, 1.0)
+			img.set_pixel(x, y, Color(1, 1, 1, a))
+	var t := ImageTexture.create_from_image(img)
+	_poly_tex_cache[n] = t
+	return t
+
+
+## 贴地多边形环。参数与 `ground_ring` 同口径(radius_px = 场地像素外接半径)。
+## ⚠ 与 `ground_ring` 一样：**返回时参数已是最终值**，tween 只放大/淡出 ⇒ 门禁下一行就能判。
+func polygon_ring(pos2d: Vector2, col: Color, radius_px: float, sides: int = 6,
+		bold: bool = false, dur: float = 0.42) -> Node3D:
+	if not _has_world():
+		return null
+	var tex := _make_poly_ring_tex(sides)
+	var target_ps: float = (radius_px * 2.0 * battle.WS) / float(maxi(1, tex.get_width()))
+	var s := Sprite3D.new()
+	s.texture = tex
+	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	s.axis = Vector3.AXIS_Y
+	s.shaded = false
+	s.transparent = true
+	if bold:
+		s.no_depth_test = true
+		s.render_priority = 11
+	s.modulate = col
+	s.position = battle._world_pos(pos2d, 0.05)
+	s.pixel_size = target_ps * 0.45
+	_adopt(s, "polygon_ring")
+	# 同 ground_ring: 把【最终】pixel_size 与边数记在节点自己身上, 门禁量真实对象不抄公式。
+	s.set_meta("target_ps", target_ps)
+	s.set_meta("sides", clampi(sides, 3, 12))
+	var tw: Tween = battle._reg_tween()
+	tw.set_parallel(true)
+	tw.tween_property(s, "pixel_size", target_ps, dur)
+	tw.tween_property(s, "modulate:a", 0.0, dur)
+	tw.chain().tween_callback(s.queue_free)
+	return s
+
+
+## 【批 B3】一点 → 多点的辐射能量带 (第三个构图母题)。
+##
+## ★它不是新贴图，是 `energy_band` 的**编排**：一个中心向 N 个目标同时拉带。
+##   写成独立入口的理由有两条，都不是"图省事"：
+##   ① "谁向谁"这件事本身就是要传达的信息(第二座炮台的护盾/弹幕相位、战利品的"从这具尸体分给全队")；
+##   ② 门禁要能【单独断言这一条】—— 埋在调用方的 for 循环里就只能断言"带的总数"，
+##      而那个数会被同帧别的带污染。
+## 返回真的画出来几条(零长度的会被 `energy_band` 自己挡掉)。
+func radial_spokes(from2d: Vector2, tos: Array, col: Color, width_px: float = 20.0,
+		dur: float = 0.30) -> int:
+	if not _has_world():
+		return 0
+	var n := 0
+	for p in tos:
+		if not (p is Vector2):
+			continue
+		if energy_band(from2d, p as Vector2, col, width_px, dur) != null:
+			n += 1
+	return n
+
+
 # ============================================================================
 #  §批 B·B2 —— 盾【怒气冲击波】
 # ============================================================================
@@ -276,6 +375,272 @@ func tick(delta: float) -> void:
 
 
 # ============================================================================
+#  §批 B3 —— 另外七类羁绊的演出入口 (2026-08-06)
+#
+#  ★★【一类一个视觉母题】。这不是审美偏好, 是上一轮的教训:
+#    装备那边四件召唤物共用同一个白光球, 玩家分不出谁是谁。
+#    同一场里可能同时亮着 3~4 类羁绊, 所以【形状】必须先分开, 颜色只是第二道。
+#
+#  | 类型 | 形状母题 | 颜色 | 已有/新增 |
+#  |---|---|---|---|
+#  | 盾   | **圆形冲击波**(Sedov–Taylor) | 琥珀 #ffd93d | 已有(B2) |
+#  | 灵物 | **实体触手**(程序化管状网格)  | 紫 #b388ff   | 已有(tentacle_vfx) |
+#  | 弓箭 | **三角环**(尖锐=腐蚀啃噬)     | 酸绿 #a8e063 | 本批 |
+#  | 奇械 | **六边环**(结晶/齿轮)         | 冰青 #7fe3ff | 本批 |
+#  | 遗物 | **八边环 + 金柱**(古代石阵)   | 古金 #d4a34a | 本批 |
+#  | 法器 | **竖直光柱**(施法感)          | 蓝紫 #9b8cff | 本批 |
+#  | 枪   | **柱 + 辐射带**               | 深橙#ff7043 / 正蓝#4d8cff(两相位) | 本批 |
+#  | 食物 | **圆环上涨 + 上升火花**       | 翠绿 #4fd97f | 本批 |
+#  | 药水 | **辐射带**(从尸体分给全队)    | 品红 #e64bd0 | 本批 |
+#  | 剑   | (本批不做, 见文件末尾 §未做)  | — | — |
+#
+#  ★铁律: **本节每个函数都不参与任何结算** —— 只读位置、只建节点。
+#    调用方在伤害/治疗结算【完】之后才调它, 且每个入口都能被门禁单独调用
+#    (CLAUDE.md §3.5: 数值测试不许依赖 tween 跑完)。
+# ============================================================================
+
+## ★★这 12 个颜色【两两的 RGB 距离必须 > 0.15】，门禁 `verify_synergy_vfx_types` ⑤ 组守着。
+##   第一版有四对没过(最惨的 0.074)，是门禁抓出来的，不是我先想到的：
+##     · 枪·护盾 #7fd0ff ↔ 奇械 #7fe3ff = **0.074**  (两个几乎一样的浅蓝)
+##     · 枪·弹幕 #ffb74d ↔ 药水 #ff9f43 = 0.101      (而且两条【都是辐射带】，形状也一样)
+##     · 食物 #8bd96a ↔ 弓箭 #a8e063   = 0.121
+##     · 盾 #ffd93d ↔ 枪·弹幕 #ffb74d  = 0.147
+##   ⇒ 改成下面这组(枪·弹幕转深橙、枪·护盾转正蓝、食物转翠绿、生死界转绯红)。
+##   第二版又被门禁抓出一条更隐蔽的: 枪·弹幕 ↔ 药水 **形状也一样**(两条都是辐射带),
+##     颜色只差 0.185 —— 同形状的两条撞色比不同形状的严重得多,
+##     所以门禁对"同形状"那一档要求 > 0.30。⇒ 药水改成**品红** #e64bd0(与 🧪 也更搭)。
+##   现在: 任意两条最接近 0.172(遗物·觉醒 ↔ 盾·收殓一档), 同形状最接近 0.427。
+##   ⚠ 别"顺手调好看一点" —— 调之前先跑那条门禁，它会告诉你撞了哪一对。
+const COL_GUN_BARRAGE := Color(1.0, 0.439, 0.263, 0.95)    # #ff7043 枪·弹幕相位(深橙)
+const COL_GUN_SHIELD  := Color(0.302, 0.549, 1.0, 0.95)    # #4d8cff 枪·护盾相位(正蓝)
+const COL_STAFF       := Color(0.608, 0.549, 1.0, 0.95)    # #9b8cff 法器(蓝紫)
+const COL_STAFF_PURE  := Color(1.0, 1.0, 0.925, 0.95)      # 净化 = 近白
+const COL_RELIC       := Color(0.831, 0.639, 0.290, 0.95)  # #d4a34a 遗物(古金)
+const COL_RELIC_LOW   := Color(0.878, 0.192, 0.192, 0.95)  # #e03131 生死界跌破 50%(绯红)
+const COL_FOOD        := Color(0.310, 0.851, 0.498, 0.95)  # #4fd97f 食物(翠绿)
+const COL_POTION      := Color(0.902, 0.294, 0.816, 0.95)  # #e64bd0 药水(品红)
+const COL_BOW         := Color(0.659, 0.878, 0.388, 0.95)  # #a8e063 弓箭(酸绿)
+const COL_GADGET      := Color(0.498, 0.890, 1.0, 0.95)    # #7fe3ff 奇械(冰青)
+const COL_SHIELD_REAP := Color(1.0, 0.914, 0.659, 0.95)    # #ffe9a8 盾·收殓(与既有反击同色)
+
+## 各类型的多边形边数 —— **母题的核心**, 改这三个数就是改玩家认牌的方式。
+const SIDES_BOW := 3
+const SIDES_GADGET := 6
+const SIDES_RELIC := 8
+
+
+# ── 枪 ───────────────────────────────────────────────────────────────────────
+
+## 枪·第一座炮台开火(每 2.5 秒)。origin=炮位, end2d=射线终点, hits=被打中的敌人位置。
+##
+## ★现状是一条 900 码长的 `_bolt_line` 从**看不见的地方**射出来 —— 玩家读不到"有一座炮台"。
+##   本入口在【炮位】上放一根矮光柱(开火那一下才有), 加上命中点的火花。
+## ⚠ **不建常驻本体**: U6「逻辑实体要不要画本体」用户尚未拍板,
+##   常驻节点还要处理换路撤场 + 一张新炮台素材 ⇒ 本批只做"开火瞬间标出炮位"。
+func gun_turret_one(origin2d: Vector2, hits: Array) -> Node3D:
+	if not _has_world():
+		return null
+	var pil := light_pillar(origin2d, COL_GUN_BARRAGE, 2.2, 0.32)
+	for p in hits:
+		if p is Vector2:
+			spark_burst(p as Vector2, COL_GUN_BARRAGE, 0.5, 10)
+	return pil
+
+
+## 枪·第二座炮台的相位(每 5 秒)。shield_phase=true → 蓝色能量辐射给全队; false → 橙色弹幕射向敌方全体。
+##
+## ★这条唯一要传达的信息就是**相位可辨** —— 现状护盾靠通用金环、弹幕靠伤害数字,
+##   "这次是给盾还是打人"完全看不出。⇒ 颜色 + 辐射对象 两条一起分。
+func gun_turret_two(origin2d: Vector2, targets: Array, shield_phase: bool) -> int:
+	if not _has_world():
+		return 0
+	var col: Color = COL_GUN_SHIELD if shield_phase else COL_GUN_BARRAGE
+	light_pillar(origin2d, col, 2.8, 0.38)
+	var n: int = radial_spokes(origin2d, targets, col, 20.0, 0.32)
+	for p in targets:
+		if not (p is Vector2):
+			continue
+		if shield_phase:
+			ground_ring(p as Vector2, col, 34.0, false, 0.34)
+		else:
+			spark_burst(p as Vector2, col, 0.5, 12)
+	return n
+
+
+# ── 法器 ─────────────────────────────────────────────────────────────────────
+
+## 法器·共鸣(顶档, 每 7.5 秒: 全队回 15% 最大生命 + 净化 2 种减益)。
+## 7.5 秒一次 ⇒ §2.3 判定"可以做重的"。全队【同时】一道蓝紫光柱 + 轻震。
+func staff_resonance(positions: Array) -> int:
+	if not _has_world():
+		return 0
+	var n := 0
+	for p in positions:
+		if not (p is Vector2):
+			continue
+		if light_pillar(p as Vector2, COL_STAFF, 4.6, 0.62) != null:
+			n += 1
+	if n > 0:
+		battle._shake(0.035)      # 极轻: 远小于 JUICE_SHAKE_HEAVY(0.10)
+	return n
+
+
+## 法器·净化(清掉了 kinds 【种】减益)。★缺的正是"清掉了什么" ⇒ 近白迸发 + 白环, 环随种数变大。
+func staff_dispel(pos2d: Vector2, kinds: int) -> Node3D:
+	if not _has_world() or kinds <= 0:
+		return null
+	var k: int = mini(kinds, 3)
+	spark_burst(pos2d, COL_STAFF_PURE, 0.8, 8 + 6 * k)
+	return ground_ring(pos2d, COL_STAFF_PURE, 26.0 + 9.0 * float(k), false, 0.30)
+
+
+## 法器·某一件法器的法力条满了、效果被触发的那一瞬。
+## ★U3(法力条要不要做可见 UI)用户未拍板 ⇒ 按方案书建议的 **C: 只做"响了"的闪光**, 进度条另议。
+func staff_mana_full(pos2d: Vector2) -> Node3D:
+	if not _has_world():
+		return null
+	return light_pillar(pos2d, COL_STAFF, 2.4, 0.30)
+
+
+# ── 遗物 ─────────────────────────────────────────────────────────────────────
+
+## 遗物·觉醒(本路开打满 20 秒的那一下·一次性·全场级) —— 本批最重的一个。
+## 全队同时: 高金柱 + 脚下八边形古纹环(bold, 地形盖不住) + 中等震屏。
+func relic_awaken(positions: Array) -> int:
+	if not _has_world():
+		return 0
+	var n := 0
+	for p in positions:
+		if not (p is Vector2):
+			continue
+		var v: Vector2 = p as Vector2
+		light_pillar(v, COL_RELIC, 5.4, 0.80)
+		polygon_ring(v, COL_RELIC, 52.0, SIDES_RELIC, true, 0.60)
+		spark_burst(v, COL_RELIC, 0.5, 16)
+		n += 1
+	if n > 0:
+		battle._shake(0.075)
+	return n
+
+
+## 遗物·生死界跨 50% 线。down=true 跌破(加攻→吸血翻倍) / false 回到线上。
+## ★这是一个**明确的阈值事件**, 现状毫无提示 —— 玩家看不出自己的行为模式刚刚变了。
+func relic_gate(pos2d: Vector2, down: bool) -> Node3D:
+	if not _has_world():
+		return null
+	var col: Color = COL_RELIC_LOW if down else COL_RELIC
+	if down:
+		spark_burst(pos2d, col, 0.7, 14)
+	return polygon_ring(pos2d, col, 44.0, SIDES_RELIC, true, 0.44)
+
+
+## 遗物·远古之力跨阈值(每 2.5 秒静默 +1~2% 增伤, 逐步逼近上限)。
+## ★阈值【由调用方传】—— 本层不烘数字(U4 的具体档位仍未拍板)。
+func relic_ancient_step(pos2d: Vector2, step: int) -> Node3D:
+	if not _has_world():
+		return null
+	return polygon_ring(pos2d, COL_RELIC, 26.0 + 8.0 * float(clampi(step, 1, 3)),
+		SIDES_RELIC, false, 0.40)
+
+
+# ── 食物 ─────────────────────────────────────────────────────────────────────
+
+## 食物·学院(开场一次性给全队 +100/220 最大生命)。绿环上涨 + 上升火花。
+func food_academy(positions: Array) -> int:
+	if not _has_world():
+		return 0
+	var n := 0
+	for p in positions:
+		if not (p is Vector2):
+			continue
+		# bold(双层 + 关深度测试): 实拍(shots/food_academy_hit1.png)单层绿环压在青蓝地图上
+		# 对比度最低的一条(变亮像素只有噪声底的 5.9 倍, 全表最低)。
+		ground_ring(p as Vector2, COL_FOOD, 40.0, true, 0.50)
+		spark_burst(p as Vector2, COL_FOOD, 0.35, 14)
+		n += 1
+	return n
+
+
+## 食物·永久成长跨阈值(累计 maxHp 每涨过一档放一次)。★阈值由调用方传, 本层不烘数字。
+func food_growth_step(pos2d: Vector2, step: int) -> Node3D:
+	if not _has_world():
+		return null
+	spark_burst(pos2d, COL_FOOD, 0.3, 8)
+	return ground_ring(pos2d, COL_FOOD, 26.0 + 9.0 * float(clampi(step, 1, 3)), false, 0.44)
+
+
+# ── 药水 ─────────────────────────────────────────────────────────────────────
+
+## 药水·战利品(猎物阵亡 → 全队攻击力永久 +5/8)。
+## ★缺的是"这份收益从哪来" ⇒ 从**尸体**向全队每个人辐射一条橙带 + 每人一簇火花。
+func potion_harvest(src2d: Vector2, positions: Array) -> int:
+	if not _has_world():
+		return 0
+	var n: int = radial_spokes(src2d, positions, COL_POTION, 18.0, 0.36)
+	for p in positions:
+		if p is Vector2:
+			spark_burst(p as Vector2, COL_POTION, 0.55, 10)
+	return n
+
+
+## 药水·猎物被标记的那一刻(现状只有一次橙色飘字, 2.5 秒后就完全看不出谁是猎物)。
+## ⚠ **常驻标记做不到**: 它该是头顶状态徽章, 而 `HEAD_ROW_CAP=4` 已满、超出【静默截断】(U5 未拍板)。
+##   ⇒ 本批只把"被选中那一下"做重(准星式双环), 常驻那半条诚实留空。
+func potion_prey_mark(pos2d: Vector2) -> Node3D:
+	if not _has_world():
+		return null
+	ground_ring(pos2d, COL_POTION, 30.0, false, 0.55)
+	return ground_ring(pos2d, COL_POTION, 52.0, true, 0.55)
+
+
+# ── 盾 ───────────────────────────────────────────────────────────────────────
+
+## 盾·收殓(敌方阵亡 → 最近的携带盾者得该单位 30% 最大生命的护盾)。
+## ★现状只有一个通用金环, **看不出是从那具尸体收来的** ⇒ 尸体 → 受益者的一道灵魂流。
+func shield_reap(from2d: Vector2, to2d: Vector2) -> Node3D:
+	if not _has_world():
+		return null
+	spark_burst(to2d, COL_SHIELD_REAP, 0.55, 12)
+	# 带宽 20→34: 实拍(shots/shield_reap_hit0.png)那条灵魂流横跨大半个屏幕却只有几像素粗,
+	# 在满屏地图纹理上读不出"从这具尸体来的"。
+	return energy_band(from2d, to2d, COL_SHIELD_REAP, 34.0, 0.42)
+
+
+# ── 弓箭 ─────────────────────────────────────────────────────────────────────
+
+## 弓箭·腐蚀叠满 5 层的那一刻(此后它受到的伤害有 10/20/35% 转成真实伤害)。
+## ★这是**规则级切换**, 现状零显示。三角环 = 弓箭的母题(尖锐啃噬)。
+func bow_corrode_full(pos2d: Vector2) -> Node3D:
+	if not _has_world():
+		return null
+	spark_burst(pos2d, COL_BOW, 0.5, 10)
+	return polygon_ring(pos2d, COL_BOW, 42.0, SIDES_BOW, true, 0.46)
+
+
+# ── 奇械 ─────────────────────────────────────────────────────────────────────
+
+## 奇械·冰封命中(全队攻击 15/25/40% 概率冻结 1.5 秒)。
+## ★频率安全: 同目标 2.5 秒 CD + 解冻后 1.5 秒免疫两道闸 ⇒ 全场 ≤1.5 次/秒, §2.3 判定"可以做重的"。
+## ⚠ 现状只有 `_freeze` 的通用冰蓝小环(半径 48) —— 那是**所有冻结来源共用**的,
+##   读不出"这是奇械羁绊冻的"。六边霜环是奇械专属母题。
+func gadget_freeze(pos2d: Vector2) -> Node3D:
+	if not _has_world():
+		return null
+	spark_burst(pos2d, COL_GADGET, 0.6, 12)
+	return polygon_ring(pos2d, COL_GADGET, 40.0, SIDES_GADGET, true, 0.44)
+
+
+## 奇械·僵硬跨阈值(每层 -2% 攻击力, 最多 20 层 = ×0.60)。
+## ★僵硬是**每段攻击都叠**的高频效果(无节流) ⇒ 每层都放特效必刷屏,
+##   只在跨阈值时放一次(阈值由调用方传)。
+func gadget_stiff_step(pos2d: Vector2, step: int) -> Node3D:
+	if not _has_world():
+		return null
+	return polygon_ring(pos2d, COL_GADGET, 22.0 + 7.0 * float(clampi(step, 1, 3)),
+		SIDES_GADGET, false, 0.36)
+
+
+# ============================================================================
 #  §跨阈值只放一次 —— 纯函数, 不烘任何数字
 # ============================================================================
 
@@ -321,6 +686,28 @@ func clear() -> int:
 	##   继续 advance(), 那是"写了没人清"的另一半 (memory [[fb-write-without-reader-and-fake-gates]])。
 	_shocks.clear()
 	return freed
+
+
+# ============================================================================
+#  §批 B3 【本轮没做到的】—— 写下来免得下一个人当成"已经好了"
+#
+#  1. **常驻显示一条都没做**(腐蚀层数 / 僵硬层数 / 猎物标记 / 火控准星 / 法力条进度)。
+#     根因是同一个: 它们该走**头顶徽章**, 而 `HEAD_ROW_CAP = 4`(RB:5838) 已被
+#     electric/ink/cyber_ai/crystal 占满, 超出的会被 `mini(items.size(), CAP)` **静默截断**
+#     —— 加了也看不见, 而且不报错(方案书 R6 / 未决点 U5, 用户尚未拍板)。
+#     ⇒ 本批一律只做"事件那一瞬", 持续态诚实留空。
+#  2. **剑(剑士追打 / 血祭)一条都没做。** 追打是全表最高频的(6 只带剑 ≈ 10 次/秒),
+#     方案书 §2.3 判定"只能做极轻的";血祭是连续量(损失百分比 → 攻击力), 只能做常驻红光。
+#     两条都不是"有明确触发瞬间"的形状, 与本批的取舍口径不符 ⇒ 留给下一批。
+#  3. **逻辑实体的本体仍然不可见**(三座炮台 / 亡魂立绘)。U6「画不画本体」未拍板,
+#     且画本体要处理常驻节点的换路撤场 + 一张新炮台素材。本批只在【开火那一瞬】
+#     用一根矮光柱标出炮位 —— 玩家能读到"那儿有个东西在打", 但读不到"有三座"。
+#  4. **枪·第二座弹幕相位的伤害数字仍是浅蓝 `#9bdcff`**(`gun_synergy_system._turret_two`),
+#     而我把弹幕相位的演出画成了**深橙**(为了和护盾相位分开)。数字与演出不同色。
+#     没顺手改是因为它属于既有数值/文案侧, 本批是演出批(方案书 R14)。**这是一条已知的不一致。**
+#  5. **食物那条对比度最低**: 翠绿环压在青蓝色海底地图上, 实拍变亮像素只有噪声底的 4.8 倍
+#     (全表最低; 最高的枪·弹幕是 2240 倍)。已改成 bold 双层缓解, 但仍是最弱的一条。
+# ============================================================================
 
 
 ## 本层还活着的节点数 (kind 为空 = 不筛类型)。调试/自检用。

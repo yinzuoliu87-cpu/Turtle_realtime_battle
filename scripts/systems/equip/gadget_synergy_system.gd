@@ -46,6 +46,10 @@ const STIFF_TIER := 3
 const STIFF_SEC := 5.0
 const STIFF_PER_STACK := 0.02
 const STIFF_MAX := 20
+## ── 只喂演出, 一点数值都不改 (批 B3·2026-08-06) ──────────────────────────
+## 【僵硬】跨阈值提示的三档(层数)。20 层 = 攻击力 ×0.60, 是个该被看见的量。
+## ⚠ 这三个数是我定的(方案书 U4「静默累积用什么节奏提示」未拍板), 要调就调这一行。
+const STIFF_VFX_STEPS := [5.0, 10.0, 20.0]
 
 ## 【易碎】顶档：被冻结或眩晕的敌人，受到的伤害 +25%
 const BRITTLE_TIER := 4
@@ -133,6 +137,11 @@ func on_hit(src, tgt) -> void:
 			battle._freeze(tgt, FREEZE_SEC)
 			tgt["_gad_freeze_cd"] = battle._t + FREEZE_CD
 			tgt["_gad_freeze_immune"] = battle._t + FREEZE_SEC + FREEZE_IMMUNE
+			# ★演出(批 B3): `_freeze` 自带的是**所有冻结来源共用**的冰蓝小环(半径 48),
+			#   读不出"这是奇械羁绊冻的"。六边霜环是奇械的专属母题。
+			#   频率安全: 上面两道闸(同目标 2.5 秒 CD + 解冻后 1.5 秒免疫)已经把它压到全场 ≤1.5 次/秒。
+			if battle._vfx != null and battle._vfx._syn != null:
+				battle._vfx._syn.gadget_freeze(Vector2(tgt.get("pos", Vector2.ZERO)))
 	# ── 僵硬 ──────────────────────────────────────────────
 	if ti >= STIFF_TIER:
 		add_stiff(tgt, 1)
@@ -144,6 +153,14 @@ func add_stiff(tgt: Dictionary, n: int) -> void:
 	tgt["stiff_stacks"] = mini(STIFF_MAX, int(tgt.get("stiff_stacks", 0)) + n)
 	tgt["stiff_until"] = battle._t + STIFF_SEC
 	battle._recalc_stats(tgt)
+	# ★演出(批 B3): 僵硬是【每段攻击都叠、无节流】的高频效果 —— 每层都放特效必刷屏。
+	#   ⇒ 只在跨阈值时放一次(阈值在本文件, 演出层不烘数字)。
+	#   ⚠ 逐层数字做不到 —— 那该是头顶徽章, HEAD_ROW_CAP=4 已满(方案书 U5 未拍板)。
+	if battle._vfx != null and battle._vfx._syn != null:
+		var sv = battle._vfx._syn
+		var step: int = sv.tier_of(float(tgt["stiff_stacks"]), STIFF_VFX_STEPS)
+		if sv.tier_advance(tgt, "_stiff_vfx", step):
+			sv.gadget_stiff_step(Vector2(tgt.get("pos", Vector2.ZERO)), step)
 
 
 ## 僵硬到期 → 清零并重算。★不做"每帧检查"，跟着 2.5 秒节拍走就够了
@@ -157,6 +174,9 @@ func _expire_stiff() -> void:
 		if battle._t < float(u.get("stiff_until", 0.0)):
 			continue
 		u["stiff_stacks"] = 0
+		# ★层数掉光了, 演出侧的"放过了没"也要跟着归零 ——
+		#   不归零的话下一轮重新叠到 5/10/20 层时 tier_advance 认为"还在同一档"而不放。
+		u["_stiff_vfx"] = 0
 		battle._recalc_stats(u)
 
 
@@ -190,6 +210,7 @@ func clear() -> void:
 	for u in battle._units:
 		if u is Dictionary:
 			u["stiff_stacks"] = 0
+			u["_stiff_vfx"] = 0          # 演出侧的阈值标记(同 _expire_stiff)
 			u["_gad_freeze_cd"] = 0.0
 			u["_gad_freeze_immune"] = 0.0
 

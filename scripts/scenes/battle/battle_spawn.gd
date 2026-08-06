@@ -722,7 +722,13 @@ func _spawn_pirate_ship_entity(u: Dictionary, at2d: Vector2):   # 实体海盗�
 	return ship
 
 func _spawn_summon(owner: Dictionary, kind: String, hp: float, atk: float, behavior: Dictionary = {}):
-	var pos: Vector2 = owner["pos"] + Vector2(randf_range(-40, 40), randf_range(30, 60))
+	# ★★2026-08-06 修(压测分层实验抓到): 这里原来是【裸】randf_range ——
+	#   `TURTLE_SEED` 只播种 `battle._battle_rng`, 管不到全局 RNG
+	#   ⇒ 同种子两遍跑, 召唤物落点每次都不同, 并级联到后面所有伤害(实测 3v3 敌人血 30413 vs 30151)。
+	#   这是**存量** bug: 058 穿甲遗弹的炮台 / 032 唤灵骷髅 早就中招, 077 只是新的消费者。
+	#   PvP 的快照对拍靠的正是"同种子两遍同结果", 所以这条不是小事。
+	var pos: Vector2 = owner["pos"] + Vector2(
+		battle._battle_rng.randf_range(-40, 40), battle._battle_rng.randf_range(30, 60))
 	pos.x = clampf(pos.x, battle.ARENA.position.x, battle.ARENA.end.x)
 	pos.y = clampf(pos.y, battle.ARENA.position.y, battle.ARENA.end.y)
 	var col = Color("#3fa9ff") if owner["side"] == "left" else Color("#ff5a5a")

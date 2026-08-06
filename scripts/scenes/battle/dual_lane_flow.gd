@@ -485,6 +485,14 @@ func _dl_build_lane_field() -> void:
 	battle._gadget_syn.clear()    # 换路: 僵硬/冰封CD归零(铸币【不清】—— 一场 = 上路+下路+决胜)
 	battle._food_syn.clear()      # 换路: 成长节拍归零
 	battle._spirit_syn.clear()    # 换路: 触手节拍与追击次数归零
+	# ★★2026-08-06 补(压测抓到: 11 局刷了 1393 条 `Trying to assign invalid previously freed instance`)。
+	#   `_spirit_syn.clear()` 只清节拍计数(_t_slap/_t_chase/_dry/_chase_used), **不碰 TentacleVfx._tents**;
+	#   而触手节点挂在 `battle._world` 上, 换路时下面的 `_sweep_world_vfx()` 会把它们 free 掉
+	#   ⇒ `_tents` 里留着一堆悬空引用, `tentacle_vfx.gd` 的 `_rebuild` 每帧
+	#   `var mi: MeshInstance3D = t["mi"]` —— **带类型的赋值本身就报错**, 下一行的
+	#   `is_instance_valid` 根本轮不到。`TentacleVfx.clear()` 全仓原本只有一个调用者
+	#   (battle_vfx.gd 的 VFX 预览路径), 换路从来没人调它。
+	battle._tentacle_vfx.clear()  # 换路: 触手网格与在途表清干净(不清 = 每帧刷 SCRIPT ERROR)
 	battle._relic_syn.clear()     # 换路: 觉醒 t0 重置(远古之力【不清】—— 同上)
 	battle._synergy.apply_all()   # ★类型羁绊(批4-1): 必须在单件属性【之后】—— 羁绊是加在单件属性上面的
 	battle._bow_syn.apply_all()   # 弓箭【腐蚀·穿透】写进 armor_pen_pct/magic_pen_pct(休眠通道, 消费侧零改动)
