@@ -305,7 +305,7 @@ func clear_all() -> void:
 
 func _spawn_pistol(owner: Dictionary, si: int, hp: float, atk: float) -> void:
 	var p = battle._spawn._spawn_summon(owner, "pistol", hp, atk,
-		{"label": "小手枪", "spr_id": "", "col_size": 22.0, "hp_w": 20.0,
+		{"label": "小手枪", "spr_id": "pistol", "col_size": 22.0, "hp_w": 20.0,
 		 "atk_interval": PISTOL_IV, "atk_range": PISTOL_RANGE, "melee": false})
 	if p == null:
 		return
@@ -341,10 +341,36 @@ func _tick_pistols(delta: float) -> void:
 		if not (p is Dictionary) or not p.get("alive", false):
 			_pistols.remove_at(i)
 			continue
+		_pistol_kick_tick(p, delta)
 		e["acc"] = float(e.get("acc", 0.0)) + delta
 		while float(e["acc"]) >= PISTOL_IV:
 			e["acc"] = float(e["acc"]) - PISTOL_IV
 			_pistol_attack(e)
+
+
+## 后坐力每帧推进: 开火瞬间把立绘弹开 `_pistol_kick_d`, 再**临界阻尼**回位。
+## ★临界阻尼 = 永不过冲(x̂(τ) = (1+τ)e^(−τ)) —— 枪不该"弹回来又晃出去"。
+## ★只动【立绘节点的偏移】, 不动单位的 `pos` —— pos 是结算用的(索敌/射程/碰撞),
+##   演出碰它就会变成"后坐把射程改了"这种只在特定时刻出现的诡异行为。
+func _pistol_kick_tick(p: Dictionary, delta: float) -> void:
+	var T: float = float(p.get("_pistol_kick_T", 0.0))
+	if T <= 0.0:
+		return
+	var spr = p.get("sprite", null)
+	if not is_instance_valid(spr):
+		p["_pistol_kick_T"] = 0.0
+		return
+	var t: float = float(p.get("_pistol_kick_t", 0.0)) + delta
+	p["_pistol_kick_t"] = t
+	var base: Vector3 = battle._world_pos(Vector2(p["pos"]), battle.GROUND_LIFT)
+	if t >= T:
+		p["_pistol_kick_T"] = 0.0
+		spr.position = base
+		return
+	var tau: float = (t / T) * 4.0                    # 4τ 内衰减到 ~9%
+	var amp: float = (1.0 + tau) * exp(-tau)          # 临界阻尼包络
+	var d: Vector2 = p.get("_pistol_kick_d", Vector2.ZERO)
+	spr.position = base + Vector3(d.x * amp * float(battle.WS), 0.0, d.y * amp * float(battle.WS))
 
 
 ## 一次攻击 = 一发子弹(1 ATK 物理, 自带 50% 暴击) + 自己 +1 破甲。
@@ -357,6 +383,11 @@ func _pistol_attack(e: Dictionary) -> void:
 		return
 	if (Vector2(tgt["pos"]) - Vector2(p["pos"])).length() > PISTOL_RANGE:
 		return
+	# ★演出: 枪口火焰 + 后坐力。**朝向取"打谁"** —— 立绘是朝右的(见 _resolve_summon_sprite 的
+	#   pistol 分支), 所以火焰锚点也按同一个朝向算, 两者天然一致。
+	#   后坐时长传实际攻击间隔 ⇒ 攻速被枪羁绊拉到 4/秒 时也占满一个周期, 不会播不完被打断。
+	var _aim: Vector2 = (Vector2(tgt["pos"]) - Vector2(p["pos"])).normalized()
+	vfx.pistol_fire(p, _aim, PISTOL_IV)
 	p["armor_pen"] = float(p.get("armor_pen", 0.0)) + PISTOL_PEN_PER_SHOT
 	battle._queue_shots(1, GOLD_GAP, func() -> void: _pistol_bullet(p), p, "p2eq_077")
 

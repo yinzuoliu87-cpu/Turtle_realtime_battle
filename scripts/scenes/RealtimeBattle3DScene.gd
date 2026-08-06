@@ -1877,6 +1877,17 @@ func _resolve_summon_sprite(spr_id: String) -> Dictionary:
 			var bt: Texture2D = load(banim)
 			if bt != null:
 				return _sprite_dict_from(bt, {"frames": 7, "frameW": 96, "frameH": 96, "duration": 720}, true)
+	# 077 铜管手铳的小手枪(2026-08-07): 全表第一个【有真立绘】的装备召唤物。
+	# ★为什么单独一支而不是走下面的 `pets/<spr_id>.png` 通用路: 它不是宠物, 没有 pets.json 元数据,
+	#   走通用路会被当成静态单图 ⇒ 16 帧的表会显示成"一排小枪"(2026-07-17 竹叶龟踩过同一个坑)。
+	# ★帧表是【乒乓】排的(0..8 再 7..1 = 16 帧): PixelLab 出的 idle 末帧与首帧差 323/1600 像素,
+	#   直接首尾相接会每轮跳一下; 乒乓让循环天然闭合, 且"悬浮上下"这个动作本来就该来回。
+	if spr_id == "pistol":
+		var pp := SPRITE_DIR + "vfx/eq-pistol-idle.png"
+		if ResourceLoader.exists(pp):
+			var pt: Texture2D = load(pp)
+			if pt != null:
+				return _sprite_dict_from(pt, {"frames": 16, "frameW": 40, "frameH": 40, "duration": 1280}, true)
 	# treasure_golem idle 动画 (宝箱怪有专属帧, frameW/H=74/73, 7帧)
 	if spr_id == "treasure-golem" or spr_id == "treasure_golem":
 		var anim := SPRITE_DIR + "pets/animations/treasure_golem/idle.png"

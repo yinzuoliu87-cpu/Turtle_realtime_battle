@@ -40,13 +40,20 @@ func _ready() -> void:
 		nf >= 2 and tex.get_width() % fh == 0, "%dx%d" % [tex.get_width(), fh])
 
 	# ── ① 助手函数必须识别帧
-	var before: int = s._world.get_child_count()
+	# ★★2026-08-07 修【偶发假红】: 原来按【子节点索引区间】倒查(从 count-1 数到 before),
+	#   而战场每帧都在建/放别的特效节点 ⇒ 别人先被 free 掉时索引整体前移, 这一段窗口就错位,
+	#   找不到刚建的那个 ⇒ 同一份代码连跑两次一次红一次绿。
+	#   ⇒ 改成【全量扫 + 按贴图认】: 不依赖索引, 只认 texture == tex。
+	#   ⚠ 全量扫要先记下"扫之前就已经存在的同贴图节点", 否则上一次跑剩的会让它恒真。
+	var pre: Array = []
+	for c0 in s._world.get_children():
+		if c0 is Sprite3D and (c0 as Sprite3D).texture == tex:
+			pre.append(c0)
 	s._burst_vfx(STRIP, s._arena_center, 200.0, 0.5)
 	await get_tree().process_frame
 	var made: Sprite3D = null
-	for i in range(s._world.get_child_count() - 1, before - 1, -1):
-		var c = s._world.get_child(i)
-		if c is Sprite3D and (c as Sprite3D).texture == tex:
+	for c in s._world.get_children():
+		if c is Sprite3D and (c as Sprite3D).texture == tex and not (c in pre):
 			made = c; break
 	_ok("★分母: _burst_vfx 真的建出了 Sprite3D", made != null)
 	if made != null:

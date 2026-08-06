@@ -280,6 +280,50 @@ func _ring(pos2: Vector2, col: Color, radius: float, life: float) -> void:
 #  §077 小手枪
 # ══════════════════════════════════════════════════════════════════
 
+## 077 开火演出的四个常量(码 / 米 / 秒)。
+## ★枪管尖 = 单位中心 + 朝向 × 这个距离。小手枪立绘 40px 宽、col_size 22 码
+##   ⇒ 半个枪长约 11 码, 再往外挪 3 码让火焰不压在枪管上。
+const PISTOL_MUZZLE_PX := 14.0
+## ★26 码是实拍改小后的值: 第一版给 26 但 `_make_fire_glow_tex` 的可见辉光远大于名义半径,
+##   13 倍拉近下盖住半个屏幕。按"火焰略大于枪管口径、不该盖住枪身"定 13 码。
+##   ⚠ 这类"名义尺寸 ≠ 观感尺寸"只有实拍才抓得到 —— 贴图自带的软边把有效半径放大了约一倍。
+const PISTOL_FLASH_PX := 13.0
+const PISTOL_FLASH_H_M := 0.42
+const PISTOL_FLASH_SEC := 0.09
+## 后坐行程(码)。★不设时长常量 —— 时长按实际攻击间隔折算, 见 pistol_fire。
+const PISTOL_KICK_PX := 7.0
+
+
+## 077 开火: **枪口火焰 + 后坐力**。
+##
+## ★★为什么这两样用代码而不是精灵表(2026-08-07 实拍两轮后的定论):
+##   PixelLab 出的 fire 动画连出两版, 火焰都画在**枪机**位置而不是枪口
+##   (燧发枪历史上确实在那儿闪, 但读起来不像"开枪"), 后坐力也几乎看不出。
+##   ⇒ **枪身用素材(idle 帧表)、这两样用代码**。代码的两个不可替代的好处:
+##   ① 锚点算得准 —— 火焰生在**枪管尖**(朝向 × 半个枪长), 与弹道起点同一点;
+##   ② **跟着实际射速缩放** —— 小手枪基础攻速 2/秒, 被枪羁绊顶档能到 4/秒。
+##      固定帧数的精灵表在 0.25 秒的节拍下**播不完就被下一发打断**, 看起来是抽搐;
+##      后坐时长按 `iv` 折算就永远占满一个攻击周期。
+##
+## `iv` = 这一发到下一发的间隔(秒)。`aim` = 单位朝向(已归一)。
+func pistol_fire(p: Dictionary, aim: Vector2, iv: float) -> void:
+	if not _has_world() or not (p is Dictionary):
+		return
+	var spr = p.get("sprite", null)
+	if is_instance_valid(spr):
+		# 后坐: 沿枪口反方向弹开, 再**临界阻尼**回位(永不过冲)。行程与时长都按射速缩放。
+		p["_pistol_kick_t"] = 0.0
+		p["_pistol_kick_T"] = clampf(iv * 0.55, 0.08, 0.30)
+		p["_pistol_kick_d"] = -aim * PISTOL_KICK_PX
+	# 枪口火焰: 生在枪管尖, 与弹道起点同一点。用现成的火光贴图(不新造纹理)。
+	var muz: Vector2 = Vector2(p.get("pos", Vector2.ZERO)) + aim * PISTOL_MUZZLE_PX
+	var f := _sprite(VfxTex._make_fire_glow_tex(),
+		battle._world_pos(muz, PISTOL_FLASH_H_M),
+		(PISTOL_FLASH_PX * float(battle.WS)) / 64.0,
+		Color(1.0, 0.86, 0.42, 0.95), false)
+	_adopt(f, PISTOL_FLASH_SEC, "pistol_flash")
+
+
 func pistol_deploy(pos: Vector2) -> void:
 	_ring(pos, Color(1.0, 0.82, 0.42, 0.85), 70.0, 0.4)
 
