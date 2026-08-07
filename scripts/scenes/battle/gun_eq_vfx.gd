@@ -476,6 +476,29 @@ func _blast_tex() -> Texture2D:
 	return _blast_tex_cache
 
 
+## 弹着火花: 一小团亮闪 + 一圈很小的冲击环。★尺寸**远小于**炸弹的爆炸 ——
+## 它要说的是"这一发打中了", 不是"这里炸了个大坑"; 做大了会和地毯轰炸的爆点混淆。
+const IMPACT_PX := 22.0
+const IMPACT_SEC := 0.16
+
+func _bullet_impact(at: Vector2, h_m: float) -> void:
+	if not _has_world():
+		return
+	# ★★两版都错过, 教训写在这:
+	#   ①「一团淡黄辉光」—— 打在绿色龟壳上读成"一小片反光", 实拍几乎看不出打中了。
+	#   ②「白热芯 + 4 根放射火花(_band)」—— 火花在实拍里是**黑棍**(短带贴在地面高度、
+	#      被龟的立绘压住), 而冲击环**大了整整 4 倍**: 我把 `_make_thin_ring_tex` 的尺寸
+	#      **硬编码成 64**, 而 `_ring` 里写的是 **256**(纹理真实尺寸)。
+	#      —— 又是"硬编码贴图尺寸"这一族, 今晚第三次(枪口 half_len、爆炸 BLAST_ART_K)。
+	#   ⇒ 现在只剩两样, 都走**现成的原语**, 不自己算尺寸:
+	#     · 白热芯: 一小团 glow(billboard, 跟着目标身高)
+	#     · 冲击环: 直接调 `_ring`(它自带正确的 256 换算与扩张动画)
+	var sp := _sprite(VfxTex._make_fire_glow_tex(), battle._world_pos(at, h_m),
+		(IMPACT_PX * float(battle.WS)) / 64.0, Color(1.0, 1.0, 0.92, 1.0), false)
+	_adopt(sp, IMPACT_SEC, "puff", {"a0": 1.0})
+	_ring(at, Color(1.0, 0.88, 0.55, 0.75), IMPACT_PX * 0.9, IMPACT_SEC * 1.4)
+
+
 ## 一次爆点。★★2026-08-07 用户:「爆炸特效？」—— 原来这里是
 ##   **一个扩张的贴地环 + 一团圆辉光**, 也就是用户说的「瞎画个圈也算特效」。
 ##   现在是真爆炸立绘(火球 → 碎块飞溅 → 烟尘消散, 11 帧)。
@@ -827,7 +850,10 @@ func bomb_drop(from2: Vector2, land: Vector2, blast_r: float) -> void:
 		return
 	# ① 落点预警圈: 半径从 1.6× 收到 1.0×(真实爆炸半径), 收满那一刻正好弹着
 	var ps1: float = (blast_r * 2.0 * float(battle.WS)) / 64.0
-	var ps0: float = ps1 * 1.6
+	# ★起始 1.6 → 1.25: 用户看到「这个橙圈你弄的多大？」。终值**不动** ——
+	#   它等于真实伤害半径 180 码(直径 360 码 ≈ 8 只龟并排), 改了就是骗玩家。
+	#   能调的只有"起始比终值大多少": 1.6 倍在场上是 576 码直径, 铺满大半个屏幕。
+	var ps0: float = ps1 * 1.25
 	var warn := _sprite(VfxTex._make_thin_ring_tex(), battle._world_pos(land, 0.06),
 		ps0, Color(1.0, 0.42, 0.20, 0.85), true)
 	_adopt(warn, BOMB_FALL_SEC, "bombwarn", {"a0": 0.85, "ps0": ps0, "ps1": ps1})
@@ -919,6 +945,12 @@ func tick(delta: float) -> void:
 				# 落地前不淡出(炸弹是实体不是光效), 最后 15% 才收掉, 免得跟爆点抢画面
 				bs.modulate.a = 1.0 if q < 0.85 else (1.0 - (q - 0.85) / 0.15)
 		if q >= 1.0:
+			# ★★2026-08-07 用户:「子弹打到哪里」—— 实拍确认: **什么都没有**。
+			#   弹飞到目标就凭空消失, 没有任何命中反馈 ⇒ 玩家读不出"这一发打中了"。
+			#   ⇒ 弹的寿命一到, 在**终点**炸一小下(火花 + 一圈极小的冲击环)。
+			#   ⚠ 只对 "bullet" 做; 尾焰(bullettail)不做, 否则一发弹会闪两次。
+			if str(f.get("kind", "")) == "bullet":
+				_bullet_impact(f.get("to", Vector2.ZERO), float(f.get("h", PISTOL_MUZZLE_H_M)))
 			n.queue_free()
 			_fx.remove_at(i)
 
