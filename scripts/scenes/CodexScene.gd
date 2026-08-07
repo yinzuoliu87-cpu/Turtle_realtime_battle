@@ -662,7 +662,10 @@ func _add_pet_portrait(cx: float, cy: float, pet: Dictionary, box: float) -> voi
 			var fps: float = maxf(4.0, roundf(float(idle_n) * 1000.0 / maxf(200.0, dur_ms)))
 			var loop_dur: float = float(idle_n) / fps
 			var tw := spr.create_tween().set_loops()   # 绑 spr, 切龟清 detail 时自动停
-			tw.tween_method(func(fr: float) -> void: spr.frame = int(fr) % idle_n, 0.0, float(idle_n), loop_dur)
+			# ★同族钳制: idle_n 来自元数据, 贴图未必真有那么多帧
+			tw.tween_method(func(fr: float) -> void:
+				spr.frame = int(fr) % maxi(1, mini(idle_n, int(spr.hframes) * int(spr.vframes)))
+			, 0.0, float(idle_n), loop_dur)
 	else:
 		var sf2: float = minf(box / float(maxi(1, tex.get_width())), box / float(maxi(1, tex.get_height())))
 		spr.scale = Vector2(sf2, sf2)

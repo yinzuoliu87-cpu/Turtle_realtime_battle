@@ -175,6 +175,9 @@ func _update_trainer_anim(u: Dictionary, delta: float) -> void:
 	else:
 		u["_tr_anim_t"] = 0.0
 	# ④ 应用: 换表 + 行(方向)×列(帧)
+	# ★同一条: 改 hframes/vframes 前先把 frame 归零 —— setter 会立即用新乘积校验当前 frame,
+	#   从单行表切到 4 行表(或反过来)时, 中间那一瞬旧帧号必然越界。见 _set_anim_sheet 的长注释。
+	spr.frame = 0
 	spr.texture = sheets[anim]
 	spr.hframes = cols
 	spr.vframes = 4

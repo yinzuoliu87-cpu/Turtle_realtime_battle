@@ -305,6 +305,9 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	var grounded_mat: ShaderMaterial = null
 	if tex != null:
+		# ★改 hframes/vframes 前先把 frame 归零 —— setter 会立即用新乘积校验当前 frame。
+		#   见 RealtimeBattle3DScene._set_anim_sheet 的长注释(那是同一个坑的第一现场)。
+		spr.frame = 0
 		spr.hframes = int(sd.get("hframes", 1))
 		spr.vframes = int(sd.get("vframes", 1))
 		spr.frame = 0
@@ -749,6 +752,9 @@ func _spawn_summon(owner: Dictionary, kind: String, hp: float, atk: float, behav
 		var fh: int = int(su_sd.get("frame_h", tex.get_height()))
 		# 召唤体按 col_size 缩放 (相对全身龟略小): 帧高归一到 ~col_size*battle.WS 的世界高
 		spr.texture = tex
+		# ★改 hframes/vframes 前先把 frame 归零 —— setter 会立即用新乘积校验当前 frame。
+		#   见 RealtimeBattle3DScene._set_anim_sheet 的长注释(那是同一个坑的第一现场)。
+		spr.frame = 0
 		spr.hframes = int(su_sd.get("hframes", 1))
 		spr.vframes = int(su_sd.get("vframes", 1))
 		spr.frame = 0

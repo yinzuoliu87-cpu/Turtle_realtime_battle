@@ -420,10 +420,12 @@ func pistol_uncovered(pos: Vector2) -> void:
 ##   · 高度 = 枪身高度(不再穿龟)
 ##   · 飞行时间 = 距离 / 速度 ⇒ **近的目标弹到得快、远的慢**, 这本身就是可读的信息
 ## ⚠ 仍然不用 tween: 位置由本文件的 `tick()` 推(CLAUDE.md §3.5)。
-const BULLET_SPD := 780.0       ## 码/秒。★用户 2026-08-07 实拍后要求「减慢 70%」: 2600 × 0.3 = 780。
-                                ## 260 码 ≈ 0.33 秒到 —— 一发的飞行明显看得完整。
-const BULLET_PX := 15.0         ## 弹丸显示尺寸(码)
-const BULLET_TAIL := 26.0       ## 尾焰长度(码)
+const BULLET_SPD := 390.0       ## 码/秒。★用户 2026-08-07 两次实拍后定: 2600 →(−70%) 780 →(再 −50%) **390**。
+                                ## 260 码 ≈ 0.67 秒到 —— 一发的飞行完整看得清, 而攻击间隔是 0.5 秒
+                                ## ⇒ **场上会同时有两发在飞**, 这本身就读得出"射速比弹速快"。
+const BULLET_PX := 9.0          ## 弹头辉光尺寸(码) —— 只负责"热", 方向交给流线
+const BULLET_HEAD := 16.0       ## 弹头流线长度(码)
+const BULLET_TAIL := 30.0       ## 尾焰长度(码, 向后画)
 func tracer(a: Vector2, b: Vector2, col: Color, gold_pct: float = 0.0, h_m: float = PISTOL_MUZZLE_H_M) -> void:
 	if not _has_world():
 		return
@@ -431,15 +433,23 @@ func tracer(a: Vector2, b: Vector2, col: Color, gold_pct: float = 0.0, h_m: floa
 	var c := Color(col.r + (1.0 - col.r) * g, col.g + (0.9 - col.g) * g, col.b * (1.0 - 0.5 * g), 0.95)
 	var dist: float = (b - a).length()
 	var life: float = clampf(dist / BULLET_SPD, 0.05, 0.5)
-	# 弹丸
+	var dir: Vector2 = (b - a).normalized() if dist > 0.001 else Vector2.RIGHT
+	# ★★2026-08-07 用户问「子弹方向有考虑吗」—— 上一版**没有**: 弹头是一团**圆的**辉光,
+	#   圆形没有方向, 只有后面那条尾焰暗示了走向。现在整颗弹是一条**沿飞行方向的流线**:
+	#     · 弹头 = 短而亮的带(BULLET_HEAD 长), 从当前位置**向前**画
+	#     · 尾焰 = 长而暗的带(BULLET_TAIL 长), 从当前位置**向后**画
+	#   两段都由 dir 定向 ⇒ 不管往哪个方向打, 弹的长轴永远和航线重合。
+	#   ⚠ 不能靠旋转 Sprite3D 解决: 弹头原来用的是 billboard 精灵, billboard 会一直正对相机,
+	#     它的"旋转"在 2.5D 斜视角下与场地方向对不上。带(平面网格)是贴着场地画的, 才对得上。
+	var head := _band(a, a + dir * BULLET_HEAD, h_m, 2.6 + 3.0 * g, c)
+	_adopt(head, life, "bullettail", {"from": a, "to": b, "a0": c.a})
+	var tail := _band(a - dir * BULLET_TAIL, a, h_m, 1.4 + 2.2 * g,
+		Color(c.r, c.g, c.b, 0.40))
+	_adopt(tail, life, "bullettail", {"from": a, "to": b, "a0": 0.40})
+	# 弹头再叠一点点辉光(只是"热", 不承担方向)
 	var s := _sprite(VfxTex._make_fire_glow_tex(), battle._world_pos(a, h_m),
 		(BULLET_PX * (1.0 + 0.5 * g) * float(battle.WS)) / 64.0, c, false)
 	_adopt(s, life, "bullet", {"from": a, "to": b, "a0": c.a, "h": h_m})
-	# 尾焰: 一小截跟着弹走的带(不是整条航线)
-	var dir: Vector2 = (b - a).normalized() if dist > 0.001 else Vector2.RIGHT
-	var tail := _band(a, a + dir * BULLET_TAIL, h_m, 1.6 + 2.4 * g,
-		Color(c.r, c.g, c.b, 0.45))
-	_adopt(tail, life, "bullettail", {"from": a, "to": b, "dir": dir, "a0": 0.45})
 
 
 ## 一次爆点: 扩张的贴地环 + 中心光晕。
@@ -792,13 +802,15 @@ func tick(delta: float) -> void:
 				bl.position = battle._world_pos(fa.lerp(fb, q), float(f.get("h", PISTOL_MUZZLE_H_M)))
 				bl.modulate.a = float(f.get("a0", 1.0)) * (1.0 if q < 0.8 else (1.0 - q) / 0.2)
 			"bullettail":
-				# 尾焰跟着弹走: 整块带**平移**(不重建网格) ⇒ 每帧零分配
+				# 弹头段 / 尾焰段都跟着弹走: 整块带**平移**(不重建网格) ⇒ 每帧零分配。
+				# ★两段建出来时都以**出膛点 a** 为基准(头段 a→a+dir·HEAD, 尾段 a−dir·TAIL→a),
+				#   所以平移量对两段是同一个: 当前位置 − a。不需要再各自算 dir 偏移
+				#   (上一版给头段传了 −dir 去补偿, 那是错的, 会让头段落后半个身位)。
 				var tm: MeshInstance3D = n
 				var ta: Vector2 = f.get("from", Vector2.ZERO)
 				var tb: Vector2 = f.get("to", Vector2.ZERO)
 				var here: Vector2 = ta.lerp(tb, q)
-				var back: Vector2 = here - Vector2(f.get("dir", Vector2.RIGHT)) * BULLET_TAIL
-				tm.position = battle._world_pos(back, 0.0) - battle._world_pos(ta, 0.0)
+				tm.position = battle._world_pos(here, 0.0) - battle._world_pos(ta, 0.0)
 				var tmat = tm.material_override
 				if tmat is StandardMaterial3D:
 					(tmat as StandardMaterial3D).albedo_color.a = float(f.get("a0", 0.45)) * (1.0 - q)

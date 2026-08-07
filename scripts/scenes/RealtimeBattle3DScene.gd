@@ -1930,6 +1930,15 @@ func _set_anim_sheet(u: Dictionary, sd: Dictionary, action: String, is_idle: boo
 	if not is_instance_valid(spr) or sd.is_empty() or sd.get("tex", null) == null:
 		return
 	var tex: Texture2D = sd["tex"]
+	# ★★2026-08-07 真根因(前面钳了六处都没治住, 因为**根本不在"谁设了大帧号"**):
+	#   Godot 在 `hframes` / `vframes` 的 setter 里会**立即用新乘积校验当前 frame**。
+	#   顺序是 hframes → vframes → frame=0 ⇒ **设 vframes 的那一瞬**, frame 还停在旧表的值。
+	#   从训龟大师的 4 行表(hframes 7 × vframes 4 = 28, frame 可达 27)切到普通单行表时,
+	#   `vframes = 1` 让乘积掉到 7, 而 frame 还是 17 ⇒ 报
+	#   `Index p_frame = 17 is out of bounds (vframes*hframes = 7)`。
+	#   ⇒ **换表前先把 frame 归零**。这也解释了它为什么是随机的: 只有场上有大师、
+	#     且它恰好在高帧号时切表才会撞上。
+	spr.frame = 0
 	spr.texture = tex
 	spr.hframes = int(sd.get("hframes", 1))
 	spr.vframes = int(sd.get("vframes", 1))
@@ -4851,7 +4860,9 @@ func play_sheet_vfx(pos2d: Vector2, sheet: Texture2D, frames: int, world_px: flo
 	spr.position = _world_pos(pos2d, h)
 	_world.add_child(spr)
 	var t := _reg_tween()
-	t.tween_method(func(fr): spr.frame = clampi(int(fr), 0, frames - 1), 0.0, float(frames), dur)   # 逐帧推进
+	# ★同族钳制: `frames` 是调用方传的, 与贴图真实帧数无关 ⇒ 再与 hframes×vframes 取小
+	t.tween_method(func(fr): spr.frame = clampi(int(fr), 0,
+		mini(frames, maxi(1, int(spr.hframes) * int(spr.vframes))) - 1), 0.0, float(frames), dur)
 	t.tween_callback(spr.queue_free)
 
 ## ── `_skill_ring` 的两条曲线 ────────────────────────────────────────────────
@@ -5038,7 +5049,7 @@ func _burst_vfx(path: String, pos2d: Vector2, size_px: float, height: float = 0.
 		# 帧在"起势+停留"这 0.26 秒里播完(与原来的节奏一致, 只是现在真的在播)
 		tw.parallel().tween_method(func(fv: float) -> void:
 			if is_instance_valid(b):
-				b.frame = mini(nf - 1, int(fv))
+				b.frame = clampi(int(fv), 0, mini(nf, maxi(1, int(b.hframes) * int(b.vframes))) - 1)
 		, 0.0, float(nf), 0.26)
 	tw.tween_interval(0.14)
 	tw.tween_property(b, "modulate:a", 0.0, 0.3)
@@ -5046,9 +5057,14 @@ func _burst_vfx(path: String, pos2d: Vector2, size_px: float, height: float = 0.
 
 # 通用飞行VFX: 贴图从A飞到B (自动识别横排帧动画 nf=宽/高) → 到点自销. delay=起飞延迟(连珠错峰用).
 
+## ★★2026-08-07: 与 battle_render.gd 同一族的钳制 —— `n` 是**调用方传的帧数**,
+##   和贴图真实帧数无关。传 18 而贴图只有 7 帧时 `mini(n-1, ...)` 会给出 17 ⇒ 越界。
+##   冒烟随机报的 `Index p_frame = 17 is out of bounds (vframes*hframes = 7)` 就是这里。
+##   ⇒ 一律再与**精灵自己的 hframes × vframes** 取小。引擎校验的是这个乘积, 不是 hframes。
 func _anim_vfx_frame(fv: float, spr, n: int) -> void:
 	if is_instance_valid(spr):
-		spr.frame = mini(n - 1, int(fv))
+		var real: int = maxi(1, int(spr.hframes) * int(spr.vframes))
+		spr.frame = clampi(int(fv), 0, mini(n, real) - 1)
 func _fly_vfx(path: String, from2d: Vector2, to2d: Vector2, size_px: float, dur: float, height: float = 1.0, delay: float = 0.0) -> void:
 	var t: Texture2D = load(path)
 	if t == null: return
@@ -7371,7 +7387,7 @@ func _spawn_phase_afterimage(spr) -> void:
 	ai.texture = spr.texture
 	ai.hframes = spr.hframes
 	ai.vframes = spr.vframes
-	ai.frame = spr.frame
+	ai.frame = clampi(int(spr.frame), 0, maxi(0, int(ai.hframes) * int(ai.vframes) - 1))
 	ai.pixel_size = spr.pixel_size
 	ai.billboard = spr.billboard
 	ai.flip_h = spr.flip_h
@@ -8354,8 +8370,14 @@ func _zap_frame(fr: float, spr: Sprite3D) -> void:
 		spr.frame = clampi(int(fr), 0, 4)
 
 # 宽刃弯刀 009
+## ★★2026-08-07: 这里原来**完全不钳位**(`spr.frame = f`, f 由调用方给) ——
+##   冒烟随机报的 `Index p_frame = 17 is out of bounds (vframes*hframes = 7)` 第三条就在这。
+##   同族第 6 处了(v0.19.37 三处 + battle_render 两处 + 这里), 共同的形状都是
+##   **"帧号来自别处、钳位却按别处的帧数(或干脆不钳)"**。
+##   ⇒ 统一判据: 钳位只认**精灵自己的 hframes × vframes**(引擎校验的就是这个乘积)。
 func _set_sprite_frame(spr: Sprite3D, f: int) -> void:
-	if is_instance_valid(spr): spr.frame = f
+	if is_instance_valid(spr):
+		spr.frame = clampi(f, 0, maxi(0, int(spr.hframes) * int(spr.vframes) - 1))
 
 
 
@@ -8381,7 +8403,9 @@ func _laser_blade_sweep(u: Dictionary, origin: Vector2, dir: Vector2, rng: float
 	tw.tween_callback(spr.queue_free)
 
 func _laser_fan_frame(fr: float, spr: Sprite3D, nfr: int) -> void:
-	if is_instance_valid(spr): spr.frame = clampi(int(fr), 0, nfr - 1)
+	# ★同族钳制: nfr 来自调用方, 与贴图真实帧数无关
+	if is_instance_valid(spr):
+		spr.frame = clampi(int(fr), 0, mini(nfr, maxi(1, int(spr.hframes) * int(spr.vframes))) - 1)
 
 func _sniper_charge_fx(u: Dictionary, tgt: Dictionary) -> void:   # 蓄力1秒: 细红瞄准线由暗渐亮 + 枪口聚能球胀大 + 目标身上三道收缩锁定环
 	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()

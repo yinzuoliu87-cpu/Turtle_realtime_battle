@@ -394,6 +394,12 @@ func _pistol_attack(e: Dictionary) -> void:
 	#   后坐时长传实际攻击间隔 ⇒ 攻速被枪羁绊拉到 4/秒 时也占满一个周期, 不会播不完被打断。
 	var _aim: Vector2 = (Vector2(tgt["pos"]) - Vector2(p["pos"])).normalized()
 	vfx.pistol_fire(p, _aim, PISTOL_IV)
+	# ★★2026-08-07: **让枪转身面向目标**。用户问「子弹方向有考虑吗」时查出来的:
+	#   渲染层的 flip_h = face_right != 立绘朝向, 而小手枪是 no_basic 召唤物、
+	#   **不走普攻状态机 ⇒ 从来没有人给它写过 face_right** ⇒ 它永远按队伍朝右。
+	#   敌人绕到身后时, 枪不转身、枪口仍在右边, 弹却往左飞 = **从枪背后飞出去**。
+	#   写了这一行之后, flip_h 会跟着变, 而枪口锚点本来就读 flip_h ⇒ 枪口自动跟到另一侧。
+	p["face_right"] = Vector2(tgt["pos"]).x >= Vector2(p["pos"]).x
 	p["armor_pen"] = float(p.get("armor_pen", 0.0)) + PISTOL_PEN_PER_SHOT
 	battle._queue_shots(1, GOLD_GAP, func() -> void: _pistol_bullet(p), p, "p2eq_077")
 
