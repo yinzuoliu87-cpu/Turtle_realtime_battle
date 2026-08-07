@@ -429,7 +429,7 @@ func _pistol_bullet(p: Dictionary) -> void:
 	# ★★只偏**水平**: 枪立绘永远朝右不转向 ⇒ 枪口在 +x。
 	#   第一版乘的是 aim(指向目标 = 右下方) ⇒ 弹从枪的右下角冒出来而不是枪口(用户实拍抓到)。
 	var _muz: Vector2 = Vector2(p["pos"]) + Vector2(float(p.get("_muzzle_px", PISTOL_MUZZLE_FALLBACK)), 0.0)
-	vfx.tracer(_muz, Vector2(tgt["pos"]), COL_PHYS, gold, float(p.get("_muzzle_h", 0.6)))
+	vfx.tracer(_muz, Vector2(tgt["pos"]), COL_PHYS, gold, float(p.get("_muzzle_h", 0.6)), GunEqVfx.body_mid_h(tgt))
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -763,7 +763,7 @@ func _heli_bullet(h: Dictionary, scale: float) -> void:
 	#   现在从**机头**出膛: `_muzzle_px` 由演出层按机头在贴图里的实测像素位置回填(见 heli_update),
 	#   它已经把 flip_h 算进去了 ⇒ 直升机掉头时出膛点自动跟到另一侧。
 	var muz: Vector2 = Vector2(h["pos"]) + Vector2(float(h.get("_muzzle_px", 0.0)), 0.0)
-	vfx.tracer(muz, Vector2(tgt["pos"]), COL_PHYS, float(owner.get("_golden_pct", 0.0)), GunEqVfx.HELI_H)
+	vfx.tracer(muz, Vector2(tgt["pos"]), COL_PHYS, float(owner.get("_golden_pct", 0.0)), GunEqVfx.HELI_H, GunEqVfx.body_mid_h(tgt))
 	# ⚠ `approach` 也要排除 —— 否则进场途中龟能仍是满的, 每帧都会重新算一次航线,
 	#   直升机会被不停地"重新指派起点"而原地抖。
 	if float(h["energy"]) >= HELI_EN_MAX and not (str(h.get("state", "")) in ["bomb", "approach", "egress"]):

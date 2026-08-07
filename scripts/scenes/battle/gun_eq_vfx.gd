@@ -431,7 +431,28 @@ const BULLET_SPD := 390.0       ## 码/秒。★用户 2026-08-07 两次实拍�
 const BULLET_PX := 9.0          ## 弹头辉光尺寸(码) —— 只负责"热", 方向交给流线
 const BULLET_HEAD := 16.0       ## 弹头流线长度(码)
 const BULLET_TAIL := 30.0       ## 尾焰长度(码, 向后画)
-func tracer(a: Vector2, b: Vector2, col: Color, gold_pct: float = 0.0, h_m: float = PISTOL_MUZZLE_H_M) -> void:
+## 目标**身体中段**的世界高度(米)。★从目标自己的立绘算, 不写死 ——
+## 实测假人立绘高 2.00 米, 中段 ≈ 1.0 米。
+static func body_mid_h(tgt) -> float:
+	if tgt is Dictionary:
+		var sp = (tgt as Dictionary).get("sprite", null)
+		if is_instance_valid(sp) and sp is Sprite3D:
+			var s2: Sprite3D = sp
+			if s2.texture != null:
+				var full: float = s2.pixel_size * float(s2.texture.get_height() / maxi(1, int(s2.vframes)))
+				return maxf(0.2, full * BODY_HIT_FRAC) + float((tgt as Dictionary).get("height", 0.0))
+	return 1.0
+
+
+## ★★2026-08-07 用户:「我问你子弹打到了假人身体的哪个地方」——
+##   实测: 弹道**全程飞在枪口高度**, 从来没往目标身上落。
+##     · 077 手枪 0.62 米 ÷ 假人 2.00 米 = **31%** ⇒ 打在**脚踝**
+##     · 080 直升机 **5.20 米** ⇒ **从头顶上方 3.2 米飞过去**, 根本没碰到身体
+##   ⇒ 弹道高度从**枪口**线性降到**目标身体中段**(由目标立绘算, 见 body_mid_h)。
+##   `h_to < 0` 表示"沿用出膛高度"(供不需要落点的调用方)。
+const BODY_HIT_FRAC := 0.5
+func tracer(a: Vector2, b: Vector2, col: Color, gold_pct: float = 0.0, h_m: float = PISTOL_MUZZLE_H_M,
+		h_to: float = -1.0) -> void:
 	if not _has_world():
 		return
 	var g: float = gold_glow(gold_pct)
@@ -454,7 +475,8 @@ func tracer(a: Vector2, b: Vector2, col: Color, gold_pct: float = 0.0, h_m: floa
 	# 弹头再叠一点点辉光(只是"热", 不承担方向)
 	var s := _sprite(VfxTex._make_fire_glow_tex(), battle._world_pos(a, h_m),
 		(BULLET_PX * (1.0 + 0.5 * g) * float(battle.WS)) / 64.0, c, false)
-	_adopt(s, life, "bullet", {"from": a, "to": b, "a0": c.a, "h": h_m})
+	var _h2: float = h_m if h_to < 0.0 else h_to
+	_adopt(s, life, "bullet", {"from": a, "to": b, "a0": c.a, "h": h_m, "h2": _h2})
 
 
 ## 爆炸立绘(11 帧一次性动画)。★**不做乒乓** —— 乒乓会让火球缩回去 = 倒放, 爆炸只能单向播。
@@ -849,12 +871,18 @@ func bomb_drop(from2: Vector2, land: Vector2, blast_r: float) -> void:
 	if not _has_world():
 		return
 	# ① 落点预警圈: 半径从 1.6× 收到 1.0×(真实爆炸半径), 收满那一刻正好弹着
-	var ps1: float = (blast_r * 2.0 * float(battle.WS)) / 64.0
+	# ★★2026-08-07 用户:「橙色圈圈的半径你画的多大啊？这是180？我看到1000码的圈」——
+	#   **他是对的**: `_make_thin_ring_tex()` 是 **256px**(它自己的注释写着"大范围预告圈用"),
+	#   而我这里除的是 **64** ⇒ 圈被画成设计值的 **4 倍**: 本该 360 码直径, 实际 **1440 码**。
+	#   ⚠ 我几十分钟前刚在**命中环**上修过一模一样的错, 却没回头查预警圈是我写的同一行。
+	#   ⇒ 尺寸一律**从纹理自己的高度算**, 不再写任何字面量。
+	var _rt: Texture2D = VfxTex._make_thin_ring_tex()
+	var ps1: float = (blast_r * 2.0 * float(battle.WS)) / float(maxi(1, _rt.get_height()))
 	# ★起始 1.6 → 1.25: 用户看到「这个橙圈你弄的多大？」。终值**不动** ——
 	#   它等于真实伤害半径 180 码(直径 360 码 ≈ 8 只龟并排), 改了就是骗玩家。
 	#   能调的只有"起始比终值大多少": 1.6 倍在场上是 576 码直径, 铺满大半个屏幕。
 	var ps0: float = ps1 * 1.25
-	var warn := _sprite(VfxTex._make_thin_ring_tex(), battle._world_pos(land, 0.06),
+	var warn := _sprite(_rt, battle._world_pos(land, 0.06),
 		ps0, Color(1.0, 0.42, 0.20, 0.85), true)
 	_adopt(warn, BOMB_FALL_SEC, "bombwarn", {"a0": 0.85, "ps0": ps0, "ps1": ps1})
 	# ② 淡尾迹(配角): 标出航向, 但主角是那颗弹
@@ -905,7 +933,10 @@ func tick(delta: float) -> void:
 				var bl: Sprite3D = n
 				var fa: Vector2 = f.get("from", Vector2.ZERO)
 				var fb: Vector2 = f.get("to", Vector2.ZERO)
-				bl.position = battle._world_pos(fa.lerp(fb, q), float(f.get("h", PISTOL_MUZZLE_H_M)))
+				# 高度也随行程插值 ⇒ 弹是**斜着落到身上**的, 不是平飞过去
+				var _hA: float = float(f.get("h", PISTOL_MUZZLE_H_M))
+				var _hB: float = float(f.get("h2", _hA))
+				bl.position = battle._world_pos(fa.lerp(fb, q), lerpf(_hA, _hB, q))
 				bl.modulate.a = float(f.get("a0", 1.0)) * (1.0 if q < 0.8 else (1.0 - q) / 0.2)
 			"bullettail":
 				# 弹头段 / 尾焰段都跟着弹走: 整块带**平移**(不重建网格) ⇒ 每帧零分配。
@@ -950,7 +981,9 @@ func tick(delta: float) -> void:
 			#   ⇒ 弹的寿命一到, 在**终点**炸一小下(火花 + 一圈极小的冲击环)。
 			#   ⚠ 只对 "bullet" 做; 尾焰(bullettail)不做, 否则一发弹会闪两次。
 			if str(f.get("kind", "")) == "bullet":
-				_bullet_impact(f.get("to", Vector2.ZERO), float(f.get("h", PISTOL_MUZZLE_H_M)))
+				# 命中火花放在**终点高度**(目标身体中段), 不是出膛高度
+				_bullet_impact(f.get("to", Vector2.ZERO),
+					float(f.get("h2", f.get("h", PISTOL_MUZZLE_H_M))))
 			n.queue_free()
 			_fx.remove_at(i)
 
