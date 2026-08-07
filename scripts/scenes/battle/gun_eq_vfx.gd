@@ -498,6 +498,23 @@ func tower_charge(t: Dictionary, ct: int, per: int) -> float:
 # ══════════════════════════════════════════════════════════════════
 
 ## 机体 = 发光球(机身) + 平面带(尾梁) + 旋转的双叶旋翼 + 龟能条。全部零素材。
+## 080 机身立绘的显示高度(码)与素材路径。★立绘缓存一次 —— 每架直升机都 load 一遍
+## 会在坠机重生时反复读盘; `null` 与"没查过"要分开存, 否则没素材时每帧都去 exists() 一次。
+const HELI_BODY_PX := 58.0
+## 旋翼转一圈, 机身立绘播几轮。1.0 = 一圈一轮。
+const HELI_FRAME_CYCLES := 1.0
+const HELI_TEX_PATH := "res://assets/sprites/vfx/eq-heli-idle.png"
+static var _heli_tex_cache: Texture2D = null
+static var _heli_tex_tried := false
+
+func _heli_tex() -> Texture2D:
+	if not _heli_tex_tried:
+		_heli_tex_tried = true
+		if ResourceLoader.exists(HELI_TEX_PATH):
+			_heli_tex_cache = load(HELI_TEX_PATH)
+	return _heli_tex_cache
+
+
 func heli_spawn(h: Dictionary) -> void:
 	if not _has_world():
 		return
@@ -505,9 +522,27 @@ func heli_spawn(h: Dictionary) -> void:
 	root.name = "GunEq_Heli"
 	battle._world.add_child(root)
 	_owned.append(root)
-	var body := _sprite(VfxTex._make_fire_glow_tex(), Vector3.ZERO, 0.022,
-		Color(0.85, 0.92, 1.0, 0.95), false)
-	body.scale = Vector3(1.4, 0.9, 1.0)
+	# ★机身: 有立绘就用立绘, 没有才退回发光球。
+	#   退回那条是**兜底不是设计** —— 发光球缩成 1.4×0.9 在场上读起来就是"一个灰长方形",
+	#   用户 2026-08-07 原话:「瞎画个圈也算特效，长方形也能算子弹」。素材在位就一定走上面这条。
+	var body: Sprite3D
+	var htex: Texture2D = _heli_tex()
+	if htex != null:
+		body = _sprite(htex, Vector3.ZERO, (HELI_BODY_PX * float(battle.WS)) / float(htex.get_height()),
+			Color(1, 1, 1, 1), false)
+		body.hframes = maxi(1, htex.get_width() / maxi(1, htex.get_height()))
+		# ★立绘已镜像成【机头朝右】(与 077 手枪同一约定), 所以只有右队要再翻回去。
+		#   ⚠ 队伍字段是 **`owner["side"]` 的字符串 "left"/"right"** ——
+		#     直升机字典自己**没有** `side` 键(它只有 `owner`)。我第一版写的
+		#     `int(h.get("side", 0)) == 1` 两头都错: 取不到键、且拿字符串当整数。
+		#     这种"读了个不存在的键、默认值又恰好不报错"的写法**永远静默**, 只有实拍能抓。
+		var _ow = h.get("owner", null)
+		if _ow is Dictionary and str(_ow.get("side", "left")) == "right":
+			body.flip_h = true
+	else:
+		body = _sprite(VfxTex._make_fire_glow_tex(), Vector3.ZERO, 0.022,
+			Color(0.85, 0.92, 1.0, 0.95), false)
+		body.scale = Vector3(1.4, 0.9, 1.0)
 	root.add_child(body)
 	var rotor := MeshInstance3D.new()
 	var st := SurfaceTool.new()
@@ -524,7 +559,11 @@ func heli_spawn(h: Dictionary) -> void:
 	rm.cull_mode = BaseMaterial3D.CULL_DISABLED
 	rm.albedo_color = Color(0.7, 0.85, 1.0, 0.55)
 	rotor.material_override = rm
-	root.add_child(rotor)
+	# ★有立绘时**不画**这块几何旋翼: 立绘自带旋翼模糊盘, 两个叠着就是两套旋翼,
+	#   而这块在实拍里读起来就是"一根横穿机身的灰长方形"(用户 2026-08-07 点名的那个)。
+	#   仍然建出来但不入树 —— heli_update 照旧积分它的相位(相位还要驱动机身帧), 只是不显示。
+	if htex == null:
+		root.add_child(rotor)
 	var en_bg := _sprite(VfxTex._make_pixel_block_tex(), Vector3(0, 0.7, 0), 0.02,
 		Color(0.06, 0.1, 0.16, 0.75), false)
 	en_bg.scale = Vector3(2.6, 0.42, 1.0)
@@ -534,6 +573,7 @@ func heli_spawn(h: Dictionary) -> void:
 	en.scale = Vector3(0.01, 0.34, 1.0)
 	root.add_child(en)
 	h["node"] = root
+	h["_body_spr"] = body
 	h["_rotor"] = rotor
 	h["_en"] = en
 	h["_body"] = body
@@ -549,6 +589,13 @@ func heli_update(h: Dictionary, delta: float) -> void:
 	var rotor = h.get("_rotor", null)
 	if rotor is Node3D and is_instance_valid(rotor):
 		rotor.rotation = Vector3(0.0, float(h["rotor"]), 0.0)
+	# 机身立绘的帧: 用**旋翼相位**驱动(不另起时钟) —— 旋翼相位本来就是每帧积分出来的,
+	# 拿它取模就天然与"旋翼在转"同步, 也不会因为暂停/变速跑掉。
+	var bs = h.get("_body_spr", null)
+	if bs is Sprite3D and is_instance_valid(bs) and int(bs.hframes) > 1:
+		var nf: int = int(bs.hframes)
+		var ph: float = fposmod(float(h["rotor"]) / TAU * HELI_FRAME_CYCLES, 1.0)
+		bs.frame = clampi(int(ph * float(nf)), 0, nf - 1)
 	var en = h.get("_en", null)
 	if en is Sprite3D and is_instance_valid(en):
 		var f: float = clampf(float(h.get("energy", 0.0)) / 100.0, 0.0, 1.0)
