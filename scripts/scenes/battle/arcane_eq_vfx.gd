@@ -298,7 +298,22 @@ static func _stroke(img: Image, x0: int, y0: int, x1: int, y1: int) -> void:
 			img.set_pixel(x, y, TX_RUNE)
 
 
-func _talisman_tex() -> ImageTexture:
+## ★优先用**真立绘**(PixelLab 出的黄纸朱砂符, 2026-08-07)。
+##   `talisman_tex_image()` 那张程序化的留着当兜底 —— 它是"几个矩形拼的符文",
+##   v0.19.37 之前它甚至是一张**纯白空板**(10.8×9.3 屏幕像素, 无符文/无月/无边框)。
+##   ⚠ 返回类型放宽到 Texture2D: 立绘是 CompressedTexture2D, 不是 ImageTexture。
+##     写死 ImageTexture 会在这里静默走不进去(只有实拍能发现)。
+const TALISMAN_TEX_PATH := "res://assets/sprites/vfx/eq-talisman.png"
+var _tex_talisman_file: Texture2D = null
+var _tex_talisman_tried := false
+
+func _talisman_tex() -> Texture2D:
+	if not _tex_talisman_tried:
+		_tex_talisman_tried = true
+		if ResourceLoader.exists(TALISMAN_TEX_PATH):
+			_tex_talisman_file = load(TALISMAN_TEX_PATH)
+	if _tex_talisman_file != null:
+		return _tex_talisman_file
 	if _tex_talisman == null:
 		_tex_talisman = ImageTexture.create_from_image(talisman_tex_image())
 	return _tex_talisman

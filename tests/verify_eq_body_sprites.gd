@@ -50,6 +50,12 @@ func _ready() -> void:
 	# 086 浮游炮绕着龟转, **没有朝向**这回事; 这条纯粹守"表没被人镜像/换掉"。
 	_check_strip("086 六分仪浮游炮", DRONE, 40, 16, -1)
 
+	# ── 089 蚀月符纸: 单帧立绘(不是帧表), 判据是**它不是一张空白板**。
+	#    由来: v0.19.37 之前它是 `talisman_tex_image()` 拼的几个矩形, 干净台一拍是
+	#    **10.8×9.3 屏幕像素的纯白空白四边形** —— 无符文/无月/无边框。
+	#    ⇒ 这条量的是"纸上有没有字": 不透明像素里, 与最亮色**明显不同**的那部分要够多。
+	_check_talisman()
+
 	# ── ④ 有立绘时不许再叠几何占位(直升机旋翼 mesh)
 	var s = load("res://scenes/RealtimeBattle3D.tscn").instantiate()
 	add_child(s)
@@ -92,6 +98,38 @@ func _ready() -> void:
 
 
 ## ①②③ 三条对一张帧表
+## 089 符纸: 判"纸上真的有字", 不是判尺寸。
+func _check_talisman() -> void:
+	var path := "res://assets/sprites/vfx/eq-talisman.png"
+	_ok("089 符纸 ★分母: 素材在位", ResourceLoader.exists(path), path)
+	if not ResourceLoader.exists(path):
+		return
+	var tex: Texture2D = load(path)
+	if tex == null:
+		_ok("089 符纸 ★分母: 能载入", false)
+		return
+	var img: Image = tex.get_image()
+	var lum: Array[float] = []
+	for y in range(img.get_height()):
+		for x in range(img.get_width()):
+			var c: Color = img.get_pixel(x, y)
+			if c.a > 0.3:
+				lum.append(c.r * 0.30 + c.g * 0.59 + c.b * 0.11)
+	_ok("089 符纸 ★分母: 有不透明像素", lum.size() > 200, "%d 个" % lum.size())
+	if lum.size() <= 200:
+		return
+	lum.sort()
+	var hi: float = lum[int(float(lum.size()) * 0.9)]     # 纸的底色(占大多数)
+	var dark := 0
+	for v in lum:
+		if v < hi - 0.18:                                  # 比底色暗一截 = 笔画
+			dark += 1
+	var frac: float = float(dark) / float(lum.size())
+	# ★阈值 8%: 一张纯白板是 0%, 现在这张实测远高于它。写字面量不引用被测数据。
+	_ok("089 符纸 ⑤ 纸上真的有笔画(暗于底色的像素 ≥ 8%)", frac >= 0.08,
+		"底色亮度 %.2f / 笔画占比 %.1f%%" % [hi, frac * 100.0])
+
+
 ## `bias`: 1 = 重心该偏右 · -1 = 该偏左 · **0 = 左右对称**(塔这种没有朝向的东西)
 func _check_strip(tag: String, path: String, frame_h: int, want_frames: int, bias: int) -> void:
 	_ok("%s ★分母: 素材在位" % tag, ResourceLoader.exists(path), path)

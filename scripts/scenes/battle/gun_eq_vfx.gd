@@ -621,10 +621,30 @@ func lane_marker(a: Vector2, b: Vector2, width: float) -> void:
 
 ## 一枚炸弹的下落弹迹: 按 ① 的自由落体 + 前置量画出来(不是垂直掉下去)。
 ## 返回弹着点 —— 门禁验的是这个几何量, 不用等演出跑完(CLAUDE.md §3.5)。
+## 080 炸弹立绘: 显示尺寸(码)、下落演出时长(秒)、素材路径(缓存一次)。
+const BOMB_PX := 22.0
+const BOMB_FALL_SEC := 0.42
+const BOMB_TEX_PATH := "res://assets/sprites/vfx/eq-bomb.png"
+static var _bomb_tex_cache: Texture2D = null
+static var _bomb_tex_tried := false
+
+func _bomb_tex() -> Texture2D:
+	if not _bomb_tex_tried:
+		_bomb_tex_tried = true
+		if ResourceLoader.exists(BOMB_TEX_PATH):
+			_bomb_tex_cache = load(BOMB_TEX_PATH)
+	return _bomb_tex_cache
+
+
 func bomb_track(drop_at: Vector2, heading: Vector2, speed: float) -> Vector2:
 	var land: Vector2 = drop_at + heading.normalized() * bomb_lead(speed, BOMB_DROP_H)
 	if not _has_world():
 		return land
+	# ★★2026-08-07 重做: 原来这里画的是【6 段短带】冒充弹迹 —— 也就是说
+	#   **炸弹本身从来没画过**, 玩家看到的是一串橙黄小方块。
+	#   (用户 08-07 原话:「瞎画个圈也算特效，长方形也能算子弹」——这就是"长方形当子弹"的实例。)
+	#   现在: 真炸弹立绘沿抛物线落下 + 一条**淡**尾迹。尾迹保留是因为它标出落点走向,
+	#   但它现在是**配角**(alpha 0.7 → 0.22、宽 2.5 → 1.2), 主角是那颗弹。
 	var segs := 6
 	for k in range(segs):
 		var f0: float = float(k) / float(segs)
@@ -632,8 +652,15 @@ func bomb_track(drop_at: Vector2, heading: Vector2, speed: float) -> Vector2:
 		var p0: Vector2 = drop_at.lerp(land, f0)
 		var p1: Vector2 = drop_at.lerp(land, f1)
 		var h0: float = HELI_H * (bomb_height(BOMB_DROP_H, f0) / BOMB_DROP_H)
-		var mi := _band(p0, p1, maxf(0.08, h0), 2.5, Color(1.0, 0.7, 0.35, 0.7))
-		_adopt(mi, 0.25, "band", {"a0": 0.7})
+		var mi := _band(p0, p1, maxf(0.08, h0), 1.2, Color(1.0, 0.7, 0.35, 0.22))
+		_adopt(mi, 0.25, "band", {"a0": 0.22})
+	var btex: Texture2D = _bomb_tex()
+	if btex != null:
+		var b := _sprite(btex, battle._world_pos(drop_at, HELI_H),
+			(BOMB_PX * float(battle.WS)) / float(btex.get_height()), Color(1, 1, 1, 1), false)
+		# 落体演出: 位置由 `bomb_height` 的**同一条自由落体曲线**驱动(不另写一条缓动) ——
+		# 演出与门禁验的几何量共用一个函数, 就不会出现"数字对、画面不对"。
+		_adopt(b, BOMB_FALL_SEC, "bomb", {"from": drop_at, "to": land, "a0": 1.0})
 	return land
 
 
@@ -663,6 +690,18 @@ func tick(delta: float) -> void:
 				var sp: Sprite3D = n
 				sp.modulate.a = float(f.get("a0", 1.0)) * (1.0 - q)
 				sp.scale = Vector3.ONE * (0.6 + 0.9 * q)
+			"bomb":
+				# ★水平匀速 + 竖直自由落体, **高度直接调 `bomb_height`** ——
+				#   与门禁验的前置量公式是同一条曲线, 不另写一条缓动。
+				#   (演出自己写一条 ease 就会出现"数字对、画面不对", 那种分歧最难查。)
+				var bs: Sprite3D = n
+				var a2: Vector2 = f.get("from", Vector2.ZERO)
+				var b2: Vector2 = f.get("to", Vector2.ZERO)
+				var here: Vector2 = a2.lerp(b2, q)
+				var hh: float = HELI_H * (bomb_height(BOMB_DROP_H, q) / BOMB_DROP_H)
+				bs.position = battle._world_pos(here, hh)
+				# 落地前不淡出(炸弹是实体不是光效), 最后 15% 才收掉, 免得跟爆点抢画面
+				bs.modulate.a = 1.0 if q < 0.85 else (1.0 - (q - 0.85) / 0.15)
 		if q >= 1.0:
 			n.queue_free()
 			_fx.remove_at(i)

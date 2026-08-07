@@ -98,3 +98,6 @@ tools/duel*-log/
 _vfxlab_*
 # VFXLAB 改前/改后对比图(2026-08-07 表现层那一轮) —— 工作产物, 不进仓
 _vfxshots/
+
+# Claude Code 本地权限设置(每台机器不同, 不进版本库)
+.claude/settings.local.json
