@@ -98,7 +98,11 @@ func _hunter_roll_ghost(u: Dictionary) -> void:                 # 单道灵巧�
 	g.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	g.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	g.shaded = false; g.transparent = true
-	g.hframes = spr.hframes; g.vframes = spr.vframes; g.frame = spr.frame
+	# ★先归零再改帧网格(这一族的统一写法): setter 会立即用新乘积校验当前 frame,
+	#   设 hframes 那一瞬 vframes 还是 1 ⇒ 乘积可能远小于要复制过来的 frame。
+	g.frame = 0
+	g.hframes = spr.hframes; g.vframes = spr.vframes
+	g.frame = clampi(int(spr.frame), 0, maxi(0, int(g.hframes) * int(g.vframes) - 1))
 	g.flip_h = spr.flip_h
 	g.pixel_size = spr.pixel_size
 	g.offset = spr.offset

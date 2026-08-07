@@ -759,7 +759,11 @@ func _heli_bullet(h: Dictionary, scale: float) -> void:
 		return
 	battle._damage._apply_damage_from(owner, tgt, battle._atk_dmg(owner, scale, tgt), COL_PHYS, 0.0, false, true)
 	h["energy"] = minf(HELI_EN_MAX, float(h.get("energy", 0.0)) + HELI_EN_PER_HIT)
-	vfx.tracer(Vector2(h["pos"]), Vector2(tgt["pos"]), COL_PHYS, float(owner.get("_golden_pct", 0.0)))
+	# ★★用户:「导弹从哪里发射」—— 原来出膛点是**机身中心**, 弹从机腹正中冒出来。
+	#   现在从**机头**出膛: `_muzzle_px` 由演出层按机头在贴图里的实测像素位置回填(见 heli_update),
+	#   它已经把 flip_h 算进去了 ⇒ 直升机掉头时出膛点自动跟到另一侧。
+	var muz: Vector2 = Vector2(h["pos"]) + Vector2(float(h.get("_muzzle_px", 0.0)), 0.0)
+	vfx.tracer(muz, Vector2(tgt["pos"]), COL_PHYS, float(owner.get("_golden_pct", 0.0)), GunEqVfx.HELI_H)
 	# ⚠ `approach` 也要排除 —— 否则进场途中龟能仍是满的, 每帧都会重新算一次航线,
 	#   直升机会被不停地"重新指派起点"而原地抖。
 	if float(h["energy"]) >= HELI_EN_MAX and not (str(h.get("state", "")) in ["bomb", "approach", "egress"]):
@@ -892,6 +896,9 @@ func _heli_bomb_run(h: Dictionary, delta: float) -> void:
 		h["bombs"] = int(h.get("bombs", 0)) + 1
 		var si: int = int(h["si"])
 		# ★炸弹也计入金弹计数(规格原文) ⇒ 同样从 `_queue_shots` 出去, gun_id 与机炮共用。
+		# ★演出走**真入口**: 每投一枚就放一次完整演出(预警圈 + 真炸弹 + 尾迹)。
+		#   `at` 是**伤害真正结算的那个落点**, 直接传给演出 ⇒ 预警圈和伤害范围天然是同一个数。
+		vfx.bomb_drop(Vector2(h["pos"]), at, BOMB_R)
 		battle._queue_shots(1, GOLD_GAP, func() -> void: heli_bomb_hit(h, si, at), h["owner"], "p2eq_080")
 	if f >= 1.0:
 		# ★★用户「别扭那就改」——原来投完最后一枚**当帧就切回追敌**, 像被人拽了一把。

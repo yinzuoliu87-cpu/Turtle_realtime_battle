@@ -4419,6 +4419,8 @@ func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   #
 		bear.position = _world_pos(pos, GROUND_LIFT)
 	# 到位: 播踢击动画 (5帧), 第3帧接触→伤害+击飞
 	if tgt != null and tgt.get("alive", false) and is_instance_valid(bear):
+		# ★先归零: 走路循环可能停在第 6 帧, 而踢击表只有 5 帧 ⇒ 设 hframes 那一瞬就越界。
+		bear.frame = 0
 		bear.texture = load("res://assets/sprites/vfx/teddy-kick.png")   # 玩偶泰迪踢击(5帧)
 		bear.hframes = 5
 		bear.frame = 0
@@ -7385,6 +7387,7 @@ func _spawn_phase_afterimage(spr) -> void:
 		return
 	var ai := Sprite3D.new()
 	ai.texture = spr.texture
+	ai.frame = 0                      # ★先归零再改帧网格(同族)
 	ai.hframes = spr.hframes
 	ai.vframes = spr.vframes
 	ai.frame = clampi(int(spr.frame), 0, maxi(0, int(ai.hframes) * int(ai.vframes) - 1))

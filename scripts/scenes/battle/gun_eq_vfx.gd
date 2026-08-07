@@ -457,11 +457,45 @@ func tracer(a: Vector2, b: Vector2, col: Color, gold_pct: float = 0.0, h_m: floa
 	_adopt(s, life, "bullet", {"from": a, "to": b, "a0": c.a, "h": h_m})
 
 
-## 一次爆点: 扩张的贴地环 + 中心光晕。
+## 爆炸立绘(11 帧一次性动画)。★**不做乒乓** —— 乒乓会让火球缩回去 = 倒放, 爆炸只能单向播。
+const BLAST_TEX_PATH := "res://assets/sprites/vfx/eq-blast.png"
+const BLAST_SEC := 0.55
+## 爆炸立绘的帧宽 = 伤害半径 × 这个系数。★不是 2.0(=直径)：
+##   立绘里的火球只占帧宽的一部分, 而**烟柱还往帧外的观感上延伸** ——
+##   按直径给, 实拍下整团把龟全吞掉、像一堵墙。1.3 让**可见火球**大致等于伤害半径,
+##   而"这一炸波及多大"由**贴地环**负责讲清楚(环画的是真半径, 一码不差)。
+const BLAST_ART_K := 1.3
+static var _blast_tex_cache: Texture2D = null
+static var _blast_tex_tried := false
+
+func _blast_tex() -> Texture2D:
+	if not _blast_tex_tried:
+		_blast_tex_tried = true
+		if ResourceLoader.exists(BLAST_TEX_PATH):
+			_blast_tex_cache = load(BLAST_TEX_PATH)
+	return _blast_tex_cache
+
+
+## 一次爆点。★★2026-08-07 用户:「爆炸特效？」—— 原来这里是
+##   **一个扩张的贴地环 + 一团圆辉光**, 也就是用户说的「瞎画个圈也算特效」。
+##   现在是真爆炸立绘(火球 → 碎块飞溅 → 烟尘消散, 11 帧)。
+##   ⚠ 贴地环**保留**但降到配角(alpha 0.9 → 0.35): 它标的是**伤害半径**, 是信息不是装饰;
+##     去掉它玩家就读不出这一炸波及多大。火球负责"好看", 环负责"讲清楚"。
 func blast(pos: Vector2, radius: float, col: Color) -> void:
 	if not _has_world():
 		return
-	_ring(pos, Color(col.r, col.g, col.b, 0.9), radius, 0.45)
+	_ring(pos, Color(col.r, col.g, col.b, 0.35), radius, 0.45)
+	var bt: Texture2D = _blast_tex()
+	if bt != null:
+		var nf: int = maxi(1, bt.get_width() / maxi(1, bt.get_height()))
+		var sp := _sprite(bt, battle._world_pos(pos, 0.30),
+			(radius * BLAST_ART_K * float(battle.WS)) / float(bt.get_height()),
+			Color(1, 1, 1, 1), false)
+		sp.hframes = nf
+		sp.frame = 0
+		_adopt(sp, BLAST_SEC, "blastanim", {"nf": nf})
+		return
+	# 兜底(素材缺席): 老的圆辉光
 	var s := _sprite(VfxTex._make_fire_glow_tex(), battle._world_pos(pos, 0.5),
 		(radius * 0.9 * battle.WS) / 96.0, Color(col.r, col.g, col.b, 0.8), false)
 	_adopt(s, 0.35, "puff", {"a0": 0.8})
@@ -619,6 +653,13 @@ func tower_charge(t: Dictionary, ct: int, per: int) -> float:
 const HELI_BODY_PX := 160.0
 ## 旋翼转一圈, 机身立绘播几轮。1.0 = 一圈一轮。
 const HELI_FRAME_CYCLES := 1.0
+## ★★机头在**贴图内**的像素坐标(左上原点)。这两个数我第一版**认反了两端**, 教训写在这:
+##   我逐列数不透明像素, 看到 x53~58 每列只有 2px 就判成"细尾梁在右, 所以贴图朝左"。
+##   实拍出来机头永远反着 ⇒ 把原图渲染出来一看: **圆胖座舱在右、尾梁+尾桨在左**,
+##   而 x53~58 那 2px 根本不是尾梁, 是**横贯全宽的旋翼叶片**。
+##   ⇒ **贴图原生朝右**。逐列统计对"哪端是什么"是不可靠的判据 —— 该看图的时候就得看图。
+const HELI_NOSE_PX_X := 52.0
+const HELI_NOSE_PX_Y := 36.0
 const HELI_TEX_PATH := "res://assets/sprites/vfx/eq-heli-idle.png"
 static var _heli_tex_cache: Texture2D = null
 static var _heli_tex_tried := false
@@ -701,6 +742,25 @@ func heli_update(h: Dictionary, delta: float) -> void:
 	var root = h.get("node", null)
 	if not (root is Node3D) or not is_instance_valid(root):
 		return
+	# ★★2026-08-07 用户:「直升机方向」—— 原来 `flip_h` 只在**生成时**按队伍设一次,
+	#   之后**永远不转**。一架直升机倒着飞而机头始终朝一边, 一眼就假。
+	#   ⇒ 按**实际移动方向**转向: **贴图原生朝右** ⇒ 往【左】飞才翻转。
+	#   ⚠ 用位移而不是"目标在哪边" —— 脱离/进场时它是**背对目标飞**的, 按目标转会转反。
+	#   ⚠ 死区 0.5 码/帧: 悬停时的微小抖动不该让它来回翻面(那比不转还难看)。
+	var prev: Vector2 = h.get("_last_pos", Vector2(h["pos"]))
+	var dx: float = float(h["pos"].x) - prev.x
+	h["_last_pos"] = Vector2(h["pos"])
+	var bs2 = h.get("_body_spr", null)
+	if bs2 is Sprite3D and is_instance_valid(bs2) and absf(dx) > 0.5:
+		(bs2 as Sprite3D).flip_h = dx < 0.0
+	# 机头的**场地坐标**回填给效果层 —— 机炮从这里出膛(和 077 手枪同一套做法)
+	if bs2 is Sprite3D and is_instance_valid(bs2):
+		var b2: Sprite3D = bs2
+		var fw2: float = float(b2.texture.get_width() / maxi(1, int(b2.hframes)))
+		var nx: float = ((HELI_NOSE_PX_X + 0.5) - fw2 * 0.5) * b2.pixel_size
+		if b2.flip_h:
+			nx = -nx
+		h["_muzzle_px"] = nx / float(battle.WS)
 	root.position = battle._world_pos(Vector2(h["pos"]), HELI_H)
 	var rotor = h.get("_rotor", null)
 	if rotor is Node3D and is_instance_valid(rotor):
@@ -752,32 +812,41 @@ func _bomb_tex() -> Texture2D:
 	return _bomb_tex_cache
 
 
-func bomb_track(drop_at: Vector2, heading: Vector2, speed: float) -> Vector2:
-	var land: Vector2 = drop_at + heading.normalized() * bomb_lead(speed, BOMB_DROP_H)
+## 一枚炸弹的**完整演出**: 落点预警圈 + 真炸弹沿抛物线落下 + 一条淡尾迹。
+##
+## ★★2026-08-07 这个函数被重写过, 原因写在这儿当教训:
+##   v0.19.41 我做了「真炸弹立绘沿抛物线落下」并写进 CHANGELOG 说修好了 ——
+##   而那个函数(`bomb_track`)**零调用者**, 炸弹**从来没在游戏里出现过**。
+##   我"目视确认"看的是一个死函数。memory [[fb-verify-must-run-the-real-path]] 记的就是这条,
+##   我又犯了一次。⇒ 现在它由 `_heli_bomb_run` 在**每次投弹时真的调用**。
+##
+## ★`land` 由**效果层传进来**(它是伤害真正结算的那个点), 本函数**不重算** ——
+##   预警圈和实际伤害范围必须是同一个数, 各算一次迟早对不上, 那就是骗玩家。
+func bomb_drop(from2: Vector2, land: Vector2, blast_r: float) -> void:
 	if not _has_world():
-		return land
-	# ★★2026-08-07 重做: 原来这里画的是【6 段短带】冒充弹迹 —— 也就是说
-	#   **炸弹本身从来没画过**, 玩家看到的是一串橙黄小方块。
-	#   (用户 08-07 原话:「瞎画个圈也算特效，长方形也能算子弹」——这就是"长方形当子弹"的实例。)
-	#   现在: 真炸弹立绘沿抛物线落下 + 一条**淡**尾迹。尾迹保留是因为它标出落点走向,
-	#   但它现在是**配角**(alpha 0.7 → 0.22、宽 2.5 → 1.2), 主角是那颗弹。
+		return
+	# ① 落点预警圈: 半径从 1.6× 收到 1.0×(真实爆炸半径), 收满那一刻正好弹着
+	var ps1: float = (blast_r * 2.0 * float(battle.WS)) / 64.0
+	var ps0: float = ps1 * 1.6
+	var warn := _sprite(VfxTex._make_thin_ring_tex(), battle._world_pos(land, 0.06),
+		ps0, Color(1.0, 0.42, 0.20, 0.85), true)
+	_adopt(warn, BOMB_FALL_SEC, "bombwarn", {"a0": 0.85, "ps0": ps0, "ps1": ps1})
+	# ② 淡尾迹(配角): 标出航向, 但主角是那颗弹
 	var segs := 6
 	for k in range(segs):
 		var f0: float = float(k) / float(segs)
 		var f1: float = float(k + 1) / float(segs)
-		var p0: Vector2 = drop_at.lerp(land, f0)
-		var p1: Vector2 = drop_at.lerp(land, f1)
+		var p0: Vector2 = from2.lerp(land, f0)
+		var p1: Vector2 = from2.lerp(land, f1)
 		var h0: float = HELI_H * (bomb_height(BOMB_DROP_H, f0) / BOMB_DROP_H)
 		var mi := _band(p0, p1, maxf(0.08, h0), 1.2, Color(1.0, 0.7, 0.35, 0.22))
 		_adopt(mi, 0.25, "band", {"a0": 0.22})
+	# ③ 真炸弹: 位置由**和门禁验的前置量公式同一个** `bomb_height` 驱动
 	var btex: Texture2D = _bomb_tex()
 	if btex != null:
-		var b := _sprite(btex, battle._world_pos(drop_at, HELI_H),
+		var b := _sprite(btex, battle._world_pos(from2, HELI_H),
 			(BOMB_PX * float(battle.WS)) / float(btex.get_height()), Color(1, 1, 1, 1), false)
-		# 落体演出: 位置由 `bomb_height` 的**同一条自由落体曲线**驱动(不另写一条缓动) ——
-		# 演出与门禁验的几何量共用一个函数, 就不会出现"数字对、画面不对"。
-		_adopt(b, BOMB_FALL_SEC, "bomb", {"from": drop_at, "to": land, "a0": 1.0})
-	return land
+		_adopt(b, BOMB_FALL_SEC, "bomb", {"from": from2, "to": land, "a0": 1.0})
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -825,6 +894,18 @@ func tick(delta: float) -> void:
 				var tmat = tm.material_override
 				if tmat is StandardMaterial3D:
 					(tmat as StandardMaterial3D).albedo_color.a = float(f.get("a0", 0.45)) * (1.0 - q)
+			"blastanim":
+				# 逐帧播一遍(不循环、不倒放)。末帧停住那一小会儿由 alpha 收尾。
+				var ba: Sprite3D = n
+				var bn: int = int(f.get("nf", 1))
+				ba.frame = clampi(int(q * float(bn)), 0, maxi(0, int(ba.hframes) * int(ba.vframes) - 1))
+				ba.modulate.a = 1.0 if q < 0.82 else (1.0 - q) / 0.18
+			"bombwarn":
+				# 收缩到真实爆炸半径; **alpha 反而越来越亮** —— 越接近弹着越显眼,
+				# 常见的错法是让它淡出, 那样最关键的最后一刻反而最看不见。
+				var wr: Sprite3D = n
+				wr.pixel_size = lerpf(float(f.get("ps0", 0.0)), float(f.get("ps1", 0.0)), q)
+				wr.modulate.a = float(f.get("a0", 0.85)) * (0.55 + 0.45 * q)
 			"bomb":
 				# ★水平匀速 + 竖直自由落体, **高度直接调 `bomb_height`** ——
 				#   与门禁验的前置量公式是同一条曲线, 不另写一条缓动。

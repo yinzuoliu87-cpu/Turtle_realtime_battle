@@ -122,9 +122,16 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 	battle._burst_vfx("res://assets/sprites/vfx/ninja-slash.png", u["pos"], 98.0, 1.0)   # 落点疾风斩弧
 	if _ndash:
 		# 落地三帧: 取表的最后三帧(原来写死 8/9/10, 越界; 理由见上面滑行那段的注释)
-		var _nlast: int = _nspr_last(_nspr) if is_instance_valid(_nspr) else 0
-		for _lf in [maxi(0, _nlast - 2), maxi(0, _nlast - 1), _nlast]:
-			if is_instance_valid(_nspr): _nspr.frame = _lf
+		# ★★2026-08-07 真根因(冒烟随机报 `p_frame = 16/17 out of bounds (…=7)` 追了很久):
+		#   上限 `_nlast` 原来**在循环外算一次**(冲刺表 18 帧 ⇒ 17), 而循环里**有 await** ——
+		#   忍者若在这三帧之间**阵亡**, 表会被换成 7 帧的 `ninja/death.png`,
+		#   后续两次写就是 frame=16、17 打在 7 帧的表上。**两条连续报错正是这么来的。**
+		#   ⇒ **每次写之前重新按精灵当前的 hframes×vframes 算上限**。
+		#   通则: **跨 await 的帧号上限一律不能缓存** —— await 中间世界会变。
+		for _step in [2, 1, 0]:
+			if is_instance_valid(_nspr):
+				var _lim: int = _nspr_last(_nspr)
+				_nspr.frame = clampi(_lim - _step, 0, _lim)
 			await battle._wait_sim(0.05)
 		u["_manual_anim"] = false
 		if is_instance_valid(_nspr): battle._set_anim_sheet(u, u.get("idle_sd", {}), "", true)   # 回idle

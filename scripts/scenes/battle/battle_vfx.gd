@@ -81,6 +81,11 @@ func _play_egg_shatter(u: Dictionary) -> void:
 	battle._shake(battle.JUICE_SHAKE_BIG)
 	var crack: Texture2D = load("res://assets/sprites/map/egg_crack.png") if ResourceLoader.exists("res://assets/sprites/map/egg_crack.png") else null
 	if crack != null:                       # 裂纹帧是对的(米白+绿斑+裂纹), 保留
+		# ★★这里是**复用单位自己的精灵**(把它换成裂纹图), 不是新建 ——
+		#   所以必须**先把 frame 归零再改帧网格**: Godot 在 hframes/vframes 的 setter 里
+		#   会立即用新乘积校验当前 frame, 而这里新乘积是 **1**, 旧 frame 可能是 17 ⇒ 直接越界。
+		#   冒烟随机报的 `p_frame = 17 is out of bounds (vframes*hframes = 7)` 同族。
+		spr.frame = 0
 		spr.texture = crack; spr.hframes = 1; spr.vframes = 1; spr.frame = 0
 		spr.material_override = null
 		spr.pixel_size = battle.TARGET_BODY_H / float(maxi(1, crack.get_height()))

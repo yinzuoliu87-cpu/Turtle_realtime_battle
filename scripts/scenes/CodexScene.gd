@@ -652,6 +652,11 @@ func _add_pet_portrait(cx: float, cy: float, pet: Dictionary, box: float) -> voi
 		var fh: int = maxi(1, int(meta.get("frameH", tex.get_height())))
 		var hf: int = maxi(1, int(floor(float(tex.get_width()) / float(fw))))
 		var vf: int = maxi(1, int(floor(float(tex.get_height()) / float(fh))))
+		# ★换表前先把 frame 归零 —— setter 会立即用新乘积校验当前 frame。
+		#   图鉴切龟时**复用同一个精灵**: 从 4 行网格(可达 27)切到 7 帧单行时,
+		#   设 vframes 那一瞬乘积掉到 7 而 frame 还是旧值 ⇒ 越界。
+		#   与 RealtimeBattle3DScene._set_anim_sheet 是同一个坑(那里有长注释)。
+		spr.frame = 0
 		spr.hframes = hf; spr.vframes = vf; spr.frame = 0
 		var frame_total: int = hf * vf
 		var idle_n: int = maxi(1, mini(int(meta.get("frames", frame_total)), frame_total - 1))
