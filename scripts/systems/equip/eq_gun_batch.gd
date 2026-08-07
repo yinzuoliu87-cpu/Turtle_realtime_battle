@@ -154,7 +154,7 @@ const PISTOL_BACK := 70.0
 ##   ★-78 又太高了(枪看着像挂在天上、不像携带者的枪), 回调到 -56: 弹道刚好从龟头上方掠过。
 const PISTOL_SIDE_Y := -56.0
 ## 演出层还没回填 `_muzzle_px` 时的兜底半枪长(码)。实测值 16.37, 这里取整。
-const PISTOL_MUZZLE_FALLBACK := 16.0
+const PISTOL_MUZZLE_FALLBACK := 15.9   ## 实测: 0.4875 帧宽 × 40px × 0.0196 ÷ WS 0.024 = 15.9 码
 ## 077 每次攻击给自己 +1 护甲穿透(规格原文), 每路重置 —— 换路重建召唤物即天然重置
 const PISTOL_PEN_PER_SHOT := 1.0
 ## 079 炮台: 生成在携带者【后方】这么远(规格原文 150 码) · 射程见 D4
@@ -412,9 +412,10 @@ func _pistol_bullet(p: Dictionary) -> void:
 	battle._damage._apply_damage_from(p, tgt, dmg, COL_PHYS, 0.0, false, true)
 	# ★弹道从**枪管尖**出发, 不是单位中心 —— 与枪口火焰同一个锚点(pistol_fire 里写的)。
 	#   `_muzzle_px` 是"半枪长(码)", 由演出层按精灵实际尺寸算出来回填, 这里不重算。
-	var _aim2: Vector2 = (Vector2(tgt["pos"]) - Vector2(p["pos"])).normalized()
-	var _muz: Vector2 = Vector2(p["pos"]) + _aim2 * float(p.get("_muzzle_px", PISTOL_MUZZLE_FALLBACK))
-	vfx.tracer(_muz, Vector2(tgt["pos"]), COL_PHYS, gold)
+	# ★★只偏**水平**: 枪立绘永远朝右不转向 ⇒ 枪口在 +x。
+	#   第一版乘的是 aim(指向目标 = 右下方) ⇒ 弹从枪的右下角冒出来而不是枪口(用户实拍抓到)。
+	var _muz: Vector2 = Vector2(p["pos"]) + Vector2(float(p.get("_muzzle_px", PISTOL_MUZZLE_FALLBACK)), 0.0)
+	vfx.tracer(_muz, Vector2(tgt["pos"]), COL_PHYS, gold, float(p.get("_muzzle_h", 0.6)))
 
 
 # ══════════════════════════════════════════════════════════════════

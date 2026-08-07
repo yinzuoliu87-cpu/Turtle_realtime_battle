@@ -287,14 +287,33 @@ func _ring(pos2: Vector2, col: Color, radius: float, life: float) -> void:
 ##   弹道从枪【上方】飞出还**穿过携带者的龟壳**。差了一整个身位, 而门禁全绿 ——
 ##   因为没有一条断言问过"它们在不在枪身上"。
 ## ⇒ 枪管尖 = 单位中心 + 朝向 × 18 码(16.37 半枪长 + 1.6 让火焰不压在枪管上)。
-const PISTOL_MUZZLE_PX := 18.0
+## ★★枪口在**贴图内**的位置(相对帧中心, 单位=帧宽/帧高的比例)。★这两个数改过三版, 全是实测逼出来的:
+##   第①版 `半帧宽 / 帧中心` —— 猜的。用户实拍:「枪口火焰在哪？偏到哪里去了」。
+##   第②版 `+0.4125 / −0.10` —— 量了贴图, 但**量错了哪一端**: 我默认"枪管在右",
+##     于是拿最右列当枪口。逐列数不透明像素才发现: **x0~9 每列只有 12~14 px 高(细枪管)、
+##     x30~36 才是圆润的枪托** ⇒ **枪管在贴图的【左】端**。
+##   第③版(现在) —— 探针又打出决定性的一条: **`flip_h = true`**。
+##     渲染层把整张图水平翻转了(所以屏幕上枪口朝右), 而我按"没翻转"算, 符号正好取反,
+##     火焰落到 local x = −0.324 = 枪的【左后方】。
+##   ⇒ 这两个数是**贴图坐标系**里的值; 显示位置要再乘一次翻转符号, 见下面 mx 的算式。
+##   实测: 枪口列 x=0(16 帧全部一致) ⇒ 水平 (0.5−20)/40 = −0.4875 帧宽
+##         枪口那一列的 y 中心, 16 帧中位数 ⇒ 竖直 +0.215 帧高(Godot 局部 +y 朝上)
+##   ⇒ 直接记**枪口在贴图里的像素坐标**(左上原点), 换算交给上面那条真实公式:
+##     x=0 (枪口列, 16 帧全一致) · y=11 (枪口那一列的 y 中心, 16 帧中位)
+const MUZZLE_PX_X := 0.0
+const MUZZLE_PX_Y := 11.0
+## (旧常量, 现仅用于没有精灵时的兜底)
+const PISTOL_MUZZLE_PX := 15.0
 ## ★26 码是实拍改小后的值: 第一版给 26 但 `_make_fire_glow_tex` 的可见辉光远大于名义半径,
 ##   13 倍拉近下盖住半个屏幕。按"火焰略大于枪管口径、不该盖住枪身"定 13 码。
 ##   ⚠ 这类"名义尺寸 ≠ 观感尺寸"只有实拍才抓得到 —— 贴图自带的软边把有效半径放大了约一倍。
-const PISTOL_FLASH_PX := 13.0
-## ★火焰/弹道的世界高度 = 枪精灵中心高度(实测 0.036 米)。
-##   ⚠ 不写 0 —— 贴地会被地面 z-fight; 0.10 刚好在枪身中段、又高于地面。
-const PISTOL_MUZZLE_H_M := 0.10
+## ★13 → 9: 13 码的软辉光在 11 倍拉近下是一大团, **连它自己的中心在哪都读不准**
+##   (我为此多花了两轮去对锚点)。收小后枪口位置一眼可判。
+const PISTOL_FLASH_PX := 9.0
+## ★弹道的世界高度。枪精灵中心实测在 0.036 米、枪管比中心再低 0.1 帧高(≈0.08 米) ⇒ 约 0.0 米。
+##   ⚠ 不写 0 —— 贴地会被地面 z-fight。0.05 刚好在枪管高度、又高于地面。
+##   (枪口火焰不用这个数 —— 它是枪的子节点, 高度由 MUZZLE_FY 决定, 不经过世界坐标。)
+const PISTOL_MUZZLE_H_M := 0.05
 const PISTOL_FLASH_SEC := 0.09
 ## 后坐行程(码)。★不设时长常量 —— 时长按实际攻击间隔折算, 见 pistol_fire。
 const PISTOL_KICK_PX := 7.0
@@ -329,20 +348,51 @@ func pistol_fire(p: Dictionary, aim: Vector2, iv: float) -> void:
 	#     它天然跟着枪走 —— 连**后坐时火焰也跟着往后弹**, 而世界坐标版做不到这一点。
 	if is_instance_valid(spr) and spr is Sprite3D:
 		var gs: Sprite3D = spr
-		var half_len: float = float(gs.texture.get_width() / maxi(1, int(gs.hframes))) * gs.pixel_size * 0.5
+		var fw: float = float(gs.texture.get_width() / maxi(1, int(gs.hframes)))
+		var fh: float = float(gs.texture.get_height() / maxi(1, int(gs.vframes)))
+		# ★★2026-08-07 第二次修。第一版用"半帧宽 + 帧中心", 用户实拍:「枪口火焰在哪？偏到哪里去了」。
+		#   量了贴图才知道两处都错(逐帧扫不透明像素, 帧 0/4/8 结论一致):
+		#     · 不透明像素只到 x = 36/40 ⇒ 枪管尖在 **0.4125 帧宽**处, 不是 0.5(右边有 3.5px 留白)
+		#     · 枪管的竖直中心在 y ≈ 24 而帧中心是 20 ⇒ 枪管**低于精灵中心 0.1 帧高**。
+		#       这一项我第一版**完全没算**(默认写了 0)。
+		#   ⇒ 锚点必须来自"贴图里枪管画在哪", 而不是"精灵框有多大"。这两件事不是一回事。
+		# ★★第⑤版 —— 前四版全错, 每一版错在一个不同的假设上, 全部写下来当教训:
+		#   ① `半帧宽 / 帧中心` —— 纯猜。用户:「枪口火焰在哪？偏到哪里去了」。
+		#   ② `最右列当枪口` —— 量了贴图但**量错了哪一端**: 逐列数不透明像素才发现
+		#      x0~9 每列只有 12~14 px 高(细枪管)、x30~36 才是圆润的枪托 ⇒ **枪管在左端**。
+		#   ③ `符号没管 flip_h` —— 探针打出 **flip_h = true**(渲染层把整张图翻过来了,
+		#      所以屏幕上枪口朝右), 我按没翻转算, 符号取反, 火焰落到枪的左后方。
+		#   ④ `用 get_aabb()` —— 它返回的是 **1.571 米的立方体**(billboard 的保守包围盒,
+		#      边长 = 帧尺寸的 2 倍), **根本不是精灵的可视范围**, 于是偏右一大截。
+		#   ⑤ (现在) 探针打出决定性的最后一条: **`offset = (0, 20)` 贴图像素** ——
+		#      精灵被整体上移 20px × pixel_size = **0.393 米**, 也就是说
+		#      **节点位置在枪的【底部】而不是中心**。前四版全都默认了"节点=中心",
+		#      这就是竖直方向一直偏低 0.393 米(屏幕上约 85 px)的原因。
+		#   ⇒ 现在按【贴图像素 → 局部坐标】的真实换算式来, 三个因素一个不漏:
+		#      居中(−fw/2) · 翻转(flip_h) · 偏移(offset)。
+		var px_off: float = ((MUZZLE_PX_X + 0.5) - fw * 0.5) * gs.pixel_size
+		if gs.flip_h:
+			px_off = -px_off
+		var mx: float = px_off + gs.offset.x * gs.pixel_size
+		var my: float = (fh * 0.5 - (MUZZLE_PX_Y + 0.5)) * gs.pixel_size + gs.offset.y * gs.pixel_size
 		var f := Sprite3D.new()
 		f.texture = VfxTex._make_fire_glow_tex()
 		f.shaded = false
 		f.transparent = true
 		f.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
-		f.modulate = Color(1.0, 0.86, 0.42, 0.95)
+		f.modulate = Color(1.0, 0.92, 0.55, 1.0)
 		f.pixel_size = (PISTOL_FLASH_PX * float(battle.WS)) / 64.0
 		# 枪立绘朝右 ⇒ 枪口在 +x; 若被翻转过就取负(现在没翻, 留着防以后)
-		f.position = Vector3(half_len * (-1.0 if gs.flip_h else 1.0), 0.0, 0.0)
+		f.position = Vector3(mx, my, 0.0)
 		gs.add_child(f)
 		_fx.append({"node": f, "t": 0.0, "life": PISTOL_FLASH_SEC, "kind": "puff", "a0": 0.95})
-		# 弹道起点也用这一点(换算回场地码), 两者天然对齐
-		p["_muzzle_px"] = half_len / float(battle.WS)
+		# 弹道起点也用这一点(换算回场地码), 两者天然对齐。
+		# ★只给**水平**分量: 枪立绘永远朝右不转向, 枪口就在 +x ——
+		#   第一版让弹道沿 `aim` 斜出去(aim 指向目标, 是右下方) ⇒ 弹从枪的右下角冒出来, 不是枪口。
+		p["_muzzle_px"] = mx / float(battle.WS)
+		# ★弹道的**高度**也要用这个点 —— 第④版之前弹道高度写死 0.05 米,
+		#   而枪口的真实全局高度是 `枪节点 y + my` ≈ 0.62 米。弹于是从枪底下飞出去。
+		p["_muzzle_h"] = gs.global_position.y + my
 
 
 func pistol_deploy(pos: Vector2) -> void:
@@ -370,10 +420,11 @@ func pistol_uncovered(pos: Vector2) -> void:
 ##   · 高度 = 枪身高度(不再穿龟)
 ##   · 飞行时间 = 距离 / 速度 ⇒ **近的目标弹到得快、远的慢**, 这本身就是可读的信息
 ## ⚠ 仍然不用 tween: 位置由本文件的 `tick()` 推(CLAUDE.md §3.5)。
-const BULLET_SPD := 2600.0      ## 码/秒。420 码 ≈ 0.16 秒到 —— 看得见"飞过去", 又不拖沓
+const BULLET_SPD := 780.0       ## 码/秒。★用户 2026-08-07 实拍后要求「减慢 70%」: 2600 × 0.3 = 780。
+                                ## 260 码 ≈ 0.33 秒到 —— 一发的飞行明显看得完整。
 const BULLET_PX := 15.0         ## 弹丸显示尺寸(码)
 const BULLET_TAIL := 26.0       ## 尾焰长度(码)
-func tracer(a: Vector2, b: Vector2, col: Color, gold_pct: float = 0.0) -> void:
+func tracer(a: Vector2, b: Vector2, col: Color, gold_pct: float = 0.0, h_m: float = PISTOL_MUZZLE_H_M) -> void:
 	if not _has_world():
 		return
 	var g: float = gold_glow(gold_pct)
@@ -381,12 +432,12 @@ func tracer(a: Vector2, b: Vector2, col: Color, gold_pct: float = 0.0) -> void:
 	var dist: float = (b - a).length()
 	var life: float = clampf(dist / BULLET_SPD, 0.05, 0.5)
 	# 弹丸
-	var s := _sprite(VfxTex._make_fire_glow_tex(), battle._world_pos(a, PISTOL_MUZZLE_H_M),
+	var s := _sprite(VfxTex._make_fire_glow_tex(), battle._world_pos(a, h_m),
 		(BULLET_PX * (1.0 + 0.5 * g) * float(battle.WS)) / 64.0, c, false)
-	_adopt(s, life, "bullet", {"from": a, "to": b, "a0": c.a})
+	_adopt(s, life, "bullet", {"from": a, "to": b, "a0": c.a, "h": h_m})
 	# 尾焰: 一小截跟着弹走的带(不是整条航线)
 	var dir: Vector2 = (b - a).normalized() if dist > 0.001 else Vector2.RIGHT
-	var tail := _band(a, a + dir * BULLET_TAIL, PISTOL_MUZZLE_H_M, 1.6 + 2.4 * g,
+	var tail := _band(a, a + dir * BULLET_TAIL, h_m, 1.6 + 2.4 * g,
 		Color(c.r, c.g, c.b, 0.45))
 	_adopt(tail, life, "bullettail", {"from": a, "to": b, "dir": dir, "a0": 0.45})
 
@@ -738,7 +789,7 @@ func tick(delta: float) -> void:
 				var bl: Sprite3D = n
 				var fa: Vector2 = f.get("from", Vector2.ZERO)
 				var fb: Vector2 = f.get("to", Vector2.ZERO)
-				bl.position = battle._world_pos(fa.lerp(fb, q), PISTOL_MUZZLE_H_M)
+				bl.position = battle._world_pos(fa.lerp(fb, q), float(f.get("h", PISTOL_MUZZLE_H_M)))
 				bl.modulate.a = float(f.get("a0", 1.0)) * (1.0 if q < 0.8 else (1.0 - q) / 0.2)
 			"bullettail":
 				# 尾焰跟着弹走: 整块带**平移**(不重建网格) ⇒ 每帧零分配
