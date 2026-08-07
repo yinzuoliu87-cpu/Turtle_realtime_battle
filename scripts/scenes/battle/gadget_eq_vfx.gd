@@ -253,6 +253,21 @@ func piezo_spark(u: Dictionary, energy: float) -> MeshInstance3D:
 
 ## 让场上的炮体节点数与逻辑炮数一致, 并把每门摆到它该在的位置。
 ## `drones` 是 EqGadgetBatch 的逻辑数组(元素含 ang / sx / sy / scat)。
+## 086 浮游炮的立绘(缓存一次) 与显示尺寸(码) / 播放速度(帧每秒)。
+const DRONE_PX := 26.0
+const DRONE_FPS := 9.0
+const DRONE_TEX_PATH := "res://assets/sprites/vfx/eq-orbdrone-idle.png"
+static var _drone_tex_cache: Texture2D = null
+static var _drone_tex_tried := false
+
+func _drone_tex() -> Texture2D:
+	if not _drone_tex_tried:
+		_drone_tex_tried = true
+		if ResourceLoader.exists(DRONE_TEX_PATH):
+			_drone_tex_cache = load(DRONE_TEX_PATH)
+	return _drone_tex_cache
+
+
 func sextant_sync(u: Dictionary, drones: Array, orbit_r: float) -> Array:
 	if not _alive():
 		return []
@@ -262,10 +277,29 @@ func sextant_sync(u: Dictionary, drones: Array, orbit_r: float) -> Array:
 		var dead = nodes.pop_back()
 		if is_instance_valid(dead):
 			(dead as Node).queue_free()
+	var dtex: Texture2D = _drone_tex()
 	while nodes.size() < drones.size():
-		var n := _mi(SphereMesh.new(), Color(DRONE_COLOR.r, DRONE_COLOR.g, DRONE_COLOR.b, 0.95), "drone")
-		(n.mesh as SphereMesh).radius = DRONE_R_M
-		(n.mesh as SphereMesh).height = DRONE_R_M * 2.0
+		# ★有立绘就用立绘。原来这里是一个 **SphereMesh 小球** —— 「白球家族」的字面意思:
+		#   六门炮绕着龟转, 玩家看到的是六个紫色小球, 分不出那是"炮"还是别的什么。
+		#   兜底那条(球)保留: 素材缺席时至少还看得见位置, 但那是**兜底不是设计**。
+		var n: Node3D
+		if dtex != null:
+			var sp := Sprite3D.new()
+			sp.texture = dtex
+			sp.hframes = maxi(1, dtex.get_width() / maxi(1, dtex.get_height()))
+			sp.shaded = false
+			sp.transparent = true
+			sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			sp.pixel_size = (DRONE_PX * float(battle.WS)) / float(dtex.get_height())
+			battle._world.add_child(sp)
+			_owned.append(sp)
+			n = sp
+		else:
+			var mi := _mi(SphereMesh.new(), Color(DRONE_COLOR.r, DRONE_COLOR.g, DRONE_COLOR.b, 0.95), "drone")
+			(mi.mesh as SphereMesh).radius = DRONE_R_M
+			(mi.mesh as SphereMesh).height = DRONE_R_M * 2.0
+			n = mi
 		nodes.append(n)
 	for i in range(drones.size()):
 		var d: Dictionary = drones[i]
@@ -274,7 +308,14 @@ func sextant_sync(u: Dictionary, drones: Array, orbit_r: float) -> Array:
 			at = Vector2(float(d.get("sx", 0.0)), float(d.get("sy", 0.0)))   # 终极演出期间飞散在外
 		else:
 			at = (u["pos"] as Vector2) + Vector2(cos(float(d["ang"])), sin(float(d["ang"]))) * orbit_r
-		(nodes[i] as MeshInstance3D).position = battle._world_pos(at, DRONE_LIFT)
+		(nodes[i] as Node3D).position = battle._world_pos(at, DRONE_LIFT)
+		# 帧: 每门炮**错开相位**(用它自己的轨道角当相位) —— 六门同帧齐闪会读成一个整体在闪。
+		if nodes[i] is Sprite3D:
+			var sp2 := nodes[i] as Sprite3D
+			var nfr: int = int(sp2.hframes)
+			if nfr > 1:
+				var ph: float = fposmod((battle._t * DRONE_FPS + float(d.get("ang", 0.0)) * 2.4) / float(nfr), 1.0)
+				sp2.frame = clampi(int(ph * float(nfr)), 0, nfr - 1)
 	u["_sext_nodes"] = nodes
 	return nodes
 

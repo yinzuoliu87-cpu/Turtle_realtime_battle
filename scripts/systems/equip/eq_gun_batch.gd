@@ -536,7 +536,7 @@ static func tower_pos(carrier: Vector2, side: String, arena: Rect2, obstacles: A
 
 func _spawn_tower(owner: Dictionary, si: int, hp: float, atk: float, res: float) -> void:
 	var t = battle._spawn._spawn_summon(owner, "medtower", hp, atk,
-		{"label": "急救塔", "spr_id": "", "col_size": 40.0, "hp_w": 30.0,
+		{"label": "急救塔", "spr_id": "coraltower", "col_size": 40.0, "hp_w": 30.0,
 		 "atk_interval": 1.0, "atk_range": TOWER_RANGE, "melee": false, "no_move": true})
 	if t == null:
 		return

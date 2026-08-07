@@ -1882,12 +1882,21 @@ func _resolve_summon_sprite(spr_id: String) -> Dictionary:
 	#   走通用路会被当成静态单图 ⇒ 16 帧的表会显示成"一排小枪"(2026-07-17 竹叶龟踩过同一个坑)。
 	# ★帧表是【乒乓】排的(0..8 再 7..1 = 16 帧): PixelLab 出的 idle 末帧与首帧差 323/1600 像素,
 	#   直接首尾相接会每轮跳一下; 乒乓让循环天然闭合, 且"悬浮上下"这个动作本来就该来回。
-	if spr_id == "pistol":
-		var pp := SPRITE_DIR + "vfx/eq-pistol-idle.png"
+	# ★装备召唤物的本体立绘(「白球家族」)。没有这几条就会掉进最下面的**兜底队色发光球** ——
+	#   干净台花名册会打 `spr=✗`, 玩家看到的是"场上多了个不明白点"。
+	#   一律 16 帧乒乓排帧(0..8 再 7..1), 见 tests/verify_eq_body_sprites.gd 的 ②。
+	const _EQ_BODY_SPR := {
+		"pistol": ["vfx/eq-pistol-idle.png", 40],       # 077 铜管手铳
+		"coraltower": ["vfx/eq-coraltower-idle.png", 64],  # 079 珊瑚急救塔
+	}
+	if _EQ_BODY_SPR.has(spr_id):
+		var _row: Array = _EQ_BODY_SPR[spr_id]
+		var pp: String = SPRITE_DIR + str(_row[0])
+		var _fw: int = int(_row[1])
 		if ResourceLoader.exists(pp):
 			var pt: Texture2D = load(pp)
 			if pt != null:
-				return _sprite_dict_from(pt, {"frames": 16, "frameW": 40, "frameH": 40, "duration": 1280}, true)
+				return _sprite_dict_from(pt, {"frames": 16, "frameW": _fw, "frameH": _fw, "duration": 1280}, true)
 	# treasure_golem idle 动画 (宝箱怪有专属帧, frameW/H=74/73, 7帧)
 	if spr_id == "treasure-golem" or spr_id == "treasure_golem":
 		var anim := SPRITE_DIR + "pets/animations/treasure_golem/idle.png"

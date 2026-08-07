@@ -33,6 +33,8 @@ extends Node
 
 const PISTOL := "res://assets/sprites/vfx/eq-pistol-idle.png"
 const HELI := "res://assets/sprites/vfx/eq-heli-idle.png"
+const CORAL := "res://assets/sprites/vfx/eq-coraltower-idle.png"
+const DRONE := "res://assets/sprites/vfx/eq-orbdrone-idle.png"
 
 var _n := 0
 var _fail := 0
@@ -42,8 +44,11 @@ func _ready() -> void:
 	await get_tree().process_frame
 	print("=== 白球家族·本体立绘 ===")
 
-	_check_strip("077 小手枪", PISTOL, 40, 16, false)
-	_check_strip("080 直升机", HELI, 64, 16, true)
+	_check_strip("077 小手枪", PISTOL, 40, 16, -1)
+	_check_strip("080 直升机", HELI, 64, 16, 1)
+	_check_strip("079 珊瑚急救塔", CORAL, 64, 16, 0)
+	# 086 浮游炮绕着龟转, **没有朝向**这回事; 这条纯粹守"表没被人镜像/换掉"。
+	_check_strip("086 六分仪浮游炮", DRONE, 40, 16, -1)
 
 	# ── ④ 有立绘时不许再叠几何占位(直升机旋翼 mesh)
 	var s = load("res://scenes/RealtimeBattle3D.tscn").instantiate()
@@ -87,7 +92,8 @@ func _ready() -> void:
 
 
 ## ①②③ 三条对一张帧表
-func _check_strip(tag: String, path: String, frame_h: int, want_frames: int, want_right: bool) -> void:
+## `bias`: 1 = 重心该偏右 · -1 = 该偏左 · **0 = 左右对称**(塔这种没有朝向的东西)
+func _check_strip(tag: String, path: String, frame_h: int, want_frames: int, bias: int) -> void:
 	_ok("%s ★分母: 素材在位" % tag, ResourceLoader.exists(path), path)
 	if not ResourceLoader.exists(path):
 		return
@@ -152,9 +158,15 @@ func _check_strip(tag: String, path: String, frame_h: int, want_frames: int, wan
 	_ok("%s ★分母: 首帧有不透明像素" % tag, cnt > 0, "%d 个" % cnt)
 	if cnt > 0:
 		var cx: float = sum_x / float(cnt)
-		var right: bool = cx > float(hgt) * 0.5
-		_ok("%s ③ 没有被镜像(重心应偏%s)" % [tag, "右" if want_right else "左"],
-			right == want_right, "x 重心 %.1f / 帧宽 %d" % [cx, hgt])
+		var mid: float = float(hgt) * 0.5
+		if bias == 0:
+			# ★对称件(塔): 判"朝向"没有意义, 改判**它确实是对称的** ——
+			#   重心偏出中线 8% 帧宽就说明它有朝向了, 那就该改用 ±1 分支。
+			_ok("%s ③ 左右对称(重心在中线 ±8% 内)" % tag, absf(cx - mid) <= float(hgt) * 0.08,
+				"x 重心 %.1f / 中线 %.1f / 帧宽 %d" % [cx, mid, hgt])
+		else:
+			_ok("%s ③ 没有被镜像(重心应偏%s)" % [tag, "右" if bias > 0 else "左"],
+				(cx > mid) == (bias > 0), "x 重心 %.1f / 帧宽 %d" % [cx, hgt])
 
 
 ## 两个帧差是否"同一个量" —— 容差见 ② 的注释(有损纹理导入)
