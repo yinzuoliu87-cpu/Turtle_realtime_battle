@@ -114,6 +114,38 @@ func _ready() -> void:
 		s._units.erase(e_b)
 	gun._helis.clear()
 
+	# ── ⑦ **巡航要保持距离盘旋**, 不许贴脸钉住
+	#    由来: 用户 2026-08-07「别扭那就改」。原来是"飞到敌人 60 码内就停", 然后悬在那儿不动。
+	#    判据两条(缺一不可): 距离收敛到 standoff 附近 **且** 速度不为零(还在绕)。
+	#    ⚠ 只验"距离收敛"是不够的 —— 钉在 220 码不动也满足它。**必须同时验它还在动。**
+	# ★调 `_heli_orbit_step`(纯几何)而不是 `_heli_patrol` —— 后者会走开火路径,
+	#   而合成假人缺 `crit`/`dmg_dealt` 等字段, 伤害管线会报一堆错(门禁自己是绿的,
+	#   但 run-tests 的**致命报错正则**会判红)。移动与开火本来就该分开测。
+	var prey_pos := Vector2(500.0, 0.0)
+	var ho: Dictionary = {"pos": Vector2(-200.0, 0.0), "state": "patrol"}
+	for _k in range(600):
+		gun._heli_orbit_step(ho, prey_pos, 0.02)
+	var d_final: float = Vector2(ho["pos"]).distance_to(prey_pos)
+	_ok("⑦ 巡航距离收敛到交战半径 220 码(±8%)", absf(d_final - 220.0) <= 220.0 * 0.08,
+		"稳态 %.0f 码" % d_final)
+	var pa: Vector2 = Vector2(ho["pos"])
+	gun._heli_orbit_step(ho, prey_pos, 0.02)
+	var spd: float = Vector2(ho["pos"]).distance_to(pa) / 0.02
+	_ok("⑦ 到位后**仍在绕**(速度不为零, 不是钉住)", spd > 60.0, "稳态速度 %.0f 码/秒" % spd)
+	# ── ⑧ **轰炸完要脱离**, 不许当帧切回追敌
+	var he: Dictionary = {"owner": {"side": "left", "pos": Vector2(0.0, 0.0), "alive": true},
+		"pos": Vector2(0.0, 0.0), "state": "egress", "egr_t": 0.0, "egr_dir": Vector2(1.0, 0.0),
+		"rotor": 0.0, "energy": 0.0}
+	var p0e: Vector2 = Vector2(he["pos"])
+	var fe := 0
+	while str(he["state"]) == "egress" and fe < 400:
+		gun._heli_egress(he, 0.02)
+		fe += 1
+	_ok("⑧ 脱离飞满 260 码(±5%)", absf(Vector2(he["pos"]).distance_to(p0e) - 260.0) <= 13.0,
+		"飞了 %.0f 码" % Vector2(he["pos"]).distance_to(p0e))
+	_ok("⑧ 脱离**不是一帧就完**(那等于没脱离)", fe >= 8, "用了 %d 帧" % fe)
+	_ok("⑧ 脱离结束回巡航", str(he["state"]) == "patrol", str(he["state"]))
+
 	# ① 结构: 开轰炸时不许直接写 pos = lane_a
 	var src := FileAccess.get_file_as_string("res://scripts/systems/equip/eq_gun_batch.gd")
 	_ok("★分母: 读到了源码", src.length() > 1000, "%d 字符" % src.length())

@@ -182,6 +182,14 @@ const CRASH_R := 500.0
 const CRASH_BURN := 40
 ## 080 直升机的巡航/坠落速度(码/秒)与飞行高度(演出用)
 const HELI_SPD := 210.0
+## 巡航交战距离(码)与绕圈的切向速度(码/秒)。★standoff 取 220 —— 明显是"隔着一段打",
+## 又远小于机炮的有效射程(机炮不设射程上限, 靠 _heli_prey 选最近敌)。
+## 切向 150 让它绕得看得出来但不至于转晕(绕一圈约 2π×220/150 ≈ 9.2 秒)。
+const HELI_STANDOFF := 220.0
+const HELI_ORBIT_SPD := 150.0
+## 轰炸后的脱离: 沿原航向再飞这么远(码), 速度取进场速度的 0.8。
+const HELI_EGRESS_LEN := 260.0
+const HELI_EGRESS_SPD := 500.0
 const CRASH_SPD := 900.0
 
 const COL_PHYS := Color("#ffcf6b")
@@ -685,6 +693,8 @@ func _tick_helis(delta: float) -> void:
 				_heli_patrol(h, delta)
 			"approach":
 				_heli_approach(h, delta)
+			"egress":
+				_heli_egress(h, delta)
 			"bomb":
 				_heli_bomb_run(h, delta)
 			"crash":
@@ -708,9 +718,7 @@ func _heli_patrol(h: Dictionary, delta: float) -> void:
 	var owner: Dictionary = h["owner"]
 	var aim = _heli_prey(h)
 	if aim is Dictionary:
-		var to: Vector2 = Vector2(aim["pos"]) - Vector2(h["pos"])
-		if to.length() > 60.0:
-			h["pos"] = Vector2(h["pos"]) + to.normalized() * HELI_SPD * delta
+		_heli_orbit_step(h, Vector2(aim["pos"]), delta)
 	h["fire_t"] = float(h.get("fire_t", 0.0)) + delta
 	if float(h["fire_t"]) < HELI_FIRE_IV:
 		return
@@ -720,6 +728,27 @@ func _heli_patrol(h: Dictionary, delta: float) -> void:
 	var shots: int = [3, 4, 10][si]
 	var scale: float = 0.35
 	battle._queue_shots(shots, HELI_SHOT_GAP, func() -> void: _heli_bullet(h, scale), owner, "p2eq_080")
+
+
+## 巡航的**移动**一步(纯几何, 不索敌不开火 ⇒ 门禁可以单独喂它)。
+## ★抽出来的理由和 CLAUDE.md §3.5 同源: 一个测"它怎么飞"的用例, 不该被"它开枪"那条路径拖下水
+##   —— 第一版门禁直接调 `_heli_patrol`, 合成假人缺 `crit`/`dmg_dealt` 字段, 伤害管线报了 16 条错。
+##   移动与开火本来就是两件事, 分开之后两边都好测。
+func _heli_orbit_step(h: Dictionary, target: Vector2, delta: float) -> void:
+		# ★★2026-08-07 用户「别扭那就改」——原来是**贴到敌人脸上 60 码就停**, 然后钉在那儿。
+		#   一架武装直升机应该**保持距离盘旋**, 不是悬在敌人头顶不动。
+		#   模型: 径向趋近到 HELI_STANDOFF 码(远了进、近了退) + 切向绕圈。
+		#   ⇒ 它永远在动、永远保持一个可读的交战距离; 而 60 码那版是"飞过去 → 定住"。
+		#   ⚠ standoff 必须 < 机炮实际射程, 否则会站在射程外空转。
+		var to: Vector2 = target - Vector2(h["pos"])
+		var dist: float = maxf(1.0, to.length())
+		var radial: Vector2 = to / dist
+		var tangent := Vector2(-radial.y, radial.x)
+		# 径向速度分量: 正=靠近, 负=后退。误差越大走得越快, 到位就自然停在环上。
+		var err: float = dist - HELI_STANDOFF
+		var v_r: float = clampf(err, -HELI_SPD, HELI_SPD)
+		var v_t: float = HELI_ORBIT_SPD
+		h["pos"] = Vector2(h["pos"]) + (radial * v_r + tangent * v_t).limit_length(HELI_SPD) * delta
 
 
 ## 一发机炮: 0.35 ATK 物理; **每命中一发 +4 龟能**(上限 100)。
@@ -733,7 +762,7 @@ func _heli_bullet(h: Dictionary, scale: float) -> void:
 	vfx.tracer(Vector2(h["pos"]), Vector2(tgt["pos"]), COL_PHYS, float(owner.get("_golden_pct", 0.0)))
 	# ⚠ `approach` 也要排除 —— 否则进场途中龟能仍是满的, 每帧都会重新算一次航线,
 	#   直升机会被不停地"重新指派起点"而原地抖。
-	if float(h["energy"]) >= HELI_EN_MAX and not (str(h.get("state", "")) in ["bomb", "approach"]):
+	if float(h["energy"]) >= HELI_EN_MAX and not (str(h.get("state", "")) in ["bomb", "approach", "egress"]):
 		_heli_begin_bomb(h)
 
 
@@ -841,6 +870,16 @@ func _heli_approach(h: Dictionary, delta: float) -> void:
 	h["pos"] = Vector2(h["pos"]) + to.normalized() * HELI_APPROACH_SPD * delta
 
 
+## 脱离: 沿原航向再飞一段, 然后回巡航。★这段**不索敌、不开火** —— 它就是"飞出去"。
+func _heli_egress(h: Dictionary, delta: float) -> void:
+	h["egr_t"] = float(h.get("egr_t", 0.0)) + delta
+	var d: Vector2 = h.get("egr_dir", Vector2.RIGHT)
+	h["pos"] = Vector2(h["pos"]) + d * HELI_EGRESS_SPD * delta
+	if float(h["egr_t"]) * HELI_EGRESS_SPD >= HELI_EGRESS_LEN:
+		h["state"] = "doom" if _heli_doomed(h) else "patrol"
+		h["egr_t"] = 0.0
+
+
 func _heli_bomb_run(h: Dictionary, delta: float) -> void:
 	var total: float = BOMB_LANE_LEN / BOMB_RUN_SPD
 	var n_total: int = bomb_count()
@@ -855,7 +894,16 @@ func _heli_bomb_run(h: Dictionary, delta: float) -> void:
 		# ★炸弹也计入金弹计数(规格原文) ⇒ 同样从 `_queue_shots` 出去, gun_id 与机炮共用。
 		battle._queue_shots(1, GOLD_GAP, func() -> void: heli_bomb_hit(h, si, at), h["owner"], "p2eq_080")
 	if f >= 1.0:
-		h["state"] = "doom" if _heli_doomed(h) else "patrol"
+		# ★★用户「别扭那就改」——原来投完最后一枚**当帧就切回追敌**, 像被人拽了一把。
+		#   真实的对地攻击机跑完航线要**沿航向脱离**再回来。加一个 `egress` 段:
+		#   继续沿原航向飞 HELI_EGRESS_LEN 码, 期间不索敌、不开火, 飞完才回巡航。
+		#   ⚠ 携带者已死(doom)时**不脱离** —— 那 10 秒窗口是给对手读的, 不该被这段拖长。
+		if _heli_doomed(h):
+			h["state"] = "doom"
+		else:
+			h["state"] = "egress"
+			h["egr_t"] = 0.0
+			h["egr_dir"] = (Vector2(h["lane_b"]) - Vector2(h["lane_a"])).normalized()
 		h["fire_t"] = 0.0
 
 
