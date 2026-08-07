@@ -798,8 +798,23 @@ func _heli_begin_bomb(h: Dictionary) -> void:
 	var lane: Array = best_lane(pts)
 	var c: Vector2 = lane[0]
 	var d: Vector2 = lane[1]
-	h["lane_a"] = c - d * (BOMB_LANE_LEN * 0.5)
-	h["lane_b"] = c + d * (BOMB_LANE_LEN * 0.5)
+	var e1: Vector2 = c - d * (BOMB_LANE_LEN * 0.5)
+	var e2: Vector2 = c + d * (BOMB_LANE_LEN * 0.5)
+	# ★★2026-08-07 用户:「这种情况为什么不从右往左？不智能吗」——
+	#   **原来根本没有"从哪头进"这个概念**: 起点写死成 `中心 − 方向×400`,
+	#   而 `方向` 只由「哪条带覆盖敌人最多」决定(`best_lane` 枚举 12 个方位取覆盖最大),
+	#   跟直升机当前在哪边**毫无关系** ⇒ 它经常绕到远端再飞回来, 看着就是"傻"。
+	#   ⇒ **就近进场**: 两个端点里选离直升机近的那个当起点。
+	#     这既是玩家期待的行为, 也顺带把进场那段路缩到最短(进场是 v0.19.45 加的, 会真的飞)。
+	#   ⚠ 结算完全不变 —— 航线是**双向对称**的带(`lane_cover` 只看点到直线的距离),
+	#     从哪头进, 覆盖到的敌人、投弹枚数、间隔都一样。
+	var here: Vector2 = Vector2(h["pos"])
+	if here.distance_squared_to(e2) < here.distance_squared_to(e1):
+		var t: Vector2 = e1
+		e1 = e2
+		e2 = t
+	h["lane_a"] = e1
+	h["lane_b"] = e2
 	# ★★2026-08-07 用户实拍:「你用瞬移了？」—— **是的, 这里原来就是一行瞬移**:
 	#   `h["pos"] = lane_a` 把直升机**直接挪到航线起点**, 玩家看到的是它凭空闪了一下。
 	#   航线起点离它当前位置最远可达 800 码(整条航线长), 这一跳非常显眼。

@@ -85,6 +85,35 @@ func _ready() -> void:
 	_ok("④ 飞不到时有兜底超时(不会永远卡在 approach)", str(h2["state"]) == "bomb",
 		"%d 帧 = %.2f 秒" % [g2, g2 * 0.02])
 
+	# ── ⑥ **就近进场**: 两个端点里必须选离直升机近的那个当起点
+	#    由来: 用户 2026-08-07「这种情况为什么不从右往左？不智能吗」——
+	#    原来起点写死成 `中心 − 方向×半长`, 而方向只由"哪条带覆盖敌人最多"决定,
+	#    **跟直升机在哪边毫无关系** ⇒ 它经常绕到远端再飞回来。
+	#    航线是双向对称的带, 从哪头进结算完全一样, 所以这纯粹是"看着傻不傻"的问题。
+	for side in [-1.0, 1.0]:
+		var hx: Dictionary = {
+			"owner": {"side": "left", "pos": Vector2(0.0, 0.0), "alive": true},
+			"pos": Vector2(600.0 * side, 400.0), "state": "patrol",
+			"rotor": 0.0, "energy": 0.0,
+		}
+		gun._helis.clear()
+		gun._helis.append(hx)
+		# 造两个敌人, 让最优航线是水平的
+		var e_a: Dictionary = {"pos": Vector2(-200.0, 400.0), "alive": true, "side": "right"}
+		var e_b: Dictionary = {"pos": Vector2(200.0, 400.0), "alive": true, "side": "right"}
+		s._units.append(e_a)
+		s._units.append(e_b)
+		gun._heli_begin_bomb(hx)
+		var la: Vector2 = Vector2(hx.get("lane_a", Vector2.ZERO))
+		var lb: Vector2 = Vector2(hx.get("lane_b", Vector2.ZERO))
+		var d_a: float = Vector2(hx["pos"]).distance_to(la)
+		var d_b: float = Vector2(hx["pos"]).distance_to(lb)
+		_ok("⑥ 直升机在 x=%.0f 时, 起点取【近端】" % (600.0 * side), d_a <= d_b,
+			"到起点 %.0f 码 / 到终点 %.0f 码" % [d_a, d_b])
+		s._units.erase(e_a)
+		s._units.erase(e_b)
+	gun._helis.clear()
+
 	# ① 结构: 开轰炸时不许直接写 pos = lane_a
 	var src := FileAccess.get_file_as_string("res://scripts/systems/equip/eq_gun_batch.gd")
 	_ok("★分母: 读到了源码", src.length() > 1000, "%d 字符" % src.length())
