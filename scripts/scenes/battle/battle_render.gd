@@ -93,7 +93,14 @@ func _advance_anim(u: Dictionary, delta: float) -> void:
 			return
 	else:
 		idx = idx % frames   # idle 循环
-	spr.frame = clampi(idx, 0, frames - 1)
+	# ★★2026-08-07: 钳位要按【贴图真实帧数】, 不能只按精灵字典说的 `frames`。
+	#   由来: 冒烟随机报 `Index p_frame = 17 is out of bounds (vframes*hframes = 7)` ——
+	#   字典说 16 帧、贴图只有 7 帧, 于是 `clampi(idx, 0, frames-1)` **把 idx 钳到 15 也照样越界**。
+	#   这正是 v0.19.37 修过的三处(忍者冲刺/玩偶熊/雷击换表)的**同一个根**:
+	#   「表换过、帧数没跟」。那三处是逐个补丁, 这里是**总源头** —— 所有走 `_set_anim_sheet`
+	#   的单位都经过这一行。⚠ 引擎校验的是 `hframes × vframes`, 不是 `hframes`(第二处旧坑)。
+	var _real: int = maxi(1, int(spr.hframes) * int(spr.vframes))
+	spr.frame = clampi(idx, 0, mini(frames, _real) - 1)
 
 # ═══ 训龟大师 4方向 directional 立绘更新器 (R6-B·2026-07-26·用户「真4方向渲染·非billboard翻转」) ═══
 #   与 28 龟(billboard + flip_h 两向)隔离: 大师用真4方向(S/E/N/W 各一套帧)。

@@ -148,7 +148,13 @@ const PISTOL_CRIT := 0.5
 ## · 后退 70 码 ≈ 一个龟身多一点 —— 够分得开、又还在"跟着主人"的读感里(079 炮台是 150, 那是建筑)
 ## · 抬高 -34 码 = 斜后方而不是正后方, 免得与携带者的血条上下叠在一起
 const PISTOL_BACK := 70.0
-const PISTOL_SIDE_Y := -34.0
+## ★2026-08-07 实拍后从 -34 加大到 -78: -34 时枪与目标的连线**正好穿过携带者的龟壳**
+##   (枪在携带者左后方、目标在正右方 ⇒ 射线必然掠过携带者)。加大侧偏让弹道从龟【上方】过。
+##   ⚠ 这两个数本来就是我定的(规格没给站位), 不是在改用户拍板的东西。
+##   ★-78 又太高了(枪看着像挂在天上、不像携带者的枪), 回调到 -56: 弹道刚好从龟头上方掠过。
+const PISTOL_SIDE_Y := -56.0
+## 演出层还没回填 `_muzzle_px` 时的兜底半枪长(码)。实测值 16.37, 这里取整。
+const PISTOL_MUZZLE_FALLBACK := 16.0
 ## 077 每次攻击给自己 +1 护甲穿透(规格原文), 每路重置 —— 换路重建召唤物即天然重置
 const PISTOL_PEN_PER_SHOT := 1.0
 ## 079 炮台: 生成在携带者【后方】这么远(规格原文 150 码) · 射程见 D4
@@ -404,7 +410,11 @@ func _pistol_bullet(p: Dictionary) -> void:
 	var gold: float = float(p.get("_golden_pct", 0.0))
 	var dmg: int = battle._atk_dmg(p, 1.0, tgt)
 	battle._damage._apply_damage_from(p, tgt, dmg, COL_PHYS, 0.0, false, true)
-	vfx.tracer(Vector2(p["pos"]), Vector2(tgt["pos"]), COL_PHYS, gold)
+	# ★弹道从**枪管尖**出发, 不是单位中心 —— 与枪口火焰同一个锚点(pistol_fire 里写的)。
+	#   `_muzzle_px` 是"半枪长(码)", 由演出层按精灵实际尺寸算出来回填, 这里不重算。
+	var _aim2: Vector2 = (Vector2(tgt["pos"]) - Vector2(p["pos"])).normalized()
+	var _muz: Vector2 = Vector2(p["pos"]) + _aim2 * float(p.get("_muzzle_px", PISTOL_MUZZLE_FALLBACK))
+	vfx.tracer(_muz, Vector2(tgt["pos"]), COL_PHYS, gold)
 
 
 # ══════════════════════════════════════════════════════════════════

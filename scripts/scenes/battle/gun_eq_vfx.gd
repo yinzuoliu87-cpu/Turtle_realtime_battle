@@ -280,15 +280,21 @@ func _ring(pos2: Vector2, col: Color, radius: float, life: float) -> void:
 #  §077 小手枪
 # ══════════════════════════════════════════════════════════════════
 
-## 077 开火演出的四个常量(码 / 米 / 秒)。
-## ★枪管尖 = 单位中心 + 朝向 × 这个距离。小手枪立绘 40px 宽、col_size 22 码
-##   ⇒ 半个枪长约 11 码, 再往外挪 3 码让火焰不压在枪管上。
-const PISTOL_MUZZLE_PX := 14.0
+## 077 开火演出的常量(码 / 米 / 秒)。★★全部来自 2026-08-07 的**实测探针**, 不是估的:
+##   探针打出来 —— 枪精灵 pixel_size=0.0196、贴图一帧 40×40、`WS=0.0240`
+##   ⇒ **半个枪长 = 16.37 码**、**精灵中心世界高度 y = 0.036 米**(基本贴地)。
+##   我第一版把火焰写在 0.42 米、弹道写在 1.0 米 ⇒ 实拍里火焰掉在枪【下方】、
+##   弹道从枪【上方】飞出还**穿过携带者的龟壳**。差了一整个身位, 而门禁全绿 ——
+##   因为没有一条断言问过"它们在不在枪身上"。
+## ⇒ 枪管尖 = 单位中心 + 朝向 × 18 码(16.37 半枪长 + 1.6 让火焰不压在枪管上)。
+const PISTOL_MUZZLE_PX := 18.0
 ## ★26 码是实拍改小后的值: 第一版给 26 但 `_make_fire_glow_tex` 的可见辉光远大于名义半径,
 ##   13 倍拉近下盖住半个屏幕。按"火焰略大于枪管口径、不该盖住枪身"定 13 码。
 ##   ⚠ 这类"名义尺寸 ≠ 观感尺寸"只有实拍才抓得到 —— 贴图自带的软边把有效半径放大了约一倍。
 const PISTOL_FLASH_PX := 13.0
-const PISTOL_FLASH_H_M := 0.42
+## ★火焰/弹道的世界高度 = 枪精灵中心高度(实测 0.036 米)。
+##   ⚠ 不写 0 —— 贴地会被地面 z-fight; 0.10 刚好在枪身中段、又高于地面。
+const PISTOL_MUZZLE_H_M := 0.10
 const PISTOL_FLASH_SEC := 0.09
 ## 后坐行程(码)。★不设时长常量 —— 时长按实际攻击间隔折算, 见 pistol_fire。
 const PISTOL_KICK_PX := 7.0
@@ -315,13 +321,28 @@ func pistol_fire(p: Dictionary, aim: Vector2, iv: float) -> void:
 		p["_pistol_kick_t"] = 0.0
 		p["_pistol_kick_T"] = clampf(iv * 0.55, 0.08, 0.30)
 		p["_pistol_kick_d"] = -aim * PISTOL_KICK_PX
-	# 枪口火焰: 生在枪管尖, 与弹道起点同一点。用现成的火光贴图(不新造纹理)。
-	var muz: Vector2 = Vector2(p.get("pos", Vector2.ZERO)) + aim * PISTOL_MUZZLE_PX
-	var f := _sprite(VfxTex._make_fire_glow_tex(),
-		battle._world_pos(muz, PISTOL_FLASH_H_M),
-		(PISTOL_FLASH_PX * float(battle.WS)) / 64.0,
-		Color(1.0, 0.86, 0.42, 0.95), false)
-	_adopt(f, PISTOL_FLASH_SEC, "pistol_flash")
+	# ★★枪口火焰: **挂成枪精灵的子节点**, 不算世界坐标。
+	#   由来(2026-08-07 实拍): 第一版用 `_world_pos(muz, 高度)` 算, 火焰掉在枪的【下方】。
+	#   根因是**我在用两套坐标系拼一个点** —— 水平偏移用场地码、高度用世界米,
+	#   而枪精灵自己的世界 y 是渲染层定的(实测 0.036), 我猜了个 0.42 又猜了个 0.10, 都不对。
+	#   ⇒ 挂子节点后, 偏移只剩**一个局部量**: 半枪长 = 半帧宽 × pixel_size。
+	#     它天然跟着枪走 —— 连**后坐时火焰也跟着往后弹**, 而世界坐标版做不到这一点。
+	if is_instance_valid(spr) and spr is Sprite3D:
+		var gs: Sprite3D = spr
+		var half_len: float = float(gs.texture.get_width() / maxi(1, int(gs.hframes))) * gs.pixel_size * 0.5
+		var f := Sprite3D.new()
+		f.texture = VfxTex._make_fire_glow_tex()
+		f.shaded = false
+		f.transparent = true
+		f.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+		f.modulate = Color(1.0, 0.86, 0.42, 0.95)
+		f.pixel_size = (PISTOL_FLASH_PX * float(battle.WS)) / 64.0
+		# 枪立绘朝右 ⇒ 枪口在 +x; 若被翻转过就取负(现在没翻, 留着防以后)
+		f.position = Vector3(half_len * (-1.0 if gs.flip_h else 1.0), 0.0, 0.0)
+		gs.add_child(f)
+		_fx.append({"node": f, "t": 0.0, "life": PISTOL_FLASH_SEC, "kind": "puff", "a0": 0.95})
+		# 弹道起点也用这一点(换算回场地码), 两者天然对齐
+		p["_muzzle_px"] = half_len / float(battle.WS)
 
 
 func pistol_deploy(pos: Vector2) -> void:
@@ -338,13 +359,36 @@ func pistol_uncovered(pos: Vector2) -> void:
 # ══════════════════════════════════════════════════════════════════
 
 ## 一条子弹弹迹。金弹时按 ⑥ 加亮加粗(亮度 = 该档真伤比例)。
+## ★★2026-08-07 重做。原来这里是【一整条从枪连到目标的静止粗带】, 存活 0.16 秒。
+##   实拍五帧, 它**每一帧都在、位置一模一样** —— 读起来不是"一颗弹飞过去", 是一根横在场上的棍
+##   (用户 08-07 原话:「长方形也能算子弹」; 这一根就是我自己做的那一根)。
+##   而且它起点是**单位中心**、高度写死 **1.0 米**, 而枪的精灵中心实测在 **0.036 米**
+##   ⇒ 弹道从枪的上方飞出, 还**穿过携带者的龟壳**。
+##
+## 现在: **一颗真的在飞的弹** —— 从枪管尖出发, 按 BULLET_SPD 飞到目标, 后面拖一小截尾焰。
+##   · 起点 = 枪管尖(与枪口火焰**同一个锚点**, 两者天然对齐)
+##   · 高度 = 枪身高度(不再穿龟)
+##   · 飞行时间 = 距离 / 速度 ⇒ **近的目标弹到得快、远的慢**, 这本身就是可读的信息
+## ⚠ 仍然不用 tween: 位置由本文件的 `tick()` 推(CLAUDE.md §3.5)。
+const BULLET_SPD := 2600.0      ## 码/秒。420 码 ≈ 0.16 秒到 —— 看得见"飞过去", 又不拖沓
+const BULLET_PX := 15.0         ## 弹丸显示尺寸(码)
+const BULLET_TAIL := 26.0       ## 尾焰长度(码)
 func tracer(a: Vector2, b: Vector2, col: Color, gold_pct: float = 0.0) -> void:
 	if not _has_world():
 		return
 	var g: float = gold_glow(gold_pct)
-	var c := Color(col.r + (1.0 - col.r) * g, col.g + (0.9 - col.g) * g, col.b * (1.0 - 0.5 * g), 0.85)
-	var mi := _band(a, b, 1.0, 3.0 + 5.0 * g, c)
-	_adopt(mi, 0.16, "band", {"a0": c.a})
+	var c := Color(col.r + (1.0 - col.r) * g, col.g + (0.9 - col.g) * g, col.b * (1.0 - 0.5 * g), 0.95)
+	var dist: float = (b - a).length()
+	var life: float = clampf(dist / BULLET_SPD, 0.05, 0.5)
+	# 弹丸
+	var s := _sprite(VfxTex._make_fire_glow_tex(), battle._world_pos(a, PISTOL_MUZZLE_H_M),
+		(BULLET_PX * (1.0 + 0.5 * g) * float(battle.WS)) / 64.0, c, false)
+	_adopt(s, life, "bullet", {"from": a, "to": b, "a0": c.a})
+	# 尾焰: 一小截跟着弹走的带(不是整条航线)
+	var dir: Vector2 = (b - a).normalized() if dist > 0.001 else Vector2.RIGHT
+	var tail := _band(a, a + dir * BULLET_TAIL, PISTOL_MUZZLE_H_M, 1.6 + 2.4 * g,
+		Color(c.r, c.g, c.b, 0.45))
+	_adopt(tail, life, "bullettail", {"from": a, "to": b, "dir": dir, "a0": 0.45})
 
 
 ## 一次爆点: 扩张的贴地环 + 中心光晕。
@@ -690,6 +734,23 @@ func tick(delta: float) -> void:
 				var sp: Sprite3D = n
 				sp.modulate.a = float(f.get("a0", 1.0)) * (1.0 - q)
 				sp.scale = Vector3.ONE * (0.6 + 0.9 * q)
+			"bullet":
+				var bl: Sprite3D = n
+				var fa: Vector2 = f.get("from", Vector2.ZERO)
+				var fb: Vector2 = f.get("to", Vector2.ZERO)
+				bl.position = battle._world_pos(fa.lerp(fb, q), PISTOL_MUZZLE_H_M)
+				bl.modulate.a = float(f.get("a0", 1.0)) * (1.0 if q < 0.8 else (1.0 - q) / 0.2)
+			"bullettail":
+				# 尾焰跟着弹走: 整块带**平移**(不重建网格) ⇒ 每帧零分配
+				var tm: MeshInstance3D = n
+				var ta: Vector2 = f.get("from", Vector2.ZERO)
+				var tb: Vector2 = f.get("to", Vector2.ZERO)
+				var here: Vector2 = ta.lerp(tb, q)
+				var back: Vector2 = here - Vector2(f.get("dir", Vector2.RIGHT)) * BULLET_TAIL
+				tm.position = battle._world_pos(back, 0.0) - battle._world_pos(ta, 0.0)
+				var tmat = tm.material_override
+				if tmat is StandardMaterial3D:
+					(tmat as StandardMaterial3D).albedo_color.a = float(f.get("a0", 0.45)) * (1.0 - q)
 			"bomb":
 				# ★水平匀速 + 竖直自由落体, **高度直接调 `bomb_height`** ——
 				#   与门禁验的前置量公式是同一条曲线, 不另写一条缓动。
