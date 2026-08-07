@@ -529,15 +529,22 @@ func _bullet_impact(at: Vector2, h_m: float) -> void:
 func blast(pos: Vector2, radius: float, col: Color) -> void:
 	if not _has_world():
 		return
-	_ring(pos, Color(col.r, col.g, col.b, 0.35), radius, 0.45)
+	# ★★2026-08-08 去掉这里原来那个贴地扩张环 —— 用户:「什么圈圈？」
+	#   预警圈(收缩)与它(扩张)**同样 360 码、同一个点、同时播**, 一收一放互相打架。
+	#   现在: 预警圈负责"炸多大 + 还有多久", 落地后**只剩火球**, 不再有第二个环。
 	var bt: Texture2D = _blast_tex()
 	if bt != null:
 		var nf: int = maxi(1, bt.get_width() / maxi(1, bt.get_height()))
-		var sp := _sprite(bt, battle._world_pos(pos, 0.30),
-			(radius * BLAST_ART_K * float(battle.WS)) / float(bt.get_height()),
-			Color(1, 1, 1, 1), false)
+		# ★尺寸 = **真实伤害直径**(2 × 半径), 不再乘"怕它太大"的系数 ——
+		#   1.3 × 半径 = 234 码, 而伤害直径是 360 码 ⇒ **火球比伤害范围小 35%**,
+		#   同一次爆炸里圈和火球自相矛盾。要"别太满"该由素材构图解决, 不是把它整体缩小。
+		# ★底边贴地: 原来画在 0.30 米、billboard 居中 ⇒ **下半个火球埋在地面以下**。
+		var one_h: float = float(bt.get_height())
+		var sp := _sprite(bt, battle._world_pos(pos, 0.02),
+			(radius * 2.0 * float(battle.WS)) / one_h, Color(1, 1, 1, 1), false)
 		sp.hframes = nf
 		sp.frame = 0
+		sp.offset = Vector2(0.0, one_h * 0.5)
 		_adopt(sp, BLAST_SEC, "blastanim", {"nf": nf})
 		return
 	# 兜底(素材缺席): 老的圆辉光
@@ -845,6 +852,19 @@ func lane_marker(a: Vector2, b: Vector2, width: float) -> void:
 ## 080 炸弹立绘: 显示尺寸(码)、下落演出时长(秒)、素材路径(缓存一次)。
 const BOMB_PX := 22.0
 const BOMB_FALL_SEC := 0.42
+## 预警贴花在一次下落里转多少弧度(半圈)。★不是随手取的: 转太快像雷达扫描、
+## 转太慢看不出在动; 半圈刚好"一眼看得出它活着"又不抢注意力。
+const WARN_SPIN := PI
+const WARN_TEX_PATH := "res://assets/sprites/vfx/eq-bomb-warn.png"
+static var _warn_tex_cache: Texture2D = null
+static var _warn_tex_tried := false
+
+func _warn_tex() -> Texture2D:
+	if not _warn_tex_tried:
+		_warn_tex_tried = true
+		if ResourceLoader.exists(WARN_TEX_PATH):
+			_warn_tex_cache = load(WARN_TEX_PATH)
+	return _warn_tex_cache
 const BOMB_TEX_PATH := "res://assets/sprites/vfx/eq-bomb.png"
 static var _bomb_tex_cache: Texture2D = null
 static var _bomb_tex_tried := false
@@ -870,21 +890,30 @@ func _bomb_tex() -> Texture2D:
 func bomb_drop(from2: Vector2, land: Vector2, blast_r: float) -> void:
 	if not _has_world():
 		return
-	# ① 落点预警圈: 半径从 1.6× 收到 1.0×(真实爆炸半径), 收满那一刻正好弹着
+	# ① 落点预警贴花
 	# ★★2026-08-07 用户:「橙色圈圈的半径你画的多大啊？这是180？我看到1000码的圈」——
 	#   **他是对的**: `_make_thin_ring_tex()` 是 **256px**(它自己的注释写着"大范围预告圈用"),
 	#   而我这里除的是 **64** ⇒ 圈被画成设计值的 **4 倍**: 本该 360 码直径, 实际 **1440 码**。
 	#   ⚠ 我几十分钟前刚在**命中环**上修过一模一样的错, 却没回头查预警圈是我写的同一行。
 	#   ⇒ 尺寸一律**从纹理自己的高度算**, 不再写任何字面量。
-	var _rt: Texture2D = VfxTex._make_thin_ring_tex()
-	var ps1: float = (blast_r * 2.0 * float(battle.WS)) / float(maxi(1, _rt.get_height()))
-	# ★起始 1.6 → 1.25: 用户看到「这个橙圈你弄的多大？」。终值**不动** ——
-	#   它等于真实伤害半径 180 码(直径 360 码 ≈ 8 只龟并排), 改了就是骗玩家。
-	#   能调的只有"起始比终值大多少": 1.6 倍在场上是 576 码直径, 铺满大半个屏幕。
-	var ps0: float = ps1 * 1.25
-	var warn := _sprite(_rt, battle._world_pos(land, 0.06),
-		ps0, Color(1.0, 0.42, 0.20, 0.85), true)
-	_adopt(warn, BOMB_FALL_SEC, "bombwarn", {"a0": 0.85, "ps0": ps0, "ps1": ps1})
+	# ★★2026-08-08 换成**真贴花素材**(`eq-bomb-warn.png`): 断续粗刻度环 + 中心靶标,
+	#   中间**留空**——360 码直径能盖住 8 只龟并排, 填充式会把站在里面的单位整个糊掉。
+	# ★★素材的刻度环**外缘已裁到贴图边界**(不透明包围盒 = 0..63) ⇒
+	#   `sprite 宽度 = 伤害直径`, **代码里一个系数都不需要**。
+	#   今晚那个"预警圈大 4 倍"、爆炸"小 35%"两个错, 根子都是"素材内容 ≠ 贴图边界、我得现推系数"
+	#   —— 系数就是错误的来源, 直接从素材上消灭掉。
+	# ★倒计时**不靠缩放**: 贴花缓慢自转(rotation.y, 贴地件不能碰 rotation.x)+ 越近越亮,
+	#   落地那一刻由爆炸接手。尺寸自始至终 = 真实伤害直径, 一码不变 ⇒ 玩家读到的圈就是会挨炸的圈。
+	var _wt: Texture2D = _warn_tex()
+	if _wt != null:
+		var _wps: float = (blast_r * 2.0 * float(battle.WS)) / float(maxi(1, _wt.get_height()))
+		var warn := _sprite(_wt, battle._world_pos(land, 0.06), _wps, Color(1, 1, 1, 0.9), true)
+		_adopt(warn, BOMB_FALL_SEC, "bombwarn", {"a0": 0.9})
+	else:
+		var _rt: Texture2D = VfxTex._make_thin_ring_tex()
+		var _rps: float = (blast_r * 2.0 * float(battle.WS)) / float(maxi(1, _rt.get_height()))
+		var w2 := _sprite(_rt, battle._world_pos(land, 0.06), _rps, Color(1.0, 0.42, 0.20, 0.85), true)
+		_adopt(w2, BOMB_FALL_SEC, "bombwarn", {"a0": 0.85})
 	# ② 淡尾迹(配角): 标出航向, 但主角是那颗弹
 	var segs := 6
 	for k in range(segs):
@@ -956,13 +985,15 @@ func tick(delta: float) -> void:
 				var ba: Sprite3D = n
 				var bn: int = int(f.get("nf", 1))
 				ba.frame = clampi(int(q * float(bn)), 0, maxi(0, int(ba.hframes) * int(ba.vframes) - 1))
-				ba.modulate.a = 1.0 if q < 0.82 else (1.0 - q) / 0.18
+				# ★不再用 alpha 收尾 —— 素材末几帧画的就是"烟尘消散",
+				#   从 q=0.82 起淡出等于**把美术画好的收尾盖掉**(不信任素材、再叠一层程序控制)。
 			"bombwarn":
-				# 收缩到真实爆炸半径; **alpha 反而越来越亮** —— 越接近弹着越显眼,
-				# 常见的错法是让它淡出, 那样最关键的最后一刻反而最看不见。
+				# ★尺寸**全程不变** = 真实伤害直径(玩家读到的圈就是会挨炸的圈)。
+				#   倒计时靠**自转 + 越来越亮**, 不再用缩放(那是我一直只会用的三个通道之一)。
+				#   ⚠ 淡出是常见错法 —— 最关键的最后一刻反而最看不见, 所以这里是越近越亮。
 				var wr: Sprite3D = n
-				wr.pixel_size = lerpf(float(f.get("ps0", 0.0)), float(f.get("ps1", 0.0)), q)
-				wr.modulate.a = float(f.get("a0", 0.85)) * (0.55 + 0.45 * q)
+				wr.rotation.y = q * WARN_SPIN
+				wr.modulate.a = float(f.get("a0", 0.9)) * (0.5 + 0.5 * q)
 			"bomb":
 				# ★水平匀速 + 竖直自由落体, **高度直接调 `bomb_height`** ——
 				#   与门禁验的前置量公式是同一条曲线, 不另写一条缓动。
@@ -973,8 +1004,16 @@ func tick(delta: float) -> void:
 				var here: Vector2 = a2.lerp(b2, q)
 				var hh: float = HELI_H * (bomb_height(BOMB_DROP_H, q) / BOMB_DROP_H)
 				bs.position = battle._world_pos(here, hh)
-				# 落地前不淡出(炸弹是实体不是光效), 最后 15% 才收掉, 免得跟爆点抢画面
-				bs.modulate.a = 1.0 if q < 0.85 else (1.0 - (q - 0.85) / 0.15)
+				# ★★2026-08-08 不再提前淡出 —— 原来从 q=0.85 起收掉, **炸弹在触地前就消失了**,
+				#   而"落地"本来就该是它最重要的一刻(现在爆炸也等到那一刻才播)。
+				bs.modulate.a = 1.0
+				# ★朝**下落方向**转: 立绘固定画成朝右下, 航线往左飞时原来是倒着落。
+				#   billboard 精灵在屏幕平面内用 rotation.z 转(**不能碰 rotation.x** —— 那是贴地件的坑)。
+				#   俯角由"竖直掉了多少 / 水平走了多少"算, 与落体曲线同源。
+				var _dx: float = (b2 - a2).length() * float(battle.WS)
+				var _dy: float = HELI_H * (bomb_height(BOMB_DROP_H, minf(1.0, q + 0.08)) - bomb_height(BOMB_DROP_H, q)) / BOMB_DROP_H
+				bs.flip_h = (b2.x - a2.x) < 0.0
+				bs.rotation.z = atan2(-_dy, maxf(0.001, _dx * 0.08)) * (-1.0 if bs.flip_h else 1.0)
 		if q >= 1.0:
 			# ★★2026-08-07 用户:「子弹打到哪里」—— 实拍确认: **什么都没有**。
 			#   弹飞到目标就凭空消失, 没有任何命中反馈 ⇒ 玩家读不出"这一发打中了"。

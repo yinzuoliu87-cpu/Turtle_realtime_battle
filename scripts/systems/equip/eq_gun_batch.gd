@@ -170,8 +170,16 @@ const HELI_SHOT_GAP := 0.06
 const BOMB_LANE_LEN := 800.0
 const BOMB_LANE_W := 120.0
 const BOMB_R := 180.0
-## 080 地毯轰炸的投弹密度与航线速度(D7: 规格没写, 我定的)
-const BOMB_SPACING := 160.0
+## 080 地毯轰炸的**枚数**(按星级)与航线速度。
+## ★★2026-08-08 修正一处【我推翻了用户已过稿的设计】:
+##   设计阶段我给的草案是「沿途投下 **8/10/14 枚**」, 用户回「地毯轰炸不错」过了稿,
+##   他那一轮只改了航线(横穿全场 → 起点终点相距 800 码 × 120 宽), **没有一个字动过枚数**。
+##   而我写方案书时把 8/10/14 **漏掉了**, 写成「边飞边不断投弹」;
+##   实现时又照着自己写歪的那句话拍了个**固定 6 枚**(先定间距 160 码, 再反推枚数)。
+##   ⇒ 后果: 三个星级的大招在画面上**完全一样**, 而我自己草案里写明的
+##     「升星改的是覆盖密度」被删掉了。
+##   ⇒ 现在: **枚数才是设计量, 间距是算出来的结果**(方向原来是反的)。
+const BOMB_COUNT := [8, 10, 14]
 const BOMB_RUN_SPD := 500.0
 ## 080 航线候选方位数(D9): 12 个方位 = 每 15°(带是双向对称的, 180° 就够)
 const LANE_DIRS := 12
@@ -409,7 +417,9 @@ func _pistol_attack(e: Dictionary) -> void:
 	#   写了这一行之后, flip_h 会跟着变, 而枪口锚点本来就读 flip_h ⇒ 枪口自动跟到另一侧。
 	p["face_right"] = Vector2(tgt["pos"]).x >= Vector2(p["pos"]).x
 	p["armor_pen"] = float(p.get("armor_pen", 0.0)) + PISTOL_PEN_PER_SHOT
-	battle._queue_shots(1, GOLD_GAP, func() -> void: _pistol_bullet(p), p, "p2eq_077")
+	# ★出膛点回调: 金弹也从**枪管尖**出去, 不再从携带者身上。`p` 是小手枪自己。
+	battle._queue_shots(1, GOLD_GAP, func() -> void: _pistol_bullet(p), p, "p2eq_077",
+		func() -> Vector2: return Vector2(p["pos"]) + Vector2(float(p.get("_muzzle_px", PISTOL_MUZZLE_FALLBACK)), 0.0))
 
 
 ## 一发子弹落地: 1 ATK 物理。★from_equip=true(焊死口径②)。
@@ -727,7 +737,9 @@ func _heli_patrol(h: Dictionary, delta: float) -> void:
 	# ★三元数组就近声明(契约 §6): 发数 / 每发 ATK 倍率 —— 与下面的 "p2eq_080" 锚点同窗口。
 	var shots: int = [3, 4, 10][si]
 	var scale: float = 0.35
-	battle._queue_shots(shots, HELI_SHOT_GAP, func() -> void: _heli_bullet(h, scale), owner, "p2eq_080")
+	# ★出膛点回调: 金弹从**机头**出去, 不再从地上那只龟身上。回调 ⇒ 直升机飞到哪就从哪出。
+	battle._queue_shots(shots, HELI_SHOT_GAP, func() -> void: _heli_bullet(h, scale), owner, "p2eq_080",
+		func() -> Vector2: return Vector2(h["pos"]) + Vector2(float(h.get("_muzzle_px", 0.0)), 0.0))
 
 
 ## 巡航的**移动**一步(纯几何, 不索敌不开火 ⇒ 门禁可以单独喂它)。
@@ -810,9 +822,14 @@ static func best_lane(pts: Array) -> Array:
 	return [best_c, best_d, best_n]
 
 
-## 一条航线上要投几枚(D7: 每 BOMB_SPACING 码一枚, 含两端)。
-static func bomb_count() -> int:
-	return int(floor(BOMB_LANE_LEN / BOMB_SPACING)) + 1
+## 一条航线上投几枚(按星级: 8/10/14, 含两端)。
+static func bomb_count(si: int = 2) -> int:
+	return BOMB_COUNT[clampi(si, 0, 2)]
+
+
+## 相邻两枚的间距(码) —— 由枚数算出来, 不是反过来。
+static func bomb_spacing(si: int = 2) -> float:
+	return BOMB_LANE_LEN / float(maxi(1, bomb_count(si) - 1))
 
 
 ## 进场速度(码/秒)与兜底超时(秒)。★比巡航快 —— 它是"去占位", 慢吞吞飞过去会把节奏拖垮;
@@ -886,7 +903,7 @@ func _heli_egress(h: Dictionary, delta: float) -> void:
 
 func _heli_bomb_run(h: Dictionary, delta: float) -> void:
 	var total: float = BOMB_LANE_LEN / BOMB_RUN_SPD
-	var n_total: int = bomb_count()
+	var n_total: int = bomb_count(int(h["si"]))
 	var gap: float = total / float(maxi(1, n_total - 1))
 	h["run_t"] = float(h.get("run_t", 0.0)) + delta
 	var f: float = clampf(float(h["run_t"]) / total, 0.0, 1.0)
@@ -899,7 +916,14 @@ func _heli_bomb_run(h: Dictionary, delta: float) -> void:
 		# ★演出走**真入口**: 每投一枚就放一次完整演出(预警圈 + 真炸弹 + 尾迹)。
 		#   `at` 是**伤害真正结算的那个落点**, 直接传给演出 ⇒ 预警圈和伤害范围天然是同一个数。
 		vfx.bomb_drop(Vector2(h["pos"]), at, BOMB_R)
-		battle._queue_shots(1, GOLD_GAP, func() -> void: heli_bomb_hit(h, si, at), h["owner"], "p2eq_080")
+		# ★★2026-08-08【时序合一】用户:「炸弹碰到目标，爆炸特效？」——
+		#   原来 `_queue_shots(1, …)` 的单发 delay 是 **0** ⇒ **伤害与爆炸在投弹那一瞬就发生**,
+		#   而炸弹要飞 BOMB_FALL_SEC 才落地。玩家看到的是:
+		#   **圈刚出现 → 立刻炸开 → 然后一颗炸弹慢悠悠落进一个已经炸完的坑里**, 落地悄无声息。
+		#   ⇒ 把结算推迟到**炸弹真的落地那一刻**: 落地 = 伤害 = 爆炸, 三者同一时间点。
+		#   ⚠ 用 `_queue_shots` 的 delay 而不是自己起计时器 —— 金弹计数/演出仍走同一个出口。
+		battle._queue_shots(1, GOLD_GAP, func() -> void: heli_bomb_hit(h, si, at),
+			h["owner"], "p2eq_080", func() -> Vector2: return at, GunEqVfx.BOMB_FALL_SEC)
 	if f >= 1.0:
 		# ★★用户「别扭那就改」——原来投完最后一枚**当帧就切回追敌**, 像被人拽了一把。
 		#   真实的对地攻击机跑完航线要**沿航向脱离**再回来。加一个 `egress` 段:

@@ -88,6 +88,8 @@ var _fx: Array = []
 ## ★单位字典只当**值**存, 绝不当 Dictionary 的键(CLAUDE.md §3.2: 递归哈希会卡死)
 var _snap: Array = []
 var _armed_src = null
+## 本发的**真实出膛点**(场地码)。null = 没给 ⇒ 退回 src["pos"]。
+var _armed_from = null
 ## 累计画过几发金弹(门禁分母)
 var _shots_marked := 0
 
@@ -288,11 +290,12 @@ static func _set_a(n, a: float) -> void:
 # ══════════════════════════════════════════════════════════════════
 
 ## ① 枪口: 射手身上炸一簇金色箭簇「»」, 尖指射向。
-func muzzle(src, aim: Vector2, pct: float) -> Node3D:
+func muzzle(src, aim: Vector2, pct: float, from_override = null) -> Node3D:
 	if not _has_world() or not (src is Dictionary):
 		return null
 	var g: float = glow(pct)
-	var p: Vector2 = (src as Dictionary)["pos"]
+	# ★枪口闪也画在**真正的出膛点**上, 不是携带者身上(同上)
+	var p: Vector2 = from_override if from_override is Vector2 else Vector2((src as Dictionary)["pos"])
 	var dir: Vector2 = (aim if aim.length() > 0.01 else Vector2.RIGHT).normalized()
 	var len_px: float = MUZZLE_PX * (0.8 + 0.35 * g)
 	var mi := _quad_along(p + dir * 8.0, p + dir * (8.0 + len_px), len_px * 0.5, BODY_Y,
@@ -335,9 +338,17 @@ func hit(tgt, pct: float) -> Node3D:
 # ══════════════════════════════════════════════════════════════════
 
 ## 开火【前】: 把全场每个单位的 `hp + shield` 记一份。
-func arm(src) -> void:
+## ★★2026-08-08【金弹从错的地方射出去】—— 用户实测指出的:
+##   起点原来一律取 `src["pos"]`, 而 `src` 是 **`_queue_shots` 的伤害归属方 = 携带者**。
+##   于是凡是"实际开火的不是携带者本人"的装备(**九把枪里的 077 小手枪 / 079 珊瑚塔 /
+##   080 直升机 / 086 浮游炮**), 金弹都是**从地上那只龟身上射出去的**,
+##   而真正的枪/炮/机在别处 —— 同一发子弹画了两条起点完全不同的弹道。
+##   根因: `src` 一个参数扛了两个语义(结算归属 / 出膛点), 必然有一边错。
+##   ⇒ `from_override` 把"出膛点"独立出来; 不传时才退回 src["pos"](携带者自己开的枪)。
+func arm(src, from_override = null) -> void:
 	_snap.clear()
 	_armed_src = src if src is Dictionary else null
+	_armed_from = from_override if from_override is Vector2 else null
 	if battle == null:
 		return
 	for u in battle._units:
@@ -349,7 +360,11 @@ func arm(src) -> void:
 ## 返回标了几个人(门禁数它: 0 = 这一发空放, 也是有意义的信息)。
 func resolve(pct: float) -> int:
 	var n := 0
-	var from2: Vector2 = Vector2((_armed_src as Dictionary)["pos"]) if _armed_src is Dictionary else Vector2.ZERO
+	var from2: Vector2 = Vector2.ZERO
+	if _armed_from is Vector2:
+		from2 = _armed_from                      # ★真正开火那个东西的出膛点
+	elif _armed_src is Dictionary:
+		from2 = Vector2((_armed_src as Dictionary)["pos"])
 	var aim: Vector2 = Vector2.RIGHT
 	for e in _snap:
 		var u = e[0]
@@ -365,9 +380,10 @@ func resolve(pct: float) -> int:
 		hit(u, pct)
 		n += 1
 	if _armed_src is Dictionary:
-		muzzle(_armed_src, aim, pct)
+		muzzle(_armed_src, aim, pct, from2)
 	_snap.clear()
 	_armed_src = null
+	_armed_from = null
 	_shots_marked += 1
 	return n
 

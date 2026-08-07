@@ -805,10 +805,18 @@ func _t080_lane() -> void:
 		"数到 %d 人" % EqGunBatch.lane_cover(base, Vector2.RIGHT, pts3))
 	_ok("④ 带长 800(半长 400): 沿线 450 码外的人不算",
 		EqGunBatch.lane_cover(base, Vector2.RIGHT, [base + Vector2(450.0, 0.0)]) == 0)
-	# 投弹枚数与航线长度/间距的同一性(两个常量必须自洽)
-	_ok("④ 投弹枚数与 800 码航线 / 160 码间距自洽: (n−1)×间距 = 800",
-		_near(float(EqGunBatch.bomb_count() - 1) * EqGunBatch.BOMB_SPACING, EqGunBatch.BOMB_LANE_LEN),
-		"n=%d" % EqGunBatch.bomb_count())
+	# ★★2026-08-08: 枚数改回**用户过稿的 8/10/14**(我曾把它换成固定 6, 见 eq_gun_batch 长注释)。
+	#   ⇒ 三条判据: ①逐星级枚数对 ②间距 = 800/(n−1) 自洽 ③**升星必须更密**(这是设计意图,
+	#     "升星改的是覆盖密度" —— 固定 6 枚时三星完全一样, 正是这条被删掉了)。
+	for _si in range(3):
+		var _n: int = EqGunBatch.bomb_count(_si)
+		_ok("④ %d★ 投 %d 枚" % [_si + 1, [8, 10, 14][_si]], _n == [8, 10, 14][_si], "n=%d" % _n)
+		_ok("④ %d★ 间距 = 800/(n−1) 自洽" % (_si + 1),
+			_near(float(_n - 1) * EqGunBatch.bomb_spacing(_si), EqGunBatch.BOMB_LANE_LEN),
+			"间距 %.1f 码" % EqGunBatch.bomb_spacing(_si))
+	_ok("④ ★升星必须更密(覆盖密度是升星的表达)",
+		EqGunBatch.bomb_spacing(0) > EqGunBatch.bomb_spacing(1) and EqGunBatch.bomb_spacing(1) > EqGunBatch.bomb_spacing(2),
+		"%.0f > %.0f > %.0f 码" % [EqGunBatch.bomb_spacing(0), EqGunBatch.bomb_spacing(1), EqGunBatch.bomb_spacing(2)])
 
 
 func _t080_bomb() -> void:
@@ -838,10 +846,15 @@ func _t080_bomb() -> void:
 		"实打 %.1f" % (i1 - float(inn["hp"])))
 	# 炸弹也计入金弹计数 ⇒ 走的是同一个 _queue_shots 出口
 	var src: String = _strip("res://scripts/systems/equip/eq_gun_batch.gd")
+	# ★★2026-08-08: 原来是**逐行**判"同一行里既有 _queue_shots( 又有 p2eq_080"。
+	#   调用一旦换行(参数变多自然会换行)这条就误报 —— 它验的是**代码排版**而不是事实。
+	#   改成: 每个 `_queue_shots(` 之后 300 字符的窗口里有没有这个 gun_id。判据不变(仍要 2 处)。
 	var qn := 0
-	for ln in src.split("\n"):
-		if ln.contains("_queue_shots(") and ln.contains("p2eq_080"):
+	var _at := src.find("_queue_shots(")
+	while _at >= 0:
+		if src.substr(_at, 300).contains("p2eq_080"):
 			qn += 1
+		_at = src.find("_queue_shots(", _at + 10)
 	_ok("④ 机炮与炸弹都从 _queue_shots(gun_id=p2eq_080) 出去 ⇒ 两者都计入金弹计数",
 		qn == 2, "找到 %d 处" % qn)
 

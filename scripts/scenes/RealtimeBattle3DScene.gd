@@ -4449,7 +4449,19 @@ func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   #
 ##   (伤害/流血/减甲/击杀连锁全继承), 并额外造成 60/80/100% 真实伤害; 金弹本身不计入计数。
 ##   ⇒ 实现: 复用同一个 fn(所以"效果完全相同"是天然的), 期间把 _golden_pct 标在单位上,
 ##     伤害管线读它加一段真伤。★不递归: 金弹那一发不再累加计数(下面 _gun_shot_ct 只在正常发数)。
-func _queue_shots(count: int, interval: float, fn: Callable, src = null, gun_id: String = "") -> void:
+## `muzzle`: 可选的**出膛点回调**(返回 Vector2 场地坐标)。
+## ★★2026-08-08: 加这个参数是因为 `src` 一直在扛两个语义 ——
+##   **结算归属**(伤害算谁的、金弹计数记谁头上 ⇒ 携带者, 对的) 和
+##   **出膛点**(弹从哪儿射出来 ⇒ 应该是真正开火的那个东西, 错的)。
+##   一个参数扛两个含义, 必然有一边错; 错的那边让**九把枪的金弹全从携带者身上射出去**。
+##   ⇒ 出膛点独立成回调, 不传就退回携带者(他自己开的枪, 本来就该从他身上出)。
+##   ⚠ 用回调不用定值: 开火的东西(小手枪/炮台/直升机/浮游炮)**自己会动**,
+##     排队时记下的坐标到真正开火那一刻就过期了。
+## `delay0`: 整批**统一推迟**多少秒。★用途: 让结算等演出到位 ——
+##   080 的炸弹要飞 0.42 秒才落地, 而 `delay = k × interval` 在 count=1 时 k=0 ⇒ 延迟为 0,
+##   于是"伤害+爆炸"发生在投弹那一瞬、炸弹还在天上。加这个参数让**落地 = 伤害 = 爆炸**。
+func _queue_shots(count: int, interval: float, fn: Callable, src = null, gun_id: String = "",
+		muzzle: Callable = Callable(), delay0: float = 0.0) -> void:
 	var per := 0
 	var gpct := 0.0
 	if gun_id != "" and src is Dictionary:
@@ -4461,7 +4473,7 @@ func _queue_shots(count: int, interval: float, fn: Callable, src = null, gun_id:
 		if src is Dictionary:
 			src["_gun_shot_ct"] = {}
 	for k in range(count):
-		_pending_shots.append({"delay": float(k) * interval, "fn": fn, "src": src})
+		_pending_shots.append({"delay": delay0 + float(k) * interval, "fn": fn, "src": src})
 		if per <= 0:
 			continue
 		var ct: Dictionary = src["_gun_shot_ct"]
@@ -4475,10 +4487,10 @@ func _queue_shots(count: int, interval: float, fn: Callable, src = null, gun_id:
 		#   开火前记一遍全场 hp+shield, 开火后掉了的就是这一发打中的 ⇒ 不必往
 		#   `battle_damage` 这条最热的共用管线里加钩子。详见 golden_shot_vfx.gd 文件头。
 		var gp := gpct
-		_pending_shots.append({"delay": float(k) * interval + interval * 0.5, "src": src,
+		_pending_shots.append({"delay": delay0 + float(k) * interval + interval * 0.5, "src": src,
 			"fn": func() -> void:
 				src["_golden_pct"] = gp
-				_gold_vfx.arm(src)
+				_gold_vfx.arm(src, (muzzle.call() if muzzle.is_valid() else null))
 				fn.call()
 				_gold_vfx.resolve(gp)
 				src["_golden_pct"] = 0.0})
