@@ -760,7 +760,20 @@ func _t080_strafe_energy() -> void:
 	h["state"] = "patrol"
 	h["energy"] = 96.0
 	_gun._heli_bullet(h, 0.35)
-	_ok("④ 龟能满 ⇒ 进入【地毯轰炸】", str(h.get("state", "")) == "bomb", "state=%s" % str(h.get("state", "")))
+	# ★★2026-08-07 状态机多了一步 `approach`(进场)。由来: 用户实拍「你用瞬移了？」——
+	#   `_heli_begin_bomb` 原来一行 `h["pos"] = lane_a` **把直升机直接挪到航线起点**,
+	#   航线长 800 码 ⇒ 这一跳非常显眼。现在改成先飞过去。见 tests/verify_heli_approach.gd。
+	#   ⇒ 这条断言从「立刻是 bomb」改成「**进入轰炸流程**」, 并把进场喂完再验后面那些。
+	#   ⚠ 不是"为了让门禁绿而放宽" —— 下面紧跟着**仍然断言它最终会到 bomb**,
+	#     且进场本身有 verify_heli_approach 的 13 条(含三次变异反向验证)守着。
+	_ok("④ 龟能满 ⇒ 进入【地毯轰炸】流程(先进场)",
+		str(h.get("state", "")) == "approach", "state=%s" % str(h.get("state", "")))
+	var _appr := 0
+	while str(h.get("state", "")) == "approach" and _appr < 400:
+		_gun._heli_approach(h, 0.02)
+		_appr += 1
+	_ok("④ 进场结束后进入【地毯轰炸】", str(h.get("state", "")) == "bomb",
+		"state=%s (进场 %d 帧)" % [str(h.get("state", "")), _appr])
 	_ok("④ 起飞轰炸时龟能清零(下一轮重新攒)", _near(float(h["energy"]), 0.0, 0.01),
 		"energy=%.1f" % float(h["energy"]))
 
@@ -898,6 +911,12 @@ func _t080_crash() -> void:
 	var hb: Dictionary = _gun._helis[0]
 	hb["energy"] = 100.0
 	_gun._heli_begin_bomb(hb)
+	# ★进场那一步(2026-08-07 加, 修"瞬移到航线起点")先喂完 —— 本节验的是**航线不被打断**,
+	#   不是进场本身; 进场有 tests/verify_heli_approach.gd 单独守。
+	var _ab := 0
+	while str(hb.get("state", "")) == "approach" and _ab < 400:
+		_gun._heli_approach(hb, 0.02)
+		_ab += 1
 	_ok("④ ★分母: 直升机确实在跑轰炸航线", str(hb.get("state", "")) == "bomb",
 		"state=%s" % str(hb.get("state", "")))
 	ub["alive"] = false

@@ -683,6 +683,8 @@ func _tick_helis(delta: float) -> void:
 		match str(h.get("state", "patrol")):
 			"patrol", "doom":
 				_heli_patrol(h, delta)
+			"approach":
+				_heli_approach(h, delta)
 			"bomb":
 				_heli_bomb_run(h, delta)
 			"crash":
@@ -729,7 +731,9 @@ func _heli_bullet(h: Dictionary, scale: float) -> void:
 	battle._damage._apply_damage_from(owner, tgt, battle._atk_dmg(owner, scale, tgt), COL_PHYS, 0.0, false, true)
 	h["energy"] = minf(HELI_EN_MAX, float(h.get("energy", 0.0)) + HELI_EN_PER_HIT)
 	vfx.tracer(Vector2(h["pos"]), Vector2(tgt["pos"]), COL_PHYS, float(owner.get("_golden_pct", 0.0)))
-	if float(h["energy"]) >= HELI_EN_MAX and str(h.get("state", "")) != "bomb":
+	# ⚠ `approach` 也要排除 —— 否则进场途中龟能仍是满的, 每帧都会重新算一次航线,
+	#   直升机会被不停地"重新指派起点"而原地抖。
+	if float(h["energy"]) >= HELI_EN_MAX and not (str(h.get("state", "")) in ["bomb", "approach"]):
 		_heli_begin_bomb(h)
 
 
@@ -778,6 +782,11 @@ static func bomb_count() -> int:
 	return int(floor(BOMB_LANE_LEN / BOMB_SPACING)) + 1
 
 
+## 进场速度(码/秒)与兜底超时(秒)。★比巡航快 —— 它是"去占位", 慢吞吞飞过去会把节奏拖垮;
+## 但仍然是**飞过去**而不是瞬移, 玩家看得到它在往哪儿去。
+const HELI_APPROACH_SPD := 620.0
+const HELI_APPROACH_MAX := 2.2
+
 func _heli_begin_bomb(h: Dictionary) -> void:
 	var owner: Dictionary = h["owner"]
 	var pts: Array = []
@@ -791,13 +800,30 @@ func _heli_begin_bomb(h: Dictionary) -> void:
 	var d: Vector2 = lane[1]
 	h["lane_a"] = c - d * (BOMB_LANE_LEN * 0.5)
 	h["lane_b"] = c + d * (BOMB_LANE_LEN * 0.5)
-	h["pos"] = Vector2(h["lane_a"])
-	h["state"] = "bomb"
+	# ★★2026-08-07 用户实拍:「你用瞬移了？」—— **是的, 这里原来就是一行瞬移**:
+	#   `h["pos"] = lane_a` 把直升机**直接挪到航线起点**, 玩家看到的是它凭空闪了一下。
+	#   航线起点离它当前位置最远可达 800 码(整条航线长), 这一跳非常显眼。
+	#   ⇒ 加一个 `approach` 进场状态: 按 HELI_APPROACH_SPD 飞过去, 到位才开始投弹。
+	#   ⚠ 结算不受影响 —— 投弹的落点/枚数/间隔都由 `run_t` 从 0 开始算, 进场只是多花一段时间。
+	h["state"] = "approach"
 	h["run_t"] = 0.0
 	h["bomb_t"] = 0.0
 	h["bombs"] = 0
 	h["energy"] = 0.0
 	vfx.lane_marker(Vector2(h["lane_a"]), Vector2(h["lane_b"]), BOMB_LANE_W)
+
+
+## 进场: 飞向航线起点。到位(或飞太久)就转 `bomb` 开投。
+## ★兜底超时是必须的 —— 航线起点可能落在障碍/场外, 没有超时就会永远飞不到、卡死在这个状态。
+func _heli_approach(h: Dictionary, delta: float) -> void:
+	h["appr_t"] = float(h.get("appr_t", 0.0)) + delta
+	var to: Vector2 = Vector2(h["lane_a"]) - Vector2(h["pos"])
+	if to.length() <= HELI_APPROACH_SPD * delta + 6.0 or float(h["appr_t"]) >= HELI_APPROACH_MAX:
+		h["pos"] = Vector2(h["lane_a"])
+		h["state"] = "bomb"
+		h["appr_t"] = 0.0
+		return
+	h["pos"] = Vector2(h["pos"]) + to.normalized() * HELI_APPROACH_SPD * delta
 
 
 func _heli_bomb_run(h: Dictionary, delta: float) -> void:

@@ -605,7 +605,10 @@ func tower_charge(t: Dictionary, ct: int, per: int) -> float:
 ## 机体 = 发光球(机身) + 平面带(尾梁) + 旋转的双叶旋翼 + 龟能条。全部零素材。
 ## 080 机身立绘的显示高度(码)与素材路径。★立绘缓存一次 —— 每架直升机都 load 一遍
 ## 会在坠机重生时反复读盘; `null` 与"没查过"要分开存, 否则没素材时每帧都去 exists() 一次。
-const HELI_BODY_PX := 58.0
+## ★58 → 96: 用户实拍「直升机小了」。58 码在 1.9 倍俯瞰下只有 74 屏幕像素,
+##   **比一只龟(84 px)还小** —— 一架直升机比龟小, 读起来就不像直升机。
+##   96 码 = 123 px, 约龟的 1.5 倍, 空中单位该有的体量。
+const HELI_BODY_PX := 96.0
 ## 旋翼转一圈, 机身立绘播几轮。1.0 = 一圈一轮。
 const HELI_FRAME_CYCLES := 1.0
 const HELI_TEX_PATH := "res://assets/sprites/vfx/eq-heli-idle.png"
