@@ -876,6 +876,42 @@ func _t_vfx_geometry() -> void:
 	# 爆发态才放脉冲波; 平时不放(4 次/秒会糊)
 	_ok("★爆发态放柱面波、平时不放", vfx.alive_count("heal_wave") == 1, "N=%d" % vfx.alive_count("heal_wave"))
 
+	# ⑯-d2 ★回复微粒 —— 2026-08-09 补。为什么要有它: 甲片脉冲的峰谷比被 PLATE_A 的
+	#   天花板(1/√6)锁死, 实拍量到"一跳只把环带总亮度推 5%", 机制在跑却**读不出在回血**
+	#   (用"变亮像素数"量出来的: 21393 像素亮起、间隔 0.24 秒 = 节拍, 肉眼看不见)。
+	var n_mote: int = vfx.alive_count("heal_mote")
+	_ok("★每一跳都升起回复微粒(平时 %d + 爆发 %d)" % [RelicEqVfx.MOTE_N, RelicEqVfx.MOTE_N_LOW],
+		n_mote == RelicEqVfx.MOTE_N + RelicEqVfx.MOTE_N_LOW, "N=%d" % n_mote)
+	_ok("爆发档微粒更密(读得出两个状态不同)", RelicEqVfx.MOTE_N_LOW > RelicEqVfx.MOTE_N,
+		"%d > %d" % [RelicEqVfx.MOTE_N_LOW, RelicEqVfx.MOTE_N])
+	# ★甲片/微粒都**不许**开 no_depth_test —— 开了就画在龟立绘之上, 六倍档整片压住龟壳和脸
+	#   (2026-08-09 实拍确认的真缺陷; 这条守的就是它本身, 不是它的替身)。
+	var pl0 := ((hl["plates"] as Array)[0] as MeshInstance3D).material_override as StandardMaterial3D
+	var mo0: StandardMaterial3D = null
+	for x in vfx._owned:
+		if is_instance_valid(x) and str((x as Node).get_meta("relic_eq_vfx", "")) == "heal_mote":
+			mo0 = (x as MeshInstance3D).material_override as StandardMaterial3D
+			break
+	_ok("分母: 拿到微粒材质", mo0 != null)
+	_ok("★甲片不画在龟身之上(no_depth_test = false)", pl0 != null and not pl0.no_depth_test)
+	_ok("★微粒不画在龟身之上(no_depth_test = false)", mo0 != null and not mo0.no_depth_test)
+	# 微粒: holdfade(前 55% 满亮) + 真的在升 —— 纯同步, 不等任何 tween
+	var mtest := {"node": MeshInstance3D.new(), "t": 0.0, "p0": Vector3(1.0, 0.06, 2.0),
+		"dx": 0.0, "dz": 0.0, "rise": RelicEqVfx.MOTE_RISE_M}
+	(mtest["node"] as MeshInstance3D).material_override = StandardMaterial3D.new()
+	vfx.apply_mote(mtest, RelicEqVfx.MOTE_LIFE * 0.30)
+	var a_hold: float = ((mtest["node"] as MeshInstance3D).material_override as StandardMaterial3D).albedo_color.a
+	var y_hold: float = (mtest["node"] as MeshInstance3D).position.y
+	vfx.apply_mote(mtest, RelicEqVfx.MOTE_LIFE * 0.95)
+	var a_late: float = ((mtest["node"] as MeshInstance3D).material_override as StandardMaterial3D).albedo_color.a
+	var y_late: float = (mtest["node"] as MeshInstance3D).position.y
+	_ok("★微粒 holdfade: 前 55% 满亮(不是从出生就淡)", _near(a_hold, 1.0, 1e-3), "a=%.3f" % a_hold)
+	_ok("微粒末段确实淡出", a_late < 0.25, "a=%.3f" % a_late)
+	_ok("★微粒真的在升(末段高于前段, 且升满接近 MOTE_RISE_M)",
+		y_late > y_hold + 0.5 and _near(y_late - 0.06, RelicEqVfx.MOTE_RISE_M * 0.95, 0.05),
+		"y %.3f → %.3f (rise=%.2f)" % [y_hold, y_late, RelicEqVfx.MOTE_RISE_M])
+	(mtest["node"] as MeshInstance3D).free()
+
 	# ⑯-e 立碑: 匀减速上升(软着陆的唯一解)
 	_ok("rise(0)=0", _near(RelicEqVfx.rise_profile(0.0), 0.0))
 	_ok("rise(0.5)=0.75(线性给 0.5 / ease_out_cubic 给 0.875)", _near(RelicEqVfx.rise_profile(0.5), 0.75, 1e-9),

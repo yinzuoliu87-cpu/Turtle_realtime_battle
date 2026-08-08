@@ -293,14 +293,24 @@ func _g5_091_scutes() -> void:
 		for i in range((cols as PackedColorArray).size()):
 			var a: float = (cols as PackedColorArray)[i].a
 			var r: float = Vector2(verts[i].x, verts[i].z).length()
-			if a >= 0.99:
+			## ★门槛从两个常量派生, 不写死数字。2026-08-09: 这里原本写死 `a <= 0.60`,
+			##   而 PLATE_VA_CORE 当时是 0.42 —— 只有 0.18 的余量。一提亮内芯(0.42→0.62,
+			##   为了让"每 0.25 秒回一次血"读得出来)就越线, 门禁红在一条**与本意无关**的魔数上。
+			##   本意是"芯比沿暗、沿在外圈", 那就按芯/沿的中点分档。
+			var mid: float = (RV.PLATE_VA_CORE + RV.PLATE_VA_RIM) * 0.5
+			if a >= RV.PLATE_VA_RIM - 0.01:
 				n_bright += 1
 				r_bright = minf(r_bright, r)
-			elif a <= 0.60:
+			elif a <= mid:
 				n_dim += 1
 				r_dim = maxf(r_dim, r)
 		_ok("⑤e 同时存在【暗芯】与【亮沿】顶点", n_dim > 0 and n_bright > 0,
-			"暗 %d / 亮 %d" % [n_dim, n_bright])
+			"暗 %d / 亮 %d (分档中点 %.2f)" % [n_dim, n_bright, (RV.PLATE_VA_CORE + RV.PLATE_VA_RIM) * 0.5])
+		## ★补: 描边要**看得出来**才叫描边。上面那条只要求"两档都有顶点",
+		##   芯 0.99 / 沿 1.00 也能过 —— 那样描边在画面上根本不存在。
+		_ok("⑤e2 芯沿对比度够(沿 − 芯 ≥ 0.25)",
+			RV.PLATE_VA_RIM - RV.PLATE_VA_CORE >= 0.25,
+			"沿 %.2f − 芯 %.2f = %.2f" % [RV.PLATE_VA_RIM, RV.PLATE_VA_CORE, RV.PLATE_VA_RIM - RV.PLATE_VA_CORE])
 		_ok("⑤f 亮沿在外圈: 最内的亮顶点半径 ≥ 最外的暗顶点半径",
 			r_bright >= r_dim - 1e-6, "亮沿内边界 %.4f / 暗芯外边界 %.4f" % [r_bright, r_dim])
 	# ★写了得有人读: 甲片材质必须开 vertex_color_use_as_albedo

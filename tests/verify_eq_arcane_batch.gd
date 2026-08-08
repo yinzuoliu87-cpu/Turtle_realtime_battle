@@ -101,6 +101,23 @@ func _arc():
 ## 推进时间。★★2026-08-08 补上 `_step_pending_shots`: 本件多处结算已改成**延后到演出到达**
 ##   (浪潮每跳 WAVE_HOP_SEC 才落), 而旧版 `_feed` 只推装备自己的 tick、**不推延后队列**
 ##   ⇒ 断言全读到 0。"推进时间"本来就该把两条都推。
+## 某一类演出**真正还活着**的个数。
+## ⚠ 不能直接用 `vfx.alive_count()` —— 它只过 `is_instance_valid`, 而 `queue_free()` 是**延迟**的:
+##   节点在同一帧内仍然 valid。我第一版就是这么数的, 于是"落地那一刻预警圈收掉"永远读成"没收",
+##   而实际上它那一帧已经被 queue_free 了。⇒ 必须排掉 `is_queued_for_deletion()`。
+func _live(kind: String) -> int:
+	var n: int = 0
+	for x in _arc().vfx._owned:
+		if not is_instance_valid(x):
+			continue
+		if (x as Node).is_queued_for_deletion():
+			continue
+		if str((x as Node).get_meta("arcane_eq_vfx", "")) != kind:
+			continue
+		n += 1
+	return n
+
+
 func _feed(sec: float, step: float = 0.05) -> void:
 	var n: int = int(round(sec / step))
 	for i in range(n):
@@ -481,6 +498,35 @@ func _t089_target_and_total() -> void:
 	_ok("② 同步触发证据 moon_stuck == 1",
 		int(_st(u, "p2eq_089").get("moon_stuck", 0)) == 1)
 
+	## ②-V 演出层: 符纸**真的显示出来了**。2026-08-09 补 —— 089 的数值门禁很全
+	##   (叠加/转移/削魔抗/时长全焊死), 却没有一条管"看不看得见"。而
+	##   memory [[project-vfx-library-rich]] 记的正是这条: 美术断言要查
+	##   **真的进了 `_world`**, 不是只判定"函数被调过"。
+	var tal_n: int = _arc().vfx.alive_count("talisman")
+	_ok("②-V 符纸节点真的进了 _world(分母)", tal_n >= 1, "N=%d" % tal_n)
+	var tal_node: MeshInstance3D = null
+	for x in _arc().vfx._owned:
+		if is_instance_valid(x) and str((x as Node).get_meta("arcane_eq_vfx", "")) == "talisman":
+			tal_node = x as MeshInstance3D
+			break
+	_ok("②-V 拿到符纸节点", tal_node != null)
+	if tal_node != null:
+		var qs: Vector2 = (tal_node.mesh as QuadMesh).size
+		var want := Vector2(ArcaneEqVfx.TALISMAN_W_PX * float(_s.WS), ArcaneEqVfx.TALISMAN_H_PX * float(_s.WS))
+		_ok("②-V 符纸尺寸 = 30×44 码(不是当年那个 10×9 的小点)",
+			absf(qs.x - want.x) < 1e-4 and absf(qs.y - want.y) < 1e-4,
+			"%.3f×%.3f (want %.3f×%.3f)" % [qs.x, qs.y, want.x, want.y])
+		## ★用的是**真素材**, 不是那张程序化兜底图 —— 兜底图只有几个矩形拼的符文,
+		##   一旦素材路径写错/文件丢了, 画面会静悄悄退化成它而没人发现。
+		_ok("②-V 素材文件在位: " + ArcaneEqVfx.TALISMAN_TEX_PATH,
+			ResourceLoader.exists(ArcaneEqVfx.TALISMAN_TEX_PATH))
+		var mt := tal_node.material_override as StandardMaterial3D
+		_ok("②-V 符纸材质挂了贴图(不是纯色块)", mt != null and mt.albedo_texture != null)
+		_ok("②-V 符纸贴在目标身上(与最近敌人同一处平面坐标)",
+			absf(tal_node.position.x - _s._world_pos(near["pos"] as Vector2, 0.0).x) < 0.01
+				and absf(tal_node.position.z - _s._world_pos(near["pos"] as Vector2, 0.0).z) < 0.01,
+			"node=(%.2f, %.2f)" % [tal_node.position.x, tal_node.position.z])
+
 	## ★总量: 每跳把目标魔抗按回 0, 隔离掉"削魔抗→增伤"这一层, 单独量 400/700/1000。
 	##   (削魔抗那条在下一组单独验, 两件事分开量才说得清)
 	var hp0: float = near["hp"]
@@ -592,6 +638,28 @@ func _t089_stack_and_transfer() -> void:
 	_s._equip_sys.fire_equip_effect(u, "p2eq_089", 3)
 	_ok("② ★符纸可叠加: 同一目标上贴了 2 张", _arc()._talismans.size() == 2,
 		"n=%d" % _arc()._talismans.size())
+
+	## ②-F 叠加在**画面上**也读得出来 —— 2026-08-09 补。旧实现每张符纸都画在同一点,
+	##   叠 3 张和叠 1 张一模一样, "可叠加"这条规格在演出层等于没做(实拍确认)。
+	_ok("②-F 扇形: 只有 1 张时不偏移", absf(ArcaneEqVfx.talisman_fan_dx(0, 1)) < 1e-6)
+	var fan3: Array = [ArcaneEqVfx.talisman_fan_dx(0, 3), ArcaneEqVfx.talisman_fan_dx(1, 3),
+		ArcaneEqVfx.talisman_fan_dx(2, 3)]
+	_ok("②-F 扇形以中心对称(三张的偏移和 = 0)",
+		absf(float(fan3[0]) + float(fan3[1]) + float(fan3[2])) < 1e-6,
+		"%.2f / %.2f / %.2f" % [fan3[0], fan3[1], fan3[2]])
+	_ok("②-F 相邻两张间距 = TALISMAN_FAN_PX",
+		absf((float(fan3[1]) - float(fan3[0])) - ArcaneEqVfx.TALISMAN_FAN_PX) < 1e-6,
+		"%.2f (want %.2f)" % [float(fan3[1]) - float(fan3[0]), ArcaneEqVfx.TALISMAN_FAN_PX])
+	## ★量【真实节点】: 两张符纸推进一帧之后, 横坐标真的分开了(不是只改了记账字段)
+	_arc().vfx.tick(0.016)
+	var txs: Array = []
+	for x in _arc().vfx._owned:
+		if is_instance_valid(x) and str((x as Node).get_meta("arcane_eq_vfx", "")) == "talisman":
+			txs.append((x as Node3D).position.x)
+	_ok("②-F 分母: 场上两张符纸节点", txs.size() == 2, "N=%d" % txs.size())
+	_ok("②-F ★两张符纸的横坐标真的分开了(不是叠在同一点)",
+		txs.size() == 2 and absf(float(txs[0]) - float(txs[1])) > 0.05,
+		"Δx=%.4f" % (absf(float(txs[0]) - float(txs[1])) if txs.size() == 2 else -1.0))
 	_feed(1.2)
 	_ok("② 2 张同时跳 ⇒ 1 秒削 2 点魔抗", absf(float(a["mr"]) + 2.0) < 1e-6,
 		"实测 mr=%.2f" % float(a["mr"]))
@@ -763,6 +831,7 @@ func _t090_mana_lock() -> void:
 	pu["base_atk"] = 100.0
 	_equip(pu, "p2eq_090", 3)
 	_mk("fortune", "right", Vector2(-100.0, 0.0), 9.0e7)
+	_arc().vfx.clear()          # ★清场: 不清的话前面小节留下的 leap/slam 节点会污染计数
 	_s._staff_syn.add_mana(pu, 999.0)
 	_ok("③L ★分母: 起跳了且排上了砸落", _arc()._slams.size() == 1 and bool(pu.get("airborne", false)),
 		"slams=%d airborne=%s" % [_arc()._slams.size(), str(pu.get("airborne", false))])
@@ -773,6 +842,30 @@ func _t090_mana_lock() -> void:
 	_ok("③L ★★砸击命中 = 角色**落地**那一刻: 落地时刻 2·vy/|g| ≡ 砸落倒计时",
 		t_land > 0.0 and absf(t_land - t_slam) < 0.02,
 		"落地 %.4f 秒 / 砸落 %.4f 秒(峰高 %.1f 米)" % [t_land, t_slam, EqArcaneBatch.PESTLE_APEX_M])
+
+	# ── ★★演出的时序也要对上(用户 2026-08-08:「落地那一刻才是…预警特效怎么样, 冲击波怎么样」)
+	#   我上一条只验了**伤害**落在落地那一刻, **没验演出** ⇒ 这里量真实节点:
+	#     ① 起跳期间: 预警圈在、冲击波不在
+	#     ② 落地那一刻: 预警圈**收掉**、冲击波**起来**
+	#   两条演出各由不同的 tick 推(演出层 `ArcaneEqVfx.tick` vs 结算侧 `_tick_slams`),
+	#   "用同一个 T"不等于"实际同一帧" —— 必须量。
+	_ok("③V 起跳期间: 预警圈在场 / 冲击波还没起",
+		_live("leap") >= 1 and _live("slam") == 0,
+		"leap=%d slam=%d" % [_live("leap"), _live("slam")])
+	var v_leap := -1
+	var v_slam := -1
+	var vs := 0
+	while vs < 300 and not _arc()._slams.is_empty():
+		var had: int = _arc()._slams.size()
+		_feed(0.02, 0.02)
+		vs += 1
+		if had > 0 and _arc()._slams.is_empty():
+			v_leap = _live("leap")
+			v_slam = _live("slam")
+	_ok("③V ★★落地那一刻: 预警圈**收掉** + 冲击波**起来**(不是一个还在一个没来)",
+		v_slam >= 1 and v_leap == 0,
+		"结算那一帧 预警圈=%d 冲击波=%d" % [v_leap, v_slam])
+	_s._units.clear()
 	_s._units.clear()
 
 	_ok("③W 预警圈半径 SLAM_R_PX ≡ 伤害半径 PESTLE_RADIUS(旧版差九倍)",

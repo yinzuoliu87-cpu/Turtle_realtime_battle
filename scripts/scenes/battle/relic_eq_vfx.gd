@@ -96,7 +96,7 @@ const PLATE_A := 0.40
 ## ★描边不占 alpha 量程: 提亮外沿不会把 ×√6 那条比值断言变成"两边都撞上限"。
 ## ⚠ 写了顶点色还得有人读 —— 材质必须开 `vertex_color_use_as_albedo`
 ##   (memory [[fb-write-without-reader-and-fake-gates]]: 生产侧写了消费侧没读, 一天踩三次)。门禁 G6 守这条。
-const PLATE_VA_CORE := 0.42
+const PLATE_VA_CORE := 0.62
 const PLATE_VA_RIM := 1.00
 ## 外沿描边带的内边界(占外接圆半径的比例)
 const PLATE_RIM_IN := 0.80
@@ -109,7 +109,22 @@ const PLATE_TAU := 0.42
 ##   加了地板之后甲片环是一个**常驻**的玉青六边形环, 脉冲只是在它上面加亮。
 ## ⚠ 地板只作用在 `tick()` 的衰减上, **不碰 `scute_pulse` 写下的峰值** ——
 ##   否则 ×√6 那条比值断言会变成 (floor+a)/(floor+b) ≠ √6。
-const PLATE_FLOOR_FRAC := 0.45
+const PLATE_FLOOR_FRAC := 0.30
+
+## ── 回复微粒(091) ────────────────────────────────────────────
+## ★为什么要有它: 甲片脉冲的峰/谷之比被 PLATE_A 的天花板(1/√6)锁死, 实拍量到
+##   "一跳只把环带总亮度推 5%" —— 机制在跑, 但**读不出在回血**(2026-08-09 用
+##   "变亮像素数" 量出来的: 21393 像素亮起、间隔 0.24 秒 = 节拍, 肉眼却看不见)。
+##   微粒不占 alpha 量程, 所以提可读性不会动那条 ×√6 的断言。
+const MOTE_LIFE := 0.62
+## 微粒升起的高度(米)与横向漂移(米)。
+const MOTE_RISE_M := 1.9
+const MOTE_DRIFT_M := 0.42
+## 微粒边长(场地像素)。
+const MOTE_SZ_PX := 3.6
+## 一跳放几颗: 平时 1 颗(4 颗/秒, 不糊), <25% 爆发档 4 颗。
+const MOTE_N := 1
+const MOTE_N_LOW := 4
 
 ## ── ② 回复脉冲波(091) ────────────────────────────────────────────
 ## 柱面波振幅公式的起算半径(归一)。a(x) = √(X0/x), 在 x = X0 处恰为 1。
@@ -191,6 +206,9 @@ var _m_box: ArrayMesh = null
 var _scutes: Array = []
 ## 091 正在扩的回复脉冲波: {node, t, amp}
 var _waves: Array = []
+var _motes: Array = []
+## 微粒的横向漂移**不走 rng** —— 用自增计数派生, 保住确定性(战斗 rng 序列一动, 别处钉序列的门禁就错位)。
+var _mote_seq: int = 0
 ## 094 每座碑一套常驻碑体: {root, rune, t, si}
 var _steles: Array = []
 ## 094 在途石块: {node, t, T, from(Vector3), to(Vector3), col}
@@ -459,7 +477,9 @@ func ensure_scutes(u: Dictionary) -> Dictionary:
 	var alphas: Array = []
 	var ps: float = PLATE_R_PX * float(battle.WS)
 	for c in hex_ring_centers(PLATE_R_PX):
-		var mi := _mesh_node(_m_hex, _mat(Color(COL_SCUTE.r, COL_SCUTE.g, COL_SCUTE.b, 0.0), true, true, 8, true))
+		# no_depth=false: 甲片是**贴地**的(y=GROUND_Y), 开了 no_depth_test 就会画在龟立绘之上
+		# ⇒ 六倍档全甲亮起时整片压住龟壳和脸(2026-08-09 实拍确认)。关掉后由深度决定遮挡。
+		var mi := _mesh_node(_m_hex, _mat(Color(COL_SCUTE.r, COL_SCUTE.g, COL_SCUTE.b, 0.0), true, false, 8, true))
 		mi.scale = Vector3(ps, 1.0, ps)
 		mi.position = Vector3(float(c.x) * float(battle.WS), 0.0, float(c.y) * float(battle.WS))
 		root.add_child(mi)
@@ -495,9 +515,65 @@ func scute_pulse(u: Dictionary, _si: int, mult: float) -> Dictionary:
 					COL_SCUTE.r, COL_SCUTE.g, COL_SCUTE.b, amp)
 	h["n"] = n + 1
 	h["a"] = alphas
+	## 微粒从**这一跳点亮的那片甲**上升起(爆发档六片全亮 ⇒ 绕环均摊)
+	var lit_k: int = n % maxi(1, plates.size())
+	_emit_motes(h, lit_k, MOTE_N_LOW if low else MOTE_N, low)
 	if low:
 		_emit_wave(u["pos"], amp)
 	return h
+
+
+## 一跳的回复微粒: 从甲片位置升起、边升边淡。
+## ⚠ 位置取的是**甲片节点的真实 local position**(不是重算一遍几何) —— 手抄的副本必然落后。
+func _emit_motes(h: Dictionary, lit_k: int, cnt: int, low: bool) -> void:
+	if not _has_world():
+		return
+	_ensure_meshes()
+	var root = h.get("root", null)
+	if not is_instance_valid(root):
+		return
+	var plates: Array = h["plates"]
+	if plates.is_empty():
+		return
+	var ms: float = MOTE_SZ_PX * float(battle.WS)
+	for i in range(cnt):
+		var k: int = (lit_k + i * 2) % plates.size()
+		var pl = plates[k]
+		if not is_instance_valid(pl):
+			continue
+		# no_depth=false: 微粒从环上升起, 让龟立绘按深度遮挡它 —— 否则前后排的微粒
+		# 一律糊在龟脸上(实拍见 m091e)。
+		## ⚠ `_adopt` 自己会把节点挂到 World —— 再 `root.add_child` 一次就是
+		##   "already has a parent"(实拍 log 里刷了 24 条)。所以这里换算成**世界坐标**。
+		var wp: Vector3 = (root as Node3D).position + (pl as Node3D).position
+		var mi := _mesh_node(_m_hex, _mat(COL_SCUTE, true, false, 10))
+		mi.scale = Vector3(ms, 1.0, ms)
+		mi.position = wp
+		_adopt(mi, "heal_mote")
+		var ph: float = float(_mote_seq)
+		_mote_seq += 1
+		_motes.append({
+			"node": mi, "t": 0.0,
+			"p0": wp,
+			"dx": cos(ph * 2.399) * MOTE_DRIFT_M,
+			"dz": sin(ph * 2.399) * MOTE_DRIFT_M,
+			"rise": MOTE_RISE_M * (1.25 if low else 1.0),
+		})
+
+
+## 把 t ∈ [0, MOTE_LIFE] 的微粒写到真实节点上(纯同步, 门禁可直接调)。
+func apply_mote(m: Dictionary, t: float) -> void:
+	var mi = m.get("node", null)
+	if not is_instance_valid(mi):
+		return
+	var uu: float = clampf(t / MOTE_LIFE, 0.0, 1.0)
+	var p0: Vector3 = m["p0"]
+	(mi as Node3D).position = Vector3(
+		p0.x + float(m["dx"]) * uu, p0.y + float(m["rise"]) * uu, p0.z + float(m["dz"]) * uu)
+	## ★holdfade: 前 55% 满亮再收 —— 从出生就淡是本轮改了五次的老毛病
+	var a: float = 1.0 if uu < 0.55 else (1.0 - (uu - 0.55) / 0.45)
+	((mi as Node3D).get("material_override") as StandardMaterial3D).albedo_color = Color(
+		COL_SCUTE.r, COL_SCUTE.g, COL_SCUTE.b, a)
 
 
 ## 一圈柱面波(只在 <25% 的爆发态放 —— 平时 4 次/秒放圈会糊成一片)。
@@ -763,6 +839,18 @@ func tick(delta: float) -> void:
 		apply_wave(w, uu)
 		kw.append(w)
 	_waves = kw
+	# 回复微粒
+	var kmo: Array = []
+	for m in _motes:
+		m["t"] = float(m["t"]) + d
+		if float(m["t"]) >= MOTE_LIFE or not is_instance_valid(m.get("node", null)):
+			var mn = m.get("node", null)
+			if is_instance_valid(mn):
+				mn.queue_free()
+			continue
+		apply_mote(m, float(m["t"]))
+		kmo.append(m)
+	_motes = kmo
 	# 碑: 升起 + 符环自转
 	for h in _steles:
 		advance_stele(h, d)
@@ -825,6 +913,7 @@ func clear_all() -> int:
 	_owned.clear()
 	_scutes.clear()
 	_waves.clear()
+	_motes.clear()
 	_steles.clear()
 	_rocks.clear()
 	_marks.clear()
@@ -849,6 +938,11 @@ func alive_count(kind: String = "") -> int:
 	var n := 0
 	for x in _owned:
 		if not is_instance_valid(x):
+			continue
+		## ★`queue_free()` 是**延迟**的 —— 同一帧里 `is_instance_valid` 仍然为 true。
+		##   不排掉它, "收掉了吗"这类断言会读到已经判死的节点(2026-08-08 在 090
+		##   的预警圈上栽过一次: 明明收了, 门禁读出"还在")。
+		if (x as Node).is_queued_for_deletion():
 			continue
 		if kind != "" and str(x.get_meta(META_KEY, "")) != kind:
 			continue

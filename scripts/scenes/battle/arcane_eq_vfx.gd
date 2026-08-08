@@ -79,6 +79,12 @@ const TALISMAN_H_PX := 44.0
 ##   脸和身体上(实拍 `_vfxlab_af089_0.png` 一看就知道) —— 治好了"看不见"却挡住了被贴的人。
 ##   抬到 1.62 让它浮在龟壳上沿, 既完整可见又不遮挡。
 const TALISMAN_Y := 1.62
+## 同一目标上叠了 N 张符纸时, 相邻两张的**横向错位**(场地像素)与**额外倾角**(弧度)。
+## ★2026-08-09: 规格写的是"符纸可叠加", 但每张都画在同一点上 ⇒ 叠 3 张和叠 1 张
+##   画面上一模一样, "可叠加"这条在演出层等于没做。实拍确认: 法器羁绊 3 档时
+##   法力自回, 台上其实贴了好几张, 完全看不出来。
+const TALISMAN_FAN_PX := 11.0
+const TALISMAN_FAN_ROLL := 0.13
 ## 符纸程序化纹理的分辨率(与 30:44 同比 —— 不同比会把月牙拉扁)
 const TALISMAN_TEX_W := 64
 const TALISMAN_TEX_H := 94
@@ -660,8 +666,46 @@ func talisman_stick(u, sec: float) -> Node3D:
 	mi.position = battle._world_pos((u as Dictionary)["pos"] as Vector2, TALISMAN_Y)
 	mi.basis = face_basis(_cam_forward(), 0.0)
 	_adopt(mi, "talisman")
-	_fx.append({"node": mi, "unit": u, "t": 0.0, "life": maxf(0.05, sec), "kind": "talisman"})
+	## 这只单位身上已经有几张 ⇒ 新的一张排在下一格(扇形错开, 见 TALISMAN_FAN_PX)
+	_fx.append({"node": mi, "unit": u, "t": 0.0, "life": maxf(0.05, sec),
+		"kind": "talisman", "slot": talisman_count_on(u)})
+	_reflow_talismans(u)
 	return mi
+
+
+## 这只单位身上**现存**几张符纸(不含刚要加的那张)。门禁直接调, 纯同步。
+func talisman_count_on(u) -> int:
+	var n: int = 0
+	for f in _fx:
+		if str(f.get("kind", "")) != "talisman":
+			continue
+		if is_same(f.get("unit", null), u):
+			n += 1
+	return n
+
+
+## 把这只单位身上的符纸重新编号(0..n-1) —— 中间掉一张时后面的要补位,
+## 否则扇形会留个洞、且 slot 越用越大把符纸甩到体外。
+func _reflow_talismans(u) -> void:
+	var idx: int = 0
+	for f in _fx:
+		if str(f.get("kind", "")) != "talisman":
+			continue
+		if not is_same(f.get("unit", null), u):
+			continue
+		f["slot"] = idx
+		f["slots"] = 0
+		idx += 1
+	for f in _fx:
+		if str(f.get("kind", "")) == "talisman" and is_same(f.get("unit", null), u):
+			f["slots"] = idx
+
+
+## 第 i 张(共 n 张)相对单位中心的横向偏移(场地像素) —— 整组以中心对称。
+static func talisman_fan_dx(i: int, n: int) -> float:
+	if n <= 1:
+		return 0.0
+	return (float(i) - float(n - 1) * 0.5) * TALISMAN_FAN_PX
 
 
 ## 符纸从尸体飞向新目标的那道紫光。
@@ -946,12 +990,18 @@ func tick(delta: float) -> void:
 				var u = f.get("unit", null)
 				if u is Dictionary and (u as Dictionary).get("alive", false):
 					var p: Vector2 = (u as Dictionary)["pos"]
+					var slot: int = int(f.get("slot", 0))
+					var slots: int = maxi(1, int(f.get("slots", 1)))
+					p.x += talisman_fan_dx(slot, slots)
 					(n as Node3D).position = battle._world_pos(p, TALISMAN_Y + bob_offset(t) * float(battle.WS))
 					## ★每帧重新对准镜头 —— 相机会跟着战况平移/缩放, 只在建的时候对一次,
 					##   镜头一动就又斜了(而"斜"到极限就是旧版那种整张消失)。
-					(n as Node3D).basis = face_basis(_cam_forward(), talisman_roll(t))
+					var extra_roll: float = (float(int(f.get("slot", 0))) - float(maxi(1, int(f.get("slots", 1))) - 1) * 0.5) * TALISMAN_FAN_ROLL
+					(n as Node3D).basis = face_basis(_cam_forward(), talisman_roll(t) + extra_roll)
 				if t >= life or not (u is Dictionary) or not (u as Dictionary).get("alive", false):
 					_free_fx(i)
+					## 掉一张之后剩下的要补位, 否则扇形留洞
+					_reflow_talismans(u)
 			"water":
 				# ★★水流带: 头走抛物线, 身体**逐段滞后**追头, 并把节距拉回静止值(弧长恒定)。
 				#   这四条(连续形体/逐段滞后/弧长恒定/头粗尾细+行波)才是"水流感"的来源,
