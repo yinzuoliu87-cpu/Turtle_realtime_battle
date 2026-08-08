@@ -114,7 +114,7 @@ const STACK_TICKS := 20
 const STACK_D0 := 46.0
 const STACK_D1 := 74.0
 ## 潮汐青 —— 全场的命中环/技能环/目标环都是白的, 白环撞形状又撞色
-const TIDE_COL := Color(0.36, 0.82, 0.92)
+const TIDE_COL := Color(0.24, 0.86, 0.98)
 
 ## ④ 084 剑波演出速度(码/秒)。★与 `EqBladeBatch.WAVE_SPD` 焊死相等(门禁验)。
 const WAVE_SPD := 900.0
@@ -737,9 +737,14 @@ func rapier_stack(u: Dictionary, stacks: int) -> void:
 	#   ② **纯白**: 场上命中环/技能环/目标环全是白的, 遮住颜色就分不出。
 	#      ⇒ 改潮汐青(与 083 的"潮汐细剑"同名同色), 满层才转白热。
 	var g: float = stack_glow(stacks)
-	var col: Color = TIDE_COL.lerp(Color(1.0, 1.0, 1.0), g * 0.65)
+	# ★★2026-08-08 实拍复验后修: 第一版写 `g * 0.65`, 而 g 是**层数的对数刻度** ——
+	#   18 层时 g≈0.97 ⇒ 和白色混了 63%, 实测最亮像素 (207,245,239) = **还是白的**。
+	#   我按"低层青、满层白"设计, 却没算过实战里的层数分布: 连续命中同一目标时层数
+	#   **几秒就堆满**, 所谓"低层"那一段几乎不存在 ⇒ 改色等于没改。
+	#   ⇒ 转白只留一点点(0.22), 满层靠**变亮**而不是变白来表达。
+	var col: Color = TIDE_COL.lerp(Color(1.0, 1.0, 1.0), g * 0.22)
 	var ring := _ground(stack_ring_tex(stacks), u["pos"], stack_diam(stacks),
-		Color(col.r, col.g, col.b, 0.55 + 0.45 * g), 5)
+		Color(col.r, col.g, col.b, 0.62 + 0.38 * g), 5)
 	_adopt(ring, "rapier")
 	_fx.append({"node": ring, "t": 0.0, "life": 0.34, "kind": "fade"})
 	if stacks >= int(STACK_CAP):
