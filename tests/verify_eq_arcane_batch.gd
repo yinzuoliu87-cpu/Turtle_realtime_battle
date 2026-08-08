@@ -1008,18 +1008,20 @@ func _t_vfx_nodes() -> void:
 	var wave = _arc().vfx.wave_path(pts)
 	_ok("⑥ 浪潮折线建出来了", wave != null and is_instance_valid(wave))
 	if wave != null:
-		# ★★2026-08-08 浪潮从"折线"改成"**一簇水**"(用户: 一簇水在目标之间跳来跳去,
-		#   有高度变化, 并不是闪电连锁) ⇒ 断言也跟着换成这一条的真判据。
-		_ok("⑥ 一簇水: %d 颗水滴" % ArcaneEqVfx.WATER_DROPS,
-			(wave as Node).get_child_count() == ArcaneEqVfx.WATER_DROPS,
+		# ★★2026-08-08 浪潮从"一簇离散水滴"改成**一条跟随的水流带**
+		#   (用户:「浪潮你自己想想到底怎么实现水流感」—— 一袋颗粒做不出水流)。
+		#   带 = FLOW_SEGS 节, 相邻两节之间一块四边形 ⇒ 子节点数 = FLOW_SEGS − 1。
+		_ok("⑥ 水流带: %d 节 ⇒ %d 块面" % [ArcaneEqVfx.FLOW_SEGS, ArcaneEqVfx.FLOW_SEGS - 1],
+			(wave as Node).get_child_count() == ArcaneEqVfx.FLOW_SEGS - 1,
 			"children=%d" % (wave as Node).get_child_count())
-		# ★★"有高度变化": **量真实节点的世界 Y**, 不是断言公式存在。
-		#   一跳的中点必须明显高于落点 —— 平着飞就不叫"跳"。
-		var _d0 = (wave as Node).get_child(0)
+		# ★★"有高度变化": 量**真实几何**。⚠ 带的顶点是**世界坐标**建的 ⇒ 节点 position 恒为 0,
+		#   读 position 会永远得到 0(第一版就是这么读的, 两条都读出 0.000)。
+		#   ⇒ 读网格 AABB 的中心 Y —— 那才是它真正画在哪。
+		var _q0 = (wave as Node).get_child(0)
 		_feed(EqArcaneBatch.WAVE_HOP_SEC * 0.5)
-		var y_mid: float = (_d0 as Node3D).position.y
+		var y_mid: float = ((_q0 as MeshInstance3D).mesh as Mesh).get_aabb().get_center().y
 		_feed(EqArcaneBatch.WAVE_HOP_SEC * 0.5)
-		var y_end: float = (_d0 as Node3D).position.y
+		var y_end: float = ((_q0 as MeshInstance3D).mesh as Mesh).get_aabb().get_center().y
 		_ok("⑥ ★有高度变化: 跳到一半时比落点高(平着飞就不叫跳)",
 			y_mid > y_end + 0.15, "中点 y=%.3f 落点 y=%.3f" % [y_mid, y_end])
 		_ok("⑥ 折线记着真实几何长度 400 码",

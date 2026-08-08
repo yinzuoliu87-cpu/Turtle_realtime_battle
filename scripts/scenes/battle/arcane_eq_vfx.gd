@@ -48,7 +48,11 @@ const PULSE_SEC := 0.55
 ## ③ 090 猛砸: **Sedov–Taylor 点爆轰** r ∝ t^(2/5) —— 强激波在均匀介质里的自相似解。
 ##    与潮涌环的线性外扩形成对比(一个是波、一个是爆), 肉眼分得出来。
 const SEDOV_EXP := 0.4
-const SLAM_SEC := 0.85
+## ★2026-08-08 0.85 → 0.55: 余波拖太久, 砸完半天不散(用户:「节奏也有问题」)
+const SLAM_SEC := 0.55
+## 硬前沿: 更快冲到边(比余波短) + 前 55% 满亮
+const SLAM_EDGE_SEC := 0.34
+const SLAM_EDGE_HOLD := 0.55
 
 ## ④ 089 符纸悬浮: 简谐上下 + 【面内】小幅摇摆。周期 1.6 秒, 幅度 4 码。
 const BOB_OMEGA := 3.926990816987241
@@ -100,7 +104,19 @@ const ARC_PEAK_FRAC := 0.18
 ## 水的两个色: 亮面与深处。★MIX 混合 ⇒ 颜色是它自己的, 不会被加成白
 const COL_WATER := Color(0.60, 0.90, 1.00, 0.95)
 const COL_WATER_DEEP := Color(0.20, 0.55, 0.82, 0.95)
-const WATER_DROPS := 11           ## 一簇里几颗水滴
+## ── 水流带(用户 2026-08-08:「浪潮你自己想想到底怎么实现水流感」)
+## ★★一簇离散水滴做不出"水流" —— 那是一袋颗粒在飞。水之所以读成水, 靠的是:
+##   ① **连续形体**(带, 不是点)  ② **逐段滞后**(身体跟着头走但慢半拍, 过弯自然甩出弧线)
+##   ③ **弧长大致恒定**(不能像弹簧忽长忽短)  ④ **头粗尾细**  ⑤ **行波**(高光沿身体往后跑)
+##   这正是用户定触手水准时说的「形态要有物理模型(弧长恒定/曲率密度/行波/逐段滞后)」
+##   —— memory [[fb-3d-quality-bar-tentacle]]。
+const FLOW_SEGS := 14             ## 水流带分几节
+const FLOW_REST_PX := 15.0        ## 相邻两节的静止间距(码) —— 弧长恒定就靠它
+const FLOW_LAG := 0.34            ## 逐段滞后系数(每帧向前一节靠拢多少)
+const FLOW_HEAD_PX := 30.0        ## 头部半宽(码)
+const FLOW_TAIL_PX := 5.0         ## 尾部半宽(码)
+const FLOW_WAVE_SPD := 2.6        ## 行波沿身体往后跑的速度(节/秒)
+const WATER_DROPS := 11           ## (溅水用)一簇里几颗水滴
 const WATER_DROP_PX := 10.0       ## 单颗水滴的边长(码)
 const WATER_SPREAD_PX := 20.0     ## 簇内水滴的横向散布(码)
 const WATER_SPREAD_M := 0.22      ## 簇内水滴的高度散布(米)
@@ -740,14 +756,9 @@ func pestle_leap(u, sec: float) -> Node3D:
 	var root := Node3D.new()
 	root.position = battle._world_pos(pos2, 0.0)
 	_adopt(root, "leap")
-	# 水柱(局部原点在底面 ⇒ 只要改 scale.y 与 position.y 就能"长高")
-	var bm := BoxMesh.new()
-	bm.size = Vector3(22.0 * float(battle.WS), 1.0, 22.0 * float(battle.WS))
-	var col := MeshInstance3D.new()
-	col.mesh = bm
-	# ★MIX 而不是 ADD: ADD 会把水柱加成一根纯白条(旧版就是这样, 读不出是水)
-	col.material_override = _mat_boundary(Color(COL_SLAM.r, COL_SLAM.g, COL_SLAM.b, 0.85))
-	root.add_child(col)
+	# ★★2026-08-08 **删掉水柱**。用户:「我从始至终说的高高跃起, 加什么水柱啊」——
+	#   他说得对: 规格里从来没有水柱, 那是我接手前就在那儿、我又没质疑就留着了。
+	#   "高高跃起"该看到的是**龟真的飞得很高 + 地面影子缩小**, 不是脚下长出一根柱子。
 	# 地面影子
 	var sh := MeshInstance3D.new()
 	sh.mesh = _ring_mesh()
@@ -766,7 +777,7 @@ func pestle_leap(u, sec: float) -> Node3D:
 	var side_col: Color = WARN_ALLY if str(battle._eff_side(u)) == "left" else WARN_FOE
 	_warn_batch(warn, pos2, SLAM_R_PX, side_col)
 	root.set_meta("radius_px", SLAM_R_PX)
-	_fx.append({"node": root, "unit": u, "col": col, "shadow": sh, "warn": warn,
+	_fx.append({"node": root, "unit": u, "shadow": sh, "warn": warn,
 		"warn_col": side_col, "warn_t": 0.0,
 		"t": 0.0, "life": maxf(0.05, sec), "kind": "leap"})
 	return root
@@ -780,6 +791,17 @@ func pestle_leap(u, sec: float) -> Node3D:
 ##   ③ **落点水花** —— 一圈贴地的溅水
 ##   ④ **震屏** —— 7 米砸下来得有分量
 func pestle_slam(pos2d: Vector2, radius_px: float) -> Node3D:
+	# ★★2026-08-08 冲击波重做(用户:「你这冲击波环做的不好, 节奏也有问题」):
+	#   旧版是**一圈软环 + 从出生就线性淡出** ⇒ 扩到最满的那一刻 alpha 恰好 0,
+	#   看得见的只有中间那段半亮的慢爬, 而且拖 0.85 秒不散(节奏拖沓)。
+	#   ⇒ 拆两层, 各管一件事:
+	#     · **硬前沿**: `_boundary_mesh`(硬边, 与预警圈同族) 快速冲出去, **前 55% 满亮**才收
+	#     · **余波**: 软环跟在后面、更淡更慢 —— 只负责"刚才这里炸过"
+	#   两层都走 Sedov(r ∝ t^0.4), 但**寿命不同** ⇒ 前沿先到边、余波慢慢散, 这就是节奏。
+	var edge := _node(_boundary_mesh(), _mat_boundary(COL_SLAM),
+		battle._world_pos(pos2d, 0.05), "slam")
+	edge.scale = Vector3(0.001, 1.0, 0.001)
+	_fx.append({"node": edge, "t": 0.0, "life": SLAM_EDGE_SEC, "kind": "slamedge", "r": radius_px})
 	var ring := _ring_fx(pos2d, radius_px, COL_SLAM, SLAM_SEC, "slam")
 	if not _has_world():
 		return ring
@@ -825,29 +847,22 @@ func wave_path(pts: Array) -> Node3D:
 	var root := Node3D.new()
 	root.position = Vector3.ZERO
 	_adopt(root, "wave")
-	var rng: RandomNumberGenerator = battle._juice_rng
-	# 一簇水: 每颗水滴一个小方块 + 各自的随机偏移(飞行中整体走同一条抛物线)
-	var drops: Array = []
-	for k in range(WATER_DROPS):
-		var bm := BoxMesh.new()
-		var sz: float = WATER_DROP_PX * (0.55 + 0.75 * rng.randf()) * float(battle.WS)
-		bm.size = Vector3(sz, sz, sz)
+	# 带的每一节先全部堆在起点, 之后由 tick 逐段追头(见 "water" 分支)
+	var chain: Array = []
+	var start: Vector2 = pts[0]
+	for k in range(FLOW_SEGS):
+		chain.append({"p": start, "h": 0.45})
+	# 每两节之间一块四边形(每帧重建 —— 形体在变, 顶点也得跟着变)
+	var quads: Array = []
+	for k2 in range(FLOW_SEGS - 1):
 		var mi := MeshInstance3D.new()
-		mi.mesh = bm
-		# ⚠ 用 MIX 不用 ADD: ADD 会把 #8ff0ff 的青**爆成纯白方块**(实拍第一版就是一坨白),
-		#   跟 088 碑体是同一个根因。水要保住自己的颜色 ⇒ `_mat_solid`。
-		#   深浅两色混着放, 才读得出是"一簇水"而不是一个整体。
-		var deep: bool = rng.randf() < 0.45
-		mi.material_override = _mat_solid(
-			COL_WATER_DEEP if deep else COL_WATER, 12)
+		mi.material_override = _mat_solid(COL_WATER, 12)
 		root.add_child(mi)
-		drops.append({"node": mi,
-			"off": Vector2(rng.randf() * 2.0 - 1.0, rng.randf() * 2.0 - 1.0) * WATER_SPREAD_PX,
-			"oy": (rng.randf() * 2.0 - 1.0) * WATER_SPREAD_M})
+		quads.append(mi)
 	root.set_meta("path_len", path_length(pts))
 	_fx.append({"node": root, "t": 0.0,
 		"life": EqArcaneBatch.wave_hop_delay(pts.size() - 2) + WATER_TAIL_SEC,
-		"kind": "water", "pts": pts, "drops": drops, "splashed": 0})
+		"kind": "water", "pts": pts, "chain": chain, "quads": quads, "splashed": 0})
 	return root
 
 
@@ -910,6 +925,15 @@ func tick(delta: float) -> void:
 					(slab as Node3D).position.y = h * (fr - 0.5)
 				if t >= life:
 					_free_fx(i)
+			"slamedge":
+				# 硬前沿: 半径走 Sedov, **前 SLAM_EDGE_HOLD 满亮**, 之后才收 ——
+				# 线性淡出会让"冲到最远"的那一刻正好看不见(本轮第 N 次同一个病)。
+				var er: float = blast_radius(t, life, float(f.get("r", 100.0))) * float(battle.WS)
+				(n as Node3D).scale = Vector3(maxf(0.001, er), 1.0, maxf(0.001, er))
+				var eq: float = clampf(t / life, 0.0, 1.0)
+				_set_alpha(n, 1.0 if eq <= SLAM_EDGE_HOLD 					else clampf((1.0 - eq) / maxf(0.001, 1.0 - SLAM_EDGE_HOLD), 0.0, 1.0))
+				if t >= life:
+					_free_fx(i)
 			"pulse", "slam":
 				var rp: float = float(f.get("r", 100.0))
 				var r: float = (blast_radius(t, life, rp) if k == "slam" else pulse_radius(t, life, rp))
@@ -929,11 +953,11 @@ func tick(delta: float) -> void:
 				if t >= life or not (u is Dictionary) or not (u as Dictionary).get("alive", false):
 					_free_fx(i)
 			"water":
-				# ★★一簇水沿抛物线逐跳飞。跳的节拍与结算侧**共用** `wave_hop_delay(i)`,
-				#   不各算一份(演出到了伤害还没到 是本仓翻过的车)。
+				# ★★水流带: 头走抛物线, 身体**逐段滞后**追头, 并把节距拉回静止值(弧长恒定)。
+				#   这四条(连续形体/逐段滞后/弧长恒定/头粗尾细+行波)才是"水流感"的来源,
+				#   一簇离散颗粒做不出来 —— 那是一袋点在飞。
 				var wpts: Array = f.get("pts", [])
 				var nseg: int = maxi(1, wpts.size() - 1)
-				# 当前在第几跳 + 该跳内的进度
 				var seg_i: int = 0
 				var seg_q: float = 0.0
 				var prev_t: float = 0.0
@@ -944,24 +968,71 @@ func tick(delta: float) -> void:
 						seg_q = clampf((t - prev_t) / maxf(0.001, end_t - prev_t), 0.0, 1.0)
 						break
 					prev_t = end_t
-				# 落点溅水: 每跨过一跳就溅一次(记 splashed 防重复)
 				var done: int = int(f.get("splashed", 0))
 				while done < nseg and t >= EqArcaneBatch.wave_hop_delay(done):
 					_water_splash(wpts[done + 1])
 					done += 1
 				f["splashed"] = done
+				# ① 头: 走这一跳的抛物线(真高度变化)
 				var a2: Vector2 = wpts[seg_i]
 				var b2: Vector2 = wpts[seg_i + 1]
-				var here: Vector2 = a2.lerp(b2, seg_q)
-				# ★真高度变化: 峰高 = 跨度 × ARC_PEAK_FRAC(米), 4h·s(1−s) 的拱形
+				var head_p: Vector2 = a2.lerp(b2, seg_q)
 				var peak_m: float = a2.distance_to(b2) * ARC_PEAK_FRAC * float(battle.WS)
-				var hgt: float = 0.45 + arc_height(seg_q, peak_m)
-				for d in (f.get("drops", []) as Array):
-					var dn = d.get("node", null)
-					if not is_instance_valid(dn):
+				var head_h: float = 0.45 + arc_height(seg_q, peak_m)
+				var chain: Array = f.get("chain", [])
+				if chain.is_empty():
+					continue
+				(chain[0] as Dictionary)["p"] = head_p
+				(chain[0] as Dictionary)["h"] = head_h
+				# ② 身体: 逐段滞后追前一节, 再把节距拉回 FLOW_REST_PX(弧长恒定)
+				for wk in range(1, chain.size()):
+					var me: Dictionary = chain[wk]
+					var ahead: Dictionary = chain[wk - 1]
+					var mp: Vector2 = me["p"]
+					var ap: Vector2 = ahead["p"]
+					mp = mp.lerp(ap, FLOW_LAG)
+					var d: Vector2 = mp - ap
+					var dl: float = d.length()
+					if dl > 0.001:
+						mp = ap + d / dl * FLOW_REST_PX      # ← 弧长恒定
+					else:
+						mp = ap + Vector2(FLOW_REST_PX, 0.0)
+					me["p"] = mp
+					me["h"] = lerpf(float(me["h"]), float(ahead["h"]), FLOW_LAG)
+				# ③ 画: 相邻两节之间一块四边形, 头粗尾细; 行波沿身体往后跑
+				var quads: Array = f.get("quads", [])
+				for k2 in range(quads.size()):
+					var qn = quads[k2]
+					if not is_instance_valid(qn):
 						continue
-					(dn as Node3D).position = battle._world_pos(here + (d["off"] as Vector2),
-						maxf(0.08, hgt + float(d["oy"])))
+					var c0: Dictionary = chain[k2]
+					var c1: Dictionary = chain[k2 + 1]
+					var p0: Vector2 = c0["p"]
+					var p1: Vector2 = c1["p"]
+					var dir2: Vector2 = p1 - p0
+					if dir2.length() < 0.001:
+						dir2 = Vector2.RIGHT
+					var perp: Vector2 = Vector2(-dir2.y, dir2.x).normalized()
+					var f0: float = float(k2) / float(maxi(1, quads.size()))
+					var f1: float = float(k2 + 1) / float(maxi(1, quads.size()))
+					var w0: float = lerpf(FLOW_HEAD_PX, FLOW_TAIL_PX, f0)
+					var w1: float = lerpf(FLOW_HEAD_PX, FLOW_TAIL_PX, f1)
+					var st := SurfaceTool.new()
+					st.begin(Mesh.PRIMITIVE_TRIANGLES)
+					var v: Array = [
+						battle._world_pos(p0 + perp * w0, float(c0["h"])),
+						battle._world_pos(p1 + perp * w1, float(c1["h"])),
+						battle._world_pos(p1 - perp * w1, float(c1["h"])),
+						battle._world_pos(p0 - perp * w0, float(c0["h"]))]
+					for idx in [0, 1, 2, 0, 2, 3]:
+						st.add_vertex(v[idx])
+					(qn as MeshInstance3D).mesh = st.commit()
+					# 行波: 高光沿身体往后跑 ⇒ 水面在"流"而不是整条一个色
+					var ph: float = fposmod(f0 + t * FLOW_WAVE_SPD, 1.0)
+					var lit: float = pow(1.0 - ph, 3.0)
+					var m2 = (qn as MeshInstance3D).material_override
+					if m2 is StandardMaterial3D:
+						(m2 as StandardMaterial3D).albedo_color = 							COL_WATER_DEEP.lerp(COL_WATER, 0.35 + 0.65 * lit)
 				if t >= life:
 					_free_fx(i)
 			"drop":
@@ -987,11 +1058,6 @@ func tick(delta: float) -> void:
 				var q: float = clampf(t / life, 0.0, 1.0)
 				if lu is Dictionary:
 					(n as Node3D).position = battle._world_pos((lu as Dictionary)["pos"] as Vector2, 0.0)
-				var lcol = f.get("col", null)
-				if is_instance_valid(lcol):
-					var hh: float = maxf(0.06, hm)          # 柱高 = 它跳了多高
-					(lcol as Node3D).scale.y = hh
-					(lcol as Node3D).position.y = hh * 0.5
 				var lsh = f.get("shadow", null)
 				if is_instance_valid(lsh):
 					var ss: float = LEAP_SHADOW_PX * 0.5 * leap_shadow_scale(hm, LEAP_APEX_M) * float(battle.WS)

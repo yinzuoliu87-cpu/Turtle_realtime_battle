@@ -493,12 +493,19 @@ func _g10_090_leap() -> void:
 	var root = _arc.pestle_leap(u, 0.6)
 	_ok("⑪ ★分母: 起跳建出了根节点", root != null and is_instance_valid(root))
 	if root != null:
-		_ok("⑪ 起跳一次建三样(水柱/影子/收势环) 实测 %d" % root.get_child_count(), root.get_child_count() >= 3)
-		var col0: float = _leap_col_h(root)
+		# ★★2026-08-08 **水柱已删**(用户:「我从始至终说的高高跃起, 加什么水柱啊」)
+		#   ⇒ 起跳现在建两样: 地面影子 + 雷电预警圈。
+		_ok("⑪ 起跳一次建两样(影子/雷电预警圈) 实测 %d" % root.get_child_count(),
+			root.get_child_count() >= 2)
+		# ★★原来这里钉的是"水柱高度跟着滞空涨"。水柱没了 ⇒ 换成**更该守的那条**:
+		#   用户「预警环我不想要缩的, 就是实际范围的」。旧版会从 2.6 倍收拢到 110 码
+		#   (而伤害是 1000 码, 差九倍) ⇒ 这条直接量**预警圈的真实横向跨度全程不变**。
+		var w0: float = _leap_warn_span(root)
 		u["height"] = WANT_APEX_M                 # 模拟跳到顶点
 		_arc.tick(0.1)
-		var col1: float = _leap_col_h(root)
-		_ok("⑪ ★水柱高度跟着真实滞空高度涨 (%.2f → %.2f)" % [col0, col1], col1 > col0 + 1.0)
+		var w1: float = _leap_warn_span(root)
+		_ok("⑪ ★预警圈全程【不缩】(旧版会收拢到伤害半径的九分之一) (%.1f → %.1f)" % [w0, w1],
+			w0 > 1.0 and absf(w1 - w0) < w0 * 0.05)
 		var sh1: float = _leap_shadow_r(root)
 		u["height"] = 0.0                          # 落回地面
 		_arc.tick(0.1)
@@ -616,6 +623,21 @@ func _ray_len(img: Image, c: float, th: float) -> float:
 		if img.get_pixel(px, py).a > 0.3:
 			last = r
 	return last
+
+
+## 预警圈的真实横向跨度(世界单位): 取它所有面片 AABB 的并集宽度。
+## ★量**真实几何**而不是读某个 scale —— 预警圈的顶点是世界坐标直接建的, 没有 scale 可读。
+func _leap_warn_span(root: Node) -> float:
+	var lo := INF
+	var hi := -INF
+	for c in root.get_children():
+		for q in (c as Node).get_children():
+			if not (q is MeshInstance3D) or (q as MeshInstance3D).mesh == null:
+				continue
+			var ab: AABB = ((q as MeshInstance3D).mesh as Mesh).get_aabb()
+			lo = minf(lo, ab.position.x)
+			hi = maxf(hi, ab.position.x + ab.size.x)
+	return 0.0 if hi < lo else hi - lo
 
 
 func _leap_col_h(root: Node3D) -> float:
