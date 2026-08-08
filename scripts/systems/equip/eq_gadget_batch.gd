@@ -360,6 +360,7 @@ func _tick_sextant(u: Dictionary, delta: float, si: int) -> void:
 		d["ang"] = float(d["ang"]) + SEXT_ORBIT_W * delta
 		if float(d.get("scat", 0.0)) > 0.0:
 			d["scat"] = maxf(0.0, float(d["scat"]) - delta)   # 终极演出期间飞散在外, 不开火
+			d["fe"] = float(d.get("fe", 0.0)) + delta          # 飞散行程(错峰: 各自的延迟与时长)
 			continue
 		d["ft"] = float(d.get("ft", 0.0)) + delta
 		if float(d["ft"]) >= SEXT_FIRE_IV:
@@ -411,7 +412,19 @@ func sext_ultimate(u: Dictionary, si: int) -> int:
 			battle._battle_rng.randf_range(battle.ARENA.position.y, battle.ARENA.end.y))
 		d["sx"] = sp.x
 		d["sy"] = sp.y
-		d["scat"] = GadgetEqVfx.RAY_LIFE
+		# ★★2026-08-08【错峰飞散】照赛博龟: 起飞**间隔** randf()*0.35、飞行**时长** 0.6~1.2 各不相同
+		#   ⇒ 六门不是"同一帧瞬移到位", 而是一个个错开飞出去。
+		#   起点记它当时的环绕位(_px/_py 由演出层每帧回填) —— 没有起点就没法插值。
+		d["fd"] = battle._battle_rng.randf() * GadgetEqVfx.SEXT_SCATTER_LAG
+		d["fdur"] = GadgetEqVfx.SEXT_SCATTER_MIN 			+ battle._battle_rng.randf() * (GadgetEqVfx.SEXT_SCATTER_MAX - GadgetEqVfx.SEXT_SCATTER_MIN)
+		d["fe"] = 0.0
+		d["ox"] = float(d.get("_px", float(u["pos"].x)))
+		d["oy"] = float(d.get("_py", float(u["pos"].y)))
+		# 回程也错峰: 各自的起飞延迟与飞行时长
+		d["bd"] = battle._battle_rng.randf() * GadgetEqVfx.SEXT_BACK_LAG
+		d["bdur"] = GadgetEqVfx.SEXT_BACK_MIN 			+ battle._battle_rng.randf() * (GadgetEqVfx.SEXT_BACK_MAX - GadgetEqVfx.SEXT_BACK_MIN)
+		# ★`scat` 要盖到**回程走完**为止, 否则一归零就又瞬移回轨道(用户点名的那条)
+		d["scat"] = GadgetEqVfx.SEXT_FIRE_DELAY + GadgetEqVfx.RAY_LIFE 			+ float(d["bd"]) + float(d["bdur"])
 		var tgt = _pick_rng(battle._targeting._pick_enemies_of(u))
 		if tgt == null:
 			continue
@@ -441,16 +454,16 @@ func sext_ultimate(u: Dictionary, si: int) -> int:
 				var dm: int = battle._resolve_dmg(u, ray, o, true)
 				battle._damage._apply_damage_from(u, o, dm, GadgetEqVfx.RAY_COLOR, 0.0, false, true)
 				vfx.sextant_ray_hit(Vector2(o["pos"])),
-			u, "", Callable(), GadgetEqVfx.SEXT_CHARGE)
+			u, "", Callable(), GadgetEqVfx.SEXT_FIRE_DELAY)
 		beams.append([sp, endp])
 		n += 1
 	u["_sext_ults"] = int(u.get("_sext_ults", 0)) + 1     # 同步证据: 终极放了几轮
 	u["_sext_rays"] = n                                   # 同步证据: 这一轮几条射线
-	# ① 蓄力: 各炮在自己的散点上炮身发亮 + 口部聚能光球膨胀
-	vfx.sextant_charge(u, beams)
-	# ② 发射: 蓄力走完才出光束(与上面那段伤害同一个延时 ⇒ 光束到、血才掉)
+	# ① 飞散走完再蓄力(赛博龟: 0.75 秒开始亮/聚能), ② 1.35 秒发射 —— 与上面那段伤害同一个延时
+	battle._queue_shots(1, 0.0, func() -> void: vfx.sextant_charge(u, beams),
+		u, "", Callable(), GadgetEqVfx.SEXT_FIRE_DELAY - GadgetEqVfx.SEXT_CHARGE)
 	battle._queue_shots(1, 0.0, func() -> void: vfx.sextant_ultimate(u, beams),
-		u, "", Callable(), GadgetEqVfx.SEXT_CHARGE)
+		u, "", Callable(), GadgetEqVfx.SEXT_FIRE_DELAY)
 	return n
 
 

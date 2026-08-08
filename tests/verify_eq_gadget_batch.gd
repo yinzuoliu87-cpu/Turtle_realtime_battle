@@ -115,49 +115,38 @@ func _step(u: Dictionary, seconds: float, dt: float = 0.05) -> int:
 ## ⚠ 只放一个假人是**测不出贯穿的**(打一个和穿一个长得一样) ——
 ##   必须在**同一条线上**放第二个更远的敌人, 断言它也掉血。
 func _t086_pierce() -> void:
-	# ★★★这条测试第一版**单跑绿、全套红**: 散点是在 `sext_ultimate` **里面**用
-	#   `battle._battle_rng` 现随机的(我在测试里预设的 sx/sy 被当场覆盖), 目标也是随机挑的
-	#   ⇒ 射线方向跟着 RNG 走, 两个敌人在不在同一条线上纯看运气。
-	#   ⇒ **把 rng 种子钉死, 跑两遍**: 第一遍学到这个种子下的真实散点与朝向,
-	#     据此把第二个敌人摆到延长线上; 第二遍用**同一个种子**重跑 ⇒ 散点与目标完全一致。
-	#   (跟我今天给 `verify_equip_batch_20260801 ⑤` 补清场是同一类账: 测试不稳就得根治。)
-	const SEED := 20260808
+	# ★★★这条测试**前两版都不稳**, 记在这:
+	#   ① 第一版预设 `sx/sy` —— 但散点是在 `sext_ultimate` **里面**现随机的, 我设的被当场覆盖
+	#   ② 第二版钉 rng 种子跑两遍 —— 一给回程加了两次 randf(), 序列就又对不上了
+	#   ⇒ 现在**根本不依赖射线朝哪**: 三个敌人挤在 10 码内(远小于线宽 40),
+	#     **贯穿必然三个全中, 不贯穿只中被挑的那一个**。散点/目标怎么随机都不影响判定。
+	#   (教训: 与其跟 rng 较劲, 不如把判据做成"对随机不敏感"。)
 	_s._units.clear()
 	var u: Dictionary = _mk("fortune", "left", Vector2(-500.0, 0.0))
 	u["atk"] = 100.0
 	u["base_atk"] = 100.0
 	_equip(u, "p2eq_086", 3)
-	var near: Dictionary = _mk("fortune", "right", Vector2(-100.0, 0.0), 9.0e7)
+	var es: Array = []
+	for k in range(3):
+		es.append(_mk("fortune", "right", Vector2(-100.0 + float(k) * 5.0, float(k) * 3.0), 9.0e7))
 	var st: Dictionary = _g()._stt(u, "p2eq_086")
-	# ── 第一遍: 只有 near, 学散点 ──
 	st["drones"] = [{"ang": 0.0, "ft": 0.0, "sx": 0.0, "sy": 0.0, "scat": 0.0}]
-	_s._battle_rng.seed = SEED
-	_pump_shots(1.0)
-	_g().sext_ultimate(u, 2)
-	var org: Vector2 = Vector2(float((st["drones"][0] as Dictionary)["sx"]),
-		float((st["drones"][0] as Dictionary)["sy"]))
-	_pump_shots(GVfx.SEXT_CHARGE + 0.3)
-	# ── 第二遍: 把 far 摆到 (散点 → near) 的延长线上, 同一个种子重跑 ──
-	var dir: Vector2 = (Vector2(near["pos"]) - org)
-	dir = dir.normalized() if dir.length() > 1.0 else Vector2.RIGHT
-	# ⚠ `_mk` 的第三个参数是**偏移量不是绝对坐标** —— 第一版我把世界坐标当偏移传进去,
-	#   far 被摆到了"场地中心 + near的世界坐标 + 方向×220", 根本不在线上(测出来恒 0)。
-	var far: Dictionary = _mk("fortune", "right", Vector2(-100.0, 0.0) + dir * 220.0, 9.0e7)
-	st["drones"] = [{"ang": 0.0, "ft": 0.0, "sx": 0.0, "sy": 0.0, "scat": 0.0}]
-	_s._battle_rng.seed = SEED
-	_pump_shots(1.0)
-	near["hp"] = 9.0e7
-	far["hp"] = 9.0e7
-	var h_near: float = float(near["hp"])
-	var h_far: float = float(far["hp"])
-	_g().sext_ultimate(u, 2)
-	_pump_shots(GVfx.SEXT_CHARGE + 0.3)
-	var d_near: float = h_near - float(near["hp"])
-	var d_far: float = h_far - float(far["hp"])
-	_ok("086 ★分母: 首目标确实被打到了(种子钉死 ⇒ 散点与目标可复现)",
-		d_near > 0.0, "首目标掉血 %.0f" % d_near)
-	_ok("086 ★★贯穿: **同一条线上更远的那个也掉血**(旧版射到目标就停 ⇒ 这里恒为 0)",
-		d_far > 0.0 and absf(d_far - 1000.0) < 3.0, "远处掉血 %.0f 期望 1000" % d_far)
+	_pump_shots(1.5)                       # 先排空: 共享假人身上可能压着别的小节的延后伤害
+	var h0: Array = []
+	for e in es:
+		h0.append(float(e["hp"]))
+	var rays: int = _g().sext_ultimate(u, 2)
+	_pump_shots(GVfx.SEXT_FIRE_DELAY + 0.3)
+	var hit := 0
+	var dmgs: Array = []
+	for k in range(es.size()):
+		var dd: float = float(h0[k]) - float((es[k] as Dictionary)["hp"])
+		dmgs.append(dd)
+		if dd > 0.0:
+			hit += 1
+	_ok("086 ★分母: 这一发确实放出来了(1 门炮 ⇒ 1 条射线)", rays == 1, "条数 %d" % rays)
+	_ok("086 ★★贯穿: 挤在 10 码内的 3 个敌人**全部**吃到(不贯穿只会中 1 个)",
+		hit == 3, "中了 %d/3, 各自掉血 %s" % [hit, str(dmgs)])
 	_s._units.clear()
 
 
@@ -518,7 +507,7 @@ func _t086_sextant() -> void:
 		#   照赛博龟阵亡齐射的编排。⇒ 开火当帧一滴血都不该掉, 推完才掉。
 		_ok("086 %d★ ☆开火当帧【一滴血都不掉】(光束还在蓄力)" % (si + 1),
 			absf(h0 - float(foe["hp"])) < 0.01, "当帧掉血 %.1f" % (h0 - float(foe["hp"])))
-		_pump_shots(GVfx.SEXT_CHARGE + 0.10)   # ★只推**延后队列**, 不推装备自己的时钟
+		_pump_shots(GVfx.SEXT_FIRE_DELAY + 0.15)   # ★只推**延后队列**, 不推装备自己的时钟
 		var d: float = h0 - float(foe["hp"])
 		var per: float = [200.0, 350.0, 1000.0][si]
 		_ok("086 %d★ 终极射线: 6 门炮各一条 = 6 × %.0f = %.0f 魔法" % [si + 1, per, per * 6.0],

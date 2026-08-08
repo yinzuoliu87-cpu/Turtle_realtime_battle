@@ -129,6 +129,17 @@ const RAY_CORE_K := 0.34         ## 白热芯相对身的粗细比
 const RAY_HOLD := 0.16           ## 满亮保持(秒) —— 之后才按 RAY_HALF 衰减
 ## ★★照赛博龟阵亡齐射的编排(用户 2026-08-08 指定参考)。那一套是 Gaster Blaster 式:
 ## 蓄力光球膨胀 → 光球消失 + 炮体后坐 → 双层光束 → 震屏 → 线上命中火花。
+## 错峰飞散(照赛博龟): 起飞间隔上限 / 飞行时长下限·上限 / 从飞散开始到发射的总时长
+const SEXT_SCATTER_LAG := 0.35
+const SEXT_SCATTER_MIN := 0.60
+const SEXT_SCATTER_MAX := 1.00
+const SEXT_FIRE_DELAY := 1.35    ## 赛博龟阵亡齐射就是 1.35 秒开火
+## ★★2026-08-08 用户:「发射完后呢, 凭什么瞬移回来」—— 对的。旧版 `scat` 一归零就
+## **瞬移回轨道**。赛博龟那边是"飞向集结点消失"(本体死了要变机甲), 而本件的炮要**继续绕**
+## ⇒ 该**飞回来**。回程同样错峰, 且**回到轨道此刻该在的位置**(轨道一直在转, 不是回旧点)。
+const SEXT_BACK_LAG := 0.30      ## 回程起飞间隔上限(秒)
+const SEXT_BACK_MIN := 0.70      ## 回程飞行时长下限
+const SEXT_BACK_MAX := 1.10      ## 回程飞行时长上限
 const SEXT_CHARGE := 0.45        ## 口部聚能光球膨胀多久(秒) —— 与赛博龟的 0.45 同一口径
 const SEXT_GLOW_COL := Color(1.6, 1.9, 2.2, 1.0)   ## 蓄力时炮身亮到什么程度(与赛博龟同)
 const SEXT_MUZZLE_PX := 16.0     ## 光球离炮体多远(码) —— 同赛博龟的 16
@@ -390,8 +401,28 @@ func sextant_sync(u: Dictionary, drones: Array, orbit_r: float) -> Array:
 	for i in range(drones.size()):
 		var d: Dictionary = drones[i]
 		var at: Vector2
+		# 轨道上此刻该在的位置(不管在不在飞散, 都先算出来 —— 回程要飞回**它**)
+		var ring0: int = i % 2
+		var rr0: float = orbit_r * (1.0 if ring0 == 0 else DRONE_RING_K)
+		var aa0: float = float(d["ang"]) * (1.0 if ring0 == 0 else -DRONE_RING_REV)
+		var home: Vector2 = (u["pos"] as Vector2) + Vector2(cos(aa0), sin(aa0)) * rr0
 		if float(d.get("scat", 0.0)) > 0.0:
-			at = Vector2(float(d.get("sx", 0.0)), float(d.get("sy", 0.0)))   # 终极演出期间飞散在外
+			# ★★三段行程(错峰去 → 停在散点 → 错峰回), 每一段各炮的延迟与时长都不同。
+			#   `_ease` = SINE EASE_IN_OUT(赛博龟那条 tween 用的就是它)。
+			var fe: float = float(d.get("fe", 0.0))
+			var sp0: Vector2 = Vector2(float(d.get("sx", 0.0)), float(d.get("sy", 0.0)))
+			var o0: Vector2 = Vector2(float(d.get("ox", 0.0)), float(d.get("oy", 0.0)))
+			var t_back: float = SEXT_FIRE_DELAY + RAY_LIFE + float(d.get("bd", 0.0))
+			if fe < t_back:
+				# ① 去程
+				var q1: float = clampf((fe - float(d.get("fd", 0.0)))
+					/ maxf(0.001, float(d.get("fdur", 1.0))), 0.0, 1.0)
+				at = o0.lerp(sp0, 0.5 - 0.5 * cos(PI * q1))
+			else:
+				# ② 回程: 飞回**轨道此刻该在的位置**
+				var q2: float = clampf((fe - t_back)
+					/ maxf(0.001, float(d.get("bdur", 1.0))), 0.0, 1.0)
+				at = sp0.lerp(home, 0.5 - 0.5 * cos(PI * q2))
 		else:
 			at = (u["pos"] as Vector2) + Vector2(cos(float(d["ang"])), sin(float(d["ang"]))) * orbit_r
 		# ★★2026-08-08 照赛博龟 `_tick_cyber_drones` 的被动编队(用户指定参考的第 ① 点):
