@@ -382,6 +382,17 @@ func _tune_units() -> void:
 			#   094 这类"死了才生效"的件必须把它擦掉, 否则永远看不到效果, 而且不报错。
 			u.erase("deathfloor_until")
 			u.erase("_review_dummy")
+		# ★`aspd` 覆盖携带者攻速(倍数)。由来(2026-08-08): 090 的浪潮是**每第三次普攻**才发,
+		#   而探针实测携带者 18 秒只普攻了 4 次(t=3.80/5.43/7.07/10.67, 第一拳还要等到 3.8 秒
+		#   —— 因为 mana_kick 让它开局就跳起来砸, 放技能期间不能普攻) ⇒ 全程只有 1 片浪潮,
+		#   还正好落在两个拍点中间。**台子配错了, 不是特效坏了。**
+		#   同 079 那条"allies=1 是必须的": 触发条件没配对, 就会把"没看见"读成"没做"。
+		var aspd_k: float = float(cfg.get("aspd", 0.0))
+		if aspd_k > 0.0:
+			# ⚠ 写 `atk_interval` 没用 —— `_recalc_stats` 会按基础值重算把它冲掉(实测改完仍是 5 拳/14 秒)。
+			#   攻速的正确入口是 **`aspd_perm`**(永久攻速乘子), 079 的 `carrier_aps` 就是按它算的。
+			u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) * aspd_k
+			battle._recalc_stats(u)
 		if hp_pct < 1.0:
 			u["hp"] = float(u["maxHp"]) * hp_pct
 			battle._equip_sys._eq_check_hp_threshold(u)   # 走真实阈值入口(044/045 这类救命件靠它)

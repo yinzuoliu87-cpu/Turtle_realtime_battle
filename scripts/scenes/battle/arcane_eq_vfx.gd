@@ -93,7 +93,13 @@ const TX_RUNE := Color(0.86, 0.66, 1.00, 1.00)    # 符文笔画
 ## ⑤ 090 浪潮每一跳的抛物线拱高 = 跨度的这个比例(4·h·s(1−s) 的 h)
 const ARC_PEAK_FRAC := 0.18
 ## 浪潮折线的带宽(码)与存活秒数
-const WAVE_W_PX := 18.0
+## ★★2026-08-08 实拍(_vfxlab_p2eq_090_4.png): 18 码粗的方块串在 ADD 下**爆成一串白球** ——
+## 而规格原文是「发射一片浪潮**如同闪电一样**」。球串既读不出"浪潮"也读不出"闪电"。
+## ⇒ 收细到 5 码 + 分段 12→20 + 逐点横向抖动(见 WAVE_JITTER) ⇒ 一道有折角的电弧。
+const WAVE_W_PX := 5.0
+## 浪潮折线的逐点横向抖动(码)。★走 `_juice_rng`(纯演出) 不走 `_battle_rng` ——
+## 它不影响任何伤害判定, 用对局 rng 会白白动确定性(rng_discipline 盯着这条)。
+const WAVE_JITTER := 14.0
 const WAVE_SEC := 0.42
 ## 符纸转移那道光带的存活秒数
 const TRANSFER_SEC := 0.30
@@ -139,7 +145,7 @@ const GROUND_Y := 0.06
 ## 环的经向分段
 const RING_LON := 48
 ## 浪潮拱线的分段数
-const ARC_SEG := 12
+const ARC_SEG := 20
 
 ## 四件演出的语义色。★**颜色的单一事实源在演出层**(本文件), 效果本体
 ## `EqArcaneBatch` 反过来引用 `ArcaneEqVfx.COL_*` 当伤害飘字色 —— 引用是**单向**的,
@@ -686,6 +692,11 @@ func wave_path(pts: Array) -> Node3D:
 		for k in range(1, ARC_SEG + 1):
 			var s: float = float(k) / float(ARC_SEG)
 			var p2: Vector2 = a.lerp(b, s)
+			# 闪电感: 中间点沿**垂直于跨度**的方向抖一下(两端不抖, 保证首尾精确落在单位身上)
+			if k < ARC_SEG:
+				var nrm: Vector2 = (b - a)
+				nrm = Vector2(-nrm.y, nrm.x).normalized() if nrm.length() > 0.01 else Vector2.UP
+				p2 += nrm * (battle._juice_rng.randf() * 2.0 - 1.0) * WAVE_JITTER * sin(PI * s)
 			var cur: Vector3 = battle._world_pos(p2, 0.55 + arc_height(s, peak))
 			var seg: Vector3 = cur - prev
 			var l: float = seg.length()

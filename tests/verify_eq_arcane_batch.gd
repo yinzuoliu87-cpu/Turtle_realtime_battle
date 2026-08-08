@@ -974,8 +974,13 @@ func _t_vfx_nodes() -> void:
 	var wave = _arc().vfx.wave_path(pts)
 	_ok("⑥ 浪潮折线建出来了", wave != null and is_instance_valid(wave))
 	if wave != null:
-		_ok("⑥ 折线段数 = 2 跳 × 12 段 = 24",
-			(wave as Node).get_child_count() == 24, "children=%d" % (wave as Node).get_child_count())
+		# ★段数不写死 24 —— 拿 **ARC_SEG 本人** 算。
+		#   写死的话调一次分段数就得改一次测试, 而这条注定会被改成"实测值"
+		#   (那就什么都不守了)。2026-08-08 浪潮改"如同闪电" ⇒ ARC_SEG 12→20。
+		var want_seg: int = (pts.size() - 1) * ArcaneEqVfx.ARC_SEG
+		_ok("⑥ 折线段数 = %d 跳 × %d 段 = %d" % [pts.size() - 1, ArcaneEqVfx.ARC_SEG, want_seg],
+			(wave as Node).get_child_count() == want_seg,
+			"children=%d" % (wave as Node).get_child_count())
 		_ok("⑥ 折线记着真实几何长度 400 码",
 			absf(float((wave as Node).get_meta("path_len", -1.0)) - 400.0) < 1e-6,
 			"实测 %.2f" % float((wave as Node).get_meta("path_len", -1.0)))
