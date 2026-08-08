@@ -179,7 +179,7 @@ const LEAP_TELE_R0 := 2.6            # 收势环起手是终了半径的这个�
 ##   为什么要镜像而不是直接引用: 本文件与 `EqArcaneBatch` 的引用是**单向**的
 ##   (见文件头 —— 效果本体引演出层的 COL_*), 反向再引一次 const 会形成循环依赖、Godot 解析期就炸。
 ##   ⇒ 拿"门禁焊死"换"不循环依赖", 与 `BladeEqVfx.WAVE_SPD` 是同一条老路。
-const SLAM_R_PX := 1000.0
+const SLAM_R_PX := 500.0
 ## ★2026-08-08 用户「这个起跳不够高, 不够物理, 哪有这么快的跳」⇒ 与结算侧同步抬高。
 const LEAP_APEX_M := 7.0
 ## ── 雷电预警圈(用户 2026-08-08:「我要做一个那种雷电圈预警的圈圈, 就是实际范围的」)
@@ -192,7 +192,21 @@ const WARN_DEPTH := 3           ## 每段电弧的分形层数
 const WARN_ROUGH := 0.30        ## 分形粗糙度(相对弦长)
 const WARN_W_PX := 7.0          ## 电弧粗细(码)
 const WARN_CORE_W_PX := 2.6     ## 白热芯粗细(码)
-const WARN_MIST := 14           ## 圈内雷雾的条数
+## ★★2026-08-09 雷雾改成【真粒子】(用户:「雷雾别拿个程序化的线条糊弄我啊, 3d 该有的粒子…」)。
+##   旧实现 = WARN_MIST 条随机短线段躺在地上 —— 那是"线条", 不是雾。
+##   现在 = GPUParticles3D, 发射体 = 整个圆盘(EMISSION_SHAPE_RING 内径 0), 开湍流,
+##   每颗独立初速/旋转/尺寸曲线/颜色渐变 ⇒ 有体积、会翻涌、覆盖到边。
+## ⚠ GPU 粒子在无头 CI 下不推进 ⇒ 门禁只能量【配置】(发射半径/数量/颜色/材质在位),
+##   量不了"粒子真实位置"。判据落在能同步读到的东西上(同 CLAUDE.md §3.5 的原则)。
+## ★覆盖率是这么算的: 圆盘面积 π·1000² ≈ 3.14M 码²。220 颗 × 26 码见方 = 0.15M ⇒ **只盖 5%**,
+##   实拍就是"一地散点"而不是雾。改成 320 颗 × 90 码 = 2.6M ⇒ 约 **80%** 覆盖, 配低透明度才成雾。
+##   (提覆盖率优先靠**放大单颗**而不是堆数量 —— 数量翻十倍会掉帧, 单颗放大不会。)
+const MIST_PARTICLES := 320     ## 圆盘里同时存在多少颗雾
+const MIST_LIFE := 1.15         ## 单颗寿命(秒)
+const MIST_SZ_PX := 90.0        ## 单颗雾的边长(码)
+const MIST_RISE := 0.9          ## 向上初速(米/秒) —— 慢慢往上翻
+const MIST_TURB := 0.55         ## 湍流强度
+const WARN_MIST := 14           ## (旧)圈内雷雾的条数 —— 已被粒子取代, 保留仅为历史对照
 const WARN_MIST_LEN := 46.0     ## 单条雷雾的长度(码)
 const WARN_MIST_A := 0.42       ## 雷雾透明度 —— 淡, 别盖住场上的单位
 ## 阵营色: 己方蓝 / 敌方红(与血条描边 `info_panel` 的 #3fa9ff / #ff5a5a 同源)
@@ -739,20 +753,219 @@ func talisman_transfer(from2d: Vector2, to2d: Vector2) -> Node3D:
 ##   旧版收拢到 `LEAP_WINDUP_PX = 110` 码, 而真正挨砸的是 1000 码, **差九倍**。
 func _warn_batch(root: Node3D, center: Vector2, radius_px: float, col: Color) -> void:
 	var rng: RandomNumberGenerator = battle._juice_rng
+	var sheet: Texture2D = _arc_sheet()
 	for i in range(WARN_ARCS):
 		var a0: float = TAU * float(i) / float(WARN_ARCS)
 		var a1: float = TAU * float(i + 1) / float(WARN_ARCS)
-		var p0: Vector2 = center + Vector2(cos(a0), sin(a0)) * radius_px
-		var p1: Vector2 = center + Vector2(cos(a1), sin(a1)) * radius_px
-		_arc_seg(root, p0, p1, col, WARN_W_PX, WARN_CORE_W_PX, rng)
-	# 圈内雷雾: 随机位置的短电弧, 淡一些 —— "整个预警范围内都有电"
-	for _k in range(WARN_MIST):
-		var ang: float = rng.randf() * TAU
-		var rr: float = radius_px * sqrt(rng.randf())        # 面积均匀(同 078 霰弹的 r=R√u)
-		var c2: Vector2 = center + Vector2(cos(ang), sin(ang)) * rr
-		var d2: Vector2 = Vector2(cos(rng.randf() * TAU), sin(rng.randf() * TAU))
-		_arc_seg(root, c2 - d2 * WARN_MIST_LEN * 0.5, c2 + d2 * WARN_MIST_LEN * 0.5,
-			Color(col.r, col.g, col.b, WARN_MIST_A), WARN_W_PX * 0.55, WARN_CORE_W_PX * 0.5, rng)
+		## ★★把电弧摆在【真实生效边界】= 伤害圆 ∩ 战场, 而不是数学上的圆周。
+		##   为什么: 1000 码半径 ⇒ 直径 2000 码, 而战场只有 1596×728 码 —— **圈比战场还大**。
+		##   画在数学圆周上, 电弧全部落在场外: 能看清龟的取景里圈在画面外, 能看到圈的取景里
+		##   龟只剩几个像素(2026-08-09 实拍确认)。而"画一个玩家永远看不全的圈"本身就是假消息,
+		##   与旧版"元数据写 1000、实际画 110"是同一种谎, 只是方向相反。
+		##   ⇒ 沿射线取"圆周点"与"战场边界点"里**更近的那个**: 范围没被缩小,
+		##     只是把边界画在它真正起作用的地方。
+		var p0: Vector2 = _warn_edge(center, a0, radius_px)
+		var p1: Vector2 = _warn_edge(center, a1, radius_px)
+		if sheet != null:
+			## ★★精灵表电弧: 每段**各自随机起始帧** —— 整批同相位会读成"一圈在齐步闪",
+			##   那是旧版随机折线换汤不换药。相位错开才像一圈各自噼啪的电。
+			_arc_sprite(root, (p0 + p1) * 0.5, center, col, sheet, rng.randi() % ARC_SHEET_FRAMES)
+		else:
+			_arc_seg(root, p0, p1, col, WARN_W_PX, WARN_CORE_W_PX, rng)   # 素材缺失时的兜底
+	## 圈内雷雾 —— 见 MIST_* 的头注: 这里**不再**画线段, 由 `_mist_particles` 出真粒子。
+	## (电弧只沿圆周排一圈; 圈内的"有电感"完全交给粒子。)
+
+
+## ══ 生成素材(PixelLab · 2026-08-09 · 用户「要像素风格就好, 不要对齐」) ══
+## ★为什么用精灵表而不是继续拼几何: 电弧的精髓是**逐帧变形**(锯齿重排 + 爆闪出现/消失),
+##   几何近似做不出来 —— 旧实现是"每 0.07 秒整批重生一批随机折线", 那是噪声不是动画。
+const ARC_SHEET_PATH := "res://assets/sprites/vfx/eq090-warn-arc.png"
+const ARC_SHEET_FRAMES := 9
+const ARC_SHEET_FPS := 14.0
+## 单段电弧的世界尺寸(Sprite3D.pixel_size)与离地高度(米)。
+## 64 px 的图 × 0.032 ≈ 2.0 米 ≈ 一只龟高。★旧值 0.075 会做出 4.8 米的电弧(比龟高一倍多)。
+const ARC_PX_SIZE := 0.032
+const ARC_H_M := 1.05
+## 落点水花: 原地翻搅的水盘(逐帧泡沫重排)。
+## ⚠ 诚实记录: 同一批还生成过一版"扩散的环", 但**实测它没在扩**
+##   (逐帧量平均半径 36.6→34.3, 反而略缩) ⇒ 没拿它当波前, 改当水花。
+const SPLASH_SHEET_PATH := "res://assets/sprites/vfx/eq090-splash.png"
+const SPLASH_SHEET_FRAMES := 9
+## 冲击波前沿: 一圈**朝外站立**的碎浪(9 帧, 泡沫逐帧重排)。
+## ★这才是"不是一个环在被拉大": 环的**成分**是会碎的浪, 半径只负责把它推出去。
+const CREST_SHEET_PATH := "res://assets/sprites/vfx/eq090-crest.png"
+const CREST_SHEET_FRAMES := 9
+const CREST_N := 20             ## 一圈几段浪冠
+const CREST_H_M := 2.6          ## 单段浪冠的高度(米)
+const CREST_FPS := 20.0
+
+var _tex_arc_sheet: Texture2D = null
+var _tex_arc_tried := false
+func _arc_sheet() -> Texture2D:
+	if not _tex_arc_tried:
+		_tex_arc_tried = true
+		if ResourceLoader.exists(ARC_SHEET_PATH):
+			_tex_arc_sheet = load(ARC_SHEET_PATH)
+	return _tex_arc_sheet
+
+
+var _tex_crest_sheet: Texture2D = null
+var _tex_crest_tried := false
+func _crest_sheet() -> Texture2D:
+	if not _tex_crest_tried:
+		_tex_crest_tried = true
+		if ResourceLoader.exists(CREST_SHEET_PATH):
+			_tex_crest_sheet = load(CREST_SHEET_PATH)
+	return _tex_crest_sheet
+
+
+var _tex_splash_sheet: Texture2D = null
+var _tex_splash_tried := false
+func _splash_sheet() -> Texture2D:
+	if not _tex_splash_tried:
+		_tex_splash_tried = true
+		if ResourceLoader.exists(SPLASH_SHEET_PATH):
+			_tex_splash_sheet = load(SPLASH_SHEET_PATH)
+	return _tex_splash_sheet
+
+
+## 单颗雾的贴图。★没有它, `QuadMesh` 就是一个**实心方片** —— 2026-08-09 实拍
+##   满屏蓝方块就是这么来的(我照抄 `_impact_particles` 时漏了"它那颗只有 0.16 米所以看不出是方的")。
+## 做法: 16×16 径向衰减 + **量化成 5 档**(像素风要的是台阶不是高斯糊) + NEAREST。
+var _tex_mist: ImageTexture = null
+func _mist_tex() -> ImageTexture:
+	if _tex_mist != null:
+		return _tex_mist
+	var n: int = 16
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	var c: float = float(n - 1) * 0.5
+	for y in range(n):
+		for x in range(n):
+			var d: float = Vector2(float(x) - c, float(y) - c).length() / (c + 0.5)
+			var a: float = clampf(1.0 - d, 0.0, 1.0)
+			a = a * a
+			## 量化: 连续渐变 → 5 档台阶(像素风)
+			a = floor(a * 5.0) / 5.0
+			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
+	_tex_mist = ImageTexture.create_from_image(img)
+	return _tex_mist
+
+
+## 预警范围内的**雷雾粒子**。整个圆盘都在冒, 不是一圈边。
+## ★半径直接吃传进来的 `radius_px` —— 与伤害半径同一个数, 不另设参数(旧版差九倍就是这么来的)。
+func _mist_particles(center: Vector2, radius_px: float, col: Color) -> GPUParticles3D:
+	var ps := GPUParticles3D.new()
+	ps.amount = MIST_PARTICLES
+	ps.lifetime = MIST_LIFE
+	ps.one_shot = false
+	ps.explosiveness = 0.0
+	ps.randomness = 1.0
+	ps.local_coords = false
+	ps.fixed_fps = 30
+	var pm := ParticleProcessMaterial.new()
+	## 发射体 = **实心圆盘**(RING 内径 0) ⇒ 雾铺满整个预警范围, 不是只在边上
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
+	pm.emission_ring_axis = Vector3(0, 1, 0)
+	pm.emission_ring_radius = radius_px * float(battle.WS)
+	pm.emission_ring_inner_radius = 0.0
+	pm.emission_ring_height = 0.25
+	pm.direction = Vector3(0, 1, 0)
+	pm.spread = 22.0
+	pm.initial_velocity_min = MIST_RISE * 0.4
+	pm.initial_velocity_max = MIST_RISE
+	pm.gravity = Vector3(0, -0.35, 0)          # 轻微回落 ⇒ 翻涌而不是升天
+	pm.turbulence_enabled = true
+	pm.turbulence_noise_strength = MIST_TURB
+	pm.turbulence_noise_scale = 2.2
+	pm.angle_min = -180.0
+	pm.angle_max = 180.0
+	pm.angular_velocity_min = -40.0
+	pm.angular_velocity_max = 40.0
+	pm.scale_min = 0.55
+	pm.scale_max = 1.35
+	## 尺寸曲线: 生出来小 → 涨到满 → 收掉(避免"凭空出现又凭空消失")
+	var cv := Curve.new()
+	cv.add_point(Vector2(0.0, 0.15))
+	cv.add_point(Vector2(0.35, 1.0))
+	cv.add_point(Vector2(1.0, 0.0))
+	var ct := CurveTexture.new()
+	ct.curve = cv
+	pm.scale_curve = ct
+	## 颜色渐变: 暗 → 亮 → 透(按阵营色)
+	var gr := Gradient.new()
+	gr.set_color(0, Color(col.r * 0.35, col.g * 0.35, col.b * 0.35, 0.0))
+	gr.set_color(1, Color(col.r, col.g, col.b, 0.0))
+	gr.add_point(0.25, Color(col.r, col.g, col.b, 0.20))
+	gr.add_point(0.70, Color(col.r, col.g, col.b, 0.13))
+	var gt := GradientTexture1D.new()
+	gt.gradient = gr
+	pm.color_ramp = gt
+	ps.process_material = pm
+	var dm := StandardMaterial3D.new()
+	dm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	dm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	dm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	dm.vertex_color_use_as_albedo = true
+	dm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	dm.albedo_color = col
+	dm.albedo_texture = _mist_tex()
+	dm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	var qm := QuadMesh.new()
+	qm.size = Vector2(MIST_SZ_PX * float(battle.WS), MIST_SZ_PX * float(battle.WS))
+	qm.material = dm
+	ps.draw_pass_1 = qm
+	ps.position = battle._world_pos(center, 0.10)
+	ps.emitting = true
+	return ps
+
+
+## 从 `center` 沿 `ang` 出发, 取"伤害半径"与"战场边界"里先到的那个交点。
+## ★纯几何, 门禁直接调(不建节点)。半径 ≤ 战场时结果就是圆周本身 —— 不改变小范围的行为。
+static func warn_edge_dist(center: Vector2, ang: float, radius_px: float, arena: Rect2) -> float:
+	var d := Vector2(cos(ang), sin(ang))
+	var lim: float = radius_px
+	if absf(d.x) > 1e-6:
+		var tx: float = ((arena.end.x if d.x > 0.0 else arena.position.x) - center.x) / d.x
+		if tx > 0.0:
+			lim = minf(lim, tx)
+	if absf(d.y) > 1e-6:
+		var ty: float = ((arena.end.y if d.y > 0.0 else arena.position.y) - center.y) / d.y
+		if ty > 0.0:
+			lim = minf(lim, ty)
+	return maxf(lim, 1.0)
+
+
+func _warn_edge(center: Vector2, ang: float, radius_px: float) -> Vector2:
+	var r: float = warn_edge_dist(center, ang, radius_px, battle.ARENA)
+	return center + Vector2(cos(ang), sin(ang)) * r
+
+
+## 一段【精灵表】电弧: 竖立在圈上、正对镜头, 逐帧播放。
+## ⚠ 站立而不是躺平 —— `axis = AXIS_Y` **本身就是平铺**, 再 rotation.x=-90 会抵消
+##   (memory [[fb-axis-y-plus-rotation-cancels]]: 两圈"贴地印记"因此一直立着)。
+##   这里要的就是立着, 所以直接用 Sprite3D 的默认 billboard, 不碰 axis。
+func _arc_sprite(root: Node3D, at: Vector2, center: Vector2, col: Color, sheet: Texture2D, frame0: int) -> void:
+	var sp := Sprite3D.new()
+	sp.texture = sheet
+	sp.hframes = ARC_SHEET_FRAMES
+	sp.frame = frame0 % ARC_SHEET_FRAMES
+	sp.set_meta("f0", frame0 % ARC_SHEET_FRAMES)
+	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sp.shaded = false
+	sp.transparent = true
+	## ⚠ 不能用 ALPHA_CUT_DISCARD: 它按 0.5 阈值丢像素, 而下面 tick 里把整段
+	##   `modulate.a` 压到 0.45(刚起跳时) ⇒ **整条电弧被丢光**, 实拍完全看不见。
+	##   (2026-08-09 踩到; 表现是"精灵表接好了、编译也过了, 就是没有画面"。)
+	sp.alpha_cut = SpriteBase3D.ALPHA_CUT_DISABLED
+	sp.modulate = Color(col.r, col.g, col.b, 1.0)
+	sp.pixel_size = ARC_PX_SIZE
+	sp.render_priority = 6
+	## ⚠ 相对量要按**圆心**算, 不能按 `root.position` —— 传进来的 root 是 `warn` 节点,
+	##   它的 `.position` 是局部的 0, 而它挂在已经位移到单位处的 leap root 下
+	##   ⇒ 用 root.position 会把偏移加两次, 电弧被甩到世界角落(2026-08-09 实拍全黑就是它)。
+	sp.position = battle._world_pos(at, ARC_H_M) - battle._world_pos(center, 0.0)
+	root.add_child(sp)
 
 
 ## 一段分形电弧(身 + 白热芯), 挂到 root 下。★与 078 电鳗同一条做法。
@@ -820,6 +1033,13 @@ func pestle_leap(u, sec: float) -> Node3D:
 	root.add_child(warn)
 	var side_col: Color = WARN_ALLY if str(battle._eff_side(u)) == "left" else WARN_FOE
 	_warn_batch(warn, pos2, SLAM_R_PX, side_col)
+	## ★雷雾: 真粒子, 铺满整个预警圆盘(见 `_mist_particles`)。
+	## ⚠ 必须挂在 **root** 下, 不能挂 `warn` —— tick 里电弧每 WARN_REFRESH(0.07 秒)
+	##   把 `warn` 的子节点**整批 queue_free 重生**, 挂那儿的粒子会被反复清掉(等于没有)。
+	##   挂 root 则跟着 `drop_leap`/寿命一起收, 生命周期正好。
+	var mist := _mist_particles(pos2, SLAM_R_PX, side_col)
+	mist.position = battle._world_pos(pos2, 0.10) - root.position
+	root.add_child(mist)
 	root.set_meta("radius_px", SLAM_R_PX)
 	_fx.append({"node": root, "unit": u, "shadow": sh, "warn": warn,
 		"warn_col": side_col, "warn_t": 0.0,
@@ -834,6 +1054,19 @@ func pestle_leap(u, sec: float) -> Node3D:
 ##   ② **冲击波环** —— 半径就是真实的 1000 码, 从 0 扩到满
 ##   ③ **落点水花** —— 一圈贴地的溅水
 ##   ④ **震屏** —— 7 米砸下来得有分量
+## 收掉某只龟的起跳演出(预警圈 + 影子)。★由**真实落地事件**调, 不靠自己数秒 ——
+## 演出的寿命和物理的落地是两条时钟, 一旦分叉就会出现"人落地了圈还亮着"。
+## (2026-08-09: 砸落改成落地事件触发后, 门禁当场量到 结算那一帧 预警圈=1。)
+func drop_leap(u) -> void:
+	for i in range(_fx.size() - 1, -1, -1):
+		var f: Dictionary = _fx[i]
+		if str(f.get("kind", "")) != "leap":
+			continue
+		if not is_same(f.get("unit", null), u):
+			continue
+		_free_fx(i)
+
+
 func pestle_slam(pos2d: Vector2, radius_px: float) -> Node3D:
 	# ★★2026-08-08 冲击波重做(用户:「你这冲击波环做的不好, 节奏也有问题」):
 	#   旧版是**一圈软环 + 从出生就线性淡出** ⇒ 扩到最满的那一刻 alpha 恰好 0,
@@ -842,33 +1075,116 @@ func pestle_slam(pos2d: Vector2, radius_px: float) -> Node3D:
 	#     · **硬前沿**: `_boundary_mesh`(硬边, 与预警圈同族) 快速冲出去, **前 55% 满亮**才收
 	#     · **余波**: 软环跟在后面、更淡更慢 —— 只负责"刚才这里炸过"
 	#   两层都走 Sedov(r ∝ t^0.4), 但**寿命不同** ⇒ 前沿先到边、余波慢慢散, 这就是节奏。
-	var edge := _node(_boundary_mesh(), _mat_boundary(COL_SLAM),
-		battle._world_pos(pos2d, 0.05), "slam")
-	edge.scale = Vector3(0.001, 1.0, 0.001)
-	_fx.append({"node": edge, "t": 0.0, "life": SLAM_EDGE_SEC, "kind": "slamedge", "r": radius_px})
+	## ★★波前 = 一圈**朝外站立的碎浪**(生成素材, 9 帧), 半径按 Sedov 往外推。
+	##   旧版是 `_boundary_mesh` 被 scale 撑大 —— 那是"一个环在变大", 环本身是死的。
+	var crest: Texture2D = _crest_sheet()
+	if crest != null:
+		var ring_root := Node3D.new()
+		ring_root.position = battle._world_pos(pos2d, 0.0)
+		_adopt(ring_root, "slam")
+		for k in range(CREST_N):
+			var ang: float = TAU * float(k) / float(CREST_N)
+			var cs := Sprite3D.new()
+			cs.texture = crest
+			cs.hframes = CREST_SHEET_FRAMES
+			cs.frame = k % CREST_SHEET_FRAMES         # 起始帧错开: 一圈不齐步
+			cs.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+			cs.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			cs.shaded = false
+			cs.transparent = true
+			cs.alpha_cut = SpriteBase3D.ALPHA_CUT_DISABLED
+			cs.render_priority = 12
+			cs.pixel_size = CREST_H_M / 64.0
+			## 朝外站: 绕 Y 轴转到背对圆心 ⇒ 玩家看到的是一堵朝自己压过来的水墙
+			cs.rotation = Vector3(0.0, -ang + PI * 0.5, 0.0)
+			cs.set_meta("ang", ang)
+			ring_root.add_child(cs)
+		_fx.append({"node": ring_root, "t": 0.0, "life": SLAM_EDGE_SEC,
+			"kind": "crestring", "r": radius_px, "c": pos2d})
+	else:
+		var edge := _node(_boundary_mesh(), _mat_boundary(COL_SLAM),
+			battle._world_pos(pos2d, 0.05), "slam")
+		edge.scale = Vector3(0.001, 1.0, 0.001)
+		_fx.append({"node": edge, "t": 0.0, "life": SLAM_EDGE_SEC, "kind": "slamedge", "r": radius_px})
 	var ring := _ring_fx(pos2d, radius_px, COL_SLAM, SLAM_SEC, "slam")
 	if not _has_world():
 		return ring
 	var rng: RandomNumberGenerator = battle._juice_rng
-	# ① 水炸开: 一大蓬水滴。近处密、远处稀(r = R√u 面积均匀), 各自抛射后落回
-	for _k in range(SLAM_BURST_DROPS):
-		var ang: float = rng.randf() * TAU
-		var reach: float = SLAM_BURST_PX * sqrt(rng.randf())
-		var bm := BoxMesh.new()
-		var sz: float = WATER_DROP_PX * (0.7 + 0.9 * rng.randf()) * float(battle.WS)
-		bm.size = Vector3(sz, sz, sz)
-		var mi := MeshInstance3D.new()
-		mi.mesh = bm
-		mi.material_override = _mat_solid(
-			COL_WATER_DEEP if rng.randf() < 0.45 else COL_WATER, 12)
-		mi.position = battle._world_pos(pos2d, 0.4)
-		_adopt(mi, "slam_drop")
-		_fx.append({"node": mi, "t": -SLAM_BURST_LAG * rng.randf(),
-			"life": SLAM_BURST_SEC * (0.7 + 0.6 * rng.randf()), "kind": "drop",
-			"p0": pos2d, "dir": Vector2(cos(ang), sin(ang)),
-			"vx": reach, "vy": SLAM_BURST_UP * (0.6 + 0.8 * rng.randf())})
-	# ③ 落点水花: 一圈贴地的溅水(比水滴矮、比冲击波小)
-	_ring_fx(pos2d, SLAM_SPLASH_PX, COL_WATER, SLAM_SEC * 0.7, "splash")
+	# ① 水炸开: **GPU 粒子**一次性喷发(旧版是 46 个 BoxMesh 各自算抛物线 ⇒ 实拍就是一堆蓝方块,
+	#   正是用户说的"方块不像水")。粒子: 半球初速 + 重力回落 + 尺寸曲线 + 深浅两色。
+	var burst := GPUParticles3D.new()
+	burst.amount = SLAM_BURST_DROPS * 3
+	burst.lifetime = SLAM_BURST_SEC
+	burst.one_shot = true
+	burst.explosiveness = 0.92
+	burst.randomness = 1.0
+	burst.local_coords = false
+	var bpm := ParticleProcessMaterial.new()
+	bpm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	bpm.emission_sphere_radius = SLAM_SPLASH_PX * 0.25 * float(battle.WS)
+	bpm.direction = Vector3(0, 1, 0)
+	bpm.spread = 72.0
+	bpm.initial_velocity_min = SLAM_BURST_UP * 0.55
+	bpm.initial_velocity_max = SLAM_BURST_UP * 1.35
+	bpm.gravity = Vector3(0, -18.0, 0)
+	bpm.damping_min = 0.4
+	bpm.damping_max = 1.6
+	bpm.scale_min = 0.5
+	bpm.scale_max = 1.5
+	var bcv := Curve.new()
+	bcv.add_point(Vector2(0.0, 1.0))
+	bcv.add_point(Vector2(0.75, 0.85))
+	bcv.add_point(Vector2(1.0, 0.0))
+	var bct := CurveTexture.new()
+	bct.curve = bcv
+	bpm.scale_curve = bct
+	var bgr := Gradient.new()
+	bgr.set_color(0, Color(1.0, 1.0, 1.0, 1.0))
+	bgr.set_color(1, Color(COL_WATER_DEEP.r, COL_WATER_DEEP.g, COL_WATER_DEEP.b, 0.0))
+	bgr.add_point(0.30, COL_WATER)
+	var bgt := GradientTexture1D.new()
+	bgt.gradient = bgr
+	bpm.color_ramp = bgt
+	burst.process_material = bpm
+	var bdm := StandardMaterial3D.new()
+	bdm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	bdm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	bdm.vertex_color_use_as_albedo = true
+	bdm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	bdm.albedo_texture = _mist_tex()
+	bdm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	var bqm := QuadMesh.new()
+	bqm.size = Vector2(WATER_DROP_PX * 2.2 * float(battle.WS), WATER_DROP_PX * 2.2 * float(battle.WS))
+	bqm.material = bdm
+	burst.draw_pass_1 = bqm
+	burst.position = battle._world_pos(pos2d, 0.35)
+	_adopt(burst, "slam_drop")
+	burst.emitting = true
+	_fx.append({"node": burst, "t": 0.0, "life": SLAM_BURST_SEC + 0.3, "kind": "keepalive"})
+	# ③ 落点水花: **生成的 9 帧水盘**(逐帧泡沫重排), 贴地平铺、边播边扩。
+	#   ★不是"一个环被 scale 撑大" —— 表面每帧都在翻搅, 扩散只负责把它铺开。
+	#   ⚠ 诚实记录: 同一批还生成过"扩散的环", 实测它**没在扩**(逐帧量平均半径 36.6→34.3),
+	#     所以扩散仍由代码给, 素材给的是**表面运动**。两者分工写在这, 别再当它是纯帧驱动。
+	var sp_sheet: Texture2D = _splash_sheet()
+	if sp_sheet != null:
+		var spr := Sprite3D.new()
+		spr.texture = sp_sheet
+		spr.hframes = SPLASH_SHEET_FRAMES
+		spr.frame = 0
+		spr.axis = Vector3.AXIS_Y            # ★AXIS_Y 本身就是平铺, 别再 rotation.x=-90(会抵消)
+		spr.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+		spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		spr.shaded = false
+		spr.transparent = true
+		spr.alpha_cut = SpriteBase3D.ALPHA_CUT_DISABLED
+		spr.render_priority = 11
+		spr.pixel_size = SLAM_SPLASH_PX * float(battle.WS) / 128.0
+		spr.position = battle._world_pos(pos2d, 0.07)
+		_adopt(spr, "splash")
+		_fx.append({"node": spr, "t": 0.0, "life": SLAM_SEC * 0.9, "kind": "splashsheet",
+			"px0": spr.pixel_size})
+	else:
+		_ring_fx(pos2d, SLAM_SPLASH_PX, COL_WATER, SLAM_SEC * 0.7, "splash")   # 素材缺失兜底
 	# ④ 震屏
 	battle._shake(SLAM_SHAKE)
 	return ring
@@ -984,6 +1300,38 @@ func tick(delta: float) -> void:
 				var s: float = maxf(0.001, r * float(battle.WS))
 				(n as Node3D).scale = Vector3(s, 1.0, s)
 				_set_alpha(n, 1.0 - clampf(t / life, 0.0, 1.0))
+				if t >= life:
+					_free_fx(i)
+			"keepalive":
+				## 粒子节点自己管颜色/寿命, 这里只负责到点回收 —— 千万别写 alpha,
+				## 统一的 `_set_alpha` 会把 GPUParticles3D 的 draw_pass 材质改坏。
+				if t >= life:
+					_free_fx(i)
+			"crestring":
+				## 半径按 Sedov(r ∝ t^0.4)往外推, 每段浪冠自己播帧 ⇒ **环在扩 + 浪在碎**
+				var cu: float = clampf(t / life, 0.0, 1.0)
+				var cr: float = blast_radius(t, life, float(f.get("r", 100.0)))
+				var ca: float = 1.0 if cu < 0.55 else (1.0 - (cu - 0.55) / 0.45)
+				for ch in (n as Node3D).get_children():
+					if not (ch is Sprite3D):
+						continue
+					var cspr := ch as Sprite3D
+					var cang: float = float(cspr.get_meta("ang", 0.0))
+					var cpt: Vector2 = Vector2(cos(cang), sin(cang)) * cr
+					cspr.position = battle._world_pos(
+						Vector2(f["c"]) + cpt, CREST_H_M * 0.5) - (n as Node3D).position
+					cspr.frame = (int(t * CREST_FPS) + int(cang * 3.0)) % CREST_SHEET_FRAMES
+					cspr.modulate.a = ca
+				if t >= life:
+					_free_fx(i)
+			"splashsheet":
+				## 逐帧播 + 同时铺开(素材给表面运动, 代码给扩散 —— 见建它那段的注释)
+				var su: float = clampf(t / life, 0.0, 1.0)
+				var sspr := n as Sprite3D
+				sspr.frame = mini(SPLASH_SHEET_FRAMES - 1, int(su * float(SPLASH_SHEET_FRAMES)))
+				sspr.pixel_size = float(f.get("px0", 0.01)) * (0.45 + 0.85 * su)
+				## holdfade: 前 60% 满亮再收(短命特效从出生就淡是本轮的老毛病)
+				sspr.modulate.a = 1.0 if su < 0.6 else (1.0 - (su - 0.6) / 0.4)
 				if t >= life:
 					_free_fx(i)
 			"talisman":
@@ -1116,16 +1464,19 @@ func tick(delta: float) -> void:
 				if is_instance_valid(lw):
 					# ★半径**不变**(就是真实砸落范围); "要来了"靠**电弧越来越密越来越亮**表达,
 					#   不靠缩圈 —— 缩圈会被读成"范围在变小", 那是假消息。
+					## ★★2026-08-09: 电弧改成**逐帧播精灵表**, 不再"每 0.07 秒整批 queue_free 重生"。
+					##   旧做法是拿"随机重排折线"冒充动画 —— 那是噪声, 不是变形。
+					##   现在每段各自推进自己的帧号(起始帧已随机), 越接近落地播得越快、越亮。
 					f["warn_t"] = float(f.get("warn_t", 0.0)) + delta
-					if float(f["warn_t"]) >= WARN_REFRESH:
-						f["warn_t"] = 0.0
-						for old_c in (lw as Node3D).get_children():
-							(old_c as Node).queue_free()
-						var wc: Color = f.get("warn_col", WARN_FOE)
-						var lu2 = f.get("unit", null)
-						var ctr: Vector2 = (lu2 as Dictionary)["pos"] if lu2 is Dictionary else Vector2.ZERO
-						_warn_batch(lw, ctr, SLAM_R_PX,
-							Color(wc.r, wc.g, wc.b, 0.45 + 0.55 * q))
+					var spd: float = ARC_SHEET_FPS * (1.0 + 1.6 * q)     # 临近落地: 噼啪加快
+					var bright: float = 0.45 + 0.55 * q
+					for ch in (lw as Node3D).get_children():
+						if ch is Sprite3D:
+							var sp3 := ch as Sprite3D
+							sp3.frame = int(floor(float(f["warn_t"]) * spd + float(sp3.get_meta("f0", 0)))) % ARC_SHEET_FRAMES
+							sp3.modulate.a = bright
+						elif ch is Node3D:
+							_set_alpha(ch, bright)
 				if t >= life:
 					_free_fx(i)
 			_:

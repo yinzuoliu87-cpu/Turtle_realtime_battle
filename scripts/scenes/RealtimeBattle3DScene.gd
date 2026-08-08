@@ -2432,6 +2432,12 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 			u["land_t"] = JUICE_LAND_SEC
 			_shake(JUICE_SHAKE_HEAVY)
 			_vfx._impact_particles(u["pos"], 0.0)
+			# ★★真实落地事件 → 通知装备系统(090 猛砸靠它结算)。
+			#   为什么不能靠倒计时: `_equip_sys.tick_global` 在本函数【上方】无条件执行,
+			#   而这段 airborne 积分被 `if frozen / elif in_ts / else` 门控着 ⇒
+			#   顿帧/时停期间跳跃冻结、倒计时照跑, 砸落会提前(实测早 3.59 米)。
+			#   落地事件是【同一个物理量】的事件, 不存在两个时钟对不上的问题。
+			_equip_sys.on_unit_landed(u)
 		return   # 击飞中不移动/不攻击 (覆盖正常行为)
 
 	if u.get("roll_active", false):   # 钻石滚球: 蜷球滚动位移态(免疫定身沉默打断·封板) — 在stun检查前, 覆盖正常AI

@@ -36,7 +36,10 @@ const WANT_GOLD_PCT := [0.60, 0.80, 1.00]
 ## 083 潮汐细剑的层数上限(规格原文)
 const WANT_STACK_CAP := 20
 ## 090 镇海杵的砸落半径 / 起跳峰高(规格原文)
-const WANT_SLAM_R := 1000.0
+## ★2026-08-09 1000 → 500(用户拍板)。这个常量是**独立第三方**: 它不引用产品代码,
+##   所以改产品数值必须来这里手动改一次 —— 这正是它的价值(防"顺手改了没人知道")。
+##   降半径的理由见 EqArcaneBatch.PESTLE_RADIUS 的头注(战场 1596×728, 直径 2000 装不下)。
+const WANT_SLAM_R := 500.0
 ## ★ 2026-08-08 2.4 → 7.0: 用户「这个起跳不够高, 不够物理, 哪有这么快的跳」。
 ## 旧值反推出的重力是 26.7 m/s²(2.7 个地球重力) ⇒ 又矮又快。
 ## 新口径: 先定 h=7.0 与 g=20.0, 再推滞空 T=2√(2h/g)=1.673 秒。
@@ -632,11 +635,19 @@ func _leap_warn_span(root: Node) -> float:
 	var hi := -INF
 	for c in root.get_children():
 		for q in (c as Node).get_children():
+			## ★2026-08-09: 电弧从 MeshInstance3D(程序化折线)换成了 Sprite3D(生成的精灵表),
+			##   只认 MeshInstance3D 的话这里会量出 0.0 → 0.0 —— 断言当场变成"两个 0 相等"的空检查。
+			##   量的是**每段电弧所在的横向位置**(节点 local x), 那就是圈的真实跨度。
+			if q is Sprite3D:
+				var sx: float = (q as Node3D).position.x
+				lo = minf(lo, sx)
+				hi = maxf(hi, sx)
+				continue
 			if not (q is MeshInstance3D) or (q as MeshInstance3D).mesh == null:
 				continue
 			var ab: AABB = ((q as MeshInstance3D).mesh as Mesh).get_aabb()
-			lo = minf(lo, ab.position.x)
-			hi = maxf(hi, ab.position.x + ab.size.x)
+			lo = minf(lo, ab.position.x + (q as Node3D).position.x)
+			hi = maxf(hi, ab.position.x + ab.size.x + (q as Node3D).position.x)
 	return 0.0 if hi < lo else hi - lo
 
 

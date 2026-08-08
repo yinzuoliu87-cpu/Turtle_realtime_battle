@@ -1670,6 +1670,14 @@ func tick_global(delta: float) -> void:
 		_b4s.tick(delta)
 
 
+## 某个单位【真实落地】(airborne true→false)那一帧, 由主循环调。
+## ★为什么要有这个事件: 主循环里 `tick_global` 在 airborne 积分【上方】无条件执行,
+##   而积分本身被顿帧/时停门控 ⇒ 冻结期间"倒计时"和"跳跃"走的是两条时钟。
+##   凡是"必须与某只龟的落地同帧"的效果, 都该听这个事件, 不该自己数秒。
+func on_unit_landed(u: Dictionary) -> void:
+	_arcane_sys.on_unit_landed(u)
+
+
 func _eq_tick(u: Dictionary, delta: float) -> void:
 	# ★这里原来有一段"用帧号去重地推进全局在途表"(弧形波/箭雨/连射)。
 	#   2026-08-06 整段搬进 `tick_global` —— 见那边的头注(它挂在"该单位有装备"闸里面, 会停摆)。

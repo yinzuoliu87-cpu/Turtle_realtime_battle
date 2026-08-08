@@ -105,6 +105,14 @@ func _arc():
 ## ⚠ 不能直接用 `vfx.alive_count()` —— 它只过 `is_instance_valid`, 而 `queue_free()` 是**延迟**的:
 ##   节点在同一帧内仍然 valid。我第一版就是这么数的, 于是"落地那一刻预警圈收掉"永远读成"没收",
 ##   而实际上它那一帧已经被 queue_free 了。⇒ 必须排掉 `is_queued_for_deletion()`。
+## 取一个节点自己 + 全部子孙(演出节点常常是 root → warn → 一堆 Sprite3D 的三层结构)。
+func _all_desc(n: Node) -> Array:
+	var out: Array = [n]
+	for c in n.get_children():
+		out.append_array(_all_desc(c as Node))
+	return out
+
+
 func _live(kind: String) -> int:
 	var n: int = 0
 	for x in _arc().vfx._owned:
@@ -123,6 +131,16 @@ func _feed(sec: float, step: float = 0.05) -> void:
 	for i in range(n):
 		_arc().tick(step)
 		_s._ballistics._step_pending_shots(step)
+		## ★★滞空积分要走【真函数】。2026-08-09: 砸落改由「真实落地事件」触发之后,
+		##   本 harness 不推进 airborne 就永远落不了地 —— 而这正是老实现的病根:
+		##   `_feed` 只跑装备自己的 tick, 于是「倒计时」和「跳跃」是两条互不相干的时钟,
+		##   门禁量到的"落地"从来不是真落地(实测结算那一刻龟在 3.5931 米高)。
+		## ⚠ 只 tick **滞空中**的单位: `_tick_unit` 在 airborne 分支末尾就 `return`
+		##   (「击飞中不移动/不攻击」) ⇒ 只做积分与落地, 不会让假人跑起来打起来。
+		## ⚠ 不在这里手写一份积分公式 —— 手抄的副本必然落后(memory [[fb-hand-rolled-copies-drift]])。
+		for u in _s._units:
+			if u is Dictionary and (u as Dictionary).get("alive", false) and (u as Dictionary).get("airborne", false):
+				_s._tick_unit(u, step)
 
 
 func _st(u: Dictionary, iid: String) -> Dictionary:
@@ -711,8 +729,8 @@ func _t090_slam() -> void:
 	var u := _mk("fortune", "left", Vector2(0, 0))
 	_equip(u, "p2eq_090", 3)
 	u["atk"] = 100.0
-	var inr := _mk("fortune", "right", Vector2(900, 0))       # 1000 码内
-	var outr := _mk("fortune", "right", Vector2(1200, 0))     # 1000 码外
+	var inr := _mk("fortune", "right", Vector2(400, 0))       # 500 码内
+	var outr := _mk("fortune", "right", Vector2(700, 0))      # 500 码外
 
 	_s._equip_sys.fire_equip_effect(u, "p2eq_090", 3)
 	_ok("③ 起跳: _slams 里出现 1 条在途记录", _arc()._slams.size() == 1,
@@ -736,13 +754,18 @@ func _t090_slam() -> void:
 	_ok("③ 起跳后滞空的 65%% 时还没砸下来(伤害没有提前结算)",
 		absf(float(inr["hp"]) - h_in) < 0.001 and _arc()._slams.size() == 1,
 		"hp 变化 %.1f" % (h_in - float(inr["hp"])))
-	_feed(T * 0.40)
+	## ★逐小步喂到砸落结算【那一刻】就停。多喂哪怕一步, 受害者的 vy 就被积分掉一截,
+	##   下面读到的就不是"击飞初速"而是"落了一半的速度"(2026-08-09 实测读出 4.2 而非 6.0)。
+	var kg: int = 0
+	while kg < 300 and not _arc()._slams.is_empty():
+		_feed(0.02, 0.02)
+		kg += 1
 	_ok("③ %.2f 秒落地 → 砸落结算" % T, _arc()._slams.is_empty(),
 		"n=%d" % _arc()._slams.size())
 	## 3 ATK(=300) + 5000 = 5300, 干净目标 mr=0 ⇒ 倍率 1.0
 	var took: float = h_in - float(inr["hp"])
-	_ok("③ 1000 码内敌人吃 5300(3×100 ATK + 5000)", int(took) == 5300, "实测 %d" % int(took))
-	_ok("③ 1000 码外敌人一点没吃", absf(float(outr["hp"]) - h_out) < 0.001,
+	_ok("③ 500 码内敌人吃 5300(3×100 ATK + 5000)", int(took) == 5300, "实测 %d" % int(took))
+	_ok("③ 500 码外敌人一点没吃", absf(float(outr["hp"]) - h_out) < 0.001,
 		"实测 %.0f" % (h_out - float(outr["hp"])))
 	_ok("③ 眩晕 8 秒(韧性 0 ⇒ 原值)",
 		absf((float(inr["stun_until"]) - float(_s._t)) - 8.0) < 0.05,
@@ -751,9 +774,18 @@ func _t090_slam() -> void:
 	## 1 秒击飞: 滞空 = 2·vy/|g|
 	var vy: float = float(inr.get("vy", 0.0))
 	var g: float = absf(float(inr.get("knock_g", 0.0)))
-	var air: float = (2.0 * vy / g) if g > 0.0 else -1.0
-	_ok("③ 击飞: 目标进入滞空态", bool(inr.get("airborne", false)))
-	_ok("③ ★击飞滞空恰好 1.0 秒(2·vy/|g|)", absf(air - 1.0) < 1e-4,
+	## ★量【总滞空时间】而不是读 vy 反推。2026-08-09: 结算那一步里主循环已经把受害者
+	##   积分了一步, 读到的 vy 是 5.76 不是 6.0(差正好 g×0.02) ⇒ 反推出 0.96 秒判红。
+	##   总滞空时间是真正要保证的量, 且**对积分步长不敏感**
+	##   (memory [[fb-make-assertions-rng-insensitive]] 同一条思路)。
+	var air: float = 0.02
+	var kair: int = 0
+	while kair < 300 and bool(inr.get("airborne", false)):
+		_feed(0.02, 0.02)
+		air += 0.02
+		kair += 1
+	_ok("③ 击飞: 目标进入滞空态", kair > 0, "滞空推进了 %d 步" % kair)
+	_ok("③ ★击飞滞空恰好 1.0 秒(实测总滞空)", absf(air - 1.0) < 0.05,
 		"vy=%.3f g=%.3f ⇒ 滞空 %.4f 秒" % [vy, g, air])
 	_ok("③ 记账: pestle_slam_hit == 1(只有圈内那一个)",
 		int(_st(u, "p2eq_090").get("pestle_slam_hit", -1)) == 1,
@@ -843,12 +875,67 @@ func _t090_mana_lock() -> void:
 		t_land > 0.0 and absf(t_land - t_slam) < 0.02,
 		"落地 %.4f 秒 / 砸落 %.4f 秒(峰高 %.1f 米)" % [t_land, t_slam, EqArcaneBatch.PESTLE_APEX_M])
 
+	## ── ③L2 ★★跑【真主循环】并注入顿帧: 砸落必须发生在龟真正贴地那一帧 ──
+	##
+	## 上面 ③L 比的是「起跳写入的 vy/g 算出的落地时刻」≡「砸落倒计时初值」——
+	## **两个写入值之间的代数恒等**, 而且两边都在 `_feed` 里跑, 而 `_feed` 不跑主循环、
+	## 不跑顿帧。它代数上永远相等, 物理上却可以差很远:
+	##   2026-08-09 探针实测(VFXLAB 真实对局) —— 结算那一刻 height=3.5931, airborne=true。
+	## 根因: `_equip_sys.tick_global` 在 `_sim_step` 里【无条件】执行, 而 airborne 积分被
+	##   `if frozen / elif in_ts / else` 门控 ⇒ 顿帧期间跳跃冻结、倒计时照跑。
+	## ⇒ 本条走 `_s._sim_step(dt, frozen, ...)` 真路径, 并**故意每三步冻一步**(顿帧),
+	##   老实现在这里必红(它会在半空结算)。
+	_s._units.clear()
+	_arc()._slams.clear()
+	var slu: Dictionary = _equip(_mk("basic", "left", Vector2(0, 0)), "p2eq_090", 3)
+	var sle: Dictionary = _mk("basic", "right", Vector2(1400, 0))
+	_s._units = [slu, sle]
+	_s._equip_sys.fire_equip_effect(slu, "p2eq_090", 3)
+	_ok("③L2 分母: 起跳了(在途 1 条 + 进滞空态)",
+		_arc()._slams.size() == 1 and bool(slu.get("airborne", false)),
+		"slams=%d airborne=%s" % [_arc()._slams.size(), str(slu.get("airborne", false))])
+	var sln0: int = int(_st(slu, "p2eq_090").get("pestle_slams", 0))
+	var sldt: float = 1.0 / 60.0
+	var sl_h: float = -1.0
+	var sl_air: bool = true
+	var sl_fz: int = 0
+	var sl_n: int = 0
+	while sl_n < 900:
+		## 每三步冻一步 = 注入顿帧。frozen 时主循环只扣 _hitstop, 不推进 _t / 不积分 airborne。
+		var sl_isfz: bool = (sl_n % 3 == 2)
+		if sl_isfz:
+			_s._hitstop = maxf(float(_s._hitstop), sldt * 2.0)
+			sl_fz += 1
+		_s._sim_step(sldt, sl_isfz, false)
+		sl_n += 1
+		if int(_st(slu, "p2eq_090").get("pestle_slams", 0)) > sln0:
+			sl_h = float(slu.get("height", -1.0))
+			sl_air = bool(slu.get("airborne", false))
+			break
+	_ok("③L2 分母: 真的注入了顿帧(冻结步 > 0)", sl_fz > 0, "冻结 %d 步 / 共 %d 步" % [sl_fz, sl_n])
+	_ok("③L2 分母: 砸落确实结算了(没跑满 900 步)", sl_h >= 0.0, "steps=%d" % sl_n)
+	_ok("③L2 ★★结算那一帧: 龟**贴地**(height == 0)",
+		sl_h >= 0.0 and sl_h <= 0.0001, "height=%.4f" % sl_h)
+	_ok("③L2 ★★结算那一帧: 已经**落地**(airborne == false)", not sl_air, "airborne=%s" % str(sl_air))
+	_s._hitstop = 0.0
+	_s._units.clear()
+	_arc()._slams.clear()
+
 	# ── ★★演出的时序也要对上(用户 2026-08-08:「落地那一刻才是…预警特效怎么样, 冲击波怎么样」)
 	#   我上一条只验了**伤害**落在落地那一刻, **没验演出** ⇒ 这里量真实节点:
 	#     ① 起跳期间: 预警圈在、冲击波不在
 	#     ② 落地那一刻: 预警圈**收掉**、冲击波**起来**
 	#   两条演出各由不同的 tick 推(演出层 `ArcaneEqVfx.tick` vs 结算侧 `_tick_slams`),
 	#   "用同一个 T"不等于"实际同一帧" —— 必须量。
+	## ★本节【自带起跳】—— 不吃上文残留的在途条目。2026-08-09 的教训:
+	##   ③V 原本依赖前面小节留下的那一跳, 我在中间插了一节清场的 ③L2, 它当场变成
+	##   "leap=0 slam=2"(量的是别人的残骸)。**共享状态的断言, 顺序一变就骗人。**
+	_arc()._slams.clear()
+	_arc().vfx.clear()
+	_s._units.clear()
+	var vu: Dictionary = _equip(_mk("basic", "left", Vector2(0, 0)), "p2eq_090", 3)
+	_s._units = [vu]
+	_s._equip_sys.fire_equip_effect(vu, "p2eq_090", 3)
 	_ok("③V 起跳期间: 预警圈在场 / 冲击波还没起",
 		_live("leap") >= 1 and _live("slam") == 0,
 		"leap=%d slam=%d" % [_live("leap"), _live("slam")])
@@ -866,6 +953,74 @@ func _t090_mana_lock() -> void:
 		v_slam >= 1 and v_leap == 0,
 		"结算那一帧 预警圈=%d 冲击波=%d" % [v_leap, v_slam])
 	_s._units.clear()
+	_s._units.clear()
+
+	## ── ③G 演出的**技术底座**(2026-08-09 大重做) ────────────────────────
+	## 用户:「雷雾别拿个程序化的线条糊弄我啊, 3d 该有的粒子、动画深的什么的呢, 冲击波也不行」。
+	## 事实核查: 项目里 GPUParticles3D / .gdshader / 精灵表逐帧 **都在用**(5 个文件 / 4 个 / 一大堆),
+	##   只有 090 一处没用 —— 全是 SurfaceTool 拼四边形 + 每帧手写 alpha。
+	## ⚠ GPU 粒子在无头 CI 下不推进 ⇒ 这里量的是**配置**(发射半径/数量/材质/贴图在位),
+	##   不是"粒子真实位置"。判据落在能同步读到的东西上(同 CLAUDE.md §3.5 的原则)。
+	_arc().vfx.clear()
+	_s._units.clear()
+	var gu: Dictionary = _equip(_mk("basic", "left", Vector2(0, 0)), "p2eq_090", 3)
+	_s._units = [gu]
+	_s._equip_sys.fire_equip_effect(gu, "p2eq_090", 3)
+	var mist_n: GPUParticles3D = null
+	var arc_n: Sprite3D = null
+	for x in _arc().vfx._owned:
+		if not is_instance_valid(x):
+			continue
+		for d in _all_desc(x as Node):
+			if d is GPUParticles3D and mist_n == null:
+				mist_n = d as GPUParticles3D
+			if d is Sprite3D and arc_n == null:
+				arc_n = d as Sprite3D
+	_ok("③G ★雷雾是真粒子(GPUParticles3D), 不是几条线段", mist_n != null)
+	if mist_n != null:
+		var mpm := mist_n.process_material as ParticleProcessMaterial
+		_ok("③G 雷雾分母: 挂了 ParticleProcessMaterial", mpm != null)
+		_ok("③G ★雷雾发射半径 ≡ 伤害半径(整个预警范围内都有雾, 不是只在边上)",
+			mpm != null and absf(mpm.emission_ring_radius - ArcaneEqVfx.SLAM_R_PX * float(_s.WS)) < 1e-3,
+			"发射 %.3f / 应为 %.3f" % [mpm.emission_ring_radius if mpm != null else -1.0,
+				ArcaneEqVfx.SLAM_R_PX * float(_s.WS)])
+		_ok("③G 雷雾从圆心起(内径 0 ⇒ 实心圆盘)",
+			mpm != null and mpm.emission_ring_inner_radius <= 1e-6)
+		_ok("③G 雷雾开了湍流(会翻涌, 不是一层静止的膜)",
+			mpm != null and mpm.turbulence_enabled)
+		var mqm := mist_n.draw_pass_1 as QuadMesh
+		var mmat := (mqm.material if mqm != null else null) as StandardMaterial3D
+		_ok("③G ★雷雾粒子有贴图(没贴图的 QuadMesh 就是实心方片 —— 实拍满屏蓝方块的根因)",
+			mmat != null and mmat.albedo_texture != null)
+	_ok("③G ★电弧是精灵表(Sprite3D 多帧), 不是程序化折线", arc_n != null)
+	if arc_n != null:
+		_ok("③G 电弧帧数 = %d(> 1 才叫动画)" % ArcaneEqVfx.ARC_SHEET_FRAMES,
+			arc_n.hframes == ArcaneEqVfx.ARC_SHEET_FRAMES and arc_n.hframes > 1,
+			"hframes=%d" % arc_n.hframes)
+		_ok("③G ★电弧不能用 ALPHA_CUT_DISCARD(阈值 0.5 会把压暗到 0.45 的整条弧丢光)",
+			arc_n.alpha_cut == SpriteBase3D.ALPHA_CUT_DISABLED)
+	for pth in [ArcaneEqVfx.ARC_SHEET_PATH, ArcaneEqVfx.SPLASH_SHEET_PATH, ArcaneEqVfx.CREST_SHEET_PATH]:
+		_ok("③G 生成素材在位: " + pth, ResourceLoader.exists(pth))
+	## 波前 = 一圈朝外站的碎浪(而不是一个被 scale 撑大的环)
+	_arc().vfx.clear()
+	_arc().vfx.pestle_slam((gu["pos"] as Vector2), EqArcaneBatch.PESTLE_RADIUS)
+	var crest_n: int = 0
+	var burst_n: int = 0
+	for x2 in _arc().vfx._owned:
+		if not is_instance_valid(x2):
+			continue
+		for d2 in _all_desc(x2 as Node):
+			## ⚠ 别拿 hframes 当身份: 落点水花也是 9 帧 ⇒ 会被一起数进来(实测 21 而非 20)。
+			##   按**贴图路径**认才是它自己。
+			if d2 is Sprite3D and (d2 as Sprite3D).texture != null 					and str(((d2 as Sprite3D).texture as Texture2D).resource_path) == ArcaneEqVfx.CREST_SHEET_PATH:
+				crest_n += 1
+			if d2 is GPUParticles3D:
+				burst_n += 1
+	_ok("③G ★冲击波前沿 = %d 段碎浪精灵(不是一个被撑大的环)" % ArcaneEqVfx.CREST_N,
+		crest_n == ArcaneEqVfx.CREST_N, "实测 %d 段" % crest_n)
+	_ok("③G ★炸开的水是粒子(旧版 46 个 BoxMesh ⇒ 实拍一堆蓝方块)",
+		burst_n >= 1, "粒子节点 %d 个" % burst_n)
+	_arc().vfx.clear()
 	_s._units.clear()
 
 	_ok("③W 预警圈半径 SLAM_R_PX ≡ 伤害半径 PESTLE_RADIUS(旧版差九倍)",

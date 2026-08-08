@@ -109,7 +109,11 @@ const TALISMAN_SEC := 15.0
 const TALISMAN_TICK := 1.0
 const TALISMAN_MR_PER_TICK := 1.0
 ## 090: 猛砸半径(码) / ATK 系数 / 起跳到砸落(秒) / 起跳峰高(米) / 击飞滞空(秒) / 几次普攻一发浪潮
-const PESTLE_RADIUS := 1000.0
+## ★★2026-08-09 1000 → 500(用户拍板)。原因是**读不成一个圈**:
+##   战场 `ARENA = Rect2(70, 110, 1596, 728)`, 半径 1000 ⇒ 直径 2000 **比战场长边还长**,
+##   预警圈整个落在画面外(实拍确认)。500 ⇒ 直径 1000: 横向放得下(1596),
+##   纵向仍超出(728) ⇒ 是一个上下被战场边界切平的圆, 但已经读得出"这是一个范围"。
+const PESTLE_RADIUS := 500.0
 const PESTLE_ATK_SCALE := 3.0
 ## ★★2026-08-08 用户:「这个起跳不够高, 不够物理, 哪有这么快的跳」。
 ##   旧版是 h=2.4 米 / T=0.6 秒, **反推出来的重力是 −26.7 m/s² ≈ 2.7 个地球重力**
@@ -121,6 +125,9 @@ const PESTLE_G := 20.0          ## 下坠重力(米/秒²)。地球 9.8; 游戏�
 static func pestle_jump_sec() -> float:
 	return 2.0 * sqrt(2.0 * PESTLE_APEX_M / PESTLE_G)
 const PESTLE_KB_SEC := 1.0
+## 砸落的**兜底**上限(秒)。正常路径由真实落地事件结算; 这条只防"永远落不了地"留下孤儿在途条目
+## (携带者被别的机制永久滞空 / 状态错乱)。★不是正常触发路径, 正常路径命中它就说明落地事件漏了。
+const PESTLE_SLAM_WATCHDOG := 3.0
 const PESTLE_EVERY := 3
 ## 浪潮每一跳飞多久(秒)。★"一簇水跳过去"要看得见飞行过程, 太快就又变成瞬时连线了。
 const WAVE_HOP_SEC := 0.26
@@ -144,6 +151,8 @@ var _steles: Array = []
 var _talismans: Array = []
 ## 起跳中还没砸下来的镇海杵 [{u, si, t_left, flat, stun}]
 var _slams: Array = []
+## 每次起跳的自增编号(见 `air_id`)。
+var _pestle_air_seq: int = 0
 ## 当前吃着 088 圈内攻速的单位(撤场/碑没了要把增量还回去)
 var _aura_units: Array = []
 
@@ -539,7 +548,12 @@ func _pestle_leap(u: Dictionary, si: int) -> void:
 	stt["pestle_leaps"] = int(stt.get("pestle_leaps", 0)) + 1   # 同步触发证据(门禁数它)
 	u["eq_state"]["p2eq_090"] = stt
 	_mana_lock(u, "p2eq_090")                        # ★砸出伤害之前, 法力条不增长
-	_slams.append({"u": u, "si": si, "flat": flat, "stun": stun, "t_left": pestle_jump_sec()})
+	## ★`air_id`: 这一跳的专属编号。落地事件只认自己那一跳 —— 携带者在半空被【别人】
+	##   击飞再落地时, 不至于被误判成"我砸下来了"(方案书 20260809 风险 4)。
+	_pestle_air_seq += 1
+	u["_pestle_air_id"] = _pestle_air_seq
+	_slams.append({"u": u, "si": si, "flat": flat, "stun": stun,
+		"t_left": pestle_jump_sec(), "air_id": _pestle_air_seq})
 	## 起跳: 直接写击飞物理字段, 由主循环那段 airborne 积分抛起再落回(不用 tween)。
 	## 峰高 h 与滞空 T 解耦: vy = 2h/T, g = −4h/T² ⇒ 落地时刻恰好 = T = 砸落时刻。
 	if not u.get("airborne", false):
@@ -563,11 +577,39 @@ func _tick_slams(delta: float) -> void:
 			_slams.remove_at(i)
 			continue
 		sl["t_left"] = float(sl["t_left"]) - delta
-		if float(sl["t_left"]) <= 0.0:
+		## ★★砸落**不再由倒计时触发** —— 由 `on_unit_landed`(真实落地事件)结算。
+		##   历史: 倒计时走 `tick_global` 的 delta, 而跳跃走被顿帧/时停门控的 `_tick_unit`,
+		##   两条时钟在顿帧期间分叉 ⇒ 砸落提前(实测结算那一刻龟还在 3.59 米高)。
+		##   这里只剩两种收尾:
+		##     ① 携带者压根没进滞空态(起跳时已被别人击飞 ⇒ 我们没写物理) ⇒ 到点即结算
+		##     ② 兜底: 超时 PESTLE_SLAM_WATCHDOG 还没落地 ⇒ 强制结算, 不留孤儿
+		if float(sl["t_left"]) <= 0.0 and not (u as Dictionary).get("airborne", false):
+			_slams.remove_at(i)
+			pestle_slam(sl)
+		elif float(sl["t_left"]) <= -PESTLE_SLAM_WATCHDOG:
 			_slams.remove_at(i)
 			pestle_slam(sl)
 		else:
 			_mana_hold(u, "p2eq_090")   # ★还在半空 ⇒ 法力条压回 0(「造成伤害后才重新记录」)
+
+
+## 【真实落地事件】—— 主循环在 `airborne` true→false 那一帧调。
+## ★这是"砸击命中 = 落地那一刻"的**唯一**正常触发路径: 演出与结算读的是同一个物理事件,
+##   不存在两个时钟对不上的问题。门禁 ③L2 注入顿帧反证这一点。
+func on_unit_landed(u: Dictionary) -> void:
+	if _slams.is_empty() or not (u is Dictionary):
+		return
+	var aid: int = int((u as Dictionary).get("_pestle_air_id", -1))
+	for i in range(_slams.size() - 1, -1, -1):
+		var sl: Dictionary = _slams[i]
+		if not is_same(sl.get("u", null), u):
+			continue
+		## 只认自己那一跳(见 air_id 的注释)。`air_id` 对不上说明这次落地是别人把它击飞的,
+		## 本次猛砸还在自己的行程里 —— 不结算, 继续等。
+		if int(sl.get("air_id", -1)) != aid:
+			continue
+		_slams.remove_at(i)
+		pestle_slam(sl)
 
 
 ## 砸落结算。★独立具名函数: 演出末尾调它、门禁也直接调它 ——
@@ -596,6 +638,7 @@ func pestle_slam(sl: Dictionary) -> void:
 	(u as Dictionary)["eq_state"]["p2eq_090"] = stt
 	_mana_unlock(u, "p2eq_090")   # ★★造成伤害【之后】才重新开始记录法力值
 	if vfx != null:
+		vfx.drop_leap(u)              # ★同一事件里收起跳演出 —— 圈不许比人晚落地
 		vfx.pestle_slam(c, PESTLE_RADIUS)
 
 
