@@ -725,6 +725,15 @@ func tower_charge(t: Dictionary, ct: int, per: int) -> float:
 ##   所以「帧宽 96 码」实际画出来只有约 40 码高, **比龟(80 px)矮一半** ⇒ 读起来就是小。
 ##   ⇒ 160 码。判据不是「帧宽等于几」, 而是**画出来的机身要明显大于一只龟**。
 const HELI_BODY_PX := 160.0
+## 起手提示: 警示环半径(码) / 时长(秒) / 震屏强度
+const ALERT_R := 190.0
+const ALERT_SEC := 0.42
+const ALERT_SHAKE := 4.0
+## 地面投影相对机身宽度的比例
+const SHADOW_K := 0.62
+## 起手闪白持续(秒)与坠机冒烟间隔(秒)
+const ALERT_FLASH := 0.35
+const CRASH_SMOKE_IV := 0.09
 ## 旋翼转一圈, 机身立绘播几轮。1.0 = 一圈一轮。
 const HELI_FRAME_CYCLES := 1.0
 ## ★★机头在**贴图内**的像素坐标(左上原点)。这两个数我第一版**认反了两端**, 教训写在这:
@@ -795,14 +804,25 @@ func heli_spawn(h: Dictionary) -> void:
 	#   仍然建出来但不入树 —— heli_update 照旧积分它的相位(相位还要驱动机身帧), 只是不显示。
 	if htex == null:
 		root.add_child(rotor)
-	var en_bg := _sprite(VfxTex._make_pixel_block_tex(), Vector3(0, 0.7, 0), 0.02,
-		Color(0.06, 0.1, 0.16, 0.75), false)
-	en_bg.scale = Vector3(2.6, 0.42, 1.0)
+	# ③ 龟能条 —— 原来是两个像素方块, 又窄又暗, 读不出"这是能量条、还差多少"。
+	#   现在: 深色描边框 + 深底 + 亮填充, 加宽加高; 满格时由 heli_update 让它闪。
+	var en_ol := _sprite(VfxTex._make_pixel_block_tex(), Vector3(0, 0.92, 0), 0.02,
+		Color(0.02, 0.03, 0.05, 0.9), false)
+	en_ol.scale = Vector3(4.3, 0.78, 1.0)
+	root.add_child(en_ol)
+	var en_bg := _sprite(VfxTex._make_pixel_block_tex(), Vector3(0, 0.92, 0), 0.02,
+		Color(0.10, 0.16, 0.22, 0.95), false)
+	en_bg.scale = Vector3(4.0, 0.56, 1.0)
 	root.add_child(en_bg)
-	var en := _sprite(VfxTex._make_pixel_block_tex(), Vector3(0, 0.7, 0), 0.02,
-		Color(0.45, 0.95, 1.0, 0.95), false)
-	en.scale = Vector3(0.01, 0.34, 1.0)
+	var en := _sprite(VfxTex._make_pixel_block_tex(), Vector3(0, 0.92, 0), 0.02,
+		Color(0.45, 0.95, 1.0, 1.0), false)
+	en.scale = Vector3(0.01, 0.5, 1.0)
 	root.add_child(en)
+	# ㉓ 地面投影(挂在 _world 而不是 root —— root 在 5.2 米高, 影子必须贴地)
+	var shd := _sprite(VfxTex._make_fire_glow_tex(), Vector3.ZERO,
+		(HELI_BODY_PX * SHADOW_K * float(battle.WS)) / 64.0, Color(0.02, 0.03, 0.05, 0.34), true)
+	_owned.append(shd)
+	h["_shadow"] = shd
 	h["node"] = root
 	h["_body_spr"] = body
 	h["_rotor"] = rotor
@@ -835,6 +855,24 @@ func heli_update(h: Dictionary, delta: float) -> void:
 		if b2.flip_h:
 			nx = -nx
 		h["_muzzle_px"] = nx / float(battle.WS)
+	_heli_shadow(h)
+	# ㉒ 起手闪白: 机身在 ALERT_FLASH 秒里由亮转常, 让"它要放大招了"在机身上也读得到
+	if bs2 is Sprite3D and is_instance_valid(bs2):
+		var at2: float = float(h.get("_alert_t", 9.0)) + delta
+		h["_alert_t"] = at2
+		var kf: float = clampf(1.0 - at2 / ALERT_FLASH, 0.0, 1.0)
+		(bs2 as Sprite3D).modulate = Color(1.0 + kf * 1.6, 1.0 + kf * 1.2, 1.0 + kf * 0.7, 1.0)
+	# ㉔ 坠机: 机身摇摆 + 持续冒烟, 让那 10 秒之后的坠落**看得出是失控**
+	if str(h.get("state", "")) == "crash":
+		if bs2 is Sprite3D and is_instance_valid(bs2):
+			(bs2 as Sprite3D).rotation.z = sin(float(h["rotor"]) * 0.8) * 0.35
+		h["_smoke_t"] = float(h.get("_smoke_t", 0.0)) + delta
+		while float(h["_smoke_t"]) >= CRASH_SMOKE_IV:
+			h["_smoke_t"] = float(h["_smoke_t"]) - CRASH_SMOKE_IV
+			var pf := _sprite(VfxTex._make_fire_glow_tex(),
+				battle._world_pos(Vector2(h["pos"]), HELI_H * 0.85),
+				(26.0 * float(battle.WS)) / 64.0, Color(0.22, 0.20, 0.19, 0.85), false)
+			_adopt(pf, 0.7, "puff", {"a0": 0.85})
 	root.position = battle._world_pos(Vector2(h["pos"]), HELI_H)
 	var rotor = h.get("_rotor", null)
 	if rotor is Node3D and is_instance_valid(rotor):
@@ -849,8 +887,36 @@ func heli_update(h: Dictionary, delta: float) -> void:
 	var en = h.get("_en", null)
 	if en is Sprite3D and is_instance_valid(en):
 		var f: float = clampf(float(h.get("energy", 0.0)) / 100.0, 0.0, 1.0)
-		en.scale = Vector3(maxf(0.01, 2.6 * f), 0.34, 1.0)
-		en.position = Vector3(-2.6 * 0.02 * (1.0 - f) * 0.5, 0.7, 0.0)
+		en.scale = Vector3(maxf(0.01, 4.0 * f), 0.5, 1.0)
+		en.position = Vector3(-4.0 * 0.02 * (1.0 - f) * 0.5, 0.92, 0.0)
+		# ★满格闪 —— "可以放大招了"必须能读出来(原来只是条到头了, 没有任何变化)
+		var blink: float = 1.0 if f < 0.999 else (0.55 + 0.45 * sin(float(h["rotor"]) * 3.0))
+		en.modulate = Color(0.45 + 0.5 * (1.0 - blink), 0.95, 1.0, blink)
+
+
+## ㉒【大招零提示】用户:「直升机释放技能会怎么样」—— 答案是**画面上什么都没发生**:
+##   机身不变、无起手、无屏幕信号, 而这是一件 5 费装备的大招。
+##   ⇒ 起飞轰炸的那一刻: 机身闪白脉冲 + 脚下爆一圈警示环 + 一记轻震屏。
+func heli_alert(h: Dictionary) -> void:
+	if not _has_world():
+		return
+	h["_alert_t"] = 0.0
+	_ring(Vector2(h["pos"]), Color(1.0, 0.55, 0.22, 0.95), ALERT_R, ALERT_SEC)
+	if battle != null and battle.has_method("_shake"):
+		battle._shake(ALERT_SHAKE)
+
+
+## ㉓【空中单位没有地面投影】—— 2.5D 场上读不出它在哪、多高。
+## 影子跟着 2D 位置走、贴地; 大小按高度收缩(越高越小越淡, 全行业通用的高度读数)。
+func _heli_shadow(h: Dictionary) -> void:
+	var sh = h.get("_shadow", null)
+	if not (sh is Sprite3D) or not is_instance_valid(sh):
+		return
+	var s2: Sprite3D = sh
+	s2.position = battle._world_pos(Vector2(h["pos"]), 0.04)
+	var f: float = clampf(1.0 - (HELI_H / 8.0), 0.35, 1.0)
+	s2.pixel_size = (HELI_BODY_PX * SHADOW_K * f * float(battle.WS)) / 64.0
+	s2.modulate.a = 0.34 * f
 
 
 func heli_free(h: Dictionary) -> void:
@@ -873,6 +939,8 @@ func lane_marker(a: Vector2, b: Vector2, width: float) -> void:
 ## 返回弹着点 —— 门禁验的是这个几何量, 不用等演出跑完(CLAUDE.md §3.5)。
 ## 080 炸弹立绘: 显示尺寸(码)、下落演出时长(秒)、素材路径(缓存一次)。
 const BOMB_PX := 22.0
+## 炸弹尾迹长度(码)
+const BOMB_TAIL_LEN := 46.0
 const BOMB_FALL_SEC := 0.42
 ## 预警贴花在一次下落里转多少弧度(半圈)。★不是随手取的: 转太快像雷达扫描、
 ## 转太慢看不出在动; 半圈刚好"一眼看得出它活着"又不抢注意力。
@@ -936,16 +1004,12 @@ func bomb_drop(from2: Vector2, land: Vector2, blast_r: float) -> void:
 		var _rps: float = (blast_r * 2.0 * float(battle.WS)) / float(maxi(1, _rt.get_height()))
 		var w2 := _sprite(_rt, battle._world_pos(land, 0.06), _rps, Color(1.0, 0.42, 0.20, 0.85), true)
 		_adopt(w2, BOMB_FALL_SEC, "bombwarn", {"a0": 0.85})
-	# ② 淡尾迹(配角): 标出航向, 但主角是那颗弹
-	var segs := 6
-	for k in range(segs):
-		var f0: float = float(k) / float(segs)
-		var f1: float = float(k + 1) / float(segs)
-		var p0: Vector2 = from2.lerp(land, f0)
-		var p1: Vector2 = from2.lerp(land, f1)
-		var h0: float = HELI_H * (bomb_height(BOMB_DROP_H, f0) / BOMB_DROP_H)
-		var mi := _band(p0, p1, maxf(0.08, h0), 1.2, Color(1.0, 0.7, 0.35, 0.22))
-		_adopt(mi, 0.25, "band", {"a0": 0.22})
+	# ② 尾迹 —— ★★2026-08-08 改成**跟着炸弹飞**。
+	#   原来是把整条弧线**一次性铺完**、0.25 秒就消失: 炸弹还在天上, 它的"尾迹"已经没了,
+	#   而且那条弧是静止的, 根本不是尾迹, 是"预先画好的轨迹线"。
+	var _tdir: Vector2 = (land - from2).normalized() if (land - from2).length() > 0.001 else Vector2.RIGHT
+	var tr := _band(from2 - _tdir * BOMB_TAIL_LEN, from2, HELI_H, 1.6, Color(1.0, 0.72, 0.38, 0.5))
+	_adopt(tr, BOMB_FALL_SEC, "bombtail", {"from": from2, "to": land, "a0": 0.5})
 	# ③ 真炸弹: 位置由**和门禁验的前置量公式同一个** `bomb_height` 驱动
 	var btex: Texture2D = _bomb_tex()
 	if btex != null:
@@ -1021,6 +1085,16 @@ func tick(delta: float) -> void:
 				var wr: Sprite3D = n
 				wr.rotation.y = q * WARN_SPIN
 				wr.modulate.a = float(f.get("a0", 0.9)) * (0.5 + 0.5 * q)
+			"bombtail":
+				# 与炸弹**同一条落体曲线**平移 ⇒ 尾巴始终挂在弹后面
+				var tm2: MeshInstance3D = n
+				var ta2: Vector2 = f.get("from", Vector2.ZERO)
+				var tb2: Vector2 = f.get("to", Vector2.ZERO)
+				var th: float = HELI_H * (bomb_height(BOMB_DROP_H, q) / BOMB_DROP_H)
+				tm2.position = battle._world_pos(ta2.lerp(tb2, q), th) - battle._world_pos(ta2, HELI_H)
+				var tmat2 = tm2.material_override
+				if tmat2 is StandardMaterial3D:
+					(tmat2 as StandardMaterial3D).albedo_color.a = float(f.get("a0", 0.5)) * (1.0 - q * 0.5)
 			"bomb":
 				# ★水平匀速 + 竖直自由落体, **高度直接调 `bomb_height`** ——
 				#   与门禁验的前置量公式是同一条曲线, 不另写一条缓动。

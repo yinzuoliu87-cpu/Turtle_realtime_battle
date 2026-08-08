@@ -146,6 +146,45 @@ func _ready() -> void:
 	_ok("⑧ 脱离**不是一帧就完**(那等于没脱离)", fe >= 8, "用了 %d 帧" % fe)
 	_ok("⑧ 脱离结束回巡航", str(he["state"]) == "patrol", str(he["state"]))
 
+	# ── ⑨ 地面投影 / 龟能条 / 起手提示 —— 这三条用**断言节点**验, 不靠截图
+	#    (截图对机位很敏感, 我今晚已经因为裁窗/焦点连着看错好几次)。
+	var hs: Dictionary = {"owner": {"side": "left", "pos": Vector2(500.0, 400.0), "alive": true},
+		"pos": Vector2(500.0, 400.0), "si": 2, "state": "patrol", "rotor": 0.0, "energy": 0.0}
+	gun.vfx.heli_spawn(hs)
+	var shd = hs.get("_shadow", null)
+	_ok("⑨ 空中单位有**地面投影**", shd is Sprite3D and is_instance_valid(shd))
+	if shd is Sprite3D:
+		gun.vfx.heli_update(hs, 0.02)
+		# ★读 position 不读 global_position —— 影子直接挂在 `_world` 下(世界原点),
+		#   两者等价; 而 global_position 在节点尚未进树时会报
+		#   `Condition "!is_inside_tree()" is true`(致命报错正则会判红)。
+		var sy: float = (shd as Sprite3D).position.y
+		_ok("⑨ 投影贴地(y < 0.2 米), 不是挂在机身高度", sy < 0.2, "影子 y=%.3f 米" % sy)
+		_ok("⑨ 投影可见(alpha > 0)", (shd as Sprite3D).modulate.a > 0.05,
+			"a=%.2f" % (shd as Sprite3D).modulate.a)
+	# 龟能条: 三层(描边/底/填充) —— 原来只有两个像素方块, 读不出是条
+	var bars := 0
+	for c in (hs["node"] as Node3D).get_children():
+		if c is Sprite3D and int((c as Sprite3D).hframes) <= 1 and absf((c as Sprite3D).position.y - 0.92) < 0.01:
+			bars += 1
+	_ok("⑨ 龟能条有三层(描边+底+填充), 不再是两个裸方块", bars == 3, "%d 层" % bars)
+	# 满格要闪(不是"条到头了什么都不变")
+	hs["energy"] = 100.0
+	hs["rotor"] = 0.0
+	gun.vfx.heli_update(hs, 0.02)
+	var a1: float = (hs["_en"] as Sprite3D).modulate.a
+	hs["rotor"] = PI / 6.0
+	gun.vfx.heli_update(hs, 0.02)
+	var a2: float = (hs["_en"] as Sprite3D).modulate.a
+	_ok("⑨ 龟能满格会闪(相位不同 ⇒ alpha 不同)", absf(a1 - a2) > 0.02,
+		"a=%.2f → %.2f" % [a1, a2])
+	# ㉒ 起手提示: 起飞轰炸那一刻要真的生成东西
+	var before_fx: int = gun.vfx.alive_count()
+	gun.vfx.heli_alert(hs)
+	_ok("㉒ 大招起手有提示(生成了警示演出节点)", gun.vfx.alive_count() > before_fx,
+		"演出节点 %d → %d" % [before_fx, gun.vfx.alive_count()])
+	gun.vfx.heli_free(hs)
+
 	# ① 结构: 开轰炸时不许直接写 pos = lane_a
 	var src := FileAccess.get_file_as_string("res://scripts/systems/equip/eq_gun_batch.gd")
 	_ok("★分母: 读到了源码", src.length() > 1000, "%d 字符" % src.length())

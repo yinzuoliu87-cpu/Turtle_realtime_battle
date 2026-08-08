@@ -902,6 +902,7 @@ func _heli_begin_bomb(h: Dictionary) -> void:
 	#   航线起点离它当前位置最远可达 800 码(整条航线长), 这一跳非常显眼。
 	#   ⇒ 加一个 `approach` 进场状态: 按 HELI_APPROACH_SPD 飞过去, 到位才开始投弹。
 	#   ⚠ 结算不受影响 —— 投弹的落点/枚数/间隔都由 `run_t` 从 0 开始算, 进场只是多花一段时间。
+	vfx.heli_alert(h)          # ★㉒ 起手提示: 机身闪白 + 脚下警示环 + 轻震屏
 	h["state"] = "approach"
 	h["run_t"] = 0.0
 	h["bomb_t"] = 0.0
