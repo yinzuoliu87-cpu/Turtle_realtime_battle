@@ -147,6 +147,45 @@ func _t086_pierce() -> void:
 	_ok("086 ★分母: 这一发确实放出来了(1 门炮 ⇒ 1 条射线)", rays == 1, "条数 %d" % rays)
 	_ok("086 ★★贯穿: 挤在 10 码内的 3 个敌人**全部**吃到(不贯穿只会中 1 个)",
 		hit == 3, "中了 %d/3, 各自掉血 %s" % [hit, str(dmgs)])
+	# ── ★用户 2026-08-08:「吃到 3 个激光就是 3 倍率, 考虑龟蛋和训龟大师」──
+	#   ① 倍率: 一个单位站在 N 条线上就吃 N 份(每条射线各自结算)
+	#   ② 龟蛋(围栏未破): `_enemies_of` 里直接 continue ⇒ **连 AoE 都不吃**, 更不会被选中
+	#   ③ 训龟大师: `_enemies_of` 收它 / `_pick_enemies_of` 排它
+	#      ⇒ **不会被选作射线目标, 但线扫过照样吃**(伤害在管线里降为 1)。
+	#      这正是 targeting 文档里点名的那个模式:「机甲死亡激光那类定向技: 用这个选目标
+	#      (不选大师), 但线扫过大师仍在 _apply_damage 里结算(吃1)」。
+	_s._units.clear()
+	var u2: Dictionary = _mk("fortune", "left", Vector2(-500.0, 0.0))
+	u2["atk"] = 100.0
+	u2["base_atk"] = 100.0
+	_equip(u2, "p2eq_086", 3)
+	var vic: Dictionary = _mk("fortune", "right", Vector2(-100.0, 0.0), 9.0e7)
+	var egg: Dictionary = _mk("fortune", "right", Vector2(-95.0, 3.0), 9.0e7)
+	egg["_isEgg"] = true
+	egg["_egg_fence"] = true
+	var tr: Dictionary = _mk("fortune", "right", Vector2(-105.0, -3.0), 9.0e7)
+	tr["is_trainer"] = true
+	var st2: Dictionary = _g()._stt(u2, "p2eq_086")
+	# 三门炮 ⇒ 三条射线; 三个"敌人"挤在 10 码内 ⇒ 只要被算进结算名单就必然在每条线上
+	st2["drones"] = []
+	for k2 in range(3):
+		st2["drones"].append({"ang": TAU * float(k2) / 3.0, "ft": 0.0, "sx": 0.0, "sy": 0.0, "scat": 0.0})
+	_pump_shots(1.5)
+	var hv: float = float(vic["hp"])
+	var he: float = float(egg["hp"])
+	var ht: float = float(tr["hp"])
+	var rays2: int = _g().sext_ultimate(u2, 2)
+	_pump_shots(GVfx.SEXT_FIRE_DELAY + 0.3)
+	var dv: float = hv - float(vic["hp"])
+	var de: float = he - float(egg["hp"])
+	var dt2: float = ht - float(tr["hp"])
+	_ok("086 ★分母: 三门炮放出三条射线", rays2 == 3, "条数 %d" % rays2)
+	_ok("086 ★★倍率: 站在 3 条线上就吃 3 份(3 × 1000 = 3000)",
+		absf(dv - 3000.0) < 5.0, "实测 %.0f 期望 3000" % dv)
+	_ok("086 ★★龟蛋(围栏未破)【一点都不吃】(_enemies_of 直接 continue ⇒ 连 AoE 都不落)",
+		absf(de) < 0.01, "龟蛋掉血 %.1f (应为 0)" % de)
+	_ok("086 ★★训龟大师【不会被选作射线目标, 但线扫过照样吃】(伤害在管线里降为 1)",
+		dt2 > 0.0 and dt2 < 20.0, "大师掉血 %.1f (应 >0 且很小)" % dt2)
 	_s._units.clear()
 
 
