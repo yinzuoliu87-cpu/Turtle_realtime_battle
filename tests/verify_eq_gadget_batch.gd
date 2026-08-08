@@ -186,6 +186,42 @@ func _t086_pierce() -> void:
 		absf(de) < 0.01, "龟蛋掉血 %.1f (应为 0)" % de)
 	_ok("086 ★★训龟大师【不会被选作射线目标, 但线扫过照样吃】(伤害在管线里降为 1)",
 		dt2 > 0.0 and dt2 < 20.0, "大师掉血 %.1f (应 >0 且很小)" % dt2)
+	# ── ★用户 2026-08-08:「不应该锁到龟蛋和训龟大师」——
+	#   上面那一节里 vic 吃满 3000, 说明三条线都瞄的是 vic; 但那只是**间接证据**。
+	#   这一节**只放龟蛋和大师**(没有任何合法目标) ⇒ 如果哪一处选靶漏了闸门,
+	#   它就会锁到它们、放出射线来。断言: **一条射线都不放、两者都一点血不掉。**
+	_s._units.clear()
+	var u3: Dictionary = _mk("fortune", "left", Vector2(-500.0, 0.0))
+	u3["atk"] = 100.0
+	u3["base_atk"] = 100.0
+	_equip(u3, "p2eq_086", 3)
+	var egg2: Dictionary = _mk("fortune", "right", Vector2(-100.0, 0.0), 9.0e7)
+	egg2["_isEgg"] = true
+	egg2["_egg_fence"] = true
+	var tr2: Dictionary = _mk("fortune", "right", Vector2(-90.0, 5.0), 9.0e7)
+	tr2["is_trainer"] = true
+	var st3: Dictionary = _g()._stt(u3, "p2eq_086")
+	st3["drones"] = []
+	for k3 in range(3):
+		st3["drones"].append({"ang": TAU * float(k3) / 3.0, "ft": 0.0, "sx": 0.0, "sy": 0.0, "scat": 0.0})
+	_pump_shots(1.5)
+	var he2: float = float(egg2["hp"])
+	var ht2: float = float(tr2["hp"])
+	# ① 终极: 没有合法目标 ⇒ 一条都放不出来
+	var rays3: int = _g().sext_ultimate(u3, 2)
+	_pump_shots(GVfx.SEXT_FIRE_DELAY + 0.3)
+	_ok("086 ★★只剩龟蛋与大师时【一条射线都不放】(选靶闸门漏了就会锁到它们)",
+		rays3 == 0, "放了 %d 条" % rays3)
+	# ② 被动开火: 同样一发都不该打出去
+	var fired3 := 0
+	for _k4 in range(3):
+		if _g().sext_fire_one(u3, 0.5, 0):
+			fired3 += 1
+	_pump_shots(1.0)
+	_ok("086 ★★被动开火同样不锁龟蛋/大师(一发都打不出去)", fired3 == 0, "打出 %d 发" % fired3)
+	_ok("086 ★★两者都【一点血都没掉】",
+		absf(he2 - float(egg2["hp"])) < 0.01 and absf(ht2 - float(tr2["hp"])) < 0.01,
+		"龟蛋 %.1f / 大师 %.1f" % [he2 - float(egg2["hp"]), ht2 - float(tr2["hp"])])
 	_s._units.clear()
 
 
