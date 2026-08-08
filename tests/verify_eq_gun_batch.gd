@@ -182,6 +182,7 @@ func _ready() -> void:
 	_t078_left()
 	_t078_right()
 	_t078_gold()
+	_t078_timing()
 	_t079_pos()
 	_t079_summon()
 	_t079_aspd_live()
@@ -194,6 +195,7 @@ func _ready() -> void:
 	_t080_crash()
 	_t_vfx_models()
 	_t_vfx_nodes()
+	_t_bullet_track()
 	_t_clear()
 
 	_gun.clear_all()
@@ -276,6 +278,7 @@ func _t_from_equip() -> void:
 	_pin(u, 100.0)
 	var h0: float = float(u["hp"])
 	_gun._eel_right(u, 0)
+	_pump()                                    # ★伤害现在按跳延后, 不推就一滴都不掉
 	var refl_eq: float = h0 - float(u["hp"])
 	_s._damage._apply_damage_from(u, foe, 100, Color.WHITE)   # 分母: 同一条路 from_equip 默认 false
 	var refl_plain: float = h0 - float(u["hp"]) - refl_eq
@@ -444,6 +447,7 @@ func _t078_left() -> void:
 	var h2: float = float(side_out["hp"])
 	var h3: float = float(far_out["hp"])
 	_gun._eel_left(u, 0, Vector2.RIGHT)
+	_pump()                                    # ★弹丸要飞到才掉血(080 立下的规矩)
 	_ok("② 1★ 锥内: 15 + 0.3×100 = 45", _near(h1 - float(inn["hp"]), 45.0, 0.5),
 		"实打 %.1f" % (h1 - float(inn["hp"])))
 	_ok("② 60 度锥外(正侧方 90 度)不吃伤", _near(h2 - float(side_out["hp"]), 0.0, 0.01),
@@ -452,6 +456,7 @@ func _t078_left() -> void:
 		"实打 %.1f" % (h3 - float(far_out["hp"])))
 	var h1b: float = float(inn["hp"])
 	_gun._eel_left(u, 2, Vector2.RIGHT)
+	_pump()
 	_ok("② 3★ 锥内: 40 + 1.0×100 = 140", _near(h1b - float(inn["hp"]), 140.0, 0.5),
 		"实打 %.1f" % (h1b - float(inn["hp"])))
 
@@ -469,6 +474,7 @@ func _t078_right() -> void:
 		var c: Dictionary = _mk("fortune", "right", Vector2(200.0, 0.0))
 		var h: Array = [float(a["hp"]), float(b["hp"]), float(c["hp"])]
 		_gun._eel_right(u, si)
+		_pump()
 		var d0: float = h[0] - float(a["hp"])
 		var d1: float = h[1] - float(b["hp"])
 		var d2: float = h[2] - float(c["hp"])
@@ -496,10 +502,12 @@ func _t078_gold() -> void:
 	var c: Dictionary = _mk("fortune", "right", Vector2(200.0, 0.0))
 	var h: Array = [float(a["hp"]), float(b["hp"]), float(c["hp"])]
 	_gun._eel_right(u, 0)
+	_pump()
 	var plain: Array = [h[0] - float(a["hp"]), h[1] - float(b["hp"]), h[2] - float(c["hp"])]
 	h = [float(a["hp"]), float(b["hp"]), float(c["hp"])]
 	u["_golden_pct"] = 0.60
 	_gun._eel_right(u, 0)
+	_pump()
 	u["_golden_pct"] = 0.0
 	var gold: Array = [h[0] - float(a["hp"]), h[1] - float(b["hp"]), h[2] - float(c["hp"])]
 	_ok("② ★分母: 非金弹那一发三段都打出来了", plain[0] > 0.0 and plain[1] > 0.0 and plain[2] > 0.0, str(plain))
@@ -539,6 +547,64 @@ func _t078_gold() -> void:
 	_pump()
 	_ok("② 轮到左管时金弹也是【左管】(锥外的第 3 人一次都没被打到)",
 		_near(bh - float(back["hp"]), 0.0, 0.01), "锥外敌掉血 %.1f" % (bh - float(back["hp"])))
+
+
+# ═════════════════════════════════════════════════════════════
+# ②T 078 时序: 伤害落在【演出到达的那一刻】, 不是开火那一帧
+# ═════════════════════════════════════════════════════════════
+## ★★这条是 080 立下的规矩(炸弹落地 = 伤害 = 爆炸)在 078 上的落实。
+##   旧版整条电链和全部锥形伤害**都在开火那一帧结算完**, 实拍里就是
+##   "一根穿了 4 只龟的紫管子" + "14 根静态土棍" —— 规格原文的「不断往…跳跃」读不出来。
+##   ⇒ 这里断言的是**时间差本身**: 不推进就不掉血, 且第 3 跳严格晚于第 2 跳。
+##   任何人把它收回同一帧, 这一节立刻红。
+func _t078_timing() -> void:
+	print("── ②T 078 时序: 伤害等演出到达 ──")
+	# (a) 左管: 弹丸要飞 200/900 ≈ 0.22 秒才到
+	_reset()
+	var u: Dictionary = _mk("fortune", "left", Vector2(-400.0, 0.0))
+	_equip(u, "p2eq_078", 1)
+	_spawn_all()
+	_pin(u, 100.0)
+	var inn: Dictionary = _mk("fortune", "right", Vector2(-200.0, 0.0))
+	var h0: float = float(inn["hp"])
+	_s._pending_shots.clear()
+	_gun._eel_left(u, 0, Vector2.RIGHT)
+	_ok("②T 左管: 开火那一帧【一滴血都不掉】(弹还在飞)",
+		_near(h0 - float(inn["hp"]), 0.0, 0.01), "开火帧掉血 %.1f" % (h0 - float(inn["hp"])))
+	_ok("②T ★分母: 确实排了延后段", _s._pending_shots.size() > 0, "排了 %d 段" % _s._pending_shots.size())
+	_pump()
+	_ok("②T 左管: 弹丸到了才掉血", (h0 - float(inn["hp"])) > 0.0, "推完掉血 %.1f" % (h0 - float(inn["hp"])))
+	# (b) 右管: 首目标当帧吃物理+魔法; 后续每一跳各晚 EEL_HOP_GAP
+	_reset()
+	var u2: Dictionary = _mk("fortune", "left", Vector2(-500.0, 0.0))
+	_equip(u2, "p2eq_078", 1)
+	_spawn_all()
+	_pin(u2, 100.0)
+	var a: Dictionary = _mk("fortune", "right", Vector2(-300.0, 0.0))
+	var b: Dictionary = _mk("fortune", "right", Vector2(-100.0, 0.0))
+	var c: Dictionary = _mk("fortune", "right", Vector2(200.0, 0.0))
+	var hh: Array = [float(a["hp"]), float(b["hp"]), float(c["hp"])]
+	_s._pending_shots.clear()
+	_gun._eel_right(u2, 0)
+	_ok("②T 右管: 开火帧只有【首目标】掉血(50 物理 + 50 魔法)",
+		_near(hh[0] - float(a["hp"]), 100.0, 0.6) and _near(hh[1] - float(b["hp"]), 0.0, 0.01)
+			and _near(hh[2] - float(c["hp"]), 0.0, 0.01),
+		"首=%.1f 二=%.1f 三=%.1f" % [hh[0] - float(a["hp"]), hh[1] - float(b["hp"]), hh[2] - float(c["hp"])])
+	# 逐格步进, 记下第 2/第 3 跳各落在第几步 ⇒ 严格先后
+	var when2 := -1
+	var when3 := -1
+	for st in range(1, 41):
+		_s._ballistics._step_pending_shots(0.03)
+		if when2 < 0 and (hh[1] - float(b["hp"])) > 0.0:
+			when2 = st
+		if when3 < 0 and (hh[2] - float(c["hp"])) > 0.0:
+			when3 = st
+		if _s._pending_shots.is_empty() and when3 >= 0:
+			break
+	_ok("②T ★分母: 第 2 跳与第 3 跳最终都落下了", when2 > 0 and when3 > 0,
+		"第2跳@第%d步 第3跳@第%d步" % [when2, when3])
+	_ok("②T 第 3 跳【严格晚于】第 2 跳(电流是一格一格跳的, 不是一帧全亮)",
+		when3 > when2, "第2跳@第%d步 第3跳@第%d步" % [when2, when3])
 
 
 # ═════════════════════════════════════════════════════════════
@@ -1031,7 +1097,7 @@ func _t_vfx_nodes() -> void:
 	var n_arc: int = vf.chain_arc(c, c + Vector2(200.0, 100.0), Color.SKY_BLUE)
 	var n_heal: int = vf.heal_beam(c, c + Vector2(300.0, 0.0), Color.GREEN, true)
 	_ok("⑤N ★分母: 锥形/电弧/治疗束都真的生成了段数",
-		n_cone == 8 and n_arc == 17 and n_heal == 10, "cone=%d arc=%d heal=%d" % [n_cone, n_arc, n_heal])
+		n_cone == 8 and n_arc == 33 and n_heal == 10, "cone=%d arc=%d heal=%d" % [n_cone, n_arc, n_heal])
 	_ok("⑤N 演出节点【真的挂进 battle._world】(不是只算了个数)",
 		_s._world.get_child_count() > before, "world 子节点 %d → %d" % [before, _s._world.get_child_count()])
 	var live: int = vf.alive_count()
@@ -1054,6 +1120,65 @@ func _t_vfx_nodes() -> void:
 	_ok("⑤N heli_update 推进了旋翼相位", float(h.get("rotor", 0.0)) > 0.0, "rotor=%.3f" % float(h["rotor"]))
 	vf.heli_free(h)
 	_ok("⑤N heli_free 拔掉机体", h.get("node", null) == null)
+	vf.clear()
+
+
+# ═════════════════════════════════════════════════════════════
+# ⑬ 弹跟着目标走 + 命中火花 —— 两条都被同一行 `return life` 静默杀死过
+# ═════════════════════════════════════════════════════════════
+## ★★这条门禁是补的欠账。v0.19.53 我把 `return life` 插在了弹头辉光**上面**,
+##   于是唯一携带 `tgt` 的那条演出**从此一次都没被创建过**:
+##     · ⑬「弹跟着目标当前位置走」—— tick() 里分支写得好好的, 零生产者 ⇒ 全程没跑
+##     · 命中火花 —— 只对 kind=="bullet" 触发 ⇒ 同一行一起没了
+##   而当时的 ⑤N 只断言"喂 2 秒后全部退场", **有没有火花都成立** ⇒ 绿灯。
+##   ⇒ 这里断言的是**真的有 fx 带着目标引用**和**终点真的被改写**, 不是"函数存在"。
+func _t_bullet_track() -> void:
+	print("── ⑬ 弹跟着目标走 + 命中火花 ──")
+	var vf = _gun.vfx
+	vf.clear()
+	var c: Vector2 = _s.ARENA.position + _s.ARENA.size * 0.5
+	var tgt: Dictionary = {"pos": c + Vector2(400.0, 0.0), "alive": true, "height": 0.0}
+	var fly: float = vf.tracer(c, Vector2(tgt["pos"]), Color.WHITE, 0.0, 0.6, 1.0, tgt)
+	_ok("⑬ ★分母: tracer 返回了飞行时间(伤害延后就是按它对齐的)", fly > 0.02, "fly=%.3f 秒" % fly)
+	var carried := 0
+	for f in vf._fx:
+		if is_same(f.get("tgt", null), tgt):
+			carried += 1
+	_ok("⑬ ★★真的有演出【携带目标引用】(不是只在 tick 里写了分支)",
+		carried >= 1, "带 tgt 的 fx=%d / 共 %d 条" % [carried, vf._fx.size()])
+	# 目标横移 240 码 → 终点必须被改写。★用**看得见的那条亮线**(bullettail)一起验,
+	#   只有辉光跟上的话观感仍然是打向旧坐标。
+	tgt["pos"] = c + Vector2(400.0, 240.0)
+	vf.tick(fly * 0.25)
+	var followed := 0
+	for f in vf._fx:
+		if is_same(f.get("tgt", null), tgt) \
+				and (Vector2(f.get("to", Vector2.ZERO)) - Vector2(tgt["pos"])).length() < 1.0:
+			followed += 1
+	_ok("⑬ 目标横移 240 码后, 每一条带 tgt 的演出终点都跟着改写",
+		followed >= 1 and followed == carried, "跟上 %d / 携带 %d" % [followed, carried])
+	# 目标死了 → 退回开火那一刻锁死的落点(不追尸体)
+	vf.clear()
+	var dead: Dictionary = {"pos": c + Vector2(400.0, 0.0), "alive": false, "height": 0.0}
+	var lock: Vector2 = Vector2(dead["pos"])
+	vf.tracer(c, lock, Color.WHITE, 0.0, 0.6, 1.0, dead)
+	dead["pos"] = c + Vector2(900.0, 900.0)
+	vf.tick(0.02)
+	var strayed := 0
+	for f in vf._fx:
+		if is_same(f.get("tgt", null), dead) \
+				and (Vector2(f.get("to", Vector2.ZERO)) - lock).length() > 1.0:
+			strayed += 1
+	_ok("⑬ 目标已死 → 仍打向锁死的落点(不追尸体)", strayed == 0, "跑偏 %d 条" % strayed)
+	# 命中火花: 弹寿终那一刻在终点生出来。★单独喂一条弹, 让"还剩几个"只反映火花。
+	vf.clear()
+	var lone: Dictionary = {"pos": c + Vector2(300.0, 0.0), "alive": true, "height": 0.0}
+	var fly2: float = vf.tracer(c, Vector2(lone["pos"]), Color.WHITE, 0.0, 0.6, 1.0, lone)
+	vf.tick(fly2 + 0.01)
+	_ok("⑬ 弹飞到终点【真的炸出命中火花】(v0.19.53~55 这一段是空的)",
+		vf.alive_count() > 0, "弹寿终后还剩 %d 个演出节点" % vf.alive_count())
+	vf.tick(2.0)
+	_ok("⑬ 火花自己也退场(不留残留节点)", vf.alive_count() == 0, "还剩 %d 个" % vf.alive_count())
 	vf.clear()
 
 

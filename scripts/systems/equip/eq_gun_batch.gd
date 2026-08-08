@@ -477,31 +477,67 @@ func _eel_fire(u: Dictionary, si: int) -> void:
 	aim = aim.normalized()
 	# ★金弹从【轮到的那一管】打出并完整继承该管效果 —— 因为金弹复用的就是这里这个 `fn`。
 	var fn: Callable = (func() -> void: _eel_left(u, si, aim)) if left else (func() -> void: _eel_right(u, si))
-	battle._queue_shots(1, GOLD_GAP, fn, u, "p2eq_078")
+	# ★★2026-08-08: 补上 muzzle 回调。原来没传 ⇒ 金弹的菱珠串从**携带者中心**出发,
+	#   而本体那一发是从**轮到的那一管**出的 —— 同一发的两半从两个地方出来。
+	#   080 已经修过同款; 这里用**同一个** `GunEqVfx.barrel_muzzle`, 不是再手抄一份几何
+	#   (手抄的副本必然落后: BARREL_OFF 一改, 抄的那份就错了)。
+	var apex: Vector2 = Vector2(u["pos"])
+	battle._queue_shots(1, GOLD_GAP, fn, u, "p2eq_078",
+		func() -> Vector2: return GunEqVfx.barrel_muzzle(apex, aim, left))
 
 
 ## 左管: 400 码 60 度锥形霰弹, 15+0.3ATK / 25+0.6ATK / 40+1ATK 物理。
 ## ★金弹时锥内**每人各吃一次**真伤 —— 因为真伤是伤害管线按段补的, 锥内每人各走一段。
+##
+## ★★2026-08-08 三处重做:
+##   ①【原点合一】判定原来以**携带者中心**为锥顶算 400 码 / 60 度, 演出却从**管口**画出去
+##     (垂直偏 22 码 + 前 12 码)。锥边缘于是会出现"画到了不掉血 / 没画到反而掉血"。
+##     ⇒ 判定与演出**同用 `barrel_muzzle` 这一个点**, 不各算各的。
+##   ②【伤害等弹到达】弹丸现在真的要飞(见 cone_blast), 伤害就不能还在开火那一帧掉完 ——
+##     这是 080 立下的规矩(炸弹落地 = 伤害 = 爆炸)。每个目标按**自己的距离**算飞行时间。
+##   ③【命中反馈】原来锥内 n 个人挨了打, 身上什么都不出现。⇒ 各打一次 hit_spark。
 func _eel_left(u: Dictionary, si: int, aim: Vector2) -> void:
 	if not u.get("alive", false):
 		return
 	var flat: float = [15.0, 25.0, 40.0][si]
 	var scale: float = [0.3, 0.6, 1.0][si]
 	var half_cos: float = cos(deg_to_rad(30.0))     # 60 度锥 ⇒ 半角 30 度
+	var apex: Vector2 = GunEqVfx.barrel_muzzle(Vector2(u["pos"]), aim, true)
+	var gpct: float = float(u.get("_golden_pct", 0.0))
+	var muz_h: float = GunEqVfx.body_mid_h(u)
 	var n := 0
+	var hit_h: float = -1.0
+	var hit_d: float = INF
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false):
 			continue
-		var rel: Vector2 = Vector2(o["pos"]) - Vector2(u["pos"])
+		var rel: Vector2 = Vector2(o["pos"]) - apex
 		var d: float = rel.length()
 		if d > 400.0:
 			continue
 		if d > 1.0 and rel.normalized().dot(aim) < half_cos:
 			continue
-		var dmg: int = battle._resolve_dmg(u, flat + scale * float(u["atk"]), o, false)
-		battle._damage._apply_damage_from(u, o, dmg, COL_PHYS, 0.0, false, true)
+		if d < hit_d:
+			hit_d = d
+			hit_h = GunEqVfx.body_mid_h(o)
+		var fly: float = clampf(d / GunEqVfx.PELLET_SPD, 0.0, 0.6)
+		# ★金弹标记在 `_queue_shots` 的闭包里用完就清零(080 踩过) ⇒ 延后的这一段必须
+		#   自己把它捎上, 否则弹一延后, 真伤就读到 0、金弹白打。
+		var tgt: Dictionary = o
+		battle._queue_shots(1, 0.0, func() -> void:
+			if not tgt.get("alive", false):
+				return
+			var keep: float = float(u.get("_golden_pct", 0.0))
+			u["_golden_pct"] = gpct
+			var dmg: int = battle._resolve_dmg(u, flat + scale * float(u["atk"]), tgt, false)
+			battle._damage._apply_damage_from(u, tgt, dmg, COL_PHYS, 0.0, false, true)
+			u["_golden_pct"] = keep
+			vfx.hit_spark(Vector2(tgt["pos"]), GunEqVfx.body_mid_h(tgt)), u, "", Callable(), fly)
 		n += 1
-	vfx.cone_blast(Vector2(u["pos"]), aim, 400.0, 30.0, COL_PHYS, float(u.get("_golden_pct", 0.0)))
+	# 弹丸落到**最近那个命中者的身体中段**(由它的立绘算, 不写死);
+	# 一个都没打中 ⇒ 保持出膛高度平着飞完 400 码(没有落点可言)。
+	var h_to: float = muz_h if hit_h < 0.0 else hit_h
+	vfx.cone_blast(Vector2(u["pos"]), aim, 400.0, 30.0, COL_PHYS, gpct, 14, muz_h, h_to)
 
 
 ## 右管: 首目标 0.5ATK 物理 + 50/100/180 魔法; 魔法段按最近顺序连锁到**所有还没被这一发电过**
@@ -519,26 +555,55 @@ func _eel_right(u: Dictionary, si: int) -> void:
 	var gold_pct: float = [0.60, 0.80, 1.00][clampi(int(battle._synergy.tier_for(u, "枪")) - 1, 0, 2)]
 	battle._damage._apply_damage_from(u, first, battle._atk_dmg(u, 0.5, first), COL_PHYS, 0.0, false, true)
 	# ★纯演出(2026-08-07): 右管出膛的那一束电。原来右管只画"目标之间的连锁", 完全没有
-	#   "从枪口打出去"这一段 ⇒ 玩家读不出是左管还是右管在响(用户:「左右两管的相位读不出来」)。
+	#   "从枪口打出去"这一段 ⇒ 读不出是左管还是右管在响。
+	#   ⚠ 2026-08-08 更正: 上一版这里写着「用户:『左右两管的相位读不出来』」—— **用户从没说过这句**,
+	#     全篇聊天记录里 "相位"/"左右两管"/"读不出" 出现 0 次。那是我自己的判断被我写成了他的原话。
+	#     和 080 的"6 枚炸弹"是同一种病: 把自己的决定记进"事实源"。判断本身仍然成立, 但署名归我。
 	#   一个数都没动: 伤害在上一行就结算完了, 这里只画。
-	vfx.eel_bolt(Vector2(u["pos"]), Vector2(first["pos"]),
-		(gold_pct if float(u.get("_golden_pct", 0.0)) > 0.0 else 0.0))
-	var chain: Array = [first]
-	var cur: Dictionary = first
-	var amt: float = mag
-	var guard := 0
-	while guard < 64:
-		guard += 1
-		if cur.get("alive", false):
-			battle._damage._apply_damage_from(u, cur, battle._resolve_dmg(u, amt, cur, true), COL_MAGIC, 0.0, false, true)
-		var nxt = _eel_next_hop(u, cur, chain)
-		if nxt == null:
-			break
-		vfx.chain_arc(Vector2(cur["pos"]), Vector2(nxt["pos"]), COL_MAGIC,
-			(gold_pct if float(u.get("_golden_pct", 0.0)) > 0.0 else 0.0))
-		chain.append(nxt)
-		cur = nxt
-		amt *= (1.0 - decay)
+	var gold_now: float = (gold_pct if float(u.get("_golden_pct", 0.0)) > 0.0 else 0.0)
+	vfx.eel_bolt(Vector2(u["pos"]), Vector2(first["pos"]), gold_now,
+		GunEqVfx.body_mid_h(u), GunEqVfx.body_mid_h(first))
+	# ★★2026-08-08【时序合一】原来整条链的**全部跳跃与全部伤害都在同一帧**结算完,
+	#   实拍(_vfxlab_p2eq_078_3.png)里就是一根穿了 4 只龟的紫管子 —— 规格原文的
+	#   「电流按最近顺序**不断**往没被电过的敌人**跳跃**」一点都读不出来。
+	#   ⇒ 改成一跳一跳走: 电弧画到哪一跳, 那一跳的伤害才掉。这正是 080 定下的规矩
+	#     (炸弹落地 = 伤害 = 爆炸)。排程走**已有的** `_queue_shots`(按 sim 帧推进),
+	#     不用 tween —— tween 在无头 CI 下推进不稳(§3.5, 海盗钩连红三次的那一课)。
+	_eel_hop(u, {"chain": [first], "cur": first, "amt": mag, "decay": decay,
+		"gold": float(u.get("_golden_pct", 0.0)), "vg": gold_now}, 0)
+
+
+## 电链每 0.09 秒跳一格。★不是随手取的: 这个间隔要**看得出先后**又不能拖到
+## 下一次开火(每 2 秒一发)之后 —— 最多 8 个敌人 ⇒ 满链 0.72 秒, 留足余量。
+const EEL_HOP_GAP := 0.09
+const EEL_HOP_MAX := 64
+
+## 第 i 跳: 先把伤害**落在当前这一格**, 再找下一格、画过去、排下一跳。
+## ★递归排程用具名函数而不是自引用的 lambda —— GDScript 里 lambda 引用自己是脏活。
+func _eel_hop(u: Dictionary, st: Dictionary, i: int) -> void:
+	if i >= EEL_HOP_MAX:
+		return
+	var cur = st.get("cur", null)
+	if not (cur is Dictionary):
+		return
+	if (cur as Dictionary).get("alive", false):
+		# 金弹标记捎带(080 的账): 延后的段读不到开火那一刻的 `_golden_pct`
+		var keep: float = float(u.get("_golden_pct", 0.0))
+		u["_golden_pct"] = float(st.get("gold", 0.0))
+		var mdmg: int = battle._resolve_dmg(u, float(st["amt"]), cur, true)
+		battle._damage._apply_damage_from(u, cur, mdmg, COL_MAGIC, 0.0, false, true)
+		u["_golden_pct"] = keep
+		# 每一跳的落点都要有"这一下打中了"—— 用电色, 和霰弹的暖白分得开
+		vfx.hit_spark(Vector2((cur as Dictionary)["pos"]), GunEqVfx.body_mid_h(cur), GunEqVfx.COL_ARC_CORE)
+	var nxt = _eel_next_hop(u, cur, st["chain"])
+	if nxt == null:
+		return
+	vfx.chain_arc(Vector2((cur as Dictionary)["pos"]), Vector2((nxt as Dictionary)["pos"]), COL_MAGIC,
+		float(st.get("vg", 0.0)), GunEqVfx.body_mid_h(cur), GunEqVfx.body_mid_h(nxt))
+	st["chain"].append(nxt)
+	st["cur"] = nxt
+	st["amt"] = float(st["amt"]) * (1.0 - float(st["decay"]))
+	battle._queue_shots(1, 0.0, func() -> void: _eel_hop(u, st, i + 1), u, "", Callable(), EEL_HOP_GAP)
 
 
 ## 下一跳 = 离当前落点**最近**且**还没被这一发电过**的敌人。

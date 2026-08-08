@@ -77,8 +77,9 @@ const ROTOR_OMEGA := 26.0
 ## 悬链线的"松弛度": 绳长 = slack × 跨度
 const BEAM_SLACK := 1.15
 ## 连锁电弧: 递归深度与首级偏移比例(相对跨度)
-const ARC_DEPTH := 4
-const ARC_ROUGH := 0.16
+const ARC_DEPTH := 5            ## 2026-08-08 4→5(17→33 点): 17 点画出来是平滑水管, 不是电
+const ARC_ROUGH := 0.34         ## 2026-08-08 0.16→0.34: 折角要真的折得出来
+const ARC_MAX_DEV := 26.0       ## 单级横向位移的绝对上限(码) —— 长跨度不允许荡成大正弦波
 
 ## ── 078 的两个已确认问题(用户 2026-08-07 实拍)与改法 ─────────────────
 ## ①【电弧是白的不是电色】。根因**不是"没上色"**, 是两件事叠加:
@@ -146,8 +147,12 @@ static func cone_r(u01: float, radius: float) -> float:
 
 
 ## ④ 中点位移分形的逐级偏移(自仿射 H = 1/2 ⇒ 逐级 ÷√2)
+## ★2026-08-08 加 ARC_MAX_DEV 绝对上限。实拍(_vfxlab_p2eq_078_4.png)里长跨度的电弧
+##   被 span×rough 放大成一个**从龟脚下荡下去的大正弦波** —— 200 码跨度的一级位移就有 68 码。
+##   电弧要的是"高频小折角", 不是"低频大摆荡"。上限只钳**基幅**, 逐级 ÷√2 的自仿射律不变
+##   (门禁 ⑥ 验的就是那个比值)。
 static func arc_sigma(level: int, span: float, rough: float = ARC_ROUGH) -> float:
-	return span * rough * pow(2.0, -0.5 * float(maxi(0, level)))
+	return minf(span * rough, ARC_MAX_DEV) * pow(2.0, -0.5 * float(maxi(0, level)))
 
 
 ## ④ 生成一条闪电折线。端点**精确**是 a / b; 中间点按 H=1/2 的中点位移。
@@ -229,9 +234,14 @@ func _adopt(n: Node3D, life: float, kind: String, extra: Dictionary = {}) -> Nod
 
 ## 贴地(或指定高度)的一条**平面带**: 沿 a→b 的矩形, 宽 half_w×2 码。
 ## 用 ArrayMesh 直接建 —— 零素材, 且朝向由几何决定(不靠 billboard 猜)。
+##
+## ★`h_b >= 0` = **两端不同高**(a 端 h、b 端 h_b), 带整体是倾斜的。
+##   2026-08-08 加的: 电弧原来两端都写死 1.0 米, 于是一条链**水平贯穿全场**,
+##   跟每个目标的实际身高毫无关系 —— 和 080「子弹全程平飞在头顶」是同一族错误。
 func _band(a2: Vector2, b2: Vector2, h: float, half_w: float, col: Color,
-		blend_add: bool = true) -> MeshInstance3D:
+		blend_add: bool = true, h_b: float = -1.0) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
+	var hb: float = h if h_b < 0.0 else h_b
 	var dir: Vector2 = b2 - a2
 	if dir.length() < 0.001:
 		dir = Vector2.RIGHT
@@ -239,8 +249,8 @@ func _band(a2: Vector2, b2: Vector2, h: float, half_w: float, col: Color,
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var v: Array = [
-		battle._world_pos(a2 + p, h), battle._world_pos(b2 + p, h),
-		battle._world_pos(b2 - p, h), battle._world_pos(a2 - p, h)]
+		battle._world_pos(a2 + p, h), battle._world_pos(b2 + p, hb),
+		battle._world_pos(b2 - p, hb), battle._world_pos(a2 - p, h)]
 	for idx in [0, 1, 2, 0, 2, 3]:
 		st.add_vertex(v[idx])
 	mi.mesh = st.commit()
@@ -489,16 +499,21 @@ func tracer(a: Vector2, b: Vector2, col: Color, gold_pct: float = 0.0, h_m: floa
 	#   ⚠ 不能靠旋转 Sprite3D 解决: 弹头原来用的是 billboard 精灵, billboard 会一直正对相机,
 	#     它的"旋转"在 2.5D 斜视角下与场地方向对不上。带(平面网格)是贴着场地画的, 才对得上。
 	var _h2: float = h_m if h_to < 0.0 else h_to
+	# ★★2026-08-08 ⑬ 的实现事故: v0.19.53 我把 `return life` 插在了这三段**上面**,
+	#   于是弹头辉光和它携带的 `tgt`(跟踪目标的唯一载体)**从那次起一次都没被创建过** ——
+	#   tick() 里的 "bullet" 分支写得好好的, 但零生产者。宣称做了 ⑬, 实际全程没跑。
+	#   ⇒ 三段都建完再 return; 且 `tgt` 同时挂到两条 bullettail 上, 让**看得见的那条亮线**
+	#     也跟着目标走(只挂辉光的话, 亮线仍然打向旧坐标 = 用户看到的还是打空)。
 	var head := _band(a, a + dir * float(sp["head"]), h_m, float(sp["hw"]) + 3.0 * g, c)
-	_adopt(head, life, "bullettail", {"from": a, "to": b, "a0": c.a, "h": h_m, "h2": _h2})
+	_adopt(head, life, "bullettail", {"from": a, "to": b, "a0": c.a, "h": h_m, "h2": _h2, "tgt": tgt})
 	var tail := _band(a - dir * float(sp["tail"]), a, h_m, float(sp["tw"]) + 2.2 * g,
 		Color(c.r, c.g, c.b, 0.40))
-	_adopt(tail, life, "bullettail", {"from": a, "to": b, "a0": 0.40, "h": h_m, "h2": _h2})
-	return life
+	_adopt(tail, life, "bullettail", {"from": a, "to": b, "a0": 0.40, "h": h_m, "h2": _h2, "tgt": tgt})
 	# 弹头再叠一点点辉光(只是"热", 不承担方向)
 	var s := _sprite(VfxTex._make_fire_glow_tex(), battle._world_pos(a, h_m),
 		(float(sp["px"]) * (1.0 + 0.5 * g) * float(battle.WS)) / 64.0, c, false)
 	_adopt(s, life, "bullet", {"from": a, "to": b, "a0": c.a, "h": h_m, "h2": _h2, "tgt": tgt})
+	return life
 
 
 ## 爆炸立绘(11 帧一次性动画)。★**不做乒乓** —— 乒乓会让火球缩回去 = 倒放, 爆炸只能单向播。
@@ -525,7 +540,13 @@ func _blast_tex() -> Texture2D:
 const IMPACT_PX := 22.0
 const IMPACT_SEC := 0.16
 
-func _bullet_impact(at: Vector2, h_m: float) -> void:
+## `col` 默认暖白(弹着)。078 的电击链传电色 ⇒ 玩家一眼分得出"这一下是电还是弹"。
+## ★公开(不带下划线)是因为 078 要在**伤害真的落下的那一刻**从外面调它 —— 见 eq_gun_batch。
+func hit_spark(at: Vector2, h_m: float, col: Color = Color(1.0, 1.0, 0.92, 1.0)) -> void:
+	_bullet_impact(at, h_m, col)
+
+
+func _bullet_impact(at: Vector2, h_m: float, col: Color = Color(1.0, 1.0, 0.92, 1.0)) -> void:
 	if not _has_world():
 		return
 	# ★★两版都错过, 教训写在这:
@@ -538,9 +559,9 @@ func _bullet_impact(at: Vector2, h_m: float) -> void:
 	#     · 白热芯: 一小团 glow(billboard, 跟着目标身高)
 	#     · 冲击环: 直接调 `_ring`(它自带正确的 256 换算与扩张动画)
 	var sp := _sprite(VfxTex._make_fire_glow_tex(), battle._world_pos(at, h_m),
-		(IMPACT_PX * float(battle.WS)) / 64.0, Color(1.0, 1.0, 0.92, 1.0), false)
+		(IMPACT_PX * float(battle.WS)) / 64.0, col, false)
 	_adopt(sp, IMPACT_SEC, "puff", {"a0": 1.0})
-	_ring(at, Color(1.0, 0.88, 0.55, 0.75), IMPACT_PX * 0.9, IMPACT_SEC * 1.4)
+	_ring(at, Color(col.r, col.g * 0.88, col.b * 0.55 + 0.2, 0.75), IMPACT_PX * 0.9, IMPACT_SEC * 1.4)
 
 
 ## 一次爆点。★★2026-08-07 用户:「爆炸特效？」—— 原来这里是
@@ -599,56 +620,127 @@ func barrel_flash(origin: Vector2, dir: Vector2, left: bool) -> Vector2:
 	return m
 
 
-## 锥形霰弹: 扇形底光 + 若干弹丸。弹丸半径按 ③ 取 r = R√u(面积均匀)。
+## 霰弹弹丸: 速度(码/秒) / 单颗流线长(码) / 半宽(码)。
+## ★2026-08-08 实拍(_vfxlab_p2eq_078_0.png)后重做。旧版是 **14 条 0.14 秒的静态土棍**
+##   从龟身中央散开, 长度随机、一动不动、穿过敌人也不停 —— 看着像一把扫帚, 不像开枪。
+const PELLET_SPD := 900.0
+const PELLET_LEN := 26.0
+const PELLET_HW := 1.6
+
+## 锥形霰弹: 一把**真的飞出去**的弹丸。弹丸半径按 ③ 取 r = R√u(面积均匀)。
 ## ★从**左管口**出膛(不是携带者中心) —— 见 BARREL_OFF 那段注释。
+## ★★2026-08-08 三处重做(实拍 _vfxlab_p2eq_078_0.png):
+##   ① 弹丸从静态棍改成**沿飞行方向平移的流线**(复用 bullettail: 建短段 + 每帧平移),
+##      于是"射出去"这件事本身有了过程 —— 而不是一帧糊 14 根线上去。
+##   ② 高度从写死 0.9 米改成 **出膛高度 → 目标身体中段**(h_to), 和 077/080 的曳光同一条规矩。
+##   ③ **删掉那个套在携带者身上的 140 码大圆环**。它既不是射程(400)也不是任何判定,
+##      玩家只会读成"这里有个范围" —— 正是用户在 080 追问的「什么圈圈？」。
+##      管口的存在感交给 barrel_flash(它就在管口, 尺寸只有 34 码, 不冒充范围)。
 func cone_blast(origin: Vector2, dir: Vector2, range_px: float, half_deg: float,
-		col: Color, gold_pct: float = 0.0, pellets: int = 14) -> int:
+		col: Color, gold_pct: float = 0.0, pellets: int = 14, h_from: float = 0.9,
+		h_to: float = -1.0) -> int:
 	if not _has_world():
 		return 0
 	var g: float = gold_glow(gold_pct)
 	var rng: RandomNumberGenerator = battle._juice_rng
 	var muz: Vector2 = barrel_flash(origin, dir, true)
+	var hb: float = h_from if h_to < 0.0 else h_to
 	var n := 0
 	for i in range(pellets):
 		var r: float = cone_r(rng.randf(), range_px)
 		var th: float = deg_to_rad(half_deg) * (rng.randf() * 2.0 - 1.0)
 		var d: Vector2 = dir.rotated(th)
-		var mi := _band(muz, muz + d * r, 0.9, 2.5 + 3.0 * g,
-			Color(col.r, col.g + 0.15 * g, col.b, 0.55 + 0.35 * g))
-		_adopt(mi, 0.14, "band", {"a0": 0.55 + 0.35 * g})
+		var dst: Vector2 = muz + d * r
+		# ★★弹速**逐颗抖动**。等速时全部弹丸永远在同一个半径上 ⇒ 一道整齐的弧形阵面,
+		#   实拍(重做第一版)里读成一把**梳子/百叶窗**在平移, 完全不像喷出去的霰弹。
+		#   抖了速度, 任一瞬间弹丸就散在不同半径上, 扇面本身才浮出来。
+		var spd: float = PELLET_SPD * (0.62 + 0.76 * rng.randf())
+		var life: float = clampf(r / spd, 0.05, 0.6)
+		# 长度跟着速度走(快的拉得长) —— 等长的短棍是"梳齿"的另一半原因
+		var seg: float = PELLET_LEN * (0.7 + 0.9 * spd / PELLET_SPD)
+		# ★ADD 混合下 alpha 就是亮度: 0.62 的暖金 (1.0,0.81,0.42) 加出来是 (0.62,0.50,0.26)
+		#   = 一根**土棕色的棍**。实拍里整把霰弹灰扑扑的根因就在这一个数, 不在颜色常量。
+		var a0: float = 0.92 + 0.08 * g
+		var mi := _band(muz, muz + d * seg, h_from, PELLET_HW + 2.0 * g,
+			Color(col.r, col.g + 0.15 * g, col.b, a0))
+		_adopt(mi, life, "bullettail", {"from": muz, "to": dst, "a0": a0, "h": h_from, "h2": hb, "fade0": 0.75})
 		n += 1
-	_ring(muz, Color(col.r, col.g, col.b, 0.5), range_px * 0.35, 0.22)
 	return n
 
 
 ## 右管出膛的那一束电: 从**右管口**打到首目标。返回管口位置(门禁验两管真的分开)。
-## ★原来右管一发都没画"从枪口出去"这一段, 只画目标之间的连锁 ⇒ 玩家读不出是右管在响。
-func eel_bolt(origin: Vector2, first: Vector2, gold_pct: float = 0.0) -> Vector2:
+## ★原来右管一发都没画"从枪口出去"这一段, 只画目标之间的连锁 ⇒ 读不出是右管在响。
+func eel_bolt(origin: Vector2, first: Vector2, gold_pct: float = 0.0,
+		h_from: float = 1.0, h_to: float = -1.0) -> Vector2:
 	var m: Vector2 = barrel_flash(origin, first - origin, false)
-	chain_arc(m, first, COL_ARC, gold_pct)
+	chain_arc(m, first, COL_ARC, gold_pct, h_from, h_to)
 	return m
 
+
+## 电弧的分叉: 每条链甩出几根**打不到人的短枝**。
+## ★这是"像不像电"的关键 —— 一条光滑的主干读成水管, 有枝杈才读成放电。
+const ARC_FORKS := 3
+const ARC_FORK_FRAC := 0.15     ## 枝长 = 主干跨度 × 这个比例(上限)。★0.34 太长，实拍里甩成一个套马索的大圈
 
 ## 连锁电弧: 中点位移分形(④)。端点精确落在两个目标身上。
 ## ★双层画法(见 COL_ARC 那段注释): 外层电紫用 **MIX**(重叠不加爆), 内层白热芯才用 ADD。
 ##   原来 16 段全是 ADD 的浅蓝带, 拐点一叠就成白线 —— 这正是"电弧是白的"的根因。
-func chain_arc(a: Vector2, b: Vector2, _col: Color, gold_pct: float = 0.0) -> int:
+##
+## ★★2026-08-08 实拍(_vfxlab_p2eq_078_3.png)后三处重做:
+##   ① **太粗太平滑** —— 6.0 码的紫带 + 2.4 的白芯, 加上 rough=0.16/depth=4 只有 17 个点,
+##      画出来是一条平滑的紫色**水管**(实拍里像穿了 4 只龟的晾衣绳)。
+##      ⇒ 收细到 3.2/1.1, 粗糙度 0.16→0.34、层数 4→5(33 点) ⇒ 出尖锐折角。
+##   ② **没有分叉** —— 见 ARC_FORKS。
+##   ③ **两端写死 1.0 米** —— 一条水平直线贯穿全场, 跟目标身高无关。⇒ 两端各自取高度。
+func chain_arc(a: Vector2, b: Vector2, _col: Color, gold_pct: float = 0.0,
+		h_a: float = 1.0, h_b: float = -1.0) -> int:
 	if not _has_world():
 		return 0
 	var g: float = gold_glow(gold_pct)
-	var pts: Array = arc_points(a, b, ARC_DEPTH, battle._battle_rng)
+	var hb: float = h_a if h_b < 0.0 else h_b
+	var rng: RandomNumberGenerator = battle._battle_rng
+	var pts: Array = arc_points(a, b, ARC_DEPTH, rng)
+	var last: int = maxi(1, pts.size() - 1)
 	for i in range(pts.size() - 1):
 		var p0: Vector2 = pts[i]
 		var p1: Vector2 = pts[i + 1]
-		# 身: 高饱和电紫的宽带, MIX ⇒ 越叠越白在结构上不可能发生
-		var body := _band(p0, p1, 1.0, 6.0 + 3.0 * g,
-			Color(COL_ARC.r + 0.35 * g, COL_ARC.g, COL_ARC.b, 0.92), false)
-		_adopt(body, 0.18, "band", {"a0": 0.92})
+		# 高度沿链**线性插值** ⇒ 从这一端的身体中段斜到那一端的身体中段
+		var q0: float = lerpf(h_a, hb, float(i) / float(last))
+		var q1: float = lerpf(h_a, hb, float(i + 1) / float(last))
+		# 身: 高饱和电紫的窄带, MIX ⇒ 越叠越白在结构上不可能发生
+		var body := _band(p0, p1, q0, 3.2 + 1.6 * g,
+			Color(COL_ARC.r + 0.35 * g, COL_ARC.g, COL_ARC.b, 0.92), false, q1)
+		_adopt(body, 0.13, "band", {"a0": 0.92})
 		# 芯: 细白热带, ADD(只有它会发亮, 且宽度只有身的三分之一)
-		var core := _band(p0, p1, 1.02, 2.4 + 1.2 * g,
-			Color(COL_ARC_CORE.r, COL_ARC_CORE.g, COL_ARC_CORE.b, 1.0))
-		_adopt(core, 0.16, "band", {"a0": 1.0})
+		var core := _band(p0, p1, q0 + 0.02, 1.1 + 0.7 * g,
+			Color(COL_ARC_CORE.r, COL_ARC_CORE.g, COL_ARC_CORE.b, 1.0), true, q1 + 0.02)
+		_adopt(core, 0.12, "band", {"a0": 1.0})
+	# 分叉: 从主干中段随机挑几个节点甩出短枝(纯装饰, 不参与任何判定)
+	var span: float = (b - a).length()
+	for _f in range(ARC_FORKS):
+		var k: int = 1 + int(rng.randf() * float(maxi(1, pts.size() - 2)))
+		k = clampi(k, 1, pts.size() - 2)
+		var root: Vector2 = pts[k]
+		var seg: Vector2 = Vector2(pts[k + 1]) - Vector2(pts[k - 1])
+		var pdir: Vector2 = Vector2(-seg.y, seg.x).normalized() if seg.length() > 0.001 else Vector2.UP
+		var sgn: float = 1.0 if rng.randf() < 0.5 else -1.0
+		var tip: Vector2 = root + (pdir * sgn + seg.normalized() * 0.5).normalized() \
+			* span * ARC_FORK_FRAC * (0.4 + 0.6 * rng.randf())
+		var fh: float = lerpf(h_a, hb, float(k) / float(last))
+		for fp in _fork_pts(root, tip, rng):
+			var fb := _band(fp[0], fp[1], fh, 1.4 + 0.6 * g,
+				Color(COL_ARC.r + 0.3 * g, COL_ARC.g, COL_ARC.b, 0.6), false)
+			_adopt(fb, 0.11, "band", {"a0": 0.6})
 	return pts.size()
+
+
+## 一根枝: 折两下就完(枝不需要主干那么细的分形)。返回若干 [p0, p1] 段。
+func _fork_pts(root: Vector2, tip: Vector2, rng: RandomNumberGenerator) -> Array:
+	var pts: Array = arc_points(root, tip, 2, rng, ARC_ROUGH * 0.8)
+	var segs: Array = []
+	for i in range(pts.size() - 1):
+		segs.append([pts[i], pts[i + 1]])
+	return segs
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -1080,13 +1172,26 @@ func tick(delta: float) -> void:
 				var tm: MeshInstance3D = n
 				var ta: Vector2 = f.get("from", Vector2.ZERO)
 				var tb: Vector2 = f.get("to", Vector2.ZERO)
+				# ★⑬ 这一条也要跟目标走。**它才是玩家看到的那条亮线** ——
+				#   只让那颗几乎看不见的辉光跟着跑, 观感上仍然是"打向开火那一刻的旧坐标"。
+				var _ttg = f.get("tgt", null)
+				if _ttg is Dictionary and (_ttg as Dictionary).get("alive", false):
+					tb = Vector2((_ttg as Dictionary)["pos"])
+					f["to"] = tb
 				var here: Vector2 = ta.lerp(tb, q)
 				var _thA: float = float(f.get("h", PISTOL_MUZZLE_H_M))
 				var _thB: float = float(f.get("h2", _thA))
 				tm.position = battle._world_pos(here, lerpf(_thA, _thB, q)) - battle._world_pos(ta, _thA)
 				var tmat = tm.material_override
 				if tmat is StandardMaterial3D:
-					(tmat as StandardMaterial3D).albedo_color.a = float(f.get("a0", 0.45)) * (1.0 - q)
+					# ★"fade0" = 从行程的百分之几才开始淡出(默认 0 = 一出膛就开始暗)。
+					#   霰弹丸传 0.75: 前四分之三全程满亮, 最后一段才收。
+					#   ★★ADD 混合下 alpha 就是亮度 ⇒ 线性淡出让弹飞到一半只剩一半亮,
+					#   实拍里整把霰弹是**土棕色的棍** —— 根因在这一行, 不在颜色常量
+					#   (我先改了两次颜色/alpha 都没用, 量了像素才看出是淡出曲线)。
+					var _f0: float = float(f.get("fade0", 0.0))
+					var _fa: float = (1.0 - q) if _f0 <= 0.0 else clampf((1.0 - q) / maxf(0.001, 1.0 - _f0), 0.0, 1.0)
+					(tmat as StandardMaterial3D).albedo_color.a = float(f.get("a0", 0.45)) * _fa
 			"blastanim":
 				# 逐帧播一遍(不循环、不倒放)。末帧停住那一小会儿由 alpha 收尾。
 				var ba: Sprite3D = n
