@@ -279,6 +279,7 @@ func _damaged081(u: Dictionary, dmg: float) -> void:
 	st["ev"] = ev
 	if battle._t < float(st.get("up_until", 0.0)):
 		u["eq_state"]["p2eq_081"] = st
+		vfx.guard_block(u)                       # ★盾真的吃下了这一下 ⇒ 盾面闪一下(实拍时零反馈)
 		return                                   # ★举盾期间受到的伤害【不计入】充能条
 	var sx: int = int(u.get("_b81_si", 0))
 	var need: float = float(u.get("maxHp", 1.0)) * [0.40, 0.35, 0.30][sx]
@@ -287,6 +288,10 @@ func _damaged081(u: Dictionary, dmg: float) -> void:
 	if float(st["charge"]) >= need:
 		st["charge"] = 0.0                       # 决定②: 满了归零, 不保留溢出
 		_b81_raise(u, sx)
+		return
+	# ★★头顶充能条: 这件装备的**身份就是它**(累计挨够 40/35/30% 最大生命才举盾),
+	#   而实拍确认画面上一点都看不见 ⇒ 举盾看起来像随机发生的。
+	vfx.guard_charge(u, float(st["charge"]) / maxf(1.0, need))
 
 
 ## 举盾。★同步入口, 门禁直接调 —— 不依赖任何演出 tween 跑完(CLAUDE.md §3.5)。
@@ -306,6 +311,7 @@ func _b81_raise(u: Dictionary, sx: int) -> void:
 	battle._damage._grant_shield(u, [60.0, 100.0, 160.0][sx])
 	battle._cur_eq_item = prev
 	vfx.guard_raise(u)
+	vfx.guard_charge(u, -1.0)      # 举盾期间不计充能 ⇒ 条也不该在
 	# ★★这里【绝不加攻速惩罚】: 用户 2026-08-06 最终拍板"举盾不扣攻速"。
 	#   方案书 §0.5 记了这条方向翻转过两次(固定0.5/秒 → 降70% → 不扣), 两版都是"惩罚谁"的结构问题,
 	#   不是数值大小问题。门禁 verify_eq_blade_batch 有一条专门验举盾前后 aspd_perm/atk_interval 不变。
@@ -327,6 +333,10 @@ func _b81_lower(u: Dictionary, show_vfx: bool = true) -> void:
 	else:
 		u["eq_state"]["p2eq_081"] = st
 	vfx.guard_lower(u, show_vfx)
+	if u.get("alive", false):
+		vfx.guard_charge(u, 0.0)   # 「举盾结束后重新开始计数」—— 条也从头开始
+	else:
+		vfx.guard_charge(u, -1.0)  # 死了就拔掉(否则条会挂在尸体头上)
 
 
 func _t081(u: Dictionary, _delta: float) -> void:

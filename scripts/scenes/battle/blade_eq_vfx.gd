@@ -52,9 +52,19 @@ extends RefCounted
 ## ① 081 举盾开合的角频率(rad/s)。ζ=1 临界阻尼。
 const GUARD_OMEGA := 11.0
 ## 举盾盾面的最终直径(码)
-const GUARD_R_PX := 82.0
+## ★★实拍(_vfxlab_p2eq_081_2.png 放大)后从 82 改到 58: 原来的盾面
+## **把携带者从龟壳以下全盖住了**, 只剩壳顶露在外 —— 看不出是谁在举盾。
+const GUARD_R_PX := 58.0
+## 盾往**面向敌人的那侧**偏多少码 —— 盾是"挡在身前"的, 不是贴在脸上的。
+## 偏了之后携带者的身体才露得出来(这才是"目前这只龟在举盾"的可读性)。
+const GUARD_OFF_PX := 30.0
+## 举起来的行程: 从低位弹到位(临界阻尼, 同本仓其它弹性动画)。
+## 旧版只有 alpha 张开 ⇒ 盾是"凭空浮现"的, 没有**举**这个动作。
+const GUARD_RISE_M := 0.55
 ## 举盾贴地环半径(码)
-const GUARD_RING_PX := 62.0
+## ★2026-08-08 62→42: 盾面收到 58 之后, 124 码直径的藤环**比盾大一倍多**,
+##   画面上是"一个大环外加一小块盾", 主次颠倒 —— 环只是脚下的记号, 不该抢主体。
+const GUARD_RING_PX := 42.0
 ## 举盾盾面的**起手** alpha。★2026-08-07: 原来是 0.0 —— 建出来那一帧完全透明,
 ##   要等下一次 `tick()` 才被写成 0.30。挂在演出上没人发现, 但"举盾"最该被看到的
 ##   就是抬起来那一瞬。现在建出来就有底 alpha, 临界阻尼曲线只负责【继续张开】。
@@ -380,6 +390,7 @@ func _ground(tex: Texture2D, pos2d: Vector2, diam_px: float, col: Color, prio: i
 	s.shaded = false
 	s.transparent = true
 	s.no_depth_test = true
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 同 _board: 别把程序化贴图糊掉
 	s.render_priority = prio
 	s.modulate = col
 	s.position = battle._world_pos(pos2d, GROUND_Y)
@@ -447,14 +458,17 @@ func guard_raise(u: Dictionary) -> void:
 	# ★盾面: 上平下尖的【藤编盾形】+ 起手就有 alpha(GUARD_A0)。
 	#   原来是 `_make_disc_texture` 实心圆 + alpha 0.0 —— 圆盘与"敌人脚下的命中闪光"
 	#   撞形状, 而 alpha 0 让抬起来那一帧根本看不见。两条都在这里治掉。
-	var shield := _board(vine_shield_tex(), u["pos"], float(u.get("height", 1.2)) + 0.4,
+	var face: float = 1.0 if bool(u.get("face_right", str(u.get("side", "left")) == "left")) else -1.0
+	var at: Vector2 = Vector2(u["pos"]) + Vector2(GUARD_OFF_PX * face, 0.0)
+	var h_top: float = float(u.get("height", 1.2)) + 0.4
+	var shield := _board(vine_shield_tex(), at, h_top - GUARD_RISE_M,
 		GUARD_R_PX, Color(1, 1, 1, GUARD_A0), 7)
 	_adopt(shield, "guard")
 	# ★贴地环: 断续藤条环(16 段), 深绿高饱和 —— 不再是"到处都有的平滑白细环"
 	var ring := _ground(vine_ring_tex(), u["pos"], GUARD_RING_PX * 2.0,
 		Color(1, 1, 1, 0.9), 5)
 	_adopt(ring, "guard_ring")
-	_guards.append({"node": shield, "ring": ring, "u": u, "t": 0.0})
+	_guards.append({"node": shield, "ring": ring, "u": u, "t": 0.0, "face": face, "flash": 0.0})
 
 
 ## 落盾: 收掉这只龟的常驻盾面。
@@ -480,6 +494,74 @@ func guard_lower(u: Dictionary, puff: bool = true) -> void:
 
 func guard_count() -> int:
 	return _guards.size()
+
+
+## 挡下一击: 让盾面闪一下白。★实拍时盾**挡住伤害却毫无反馈** ——
+## 这件的全部价值就是"这几秒挨的打不算数", 而画面上挨打和没挨打长得一模一样。
+func guard_block(u: Dictionary) -> void:
+	for g in _guards:
+		if is_same(g["u"], u):
+			g["flash"] = 1.0
+			return
+
+
+# ── 081 充能条 ──────────────────────────────────────────────────────
+## ★★这件装备的**身份就是那条充能条**(累计挨够 40/35/30% 最大生命才举盾),
+##   而实拍确认: 画面上**一点都看不见**。玩家读不出"还差多少就举盾",
+##   于是举盾看起来像随机发生的。⇒ 头顶给一条真的条。
+## 与 079 的金弹条同一套做法(背景条 + 填充条 + 每帧写位置), 但**不共用代码**:
+##   那条在 gun_eq_vfx, 这是 blade_eq_vfx; 两层各自独立注入, 跨层调用会把演出层耦死。
+const CHG_W_PX := 56.0          ## 条宽(码)
+const CHG_H_PX := 8.0           ## 条高(码)
+const CHG_UP_M := 0.55          ## 挂在单位立绘顶上方多少米
+const CHG_BG := Color(0.06, 0.10, 0.06, 0.72)
+const CHG_FILL := Color(0.55, 0.95, 0.42, 0.95)
+const CHG_FULL := Color(1.0, 0.96, 0.55, 1.0)   ## 快满了转暖 —— "要举盾了"提前读得到
+
+var _charges: Array = []        ## [{u, bg, fill}]
+
+## `frac` = 已充能 / 需求。`frac < 0` = 撤掉这条(举盾期间不计充能, 条就不该在)。
+func guard_charge(u: Dictionary, frac: float) -> void:
+	if not _has_world() or not (u is Dictionary):
+		return
+	var slot = null
+	for c in _charges:
+		if is_same(c["u"], u):
+			slot = c
+			break
+	if frac < 0.0:
+		if slot != null:
+			for k in ["bg", "fill"]:
+				var n = slot.get(k, null)
+				if n != null and is_instance_valid(n):
+					n.queue_free()
+			_charges.erase(slot)
+		return
+	if slot == null:
+		var bg := _board(VfxTex._make_pixel_block_tex(), u["pos"], 0.0, CHG_W_PX, CHG_BG, 8)
+		var fl := _board(VfxTex._make_pixel_block_tex(), u["pos"], 0.0, CHG_W_PX, CHG_FILL, 9)
+		_adopt(bg, "guard_chg")
+		_adopt(fl, "guard_chg")
+		slot = {"u": u, "bg": bg, "fill": fl}
+		_charges.append(slot)
+	var f: float = clampf(frac, 0.0, 1.0)
+	var top: float = guard_bar_h(u)   # ★已含击飞高度(sprite_h 里加过), 不能再加一遍
+	var base: Vector3 = battle._world_pos(Vector2(u["pos"]), top)
+	var bg2: Sprite3D = slot["bg"]
+	var fl2: Sprite3D = slot["fill"]
+	bg2.position = base
+	bg2.scale = Vector3(1.0, CHG_H_PX / CHG_W_PX, 1.0)
+	# 填充条从**左端**长出去: 缩 x 的同时把中心往左挪半个缺口(否则是"从中间往两边长")
+	var half: float = bg2.pixel_size * float(bg2.texture.get_width()) * 0.5
+	fl2.position = base + Vector3(-half * (1.0 - f), 0.0, 0.0)
+	fl2.scale = Vector3(maxf(0.02, f), CHG_H_PX / CHG_W_PX * 0.72, 1.0)
+	fl2.modulate = CHG_FILL.lerp(CHG_FULL, clampf((f - 0.7) / 0.3, 0.0, 1.0))
+
+
+## 条的**绝对**离地高度(米) = 立绘顶端 + CHG_UP_M。★纯函数, 门禁直接验(不用等演出建出来)。
+## `sprite_h(u, 1.0)` 已经把击飞高度 `u["height"]` 算进去了 —— 调用方不要再加一遍。
+static func guard_bar_h(u) -> float:
+	return GunEqVfx.sprite_h(u, 1.0) + CHG_UP_M
 
 
 # ── 082 护心反伤 ────────────────────────────────────────────────────
@@ -606,8 +688,17 @@ func tick(delta: float) -> void:
 		var a: float = guard_open(GUARD_OMEGA, float(g["t"]))
 		var uu: Dictionary = g["u"]
 		# ★起手就是 GUARD_A0(不是 0) —— 临界阻尼只负责从 A0 继续张到 A1
-		(n as Sprite3D).modulate.a = GUARD_A0 + (GUARD_A1 - GUARD_A0) * a
-		(n as Sprite3D).position = battle._world_pos(uu["pos"], float(uu.get("height", 1.2)) + 0.4)
+		var sp3: Sprite3D = n
+		# 挡下一击的闪白: 每帧衰减, 叠在常驻 alpha 上(不改结构, 只加一个通道)
+		g["flash"] = maxf(0.0, float(g.get("flash", 0.0)) - delta * 5.0)
+		var fl: float = float(g["flash"])
+		sp3.modulate = Color(1.0, 1.0, 1.0, 1.0).lerp(Color(2.2, 2.4, 1.6, 1.0), fl)
+		sp3.modulate.a = clampf(GUARD_A0 + (GUARD_A1 - GUARD_A0) * a + 0.42 * fl, 0.0, 1.0)
+		# ★"举"这个动作: 高度随同一条临界阻尼曲线从低位抬到位(旧版只有 alpha 在张)
+		var fx2: float = float(g.get("face", 1.0))
+		var top: float = float(uu.get("height", 1.2)) + 0.4
+		sp3.position = battle._world_pos(Vector2(uu["pos"]) + Vector2(GUARD_OFF_PX * fx2, 0.0),
+			top - GUARD_RISE_M * (1.0 - a))
 		var r = g.get("ring", null)
 		if r != null and is_instance_valid(r):
 			(r as Sprite3D).position = battle._world_pos(uu["pos"], GROUND_Y)
@@ -652,6 +743,7 @@ func clear() -> void:
 	_owned.clear()
 	_fx.clear()
 	_guards.clear()
+	_charges.clear()   # ★充能条也是本层建的常驻节点, 撤场不清就会跨路留在场上
 
 
 ## 本层现在挂了几个节点(门禁按 meta 数)。
