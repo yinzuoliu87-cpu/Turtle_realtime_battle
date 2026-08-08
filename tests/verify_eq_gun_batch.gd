@@ -822,7 +822,7 @@ func _t080_lane() -> void:
 
 
 func _t080_bomb() -> void:
-	print("── ④ 080 炸弹: 落点 180 码内 0.8/1.1/1.5ATK 物理 + 40/70/120 魔法 ──")
+	print("── ④ 080 炸弹: 落点 150 码内 0.8/1.1/1.5ATK 物理 + 40/70/120 魔法 ──")
 	_reset()
 	var u: Dictionary = _mk("fortune", "left", Vector2(-300.0, 0.0))
 	_equip(u, "p2eq_080", 1)
@@ -837,10 +837,12 @@ func _t080_bomb() -> void:
 	var i0: float = float(inn["hp"])
 	var o0: float = float(out["hp"])
 	var n: int = _gun.heli_bomb_hit(h, 0, at)
-	_ok("④ ★分母: 一枚炸弹命中了 1 个人(180 码内那个)", n == 1, "命中 %d 人" % n)
+	# ★2026-08-08 半径 180 → 150(用户削弱)。测试点用的是 100 码(内) / 300 码(外),
+	#   两个都还在正确的一侧 ⇒ 判据不变, 只改文字。
+	_ok("④ ★分母: 一枚炸弹命中了 1 个人(150 码内那个)", n == 1, "命中 %d 人" % n)
 	_ok("④ 1★ 一枚 = 0.8×200 物理 + 40 魔法 = 200", _near(i0 - float(inn["hp"]), 200.0, 0.6),
 		"实打 %.1f" % (i0 - float(inn["hp"])))
-	_ok("④ 180 码外(300 码)不吃伤", _near(o0 - float(out["hp"]), 0.0, 0.01),
+	_ok("④ 150 码外(300 码)不吃伤", _near(o0 - float(out["hp"]), 0.0, 0.01),
 		"实打 %.1f" % (o0 - float(out["hp"])))
 	var i1: float = float(inn["hp"])
 	_gun.heli_bomb_hit(h, 2, at)

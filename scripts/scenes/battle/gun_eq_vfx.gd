@@ -488,16 +488,16 @@ func tracer(a: Vector2, b: Vector2, col: Color, gold_pct: float = 0.0, h_m: floa
 	#   两段都由 dir 定向 ⇒ 不管往哪个方向打, 弹的长轴永远和航线重合。
 	#   ⚠ 不能靠旋转 Sprite3D 解决: 弹头原来用的是 billboard 精灵, billboard 会一直正对相机,
 	#     它的"旋转"在 2.5D 斜视角下与场地方向对不上。带(平面网格)是贴着场地画的, 才对得上。
+	var _h2: float = h_m if h_to < 0.0 else h_to
 	var head := _band(a, a + dir * float(sp["head"]), h_m, float(sp["hw"]) + 3.0 * g, c)
-	_adopt(head, life, "bullettail", {"from": a, "to": b, "a0": c.a})
+	_adopt(head, life, "bullettail", {"from": a, "to": b, "a0": c.a, "h": h_m, "h2": _h2})
 	var tail := _band(a - dir * float(sp["tail"]), a, h_m, float(sp["tw"]) + 2.2 * g,
 		Color(c.r, c.g, c.b, 0.40))
-	_adopt(tail, life, "bullettail", {"from": a, "to": b, "a0": 0.40})
+	_adopt(tail, life, "bullettail", {"from": a, "to": b, "a0": 0.40, "h": h_m, "h2": _h2})
 	return life
 	# 弹头再叠一点点辉光(只是"热", 不承担方向)
 	var s := _sprite(VfxTex._make_fire_glow_tex(), battle._world_pos(a, h_m),
 		(float(sp["px"]) * (1.0 + 0.5 * g) * float(battle.WS)) / 64.0, c, false)
-	var _h2: float = h_m if h_to < 0.0 else h_to
 	_adopt(s, life, "bullet", {"from": a, "to": b, "a0": c.a, "h": h_m, "h2": _h2, "tgt": tgt})
 
 
@@ -941,6 +941,14 @@ func lane_marker(a: Vector2, b: Vector2, width: float) -> void:
 const BOMB_PX := 22.0
 ## 炸弹尾迹长度(码)
 const BOMB_TAIL_LEN := 46.0
+## ★★2026-08-08 用户:「投弹是直升机投, 为什么我看到的是在直升机很后面的位置凭空出现」
+##   探针查证: 炸弹**确实在直升机位置生成**(水平差 0~10 码)。但**机身有 160 码宽、
+##   炸弹只有 22 码 ⇒ 生成那一刻整颗弹被机身完全盖住**。直升机以 500 码/秒飞走,
+##   要 0.16 秒才把弹"让"出来 —— 那时它已经飞出 **80 码**, 于是看起来是
+##   "弹在直升机后面凭空冒出来"。**不是凭空生成, 是从机身背后钻出来的。**
+##   ⇒ 弹从**机腹**出膛: 实测机腹(不透明像素第 97 百分位, 16 帧中位 47/64)
+##     在机身中心**下方 0.234 帧高 = 0.90 世界米**。从那儿出来第一帧就露在机身之外。
+const BOMB_BAY_DROP := 0.90
 const BOMB_FALL_SEC := 0.42
 ## 预警贴花在一次下落里转多少弧度(半圈)。★不是随手取的: 转太快像雷达扫描、
 ## 转太慢看不出在动; 半圈刚好"一眼看得出它活着"又不抢注意力。
@@ -1008,12 +1016,13 @@ func bomb_drop(from2: Vector2, land: Vector2, blast_r: float) -> void:
 	#   原来是把整条弧线**一次性铺完**、0.25 秒就消失: 炸弹还在天上, 它的"尾迹"已经没了,
 	#   而且那条弧是静止的, 根本不是尾迹, 是"预先画好的轨迹线"。
 	var _tdir: Vector2 = (land - from2).normalized() if (land - from2).length() > 0.001 else Vector2.RIGHT
-	var tr := _band(from2 - _tdir * BOMB_TAIL_LEN, from2, HELI_H, 1.6, Color(1.0, 0.72, 0.38, 0.5))
+	var tr := _band(from2 - _tdir * BOMB_TAIL_LEN, from2, HELI_H - BOMB_BAY_DROP, 1.6,
+		Color(1.0, 0.72, 0.38, 0.5))
 	_adopt(tr, BOMB_FALL_SEC, "bombtail", {"from": from2, "to": land, "a0": 0.5})
 	# ③ 真炸弹: 位置由**和门禁验的前置量公式同一个** `bomb_height` 驱动
 	var btex: Texture2D = _bomb_tex()
 	if btex != null:
-		var b := _sprite(btex, battle._world_pos(from2, HELI_H),
+		var b := _sprite(btex, battle._world_pos(from2, HELI_H - BOMB_BAY_DROP),
 			(BOMB_PX * float(battle.WS)) / float(btex.get_height()), Color(1, 1, 1, 1), false)
 		_adopt(b, BOMB_FALL_SEC, "bomb", {"from": from2, "to": land, "a0": 1.0})
 
@@ -1060,6 +1069,11 @@ func tick(delta: float) -> void:
 				bl.modulate.a = float(f.get("a0", 1.0)) * (1.0 if q < 0.8 else (1.0 - q) / 0.2)
 			"bullettail":
 				# 弹头段 / 尾焰段都跟着弹走: 整块带**平移**(不重建网格) ⇒ 每帧零分配。
+				# ★★2026-08-08 用户:「这明显是在角色的很上方啊」—— 他是对的:
+				#   这两段原来**只在 2D 平面里平移, 高度从头到尾都是出膛高度**(直升机 5.2 米),
+				#   一路平飞到目标头顶; 只有那个**几乎看不见的小弹头辉光**才真的降到 1.0 米。
+				#   而玩家看到的"那条亮线"就是这两段 ⇒ 观感上子弹全程在角色上方飞过。
+				#   ⇒ 平移量必须**带上高度插值**, 和弹头走同一条线。
 				# ★两段建出来时都以**出膛点 a** 为基准(头段 a→a+dir·HEAD, 尾段 a−dir·TAIL→a),
 				#   所以平移量对两段是同一个: 当前位置 − a。不需要再各自算 dir 偏移
 				#   (上一版给头段传了 −dir 去补偿, 那是错的, 会让头段落后半个身位)。
@@ -1067,7 +1081,9 @@ func tick(delta: float) -> void:
 				var ta: Vector2 = f.get("from", Vector2.ZERO)
 				var tb: Vector2 = f.get("to", Vector2.ZERO)
 				var here: Vector2 = ta.lerp(tb, q)
-				tm.position = battle._world_pos(here, 0.0) - battle._world_pos(ta, 0.0)
+				var _thA: float = float(f.get("h", PISTOL_MUZZLE_H_M))
+				var _thB: float = float(f.get("h2", _thA))
+				tm.position = battle._world_pos(here, lerpf(_thA, _thB, q)) - battle._world_pos(ta, _thA)
 				var tmat = tm.material_override
 				if tmat is StandardMaterial3D:
 					(tmat as StandardMaterial3D).albedo_color.a = float(f.get("a0", 0.45)) * (1.0 - q)
@@ -1090,8 +1106,8 @@ func tick(delta: float) -> void:
 				var tm2: MeshInstance3D = n
 				var ta2: Vector2 = f.get("from", Vector2.ZERO)
 				var tb2: Vector2 = f.get("to", Vector2.ZERO)
-				var th: float = HELI_H * (bomb_height(BOMB_DROP_H, q) / BOMB_DROP_H)
-				tm2.position = battle._world_pos(ta2.lerp(tb2, q), th) - battle._world_pos(ta2, HELI_H)
+				var th: float = (HELI_H - BOMB_BAY_DROP) * (bomb_height(BOMB_DROP_H, q) / BOMB_DROP_H)
+				tm2.position = battle._world_pos(ta2.lerp(tb2, q), th) - battle._world_pos(ta2, HELI_H - BOMB_BAY_DROP)
 				var tmat2 = tm2.material_override
 				if tmat2 is StandardMaterial3D:
 					(tmat2 as StandardMaterial3D).albedo_color.a = float(f.get("a0", 0.5)) * (1.0 - q * 0.5)
@@ -1103,7 +1119,9 @@ func tick(delta: float) -> void:
 				var a2: Vector2 = f.get("from", Vector2.ZERO)
 				var b2: Vector2 = f.get("to", Vector2.ZERO)
 				var here: Vector2 = a2.lerp(b2, q)
-				var hh: float = HELI_H * (bomb_height(BOMB_DROP_H, q) / BOMB_DROP_H)
+				# ★起算高度是**机腹**不是机身中心(见 BOMB_BAY_DROP 的长注释) ——
+				#   否则第一帧会从机腹"跳回"机身中心, 又被机身盖住。
+				var hh: float = (HELI_H - BOMB_BAY_DROP) * (bomb_height(BOMB_DROP_H, q) / BOMB_DROP_H)
 				bs.position = battle._world_pos(here, hh)
 				# ★★2026-08-08 不再提前淡出 —— 原来从 q=0.85 起收掉, **炸弹在触地前就消失了**,
 				#   而"落地"本来就该是它最重要的一刻(现在爆炸也等到那一刻才播)。
