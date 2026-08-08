@@ -110,6 +110,22 @@ const RAY_THICK := 0.13          ## 终极射线粗细(米)。★2026-08-08 0.20
                                  ##   像横跨全场的**脚手架板**, 不像一道射线
 const RAY_CORE_K := 0.34         ## 白热芯相对身的粗细比
 const RAY_HOLD := 0.16           ## 满亮保持(秒) —— 之后才按 RAY_HALF 衰减
+## ★★照赛博龟阵亡齐射的编排(用户 2026-08-08 指定参考)。那一套是 Gaster Blaster 式:
+## 蓄力光球膨胀 → 光球消失 + 炮体后坐 → 双层光束 → 震屏 → 线上命中火花。
+const SEXT_CHARGE := 0.45        ## 口部聚能光球膨胀多久(秒) —— 与赛博龟的 0.45 同一口径
+const SEXT_MUZZLE_PX := 16.0     ## 光球离炮体多远(码) —— 同赛博龟的 16
+const SEXT_ORB_R0 := 0.06        ## 光球起手半径(米)
+const SEXT_ORB_R1 := 0.30        ## 光球胀满半径(米)
+const SEXT_RECOIL_PX := 30.0     ## 炮体后坐多少码
+const SEXT_RECOIL_BACK := 0.08   ## 后坐用时(秒)
+const SEXT_RECOIL_HOME := 0.24   ## 回位用时(秒)
+const SEXT_SHAKE := 0.03         ## 震屏幅度(与赛博龟同)
+const SEXT_BEAM_TEX := "res://assets/sprites/vfx/fx-energy-beam.png"   ## 与赛博龟齐射同一张
+## ★2026-08-08 实拍后收一档(120/200 → 78/140): 赛博龟那套是 150/250, 但它一次只朝
+## **一个方向**放、且战场铺得开; 本件是**六条同时对着中间几只龟交叉**, 200 码宽的外晕
+## 把整个画面洗白了(龟全被盖住)。结构照抄(双层·白核+彩晕·外晕略久), 尺度按场面收。
+const SEXT_BEAM_CORE_PX := 78.0  ## 厚白核心束宽(码)
+const SEXT_BEAM_HALO_PX := 140.0 ## 紫晕外束宽(码)
 const RAY_MUZZLE_R := 0.26       ## 发射端炮口闪半径(米)
 const RAY_POP_R := 0.34          ## 命中端爆点半径(米)
 const RAY_COLOR := Color(0.72, 0.35, 1.0)   ## 紫色终极射线(规格明写"紫色")
@@ -383,6 +399,31 @@ func sextant_shot(u: Dictionary, tgt: Dictionary) -> MeshInstance3D:
 
 
 ## 终极射线: `beams` = [[飞散点, 目标点], ...]。每条一根紫色粗光柱 + 指数余辉。
+## ① 蓄力(照赛博龟): 每门炮在自己的散点上, 口部一颗**聚能光球膨胀** SEXT_CHARGE 秒。
+## ★旧版**没有蓄力这一段** —— 光束凭空出现, 玩家读不到"要来了"。
+## ★用每帧 tick 推进而不是 tween: 无头 CI 下 tween 推进不稳(CLAUDE.md §3.5),
+##   而本层的 `_fx` 是跟着 sim delta 走的。
+func sextant_charge(_u: Dictionary, beams: Array) -> Array:
+	if not _alive():
+		return []
+	var out: Array = []
+	for pair in beams:
+		if not (pair is Array) or (pair as Array).size() < 2:
+			continue
+		var a: Vector2 = pair[0]
+		var b: Vector2 = pair[1]
+		var d: Vector2 = (b - a)
+		d = d.normalized() if d.length() > 0.01 else Vector2.RIGHT
+		var orb := _mi(SphereMesh.new(), Color(0.90, 1.0, 1.0, 0.95), "sext_charge")
+		(orb.mesh as SphereMesh).radius = 1.0
+		(orb.mesh as SphereMesh).height = 2.0
+		orb.position = battle._world_pos(a + d * SEXT_MUZZLE_PX, DRONE_LIFT)
+		orb.scale = Vector3.ONE * SEXT_ORB_R0
+		_fx.append({"node": orb, "t": 0.0, "life": SEXT_CHARGE, "charge": true})
+		out.append(orb)
+	return out
+
+
 func sextant_ultimate(_u: Dictionary, beams: Array) -> Array:
 	if not _alive():
 		return []
@@ -413,6 +454,24 @@ func sextant_ultimate(_u: Dictionary, beams: Array) -> Array:
 		pop.position = battle._world_pos(pair[1], DRONE_LIFT)
 		pop.scale = Vector3.ONE * RAY_POP_R
 		_transient(pop, RAY_LIFE * 0.6, RAY_HALF)
+		# ★★双层**真素材**光束(照赛博龟): 厚白核心 + 紫晕外束, **外束略久** = 收细消散感。
+		#   赛博龟用的就是 `fx-energy-beam.png` 这张; 纯几何 BoxMesh 读成"一块板",
+		#   有纹理的束才读成"一道能量"。⚠ 传单帧素材, 别传精灵表(memory [[project-vfx-library-rich]])。
+		battle._beam_vfx(SEXT_BEAM_TEX, pair[0], pair[1], SEXT_BEAM_CORE_PX,
+			Color(1.0, 1.0, 1.0, 1.0), RAY_LIFE * 0.72, DRONE_LIFT)
+		battle._beam_vfx(SEXT_BEAM_TEX, pair[0], pair[1], SEXT_BEAM_HALO_PX,
+			Color(RAY_COLOR.r, RAY_COLOR.g, RAY_COLOR.b, 0.75), RAY_LIFE, DRONE_LIFT)
+		# 后坐: 炮体(这里用光束起点的一颗亮球代表)向后弹再回位 —— Gaster Blaster 的标志
+		var d2: Vector2 = (Vector2(pair[1]) - Vector2(pair[0]))
+		d2 = d2.normalized() if d2.length() > 0.01 else Vector2.RIGHT
+		var kick := _mi(SphereMesh.new(), Color(0.92, 1.0, 1.0, 1.0), "sext_ray")
+		(kick.mesh as SphereMesh).radius = 1.0
+		(kick.mesh as SphereMesh).height = 2.0
+		kick.scale = Vector3.ONE * RAY_MUZZLE_R * 0.85
+		_fx.append({"node": kick, "t": 0.0, "life": SEXT_RECOIL_BACK + SEXT_RECOIL_HOME,
+			"recoil": true, "p0": Vector2(pair[0]), "dir": d2})
+	if not beams.is_empty():
+		battle._shake(SEXT_SHAKE)   # 齐射要有分量 —— 赛博龟那一套也震(同一个幅度)
 	return out
 
 
@@ -495,6 +554,23 @@ func tick(delta: float) -> void:
 		#   读出来 —— 只有"往上走"这个方向才读得出是在转成龟能, 一颗静止的球读不出任何一半。
 		#   ⚠ 负 t 必须显式判(t<0 完全不画): 只靠 alpha 曲线会让它一出生就满亮, 错开等于没做
 		#   (082 贝壳串踩过同一个坑)。
+		if h.get("recoil", true) and h.has("recoil"):
+			# 后坐 → 回位。前 SEXT_RECOIL_BACK 秒往后弹, 之后弹回原点。
+			var rp: Vector2 = h["p0"]
+			var rd: Vector2 = h["dir"]
+			var back: float
+			if t < SEXT_RECOIL_BACK:
+				back = SEXT_RECOIL_PX * (t / maxf(0.001, SEXT_RECOIL_BACK))
+			else:
+				back = SEXT_RECOIL_PX * (1.0 - clampf((t - SEXT_RECOIL_BACK) / maxf(0.001, SEXT_RECOIL_HOME), 0.0, 1.0))
+			(n as MeshInstance3D).position = battle._world_pos(rp - rd * back, DRONE_LIFT)
+			a = 1.0
+		if h.get("charge", false):
+			# 蓄力光球: 半径 R0→R1 加速膨胀(TRANS_QUAD/EASE_IN 的等价写法 q²), 亮度全程满。
+			# ★"越胀越大"本身就是"要发射了"的读法 —— 旧版这一段完全没有。
+			var cq: float = clampf(t / maxf(0.001, life), 0.0, 1.0)
+			(n as MeshInstance3D).scale = Vector3.ONE * lerpf(SEXT_ORB_R0, SEXT_ORB_R1, cq * cq)
+			a = 1.0
 		if h.has("rise"):
 			if t < 0.0:
 				a = 0.0

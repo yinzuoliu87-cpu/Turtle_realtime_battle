@@ -106,6 +106,15 @@ func _step(u: Dictionary, seconds: float, dt: float = 0.05) -> int:
 	return k
 
 
+## 只推进【延后结算队列】, **不动** `tick_unit`。
+## ★★用 `_step` 推会把装备自己的计时也带着走 —— 3★ 那一档因此在 0.55 秒里
+##   又攒够阈值放了第二轮终极, 总伤从 6000 变成 11000。要验"延后的那一段落下来",
+##   就只能推延后队列这一件事。
+func _pump_shots(seconds: float, dt: float = 0.05) -> void:
+	for _i in range(int(round(seconds / dt))):
+		_s._ballistics._step_pending_shots(dt)
+
+
 func _fn_body(code: String, header: String) -> String:
 	var i: int = code.find(header)
 	if i < 0:
@@ -440,9 +449,18 @@ func _t086_sextant() -> void:
 		q["base_atk"] = 100.0
 		_equip(q, "p2eq_086", si + 1)
 		_step(q, 18.2)
+		# ★★先把队列排空再记基线: 18.2 秒里**自然触发过一轮终极**, 它的伤害现在是延后的,
+		#   很可能还压在队列里没落。不排空就会在下面那次 `_pump_shots` 里一起落下来
+		#   ⇒ 3★ 实测 11000 而不是 6000。(这是"伤害改成延后"之后必须补的一步。)
+		_pump_shots(1.0)
 		foe["hp"] = 9.0e7
 		var h0: float = float(foe["hp"])
 		var rays: int = _g().sext_ultimate(q, si)
+		# ★★2026-08-08【时序合一】伤害已推迟到**光束真的射出去**那一刻(蓄力 SEXT_CHARGE 秒后),
+		#   照赛博龟阵亡齐射的编排。⇒ 开火当帧一滴血都不该掉, 推完才掉。
+		_ok("086 %d★ ☆开火当帧【一滴血都不掉】(光束还在蓄力)" % (si + 1),
+			absf(h0 - float(foe["hp"])) < 0.01, "当帧掉血 %.1f" % (h0 - float(foe["hp"])))
+		_pump_shots(GVfx.SEXT_CHARGE + 0.10)   # ★只推**延后队列**, 不推装备自己的时钟
 		var d: float = h0 - float(foe["hp"])
 		var per: float = [200.0, 350.0, 1000.0][si]
 		_ok("086 %d★ 终极射线: 6 门炮各一条 = 6 × %.0f = %.0f 魔法" % [si + 1, per, per * 6.0],

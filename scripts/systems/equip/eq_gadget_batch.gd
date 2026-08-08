@@ -395,13 +395,28 @@ func sext_ultimate(u: Dictionary, si: int) -> int:
 		var tgt = _pick_rng(battle._targeting._pick_enemies_of(u))
 		if tgt == null:
 			continue
-		var dm: int = battle._resolve_dmg(u, ray, tgt, true)
-		battle._damage._apply_damage_from(u, tgt, dm, GadgetEqVfx.RAY_COLOR, 0.0, false, true)
+		# ★★2026-08-08【时序合一 + 照赛博龟的编排】用户:「参考下赛博龟被动的攻击方式和技能演出」。
+		#   赛博龟阵亡齐射是完整的七段: 错峰飞散 → 炮身发亮 → **口部聚能光球膨胀 0.45 秒**
+		#   → 光球消失 + **炮体后坐再回位**(Gaster Blaster 标志) → **双层光束**(厚白核心 + 青晕
+		#   外束, 外束略久 = 收细消散感) → 震屏 → 线上每个目标命中火花。
+		#   本件旧版是"光束凭空出现再淡出", 七段一段都没有, 伤害也在开火那一帧就落。
+		#   ⇒ 伤害推迟到**光束真的射出去**那一刻(SEXT_CHARGE 秒后), 与演出对齐。
+		var vt: Dictionary = tgt
+		battle._queue_shots(1, 0.0, func() -> void:
+			if not vt.get("alive", false):
+				return
+			var dm: int = battle._resolve_dmg(u, ray, vt, true)
+			battle._damage._apply_damage_from(u, vt, dm, GadgetEqVfx.RAY_COLOR, 0.0, false, true),
+			u, "", Callable(), GadgetEqVfx.SEXT_CHARGE)
 		beams.append([sp, Vector2(tgt["pos"])])
 		n += 1
 	u["_sext_ults"] = int(u.get("_sext_ults", 0)) + 1     # 同步证据: 终极放了几轮
 	u["_sext_rays"] = n                                   # 同步证据: 这一轮几条射线
-	vfx.sextant_ultimate(u, beams)
+	# ① 蓄力: 各炮在自己的散点上炮身发亮 + 口部聚能光球膨胀
+	vfx.sextant_charge(u, beams)
+	# ② 发射: 蓄力走完才出光束(与上面那段伤害同一个延时 ⇒ 光束到、血才掉)
+	battle._queue_shots(1, 0.0, func() -> void: vfx.sextant_ultimate(u, beams),
+		u, "", Callable(), GadgetEqVfx.SEXT_CHARGE)
 	return n
 
 
