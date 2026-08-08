@@ -110,6 +110,57 @@ func _step(u: Dictionary, seconds: float, dt: float = 0.05) -> int:
 ## ★★用 `_step` 推会把装备自己的计时也带着走 —— 3★ 那一档因此在 0.55 秒里
 ##   又攒够阈值放了第二轮终极, 总伤从 6000 变成 11000。要验"延后的那一段落下来",
 ##   就只能推延后队列这一件事。
+## ★★贯穿(用户 2026-08-08:「是不是穿透」)。赛博龟阵亡齐射的激光是**贯穿**的:
+## 射出去 1300 码、线上**所有**敌人各吃一次。本件旧版是"射到目标就停、只结算那一个"。
+## ⚠ 只放一个假人是**测不出贯穿的**(打一个和穿一个长得一样) ——
+##   必须在**同一条线上**放第二个更远的敌人, 断言它也掉血。
+func _t086_pierce() -> void:
+	# ★★★这条测试第一版**单跑绿、全套红**: 散点是在 `sext_ultimate` **里面**用
+	#   `battle._battle_rng` 现随机的(我在测试里预设的 sx/sy 被当场覆盖), 目标也是随机挑的
+	#   ⇒ 射线方向跟着 RNG 走, 两个敌人在不在同一条线上纯看运气。
+	#   ⇒ **把 rng 种子钉死, 跑两遍**: 第一遍学到这个种子下的真实散点与朝向,
+	#     据此把第二个敌人摆到延长线上; 第二遍用**同一个种子**重跑 ⇒ 散点与目标完全一致。
+	#   (跟我今天给 `verify_equip_batch_20260801 ⑤` 补清场是同一类账: 测试不稳就得根治。)
+	const SEED := 20260808
+	_s._units.clear()
+	var u: Dictionary = _mk("fortune", "left", Vector2(-500.0, 0.0))
+	u["atk"] = 100.0
+	u["base_atk"] = 100.0
+	_equip(u, "p2eq_086", 3)
+	var near: Dictionary = _mk("fortune", "right", Vector2(-100.0, 0.0), 9.0e7)
+	var st: Dictionary = _g()._stt(u, "p2eq_086")
+	# ── 第一遍: 只有 near, 学散点 ──
+	st["drones"] = [{"ang": 0.0, "ft": 0.0, "sx": 0.0, "sy": 0.0, "scat": 0.0}]
+	_s._battle_rng.seed = SEED
+	_pump_shots(1.0)
+	_g().sext_ultimate(u, 2)
+	var org: Vector2 = Vector2(float((st["drones"][0] as Dictionary)["sx"]),
+		float((st["drones"][0] as Dictionary)["sy"]))
+	_pump_shots(GVfx.SEXT_CHARGE + 0.3)
+	# ── 第二遍: 把 far 摆到 (散点 → near) 的延长线上, 同一个种子重跑 ──
+	var dir: Vector2 = (Vector2(near["pos"]) - org)
+	dir = dir.normalized() if dir.length() > 1.0 else Vector2.RIGHT
+	# ⚠ `_mk` 的第三个参数是**偏移量不是绝对坐标** —— 第一版我把世界坐标当偏移传进去,
+	#   far 被摆到了"场地中心 + near的世界坐标 + 方向×220", 根本不在线上(测出来恒 0)。
+	var far: Dictionary = _mk("fortune", "right", Vector2(-100.0, 0.0) + dir * 220.0, 9.0e7)
+	st["drones"] = [{"ang": 0.0, "ft": 0.0, "sx": 0.0, "sy": 0.0, "scat": 0.0}]
+	_s._battle_rng.seed = SEED
+	_pump_shots(1.0)
+	near["hp"] = 9.0e7
+	far["hp"] = 9.0e7
+	var h_near: float = float(near["hp"])
+	var h_far: float = float(far["hp"])
+	_g().sext_ultimate(u, 2)
+	_pump_shots(GVfx.SEXT_CHARGE + 0.3)
+	var d_near: float = h_near - float(near["hp"])
+	var d_far: float = h_far - float(far["hp"])
+	_ok("086 ★分母: 首目标确实被打到了(种子钉死 ⇒ 散点与目标可复现)",
+		d_near > 0.0, "首目标掉血 %.0f" % d_near)
+	_ok("086 ★★贯穿: **同一条线上更远的那个也掉血**(旧版射到目标就停 ⇒ 这里恒为 0)",
+		d_far > 0.0 and absf(d_far - 1000.0) < 3.0, "远处掉血 %.0f 期望 1000" % d_far)
+	_s._units.clear()
+
+
 func _pump_shots(seconds: float, dt: float = 0.05) -> void:
 	for _i in range(int(round(seconds / dt))):
 		_s._ballistics._step_pending_shots(dt)
@@ -155,6 +206,7 @@ func _ready() -> void:
 	_t_dispatch()
 	_t085_piezo()
 	_t086_sextant()
+	_t086_pierce()
 	_t087_dive_ballast()
 	_t087_dive_steal()
 	await _t_teardown()
@@ -435,9 +487,15 @@ func _t086_sextant() -> void:
 		g["atk"] = 100.0
 		g["base_atk"] = 100.0
 		_equip(g, "p2eq_086", si + 1)
+		_pump_shots(1.0)   # ★先排空: 共享假人身上可能压着**别的小节**留下的延后伤害
 		var h0: float = float(foe["hp"])
 		var mult: float = [0.3, 0.4, 0.5][si]
 		var hit: bool = _g().sext_fire_one(g, mult)
+		# ★★伤害已改成**等弹飞到**才落(照赛博龟被动: 小而淡的弹走真弹道, 按距离算飞行时间)
+		#   ⇒ 开火当帧不掉血, 要把延后队列推完。
+		_ok("086 %d★ ☆开火当帧不掉血(弹还在飞)" % (si + 1),
+			absf(h0 - float(foe["hp"])) < 0.01, "当帧掉血 %.2f" % (h0 - float(foe["hp"])))
+		_pump_shots(0.8)
 		var d: float = h0 - float(foe["hp"])
 		_ok("086 %d★ 单门炮一发 = 携带者 %.1f × ATK(100) = %.0f 物理" % [si + 1, mult, want_shot[si]],
 			hit and absf(d - want_shot[si]) < 0.51, "实测 %.2f 期望 %.1f" % [d, want_shot[si]])
@@ -794,11 +852,15 @@ func _t_teardown() -> void:
 	var tr = _g().vfx.sextant_shot(a, foe)
 	_ok("⑥ ★分母: 射击曳光真的建出来并挂进 battle._world", _in_world(tr),
 		"parent=%s" % (str((tr as Node).get_parent()) if tr != null else "无节点"))
-	_g().tick(0.05)
+	# ★★2026-08-08: 曳光改成**一颗按距离算飞行时间的弹**(照赛博龟被动的 dist/900),
+	#   寿命不再是固定的 0.16 ⇒ 这里按真实飞行时间推, 不写死 0.25。
+	var _fly: float = clampf((Vector2(foe["pos"]) - Vector2(a["pos"])).length()
+		/ GVfx.SHOT_BOLT_SPD, 0.12, 0.5)
+	_g().tick(_fly * 0.4)
 	var alive_early: bool = is_instance_valid(tr)
-	_g().tick(0.2)
+	_g().tick(_fly * 0.8)
 	await get_tree().process_frame
-	_ok("⑥ `tick(delta)` 推进演出: 0.05 秒时曳光还在, 0.25 秒(>0.16 寿命)后被 free",
+	_ok("⑥ `tick(delta)` 推进演出: 飞行到 40% 时弹还在, 超过飞行时间后被 free",
 		alive_early and not is_instance_valid(tr),
 		"0.05s 还在=%s / 0.25s 还在=%s (期望 true / false)"
 		% [str(alive_early), str(is_instance_valid(tr))])

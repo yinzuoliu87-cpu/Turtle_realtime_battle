@@ -102,6 +102,23 @@ const MOTE_GAP := 0.06
 const DRONE_R_M := 0.16          ## 炮体半径(米)
 const DRONE_COLOR := Color(0.70, 0.86, 1.0)
 const DRONE_LIFT := 1.55         ## 环绕高度(米·在龟头顶上方)
+## ★照赛博龟 `_tick_cyber_drones` 的被动编队参数(内外双环·反向·浮动·平滑跟随)
+const DRONE_RING_K := 1.42       ## 外环半径 = 内环 × 这个数(赛博: 48 → 76 ≈ 1.58)
+const DRONE_RING_REV := 0.8      ## 外环反向公转的角速度比(赛博: −0.8)
+const DRONE_RING_H := 0.25       ## 外环比内环高多少米(赛博: +0.25)
+const DRONE_BOB_W := 2.2         ## 悬浮上下浮动角频率(赛博: 2.2)
+const DRONE_BOB_A := 0.10        ## 浮动幅度(米·赛博: 0.1)
+const DRONE_FOLLOW := 6.0        ## 平滑跟随系数(赛博: delta×6)
+## 开火三件套(照赛博龟): 炮口闪 / 后坐 / 小而淡的弹
+const SHOT_MUZZLE_PX := 12.0     ## 炮口闪离炮体多远(码)
+const SHOT_MUZZLE_R := 0.13      ## 炮口闪半径(米)
+const SHOT_MUZZLE_SEC := 0.12    ## 炮口闪时长(赛博: 0.12)
+const SHOT_KICK_IN := 0.05       ## 后坐缩进用时(赛博: 0.05)
+const SHOT_KICK_OUT := 0.10      ## 弹回用时(赛博: 0.10)
+const SHOT_KICK_K := 0.82        ## 后坐缩到原尺寸的几成(赛博: 0.82)
+const SHOT_BOLT_PS := 0.008      ## 弹丸的 pixel_size(与赛博龟同)
+const SHOT_BOLT_A := 0.65        ## 弹的 alpha —— 赛博的注释: "小而淡, 防 20 炮糊屏"
+const SHOT_BOLT_SPD := 900.0     ## 弹速(码/秒·赛博按 dist/900 算飞行时间)
 const SHOT_LIFE := 0.16          ## 射击曳光存续(秒)
 const SHOT_THICK := 0.035        ## 曳光粗细(米)
 const RAY_LIFE := 0.70           ## 终极射线存续(秒)
@@ -113,6 +130,7 @@ const RAY_HOLD := 0.16           ## 满亮保持(秒) —— 之后才按 RAY_HA
 ## ★★照赛博龟阵亡齐射的编排(用户 2026-08-08 指定参考)。那一套是 Gaster Blaster 式:
 ## 蓄力光球膨胀 → 光球消失 + 炮体后坐 → 双层光束 → 震屏 → 线上命中火花。
 const SEXT_CHARGE := 0.45        ## 口部聚能光球膨胀多久(秒) —— 与赛博龟的 0.45 同一口径
+const SEXT_GLOW_COL := Color(1.6, 1.9, 2.2, 1.0)   ## 蓄力时炮身亮到什么程度(与赛博龟同)
 const SEXT_MUZZLE_PX := 16.0     ## 光球离炮体多远(码) —— 同赛博龟的 16
 const SEXT_ORB_R0 := 0.06        ## 光球起手半径(米)
 const SEXT_ORB_R1 := 0.30        ## 光球胀满半径(米)
@@ -376,7 +394,27 @@ func sextant_sync(u: Dictionary, drones: Array, orbit_r: float) -> Array:
 			at = Vector2(float(d.get("sx", 0.0)), float(d.get("sy", 0.0)))   # 终极演出期间飞散在外
 		else:
 			at = (u["pos"] as Vector2) + Vector2(cos(float(d["ang"])), sin(float(d["ang"]))) * orbit_r
-		(nodes[i] as Node3D).position = battle._world_pos(at, DRONE_LIFT)
+		# ★★2026-08-08 照赛博龟 `_tick_cyber_drones` 的被动编队(用户指定参考的第 ① 点):
+		#   **双环反向公转**(内环顺、外环逆) + **悬浮上下浮动** + **平滑跟随**(lerp, 不硬贴)
+		#   + **按位置翻面**。旧版是单环、硬贴、不浮动 ⇒ 读成"六个贴在圆周上的贴纸"。
+		var ring: int = i % 2
+		if float(d.get("scat", 0.0)) <= 0.0:
+			var rr: float = orbit_r * (1.0 if ring == 0 else DRONE_RING_K)
+			var aa: float = float(d["ang"]) * (1.0 if ring == 0 else -DRONE_RING_REV)
+			at = (u["pos"] as Vector2) + Vector2(cos(aa), sin(aa)) * rr
+		var hh: float = DRONE_LIFT + DRONE_RING_H * float(ring) 			+ sin(battle._t * DRONE_BOB_W + float(d.get("ang", 0.0))) * DRONE_BOB_A
+		var want3: Vector3 = battle._world_pos(at, hh)
+		var nd3: Node3D = nodes[i]
+		# 平滑跟随: 首帧直接到位(否则新炮会从原点飞过来), 之后才 lerp
+		if nd3.position == Vector3.ZERO:
+			nd3.position = want3
+		else:
+			nd3.position = nd3.position.lerp(want3, clampf(DRONE_FOLLOW * 0.05, 0.0, 1.0))
+		if nd3 is Sprite3D:
+			(nd3 as Sprite3D).flip_h = (at.x - float((u["pos"] as Vector2).x)) < 0.0
+		d["_px"] = at.x
+		d["_py"] = at.y
+		d["_ph"] = hh
 		# 帧: 每门炮**错开相位**(用它自己的轨道角当相位) —— 六门同帧齐闪会读成一个整体在闪。
 		if nodes[i] is Sprite3D:
 			var sp2 := nodes[i] as Sprite3D
@@ -389,13 +427,56 @@ func sextant_sync(u: Dictionary, drones: Array, orbit_r: float) -> Array:
 
 
 ## 一门炮打一发: 细曳光。
-func sextant_shot(u: Dictionary, tgt: Dictionary) -> MeshInstance3D:
+## ★★2026-08-08 照赛博龟被动开火重做(用户指定参考的第 ① 点)。旧版是
+##   `_beam(u["pos"], tgt["pos"])` —— **一条从「携带者身上」瞬时连到目标的光柱**:
+##   六门炮绕着龟转, 每一发却都从龟身中心射出去, 读不出是哪门炮打的。
+##   赛博龟那套是三件: **炮口青闪 + 炮体后坐脉冲 + 一颗小而淡的弹**(它的注释明写
+##   "小而淡……防20炮糊屏" —— 本件六门同时连线只会更糊)。
+## `di` = 开火的是第几门炮(−1 = 不知道, 兜底回落到携带者身上)。
+func sextant_shot(u: Dictionary, tgt: Dictionary, di: int = -1) -> Node3D:
 	if not _alive():
 		return null
-	var n := _beam(u["pos"], tgt["pos"], DRONE_LIFT * 0.8, SHOT_THICK,
-		Color(DRONE_COLOR.r, DRONE_COLOR.g, DRONE_COLOR.b, 0.8), "sext_shot")
-	_transient(n, SHOT_LIFE)
-	return n
+	var from2: Vector2 = u["pos"]
+	var lift: float = DRONE_LIFT
+	var nodes: Array = u.get("_sext_nodes", [])
+	var drones: Array = (u.get("eq_state", {}) as Dictionary).get("p2eq_086", {}).get("drones", [])
+	if di >= 0 and di < drones.size():
+		var dd: Dictionary = drones[di]
+		if dd.has("_px"):
+			from2 = Vector2(float(dd["_px"]), float(dd["_py"]))
+			lift = float(dd.get("_ph", DRONE_LIFT))
+	var d2: Vector2 = (Vector2(tgt["pos"]) - from2)
+	d2 = d2.normalized() if d2.length() > 0.01 else Vector2.RIGHT
+	# ① 炮口青闪
+	var mz := _mi(SphereMesh.new(), Color(0.55, 0.96, 1.0, 0.92), "sext_shot")
+	(mz.mesh as SphereMesh).radius = 1.0
+	(mz.mesh as SphereMesh).height = 2.0
+	mz.position = battle._world_pos(from2 + d2 * SHOT_MUZZLE_PX, lift)
+	mz.scale = Vector3.ONE * SHOT_MUZZLE_R
+	_transient(mz, SHOT_MUZZLE_SEC)
+	# ② 炮体后坐脉冲(缩一下再弹回) —— 赛博龟用的就是 scale 0.82 → 1.0
+	if di >= 0 and di < nodes.size() and is_instance_valid(nodes[di]):
+		_fx.append({"node": nodes[di], "t": 0.0, "life": SHOT_KICK_IN + SHOT_KICK_OUT, "kick": true})
+	# ③ 一颗**小而淡的弹丸**从这门炮飞到目标。
+	#   ★★用户 2026-08-08:「哪里会是射线」—— 对的。赛博龟浮游炮打出去的是
+	#   `VfxTex._make_bolt_texture` 的**一颗 Sprite3D 弹丸**(pixel_size 0.008 · alpha 0.65,
+	#   它的注释写着"小而淡……防20炮糊屏"), 走标准弹道系统。
+	#   我第一版拿 `_beam` 建了一条带再平移 —— **那还是一条线**, 不是弹。
+	var bolt := Sprite3D.new()
+	bolt.texture = VfxTex._make_bolt_texture(DRONE_COLOR)
+	bolt.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	bolt.shaded = false
+	bolt.transparent = true
+	bolt.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	bolt.pixel_size = SHOT_BOLT_PS
+	bolt.modulate = Color(1.0, 1.0, 1.0, SHOT_BOLT_A)
+	bolt.position = battle._world_pos(from2, lift)
+	battle._world.add_child(bolt)
+	_owned.append(bolt)
+	var fly: float = clampf((Vector2(tgt["pos"]) - from2).length() / SHOT_BOLT_SPD, 0.12, 0.5)
+	_fx.append({"node": bolt, "t": 0.0, "life": fly, "bolt": true,
+		"p0": from2, "p1": Vector2(tgt["pos"]), "h": lift, "tgt": tgt})
+	return bolt
 
 
 ## 终极射线: `beams` = [[飞散点, 目标点], ...]。每条一根紫色粗光柱 + 指数余辉。
@@ -403,6 +484,19 @@ func sextant_shot(u: Dictionary, tgt: Dictionary) -> MeshInstance3D:
 ## ★旧版**没有蓄力这一段** —— 光束凭空出现, 玩家读不到"要来了"。
 ## ★用每帧 tick 推进而不是 tween: 无头 CI 下 tween 推进不稳(CLAUDE.md §3.5),
 ##   而本层的 `_fx` 是跟着 sim delta 走的。
+## 贯穿激光**线上每一个**被打中的目标各出一次火花(照赛博龟: 每个中招的都 `_hit_spark`)。
+## ★旧版只打一个目标, 也就没有"线上谁被扫到了"这回事。
+func sextant_ray_hit(at: Vector2) -> void:
+	if not _alive():
+		return
+	var n := _mi(SphereMesh.new(), Color(1.0, 0.92, 1.0, 1.0), "sext_ray")
+	(n.mesh as SphereMesh).radius = 1.0
+	(n.mesh as SphereMesh).height = 2.0
+	n.position = battle._world_pos(at, DRONE_LIFT)
+	n.scale = Vector3.ONE * RAY_POP_R
+	_transient(n, RAY_LIFE * 0.5, RAY_HALF)
+
+
 func sextant_charge(_u: Dictionary, beams: Array) -> Array:
 	if not _alive():
 		return []
@@ -421,6 +515,11 @@ func sextant_charge(_u: Dictionary, beams: Array) -> Array:
 		orb.scale = Vector3.ONE * SEXT_ORB_R0
 		_fx.append({"node": orb, "t": 0.0, "life": SEXT_CHARGE, "charge": true})
 		out.append(orb)
+	# ★炮身在蓄力期间**发亮**(赛博龟: modulate → (1.6,1.9,2.2))。旧版只有光球在胀,
+	#   炮体本身一点反应都没有 ⇒ 读不出"是这几门炮在蓄力"。
+	for nd in (_u.get("_sext_nodes", []) as Array):
+		if is_instance_valid(nd) and nd is Sprite3D:
+			_fx.append({"node": nd, "t": 0.0, "life": SEXT_CHARGE, "glow": true})
 	return out
 
 
@@ -546,7 +645,15 @@ func tick(delta: float) -> void:
 		h["t"] = t
 		var life: float = float(h["life"])
 		if t >= life:
-			(n as Node).queue_free()
+			# ★★"kick"(炮体后坐)借的是**别人的常驻节点**(浮游炮本体) —— 寿命到了
+			#   只能把 scale 还原, **绝不能 queue_free**, 否则一开火就把那门炮删掉。
+			#   (这一条是写的时候就险些踩进去的: 本 tick 对所有 fx 一视同仁地 free。)
+			if h.get("kick", false):
+				(n as Node3D).scale = Vector3.ONE
+			elif h.get("glow", false):
+				(n as Sprite3D).modulate = Color(1, 1, 1, 1)   # 借的是炮体, 只还原不 free
+			else:
+				(n as Node).queue_free()
 			continue
 		var half: float = float(h.get("half", 0.0))
 		var a: float = ray_alpha(t) if half > 0.0 else (1.0 - t / life)
@@ -554,6 +661,28 @@ func tick(delta: float) -> void:
 		#   读出来 —— 只有"往上走"这个方向才读得出是在转成龟能, 一颗静止的球读不出任何一半。
 		#   ⚠ 负 t 必须显式判(t<0 完全不画): 只靠 alpha 曲线会让它一出生就满亮, 错开等于没做
 		#   (082 贝壳串踩过同一个坑)。
+		if h.get("bolt", false):
+			# 弹丸沿 p0→目标匀速飞。★终点取目标**当前**位置(目标动了不会打空) ——
+			#   这是 077/080 上被用户逐条盯出来定下的规矩。
+			var bq: float = clampf(t / maxf(0.001, life), 0.0, 1.0)
+			var bt = h.get("tgt", null)
+			if bt is Dictionary and (bt as Dictionary).get("alive", false):
+				h["p1"] = Vector2((bt as Dictionary)["pos"])
+			var bp: Vector2 = (h["p0"] as Vector2).lerp(h["p1"] as Vector2, bq)
+			(n as Node3D).position = battle._world_pos(bp, float(h["h"]))
+			(n as Sprite3D).modulate.a = SHOT_BOLT_A
+			keep.append(h)
+			continue
+		if h.get("kick", false):
+			# 炮体后坐脉冲: 缩到 SHOT_KICK_K 再弹回。★这是**别人的常驻节点**,
+			#   寿命到了只能把 scale 还原, **绝不能 queue_free**(那会把炮打没)。
+			var kn: Node3D = n
+			var k: float
+			if t < SHOT_KICK_IN:
+				k = lerpf(1.0, SHOT_KICK_K, t / maxf(0.001, SHOT_KICK_IN))
+			else:
+				k = lerpf(SHOT_KICK_K, 1.0, clampf((t - SHOT_KICK_IN) / maxf(0.001, SHOT_KICK_OUT), 0.0, 1.0))
+			kn.scale = Vector3.ONE * k
 		if h.get("recoil", true) and h.has("recoil"):
 			# 后坐 → 回位。前 SEXT_RECOIL_BACK 秒往后弹, 之后弹回原点。
 			var rp: Vector2 = h["p0"]
@@ -578,6 +707,18 @@ func tick(delta: float) -> void:
 				var q: float = clampf(t / maxf(0.001, life), 0.0, 1.0)
 				(n as MeshInstance3D).position.y = float(h["y0"]) + float(h["rise"]) * q
 				a = 1.0 - q * q
+		# ★★"kick"(炮体后坐)借的是**别人的 Sprite3D**, 不是本层建的 MeshInstance3D ——
+		#   底下这段统一按 MeshInstance3D 写 alpha, 对它就是 `material_override on Nil`
+		#   (实拍日志里 756 条)。它的 scale 上面已经写完了, 到这里直接收工。
+		if h.get("glow", false):
+			# 蓄力发亮: 越接近发射越亮(赛博龟是一次性 tween 到 (1.6,1.9,2.2), 这里连续推)
+			var gq: float = clampf(t / maxf(0.001, life), 0.0, 1.0)
+			(n as Sprite3D).modulate = Color(1, 1, 1, 1).lerp(SEXT_GLOW_COL, gq)
+			keep.append(h)
+			continue
+		if h.get("kick", false):
+			keep.append(h)
+			continue
 		var m = (n as MeshInstance3D).material_override
 		if m is StandardMaterial3D:
 			var c: Color = (m as StandardMaterial3D).albedo_color

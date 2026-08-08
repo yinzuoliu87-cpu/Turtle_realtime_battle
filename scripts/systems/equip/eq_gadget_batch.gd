@@ -323,6 +323,10 @@ const SEXT_CAP := 6             ## 最多 6 门
 const SEXT_FIRE_IV := 2.0       ## 每门炮每 2 秒攻击一次
 const SEXT_ORBIT_R := 74.0      ## 环绕半径(码)
 const SEXT_ORBIT_W := 1.05      ## 环绕角速度(弧度/秒)
+## 终极射线**贯穿**多远(码) —— 赛博龟阵亡齐射是 1300, 同口径
+const SEXT_RAY_LEN := 1300.0
+## 判"在不在这条线上"的半宽(码) —— 赛博龟用 40
+const SEXT_RAY_HALF_W := 40.0
 
 
 func _tick_sextant(u: Dictionary, delta: float, si: int) -> void:
@@ -336,7 +340,12 @@ func _tick_sextant(u: Dictionary, delta: float, si: int) -> void:
 		var g: float = float(st.get("gen_t", 0.0)) + delta
 		while g >= SEXT_GEN_IV and drones.size() < SEXT_CAP:
 			g -= SEXT_GEN_IV
-			drones.append({"ang": TAU * float(drones.size()) / float(SEXT_CAP), "ft": 0.0,
+			# ★★2026-08-08 `ft` 初值改成**随机错峰**(照赛博龟 `fire_t = 1.6 * randf()`)。
+			#   原来六门都是 0.0 ⇒ **同时到点、同时开火**, 读成"一个整体在放", 而不是六门各打各的。
+			#   ⚠ 用 `_battle_rng` 不用 `_juice_rng`: `ft` 决定**伤害在哪一帧落**, 属于对局逻辑,
+			#     走演出 rng 会破坏确定性(rng_discipline 门禁盯着这条)。
+			drones.append({"ang": TAU * float(drones.size()) / float(SEXT_CAP),
+				"ft": battle._battle_rng.randf() * SEXT_FIRE_IV,
 				"sx": 0.0, "sy": 0.0, "scat": 0.0})
 			_remember(u)
 		st["gen_t"] = g
@@ -345,7 +354,9 @@ func _tick_sextant(u: Dictionary, delta: float, si: int) -> void:
 	_sext_apply_mr(u, drones.size(), mr_per)
 	# ── 环绕 + 开火 ──
 	var fired: int = 0
-	for d in drones:
+	# ★带下标遍历: 要把"开火的是第几门炮"传给演出层, 弹才能从**那门炮**出膛(照赛博龟)
+	for di in range(drones.size()):
+		var d: Dictionary = drones[di]
 		d["ang"] = float(d["ang"]) + SEXT_ORBIT_W * delta
 		if float(d.get("scat", 0.0)) > 0.0:
 			d["scat"] = maxf(0.0, float(d["scat"]) - delta)   # 终极演出期间飞散在外, 不开火
@@ -353,7 +364,7 @@ func _tick_sextant(u: Dictionary, delta: float, si: int) -> void:
 		d["ft"] = float(d.get("ft", 0.0)) + delta
 		if float(d["ft"]) >= SEXT_FIRE_IV:
 			d["ft"] = float(d["ft"]) - SEXT_FIRE_IV
-			if sext_fire_one(u, atk_mult):
+			if sext_fire_one(u, atk_mult, di):
 				fired += 1
 	if fired > 0:
 		st["shots"] = int(st.get("shots", 0)) + fired
@@ -367,13 +378,22 @@ func _tick_sextant(u: Dictionary, delta: float, si: int) -> void:
 
 ## 一门炮打一次随机敌人。返回是否真的打出去了。
 ## ★随机走 `battle._battle_rng`(焊死口径 ①), 伤害 `from_equip=true`(焊死口径 ②)。
-func sext_fire_one(u: Dictionary, atk_mult: float) -> bool:
+func sext_fire_one(u: Dictionary, atk_mult: float, di: int = -1) -> bool:
 	var tgt = _pick_rng(battle._targeting._pick_enemies_of(u))
 	if tgt == null:
 		return false
-	var dm: int = battle._resolve_dmg(u, float(u.get("atk", 0.0)) * atk_mult, tgt, false)
-	battle._damage._apply_damage_from(u, tgt, dm, Color(0.72, 0.86, 1.0), 0.0, false, true)
-	vfx.sextant_shot(u, tgt)
+	# ★★2026-08-08 照赛博龟被动: 弹从**那门炮**出膛(不是从携带者身上), 且伤害等弹飞到。
+	#   `di` 由调用方给 —— 哪门炮的计时器到点就是哪门在打。
+	var vt: Dictionary = tgt
+	var fly: float = clampf((Vector2(tgt["pos"]) - Vector2(u["pos"])).length()
+		/ GadgetEqVfx.SHOT_BOLT_SPD, 0.12, 0.5)
+	battle._queue_shots(1, 0.0, func() -> void:
+		if not vt.get("alive", false):
+			return
+		var dm: int = battle._resolve_dmg(u, float(u.get("atk", 0.0)) * atk_mult, vt, false)
+		battle._damage._apply_damage_from(u, vt, dm, Color(0.72, 0.86, 1.0), 0.0, false, true),
+		u, "", Callable(), fly)
+	vfx.sextant_shot(u, tgt, di)
 	return true
 
 
@@ -395,20 +415,34 @@ func sext_ultimate(u: Dictionary, si: int) -> int:
 		var tgt = _pick_rng(battle._targeting._pick_enemies_of(u))
 		if tgt == null:
 			continue
+		# ★★2026-08-08【贯穿】用户:「是不是穿透」—— 赛博龟阵亡齐射的激光是**贯穿**的:
+		#   `endp = dpos + ldir * 1300`(射出去而不是射到目标就停) + **线上所有敌人各吃一次**。
+		#   本件旧版是"射到目标就停、只结算那一个"。⇒ 照它改。
+		#   ⚠ 这是**强度变化**(线上多个敌人时伤害翻倍), 规格原文只写了"朝一个随机目标发一条
+		#     射线, 每条造成 200/350/1000" —— 没写贯穿也没写不贯穿。要退回只打首目标说一声。
+		var ldir: Vector2 = (Vector2(tgt["pos"]) - sp)
+		ldir = ldir.normalized() if ldir.length() > 1.0 else Vector2.RIGHT
+		var endp: Vector2 = sp + ldir * SEXT_RAY_LEN
 		# ★★2026-08-08【时序合一 + 照赛博龟的编排】用户:「参考下赛博龟被动的攻击方式和技能演出」。
 		#   赛博龟阵亡齐射是完整的七段: 错峰飞散 → 炮身发亮 → **口部聚能光球膨胀 0.45 秒**
 		#   → 光球消失 + **炮体后坐再回位**(Gaster Blaster 标志) → **双层光束**(厚白核心 + 青晕
 		#   外束, 外束略久 = 收细消散感) → 震屏 → 线上每个目标命中火花。
 		#   本件旧版是"光束凭空出现再淡出", 七段一段都没有, 伤害也在开火那一帧就落。
 		#   ⇒ 伤害推迟到**光束真的射出去**那一刻(SEXT_CHARGE 秒后), 与演出对齐。
-		var vt: Dictionary = tgt
+		var org: Vector2 = sp
+		var dr: Vector2 = ldir
 		battle._queue_shots(1, 0.0, func() -> void:
-			if not vt.get("alive", false):
-				return
-			var dm: int = battle._resolve_dmg(u, ray, vt, true)
-			battle._damage._apply_damage_from(u, vt, dm, GadgetEqVfx.RAY_COLOR, 0.0, false, true),
+			# 贯穿: 线上**所有**敌人各吃一次(照赛博龟那条 `_on_line(dpos, ldir, pos, 40)`)
+			for o in battle._targeting._enemies_of(u):
+				if not o.get("alive", false):
+					continue
+				if not battle._on_line(org, dr, Vector2(o["pos"]), SEXT_RAY_HALF_W):
+					continue
+				var dm: int = battle._resolve_dmg(u, ray, o, true)
+				battle._damage._apply_damage_from(u, o, dm, GadgetEqVfx.RAY_COLOR, 0.0, false, true)
+				vfx.sextant_ray_hit(Vector2(o["pos"])),
 			u, "", Callable(), GadgetEqVfx.SEXT_CHARGE)
-		beams.append([sp, Vector2(tgt["pos"])])
+		beams.append([sp, endp])
 		n += 1
 	u["_sext_ults"] = int(u.get("_sext_ults", 0)) + 1     # 同步证据: 终极放了几轮
 	u["_sext_rays"] = n                                   # 同步证据: 这一轮几条射线
