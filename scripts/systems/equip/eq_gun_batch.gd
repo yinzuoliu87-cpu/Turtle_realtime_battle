@@ -432,14 +432,27 @@ func _pistol_bullet(p: Dictionary) -> void:
 	if (Vector2(tgt["pos"]) - Vector2(p["pos"])).length() > PISTOL_RANGE:
 		return
 	var gold: float = float(p.get("_golden_pct", 0.0))
-	var dmg: int = battle._atk_dmg(p, 1.0, tgt)
-	battle._damage._apply_damage_from(p, tgt, dmg, COL_PHYS, 0.0, false, true)
 	# ★弹道从**枪管尖**出发, 不是单位中心 —— 与枪口火焰同一个锚点(pistol_fire 里写的)。
 	#   `_muzzle_px` 是"半枪长(码)", 由演出层按精灵实际尺寸算出来回填, 这里不重算。
 	# ★★只偏**水平**: 枪立绘永远朝右不转向 ⇒ 枪口在 +x。
 	#   第一版乘的是 aim(指向目标 = 右下方) ⇒ 弹从枪的右下角冒出来而不是枪口(用户实拍抓到)。
 	var _muz: Vector2 = Vector2(p["pos"]) + Vector2(float(p.get("_muzzle_px", PISTOL_MUZZLE_FALLBACK)), 0.0)
-	vfx.tracer(_muz, Vector2(tgt["pos"]), COL_PHYS, gold, float(p.get("_muzzle_h", 0.6)), GunEqVfx.body_mid_h(tgt))
+	# ★⑭ 同上: 结算等弹飞到(内层空 gun_id, 不重复计金弹)
+	var _fly2: float = vfx.tracer(_muz, Vector2(tgt["pos"]), COL_PHYS, gold,
+		float(p.get("_muzzle_h", 0.6)), GunEqVfx.body_mid_h(tgt), tgt)
+	# ★★把 `_golden_pct` **带进**延后的结算 —— 这是延后伤害引入的真 bug:
+	#   金弹的真伤在 `battle_damage` 里是从 `src["_golden_pct"]` 读的, 而那个标记
+	#   在 `_queue_shots` 的闭包里**用完就清零**。伤害一旦推迟到弹落地, 读到的就是 0
+	#   ⇒ **金弹白打**(实测 6 发全按普通弹算, 240 变 180)。
+	#   ⇒ 结算前把当时的 gold 标回去, 算完立刻还原。
+	battle._queue_shots(1, 0.0, func() -> void:
+		if not tgt.get("alive", false):
+			return
+		var _sv: float = float(p.get("_golden_pct", 0.0))
+		p["_golden_pct"] = gold
+		battle._damage._apply_damage_from(p, tgt, battle._atk_dmg(p, 1.0, tgt), COL_PHYS, 0.0, false, true)
+		p["_golden_pct"] = _sv
+	, p, "", Callable(), _fly2)
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -769,16 +782,35 @@ func _heli_bullet(h: Dictionary, scale: float) -> void:
 	var tgt = _heli_prey(h)
 	if tgt == null or not tgt.get("alive", false):
 		return
-	battle._damage._apply_damage_from(owner, tgt, battle._atk_dmg(owner, scale, tgt), COL_PHYS, 0.0, false, true)
-	h["energy"] = minf(HELI_EN_MAX, float(h.get("energy", 0.0)) + HELI_EN_PER_HIT)
-	# ★★用户:「导弹从哪里发射」—— 原来出膛点是**机身中心**, 弹从机腹正中冒出来。
-	#   现在从**机头**出膛: `_muzzle_px` 由演出层按机头在贴图里的实测像素位置回填(见 heli_update),
-	#   它已经把 flip_h 算进去了 ⇒ 直升机掉头时出膛点自动跟到另一侧。
+	# ★出膛点 = **机头**(不是机身中心)。`_muzzle_px` 由演出层按机头在贴图里的实测像素位置回填
+	#   (见 heli_update), 已把 flip_h 算进去 ⇒ 直升机掉头时出膛点自动跟到另一侧。
 	var muz: Vector2 = Vector2(h["pos"]) + Vector2(float(h.get("_muzzle_px", 0.0)), 0.0)
-	vfx.tracer(muz, Vector2(tgt["pos"]), COL_PHYS, float(owner.get("_golden_pct", 0.0)), GunEqVfx.HELI_H, GunEqVfx.body_mid_h(tgt))
-	# ⚠ `approach` 也要排除 —— 否则进场途中龟能仍是满的, 每帧都会重新算一次航线,
-	#   直升机会被不停地"重新指派起点"而原地抖。
-	if float(h["energy"]) >= HELI_EN_MAX and not (str(h.get("state", "")) in ["bomb", "approach", "egress"]):
+	# ★★2026-08-08 ⑭【伤害早于弹到达】: 原来这里当场扣血, 而弹要飞 0.4~0.7 秒 ——
+	#   **血条先掉、弹后到**, 画面和实际发生的事是两回事(弹纯装饰)。
+	#   ⇒ 先放演出拿到**飞行时间**, 再把结算推到弹真正到达那一刻(和炸弹同一条纪律)。
+	#   ⚠ 内层 `_queue_shots` 传空 gun_id ⇒ **不重复计金弹**(外层那一发已经计过了)。
+	var _fly: float = vfx.tracer(muz, Vector2(tgt["pos"]), COL_PHYS,
+		float(owner.get("_golden_pct", 0.0)), GunEqVfx.HELI_H, GunEqVfx.body_mid_h(tgt), tgt,
+		GunEqVfx.BUL_MG)   # ★机炮型: 快/细/长尾
+	var _gp: float = float(owner.get("_golden_pct", 0.0))
+	battle._queue_shots(1, 0.0, func() -> void:
+		if not tgt.get("alive", false):
+			return                                   # 弹在途中目标就死了 ⇒ 这一发落空(合理)
+		# ★金弹标记要带过来, 理由同 _pistol_bullet 的长注释(否则金弹真伤白丢)
+		var _sv: float = float(owner.get("_golden_pct", 0.0))
+		owner["_golden_pct"] = _gp
+		battle._damage._apply_damage_from(owner, tgt, battle._atk_dmg(owner, scale, tgt), COL_PHYS, 0.0, false, true)
+		owner["_golden_pct"] = _sv
+		h["energy"] = minf(HELI_EN_MAX, float(h.get("energy", 0.0)) + HELI_EN_PER_HIT)
+		_heli_check_bomb(h)
+	, owner, "", Callable(), _fly)
+
+
+## 龟能满 ⇒ 起飞轰炸。★抽出来是因为结算已经推迟到弹到达那一刻(见 _heli_bullet),
+## 检查也得跟着推迟 —— 否则会出现"龟能还没加上就先检查"。
+## ⚠ `approach`/`egress` 也要排除: 否则进场途中龟能仍是满的, 每帧重算航线, 直升机原地抖。
+func _heli_check_bomb(h: Dictionary) -> void:
+	if float(h.get("energy", 0.0)) >= HELI_EN_MAX and not (str(h.get("state", "")) in ["bomb", "approach", "egress"]):
 		_heli_begin_bomb(h)
 
 

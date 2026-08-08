@@ -425,6 +425,18 @@ func pistol_uncovered(pos: Vector2) -> void:
 ##   · 高度 = 枪身高度(不再穿龟)
 ##   · 飞行时间 = 距离 / 速度 ⇒ **近的目标弹到得快、远的慢**, 这本身就是可读的信息
 ## ⚠ 仍然不用 tween: 位置由本文件的 `tick()` 推(CLAUDE.md §3.5)。
+## ★★2026-08-08 ⑮【手枪和机炮打出一模一样的弹】用户实测指出:
+##   077 是**单发大威力手铳**(0.5 秒一发)、080 三星是**一轮 10 发的机炮** ——
+##   而两者调的是同一个 `tracer`: 同速度、同外观、同尾焰、同命中。视觉上完全没有区别。
+##   ⇒ 分成两型。**区别不在弹道曲线**(用户明确说子弹不需要重力), 在**速度/粗细/长短**:
+##     · 手铳 = 慢、粗、短尾, 一发一发看得清 —— "有分量"
+##     · 机炮 = 快、细、长尾, 连成串 —— "泼出去"
+enum { BUL_PISTOL, BUL_MG }
+## 速度(码/秒) / 头段长(码) / 尾段长(码) / 头粗 / 尾粗 / 弹头辉光(码)
+const BULLET_SPEC := {
+	BUL_PISTOL: {"spd": 390.0, "head": 16.0, "tail": 30.0, "hw": 2.6, "tw": 1.4, "px": 9.0},
+	BUL_MG:     {"spd": 980.0, "head": 26.0, "tail": 62.0, "hw": 1.5, "tw": 0.9, "px": 5.0},
+}
 const BULLET_SPD := 390.0       ## 码/秒。★用户 2026-08-07 两次实拍后定: 2600 →(−70%) 780 →(再 −50%) **390**。
                                 ## 260 码 ≈ 0.67 秒到 —— 一发的飞行完整看得清, 而攻击间隔是 0.5 秒
                                 ## ⇒ **场上会同时有两发在飞**, 这本身就读得出"射速比弹速快"。
@@ -451,14 +463,23 @@ static func body_mid_h(tgt) -> float:
 ##   ⇒ 弹道高度从**枪口**线性降到**目标身体中段**(由目标立绘算, 见 body_mid_h)。
 ##   `h_to < 0` 表示"沿用出膛高度"(供不需要落点的调用方)。
 const BODY_HIT_FRAC := 0.5
+## `tgt`: 传目标字典的话, 弹会**跟着它走**(见下面 ⑬)。返回**飞行时间(秒)**, 供结算对齐。
+##
+## ★★2026-08-08 ⑬【终点在开火瞬间锁死】用户实测指出:
+##   原来 `b` 是开火那一刻抄下来的坐标, 弹飞 0.67 秒期间目标只要动了,
+##   弹就**打到它刚才站的地方**并在那儿炸出命中火花 —— 目标已经走了。
+##   ⇒ 传了 `tgt` 就每帧读它**当前**位置; 目标死了/丢了才退回锁死的那个点。
 func tracer(a: Vector2, b: Vector2, col: Color, gold_pct: float = 0.0, h_m: float = PISTOL_MUZZLE_H_M,
-		h_to: float = -1.0) -> void:
+		h_to: float = -1.0, tgt = null, kind: int = BUL_PISTOL) -> float:
+	var sp: Dictionary = BULLET_SPEC[kind]
 	if not _has_world():
-		return
+		return clampf((b - a).length() / float(sp["spd"]), 0.05, 0.5)   # 无世界也要给飞行时间(结算靠它)
 	var g: float = gold_glow(gold_pct)
 	var c := Color(col.r + (1.0 - col.r) * g, col.g + (0.9 - col.g) * g, col.b * (1.0 - 0.5 * g), 0.95)
 	var dist: float = (b - a).length()
-	var life: float = clampf(dist / BULLET_SPD, 0.05, 0.5)
+	var life: float = clampf(dist / float(sp["spd"]), 0.05, 0.5)
+	if not _has_world():
+		return life
 	var dir: Vector2 = (b - a).normalized() if dist > 0.001 else Vector2.RIGHT
 	# ★★2026-08-07 用户问「子弹方向有考虑吗」—— 上一版**没有**: 弹头是一团**圆的**辉光,
 	#   圆形没有方向, 只有后面那条尾焰暗示了走向。现在整颗弹是一条**沿飞行方向的流线**:
@@ -467,16 +488,17 @@ func tracer(a: Vector2, b: Vector2, col: Color, gold_pct: float = 0.0, h_m: floa
 	#   两段都由 dir 定向 ⇒ 不管往哪个方向打, 弹的长轴永远和航线重合。
 	#   ⚠ 不能靠旋转 Sprite3D 解决: 弹头原来用的是 billboard 精灵, billboard 会一直正对相机,
 	#     它的"旋转"在 2.5D 斜视角下与场地方向对不上。带(平面网格)是贴着场地画的, 才对得上。
-	var head := _band(a, a + dir * BULLET_HEAD, h_m, 2.6 + 3.0 * g, c)
+	var head := _band(a, a + dir * float(sp["head"]), h_m, float(sp["hw"]) + 3.0 * g, c)
 	_adopt(head, life, "bullettail", {"from": a, "to": b, "a0": c.a})
-	var tail := _band(a - dir * BULLET_TAIL, a, h_m, 1.4 + 2.2 * g,
+	var tail := _band(a - dir * float(sp["tail"]), a, h_m, float(sp["tw"]) + 2.2 * g,
 		Color(c.r, c.g, c.b, 0.40))
 	_adopt(tail, life, "bullettail", {"from": a, "to": b, "a0": 0.40})
+	return life
 	# 弹头再叠一点点辉光(只是"热", 不承担方向)
 	var s := _sprite(VfxTex._make_fire_glow_tex(), battle._world_pos(a, h_m),
-		(BULLET_PX * (1.0 + 0.5 * g) * float(battle.WS)) / 64.0, c, false)
+		(float(sp["px"]) * (1.0 + 0.5 * g) * float(battle.WS)) / 64.0, c, false)
 	var _h2: float = h_m if h_to < 0.0 else h_to
-	_adopt(s, life, "bullet", {"from": a, "to": b, "a0": c.a, "h": h_m, "h2": _h2})
+	_adopt(s, life, "bullet", {"from": a, "to": b, "a0": c.a, "h": h_m, "h2": _h2, "tgt": tgt})
 
 
 ## 爆炸立绘(11 帧一次性动画)。★**不做乒乓** —— 乒乓会让火球缩回去 = 倒放, 爆炸只能单向播。
@@ -965,6 +987,11 @@ func tick(delta: float) -> void:
 				# 高度也随行程插值 ⇒ 弹是**斜着落到身上**的, 不是平飞过去
 				var _hA: float = float(f.get("h", PISTOL_MUZZLE_H_M))
 				var _hB: float = float(f.get("h2", _hA))
+				# ★⑬ 终点跟着目标走(目标还活着的话), 不再打到它开火那一刻站的地方
+				var _tg = f.get("tgt", null)
+				if _tg is Dictionary and (_tg as Dictionary).get("alive", false):
+					fb = Vector2((_tg as Dictionary)["pos"])
+					f["to"] = fb
 				bl.position = battle._world_pos(fa.lerp(fb, q), lerpf(_hA, _hB, q))
 				bl.modulate.a = float(f.get("a0", 1.0)) * (1.0 if q < 0.8 else (1.0 - q) / 0.2)
 			"bullettail":

@@ -754,12 +754,14 @@ func _t080_strafe_energy() -> void:
 	h["state"] = "bomb"
 	h["energy"] = 99.0
 	_gun._heli_bullet(h, 0.35)
+	_pump()          # ★2026-08-08: 伤害/龟能现在**等弹飞到**才结算(见 _heli_bullet), 得先把在途弹推完
 	_ok("④ 龟能上限 100(99 + 4 只到 100, 不是 103)", _near(float(h["energy"]), 100.0, 0.01),
 		"energy=%.1f" % float(h["energy"]))
 	# 满龟能 ⇒ 从巡航态起飞轰炸, 并把龟能清零(下一轮重新攒)
 	h["state"] = "patrol"
 	h["energy"] = 96.0
 	_gun._heli_bullet(h, 0.35)
+	_pump()          # ★同上: 龟能满与起飞判定都跟着弹的到达时刻走
 	# ★★2026-08-07 状态机多了一步 `approach`(进场)。由来: 用户实拍「你用瞬移了？」——
 	#   `_heli_begin_bomb` 原来一行 `h["pos"] = lane_a` **把直升机直接挪到航线起点**,
 	#   航线长 800 码 ⇒ 这一跳非常显眼。现在改成先飞过去。见 tests/verify_heli_approach.gd。
