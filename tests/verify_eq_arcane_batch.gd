@@ -749,6 +749,32 @@ func _t090_mana_lock() -> void:
 	#   旧版预告环收拢到 `LEAP_WINDUP_PX = 110` 码, 而真正挨砸的是 1000 码 —— **差九倍**,
 	#   而且节点上的 meta 写的是 1000(元数据说 1000、画出来 110) ⇒ 只验 meta 抓不到。
 	#   这一条直接钉**两个常量相等**, 哪天又拆开就红。
+	# ── ★★"砸击命中 = 角色落地那一刻"(用户 2026-08-08 追问) ──
+	#   ⚠ 我的第一版是**假门禁**: 循环里用 `_feed` 推进, 而 `_feed` 只跑装备自己的 tick、
+	#     **不跑主循环的 airborne 积分** ⇒ `height` 全程是 0, 我量到的 0.000 不是"落地了",
+	#     是"它压根没起飞"。反向验证(把倒计时砍一半)时这条**没红** —— 它什么都没守。
+	#   ⇒ 改成量**两个真数的关系**, 两边都从产品代码读:
+	#     ① 起跳时真写到单位身上的抛体参数 `vy` / `knock_g` ⇒ 落地时刻 = 2·vy/|g|
+	#     ② 砸落倒计时 `_slams[0].t_left`
+	#     谁改了一边没改另一边, 这条立刻红(反向验证证明了)。
+	_s._units.clear()
+	var pu: Dictionary = _mk("fortune", "left", Vector2(-300.0, 0.0))
+	pu["atk"] = 100.0
+	pu["base_atk"] = 100.0
+	_equip(pu, "p2eq_090", 3)
+	_mk("fortune", "right", Vector2(-100.0, 0.0), 9.0e7)
+	_s._staff_syn.add_mana(pu, 999.0)
+	_ok("③L ★分母: 起跳了且排上了砸落", _arc()._slams.size() == 1 and bool(pu.get("airborne", false)),
+		"slams=%d airborne=%s" % [_arc()._slams.size(), str(pu.get("airborne", false))])
+	var _vy: float = float(pu.get("vy", 0.0))
+	var _kg: float = absf(float(pu.get("knock_g", 0.0)))
+	var t_land: float = (2.0 * _vy / _kg) if _kg > 0.0001 else -1.0
+	var t_slam: float = float((_arc()._slams[0] as Dictionary).get("t_left", -1.0)) 		if _arc()._slams.size() > 0 else -1.0
+	_ok("③L ★★砸击命中 = 角色**落地**那一刻: 落地时刻 2·vy/|g| ≡ 砸落倒计时",
+		t_land > 0.0 and absf(t_land - t_slam) < 0.02,
+		"落地 %.4f 秒 / 砸落 %.4f 秒(峰高 %.1f 米)" % [t_land, t_slam, EqArcaneBatch.PESTLE_APEX_M])
+	_s._units.clear()
+
 	_ok("③W 预警圈半径 SLAM_R_PX ≡ 伤害半径 PESTLE_RADIUS(旧版差九倍)",
 		absf(ArcaneEqVfx.SLAM_R_PX - EqArcaneBatch.PESTLE_RADIUS) < 1e-6,
 		"圈 %.0f / 伤害 %.0f" % [ArcaneEqVfx.SLAM_R_PX, EqArcaneBatch.PESTLE_RADIUS])
