@@ -138,7 +138,25 @@ const LEAP_TELE_R0 := 2.6            # 收势环起手是终了半径的这个�
 ##   (见文件头 —— 效果本体引演出层的 COL_*), 反向再引一次 const 会形成循环依赖、Godot 解析期就炸。
 ##   ⇒ 拿"门禁焊死"换"不循环依赖", 与 `BladeEqVfx.WAVE_SPD` 是同一条老路。
 const SLAM_R_PX := 1000.0
-const LEAP_APEX_M := 2.4
+## ★2026-08-08 用户「这个起跳不够高, 不够物理, 哪有这么快的跳」⇒ 与结算侧同步抬高。
+const LEAP_APEX_M := 7.0
+## ── 雷电预警圈(用户 2026-08-08:「我要做一个那种雷电圈预警的圈圈, 就是实际范围的」)
+## ★★**不是一张贴图**。用户原话「不要拿图片敷衍我」—— 一张静态贴图铺地上是拿素材替代演出。
+##   这里是**活的**: 圆周上的电弧每 WARN_REFRESH 秒整批重生, 各自带分形折角与分叉;
+##   圈内还有游走的雷雾。做法沿用 078 电鳗那套(分形折线 + 双层 + 分叉), 已经验证过。
+const WARN_ARCS := 22           ## 圆周上同时有几段电弧
+const WARN_REFRESH := 0.07      ## 多久整批重生一次(秒) —— 这就是"噼啪"的节奏
+const WARN_DEPTH := 3           ## 每段电弧的分形层数
+const WARN_ROUGH := 0.30        ## 分形粗糙度(相对弦长)
+const WARN_W_PX := 7.0          ## 电弧粗细(码)
+const WARN_CORE_W_PX := 2.6     ## 白热芯粗细(码)
+const WARN_MIST := 14           ## 圈内雷雾的条数
+const WARN_MIST_LEN := 46.0     ## 单条雷雾的长度(码)
+const WARN_MIST_A := 0.42       ## 雷雾透明度 —— 淡, 别盖住场上的单位
+## 阵营色: 己方蓝 / 敌方红(与血条描边 `info_panel` 的 #3fa9ff / #ff5a5a 同源)
+const WARN_Y := 0.06            ## 预警圈离地高度(米)
+const WARN_ALLY := Color(0.247, 0.663, 1.0)
+const WARN_FOE := Color(1.0, 0.353, 0.353)
 
 ## 贴地几何的离地高度(米) —— 高于地板顶面才不会被吞
 const GROUND_Y := 0.06
@@ -636,6 +654,65 @@ func talisman_transfer(from2d: Vector2, to2d: Vector2) -> Node3D:
 ##     · **落点预告环**: 半径从 1.18× 收到 1.0×(`telegraph_radius`), **收满即砸落**
 ##       ⇒ 提前告诉玩家"这一下要砸多大、什么时候砸"; 用的是 088 那张**硬边**网格,
 ##         因为它要表达的确实是一条边界。
+## 雷电预警圈的**一批**电弧(圆周分 WARN_ARCS 段, 每段一道分形电弧 + 白热芯 + 偶尔一根内指分叉)。
+## ★半径就是**真实砸落半径**, 不缩不涨 —— 用户:「预警环我不想要缩的, 要实际范围的」。
+##   旧版收拢到 `LEAP_WINDUP_PX = 110` 码, 而真正挨砸的是 1000 码, **差九倍**。
+func _warn_batch(root: Node3D, center: Vector2, radius_px: float, col: Color) -> void:
+	var rng: RandomNumberGenerator = battle._juice_rng
+	for i in range(WARN_ARCS):
+		var a0: float = TAU * float(i) / float(WARN_ARCS)
+		var a1: float = TAU * float(i + 1) / float(WARN_ARCS)
+		var p0: Vector2 = center + Vector2(cos(a0), sin(a0)) * radius_px
+		var p1: Vector2 = center + Vector2(cos(a1), sin(a1)) * radius_px
+		_arc_seg(root, p0, p1, col, WARN_W_PX, WARN_CORE_W_PX, rng)
+	# 圈内雷雾: 随机位置的短电弧, 淡一些 —— "整个预警范围内都有电"
+	for _k in range(WARN_MIST):
+		var ang: float = rng.randf() * TAU
+		var rr: float = radius_px * sqrt(rng.randf())        # 面积均匀(同 078 霰弹的 r=R√u)
+		var c2: Vector2 = center + Vector2(cos(ang), sin(ang)) * rr
+		var d2: Vector2 = Vector2(cos(rng.randf() * TAU), sin(rng.randf() * TAU))
+		_arc_seg(root, c2 - d2 * WARN_MIST_LEN * 0.5, c2 + d2 * WARN_MIST_LEN * 0.5,
+			Color(col.r, col.g, col.b, WARN_MIST_A), WARN_W_PX * 0.55, WARN_CORE_W_PX * 0.5, rng)
+
+
+## 一段分形电弧(身 + 白热芯), 挂到 root 下。★与 078 电鳗同一条做法。
+func _arc_seg(root: Node3D, a: Vector2, b: Vector2, col: Color,
+		w_px: float, core_px: float, rng: RandomNumberGenerator) -> void:
+	var pts: Array = [a, b]
+	var span: float = (b - a).length()
+	var dir: Vector2 = (b - a).normalized() if span > 0.001 else Vector2.RIGHT
+	var perp: Vector2 = Vector2(-dir.y, dir.x)
+	for lv in range(WARN_DEPTH):
+		var sig: float = span * WARN_ROUGH * pow(2.0, -0.5 * float(lv + 1))
+		var out: Array = [pts[0]]
+		for k in range(pts.size() - 1):
+			var mid: Vector2 = (Vector2(pts[k]) + Vector2(pts[k + 1])) * 0.5
+			out.append(mid + perp * sig * (rng.randf() * 2.0 - 1.0))
+			out.append(Vector2(pts[k + 1]))
+		pts = out
+	for k2 in range(pts.size() - 1):
+		_warn_band(root, pts[k2], pts[k2 + 1], w_px, Color(col.r, col.g, col.b, col.a * 0.85))
+		_warn_band(root, pts[k2], pts[k2 + 1], core_px, Color(1.0, 1.0, 1.0, col.a))
+
+
+## 一条贴地的细带(世界坐标顶点直接建 ⇒ 朝向由几何决定, 不靠 billboard)。
+func _warn_band(root: Node3D, a: Vector2, b: Vector2, half_w_px: float, col: Color) -> void:
+	var d: Vector2 = b - a
+	if d.length() < 0.001:
+		return
+	var p: Vector2 = Vector2(-d.y, d.x).normalized() * half_w_px * 0.5
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var v: Array = [battle._world_pos(a + p, WARN_Y), battle._world_pos(b + p, WARN_Y),
+		battle._world_pos(b - p, WARN_Y), battle._world_pos(a - p, WARN_Y)]
+	for idx in [0, 1, 2, 0, 2, 3]:
+		st.add_vertex(v[idx])
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = _mat(col, 11)
+	root.add_child(mi)
+
+
 func pestle_leap(u, sec: float) -> Node3D:
 	if not _has_world() or not (u is Dictionary):
 		return null
@@ -657,15 +734,20 @@ func pestle_leap(u, sec: float) -> Node3D:
 	sh.material_override = _mat(COL_WAVE, 8)
 	sh.scale = Vector3(LEAP_SHADOW_PX * 0.5 * float(battle.WS), 1.0, LEAP_SHADOW_PX * 0.5 * float(battle.WS))
 	root.add_child(sh)
-	# 落点预告环(硬边) —— 半径就是真实的砸落半径, 不是"贴片尺寸"
-	var tele := MeshInstance3D.new()
-	tele.mesh = _boundary_mesh()
-	tele.material_override = _mat_boundary(COL_SLAM)
-	var r0: float = telegraph_radius(0.0, LEAP_WINDUP_PX) * float(battle.WS)
-	tele.scale = Vector3(r0, 1.0, r0)
-	root.add_child(tele)
+	# ★★雷电预警圈(2026-08-08 重做)。旧版是一圈**收拢的硬边环**, 而且收拢到
+	#   `LEAP_WINDUP_PX = 110` 码 —— 真正挨砸的是 `SLAM_R_PX = 1000` 码, **差九倍**:
+	#   玩家读到"圈收到这么小 = 只有这一小圈挨砸", 站 300 码外照样吃 3ATK+5000 魔法+8 秒眩晕。
+	#   (节点上还 `set_meta("radius_px", SLAM_R_PX)` 写着 1000 ⇒ **元数据说 1000、画出来 110**,
+	#    门禁只验 meta 就抓不到 —— memory [[fb-write-without-reader-and-fake-gates]] 那一族。)
+	#   ⇒ 现在: **固定在真实半径、不缩**, 且是**活的电弧**(每 WARN_REFRESH 秒整批重生)。
+	var warn := Node3D.new()
+	warn.position = Vector3.ZERO
+	root.add_child(warn)
+	var side_col: Color = WARN_ALLY if str(battle._eff_side(u)) == "left" else WARN_FOE
+	_warn_batch(warn, pos2, SLAM_R_PX, side_col)
 	root.set_meta("radius_px", SLAM_R_PX)
-	_fx.append({"node": root, "unit": u, "col": col, "shadow": sh, "tele": tele,
+	_fx.append({"node": root, "unit": u, "col": col, "shadow": sh, "warn": warn,
+		"warn_col": side_col, "warn_t": 0.0,
 		"t": 0.0, "life": maxf(0.05, sec), "kind": "leap"})
 	return root
 
@@ -789,11 +871,20 @@ func tick(delta: float) -> void:
 				if is_instance_valid(lsh):
 					var ss: float = LEAP_SHADOW_PX * 0.5 * leap_shadow_scale(hm, LEAP_APEX_M) * float(battle.WS)
 					(lsh as Node3D).scale = Vector3(ss, 1.0, ss)
-				var lte = f.get("tele", null)
-				if is_instance_valid(lte):
-					var tr: float = telegraph_radius(q, LEAP_WINDUP_PX) * float(battle.WS)
-					(lte as Node3D).scale = Vector3(tr, 1.0, tr)
-					_set_alpha(lte, 0.30 + 0.55 * q)        # 越接近砸落越亮 ⇒ "要来了"
+				var lw = f.get("warn", null)
+				if is_instance_valid(lw):
+					# ★半径**不变**(就是真实砸落范围); "要来了"靠**电弧越来越密越来越亮**表达,
+					#   不靠缩圈 —— 缩圈会被读成"范围在变小", 那是假消息。
+					f["warn_t"] = float(f.get("warn_t", 0.0)) + delta
+					if float(f["warn_t"]) >= WARN_REFRESH:
+						f["warn_t"] = 0.0
+						for old_c in (lw as Node3D).get_children():
+							(old_c as Node).queue_free()
+						var wc: Color = f.get("warn_col", WARN_FOE)
+						var lu2 = f.get("unit", null)
+						var ctr: Vector2 = (lu2 as Dictionary)["pos"] if lu2 is Dictionary else Vector2.ZERO
+						_warn_batch(lw, ctr, SLAM_R_PX,
+							Color(wc.r, wc.g, wc.b, 0.45 + 0.55 * q))
 				if t >= life:
 					_free_fx(i)
 			_:

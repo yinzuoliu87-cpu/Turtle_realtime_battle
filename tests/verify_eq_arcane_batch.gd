@@ -656,12 +656,16 @@ func _t090_slam() -> void:
 
 	var h_in: float = inr["hp"]
 	var h_out: float = outr["hp"]
-	_feed(0.4)
-	_ok("③ 起跳后 0.4 秒还没砸下来(伤害没提前结算)",
+	# ★★滞空时长不写死 —— 拿 `pestle_jump_sec()` 本人算。
+	#   2026-08-08 起跳改成"先定峰高与重力、再推滞空"(用户「不够物理」),
+	#   T 从 0.6 变成 2√(2h/g)。写死的话调一次峰高就得改一次测试。
+	var T: float = EqArcaneBatch.pestle_jump_sec()
+	_feed(T * 0.65)
+	_ok("③ 起跳后滞空的 65%% 时还没砸下来(伤害没有提前结算)",
 		absf(float(inr["hp"]) - h_in) < 0.001 and _arc()._slams.size() == 1,
 		"hp 变化 %.1f" % (h_in - float(inr["hp"])))
-	_feed(0.3)
-	_ok("③ 0.6 秒落地 → 砸落结算", _arc()._slams.is_empty(),
+	_feed(T * 0.40)
+	_ok("③ %.2f 秒落地 → 砸落结算" % T, _arc()._slams.is_empty(),
 		"n=%d" % _arc()._slams.size())
 	## 3 ATK(=300) + 5000 = 5300, 干净目标 mr=0 ⇒ 倍率 1.0
 	var took: float = h_in - float(inr["hp"])
@@ -692,7 +696,7 @@ func _t090_slam() -> void:
 		var e2 := _mk("fortune", "right", Vector2(200, 0))
 		var h0: float = e2["hp"]
 		_s._equip_sys.fire_equip_effect(u2, "p2eq_090", int(cse[0]))
-		_feed(0.7)
+		_feed(EqArcaneBatch.pestle_jump_sec() + 0.1)   # ★等滞空走完(不写死)
 		var g2: int = int(h0 - float(e2["hp"]))
 		_ok("③ %d★ 猛砸 = 300 + %.0f" % [int(cse[0]), float(cse[1])],
 			g2 == int(300.0 + float(cse[1])), "实测 %d" % g2)
@@ -714,15 +718,36 @@ func _t090_mana_lock() -> void:
 	_ok("③ 法力满 → 经 add_mana 真的起跳了", _arc()._slams.size() == 1,
 		"n=%d" % _arc()._slams.size())
 	_ok("③ 起跳瞬间就锁住法力条", _arc().mana_locked(u, "p2eq_090"))
-	_feed(0.4)
+	_feed(EqArcaneBatch.pestle_jump_sec() * 0.55)   # ★半空中(滞空的一半多一点)
 	_s._staff_syn.add_mana(u, 10.0)
 	_feed(0.05, 0.05)
 	_ok("③ ★在【半空中】(伤害还没造成)法力条仍被压回 0",
 		absf(float(_st(u, "p2eq_090").get("mana", -1.0))) < 1e-6,
 		"mana=%.3f" % float(_st(u, "p2eq_090").get("mana", -1.0)))
 	_ok("③ ★分母: 这时确实还没砸下来", _arc()._slams.size() == 1, "n=%d" % _arc()._slams.size())
-	_feed(0.3)
+	_feed(EqArcaneBatch.pestle_jump_sec() * 0.55)   # ★再推到落地
 	_ok("③ ★造成伤害之后才解锁", not _arc().mana_locked(u, "p2eq_090"))
+
+	# ── ★★起跳物理(用户 2026-08-08:「不够高, 不够物理, 哪有这么快的跳」) ──
+	#   新口径是**先定峰高 h 与重力 g、再推滞空 T**(物理的因果方向),
+	#   而不是旧版"先定 T 再倒推 g"(h=2.4/T=0.6 ⇒ g=26.7 = 2.7 个地球重力)。
+	var _h: float = EqArcaneBatch.PESTLE_APEX_M
+	var _g: float = EqArcaneBatch.PESTLE_G
+	var _T: float = EqArcaneBatch.pestle_jump_sec()
+	_ok("③P 滞空 T ≡ 2√(2h/g)(不是写死的数)",
+		absf(_T - 2.0 * sqrt(2.0 * _h / _g)) < 1e-6, "T=%.4f h=%.1f g=%.1f" % [_T, _h, _g])
+	_ok("③P 峰高 = v₀²/(2g) ≡ h(起跳初速与峰高自洽)",
+		absf(pow(sqrt(2.0 * _g * _h), 2.0) / (2.0 * _g) - _h) < 1e-4, "h=%.3f" % _h)
+	_ok("③P 重力在地球重力的 1.5~3 倍内(旧版 26.7 = 2.7 倍但峰高只有 2.4 米 ⇒ 又矮又快)",
+		_g >= 14.7 and _g <= 29.4 and _h >= 5.0, "g=%.1f h=%.1f T=%.2f" % [_g, _h, _T])
+
+	# ── ★★雷电预警圈的半径 ≡ 真实砸落半径 ──
+	#   旧版预告环收拢到 `LEAP_WINDUP_PX = 110` 码, 而真正挨砸的是 1000 码 —— **差九倍**,
+	#   而且节点上的 meta 写的是 1000(元数据说 1000、画出来 110) ⇒ 只验 meta 抓不到。
+	#   这一条直接钉**两个常量相等**, 哪天又拆开就红。
+	_ok("③W 预警圈半径 SLAM_R_PX ≡ 伤害半径 PESTLE_RADIUS(旧版差九倍)",
+		absf(ArcaneEqVfx.SLAM_R_PX - EqArcaneBatch.PESTLE_RADIUS) < 1e-6,
+		"圈 %.0f / 伤害 %.0f" % [ArcaneEqVfx.SLAM_R_PX, EqArcaneBatch.PESTLE_RADIUS])
 	_s._staff_syn.add_mana(u, 10.0)
 	_feed(0.05, 0.05)
 	_ok("③ ★解锁后法力条恢复增长(灌 10 就是 10)",

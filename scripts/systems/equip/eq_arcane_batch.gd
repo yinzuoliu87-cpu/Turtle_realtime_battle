@@ -111,8 +111,15 @@ const TALISMAN_MR_PER_TICK := 1.0
 ## 090: 猛砸半径(码) / ATK 系数 / 起跳到砸落(秒) / 起跳峰高(米) / 击飞滞空(秒) / 几次普攻一发浪潮
 const PESTLE_RADIUS := 1000.0
 const PESTLE_ATK_SCALE := 3.0
-const PESTLE_JUMP_SEC := 0.6
-const PESTLE_APEX_M := 2.4
+## ★★2026-08-08 用户:「这个起跳不够高, 不够物理, 哪有这么快的跳」。
+##   旧版是 h=2.4 米 / T=0.6 秒, **反推出来的重力是 −26.7 m/s² ≈ 2.7 个地球重力**
+##   —— 又矮又快, 像被弹簧弹了一下, 不像"跳起来再砸下去"。
+##   ⇒ 改成**先定峰高与重力、再推滞空**(物理的因果方向), 而不是先定时间再倒推重力。
+const PESTLE_APEX_M := 7.0      ## 峰高(米)。龟高约 2 米 ⇒ 跳三个半身位
+const PESTLE_G := 20.0          ## 下坠重力(米/秒²)。地球 9.8; 游戏里惯用约 2 倍让落地有分量
+## 滞空 T = 2√(2h/g)。★不写死: 改 h 或 g, T 自动跟着走(门禁验这条关系)
+static func pestle_jump_sec() -> float:
+	return 2.0 * sqrt(2.0 * PESTLE_APEX_M / PESTLE_G)
 const PESTLE_KB_SEC := 1.0
 const PESTLE_EVERY := 3
 
@@ -530,17 +537,17 @@ func _pestle_leap(u: Dictionary, si: int) -> void:
 	stt["pestle_leaps"] = int(stt.get("pestle_leaps", 0)) + 1   # 同步触发证据(门禁数它)
 	u["eq_state"]["p2eq_090"] = stt
 	_mana_lock(u, "p2eq_090")                        # ★砸出伤害之前, 法力条不增长
-	_slams.append({"u": u, "si": si, "flat": flat, "stun": stun, "t_left": PESTLE_JUMP_SEC})
+	_slams.append({"u": u, "si": si, "flat": flat, "stun": stun, "t_left": pestle_jump_sec()})
 	## 起跳: 直接写击飞物理字段, 由主循环那段 airborne 积分抛起再落回(不用 tween)。
 	## 峰高 h 与滞空 T 解耦: vy = 2h/T, g = −4h/T² ⇒ 落地时刻恰好 = T = 砸落时刻。
 	if not u.get("airborne", false):
 		u["airborne"] = true
-		u["vy"] = 2.0 * PESTLE_APEX_M / PESTLE_JUMP_SEC
+		u["vy"] = sqrt(2.0 * PESTLE_G * PESTLE_APEX_M)   # v₀ = √(2gh)
 		u["vx"] = 0.0
 		u["vz"] = 0.0
-		u["knock_g"] = -4.0 * PESTLE_APEX_M / (PESTLE_JUMP_SEC * PESTLE_JUMP_SEC)
+		u["knock_g"] = -PESTLE_G                          # 重力是**给定的**, 不是倒推的
 	if vfx != null:
-		vfx.pestle_leap(u, PESTLE_JUMP_SEC)
+		vfx.pestle_leap(u, pestle_jump_sec())
 
 
 ## 在途猛砸的倒计时。携带者中途死了就丢掉这条(并解锁, 免得留一把锁在尸体上)。
