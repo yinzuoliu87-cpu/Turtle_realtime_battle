@@ -86,11 +86,15 @@ const REFLECT_W := 14.0
 ##   遮住颜色就完全分不出(用户:「撞形状比撞色更要命」)。
 ##   贝壳弧是**离散的、带肋的扇形**, 剪影上与任何直条/圆环都不同。
 const REFLECT_SHELLS := 5
+## 相邻两枚贝壳点亮的间隔(秒) —— 让整串读成"从自己弹向攻击者", 而不是一次糊上去
+const REFLECT_STAGGER := 0.035
 ## 单枚贝壳弧的尺寸(码)
 const SHELL_PX := 54.0
 ## 贝壳弧的离地高度(米)。★不能用 `u["height"]` —— 那是**击飞高度**, 常态恒为 0,
 ##   于是整串贝壳贴在地面被影子和飘字压住(第一版实拍就是这样)。
 const SHELL_Y := 0.80
+## 贝壳弧取立绘高度的哪一成 —— 护心甲在胸口
+const SHELL_FRAC := 0.42
 
 ## ③ 083 层数辉光: 20 层归一。ln(1+20) = 3.0445224377234230(字面量 —— GDScript 的 const
 ##   表达式不接受内建函数调用, 同 BowEqVfx.GOLDEN_ANGLE 那条注释)。
@@ -425,6 +429,7 @@ func _quad_along(a2: Vector2, b2: Vector2, half_w: float, y_m: float,
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	mat.no_depth_test = true
 	mat.render_priority = 8
+	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 同 _board/_ground: 别糊
 	mat.albedo_texture = tex
 	mat.albedo_color = col
 	mi.material_override = mat
@@ -513,7 +518,7 @@ func guard_block(u: Dictionary) -> void:
 ##   那条在 gun_eq_vfx, 这是 blade_eq_vfx; 两层各自独立注入, 跨层调用会把演出层耦死。
 const CHG_W_PX := 56.0          ## 条宽(码)
 const CHG_H_PX := 8.0           ## 条高(码)
-const CHG_UP_M := 0.55          ## 挂在单位立绘顶上方多少米
+const CHG_UP_M := 0.34          ## 摆在头顶锚点(血条那个)再往上多少米 —— 不压血条
 const CHG_BG := Color(0.06, 0.10, 0.06, 0.72)
 const CHG_FILL := Color(0.55, 0.95, 0.42, 0.95)
 const CHG_FULL := Color(1.0, 0.96, 0.55, 1.0)   ## 快满了转暖 —— "要举盾了"提前读得到
@@ -521,7 +526,10 @@ const CHG_FULL := Color(1.0, 0.96, 0.55, 1.0)   ## 快满了转暖 —— "要�
 var _charges: Array = []        ## [{u, bg, fill}]
 
 ## `frac` = 已充能 / 需求。`frac < 0` = 撤掉这条(举盾期间不计充能, 条就不该在)。
-func guard_charge(u: Dictionary, frac: float) -> void:
+## `pips` = 手上已攒【几层】(082 用; 081 只有一条条没有层, 传 0)。
+## ★★一份实现两件共用(081 举盾充能 / 082 护心充能) —— 不各写一份。
+##   "手抄的副本必然落后": 条的挂高、左端生长、颜色阈值改一次就得改两处。
+func charge_bar(u: Dictionary, frac: float, col: Color = CHG_FILL, pips: int = 0) -> void:
 	if not _has_world() or not (u is Dictionary):
 		return
 	var slot = null
@@ -535,6 +543,9 @@ func guard_charge(u: Dictionary, frac: float) -> void:
 				var n = slot.get(k, null)
 				if n != null and is_instance_valid(n):
 					n.queue_free()
+			for pn in (slot.get("pips", []) as Array):
+				if is_instance_valid(pn):
+					(pn as Node).queue_free()
 			_charges.erase(slot)
 		return
 	if slot == null:
@@ -544,6 +555,7 @@ func guard_charge(u: Dictionary, frac: float) -> void:
 		_adopt(fl, "guard_chg")
 		slot = {"u": u, "bg": bg, "fill": fl}
 		_charges.append(slot)
+	_sync_pips(slot, u, pips, col)
 	var f: float = clampf(frac, 0.0, 1.0)
 	var top: float = guard_bar_h(u)   # ★已含击飞高度(sprite_h 里加过), 不能再加一遍
 	var base: Vector3 = battle._world_pos(Vector2(u["pos"]), top)
@@ -555,13 +567,50 @@ func guard_charge(u: Dictionary, frac: float) -> void:
 	var half: float = bg2.pixel_size * float(bg2.texture.get_width()) * 0.5
 	fl2.position = base + Vector3(-half * (1.0 - f), 0.0, 0.0)
 	fl2.scale = Vector3(maxf(0.02, f), CHG_H_PX / CHG_W_PX * 0.72, 1.0)
-	fl2.modulate = CHG_FILL.lerp(CHG_FULL, clampf((f - 0.7) / 0.3, 0.0, 1.0))
+	fl2.modulate = col.lerp(CHG_FULL, clampf((f - 0.7) / 0.3, 0.0, 1.0))
 
 
-## 条的**绝对**离地高度(米) = 立绘顶端 + CHG_UP_M。★纯函数, 门禁直接验(不用等演出建出来)。
-## `sprite_h(u, 1.0)` 已经把击飞高度 `u["height"]` 算进去了 —— 调用方不要再加一遍。
+## 层数指示格: 一层一格, 摆在条的**上方**。★这是"我手上有几层"的唯一读出口 ——
+## 082 的普攻要消耗一层, 玩家读不到层数就不知道下一下普攻会不会触发。
+const PIP_PX := 9.0             ## 单格宽(码)
+const PIP_GAP_PX := 4.0
+const PIP_UP_M := 0.16          ## 格子摆在条上方多少米
+const PIP_MAX := 6              ## 最多画几格(再多就只是"很多层", 不必逐个画)
+
+func _sync_pips(slot: Dictionary, u: Dictionary, want: int, col: Color) -> void:
+	var pips: Array = slot.get("pips", [])
+	var n: int = clampi(want, 0, PIP_MAX)
+	while pips.size() > n:
+		var d = pips.pop_back()
+		if is_instance_valid(d):
+			(d as Node).queue_free()
+	while pips.size() < n:
+		var s2 := _board(VfxTex._make_pixel_block_tex(), u["pos"], 0.0, PIP_PX, col, 10)
+		_adopt(s2, "guard_pip")
+		pips.append(s2)
+	slot["pips"] = pips
+	if n <= 0:
+		return
+	var y: float = guard_bar_h(u) + PIP_UP_M
+	var step: float = (PIP_PX + PIP_GAP_PX)
+	var x0: float = -(step * float(n - 1)) * 0.5
+	for i in range(n):
+		var sp: Sprite3D = pips[i]
+		sp.position = battle._world_pos(Vector2(u["pos"]) + Vector2(x0 + step * float(i), 0.0), y)
+		sp.modulate = CHG_FULL
+
+
+## 条的**绝对**离地高度(米)。★纯函数, 门禁直接验(不用等演出建出来)。
+##
+## ★★用**本项目已有的头顶锚点** `bar_head_h`(血条就是按它定位的, 见 battle_render:484,
+##   大单位如海盗船会覆写它抬高) —— 不自己从立绘尺寸另算一个。
+##   第一版我写的是 `sprite_h(u, 1.0) + 0.55`, 实拍出来**条压在龟壳上**:
+##   自己造的锚点和全场血条用的那个不是一回事, 一造就偏。这正是"手抄的副本必然落后"。
+const BAR_HEAD_DEFAULT := 2.4   # 与 battle_render 里那行的缺省值同源
 static func guard_bar_h(u) -> float:
-	return GunEqVfx.sprite_h(u, 1.0) + CHG_UP_M
+	if u is Dictionary:
+		return float((u as Dictionary).get("height", 0.0)) 			+ float((u as Dictionary).get("bar_head_h", BAR_HEAD_DEFAULT)) + CHG_UP_M
+	return BAR_HEAD_DEFAULT + CHG_UP_M
 
 
 # ── 082 护心反伤 ────────────────────────────────────────────────────
@@ -582,7 +631,8 @@ func clam_reflect(u: Dictionary, src) -> int:
 	var inten: float = reflect_intensity(d, REFLECT_D0)
 	var dir: Vector2 = (b - a)
 	dir = dir.normalized() if dir.length() > 0.01 else Vector2.RIGHT
-	var h: float = SHELL_Y + float(u.get("height", 0.0))
+	# ★护心甲在**胸口**, 按携带者立绘取(0.42), 不再写死 0.80 —— 立绘一换尺寸写死的米数就错
+	var h: float = GunEqVfx.sprite_h(u, SHELL_FRAC)
 	for i in range(REFLECT_SHELLS):
 		var f: float = float(i) / float(maxi(1, REFLECT_SHELLS - 1))
 		var sz: float = SHELL_PX * (0.72 + 0.5 * f)
@@ -594,7 +644,14 @@ func clam_reflect(u: Dictionary, src) -> int:
 		if mi == null:
 			continue
 		_adopt(mi, "reflect")
-		_fx.append({"node": mi, "t": 0.0, "life": 0.18 + 0.05 * f, "kind": "fade"})
+		# ★★2026-08-08 实拍(_vfxlab_p2eq_082_2.png)量了像素后两处改:
+		#   ① **暗**: 主体只有 RGB(28~42, 35~53, 39~55), 地板是 (9,10,16) —— 几乎和背景一样。
+		#      根因同 078 霰弹/079 治疗束: `fade` 从出生就线性收 alpha, 半程只剩一半亮。
+		#      ⇒ 走 "holdfade"(前 70% 满亮)。
+		#   ② **静**: 5 枚贝壳同时出现在路径上, 读不出"从护心甲弹向攻击者"这个方向。
+		#      ⇒ 逐枚延迟 REFLECT_STAGGER 秒点亮 ⇒ 一串从自己流向对方的弧。
+		_fx.append({"node": mi, "t": -REFLECT_STAGGER * float(i), "life": 0.18 + 0.05 * f,
+			"kind": "holdfade", "a0": (0.55 + 0.45 * inten) * (0.60 + 0.40 * f)})
 	return REFLECT_SHELLS
 
 
@@ -725,6 +782,15 @@ func tick(delta: float) -> void:
 				var p: Vector2 = wave_pos(f["org"], f["dir"], float(f["t"]))
 				(n as Sprite3D).position = battle._world_pos(p, float(f["h"]))
 				_set_a(n, 1.0 - x * x)
+			"holdfade":
+				# ★前 70% 满亮, 最后 30% 才收 —— 线性淡出会让效果大半辈子处在半亮以下,
+				#   实拍量到贝壳弧主体只有 RGB(42,53,55) 而地板是 (9,10,16)。
+				# ★`t` 可以是**负数**(逐枚错开点亮): 还没轮到就完全不画,
+				#   否则 x 被 clampf 钳在 0 ⇒ alpha 满 ⇒ 5 枚还是一次糊上去, 错开等于没做。
+				if float(f["t"]) < 0.0:
+					_set_a(n, 0.0)
+				else:
+					_set_a(n, float(f.get("a0", 1.0)) * clampf((1.0 - x) / 0.30, 0.0, 1.0))
 			_:
 				# ★不能再假设"全是 Sprite3D" —— 082 的贝壳弧是 MeshInstance3D(要真朝向)
 				_set_a(n, 1.0 - x)

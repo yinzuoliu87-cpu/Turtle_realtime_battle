@@ -291,7 +291,7 @@ func _damaged081(u: Dictionary, dmg: float) -> void:
 		return
 	# ★★头顶充能条: 这件装备的**身份就是它**(累计挨够 40/35/30% 最大生命才举盾),
 	#   而实拍确认画面上一点都看不见 ⇒ 举盾看起来像随机发生的。
-	vfx.guard_charge(u, float(st["charge"]) / maxf(1.0, need))
+	vfx.charge_bar(u, float(st["charge"]) / maxf(1.0, need))
 
 
 ## 举盾。★同步入口, 门禁直接调 —— 不依赖任何演出 tween 跑完(CLAUDE.md §3.5)。
@@ -311,7 +311,7 @@ func _b81_raise(u: Dictionary, sx: int) -> void:
 	battle._damage._grant_shield(u, [60.0, 100.0, 160.0][sx])
 	battle._cur_eq_item = prev
 	vfx.guard_raise(u)
-	vfx.guard_charge(u, -1.0)      # 举盾期间不计充能 ⇒ 条也不该在
+	vfx.charge_bar(u, -1.0)      # 举盾期间不计充能 ⇒ 条也不该在
 	# ★★这里【绝不加攻速惩罚】: 用户 2026-08-06 最终拍板"举盾不扣攻速"。
 	#   方案书 §0.5 记了这条方向翻转过两次(固定0.5/秒 → 降70% → 不扣), 两版都是"惩罚谁"的结构问题,
 	#   不是数值大小问题。门禁 verify_eq_blade_batch 有一条专门验举盾前后 aspd_perm/atk_interval 不变。
@@ -334,9 +334,9 @@ func _b81_lower(u: Dictionary, show_vfx: bool = true) -> void:
 		u["eq_state"]["p2eq_081"] = st
 	vfx.guard_lower(u, show_vfx)
 	if u.get("alive", false):
-		vfx.guard_charge(u, 0.0)   # 「举盾结束后重新开始计数」—— 条也从头开始
+		vfx.charge_bar(u, 0.0)   # 「举盾结束后重新开始计数」—— 条也从头开始
 	else:
-		vfx.guard_charge(u, -1.0)  # 死了就拔掉(否则条会挂在尸体头上)
+		vfx.charge_bar(u, -1.0)  # 死了就拔掉(否则条会挂在尸体头上)
 
 
 func _t081(u: Dictionary, _delta: float) -> void:
@@ -361,6 +361,8 @@ func b81_guarding(u: Dictionary) -> bool:
 #    ✅ 用户 2026-08-06:「不算, 独立, 不触发」= DoT 每跳不算 / 多段各段独立 / 反伤不触发对方反伤
 # ══════════════════════════════════════════════════════════════════════
 const CLAM_PER_CHARGE := 15   # 每反伤 15 次攒一层(规格是单值不是三元组, 不随星级变)
+## 082 充能条的颜色(青白) —— 与 081 的藤绿分得开, 同屏两件同带时读得出是哪一条
+const CLAM_BAR_COL := Color(0.62, 0.95, 0.90, 0.95)
 
 
 func _spawn082(u: Dictionary, si: int) -> void:
@@ -395,6 +397,11 @@ func _damaged082(u: Dictionary, src) -> void:
 		st["charges"] = int(st.get("charges", 0)) + 1
 	u["eq_state"]["p2eq_082"] = st
 	vfx.clam_reflect(u, src)
+	# ★★头顶充能条 + 层数格。这件的核心资源是"攒了几层"(普攻消耗一层才回血+附魔伤),
+	#   而实拍确认画面上**层数与进度都读不出来** ⇒ 玩家不知道下一下普攻会不会触发。
+	#   与 081 共用同一个 `charge_bar`(一份实现两件用), 只换颜色以示区分。
+	vfx.charge_bar(u, float(st.get("refl_n", 0)) / float(CLAM_PER_CHARGE),
+		CLAM_BAR_COL, int(st.get("charges", 0)))
 
 
 ## 普攻消耗一层充能: 回复 5/7/10% 最大生命 + 附带 100% 魔抗的魔法伤害。
@@ -409,6 +416,8 @@ func _basic082(u: Dictionary, tgt) -> void:
 	st["charges"] = int(st["charges"]) - 1
 	st["spent"] = int(st.get("spent", 0)) + 1    # 同步触发证据
 	u["eq_state"]["p2eq_082"] = st
+	vfx.charge_bar(u, float(st.get("refl_n", 0)) / float(CLAM_PER_CHARGE),
+		CLAM_BAR_COL, int(st.get("charges", 0)))   # 消耗掉的那一格要立刻消失
 	var sx: int = int(u.get("_b82_si", 0))
 	var prev = battle._cur_eq_item
 	battle._cur_eq_item = "p2eq_082"             # 盾类装备的治疗 → 盾羁绊 9 档转 20% 圣光盾
