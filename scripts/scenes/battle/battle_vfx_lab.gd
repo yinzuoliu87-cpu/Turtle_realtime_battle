@@ -284,8 +284,29 @@ func _build_grid() -> void:
 ## 默认: 整个 `_ui_layer` 直接 `visible=false` —— 血条/徽章/PK 条/按钮/队伍面板/飘字全没。
 ## `VFXLAB_TEXT=1`: 层留着(飘字要它), 改成**逐个藏**已有的 UI, 每帧还要压一次(见 _process)。
 ## ★"关的方式要可靠" = 不是把它们移出屏幕, 是真的不显示。
+## ★`cfg["ui"] = true` / `VFXLAB_UI=1`: **保留 UI 层**。
+##   由来(2026-08-08 用户:「充能条和层数不要放头顶, 在装备图标框里」):
+##   充能进度与层数的正规出口是**头像下的装备格**(PANEL_CHARGE / PANEL_COUNT),
+##   那是 UI。台子默认把 UI 全关(黑场只留特效), 于是这两件装备的核心读数
+##   **在台子上永远看不到** —— 台子的判据反而挡住了要评审的东西。
 func _hide_ui_once() -> void:
 	if battle._ui_layer == null or not is_instance_valid(battle._ui_layer):
+		return
+	if bool(cfg.get("ui", false)) or OS.has_environment("VFXLAB_UI"):
+		# ★不是"整层 UI 全开" —— 那样 VS 条/血条/飘字全回来了, 台子就不是干净黑场。
+		#   只留**队伍面板**(装备图标框在它里面)。
+		# ★★做法是【整层关掉 + 把面板搬到独立层】, 不是"逐个隐藏其余子节点":
+		#   本函数只跑一次, 而单位血条/伤害飘字是**之后**才挂进 _ui_layer 的 ——
+		#   逐个隐藏漏得掉它们(第一版实拍里血条和飘字确实还在)。整层 visible=false 才管得住后来的。
+		battle._ui_layer.visible = false
+		var keep := CanvasLayer.new()
+		keep.name = "VFXLabKeepUI"
+		keep.layer = battle._ui_layer.layer + 1
+		battle.add_child(keep)
+		for pn in [battle._team_panel_left, battle._team_panel_right]:
+			if pn != null and is_instance_valid(pn) and pn.get_parent() != null:
+				pn.get_parent().remove_child(pn)
+				keep.add_child(pn)
 		return
 	if not _text_on:
 		battle._ui_layer.visible = false

@@ -88,6 +88,10 @@ const REFLECT_W := 14.0
 const REFLECT_SHELLS := 5
 ## 相邻两枚贝壳点亮的间隔(秒) —— 让整串读成"从自己弹向攻击者", 而不是一次糊上去
 const REFLECT_STAGGER := 0.035
+## 强化普攻的"回血上涌": 几片贝壳白光 / 上涌多少米 / 相邻两片错开多久
+const HEAL_MOTES := 3
+const HEAL_RISE_M := 0.85
+const HEAL_MOTE_GAP := 0.055
 ## 单枚贝壳弧的尺寸(码)
 const SHELL_PX := 54.0
 ## 贝壳弧的离地高度(米)。★不能用 `u["height"]` —— 那是**击飞高度**, 常态恒为 0,
@@ -516,89 +520,10 @@ func guard_block(u: Dictionary) -> void:
 ##   于是举盾看起来像随机发生的。⇒ 头顶给一条真的条。
 ## 与 079 的金弹条同一套做法(背景条 + 填充条 + 每帧写位置), 但**不共用代码**:
 ##   那条在 gun_eq_vfx, 这是 blade_eq_vfx; 两层各自独立注入, 跨层调用会把演出层耦死。
-const CHG_W_PX := 56.0          ## 条宽(码)
-const CHG_H_PX := 8.0           ## 条高(码)
-const CHG_UP_M := 0.34          ## 摆在头顶锚点(血条那个)再往上多少米 —— 不压血条
-const CHG_BG := Color(0.06, 0.10, 0.06, 0.72)
-const CHG_FILL := Color(0.55, 0.95, 0.42, 0.95)
-const CHG_FULL := Color(1.0, 0.96, 0.55, 1.0)   ## 快满了转暖 —— "要举盾了"提前读得到
-
-var _charges: Array = []        ## [{u, bg, fill}]
-
-## `frac` = 已充能 / 需求。`frac < 0` = 撤掉这条(举盾期间不计充能, 条就不该在)。
-## `pips` = 手上已攒【几层】(082 用; 081 只有一条条没有层, 传 0)。
-## ★★一份实现两件共用(081 举盾充能 / 082 护心充能) —— 不各写一份。
-##   "手抄的副本必然落后": 条的挂高、左端生长、颜色阈值改一次就得改两处。
-func charge_bar(u: Dictionary, frac: float, col: Color = CHG_FILL, pips: int = 0) -> void:
-	if not _has_world() or not (u is Dictionary):
-		return
-	var slot = null
-	for c in _charges:
-		if is_same(c["u"], u):
-			slot = c
-			break
-	if frac < 0.0:
-		if slot != null:
-			for k in ["bg", "fill"]:
-				var n = slot.get(k, null)
-				if n != null and is_instance_valid(n):
-					n.queue_free()
-			for pn in (slot.get("pips", []) as Array):
-				if is_instance_valid(pn):
-					(pn as Node).queue_free()
-			_charges.erase(slot)
-		return
-	if slot == null:
-		var bg := _board(VfxTex._make_pixel_block_tex(), u["pos"], 0.0, CHG_W_PX, CHG_BG, 8)
-		var fl := _board(VfxTex._make_pixel_block_tex(), u["pos"], 0.0, CHG_W_PX, CHG_FILL, 9)
-		_adopt(bg, "guard_chg")
-		_adopt(fl, "guard_chg")
-		slot = {"u": u, "bg": bg, "fill": fl}
-		_charges.append(slot)
-	_sync_pips(slot, u, pips, col)
-	var f: float = clampf(frac, 0.0, 1.0)
-	var top: float = guard_bar_h(u)   # ★已含击飞高度(sprite_h 里加过), 不能再加一遍
-	var base: Vector3 = battle._world_pos(Vector2(u["pos"]), top)
-	var bg2: Sprite3D = slot["bg"]
-	var fl2: Sprite3D = slot["fill"]
-	bg2.position = base
-	bg2.scale = Vector3(1.0, CHG_H_PX / CHG_W_PX, 1.0)
-	# 填充条从**左端**长出去: 缩 x 的同时把中心往左挪半个缺口(否则是"从中间往两边长")
-	var half: float = bg2.pixel_size * float(bg2.texture.get_width()) * 0.5
-	fl2.position = base + Vector3(-half * (1.0 - f), 0.0, 0.0)
-	fl2.scale = Vector3(maxf(0.02, f), CHG_H_PX / CHG_W_PX * 0.72, 1.0)
-	fl2.modulate = col.lerp(CHG_FULL, clampf((f - 0.7) / 0.3, 0.0, 1.0))
 
 
 ## 层数指示格: 一层一格, 摆在条的**上方**。★这是"我手上有几层"的唯一读出口 ——
 ## 082 的普攻要消耗一层, 玩家读不到层数就不知道下一下普攻会不会触发。
-const PIP_PX := 9.0             ## 单格宽(码)
-const PIP_GAP_PX := 4.0
-const PIP_UP_M := 0.16          ## 格子摆在条上方多少米
-const PIP_MAX := 6              ## 最多画几格(再多就只是"很多层", 不必逐个画)
-
-func _sync_pips(slot: Dictionary, u: Dictionary, want: int, col: Color) -> void:
-	var pips: Array = slot.get("pips", [])
-	var n: int = clampi(want, 0, PIP_MAX)
-	while pips.size() > n:
-		var d = pips.pop_back()
-		if is_instance_valid(d):
-			(d as Node).queue_free()
-	while pips.size() < n:
-		var s2 := _board(VfxTex._make_pixel_block_tex(), u["pos"], 0.0, PIP_PX, col, 10)
-		_adopt(s2, "guard_pip")
-		pips.append(s2)
-	slot["pips"] = pips
-	if n <= 0:
-		return
-	var y: float = guard_bar_h(u) + PIP_UP_M
-	var step: float = (PIP_PX + PIP_GAP_PX)
-	var x0: float = -(step * float(n - 1)) * 0.5
-	for i in range(n):
-		var sp: Sprite3D = pips[i]
-		sp.position = battle._world_pos(Vector2(u["pos"]) + Vector2(x0 + step * float(i), 0.0), y)
-		sp.modulate = CHG_FULL
-
 
 ## 条的**绝对**离地高度(米)。★纯函数, 门禁直接验(不用等演出建出来)。
 ##
@@ -606,13 +531,6 @@ func _sync_pips(slot: Dictionary, u: Dictionary, want: int, col: Color) -> void:
 ##   大单位如海盗船会覆写它抬高) —— 不自己从立绘尺寸另算一个。
 ##   第一版我写的是 `sprite_h(u, 1.0) + 0.55`, 实拍出来**条压在龟壳上**:
 ##   自己造的锚点和全场血条用的那个不是一回事, 一造就偏。这正是"手抄的副本必然落后"。
-const BAR_HEAD_DEFAULT := 2.4   # 与 battle_render 里那行的缺省值同源
-static func guard_bar_h(u) -> float:
-	if u is Dictionary:
-		return float((u as Dictionary).get("height", 0.0)) 			+ float((u as Dictionary).get("bar_head_h", BAR_HEAD_DEFAULT)) + CHG_UP_M
-	return BAR_HEAD_DEFAULT + CHG_UP_M
-
-
 # ── 082 护心反伤 ────────────────────────────────────────────────────
 
 ## 反伤: 从携带者【弹回】攻击者的一串贝壳弧, 亮度按平方反比。返回铺了几枚(门禁分母)。
@@ -652,6 +570,23 @@ func clam_reflect(u: Dictionary, src) -> int:
 		#      ⇒ 逐枚延迟 REFLECT_STAGGER 秒点亮 ⇒ 一串从自己流向对方的弧。
 		_fx.append({"node": mi, "t": -REFLECT_STAGGER * float(i), "life": 0.18 + 0.05 * f,
 			"kind": "holdfade", "a0": (0.55 + 0.45 * inten) * (0.60 + 0.40 * f)})
+	# ★★2026-08-08 用户:「不应该是敌人身上有个攻击发出后回到自身的感觉吗」——
+	#   旧版**只有中间那串贝壳弧**, 两头都没有事情发生 ⇒ 读成"我朝你扔了点东西",
+	#   而不是"你打我这一下被甲弹回你自己身上"。⇒ 补两头:
+	#     ① 出发端: 护心甲(胸口)一记**格挡白闪** = 这一下被甲挡住了
+	#     ② 到达端: 攻击者**身体中段**一记贝壳撞击 = 弹回去打在你自己身上
+	#   ②【延后到贝壳串走完才炸】—— 靠负的 t(holdfade 分支显式判 t<0 才不画)。
+	var flash := _board(shell_tex(), a, h, SHELL_PX * 0.9, Color(1.0, 1.0, 0.95, 0.95), 9)
+	_adopt(flash, "reflect")
+	_fx.append({"node": flash, "t": 0.0, "life": 0.14, "kind": "holdfade", "a0": 0.95})
+	var lag: float = REFLECT_STAGGER * float(REFLECT_SHELLS)
+	var hb: float = GunEqVfx.body_mid_h(src)
+	var pop := _board(shell_tex(), b, hb, SHELL_PX * 1.15, Color(0.72, 1.0, 0.92, 1.0), 9)
+	_adopt(pop, "reflect")
+	_fx.append({"node": pop, "t": -lag, "life": 0.20, "kind": "holdfade", "a0": 1.0})
+	var rip := _ground(VfxTex._make_thin_ring_tex(), b, 44.0, Color(0.72, 1.0, 0.92, 0.85), 5)
+	_adopt(rip, "reflect")
+	_fx.append({"node": rip, "t": -lag, "life": 0.26, "kind": "grow", "d0": 44.0, "d1": 96.0})
 	return REFLECT_SHELLS
 
 
@@ -659,10 +594,30 @@ func clam_reflect(u: Dictionary, src) -> int:
 func clam_burst(u: Dictionary, tgt) -> void:
 	if not _has_world():
 		return
-	var r1 := _ground(VfxTex._make_thin_ring_tex(), u["pos"], 120.0, Color(0.85, 0.98, 0.95, 0.9), 5)
+	# ★★2026-08-08 用户:「强化普攻也没特效吗」—— 旧版就是**两个贴地细圆环**,
+	#   而本文件自己的注释早就写着"平滑细圆环全场到处都是(命中环/技能环/目标环)"
+	#   ⇒ 遮住颜色就完全分不出, 等于没有特效。这一发要读出**两件事**:
+	#     ① 我回了一大口血(5/7/10% 最大生命)  ② 你吃了一记等同我魔抗的魔法伤害
+	#   ⇒ ① 用**上涌的贝壳白光**(向上走的才读作治疗, 贴地环读不出);
+	#     ② 用**贝壳撞击**砸在目标身体中段(与反伤同一族剪影 ⇒ 一眼认得出是这件装备)。
+	var ch: float = GunEqVfx.sprite_h(u, SHELL_FRAC)
+	var r1 := _ground(VfxTex._make_thin_ring_tex(), u["pos"], 96.0, Color(0.85, 0.98, 0.95, 0.9), 5)
 	_adopt(r1, "clam_burst")
-	_fx.append({"node": r1, "t": 0.0, "life": 0.3, "kind": "grow", "d0": 120.0, "d1": 190.0})
+	_fx.append({"node": r1, "t": 0.0, "life": 0.3, "kind": "grow", "d0": 96.0, "d1": 168.0})
+	# 回血: 三片贝壳白光**依次上涌**(错开点亮 ⇒ 有流向, 不是一团糊上去)
+	for i in range(HEAL_MOTES):
+		var f: float = float(i) / float(maxi(1, HEAL_MOTES - 1))
+		var mo := _board(shell_tex(), u["pos"], ch + HEAL_RISE_M * f,
+			SHELL_PX * (0.55 - 0.16 * f), Color(0.90, 1.0, 0.96, 0.95), 9)
+		_adopt(mo, "clam_burst")
+		_fx.append({"node": mo, "t": -HEAL_MOTE_GAP * float(i), "life": 0.30,
+			"kind": "holdfade", "a0": 0.95})
 	if tgt is Dictionary:
+		var th: float = GunEqVfx.body_mid_h(tgt)
+		var hit := _board(shell_tex(), (tgt as Dictionary)["pos"], th, SHELL_PX * 1.35,
+			Color(0.55, 0.92, 1.0, 1.0), 9)
+		_adopt(hit, "clam_burst")
+		_fx.append({"node": hit, "t": 0.0, "life": 0.22, "kind": "holdfade", "a0": 1.0})
 		var r2 := _ground(VfxTex._make_thin_ring_tex(), (tgt as Dictionary)["pos"], 60.0,
 			Color(0.5, 0.9, 1.0, 0.9), 5)
 		_adopt(r2, "clam_burst")
@@ -809,7 +764,6 @@ func clear() -> void:
 	_owned.clear()
 	_fx.clear()
 	_guards.clear()
-	_charges.clear()   # ★充能条也是本层建的常驻节点, 撤场不清就会跨路留在场上
 
 
 ## 本层现在挂了几个节点(门禁按 meta 数)。

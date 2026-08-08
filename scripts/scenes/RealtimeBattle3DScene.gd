@@ -631,11 +631,16 @@ const PANEL_COUNT := {   # 头像下装备格右下角层数徽章: id → eq_st
 	"p2eq_043": "wave",            # 巨浪层(0-3)
 	"p2eq_017": "anchor_charges",  # 沉锚就绪充能数(另有anchor_accum攒治疗条)
 	"p2eq_036": "egg_levels",      # 温泉蛋临时等级(0-3; 另有incub充能条)
+	"p2eq_082": "charges",         # 护心甲充能层(每反伤 15 次一层; 普攻消耗一层)
 }
 const PANEL_CHARGE := {   # 局内头像下装备格的充能进度条: id → [充能字段, 满值]
 	"p2eq_009": ["blade_energy", 100.0], "p2eq_026": ["thunder", 100.0],
 	"p2eq_023": ["fire_mana", 100.0, "#ff8a3c"],   # 023法力条(火橙; 第3项=自定义条色, 缺省青)
 	"p2eq_017": ["anchor_accum", 250.0], "p2eq_036": ["incub", 100.0],
+	# ★★盾类两件(2026-08-08 用户:「充能条和层数不要放头顶, 在装备图标框里」)
+	#   081 的需求是 maxHp×40/35/30%(不是常量) ⇒ 存归一后的 chg_pct(0~100), 这张表的 cap 只能是常量;
+	#   082 的分母就是常量 15 ⇒ 直接拿 refl_n。
+	"p2eq_081": ["chg_pct", 100.0, "#7cf07c"], "p2eq_082": ["refl_n", 15.0, "#9ff0d8"],
 }
 var _selected_unit = null                     # 当前选中(点击)的单位 Dictionary, 高亮其框
 var _info_panel: PanelContainer = null        # 详情面板 (居中, 显等级/属性/被动/技能/装备); 重开覆盖

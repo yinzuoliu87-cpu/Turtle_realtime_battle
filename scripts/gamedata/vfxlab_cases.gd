@@ -44,6 +44,7 @@ extends RefCounted
 ## | `shots` | 要拍的时刻列表(**游戏秒**, 从战斗开始算)。空 = 不拍, 挂着给人看 |
 ## | `tier` | 给我方直接装一档羁绊(默认 `枪`, 用 `tier_syn` 改)。**看金弹必须给** ——<br>`_queue_shots` 的金弹计数只在 `tier_for(src,"枪")>0` 时才走, 台子默认零羁绊 ⇒<br>079「金弹时回血翻倍」这类招牌机制在台上**一次都不会发生**(2026-08-08 补) |
 ## | `tier_syn` | `tier` 装的是哪一系羁绊(默认 `枪`) |
+## | `ui` | **保留 UI 层**(默认全关)。充能进度/层数的正规出口是头像下的装备格 ⇒<br>081/082 这类"核心读数在 UI 里"的件必须开, 否则台子上永远看不到 |
 ## | `note` | 触发条件 / 为什么这么配 |
 ##
 ## ══════════════════════════════════════════════════════════════════════
@@ -163,7 +164,7 @@ const CASES := {
 ## 081 藤编圆盾 —— 累计受到 30% 最大生命的伤害后举盾 3.5 秒(3★)。
 ## ★**假人必须还手**, 否则充能条一辈子不动 —— 这是上一轮实测确认过的坑。
 "p2eq_081": {
-	"star": 3, "carrier": "basic", "enemies": 2, "enemy_attacks": true,
+	"ui": true, "star": 3, "carrier": "basic", "enemies": 2, "enemy_attacks": true,
 	"enemy_dist": 200.0, "enemy_gap": 120.0, "enemy_hp": 900000.0,
 	"dur": 22.0, "zoom": 5.0, "focus": "carrier", "focus_h": 1.0,
 	"shots": [4.0, 6.0, 8.0, 10.0, 13.0, 17.0, 21.0],
@@ -173,7 +174,7 @@ const CASES := {
 ## 082 砗磲护心甲 —— 每次挨一段攻击反伤; 每 15 次反伤攒 1 层; 携带者**普攻**消耗一层。
 ## ★两头都要: 假人还手(攒层) + 携带者普攻(消耗层)。少一头就只看得到半条。
 "p2eq_082": {
-	"star": 3, "carrier": "basic", "enemies": 2, "enemy_attacks": true, "attacker": true,
+	"ui": true, "star": 3, "carrier": "basic", "enemies": 2, "enemy_attacks": true, "attacker": true,
 	"enemy_dist": 180.0, "enemy_gap": 120.0,
 	"dur": 26.0, "zoom": 5.0, "focus": "carrier", "focus_h": 1.0,
 	"shots": [5.0, 9.0, 13.0, 17.0, 21.0, 25.0],
