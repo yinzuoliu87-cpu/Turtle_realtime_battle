@@ -122,6 +122,8 @@ static func pestle_jump_sec() -> float:
 	return 2.0 * sqrt(2.0 * PESTLE_APEX_M / PESTLE_G)
 const PESTLE_KB_SEC := 1.0
 const PESTLE_EVERY := 3
+## 浪潮每一跳飞多久(秒)。★"一簇水跳过去"要看得见飞行过程, 太快就又变成瞬时连线了。
+const WAVE_HOP_SEC := 0.26
 
 ## 伤害飘字色。★取自演出层 `ArcaneEqVfx.COL_*`(颜色的单一事实源在那边),
 ##   引用是**单向**的 —— 演出层不反过来引用本文件, 免得两个 class_name 循环依赖。
@@ -626,6 +628,12 @@ func _pestle_on_basic(u: Dictionary, tgt, si: int) -> void:
 ##   一次浪潮一份。**绝不拿单位字典当 Dictionary 的键**(Godot 递归哈希 + 互引成环 → 卡死,
 ##   CLAUDE.md §3.2), 判存在一律 `battle._arr_has_unit`, 比较一律 `is_same`。
 ## ★携带者一开始就在 `visited` 里 —— 他是起点, 浪潮不回头。
+## 第 i 跳(0 起)落到目标的时刻(秒)。★演出与结算共用这一个函数 —— 两边各算一份
+## 就是"演出到了伤害还没到"的老毛病(CLAUDE.md 里 084 剑波焊 WAVE_SPD 也是为这个)。
+static func wave_hop_delay(i: int) -> float:
+	return WAVE_HOP_SEC * float(i + 1)
+
+
 func wave_chain(u: Dictionary, first, hops: int, dmg: float, heal: float) -> Array:
 	var visited: Array = [u]
 	var path: Array = [(u["pos"] as Vector2)]
@@ -643,12 +651,24 @@ func wave_chain(u: Dictionary, first, hops: int, dmg: float, heal: float) -> Arr
 		var o: Dictionary = nxt
 		visited.append(o)
 		path.append(o["pos"] as Vector2)
-		if battle._is_hostile(u, o):
-			battle._damage._apply_damage_from(u, o, _magic_after_mr(u, dmg, o),
-				COL_WAVE, 0.0, false, true)
+		# ★★2026-08-08【时序合一】伤害/治疗**等那一簇水真的跳到**才结算。
+		#   用户:「浪潮弹射是一簇水在目标之间跳来跳去, 有高度变化, 并不是闪电连锁」——
+		#   既然它是**飞过去**的, 就不该在出手那一帧把整条链全算完(旧版就是那样,
+		#   演出还没画完血已经掉光了)。每跳按累计飞行时间延后。
+		var tgt_u: Dictionary = o
+		var lag: float = wave_hop_delay(hit)
+		var to_foe: bool = battle._is_hostile(u, o)
+		battle._queue_shots(1, 0.0, func() -> void:
+			if not tgt_u.get("alive", false):
+				return
+			if to_foe:
+				battle._damage._apply_damage_from(u, tgt_u, _magic_after_mr(u, dmg, tgt_u),
+					COL_WAVE, 0.0, false, true)
+			else:
+				battle._damage._heal(tgt_u, heal), u, "", Callable(), lag)
+		if to_foe:
 			nd += 1
 		else:
-			battle._damage._heal(o, heal)
 			nh += 1
 		hit += 1
 		cur = o["pos"]

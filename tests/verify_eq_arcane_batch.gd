@@ -98,10 +98,14 @@ func _arc():
 
 
 ## 手动喂节拍。★这是本门禁唯一的时间来源 —— 不 await 帧、不用 create_timer。
+## 推进时间。★★2026-08-08 补上 `_step_pending_shots`: 本件多处结算已改成**延后到演出到达**
+##   (浪潮每跳 WAVE_HOP_SEC 才落), 而旧版 `_feed` 只推装备自己的 tick、**不推延后队列**
+##   ⇒ 断言全读到 0。"推进时间"本来就该把两条都推。
 func _feed(sec: float, step: float = 0.05) -> void:
 	var n: int = int(round(sec / step))
 	for i in range(n):
 		_arc().tick(step)
+		_s._ballistics._step_pending_shots(step)
 
 
 func _st(u: Dictionary, iid: String) -> Dictionary:
@@ -795,6 +799,9 @@ func _t090_wave() -> void:
 	_ok("③ 第三次普攻发出浪潮",
 		int(_st(u, "p2eq_090").get("pestle_waves", 0)) == 1,
 		"waves=%d" % int(_st(u, "p2eq_090").get("pestle_waves", 0)))
+	# ★★浪潮的伤害/治疗现在**等那一簇水真的跳到**才结算(每跳 WAVE_HOP_SEC),
+	#   不再是出手那一帧就把整条链算完 ⇒ 断言前必须把延后队列推完。
+	_feed(EqArcaneBatch.WAVE_HOP_SEC * 10.0)
 	var st: Dictionary = _st(u, "p2eq_090")
 	_ok("③ ★分母: 场上 3 敌 + 2 友 = 5 个可跳单位(龟蛋/大师不算), 3★ 上限 8 ⇒ 全跳完 5 个",
 		int(st.get("wave_hits", -1)) == 5, "hits=%d" % int(st.get("wave_hits", -1)))
@@ -845,6 +852,7 @@ func _t090_wave() -> void:
 	_ok("③ ★2★ 跳数上限 5(场上有 6 个可跳单位)",
 		int(_st(u3, "p2eq_090").get("wave_hits", -1)) == 5,
 		"hits=%d" % int(_st(u3, "p2eq_090").get("wave_hits", -1)))
+	_feed(EqArcaneBatch.WAVE_HOP_SEC * 10.0)   # ★同上: 等水跳到
 	_ok("③ 2★ 打到敌人 70 魔法伤害", int(h3 - float(t3["hp"])) == 70,
 		"实测 %d" % int(h3 - float(t3["hp"])))
 
@@ -858,6 +866,7 @@ func _t090_wave() -> void:
 	var ha4: float = a4["hp"]
 	for i in range(3):
 		_s._equip_sys._eq_on_basic_attack(u4, t4)
+	_feed(EqArcaneBatch.WAVE_HOP_SEC * 10.0)   # ★同上: 等水跳到
 	_ok("③ 1★ 打到敌人 40 / 奶友军 20",
 		int(h4 - float(t4["hp"])) == 40 and absf((float(a4["hp"]) - ha4) - 20.0) < 0.01,
 		"dmg=%d heal=%.1f" % [int(h4 - float(t4["hp"])), float(a4["hp"]) - ha4])
@@ -999,13 +1008,20 @@ func _t_vfx_nodes() -> void:
 	var wave = _arc().vfx.wave_path(pts)
 	_ok("⑥ 浪潮折线建出来了", wave != null and is_instance_valid(wave))
 	if wave != null:
-		# ★段数不写死 24 —— 拿 **ARC_SEG 本人** 算。
-		#   写死的话调一次分段数就得改一次测试, 而这条注定会被改成"实测值"
-		#   (那就什么都不守了)。2026-08-08 浪潮改"如同闪电" ⇒ ARC_SEG 12→20。
-		var want_seg: int = (pts.size() - 1) * ArcaneEqVfx.ARC_SEG
-		_ok("⑥ 折线段数 = %d 跳 × %d 段 = %d" % [pts.size() - 1, ArcaneEqVfx.ARC_SEG, want_seg],
-			(wave as Node).get_child_count() == want_seg,
+		# ★★2026-08-08 浪潮从"折线"改成"**一簇水**"(用户: 一簇水在目标之间跳来跳去,
+		#   有高度变化, 并不是闪电连锁) ⇒ 断言也跟着换成这一条的真判据。
+		_ok("⑥ 一簇水: %d 颗水滴" % ArcaneEqVfx.WATER_DROPS,
+			(wave as Node).get_child_count() == ArcaneEqVfx.WATER_DROPS,
 			"children=%d" % (wave as Node).get_child_count())
+		# ★★"有高度变化": **量真实节点的世界 Y**, 不是断言公式存在。
+		#   一跳的中点必须明显高于落点 —— 平着飞就不叫"跳"。
+		var _d0 = (wave as Node).get_child(0)
+		_feed(EqArcaneBatch.WAVE_HOP_SEC * 0.5)
+		var y_mid: float = (_d0 as Node3D).position.y
+		_feed(EqArcaneBatch.WAVE_HOP_SEC * 0.5)
+		var y_end: float = (_d0 as Node3D).position.y
+		_ok("⑥ ★有高度变化: 跳到一半时比落点高(平着飞就不叫跳)",
+			y_mid > y_end + 0.15, "中点 y=%.3f 落点 y=%.3f" % [y_mid, y_end])
 		_ok("⑥ 折线记着真实几何长度 400 码",
 			absf(float((wave as Node).get_meta("path_len", -1.0)) - 400.0) < 1e-6,
 			"实测 %.2f" % float((wave as Node).get_meta("path_len", -1.0)))

@@ -96,6 +96,18 @@ const ARC_PEAK_FRAC := 0.18
 ## ★★2026-08-08 实拍(_vfxlab_p2eq_090_4.png): 18 码粗的方块串在 ADD 下**爆成一串白球** ——
 ## 而规格原文是「发射一片浪潮**如同闪电一样**」。球串既读不出"浪潮"也读不出"闪电"。
 ## ⇒ 收细到 5 码 + 分段 12→20 + 逐点横向抖动(见 WAVE_JITTER) ⇒ 一道有折角的电弧。
+## ── 一簇水(用户 2026-08-08 纠正: 浪潮是水不是闪电)
+## 水的两个色: 亮面与深处。★MIX 混合 ⇒ 颜色是它自己的, 不会被加成白
+const COL_WATER := Color(0.60, 0.90, 1.00, 0.95)
+const COL_WATER_DEEP := Color(0.20, 0.55, 0.82, 0.95)
+const WATER_DROPS := 11           ## 一簇里几颗水滴
+const WATER_DROP_PX := 10.0       ## 单颗水滴的边长(码)
+const WATER_SPREAD_PX := 20.0     ## 簇内水滴的横向散布(码)
+const WATER_SPREAD_M := 0.22      ## 簇内水滴的高度散布(米)
+const WATER_TAIL_SEC := 0.30      ## 最后一跳之后再留多久
+const WATER_SPLASH_PX := 54.0     ## 落点溅起的环直径(码)
+const WATER_SPLASH_SEC := 0.34
+const WATER_SPLASH_DROPS := 6     ## 落点弹出几颗水滴
 const WAVE_W_PX := 5.0
 ## 浪潮折线的逐点横向抖动(码)。★走 `_juice_rng`(纯演出) 不走 `_battle_rng` ——
 ## 它不影响任何伤害判定, 用对局 rng 会白白动确定性(rng_discipline 盯着这条)。
@@ -759,43 +771,66 @@ func pestle_slam(pos2d: Vector2, radius_px: float) -> Node3D:
 
 ## 浪潮折线: 每一跳画一段拱形(4·h·s(1−s)), 拱高 = 跨度的 ARC_PEAK_FRAC。
 ## ★同步建完就返回 —— 伤害早在 `EqArcaneBatch.wave_chain` 里结算过了, 这里纯画。
+## 浪潮: **一簇水**沿抛物线从一个目标跳到下一个, 每落一处溅一下。
+##
+## ★★2026-08-08 用户:「浪潮弹射是**一簇水**在目标之间跳来跳去, **有高度变化**,
+##   **并不是闪电连锁**, 你理解有问题」—— 他是对的, 而且这是我读错了规格:
+##   原话「发射一片浪潮**如同闪电一样**」说的是"**快**得像闪电", 我读成了"**形状**像闪电",
+##   于是做成折线电弧还加了抖动。这件是**镇海杵**, 整件都该是水。
+## ⇒ 现在: 一簇水滴(WATER_DROPS 颗, 各带随机小偏移)整体沿**真抛物线**飞,
+##   峰高 = 跨度 × ARC_PEAK_FRAC; 每跳到一个目标就 `_water_splash` 溅一圈, 再飞下一跳。
+##   飞行节拍与结算侧共用 `EqArcaneBatch.wave_hop_delay(i)`(不各算一份)。
 func wave_path(pts: Array) -> Node3D:
 	if not _has_world() or pts.size() < 2:
 		return null
 	var root := Node3D.new()
 	root.position = Vector3.ZERO
 	_adopt(root, "wave")
-	for i in range(1, pts.size()):
-		var a: Vector2 = pts[i - 1]
-		var b: Vector2 = pts[i]
-		var span: float = a.distance_to(b)
-		var peak: float = span * ARC_PEAK_FRAC * float(battle.WS)
-		var prev: Vector3 = battle._world_pos(a, 0.55)
-		for k in range(1, ARC_SEG + 1):
-			var s: float = float(k) / float(ARC_SEG)
-			var p2: Vector2 = a.lerp(b, s)
-			# 闪电感: 中间点沿**垂直于跨度**的方向抖一下(两端不抖, 保证首尾精确落在单位身上)
-			if k < ARC_SEG:
-				var nrm: Vector2 = (b - a)
-				nrm = Vector2(-nrm.y, nrm.x).normalized() if nrm.length() > 0.01 else Vector2.UP
-				p2 += nrm * (battle._juice_rng.randf() * 2.0 - 1.0) * WAVE_JITTER * sin(PI * s)
-			var cur: Vector3 = battle._world_pos(p2, 0.55 + arc_height(s, peak))
-			var seg: Vector3 = cur - prev
-			var l: float = seg.length()
-			if l > 0.0005:
-				var bm := BoxMesh.new()
-				bm.size = Vector3(l, WAVE_W_PX * float(battle.WS), WAVE_W_PX * float(battle.WS))
-				var mi := MeshInstance3D.new()
-				mi.mesh = bm
-				mi.material_override = _mat(COL_WAVE, 12)
-				mi.position = prev + seg * 0.5
-				mi.rotation.y = -atan2(seg.z, seg.x)
-				mi.rotation.z = asin(clampf(seg.y / l, -1.0, 1.0))
-				root.add_child(mi)
-			prev = cur
+	var rng: RandomNumberGenerator = battle._juice_rng
+	# 一簇水: 每颗水滴一个小方块 + 各自的随机偏移(飞行中整体走同一条抛物线)
+	var drops: Array = []
+	for k in range(WATER_DROPS):
+		var bm := BoxMesh.new()
+		var sz: float = WATER_DROP_PX * (0.55 + 0.75 * rng.randf()) * float(battle.WS)
+		bm.size = Vector3(sz, sz, sz)
+		var mi := MeshInstance3D.new()
+		mi.mesh = bm
+		# ⚠ 用 MIX 不用 ADD: ADD 会把 #8ff0ff 的青**爆成纯白方块**(实拍第一版就是一坨白),
+		#   跟 088 碑体是同一个根因。水要保住自己的颜色 ⇒ `_mat_solid`。
+		#   深浅两色混着放, 才读得出是"一簇水"而不是一个整体。
+		var deep: bool = rng.randf() < 0.45
+		mi.material_override = _mat_solid(
+			COL_WATER_DEEP if deep else COL_WATER, 12)
+		root.add_child(mi)
+		drops.append({"node": mi,
+			"off": Vector2(rng.randf() * 2.0 - 1.0, rng.randf() * 2.0 - 1.0) * WATER_SPREAD_PX,
+			"oy": (rng.randf() * 2.0 - 1.0) * WATER_SPREAD_M})
 	root.set_meta("path_len", path_length(pts))
-	_fx.append({"node": root, "t": 0.0, "life": WAVE_SEC, "kind": "wave"})
+	_fx.append({"node": root, "t": 0.0,
+		"life": EqArcaneBatch.wave_hop_delay(pts.size() - 2) + WATER_TAIL_SEC,
+		"kind": "water", "pts": pts, "drops": drops, "splashed": 0})
 	return root
+
+
+## 落点溅水: 一圈贴地小环 + 几颗向外弹的水滴。
+func _water_splash(at: Vector2) -> void:
+	if not _has_world():
+		return
+	var rng: RandomNumberGenerator = battle._juice_rng
+	_ring_fx(at, WATER_SPLASH_PX, COL_WAVE, WATER_SPLASH_SEC, "splash")
+	for _k in range(WATER_SPLASH_DROPS):
+		var bm := BoxMesh.new()
+		var sz: float = WATER_DROP_PX * 0.8 * float(battle.WS)
+		bm.size = Vector3(sz, sz, sz)
+		var mi := MeshInstance3D.new()
+		mi.mesh = bm
+		mi.material_override = _mat_solid(COL_WATER, 12)
+		var ang: float = rng.randf() * TAU
+		mi.position = battle._world_pos(at, 0.35)
+		_adopt(mi, "splash")
+		_fx.append({"node": mi, "t": 0.0, "life": WATER_SPLASH_SEC, "kind": "drop",
+			"p0": at, "dir": Vector2(cos(ang), sin(ang)),
+			"vx": WATER_SPLASH_PX * (0.5 + rng.randf()), "vy": 1.6 + rng.randf()})
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -853,6 +888,51 @@ func tick(delta: float) -> void:
 					##   镜头一动就又斜了(而"斜"到极限就是旧版那种整张消失)。
 					(n as Node3D).basis = face_basis(_cam_forward(), talisman_roll(t))
 				if t >= life or not (u is Dictionary) or not (u as Dictionary).get("alive", false):
+					_free_fx(i)
+			"water":
+				# ★★一簇水沿抛物线逐跳飞。跳的节拍与结算侧**共用** `wave_hop_delay(i)`,
+				#   不各算一份(演出到了伤害还没到 是本仓翻过的车)。
+				var wpts: Array = f.get("pts", [])
+				var nseg: int = maxi(1, wpts.size() - 1)
+				# 当前在第几跳 + 该跳内的进度
+				var seg_i: int = 0
+				var seg_q: float = 0.0
+				var prev_t: float = 0.0
+				for si2 in range(nseg):
+					var end_t: float = EqArcaneBatch.wave_hop_delay(si2)
+					if t < end_t or si2 == nseg - 1:
+						seg_i = si2
+						seg_q = clampf((t - prev_t) / maxf(0.001, end_t - prev_t), 0.0, 1.0)
+						break
+					prev_t = end_t
+				# 落点溅水: 每跨过一跳就溅一次(记 splashed 防重复)
+				var done: int = int(f.get("splashed", 0))
+				while done < nseg and t >= EqArcaneBatch.wave_hop_delay(done):
+					_water_splash(wpts[done + 1])
+					done += 1
+				f["splashed"] = done
+				var a2: Vector2 = wpts[seg_i]
+				var b2: Vector2 = wpts[seg_i + 1]
+				var here: Vector2 = a2.lerp(b2, seg_q)
+				# ★真高度变化: 峰高 = 跨度 × ARC_PEAK_FRAC(米), 4h·s(1−s) 的拱形
+				var peak_m: float = a2.distance_to(b2) * ARC_PEAK_FRAC * float(battle.WS)
+				var hgt: float = 0.45 + arc_height(seg_q, peak_m)
+				for d in (f.get("drops", []) as Array):
+					var dn = d.get("node", null)
+					if not is_instance_valid(dn):
+						continue
+					(dn as Node3D).position = battle._world_pos(here + (d["off"] as Vector2),
+						maxf(0.08, hgt + float(d["oy"])))
+				if t >= life:
+					_free_fx(i)
+			"drop":
+				# 溅出的水滴: 自己走一条小抛物线落回地面
+				var dq: float = clampf(t / life, 0.0, 1.0)
+				var dp: Vector2 = (f["p0"] as Vector2) + (f["dir"] as Vector2) * float(f["vx"]) * dq
+				var dh: float = maxf(0.05, float(f["vy"]) * dq - 4.2 * dq * dq)
+				(n as Node3D).position = battle._world_pos(dp, dh)
+				_set_alpha(n, 1.0 - dq * dq)
+				if t >= life:
 					_free_fx(i)
 			"leap":
 				# ★三样各管一件事, 全部跟着**真实滞空高度** `u["height"]` 走
