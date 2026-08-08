@@ -145,6 +145,10 @@ const ARC_SEG := 12
 ## `EqArcaneBatch` 反过来引用 `ArcaneEqVfx.COL_*` 当伤害飘字色 —— 引用是**单向**的,
 ## 免得两个 class_name 互相引用形成循环依赖(Godot 解析 const 时会炸)。
 const COL_TIDE := Color("#5fd8ff")     # 088 潮汐(青)
+const COL_STELE_BODY := Color(0.30, 0.52, 0.62, 0.96)   # 碑身: 湿石青(MIX, 不发亮)
+const COL_STELE_BASE := Color(0.16, 0.28, 0.34, 0.96)   # 底座: 更暗一档
+const STELE_BASE_K := 1.55                              # 底座相对碑身宽多少倍
+const COL_STELE_RUNE := Color(0.62, 0.94, 1.0, 1.0)     # 顶端符带: 亮潮汐青(MIX, 提亮不靠加法)
 const COL_MOON := Color("#b98cff")     # 089 蚀月(紫)
 const COL_SLAM := Color("#7ec8ff")     # 090 猛砸(蓝白)
 const COL_WAVE := Color("#8ff0ff")     # 090 浪潮(浅青)
@@ -454,6 +458,21 @@ static func _mat(col: Color, prio: int) -> StandardMaterial3D:
 ## 贴图片材质(符纸用)。★与 `_mat` 的两处关键差别:
 ##   · **MIX 而不是 ADD** —— ADD 会把纸面/边框/符文一起加成一片白, 正是旧版"纯白空白"的一半原因
 ##   · `no_depth_test` —— 符纸贴在敌人身上, 不穿透就会被立绘挡掉半张
+## **实体**材质(碑体用)。★与 `_mat` 的关键差别是 **MIX 而不是 ADD**:
+## ADD 下一个实心盒子的正反两面(CULL_DISABLED)会互相叠加 ⇒ 青色 #5fd8ff **爆成纯白**,
+## 实拍里 088 的碑就是一块**纯白长方块**(白球/白块家族)。实体物要 MIX + 只画正面。
+static func _mat_solid(col: Color, prio: int) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_MIX
+	m.cull_mode = BaseMaterial3D.CULL_BACK
+	m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	m.render_priority = prio
+	m.albedo_color = col
+	return m
+
+
 static func _mat_paper(tex: Texture2D) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -522,13 +541,34 @@ func stele_raise(pos2d: Vector2, radius_px: float, sec: float) -> Node3D:
 	ring.material_override = _mat_boundary(COL_TIDE)
 	ring.scale = Vector3(radius_px * float(battle.WS), 1.0, radius_px * float(battle.WS))
 	root.add_child(ring)
-	var bm := BoxMesh.new()
-	bm.size = Vector3(STELE_W_PX * float(battle.WS), STELE_H_PX * float(battle.WS),
-		STELE_D_PX * float(battle.WS))
+	# ★★2026-08-08 实拍(_vfxlab_p2eq_088)后重做碑体。旧版是**一块纯白长方块** ——
+	#   根因不是颜色而是 `_mat` 走 **ADD**: 实心盒子的正反两面叠加把 #5fd8ff 爆成白。
+	#   ⇒ 走 `_mat_solid`(MIX + 只画正面), 并拆成三段做出**碑的剪影**:
+	#     底座(宽而矮·暗) / 碑身(窄而高·石青) / 顶端符带(亮青, 这块是"它在生效"的信号)
+	var ws: float = float(battle.WS)
 	var slab := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(STELE_W_PX * ws, STELE_H_PX * ws, STELE_D_PX * ws)
 	slab.mesh = bm
-	slab.material_override = _mat(COL_TIDE, 10)
+	slab.material_override = _mat_solid(COL_STELE_BODY, 10)
 	root.add_child(slab)
+	var base := MeshInstance3D.new()
+	var bbm := BoxMesh.new()
+	bbm.size = Vector3(STELE_W_PX * STELE_BASE_K * ws, STELE_H_PX * 0.16 * ws,
+		STELE_D_PX * STELE_BASE_K * ws)
+	base.mesh = bbm
+	base.material_override = _mat_solid(COL_STELE_BASE, 9)
+	base.position = Vector3(0.0, -STELE_H_PX * 0.42 * ws, 0.0)
+	slab.add_child(base)
+	var rune := MeshInstance3D.new()
+	var rbm := BoxMesh.new()
+	rbm.size = Vector3(STELE_W_PX * 1.08 * ws, STELE_H_PX * 0.055 * ws, STELE_D_PX * 1.08 * ws)
+	rune.mesh = rbm
+	# ⚠ 这里**也不能用 ADD**: 实心盒正反面叠加照样把青爆成白(第一版符带就是一条白带,
+	#   跟碑体是同一个根因, 只是换了个小零件)。要"发亮"靠**提亮颜色**, 不靠加法混合。
+	rune.material_override = _mat_solid(COL_STELE_RUNE, 11)
+	rune.position = Vector3(0.0, STELE_H_PX * 0.24 * ws, 0.0)
+	slab.add_child(rune)
 	## ★把【效果半径】记在节点自己身上, 门禁量真实对象而不是在测试里把公式抄一遍
 	##   (memory [[fb-write-without-reader-and-fake-gates]]:「门禁模拟公式 ≠ 量真实对象」)。
 	root.set_meta("radius_px", radius_px)

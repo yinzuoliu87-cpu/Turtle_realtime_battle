@@ -924,12 +924,22 @@ func _t_vfx_physics() -> void:
 	_ok("⑤③ 086 射线【朝向】: 节点 basis 的 +X 轴 ≡ 两点世界方向单位向量"
 		+ "(memory: 旋转互相抵消光看是看不出来的)",
 		got_dir.dot(want_dir) > 0.99999, "点积 %.6f 期望 1.0" % got_dir.dot(want_dir))
+	# ★★2026-08-08: 曲线改成**先保持 RAY_HOLD 秒再指数衰减** ——
+	#   纯指数余辉(半衰 0.20 / 寿命 0.70)让射线大半辈子在 25% 亮度以下,
+	#   实拍里是几条几乎与背景同暗的深紫色板。
+	#   这一节现在钉**两件事**(比旧版更严, 不是放宽):
+	#     ① 保持段真的存在: alpha(0) ≡ alpha(RAY_HOLD) ≡ 1
+	#     ② 保持段**之后**仍是严格的指数律: 一个半衰期 1/2、两个 1/4
 	var a0: float = GVfx.ray_alpha(0.0)
-	var ah: float = GVfx.ray_alpha(GVfx.RAY_HALF)
-	var a2h: float = GVfx.ray_alpha(GVfx.RAY_HALF * 2.0)
-	_ok("⑤③ 086 余辉走指数衰减: 一个半衰期剩 1/2, 两个半衰期剩 1/4(线性淡出给不出 1/4)",
-		absf(ah / a0 - 0.5) < 1e-5 and absf(a2h / a0 - 0.25) < 1e-5,
-		"1半衰=%.6f 2半衰=%.6f 期望 0.5 / 0.25" % [ah / a0, a2h / a0])
+	var ahold: float = GVfx.ray_alpha(GVfx.RAY_HOLD)
+	var ah: float = GVfx.ray_alpha(GVfx.RAY_HOLD + GVfx.RAY_HALF)
+	var a2h: float = GVfx.ray_alpha(GVfx.RAY_HOLD + GVfx.RAY_HALF * 2.0)
+	_ok("⑤③ 086 保持段真的存在: alpha(0) ≡ alpha(RAY_HOLD) ≡ 1(纯指数余辉在这里已经掉到 0.58)",
+		absf(a0 - 1.0) < 1e-5 and absf(ahold - 1.0) < 1e-5 and GVfx.RAY_HOLD > 0.0,
+		"alpha(0)=%.6f alpha(HOLD)=%.6f HOLD=%.3f" % [a0, ahold, GVfx.RAY_HOLD])
+	_ok("⑤③ 086 保持段之后余辉走指数衰减: 一个半衰期剩 1/2, 两个剩 1/4(线性淡出给不出 1/4)",
+		absf(ah / ahold - 0.5) < 1e-5 and absf(a2h / ahold - 0.25) < 1e-5,
+		"1半衰=%.6f 2半衰=%.6f 期望 0.5 / 0.25" % [ah / ahold, a2h / ahold])
 
 	# ④ 水柱: 定长径比柱体 ⇒ 半径 ∝ ∛V
 	var jr: Array = []

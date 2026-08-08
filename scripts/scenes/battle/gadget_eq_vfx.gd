@@ -106,7 +106,12 @@ const SHOT_LIFE := 0.16          ## 射击曳光存续(秒)
 const SHOT_THICK := 0.035        ## 曳光粗细(米)
 const RAY_LIFE := 0.70           ## 终极射线存续(秒)
 const RAY_HALF := 0.20           ## 余辉半衰期(秒)
-const RAY_THICK := 0.20          ## 终极射线粗细(米)
+const RAY_THICK := 0.13          ## 终极射线粗细(米)。★2026-08-08 0.20→0.13: 旧粗细在实拍里
+                                 ##   像横跨全场的**脚手架板**, 不像一道射线
+const RAY_CORE_K := 0.34         ## 白热芯相对身的粗细比
+const RAY_HOLD := 0.16           ## 满亮保持(秒) —— 之后才按 RAY_HALF 衰减
+const RAY_MUZZLE_R := 0.26       ## 发射端炮口闪半径(米)
+const RAY_POP_R := 0.34          ## 命中端爆点半径(米)
 const RAY_COLOR := Color(0.72, 0.35, 1.0)   ## 紫色终极射线(规格明写"紫色")
 
 ## 087 水柱: r = JET_K·V^(1/3) (米)。JET_ASPECT = 柱长/柱半径(定长径比 ⇒ V ∝ r³)。
@@ -177,7 +182,13 @@ func beam_len_m(a: Vector2, b: Vector2) -> float:
 
 ## ③ 指数余辉(半衰期 RAY_HALF)
 static func ray_alpha(t: float) -> float:
-	return exp(-log(2.0) * maxf(0.0, t) / RAY_HALF)
+	# ★★2026-08-08 加保持段。纯指数余辉(半衰期 0.20 / 寿命 0.70)让射线
+	#   **大半辈子在 25% 亮度以下** —— 实拍里是几条几乎与背景同暗的**深紫色板**。
+	#   这是本轮第五次撞见同一个"淡出病"(078/079/082/084/这里)。
+	#   ⇒ 前 RAY_HOLD 秒满亮, 之后才按原来的半衰期衰减(衰减律本身没动, 门禁照旧)。
+	if t <= RAY_HOLD:
+		return 1.0
+	return exp(-log(2.0) * maxf(0.0, t - RAY_HOLD) / RAY_HALF)
 
 
 ## ④ 定长径比柱体: 半径 ∝ V^(1/3)
@@ -379,10 +390,29 @@ func sextant_ultimate(_u: Dictionary, beams: Array) -> Array:
 	for pair in beams:
 		if not (pair is Array) or (pair as Array).size() < 2:
 			continue
+		# 身: 紫。芯: 更细的白热 —— 单层实心条读成"一块板", 双层才读成"一道光"
+		#   (与 078 电弧同一条做法: 身管颜色、芯管亮)
 		var n := _beam(pair[0], pair[1], DRONE_LIFT, RAY_THICK,
 			Color(RAY_COLOR.r, RAY_COLOR.g, RAY_COLOR.b, 1.0), "sext_ray")
 		_transient(n, RAY_LIFE, RAY_HALF)
 		out.append(n)
+		var core := _beam(pair[0], pair[1], DRONE_LIFT + 0.02, RAY_THICK * RAY_CORE_K,
+			Color(1.0, 0.94, 1.0, 1.0), "sext_ray")
+		_transient(core, RAY_LIFE * 0.8, RAY_HALF)
+		# 两端: 发射端炮口闪 + 命中端爆点。旧版**两头什么都不发生** ⇒ 读不出
+		#   "从这门炮打出去、打在那个目标身上"(与 082 反伤是同一种缺失)
+		var muz := _mi(SphereMesh.new(), Color(1.0, 0.90, 1.0, 1.0), "sext_ray")
+		(muz.mesh as SphereMesh).radius = 1.0
+		(muz.mesh as SphereMesh).height = 2.0
+		muz.position = battle._world_pos(pair[0], DRONE_LIFT)
+		muz.scale = Vector3.ONE * RAY_MUZZLE_R
+		_transient(muz, RAY_LIFE * 0.45, RAY_HALF * 0.6)
+		var pop := _mi(SphereMesh.new(), Color(RAY_COLOR.r, RAY_COLOR.g, RAY_COLOR.b, 1.0), "sext_ray")
+		(pop.mesh as SphereMesh).radius = 1.0
+		(pop.mesh as SphereMesh).height = 2.0
+		pop.position = battle._world_pos(pair[1], DRONE_LIFT)
+		pop.scale = Vector3.ONE * RAY_POP_R
+		_transient(pop, RAY_LIFE * 0.6, RAY_HALF)
 	return out
 
 
