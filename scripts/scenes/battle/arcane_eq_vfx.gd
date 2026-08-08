@@ -108,6 +108,14 @@ const WATER_TAIL_SEC := 0.30      ## 最后一跳之后再留多久
 const WATER_SPLASH_PX := 54.0     ## 落点溅起的环直径(码)
 const WATER_SPLASH_SEC := 0.34
 const WATER_SPLASH_DROPS := 6     ## 落点弹出几颗水滴
+## ── 猛砸落地(水炸开)
+const SLAM_BURST_DROPS := 46      ## 炸开多少颗水滴
+const SLAM_BURST_PX := 420.0      ## 水滴最远抛到多少码(不是 1000 —— 那是伤害范围, 水泼不了那么远)
+const SLAM_BURST_UP := 3.4        ## 抛射初速(高度项)
+const SLAM_BURST_SEC := 0.75
+const SLAM_BURST_LAG := 0.06      ## 逐颗错开起飞(整齐划一像喷泉, 错开才像炸开)
+const SLAM_SPLASH_PX := 260.0     ## 落点贴地水花的直径(码)
+const SLAM_SHAKE := 0.055         ## 震屏幅度 —— 7 米砸下来得有分量
 const WAVE_W_PX := 5.0
 ## 浪潮折线的逐点横向抖动(码)。★走 `_juice_rng`(纯演出) 不走 `_battle_rng` ——
 ## 它不影响任何伤害判定, 用对局 rng 会白白动确定性(rng_discipline 盯着这条)。
@@ -764,9 +772,40 @@ func pestle_leap(u, sec: float) -> Node3D:
 	return root
 
 
-## 砸落: 一圈 Sedov 激波(半径 = 1000 码的真实效果半径)。
+## 砸落。★★2026-08-08 重做 —— 旧版**就一句 `_ring_fx`**: 一圈柔和扩张环, 别的什么都没有。
+## 从 7 米砸下来只出一个环, 跟"镇海杵猛砸整个战场"完全不匹配(用户:「砸击特效到底怎么做」)。
+## 现在四样, 全是水(这件是镇海杵):
+##   ① **水炸开** —— 一大蓬水滴从落点向外抛射(各自走抛物线, 落回地面)
+##   ② **冲击波环** —— 半径就是真实的 1000 码, 从 0 扩到满
+##   ③ **落点水花** —— 一圈贴地的溅水
+##   ④ **震屏** —— 7 米砸下来得有分量
 func pestle_slam(pos2d: Vector2, radius_px: float) -> Node3D:
-	return _ring_fx(pos2d, radius_px, COL_SLAM, SLAM_SEC, "slam")
+	var ring := _ring_fx(pos2d, radius_px, COL_SLAM, SLAM_SEC, "slam")
+	if not _has_world():
+		return ring
+	var rng: RandomNumberGenerator = battle._juice_rng
+	# ① 水炸开: 一大蓬水滴。近处密、远处稀(r = R√u 面积均匀), 各自抛射后落回
+	for _k in range(SLAM_BURST_DROPS):
+		var ang: float = rng.randf() * TAU
+		var reach: float = SLAM_BURST_PX * sqrt(rng.randf())
+		var bm := BoxMesh.new()
+		var sz: float = WATER_DROP_PX * (0.7 + 0.9 * rng.randf()) * float(battle.WS)
+		bm.size = Vector3(sz, sz, sz)
+		var mi := MeshInstance3D.new()
+		mi.mesh = bm
+		mi.material_override = _mat_solid(
+			COL_WATER_DEEP if rng.randf() < 0.45 else COL_WATER, 12)
+		mi.position = battle._world_pos(pos2d, 0.4)
+		_adopt(mi, "slam_drop")
+		_fx.append({"node": mi, "t": -SLAM_BURST_LAG * rng.randf(),
+			"life": SLAM_BURST_SEC * (0.7 + 0.6 * rng.randf()), "kind": "drop",
+			"p0": pos2d, "dir": Vector2(cos(ang), sin(ang)),
+			"vx": reach, "vy": SLAM_BURST_UP * (0.6 + 0.8 * rng.randf())})
+	# ③ 落点水花: 一圈贴地的溅水(比水滴矮、比冲击波小)
+	_ring_fx(pos2d, SLAM_SPLASH_PX, COL_WATER, SLAM_SEC * 0.7, "splash")
+	# ④ 震屏
+	battle._shake(SLAM_SHAKE)
+	return ring
 
 
 ## 浪潮折线: 每一跳画一段拱形(4·h·s(1−s)), 拱高 = 跨度的 ARC_PEAK_FRAC。
@@ -927,6 +966,12 @@ func tick(delta: float) -> void:
 					_free_fx(i)
 			"drop":
 				# 溅出的水滴: 自己走一条小抛物线落回地面
+				# ⚠ **负的 t = 还没轮到它起飞**, 必须显式判 —— `clampf(t/life,0,1)` 会把它钳成 0,
+				#   于是这颗水滴会**满亮地堆在落点**等着, 错开等于没做。
+				#   (082 贝壳串、085 龟能微粒踩过同一个坑, 这是第三次。)
+				if t < 0.0:
+					_set_alpha(n, 0.0)
+					continue
 				var dq: float = clampf(t / life, 0.0, 1.0)
 				var dp: Vector2 = (f["p0"] as Vector2) + (f["dir"] as Vector2) * float(f["vx"]) * dq
 				var dh: float = maxf(0.05, float(f["vy"]) * dq - 4.2 * dq * dq)
