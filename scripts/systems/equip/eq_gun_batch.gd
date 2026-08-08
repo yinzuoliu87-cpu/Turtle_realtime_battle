@@ -160,6 +160,9 @@ const PISTOL_PEN_PER_SHOT := 1.0
 ## 079 炮台: 生成在携带者【后方】这么远(规格原文 150 码) · 射程见 D4
 const TOWER_BACK := 150.0
 const TOWER_RANGE := 700.0
+## 炮口在炮台立绘高度的哪一成 —— 顶端那颗发光的珊瑚珠(实量立绘 0.78 处)。
+## ★不写死米数: 立绘一换尺寸, 写死的米数就错了(零系数素材纪律的同一条)。
+const TOWER_MUZZLE_FRAC := 0.78
 ## 080 直升机: 机炮节拍 1.2 秒(规格原文) · 每命中一发 +4 龟能、上限 100(规格原文)
 const HELI_FIRE_IV := 1.2
 const HELI_EN_PER_HIT := 4.0
@@ -724,15 +727,36 @@ func _tower_bullet(t: Dictionary, si: int) -> void:
 	var golden: bool = float(t.get("_golden_pct", 0.0)) > 0.0
 	var tgt = battle._targeting._nearest_enemy(t)
 	if tgt != null and tgt.get("alive", false) and (Vector2(tgt["pos"]) - Vector2(t["pos"])).length() <= TOWER_RANGE:
-		battle._damage._apply_damage_from(t, tgt, battle._atk_dmg(t, 1.0, tgt), COL_PHYS, 0.0, false, true)
-		var mdm: int = battle._resolve_dmg(t, float(tgt["maxHp"]) * hp_pct, tgt, true)
-		if tgt.get("alive", false):
-			battle._damage._apply_damage_from(t, tgt, mdm, COL_MAGIC, 0.0, false, true)
-		vfx.tracer(Vector2(t["pos"]), Vector2(tgt["pos"]), COL_PHYS, gold_pct if golden else 0.0)
+		# ★★2026-08-08 实拍(_vfxlab_p2eq_079_2.png): 炮弹**贴着地面滑行**, 从敌人**脚下**穿过去。
+		#   根因是这一行 `tracer(a, b, col, gold)` 后面三个参数一个都没传 ⇒ 全吃默认值:
+		#     · h_m 默认 0.05 米(手枪的枪口高度) ⇒ 炮台从自己脚底 5 厘米处开火
+		#     · h_to 默认 −1(不下落) ⇒ 一路平飞, 永远碰不到身体
+		#     · tgt 默认 null ⇒ 目标一动就打到它刚才站的地方
+		#   077/080 上被用户逐条盯出来改过的三件事, 在这件上一件都没做。
+		#   ⇒ 炮口取炮台立绘顶端那颗珊瑚珠(0.78), 落点取目标身体中段, 并把目标本体传进去。
+		var muz_h: float = GunEqVfx.sprite_h(t, TOWER_MUZZLE_FRAC)
+		var fly: float = vfx.tracer(Vector2(t["pos"]), Vector2(tgt["pos"]), COL_PHYS,
+			gold_pct if golden else 0.0, muz_h, GunEqVfx.body_mid_h(tgt), tgt)
+		vfx.tower_muzzle(Vector2(t["pos"]), muz_h, COL_PHYS)
+		# ★伤害等炮弹到达(080 立的规矩)。金弹标记在闭包返回时被清掉 ⇒ 延后段自己捎上。
+		var gp: float = float(t.get("_golden_pct", 0.0))
+		var vt: Dictionary = tgt
+		battle._queue_shots(1, 0.0, func() -> void:
+			if not vt.get("alive", false):
+				return
+			var keep: float = float(t.get("_golden_pct", 0.0))
+			t["_golden_pct"] = gp
+			battle._damage._apply_damage_from(t, vt, battle._atk_dmg(t, 1.0, vt), COL_PHYS, 0.0, false, true)
+			var mdm: int = battle._resolve_dmg(t, float(vt["maxHp"]) * hp_pct, vt, true)
+			if vt.get("alive", false):
+				battle._damage._apply_damage_from(t, vt, mdm, COL_MAGIC, 0.0, false, true)
+			t["_golden_pct"] = keep, t, "", Callable(), fly)
 	var low = lowest_ally(t)
 	if low is Dictionary:
 		battle._damage._heal(low, heal * (2.0 if golden else 1.0))
-		vfx.heal_beam(Vector2(t["pos"]), Vector2(low["pos"]), COL_HEAL, golden)
+		# 束的两端各按自己的立绘取身体中段 —— 旧版两端都写死 1.2 米
+		vfx.heal_beam(Vector2(t["pos"]), Vector2(low["pos"]), COL_HEAL, golden,
+			GunEqVfx.sprite_h(t, TOWER_MUZZLE_FRAC), GunEqVfx.body_mid_h(low))
 	vfx.tower_charge(t, int((t.get("_gun_shot_ct", {}) as Dictionary).get("p2eq_079", 0)), per_gold)
 
 

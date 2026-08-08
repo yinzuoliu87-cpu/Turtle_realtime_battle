@@ -456,14 +456,21 @@ const BULLET_TAIL := 30.0       ## 尾焰长度(码, 向后画)
 ## 目标**身体中段**的世界高度(米)。★从目标自己的立绘算, 不写死 ——
 ## 实测假人立绘高 2.00 米, 中段 ≈ 1.0 米。
 static func body_mid_h(tgt) -> float:
-	if tgt is Dictionary:
-		var sp = (tgt as Dictionary).get("sprite", null)
+	return sprite_h(tgt, BODY_HIT_FRAC)
+
+
+## 立绘高度的任意分数处(世界米)。★`body_mid_h` 只是 frac=0.5 的那一档 ——
+## 一个函数, 不让"按立绘算高度"这件事在各处各写一遍(手抄的副本必然落后)。
+## 用处: 炮台的炮口在**顶端那颗珊瑚珠**(frac≈0.78), 而命中点在身体中段(0.5)。
+static func sprite_h(u, frac: float) -> float:
+	if u is Dictionary:
+		var sp = (u as Dictionary).get("sprite", null)
 		if is_instance_valid(sp) and sp is Sprite3D:
 			var s2: Sprite3D = sp
 			if s2.texture != null:
 				var full: float = s2.pixel_size * float(s2.texture.get_height() / maxi(1, int(s2.vframes)))
-				return maxf(0.2, full * BODY_HIT_FRAC) + float((tgt as Dictionary).get("height", 0.0))
-	return 1.0
+				return maxf(0.2, full * frac) + float((u as Dictionary).get("height", 0.0))
+	return 2.0 * frac
 
 
 ## ★★2026-08-07 用户:「我问你子弹打到了假人身体的哪个地方」——
@@ -751,25 +758,57 @@ func tower_deploy(pos: Vector2) -> void:
 	_ring(pos, Color(0.45, 1.0, 0.72, 0.9), 120.0, 0.5)
 
 
+## 炮台开火时顶端珊瑚珠的一小下亮闪。★实拍(_vfxlab_p2eq_079_2.png)里炮台开火
+## **一点表现都没有** —— 炮弹凭空从地上冒出来, 读不出是这座塔打的。
+const TOWER_FLASH_PX := 26.0
+const TOWER_FLASH_SEC := 0.10
+
+func tower_muzzle(pos: Vector2, h_m: float, col: Color) -> void:
+	if not _has_world():
+		return
+	var s := _sprite(VfxTex._make_fire_glow_tex(), battle._world_pos(pos, h_m),
+		(TOWER_FLASH_PX * float(battle.WS)) / 64.0, Color(col.r, col.g, col.b, 1.0), false)
+	_adopt(s, TOWER_FLASH_SEC, "puff", {"a0": 1.0})
+
+
+const HEAL_SEC := 0.42          ## 一束治疗活多久
+const HEAL_WAVE := 2.0          ## 一束里跑几个光波(读"从炮台流向友军")
+
 ## 治疗光束: 真悬链线(⑤)。金弹(治疗翻倍)时画两股、更亮。
-func heal_beam(a: Vector2, b: Vector2, col: Color, doubled: bool = false) -> int:
+##
+## ★★2026-08-08 实拍(_vfxlab_p2eq_079_2.png)后三处重做。旧版在画面上是
+##   **一根深灰色的死柱子**, 读不出是治疗、也读不出谁给谁:
+##   ① **灰**: 量了像素 —— 束身确实是 #7dffb0, 但采样时刻的有效 alpha 只有 **0.15**。
+##      根因和 078 霰弹的"土棕色棍"完全一样: `band` 从出生就线性淡出, 0.3 秒的束
+##      大半辈子都在半亮以下。⇒ 走 fade0(前 70% 满亮)。
+##   ② **静**: 一条 0.3 秒不动的直带, 没有方向。⇒ 每段各带相位, 亮度是一列**跑动的光波**,
+##      从 a(炮台) 流向 b(友军) —— 治疗的方向由此读得出来。
+##   ③ **两端写死 1.2 米**: 跟炮台多高、友军多高都没关系。⇒ 两端各按自己的立绘取高度。
+func heal_beam(a: Vector2, b: Vector2, col: Color, doubled: bool = false,
+		h_a: float = 1.2, h_b: float = -1.0) -> int:
 	if not _has_world():
 		return 0
 	var span: float = (b - a).length()
 	if span < 1.0:
 		return 0
 	var segs := 10
+	var hb: float = h_a if h_b < 0.0 else h_b
 	var drop_scale: float = 0.004 * battle.WS   # 码 → 世界米(垂度画在高度上)
+	# ★普通束 0.55 在 ADD 下只有半亮, 再乘上波谷就成了灰管(实测 (73,110,99));
+	# 金弹双束保持更亮 ⇒ "回血翻倍"靠亮度差就读得出来。
+	var a0: float = 0.80 if not doubled else 0.98
 	var n := 0
 	for k in range(segs):
 		var f0: float = float(k) / float(segs)
 		var f1: float = float(k + 1) / float(segs)
 		var p0: Vector2 = a.lerp(b, f0)
 		var p1: Vector2 = a.lerp(b, f1)
-		var h0: float = 1.2 - catenary_drop(span, f0) * drop_scale
+		# 两端高度线性插值, 再减去悬链线垂度 ⇒ 束是"挂"在两个身体中段之间的
+		var h0: float = lerpf(h_a, hb, f0) - catenary_drop(span, f0) * drop_scale
+		var h1: float = lerpf(h_a, hb, f1) - catenary_drop(span, f1) * drop_scale
 		var mi := _band(p0, p1, maxf(0.15, h0), (3.0 if not doubled else 5.0),
-			Color(col.r, col.g, col.b, 0.55 if not doubled else 0.9))
-		_adopt(mi, 0.3, "band", {"a0": 0.55 if not doubled else 0.9})
+			Color(col.r, col.g, col.b, a0), true, maxf(0.15, h1))
+		_adopt(mi, HEAL_SEC, "healseg", {"a0": a0, "f": f0})
 		n += 1
 	return n
 
@@ -1141,6 +1180,18 @@ func tick(delta: float) -> void:
 				var mat = (n as MeshInstance3D).material_override
 				if mat is StandardMaterial3D:
 					(mat as StandardMaterial3D).albedo_color.a = float(f.get("a0", 1.0)) * (1.0 - q)
+			"healseg":
+				# ★治疗光束的一段: 亮度 = 整束的淡出 × 一列**跑动的光波**。
+				#   光波从 f=0(炮台) 跑向 f=1(友军) ⇒「谁在给谁回血」读得出来;
+				#   而旧版是一根 0.3 秒不动的直带, 实拍里像根灌钢管。
+				#   淡出也改成"前 70% 满亮" —— 线性淡出让束大半辈子只有 15% 亮度,
+				#   量了像素才发现"灰"的根因在这里, 不在 COL_HEAL(它确实是 #7dffb0)。
+				var hmat = (n as MeshInstance3D).material_override
+				if hmat is StandardMaterial3D:
+					var hold: float = clampf((1.0 - q) / 0.30, 0.0, 1.0)
+					var ph: float = fposmod(float(f.get("f", 0.0)) - q * HEAL_WAVE, 1.0)
+					var wave: float = 0.45 + 0.55 * pow(1.0 - ph, 3.0)
+					(hmat as StandardMaterial3D).albedo_color.a = float(f.get("a0", 1.0)) * hold * wave
 			"puff":
 				var sp: Sprite3D = n
 				sp.modulate.a = float(f.get("a0", 1.0)) * (1.0 - q)

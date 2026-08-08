@@ -126,6 +126,7 @@ func pre_build() -> bool:
 	cfg = VfxLabCases.get_case(case_id)
 	# ── env 覆盖(临场调参不用改表) ──
 	if OS.has_environment("VFXLAB_STAR"):    cfg["star"] = int(OS.get_environment("VFXLAB_STAR"))
+	if OS.has_environment("VFXLAB_TIER"):    cfg["tier"] = int(OS.get_environment("VFXLAB_TIER"))
 	if OS.has_environment("VFXLAB_CARRIER"): cfg["carrier"] = OS.get_environment("VFXLAB_CARRIER")
 	if OS.has_environment("VFXLAB_ZOOM"):    cfg["zoom"] = float(OS.get_environment("VFXLAB_ZOOM"))
 	if OS.has_environment("VFXLAB_FOCUS"):   cfg["focus"] = OS.get_environment("VFXLAB_FOCUS")
@@ -182,6 +183,19 @@ func pre_build() -> bool:
 	return true
 
 
+## 给我方装一档羁绊。★没有它, **金弹这一整条机制在台上永远不会触发** ——
+## `_queue_shots` 的金弹计数只在 `tier_for(src, "枪") > 0` 时才走, 而台子默认零羁绊。
+## 079 的招牌机制就是"金弹时回血翻倍", 台上看不到金弹 = 这件装备的看点根本没上演。
+## (2026-08-08 补: 之前逐件评审 077/078/079/080 全程都没看过金弹, 就是缺这一行。)
+func _apply_tier() -> void:
+	var t: int = int(cfg.get("tier", 0))
+	if t <= 0:
+		return
+	var syn: String = str(cfg.get("tier_syn", "枪"))
+	battle._synergy._by_side["left"] = {syn: t}
+	print("[VFXLAB] 羁绊: 我方 %s %d 档 ⇒ 金弹每 %d 发出一次" % [syn, t, [4, 3, 2][clampi(t - 1, 0, 2)]])
+
+
 # ════════════════════════════════════════════════════════════════════════════
 #  ② 建场 + spawn【之后】: 清场 / 改单位 / 摆相机 / 开拍
 # ════════════════════════════════════════════════════════════════════════════
@@ -194,6 +208,7 @@ func post_spawn() -> void:
 	_hide_ui_once()
 	_relayout_units()
 	_tune_units()
+	_apply_tier()
 	# 相机: 记下原始 fov 与"机位相对注视点"的固定偏移 —— 之后每帧只平移这个刚体, 不再 look_at
 	if battle._cam != null and is_instance_valid(battle._cam):
 		_fov0 = float(battle._cam.fov)

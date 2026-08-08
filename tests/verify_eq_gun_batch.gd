@@ -709,6 +709,7 @@ func _t079_bullet() -> void:
 	var f0: float = float(foe["hp"])
 	var a0: float = float(ally["hp"])
 	_gun._tower_bullet(t, 1)
+	_pump()                                    # ★炮弹要飞到才掉血(080 立下的规矩)
 	var dealt: float = f0 - float(foe["hp"])
 	var healed: float = float(ally["hp"]) - a0
 	_ok("③ 2★ 单发伤害 = 1×20 物理 + 1000×1.5% 魔法 = 35", _near(dealt, 35.0, 0.6), "实打 %.1f" % dealt)
@@ -734,10 +735,78 @@ func _t079_bullet() -> void:
 	var f3: float = float(foe3["hp"])
 	var y3: float = float(ally3["hp"])
 	_gun._tower_bullet(t3, 2)
+	_pump()
 	_ok("③ 3★ 单发伤害 = 1×30 物理 + 1000×2% 魔法 = 50", _near(f3 - float(foe3["hp"]), 50.0, 0.6),
 		"实打 %.1f" % (f3 - float(foe3["hp"])))
 	_ok("③ 3★ 回血 20", _near(float(ally3["hp"]) - y3, 20.0, 0.01),
 		"回了 %.1f" % (float(ally3["hp"]) - y3))
+	# ★★时序: 炮弹伤害落在**弹到达那一刻**, 回血则是开火当帧(治疗不飞)。
+	#   旧版两样都在当帧, 而曳光要飞 0.5 秒 ⇒ 血先掉、弹后到。
+	#   任何人把伤害收回当帧, 下面两条立刻红。
+	_reset()
+	var u4: Dictionary = _mk("fortune", "left", Vector2(-300.0, 0.0))
+	_equip(u4, "p2eq_079", 3)
+	_spawn_all()
+	var t4 = _find_summon("medtower")
+	var foe4: Dictionary = _mk("fortune", "right", Vector2(-100.0, 0.0), 1000.0)
+	var ally4: Dictionary = _mk("fortune", "left", Vector2(-350.0, 60.0), 1000.0)
+	ally4["hp"] = 100.0
+	t4["pos"] = foe4["pos"] + Vector2(-260.0, 0.0)
+	var f4: float = float(foe4["hp"])
+	var y4: float = float(ally4["hp"])
+	_s._pending_shots.clear()
+	_gun._tower_bullet(t4, 2)
+	_ok("③T 开火当帧: 敌人【一滴血都不掉】(炮弹还在飞)",
+		_near(f4 - float(foe4["hp"]), 0.0, 0.01), "当帧掉血 %.1f" % (f4 - float(foe4["hp"])))
+	_ok("③T 开火当帧: 回血已经到位(治疗不需要飞)",
+		_near(float(ally4["hp"]) - y4, 20.0, 0.01), "当帧回了 %.1f" % (float(ally4["hp"]) - y4))
+	_ok("③T ★分母: 确实排了延后段", _s._pending_shots.size() > 0,
+		"排了 %d 段" % _s._pending_shots.size())
+	# ★★不能只断言"过了队列" —— delay0 写 0 也会过队列, "当帧不掉血"照样成立。
+	#   (反向验证时实测到的: 把延后量改成 0, 上面那条没红 ⇒ 它守不住东西。)
+	#   ⇒ 逐格步进, 断言伤害落在第几格: 260 码 ÷ 390 码/秒 ≈ 0.67 秒, 必须等到第 6 格以后。
+	var landed := -1
+	for st4 in range(1, 41):
+		_s._ballistics._step_pending_shots(0.1)
+		if landed < 0 and (f4 - float(foe4["hp"])) > 0.0:
+			landed = st4
+			break
+	_ok("③T 伤害落在【弹飞到的那一刻】(260 码 ÷ 390 码/秒 ≈ 0.67 秒 ⇒ 第 6 格后)",
+		landed >= 6, "落在第 %d 格(每格 0.1 秒)" % landed)
+	_pump()
+	_ok("③T 炮弹到达才掉血 = 50", _near(f4 - float(foe4["hp"]), 50.0, 0.6),
+		"推完掉血 %.1f" % (f4 - float(foe4["hp"])))
+	# ★★高度: 旧版 `tracer(a, b, col, gold)` 后三个参数一个都没传 ⇒ 全吃默认值,
+	#   炮台从自己脚底 5 厘米开火、一路平飞、从敌人脚下穿过去(实拍实量 y=512 vs 龟脚 490)。
+	#   这个 bug 原本**一条门禁都没有** —— 所以补在这里: 量演出自己记下的两个高度。
+	var vf2 = _gun.vfx
+	vf2.clear()
+	_s._pending_shots.clear()
+	_gun._tower_bullet(t4, 2)
+	var muz_h: float = GunEqVfx.sprite_h(t4, EqGunBatch.TOWER_MUZZLE_FRAC)
+	var mid_h: float = GunEqVfx.body_mid_h(foe4)
+	var n_ok := 0
+	var n_all := 0
+	var got_h := -1.0
+	var got_h2 := -1.0
+	for fx in vf2._fx:
+		if not fx.has("h2"):
+			continue
+		n_all += 1
+		got_h = float(fx.get("h", -1.0))
+		got_h2 = float(fx.get("h2", -1.0))
+		if _near(got_h, muz_h, 0.02) and _near(got_h2, mid_h, 0.02):
+			n_ok += 1
+	_ok("③H ★分母: 炮弹演出真的建出来了", n_all > 0, "带高度的演出段 %d 条" % n_all)
+	_ok("③H 出膛高度 = 炮台立绘顶端珊瑚珠(不是手枪默认的 0.05 米)",
+		n_all > 0 and _near(got_h, muz_h, 0.02) and got_h > 0.5,
+		"实为 %.3f 米 / 应为 %.3f 米" % [got_h, muz_h])
+	_ok("③H 落点高度 = 目标身体中段(不是一路平飞)",
+		n_all > 0 and _near(got_h2, mid_h, 0.02) and absf(got_h2 - got_h) > 0.05,
+		"出膛 %.3f → 落点 %.3f / 应落在 %.3f" % [got_h, got_h2, mid_h])
+	_ok("③H 每一段演出的高度都对(不是只有一条蒙对)", n_ok == n_all,
+		"%d/%d 段对" % [n_ok, n_all])
+	vf2.clear()
 
 
 func _t079_lowest_ally() -> void:
