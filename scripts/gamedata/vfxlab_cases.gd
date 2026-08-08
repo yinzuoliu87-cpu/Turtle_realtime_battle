@@ -184,7 +184,7 @@ const CASES := {
 ## 083 潮汐细剑 —— 连续命中同一敌人叠层(至多 20), 切目标清零; 被动按损血给攻速。
 ## 触发: `on_hit` ⇒ 携带者必须真的打。单敌人保证不会切目标。
 "p2eq_083": {
-	"star": 3, "carrier": "basic", "enemies": 1, "attacker": true, "enemy_dist": 60.0,
+	"ui": true, "star": 3, "carrier": "basic", "enemies": 1, "attacker": true, "enemy_dist": 60.0,
 	"dur": 18.0, "zoom": 5.0, "focus": "mid", "focus_h": 1.0,
 	"shots": [3.0, 6.0, 9.0, 12.0, 15.0, 17.5],
 	"note": "近战携带者 ⇒ 敌 1 放 60 码(射程 70 内)省掉走位时间。单敌人 = 层数只涨不清。",
@@ -200,9 +200,9 @@ const CASES := {
 	"eq": "p2eq_084",
 	"star": 3, "carrier": "basic", "enemies": 1, "attacker": true, "fast_energy": true,
 	"enemy_dist": 380.0,
-	"dur": 20.0, "zoom": 2.2, "focus": "carrier", "focus_h": 1.0,
+	"dur": 20.0, "zoom": 1.25, "focus": "point", "focus_xy": Vector2(868.0, 474.0), "focus_h": 1.0,
 	"shots": [2.90, 3.00, 3.10, 3.20, 3.30, 3.45, 3.60, 3.90, 4.50, 8.00],
-	"note": "近战→远程。fast_energy 让 80 龟能的十字斩几秒就放; 0.1 秒一档密排才抓得到横斩→横波→竖斩→竖波四段(整段只有 ~0.8 秒)。focus 必须锁 carrier —— 它会后撤 150 码。",
+	"note": "★2026-08-08 改机位: 横斩本身就是 250 码 120 度、波再往外推 —— focus 锁 carrier(它还要后撤 150 码)会把整段斩击甩出画面, zoom 2.2 也装不下。改锁场地正中 + zoom 1.6。fast_energy 让 80 龟能的十字斩几秒就放; 0.1 秒一档密排才抓得到横斩→横波→竖斩→竖波四段(整段只有 ~0.8 秒)。",
 },
 
 ## 084 手半剑(远程携带) —— 变近战 100 码 + 把射程换算成生命/攻击/吸血(**实时**换算)。

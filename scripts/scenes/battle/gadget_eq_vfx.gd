@@ -82,6 +82,21 @@ const SPARK_COLOR := Color(0.62, 0.95, 1.0)
 ## 辉光的不透明度。★从 0.85 降下来: 半径放大 3~6 倍之后, 0.85 的加法混合会盖成一坨实心白球
 ##   把携带者整只糊住 —— 这是"治好看不见"顺手造出的反向问题。0.60 仍是明确的青白辉光。
 const SPARK_ALPHA := 0.60
+## 压电裂纹: 几道 / 多粗(米) / 画在胸口多高(米)
+const CRACK_N := 5
+const CRACK_THICK := 0.07
+const PIEZO_CHEST_M := 0.85
+## 龟能微粒: 几粒 / 单粒长(码) / 粗(米) / 横向铺开(码) / 上涌多少米 / 活多久 / 相邻错开
+## ★金色取的就是**龟能条的色号 #ffce4d**(battle_hud 里那条) —— 同一种资源同一个颜色,
+##   玩家不必再学一遍"这个金色是什么"。
+const ENERGY_GOLD := Color(1.0, 0.807, 0.302, 0.95)
+const MOTE_N := 4
+const MOTE_LEN_PX := 16.0
+const MOTE_THICK := 0.10
+const MOTE_SPREAD_PX := 40.0
+const MOTE_RISE_M := 1.15
+const MOTE_LIFE := 0.42
+const MOTE_GAP := 0.06
 
 ## 086 浮游炮
 const DRONE_R_M := 0.16          ## 炮体半径(米)
@@ -237,14 +252,40 @@ func _transient(n: MeshInstance3D, life: float, half: float = 0.0) -> void:
 func piezo_spark(u: Dictionary, energy: float) -> MeshInstance3D:
 	if not _alive() or energy <= 0.0:
 		return null
+	# ★★2026-08-08 实拍(_vfxlab_p2eq_085_3.png): 旧版是一颗 **SphereMesh 白球**罩在携带者身上
+	#   —— 正是用户这一轮开头就点名的"白球家族"。一个球读不出"伤害进来了"与"变成龟能了"
+	#   这两件事的任何一半。⇒ 拆成两段, 各管一半:
+	#     ① 压电: 胸口炸出几道**短促的放射裂纹**(压电陶瓷受压开裂), 青白、尖、快
+	#     ② 转化: 几粒 **龟能金(#ffce4d, 与龟能条同色)的微粒沿身体上涌**
+	#        —— "往上走"这个方向本身就是"转成龟能"的读法
+	#   尺寸仍由 `spark_radius(energy)` 驱动 ⇒ √E 律那几条门禁照旧管着它。
 	var r: float = spark_radius(energy)
-	var n := _mi(SphereMesh.new(), Color(SPARK_COLOR.r, SPARK_COLOR.g, SPARK_COLOR.b, SPARK_ALPHA), "piezo")
-	(n.mesh as SphereMesh).radius = 1.0
-	(n.mesh as SphereMesh).height = 2.0
-	n.position = battle._world_pos(u["pos"], 0.85)
-	n.scale = Vector3.ONE * r
-	_transient(n, SPARK_LIFE)
-	return n
+	var ctr: Vector2 = u["pos"]
+	var head: MeshInstance3D = null
+	for i in range(CRACK_N):
+		var th: float = TAU * float(i) / float(CRACK_N) + float(u.get("_st_taken", 0)) * 0.7
+		var d: Vector2 = Vector2(cos(th), sin(th) * 0.55)          # 压扁: 2.5D 斜视角下才像贴着身体
+		# ★★裂纹的**世界长度严格等于 `spark_radius(E)`** —— 门禁断言的正是"真实节点的
+		#   scale ≡ 公式值"(不是"公式对了但没写到节点上")。两点的场地码间距 = r / WS,
+		#   `_beam` 会把它换算回世界米 ⇒ scale.x 恰好是 r。第一版我按 PX_PER_M 随手换算,
+		#   门禁立刻红(scale 0.4246 vs 公式 0.5128) —— 它守住了东西。
+		var step: float = r / maxf(0.0001, float(battle.WS))
+		var a0: Vector2 = ctr + d * (step * 0.25)
+		var b0: Vector2 = a0 + d * step
+		var cr := _beam(a0, b0, PIEZO_CHEST_M, CRACK_THICK,
+			Color(SPARK_COLOR.r, SPARK_COLOR.g, SPARK_COLOR.b, 0.95), "piezo")
+		_transient(cr, SPARK_LIFE * 0.55)
+		if head == null:
+			head = cr
+	for k in range(MOTE_N):
+		var f: float = float(k) / float(maxi(1, MOTE_N - 1))
+		var off: Vector2 = Vector2((f - 0.5) * MOTE_SPREAD_PX, 0.0)
+		var mo := _beam(ctr + off - Vector2(MOTE_LEN_PX * 0.5, 0.0),
+			ctr + off + Vector2(MOTE_LEN_PX * 0.5, 0.0),
+			PIEZO_CHEST_M, MOTE_THICK, ENERGY_GOLD, "piezo")
+		_fx.append({"node": mo, "t": -MOTE_GAP * float(k), "life": MOTE_LIFE,
+			"rise": MOTE_RISE_M, "y0": mo.position.y})
+	return head
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -420,6 +461,17 @@ func tick(delta: float) -> void:
 			continue
 		var half: float = float(h.get("half", 0.0))
 		var a: float = ray_alpha(t) if half > 0.0 else (1.0 - t / life)
+		# ★"rise" = 沿 Y 上涌 + 负 t 延后出现。085 的"伤害转化为龟能"靠**一串依次上涌的微粒**
+		#   读出来 —— 只有"往上走"这个方向才读得出是在转成龟能, 一颗静止的球读不出任何一半。
+		#   ⚠ 负 t 必须显式判(t<0 完全不画): 只靠 alpha 曲线会让它一出生就满亮, 错开等于没做
+		#   (082 贝壳串踩过同一个坑)。
+		if h.has("rise"):
+			if t < 0.0:
+				a = 0.0
+			else:
+				var q: float = clampf(t / maxf(0.001, life), 0.0, 1.0)
+				(n as MeshInstance3D).position.y = float(h["y0"]) + float(h["rise"]) * q
+				a = 1.0 - q * q
 		var m = (n as MeshInstance3D).material_override
 		if m is StandardMaterial3D:
 			var c: Color = (m as StandardMaterial3D).albedo_color

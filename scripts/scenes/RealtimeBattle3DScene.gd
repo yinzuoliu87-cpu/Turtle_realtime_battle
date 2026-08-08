@@ -632,6 +632,7 @@ const PANEL_COUNT := {   # 头像下装备格右下角层数徽章: id → eq_st
 	"p2eq_017": "anchor_charges",  # 沉锚就绪充能数(另有anchor_accum攒治疗条)
 	"p2eq_036": "egg_levels",      # 温泉蛋临时等级(0-3; 另有incub充能条)
 	"p2eq_082": "charges",         # 护心甲充能层(每反伤 15 次一层; 普攻消耗一层)
+	"p2eq_083": "stacks",          # 潮汐细剑连击层(0-20; 切目标或目标死清空)
 }
 const PANEL_CHARGE := {   # 局内头像下装备格的充能进度条: id → [充能字段, 满值]
 	"p2eq_009": ["blade_energy", 100.0], "p2eq_026": ["thunder", 100.0],

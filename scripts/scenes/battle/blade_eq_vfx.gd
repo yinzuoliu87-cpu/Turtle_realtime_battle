@@ -109,14 +109,22 @@ const STACK_LN21 := 3.044522437723423
 ##   刻度分成 20 格 ⇒ 既能一眼读"满没满", 也能真的数出来是几层。
 const STACK_TICKS := 20
 ## 进度环的直径(码): 0 层这么大 → 20 层这么大
-const STACK_D0 := 74.0
-const STACK_D1 := 132.0
+## ★2026-08-08 收小(74/132 → 46/74): 132 码直径横跨半个画面, 龟反而成了配角。
+## 读数已进装备图标框, 这圈只负责"我在叠层"的氛围。
+const STACK_D0 := 46.0
+const STACK_D1 := 74.0
+## 潮汐青 —— 全场的命中环/技能环/目标环都是白的, 白环撞形状又撞色
+const TIDE_COL := Color(0.36, 0.82, 0.92)
 
 ## ④ 084 剑波演出速度(码/秒)。★与 `EqBladeBatch.WAVE_SPD` 焊死相等(门禁验)。
 const WAVE_SPD := 900.0
 ## 十字斩两段的扇形半角(弧度): 横斩 120°/2 · 竖斩 60°/2。★与结算侧焊死。
 const SLASH_HALF_WIDE := 1.0471975512
 const SLASH_HALF_NARROW := 0.5235987756
+## 十字斩扫过多远(码) —— 规格原文"250 码", 结算侧与演出侧共用这一个数
+const SLASH_REACH := 250.0
+## 剑刃弧贴图里, 弧的半径占帧宽的几成(见 cross_blade_tex 的 R = n*0.455)
+const BLADE_R_FRAC := 0.455
 
 ## 贴地几何离地高度(米)
 const GROUND_Y := 0.07
@@ -130,6 +138,8 @@ const OWNED_CAP := 256
 static var _tex_vine_shield: ImageTexture = null
 static var _tex_vine_ring: ImageTexture = null
 static var _tex_shell: ImageTexture = null
+static var _tex_blade: ImageTexture = null
+static var _tex_wave: ImageTexture = null
 static var _tex_stack: Dictionary = {}     # stacks(int) → ImageTexture, 最多 21 张
 
 var battle
@@ -268,6 +278,89 @@ static func vine_shield_tex() -> ImageTexture:
 			img.set_pixel(x, y, Color(col.r, col.g, col.b, a))
 	_tex_vine_shield = ImageTexture.create_from_image(img)
 	return _tex_vine_shield
+
+
+## 084 十字斩的**剑刃弧**。★为什么不继续用共享的 `VfxTex._make_slash_texture`:
+##   那张是 **64px + `a = edge²·taper` 的软渐变**, 放到屏上 250 码 ⇒ 一团**模糊的白雾**
+##   (实拍 _vfxlab_p2eq_084_melee 里就是几道糊边白弧), 和全场脆像素完全两个画风。
+##   而它还有别的调用方(主场景), 不能就地改硬 —— 所以本件自备一张。
+## 剑刃的判据是**剪影**: 外缘一条硬边(刀锋), 内侧收进去(刀背), 两端尖 —— 不是一条羽化的带子。
+static func cross_blade_tex() -> ImageTexture:
+	if _tex_blade != null:
+		return _tex_blade
+	var n := 128
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var c: float = float(n) * 0.5
+	var R: float = float(n) * 0.455
+	var th: float = float(n) * 0.085
+	for y in range(n):
+		for x in range(n):
+			var dx: float = float(x) - c
+			var dy: float = float(y) - c
+			var d: float = sqrt(dx * dx + dy * dy)
+			if d > R or d < R - th:
+				continue                       # ★硬边: 圈外/圈内直接不画, 不做羽化
+			var a: float = atan2(dy, dx)
+			var f: float = (a - deg_to_rad(-150.0)) / deg_to_rad(180.0)
+			if f < 0.0 or f > 1.0:
+				continue
+			# 两端收尖: 靠**厚度**收(几何), 不靠 alpha 渐隐(羽化)
+			var taper: float = sin(PI * f)
+			if (R - d) > th * taper:
+				continue
+			# 刀锋那一层白热(最外 30%), 其余是本色 —— 两级台阶, 不是连续渐变
+			var edge: bool = (R - d) < th * 0.30
+			img.set_pixel(x, y, Color(1, 1, 1, 1.0) if edge else Color(0.92, 0.96, 1.0, 0.98))
+	_tex_blade = ImageTexture.create_from_image(img)
+	return _tex_blade
+
+
+## 084 剑波: 一条**前刃硬、后缘阶梯收**的直波(不是软椭圆透镜)。
+static func cross_wave_tex() -> ImageTexture:
+	if _tex_wave != null:
+		return _tex_wave
+	# ★★第一版把内容**铺满整张贴图**, 再乘 250 码的板 ⇒ 屏上是一块比龟还大四倍的
+	#   **梯形水杯**(实拍 _vfxlab_p2eq_084_melee 第一轮)。剑波的剪影是**一道弓形的薄刃**,
+	#   不是一块板 ⇒ 内容只占纵向中间一小条, 其余留空; 板再大也只是"更长的一道刃"。
+	var w := 128
+	var h := 128
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var mid: float = float(h) * 0.5
+	var thick: float = float(h) * 0.055      # 刃厚只占 5.5% ⇒ 屏上是"一道", 不是"一块"
+	var bow: float = float(h) * 0.16         # 弓背深度(中间凸出去)
+	for x in range(w):
+		var t: float = float(x) / float(w - 1)             # 0..1 横向
+		var taper: float = sin(PI * t)                      # 两端收尖
+		if taper <= 0.02:
+			continue
+		var cy: float = mid - bow * taper                   # 弓形: 中间凸向 −Y(行进方向)
+		var half: float = thick * taper
+		var y0: int = int(floor(cy - half))
+		var y1: int = int(ceil(cy + half))
+		for y in range(maxi(0, y0), mini(h, y1 + 1)):
+			var d: float = absf(float(y) - cy) / maxf(0.001, half)
+			if d > 1.0:
+				continue
+			# 两级台阶: 前缘(靠 −Y 一侧)白热, 后半是本色 —— 阶梯读得出"刃"与"背"
+			var lead: bool = (float(y) - cy) < -half * 0.25
+			img.set_pixel(x, y, Color(1, 1, 1, 1.0) if lead else Color(0.70, 0.86, 1.0, 0.9))
+	# 尾迹: 刃后方几道更细的短线(读出"它在往前推")
+	for k in range(3):
+		var off: float = thick * (2.2 + 2.0 * float(k))
+		var a: float = 0.42 - 0.11 * float(k)
+		for x in range(w):
+			var t2: float = float(x) / float(w - 1)
+			var tp: float = sin(PI * t2)
+			if tp <= 0.30:
+				continue
+			var yy: int = int(round(mid - bow * tp + off))
+			if yy < 0 or yy >= h:
+				continue
+			img.set_pixel(x, yy, Color(0.62, 0.80, 1.0, a))
+	_tex_wave = ImageTexture.create_from_image(img)
+	return _tex_wave
 
 
 ## 举盾的贴地环: **断续的藤条环**(16 段), 不是平滑细圆环。
@@ -636,13 +729,22 @@ func clam_burst(u: Dictionary, tgt) -> void:
 func rapier_stack(u: Dictionary, stacks: int) -> void:
 	if not _has_world():
 		return
+	# ★★2026-08-08 实拍(_vfxlab_p2eq_083_4.png)两处改:
+	#   ① **环巨大**: 132 码直径在正常机位下横跨半个画面, 主体(龟)反而成了配角。
+	#      ⇒ 收到 46→74 码。它是"我在叠层"的**氛围**, 不是读数 ——
+	#      读数已经按用户 2026-08-08 的规矩搬进**装备图标框**(PANEL_COUNT["p2eq_083"]),
+	#      环不必再兼职当刻度盘。
+	#   ② **纯白**: 场上命中环/技能环/目标环全是白的, 遮住颜色就分不出。
+	#      ⇒ 改潮汐青(与 083 的"潮汐细剑"同名同色), 满层才转白热。
 	var g: float = stack_glow(stacks)
+	var col: Color = TIDE_COL.lerp(Color(1.0, 1.0, 1.0), g * 0.65)
 	var ring := _ground(stack_ring_tex(stacks), u["pos"], stack_diam(stacks),
-		Color(1.0, 1.0, 1.0, 0.55 + 0.45 * g), 5)
+		Color(col.r, col.g, col.b, 0.55 + 0.45 * g), 5)
 	_adopt(ring, "rapier")
 	_fx.append({"node": ring, "t": 0.0, "life": 0.34, "kind": "fade"})
 	if stacks >= int(STACK_CAP):
-		var cap := _ground(stack_ring_tex(int(STACK_CAP)), u["pos"], stack_diam(stacks), Color(1, 1, 1, 0.9), 5)
+		var cap := _ground(stack_ring_tex(int(STACK_CAP)), u["pos"], stack_diam(stacks),
+			Color(1.0, 1.0, 1.0, 0.9), 5)
 		_adopt(cap, "rapier_cap")
 		_fx.append({"node": cap, "t": 0.0, "life": 0.4, "kind": "grow",
 			"d0": stack_diam(stacks), "d1": stack_diam(stacks) * 1.7})
@@ -660,16 +762,26 @@ func cross_retreat(u: Dictionary, dest: Vector2, _dir: Vector2) -> void:
 
 
 ## 斩击: 一道新月剑弧, 张角与结算侧同一个数(见 slash_half_rad)。
-func cross_slash(u: Dictionary, dir: Vector2, seg: int) -> void:
+## ⚠ **已知缺口(不隐瞒)**: `_dir` 现在没被用上 —— 弧是 `Sprite3D` 的 billboard,
+##   billboard 会吃掉 roll(本仓 001 飞斩的旧账), 所以这一刀**指不了方向**, 永远按同一个
+##   屏幕朝向画。要真指向目标得改用世界坐标顶点建的四边形(同 082 贝壳走 `_quad_along` 那条路)。
+##   这一轮先把"尺寸对上规格 250 码 + 亮度读得出是一刀"做掉, 方向留作下一轮。
+func cross_slash(u: Dictionary, _dir: Vector2, seg: int) -> void:
 	if not _has_world():
 		return
 	var half: float = slash_half_rad(seg)
 	var col: Color = Color(0.86, 0.92, 1.0) if seg == 1 else Color(1.0, 0.94, 0.78)
-	var mid: Vector2 = u["pos"] + dir * 125.0
-	var s := _board(VfxTex._make_slash_texture(col), mid, float(u.get("height", 1.2)) * 0.75,
-		250.0 * (half / SLASH_HALF_WIDE + 0.5), Color(col.r, col.g, col.b, 0.95), 7)
+	# ★★2026-08-08 尺寸重定。旧写法 `250 * (half/WIDE + 0.5)` 给横斩算出 **375 码**——
+	#   比规格的 250 码大了一半, 而这一笔正是"扫过多远"的唯一视觉承诺(演出即判定)。
+	#   贴图里弧的半径占帧宽 BLADE_R_FRAC ⇒ 要让弧的**外缘**正好落在 250 码上,
+	#   帧宽必须是 250 / BLADE_R_FRAC; 中心也就回到携带者身上(不再往前挪半个身位)。
+	var s := _board(cross_blade_tex(), u["pos"], GunEqVfx.body_mid_h(u),
+		SLASH_REACH / BLADE_R_FRAC, Color(col.r, col.g, col.b, 0.95), 7)
 	_adopt(s, "slash")
-	_fx.append({"node": s, "t": 0.0, "life": 0.22, "kind": "fade"})
+	# ★★"一出生就线性淡出" —— 今天第四次同一个病(078 霰弹 / 079 治疗束 / 082 贝壳弧 / 这里)。
+	#   一刀只活 0.22 秒, 线性淡出让它**大半辈子处在半亮以下** ⇒ 实拍里读成一道灰弧,
+	#   而不是"一刀劈过去"。⇒ holdfade: 前 70% 满亮, 最后一段才收。
+	_fx.append({"node": s, "t": 0.0, "life": 0.26, "kind": "holdfade", "a0": 0.95})
 
 
 ## 剑波: 沿 dir 匀速推进, 位置由 wave_pos() 给出(与结算侧同一个 WAVE_SPD)。
@@ -678,11 +790,11 @@ func cross_wave(u: Dictionary, org: Vector2, dir: Vector2, seg: int) -> void:
 		return
 	var col: Color = Color(0.74, 0.86, 1.0) if seg == 2 else Color(1.0, 0.9, 0.7)
 	var wide: bool = seg == 2
-	var s := _board(VfxTex._make_wave_texture(col), org, float(u.get("height", 1.2)) * 0.7,
+	var s := _board(cross_wave_tex(), org, GunEqVfx.body_mid_h(u),
 		(250.0 if wide else 110.0), Color(col.r, col.g, col.b, 0.9), 7)
 	_adopt(s, "wave")
 	_fx.append({"node": s, "t": 0.0, "life": 0.78, "kind": "wave", "org": org, "dir": dir,
-		"h": float(u.get("height", 1.2)) * 0.7})
+		"h": GunEqVfx.body_mid_h(u)})
 
 
 # ══════════════════════════════════════════════════════════════════════
