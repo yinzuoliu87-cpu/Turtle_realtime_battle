@@ -30,7 +30,12 @@ const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 ##   · 碑高 1.90 → 2.95 米:   1.90 米只有 22.5×33.5 屏幕像素, 碑面上刻什么都是 2~3 px
 ##   两条的可见性判据由 tests/verify_eq_vfx_visibility.gd 单独守。
 const WANT_PLATE_R_PX := 21.0
-const WANT_STELE_H := 2.95
+## ★2026-08-09 碑体重做后 2.95 → 3.60 米: 屏幕 63.4 px 高(龟立绘 44 px), 碑该是地标。
+const WANT_STELE_H := 3.60
+## 实战默认视角的两把尺子(字面值, 与 verify_eq_vfx_visibility 同源):
+## 相机 (0,28,22) look_at (0,0.6,0) fov40 ⇒ 横向 28.14758 px/米、世界竖直 17.62155 px/米。
+const PX_PER_M_LIT := 28.147577
+const PX_PER_M_VERT_LIT := 17.621551
 
 var _n := 0
 var _fail := 0
@@ -48,6 +53,27 @@ func _ok(name: String, cond: bool, detail: String = "") -> void:
 
 func _near(a: float, b: float, eps: float = 1e-4) -> bool:
 	return absf(a - b) <= eps
+
+
+## 一张立绘片投到实战镜头屏幕上的**包围盒尺寸(像素)**。
+## ★量的是四个真实顶点经 `global_transform` 之后的世界坐标, 再乘两把尺子 ——
+##   不是"拿 scale 乘一乘"(那样父节点的补偿、旋转都会被漏掉, 正是要抓的那个 bug)。
+func _screen_wh(sp: Sprite3D) -> Vector2:
+	if sp == null or sp.texture == null:
+		return Vector2.ZERO
+	var hw: float = float(sp.texture.get_width()) * sp.pixel_size * 0.5
+	var hh: float = float(sp.texture.get_height()) * sp.pixel_size * 0.5
+	var gx: Transform3D = sp.global_transform
+	var xs: Array = []
+	var ys: Array = []
+	for c in [Vector3(-hw, -hh, 0.0), Vector3(hw, -hh, 0.0), Vector3(hw, hh, 0.0), Vector3(-hw, hh, 0.0)]:
+		var w: Vector3 = gx * (c as Vector3)
+		xs.append(w.x)
+		ys.append(w.y)
+	xs.sort()
+	ys.sort()
+	return Vector2((float(xs[3]) - float(xs[0])) * PX_PER_M_LIT,
+		(float(ys[3]) - float(ys[0])) * PX_PER_M_VERT_LIT)
 
 
 ## 干净合成单位。★用 `fortune` 不用 `basic`: 小龟·不屈会给小龟造成的一切伤害 +20%。
@@ -722,9 +748,16 @@ func _t094_bolt() -> void:
 		sys.tick(0.05)                                   # 3.05 秒
 	_ok("3 秒到点: 石块已发射(在途 1 发)", sys._bolts.size() == 1, "N=%d" % sys._bolts.size())
 	_ok("在途期间还没掉血(落地才结算)", _near(float(foe["hp"]), hp0), "hp=%.1f" % float(foe["hp"]))
+	# ★系统侧的在途表与演出侧的石块是**两份累加器**(伤害用前者、画面用后者)。
+	#   它们必须由同一个 tick 同一个 delta 推 ⇒ 落地那一帧两边一起结束。
+	#   这条守的就是"伤害不许比石头早/晚半秒"(memory [[fb-vfx-defect-families]] 的第三类)。
+	var rock_in_air: int = sys.vfx.alive_count("stone_bolt")
+	_ok("在途期间演出侧也有 1 块石头(分母)", rock_in_air == 1, "N=%d" % rock_in_air)
 	for _i in range(11):
 		sys.tick(0.05)                                   # 再 0.55 秒 > 落时 0.5
 	_ok("落地后真的掉血", float(foe["hp"]) < hp0, "%.1f → %.1f" % [hp0, float(foe["hp"])])
+	_ok("★落地那一帧演出侧的石头也没了(伤害与石头同帧, 不是各走各的秒表)",
+		sys.vfx.alive_count("stone_bolt") == 0, "N=%d" % sys.vfx.alive_count("stone_bolt"))
 	_ok("落地证据挂在目标身上", int(foe.get("_stele_bolt_n", 0)) == 1, "n=%d" % int(foe.get("_stele_bolt_n", 0)))
 	_ok("在途表已出清", sys._bolts.is_empty(), "N=%d" % sys._bolts.size())
 	# 节拍: 再喂 6 秒 ⇒ 再来 2 发(共 3 发)
@@ -924,15 +957,68 @@ func _t_vfx_geometry() -> void:
 	var sh: Dictionary = sys._steles[0]["h"]
 	_ok("碑真的进了 _world", not sh.is_empty() and is_instance_valid(sh["root"]) and sh["root"].get_parent() == _s._world)
 	var y_ground: float = _s._world_pos(carrier["pos"], 0.0).y
-	var y0: float = (sh["root"] as Node3D).position.y
-	_ok("τ=0 时整座碑埋在地下(−碑高)", _near(y0 - y_ground, -WANT_STELE_H, 1e-3), "Δy=%.4f" % (y0 - y_ground))
-	vfx.apply_stele(sh, 0.5)
-	var y_half: float = (sh["root"] as Node3D).position.y
-	_ok("★τ=0.5 时真实节点已升到 75%(量真实对象不是抄公式)",
-		_near(y_half - y_ground, -WANT_STELE_H * 0.25, 1e-3), "Δy=%.4f (期望 %.4f)" % [y_half - y_ground, -WANT_STELE_H * 0.25])
-	vfx.apply_stele(sh, 1.0)
-	_ok("τ=1 时碑面恰好落在地面", _near((sh["root"] as Node3D).position.y - y_ground, 0.0, 1e-4),
-		"Δy=%.5f" % ((sh["root"] as Node3D).position.y - y_ground))
+	# ⑯-e1 ★升起靠 region_rect 逐行揭开立绘, **不靠"埋下去让地板挡住"**
+	#   (地板挡不挡得住取决于地图 —— VFXLAB 黑场/镂空地面都会漏; region 是画多少就是多少)
+	var spr = sh.get("sprite", null)
+	_ok("碑体是新立绘 Sprite3D(分母)", spr != null and is_instance_valid(spr) and (spr as Sprite3D).texture != null)
+	if spr != null and is_instance_valid(spr) and (spr as Sprite3D).texture != null:
+		var th: float = float((spr as Sprite3D).texture.get_height())
+		vfx.apply_stele(sh, 0.0)
+		var f0: float = (spr as Sprite3D).region_rect.size.y / th
+		vfx.apply_stele(sh, 0.5)
+		var f_half: float = (spr as Sprite3D).region_rect.size.y / th
+		var off_half: float = (spr as Sprite3D).offset.y
+		vfx.apply_stele(sh, 1.0)
+		var f1: float = (spr as Sprite3D).region_rect.size.y / th
+		_ok("τ=0 时几乎一点没露头(露出比 ≤ 1/贴图高)", f0 <= 1.5 / th, "露出 %.4f" % f0)
+		_ok("★τ=0.5 时真实节点露出 75%(量 region_rect, 不是抄公式)",
+			_near(f_half, 0.75, 2e-3), "露出 %.4f" % f_half)
+		_ok("τ=1 时整张碑立绘都露出来", _near(f1, 1.0, 1e-6), "露出 %.6f" % f1)
+		_ok("★露出区域的**下边缘恒钉在地面**(offset = 区域半高)",
+			_near(off_half, th * 0.75 * 0.5, 1e-3), "offset=%.3f (期望 %.3f)" % [off_half, th * 0.75 * 0.5])
+		_ok("碑体贴图按 NEAREST 取样", (spr as Sprite3D).texture_filter == BaseMaterial3D.TEXTURE_FILTER_NEAREST)
+		# ⑯-e2 ★碑体在屏幕上保住立绘的长宽比(漏掉竖直 0.626 压缩就会变成横匾)
+		var tw: float = float((spr as Sprite3D).texture.get_width())
+		var s_w: float = tw * (spr as Sprite3D).pixel_size * (spr as Sprite3D).scale.x * PX_PER_M_LIT
+		var s_h: float = th * (spr as Sprite3D).pixel_size * (spr as Sprite3D).scale.y * PX_PER_M_VERT_LIT
+		_ok("★碑体屏幕长宽比 == 立绘长宽比", _near(s_w / maxf(s_h, 1e-6), tw / th, 0.02),
+			"屏幕 %.1f×%.1f=%.3f vs 立绘 %.0f×%.0f=%.3f" % [s_w, s_h, s_w / maxf(s_h, 1e-6), tw, th, tw / th])
+		_ok("碑体屏幕高 = 碑高 × 17.62(≥ 龟立绘 44 px)", s_h >= 44.0, "%.1f px" % s_h)
+	# ⑯-e3 ★root 从头到尾不动 + 碑基石台**钉在地面**
+	#   (旧版石台挂在会上下移动的 root 下, 实拍量到它在屏幕上整整跑了 148 px)
+	var y_root0: float = (sh["root"] as Node3D).position.y
+	var base_n = sh.get("base", null)
+	_ok("碑基石台建出来了(分母)", base_n != null and is_instance_valid(base_n))
+	var by0: float = (base_n as Node3D).global_position.y if base_n != null and is_instance_valid(base_n) else -999.0
+	vfx.apply_stele(sh, 0.3)
+	vfx.advance_stele(sh, 0.1)
+	var y_root1: float = (sh["root"] as Node3D).position.y
+	var by1: float = (base_n as Node3D).global_position.y if base_n != null and is_instance_valid(base_n) else -998.0
+	_ok("★升起过程中 root 一动不动(升起不靠移动整座碑)", _near(y_root1, y_root0, 1e-6),
+		"y %.5f → %.5f" % [y_root0, y_root1])
+	_ok("★碑基石台的世界高度恒 = 地面(不随碑升起上下跑)",
+		_near(by1, by0, 1e-6) and _near(by0 - y_ground, RelicEqVfx.GROUND_Y, 1e-4),
+		"y %.5f → %.5f (地面 %.5f)" % [by0, by1, y_ground])
+	# ⑯-e4 ★碑顶符石 = 分星信息, 屏幕上必须分得开
+	var slots2: Array = RelicEqVfx.crest_slots(2, WANT_STELE_H)
+	var ns_crest: Array = []
+	for si in [0, 1, 2]:
+		ns_crest.append(RelicEqVfx.crest_slots(si, WANT_STELE_H).size())
+	_ok("★碑顶符石颗数 = 1/2/3(分星靠数颗数)", ns_crest == [1, 2, 3], "实测 %s" % str(ns_crest))
+	var pitch_px: float = absf(float((slots2[1] as Vector2).x) - float((slots2[0] as Vector2).x)) * PX_PER_M_LIT
+	var crest_px: float = 2.0 * RelicEqVfx.CREST_R_M * PX_PER_M_LIT
+	_ok("★相邻两颗的屏幕间距 > 单颗宽度(数得清的充要条件)", pitch_px > crest_px,
+		"间距 %.2f px vs 宽 %.2f px" % [pitch_px, crest_px])
+	_ok("3★ 真的建了 3 颗符石节点", (sh.get("crests", []) as Array).size() == 3,
+		"N=%d" % (sh.get("crests", []) as Array).size())
+	# ⑯-e5 ★破土爆点是暖尘不是石头本色(旧版 luma 0.257, 实拍是全屏最暗的东西)
+	var blast_col: Color = Color(0, 0, 0, 1)
+	if not (vfx._shocks as Array).is_empty():
+		blast_col = (vfx._shocks[0] as Dictionary)["col"]
+	var blast_luma: float = 0.2126 * blast_col.r + 0.7152 * blast_col.g + 0.0722 * blast_col.b
+	_ok("破土爆点建出来了(分母)", not (vfx._shocks as Array).is_empty(), "N=%d" % (vfx._shocks as Array).size())
+	_ok("★破土爆点亮度 ≥ 0.60(旧版 0.257 在黑场里几乎看不见)", blast_luma >= 0.60,
+		"luma=%.4f" % blast_luma)
 
 	# ⑯-f 石雷: 真自由落体
 	_ok("fall(0)=1 · fall(1)=0", _near(RelicEqVfx.fall_profile(0.0), 1.0) and _near(RelicEqVfx.fall_profile(1.0), 0.0))
@@ -952,6 +1038,38 @@ func _t_vfx_geometry() -> void:
 	_ok("石雷落时 = 0.5 秒(H=5.25 / g=42 的闭式解)",
 		_near(RelicEqVfx.fall_time(RelicEqVfx.BOLT_H, RelicEqVfx.BOLT_G), 0.5, 1e-6),
 		"%.6f 秒" % RelicEqVfx.fall_time(RelicEqVfx.BOLT_H, RelicEqVfx.BOLT_G))
+	# ⑯-f2 ★石块是新立绘、只绕视线轴翻滚
+	#   (旧版是程序化八面体 + UNSHADED 纯色 ⇒ 每个面同色只剩剪影, 实拍读成"一枚橙色五边形";
+	#    换成立绘之后绕 x/y 转会把片转到侧面变成一条线, 所以只许绕 z)
+	var rb: Dictionary = vfx.stone_bolt(carrier["pos"] + Vector2(60, 0), 2)
+	_ok("石块建出来了(分母)", not rb.is_empty() and is_instance_valid(rb.get("node", null)))
+	if not rb.is_empty() and is_instance_valid(rb.get("node", null)):
+		var rw := rb["node"] as Node3D
+		var rn := rb["spr"] as Sprite3D
+		_ok("石块是新立绘(不是纯色多面体)", rn != null and rn.texture != null)
+		_ok("石块贴图按 NEAREST 取样", rn != null and rn.texture_filter == BaseMaterial3D.TEXTURE_FILTER_NEAREST)
+		vfx.apply_bolt(rb, 0.0)
+		var y_top: float = rw.position.y
+		vfx.apply_bolt(rb, 1.0)
+		var y_bot: float = rw.position.y
+		_ok("★石块真的从高处落到地面(Δy ≈ BOLT_H)",
+			_near(y_top - y_bot, RelicEqVfx.BOLT_H, 1e-4), "Δy=%.4f" % (y_top - y_bot))
+		_ok("★石块只绕视线轴 z 翻滚(绕 x/y 会把立绘转成一条线)",
+			_near(rn.rotation.x, 0.0, 1e-9) and _near(rn.rotation.y, 0.0, 1e-9) and absf(rn.rotation.z) > 0.1,
+			"rot=(%.4f, %.4f, %.4f)" % [rn.rotation.x, rn.rotation.y, rn.rotation.z])
+		# ★翻滚到 90° 时长宽**不许对调** —— 量的是四个真实顶点投到屏幕上的包围盒。
+		#   改前(压缩与旋转写在同一个节点上)实拍是 32 × 13.6 px, 本该 18.7 × 20。
+		## ⚠ 必须先回到 τ=0 —— 上一行断言把 τ 停在 1.0(转了 183°), 拿那一帧当"未旋转基准"
+		##   会让基准自己就带 3° 的偏差(第一版就这么错过一次, 差 5% 判红)。
+		vfx.apply_bolt(rb, 0.0)
+		var wh0: Vector2 = _screen_wh(rn)
+		var tau90: float = (PI * 0.5) / maxf(float(rb["T"]) * RelicEqVfx.BOLT_SPIN, 1e-6)
+		vfx.apply_bolt(rb, tau90)
+		var wh90: Vector2 = _screen_wh(rn)
+		_ok("石块屏幕包围盒分母(τ=0)", wh0.x > 4.0 and wh0.y > 4.0, "%.2f × %.2f px" % [wh0.x, wh0.y])
+		_ok("★翻滚到 90° 时屏幕长宽只是对调而不是被压扁(横向压缩必须在旋转之外)",
+			_near(wh90.x, wh0.y, 0.6) and _near(wh90.y, wh0.x, 0.6),
+			"τ=0 %.2f×%.2f → 90° %.2f×%.2f" % [wh0.x, wh0.y, wh90.x, wh90.y])
 
 	# ⑯-g 贴地: |三角面法线·上| ≈ 1(memory [[fb-axis-y-plus-rotation-cancels]])
 	var mi0 = plates[0]
@@ -978,6 +1096,43 @@ func _t_vfx_geometry() -> void:
 	_ok("吃到光环的友军数(分母)", buffed >= 2, "N=%d" % buffed)
 	_ok("★头顶印记数 == 吃到光环的友军数", vfx.mark_count() == buffed,
 		"印记 %d vs 友军 %d" % [vfx.mark_count(), buffed])
+	# ⑯-h2 ★印记必须是**立着**的片, 而且屏幕上过 16 px 的存在阈值。
+	#   旧版拿【贴地】的六边形悬在头顶 1.15 米, 实拍在实战镜头下整只友军身上只剩
+	#   **10 个琥珀像素**(2026-08-09 逐像素数出来的) —— 全队增伤/双抗这条核心信息等于没画。
+	var mk_node = null
+	for x in vfx._owned:
+		if is_instance_valid(x) and str((x as Node).get_meta("relic_eq_vfx", "")) == "aura_mark":
+			mk_node = x
+			break
+	_ok("拿到印记节点(分母)", mk_node != null)
+	if mk_node != null:
+		var mk_arr: Array = ((mk_node as MeshInstance3D).mesh as ArrayMesh).surface_get_arrays(0)
+		var mk_nm: PackedVector3Array = mk_arr[Mesh.ARRAY_NORMAL]
+		var up_n := 0
+		for nv in mk_nm:
+			if absf((nv as Vector3).normalized().dot(Vector3.UP)) > 0.01:
+				up_n += 1
+		_ok("印记法线分母", mk_nm.size() > 0, "N=%d" % mk_nm.size())
+		_ok("★印记是**立着**的(|法线·上| ≈ 0, 不是躺在头顶的一张片)", up_n == 0,
+			"%d/%d 个法线朝上" % [up_n, mk_nm.size()])
+		var mk_w_px: float = 2.0 * (mk_node as Node3D).scale.x * PX_PER_M_LIT
+		_ok("★印记屏幕宽 ≥ 16 px(龟头顶等级徽章的边长; 旧版只有 10 个像素)",
+			mk_w_px >= 16.0, "%.2f px" % mk_w_px)
+	# ⑯-h3 ★碑基石台的闪光是【事件驱动】的: 只有 stele_fire 真的发射了才亮, 演出侧不自己数秒
+	var fh: Dictionary = sys._steles[0]["h"]
+	fh["flash"] = 0.0
+	for _i in range(40):
+		vfx.advance_stele(fh, 0.05)                     # 空推 2 秒 —— 没发射就不该亮
+	var flash_idle: float = float(fh.get("flash", 0.0))
+	sys.stele_fire(sys._steles[0])
+	var flash_fire: float = float(fh.get("flash", 0.0))
+	vfx.advance_stele(fh, 0.42)                          # 一个衰减时间常数
+	var flash_decay: float = float(fh.get("flash", 0.0))
+	_ok("★没发射石雷时石台不亮(演出层没有自己的秒表)", _near(flash_idle, 0.0, 1e-6),
+		"flash=%.6f" % flash_idle)
+	_ok("★发射的那一刻石台被推到满亮", _near(flash_fire, 1.0, 1e-6), "flash=%.6f" % flash_fire)
+	_ok("★之后指数衰减(1 个时间常数后 ≈ 1/e)", _near(flash_decay, 1.0 / exp(1.0), 0.02),
+		"flash=%.4f (1/e=%.4f)" % [flash_decay, 1.0 / exp(1.0)])
 
 	# ⑯-i 撤场: 真的 free 掉(不是只清账)
 	var root_ref = sh["root"]

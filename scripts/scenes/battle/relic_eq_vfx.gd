@@ -49,13 +49,25 @@ extends RefCounted
 ##   契约 §5「零素材特效原语」点名的就是它。
 ##
 ## ── 技术路线 ────────────────────────────────────────────────────────
-## 程序化 `ArrayMesh`(`SurfaceTool` 现算) + `ShockwaveVfx`, **零素材**。
-## 用户素材铁律「新内容一律新素材, 不许拿别件的立绘顶替」—— 程序化几何不产出图, 天然合规。
-## （诚实记录: 祖龟碑若要**像素立绘级**的碑面雕纹, 需要一张新美术; 见交付报告。）
+## 091 全程序化 `ArrayMesh`(`SurfaceTool` 现算)；
+## 094 = **两张新像素立绘** + 程序化几何 + `ShockwaveVfx`。
 ##
-## ⚠ 朝向坑 (memory [[fb-axis-y-plus-rotation-cancels]]): 本文件**不用 Sprite3D**,
-##   直接建世界坐标顶点 ⇒ 没有 `axis = AXIS_Y` 与 `rotation.x = -90` 互相抵消那层歧义。
-##   贴地的东西一律 y = GROUND_Y 的水平顶点, 门禁量 |三角面法线·上| ≈ 1.000。
+## ★2026-08-09 更正一条旧记录。这里原来写着「零素材 ⇒ 天然合规」, 那是把
+##   **不生成素材** 说成了 **满足素材铁律**。铁律的原文是「新内容一律新素材」——
+##   它要的是"别拿别件的图顶替", 不是"干脆别用图"。实拍的结论很直白:
+##   五个 UNSHADED 纯色盒子拼出来的碑, 在实战镜头下就是一块**灰色多米诺骨牌**,
+##   零质感、零"祖龟"身份。⇒ 碑体与石块改用 PixelLab 现生成的两张新图
+##   (`eq094-stele.png` 52×62 / `eq094-stone.png` 28×30), 与 vfx 库里的其它素材无关联。
+##
+## ⚠ 朝向坑 (memory [[fb-axis-y-plus-rotation-cancels]]): 094 的两张立绘用 Sprite3D,
+##   但**不设 `axis`、不设 billboard**, 顶点就在默认的 XY 平面(法线 +Z)⇒ 世界里真的立着,
+##   没有"两个朝向设置互相抵消"的余地。贴地的东西(甲片/碑基石台)一律 y = GROUND_Y 的
+##   水平顶点、用**贴地**网格; 立着的东西(碑顶符石/全队印记)用**立着**的网格 `_m_hexv`。
+##   门禁两边各量一条 |三角面法线·上|(贴地要 ≈1.000, 立着要 ≈0.000)。
+##
+## ⚠ **立着的片要补长宽比**: 世界竖直在屏幕上被压扁到 0.626(见 PX_PER_M / PX_PER_M_VERT)。
+##   直接按世界 1:1 摆 52×62 的碑立绘 ⇒ 屏幕上 70 宽 × 52 高 = 一块横匾。
+##   补偿走 `screen_aspect_w()`; 会翻滚的片(石块)还得把补偿放到**父**节点上, 见 `_spin_sprite`。
 ##
 ## ⚠ 不用 `create_tween` (CLAUDE.md §3.5): 无头 CI 下 tween 推进不稳, 而且走 sim 的 delta
 ##   才跟时停/换路同步。**本层每一条形态都由 `tick(delta)` 推进**, 门禁可以同步喂任意 delta。
@@ -134,58 +146,102 @@ const WAVE_X0 := 0.0625
 const WAVE_R_PX := 74.0
 const WAVE_LIFE := 0.42
 
+## ── ★实战镜头的两把尺子(094 全靠它们定尺寸) ──────────────────────
+## 默认视角 1280×720: 相机 (0,28,22) look_at (0,0.6,0), fov 40(竖直)。
+##   视距 d = √(27.4² + 22²) = 35.13915 米, 屏高 = 2·d·tan20° = 25.5794 米
+##   ⇒ **横向**(与视轴垂直) 28.14758 px/米 ／ **世界竖直** ×22/d = 17.62155 px/米
+## ★关键推论: 世界里"立着"的一张片会被压扁到 **0.626**。
+##   直接把 52×62 的碑立绘按世界高宽 1:1 摆上去, 屏幕上会变成 **宽 70 × 高 52** ——
+##   一块躺倒的匾, 不是碑。所以碑/符石/石块的世界宽度都要按 `screen_aspect_w()` 反算。
+const PX_PER_M := 28.147577
+const PX_PER_M_VERT := 17.621551
+
 ## ── ③ 立碑(094) ──────────────────────────────────────────────────
 ## 碑破土升起的时长(秒)。
 const RISE_SEC := 0.85
-## 碑体总高(米)、碑座半宽/半深(米)、碑身底/顶半宽(米)、碑身半深(米)。
-## ★2026-08-07 整体放大 ×1.55 —— 旧尺寸(H 1.90 / 半宽 0.30)在实战默认视角下
-##   只有 **22.5 宽 × 43 高 屏幕像素**(竖直方向 17.62 px/米、横向 28.15 px/米),
-##   碑面上再刻什么都只有 2~3 px。放大后 **35 × 66 px**, 刻纹才有地方站。
-const STELE_H := 2.95
-const PLINTH_H := 0.30
-const PLINTH_HW := 0.62
-const PLINTH_HD := 0.34
-const SHAFT_HW_BOT := 0.46
-const SHAFT_HW_TOP := 0.34
-const SHAFT_HD := 0.15
-## 碑脚符环(贴地)的半径(场地像素)与转速(弧度/秒)。
-const RUNE_R_PX := 58.0
-const RUNE_SPIN := 0.55
+## 碑体总高(米)。★3.60 米 ⇒ 屏幕 **63.4 px 高**(龟立绘 44 px), 是个"地标"而不是路边石。
+const STELE_H := 3.60
+## 碑体立绘(新素材·PixelLab 2026-08-09 生成, 52×62)。
+## ★为什么必须是立绘: 旧版是 5 个 UNSHADED 纯色盒子拼的, 实拍读成"一块灰色多米诺骨牌" ——
+##   零质感、零"祖龟"身份。素材铁律(用户 2026-08-03):【新内容一律新素材】。
+const STELE_TEX := "res://assets/sprites/vfx/eq094-stele.png"
 
-## ── ③b 碑面琥珀刻纹(094 唯一的分星信息) ──────────────────────────
-## ★2026-08-07 重做 —— 旧版**一条都看不出来**, 两个根因叠在一起:
-##   ① 碑身 `SHADING_MODE_UNSHADED` + albedo 0.62~0.66 ⇒ 碑身本身就是一块自发光的亮灰,
-##      刻纹又是 **BLEND_ADD** ⇒ 0.64 + 0.85×0.79 直接饱和成纯白, 刻纹与碑身糊成一块。
-##      干净台 4.2 倍实拍(改前图 `_vfxlab_bf094_1.png`)就是一块纯白板。
-##   ② 分星靠的是刻纹**宽度** 0.13/0.17/0.22 —— 换算到屏幕是 7.3 / 9.6 / 12.4 px 的
-##      竖条宽度差, 就算不烧白, 肉眼也分不出"这条比那条宽 2 px"。
-## ⇒ 现在: 碑身压暗(见 COL_STONE) + 刻纹改 **BLEND_MIX**(是刻上去的漆, 不是打上去的光)
-##   + **分星改成数条数**: 星级 si ⇒ si+1 道横向刻纹。"数得清"永远比"比得出宽度"可靠。
-const GLYPH_N_BASE := 1
-## 单条刻纹的半高(米)与半宽占碑身半宽的比例。
-const GLYPH_HH := 0.13
-const GLYPH_W_FRAC := 0.86
-## 相邻两条刻纹的中心间距(米)
-const GLYPH_PITCH := 0.46
-## 刻纹组的中心高度(从碑座顶面往上算, 占碑身高的比例)
-const GLYPH_MID_FRAC := 0.68
+## ── ③b 碑顶符石(094 唯一的分星信息) ──────────────────────────────
+## ★2026-08-09 第三次重做。前两版的分星都**在屏幕上读不出来**:
+##   · 第一版靠刻纹**宽度** 0.13/0.17/0.22 —— 7.3/9.6/12.4 px 的宽度差, 肉眼分不出。
+##   · 第二版改成"数条数"(si+1 道横纹), 但**两面各画一组**, 而背面那组在屏幕上
+##     正好被抬高约一个 GLYPH_PITCH ⇒ 与正面错位半格, **屏幕上数出来是 si+2**。
+##     干净台实测(2026-08-09): 1★ 数出 2 条 / 2★ 数出 3 条 / 3★ 数出 4 条, 每档都多一条。
+##     而当时的门禁只量了 `glyph_bands()` 这个**纯函数**(它当然返回 si+1)⇒ 全绿。
+##     教训: 分星信息的门禁必须落在**屏幕上数得出来的东西**上。
+## ⇒ 现在: **碑顶上方悬浮 si+1 颗琥珀六边形符石, 横向排开**。
+##   横向排开 ⇒ 吃满 28.15 px/米(竖排只有 17.62), 且背景是空的天空, 对比度拉满。
+const CREST_N_BASE := 1
+## 单颗符石的外接圆半径(米)与相邻两颗的中心间距(米)。
+## ★2·0.26·28.15 = 14.6 px 宽 / 间距 0.66·28.15 = 18.6 px ⇒ 3 颗跨 51.8 px, 一眼数得清。
+const CREST_R_M := 0.26
+const CREST_PITCH_M := 0.66
+## 碑顶到符石中心的间距(米)。
+const CREST_GAP_M := 0.40
+## 符石的呼吸(振幅·占基准亮度的比例)与频率(Hz)。★纯正弦, 由 tick 推进, 不是自己的秒表。
+const CREST_BREATH := 0.22
+const CREST_HZ := 0.45
+## 立着的六边形(符石 / 全队印记 / 台基石板)的内芯与外沿顶点 alpha, 以及外沿带的内边界。
+## ★**自成一套, 不复用 091 的 PLATE_\*** —— 那三个常数归甲片环, 借过来用就是
+##   "手抄的副本必然落后"的另一种写法: 甲片那边一调, 碑这边跟着变, 而两件毫无关系。
+const CREST_RIM_IN := 0.72
+const CREST_VA_CORE := 0.55
+const CREST_VA_RIM := 1.00
+## 全队光环头顶印记的外接圆半径(米)与离地高度(米)。
+## ★0.30 米 ⇒ 屏幕 **16.9 px 宽**(阈值 16 px = 龟头顶等级徽章的边长)。
+##   旧版是 7.5 **场地像素** = 0.18 米的**贴地**片, 实拍在实战镜头下只剩 10 个像素。
+const MARK_R_M := 0.30
+## ★3.30 米 ⇒ 屏幕 **58.2 px**。为什么不是"龟身高 2.0 米":
+##   龟立绘是 **billboard**(正对镜头, 不吃竖直压缩)⇒ 它在屏幕上是 2.0 × 28.15 = 56.3 px 高;
+##   而印记是世界里立着的片, 只吃 17.62 px/米。按 2.0 米摆会落在 35 px 处 = **正贴在龟背上**
+##   (2026-08-09 实拍确认: 琥珀六边形压在友军的壳中间)。两套尺子不能混用。
+const MARK_H_M := 3.30
+const MARK_BOB_M := 0.09
+const MARK_HZ := 0.55
+
+## ── ③c 碑基石台(替掉旧的"无含义大圆环") ──────────────────────────
+## ★旧版是一圈 58 码半径的实心圆环带, ADD 0.42 ⇒ 实拍量到 RGB(117,106,64) 的
+##   **脏芥末色甜甜圈**, 横跨 320 屏幕像素, 比碑本身还大、还抢眼, 且不含任何信息
+##   (memory [[fb-vfx-defect-families]] 点名的"无含义圆环")。
+## ★更糟的是它**挂在会移动的 root 下** ⇒ 碑升起时它跟着从地下往上跑,
+##   实测屏幕上整整走了 148 px(2.62 秒 y=579 → 3.42 秒 y=431), 而且因为开了
+##   `no_depth_test` 连埋在地下都照样可见。地面上的印记本来就该钉死在地面。
+## ⇒ 现在: **8 块梯形石板拼成的台基**(有缝隙 = 看得出是"砌"出来的), 半径收到 30 码,
+##   钉在地面、不吃 no_depth_test, 石雷发射时整台亮一下(事件驱动, 不是自己数秒)。
+const BASE_SIDES := 8
+const BASE_R_PX := 30.0
+const BASE_INNER := 0.52
+const BASE_GAP_DEG := 3.2
+const BASE_A := 0.80
+## 石台的常态亮度与"发射石雷"闪光的衰减时间常数(秒)。
+const BASE_FLASH_TAU := 0.42
 
 ## ── ④ 石雷(094) ──────────────────────────────────────────────────
 ## 石块的起落高度(米)与重力(米/秒²)。★两者一起把落时定死成 T = √(2H/g) = 0.5 秒,
 ##   不是"我觉得 0.5 秒好看"—— 改任一个, `fall_time()` 与门禁 ⑥ 一起跟着变。
 const BOLT_H := 5.25
 const BOLT_G := 42.0
-## 石块的世界尺寸(米)。
-const BOLT_R := 0.30
+## 石块立绘(新素材·28×30)的世界高度(米)与翻滚角速度(弧度/秒)。
+## ★旧版是程序化八面体 + UNSHADED 纯色 ⇒ 每个面同一个颜色, 只剩剪影,
+##   实拍读成"一枚橙色五边形"(见 `_vfxlab_z1_3.png`), 完全不像石头。
+const BOLT_TEX := "res://assets/sprites/vfx/eq094-stone.png"
+const BOLT_H_M := 0.86
+const BOLT_SPIN := 6.4
 
-## 配色。碑=**暗**青灰石 + 琥珀刻纹; 甲片=玉青; 石雷=暖岩。
-## ★COL_STONE 从 (0.62,0.64,0.66) 压到 (0.26,0.28,0.31): 材质是 UNSHADED ⇒ albedo 就是自发光,
-##   0.64 的灰在纯黑场里已经是"亮白板", 刻纹再画什么都被它顶掉。压暗之后
-##   刻纹(luma 0.79) / 碑身(luma 0.28) 的亮度比 = **2.8 倍**, 一眼分得出。
+## 配色。甲片=玉青; 符石/台基描边=琥珀; 石雷落地=暖岩; 破土=暖尘。
+## ★COL_DUST 是 2026-08-09 新加的: 破土爆点原来用 COL_STONE(luma 0.257), 实拍量到峰值
+##   只有 RGB(52,43,44) —— 在 (9,10,16) 的黑场上是**全屏最暗的东西**, 而它本该是
+##   "碑破土而出"这一刻的重音。改成暖尘 luma 0.69。
 const COL_SCUTE := Color(0.48, 1.00, 0.74, 1.0)
 const COL_STONE := Color(0.26, 0.28, 0.31, 1.0)
 const COL_GLYPH := Color(1.00, 0.78, 0.34, 1.0)
 const COL_BOLT := Color(0.86, 0.62, 0.36, 1.0)
+const COL_DUST := Color(0.82, 0.70, 0.50, 1.0)
 
 
 var battle
@@ -199,8 +255,12 @@ var _owned: Array = []
 ##   `N resources still in use at exit`(shockwave_vfx.gd:146 记的坑)。
 var _m_hex: ArrayMesh = null
 var _m_ring: ArrayMesh = null
-var _m_rock: ArrayMesh = null
-var _m_box: ArrayMesh = null
+## 094: 立着的六边形(碑顶符石 / 全队印记) 与 贴地的分块石板环(碑基台)。
+var _m_hexv: ArrayMesh = null
+var _m_plates: ArrayMesh = null
+## 094 的两张新立绘(碑体 / 石块)。★懒加载并缓存 —— `load()` 每次都查资源表。
+var _tex_stele: Texture2D = null
+var _tex_stone: Texture2D = null
 
 ## 091 每个携带者一套常驻甲片环: {u, root, plates:[6], a:[6], n}
 var _scutes: Array = []
@@ -276,26 +336,31 @@ static func pulse_amp(mult: float) -> float:
 	return sqrt(maxf(mult, 0.0))
 
 
-## 094 碑面刻纹的几何(★门禁直接调, 不建节点)。
+## 094 碑顶符石的位置(★门禁直接调, 不建节点)。
 ##
-## 返回 `si + 1` 条横向刻纹, 每条 `{y, hw, hh}`(单位: 米, y 从**碑座顶面**往上算):
-##   · **条数 = si + 1** —— 分星信息落在"数得清的条数"上, 不是"比得出的宽度差"
-##   · 半宽 = 该高度处碑身半宽 × GLYPH_W_FRAC ⇒ 刻纹**恒在碑面内**(不会挑出碑外), 且
-##     碑身是下宽上窄的锥台 ⇒ 越靠上的刻纹越短, 跟着碑走
-##   · 组整体以 GLYPH_MID_FRAC 处为中心上下均分 ⇒ 1/2/3 条时视觉重心都在同一高度
-static func glyph_bands(si: int, shaft_h: float) -> Array:
-	var n: int = GLYPH_N_BASE + clampi(si, 0, 2)
-	var mid: float = shaft_h * GLYPH_MID_FRAC
+## 返回 `si + 1` 个 `Vector2(x, y)`(单位: 米, 相对碑底的地面点):
+##   · **颗数 = si + 1** —— 分星信息落在"数得清的颗数"上
+##   · **横向**排开 ⇒ 吃满 28.15 px/米(世界竖直只有 17.62), 且相邻两颗的屏幕间距
+##     = CREST_PITCH_M × 28.15 = 18.6 px, 比单颗宽度(14.6 px)还大 ⇒ 一定分得开
+##   · 以碑轴为中心左右均分 ⇒ 1/2/3 颗时视觉重心都在碑正上方
+static func crest_slots(si: int, stele_h: float) -> Array:
+	var n: int = CREST_N_BASE + clampi(si, 0, 2)
 	var out: Array = []
 	for k in range(n):
-		var y: float = mid + (float(k) - float(n - 1) * 0.5) * GLYPH_PITCH
-		var f: float = clampf(y / maxf(shaft_h, 1e-6), 0.0, 1.0)
-		out.append({
-			"y": y,
-			"hw": lerpf(SHAFT_HW_BOT, SHAFT_HW_TOP, f) * GLYPH_W_FRAC,
-			"hh": GLYPH_HH,
-		})
+		out.append(Vector2((float(k) - float(n - 1) * 0.5) * CREST_PITCH_M, stele_h + CREST_GAP_M))
 	return out
+
+
+## 一张**立着**的片要多宽, 才能在屏幕上保住它自己的长宽比。
+##
+## ★世界竖直方向被压扁到 PX_PER_M_VERT / PX_PER_M = 0.626 ⇒
+##     屏幕宽 = 世界宽 × PX_PER_M     屏幕高 = 世界高 × PX_PER_M_VERT
+##   要 `屏幕宽 / 屏幕高 == tex_w / tex_h`, 世界宽就必须是
+##     world_w = world_h × (PX_PER_M_VERT / PX_PER_M) × (tex_w / tex_h)
+##   漏掉这个系数的话, 52×62 的碑立绘在屏幕上会变成 70 宽 × 52 高的**横匾**。
+## ★可验证性质(门禁): `screen_aspect_w(h, w, h) / h ≡ 0.626`(正方形贴图的世界宽只有高的 0.626)。
+static func screen_aspect_w(world_h: float, tex_w: float, tex_h: float) -> float:
+	return world_h * (PX_PER_M_VERT / PX_PER_M) * (maxf(tex_w, 1.0) / maxf(tex_h, 1.0))
 
 
 ## 匀减速上升的归一高度 ĥ(τ) = 2τ − τ²(τ ∈ [0,1])。
@@ -389,45 +454,75 @@ static func _build_annulus(inner: float, seg: int) -> ArrayMesh:
 	return st.commit()
 
 
-## 一块**不规则**石头(单位半径)。顶点是写死的八面体变体, **零随机** ——
-## 走 `battle._battle_rng` 也行, 但形状没必要吃确定性预算。
-static func _build_rock() -> ArrayMesh:
-	var top := Vector3(0.10, 1.00, -0.05)
-	var bot := Vector3(-0.08, -1.00, 0.06)
-	var eq: Array = [
-		Vector3(1.00, 0.12, 0.00), Vector3(0.34, -0.06, 0.88),
-		Vector3(-0.70, 0.10, 0.62), Vector3(-0.92, -0.08, -0.28),
-		Vector3(0.06, 0.14, -0.96),
-	]
+## **立着**的正六边形(单位外接圆·XY 平面·法线 +Z)。094 的碑顶符石与全队印记都是它。
+##
+## ⚠ 与 `_build_hex()` 的区别只有"躺着还是立着", 但这正是 2026-08-09 实拍抓到的缺陷:
+##   旧的全队印记直接拿**贴地**的 `_m_hex` 悬在头顶 1.15 米 —— 一张水平的片被 52° 俯角
+##   看过去只剩一条缝, 实拍在实战镜头下**整只友军身上只有 10 个琥珀像素**。
+##   贴地的东西用贴地网格、立着的东西用立着的网格, 不许混用
+##   (memory [[fb-axis-y-plus-rotation-cancels]] 是同一个坑的另一面)。
+## ★不设 `axis`、不设 `rotation` —— 顶点直接建在 XY 平面上, 没有"两个朝向设置互相抵消"的余地。
+static func _build_hex_v() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for i in range(eq.size()):
-		var a: Vector3 = eq[i]
-		var b: Vector3 = eq[(i + 1) % eq.size()]
-		_tri(st, top, a, b)
-		_tri(st, bot, b, a)
+	var rin: float = CREST_RIM_IN
+	for k in range(6):
+		var t0: float = TAU * float(k) / 6.0
+		var t1: float = TAU * float(k + 1) / 6.0
+		var i0 := Vector3(rin * cos(t0), rin * sin(t0), 0.0)
+		var i1 := Vector3(rin * cos(t1), rin * sin(t1), 0.0)
+		var o0 := Vector3(cos(t0), sin(t0), 0.0)
+		var o1 := Vector3(cos(t1), sin(t1), 0.0)
+		_tri_c(st, Vector3.ZERO, i0, i1, CREST_VA_CORE)
+		_tri_c(st, i0, o0, o1, CREST_VA_RIM)
+		_tri_c(st, i0, o1, i1, CREST_VA_RIM)
 	return st.commit()
 
 
-## 单位立方体(±1)。碑座/碑身都是它按 scale 拉出来的。
-static func _build_box() -> ArrayMesh:
+## 贴地的**分块环带**: `sides` 块梯形石板绕成一圈, 每块之间留 `gap_deg` 的缝。
+##
+## ★为什么不是一整圈实心环: 一整圈是"无含义圆环"(memory [[fb-vfx-defect-families]] 的一类),
+##   而**留了缝的多块石板**一眼看得出是"砌"出来的台基 —— 同样的像素数, 多了含义。
+## ★顶点 alpha: 内沿 CREST_VA_CORE(暗) / 外沿 CREST_VA_RIM(亮) ⇒ 每块石板自己有个边,
+##   缝之外还多一层可读性。材质要开 `vertex_color_use_as_albedo` 才有人读它。
+static func _build_plate_ring(sides: int, inner: float, gap_deg: float) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var p: Array = [
-		Vector3(-1, -1, -1), Vector3(1, -1, -1), Vector3(1, -1, 1), Vector3(-1, -1, 1),
-		Vector3(-1, 1, -1), Vector3(1, 1, -1), Vector3(1, 1, 1), Vector3(-1, 1, 1),
-	]
-	_quad(st, p[4], p[7], p[6], p[5])          # 顶
-	_quad(st, p[0], p[1], p[2], p[3])          # 底
-	_quad(st, p[3], p[2], p[6], p[7])          # +z
-	_quad(st, p[1], p[0], p[4], p[5])          # -z
-	_quad(st, p[2], p[1], p[5], p[6])          # +x
-	_quad(st, p[0], p[3], p[7], p[4])          # -x
+	var n: int = maxi(3, sides)
+	var g: float = deg_to_rad(maxf(gap_deg, 0.0))
+	for k in range(n):
+		var t0: float = TAU * float(k) / float(n) + g
+		var t1: float = TAU * float(k + 1) / float(n) - g
+		var seg: int = 3
+		for i in range(seg):
+			var a0: float = lerpf(t0, t1, float(i) / float(seg))
+			var a1: float = lerpf(t0, t1, float(i + 1) / float(seg))
+			var pi0 := Vector3(inner * cos(a0), 0.0, inner * sin(a0))
+			var pi1 := Vector3(inner * cos(a1), 0.0, inner * sin(a1))
+			var po0 := Vector3(cos(a0), 0.0, sin(a0))
+			var po1 := Vector3(cos(a1), 0.0, sin(a1))
+			_tri_a(st, pi0, po0, po1, CREST_VA_CORE, CREST_VA_RIM, CREST_VA_RIM)
+			_tri_a(st, pi0, po1, pi1, CREST_VA_CORE, CREST_VA_RIM, CREST_VA_CORE)
 	return st.commit()
+
+
+## 逐顶点 alpha 的三角面(RGB 恒白 —— 本色由材质 albedo 给, 顶点色只管明暗)。
+## ★与 `_tri_c` 的区别: 那个一整面同一个 alpha, 这个内沿/外沿可以不同 ⇒ 石板才有"边"。
+static func _tri_a(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3,
+		va: float, vb: float, vc: float) -> void:
+	var n: Vector3 = (b - a).cross(c - a)
+	n = n.normalized() if n.length() > 1e-9 else Vector3.UP
+	var vs: Array = [a, b, c]
+	var al: Array = [va, vb, vc]
+	for i in range(3):
+		st.set_normal(n)
+		st.set_color(Color(1.0, 1.0, 1.0, float(al[i])))
+		st.add_vertex(vs[i])
 
 
 ## `use_vcol` = 让**顶点色**参与 albedo(甲片描边靠它; 见 `_build_hex`)。
-## ⚠ 默认关: `_m_ring` / `_m_rock` / `_m_box` 都没有顶点色数组, 全局打开会让它们吃到未定义的默认值。
+## ⚠ 默认关: `_m_ring` 没有顶点色数组, 全局打开会让它吃到未定义的默认值。
+##   有顶点色的只有 `_m_hex`(091 甲片) / `_m_hexv`(094 符石·印记) / `_m_plates`(094 石台)。
 static func _mat(col: Color, additive: bool, no_depth: bool, prio: int,
 		use_vcol: bool = false) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
@@ -454,10 +549,60 @@ func _ensure_meshes() -> void:
 		_m_hex = _build_hex()
 	if _m_ring == null:
 		_m_ring = _build_annulus(0.74, 48)
-	if _m_rock == null:
-		_m_rock = _build_rock()
-	if _m_box == null:
-		_m_box = _build_box()
+	if _m_hexv == null:
+		_m_hexv = _build_hex_v()
+	if _m_plates == null:
+		_m_plates = _build_plate_ring(BASE_SIDES, BASE_INNER, BASE_GAP_DEG)
+
+
+## 094 的两张立绘。★缺图时返回 null 而不是崩 —— 调用侧一律判 null 再建节点。
+func _tex(path: String) -> Texture2D:
+	if path == STELE_TEX:
+		if _tex_stele == null and ResourceLoader.exists(path):
+			_tex_stele = load(path) as Texture2D
+		return _tex_stele
+	if _tex_stone == null and ResourceLoader.exists(path):
+		_tex_stone = load(path) as Texture2D
+	return _tex_stone
+
+
+## 一张**立着**的立绘片(碑体 / 石块共用)。★不 billboard、不设 axis、不加 rotation ——
+##   顶点就在 XY 平面上, 世界里真的是竖着的, 与地面的遮挡关系精确。
+## ★世界宽由 `screen_aspect_w()` 反算, 保证屏幕上是立绘本来的长宽比。
+func _sprite_node(tex: Texture2D, world_h: float, prio: int) -> Sprite3D:
+	var sp := Sprite3D.new()
+	sp.texture = tex
+	sp.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	sp.shaded = false
+	sp.transparent = true
+	## ⚠ 不用 ALPHA_CUT_DISCARD: 它按 0.5 阈值丢像素, 而这两张片都会被整体压暗
+	##   (碑升起时的入场淡入 / 石块的落地前压暗) ⇒ 整张图会被丢光
+	##   (2026-08-09 在 090 的电弧上刚踩过这条)。
+	sp.alpha_cut = SpriteBase3D.ALPHA_CUT_DISABLED
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sp.render_priority = prio
+	var tw: float = float(maxi(1, tex.get_width()))
+	var th: float = float(maxi(1, tex.get_height()))
+	sp.pixel_size = world_h / th
+	var nat_w: float = world_h * tw / th                       # pixel_size 直接给出的世界宽
+	sp.scale = Vector3(screen_aspect_w(world_h, tw, th) / maxf(nat_w, 1e-6), 1.0, 1.0)
+	return sp
+
+
+## 会**翻滚**的立绘片: 压缩放**父**节点、旋转放**子**节点, 返回父节点。
+##
+## ★为什么非拆两层不可(2026-08-09 实拍抓到): 横向压缩是"世界竖直被压扁 0.626"的补偿,
+##   它必须**永远沿世界 x** 生效。写在同一个节点上时 `basis = R · S` ⇒ 压缩跟着一起转,
+##   翻到 90° 那一刻长宽直接对调 —— 实测石块在半程被压成 **32 × 13.6 px 的一条**
+##   (本该是 18.7 × 20)。放到父节点后 `basis = S · R`: 先转再压, 任何角度都对。
+func _spin_sprite(tex: Texture2D, world_h: float, prio: int) -> Node3D:
+	var sp := _sprite_node(tex, world_h, prio)
+	var comp: float = sp.scale.x
+	sp.scale = Vector3.ONE
+	var wrap := Node3D.new()
+	wrap.scale = Vector3(comp, 1.0, 1.0)
+	wrap.add_child(sp)
+	return wrap
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -615,77 +760,126 @@ func drop_scutes(u: Dictionary) -> void:
 
 
 # ══════════════════════════════════════════════════════════════════
-#  §094 祖龟碑 —— 破土立碑 + 碑脚符环 + 石雷 + 全队印记
+#  §094 祖龟碑 —— 破土立碑 + 碑基石台 + 碑顶符石 + 石雷 + 全队印记
 # ══════════════════════════════════════════════════════════════════
 
 ## 在 pos2d 立一座碑。返回句柄; 世界不在时返回 {}。
 ##
-## ⚠ 句柄在本函数返回时就是 **τ=0 的最终值**(整座碑还埋在地下), 门禁下一行就能量。
+## 句柄: {root, sprite, base, crests:[si+1], pos, t, si, flash}
+## ⚠ 句柄在本函数返回时就是 **τ=0 的最终值**(碑还一点没露头), 门禁下一行就能量。
 func raise_stele(pos2d: Vector2, si: int) -> Dictionary:
 	if not _has_world():
 		return {}
 	_ensure_meshes()
+	var sn: int = clampi(si, 0, 2)
 	var root := Node3D.new()
-	var gl: Color = COL_GLYPH
-	# 碑座
-	var plinth := _mesh_node(_m_box, _mat(Color(COL_STONE.r * 0.72, COL_STONE.g * 0.74, COL_STONE.b * 0.78, 1.0), false, false, 2))
-	plinth.scale = Vector3(PLINTH_HW, PLINTH_H * 0.5, PLINTH_HD)
-	plinth.position = Vector3(0.0, PLINTH_H * 0.5, 0.0)
-	root.add_child(plinth)
-	# 碑身(下宽上窄: 用两段盒子近似锥台 —— 一段盒子做不出收分, 收分正是"碑"的形)
-	var shaft_h: float = STELE_H - PLINTH_H
-	var seg_n := 4
-	for i in range(seg_n):
-		var f0: float = float(i) / float(seg_n)
-		var f1: float = float(i + 1) / float(seg_n)
-		var hw: float = lerpf(SHAFT_HW_BOT, SHAFT_HW_TOP, (f0 + f1) * 0.5)
-		var seg := _mesh_node(_m_box, _mat(Color(COL_STONE.r, COL_STONE.g, COL_STONE.b, 1.0), false, false, 2))
-		seg.scale = Vector3(hw, shaft_h * (f1 - f0) * 0.5, SHAFT_HD)
-		seg.position = Vector3(0.0, PLINTH_H + shaft_h * (f0 + f1) * 0.5, 0.0)
-		root.add_child(seg)
-	# 碑面刻纹: 两面各 **si+1 道横纹**(条数 = 分星信息), 琥珀 MIX 漆色, 不是加法光
-	## ★MIX 不是 ADD: ADD 会把刻纹加进已经很亮的碑身里烧成白, 那正是改前的样子。
-	##   而 MIX 是"刻上去的漆" —— 无论碑身多亮, 刻纹处显示的就是琥珀色本身。
-	var bands: Array = glyph_bands(si, shaft_h)
-	for sgn in [1.0, -1.0]:
-		for gb in bands:
-			var band := _mesh_node(_m_box, _mat(Color(gl.r, gl.g, gl.b, 1.0), false, false, 6))
-			band.scale = Vector3(float(gb["hw"]), float(gb["hh"]), 0.012)
-			band.position = Vector3(0.0, PLINTH_H + float(gb["y"]), sgn * (SHAFT_HD + 0.014))
-			root.add_child(band)
-	# 碑脚符环(贴地·缓慢自转)
-	var rune := _mesh_node(_m_ring, _mat(Color(gl.r, gl.g, gl.b, 0.42), true, true, 7))
-	var rr: float = RUNE_R_PX * float(battle.WS)
-	rune.scale = Vector3(rr, 1.0, rr)
-	rune.position = Vector3(0.0, GROUND_Y, 0.0)
-	root.add_child(rune)
-
 	root.position = battle._world_pos(pos2d, 0.0)
+	var gl: Color = COL_GLYPH
+
+	## ── 碑基石台(贴地) ──
+	## ★**先建、位置写死在 root 的局部 0 高度**, 而且 root 从此**一动不动** ——
+	##   旧版把它挂在会上下移动的 root 下, 碑升起时它跟着从地里冒出来, 实测在屏幕上
+	##   走了 148 px。地面上的印记就该钉在地面上。
+	## ★no_depth=false: 它是**贴地**的石台, 开了 no_depth_test 会连埋在地下都可见(旧版的另一半毛病)。
+	var base := _mesh_node(_m_plates, _mat(
+		Color(COL_STONE.r * 1.30, COL_STONE.g * 1.22, COL_STONE.b * 1.05, BASE_A), false, false, 3, true))
+	var br: float = BASE_R_PX * float(battle.WS)
+	base.scale = Vector3(br, 1.0, br)
+	base.position = Vector3(0.0, GROUND_Y, 0.0)
+	root.add_child(base)
+
+	## ── 碑体(新立绘·竖直片) ──
+	var tex: Texture2D = _tex(STELE_TEX)
+	var sprite: Sprite3D = null
+	if tex != null:
+		sprite = _sprite_node(tex, STELE_H, 5)
+		sprite.position = Vector3(0.0, 0.0, 0.0)
+		root.add_child(sprite)
+
+	## ── 碑顶符石: si+1 颗, 横向排开(分星信息) ──
+	var crests: Array = []
+	for s in crest_slots(sn, STELE_H):
+		var mi := _mesh_node(_m_hexv, _mat(Color(gl.r, gl.g, gl.b, 1.0), false, false, 8, true))
+		mi.scale = Vector3(CREST_R_M, CREST_R_M, CREST_R_M)
+		mi.position = Vector3(float(s.x), float(s.y), 0.02)
+		root.add_child(mi)
+		crests.append(mi)
+
 	_adopt(root, "stele")
-	var h := {"root": root, "rune": rune, "pos": pos2d, "t": 0.0, "si": clampi(si, 0, 2)}
+	var h := {
+		"root": root, "sprite": sprite, "base": base, "crests": crests,
+		"pos": pos2d, "t": 0.0, "si": sn, "flash": 0.0,
+	}
 	_steles.append(h)
 	apply_stele(h, 0.0)
-	# 破土: 复用 ShockwaveVfx 的爆点(不重造)
-	_blast(pos2d, Color(COL_STONE.r, COL_STONE.g * 0.92, COL_STONE.b * 0.80, 0.9))
+	# 破土: 复用 ShockwaveVfx 的爆点(不重造)。★颜色是**暖尘**不是石头本色 ——
+	#   旧版用 COL_STONE(luma 0.257), 实拍峰值只有 RGB(52,43,44), 是全屏最暗的东西。
+	_blast(pos2d, Color(COL_DUST.r, COL_DUST.g, COL_DUST.b, 0.9))
 	return h
 
 
 ## 把 τ ∈ [0,1] 的升起形态写到**真实节点**上。纯同步。
+##
+## ★升起靠 **`region_rect` 逐行揭开立绘**, 不靠"把整座碑往下埋再让地板挡住":
+##   ① 地板挡不挡得住取决于地图(VFXLAB 的黑场、某些关卡的镂空地面都会漏),
+##      而 region 是**画多少就是多少**, 与场景无关;
+##   ② 屏幕上"露出多少"变成一个可以直接读的数(`region_rect.size.y / 贴图高`),
+##      门禁能量真实节点, 不用去反推一个世界坐标。
+## 露出的是立绘的**上半部**(碑顶先破土), 区域的**下边缘恒在地面** ⇒ 看着就是从土里顶出来。
 func apply_stele(h: Dictionary, tau: float) -> void:
-	var root = h.get("root", null)
-	if not is_instance_valid(root):
+	var sp = h.get("sprite", null)
+	if not is_instance_valid(sp):
 		return
-	var base: Vector3 = battle._world_pos(h["pos"], 0.0)
-	root.position = Vector3(base.x, base.y - STELE_H * (1.0 - rise_profile(tau)), base.z)
+	var tex: Texture2D = (sp as Sprite3D).texture
+	if tex == null:
+		return
+	var tw: float = float(tex.get_width())
+	var th: float = float(tex.get_height())
+	var f: float = clampf(rise_profile(tau), 0.0, 1.0)
+	var rh: float = maxf(th * f, 1.0)
+	(sp as Sprite3D).region_enabled = true
+	(sp as Sprite3D).region_rect = Rect2(0.0, 0.0, tw, rh)
+	## offset 单位是贴图像素, +y = 往上 ⇒ 区域底边正好落在节点(地面)上。
+	(sp as Sprite3D).offset = Vector2(0.0, rh * 0.5)
 
 
-## 每帧推进一座碑(升起 + 符环自转)。
+## 每帧推进一座碑(升起 + 符石呼吸/跟顶 + 石台闪光衰减)。
 func advance_stele(h: Dictionary, delta: float) -> void:
-	h["t"] = float(h.get("t", 0.0)) + maxf(delta, 0.0)
-	apply_stele(h, float(h["t"]) / RISE_SEC)
-	var rune = h.get("rune", null)
-	if is_instance_valid(rune):
-		rune.rotation.y = fmod(float(h["t"]) * RUNE_SPIN, TAU)
+	var d: float = maxf(delta, 0.0)
+	h["t"] = float(h.get("t", 0.0)) + d
+	var t: float = float(h["t"])
+	var f: float = clampf(rise_profile(t / RISE_SEC), 0.0, 1.0)
+	apply_stele(h, t / RISE_SEC)
+	## 符石跟着碑顶一起冒出来 —— 碑没升到位, 符石就还在土里(y 跟着 f 走), 且整体淡入。
+	var breath: float = 1.0 + CREST_BREATH * sin(TAU * CREST_HZ * t)
+	var crests: Array = h.get("crests", [])
+	var slots: Array = crest_slots(int(h.get("si", 0)), STELE_H * f)
+	for k in range(mini(crests.size(), slots.size())):
+		var mi = crests[k]
+		if not is_instance_valid(mi):
+			continue
+		var s: Vector2 = slots[k]
+		(mi as Node3D).position = Vector3(float(s.x), float(s.y), 0.02)
+		((mi as Node3D).get("material_override") as StandardMaterial3D).albedo_color = Color(
+			COL_GLYPH.r, COL_GLYPH.g, COL_GLYPH.b, clampf(f * f * breath, 0.0, 1.0))
+	## 石台: 常态 BASE_A, 发射石雷时被 `stele_flash()` 推到 1.0 再指数衰减回来。
+	## ⚠ 这是**事件驱动**的 —— 石台不数自己的秒表, 它只在系统真的发射了石雷时被推一下
+	##   (CLAUDE.md 的"必须与物理事件同帧的演出不能有自己的秒表")。
+	h["flash"] = float(h.get("flash", 0.0)) * exp(-d / BASE_FLASH_TAU)
+	var bs = h.get("base", null)
+	if is_instance_valid(bs):
+		var a: float = clampf(BASE_A + (1.0 - BASE_A) * float(h["flash"]), 0.0, 1.0)
+		var c: Color = Color(COL_STONE.r * 1.30, COL_STONE.g * 1.22, COL_STONE.b * 1.05, 1.0)
+		var w: float = float(h["flash"])
+		((bs as Node3D).get("material_override") as StandardMaterial3D).albedo_color = Color(
+			lerpf(c.r, COL_GLYPH.r, w), lerpf(c.g, COL_GLYPH.g, w), lerpf(c.b, COL_GLYPH.b, w), a)
+
+
+## 石雷发射的那一刻: 把碑基石台推到满亮(之后由 `advance_stele` 指数衰减)。
+## ★由 `EqRelicBatch.stele_fire()` 调 —— 与"真的发射了一发"同帧, 演出侧不自己判时。
+func stele_flash(h) -> void:
+	if h is Dictionary:
+		(h as Dictionary)["flash"] = 1.0
 
 
 ## 收掉一座碑(换路 / 撤场)。
@@ -707,13 +901,16 @@ func stone_bolt(to2d: Vector2, si: int) -> Dictionary:
 	if not _has_world():
 		return {}
 	_ensure_meshes()
-	var s: float = BOLT_R * (1.0 + 0.16 * float(clampi(si, 0, 2)))
-	var mi := _mesh_node(_m_rock, _mat(Color(COL_BOLT.r, COL_BOLT.g, COL_BOLT.b, 1.0), false, false, 4))
-	mi.scale = Vector3(s, s, s)
-	_adopt(mi, "stone_bolt")
+	var sn: int = clampi(si, 0, 2)
+	var tex: Texture2D = _tex(BOLT_TEX)
+	if tex == null:
+		return {}
+	var hm: float = BOLT_H_M * (1.0 + 0.16 * float(sn))
+	var wrap := _spin_sprite(tex, hm, 6)
+	_adopt(wrap, "stone_bolt")
 	var b := {
-		"node": mi, "t": 0.0, "T": fall_time(BOLT_H, BOLT_G),
-		"pos": to2d, "si": clampi(si, 0, 2),
+		"node": wrap, "spr": wrap.get_child(0), "t": 0.0, "T": fall_time(BOLT_H, BOLT_G),
+		"pos": to2d, "si": sn, "h_m": hm,
 	}
 	_rocks.append(b)
 	apply_bolt(b, 0.0)
@@ -721,15 +918,22 @@ func stone_bolt(to2d: Vector2, si: int) -> Dictionary:
 
 
 ## 把 τ ∈ [0,1] 的落体形态写到**真实节点**上。纯同步。
-## ★高度走 `fall_profile`(真抛物线), 自转是匀角速(刚体无力矩)。
+## ★高度走 `fall_profile`(真抛物线), 自转是**匀角速**(刚体无力矩 —— 空中没有力矩就不会变速)。
+## ⚠ 只绕**视线轴 z** 转: 立绘是一张竖直的片, 绕 x/y 转会把它转到侧面变成一条线
+##   (旧版的程序化石头绕 x/y 转没事, 换成片之后就不行了)。
 func apply_bolt(b: Dictionary, tau: float) -> void:
 	var mi = b.get("node", null)
 	if not is_instance_valid(mi):
 		return
 	var t: float = clampf(tau, 0.0, 1.0)
+	var hm: float = float(b.get("h_m", BOLT_H_M))
 	var ground: Vector3 = battle._world_pos(b["pos"], 0.0)
-	mi.position = Vector3(ground.x, ground.y + BOLT_H * fall_profile(t) + BOLT_R, ground.z)
-	mi.rotation = Vector3(t * 5.6, t * 3.1, 0.0)
+	(mi as Node3D).position = Vector3(
+		ground.x, ground.y + BOLT_H * fall_profile(t) + hm * 0.5, ground.z)
+	## ★旋转写在**子**节点上, 横向压缩留在父节点 —— 见 `_spin_sprite` 的长注释。
+	var sp = b.get("spr", null)
+	if is_instance_valid(sp):
+		(sp as Node3D).rotation = Vector3(0.0, 0.0, t * float(b.get("T", 0.5)) * BOLT_SPIN)
 
 
 ## 一次点爆(复用 ShockwaveVfx)。
@@ -776,9 +980,12 @@ func set_marks(units: Array) -> void:
 				break
 		if have:
 			continue
-		var ps: float = 7.5 * float(battle.WS)
-		var mi := _mesh_node(_m_hex, _mat(Color(COL_GLYPH.r, COL_GLYPH.g, COL_GLYPH.b, 0.75), true, true, 9))
-		mi.scale = Vector3(ps, 1.0, ps)
+		## ★用**立着**的六边形 `_m_hexv`, 不是贴地的 `_m_hex`。
+		##   旧版拿贴地网格悬在头顶 1.15 米 —— 52° 俯角看一张水平的片, 实拍在实战镜头下
+		##   整只友军身上只剩 **10 个琥珀像素**(2026-08-09 逐像素数出来的), 等于没做。
+		## ★半径 0.30 米 ⇒ 屏幕 16.9 px 宽, 刚过"龟头顶等级徽章 16 px"这条存在阈值。
+		var mi := _mesh_node(_m_hexv, _mat(Color(COL_GLYPH.r, COL_GLYPH.g, COL_GLYPH.b, 0.92), false, true, 9, true))
+		mi.scale = Vector3(MARK_R_M, MARK_R_M, MARK_R_M)
 		_adopt(mi, "aura_mark")
 		_marks.append({"u": u, "node": mi, "t": 0.0})
 
@@ -878,8 +1085,8 @@ func tick(delta: float) -> void:
 				mi.queue_free()
 			continue
 		m["t"] = float(m.get("t", 0.0)) + d
-		var bob: float = 0.07 * sin(TAU * 0.55 * float(m["t"]))
-		mi.position = battle._world_pos(u["pos"], 1.15 + bob)
+		var bob: float = MARK_BOB_M * sin(TAU * MARK_HZ * float(m["t"]))
+		mi.position = battle._world_pos(u["pos"], MARK_H_M + bob)
 		km.append(m)
 	_marks = km
 	# 爆点
@@ -920,8 +1127,8 @@ func clear_all() -> int:
 	_shocks.clear()
 	_m_hex = null
 	_m_ring = null
-	_m_rock = null
-	_m_box = null
+	_m_hexv = null
+	_m_plates = null
 	# ★连 `_shock` 的三个网格缓存一起放 —— 它是**本层 new 出来的**实例, 生命周期归本层。
 	#   实测: 不放的话进程退出刷 `3 RID allocations of type DummyMesh were leaked at exit`
 	#   (对照组 verify_synergy_vfx 没有这三条 —— 它没触发过 make_blast, 缓存压根没建)。

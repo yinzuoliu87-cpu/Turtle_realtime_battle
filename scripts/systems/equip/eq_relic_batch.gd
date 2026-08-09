@@ -363,6 +363,9 @@ func stele_fire(st: Dictionary) -> Dictionary:
 	st["n_bolt"] = int(st.get("n_bolt", 0)) + 1
 	if vfx != null:
 		vfx.stone_bolt(b["pos"], si)
+		## ★碑基石台在"真的发射了一发"这一帧亮一下 —— 演出侧**没有自己的秒表**,
+		##   它读不到 3 秒节拍, 只被这一行推。节拍改了演出自动跟着改。
+		vfx.stele_flash(st.get("h", null))
 	return b
 
 

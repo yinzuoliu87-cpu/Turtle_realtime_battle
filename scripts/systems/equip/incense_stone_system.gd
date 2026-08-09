@@ -109,6 +109,9 @@ func on_spawn(u: Dictionary, eid: String, _si: int) -> void:
 	stt["dealt0"] = int(u.get("_st_dealt", 0))
 	stt["emp_t"] = 0.0
 	stt["emp"] = 0
+	# 登场就把刻痕数镜像进来 —— 装备格的层数徽章第一帧就要显示存量, 不能等第一次刻痕
+	# (⚠ 消费侧尚未接线, 见 tick_unit 里同名字段旁边那段说明)
+	stt["marks"] = int(_marks.get(side, 0))
 	u["eq_state"][EID] = stt
 	_reapply(side)
 
@@ -131,18 +134,40 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 		stt["dealt0"] = now
 		if int(_marks.get(side, 0)) < MARK_CAP:
 			stt["chg"] = int(stt.get("chg", 0)) + d
+			# ★★2026-08-09【一帧多道要合成一次】。实拍探针: 携带者一次斩击打出 2 万伤害
+			#   ⇒ 这个 while 在 **同一帧** 转了 5 圈(t=13.58 连打 marks=1,2,3,4,5)。
+			#   原来每圈都调一次 `_on_mark_scored` ⇒ 同一个点上叠 5 道一模一样的刻痕、
+			#   5 条互相盖住的飘字("香火 1".."香火 5" 完全重合 = 谁都读不出来),
+			#   而 `_reapply` 也白跑 5 遍(每遍都要 revoke + 遍历全场重发)。
+			#   ⇒ 先把这一帧刻了几道数出来, 循环结束后**只结算/只演出一次**。
+			var gained := 0
 			while int(stt["chg"]) >= PER_MARK and int(_marks.get(side, 0)) < MARK_CAP:
 				stt["chg"] = int(stt["chg"]) - PER_MARK
 				_marks[side] = int(_marks.get(side, 0)) + 1
-				_on_mark_scored(u, side)
+				gained += 1
 			# ★★钳一次: 上面这个 while 可能是【在循环中途撞到 300 上限】退出的,
 			#   那时 chg 还剩一大截(实测灌 500 道的量时是 816000)。不钳就会显示成
 			#   "充能条 816000/4000" —— 而且一旦上限以后被调高, 这堆存量会瞬间全变成刻痕。
 			if int(_marks.get(side, 0)) >= MARK_CAP:
 				stt["chg"] = PER_MARK
+			if gained > 0:
+				_on_mark_scored(u, side, gained)
 		else:
 			# ★进 tick 时就已经满 300: 不再消耗充能, 条冻结显示满(方案书 R4 的定论)
 			stt["chg"] = PER_MARK
+	# 刻痕数镜像进 eq_state: 头像下装备格的层数徽章(PANEL_COUNT)只会读 eq_state,
+	# 而刻痕本身是【按阵营】存的池子, 单位身上没有。无条件写(不只在刻痕时写),
+	# 否则登场那一刻的存量刻痕在格子里显示成 0。
+	#
+	# ⚠⚠【消费侧还没接上, 现在这行是死写】—— 诚实记录, 别当成"已经做完了"。
+	#   093 目前**不在** `RealtimeBattle3DScene.PANEL_COUNT / PANEL_CHARGE` 里,
+	#   所以这一件的两个核心读数(充能条 0~4000 / 刻痕数 0~300)在局内**没有任何 UI 出口**
+	#   —— VFXLAB 开着 ui=true 实拍过, 装备格里是空的。
+	#   接线只要两行(在主场景那两张常量表里各加一条, 归主会话改):
+	#     PANEL_COUNT  : "p2eq_093": "marks"
+	#     PANEL_CHARGE : "p2eq_093": ["chg", 4000.0, "#ffd27a"]
+	#   这两行一加, 本行与 `stt["chg"]` 就是它们的数据源, 不用再动别处。
+	stt["marks"] = int(_marks.get(side, 0))
 
 	# ② 主动: 每 12 秒强化下 4 次普攻。★自管累加器, 不读 battle._t(它跨路累加永不重置·§3.4)
 	stt["emp_t"] = float(stt.get("emp_t", 0.0)) + delta
@@ -155,14 +180,15 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 				battle._incense_vfx.empower_burst(u)
 
 
-## 刻成一道痕: 重算全队加成、写回存档、放演出。
-func _on_mark_scored(u: Dictionary, side: String) -> void:
+## 刻成痕: 重算全队加成、写回存档、放演出。
+## `gained` = **这一帧一共刻了几道**(见 tick_unit 的批量注释), 演出要拿它决定摆几道凿痕、飘字写 +几。
+func _on_mark_scored(u: Dictionary, side: String, gained: int) -> void:
 	if side == "left" and GameState != null:
 		GameState.incense_marks = int(_marks["left"])
 	_persist_chg(u)
 	_reapply(side)
 	if battle._incense_vfx != null:
-		battle._incense_vfx.mark_carved(u, int(_marks.get(side, 0)))
+		battle._incense_vfx.mark_carved(u, int(_marks.get(side, 0)), gained)
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -313,3 +339,8 @@ func clear_all() -> void:
 		if o is Dictionary and _has_stone(o):
 			_persist_chg(o)
 	_revoke()
+	# ★演出也要撤。香台是**常驻节点**(挂在 `_world` 上、由 emp 驱动), 换路时那批单位字典
+	#   会被换掉 —— 不显式拔掉的话它就靠"节点被 _world 一起 free"兜底, 而那是**别人的**
+	#   生命周期, 不是本层保证的。本层自己建的东西本层自己收。
+	if battle._incense_vfx != null:
+		battle._incense_vfx.clear()

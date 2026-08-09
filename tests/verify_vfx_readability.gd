@@ -532,32 +532,41 @@ func _g11_093_incense() -> void:
 	# 主循环真的每帧推它(不用 tween ⇒ 没人调 tick 就永远不动而且不报错)
 	_ok("⑫ ★主循环每帧调 _incense_vfx.tick(", main.contains("_incense_vfx.tick("))
 	# 真实节点: 全部在头顶以上
-	var u: Dictionary = {"pos": Vector2(700.0, 400.0), "alive": true, "height": 0.0}
+	# ★2026-08-09 随演出重做改口径: 香不再是 3 个独立一次性节点, 而是**一座常驻香台**
+	#   (一个 Node3D 挂 4 支香, 支数每帧由 `eq_state.emp` 驱动) ⇒ 得先给它一个真的 emp。
+	var u: Dictionary = {"pos": Vector2(700.0, 400.0), "alive": true, "height": 0.0,
+		"eq_state": {"p2eq_093": {"emp": 4}}}
 	var tgt: Dictionary = {"pos": Vector2(760.0, 400.0), "alive": true, "height": 0.0}
 	_inc.clear()
 	await get_tree().process_frame
 	_inc.empower_burst(u)
-	_ok("⑫ 三支香真的建出来了 (%d 支)" % _inc.alive_count("stick"), _inc.alive_count("stick") == 3)
+	_inc.tick(0.30)     # 入场只有 0.22 秒, 推一下就到位(同步, 不等 tween)
+	_ok("⑫ 香台真的建出来了 (%d 座)" % _inc.alive_count("altar"), _inc.alive_count("altar") == 1)
+	_ok("⑫ ★点着 4 支香 = 剩余 4 次强化普攻 (实测 %d)" % _inc.lit_sticks_of(u),
+		_inc.lit_sticks_of(u) == 4)
 	var ground_y: float = _s._world_pos(u["pos"], 0.0).y
 	var min_y := 1.0e9
 	for c in _s._world.get_children():
-		if c is Node3D and (c as Node).has_meta(IV.META_KEY) and str((c as Node).get_meta(IV.META_KEY)) == "stick":
+		if c is Node3D and (c as Node).has_meta(IV.META_KEY) and str((c as Node).get_meta(IV.META_KEY)) == "altar":
 			min_y = minf(min_y, (c as Node3D).position.y)
-	_ok("⑫ ★香在头顶以上 (y=%.2f > 地面 %.2f + 1.0)" % [min_y, ground_y], min_y > ground_y + 1.0)
-	# 香的尺寸: 贴图 24×96 ⇒ 传的是"宽", 实际高 = 宽×4
+	_ok("⑫ ★香台在头顶以上 (y=%.2f > 地面 %.2f + 1.0)" % [min_y, ground_y], min_y > ground_y + 1.0)
+	# 香的尺寸: 贴图 32×64 ⇒ 传的是"宽", 实际高 = 宽×2
 	var stick_h: float = IV.STICK_W_PX * IV.STICK_TEX_ASPECT * PX_PER_YARD
 	_ok("⑫ 单支香高 %.0f 屏幕 px ≥ 徽章 %.0f px 且 ≤ 龟立绘的 2 倍(88px)" % [stick_h, BADGE_PX],
 		stick_h >= BADGE_PX and stick_h <= 88.0)
-	# 四瓣火焰: 剪影不是圆(45° 方向必须比 0° 短很多)
+	# 命中火印: 建得出来 + 剪影【横竖正交于香】(刻痕是横沟, 香是竖杆 —— 同件两个入口不许撞剪影)
 	_inc.empower_hit(u, tgt)
-	_ok("⑫ 命中火焰建出来了", _inc.alive_count("flare") >= 1)
-	var fl: Image = IV.flare_tex().get_image()
-	var fn: int = fl.get_width()
-	var fc: float = float(fn - 1) * 0.5
-	var r_axis: float = _ray_len(fl, fc, 0.0)
-	var r_diag: float = _ray_len(fl, fc, PI * 0.25)
-	_ok("⑫ ★四瓣火焰不是圆 (轴向 %.2f vs 斜向 %.2f, 比值 < 0.4)" % [r_axis, r_diag],
-		r_axis > 0.0 and r_diag / r_axis < 0.4)
+	_ok("⑫ 命中火印建出来了", _inc.alive_count("seal") >= 1)
+	var ti: Image = IV.tally_tex().get_image()
+	_ok("⑫ ★刻痕是【横】沟 (%dx%d, 宽 > 高×2) —— 与竖直的香剪影正交, 不会被读成'没点着的香'"
+		% [ti.get_width(), ti.get_height()], ti.get_width() > ti.get_height() * 2)
+	# 火星是【菱形】不是圆点(与 ③ 金弹同一族判据: 遮住颜色只看剪影也得分得出)
+	var spi: Image = IV.spark_tex().get_image()
+	var sc: float = float(spi.get_width() - 1) * 0.5
+	var s_axis: float = _ray_len(spi, sc, 0.0)
+	var s_diag: float = _ray_len(spi, sc, PI * 0.25)
+	_ok("⑫ 火星是菱形不是圆 (轴向 %.2f vs 斜向 %.2f, 比值 < 0.85)" % [s_axis, s_diag],
+		s_axis > 0.0 and s_diag / s_axis < 0.85)
 	_inc.clear()
 	await get_tree().process_frame
 	_ok("⑫ 撤场干净 (剩 %d)" % _inc.alive_count(), _inc.alive_count() == 0)

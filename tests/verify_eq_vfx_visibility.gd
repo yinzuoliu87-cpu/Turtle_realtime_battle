@@ -330,82 +330,67 @@ func _g5_091_scutes() -> void:
 	_rv.clear_all()
 
 
-# ── ⑥ 094 祖龟碑: 刻纹看得出来 + 三个星级分得出 ───────────────────────────
+# ── ⑥ 094 祖龟碑: 碑体读得出 + 三个星级数得清 ─────────────────────────────
+##
+## ★2026-08-09 整节重写(094 逐件重做)。旧的这一节**把缺陷本身焊进了断言**:
+##   它写着「刻纹 %d 条(3★ 两面各 3 条 = 6)」并要求 band_mats.size() == 6 ——
+##   而"两面各画一组"正是那次实拍抓到的根因: 背面那组在屏幕上被抬高约一个刻纹间距,
+##   与正面错半格 ⇒ **屏幕上数出来是 si+2**(1★→2 / 2★→3 / 3★→4, 逐像素量过)。
+##   旧断言只量 `glyph_bands()` 这个纯函数和材质条数, 两项都是"屏幕上数不数得出"的**替身**。
+## ⇒ 现在分星信息改成【碑顶横向排开的 si+1 颗符石】, 本节量的是它们**在屏幕上分不分得开**。
 func _g6_094_glyphs() -> void:
 	print("")
-	print("  ⑥ 094 祖龟碑 —— 刻纹可见 / 三星级可分辨:")
-	var shaft_h: float = RV.STELE_H - RV.PLINTH_H
-	# a. 条数 = si + 1, 三档互不相同
+	print("  ⑥ 094 祖龟碑 —— 碑体可读 / 三星级数得清:")
+	# a. 颗数 = si + 1, 三档互不相同
 	var ns: Array = []
 	for si in [0, 1, 2]:
-		ns.append(RV.glyph_bands(si, shaft_h).size())
-	_ok("⑥a ★三个星级的刻纹条数 = 1 / 2 / 3(数得清, 不是「比宽度差 2 px」)",
+		ns.append(RV.crest_slots(si, 3.0).size())
+	_ok("⑥a ★三个星级的碑顶符石 = 1 / 2 / 3 颗(数得清, 不是「比宽度差 2 px」)",
 		ns == [1, 2, 3], "实测 %s" % str(ns))
-	# b. 单条刻纹的屏幕尺寸
-	var b2: Array = RV.glyph_bands(2, shaft_h)
-	var wmin := 1e9
-	var hmin := 1e9
-	for gb in b2:
-		wmin = minf(wmin, 2.0 * float(gb["hw"]) * PX_PER_M)
-		hmin = minf(hmin, 2.0 * float(gb["hh"]) * PX_PER_M_VERT)
-	_ok("⑥b 单条刻纹屏幕宽 ≥ 16 px", wmin >= VISIBLE_PX, "最窄 %.2f px" % wmin)
-	_ok("⑥c 单条刻纹屏幕高 ≥ 4 px(竖直只有 17.62 px/米, 这是能给的上限区间)",
-		hmin >= 4.0, "最矮 %.2f px" % hmin)
-	# c. 刻纹恒在碑面内(不挑出碑外)
-	var inside := 0
-	var total := 0
-	for si in [0, 1, 2]:
-		for gb in RV.glyph_bands(si, shaft_h):
-			total += 1
-			var f: float = clampf(float(gb["y"]) / shaft_h, 0.0, 1.0)
-			var shaft_hw: float = lerpf(RV.SHAFT_HW_BOT, RV.SHAFT_HW_TOP, f)
-			if float(gb["hw"]) <= shaft_hw and float(gb["y"]) - float(gb["hh"]) > 0.0 \
-					and float(gb["y"]) + float(gb["hh"]) < shaft_h:
-				inside += 1
-	_ok("⑥d 六条刻纹全在碑面范围内(不挑出碑外、不越过碑座/碑顶)", inside == total and total == 6,
-		"%d/%d" % [inside, total])
-	# d. ★对比度: 刻纹是"刻上去的漆"不是"打上去的光" —— 量真实材质
+	# b. ★屏幕上真的分得开: 相邻两颗的**间距** > 单颗的**宽度**, 否则会连成一片
+	var s2: Array = RV.crest_slots(2, 3.0)
+	var pitch_px: float = absf(float((s2[1] as Vector2).x) - float((s2[0] as Vector2).x)) * PX_PER_M
+	var crest_w_px: float = 2.0 * RV.CREST_R_M * PX_PER_M
+	_ok("⑥b 单颗符石屏幕宽 ≥ 14 px(头顶等级徽章 16 px 是参照)", crest_w_px >= 14.0,
+		"%.2f px" % crest_w_px)
+	_ok("⑥c ★相邻两颗的屏幕间距 > 单颗宽度(数得清的充要条件)", pitch_px > crest_w_px,
+		"间距 %.2f px vs 宽 %.2f px" % [pitch_px, crest_w_px])
+	# c. 三颗都在碑顶之上, 且横向排开(不是竖排 —— 竖排只有 17.62 px/米, 会糊)
+	var same_y := true
+	var above := true
+	for s in s2:
+		if not _near((s as Vector2).y, (s2[0] as Vector2).y, 1e-6):
+			same_y = false
+		if (s as Vector2).y <= 3.0:
+			above = false
+	_ok("⑥d 三颗同高、横向排开(竖排的话屏幕间距只剩 0.626 倍)", same_y, "y 一致=%s" % str(same_y))
+	_ok("⑥e 符石在碑顶之上(不压在碑面上)", above)
+	# d. ★碑体: 屏幕上保住立绘的长宽比 —— 这是"立着的片"最容易错的一条
 	var h0: Dictionary = _rv.raise_stele(Vector2(700.0, 400.0), 2)
-	_ok("⑥e 真实碑建出来了(分母)", not h0.is_empty() and is_instance_valid(h0["root"]))
+	_ok("⑥f 真实碑建出来了(分母)", not h0.is_empty() and is_instance_valid(h0["root"]))
 	if h0.is_empty():
 		return
-	var shaft_mat = null
-	var band_mats: Array = []
-	for ch in (h0["root"] as Node3D).get_children():
-		if not (ch is MeshInstance3D):
-			continue
-		var m = (ch as MeshInstance3D).material_override
-		if not (m is StandardMaterial3D):
-			continue
-		var c: Color = (m as StandardMaterial3D).albedo_color
-		## 刻纹 = 琉珀色且不透明。★ a >= 0.99 这一条不能省 ——
-		##   碑脚符环用的是同一个 COL_GLYPH(alpha 0.42), 不排掉会多数出一条。
-		if c.r > 0.9 and c.g > 0.7 and c.b < 0.5 and c.a >= 0.99:
-			band_mats.append(m)
-		## 碑身 = COL_STONE 本色(碑座是它的 0.72~0.78 倍缩色, 不能混进来)
-		elif _near3(c, RV.COL_STONE):
-			shaft_mat = m
-	_ok("⑥f 认出碑身与刻纹材质(分母): 刻纹 %d 条(3★ 两面各 3 条 = 6)" % band_mats.size(),
-		shaft_mat != null and band_mats.size() == 6)
-	if shaft_mat == null or band_mats.is_empty():
+	var sp = h0.get("sprite", null)
+	_ok("⑥g 碑体是新立绘(不是纯色盒子)", sp != null and is_instance_valid(sp) and (sp as Sprite3D).texture != null)
+	if sp == null or not is_instance_valid(sp) or (sp as Sprite3D).texture == null:
+		_rv.clear_all()
 		return
-	var add_n := 0
-	for m in band_mats:
-		if (m as StandardMaterial3D).blend_mode == BaseMaterial3D.BLEND_MODE_ADD:
-			add_n += 1
-	_ok("⑥g ★刻纹**不是** BLEND_ADD(加法会把它加进自发光的碑身里烧成纯白 —— 改前就是这样)",
-		add_n == 0, "%d/%d 条仍是 ADD" % [add_n, band_mats.size()])
-	var l_band: float = _luma((band_mats[0] as StandardMaterial3D).albedo_color)
-	var l_shaft: float = _luma((shaft_mat as StandardMaterial3D).albedo_color)
-	_ok("⑥h ★刻纹 / 碑身 亮度比 ≥ 2.0(改前碑身 luma 0.64 已近白, 加什么都看不出)",
-		l_band / maxf(l_shaft, 1e-6) >= 2.0,
-		"刻纹 %.4f / 碑身 %.4f = %.3f 倍" % [l_band, l_shaft, l_band / maxf(l_shaft, 1e-6)])
-	# e. 碑体本身的屏幕尺寸
-	var stele_w_px: float = 2.0 * RV.PLINTH_HW * PX_PER_M
-	var stele_h_px: float = RV.STELE_H * PX_PER_M_VERT
-	_ok("⑥i 碑体屏幕尺寸 ≥ 30 × 44 px(改前 22.5 × 33.5, 碑面上装不下刻纹)",
-		stele_w_px >= 30.0 and stele_h_px >= 44.0,
-		"实测 %.2f × %.2f px" % [stele_w_px, stele_h_px])
+	var spr := sp as Sprite3D
+	var tex: Texture2D = spr.texture
+	var tw: float = float(tex.get_width())
+	var th: float = float(tex.get_height())
+	## 世界尺寸 = 贴图尺寸 × pixel_size × 节点 scale;  屏幕尺寸 = 世界横向×28.15 / 世界竖直×17.62
+	var world_w: float = tw * spr.pixel_size * spr.scale.x
+	var world_h: float = th * spr.pixel_size * spr.scale.y
+	var scr_w: float = world_w * PX_PER_M
+	var scr_h: float = world_h * PX_PER_M_VERT
+	_ok("⑥h ★屏幕长宽比 == 立绘长宽比(漏掉竖直 0.626 压缩的话碑会变成横匾)",
+		_near(scr_w / maxf(scr_h, 1e-6), tw / th, 0.02),
+		"屏幕 %.1f×%.1f = %.3f  vs 立绘 %.0f×%.0f = %.3f" % [scr_w, scr_h, scr_w / maxf(scr_h, 1e-6), tw, th, tw / th])
+	_ok("⑥i 碑体屏幕尺寸 ≥ 30 × 44 px(龟立绘 44 px, 碑是地标应当更高)",
+		scr_w >= 30.0 and scr_h >= 44.0, "实测 %.2f × %.2f px" % [scr_w, scr_h])
+	_ok("⑥j 贴图按 NEAREST 取样(线性会把像素画糊成一团)",
+		spr.texture_filter == BaseMaterial3D.TEXTURE_FILTER_NEAREST)
 	_rv.clear_all()
 
 
@@ -418,9 +403,8 @@ func _mk(pos: Vector2) -> Dictionary:
 	}
 
 
-## 两个颜色的 RGB 是不是同一个(用来把【碑身本色】与【碑座的缩色】分开)
-func _near3(a: Color, b: Color) -> bool:
-	return absf(a.r - b.r) < 1e-4 and absf(a.g - b.g) < 1e-4 and absf(a.b - b.b) < 1e-4
+func _near(a: float, b: float, eps: float = 1e-4) -> bool:
+	return absf(a - b) <= eps
 
 
 func _luma(c: Color) -> float:
