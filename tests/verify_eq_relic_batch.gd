@@ -752,12 +752,18 @@ func _t094_bolt() -> void:
 	#   它们必须由同一个 tick 同一个 delta 推 ⇒ 落地那一帧两边一起结束。
 	#   这条守的就是"伤害不许比石头早/晚半秒"(memory [[fb-vfx-defect-families]] 的第三类)。
 	var rock_in_air: int = sys.vfx.alive_count("stone_bolt")
-	_ok("在途期间演出侧也有 1 块石头(分母)", rock_in_air == 1, "N=%d" % rock_in_air)
+	_ok("在途期间演出侧有 1 个蓄能点(分母)", rock_in_air == 1, "N=%d" % rock_in_air)
+	## ★2026-08-09 石雷改成闪电(用户:「石雷我要闪电高高劈下来，不要图片」)后,
+	##   在途期间画面上是**蓄能预兆**, 真正的闪电在【伤害那一帧】才劈 ⇒ 此刻不该有闪电。
+	_ok("★在途期间【还没有】闪电(闪电是瞬时的, 不该提前出现)",
+		sys.vfx.alive_count("thunder") == 0, "N=%d" % sys.vfx.alive_count("thunder"))
 	for _i in range(11):
 		sys.tick(0.05)                                   # 再 0.55 秒 > 落时 0.5
 	_ok("落地后真的掉血", float(foe["hp"]) < hp0, "%.1f → %.1f" % [hp0, float(foe["hp"])])
-	_ok("★落地那一帧演出侧的石头也没了(伤害与石头同帧, 不是各走各的秒表)",
+	_ok("★结算那一帧蓄能点收掉(伤害与演出同帧, 不是各走各的秒表)",
 		sys.vfx.alive_count("stone_bolt") == 0, "N=%d" % sys.vfx.alive_count("stone_bolt"))
+	_ok("★★结算那一帧【闪电劈下来了】(由 stele_bolt_land 在打出伤害的同一帧发出)",
+		sys.vfx.alive_count("thunder") >= 1, "N=%d" % sys.vfx.alive_count("thunder"))
 	_ok("落地证据挂在目标身上", int(foe.get("_stele_bolt_n", 0)) == 1, "n=%d" % int(foe.get("_stele_bolt_n", 0)))
 	_ok("在途表已出清", sys._bolts.is_empty(), "N=%d" % sys._bolts.size())
 	# 节拍: 再喂 6 秒 ⇒ 再来 2 发(共 3 发)
@@ -1038,38 +1044,43 @@ func _t_vfx_geometry() -> void:
 	_ok("石雷落时 = 0.5 秒(H=5.25 / g=42 的闭式解)",
 		_near(RelicEqVfx.fall_time(RelicEqVfx.BOLT_H, RelicEqVfx.BOLT_G), 0.5, 1e-6),
 		"%.6f 秒" % RelicEqVfx.fall_time(RelicEqVfx.BOLT_H, RelicEqVfx.BOLT_G))
-	# ⑯-f2 ★石块是新立绘、只绕视线轴翻滚
-	#   (旧版是程序化八面体 + UNSHADED 纯色 ⇒ 每个面同色只剩剪影, 实拍读成"一枚橙色五边形";
-	#    换成立绘之后绕 x/y 转会把片转到侧面变成一条线, 所以只许绕 z)
-	var rb: Dictionary = vfx.stone_bolt(carrier["pos"] + Vector2(60, 0), 2)
-	_ok("石块建出来了(分母)", not rb.is_empty() and is_instance_valid(rb.get("node", null)))
-	if not rb.is_empty() and is_instance_valid(rb.get("node", null)):
-		var rw := rb["node"] as Node3D
-		var rn := rb["spr"] as Sprite3D
-		_ok("石块是新立绘(不是纯色多面体)", rn != null and rn.texture != null)
-		_ok("石块贴图按 NEAREST 取样", rn != null and rn.texture_filter == BaseMaterial3D.TEXTURE_FILTER_NEAREST)
-		vfx.apply_bolt(rb, 0.0)
-		var y_top: float = rw.position.y
-		vfx.apply_bolt(rb, 1.0)
-		var y_bot: float = rw.position.y
-		_ok("★石块真的从高处落到地面(Δy ≈ BOLT_H)",
-			_near(y_top - y_bot, RelicEqVfx.BOLT_H, 1e-4), "Δy=%.4f" % (y_top - y_bot))
-		_ok("★石块只绕视线轴 z 翻滚(绕 x/y 会把立绘转成一条线)",
-			_near(rn.rotation.x, 0.0, 1e-9) and _near(rn.rotation.y, 0.0, 1e-9) and absf(rn.rotation.z) > 0.1,
-			"rot=(%.4f, %.4f, %.4f)" % [rn.rotation.x, rn.rotation.y, rn.rotation.z])
-		# ★翻滚到 90° 时长宽**不许对调** —— 量的是四个真实顶点投到屏幕上的包围盒。
-		#   改前(压缩与旋转写在同一个节点上)实拍是 32 × 13.6 px, 本该 18.7 × 20。
-		## ⚠ 必须先回到 τ=0 —— 上一行断言把 τ 停在 1.0(转了 183°), 拿那一帧当"未旋转基准"
-		##   会让基准自己就带 3° 的偏差(第一版就这么错过一次, 差 5% 判红)。
-		vfx.apply_bolt(rb, 0.0)
-		var wh0: Vector2 = _screen_wh(rn)
-		var tau90: float = (PI * 0.5) / maxf(float(rb["T"]) * RelicEqVfx.BOLT_SPIN, 1e-6)
-		vfx.apply_bolt(rb, tau90)
-		var wh90: Vector2 = _screen_wh(rn)
-		_ok("石块屏幕包围盒分母(τ=0)", wh0.x > 4.0 and wh0.y > 4.0, "%.2f × %.2f px" % [wh0.x, wh0.y])
-		_ok("★翻滚到 90° 时屏幕长宽只是对调而不是被压扁(横向压缩必须在旋转之外)",
-			_near(wh90.x, wh0.y, 0.6) and _near(wh90.y, wh0.x, 0.6),
-			"τ=0 %.2f×%.2f → 90° %.2f×%.2f" % [wh0.x, wh0.y, wh90.x, wh90.y])
+	# ⑯-f2 ★★石雷 = 闪电(2026-08-09 重做)。旧版是一张**静态石头贴图**自由落体 —— 那正是"图片"。
+	#   这一节原本钉的是落石(Δy ≈ BOLT_H / 只绕 z 翻滚 / 90° 长宽对调), 石头没了, 整节按闪电重写。
+	#   ⚠ 两个渲染坑各配一条断言, 都是实拍 + 染色探针钉出来的:
+	#     ① `BILLBOARD_ENABLED` 会让精灵**完全**对齐相机(含 roll), 而本作相机 52° 俯视
+	#        ⇒ 一道竖直闪电被掰成斜的短条。必须 `BILLBOARD_FIXED_Y`。
+	#     ② `region_enabled` 那条路**根本画不出来**: 节点 visible=true/alpha=1/挂在 World 下、
+	#        区域也在逐帧推进, 就是不显示。把它染成品红后全屏**零个品红像素**; 去掉 region 后 4071 个。
+	_ok("⑯-f2 闪电素材在位: " + RelicEqVfx.THUNDER_TEX, ResourceLoader.exists(RelicEqVfx.THUNDER_TEX))
+	var th: Dictionary = vfx.thunder_strike(carrier["pos"] + Vector2(60, 0), 2)
+	_ok("闪电建出来了(分母)", not th.is_empty() and is_instance_valid(th.get("node", null)))
+	if not th.is_empty() and is_instance_valid(th.get("node", null)):
+		var tn := th["node"] as Sprite3D
+		_ok("闪电真的进了 _world", tn.get_parent() == _s._world)
+		_ok("★闪电是逐帧动画(%d 帧, 不是一张静图)" % RelicEqVfx.THUNDER_FRAMES,
+			tn.hframes == RelicEqVfx.THUNDER_FRAMES and tn.hframes > 1, "hframes=%d" % tn.hframes)
+		_ok("★★必须 BILLBOARD_FIXED_Y —— ENABLED 会把竖直闪电掰成斜条",
+			tn.billboard == BaseMaterial3D.BILLBOARD_FIXED_Y,
+			"billboard=%d" % int(tn.billboard))
+		_ok("★★不许开 region_enabled(开了整道闪电画不出来, 染色实证零像素)",
+			not tn.region_enabled)
+		_ok("不许 ALPHA_CUT_DISCARD(阈值 0.5 会把压暗的整道闪电丢光)",
+			tn.alpha_cut == SpriteBase3D.ALPHA_CUT_DISABLED)
+		_ok("闪电贴图按 NEAREST 取样", tn.texture_filter == BaseMaterial3D.TEXTURE_FILTER_NEAREST)
+		## "高高劈下来": 整道闪电的世界高度必须远高于一只龟(龟立绘约 1 个世界单位)
+		var th_h: float = float(tn.texture.get_height()) * tn.pixel_size
+		_ok("★闪电够高(≥ 6 个世界单位 ≈ 6 只龟高)", th_h >= 6.0, "%.2f" % th_h)
+		## 逐帧真的在换帧 + holdfade
+		vfx.apply_thunder(th, 0.0)
+		var f0: int = tn.frame
+		var th_a0: float = tn.modulate.a
+		vfx.apply_thunder(th, 0.5)
+		var f_mid: int = tn.frame
+		vfx.apply_thunder(th, 0.95)
+		var th_late: float = tn.modulate.a
+		_ok("★闪电通道逐帧在变(不是定格一张)", f_mid != f0, "帧 %d → %d" % [f0, f_mid])
+		_ok("★holdfade: 前 55%% 满亮(不是一出生就淡)", _near(th_a0, 1.0, 1e-3), "a=%.3f" % th_a0)
+		_ok("末段确实淡出", th_late < 0.2, "a=%.3f" % th_late)
 
 	# ⑯-g 贴地: |三角面法线·上| ≈ 1(memory [[fb-axis-y-plus-rotation-cancels]])
 	var mi0 = plates[0]

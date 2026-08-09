@@ -384,6 +384,10 @@ func stele_bolt_land(b: Dictionary) -> int:
 	#   `_kill` 里别的死亡效果也会建节点, 那种断言反向验证时不会红。
 	b["landed"] = int(b.get("landed", 0)) + 1
 	tgt["_stele_bolt_n"] = int(tgt.get("_stele_bolt_n", 0)) + 1
+	## ★★闪电在【伤害这一帧】劈下 —— 演出侧没有自己的秒表, 节拍/延时怎么改它都跟着走。
+	##   用户 2026-08-09:「石雷我要闪电高高劈下来，不要图片」。
+	if vfx != null:
+		vfx.thunder_strike(Vector2(b.get("pos", tgt["pos"])), si)
 	return dmg
 
 

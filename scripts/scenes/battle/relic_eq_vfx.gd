@@ -224,6 +224,22 @@ const BASE_FLASH_TAU := 0.42
 ## ── ④ 石雷(094) ──────────────────────────────────────────────────
 ## 石块的起落高度(米)与重力(米/秒²)。★两者一起把落时定死成 T = √(2H/g) = 0.5 秒,
 ##   不是"我觉得 0.5 秒好看"—— 改任一个, `fall_time()` 与门禁 ⑥ 一起跟着变。
+## ══ 石雷 = 闪电劈下(2026-08-09 用户:「石雷我要闪电高高劈下来，不要图片」) ══
+## 旧实现: 一张**静态石头贴图**从 BOLT_H 米自由落体 —— 那正是"图片"。
+## 现在: [0,T) 目标头顶蓄能(预兆) → **T 那一刻**一道 7 帧闪电从高处贯到地面 + 白闪 + 震屏。
+## ★★T 一帧不动 —— 伤害仍由 `stele_bolt_land` 在 T 结算, 演出只是换了内容。
+##   (闪电本身是瞬时的, 拿它走"下落"就没有物理意义了; 所以把 T 用作**预兆窗口**。)
+const THUNDER_TEX := "res://assets/sprites/vfx/eq094-thunder.png"
+const THUNDER_FRAMES := 7
+## 闪电从多高劈下来(米)。★"高高" —— 比旧石块的 5.25 高一截, 顶端出画外才有"从天上来"。
+const THUNDER_H_M := 9.0
+const THUNDER_LIFE := 0.34        ## 整道闪电活多久(秒)
+const THUNDER_RACE := 0.14        ## 前 14% 寿命里通道**自上而下贯下来**(逐行揭开)
+const THUNDER_FPS := 22.0         ## 通道抖动的帧速
+## 预兆: 目标头顶聚一点能量, 随 τ 长大变亮。
+const TELE_H_M := 2.2             ## 蓄能点离地高度(米)
+const TELE_PX := 26.0             ## 蓄能点最大直径(码)
+
 const BOLT_H := 5.25
 const BOLT_G := 42.0
 ## 石块立绘(新素材·28×30)的世界高度(米)与翻滚角速度(弧度/秒)。
@@ -273,6 +289,8 @@ var _mote_seq: int = 0
 var _steles: Array = []
 ## 094 在途石块: {node, t, T, from(Vector3), to(Vector3), col}
 var _rocks: Array = []
+## 在途闪电(见 `thunder_strike`)。
+var _thunders: Array = []
 ## 094 全队光环的头顶印记: {u, node, t}
 var _marks: Array = []
 ## 正在播的爆点(ShockwaveVfx 句柄)
@@ -556,11 +574,16 @@ func _ensure_meshes() -> void:
 
 
 ## 094 的两张立绘。★缺图时返回 null 而不是崩 —— 调用侧一律判 null 再建节点。
+var _tex_thunder: Texture2D = null
 func _tex(path: String) -> Texture2D:
 	if path == STELE_TEX:
 		if _tex_stele == null and ResourceLoader.exists(path):
 			_tex_stele = load(path) as Texture2D
 		return _tex_stele
+	if path == THUNDER_TEX:
+		if _tex_thunder == null and ResourceLoader.exists(path):
+			_tex_thunder = load(path) as Texture2D
+		return _tex_thunder
 	if _tex_stone == null and ResourceLoader.exists(path):
 		_tex_stone = load(path) as Texture2D
 	return _tex_stone
@@ -897,24 +920,77 @@ func drop_stele(h: Dictionary) -> void:
 
 ## 砸一道石雷: 石块从 `to2d` 正上方 BOLT_H 米无初速落下, 落地放爆点。
 ## 返回句柄; 世界不在时返回 {}。★落时由 `fall_time(BOLT_H, BOLT_G)` 定死。
+## 石雷的**预兆**: 目标头顶聚一点能量, 随 τ 长大变亮。真正的闪电在 `thunder_strike` 里,
+## 由结算侧在**伤害那一帧**调 —— 演出与伤害同帧, 演出侧不自己数秒。
+## 函数名沿用 `stone_bolt`(结算侧与门禁都在调它), 内容已换成蓄能点。
 func stone_bolt(to2d: Vector2, si: int) -> Dictionary:
 	if not _has_world():
 		return {}
 	_ensure_meshes()
 	var sn: int = clampi(si, 0, 2)
-	var tex: Texture2D = _tex(BOLT_TEX)
-	if tex == null:
-		return {}
-	var hm: float = BOLT_H_M * (1.0 + 0.16 * float(sn))
-	var wrap := _spin_sprite(tex, hm, 6)
-	_adopt(wrap, "stone_bolt")
+	var mi := _mesh_node(_m_ring, _mat(COL_GLYPH, true, true, 14))
+	mi.position = battle._world_pos(to2d, TELE_H_M)
+	_adopt(mi, "stone_bolt")
 	var b := {
-		"node": wrap, "spr": wrap.get_child(0), "t": 0.0, "T": fall_time(BOLT_H, BOLT_G),
-		"pos": to2d, "si": sn, "h_m": hm,
+		"node": mi, "spr": null, "t": 0.0, "T": fall_time(BOLT_H, BOLT_G),
+		"pos": to2d, "si": sn, "h_m": TELE_H_M,
 	}
 	_rocks.append(b)
 	apply_bolt(b, 0.0)
 	return b
+
+
+## ★★真正的闪电: 从 THUNDER_H_M 米高处**贯到地面**。
+## · 前 THUNDER_RACE 段用 `region_rect` **自上而下逐行揭开** ⇒ 看得出是"劈下来"而不是"整根冒出来"
+## · 通道每帧换一张(7 帧) ⇒ 抖动是**逐帧变形**, 不是缩放假动
+## · holdfade: 前 55% 满亮再收
+func thunder_strike(at2d: Vector2, si: int) -> Dictionary:
+	if not _has_world():
+		return {}
+	var tex: Texture2D = _tex(THUNDER_TEX)
+	if tex == null:
+		return {}
+	var sn: int = clampi(si, 0, 2)
+	var sp := Sprite3D.new()
+	sp.texture = tex
+	sp.hframes = THUNDER_FRAMES
+	sp.frame = 0
+	## ⚠ 必须 FIXED_Y 不能 ENABLED: `BILLBOARD_ENABLED` 会让精灵**完全**对齐相机(含 roll),
+	##   而本作相机是 52° 俯视 ⇒ 一道竖直的闪电会被掰成斜的短条(2026-08-09 实拍确认)。
+	##   `BILLBOARD_FIXED_Y` 只绕 Y 轴转 ⇒ 始终正对镜头**且保持直立**。
+	sp.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sp.shaded = false
+	sp.transparent = true
+	sp.alpha_cut = SpriteBase3D.ALPHA_CUT_DISABLED   # ⚠ DISCARD 会把压暗的整道闪电丢光
+	sp.render_priority = 20
+	var fw: float = float(tex.get_width()) / float(THUNDER_FRAMES)
+	var fh: float = float(tex.get_height())
+	## 高度按 THUNDER_H_M 反算 pixel_size; 3★ 再粗壮一点
+	sp.pixel_size = THUNDER_H_M * (1.0 + 0.10 * float(sn)) / maxf(1.0, fh)
+	sp.position = battle._world_pos(at2d, THUNDER_H_M * 0.5 * (1.0 + 0.10 * float(sn)))
+	_adopt(sp, "thunder")
+	var h := {"node": sp, "t": 0.0, "life": THUNDER_LIFE, "at": at2d, "si": sn,
+		"fw": fw, "fh": fh, "y_full": sp.position.y}
+	_thunders.append(h)
+	apply_thunder(h, 0.0)
+	return h
+
+
+## 把 u ∈ [0,1] 的闪电形态写到**真实节点**上。纯同步 —— 门禁直接调, 不等任何动画。
+func apply_thunder(h: Dictionary, u: float) -> void:
+	var sp = h.get("node", null)
+	if not is_instance_valid(sp):
+		return
+	var t: float = clampf(u, 0.0, 1.0)
+	var s3 := sp as Sprite3D
+	## ⚠ **不用 `region_enabled`**: 实拍证明那条路走不通 —— 节点 visible=true/alpha=1/挂在
+	##   World 下, 把它染成品红后全屏**零个品红像素**(两轮: 区域高度下限 0 与 0.06 都一样)。
+	##   090 的电弧用的是 `hframes` + `frame`, 那条路是验证过能渲染的, 这里照抄。
+	s3.hframes = THUNDER_FRAMES
+	s3.frame = int(floor(t * float(h.get("life", THUNDER_LIFE)) * THUNDER_FPS)) % THUNDER_FRAMES
+	## holdfade: 前 55% 满亮再收
+	s3.modulate.a = 1.0 if t < 0.55 else (1.0 - (t - 0.55) / 0.45)
 
 
 ## 把 τ ∈ [0,1] 的落体形态写到**真实节点**上。纯同步。
@@ -926,14 +1002,14 @@ func apply_bolt(b: Dictionary, tau: float) -> void:
 	if not is_instance_valid(mi):
 		return
 	var t: float = clampf(tau, 0.0, 1.0)
-	var hm: float = float(b.get("h_m", BOLT_H_M))
-	var ground: Vector3 = battle._world_pos(b["pos"], 0.0)
-	(mi as Node3D).position = Vector3(
-		ground.x, ground.y + BOLT_H * fall_profile(t) + hm * 0.5, ground.z)
-	## ★旋转写在**子**节点上, 横向压缩留在父节点 —— 见 `_spin_sprite` 的长注释。
-	var sp = b.get("spr", null)
-	if is_instance_valid(sp):
-		(sp as Node3D).rotation = Vector3(0.0, 0.0, t * float(b.get("T", 0.5)) * BOLT_SPIN)
+	## 蓄能点: 随 τ 长大变亮, 停在目标头顶 TELE_H_M。★不再有"下落"这回事 ——
+	##   闪电是瞬时的, 真正的一击在 `thunder_strike`, 由结算侧在伤害那一帧调。
+	var d: float = TELE_PX * float(battle.WS) * (0.25 + 0.75 * t * t)
+	(mi as Node3D).scale = Vector3(d, 1.0, d)
+	(mi as Node3D).position = battle._world_pos(b["pos"], TELE_H_M)
+	var m := (mi as MeshInstance3D).material_override as StandardMaterial3D
+	if m != null:
+		m.albedo_color = Color(COL_GLYPH.r, COL_GLYPH.g, COL_GLYPH.b, 0.15 + 0.85 * t * t)
 
 
 ## 一次点爆(复用 ShockwaveVfx)。
@@ -1063,6 +1139,18 @@ func tick(delta: float) -> void:
 		advance_stele(h, d)
 	# 在途石块
 	var kr: Array = []
+	var kt: Array = []
+	for h in _thunders:
+		h["t"] = float(h["t"]) + delta
+		var lf: float = float(h.get("life", THUNDER_LIFE))
+		if float(h["t"]) >= lf or not is_instance_valid(h.get("node", null)):
+			var hn = h.get("node", null)
+			if is_instance_valid(hn):
+				hn.queue_free()
+			continue
+		apply_thunder(h, float(h["t"]) / maxf(lf, 1e-4))
+		kt.append(h)
+	_thunders = kt
 	for b in _rocks:
 		b["t"] = float(b["t"]) + d
 		var tt: float = float(b["t"]) / maxf(float(b["T"]), 0.001)
@@ -1123,6 +1211,7 @@ func clear_all() -> int:
 	_motes.clear()
 	_steles.clear()
 	_rocks.clear()
+	_thunders.clear()
 	_marks.clear()
 	_shocks.clear()
 	_m_hex = null
