@@ -1043,7 +1043,13 @@ func pestle_leap(u, sec: float) -> Node3D:
 	root.set_meta("radius_px", SLAM_R_PX)
 	_fx.append({"node": root, "unit": u, "shadow": sh, "warn": warn,
 		"warn_col": side_col, "warn_t": 0.0,
-		"t": 0.0, "life": maxf(0.05, sec), "kind": "leap"})
+		## ★★`life` 只用来算进度 q(电弧越接近落地越快越亮), **不再用它退场**。
+		##   2026-08-09 用户:「还没落地怎么雷雾和预警消失了」—— 就是它:
+		##   演出 tick 走 `tick_global`(顿帧期间照跑), 而跳跃被 `if frozen` 冻住
+		##   ⇒ 演出比人先"到点", 圈和雾在半空就没了。这与砸落提前是**同一个 bug 的两半**,
+		##   我上一轮只修了结算侧。⇒ 退场只认 `drop_leap`(真实落地事件), `watchdog` 兜底防孤儿。
+		"t": 0.0, "life": maxf(0.05, sec), "kind": "leap",
+		"watchdog": maxf(0.05, sec) * 3.0 + 2.0})
 	return root
 
 
@@ -1477,7 +1483,8 @@ func tick(delta: float) -> void:
 							sp3.modulate.a = bright
 						elif ch is Node3D:
 							_set_alpha(ch, bright)
-				if t >= life:
+				## ★不看 life —— 见建它那段的注释。只有真实落地(`drop_leap`)或兜底超时才收。
+				if t >= float(f.get("watchdog", life * 3.0 + 2.0)):
 					_free_fx(i)
 			_:
 				_set_alpha(n, 1.0 - clampf(t / life, 0.0, 1.0))

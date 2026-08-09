@@ -345,6 +345,28 @@ func _relayout_units() -> void:
 	var anchor := Vector2(clampf(cx - span * 0.5, battle.ARENA.position.x + 80.0, battle.ARENA.end.x - 80.0), cy)
 	var delta: Vector2 = anchor - Vector2(carrier["pos"])
 	var ai := 0
+	## ★★假人默认【不放技能】(2026-08-09)。由来: 090 浪潮台上携带者 14 秒只普攻 2 次,
+	##   探针查出是 `_sk_basic_strike` —— **假人是 basic 龟, 它自己放技能把携带者眩晕了 1.65 秒**,
+	##   眩晕期间不能普攻 ⇒ 凑不齐"第三下" ⇒ 浪潮一次都不触发, 而我差点判成"演出没做"。
+	##   `enemy_attacks` 只管普攻, 管不住技能 —— 这是两回事。
+	##   想看假人放技能的用例, 在 case 里写 `enemy_skills: true`。
+	if not bool(cfg.get("enemy_skills", false)):
+		for su in battle._units:
+			if su is Dictionary and not (su as Dictionary).get("_eqdemo_carrier", false):
+				## ⚠ 只锁 `energy_lock_until` **不够** —— 那道闸挡的是"龟能继续充",
+				##   而假人**开局就带能量**, 照样立刻放得出来(实测: 锁了之后携带者仍在 t=0.77
+				##   被 `_sk_basic_strike` 眩晕 1.65 秒)。⇒ 直接把主动技能表清空, 从源头断掉。
+				su["active_skills"] = []
+				su["energy_lock_until"] = 1.0e9
+	## ★`carrier_silent`: 连**携带者自己的**主动技也关掉。由来(2026-08-09): 090 的浪潮靠
+	##   "每第三次普攻"触发, 而携带者是 basic 龟 —— 它的 `_sk_basic_strike` 第一行就是
+	##   `_stun(u, 1.65, ...)`【全程定身自己】, 能量一满就把自己钉 1.65 秒 ⇒ 14 秒只普攻 2 次,
+	##   浪潮一次都发不出来。这是**产品的正确行为**, 错在台子: 要看的是装备的浪潮, 不是龟的技能。
+	if bool(cfg.get("carrier_silent", false)):
+		for cu in battle._units:
+			if cu is Dictionary and (cu as Dictionary).get("_eqdemo_carrier", false):
+				cu["active_skills"] = []
+				cu["energy_lock_until"] = 1.0e9
 	var ei := 0
 	for u in battle._units:
 		if not (u is Dictionary):

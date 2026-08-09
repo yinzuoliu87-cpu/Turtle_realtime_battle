@@ -917,6 +917,39 @@ func _t090_mana_lock() -> void:
 	_ok("③L2 ★★结算那一帧: 龟**贴地**(height == 0)",
 		sl_h >= 0.0 and sl_h <= 0.0001, "height=%.4f" % sl_h)
 	_ok("③L2 ★★结算那一帧: 已经**落地**(airborne == false)", not sl_air, "airborne=%s" % str(sl_air))
+	## ★★③L3 演出**必须活到落地那一刻**(用户 2026-08-09:「还没落地怎么雷雾和预警消失了」)。
+	##   这是 ③L2 那个 bug 的**另一半**: 我上一轮只修了结算侧, 起跳演出仍靠自己的 `life` 退场,
+	##   而演出 tick 走 `tick_global`(顿帧期间照跑)、跳跃被 `if frozen` 冻住
+	##   ⇒ 顿帧攒够了, 圈和雾在半空就没了。
+	##   判据: **在注入顿帧的真主循环里**, 走到解析滞空时间(1.673 秒)之后、真正落地之前,
+	##   预警圈必须还在。老实现在这里必红。
+	_arc().vfx.clear()
+	_arc()._slams.clear()
+	_s._units.clear()
+	var l3u: Dictionary = _equip(_mk("basic", "left", Vector2(0, 0)), "p2eq_090", 3)
+	_s._units = [l3u]
+	_s._equip_sys.fire_equip_effect(l3u, "p2eq_090", 3)
+	var l3dt: float = 1.0 / 60.0
+	var l3_nominal: int = int(ceil(EqArcaneBatch.pestle_jump_sec() / l3dt))
+	var l3_live_at_nominal: int = -1
+	var l3n: int = 0
+	while l3n < 900 and not _arc()._slams.is_empty():
+		var l3fz: bool = (l3n % 3 == 2)
+		if l3fz:
+			_s._hitstop = maxf(float(_s._hitstop), l3dt * 2.0)
+		_s._sim_step(l3dt, l3fz, false)
+		l3n += 1
+		## 走满"解析滞空时间"那么多【演出步】时(顿帧让真实落地还没到), 量预警圈还在不在
+		if l3n == l3_nominal:
+			l3_live_at_nominal = _live("leap")
+	_ok("③L3 分母: 顿帧确实把落地推后了(真实用了 %d 步 > 解析 %d 步)" % [l3n, l3_nominal],
+		l3n > l3_nominal, "%d vs %d" % [l3n, l3_nominal])
+	_ok("③L3 ★★走到解析滞空时间时【还没落地】, 预警圈必须仍在场",
+		l3_live_at_nominal >= 1, "那一刻预警圈=%d" % l3_live_at_nominal)
+	_ok("③L3 落地后预警圈才收掉", _live("leap") == 0, "落地后=%d" % _live("leap"))
+	_s._hitstop = 0.0
+	_arc().vfx.clear()
+	_s._units.clear()
 	_s._hitstop = 0.0
 	_s._units.clear()
 	_arc()._slams.clear()
