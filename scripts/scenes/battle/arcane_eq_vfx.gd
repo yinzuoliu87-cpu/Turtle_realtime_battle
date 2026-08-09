@@ -325,10 +325,16 @@ static func face_basis(cam_fwd: Vector3, roll: float) -> Basis:
 ## 镜头前向(单位向量)。
 ## ★拿不到相机时退回**默认战斗机位的视轴**(0,28,22) → (0,0.6,0) —— 本项目相机方向恒定
 ##   (缩放只改 fov、平移只挪机位, 见 `RB._cam_zoom_base` 的算法), 所以这个退路是真值不是凑数。
-func _cam_forward() -> Vector3:
-	if battle != null and is_instance_valid(battle._cam):
-		return -((battle._cam as Camera3D).global_transform.basis.z).normalized()
+## ★静态版: 别的演出文件(如 084 的十字斩)也要"正对镜头 + 面内 roll", 走同一份实现,
+##   免得手抄一份从此各自漂(memory [[fb-hand-rolled-copies-drift]])。
+static func cam_forward_of(b) -> Vector3:
+	if b != null and is_instance_valid(b._cam):
+		return -((b._cam as Camera3D).global_transform.basis.z).normalized()
 	return Vector3(0.0, -27.4, -22.0).normalized()
+
+
+func _cam_forward() -> Vector3:
+	return cam_forward_of(battle)
 
 
 # ══════════════════════════════════════════════════════════════════

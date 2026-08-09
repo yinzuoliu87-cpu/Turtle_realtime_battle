@@ -771,6 +771,17 @@ func cross_retreat(u: Dictionary, dest: Vector2, _dir: Vector2) -> void:
 ##   billboard 会吃掉 roll(本仓 001 飞斩的旧账), 所以这一刀**指不了方向**, 永远按同一个
 ##   屏幕朝向画。要真指向目标得改用世界坐标顶点建的四边形(同 082 贝壳走 `_quad_along` 那条路)。
 ##   这一轮先把"尺寸对上规格 250 码 + 亮度读得出是一刀"做掉, 方向留作下一轮。
+## 场地方向 → **屏幕平面内的 roll 角**(弧度)。纯函数, 门禁直接调。
+## ★为什么要压一下纵深: 本作是 2.5D 斜视, 横向 0.6755 屏幕像素/码、贴地纵深只有 0.5267 px/码
+##   ⇒ 场地上的 45° 在屏幕上不是 45°。不压这一下, 斜着劈的刀会指偏。
+## ★屏幕 y 向下为正, 而场地 y 向"远处"为正 ⇒ 取负号。
+const SCREEN_DEPTH_K := 0.5267 / 0.6755
+static func dir_to_roll(dir: Vector2) -> float:
+	if dir.length_squared() < 1e-12:
+		return 0.0
+	return atan2(-dir.y * SCREEN_DEPTH_K, dir.x)
+
+
 func cross_slash(u: Dictionary, _dir: Vector2, seg: int) -> void:
 	if not _has_world():
 		return
@@ -782,6 +793,13 @@ func cross_slash(u: Dictionary, _dir: Vector2, seg: int) -> void:
 	#   帧宽必须是 250 / BLADE_R_FRAC; 中心也就回到携带者身上(不再往前挪半个身位)。
 	var s := _board(cross_blade_tex(), u["pos"], GunEqVfx.body_mid_h(u),
 		SLASH_REACH / BLADE_R_FRAC, Color(col.r, col.g, col.b, 0.95), 7)
+	## ★★2026-08-09 补上"指方向"这个缺口。旧注释写着「`_dir` 没被用上 —— 弧是 billboard,
+	##   billboard 会吃掉 roll」。解法不是放弃 billboard 的**朝向**, 而是自己算基:
+	##   `face_basis(视轴, roll)` = **正对镜头**(所以不会被 52° 俯视压扁) + **面内旋转**(所以指得出方向)。
+	##   这与 094 闪电那条同族: billboard 的"完全对齐相机"包含 roll, 想自己控制 roll 就不能用它。
+	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	s.basis = ArcaneEqVfx.face_basis(ArcaneEqVfx.cam_forward_of(battle), dir_to_roll(_dir))
+	s.set_meta("slash_roll", dir_to_roll(_dir))
 	_adopt(s, "slash")
 	# ★★"一出生就线性淡出" —— 今天第四次同一个病(078 霰弹 / 079 治疗束 / 082 贝壳弧 / 这里)。
 	#   一刀只活 0.22 秒, 线性淡出让它**大半辈子处在半亮以下** ⇒ 实拍里读成一道灰弧,

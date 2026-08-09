@@ -354,6 +354,8 @@ func piezo_spark(u: Dictionary, energy: float) -> MeshInstance3D:
 ## 让场上的炮体节点数与逻辑炮数一致, 并把每门摆到它该在的位置。
 ## `drones` 是 EqGadgetBatch 的逻辑数组(元素含 ang / sx / sy / scat)。
 ## 086 浮游炮的立绘(缓存一次) 与显示尺寸(码) / 播放速度(帧每秒)。
+## 新炮淡入时长(秒)。
+const DRONE_FADE_IN := 0.30
 const DRONE_PX := 26.0
 const DRONE_FPS := 9.0
 const DRONE_TEX_PATH := "res://assets/sprites/vfx/eq-orbdrone-idle.png"
@@ -400,9 +402,24 @@ func sextant_sync(u: Dictionary, drones: Array, orbit_r: float) -> Array:
 			(mi.mesh as SphereMesh).radius = DRONE_R_M
 			(mi.mesh as SphereMesh).height = DRONE_R_M * 2.0
 			n = mi
+		## ★★新炮**淡入** 0.3 秒(2026-08-09 补上一直挂着的缺口)。
+		##   没有它, 每 3 秒就有一门炮**凭空出现**在轨道上 —— 六门凑齐的过程读不出"在造炮",
+		##   只读成"画面上又多了个东西"。诞生时刻记在节点 meta 上, 由 tick 每帧推。
+		##   ⚠ 用 `battle._t`(战斗时钟)而不是墙钟: 顿帧/时停时它跟着停, 与别的演出同步。
+		n.set_meta("born_t", float(battle._t))
+		if n is Sprite3D:
+			(n as Sprite3D).modulate.a = 0.0
 		nodes.append(n)
 	for i in range(drones.size()):
 		var d: Dictionary = drones[i]
+		## 淡入: 从诞生起 DRONE_FADE_IN 秒内 0 → 1(之后恒 1, 不再碰它)
+		var nd_i = nodes[i] if i < nodes.size() else null
+		if nd_i is Sprite3D:
+			var age: float = float(battle._t) - float((nd_i as Node).get_meta("born_t", 0.0))
+			if age < DRONE_FADE_IN:
+				(nd_i as Sprite3D).modulate.a = clampf(age / maxf(DRONE_FADE_IN, 1e-4), 0.0, 1.0)
+			elif (nd_i as Sprite3D).modulate.a < 1.0:
+				(nd_i as Sprite3D).modulate.a = 1.0
 		var at: Vector2
 		# 轨道上此刻该在的位置(不管在不在飞散, 都先算出来 —— 回程要飞回**它**)
 		var ring0: int = i % 2

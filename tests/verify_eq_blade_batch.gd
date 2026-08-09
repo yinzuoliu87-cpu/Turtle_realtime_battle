@@ -149,6 +149,7 @@ func _ready() -> void:
 	_t084_ranged()
 	_t084_realtime()
 	_t_vfx()
+	_t_slash_direction()
 
 	_blade().clear_all()
 	_s.queue_free()
@@ -878,6 +879,47 @@ func _t084_realtime() -> void:
 # ═════════════════════════════════════════════════════════════
 # ⑤ 演出层: 可验证的模型性质 + 零素材 + 撤场
 # ═════════════════════════════════════════════════════════════
+
+## ★★十字斩**指得出方向**(2026-08-09 补上一直挂着的缺口)。
+## 旧注释白纸黑字写着「`_dir` 没被用上 —— 弧是 billboard, billboard 会吃掉 roll」。
+## 解法不是放弃 billboard 的朝向, 而是自己算基: `face_basis(视轴, roll)`
+## = 正对镜头(不会被 52° 俯视压扁) + 面内旋转(指得出方向)。
+## ⚠ 与 094 闪电那条同族: billboard 的"完全对齐相机"**包含 roll**, 想自己控制 roll 就不能用它。
+func _t_slash_direction() -> void:
+	var BV := preload("res://scripts/scenes/battle/blade_eq_vfx.gd")
+	## ① 纯函数: 场地方向 → 屏幕内 roll。右 = 0; 左 = ±π; 上下互为反号。
+	_ok("④D 向右劈 roll = 0", absf(BV.dir_to_roll(Vector2(1, 0))) < 1e-6,
+		"%.4f" % BV.dir_to_roll(Vector2(1, 0)))
+	_ok("④D 向左劈 roll = ±π", absf(absf(BV.dir_to_roll(Vector2(-1, 0))) - PI) < 1e-6,
+		"%.4f" % BV.dir_to_roll(Vector2(-1, 0)))
+	var up_r: float = BV.dir_to_roll(Vector2(0, -1))
+	var dn_r: float = BV.dir_to_roll(Vector2(0, 1))
+	_ok("④D 上下互为反号(不是同一个角)", up_r * dn_r < 0.0, "上 %.4f / 下 %.4f" % [up_r, dn_r])
+	## ② ★2.5D 纵深压缩: 场地上的 45° 在屏幕上**不是** 45°(横向 0.6755 px/码、纵深 0.5267)。
+	##    不压这一下斜着劈的刀会指偏 —— 这条就是守那个压缩系数真的被用上了。
+	var d45: float = BV.dir_to_roll(Vector2(1, -1))
+	_ok("④D ★场地 45° 在屏幕上被纵深压缩(≠ 45°, 且落在 0~45° 之间)",
+		d45 > 0.01 and d45 < PI * 0.25 - 0.01, "%.4f 弧度 = %.2f°" % [d45, rad_to_deg(d45)])
+	## ③ 量【真实节点】: 关掉了 billboard, 且 meta 上记的 roll 与方向一致
+	var su: Dictionary = _mk("basic", "left", Vector2(0, 0))
+	_s._units = [su]
+	_blade().vfx.clear()
+	_blade().vfx.cross_slash(su, Vector2(-1, 0), 1)
+	var sn: Sprite3D = null
+	for x in _blade().vfx._owned:
+		if is_instance_valid(x) and x is Sprite3D and (x as Node).has_meta("slash_roll"):
+			sn = x as Sprite3D
+			break
+	_ok("④D 分母: 拿到十字斩的弧节点", sn != null)
+	if sn != null:
+		_ok("④D ★★必须关掉 billboard(开着就吃掉 roll, 方向永远指不出来)",
+			sn.billboard == BaseMaterial3D.BILLBOARD_DISABLED, "billboard=%d" % int(sn.billboard))
+		_ok("④D 节点记的 roll 与方向算出来的一致",
+			absf(float(sn.get_meta("slash_roll", 0.0)) - BV.dir_to_roll(Vector2(-1, 0))) < 1e-6)
+	_blade().vfx.clear()
+	_s._units.clear()
+
+
 func _t_vfx() -> void:
 	print("── ⑤ 演出层 BladeEqVfx: 模型性质 / 零素材 / 撤场 ──")
 	## ① 081 临界阻尼(ζ=1): x̂(0)=0 · 单调 · 恒 < 1(永不过冲) · x̂(1/ω)=1−2/e

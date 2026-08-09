@@ -1117,6 +1117,25 @@ func _t_vfx_physics() -> void:
 	for k in range(6):
 		drones.append({"ang": float(k), "ft": 0.0, "sx": 0.0, "sy": 0.0, "scat": 0.0})
 	var nodes: Array = vf.sextant_sync(du, drones, 74.0)
+	## ★★新炮**淡入** 0.3 秒(2026-08-09 补上一直挂着的缺口)。
+	##   没有它, 每 3 秒就有一门炮**凭空出现**在轨道上 —— 六门凑齐的过程读不出"在造炮"。
+	##   ⚠ 计时用 `battle._t`(战斗时钟)而不是墙钟: 顿帧/时停时它跟着停, 与别的演出同步。
+	_ok("⑥F 新炮出生那一刻是全透明的(淡入起点)",
+		(nodes[0] as Sprite3D).modulate.a <= 0.001 if nodes[0] is Sprite3D else true,
+		"a=%.3f" % ((nodes[0] as Sprite3D).modulate.a if nodes[0] is Sprite3D else -1.0))
+	_ok("⑥F 每门炮都记了诞生时刻(淡入靠它算, 不是靠墙钟)",
+		(nodes[0] as Node).has_meta("born_t"))
+	## 把战斗时钟往前推到淡入过半 / 淡入之后, 各量一次
+	var t_born: float = float((nodes[0] as Node).get_meta("born_t", 0.0))
+	_s._t = t_born + GadgetEqVfx.DRONE_FADE_IN * 0.5
+	vf.sextant_sync(du, drones, 74.0)
+	var a_half: float = (nodes[0] as Sprite3D).modulate.a if nodes[0] is Sprite3D else -1.0
+	_s._t = t_born + GadgetEqVfx.DRONE_FADE_IN * 1.5
+	vf.sextant_sync(du, drones, 74.0)
+	var a_done: float = (nodes[0] as Sprite3D).modulate.a if nodes[0] is Sprite3D else -1.0
+	_ok("⑥F ★淡入过半时约半亮(真的在渐变, 不是一步到位)",
+		absf(a_half - 0.5) < 0.08, "a=%.3f" % a_half)
+	_ok("⑥F ★淡入结束后满亮且不再变", absf(a_done - 1.0) < 1e-4, "a=%.3f" % a_done)
 	vf.dive_gauge(du, 100.0, 1000.0)
 	_ok("⑤ ★分母: 6 门炮体 + 水位计都建出来且挂进了 _world",
 		nodes.size() == 6 and _in_world(nodes[0]) and _in_world(du.get("_dive_bg", null)),
