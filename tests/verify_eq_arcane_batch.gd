@@ -1053,6 +1053,33 @@ func _t090_mana_lock() -> void:
 		crest_n == ArcaneEqVfx.CREST_N, "实测 %d 段" % crest_n)
 	_ok("③G ★炸开的水是粒子(旧版 46 个 BoxMesh ⇒ 实拍一堆蓝方块)",
 		burst_n >= 1, "粒子节点 %d 个" % burst_n)
+	## ③G-W 浪潮的水流带 —— 2026-08-09。**它一直是隐形的**: 四边形每帧按 `perp` 现算顶点,
+	##   方向一变绕向就翻, 而材质是 CULL_BACK ⇒ 整条带子被剔掉。实拍画面上只剩两个灰块,
+	##   那其实是每跳的落点水花, 带子一节都没显示 —— 而我差点判成"浪潮没触发"。
+	_arc().vfx.clear()
+	var wpath: Array = [Vector2(400, 300), Vector2(600, 320), Vector2(760, 280)]
+	var wroot = _arc().vfx.wave_path(wpath)
+	_ok("③G-W 分母: 水流带建出来了", wroot != null and is_instance_valid(wroot))
+	var wq: int = 0
+	var wq_culled: int = 0
+	var wq_vcol: int = 0
+	if wroot != null:
+		for wc in (wroot as Node3D).get_children():
+			if not (wc is MeshInstance3D):
+				continue
+			wq += 1
+			var wmat := (wc as MeshInstance3D).material_override as StandardMaterial3D
+			if wmat != null and wmat.cull_mode != BaseMaterial3D.CULL_DISABLED:
+				wq_culled += 1
+			if wmat != null and wmat.vertex_color_use_as_albedo:
+				wq_vcol += 1
+	_ok("③G-W 带子分 %d 节 ⇒ %d 块面" % [ArcaneEqVfx.FLOW_SEGS, ArcaneEqVfx.FLOW_SEGS - 1],
+		wq == ArcaneEqVfx.FLOW_SEGS - 1, "实测 %d 块" % wq)
+	_ok("③G-W ★★每一块都必须双面可见(CULL_DISABLED) —— 否则整条带子在画面上消失",
+		wq > 0 and wq_culled == 0, "被剔面的块数=%d/%d" % [wq_culled, wq])
+	_ok("③G-W 头亮尾淡的顶点色有人读(vertex_color_use_as_albedo)",
+		wq > 0 and wq_vcol == wq, "%d/%d" % [wq_vcol, wq])
+	_arc().vfx.clear()
 	_arc().vfx.clear()
 	_s._units.clear()
 

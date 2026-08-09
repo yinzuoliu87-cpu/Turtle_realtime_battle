@@ -117,10 +117,12 @@ const COL_WATER_DEEP := Color(0.20, 0.55, 0.82, 0.95)
 ##   这正是用户定触手水准时说的「形态要有物理模型(弧长恒定/曲率密度/行波/逐段滞后)」
 ##   —— memory [[fb-3d-quality-bar-tentacle]]。
 const FLOW_SEGS := 14             ## 水流带分几节
-const FLOW_REST_PX := 15.0        ## 相邻两节的静止间距(码) —— 弧长恒定就靠它
+const FLOW_REST_PX := 11.0        ## 相邻两节的静止间距(码) —— 弧长恒定就靠它
 const FLOW_LAG := 0.34            ## 逐段滞后系数(每帧向前一节靠拢多少)
-const FLOW_HEAD_PX := 30.0        ## 头部半宽(码)
-const FLOW_TAIL_PX := 5.0         ## 尾部半宽(码)
+## ★2026-08-09 30→13: 30 码**半宽**意味着整条 60 码宽 —— 比龟还宽, 实拍是一片平板楔子,
+##   没有"一簇水"的感觉。收到 13(整条 26 码 ≈ 半只龟宽)才像一股水。
+const FLOW_HEAD_PX := 13.0        ## 头部半宽(码)
+const FLOW_TAIL_PX := 2.0         ## 尾部半宽(码)
 const FLOW_WAVE_SPD := 2.6        ## 行波沿身体往后跑的速度(节/秒)
 const WATER_DROPS := 11           ## (溅水用)一簇里几颗水滴
 const WATER_DROP_PX := 10.0       ## 单颗水滴的边长(码)
@@ -1222,7 +1224,14 @@ func wave_path(pts: Array) -> Node3D:
 	var quads: Array = []
 	for k2 in range(FLOW_SEGS - 1):
 		var mi := MeshInstance3D.new()
-		mi.material_override = _mat_solid(COL_WATER, 12)
+		var wm := _mat_solid(COL_WATER, 12)
+		## ⚠ 带子必须**双面可见**: `_mat_solid` 默认 CULL_BACK, 而这些四边形是每帧按
+		##   `perp` 现算顶点的 —— 头尾方向一变绕向就翻, 整条带子会被剔掉。
+		##   (2026-08-09 实拍: 画面上只剩两个灰块, 那其实是每跳的落点水花, 带子一节都没显示。)
+		wm.cull_mode = BaseMaterial3D.CULL_DISABLED
+		## 头亮尾淡靠**顶点色**(写了得有人读 ⇒ 必须开 vertex_color_use_as_albedo)
+		wm.vertex_color_use_as_albedo = true
+		mi.material_override = wm
 		root.add_child(mi)
 		quads.append(mi)
 	root.set_meta("path_len", path_length(pts))
@@ -1428,7 +1437,14 @@ func tick(delta: float) -> void:
 						battle._world_pos(p1 + perp * w1, float(c1["h"])),
 						battle._world_pos(p1 - perp * w1, float(c1["h"])),
 						battle._world_pos(p0 - perp * w0, float(c0["h"]))]
+					## 沿身体的不透明度: 头 1.0 → 尾 0.15(一股水的头是实的, 尾巴散开)
+					var a0v: float = lerpf(1.0, 0.15, f0)
+					var a1v: float = lerpf(1.0, 0.15, f1)
+					var vc: Array = [
+						Color(1, 1, 1, a0v), Color(1, 1, 1, a1v),
+						Color(1, 1, 1, a1v), Color(1, 1, 1, a0v)]
 					for idx in [0, 1, 2, 0, 2, 3]:
+						st.set_color(vc[idx])
 						st.add_vertex(v[idx])
 					(qn as MeshInstance3D).mesh = st.commit()
 					# 行波: 高光沿身体往后跑 ⇒ 水面在"流"而不是整条一个色
