@@ -32,6 +32,15 @@ extends RefCounted
 
 var battle
 
+## 095【圣光护盾】的演出层(2026-08-09 逐件重做)。
+## ★为什么 new 在这里而不是主场景: `RealtimeBattle3DScene` 本轮不在可改范围, 而本系统的
+##   `tick(delta)` 已经是主循环每帧调的一条(RB:2202) —— 演出层的每帧驱动挂它即可,
+##   同 `battle._vfx._syn.tick(delta)` 那一行的做法(见下面 tick 的头注)。
+## ★用 preload 常量而不是直接写 `HolyShieldVfx.new(...)`: 新增的 `class_name` 要跑过
+##   `--import` 才注册进全局类表, preload 不吃这一口。
+const HolyShieldVfxS := preload("res://scripts/scenes/battle/holy_shield_vfx.gd")
+var _holy_vfx = null
+
 ## 逐档：冲击波 = 自身最大生命的百分之几（真伤 + 自身护盾）
 const WAVE_PCT := [0.04, 0.06, 0.08]
 ## 累计受到多少伤害放一次（用户 2026-08-03 定：400，固定值不随血量缩放）
@@ -61,6 +70,9 @@ const REAP_TIER := 2
 
 func _init(b) -> void:
 	battle = b
+	## 只读回调注入(拆分模板 dmg_stats_panel.gd): 演出层靠它问"这只龟身上有几件 095",
+	## 从而不认识本系统、也就不可能反过来改任何数。
+	_holy_vfx = HolyShieldVfxS.new(b, Callable(self, "holy_count"))
 
 
 ## 受到伤害时调（挂 `_eq_on_target` 那条承伤钩之后）。
@@ -139,6 +151,10 @@ func _riposte(u: Dictionary, src) -> void:
 	if float(u.get("shield", 0.0)) <= 0.0:
 		return                                      # 「圣光护盾存在时」—— 没盾不反击
 	battle._damage._apply_damage_from(u, src, int(RIPOSTE_FLAT), Color("#ffe9a8"), 0.0, true)
+	## ★演出【与伤害同帧】—— 上一行刚结算完就画, 光矢没有飞行时间。
+	##   重做前这条反击**一点演出都没有**(探针实测它一直在触发, 画面上只有敌人头上一个 "2")。
+	##   ⚠ 这一行只画不算; 放在结算之后, 保证"看到光矢 = 伤害已经打出去了"。
+	_holy_vfx.riposte(u, src, RIPOSTE_FLAT)
 
 
 ## 身上装了几件【圣光护盾】装备
@@ -161,6 +177,9 @@ func tick(delta: float) -> void:
 	##   ⇒ 以后别的羁绊也要每帧驱动时, **仍然走这一处**, 不要再加第二个 tick 源(会双倍推进)。
 	if battle._vfx != null and battle._vfx._syn != null:
 		battle._vfx._syn.tick(delta)
+	## ★接线(2026-08-09·095 逐件重做): 圣光护盾演出层的【每帧驱动】, 理由与上面那行完全一样,
+	##   而且必须同样在提前 return 之【前】—— 放后面的话常驻盾板每 3 秒才动一帧。
+	_holy_vfx.tick(delta)
 	_t_holy += delta
 	if _t_holy < HOLY_PERIOD:
 		return
@@ -171,7 +190,11 @@ func tick(delta: float) -> void:
 		var n: int = holy_count(u)
 		if n <= 0:
 			continue
-		battle._damage._grant_shield(u, HOLY_AMOUNT * float(n) * holy_bonus(u))
+		var amt: float = HOLY_AMOUNT * float(n) * holy_bonus(u)
+		battle._damage._grant_shield(u, amt)
+		## ★演出在 `_grant_shield` 之【后】: 那时 `shield` 已经 > 0, 盾板的出现条件才成立。
+		##   顺序反了的话补盾那一帧盾板还不在 —— 而那正是最该看到它的一帧。
+		_holy_vfx.grant_burst(u, amt)
 
 
 ## 9 档「圣盾值 +20%」
@@ -226,3 +249,5 @@ func clear() -> void:
 	##   (dual_lane_flow.gd:458 每次换路都调本函数)。
 	if battle._vfx != null and battle._vfx._syn != null:
 		battle._vfx._syn.clear()
+	## 095 的常驻盾板同理 —— 它挂在 `_world` 上, 换路时没人替它撤场。
+	_holy_vfx.clear()

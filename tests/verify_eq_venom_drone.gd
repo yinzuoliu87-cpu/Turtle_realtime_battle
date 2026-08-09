@@ -67,6 +67,7 @@ func _ready() -> void:
 	await _g3_path_behavior()
 	await _g4_turn_inertia()
 	_g5_fog_physics()
+	_g5b_fog_rim()
 	await _g6_fog_lifetime()
 	await _g7_poison()
 	await _g8_vslow()
@@ -74,6 +75,7 @@ func _ready() -> void:
 	await _g10_carrier_death()
 	await _g11_lane_clear()
 	_g12_flap_physics()
+	await _g12b_moth_readability()
 	await _g13_ring_visibility()
 	await _g14_zero_asset()
 	await _g15_rng()
@@ -373,17 +375,22 @@ func _g5_fog_physics() -> void:
 		VV.fog_alpha_at(0.0, 1.0) > VV.fog_alpha_at(VV.fog_radius(1.0), 1.0) * 5.0)
 
 	# ⑤e ★接线: 【真实节点】的 scale 与材质 alpha 就是上面那两条曲线(不是另画一套)
+	# ★2026-08-09 重做后一团毒雾是 Node3D 挂两片(haze 高斯烟团 + rim 判定边界环) ⇒
+	#   这里要取 `haze` 子节点。**不能只把 cast 改成 null 就算了** —— 那样这两条断言
+	#   会静默变成"跳过", 看着照样绿(本项目栽过的"空检查")。
 	_v.clear_all()
 	var fn = _v._vfx.make_fog(Vector2(700.0, 400.0))
 	_ok("⑤ ★分母: 毒雾节点建出来了", fn != null)
 	if fn != null:
+		var hz := fn.get_node_or_null("haze") as MeshInstance3D
+		_ok("⑤ ★分母: haze(高斯烟团)子节点在", hz != null)
 		var bad5 := 0
 		var m5 := 0
 		for i in range(0, 16):
 			var tt: float = float(i) * 0.25
 			_v._vfx.apply_fog(fn, tt)
-			var sc: float = fn.scale.x / float(_s.WS)          # 米 → 码
-			var al: float = (fn.material_override as StandardMaterial3D).albedo_color.a
+			var sc: float = hz.scale.x / float(_s.WS)          # 米 → 码
+			var al: float = (hz.material_override as StandardMaterial3D).albedo_color.a
 			if absf(sc - VV.fog_sigma(tt)) > 1e-4:
 				bad5 += 1
 			# 渲染 alpha = 显示增益 0.45 × 归一浓度(★增益是常数 ⇒ 等值线一条不动)
@@ -395,6 +402,150 @@ func _g5_fog_physics() -> void:
 		_ok("⑤ ★★真实节点的 scale 与材质 alpha 就是这两条曲线本身(演出与判定同源)", bad5 == 0,
 			"不符 %d 处" % bad5)
 		fn.queue_free()
+
+
+# ── ⑤★ 判定边界环 rim: 2026-08-09 逐件重做的三条验收 ─────────────────────────
+## 实拍(VFXLAB p2eq_092 · zoom 1.0 实战镜头)抓出三处, 三处一个解 —— 见
+## venom_drone_vfx.gd 文件头【甲乙丙】。这一节守的就是那个解。
+func _g5b_fog_rim() -> void:
+	print("")
+	print("  ⑤★ 判定边界环 — 治【一团一团读不出 / 淡出病 / 边界在 alpha 0.016 上】:")
+
+	# ⑤f ★★"每 0.25 秒留一团"在【画面上】成不成立: 沿航线叠 16 团, 数合成亮度的局部极小值。
+	#    ★这不是主观判断 —— 相邻两团心距 = 110 码/秒 × 0.25 秒 = 27.5 码, 而 σ(0)=26,
+	#      两个等幅高斯要心距 > 2σ 才有凹陷 ⇒ **只有 haze 的旧演出在数学上必然是一条光滑绿脊**。
+	#    ★把【错的现状】也钉进断言(旧口径必须是 0 个), 否则新口径涨到多少都说明不了问题。
+	var d_step := 110.0 * 0.25
+	var haze_only: Array = []
+	var with_rim: Array = []
+	var x := -460.0
+	while x <= 40.0:
+		var a_h := 0.0
+		var a_r := 0.0
+		for k in range(16):
+			var tk: float = 0.25 * float(k)
+			var dx: float = absf(x + d_step * float(k))
+			a_h += 0.45 * VV.fog_alpha_at(dx, tk)
+			a_r += VV.fog_draw_at(dx, tk)
+		haze_only.append(a_h)
+		with_rim.append(a_r)
+		x += 0.5
+	var dip_h: int = _dips(haze_only)
+	var dip_r: int = _dips(with_rim)
+	print("     沿航线采 %d 点(16 团 · 心距 %.1f 码 · σ(0)=%.1f 码):" % [
+		haze_only.size(), d_step, VV.fog_sigma(0.0)])
+	print("       只有 haze(旧演出) 的局部极小值 %d 个 —— 心距/σ = %.2f < 2 ⇒ 数学上必然是一条光滑绿脊" % [
+		dip_h, d_step / VV.fog_sigma(0.0)])
+	print("       haze + rim(新演出) 的局部极小值 %d 个 —— 每团一个可数的边界" % dip_r)
+	_ok("⑤f ★分母: 真的采了点 (N=%d)" % haze_only.size(), haze_only.size() > 900)
+	_ok("⑤f ★★【根因钉死】只有高斯烟团时, 沿航线一个局部极小值都没有(团数在画面上不可数)",
+		dip_h == 0, "实得 %d" % dip_h)
+	_ok("⑤f ★★★补了判定边界环之后, 沿航线数得出 ≥ 12 段边界(= 一团一团数得出来)",
+		dip_r >= 12, "实得 %d" % dip_r)
+
+	# ⑤g ★holdfade: 前 62% 寿命恒定满亮, 之后才线性退场 —— 治"短命特效一出生就淡出"
+	var hold_bad := 0
+	var mh := 0
+	var t := 0.0
+	while t <= 4.0 * 0.55 + 1e-9:
+		if absf(VV.fog_rim_alpha(t) - VV.fog_rim_alpha(0.0)) > 1e-9:
+			hold_bad += 1
+		mh += 1
+		t += 0.02
+	var mono_down := true
+	var prev: float = VV.fog_rim_alpha(4.0 * 0.62)
+	var t2: float = 4.0 * 0.62 + 0.02
+	while t2 <= 4.0:
+		var cur: float = VV.fog_rim_alpha(t2)
+		if cur > prev + 1e-9:
+			mono_down = false
+		prev = cur
+		t2 += 0.02
+	print("     环亮度: t=0 %.4f / t=1 %.4f / t=2 %.4f / t=2.48(62%%) %.4f / t=3.4 %.4f / t=4 %.4f" % [
+		VV.fog_rim_alpha(0.0), VV.fog_rim_alpha(1.0), VV.fog_rim_alpha(2.0),
+		VV.fog_rim_alpha(2.48), VV.fog_rim_alpha(3.4), VV.fog_rim_alpha(4.0)])
+	print("     对照 haze 的峰值 alpha: t=0 %.4f / t=1 %.4f / t=2 %.4f (**前 1 秒就丢掉 2/3** = 淡出病)" % [
+		0.45 * VV.fog_peak(0.0), 0.45 * VV.fog_peak(1.0), 0.45 * VV.fog_peak(2.0)])
+	_ok("⑤g ★分母: 真的扫了前 55%% 寿命 (N=%d)" % mh, mh > 100)
+	_ok("⑤g ★★holdfade: 前 55%% 寿命(2.2 秒)里亮度【一点都不降】(不是一出生就线性淡出)",
+		hold_bad == 0, "有 %d 个采样点已经开始降了" % hold_bad)
+	_ok("⑤g ★之后单调退场, 且寿命末尾精确归零", mono_down and absf(VV.fog_rim_alpha(4.0)) < 1e-9)
+	_ok("⑤g ★反差证据: 同一时刻(t=2)环还有 %.3f 而雾体只剩 %.3f —— 这团【看不见但照样上毒】"
+		% [VV.fog_rim_alpha(2.0), 0.45 * VV.fog_peak(2.0)],
+		VV.fog_rim_alpha(2.0) > 0.45 * VV.fog_peak(2.0) * 4.0)
+
+	# ⑤h ★★量【真实节点】: 环的世界半径就是 sim 判定用的半径, 不是另算一份
+	_v.clear_all()
+	var fn = _v._vfx.make_fog(Vector2(700.0, 400.0))
+	_ok("⑤h ★分母: 毒雾节点建出来了", fn != null)
+	if fn == null:
+		return
+	var rim := fn.get_node_or_null("rim") as MeshInstance3D
+	_ok("⑤h ★分母: rim 子节点在", rim != null)
+	if rim == null:
+		return
+	var badr := 0
+	var mr := 0
+	var worst_r := 0.0
+	for i in range(0, 16):
+		var tt: float = float(i) * 0.25
+		_v._vfx.apply_fog(fn, tt)
+		var want_r: float = VV.fog_radius(tt)
+		if want_r <= 0.0:
+			if rim.visible:
+				badr += 1
+			continue
+		var got_r: float = rim.scale.x / float(_s.WS)      # 米 → 码
+		var got_a: float = (rim.material_override as StandardMaterial3D).albedo_color.a
+		worst_r = maxf(worst_r, absf(got_r - want_r))
+		if absf(got_r - want_r) > 1e-4:
+			badr += 1
+		if absf(got_a - VV.fog_rim_alpha(tt)) > 1e-6:
+			badr += 1
+		if not rim.visible:
+			badr += 1
+		mr += 1
+	print("     真实 rim 节点 vs 判定半径: 喂 16 个时刻(其中 %d 个环还在), 不符 %d 处; 半径最大偏差 %.9f 码" % [
+		mr, badr, worst_r])
+	_ok("⑤h ★分母: 真的有时刻是环还在的 (N=%d)" % mr, mr >= 15)
+	_ok("⑤h ★★★环的世界半径 == sim 判定命中用的 fog_radius(t)(打得到的边界终于画出来了)",
+		badr == 0, "不符 %d 处" % badr)
+	# ★反面: 若把环画成 σ(t)(旧 haze 的口径)就会差出一大截 —— 证明上一条不是恒真式
+	print("     ★反面: 若环按 σ(t) 画, t=1 时是 %.1f 码, 而判定半径是 %.1f 码(差 %.1f 码)" % [
+		VV.fog_sigma(1.0), VV.fog_radius(1.0), absf(VV.fog_sigma(1.0) - VV.fog_radius(1.0))])
+	_ok("⑤h ★反面: σ(t) 与 fog_radius(t) 本来就差得远(所以上一条是真断言)",
+		absf(VV.fog_sigma(1.0) - VV.fog_radius(1.0)) > 20.0)
+	# 寿命末尾环收干净
+	_v._vfx.apply_fog(fn, 4.0)
+	_ok("⑤h ★寿命末尾(4.0 秒)环隐藏(判定半径已归零, 不能留个圈在地上)", not rim.visible)
+	# 环的顶点色剖面 == fog_rim_profile(★从真实网格反解, 不是把公式抄第二遍)
+	_v._vfx.apply_fog(fn, 1.0)
+	var vs: PackedVector3Array = (rim.mesh as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	var cs: PackedColorArray = (rim.mesh as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+	var badp := 0
+	var mp := 0
+	var rho_min := 9.9
+	var rho_max := 0.0
+	for i in range(vs.size()):
+		var rho: float = Vector2(vs[i].x, vs[i].z).length()
+		rho_min = minf(rho_min, rho)
+		rho_max = maxf(rho_max, rho)
+		if absf(cs[i].a - VV.fog_rim_profile(rho)) > 1e-4:
+			badp += 1
+		mp += 1
+	print("     环网格 %d 个顶点: ρ ∈ [%.4f, %.4f](需求 [0.88, 1.00]); 顶点 alpha 与剖面不符 %d 处" % [
+		mp, rho_min, rho_max, badp])
+	_ok("⑤h ★分母: 环真的有顶点 (N=%d)" % mp, mp > 200)
+	_ok("⑤h ★环的外缘 ρ 精确为 1.0 —— 也就是**外缘就是判定边界本身**",
+		absf(rho_max - 1.0) < 1e-4, "实得 %.6f" % rho_max)
+	_ok("⑤h ★环的顶点 alpha 就是 fog_rim_profile 这条剖面(从真实网格反解)", badp == 0,
+		"不符 %d 处" % badp)
+	# 贴地
+	var g: Array = _updots(rim, 0)
+	print("     环 %d 面, |n·上| 最小 %.4f 平均 %.4f" % [int(g[0]), float(g[1]), float(g[2])])
+	_ok("⑤h ★分母: 环真的有面 (N=%d)" % int(g[0]), int(g[0]) > 100)
+	_ok("⑤h ★环贴地平铺(不是立着的圈)", float(g[1]) > 0.99)
+	fn.queue_free()
 
 
 # ── ⑥ 毒雾寿命: 每 0.25 秒留一团 · 每团 4 秒后【真的消失】────────────────────
@@ -818,6 +969,112 @@ func _g12_flap_physics() -> void:
 		and float(env[20]) > float(env[10]) * 1.5)
 
 
+# ── ⑫★ 蛾体可读性: 2026-08-09 逐件重做的验收(全部量【真实网格顶点】) ─────────
+## 旧演出在实战镜头(zoom 1.0)下染色法实测: 躯干 32×15 px、**两只翅膀合计只占一个
+## 12×27 px 的竖条**、尾巴 23~35 px 却是全身最亮 ⇒ 读作"一颗绿橄榄 + 一片灰三角",
+## 而且尾巴被当成头(方向感是反的)。这一节把那三条都钉成断言。
+func _g12b_moth_readability() -> void:
+	print("")
+	print("  ⑫★ 蛾体可读性 — 俯视 52° 下双翅不许重叠 / 头尾分得清:")
+	await _setup_units()
+	_v.clear_all()
+	_v._on_beat()
+	_ok("⑫★ ★分母: 飞行物建出来了", _v._drones.size() == 1)
+	if _v._drones.is_empty():
+		return
+	var dr = _v._drones[0]["node"]
+	_ok("⑫★ ★分母: 节点在", is_instance_valid(dr))
+	if not is_instance_valid(dr):
+		return
+
+	# ⑫d ★★双翅【不许折到本体正上方】——【俯视视角】下那等于两只翅在屏幕上完全重合。
+	#    判据: 整个扇动周期里, 翅尖的**竖直行程** / 翅尖的**最小横向展开** 必须够小。
+	#    ★量的是 `apply_drone` 真的吐进 ImmediateMesh 的顶点, 不是把公式在测试里抄一遍
+	#      (memory [[fb-write-without-reader-and-fake-gates]]: 门禁模拟公式 ≠ 量真实对象)。
+	var wing := dr.get_node_or_null("wing") as MeshInstance3D
+	_ok("⑫★ ★分母: 翅膀节点在", wing != null)
+	if wing == null:
+		return
+	var y_lo := 1e9
+	var y_hi := -1e9
+	var z_abs_min := 1e9
+	var z_abs_max := 0.0
+	var left := 0
+	var right := 0
+	var frames := 0
+	for i in range(0, 40):                       # 覆盖 1/6 秒 = 6Hz 的一整个周期
+		var t: float = float(i) * (1.0 / 6.0) / 40.0
+		_v._vfx.apply_drone(dr, Vector2(700.0, 400.0), 0.0, t)
+		var vs: PackedVector3Array = (wing.mesh as ImmediateMesh).surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+		if vs.size() == 0:
+			continue
+		frames += 1
+		var zmax_this := 0.0
+		for v in vs:
+			y_lo = minf(y_lo, v.y); y_hi = maxf(y_hi, v.y)
+			if v.z > 0.001: left += 1
+			elif v.z < -0.001: right += 1
+			zmax_this = maxf(zmax_this, absf(v.z))
+		z_abs_min = minf(z_abs_min, zmax_this)
+		z_abs_max = maxf(z_abs_max, zmax_this)
+	var ratio: float = (y_hi - y_lo) / maxf(z_abs_min, 1e-6)
+	print("     喂 %d 个相位: 翅尖竖直行程 %.4f 米 / 全周期最小横向展开 %.4f 米 ⇒ 比值 %.3f" % [
+		frames, y_hi - y_lo, z_abs_min, ratio])
+	# ★旧写法 tip = (0, sinφ·SPAN, ±cosφ·SPAN): 竖直行程是峰峰值 2·sin(A)·SPAN,
+	#   最小横向展开是 cos(A)·SPAN(A = FLAP_AMP = 0.70) ⇒ 比值 1.68, 翅整个折到头顶上。
+	var old_ratio: float = (2.0 * sin(0.70) * 0.72) / (cos(0.70) * 0.72)
+	print("     ★旧写法(tip = (0, sinφ·SPAN, ±cosφ·SPAN)) 的同一比值 = %.3f —— 翅整个折到头顶上" % old_ratio)
+	_ok("⑫★ ★分母: 真的喂了相位 (N=%d)" % frames, frames == 40)
+	_ok("⑫★ ★★双翅始终摊开在两侧: 竖直行程/横向展开 < 0.60(旧写法是 %.2f ⇒ 52° 俯视下必然重叠)"
+		% old_ratio, ratio < 0.60, "实得 %.3f" % ratio)
+	_ok("⑫★ ★左右两侧都真的有翅(左 %d 顶点 / 右 %d 顶点, 需求都 > 0 且大致相等)" % [left, right],
+		left > 0 and right > 0 and absi(left - right) <= 2)
+	_ok("⑫★ ★翅展够大(最大横向 %.3f 米 ≥ 半个体长)" % z_abs_max, z_abs_max > 0.45)
+
+	# ⑫e ★方向感: 头在前、腹在后、触角最靠前; 头必须比尾亮(旧版尾巴最亮 ⇒ 被读成头)
+	var seg: Dictionary = {}
+	for nm in ["head", "body", "abdomen"]:
+		var n = dr.get_node_or_null(nm)
+		if n != null:
+			seg[nm] = n
+	print("     蛾体分段: %s (需求 head/body/abdomen 三段都在)" % str(seg.keys()))
+	_ok("⑫★ ★分母: 头/胸/腹三段都建出来了 (N=%d)" % seg.size(), seg.size() == 3)
+	if seg.size() == 3:
+		var xh: float = float(seg["head"].position.x)
+		var xb: float = float(seg["body"].position.x)
+		var xa: float = float(seg["abdomen"].position.x)
+		print("     三段的局部 x(+X = 前进方向): 头 %.3f > 胸 %.3f > 腹 %.3f" % [xh, xb, xa])
+		_ok("⑫★ ★★头在最前、腹在最后(一颗光滑椭球给不出方向感)", xh > xb and xb > xa)
+		var lum_h: float = _lum(seg["head"])
+		var lum_a: float = _lum(seg["abdomen"])
+		_ok("⑫★ ★头比腹亮(视觉重心在头) — 头 %.3f > 腹 %.3f" % [lum_h, lum_a], lum_h > lum_a * 1.4)
+		var flap := dr.get_node_or_null("flap") as MeshInstance3D
+		_ok("⑫★ ★分母: 尾巴节点在", flap != null)
+		if flap != null:
+			var lum_t: float = _lum(flap)
+			print("     亮度: 头 %.3f / 尾 %.3f (旧版尾巴是 1.000 的加性发光 ⇒ 全身最亮 ⇒ 被读成头)" % [
+				lum_h, lum_t])
+			_ok("⑫★ ★★尾巴不再是全身最亮(否则它会被读成头, 方向感整个反)", lum_t < lum_h * 0.8,
+				"头 %.3f / 尾 %.3f" % [lum_h, lum_t])
+	var ant := dr.get_node_or_null("antenna") as MeshInstance3D
+	_ok("⑫★ ★分母: 触角节点在", ant != null)
+	if ant != null:
+		var av: PackedVector3Array = (ant.mesh as ImmediateMesh).surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+		var xmax := -9.9
+		for v in av:
+			xmax = maxf(xmax, v.x)
+		print("     触角 %d 顶点, 最靠前的 x = %.3f (头心 x = 0.300 ⇒ 触角必须更靠前)" % [av.size(), xmax])
+		_ok("⑫★ ★触角真的伸在头的前面(全身最前的点)", av.size() >= 6 and xmax > 0.42,
+			"顶点 %d / xmax %.3f" % [av.size(), xmax])
+
+	# ⑫f ★飞行高度: 必须高过龟(龟身高 2.0 米), 否则和绿壳龟糊成一坨
+	_v._vfx.apply_drone(dr, Vector2(700.0, 400.0), 0.0, 0.0)
+	print("     飞行物离地 %.2f 米 (龟身高 2.0 米 ⇒ 必须 > 2.0 才是'在头顶上方飞')" % dr.position.y)
+	_ok("⑫★ ★★飞得比龟高(旧值 1.55 米 = 趴在龟背上, 实拍里两者糊成一坨)",
+		dr.position.y > 2.0, "实得 %.2f" % dr.position.y)
+	_v.clear_all()
+
+
 # ── ⑬ 剧毒缓速的累积可见性: 环上刻痕数 == 层数 ──────────────────────────────
 func _g13_ring_visibility() -> void:
 	print("")
@@ -891,8 +1148,12 @@ func _g14_zero_asset() -> void:
 	print("     共查 %d 类节点, 带贴图/带资源路径的 %d 处 (需求 0)" % [checked, bad])
 	_ok("⑭ ★分母: 真的查了 (N=%d)" % checked, checked == 2)
 	_ok("⑭ ★一张素材都没用(全是现算的几何 + 顶点色)", bad == 0)
-	# 毒雾贴地
-	var fog := _pick("venom_fog") as MeshInstance3D
+	# 毒雾贴地。★重做后一团毒雾是 Node3D 挂 haze + rim, 这里取 haze 子节点 ——
+	#   **不能让 cast 失败静默跳过**, 那样这两条会变成空检查却照样绿。
+	var fog_root := _pick("venom_fog")
+	_ok("⑭ ★分母: 毒雾 root 在", fog_root != null)
+	var fog := (fog_root.get_node_or_null("haze") if fog_root != null else null) as MeshInstance3D
+	_ok("⑭ ★分母: haze 子节点在(取不到就说明结构变了, 不许静默跳过)", fog != null)
 	if fog != null:
 		var g: Array = _updots(fog, 0)
 		print("     毒雾盘 %d 面, |n·上| 最小 %.4f 平均 %.4f" % [int(g[0]), float(g[1]), float(g[2])])
@@ -1052,6 +1313,16 @@ func _leg_seq(seed_v: int) -> Array:
 	return out
 
 
+## 一条采样曲线上的【局部极小值】个数 —— "一团一团分不分得出来"的尺子。
+## ★两个等幅高斯只有心距 > 2σ 才会在中间出现凹陷; 本件心距/σ ≤ 1.06 ⇒ 纯 haze 必然是 0。
+func _dips(a: Array) -> int:
+	var n := 0
+	for i in range(1, a.size() - 1):
+		if float(a[i]) < float(a[i - 1]) - 1e-9 and float(a[i]) < float(a[i + 1]) - 1e-9:
+			n += 1
+	return n
+
+
 func _distinct(a: Array) -> int:
 	var seen: Dictionary = {}
 	for x in a:
@@ -1129,6 +1400,16 @@ func _dots_from(vs: PackedVector3Array, b: Basis) -> Array:
 			cnt += 1
 		i += 3
 	return [cnt, (mn if cnt > 0 else 0.0), (sum / float(maxi(1, cnt)))]
+
+
+## 一个 MeshInstance3D 的 material_override 的【感知亮度】(Rec.709 加权 × alpha)。
+## ★量"谁最亮"要连 alpha 一起量 —— 旧尾巴是 alpha=1.0 的加性发光, 这正是它抢走视觉重心的原因。
+func _lum(mi) -> float:
+	var m := (mi as MeshInstance3D).material_override as StandardMaterial3D
+	if m == null:
+		return 0.0
+	var c: Color = m.albedo_color
+	return (0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b) * c.a
 
 
 func _tri_count(mi: MeshInstance3D) -> int:
