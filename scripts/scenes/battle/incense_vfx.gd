@@ -58,6 +58,12 @@ extends RefCounted
 const GOLD := Color(1.0, 0.82, 0.42, 0.95)
 const EMBER := Color(0.98, 0.44, 0.20, 0.85)
 
+## ★★2026-08-09 这两张从**静图**升级成 **9 帧精灵条**(PixelLab `animate_image` 直接在原图上动,
+##   画风不变)。用户:「你有没有拿图片敷衍我」—— 之前确实是: 香画着烟但烟是死的, 火印画着火但火不动。
+##   香的火头跳动 + 青烟上飘、火印的火焰炸开, 这两样的精髓都是**逐帧变形**, 缩放/透明度做不出来。
+const STICK_FRAMES := 9
+const SEAL_FRAMES := 9
+const STICK_FPS := 9.0            ## 香的燃烧循环速度(帧/秒)
 const STICK_TEX_PATH := "res://assets/sprites/vfx/eq093-incense-stick.png"
 const SEAL_TEX_PATH := "res://assets/sprites/vfx/eq093-ember-seal.png"
 
@@ -66,9 +72,17 @@ const HEAD_Y := 1.55
 ## 一排香: 单支**宽**(码) / 支距(码) / 升起(米) / 入场与收尾(秒)
 ## ★`_board` 是按【贴图宽】换算 pixel_size 的 ⇒ 这里传的必须是"宽";
 ##   贴图 32×64 ⇒ 实际高 = 宽 × 2 = 40 码, 与龟(47 码)同量级, 不再是 76 码的巨柱。
-const STICK_W_PX := 20.0
+## ★★2026-08-09 用户:「飘起来的烟有在对应香台吗」—— 没有。这是个纯几何错误:
+##   单帧 32x64 ⇒ 世界宽 STICK_W_PX、高 = 宽 x STICK_TEX_ASPECT。而旧值 宽 20 / 间距 12
+##   ⇒ **相邻两支的精灵互相重叠 8 码**, 每支自带的烟糊成一条横带, 看着像"飘在上面的宽带"
+##   而不是"每支香各自冒烟"。⇒ 现在**间距 > 单支宽度**, 从结构上保证不重叠(门禁焊死这条)。
+## 22 码 ⇒ 连烟高 44 码 = 龟立绘高, 刚好压在既有门禁 ⑤ 的两条上限内
+##   (单支 ≤ 龟身高 47 码 / 香台顶不许顶到刻痕落点 2.45 m)。
+const STICK_W_PX := 22.0
 const STICK_TEX_ASPECT := 2.0
-const STICK_GAP_PX := 12.0
+## ★间距必须 > 单支宽度: 否则相邻两支的精灵重叠, 各自的烟糊成一条横带,
+##   读起来就不是"每支香各自冒烟"了(门禁 ⑩ 焊死这条不等式)。
+const STICK_GAP_PX := 24.0
 const STICK_RISE_M := 0.30
 const ALTAR_IN_SEC := 0.22
 const ALTAR_OUT_SEC := 0.30
@@ -235,9 +249,13 @@ static func glow_tex() -> ImageTexture:
 ##   本仓所有 `blend_mode = BLEND_MODE_ADD` 都写在 `StandardMaterial3D` 上,
 ##   而 Sprite3D 的材质是引擎内部生成的、拿不到 ⇒ **这一层做不出加色发光**。
 ##   ⇒ 火头的"亮"改由贴图自己给(`glow_tex` 芯部接近白 + 高 alpha), 在暗底上一样读得出。
-func _mk_sprite(tex: Texture2D, size_px: float, col: Color) -> Sprite3D:
+## ★`frames` = 这张贴图是几帧的横向精灵条(1 = 静图)。
+## ⚠ 必须参与 `pixel_size` 的分母 —— 否则 9 帧条会按【整条宽度】折算, 画面上小 9 倍。
+func _mk_sprite(tex: Texture2D, size_px: float, col: Color, frames: int = 1) -> Sprite3D:
 	var s := Sprite3D.new()
 	s.texture = tex
+	if frames > 1:
+		s.hframes = frames
 	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	s.shaded = false
 	s.transparent = true
@@ -245,13 +263,13 @@ func _mk_sprite(tex: Texture2D, size_px: float, col: Color) -> Sprite3D:
 	s.render_priority = 18
 	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	s.modulate = col
-	s.pixel_size = (size_px * float(battle.WS)) / maxf(1.0, float(tex.get_width()))
+	s.pixel_size = (size_px * float(battle.WS)) / maxf(1.0, float(tex.get_width()) / float(maxi(1, frames)))
 	return s
 
 
 ## 世界坐标上的公告板(一次性特效用)。
-func _board(tex: Texture2D, pos2: Vector2, y_m: float, size_px: float, col: Color) -> Sprite3D:
-	var s := _mk_sprite(tex, size_px, col)
+func _board(tex: Texture2D, pos2: Vector2, y_m: float, size_px: float, col: Color, frames: int = 1) -> Sprite3D:
+	var s := _mk_sprite(tex, size_px, col, frames)
 	s.position = battle._world_pos(pos2, y_m)
 	return s
 
@@ -342,7 +360,7 @@ func empower_burst(u: Dictionary) -> void:
 		g.position = Vector3(lx, STICK_W_PX * STICK_TEX_ASPECT * float(battle.WS) * 0.22, 0.0)
 		root.add_child(g)
 		glows.append(g)
-		var s := _mk_sprite(stick_tex(), STICK_W_PX, Color(1, 1, 1, 0.0))
+		var s := _mk_sprite(stick_tex(), STICK_W_PX, Color(1, 1, 1, 0.0), STICK_FRAMES)
 		s.position = Vector3(lx, 0.0, 0.0)
 		root.add_child(s)
 		sticks.append(s)
@@ -365,7 +383,9 @@ func empower_hit(_u: Dictionary, tgt: Dictionary) -> void:
 		return
 	var p: Vector2 = tgt.get("pos", Vector2.ZERO)
 	var y: float = SEAL_Y + float(tgt.get("height", 0.0))
-	var f := _board(seal_tex(), p, y, SEAL_D * SEAL_K0, Color(1, 1, 1, 1.0))
+	## ★暖色调和: 素材中心是灰石色, 与"香火金红"的身份色不统一(agent 自己也标了这条)。
+	##   只压一点点 —— 压太狠会把外圈火焰的橙黄也拉偏。
+	var f := _board(seal_tex(), p, y, SEAL_D * SEAL_K0, Color(1.0, 0.90, 0.74, 1.0), SEAL_FRAMES)
 	_adopt(f, SEAL_SEC, "seal", {"p": p, "y": y})
 	for dx in [-13.0, 0.0, 13.0]:
 		var at: Vector2 = p + Vector2(dx, 0.0)
@@ -405,7 +425,10 @@ func tick(delta: float) -> void:
 			"seal":
 				# 盖章: 1.7× 砸到 1.0×(前 35% 完成), 然后按住不动直到 68% 才淡出
 				var k: float = lerpf(SEAL_K0, 1.0, clampf(q / 0.35, 0.0, 1.0))
-				s.pixel_size = (SEAL_D * k * float(battle.WS)) / maxf(1.0, float(s.texture.get_width()))
+				## ⚠ 分母是**单帧宽**(整条 / 帧数), 不是整条宽 —— 否则 9 帧条会缩到 1/9。
+				s.pixel_size = (SEAL_D * k * float(battle.WS)) 					/ maxf(1.0, float(s.texture.get_width()) / float(SEAL_FRAMES))
+				## ★逐帧: 一次性把 9 帧铺满整个寿命(火焰炸开 → 收), 不循环。
+				s.frame = mini(SEAL_FRAMES - 1, int(q * float(SEAL_FRAMES)))
 				s.modulate.a = _holdfade(q, 0.68)
 			_:
 				s.modulate.a = _holdfade(q, 0.55)
@@ -442,6 +465,11 @@ func _tick_altars(delta: float) -> void:
 			var rise: float = STICK_RISE_M * clampf(float(a["t"]) / ALTAR_IN_SEC, 0.0, 1.0)
 			(root as Node3D).position = battle._world_pos(Vector2((u as Dictionary)["pos"]), HEAD_Y + rise)
 		var sticks: Array = a.get("sticks", [])
+		## ★逐帧: 香在烧 —— 火头跳 + 青烟上飘, 循环播; **每支错开相位**, 免得一排香齐步动。
+		for ki in range(sticks.size()):
+			var sk = sticks[ki]
+			if sk is Sprite3D and (sk as Sprite3D).hframes > 1:
+				(sk as Sprite3D).frame = (int(float(a["t"]) * STICK_FPS) + ki * 2) % STICK_FRAMES
 		var glows: Array = a.get("glows", [])
 		var snuff: Dictionary = a.get("snuff", {})
 		for k in range(sticks.size()):

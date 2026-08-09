@@ -66,6 +66,7 @@ func _ready() -> void:
 	_t_wired()
 	await _t_batch_via_system()
 	_t_panel_readouts()
+	_t_stick_spacing()
 
 	_s.queue_free()
 	await get_tree().process_frame
@@ -190,13 +191,23 @@ func _t_silhouettes() -> void:
 		mid_t >= 6 and edge_t * 2 <= mid_t)
 
 	# 香: 竖的(贴图高 > 宽)
+	## ★2026-08-09 这两张已从静图升级成 **9 帧横向精灵条** ⇒ 剪影必须量**单帧**,
+	##   拿整条宽度量会把"竖的香"读成"横的条"(实测 288×64 ⇒ 这条当场红过)。
 	var si: Image = IV.stick_tex().get_image()
-	_ok("③ 香是【竖】的 (%dx%d, 高 > 宽)" % [si.get_width(), si.get_height()],
-		si.get_height() > si.get_width())
+	var siw: int = si.get_width() / IV.STICK_FRAMES
+	_ok("③ 香是【竖】的 (单帧 %dx%d, 高 > 宽)" % [siw, si.get_height()],
+		si.get_height() > siw)
+	_ok("③ ★香是逐帧动画(9 帧, 火头跳 + 青烟飘) —— 不是一张死图",
+		IV.STICK_FRAMES > 1 and si.get_width() == siw * IV.STICK_FRAMES,
+		"帧数=%d 整条宽=%d" % [IV.STICK_FRAMES, si.get_width()])
 	# 火印: 近似方(八角勋章), 与横沟/竖香都不同族
 	var zi: Image = IV.seal_tex().get_image()
-	_ok("③ 火印近似方形 (%dx%d)" % [zi.get_width(), zi.get_height()],
-		absf(float(zi.get_width()) - float(zi.get_height())) <= 4.0)
+	var ziw: int = zi.get_width() / IV.SEAL_FRAMES
+	_ok("③ ★火印是逐帧动画(9 帧, 火焰炸开) —— 不是一张死图",
+		IV.SEAL_FRAMES > 1 and zi.get_width() == ziw * IV.SEAL_FRAMES,
+		"帧数=%d 整条宽=%d" % [IV.SEAL_FRAMES, zi.get_width()])
+	_ok("③ 火印近似方形 (单帧 %dx%d)" % [ziw, zi.get_height()],
+		absf(float(ziw) - float(zi.get_height())) <= 4.0)
 
 	# 素材必须真有内容(空图/全透明会让上面几条变成"量了个寂寞")
 	_ok("③ ★分母: 香的素材非空 (不透明像素 %d)" % _opaque(si), _opaque(si) > 150)
@@ -411,6 +422,27 @@ func _t_panel_readouts() -> void:
 			and absf(float(cg[1]) - float(IncenseStoneSystem.PER_MARK)) < 1e-6,
 		"%s / 满值 %s vs PER_MARK %.0f" % [str(cg[0]) if cg.size() > 0 else "?",
 			str(cg[1]) if cg.size() > 1 else "?", float(IncenseStoneSystem.PER_MARK)])
+
+
+## ⑩ 相邻两支香的间距必须 **> 单支宽度**。
+## ★2026-08-09 用户:「飘起来的烟有在对应香台吗」—— 当时没有。根因是纯几何:
+##   单帧 32x64 ⇒ 世界宽 STICK_W_PX、高 = 宽 x STICK_TEX_ASPECT。旧值 宽 20 / 间距 12
+##   ⇒ **相邻两支的精灵互相重叠 8 码**, 各自的烟糊成一条横带, 读成"飘在上面的宽带"
+##   而不是"每支香各自冒烟"。这条不等式一破, 烟就又连片。
+func _t_stick_spacing() -> void:
+	_ok("⑩ ★相邻两支香的间距 > 单支宽度(否则各自的烟会糊成一条横带)",
+		IV.STICK_GAP_PX > IV.STICK_W_PX,
+		"间距 %.1f vs 宽度 %.1f 码" % [IV.STICK_GAP_PX, IV.STICK_W_PX])
+	## 香的世界高 = 宽 x 贴图长宽比; 贴图里**上半截是烟**, 所以香身本体比这个数矮。
+	## 仍要有个上限: 整只龟立绘约 44 码, 香连烟不该超过它太多。
+	var stick_h: float = IV.STICK_W_PX * IV.STICK_TEX_ASPECT
+	_ok("⑩ 香(连烟)的高度 ≤ 龟立绘的 1.3 倍", stick_h <= 44.0 * 1.3,
+		"%.1f 码 vs 上限 %.1f" % [stick_h, 44.0 * 1.3])
+	_ok("⑩ 分母: 贴图长宽比与实际素材一致",
+		absf(float(IV.stick_tex().get_width()) / float(IV.STICK_FRAMES)
+			* IV.STICK_TEX_ASPECT - float(IV.stick_tex().get_height())) < 0.01,
+		"单帧 %dx%d, ASPECT=%.2f" % [IV.stick_tex().get_width() / IV.STICK_FRAMES,
+			IV.stick_tex().get_height(), IV.STICK_TEX_ASPECT])
 
 
 func _read(path: String) -> String:
