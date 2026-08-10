@@ -140,6 +140,16 @@ func pre_build() -> bool:
 	##   ⚠ 这条很重要: 2026-08-09 我把地图海草当成 091 的甲片, 结论方向整个反了;
 	##     "是不是这件画的"一律要 A/B, 不许目视下结论(memory [[fb-clean-vfx-stage-not-squint]])。
 	if OS.has_environment("VFXLAB_EQ"):      cfg["eq"] = OS.get_environment("VFXLAB_EQ")
+	## ★★【静态对照模式】VFXLAB_STILL=1 —— 专为 A/B 的**绝对归属**准备。
+	##   发现的问题(2026-08-11): 同参数只换装备做差分时, **换了装备龟的攻击节奏就变了**
+	##   ⇒ 动画相位/位置跟着变 ⇒ **差分把龟自己也算进去了**。
+	##   实例: 061 差分报 30568 个像素, 而那一帧裁出来肉眼几乎什么都没有 —— 差的是龟。
+	##   ⇒ 要回答"这件到底画没画东西", 就得让**两边的龟完全一样**: 不攻击、不还手。
+	##   (相对比较 —— 同一件装备改前 vs 改后 —— 不受此影响, 因为干扰项两边一样。)
+	if OS.has_environment("VFXLAB_STILL"):
+		cfg["attacker"] = false
+		cfg["enemy_attacks"] = false
+		cfg["carrier_silent"] = true
 	if OS.has_environment("VFXLAB_FOCUS_XY"):
 		var parts: PackedStringArray = OS.get_environment("VFXLAB_FOCUS_XY").split(",")
 		if parts.size() >= 2:
