@@ -80,6 +80,39 @@ func _ready() -> void:
 	# ★分母: 全表条目数。少于这个说明列表没建全, 上面的"每条都点开"就是空检查。
 	_ok("★分母: 五个页签合计点开 %d 条(≥100)" % total, total >= 100, "total=%d" % total)
 
+	# ══════════════════════════════════════════════════════════════
+	#  ★★列表条目数 vs 【数据源】—— 跨源比对, 不是自己跟自己比
+	# ══════════════════════════════════════════════════════════════
+	# 上面那条 `opened == cnt` 是**代数恒等**: cnt 取自 `inst._items.size()`,
+	# opened 数的是对同一个数组的遍历 ⇒ 永远相等, **列表少建了一条它也发现不了**。
+	# 2026-08-10 实证: 页签写着「装备 (103)」而列表只有 102 行 —— 圣光护盾 cost=0,
+	# 而行构造器写死只遍历费用 1~5, 把它静默丢了。计数走数据、列表走写死档位, 两条路不同源。
+	# ⇒ 这里拿【数据源的真实条数】比【列表真的建了几行】。
+	inst._switch_tab("equips")
+	for _k in range(8):
+		await get_tree().process_frame
+	var n_p2: int = DataRegistry.phase2_equipment.size()
+	var n_cons := 0
+	for eq in DataRegistry.all_equipment:
+		if eq is Dictionary and str(eq.get("category", "")) == "consumable":
+			n_cons += 1
+	var want_eq: int = n_p2 + n_cons
+	_ok("★分母: 数据源里 %d 件装备 + %d 件消耗品" % [n_p2, n_cons], n_p2 >= 90 and n_cons > 0)
+	_ok("★★装备页列出的行数 = 数据源条数(一件都不许被静默丢掉)",
+		inst._items.size() == want_eq,
+		"列表 %d 行 / 数据 %d 条" % [inst._items.size(), want_eq])
+	# 逐个 id 对: 数量对得上也可能是"丢了一件又多算一件"
+	var listed := {}
+	for it in inst._items:
+		if it is Dictionary and str(it.get("id", "")).begins_with("p2eq_"):
+			listed[str(it["id"])] = true
+	var missing: Array = []
+	for eq2 in DataRegistry.phase2_equipment:
+		if eq2 is Dictionary and not listed.has(str(eq2.get("id", ""))):
+			missing.append(str(eq2.get("id", "")))
+	_ok("★★每一件 p2eq 都真的出现在装备页里(按 id 逐个对)",
+		missing.is_empty(), "缺: %s" % str(missing.slice(0, 8)))
+
 	# ★精英小将必须真的被渲染到 —— 它在 pets 页【末尾】, 只点前几条永远碰不到,
 	#   而 ceilf 那个 bug 恰恰只在它的详情里触发。
 	inst._switch_tab("pets")

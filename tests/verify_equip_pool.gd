@@ -169,6 +169,32 @@ func _ready() -> void:
 	_ok("⑥ ★同一次掷货不出重复(D23 的配套: 池不动货架 ⇒ 重复要在掷货时去掉)",
 		dup.is_empty(), "重复 %s / 本次掷出 %d 格" % [str(dup), offer.size()])
 
+	# ════════════════════════════════════════════
+	#  ★★⑦ 老存档必须能抽到【后来新加的装备】(2026-08-10 补)
+	# ════════════════════════════════════════════
+	# 用户 2026-08-10 实机反馈「为啥我手机上没看到新装备」。
+	# 根因: `ensure_equip_pool()` 原本是 `if not equip_pool.is_empty(): return` ——
+	# 而池子是**存进存档的**。于是老存档里那份池子是"当时那张装备表的快照",
+	# 之后新加的件**永远进不去** ⇒ 商店一辈子抽不到它们。
+	# ★断言的是【补齐】而不是【重建】: 已有 id 的张数一个都不能动 ——
+	#   动了等于把玩家已经买走/卖掉的记录抹掉(池子记的是"还剩几张")。
+	print("── ⑦ 老存档补齐新装备 ──")
+	var full_now: Dictionary = EquipPoolS.full_pool(DataRegistry.phase2_equipment)
+	var some_id: String = ""
+	for k in full_now:
+		some_id = str(k)
+		break
+	# 造一份"只有一件、且那件已经被买走一张"的老存档池
+	GameState.equip_pool = {some_id: int(full_now[some_id]) - 1}
+	GameState.ensure_equip_pool()
+	_ok("★分母: 当前装备表 %d 件上架" % full_now.size(), full_now.size() >= 90)
+	_ok("⑦ ★★老存档的池子会把【后来新加的装备】补进去(否则商店永远抽不到)",
+		GameState.equip_pool.size() == full_now.size(),
+		"补齐后 %d 个 id / 应为 %d" % [GameState.equip_pool.size(), full_now.size()])
+	_ok("⑦ ★已有 id 的剩余张数**一个都没被动**(动了等于抹掉玩家的买卖记录)",
+		int(GameState.equip_pool[some_id]) == int(full_now[some_id]) - 1,
+		"%s 剩 %d / 应剩 %d" % [some_id, int(GameState.equip_pool[some_id]), int(full_now[some_id]) - 1])
+
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 装备私人池(批2)" if _fail == 0 else "FAIL x%d" % _fail)

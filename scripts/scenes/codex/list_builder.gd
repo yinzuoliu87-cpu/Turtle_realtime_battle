@@ -148,8 +148,22 @@ func _add_simple_row(label: String, label_color: String, stroke: Color, icon_pat
 #   数据源: DataRegistry.phase2_equipment (data/phase2-equipment.json); 消耗品 = all_equipment 中 category=consumable。
 #   行描边 + 标题 都用费用色(host.COST_COLOR·装备无 rarity 字段); p2eq 有 PNG 图标(img·2026-07-18)→图标格+纯名, 无 img 才 emoji 前缀兜底。
 func _add_equip_rows() -> void:
-	# 费用分组 (1→5)
-	for cost in [1, 2, 3, 4, 5]:
+	## ★★分组的费用档【从数据里取】, 不写死 [1,2,3,4,5]。
+	##   2026-08-10 实拍发现: 页签计数说「装备 (103)」而列表只列得出 102 件 ——
+	##   圣光护盾 `p2eq_095` 的 `cost` 是 **0**(它是盾羁绊赠送的, 不上商店也就没有费用),
+	##   而这里写死只遍历 1~5 ⇒ **它被静默丢掉**: 不报错、不留痕, 只有把计数和行数
+	##   对起来数才发现。计数走 `phase2_equipment.size()`、列表走写死档位, 两条路不同源。
+	##   ⚠ 同族的坑在背包羁绊弹框上刚踩过(档数写死 3 档 ⇒ 四档制的顶档不画)。
+	##   **凡是"档位/分组"都从数据里取** —— 写死一个就等于把不在名单里的那类藏起来。
+	var costs: Array = []
+	for eq in DataRegistry.phase2_equipment:
+		if not (eq is Dictionary):
+			continue
+		var c: int = int(eq.get("cost", 0))
+		if not costs.has(c):
+			costs.append(c)
+	costs.sort()
+	for cost in costs:
 		var items = []
 		for eq in DataRegistry.phase2_equipment:
 			if not (eq is Dictionary):
@@ -159,7 +173,11 @@ func _add_equip_rows() -> void:
 		if items.is_empty():
 			continue
 		var ccol: String = host.COST_COLOR.get(cost, "#4cc9f0")
-		_add_header("▸ 费用 %d (%d)" % [cost, items.size()], ccol)
+		## 费用 0 = 羁绊赠送(不上商店, 所以没有费用) —— 标题不写"费用 0", 那读起来像"免费"
+		if cost <= 0:
+			_add_header("▸ 羁绊赠送 (%d)" % items.size(), "#ffd93d")
+		else:
+			_add_header("▸ 费用 %d (%d)" % [cost, items.size()], ccol)
 		for eq in items:
 			host._items.append(eq)
 			var stroke: String = ccol

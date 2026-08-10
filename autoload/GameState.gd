@@ -1364,12 +1364,34 @@ func auto_merge_all() -> void:
 #    / 赛季重置(start_new_season)。★货架不动池(D23: 成交才扣)。
 # ══════════════════════════════════════════════════════════════════════
 
-## 池空 → 补满。★不在 _ready 里初始化, 因为 DataRegistry 的载入顺序不保证;
+## 池空 → 补满; 池非空 → **补齐后来新加的装备**。
+## ★不在 _ready 里初始化, 因为 DataRegistry 的载入顺序不保证;
 ## 改成"用到时确保", 所有入口(掷货/买/卖)都先调它。
+##
+## ══════════════════════════════════════════════════════════════════
+##  ★★2026-08-10 修: 老存档【一辈子抽不到新装备】
+## ══════════════════════════════════════════════════════════════════
+## 改之前这里是 `if not equip_pool.is_empty(): return` —— 池子是**当时那张装备表的快照**,
+## 之后往 `phase2-equipment.json` 加的件**永远不会进池** ⇒ 商店里一次都不会出现。
+##
+## 用户 2026-08-10 实机反馈「为啥我手机上没看到新装备啊」。查证:
+##   · 包没问题(pck 里 `p2eq_060`/`p2eq_077`/`p2eq_095` 的路径都在, 各 7 处引用)
+##   · 抽卡池 `full_pool` 收的是"调用那一刻"的 `DataRegistry.phase2_equipment`
+##   · 而 `equip_pool` 进存档(save 的 `equip_pool` 键) ⇒ 存档比装备表旧就永久落后
+## ⇒ 只补【池里没有的 id】; **已有的张数一个都不动** —— 动了等于把玩家已经买走/
+##   卖掉的记录抹掉(池子记的是"还剩几张", 不是"总共几张")。
+##
+## ⚠ 与 D12「不做旧档兜底」不冲突: 那条说的是"老存档没有 equip_pool 这个键时不特殊处理"
+##   (缺键 → 空字典 → 走上面的补满)。这里治的是**另一种病**: 键在、内容却停在旧表。
+##   缺值和陈旧值是两类病 —— 同 data_integrity 那条「空值和错值是两类病」。
 func ensure_equip_pool() -> void:
-	if not equip_pool.is_empty():
+	var full: Dictionary = _EquipPool.full_pool(DataRegistry.phase2_equipment)
+	if equip_pool.is_empty():
+		equip_pool = full
 		return
-	equip_pool = _EquipPool.full_pool(DataRegistry.phase2_equipment)
+	for eid in full:
+		if not equip_pool.has(eid):
+			equip_pool[eid] = full[eid]
 
 
 ## 买走 1 张。返回是否成功 —— 张数不够时【不扣、返回 false】, 调用方要据此拒绝这笔交易。
