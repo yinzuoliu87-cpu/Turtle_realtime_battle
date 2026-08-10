@@ -342,9 +342,19 @@ func _cream_tick(u: Dictionary, si: int, stt: Dictionary, delta: float) -> void:
 		while float(stt["loss_acc"]) >= step and int(stt.get("given_n", 0)) < CREAM_TIMES:
 			stt["loss_acc"] = float(stt["loss_acc"]) - step
 			_cream_grant_all(u, si, stt)
-	var sh = stt.get("shell", null)
-	if sh is Dictionary:
-		_vfx.cream_shell_update(sh, delta)
+	## ★★壳的呼吸改成【逐个友军】推进(2026-08-11)。
+	##   改之前只推 `stt["shell"]` 那一个(建在携带者身上的) ——
+	##   现在壳分散在每个拿到盾的友军身上, 不改这里就变成"壳建了但不动"。
+	##   ★盾没了(被打破/撚场)就把壳收掉 —— 否则会出现"盾早没了壳还亮着"。
+	for o in battle._targeting._allies_of(u, true):
+		var osh = o.get("_cream_shell", null)
+		if not (osh is Dictionary):
+			continue
+		if not o.get("alive", false) or battle._spec.val(o, KEY_CREAM) <= 0.0:
+			_vfx.cream_shell_free(osh)
+			o.erase("_cream_shell")
+			continue
+		_vfx.cream_shell_update(osh, delta)
 
 
 ## 给【所有友军(含自己)】各上一层奶油护盾。★**同步入口**, 门禁直接调。
@@ -367,10 +377,16 @@ func _cream_grant_all(u: Dictionary, si: int, stt: Dictionary) -> void:
 			"on_break": func(uu, _k, reason): _cream_on_break(uu, si, str(reason)),
 		})
 		o["_cream_given"] = float(o.get("_cream_given", 0.0)) + amt   # 同步证据
+		## ★★每一个拿到盾的友军都要有壳(2026-08-11 修)。
+		##   改之前壳只建一个、而且建在**携带者**身上(下面那行 `cream_shell_make(u)`) ⇒
+		##   友军拿到了盾、身上却什么都没有 ⇒ 用户实拍:「全队奶油护盾完全没表达」。
+		##   这一类比"颜色不对"严重: **玩家无从得知效果生效了没有**。
+		##   ★ `cream_shell_make` 建的是个跟随单位的精灵, 进 `_follow_vfx` ——
+		##   而 `_follow_vfx` 换路是会被清的(dual_lane_flow), 所以逐人建不会残留。
+		if not (o.get("_cream_shell", null) is Dictionary):
+			o["_cream_shell"] = _vfx.cream_shell_make(o)
 		n += 1
 	stt["cream_targets_last"] = n
-	if not (stt.get("shell", null) is Dictionary):
-		stt["shell"] = _vfx.cream_shell_make(u)
 
 
 ## 奶油护盾被打破 → 300 码 AOE + 给【持有者】整路加成。

@@ -56,6 +56,8 @@ frames_for () {
     verify_info_panel_stats) echo 2000 ;;
     # 背包文案放不放得下: 建 Inventory 场景 + 选中最长那件 + 量真实屏幕矩形
     verify_inventory_text_fit) echo 1500 ;;
+    # 071 全队奶油护盾: 建战斗场 + 造 3 友军 + 走 tick_unit 真入口(纯同步)
+    verify_cream_shell_all) echo 2000 ;;
     # 羁绊演出层共用基建: 建战斗场景 + 78 条同步断言(不等任何 tween), 但建场本身就吃几百帧。
     #   ★实测本机 500 帧【跑不完】(被掐断 → 没打 ALL PASS → 看着像断言失败), 800 帧够 ⇒ 给 2500 兜 CI。
     verify_synergy_vfx) echo 2500 ;;
