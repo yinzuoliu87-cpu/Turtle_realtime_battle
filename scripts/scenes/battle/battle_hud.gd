@@ -1146,6 +1146,20 @@ func _show_banner(won: bool) -> void:
 		battle._surrender_panel.visible = false
 	if battle._surrender_btn != null and is_instance_valid(battle._surrender_btn):
 		battle._surrender_btn.disabled = true
+	## ══════════════════════════════════════════════════════════════
+	##  ★★2026-08-10 收掉【战中伤害统计面板】—— 不收它玩家会被卡在结算屏
+	## ══════════════════════════════════════════════════════════════
+	## 用户实测:「战斗结束后如果名单很多, 玩家根本点不到回到主菜单的按钮」。
+	## 根因: `dmg_stats_panel` 有个 **0.4 秒自刷计时器**, 而 `render()` 第一行就是
+	##   `_to_front()` —— 把自己移到 `_ui_layer` 末尾(同层树序 = 绘制层级, 后者在上)。
+	##   结算卡是在 `_show_banner` 里建的, 树序比它小 ⇒ **面板 0.4 秒内就压到结算卡上面**,
+	##   名单越长面板越高, 盖住按钮 ⇒ 点不到, 而且它是**自愈式**的(压下去 0.4 秒又上来)。
+	##   探针实测: 25 个单位时 面板树序 64 / 结算卡 38, 面板 y 100~530。
+	## ⇒ 结算是**模态**的, 战中浮层一律收掉(投降面板早就这么做了, 只是漏了这一个)。
+	##   数据也没丢: 结算卡自己就有一张更全的战斗数据表。
+	if battle._dmg_stats != null and battle._dmg_stats.panel != null \
+			and is_instance_valid(battle._dmg_stats.panel):
+		battle._dmg_stats.panel.visible = false
 	battle._log("[color=%s]%s[/color]" % ["#ffd93d" if won else "#ff6b6b", "🏆 战斗胜利!" if won else "💀 战斗失败!"])
 	# §AUDIO: 结算 — 败方放 defeat 音; BGM 淡出收尾.
 	# ⚠缺口(2026-07-21 核实): assets/audio/sfx/ 下【只有 defeat.wav, 没有胜利音】,
@@ -1471,6 +1485,20 @@ func _build_stats_panel() -> Control:
 	# 页体: 每页一个 HBox(我方|敌方), 同时只显一个; 外面套 ScrollContainer —— 合计页行数可能超屏底
 	var scroll = ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	## ══════════════════════════════════════════════════════════════
+	##  ★★2026-08-10 给数据表钳一个高度上限 —— 不钳的话按钮会被顶出屏幕
+	## ══════════════════════════════════════════════════════════════
+	## 用户实测「名单很多时点不到回主菜单」。这里是第二个成因(另一个见 `_show_banner`
+	## 里收统计面板那段): 这个 ScrollContainer **原来没有任何高度约束**, 名单越长它越高,
+	## 整张结算卡跟着长; 卡片由 CenterContainer 居中 ⇒ 太高时**上下两头一起溢出屏幕**,
+	## 而按钮行正好在下面那一头。
+	## 探针实测(1280×720 视口): 9 个单位 → 卡高 443 ✅; **25 个单位 → 卡高 643**,
+	## 已经吃掉 720 的九成, 再多就必然把按钮推出去。
+	## ⇒ 上限 = 视口高 − 其余部分(标题/后果句/奖励块/按钮行/边距)所需, 钳进 [140, 420]。
+	##   同 Inspector 面板那处的做法(本文件 `_body_sc`), 也同图鉴详情框。
+	var _vp: Vector2 = battle.get_viewport().get_visible_rect().size
+	scroll.custom_minimum_size = Vector2(0, clampf(_vp.y - 440.0, 140.0, 400.0))
+	scroll.size_flags_vertical = Control.SIZE_FILL
 	var body = Control.new()
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(body)
