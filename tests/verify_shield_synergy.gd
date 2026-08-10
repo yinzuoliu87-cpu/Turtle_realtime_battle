@@ -83,19 +83,34 @@ func _ready() -> void:
 
 	# ── 反击: 有护盾才反, 顶档才有 ──
 	# ★反击现在来自【圣光护盾装备】, 不是档位: 没装就没有(用户 2026-08-03 重定)
+	#
+	# ★★2026-08-10 反击改成【光弹飞到才出伤】(用户:「要光弹啊，弹命中了再出伤啊」)。
+	#   伤害挂在 `_queue_shots` 的延后队列上, 调完 `_riposte` 那一帧敌人还没掉血 ——
+	#   所以这里必须把队列**推完**再读血。不推的话两条都会读到 0:
+	#   "有反击"那条假 FAIL, 而"不反击"那两条变成**假通过**(没飞到也是 0)。
+	var _drain := func() -> void:
+		s._ballistics._step_pending_shots(2.0)
 	foe["hp"] = 100000.0
 	me["shield"] = 500.0; me["_shield_rage"] = 0.0
 	s._shield_syn._riposte(me, foe)
+	_drain.call()
 	_ok("★没装圣光护盾装备 → 就算有护盾也【不反击】",
 		absf(100000.0 - float(foe["hp"])) < 0.5, "敌掉 %.0f" % (100000.0 - float(foe["hp"])))
 	me["equips"] = [{"id": "p2eq_095", "star": 1}]     # 装上圣光护盾
 	foe["hp"] = 100000.0; me["shield"] = 500.0
 	s._shield_syn._riposte(me, foe)
+	## ★先抓一把"还没推队列时的血" —— 它必须还是满的,
+	##   否则就是"光弹还没到伤害先出了", 那正是这次要防的毛病。
+	var hp_before_flight: float = float(foe["hp"])
+	_drain.call()
 	var rip: float = 100000.0 - float(foe["hp"])
+	_ok("★反击的伤害**不在发弹那一帧**出(光弹要飞到才结算)",
+		absf(hp_before_flight - 100000.0) < 0.5, "发弹那一帧敌已掉 %.0f" % (100000.0 - hp_before_flight))
 	_ok("反击: 装了圣光护盾且有护盾 → 2 点真伤(固定, 不随件数放大)",
 		absf(rip - 2.0) < 0.5, "实得 %.0f" % rip)
 	foe["hp"] = 100000.0; me["shield"] = 0.0
 	s._shield_syn._riposte(me, foe)
+	_drain.call()
 	_ok("★对照: 装了但当前没有护盾值 → 不反击(「圣光护盾存在时」)",
 		absf(100000.0 - float(foe["hp"])) < 0.5, "敌掉 %.0f" % (100000.0 - float(foe["hp"])))
 	# 圣光护盾装备的周期护盾

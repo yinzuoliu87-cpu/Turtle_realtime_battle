@@ -3,9 +3,10 @@ extends RefCounted
 ## holy_shield_vfx.gd — 095【圣光护盾】的演出层 (2026-08-09 逐件重做)
 ##
 ## 三个入口, 与规格的三句话一一对应:
-##   · `grant_burst(u, amt)`  每 3 秒补 55 点 → 头顶降一道圣光柱 + 落一枚十字圣印 + 光粒
-##   · `tick(delta)`          「圣光护盾存在时」→ 携带者身前**常驻一面圣光盾板**
-##   · `riposte(u, src, dmg)` 反击 2 点真伤 → 盾板 → 攻击者一道白金光矢 + 攻击者身上一枚圣罚印
+##   · `grant_burst(u, amt)`  每 3 秒补 55 点 → **罩子合拢**(26 块能量板飞入锁死) + 碎光被推开
+##   · `tick(delta)`          「圣光护盾存在时」→ **包住携带者的 3D 球罩**(常驻)
+##   · `riposte(u, src, dmg)` 反击 2 点真伤 → 罩面涟漪 + 一枚光弹飞回去, **飞到才出伤**
+##   · `riposte_hit(src)`      光弹命中那一帧(由结算侧调) → 攻击者身上一枚圣罚印
 ##
 ## ══════════════════════════════════════════════════════════════════════
 ##  ★重做前是什么样(实拍为证, `_vfxlab_p2eq_095_base_*.png`)
@@ -38,14 +39,21 @@ extends RefCounted
 ##    所以它和反击的真实开关**永远同步**(反击的条件就是 `holy_count>0 and shield>0`)。
 ##    ⚠ `u["shield"]` 是**总护盾**不是"圣光那一份": 反击的条件读的也是它, 两边同源才不会
 ##    出现"盾板亮着却不反击"。
-## 3. **反击的光矢没有飞行时间**: 伤害是瞬时结算的, 光矢在第 0 帧就是整条 ——
-##    "伤害不等演出到达"是踩过的一整类毛病。
+## 3. **反击的光弹飞到才出伤**: 飞行时间由纯函数 `bolt_flight` 给,
+##    结算侧拿它延后、演出侧拿它推进 —— **同一个数**, 所以"弹到"与"出伤"永远同帧。
+##    (“伤害不等演出到达”是踩过的一整类毛病; 反过来“演出到了但伤害早就出了”也是。)
 ##
-## ★素材(2026-08-09 新生成, PixelLab, 本件专用, 不复用任何现有 vfx):
-##   · `eq095-holy-aegis.png` —— 悬浮圣光盾板(白金盾面 + 十字), 逐帧微光循环
-##   · `eq095-holy-smite.png` —— 圣罚印(四芒十字 + 放射光刃), 反击时盖在攻击者身上
-##   其余小件(光柱 / 光矢 / 光粒)是本文件逐像素现算的程序化贴图 —— 同 incense_vfx 的立场:
-##   程序化不产出可复用的图, `resource_path` 是空串(门禁断言这一条)。
+## ★素材:
+##   · `eq095-holy-smite.png` —— 圣罚印(四芒十字 + 放射光刃), 反击光弹命中时盖在攻击者身上。
+##     2026-08-09 新生成(PixelLab, 本件专用, 不复用任何现有 vfx)。
+##   · 光粒是本文件逐像素现算的程序化贴图 —— 同 incense_vfx 的立场:
+##     程序化不产出可复用的图, `resource_path` 是空串(门禁断言这一条)。
+##   · 罩子与合拢的板子是**真 3D 几何 + shader**, 根本不过贴图。
+##
+## ⚠ 2026-08-09 清掉了一整层死代码: 盾板贴图(`aegis_tex`/`eq095-holy-aegis.png`)已被
+##   3D 球罩取代, 光矢(`beam_tex`/`_beam`)已被光弹取代 —— 两者都零调用者,
+##   而门禁还在断言它们的尺寸/配色(memory [[fb-verify-must-run-the-real-path]]:
+##   「断言函数存在」守不住「还有没有人调」)。
 
 ## 身份色。★近白芯 + 金边, 与盾羁绊的琥珀 `#ffd93d` / 米金 `#ffe9a8` 分开。
 const HOLY_GOLD := Color(1.0, 0.847, 0.408, 0.95)
@@ -59,20 +67,60 @@ const HOLY_WHITE := Color(1.0, 0.988, 0.918, 1.0)
 ##   ⇒ 盾板只留调色一致的 **4 帧**(0~3)做呼吸循环; 圣罚印 9 帧【重排】成
 ##     "最强迸发 → 逐步收回到光秃的十字"(order = 2,1,0,3,8,7,6,5,4), 一次性播完不循环。
 ##   两张再一起按同一条【近白芯 → 金 → 深金】亮度斜坡重映射, 保证两个入口同一个身份色。
-const AEGIS_TEX_PATH := "res://assets/sprites/vfx/eq095-holy-aegis.png"
+const DOME_SHADER_PATH := "res://assets/shaders/holy_shield_dome.gdshader"
 const SMITE_TEX_PATH := "res://assets/sprites/vfx/eq095-holy-smite.png"
-const AEGIS_FRAMES := 4
+## ══════════════════════════════════════════════════════════════════
+##  ★★2026-08-09 补盾从「天上砸一道光柱」整个换成「罩子自己合拢」
+## ══════════════════════════════════════════════════════════════════
+## 用户:「改掉，不允许图片敷衍或简单圆特效」。
+## 换掉的理由(自评 + 实拍):
+##   ① **方向反了**。「获得护盾」的动作是罩子在身上成型; 从天上劈下来是"天罚/审判"的语言。
+##   ② **主角被盖住**。光柱高 7.8 个世界单位、宽度又是按帧高折算的, 实拍里罩子被它糊没了。
+##   ③ 那张 9 帧图的**爆闪在帧内 87% 处**, 底边贴地时爆闪浮在离地约 1 个世界单位的空中,
+##      下面吊着一截细碎余烬 —— 用户读成"打到中间就跟碰到墙壁一样"。对齐能修, 但①②修不了。
+## ⇒ 新做法: **26 块六边形能量板从罩外飞进来, 各自旋转着缩到位, 逐块锁死拼成罩子**。
+##   每块板有自己的位置/自转/落位时刻, 是 26 个独立运动的刚体 —— 不是一张图整体缩放,
+##   也不是圆环。几何贴在球面上, 落位后严丝合缝就是罩子本身。
+const PANEL_SHADER_PATH := "res://assets/shaders/holy_shield_panels.gdshader"
+## 板子块数。★26 是"看得清是拼起来的"与"密到能读成一个壳"之间的平衡:
+##   太少(<14)读成几片碎玻璃, 太多(>40)单块在实战镜头下只剩几个像素, 又变回一团光。
+const PANEL_N := 26
+## 出生时离罩面多远(× 半径)。0.55 ⇒ 板子从罩外约半个身位冲进来。
+const PANEL_FLY_K := 0.55
+## 装配时长 / 装完之后板子退场的时长(秒)
+const BUILD_SEC := 0.46
+const BUILD_FADE := 0.30
+## 总进度要跑过 1 —— 最后落位的那几块也得有时间闪完它的"锁死"高光。
+const BUILD_OVER := 1.30
 const SMITE_FRAMES := 9
 ## 盾板微光循环速度(帧/秒)。慢一点 —— 它是常驻物, 快了会变成闪烁噪点。
-const AEGIS_FPS := 6.0
 
 ## 盾板: 宽(码) / 悬浮高度(米) / 朝敌方向的横向偏移(码) / 入场与收尾(秒)
 ## ★宽度 30 码 ≈ 一只龟(44 码宽)的 2/3 —— 举在身前读得出"他举着盾", 又不会把龟盖住。
-const AEGIS_W_PX := 33.0
+## ★盾板是这件装备的**持续标识**, 33 码在实战镜头下只有 22 px, 几乎看不见 ⇒ 48。
+## ★★2026-08-09 用户:「这是3D啊，是要罩子啊，设计个罩子啊」——
+##   护盾从"身前一块平板"改成**包住单位的 3D 球罩**(SphereMesh + 菲涅尔 shader)。
+##   ⚠ 用真 3D 球的理由: 透视/等距/前后遮挡**引擎自己算对**, 不用我去凑一个"看起来像罩子"
+##   的二维形状 —— 之前那块平板读不出"罩", 根子就在这。
+## 罩子半径(世界单位)。龟立绘约 1.06 个世界单位高 ⇒ 0.78 刚好包住又不糊住脚。
+## ★★2026-08-09 实拍标定后重定(用户:「位置、等距、大小你完全错误」)。
+##   标定法: 罩子直径 1.56 单位在 1280x720 实战镜头下约 25 px, 而龟立绘高约 42 px
+##   ⇒ **龟高约 2.6 个世界单位, 中心在 1.3** —— 我之前按"44 码 × WS = 1.06"算, 差了 2.5 倍。
+##   (那个 1.06 是把"码"当成了 `_world_pos` 的高度单位, 两者根本不是一回事。)
+## 半径 1.55 ⇒ 直径 3.1 > 龟高 2.6, 真正包得住。
+const DOME_R := 1.55
+## 罩心离地(世界单位) —— 取龟身中段, 让罩子上下都包得住。
+## ★罩心离地。龟立绘脚在 0、胸口约 0.88(旧盾板就挂那儿) ⇒ 全高约 1.2。
+##   0.52 偏低(接近腰), 实拍罩子压在脚边 ⇒ 抬到 0.62 取真正的身体中段。
+const DOME_Y := 1.30
+## 补盾那一下的"弹出": 先撑到 POP_K 再回落到 1.0
+const DOME_POP_K := 1.16
+const DOME_POP_SEC := 0.22
+## 涟漪(挨打)持续
+const DOME_HIT_SEC := 0.42
 ## 悬浮高度(米)。★**实拍量出来的, 不是按"龟高 1.13 米"推的** —— 第一版按推算取 0.62,
 ##   台上盾板落在肚子/脚边(还压住了腿), 读成"掉在地上的盾"而不是"举在身前的盾"。
 ##   零点(地面)在屏幕上比立绘的脚底还低一截(有影子那一圈), 所以推算值一律偏低。
-const AEGIS_Y := 0.88
 const AEGIS_OFF_PX := 15.0
 const AEGIS_IN_SEC := 0.16
 const AEGIS_OUT_SEC := 0.26
@@ -85,21 +133,23 @@ const AEGIS_REF := 55.0
 const AEGIS_FLASH := 0.55
 const AEGIS_FLASH_SEC := 0.30
 
-## 补盾: 光柱高(米) / 存活(秒)
-## ★补盾那一下**不再另画一枚圣印** —— 圣印(smite_tex)是反击的形状, 两个入口用同一张图
-##   就又变成"同一件装备的两个入口剪影撞车"(093 的刻痕/香刚踩过)。
-##   补盾的身份 = 光柱 + 光粒 + **盾板当场出现并鼓一记高光**, 与反击的"光矢 + 圣罚印"完全分开。
-const PILLAR_H_M := 2.05
-const PILLAR_SEC := 0.46
-## 光粒: 尺寸(码) / 升高(米) / 存活(秒) / 一次几粒
-const MOTE_PX := 9.0
-const MOTE_RISE_M := 0.72
-const MOTE_SEC := 0.52
-const MOTE_N := 5
+## 补盾那一下**不另画圣印** —— 圣印(smite_tex)是反击的形状, 两个入口用同一张图
+## 就又变成"同一件装备的两个入口剪影撞车"(093 的刻痕/香刚踩过)。
+## 补盾的身份 = **能量板合拢** + 被推开的碎光 + 罩子弹一记, 与反击的"光弹 + 圣罚印"完全分开。
+##
+## 碎光: 尺寸(码) / 被推开多远(码) / 升高(世界单位) / 存活(秒) / 一次几粒
+## ★★不再"往上飘"。飘是烟的语言(093 用的就是它); 这里的物理意义是
+##   **罩子合拢把周围的光挤了出去** ⇒ 沿径向向外冲、越冲越慢。
+const MOTE_PX := 12.0
+const MOTE_PUSH_PX := 40.0
+const MOTE_RISE_M := 0.26
+const MOTE_SEC := 0.46
+const MOTE_N := 7
+## 芯: 极短白闪, 定住"合上了"的那一帧(一发冲击至少要有一个重音)。
+const CORE_PX := 58.0
+const CORE_SEC := 0.10
 
 ## 反击: 光矢宽(码) / 存活(秒) / 贴地高度(米); 圣罚印 尺寸(码) / 起手倍率 / 存活(秒) / 高度(米)
-const BEAM_W_PX := 12.0
-const BEAM_SEC := 0.24
 const BEAM_Y := 0.55
 const SMITE_D := 42.0
 const SMITE_K0 := 1.45
@@ -111,11 +161,10 @@ const META_KEY := "holy_shield_vfx"
 ## 最后一道闸: 同时在场的【一次性】节点上限(常驻盾板不受它约束)
 const OWNED_CAP := 96
 
-static var _tex_aegis: Texture2D = null
 static var _tex_smite: Texture2D = null
-static var _tex_pillar: ImageTexture = null
 static var _tex_mote: ImageTexture = null
-static var _tex_beam: ImageTexture = null
+## 合拢用的板子网格(全场共用一份 —— 26 块的几何是死的, 动的全在 shader 里)
+static var _panel_mesh: ArrayMesh = null
 
 var battle
 ## 「这只龟身上有几件 095」。★构造注入的只读回调(拆分模板 dmg_stats_panel.gd 的做法) ——
@@ -125,6 +174,8 @@ var _holy_count_cb: Callable = Callable()
 var _fx: Array = []
 ## 常驻盾板 [{node, u, t, out, flash}] —— 由 `u["shield"]` 驱动, 不自己计时
 var _aegis: Array = []
+## 在途光弹(见 riposte / bolt_flight)。
+var _bolts: Array = []
 
 
 func _init(b, holy_count_cb: Callable = Callable()) -> void:
@@ -137,15 +188,8 @@ func _has_world() -> bool:
 
 
 # ══════════════════════════════════════════════════════════════════
-#  §贴图 —— 两张真像素素材 + 三张程序化小件
+#  §贴图 / 网格 —— 一张真像素素材 + 一张程序化小件 + 合拢用的板子网格
 # ══════════════════════════════════════════════════════════════════
-
-## 悬浮圣光盾板(素材)。
-static func aegis_tex() -> Texture2D:
-	if _tex_aegis == null:
-		_tex_aegis = load(AEGIS_TEX_PATH)
-	return _tex_aegis
-
 
 ## 圣罚印(素材)。
 static func smite_tex() -> Texture2D:
@@ -154,49 +198,66 @@ static func smite_tex() -> Texture2D:
 	return _tex_smite
 
 
-## 圣光柱: 竖直, 中央亮芯 + 左右软边; **上亮下淡**(光是从天上降下来的)。
-## ★内容不铺满整张 —— 铺满的话缩放采样会在边界切出一圈硬边。
-##
-## ★★2026-08-09 实拍改两处(第一版在台上读成"一根灰色的雾柱, 还把龟盖住了"):
-##   ① **太宽**: 贴图 32×96 + 柱高 2.6 米 ⇒ 世界宽 0.87 米 = **36 码**, 比一只龟(44 码)还宽。
-##      改成 14 宽 ⇒ 约 16 码, 是一束光不是一堵墙。
-##   ② **半透 + 近白 = 灰**。黑底上 alpha 0.4 的白像素合成出来就是 RGB(100,100,100),
-##      肉眼读到的是灰色。⇒ 主体色改成【金】(只有 core > 0.45 才往近白推),
-##      alpha 底也从 0 抬到 0.25 —— **"亮"只能由贴图自己给**(Sprite3D 没有加色混合)。
-static func pillar_tex() -> ImageTexture:
-	if _tex_pillar != null:
-		return _tex_pillar
-	var w := 14
-	var h := 96
-	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	var cx := float(w - 1) * 0.5
-	for y in range(h):
-		var fy: float = float(y) / float(h - 1)          # 0 = 顶
-		# 上宽下窄一点点: 读起来是"一束落下来的光", 不是一根柱子
-		var half: float = (cx - 0.4) * (0.95 - 0.20 * fy)
-		# 竖直方向: 顶端满亮, 到底部落到 0.46; 最底 8% 再收一下, 免得是一刀切
-		var va: float = lerpf(1.0, 0.46, fy)
-		if fy > 0.92:
-			va *= clampf((1.0 - fy) / 0.08, 0.0, 1.0)
-		for x in range(w):
-			var d: float = absf(float(x) - cx)
-			if d > half:
-				continue
-			var core: float = clampf(1.0 - d / maxf(0.5, half), 0.0, 1.0)
-			# ★主体必须是**金**: 第二版把 core > 0.45 就推近白, 而 14 像素宽的柱子里
-			#   八成像素都满足 ⇒ 实拍量出来 RGB(228,236,218) —— **一根白灰色的杆**,
-			#   压在龟壳上像插了根铁棍。现在只有最中间那一线(core > 0.82)才近白。
-			var col: Color = HOLY_GOLD.lerp(HOLY_WHITE, clampf((core - 0.82) / 0.18, 0.0, 1.0))
-			var a: float = va * clampf(0.20 + 0.80 * core, 0.0, 1.0)
-			if a <= 0.02:
-				continue
-			img.set_pixel(x, y, Color(col.r, col.g, col.b, clampf(a, 0.0, 1.0)))
-	_tex_pillar = ImageTexture.create_from_image(img)
-	return _tex_pillar
+## 【护盾合拢】用的板子网格: 26 块贴在球面上的正六边形。
+## ★为什么是 ArrayMesh 手搓而不是拿 SphereMesh 加个 shader:
+##   板子要**各自飞进来**, 就必须每块的顶点都知道"我属于哪一块"。共享顶点的球面网格
+##   做不到 —— 相邻三角形共用顶点, 一动就撕裂。所以每块板子的 7 个顶点是独立的,
+##   并把「本块的中心方向」烘进 NORMAL、「本块的延时/自转种子」烘进顶点色。
+## ★六边形半径按**铺满球面**反解: 六边形面积 2.598·hr² × N = 4πR² ⇒ hr = R·√(4π/2.598N)。
+##   ×1.06 让相邻板子微微交叠, 落位后不留缝。
+static func panel_mesh() -> ArrayMesh:
+	if _panel_mesh != null:
+		return _panel_mesh
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var uvs := PackedVector2Array()
+	var cols := PackedColorArray()
+	var idx := PackedInt32Array()
+	var hr: float = DOME_R * sqrt(4.0 * PI / (2.598 * float(PANEL_N))) * 1.06
+	var golden: float = PI * (3.0 - sqrt(5.0))       # 黄金角 ⇒ 球面上最均匀的 N 点分布
+	for i in range(PANEL_N):
+		var yy: float = 1.0 - 2.0 * (float(i) + 0.5) / float(PANEL_N)
+		var rr: float = sqrt(maxf(0.0, 1.0 - yy * yy))
+		var th: float = golden * float(i)
+		var c := Vector3(cos(th) * rr, yy, sin(th) * rr).normalized()
+		# 切平面基底(极点附近换参考轴, 否则 cross 退化成零向量 ⇒ 那两块板子是坏的)
+		var refv: Vector3 = Vector3.UP if absf(c.y) < 0.95 else Vector3.RIGHT
+		var t1: Vector3 = refv.cross(c).normalized()
+		var t2: Vector3 = c.cross(t1).normalized()
+		# 延时: 大致**从下往上装**(yy 从 -1 到 1) + 一点错落, 免得整圈整齐得像机械
+		var delay: float = clampf((yy + 1.0) * 0.5 * 0.82 + fmod(float(i) * 0.37, 1.0) * 0.18, 0.0, 1.0)
+		var spin: float = fmod(float(i) * 0.61803, 1.0)
+		var base: int = verts.size()
+		verts.append(c * DOME_R)
+		norms.append(c)
+		uvs.append(Vector2(0.5, 0.5))
+		cols.append(Color(delay, 0.0, spin, 1.0))
+		for k in range(6):
+			var a2: float = TAU * float(k) / 6.0
+			# ★顶点投影回球面 ⇒ 板子是**弯的**, 贴合罩子; 平的六边形会在球面上翘起来
+			var pv: Vector3 = (c * DOME_R + t1 * (cos(a2) * hr) + t2 * (sin(a2) * hr)).normalized() * DOME_R
+			verts.append(pv)
+			norms.append(c)
+			uvs.append(Vector2(0.5 + 0.5 * cos(a2), 0.5 + 0.5 * sin(a2)))
+			cols.append(Color(delay, 1.0, spin, 1.0))
+		for k in range(6):
+			idx.append(base)
+			idx.append(base + 1 + k)
+			idx.append(base + 1 + ((k + 1) % 6))
+	var arr := []
+	arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = verts
+	arr[Mesh.ARRAY_NORMAL] = norms
+	arr[Mesh.ARRAY_TEX_UV] = uvs
+	arr[Mesh.ARRAY_COLOR] = cols
+	arr[Mesh.ARRAY_INDEX] = idx
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	_panel_mesh = m
+	return _panel_mesh
 
 
-## 一粒上飘的光屑: **四芒小十字**(不是圆点) —— 与圣光的十字母题同族。
+## 一粒被推开的光屑: **四芒小十字**(不是圆点) —— 与圣光的十字母题同族。
 static func mote_tex() -> ImageTexture:
 	if _tex_mote != null:
 		return _tex_mote
@@ -220,32 +281,6 @@ static func mote_tex() -> ImageTexture:
 	return _tex_mote
 
 
-## 反击的光矢: 横向, 前端尖、后端收细, 中间一条近白亮芯。
-## ★两端不等宽是有意的 —— 等宽的话就是一根棍子, 读不出"射出去的方向"。
-static func beam_tex() -> ImageTexture:
-	if _tex_beam != null:
-		return _tex_beam
-	var w := 96
-	var h := 16
-	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	var cy := float(h - 1) * 0.5
-	for x in range(w):
-		var fx: float = float(x) / float(w - 1)          # 0 = 尾, 1 = 矢尖
-		# 尾部细 → 中后段最厚 → 矢尖收成一点
-		var thick: float = (h * 0.5 - 0.6) * clampf(sin(pow(fx, 0.72) * PI) * 1.12, 0.0, 1.0)
-		if thick < 0.5:
-			continue
-		for y in range(h):
-			var dy: float = absf(float(y) - cy)
-			if dy > thick:
-				continue
-			var core: float = clampf(1.0 - dy / maxf(0.5, thick), 0.0, 1.0)
-			# 同 pillar/mote: 主体金, 芯部才近白; alpha 底抬到 0.55 —— 半透白 = 灰
-			var col: Color = HOLY_GOLD.lerp(HOLY_WHITE, clampf((core - 0.55) / 0.45, 0.0, 1.0))
-			img.set_pixel(x, y, Color(col.r, col.g, col.b, clampf(0.55 + 0.45 * core, 0.0, 1.0)))
-	_tex_beam = ImageTexture.create_from_image(img)
-	return _tex_beam
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -278,51 +313,6 @@ func _board(tex: Texture2D, pos2: Vector2, y_m: float, size_px: float, col: Colo
 	return s
 
 
-## 竖直光柱(不 billboard 全轴 —— 全轴会让柱子随相机俯仰倒下去; FIXED_Y 只绕 Y 转)。
-## `y_base` = 柱子**底端**离地多高(米)。★不是"中心高度" —— 光柱要**落在盾板上**而不是
-##   从头贯到脚: 贯到脚时它整根压在龟壳上, 实拍读成"插了根杆子"而不是"一束光落下来"。
-func _pillar(pos2: Vector2, h_m: float, y_base: float) -> Sprite3D:
-	var tex := pillar_tex()
-	var s := Sprite3D.new()
-	s.texture = tex
-	s.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
-	s.shaded = false
-	s.transparent = true
-	s.no_depth_test = true
-	s.render_priority = 17
-	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	s.modulate = Color(1, 1, 1, 1)
-	s.pixel_size = h_m / float(maxi(1, tex.get_height()))
-	s.position = battle._world_pos(pos2, y_base + h_m * 0.5)
-	return s
-
-
-## 贴地光矢 a→b。几何照 synergy_vfx.energy_band: `axis = AXIS_Y`(**本身就是平铺, 不许再加
-## rotation.x** —— memory [[fb-axis-y-plus-rotation-cancels]]), 沿 +X 拉伸后用 rotation.y 对齐。
-func _beam(a2: Vector2, b2: Vector2) -> Sprite3D:
-	var wf: Vector3 = battle._world_pos(a2, BEAM_Y)
-	var wt: Vector3 = battle._world_pos(b2, BEAM_Y)
-	var seg: Vector3 = wt - wf
-	var seg_len: float = seg.length()
-	if seg_len < 0.01:
-		return null
-	var tex := beam_tex()
-	var ps: float = (BEAM_W_PX * float(battle.WS)) / float(maxi(1, tex.get_height()))
-	var s := Sprite3D.new()
-	s.texture = tex
-	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-	s.axis = Vector3.AXIS_Y
-	s.shaded = false
-	s.transparent = true
-	s.no_depth_test = true
-	s.render_priority = 18
-	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	s.modulate = Color(1, 1, 1, 1)
-	s.pixel_size = ps
-	s.position = wf + seg * 0.5
-	s.rotation.y = -atan2(seg.z, seg.x)
-	s.scale = Vector3(seg_len / maxf(0.001, float(tex.get_width()) * ps), 1.0, 1.0)
-	return s
 
 
 func _adopt(n: Node3D, life: float, kind: String, extra: Dictionary = {}) -> Node3D:
@@ -353,25 +343,37 @@ static func _holdfade(q: float, hold: float) -> float:
 #  §入口①  每 3 秒补盾: 圣光降下
 # ══════════════════════════════════════════════════════════════════
 
-## `amt` 只用来决定光粒多少 —— **一点数值都不算**。
+## `amt` 只用来决定碎光多少 —— **一点数值都不算**。
 func grant_burst(u, amt: float = 0.0) -> void:
 	if not (u is Dictionary) or not (u as Dictionary).get("alive", false) or not _has_world():
 		return
 	var p: Vector2 = (u as Dictionary).get("pos", Vector2.ZERO)
-	# 光柱落在**盾板**上(同一个 x 锚点、底端就是盾板高度) —— 读作"这束光就是来补这面盾的"
-	var pil := _pillar(_aegis_anchor(u as Dictionary), PILLAR_H_M, AEGIS_Y)
-	_adopt(pil, PILLAR_SEC, "pillar", {"p": p})
-	var n: int = MOTE_N if amt > 0.0 else maxi(2, MOTE_N - 2)
-	for i in range(n):
-		var dx: float = (float(i) - float(n - 1) * 0.5) * 13.0
-		var at: Vector2 = p + Vector2(dx, 0.0)
-		var mo := _board(mote_tex(), at, 0.12, MOTE_PX, Color(1, 1, 1, 1.0))
-		_adopt(mo, MOTE_SEC, "mote", {"p": at, "y0": 0.12, "delay": 0.03 * float(i)})
-	# ★盾板【当场】出现, 不等下一帧的 tick —— 结算侧是先 `_grant_shield` 再调本函数,
-	#   所以这一刻 `shield` 已经 > 0, 条件是成立的。等 tick 补的话补盾那一帧盾板还不在,
+	# ★罩子【当场】出现, 不等下一帧的 tick —— 结算侧是先 `_grant_shield` 再调本函数,
+	#   所以这一刻 `shield` 已经 > 0, 条件是成立的。等 tick 补的话补盾那一帧罩子还不在,
 	#   而那正是最该看到它的一帧(而且拍点密排时一定会拍到那一帧)。
 	_ensure_aegis(u)
 	_flash_aegis(u)
+	## ★★本体: 【护盾合拢】—— 26 块六边形能量板从罩外飞进来逐块锁死。
+	##   同时罩子本体弹一记(DOME_POP_K) —— 板子锁上的那一下壳体鼓起来。
+	var ad2: Dictionary = _aegis_of(u)
+	if not ad2.is_empty():
+		ad2["pop"] = DOME_POP_SEC
+		_start_build(ad2)
+	## ★芯: 极短白闪, 只活 CORE_SEC —— "合上了"那一帧的重音
+	var co := _board(mote_tex(), p, DOME_Y, CORE_PX, Color(1, 1, 1, 1.0))
+	_adopt(co, CORE_SEC, "core", {"p": p, "y0": DOME_Y})
+	## ★★碎光被**推出去**(不是往上飘): 物理意义是罩子合拢把周围的光挤开了。
+	##   往上飘是**烟**的语言(093 用的就是它), 两件装备的碎屑得分得开。
+	##   ☆ y 分量乘 0.55: 这是等距镜头, 地面上的圆在屏幕上是扫圆 ——
+	##   不压的话碎光会飞成一个正圆, 读成"地上一个圈"。
+	var n: int = MOTE_N if amt > 0.0 else maxi(2, MOTE_N - 2)
+	for i in range(n):
+		var ang: float = TAU * (float(i) + 0.35) / float(n)
+		var dir := Vector2(cos(ang), sin(ang) * 0.55)
+		var far: float = MOTE_PUSH_PX * (0.78 + 0.34 * float(i % 3))
+		var mo := _board(mote_tex(), p, DOME_Y * 0.82, MOTE_PX, Color(1, 1, 1, 1.0))
+		_adopt(mo, MOTE_SEC, "mote", {"p": p, "y0": DOME_Y * 0.82, "dir": dir, "far": far,
+			"delay": 0.02 * float(i)})
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -380,17 +382,57 @@ func grant_burst(u, amt: float = 0.0) -> void:
 
 ## ★**没有飞行时间**: 伤害在结算侧那一帧就打完了, 光矢在第 0 帧就是整条。
 ##   (memory [[fb-vfx-defect-families]]: "伤害不等演出到达"是一整类毛病。)
+## 光弹飞行时间(秒) = 距离 / 速度。★纯函数: 结算侧用它算延后多久出伤, 演出侧用它推进。
+##   **同一个数**, 所以"弹到"和"出伤"永远同帧。
+const BOLT_SPEED := 900.0        ## 码/秒
+const BOLT_PX := 26.0            ## 光弹直径(码)
+static func bolt_flight(a2: Vector2, b2: Vector2) -> float:
+	return a2.distance_to(b2) / BOLT_SPEED
+
+
+## 一枚光弹的节点(小而亮的四芒, 复用光屑贴图)。
+func _bolt_node(at: Vector2) -> Sprite3D:
+	var sp := _board(mote_tex(), at, BEAM_Y, BOLT_PX, Color(1, 1, 1, 1.0))
+	sp.set_meta(META_KEY, "rbolt")
+	return sp
+
+
+## 光弹到达那一帧: 攻击者身上盖一枚圣罚印。由结算侧调(与伤害同帧)。
+func riposte_hit(src) -> void:
+	if not (src is Dictionary) or not _has_world():
+		return
+	var b: Vector2 = (src as Dictionary).get("pos", Vector2.ZERO)
+	var y: float = SMITE_Y + float((src as Dictionary).get("height", 0.0))
+	var sm := _board(smite_tex(), b, y, SMITE_D * SMITE_K0, Color(1, 1, 1, 1.0), SMITE_FRAMES)
+	_adopt(sm, SMITE_SEC, "smite", {"p": b, "y": y, "d": SMITE_D})
+
+
 func riposte(u, src, _dmg: float = 0.0) -> void:
 	if not (u is Dictionary) or not (src is Dictionary) or not _has_world():
 		return
 	var a: Vector2 = _aegis_anchor(u as Dictionary)
 	var b: Vector2 = (src as Dictionary).get("pos", Vector2.ZERO)
-	var bm := _beam(a, b)
-	if bm != null:
-		_adopt(bm, BEAM_SEC, "beam")
-	var y: float = SMITE_Y + float((src as Dictionary).get("height", 0.0))
-	var sm := _board(smite_tex(), b, y, SMITE_D * SMITE_K0, Color(1, 1, 1, 1.0), SMITE_FRAMES)
-	_adopt(sm, SMITE_SEC, "smite", {"p": b, "y": y, "d": SMITE_D})
+	## ★★2026-08-09 用户:「反击怎么做，你这是射金光吗」——
+	##   反击的物理意义是**罩子把伤害弹回去**, 不是携带者主动射一发。⇒ 两步:
+	##   ① 罩子在**被打的那个方向**上炸开一圈涟漪(打哪儿亮哪儿)
+	##   ② 被弹回的能量沿罩面切出去打在攻击者身上(仍保留光矢, 但它现在是"弹出物"不是"发射物")
+	var ad: Dictionary = _aegis_of(u)
+	if not ad.is_empty():
+		var dir2: Vector2 = (b - a)
+		if dir2.length_squared() > 1e-9:
+			dir2 = dir2.normalized()
+			## 场地方向 → 模型空间方向(x 右, z 朝屏幕下方)。y 略抬, 让涟漪中心落在罩子腰线上。
+			ad["hit_dir"] = Vector3(dir2.x, 0.18, dir2.y).normalized()
+		ad["hit_t"] = 0.0
+	## ★★2026-08-09 用户:「要光弹啊，弹命中了再出伤啊」+「两个都用光弹就好啊」——
+	##   不分远近, 一律**一枚光弹从罩面飞回攻击者, 飞到才结算**。
+	##   这样"看到弹中"与"打出伤害"仍是同一个事件, 同帧原则没破。
+	##   ⚠ 圣罚印**不在这里画** —— 它由结算侧在光弹到达那一帧调 `riposte_hit`。
+	var edge: Vector2 = a
+	if (b - a).length_squared() > 1e-9:
+		edge = a + (b - a).normalized() * (DOME_R / float(battle.WS))
+	_bolts.append({"from": edge, "to": b, "t": 0.0,
+		"T": maxf(bolt_flight(edge, b), 0.001), "node": _bolt_node(edge)})
 	_flash_aegis(u)
 
 
@@ -444,23 +486,102 @@ func _ensure_aegis(u) -> void:
 		_spawn_aegis(u as Dictionary)
 
 
+## 罩子 = 真 3D 球体 + 菲涅尔 shader。见 DOME_R 那段注释。
 func _spawn_aegis(u: Dictionary) -> void:
-	var s := _mk_sprite(aegis_tex(), AEGIS_W_PX, Color(1, 1, 1, 0.0), AEGIS_FRAMES)
-	# ★出生就摆到位, 别等 tick 的第一帧 —— Node3D 默认在原点, 只在 tick 里写位置的话
-	#   【第一帧整面盾板画在地图原点(0,0,0)】。一帧闪一下肉眼抓不到, 门禁一量就露。
-	s.position = battle._world_pos(_aegis_anchor(u), AEGIS_Y)
-	s.set_meta(META_KEY, "aegis")
-	battle._world.add_child(s)
-	_aegis.append({"node": s, "u": u, "t": 0.0, "out": -1.0, "flash": 0.0})
+	var sm := SphereMesh.new()
+	sm.radius = DOME_R
+	sm.height = DOME_R * 2.0
+	sm.radial_segments = 24
+	sm.rings = 12
+	var mi := MeshInstance3D.new()
+	mi.mesh = sm
+	var mat := ShaderMaterial.new()
+	mat.shader = load(DOME_SHADER_PATH)
+	mat.set_shader_parameter("tint", Vector3(HOLY_GOLD.r, HOLY_GOLD.g, HOLY_GOLD.b))
+	mat.set_shader_parameter("alpha", 0.0)
+	mat.set_shader_parameter("pop", 0.0)
+	mat.set_shader_parameter("hit_t", 1.0)
+	## ⚠ `render_priority` 在**材质**上, 不在 MeshInstance3D 上(写错会每帧刷一条 SCRIPT ERROR)
+	mat.render_priority = 16
+	mi.material_override = mat
+	# ★出生就摆到位, 别等 tick 的第一帧(Node3D 默认在原点 ⇒ 第一帧整个罩子画在地图原点)
+	mi.position = battle._world_pos((u["pos"] as Vector2), DOME_Y)
+	mi.set_meta(META_KEY, "aegis")
+	battle._world.add_child(mi)
+	var a: Dictionary = {"node": mi, "u": u, "t": 0.0, "out": -1.0, "flash": 0.0,
+		"pop": 0.0, "hit_t": 1.0, "hit_dir": Vector3(0, 0, 1), "build_t": -1.0}
+	_aegis.append(a)
+	_ensure_panels(a)
+
+
+## 【护盾合拢】的板子层 —— 挂在罩子**底下**当子节点。
+## ★为什么是子节点: 位置/缩放/朝向全跟着罩子走, 不用两处各算一遍(手抄的副本必然落后)。
+func _ensure_panels(a: Dictionary) -> void:
+	var old = a.get("panels", null)
+	if old is MeshInstance3D and is_instance_valid(old):
+		return
+	var host = a.get("node", null)
+	if not (host is Node3D) or not is_instance_valid(host):
+		return
+	var mi := MeshInstance3D.new()
+	mi.mesh = panel_mesh()
+	## ⚠ 板子在出生时会飞到罩面外 `PANEL_FLY_K` 倍半径处, 而 AABB 是按**网格原始顶点**算的
+	##   (都在半径 DOME_R 的球面上) ⇒ 视锥剔除会在板子还在外围时把整个节点剔掉。
+	##   这正是"节点建出来了、参数也对、就是看不见"的第三类原因(取景/剔除/阈值)。
+	var rr: float = DOME_R * (1.0 + PANEL_FLY_K) * 1.25
+	mi.custom_aabb = AABB(Vector3(-rr, -rr, -rr), Vector3(rr * 2.0, rr * 2.0, rr * 2.0))
+	var mat := ShaderMaterial.new()
+	mat.shader = load(PANEL_SHADER_PATH)
+	## ★走金不走近白: 加色混合下近白会直接叠爆成一团白(实拍过的老账)
+	mat.set_shader_parameter("tint", Vector3(HOLY_GOLD.r, HOLY_GOLD.g, HOLY_GOLD.b))
+	mat.set_shader_parameter("radius", DOME_R)
+	mat.set_shader_parameter("fly", PANEL_FLY_K)
+	mat.set_shader_parameter("build", 0.0)
+	mat.set_shader_parameter("fade", 1.0)
+	## 板子压在罩壳之上(罩壳 16), 否则加色混合下会被壳吃掉一半
+	mat.render_priority = 17
+	mi.material_override = mat
+	mi.visible = false
+	mi.set_meta(META_KEY, "panels")
+	(host as Node3D).add_child(mi)
+	a["panels"] = mi
+
+
+## 放一次合拢(补盾那一下)。重复调用就是重播 —— 每 3 秒补一次盾, 就装配一次。
+func _start_build(a: Dictionary) -> void:
+	_ensure_panels(a)
+	a["build_t"] = 0.0
+	var pn = a.get("panels", null)
+	if pn is MeshInstance3D and is_instance_valid(pn):
+		(pn as MeshInstance3D).visible = true
 
 
 # ══════════════════════════════════════════════════════════════════
 #  §每帧推进(不用 tween)
 # ══════════════════════════════════════════════════════════════════
 
+## 在途光弹: 沿直线飞, 到点自销(伤害由结算侧在同一时刻出 —— 两边用同一个 `bolt_flight`)。
+func _tick_bolts(delta: float) -> void:
+	for i in range(_bolts.size() - 1, -1, -1):
+		var b: Dictionary = _bolts[i]
+		var nd = b.get("node", null)
+		if not is_instance_valid(nd):
+			_bolts.remove_at(i)
+			continue
+		b["t"] = float(b["t"]) + delta
+		var q: float = clampf(float(b["t"]) / float(b["T"]), 0.0, 1.0)
+		var at: Vector2 = (b["from"] as Vector2).lerp(b["to"] as Vector2, q)
+		(nd as Sprite3D).position = battle._world_pos(at, BEAM_Y)
+		(nd as Sprite3D).modulate.a = 1.0
+		if q >= 1.0:
+			(nd as Node).queue_free()
+			_bolts.remove_at(i)
+
+
 func tick(delta: float) -> void:
 	if delta <= 0.0:
 		return
+	_tick_bolts(delta)
 	_tick_aegis(delta)
 	if _fx.is_empty():
 		return
@@ -474,19 +595,24 @@ func tick(delta: float) -> void:
 		var s: Sprite3D = n
 		var q: float = clampf(float(f["t"]) / float(f["life"]), 0.0, 1.0)
 		match str(f.get("kind", "")):
-			"pillar":
-				# 光柱: 落下来的那一下最亮, 前 50% 满亮
-				s.modulate.a = _holdfade(q, 0.50)
 			"mote":
+				## 碎光: 沿径向被**推出去**, 越冲越慢(二次缓出) + 微微抬高。
+				##   ★位移写回 `p + dir*far*e` 而不是每帧累加 —— 累加会跟帧率走(卡一帧就飞远一截)。
 				var dl: float = float(f.get("delay", 0.0))
 				var qm: float = clampf((float(f["t"]) - dl) / maxf(0.01, float(f["life"]) - dl), 0.0, 1.0)
-				s.position = battle._world_pos(f["p"], float(f["y0"]) + MOTE_RISE_M * qm)
-				s.modulate.a = (0.0 if float(f["t"]) < dl else _holdfade(qm, 0.45))
+				var em: float = 1.0 - pow(1.0 - qm, 2.6)
+				var at: Vector2 = Vector2(f["p"]) + Vector2(f.get("dir", Vector2.RIGHT)) * float(f.get("far", 0.0)) * em
+				s.position = battle._world_pos(at, float(f["y0"]) + MOTE_RISE_M * em)
+				s.modulate.a = (0.0 if float(f["t"]) < dl else _holdfade(qm, 0.40))
 			"smite":
 				var k2: float = lerpf(SMITE_K0, 1.0, clampf(q / 0.30, 0.0, 1.0))
 				s.pixel_size = _ps_for(s, float(f["d"]) * k2, SMITE_FRAMES)
 				s.frame = mini(SMITE_FRAMES - 1, int(q * float(SMITE_FRAMES)))
 				s.modulate.a = _holdfade(q, 0.58)
+			"core":
+				## 芯: 前 60% 满亮再收, 同时快速涨大一点(冲击的"顶")
+				s.pixel_size = _ps_for(s, CORE_PX * (0.55 + 0.75 * q), 1)
+				s.modulate.a = _holdfade(q, 0.60)
 			"beam":
 				s.modulate.a = _holdfade(q, 0.55)
 			_:
@@ -511,10 +637,12 @@ func _tick_aegis(delta: float) -> void:
 	for i in range(_aegis.size() - 1, -1, -1):
 		var a: Dictionary = _aegis[i]
 		var nd = a.get("node", null)
-		if not (nd is Sprite3D) or not is_instance_valid(nd):
+		## ⚠ 罩子是 MeshInstance3D 不是 Sprite3D —— 这里漏改会让它一进 tick 就被当成
+		##   无效条目移除掉(2026-08-09 实测: 罩子建出来了但下一帧就没了)
+		if not (nd is Node3D) or not is_instance_valid(nd):
 			_aegis.remove_at(i)
 			continue
-		var s: Sprite3D = nd
+		var s: MeshInstance3D = nd
 		a["t"] = float(a["t"]) + delta
 		var u = a.get("u", null)
 		var hold: bool = _should_hold(u)
@@ -531,8 +659,9 @@ func _tick_aegis(delta: float) -> void:
 				s.queue_free()
 				_aegis.remove_at(i)
 				continue
+		## ★罩子跟着单位, 罩心取龟身中段 ⇒ 上下都包得住(位置/大小是这次的核心要求)
 		if u is Dictionary and (u as Dictionary).get("alive", false):
-			s.position = battle._world_pos(_aegis_anchor(u as Dictionary), AEGIS_Y)
+			s.position = battle._world_pos((u as Dictionary)["pos"] as Vector2, DOME_Y)
 		# 尺寸随剩余护盾: 见底时 AEGIS_MIN_K, ≥55 满尺寸 —— 这一件唯一的"还剩多少"读数
 		var sh: float = float((u as Dictionary).get("shield", 0.0)) if u is Dictionary else 0.0
 		var k: float = lerpf(AEGIS_MIN_K, 1.0, clampf(sh / AEGIS_REF, 0.0, 1.0))
@@ -542,11 +671,59 @@ func _tick_aegis(delta: float) -> void:
 			fl = maxf(0.0, fl - delta)
 			a["flash"] = fl
 		var fk: float = AEGIS_FLASH * (fl / AEGIS_FLASH_SEC)
-		s.pixel_size = _ps_for(s, AEGIS_W_PX * (k + fk * 0.22), AEGIS_FRAMES)
-		s.frame = int(float(a["t"]) * AEGIS_FPS) % AEGIS_FRAMES
+		## ★★弹出: 补盾那一下先撑到 DOME_POP_K 再回落 —— 罩子"合拢"的那一下
+		var pp: float = float(a.get("pop", 0.0))
+		if pp > 0.0:
+			pp = maxf(0.0, pp - delta)
+			a["pop"] = pp
+		var pk: float = pp / DOME_POP_SEC
 		var ina: float = clampf(float(a["t"]) / AEGIS_IN_SEC, 0.0, 1.0)
-		# 常驻物不许"一出生就淡出": 底 alpha 恒 0.88, 只有入场/收尾/高光在动
-		s.modulate.a = clampf(ina * out_a * (0.88 + fk * 0.20), 0.0, 1.0)
+		## ★★2026-08-09 用户:「罩子为什么大小在变」—— 我把"剩余护盾"做成了罩子**尺寸**,
+		##   护盾越少罩子越小。这是错的: 罩子是个物理外壳, 大小不该动, 会读成在呼吸。
+		##   ⇒ 尺寸只由**入场**和**合拢弹一下**驱动; **剩余量改为驱动亮度**(见下面 alpha)。
+		var scl: float = (1.0 + (DOME_POP_K - 1.0) * pk) * (0.72 + 0.28 * ina)
+		s.scale = Vector3(scl, scl, scl)
+		## ★★涟漪: 挨打那一下从命中方向扩开 —— 打哪儿亮哪儿
+		var ht: float = float(a.get("hit_t", 1.0))
+		if ht < 1.0:
+			ht = minf(1.0, ht + delta / DOME_HIT_SEC)
+			a["hit_t"] = ht
+		var mat := s.material_override as ShaderMaterial
+		if mat != null:
+			## 常驻物不许"一出生就淡出": 底强度恒定, 只有入场/收尾/弹出/涟漪在动
+			## 剩余护盾 ⇒ **亮度**(k 从 AEGIS_MIN_K 到 1.0), 尺寸恒定
+			mat.set_shader_parameter("alpha", clampf(ina * out_a * (0.30 + 0.62 * k), 0.0, 1.0))
+			mat.set_shader_parameter("pop", pk * 0.9 + fk * 0.5)
+			mat.set_shader_parameter("hit_t", ht)
+			mat.set_shader_parameter("hit_dir", a.get("hit_dir", Vector3(0, 0, 1)))
+			mat.set_shader_parameter("t", float(a["t"]))
+		_tick_build(a, delta, out_a)
+
+
+## 【护盾合拢】的进度推进。★没有自己的秒表以外的任何状态 —— 起点由 `_start_build` 打,
+## 之后纯靠 delta 累加; 装完就把板子层藏起来(不销毁, 下次补盾直接重播)。
+func _tick_build(a: Dictionary, delta: float, out_a: float) -> void:
+	var bt: float = float(a.get("build_t", -1.0))
+	if bt < 0.0:
+		return
+	var pn = a.get("panels", null)
+	if not (pn is MeshInstance3D) or not is_instance_valid(pn):
+		a["build_t"] = -1.0
+		return
+	bt += delta
+	a["build_t"] = bt
+	var mi: MeshInstance3D = pn
+	var pm := mi.material_override as ShaderMaterial
+	if pm != null:
+		## 总进度跑到 BUILD_OVER(>1) —— 最后落位的那几块也要有时间闪完"锁死"高光
+		pm.set_shader_parameter("build", clampf(bt / BUILD_SEC, 0.0, 1.0) * BUILD_OVER)
+		var fd: float = 1.0
+		if bt > BUILD_SEC:
+			fd = clampf(1.0 - (bt - BUILD_SEC) / BUILD_FADE, 0.0, 1.0)
+		pm.set_shader_parameter("fade", fd * out_a)
+	if bt >= BUILD_SEC + BUILD_FADE:
+		a["build_t"] = -1.0
+		mi.visible = false
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -568,6 +745,14 @@ func clear() -> int:
 			y.queue_free()
 			n += 1
 	_aegis.clear()
+	## ★在途光弹也要撤 —— 漏了它换路时会残留一枚在世界里
+	##   (memory [[fb-write-without-reader-and-fake-gates]] 同族: 新增了一类节点却没接进撤场)
+	for b in _bolts:
+		var z = b.get("node", null)
+		if z is Node3D and is_instance_valid(z):
+			z.queue_free()
+			n += 1
+	_bolts.clear()
 	return n
 
 
@@ -579,7 +764,14 @@ func alive_count(kind: String = "") -> int:
 			var y = a.get("node", null)
 			if y is Node3D and is_instance_valid(y):
 				n += 1
-	if kind == "aegis":
+	## ★在途光弹存在 `_bolts` 里(不在 `_fx`) —— 漏了这一段, `alive_count("rbolt")` 永远是 0,
+	##   门禁会把"光弹当场就在"判成没有(2026-08-09 实测)。
+	if kind == "" or kind == "rbolt":
+		for b in _bolts:
+			var bn = b.get("node", null)
+			if bn is Node3D and is_instance_valid(bn):
+				n += 1
+	if kind == "aegis" or kind == "rbolt":
 		return n
 	for f in _fx:
 		var x = f.get("node", null)
@@ -608,12 +800,28 @@ func fx_nodes(kind: String = "") -> Array:
 
 
 ## 某只龟当下那面盾板的节点(没有返回 null)。★门禁量真实对象用 —— 不返回记账字段。
-func aegis_node_of(u) -> Sprite3D:
+## ★2026-08-09 返回类型 Sprite3D → Node3D: 盾板已换成 3D 球罩(MeshInstance3D)。
+func aegis_node_of(u) -> Node3D:
 	var a: Dictionary = _aegis_of(u)
 	if a.is_empty():
 		return null
 	var n = a.get("node", null)
-	return n if (n is Sprite3D and is_instance_valid(n)) else null
+	return n if (n is Node3D and is_instance_valid(n)) else null
+
+
+## 某只龟当下那层【合拢板】的节点(没有返回 null)。★门禁量真实对象用。
+func panels_node_of(u) -> MeshInstance3D:
+	var a: Dictionary = _aegis_of(u)
+	if a.is_empty():
+		return null
+	var n = a.get("panels", null)
+	return n if (n is MeshInstance3D and is_instance_valid(n)) else null
+
+
+## 合拢进度(秒; < 0 表示当下没在装配)。门禁用它验"补盾真的放了一次合拢"。
+func build_t_of(u) -> float:
+	var a: Dictionary = _aegis_of(u)
+	return -1.0 if a.is_empty() else float(a.get("build_t", -1.0))
 
 
 # ══════════════════════════════════════════════════════════════════

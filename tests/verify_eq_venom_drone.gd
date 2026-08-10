@@ -68,6 +68,7 @@ func _ready() -> void:
 	await _g4_turn_inertia()
 	_g5_fog_physics()
 	_g5b_fog_rim()
+	await _g5c_fog_particles()
 	await _g6_fog_lifetime()
 	await _g7_poison()
 	await _g8_vslow()
@@ -394,10 +395,14 @@ func _g5_fog_physics() -> void:
 			if absf(sc - VV.fog_sigma(tt)) > 1e-4:
 				bad5 += 1
 			# 渲染 alpha = 显示增益 0.45 × 归一浓度(★增益是常数 ⇒ 等值线一条不动)
-			if absf(al - 0.45 * VV.fog_peak(tt)) > 1e-6:
+			## ★读常量而不是写死 0.45: 这条守的是**关系**(alpha = 常数增益 × 归一浓度,
+			##   增益与 t 无关 ⇒ 等值线一条不动), 不是那个具体数字。
+			##   2026-08-09 haze 从"就是雾"降级为极淡底色(0.45→0.14, 真雾改用粒子),
+			##   写死的数字当场把这条判红 —— 而演出与判定的关系其实一点没变。
+			if absf(al - VV.FOG_DRAW_A * VV.fog_peak(tt)) > 1e-6:
 				bad5 += 1
 			m5 += 1
-		print("     真实节点 vs 曲线: 喂 %d 个时刻, 不符 %d 处 (scale=σ(t) 码 / alpha=0.45×C_peak(t))" % [m5, bad5])
+		print("     真实节点 vs 曲线: 喂 %d 个时刻, 不符 %d 处 (scale=σ(t) 码 / alpha=%.2f×C_peak(t))" % [m5, bad5, VV.FOG_DRAW_A])
 		_ok("⑤ ★分母: 真的喂了时刻 (N=%d)" % m5, m5 == 16)
 		_ok("⑤ ★★真实节点的 scale 与材质 alpha 就是这两条曲线本身(演出与判定同源)", bad5 == 0,
 			"不符 %d 处" % bad5)
@@ -408,147 +413,15 @@ func _g5_fog_physics() -> void:
 ## 实拍(VFXLAB p2eq_092 · zoom 1.0 实战镜头)抓出三处, 三处一个解 —— 见
 ## venom_drone_vfx.gd 文件头【甲乙丙】。这一节守的就是那个解。
 func _g5b_fog_rim() -> void:
+	## ★★2026-08-09 **判定边界环已移除**(用户:「为啥要环啊」—— 我没有站得住的理由)。
+	##   原来这一节钉的是"环在场 / 环 holdfade / 环半径 ≡ fog_radius(t)"。
+	##   ②那条保证没有丢, 而是**加强**了: 粒子直接铺在 `fog_radius(t)` 里(见 ⑤P),
+	##   "看得见的 == 打得到的"由粒子的发射盘独扛, 不再靠画一条线。
+	##   `fog_rim_profile` / `_build_rim_mesh` 是纯函数, 保留不删, 但已无人调用。
 	print("")
-	print("  ⑤★ 判定边界环 — 治【一团一团读不出 / 淡出病 / 边界在 alpha 0.016 上】:")
-
-	# ⑤f ★★"每 0.25 秒留一团"在【画面上】成不成立: 沿航线叠 16 团, 数合成亮度的局部极小值。
-	#    ★这不是主观判断 —— 相邻两团心距 = 110 码/秒 × 0.25 秒 = 27.5 码, 而 σ(0)=26,
-	#      两个等幅高斯要心距 > 2σ 才有凹陷 ⇒ **只有 haze 的旧演出在数学上必然是一条光滑绿脊**。
-	#    ★把【错的现状】也钉进断言(旧口径必须是 0 个), 否则新口径涨到多少都说明不了问题。
-	var d_step := 110.0 * 0.25
-	var haze_only: Array = []
-	var with_rim: Array = []
-	var x := -460.0
-	while x <= 40.0:
-		var a_h := 0.0
-		var a_r := 0.0
-		for k in range(16):
-			var tk: float = 0.25 * float(k)
-			var dx: float = absf(x + d_step * float(k))
-			a_h += 0.45 * VV.fog_alpha_at(dx, tk)
-			a_r += VV.fog_draw_at(dx, tk)
-		haze_only.append(a_h)
-		with_rim.append(a_r)
-		x += 0.5
-	var dip_h: int = _dips(haze_only)
-	var dip_r: int = _dips(with_rim)
-	print("     沿航线采 %d 点(16 团 · 心距 %.1f 码 · σ(0)=%.1f 码):" % [
-		haze_only.size(), d_step, VV.fog_sigma(0.0)])
-	print("       只有 haze(旧演出) 的局部极小值 %d 个 —— 心距/σ = %.2f < 2 ⇒ 数学上必然是一条光滑绿脊" % [
-		dip_h, d_step / VV.fog_sigma(0.0)])
-	print("       haze + rim(新演出) 的局部极小值 %d 个 —— 每团一个可数的边界" % dip_r)
-	_ok("⑤f ★分母: 真的采了点 (N=%d)" % haze_only.size(), haze_only.size() > 900)
-	_ok("⑤f ★★【根因钉死】只有高斯烟团时, 沿航线一个局部极小值都没有(团数在画面上不可数)",
-		dip_h == 0, "实得 %d" % dip_h)
-	_ok("⑤f ★★★补了判定边界环之后, 沿航线数得出 ≥ 12 段边界(= 一团一团数得出来)",
-		dip_r >= 12, "实得 %d" % dip_r)
-
-	# ⑤g ★holdfade: 前 62% 寿命恒定满亮, 之后才线性退场 —— 治"短命特效一出生就淡出"
-	var hold_bad := 0
-	var mh := 0
-	var t := 0.0
-	while t <= 4.0 * 0.55 + 1e-9:
-		if absf(VV.fog_rim_alpha(t) - VV.fog_rim_alpha(0.0)) > 1e-9:
-			hold_bad += 1
-		mh += 1
-		t += 0.02
-	var mono_down := true
-	var prev: float = VV.fog_rim_alpha(4.0 * 0.62)
-	var t2: float = 4.0 * 0.62 + 0.02
-	while t2 <= 4.0:
-		var cur: float = VV.fog_rim_alpha(t2)
-		if cur > prev + 1e-9:
-			mono_down = false
-		prev = cur
-		t2 += 0.02
-	print("     环亮度: t=0 %.4f / t=1 %.4f / t=2 %.4f / t=2.48(62%%) %.4f / t=3.4 %.4f / t=4 %.4f" % [
-		VV.fog_rim_alpha(0.0), VV.fog_rim_alpha(1.0), VV.fog_rim_alpha(2.0),
-		VV.fog_rim_alpha(2.48), VV.fog_rim_alpha(3.4), VV.fog_rim_alpha(4.0)])
-	print("     对照 haze 的峰值 alpha: t=0 %.4f / t=1 %.4f / t=2 %.4f (**前 1 秒就丢掉 2/3** = 淡出病)" % [
-		0.45 * VV.fog_peak(0.0), 0.45 * VV.fog_peak(1.0), 0.45 * VV.fog_peak(2.0)])
-	_ok("⑤g ★分母: 真的扫了前 55%% 寿命 (N=%d)" % mh, mh > 100)
-	_ok("⑤g ★★holdfade: 前 55%% 寿命(2.2 秒)里亮度【一点都不降】(不是一出生就线性淡出)",
-		hold_bad == 0, "有 %d 个采样点已经开始降了" % hold_bad)
-	_ok("⑤g ★之后单调退场, 且寿命末尾精确归零", mono_down and absf(VV.fog_rim_alpha(4.0)) < 1e-9)
-	_ok("⑤g ★反差证据: 同一时刻(t=2)环还有 %.3f 而雾体只剩 %.3f —— 这团【看不见但照样上毒】"
-		% [VV.fog_rim_alpha(2.0), 0.45 * VV.fog_peak(2.0)],
-		VV.fog_rim_alpha(2.0) > 0.45 * VV.fog_peak(2.0) * 4.0)
-
-	# ⑤h ★★量【真实节点】: 环的世界半径就是 sim 判定用的半径, 不是另算一份
-	_v.clear_all()
-	var fn = _v._vfx.make_fog(Vector2(700.0, 400.0))
-	_ok("⑤h ★分母: 毒雾节点建出来了", fn != null)
-	if fn == null:
-		return
-	var rim := fn.get_node_or_null("rim") as MeshInstance3D
-	_ok("⑤h ★分母: rim 子节点在", rim != null)
-	if rim == null:
-		return
-	var badr := 0
-	var mr := 0
-	var worst_r := 0.0
-	for i in range(0, 16):
-		var tt: float = float(i) * 0.25
-		_v._vfx.apply_fog(fn, tt)
-		var want_r: float = VV.fog_radius(tt)
-		if want_r <= 0.0:
-			if rim.visible:
-				badr += 1
-			continue
-		var got_r: float = rim.scale.x / float(_s.WS)      # 米 → 码
-		var got_a: float = (rim.material_override as StandardMaterial3D).albedo_color.a
-		worst_r = maxf(worst_r, absf(got_r - want_r))
-		if absf(got_r - want_r) > 1e-4:
-			badr += 1
-		if absf(got_a - VV.fog_rim_alpha(tt)) > 1e-6:
-			badr += 1
-		if not rim.visible:
-			badr += 1
-		mr += 1
-	print("     真实 rim 节点 vs 判定半径: 喂 16 个时刻(其中 %d 个环还在), 不符 %d 处; 半径最大偏差 %.9f 码" % [
-		mr, badr, worst_r])
-	_ok("⑤h ★分母: 真的有时刻是环还在的 (N=%d)" % mr, mr >= 15)
-	_ok("⑤h ★★★环的世界半径 == sim 判定命中用的 fog_radius(t)(打得到的边界终于画出来了)",
-		badr == 0, "不符 %d 处" % badr)
-	# ★反面: 若把环画成 σ(t)(旧 haze 的口径)就会差出一大截 —— 证明上一条不是恒真式
-	print("     ★反面: 若环按 σ(t) 画, t=1 时是 %.1f 码, 而判定半径是 %.1f 码(差 %.1f 码)" % [
-		VV.fog_sigma(1.0), VV.fog_radius(1.0), absf(VV.fog_sigma(1.0) - VV.fog_radius(1.0))])
-	_ok("⑤h ★反面: σ(t) 与 fog_radius(t) 本来就差得远(所以上一条是真断言)",
-		absf(VV.fog_sigma(1.0) - VV.fog_radius(1.0)) > 20.0)
-	# 寿命末尾环收干净
-	_v._vfx.apply_fog(fn, 4.0)
-	_ok("⑤h ★寿命末尾(4.0 秒)环隐藏(判定半径已归零, 不能留个圈在地上)", not rim.visible)
-	# 环的顶点色剖面 == fog_rim_profile(★从真实网格反解, 不是把公式抄第二遍)
-	_v._vfx.apply_fog(fn, 1.0)
-	var vs: PackedVector3Array = (rim.mesh as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
-	var cs: PackedColorArray = (rim.mesh as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_COLOR]
-	var badp := 0
-	var mp := 0
-	var rho_min := 9.9
-	var rho_max := 0.0
-	for i in range(vs.size()):
-		var rho: float = Vector2(vs[i].x, vs[i].z).length()
-		rho_min = minf(rho_min, rho)
-		rho_max = maxf(rho_max, rho)
-		if absf(cs[i].a - VV.fog_rim_profile(rho)) > 1e-4:
-			badp += 1
-		mp += 1
-	print("     环网格 %d 个顶点: ρ ∈ [%.4f, %.4f](需求 [0.88, 1.00]); 顶点 alpha 与剖面不符 %d 处" % [
-		mp, rho_min, rho_max, badp])
-	_ok("⑤h ★分母: 环真的有顶点 (N=%d)" % mp, mp > 200)
-	_ok("⑤h ★环的外缘 ρ 精确为 1.0 —— 也就是**外缘就是判定边界本身**",
-		absf(rho_max - 1.0) < 1e-4, "实得 %.6f" % rho_max)
-	_ok("⑤h ★环的顶点 alpha 就是 fog_rim_profile 这条剖面(从真实网格反解)", badp == 0,
-		"不符 %d 处" % badp)
-	# 贴地
-	var g: Array = _updots(rim, 0)
-	print("     环 %d 面, |n·上| 最小 %.4f 平均 %.4f" % [int(g[0]), float(g[1]), float(g[2])])
-	_ok("⑤h ★分母: 环真的有面 (N=%d)" % int(g[0]), int(g[0]) > 100)
-	_ok("⑤h ★环贴地平铺(不是立着的圈)", float(g[1]) > 0.99)
-	fn.queue_free()
+	print("  ⑤b 判定边界环: 已移除(见本函数注释), 保证改由 ⑤P 的粒子发射盘承担")
 
 
-# ── ⑥ 毒雾寿命: 每 0.25 秒留一团 · 每团 4 秒后【真的消失】────────────────────
 func _g6_fog_lifetime() -> void:
 	print("")
 	print("  ⑥ 毒雾 — 每 0.25 秒留一团 · 4 秒后真的消失:")
@@ -1426,6 +1299,67 @@ func _ok(what: String, cond: bool, detail: String = "") -> void:
 	else:
 		_fail += 1
 		print("     [FAIL] ", what, ("  " + detail) if detail != "" else "")
+
+
+
+## ★★毒雾是**真粒子**(2026-08-09 用户:「那也别用圈圈来敷衍我啊，雾气是怎么做?」)。
+## 旧"雾" = 一张贴地平面圆盘(顶点 alpha 写死高斯), 零粒子零贴图零动画 ——
+## 不翻涌不飘不变形, 只会整体缩放变淡。与 090 被点名的"雷雾是程序化线条"同族。
+## ⚠ GPU 粒子在无头 CI 下不推进 ⇒ 这里只量**配置**(是不是粒子/发射半径/有没有贴图),
+##   量不了"粒子真实位置"。判据落在能同步读到的东西上(CLAUDE.md §3.5 同一条原则)。
+func _g5c_fog_particles() -> void:
+	var root = _v._vfx.make_fog(Vector2(400, 300))
+	_ok("⑤P 分母: 毒雾团建出来了", is_instance_valid(root))
+	if not is_instance_valid(root):
+		return
+	var puffs = (root as Node).get_node_or_null("puffs")
+	_ok("⑤P ★★毒雾是 GPUParticles3D 真粒子, 不是一张贴地渐变圆盘",
+		puffs != null and puffs is GPUParticles3D)
+	if puffs == null:
+		return
+	var ps := puffs as GPUParticles3D
+	var pm := ps.process_material as ParticleProcessMaterial
+	_ok("⑤P 分母: 挂了 ParticleProcessMaterial", pm != null)
+	_ok("⑤P 粒子会翻涌(开了湍流, 不是一层静止的膜)", pm != null and pm.turbulence_enabled)
+	_ok("⑤P 从圆心起(内径 0 ⇒ 实心圆盘, 不是只在边上)",
+		pm != null and pm.emission_ring_inner_radius <= 1e-6)
+	var qm := ps.draw_pass_1 as QuadMesh
+	var dm := (qm.material if qm != null else null) as StandardMaterial3D
+	_ok("⑤P ★粒子有贴图(没贴图的 QuadMesh 就是实心方片 —— 090 满屏蓝方块的根因)",
+		dm != null and dm.albedo_texture != null)
+	_ok("⑤P 贴图按 NEAREST 取样", dm != null and dm.texture_filter == BaseMaterial3D.TEXTURE_FILTER_NEAREST)
+	## ★★发射半径必须跟着闭式解的 σ(t) 走 —— 与判定同源, 不是另调一套看着差不多的数
+	var bad: int = 0
+	var m: int = 0
+	for k in range(9):
+		var tt: float = float(k) * 0.45
+		_v._vfx.apply_fog(root, tt)
+		## ★★不是 σ(t) 而是 **判定半径 R(t)** —— 雾铺到哪就打到哪。
+		##   2026-08-09 去掉判定边界环之后, "看得见 == 打得到"由这一条独扛。
+		var want: float = VV.fog_radius(tt) * float(_s.WS)
+		if absf(pm.emission_ring_radius - want) > 1e-5:
+			bad += 1
+		m += 1
+	_ok("⑤P ★★发射盘半径 ≡ 判定半径 fog_radius(t)(喂 %d 个时刻, 雾铺到哪就打到哪)" % m,
+		bad == 0, "不符 %d 处" % bad)
+	## 判定半径先涨后跌、t=4 精确归零 ⇒ 雾自己收干净
+	_v._vfx.apply_fog(root, 3.99)
+	var r_end: float = pm.emission_ring_radius
+	_v._vfx.apply_fog(root, 2.0)
+	var r_mid: float = pm.emission_ring_radius
+	_ok("⑤P 雾的范围先涨后收(中段 > 末段), 4 秒时自己收干净",
+		r_mid > r_end * 3.0, "t=2 %.4f / t=3.99 %.4f" % [r_mid, r_end])
+	## 亮度跟着归一浓度走(与 haze 同一条 C_peak, 只是增益不同)
+	_v._vfx.apply_fog(root, 0.0)
+	var a0: float = dm.albedo_color.a
+	_v._vfx.apply_fog(root, 2.0)
+	var a2: float = dm.albedo_color.a
+	_ok("⑤P 粒子亮度随浓度衰减(t=0 比 t=2 亮)", a0 > a2, "%.4f → %.4f" % [a0, a2])
+	## ⚠ 必须**等一帧**再走: `queue_free()` 是延迟的, 不等的话这团雾会被后面
+	##   ⑥/⑪ 的节点计数逮到, 报成"多了一团 / 泄漏一个"(2026-08-09 实测三条红)。
+	if is_instance_valid(root):
+		(root as Node).queue_free()
+	await get_tree().process_frame
 
 
 func _done() -> void:

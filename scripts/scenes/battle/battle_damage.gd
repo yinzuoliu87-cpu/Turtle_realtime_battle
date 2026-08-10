@@ -441,7 +441,15 @@ func _grant_shield(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 	u["_st_shield"] = int(u.get("_st_shield", 0)) + got   # §STATS: 实际获盾
 	if got >= 8:                             # #1 护盾飘字 "+N 盾" (浅蓝); 门槛过滤每帧微盾被动防刷屏
 		battle._vfx._float_text(u["pos"] + Vector2(0, -52), "+%d 盾" % got, Color("#ffffff"), false, "shield")
-	battle._skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.4), 44.0)
+	## ★★2026-08-09 用户看到 095 的画面:「又是程序生成的环？哪个商业游戏是你这么做啊」。
+	##   这一行就是那个环 —— `_skill_ring` 是**代码现画的一个圆**, 而它封着全游戏 44 个给盾点,
+	##   于是任何来源给盾, 脚下都糊同一个金圈。程序化圆环是占位素材的水平, 这条不辩解。
+	## ⚠ 但它是**共享**的: 直接删会波及所有装备/羁绊/技能 ⇒ 那是单独一轮的事(已记路线图)。
+	##   这里只开一个口子: **本装备自绘时跳过通用环**, 由那件装备的演出层负责这一下。
+	##   `_own_grant_vfx` 由自绘方在调 `_grant_shield` 前置 true, 本函数用完即清。
+	if not bool(u.get("_own_grant_vfx", false)):
+		battle._skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.4), 44.0)
+	u.erase("_own_grant_vfx")
 	battle._audio_sys._sfx_shield_gain()                       # §AUDIO: 得盾音 (节流; 群体上盾不刷屏)
 
 

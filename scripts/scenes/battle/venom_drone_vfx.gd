@@ -123,6 +123,21 @@ const FOG_TAU := 2.2
 ## 网格画到 3σ。★必须 ≥ max R(t)/σ(t) = R(0)/σ(0) = 2.582, 否则"打得到的地方没画出来"
 const FOG_RHO_MAX := 3.0
 ## 毒雾网格分段
+## ── 真粒子雾 (2026-08-09 用户:「那也别用圈圈来敷衍我啊，雾气是怎么做?」) ────────
+## 旧"雾"= `_build_fog_mesh()` 建的一张**贴地平面圆盘**(7 圈 x 32 段, 顶点 alpha 写死高斯),
+## 零粒子零贴图零动画 —— 不翻涌不飘不变形, 只会整体缩放和变淡。
+## 这与 090 被点名的"雷雾是程序化线条"同族, 那次的解法就是 GPUParticles3D, 这里照抄。
+## ★闭式解一个数不动: 发射半径吃 `fog_sigma(t)`、亮度吃 `fog_peak(t)`,
+##   判定与画面仍然同源(haze 盘保留为极淡底色, 原有全部门禁不受影响)。
+const FOG_PART_N := 34            ## 每团雾同时存在多少颗
+const FOG_PART_PX := 58.0         ## 单颗边长(码)。★覆盖率靠**放大单颗**不靠堆数量
+const FOG_PART_LIFE := 1.15       ## 单颗寿命(秒)
+const FOG_PART_RISE := 0.55       ## 向上初速(米/秒) —— 慢慢往上翻
+const FOG_PART_TURB := 0.65       ## 湍流强度
+## 发射盘半径 = k x sigma(t)。1.2 sigma 处高斯还有 49% 浓度, 再外面基本看不见了。
+const FOG_PART_K := 1.2
+## 粒子整体亮度增益(乘在归一浓度上)。
+const FOG_PART_A := 0.85
 const FOG_RINGS := 7
 const FOG_SEGS := 32
 
@@ -131,7 +146,10 @@ const FOG_SEGS := 32
 ## 0.88 ⇒ 环厚约 0.12·R ≈ 8 码 ≈ 实战镜头下 5 px: 再细就闪, 再粗就糊成盘。
 const RIM_IN := 0.88
 ## 环的满亮 alpha
-const RIM_A := 0.55
+## ★2026-08-09 0.55→0.34: 有了真雾之后, 环退回"判定边界的提示线", 不再当主角。
+## ★2026-08-09 二次下调 0.34→0.15: 有真粒子雾之后, 环只是"判定边界的提示线",
+##   实拍在 0.34 时整条航线读成"一串圈"而不是雾, 这与用户「别用圈圈敷衍我」直接冲突。
+const RIM_A := 0.15
 ## **holdfade**: 前这么大比例的寿命里恒定满亮, 之后才线性退场。
 ## ★这一条是治"淡出病"的唯一开关 —— 0 就退化成"一出生就线性淡出"(门禁 ⑤g 的反向验证点)。
 const RIM_HOLD := 0.62
@@ -202,7 +220,9 @@ const HIND_X := -0.30
 ##   一个【常数】增益同时缩放浓度与阈值 ⇒ 等值线一条不动, "看得见的边界 == 打得到的边界"
 ##   仍然精确成立(门禁 ⑤d 验的正是这条)。加它的理由是实拍出来的:
 ##   16 团加性叠在一起会把尾迹烧成一片白, 反而看不出"一团一团铺开"的层次。
-const FOG_DRAW_A := 0.45
+## ★2026-08-09 0.45→0.14: haze 盘从"就是雾"降级为**极淡底色** —— 真正的雾现在是粒子。
+##   它仍然承载 `fog_alpha_at` 的精确关系(门禁 ⑤ 量的是它), 所以保留不删。
+const FOG_DRAW_A := 0.14
 
 ## ★本体【不用加性】—— 实拍教训: 本体 + 双翅 + 尾巴四层加性叠在一处直接饱和成白团,
 ##   翅和尾完全看不出来(比"没做动画"还糟)。改成:
@@ -388,6 +408,81 @@ static func tail_phase_speed(f: float = FLAP_HZ) -> float:
 ## 单位 σ 的贴地高斯盘(顶点 alpha = e^(−ρ²/2), ρ 画到 FOG_RHO_MAX)。
 ## ★网格是【σ 口径】的: 节点 scale = σ(t) ⇒ 世界半径 r 处的顶点 alpha 恒为 e^(−r²/2σ²),
 ##   再乘材质的 C_peak(t) 就精确等于 fog_alpha_at(r,t)。这是"看得见=打得到"的实现依据。
+## 单颗雾的贴图。★没有它, `QuadMesh` 就是一个**实心方片** —— 090 实拍满屏蓝方块就是这么来的。
+## 做法: 16x16 径向衰减 + **量化成 5 档**(像素风要台阶不要高斯糊) + NEAREST。
+var _tex_puff: ImageTexture = null
+func _puff_tex() -> ImageTexture:
+	if _tex_puff != null:
+		return _tex_puff
+	var n: int = 16
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	var c: float = float(n - 1) * 0.5
+	for y in range(n):
+		for x in range(n):
+			var d: float = Vector2(float(x) - c, float(y) - c).length() / (c + 0.5)
+			var a: float = clampf(1.0 - d, 0.0, 1.0)
+			a = a * a
+			a = floor(a * 5.0) / 5.0
+			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
+	_tex_puff = ImageTexture.create_from_image(img)
+	return _tex_puff
+
+
+## 一团雾的粒子体。发射盘半径每帧由 `apply_fog` 按 `fog_sigma(t)` 写。
+func _make_fog_particles() -> GPUParticles3D:
+	var ps := GPUParticles3D.new()
+	ps.name = "puffs"
+	ps.amount = FOG_PART_N
+	ps.lifetime = FOG_PART_LIFE
+	ps.one_shot = false
+	ps.randomness = 1.0
+	ps.local_coords = false
+	ps.fixed_fps = 30
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
+	pm.emission_ring_axis = Vector3(0, 1, 0)
+	pm.emission_ring_radius = FOG_SIG0 * FOG_PART_K * float(battle.WS)
+	pm.emission_ring_inner_radius = 0.0
+	pm.emission_ring_height = 0.2
+	pm.direction = Vector3(0, 1, 0)
+	pm.spread = 25.0
+	pm.initial_velocity_min = FOG_PART_RISE * 0.35
+	pm.initial_velocity_max = FOG_PART_RISE
+	pm.gravity = Vector3(0, -0.3, 0)
+	pm.turbulence_enabled = true
+	pm.turbulence_noise_strength = FOG_PART_TURB
+	pm.turbulence_noise_scale = 2.0
+	pm.angle_min = -180.0
+	pm.angle_max = 180.0
+	pm.angular_velocity_min = -35.0
+	pm.angular_velocity_max = 35.0
+	pm.scale_min = 0.6
+	pm.scale_max = 1.4
+	var cv := Curve.new()
+	cv.add_point(Vector2(0.0, 0.15))
+	cv.add_point(Vector2(0.35, 1.0))
+	cv.add_point(Vector2(1.0, 0.0))
+	var ct := CurveTexture.new()
+	ct.curve = cv
+	pm.scale_curve = ct
+	ps.process_material = pm
+	var dm := StandardMaterial3D.new()
+	dm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	dm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	dm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	dm.vertex_color_use_as_albedo = true
+	dm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	dm.albedo_texture = _puff_tex()
+	dm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	dm.albedo_color = COL_FOG
+	var qm := QuadMesh.new()
+	qm.size = Vector2(FOG_PART_PX * float(battle.WS), FOG_PART_PX * float(battle.WS))
+	qm.material = dm
+	ps.draw_pass_1 = qm
+	ps.emitting = true
+	return ps
+
+
 static func _build_fog_mesh() -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	var st := SurfaceTool.new()
@@ -522,11 +617,13 @@ func make_fog(pos2d: Vector2):
 	haze.material_override = _mat(true, 8)
 	haze.name = "haze"
 	root.add_child(haze)
-	var rim := MeshInstance3D.new()
-	rim.mesh = _cache_rim
-	rim.material_override = _mat(true, 9)
-	rim.name = "rim"
-	root.add_child(rim)
+	## ★★2026-08-09 **去掉判定边界环**。用户:「为啥要环啊」—— 我没有站得住的理由:
+	##   环是为了①数得出团数 ②画出判定边界, 两条都不是需求, 而且读起来就是"一串圈"。
+	##   ②那条改由**粒子直接铺在判定半径 R(t) 里**来保证(见 apply_fog) —— 不画线, 保证更强。
+	##   `_build_rim_mesh` / `fog_rim_*` 保留不删: 它们是纯函数, 仍被门禁当**几何事实源**用。
+	## ★★真粒子雾。haze 盘保留(它承载 `fog_alpha_at` 的精确关系, 门禁量的就是它),
+	##   但已压到极淡当底色; **画面上的雾从这里来**。
+	root.add_child(_make_fog_particles())
 	battle._world.add_child(root)
 	apply_fog(root, 0.0)
 	return root
@@ -546,19 +643,21 @@ func apply_fog(root, t: float) -> void:
 		var a: float = FOG_DRAW_A * fog_peak(t)
 		(haze.material_override as StandardMaterial3D).albedo_color = Color(
 			COL_FOG.r, COL_FOG.g, COL_FOG.b, a)
-	var rim = root.get_node_or_null("rim")
-	if not is_instance_valid(rim):
-		return
-	## ★★环的世界半径 **就是** sim 判定用的 `fog_radius(t)` —— 不是另算一份"看着差不多"的。
-	##   门禁 ⑤e-rim 量的是这个真实节点的 scale, 不是重抄一遍公式。
-	var rr: float = fog_radius(t)
-	rim.visible = rr > 0.0
-	if rr <= 0.0:
-		return
-	var rs: float = rr * float(battle.WS)
-	rim.scale = Vector3(rs, 1.0, rs)
-	(rim.material_override as StandardMaterial3D).albedo_color = Color(
-		COL_RIM.r, COL_RIM.g, COL_RIM.b, fog_rim_alpha(t))
+	## 粒子: 发射盘半径 = FOG_PART_K x σ(t)、整体亮度 = C_peak(t) —— 两个都取自闭式解,
+	## 所以"雾铺到哪"和"雾多浓"跟判定同源, 不是另调一套看着差不多的数。
+	var puffs = root.get_node_or_null("puffs")
+	if is_instance_valid(puffs):
+		var pm2 := (puffs as GPUParticles3D).process_material as ParticleProcessMaterial
+		if pm2 != null:
+			## ★★发射盘半径 **就是** sim 判定命中的 `fog_radius(t)` —— 雾铺到哪就打到哪,
+			##   而且它先涨后缩、t=4 精确归零 ⇒ 雾会自己收干净, 不用另外淡出。
+			pm2.emission_ring_radius = maxf(fog_radius(t) * float(battle.WS), 1e-4)
+		var qm2 := (puffs as GPUParticles3D).draw_pass_1 as QuadMesh
+		var dm2 := (qm2.material if qm2 != null else null) as StandardMaterial3D
+		if dm2 != null:
+			dm2.albedo_color = Color(COL_FOG.r, COL_FOG.g, COL_FOG.b,
+				FOG_PART_A * fog_peak(t))
+	## (环已移除 —— 见 make_fog 里那段注释)
 
 
 # ══════════════════════════════════════════════════════════════════

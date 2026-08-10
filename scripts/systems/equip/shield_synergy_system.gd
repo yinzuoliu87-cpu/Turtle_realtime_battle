@@ -150,8 +150,20 @@ func _riposte(u: Dictionary, src) -> void:
 		return                                      # 反击来自【圣光护盾装备】, 没装就没有
 	if float(u.get("shield", 0.0)) <= 0.0:
 		return                                      # 「圣光护盾存在时」—— 没盾不反击
-	battle._damage._apply_damage_from(u, src, int(RIPOSTE_FLAT), Color("#ffe9a8"), 0.0, true)
-	## ★演出【与伤害同帧】—— 上一行刚结算完就画, 光矢没有飞行时间。
+	## ★★2026-08-09 用户:「要光弹啊，弹命中了再出伤啊」——
+	##   反击改成**一枚光弹从罩面飞回攻击者, 飞到那一刻才结算伤害**。
+	##   飞行时间由演出侧的纯函数 `bolt_flight` 给, **两边用同一个数** ⇒
+	##   "看到弹中"与"打出伤害"仍然是同一个事件, 同帧原则没破(只是这一帧往后挪了)。
+	var _from: Vector2 = Vector2(u.get("pos", Vector2.ZERO))
+	var _to: Vector2 = Vector2((src as Dictionary).get("pos", Vector2.ZERO))
+	var _fly: float = HolyShieldVfx.bolt_flight(_from, _to)
+	battle._queue_shots(1, 0.0, func() -> void:
+		if not (src is Dictionary) or not (src as Dictionary).get("alive", false):
+			return
+		battle._damage._apply_damage_from(u, src, int(RIPOSTE_FLAT), Color("#ffe9a8"), 0.0, true)
+		if _holy_vfx != null:
+			_holy_vfx.riposte_hit(src), u, "", Callable(), _fly)
+	## 演出: 罩子涟漪 + 光弹起飞(下一行), 伤害在光弹到达时才出。
 	##   重做前这条反击**一点演出都没有**(探针实测它一直在触发, 画面上只有敌人头上一个 "2")。
 	##   ⚠ 这一行只画不算; 放在结算之后, 保证"看到光矢 = 伤害已经打出去了"。
 	_holy_vfx.riposte(u, src, RIPOSTE_FLAT)
@@ -191,6 +203,10 @@ func tick(delta: float) -> void:
 		if n <= 0:
 			continue
 		var amt: float = HOLY_AMOUNT * float(n) * holy_bonus(u)
+		## ★★095 自绘补盾演出 ⇒ 跳过 `_grant_shield` 里那个**全游戏共用的程序化金环**。
+		##   用户 2026-08-09:「又是程序生成的环？哪个商业游戏是你这么做啊」。
+		##   通用环本身不动(它封着 44 个给盾点), 只在这里声明"这一下我自己画"。
+		u["_own_grant_vfx"] = true
 		battle._damage._grant_shield(u, amt)
 		## ★演出在 `_grant_shield` 之【后】: 那时 `shield` 已经 > 0, 盾板的出现条件才成立。
 		##   顺序反了的话补盾那一帧盾板还不在 —— 而那正是最该看到它的一帧。
