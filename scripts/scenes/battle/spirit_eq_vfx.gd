@@ -585,7 +585,11 @@ func bubble_ring(pos2d: Vector2, col: Color, idx: int) -> Dictionary:
 	_ensure_meshes()
 	_ensure_room()
 	var org: Vector3 = battle._world_pos(pos2d, 0.0)
-	var tor := _spawn_node(_m_torus, _mat(false, 9), org + Vector3(0.0, 0.30 + 0.22 * float(idx), 0.0), "ring")
+	## ★★环面也是封闭曲面(管子的正面+背面) ⇒ 加色混合下同样会叠出白。
+	##   A/B 实测(2026-08-11): 颜色推深后白占比 76%→43%, 再只画正面才掍得下去。
+	var _rm := _mat(false, 9)
+	_rm.cull_mode = BaseMaterial3D.CULL_BACK
+	var tor := _spawn_node(_m_torus, _rm, org + Vector3(0.0, 0.30 + 0.22 * float(idx), 0.0), "ring")
 	if tor == null:
 		return {}
 	var h := {
@@ -605,7 +609,13 @@ func float_bladder(pos2d: Vector2, col: Color) -> Dictionary:
 	_ensure_meshes()
 	_ensure_room()
 	var org: Vector3 = battle._world_pos(pos2d, 0.0)
-	var sph := _spawn_node(_m_sphere, _mat(false, 7), org + Vector3(0.0, 1.55, 0.0), "bladder")
+	var _bm := _mat(false, 7)
+	## ★★实心球 + 加色混合 + CULL_DISABLED ⇒ 正面背面各加一层 ⇒ **球心被加爆成白**。
+	##   同族实测见 073 藤蕎小球(2026-08-11 A/B): 白芯占比 15% → 只画正面后 3%。
+	##   浮囊本身就是个"气囊", 背面看不见, 只画正面不掉任何信息。
+	##   ⚠ 只改浮囊自己这份 —— `_mat()` 是共用的, 环/带子需要 CULL_DISABLED。
+	_bm.cull_mode = BaseMaterial3D.CULL_BACK
+	var sph := _spawn_node(_m_sphere, _bm, org + Vector3(0.0, 1.55, 0.0), "bladder")
 	if sph == null:
 		return {}
 	var h := {

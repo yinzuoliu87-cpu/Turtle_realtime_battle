@@ -311,10 +311,14 @@ func _eq_whale_ring(src: Dictionary, tgt: Dictionary, si: int) -> void:
 		battle._damage._apply_damage_from(src, tgt, maxi(1, int(round([25.0, 40.0, 70.0][si]))),
 			Color("#ffffff"), 0.0, true, true)
 		tgt["_ring_boom_n"] = int(tgt.get("_ring_boom_n", 0)) + 1
-		battle._skill_ring(tgt["pos"], Color(0.75, 0.95, 1.0, 0.75), 58.0)
+		battle._skill_ring(tgt["pos"], Color(0.26, 0.70, 1.00, 0.75), 58.0)   # ★颜色推深(见下)
 	else:
 		tgt["whale_rings"] = n
-		_vfx.bubble_ring(tgt["pos"], Color(0.72, 0.93, 1.0, 0.8), n - 1)
+		## ★★ 063 的两个环颜色从 (0.72~0.75, 0.93~0.95, 1.0) 推深到 (0.26~0.28, 0.70~0.72, 1.0)。
+		##   原色饱和度只有 0.28 ⇒ 对黑底就是白。A/B 实测(2026-08-11):
+		##   063 自己画的 31252 个像素里 **76% 低饱和** —— 整个读成白。
+		##   (095 的结论: 亮度靠 alpha 给, 不能靠把颜色推淡。)
+		_vfx.bubble_ring(tgt["pos"], Color(0.28, 0.72, 1.00, 0.8), n - 1)
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -393,7 +397,12 @@ func _ghost_grant(u: Dictionary, si: int) -> void:
 		"on_break": func(uu, _k, _reason): _ghost_break(uu, si),
 	})
 	stt = u["eq_state"].get("p2eq_064", {})
-	stt["ghost_vfx"] = _vfx.float_bladder(u["pos"], Color(0.72, 0.86, 1.0, 0.85))
+	## ★★颜色从 (0.72, 0.86, 1.00) 推深到 (0.30, 0.62, 1.00)。
+	##   原色饱和度只有 0.28 —— **对黑底来说就是白**。A/B 实测(2026-08-11):
+	##   即使改成只画正面, 它自己画的像素里仍有 **42% 低饱和**。
+	##   095 那一轮的结论: **亮度要靠 alpha 给, 不能靠把颜色推淡** ——
+	##   半透明的近白在黑底上合成出来就是灰/白。
+	stt["ghost_vfx"] = _vfx.float_bladder(u["pos"], Color(0.30, 0.62, 1.00, 0.85))   # ★颜色推深: 见下
 	u["eq_state"]["p2eq_064"] = stt
 
 

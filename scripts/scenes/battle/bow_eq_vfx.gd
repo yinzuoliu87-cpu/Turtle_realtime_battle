@@ -456,6 +456,13 @@ func ensure_orb(u: Dictionary) -> Node3D:
 		_mesh_orb.rings = 6
 	var m := _mat(false, 8)
 	m.albedo_color = Color(0.45, 0.95, 0.42, 0.9)
+	## ★★实心球 + 加色混合 + CULL_DISABLED ⇒ 正面背面各加一层 ⇒ **球心被加爆成白**。
+	##   实拍 A/B 实测(2026-08-11): 073 自己画的 14000 个像素里, 62% 明确偏绿、
+	##   **15% 低饱和(白芯)** —— 实战小尺寸下白芯占视觉主导, 读成"一个白球"。
+	##   ⇒ 球体只画正面(反正背面也看不到), 加色只叠一层, 颜色就留得住。
+	##   (同族: 095 罩子那一轮的"颜色乘数必须 ≤ 1.0, 否则金子被钳成白"。)
+	##   ⚠ 只改小球自己这一份材质 —— `_mat()` 是共用的, 环/带子需要 CULL_DISABLED。
+	m.cull_mode = BaseMaterial3D.CULL_BACK
 	var org: Vector2 = (u["pos"] as Vector2) + ORB_OFFSET
 	var n := _node(_mesh_orb, m, battle._world_pos(org, 0.85), "vine_orb")
 	u["_vine_orb"] = n
