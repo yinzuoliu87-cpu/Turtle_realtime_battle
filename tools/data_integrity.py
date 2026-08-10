@@ -112,5 +112,26 @@ else:
     print('  [分母] 评审表 %d 行 / 上架 %d 件 (另有 %d 件羁绊赠送, 不进表)' % (len(rows), len(SHOP_EQ), len(GRANT_EQ)))
     chk('★装备评审表与 phase2-equipment.json 一致(它自称"当前权威状态")', sorted(drift)[:8])
 
+# ============================================================
+#  ★每件装备都必须有图标(2026-08-10 补)
+# ============================================================
+# 由来: 用户问「图标全做了吗」—— 查下来 060~095 共 36 件的 img 是空的,
+# 从加进游戏那天起就没有图。而背包/商店的画法是
+# `if img != "" and 文件存在: 画图` —— 后面没有 else ⇒ 无图就什么都不画:
+# 背包大格只剩一行字、龟身上的小格是纯空框、商店卡片也空。
+#
+# ★为什么之前没接住: 上面那节「资源路径存在性」只查"填了的路径对不对",
+#   空字段直接跳过 ⇒ "根本没填"永远不会被发现。
+#   空值和错值是两类病, 只查后者等于放过前者。
+print('')
+print('=== 装备图标覆盖 ===')
+_no_img = [e['id'] for e in eq if not str(e.get('img', '') or '').strip()]
+_bad_img = [e['id'] for e in eq
+            if str(e.get('img', '') or '').strip()
+            and not os.path.exists(os.path.join('assets/sprites', str(e['img'])))]
+print('  [分母] 装备 %d 件' % len(eq))
+chk('★每件装备都配了图标(img 非空) —— 空着就是背包里的空白格', sorted(_no_img)[:12])
+chk('★每个图标文件真的在盘上', sorted(_bad_img)[:12])
+
 print('\n%s' % ('ALL OK — 数据完整性' if fail[0]==0 else 'FAILED: %d 项' % fail[0]))
 sys.exit(1 if fail[0] else 0)

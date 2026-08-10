@@ -338,13 +338,10 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, is_leade
 		if filled:
 			var eid2 := str((eqs[ci] as Dictionary).get("id", ""))
 			var edef2: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid2, {})
-			var im := str(edef2.get("img", ""))
-			if im != "" and ResourceLoader.exists("res://assets/sprites/" + im):
-				var tr := TextureRect.new(); tr.texture = load("res://assets/sprites/" + im)
-				tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-				tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-				tr.position = Vector2(1, 1); tr.size = Vector2(cw - 2, cw - 2); tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				cell.add_child(tr)
+			## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(060~095 有 36 件没配图)
+			var ic2 := EquipIcon.make(edef2, Vector2(cw - 2, cw - 2), true)
+			ic2.position = Vector2(1, 1)
+			cell.add_child(ic2)
 		if _sel_bench >= 0:
 			cell.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 装备模式: 透传→点框body装上
 		elif filled:
@@ -560,13 +557,10 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
 	var rcol := _cost_color(int(edef.get("cost", 1)))
 	var box := _slot_panel(pos, Color("#2a3a1c") if sel else Color("#1c2836"), Color("#ffd93d") if sel else rcol)
-	var img := str(edef.get("img", ""))
-	if img != "" and ResourceLoader.exists("res://assets/sprites/" + img):
-		var ic := TextureRect.new(); ic.texture = load("res://assets/sprites/" + img)
-		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		ic.position = Vector2(SLOT / 2.0 - 22, 18); ic.size = Vector2(44, 36)
-		box.add_child(ic)
+	## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(060~095 有 36 件没配图)
+	var ic2 := EquipIcon.make(edef, Vector2(44, 36))
+	ic2.position = Vector2(SLOT / 2.0 - 22, 18)
+	box.add_child(ic2)
 	var nm := Label.new()
 	nm.text = str(edef.get("name", eid))
 	nm.add_theme_font_size_override("font_size", 12)

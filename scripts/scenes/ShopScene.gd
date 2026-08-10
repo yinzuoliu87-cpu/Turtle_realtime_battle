@@ -347,12 +347,10 @@ func _build_bench_preview(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 		if str(it.get("id", "")) == _sel_own and int(it.get("star", 1)) == _sel_own_star:
 			csb.border_color = Color("#ffd93d"); csb.set_border_width_all(3)
 		_wire_own_tap(cell, str(it.get("id", "")), int(it.get("star", 1)))
-		var img := str(edef.get("img", ""))
-		if img != "" and ResourceLoader.exists("res://assets/sprites/" + img):
-			var ic := TextureRect.new(); ic.texture = load("res://assets/sprites/" + img)
-			ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			ic.position = Vector2(14, 6); ic.size = Vector2(36, 32); cell.add_child(ic)
+		## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(060~095 有 36 件没配图)
+		var ic2 := EquipIcon.make(edef, Vector2(36, 32))
+		ic2.position = Vector2(14, 6)
+		cell.add_child(ic2)
 		var st := Label.new(); st.text = "★".repeat(int(it.get("star", 1)))
 		st.add_theme_font_size_override("font_size", 11); st.add_theme_color_override("font_color", Color("#ffd93d"))
 		st.position = Vector2(0, 44); st.size = Vector2(64, 16); st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -439,12 +437,10 @@ func _build_lineup_equips(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 					enm.mouse_filter = Control.MOUSE_FILTER_IGNORE
 					enm.position = Vector2(ox + cx + ci * 40, y + 59); enm.size = Vector2(36, 14)
 					host.add_child(enm)
-					var img := str(edef.get("img", ""))
-					if img != "" and ResourceLoader.exists("res://assets/sprites/" + img):
-						var ic := TextureRect.new(); ic.texture = load("res://assets/sprites/" + img)
-						ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-						ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-						ic.position = Vector2(4, 2); ic.size = Vector2(28, 24); ic.mouse_filter = Control.MOUSE_FILTER_IGNORE; cell.add_child(ic)
+					## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(060~095 有 36 件没配图)
+					var ic2 := EquipIcon.make(edef, Vector2(28, 24), true)
+					ic2.position = Vector2(4, 2)
+					cell.add_child(ic2)
 					var st := Label.new(); st.text = "★".repeat(int(it.get("star", 1)))
 					st.add_theme_font_size_override("font_size", 10); st.add_theme_color_override("font_color", Color("#ffd93d"))
 					st.position = Vector2(0, 24); st.size = Vector2(36, 12); st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -525,15 +521,12 @@ func _card(idx: int, pos: Vector2) -> Control:
 	#   卡上同时写「1 费」和「◎ 1」等于把同一个数字显示两遍。
 	#   保留下面那个带币图标的价格(购买决策要看的是它); 费用档由【卡框颜色】表达
 	#   (灰/绿/蓝/紫/金 = 1~5 费, 与出货概率行同一套色)。
-	var img := str(edef.get("img", ""))
-	if img != "" and ResourceLoader.exists("res://assets/sprites/" + img):
-		var ic := TextureRect.new(); ic.texture = load("res://assets/sprites/" + img)
-		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		# 「N 费」撤掉后顶部空出 17px, 全给图标 —— 卡片上最该被一眼认出的是【这是什么东西】
-		# 卡框边 10 → 内容从 18 起, 底部对称留 8。原来上留 12 / 下留 5.5, 差一倍。
-		ic.position = Vector2(SLOT_W / 2.0 - 30, 18); ic.size = Vector2(60, 56)
-		box.add_child(ic)
+	# 「N 费」撤掉后顶部空出 17px, 全给图标 —— 卡片上最该被一眼认出的是【这是什么东西】
+	# 卡框边 10 → 内容从 18 起, 底部对称留 8。原来上留 12 / 下留 5.5, 差一倍。
+	## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(060~095 有 36 件没配图)
+	var ic2 := EquipIcon.make(edef, Vector2(60, 56))
+	ic2.position = Vector2(SLOT_W / 2.0 - 30, 18)
+	box.add_child(ic2)
 	# ★名字按费用档着色(用户 2026-07-29)。撤掉「N 费」文字后费用信息一度是【丢的】——
 	#   我当时说"靠卡框颜色表达", 但实测卡框 modulate 染色的色差只有 6~10(人眼要 >60),
 	#   等于没表达。名字是卡上唯一够大的文字, 由它承担费用档最实在。
@@ -672,13 +665,10 @@ func _build_detail_panel() -> void:
 	var coins := int(GameState.meta_deepsea_coins)
 
 	# 图标 + 名称 + 费用
-	var img := str(edef.get("img", ""))
-	if img != "" and ResourceLoader.exists("res://assets/sprites/" + img):
-		var ic := TextureRect.new(); ic.texture = load("res://assets/sprites/" + img)
-		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		ic.position = Vector2(34, 32); ic.size = Vector2(66, 58)
-		box.add_child(ic)
+	## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(060~095 有 36 件没配图)
+	var ic2 := EquipIcon.make(edef, Vector2(66, 58))
+	ic2.position = Vector2(34, 32)
+	box.add_child(ic2)
 	var nm := Label.new(); nm.text = str(edef.get("name", "?"))
 	nm.add_theme_font_size_override("font_size", 26)
 	nm.add_theme_color_override("font_color", _cost_color(cost))
