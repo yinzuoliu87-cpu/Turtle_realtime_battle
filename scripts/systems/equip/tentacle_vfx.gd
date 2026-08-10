@@ -111,6 +111,24 @@ const T_EMERGE_MOVE := 1.0
 ## 闪避追击用的短促点刺（不立起、不预告）
 const T_JAB := 0.30
 
+## ══════════════════════════════════════════════════════════════════
+##  ★★【视觉命中时刻】—— 结算侧与演出侧共用的**同一个数**
+## ══════════════════════════════════════════════════════════════════
+## 用户 2026-08-10:「触手有个明显问题, 什么时候算命中, 是拍下去打到目标啊」。
+##
+## 改之前: `_slap()` 把伤害**全部结算完**才调 `strike()` 起演出 ⇒
+##   正常拍击要走 预警 1.00s → 前摇 0.13s → ST_SLAM 第一帧爆闪,
+##   **伤害比视觉命中早 1.13 秒**。后果两条:
+##   ① 预警圈彻底成摆设 —— 伤害在预警**开始之前**就结算, 走开也没用;
+##   ② 打击名单用的是 1.13 秒前的站位。近战 95~120 码/秒 ⇒ 这段时间能走 107~136 码,
+##      而伤害带半宽只有 120 码 ⇒ **画面上在带子外的挨打、站带子里的没挨打**。
+##
+## ⇒ 把"视觉命中在第几秒"做成**纯函数**, 结算侧据此延后出伤。
+##   ★不靠 tween 回调 —— 无头 CI 下 tween 推进不稳(CLAUDE.md §3.5)。
+##   ★闪避追击(share < 0.9)走点刺: `strike()` 直接把状态设成 ST_SLAM ⇒ 0, 本来就是对的。
+static func hit_delay(share: float) -> float:
+	return 0.0 if share < 0.9 else (T_WARN + T_REAR)
+
 # ── 形状 ──────────────────────────────────────────────────────────
 ##
 ## ★★2026-08-04【自截图看出来的第三次认错】：
@@ -547,6 +565,29 @@ func strike(side: String, idx: int, aim2: Vector2, share: float = 1.0) -> void:
 	t["ts"] = 0.0
 	t["hit"] = false
 	t["warned"] = false
+	## ★这一击的流水号: 延后结算的伤害要靠它确认"还是同一击"
+	##   (期间可能被撤回/被新指令覆盖 —— 那时候就不该再出伤了)。
+	t["serial"] = int(t.get("serial", 0)) + 1
+
+
+## 这根触手当前这一击的流水号(没有这根 → -1)。
+func strike_serial(side: String, idx: int) -> int:
+	var k: String = _key(side, idx)
+	return int((_tents[k] as Dictionary).get("serial", 0)) if _tents.has(k) else -1
+
+
+## 这根触手是不是**还在打那一击** —— 延后结算前必须问一句:
+## 期间可能被撤回(ST_RETRACT)、钻地搬家、或被新的 strike 覆盖。
+## 不问的话会出现"触手已经撤了, 伤害照打"。
+func is_striking(side: String, idx: int, serial: int) -> bool:
+	var k: String = _key(side, idx)
+	if not _tents.has(k):
+		return false
+	var t: Dictionary = _tents[k]
+	if int(t.get("serial", 0)) != serial:
+		return false
+	var st: int = int(t["state"])
+	return st == ST_WARN or st == ST_REAR or st == ST_SLAM
 
 
 func tick(delta: float) -> void:

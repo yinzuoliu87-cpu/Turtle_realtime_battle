@@ -91,10 +91,18 @@ func add_mana(u: Dictionary, n: float) -> void:
 			continue
 		var stt: Dictionary = u["eq_state"].get(iid, {})
 		stt["mana"] = float(stt.get("mana", 0.0)) + n
+		## ★★镜像一份【归一化百分比】给装备图标框的法力条(2026-08-10 补)。
+		##   用户实测:「5 费装备有个法器吧, 那我压根没看到装备图标那里有法力条,
+		##   在攒法力吗」—— 查证: 10 件法器**一件都不在 PANEL_CHARGE 里**, 局内零读数。
+		##   ★为什么不直接拿 `mana`: 满值 `MANA_FULL` 随档位变(100/80/60/50),
+		##     而 PANEL_CHARGE 的分母只能是**常量** ⇒ 直接拿 mana 会让高档永远填不满。
+		##     同 081 藤编圆盾那一行的做法(存 chg_pct), 这里存 mana_pct(0~100)。
+		stt["mana_pct"] = clampf(float(stt["mana"]) / maxf(1.0, full) * 100.0, 0.0, 100.0)
 		u["eq_state"][iid] = stt
 		if float(stt["mana"]) < full:
 			continue
 		stt["mana"] = 0.0
+		stt["mana_pct"] = 0.0
 		_fire(u, iid, int(e.get("star", 1)))
 
 

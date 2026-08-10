@@ -493,6 +493,11 @@ func _dl_build_lane_field() -> void:
 	#   `is_instance_valid` 根本轮不到。`TentacleVfx.clear()` 全仓原本只有一个调用者
 	#   (battle_vfx.gd 的 VFX 预览路径), 换路从来没人调它。
 	battle._tentacle_vfx.clear()  # 换路: 触手网格与在途表清干净(不清 = 每帧刷 SCRIPT ERROR)
+	## ★★2026-08-10 补: 金弹层换路没人清 —— 全仓**一个 `_gold_vfx.clear()` 都没有**。
+	##   它的弹迹节点挂在 `_world` 上, 而换路只 free【单位自己的】节点、`_world` 不重建
+	##   ⇒ 上一路的金弹菱珠带着剩余寿命飘进下一路; `_snap`(伤害快照)也跨路残留。
+	##   同族的坑记在 `tentacle_vfx.clear()` 上面那段长注释里。
+	battle._gold_vfx.clear()
 	battle._relic_syn.clear()     # 换路: 觉醒 t0 重置(远古之力【不清】—— 同上)
 	battle._synergy.apply_all()   # ★类型羁绊(批4-1): 必须在单件属性【之后】—— 羁绊是加在单件属性上面的
 	battle._bow_syn.apply_all()   # 弓箭【腐蚀·穿透】写进 armor_pen_pct/magic_pen_pct(休眠通道, 消费侧零改动)

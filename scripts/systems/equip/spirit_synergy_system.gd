@@ -35,6 +35,10 @@ const TENTACLES := [1, 2, 2, 2]
 const HIT_HP_PCT := 0.04
 const HIT_FLAT := 55.0
 const HIT_MULT := [1.0, 1.0, 1.30, 1.60]
+## 伤害带半宽（码）。★用户 2026-08-05 拍板 ×3（40→120）。
+## ⚠ 必须与 `tentacle_vfx.WARN_HALF_W` 相等 —— 一个是打的范围、一个是画给玩家看的预警区。
+const HIT_HALF_W := 120.0
+
 ## 【闪避追击】追击伤害占拍击的比例 + 每 2.5 秒的次数上限（档1 无）
 const CHASE_SHARE := 0.25
 const CHASE_CAP := [0, 3, 3, 5]
@@ -194,35 +198,75 @@ func _slap(side: String, idx: int, share: float) -> int:
 		dir = Vector2.RIGHT
 	dir = dir.normalized()
 	var mult: float = HIT_MULT[clampi(ti - 1, 0, 3)] * share
+	## ══════════════════════════════════════════════════════════════
+	##  ★★演出先起、伤害后到（用户 2026-08-10 拍板【方案 A】）
+	## ══════════════════════════════════════════════════════════════
+	## 改之前这里是【先把伤害全打完, 再调 strike() 起演出】, 而正常拍击要走
+	## 预警 1.00s → 前摇 0.13s → ST_SLAM 第一帧爆闪 ⇒ **伤害比视觉命中早 1.13 秒**。
+	## 用户:「什么时候算命中, 是拍下去打到目标啊」。
+	##
+	## 现在:
+	##   · **方向与带子在 t=0 定死**(origin/dir/rng 都已算好, 下面不再动) ——
+	##     预警画的就是它, 一变就成骗人;
+	##   · **吃伤害的名单在【视觉命中那一刻】重算** —— 谁那时候站在带子里就打谁,
+	##     所以"看到预警走开"真的有用。这是方案 A 与方案 B 的唯一区别。
+	## ⚠ 代价: 触手会变弱(1.13 秒足够走出 107~136 码, 而带子半宽只有 120)。
+	##   这是**有意的平衡改动**, 不是副作用。
+	battle._tentacle_vfx.strike(side, idx, Vector2(aim["pos"]), share)
+	var _serial: int = battle._tentacle_vfx.strike_serial(side, idx)
+	var _delay: float = battle._tentacle_vfx.hit_delay(share)
+	if _delay <= 0.0:
+		# 闪避追击走点刺, 视觉命中就在第 0 帧 ⇒ 立即结算(它本来就是对的)
+		return _slap_resolve(side, origin, dir, rng, mult)
+	## ★走 `_queue_shots` 而不是 tween: 它按**钳制后的 sim delta** 推进、尊重时停,
+	##   且换路时 `dual_lane_flow` 会 `_pending_shots.clear()` ⇒ 无跨路残留。
+	battle._queue_shots(1, 0.0, func() -> void:
+		## 期间可能被撤回/搬家/被新指令覆盖 —— 那时候不该再出伤
+		if not battle._tentacle_vfx.is_striking(side, idx, _serial):
+			return
+		_slap_resolve(side, origin, dir, rng, mult), null, "", Callable(), _delay)
+	## 返回的是**按 t=0 站位预计会打中几个** —— 真实命中数要等 `_delay` 之后才知道。
+	return _band_foes(side, origin, dir, rng).size()
+
+
+## 伤害带里的敌人（带子由 origin/dir/rng 定死，半宽 HIT_HALF_W）。
+## ★抽出来是因为它要被调用两次：t=0 预计一次、命中那一刻真算一次。
+##   就地各写一遍 = 抄一次永远落后一次（memory [[fb-hand-rolled-copies-drift]]）。
+func _band_foes(side: String, origin: Vector2, dir: Vector2, rng: float) -> Array:
+	var out: Array = []
+	for u in battle._units:
+		if not (u is Dictionary) or not u.get("alive", false):
+			continue
+		if str(u.get("side", "")) == side:
+			continue
+		var rel: Vector2 = Vector2(u["pos"]) - origin
+		var along: float = rel.dot(dir)
+		# ★★2026-08-05 补的长度上限：原来只排除"在身后"，没有长度限制 ⇒
+		#   伤害带是【向前无限延伸】的半平面，触手够不到的敌人照样挨打
+		#   (探针实测: 640 码外的敌人被打掉 48065)。
+		if along < 0.0 or along > rng:
+			continue
+		# ★★半宽 120（用户 2026-08-05 拍板 ×3）。
+		#   ⚠ 必须与 `tentacle_vfx.WARN_HALF_W` 一致 —— 那是画给玩家看的预警区，
+		#     两者不等 = 打得到却不画(骗玩家) 或 画了打不到(白吓唬)。
+		#     `verify_spirit_slap_range` ⑤b 焊着这一条。
+		if absf(rel.cross(dir)) > HIT_HALF_W:
+			continue
+		out.append(u)
+	return out
+
+
+## 真正结算一次拍击的伤害。返回打中了几个。
+func _slap_resolve(side: String, origin: Vector2, dir: Vector2, rng: float, mult: float) -> int:
 	var shooter = _any_carrier(side)
 	var hits := 0
-	for f in foes:
-		var rel: Vector2 = Vector2(f["pos"]) - origin
-		var along: float = rel.dot(dir)
-		if along < 0.0:
-			continue
-		# ★★2026-08-05 补长度上限。原来这里【只排除"在身后"】, 没有任何长度限制 ——
-		#   伤害带是【向前无限延伸 × 240 码宽】的半平面, 战场 1596 宽而射程只有 400,
-		#   ⇒ 触手根本够不到的敌人照样挨打(探针实测: 640 码外的敌人被打掉 48065)。
-		#   选靶那一步本来就有射程限制, 理由(见上面 177 行注释)对伤害带同样成立:
-		#   「范围外的敌人不该被选中, 否则演出伸不到 …… 会让"安全距离"这条规则失效」。
-		#   ⚠ 半宽 40→120 之后这个洞被放大了 3 倍(带子越宽, 顺带扫到的路人越多),
-		#     所以是跟 ×3 一起该修的, 不是独立的旧账。
-		if along > rng:
-			continue
-		# ★★2026-08-05 用户拍板 ×3（40→120）：「我要实际攻击范围也是这 3 倍」。
-		#   ⚠ 与 `tentacle_vfx.WARN_HALF_W` 必须一致 —— 那是画给玩家看的预警区。
-		if absf(rel.cross(dir)) > 120.0:
-			continue
+	for f in _band_foes(side, origin, dir, rng):
 		var dmg: int = maxi(1, int((float(f.get("maxHp", 0.0)) * HIT_HP_PCT + HIT_FLAT) * mult))
 		if shooter is Dictionary:
 			battle._damage._apply_damage_from(shooter, f, dmg, Color("#b388ff"))
 		else:
 			battle._damage._apply_damage(f, dmg, Color("#b388ff"))
 		hits += 1
-	# ★演出与结算【解耦】: 伤害上面已经结算完了, 这里只是好看。
-	#   一个测数值的用例不该依赖任何动画跑完(CLAUDE.md §3.5)。
-	battle._tentacle_vfx.strike(side, idx, Vector2(aim["pos"]), share)
 	return hits
 
 

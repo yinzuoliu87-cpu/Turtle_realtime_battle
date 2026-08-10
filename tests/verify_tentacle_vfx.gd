@@ -300,11 +300,18 @@ func _ready() -> void:
 		_ok("⑤b ★预警带宽度 == 真实命中通道(半宽 120 码 = %.2fm)" % one,
 			lat > one * 1.2 and lat < one * 3.4, "带宽 %.2fm" % lat)
 		# ★两头都焊住：`_slap` 的命中半宽改了、这边没跟，也要红。
-		var src_sl: String = FileAccess.get_file_as_string(
-			"res://scripts/systems/equip/spirit_synergy_system.gd")
+		# ★★ 2026-08-10 从【grep 源码找字面量】改成【比两个常量】：
+		#   原来找的是 `cross(dir)) > 120.0` 这串源码文本 —— 半宽一提成常量就拓空了，
+		#   而行为完全没变。这正是 CLAUDE.md §2 记的那类「审计器读源码找数值，
+		#   函数一搬家就误报」。现在直接比两边的常量，重构不会误报、改值照样会红。
+		#   ⚠ 期望值仍然**写死 120.0**（不是拿一个常量比另一个）——
+		#     两边一起改成 160 时必须也能拓到，否则又是恒真式。
+		var SSS := preload("res://scripts/systems/equip/spirit_synergy_system.gd")
 		_ok("⑤b ★预警宽度与 _slap 的命中判定同源(两处都是 120)",
-			absf(float(TV.WARN_HALF_W) - 120.0) < 0.01 and src_sl.find("cross(dir)) > 120.0") >= 0,
-			"WARN_HALF_W=%.1f / _slap 源码里没找到 `> 120.0`" % float(TV.WARN_HALF_W))
+			absf(float(TV.WARN_HALF_W) - 120.0) < 0.01
+				and absf(float(SSS.HIT_HALF_W) - 120.0) < 0.01
+				and absf(float(TV.WARN_HALF_W) - float(SSS.HIT_HALF_W)) < 0.01,
+			"WARN_HALF_W=%.1f / HIT_HALF_W=%.1f" % [float(TV.WARN_HALF_W), float(SSS.HIT_HALF_W)])
 	# ★预警带【持续整整 T_WARN】—— 原来那版只有蓄势那 0.13 秒的一闪，等于没有。
 	_v.tick(TV.T_WARN * 0.9)
 	_ok("⑤b ★预警带在 %.2f 秒后仍然亮着(官方 f009~f039 持续 1 秒)" % (TV.T_WARN * 0.9),

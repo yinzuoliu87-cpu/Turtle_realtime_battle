@@ -131,6 +131,15 @@ func pre_build() -> bool:
 	if OS.has_environment("VFXLAB_ZOOM"):    cfg["zoom"] = float(OS.get_environment("VFXLAB_ZOOM"))
 	if OS.has_environment("VFXLAB_FOCUS"):   cfg["focus"] = OS.get_environment("VFXLAB_FOCUS")
 	if OS.has_environment("VFXLAB_DUR"):     cfg["dur"] = float(OS.get_environment("VFXLAB_DUR"))
+	## ★★A/B 对照用: 同参数【只换装备】。2026-08-10 补。
+	##   台子里本来只有三条写死的 A/B 基线(`ab_attacker` 等), 而它们是**为 093 定制的参数**,
+	##   拿去比别的件并不同参 ⇒ 结论不成立。
+	##   有了这个覆盖, 任何一件都能一行做出对照:
+	##     VFXLAB_CASE=p2eq_063 VFXLAB_EQ=p2eq_047 VFXLAB_OUT=res://_ab_063_
+	##   (p2eq_047 重击锤只改属性、**没有任何节点或演出** ⇒ 画面上剩下的全是通用演出。)
+	##   ⚠ 这条很重要: 2026-08-09 我把地图海草当成 091 的甲片, 结论方向整个反了;
+	##     "是不是这件画的"一律要 A/B, 不许目视下结论(memory [[fb-clean-vfx-stage-not-squint]])。
+	if OS.has_environment("VFXLAB_EQ"):      cfg["eq"] = OS.get_environment("VFXLAB_EQ")
 	if OS.has_environment("VFXLAB_FOCUS_XY"):
 		var parts: PackedStringArray = OS.get_environment("VFXLAB_FOCUS_XY").split(",")
 		if parts.size() >= 2:

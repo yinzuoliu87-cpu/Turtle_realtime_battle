@@ -278,8 +278,19 @@ func _ready() -> void:
 	# 首档(2 件): 1 个触手, 伤害 = 4% 目标 maxHp + 55 = 0.04×3000+55 = 175
 	var s1 := _run([_mk("left", sp.slice(0, 2)), _mk("right", [])])
 	var sh1: float = float(s1[1]["hp"])
+	## ★先让触手真的站稳: `_spirit_syn.tick()` 会建触手, 但出土(T_EMERGE = 2 秒)
+	##   期间 `strike()` 直接 return。而演出层的 tick 是主循环喂的, 这里得自己喂。
+	##   (改之前伤害不管演出照打, 所以这个坑一直被盖着。)
+	_s._spirit_syn.tick(0.01)
+	for _e in range(30):
+		_s._tentacle_vfx.tick(0.12)
 	_s._spirit_syn._t_slap = 0.0
 	_s._spirit_syn.tick(5.1)              # 拍击周期是 5 秒(用户 2026-08-04 定), 不是 2.5
+	## ★★ 2026-08-10 拍击改成【延后到视觉命中那一刻】才结算(方案 A):
+	##   伤害不再在 `_slap()` 里立即打出, 而是等 T_WARN + T_REAR = 1.13 秒。
+	##   原因: 改之前**伤害比视觉命中早 1.13 秒**, 预警圈彻底成了摆设。
+	##   ★同步推一次待发队列即可, 不等帧也不等 tween ⇒ 仍然是确定性断言。
+	_s._ballistics._step_pending_shots(_s._tentacle_vfx.hit_delay(1.0) + 0.05)
 	var dealt: float = sh1 - float(s1[1]["hp"])
 	# ★期望值写死 175(= 4%×3000 + 55)。原来写的是"100~260 之间"——太松:
 	#   把基数 55 改成 5 时实伤 125 仍落在区间内, 变异实测 0 FAIL。区间断言必须紧到能抓住改动。

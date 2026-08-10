@@ -518,8 +518,17 @@ func _build_op_bar() -> void:
 			var _star: int = int(sit.get("star", 1))
 			var l := RichTextLabel.new()
 			l.bbcode_enabled = true
-			l.fit_content = true
-			l.scroll_active = false
+			## ★★2026-08-11 从 `fit_content=true / scroll_active=false` 改成【可滚】。
+			##   底栏用 `l.size = Vector2(bw - 320, 48)` 固定 48 px 高，14 号字 + 4 行距
+			##   ⇒ 约 2.6 行。而装备文案中位数 116 字、**最长 327 字(084 手半剑)**，
+			##   95 件里 44 件超过两行 ⇒ **将近一半的装备，玩家看不到后面几行**。
+			##   与路线图 §二·五 第 6 条「图鉴详情长条目裁尾」同族。
+			##   ⚠ 为什么不是"把框改高": 底栏在 y=636、高 66，下边已经贴到 720 设计框底部；
+			##     往上长会撞到备战席网格(它的高度是动态算的)。**可滚是零布局风险的那个解。**
+			##   门禁 `verify_inventory_text_fit` 量的是 `get_content_height()` 与框高，
+			##   不是我按"每行几个字"估的。
+			l.fit_content = false
+			l.scroll_active = true
 			l.text = "▶ %s  ★%d  (%s)   —— 点上方【龟 / 小将】装上   ·   %s" % [str(sdef.get("name", "")), _star, "费用%d" % int(sdef.get("cost", 1)), SkillText.highlight_star(str(sdef.get("effectDesc1", "")), _star)]
 			l.add_theme_font_size_override("normal_font_size", 14); l.add_theme_color_override("default_color", Color("#ffd93d"))
 			l.position = Vector2(16, 10); l.size = Vector2(bw - 320, 48); l.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(l)

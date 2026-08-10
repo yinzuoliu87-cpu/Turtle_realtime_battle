@@ -51,15 +51,21 @@ func _equip_to(pet_id: String, bench_idx: int) -> void:
 		host._toast("临时等级器 → %s 本大轮 +1 级 (现 +%d)" % [pet_id, GameState.temp_level_bonus(pet_id)])
 		host._rebuild(); return
 	var eqs: Array = GameState.persistent_equipped.get(pet_id, [])
+	## ★★【羨绞赠送件】直接放行: 它不占任何容量(见 GameState._cap_count),
+	##   所以也不该被"已装满"拦住。
+	##   ★★原来的写法把容量检查放在**读取要装哪件之前** —— 于是一只装满 3 件的龟
+	##   永远接不了圣光护盾(用户 2026-08-10:「背包里应该不算占位, 怎么满了就不能装」)。
+	##   数的时候跳过它、拦的时候却拦它, 两边口径不一致。
+	var _grant: bool = GameState.is_synergy_grant(bench[bench_idx])
 	# ★装备容量统一规则(2026-07-27): 单只≤3 且 全队合计≤team_equip_cap(赛季等级)。两条都要过。
 	#   两种"装不了"的原因必须分别告诉玩家 —— 否则只会觉得"点了没反应"。
 	# ★羁绊赠送的装备(圣光护盾)不占单只上限 —— 数的时候要跳过它,
 	#   漏了这一处就会出现"明明只装了 2 件却说已装满"。
-	if GameState._cap_count(eqs) >= host.P2.UNIT_EQUIP_CAP:
+	if not _grant and GameState._cap_count(eqs) >= host.P2.UNIT_EQUIP_CAP:
 		host._sel_bench = -1
 		host._toast("这只已装满 %d 件（单只上限）" % host.P2.UNIT_EQUIP_CAP)
 		host._rebuild(); return
-	if not GameState.team_has_equip_room():
+	if not _grant and not GameState.team_has_equip_room():
 		host._sel_bench = -1
 		host._toast("全队装备已满 %d/%d · 升赛季等级可再装" % [GameState.team_equipped_count(), GameState.team_equip_cap()])
 		host._rebuild(); return
@@ -91,14 +97,20 @@ func _equip_minion(lane: String, idx: int, bench_idx: int) -> void:
 	if str(u.get("kind", "")) != "minion":
 		host._sel_bench = -1; host._rebuild(); return
 	var eqs: Array = u.get("equips", []) if u.get("equips", null) is Array else []
+	## ★★【羨绞赠送件】直接放行: 它不占任何容量(见 GameState._cap_count),
+	##   所以也不该被"已装满"拦住。
+	##   ★★原来的写法把容量检查放在**读取要装哪件之前** —— 于是一只装满 3 件的龟
+	##   永远接不了圣光护盾(用户 2026-08-10:「背包里应该不算占位, 怎么满了就不能装」)。
+	##   数的时候跳过它、拦的时候却拦它, 两边口径不一致。
+	var _grant: bool = GameState.is_synergy_grant(bench[bench_idx])
 	# 小将与统领【同一套容量规则】(用户 2026-07-27:「单只统领或小将的上限固定为3」)
 	# ★羁绊赠送的装备(圣光护盾)不占单只上限 —— 数的时候要跳过它,
 	#   漏了这一处就会出现"明明只装了 2 件却说已装满"。
-	if GameState._cap_count(eqs) >= host.P2.UNIT_EQUIP_CAP:
+	if not _grant and GameState._cap_count(eqs) >= host.P2.UNIT_EQUIP_CAP:
 		host._sel_bench = -1
 		host._toast("这个小将已装满 %d 件（单只上限）" % host.P2.UNIT_EQUIP_CAP)
 		host._rebuild(); return
-	if not GameState.team_has_equip_room():
+	if not _grant and not GameState.team_has_equip_room():
 		host._sel_bench = -1
 		host._toast("全队装备已满 %d/%d · 升赛季等级可再装" % [GameState.team_equipped_count(), GameState.team_equip_cap()])
 		host._rebuild(); return

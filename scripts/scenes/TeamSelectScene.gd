@@ -1156,6 +1156,11 @@ func _on_start() -> void:
 	GameState.left_team = left_typed
 	GameState.left_slots = left_slots_typed
 	GameState.season_leaders = left_typed.duplicate()   # 战斗左队读这个 (RealtimeBattle3DScene._season_leaders)
+	## ★★换统领会改变【当前阵容的盾件数】⇒ 盾羨绞档位可能变 ⇒ 圣光护盾要补发/收回。
+	##   档位文案白纸黑字写着「掉档即消失」, 而 `shield_grant_count()` 遍历的正是 `season_leaders`。
+	##   2026-08-10 查证: equip_ops 的 5 处(装/卸/卖)都调了同步, **只有换统领这条路漏了**
+	##   ⇒ 换人后圣光护盾不补也不收(用户:「3 盾我拆掉后圣光护盾应该消失的」同族)。
+	GameState.sync_synergy_grants()
 
 	_write_last_lineup()
 

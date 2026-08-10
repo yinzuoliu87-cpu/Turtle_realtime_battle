@@ -49,6 +49,13 @@ frames_for () {
     verify_tentacle_relocate) echo 3000 ;;
     # 状态边界连续性: 建战斗场景 + 逐个转移取两侧参数(纯同步, 不等演出)
     verify_tentacle_continuity) echo 2500 ;;
+    # 命中时刻(方案 A): 建战斗场 + 造真携带者走档位链 + 嗂触手出土 3.6 秒
+    #   + 同步推 `_step_pending_shots`(不等帧、不等 tween)
+    verify_tentacle_hit_timing) echo 3000 ;;
+    # 详情面板属性读数: 建战斗场 + 两次取属性行(纯同步, 不等任何演出)
+    verify_info_panel_stats) echo 2000 ;;
+    # 背包文案放不放得下: 建 Inventory 场景 + 选中最长那件 + 量真实屏幕矩形
+    verify_inventory_text_fit) echo 1500 ;;
     # 羁绊演出层共用基建: 建战斗场景 + 78 条同步断言(不等任何 tween), 但建场本身就吃几百帧。
     #   ★实测本机 500 帧【跑不完】(被掐断 → 没打 ALL PASS → 看着像断言失败), 800 帧够 ⇒ 给 2500 兜 CI。
     verify_synergy_vfx) echo 2500 ;;

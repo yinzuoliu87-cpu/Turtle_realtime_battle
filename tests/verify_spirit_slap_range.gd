@@ -127,7 +127,7 @@ func _ready() -> void:
 	for u in [near_on, in_band, out_band, far_on]:
 		hp0[str(u.get("uid", u))] = float(u["hp"])
 
-	var hits: int = syn._slap("left", 0, 1.0)
+	var hits: int = _slap_and_land(syn, "left", 0, 1.0)
 	_ok("①b ★分母: 拍击真的结算了(命中 %d 个)" % hits, hits > 0,
 		"一个都没打中 ⇒ 后面三条是空检查")
 
@@ -182,7 +182,7 @@ func _ready() -> void:
 				_s._units.erase(u)
 		var near2 := _dummy("right", origin + Vector2(60.0, 0.0))    # 保证选靶方向仍是 +X
 		var probe := _dummy("right", origin + Vector2(mid, 0.0))
-		syn._slap("left", 0, 1.0)
+		_slap_and_land(syn, "left", 0, 1.0)
 		if float(probe["hp"]) < 999999.0: lo = mid
 		else: hi = mid
 	var dmg_len: float = (lo + hi) * 0.5
@@ -194,3 +194,26 @@ func _ready() -> void:
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 灵物拍击命中带" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+## 拍击一次并**推到视觉命中那一刻**。
+## ★★ 2026-08-10 拍击改成【延后结算】(方案 A): 伤害不再在 `_slap()` 里立即打出,
+##   而是等到触手真的拍到(T_WARN + T_REAR = 1.13 秒)才结算 ——
+##   因为原来**伤害比视觉命中早 1.13 秒**, 预警圈彻底成了摆设。
+##   所以这里不能再"调完就查血量" —— 要把待发队列推过那个延迟。
+## ★不用 await/等帧: `_step_pending_shots(dt)` 是同步的, 一次喂够就触发 ⇒ 确定性、不依赖帧率。
+func _slap_and_land(syn, side: String, idx: int, share: float) -> int:
+	## ★先走完【出土】(T_EMERGE = 2.0 秒): ST_EMERGE / ST_RETRACT 期间
+	##   `strike()` 会直接 return ⇒ 没有流水号、延后结算会被 `is_striking` 拦下。
+	##   ★改之前伤害不管演出照打, 所以这个坑一直被盖着 ——
+	##   现在伤害挂在演出上, "触手还没站稳就能打人"这件事自然就不成立了。
+	## ★先确保这根触手真的存在 —— `_tents` 里没有它的话 `strike()` 直接 return。
+	##   (改之前伤害不管有没有触手照打, 所以测试一直没建触手也能绿。
+	##   真实对局里 `_tick` 是先 `ensure()` 再 `_slap()` 的, 所以不存在这种情况。)
+	_s._tentacle_vfx.ensure_forced(side, idx + 1)
+	for _e in range(30):
+		_s._tentacle_vfx.tick(0.12)
+	var n: int = syn._slap(side, idx, share)
+	var d: float = _s._tentacle_vfx.hit_delay(share)
+	if d > 0.0:
+		_s._ballistics._step_pending_shots(d + 0.02)
+	return n

@@ -219,7 +219,12 @@ func _info_stat_rows(u: Dictionary) -> Array:
 		[sic + "def-icon.png",      "护甲 %d" % int(u.get("def", 0)),                                W],
 		[sic + "mr-icon.png",       "魔抗 %d" % int(u.get("mr", 0)),                                 Color("#9bdcff")],
 		[sic + "crit-icon.png",     "暴击 %d%%" % int(float(u.get("crit", 0.0)) * 100.0),            W],
-		[sic + "aspd-icon.png",     "攻速 %ss" % battle._fmt_num(float(u.get("atk_interval", 0.0))),        W],
+		## ★★☆攻速要显【次/秒】, 不是【秒】(2026-08-10 修)。
+		##   原来写的是 `atk_interval` —— 那是**攻击间隔**, 却标着"攻速":
+		##   数字越大反而越慢, 玩家会**整个读反**。
+		##   而且图鉴那边一直是 "0.94 次/秒" ⇒ 同一个属性两处两个口径。
+		##   (用户 2026-08-10:「应该是多少下每秒」)
+		[sic + "aspd-icon.png",     "攻速 %s 次/秒" % battle._fmt_num(1.0 / maxf(0.001, float(u.get("atk_interval", 1.0)))), W],
 		[sic + "range-icon.png",    "射程 %d" % int(u.get("atk_range", 0)),                          W],
 		[sic + "move-icon.png",     "移速 %d" % int(u.get("move_spd", 0)),                           W],
 	]
