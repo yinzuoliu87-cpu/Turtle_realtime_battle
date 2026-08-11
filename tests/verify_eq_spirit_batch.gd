@@ -36,7 +36,7 @@ const WANT_K4_04 := 1.7411011265922482      # 4^0.4
 ## 段②峰 / 段①峰 = ln(R_MIN^−2) / ln(2^2) = ln(277.777…)/ln(4)
 const WANT_FLASH_RATIO := 4.058893689053568
 ## 涡环: R₀=0.42, R(t)² = R₀² + (1−R₀²)·t/LIFE ⇒ R² 对 t 严格线性
-const WANT_RING_R0 := 0.42
+const WANT_RING_R0 := 0.62
 ## 063 覆盖率 = 0.03 / 0.075
 const WANT_COVERAGE := 0.40
 

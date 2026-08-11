@@ -227,9 +227,9 @@ static func strike_shape(u: float) -> Dictionary:
 # ══════════════════════════════════════════════════════════════════
 
 ## 初始环半径(相对最终环半径)
-const RING_R0 := 0.42
+const RING_R0 := 0.62   # 0.42→0.62(2026-08-11 用户「要环不要圆」: 起始环径太小+管肥=读成实心蛋)
 ## 初始环管半径 / 初始环半径
-const RING_A0_FRAC := 0.30
+const RING_A0_FRAC := 0.12   # 0.30→0.12(细管才读成空心环; 守恒律 R·a²≡const 与 a₀ 取值无关)
 ## 一个环的存活时长(秒)
 const RING_LIFE := 1.10
 ## 环的经向 / 管周向分段
@@ -319,6 +319,7 @@ var _m_upf_big: ArrayMesh = null
 var _m_cracks: Array = []
 var _m_chips: ArrayMesh = null
 var _m_claw: ArrayMesh = null
+var _m_torus_thin: ArrayMesh = null
 
 ## 060 的两个专用 shader(时间走 uniform, 不碰内建墙钟 —— mana_beam 同款纪律)
 const SH_JELLY := preload("res://assets/shaders/jellyfish_bell.gdshader")
@@ -655,6 +656,33 @@ static func _torus_vert(th: float, ph: float) -> Array:
 	return [p, Color(1, 1, 1, a)]
 
 
+## 真·细管圆环(063 持久叠环/引爆用): R=1, a=0.14 的标准圆环面 —— 有真实的洞。
+## ★_build_torus 那个是 R=a 的角环(内半径 0 没有洞, 环感靠明暗假装), 顶视角=实心盘;
+##   飞行环(斜视+暗部)骗得过去, 套身持久环骗不过去(2026-08-11 实拍连翻三轮才定位)。
+static func _build_torus_thin() -> ArrayMesh:
+	var mesh := ArrayMesh.new()
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var A := 0.14
+	for j in range(RING_LON):
+		var t0: float = float(j) / float(RING_LON) * TAU
+		var t1: float = float(j + 1) / float(RING_LON) * TAU
+		for k in range(RING_TUBE):
+			var p0: float = float(k) / float(RING_TUBE) * TAU
+			var p1: float = float(k + 1) / float(RING_TUBE) * TAU
+			_tri(st, _tor2_vert(t0, p0, A), _tor2_vert(t1, p0, A), _tor2_vert(t1, p1, A))
+			_tri(st, _tor2_vert(t0, p0, A), _tor2_vert(t1, p1, A), _tor2_vert(t0, p1, A))
+	st.commit(mesh)
+	return mesh
+
+
+static func _tor2_vert(th: float, ph: float, a: float) -> Array:
+	var dir := Vector3(cos(th), 0.0, sin(th))
+	var p: Vector3 = dir * (1.0 + a * cos(ph)) + Vector3(0.0, a * sin(ph), 0.0)
+	var al: float = lerpf(0.5, 1.0, 0.5 + 0.5 * sin(ph))
+	return [p, Color(1, 1, 1, al)]
+
+
 ## 单位半径球(浮囊)
 static func _build_sphere() -> ArrayMesh:
 	var mesh := ArrayMesh.new()
@@ -692,6 +720,7 @@ func _ensure_meshes() -> void:
 		for b in range(4): _m_cracks.append(_build_cracks(b))
 	if _m_chips == null: _m_chips = _build_chips()
 	if _m_claw == null: _m_claw = _build_claw()
+	if _m_torus_thin == null: _m_torus_thin = _build_torus_thin()
 
 
 ## 节点上打的自定义 meta 键 —— 门禁按 meta 数点数, **不按名字/贴图路径**:
@@ -969,8 +998,12 @@ func whale_stack(tgt: Dictionary, n: int) -> void:
 		(h as Dictionary)["n"] = n
 		return
 	_ensure_room()
-	var t1 := _spawn_node(_m_torus, _mat(false, 13), battle._world_pos(tgt.get("pos", Vector2.ZERO), 2.15), "torus")
-	var t2 := _spawn_node(_m_torus, _mat(false, 13), battle._world_pos(tgt.get("pos", Vector2.ZERO), 2.5), "torus2")
+	var _rm1 := _mat(false, 13)
+	_rm1.cull_mode = BaseMaterial3D.CULL_BACK   # ★只画正面: 内侧面露出来会读成"碗/实心圆"(用户点名要空心环)
+	var _rm2 := _mat(false, 13)
+	_rm2.cull_mode = BaseMaterial3D.CULL_BACK
+	var t1 := _spawn_node(_m_torus_thin, _rm1, battle._world_pos(tgt.get("pos", Vector2.ZERO), 0.7), "torus")
+	var t2 := _spawn_node(_m_torus_thin, _rm2, battle._world_pos(tgt.get("pos", Vector2.ZERO), 1.1), "torus2")
 	if t1 == null or t2 == null:
 		return
 	var hh := {"kind": "wring_ov", "torus": t1, "torus2": t2, "u": tgt, "n": n,
@@ -991,7 +1024,9 @@ func whale_detonate(tgt: Dictionary) -> void:
 		return
 	_ensure_meshes()
 	_ensure_room()
-	var tor := _spawn_node(_m_torus, _mat(false, 14), battle._world_pos(tgt.get("pos", Vector2.ZERO), 1.6), "torus")
+	var _rmd := _mat(false, 14)
+	_rmd.cull_mode = BaseMaterial3D.CULL_BACK
+	var tor := _spawn_node(_m_torus_thin, _rmd, battle._world_pos(tgt.get("pos", Vector2.ZERO), 0.9), "torus")
 	var fl := _spawn_node(_m_cracks[2], _mat(false, 14), battle._world_pos(tgt.get("pos", Vector2.ZERO), 1.4), "flash")
 	var ch := _spawn_node(_m_chips, _mat(false, 14), battle._world_pos(tgt.get("pos", Vector2.ZERO), 1.0), "chips")
 	if tor == null or fl == null or ch == null:
@@ -1320,10 +1355,11 @@ func _apply_wring(h: Dictionary) -> void:
 		if not is_instance_valid(nd):
 			i += 1
 			continue
-		nd.position = battle._world_pos((uu as Dictionary).get("pos", Vector2.ZERO), 2.15 + 0.35 * i + 0.06 * sin(t * 2.0 + float(i)))
-		nd.scale = Vector3(r, r * 0.32, r)
+		# ★环【套在身体上】(用户 2026-08-11: 不要悬头顶): 腰位起步, 第二环高一档, 轻微上下浮
+		nd.position = battle._world_pos((uu as Dictionary).get("pos", Vector2.ZERO), 0.7 + 0.4 * i + 0.05 * sin(t * 2.0 + float(i)))
+		nd.scale = Vector3(r, r, r)   # 真环网格(_m_torus_thin)有真实的洞 ⇒ 均匀缩放即可
 		nd.rotation.y = t * (0.9 + 0.4 * float(i))
-		var vis: float = 0.9 if n > i else 0.0
+		var vis: float = 0.8 if n > i else 0.0
 		_set_col(nd, Color(0.28, 0.72, 1.0, vis))
 		i += 1
 
@@ -1335,7 +1371,7 @@ func _apply_wdet(h: Dictionary, u: float) -> void:
 	var tor = h.get("torus", null)
 	if is_instance_valid(tor):
 		var tr: float = r * lerpf(1.2, 0.12, k)
-		tor.scale = Vector3(tr, tr * 0.32, tr)
+		tor.scale = Vector3(tr, tr, tr)
 		_set_col(tor, Color(0.28, 0.72, 1.0, 0.9 * (1.0 - k)))
 	var fl = h.get("flash", null)
 	if is_instance_valid(fl):

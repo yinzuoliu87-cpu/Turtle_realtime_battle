@@ -370,6 +370,15 @@ func _relayout_units() -> void:
 	##   眩晕期间不能普攻 ⇒ 凑不齐"第三下" ⇒ 浪潮一次都不触发, 而我差点判成"演出没做"。
 	##   `enemy_attacks` 只管普攻, 管不住技能 —— 这是两回事。
 	##   想看假人放技能的用例, 在 case 里写 `enemy_skills: true`。
+	# ★enemy_no_passive: 清掉敌人的被动(泡泡龟攒泡开盾这类) —— 2026-08-11 063 补验收时
+	#   染色法判案: 敌方小龟的蓝泡盾罩把整只敌人罩住, 被连误判三轮是"063 的蓝蛋"。
+	#   台子的目的就是隔离被测件, 敌人被动属于污染源(海草判成甲片同族)。
+	if bool(cfg.get("enemy_no_passive", false)):
+		for su in battle._units:
+			if su is Dictionary and str((su as Dictionary).get("side", "")) == "right":
+				su["passive"] = null
+				su["bubble_store"] = 0.0
+				su["bubbleShieldVal"] = 0.0
 	if not bool(cfg.get("enemy_skills", false)):
 		for su in battle._units:
 			if su is Dictionary and not (su as Dictionary).get("_eqdemo_carrier", false):

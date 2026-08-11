@@ -93,6 +93,7 @@ const CASES := {
 ## ★**友军必须在 200 码内**(ally_dist=150): 2026-08-11 补验收发现默认摆位 227 码 ⇒ 光环谁都没罩到。
 ## ★真实周期 = 7 + 2.5 = 9.5s: 开伞 7.0 / 收伞+回血 9.5 / 第二次开伞 16.5(旧拍点按 14.0 排, 全拍空)。
 "p2eq_060": {
+	"enemy_no_passive": true,
 	"star": 3, "carrier": "basic", "allies": 2, "enemies": 1, "enemy_dist": 300.0,
 	"ally_dist": 150.0,
 	"dur": 18.0, "zoom": 1.0, "focus": "carrier", "focus_h": 0.8,
@@ -104,6 +105,7 @@ const CASES := {
 ## 触发: 靠**命中** ⇒ `attacker` 必开(memory [[fb-eqdemo-attacker-default]])。
 ## 看点: ①钻孔的命中特效 ②【破损】层数在敌人身上读不读得出。
 "p2eq_061": {
+	"enemy_no_passive": true,
 	"star": 3, "carrier": "basic", "enemies": 1, "enemy_dist": 200.0,
 	"attacker": true, "ui": true,
 	"dur": 12.0, "zoom": 1.0, "focus": "carrier", "focus_h": 0.8,
@@ -116,6 +118,7 @@ const CASES := {
 ##   三个条件缺一不可: 假人要还手、携带者要普攻、还要真的闪避到。
 ##   ⇒ `enemy_attacks` + `attacker` 都开, 且 `dur` 给长(闪避是概率事件, 短了可能一次都没有)。
 "p2eq_062": {
+	"enemy_no_passive": true,
 	"star": 3, "carrier": "basic", "enemies": 2, "enemy_attacks": true, "enemy_dist": 180.0,
 	"attacker": true, "carrier_hp": 1.0,
 	"dur": 24.0, "zoom": 1.0, "focus": "carrier", "focus_h": 0.8,
@@ -126,6 +129,7 @@ const CASES := {
 ## 063 白鲸气环 —— 释放技能后获得攻速, 持续按消耗龟能折算。
 ## 触发: 要**放得出技能** ⇒ `fast_energy`(龟能开局即就绪 + 回充 ×4)必开, 否则要干等。
 "p2eq_063": {
+	"enemy_no_passive": true,
 	"star": 3, "carrier": "basic", "enemies": 1, "enemy_dist": 220.0,
 	"attacker": true, "fast_energy": true, "ui": true,
 	"dur": 16.0, "zoom": 1.0, "focus": "carrier", "focus_h": 0.8,
@@ -137,6 +141,7 @@ const CASES := {
 ## 触发: 要**真的掉到 35% 以下** ⇒ `enemy_attacks` + `carrier_hp` 压到刚好高于阈值一点,
 ##   让它在台上自然跌破(直接设到 35% 以下的话, 入场那一帧就触发, 拍不到"跌破的瞬间")。
 "p2eq_064": {
+	"enemy_no_passive": true,
 	"star": 3, "carrier": "basic", "enemies": 2, "enemy_attacks": true, "enemy_dist": 170.0,
 	"carrier_hp": 0.45, "ui": true,
 	"dur": 26.0, "zoom": 1.0, "focus": "carrier", "focus_h": 0.8,
