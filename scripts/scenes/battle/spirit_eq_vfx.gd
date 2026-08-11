@@ -987,6 +987,25 @@ func bubble_ring(pos2d: Vector2, col: Color, idx: int) -> Dictionary:
 	return h
 
 
+## 063: 加环演出 —— 大环贴地从外收拢、落到本层叠环的半径上(用户 2026-08-11 三改:
+## 「添加环做大环缩小到环的特效」, 上升涡环废弃)。n = 落成后的层数(决定落点半径)。
+func whale_ring_apply(tgt: Dictionary, n: int) -> void:
+	if not _has_world():
+		return
+	_ensure_meshes()
+	_ensure_room()
+	var _rma := _mat(false, 14)
+	_rma.cull_mode = BaseMaterial3D.CULL_BACK
+	var tor := _spawn_node(_m_torus_thin, _rma, battle._world_pos(tgt.get("pos", Vector2.ZERO), 0.10), "ring")
+	if tor == null:
+		return
+	var r_end: float = 30.0 * float(battle.WS) * (1.0 + 0.45 * float(maxi(n - 1, 0)))
+	var h := {"kind": "wapply", "ring": tor, "u": tgt, "r0": r_end * 2.4, "r1": r_end,
+		"dur": 0.30, "t": 0.0}
+	_live.append(h)
+	apply_at(h, 0.0)
+
+
 ## 063: 持久叠环覆盖层 —— 1~2 个亮气环悬在目标头顶慢转微浮, 层数即读数(引爆前一直在)。
 ## 旧状态: 环的视觉只活 1.1s(飞行演出)而层数持续到 3 ⇒ 叠环状态大部分时间零显示。
 func whale_stack(tgt: Dictionary, n: int) -> void:
@@ -1122,6 +1141,7 @@ func apply_at(h: Dictionary, u: float) -> void:
 		"mready": _apply_mready(h)
 		"mhit": _apply_mhit(h, u)
 		"wring_ov": _apply_wring(h)
+		"wapply": _apply_wapply(h, u)
 		"wdet": _apply_wdet(h, u)
 		"whaste": _apply_whaste(h, u)
 		"pcover": _apply_pcover(h, u)
@@ -1365,14 +1385,28 @@ func _apply_wring(h: Dictionary) -> void:
 		i += 1
 
 
+## 加环: 大环贴地收拢落位(跟随目标), 落定时最亮
+func _apply_wapply(h: Dictionary, u: float) -> void:
+	var uu = h.get("u", null)
+	var nd = h.get("ring", null)
+	if not is_instance_valid(nd):
+		return
+	if uu is Dictionary:
+		nd.position = battle._world_pos((uu as Dictionary).get("pos", Vector2.ZERO), 0.10)
+	var k: float = clampf(u, 0.0, 1.0)
+	var r: float = lerpf(float(h["r0"]), float(h["r1"]), 1.0 - (1.0 - k) * (1.0 - k))
+	nd.scale = Vector3(r, r * 0.5, r)
+	_set_col(nd, Color(0.28, 0.72, 1.0, 0.35 + 0.55 * k))
+
+
 ## 引爆: 环归心收缩 + 星形爆闪 + 碎屑弹开
 func _apply_wdet(h: Dictionary, u: float) -> void:
 	var k: float = clampf(u, 0.0, 1.0)
 	var r: float = float(h["r"])
 	var tor = h.get("torus", null)
 	if is_instance_valid(tor):
-		# 引爆: 从最大环(第二环 1.45r)向心塌收到零 —— 「三环合拢引爆」的读数
-		var tr: float = r * lerpf(1.45, 0.10, k)
+		# ★引爆【向外炸开】(用户: 要爆开不是缩小): 环从叠环半径向外冲到 2.6 倍并淡出
+		var tr: float = r * lerpf(0.6, 2.6, 1.0 - (1.0 - k) * (1.0 - k))
 		tor.scale = Vector3(tr, tr * 0.5, tr)
 		_set_col(tor, Color(0.28, 0.72, 1.0, 0.9 * (1.0 - k)))
 	var fl = h.get("flash", null)

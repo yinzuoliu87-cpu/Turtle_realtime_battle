@@ -350,10 +350,8 @@ func _eq_whale_ring(src: Dictionary, tgt: Dictionary, si: int, basic: bool = fal
 		_vfx.whale_detonate(tgt)   # 叠环归心收缩 + 星形爆闪(旧通用 skill_ring 圆已废)
 	else:
 		tgt["whale_rings"] = n
-		## 吐环飞行演出(浮力涡环物理) + 持久叠环覆盖(层数读数, 2026-08-11 补 —— 旧状态
-		## 环视觉只活 1.1s 而层数持续到 3, 叠环状态大部分时间零显示)。
-		## 色是 A/B 推深过的那支亮青(原低饱和对黑底读成白, 095 结论)。
-		_vfx.bubble_ring(tgt["pos"], Color(0.28, 0.72, 1.00, 0.8), n - 1)
+		## 加环 = 大环贴地收拢落位(用户三改; 上升涡环演出废弃, 物理纯函数留给门禁) + 持久叠环
+		_vfx.whale_ring_apply(tgt, n)
 		_vfx.whale_stack(tgt, n)
 
 
