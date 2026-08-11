@@ -58,6 +58,8 @@ frames_for () {
     verify_inventory_text_fit) echo 1500 ;;
     # 071 全队奶油护盾: 建战斗场 + 造 3 友军 + 走 tick_unit 真入口(纯同步)
     verify_cream_shell_all) echo 2000 ;;
+    # 072 礼盒形态: 建战斗场 + 造携带者 + 进/出盒各一次(纯同步, 量真实 texture)
+    verify_cake_box_form) echo 1500 ;;
     # 羁绊演出层共用基建: 建战斗场景 + 78 条同步断言(不等任何 tween), 但建场本身就吃几百帧。
     #   ★实测本机 500 帧【跑不完】(被掐断 → 没打 ALL PASS → 看着像断言失败), 800 帧够 ⇒ 给 2500 兜 CI。
     verify_synergy_vfx) echo 2500 ;;

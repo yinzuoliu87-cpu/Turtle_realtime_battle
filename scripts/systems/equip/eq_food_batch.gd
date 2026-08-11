@@ -33,6 +33,9 @@ extends RefCounted
 const KEY_GREY := "p2eq_070_grey"      ## 070 灰色血条(SpecialBalance 的 key)
 const KEY_CREAM := "p2eq_071_cream"    ## 071 奶油护盾
 const KEY_ULT := "p2eq_072_ult"        ## 072 终极护盾
+## 072 【化身蛋糕礼盒】的形态立绘(本件专用新素材, 不复用任何现有图)。
+## 铁皮箱体 + 铆钉护角 + 丝带蝴蝶结 —— 要读得出"能挨打的铁盒子"而不是"一块蛋糕"。
+const BOX_FORM_TEX := "res://assets/sprites/vfx/eq072-cake-box.png"
 
 var battle
 var _eq                                ## EquipSystem(拿 _eq_si / _eq_grant_energy)
@@ -471,6 +474,18 @@ func _box_enter(u: Dictionary, si: int, stt: Dictionary) -> void:
 	u["_cake_o_melee"] = bool(u.get("melee", false))
 	u["_cake_o_skills"] = (u.get("active_skills", []) as Array).duplicate()
 	u["_cake_o_basic"] = bool(u.get("no_basic", false))
+	## ★★真的换立绘(2026-08-11 用户:「换」)。
+	##   改之前 `_box_enter` 只改属性(射程/技能/普攻), 视觉上只有一次性的 `box_close_fx`
+	##   ⇒ **属性变了、长相还是龟**, 玩家不知道自己已经"化身蛋糕礼盒"。
+	##   ★为什么换的是 `idle_sd` 而不是直接设 spr.texture:
+	##   `battle_render` 每帧会用 `u["idle_sd"]` 把属性还原到 idle(动作播完就回 idle),
+	##   直接改贴图下一帧就被抹掉了 —— 换源头才能持久。
+	u["_cake_o_idle_sd"] = u.get("idle_sd", {})
+	var _box_tex: Texture2D = load(BOX_FORM_TEX) if ResourceLoader.exists(BOX_FORM_TEX) else null
+	if _box_tex != null:
+		var _bsd: Dictionary = battle._sprite_dict_from(_box_tex, null, false)
+		u["idle_sd"] = _bsd
+		battle._set_anim_sheet(u, _bsd, "", true)
 	# ★双抗【不存原值】: 礼盒加的那部分单独记在 `_cake_res_given` 里, 出盒时按差量减回去。
 	#   存原值再整个写回会把变身期间【别的来源】给的双抗(071 破盾 +10、羁绊…)一并抹掉 ——
 	#   那是"手抄快照"的典型翻车形状, 所以这里只动自己加的那一份。
@@ -615,6 +630,13 @@ func _box_unbox(u: Dictionary, reason: String) -> void:
 	u["melee"] = bool(u.get("_cake_o_melee", false))
 	u["active_skills"] = (u.get("_cake_o_skills", []) as Array).duplicate()
 	u["no_basic"] = bool(u.get("_cake_o_basic", false))
+	## ★立绘也要换回去 —— 漏了就会"盾早破了人还是个盒子"。
+	##   同方向: 换的是 `idle_sd` 本身, 而不是 `spr.texture`(那会被渲染层下一帧抹掉)。
+	var _osd = u.get("_cake_o_idle_sd", null)
+	if _osd is Dictionary and not (_osd as Dictionary).is_empty():
+		u["idle_sd"] = _osd
+		battle._set_anim_sheet(u, _osd, "", true)
+	u.erase("_cake_o_idle_sd")
 	# ★把 skill_cd 清空让它重新懒初始化 —— 变身期间 active_skills 是空的, `_tick_skill_cd`
 	#   的懒初始化会把 skill_cd 初始化成【空字典】并从此不再补。不清的话出盒瞬间
 	#   `_pick_ready_skill` 会拿到 `cds.get(st, 0.0) == 0.0` ⇒ 每一个技能都"冷却好了" ⇒ 白送一发大招。
