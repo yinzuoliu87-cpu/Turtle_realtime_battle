@@ -412,8 +412,10 @@ func _eq_pressure_release(u: Dictionary, si: int, stt: Dictionary) -> void:
 	u["eq_state"]["p2eq_068"] = stt
 	if stored <= 0.0:
 		return
+	# ★读数走血条第四段(hp_bar 的法力蓝段, 见 _tick_pressure_can 的 _manaShieldVal 镜像), 不飘字 ——
+	#   飘字飘完就没了, 玩家不知道自己还剩多少盾/几秒(用户 2026-08-11:「应该是给一个特殊颜色
+	#   护盾条, 这是特殊护盾」)。血条早有圣盾白黄/壳青绿/海胆紫三段先例, 这是第四段。
 	battle._spec.grant(u, CAN_MANA_KEY, stored * [1.00, 1.20, 3.00][si], {"decay_sec": 8.0, "order": 10})
-	battle._vfx._float_text(u["pos"] + Vector2(0, -62), "法力护盾", Color(0.62, 0.82, 1.0))
 	# 法力激光: 朝【最远敌人】, 2000 码贯穿, 3 秒里共打出储存值的 100/120/600%
 	var far = _can_farthest(u)
 	if far == null:
@@ -463,6 +465,9 @@ func _tick_pressure_can(u: Dictionary, si: int, delta: float) -> void:
 	var cap: float = _can_cap(u, si)
 	# ★读数走装备图标框的 PANEL_CHARGE(见 `can_pct` 镜像), 不在这里自造头顶条 ——
 	#   旧的那条实拍是【横穿龟身】的一道白线, 而且挂在 `_world` 下没人清 ⇒ 跨路残留。
+	# ★法力护盾余额每帧镜像进单位字段, 给血条第四段读(HpBar 只认 f 的字段, 拿不到 battle._spec)。
+	#   吸收/衰减/耗尽全走 SpecialBalance, 这里只抄读数 ⇒ 镜像永远收敛, 不会自己漂。
+	u["_manaShieldVal"] = battle._spec.val(u, CAN_MANA_KEY)
 	u["eq_state"]["p2eq_068"] = stt
 	_eq_beam_step(u, delta)
 	var due: float = float(stt["can_t0"]) + CAN_PERIOD * float(int(stt.get("can_fired", 0)) + 1)

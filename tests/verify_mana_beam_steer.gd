@@ -82,6 +82,7 @@ func _ready() -> void:
 	_t_xsec()
 	_t_hit_fade()
 	_t_lane_clear()
+	_t_mana_bar()
 
 	_s.queue_free()
 	await get_tree().process_frame
@@ -294,3 +295,60 @@ func _t_lane_clear() -> void:
 	_ok("⑧ ★★换路撤场后节点归零(漏清 = 上一路的射线钉在下一路)",
 		_ps._beam_vfx.node_count() == 0,
 		"还剩 %d 个" % _ps._beam_vfx.node_count())
+
+
+## ⑨ 法力护盾进血条第四段(用户 2026-08-11:「为啥飘字, 应该是给一个特殊颜色护盾条, 这是特殊护盾」)
+##   与圣盾白黄(_holyShieldVal)/壳青绿(_hidingShellVal)/海胆紫(urchin_sh_left)同一套机制。
+##   链条: SpecialBalance 余额 → _tick_pressure_can 每帧镜像 _manaShieldVal → HpBar 读字段画段。
+##   判据落在【真实单位字段 + 真实 HpBar 对象】, 镜像走真实的每帧入口, 不由门禁手写。
+func _t_mana_bar() -> void:
+	_s._units.clear()
+	_s._spec.clear_all()
+	var c: Vector2 = _s.ARENA.position + _s.ARENA.size * 0.5
+	var carrier: Dictionary = _s._spawn._make_unit("fortune", "left", c + Vector2(-520.0, 0.0))
+	carrier["alive"] = true
+	carrier["pos"] = c + Vector2(-520.0, 0.0)
+	carrier["hp"] = 3000.0; carrier["maxHp"] = 3000.0
+	carrier["shield"] = 0.0
+	carrier["equips"] = [{"id": "p2eq_068", "star": 3}]
+	carrier["eq_state"] = {"p2eq_068": {"can_t0": 0.0, "can_charge": 3000.0, "can_fired": 0}}
+	_s._units.append(carrier)
+	_mk("right", carrier["pos"] + Vector2(900.0, 0.0))
+	_ps._eq_pressure_release(carrier, 2, carrier["eq_state"]["p2eq_068"])
+	var granted: float = _s._spec.val(carrier, _ps.CAN_MANA_KEY)
+	_ok("⑨ ★分母: 释放后 SpecialBalance 里真有法力护盾", granted > 0.0, "val=%.0f" % granted)
+	_ps._tick_pressure_can(carrier, 2, 0.05)
+	_ok("⑨ ★★每帧镜像已写进单位字段(血条只认 f 的字段, 拿不到 battle._spec)",
+		absf(float(carrier.get("_manaShieldVal", 0.0)) - granted) < 1.0,
+		"_manaShieldVal=%.0f 应≈%.0f" % [float(carrier.get("_manaShieldVal", 0.0)), granted])
+	var hb = carrier.get("hp_bar", null)
+	_ok("⑨ ★分母: 单位真有 HpBar 组件", hb != null and is_instance_valid(hb))
+	if hb != null and is_instance_valid(hb):
+		hb.update_state(carrier)
+		_ok("⑨ ★★HpBar 把法力盾读成了段值(真实对象字段, 不量替身)",
+			absf(float(hb._mana) - granted) < 1.0, "hb._mana=%.0f 应≈%.0f" % [float(hb._mana), granted])
+		_ok("⑨ ★★法力盾计入条总量 _bm(不计入 ⇒ 段宽恒为 0 = 画不出来)",
+			float(hb._bm) >= 3000.0 + granted - 1.0,
+			"_bm=%.0f 应≥ maxHp+盾=%.0f" % [float(hb._bm), 3000.0 + granted])
+		_ok("⑨ 段色是蓝主导的特殊色(区别圣盾黄/壳绿/海胆紫/普通灰白)",
+			hb._MANA_L.b8 > hb._MANA_L.r8 and hb._MANA_L.b8 > hb._MANA_L.g8,
+			"_MANA_L=#%02x%02x%02x" % [hb._MANA_L.r8, hb._MANA_L.g8, hb._MANA_L.b8])
+	# 8 秒线性衰减要在条上肉眼可见: 衰减走真实 SpecialBalance.tick, 镜像必须跟着缩
+	_s._spec.tick(4.0)
+	_ps._tick_pressure_can(carrier, 2, 0.05)
+	var half: float = float(carrier.get("_manaShieldVal", 0.0))
+	_ok("⑨ 衰减跟得上(4/8 秒后镜像 ≈ 一半)", half > granted * 0.3 and half < granted * 0.7,
+		"衰减 4 秒后 %.0f(初始 %.0f)" % [half, granted])
+	_s._spec.tick(9.0)
+	_ps._tick_pressure_can(carrier, 2, 0.05)
+	_ok("⑨ 耗尽后镜像归零(条停在旧值 = 骗人)",
+		float(carrier.get("_manaShieldVal", -1.0)) < 0.5,
+		"_manaShieldVal=%.2f" % float(carrier.get("_manaShieldVal", -1.0)))
+	# 飘字必须删干净 —— 有现成血条段机制却另起一行飘字, 是「充能条没人看得见」同款错误
+	var src: String = FileAccess.get_file_as_string("res://scripts/systems/equip/eq_potion_batch.gd")
+	_ok("⑨ ★分母: 源文件读得到(空串 = 空检查)", src.length() > 1000, "len=%d" % src.length())
+	var bad := false
+	for ln in src.split("\n"):
+		if ("_float_text" in ln) and ("法力护盾" in ln):
+			bad = true
+	_ok("⑨ ★飘字已删(源码不再有「法力护盾」_float_text 行)", not bad)
