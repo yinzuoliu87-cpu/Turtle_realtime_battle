@@ -1043,7 +1043,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false)
 			"p2eq_062": _spirit_sys._eq_mantis_strike(src, tgt, dmg, si, basic)   # ★basic 在函数内闸(【普攻】规格·2026-08-11); 单行保审计锚点形状
 			"p2eq_063": _spirit_sys._eq_whale_ring(src, tgt, si, basic)   # ★basic 在函数内闸(【普攻】规格·2026-08-11); 单行保审计锚点形状
 			# 食物(本体在 eq_food_batch.gd)
-			"p2eq_070": _food_sys._eq_ballast_brick(src, tgt, si)
+			"p2eq_070": _food_sys._eq_ballast_brick(src, tgt, si, basic)   # ★普攻规格·闸在函数内(v0.19.100 六件漏了它, 070 补验收时抓到)
 		src["eq_state"][iid] = stt
 	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
 	                           #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)

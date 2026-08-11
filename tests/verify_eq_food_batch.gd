@@ -280,7 +280,7 @@ func _t070() -> void:
 		var h0: float = float(t["hp"])
 		var hn0: float = float(near["hp"])
 		var hf0: float = float(far["hp"])
-		_food._eq_ballast_brick(u, t, si)
+		_food._eq_ballast_brick(u, t, si, true)
 		var want_main: float = 3000.0 * main_pct[si]
 		var want_spl: float = 3000.0 * spl_pct[si]
 		_ok("070 si=%d on-hit = 自身最大生命 3/4.5/7%% = %.1f" % [si, want_main],
@@ -623,7 +623,7 @@ func _t070_magnitude() -> void:
 		var h0: float = float(t["hp"])
 		var s0: float = float(s2["hp"])
 		_food.tick_unit(u, 0.016)
-		_food._eq_ballast_brick(u, t, 2)
+		_food._eq_ballast_brick(u, t, 2, true)
 		_ok("⑤ maxHp=%.0f: on-hit 实发 %.0f(设计带 %.0f)" % [mh, h0 - float(t["hp"]), float(row[1])],
 			absf((h0 - float(t["hp"])) - float(row[1])) < 0.51 + 1.0, "")
 		_ok("⑤ maxHp=%.0f: 溅射/人 实发 %.0f(设计带 %.0f)" % [mh, s0 - float(s2["hp"]), float(row[2])],

@@ -277,7 +277,10 @@ func _brick_convert(u: Dictionary, stt: Dictionary) -> void:
 
 
 ## on-hit(由 EquipSystem._eq_on_hit 分派)。★**同步结算**, 不等任何演出。
-func _eq_ballast_brick(src: Dictionary, tgt: Dictionary, si: int) -> void:
+func _eq_ballast_brick(src: Dictionary, tgt: Dictionary, si: int, basic: bool = false) -> void:
+	## ★规格「每次普攻附带」—— 技能/浮游炮不触发(2026-08-11 报修族第 7 件, 补验收时抓到)。
+	if not basic:
+		return
 	if not src.get("alive", false) or not tgt.get("alive", false):
 		return
 	var mh: float = float(src["maxHp"])

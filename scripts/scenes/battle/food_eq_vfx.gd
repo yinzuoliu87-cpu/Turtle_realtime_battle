@@ -451,7 +451,10 @@ func cake_bite_fx(u: Dictionary, idx: int) -> void:
 func splash_crown(pos2d: Vector2) -> Dictionary:
 	if not is_instance_valid(battle._world):
 		return {}
-	var rm: float = range_m(SPLASH_RANGE_PX)
+	## ★冠的视觉半径【收到 70 码】(2026-08-11): 实拍 250 码全程冠把整个战场罩进一个碗里,
+	##   每次普攻罩一次全屏 = 视觉轰炸。溅射覆盖的证据交给每个被溅者身上的咸鱼屑
+	##   (谁被溅到谁身上掉屑), 冠只负责"砸出水花"这个事件读数。伤害判定仍用 SPLASH_RANGE_PX。
+	var rm: float = range_m(70.0)
 	var crown := _mk_node(_crown_mesh(), _mat(true, 10), battle._world_pos(pos2d, 0.0))
 	var ring := _mk_node(_ring_mesh(), _mat(true, 11), battle._world_pos(pos2d, 0.0))
 	var h := {"kind": "crown", "crown": crown, "ring": ring, "r_m": rm, "t": 0.0, "dur": CROWN_SEC}
