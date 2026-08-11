@@ -127,6 +127,7 @@ func _tick_whale_brew(u: Dictionary, si: int) -> void:
 		return
 	var el: float = battle._t - float(stt.get("brew_at_t", battle._t))
 	u["size_mult"] = float(stt.get("brew_size0", 1.0)) * Vfx.ovr_size_at(el, BREW_SIZE)
+	_vfx.brew_glow_tick(u, el)   # 金红体光: 帧同步 + 强度/色相推进(常驻=免控标识)
 	_brew_immune(u)
 	u["eq_state"]["p2eq_066"] = stt
 
@@ -157,7 +158,7 @@ func _eq_whale_brew(u: Dictionary, si: int, stt: Dictionary) -> void:
 	u["_brew_immune"] = true
 	u["eq_state"]["p2eq_066"] = stt
 	_brew_immune(u)
-	_vfx.brew_flash(u)
+	_vfx.brew_glow_start(u)   # 金红体光(金圈已废, 用户 2026-08-11)
 	battle._vfx._float_text(u["pos"] + Vector2(0, -84), "浓浆!", Color(1.0, 0.88, 0.55))
 
 

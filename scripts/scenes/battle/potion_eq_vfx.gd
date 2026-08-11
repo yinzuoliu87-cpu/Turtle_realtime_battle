@@ -414,11 +414,44 @@ func film_clear(u: Dictionary) -> void:
 #  §066 变身闪光 (一次性冲击环, 与过冲同拍)
 # ══════════════════════════════════════════════════════════════════
 
-func brew_flash(u: Dictionary) -> void:
-	if not _alive_world():
+## 066: 喝药金红体光(用户 2026-08-11「整个人的身体和轮廓发金和红光」, 金圈已废) ——
+## 复制一张单位立绘放大 14% 挂在本体 sprite 后面当轮廓辉光; 挂成子节点 ⇒ 跟位置/
+## 跟 billboard/单位亡自动释放。帧同步与强度推进在 brew_glow_tick(每帧, 066 tick 调)。
+const BREW_GOLD := Color(1.0, 0.82, 0.30)
+const BREW_RED := Color(1.0, 0.32, 0.20)
+
+
+## ⚠ 立绘复制+modulate 的轮廓法已废: modulate 是乘法着色, 深绿壳×金=暗棕剪影(实拍翻车)。
+## 现行: 亮金红辐射辉光贴在身后(VfxTex 现成辉光纹理, 亮芯渐隐), 罩住全身 = 「身体在发光」。
+func brew_glow_start(u: Dictionary) -> void:
+	var spr = u.get("sprite", null)
+	if spr == null or not is_instance_valid(spr):
 		return
-	battle._splash_ring_bold(u["pos"], Color(0.98, 0.90, 0.62), 150.0)
-	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.45, 0.75), 92.0)
+	if is_instance_valid(u.get("_brew_glow", null)):
+		return
+	var g := Sprite3D.new()
+	g.texture = VfxTex._make_fire_glow_tex()
+	g.pixel_size = 0.030
+	g.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # 跟父面向(父已是广告牌)
+	g.shaded = false
+	g.transparent = true
+	g.render_priority = -1                            # 画在本体后面
+	g.position = Vector3(0.0, 0.0, -0.02)
+	g.modulate = Color(BREW_GOLD.r, BREW_GOLD.g, BREW_GOLD.b, 0.0)
+	spr.add_child(g)
+	u["_brew_glow"] = g
+
+
+## el = 距喝药秒数。前 1.2s 强光(0.9 起), 之后收成 0.32 常驻(免控标识); 金↔红缓慢交替 + 微呼吸。
+func brew_glow_tick(u: Dictionary, el: float) -> void:
+	var g = u.get("_brew_glow", null)
+	if not is_instance_valid(g):
+		return
+	var a: float = lerpf(0.90, 0.32, clampf(el / 1.2, 0.0, 1.0)) * (1.0 + 0.10 * sin(el * 3.3))
+	var c: Color = BREW_GOLD.lerp(BREW_RED, 0.5 + 0.5 * sin(el * 2.1))
+	g.modulate = Color(c.r, c.g, c.b, clampf(a, 0.0, 1.0))
+	var k: float = 1.0 + 0.06 * sin(el * 3.3)
+	g.scale = Vector3.ONE * k
 
 
 # ══════════════════════════════════════════════════════════════════
