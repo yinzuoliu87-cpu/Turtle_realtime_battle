@@ -921,7 +921,7 @@ func _eq_bonus_hit(src: Dictionary, tgt: Dictionary, amount: float, col: Color) 
 	return d
 
 
-func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
+func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false) -> void:
 	if src.get("equips", []).is_empty():
 		return
 	# AoE 判定(启发式): 同帧内 src 命中≥2个不同目标 → 范围技能 (供 002 等"范围减半"用; 首个目标算单体)
@@ -958,11 +958,13 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 					tgt["hp"] = 0.0
 					if was: battle._kill(tgt, src)
 			"p2eq_038":   # 信号放大器(用户2026-07-30 效果重做): 每次普攻叠一层放大; 每满 5 层放一道弧形电磁波
+				if not basic: continue   # ★规格是【普攻】—— 技能不触发(2026-08-11)
 				# ★整套(层数/增伤/攻速/发波/张角递增/魔抗穿透)在 SignalWaveSystem。
 				#   原来的实现是"每 6 秒随机一段 3.5 秒增伤", 已整个替换。
 				_sigwave.on_hit(src, tgt, si, stt)
 				src["eq_state"][iid] = stt
 			"p2eq_056":   # 飞镖(用户2026-07-30): 每 5 下普攻, 下一击强化 → 击飞目标 1 秒
+				if not basic: continue   # ★规格是【普攻】—— 技能不触发(2026-08-11)
 				# ★计数【每 5 下触发一次】—— 用取模而不是"攒到 5 再清零", 两者等价但取模不会
 				#   因为中途有别的分支 return 而漏清。第 5/10/15… 下命中即触发。
 				var dh: int = int(stt.get("dart_hits", 0)) + 1
@@ -976,6 +978,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 					tgt["_dart_kb_n"] = int(tgt.get("_dart_kb_n", 0)) + 1   # 同步触发证据(供门禁)
 					battle._skill_ring(tgt["pos"], Color(1.0, 0.85, 0.4, 0.8), 52.0)
 			"p2eq_015":   # 荆棘海胆: 消费"强化下一次普攻" → 命中施加大量流血(用户2026-07-30 重做)
+				if not basic: continue   # ★规格是【普攻】—— 技能不触发(2026-08-11)
 				# ★强化是【攒着的次数】而不是布尔 —— 一发巨额反伤可能一次攒出好几次,
 				#   用布尔会把多出来的吞掉。每次普攻消费一层。
 				var emp: int = int(stt.get("thorn_empower", 0))
@@ -1036,9 +1039,9 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int) -> void:
 			# ══ 灵物 3 件(2026-08-05 用户逐件重做·§0.5 定稿) ═════════════════
 			#    ★效果本体在 scripts/systems/equip/eq_spirit_batch.gd; 分派仍写成
 			#      `"id": _fn(` 形状 —— tooltip_number_audit 靠它把效果函数定义处也当锚点。
-			"p2eq_061": _spirit_sys._eq_drill_snail(src, tgt, si)
-			"p2eq_062": _spirit_sys._eq_mantis_strike(src, tgt, dmg, si)
-			"p2eq_063": _spirit_sys._eq_whale_ring(src, tgt, si)
+			"p2eq_061": _spirit_sys._eq_drill_snail(src, tgt, si, basic)   # ★basic 在函数内闸(【普攻】规格·2026-08-11); 单行保审计锚点形状
+			"p2eq_062": _spirit_sys._eq_mantis_strike(src, tgt, dmg, si, basic)   # ★basic 在函数内闸(【普攻】规格·2026-08-11); 单行保审计锚点形状
+			"p2eq_063": _spirit_sys._eq_whale_ring(src, tgt, si, basic)   # ★basic 在函数内闸(【普攻】规格·2026-08-11); 单行保审计锚点形状
 			# 食物(本体在 eq_food_batch.gd)
 			"p2eq_070": _food_sys._eq_ballast_brick(src, tgt, si)
 		src["eq_state"][iid] = stt

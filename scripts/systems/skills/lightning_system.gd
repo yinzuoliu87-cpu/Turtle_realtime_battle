@@ -47,7 +47,7 @@ func _lightning_hop(u: Dictionary, from_pos: Vector2, target: Dictionary, fr: fl
 	if not target.get("alive", false):
 		return
 	_lightning_arc(from_pos, target["pos"], Color("#aef0ff"))   # 锯齿电弧
-	battle._damage._apply_damage_from(u, target, battle._atk_dmg(u, 0.9 * fr, target, true), Color("#4dabf7"))
+	battle._damage._apply_basic_hit_from(u, target, battle._atk_dmg(u, 0.9 * fr, target, true), Color("#4dabf7"))
 	battle._vfx._hit_spark(target)
 	if hop_i > 0:
 		_lightning_electric(u, target)   # 连锁每跳也叠电击层(主目标由_on_basic_hit叠, 避免重复)

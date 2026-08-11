@@ -200,15 +200,15 @@ func _step_projectiles(delta: float) -> void:
 				elif pr.get("shuriken_hit", false):   # 手里剑: 物理段(红·减甲)+暴击时真伤段(白·穿甲)→同发跳两数字(飘字系统按类型自动错开行·不合并)
 					battle._last_atk_crit = bool(pr.get("is_crit", false))   # 两段都按暴击显示(大字+暴击图标)
 					battle._last_dmg_type = "physical"
-					battle._damage._apply_damage_from(pr["src"], tgt, battle._phys_after_armor(pr["src"], float(pr["nj_phys"]), tgt), Color("#ff4444"), 0.0, false)   # 物理段(红)
+					battle._damage._apply_damage_from(pr["src"], tgt, battle._phys_after_armor(pr["src"], float(pr["nj_phys"]), tgt), Color("#ff4444"), 0.0, false, false, false, false, false, true)   # 物理段(红·basic=普攻)
 					if float(pr.get("nj_true", 0.0)) >= 1.0 and tgt.get("alive", false):
 						battle._last_atk_crit = bool(pr.get("is_crit", false))   # 物理段hook可能改写→真伤段前重置
-						battle._damage._apply_damage_from(pr["src"], tgt, int(round(float(pr["nj_true"]))), Color("#ffffff"), 0.0, true, false, true)   # 真伤段(白·pre_crit=已含暴击不再二次掷)
+						battle._damage._apply_damage_from(pr["src"], tgt, int(round(float(pr["nj_true"]))), Color("#ffffff"), 0.0, true, false, true, false, false, true)   # 真伤段(白·pre_crit=已含暴击不再二次掷·basic=普攻)
 				elif pr.get("ghost_touch", false):   # 幽魂触碰: 物理(红·减甲)+真实(白·穿甲) 命中同发跳两数字
 					battle._last_dmg_type = "physical"
-					battle._damage._apply_damage_from(pr["src"], tgt, battle._phys_after_armor(pr["src"], float(pr["gt_phys"]), tgt), Color("#ff4444"), 0.0, false)
+					battle._damage._apply_damage_from(pr["src"], tgt, battle._phys_after_armor(pr["src"], float(pr["gt_phys"]), tgt), Color("#ff4444"), 0.0, false, false, false, false, false, true)
 					if tgt.get("alive", false):
-						battle._damage._apply_damage_from(pr["src"], tgt, int(round(float(pr["gt_true"]))), Color("#ffffff"), 0.0, true)
+						battle._damage._apply_damage_from(pr["src"], tgt, int(round(float(pr["gt_true"]))), Color("#ffffff"), 0.0, true, false, false, false, false, true)
 					battle._ghost_sys._ghost_touch_hit(tgt["pos"])
 				elif pr.get("eq_bolt", false):   # 装备弹道(弩矢/飞镖等): 记为装备物理伤, 命中溅火花
 					battle._damage._apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], float(pr.get("eq_ls", 0.0)), false, true)
@@ -234,7 +234,7 @@ func _step_projectiles(delta: float) -> void:
 					battle._damage._apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], 0.0, false)
 					battle._equip_sys._eq_drone_halve = false
 				elif pr["src"] != null:
-					battle._damage._apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], 0.0, pr.get("raw", false))   # raw=手里剑暴击转真伤等
+					battle._damage._apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], 0.0, pr.get("raw", false), false, false, false, false, pr.get("basic_onhit", false))   # raw=手里剑暴击转真伤等; basic 随弹道标
 				else:
 					battle._damage._apply_damage(tgt, pr["dmg"], pr["col"])
 				battle._vfx._flash(tgt)

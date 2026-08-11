@@ -199,7 +199,10 @@ func breach_of(tgt: Dictionary) -> int:
 	return int(tgt.get("breach_stacks", 0))
 
 
-func _eq_drill_snail(src: Dictionary, tgt: Dictionary, si: int) -> void:
+func _eq_drill_snail(src: Dictionary, tgt: Dictionary, si: int, basic: bool = false) -> void:
+	## ★规格「每次普攻命中」(§0.5) —— 技能/浮游炮/演出伤害不触发(2026-08-11 用户报修)。
+	if not basic:
+		return
 	if not tgt.get("alive", false) or float(tgt.get("maxHp", 0.0)) <= 0.0:
 		return
 	## ★先判"这一击之前"是不是已经 20 层 —— 本次施加的层数不算进这一发的转真伤判定。
@@ -258,7 +261,10 @@ func _eq_mantis_ready(u: Dictionary, _si: int) -> void:
 ##        会让所有远程携带者永远触发不了。
 ##   ⇒ 取与 015 一致的既有惯例。要改成严格"只有普攻", 得先给伤害管线传一个"这一段是普攻"
 ##      的标记(那是 battle_damage.gd 的中央签名, 本批不许动)。
-func _eq_mantis_strike(src: Dictionary, tgt: Dictionary, dmg: int, si: int) -> void:
+func _eq_mantis_strike(src: Dictionary, tgt: Dictionary, dmg: int, si: int, basic: bool = false) -> void:
+	## ★规格「强化下一次普攻」(§0.5) —— 只在普攻命中时放强化(2026-08-11 用户报修)。
+	if not basic:
+		return
 	var stt: Dictionary = src["eq_state"].get("p2eq_062", {})
 	if not bool(stt.get("emp_ready", false)) or not tgt.get("alive", false):
 		src["eq_state"]["p2eq_062"] = stt
@@ -328,7 +334,10 @@ func _eq_whale_haste(u: Dictionary, si: int) -> void:
 ## 普攻命中 → 挂一个环; 满 3 个引爆 25/40/70 真伤并清零。
 ## ⚠ 同 062 的诚实记录: 挂的是 `_eq_on_hit`, 所以携带者的**技能伤害也会挂环**。
 ##   原因同上(管线没有"这一段是普攻"的标记), 且与 061 破损、083 潮汐细剑同口径。
-func _eq_whale_ring(src: Dictionary, tgt: Dictionary, si: int) -> void:
+func _eq_whale_ring(src: Dictionary, tgt: Dictionary, si: int, basic: bool = false) -> void:
+	## ★规格「携带者的普攻施加环」(§0.5) —— 技能不施环(2026-08-11 用户报修)。
+	if not basic:
+		return
 	if not tgt.get("alive", false):
 		return
 	var n: int = int(tgt.get("whale_rings", 0)) + 1

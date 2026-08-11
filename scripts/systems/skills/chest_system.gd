@@ -125,7 +125,7 @@ func _chest_basic(u: Dictionary, tgt: Dictionary) -> void:       # 普攻·宝�
 		var oref: Dictionary = o
 		battle._pending_shots.append({"delay": wave_t * clampf(along / reach, 0.0, 1.0), "fn": func() -> void:   # 波头扫到才结算(近先远后)
 			if not oref.get("alive", false) or not uu.get("alive", false): return
-			battle._damage._apply_damage_from(uu, oref, battle._atk_dmg(uu, 1.0, oref) + bonus, Color("#ffd93d"))
+			battle._damage._apply_basic_hit_from(uu, oref, battle._atk_dmg(uu, 1.0, oref) + bonus, Color("#ffd93d"))
 			battle._burst_vfx("res://assets/sprites/vfx/treasure-slam.png", oref["pos"], 130.0)                  # 命中放射爆闪(s21·波到才炸)
 		, "src": u})
 	# ① 砸点层(s16): 尘环+金爆+轻震

@@ -59,9 +59,9 @@ func _shell_basic(u: Dictionary, tgt: Dictionary) -> void:
 	var is_true: bool = bool(u["basic_alt"])
 	# 主目标命中
 	if is_true:
-		battle._damage._apply_damage_from(u, tgt, int(u["atk"] * 1.0), Color("#ffffff"), 0.0, true)   # 真实(穿减伤)
+		battle._damage._apply_basic_hit_from(u, tgt, int(u["atk"] * 1.0), Color("#ffffff"), 0.0, true)   # 真实(穿减伤)
 	else:
-		battle._damage._apply_damage_from(u, tgt, battle._resolve_dmg(u, u["atk"] * 1.0, tgt, false), Color("#ff4444"))
+		battle._damage._apply_basic_hit_from(u, tgt, battle._resolve_dmg(u, u["atk"] * 1.0, tgt, false), Color("#ff4444"))
 	# 近战打击感: 闪白 + 前冲 (同 _emit_basic 近战分支)
 	battle._vfx._flash(tgt); battle._melee_lunge(u, tgt)
 	# 范围溅射: 主目标120px内其他敌 50%(同类型)
@@ -70,9 +70,9 @@ func _shell_basic(u: Dictionary, tgt: Dictionary) -> void:
 			continue
 		if (e["pos"] - tgt["pos"]).length() <= battle.SHELL_SPLASH_RADIUS:
 			if is_true:
-				battle._damage._apply_damage_from(u, e, int(u["atk"] * 0.5), Color("#ffffff"), 0.0, true)
+				battle._damage._apply_basic_hit_from(u, e, int(u["atk"] * 0.5), Color("#ffffff"), 0.0, true)
 			else:
-				battle._damage._apply_damage_from(u, e, battle._resolve_dmg(u, u["atk"] * 0.5, e, false), Color("#ff4444"))
+				battle._damage._apply_basic_hit_from(u, e, battle._resolve_dmg(u, u["atk"] * 0.5, e, false), Color("#ff4444"))
 
 # 闪电龟·改造普攻(用户2026-06-28逐字"得改造，是一次攻击一道，并有连锁闪电和叠被动"):
 #   一道闪电(魔法 0.6×ATK)命中主目标 → 依次接力连锁2跳(每跳260码内最近敌, 伤害×0.6递减 → 0.36A/0.216A)。

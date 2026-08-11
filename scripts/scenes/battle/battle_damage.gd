@@ -92,7 +92,15 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: Stri
 ## ★no_popup: 不跳通用伤害飘字。给【自己维护一个常驻数字】的效果用 ——
 ##   靶向器钩索炸弹的 DoT 是"宿主头上一个累加滚动数字"(用户 2026-08-01 指定),
 ##   再叠一串通用红字就是两个数字打架。伤害/统计/护盾一切照旧, 只是不弹那个字。
-func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, extra_ls: float = 0.0, raw: bool = false, from_equip: bool = false, pre_crit: bool = false, no_dodge: bool = false, no_popup: bool = false) -> void:
+## ★`basic=true` 只给【普攻链】打(近战直伤/普攻弹道落点/各龟的普攻分支/普攻溅射):
+##   2026-08-11 用户报「浮游炮(非普攻)能触发钻孔螺」—— _eq_on_hit 原来对一切
+##   _apply_damage_from 无差别开火, 而 015/038/056/061/062/063 的规格都写的是【普攻】。
+##   技能/演出伤害一律不打这个标 ⇒ 那六件不再被技能触发。
+func _apply_basic_hit_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, extra_ls: float = 0.0, raw: bool = false) -> void:
+	_apply_damage_from(src, u, dmg, col, extra_ls, raw, false, false, false, false, true)
+
+
+func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, extra_ls: float = 0.0, raw: bool = false, from_equip: bool = false, pre_crit: bool = false, no_dodge: bool = false, no_popup: bool = false, basic: bool = false) -> void:
 	battle._adf_ct += 1
 	if battle._adf_ct > 20000:                        # 防御: 一帧伤害调用爆炸(死亡链无限级联)→本帧后续伤害丢弃防卡死(用户2026-07-19卡死猎手)
 		if not battle._adf_warned:
@@ -292,7 +300,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	# 装备事件钩子 (on-hit 攻击方 / on-target 防守方 / HP阈值) — 装备自身造的段不再回钩
 	if not from_equip:
 		if src["alive"] and u["alive"]:
-			battle._equip_sys._eq_on_hit(src, u, dmg)        # on-hit: 攻击者装备 (流血/灼烧/连锁/追击/穿透/标记 等)
+			battle._equip_sys._eq_on_hit(src, u, dmg, basic) # on-hit: 攻击者装备 (流血/灼烧/连锁/追击/穿透/标记 等; basic 闸【普攻】类)
 			battle._bow_syn.on_hit(src, u)                   # 弓箭【处决】: 全队(用户2026-08-03改), 斩杀线按各自暴击率
 			battle._potion_syn.try_behead(src, u)            # 药水顶档【斩首】: 攻击猎物且其 <20% 血 → 直接处决
 			battle._gadget_syn.on_hit(src, u)                # 奇械【冰封】掷骰冻结 + 【僵硬】叠 1 层

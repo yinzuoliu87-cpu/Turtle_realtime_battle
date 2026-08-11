@@ -107,7 +107,7 @@ func tick(_delta: float) -> void:
 		#   ⇒ 一次追打把 on-hit 点了【两次】, 一次普攻 = 1 + 2x2 = **5 次 on-hit 事件**(应为 3)。
 		#   影响的不止某一件装备, 是**所有 on-hit 装备**(流血叠层/005 双刃/各种充能计数)
 		#   在剑阵容里全部按双倍速率跑。弓/药水/奇械/法器没这问题(它们只在内部那段挂了一次)。
-		battle._damage._apply_damage_from(src, tgt, dmg, Color("#ffd27f"))
+		battle._damage._apply_basic_hit_from(src, tgt, dmg, Color("#ffd27f"))   # ★追打=普攻的复制: 带 basic 标(083 规格「追打计入」; 061 族同理)
 		src["_sw_busy"] = false
 	_pending = keep
 

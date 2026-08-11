@@ -146,6 +146,7 @@ func _ready() -> void:
 	_sp = _eq._spirit_sys
 
 	_t_wiring()
+	_t_basic_gate()
 	_t060_parasol()
 	_t061_drill()
 	_t062_mantis()
@@ -240,6 +241,26 @@ func _t_wiring() -> void:
 # 060 磷光水母伞: 每 7 秒开伞 2.5 秒(11/22/35% 减伤 + 15% 闪避, 200 码),
 #                 结束时携带者回复 50/80/130, 然后才重新计时
 # ─────────────────────────────────────────────────────────────
+
+# ══════════════════════════════════════════════════════════════════════════
+# ⓪b 非普攻不触发【普攻】规格件(2026-08-11 用户报修: 赛博浮游炮/技能曾误触发钻孔螺)
+#    判据走【真实伤害入口】: _apply_damage_from(无标) vs _apply_basic_hit_from(普攻标)。
+#    不是直接调 _eq_on_hit 喂布尔 —— 那是恒真式, 守不住"伤害管线忘了传标"。
+# ══════════════════════════════════════════════════════════════════════════
+func _t_basic_gate() -> void:
+	print("── ⓪b 普攻闸(浮游炮/技能不触发) ──")
+	_s._units.clear()
+	var a: Dictionary = _equip_flags(_mk("fortune", "left", Vector2(-100.0, 0.0), 1000.0), "p2eq_061", 3)
+	var t: Dictionary = _mk("basic", "right", Vector2(100.0, 0.0), 100000.0)
+	t["dodge_bonus"] = 0.0
+	_s._damage._apply_damage_from(a, t, 10, Color(1, 1, 1))
+	_ok("⓪b ★★技能/浮游炮命中【不】叠破损(走真实伤害入口, 无普攻标)",
+		int(t.get("breach_stacks", 0)) == 0, "实测 %d 层" % int(t.get("breach_stacks", 0)))
+	_s._damage._apply_basic_hit_from(a, t, 10, Color(1, 1, 1))
+	_ok("⓪b ★普攻命中叠破损(_apply_basic_hit_from 带标)",
+		int(t.get("breach_stacks", 0)) > 0, "实测 %d 层" % int(t.get("breach_stacks", 0)))
+
+
 func _t060_parasol() -> void:
 	print("── 060 磷光水母伞 ──")
 	for si in range(3):
@@ -325,7 +346,7 @@ func _t061_drill() -> void:
 		var o: Dictionary = _mk("fortune", "right", Vector2(-150.0, -220.0), 2000.0)
 		var h0: float = float(o["hp"])
 		_ok("061 si=%d ★分母: 起手破损 0 层" % si, int(o.get("breach_stacks", 0)) == 0)
-		_s._equip_sys._eq_on_hit(u, o, 0)
+		_s._equip_sys._eq_on_hit(u, o, 0, true)
 		_ok("061 si=%d 额外伤害 = 2000 × %.1f%% = %.0f(魔抗 0)" % [si, pct * 100.0, 2000.0 * pct],
 			absf(h0 - float(o["hp"]) - 2000.0 * pct) < 0.51,
 			"实掉 %.1f 期望 %.1f" % [h0 - float(o["hp"]), 2000.0 * pct])
@@ -336,7 +357,7 @@ func _t061_drill() -> void:
 	var a: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, -180.0), 3000.0), "p2eq_061", 3)
 	var t: Dictionary = _mk("fortune", "right", Vector2(-150.0, -180.0), 100000.0)
 	for i in range(30):
-		_s._equip_sys._eq_on_hit(a, t, 0)
+		_s._equip_sys._eq_on_hit(a, t, 0, true)
 	_ok("061 ★单目标破损上限 20 层(打 30 下也只有 20)",
 		int(t["breach_stacks"]) == 20, "实测 %d" % int(t["breach_stacks"]))
 	# ★★满 20 层 → 转真实伤害。三步比, 【不引用游戏的抗性公式】:
@@ -348,7 +369,7 @@ func _t061_drill() -> void:
 	var m0: Dictionary = _mk("fortune", "right", Vector2(-150.0, -140.0), 10000.0)
 	m0["breach_stacks"] = 18
 	var z0: float = float(m0["hp"])
-	_s._equip_sys._eq_on_hit(a2, m0, 0)
+	_s._equip_sys._eq_on_hit(a2, m0, 0, true)
 	var dbase: float = z0 - float(m0["hp"])
 	_ok("061 ★分母: 零抗性 + 18 层 → 基数 = 10000 × 2% = 200",
 		absf(dbase - 200.0) < 0.51, "实掉 %.1f" % dbase)
@@ -356,13 +377,13 @@ func _t061_drill() -> void:
 	m["mr"] = 100.0                          # 魔抗 100 ⇒ 魔法段被吃掉一部分
 	m["breach_stacks"] = 18
 	var b0: float = float(m["hp"])
-	_s._equip_sys._eq_on_hit(a2, m, 0)
+	_s._equip_sys._eq_on_hit(a2, m, 0, true)
 	var d18: float = b0 - float(m["hp"])
 	_ok("061 ★分母: 18 层时走【魔法】伤害 ⇒ 100 魔抗真的吃掉了一部分(严格 < 200 且 > 0)",
 		d18 > 0.0 and d18 < 199.5, "实掉 %.1f(零抗性时是 %.1f)" % [d18, dbase])
 	m["breach_stacks"] = 20
 	var b1: float = float(m["hp"])
-	_s._equip_sys._eq_on_hit(a2, m, 0)       # 20 层 → 真伤(不吃魔抗) → 10000×2% = 200
+	_s._equip_sys._eq_on_hit(a2, m, 0, true)       # 20 层 → 真伤(不吃魔抗) → 10000×2% = 200
 	var d20: float = b1 - float(m["hp"])
 	_ok("061 ★★满 20 层 → 转【真实伤害】: 同一个 100 魔抗目标上从 %.1f 变回精确 200" % d18,
 		absf(d20 - 200.0) < 0.51, "实掉 %.1f 期望 200" % d20)
@@ -371,8 +392,8 @@ func _t061_drill() -> void:
 	var p1: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, -100.0), 3000.0), "p2eq_061", 1)
 	var p2: Dictionary = _equip(_mk("fortune", "left", Vector2(-280.0, -100.0), 3000.0), "p2eq_061", 1)
 	var sh: Dictionary = _mk("fortune", "right", Vector2(-150.0, -100.0), 5000.0)
-	_s._equip_sys._eq_on_hit(p1, sh, 0)
-	_s._equip_sys._eq_on_hit(p2, sh, 0)
+	_s._equip_sys._eq_on_hit(p1, sh, 0, true)
+	_s._equip_sys._eq_on_hit(p2, sh, 0, true)
 	_ok("061 ★多个携带者共享同一目标身上的破损层(1+1=2, 不是各记各的)",
 		int(sh["breach_stacks"]) == 2, "实测 %d" % int(sh["breach_stacks"]))
 	# ★分母: 不带 061 的同一发, 一点不掉血也不叠层
@@ -380,7 +401,7 @@ func _t061_drill() -> void:
 	var bare: Dictionary = _mk("fortune", "left", Vector2(-300.0, -60.0), 3000.0)
 	var o2: Dictionary = _mk("fortune", "right", Vector2(-150.0, -60.0), 2000.0)
 	var q0: float = float(o2["hp"])
-	_s._equip_sys._eq_on_hit(bare, o2, 0)
+	_s._equip_sys._eq_on_hit(bare, o2, 0, true)
 	_ok("061 ★分母: 不带 061 → 不掉血也不叠层(证明上面那些不是恒真)",
 		absf(q0 - float(o2["hp"])) < 0.01 and int(o2.get("breach_stacks", 0)) == 0,
 		"掉 %.1f 层 %d" % [q0 - float(o2["hp"]), int(o2.get("breach_stacks", 0))])
@@ -404,7 +425,7 @@ func _t062_mantis() -> void:
 		var want: float = 100.0 * atk_k + 2000.0 * hp_k
 		# ★没蓄力时: 普攻不产生任何额外伤害
 		var z0: float = float(o["hp"])
-		_s._equip_sys._eq_on_hit(u, o, 50)
+		_s._equip_sys._eq_on_hit(u, o, 50, true)
 		_ok("062 si=%d ★分母: 没闪避过 → 普攻不带额外段(掉血 0)" % si,
 			absf(z0 - float(o["hp"])) < 0.01, "实掉 %.1f" % (z0 - float(o["hp"])))
 		# 闪避 → 蓄一发
@@ -413,7 +434,7 @@ func _t062_mantis() -> void:
 			bool((u["eq_state"].get("p2eq_062", {}) as Dictionary).get("emp_ready", false)))
 		var h0: float = float(o["hp"])
 		var me0: float = float(u["hp"])
-		_s._equip_sys._eq_on_hit(u, o, 50)   # 假定普攻本体打了 50
+		_s._equip_sys._eq_on_hit(u, o, 50, true)   # 假定普攻本体打了 50
 		var got: float = h0 - float(o["hp"])
 		_ok("062 si=%d 额外物理 = %.1f×ATK100 + %.0f%%×2000 = %.0f(护甲 0)" % [si, atk_k, hp_k * 100.0, want],
 			absf(got - want) < 0.51, "实掉 %.1f 期望 %.1f" % [got, want])
@@ -427,14 +448,14 @@ func _t062_mantis() -> void:
 	var e: Dictionary = _mk("fortune", "right", Vector2(-150.0, 20.0), 2000.0)
 	var tsave: float = _s._t
 	_s._equip_sys._eq_on_dodge(c)
-	_s._equip_sys._eq_on_hit(c, e, 10)                       # 打出 → 进 CD
+	_s._equip_sys._eq_on_hit(c, e, 10, true)                       # 打出 → 进 CD
 	_s._t = tsave + 1.9
 	_s._equip_sys._eq_on_dodge(c)
 	_ok("062 ★★口径②: CD 内(1.9 秒)闪避成功也【不蓄】下一发(不是'蓄了但打不出')",
 		not bool((c["eq_state"].get("p2eq_062", {}) as Dictionary).get("emp_ready", false)),
 		"emp_ready=%s" % str((c["eq_state"].get("p2eq_062", {}) as Dictionary).get("emp_ready", false)))
 	var y0: float = float(e["hp"])
-	_s._equip_sys._eq_on_hit(c, e, 10)
+	_s._equip_sys._eq_on_hit(c, e, 10, true)
 	_ok("062 ★★CD 内的普攻确实没有额外段(掉血 0)",
 		absf(y0 - float(e["hp"])) < 0.01, "实掉 %.1f" % (y0 - float(e["hp"])))
 	_s._t = tsave + 2.1
@@ -500,12 +521,12 @@ func _t063_whale() -> void:
 		o["mr"] = 200.0
 		o["def"] = 200.0                     # 真伤不吃这两条 —— 是不是真伤在这里就分得出来
 		var s0: float = float(o["hp"])
-		_s._equip_sys._eq_on_hit(u2, o, 0)
-		_s._equip_sys._eq_on_hit(u2, o, 0)
+		_s._equip_sys._eq_on_hit(u2, o, 0, true)
+		_s._equip_sys._eq_on_hit(u2, o, 0, true)
 		_ok("063 si=%d ★分母: 前两个环不掉血, 环数 = 2" % si,
 			absf(s0 - float(o["hp"])) < 0.01 and int(o["whale_rings"]) == 2,
 			"掉 %.1f 环 %d" % [s0 - float(o["hp"]), int(o["whale_rings"])])
-		_s._equip_sys._eq_on_hit(u2, o, 0)
+		_s._equip_sys._eq_on_hit(u2, o, 0, true)
 		_ok("063 si=%d 第 3 个环引爆 = %.0f 点【真实】伤害(200 双抗一点不减)" % [si, boom],
 			absf(s0 - float(o["hp"]) - boom) < 0.51, "实掉 %.1f" % (s0 - float(o["hp"])))
 		_ok("063 si=%d 引爆后环数清零(重新攒)" % si,

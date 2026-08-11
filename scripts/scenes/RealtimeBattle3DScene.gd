@@ -2825,7 +2825,7 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		for _i2 in range(_hits.size()):
 			var o: Dictionary = _hits[_i2]
 			var _sc: float = 1.0 if _i2 == 0 else CYBER_LASER_FALLOFF   # 首个满伤, 后续 50%
-			_damage._apply_damage_from(u, o, _atk_dmg(u, _sc, o), Color("#9bf0ff"))
+			_damage._apply_basic_hit_from(u, o, _atk_dmg(u, _sc, o), Color("#9bf0ff"))
 			_vfx._hit_spark(o)                                                       # 沿线每个命中点火花(2026-07-15提质)
 		_bolt_line(u["pos"], u["pos"] + _cdir * 1300.0, Color(0.85, 1.0, 1.0))     # 白青亮核心线
 		_beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", u["pos"], u["pos"] + _cdir * 1300.0, 44.0, Color(0.5, 0.9, 1.0, 0.55), 0.22)   # 青色辉光束(细·随核心线衰减)
@@ -4143,7 +4143,7 @@ func _emit_basic(u: Dictionary, tgt: Dictionary, dmg: int, col: Color, i: int) -
 		u["dice_fate_ls"] = false
 		_vfx._float_text(u["pos"] + Vector2(0, -58), "命运吸血!", Color("#ff6b6b"))
 	if u["melee"]:
-		_damage._apply_damage_from(u, tgt, dmg, col, _ls)
+		_damage._apply_basic_hit_from(u, tgt, dmg, col, _ls)
 		if i == 0:
 			_vfx._flash(tgt); _melee_lunge(u, tgt)
 	else:
@@ -4159,7 +4159,7 @@ func _splash_adjacent(u: Dictionary, tgt: Dictionary, frac: float) -> void:
 		if is_same(o, tgt) or not o["alive"]:
 			continue
 		if (o["pos"] - tgt["pos"]).length() <= 90.0:
-			_damage._apply_damage_from(u, o, _mitigate(u, u["atk"] * 0.6 * frac, o, false), Color("#cfd8e8"))
+			_damage._apply_basic_hit_from(u, o, _mitigate(u, u["atk"] * 0.6 * frac, o, false), Color("#cfd8e8"))
 	# 普攻 on-hit 被动钩子 (墨迹/电击/结晶叠层 + 猎杀斩杀 等)
 	_on_basic_hit(u, tgt)
 

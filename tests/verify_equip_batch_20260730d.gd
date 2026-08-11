@@ -227,7 +227,7 @@ func _t_dart() -> void:
 		var fired: Array = []
 		for hit in range(1, 11):
 			var n0: int = int(tgt.get("_dart_kb_n", 0))
-			_s._equip_sys._eq_on_hit(car, tgt, 10)
+			_s._equip_sys._eq_on_hit(car, tgt, 10, true)   # basic=普攻标(056 规格「每5下普攻」·2026-08-11 闸修)
 			if int(tgt.get("_dart_kb_n", 0)) > n0:
 				fired.append(hit)
 		_ok("1-6 ★★击飞发生在第 [5, 10] 下(不是 4 或 6)",

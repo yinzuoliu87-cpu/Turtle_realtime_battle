@@ -177,7 +177,7 @@ func _t_dispatch() -> void:
 	var dmg_src: String = _strip("res://scripts/scenes/battle/battle_damage.gd")
 	var rb_src: String = _strip("res://scripts/scenes/RealtimeBattle3DScene.gd")
 	_ok("⓪ ★★接线: battle_damage 的普攻/技能路真的调 _eq_on_hit",
-		dmg_src.contains("_eq_on_hit(src, u, dmg)"), "len=%d" % dmg_src.length())
+		dmg_src.contains("_eq_on_hit(src, u, dmg, basic)"), "len=%d" % dmg_src.length())
 	_ok("⓪ ★★接线: battle_damage 的闪避分支真的调 _eq_on_dodge",
 		dmg_src.contains("_eq_on_dodge(u)"))
 	_ok("⓪ ★★接线: 主场景的普攻真的调 _eq_on_basic_attack",
