@@ -250,19 +250,15 @@ func _eq_mantis_ready(u: Dictionary, _si: int) -> void:
 		return
 	stt["emp_ready"] = true
 	u["eq_state"]["p2eq_062"] = stt
+	_vfx.mantis_ready(u)   # 待发指示: 身前钳形光弧(玩家能看出下一击有强化)
 
 
 ## 普攻命中 → 若已蓄好, 打出强化段并回血。
 ## ★消费点放 on-hit, 与 015 荆棘海胆的「强化下一次普攻」同一个惯例。
-## ⚠ **诚实记录(与用户原话的一处偏差)**: 用户写的是"强化下一次**普攻**", 而 `_eq_on_hit`
-##   会被携带者打出的**任意一段非装备伤害**调到(技能也算) ⇒ 这一发有可能被技能吃掉。
-##   为什么不挂 `_eq_on_basic_attack`(那才是"只有普攻"的钩子):
-##     ① 它在 `_basic_attack` 的**开头**触发, 那时这一击的伤害还没算出来,
-##        而口径① 要求按"整次普攻打出的总伤害"回 40% —— 拿不到 dmg 就做不出来;
-##     ② 远程普攻的伤害落在**后面的帧**(弹道飞完才结算), 想靠"同帧"把两者对起来
-##        会让所有远程携带者永远触发不了。
-##   ⇒ 取与 015 一致的既有惯例。要改成严格"只有普攻", 得先给伤害管线传一个"这一段是普攻"
-##      的标记(那是 battle_damage.gd 的中央签名, 本批不许动)。
+## ★(2026-08-11 已根治)旧注释曾记录「_eq_on_hit 会被技能调到, 这一发可能被技能吃掉」——
+##   v0.19.100 给伤害管线加了 `basic` 显式标(普攻链打标), 本函数由分派传入并在函数头闸住,
+##   「强化下一次普攻」现在严格只被普攻命中消费。仍留在 on-hit(而非 _eq_on_basic_attack):
+##   口径① 要按"整次普攻总伤害"回 40%, 只有命中时刻才拿得到 dmg(远程弹道尤其)。
 func _eq_mantis_strike(src: Dictionary, tgt: Dictionary, dmg: int, si: int, basic: bool = false) -> void:
 	## ★规格「强化下一次普攻」(§0.5) —— 只在普攻命中时放强化(2026-08-11 用户报修)。
 	if not basic:
@@ -282,7 +278,9 @@ func _eq_mantis_strike(src: Dictionary, tgt: Dictionary, dmg: int, si: int, basi
 	## 口径①: 40% 按【普攻本体 + 额外段】的总伤害算
 	battle._damage._heal(src, float(dmg + extra) * MANTIS_LEECH)
 	src["_mantis_n"] = int(src.get("_mantis_n", 0)) + 1
-	_vfx.cavitation_strike(tgt["pos"], Color(1.0, 0.85, 0.45, 0.95))
+	_vfx.mantis_consume(src)      # 收待发指示
+	_vfx.mantis_hit(tgt["pos"])   # 钳斩→气泡簇聚缩→星形溃灭闪(旧圆盘+白球已废)
+	_vfx.green_heal(src)          # 40% 吸血: 060 同支绿的恢复光点涌
 
 
 # ══════════════════════════════════════════════════════════════════════════

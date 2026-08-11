@@ -318,6 +318,7 @@ var _m_upf: ArrayMesh = null
 var _m_upf_big: ArrayMesh = null
 var _m_cracks: Array = []
 var _m_chips: ArrayMesh = null
+var _m_claw: ArrayMesh = null
 
 ## 060 的两个专用 shader(时间走 uniform, 不碰内建墙钟 —— mana_beam 同款纪律)
 const SH_JELLY := preload("res://assets/shaders/jellyfish_bell.gdshader")
@@ -545,6 +546,35 @@ static func _build_cracks(band: int) -> ArrayMesh:
 	return mesh
 
 
+## 062 钳形光弧: 左右两片月牙钳(弧 130°, 根粗尖细, 十字条带)。待发指示与钳合闪共用。
+static func _build_claw() -> ArrayMesh:
+	var mesh := ArrayMesh.new()
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var segs := 10
+	for side in [-1.0, 1.0]:
+		for sg in range(segs):
+			var t0: float = float(sg) / float(segs)
+			var t1: float = float(sg + 1) / float(segs)
+			var a0: float = deg_to_rad(-65.0 + 130.0 * t0) + PI * (0.5 - 0.5 * side)
+			var a1: float = deg_to_rad(-65.0 + 130.0 * t1) + PI * (0.5 - 0.5 * side)
+			var p0 := Vector3(cos(a0) * 1.0 + 0.18 * side, 0.10 * sin(a0 * 2.0), sin(a0) * 0.85)
+			var p1 := Vector3(cos(a1) * 1.0 + 0.18 * side, 0.10 * sin(a1 * 2.0), sin(a1) * 0.85)
+			var w0: float = 0.16 * (1.0 - t0 * 0.9)
+			var w1: float = 0.16 * (1.0 - t1 * 0.9)
+			var c0 := Color(1.0, 0.82, 0.45, 0.85 * (1.0 - t0 * 0.5))
+			var c1 := Color(1.0, 0.82, 0.45, 0.85 * (1.0 - t1 * 0.5))
+			var nd: Vector3 = (p1 - p0).normalized()
+			var sv := Vector3(-nd.z, 0.0, nd.x)
+			for ax in [sv, Vector3(0, 1, 0)]:
+				var s0: Vector3 = ax * w0
+				var s1: Vector3 = ax * w1
+				_tri_uv(st, [p0 - s0, c0, Vector2.ZERO], [p1 - s1, c1, Vector2.ZERO], [p1 + s1, c1, Vector2.ZERO])
+				_tri_uv(st, [p0 - s0, c0, Vector2.ZERO], [p1 + s1, c1, Vector2.ZERO], [p0 + s0, c0, Vector2.ZERO])
+	st.commit(mesh)
+	return mesh
+
+
 ## 061 壳屑: 一圈小碎片(菱形光点复用), 节点 scale 弹开读成迸出
 static func _build_chips() -> ArrayMesh:
 	var mesh := ArrayMesh.new()
@@ -661,6 +691,7 @@ func _ensure_meshes() -> void:
 	if _m_cracks.is_empty():
 		for b in range(4): _m_cracks.append(_build_cracks(b))
 	if _m_chips == null: _m_chips = _build_chips()
+	if _m_claw == null: _m_claw = _build_claw()
 
 
 ## 节点上打的自定义 meta 键 —— 门禁按 meta 数点数, **不按名字/贴图路径**:
@@ -838,7 +869,52 @@ func breach_marks(pos2d: Vector2, col: Color, n: int) -> Dictionary:
 	return h
 
 
-## 062: 强化普攻的两段式(钳合 → 空泡 → 溃灭闪光)。
+## 062: 【蓄好待发】指示 —— 携带者身前一对钳形光弧微微开合, 命中消费即收。
+func mantis_ready(u: Dictionary) -> void:
+	if not _has_world():
+		return
+	_ensure_meshes()
+	var h = u.get("_mready_h", null)
+	if h is Dictionary and is_instance_valid((h as Dictionary).get("claw", null)):
+		return
+	_ensure_room()
+	var nd := _spawn_node(_m_claw, _mat(false, 13), battle._world_pos(u.get("pos", Vector2.ZERO), 1.5), "claw")
+	if nd == null:
+		return
+	var hh := {"kind": "mready", "claw": nd, "u": u, "r": 30.0 * float(battle.WS), "dur": 1.0e9, "t": 0.0}
+	u["_mready_h"] = hh
+	_live.append(hh)
+	apply_at(hh, 0.0)
+
+
+func mantis_consume(u: Dictionary) -> void:
+	var h = u.get("_mready_h", null)
+	if h is Dictionary:
+		_free_handle(h)
+		drop(h)
+	u["_mready_h"] = null
+
+
+## 062: 强化命中三拍(照真实空化时序, 全有机形态): ①钳形 V 双弧快斩 ②小气泡簇向心聚缩
+## ③星形溃灭闪 + 壳屑(Rayleigh「第二段必然更亮」保住, 亮的是尖锐星芒不是白球)。
+func mantis_hit(pos2d: Vector2) -> void:
+	if not _has_world():
+		return
+	_ensure_meshes()
+	_ensure_room()
+	var claw := _spawn_node(_m_claw, _mat(false, 14), battle._world_pos(pos2d, 1.4), "claw")
+	var bub := _spawn_node(_m_upf_big, _mat(false, 13), battle._world_pos(pos2d, 1.2), "bub")
+	var fl := _spawn_node(_m_cracks[1], _mat(false, 14), battle._world_pos(pos2d, 1.3), "flash")
+	var ch := _spawn_node(_m_chips, _mat(false, 14), battle._world_pos(pos2d, 1.0), "chips")
+	if claw == null or bub == null or fl == null or ch == null:
+		return
+	var h := {"kind": "mhit", "claw": claw, "bub": bub, "flash": fl, "chips": ch,
+		"r": 44.0 * float(battle.WS), "dur": 0.50, "t": 0.0}
+	_live.append(h)
+	apply_at(h, 0.0)
+
+
+## (旧)两段式圆盘+白球 —— 已被 mantis_hit 取代, 留给门禁形态用例(strike_shape 闭式解仍被钉)。
 func cavitation_strike(pos2d: Vector2, col: Color) -> Dictionary:
 	if not _has_world():
 		return {}
@@ -947,6 +1023,8 @@ func apply_at(h: Dictionary, u: float) -> void:
 		"parasol": _apply_parasol(h, u)
 		"breach_ov": _apply_breach_ov(h)
 		"pdrill": _apply_pdrill(h, u)
+		"mready": _apply_mready(h)
+		"mhit": _apply_mhit(h, u)
 		"pcover": _apply_pcover(h, u)
 		"pflash": _apply_pflash(h, u)
 		"pheal": _apply_pheal(h, u)
@@ -1107,6 +1185,74 @@ func _apply_breach_ov(h: Dictionary) -> void:
 	_set_col(nd, Color(1, 1, 1, a))
 
 
+## 待发钳弧: 跟随单位, 微微开合搏动(scale 呼吸); 单位死亡自清。
+func _apply_mready(h: Dictionary) -> void:
+	var uu = h.get("u", null)
+	var nd = h.get("claw", null)
+	if not is_instance_valid(nd):
+		return
+	if not (uu is Dictionary) or not (uu as Dictionary).get("alive", false):
+		_free_handle(h)
+		if uu is Dictionary:
+			(uu as Dictionary)["_mready_h"] = null
+		drop(h)
+		return
+	nd.position = battle._world_pos((uu as Dictionary).get("pos", Vector2.ZERO), 1.5)
+	var t: float = float(h.get("t", 0.0))
+	var r: float = float(h["r"]) * (1.0 + 0.08 * sin(t * 5.0))
+	nd.scale = Vector3(r, r, r)
+	nd.rotation.y = 0.25 * sin(t * 2.1)
+	_set_col(nd, Color(1, 1, 1, 0.6 + 0.2 * sin(t * 5.0)))
+
+
+## 强化命中三拍: 钳斩(0~0.12 过冲) → 气泡簇聚缩(0.1~0.32) → 星形溃灭闪+壳屑(0.28~0.5)
+func _apply_mhit(h: Dictionary, u: float) -> void:
+	var t: float = clampf(u, 0.0, 1.0) * float(h["dur"])
+	var r: float = float(h["r"])
+	var claw = h.get("claw", null)
+	if is_instance_valid(claw):
+		var k1: float = clampf(t / 0.12, 0.0, 1.0)
+		var cr: float = r * (0.5 + 1.0 * k1)
+		claw.scale = Vector3(cr, cr, cr)
+		_set_col(claw, Color(1, 1, 1, 0.95 * (1.0 - k1)))
+	var bub = h.get("bub", null)
+	if is_instance_valid(bub):
+		var k2: float = clampf((t - 0.10) / 0.22, 0.0, 1.0)
+		var br: float = r * lerpf(1.1, 0.3, k2)          # 向心聚缩(空泡被压向溃灭点)
+		bub.scale = Vector3(br, br, br)
+		_set_col(bub, Color(1, 1, 1, (0.7 * k2 + 0.2) * (1.0 if t < 0.32 else 0.0)))
+	var fl = h.get("flash", null)
+	if is_instance_valid(fl):
+		var k3: float = clampf((t - 0.28) / 0.22, 0.0, 1.0)
+		var fr: float = r * (0.4 + 1.2 * sin(k3 * PI))
+		fl.scale = Vector3(fr, fr, fr)
+		_set_col(fl, Color(1, 1, 1, 0.95 * sin(k3 * PI)))
+	var ch = h.get("chips", null)
+	if is_instance_valid(ch):
+		var k4: float = clampf((t - 0.28) / 0.22, 0.0, 1.0)
+		var r2: float = r * (0.4 + 1.2 * k4)
+		ch.scale = Vector3(r2, r2, r2)
+		_set_col(ch, Color(1, 1, 1, 0.9 * (1.0 - k4 * k4) * (1.0 if t >= 0.28 else 0.0)))
+
+
+## 060·丙沿用: 只要绿色恢复涌(mote 不建 ⇒ 收束段自动跳过) —— 062 的 40% 吸血也用这支绿。
+func green_heal(u: Dictionary) -> void:
+	if not _has_world():
+		return
+	_ensure_meshes()
+	_ensure_room()
+	var gm := _spawn_node(_m_upf_big, _shader_mat(SH_PLANK, 12, 1), battle._world_pos(u.get("pos", Vector2.ZERO), 1.1), "gmote")
+	if gm == null:
+		return
+	if gm.material_override is ShaderMaterial:
+		(gm.material_override as ShaderMaterial).set_shader_parameter(
+			"u_col", Vector3(HEAL_GREEN.r, HEAL_GREEN.g, HEAL_GREEN.b))
+		(gm.material_override as ShaderMaterial).set_shader_parameter("u_boost", 2.6)
+	var h := {"kind": "pheal", "gmote": gm, "u": u, "r0": 0.0, "dur": 0.95, "t": 0.28}
+	_live.append(h)
+	apply_at(h, 0.28 / 0.95)
+
+
 ## 钻入闪: 裂纹星速闪(过冲缩回) + 壳屑弹开淡出
 func _apply_pdrill(h: Dictionary, u: float) -> void:
 	var k: float = clampf(u, 0.0, 1.0)
@@ -1205,7 +1351,7 @@ func _apply_burst(h: Dictionary, u: float) -> void:
 #  §推进与撤场
 # ══════════════════════════════════════════════════════════════════
 
-const NODE_KEYS := ["bell", "ring", "disc", "flash", "torus", "sphere", "cloud", "edge", "plank", "upf", "mote", "gmote", "cracks", "chips"]
+const NODE_KEYS := ["bell", "ring", "disc", "flash", "torus", "sphere", "cloud", "edge", "plank", "upf", "mote", "gmote", "cracks", "chips", "claw", "bub"]
 
 
 func _free_handle(h: Dictionary) -> void:
