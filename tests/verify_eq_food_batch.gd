@@ -283,14 +283,28 @@ func _t070() -> void:
 		_food._eq_ballast_brick(u, t, si, true)
 		var want_main: float = 3000.0 * main_pct[si]
 		var want_spl: float = 3000.0 * spl_pct[si]
-		_ok("070 si=%d on-hit = 自身最大生命 3/4.5/7%% = %.1f" % [si, want_main],
+		_ok("070 si=%d on-hit = 自身最大生命 3/4.5/7%% = %.1f【立即结算】" % [si, want_main],
 			absf((h0 - float(t["hp"])) - want_main) < 0.51 + 1.0, "实测 %.1f" % (h0 - float(t["hp"])))
-		_ok("070 si=%d 溅射 250 码内 = 1/1.5/2%% = %.1f" % [si, want_spl],
+		# ★伤害跟冲击环走(2026-08-11 用户返工): 近敌 140 码, 环速 550 码/秒 ⇒ 应在 0.2545 秒被扫到。
+		#   步进用真实消费口 _ballistics._step_pending_shots(sim 内定时器, 无 tween、无墙钟)。
+		_ok("070 si=%d ★环未出发: 调用瞬间近敌一滴血没掉(伤害跟环走, 不是立即溅射)" % si,
+			absf(hn0 - float(near["hp"])) < 0.01, "实测掉了 %.2f" % (hn0 - float(near["hp"])))
+		_s._ballistics._step_pending_shots(0.10)
+		_ok("070 si=%d ★0.10 秒环到 55 码, 还没扫到 140 码处近敌" % si,
+			absf(hn0 - float(near["hp"])) < 0.01, "实测掉了 %.2f" % (hn0 - float(near["hp"])))
+		_s._ballistics._step_pending_shots(0.20)
+		_ok("070 si=%d 溅射 250 码内 = 1/1.5/2%% = %.1f(累计 0.30 秒, 环 165 码 ≥ 140 已扫到)" % [si, want_spl],
 			absf((hn0 - float(near["hp"])) - want_spl) < 0.51 + 1.0, "实测 %.1f" % (hn0 - float(near["hp"])))
-		_ok("070 si=%d ★分母: 250 码【外】的敌人一点没吃到" % si,
+		_s._ballistics._step_pending_shots(1.0)
+		_ok("070 si=%d ★分母: 250 码【外】的敌人环扫完了也一点没吃到" % si,
 			absf(hf0 - float(far["hp"])) < 0.51, "实测 %.1f" % (hf0 - float(far["hp"])))
 		_ok("070 si=%d ★同步触发证据: 目标身上 _brick_hit_n 记了 1 次" % si,
 			int(t.get("_brick_hit_n", 0)) == 1, "n=%d" % int(t.get("_brick_hit_n", 0)))
+	# ★同源判据(070/075 老原则): 环的半径函数与伤害延时用同一个常量 ——
+	#   brick_wave_radius(140/速度) 必须正好 = 140 码, 即【环到达时刻 = 伤害时刻】。
+	_ok("070 ★同源判据: brick_wave_radius(140码/环速) = 140.000 码(环到达=伤害结算, 一个常量出数)",
+		absf(FoodEqVfx.brick_wave_radius(140.0 / FoodEqVfx.BRICK_WAVE_SPEED) - 140.0) < 0.001,
+		"实测 %.3f" % FoodEqVfx.brick_wave_radius(140.0 / FoodEqVfx.BRICK_WAVE_SPEED))
 
 	# ②-b 灰色血条: 受到 1000 伤害 → 存 30/40/50%
 	var grey_pct := [0.30, 0.40, 0.50]
@@ -624,6 +638,8 @@ func _t070_magnitude() -> void:
 		var s0: float = float(s2["hp"])
 		_food.tick_unit(u, 0.016)
 		_food._eq_ballast_brick(u, t, 2, true)
+		# 溅射改成跟冲击环走 ⇒ 把 pending 队列冲干净(1 秒 > 250/550), 量级口径不变
+		_s._ballistics._step_pending_shots(1.0)
 		_ok("⑤ maxHp=%.0f: on-hit 实发 %.0f(设计带 %.0f)" % [mh, h0 - float(t["hp"]), float(row[1])],
 			absf((h0 - float(t["hp"])) - float(row[1])) < 0.51 + 1.0, "")
 		_ok("⑤ maxHp=%.0f: 溅射/人 实发 %.0f(设计带 %.0f)" % [mh, s0 - float(s2["hp"]), float(row[2])],
@@ -826,6 +842,20 @@ func _t_vfx_art() -> void:
 	_ok("⑦-3 070 ★量的是【真实节点的 scale】不是公式: R(0.25)/R(1) = 0.500(√x)",
 		absf(r_quarter / maxf(r_full, 1e-9) - 0.5) < 1e-4,
 		"%.4f / %.4f" % [r_quarter, r_full])
+
+	# ⑦-3b 070 冲击环: 真实节点 + 恒速扩张 + 终态半径 = 250 码(2026-08-11 用户返工)
+	var hw: Dictionary = vfx.brick_wave(Vector2(0.0, 0.0))
+	var wrg = hw.get("ring", null)
+	_ok("⑦-3b 070 冲击环网格真的挂进 _world",
+		is_instance_valid(wrg) and wrg.is_inside_tree() and is_same(wrg.get_parent(), w), "")
+	vfx.bwave_apply_at(hw, 0.5)
+	var w_half: float = wrg.scale.x
+	vfx.bwave_apply_at(hw, 1.0)
+	var w_full: float = wrg.scale.x
+	_ok("⑦-3c 070 ★真实节点: 环半径 r(0.5)/r(1) = 0.500(恒速扩张, 不是 √x 也不是缓动)",
+		absf(w_half / maxf(w_full, 1e-9) - 0.5) < 1e-4, "%.4f / %.4f" % [w_half, w_full])
+	_ok("⑦-3d 070 冲击环终态世界半径 = 250 码(真实溅射半径, 画小了才是骗人)",
+		absf(w_full - 250.0 * float(_s.WS)) < 1e-4, "%.4f / %.4f" % [w_full, 250.0 * float(_s.WS)])
 
 	# ⑦-4 071 破壳: 洞半径线性 ⇒ 真实节点 scale 在 x=0.5 时正好是一半
 	var hb: Dictionary = vfx.cream_burst(Vector2(40.0, 0.0))

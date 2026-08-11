@@ -113,6 +113,12 @@ const TAUNT_RANGE_PX := 550.0
 const CAKE_FIELD_PX := 300.0
 ## 溅射环半径(码), 与 070 的 250 码同一个数
 const SPLASH_RANGE_PX := 250.0
+## ★070 冲击环速度(码/秒) —— 视觉扩张与伤害调度共用的【同一个】常量(2026-08-11 用户:
+##   「溅射范围不是250吗…主要是炸开一道环, 环碰到敌人才跳伤害」)。
+##   环半径 r(t) = BRICK_WAVE_SPEED·t 恒速扩到 250 码; 圈内每个敌人的伤害延时
+##   = 距离 / 同一个速度(eq_food_batch._eq_ballast_brick 的 _pending_shots 调度)
+##   ⇒ 环碰到谁, 谁那一刻掉血。改这个数, 视觉与伤害一起变, 不会各错各的。
+const BRICK_WAVE_SPEED := 550.0
 
 var battle
 
@@ -155,6 +161,12 @@ static func crown_radius(x: float) -> float:
 static func crown_height(x: float) -> float:
 	var xx: float = clampf(x, 0.0, 1.0)
 	return 4.0 * xx * (1.0 - xx)
+
+
+## 070 冲击环半径(码), t 单位是秒: 恒速扩张、到 250 码封顶。
+## ★演出缩放与伤害延时都只从这一个函数/常量出数(环到达时刻 = 伤害时刻)。
+static func brick_wave_radius(t: float) -> float:
+	return minf(BRICK_WAVE_SPEED * maxf(t, 0.0), SPLASH_RANGE_PX)
 
 
 ## 071 Taylor–Culick 洞半径: **严格线性**(边缘恒速回缩)。
@@ -451,9 +463,8 @@ func cake_bite_fx(u: Dictionary, idx: int) -> void:
 func splash_crown(pos2d: Vector2) -> Dictionary:
 	if not is_instance_valid(battle._world):
 		return {}
-	## ★冠的视觉半径【收到 70 码】(2026-08-11): 实拍 250 码全程冠把整个战场罩进一个碗里,
-	##   每次普攻罩一次全屏 = 视觉轰炸。溅射覆盖的证据交给每个被溅者身上的咸鱼屑
-	##   (谁被溅到谁身上掉屑), 冠只负责"砸出水花"这个事件读数。伤害判定仍用 SPLASH_RANGE_PX。
+	## 冠只是"砸出水花"的落点读数(70 码水花本体); 【250 码溅射范围】由 brick_wave
+	## 冲击环诚实表达 —— 环恒速扩到 250 码, 环碰到谁谁那一刻掉血(2026-08-11 用户拍板)。
 	var rm: float = range_m(70.0)
 	var crown := _mk_node(_crown_mesh(), _mat(true, 10), battle._world_pos(pos2d, 0.0))
 	var ring := _mk_node(_ring_mesh(), _mat(true, 11), battle._world_pos(pos2d, 0.0))
@@ -481,6 +492,34 @@ func crown_apply_at(h: Dictionary, x: float) -> void:
 		(rg.material_override as StandardMaterial3D).albedo_color = Color(0.86, 0.72, 0.48, 0.85 * fade)
 
 
+## 070 冲击环: 从砸点炸开、恒速扩到 250 码(= 真实溅射半径, 画小了才是骗人)。
+## ★环半径只读 brick_wave_radius —— 伤害调度(eq_food_batch)用同一个常量,
+##   环扫到哪个敌人, 哪个敌人那一刻跳伤害。
+func brick_wave(pos2d: Vector2) -> Dictionary:
+	if not is_instance_valid(battle._world):
+		return {}
+	var ring := _mk_node(_ring_mesh(), _mat(true, 11), battle._world_pos(pos2d, 0.0))
+	var h := {"kind": "bwave", "ring": ring, "t": 0.0, "dur": SPLASH_RANGE_PX / BRICK_WAVE_SPEED}
+	bwave_apply_at(h, 0.0)
+	_live.append(h)
+	return h
+
+
+## ★冲击环形态的单一事实源 —— 演出与门禁都只读这一个函数。
+## 前 78% 满亮(fb-vfx-defect-families 淡出病: 短命特效不许一出生就线性淡出), 尾段收干净。
+func bwave_apply_at(h: Dictionary, x: float) -> void:
+	if h.is_empty():
+		return
+	var rg = h.get("ring", null)
+	if not is_instance_valid(rg):
+		return
+	var xx: float = clampf(x, 0.0, 1.0)
+	var r: float = maxf(range_m(brick_wave_radius(xx * float(h.get("dur", 0.45)))), 1e-4)
+	rg.scale = Vector3(r, r, r)
+	var fade: float = 1.0 - smoothstep(0.78, 1.0, xx)
+	(rg.material_override as StandardMaterial3D).albedo_color = Color(0.99, 0.86, 0.55, 0.92 * fade)
+
+
 ## 灰色血条: 直接挂在【那个单位自己的血条 Control】上, 玩家一眼看懂"这段会回来"。
 ## ★不改 battle_render.gd(主会话的地盘) —— 这里是运行时往 bar_root 里加一个 ColorRect,
 ##   位置/宽度由纯函数 `grey_rect` 算, 门禁量的是**真实节点**的 size/position, 不是公式。
@@ -492,7 +531,8 @@ func grey_bar_update(u: Dictionary, grey: float) -> void:
 	if not is_instance_valid(rect):
 		rect = ColorRect.new()
 		rect.name = "GreyHp"
-		rect.color = Color(0.72, 0.74, 0.78, 0.85)
+		## ★深灰(2026-08-11 用户: 「血条的灰我要的是深灰色的」), 不是浅银灰
+		rect.color = Color(0.32, 0.33, 0.36, 0.95)
 		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		rect.z_index = 3
 		root.add_child(rect)
@@ -650,6 +690,10 @@ func tick(delta: float) -> void:
 				crown_apply_at(h, x)
 				if not alive:
 					_free_keys(h, ["crown", "ring"])
+			"bwave":
+				bwave_apply_at(h, x)
+				if not alive:
+					_free_keys(h, ["ring"])
 			"tc":
 				tc_apply_at(h, x)
 				if not alive:

@@ -294,15 +294,24 @@ func _eq_ballast_brick(src: Dictionary, tgt: Dictionary, si: int, basic: bool = 
 	for o in battle._targeting._enemies_of(src):
 		if is_same(o, tgt) or not o.get("alive", false):
 			continue
-		if (o["pos"] - tgt["pos"]).length() > 250.0:
+		var d: float = (o["pos"] - tgt["pos"]).length()
+		if d > 250.0:
 			continue
-		battle._damage._apply_damage_from(src, o,
-			battle._resolve_dmg(src, mh * splash_pct, o, false), Color("#ffcf88"), 0.0, false, true)
-		o["_brick_splash_n"] = int(o.get("_brick_splash_n", 0)) + 1
+		## ★伤害跟冲击环走(2026-08-11 用户: 「主要是炸开一道环, 环碰到敌人才跳伤害」):
+		##   延时 = 距离 / FoodEqVfx.BRICK_WAVE_SPEED —— 与环的视觉扩张【同一个常量】。
+		##   _pending_shots 是 sim 内定时器(CLAUDE.md §3.5: 数值不依赖演出 tween)。
+		##   伤害额在调度时快照(on-hit 那一刻的最大生命); 回调重查存活, 环没到人先死不结算。
+		var dmg_o: float = battle._resolve_dmg(src, mh * splash_pct, o, false)
+		battle._pending_shots.append({"delay": d / FoodEqVfx.BRICK_WAVE_SPEED, "src": src,
+			"fn": func() -> void:
+				if not src.get("alive", false) or not o.get("alive", false):
+					return
+				battle._damage._apply_damage_from(src, o, dmg_o, Color("#ffcf88"), 0.0, false, true)
+				o["_brick_splash_n"] = int(o.get("_brick_splash_n", 0)) + 1})
 		n += 1
 	src["_brick_splash_last"] = n
-	if n > 0:
-		_vfx.splash_crown(tgt["pos"])
+	_vfx.splash_crown(tgt["pos"])
+	_vfx.brick_wave(tgt["pos"])
 
 
 # ══════════════════════════════════════════════════════════════════
