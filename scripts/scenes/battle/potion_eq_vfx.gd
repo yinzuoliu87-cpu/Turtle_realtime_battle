@@ -382,25 +382,6 @@ func _beam_mesh() -> ArrayMesh:
 	return mesh
 
 
-## 单位面片(1×1, 中心在原点, 面朝 +Z 的竖直四边形) —— 充能条用。
-func _quad_mesh() -> ArrayMesh:
-	if _m_quad != null:
-		return _m_quad
-	var mesh := ArrayMesh.new()
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var w := Color(1, 1, 1, 1)
-	var p := [[Vector3(0.0, 0.0, 0.0), w], [Vector3(1.0, 0.0, 0.0), w],
-		[Vector3(1.0, 1.0, 0.0), w], [Vector3(0.0, 1.0, 0.0), w]]
-	_tri(st, p[0], p[1], p[2])
-	_tri(st, p[0], p[2], p[3])
-	st.commit(mesh)
-	_m_quad = mesh
-	return mesh
-
-
-## 加性发光材质(零素材, 顶点色当亮度)。
-## ⚠ render_priority 在【材质】上, MeshInstance3D 没有这个属性(hookbomb_system 那段血泪注释)。
 static func _mat(no_depth: bool, prio: int, additive: bool = true) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -526,44 +507,6 @@ func mana_beam(origin: Vector2, dir: Vector2) -> Dictionary:
 
 
 ## 充能条: 头顶两片(底槽 + 填充)。★玩家得看出"快满了", 这是用户点名要的可见性。
-const BAR_W := 62.0
-const BAR_H := 9.0
-const BAR_LIFT := 1.28
-
-
-func charge_bar(u: Dictionary, frac: float) -> MeshInstance3D:
-	if not _alive_world():
-		return null
-	var bg = u.get("_pcan_bg", null)
-	var fg = u.get("_pcan_fg", null)
-	if not (bg is MeshInstance3D) or not is_instance_valid(bg):
-		bg = _node(_quad_mesh(), _mat(true, 20, false), Vector3.ZERO)
-		u["_pcan_bg"] = bg
-	if not (fg is MeshInstance3D) or not is_instance_valid(fg):
-		fg = _node(_quad_mesh(), _mat(true, 21), Vector3.ZERO)
-		u["_pcan_fg"] = fg
-	var w: float = BAR_W * float(battle.WS)
-	var hgt: float = BAR_H * float(battle.WS)
-	var org: Vector3 = battle._world_pos(u["pos"], 0.0) + Vector3(-w * 0.5, BAR_LIFT, 0.0)
-	bg.position = org
-	bg.scale = Vector3(w, hgt, 1.0)
-	(bg.material_override as StandardMaterial3D).albedo_color = Color(0.05, 0.09, 0.16, 0.72)
-	var f: float = clampf(frac, 0.0, 1.0)
-	fg.position = org + Vector3(0.0, 0.0, 0.004)
-	fg.scale = Vector3(maxf(w * f, 1e-4), hgt, 1.0)
-	# 快满了 → 由青转白热(玩家的"要放大招了"读数)
-	var col: Color = Color(0.42, 0.80, 1.0).lerp(Color(1.0, 0.98, 0.88), f * f)
-	(fg.material_override as StandardMaterial3D).albedo_color = Color(col.r, col.g, col.b, 0.30 + 0.70 * f)
-	fg.visible = f > 0.001
-	return fg
-
-
-func charge_bar_clear(u: Dictionary) -> void:
-	for k in ["_pcan_bg", "_pcan_fg"]:
-		var nd = u.get(k, null)
-		if nd is MeshInstance3D and is_instance_valid(nd):
-			nd.queue_free()
-		u[k] = null
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -606,6 +549,21 @@ func apply_at(h: Dictionary, uu: float) -> void:
 
 
 ## 推进一帧。★由 sim 循环调, 不用 tween(无头 CI 下 tween 推进不稳)。
+## 撤场: 把还活着的演出全部 free。
+##
+## ★★2026-08-11 补: 这份文件**以前根本没有 clear_all** ——
+##   而 dual_lane_flow 的换路清理是 has_method 保护的 ⇒ 药水这一路(065~068)
+##   一直被**静默跳过**, 演出节点全留到下一路。
+##   保护性的 has_method 让「没写 clear」变成了「不清也不报错」——
+##   与 memory [[fb-write-without-reader-and-fake-gates]] 同族。
+func clear_all() -> void:
+	for h in _live:
+		var nd = h.get("nd", null)
+		if is_instance_valid(nd):
+			nd.queue_free()
+	_live = []
+
+
 func advance(delta: float) -> void:
 	if _live.is_empty():
 		return

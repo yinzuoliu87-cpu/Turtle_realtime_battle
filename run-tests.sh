@@ -60,6 +60,10 @@ frames_for () {
     verify_cream_shell_all) echo 2000 ;;
     # 072 礼盒形态: 建战斗场 + 造携带者 + 进/出盒各一次(纯同步, 量真实 texture)
     verify_cake_box_form) echo 1500 ;;
+    # 068 充能读数: 建战斗场 + 走真伤害入口喂三次 + 源码纪律扫描(纯同步, 不等演出)
+    verify_eq_readouts) echo 2000 ;;
+    # 068 可转向射线: 建战斗场 + 四组重建队伍 + 同步喂 delta(闭式解, 不等演出/不等 tween)
+    verify_mana_beam_steer) echo 3000 ;;
     # 羁绊演出层共用基建: 建战斗场景 + 78 条同步断言(不等任何 tween), 但建场本身就吃几百帧。
     #   ★实测本机 500 帧【跑不完】(被掐断 → 没打 ALL PASS → 看着像断言失败), 800 帧够 ⇒ 给 2500 兜 CI。
     verify_synergy_vfx) echo 2500 ;;

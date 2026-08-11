@@ -181,7 +181,7 @@ const CASES := {
 	"star": 3, "carrier": "basic", "enemies": 2, "enemy_attacks": true, "enemy_dist": 190.0,
 	"ui": true,
 	"dur": 20.0, "zoom": 1.0, "focus": "carrier", "focus_h": 0.8,
-	"shots": [3.0, 6.0, 9.0, 11.9, 12.1, 12.6, 13.5, 15.0, 18.0],
+	"shots": [6.0, 11.9, 12.1, 12.8, 13.6, 14.4, 14.9, 15.1, 16.0],
 	"note": "★两段: 前 12 秒【存】(ui 里看充能条涨)、12 秒后【放】。enemy_attacks 不开的话充能条一辈子不动 —— 这正是 081 踩过的坑。11.9/12.1 夹住释放开始的那一刻。",
 },
 

@@ -620,50 +620,10 @@ const _LOG_CAP := 200
 # --- 局内信息 UI (左右队头像框 + 点单位看详情面板; 纯 UI 不动玩法) ---
 var _team_panel_left: VBoxContainer = null    # 屏幕左侧头像框栏 (左队主龟)
 var _team_panel_right: VBoxContainer = null   # 屏幕右侧头像框栏 (右队主龟)
-const PANEL_COUNT := {   # 头像下装备格右下角层数徽章: id → eq_state层数/计数字段 (刷新.get兜底0)
-	"p2eq_034": "bear_layers",      # 大熊层
-	"p2eq_013": "harden_stacks", "p2eq_014": "harden_stacks",   # 硬化层(0-20)
-	"p2eq_024": "dragon_stacks",   # 吐息层(0-3)
-	"p2eq_035": "coins_made",      # 本局累计产币数(原"齿轮层"已随2026-07-18改版作废·恒为0)
-	"p2eq_052": "revolver_bullets", "p2eq_027": "baton_charges", "p2eq_039": "bamboo_charges",   # 子弹/电击/生长充能
-	"p2eq_019": "anemone_layers",  # 海葵层
-	"p2eq_020": "exercise",       # 哑铃锻炼层(局内, 每场重置)
-	"p2eq_043": "wave",            # 巨浪层(0-3)
-	"p2eq_093": "marks",           # 香火石刻痕(0-300·跨对局保留·赛季重置)
-	"p2eq_017": "anchor_charges",  # 沉锚就绪充能数(另有anchor_accum攒治疗条)
-	"p2eq_036": "egg_levels",      # 温泉蛋临时等级(0-3; 另有incub充能条)
-	"p2eq_082": "charges",         # 护心甲充能层(每反伤 15 次一层; 普攻消耗一层)
-	"p2eq_083": "stacks",          # 潮汐细剑连击层(0-20; 切目标或目标死清空)
-	# ★★ 2026-08-10 补三件【系统写了、UI 没人读】的进度(与法器法力条同族)。
-	#   扫 `eq_state` 写入字段 vs 本表 + PANEL_CHARGE 读取字段扫出来的:
-	#   玩家在局内**完全看不到**这三件攒到哪, 而它们的效果就是"越攒越强"。
-	"p2eq_065": "oil_stacks",     # 鲨肝油: 每次普攻 +1 层攻速(无限叠, 换路重置)
-	"p2eq_069": "eaten",          # 珊瑚糖糕: 已吃几块(共 3 块, 80/55/30% 各一)
-	#   ★拿 `eaten` 而不是 `cake_eaten_n`: 前者是**驱动逻辑的那个计数**(while 循环读它),
-	#   后者注释里写明是"同步触发证据(门禁读它)" —— 拿测试专用字段做玩家读数会漂。
-	"p2eq_074": "bone_layers",    # 鲸骨胸甲: 叠护盾层数(无上限)
-}
-const PANEL_CHARGE := {   # 局内头像下装备格的充能进度条: id → [充能字段, 满值]
-	"p2eq_009": ["blade_energy", 100.0], "p2eq_026": ["thunder", 100.0],
-	"p2eq_023": ["fire_mana", 100.0, "#ff8a3c"],   # 023法力条(火橙; 第3项=自定义条色, 缺省青)
-	"p2eq_017": ["anchor_accum", 250.0], "p2eq_036": ["incub", 100.0],
-	# ★★盾类两件(2026-08-08 用户:「充能条和层数不要放头顶, 在装备图标框里」)
-	#   081 的需求是 maxHp×40/35/30%(不是常量) ⇒ 存归一后的 chg_pct(0~100), 这张表的 cap 只能是常量;
-	#   082 的分母就是常量 15 ⇒ 直接拿 refl_n。
-	"p2eq_081": ["chg_pct", 100.0, "#7cf07c"], "p2eq_082": ["refl_n", 15.0, "#9ff0d8"],
-	# 093 香火石: 每攒够 4000 点伤害刻一道痕 ⇒ 分母是常量 4000, 直接拿 chg。
-	# ★之前这两个读数在局内**没有任何 UI 出口**(装备格全空), 玩家看不到自己攒到哪。
-	"p2eq_093": ["chg", 4000.0, "#ffd27a"],
-	# ★★法器【法力条】(2026-08-10): 10 件法器以前**局内零读数** ——
-	#   用户:「我压根没看到装备图标那里有法力条, 在攒法力吗」。
-	#   每件法器有**独立**法力条(规格原文), 所以是逐件一条而不是共用一条。
-	#   分母拿 `mana_pct`(staff_synergy_system 里归一化镜像)而不是 `mana`:
-	#   满值随档位变(100/80/60/50), 而这张表的分母只能是常量。
-	"p2eq_011": ["mana_pct", 100.0, "#a98bff"], 	"p2eq_029": ["mana_pct", 100.0, "#a98bff"], "p2eq_030": ["mana_pct", 100.0, "#a98bff"],
-	"p2eq_031": ["mana_pct", 100.0, "#a98bff"], "p2eq_043": ["mana_pct", 100.0, "#a98bff"],
-	"p2eq_088": ["mana_pct", 100.0, "#a98bff"], "p2eq_089": ["mana_pct", 100.0, "#a98bff"],
-	"p2eq_090": ["mana_pct", 100.0, "#a98bff"],
-}
+## 局内装备格读数(层数徽章 / 充能条)的两张纯数据表 —— 正文在 `scripts/gamedata/equip_readouts.gd`。
+## ★新读数往那儿加, **不要在演出层自造头顶条**(用户 2026-08-08 定)。
+const PANEL_COUNT := EquipReadouts.COUNT
+const PANEL_CHARGE := EquipReadouts.CHARGE
 var _selected_unit = null                     # 当前选中(点击)的单位 Dictionary, 高亮其框
 var _info_panel: PanelContainer = null        # 详情面板 (居中, 显等级/属性/被动/技能/装备); 重开覆盖
 

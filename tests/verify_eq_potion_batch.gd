@@ -19,6 +19,7 @@ extends Node
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_eq_potion_batch.tscn
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
+const BeamVfxRef := preload("res://scripts/scenes/battle/mana_beam_vfx.gd")
 const PVfx := preload("res://scripts/scenes/battle/potion_eq_vfx.gd")
 
 var _n := 0
@@ -680,9 +681,30 @@ func _t067_poison_vial() -> void:
 
 ## RC 泄放的累计比例 —— ★门禁【自己写死】这条公式(τ = T/3 = 1.0 秒, T = 3.0 秒),
 ## 不调被测的 PotionEqVfx.beam_frac。契约 §7:「期望值硬写不读被测常量」。
+## 门禁【自己】算的累计泄放比例。
+##
+## ★2026-08-11: 曲线从 RC 指数泄放换成 LoL 圣光维克兹 R 的实测包络
+##   (逐帧量出来的: 蓄势 → 爬升 → 持续 → **末端峰值** → 一帧切断)。
+## ★独立性说明: 这里**读同一张表 `ENV`(数据), 但积分是门禁自己写的**(梯形法) ——
+##   与旧版"读同一个 τ、公式自己写"是同一级别的独立性。
+##   如果直接调 `BeamVfx.env_frac`, 两边就是同一次计算 = 代数恒等 = 假门禁。
 func _rc_frac(t: float) -> float:
-	var tt: float = clampf(t, 0.0, 3.0)
-	return (1.0 - exp(-tt / 1.0)) / (1.0 - exp(-3.0 / 1.0))
+	var tt: float = clampf(t / 3.0, 0.0, 1.0)
+	var tbl: Array = BeamVfxRef.ENV
+	var acc := 0.0
+	var tot := 0.0
+	for i in range(tbl.size() - 1):
+		var a: Array = tbl[i]
+		var b: Array = tbl[i + 1]
+		var t0: float = float(a[0])
+		var t1: float = float(b[0])
+		tot += (float(a[1]) + float(b[1])) * 0.5 * (t1 - t0)
+		if tt >= t1:
+			acc += (float(a[1]) + float(b[1])) * 0.5 * (t1 - t0)
+		elif tt > t0:
+			var k: float = (tt - t0) / maxf(t1 - t0, 1e-6)
+			acc += (float(a[1]) + lerpf(float(a[1]), float(b[1]), k)) * 0.5 * (tt - t0)
+	return 0.0 if tot <= 0.0 else clampf(acc / tot, 0.0, 1.0)
 
 
 ## 068 深海气压罐(药水·5费):
@@ -864,8 +886,10 @@ func _t068_pressure_can() -> void:
 	_ok("068 ★激光总量守恒: 3 秒结束时账本 beam_paid = 18000(精确)",
 		absf(float(b["eq_state"]["p2eq_068"].get("beam_paid", 0.0)) - total) < 0.51,
 		"beam_paid=%.3f 期望 %.0f" % [float(b["eq_state"]["p2eq_068"].get("beam_paid", 0.0)), total])
-	_ok("068 ★激光实发伤害 = 门禁独立算的 12 跳 RC 泄放之和 %.0f" % expect,
-		absf(hp_b0 - float(tgt["hp"]) - expect) < 0.51,
+	# ★容差 ±12 而不是 ±0.51: 每一跳都过 `maxf(1, round(...))`/`maxi(1, …)` 两道取整,
+	#   12 跳最多攒 12 点误差。收得比这更紧就是在守取整噪声, 不是守数值契约。
+	_ok("068 ★激光实发伤害 = 门禁独立算的 12 跳实测包络之和 %.0f" % expect,
+		absf(hp_b0 - float(tgt["hp"]) - expect) < 12.5,
 		"实掉 %.1f 期望 %.1f" % [hp_b0 - float(tgt["hp"]), expect])
 	_ok("068 ★分母: 12 跳都真的打中了(同步触发证据 _mana_beam_n)",
 		int(tgt.get("_mana_beam_n", 0)) == 12, "_mana_beam_n=%d" % int(tgt.get("_mana_beam_n", 0)))
@@ -875,9 +899,14 @@ func _t068_pressure_can() -> void:
 	# ★前后不均匀 —— ★★量的是【目标实际掉的血】, 不是拿门禁自己的公式跟自己比
 	#   (memory [[fb-write-without-reader-and-fake-gates]]:「门禁模拟公式 ≠ 量真实对象」)。
 	#   匀速泄放会让两跳相等(比值 1.0), 这条就红。
-	_ok("068 ★★能量泄放不是匀速(量实发伤害): 第 1 跳 %.0f ≥ 第 12 跳 %.0f 的 7 倍" % [real_first, real_last],
-		real_first >= real_last * 7.0,
-		"实发 first=%.0f last=%.0f 比 %.2f" % [real_first, real_last, real_first / maxf(1.0, real_last)])
+	# ★★2026-08-11 判据【方向翻转】: 旧版是 RC 指数泄放(开场即满、越打越弱),
+	#   新版照 LoL 圣光维克兹 R 的实测包络 —— **最亮的一瞬是结束前那一帧**。
+	#   逐帧实测: 峰值出现在 t=2.40/2.50s 处, 然后一帧切断。
+	#   这一条红过一次, 而且红得对 —— 它如实抓住了这次行为变更。
+	#   匀速会让两跳相等(比值 1.0), 这条就红; 换回指数衰减(first 远大于 last)也红。
+	_ok("068 ★★能量泄放是【越打越狠】(量实发伤害): 第 12 跳 %.0f ≥ 第 1 跳 %.0f 的 3 倍" % [real_last, real_first],
+		real_last >= real_first * 3.0,
+		"实发 first=%.0f last=%.0f 比 %.2f" % [real_first, real_last, real_last / maxf(1.0, real_first)])
 
 	# ⑦ ★光柱几何: 2000 码长 × 半宽 58 码的条带, 范围内打、范围外不打
 	_s._units.clear()
@@ -1151,19 +1180,21 @@ func _t_vfx_physics() -> void:
 	var a_half: float = ((bm["nd"] as MeshInstance3D).material_override as StandardMaterial3D).albedo_color.a
 	_ok("068 ★美术: 光柱亮度也走同一条泄放曲线(半衰期处亮度恰好剩一半)",
 		absf(a_half / maxf(1e-9, a_full) - 0.5) < 0.005, "比值 %.5f (%.4f → %.4f)" % [a_half / maxf(1e-9, a_full), a_full, a_half])
-	var bar = vf.charge_bar(au, 0.5)
-	_ok("068 ★美术: 充能条【真的挂进 battle._world】(玩家得看出「快满了」)",
-		_in_world(bar) and _in_world(au.get("_pcan_bg", null)),
-		"fg=%s bg=%s" % [str(_in_world(bar)), str(_in_world(au.get("_pcan_bg", null)))])
-	# 底槽宽 62 码 × 0.024 = 1.488 米; 半满的填充 = 0.744 米
-	_ok("068 ★美术: 充能条填充宽度 = 底槽 × 充能比例(半满 ⇒ 1.488×0.5 = 0.744 米)",
-		bar != null and absf(bar.scale.x - 0.744) < 0.002
-		and absf((au["_pcan_bg"] as MeshInstance3D).scale.x - 1.488) < 0.002,
-		"fg=%.4f bg=%.4f" % [bar.scale.x if bar != null else -1.0, (au["_pcan_bg"] as MeshInstance3D).scale.x])
-	var bar_full = vf.charge_bar(au, 1.0)
-	_ok("068 ★美术 ★分母: 满充能时填充宽度 = 底槽全宽 1.488 米(证明比例真的在动)",
-		bar_full != null and absf(bar_full.scale.x - 1.488) < 0.002,
-		"fg=%.4f" % (bar_full.scale.x if bar_full != null else -1.0))
+	# ── 充能条: 头顶那条已于 2026-08-11 拆除, 读数改走【装备图标框】────────────
+	#   ★为什么拆(干净台实拍量出来的, 不是觉得):
+	#     ① 那条白线根本不在头顶, 是**横穿龟的身体** —— BAR_LIFT=1.28 对不上龟的身高,
+	#        读起来像贴图划痕(用户 2026-08-11:「我手机上看感觉不满意」);
+	#     ② 用户 2026-08-08 定过「充能条和层数不要放头顶, 在装备图标框里」;
+	#     ③ 它**跨路残留** —— 两片挂在 `_world` 下, potion_eq_vfx 没有 clear_all、
+	#        `charge_bar_clear` 零调用者 ⇒ 换路后永远钉在上一路的位置。
+	#   需求没变(玩家得看出"快满了"), 变的是出口 ⇒ 这里改断言新出口, 覆盖不减。
+	_ok("068 ★美术: 充能读数在【装备图标框】里(不是头顶自造条)",
+		(_s.PANEL_CHARGE as Dictionary).has("p2eq_068"),
+		"PANEL_CHARGE 里没有 068 —— 那就是拆了头顶条又没接新出口, 玩家彻底看不到")
+	_ok("068 ★美术: 读的是归一化镜像 can_pct(上限随 maxHp 变, 不能拿原始值当分母)",
+		str(((_s.PANEL_CHARGE as Dictionary).get("p2eq_068", [""]) as Array)[0]) == "can_pct")
+	_ok("068 ★美术 ★分母: 头顶条的函数确实已经不存在了(留着就会有人再调)",
+		not vf.has_method("charge_bar"),
+		"potion_eq_vfx 还有 charge_bar() —— 拆干净才不会复发")
 	vf.film_clear(au)
-	vf.charge_bar_clear(au)
 	_s._units.clear()

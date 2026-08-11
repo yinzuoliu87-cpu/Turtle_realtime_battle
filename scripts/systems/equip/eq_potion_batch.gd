@@ -31,6 +31,9 @@ extends RefCounted
 ## 这样别的系统中途改 `shield_amp` 也不会算错, 且撤销是幂等的。
 
 const Vfx := preload("res://scripts/scenes/battle/potion_eq_vfx.gd")
+## ★068 的可转向射线单独成文件: 它是自成一体的子系统(实测包络表 + 3D 几何 +
+##   转向 + 枪口 + 命中爆点), 塞进 potion_eq_vfx 会把那份文件顶成第二个上帝文件。
+const BeamVfx := preload("res://scripts/scenes/battle/mana_beam_vfx.gd")
 
 ## 067 减益的悬挂时长(秒): 每帧刷新, 中毒一结束就在这个窗口内自然失效。
 const VIAL_DEBUFF_HOLD := 0.30
@@ -40,6 +43,7 @@ const BEAM_TICK := 0.25
 
 var battle
 var _vfx
+var _beam_vfx
 
 ## 演出推进的帧去重(同 EquipSystem 里 `_sig_tick_fr` 的做法):
 ## `tick_unit` 是**每单位**调的, 不去重会一帧推进 N 次(N = 携带者数)。
@@ -49,6 +53,7 @@ var _adv_fr: int = -1
 func _init(b) -> void:
 	battle = b
 	_vfx = Vfx.new(b)
+	_beam_vfx = BeamVfx.new(b)
 
 
 func vfx():
@@ -375,6 +380,11 @@ func _eq_pressure_store(u: Dictionary, dmg: int, si: int) -> void:
 	var stt: Dictionary = u["eq_state"].get("p2eq_068", {})
 	var cap: float = _can_cap(u, si)
 	stt["can_charge"] = minf(cap, float(stt.get("can_charge", 0.0)) + float(dmg) * [0.60, 1.00, 2.00][si])
+	# ★归一化镜像, 给局内装备格的充能条读(PANEL_CHARGE 的分母只能是常量,
+	#   而这里的上限是 maxHp×20/40/100% —— 同 081 藤编圆盾存 chg_pct 的做法)。
+	#   2026-08-11 补: 在此之前 068 攒了一整条充能【局内零出口】, 玩家看不到自己攒到哪,
+	#   而它的效果恰恰就是"攒得越多打得越狠"。
+	stt["can_pct"] = clampf(float(stt["can_charge"]) / maxf(1.0, cap) * 100.0, 0.0, 100.0)
 	u["eq_state"]["p2eq_068"] = stt
 
 
@@ -398,6 +408,7 @@ func _eq_pressure_release(u: Dictionary, si: int, stt: Dictionary) -> void:
 	stt["can_fired"] = int(stt.get("can_fired", 0)) + 1
 	var stored: float = float(stt.get("can_charge", 0.0))
 	stt["can_charge"] = 0.0
+	stt["can_pct"] = 0.0          # ★清空充能时读数也要归零, 否则条会停在满格骗人
 	u["eq_state"]["p2eq_068"] = stt
 	if stored <= 0.0:
 		return
@@ -417,8 +428,18 @@ func _eq_pressure_release(u: Dictionary, si: int, stt: Dictionary) -> void:
 	stt["beam_acc"] = 0.0
 	stt["beam_org"] = u["pos"]
 	stt["beam_dir"] = dir
+	# ★可转向(2026-08-11 用户:「本来就应该是可以转向的射线」):
+	#   `beam_ang` 是**射线的真实朝向**, `beam_tgt` 是它想指向的目标。
+	#   伤害判定一律用 `beam_ang` 而不是目标位置 —— 否则"扫过谁烧谁"就是假的。
+	stt["beam_ang"] = dir.angle()
+	# ★★扫掠起点必须钉在【开火时的朝向】。
+	#   漏了这一行, 第一个 tick 的 `beam_ang_paid` 会默认成"转完之后的当前角"
+	#   ⇒ 首段扫掠被压成零宽 ⇒ 开火后立刻扫过的敌人【一个都判不到】。
+	#   这是 verify_mana_beam_steer ② 抓出来的真 bug, 不是假想。
+	stt["beam_ang_paid"] = dir.angle()
+	stt["beam_tgt"] = far
 	u["eq_state"]["p2eq_068"] = stt
-	_vfx.mana_beam(u["pos"], dir)
+	stt["beam_h"] = _beam_vfx.fire(u["pos"], dir.angle(), Vfx.BEAM_RANGE, Vfx.BEAM_HALF_W)
 
 
 ## 最远的【可定向选取】敌人(排除训龟大师与不可选中者)。
@@ -440,7 +461,8 @@ func _tick_pressure_can(u: Dictionary, si: int, delta: float) -> void:
 	if not stt.has("can_t0"):
 		stt["can_t0"] = battle._t          # 兜底: 合成单位/老存档没走 _eq_apply_flags
 	var cap: float = _can_cap(u, si)
-	_vfx.charge_bar(u, float(stt.get("can_charge", 0.0)) / maxf(1.0, cap))
+	# ★读数走装备图标框的 PANEL_CHARGE(见 `can_pct` 镜像), 不在这里自造头顶条 ——
+	#   旧的那条实拍是【横穿龟身】的一道白线, 而且挂在 `_world` 下没人清 ⇒ 跨路残留。
 	u["eq_state"]["p2eq_068"] = stt
 	_eq_beam_step(u, delta)
 	var due: float = float(stt["can_t0"]) + CAN_PERIOD * float(int(stt.get("can_fired", 0)) + 1)
@@ -448,9 +470,10 @@ func _tick_pressure_can(u: Dictionary, si: int, delta: float) -> void:
 		_eq_pressure_release(u, si, stt)
 
 
-## 法力激光的持续伤害推进。**纯同步**, 门禁直接喂 delta, 不等任何演出。
+## 法力激光的持续推进: 转向 + 扫掠伤害 + 演出。**纯同步**, 门禁直接喂 delta, 不等任何演出。
 ##
-## ★★伤害与亮度走**同一条** RC 泄放曲线(potion_eq_vfx §④): 光柱最亮那一瞬也正是打得最狠那一瞬。
+## ★★伤害与亮度走**同一条**实测包络(mana_beam_vfx §A): `env` 是瞬时强度,
+##   `env_frac` 是它的归一化积分 ⇒ 画面最亮那一瞬也正是打得最狠那一瞬。
 ##   不是"画面按 A 曲线、伤害按 B 曲线"那种两张皮。
 ## ★按 BEAM_TICK 分段结算而不是逐帧: `_dot_after_resist` 有 `maxi(1, …)` 下限,
 ##   逐帧会让"每帧至少 1 点"在高帧率下把总量顶上天。
@@ -465,7 +488,31 @@ func _eq_beam_step(u: Dictionary, delta: float) -> void:
 	var t0: float = float(stt.get("beam_t", 0.0))
 	var t1: float = minf(t0 + maxf(delta, 0.0), Vfx.BEAM_SEC)
 	stt["beam_t"] = t1
-	var want: float = total * Vfx.beam_frac(t1)
+
+	# ── 转向 ────────────────────────────────────────────────────
+	#   目标死了/失效了就改指最远的活敌; 方向按角速率上限逼近, **不瞬移**。
+	var a0: float = float(stt.get("beam_ang", 0.0))
+	var tgt = stt.get("beam_tgt", null)
+	if not (tgt is Dictionary) or not bool(tgt.get("alive", false)):
+		tgt = _can_farthest(u)
+		stt["beam_tgt"] = tgt
+	if tgt is Dictionary:
+		var want_ang: float = ((tgt["pos"] as Vector2) - (stt.get("beam_org", u["pos"]) as Vector2)).angle()
+		var step: float = deg_to_rad(BeamVfx.TURN_DPS) * maxf(delta, 0.0)
+		var dd: float = angle_difference(a0, want_ang)
+		a0 = a0 + clampf(dd, -step, step)
+	stt["beam_ang"] = a0
+	stt["beam_dir"] = Vector2(cos(a0), sin(a0))
+
+	# ── 演出: 只转节点 + 更新包络 + 告知现在照到了谁 ────────────────
+	var h = stt.get("beam_h", null)
+	if h is Dictionary and not (h as Dictionary).is_empty():
+		_beam_vfx.aim(h, a0)
+		_beam_vfx.set_progress(h, t1 / maxf(Vfx.BEAM_SEC, 0.001))
+		_beam_vfx.set_hits(h, _beam_lit(u, stt), delta)
+
+	# ── 伤害: 按【本 tick 扫掠过的角度区间】结算 ──────────────────
+	var want: float = total * BeamVfx.env_frac(t1 / maxf(Vfx.BEAM_SEC, 0.001))
 	var due: float = want - float(stt.get("beam_paid", 0.0))
 	var ended: bool = t1 >= Vfx.BEAM_SEC
 	stt["beam_acc"] = float(stt.get("beam_acc", 0.0)) + maxf(delta, 0.0)
@@ -473,23 +520,96 @@ func _eq_beam_step(u: Dictionary, delta: float) -> void:
 		stt["beam_acc"] = 0.0
 		if due >= 1.0:
 			stt["beam_paid"] = float(stt.get("beam_paid", 0.0)) + due
-			_beam_hit(u, stt, due)
+			_beam_hit(u, stt, due, float(stt.get("beam_ang_paid", a0)), a0)
+		stt["beam_ang_paid"] = a0
 	if ended:
 		stt["beam_total"] = 0.0
+		if h is Dictionary and not (h as Dictionary).is_empty():
+			_beam_vfx.stop(h)
+		stt["beam_h"] = null
+		stt["beam_tgt"] = null
 	u["eq_state"]["p2eq_068"] = stt
 
 
-## 这一跳打给光柱里的每个敌人。光柱 = 从 `beam_org` 沿 `beam_dir` 长 2000 码、半宽 58 码的条带。
-func _beam_hit(u: Dictionary, stt: Dictionary, amount: float) -> void:
+## 此刻**正被射线照到**的敌人(瞬时判定, 只给演出用 —— 伤害走扫掠, 见 `_beam_hit`)。
+func _beam_lit(u: Dictionary, stt: Dictionary) -> Array:
 	var org: Vector2 = stt.get("beam_org", u["pos"])
-	var dir: Vector2 = stt.get("beam_dir", Vector2.RIGHT)
+	var ang: float = float(stt.get("beam_ang", 0.0))
+	var out: Array = []
 	for o in battle._targeting._enemies_of(u):
 		var rel: Vector2 = o["pos"] - org
-		var along: float = rel.dot(dir)
-		if along < 0.0 or along > Vfx.BEAM_RANGE:
+		var d: float = rel.length()
+		if d > Vfx.BEAM_RANGE:
 			continue
-		if absf(rel.dot(Vector2(-dir.y, dir.x))) > Vfx.BEAM_HALF_W:
+		if absf(angle_difference(ang, rel.angle())) <= _half_angle(d):
+			out.append(o)
+	return out
+
+
+## 敌人在距离 d 处占的【角半宽】。
+## ★用 asin 而不是 atan: 这样它与旧版"垂距 ≤ BEAM_HALF_W"的判定【严格等价】——
+##   点在距离 d、角偏 θ 处的垂距 = d·sin(θ), 所以 垂距≤W ⇔ |θ| ≤ asin(W/d)。
+##   等价性是回归保护的基础: 不转向时新旧行为必须逐字一致。
+func _half_angle(d: float) -> float:
+	return asin(clampf(Vfx.BEAM_HALF_W / maxf(d, 0.001), 0.0, 1.0))
+
+
+## 本 tick 内, 敌人被射线照到的【时长比例】。
+##
+## ★★为什么必须这样算, 而不是"tick 结束时在不在线上":
+##   BEAM_TICK=0.25s, 转向 110°/s ⇒ **一个 tick 转 27.5°**。在 500 码处是 240 码弧长,
+##   而射线全宽才 116 码 ⇒ 敌人会整个从两个 tick 的缝里漏过去, 且**不报任何错**。
+##   (与「逐帧机制门禁必须逐帧喂」「合成单位被钳到同一点」同族: 粗粒度采样看不见缝隙。)
+##
+## 闭式解不是采样: 把"敌人占的角区间"与"本 tick 扫掠的角区间"求交, 交集长度 ÷ 扫掠角。
+## ★不转向时(|Δ|≈0)退化成 f=1 ⇒ **与改动前逐字一致**, 这是回归保护。
+func _sweep_frac(a0: float, a1: float, beta: float, alpha: float) -> float:
+	var d: float = angle_difference(a0, a1)
+	var b: float = angle_difference(a0, beta)
+	if absf(d) < 1e-5:
+		return 1.0 if absf(b) <= alpha else 0.0
+	var lo: float = minf(0.0, d)
+	var hi: float = maxf(0.0, d)
+	var ov: float = minf(hi, b + alpha) - maxf(lo, b - alpha)
+	if ov <= 0.0:
+		return 0.0
+	return clampf(ov / absf(d), 0.0, 1.0)
+
+
+## 这一跳打给【本 tick 被射线扫过】的每个敌人, 各自按被照时长比例结算。
+##
+## ★用户 2026-08-11:「射线碰到谁就开始造成伤害, 射线离开就停止造成伤害」。
+## ★数值契约不变: `_beam_hit` 本来就是"带内每个敌人各吃全额"(不是平分),
+##   所以「3 秒共造成充能值的 100/120/600%」说的一直是**对单个持续被照的目标**。
+##   改成扫射后这条原样成立; 变的只是被扫过的敌人按被照时长拿一部分。
+func _beam_hit(u: Dictionary, stt: Dictionary, amount: float, a0: float, a1: float) -> void:
+	var org: Vector2 = stt.get("beam_org", u["pos"])
+	for o in battle._targeting._enemies_of(u):
+		var rel: Vector2 = o["pos"] - org
+		var d: float = rel.length()
+		if d > Vfx.BEAM_RANGE:
+			continue
+		var f: float = _sweep_frac(a0, a1, rel.angle(), _half_angle(d))
+		if f <= 0.0:
+			continue
+		var part: float = amount * f
+		if part < 1.0:
 			continue
 		o["_mana_beam_n"] = int(o.get("_mana_beam_n", 0)) + 1   # 同步触发证据(门禁数它, 不等演出)
-		battle._damage._apply_damage(o, battle._damage._dot_after_resist(o, amount, true, u),
+		battle._damage._apply_damage(o, battle._damage._dot_after_resist(o, part, true, u),
 			Color(0.62, 0.82, 1.0), u, "mag", false, true)
+
+
+## 换路/战斗结束的撤场。
+##
+## ★★2026-08-11 发现: `_potion_sys` **既没有 `clear_all` 也没有 `clear`** ——
+##   而 `dual_lane_flow` 的换路清理用的是 `has_method` 保护 ⇒ **药水这一路一直被静默跳过**。
+##   四件(065~068)的演出节点都挂在 `battle._world` 下, 换路时 `_world` 不重建 ⇒ 全留到下一路。
+##   这是"写了没人读"的同族: 保护性的 `has_method` 让"没写 clear"变成了静默不清。
+func clear_all() -> void:
+	if _beam_vfx != null:
+		_beam_vfx.clear_all()
+	if _vfx != null and _vfx.has_method("clear_all"):
+		_vfx.clear_all()
+
+
