@@ -469,6 +469,8 @@ func _tick_pressure_can(u: Dictionary, si: int, delta: float) -> void:
 	#   吸收/衰减/耗尽全走 SpecialBalance, 这里只抄读数 ⇒ 镜像永远收敛, 不会自己漂。
 	u["_manaShieldVal"] = battle._spec.val(u, CAN_MANA_KEY)
 	u["eq_state"]["p2eq_068"] = stt
+	# 束结束后的末端爆发/塌收没有别的驱动源(束活着时由 set_hits 驱动) —— 内部有帧去重
+	_beam_vfx.advance(delta)
 	_eq_beam_step(u, delta)
 	var due: float = float(stt["can_t0"]) + CAN_PERIOD * float(int(stt.get("can_fired", 0)) + 1)
 	if battle._t >= due:
@@ -530,7 +532,10 @@ func _eq_beam_step(u: Dictionary, delta: float) -> void:
 	if ended:
 		stt["beam_total"] = 0.0
 		if h is Dictionary and not (h as Dictionary).is_empty():
-			_beam_vfx.stop(h)
+			# ★自然结束走 finale 不走 stop: 实测参考的最后 0.1s 爆点有【末端爆发】
+			#   (刺长×2.2 + 实心白核 + 白刺带), 然后 4 帧塌收 —— 由 advance 自清。
+			#   换路/清场仍走 stop/clear_all(立即全清), 两条路都有门禁。
+			_beam_vfx.finale(h)
 		stt["beam_h"] = null
 		stt["beam_tgt"] = null
 	u["eq_state"]["p2eq_068"] = stt

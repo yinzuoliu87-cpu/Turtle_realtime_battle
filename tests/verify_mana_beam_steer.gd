@@ -83,6 +83,7 @@ func _ready() -> void:
 	_t_hit_fade()
 	_t_lane_clear()
 	_t_mana_bar()
+	await _t_burst_tables()
 
 	_s.queue_free()
 	await get_tree().process_frame
@@ -352,3 +353,93 @@ func _t_mana_bar() -> void:
 		if ("_float_text" in ln) and ("法力护盾" in ln):
 			bad = true
 	_ok("⑨ ★飘字已删(源码不再有「法力护盾」_float_text 行)", not bad)
+	_ps.clear_all()          # ⑨ 自己放的束自己清 —— 漏了会污染 ⑩ 的节点计数(踩过)
+
+
+## ⑩ 爆点/细丝照实测表(2026-08-11 逐帧量的, 用户标准: 像素级 1:1 视频参考)
+##   实测三个反直觉结论都要焊死: 持续期无白芯 / 刺形每~2帧重掷 / 白色只在末端爆发。
+##   判据落在【真实网格顶点 / 真实节点 / 真实 mesh 引用】, 不是"我调用过"。
+func _t_burst_tables() -> void:
+	# ── 表本身 ──
+	_ok("⑩ 刺长分位表照实测(p50=64码, max=90码; 1px=1.115码)",
+		absf(Beam.spike_len(0.5) - 64.0) < 0.5 and absf(Beam.spike_len(1.0) - 90.0) < 0.5,
+		"p50=%.1f max=%.1f" % [Beam.spike_len(0.5), Beam.spike_len(1.0)])
+	_ok("⑩ 刺角宽双峰保住(细针<15° 宽瓣>30°, 实测 4~12° 与 35~55°)",
+		Beam.HIT_NEEDLE_DEG < 15.0 and Beam.HIT_LOBE_DEG > 30.0,
+		"needle=%.0f° lobe=%.0f°" % [Beam.HIT_NEEDLE_DEG, Beam.HIT_LOBE_DEG])
+	var ci: Color = Beam.HIT_COL_IN
+	var sat: float = (ci.r - minf(minf(ci.r, ci.g), ci.b) / ci.r) if ci.r > 0 else 0.0
+	sat = (maxf(maxf(ci.r, ci.g), ci.b) - minf(minf(ci.r, ci.g), ci.b)) / maxf(maxf(maxf(ci.r, ci.g), ci.b), 0.001)
+	_ok("⑩ ★持续期爆点是琥珀不是白(实测白占比<4%%, sat 0.69) —— 白色只属于末端爆发",
+		sat >= 0.4, "根部色 sat=%.2f" % sat)
+	_ok("⑩ 光晕剖面: 平台到 33码 + 指数衰减 + 90码见底",
+		absf(Beam.glow_at(0.0) - 1.0) < 1e-6 and absf(Beam.glow_at(33.0) - 1.0) < 1e-6
+		and Beam.glow_at(60.0) > 0.05 and Beam.glow_at(60.0) < 0.4
+		and Beam.glow_at(90.0) < 1e-6,
+		"g(33)=%.2f g(60)=%.2f g(90)=%.2f" % [Beam.glow_at(33.0), Beam.glow_at(60.0), Beam.glow_at(90.0)])
+	# ── 刺束网格是真 3D(旧版贴地星芒 y≡0 就是被这条打死的) ──
+	var bm: ArrayMesh = Beam._burst_mesh(1)
+	var vts: PackedVector3Array = bm.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	var maxy := 0.0
+	for v in vts:
+		maxy = maxf(maxy, absf(v.y))
+	_ok("⑩ ★★刺束是 3D(方向撒满球面含朝镜头), 不是贴地星芒", maxy > 0.3,
+		"max|y|=%.2f —— 0 = 全趴在地上" % maxy)
+	_ok("⑩ ★分母: 刺数照表(顶点数 = N×2片×3)", vts.size() == Beam.HIT_SPIKE_N * 6,
+		"%d 顶点, 期望 %d" % [vts.size(), Beam.HIT_SPIKE_N * 6])
+	# ── 运行时: 走真入口(release → _eq_beam_step), 断言真实节点 ──
+	_s._units.clear()
+	_s._spec.clear_all()
+	_ps.clear_all()          # 从干净的 _live 起量, 别人漏的束不算到我头上
+	var c: Vector2 = _s.ARENA.position + _s.ARENA.size * 0.5
+	var carrier: Dictionary = _s._spawn._make_unit("fortune", "left", c + Vector2(-520.0, 0.0))
+	carrier["alive"] = true
+	carrier["pos"] = c + Vector2(-520.0, 0.0)
+	carrier["hp"] = 3000.0; carrier["maxHp"] = 3000.0
+	carrier["equips"] = [{"id": "p2eq_068", "star": 3}]
+	carrier["eq_state"] = {"p2eq_068": {"can_t0": 0.0, "can_charge": 3000.0, "can_fired": 0}}
+	_s._units.append(carrier)
+	_mk("right", carrier["pos"] + Vector2(900.0, 0.0))
+	_ps._eq_pressure_release(carrier, 2, carrier["eq_state"]["p2eq_068"])
+	var st: Dictionary = carrier["eq_state"]["p2eq_068"]
+	var h: Dictionary = st.get("beam_h", {})
+	_ok("⑩ ★分母: 束身里有细丝节点(实测每截面 3~5 条亮脊)",
+		is_instance_valid(h.get("fil_node", null)) and Beam.FIL_N >= 2 and Beam.FIL_N <= 5,
+		"FIL_N=%d" % Beam.FIL_N)
+	for _i in range(11):
+		_ps._eq_beam_step(carrier, 0.25)      # 2.75s: 持续段
+	var marks: Array = h.get("marks", [])
+	_ok("⑩ ★分母: 持续段有爆点 mark", marks.size() > 0)
+	if marks.size() > 0:
+		var m0: Dictionary = marks[0]
+		_ok("⑩ ★持续段【没有】白核节点(白色只属于末端爆发)", m0.get("core", null) == null)
+		_ok("⑩ 爆点带球状光晕壳(三层)", (m0.get("glows", []) as Array).size() == 3)
+		var mesh_a = m0["star"].mesh if is_instance_valid(m0.get("star", null)) else null
+		_ps._eq_beam_step(carrier, 0.05)      # resh 0.05 ≥ 0.04 ⇒ 重掷
+		var mesh_b = m0["star"].mesh if is_instance_valid(m0.get("star", null)) else null
+		_ok("⑩ ★★刺形真的在重掷(实测 33ms 相关只剩 0.37): 换的是真 mesh 引用",
+			mesh_a != null and mesh_b != null and mesh_a != mesh_b)
+		var fil_a = h["fil_node"].mesh if is_instance_valid(h.get("fil_node", null)) else null
+		_ps._eq_beam_step(carrier, 0.05)      # t_acc 跨 0.08 档 ⇒ 细丝换排布
+		var fil_b = h["fil_node"].mesh if is_instance_valid(h.get("fil_node", null)) else null
+		_ok("⑩ 细丝排布在轮换(实测脊位逐帧重排)", fil_a != null and fil_b != null and fil_a != fil_b)
+	# ── 末端爆发: 束结束 → 白核+白刺带出现, 然后自清 ──
+	_ps._eq_beam_step(carrier, 0.30)          # 2.85+0.30 > 3.0 ⇒ ended ⇒ finale
+	_ok("⑩ ★分母: 束体已撤(finale 只留爆点)", not is_instance_valid(h.get("muzzle", null)))
+	var fmarks: Array = h.get("marks", [])
+	var has_core := false
+	for m in fmarks:
+		if is_instance_valid(m.get("core", null)) and float(m.get("burst", -1.0)) >= 0.0:
+			has_core = true
+	_ok("⑩ ★★末端爆发: 白核节点真的建出来了(实测最后 0.1s 实心白核+白刺带)", has_core,
+		"marks=%d" % fmarks.size())
+	# 自清: 走真实驱动源 advance(帧去重 ⇒ 每次 await 一帧)。
+	# ★先把 carrier 撤出 sim —— 真实 _process 也会对它调 advance(真实 delta≈0.016),
+	#   帧去重会把门禁手动喂的 0.05 吃掉 ⇒ 0.16s < 0.17s 塌收永远走不完(踩过)。
+	_s._units.clear()
+	for _i in range(10):
+		_ps._beam_vfx.advance(0.05)
+		await get_tree().process_frame
+	_ok("⑩ ★★爆发后自清(0.10s 爆发 + 0.07s 塌收, 之后节点必须归零)",
+		_ps._beam_vfx.node_count() == 0 and _ps._beam_vfx.live_count() == 0,
+		"还剩 %d 节点 / %d 句柄" % [_ps._beam_vfx.node_count(), _ps._beam_vfx.live_count()])

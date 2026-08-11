@@ -75,13 +75,50 @@ const TURN_DPS := 110.0
 
 ## 命中爆点的淡入/淡出(秒)。★用户 2026-08-11:「命中特效不能是突然出现突然消失的」。
 ## ★淡入比淡出短: 被照到要"立刻有反应", 离开可以留一点余韵。
-const HIT_IN := 0.09
-const HIT_OUT := 0.18
-## 命中爆点的星芒枝数与基础尺寸(码)
-const HIT_SPIKES := 7
-const HIT_R := 46.0
+## 实测(束切断后爆点 4 帧内塌掉)比旧值快得多 ⇒ 收紧到 0.06/0.10, 仍保 out>in。
+const HIT_IN := 0.06
+const HIT_OUT := 0.10
 ## 枪口星芒尺寸(码)
 const MUZZLE_R := 62.0
+
+## ══════════════════════════════════════════════════════════════════
+##  §B2 爆点结构表 —— 2026-08-11 逐帧量出(r_full 持续段 222~240 + 爆发段 271~276)
+## ══════════════════════════════════════════════════════════════════
+## 换算锚: 参考束全宽 104px = 我们 BEAM_HALF_W×2 = 116码 ⇒ 1px ≈ 1.115码。
+## ★三个反直觉的实测结论(不许"顺手改回直觉"):
+##   ① 持续期【没有白芯】: 黄像素 RGB(207,144,65)→(173,111,84), 白占比 <4%。
+##      白色只在【末端爆发】出现(实心核 ~10px + 白刺带 44~72px)。
+##   ② 刺的角宽是【双峰】: 细针 4~12° 与宽瓣 35~55° 并存(p25=6° p50=22° p75=47°)。
+##   ③ 刺形每 ~2 帧重掷一次(相邻帧 33ms 相关只剩 0.37) —— 不是一个定形星芒在转。
+const HIT_SPIKE_N := 15                                    # 整圈外推中位(逐帧 9~20)
+const HIT_LEN_Q: Array = [27.0, 40.0, 64.0, 77.0, 90.0]   # 刺长分位表(码) q=0/.25/.5/.75/1
+const HIT_NEEDLE_FRAC := 0.6                               # 细针占比; 其余为宽瓣
+const HIT_NEEDLE_DEG := 8.0                                # 细针全角宽(°)
+const HIT_LOBE_DEG := 42.0                                 # 宽瓣全角宽(°)
+const HIT_GLOW_R0 := 33.0        # 光晕亮度平台半径(码) — mean dL 在 r≤30px 持平
+const HIT_GLOW_SCALE := 14.5     # 平台外指数衰减尺度(码) (≈13px)
+const HIT_GLOW_RMAX := 90.0      # 光晕见底半径(码) (≈80px)
+const HIT_RESHUFFLE := 0.04      # 刺形重掷周期(秒)
+const HIT_PATTERNS := 3          # 预建几套刺形轮换(建网格不进热路径)
+const HIT_COL_IN := Color(0.81, 0.56, 0.25)    # 根部 RGB(207,144,65) sat 0.69
+const HIT_COL_OUT := Color(0.68, 0.44, 0.33)   # 端部 RGB(173,111,84) sat 0.51
+## 末端爆发(束结束的最后一瞬, 实测 0.1s / 6 帧):
+const BURST_SEC := 0.10
+const BURST_LEN_MULT := 2.2      # 刺长倍率(204px / 90px)
+const BURST_CORE_R := 12.0       # 实心白核半径(码) (≈10px)
+const BURST_RING_R0 := 49.0      # 白刺带内半径(码) (44px)
+const BURST_RING_R1 := 80.0      # 白刺带外半径(码) (72px)
+const BURST_OUT := 0.07          # 爆发后的塌收(实测 4 帧)
+
+## ══════════════════════════════════════════════════════════════════
+##  §B3 束身细丝 —— 横截面亮脊实测 p50 = 4 条(2~5 波动), 位置逐帧重排
+## ══════════════════════════════════════════════════════════════════
+## ★离束火花实测为【零】(perp>65px 无独立亮斑) —— 亮点全在束辉光内部,
+##   所以不做飞散粒子, 只做束内细丝。
+const FIL_N := 4                 # 每束细丝股数
+const FIL_R := 0.085             # 细丝半径(单位半径 = 束半宽的倍数)
+const FIL_SWAP := 0.08           # 细丝排布轮换周期(秒)
+const FIL_COL := Color(1.0, 0.92, 0.70)   # 近白琥珀(比外晕亮一挡)
 
 var battle = null
 var _live: Array = []
@@ -295,17 +332,87 @@ static func _star_mesh(n: int) -> ArrayMesh:
 	return mesh
 
 
-static func _disc_mesh(seg: int) -> ArrayMesh:
+## 确定性伪随机(哈希, 无 RNG 状态) —— 刺形/细丝排布要"看着随机"但不许碰全局随机流
+## (rng_discipline 门禁: 裸随机冻结)。同一 seed 永远同一套形, 重掷靠换 seed。
+static func _hash(i: int) -> float:
+	return fposmod(sin(float(i) * 12.9898 + 78.233) * 43758.5453, 1.0)
+
+
+## 刺长: 按实测分位表采样(q∈[0,1] → 码)。表是 [min,p25,p50,p75,max], 线性内插。
+static func spike_len(q: float) -> float:
+	var t: float = clampf(q, 0.0, 1.0) * 4.0
+	var i: int = clampi(int(t), 0, 3)
+	return lerpf(float(HIT_LEN_Q[i]), float(HIT_LEN_Q[i + 1]), t - float(i))
+
+
+## 光晕亮度剖面(归一): r≤R0 平台 1.0, 之后 exp(-(r-R0)/SCALE), RMAX 处清零。
+static func glow_at(r: float) -> float:
+	if r <= HIT_GLOW_R0:
+		return 1.0
+	if r >= HIT_GLOW_RMAX:
+		return 0.0
+	return exp(-(r - HIT_GLOW_R0) / HIT_GLOW_SCALE)
+
+
+## ★爆点刺束 —— 真 3D: 方向撒满整个球面(含朝镜头), 每根刺是一对十字鳍。
+## 参考: 几十根长短粗细各异的尖刺炸开成球状、立起来与角色相当 —— 不是贴地星芒。
+## seed 换一套刺形(数量/方向/长短/宽窄全部由哈希驱动, 同 seed 恒定)。
+## 单位: 网格半径 1.0 = HIT_LEN_Q 的最大值(码), 运行时按码缩放。
+static func _burst_mesh(seed: int) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var mid := Color(1.0, 1.0, 1.0, 0.9)
-	var rim := Color(1.0, 0.72, 0.30, 0.0)
-	for i in range(seg):
-		var a0: float = TAU * float(i) / float(seg)
-		var a1: float = TAU * float(i + 1) / float(seg)
-		st.set_color(mid); st.add_vertex(Vector3.ZERO)
-		st.set_color(rim); st.add_vertex(Vector3(cos(a0), 0.0, sin(a0)))
-		st.set_color(rim); st.add_vertex(Vector3(cos(a1), 0.0, sin(a1)))
+	var lmax: float = float(HIT_LEN_Q[4])
+	for i in range(HIT_SPIKE_N):
+		var b: int = seed * 97 + i * 13
+		# 球面均匀方向: y = 2h-1, 方位角 2πh'
+		var cy: float = 2.0 * _hash(b) - 1.0
+		var az: float = TAU * _hash(b + 1)
+		var rr: float = sqrt(maxf(1.0 - cy * cy, 0.0))
+		var dir := Vector3(rr * cos(az), cy, rr * sin(az))
+		var ln: float = spike_len(_hash(b + 2)) / lmax
+		var needle: bool = _hash(b + 3) < HIT_NEEDLE_FRAC
+		var deg: float = HIT_NEEDLE_DEG if needle else HIT_LOBE_DEG
+		# 半高角宽 → 半长处的半宽
+		var hw: float = ln * 0.5 * tan(deg_to_rad(deg * 0.5))
+		var side := dir.cross(Vector3.UP)
+		if side.length() < 0.1:
+			side = dir.cross(Vector3.RIGHT)
+		side = side.normalized() * hw
+		var side2 := dir.cross(side).normalized() * hw
+		var c0 := Color(HIT_COL_IN.r, HIT_COL_IN.g, HIT_COL_IN.b, 0.95)
+		var c1 := Color(HIT_COL_OUT.r, HIT_COL_OUT.g, HIT_COL_OUT.b, 0.0)
+		for s in [side, side2]:      # 十字鳍: 两片互垂, 任何视角都有截面
+			st.set_color(c0); st.add_vertex(-s)
+			st.set_color(c1); st.add_vertex(dir * ln)
+			st.set_color(c0); st.add_vertex(s)
+	var mesh := ArrayMesh.new()
+	st.commit(mesh)
+	return mesh
+
+
+## 末端爆发的白刺带: 白色碎片刺, 根部悬在 RING_R0、尖到 RING_R1(实测白色在 44~72px 成带)。
+static func _burst_ring_mesh(seed: int) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var n: int = HIT_SPIKE_N
+	for i in range(n):
+		var b: int = seed * 131 + i * 17
+		var cy: float = 2.0 * _hash(b) - 1.0
+		var az: float = TAU * _hash(b + 1)
+		var rr: float = sqrt(maxf(1.0 - cy * cy, 0.0))
+		var dir := Vector3(rr * cos(az), cy, rr * sin(az))
+		var r0: float = BURST_RING_R0 / BURST_RING_R1
+		var hw: float = 0.055 + 0.05 * _hash(b + 2)
+		var side := dir.cross(Vector3.UP)
+		if side.length() < 0.1:
+			side = dir.cross(Vector3.RIGHT)
+		side = side.normalized() * hw
+		var c0 := Color(1.0, 1.0, 1.0, 0.9)
+		var c1 := Color(1.0, 0.97, 0.88, 0.0)
+		for s in [side, dir.cross(side).normalized() * hw]:
+			st.set_color(c0); st.add_vertex(dir * r0 - s)
+			st.set_color(c1); st.add_vertex(dir)
+			st.set_color(c0); st.add_vertex(dir * r0 + s)
 	var mesh := ArrayMesh.new()
 	st.commit(mesh)
 	return mesh
@@ -319,7 +426,7 @@ func _alive_world() -> bool:
 	return battle != null and is_instance_valid(battle._world)
 
 
-func _node(mesh: ArrayMesh, mat: StandardMaterial3D, org: Vector3) -> MeshInstance3D:
+func _node(mesh: Mesh, mat: StandardMaterial3D, org: Vector3) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.material_override = mat
@@ -327,6 +434,37 @@ func _node(mesh: ArrayMesh, mat: StandardMaterial3D, org: Vector3) -> MeshInstan
 	if _alive_world():
 		battle._world.add_child(mi)
 	return mi
+
+
+## 束身细丝: FIL_N 股, 各有垂向偏移与微角差(两端偏移不同 ⇒ 与轴不严格平行),
+## 每股一对十字鳍薄带。seed 换一套排布(实测: 脊的位置沿束变化、逐帧重排)。
+## 单位空间与壳一致: x∈[0,1], 半径 1 = 束半宽。
+static func _fil_mesh(seed: int) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(FIL_N):
+		var b: int = seed * 61 + i * 29
+		var a0: float = TAU * _hash(b)
+		var r0: float = 0.15 + 0.45 * _hash(b + 1)
+		var y0: float = sin(a0) * r0
+		var z0: float = cos(a0) * r0
+		var y1: float = clampf(y0 + 0.55 * (_hash(b + 2) - 0.5), -0.6, 0.6)
+		var z1: float = clampf(z0 + 0.55 * (_hash(b + 3) - 0.5), -0.6, 0.6)
+		var p0 := Vector3(0.04, y0, z0)
+		var p1 := Vector3(0.97, y1, z1)
+		var c0 := Color(FIL_COL.r, FIL_COL.g, FIL_COL.b, 0.0)
+		var cm := Color(FIL_COL.r, FIL_COL.g, FIL_COL.b, 0.42 + 0.2 * _hash(b + 4))
+		var mid: Vector3 = (p0 + p1) * 0.5
+		for s in [Vector3(0.0, FIL_R, 0.0), Vector3(0.0, 0.0, FIL_R)]:
+			st.set_color(c0); st.add_vertex(p0 - s)
+			st.set_color(cm); st.add_vertex(mid + s)
+			st.set_color(c0); st.add_vertex(p1 - s)
+			st.set_color(c0); st.add_vertex(p0 + s)
+			st.set_color(cm); st.add_vertex(mid - s)
+			st.set_color(c0); st.add_vertex(p1 + s)
+	var mesh := ArrayMesh.new()
+	st.commit(mesh)
+	return mesh
 
 
 ## 开火。返回句柄(存进 eq_state)。`ang` 是世界平面上的朝向弧度。
@@ -340,12 +478,24 @@ func fire(origin: Vector2, ang: float, length: float, half_w: float) -> Dictiona
 		var nd := _node(_shell_mesh_k(i), _mat(30 + i), battle._world_pos(origin, 0.0))
 		nd.scale = Vector3(length * ws, half_w * ws, half_w * ws)
 		shells.append(nd)
+	# 细丝: 两套排布轮换(换 mesh 不换节点 ⇒ 热路径零分配)。节点放进 shells,
+	# aim/set_progress/stop/node_count 就全部顺带管到了。
+	var fil_meshes: Array = [_fil_mesh(1), _fil_mesh(2)]
+	var fil := _node(fil_meshes[0], _mat(35), battle._world_pos(origin, 0.0))
+	fil.scale = Vector3(length * ws, half_w * ws, half_w * ws)
+	shells.append(fil)
 	var mz := _node(_star_mesh(9), _mat(36), battle._world_pos(origin, 0.0))
 	mz.scale = Vector3(MUZZLE_R * ws, 1.0, MUZZLE_R * ws)
 	var h: Dictionary = {
 		"shells": shells, "muzzle": mz, "org": origin, "ang": ang,
 		"len": length, "hw": half_w, "s": 0.0, "marks": [],
+		"fil_meshes": fil_meshes, "fil_node": fil, "t_acc": 0.0,
+		# 爆点刺形: 预建 HIT_PATTERNS 套轮换(重掷=换 mesh, 不是每 40ms 建网格)
+		"hit_meshes": [], "ring_mesh": null,
 	}
+	for i in range(HIT_PATTERNS):
+		(h["hit_meshes"] as Array).append(_burst_mesh(i + 1))
+	h["ring_mesh"] = _burst_ring_mesh(7)
 	aim(h, ang)
 	set_progress(h, 0.0)
 	_live.append(h)
@@ -382,13 +532,24 @@ func set_progress(h: Dictionary, s: float) -> void:
 		mz.scale = Vector3(MUZZLE_R * ws * (0.7 + 0.5 * i), 1.0, MUZZLE_R * ws * (0.7 + 0.5 * i))
 		(mz.material_override as StandardMaterial3D).albedo_color = Color(1, 1, 1, i)
 		mz.rotation.y = float(h.get("ang", 0.0)) * 0.35     # 缓慢反向自转, 免得像贴纸
+	# 细丝排布轮换(换 mesh 不建节点): 实测脊位逐帧重排, 周期 FIL_SWAP
+	var fn = h.get("fil_node", null)
+	if is_instance_valid(fn):
+		var fm: Array = h.get("fil_meshes", [])
+		if fm.size() >= 2:
+			var idx: int = int(float(h.get("t_acc", 0.0)) / FIL_SWAP) % fm.size()
+			if fn.mesh != fm[idx]:
+				fn.mesh = fm[idx]
 
 
 ## 每帧告知"现在照到了谁" —— 命中爆点按这个增删, 并且**淡入淡出**。
 ## ★用户 2026-08-11:「命中特效不能是突然出现突然消失的」。
+## ★爆点亮度乘束包络(实测: 爆点能量跟束包络同曲线起伏) —— 一条曲线, 不是两张皮。
 func set_hits(h: Dictionary, lit: Array, delta: float) -> void:
 	if h.is_empty() or not _alive_world():
 		return
+	h["t_acc"] = float(h.get("t_acc", 0.0)) + maxf(delta, 0.0)
+	var envk: float = 0.35 + 0.65 * env(float(h.get("s", 0.0)))
 	var marks: Array = h.get("marks", [])
 	# ① 已有的: 还在照 → 淡入; 不照了 → 淡出
 	var keep: Array = []
@@ -403,7 +564,7 @@ func set_hits(h: Dictionary, lit: Array, delta: float) -> void:
 		if float(m["a"]) <= 0.0 and not still:
 			_free_mark(m)
 			continue
-		_apply_mark(m)
+		_apply_mark(m, h, envk, delta)
 		keep.append(m)
 	# ② 新照到的: 建一个(alpha 从 0 起, 所以是淡入不是突现)
 	for u in lit:
@@ -414,20 +575,41 @@ func set_hits(h: Dictionary, lit: Array, delta: float) -> void:
 				break
 		if found:
 			continue
-		keep.append(_make_mark(u))
+		keep.append(_make_mark(u, h, envk))
 	h["marks"] = keep
 
 
-func _make_mark(u: Dictionary) -> Dictionary:
+## 爆点中心在【身体中段】(高度 1.1) —— 参考爆点包住角色, 不是贴地(立起来与角色相当)。
+const HIT_H := 1.1
+## 光晕三层壳: 半径与基础 alpha 按实测剖面配(平台 33码 → 指数落到 90码见底)。
+## 加色叠加下三层从内到外的透视叠加近似平台+衰减 —— 近似, 没做实拍闭环(诚实标注)。
+const GLOW_SHELLS: Array = [[33.0, 0.14], [58.0, 0.06], [90.0, 0.028]]
+
+
+func _make_mark(u: Dictionary, h: Dictionary, envk: float) -> Dictionary:
 	var ws: float = float(battle.WS)
-	var star := _node(_star_mesh(HIT_SPIKES), _mat(38), battle._world_pos(u.get("pos", Vector2.ZERO), 0.0))
-	var glow := _node(_disc_mesh(22), _mat(37), battle._world_pos(u.get("pos", Vector2.ZERO), 0.0))
-	var m: Dictionary = {"u": u, "star": star, "glow": glow, "a": 0.0, "on": true, "spin": 0.0, "ws": ws}
-	_apply_mark(m)
+	var p: Vector3 = battle._world_pos(u.get("pos", Vector2.ZERO), HIT_H)
+	var meshes: Array = h.get("hit_meshes", [])
+	var star := _node(meshes[0] if meshes.size() > 0 else _burst_mesh(1), _mat(38), p)
+	var glows: Array = []
+	for g in GLOW_SHELLS:
+		var sm := SphereMesh.new()
+		sm.radius = 1.0
+		sm.height = 2.0
+		sm.radial_segments = 18
+		sm.rings = 9
+		var mt := _mat(37)
+		mt.albedo_color = Color(HIT_COL_IN.r, HIT_COL_IN.g, HIT_COL_IN.b, 0.0)
+		var nd := _node(sm, mt, p)
+		nd.scale = Vector3.ONE * float((g as Array)[0]) * ws
+		glows.append(nd)
+	var m: Dictionary = {"u": u, "star": star, "glows": glows, "core": null, "ring": null,
+		"a": 0.0, "on": true, "spin": 0.0, "ws": ws, "resh": 0.0, "pi": 0, "burst": -1.0}
+	_apply_mark(m, h, envk, 0.0)
 	return m
 
 
-func _apply_mark(m: Dictionary) -> void:
+func _apply_mark(m: Dictionary, h: Dictionary, envk: float, delta: float) -> void:
 	var u = m.get("u", null)
 	if not (u is Dictionary):
 		return
@@ -435,25 +617,139 @@ func _apply_mark(m: Dictionary) -> void:
 	var a: float = float(m.get("a", 0.0))
 	# ★缓入缓出曲线(smoothstep), 线性 alpha 会读成"闪一下"
 	var e: float = a * a * (3.0 - 2.0 * a)
-	m["spin"] = float(m.get("spin", 0.0)) + 0.06
-	var p: Vector3 = battle._world_pos(u.get("pos", Vector2.ZERO), 0.0)
-	for key in ["star", "glow"]:
-		var nd = m.get(key, null)
-		if not is_instance_valid(nd):
-			continue
-		nd.position = p
-		var r: float = HIT_R * ws * (0.55 + 0.45 * e) * (1.35 if key == "glow" else 1.0)
-		nd.scale = Vector3(r, 1.0, r)
-		nd.rotation.y = float(m["spin"]) * (1.0 if key == "star" else -0.6)
-		(nd.material_override as StandardMaterial3D).albedo_color = Color(1, 1, 1, e * (1.0 if key == "star" else 0.7))
+	m["spin"] = float(m.get("spin", 0.0)) + 0.9 * delta
+	var p: Vector3 = battle._world_pos(u.get("pos", Vector2.ZERO), HIT_H)
+	# 刺形重掷: 每 HIT_RESHUFFLE 秒换一套预建刺形 + 换一个哈希朝向(不重建网格)
+	m["resh"] = float(m.get("resh", 0.0)) + delta
+	if float(m["resh"]) >= HIT_RESHUFFLE:
+		m["resh"] = 0.0
+		m["pi"] = (int(m.get("pi", 0)) + 1) % HIT_PATTERNS
+		var meshes: Array = h.get("hit_meshes", [])
+		var star0 = m.get("star", null)
+		if is_instance_valid(star0) and meshes.size() > int(m["pi"]):
+			star0.mesh = meshes[int(m["pi"])]
+	# 末端爆发的时间推进(burst>=0 才生效)
+	var bt: float = float(m.get("burst", -1.0))
+	var blen := 1.0
+	var bfade := 1.0
+	if bt >= 0.0:
+		bt += delta
+		m["burst"] = bt
+		blen = lerpf(1.0, BURST_LEN_MULT, clampf(bt / BURST_SEC, 0.0, 1.0))
+		if bt > BURST_SEC:
+			bfade = clampf(1.0 - (bt - BURST_SEC) / BURST_OUT, 0.0, 1.0)
+	var lmax: float = float(HIT_LEN_Q[4])
+	var star = m.get("star", null)
+	if is_instance_valid(star):
+		star.position = p
+		star.scale = Vector3.ONE * lmax * ws * blen * (0.7 + 0.3 * e)
+		star.rotation.y = float(m["spin"]) + float(m.get("pi", 0)) * 2.4
+		(star.material_override as StandardMaterial3D).albedo_color = Color(1, 1, 1, e * envk * bfade)
+	var gi := 0
+	for nd in m.get("glows", []):
+		if is_instance_valid(nd):
+			nd.position = p
+			var ga: float = float((GLOW_SHELLS[gi] as Array)[1])
+			(nd.material_override as StandardMaterial3D).albedo_color = Color(
+				HIT_COL_IN.r, HIT_COL_IN.g, HIT_COL_IN.b, ga * e * envk * bfade * blen)
+		gi += 1
+	# 爆发期的白核与白刺带(只在 finale 里建)
+	var bin_a: float = clampf(bt / (BURST_SEC * 0.5), 0.0, 1.0) if bt >= 0.0 else 0.0
+	var core = m.get("core", null)
+	if is_instance_valid(core):
+		core.position = p
+		(core.material_override as StandardMaterial3D).albedo_color = Color(1, 1, 1, 0.9 * bin_a * bfade)
+	var ring = m.get("ring", null)
+	if is_instance_valid(ring):
+		ring.position = p
+		# ★白刺带【不乘 blen】: 实测白色固定在 49~80 码成带, 只有琥珀刺才拉长 ×2.2
+		ring.scale = Vector3.ONE * BURST_RING_R1 * ws
+		ring.rotation.y = float(m["spin"]) * 0.5
+		(ring.material_override as StandardMaterial3D).albedo_color = Color(1, 1, 1, bin_a * bfade)
 
 
 func _free_mark(m: Dictionary) -> void:
-	for key in ["star", "glow"]:
+	for key in ["star", "core", "ring"]:
 		var nd = m.get(key, null)
 		if is_instance_valid(nd):
 			nd.queue_free()
 		m[key] = null
+	for nd in m.get("glows", []):
+		if is_instance_valid(nd):
+			nd.queue_free()
+	m["glows"] = []
+
+
+## ★束自然结束: 束体立即撤(包络已把"一帧切断"演完), 但**正在照着的爆点转入末端爆发**
+## (实测: 最后 0.1s 刺长 ×2.2 + 实心白核 + 白刺带, 然后 4 帧塌收) —— 之后由 advance 自清。
+func finale(h: Dictionary) -> void:
+	if h.is_empty():
+		return
+	for nd in h.get("shells", []):
+		if is_instance_valid(nd):
+			nd.queue_free()
+	h["shells"] = []
+	h["fil_node"] = null
+	var mz = h.get("muzzle", null)
+	if is_instance_valid(mz):
+		mz.queue_free()
+	h["muzzle"] = null
+	var ring_mesh = h.get("ring_mesh", null)
+	var keep: Array = []
+	for m in h.get("marks", []):
+		if not bool(m.get("on", false)) or float(m.get("a", 0.0)) <= 0.0:
+			_free_mark(m)          # 没在照的余韵 mark 直接收掉, 不给它爆发
+			continue
+		m["burst"] = 0.0
+		var u = m.get("u", null)
+		if u is Dictionary and _alive_world():
+			var ws: float = float(m.get("ws", 1.0))
+			var p: Vector3 = battle._world_pos((u as Dictionary).get("pos", Vector2.ZERO), HIT_H)
+			var sm := SphereMesh.new()
+			sm.radius = 1.0
+			sm.height = 2.0
+			sm.radial_segments = 16
+			sm.rings = 8
+			var cn := _node(sm, _mat(39), p)
+			cn.scale = Vector3.ONE * BURST_CORE_R * ws
+			m["core"] = cn
+			if ring_mesh != null:
+				m["ring"] = _node(ring_mesh, _mat(39), p)
+		keep.append(m)
+	h["marks"] = keep
+	if keep.is_empty():
+		_drop(h)
+
+
+## 每帧推进(束结束后的爆发/塌收没有别的驱动源)。多携带者会各调一次 ⇒ 帧去重。
+var _adv_fr: int = -1
+func advance(delta: float) -> void:
+	var fr: int = Engine.get_process_frames()
+	if fr == _adv_fr:
+		return
+	_adv_fr = fr
+	for h in _live.duplicate():
+		if not (h.get("shells", []) as Array).is_empty():
+			continue                      # 束还活着, 由 set_hits 驱动
+		var keep: Array = []
+		for m in h.get("marks", []):
+			var bt: float = float(m.get("burst", -1.0))
+			if bt >= 0.0 and bt > BURST_SEC + BURST_OUT:
+				_free_mark(m)
+				continue
+			_apply_mark(m, h, 1.0, delta)
+			keep.append(m)
+		h["marks"] = keep
+		if keep.is_empty():
+			_drop(h)
+
+
+func _drop(h: Dictionary) -> void:
+	var keep: Array = []
+	for x in _live:
+		if not is_same(x, h):
+			keep.append(x)
+	_live = keep
 
 
 ## 收工: 射线本体与所有命中爆点一起清掉。
@@ -465,6 +761,7 @@ func stop(h: Dictionary) -> void:
 		if is_instance_valid(nd):
 			nd.queue_free()
 	h["shells"] = []
+	h["fil_node"] = null
 	var mz = h.get("muzzle", null)
 	if is_instance_valid(mz):
 		mz.queue_free()
@@ -472,11 +769,7 @@ func stop(h: Dictionary) -> void:
 	for m in h.get("marks", []):
 		_free_mark(m)
 	h["marks"] = []
-	var keep: Array = []
-	for x in _live:
-		if not is_same(x, h):
-			keep.append(x)
-	_live = keep
+	_drop(h)
 
 
 func clear_all() -> void:
@@ -489,7 +782,7 @@ func live_count() -> int:
 	return _live.size()
 
 
-## 场上所有(射线 + 枪口 + 命中爆点)的节点总数 —— 门禁数它验换路清干净。
+## 场上所有(射线 + 细丝 + 枪口 + 命中爆点/白核/白刺带)的节点总数 —— 门禁数它验换路清干净。
 func node_count() -> int:
 	var n := 0
 	for h in _live:
@@ -499,7 +792,10 @@ func node_count() -> int:
 		if is_instance_valid(h.get("muzzle", null)):
 			n += 1
 		for m in h.get("marks", []):
-			for key in ["star", "glow"]:
+			for key in ["star", "core", "ring"]:
 				if is_instance_valid(m.get(key, null)):
+					n += 1
+			for nd in m.get("glows", []):
+				if is_instance_valid(nd):
 					n += 1
 	return n
