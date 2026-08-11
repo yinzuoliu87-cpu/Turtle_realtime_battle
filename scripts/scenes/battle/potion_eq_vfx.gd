@@ -421,8 +421,37 @@ const BREW_GOLD := Color(1.0, 0.82, 0.30)
 const BREW_RED := Color(1.0, 0.32, 0.20)
 
 
-## ⚠ 立绘复制+modulate 的轮廓法已废: modulate 是乘法着色, 深绿壳×金=暗棕剪影(实拍翻车)。
-## 现行: 亮金红辐射辉光贴在身后(VfxTex 现成辉光纹理, 亮芯渐隐), 罩住全身 = 「身体在发光」。
+## 二改(用户原话「你角色获得强化是全身和轮廓啊」): 光晕法也废 ——
+##   ① 本体发光 = 单位精灵 modulate 用 HDR 过曝暖色(分量>1 才能把深色壳【提亮】成金红;
+##      第一版轮廓法翻车根因 = 分量≤1 的乘法只会压暗)。每帧重申(命中白闪短暂盖过, 下帧回来)。
+##   ② 轮廓发光 = 立绘的【白剪影】版放大 12% 垫在本体后(白剪影是平色, 染什么色就是什么色;
+##      像素图集小, 白化一遍进缓存)。
+## 本体着色档(金/红两端)。★Sprite3D modulate 分量 >1 会被钳位(实拍验证 HDR 路不通) ——
+##   改 ≤1 乘法: 金 = 压蓝绿通道让色相右移(轻微变暗换明确变金, 可接受)。
+const BREW_BODY_GOLD := Color(1.0, 0.78, 0.42)
+const BREW_BODY_RED := Color(1.0, 0.55, 0.42)
+
+static var _sil_cache: Dictionary = {}   # texture RID → 白剪影 ImageTexture
+
+
+static func _white_silhouette(tex: Texture2D) -> ImageTexture:
+	var key := str(tex.get_rid())
+	if _sil_cache.has(key):
+		return _sil_cache[key]
+	var img: Image = tex.get_image()
+	if img.is_compressed():
+		img.decompress()
+	img.convert(Image.FORMAT_RGBA8)
+	for y in range(img.get_height()):
+		for x in range(img.get_width()):
+			var c: Color = img.get_pixel(x, y)
+			if c.a > 0.01:
+				img.set_pixel(x, y, Color(1, 1, 1, c.a))
+	var out := ImageTexture.create_from_image(img)
+	_sil_cache[key] = out
+	return out
+
+
 func brew_glow_start(u: Dictionary) -> void:
 	var spr = u.get("sprite", null)
 	if spr == null or not is_instance_valid(spr):
@@ -430,28 +459,41 @@ func brew_glow_start(u: Dictionary) -> void:
 	if is_instance_valid(u.get("_brew_glow", null)):
 		return
 	var g := Sprite3D.new()
-	g.texture = VfxTex._make_fire_glow_tex()
-	g.pixel_size = 0.030
+	g.texture = _white_silhouette(spr.texture)
+	g.hframes = spr.hframes
+	g.vframes = spr.vframes
+	g.frame = spr.frame
+	g.pixel_size = spr.pixel_size
+	g.texture_filter = spr.texture_filter
 	g.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # 跟父面向(父已是广告牌)
 	g.shaded = false
 	g.transparent = true
-	g.render_priority = -1                            # 画在本体后面
-	g.position = Vector3(0.0, 0.0, -0.02)
+	g.render_priority = -1                            # 画在本体后面 ⇒ 只露放大的轮廓边
+	g.centered = spr.centered                         # ★枢轴必须与父一致: 不拷 offset/centered
+	g.offset = spr.offset                             #   的话轮廓片会坠到父枢轴处成一坨(实拍抓的)
+	g.scale = Vector3.ONE * 1.16
 	g.modulate = Color(BREW_GOLD.r, BREW_GOLD.g, BREW_GOLD.b, 0.0)
 	spr.add_child(g)
 	u["_brew_glow"] = g
 
 
-## el = 距喝药秒数。前 1.2s 强光(0.9 起), 之后收成 0.32 常驻(免控标识); 金↔红缓慢交替 + 微呼吸。
+## el = 距喝药秒数。前 1.2s 强(轮廓 0.95/本体过曝拉满), 之后常驻(轮廓 0.45/本体轻过曝);
+## 金↔红缓慢交替 + 微呼吸 —— 到战斗结束(免控标识)。
 func brew_glow_tick(u: Dictionary, el: float) -> void:
+	var k01: float = clampf(el / 1.2, 0.0, 1.0)
+	var mix: float = 0.5 + 0.5 * sin(el * 2.1)
 	var g = u.get("_brew_glow", null)
-	if not is_instance_valid(g):
-		return
-	var a: float = lerpf(0.90, 0.32, clampf(el / 1.2, 0.0, 1.0)) * (1.0 + 0.10 * sin(el * 3.3))
-	var c: Color = BREW_GOLD.lerp(BREW_RED, 0.5 + 0.5 * sin(el * 2.1))
-	g.modulate = Color(c.r, c.g, c.b, clampf(a, 0.0, 1.0))
-	var k: float = 1.0 + 0.06 * sin(el * 3.3)
-	g.scale = Vector3.ONE * k
+	if is_instance_valid(g):
+		var spr = u.get("sprite", null)
+		if is_instance_valid(spr):
+			g.frame = spr.frame
+			g.flip_h = spr.flip_h
+		var a: float = lerpf(1.0, 0.55, k01) * (1.0 + 0.08 * sin(el * 3.3))
+		var c: Color = BREW_GOLD.lerp(BREW_RED, mix)
+		g.modulate = Color(c.r, c.g, c.b, clampf(a, 0.0, 1.0))
+	## 本体发光: 写【常驻体色通道】u["_body_tint"](渲染层拿它当白闪的底色, 不再被每帧盖掉)
+	var body: Color = BREW_BODY_GOLD.lerp(BREW_BODY_RED, mix)
+	u["_body_tint"] = Color.WHITE.lerp(body, lerpf(1.0, 0.45, k01))
 
 
 # ══════════════════════════════════════════════════════════════════

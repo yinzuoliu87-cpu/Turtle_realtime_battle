@@ -379,9 +379,12 @@ func _update_world_transforms() -> void:
 		var bs: Vector3 = u.get("spr_base_scale", Vector3.ONE)
 		var gm: float = float(u.get("size_mult", 1.0))   # 体型倍率(石头岩层+2%/层); 从base起算不累积
 		spr.scale = Vector3(bs.x * sq.x * gm, bs.y * sq.y * gm, bs.z)
-		# 受击闪白: modulate 由 base 白 → 过曝白线性插值 (flash_t/battle.JUICE_FLASH_SEC); 死亡淡出走 alpha 不冲突
+		# 受击闪白: modulate 由【常驻体色】→ 过曝白线性插值 (flash_t/battle.JUICE_FLASH_SEC)。
+		# ★底色从 `_body_tint` 读(默认白): 给"喝药金红体光"这类常驻体色一条通用通道 ——
+		#   原来写死 Color.WHITE, 任何效果直接改 spr.modulate 都会被这行每帧盖掉(066 踩的)。
 		var fl: float = clampf(u.get("flash_t", 0.0) / battle.JUICE_FLASH_SEC, 0.0, 1.0)
-		spr.modulate = Color.WHITE.lerp(u.get("flash_col", battle.JUICE_FLASH_COLOR), fl)
+		var _base_tint: Color = u.get("_body_tint", Color.WHITE)
+		spr.modulate = _base_tint.lerp(u.get("flash_col", battle.JUICE_FLASH_COLOR), fl)
 		if str(u.get("id","")) == "ghost" and battle._t < float(u.get("phase_until", 0.0)):   # 虚化态本体(用户2026-07-11): 半透明+忽隐忽现幽紫 + 残影拖尾
 			spr.modulate = Color(0.78, 0.62, 1.0, 0.34 + 0.14 * sin(battle._t * 9.0))
 			if battle._t - float(u.get("_phase_ai_t", -1.0)) >= 0.08:
