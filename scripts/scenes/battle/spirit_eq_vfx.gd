@@ -312,6 +312,24 @@ var _m_ring: ArrayMesh = null
 var _m_disc: ArrayMesh = null
 var _m_torus: ArrayMesh = null
 var _m_sphere: ArrayMesh = null
+var _m_plank: ArrayMesh = null
+var _m_upf: ArrayMesh = null
+
+## 060 的两个专用 shader(时间走 uniform, 不碰内建墙钟 —— mana_beam 同款纪律)
+const SH_JELLY := preload("res://assets/shaders/jellyfish_bell.gdshader")
+const SH_PLANK := preload("res://assets/shaders/phospho_plankton.gdshader")
+## 磷光青(060 的身份色)
+const PHOSPHO := Color(0.55, 0.95, 1.0)
+
+
+static func _shader_mat(sh: Shader, prio: int, mode: int = 0) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	m.render_priority = prio
+	m.set_shader_parameter("u_col", Vector3(PHOSPHO.r, PHOSPHO.g, PHOSPHO.b))
+	if sh == SH_PLANK:
+		m.set_shader_parameter("u_mode", mode)
+	return m
 
 
 func _init(b) -> void:
@@ -349,7 +367,7 @@ static func _mat(no_depth: bool, prio: int) -> StandardMaterial3D:
 	return m
 
 
-static func _node(mesh: ArrayMesh, mat: StandardMaterial3D, org: Vector3) -> MeshInstance3D:
+static func _node(mesh: ArrayMesh, mat: Material, org: Vector3) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	## ★material_override 不用 set_surface_override_material(理由见文件头)
@@ -359,6 +377,9 @@ static func _node(mesh: ArrayMesh, mat: StandardMaterial3D, org: Vector3) -> Mes
 
 
 ## 单位半径的【水母伞】: 下半椭球壳。伞缘亮、伞顶暗(磷光集中在伞缘)。
+## ★UV 是给 jellyfish_bell.gdshader 的数据通道(约定焊死):
+##   UV.x = 方位角/TAU; UV.y ≥ 0 伞面(0=伞缘 1=伞顶), UV.y < 0 触须(-w, 根→梢)。
+## ★触须是十字双鳍(单面片背对相机会被剔/看不见 —— 飘带那次踩过), 分 5 段(行波要弯得动)。
 static func _build_bell() -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	var st := SurfaceTool.new()
@@ -373,34 +394,115 @@ static func _build_bell() -> ArrayMesh:
 			var b := _bell_vert(p0, t1)
 			var c := _bell_vert(p1, t1)
 			var d := _bell_vert(p1, t0)
-			_tri(st, a, b, c)
-			_tri(st, a, c, d)
-	## 触须: 从伞缘垂下的细条(两三角一条)
+			_tri_uv(st, a, b, c)
+			_tri_uv(st, a, c, d)
+	## 触须: 分段十字鳍, 每段顶点带 UV.y=-w 给 shader 做行波
+	var segs := 5
 	for k in range(TENTACLE_N):
 		var th: float = float(k) / float(TENTACLE_N) * TAU
-		var w: float = 0.035
-		var x0 := Vector3(cos(th), 0.0, sin(th))
-		var side := Vector3(-sin(th) * w, 0.0, cos(th) * w)
-		var tip := Vector3(cos(th) * 0.92, -TENTACLE_LEN * BELL_SQUASH, sin(th) * 0.92)
-		var va := [x0 - side, Color(1, 1, 1, 0.55)]
-		var vb := [x0 + side, Color(1, 1, 1, 0.55)]
-		var vc := [tip + side * 0.35, Color(1, 1, 1, 0.0)]
-		var vd := [tip - side * 0.35, Color(1, 1, 1, 0.0)]
-		_tri(st, va, vb, vc)
-		_tri(st, va, vc, vd)
+		var ux: float = (float(k) + 0.5) / float(TENTACLE_N)
+		var wd := 0.035
+		for s in range(segs):
+			var w0: float = float(s) / float(segs)
+			var w1: float = float(s + 1) / float(segs)
+			var r0: float = lerpf(1.0, 0.92, w0)
+			var r1: float = lerpf(1.0, 0.92, w1)
+			var y0: float = -TENTACLE_LEN * BELL_SQUASH * w0
+			var y1: float = -TENTACLE_LEN * BELL_SQUASH * w1
+			var p0v := Vector3(cos(th) * r0, y0, sin(th) * r0)
+			var p1v := Vector3(cos(th) * r1, y1, sin(th) * r1)
+			var a0: float = 0.55 * (1.0 - w0)
+			var a1: float = 0.55 * (1.0 - w1)
+			var wk0: float = wd * (1.0 - 0.6 * w0)
+			var wk1: float = wd * (1.0 - 0.6 * w1)
+			for side in [Vector3(-sin(th), 0.0, cos(th)), Vector3(cos(th) * 0.3, 1.0, sin(th) * 0.3).normalized()]:
+				var s0: Vector3 = side * wk0
+				var s1: Vector3 = side * wk1
+				var va := [p0v - s0, Color(1, 1, 1, a0), Vector2(ux, -w0)]
+				var vb := [p0v + s0, Color(1, 1, 1, a0), Vector2(ux, -w0)]
+				var vc := [p1v + s1, Color(1, 1, 1, a1), Vector2(ux, -w1)]
+				var vd2 := [p1v - s1, Color(1, 1, 1, a1), Vector2(ux, -w1)]
+				_tri_uv(st, va, vb, vc)
+				_tri_uv(st, va, vc, vd2)
+	st.generate_normals()
 	st.commit(mesh)
 	return mesh
 
 
-## 伞面顶点。phi=0 在伞缘(赤道), phi=π/2 在伞顶。
+## 带 UV 通道的顶点写入(v = [pos, color, uv]; 旧 _tri 的三元组没有 uv)
+static func _tri_uv(st: SurfaceTool, a: Array, b: Array, c: Array) -> void:
+	for v in [a, b, c]:
+		st.set_color(v[1])
+		st.set_uv(v[2] if v.size() > 2 else Vector2.ZERO)
+		st.add_vertex(v[0])
+
+
+## 伞面顶点。phi=0 在伞缘(赤道), phi=π/2 在伞顶。UV=(方位/TAU, sinφ) 给 shader。
 static func _bell_vert(phi: float, th: float) -> Array:
 	var p := Vector3(cos(phi) * cos(th), sin(phi) * BELL_SQUASH, cos(phi) * sin(th))
 	## 磷光: 伞缘最亮 → 伞顶半亮(生物发光集中在伞缘的光器上)
 	var a: float = lerpf(1.0, 0.22, sin(phi))
-	return [p, Color(1, 1, 1, a)]
+	return [p, Color(1, 1, 1, a), Vector2(th / TAU, sin(phi))]
 
 
-## 单位半径的贴地细环(用作 200 码庇护圈 / 引爆环 / 诅咒云外沿)
+## 磷光浮游生物场(060): 散布在单位圆盘里的小菱形光点 + 圈带加密。
+## ★这是「庇护圈」的替身 —— 用户 2026-08-11:「别用这种程序生成的圆敷衍」。
+##   圈不再是几何线, 是 r∈[0.88,1.0] 圈带处加密的浮游光点(各自闪烁)。
+##   UV.x = 归一半径(=1 处就是 200 码 —— 半径语义还在, 只是长相变成了生物),
+##   UV.y = 光点 id, COLOR.a = 菱形形状(中心亮尖端 0)。
+const PLANK_FIELD_N := 64
+const PLANK_BAND_N := 30
+static func _build_plank() -> ArrayMesh:
+	var mesh := ArrayMesh.new()
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(PLANK_FIELD_N + PLANK_BAND_N):
+		var b: int = i * 13 + 5
+		var band: bool = i >= PLANK_FIELD_N
+		var rr: float = (0.88 + 0.12 * _hh(b)) if band else (0.12 + 0.86 * sqrt(_hh(b)))
+		var th: float = TAU * _hh(b + 1)
+		var sz: float = (0.014 + 0.016 * _hh(b + 2)) * (1.25 if band else 1.0)
+		var y: float = GROUND_Y + 0.02 + 0.10 * _hh(b + 3)
+		var c := Vector3(rr * cos(th), y, rr * sin(th))
+		var mid: float = float(i) / float(PLANK_FIELD_N + PLANK_BAND_N)
+		_mote(st, c, sz, Vector2(rr, mid))
+	st.commit(mesh)
+	return mesh
+
+
+## 伞下上浮微粒(060): 伞半径内的小光点, shader mode1 让它们各自循环上浮。
+const UPF_N := 14
+static func _build_upf() -> ArrayMesh:
+	var mesh := ArrayMesh.new()
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(UPF_N):
+		var b: int = i * 29 + 3
+		var rr: float = 0.15 + 0.75 * sqrt(_hh(b))
+		var th: float = TAU * _hh(b + 1)
+		var c := Vector3(rr * cos(th), 0.05, rr * sin(th))
+		_mote(st, c, 0.035 + 0.03 * _hh(b + 2), Vector2(rr, float(i) / float(UPF_N)))
+	st.commit(mesh)
+	return mesh
+
+
+## 一颗光点 = 两片十字菱形(任意视角有截面; 平面双面不翻倍)
+static func _mote(st: SurfaceTool, c: Vector3, sz: float, uv: Vector2) -> void:
+	var bright := Color(1, 1, 1, 0.9)
+	var dim := Color(1, 1, 1, 0.0)
+	for pr in [[Vector3(sz, 0, 0), Vector3(0, sz, 0)], [Vector3(0, 0, sz), Vector3(0, sz, 0)]]:
+		var u_: Vector3 = pr[0]
+		var v_: Vector3 = pr[1]
+		_tri_uv(st, [c - u_, dim, uv], [c + v_, bright, uv], [c + u_, dim, uv])
+		_tri_uv(st, [c - u_, dim, uv], [c + u_, dim, uv], [c - v_, bright, uv])
+
+
+## 确定性哈希(mesh 生成期用, 不碰全局随机流)
+static func _hh(i: int) -> float:
+	return fposmod(sin(float(i) * 12.9898 + 78.233) * 43758.5453, 1.0)
+
+
+## 单位半径的贴地细环(用作引爆环 / 诅咒云外沿; 060 的庇护圈已换浮游光点带)
 static func _build_ring() -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	var st := SurfaceTool.new()
@@ -495,6 +597,8 @@ func _ensure_meshes() -> void:
 	if _m_disc == null: _m_disc = _build_disc()
 	if _m_torus == null: _m_torus = _build_torus()
 	if _m_sphere == null: _m_sphere = _build_sphere()
+	if _m_plank == null: _m_plank = _build_plank()
+	if _m_upf == null: _m_upf = _build_upf()
 
 
 ## 节点上打的自定义 meta 键 —— 门禁按 meta 数点数, **不按名字/贴图路径**:
@@ -503,7 +607,7 @@ const META_KEY := "spirit_eq_vfx"
 
 
 ## 建节点并挂进 _world + 打 meta。返回节点(挂不上时返回 null)。
-func _spawn_node(mesh: ArrayMesh, mat: StandardMaterial3D, org: Vector3, kind: String) -> MeshInstance3D:
+func _spawn_node(mesh: ArrayMesh, mat: Material, org: Vector3, kind: String) -> MeshInstance3D:
 	if not _has_world():
 		return null
 	var mi := _node(mesh, mat, org)
@@ -517,23 +621,79 @@ func _spawn_node(mesh: ArrayMesh, mat: StandardMaterial3D, org: Vector3, kind: S
 # ══════════════════════════════════════════════════════════════════
 
 ## 060: 打开伞。radius_px = 庇护半径(码, 用户定稿 200), dur = 持续(2.5 秒)。
-## ⚠ 庇护圈的半径必须**量真实节点**: ring 节点的 scale = radius_px × WS。
-func parasol_open(pos2d: Vector2, col: Color, radius_px: float, dur: float) -> Dictionary:
+## covered = 本次被罩住的队友(单位字典数组) —— 每人头顶起一簇环绕磷光点(谁被罩着一眼可读)。
+## ⚠ 庇护范围的半径必须**量真实节点**: plank 场节点的 scale = radius_px × WS
+##   (浮游光点带的 r=1 就是 200 码 —— 长相换成生物了, 半径语义没变)。
+func parasol_open(pos2d: Vector2, col: Color, radius_px: float, dur: float, covered: Array = []) -> Dictionary:
 	if not _has_world():
 		return {}
 	_ensure_meshes()
 	_ensure_room()
 	var org: Vector3 = battle._world_pos(pos2d, 0.0)
 	## 伞本体挂在龟头顶上方一点(伞是撑开在头顶的)
-	var bell := _spawn_node(_m_bell, _mat(false, 8), org + Vector3(0.0, 1.30, 0.0), "bell")
-	var ring := _spawn_node(_m_ring, _mat(true, 9), org, "parasol_ring")
-	if bell == null or ring == null:
+	var bell := _spawn_node(_m_bell, _shader_mat(SH_JELLY, 8), org + Vector3(0.0, 1.30, 0.0), "bell")
+	## 磷光浮游场: 静布光点 + 开伞光波扫过点亮 + 圈带常亮(替掉几何圆环)
+	var plank := _spawn_node(_m_plank, _shader_mat(SH_PLANK, 9, 0), org, "plank")
+	var upf := _spawn_node(_m_upf, _shader_mat(SH_PLANK, 10, 1), org, "upf")
+	if bell == null or plank == null or upf == null:
 		return {}
 	var h := {
-		"kind": "parasol", "bell": bell, "ring": ring, "col": col,
+		"kind": "parasol", "bell": bell, "plank": plank, "upf": upf, "col": col,
 		"bell_r": 78.0 * float(battle.WS), "ring_r": radius_px * float(battle.WS),
 		"dur": maxf(dur, 0.01), "t": 0.0,
 	}
+	_live.append(h)
+	apply_at(h, 0.0)
+	## 丙: 被罩队友的环绕磷光点(独立句柄, 各自跟随单位)
+	for cu in covered:
+		if cu is Dictionary:
+			parasol_cover(cu, dur)
+	return h
+
+
+## 060·丙: 单位头顶一簇缓慢上浮的磷光微粒(被伞罩着的读数), 跟随单位移动。
+func parasol_cover(u: Dictionary, dur: float) -> Dictionary:
+	if not _has_world():
+		return {}
+	_ensure_meshes()
+	_ensure_room()
+	var nd := _spawn_node(_m_upf, _shader_mat(SH_PLANK, 11, 1), battle._world_pos(u.get("pos", Vector2.ZERO), 1.9), "mote")
+	if nd == null:
+		return {}
+	var h := {"kind": "pcover", "mote": nd, "u": u, "r": 34.0 * float(battle.WS),
+		"dur": maxf(dur, 0.01), "t": 0.0}
+	_live.append(h)
+	apply_at(h, 0.0)
+	return h
+
+
+## 060·丙: 闪避触发的迷你伞残影 —— 「伞替你挡了一下」。0.3 秒快速开合。
+func parasol_dodge_flash(u: Dictionary) -> Dictionary:
+	if not _has_world():
+		return {}
+	_ensure_meshes()
+	_ensure_room()
+	var nd := _spawn_node(_m_bell, _shader_mat(SH_JELLY, 12), battle._world_pos(u.get("pos", Vector2.ZERO), 2.0), "bell")
+	if nd == null:
+		return {}
+	var h := {"kind": "pflash", "bell": nd, "u": u, "r": 34.0 * float(battle.WS),
+		"dur": 0.30, "t": 0.0}
+	_live.append(h)
+	apply_at(h, 0.0)
+	return h
+
+
+## 060·丙: 收伞回血 —— 伞的磷光收束成光流回到携带者身体(回血的演出因果)。
+func parasol_heal(u: Dictionary) -> Dictionary:
+	if not _has_world():
+		return {}
+	_ensure_meshes()
+	_ensure_room()
+	var nd := _spawn_node(_m_upf, _shader_mat(SH_PLANK, 11, 1), battle._world_pos(u.get("pos", Vector2.ZERO), 1.4), "mote")
+	if nd == null:
+		return {}
+	var h := {"kind": "pheal", "mote": nd, "u": u, "r0": 64.0 * float(battle.WS),
+		"dur": 0.40, "t": 0.0}
 	_live.append(h)
 	apply_at(h, 0.0)
 	return h
@@ -665,6 +825,9 @@ func apply_at(h: Dictionary, u: float) -> void:
 		return
 	match str(h.get("kind", "")):
 		"parasol": _apply_parasol(h, u)
+		"pcover": _apply_pcover(h, u)
+		"pflash": _apply_pflash(h, u)
+		"pheal": _apply_pheal(h, u)
 		"breach": _apply_breach(h, u)
 		"strike": _apply_strike(h, u)
 		"ring": _apply_ring(h, u)
@@ -690,13 +853,88 @@ func _apply_parasol(h: Dictionary, u: float) -> void:
 	var col: Color = h["col"]
 	var br: float = float(h["bell_r"]) * f
 	_set_scale(h["bell"], Vector3(br, br, br))
-	## 磷光强度随张开度走(伞张得越开, 发光面越大)
-	_set_col(h["bell"], Color(col.r, col.g, col.b, col.a * clampf(f, 0.0, 1.0)))
-	## ★庇护圈是【效果半径的真实写照】: 半径恒等于 200 码, 不随伞的振荡缩放 ——
-	##   它表示的是"谁在范围里", 拿它当演出去过冲就是在骗玩家。只有亮度跟着张开度走。
+	## 钟体 shader: 张开度/时间喂 uniform(搏动·菲涅尔·脉络·触须行波全在 shader 里)
+	var bm = h["bell"].material_override if is_instance_valid(h["bell"]) else null
+	if bm is ShaderMaterial:
+		bm.set_shader_parameter("u_t", t)
+		bm.set_shader_parameter("u_open", f)
+		bm.set_shader_parameter("u_alpha", col.a)
+	## ★庇护范围是【效果半径的真实写照】: plank 场半径恒等于 200 码, 不随伞的振荡缩放 ——
+	##   它表示的是"谁在范围里", 拿它当演出去过冲就是在骗玩家。亮相由 shader 里的
+	##   光波(开伞后 0.55s 扫满)与圈带常亮承担 —— 长相是浮游生物, 不是几何线圈。
 	var rr: float = float(h["ring_r"])
-	_set_scale(h["ring"], Vector3(rr, rr, rr))
-	_set_col(h["ring"], Color(col.r, col.g, col.b, col.a * 0.55 * clampf(f, 0.0, 1.0)))
+	_set_scale(h["plank"], Vector3(rr, rr, rr))
+	var pm = h["plank"].material_override if is_instance_valid(h["plank"]) else null
+	if pm is ShaderMaterial:
+		pm.set_shader_parameter("u_t", t)
+		pm.set_shader_parameter("u_open", clampf(f, 0.0, 1.0))
+		pm.set_shader_parameter("u_wave_t", t if t < 0.8 else -1.0)
+		pm.set_shader_parameter("u_alpha", col.a)
+	## 伞下上浮微粒(伞半径尺度)
+	var ur: float = float(h["bell_r"]) * 1.15
+	_set_scale(h["upf"], Vector3(ur, ur, ur))
+	var um = h["upf"].material_override if is_instance_valid(h["upf"]) else null
+	if um is ShaderMaterial:
+		um.set_shader_parameter("u_t", t)
+		um.set_shader_parameter("u_open", clampf(f, 0.0, 1.0))
+		um.set_shader_parameter("u_alpha", col.a * 0.8)
+
+
+## 被罩队友的环绕磷光点: 跟随单位, 首尾 0.15 淡入淡出。
+func _apply_pcover(h: Dictionary, u: float) -> void:
+	var uu = h.get("u", null)
+	if not (uu is Dictionary):
+		return
+	var nd = h.get("mote", null)
+	if not is_instance_valid(nd):
+		return
+	nd.position = battle._world_pos((uu as Dictionary).get("pos", Vector2.ZERO), 1.9)
+	var r: float = float(h["r"])
+	nd.scale = Vector3(r, r, r)
+	var t: float = clampf(u, 0.0, 1.0) * float(h["dur"])
+	var k: float = minf(minf(t / 0.15, (float(h["dur"]) - t) / 0.15), 1.0)
+	var m = nd.material_override
+	if m is ShaderMaterial:
+		m.set_shader_parameter("u_t", t)
+		m.set_shader_parameter("u_open", clampf(k, 0.0, 1.0))
+		m.set_shader_parameter("u_alpha", 0.8)
+
+
+## 闪避残影: 迷你伞 0.3 秒快速开合(开合曲线复用同一套阻尼阶跃)。
+func _apply_pflash(h: Dictionary, u: float) -> void:
+	var uu = h.get("u", null)
+	var nd = h.get("bell", null)
+	if not is_instance_valid(nd):
+		return
+	if uu is Dictionary:
+		nd.position = battle._world_pos((uu as Dictionary).get("pos", Vector2.ZERO), 2.0)
+	var t: float = clampf(u, 0.0, 1.0) * float(h["dur"])
+	var f: float = parasol_open_frac(t, float(h["dur"]))
+	var r: float = float(h["r"]) * maxf(f, 0.001)
+	nd.scale = Vector3(r, r, r)
+	var m = nd.material_override
+	if m is ShaderMaterial:
+		m.set_shader_parameter("u_t", t)
+		m.set_shader_parameter("u_open", f)
+		m.set_shader_parameter("u_alpha", 0.9)
+
+
+## 收伞光流: 磷光微粒从伞的尺度收束进身体(scale 收缩 + 淡出), 回血的演出因果。
+func _apply_pheal(h: Dictionary, u: float) -> void:
+	var uu = h.get("u", null)
+	var nd = h.get("mote", null)
+	if not is_instance_valid(nd):
+		return
+	if uu is Dictionary:
+		nd.position = battle._world_pos((uu as Dictionary).get("pos", Vector2.ZERO), 1.4)
+	var k: float = clampf(u, 0.0, 1.0)
+	var r: float = float(h["r0"]) * lerpf(1.0, 0.12, k * k)
+	nd.scale = Vector3(r, r, r)
+	var m = nd.material_override
+	if m is ShaderMaterial:
+		m.set_shader_parameter("u_t", k * 0.4)
+		m.set_shader_parameter("u_open", 1.0)
+		m.set_shader_parameter("u_alpha", 0.9 * (1.0 - k * k))
 
 
 func _apply_breach(h: Dictionary, u: float) -> void:
@@ -782,7 +1020,7 @@ func _apply_burst(h: Dictionary, u: float) -> void:
 #  §推进与撤场
 # ══════════════════════════════════════════════════════════════════
 
-const NODE_KEYS := ["bell", "ring", "disc", "flash", "torus", "sphere", "cloud", "edge"]
+const NODE_KEYS := ["bell", "ring", "disc", "flash", "torus", "sphere", "cloud", "edge", "plank", "upf", "mote"]
 
 
 func _free_handle(h: Dictionary) -> void:

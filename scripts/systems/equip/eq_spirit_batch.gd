@@ -129,7 +129,13 @@ func _parasol_open(u: Dictionary, si: int, stt: Dictionary) -> void:
 	## ★存的是【单位数组】不是 Dictionary 的键(CLAUDE.md §3.2), 收伞时按 is_same 找回来。
 	stt["pa_units"] = got
 	stt["pa_dr"] = dr
-	_vfx.parasol_open(u["pos"], Color(0.55, 0.95, 1.0, 0.9), PARASOL_RADIUS, PARASOL_OPEN)
+	## covered 传给演出: 被罩队友每人头顶一簇环绕磷光点(谁在伞下一眼可读)。
+	## ★携带者自己不传 —— 它头顶已经有整把伞了, 再加光点是重复读数。
+	var others: Array = []
+	for o in got:
+		if not is_same(o, u):
+			others.append(o)
+	_vfx.parasol_open(u["pos"], Color(0.55, 0.95, 1.0, 0.9), PARASOL_RADIUS, PARASOL_OPEN, others)
 
 
 ## 伞收拢: 摘掉减伤/闪避, 携带者回复 50/80/130 生命
@@ -149,7 +155,27 @@ func _parasol_close(u: Dictionary, si: int, stt: Dictionary) -> void:
 	stt["pa_units"] = []
 	stt["pa_dr"] = 0.0
 	if u.get("alive", false):
+		## 回血的演出因果: 伞的磷光收束成光流回到身体, 然后数字才落(不是凭空飘个数)。
+		_vfx.parasol_heal(u)
 		battle._damage._heal(u, [50.0, 80.0, 130.0][si])
+
+
+## 【闪避触发】伞的 15% 闪避真的挡下一击时: 被攻击者身上闪一记迷你伞快速开合的残影 ——
+## 「伞替你挡了一下」。闪避从纯数值变成看得见的时刻(丙层, 用户 2026-08-11 拍板)。
+## ★挂在 EquipSystem._eq_on_dodge(每次闪避都走的唯一入口), 只对带伞 buff 的单位生效。
+## ★0.25s 每单位节流: 高攻速敌人连闪会刷屏。
+func on_parasol_dodge(u: Dictionary) -> void:
+	var has_buff := false
+	for b in u.get("buffs", []):
+		if b is Dictionary and str((b as Dictionary).get("src_eq", "")) == PARASOL_BUFF_SRC:
+			has_buff = true
+			break
+	if not has_buff:
+		return
+	if battle._t - float(u.get("_pflash_t", -10.0)) < 0.25:
+		return
+	u["_pflash_t"] = battle._t
+	_vfx.parasol_dodge_flash(u)
 
 
 # ══════════════════════════════════════════════════════════════════════════

@@ -1359,6 +1359,9 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 #  on-dodge (闪避后)
 # ============================================================================
 func _eq_on_dodge(u: Dictionary) -> void:
+	## 060 磷光水母伞: 伞的闪避真挡下一击时闪一记迷你伞残影 —— 按【buff 来源】判,
+	## 不遍历 equips: 被罩的队友自己不带这件装备(光环给的), 遍历装备会漏掉他们。
+	_spirit_sys.on_parasol_dodge(u)
 	for e in u.get("equips", []):
 		if str(e["id"]) == "p2eq_046":   # 幽灵墨鱼: 闪避→永久护盾
 			var stt: Dictionary = u["eq_state"].get("p2eq_046", {})

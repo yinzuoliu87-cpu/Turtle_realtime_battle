@@ -855,24 +855,27 @@ func _t_vfx_nodes() -> void:
 	_s._units.clear()
 	var pc: Dictionary = _equip_flags(_mk("fortune", "left", Vector2(-200.0, -200.0), 1000.0), "p2eq_060", 3)
 	_sp.tick_unit(pc, 7.1)
-	_ok("⑥ ★★【真效果路径】开伞真的往 _world 里挂了 2 个节点(伞体 + 庇护圈), 不是【函数被调过】",
-		_count_meta("") - n0 == 2, "多了 %d 个" % (_count_meta("") - n0))
-	var ring = _pick_meta("parasol_ring")
-	_ok("⑥ ★分母: 取到了庇护圈节点", ring != null)
-	if ring != null:
+	_ok("⑥ ★★【真效果路径】开伞真的往 _world 里挂了 3 个节点(伞体 + 磷光场 + 上浮微粒), 不是【函数被调过】",
+		_count_meta("") - n0 == 3, "多了 %d 个" % (_count_meta("") - n0))
+	# 2026-08-11 重做: 庇护圈从几何线圈换成【磷光浮游光点场】(用户「别用程序生成的圆敷衍」)。
+	# 半径语义没变: plank 场节点的 scale 仍必须 = 200 码 × WS(圈带就画在 r=0.88~1.0 处)。
+	var plank = _pick_meta("plank")
+	_ok("⑥ ★分母: 取到了磷光场节点", plank != null)
+	if plank != null:
 		# ★★尺子匹配被测概念: 庇护半径必须是 200 【码】换算成米, 量的是【真效果建出来的】节点 scale
 		var want_m: float = 200.0 * float(_s.WS)
-		_ok("⑥ ★★庇护圈的**真实世界半径** = 200 码 × WS = %.4f m(量真节点 scale, 不是量公式)" % want_m,
-			absf(float(ring.scale.x) - want_m) < 1e-4,
-			"实测 %.4f m" % float(ring.scale.x))
-		var ud: Array = _updots(ring, 0)
-		_ok("⑥ ★贴地: 庇护圈 %d 个三角面的 |世界法线·上| 最小 %.4f(≈1 才是躺平的)"
-			% [int(ud[0]), float(ud[1])], int(ud[0]) > 20 and float(ud[1]) > 0.99)
+		_ok("⑥ ★★磷光场的**真实世界半径** = 200 码 × WS = %.4f m(量真节点 scale, 不是量公式)" % want_m,
+			absf(float(plank.scale.x) - want_m) < 1e-4,
+			"实测 %.4f m" % float(plank.scale.x))
+		# ★圈不再是连续几何环: 光点场顶点数 = (64场+30带)×2片×6顶点 —— 数真网格
+		var vcnt: int = (plank.mesh as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_VERTEX].size()
+		_ok("⑥ ★庇护范围是浮游光点场不是线圈(顶点数 = 94 颗 × 12)", vcnt == 94 * 12,
+			"实为 %d 顶点" % vcnt)
 		_ok("⑥ 零素材: 网格是程序现算的(resource_path 为空串)",
-			str((ring.mesh as ArrayMesh).resource_path) == "",
-			"path=%s" % str((ring.mesh as ArrayMesh).resource_path))
+			str((plank.mesh as ArrayMesh).resource_path) == "",
+			"path=%s" % str((plank.mesh as ArrayMesh).resource_path))
 		_ok("⑥ 走 material_override(不是 surface override —— 后者在无头下刷 material is null)",
-			ring.material_override != null and ring.get_surface_override_material_count() >= 0)
+			plank.material_override != null and plank.get_surface_override_material_count() >= 0)
 	# ══ ⑥-B 形态: 直接喂任意 u 看伞体半径怎么走(纯同步, 不等 tween) ═══════
 	vfx.clear_all()
 	await get_tree().process_frame
