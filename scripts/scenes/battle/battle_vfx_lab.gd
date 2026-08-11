@@ -396,7 +396,12 @@ func _relayout_units() -> void:
 				u["pos"] = _clamp_arena(Vector2(u["pos"]) + delta)     # 携带者与它的召唤物: 整体平移
 			else:
 				ai += 1
-				u["pos"] = _clamp_arena(anchor + Vector2(-170.0, (-1.0 if ai % 2 == 1 else 1.0) * 150.0 * ceilf(float(ai) * 0.5)))
+				# ★`ally_dist`: 友军到携带者的距离(码)。默认 = 旧写死摆位的实际距离(√(170²+150²)≈226.7),
+				#   不动既有 case。光环类装备必配: 060 补验收时发现友军被摆在 227 码 ⇒ 200 码光环
+				#   谁都没罩到, "allies=2 是必须的"的初衷被摆位打败(和 EQDEMO 敌距不准是同族病)。
+				var _ak: float = float(cfg.get("ally_dist", 226.7)) / 226.7
+				u["pos"] = _clamp_arena(anchor + Vector2(-170.0 * _ak,
+					(-1.0 if ai % 2 == 1 else 1.0) * 150.0 * _ak * ceilf(float(ai) * 0.5)))
 		else:
 			u["pos"] = _clamp_arena(anchor + Vector2(dist + float(ei) * gap, 0.0))
 			ei += 1
