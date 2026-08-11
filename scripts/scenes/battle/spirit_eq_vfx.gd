@@ -958,6 +958,67 @@ func bubble_ring(pos2d: Vector2, col: Color, idx: int) -> Dictionary:
 	return h
 
 
+## 063: 持久叠环覆盖层 —— 1~2 个亮气环悬在目标头顶慢转微浮, 层数即读数(引爆前一直在)。
+## 旧状态: 环的视觉只活 1.1s(飞行演出)而层数持续到 3 ⇒ 叠环状态大部分时间零显示。
+func whale_stack(tgt: Dictionary, n: int) -> void:
+	if not _has_world():
+		return
+	_ensure_meshes()
+	var h = tgt.get("_wring_h", null)
+	if h is Dictionary and is_instance_valid((h as Dictionary).get("torus", null)):
+		(h as Dictionary)["n"] = n
+		return
+	_ensure_room()
+	var t1 := _spawn_node(_m_torus, _mat(false, 13), battle._world_pos(tgt.get("pos", Vector2.ZERO), 2.15), "torus")
+	var t2 := _spawn_node(_m_torus, _mat(false, 13), battle._world_pos(tgt.get("pos", Vector2.ZERO), 2.5), "torus2")
+	if t1 == null or t2 == null:
+		return
+	var hh := {"kind": "wring_ov", "torus": t1, "torus2": t2, "u": tgt, "n": n,
+		"r": 30.0 * float(battle.WS), "dur": 1.0e9, "t": 0.0}
+	tgt["_wring_h"] = hh
+	_live.append(hh)
+	apply_at(hh, 0.0)
+
+
+## 063: 引爆 —— 叠环归心收缩 + 星形爆闪 + 碎屑(真伤白字由效果侧跳)。
+func whale_detonate(tgt: Dictionary) -> void:
+	var h = tgt.get("_wring_h", null)
+	if h is Dictionary:
+		_free_handle(h)
+		drop(h)
+	tgt["_wring_h"] = null
+	if not _has_world():
+		return
+	_ensure_meshes()
+	_ensure_room()
+	var tor := _spawn_node(_m_torus, _mat(false, 14), battle._world_pos(tgt.get("pos", Vector2.ZERO), 1.6), "torus")
+	var fl := _spawn_node(_m_cracks[2], _mat(false, 14), battle._world_pos(tgt.get("pos", Vector2.ZERO), 1.4), "flash")
+	var ch := _spawn_node(_m_chips, _mat(false, 14), battle._world_pos(tgt.get("pos", Vector2.ZERO), 1.0), "chips")
+	if tor == null or fl == null or ch == null:
+		return
+	var hh := {"kind": "wdet", "torus": tor, "flash": fl, "chips": ch,
+		"r": 40.0 * float(battle.WS), "dur": 0.42, "t": 0.0}
+	_live.append(hh)
+	apply_at(hh, 0.0)
+
+
+## 063: 攻速期升泡流 —— 白鲸吐泡加速的语义, buff 持续多久泡流就冒多久。
+func whale_haste(u: Dictionary, sec: float) -> void:
+	if not _has_world() or sec <= 0.05:
+		return
+	_ensure_meshes()
+	_ensure_room()
+	var gm := _spawn_node(_m_upf_big, _shader_mat(SH_PLANK, 12, 1), battle._world_pos(u.get("pos", Vector2.ZERO), 1.6), "mote")
+	if gm == null:
+		return
+	if gm.material_override is ShaderMaterial:
+		(gm.material_override as ShaderMaterial).set_shader_parameter("u_boost", 1.6)
+	var hh := {"kind": "whaste", "mote": gm, "u": u, "r": 34.0 * float(battle.WS),
+		"dur": sec, "t": 0.0}
+	_live.append(hh)
+	apply_at(hh, 0.0)
+
+
 ## 064: 浮囊。frac 由 `apply_at` 从外部余额喂进来(见 set_bladder_frac)。
 func float_bladder(pos2d: Vector2, col: Color) -> Dictionary:
 	if not _has_world():
@@ -1025,6 +1086,9 @@ func apply_at(h: Dictionary, u: float) -> void:
 		"pdrill": _apply_pdrill(h, u)
 		"mready": _apply_mready(h)
 		"mhit": _apply_mhit(h, u)
+		"wring_ov": _apply_wring(h)
+		"wdet": _apply_wdet(h, u)
+		"whaste": _apply_whaste(h, u)
 		"pcover": _apply_pcover(h, u)
 		"pflash": _apply_pflash(h, u)
 		"pheal": _apply_pheal(h, u)
@@ -1235,6 +1299,75 @@ func _apply_mhit(h: Dictionary, u: float) -> void:
 		_set_col(ch, Color(1, 1, 1, 0.9 * (1.0 - k4 * k4) * (1.0 if t >= 0.28 else 0.0)))
 
 
+## 叠环覆盖: 跟随目标, 慢转微浮; n 决定第二环显不显; 死亡自清。亮青(A/B 推深过的那支)。
+func _apply_wring(h: Dictionary) -> void:
+	var uu = h.get("u", null)
+	var t1 = h.get("torus", null)
+	if not is_instance_valid(t1):
+		return
+	if not (uu is Dictionary) or not (uu as Dictionary).get("alive", false):
+		_free_handle(h)
+		if uu is Dictionary:
+			(uu as Dictionary)["_wring_h"] = null
+		drop(h)
+		return
+	var t: float = float(h.get("t", 0.0))
+	var n: int = int(h.get("n", 1))
+	var r: float = float(h["r"])
+	var i := 0
+	for key in ["torus", "torus2"]:
+		var nd = h.get(key, null)
+		if not is_instance_valid(nd):
+			i += 1
+			continue
+		nd.position = battle._world_pos((uu as Dictionary).get("pos", Vector2.ZERO), 2.15 + 0.35 * i + 0.06 * sin(t * 2.0 + float(i)))
+		nd.scale = Vector3(r, r * 0.32, r)
+		nd.rotation.y = t * (0.9 + 0.4 * float(i))
+		var vis: float = 0.9 if n > i else 0.0
+		_set_col(nd, Color(0.28, 0.72, 1.0, vis))
+		i += 1
+
+
+## 引爆: 环归心收缩 + 星形爆闪 + 碎屑弹开
+func _apply_wdet(h: Dictionary, u: float) -> void:
+	var k: float = clampf(u, 0.0, 1.0)
+	var r: float = float(h["r"])
+	var tor = h.get("torus", null)
+	if is_instance_valid(tor):
+		var tr: float = r * lerpf(1.2, 0.12, k)
+		tor.scale = Vector3(tr, tr * 0.32, tr)
+		_set_col(tor, Color(0.28, 0.72, 1.0, 0.9 * (1.0 - k)))
+	var fl = h.get("flash", null)
+	if is_instance_valid(fl):
+		var fr: float = r * (0.4 + 1.3 * sin(k * PI))
+		fl.scale = Vector3(fr, fr, fr)
+		_set_col(fl, Color(1, 1, 1, 0.95 * sin(k * PI)))
+	var ch = h.get("chips", null)
+	if is_instance_valid(ch):
+		var r2: float = r * (0.4 + 1.3 * k)
+		ch.scale = Vector3(r2, r2, r2)
+		_set_col(ch, Color(0.6, 0.9, 1.0, 0.9 * (1.0 - k * k)))
+
+
+## 攻速泡流: 跟随携带者, 首尾 0.2s 淡入淡出
+func _apply_whaste(h: Dictionary, u: float) -> void:
+	var uu = h.get("u", null)
+	var nd = h.get("mote", null)
+	if not is_instance_valid(nd):
+		return
+	if uu is Dictionary:
+		nd.position = battle._world_pos((uu as Dictionary).get("pos", Vector2.ZERO), 1.6)
+	var t: float = clampf(u, 0.0, 1.0) * float(h["dur"])
+	var k: float = minf(minf(t / 0.2, (float(h["dur"]) - t) / 0.2), 1.0)
+	var r: float = float(h["r"])
+	nd.scale = Vector3(r, r, r)
+	var m = nd.material_override
+	if m is ShaderMaterial:
+		m.set_shader_parameter("u_t", t)
+		m.set_shader_parameter("u_open", clampf(k, 0.0, 1.0))
+		m.set_shader_parameter("u_alpha", 0.85)
+
+
 ## 060·丙沿用: 只要绿色恢复涌(mote 不建 ⇒ 收束段自动跳过) —— 062 的 40% 吸血也用这支绿。
 func green_heal(u: Dictionary) -> void:
 	if not _has_world():
@@ -1351,7 +1484,7 @@ func _apply_burst(h: Dictionary, u: float) -> void:
 #  §推进与撤场
 # ══════════════════════════════════════════════════════════════════
 
-const NODE_KEYS := ["bell", "ring", "disc", "flash", "torus", "sphere", "cloud", "edge", "plank", "upf", "mote", "gmote", "cracks", "chips", "claw", "bub"]
+const NODE_KEYS := ["bell", "ring", "disc", "flash", "torus", "sphere", "cloud", "edge", "plank", "upf", "mote", "gmote", "cracks", "chips", "claw", "bub", "torus2"]
 
 
 func _free_handle(h: Dictionary) -> void:

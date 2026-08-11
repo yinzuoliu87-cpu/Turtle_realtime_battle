@@ -329,10 +329,11 @@ func _eq_whale_haste(u: Dictionary, si: int) -> void:
 		u["haste_mult"] = want
 	u["haste_until"] = maxf(float(u.get("haste_until", 0.0)), battle._t + sec)
 	u["_whale_cast_n"] = int(u.get("_whale_cast_n", 0)) + 1
+	_vfx.whale_haste(u, sec)   # 攻速期读数: 升泡流冒够 buff 全程
 
 
 ## 普攻命中 → 挂一个环; 满 3 个引爆 25/40/70 真伤并清零。
-## ⚠ 同 062 的诚实记录: 挂的是 `_eq_on_hit`, 所以携带者的**技能伤害也会挂环**。
+## ★(2026-08-11 已根治)旧注释「技能伤害也会挂环」—— v0.19.100 的 basic 管线标已闸住。
 ##   原因同上(管线没有"这一段是普攻"的标记), 且与 061 破损、083 潮汐细剑同口径。
 func _eq_whale_ring(src: Dictionary, tgt: Dictionary, si: int, basic: bool = false) -> void:
 	## ★规格「携带者的普攻施加环」(§0.5) —— 技能不施环(2026-08-11 用户报修)。
@@ -346,14 +347,14 @@ func _eq_whale_ring(src: Dictionary, tgt: Dictionary, si: int, basic: bool = fal
 		battle._damage._apply_damage_from(src, tgt, maxi(1, int(round([25.0, 40.0, 70.0][si]))),
 			Color("#ffffff"), 0.0, true, true)
 		tgt["_ring_boom_n"] = int(tgt.get("_ring_boom_n", 0)) + 1
-		battle._skill_ring(tgt["pos"], Color(0.26, 0.70, 1.00, 0.75), 58.0)   # ★颜色推深(见下)
+		_vfx.whale_detonate(tgt)   # 叠环归心收缩 + 星形爆闪(旧通用 skill_ring 圆已废)
 	else:
 		tgt["whale_rings"] = n
-		## ★★ 063 的两个环颜色从 (0.72~0.75, 0.93~0.95, 1.0) 推深到 (0.26~0.28, 0.70~0.72, 1.0)。
-		##   原色饱和度只有 0.28 ⇒ 对黑底就是白。A/B 实测(2026-08-11):
-		##   063 自己画的 31252 个像素里 **76% 低饱和** —— 整个读成白。
-		##   (095 的结论: 亮度靠 alpha 给, 不能靠把颜色推淡。)
+		## 吐环飞行演出(浮力涡环物理) + 持久叠环覆盖(层数读数, 2026-08-11 补 —— 旧状态
+		## 环视觉只活 1.1s 而层数持续到 3, 叠环状态大部分时间零显示)。
+		## 色是 A/B 推深过的那支亮青(原低饱和对黑底读成白, 095 结论)。
 		_vfx.bubble_ring(tgt["pos"], Color(0.28, 0.72, 1.00, 0.8), n - 1)
+		_vfx.whale_stack(tgt, n)
 
 
 # ══════════════════════════════════════════════════════════════════════════
