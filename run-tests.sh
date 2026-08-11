@@ -152,20 +152,61 @@ frames_for () {
   esac
 }
 
+# ══════════════════════════════════════════════════════════════════════════
+#  自证测试跑法: 有界并行 (2026-08-11)
+# ══════════════════════════════════════════════════════════════════════════
+#  ★为什么要并行 —— 实测的时间去向, 不是猜的:
+#      · 随便挑一个【重】测试(建战斗场 + 走完整档位链)  2.03 秒
+#      · 挑一个【空】测试(verify_version, 只读四个文件) 2.14 秒
+#    两者一样 ⇒ **耗时几乎 100% 是 Godot 进程启动, 测试自己的逻辑不要钱**。
+#    串行等于把这 2 秒的启动【重复 168 次】= 5.7 分钟, 而 CPU 只用了一个核。
+#  ★量过但【不是】原因的(免得以后再查一遍):
+#      · CPU 降频      —— 连跑 40 次, 后 10 次只慢 4%
+#      · 音频驱动初始化 —— 带不带 `--audio-driver Dummy` 完全一样(2034 vs 2030 ms)
+#      · 审计器        —— 六个加起来 1.5 秒
+#      · 冒烟          —— 80 秒(真贵, 但只有一次, 不在这一段)
+#
+#  ★并行安全性是【查过】的, 不是假定的:
+#      · 零个测试写盘(tests/ 里的 DirAccess.open 全是列目录)
+#      · 碰存档的三个(incense_stone / season_flow / shop_persist)都显式
+#        `test_mode = true` 或注释写明"不调 GameState.save()" ⇒ 不写 user://
+#      · 唯一的共享可写状态是 `.godot/` 导入缓存 ⇒ 开跑前先单独 --import 一次
+#
+#  ★判定逻辑与串行版【逐字相同】(rc / 致命正则 / ALL PASS 关键字)。
+#    只改调度不改判据 —— 否则就是拿"跑得快"换"假绿灯", 这个项目栽过太多次了。
+JOBS="${JOBS:-4}"   # 想更快: JOBS=8 bash run-tests.sh (这台机器 CPU 有硬件故障, 默认保守)
+
+# 只跑, 不判定。输出与退出码各写一个文件(并行下拿不到子进程的 $?)
+run_one () {  # $1 = 测试名
+  local t="$1"
+  [ -f "$DIR/tests/$t.tscn" ] || return 0
+  "$GODOT" --headless --path "$DIR" "res://tests/$t.tscn" \
+      --quit-after "$(frames_for "$t")" > "$RAW/$t.log" 2>&1
+  echo $? > "$RAW/$t.rc"
+}
+
+# 只判定, 不跑。★这一段是从原 run_test 原样搬来的, 判据没动
 run_test () {  # $1 = 测试名
   local name="$1"
   if [ ! -f "$DIR/tests/$name.tscn" ]; then
     echo "  SKIP  $name (无 .tscn)"; return
   fi
-  local out rc fatal
-  out="$("$GODOT" --headless --path "$DIR" "res://tests/$name.tscn" --quit-after "$(frames_for "$name")" 2>&1)"
-  rc=$?
-  fatal="$(echo "$out" | grep -cE "$FATAL")"
-  if [ "$rc" -eq 0 ] && [ "$fatal" -eq 0 ] && { echo "$out" | grep -q "ALL PASS" || echo "$out" | grep -q "自证完成"; }; then
+  local rc fatal
+  # ★rc 文件不存在 = 那个进程根本没留下结果(被杀/没起来) ⇒ 判 99 = FAIL,
+  #   绝不能当成 0 —— "没跑" 必须红, 不能静默变绿
+  rc="$(cat "$RAW/$name.rc" 2>/dev/null || echo 99)"
+  [ -n "$rc" ] || rc=99
+  # ★别在这里写 `|| echo 0`: `grep -c` 数到 0 时【打印 0 但退出码是 1】,
+  #   `||` 于是再追加一个 0 ⇒ 值变成两行 ⇒ `[ ]` 当整数用直接炸 ⇒ 168 个全判 FAIL。
+  #   (2026-08-11 实测踩到: 并行改造第一版就是这么全红的。串行版本来没这句,
+  #    是我"顺手加固"加出来的 —— 防御性代码也要验, 它一样会引入 bug)
+  fatal="$(grep -cE "$FATAL" "$RAW/$name.log" 2>/dev/null)"
+  [ -n "$fatal" ] || fatal=0
+  if [ "$rc" -eq 0 ] && [ "$fatal" -eq 0 ] && { grep -q "ALL PASS" "$RAW/$name.log" || grep -q "自证完成" "$RAW/$name.log"; }; then
     PASS=$((PASS+1)); echo "  PASS  $name"
   else
     FAIL=$((FAIL+1)); echo "  FAIL  $name  (rc=$rc, 致命报错=$fatal)"
-    echo "$out" | grep -E "\[FAIL\]|✗|$FATAL" | head -5 | sed 's/^/        /'
+    grep -E "\[FAIL\]|✗|$FATAL" "$RAW/$name.log" 2>/dev/null | head -5 | sed 's/^/        /'
   fi
 }
 
@@ -175,20 +216,46 @@ run_test () {  # $1 = 测试名
 #   写测试的人不会记得回来改名单, 所以名单这种形式本身就是错的 —— 改成扫目录。
 #   新增测试只要放进 tests/ 并配好 .tscn 就自动纳入, 无需任何登记动作。
 echo "=== 自证测试 (自动发现 tests/verify_*.gd) ==="
-DISCOVERED=0
+RAW="$(mktemp -d)"
+trap 'rm -rf "$RAW"' EXIT
+
+# ★先单独导入一次: `.godot/` 导入缓存是并行下唯一的共享可写状态,
+#   让 N 个进程同时冷启动去建它会打架。这一步之后缓存是热的, 后面只读。
+"$GODOT" --headless --path "$DIR" --import > /dev/null 2>&1
+
+# ★冒烟(80 秒)与测试池【同时】跑 —— 它是完全独立的进程, 与自证测试零共享状态,
+#   排在后面串行等 = 白白多花 80 秒。判定逻辑在下面的冒烟段, 一个字没改。
+#   必须用 SHIP=1: 否则 _review_demo() 为真 → 假人永不死 → 战斗永不结束 → 结算路径根本没测到。
+( SHIP=1 "$GODOT" --headless --path "$DIR" res://tests/smoke_scenes.tscn \
+    --quit-after 40000 > "$RAW/smoke.log" 2>&1; echo $? > "$RAW/smoke.rc" ) &
+SMOKE_PID=$!
+
+NAMES=()
 for f in "$DIR"/tests/verify_*.gd; do
   [ -e "$f" ] || continue
-  t="$(basename "$f" .gd)"
-  DISCOVERED=$((DISCOVERED+1))
+  NAMES+=("$(basename "$f" .gd)")
+done
+DISCOVERED=${#NAMES[@]}
+
+# 有界并行: 同时最多 $JOBS 个 Godot
+export -f run_one frames_for
+export GODOT DIR RAW
+printf '%s\n' "${NAMES[@]}" | xargs -P "$JOBS" -I{} bash -c 'run_one "$@"' _ {}
+
+# ★判定仍是【串行、按名字顺序】—— 日志与串行版逐行可比, 不会因并行乱序
+for t in "${NAMES[@]}"; do
   run_test "$t"
 done
-echo "  (发现 $DISCOVERED 个测试)"
+echo "  (发现 $DISCOVERED 个测试, 并行度 $JOBS)"
 
 # ── 全流程闪退冒烟 ────────────────────────────────────────────────────────────
 #   必须用 SHIP=1 跑: 否则 _review_demo() 为真 → 假人永不死 → 战斗永不结束 → 结算路径根本没测到。
 echo "=== 全流程闪退冒烟 (SHIP=1 真实对局) ==="
-SMOKE_OUT="$(SHIP=1 "$GODOT" --headless --path "$DIR" res://tests/smoke_scenes.tscn --quit-after 40000 2>&1)"
-SMOKE_RC=$?
+wait "$SMOKE_PID"        # ★它在自证测试跑的时候就已经在跑了, 通常这里立刻返回
+SMOKE_OUT="$(cat "$RAW/smoke.log" 2>/dev/null)"
+SMOKE_RC="$(cat "$RAW/smoke.rc" 2>/dev/null)"
+# ★rc 文件没留下 = 那个进程根本没跑完 ⇒ 判 99 = FAIL。"没跑"必须红, 不能静默变绿
+[ -n "$SMOKE_RC" ] || SMOKE_RC=99
 SMOKE_FATAL="$(echo "$SMOKE_OUT" | grep -cE "$FATAL")"
 if [ "$SMOKE_RC" -eq 0 ] && [ "$SMOKE_FATAL" -eq 0 ] && echo "$SMOKE_OUT" | grep -q "SMOKE DONE"; then
   PASS=$((PASS+1)); echo "  PASS  smoke_scenes (9场景进出×4 + 战斗中途硬释放×3 + 60秒完整战斗)"
