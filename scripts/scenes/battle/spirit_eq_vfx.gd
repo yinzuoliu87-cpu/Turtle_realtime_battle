@@ -974,7 +974,7 @@ func bubble_ring(pos2d: Vector2, col: Color, idx: int) -> Dictionary:
 	##   A/B 实测(2026-08-11): 颜色推深后白占比 76%→43%, 再只画正面才掍得下去。
 	var _rm := _mat(false, 9)
 	_rm.cull_mode = BaseMaterial3D.CULL_BACK
-	var tor := _spawn_node(_m_torus, _rm, org + Vector3(0.0, 0.30 + 0.22 * float(idx), 0.0), "ring")
+	var tor := _spawn_node(_m_torus_thin, _rm, org + Vector3(0.0, 0.30 + 0.22 * float(idx), 0.0), "ring")
 	if tor == null:
 		return {}
 	var h := {
@@ -1002,8 +1002,8 @@ func whale_stack(tgt: Dictionary, n: int) -> void:
 	_rm1.cull_mode = BaseMaterial3D.CULL_BACK   # ★只画正面: 内侧面露出来会读成"碗/实心圆"(用户点名要空心环)
 	var _rm2 := _mat(false, 13)
 	_rm2.cull_mode = BaseMaterial3D.CULL_BACK
-	var t1 := _spawn_node(_m_torus_thin, _rm1, battle._world_pos(tgt.get("pos", Vector2.ZERO), 0.7), "torus")
-	var t2 := _spawn_node(_m_torus_thin, _rm2, battle._world_pos(tgt.get("pos", Vector2.ZERO), 1.1), "torus2")
+	var t1 := _spawn_node(_m_torus_thin, _rm1, battle._world_pos(tgt.get("pos", Vector2.ZERO), 0.10), "torus")
+	var t2 := _spawn_node(_m_torus_thin, _rm2, battle._world_pos(tgt.get("pos", Vector2.ZERO), 0.10), "torus2")
 	if t1 == null or t2 == null:
 		return
 	var hh := {"kind": "wring_ov", "torus": t1, "torus2": t2, "u": tgt, "n": n,
@@ -1026,7 +1026,7 @@ func whale_detonate(tgt: Dictionary) -> void:
 	_ensure_room()
 	var _rmd := _mat(false, 14)
 	_rmd.cull_mode = BaseMaterial3D.CULL_BACK
-	var tor := _spawn_node(_m_torus_thin, _rmd, battle._world_pos(tgt.get("pos", Vector2.ZERO), 0.9), "torus")
+	var tor := _spawn_node(_m_torus_thin, _rmd, battle._world_pos(tgt.get("pos", Vector2.ZERO), 0.10), "torus")
 	var fl := _spawn_node(_m_cracks[2], _mat(false, 14), battle._world_pos(tgt.get("pos", Vector2.ZERO), 1.4), "flash")
 	var ch := _spawn_node(_m_chips, _mat(false, 14), battle._world_pos(tgt.get("pos", Vector2.ZERO), 1.0), "chips")
 	if tor == null or fl == null or ch == null:
@@ -1355,9 +1355,10 @@ func _apply_wring(h: Dictionary) -> void:
 		if not is_instance_valid(nd):
 			i += 1
 			continue
-		# ★环【套在身体上】(用户 2026-08-11: 不要悬头顶): 腰位起步, 第二环高一档, 轻微上下浮
-		nd.position = battle._world_pos((uu as Dictionary).get("pos", Vector2.ZERO), 0.7 + 0.4 * i + 0.05 * sin(t * 2.0 + float(i)))
-		nd.scale = Vector3(r, r, r)   # 真环网格(_m_torus_thin)有真实的洞 ⇒ 均匀缩放即可
+		# ★环【平铺地面·同心外扩】(用户 2026-08-11 二改: 环放地下, 第二个比第一个大)
+		nd.position = battle._world_pos((uu as Dictionary).get("pos", Vector2.ZERO), 0.10)
+		var ri: float = r * (1.0 + 0.45 * float(i))   # 第二环半径 ×1.45
+		nd.scale = Vector3(ri, ri * 0.5, ri)          # y 压扁一点: 贴地环不需要立管
 		nd.rotation.y = t * (0.9 + 0.4 * float(i))
 		var vis: float = 0.8 if n > i else 0.0
 		_set_col(nd, Color(0.28, 0.72, 1.0, vis))
@@ -1370,8 +1371,9 @@ func _apply_wdet(h: Dictionary, u: float) -> void:
 	var r: float = float(h["r"])
 	var tor = h.get("torus", null)
 	if is_instance_valid(tor):
-		var tr: float = r * lerpf(1.2, 0.12, k)
-		tor.scale = Vector3(tr, tr, tr)
+		# 引爆: 从最大环(第二环 1.45r)向心塌收到零 —— 「三环合拢引爆」的读数
+		var tr: float = r * lerpf(1.45, 0.10, k)
+		tor.scale = Vector3(tr, tr * 0.5, tr)
 		_set_col(tor, Color(0.28, 0.72, 1.0, 0.9 * (1.0 - k)))
 	var fl = h.get("flash", null)
 	if is_instance_valid(fl):
@@ -1482,8 +1484,10 @@ func _apply_ring(h: Dictionary, u: float) -> void:
 	##   ⚠ 诚实记录: 这是**近似**, 只在 a≪R 时准 —— 而气环恰好一直 a≪R
 	##     (a₀/R₀ = 0.30, 随 R 增大还在变小)。守恒律本身由纯函数 ring_radius/ring_tube 给,
 	##     门禁逐点验的是那两个函数; 这里只负责把它画出来。
-	var sx: float = rm * (R + a) * 0.5
-	var sy: float = rm * a
+	# 真环网格(R=1/a=0.14): 主径直接 R, 管径纵向按 a/0.14 跟守恒变细。
+	# (管的水平向厚度随 R 等比 —— 显示近似; 守恒律本体仍由 ring_radius/ring_tube 纯函数钉)
+	var sx: float = rm * R
+	var sy: float = rm * (a / 0.14)
 	_set_scale(h["torus"], Vector3(sx, sy, sx))
 	## Kelvin–Lamb: 越胀越慢 ⇒ 上升高度是速度的积分, 用归一速度加权
 	var rise: float = float(h["rise"]) * (R - RING_R0) / maxf(1.0 - RING_R0, 1e-6)
