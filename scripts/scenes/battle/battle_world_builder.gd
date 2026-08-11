@@ -458,6 +458,11 @@ func _build_environment() -> void:
 		env.ambient_light_color = Color(0.6, 0.6, 0.6)
 		env.ambient_light_energy = 1.0
 		env.adjustment_enabled = false
+	# ★VFXLAB_GLOW=1: 黑场里把泛光开回来(桌面真机的同一套参数) —— 给用户【验收观看】用,
+	#   让台子看到的 = 玩家看到的(2026-08-11 发现: 黑场关 bloom ⇒ 一直在比真机更"干"的环境验收)。
+	#   ⚠ 默认不开: BLACKMAP 是染色法/差分量测的基线环境, 泛光会污染逐像素判定 —— 基线不能动。
+	if OS.has_environment("VFXLAB_GLOW"):
+		env.glow_enabled = true
 	var we = WorldEnvironment.new()
 	we.environment = env
 	battle._world.add_child(we)

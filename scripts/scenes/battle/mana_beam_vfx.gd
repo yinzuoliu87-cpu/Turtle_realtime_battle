@@ -142,6 +142,18 @@ const RIBBON_W := 6.0            # 带半宽(码, 实测带宽 ~10码)
 ## ⚠ 转速是【估计】不是精量(彗尾无法逐帧锁同一条; 0.5s 内构型大变 ⇒ 120~180°/s 带),
 ##   与 k=0.55 同族: 可感知量, 真机看着不对再调。
 const RIBBON_DPS := 150.0
+## 收场: 束身一帧切(实测 0.96→0.04/帧), 但【枪口+飘带】用 ~0.2s 渐隐(实测 0.26→本底/12帧)。
+## 之前整套瞬灭 —— 用户「消散有这么突然吗」, 分区量出来突兀就差在这 0.2s。
+const MUZZLE_FADE := 0.2
+## 束内白热短划(参考 250 帧放大: 束芯不是连续线, 是长短不一带缺口的短划) + 近束闪点
+## (1~4px 星点, 实测只出现在束周 65px 内)。都烘进细丝网格, 随 FIL_SWAP 重排。人眼验收(用户拍板)。
+const DASH_N := 10
+const GLINT_N := 8
+const GLINT_XR := 0.004          # 闪点沿束半径(≈8码/束长2000)
+const GLINT_PR := 0.14           # 闪点垂向半径(≈8码/束半宽58)
+## 地面反照: 束正下方贴地渐变亮带(参考里地面被束照亮)
+const GROUND_W := 1.9            # 半宽(束半宽的倍数)
+const GROUND_A := 0.10
 
 var battle = null
 var _live: Array = []
@@ -487,6 +499,45 @@ static func _fil_mesh(seed: int) -> ArrayMesh:
 			st.set_color(c0); st.add_vertex(p0 + s)
 			st.set_color(cm); st.add_vertex(mid - s)
 			st.set_color(c0); st.add_vertex(p1 + s)
+	# 白热短划: 参考束芯是【长短不一带缺口的短划】不是连续线(250 帧放大) —— 近白, 比细丝亮一挡
+	for i in range(DASH_N):
+		var b2: int = seed * 173 + i * 37
+		var x0: float = 0.06 + 0.82 * _hash(b2)
+		var dl: float = 0.03 + 0.09 * _hash(b2 + 1)
+		var a0: float = TAU * _hash(b2 + 2)
+		var r0: float = 0.05 + 0.40 * _hash(b2 + 3)
+		var pd0 := Vector3(x0, sin(a0) * r0, cos(a0) * r0)
+		var pd1 := Vector3(minf(x0 + dl, 0.97), pd0.y, pd0.z)
+		var ca := Color(1.0, 0.97, 0.85, 0.0)
+		var cb := Color(1.0, 0.97, 0.85, 0.55 + 0.3 * _hash(b2 + 4))
+		var mid2: Vector3 = (pd0 + pd1) * 0.5
+		for s in [Vector3(0.0, FIL_R * 0.8, 0.0), Vector3(0.0, 0.0, FIL_R * 0.8)]:
+			st.set_color(ca); st.add_vertex(pd0 - s)
+			st.set_color(cb); st.add_vertex(mid2 + s)
+			st.set_color(ca); st.add_vertex(pd1 - s)
+			st.set_color(ca); st.add_vertex(pd0 + s)
+			st.set_color(cb); st.add_vertex(mid2 - s)
+			st.set_color(ca); st.add_vertex(pd1 + s)
+	# 近束闪点: 1~4px 星点, 只在束周出现(实测离束 65px 外为零) —— 三平面小菱形, 任意视角有截面
+	for i in range(GLINT_N):
+		var b3: int = seed * 211 + i * 41
+		var a1: float = TAU * _hash(b3 + 1)
+		var r1: float = 0.30 + 0.75 * _hash(b3 + 2)
+		var gp := Vector3(0.05 + 0.88 * _hash(b3), sin(a1) * r1, cos(a1) * r1)
+		var gc := Color(1.0, 1.0, 0.95, 0.5 + 0.4 * _hash(b3 + 3))
+		var ge := Color(1.0, 0.9, 0.6, 0.0)
+		var axx := Vector3(GLINT_XR, 0.0, 0.0)
+		var axy := Vector3(0.0, GLINT_PR, 0.0)
+		var axz := Vector3(0.0, 0.0, GLINT_PR)
+		for pr in [[axx, axy], [axz, axy], [axx, axz]]:
+			var u_: Vector3 = pr[0]
+			var v_: Vector3 = pr[1]
+			st.set_color(ge); st.add_vertex(gp - u_)
+			st.set_color(gc); st.add_vertex(gp + v_)
+			st.set_color(ge); st.add_vertex(gp + u_)
+			st.set_color(ge); st.add_vertex(gp - u_)
+			st.set_color(ge); st.add_vertex(gp + u_)
+			st.set_color(gc); st.add_vertex(gp - v_)
 	var mesh := ArrayMesh.new()
 	st.commit(mesh)
 	return mesh
@@ -552,6 +603,28 @@ static func _ribbon_mesh(seed: int) -> ArrayMesh:
 	return mesh
 
 
+## 地面反照: 束正下方贴地渐变亮带(参考里地面被束照亮; 黑场看不见, 真机地图上读得出)。
+## 单位空间与壳一致(x∈[0,1], z=束半宽倍数), 朝上单面(加色下双面=翻倍, 不许)。
+static func _ground_mesh() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var cc := Color(0.87, 0.70, 0.38, GROUND_A)
+	var ce := Color(0.66, 0.50, 0.28, 0.0)
+	var y := 0.02
+	for half in [[-GROUND_W, 0.0, ce, cc], [0.0, GROUND_W, cc, ce]]:
+		var z0: float = half[0]
+		var z1: float = half[1]
+		var col0: Color = half[2]
+		var col1: Color = half[3]
+		_quad(st,
+			Vector3(0.03, y, z0), Vector3(0.03, y, z1),
+			Vector3(0.97, y, z1), Vector3(0.97, y, z0),
+			col0, col1, col1, col0)
+	var mesh := ArrayMesh.new()
+	st.commit(mesh)
+	return mesh
+
+
 ## 开火。返回句柄(存进 eq_state)。`ang` 是世界平面上的朝向弧度。
 func fire(origin: Vector2, ang: float, length: float, half_w: float) -> Dictionary:
 	if not _alive_world():
@@ -569,6 +642,10 @@ func fire(origin: Vector2, ang: float, length: float, half_w: float) -> Dictiona
 	var fil := _node(fil_meshes[0], _beam_mat(35), battle._world_pos(origin, 0.0))
 	fil.scale = Vector3(length * ws, half_w * ws, half_w * ws)
 	shells.append(fil)
+	# 地面反照条(同吃束身 shader 的包络/闪变; 放 shells 里 ⇒ aim/清场自动管到)
+	var gq := _node(_ground_mesh(), _beam_mat(29), battle._world_pos(origin, 0.0))
+	gq.scale = Vector3(length * ws, half_w * ws, half_w * ws)
+	shells.append(gq)
 	var mz := _node(_star_mesh(9), _mat(36), battle._world_pos(origin, 0.0))
 	mz.scale = Vector3(MUZZLE_R * ws, 1.0, MUZZLE_R * ws)
 	# 枪口飘带: RIBBON_N 条彗尾弧带绕施法者公转(每条自己的相位与形状)
@@ -793,17 +870,23 @@ func finale(h: Dictionary) -> void:
 		return
 	for nd in h.get("shells", []):
 		if is_instance_valid(nd):
-			nd.queue_free()
+			nd.queue_free()          # 束身【一帧切】—— 实测走廊亮度 0.96→0.04/帧, 不留余辉
 	h["shells"] = []
 	h["fil_node"] = null
+	# ★枪口+飘带【不瞬灭】: 实测切断后枪口区用 ~0.2s 渐隐(0.26→本底/12帧)。
+	#   之前整套同帧消失 —— 用户「消散有这么突然吗」, 分区量出来突兀就差这 0.2s 的尾巴。
+	var fades: Array = []
 	for rb in h.get("ribbons", []):
 		if is_instance_valid(rb):
-			rb.queue_free()
+			fades.append(rb)
 	h["ribbons"] = []
 	var mz = h.get("muzzle", null)
 	if is_instance_valid(mz):
-		mz.queue_free()
+		fades.append(mz)
 	h["muzzle"] = null
+	h["fade_nodes"] = fades
+	h["fade_t"] = 0.0
+	h["fade_a0"] = env(1.0)
 	var ring_mesh = h.get("ring_mesh", null)
 	var keep: Array = []
 	for m in h.get("marks", []):
@@ -841,6 +924,21 @@ func advance(delta: float) -> void:
 	for h in _live.duplicate():
 		if not (h.get("shells", []) as Array).is_empty():
 			continue                      # 束还活着, 由 set_hits 驱动
+		# 枪口+飘带 0.2s 渐隐(实测)
+		var fades: Array = h.get("fade_nodes", [])
+		if not fades.is_empty():
+			h["fade_t"] = float(h.get("fade_t", 0.0)) + delta
+			var fk: float = 1.0 - float(h["fade_t"]) / MUZZLE_FADE
+			if fk <= 0.0:
+				for nd in fades:
+					if is_instance_valid(nd):
+						nd.queue_free()
+				h["fade_nodes"] = []
+			else:
+				for nd in fades:
+					if is_instance_valid(nd):
+						(nd.material_override as StandardMaterial3D).albedo_color = \
+							Color(1, 1, 1, float(h.get("fade_a0", 0.8)) * fk)
 		var keep: Array = []
 		for m in h.get("marks", []):
 			var bt: float = float(m.get("burst", -1.0))
@@ -850,7 +948,7 @@ func advance(delta: float) -> void:
 			_apply_mark(m, h, 1.0, delta)
 			keep.append(m)
 		h["marks"] = keep
-		if keep.is_empty():
+		if keep.is_empty() and (h.get("fade_nodes", []) as Array).is_empty():
 			_drop(h)
 
 
@@ -876,6 +974,10 @@ func stop(h: Dictionary) -> void:
 		if is_instance_valid(rb):
 			rb.queue_free()
 	h["ribbons"] = []
+	for nd in h.get("fade_nodes", []):
+		if is_instance_valid(nd):
+			nd.queue_free()
+	h["fade_nodes"] = []
 	var mz = h.get("muzzle", null)
 	if is_instance_valid(mz):
 		mz.queue_free()
@@ -905,6 +1007,9 @@ func node_count() -> int:
 				n += 1
 		for rb in h.get("ribbons", []):
 			if is_instance_valid(rb):
+				n += 1
+		for nd in h.get("fade_nodes", []):
+			if is_instance_valid(nd):
 				n += 1
 		if is_instance_valid(h.get("muzzle", null)):
 			n += 1
