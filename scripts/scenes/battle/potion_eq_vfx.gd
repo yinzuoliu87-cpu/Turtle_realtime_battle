@@ -500,11 +500,59 @@ func brew_glow_tick(u: Dictionary, el: float) -> void:
 #  §067 投掷 + 毒云
 # ══════════════════════════════════════════════════════════════════
 
+## 药瓶网格: 十字双片瓶形剪影(瓶身绿玻璃 + 下半瓶液更亮 + 瓶颈 + 软木塞)。
+## ★旧投掷物是 _ring_mesh 圆环 —— 飞行中读成"一个绿圈", 既是程序圆又不像瓶(2026-08-11 用户线)。
+static func _bottle_mesh() -> ArrayMesh:
+	var mesh := ArrayMesh.new()
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var glass := Color(0.52, 0.92, 0.42, 0.55)
+	var liquid := Color(0.36, 0.95, 0.30, 0.9)
+	var cork := Color(0.78, 0.62, 0.38, 0.95)
+	for axis in [Vector3(1, 0, 0), Vector3(0, 0, 1)]:
+		var sx: Vector3 = axis
+		# 瓶身 10×13(y -6.5..6.5), 瓶液下 60%, 瓶颈 4×5(y 6.5..11.5), 塞 4.4×2.4
+		for q in [[-5.0, -6.5, 5.0, 6.5, glass], [-4.2, -6.0, 4.2, 1.8, liquid],
+				[-2.0, 6.5, 2.0, 11.5, glass], [-2.2, 11.5, 2.2, 13.9, cork]]:
+			var x0: float = q[0]; var y0: float = q[1]; var x1: float = q[2]; var y1: float = q[3]
+			var c: Color = q[4]
+			var a := sx * x0; var b := sx * x1
+			st.set_color(c); st.add_vertex(a + Vector3(0, y0, 0))
+			st.set_color(c); st.add_vertex(b + Vector3(0, y0, 0))
+			st.set_color(c); st.add_vertex(b + Vector3(0, y1, 0))
+			st.set_color(c); st.add_vertex(a + Vector3(0, y0, 0))
+			st.set_color(c); st.add_vertex(b + Vector3(0, y1, 0))
+			st.set_color(c); st.add_vertex(a + Vector3(0, y1, 0))
+	st.commit(mesh)
+	return mesh
+
+
+## 落地液滴迸溅: 8 颗绿液滴向外放射(小菱形), 0.35s 弹开淡出
+static func _splash_mesh() -> ArrayMesh:
+	var mesh := ArrayMesh.new()
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(8):
+		var ang: float = TAU * (float(i) + 0.5 * fposmod(sin(float(i) * 12.99) * 43758.5, 1.0)) / 8.0
+		var r: float = 0.5 + 0.45 * fposmod(sin(float(i) * 7.13) * 43758.5, 1.0)
+		var c := Vector3(cos(ang) * r, 0.2 + 0.35 * fposmod(sin(float(i) * 3.7) * 43758.5, 1.0), sin(ang) * r)
+		var sz: float = 0.10 + 0.06 * fposmod(sin(float(i) * 5.3) * 43758.5, 1.0)
+		var bright := Color(0.5, 0.95, 0.4, 0.9)
+		var dim := Color(0.4, 0.9, 0.35, 0.0)
+		for pr in [[Vector3(sz, 0, 0), Vector3(0, sz, 0)], [Vector3(0, 0, sz), Vector3(0, sz, 0)]]:
+			var u_: Vector3 = pr[0]; var v_: Vector3 = pr[1]
+			st.set_color(dim); st.add_vertex(c - u_)
+			st.set_color(bright); st.add_vertex(c + v_)
+			st.set_color(dim); st.add_vertex(c + u_)
+	st.commit(mesh)
+	return mesh
+
+
 ## 抛出一个药瓶(纯演出)。落地结算由调用方用 battle._pending_shots 定时 —— **不是 tween**。
 func vial_throw(p0: Vector2, p1: Vector2) -> Dictionary:
 	if not _alive_world():
 		return {}
-	var nd := _node(_ring_mesh(), _mat(true, 12), battle._world_pos(p0, 0.0))
+	var nd := _node(_bottle_mesh(), _mat(true, 12), battle._world_pos(p0, 0.0))
 	var h := {"kind": "vial", "nd": nd, "p0": p0, "p1": p1, "t": 0.0, "dur": VIAL_FLIGHT}
 	apply_at(h, 0.0)
 	_live.append(h)
@@ -512,9 +560,14 @@ func vial_throw(p0: Vector2, p1: Vector2) -> Dictionary:
 
 
 ## 落地毒云(纯演出)。半径 ∝ √t, 峰值 ∝ 1/t, 质量守恒 —— 全由 §③ 的闭式解驱动。
+## 出生同刻: 绿液滴迸溅(瓶子摔碎的那一下, 2026-08-11 补)。
 func vial_cloud(pos: Vector2) -> Dictionary:
 	if not _alive_world():
 		return {}
+	var sp := _node(_splash_mesh(), _mat(true, 13), battle._world_pos(pos, 0.2))
+	var hs := {"kind": "vsplash", "nd": sp, "t": 0.0, "dur": 0.35}
+	apply_at(hs, 0.0)
+	_live.append(hs)
 	var nd := _node(_cloud_mesh(), _mat(true, 7), battle._world_pos(pos, 0.0))
 	var h := {"kind": "cloud", "nd": nd, "pos": pos, "t": 0.0, "dur": CLOUD_LIFE}
 	apply_at(h, 0.0)
@@ -561,9 +614,15 @@ func apply_at(h: Dictionary, uu: float) -> void:
 			var p: Vector2 = arc_pos(h["p0"], h["p1"], s)
 			var hh: float = arc_height(s, VIAL_ARC_H) * float(battle.WS)
 			nd.position = battle._world_pos(p, hh)
-			var rr: float = 15.0 * float(battle.WS)
+			var rr: float = 2.2 * float(battle.WS)     # 瓶网格单位=码(高约28码), 只乘 WS
 			nd.scale = Vector3(rr, rr, rr)
-			mat.albedo_color = Color(0.52, 0.92, 0.42, 0.95)
+			nd.rotation.z = s * 9.4                    # 飞行自旋(翻着跟头的瓶子)
+			mat.albedo_color = Color(1, 1, 1, 0.95)
+		"vsplash":
+			var k: float = clampf(s, 0.0, 1.0)
+			var r2: float = 30.0 * float(battle.WS) * (0.5 + 1.3 * k)
+			nd.scale = Vector3(r2, r2, r2)
+			mat.albedo_color = Color(1, 1, 1, 0.95 * (1.0 - k * k))
 		"cloud":
 			# ★半径与亮度都从扩散闭式解取, 不是"越来越大越来越淡"的手调
 			var t: float = CLOUD_T0 + s * CLOUD_LIFE
