@@ -217,7 +217,9 @@ func _eq_drill_snail(src: Dictionary, tgt: Dictionary, si: int, basic: bool = fa
 		battle._damage._apply_damage_from(src, tgt,
 			battle._resolve_dmg(src, amount, tgt, true), Color("#8fe3ff"), 0.0, false, true)
 	tgt["breach_stacks"] = mini(BREACH_CAP, breach_of(tgt) + [1, 1, 2][si])
-	_vfx.breach_marks(tgt["pos"], Color(0.62, 0.90, 1.0, 0.85), breach_of(tgt))
+	# 演出: 持久裂纹覆盖层(层数读数, Paris 律驱动, 满 20 白热) + 每击钻入闪/壳屑
+	_vfx.breach_overlay(tgt, breach_of(tgt))
+	_vfx.drill_flash(tgt["pos"])
 
 
 # ══════════════════════════════════════════════════════════════════════════

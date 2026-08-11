@@ -316,6 +316,8 @@ var _m_plank: ArrayMesh = null
 var _m_upf: ArrayMesh = null
 ## 大号光点版(小尺度节点用): pheal/pcover 节点只放 38~46 码, 光点不放大会缩成 1~2 像素隐形
 var _m_upf_big: ArrayMesh = null
+var _m_cracks: Array = []
+var _m_chips: ArrayMesh = null
 
 ## 060 的两个专用 shader(时间走 uniform, 不碰内建墙钟 —— mana_beam 同款纪律)
 const SH_JELLY := preload("res://assets/shaders/jellyfish_bell.gdshader")
@@ -504,6 +506,60 @@ static func _hh(i: int) -> float:
 	return fposmod(sin(float(i) * 12.9898 + 78.233) * 43758.5453, 1.0)
 
 
+## 061 裂纹覆盖层: 锯齿折线裂缝(十字条带), 档位=层段(1-5/6-12/13-19/20 → 裂缝 2/4/6/8 条)。
+## ★不是圆环: 用户 2026-08-11「别用程序生成的圆敷衍」—— 破损就该长得像【裂开】。
+## 单位半径 1 = 满层裂纹半径; 运行时 scale × crack_len(n)(Paris 律, 快满暴涨)。
+static func _build_cracks(band: int) -> ArrayMesh:
+	var mesh := ArrayMesh.new()
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var n_cr: int = [2, 4, 6, 8][clampi(band, 0, 3)]
+	var white: bool = band >= 3
+	for i in range(n_cr):
+		var b: int = band * 71 + i * 19
+		var ang: float = TAU * (float(i) + 0.5 * _hh(b)) / float(n_cr)
+		var segs := 4
+		var pos := Vector3.ZERO
+		var dir := Vector3(cos(ang), 0.35 * (_hh(b + 1) - 0.5), sin(ang)).normalized()
+		var w0: float = 0.10 * (0.8 + 0.5 * _hh(b + 2))
+		for sg in range(segs):
+			var t0: float = float(sg) / float(segs)
+			var ln: float = (1.0 / float(segs)) * (0.75 + 0.5 * _hh(b + 3 + sg))
+			# 锯齿: 每段折一个随机小角
+			var kink := Vector3(-dir.z, 0.0, dir.x) * (_hh(b + 9 + sg) - 0.5) * 0.55
+			var nd: Vector3 = (dir + kink).normalized()
+			var p1: Vector3 = pos + nd * ln
+			var wa: float = w0 * (1.0 - t0)
+			var wb: float = w0 * (1.0 - float(sg + 1) / float(segs))
+			var ca := Color(1, 1, 1, 0.9 * (1.0 - 0.5 * t0)) if white else Color(0.62, 0.9, 1.0, 0.85 * (1.0 - 0.5 * t0))
+			var cb := Color(ca.r, ca.g, ca.b, ca.a * 0.6)
+			var side := Vector3(-nd.z, 0.0, nd.x)
+			for sv in [side, Vector3(0, 1, 0)]:
+				var s0: Vector3 = sv * wa
+				var s1: Vector3 = sv * wb
+				_tri_uv(st, [pos - s0, ca, Vector2.ZERO], [p1 - s1, cb, Vector2.ZERO], [p1 + s1, cb, Vector2.ZERO])
+				_tri_uv(st, [pos - s0, ca, Vector2.ZERO], [p1 + s1, cb, Vector2.ZERO], [pos + s0, ca, Vector2.ZERO])
+			pos = p1
+			dir = nd
+	st.commit(mesh)
+	return mesh
+
+
+## 061 壳屑: 一圈小碎片(菱形光点复用), 节点 scale 弹开读成迸出
+static func _build_chips() -> ArrayMesh:
+	var mesh := ArrayMesh.new()
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(6):
+		var b: int = i * 23 + 7
+		var ang: float = TAU * _hh(b)
+		var r: float = 0.45 + 0.5 * _hh(b + 1)
+		var c := Vector3(cos(ang) * r, 0.15 + 0.5 * _hh(b + 2), sin(ang) * r)
+		_mote(st, c, 0.09 + 0.06 * _hh(b + 3), Vector2(r, float(i) / 6.0))
+	st.commit(mesh)
+	return mesh
+
+
 ## 单位半径的贴地细环(用作引爆环 / 诅咒云外沿; 060 的庇护圈已换浮游光点带)
 static func _build_ring() -> ArrayMesh:
 	var mesh := ArrayMesh.new()
@@ -602,6 +658,9 @@ func _ensure_meshes() -> void:
 	if _m_plank == null: _m_plank = _build_plank()
 	if _m_upf == null: _m_upf = _build_upf()
 	if _m_upf_big == null: _m_upf_big = _build_upf(3.0)
+	if _m_cracks.is_empty():
+		for b in range(4): _m_cracks.append(_build_cracks(b))
+	if _m_chips == null: _m_chips = _build_chips()
 
 
 ## 节点上打的自定义 meta 键 —— 门禁按 meta 数点数, **不按名字/贴图路径**:
@@ -719,7 +778,48 @@ func parasol_heal(u: Dictionary) -> Dictionary:
 	return h
 
 
-## 061: 在目标身上刷一次破损裂纹。n = 施加之后的层数。
+## 061: 持久裂纹覆盖层(跟随目标, 层数=档位+尺寸, 满 20 白热搏动)。create-or-update。
+## 句柄存在 tgt["_breach_h"](单位自己的字段, 不拿单位当键 §3.2)。
+func breach_overlay(tgt: Dictionary, n: int) -> void:
+	if not _has_world():
+		return
+	_ensure_meshes()
+	var h = tgt.get("_breach_h", null)
+	var band: int = 3 if n >= BREACH_CAP else (2 if n >= 13 else (1 if n >= 6 else 0))
+	if h is Dictionary and is_instance_valid((h as Dictionary).get("cracks", null)):
+		(h as Dictionary)["n"] = n
+		if int((h as Dictionary).get("band", -1)) != band:
+			(h as Dictionary)["band"] = band
+			(h as Dictionary)["cracks"].mesh = _m_cracks[band]
+		return
+	_ensure_room()
+	var nd := _spawn_node(_m_cracks[band], _mat(false, 13), battle._world_pos(tgt.get("pos", Vector2.ZERO), 1.2), "cracks")
+	if nd == null:
+		return
+	var hh := {"kind": "breach_ov", "cracks": nd, "u": tgt, "n": n, "band": band,
+		"base_r": 64.0 * float(battle.WS), "dur": 1.0e9, "t": 0.0}
+	tgt["_breach_h"] = hh
+	_live.append(hh)
+	apply_at(hh, 0.0)
+
+
+## 061: 钻入闪(裂纹小星速闪) + 壳屑迸出。每次普攻命中一次。
+func drill_flash(pos2d: Vector2) -> void:
+	if not _has_world():
+		return
+	_ensure_meshes()
+	_ensure_room()
+	var fl := _spawn_node(_m_cracks[1], _mat(false, 14), battle._world_pos(pos2d, 1.4), "flash")
+	var ch := _spawn_node(_m_chips, _mat(false, 14), battle._world_pos(pos2d, 1.0), "chips")
+	if fl == null or ch == null:
+		return
+	var h := {"kind": "pdrill", "flash": fl, "chips": ch,
+		"r": 40.0 * float(battle.WS), "dur": 0.28, "t": 0.0}
+	_live.append(h)
+	apply_at(h, 0.0)
+
+
+## (旧)一次性裂纹环 —— 已被 breach_overlay/drill_flash 取代, 留给门禁形态用例。
 func breach_marks(pos2d: Vector2, col: Color, n: int) -> Dictionary:
 	if not _has_world():
 		return {}
@@ -845,6 +945,8 @@ func apply_at(h: Dictionary, u: float) -> void:
 		return
 	match str(h.get("kind", "")):
 		"parasol": _apply_parasol(h, u)
+		"breach_ov": _apply_breach_ov(h)
+		"pdrill": _apply_pdrill(h, u)
 		"pcover": _apply_pcover(h, u)
 		"pflash": _apply_pflash(h, u)
 		"pheal": _apply_pheal(h, u)
@@ -981,6 +1083,45 @@ func _apply_pheal(h: Dictionary, u: float) -> void:
 			m2.set_shader_parameter("u_alpha", 1.0)
 
 
+## 持久裂纹: 跟随单位; 尺寸 = crack_len(n)(Paris 律 —— 快满暴涨是积分出来的不是拍的);
+## 满层白热搏动(读数=「下一击真伤」)。单位死亡自清。
+func _apply_breach_ov(h: Dictionary) -> void:
+	var uu = h.get("u", null)
+	var nd = h.get("cracks", null)
+	if not is_instance_valid(nd):
+		return
+	if not (uu is Dictionary) or not (uu as Dictionary).get("alive", false):
+		_free_handle(h)
+		if uu is Dictionary:
+			(uu as Dictionary)["_breach_h"] = null
+		drop(h)
+		return
+	nd.position = battle._world_pos((uu as Dictionary).get("pos", Vector2.ZERO), 1.2)
+	var n: int = int(h.get("n", 0))
+	var g: float = crack_len(float(n))
+	var r: float = float(h["base_r"]) * (0.35 + 0.65 * g)
+	nd.scale = Vector3(r, r, r)
+	var a: float = 0.7 + 0.3 * g
+	if n >= BREACH_CAP:
+		a = 0.75 + 0.25 * sin(float(h.get("t", 0.0)) * 9.0)   # 白热搏动
+	_set_col(nd, Color(1, 1, 1, a))
+
+
+## 钻入闪: 裂纹星速闪(过冲缩回) + 壳屑弹开淡出
+func _apply_pdrill(h: Dictionary, u: float) -> void:
+	var k: float = clampf(u, 0.0, 1.0)
+	var fl = h.get("flash", null)
+	if is_instance_valid(fl):
+		var r: float = float(h["r"]) * (0.5 + 0.9 * sin(k * PI))
+		fl.scale = Vector3(r, r, r)
+		_set_col(fl, Color(1, 1, 1, 0.95 * (1.0 - k)))
+	var ch = h.get("chips", null)
+	if is_instance_valid(ch):
+		var r2: float = float(h["r"]) * (0.4 + 1.1 * k)
+		ch.scale = Vector3(r2, r2, r2)
+		_set_col(ch, Color(1, 1, 1, 0.9 * (1.0 - k * k)))
+
+
 func _apply_breach(h: Dictionary, u: float) -> void:
 	var col: Color = h["col"]
 	var n: int = int(h["n"])
@@ -1064,7 +1205,7 @@ func _apply_burst(h: Dictionary, u: float) -> void:
 #  §推进与撤场
 # ══════════════════════════════════════════════════════════════════
 
-const NODE_KEYS := ["bell", "ring", "disc", "flash", "torus", "sphere", "cloud", "edge", "plank", "upf", "mote", "gmote"]
+const NODE_KEYS := ["bell", "ring", "disc", "flash", "torus", "sphere", "cloud", "edge", "plank", "upf", "mote", "gmote", "cracks", "chips"]
 
 
 func _free_handle(h: Dictionary) -> void:
