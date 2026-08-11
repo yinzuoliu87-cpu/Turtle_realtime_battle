@@ -67,7 +67,9 @@ def shoot(eq_id, out_prefix):
     subprocess.run([GODOT, "--path", ".", "--resolution", "1280x720",
                     "--position", "5000,5000", "--audio-driver", "Dummy",
                     "res://scenes/RealtimeBattle3D.tscn"],
-                   env=env, capture_output=True, timeout=300)
+                   env=env, capture_output=True, timeout=900)   # ★900 而不是 300:
+    #   机器降频后一个 22 秒的台子能跑 5 分钟以上。超时本身不会弄脏工作区
+    #   (finally 里一定还原, 已实测验证), 但白跑一趟很贵。
 
 
 def count_dye(prefix):
@@ -95,7 +97,27 @@ def count_dye(prefix):
     return rows
 
 
+def sweep_stale():
+    """★启动就扫一遍 `*.dyebak` 并恢复 —— 而且放在**参数检查之前**。
+
+    实测教训(2026-08-11): 第一版把恢复逻辑放在参数解析**之后**,
+    而无参调用会先 `return 2` ⇒ 恢复永远跑不到。
+    自己验自己时拓到的 —— 写了没人跑的恢复代码等于没写。
+    """
+    n = 0
+    for bak in glob.glob("scripts/**/*.dyebak", recursive=True) + glob.glob("*.dyebak"):
+        tgt = bak[:-len(".dyebak")]
+        if os.path.exists(tgt):
+            io.open(tgt, "w", encoding="utf-8", newline="").write(
+                io.open(bak, encoding="utf-8", newline="").read())
+            print("★收尾上一次被杀的染色: 已恢复 %s" % tgt)
+            n += 1
+        os.remove(bak)
+    return n
+
+
 def main():
+    sweep_stale()
     if len(sys.argv) < 4:
         print(__doc__)
         return 2
@@ -105,6 +127,13 @@ def main():
         print("★拒绝染色：`%s` 在 %s 里出现 %d 次（必须恰好 1 次，否则会染错地方）"
               % (expr, path, src.count(expr)))
         return 1
+    # ★★先把原文写成磁盘备份。
+    #   实测教训(2026-08-11): 内层 subprocess 超时时 `finally` 能还原,
+    #   但外层用 `timeout 900 python ...` 把**整个 python 进程 kill 掉**时,
+    #   `finally` 根本不会跑 ⇒ 染色就留在代码里了(当时真的残留了 1 处)。
+    #   ⇒ 磁盘备份 + 下次启动时自动恢复, 才能抵御"被杀"。
+    bak_path = path + ".dyebak"
+    io.open(bak_path, "w", encoding="utf-8", newline="").write(src)
     bak = src
     try:
         io.open(path, "w", encoding="utf-8", newline="").write(
@@ -127,6 +156,8 @@ def main():
         io.open(path, "w", encoding="utf-8", newline="").write(bak)
         left = io.open(path, encoding="utf-8", newline="").read().count("DYE-PROBE")
         print("还原：%s（残留 DYE-PROBE %d 处）" % ("干净" if left == 0 else "★没还原干净！", left))
+        if left == 0 and os.path.exists(bak_path):
+            os.remove(bak_path)
     return 0
 
 

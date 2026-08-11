@@ -101,3 +101,4 @@ _vfxshots/
 
 # Claude Code 本地权限设置(每台机器不同, 不进版本库)
 .claude/settings.local.json
+.dyebak
