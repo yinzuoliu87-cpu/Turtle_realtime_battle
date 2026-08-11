@@ -79,7 +79,6 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 		var iid: String = str((e as Dictionary).get("id", ""))
 		var si: int = clampi(int((e as Dictionary).get("star", 1)), 1, 3) - 1
 		match iid:
-			"p2eq_065": _tick_shark_oil(u, si)
 			"p2eq_066": _tick_whale_brew(u, si)
 			"p2eq_067": _tick_vial_field(u, si)
 			"p2eq_068": _tick_pressure_can(u, si, delta)
@@ -101,17 +100,8 @@ func _eq_shark_oil(u: Dictionary, si: int) -> void:
 	u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + [0.01, 0.02, 0.04][si]
 	stt["oil_stacks"] = int(stt.get("oil_stacks", 0)) + 1
 	u["eq_state"]["p2eq_065"] = stt
-	# 层数可见性: 每 5 层跳一次读数(逐层跳会刷屏)
-	if int(stt["oil_stacks"]) % 5 == 0:
-		battle._vfx._float_text(u["pos"] + Vector2(0, -70), "油膜 %d 层" % int(stt["oil_stacks"]),
-			Vfx.film_color(int(stt["oil_stacks"])))
-
-
-## 每帧: 脚下油膜光晕。颜色 = 薄膜干涉色(层数→膜厚→干涉序), 见 potion_eq_vfx §①。
-func _tick_shark_oil(u: Dictionary, si: int) -> void:
-	var _unused: int = si
-	var stt: Dictionary = u["eq_state"].get("p2eq_065", {})
-	_vfx.film_halo(u, int(stt.get("oil_stacks", 0)))
+	# ★读数只走装备格右下角层数徽章(PANEL_COUNT 的 oil_stacks) —— 用户 2026-08-11:
+	#   「这个不要特效, 但图标那里要显示层数」。油膜光晕/飘字整条撤除。
 
 
 # ══════════════════════════════════════════════════════════════════

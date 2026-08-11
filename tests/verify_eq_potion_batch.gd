@@ -955,74 +955,8 @@ func _t068_pressure_can() -> void:
 ##   手调出来的缓动曲线**一条都过不了**。
 ##   ★所有期望值在本文件里【独立写死】(带推导), 不读 PotionEqVfx 的常量。
 func _t_vfx_physics() -> void:
-	print("── ★演出物理模型 · 065 薄膜干涉 ──")
-	# ① 反射率是【归一强度】: 全域 ∈ [0,1]
-	var oob := 0
-	var ns := 0
-	for i in range(4001):
-		var d: float = 100.0 + float(i) * 0.8
-		for lam in [610.0, 545.0, 465.0]:
-			ns += 1
-			var v: float = PVfx.film_reflect(d, float(lam))
-			if v < -1e-9 or v > 1.0 + 1e-9:
-				oob += 1
-	_ok("065vfx ★分母: 采样 %d 个 (膜厚, 波长) 点" % ns, ns == 12003, "ns=%d" % ns)
-	_ok("065vfx 反射率恒在 [0,1](归一强度, 不是随手画的曲线)", oob == 0, "越界 %d 个" % oob)
-
-	# ② ★★暗纹【等距】: 单层膜的相消条件 2nd = mλ ⇒ 零点间隔恒为 λ/(2n)。
-	#    n=1.47(角鲨烯)、λ=610nm ⇒ 610/(2×1.47) = 207.483 nm, 与 m 无关。
-	#    ★"两色之间 lerp"的手调渐变只有 0 或 1 个零点, 不可能有一串等距的。
-	var zeros: Array = []
-	var prev: float = PVfx.film_reflect(150.0, 610.0)
-	var cur: float = PVfx.film_reflect(150.02, 610.0)
-	var d0 := 150.02
-	while d0 < 3000.0:
-		var nxt: float = PVfx.film_reflect(d0 + 0.02, 610.0)
-		if cur < prev and cur < nxt and cur < 1.0e-3:
-			zeros.append(d0)
-		prev = cur
-		cur = nxt
-		d0 += 0.02
-	_ok("065vfx ★分母: 在膜厚 150~3000nm 里找到 %d 个暗纹(应 ≥ 10 个)" % zeros.size(),
-		zeros.size() >= 10, "zeros=%d" % zeros.size())
-	var worst := 0.0
-	for i in range(1, zeros.size()):
-		worst = maxf(worst, absf(float(zeros[i]) - float(zeros[i - 1]) - 207.483))
-	_ok("065vfx ★★暗纹等距 = λ/(2n) = 610/(2×1.47) = 207.483 nm(与级次 m 无关)",
-		zeros.size() >= 10 and worst < 0.06, "最大偏差 %.4f nm" % worst)
-
-	# ③ ★三通道次序会【翻转】—— 单段 lerp 做不到(它的通道次序永远不变)
-	var rb := false
-	var br := false
-	for i in range(3000):
-		var dd: float = 100.0 + float(i) * 1.0
-		var r: float = PVfx.film_reflect(dd, 610.0)
-		var bl: float = PVfx.film_reflect(dd, 465.0)
-		if r > bl + 0.3:
-			rb = true
-		if bl > r + 0.3:
-			br = true
-	_ok("065vfx ★干涉色是【循环】的: 存在膜厚 R≫B, 也存在膜厚 B≫R(次序翻转)", rb and br,
-		"R>B 出现=%s  B>R 出现=%s" % [str(rb), str(br)])
-
-	# ④ 膜厚随层数【线性】: 每层 +42nm(定标常数, 不改变曲线形状)
-	var lin_bad := 0
-	for k in range(60):
-		if absf(PVfx.film_thickness_nm(k + 1) - PVfx.film_thickness_nm(k) - 42.0) > 1e-6:
-			lin_bad += 1
-	_ok("065vfx 膜厚 = 130 + 42×层数(线性)", lin_bad == 0 and absf(PVfx.film_thickness_nm(0) - 130.0) < 1e-6,
-		"非线性 %d 处, d(0)=%.2f" % [lin_bad, PVfx.film_thickness_nm(0)])
-	# ★层数→颜色是非单调的(至少两个局部极大) —— 单调渐变给不出"金→绿→紫→金"
-	var maxima := 0
-	for k in range(1, 59):
-		var a: float = PVfx.film_color(k - 1).r
-		var bq: float = PVfx.film_color(k).r
-		var cq: float = PVfx.film_color(k + 1).r
-		if bq > a and bq > cq:
-			maxima += 1
-	_ok("065vfx ★层数→颜色非单调: 0~60 层里红通道至少 2 个局部极大(干涉序在循环)",
-		maxima >= 2, "局部极大 %d 个" % maxima)
-
+	## (065 薄膜干涉物理门禁已随特效撤除删除 —— 用户 2026-08-11「不要特效」,
+	##  函数已删, 留门禁=保护死代码。层数读数走 PANEL_COUNT 徽章, verify_eq_readouts 守。)
 	print("── ★演出物理模型 · 066 二阶欠阻尼阶跃响应 ──")
 	# ⑤ 边界: y(0)=0, y(∞)→1
 	_ok("066vfx 阶跃响应 y(0) = 0", absf(PVfx.damped_step(0.0)) < 1e-9, "y(0)=%.9f" % PVfx.damped_step(0.0))
@@ -1140,21 +1074,10 @@ func _t_vfx_physics() -> void:
 		"Q(0)=%.12f Q(3)=%.12f" % [PVfx.beam_frac(0.0), PVfx.beam_frac(3.0)])
 
 	print("── ★美术: 节点真的显示进 battle._world ──")
-	# ⑪ 065 油膜光晕
+	# (⑪ 065 油膜光晕美术门禁已随特效撤除删除)
 	_s._units.clear()
 	var vf = _s._equip_sys._potion_sys.vfx()
 	var au: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, 300.0), 1000.0), "p2eq_065", 3)
-	var halo = vf.film_halo(au, 12)
-	_ok("065 ★美术: 油膜光晕【真的挂进 battle._world】(不是只调了个函数)",
-		_in_world(halo) and halo.visible, "parent=%s" % (str(halo.get_parent()) if halo != null else "null"))
-	# 半径 = 46 + 1.4×12 = 62.8 码 × WS(0.024) = 1.5072 米
-	_ok("065 ★美术: 光晕半径随层数长(12 层 ⇒ 46+1.4×12 = 62.8 码 = 1.5072 米)",
-		halo != null and absf(halo.scale.x - 1.5072) < 0.002, "scale.x=%.4f" % (halo.scale.x if halo != null else -1.0))
-	var c12: Color = PVfx.film_color(12)
-	_ok("065 ★美术: 光晕颜色 = 该层数的干涉色(节点上的 albedo 与 film_color 同源)",
-		halo != null and absf((halo.material_override as StandardMaterial3D).albedo_color.r - c12.r) < 1e-5,
-		"节点 r=%.5f film_color r=%.5f" % [(halo.material_override as StandardMaterial3D).albedo_color.r if halo != null else -1.0, c12.r])
-
 	# ⑫ 067 毒云: 节点进 _world, 且半径按 √t 长
 	var cl: Dictionary = vf.vial_cloud(Vector2(au["pos"]))
 	_ok("067 ★美术: 毒云【真的挂进 battle._world】", _in_world(cl.get("nd", null)),

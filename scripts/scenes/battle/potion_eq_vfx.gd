@@ -94,30 +94,6 @@ const FILM_LAMBDA_G := 545.0
 const FILM_LAMBDA_B := 465.0
 
 
-## 叠了 n 层之后的油膜厚度(纳米)。线性 —— 一层油一层厚度。
-static func film_thickness_nm(stacks: int) -> float:
-	return FILM_D0 + FILM_DK * float(maxi(0, stacks))
-
-
-## 单层薄膜双光束干涉的归一反射率。上表面 π 相移 ⇒ R = sin²(2πnd/λ) ∈ [0, 1]。
-## 零点(全暗)恰在 2nd = mλ, 即 d = m·λ/(2n) —— **等距**, 间隔 λ/(2n)。
-static func film_reflect(d_nm: float, lambda_nm: float) -> float:
-	var s: float = sin(PI * 2.0 * FILM_N * d_nm / maxf(1.0, lambda_nm))
-	return s * s
-
-
-## 相邻暗纹的膜厚间隔(纳米) = λ/(2n)。门禁拿它对着实测零点间距比。
-static func film_fringe_spacing_nm(lambda_nm: float) -> float:
-	return lambda_nm / (2.0 * FILM_N)
-
-
-## 叠 n 层时的干涉色。★整个 065 光晕的颜色**只从这一个函数出**, 演出与门禁共用同一份。
-static func film_color(stacks: int) -> Color:
-	var d: float = film_thickness_nm(stacks)
-	return Color(film_reflect(d, FILM_LAMBDA_R), film_reflect(d, FILM_LAMBDA_G),
-		film_reflect(d, FILM_LAMBDA_B), 1.0)
-
-
 # ══════════════════════════════════════════════════════════════════
 #  §② 二阶欠阻尼阶跃响应 (066 鲸涎浓浆 · 变身过冲回稳)
 # ══════════════════════════════════════════════════════════════════
@@ -425,24 +401,6 @@ const FILM_R_MAX := 118.0
 
 static func film_radius(stacks: int) -> float:
 	return minf(FILM_R0 + FILM_RK * float(maxi(0, stacks)), FILM_R_MAX)
-
-
-## 建/更新携带者脚下的油膜环。返回节点(已挂进 battle._world)。
-func film_halo(u: Dictionary, stacks: int) -> MeshInstance3D:
-	if not _alive_world():
-		return null
-	var nd = u.get("_oilfilm_nd", null)
-	if not (nd is MeshInstance3D) or not is_instance_valid(nd):
-		nd = _node(_ring_mesh(), _mat(true, 8), battle._world_pos(u["pos"], 0.0))
-		u["_oilfilm_nd"] = nd
-	var rm: float = film_radius(stacks) * float(battle.WS)
-	nd.scale = Vector3(rm, rm, rm)
-	nd.position = battle._world_pos(u["pos"], 0.0)
-	var c: Color = film_color(stacks)
-	# 层数越多整体越亮(能量), 颜色由干涉给
-	var lum: float = clampf(0.30 + 0.035 * float(stacks), 0.30, 0.95)
-	(nd.material_override as StandardMaterial3D).albedo_color = Color(c.r, c.g, c.b, lum)
-	return nd
 
 
 func film_clear(u: Dictionary) -> void:
