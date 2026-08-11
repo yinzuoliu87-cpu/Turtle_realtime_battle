@@ -314,6 +314,8 @@ var _m_torus: ArrayMesh = null
 var _m_sphere: ArrayMesh = null
 var _m_plank: ArrayMesh = null
 var _m_upf: ArrayMesh = null
+## 大号光点版(小尺度节点用): pheal/pcover 节点只放 38~46 码, 光点不放大会缩成 1~2 像素隐形
+var _m_upf_big: ArrayMesh = null
 
 ## 060 的两个专用 shader(时间走 uniform, 不碰内建墙钟 —— mana_beam 同款纪律)
 const SH_JELLY := preload("res://assets/shaders/jellyfish_bell.gdshader")
@@ -472,7 +474,7 @@ static func _build_plank() -> ArrayMesh:
 
 ## 伞下上浮微粒(060): 伞半径内的小光点, shader mode1 让它们各自循环上浮。
 const UPF_N := 14
-static func _build_upf() -> ArrayMesh:
+static func _build_upf(size_mult: float = 1.0) -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -481,7 +483,7 @@ static func _build_upf() -> ArrayMesh:
 		var rr: float = 0.15 + 0.75 * sqrt(_hh(b))
 		var th: float = TAU * _hh(b + 1)
 		var c := Vector3(rr * cos(th), 0.05, rr * sin(th))
-		_mote(st, c, 0.035 + 0.03 * _hh(b + 2), Vector2(rr, float(i) / float(UPF_N)))
+		_mote(st, c, (0.035 + 0.03 * _hh(b + 2)) * size_mult, Vector2(rr, float(i) / float(UPF_N)))
 	st.commit(mesh)
 	return mesh
 
@@ -599,6 +601,7 @@ func _ensure_meshes() -> void:
 	if _m_sphere == null: _m_sphere = _build_sphere()
 	if _m_plank == null: _m_plank = _build_plank()
 	if _m_upf == null: _m_upf = _build_upf()
+	if _m_upf_big == null: _m_upf_big = _build_upf(3.0)
 
 
 ## 节点上打的自定义 meta 键 —— 门禁按 meta 数点数, **不按名字/贴图路径**:
@@ -651,16 +654,22 @@ func parasol_open(pos2d: Vector2, col: Color, radius_px: float, dur: float, cove
 	return h
 
 
-## 060·丙: 单位头顶一簇缓慢上浮的磷光微粒(被伞罩着的读数), 跟随单位移动。
+## 060·丙: 被罩队友头顶撑起一把【迷你水母伞】(同款钟体, 与主伞同步开合搏动) +
+## 环绕磷光微粒。「伞下的人头顶有小伞」—— 用户 2026-08-11:「给友军的罩子特效不明显」。
 func parasol_cover(u: Dictionary, dur: float) -> Dictionary:
 	if not _has_world():
 		return {}
 	_ensure_meshes()
 	_ensure_room()
-	var nd := _spawn_node(_m_upf, _shader_mat(SH_PLANK, 11, 1), battle._world_pos(u.get("pos", Vector2.ZERO), 1.9), "mote")
-	if nd == null:
+	var org: Vector3 = battle._world_pos(u.get("pos", Vector2.ZERO), 2.15)
+	var bell := _spawn_node(_m_bell, _shader_mat(SH_JELLY, 11), org, "bell")
+	var nd := _spawn_node(_m_upf_big, _shader_mat(SH_PLANK, 12, 1), battle._world_pos(u.get("pos", Vector2.ZERO), 1.7), "mote")
+	if nd != null and nd.material_override is ShaderMaterial:
+		(nd.material_override as ShaderMaterial).set_shader_parameter("u_boost", 1.6)
+	if bell == null or nd == null:
 		return {}
-	var h := {"kind": "pcover", "mote": nd, "u": u, "r": 34.0 * float(battle.WS),
+	var h := {"kind": "pcover", "bell": bell, "mote": nd, "u": u,
+		"bell_r": 44.0 * float(battle.WS), "r": 38.0 * float(battle.WS),
 		"dur": maxf(dur, 0.01), "t": 0.0}
 	_live.append(h)
 	apply_at(h, 0.0)
@@ -683,17 +692,28 @@ func parasol_dodge_flash(u: Dictionary) -> Dictionary:
 	return h
 
 
-## 060·丙: 收伞回血 —— 伞的磷光收束成光流回到携带者身体(回血的演出因果)。
+## 收血绿(治疗的通用语义色 —— 形态仍是有机光点, 不是圆圈)
+const HEAL_GREEN := Color(0.45, 1.0, 0.55)
+
+
+## 060·丙: 收伞回血, 两拍(用户 2026-08-11 拍板「回血的时候加个绿色回复的特效」):
+##   ① 0~0.4s 伞的磷光收束成光流回到身体(青) —— 回血的因;
+##   ② 0.3~0.95s 身体涌出【绿色恢复光点】上浮消散 —— 回血的果, 数字随后落。
 func parasol_heal(u: Dictionary) -> Dictionary:
 	if not _has_world():
 		return {}
 	_ensure_meshes()
 	_ensure_room()
-	var nd := _spawn_node(_m_upf, _shader_mat(SH_PLANK, 11, 1), battle._world_pos(u.get("pos", Vector2.ZERO), 1.4), "mote")
-	if nd == null:
+	var nd := _spawn_node(_m_upf_big, _shader_mat(SH_PLANK, 11, 1), battle._world_pos(u.get("pos", Vector2.ZERO), 1.4), "mote")
+	var gm := _spawn_node(_m_upf_big, _shader_mat(SH_PLANK, 12, 1), battle._world_pos(u.get("pos", Vector2.ZERO), 1.1), "gmote")
+	if nd == null or gm == null:
 		return {}
-	var h := {"kind": "pheal", "mote": nd, "u": u, "r0": 64.0 * float(battle.WS),
-		"dur": 0.40, "t": 0.0}
+	if gm.material_override is ShaderMaterial:
+		(gm.material_override as ShaderMaterial).set_shader_parameter(
+			"u_col", Vector3(HEAL_GREEN.r, HEAL_GREEN.g, HEAL_GREEN.b))
+		(gm.material_override as ShaderMaterial).set_shader_parameter("u_boost", 2.6)
+	var h := {"kind": "pheal", "mote": nd, "gmote": gm, "u": u, "r0": 64.0 * float(battle.WS),
+		"dur": 0.95, "t": 0.0}
 	_live.append(h)
 	apply_at(h, 0.0)
 	return h
@@ -880,24 +900,34 @@ func _apply_parasol(h: Dictionary, u: float) -> void:
 		um.set_shader_parameter("u_alpha", col.a * 0.8)
 
 
-## 被罩队友的环绕磷光点: 跟随单位, 首尾 0.15 淡入淡出。
+## 被罩队友: 迷你伞(与主伞同一条开合曲线 ⇒ 同步呼吸) + 环绕磷光点, 都跟随单位。
 func _apply_pcover(h: Dictionary, u: float) -> void:
 	var uu = h.get("u", null)
 	if not (uu is Dictionary):
 		return
+	var t: float = clampf(u, 0.0, 1.0) * float(h["dur"])
+	var f: float = parasol_open_frac(t, float(h["dur"]))
+	var bell = h.get("bell", null)
+	if is_instance_valid(bell):
+		bell.position = battle._world_pos((uu as Dictionary).get("pos", Vector2.ZERO), 2.15)
+		var br: float = float(h["bell_r"]) * maxf(f, 0.001)
+		bell.scale = Vector3(br, br, br)
+		var bm = bell.material_override
+		if bm is ShaderMaterial:
+			bm.set_shader_parameter("u_t", t)
+			bm.set_shader_parameter("u_open", f)
+			bm.set_shader_parameter("u_alpha", 0.62)
 	var nd = h.get("mote", null)
 	if not is_instance_valid(nd):
 		return
-	nd.position = battle._world_pos((uu as Dictionary).get("pos", Vector2.ZERO), 1.9)
+	nd.position = battle._world_pos((uu as Dictionary).get("pos", Vector2.ZERO), 1.7)
 	var r: float = float(h["r"])
 	nd.scale = Vector3(r, r, r)
-	var t: float = clampf(u, 0.0, 1.0) * float(h["dur"])
-	var k: float = minf(minf(t / 0.15, (float(h["dur"]) - t) / 0.15), 1.0)
 	var m = nd.material_override
 	if m is ShaderMaterial:
 		m.set_shader_parameter("u_t", t)
-		m.set_shader_parameter("u_open", clampf(k, 0.0, 1.0))
-		m.set_shader_parameter("u_alpha", 0.8)
+		m.set_shader_parameter("u_open", clampf(f, 0.0, 1.0))
+		m.set_shader_parameter("u_alpha", 0.95)
 
 
 ## 闪避残影: 迷你伞 0.3 秒快速开合(开合曲线复用同一套阻尼阶跃)。
@@ -919,22 +949,36 @@ func _apply_pflash(h: Dictionary, u: float) -> void:
 		m.set_shader_parameter("u_alpha", 0.9)
 
 
-## 收伞光流: 磷光微粒从伞的尺度收束进身体(scale 收缩 + 淡出), 回血的演出因果。
+## 收伞回血两拍: ①磷光收束进身体(青, 0~0.4s) ②绿色恢复光点从身体涌出上浮(0.3~0.95s)。
 func _apply_pheal(h: Dictionary, u: float) -> void:
 	var uu = h.get("u", null)
+	var t: float = clampf(u, 0.0, 1.0) * float(h["dur"])
+	## ① 收束(青)
 	var nd = h.get("mote", null)
-	if not is_instance_valid(nd):
-		return
-	if uu is Dictionary:
-		nd.position = battle._world_pos((uu as Dictionary).get("pos", Vector2.ZERO), 1.4)
-	var k: float = clampf(u, 0.0, 1.0)
-	var r: float = float(h["r0"]) * lerpf(1.0, 0.12, k * k)
-	nd.scale = Vector3(r, r, r)
-	var m = nd.material_override
-	if m is ShaderMaterial:
-		m.set_shader_parameter("u_t", k * 0.4)
-		m.set_shader_parameter("u_open", 1.0)
-		m.set_shader_parameter("u_alpha", 0.9 * (1.0 - k * k))
+	if is_instance_valid(nd):
+		if uu is Dictionary:
+			nd.position = battle._world_pos((uu as Dictionary).get("pos", Vector2.ZERO), 1.4)
+		var k1: float = clampf(t / 0.4, 0.0, 1.0)
+		var r: float = float(h["r0"]) * lerpf(1.0, 0.12, k1 * k1)
+		nd.scale = Vector3(r, r, r)
+		var m = nd.material_override
+		if m is ShaderMaterial:
+			m.set_shader_parameter("u_t", k1 * 0.4)
+			m.set_shader_parameter("u_open", 1.0)
+			m.set_shader_parameter("u_alpha", 0.9 * (1.0 - k1 * k1))
+	## ② 绿色恢复(治疗语义色): 上浮光点, 亮度走 sin 包(起于收束将尽时)
+	var gm = h.get("gmote", null)
+	if is_instance_valid(gm):
+		if uu is Dictionary:
+			gm.position = battle._world_pos((uu as Dictionary).get("pos", Vector2.ZERO), 1.1)
+		var k2: float = clampf((t - 0.30) / 0.65, 0.0, 1.0)
+		var gr: float = 54.0 * float(battle.WS)
+		gm.scale = Vector3(gr, gr, gr)
+		var m2 = gm.material_override
+		if m2 is ShaderMaterial:
+			m2.set_shader_parameter("u_t", k2 * 4.0)          # 驱动上浮循环(拉快: 一次浮到顶)
+			m2.set_shader_parameter("u_open", sin(k2 * PI))
+			m2.set_shader_parameter("u_alpha", 1.0)
 
 
 func _apply_breach(h: Dictionary, u: float) -> void:
@@ -1020,7 +1064,7 @@ func _apply_burst(h: Dictionary, u: float) -> void:
 #  §推进与撤场
 # ══════════════════════════════════════════════════════════════════
 
-const NODE_KEYS := ["bell", "ring", "disc", "flash", "torus", "sphere", "cloud", "edge", "plank", "upf", "mote"]
+const NODE_KEYS := ["bell", "ring", "disc", "flash", "torus", "sphere", "cloud", "edge", "plank", "upf", "mote", "gmote"]
 
 
 func _free_handle(h: Dictionary) -> void:

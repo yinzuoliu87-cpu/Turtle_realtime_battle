@@ -15,6 +15,7 @@ uniform float u_wave_t = -1.0;    // 开伞后经过秒; <0 = 无波
 uniform float u_alpha = 1.0;
 uniform vec3 u_col = vec3(0.55, 0.95, 1.0);
 uniform int u_mode = 0;
+uniform float u_boost = 1.0;   // 亮度增益: 治疗绿涌 2.6 / 覆盖微粒 1.6(额定连乘后太暗, 实拍定的档)
 uniform float u_wave_v = 1.82;    // 波速(归一半径/秒): 0.55s 扫满 200 码
 
 varying float v_rise;
@@ -49,5 +50,5 @@ void fragment() {
 		a = COLOR.a * u_open * (0.35 + 0.40 * tw) * (1.0 - v_rise);
 	}
 	ALBEDO = u_col;
-	ALPHA = clamp(a * u_alpha, 0.0, 1.0);
+	ALPHA = clamp(a * u_alpha * u_boost, 0.0, 1.0);
 }
