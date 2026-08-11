@@ -1536,11 +1536,11 @@ func _apply_ring(h: Dictionary, u: float) -> void:
 func _apply_bladder(h: Dictionary) -> void:
 	var f: float = float(h["frac"])
 	var col: Color = h["col"]
-	var r: float = float(h["r_m"]) * bladder_radius_frac(f)
-	## 松弛的皮沿重力垂下来 ⇒ 越瘪越扁(y 比 x/z 再多缩一点松弛度)
-	var slack: float = bladder_slack(f)
-	_set_scale(h["sphere"], Vector3(r, r * (1.0 - 0.45 * slack), r))
-	_set_col(h["sphere"], Color(col.r, col.g, col.b, col.a * (0.35 + 0.5 * f)))
+	## ★尺寸恒定(用户 2026-08-11:「没必要缩小」) —— 余量只走透明度微降,
+	##   等压放气 r∝f^(1/3) 的纯函数留给门禁(物理判据), 不再驱动节点。
+	var r: float = float(h["r_m"])
+	_set_scale(h["sphere"], Vector3(r, r, r))
+	_set_col(h["sphere"], Color(col.r, col.g, col.b, col.a * (0.45 + 0.4 * f)))
 
 
 func _apply_burst(h: Dictionary, u: float) -> void:
