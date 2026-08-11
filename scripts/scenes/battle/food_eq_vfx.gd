@@ -361,11 +361,45 @@ func _mk_sprite(tex: Texture2D, pos2d: Vector2, h: float, size_px: float, col: C
 
 ## 建/更新头顶那三块糕。`left` = 还剩几块(0~3) ⇒ **剩几块就画几块**, 用户要的"可见"。
 ## 返回句柄(存在 eq_state 里), 由 `cake_orbit_update` 每帧推进。
+## 像素糖糕贴图(11×10): 樱桃顶 + 奶油带 + 粉霜(带糖屑) + 珊瑚底。静态缓存, NEAREST 保像素感。
+## ★旧的 15 码淡粉圆点在实拍里只有 ~5px 半透明 —— 「剩几块糖」这个核心读数等于隐形。
+static var _cake_tex_cache: ImageTexture = null
+
+
+static func _cake_tex() -> ImageTexture:
+	if _cake_tex_cache != null:
+		return _cake_tex_cache
+	var img := Image.create(11, 10, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var cherry := Color(0.90, 0.15, 0.25)
+	var cream := Color(1.0, 0.95, 0.86)
+	var pink := Color(1.0, 0.62, 0.75)
+	var coral := Color(0.95, 0.45, 0.40)
+	var dark := Color(0.78, 0.34, 0.32)
+	img.set_pixel(5, 0, cherry)
+	for x in range(4, 7): img.set_pixel(x, 1, cherry)
+	for x in range(2, 9): img.set_pixel(x, 2, cream)
+	for x in range(1, 10):
+		img.set_pixel(x, 3, cream if x % 3 == 0 else pink)
+		img.set_pixel(x, 4, pink)
+		img.set_pixel(x, 5, pink if x % 4 != 1 else cream)
+	for x in range(1, 10):
+		img.set_pixel(x, 6, coral)
+		img.set_pixel(x, 7, coral)
+	for x in range(2, 9):
+		img.set_pixel(x, 8, dark)
+	for x in range(3, 8):
+		img.set_pixel(x, 9, dark)
+	_cake_tex_cache = ImageTexture.create_from_image(img)
+	return _cake_tex_cache
+
+
 func cake_orbit_make(u: Dictionary, left: int) -> Dictionary:
-	var tex: Texture2D = VfxTex._make_disc_texture()
+	var tex: Texture2D = _cake_tex()
 	var h := {"spr": [], "t": 0.0, "left": clampi(left, 0, CAKE_N)}
 	for i in range(CAKE_N):
-		var s := _mk_sprite(tex, u["pos"], CAKE_HOVER_H, 15.0, Color(1.0, 0.72, 0.80, 0.95))
+		var s := _mk_sprite(tex, u["pos"], CAKE_HOVER_H, 24.0, Color(1, 1, 1, 1))
+		s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		(h["spr"] as Array).append(s)
 	cake_orbit_update(u, h, 0.0)
 	return h
@@ -386,7 +420,7 @@ func cake_orbit_update(u: Dictionary, h: Dictionary, delta: float) -> void:
 		s.visible = i < left
 		var a: float = cake_angle(i, t)
 		var off := Vector2(cos(a), sin(a) * 0.45) * CAKE_ORBIT_PX
-		s.position = battle._world_pos(u["pos"] + off, CAKE_HOVER_H)
+		s.position = battle._world_pos(u["pos"] + off, CAKE_HOVER_H + 0.07 * sin(t * 3.0 + float(i) * 2.1))
 
 
 func cake_orbit_free(h: Dictionary) -> void:
@@ -401,12 +435,12 @@ func cake_orbit_free(h: Dictionary) -> void:
 func cake_bite_fx(u: Dictionary, idx: int) -> void:
 	if not is_instance_valid(battle._world):
 		return
-	var tex: Texture2D = VfxTex._make_disc_texture()
+	var tex: Texture2D = _cake_tex()
 	var a: float = cake_angle(idx, 0.0)
 	var from2: Vector2 = u["pos"] + Vector2(cos(a), sin(a) * 0.45) * CAKE_ORBIT_PX
-	var s := _mk_sprite(tex, from2, CAKE_HOVER_H, 15.0, Color(1.0, 0.82, 0.88, 1.0))
+	var s := _mk_sprite(tex, from2, CAKE_HOVER_H, 24.0, Color(1, 1, 1, 1))
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	_live.append({"kind": "bite", "spr": s, "unit": u, "from": from2, "t": 0.0, "dur": BITE_SEC})
-	battle._skill_ring(u["pos"], Color(1.0, 0.62, 0.74, 0.55), 34.0)
 
 
 # ══════════════════════════════════════════════════════════════════
