@@ -117,8 +117,31 @@ const BURST_OUT := 0.07          # 爆发后的塌收(实测 4 帧)
 ##   所以不做飞散粒子, 只做束内细丝。
 const FIL_N := 4                 # 每束细丝股数
 const FIL_R := 0.085             # 细丝半径(单位半径 = 束半宽的倍数)
-const FIL_SWAP := 0.08           # 细丝排布轮换周期(秒)
+const FIL_SWAP := 0.27           # 细丝排布轮换周期(秒) = 实测闪变去相关时间(lag 267ms 相关 0.50)
 const FIL_COL := Color(1.0, 0.92, 0.70)   # 近白琥珀(比外晕亮一挡)
+
+## ══════════════════════════════════════════════════════════════════
+##  §B4 束身 shader + 枪口飘带 —— 2026-08-11 二轮量测(方案书 §九)
+## ══════════════════════════════════════════════════════════════════
+## ★实测三连(与直觉全反, 不许"顺手加回来"):
+##   ① 束身【不流动】(55/55 帧对互相关最佳位移=0) ⇒ 亮纹原地闪变, shader 不做 UV 滚动
+##   ② 束沿【光滑】(粗糙度 ±1px=2%) ⇒ 不做边缘舔焰
+##   ③ 调制幅度 ±10.5% / 呼吸 ±6.0% 主周期 67ms / 闪变去相关 270ms —— 全在 shader uniform 里
+const BEAM_SHADER := preload("res://assets/shaders/mana_beam.gdshader")
+const BEAM_MOD_AMP := 0.105      # 沿束亮度调制幅度(实测 std/mean)
+const BEAM_EVOLVE_SEC := 0.27    # 闪变去相关时间(秒)
+const BEAM_BREATH_AMP := 0.06    # 束宽呼吸幅度
+const BEAM_BREATH_SEC := 0.067   # 呼吸主周期(秒)
+## 枪口飘带: 参考里 3~4 条金色彗尾弧带绕施法者身体转、端头带星形闪点(r_full 210/240/270 帧)。
+## 半径实测 60~95px ≈ 67~106 码; 弧带爬升到约束宽高度。
+const RIBBON_N := 3
+const RIBBON_R0 := 70.0          # 弧带内端半径(码)
+const RIBBON_R1 := 105.0         # 弧带外端半径(码)
+const RIBBON_H := 90.0           # 爬升高度(码)
+const RIBBON_W := 6.0            # 带半宽(码, 实测带宽 ~10码)
+## ⚠ 转速是【估计】不是精量(彗尾无法逐帧锁同一条; 0.5s 内构型大变 ⇒ 120~180°/s 带),
+##   与 k=0.55 同族: 可感知量, 真机看着不对再调。
+const RIBBON_DPS := 150.0
 
 var battle = null
 var _live: Array = []
@@ -231,14 +254,16 @@ static func core_frac() -> float:
 #  §D 几何 —— 真 3D 同轴套壳(不是贴图, 不是贴地四边形)
 # ══════════════════════════════════════════════════════════════════
 
-static func _mat(prio: int) -> StandardMaterial3D:
+static func _mat(prio: int, two_sided: bool = false) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	# ★只画正面。实心闭合曲面 + 加色 + 双面 ⇒ 正反各叠一层 ⇒ 中心必然加爆成白,
+	# ★闭合曲面只画正面。实心闭合曲面 + 加色 + 双面 ⇒ 正反各叠一层 ⇒ 中心必然加爆成白,
 	#   这就是 v0.19.90「白球家族」四件的共同根因。
-	m.cull_mode = BaseMaterial3D.CULL_BACK
+	# ★但【平面条带】(飘带)必须双面: 单面会把背对相机的半圈整个剔掉(实拍读成虚线圈)。
+	#   平面双面不会翻倍 —— 每个像素只盖一层面。
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED if two_sided else BaseMaterial3D.CULL_BACK
 	m.vertex_color_use_as_albedo = true
 	m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
 	m.no_depth_test = true
@@ -426,7 +451,7 @@ func _alive_world() -> bool:
 	return battle != null and is_instance_valid(battle._world)
 
 
-func _node(mesh: Mesh, mat: StandardMaterial3D, org: Vector3) -> MeshInstance3D:
+func _node(mesh: Mesh, mat: Material, org: Vector3) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.material_override = mat
@@ -467,6 +492,66 @@ static func _fil_mesh(seed: int) -> ArrayMesh:
 	return mesh
 
 
+## 束身 shader 材质(壳与细丝共用同一份 shader, 每节点一份材质 ⇒ 保留逐层 render_priority)。
+## 实测常量灌进 uniform; u_t/u_env 由 set_progress 每帧喂。
+static func _beam_mat(prio: int) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = BEAM_SHADER
+	m.render_priority = prio
+	m.set_shader_parameter("u_mod_amp", BEAM_MOD_AMP)
+	m.set_shader_parameter("u_evolve_sec", BEAM_EVOLVE_SEC)
+	m.set_shader_parameter("u_breath", BEAM_BREATH_AMP)
+	m.set_shader_parameter("u_breath_sec", BEAM_BREATH_SEC)
+	return m
+
+
+## 枪口飘带: 绕竖轴的弧形彗尾带(十字鳍双条, 顶视也有截面), 端头一簇星形闪点。
+## 网格单位 = 码(运行时只乘 WS), 绕原点建, 节点转 rotation.y = 公转。
+static func _ribbon_mesh(seed: int) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var b: int = seed * 43
+	var arc: float = deg_to_rad(200.0 + 80.0 * _hash(b))
+	var segs := 22
+	var head := Color(1.0, 0.93, 0.66, 0.9)      # 头亮
+	var tail := Color(0.82, 0.58, 0.24, 0.0)     # 尾隐(琥珀)
+	var pts: Array = []
+	for i in range(segs + 1):
+		var t: float = float(i) / float(segs)
+		var a: float = arc * t
+		# 每条半径差异拉开(±18%): 参考里三条弧大小不一, 同半径会读成一个"圆环"
+		var r: float = lerpf(RIBBON_R0, RIBBON_R1, t) * (0.82 + 0.36 * _hash(b + 7)) \
+			* (1.0 + 0.10 * (_hash(b + i) - 0.5))
+		var y: float = RIBBON_H * t * t              # 尾贴地、头扬起(参考: 弧带向上卷)
+		pts.append(Vector3(cos(a) * r, y, sin(a) * r))
+	for i in range(segs):
+		var t0: float = float(i) / float(segs)
+		var t1: float = float(i + 1) / float(segs)
+		var c0 := tail.lerp(head, t0)                # 线性向头部聚亮(t² 实拍读成一圈虚线, 太瘦)
+		var c1 := tail.lerp(head, t1)
+		# 真四边形条带(之前每段一个三角形 ⇒ 宽底尖点交替 = 虚线感), 十字双鳍:
+		# 竖鳍(侧视有宽) + 【径向】鳍(顶视有宽 —— 之前误写成切线方向 ⇒ 顶视零宽)
+		var s0y := Vector3(0.0, RIBBON_W, 0.0)
+		var s0r := Vector3(cos(arc * t0), 0.0, sin(arc * t0)) * RIBBON_W
+		var s1r := Vector3(cos(arc * t1), 0.0, sin(arc * t1)) * RIBBON_W
+		_quad(st, pts[i] - s0y, pts[i + 1] - s0y, pts[i + 1] + s0y, pts[i] + s0y, c0, c1, c1, c0)
+		_quad(st, pts[i] - s0r, pts[i + 1] - s1r, pts[i + 1] + s1r, pts[i] + s0r, c0, c1, c1, c0)
+	# 端头星: 四枝短十字闪点(参考里每条彗尾头上都有)
+	var hp: Vector3 = pts[segs]
+	var sc := Color(1.0, 1.0, 1.0, 0.9)
+	var se := Color(1.0, 0.85, 0.45, 0.0)
+	for k in range(4):
+		var a2: float = TAU * float(k) / 4.0 + _hash(b + 99) * TAU
+		var dir := Vector3(cos(a2) * 16.0, (8.0 if k % 2 == 0 else -8.0), sin(a2) * 16.0)
+		var side := dir.cross(Vector3.UP).normalized() * 3.0
+		st.set_color(sc); st.add_vertex(hp - side)
+		st.set_color(se); st.add_vertex(hp + dir)
+		st.set_color(sc); st.add_vertex(hp + side)
+	var mesh := ArrayMesh.new()
+	st.commit(mesh)
+	return mesh
+
+
 ## 开火。返回句柄(存进 eq_state)。`ang` 是世界平面上的朝向弧度。
 func fire(origin: Vector2, ang: float, length: float, half_w: float) -> Dictionary:
 	if not _alive_world():
@@ -475,21 +560,31 @@ func fire(origin: Vector2, ang: float, length: float, half_w: float) -> Dictiona
 	var shells: Array = []
 	for i in range(SHELL_U.size()):
 		# 从外到内建, render_priority 递增 ⇒ 芯画在最上面
-		var nd := _node(_shell_mesh_k(i), _mat(30 + i), battle._world_pos(origin, 0.0))
+		var nd := _node(_shell_mesh_k(i), _beam_mat(30 + i), battle._world_pos(origin, 0.0))
 		nd.scale = Vector3(length * ws, half_w * ws, half_w * ws)
 		shells.append(nd)
 	# 细丝: 两套排布轮换(换 mesh 不换节点 ⇒ 热路径零分配)。节点放进 shells,
-	# aim/set_progress/stop/node_count 就全部顺带管到了。
+	# aim/set_progress/stop/node_count 就全部顺带管到了。细丝同吃束身 shader 的闪变/呼吸。
 	var fil_meshes: Array = [_fil_mesh(1), _fil_mesh(2)]
-	var fil := _node(fil_meshes[0], _mat(35), battle._world_pos(origin, 0.0))
+	var fil := _node(fil_meshes[0], _beam_mat(35), battle._world_pos(origin, 0.0))
 	fil.scale = Vector3(length * ws, half_w * ws, half_w * ws)
 	shells.append(fil)
 	var mz := _node(_star_mesh(9), _mat(36), battle._world_pos(origin, 0.0))
 	mz.scale = Vector3(MUZZLE_R * ws, 1.0, MUZZLE_R * ws)
+	# 枪口飘带: RIBBON_N 条彗尾弧带绕施法者公转(每条自己的相位与形状)
+	var ribbons: Array = []
+	for i in range(RIBBON_N):
+		var rb := _node(_ribbon_mesh(i + 1), _mat(34, true), battle._world_pos(origin, 0.0))
+		rb.scale = Vector3.ONE * ws
+		rb.rotation.y = TAU * float(i) / float(RIBBON_N)
+		# 每条平面各歪一点(±14°): 参考的弧带不是同平面圆环, 是歪着绕的大弧
+		rb.rotation.x = deg_to_rad(lerpf(-14.0, 14.0, _hash(i * 31 + 5)))
+		ribbons.append(rb)
 	var h: Dictionary = {
 		"shells": shells, "muzzle": mz, "org": origin, "ang": ang,
 		"len": length, "hw": half_w, "s": 0.0, "marks": [],
 		"fil_meshes": fil_meshes, "fil_node": fil, "t_acc": 0.0,
+		"ribbons": ribbons,
 		# 爆点刺形: 预建 HIT_PATTERNS 套轮换(重掷=换 mesh, 不是每 40ms 建网格)
 		"hit_meshes": [], "ring_mesh": null,
 	}
@@ -521,23 +616,34 @@ func set_progress(h: Dictionary, s: float) -> void:
 	var ws: float = float(battle.WS) if battle != null else 1.0
 	# 粗细也跟着涨(实测: 爬升期光束在变粗), 但幅度小于亮度
 	var w: float = float(h.get("hw", 58.0)) * ws * (0.62 + 0.38 * i)
+	var tac: float = float(h.get("t_acc", 0.0))
 	for k in range(h.get("shells", []).size()):
 		var nd = h["shells"][k]
 		if not is_instance_valid(nd):
 			continue
 		nd.scale = Vector3(float(h.get("len", 2000.0)) * ws, w, w)
-		(nd.material_override as StandardMaterial3D).albedo_color = Color(1, 1, 1, i)
+		# 束身 shader: 亮度=包络, 时间喂 t_acc(闪变/呼吸都从它算, 不用 TIME)
+		var sm := nd.material_override as ShaderMaterial
+		sm.set_shader_parameter("u_env", i)
+		sm.set_shader_parameter("u_t", tac)
 	var mz = h.get("muzzle", null)
 	if is_instance_valid(mz):
 		mz.scale = Vector3(MUZZLE_R * ws * (0.7 + 0.5 * i), 1.0, MUZZLE_R * ws * (0.7 + 0.5 * i))
 		(mz.material_override as StandardMaterial3D).albedo_color = Color(1, 1, 1, i)
 		mz.rotation.y = float(h.get("ang", 0.0)) * 0.35     # 缓慢反向自转, 免得像贴纸
-	# 细丝排布轮换(换 mesh 不建节点): 实测脊位逐帧重排, 周期 FIL_SWAP
+	# 枪口飘带: 绕施法者公转(转速=实测估计带 150°/s), 亮度跟包络
+	var ri := 0
+	for rb in h.get("ribbons", []):
+		if is_instance_valid(rb):
+			rb.rotation.y = TAU * float(ri) / float(RIBBON_N) + deg_to_rad(RIBBON_DPS) * tac
+			(rb.material_override as StandardMaterial3D).albedo_color = Color(1, 1, 1, i)
+		ri += 1
+	# 细丝排布轮换(换 mesh 不建节点): 实测脊位重排周期 = 闪变去相关时间 FIL_SWAP
 	var fn = h.get("fil_node", null)
 	if is_instance_valid(fn):
 		var fm: Array = h.get("fil_meshes", [])
 		if fm.size() >= 2:
-			var idx: int = int(float(h.get("t_acc", 0.0)) / FIL_SWAP) % fm.size()
+			var idx: int = int(tac / FIL_SWAP) % fm.size()
 			if fn.mesh != fm[idx]:
 				fn.mesh = fm[idx]
 
@@ -690,6 +796,10 @@ func finale(h: Dictionary) -> void:
 			nd.queue_free()
 	h["shells"] = []
 	h["fil_node"] = null
+	for rb in h.get("ribbons", []):
+		if is_instance_valid(rb):
+			rb.queue_free()
+	h["ribbons"] = []
 	var mz = h.get("muzzle", null)
 	if is_instance_valid(mz):
 		mz.queue_free()
@@ -762,6 +872,10 @@ func stop(h: Dictionary) -> void:
 			nd.queue_free()
 	h["shells"] = []
 	h["fil_node"] = null
+	for rb in h.get("ribbons", []):
+		if is_instance_valid(rb):
+			rb.queue_free()
+	h["ribbons"] = []
 	var mz = h.get("muzzle", null)
 	if is_instance_valid(mz):
 		mz.queue_free()
@@ -782,12 +896,15 @@ func live_count() -> int:
 	return _live.size()
 
 
-## 场上所有(射线 + 细丝 + 枪口 + 命中爆点/白核/白刺带)的节点总数 —— 门禁数它验换路清干净。
+## 场上所有(射线 + 细丝 + 飘带 + 枪口 + 命中爆点/白核/白刺带)的节点总数 —— 门禁数它验换路清干净。
 func node_count() -> int:
 	var n := 0
 	for h in _live:
 		for nd in h.get("shells", []):
 			if is_instance_valid(nd):
+				n += 1
+		for rb in h.get("ribbons", []):
+			if is_instance_valid(rb):
 				n += 1
 		if is_instance_valid(h.get("muzzle", null)):
 			n += 1

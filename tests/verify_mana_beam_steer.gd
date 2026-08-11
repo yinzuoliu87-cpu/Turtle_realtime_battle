@@ -406,26 +406,62 @@ func _t_burst_tables() -> void:
 	_ok("⑩ ★分母: 束身里有细丝节点(实测每截面 3~5 条亮脊)",
 		is_instance_valid(h.get("fil_node", null)) and Beam.FIL_N >= 2 and Beam.FIL_N <= 5,
 		"FIL_N=%d" % Beam.FIL_N)
-	for _i in range(11):
-		_ps._eq_beam_step(carrier, 0.25)      # 2.75s: 持续段
+	for _i in range(10):
+		_ps._eq_beam_step(carrier, 0.25)      # 2.50s: 持续段
 	var marks: Array = h.get("marks", [])
 	_ok("⑩ ★分母: 持续段有爆点 mark", marks.size() > 0)
 	if marks.size() > 0:
 		var m0: Dictionary = marks[0]
 		_ok("⑩ ★持续段【没有】白核节点(白色只属于末端爆发)", m0.get("core", null) == null)
 		_ok("⑩ 爆点带球状光晕壳(三层)", (m0.get("glows", []) as Array).size() == 3)
+		var fil_a = h["fil_node"].mesh if is_instance_valid(h.get("fil_node", null)) else null
+		_ps._eq_beam_step(carrier, 0.28)      # t_acc 2.50→2.78 跨 0.27 档 ⇒ 细丝换排布
+		var fil_b = h["fil_node"].mesh if is_instance_valid(h.get("fil_node", null)) else null
+		_ok("⑩ 细丝排布在轮换(周期=实测闪变去相关 270ms)", fil_a != null and fil_b != null and fil_a != fil_b)
 		var mesh_a = m0["star"].mesh if is_instance_valid(m0.get("star", null)) else null
-		_ps._eq_beam_step(carrier, 0.05)      # resh 0.05 ≥ 0.04 ⇒ 重掷
+		_ps._eq_beam_step(carrier, 0.05)      # resh ≥ 0.04 ⇒ 重掷
 		var mesh_b = m0["star"].mesh if is_instance_valid(m0.get("star", null)) else null
 		_ok("⑩ ★★刺形真的在重掷(实测 33ms 相关只剩 0.37): 换的是真 mesh 引用",
 			mesh_a != null and mesh_b != null and mesh_a != mesh_b)
-		var fil_a = h["fil_node"].mesh if is_instance_valid(h.get("fil_node", null)) else null
-		_ps._eq_beam_step(carrier, 0.05)      # t_acc 跨 0.08 档 ⇒ 细丝换排布
-		var fil_b = h["fil_node"].mesh if is_instance_valid(h.get("fil_node", null)) else null
-		_ok("⑩ 细丝排布在轮换(实测脊位逐帧重排)", fil_a != null and fil_b != null and fil_a != fil_b)
+	# ── ⑪ 束身 shader + 枪口飘带(二轮量测, 方案书 §九) ──
+	_ok("⑪ 实测常量钉死: 调制±10.5%% / 呼吸±6%%·67ms / 闪变 270ms",
+		absf(Beam.BEAM_MOD_AMP - 0.105) < 1e-6 and absf(Beam.BEAM_BREATH_AMP - 0.06) < 1e-6
+		and absf(Beam.BEAM_BREATH_SEC - 0.067) < 1e-6 and absf(Beam.BEAM_EVOLVE_SEC - 0.27) < 1e-6)
+	var sh0 = (h["shells"] as Array)[0]
+	var smat = sh0.material_override if is_instance_valid(sh0) else null
+	_ok("⑪ ★束身材质是 ShaderMaterial 且挂的是 mana_beam shader(真对象)",
+		smat is ShaderMaterial and (smat as ShaderMaterial).shader == Beam.BEAM_SHADER)
+	if smat is ShaderMaterial:
+		# ★null 安全: 参数根本没被设过时 get 返回 null, float(null) 是运行时错误 ——
+		#   会把测试函数【静默中止】(剩余断言不跑但照样 ALL PASS)。null → -999 = 必红。
+		var utv = (smat as ShaderMaterial).get_shader_parameter("u_t")
+		var uev = (smat as ShaderMaterial).get_shader_parameter("u_env")
+		var ut: float = float(utv) if utv != null else -999.0
+		var ue: float = float(uev) if uev != null else -999.0
+		_ok("⑪ ★★u_t 每帧在喂(shader 时间不是 TIME 是 t_acc) —— 回读真参数",
+			absf(ut - float(h.get("t_acc", -1.0))) < 0.3, "u_t=%.2f t_acc=%.2f" % [ut, float(h.get("t_acc", 0.0))])
+		_ok("⑪ u_env 跟着包络(此刻 s≈0.94 应 >0.5)", ue > 0.5, "u_env=%.2f" % ue)
+	var src2: String = FileAccess.get_file_as_string("res://assets/shaders/mana_beam.gdshader")
+	_ok("⑪ ★分母: shader 源文件在", src2.length() > 300, "len=%d" % src2.length())
+	_ok("⑪ ★shader 不用 TIME(暂停一致/确定性 —— 时间只能走 u_t)",
+		not ("TIME" in src2))
+	_ok("⑪ ★shader 不做 UV 滚动(实测束身【不流动】: 55/55 帧对位移=0)",
+		not ("u_flow" in src2) and not ("scroll" in src2))
+	var rbs: Array = h.get("ribbons", [])
+	_ok("⑪ ★分母: 枪口飘带 %d 条都在(真节点)" % Beam.RIBBON_N,
+		rbs.size() == Beam.RIBBON_N and is_instance_valid(rbs[0]) if rbs.size() > 0 else false)
+	if rbs.size() > 0 and is_instance_valid(rbs[0]):
+		var rot_a: float = float((rbs[0] as Node3D).rotation.y)
+		_ps._eq_beam_step(carrier, 0.05)
+		var rot_b: float = float((rbs[0] as Node3D).rotation.y)
+		var moved: float = absf(angle_difference(rot_a, rot_b))
+		_ok("⑪ ★★飘带真的在公转(150°/s × 0.05s ≈ 7.5°)",
+			moved > deg_to_rad(5.0) and moved < deg_to_rad(12.0),
+			"实转 %.1f°" % rad_to_deg(moved))
 	# ── 末端爆发: 束结束 → 白核+白刺带出现, 然后自清 ──
-	_ps._eq_beam_step(carrier, 0.30)          # 2.85+0.30 > 3.0 ⇒ ended ⇒ finale
+	_ps._eq_beam_step(carrier, 0.30)          # 2.88+0.30 > 3.0 ⇒ ended ⇒ finale
 	_ok("⑩ ★分母: 束体已撤(finale 只留爆点)", not is_instance_valid(h.get("muzzle", null)))
+	_ok("⑪ 飘带随 finale 一起撤(留着就绕一个空位转)", (h.get("ribbons", []) as Array).is_empty())
 	var fmarks: Array = h.get("marks", [])
 	var has_core := false
 	for m in fmarks:
