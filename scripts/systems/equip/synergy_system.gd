@@ -56,6 +56,21 @@ func _init(b) -> void:
 
 ## 开战 / 换路后调用（挂在 _eq_apply_all_stats 之后 —— 单件属性先落地，羁绊再加在上面）。
 ## ★幂等由 `_synergy_done` 标记保证：换路会重建单位字典，但档位本身不重算（D11 一场算一次）。
+## 换路清档 —— **必须在换路时调一次**, 否则下一路沿用上一路的档位。
+##
+## ★2026-08-12 补。此前这个类**根本没有 clear 方法**, 而 `apply_all()` 只在
+##   `_by_side[side].is_empty()` 时才算 ⇒ 探针实测: 上路带 3 枪、下路带 3 盾,
+##   换路后 `_by_side.left` 仍是 `{"枪": 1}`, 下路单位带着盾却拿不到盾羁绊、
+##   反而白拿一个自己没有的枪羁绊。**每一局的下路与决胜都在这么跑。**
+##   `_dl_build_lane_field()` 里同族的 shield/bow/gun/staff/potion/gadget/food 全都 clear 了,
+##   唯独漏了这一个 —— 因为它没有这个方法可调。
+## ★不去掉 `apply_all` 里那道 `is_empty()` 守卫: VFXLAB 靠手写 `_by_side` 注入档位,
+##   去掉守卫会让台子上的注入被立刻冲掉。
+func clear() -> void:
+	_by_side = {"left": {}, "right": {}}
+	tier_of = {}
+
+
 func apply_all() -> void:
 	for side in ["left", "right"]:
 		if (_by_side[side] as Dictionary).is_empty():

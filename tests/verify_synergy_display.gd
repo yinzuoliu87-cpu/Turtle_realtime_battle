@@ -138,6 +138,39 @@ func _ready() -> void:
 	row_l.queue_free()
 	row_r.queue_free()
 
+	# ══ ④ 换路必须重算档位(2026-08-12 修的真 bug) ═════════════════════════
+	#   `apply_all()` 只在 `_by_side` 为空时才算(守卫是给 VFXLAB 注入档位留的),
+	#   而换路那段此前**没 clear 过 _synergy**(这个类当时根本没有 clear 方法)
+	#   ⇒ 探针实测: 上路 3 枪 / 下路 3 盾, 换路后下路仍是 {"枪":1} —— 带着盾拿不到盾羁绊,
+	#     反而白拿一个自己没有的枪羁绊。**每一局的下路与决胜都在这么跑。**
+	var c2: Vector2 = _s.ARENA.position + _s.ARENA.size * 0.5
+	var g1: Dictionary = _s._spawn._make_unit("basic", "left", c2 + Vector2(-120, 0))
+	g1["equips"] = [{"id": "p2eq_048", "star": 1}, {"id": "p2eq_050", "star": 1},
+		{"id": "p2eq_051", "star": 1}]                       # 3 枪
+	g1["eq_state"] = {}
+	_s._units.clear()
+	_s._units.append(g1)
+	_s._synergy.clear()
+	_s._synergy.apply_all()
+	var lane1: Dictionary = (_s._synergy._by_side["left"] as Dictionary).duplicate()
+	_ok("④ ★分母: 第一路(3 枪)确实算出了枪羁绊", int(lane1.get("枪", 0)) >= 1, str(lane1))
+	var g2: Dictionary = _s._spawn._make_unit("basic", "left", c2 + Vector2(-120, 0))
+	g2["equips"] = [{"id": "p2eq_014", "star": 1}, {"id": "p2eq_015", "star": 1},
+		{"id": "p2eq_016", "star": 1}]                       # 换成 3 盾
+	g2["eq_state"] = {}
+	_s._units.clear()
+	_s._units.append(g2)
+	_s._synergy.clear()                                      # ← 换路那行
+	_s._synergy.apply_all()
+	var lane2: Dictionary = (_s._synergy._by_side["left"] as Dictionary)
+	_ok("④ ★换路后按【新阵容】重算: 有盾羁绊", int(lane2.get("盾", 0)) >= 1, str(lane2))
+	_ok("④ ★★上一路的枪羁绊不许留下(这就是那个 bug 的样子)",
+		int(lane2.get("枪", 0)) == 0, "实得 枪=%d" % int(lane2.get("枪", 0)))
+	# 源码: 换路那条路真的会 clear(光有 clear 方法没人调 = 没修)
+	_ok("④ ★换路代码里 clear() 排在 apply_all() 之前(顺序反了等于没清)",
+		src_dl.find("_synergy.clear()") > 0
+			and src_dl.find("_synergy.clear()") < src_dl.find("_synergy.apply_all()"))
+
 	_s._units.clear()
 	_s.set_process(false)
 	await get_tree().process_frame

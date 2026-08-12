@@ -499,6 +499,11 @@ func _dl_build_lane_field() -> void:
 	##   同族的坑记在 `tentacle_vfx.clear()` 上面那段长注释里。
 	battle._gold_vfx.clear()
 	battle._relic_syn.clear()     # 换路: 觉醒 t0 重置(远古之力【不清】—— 同上)
+	## ★★换路必须先 clear 再 apply —— apply_all 只在 `_by_side` 为空时才算(2026-08-12 修)。
+	##   漏了这一行的后果是【下路与决胜沿用上路的档位】: 探针实测上路 3 枪、下路 3 盾,
+	##   下路单位带着盾拿不到盾羁绊、反而白拿一个枪羁绊。同族的 shield/bow/gun/staff/
+	##   potion/gadget/food 在本函数里全都 clear 了, 唯独这一个漏了(它当时没有 clear 方法)。
+	battle._synergy.clear()
 	battle._synergy.apply_all()   # ★类型羁绊(批4-1): 必须在单件属性【之后】—— 羁绊是加在单件属性上面的
 	battle._bow_syn.apply_all()   # 弓箭【腐蚀·穿透】写进 armor_pen_pct/magic_pen_pct(休眠通道, 消费侧零改动)
 	battle._gun_syn.apply_all()   # 枪【火控】(第三座炮台): 给带枪者标 _fire_ctrl
