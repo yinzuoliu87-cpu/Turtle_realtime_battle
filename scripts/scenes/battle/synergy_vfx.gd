@@ -39,12 +39,19 @@ const META_KEY := "synergy_vfx"
 ## _owned 的上限, 照 RB:_reg_tween 的 512 一样是"最后一道闸"(方案书 R12 手机端预算)。
 const OWNED_CAP := 256
 
+## 贴地几何离地高度(米): 地板在 y=0, 抬一点免 z-fighting(同 food/shockwave 两层的做法)
+const GROUND_Y := 0.06
+
 ## 常驻炮台("side|idx" → {root,yaw,barrel,mat_r,recoil})。
 ## ★炮台是常驻结构, 不进 _fx 那种"活一会儿就没"的队列。
 var _turrets: Dictionary = {}
 var _mesh_tur_base: ArrayMesh = null
 var _mesh_tur_barrel: ArrayMesh = null
 var _mesh_tur_dish: ArrayMesh = null
+var _mesh_emitter: ArrayMesh = null
+var _mesh_star_wave: ArrayMesh = null
+## 正在扩散的星浪(炮台二) —— 每帧由 gun_turret_tick 推进
+var _waves: Array = []
 
 var battle
 
@@ -673,6 +680,226 @@ static func _mat_add() -> StandardMaterial3D:
 	return m
 
 
+
+## ══════════════════════════════════════════════════════════════════
+##  §炮台二·放射体 + 蓄力 + 宇宙星浪冲击波(2026-08-12 用户重做)
+## ══════════════════════════════════════════════════════════════════
+## 用户原话:「第二个炮台不应该有炮管, 而是放射性炮台 …… 放盾就释放白色冲击波,
+##   打伤害就释放红色冲击波, 炮台本身的颜色也变红变白 …… 冲击波不要只那个圆形敷衍我,
+##   我要那种精美的冲击波 …… 波碰到单位才施加效果 …… 波要有宇宙星浪的感觉 ……
+##   炮台也不要直接去放, 而是有个蓄力, 然后释放的过程个动画」
+##
+## ── 形态 ─────────────────────────────────────────────────────────
+## · 炮台二没有炮管: 一圈【共振环】(三层同心薄环, 蓄力时收紧+发亮) 立在底座上
+## · 蓄力 CHARGE_SEC 秒: 环收紧、亮度攀升、四周有星点【向内】吸附
+## · 释放: 星浪从炮台炸开 —— 不是一个圆, 是【波状冠 + 放射星尾 + 随波走的星点】
+##
+## ── 波的半径是【机制与演出的同一个事实源】 ────────────────────────
+## r(t) = WAVE_SPEED · t, 扫到谁谁那一刻才吃效果(GunSynergySystem 用同一个常量排延时),
+## 与 070 咸鱼砖冲击环同一条纪律: 改速度, 视觉与结算一起变。
+
+## 波速(码/秒) —— ★与机制侧共用, 改这里两边一起变
+const WAVE_SPEED := 520.0
+## 波能走多远(码) / 波的存活由 半径/速度 算
+const WAVE_RANGE := 900.0
+## 蓄力时长(秒)
+const CHARGE_SEC := 0.55
+## 波纹起伏: 两组模数与相对幅度(让波沿是【起伏的】而不是正圆)
+const WAVE_MODES := [7.0, 13.0]
+const WAVE_AMP := 0.018
+## 放射星尾条数 / 随波走的星点数
+const WAVE_RAYS := 26
+const WAVE_STARS := 22
+## 相位色: 白=转护盾 / 红=化弹幕
+const COL_WAVE_SHIELD := Color(0.96, 0.98, 1.00, 1.0)
+const COL_WAVE_DMG := Color(1.00, 0.32, 0.30, 1.0)
+
+
+## 共振环(炮台二的"炮"): 三层同心薄环立在底座上(单位半径)
+static func _build_emitter_rings() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var hi := Color(1, 1, 1, 1.0)
+	var mid := Color(1, 1, 1, 0.55)
+	for band in [[0.94, 1.0, hi], [0.66, 0.72, mid], [0.38, 0.43, mid]]:
+		var ri: float = float(band[0])
+		var ro: float = float(band[1])
+		var c: Color = band[2]
+		for k in range(36):
+			var t0: float = float(k) * TAU / 36.0
+			var t1: float = float(k + 1) * TAU / 36.0
+			## 环立在 XZ 平面(贴地)但抬到炮台顶 —— 从侧面看是一圈光箍
+			_tri3(st, [Vector3(cos(t0) * ri, 0.0, sin(t0) * ri), c],
+				[Vector3(cos(t0) * ro, 0.0, sin(t0) * ro), c],
+				[Vector3(cos(t1) * ro, 0.0, sin(t1) * ro), c])
+			_tri3(st, [Vector3(cos(t0) * ri, 0.0, sin(t0) * ri), c],
+				[Vector3(cos(t1) * ro, 0.0, sin(t1) * ro), c],
+				[Vector3(cos(t1) * ri, 0.0, sin(t1) * ri), c])
+	return _commit3(st)
+
+
+## 星浪网格(单位半径): 波状冠 + 放射星尾。**不是一个圆环** ——
+## 冠沿按两组模数起伏(WAVE_MODES), 冠外拖 WAVE_RAYS 条长短不一的星尾。
+static func _build_star_wave() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var seg := 128
+	## ① 波冠: 内缘透 → 冠脊亮 → 外缘透(三段), 半径按模数起伏
+	for k in range(seg):
+		var t0: float = float(k) / float(seg) * TAU
+		var t1: float = float(k + 1) / float(seg) * TAU
+		var w0: float = 1.0 + WAVE_AMP * (sin(WAVE_MODES[0] * t0) + 0.6 * sin(WAVE_MODES[1] * t0 + 1.7))
+		var w1: float = 1.0 + WAVE_AMP * (sin(WAVE_MODES[0] * t1) + 0.6 * sin(WAVE_MODES[1] * t1 + 1.7))
+		## ★冠带必须【窄】: 第一版 0.74→1.06 占了半径的 32%, 扩到 900 码时厚 288 码 ⇒
+		##   实拍读成"一团云"而不是一道浪。收到 ~9%: 内裙渐亮 → 冠脊最亮 → 外雾快收。
+		for seg3 in [[0.915, 0.0, 0.985, 0.75], [0.985, 0.75, 1.0, 1.0], [1.0, 1.0, 1.028, 0.0]]:
+			var ri0: float = float(seg3[0]) * w0
+			var a_in: float = float(seg3[1])
+			var ro0: float = float(seg3[2]) * w0
+			var a_out: float = float(seg3[3])
+			var ri1: float = float(seg3[0]) * w1
+			var ro1: float = float(seg3[2]) * w1
+			_tri3(st, [Vector3(cos(t0) * ri0, GROUND_Y, sin(t0) * ri0), Color(1, 1, 1, a_in)],
+				[Vector3(cos(t0) * ro0, GROUND_Y, sin(t0) * ro0), Color(1, 1, 1, a_out)],
+				[Vector3(cos(t1) * ro1, GROUND_Y, sin(t1) * ro1), Color(1, 1, 1, a_out)])
+			_tri3(st, [Vector3(cos(t0) * ri0, GROUND_Y, sin(t0) * ri0), Color(1, 1, 1, a_in)],
+				[Vector3(cos(t1) * ro1, GROUND_Y, sin(t1) * ro1), Color(1, 1, 1, a_out)],
+				[Vector3(cos(t1) * ri1, GROUND_Y, sin(t1) * ri1), Color(1, 1, 1, a_in)])
+	## ② 放射星尾: 冠外一条条向外拉长的细尾(长度按序号错落 —— 星浪不是齐头并进)
+	for j in range(WAVE_RAYS):
+		var th: float = float(j) * TAU / float(WAVE_RAYS) + 0.07
+		var ln: float = [0.16, 0.09, 0.13, 0.06][j % 4]
+		var hw: float = 0.005
+		_tri3(st, [Vector3(cos(th - hw) * 0.99, GROUND_Y, sin(th - hw) * 0.99), Color(1, 1, 1, 0.85)],
+			[Vector3(cos(th) * (1.0 + ln), GROUND_Y, sin(th) * (1.0 + ln)), Color(1, 1, 1, 0.0)],
+			[Vector3(cos(th + hw) * 0.99, GROUND_Y, sin(th + hw) * 0.99), Color(1, 1, 1, 0.85)])
+	return _commit3(st)
+
+
+## 蓄力: 共振环收紧发亮 + 星点向内吸附。返回蓄力句柄(门禁读它)。
+func gun_wave_charge(key: String, shield_phase: bool) -> Dictionary:
+	var h = _turrets.get(key, null)
+	if not (h is Dictionary):
+		return {}
+	var col: Color = COL_WAVE_SHIELD if shield_phase else COL_WAVE_DMG
+	(h as Dictionary)["charge"] = 0.0
+	(h as Dictionary)["charging"] = true
+	(h as Dictionary)["phase_col"] = col
+	## ★炮台【本体】也换色(用户点名: 炮台本身的颜色也变红变白)
+	var mr = (h as Dictionary).get("mat_r", null)
+	if mr is StandardMaterial3D:
+		(mr as StandardMaterial3D).albedo_color = Color(col.r, col.g, col.b, 1.0)
+	var mb = (h as Dictionary).get("mat_b", null)
+	if mb is StandardMaterial3D:
+		(mb as StandardMaterial3D).albedo_color = Color(col.r * 0.55, col.g * 0.55, col.b * 0.62, 0.95)
+	## 向内吸附的星点(确定性摆位)
+	var pf: Vector2 = (h as Dictionary).get("pos", Vector2.ZERO)
+	var dot := VfxTex._make_disc_texture()
+	for i in range(10):
+		var th: float = float(i) * TAU / 10.0 + 0.3
+		var from2: Vector2 = pf + Vector2(cos(th), sin(th) * 0.6) * 150.0
+		var m := Sprite3D.new()
+		m.texture = dot
+		m.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		m.shaded = false
+		m.transparent = true
+		m.modulate = Color(col.r, col.g, col.b, 0.9)
+		m.pixel_size = (10.0 * float(battle.WS)) / float(maxi(1, dot.get_height()))
+		m.position = battle._world_pos(from2, 0.5)
+		_adopt(m, "wave_charge_mote")
+		var tw: Tween = battle._reg_tween()
+		tw.tween_property(m, "position", battle._world_pos(pf, 0.62), CHARGE_SEC)
+		tw.parallel().tween_property(m, "modulate:a", 0.0, CHARGE_SEC)
+		tw.tween_callback(m.queue_free)
+	return h
+
+
+## 释放星浪。返回波句柄(门禁读半径), 每帧由 gun_turret_tick 推进。
+func gun_wave_release(key: String, shield_phase: bool) -> Dictionary:
+	if not _has_world():
+		return {}
+	var h = _turrets.get(key, null)
+	var pf: Vector2 = (h as Dictionary).get("pos", Vector2.ZERO) if h is Dictionary else Vector2.ZERO
+	if h is Dictionary:
+		(h as Dictionary)["charging"] = false
+		(h as Dictionary)["charge"] = 0.0
+		(h as Dictionary)["kick"] = 1.0        # 释放那一下炮台自身的膨胀
+	if _mesh_star_wave == null:
+		_mesh_star_wave = _build_star_wave()
+	var col: Color = COL_WAVE_SHIELD if shield_phase else COL_WAVE_DMG
+	var mi := MeshInstance3D.new()
+	mi.mesh = _mesh_star_wave
+	var mat := _mat_add()
+	mat.albedo_color = Color(col.r, col.g, col.b, 1.0)
+	mi.material_override = mat
+	mi.position = battle._world_pos(pf, 0.0)
+	mi.scale = Vector3.ONE * 1e-4
+	_adopt(mi, "star_wave")
+	## 随波走的星点
+	var stars: Array = []
+	var dot := VfxTex._make_disc_texture()
+	for i in range(WAVE_STARS):
+		var sp := Sprite3D.new()
+		sp.texture = dot
+		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sp.shaded = false
+		sp.transparent = true
+		sp.modulate = Color(col.r, col.g, col.b, 1.0)
+		sp.pixel_size = ([14.0, 9.0, 18.0, 11.0][i % 4] * float(battle.WS)) / float(maxi(1, dot.get_height()))
+		sp.position = battle._world_pos(pf, 0.35)
+		_adopt(sp, "wave_star")
+		stars.append(sp)
+	var wh := {"node": mi, "mat": mat, "stars": stars, "c": pf, "t": 0.0,
+		"life": WAVE_RANGE / WAVE_SPEED, "col": col}
+	_waves.append(wh)
+	return wh
+
+
+## 波的半径(码) —— ★机制与演出的同一个事实源(GunSynergySystem 用它排到达时刻)
+static func wave_radius(t: float) -> float:
+	return minf(WAVE_SPEED * maxf(t, 0.0), WAVE_RANGE)
+
+
+## 每帧推进星浪(由 gun_turret_tick 顺带调)
+func _tick_waves(delta: float) -> void:
+	if _waves.is_empty():
+		return
+	var keep: Array = []
+	for w in _waves:
+		var t: float = float(w["t"]) + maxf(delta, 0.0)
+		w["t"] = t
+		var life: float = float(w["life"])
+		var n = w["node"]
+		if t >= life or not is_instance_valid(n):
+			if is_instance_valid(n):
+				n.queue_free()
+			for s2 in w.get("stars", []):
+				if is_instance_valid(s2):
+					s2.queue_free()
+			continue
+		var r_px: float = wave_radius(t)
+		var r: float = maxf(r_px * float(battle.WS), 1e-4)
+		n.scale = Vector3(r, r, r)
+		var x: float = t / life
+		var fade: float = 1.0 - smoothstep(0.55, 1.0, x)
+		var col: Color = w["col"]
+		(w["mat"] as StandardMaterial3D).albedo_color = Color(col.r, col.g, col.b, fade)
+		## 星点: 骑在冠上随波外移 + 闪烁(相位按序号错开 ⇒ 不是一起明灭)
+		var c2: Vector2 = w["c"]
+		var arr: Array = w.get("stars", [])
+		for i in range(arr.size()):
+			var sp = arr[i]
+			if not is_instance_valid(sp):
+				continue
+			var th: float = float(i) * TAU / float(maxi(1, arr.size())) + 0.11
+			var rr: float = r_px * (0.94 + 0.10 * sin(float(i) * 2.3))
+			sp.position = battle._world_pos(c2 + Vector2(cos(th), sin(th)) * rr, 0.35)
+			var tw2: float = 0.55 + 0.45 * sin(t * 11.0 + float(i) * 1.9)
+			sp.modulate.a = fade * tw2
+		keep.append(w)
+	_waves = keep
+
+
 ## 炮管(单位长: 沿 +X 伸出 1, 方管) + 炮口环
 static func _build_turret_barrel() -> ArrayMesh:
 	var st := SurfaceTool.new()
@@ -742,16 +969,16 @@ func gun_turret_ensure(key: String, pos2d: Vector2, kind: int = 0, shield_phase:
 	var barrel: MeshInstance3D = null
 	match kind:
 		1:
-			## 炮台二: **双管**并列(能量炮), 相位不同颜色不同
-			for sgn in [-1.0, 1.0]:
-				var bb := MeshInstance3D.new()
-				bb.mesh = _mesh_tur_barrel
-				bb.material_override = mr
-				bb.scale = Vector3.ONE * (TURRET_BARREL_PX * 0.86 * ws)
-				bb.position = Vector3(0.0, 0.0, sgn * TURRET_R_PX * 0.34 * ws)
-				yawn.add_child(bb)
-				if barrel == null:
-					barrel = bb
+			## 炮台二: **没有炮管**(用户 2026-08-12 点名) —— 它是【放射体】:
+			## 一圈共振环立在底座上, 蓄力时收紧发亮, 释放时炸出星浪。
+			if _mesh_emitter == null:
+				_mesh_emitter = _build_emitter_rings()
+			var em := MeshInstance3D.new()
+			em.mesh = _mesh_emitter
+			em.material_override = mr
+			em.scale = Vector3.ONE * (TURRET_R_PX * 1.25 * ws)
+			yawn.add_child(em)
+			barrel = em
 		2:
 			## 炮台三·火控: 不是炮 —— 一面【雷达碟】(竖立的薄环)常年在转
 			if _mesh_tur_dish == null:
@@ -770,8 +997,9 @@ func gun_turret_ensure(key: String, pos2d: Vector2, kind: int = 0, shield_phase:
 			b0.scale = Vector3.ONE * (TURRET_BARREL_PX * 1.12 * ws)
 			yawn.add_child(b0)
 			barrel = b0
-	_turrets[key] = {"root": root, "yaw": yawn, "barrel": barrel, "mat_r": mr,
-		"recoil": 0.0, "pos": pos2d, "kind": kind, "spin": 0.0}
+	_turrets[key] = {"root": root, "yaw": yawn, "barrel": barrel, "mat_r": mr, "mat_b": base.material_override,
+		"recoil": 0.0, "pos": pos2d, "kind": kind, "spin": 0.0, "charge": 0.0,
+		"charging": false, "kick": 0.0}
 	return root
 
 
@@ -867,7 +1095,26 @@ func gun_turret_tick(delta: float) -> void:
 		(h as Dictionary)["recoil"] = r
 		var barrel = (h as Dictionary).get("barrel", null)
 		var kind: int = int((h as Dictionary).get("kind", 0))
-		if is_instance_valid(barrel):
+		if is_instance_valid(barrel) and kind == 1:
+			## 放射体: 蓄力时共振环【收紧 + 变亮】, 释放那一下向外弹一下(kick)
+			var chg: float = float((h as Dictionary).get("charge", 0.0))
+			if bool((h as Dictionary).get("charging", false)):
+				chg = minf(1.0, chg + delta / CHARGE_SEC)
+				(h as Dictionary)["charge"] = chg
+			var kick: float = maxf(0.0, float((h as Dictionary).get("kick", 0.0)) - delta * 3.2)
+			(h as Dictionary)["kick"] = kick
+			var ws2: float = float(battle.WS)
+			var k_s: float = (1.0 - 0.26 * chg) + 0.5 * kick
+			barrel.scale = Vector3.ONE * (TURRET_R_PX * 1.25 * ws2 * k_s)
+			barrel.rotation.y = float((h as Dictionary).get("spin", 0.0)) + delta * (1.2 + 5.0 * chg)
+			(h as Dictionary)["spin"] = barrel.rotation.y
+			var mr1 = (h as Dictionary).get("mat_r", null)
+			if mr1 is StandardMaterial3D:
+				var pc: Color = (h as Dictionary).get("phase_col", COL_GUN_BARRAGE)
+				var lum: float = 1.0 + 0.9 * chg + 0.8 * kick
+				(mr1 as StandardMaterial3D).albedo_color = Color(minf(pc.r * lum, 1.0),
+					minf(pc.g * lum, 1.0), minf(pc.b * lum, 1.0), 1.0)
+		elif is_instance_valid(barrel):
 			if kind == 2:
 				## 火控塔: 碟常年扫描(它不开火, 所以"在工作"只能靠转来表达)
 				var sp: float = float((h as Dictionary).get("spin", 0.0)) + delta * 2.1
@@ -880,6 +1127,7 @@ func gun_turret_tick(delta: float) -> void:
 			var c: Color = (h as Dictionary).get("phase_col", _turret_col(kind, false))
 			(mr as StandardMaterial3D).albedo_color = Color(minf(c.r * (1.0 + 0.6 * r), 1.0),
 				minf(c.g * (1.0 + 0.6 * r), 1.0), minf(c.b * (1.0 + 0.6 * r), 1.0), 1.0)
+	_tick_waves(delta)
 
 
 ## 火控塔【接通】携枪者: 向每人拉一条能量带(档3 的唯一可见证据 —— 它不开火)。

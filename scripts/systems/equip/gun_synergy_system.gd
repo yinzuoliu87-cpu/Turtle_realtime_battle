@@ -52,6 +52,9 @@ var _t2_acc := 0.0
 const FIRECTRL_IV := 1.6
 var _fc_acc := 0.0
 var _t2_shield_phase := {"left": true, "right": true}
+## 这一拍炮台二的记账(门禁读它: 相位/能量/均摊人数) —— 结算已延到波扫到才发生,
+## 需要一个"这一拍打算做什么"的同步证据, 否则门禁只能等演出(CLAUDE.md §3.5 禁止)。
+var _t2_last := {}
 
 
 func _init(b) -> void:
@@ -241,31 +244,48 @@ func _turret_two(side: String) -> void:
 		else:
 			foes.append(u)
 	var is_shield: bool = bool(_t2_shield_phase.get(side, true))
-	var lit: Array = []          # 这一发【辐射到谁】—— 只喂演出, 不参与任何结算
-	if is_shield:
-		if not allies.is_empty():
-			var each: float = energy / float(allies.size())
-			for a in allies:
-				battle._damage._grant_shield(a, each)
-				lit.append(Vector2(a["pos"]))
-	else:
-		if not foes.is_empty():
-			var each2: int = maxi(1, int(energy / float(foes.size())))
-			var shooter2 = _any_carrier(side)
-			for f in foes:
-				if shooter2 is Dictionary:
-					battle._damage._apply_damage_from(shooter2, f, each2, Color("#9bdcff"))
-				else:
-					battle._damage._apply_damage(f, each2, Color("#9bdcff"))
-				lit.append(Vector2(f["pos"]))
-	# ★演出(批 B3): 这条效果唯一要传达的是【相位可辨】——
-	#   现状护盾靠通用金环、弹幕靠伤害数字, "这次是给盾还是打人"完全看不出。
-	#   蓝=护盾辐射给全队 / 橙=弹幕射向敌方全体, 颜色与辐射对象两条一起分。
-	if battle._vfx != null and battle._vfx._syn != null:
-		battle._vfx._syn.gun_turret_two(_turret_pos(side, 1), lit, is_shield)
-		if not lit.is_empty():
-			battle._vfx._syn.gun_turret_fire("%s|1" % side, lit[0], is_shield)
+	var origin: Vector2 = _turret_pos(side, 1)
+	var sv = null
+	if battle._vfx != null:
+		sv = battle._vfx._syn
+	## ★★2026-08-12 用户重做:「炮台也不要直接去放, 而是有个蓄力, 然后释放」+
+	##   「波碰到单位才施加效果」⇒ 结算从"立刻全给"改成:
+	##     ① 先蓄力 CHARGE_SEC 秒(演出: 共振环收紧发亮 + 星点内吸, 炮台换成本相位的颜色)
+	##     ② 释放星浪(白=转护盾 / 红=化弹幕)
+	##     ③ 每个目标的效果延到【波扫到它】那一刻(距离 ÷ 波速), 与 070 咸鱼砖同一条纪律。
+	##   ⇒ 能量/均摊口径一个字没改: 均摊分母仍是这一拍的目标数, 只是到账时刻跟着波走。
+	var targets: Array = allies if is_shield else foes
+	if targets.is_empty():
+		return
+	var each: float = energy / float(targets.size())
+	var shooter = _any_carrier(side)
+	if sv != null:
+		sv.gun_wave_charge("%s|1" % side, is_shield)
+	## 蓄力结束才释放 —— 用 sim 内定时器(_pending_shots), 不用 tween(CLAUDE.md §3.5)
+	var charge_sec: float = SynergyVfx.CHARGE_SEC
+	battle._pending_shots.append({"delay": charge_sec, "src": shooter, "fn": func() -> void:
+		if sv != null:
+			sv.gun_wave_release("%s|1" % side, is_shield)
+		for t in targets:
+			if not (t is Dictionary) or not (t as Dictionary).get("alive", false):
+				continue
+			## 到达时刻 = 距离 ÷ 波速(与演出同一个常量 —— 波扫到谁, 谁那一刻才吃效果)
+			var d: float = origin.distance_to(Vector2((t as Dictionary)["pos"]))
+			battle._pending_shots.append({"delay": d / SynergyVfx.WAVE_SPEED, "src": shooter,
+				"fn": func() -> void:
+					if not (t as Dictionary).get("alive", false):
+						return
+					if is_shield:
+						battle._damage._grant_shield(t, each)
+					else:
+						var dmg: int = maxi(1, int(each))
+						if shooter is Dictionary:
+							battle._damage._apply_damage_from(shooter, t, dmg, Color("#ff5a55"), 0.0, true, true)
+						else:
+							battle._damage._apply_damage(t, dmg, Color("#ff5a55"), true)})
+	})
 	_t2_shield_phase[side] = not is_shield
+	_t2_last[side] = {"shield": is_shield, "energy": energy, "n": targets.size()}
 
 
 ## 炮台位置：按阵营的场地方向排在后方（idx 0=最前 1=中 2=后）。

@@ -77,12 +77,51 @@ func _ready() -> void:
 	ally2["shield"] = 0.0
 	s._gun_syn._t2_acc = 0.0
 	s._gun_syn.tick(5.1)
-	_ok("③ 炮台二(每5秒)·第一拍: 转护盾均摊全队", float(ally2.get("shield", 0.0)) > 0.0,
-		"护盾 %.0f" % float(ally2.get("shield", 0.0)))
+	## ★★2026-08-12 重做: 炮台二不再"调用即到账" —— 先蓄力 CHARGE_SEC, 再释放星浪,
+	##   每个目标等【波扫到它】才吃效果(用户:「炮台也不要直接去放, 而是有个蓄力」
+	##   「波碰到单位才施加效果」)。所以判据分三段量, 不能只看一次调用后的结果。
+	_ok("③ ★蓄力期间【还没到账】(这一拍打算做什么记在 _t2_last, 不靠等演出)",
+		absf(float(ally2.get("shield", 0.0))) < 0.01
+		and bool((s._gun_syn._t2_last.get("left", {}) as Dictionary).get("shield", false)),
+		"护盾 %.1f · 记账 %s" % [float(ally2.get("shield", 0.0)), str(s._gun_syn._t2_last.get("left", {}))])
+	## 推进 sim 定时器: 蓄力 0.55 秒 + 波从炮位走到友军的时间
+	var d_ally: float = s._gun_syn._turret_pos("left", 1).distance_to(Vector2(ally2["pos"]))
+	var need: float = SynergyVfx.CHARGE_SEC + d_ally / SynergyVfx.WAVE_SPEED + 0.05
+	var steps: int = int(ceil(need / 0.02))
+	for _i in range(steps):
+		s._ballistics._step_pending_shots(0.02)
+	_ok("③ 炮台二(每5秒)·第一拍: 波扫到后转护盾均摊全队", float(ally2.get("shield", 0.0)) > 0.0,
+		"护盾 %.0f(等了 %.2f 秒: 蓄力 %.2f + 波程 %.0f 码)"
+		% [float(ally2.get("shield", 0.0)), need, SynergyVfx.CHARGE_SEC, d_ally])
+	## ★波是【由近及远】到的: 造一近一远两个友军, 近的先拿到盾
+	var near_a := _mk("left", [])
+	var far_a := _mk("left", [])
+	near_a["pos"] = s._gun_syn._turret_pos("left", 1) + Vector2(60.0, 0.0)
+	far_a["pos"] = s._gun_syn._turret_pos("left", 1) + Vector2(560.0, 0.0)
+	near_a["shield"] = 0.0
+	far_a["shield"] = 0.0
+	_run(s, [c2, near_a, far_a, _mk("left", G.slice(3, 6)), foe2])
+	s._gun_syn.clear()
+	s._gun_syn._t2_shield_phase["left"] = true
+	s._gun_syn._t2_acc = 0.0
+	s._gun_syn.tick(5.1)
+	for _j in range(int(ceil((SynergyVfx.CHARGE_SEC + 0.16) / 0.02))):
+		s._ballistics._step_pending_shots(0.02)
+	var near_first: bool = float(near_a.get("shield", 0.0)) > 0.0 and absf(float(far_a.get("shield", 0.0))) < 0.01
+	_ok("③ ★★波扫到才生效: 近的(60 码)已拿到盾 %.0f, 远的(560 码)还没 %.0f"
+			% [float(near_a.get("shield", 0.0)), float(far_a.get("shield", 0.0))], near_first, "")
+	for _k in range(int(ceil(560.0 / SynergyVfx.WAVE_SPEED / 0.02)) + 6):
+		s._ballistics._step_pending_shots(0.02)
+	_ok("③ ★波走到远处后, 远的也拿到盾 %.0f" % float(far_a.get("shield", 0.0)),
+		float(far_a.get("shield", 0.0)) > 0.0, "")
+	## 第二拍: 相位翻成弹幕(红波打人)
 	var fh: float = float(foe2["hp"])
 	s._gun_syn._t2_acc = 0.0
 	s._gun_syn.tick(5.1)
-	_ok("③ 炮台二(每5秒)·第二拍: 化弹幕打敌方全体", float(foe2["hp"]) < fh,
+	var d_foe: float = s._gun_syn._turret_pos("left", 1).distance_to(Vector2(foe2["pos"]))
+	for _m in range(int(ceil((SynergyVfx.CHARGE_SEC + d_foe / SynergyVfx.WAVE_SPEED + 0.06) / 0.02))):
+		s._ballistics._step_pending_shots(0.02)
+	_ok("③ 炮台二(每5秒)·第二拍: 化弹幕打敌方全体(波扫到才掉血)", float(foe2["hp"]) < fh,
 		"敌掉 %.0f" % (fh - float(foe2["hp"])))
 	# 对照: 3 件时没有第二座
 	var c3 := _mk("left", G.slice(0, 3))
@@ -94,6 +133,9 @@ func _ready() -> void:
 	ally3["shield"] = 0.0
 	s._gun_syn._t2_acc = 0.0
 	s._gun_syn.tick(5.1)
+	## ★对照组也要把定时器推完 —— 否则"没护盾"可能只是"还没到账", 那就是个假对照
+	for _n in range(int(ceil((SynergyVfx.CHARGE_SEC + 2.0) / 0.02))):
+		s._ballistics._step_pending_shots(0.02)
 	_ok("③ ★对照: 3 件时【没有】第二座炮台(不给护盾)",
 		absf(float(ally3.get("shield", 0.0))) < 0.5, "护盾 %.0f" % float(ally3.get("shield", 0.0)))
 

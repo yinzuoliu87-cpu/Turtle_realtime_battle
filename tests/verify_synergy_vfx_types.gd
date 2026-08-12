@@ -212,22 +212,38 @@ func _g4_real_paths() -> void:
 	# ── 枪·第二座(两个相位各跑一次, 必须分得开) ──────────────────
 	await _reset()
 	_s._gun_syn._t2_shield_phase["left"] = true
-	_s._gun_syn._turret_two("left")
-	var band_shield: int = _count("energy_band")
-	var ring_shield: int = _count("ground_ring")
-	var spark_shield: int = _count("spark_burst")
-	await _reset()
-	_s._gun_syn._t2_shield_phase["left"] = false
-	_s._gun_syn._turret_two("left")
-	var band_barrage: int = _count("energy_band")
-	var ring_barrage: int = _count("ground_ring")
-	var spark_barrage: int = _count("spark_burst")
-	print("     护盾相位: 带%d 环%d 火花%d   ｜  弹幕相位: 带%d 环%d 火花%d" % [
-		band_shield, ring_shield, spark_shield, band_barrage, ring_barrage, spark_barrage])
-	_ok("④ 枪·第二座: 护盾相位向友军辐射(带 ≥1)", band_shield >= 1)
-	_ok("④ 枪·第二座: 弹幕相位向敌方辐射(带 ≥1)", band_barrage >= 1)
-	_ok("④ ★★两个相位【画的东西不一样】(护盾=环 / 弹幕=火花) —— 这条效果的核心信息就是相位可辨",
-		ring_shield >= 1 and spark_shield == 0 and spark_barrage >= 1 and ring_barrage == 0)
+	## ★★2026-08-12 炮台二重做(用户:「不应该有炮管, 而是放射性炮台 …… 放盾白色冲击波,
+	##   打伤害红色冲击波, 炮台本身的颜色也变红变白 …… 有个蓄力, 然后释放」):
+	##   相位不再靠"环 vs 火花"表达, 而是【白波 / 红波 + 炮台本体换色】。判据随之改写。
+	var sv2 = _s._vfx._syn
+	sv2.gun_turret_ensure("left|1", _s._gun_syn._turret_pos("left", 1), 1)
+	## ① 护盾相位: 蓄力 → 炮台变【白】
+	sv2.gun_wave_charge("left|1", true)
+	var col_shield: Color = (sv2._turrets["left|1"]["mat_r"] as StandardMaterial3D).albedo_color
+	## ② 弹幕相位: 蓄力 → 炮台变【红】
+	sv2.gun_wave_charge("left|1", false)
+	var col_dmg: Color = (sv2._turrets["left|1"]["mat_r"] as StandardMaterial3D).albedo_color
+	print("     炮台本体色: 护盾相位 rgb(%.2f,%.2f,%.2f) ｜ 弹幕相位 rgb(%.2f,%.2f,%.2f)" % [
+		col_shield.r, col_shield.g, col_shield.b, col_dmg.r, col_dmg.g, col_dmg.b])
+	_ok("④ 枪·第二座 ★炮台本体【护盾相位=白】(g/b 都高)",
+		col_shield.g > 0.85 and col_shield.b > 0.85)
+	_ok("④ 枪·第二座 ★炮台本体【弹幕相位=红】(r 高而 g/b 低)",
+		col_dmg.r > 0.85 and col_dmg.g < 0.5 and col_dmg.b < 0.5)
+	_ok("④ ★★两个相位【颜色真的不一样】—— 相位可辨是这条效果的核心信息",
+		absf(col_shield.g - col_dmg.g) > 0.4)
+	## ③ 释放: 星浪节点真的建出来, 且两个相位的波色不同
+	var w_s: Dictionary = sv2.gun_wave_release("left|1", true)
+	var w_d: Dictionary = sv2.gun_wave_release("left|1", false)
+	_ok("④ 枪·第二座 ★释放真的建出星浪(白/红各一道)",
+		is_instance_valid(w_s.get("node", null)) and is_instance_valid(w_d.get("node", null)))
+	_ok("④ 枪·第二座 ★白波 vs 红波的波色不同",
+		absf((w_s.get("col", Color.WHITE) as Color).g - (w_d.get("col", Color.WHITE) as Color).g) > 0.4)
+	## ④ 波【会扩散】: 推进后半径真的变大(它是"扫到才生效"的那把尺子)
+	var r0: float = SynergyVfx.wave_radius(0.05)
+	var r1: float = SynergyVfx.wave_radius(0.40)
+	_ok("④ 枪·第二座 ★波在扩散: r(0.05)=%.0f 码 → r(0.40)=%.0f 码(速度 %.0f 码/秒)"
+			% [r0, r1, SynergyVfx.WAVE_SPEED],
+		r1 > r0 and absf(r1 - r0 - SynergyVfx.WAVE_SPEED * 0.35) < 1.0)
 
 	# ── 法器·共鸣 ──────────────────────────────────────────────────
 	await _reset()
