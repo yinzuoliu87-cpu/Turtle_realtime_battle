@@ -7,6 +7,8 @@ const W := 1280.0
 const H := 720.0
 ## 装备逐星属性表 —— 与战斗实装/背包/图鉴【同一张表】(CLAUDE.md §1: 装备属性的真事实源)
 const EquipStats = preload("res://scripts/gamedata/equip_stats.gd")
+## 类型羁绊: 阈值/档位/类型映射 —— 与背包羁绊面板/战斗侧同一份(2026-08-11 商店信息栏显示羁绊)
+const Phase2Types = preload("res://scripts/gamedata/phase2_types.gd")
 ## 深海币图标 —— 复用主菜单那张(MainMenuScene:564 `mic + "ic-deepsea.png"`)。
 ## ★用户 2026-07-28「深海币可以复用吧」: 商店原先 6 处全在打 emoji 💠(方片), 而主菜单/局内
 ##   是这枚螺旋贝币 —— 同一种货币两套视觉。emoji 还随系统字体变, 换机器就换样。
@@ -682,6 +684,23 @@ func _build_detail_panel() -> void:
 	cl.position = Vector2(112, 70); cl.size = Vector2(160, 22)
 	box.add_child(cl)
 
+	# ★羁绊小签(2026-08-11 用户: 「商店页面的信息栏优化, 要去显示羁绊」):
+	#   费用行右侧一眼可见【类型 ×现有件数 · 档位】; 完整阈值与"装上后升不升档"在描述区首行。
+	var syn: Dictionary = _synergy_info(str(edef.get("id", "")))
+	if not syn.is_empty():
+		var sg := Label.new()
+		sg.text = "%s%s ×%d·%s" % [str(syn["emoji"]), str(syn["name"]), int(syn["count"]),
+			("档%d" % int(syn["tier"])) if int(syn["tier"]) > 0 else "未激活"]
+		sg.add_theme_font_size_override("font_size", 13)
+		sg.add_theme_color_override("font_color",
+			Color("#ffd93d") if int(syn["tier"]) > 0 else Color("#7a92a8"))
+		sg.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		## ★Label 会被字体最小宽度撑破给定 size(实测 15 号字撑到 201px, 右沿压进面板框边)
+		##   ⇒ 定宽 + clip_text 双保险; 门禁⑧量的是真实节点矩形, 压框直接红。
+		sg.clip_text = true
+		sg.position = Vector2(205, 72); sg.size = Vector2(PANEL_W - 34 - 205, 20)
+		box.add_child(sg)
+
 	_panel_sep(box, 104)
 
 	# ★完整效果描述(常驻可见) —— 富文本走 RichTextLabel, 与图鉴同口径
@@ -692,7 +711,7 @@ func _build_detail_panel() -> void:
 	# 字号 16 → 18(用户 2026-07-28:「这么小的字?」)。卡面摘要砍掉后, 完整描述全靠这一块。
 	desc.add_theme_font_size_override("normal_font_size", 20)
 	desc.position = Vector2(34, 112); desc.size = Vector2(PANEL_W - 68, 264)
-	desc.text = _rich_desc(edef, own_star if own_mode else 1)
+	desc.text = _synergy_bbcode(syn) + _rich_desc(edef, own_star if own_mode else 1)
 	box.add_child(desc)
 	# ★59 件里有 1 件(玩偶小熊 297px > 框 230)一屏放不下 —— 门禁⑥量出来的。
 	#   不加提示的话, 玩家看到的是"描述断在半句", 会以为是 bug 而不是"可以滚"。
@@ -838,6 +857,60 @@ func _panel_sep(parent: Control, y: float) -> Control:
 	ln.position = Vector2(34, y); ln.size = Vector2(PANEL_W - 68, 1)
 	parent.add_child(ln)
 	return ln
+
+
+## 这件装备的羁绊信息(2026-08-11 用户: 「商店页面的信息栏优化, 要去显示羁绊」)。
+## 返回 {} = 无类型(不显示)。count/tier 是【队伍已装上】的现状(替补席不算 · id 去重),
+## 口径 = GameState.team_p2_equips_for_synergy + Phase2Types.calc_active(背包/战斗同一份)。
+func _synergy_info(eid: String) -> Dictionary:
+	var typ: String = Phase2Types.type_of(eid)
+	if typ == "" or not Phase2Types.TYPES.has(typ):
+		return {}
+	var seen: Dictionary = {}
+	var n := 0
+	for it in GameState.team_p2_equips_for_synergy():
+		if not (it is Dictionary):
+			continue
+		var iid := str((it as Dictionary).get("id", ""))
+		if iid == "" or seen.has(iid):
+			continue
+		seen[iid] = true
+		if Phase2Types.type_of(iid) == typ:
+			n += 1
+	var tiers: Array = (Phase2Types.TYPES[typ] as Dictionary).get("tiers", [])
+	var tier := 0
+	for i in range(tiers.size()):
+		if n >= int(tiers[i]):
+			tier = i + 1
+	# 装上后(去重: 已拥有同款 id 时 +0)
+	var owned: bool = seen.has(eid)
+	var n2: int = n if owned else n + 1
+	var tier2 := 0
+	for i in range(tiers.size()):
+		if n2 >= int(tiers[i]):
+			tier2 = i + 1
+	return {"type": typ, "name": Phase2Types.display_name(typ), "emoji": Phase2Types.emoji_of(typ),
+		"tiers": tiers, "count": n, "tier": tier, "owned": owned, "count2": n2, "tier2": tier2}
+
+
+## 描述区首行的羁绊详情(bbcode)。空信息返回空串(描述原样)。
+func _synergy_bbcode(syn: Dictionary) -> String:
+	if syn.is_empty():
+		return ""
+	var parts: PackedStringArray = []
+	for t in (syn["tiers"] as Array):
+		parts.append(str(int(t)))
+	var line := "[color=#58d3ff]羁绊·%s%s[/color]  阈值 %s · 队伍现有 ×%d(%s)" % [
+		str(syn["emoji"]), str(syn["name"]), "/".join(parts), int(syn["count"]),
+		("档%d" % int(syn["tier"])) if int(syn["tier"]) > 0 else "未激活"]
+	var second := ""
+	if bool(syn["owned"]):
+		second = "[color=#8fa2b5]已有同款 —— 羁绊按种类去重, 重复买不涨羁绊数[/color]"
+	elif int(syn["tier2"]) > int(syn["tier"]):
+		second = "[color=#7fe39a]买入并装上 → ×%d · 升到档%d[/color]" % [int(syn["count2"]), int(syn["tier2"])]
+	else:
+		second = "买入并装上 → ×%d" % int(syn["count2"])
+	return line + "\n" + second + "\n\n"
 
 
 ## 完整描述。★实测: 59 件装备的 effectDesc1 【全是纯文本】—— 无 HTML 标签、无方括号

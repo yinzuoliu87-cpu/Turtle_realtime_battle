@@ -8,18 +8,9 @@ var host
 func _init(b) -> void:
 	host = b
 
+## ★2026-08-11 收拢进 GameState.team_p2_equips_for_synergy(商店羁绊信息栏也要用同一份口径)。
 func _team_equips_for_synergy() -> Array:
-	var all_equips: Array = []
-	for pid in host._lineup_ids():
-		for it in GameState.persistent_equipped.get(str(pid), []):
-			all_equips.append(it)
-	var lineup = GameState.get_dual_lineup()
-	for lk in ["top", "bottom"]:
-		for u in lineup.get(lk, []):
-			if u is Dictionary and str(u.get("kind", "")) == "minion" and u.get("equips", null) is Array:
-				for it in u.get("equips", []):
-					all_equips.append(it)
-	return all_equips
+	return GameState.team_p2_equips_for_synergy()
 
 # 右侧类型羁绊(大改): 只显名称+档位, 点击弹框看完整效果; 计入小将装备.
 # 右侧类型羁绊(大改): 只显名称+档位, 点击弹框看完整效果; 计入小将装备.

@@ -28,6 +28,7 @@ class_name EquipReadouts
 
 
 const COUNT := {   # 头像下装备格右下角层数徽章: id → eq_state层数/计数字段 (刷新.get兜底0)
+	"p2eq_071": "given_n",        # 炼乳罐: 本路已发奶油盾次数 1/2/3(2026-08-11 用户: 图标数字显示已提供护盾次数)
 	"p2eq_034": "bear_layers",      # 大熊层
 	"p2eq_013": "harden_stacks", "p2eq_014": "harden_stacks",   # 硬化层(0-20)
 	"p2eq_024": "dragon_stacks",   # 吐息层(0-3)

@@ -603,6 +603,39 @@ static func _cap_count(arr) -> int:
 	return n
 
 
+## 当前阵容统领 id 列表(season_leaders, 空时回退 lastLineup.json)。
+## ★单一事实源(2026-08-11): 原本只住在 InventoryScene._lineup_ids, 商店羁绊信息栏也要用
+##   ⇒ 提上来共用(memory [[fb-hand-rolled-copies-drift]]: 手抄的副本必然落后)。
+func lineup_leader_ids() -> Array:
+	if season_leaders is Array and (season_leaders as Array).size() > 0:
+		return season_leaders.duplicate()
+	if FileAccess.file_exists("user://lastLineup.json"):
+		var f := FileAccess.open("user://lastLineup.json", FileAccess.READ)
+		if f != null:
+			var parsed = JSON.parse_string(f.get_as_text())
+			f.close()
+			if parsed is Dictionary and (parsed as Dictionary).has("ids"):
+				return (parsed["ids"] as Array).duplicate()
+	return []
+
+
+## 全队(当前统领 + 双路小将)身上的装备清单 —— 【羁绊口径】: 只数已装上的, 替补席不算。
+## ★与背包羁绊面板(InvSynergy)/战斗侧(SynergySystem 数 battle._units)同口径;
+##   计数去重(calc_active 按 id 去重)发生在 Phase2Types, 这里只负责收集。
+func team_p2_equips_for_synergy() -> Array:
+	var all_equips: Array = []
+	for pid in lineup_leader_ids():
+		for it in persistent_equipped.get(str(pid), []):
+			all_equips.append(it)
+	var dl: Dictionary = get_dual_lineup()
+	for lane in ["top", "bottom"]:
+		for u in (dl.get(lane, []) as Array):
+			if u is Dictionary and str((u as Dictionary).get("kind", "")) == "minion" and (u as Dictionary).get("equips", null) is Array:
+				for it in (u as Dictionary).get("equips", []):
+					all_equips.append(it)
+	return all_equips
+
+
 ## 全队(当前 3 统领 + dual_lineup 里的 3 小将)已装备总件数 —— 新规则的分母。
 ## ★只数【当前阵容上】的: persistent_equipped 里可能残留已不在队的老龟, 那些不占容量。
 ## ★羁绊赠送的装备不计入(见上)。

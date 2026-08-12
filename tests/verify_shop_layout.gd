@@ -388,6 +388,31 @@ func _ready() -> void:
 	print("  按钮数 = %d" % nbtn)
 	_chk("⑤ ★分母: 按钮数 > 0 (0 个 = 第②条是空检查)", nbtn > 0)
 
+	# ── ⑫ 羁绊信息(2026-08-11 用户: 商店信息栏要显示羁绊) ──
+	#   口径 = GameState.team_p2_equips_for_synergy(只数已装上·id 去重), 与背包/战斗同一份。
+	#   合成队伍: 3 件弓箭(039/049/054) → 弓箭阈值 [3,6,9] ⇒ ×3 档1。
+	gs.season_leaders = ["synergy_probe_t1"]
+	gs.persistent_equipped["synergy_probe_t1"] = [
+		{"id": "p2eq_039", "star": 1}, {"id": "p2eq_049", "star": 1},
+		{"id": "p2eq_054", "star": 1}, {"id": "p2eq_039", "star": 2}]   # 第4件是重复 id: 去重后仍 ×3
+	var s1: Dictionary = sc._synergy_info("p2eq_073")
+	_chk("⑫ 弓箭 ×3(重复 id 去重) · 档1", int(s1.get("count", -1)) == 3 and int(s1.get("tier", -1)) == 1)
+	_chk("⑫ 未拥有的 073: 买入并装上 → ×4(3+1, 不升档)",
+		bool(s1.get("owned", true)) == false and int(s1.get("count2", -1)) == 4 and int(s1.get("tier2", -1)) == 1)
+	var s2: Dictionary = sc._synergy_info("p2eq_039")
+	_chk("⑫ 已拥有同款 039: 去重 ⇒ 买入不涨(×3 不变)",
+		bool(s2.get("owned", false)) == true and int(s2.get("count2", -1)) == 3)
+	# 凑到 5 件再看一件新的 → ×6 正好跨阈值 ⇒ 升档提示必须出现
+	gs.persistent_equipped["synergy_probe_t1"].append({"id": "p2eq_055", "star": 1})
+	gs.persistent_equipped["synergy_probe_t1"].append({"id": "p2eq_056", "star": 1})
+	var s3: Dictionary = sc._synergy_info("p2eq_073")
+	var bb: String = sc._synergy_bbcode(s3)
+	_chk("⑫ ×5 → 买入装上 ×6 = 升到档2(跨阈值)", int(s3.get("tier2", -1)) == 2)
+	_chk("⑫ bbcode 含阈值 3/6/9 与升档提示", bb.contains("阈值 3/6/9") and bb.contains("升到档2"))
+	var s4: Dictionary = sc._synergy_info("no_such_equip")
+	_chk("⑫ ★分母: 无类型 id → 空(面板不显示羁绊行)", s4.is_empty() and sc._synergy_bbcode(s4) == "")
+	gs.persistent_equipped.erase("synergy_probe_t1")   # 探针队伍清场, 不污染后续用例
+
 	_done(sc)
 
 

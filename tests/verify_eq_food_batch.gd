@@ -392,6 +392,10 @@ func _t071() -> void:
 	_food.tick_unit(c, 0.016)
 	_ok("071 ★每路封顶 3 次: 再掉再多也不给第 4 次", int(stt["given_n"]) == 3,
 		"given_n=%d" % int(stt["given_n"]))
+	# ★图标数字 = 已提供护盾次数(2026-08-11 用户: 「图标那里有个数字表示已提供护盾次数, 1,2,3」):
+	#   走装备格层数徽章 COUNT 通道(用户铁律: 读数不进头顶), 徽章读的正是上面数到 3 的同一个字段。
+	_ok("071 ★装备格徽章接的就是 given_n(已发盾次数, 消费侧 = COUNT 表)",
+		str(_s.PANEL_COUNT.get("p2eq_071", "")) == "given_n", "表值=%s" % str(_s.PANEL_COUNT.get("p2eq_071", "?")))
 
 	# ③-c 破盾: 300 码内敌 70/100/150 魔法伤害 + 持有者整路三样加成
 	var burst := [70.0, 100.0, 150.0]
@@ -521,7 +525,6 @@ func _t072() -> void:
 		var outside: Dictionary = _mk("fortune", "left", Vector2(220.0, y), 2000.0)     # 520 码 > 300
 		inside["hp"] = 1000.0
 		outside["hp"] = 1000.0
-		caster["_box_field_pos"] = caster["pos"]
 		var eb0: float = float(inside.get("energy_bank", 0.0))
 		_food.box_field_pulse(caster, si)
 		_ok("072 si=%d 法阵每秒回 %.0f 生命(300 码内友军)" % [si, fheal[si]],
@@ -531,6 +534,14 @@ func _t072() -> void:
 			float(inside.get("energy_bank", 0.0)) >= eb0, "")
 		_ok("072 si=%d ★分母: 300 码外的友军一点没回" % si,
 			absf(float(outside["hp"]) - 1000.0) < 0.51, "实测 %.1f" % (float(outside["hp"]) - 1000.0))
+		# ★法阵跟随携带者(2026-08-11 用户拍板「是要跟随的」): 施法者走远后再结算,
+		#   判定中心必须是【当前】位置 —— 原来圈内的友军现在圈外, 一滴都不该回。
+		inside["hp"] = 1000.0
+		caster["pos"] = caster["pos"] + Vector2(2000.0, 0.0)
+		_food.box_field_pulse(caster, si)
+		_ok("072 si=%d ★法阵跟人走: 施法者挪走 2000 码后结算, 原圈内友军一点没回" % si,
+			absf(float(inside["hp"]) - 1000.0) < 0.51, "实测 %.1f" % (float(inside["hp"]) - 1000.0))
+		caster["pos"] = caster["pos"] - Vector2(2000.0, 0.0)
 
 	# ④-f 破盾 → 出盒: 属性还原 + 锁定双抗撤掉 + 本路不再变回
 	var ub: Dictionary = _equip(_mk("fortune", "left", Vector2(300.0, -120.0), 2000.0), "p2eq_072", 3)
@@ -870,6 +881,87 @@ func _t_vfx_art() -> void:
 		absf(rh / maxf(rf, 1e-9) - 0.5) < 1e-4, "%.4f / %.4f" % [rh, rf])
 	_ok("⑦-6 071 破壳环的世界半径 = 300 码(AOE 半径本身)",
 		absf(rf - 300.0 * float(_s.WS)) < 1e-4, "%.4f / %.4f" % [rf, 300.0 * float(_s.WS)])
+	# ⑦-6b 071 破壳的洞缘奶油滴(2026-08-11 补验收加): 12 颗真实 Sprite3D 挂进 _world,
+	#   x=0.5 时钉在洞缘(半径 150 码), 不是"函数被调过"
+	var tc_drops: Array = hb.get("drops", [])
+	var drops_in_w := 0
+	for dsp in tc_drops:
+		if is_instance_valid(dsp) and dsp.is_inside_tree() and is_same(dsp.get_parent(), w):
+			drops_in_w += 1
+	_ok("⑦-6b 071 破壳奶油滴 12/12 真的挂进 _world", drops_in_w == 12, "实测 %d" % drops_in_w)
+	if tc_drops.size() == 12 and is_instance_valid(tc_drops[0]):
+		vfx.tc_apply_at(hb, 0.5)
+		var d0 = tc_drops[0]
+		var want_p: Vector3 = _s._world_pos(Vector2(40.0, 0.0) + Vector2(150.0, 0.0), 0.0)   # i=0 ⇒ 角 0 ⇒ 正右 150 码
+		var dxz: float = Vector2(d0.position.x - want_p.x, d0.position.z - want_p.z).length()
+		_ok("⑦-6c 071 ★量真实节点: x=0.5 时第 0 颗滴的水平位置钉在洞缘(中心+150 码处)",
+			dxz < 1e-3, "偏差 %.5f m" % dxz)
+	# ⑦-6d 071 奶油壳不再是发光白球(用户明令禁白球敷衍): 26×14 手画像素奶油(垂坠圆瓣),
+	#   NEAREST 采样, 真的挂进 _world 且跟随单位
+	var shu: Dictionary = _mk("fortune", "left", Vector2(520.0, -250.0), 1000.0)
+	var shh: Dictionary = vfx.cream_shell_make(shu)
+	var shs = shh.get("spr", null)
+	_ok("⑦-6d 071 奶油壳 Sprite 真的挂进 _world",
+		is_instance_valid(shs) and shs.is_inside_tree() and is_same(shs.get_parent(), w), "")
+	if is_instance_valid(shs):
+		var stex = shs.texture
+		_ok("⑦-6e 071 ★壳贴图是 26×14 手画像素(不是 96×96 的 glow 球贴图)",
+			stex != null and stex.get_width() == 26 and stex.get_height() == 14,
+			"实测 %dx%d" % [stex.get_width() if stex != null else -1, stex.get_height() if stex != null else -1])
+		_ok("⑦-6f 071 壳贴图 NEAREST 采样(像素感, 不糊)",
+			shs.texture_filter == BaseMaterial3D.TEXTURE_FILTER_NEAREST, "")
+	vfx.cream_shell_free(shh)
+	# ⑦-6g 071 奶油护盾进血条(特殊护盾给特殊颜色护盾条 —— 068 法力盾定的规矩):
+	#   量真实 ColorRect 的位置/宽度, 0 时必须隐藏
+	var cbu: Dictionary = _mk("fortune", "left", Vector2(560.0, -250.0), 1000.0)
+	cbu["hp"] = 500.0
+	vfx.cream_bar_update(cbu, 200.0)
+	var crect = cbu.get("_cream_rect", null)
+	var croot = cbu.get("bar_root", null)
+	_ok("⑦-6g 071 奶油盾段真的是血条 Control 的子节点",
+		is_instance_valid(crect) and is_instance_valid(croot) and is_same(crect.get_parent(), croot)
+		and crect.is_inside_tree(), "")
+	if is_instance_valid(crect):
+		_ok("⑦-6h 071 ★量真实节点: hp 50%% / 盾 20%% ⇒ x=33.0 宽=13.2(血条宽 66)",
+			absf(crect.position.x - 33.0) < 0.51 and absf(crect.size.x - 13.2) < 0.51,
+			"x=%.2f w=%.2f" % [crect.position.x, crect.size.x])
+		vfx.cream_bar_update(cbu, 0.0)
+		_ok("⑦-6i 071 ★分母: 盾 0 时段隐藏(不留空条)", not crect.visible, "")
+	# ⑦-6j 段几何纯函数: 排在 before 之后 + 钳在条内(供 072 终极盾段共用同一把尺)
+	var sg: Array = FoodEqVfx.shield_seg_rect(66.0, 500.0, 1000.0, 200.0, 300.0)
+	_ok("⑦-6j 071 段几何: hp 50%% + 前段 20%% + 本段 30%% ⇒ x0=46.2 宽=19.8",
+		absf(float(sg[0]) - 46.2) < 0.01 and absf(float(sg[1]) - 19.8) < 0.01,
+		"x0=%.2f w=%.2f" % [float(sg[0]), float(sg[1])])
+	var sg2: Array = FoodEqVfx.shield_seg_rect(66.0, 900.0, 1000.0, 0.0, 800.0)
+	_ok("⑦-6k 071 段几何 ★钳在血条内: 盾比余量多时不画出右边界",
+		float(sg2[0]) + float(sg2[1]) <= 66.0 + 0.01,
+		"x0=%.2f w=%.2f" % [float(sg2[0]), float(sg2[1])])
+	# ⑦-6l~6m 壳【不随盾量缩小】+ 破盾走【炸开】(2026-08-11 用户钉死:「不要做那种被打缩小的」)
+	var nsu: Dictionary = _equip(_mk("fortune", "left", Vector2(600.0, -250.0), 1000.0), "p2eq_071", 3)
+	_food.tick_unit(nsu, 0.016)
+	var nsh = nsu.get("_cream_shell", null)
+	var nspr = (nsh as Dictionary).get("spr", null) if nsh is Dictionary else null
+	var sc_full: float = nspr.scale.x if is_instance_valid(nspr) else -1.0
+	var nbal: float = _s._spec.val(nsu, "p2eq_071_cream")
+	_s._spec.absorb(nsu, nbal - 1.0)          # 盾从满打到只剩 1 点
+	_food.tick_unit(nsu, 0.016)
+	var sc_low: float = nspr.scale.x if is_instance_valid(nspr) else -2.0
+	_ok("⑦-6l 071 ★盾满→只剩 1 点, 壳保持全尺寸(呼吸 ±3%% 内, 绝不随盾量缩小)",
+		sc_full > 0.94 and sc_low > 0.94 and absf(sc_full - sc_low) < 0.07,
+		"满盾 scale=%.4f · 1点盾 scale=%.4f" % [sc_full, sc_low])
+	var live_tc0: int = _count_live_kind("tc")
+	_s._spec.absorb(nsu, 10.0)                # 打光 → SpecialBalance 触发 on_break
+	_food.tick_unit(nsu, 0.016)               # 壳回收在携带者 tick 的友军巡回里
+	_ok("⑦-6m 071 ★破盾走【炸开】路径: tc 破膜句柄 +1 且壳被整只收走(不是缩小消失)",
+		_count_live_kind("tc") == live_tc0 + 1 and not nsu.has("_cream_shell"),
+		"tc句柄 %d→%d · 壳键还在=%s" % [live_tc0, _count_live_kind("tc"), str(nsu.has("_cream_shell"))])
+	# ⑦-6n 盾条颜色 = 奶黄(炼乳金): 与圣盾白黄段 #fff4c0 拉得开(用户点名要分得清的特殊护盾条)
+	if is_instance_valid(crect):
+		var cc: Color = crect.color
+		var d_holy: float = absf(cc.r - 1.0) + absf(cc.g - 0.957) + absf(cc.b - 0.753)
+		_ok("⑦-6n 071 盾条是奶黄(R1.0 G0.85 B0.56)且与圣盾白黄距离 > 0.15",
+			absf(cc.r - 1.0) < 0.02 and absf(cc.g - 0.85) < 0.02 and absf(cc.b - 0.56) < 0.02
+			and d_holy > 0.15, "实测 (%.2f, %.2f, %.2f) · 与圣盾差 %.3f" % [cc.r, cc.g, cc.b, d_holy])
 
 	# ⑦-7 072 嘲讽环: 半径 = 550 码, 亮度随锁定人数升
 	var bx: Dictionary = _equip(_mk("fortune", "left", Vector2(500.0, 200.0), 2000.0), "p2eq_072", 3)
@@ -885,6 +977,154 @@ func _t_vfx_art() -> void:
 	var a6: float = (ring.material_override as StandardMaterial3D).albedo_color.a
 	_ok("⑦-9 072 ★双抗有视觉反馈: 0 人锁定 → 6 人锁定, 环的不透明度真的从 %.2f 升到 %.2f" % [a0, a6],
 		a6 > a0 + 0.3, "")
+	# ⑦-9b 072 盖子开合用【礼盒立绘】不是白圆盘(2026-08-11 补验收: 白盘属"白球/圆盘敷衍"族)
+	vfx.box_close_fx(bx)
+	var lid_h: Dictionary = {}
+	for lh in _food._vfx._live:
+		if str(lh.get("kind", "")) == "lid":
+			lid_h = lh   # 取最后一个 lid 句柄
+	var lid_spr = lid_h.get("spr", null)
+	_ok("⑦-9b 072 盖子贴图是 64×64 礼盒立绘(不是 128×128 disc)",
+		is_instance_valid(lid_spr) and lid_spr.texture != null
+		and lid_spr.texture.get_width() == 64 and lid_spr.texture.get_height() == 64, "")
+	# ⑦-9c 072 蛋糕法阵: 环沿 8 颗粉霜奶糕真的在 _world, 且钉在 300 码半径上
+	var fd_u: Dictionary = _mk("fortune", "left", Vector2(100.0, 100.0), 2000.0)
+	var fd_h: Dictionary = vfx.cake_field_fx(fd_u, 5.0)
+	var fdeco: Array = fd_h.get("deco", [])
+	var fd_in_w := 0
+	var fd_on_rim := true
+	## ★中心读【单位当前位置】—— `_mk` 收的是相对竞技场中心的偏移, 写死 (100,100) 会错位
+	##   (法阵改跟随后中心就是携带者本人, 硬编码的绝对坐标不再等价)。
+	var fd_center: Vector3 = _s._world_pos(fd_u["pos"], 0.0)
+	for dp in fdeco:
+		if is_instance_valid(dp) and dp.is_inside_tree() and is_same(dp.get_parent(), w):
+			fd_in_w += 1
+			var fd_r: float = Vector2(dp.position.x - fd_center.x, dp.position.z - fd_center.z).length()
+			if absf(fd_r - 300.0 * float(_s.WS)) > 1e-3:
+				fd_on_rim = false
+	_ok("⑦-9c 072 法阵奶糕 8/8 真的挂进 _world 且全部钉在 300 码环沿",
+		fd_in_w == 8 and fd_on_rim, "in_world=%d on_rim=%s" % [fd_in_w, str(fd_on_rim)])
+	# ⑦-9c2~9c4 法阵二轮(2026-08-11 用户: 素圈「很敷衍」): 波浪裱花外环 + 会转的辐条层 + 不许白
+	var fd_ring = fd_h.get("ring", null)
+	var fd_sp = fd_h.get("spokes", null)
+	_ok("⑦-9c2 072 法阵辐条层真的挂进 _world(素圈没有第二层)",
+		is_instance_valid(fd_sp) and fd_sp.is_inside_tree() and is_same(fd_sp.get_parent(), w), "")
+	var rot0: float = fd_sp.rotation.y if is_instance_valid(fd_sp) else -1.0
+	vfx.tick(0.5)
+	var rot1: float = fd_sp.rotation.y if is_instance_valid(fd_sp) else -1.0
+	_ok("⑦-9c3 072 ★法阵是活的: 辐条层 0.5 秒转过 %.3f rad(= FIELD_SPIN×0.5, 素圈转不起来)" % absf(rot1 - rot0),
+		absf((rot1 - rot0) - FoodEqVfx.FIELD_SPIN * 0.5) < 1e-4, "rot %.4f→%.4f" % [rot0, rot1])
+	if is_instance_valid(fd_ring):
+		var fc: Color = (fd_ring.material_override as StandardMaterial3D).albedo_color
+		_ok("⑦-9c4 072 ★法阵环是蛋糕粉不是白圈(G 通道 %.2f ≤ 0.55, 旧版 0.80 被泛光洗白)" % fc.g,
+			fc.g <= 0.55 and fc.r > 0.9 and fc.b > fc.g, "r=%.2f g=%.2f b=%.2f" % [fc.r, fc.g, fc.b])
+	# 外沿波瓣的均值仍 = 判定半径: 采样网格外沿顶点半径, 均值必须回到 1.0(缩放前)
+	if is_instance_valid(fd_ring):
+		var faces2: PackedVector3Array = (fd_ring.mesh as ArrayMesh).get_faces()
+		var rsum := 0.0
+		var rn := 0
+		var rmax := 0.0
+		for vi in range(faces2.size()):
+			var rr: float = Vector2(faces2[vi].x, faces2[vi].z).length()
+			if rr > 0.94:   # 只统计外沿顶点(内沿 0.88)
+				rsum += rr
+				rn += 1
+				rmax = maxf(rmax, rr)
+		_ok("⑦-9c5 072 ★裱花波瓣是装饰不是改判定: 外沿均值 %.4f ≈ 1.000(±3%% 波动, 峰值 %.3f)" % [rsum / maxf(float(rn), 1.0), rmax],
+			rn > 0 and absf(rsum / maxf(float(rn), 1.0) - 1.0) < 0.01, "")
+	# ⑦-9c6 演出【真的跟着人走】(2026-08-11 用户: 「法阵没有随着礼盒移动吗」):
+	#   量的是真实节点的世界坐标, 不是"存了个 unit 引用"。三层(环/辐条/奶糕)一起跟。
+	fd_u["pos"] = fd_u["pos"] + Vector2(400.0, 0.0)
+	vfx.tick(0.016)
+	var want_c: Vector3 = _s._world_pos(fd_u["pos"], 0.0)
+	var fd_sp2 = fd_h.get("spokes", null)
+	var d_ring: float = Vector2(fd_ring.position.x - want_c.x, fd_ring.position.z - want_c.z).length() if is_instance_valid(fd_ring) else 999.0
+	var d_spk: float = Vector2(fd_sp2.position.x - want_c.x, fd_sp2.position.z - want_c.z).length() if is_instance_valid(fd_sp2) else 999.0
+	var deco_ok := true
+	var fdeco2: Array = fd_h.get("deco", [])
+	for di2 in range(fdeco2.size()):
+		var dp2 = fdeco2[di2]
+		if is_instance_valid(dp2):
+			var dr2: float = Vector2(dp2.position.x - want_c.x, dp2.position.z - want_c.z).length()
+			if absf(dr2 - 300.0 * float(_s.WS)) > 1e-3:
+				deco_ok = false
+	_ok("⑦-9c6 072 ★法阵跟人走(真实节点世界坐标): 携带者挪 400 码后环/辐条中心偏差 %.5f/%.5f m ≈ 0" % [d_ring, d_spk],
+		d_ring < 1e-3 and d_spk < 1e-3, "")
+	_ok("⑦-9c7 072 ★跟随后 8 颗奶糕仍钉在新中心的 300 码环沿(整块法阵一起搬, 不是只搬环)",
+		deco_ok and fdeco2.size() == 8, "deco=%d" % fdeco2.size())
+	# ⑦-9c8~9c12 出盒烟雾爆开(2026-08-11 用户点名): 真节点 + 减速扩散 + 卷吸膨胀 + 不许一出生就淡
+	var smu: Dictionary = _mk("fortune", "left", Vector2(-420.0, 320.0), 2000.0)
+	var smk: Array = vfx.unbox_smoke(smu)
+	var sm_in := 0
+	for sp5 in smk:
+		if is_instance_valid(sp5) and sp5.is_inside_tree() and is_same(sp5.get_parent(), w):
+			sm_in += 1
+	_ok("⑦-9c8 072 出盒烟雾 %d 团真的挂进 _world" % sm_in, sm_in == FoodEqVfx.SMOKE_N,
+		"in_world=%d / %d" % [sm_in, FoodEqVfx.SMOKE_N])
+	_ok("⑦-9c9 072 烟团贴图是 13×13 手画絮团(不是 disc/glow 白球)",
+		smk.size() > 0 and smk[0].texture != null
+		and smk[0].texture.get_width() == 13 and smk[0].texture.get_height() == 13, "")
+	# 减速扩散: 匀速时 r(2Δ)/r(Δ) 恰为 2, 带阻力必须【明显小于 2】
+	var r1: float = FoodEqVfx.smoke_radius(0.10)
+	var r2: float = FoodEqVfx.smoke_radius(0.20)
+	_ok("⑦-9c10 072 ★烟是被空气拖住的: r(0.2)/r(0.1) = %.3f < 2.000(匀速环恰好 2)" % (r2 / maxf(r1, 1e-9)),
+		r2 / maxf(r1, 1e-9) < 1.75 and r2 > r1, "r1=%.2f r2=%.2f" % [r1, r2])
+	# 卷吸膨胀 ∝ √x: (d(4x)−D0)/(d(x)−D0) = 2
+	var d1: float = FoodEqVfx.smoke_diam(0.1) - FoodEqVfx.SMOKE_D0
+	var d4: float = FoodEqVfx.smoke_diam(0.4) - FoodEqVfx.SMOKE_D0
+	_ok("⑦-9c11 072 ★卷吸: 团径增量 d(0.4)/d(0.1) = %.4f ≈ 2.000(∝√x)" % (d4 / maxf(d1, 1e-9)),
+		absf(d4 / maxf(d1, 1e-9) - 2.0) < 1e-3, "")
+	# 前 70% 满亮 + 真实节点确实在长大、在往外走
+	var sp0 = smk[0]
+	var p_born: Vector3 = sp0.position
+	vfx.tick(0.30)
+	var moved: float = Vector2(sp0.position.x - p_born.x, sp0.position.z - p_born.z).length()
+	_ok("⑦-9c12 072 ★量真实节点: 0.3 秒后烟团外移 %.3f m 且放大 %.2f×, 此刻仍满亮(a=%.2f)"
+		% [moved, sp0.scale.x, sp0.modulate.a],
+		moved > 0.5 and sp0.scale.x > 1.3 and sp0.modulate.a > 0.99, "")
+	# 出盒【真的会】放烟(不是只写了函数没人调) —— 走真实回调 _box_unbox
+	var ubx: Dictionary = _equip(_mk("fortune", "left", Vector2(-460.0, 380.0), 2000.0), "p2eq_072", 3)
+	_food.tick_unit(ubx, 0.016)
+	var sm_live0: int = _count_live_kind("smoke")
+	_s._spec.absorb(ubx, _s._spec.val(ubx, "p2eq_072_ult") + 10.0)
+	_ok("⑦-9c13 072 ★破盾出盒【真的】放烟(走 SpecialBalance 回调, 不是死函数): smoke 句柄 %d→%d"
+		% [sm_live0, _count_live_kind("smoke")],
+		_count_live_kind("smoke") >= sm_live0 + FoodEqVfx.SMOKE_N
+		and int(ubx.get("_cake_unboxed_n", 0)) == 1, "")
+	# ⑦-9d 072 法阵滴答读数: box_field_pulse 给圈内友军升起小奶糕(healdrop 句柄)
+	var hd0: int = _count_live_kind("healdrop")
+	var fpu: Dictionary = _equip(_mk("fortune", "left", Vector2(300.0, -300.0), 2000.0), "p2eq_072", 3)
+	var fmate: Dictionary = _mk("fortune", "left", Vector2(340.0, -300.0), 2000.0)
+	fmate["hp"] = 1000.0
+	_food.box_field_pulse(fpu, 2)
+	_ok("⑦-9d 072 每秒滴答有读数: 一次 pulse 后 healdrop 句柄 ≥ +2(施法者+圈内友军各一颗)",
+		_count_live_kind("healdrop") >= hd0 + 2,
+		"%d→%d" % [hd0, _count_live_kind("healdrop")])
+	# ⑦-9e 072 终极护盾进血条(礼盒粉段): 量真实 ColorRect, 0 时隐藏
+	var ubu: Dictionary = _mk("fortune", "left", Vector2(680.0, -250.0), 1000.0)
+	ubu["hp"] = 500.0
+	vfx.ult_bar_update(ubu, 200.0)
+	var urect = ubu.get("_ult_rect", null)
+	_ok("⑦-9e 072 终极盾段真的是血条 Control 的子节点",
+		is_instance_valid(urect) and is_same(urect.get_parent(), ubu.get("bar_root", null)), "")
+	if is_instance_valid(urect):
+		_ok("⑦-9f 072 ★量真实节点: hp 50%% / 盾 20%% ⇒ x=33.0 宽=13.2",
+			absf(urect.position.x - 33.0) < 0.51 and absf(urect.size.x - 13.2) < 0.51,
+			"x=%.2f w=%.2f" % [urect.position.x, urect.size.x])
+		vfx.ult_bar_update(ubu, 0.0)
+		_ok("⑦-9g 072 ★分母: 盾 0 时段隐藏", not urect.visible, "")
+	# ⑦-9h 072 分裂礼盒有真立绘(idle_sd.tex —— 花名册判"有没有美术"的同一把尺),
+	#   不再是队色发光球(_spawn_summon 无 spr_id 的兜底)
+	var spu: Dictionary = _equip(_mk("fortune", "left", Vector2(720.0, -250.0), 1000.0), "p2eq_072", 3)
+	var n_before: int = _s._units.size()
+	_food._eq_cake_split(spu, 2, 3)
+	var sboxes: Array = _s._units.slice(n_before)
+	var sb_ok: bool = sboxes.size() == 2
+	for sb in sboxes:
+		var sbt = ((sb as Dictionary).get("idle_sd", {}) as Dictionary).get("tex", null)
+		if sbt == null or sbt.get_width() != 64 or sbt.get_height() != 64:
+			sb_ok = false
+	_ok("⑦-9h 072 分裂礼盒 2/2 有真立绘(idle_sd.tex 64×64)", sb_ok, "boxes=%d" % sboxes.size())
 
 	# ⑦-10 069 头顶三块糕: 剩几块就显示几块(用户要的"吃掉的过程可见")
 	var ck: Dictionary = _equip(_mk("fortune", "left", Vector2(540.0, -200.0), 1000.0), "p2eq_069", 3)
@@ -930,3 +1170,12 @@ func _grey_hidden(vfx, u: Dictionary) -> bool:
 	vfx.grey_bar_update(u, 0.0)
 	var rect = u.get("_grey_rect", null)
 	return is_instance_valid(rect) and not rect.visible
+
+
+## 数 FoodEqVfx._live 里某种演出句柄的个数(⑦-6m 用: 破盾必须走 burst 路径)
+func _count_live_kind(kind: String) -> int:
+	var n := 0
+	for h in _food._vfx._live:
+		if str(h.get("kind", "")) == kind:
+			n += 1
+	return n

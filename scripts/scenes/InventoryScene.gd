@@ -149,16 +149,9 @@ func _rebuild() -> void:
 	UIFrame.attach(self)
 
 ## 取出战 3 统领: season_leaders 优先, 空则 lastLineup.json.
+## ★2026-08-11 本体收拢进 GameState.lineup_leader_ids(商店/背包共用, 副本会漂)。
 func _lineup_ids() -> Array:
-	if GameState.season_leaders is Array and (GameState.season_leaders as Array).size() > 0:
-		return GameState.season_leaders.duplicate()
-	if FileAccess.file_exists("user://lastLineup.json"):
-		var f := FileAccess.open("user://lastLineup.json", FileAccess.READ)
-		if f != null:
-			var parsed = JSON.parse_string(f.get_as_text()); f.close()
-			if parsed is Dictionary and (parsed as Dictionary).has("ids"):
-				return (parsed["ids"] as Array).duplicate()
-	return []
+	return GameState.lineup_leader_ids()
 
 # ─── 上部: 双路布阵 (上战场/下战场, 3统领+3小将分3+3; 点头像互换分路, 点小将切前/后排) ───
 const UBOX_W := 244.0   # 阵容单位框(再放大·填左侧空间+适手机点触·用户2026-07-19)

@@ -362,10 +362,15 @@ func _cream_tick(u: Dictionary, si: int, stt: Dictionary, delta: float) -> void:
 	##   现在壳分散在每个拿到盾的友军身上, 不改这里就变成"壳建了但不动"。
 	##   ★盾没了(被打破/撚场)就把壳收掉 —— 否则会出现"盾早没了壳还亮着"。
 	for o in battle._targeting._allies_of(u, true):
+		var cv: float = battle._spec.val(o, KEY_CREAM)
+		## ★盾量进血条(2026-08-11 补验收): 奶油盾是 SpecialBalance 余额, 不进 u["shield"] ⇒
+		##   血条上原本【没有任何读数】—— 玩家看得见壳、看不见"还剩多少/破没破"。
+		##   照 068 法力盾的规矩(特殊护盾给特殊颜色护盾条)每帧喂真实余额, 0 时自动隐藏。
+		_vfx.cream_bar_update(o, cv)
 		var osh = o.get("_cream_shell", null)
 		if not (osh is Dictionary):
 			continue
-		if not o.get("alive", false) or battle._spec.val(o, KEY_CREAM) <= 0.0:
+		if not o.get("alive", false) or cv <= 0.0:
 			_vfx.cream_shell_free(osh)
 			o.erase("_cream_shell")
 			continue
@@ -470,6 +475,10 @@ func _box_tick(u: Dictionary, si: int, stt: Dictionary, delta: float) -> void:
 		})
 		stt["ult_given"] = float(u["maxHp"]) * pct   # 同步证据
 		_box_enter(u, si, stt)
+	## ★盾量进血条(2026-08-11 补验收): 终极护盾是 SpecialBalance 余额, 不进 u["shield"] ⇒
+	##   血条上原本没有任何读数 —— 玩家只看得到"变成了盒子", 看不到"这层盾还剩多少/快破没"。
+	##   照 068 法力盾的规矩(特殊护盾给特殊颜色护盾条)每帧喂真实余额(礼盒粉段), 破盾后自动隐藏。
+	_vfx.ult_bar_update(u, battle._spec.val(u, KEY_ULT))
 	if u.get("_cake_box", false):
 		_box_form_tick(u, si, stt, delta)
 
@@ -596,13 +605,14 @@ func box_hit(u: Dictionary, tgt: Dictionary) -> void:
 	battle._vfx._hit_spark(tgt)
 
 
-## 礼盒技能: 在自己脚下开一个 300 码蛋糕法阵, 持续 5 秒。
+## 礼盒技能: 以自己为中心开一个 300 码蛋糕法阵, 持续 5 秒。
+## ★跟随携带者(2026-08-11 用户拍板「是要跟随的」): 判定中心 = 每次结算时的当前位置,
+##   演出层同帧跟随(cake_field_fx 存 unit 引用) —— 判定与画面永远同一个点。
 func _box_field(u: Dictionary, _si: int) -> void:
 	u["_box_field_left"] = BOX_FIELD_SEC
-	u["_box_field_pos"] = u["pos"]
 	u["_box_field_acc"] = 0.0
 	u["_box_field_n"] = int(u.get("_box_field_n", 0)) + 1   # 同步触发证据
-	_vfx.cake_field_fx(u["pos"], BOX_FIELD_SEC)
+	_vfx.cake_field_fx(u, BOX_FIELD_SEC)
 
 
 func _box_field_tick(u: Dictionary, si: int, _stt: Dictionary, delta: float) -> void:
@@ -619,7 +629,8 @@ func _box_field_tick(u: Dictionary, si: int, _stt: Dictionary, delta: float) -> 
 ## 法阵的一次每秒结算。★**同步入口**, 门禁直接调。
 ## (装备 "p2eq_072" —— tooltip_number_audit 的就近锚点)
 func box_field_pulse(u: Dictionary, si: int) -> void:
-	var c: Vector2 = u.get("_box_field_pos", u["pos"])
+	## ★中心 = 当前位置(跟随, 2026-08-11 用户拍板), 不再读施放时的快照
+	var c: Vector2 = u["pos"]
 	var heal: float = [50.0, 70.0, 120.0][si]     # 每秒回 50/70/120 生命
 	var energy: float = [2.0, 4.0, 6.0][si]       # 每秒给 2/4/6 龟能
 	var n := 0
@@ -628,6 +639,9 @@ func box_field_pulse(u: Dictionary, si: int) -> void:
 			continue
 		battle._damage._heal(o, heal)
 		_eq._eq_grant_energy(o, energy)
+		## ★滴答读数(2026-08-11 补验收): 台子默认关飘字 ⇒ "每秒回血"原来一点画面证据都没有。
+		##   被治到的友军身上升一颗小奶糕 —— 谁在圈里、哪一秒跳了, 一眼可读。
+		_vfx.field_heal_fx(o)
 		n += 1
 	u["_box_field_hits"] = int(u.get("_box_field_hits", 0)) + n   # 同步证据
 
@@ -663,6 +677,9 @@ func _box_unbox(u: Dictionary, reason: String) -> void:
 	battle._recalc_stats(u)
 	_vfx.taunt_ring_free(u)
 	_vfx.box_open_fx(u)
+	## ★烟雾爆开(2026-08-11 用户点名「护盾被打破变为本体时, 需要做个烟雾爆开特效」):
+	##   盒子炸成一团烟、烟散了人站在那儿 —— 形态切换需要一个遮蔽帧, 否则是硬切。
+	_vfx.unbox_smoke(u)
 
 
 ## 携带者阵亡 → 分裂出两个蛋糕礼盒(由 EquipSystem._eq_on_death 分派)。
@@ -695,6 +712,21 @@ func _eq_cake_split(u: Dictionary, si: int, star: int) -> void:
 			continue
 		b["base_def"] = own_def
 		b["base_mr"] = own_mr
+		## ★分裂盒也要有立绘(2026-08-11 补验收): _spawn_summon 无 spr_id ⇒ 兜底队色发光球,
+		##   花名册打 spr=✗ ——「白球家族」, 玩家看到的是"场上多了两个蓝光点"而不是两个礼盒。
+		##   做法同 _box_enter: 换 idle_sd 源头(渲染层每帧从 idle_sd 还原, 改 spr.texture 会被抹掉)。
+		##   idle_px 按"64px 盒帧 → 40 码身高"归一(同 _spawn_summon 有立绘分支的公式);
+		##   modulate 归白 —— 兜底发光球被染成了队色蓝, 不洗掉的话礼盒是蓝的。
+		var _btex: Texture2D = load(BOX_FORM_TEX) if ResourceLoader.exists(BOX_FORM_TEX) else null
+		if _btex != null:
+			var _bsd2: Dictionary = battle._sprite_dict_from(_btex, null, false)
+			b["idle_px"] = float(battle.TARGET_BODY_H) * (40.0 / 56.0) / float(maxi(1, _btex.get_height()))
+			b["idle_offy"] = float(_btex.get_height()) * 0.5
+			b["idle_sd"] = _bsd2
+			battle._set_anim_sheet(b, _bsd2, "", true)
+			var _bspr = b.get("sprite", null)
+			if is_instance_valid(_bspr):
+				_bspr.modulate = Color(1, 1, 1, 1)
 		b["equips"] = [{"id": "p2eq_072", "star": star}]   # ★挂条目只为吃到每帧 _eq_tick(不跑属性管线)
 		b["eq_state"] = {"p2eq_072": {"opened": true, "field_iv": 8.0, "field_t": 4.0}}
 		b["_cake_is_box"] = true
