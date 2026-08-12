@@ -68,7 +68,9 @@ func tier_of(u: Dictionary) -> int:
 	return int(battle._synergy.tier_for(u, "法器"))
 
 
-## 该单位身上第 idx 件法器的法力条满值
+## 该单位身上第 idx 件法器的法力条满值。
+## ★档 0(没激活羁绊)= 100, 与首档同值 —— clamp 把 -1 夹到 0 就是这个意思, 不是巧合:
+##   规格里首档写的就是 100, 羁绊的收益是从二档起【降满值】(80/60/50), 一档只给属性与团队效果。
 func mana_full(u: Dictionary) -> float:
 	return MANA_FULL[clampi(tier_of(u) - 1, 0, 3)]
 
@@ -80,8 +82,13 @@ func add_mana(u: Dictionary, n: float) -> void:
 		return
 	if u.get("_staff_busy", false):
 		return                       # ★防连放：法器效果自己打出的伤害不涨法力
-	if tier_of(u) <= 0:
-		return
+	## ★这里【曾经】有一道 `if tier_of(u) <= 0: return` —— 没激活法器羁绊就一点法力不涨。
+	##   2026-08-12 用户拆掉:「我整个场上只装备符纸为啥不能触发主动? 激活法器羁绊只是
+	##   加快法力条的充能但没激活时也有 100 法力值啊」。理由是硬的: 088/089/090 三件的
+	##   **唯一**触发方式就是"该法器法力条集满时"(文案逐字), 有闸就等于单装一件=死件,
+	##   文案承诺的主动永远兑现不了。⇒ 法力条是【每件法器自带】的, 满值 100;
+	##   羁绊的作用是把满值降到 80/60/50(mana_full 的 clamp 本来就让档 0 = 100)。
+	##   ⚠ 只拆法力条这一道 —— 灵泉/共鸣是**全队**收益, 照旧要档位。
 	var full: float = mana_full(u)
 	for e in u.get("equips", []):
 		if not (e is Dictionary):
@@ -129,9 +136,11 @@ func tick(delta: float) -> void:
 			if not (u is Dictionary) or not u.get("alive", false):
 				continue
 			var ti: int = tier_of(u)
+			## ★自然增长(每 2.5 秒 +25)对【每个带法器的人】都跑, 不再要求档位 ≥1（同上）。
+			##   下面的灵泉才是全队收益, 那个仍然要档位。
+			add_mana(u, MANA_PER_TICK)
 			if ti <= 0:
 				continue
-			add_mana(u, MANA_PER_TICK)
 			var pct: float = SPRING_PCT[clampi(ti - 1, 0, 3)]
 			if pct > 0.0:
 				var lost: float = maxf(0.0, float(u.get("maxHp", 0.0)) - float(u.get("hp", 0.0)))

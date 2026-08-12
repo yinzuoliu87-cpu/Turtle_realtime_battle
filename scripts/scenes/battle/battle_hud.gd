@@ -2010,3 +2010,21 @@ func _topright_positions() -> Dictionary:
 	var sur_x: float = vp.x - bw - m.z          # 最右 = 投降
 	var sta_x: float = sur_x - bw - 8.0         # 其左 = 统计
 	return {"surrender": Vector2(sur_x, m.y), "stats": Vector2(sta_x, m.y)}
+
+## 装备格底下的一条充能条(黑底 + 彩色填充)。★一件装备可以有【多条】——
+## 023 灼热火珊瑚 / 026 雷电法杖 身上同时跑着两条真条子: 它自己的老充能
+## (每段命中 +10/+25, 满 100 放主动) 和法器羁绊的法力条(满 100/80/60/50 也放同一个主动)。
+## 以前一件只画一条 ⇒ 紫色那条在局内零出口, 玩家只会看到"它自己突然放了"(2026-08-12 补)。
+## `spec` = [字段名, 满值, 可选条色]；填充由 info_panel 每帧按 eq_state[id][字段] 刷。
+func add_equip_charge_bar(u: Dictionary, slot: Control, eid: String, spec: Array) -> void:
+	var cb_bg := ColorRect.new()
+	cb_bg.color = Color(0, 0, 0, 0.6)
+	cb_bg.custom_minimum_size = Vector2(44, 4)
+	cb_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.add_child(cb_bg)
+	var cb_fill := ColorRect.new()
+	cb_fill.color = (Color(str(spec[2])) if spec.size() > 2 else Color("#5ad2ff"))   # 可选第3项=自定义条色(023火法力=火橙)
+	cb_fill.size = Vector2(0, 3)
+	cb_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cb_bg.add_child(cb_fill)
+	(u["panel_charge_bars"] as Array).append({"fill": cb_fill, "iid": eid, "key": spec[0], "cap": spec[1]})

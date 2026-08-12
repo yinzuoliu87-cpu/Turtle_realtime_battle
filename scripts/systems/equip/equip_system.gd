@@ -1906,6 +1906,30 @@ func fire_equip_effect(u: Dictionary, iid: String, star: int, stt = null) -> voi
 		#      其余十四件已从 EQ_IV_BATCH1 摘掉, 根本不会走到这个函数。
 		"p2eq_088", "p2eq_089", "p2eq_090":
 			_arcane_sys.on_mana_full(u, iid, si)
+		# ── 法器【补齐】(2026-08-12) ────────────────────────────────────────
+		#   ★这五件此前【不在这张表里】= 法力条满了只清零 + 放一根光柱, 效果零触发。
+		#     而规格(staff_synergy_system.gd 头注逐字)是「满 100/80/60/50 →
+		#     **触发这件法器的效果**」—— 十件都该触发, 不是只有能路由的那五件。
+		#     用户 2026-08-12 问「每个法器装备又正确接了法力条吗, 能触发主动吗」查出来的。
+		#   ★一律接【它原生路径调的同一个函数】(与本函数抽出来的初衷一致:
+		#     "周期到点"与"法器法力满"走同一条路), 不另写一套:
+		#       011 施法后连斩 → _eq_bloodletting     (原生: _eq_on_cast)
+		#       023 火珊瑚主动 → _eq_fire_coral_active(原生: 自己的 fire_mana 满 100)
+		#       026 连锁闪电   → battle._chain_windup (原生: 自己的 thunder 满 100)
+		#       029 冰道       → _eq_ice_fissure      (原生: 每 12 秒 _tick_ice_fissure)
+		#       043 巨浪       → +1 层, 满层才涌浪    (原生: 每周期 +1 层 —— 同一分支, 见下)
+		"p2eq_011": _eq_bloodletting(u, si)
+		"p2eq_023": _eq_fire_coral_active(u, si)
+		"p2eq_026": battle._chain_windup(u, si)
+		"p2eq_029": _eq_ice_fissure(u, si)
+		"p2eq_043":
+			# ★043 的"这件法器的效果"= 周期分支本身(+1 巨浪层, 满层才涌浪), 不是直接放浪。
+			#   照抄 _eq_on_interval 里那一段, 保持两条路径逐字同义。
+			stt["wave"] = int(stt.get("wave", 0)) + 1
+			if int(stt["wave"]) >= [3, 2, 2][si]:
+				stt["wave"] = 0
+				_eq_water_wave(u, si)
+			u["eq_state"][iid] = stt
 		# ★092【剧毒飞行物】没有分支 —— 它不是"周期到点触发一次"的形状(0.25 秒节拍 + 每帧飞行),
 		#   驱动挂在 RelicSynergySystem.tick() → _venom.tick(delta)。见 eq_venom_drone.gd 文件头。
 		# ★094【祖龟碑】也没有分支 —— 改成【阵亡触发】, 走 _eq_on_death → _relic_sys.on_death。

@@ -8691,18 +8691,11 @@ func _make_panel_equip_slot(u: Dictionary, eid: String) -> Control:   # 头像�
 		box.add_child(cnt)
 		(u["panel_count_labels"] as Array).append({"lbl": cnt, "iid": eid, "key": PANEL_COUNT[eid]})
 	if PANEL_CHARGE.has(eid):   # 充能进度条: 宽刃弯刀等
-		var cfg: Array = PANEL_CHARGE[eid]
-		var cb_bg := ColorRect.new()
-		cb_bg.color = Color(0, 0, 0, 0.6)
-		cb_bg.custom_minimum_size = Vector2(44, 4)
-		cb_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		slot.add_child(cb_bg)
-		var cb_fill := ColorRect.new()
-		cb_fill.color = (Color(str(cfg[2])) if cfg.size() > 2 else Color("#5ad2ff"))   # 可选第3项=自定义条色(023法力=火橙)
-		cb_fill.size = Vector2(0, 3)
-		cb_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cb_bg.add_child(cb_fill)
-		(u["panel_charge_bars"] as Array).append({"fill": cb_fill, "iid": eid, "key": cfg[0], "cap": cfg[1]})
+		## 表里的值可以是【一条规格】[key, cap, 色] 或【一串规格】[[...], [...]] ——
+		## 023/026 是两条(自己的老充能 + 法器法力)。构建在 _hud, 这里只翻表。
+		var raw: Array = PANEL_CHARGE[eid]
+		for spec_v in (raw if (raw.size() > 0 and raw[0] is Array) else [raw]):
+			_hud.add_equip_charge_bar(u, slot, eid, spec_v)
 	return slot
 
 func _make_mini_lv_badge(level: int) -> Panel:

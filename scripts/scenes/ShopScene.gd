@@ -29,6 +29,9 @@ const PANEL_H := 592.0
 const BENCH_Y := 484.0       # 备战席(现只在弹层里用, 主页面是按钮)
 const BOTTOM_BTN_Y := 552.0  # 底部两个摘要按钮
 const LINEUP_Y := 580.0      # 阵容装备(横排)
+## 羁绊总览条(货架与底部按钮之间那条空带)。★进 verify_shop_layout 的越界检查
+const SYN_BAR_Y := 528.0
+const SYN_CHIP_W := 176.0
 const MIN_TOUCH_H := 44.0    # 移动端触摸目标最低高度(用户2026-07-28「买经验按钮很小」: 原36不达标)
 const REFRESH_COST := 2   # 刷新花费。原 phase2_config 那套(SHOP_REFRESH_BASE + shop_refresh_cost())已随死代码清理删除, 现在这里是唯一来源(2026-07-19)
 const PRICE_MULT := 1        # 售价 = 装备 cost (费) × 1 = 几费卖几深海币 (用户 2026-07-01; 原 ×3 占位已改)
@@ -294,6 +297,7 @@ func _rebuild() -> void:
 	_coin_button_icon(rf, 20)
 	rf.pressed.connect(_on_refresh); _skin_button(rf); add_child(rf)
 
+	_build_synergy_bar()    # ★羁绊总览: 当前激活了哪些 + 距下一档还差几件(2026-08-12 用户点名)
 	_build_detail_panel()   # ★右侧常驻详情面板(本次重设计的核心: 描述不再藏在 tooltip 里)
 	_build_bottom_buttons()
 	# ★UI 双端适配(用户2026-08-01「有些画面都没有居中」): 内容装进 1280×720 设计框并居中于真实视口。
@@ -628,6 +632,91 @@ func _on_select_own(eid: String, star: int) -> void:
 ## 用户 2026-07-28:「商店页面看不到装备的描述」+「你要一劳永逸的改」
 ## → 所以详情是【常驻可见的面板】, 不是又一个"要触发才出现"的提示(tooltip/弹窗都不行:
 ##   图鉴当初就是因为 hover 在手机上不存在, 才补的点击弹窗; 商店这里直接做成常驻)。
+## 羁绊总览条(货架下方): 当前激活的每一系 + 距下一档还差几件。
+## ★口径与战斗/背包完全一致: 只数【装在身上】的、按 id 去重(GameState.team_p2_equips_for_synergy)。
+##   ⚠ 不数背包 —— "买到 ≠ 装上"(2026-08-12 圣光护盾白送 bug 的同一条教训)。
+## 用户 2026-08-12:「商店里应该显示目前背包里激活的羁绊和下一个档位需求数量」。
+func _build_synergy_bar() -> void:
+	var counts: Dictionary = {}
+	var seen: Dictionary = {}
+	for it in GameState.team_p2_equips_for_synergy():
+		if not (it is Dictionary):
+			continue
+		var iid := str((it as Dictionary).get("id", ""))
+		if iid == "" or seen.has(iid):
+			continue
+		seen[iid] = true
+		var t := str(Phase2Types.type_of(iid))
+		if t != "":
+			counts[t] = int(counts.get(t, 0)) + 1
+	var rows: Array = []
+	for t2 in counts.keys():
+		if not Phase2Types.TYPES.has(t2):
+			continue
+		var n: int = int(counts[t2])
+		var tiers: Array = (Phase2Types.TYPES[t2] as Dictionary).get("tiers", [])
+		var tier := 0
+		var need := -1
+		for i in range(tiers.size()):
+			if n >= int(tiers[i]):
+				tier = i + 1
+			elif need < 0:
+				need = int(tiers[i]) - n
+		rows.append({"t": t2, "n": n, "tier": tier, "need": need})
+	## 排序: 已激活的在前(档位高的更前), 其次是"差得最少"的 —— 玩家最关心的是"再买一件就升档"
+	rows.sort_custom(func(a, b):
+		if int(a["tier"]) != int(b["tier"]):
+			return int(a["tier"]) > int(b["tier"])
+		var na: int = int(a["need"]) if int(a["need"]) >= 0 else 99
+		var nb: int = int(b["need"]) if int(b["need"]) >= 0 else 99
+		return na < nb)
+
+	var y: float = SYN_BAR_Y
+	var hdr := Label.new()
+	hdr.text = "羁绊"
+	hdr.add_theme_font_size_override("font_size", 15)
+	hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
+	hdr.position = Vector2(GRID_X, y); hdr.size = Vector2(44, 20)
+	add_child(hdr)
+	if rows.is_empty():
+		var none := Label.new()
+		none.text = "（还没装上任何同类型装备 · 装 3 件同类型即可激活）"
+		none.add_theme_font_size_override("font_size", 13)
+		none.add_theme_color_override("font_color", Color("#5a6675"))
+		none.position = Vector2(GRID_X + 46, y + 1); none.size = Vector2(700, 20)
+		add_child(none)
+		return
+	var x: float = GRID_X + 46.0
+	for r in rows:
+		if x > GRID_X + 700.0:
+			break
+		var chip := Label.new()
+		var tier: int = int(r["tier"])
+		var need: int = int(r["need"])
+		var n_now: int = int(r["n"])
+		## ★用【数字】表达进度, 不用一句话去说(2026-08-12 用户:「想想怎么以图片或数字的
+		##   形式显示差几件而不是文字这么去说」)。写法取自走棋通行式: 图标 + 当前/下一档阈值,
+		##   再跟满/空星表示已激活到第几档 —— 一眼扫过去就是"我还差几件"。
+		var star_n: int = (Phase2Types.TYPES[str(r["t"])] as Dictionary).get("tiers", []).size()
+		var stars := ""
+		for si in range(star_n):
+			stars += "★" if si < tier else "☆"
+		if need > 0:
+			chip.text = "%s%s %d/%d %s" % [str(Phase2Types.emoji_of(str(r["t"]))), str(r["t"]),
+				n_now, n_now + need, stars]
+		else:
+			chip.text = "%s%s %d %s" % [str(Phase2Types.emoji_of(str(r["t"]))), str(r["t"]),
+				n_now, stars]
+		chip.add_theme_font_size_override("font_size", 14)
+		chip.add_theme_color_override("font_color",
+			Color("#ffd93d") if tier > 0 else Color("#7a92a8"))
+		chip.position = Vector2(x, y + 1)
+		chip.size = Vector2(SYN_CHIP_W, 20)
+		chip.clip_text = true
+		add_child(chip)
+		x += SYN_CHIP_W + 6.0
+
+
 func _build_detail_panel() -> void:
 	var box := Panel.new()
 	var sb := StyleBoxFlat.new()
@@ -889,7 +978,10 @@ func _synergy_info(eid: String) -> Dictionary:
 	for i in range(tiers.size()):
 		if n2 >= int(tiers[i]):
 			tier2 = i + 1
-	return {"type": typ, "name": Phase2Types.display_name(typ), "emoji": Phase2Types.emoji_of(typ),
+	## ★名字用【纯类型名】(枪/盾/法器…), 不用 display_name ——
+	##   那个是"盾·守护""奇械·魔抗"这类带后缀的花名(2026-08-12 用户:「而不是什么守护那种词,
+	##   就是枪, 盾什么的」)。玩家凑羁绊时脑子里想的就是"我还差几件盾"。
+	return {"type": typ, "name": typ, "emoji": Phase2Types.emoji_of(typ),
 		"tiers": tiers, "count": n, "tier": tier, "owned": owned, "count2": n2, "tier2": tier2}
 
 

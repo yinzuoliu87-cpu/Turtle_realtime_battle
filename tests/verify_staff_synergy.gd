@@ -18,6 +18,7 @@ extends Node
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")
 const Staff := preload("res://scripts/systems/equip/staff_synergy_system.gd")
+const EquipReadouts := preload("res://scripts/gamedata/equip_readouts.gd")
 
 var _n := 0
 var _fail := 0
@@ -45,12 +46,32 @@ func _ready() -> void:
 	var staffs: Array = _ids_of_type("法器", 10)
 	_ok("★分母: 找到 %d 件法器装备(顶档 10 件才验得了)" % staffs.size(), staffs.size() >= 10)
 
-	# ══ ① 对照：没激活羁绊(1 件, 首档要 2) → 法力一点不涨 ═══════════
+	# ══ ① 没激活羁绊也有法力条(满值 100) ══════════════════════════════
+	#   ★这里【曾经】断言的是相反的事("1 件 → 法力一点不涨")。2026-08-12 用户拆掉那道闸:
+	#     「我整个场上只装备符纸为啥不能触发主动? 激活法器羁绊只是加快法力条的充能
+	#       但没激活时也有 100 法力值啊」。理由是硬的 —— 088/089/090 三件的**唯一**
+	#     触发方式就是"该法器法力条集满时"(文案逐字), 有闸就等于单装一件是死件。
 	var a0: Dictionary = _mk("left", staffs.slice(0, 1))
 	_run([a0])
-	_s._staff_syn.add_mana(a0, 999.0)
-	_ok("① ★对照: 法器未激活(1 件, 首档要 2 件) → 法力一点不涨",
+	_ok("① ★没激活羁绊(1 件)时满值 = 100", _s._staff_syn.mana_full(a0) == 100.0,
+		"实得 %.0f" % _s._staff_syn.mana_full(a0))
+	_s._staff_syn.add_mana(a0, 40.0)
+	_ok("① ★没激活羁绊也照涨法力(拆闸前这里恒为 0)",
+		absf(_mana(a0, staffs[0]) - 40.0) < 0.01, "mana=%.1f" % _mana(a0, staffs[0]))
+	_s._staff_syn.add_mana(a0, 61.0)         # 40+61=101 ≥ 100 ⇒ 该触发并清零
+	_ok("① ★没激活羁绊也能【满 100 触发】(清零 = 触发过了)",
 		absf(_mana(a0, staffs[0])) < 0.01, "mana=%.1f" % _mana(a0, staffs[0]))
+	# ★只拆法力条这一道: 灵泉(每 2.5 秒按已损生命回血)是【全队】收益, 仍然要档位。
+	#   不钉这条的话, 以后顺手把灵泉也放开 = 一件法器全队回血, 局内看不出来。
+	a0["hp"] = 1000.0                        # 掉了 2000
+	var hp_before: float = float(a0["hp"])
+	_s._staff_syn._t_tick = 0.0
+	_s._staff_syn.tick(_s.EQ_TICK + 0.001)   # 走一个自然节拍
+	_ok("① ★灵泉仍然要档位(没激活 ⇒ 一点不回血), 拆闸只拆了法力条",
+		absf(float(a0["hp"]) - hp_before) < 0.01, "hp %.0f → %.0f" % [hp_before, float(a0["hp"])])
+	_ok("① 而同一个节拍里法力照涨 +25(分母: 证明 tick 真的跑过了, 不是空转)",
+		absf(_mana(a0, staffs[0]) - Staff.MANA_PER_TICK) < 0.01,
+		"mana=%.1f" % _mana(a0, staffs[0]))
 
 	# ══ ② 法力条【每件独立】═══════════════════════════════════════
 	# 首档满值 100。给 60 → 两件都是 60、都没满。
@@ -209,6 +230,67 @@ func _ready() -> void:
 	var src_syn: String = FileAccess.get_file_as_string("res://scripts/systems/equip/synergy_system.gd")
 	_ok("⑪ ★灵泉只有一个主人(synergy_system 里不再有法器的周期回血)",
 		src_syn.find("TIDE_PCT") < 0 and src_syn.find('tiers.has("法器")') < 0)
+
+	# ══ ⑫ 【每一件】法器都要能被法力条触发 ══════════════════════════════
+	#   规格:「满 100/80/60/50 → **触发这件法器的效果**」⇒ 十件都要在 fire_equip_effect
+	#   的 match 里有分支。那个 match **没有兜底 `_:`**, 漏一件就是"法力白攒":
+	#   条照涨照满照清零、光柱照放, 效果零触发 —— 局内完全看不出来, 只会觉得"这件好弱"。
+	#   2026-08-12 实测漏了五件(011/023/026/029/043), 用户问「能触发主动吗」才查出来。
+	var src_eq: String = FileAccess.get_file_as_string("res://scripts/systems/equip/equip_system.gd")
+	var i0: int = src_eq.find("func fire_equip_effect(")
+	var i1: int = src_eq.find("\nfunc ", i0 + 10)      # 到下一个顶层 func 为止 = 这张分发表
+	_ok("⑫ 找得到 fire_equip_effect 的函数体(判据的地基)", i0 >= 0 and i1 > i0)
+	var body: String = src_eq.substr(i0, i1 - i0) if (i0 >= 0 and i1 > i0) else ""
+	var staff_ids: Array = []
+	for se in DataRegistry.phase2_equipment:
+		var sid: String = str((se as Dictionary).get("id", ""))
+		if Phase2Types.type_of(sid) == "法器":
+			staff_ids.append(sid)
+	staff_ids.sort()
+	var missing: Array = []
+	for sid2 in staff_ids:
+		if body.find('"%s"' % str(sid2)) < 0:
+			missing.append(str(sid2))
+	_ok("⑫ ★分母: 法器共 10 件(少了说明类型表被动过, 判据要跟着改)",
+		staff_ids.size() == 10, "实得 %d 件: %s" % [staff_ids.size(), str(staff_ids)])
+	_ok("⑫ ★十件法器【每一件】都在 fire_equip_effect 里有分支(法力满 ⇒ 真的放得出效果)",
+		missing.is_empty(), "没接的: %s" % str(missing))
+	# 兜底分支一旦被加进来, 上面那条断言就失去意义(什么 id 都"能触发"了) —— 一并钉死
+	_ok("⑫ ★分发表不许有兜底 `_:`(有的话上一条就成了空检查)",
+		body.find("\n\t\t_:") < 0)
+
+	# ══ ⑬ 【每一件】法器的法力条都要在局内看得见 ═════════════════════════
+	#   用户 2026-08-12「每个法器装备又正确接了法力条吗」的字面判据。
+	#   ★出口只有一个: 头像下装备格的充能条(PANEL_CHARGE / EquipReadouts.CHARGE),
+	#     读 eq_state[id].mana_pct(归一百分比 —— 满值随档位 100/80/60/50 变, 而条的分母
+	#     只能是常量, 直接读 mana 会让高档永远填不满)。
+	#   ★023/026 身上【同时】跑着两条真条子(它自己的老充能 + 法器法力), 所以表里是"一件多条"。
+	var no_bar: Array = []
+	for sid3 in staff_ids:
+		var raw2: Array = EquipReadouts.CHARGE.get(str(sid3), [])
+		var specs2: Array = raw2 if (raw2.size() > 0 and raw2[0] is Array) else [raw2]
+		var has_mana := false
+		for sp in specs2:
+			if (sp is Array) and (sp as Array).size() > 0 and str((sp as Array)[0]) == "mana_pct":
+				has_mana = true
+		if not has_mana:
+			no_bar.append(str(sid3))
+	_ok("⑬ ★十件法器【每一件】的法力条在装备格里都有出口(mana_pct)",
+		no_bar.is_empty(), "看不到法力的: %s" % str(no_bar))
+	# 老条不许被顶掉: 023/026 文案里写着"进度显示在图标下方", 说的是它们自己那条
+	var r23: Array = EquipReadouts.CHARGE.get("p2eq_023", [])
+	var r26: Array = EquipReadouts.CHARGE.get("p2eq_026", [])
+	_ok("⑬ 023/026 是【两条】(老充能 + 法力), 老那条没被顶掉",
+		r23.size() == 2 and r26.size() == 2
+			and str((r23[0] as Array)[0]) == "fire_mana" and str((r26[0] as Array)[0]) == "thunder",
+		"023=%s 026=%s" % [str(r23), str(r26)])
+	# 渲染层要真的会画多条 —— 光改表不改渲染 = 表写了没人读(memory 里那条"写进去了没人读")
+	var src_rb: String = FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")
+	var src_hud: String = FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_hud.gd")
+	_ok("⑬ ★渲染层按【一串规格】逐条展开(不是只画一条)",
+		src_rb.find("for spec_v in (raw if (raw.size() > 0 and raw[0] is Array) else [raw]):") >= 0
+			and src_rb.find("_hud.add_equip_charge_bar(u, slot, eid, spec_v)") >= 0
+			and src_hud.find("func add_equip_charge_bar(") >= 0)
 
 	_s._units.clear()
 	_s.set_process(false)

@@ -142,6 +142,27 @@ const CASES := {
 	"note": "★mana_kick 灌满法力走真实入口触发共鸣 —— 不灌的话台上法力永远攒不满, 会误判成'没做'。",
 },
 
+## 法器【两条充能条】—— 看的是装备格里的读数, 不是场上的特效。
+"syn_staff_bars": {
+	"eq": "p2eq_023", "star": 3, "carrier": "basic", "allies": 1, "enemies": 2,
+	"enemy_dist": 200.0, "tier": 3, "tier_syn": "法器", "mana_kick": 30.0,
+	"ui": true, "attacker": true, "enemy_attacks": true,
+	"dur": 14.0, "zoom": 0.9, "focus": "carrier", "focus_h": 0.8,
+	"shots": [2.0, 4.0, 6.0, 9.0, 13.0],
+	"note": "★看点全在头像下的装备格: 023 该有【两条】条子 —— 上=火法力(橙, 每段命中+10, 满100), 下=法器法力(紫, 满60)。attacker 必须开(火法力靠命中涨); mana_kick 30 让紫条停半满而不是一灌就清零。",
+},
+
+## 法器【单装一件·没有羁绊】—— 看法力条是不是照样涨、照样触发。
+## ★不写 tier/tier_syn 就是档 0(羁绊未激活)。089 蚀月符纸的唯一触发方式就是法力条集满,
+##   2026-08-12 拆闸前这条紫条永远是空的 = 这件装备是死件。
+"syn_staff_solo": {
+	"eq": "p2eq_089", "star": 3, "carrier": "basic", "allies": 1, "enemies": 2,
+	"enemy_dist": 200.0, "ui": true, "attacker": true, "enemy_attacks": true,
+	"dur": 16.0, "zoom": 0.9, "focus": "carrier", "focus_h": 0.8,
+	"shots": [2.0, 5.0, 8.0, 11.0, 15.0],
+	"note": "★看点在装备格那条紫条: 没激活羁绊也该照涨(每 2.5 秒 +25, 满 100 触发贴符)。不配 tier 是故意的 —— 配了就验不到没羁绊这个情形。",
+},
+
 ## 遗物羁绊 —— 觉醒/传送门。
 "syn_relic": {
 	"eq": "p2eq_004", "star": 3, "carrier": "basic", "allies": 2, "enemies": 3,
