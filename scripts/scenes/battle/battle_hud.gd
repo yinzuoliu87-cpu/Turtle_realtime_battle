@@ -1,5 +1,7 @@
 class_name BattleHud
 extends RefCounted
+
+const _P2T_HUD := preload("res://scripts/gamedata/phase2_types.gd")   # 羁绊 chips 的 emoji
 ## 战斗HUD/面板构建与显示: UI层/暂停/日志/统计/编辑笔刷/队伍头像框/胜负横幅/点龟详情面板/触控盘·纯UI
 ## 类内名不变;外部名加 battle.
 
@@ -2028,3 +2030,50 @@ func add_equip_charge_bar(u: Dictionary, slot: Control, eid: String, spec: Array
 	cb_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cb_bg.add_child(cb_fill)
 	(u["panel_charge_bars"] as Array).append({"fill": cb_fill, "iid": eid, "key": spec[0], "cap": spec[1]})
+
+## 队伍头像列顶上的【羁绊 chips】—— 这一侧激活了哪些类型、各到第几档。
+## 极简形态: `🔫3 🛡1`(emoji + 档位数字)。类型名/阈值/效果详情看背包与商店, 局内只回答
+## "我现在有什么"这一个问题。★数据读 `battle._synergy._by_side[side]`(战斗自己算好的那份),
+## 不重算 —— 重算一份就会有"显示和结算对不上"的经典分歧。
+func make_synergy_chip_row(side: String) -> Control:
+	var tiers: Dictionary = {}
+	if battle._synergy != null:
+		tiers = (battle._synergy._by_side as Dictionary).get(str(side), {})
+	var row := HBoxContainer.new()
+	row.name = "SynergyChips_" + str(side)
+	row.add_theme_constant_override("separation", 4)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var keys: Array = tiers.keys()
+	keys.sort()                                  # 稳定顺序: 同一局刷新前后不跳来跳去
+	for t in keys:
+		var tier: int = int(tiers[t])
+		if tier <= 0:
+			continue
+		var lb := Label.new()
+		lb.text = "%s%d" % [str(_P2T_HUD.emoji_of(str(t))), tier]
+		lb.add_theme_font_size_override("font_size", 13)
+		lb.add_theme_color_override("font_color", Color("#ffd93d"))
+		lb.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1.0))
+		lb.add_theme_constant_override("outline_size", 4)
+		lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lb.tooltip_text = "%s · %d 档" % [str(t), tier]
+		row.add_child(lb)
+	return row
+
+
+## 只把两列顶上的羁绊 chips 换一遍(不碰整层 UI)。
+## ★给【建列之后才知道档位】的场合用 —— VFXLAB 就是这样(先建场, 后写 _by_side)。
+##   一开始我在那里调 `_build_team_panels()`, 结果整层 UI(连血条)都没了; 那个函数不是
+##   给"建完再叫一次"用的。真实对局不需要这个: apply_all 本来就在建列之前。
+func refresh_synergy_chips() -> void:
+	for side in ["left", "right"]:
+		var col: Node = battle._team_panel_left if side == "left" else battle._team_panel_right
+		if col == null or not is_instance_valid(col):
+			continue
+		var old: Node = col.get_node_or_null("SynergyChips_" + str(side))
+		if old != null:
+			col.remove_child(old)
+			old.queue_free()
+		var row: Control = make_synergy_chip_row(str(side))
+		col.add_child(row)
+		col.move_child(row, 0)

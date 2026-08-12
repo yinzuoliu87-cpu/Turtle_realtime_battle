@@ -622,6 +622,51 @@ func lineup_leader_ids() -> Array:
 ## 全队(当前统领 + 双路小将)身上的装备清单 —— 【羁绊口径】: 只数已装上的, 替补席不算。
 ## ★与背包羁绊面板(InvSynergy)/战斗侧(SynergySystem 数 battle._units)同口径;
 ##   计数去重(calc_active 按 id 去重)发生在 Phase2Types, 这里只负责收集。
+## 当前阵容的【羁绊行】—— 商店总览条与出战页 chips 共用这一份。
+## 返回 [{"t": 类型名, "n": 件数, "tier": 已激活档位(0=未激活), "need": 距下一档还差几件(-1=已顶档)}]
+## 排序: 已激活的在前(档位高的更前), 其次"差得最少"的 —— 玩家最关心"再买一件就升档"。
+##
+## ★口径与战斗完全一致: 只数【装在身上】的、**按装备 id 去重**(带两件一模一样的剑只算 1)。
+##   ⚠ 不数背包 —— "买到 ≠ 装上"(2026-08-12 圣光护盾白送 bug 的同一条教训)。
+## ★这段【曾经】只长在 ShopScene 里; 2026-08-12 出战页也要显示羁绊时抽到这里, 而不是
+##   照抄一份过去 —— 去重口径/差几件/排序三样都容易抄漂, 两处显示不一致玩家会当成 bug。
+func synergy_rows() -> Array:
+	var counts: Dictionary = {}
+	var seen: Dictionary = {}
+	for it in team_p2_equips_for_synergy():
+		if not (it is Dictionary):
+			continue
+		var iid := str((it as Dictionary).get("id", ""))
+		if iid == "" or seen.has(iid):
+			continue
+		seen[iid] = true
+		var t := str(_P2T.type_of(iid))
+		if t != "":
+			counts[t] = int(counts.get(t, 0)) + 1
+	var rows: Array = []
+	for t2 in counts.keys():
+		if not _P2T.TYPES.has(t2):
+			continue
+		var n: int = int(counts[t2])
+		var tiers: Array = (_P2T.TYPES[t2] as Dictionary).get("tiers", [])
+		var tier := 0
+		var need := -1
+		for k in range(tiers.size()):
+			if n >= int(tiers[k]):
+				tier = k + 1
+			elif need < 0:
+				need = int(tiers[k]) - n
+		rows.append({"t": t2, "n": n, "tier": tier, "need": need,
+			"tiers_n": tiers.size()})
+	rows.sort_custom(func(a, b):
+		if int(a["tier"]) != int(b["tier"]):
+			return int(a["tier"]) > int(b["tier"])
+		var na: int = int(a["need"]) if int(a["need"]) >= 0 else 99
+		var nb: int = int(b["need"]) if int(b["need"]) >= 0 else 99
+		return na < nb)
+	return rows
+
+
 func team_p2_equips_for_synergy() -> Array:
 	var all_equips: Array = []
 	for pid in lineup_leader_ids():

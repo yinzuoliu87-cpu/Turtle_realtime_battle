@@ -42,6 +42,8 @@ const RL := {
 	"start":      {"x": 1258, "y": 715, "w": 214, "h": 68},
 }
 
+const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")   # 羁绊 chips 用(emoji/档位阈值)
+
 const RARITY_COLOR: Dictionary = {
 	"C":   Color("#06d6a0"), "B": Color("#4cc9f0"), "A": Color("#3a9abf"),
 	"S":   Color("#c77dff"), "SS": Color("#ffd93d"), "SSS": Color("#ff6b6b"),
@@ -638,7 +640,11 @@ func _build_ui() -> void:
 
 	# 实时 3v3：去掉回合制「前排/后排」标签 (自由走位下定位无意义)
 
-	# _build_synergy_region()   # 删: 老宠物标签羁绊已弃用 (用户 2026-06-23 "删掉老羁绊"), 改用 10 类型装备羁绊系统
+	## ★2026-08-12 接回来了。这行【曾经】被注释掉, 注释写「改用 10 类型装备羁绊系统」——
+	##   但只做了前半句(删掉老宠物标签羁绊), 后半句(接新的装备羁绊)一直没做,
+	##   于是这一页至今零羁绊显示。而羁绊是跟【阵容】走的(装备挂在龟身上, 只有出战的龟
+	##   带上场), 这一页恰恰是最该显示它的地方。内容见 _refresh_synergy_chips()。
+	_build_synergy_region()
 	_slots._build_slots()
 	_build_grid_region()
 	_detail._build_detail_region()
@@ -712,6 +718,11 @@ func _build_synergy_region() -> void:
 	var panel := PanelContainer.new()
 	root.add_child(panel)
 	_place(panel, "synergy")
+	## ★收到羊皮纸的【实测】宽度: 设计槽 407 换算到 1280 视口是 316px, 而羊皮纸右缘实测只到
+	##   x≈303(panel 左缘 x≈142) ⇒ 可用宽仅约 161px。不收窄的话 chips 会溢出到木头背景上
+	##   (实拍确认过: 第三个 chip 掉在纸外)。取 0.50 ≈ 158px, 留一点边距。
+	##   —— 这是方案书 20260812-羁绊显示 §5 的风险 R1, 实拍后按实测值堵上。
+	panel.size.x = panel.size.x * 0.50
 	var sb := StyleBoxEmpty.new()
 	sb.content_margin_left = _sp(10); sb.content_margin_right = _sp(10)
 	sb.content_margin_top = _sp(8); sb.content_margin_bottom = _sp(8)
@@ -722,17 +733,58 @@ func _build_synergy_region() -> void:
 	panel.add_child(vb)
 
 	var t := Label.new()
-	t.text = "激活羁绊"
+	t.text = "类型羁绊"
 	t.add_theme_font_size_override("font_size", _sf(13))
 	t.add_theme_color_override("font_color", Color("#4a2f12"))
 	vb.add_child(t)
 
 	# PoC .synergy-chips: flex-wrap gap:8 (index.html:495) → HFlowContainer 自动换行
 	_synergy_box = HFlowContainer.new()
-	_synergy_box.add_theme_constant_override("h_separation", _sp(8))
-	_synergy_box.add_theme_constant_override("v_separation", _sp(8))
+	_synergy_box.add_theme_constant_override("h_separation", _sp(6))
+	_synergy_box.add_theme_constant_override("v_separation", _sp(4))
 	_synergy_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vb.add_child(_synergy_box)
+	_refresh_synergy_chips()
+
+
+## 按当前【阵容】重算羁绊 chips。换人/清空/上次阵容 都会调到(经 _refresh_after_team / _refresh_all)。
+##
+## ★算法在 `GameState.synergy_rows()` —— 与商店总览条**同一份**。不在这里就地写一套:
+##   去重口径("按装备 id 去重")、"距下一档还差几件"、排序规则 三样都容易抄漂,
+##   两处显示不一致玩家会当成 bug(memory [[fb-hand-rolled-copies-drift]])。
+## ★chip 文案与商店总览条同形: `🔫枪 4/6 ★☆☆` —— 数字表示还差几件, 星位表示已到第几档。
+func _refresh_synergy_chips() -> void:
+	if _synergy_box == null or not is_instance_valid(_synergy_box):
+		return
+	for c in _synergy_box.get_children():
+		c.queue_free()
+	var rows: Array = GameState.synergy_rows()
+	if rows.is_empty():
+		var none := Label.new()
+		none.text = "（出战的龟身上还没有同类型装备）"
+		none.add_theme_font_size_override("font_size", _sf(11))
+		none.add_theme_color_override("font_color", Color("#6b5333"))
+		_synergy_box.add_child(none)
+		return
+	for r in rows:
+		var typ := str(r["t"])
+		var tier: int = int(r["tier"])
+		var need: int = int(r["need"])
+		var n_now: int = int(r["n"])
+		var stars := ""
+		for si in range(int(r.get("tiers_n", 0))):
+			stars += "★" if si < tier else "☆"
+		var chip := Label.new()
+		if need > 0:
+			chip.text = "%s%s %d/%d %s" % [str(Phase2Types.emoji_of(typ)), typ, n_now, n_now + need, stars]
+		else:
+			chip.text = "%s%s %d %s" % [str(Phase2Types.emoji_of(typ)), typ, n_now, stars]
+		chip.add_theme_font_size_override("font_size", _sf(13))
+		## ★羊皮纸底实测 rgb(132,96,56) —— 亮色/金色在上面根本读不出来(第一版就是这么翻的车)。
+		##   改成深褐系: 已激活用标题同款深褐(最跳), 未激活浅一档(在, 但不抢眼)。
+		chip.add_theme_color_override("font_color",
+			Color("#3a2408") if tier > 0 else Color("#5c4322"))
+		_synergy_box.add_child(chip)
 
 
 func _build_grid_region() -> void:
@@ -885,6 +937,7 @@ func _refresh_all() -> void:
 	_slots._refresh_slots()
 	_pet_grid._refresh_grid()
 	_refresh_confirm()
+	_refresh_synergy_chips()   # ★「上次阵容」只走这条路, 不走 _refresh_after_team
 	_detail._refresh_detail()
 
 
@@ -1020,6 +1073,7 @@ func _refresh_after_team() -> void:
 	_slots._refresh_slots()
 	_pet_grid._refresh_grid()
 	_refresh_confirm()
+	_refresh_synergy_chips()   # 换人就换羁绊(装备跟着龟上场)
 
 
 func _mark_label(mark) -> String:

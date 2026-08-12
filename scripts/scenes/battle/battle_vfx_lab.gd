@@ -220,6 +220,11 @@ func _apply_tier() -> void:
 	##   会被误判成"没做"。(2026-08-12 复核炮台三时抓到。)
 	if battle._gun_syn != null:
 		battle._gun_syn.apply_all()
+	## 同理: 头像列顶上的羁绊 chips 也是【建列那一刻】读 _by_side 的, 而台子这时才给档位
+	##   ⇒ 不重建就永远是空行, 会被误判成"战斗内羁绊显示没做"。(真实对局无此问题:
+	##   battle_spawn.gd 里 apply_all(:174) 在 _build_team_panels(:191) 之前。)
+	if cfg.get("ui", false):
+		battle._hud.refresh_synergy_chips()
 	## ★同理: 依赖档位的【常驻标记】(如剑·血祭的 _blood_rite)也在建场时就写死了(那时档位=0),
 	##   不重跑就永远是 0 ⇒ 血气在台上永远不画, 又会被误判成"没做"。
 	## ⚠ `SynergySystem.apply_all` **不幂等**(每件属性是 += ) ⇒ 重跑会把该类型的属性加两遍。

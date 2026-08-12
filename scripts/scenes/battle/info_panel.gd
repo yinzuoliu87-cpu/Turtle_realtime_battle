@@ -22,6 +22,10 @@ func _make_team_column(side: String) -> VBoxContainer:
 		col.position = Vector2(-10, 0)
 		col.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	col.grow_vertical = Control.GROW_DIRECTION_BOTH
+	## ★羁绊 chips 挂成这一列的【第一个子节点】(2026-08-12): 天然跟着列的锚点走
+	##   (左栏贴左 / 右栏贴右 / 竖直居中), 一个坐标都不用写死。
+	##   数据是战斗算好的 `_synergy._by_side[side]`, 建列时它已经有值(apply_all 在建列之前跑)。
+	col.add_child(battle._hud.make_synergy_chip_row(side))
 	for u in battle._units:
 		# ★按【有效阵营】分栏 —— 被驯服归顺我方的龟要出现在【我方】头像栏里。
 		#   改前用原 side, 于是归顺的龟逻辑上已经是我方(不打我方/打原队/算我方存活/血条我方色),

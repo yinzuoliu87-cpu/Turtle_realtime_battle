@@ -637,39 +637,9 @@ func _on_select_own(eid: String, star: int) -> void:
 ##   ⚠ 不数背包 —— "买到 ≠ 装上"(2026-08-12 圣光护盾白送 bug 的同一条教训)。
 ## 用户 2026-08-12:「商店里应该显示目前背包里激活的羁绊和下一个档位需求数量」。
 func _build_synergy_bar() -> void:
-	var counts: Dictionary = {}
-	var seen: Dictionary = {}
-	for it in GameState.team_p2_equips_for_synergy():
-		if not (it is Dictionary):
-			continue
-		var iid := str((it as Dictionary).get("id", ""))
-		if iid == "" or seen.has(iid):
-			continue
-		seen[iid] = true
-		var t := str(Phase2Types.type_of(iid))
-		if t != "":
-			counts[t] = int(counts.get(t, 0)) + 1
-	var rows: Array = []
-	for t2 in counts.keys():
-		if not Phase2Types.TYPES.has(t2):
-			continue
-		var n: int = int(counts[t2])
-		var tiers: Array = (Phase2Types.TYPES[t2] as Dictionary).get("tiers", [])
-		var tier := 0
-		var need := -1
-		for i in range(tiers.size()):
-			if n >= int(tiers[i]):
-				tier = i + 1
-			elif need < 0:
-				need = int(tiers[i]) - n
-		rows.append({"t": t2, "n": n, "tier": tier, "need": need})
-	## 排序: 已激活的在前(档位高的更前), 其次是"差得最少"的 —— 玩家最关心的是"再买一件就升档"
-	rows.sort_custom(func(a, b):
-		if int(a["tier"]) != int(b["tier"]):
-			return int(a["tier"]) > int(b["tier"])
-		var na: int = int(a["need"]) if int(a["need"]) >= 0 else 99
-		var nb: int = int(b["need"]) if int(b["need"]) >= 0 else 99
-		return na < nb)
+	## ★算法住在 GameState.synergy_rows() —— 出战页 chips 用的是同一份(2026-08-12)。
+	##   去重口径 / "差几件" / 排序三样都在那里, 两处显示才不会漂。
+	var rows: Array = GameState.synergy_rows()
 
 	var y: float = SYN_BAR_Y
 	var hdr := Label.new()
