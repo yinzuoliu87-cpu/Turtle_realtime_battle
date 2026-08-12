@@ -31,7 +31,9 @@ var tier_of: Dictionary = {}
 ## 各方各自的档位：left / right 各一份（对手的羁绊当然按对手的装备算）。
 var _by_side: Dictionary = {"left": {}, "right": {}}
 var _t_pulse := 0.0          # 盛宴 的 2.5 秒节拍
-var _t_light := 0.0          # 圣光的 5 秒节拍
+var _t_light := 0.0
+## 血气飘动用的时钟(走 sim 的 delta, 不用 TIME —— 与时停/换路同步)
+var _blood_t := 0.0          # 圣光的 5 秒节拍
 
 const PULSE := 2.5           # = RealtimeBattle3DScene.EQ_TICK（装备周期 = 1 回合 ≈ 2.5 秒）
 const LIGHT := 5.0
@@ -222,6 +224,31 @@ func tick(delta: float) -> void:
 		_pulse()
 	if _t_light >= LIGHT:
 		_t_light -= LIGHT
+	_blood_rite_vfx(delta)
+
+
+## 剑【血祭】的演出(2026-08-12 补 —— 十条羁绊里它是唯一零演出的):
+## 机制是"每损失 1% 生命 → +N% 攻击力"的【常驻连续】加成 ⇒ 表现也必须连续:
+## 血丝条数与亮度随已损失生命涨, **满血时完全不画**(没有加成就没有表现)。
+## ★不做"每次攻击闪一下": 那是每秒好几次, 必然刷屏(方案书 §9 同一条判断)。
+func _blood_rite_vfx(delta: float) -> void:
+	if battle._vfx == null or battle._vfx._syn == null:
+		return
+	_blood_t += delta
+	for u in battle._units:
+		if not (u is Dictionary):
+			continue
+		if float(u.get("_blood_rite", 0.0)) <= 0.0:
+			if (u as Dictionary).has("_blood_vfx"):
+				battle._vfx._syn.blood_rite_free(u)
+			continue
+		if not u.get("alive", false):
+			if (u as Dictionary).has("_blood_vfx"):
+				battle._vfx._syn.blood_rite_free(u)
+			continue
+		var mh: float = maxf(1.0, float(u.get("maxHp", 1.0)))
+		var lost: float = clampf(1.0 - float(u.get("hp", mh)) / mh, 0.0, 1.0)
+		battle._vfx._syn.blood_rite_update(u, lost, _blood_t)
 
 
 ## 食物【盛宴】：每 2.5 秒全队回复「已损失生命」的 N%。（法器灵泉已移出，见上）

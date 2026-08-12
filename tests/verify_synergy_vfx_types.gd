@@ -245,6 +245,36 @@ func _g4_real_paths() -> void:
 			% [r0, r1, SynergyVfx.WAVE_SPEED],
 		r1 > r0 and absf(r1 - r0 - SynergyVfx.WAVE_SPEED * 0.35) < 1.0)
 
+	# ── 剑·血祭(2026-08-12 补: 十条里唯一零演出的一条) ─────────────────
+	## 机制是【常驻·连续】的(每损失 1% 生命 → +N% 攻击力) ⇒ 判据也必须是连续的:
+	## 血丝条数随"已损失生命"涨, **满血时必须是 0**(没有加成就不该有表现 —— 这条是分母)。
+	await _reset()
+	## ★本测试只验演出层, 不建真单位 —— 血气接口要的就是 pos/alive/hp 三个字段
+	var bu: Dictionary = {"pos": Vector2(400.0, 400.0), "alive": true,
+		"maxHp": 1000.0, "hp": 1000.0, "side": "left"}
+	var n_full: int = _s._vfx._syn.blood_rite_update(bu, 0.0, 0.0)
+	var n_half: int = _s._vfx._syn.blood_rite_update(bu, 0.5, 0.0)
+	var n_low: int = _s._vfx._syn.blood_rite_update(bu, 0.9, 0.0)
+	print("     血祭血丝: 满血 %d 条 ｜ 半血 %d 条 ｜ 残血(10%%) %d 条" % [n_full, n_half, n_low])
+	_ok("⑨ 剑·血祭 ★满血【一条都不画】(没有加成就没有表现)", n_full == 0)
+	_ok("⑨ 剑·血祭 血丝随已损失生命变多(半血 %d < 残血 %d)" % [n_half, n_low], n_half < n_low)
+	_ok("⑨ 剑·血祭 残血时接近上限 %d 条" % SynergyVfx.BLOOD_WISPS, n_low >= SynergyVfx.BLOOD_WISPS - 1)
+	## 亮度也随之涨(量真实材质, 不是"条数够了就算")
+	_s._vfx._syn.blood_rite_update(bu, 0.2, 0.0)
+	var a_lo := 0.0
+	var a_hi := 0.0
+	var wisp0 = ((bu.get("_blood_vfx", {}) as Dictionary).get("wisps", []) as Array)[0]
+	if is_instance_valid(wisp0):
+		a_lo = (wisp0.material_override as StandardMaterial3D).albedo_color.a
+	_s._vfx._syn.blood_rite_update(bu, 0.95, 0.0)
+	if is_instance_valid(wisp0):
+		a_hi = (wisp0.material_override as StandardMaterial3D).albedo_color.a
+	_ok("⑨ 剑·血祭 ★血丝亮度也随残血涨(%.2f → %.2f)" % [a_lo, a_hi], a_hi > a_lo + 0.2)
+	## 撤场: 单位死了要收干净
+	var freed: int = _s._vfx._syn.blood_rite_free(bu)
+	_ok("⑨ 剑·血祭 ★撤场 free 了 %d 个节点且引用清干净" % freed,
+		freed >= SynergyVfx.BLOOD_WISPS and not bu.has("_blood_vfx"))
+
 	# ── 法器·共鸣 ──────────────────────────────────────────────────
 	await _reset()
 	_set_tiers("left", {"法器": 4})

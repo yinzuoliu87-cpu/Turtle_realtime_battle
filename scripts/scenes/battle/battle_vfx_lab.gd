@@ -220,6 +220,14 @@ func _apply_tier() -> void:
 	##   会被误判成"没做"。(2026-08-12 复核炮台三时抓到。)
 	if battle._gun_syn != null:
 		battle._gun_syn.apply_all()
+	## ★同理: 依赖档位的【常驻标记】(如剑·血祭的 _blood_rite)也在建场时就写死了(那时档位=0),
+	##   不重跑就永远是 0 ⇒ 血气在台上永远不画, 又会被误判成"没做"。
+	## ⚠ `SynergySystem.apply_all` **不幂等**(每件属性是 += ) ⇒ 重跑会把该类型的属性加两遍。
+	##   台子是【看演出】的地方, 数值本来就不该在这里读 —— 打一行警告免得有人拿台上的数当真。
+	if battle._synergy != null:
+		battle._synergy.apply_all()
+		print("[VFXLAB] ⚠ 已为演出重跑 synergy.apply_all() —— 该类型的【每件属性】在台上会是两份,")
+		print("[VFXLAB]   台上数值不可当真(要量数值请走 tests/verify_*), 这里只看画面。")
 
 
 # ════════════════════════════════════════════════════════════════════════════

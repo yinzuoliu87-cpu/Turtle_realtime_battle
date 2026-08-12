@@ -51,6 +51,8 @@ var _mesh_tur_dish: ArrayMesh = null
 var _mesh_emitter: ArrayMesh = null
 var _mesh_star_wave: ArrayMesh = null
 var _mesh_rune: ArrayMesh = null
+var _mesh_blood: ArrayMesh = null
+var _mesh_ring_flat: ArrayMesh = null
 ## 正在扩散的星浪(炮台二) —— 每帧由 gun_turret_tick 推进
 var _waves: Array = []
 
@@ -1003,6 +1005,133 @@ func gun_firectrl_enchant(key: String, targets: Array) -> int:
 		energy_band(pf, t as Vector2, COL_ENCHANT, 16.0, 0.55)
 		firectrl_enchant_one(t as Vector2)
 		n += 1
+	return n
+
+
+
+## ══════════════════════════════════════════════════════════════════
+##  §剑·血祭 —— 随残血变浓的血气(2026-08-12 补: 十条里唯一零演出的一条)
+## ══════════════════════════════════════════════════════════════════
+## 机制是【常驻·连续】的(每损失 1% 生命 → +N% 攻击力), 所以:
+##   · 不做"每次攻击闪一下"——那是每秒好几次, 必然刷屏
+##   · 做成【强度随已损失生命连续变化】的血气: 血丝条数/亮度、脚下血痕的浓度
+##   · ★满血时完全不画 —— 没有加成就不该有表现(门禁拿这条当分母)
+## 一个单位最多 BLOOD_WISPS 条血丝; 条数 = ceil(已损失比例 × 上限)。
+
+const BLOOD_WISPS := 5
+const BLOOD_COL := Color(0.86, 0.10, 0.16, 1.0)
+## 血丝: 高度(米)/宽度(码)/飘动周期(秒)
+const BLOOD_H := 0.95
+const BLOOD_W_PX := 7.0
+const BLOOD_CYCLE := 1.6
+## 脚下血痕半径(码)
+const BLOOD_POOL_PX := 30.0
+
+
+## 一条血丝的网格(局部: 底在原点, 沿 +Y 升 1; 底浓顶透, 中段略宽 —— 是"丝"不是矩形条)
+static func _build_blood_wisp() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var seg := 6
+	for i in range(seg):
+		var y0: float = float(i) / float(seg)
+		var y1: float = float(i + 1) / float(seg)
+		var w0: float = sin(PI * y0) * 0.5 + 0.12
+		var w1: float = sin(PI * y1) * 0.5 + 0.12
+		var a0: float = 1.0 - y0
+		var a1: float = 1.0 - y1
+		_tri3(st, [Vector3(-w0, y0, 0.0), Color(1, 1, 1, a0)],
+			[Vector3(w0, y0, 0.0), Color(1, 1, 1, a0)], [Vector3(w1, y1, 0.0), Color(1, 1, 1, a1)])
+		_tri3(st, [Vector3(-w0, y0, 0.0), Color(1, 1, 1, a0)],
+			[Vector3(w1, y1, 0.0), Color(1, 1, 1, a1)], [Vector3(-w1, y1, 0.0), Color(1, 1, 1, a1)])
+	return _commit3(st)
+
+
+## 每帧更新一个单位的血气。`lost` = 已损失生命比例(0..1)。
+## 返回当前【显示】的血丝条数(门禁分母: 满血必须是 0)。
+func blood_rite_update(u: Dictionary, lost: float, t: float) -> int:
+	if not _has_world():
+		return 0
+	var k: float = clampf(lost, 0.0, 1.0)
+	var want: int = int(ceil(k * float(BLOOD_WISPS) - 0.0001))
+	var h = u.get("_blood_vfx", null)
+	if not (h is Dictionary):
+		h = {"wisps": [], "pool": null}
+		u["_blood_vfx"] = h
+	var hh: Dictionary = h
+	var arr: Array = hh.get("wisps", [])
+	arr = arr.filter(func(x): return is_instance_valid(x))
+	if _mesh_blood == null:
+		_mesh_blood = _build_blood_wisp()
+	while arr.size() < BLOOD_WISPS:
+		var mat := _mat_add()
+		mat.albedo_color = Color(BLOOD_COL.r, BLOOD_COL.g, BLOOD_COL.b, 0.0)
+		var mi := MeshInstance3D.new()
+		mi.mesh = _mesh_blood
+		mi.material_override = mat
+		_adopt(mi, "blood_wisp")
+		arr.append(mi)
+	hh["wisps"] = arr
+	var ws: float = float(battle.WS)
+	var pos: Vector2 = u["pos"]
+	for i in range(arr.size()):
+		var n: MeshInstance3D = arr[i]
+		if not is_instance_valid(n):
+			continue
+		var on: bool = i < want and u.get("alive", false)
+		var m = n.material_override
+		if m is StandardMaterial3D:
+			## 亮度随"已损失"连续涨 —— 不是有/无两档
+			(m as StandardMaterial3D).albedo_color = Color(BLOOD_COL.r, BLOOD_COL.g, BLOOD_COL.b,
+				(0.28 + 0.55 * k) if on else 0.0)
+		if not on:
+			continue
+		## 绕身一圈等分 + 各自不同相位的飘动(同相位会读成一排栅栏)
+		var th: float = float(i) * TAU / float(BLOOD_WISPS) + t * 0.55
+		var sway: float = sin(t * TAU / BLOOD_CYCLE + float(i) * 1.7) * 0.16
+		var off := Vector2(cos(th), sin(th) * 0.55) * (16.0 + 5.0 * float(i % 2))
+		n.position = battle._world_pos(pos + off, 0.12)
+		n.scale = Vector3(BLOOD_W_PX * ws, BLOOD_H * (0.7 + 0.5 * k), BLOOD_W_PX * ws)
+		n.rotation = Vector3(sway, th, 0.0)
+	## 脚下血痕: 越残越浓(满血不画)
+	var pool = hh.get("pool", null)
+	if not is_instance_valid(pool):
+		if _mesh_ring_flat == null:
+			_mesh_ring_flat = _build_rune_ring()
+		var pm := _mat_add()
+		pm.albedo_color = Color(BLOOD_COL.r, BLOOD_COL.g, BLOOD_COL.b, 0.0)
+		pool = MeshInstance3D.new()
+		pool.mesh = _mesh_ring_flat
+		pool.material_override = pm
+		_adopt(pool, "blood_pool")
+		hh["pool"] = pool
+	if is_instance_valid(pool):
+		var pr: float = BLOOD_POOL_PX * float(battle.WS)
+		pool.scale = Vector3(pr, pr, pr)
+		pool.position = battle._world_pos(pos, 0.01)
+		pool.rotation.y = t * 0.35
+		var pm2 = pool.material_override
+		if pm2 is StandardMaterial3D:
+			(pm2 as StandardMaterial3D).albedo_color = Color(BLOOD_COL.r, BLOOD_COL.g, BLOOD_COL.b,
+				0.0 if (want <= 0 or not u.get("alive", false)) else 0.10 + 0.35 * k)
+	return want if u.get("alive", false) else 0
+
+
+## 撤走一个单位的血气(死亡/换路)。返回 free 了几个。
+func blood_rite_free(u: Dictionary) -> int:
+	var h = u.get("_blood_vfx", null)
+	if not (h is Dictionary):
+		return 0
+	var n := 0
+	for w in (h as Dictionary).get("wisps", []):
+		if is_instance_valid(w):
+			w.queue_free()
+			n += 1
+	var p = (h as Dictionary).get("pool", null)
+	if is_instance_valid(p):
+		p.queue_free()
+		n += 1
+	u.erase("_blood_vfx")
 	return n
 
 

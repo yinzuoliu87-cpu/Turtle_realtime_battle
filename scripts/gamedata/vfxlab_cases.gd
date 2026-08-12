@@ -111,7 +111,7 @@ const CASES := {
 ## 剑羁绊 —— 血祭(全队每损失 1% 生命 → +0.1/0.3/0.5% 攻击力)。
 ## ★这条是【常驻属性】, 自查看的是"越残越猛有没有任何画面证据"(预判: 零演出)。
 "syn_sword": {
-	"eq": "p2eq_001", "star": 3, "carrier": "basic", "enemies": 3, "enemy_attacks": true,
+	"eq": "p2eq_001", "star": 3, "carrier": "basic", "enemies": 3, "enemy_attacks": true, "allies": 2, "carrier_hp": 0.35,
 	"enemy_dist": 180.0, "tier": 3, "tier_syn": "剑", "attacker": true, "ui": true,
 	"dur": 18.0, "zoom": 1.0, "focus": "carrier", "focus_h": 0.7,
 	"shots": [1.0, 4.0, 8.0, 12.0, 16.0],
