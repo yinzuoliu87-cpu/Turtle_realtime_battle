@@ -249,22 +249,18 @@ func _turret_two(side: String) -> void:
 ## 炮台位置：按阵营的场地方向排在后方（idx 0=最前 1=中 2=后）。
 ## ★炮台不是单位, 所以这里只是"一个坐标"—— 它不会被选中、不会被攻击、不会死。
 func _turret_pos(side: String, idx: int) -> Vector2:
-	## ★三座【分前中后】站位(2026-08-12 用户:「这位置隔这么近吗」)——
-	##   权威 TIER_DESCS["枪"] 逐字: 炮台一「我方**前方**」/ 炮台二「**中心**」/ 炮台三·火控「**后方**」。
-	##   旧公式是 0.12/0.18/0.24 三个挨着的 x(相距仅 96 码), 三座挤成一堆且全在自家后场,
-	##   与文档的前/中/后完全对不上。
-	## ⚠ 这会改动【炮台一那条穿透线的起点】——它本来就该从前方打, 线更贴近战线是文档的意思。
+	## ★三座按【三角形】站位(2026-08-12 用户拍板:「以三角形放置: 前上前下和后面」)——
+	##   前上 = 炮台一·轰击 / 前下 = 炮台二·能量 / 后方 = 炮台三·火控。
+	##   之前是三座横排(相距 96 码)、再之前我改成前中后但用纵向错开半档, 都不好看;
+	##   三角形既拉得开又是个能读出来的阵形。
+	## ⚠ 站位会改动炮台一那条穿透线的起点与炮台二的辐射源 —— 这是站位本身的含义, 不是副作用。
 	var a: Rect2 = battle.ARENA
-	## 前/中/后的横向位置(以左方为例; 右方镜像)
-	var fx: float = [0.34, 0.50, 0.09][clampi(idx, 0, 2)]
-	var x: float = a.position.x + a.size.x * fx
-	if side != "left":
-		x = a.position.x + a.size.x * (1.0 - fx)
-	## 中心那座两边会重合 ⇒ 各自沿纵向错开一点(左上右下), 免得叠在同一个点上
-	var dy: float = [0.0, -0.16, 0.0][clampi(idx, 0, 2)]
-	if side != "left":
-		dy = -dy
-	var y: float = a.position.y + a.size.y * (0.5 + dy)
+	## [横向比例, 纵向偏移(相对场高)] —— 以左方为例, 右方横向镜像、纵向不镜像
+	var spec := [[0.32, -0.20], [0.32, 0.20], [0.10, 0.0]]
+	var fx: float = float(spec[clampi(idx, 0, 2)][0])
+	var fy: float = float(spec[clampi(idx, 0, 2)][1])
+	var x: float = a.position.x + a.size.x * (fx if side == "left" else 1.0 - fx)
+	var y: float = a.position.y + a.size.y * (0.5 + fy)
 	return Vector2(x, y)
 
 
