@@ -63,11 +63,16 @@ func _ready() -> void:
 
 	# ══ ② synergy_rows 的算法本身 ═════════════════════════════════════════
 	#   口径: 只数【装在身上】的 + 按装备 id 去重; need = 距下一档还差几件。
+	## ★★阵容【自己种】, 不用环境里现成的 —— CI 上没有本地存档, `lineup_leader_ids()` 返回空,
+	##   第一版就这么红在 CI 上而本地全绿(memory [[fb-ci-vs-local-divergence]]:
+	##   "CI 默认队 vs 本地存档队")。判据要对环境不敏感。
+	GameState.test_mode = true                # ★演示数据绝不许落盘(2026-08-12 污染存档的教训)
+	var saved_leaders = GameState.season_leaders
+	GameState.season_leaders = ["green"]      # 固定一只, 与真实存档无关
 	var ids: Array = GameState.lineup_leader_ids()
-	_ok("② ★分母: 阵容里有龟(没有的话下面全是空检查)", not ids.is_empty(),
-		"阵容 %d 只" % ids.size())
+	_ok("② ★分母: 种进去的阵容读得回来(读不回来下面全是空检查)", ids.size() == 1,
+		"阵容 %d 只: %s" % [ids.size(), str(ids)])
 	if not ids.is_empty():
-		GameState.test_mode = true            # ★演示数据绝不许落盘(2026-08-12 污染存档的教训)
 		var pid := str(ids[0])
 		var saved = GameState.persistent_equipped.get(pid, null)
 		# 枪 4 件(首档 3 ⇒ 一档, 距二档差 2) + 同一件重复 2 次(去重后仍算 1)
@@ -101,6 +106,7 @@ func _ready() -> void:
 			GameState.persistent_equipped.erase(pid)
 		else:
 			GameState.persistent_equipped[pid] = saved
+	GameState.season_leaders = saved_leaders   # ★种什么就还原什么(改了不还原会波及同文件后面的用例)
 
 	# ══ ③ 战斗内 chips ════════════════════════════════════════════════════
 	RB.DEBUG_EDIT = true
