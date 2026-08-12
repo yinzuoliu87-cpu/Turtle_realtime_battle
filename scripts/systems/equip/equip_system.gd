@@ -1058,7 +1058,9 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false)
 # 雷电法杖 026: 连锁闪电
 # 雷电法杖 026: 连锁闪电
 func _eq_chain_lightning(u: Dictionary, si: int) -> void:
-	var enemies = battle._targeting._enemies_of(u)
+	## ★连锁是【逐跳单体指向】(每一跳锁一个具体目标) ⇒ 走 §PICK-TARGET 闸, 不锁训龟大师
+	##   (用户 2026-08-12 实测点名:「像闪电连锁等不可以锁」)。
+	var enemies = battle._targeting._pick_enemies_of(u)
 	if enemies.is_empty():
 		return
 	var hops: int = [4, 5, 6][si]

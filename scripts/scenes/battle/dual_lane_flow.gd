@@ -451,6 +451,17 @@ func _dl_build_lane_field() -> void:
 	battle._world_builder._build_map_props()   # 地图障碍(中央大礁+两侧墙)+基地穹顶围栏(幂等, 跨路复用)
 	battle._world_builder._build_navmesh()     # 2D navmesh 避障(幂等; 障碍挖洞→单位绕行)
 	# 装备+登场被动管线(评审流程走的 756-758, 双路早退绕过了→这里补上): leader读persistent_equipped+dual_lineup, 小将读dual_lineup._dl_equips, 双方leader上登场被动
+	## ★★批④(077~094 十七件)的换路撤场必须在【生成之前】(2026-08-13 修)。
+	##   这一批里有大量常驻物: 077 小手枪 / 079 医疗炮台 / 080 直升机 / 086 浮游炮 /
+	##   088 潮汐碑 / 089 符纸 / 094 祖龟碑, 漏清会把上一路的整个带进下一路。
+	##   但它**曾经排在 `_eq_apply_all_stats()` 之后** —— 而登场钩正是在那里生成召唤物 ⇒
+	##   刚生成就被清掉。用户实测第 2 条「5费的直升机为什么压根没有召唤」就是它:
+	##   直升机**不是单位**, clear_all 里 `vfx.heli_free(h)` 把节点直接拔掉 ⇒ 整架消失;
+	##   而小手枪/炮台是 `battle._units` 里的真单位, 只丢了登记表 ⇒ 人还在、驱动没了
+	##   (所以玩家"看得到小手枪却看不到直升机", 这个不对称正是同一个 bug 的两副面孔)。
+	for _b4ref in battle._equip_sys._b4_all():
+		if _b4ref != null:
+			_b4ref.clear_all()
 	battle._inject_equipment()
 	battle._spawn._apply_spawn_passives()
 	battle._equip_sys._stats._eq_apply_all_stats()
@@ -474,13 +485,6 @@ func _dl_build_lane_field() -> void:
 			_sysref.clear_all()
 		elif _sysref.has_method("clear"):
 			_sysref.clear()
-	# ★批④(2026-08-06·077~094 十七件)的换路撤场 —— 六个系统统一走 `_b4_all()`。
-	#   这一批里有大量【会活过一路】的东西: 077 的小手枪 / 079 的医疗炮台 / 080 的直升机 /
-	#   086 的六个浮游炮 / 088 的潮汐碑 / 089 的符纸 / 094 的祖龟碑。
-	#   漏清就是把上一路的召唤物与光环整个带进下一路 —— 而且**不会报错**, 只会让下路莫名其妙。
-	for _b4ref in battle._equip_sys._b4_all():
-		if _b4ref != null:
-			_b4ref.clear_all()
 	battle._potion_syn.clear()    # 换路: 猎物标记与节拍归零
 	battle._gadget_syn.clear()    # 换路: 僵硬/冰封CD归零(铸币【不清】—— 一场 = 上路+下路+决胜)
 	battle._food_syn.clear()      # 换路: 成长节拍归零

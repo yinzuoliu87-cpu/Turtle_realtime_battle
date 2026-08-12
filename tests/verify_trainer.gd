@@ -95,6 +95,39 @@ func _ready() -> void:
 		print("  [实测] 把训龟大师放到敌人脚边(距离 5 码), _nearest_enemy 选中的是: %s"
 			% ("训龟大师" if picked_is_trainer else str((picked as Dictionary).get("name", "?")) if picked is Dictionary else "null"))
 		_ok("★贴脸也不会被主动索敌(_nearest_enemy 跳过它)", not picked_is_trainer)
+		# ── ③b ★★2026-08-12 用户实测:「很多技能还有召唤物触手都会锁训龟大师」──
+		#   规矩: 单体指向走 §PICK-TARGET 闸(排大师), 真 AOE 走 _enemies_of(大师照吃)。
+		#   三条实测漏了闸: 闪电连锁(用原始表逐跳)/ 枪炮台一 / 灵物触手(后两者连敌表都是手写的,
+		#   `side != side`, 连 _is_hostile 都没走)。这里逐条钉住**名单里没有大师**。
+		var pick_u: Array = s._targeting._pick_enemies_of(foe)
+		var has_tr_u := false
+		for o in pick_u:
+			if (o as Dictionary).get("is_trainer", false):
+				has_tr_u = true
+		_ok("③b ★分母: 单体闸拿得到别的敌人(空名单就是空检查)", pick_u.size() >= 1,
+			"名单 %d 个" % pick_u.size())
+		_ok("③b ★单体闸 _pick_enemies_of 名单里没有大师", not has_tr_u)
+		# 按阵营的重载(触手/炮台这类"逻辑实体"用它 —— 它们不是单位, 拿不到 u)
+		var side_of_foe: String = str(s._eff_side(foe))
+		var pick_s: Array = s._targeting._pick_enemies_of_side(side_of_foe)
+		var has_tr_s := false
+		for o2 in pick_s:
+			if (o2 as Dictionary).get("is_trainer", false):
+				has_tr_s = true
+		_ok("③b ★分母: 按阵营的闸也拿得到人", pick_s.size() >= 1, "名单 %d 个" % pick_s.size())
+		_ok("③b ★★按阵营闸 _pick_enemies_of_side 名单里也没有大师(触手/炮台走这条)",
+			not has_tr_s)
+		# 源码: 三处真的改过来了(光有闸没人走 = 没修)
+		var src_eq: String = FileAccess.get_file_as_string("res://scripts/systems/equip/equip_system.gd")
+		var src_gun: String = FileAccess.get_file_as_string("res://scripts/systems/equip/gun_synergy_system.gd")
+		var src_spr: String = FileAccess.get_file_as_string("res://scripts/systems/equip/spirit_synergy_system.gd")
+		_ok("③b ★闪电连锁走单体闸", src_eq.find("battle._targeting._pick_enemies_of(u)") >= 0)
+		_ok("③b ★枪炮台一走按阵营闸(不再手写敌表)",
+			src_gun.find("_pick_enemies_of_side(side)") >= 0
+				and src_gun.find('str(u.get("side", "")) != side:
+			foes.append(u)') < 0)
+		_ok("③b ★灵物触手走按阵营闸(不再手写敌表)",
+			src_spr.find("_pick_enemies_of_side(side)") >= 0)
 		# AoE 走 _enemies_of —— 那条路必须【能】拿到它
 		var aoe: Array = s._targeting._enemies_of(foe)
 		var in_aoe := false

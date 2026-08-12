@@ -177,6 +177,33 @@ func _ready() -> void:
 		src_dl.find("_synergy.clear()") > 0
 			and src_dl.find("_synergy.clear()") < src_dl.find("_synergy.apply_all()"))
 
+	# ══ ⑤ 换路管线: 批④的召唤物【生成之后不许被撤场清掉】═══════════════════
+	#   用户实测第 2 条:「5费的直升机为什么压根没有召唤」。
+	#   根因: `_dl_build_lane_field()` 里【先】`_eq_apply_all_stats()`(登场钩在这生成
+	#   小手枪/医疗炮台/直升机/浮游炮/潮汐碑…), **后**才跑批④的换路撤场 `clear_all()`
+	#   ⇒ 刚生成就被清。直升机不是单位 ⇒ 节点被 heli_free 直接拔掉 = 整架消失;
+	#   小手枪/炮台是真单位 ⇒ 只丢登记表, 人还在但驱动没了(所以"看得到枪、看不到机")。
+	#   ★判据落在**顺序**上: 撤场必须排在生成之前。只断言"能生成"守不住 —— 它本来就能生成。
+	var src_dl2: String = FileAccess.get_file_as_string("res://scripts/scenes/battle/dual_lane_flow.gd")
+	var i_clear: int = src_dl2.find("_b4ref.clear_all()")
+	var i_spawn: int = src_dl2.find("_stats._eq_apply_all_stats()")
+	_ok("⑤ ★分母: 换路管线里这两步都在", i_clear > 0 and i_spawn > 0,
+		"clear@%d spawn@%d" % [i_clear, i_spawn])
+	_ok("⑤ ★★批④撤场排在【登场生成之前】(反了 = 刚生成就被清 = 直升机永远不出现)",
+		i_clear > 0 and i_spawn > i_clear, "clear@%d < spawn@%d" % [i_clear, i_spawn])
+	# 真的跑一遍登场钩, 确认直升机建得出来(分母: 生成本身没坏)
+	var hcar: Dictionary = _s._spawn._make_unit("basic", "left", Vector2(600, 400))
+	hcar["equips"] = [{"id": "p2eq_080", "star": 3}]
+	hcar["eq_state"] = {}
+	_s._units.clear()
+	_s._units.append(hcar)
+	var gsys = _s._equip_sys._b4("p2eq_080")
+	if gsys != null:
+		gsys.clear_all()
+		_s._equip_sys._stats._eq_apply_all_stats()
+		_ok("⑤ ★分母: 登场钩真的建得出直升机(建不出来上面那条就没意义)",
+			gsys._helis.size() == 1, "实得 %d 架" % gsys._helis.size())
+
 	_s._units.clear()
 	_s.set_process(false)
 	await get_tree().process_frame

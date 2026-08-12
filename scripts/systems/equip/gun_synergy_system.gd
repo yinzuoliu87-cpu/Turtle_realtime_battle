@@ -153,10 +153,9 @@ func _side_tier(side: String) -> int:
 ## 第一座：选一名敌人轰击，直线上所有敌人各吃 80 物理；最低血友军回 30% × 造成伤害。
 func _turret_one(side: String) -> void:
 	var origin: Vector2 = _turret_pos(side, 0)
-	var foes: Array = []
-	for u in battle._units:
-		if u is Dictionary and u.get("alive", false) and str(u.get("side", "")) != side:
-			foes.append(u)
+	## ★选【轰击方向】是单体指向 ⇒ 走标准闸(排大师/不可选中/按有效阵营), 不再手写敌表。
+	##   直线上的扫射结算仍是范围语义, 那一步照旧(大师被线扫到就该吃)。
+	var foes: Array = battle._targeting._pick_enemies_of_side(side)
 	if foes.is_empty():
 		return
 	# ★确定性选取: 取【最近的】那个当轰击方向 —— 同炮台/猎物的规矩, 随机会让门禁与回放都不稳。

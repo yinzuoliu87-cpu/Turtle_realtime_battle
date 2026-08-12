@@ -154,6 +154,28 @@ func _pick_enemies_of(u: Dictionary) -> Array:
 		out.append(o)
 	return out
 
+## §PICK-TARGET 的【按阵营】重载 —— 给"逻辑实体"用: 触手、炮台这些**不是单位**的东西
+## 拿不到 `_pick_enemies_of(u)` 需要的那个 u, 以前就各自手写一份敌表, 于是
+## ①没走 `_is_hostile`(归顺的龟被判错阵营) ②没排大师 ③没排不可选中 —— 三样全漏。
+## ⚠ 语义同 `_pick_enemies_of`: 只给「挑一个/最近一个/单体指向」用;
+##   真 AOE 的结算名单仍该用原始表(大师只吃 AOE 波及是设计, 不是漏)。
+func _pick_enemies_of_side(side: String) -> Array:
+	var out: Array = []
+	for o in battle._units:
+		if not (o is Dictionary) or not o.get("alive", false):
+			continue
+		if str(battle._eff_side(o)) == str(side):
+			continue                              # ★按【有效阵营】: 归顺的龟算它现在这边
+		if o.get("_egg_fence", false):
+			continue                              # 围栏未破的蛋: 单体不锁(同 _enemies_of)
+		if o.get("is_trainer", false):
+			continue                              # 训龟大师: 场外监视者, 只吃 AOE 波及
+		if battle._is_untargetable(o):
+			continue
+		out.append(o)
+	return out
+
+
 ## 均分型护盾/团队份额的受益名单: 排除【训龟大师】与【龟蛋】——
 ##   两者都是"占着人头却把盾摊薄"的非战斗单位: 大师是场外监视者、龟蛋不动不攻击且已自带围栏 200 双抗。
 ## ★只给【均分/按人头分摊】的效果用(铁壁盾 016、温泉蛋孵化盾 036); "给全队罩个盾"之类无所谓不用换。

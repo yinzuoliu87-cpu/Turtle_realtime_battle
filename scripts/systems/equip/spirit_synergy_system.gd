@@ -171,10 +171,10 @@ func _slap(side: String, idx: int, share: float) -> int:
 	if ti <= 0:
 		return 0
 	var origin: Vector2 = tentacle_pos(side, idx)
-	var foes: Array = []
-	for u in battle._units:
-		if u is Dictionary and u.get("alive", false) and str(u.get("side", "")) != side:
-			foes.append(u)
+	## ★触手选的是"最近的那一个" = 单体指向 ⇒ 走标准闸, 不锁训龟大师
+	##   (用户 2026-08-12:「召唤物触手都会锁训龟大师, 不应该」)。
+	##   触手挥击的带状结算仍是范围语义, 大师被扫到照吃 —— 那是设计。
+	var foes: Array = battle._targeting._pick_enemies_of_side(side)
 	if foes.is_empty():
 		return 0
 	# ★确定性选取: 最近的那个(同炮台/收殓的规矩)
