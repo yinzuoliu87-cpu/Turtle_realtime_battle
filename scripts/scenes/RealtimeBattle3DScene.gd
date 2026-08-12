@@ -4632,7 +4632,11 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 	#   (CLAUDE.md §3.3), 在别处拦就只拦得住其中一条; 而"含真伤"要求它在真伤也走的这条收口上生效。
 	#   `_dmg_cap_one` 保留不动 —— 亡灵骷髅 032 用的是它, 语义是"命数式单位", 与带值封顶不是一回事。
 	var _capv: float = float(u.get("_dmg_cap_val", 0.0))
-	if _capv > 0.0:
+	## ★★【有护盾就不封顶】(用户 2026-08-12 削弱:「小手枪在拥有护盾时将不再有将伤害
+	##   降低到 1 这个被动」)。理由: 小手枪一旦被 079 医疗炮台 / 枪羁绊的白色冲击波 /
+	##   盾羁绊套上护盾, 就成了"护盾先吸 + 溢出还被封到 2 点" = 实质无敌。
+	##   ⇒ 护盾期间按原样吃伤害(护盾自己会挡), 盾破了封顶才重新生效。
+	if _capv > 0.0 and float(u.get("shield", 0.0)) <= 0.0:
 		return minf(d, _capv)
 	return d
 

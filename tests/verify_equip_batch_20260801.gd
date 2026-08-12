@@ -693,8 +693,11 @@ func _t12_anchor() -> void:
 	_ok("⑫ 0.2 秒 → 还没到节拍, 不回血", absf(float(u["hp"]) - 500.0) < 0.01, "hp=%.1f" % float(u["hp"]))
 	_s._equip_tick_sys._tick_anchor(u, 0.06)
 	_s._damage._heal_flush(u)
-	_ok("⑫ ★满 0.25 秒 → 回 1% maxHp = 10 点(1★)",
-		absf(float(u["hp"]) - 510.0) < 1.01, "hp=%.1f (期望 510)" % float(u["hp"]))
+	## ★2026-08-12 用户削弱: 每 0.25 秒回血 1/2/15% → **0.1/0.2/3%** maxHp。
+	##   1★ 于是从 10 点变成 1 点(maxHp 1000)。数值判据在 verify_nerf_pistol_anchor 里逐星级验,
+	##   这里只守"节拍到了会回血"这条时序。
+	_ok("⑫ ★满 0.25 秒 → 回 0.1% maxHp = 1 点(1★·2026-08-12 削弱后)",
+		absf(float(u["hp"]) - 501.0) < 0.51, "hp=%.1f (期望 501)" % float(u["hp"]))
 	# on-hurt 不得再产生治疗(否则变成"定时 + 受伤"双份)
 	var atk: Dictionary = _mk("basic", "right", Vector2(60.0, 0.0), 1000.0)
 	u["hp"] = 500.0

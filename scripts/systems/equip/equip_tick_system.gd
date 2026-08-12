@@ -144,7 +144,10 @@ func _tick_anchor(u: Dictionary, delta: float) -> void:
 		e["anchor_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		var stt: Dictionary = u["eq_state"].get("p2eq_017", {})
-		var heal_amt: float = u["maxHp"] * [0.01, 0.02, 0.15][si]
+		## 用户 2026-08-12 削弱:「巨沉之锚的每 0.25 回血削弱为 0.1/0.2/3% 最大生命值」
+		## (原 1/2/15%)。★注意这条回血还兼着充能来源(累积治疗满 250 → +1 沉锚充能),
+		##   所以削回血 = 连带把沉锚充能的攒速一起削了, 不是只削治疗量。
+		var heal_amt: float = u["maxHp"] * [0.001, 0.002, 0.03][si]
 		var low = null
 		var lv := INF
 		for o in battle._targeting._allies_of(u):
