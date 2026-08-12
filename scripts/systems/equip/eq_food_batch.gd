@@ -478,7 +478,10 @@ func _box_tick(u: Dictionary, si: int, stt: Dictionary, delta: float) -> void:
 	## ★盾量进血条(2026-08-11 补验收): 终极护盾是 SpecialBalance 余额, 不进 u["shield"] ⇒
 	##   血条上原本没有任何读数 —— 玩家只看得到"变成了盒子", 看不到"这层盾还剩多少/快破没"。
 	##   照 068 法力盾的规矩(特殊护盾给特殊颜色护盾条)每帧喂真实余额(礼盒粉段), 破盾后自动隐藏。
-	_vfx.ult_bar_update(u, battle._spec.val(u, KEY_ULT))
+	## ★2026-08-12 改走 HpBar: 镜像进 `_ultShieldVal`, 由血条自己画(它的 barMax 会撑开)。
+	##   原来在 food_eq_vfx 自画一条 ColorRect, 而那套用 maxHp 当分母 ⇒
+	##   **满血时段宽恒为 0**, 玩家一次都没看见过(用户实测第 7 条)。
+	u["_ultShieldVal"] = battle._spec.val(u, KEY_ULT)
 	if u.get("_cake_box", false):
 		_box_form_tick(u, si, stt, delta)
 

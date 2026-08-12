@@ -1100,19 +1100,30 @@ func _t_vfx_art() -> void:
 	_ok("⑦-9d 072 每秒滴答有读数: 一次 pulse 后 healdrop 句柄 ≥ +2(施法者+圈内友军各一颗)",
 		_count_live_kind("healdrop") >= hd0 + 2,
 		"%d→%d" % [hd0, _count_live_kind("healdrop")])
-	# ⑦-9e 072 终极护盾进血条(礼盒粉段): 量真实 ColorRect, 0 时隐藏
-	var ubu: Dictionary = _mk("fortune", "left", Vector2(680.0, -250.0), 1000.0)
-	ubu["hp"] = 500.0
-	vfx.ult_bar_update(ubu, 200.0)
-	var urect = ubu.get("_ult_rect", null)
-	_ok("⑦-9e 072 终极盾段真的是血条 Control 的子节点",
-		is_instance_valid(urect) and is_same(urect.get_parent(), ubu.get("bar_root", null)), "")
-	if is_instance_valid(urect):
-		_ok("⑦-9f 072 ★量真实节点: hp 50%% / 盾 20%% ⇒ x=33.0 宽=13.2",
-			absf(urect.position.x - 33.0) < 0.51 and absf(urect.size.x - 13.2) < 0.51,
-			"x=%.2f w=%.2f" % [urect.position.x, urect.size.x])
-		vfx.ult_bar_update(ubu, 0.0)
-		_ok("⑦-9g 072 ★分母: 盾 0 时段隐藏", not urect.visible, "")
+	# ⑦-9e 072 终极护盾进血条 —— 2026-08-12 重做: 改走 HpBar(镜像 `_ultShieldVal`)。
+	#   ★用户实测「5费蛋糕礼盒的特殊护盾条我压根没看到」。根因: 原来在 food_eq_vfx 自画
+	#     一条 ColorRect, 用 `maxHp` 当分母算起点 ⇒ **满血时起点已在条尾, 宽度恒为 0**。
+	#     而 072 的盾正是"开局满血时给" ⇒ 从生下来就不可见。
+	#   ⇒ 判据必须是「**满血时也画得出来**」, 只断言"段存在"守不住(0 宽的段同样存在)。
+	var ubar := HpBar.new()
+	var ufull: Dictionary = {"hp": 1000.0, "maxHp": 1000.0, "shield": 0.0,
+		"_ultShieldVal": 1200.0, "side": "left", "alive": true}
+	ubar.update_state(ufull)
+	_ok("⑦-9e ★★满血 + 终极盾 120%% ⇒ barMax 被撑开(否则盾段无处可画)",
+		ubar._bm > 1000.5, "barMax=%.0f (maxHp=1000)" % ubar._bm)
+	_ok("⑦-9f ★barMax 恰好 = 血 + 终极盾(不是随便放大)",
+		absf(ubar._bm - 2200.0) < 0.51, "barMax=%.0f (应 2200)" % ubar._bm)
+	_ok("⑦-9f2 ★读到的终极盾量 = 镜像字段", absf(ubar._ult - 1200.0) < 0.51,
+		"_ult=%.0f" % ubar._ult)
+	var uzero: Dictionary = {"hp": 1000.0, "maxHp": 1000.0, "shield": 0.0,
+		"_ultShieldVal": 0.0, "side": "left", "alive": true}
+	ubar.update_state(uzero)
+	_ok("⑦-9g ★分母: 没有终极盾时 barMax 不被撑开(=maxHp)",
+		absf(ubar._bm - 1000.0) < 0.51, "barMax=%.0f" % ubar._bm)
+	ubar.free()
+	var src_food: String = FileAccess.get_file_as_string("res://scripts/systems/equip/eq_food_batch.gd")
+	_ok("⑦-9g2 072 每帧真的把余额镜像进 `_ultShieldVal`(光有段没人喂=没做)",
+		src_food.find('u["_ultShieldVal"] = battle._spec.val(u, KEY_ULT)') >= 0)
 	# ⑦-9h 072 分裂礼盒有真立绘(idle_sd.tex —— 花名册判"有没有美术"的同一把尺),
 	#   不再是队色发光球(_spawn_summon 无 spr_id 的兜底)
 	var spu: Dictionary = _equip(_mk("fortune", "left", Vector2(720.0, -250.0), 1000.0), "p2eq_072", 3)

@@ -61,6 +61,29 @@ func _ready() -> void:
 	_ok("① 携带者死后的 5 点档也一样(同一个字段, 别只堵一半)",
 		s._mitigate_incoming(p, 100.0, true) > 90.0)
 
+	# ══ ①b 小手枪: 受到的所有治疗封顶 1 点(用户 2026-08-12 第 3 条) ══════════
+	#   ★放在 `battle_damage._heal()` 最前面 = **所有治疗源的共用收口**:
+	#     079 医疗炮台 / 法器灵泉 / 食物盛宴 / 090 的治疗浪潮 各有各的入口, 在别处拦只拦得住一条。
+	var hp2: Dictionary = s._spawn._make_unit("basic", "left", c + Vector2(40, 0))
+	hp2["maxHp"] = 500.0
+	hp2["hp"] = 100.0
+	hp2["_heal_cap_val"] = 1.0
+	var got: float = s._damage._heal(hp2, 200.0)
+	_ok("①b ★小手枪: 一次 200 点治疗只回 1 点", absf(got - 1.0) < 0.01, "实得 %.2f" % got)
+	hp2["heal_amp"] = 2.0                        # 治疗加成 +200%
+	var got2: float = s._damage._heal(hp2, 200.0)
+	_ok("①b ★★封顶在【所有乘算之后】: 有 +200% 治疗加成也还是 1 点(不是 3 点)",
+		absf(got2 - 1.0) < 0.01, "实得 %.2f" % got2)
+	var other: Dictionary = s._spawn._make_unit("basic", "left", c + Vector2(80, 0))
+	other["maxHp"] = 500.0
+	other["hp"] = 100.0
+	var got3: float = s._damage._heal(other, 200.0)
+	_ok("①b ★分母: 没写这个字段的单位不受影响(照回 200)",
+		absf(got3 - 200.0) < 0.01, "实得 %.2f" % got3)
+	var src_gun: String = FileAccess.get_file_as_string("res://scripts/systems/equip/eq_gun_batch.gd")
+	_ok("①b 小手枪生成时真的写了这个字段(光有闸没人写=没做)",
+		src_gun.find('p["_heal_cap_val"] = 1.0') >= 0)
+
 	# ══ ② 不沉之锚: 每 0.25 秒回 0.1/0.2/3% 最大生命 ═══════════════════════
 	#   ★同时验【充能攒速】: 这条回血兼着沉锚充能的来源(累积满 250 → +1 充能),
 	#     削回血 = 连带削充能。只验治疗量会漏掉一半影响面。

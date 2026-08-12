@@ -1217,10 +1217,42 @@ func _show_banner(won: bool) -> void:
 	shell_sb.content_margin_top = 22; shell_sb.content_margin_bottom = 24
 	shell.add_theme_stylebox_override("panel", shell_sb)
 	center.add_child(shell)
+	## ★★结算页的按钮【必须永远够得着】(用户 2026-08-12 实测:「结算时数量单位过多还是会
+	##   导致按钮被挤下去, 我手机是钮点不到」)。
+	##   CenterContainer 按子节点最小尺寸居中 ⇒ 卡片一超视口就上下一起溢出, 按钮掉出屏幕。
+	##   ⇒ 「标题~数据表」进一个**高度封顶的滚动区**, 按钮行放在滚动区【外面】。
+	##   预算按视口算并扣安全区(手机刘海/手势条), 不写死像素。
+	var outer := VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 12)
+	shell.add_child(outer)
+	var vp: Vector2 = battle.get_viewport().get_visible_rect().size
+	var sm: Vector4 = SafeArea.margins(vp, 6.0)
+	## 留给: 卡片上下内边距(46) + 按钮行(约 70) + 安全区 + 一点呼吸
+	var scroll_max: float = maxf(180.0, vp.y - 46.0 - 70.0 - sm.y - sm.w - 40.0)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	## ★滚动条【不占位】: 默认的 AUTO 会给竖条预留宽度, 结算卡因此整体左移几像素,
+	##   verify_ui_layout ⑥「居中于真实视口」当场红(实测偏 -5)。
+	##   SHOW_NEVER 只是不画条, 拖动/滚轮照样能滚 —— 与出战页选龟网格同一套做法。
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	scroll.custom_minimum_size = Vector2(0, 0)
+	scroll.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	outer.add_child(scroll)
 	var card := VBoxContainer.new()
 	card.add_theme_constant_override("separation", 12)
 	card.alignment = BoxContainer.ALIGNMENT_CENTER
-	shell.add_child(card)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(card)
+	## 内容比预算矮就按内容高(卡片不至于凭空拉长); 高了就封顶并内部滚动。
+	## ★★必须【延迟求值】: `set_deferred("custom_minimum_size", <算式>)` 只延迟**赋值**,
+	##   算式在这一行就求完了 —— 那时 card 还是空的, 于是恒得 120, 卡片被压成一小条
+	##   (verify_result_reachable 的「结算卡真的很高」分母当场红, 实测卡高 224)。
+	##   用 lambda + call_deferred 才是延迟【求值】。
+	var _fit_scroll := func() -> void:
+		if is_instance_valid(scroll) and is_instance_valid(card):
+			scroll.custom_minimum_size = Vector2(0,
+				minf(scroll_max, maxf(120.0, card.get_combined_minimum_size().y)))
+	_fit_scroll.call_deferred()
 
 	# ── ① 结果标题
 	var big = Label.new()
@@ -1272,7 +1304,8 @@ func _show_banner(won: bool) -> void:
 	var btn_row = HBoxContainer.new()
 	btn_row.add_theme_constant_override("separation", 28)
 	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	card.add_child(btn_row)
+	## ★挂在 `outer` 而不是 `card` —— card 在滚动区里, 挂那儿就会被内容顶出可视范围。
+	outer.add_child(btn_row)
 	# ★教学模式: 结算按钮走导演(战斗1打完→商店, 战斗2打完→结束回菜单), 而不是直接返回菜单。
 	var _td = battle.get_node_or_null("/root/TutorialDirector")
 	if _td != null and _td.is_active():
@@ -2015,7 +2048,7 @@ func _topright_positions() -> Dictionary:
 
 ## 装备格底下的一条充能条(黑底 + 彩色填充)。★一件装备可以有【多条】——
 ## 023 灼热火珊瑚 / 026 雷电法杖 身上同时跑着两条真条子: 它自己的老充能
-## (每段命中 +10/+25, 满 100 放主动) 和法器羁绊的法力条(满 100/80/60/50 也放同一个主动)。
+## (每段命中 +10/+25) 和法器羁绊的法力条(满值随档位 200/180/150/120/80)。
 ## 以前一件只画一条 ⇒ 紫色那条在局内零出口, 玩家只会看到"它自己突然放了"(2026-08-12 补)。
 ## `spec` = [字段名, 满值, 可选条色]；填充由 info_panel 每帧按 eq_state[id][字段] 刷。
 func add_equip_charge_bar(u: Dictionary, slot: Control, eid: String, spec: Array) -> void:

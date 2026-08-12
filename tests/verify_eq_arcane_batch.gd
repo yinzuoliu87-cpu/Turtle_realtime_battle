@@ -457,14 +457,16 @@ func _t088_aura() -> void:
 func _t088_mana_lock() -> void:
 	print("── ① 088 ★★释放期间锁法力条(不锁的话法器 4 档就常驻了) ──")
 	_fresh()
-	## 法器 4 档 ⇒ 法力条满值 50(StaffSynergySystem.MANA_FULL 的顶档)
+	## 法器 4 档 ⇒ 法力条满值 = StaffSynergySystem.MANA_FULL_BY_TIER 的顶档
+	## ★别写死数字: 2026-08-12 用户把满值整体削弱成 200/180/150/120/80(档 0~4),
+	##   写死 50 的那几处当场全红。判据要**按表算**, 数值调整时不该动测试。
 	_s._synergy._by_side["left"] = {"法器": 4}
 	var u := _mk("fortune", "left", Vector2(0, 0))
 	_equip(u, "p2eq_088", 3)
 	var _e := _mk("fortune", "right", Vector2(100, 0))
 
 	## ★走【真入口】: 法力条满是由 StaffSynergySystem.add_mana 触发的
-	_s._staff_syn.add_mana(u, 50.0)
+	_s._staff_syn.add_mana(u, _s._staff_syn.mana_full(u))
 	_ok("① 法力满 → 经 add_mana 真的立起了碑", _arc()._steles.size() == 1,
 		"n=%d" % _arc()._steles.size())
 	_ok("① 碑存在 ⇒ 这件装备的法力条被标记为锁住",
@@ -818,7 +820,7 @@ func _t090_mana_lock() -> void:
 	u["atk"] = 100.0
 	var _e2 := _mk("fortune", "right", Vector2(200, 0))
 
-	_s._staff_syn.add_mana(u, 50.0)
+	_s._staff_syn.add_mana(u, _s._staff_syn.mana_full(u))   # ★按表灌满, 别写死(满值 2026-08-12 调过)
 	_ok("③ 法力满 → 经 add_mana 真的起跳了", _arc()._slams.size() == 1,
 		"n=%d" % _arc()._slams.size())
 	_ok("③ 起跳瞬间就锁住法力条", _arc().mana_locked(u, "p2eq_090"))

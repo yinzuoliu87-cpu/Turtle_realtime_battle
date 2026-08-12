@@ -958,24 +958,10 @@ func unbox_smoke(u: Dictionary) -> Array:
 
 ## 072 终极护盾段(礼盒粉): 挂在携带者血条上, 每帧由 _box_tick 喂真实余额。
 ## 与 071 奶油段共用 shield_seg_rect 这把尺; 排序在灰条/奶油段之后(段与段不重叠)。
-func ult_bar_update(u: Dictionary, val: float) -> void:
-	var root = u.get("bar_root", null)
-	if not is_instance_valid(root):
-		return
-	var rect = u.get("_ult_rect", null)
-	if not is_instance_valid(rect):
-		rect = ColorRect.new()
-		rect.name = "UltShield"
-		rect.color = Color(1.0, 0.60, 0.76, 0.95)
-		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		rect.z_index = 3
-		root.add_child(rect)
-		u["_ult_rect"] = rect
-	var before: float = battle._spec.val(u, EqFoodBatch.KEY_GREY) + battle._spec.val(u, EqFoodBatch.KEY_CREAM)
-	var g: Array = shield_seg_rect(float(battle.BAR_W), float(u["hp"]), float(u["maxHp"]), before, val)
-	rect.position = Vector2(float(g[0]), 8.0)
-	rect.size = Vector2(float(g[1]), float(battle.BAR_H))
-	rect.visible = val > 0.5 and u.get("alive", false)
+## ⛔ 这里曾经是 `ult_bar_update()`(072 终极盾自画一条 ColorRect)。
+##   2026-08-12 改走 HpBar(镜像 `_ultShieldVal`)后**零调用者** ⇒ 删掉, 不留空壳:
+##   零调用者的死函数会被"断言函数存在"型门禁保护住(memory [[fb-verify-must-run-the-real-path]])。
+##   它的老毛病也记在这: 用 maxHp 当分母算段起点 ⇒ 满血时段宽恒为 0, 玩家一次没看见过。
 
 
 ## 072 法阵每秒结算的读数: 被治疗的友军身上升起一颗小奶糕(0.6 秒, 前 70% 满亮)。

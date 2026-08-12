@@ -492,6 +492,16 @@ func _heal(u: Dictionary, amt: float, silent: bool = false) -> float:   # 返回
 	amt *= battle._sd_heal_mult()                       # §SUDDEN 决胜期治疗 ×50%
 	if battle._t < float(u.get("heal_reduce_until", 0.0)):
 		amt *= maxf(0.0, 1.0 - float(u.get("heal_reduce_pct", 0.0)))   # 治疗削减(凤凰涅槃/烫伤等)
+	## ★★【治疗封顶】(用户 2026-08-12:「小手枪增加限制: 受到的所有治疗都将为1点」)。
+	##   位置有讲究, 两点:
+	##   ① 放在 `_heal()` 里 = **所有治疗源的共用收口**(079 医疗炮台 / 法器灵泉 / 食物盛宴 /
+	##      090 治疗浪潮 各有各的入口), 在别处拦只拦得住一条 —— 同伤害封顶 `_dmg_cap_val`。
+	##   ② 放在**所有乘算之后**: 「受到的治疗都将为 1 点」说的是最终到手。
+	##      第一版写在函数最前面, 结果 `heal_amp +200%` 把封顶后的 1 又放大成 3 ——
+	##      门禁当场抓到(「封顶在加成之前」那条断言)。
+	var _hcap: float = float(u.get("_heal_cap_val", 0.0))
+	if _hcap > 0.0:
+		amt = minf(amt, _hcap)
 	var hb: float = u["hp"]
 	u["hp"] = minf(u["maxHp"], u["hp"] + amt)
 	u["_st_heal"] = int(u.get("_st_heal", 0)) + int(u["hp"] - hb)   # §STATS: 实际回复(超过满血不计)

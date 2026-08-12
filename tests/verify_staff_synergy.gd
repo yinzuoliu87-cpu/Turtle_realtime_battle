@@ -54,13 +54,13 @@ func _ready() -> void:
 	#     触发方式就是"该法器法力条集满时"(文案逐字), 有闸就等于单装一件是死件。
 	var a0: Dictionary = _mk("left", staffs.slice(0, 1))
 	_run([a0])
-	_ok("① ★没激活羁绊(1 件)时满值 = 100", _s._staff_syn.mana_full(a0) == 100.0,
+	_ok("① ★没激活羁绊(1 件)时满值 = 200(2026-08-12 削弱)", _s._staff_syn.mana_full(a0) == 200.0,
 		"实得 %.0f" % _s._staff_syn.mana_full(a0))
 	_s._staff_syn.add_mana(a0, 40.0)
 	_ok("① ★没激活羁绊也照涨法力(拆闸前这里恒为 0)",
 		absf(_mana(a0, staffs[0]) - 40.0) < 0.01, "mana=%.1f" % _mana(a0, staffs[0]))
-	_s._staff_syn.add_mana(a0, 61.0)         # 40+61=101 ≥ 100 ⇒ 该触发并清零
-	_ok("① ★没激活羁绊也能【满 100 触发】(清零 = 触发过了)",
+	_s._staff_syn.add_mana(a0, 161.0)        # 40+161=201 ≥ 200 ⇒ 该触发并清零
+	_ok("① ★没激活羁绊也能【满 200 触发】(清零 = 触发过了)",
 		absf(_mana(a0, staffs[0])) < 0.01, "mana=%.1f" % _mana(a0, staffs[0]))
 	# ★只拆法力条这一道: 灵泉(每 2.5 秒按已损生命回血)是【全队】收益, 仍然要档位。
 	#   不钉这条的话, 以后顺手把灵泉也放开 = 一件法器全队回血, 局内看不出来。
@@ -79,14 +79,14 @@ func _ready() -> void:
 	var a1: Dictionary = _mk("left", staffs.slice(0, 2))
 	_run([a1])
 	_s._staff_syn.add_mana(a1, 60.0)
-	_ok("② 首档满值 = 100(定稿)", _s._staff_syn.mana_full(a1) == 100.0,
+	_ok("② 首档(2 件)满值 = 180(2026-08-12 削弱)", _s._staff_syn.mana_full(a1) == 180.0,
 		"实得 %.0f" % _s._staff_syn.mana_full(a1))
 	_ok("② 两件法器【各自】涨到 60(不是共享一条条)",
 		absf(_mana(a1, staffs[0]) - 60.0) < 0.01 and absf(_mana(a1, staffs[1]) - 60.0) < 0.01,
 		"[%.0f, %.0f]" % [_mana(a1, staffs[0]), _mana(a1, staffs[1])])
 	# 只把第 0 件推满：手动补 40 会两件一起补，所以改用"直接写第 0 件再加 1"
 	var st0: Dictionary = a1["eq_state"].get(staffs[0], {})
-	st0["mana"] = 99.0
+	st0["mana"] = 179.0   # 首档满值 180(2026-08-12 削弱后), 再 +1 正好过线
 	a1["eq_state"][staffs[0]] = st0
 	_s._staff_syn.add_mana(a1, 1.0)
 	_ok("② ★满了的那件清零, 另一件【不受影响】(仍在 61)",
@@ -131,7 +131,7 @@ func _ready() -> void:
 		_run([au])
 		full_by_tier.append(_s._staff_syn.mana_full(au))
 	_ok("⑥ 满值逐档递减 %s(法器越多放得越勤)" % str(full_by_tier),
-		full_by_tier == [100.0, 80.0, 60.0, 50.0], str(full_by_tier))
+		full_by_tier == [180.0, 150.0, 120.0, 80.0], str(full_by_tier))
 
 	# ══ ⑦ 作用域: 灵泉/余韵/共鸣 = 全队(不带法器的队友也吃) ════════
 	# 5 件法器全在 A 身上(档2) → B 一件不带, 也要回血。
@@ -233,7 +233,7 @@ func _ready() -> void:
 		src_syn.find("TIDE_PCT") < 0 and src_syn.find('tiers.has("法器")') < 0)
 
 	# ══ ⑫ 【每一件】法器都要能被法力条触发 ══════════════════════════════
-	#   规格:「满 100/80/60/50 → **触发这件法器的效果**」⇒ 十件都要在 fire_equip_effect
+	#   规格:「满值(档 0~4 = 200/180/150/120/80) → **触发这件法器的效果**」⇒ 十件都要在 fire_equip_effect
 	#   的 match 里有分支。那个 match **没有兜底 `_:`**, 漏一件就是"法力白攒":
 	#   条照涨照满照清零、光柱照放, 效果零触发 —— 局内完全看不出来, 只会觉得"这件好弱"。
 	#   2026-08-12 实测漏了五件(011/023/026/029/043), 用户问「能触发主动吗」才查出来。
@@ -323,18 +323,18 @@ func _ready() -> void:
 	#   ★满值因此从【按人算】变成【按件算】—— 同一个单位身上两件法器的满值可以不一样。
 	var a43: Dictionary = _mk("left", [staffs[0]])
 	_run([a43])
-	for cs in [[1, 150.0], [2, 125.0], [3, 100.0]]:
-		_ok("⑮ 043 ★%d 的满值 = %.0f(档0基准100 × (1+%.0f%%))" % [int(cs[0]), float(cs[1]),
+	for cs in [[1, 300.0], [2, 250.0], [3, 200.0]]:
+		_ok("⑮ 043 ★%d 的满值 = %.0f(档0基准200 × (1+%.0f%%))" % [int(cs[0]), float(cs[1]),
 				float(StaffSyn.MANA_FULL_PCT["p2eq_043"][int(cs[0]) - 1])],
 			absf(_s._staff_syn.mana_full_for(a43, "p2eq_043", int(cs[0])) - float(cs[1])) < 0.01,
 			"实得 %.1f" % _s._staff_syn.mana_full_for(a43, "p2eq_043", int(cs[0])))
-	_ok("⑮ ★分母: 没登记倍率的法器仍按【人】的满值(100), 没被这条改动波及",
-		absf(_s._staff_syn.mana_full_for(a43, "p2eq_089", 1) - 100.0) < 0.01,
+	_ok("⑮ ★分母: 没登记倍率的法器仍按【人】的满值(档0=200), 没被这条改动波及",
+		absf(_s._staff_syn.mana_full_for(a43, "p2eq_089", 1) - 200.0) < 0.01,
 		"089★1 实得 %.1f" % _s._staff_syn.mana_full_for(a43, "p2eq_089", 1))
 	# 有羁绊时按档位满值【成比例】放大, 不是写死 150
-	_s._synergy._by_side = {"left": {"法器": 4}, "right": {}}       # 档4 ⇒ 基准 50
-	_ok("⑮ ★顶档时也成比例(50 × 1.5 = 75), 不是写死的 150",
-		absf(_s._staff_syn.mana_full_for(a43, "p2eq_043", 1) - 75.0) < 0.01,
+	_s._synergy._by_side = {"left": {"法器": 4}, "right": {}}       # 档4 ⇒ 基准 80
+	_ok("⑮ ★顶档时也成比例(80 × 1.5 = 120), 不是写死的 300",
+		absf(_s._staff_syn.mana_full_for(a43, "p2eq_043", 1) - 120.0) < 0.01,
 		"实得 %.1f" % _s._staff_syn.mana_full_for(a43, "p2eq_043", 1))
 	_s._synergy._by_side = {"left": {}, "right": {}}
 

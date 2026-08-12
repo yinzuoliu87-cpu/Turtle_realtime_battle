@@ -189,7 +189,32 @@ func _ready() -> void:
 		live_n - base_n == 1, "这一张卡新增 %d 个" % (live_n - base_n))
 	_ok("C2 按钮指向的场景真存在(%s)" % BattleHud.SHOP_SCENE,
 		ResourceLoader.exists(BattleHud.SHOP_SCENE))
+	# ── C2b. ★★结算按钮【必须在屏幕里】—— 用户 2026-08-12 实测:
+	#   「结算时数量单位过多还是会导致按钮被挤下去, 我手机是钮点不到」。
+	#   结算卡是 CenterContainer 按最小尺寸居中, 数据表行数随参战单位数长 ⇒ 一超视口
+	#   就上下溢出, 按钮掉出屏幕 = 整局卡死在结算页。
+	#   ★判据必须是【坐标在视口内】: 只断言"按钮存在"守不住 —— 掉到屏幕外的按钮同样存在。
+	#   ★灌一张【很长】的数据表再验: 单位少时本来就不会溢出, 那样验等于空检查。
+	for _i in range(60):
+		var _fake: Dictionary = _mk_unit_for_stats(_i)
+		scene._units.append(_fake)
+	scene._settled = false
+	scene._hud._show_banner(true)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var vp_h: float = scene.get_viewport().get_visible_rect().size.y
+	var worst_bottom := -1.0
+	var found := 0
+	for b in _btns_with_text(scene._ui_layer, BattleHud.SHOP_BTN_TEXT):
+		found += 1
+		var r: Rect2 = (b as Control).get_global_rect()
+		worst_bottom = maxf(worst_bottom, r.end.y)
+	_ok("C2b ★分母: 灌了 60 个单位后仍找得到结算按钮", found >= 1, "找到 %d 个" % found)
+	_ok("C2b ★★按钮整体在视口内(底边 %.0f ≤ 视口高 %.0f) —— 挤出屏幕就是点不到"
+			% [worst_bottom, vp_h], found >= 1 and worst_bottom <= vp_h + 0.5)
 	# 淘汰态再结算一次: 这一张卡【一个都不该多】。
+	## ★重新取基线: 上面 C2b 为了撑长数据表又结算了一张卡, 不重新取会把它算进差分里。
+	live_n = _count_btn_text(scene._ui_layer, BattleHud.SHOP_BTN_TEXT)
 	gs2.hearts = 0                       # → is_eliminated() = true
 	scene._settled = false
 	scene._hud._show_banner(false)
@@ -212,3 +237,20 @@ func _done() -> void:
 	else:
 		print("FAIL x", _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+## 取出所有文案匹配的按钮节点(判据要量【坐标】, 只数个数守不住"掉出屏幕")。
+func _btns_with_text(root: Node, txt: String) -> Array:
+	var out: Array = []
+	if root is Button and str((root as Button).text) == txt:
+		out.append(root)
+	for c in root.get_children():
+		out.append_array(_btns_with_text(c, txt))
+	return out
+
+
+## 造一个只为撑长结算数据表的假单位。
+func _mk_unit_for_stats(i: int) -> Dictionary:
+	return {"id": "green", "name": "凑数%d" % i, "side": ("left" if i % 2 == 0 else "right"),
+		"alive": false, "hp": 0.0, "maxHp": 100.0, "shield": 0.0,
+		"_st_dmg": 100 + i, "_st_taken": 50 + i, "_st_heal": i, "equips": [], "eq_state": {}}
