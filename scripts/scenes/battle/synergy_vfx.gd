@@ -44,6 +44,7 @@ const OWNED_CAP := 256
 var _turrets: Dictionary = {}
 var _mesh_tur_base: ArrayMesh = null
 var _mesh_tur_barrel: ArrayMesh = null
+var _mesh_tur_dish: ArrayMesh = null
 
 var battle
 
@@ -419,6 +420,8 @@ func tick(delta: float) -> void:
 ##   ⚠ 别"顺手调好看一点" —— 调之前先跑那条门禁，它会告诉你撞了哪一对。
 const COL_GUN_BARRAGE := Color(1.0, 0.439, 0.263, 0.95)    # #ff7043 枪·弹幕相位(深橙)
 const COL_GUN_SHIELD  := Color(0.302, 0.549, 1.0, 0.95)    # #4d8cff 枪·护盾相位(正蓝)
+## 枪·火控塔(炮台三): 青金 —— 与轰击橙/护盾蓝都拉得开, 一眼分得出是第三座
+const COL_GUN_FIRECTRL := Color(0.494, 0.910, 0.784, 0.95)
 const COL_STAFF       := Color(0.608, 0.549, 1.0, 0.95)    # #9b8cff 法器(蓝紫)
 const COL_STAFF_PURE  := Color(1.0, 1.0, 0.925, 0.95)      # 净化 = 近白
 const COL_RELIC       := Color(0.831, 0.639, 0.290, 0.95)  # #d4a34a 遗物(古金)
@@ -517,7 +520,8 @@ static func _commit3(st: SurfaceTool) -> ArrayMesh:
 
 ## 保活一座炮台(幂等)。key = "side|idx"。每 tick 调 ⇒ 炮台一直站在那儿。
 ## ★这是"炮台看得见"的事实源: 门禁量它在不在 _world、站没站在炮位上。
-func gun_turret_ensure(key: String, pos2d: Vector2, shield_phase: bool = false) -> Node3D:
+## kind: 0=轰击炮(单长管·橙) / 1=能量炮(双管·相位变色) / 2=火控塔(雷达碟·青金)
+func gun_turret_ensure(key: String, pos2d: Vector2, kind: int = 0, shield_phase: bool = false) -> Node3D:
 	if not _has_world():
 		return null
 	var h = _turrets.get(key, null)
@@ -529,29 +533,91 @@ func gun_turret_ensure(key: String, pos2d: Vector2, shield_phase: bool = false) 
 		_mesh_tur_base = _build_turret_base()
 	if _mesh_tur_barrel == null:
 		_mesh_tur_barrel = _build_turret_barrel()
-	var col: Color = COL_GUN_SHIELD if shield_phase else COL_GUN_BARRAGE
+	var col: Color = _turret_col(kind, shield_phase)
 	var ws: float = float(battle.WS)
 	var root := Node3D.new()
 	root.position = battle._world_pos(pos2d, 0.0)
 	_adopt(root, "gun_turret")
+	## 底座: 火控塔更高更细(它是"塔"不是"炮")
 	var base := MeshInstance3D.new()
 	base.mesh = _mesh_tur_base
 	base.material_override = _turret_mat(Color(col.r * 0.55, col.g * 0.55, col.b * 0.62, 0.95))
-	base.scale = Vector3(TURRET_R_PX * ws, TURRET_H_PX * ws, TURRET_R_PX * ws)
+	var br: float = TURRET_R_PX * (0.72 if kind == 2 else 1.0)
+	var bh: float = TURRET_H_PX * (1.55 if kind == 2 else 1.0)
+	base.scale = Vector3(br * ws, bh * ws, br * ws)
 	root.add_child(base)
 	## 转的是【炮塔】不是底座 —— 真炮台就是这样
 	var yawn := Node3D.new()
-	yawn.position = Vector3(0.0, TURRET_H_PX * ws, 0.0)
+	yawn.position = Vector3(0.0, bh * ws, 0.0)
 	root.add_child(yawn)
-	var barrel := MeshInstance3D.new()
-	barrel.mesh = _mesh_tur_barrel
-	var mr := _turret_mat(Color(col.r, col.g, col.b, 1.0))
-	barrel.material_override = mr
-	barrel.scale = Vector3.ONE * (TURRET_BARREL_PX * ws)
-	yawn.add_child(barrel)
+	var mr: StandardMaterial3D = _turret_mat(Color(col.r, col.g, col.b, 1.0))
+	var barrel: MeshInstance3D = null
+	match kind:
+		1:
+			## 炮台二: **双管**并列(能量炮), 相位不同颜色不同
+			for sgn in [-1.0, 1.0]:
+				var bb := MeshInstance3D.new()
+				bb.mesh = _mesh_tur_barrel
+				bb.material_override = mr
+				bb.scale = Vector3.ONE * (TURRET_BARREL_PX * 0.86 * ws)
+				bb.position = Vector3(0.0, 0.0, sgn * TURRET_R_PX * 0.34 * ws)
+				yawn.add_child(bb)
+				if barrel == null:
+					barrel = bb
+		2:
+			## 炮台三·火控: 不是炮 —— 一面【雷达碟】(竖立的薄环)常年在转
+			if _mesh_tur_dish == null:
+				_mesh_tur_dish = _build_turret_dish()
+			var dish := MeshInstance3D.new()
+			dish.mesh = _mesh_tur_dish
+			dish.material_override = mr
+			dish.scale = Vector3.ONE * (TURRET_R_PX * 1.15 * ws)
+			yawn.add_child(dish)
+			barrel = dish
+		_:
+			## 炮台一: 单根长管(轰击炮)
+			var b0 := MeshInstance3D.new()
+			b0.mesh = _mesh_tur_barrel
+			b0.material_override = mr
+			b0.scale = Vector3.ONE * (TURRET_BARREL_PX * 1.12 * ws)
+			yawn.add_child(b0)
+			barrel = b0
 	_turrets[key] = {"root": root, "yaw": yawn, "barrel": barrel, "mat_r": mr,
-		"recoil": 0.0, "pos": pos2d}
+		"recoil": 0.0, "pos": pos2d, "kind": kind, "spin": 0.0}
 	return root
+
+
+## 三座炮台的配色: 一=橙(轰击) / 二=相位色(蓝护盾↔橙弹幕) / 三=青金(火控)
+static func _turret_col(kind: int, shield_phase: bool) -> Color:
+	if kind == 2:
+		return COL_GUN_FIRECTRL
+	if kind == 1:
+		return COL_GUN_SHIELD if shield_phase else COL_GUN_BARRAGE
+	return COL_GUN_BARRAGE
+
+
+## 火控塔的雷达碟: 竖立薄环 + 三根辐条(单位半径)
+static func _build_turret_dish() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var hi := Color(1, 1, 1, 1.0)
+	var mid := Color(1, 1, 1, 0.55)
+	## 环(在 XY 平面竖着, 绕 Y 转就像雷达扫描)
+	for k in range(28):
+		var t0: float = float(k) * TAU / 28.0
+		var t1: float = float(k + 1) * TAU / 28.0
+		var ri := 0.82
+		_tri3(st, [Vector3(cos(t0) * ri, sin(t0) * ri, 0.0), mid],
+			[Vector3(cos(t0), sin(t0), 0.0), hi], [Vector3(cos(t1), sin(t1), 0.0), hi])
+		_tri3(st, [Vector3(cos(t0) * ri, sin(t0) * ri, 0.0), mid],
+			[Vector3(cos(t1), sin(t1), 0.0), hi], [Vector3(cos(t1) * ri, sin(t1) * ri, 0.0), mid])
+	## 三根辐条
+	for j in range(3):
+		var a: float = float(j) * TAU / 3.0
+		var w := 0.07
+		_tri3(st, [Vector3(0, 0, 0), hi],
+			[Vector3(cos(a - w), sin(a - w), 0.0), mid], [Vector3(cos(a + w), sin(a + w), 0.0), mid])
+	return _commit3(st)
 
 
 static func _turret_mat(col: Color) -> StandardMaterial3D:
@@ -580,7 +646,14 @@ func gun_turret_fire(key: String, target2d: Vector2, shield_phase: bool = false)
 		if d.length() > 1e-5:
 			yawn.rotation.y = -atan2(d.y, d.x)
 	(h as Dictionary)["recoil"] = 1.0
-	var col: Color = COL_GUN_SHIELD if shield_phase else COL_GUN_BARRAGE
+	var kind2: int = int((h as Dictionary).get("kind", 0))
+	var col: Color = _turret_col(kind2, shield_phase)
+	## 炮台二: 相位换色(蓝=转护盾 / 橙=化弹幕) —— 「这次是给盾还是打人」看炮台就知道
+	if kind2 == 1:
+		var mr2 = (h as Dictionary).get("mat_r", null)
+		if mr2 is StandardMaterial3D:
+			(mr2 as StandardMaterial3D).albedo_color = Color(col.r, col.g, col.b, 1.0)
+		(h as Dictionary)["phase_col"] = col
 	## 炮口闪落在【炮管末端】: 用存下来的场地坐标 + 朝向算, 不做 world→field 逆变换
 	## (_world_pos 可能带偏移/缩放, 逆算会把火花甩到别处 —— 上一版就飘到了屏幕左上角)
 	var pf: Vector2 = (h as Dictionary).get("pos", Vector2.ZERO)
@@ -605,13 +678,35 @@ func gun_turret_tick(delta: float) -> void:
 		var r: float = maxf(0.0, float((h as Dictionary).get("recoil", 0.0)) - delta / TURRET_RECOIL_TAU)
 		(h as Dictionary)["recoil"] = r
 		var barrel = (h as Dictionary).get("barrel", null)
+		var kind: int = int((h as Dictionary).get("kind", 0))
 		if is_instance_valid(barrel):
-			barrel.position.x = -TURRET_RECOIL_PX * float(battle.WS) * r
+			if kind == 2:
+				## 火控塔: 碟常年扫描(它不开火, 所以"在工作"只能靠转来表达)
+				var sp: float = float((h as Dictionary).get("spin", 0.0)) + delta * 2.1
+				(h as Dictionary)["spin"] = sp
+				barrel.rotation.z = sp
+			else:
+				barrel.position.x = -TURRET_RECOIL_PX * float(battle.WS) * r
 		var mr = (h as Dictionary).get("mat_r", null)
 		if mr is StandardMaterial3D:
-			var c: Color = COL_GUN_BARRAGE
+			var c: Color = (h as Dictionary).get("phase_col", _turret_col(kind, false))
 			(mr as StandardMaterial3D).albedo_color = Color(minf(c.r * (1.0 + 0.6 * r), 1.0),
 				minf(c.g * (1.0 + 0.6 * r), 1.0), minf(c.b * (1.0 + 0.6 * r), 1.0), 1.0)
+
+
+## 火控塔【接通】携枪者: 向每人拉一条能量带(档3 的唯一可见证据 —— 它不开火)。
+## 返回接通了几人(门禁分母)。
+func gun_firectrl_link(key: String, targets: Array) -> int:
+	var h = _turrets.get(key, null)
+	if not (h is Dictionary):
+		return 0
+	var pf: Vector2 = (h as Dictionary).get("pos", Vector2.ZERO)
+	var n := 0
+	for t in targets:
+		if t is Vector2:
+			energy_band(pf, t as Vector2, COL_GUN_FIRECTRL, 14.0, 0.42)
+			n += 1
+	return n
 
 
 ## 撤走一座炮台(掉档/换路/撤场)。返回是否真的撤了。

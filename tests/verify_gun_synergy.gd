@@ -131,7 +131,7 @@ func _ready() -> void:
 	_ok("★分母: 演出层在位(它不在, 下面全是空检查)", sv != null, str(sv))
 	if sv != null:
 		# 3 件枪 = 档1 ⇒ 第一座炮台; 先清干净再建
-		for k0 in ["left|0", "left|1", "right|0", "right|1"]:
+		for k0 in ["left|0", "left|1", "left|2", "right|0", "right|1", "right|2"]:
 			sv.gun_turret_free(k0)
 		var g3: Array = _ids("枪", 3)
 		_run(_scene, [_mk("left", g3), _mk("right", [])])
@@ -140,7 +140,7 @@ func _ready() -> void:
 			sv.gun_turret_count() == 1, "count=%d" % sv.gun_turret_count())
 		# 炮台站在【炮位】上 —— 量真实节点世界坐标 vs _turret_pos 的换算
 		var want: Vector3 = _scene._world_pos(_scene._gun_syn._turret_pos("left", 0), 0.0)
-		var got = sv.gun_turret_ensure("left|0", _scene._gun_syn._turret_pos("left", 0))
+		var got = sv.gun_turret_ensure("left|0", _scene._gun_syn._turret_pos("left", 0), 0)
 		_ok("★炮台站在炮位上(偏差 %.4f m)" % (got.position - want).length() if got != null else "★炮台节点缺失",
 			got != null and (got.position - want).length() < 1e-3, "")
 		_ok("★炮台真的挂在 _world 下(不是建了没进场景树)",
@@ -158,6 +158,34 @@ func _ready() -> void:
 		_ok("★开火入口真的认这座炮台(返回 true)", fired, "")
 		# ★分母: 不存在的炮台开火必须返回 false(否则上一条可能是"永远 true")
 		_ok("★分母: 不存在的炮台开火返回 false", not sv.gun_turret_fire("left|9", tgt), "")
+		# ★★档3(9 件枪) = 三座, 且【三种形态各不相同】(2026-08-12 用户:「那是有3种炮台, 你确定有吗」)
+		#    权威 TIER_DESCS["枪"]: 炮台一轰击 / 炮台二能量(相位) / 炮台三·火控 —— 第三座以前根本没建。
+		var g9: Array = _ids("枪", 9)
+		_run(_scene, [_mk("left", g9), _mk("right", [])])
+		_scene._gun_syn.tick(0.016)
+		_ok("★★档3(9 件枪): 三座炮台都站着(第三座=火控塔)", sv.gun_turret_count() == 3,
+			"count=%d" % sv.gun_turret_count())
+		var kinds: Array = []
+		for ki in range(3):
+			var nd = sv.gun_turret_ensure("left|%d" % ki, _scene._gun_syn._turret_pos("left", ki), ki)
+			kinds.append(nd != null)
+		_ok("★三座各自建得出来(kind 0/1/2)", kinds == [true, true, true], str(kinds))
+		## 形态真的不同: 火控塔的碟【在转】而炮一/炮二不转(量真实节点的旋转)
+		var d0: float = sv._turrets["left|2"]["barrel"].rotation.z
+		_scene._gun_syn.tick(0.5)
+		var d1: float = sv._turrets["left|2"]["barrel"].rotation.z
+		_ok("★炮台三·火控: 雷达碟在转(0.5 秒转过 %.3f rad) —— 它不开火, 转就是它在工作的证据"
+				% absf(d1 - d0), absf(d1 - d0) > 0.5, "")
+		var b0x: float = sv._turrets["left|0"]["barrel"].rotation.z
+		_scene._gun_syn.tick(0.5)
+		_ok("★分母: 炮台一的管【不转】(0.5 秒转过 %.3f rad ≈ 0) —— 三座不是同一个形态"
+				% absf(sv._turrets["left|0"]["barrel"].rotation.z - b0x),
+			absf(sv._turrets["left|0"]["barrel"].rotation.z - b0x) < 1e-6, "")
+		## 火控【接通】: 向携枪者拉光束, 数返回值
+		var linked: int = sv.gun_firectrl_link("left|2", [Vector2(100.0, 100.0), Vector2(200.0, 120.0)])
+		_ok("★炮台三接通了 2 个携枪者(光束数 = 人数)", linked == 2, "linked=%d" % linked)
+		_ok("★分母: 不存在的火控塔接通 0 人", sv.gun_firectrl_link("left|9", [Vector2.ZERO]) == 0, "")
+
 		# 掉档: 0 件枪 ⇒ 炮台撤走(不许"羁绊没了炮台还杵在那")
 		_run(_scene, [_mk("left", []), _mk("right", [])])
 		_scene._gun_syn.tick(0.016)

@@ -45,6 +45,9 @@ const T3_PER_GUN := 0.10
 ## 各阵营的节拍与第二座的相位（true = 这次转护盾，false = 这次化弹幕）
 var _t_acc := 0.0
 var _t2_acc := 0.0
+## 火控链接光束的节拍(秒) —— 常驻机制不能每帧画, 会刷屏
+const FIRECTRL_IV := 1.6
+var _fc_acc := 0.0
 var _t2_shield_phase := {"left": true, "right": true}
 
 
@@ -113,15 +116,31 @@ func _turret_keepalive(delta: float) -> void:
 		sv = battle._vfx._syn
 	if sv == null:
 		return
+	## ★三档 = 三座, 各一个形态(权威文档 TIER_DESCS["枪"]: 炮台一轰击 / 炮台二能量 / 炮台三·火控)
 	for side in ["left", "right"]:
 		var t: int = _side_tier(side)
-		for idx in range(2):
+		for idx in range(3):
 			var key: String = "%s|%d" % [side, idx]
 			if t >= idx + 1:
-				sv.gun_turret_ensure(key, _turret_pos(side, idx))
+				sv.gun_turret_ensure(key, _turret_pos(side, idx), idx)
 			else:
 				sv.gun_turret_free(key)
 	sv.gun_turret_tick(delta)
+	## 火控塔(第三座)不开火 ⇒ 它"在工作"的证据是【向每个携枪者接通的光束】, 每 FIRECTRL_IV 秒一次
+	_fc_acc += delta
+	if _fc_acc >= FIRECTRL_IV:
+		_fc_acc -= FIRECTRL_IV
+		for side2 in ["left", "right"]:
+			if _side_tier(side2) < 3:
+				continue
+			var tos: Array = []
+			for u in battle._units:
+				if not (u is Dictionary) or not u.get("alive", false) or str(u.get("side", "")) != side2:
+					continue
+				if float(u.get("_fire_ctrl", 0.0)) > 0.0:
+					tos.append(u["pos"])
+			if not tos.is_empty():
+				sv.gun_firectrl_link("%s|2" % side2, tos)
 
 
 func _side_tier(side: String) -> int:
