@@ -208,11 +208,28 @@ func _g3_gold_vs_normal() -> void:
 		_ok("④ ★掉血的那个真被标上了 (marked=%d ≥ 1)" % m2, m2 >= 1)
 		_ok("④ 金弹演出层真的建出了节点 (%d 个 > 普通弹的 %d)" % [_gold.alive_count(), plain_nodes],
 			_gold.alive_count() > plain_nodes)
+		## ★弹迹的 kind 2026-08-12 从 "bead"(一串静止珠子)改成 "bullet"(一颗在飞的弹)
 		_ok("④ 三样都在: 枪口 / 弹迹 / 命中",
-			_gold.alive_count("muzzle") >= 1 and _gold.alive_count("bead") >= 1
+			_gold.alive_count("muzzle") >= 1 and _gold.alive_count("bullet") >= 1
 			and _gold.alive_count("frame") >= 1,
-			"muzzle=%d bead=%d frame=%d" % [_gold.alive_count("muzzle"),
-				_gold.alive_count("bead"), _gold.alive_count("frame")])
+			"muzzle=%d bullet=%d frame=%d" % [_gold.alive_count("muzzle"),
+				_gold.alive_count("bullet"), _gold.alive_count("frame")])
+		## ★★弹迹【必须在动】—— 这才是 2026-08-12 修的东西。旧版是沿最后一段铺 5 颗
+		##   **静止**菱珠, 射速高时多批重叠, 读起来是"目标身上堆了一坨黄方块"而不是
+		##   "一颗弹飞过去"(方案书 20260807 §6.1 确诊)。只断言"弹迹节点存在"守不住这个 ——
+		##   静止的珠子同样存在。所以量**位移**。
+		var _bpos0: Array = []
+		for _nd in _gold.nodes_of("bullet"):
+			_bpos0.append((_nd as Node3D).position)
+		_gold.tick(0.06)
+		var moved := 0
+		var _bi := 0
+		for _nd2 in _gold.nodes_of("bullet"):
+			if _bi < _bpos0.size() and (_nd2 as Node3D).position.distance_to(_bpos0[_bi]) > 0.01:
+				moved += 1
+			_bi += 1
+		_ok("④ ★★弹迹在【动】(推 0.06 秒后位移 > 0) —— 静止的珠子串正是被修掉的那个",
+			moved >= 1 and _bpos0.size() >= 1, "动了 %d / 共 %d 块" % [moved, _bpos0.size()])
 		# ★没掉血就不该画 —— 否则"标记"是恒真的, 等于没验
 		_gold.clear()
 		_gold.arm(shooter)

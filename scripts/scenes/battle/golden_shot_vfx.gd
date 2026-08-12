@@ -61,8 +61,13 @@ const MUZZLE_SEC := 0.26
 ## (080 直升机的 `src` 是携带者, 真正开火的是空中的机体), 只保证**入射方向**与命中点对。
 const TRAIL_LEN := 150.0
 ## 菱珠个数与单颗尺寸(码)
-const TRAIL_BEADS := 5
+## ★TRAIL_BEADS 已废弃(2026-08-12): 弹迹不再是"铺 N 颗静止珠子", 而是一颗在动的弹。
+##   常量留着是因为 `bead_tex()` 与命中菱仍在用 BEAD_PX 当尺寸基准。
 const BEAD_PX := 26.0
+const BULLET_LEN := 52.0     # 弹体沿飞行方向的长度(码) —— 拉长才读得出"在飞"
+const BULLET_HALF_W := 8.0   # 弹体半宽(码)
+const TAIL_LEN := 150.0      # 身后拖影长度(码) —— 比弹体长得多, 给速度感
+const TAIL_HALF_W := 5.0
 const TRAIL_SEC := 0.22
 ## 命中菱框: 从这么大扩到这么大(码)
 const HIT_R0 := 26.0
@@ -308,14 +313,20 @@ func trail(from2: Vector2, to2: Vector2, pct: float) -> int:
 	if not _has_world():
 		return 0
 	var g: float = glow(pct)
-	for i in range(TRAIL_BEADS):
-		var p: Vector2 = bead_pos(from2, to2, i, TRAIL_BEADS)
-		var f: float = float(i) / float(maxi(1, TRAIL_BEADS - 1))
-		var s := _board(bead_tex(), p, BODY_Y,
-			BEAD_PX * (0.55 + 0.65 * f) * (0.8 + 0.3 * g),
-			Color(1.0, 1.0, 1.0, 0.55 + 0.45 * f))
-		_adopt(s, TRAIL_SEC * (0.6 + 0.5 * f), "bead", {"a0": 0.55 + 0.45 * f, "ps0": s.pixel_size})
-	return TRAIL_BEADS
+	var d: Vector2 = to2 - from2
+	if d.length() < 0.001:
+		d = Vector2.RIGHT
+	var dn: Vector2 = d.normalized()
+	## 拖影在后、弹体在前, 两块都【整体平移】着走(见 tick 的 "bullet" 分支)。
+	var tail := _quad_along(from2 - dn * TAIL_LEN, from2, TAIL_HALF_W, BODY_Y,
+		bead_tex(), Color(1.0, 1.0, 1.0, 0.20 + 0.16 * g))
+	_adopt(tail, TRAIL_SEC, "bullet",
+		{"a0": 0.20 + 0.16 * g, "f": from2, "to": to2, "y": BODY_Y})
+	var body := _quad_along(from2, from2 + dn * BULLET_LEN, BULLET_HALF_W, BODY_Y,
+		bead_tex(), Color(1.0, 1.0, 1.0, 0.80 + 0.18 * g))
+	_adopt(body, TRAIL_SEC, "bullet",
+		{"a0": 0.80 + 0.18 * g, "f": from2, "to": to2, "y": BODY_Y})
+	return 2
 
 
 ## ③ 命中: 目标身上一个菱形外框炸开 + 中心一颗实心菱。
@@ -416,6 +427,16 @@ func tick(delta: float) -> void:
 				_set_a(n, a0 * (1.0 - q * q))
 			"muzzle":
 				_set_a(n, a0 * (1.0 - q))
+			"bullet":
+				## 弹体/拖影【整体平移】: 顶点是按 from 那一刻的世界坐标建的,
+				## 所以位移 = 世界(当前点) − 世界(起点)。朝向由几何决定, 不用管 billboard。
+				var ff: Vector2 = f.get("f", Vector2.ZERO)
+				var tt: Vector2 = f.get("to", Vector2.ZERO)
+				var yy: float = float(f.get("y", BODY_Y))
+				var here: Vector2 = ff.lerp(tt, q)
+				(n as Node3D).position = battle._world_pos(here, yy) - battle._world_pos(ff, yy)
+				## ★保亮到 70% 再淡: 一出生就线性淡出, 实拍会把金弹读成土黄(淡出病)
+				_set_a(n, a0 * (1.0 if q < 0.7 else (1.0 - (q - 0.7) / 0.3)))
 			_:
 				_set_a(n, a0 * (1.0 - q * q))
 		if q >= 1.0:
@@ -438,6 +459,19 @@ func clear() -> int:
 
 
 ## 现存节点数(可按 kind 过滤) —— 门禁量真实对象用。
+## 取某一类还活着的节点 —— 门禁要量**位移**(只数个数守不住"弹迹在不在动")。
+func nodes_of(kind: String) -> Array:
+	var out: Array = []
+	for f in _fx:
+		var x = f.get("node", null)
+		if not (x is Node3D) or not is_instance_valid(x):
+			continue
+		if str((x as Node).get_meta(META_KEY, "")) != kind:
+			continue
+		out.append(x)
+	return out
+
+
 func alive_count(kind: String = "") -> int:
 	var n := 0
 	for f in _fx:
