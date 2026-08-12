@@ -186,6 +186,43 @@ func _ready() -> void:
 		_ok("★炮台三接通了 2 个携枪者(光束数 = 人数)", linked == 2, "linked=%d" % linked)
 		_ok("★分母: 不存在的火控塔接通 0 人", sv.gun_firectrl_link("left|9", [Vector2.ZERO]) == 0, "")
 
+
+		# ★★炮台一的三样演出(2026-08-12 用户:「第一座要改为激光直线, 被治疗的友军用绿光回复
+		#    效果(中上半身冒绿光), 激光命中要有命中效果」) —— 量真实节点, 不是"函数存在"。
+		var before_n: int = _scene._world.get_child_count()
+		var lz = sv.gun_laser(Vector2(300.0, 400.0), Vector2.RIGHT, 800.0)
+		_ok("★激光节点真的挂进 _world",
+			lz != null and _scene._world.is_ancestor_of(lz), str(lz))
+		if lz != null:
+			## 激光是【两层】的(外晕 + 白热芯) —— 单层匀亮线正是上一版读成"一条橙线"的原因。
+			## 三层 × 每层 2 三角 × 3 顶点 = 18 个顶点
+			var lv: int = ((lz.mesh as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+				as PackedVector3Array).size()
+			_ok("★激光是多层的(顶点数 %d = 3 层 × 2 三角 × 3)" % lv, lv == 18, "verts=%d" % lv)
+			var lw: float = lz.get_aabb().size.z
+			_ok("★激光的宽度来自外晕(%.3f m ≈ 2×%.0f 码×WS)" % [lw, 17],
+				lw > 0.1, "w=%.4f" % lw)
+		var hit_node = sv.gun_laser_hit(Vector2(500.0, 400.0), Vector2.RIGHT)
+		_ok("★命中花节点真的挂进 _world(激光命中要有命中效果)",
+			hit_node != null and _scene._world.is_ancestor_of(hit_node), str(hit_node))
+		var heal_made: int = sv.heal_glow(Vector2(320.0, 420.0))
+		_ok("★治疗绿光建了 %d 个节点(光柱 + 胸口光晕 + %d 颗上浮绿点)"
+				% [heal_made, SynergyVfx.HEAL_MOTES],
+			heal_made == 2 + SynergyVfx.HEAL_MOTES, "made=%d" % heal_made)
+		## 绿光的高度: 底在【中上半身】(胸口 0.55 米)而不是脚下 —— 用户点名的位置
+		var glow_y := -1.0
+		for gi in range(_scene._world.get_child_count() - 1, -1, -1):
+			var gc = _scene._world.get_child(gi)
+			if gc is Sprite3D and (gc as Node).has_meta("synergy_vfx") \
+					and str((gc as Node).get_meta("synergy_vfx")) == "heal_glow":
+				glow_y = (gc as Node3D).position.y
+				break
+		_ok("★绿光柱在【中上半身】起(底 0.55 米 ⇒ 中心 y=%.2f > 0.55)" % glow_y,
+			glow_y > 0.55, "y=%.3f" % glow_y)
+		_ok("★分母: 这三样真的往场景树里加了东西(%d → %d)"
+				% [before_n, _scene._world.get_child_count()],
+			_scene._world.get_child_count() > before_n, "")
+
 		# 掉档: 0 件枪 ⇒ 炮台撤走(不许"羁绊没了炮台还杵在那")
 		_run(_scene, [_mk("left", []), _mk("right", [])])
 		_scene._gun_syn.tick(0.016)

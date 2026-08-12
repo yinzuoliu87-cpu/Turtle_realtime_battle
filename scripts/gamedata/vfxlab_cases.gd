@@ -102,7 +102,7 @@ const CASES := {
 ## ★用户 2026-08-12:「比如枪, 炮台我完全没看到啊」⇒ 这个台子就是来复核这句的。
 "syn_gun": {
 	"eq": "p2eq_077", "star": 3, "carrier": "basic", "enemies": 3, "enemy_dist": 260.0,
-	"enemy_gap": 120.0, "attacker": true, "tier": 3, "tier_syn": "枪", "ui": true,
+	"enemy_gap": 120.0, "attacker": true, "allies": 2, "enemy_attacks": true, "carrier_hp": 0.45, "tier": 3, "tier_syn": "枪", "ui": true,
 	"dur": 16.0, "zoom": 0.72, "focus": "mid", "focus_h": 0.6,
 	"shots": [1.0, 2.55, 2.70, 5.05, 5.20, 7.55, 10.05, 12.55, 15.0],
 	"note": "★炮位在场地 12%/18% 宽处(队伍后方) ⇒ zoom 拉远到 0.72 + focus=mid 才框得进来; 拍点压在 2.5 秒的整数倍(第一座)与 5 秒的整数倍(第二座)。",

@@ -32,6 +32,9 @@ const T2_PERIOD := 5.0               # 第二座: 每 5 秒(用户 2026-08-03 �
 const T1_DMG := 80.0
 const T1_HEAL_SHARE := 0.30
 const T1_LINE_HALFW := 40.0          # 直线判定半宽（码）
+## 激光画多长(码): 没打到人时的默认长度。★判定本身是"沿射线正方向 + 半宽内"无限远,
+## 所以这只是【画】的默认值; 有命中点时按最远命中点再多 40 码画(见 _turret_one)。
+const T1_LINE_LEN := 900.0
 ## 第二座：每周期产的能量 = 基数 + 每件枪 × N
 const T2_BASE_ENERGY := 100.0
 const T2_PER_GUN := 20.0
@@ -191,19 +194,38 @@ func _turret_one(side: String) -> void:
 			battle._damage._apply_damage(f, dmg, Color("#ffb74d"))
 		total += float(dmg)
 		hit_pos.append(Vector2(f["pos"]))
+	var healed = null
 	if total > 0.0:
 		var low = _lowest_ally(side)
 		if low is Dictionary:
 			battle._damage._heal(low, total * T1_HEAL_SHARE)
-	battle._bolt_line(origin, origin + dir * 900.0, Color(1.0, 0.72, 0.3, 0.75))
-	# ★演出(批 B3): 伤害与治疗上面已经结算完了, 这一行【只是好看】——
-	#   现状那条 900 码的橙线是从"看不见的地方"射出来的, 玩家读不到"有一座炮台"。
-	#   炮位一根矮光柱 = 标出炮台在哪; 命中点火花 = 标出这一线打到了谁。
+			healed = low
+	## ★旧的 900 码 `_bolt_line` 已删(2026-08-12): 它是一条【定长、单层、匀亮】的橙线,
+	##   不管打到谁都一路射出战场 —— 用户要的"激光"正是它的反面。
+	##   现在改由 sv2.gun_laser 画: 白热芯 + 双层外晕, 长度 = 打到哪画到哪。
+	# ★演出: 伤害与治疗上面已经结算完了, 下面这些【只是好看】。
 	if battle._vfx != null and battle._vfx._syn != null:
-		battle._vfx._syn.gun_turret_one(origin, hit_pos)
+		var sv2 = battle._vfx._syn
+		sv2.gun_turret_one(origin, [])          # 炮位光柱(命中火花改由激光命中效果给)
 		## 炮塔转向这一轮的目标 + 后坐 + 炮口闪(看得出是【这座炮台】打的)
 		if not hit_pos.is_empty():
-			battle._vfx._syn.gun_turret_fire("%s|0" % side, hit_pos[0])
+			sv2.gun_turret_fire("%s|0" % side, hit_pos[0])
+		## ★2026-08-12 用户三条:「第一座要改为激光直线 / 激光命中要有命中效果 /
+		##   被治疗的友军用绿光回复效果(中上半身冒绿光)」
+		##   激光长度 = 打到最远那个命中点再多一截(没人命中就照射程画满) —— 线的长度
+		##   本身就是"这一炮打到哪"的读数, 不是随便给个定值。
+		## 打到人 ⇒ 画到【最远那个命中点】再多一截; 没打到人才用默认长度。
+		## (上一版写成 maxf(默认, 命中距离) ⇒ 永远至少 900 码, 激光冲出战场老远)
+		var far: float = T1_LINE_LEN
+		if not hit_pos.is_empty():
+			far = 0.0
+			for hp2 in hit_pos:
+				far = maxf(far, origin.distance_to(hp2) + 55.0)
+		sv2.gun_laser(origin, dir, far)
+		for hp3 in hit_pos:
+			sv2.gun_laser_hit(hp3, dir)
+		if healed is Dictionary:
+			sv2.heal_glow(Vector2(healed["pos"]))
 
 
 ## 第二座：每周期产能量，交替【转护盾均摊全队】/【化弹幕敌方全体均摊魔法】。

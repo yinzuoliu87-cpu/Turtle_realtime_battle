@@ -485,6 +485,194 @@ static func _build_turret_base() -> ArrayMesh:
 	return _commit3(st)
 
 
+
+## ══════════════════════════════════════════════════════════════════
+##  §炮台一·激光 + 命中 + 治疗绿光(2026-08-12 用户三条)
+## ══════════════════════════════════════════════════════════════════
+## 用户原话:「第一座要改为激光直线, 被治疗的友军用绿光回复效果, 就是中上半身冒出绿光治疗,
+##            激光命中要有命中效果」
+## ⇒ ① 线从"一条匀亮细线"改成【激光】: 白热芯 + 橙外晕两层(芯细外宽), 出场瞬亮、末段收
+##    ② 每个命中点一枚【冲击花】: 十字亮芯 + 外扩细环 + 溅射火花
+##    ③ 被治疗友军【中上半身冒绿光】: 一根从胸口升起的绿光柱 + 上浮的绿点
+
+## 激光: 芯宽/晕宽(码) 与存活(秒)
+const LASER_CORE_W := 5.0
+const LASER_GLOW_W := 17.0
+const LASER_SEC := 0.26
+## 命中冲击花: 臂长(码)/存活(秒)
+const LASER_HIT_ARM := 30.0
+const LASER_HIT_SEC := 0.30
+## 治疗绿光: 柱高(米)/存活(秒)/上浮点数
+const HEAL_COL := Color(0.36, 0.98, 0.52, 0.95)
+const HEAL_H := 2.1
+const HEAL_SEC := 0.62
+const HEAL_MOTES := 9
+
+
+## 一束激光(from → 沿 dir 的 len_px 码)。★两层: 白热芯 + 外晕, 所以它读起来是"激光"
+## 而不是"一条橙线"(单层匀亮线是上一版被判"像激光的反面"的原因: 太平、没有芯)。
+func gun_laser(from2d: Vector2, dir2d: Vector2, len_px: float) -> MeshInstance3D:
+	if not _has_world():
+		return null
+	var d: Vector2 = dir2d
+	if d.length() < 1e-6:
+		d = Vector2.RIGHT
+	d = d.normalized()
+	var perp := Vector2(-d.y, d.x)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var a: Vector2 = from2d
+	var b: Vector2 = from2d + d * len_px
+	var ya := 0.75
+	## 外晕(宽·半透) → 芯(细·纯白) 两层, 由外到内画
+	for layer in [[LASER_GLOW_W, Color(1.0, 0.62, 0.28, 0.42)],
+			[LASER_GLOW_W * 0.45, Color(1.0, 0.80, 0.45, 0.72)],
+			[LASER_CORE_W, Color(1.0, 0.97, 0.90, 1.0)]]:
+		var w: float = float(layer[0])
+		var c: Color = layer[1]
+		## 尾端(炮口)最亮, 远端稍收 —— 激光是从炮口射出去的, 不是两头一样亮
+		var c_far := Color(c.r, c.g, c.b, c.a * 0.55)
+		_tri3(st, [battle._world_pos(a - perp * w, ya), c], [battle._world_pos(a + perp * w, ya), c],
+			[battle._world_pos(b + perp * w * 0.6, ya), c_far])
+		_tri3(st, [battle._world_pos(a - perp * w, ya), c], [battle._world_pos(b + perp * w * 0.6, ya), c_far],
+			[battle._world_pos(b - perp * w * 0.6, ya), c_far])
+	var mesh := ArrayMesh.new()
+	st.commit(mesh)
+	var n := _fade_node(mesh, _mat_add(), "gun_laser", LASER_SEC)
+	return n
+
+
+## 激光命中点的【冲击花】: 十字亮芯 + 一圈细环 + 溅射火花。
+func gun_laser_hit(at2d: Vector2, dir2d: Vector2) -> MeshInstance3D:
+	if not _has_world():
+		return null
+	var d: Vector2 = dir2d.normalized() if dir2d.length() > 1e-6 else Vector2.RIGHT
+	var perp := Vector2(-d.y, d.x)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var ya := 0.75
+	var hot := Color(1.0, 0.97, 0.88, 1.0)
+	var warm := Color(1.0, 0.66, 0.30, 0.75)
+	## 十字亮芯(沿射线与垂直各一道, 中间粗两头尖)
+	for ax in [[d, perp], [perp, d]]:
+		var u: Vector2 = ax[0]
+		var v: Vector2 = ax[1]
+		_tri3(st, [battle._world_pos(at2d - u * LASER_HIT_ARM, ya), Color(hot.r, hot.g, hot.b, 0.0)],
+			[battle._world_pos(at2d + v * 4.0, ya), hot],
+			[battle._world_pos(at2d - v * 4.0, ya), hot])
+		_tri3(st, [battle._world_pos(at2d + u * LASER_HIT_ARM, ya), Color(hot.r, hot.g, hot.b, 0.0)],
+			[battle._world_pos(at2d + v * 4.0, ya), hot],
+			[battle._world_pos(at2d - v * 4.0, ya), hot])
+	## 外环(细): 命中处炸开的一圈
+	for k in range(20):
+		var t0: float = float(k) * TAU / 20.0
+		var t1: float = float(k + 1) * TAU / 20.0
+		var r0 := LASER_HIT_ARM * 0.52
+		var r1 := LASER_HIT_ARM * 0.66
+		_tri3(st, [battle._world_pos(at2d + Vector2(cos(t0), sin(t0)) * r0, ya), warm],
+			[battle._world_pos(at2d + Vector2(cos(t0), sin(t0)) * r1, ya), Color(warm.r, warm.g, warm.b, 0.0)],
+			[battle._world_pos(at2d + Vector2(cos(t1), sin(t1)) * r1, ya), Color(warm.r, warm.g, warm.b, 0.0)])
+		_tri3(st, [battle._world_pos(at2d + Vector2(cos(t0), sin(t0)) * r0, ya), warm],
+			[battle._world_pos(at2d + Vector2(cos(t1), sin(t1)) * r1, ya), Color(warm.r, warm.g, warm.b, 0.0)],
+			[battle._world_pos(at2d + Vector2(cos(t1), sin(t1)) * r0, ya), warm])
+	var mesh := ArrayMesh.new()
+	st.commit(mesh)
+	var n := _fade_node(mesh, _mat_add(), "gun_laser_hit", LASER_HIT_SEC)
+	## 溅射火花(复用现成的 spark_burst, 颜色跟激光同支)
+	spark_burst(at2d, Color(1.0, 0.78, 0.42, 0.95), 0.7, 9)
+	return n
+
+
+## 被治疗友军的【绿光回复】: 中上半身(胸口高度)升起一根绿光柱 + 上浮绿点。
+## ★用户原话「中上半身冒出绿光治疗」⇒ 光柱底在 0.55 米(胸口)而不是脚下。
+func heal_glow(pos2d: Vector2) -> int:
+	if not _has_world():
+		return 0
+	var made := 0
+	var tex := VfxTex._make_lightshaft_texture()
+	var s := Sprite3D.new()
+	s.texture = tex
+	s.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+	s.shaded = false
+	s.transparent = true
+	s.modulate = Color(HEAL_COL.r, HEAL_COL.g, HEAL_COL.b, 0.0)
+	s.pixel_size = HEAL_H / float(maxi(1, tex.get_height()))
+	s.scale = Vector3(2.6, 1.0, 1.0)          # ★加宽: 原来是一道细线, 实拍只有 68 个强绿像素
+	s.position = battle._world_pos(pos2d, 0.55 + HEAL_H * 0.5)
+	_adopt(s, "heal_glow")
+	made += 1
+	## 胸口一团光晕 —— 「中上半身冒绿光」的"冒"字靠它, 光柱只是往上散的那一截
+	var halo_tex := VfxTex._make_disc_texture()
+	var halo := Sprite3D.new()
+	halo.texture = halo_tex
+	halo.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	halo.shaded = false
+	halo.transparent = true
+	halo.modulate = Color(HEAL_COL.r, HEAL_COL.g, HEAL_COL.b, 0.0)
+	halo.pixel_size = (52.0 * float(battle.WS)) / float(maxi(1, halo_tex.get_height()))
+	halo.position = battle._world_pos(pos2d, 0.62)
+	_adopt(halo, "heal_halo")
+	made += 1
+	var twh: Tween = battle._reg_tween()
+	twh.tween_property(halo, "modulate:a", 0.85, HEAL_SEC * 0.18)
+	twh.tween_interval(HEAL_SEC * 0.30)
+	twh.tween_property(halo, "modulate:a", 0.0, HEAL_SEC * 0.52)
+	twh.tween_callback(halo.queue_free)
+	var tw: Tween = battle._reg_tween()
+	tw.tween_property(s, "modulate:a", HEAL_COL.a, HEAL_SEC * 0.20)
+	tw.tween_interval(HEAL_SEC * 0.34)
+	tw.tween_property(s, "modulate:a", 0.0, HEAL_SEC * 0.46)
+	tw.tween_callback(s.queue_free)
+	## 上浮的绿点(确定性摆位: 等分角 + 固定半径, 无 randf)
+	var dot := VfxTex._make_disc_texture()
+	for i in range(HEAL_MOTES):
+		var th: float = float(i) * TAU / float(HEAL_MOTES) + 0.2
+		var off := Vector2(cos(th), sin(th) * 0.5) * 16.0
+		var m := Sprite3D.new()
+		m.texture = dot
+		m.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		m.shaded = false
+		m.transparent = true
+		m.modulate = HEAL_COL
+		m.pixel_size = (12.0 * float(battle.WS)) / float(maxi(1, dot.get_height()))
+		m.position = battle._world_pos(pos2d + off, 0.5)
+		_adopt(m, "heal_mote")
+		made += 1
+		var tw2: Tween = battle._reg_tween()
+		tw2.tween_property(m, "position:y", m.position.y + 0.85, HEAL_SEC * 0.9)
+		tw2.parallel().tween_property(m, "modulate:a", 0.0, HEAL_SEC * 0.9)
+		tw2.tween_callback(m.queue_free)
+	return made
+
+
+## 建一个一次性网格节点并按 holdfade 淡出(前 62% 满亮, 尾段收) —— 本层没有 _fx 队列,
+## 淡出照本层既有做法走 tween(light_pillar 同款)。
+func _fade_node(mesh: ArrayMesh, mat: StandardMaterial3D, kind: String, dur: float) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.material_override = mat
+	_adopt(mi, kind)
+	var tw: Tween = battle._reg_tween()
+	tw.tween_interval(maxf(0.01, dur * 0.62))
+	tw.tween_property(mat, "albedo_color:a", 0.0, maxf(0.02, dur * 0.38))
+	tw.tween_callback(mi.queue_free)
+	return mi
+
+
+## 加色材质(激光/命中花共用)
+static func _mat_add() -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.vertex_color_use_as_albedo = true
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	m.no_depth_test = true
+	m.albedo_color = Color(1, 1, 1, 1)
+	return m
+
+
 ## 炮管(单位长: 沿 +X 伸出 1, 方管) + 炮口环
 static func _build_turret_barrel() -> ArrayMesh:
 	var st := SurfaceTool.new()
