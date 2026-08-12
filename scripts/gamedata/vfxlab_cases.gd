@@ -92,6 +92,107 @@ const CASES := {
 ## 收伞时携带者回血 50/80/130。触发: `tick` 自走节拍, 携带者站着就行。
 ## ★**友军必须在 200 码内**(ally_dist=150): 2026-08-11 补验收发现默认摆位 227 码 ⇒ 光环谁都没罩到。
 ## ★真实周期 = 7 + 2.5 = 9.5s: 开伞 7.0 / 收伞+回血 9.5 / 第二次开伞 16.5(旧拍点按 14.0 排, 全拍空)。
+## ══════════════════════════════════════════════════════════════════
+##  §羁绊 case(2026-08-12) —— 十条羁绊的演出自查
+##  ★与装备 case 的差别: 用 `tier` + `tier_syn` 直接给我方装一档羁绊,
+##    再按那条羁绊的节拍排拍点(枪炮台 2.5/5 秒、灵物触手 5 秒 …)。
+## ══════════════════════════════════════════════════════════════════
+
+## 枪羁绊 —— 三座炮台(3件起第一座每2.5秒轰击 / 6件起第二座每5秒 / 顶档火控)。
+## ★用户 2026-08-12:「比如枪, 炮台我完全没看到啊」⇒ 这个台子就是来复核这句的。
+"syn_gun": {
+	"eq": "p2eq_077", "star": 3, "carrier": "basic", "enemies": 3, "enemy_dist": 260.0,
+	"enemy_gap": 120.0, "attacker": true, "tier": 3, "tier_syn": "枪", "ui": true,
+	"dur": 16.0, "zoom": 0.72, "focus": "mid", "focus_h": 0.6,
+	"shots": [1.0, 2.55, 2.70, 5.05, 5.20, 7.55, 10.05, 12.55, 15.0],
+	"note": "★炮位在场地 12%/18% 宽处(队伍后方) ⇒ zoom 拉远到 0.72 + focus=mid 才框得进来; 拍点压在 2.5 秒的整数倍(第一座)与 5 秒的整数倍(第二座)。",
+},
+
+## 剑羁绊 —— 血祭(全队每损失 1% 生命 → +0.1/0.3/0.5% 攻击力)。
+## ★这条是【常驻属性】, 自查看的是"越残越猛有没有任何画面证据"(预判: 零演出)。
+"syn_sword": {
+	"eq": "p2eq_001", "star": 3, "carrier": "basic", "enemies": 3, "enemy_attacks": true,
+	"enemy_dist": 180.0, "tier": 3, "tier_syn": "剑", "attacker": true, "ui": true,
+	"dur": 18.0, "zoom": 1.0, "focus": "carrier", "focus_h": 0.7,
+	"shots": [1.0, 4.0, 8.0, 12.0, 16.0],
+	"note": "★要挨打才看得出'越残越猛'⇒ enemy_attacks; 拍点铺满整段看有没有随血量变化的表现。",
+},
+
+## 盾羁绊 —— 圣光(每 5 秒给最低血友军护盾) + 受击反应。
+"syn_shield": {
+	"eq": "p2eq_014", "star": 3, "carrier": "basic", "allies": 2, "enemies": 3,
+	"enemy_attacks": true, "enemy_dist": 170.0, "tier": 3, "tier_syn": "盾", "ui": true,
+	"dur": 20.0, "zoom": 0.9, "focus": "carrier", "focus_h": 0.8,
+	"shots": [1.0, 5.05, 5.3, 10.05, 10.3, 15.05, 19.0],
+	"note": "★圣光 5 秒一跳 ⇒ 拍点压在 5 的整数倍及其后 0.25 秒(看跳出来那一下与残留)。allies=2 才有'发给谁'可看。",
+},
+
+## 法器羁绊 —— 灵泉/余韵/共鸣(法力条满 → 触发)。
+"syn_staff": {
+	"eq": "p2eq_011", "star": 3, "carrier": "basic", "allies": 2, "enemies": 2,
+	"enemy_dist": 220.0, "tier": 3, "tier_syn": "法器", "mana_kick": 100.0, "ui": true,
+	"attacker": true, "fast_energy": true, "enemy_attacks": true,
+	"dur": 16.0, "zoom": 0.9, "focus": "carrier", "focus_h": 0.8,
+	"shots": [1.2, 1.5, 2.0, 4.0, 8.0, 12.0, 15.0],
+	"note": "★mana_kick 灌满法力走真实入口触发共鸣 —— 不灌的话台上法力永远攒不满, 会误判成'没做'。",
+},
+
+## 遗物羁绊 —— 觉醒/传送门。
+"syn_relic": {
+	"eq": "p2eq_004", "star": 3, "carrier": "basic", "allies": 2, "enemies": 3,
+	"enemy_attacks": true, "enemy_dist": 200.0, "tier": 3, "tier_syn": "遗物", "ui": true,
+	"dur": 20.0, "zoom": 0.9, "focus": "mid", "focus_h": 0.8,
+	"shots": [0.5, 1.0, 3.0, 7.0, 11.0, 15.0, 19.0],
+	"note": "★觉醒在开局前后, 传送门在中段 ⇒ 前密后疏。",
+},
+
+## 药水羁绊 —— 收割(敌人阵亡时全队获得增益)。
+"syn_potion": {
+	"eq": "p2eq_019", "star": 3, "carrier": "basic", "allies": 2, "enemies": 3,
+	"enemy_hp": 60.0, "enemy_dist": 150.0, "attacker": true, "tier": 3, "tier_syn": "药水",
+	"ui": true, "dur": 18.0, "zoom": 0.9, "focus": "mid", "focus_h": 0.8,
+	"shots": [1.0, 3.0, 5.0, 7.0, 10.0, 14.0, 17.0],
+	"note": "★收割要【敌人真的死】才触发 ⇒ enemy_hp 压到 60 让它们很快被打死; attacker 必开。",
+},
+
+## 食物羁绊 —— 盛宴(每 2.5 秒回复) + 学院。
+"syn_food": {
+	"eq": "p2eq_002", "star": 3, "carrier": "basic", "allies": 2, "enemies": 2,
+	"enemy_attacks": true, "enemy_dist": 200.0, "tier": 3, "tier_syn": "食物", "ui": true,
+	"dur": 16.0, "zoom": 0.9, "focus": "carrier", "focus_h": 0.8,
+	"shots": [1.0, 2.55, 2.8, 5.05, 7.55, 10.05, 15.0],
+	"note": "★盛宴 2.5 秒一跳 ⇒ 拍点压在 2.5 的整数倍。要挨打掉血才看得出回复。",
+},
+
+## 奇械羁绊 —— 冰冻。
+"syn_gadget": {
+	"eq": "p2eq_008", "star": 3, "carrier": "basic", "enemies": 3, "enemy_dist": 190.0,
+	"attacker": true, "tier": 3, "tier_syn": "奇械", "ui": true,
+	"dur": 18.0, "zoom": 0.9, "focus": "mid", "focus_h": 0.7,
+	"shots": [1.0, 3.0, 5.0, 8.0, 11.0, 14.0, 17.0],
+	"note": "★冰冻由攻击触发 ⇒ attacker 必开; 三个敌人才看得出冻的是谁。",
+},
+
+## 弓箭羁绊 —— 腐蚀叠层(满层一次表现)。
+"syn_bow": {
+	"eq": "p2eq_039", "star": 3, "carrier": "basic", "enemies": 3, "enemy_dist": 190.0,
+	"attacker": true, "tier": 3, "tier_syn": "弓箭", "ui": true,
+	"dur": 20.0, "zoom": 0.9, "focus": "mid", "focus_h": 0.7,
+	"shots": [1.0, 4.0, 7.0, 10.0, 13.0, 16.0, 19.0],
+	"note": "★腐蚀是攒层的, 满层才有一次表现 ⇒ 时间要给够(20 秒)且 attacker 必开。",
+},
+
+## 灵物羁绊 —— 触手(5 秒一拍) + 闪避追击 + 亡灵。
+## ★触手那套是本项目的质量标杆(memory fb-3d-quality-bar-tentacle), 这台只做复核不动它。
+"syn_spirit": {
+	"eq": "p2eq_025", "star": 3, "carrier": "basic", "enemies": 3, "enemy_dist": 200.0,
+	"enemy_attacks": true, "tier": 3, "tier_syn": "灵物", "ui": true,
+	"dur": 20.0, "zoom": 0.85, "focus": "mid", "focus_h": 0.7,
+	"shots": [1.0, 4.9, 5.1, 5.4, 9.9, 10.2, 15.0, 19.0],
+	"note": "★触手拍击 5 秒一次 ⇒ 拍点压在 5 的整数倍前后(预警区→拍下→余波)。",
+},
+
+
 "p2eq_060": {
 	"enemy_no_passive": true,
 	"star": 3, "carrier": "basic", "allies": 2, "enemies": 1, "enemy_dist": 300.0,

@@ -87,6 +87,10 @@ func apply_all() -> void:
 func tick(delta: float) -> void:
 	# ★两座炮台【各走各的节拍】: 第一座 2.5 秒、第二座 5 秒(用户定)。
 	#   共用一个计时器的话, 第二座只能是第一座的整数倍且相位锁死 —— 那不是同一件事。
+	## ★炮台【常驻实体】保活(2026-08-12 用户:「炮台我完全没看到啊」) ——
+	##   以前只有开火那 0.32 秒闪一根光柱, 场上没有任何"这里有一座炮台"的东西。
+	##   现在每帧保活: 有档位就站着, 掉档/换路就撤走。
+	_turret_keepalive(delta)
 	_t_acc += delta
 	if _t_acc >= TICK:
 		_t_acc -= TICK
@@ -99,6 +103,25 @@ func tick(delta: float) -> void:
 		for side2 in ["left", "right"]:
 			if _side_tier(side2) >= 2:
 				_turret_two(side2)         # 6 件起
+
+
+## 炮台实体的保活/撤走。★炮台不是单位 —— 它只是演出层的一个常驻节点。
+##   档位规则与开火完全一致(≥1 档第一座 / ≥2 档第二座), 免得"看得见的"与"会打的"对不上。
+func _turret_keepalive(delta: float) -> void:
+	var sv = null
+	if battle._vfx != null:
+		sv = battle._vfx._syn
+	if sv == null:
+		return
+	for side in ["left", "right"]:
+		var t: int = _side_tier(side)
+		for idx in range(2):
+			var key: String = "%s|%d" % [side, idx]
+			if t >= idx + 1:
+				sv.gun_turret_ensure(key, _turret_pos(side, idx))
+			else:
+				sv.gun_turret_free(key)
+	sv.gun_turret_tick(delta)
 
 
 func _side_tier(side: String) -> int:
@@ -159,6 +182,9 @@ func _turret_one(side: String) -> void:
 	#   炮位一根矮光柱 = 标出炮台在哪; 命中点火花 = 标出这一线打到了谁。
 	if battle._vfx != null and battle._vfx._syn != null:
 		battle._vfx._syn.gun_turret_one(origin, hit_pos)
+		## 炮塔转向这一轮的目标 + 后坐 + 炮口闪(看得出是【这座炮台】打的)
+		if not hit_pos.is_empty():
+			battle._vfx._syn.gun_turret_fire("%s|0" % side, hit_pos[0])
 
 
 ## 第二座：每周期产能量，交替【转护盾均摊全队】/【化弹幕敌方全体均摊魔法】。
@@ -196,6 +222,8 @@ func _turret_two(side: String) -> void:
 	#   蓝=护盾辐射给全队 / 橙=弹幕射向敌方全体, 颜色与辐射对象两条一起分。
 	if battle._vfx != null and battle._vfx._syn != null:
 		battle._vfx._syn.gun_turret_two(_turret_pos(side, 1), lit, is_shield)
+		if not lit.is_empty():
+			battle._vfx._syn.gun_turret_fire("%s|1" % side, lit[0], is_shield)
 	_t2_shield_phase[side] = not is_shield
 
 

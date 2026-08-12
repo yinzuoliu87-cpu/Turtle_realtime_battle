@@ -39,6 +39,12 @@ const META_KEY := "synergy_vfx"
 ## _owned 的上限, 照 RB:_reg_tween 的 512 一样是"最后一道闸"(方案书 R12 手机端预算)。
 const OWNED_CAP := 256
 
+## 常驻炮台("side|idx" → {root,yaw,barrel,mat_r,recoil})。
+## ★炮台是常驻结构, 不进 _fx 那种"活一会儿就没"的队列。
+var _turrets: Dictionary = {}
+var _mesh_tur_base: ArrayMesh = null
+var _mesh_tur_barrel: ArrayMesh = null
+
 var battle
 
 ## 本层建出来、还没自销的节点 (R7 撤场用)。存节点不存单位字典 —— CLAUDE.md §3.2。
@@ -436,6 +442,200 @@ const SIDES_RELIC := 8
 ## ★现状是一条 900 码长的 `_bolt_line` 从**看不见的地方**射出来 —— 玩家读不到"有一座炮台"。
 ##   本入口在【炮位】上放一根矮光柱(开火那一下才有), 加上命中点的火花。
 ## ⚠ **不建常驻本体**: U6「逻辑实体要不要画本体」用户尚未拍板,
+# ══════════════════════════════════════════════════════════════════
+#  §枪·炮台实体(2026-08-12 用户:「比如枪, 炮台我完全没看到啊」)
+# ══════════════════════════════════════════════════════════════════
+## 实拍复核: 炮台**根本没有实体** —— 只有每 2.5 秒在炮位闪 0.32 秒的一根光柱,
+## 而炮位在场地 12%/18% 宽处(队伍后方) ⇒ 玩家看到的是"凭空飞来一条橙线"。
+## ⇒ 造一座【常驻】炮台: 六棱底座 + 顶盖 + 可转炮塔与炮管; 开火时转向目标 + 后坐 + 炮口闪。
+## ★炮台不是单位(无血量/不被选中/不参与选靶), 所以它只是演出层的常驻节点, 由 tick 保活。
+
+## 炮台尺寸(码): 底座半径 / 底座高 / 炮管长
+const TURRET_R_PX := 34.0
+const TURRET_H_PX := 46.0
+const TURRET_BARREL_PX := 46.0
+## 后坐位移(码)与恢复时间常数(秒)
+const TURRET_RECOIL_PX := 12.0
+const TURRET_RECOIL_TAU := 0.16
+
+
+## 六棱底座 + 顶盖(单位尺度: 半径 1 / 高 1)
+static func _build_turret_base() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var hi := Color(1, 1, 1, 1.0)
+	var mid := Color(1, 1, 1, 0.72)
+	var lo := Color(1, 1, 1, 0.34)
+	for k in range(6):
+		var t0: float = float(k) * TAU / 6.0
+		var t1: float = float(k + 1) * TAU / 6.0
+		_tri3(st, [Vector3(cos(t0), 0.0, sin(t0)), lo], [Vector3(cos(t0), 1.0, sin(t0)), mid],
+			[Vector3(cos(t1), 1.0, sin(t1)), mid])
+		_tri3(st, [Vector3(cos(t0), 0.0, sin(t0)), lo], [Vector3(cos(t1), 1.0, sin(t1)), mid],
+			[Vector3(cos(t1), 0.0, sin(t1)), lo])
+	for k2 in range(6):
+		var u0: float = float(k2) * TAU / 6.0
+		var u1: float = float(k2 + 1) * TAU / 6.0
+		_tri3(st, [Vector3(0.0, 1.02, 0.0), hi],
+			[Vector3(cos(u0) * 0.92, 1.0, sin(u0) * 0.92), mid],
+			[Vector3(cos(u1) * 0.92, 1.0, sin(u1) * 0.92), mid])
+	return _commit3(st)
+
+
+## 炮管(单位长: 沿 +X 伸出 1, 方管) + 炮口环
+static func _build_turret_barrel() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var hi := Color(1, 1, 1, 1.0)
+	var mid := Color(1, 1, 1, 0.70)
+	var w := 0.24
+	for axis in [Vector3(0, w, 0), Vector3(0, 0, w)]:
+		_tri3(st, [Vector3.ZERO + axis, mid], [Vector3(1.0, 0, 0) + axis, hi],
+			[Vector3(1.0, 0, 0) - axis, hi])
+		_tri3(st, [Vector3.ZERO + axis, mid], [Vector3(1.0, 0, 0) - axis, hi],
+			[Vector3.ZERO - axis, mid])
+	for k in range(8):
+		var t0: float = float(k) * TAU / 8.0
+		var t1: float = float(k + 1) * TAU / 8.0
+		_tri3(st, [Vector3(1.0, 0, 0), hi],
+			[Vector3(1.0, cos(t0) * w * 1.7, sin(t0) * w * 1.7), hi],
+			[Vector3(1.0, cos(t1) * w * 1.7, sin(t1) * w * 1.7), mid])
+	return _commit3(st)
+
+
+static func _tri3(st: SurfaceTool, a: Array, b: Array, c: Array) -> void:
+	for v in [a, b, c]:
+		st.set_color(v[1])
+		st.add_vertex(v[0])
+
+
+static func _commit3(st: SurfaceTool) -> ArrayMesh:
+	var m := ArrayMesh.new()
+	st.commit(m)
+	return m
+
+
+## 保活一座炮台(幂等)。key = "side|idx"。每 tick 调 ⇒ 炮台一直站在那儿。
+## ★这是"炮台看得见"的事实源: 门禁量它在不在 _world、站没站在炮位上。
+func gun_turret_ensure(key: String, pos2d: Vector2, shield_phase: bool = false) -> Node3D:
+	if not _has_world():
+		return null
+	var h = _turrets.get(key, null)
+	if h is Dictionary and is_instance_valid((h as Dictionary).get("root", null)):
+		var rt0 = (h as Dictionary)["root"]
+		rt0.position = battle._world_pos(pos2d, 0.0)
+		return rt0
+	if _mesh_tur_base == null:
+		_mesh_tur_base = _build_turret_base()
+	if _mesh_tur_barrel == null:
+		_mesh_tur_barrel = _build_turret_barrel()
+	var col: Color = COL_GUN_SHIELD if shield_phase else COL_GUN_BARRAGE
+	var ws: float = float(battle.WS)
+	var root := Node3D.new()
+	root.position = battle._world_pos(pos2d, 0.0)
+	_adopt(root, "gun_turret")
+	var base := MeshInstance3D.new()
+	base.mesh = _mesh_tur_base
+	base.material_override = _turret_mat(Color(col.r * 0.55, col.g * 0.55, col.b * 0.62, 0.95))
+	base.scale = Vector3(TURRET_R_PX * ws, TURRET_H_PX * ws, TURRET_R_PX * ws)
+	root.add_child(base)
+	## 转的是【炮塔】不是底座 —— 真炮台就是这样
+	var yawn := Node3D.new()
+	yawn.position = Vector3(0.0, TURRET_H_PX * ws, 0.0)
+	root.add_child(yawn)
+	var barrel := MeshInstance3D.new()
+	barrel.mesh = _mesh_tur_barrel
+	var mr := _turret_mat(Color(col.r, col.g, col.b, 1.0))
+	barrel.material_override = mr
+	barrel.scale = Vector3.ONE * (TURRET_BARREL_PX * ws)
+	yawn.add_child(barrel)
+	_turrets[key] = {"root": root, "yaw": yawn, "barrel": barrel, "mat_r": mr,
+		"recoil": 0.0, "pos": pos2d}
+	return root
+
+
+static func _turret_mat(col: Color) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.vertex_color_use_as_albedo = true
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.albedo_color = col
+	return m
+
+
+## 开火: 炮塔转向目标 + 后坐 + 炮口闪。返回是否真的开了(没这座炮台就 false)。
+func gun_turret_fire(key: String, target2d: Vector2, shield_phase: bool = false) -> bool:
+	var h = _turrets.get(key, null)
+	if not (h is Dictionary):
+		return false
+	var rt = (h as Dictionary).get("root", null)
+	if not is_instance_valid(rt):
+		return false
+	var yawn = (h as Dictionary).get("yaw", null)
+	if is_instance_valid(yawn):
+		var here := Vector2(rt.position.x, rt.position.z)
+		var to: Vector3 = battle._world_pos(target2d, 0.0)
+		var d := Vector2(to.x - here.x, to.z - here.y)
+		if d.length() > 1e-5:
+			yawn.rotation.y = -atan2(d.y, d.x)
+	(h as Dictionary)["recoil"] = 1.0
+	var col: Color = COL_GUN_SHIELD if shield_phase else COL_GUN_BARRAGE
+	## 炮口闪落在【炮管末端】: 用存下来的场地坐标 + 朝向算, 不做 world→field 逆变换
+	## (_world_pos 可能带偏移/缩放, 逆算会把火花甩到别处 —— 上一版就飘到了屏幕左上角)
+	var pf: Vector2 = (h as Dictionary).get("pos", Vector2.ZERO)
+	var dirf: Vector2 = (target2d - pf)
+	if dirf.length() > 1e-5:
+		dirf = dirf.normalized()
+	else:
+		dirf = Vector2.RIGHT
+	spark_burst(pf + dirf * (TURRET_BARREL_PX * 1.05), col, TURRET_H_PX * float(battle.WS) * 1.1, 8)
+	return true
+
+
+## 每帧: 后坐恢复 + 炮口亮度回落。由 GunSynergySystem.tick 调。
+func gun_turret_tick(delta: float) -> void:
+	for key in _turrets.keys():
+		var h = _turrets[key]
+		if not (h is Dictionary):
+			continue
+		if not is_instance_valid((h as Dictionary).get("root", null)):
+			_turrets.erase(key)
+			continue
+		var r: float = maxf(0.0, float((h as Dictionary).get("recoil", 0.0)) - delta / TURRET_RECOIL_TAU)
+		(h as Dictionary)["recoil"] = r
+		var barrel = (h as Dictionary).get("barrel", null)
+		if is_instance_valid(barrel):
+			barrel.position.x = -TURRET_RECOIL_PX * float(battle.WS) * r
+		var mr = (h as Dictionary).get("mat_r", null)
+		if mr is StandardMaterial3D:
+			var c: Color = COL_GUN_BARRAGE
+			(mr as StandardMaterial3D).albedo_color = Color(minf(c.r * (1.0 + 0.6 * r), 1.0),
+				minf(c.g * (1.0 + 0.6 * r), 1.0), minf(c.b * (1.0 + 0.6 * r), 1.0), 1.0)
+
+
+## 撤走一座炮台(掉档/换路/撤场)。返回是否真的撤了。
+func gun_turret_free(key: String) -> bool:
+	var h = _turrets.get(key, null)
+	if not (h is Dictionary):
+		return false
+	var rt = (h as Dictionary).get("root", null)
+	if is_instance_valid(rt):
+		rt.queue_free()
+	_turrets.erase(key)
+	return true
+
+
+## 场上现有几座炮台(门禁分母)
+func gun_turret_count() -> int:
+	var n := 0
+	for k in _turrets.keys():
+		var h = _turrets[k]
+		if h is Dictionary and is_instance_valid((h as Dictionary).get("root", null)):
+			n += 1
+	return n
+
+
 ##   常驻节点还要处理换路撤场 + 一张新炮台素材 ⇒ 本批只做"开火瞬间标出炮位"。
 func gun_turret_one(origin2d: Vector2, hits: Array) -> Node3D:
 	if not _has_world():

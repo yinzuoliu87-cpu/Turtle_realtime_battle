@@ -199,7 +199,10 @@ static func _load_seed() -> Dictionary:
 		return parsed
 	return {"brackets": {}}
 
-const SEED_VER := 6   # 2026-07-27 v6: 队列模拟(160只机器人从0起互打·8命淘汰)产出的【真实玩家快照】180支/9档各20; 装备是真背包历史(1~5费混搭·便宜的星高贵的星低), 非按目标强度反推。升版→老档清旧seed_并入新种子(玩家上传的真ghost保留)
+const SEED_VER := 7   # 2026-08-12 v7: 32 只机器人真实队列重跑(30 轮打到只剩 1 队·510 条快照)——含新装备 060~076 与第四种买法【羁绊流】(149/510 条)。
+## 沿革: v6(2026-07-27) = 队列模拟产出的真实玩家快照 180 支/9 档各 20; 装备是真背包历史
+## (1~5 费混搭·便宜的星高贵的星低), 非按目标强度反推。升版 → 老档清旧 seed_ 并入新种子
+## (玩家上传的真 ghost 保留)。
 ## 种子并入(版本化): 无seed_ 或 池版本<SEED_VER → 清旧seed_+并入新种子+落盘. 修真机bug"老池挡住新种子永不升级"(用户2026-07-15).
 static func _ensure_seeded(pool: Dictionary) -> void:
 	var brackets: Dictionary = pool.get("brackets", {})

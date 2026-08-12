@@ -17187,6 +17187,136 @@
     "trainer_skill": "magic_stone"
    },
    {
+    "_strategy": "synergy",
+    "bracket": 8,
+    "equipped": {
+     "hiding": [
+      {
+       "id": "p2eq_056",
+       "star": 1
+      },
+      {
+       "id": "p2eq_017",
+       "star": 1
+      },
+      {
+       "id": "p2eq_070",
+       "star": 2
+      }
+     ],
+     "lava": [
+      {
+       "id": "p2eq_080",
+       "star": 1
+      },
+      {
+       "id": "p2eq_086",
+       "star": 1
+      },
+      {
+       "id": "p2eq_052",
+       "star": 2
+      }
+     ],
+     "stone": [
+      {
+       "id": "p2eq_068",
+       "star": 1
+      },
+      {
+       "id": "p2eq_034",
+       "star": 1
+      },
+      {
+       "id": "p2eq_068",
+       "star": 1
+      }
+     ]
+    },
+    "ghost_id": "seed_autoplay_coh_13_b28",
+    "is_bot": false,
+    "lane_assign": {
+     "bottom": [
+      "lava",
+      "hiding",
+      "stone"
+     ],
+     "top": []
+    },
+    "leaders": [
+     "lava",
+     "hiding",
+     "stone"
+    ],
+    "loadouts": {},
+    "minions": {
+     "bottom": [],
+     "top": [
+      {
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_003",
+         "star": 1
+        },
+        {
+         "id": "p2eq_025",
+         "star": 1
+        },
+        {
+         "id": "p2eq_024",
+         "star": 1
+        }
+       ],
+       "role": "front"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_065",
+         "star": 1
+        },
+        {
+         "id": "p2eq_045",
+         "star": 1
+        },
+        {
+         "id": "p2eq_015",
+         "star": 1
+        }
+       ],
+       "role": "back"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_043",
+         "star": 1
+        }
+       ],
+       "role": "front"
+      }
+     ]
+    },
+    "pet_levels": {
+     "hiding": 1,
+     "lava": 1,
+     "stone": 1
+    },
+    "profile": {
+     "avatar": "lava",
+     "id": "COH13",
+     "name": "养生小能手666"
+    },
+    "schema_ver": 1,
+    "season_eggs_killed": 0,
+    "season_level": 9,
+    "season_total_battles": 28,
+    "trainer_skill": "hook"
+   },
+   {
     "_strategy": "greedy_cost",
     "bracket": 8,
     "equipped": {
@@ -18125,138 +18255,6 @@
     "season_level": 10,
     "season_total_battles": 29,
     "trainer_skill": "whistle"
-   },
-   {
-    "_strategy": "merge_first",
-    "bracket": 8,
-    "equipped": {
-     "candy": [
-      {
-       "id": "p2eq_014",
-       "star": 2
-      },
-      {
-       "id": "p2eq_052",
-       "star": 2
-      },
-      {
-       "id": "p2eq_038",
-       "star": 2
-      }
-     ],
-     "headless": [
-      {
-       "id": "p2eq_043",
-       "star": 2
-      },
-      {
-       "id": "p2eq_059",
-       "star": 2
-      },
-      {
-       "id": "p2eq_026",
-       "star": 2
-      }
-     ],
-     "pirate": [
-      {
-       "id": "p2eq_026",
-       "star": 2
-      },
-      {
-       "id": "p2eq_059",
-       "star": 2
-      },
-      {
-       "id": "p2eq_057",
-       "star": 2
-      }
-     ]
-    },
-    "ghost_id": "seed_c4_coh_20_b29",
-    "is_bot": false,
-    "lane_assign": {
-     "bottom": [
-      "candy",
-      "pirate"
-     ],
-     "top": [
-      "headless"
-     ]
-    },
-    "leaders": [
-     "headless",
-     "candy",
-     "pirate"
-    ],
-    "loadouts": {},
-    "minions": {
-     "bottom": [
-      {
-       "elite": false,
-       "equips": [
-        {
-         "id": "p2eq_053",
-         "star": 2
-        }
-       ],
-       "role": "back"
-      }
-     ],
-     "top": [
-      {
-       "elite": false,
-       "equips": [
-        {
-         "id": "p2eq_020",
-         "star": 2
-        },
-        {
-         "id": "p2eq_045",
-         "star": 1
-        },
-        {
-         "id": "p2eq_023",
-         "star": 1
-        }
-       ],
-       "role": "front"
-      },
-      {
-       "elite": false,
-       "equips": [
-        {
-         "id": "p2eq_024",
-         "star": 2
-        },
-        {
-         "id": "p2eq_006",
-         "star": 2
-        },
-        {
-         "id": "p2eq_033",
-         "star": 1
-        }
-       ],
-       "role": "back"
-      }
-     ]
-    },
-    "pet_levels": {
-     "candy": 2,
-     "headless": 1,
-     "pirate": 1
-    },
-    "profile": {
-     "avatar": "headless",
-     "id": "COH20",
-     "name": "Zoe啦"
-    },
-    "schema_ver": 1,
-    "season_eggs_killed": 0,
-    "season_level": 9,
-    "season_total_battles": 29,
-    "trainer_skill": "magic_stone"
    }
   ]
  }

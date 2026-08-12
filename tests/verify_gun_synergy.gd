@@ -120,6 +120,50 @@ func _ready() -> void:
 	_ok("④ ★对照: 未激活(2件) → 6 发就是 6 发, 没有金弹",
 		s._pending_shots.size() == 6, "实得 %d" % s._pending_shots.size())
 
+	# ══════════════════════════════════════════════════════════════
+	# ★★炮台是【看得见的实体】(2026-08-12 用户:「比如枪, 炮台我完全没看到啊」)
+	#    由来: 以前炮台只是"一个坐标 + 每 2.5 秒闪 0.32 秒的一根光柱",
+	#    场上没有任何"这里有一座炮台"的东西 ⇒ 玩家读到的是"凭空飞来一条橙线"。
+	#    现在 GunSynergySystem.tick 每帧保活一座常驻炮台节点(底座+炮塔+炮管)。
+	#    ★量的是【真实节点在不在 _world、站没站在炮位上】, 不是"某函数存在"。
+	# ══════════════════════════════════════════════════════════════
+	var sv = _scene._vfx._syn
+	_ok("★分母: 演出层在位(它不在, 下面全是空检查)", sv != null, str(sv))
+	if sv != null:
+		# 3 件枪 = 档1 ⇒ 第一座炮台; 先清干净再建
+		for k0 in ["left|0", "left|1", "right|0", "right|1"]:
+			sv.gun_turret_free(k0)
+		var g3: Array = _ids("枪", 3)
+		_run(_scene, [_mk("left", g3), _mk("right", [])])
+		_scene._gun_syn.tick(0.016)
+		_ok("★★档1(3 件枪): 场上真的站着 1 座炮台(不是只有开火那一闪)",
+			sv.gun_turret_count() == 1, "count=%d" % sv.gun_turret_count())
+		# 炮台站在【炮位】上 —— 量真实节点世界坐标 vs _turret_pos 的换算
+		var want: Vector3 = _scene._world_pos(_scene._gun_syn._turret_pos("left", 0), 0.0)
+		var got = sv.gun_turret_ensure("left|0", _scene._gun_syn._turret_pos("left", 0))
+		_ok("★炮台站在炮位上(偏差 %.4f m)" % (got.position - want).length() if got != null else "★炮台节点缺失",
+			got != null and (got.position - want).length() < 1e-3, "")
+		_ok("★炮台真的挂在 _world 下(不是建了没进场景树)",
+			got != null and _scene._world.is_ancestor_of(got), "")
+		# 6 件枪 = 档2 ⇒ 两座
+		var g6: Array = _ids("枪", 6)
+		_run(_scene, [_mk("left", g6), _mk("right", [])])
+		_scene._gun_syn.tick(0.016)
+		_ok("★★档2(6 件枪): 两座炮台都站着", sv.gun_turret_count() == 2,
+			"count=%d" % sv.gun_turret_count())
+		# 开火: 炮塔真的转向目标(量 yaw), 且有后坐
+		var tgt := Vector2(_scene.ARENA.position.x + _scene.ARENA.size.x * 0.8,
+			_scene.ARENA.position.y + _scene.ARENA.size.y * 0.5)
+		var fired: bool = sv.gun_turret_fire("left|0", tgt)
+		_ok("★开火入口真的认这座炮台(返回 true)", fired, "")
+		# ★分母: 不存在的炮台开火必须返回 false(否则上一条可能是"永远 true")
+		_ok("★分母: 不存在的炮台开火返回 false", not sv.gun_turret_fire("left|9", tgt), "")
+		# 掉档: 0 件枪 ⇒ 炮台撤走(不许"羁绊没了炮台还杵在那")
+		_run(_scene, [_mk("left", []), _mk("right", [])])
+		_scene._gun_syn.tick(0.016)
+		_ok("★★掉档(0 件枪): 炮台被撤走 count=%d" % sv.gun_turret_count(),
+			sv.gun_turret_count() == 0, "")
+
 	s._units.clear(); s.set_process(false)
 	await get_tree().process_frame
 	s.queue_free()
