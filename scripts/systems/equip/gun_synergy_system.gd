@@ -249,11 +249,22 @@ func _turret_two(side: String) -> void:
 ## 炮台位置：按阵营的场地方向排在后方（idx 0=最前 1=中 2=后）。
 ## ★炮台不是单位, 所以这里只是"一个坐标"—— 它不会被选中、不会被攻击、不会死。
 func _turret_pos(side: String, idx: int) -> Vector2:
+	## ★三座【分前中后】站位(2026-08-12 用户:「这位置隔这么近吗」)——
+	##   权威 TIER_DESCS["枪"] 逐字: 炮台一「我方**前方**」/ 炮台二「**中心**」/ 炮台三·火控「**后方**」。
+	##   旧公式是 0.12/0.18/0.24 三个挨着的 x(相距仅 96 码), 三座挤成一堆且全在自家后场,
+	##   与文档的前/中/后完全对不上。
+	## ⚠ 这会改动【炮台一那条穿透线的起点】——它本来就该从前方打, 线更贴近战线是文档的意思。
 	var a: Rect2 = battle.ARENA
-	var y: float = a.position.y + a.size.y * 0.5
-	var x: float = a.position.x + a.size.x * (0.12 + 0.06 * float(idx))
+	## 前/中/后的横向位置(以左方为例; 右方镜像)
+	var fx: float = [0.34, 0.50, 0.09][clampi(idx, 0, 2)]
+	var x: float = a.position.x + a.size.x * fx
 	if side != "left":
-		x = a.position.x + a.size.x * (0.88 - 0.06 * float(idx))
+		x = a.position.x + a.size.x * (1.0 - fx)
+	## 中心那座两边会重合 ⇒ 各自沿纵向错开一点(左上右下), 免得叠在同一个点上
+	var dy: float = [0.0, -0.16, 0.0][clampi(idx, 0, 2)]
+	if side != "left":
+		dy = -dy
+	var y: float = a.position.y + a.size.y * (0.5 + dy)
 	return Vector2(x, y)
 
 
