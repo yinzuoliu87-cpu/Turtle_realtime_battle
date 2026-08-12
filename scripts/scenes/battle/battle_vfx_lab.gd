@@ -214,6 +214,12 @@ func _apply_tier() -> void:
 	var syn: String = str(cfg.get("tier_syn", "枪"))
 	battle._synergy._by_side["left"] = {syn: t}
 	print("[VFXLAB] 羁绊: 我方 %s %d 档 ⇒ 金弹每 %d 发出一次" % [syn, t, [4, 3, 2][clampi(t - 1, 0, 2)]])
+	## ★给完档位必须【重跑一次】依赖档位的开局逻辑 —— 台子是"先建场、后给档位",
+	##   而 battle_spawn 里的 apply_all 早在建场时就跑完了(那时档位还是 0)。
+	##   不补这一行, 顶档才有的开局演出(枪·火控的一次性附魔)在台上永远不会发生,
+	##   会被误判成"没做"。(2026-08-12 复核炮台三时抓到。)
+	if battle._gun_syn != null:
+		battle._gun_syn.apply_all()
 
 
 # ════════════════════════════════════════════════════════════════════════════

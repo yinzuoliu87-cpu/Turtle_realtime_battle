@@ -223,10 +223,36 @@ func _ready() -> void:
 		_ok("★分母: 炮台一的管【不转】(0.5 秒转过 %.3f rad ≈ 0) —— 三座不是同一个形态"
 				% absf(sv._turrets["left|0"]["barrel"].rotation.z - b0x),
 			absf(sv._turrets["left|0"]["barrel"].rotation.z - b0x) < 1e-6, "")
-		## 火控【接通】: 向携枪者拉光束, 数返回值
-		var linked: int = sv.gun_firectrl_link("left|2", [Vector2(100.0, 100.0), Vector2(200.0, 120.0)])
-		_ok("★炮台三接通了 2 个携枪者(光束数 = 人数)", linked == 2, "linked=%d" % linked)
-		_ok("★分母: 不存在的火控塔接通 0 人", sv.gun_firectrl_link("left|9", [Vector2.ZERO]) == 0, "")
+		## ★★火控【开局一次性附魔】(2026-08-12 用户:「只要有该局给所有携带枪的友军一个
+		##   附魔的动作 …… 只需要战斗开始后展示一个演示特效就好」) —— 旧的每 1.6 秒
+		##   拉光束那套已删, 判据随之改成"一局一次、每人一套附魔演出"。
+		var before_e: int = _scene._world.get_child_count()
+		var ench: int = sv.gun_firectrl_enchant("left|2", [Vector2(100.0, 100.0), Vector2(200.0, 120.0)])
+		_ok("★炮台三给 2 个携枪者各放了一次附魔(返回 %d)" % ench, ench == 2, "n=%d" % ench)
+		var per: int = 1 + SynergyVfx.ENCHANT_MOTES        # 符文环 + 上浮金点
+		var added: int = _scene._world.get_child_count() - before_e
+		_ok("★附魔真的建了节点: 新增 %d 个(每人 1 环 + %d 金点 + 1 道接通束)"
+				% [added, SynergyVfx.ENCHANT_MOTES], added >= 2 * per, "added=%d" % added)
+		## 符文环【从脚下升到头顶】—— 停在脚下只是个圈, 升上去才读成"被附魔过"
+		var ring_y0 := -1.0
+		for ei in range(_scene._world.get_child_count() - 1, -1, -1):
+			var ec = _scene._world.get_child(ei)
+			if ec is MeshInstance3D and (ec as Node).has_meta("synergy_vfx") \
+					and str((ec as Node).get_meta("synergy_vfx")) == "enchant_ring":
+				ring_y0 = (ec as Node3D).position.y
+				break
+		_ok("★符文环出生在【脚下】(y=%.3f ≈ 0), 再由 tween 升到头顶" % ring_y0,
+			ring_y0 >= 0.0 and ring_y0 < 0.2, "y=%.3f" % ring_y0)
+		## ★分母: 不存在的火控塔 → 0 人(证明上面不是"永远返回人数")
+		_ok("★分母: 不存在的火控塔附魔 0 人",
+			sv.gun_firectrl_enchant("left|9", []) == 0, "")
+		## ★不做周期性表现: 连续 tick 3 秒不该再新增附魔节点(用户只要开局一次)
+		var n_before: int = _count_meta("enchant_ring")
+		for _t3 in range(150):
+			_scene._gun_syn.tick(0.02)
+		_ok("★★不做周期性表现: tick 3 秒后附魔环没有新增(%d → %d)"
+				% [n_before, _count_meta("enchant_ring")],
+			_count_meta("enchant_ring") <= n_before, "")
 
 
 		# ★★炮台一的三样演出(2026-08-12 用户:「第一座要改为激光直线, 被治疗的友军用绿光回复
@@ -304,3 +330,14 @@ func _mk(side: String, ids: Array) -> Dictionary:
 	for i in ids: e.append({"id": str(i), "star": 1})
 	u["equips"] = e; u["eq_state"] = {}
 	return u
+
+
+## 数场上带某个 synergy_vfx meta 的节点(按 meta 认, 不按名字/下标)
+func _count_meta(kind: String) -> int:
+	var n := 0
+	for i in range(_scene._world.get_child_count()):
+		var c = _scene._world.get_child(i)
+		if c is Node and (c as Node).has_meta("synergy_vfx") \
+				and str((c as Node).get_meta("synergy_vfx")) == kind:
+			n += 1
+	return n

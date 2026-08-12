@@ -48,9 +48,6 @@ const T3_PER_GUN := 0.10
 ## 各阵营的节拍与第二座的相位（true = 这次转护盾，false = 这次化弹幕）
 var _t_acc := 0.0
 var _t2_acc := 0.0
-## 火控链接光束的节拍(秒) —— 常驻机制不能每帧画, 会刷屏
-const FIRECTRL_IV := 1.6
-var _fc_acc := 0.0
 var _t2_shield_phase := {"left": true, "right": true}
 ## 这一拍炮台二的记账(门禁读它: 相位/能量/均摊人数) —— 结算已延到波扫到才发生,
 ## 需要一个"这一拍打算做什么"的同步证据, 否则门禁只能等演出(CLAUDE.md §3.5 禁止)。
@@ -77,6 +74,9 @@ func gun_count(side: String) -> int:
 ## ★火控是"额外造成 N% 真实伤害" ⇒ 用现成的 `damage_amp` 装不下（那是增伤不是真伤），
 ##   所以单开一个字段，由伤害管线读。
 func apply_all() -> void:
+	## ★开局一次性附魔(2026-08-12 用户重做): 收集这一局被接通火控的携枪者, 收完放一次演出。
+	var _fc_targets: Array = []
+	var _fc_side := "left"
 	for u in battle._units:
 		if not (u is Dictionary):
 			continue
@@ -91,7 +91,13 @@ func apply_all() -> void:
 			continue          # ★原文是为【携带者】接通火控 —— 不带枪的连基数 10% 都不给。
 			                  #   (门禁抓出来的: 我上一版删掉了这个判断, 不带枪的白拿 10%。)
 		u["_fire_ctrl"] = T3_BASE + T3_PER_GUN * float(mine)
-
+		_fc_targets.append(Vector2(u["pos"]))
+		_fc_side = str(u.get("side", "left"))
+	## 演出: 火控塔向这些人各射一道接通束 + 身上升起符文环(一局一次, 不做周期性表现)
+	if not _fc_targets.is_empty() and battle._vfx != null and battle._vfx._syn != null:
+		var svf = battle._vfx._syn
+		svf.gun_turret_ensure("%s|2" % _fc_side, _turret_pos(_fc_side, 2), 2)
+		svf.gun_firectrl_enchant("%s|2" % _fc_side, _fc_targets)
 
 func tick(delta: float) -> void:
 	# ★两座炮台【各走各的节拍】: 第一座 2.5 秒、第二座 5 秒(用户定)。
@@ -132,21 +138,8 @@ func _turret_keepalive(delta: float) -> void:
 			else:
 				sv.gun_turret_free(key)
 	sv.gun_turret_tick(delta)
-	## 火控塔(第三座)不开火 ⇒ 它"在工作"的证据是【向每个携枪者接通的光束】, 每 FIRECTRL_IV 秒一次
-	_fc_acc += delta
-	if _fc_acc >= FIRECTRL_IV:
-		_fc_acc -= FIRECTRL_IV
-		for side2 in ["left", "right"]:
-			if _side_tier(side2) < 3:
-				continue
-			var tos: Array = []
-			for u in battle._units:
-				if not (u is Dictionary) or not u.get("alive", false) or str(u.get("side", "")) != side2:
-					continue
-				if float(u.get("_fire_ctrl", 0.0)) > 0.0:
-					tos.append(u["pos"])
-			if not tos.is_empty():
-				sv.gun_firectrl_link("%s|2" % side2, tos)
+	## ★火控塔不做周期性表现(2026-08-12 用户:「只需要战斗开始后展示一个演示特效就好」)——
+	##   开局那一次附魔在 apply_all 里放, 这里每帧只保活炮台本身。
 
 
 func _side_tier(side: String) -> int:

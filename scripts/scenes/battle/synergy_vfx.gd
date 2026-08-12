@@ -50,6 +50,7 @@ var _mesh_tur_barrel: ArrayMesh = null
 var _mesh_tur_dish: ArrayMesh = null
 var _mesh_emitter: ArrayMesh = null
 var _mesh_star_wave: ArrayMesh = null
+var _mesh_rune: ArrayMesh = null
 ## 正在扩散的星浪(炮台二) —— 每帧由 gun_turret_tick 推进
 var _waves: Array = []
 
@@ -900,6 +901,111 @@ func _tick_waves(delta: float) -> void:
 	_waves = keep
 
 
+
+## ══════════════════════════════════════════════════════════════════
+##  §炮台三·火控【开局一次性附魔】(2026-08-12 用户重做)
+## ══════════════════════════════════════════════════════════════════
+## 用户原话:「只要有该局给所有携带枪的友军一个附魔的动作, 友军有被附魔过的感觉就行,
+##   只需要战斗开始后展示一个演示特效就好」
+## ⇒ 去掉每 1.6 秒拉一次光束那套(常驻机制每隔几秒闪一下 = 刷屏, 也说不清"这是啥"),
+##   改成【开局一次】: 火控塔向每个携枪者射出一道接通束, 束到人身上后
+##   从脚下升起一圈符文环 + 金点上浮 —— 一看就是"被附魔过了"。
+
+## 附魔: 符文环升起时长(秒) / 环半径(码) / 符文刻痕数 / 上浮金点数
+const ENCHANT_SEC := 0.85
+const ENCHANT_R_PX := 34.0
+const ENCHANT_RUNES := 8
+const ENCHANT_MOTES := 6
+## 附魔色: 火控青金(与炮台三同支)
+const COL_ENCHANT := Color(0.62, 0.95, 0.78, 1.0)
+
+
+## 符文环(单位半径贴地): 一圈细环 + ENCHANT_RUNES 道刻痕
+static func _build_rune_ring() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var hi := Color(1, 1, 1, 1.0)
+	var mid := Color(1, 1, 1, 0.5)
+	for k in range(48):
+		var t0: float = float(k) * TAU / 48.0
+		var t1: float = float(k + 1) * TAU / 48.0
+		_tri3(st, [Vector3(cos(t0) * 0.94, GROUND_Y, sin(t0) * 0.94), mid],
+			[Vector3(cos(t0), GROUND_Y, sin(t0)), hi],
+			[Vector3(cos(t1), GROUND_Y, sin(t1)), hi])
+		_tri3(st, [Vector3(cos(t0) * 0.94, GROUND_Y, sin(t0) * 0.94), mid],
+			[Vector3(cos(t1), GROUND_Y, sin(t1)), hi],
+			[Vector3(cos(t1) * 0.94, GROUND_Y, sin(t1) * 0.94), mid])
+	## 刻痕: 环外一圈短齿(长短交替 —— 齐长的一圈齿会读成锯片)
+	for j in range(ENCHANT_RUNES):
+		var th: float = float(j) * TAU / float(ENCHANT_RUNES)
+		var ln: float = 1.0 + ([0.20, 0.12][j % 2])
+		var hw := 0.035
+		_tri3(st, [Vector3(cos(th - hw), GROUND_Y, sin(th - hw)), hi],
+			[Vector3(cos(th) * ln, GROUND_Y, sin(th) * ln), Color(1, 1, 1, 0.0)],
+			[Vector3(cos(th + hw), GROUND_Y, sin(th + hw)), hi])
+	return _commit3(st)
+
+
+## 给一个单位放【被附魔】的演出: 脚下升起旋转符文环 + 金点上浮。
+## 返回建出的节点数(门禁分母)。
+func firectrl_enchant_one(pos2d: Vector2) -> int:
+	if not _has_world():
+		return 0
+	if _mesh_rune == null:
+		_mesh_rune = _build_rune_ring()
+	var made := 0
+	var mat := _mat_add()
+	mat.albedo_color = Color(COL_ENCHANT.r, COL_ENCHANT.g, COL_ENCHANT.b, 1.0)
+	var mi := MeshInstance3D.new()
+	mi.mesh = _mesh_rune
+	mi.material_override = mat
+	var r: float = ENCHANT_R_PX * float(battle.WS)
+	mi.scale = Vector3(r, r, r)
+	mi.position = battle._world_pos(pos2d, 0.02)
+	_adopt(mi, "enchant_ring")
+	made += 1
+	## 环【升到头顶】并边升边转 —— "从脚到头扫一遍"才是附魔的读法, 停在脚下只是个圈
+	var tw: Tween = battle._reg_tween()
+	tw.tween_property(mi, "position:y", mi.position.y + 1.45, ENCHANT_SEC)
+	tw.parallel().tween_property(mi, "rotation:y", TAU * 1.25, ENCHANT_SEC)
+	tw.parallel().tween_property(mat, "albedo_color:a", 0.0, ENCHANT_SEC)
+	tw.tween_callback(mi.queue_free)
+	## 上浮金点
+	var dot := VfxTex._make_disc_texture()
+	for i in range(ENCHANT_MOTES):
+		var th: float = float(i) * TAU / float(ENCHANT_MOTES) + 0.4
+		var sp := Sprite3D.new()
+		sp.texture = dot
+		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sp.shaded = false
+		sp.transparent = true
+		sp.modulate = COL_ENCHANT
+		sp.pixel_size = (9.0 * float(battle.WS)) / float(maxi(1, dot.get_height()))
+		sp.position = battle._world_pos(pos2d + Vector2(cos(th), sin(th) * 0.5) * 20.0, 0.15)
+		_adopt(sp, "enchant_mote")
+		made += 1
+		var tw2: Tween = battle._reg_tween()
+		tw2.tween_property(sp, "position:y", sp.position.y + 1.25, ENCHANT_SEC * 0.95)
+		tw2.parallel().tween_property(sp, "modulate:a", 0.0, ENCHANT_SEC * 0.95)
+		tw2.tween_callback(sp.queue_free)
+	return made
+
+
+## 火控塔【开局一次性附魔】: 向每个携枪者射一道接通束, 并在他们身上放附魔演出。
+## 返回附魔了几个人(门禁分母)。★一局一次 —— 由 GunSynergySystem.apply_all 调。
+func gun_firectrl_enchant(key: String, targets: Array) -> int:
+	var h = _turrets.get(key, null)
+	var pf: Vector2 = (h as Dictionary).get("pos", Vector2.ZERO) if h is Dictionary else Vector2.ZERO
+	var n := 0
+	for t in targets:
+		if not (t is Vector2):
+			continue
+		energy_band(pf, t as Vector2, COL_ENCHANT, 16.0, 0.55)
+		firectrl_enchant_one(t as Vector2)
+		n += 1
+	return n
+
+
 ## 炮管(单位长: 沿 +X 伸出 1, 方管) + 炮口环
 static func _build_turret_barrel() -> ArrayMesh:
 	var st := SurfaceTool.new()
@@ -1128,21 +1234,6 @@ func gun_turret_tick(delta: float) -> void:
 			(mr as StandardMaterial3D).albedo_color = Color(minf(c.r * (1.0 + 0.6 * r), 1.0),
 				minf(c.g * (1.0 + 0.6 * r), 1.0), minf(c.b * (1.0 + 0.6 * r), 1.0), 1.0)
 	_tick_waves(delta)
-
-
-## 火控塔【接通】携枪者: 向每人拉一条能量带(档3 的唯一可见证据 —— 它不开火)。
-## 返回接通了几人(门禁分母)。
-func gun_firectrl_link(key: String, targets: Array) -> int:
-	var h = _turrets.get(key, null)
-	if not (h is Dictionary):
-		return 0
-	var pf: Vector2 = (h as Dictionary).get("pos", Vector2.ZERO)
-	var n := 0
-	for t in targets:
-		if t is Vector2:
-			energy_band(pf, t as Vector2, COL_GUN_FIRECTRL, 14.0, 0.42)
-			n += 1
-	return n
 
 
 ## 撤走一座炮台(掉档/换路/撤场)。返回是否真的撤了。
