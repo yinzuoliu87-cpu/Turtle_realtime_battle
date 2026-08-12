@@ -1451,7 +1451,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 			#    063 白鲸气环第①段: 放技能后 +30/60/100% 攻速, 持续【本次消耗龟能 ×0.03】秒
 			"p2eq_063": _spirit_sys._eq_whale_haste(u, si)
 			# ══ 弓箭(2026-08-05 用户逐件重做·§0.5 定稿) ══════════════════
-			#    076 连发弩机主动: 放完技能起一轮连射, 发数 = 本次技能消耗龟能 ÷ 5。
+			#    076 连发弩机主动: 放完技能起一轮连射, 发数 = 本次技能消耗龟能 ÷ 8。
 			#    ★消耗查 `battle._skill_cost(u, stype)`, 不在任何地方抄一份消耗表。
 			"p2eq_076": _bow_sys.on_cast_076(u, si)
 	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)

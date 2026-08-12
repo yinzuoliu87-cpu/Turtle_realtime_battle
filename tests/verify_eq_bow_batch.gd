@@ -119,7 +119,7 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	gs.test_mode = true
-	print("=== 弓箭 4 件(073 藤蔓弓弦 / 074 鲸骨胸甲 / 075 测距绳结 / 076 连发弩机) ===")
+	print("=== 弓箭 4 件(073 藤蔓弓弦 / 074 鲸骨胸甲 / 075 银色箭袋 / 076 连发弩机) ===")
 	_s = RB.new()
 	add_child(_s)
 	for _i in range(30):
@@ -139,6 +139,7 @@ func _ready() -> void:
 	_t076_steal()
 	_t_vfx_physics()
 	_t_vfx_nodes()
+	_t_readouts_fixture()
 
 	_s._equip_sys._bow_sys.clear()
 	_s.queue_free()
@@ -198,10 +199,11 @@ func _t_dispatch() -> void:
 			ghosts.append(fn)
 	_ok("⓪ ★旧的四个 AI 编的效果函数已彻底删除(不是只删分派留死代码)",
 		ghosts.is_empty(), str(ghosts))
-	## ★演出与效果的节拍是【同一个数】: 076 每 0.25 秒一发, 反冲振子也按 0.25 秒排
-	_ok("⓪ ★连射节拍与反冲节拍焊死相等(0.25 秒)",
+	## ★演出与效果的节拍是【同一个数】: 076 每 0.15 秒一发, 反冲振子也按 0.15 秒排
+	##   (2026-08-12 用户把 0.25 改成 0.15 —— 改一处两处都得动, 这条就是防漏改的)
+	_ok("⓪ ★连射节拍与反冲节拍焊死相等(0.15 秒)",
 		absf(EqBowBatch.VOLLEY_IV - BowEqVfx.RECOIL_IV) < 1e-9
-			and absf(EqBowBatch.VOLLEY_IV - 0.25) < 1e-9,
+			and absf(EqBowBatch.VOLLEY_IV - 0.15) < 1e-9,
 		"volley=%.4f recoil=%.4f" % [EqBowBatch.VOLLEY_IV, BowEqVfx.RECOIL_IV])
 
 
@@ -505,7 +507,7 @@ func _t074_bone_cuirass() -> void:
 # ③ 075 的被动增伤: 每距 100 码 +3/4/5%, 不封顶
 # ═════════════════════════════════════════════════════════════
 func _t075_amp() -> void:
-	print("── ③ 075 测距绳结 · 距离增伤(不封顶) ──")
+	print("── ③ 075 银色箭袋 · 距离增伤(不封顶) ──")
 	for si in range(3):
 		var per: float = [0.03, 0.04, 0.05][si]
 		_s._units.clear()
@@ -681,10 +683,10 @@ func _t076_passive() -> void:
 
 
 # ═════════════════════════════════════════════════════════════
-# ④b 076 的主动: 发数 = 消耗 ÷ 5 · 2000 码贯穿 · 每穿一人 ×0.75(最低 25%)
+# ④b 076 的主动: 发数 = 消耗 ÷ 8 · 2000 码贯穿 · 每穿一人 ×0.75(最低 25%)
 # ═════════════════════════════════════════════════════════════
 func _t076_volley() -> void:
-	print("── ④b 076 · 连射(发数=消耗÷5 · 2000 码贯穿 · 衰减 0.75) ──")
+	print("── ④b 076 · 连射(发数=消耗÷8 · 2000 码贯穿 · 衰减 0.75) ──")
 	## ★发数查的是 battle._skill_cost, 不是抄的表
 	_s._units.clear()
 	_s._equip_sys._bow_sys.clear()
@@ -696,30 +698,30 @@ func _t076_volley() -> void:
 	_ok("④b ★分母: battle._skill_cost 查到本次消耗 90 龟能",
 		absf(float(_s._skill_cost(u, "fakeSkill")) - 90.0) < 0.01,
 		"cost=%.1f" % float(_s._skill_cost(u, "fakeSkill")))
-	_ok("④b 90 龟能 → 18 发(每 5 龟能一发)",
-		_s._equip_sys._bow_sys.shots_for(u, "fakeSkill") == 18,
+	_ok("④b 90 龟能 → 11 发(每 8 龟能一发, 向下取整)",
+		_s._equip_sys._bow_sys.shots_for(u, "fakeSkill") == 11,
 		"shots=%d" % _s._equip_sys._bow_sys.shots_for(u, "fakeSkill"))
 	u["energy_cost"] = {"bigSkill": 210.0}
 	u["pending"] = "K:bigSkill"
-	_ok("④b 210 龟能 → 42 发(方案书量级表的那一行)",
-		_s._equip_sys._bow_sys.shots_for(u, "bigSkill") == 42,
+	_ok("④b 210 龟能 → 26 发(削弱后的量级: 210 ÷ 8 = 26.25)",
+		_s._equip_sys._bow_sys.shots_for(u, "bigSkill") == 26,
 		"shots=%d" % _s._equip_sys._bow_sys.shots_for(u, "bigSkill"))
 	## ★真入口: 经 _eq_on_cast 排队, 再同步喂 tick 逐发射出
 	var e1: Dictionary = _mk("basic", "right", Vector2(-500.0, -420.0), 1.0e9)
 	u["energy_cost"] = {"fakeSkill": 50.0}
 	u["pending"] = "K:fakeSkill"
 	_s._equip_sys._eq_on_cast(u, e1)
-	_ok("④b ★★真入口: 经 _eq_on_cast 排了 10 发(50 ÷ 5)",
-		int((u["eq_state"].get("p2eq_076", {}) as Dictionary).get("volley_planned", 0)) == 10,
+	_ok("④b ★★真入口: 经 _eq_on_cast 排了 6 发(50 ÷ 8 = 6.25)",
+		int((u["eq_state"].get("p2eq_076", {}) as Dictionary).get("volley_planned", 0)) == 6,
 		"planned=%d" % int((u["eq_state"].get("p2eq_076", {}) as Dictionary).get("volley_planned", 0)))
-	for _k in range(300):                                # 同步喂 3 秒(10 发 × 0.25 = 2.5 秒)
+	for _k in range(300):                                # 同步喂 3 秒(6 发 × 0.15 = 0.9 秒, 富余)
 		_s._equip_sys._bow_sys.tick(0.01)
 	var fired: int = int((u["eq_state"].get("p2eq_076", {}) as Dictionary).get("volley_fired", 0))
-	_ok("④b ★真的射出了 10 发(不多不少 · 全同步喂 tick, 不等演出)", fired == 10, "fired=%d" % fired)
+	_ok("④b ★真的射出了 6 发(不多不少 · 全同步喂 tick, 不等演出)", fired == 6, "fired=%d" % fired)
 	for _k2 in range(300):
 		_s._equip_sys._bow_sys.tick(0.01)
-	_ok("④b ★分母: 再喂 3 秒仍是 10 发(连射真的停了)",
-		int((u["eq_state"].get("p2eq_076", {}) as Dictionary).get("volley_fired", 0)) == 10,
+	_ok("④b ★分母: 再喂 3 秒仍是 6 发(连射真的停了)",
+		int((u["eq_state"].get("p2eq_076", {}) as Dictionary).get("volley_fired", 0)) == 6,
 		"fired=%d" % int((u["eq_state"].get("p2eq_076", {}) as Dictionary).get("volley_fired", 0)))
 	## ★贯穿 + 衰减: 五个敌人排成一条直线, 一发箭穿过去伤害应是 25.6→19.2→14.4→10.8→8.1
 	##   (3★ / ATK 120: 0.08×120 + 16 = 25.6, 每穿一人 ×0.75)
@@ -771,12 +773,12 @@ func _t076_volley() -> void:
 
 
 # ═════════════════════════════════════════════════════════════
-# ④c 076 偷龟能: 每穿一人偷 1/1/2 点, 双向(敌人真的少, 自己真的多)
+# ④c 076 偷龟能: 每穿一人偷 0.5/0.5/1 点, 双向(敌人真的少, 自己真的多)
 # ═════════════════════════════════════════════════════════════
 func _t076_steal() -> void:
-	print("── ④c 076 · 每穿一人偷 1/1/2 点龟能(双向) ──")
+	print("── ④c 076 · 每穿一人偷 0.5/0.5/1 点龟能(双向) ──")
 	for si in range(3):
-		var steal: float = float([1, 1, 2][si])
+		var steal: float = [0.5, 0.5, 1.0][si]
 		_s._units.clear()
 		_s._equip_sys._bow_sys.clear()
 		var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-700.0, -300.0)), "p2eq_076", si + 1)
@@ -794,7 +796,7 @@ func _t076_steal() -> void:
 		var pierced: int = _s._equip_sys._bow_sys.volley_shot(u, si)
 		_ok("④c si=%d ★分母: 这一发穿到了 1 个人" % si, pierced == 1, "pierced=%d" % pierced)
 		## 偷 N 点 = 敌人冷却【多】N×0.075 秒
-		_ok("④c si=%d 敌人被偷走 %.0f 点龟能(冷却往后推 %.4f 秒)" % [si, steal, steal * 0.075],
+		_ok("④c si=%d 敌人被偷走 %.1f 点龟能(冷却往后推 %.4f 秒)" % [si, steal, steal * 0.075],
 			absf(float(v["skill_cd"]["theirs"]) - his0 - steal * 0.075) < 0.0005,
 			"敌冷却 %.4f → %.4f" % [his0, float(v["skill_cd"]["theirs"])])
 		## 自己冷却【少】同样多
@@ -1022,11 +1024,26 @@ func _t_vfx_nodes() -> void:
 	_ok("⑥ 箭雨落区环真的挂进了 _world",
 		is_instance_valid(ring) and _s._world.is_ancestor_of(ring), str(ring))
 	if is_instance_valid(ring):
+		## ★三段包络(2026-08-12 用户重设计:「先以中心展开一个圈…最后圈往中间关闭」):
+		##   出生半径必须≈0(从中心展开), 推进到常驻段才是 400 码, 末段收回≈0。
+		var r_born: float = ring.get_aabb().size.x * 0.5 * ring.scale.x
+		_ok("⑥ ★【展开】出生半径 %.5f m ≈ 0(从圆心长出来, 不是一上来就满圈)" % r_born,
+			r_born < 0.05, "r0=%.5f" % r_born)
+		vfx.tick(0.30)                                   # 越过展开段
 		var aabb: AABB = ring.get_aabb()
 		var r_m: float = aabb.size.x * 0.5 * ring.scale.x
 		var want_m: float = 400.0 * float(_s.WS)
 		_ok("⑥ ★量真实节点: 落区环世界半径 %.4f m = 400 码 × WS = %.4f m" % [r_m, want_m],
 			absf(r_m - want_m) < 0.01, "实测 %.5f 期望 %.5f" % [r_m, want_m])
+		vfx.tick(1.15)                                   # 推到 t=1.45(总 1.5 秒, 收拢段 1.20~1.50)
+		var r_close: float = ring.get_aabb().size.x * 0.5 * ring.scale.x
+		_ok("⑥ ★【关闭】末段圈往中间收: %.4f m → %.4f m(收到 25%% 以内)" % [r_m, r_close],
+			r_close < r_m * 0.25, "r_close=%.5f" % r_close)
+		## 纯函数包络与真实节点同源(演出/门禁不许各算各的)
+		_ok("⑥ ★包络纯函数: 展开中点 <1 · 常驻 =1 · 收拢末尾 ≈0",
+			BowEqVfx.rain_ring_scale(BowEqVfx.RAIN_OPEN_SEC * 0.5, 1.5) < 1.0
+			and absf(BowEqVfx.rain_ring_scale(0.75, 1.5) - 1.0) < 1e-6
+			and BowEqVfx.rain_ring_scale(1.5, 1.5) < 1e-6, "")
 		_ok("⑥ ★贴地: 环的顶点都在同一水平面(不是立起来的; 见 memory fb-axis-y-plus-rotation-cancels)",
 			absf(ring.get_aabb().size.y) < 1e-4, "AABB.y=%.6f" % ring.get_aabb().size.y)
 
@@ -1034,35 +1051,129 @@ func _t_vfx_nodes() -> void:
 	_s._battle_rng.seed = SEED
 	var before_children: int = _s._world.get_child_count()
 	var made_arrows: int = vfx.rain_arrows(Vector2(0.0, 0.0), 400.0, 7)
-	_ok("⑥ 一跳箭雨真的建了 7 支落箭, 且都挂进了 _world",
-		made_arrows == 7 and _s._world.get_child_count() - before_children == 7,
+	## ★每支箭 = 箭身 + 地面影子 + 拖尾 三个节点
+	##   (影子让观众提前看出落点; 拖尾画的是已走过的路径 —— 2026-08-12 用户点名要拖尾)
+	_ok("⑥ 一跳箭雨真的建了 7 支落箭(各带影子+拖尾 ⇒ 21 个节点), 且都挂进了 _world",
+		made_arrows == 7 and _s._world.get_child_count() - before_children == 21,
 		"made=%d 新增子节点=%d" % [made_arrows, _s._world.get_child_count() - before_children])
-	var arrow = _s._world.get_child(_s._world.get_child_count() - 1)
+	## ★按 meta 认箭, 不按子节点下标 —— 一支箭挂几个节点是会变的, 下标一变就量错对象
+	var arrow = null
+	for ai in range(_s._world.get_child_count() - 1, -1, -1):
+		var cand = _s._world.get_child(ai)
+		if cand is MeshInstance3D and (cand as Node).has_meta(BowEqVfx.META_KEY) 				and str((cand as Node).get_meta(BowEqVfx.META_KEY)) == "rain_arrow":
+			arrow = cand
+			break
 	if is_instance_valid(arrow) and arrow is MeshInstance3D:
-		## 行程 run = 400×0.9 = 360 码 ⇒ 顶点 = lob_apex_px(720) = 720×tan60°/4 = 311.77 码
-		## AABB 的最高点 = 抛物线顶点 + 光带半宽(2.4 码) —— 后者是几何厚度, 不是误差。
-		## 行程 run = 400×0.9 = 360 码 ⇒ 顶点 = lob_apex_px(720) = 720×tan60°/4 = 311.769 码。
-		var top_m: float = (arrow as MeshInstance3D).get_aabb().end.y
-		var want_top: float = (720.0 * 1.7320508 * 0.25 + 2.4) * float(_s.WS)
-		_ok("⑥ ★量真实节点: 落箭起点高 %.4f m = (抛物线顶点 311.769 + 光带半宽 2.4)×WS = %.4f m" % [top_m, want_top],
-			absf(top_m - want_top) < 0.002, "实测 %.5f 期望 %.5f" % [top_m, want_top])
-		_ok("⑥ ★分母: 落箭真的是【斜的】(水平行程 %.3f m > 0, 垂直掉下来会是 0)"
-				% (arrow as MeshInstance3D).get_aabb().size.x,
-			(arrow as MeshInstance3D).get_aabb().size.x > 0.1)
+		## ★★用户 2026-08-12 判语:「完全看不到箭在动」⇒ 旧版把整条弹道焊进网格、节点不动。
+		##   新版箭是真的在飞: 这里量【同一个节点】在连续两帧的世界坐标, 必须在动、且在下落。
+		var a_node: MeshInstance3D = arrow
+		vfx.tick(0.001)                                   # 让它进入飞行(t≈0: 最高点)
+		var p0: Vector3 = a_node.position
+		vfx.tick(BowEqVfx.RAIN_FLY_SEC * 0.5)
+		var p1: Vector3 = a_node.position
+		vfx.tick(BowEqVfx.RAIN_FLY_SEC * 0.5 - 0.002)
+		var p2: Vector3 = a_node.position
+		_ok("⑥ ★★箭真的在动: 三帧世界坐标 y = %.3f → %.3f → %.3f(单调下落)" % [p0.y, p1.y, p2.y],
+			p0.y > p1.y and p1.y > p2.y and p0.y - p2.y > 1.0, "")
+		_ok("⑥ ★落地那一下最快(自由落体): 后半程掉的 %.3f m > 前半程 %.3f m"
+				% [p1.y - p2.y, p0.y - p1.y], (p1.y - p2.y) > (p0.y - p1.y), "")
+		_ok("⑥ ★出发高度 = %.1f 码 × WS = %.3f m(量真实节点, 不是抄公式)"
+				% [BowEqVfx.RAIN_FLY_H, BowEqVfx.RAIN_FLY_H * float(_s.WS)],
+			absf(p0.y - BowEqVfx.RAIN_FLY_H * float(_s.WS)) < 0.25, "y0=%.4f" % p0.y)
+		_ok("⑥ ★分母: 落箭是【斜】着扎下来的(水平也移动了 %.3f m > 0)"
+				% Vector2(p0.x - p2.x, p0.z - p2.z).length(),
+			Vector2(p0.x - p2.x, p0.z - p2.z).length() > 0.1, "")
+		## ★★入射角【全程恒定】= 上一版"斜着射入"的读法(2026-08-12 用户点名要回这个),
+		##   而不是从抛物线顶点起步(那个出发几乎水平、越落越陡)。量两段真实位移的仰角。
+		var seg1 := Vector2(Vector2(p0.x - p1.x, p0.z - p1.z).length(), p0.y - p1.y)
+		var seg2 := Vector2(Vector2(p1.x - p2.x, p1.z - p2.z).length(), p1.y - p2.y)
+		var ang1: float = rad_to_deg(atan2(seg1.y, maxf(seg1.x, 1e-9)))
+		var ang2: float = rad_to_deg(atan2(seg2.y, maxf(seg2.x, 1e-9)))
+		_ok("⑥ ★★斜着射入: 前后两段入射角 %.2f° / %.2f° 一致(≈60°, 差 <0.5°)" % [ang1, ang2],
+			absf(ang1 - ang2) < 0.5 and absf(ang1 - 60.0) < 1.5, "")
+		## 飞行纯函数与真实节点同源
+		_ok("⑥ ★飞行包络: u=0 在最高点(1.0) · u=1 落地(0.0) · 中点 0.75(自由落体不是线性)",
+			absf(BowEqVfx.rain_fly_at(0.0).y - 1.0) < 1e-6
+			and absf(BowEqVfx.rain_fly_at(1.0).y) < 1e-6
+			and absf(BowEqVfx.rain_fly_at(0.5).y - 0.75) < 1e-6, "")
+
+		## ★★拖尾(2026-08-12 用户:「箭我要有拖尾」): 量拖尾节点的真实 scale.y
+		##   —— 长度 = 已飞过的距离(封顶), 所以它画的就是走过的那段路径。
+		var trail = null
+		for ti in range(_s._world.get_child_count()):
+			var tc = _s._world.get_child(ti)
+			if tc is MeshInstance3D and (tc as Node).has_meta(BowEqVfx.META_KEY) 					and str((tc as Node).get_meta(BowEqVfx.META_KEY)) == "rain_trail":
+				trail = tc
+		if is_instance_valid(trail):
+			var tl_now: float = (trail as MeshInstance3D).scale.y
+			_ok("⑥ ★★拖尾真的在长: 飞到末段时长度 %.3f m > 0(旧版没有拖尾)" % tl_now,
+				tl_now > 0.5, "len=%.4f" % tl_now)
+			_ok("⑥ ★拖尾封顶 %.0f 码(不会拉成横穿全场的一条白线)" % BowEqVfx.RAIN_TRAIL_MAX,
+				tl_now <= BowEqVfx.RAIN_TRAIL_MAX * float(_s.WS) + 1e-3, "len=%.4f" % tl_now)
+		else:
+			_ok("⑥ ★★拖尾真的在长(★分母: 场上没找到拖尾节点)", false, "")
+		## ★★落地【不凭空消失】(用户点名): 飞行体出列那一刻必须留下【插在地上的箭】+ 落尘。
+		var stuck0: int = _count_kind("rain_stuck")
+		vfx.tick(0.12)                                     # 越过飞行终点
+		var stuck1: int = _count_kind("rain_stuck")
+		_ok("⑥ ★★落地不凭空消失: 插在地上的箭 %d → %d(飞行体换成插着的那支, 再慢慢淡)"
+			% [stuck0, stuck1], stuck1 > stuck0, "")
+		_ok("⑥ ★落地掀起落尘 %d 处" % _count_kind("rain_dust"), _count_kind("rain_dust") > 0, "")
+
+	## ★★整波【同向齐射】(2026-08-12 用户:「不是四面八方射过来的」):
+	##   量每支箭来向与【第一支】的夹角, 全部 < 5°。
+	##   ⚠ 别拿 atan2 的 min-max 当散布 —— 来向落在 ±180° 附近时会跨越环绕边界,
+	##     算出 358° 的假散布(第一版断言就是这么假红的; 尺子要匹配被测概念)。
+	var dirs: Array = []
+	for ci in range(_s._world.get_child_count()):
+		var nd = _s._world.get_child(ci)
+		if not (nd is MeshInstance3D) or not (nd as Node).has_meta(BowEqVfx.META_KEY):
+			continue
+		if str((nd as Node).get_meta(BowEqVfx.META_KEY)) != "rain_arrow":
+			continue
+		var upv: Vector3 = (nd as MeshInstance3D).transform.basis.y.normalized()
+		var hz := Vector2(upv.x, upv.z)
+		if hz.length() > 1e-6:
+			dirs.append(hz.normalized())
+	var max_dev := 0.0
+	if dirs.size() >= 2:
+		var ref: Vector2 = dirs[0]
+		for dv in dirs:
+			max_dev = maxf(max_dev, rad_to_deg(absf(ref.angle_to(dv))))
+	_ok("⑥ ★★同向齐射: %d 支箭的来向与首支最大夹角 %.2f°(同一侧压过来, 不是四面八方)"
+			% [dirs.size(), max_dev],
+		dirs.size() >= 5 and max_dev < 5.0, "n=%d dev=%.2f" % [dirs.size(), max_dev])
 
 	## ④ 贯穿光迹: 2000 码长, 且**分段数 = 穿透点数 + 1**
 	var tr = vfx.pierce_tracer(Vector2(-600.0, 0.0), Vector2.RIGHT, 2000.0, [0.25, 0.5])
 	_ok("⑥ 贯穿光迹真的挂进了 _world",
 		is_instance_valid(tr) and _s._world.is_ancestor_of(tr), str(tr))
 	if is_instance_valid(tr):
-		var len_m: float = tr.get_aabb().size.x
-		var want_len: float = 2000.0 * float(_s.WS)
-		_ok("⑥ ★量真实节点: 光迹世界长度 %.4f m = 2000 码 × WS = %.4f m" % [len_m, want_len],
-			absf(len_m - want_len) < 0.05, "实测 %.5f 期望 %.5f" % [len_m, want_len])
-		var mesh: ArrayMesh = tr.mesh
-		## 三段(0→0.25→0.5→1.0) × 2 三角形 × 3 顶点 = 18 个顶点
-		var vtx: int = (mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
-		_ok("⑥ 穿 2 人 ⇒ 光迹分成 3 段(18 个顶点), 每段一个亮度档", vtx == 18, "verts=%d" % vtx)
+		## ★★2026-08-12 用户:「这感觉像激光来的, 我需要箭和尾迹, 速度也太快了」——
+		##   旧版是一条【瞬时铺满 2000 码】的分段光带(所以读成激光); 现在是一支【飞】的弩矢。
+		##   判据随之改成: 量同一个节点的真实位移与速度, 以及尾迹随之变长。
+		var b0: Vector3 = tr.position
+		vfx.tick(0.10)
+		var b1: Vector3 = tr.position
+		var step_m: float = (b1 - b0).length()
+		var want_step: float = BowEqVfx.BOLT_SPEED * 0.10 * float(_s.WS)
+		_ok("⑥ ★★弩矢真的在飞: 0.10 秒走了 %.3f m = %.0f 码/秒 × 0.10 × WS = %.3f m"
+				% [step_m, BowEqVfx.BOLT_SPEED, want_step],
+			absf(step_m - want_step) < 0.05, "实测 %.4f 期望 %.4f" % [step_m, want_step])
+		_ok("⑥ ★飞完 2000 码要 %.2f 秒(不是瞬时铺满 —— 那正是「像激光」的根因)"
+				% (2000.0 / BowEqVfx.BOLT_SPEED),
+			2000.0 / BowEqVfx.BOLT_SPEED > 0.5, "")
+		## 尾迹: 与 075 落箭同一条做法(画的是已飞过的那段), 长度随飞行变长并封顶
+		var btrail = null
+		for bi in range(_s._world.get_child_count()):
+			var bc = _s._world.get_child(bi)
+			if bc is MeshInstance3D and (bc as Node).has_meta(BowEqVfx.META_KEY) 					and str((bc as Node).get_meta(BowEqVfx.META_KEY)) == "bolt_trail":
+				btrail = bc
+		_ok("⑥ ★★弩矢有尾迹, 且长度 %.3f m > 0 并封顶 %.0f 码"
+				% [(btrail as MeshInstance3D).scale.y if is_instance_valid(btrail) else -1.0,
+					BowEqVfx.BOLT_TRAIL_MAX],
+			is_instance_valid(btrail) and (btrail as MeshInstance3D).scale.y > 0.1
+			and (btrail as MeshInstance3D).scale.y <= BowEqVfx.BOLT_TRAIL_MAX * float(_s.WS) + 1e-3, "")
 
 	## ① 藤蔓小球: 真的挂进 _world, 且【不硬绑】(携带者瞬移后小球还在原地追)
 	var u: Dictionary = _mk("fortune", "left", Vector2(-200.0, -200.0))
@@ -1075,26 +1186,319 @@ func _t_vfx_nodes() -> void:
 	_ok("⑥ ★小球【不硬绑】: 携带者瞬移 400 码后一帧只追了 %.1f 码(硬绑会是 400)" % moved,
 		moved > 0.1 and moved < 40.0, "moved=%.3f" % moved)
 
-	## ② 骨甲片: 层数 = 节点数, 且每片都在 _world 里
+	## ② 护盾罩(2026-08-12 用户:「我要的是护盾罩子: 获得护盾/持续护盾/护盾破裂」)
+	##    —— 膜 + 鲸骨肋条两个网格真的进 _world; 幂等(再调不新增)
 	var b: Dictionary = _mk("fortune", "left", Vector2(-100.0, -200.0))
-	var made: int = vfx.plates_refresh(b, 0.30, 12)
-	var in_world := 0
-	for p in b.get("_bone_plates", []):
-		if is_instance_valid(p) and _s._world.is_ancestor_of(p):
-			in_world += 1
-	_ok("⑥ 骨甲 12 层 → 12 片甲, 且 12 片全在 _world 里",
-		made == 12 and in_world == 12, "made=%d in_world=%d" % [made, in_world])
-	## 壳半径按体积律涨: 8 倍护盾 ⇒ 半径 2 倍(量【真实节点到本体的距离】)
-	var base_pos: Vector3 = _s._world_pos(b["pos"], 0.55)
-	var d1: float = (b["_bone_plates"][0] as Node3D).position.distance_to(base_pos)
-	vfx.plates_refresh(b, 0.30 * 8.0, 12)
-	var d2: float = (b["_bone_plates"][0] as Node3D).position.distance_to(base_pos)
-	_ok("⑥ ★量真实节点: 护盾 ×8 → 甲片离体距离 %.4f → %.4f, 比值 %.4f ≈ 2"
-			% [d1, d2, d2 / maxf(1e-9, d1)],
-		absf(d2 / maxf(1e-9, d1) - 2.0) < 0.02, "ratio=%.5f" % (d2 / maxf(1e-9, d1)))
-	## 撤场: detach 后节点真的没了(换路自扫走的就是这条路)
-	var freed: int = vfx.detach(b)
-	_ok("⑥ ★撤场: detach 释放了 12 片甲, 且单位身上的引用被清干净",
-		freed == 12 and not b.has("_bone_plates"), "freed=%d" % freed)
+	var dh: Dictionary = vfx.dome_ensure(b)
+	var shell = dh.get("shell", null)
+	var omat = dh.get("mat", null)
+	_ok("⑥ 护盾球真的挂进 _world, 且用的是流动 shader(不是 StandardMaterial 的死球)",
+		is_instance_valid(shell) and _s._world.is_ancestor_of(shell)
+		and omat is ShaderMaterial and (omat as ShaderMaterial).shader != null, "")
+	## ★流动的事实源 = 每帧喂给 shader 的 u_t(不用 TIME —— 无头/暂停下可复现, 同 mana_beam)
+	##   ⚠ null 安全回读(memory fb-null-readback-makes-test-silently-abort):
+	##      未设过的参数回读是 null, float(null) 会让整个测试函数静默中止还照打 ALL PASS。
+	var t_before = (omat as ShaderMaterial).get_shader_parameter("u_t")
+	var tb: float = float(t_before) if t_before != null else -999.0
+	vfx.dome_follow(b, 0.25)
+	var t_after = (omat as ShaderMaterial).get_shader_parameter("u_t")
+	var ta: float = float(t_after) if t_after != null else -999.0
+	_ok("⑥ ★护盾球是【流动】的: 一帧 0.25 秒后 shader 时间 %.3f → %.3f(不动就是张静止贴图)" % [tb, ta],
+		tb > -900.0 and ta > -900.0 and absf(ta - tb - 0.25) < 1e-4, "")
+	var again: Dictionary = vfx.dome_ensure(b)
+	_ok("⑥ ★幂等: 再调 dome_ensure 不新建(罩子只有一个, 不是叠一次加一层)",
+		is_same(again.get("shell", null), shell), "")
+	## ★尺寸【不随剩余盾量缩小】(用户 2026-08-11 对 071 定的同族约束)
+	vfx.dome_follow(b, 1.0)                      # 先跑过弹出期
+	var sc_full: float = (shell as Node3D).scale.x
+	b["shield"] = 1.0                            # 盾被打到只剩 1 点
+	vfx.dome_follow(b, 0.016)
+	var sc_low: float = (shell as Node3D).scale.x
+	_ok("⑥ ★罩子不随盾量缩小: 满盾 %.4f vs 剩 1 点 %.4f(呼吸 ±3.5%% 内)" % [sc_full, sc_low],
+		absf(sc_full - sc_low) / maxf(sc_full, 1e-9) < 0.08 and sc_full > 0.0, "")
+	## 破裂: 罩子没了、骨片飞出来
+	var shards: int = vfx.dome_break(b)
+	## ⚠ queue_free 是【延迟】释放 —— 同一帧里节点仍然 is_instance_valid,
+	##   判"收掉了"要看 is_queued_for_deletion(拿 is_instance_valid 判会假红)。
+	_ok("⑥ ★护盾破裂: 罩子收掉 + 炸出 %d 片骨片(不是直接消失)" % shards,
+		shards == BowEqVfx.DOME_SHARDS and not b.has("_bone_dome")
+		and (not is_instance_valid(shell) or (shell as Node).is_queued_for_deletion()),
+		"shards=%d" % shards)
+	## 撤场: detach 后罩子节点真的没了(换路自扫走的就是这条路)
+	var b2: Dictionary = _mk("fortune", "left", Vector2(-140.0, -200.0))
+	vfx.dome_ensure(b2)
+	var freed: int = vfx.detach(b2)
+	_ok("⑥ ★撤场: detach 释放了护盾球, 单位身上的引用被清干净",
+		freed == 1 and not b2.has("_bone_dome"), "freed=%d" % freed)
 	_s._equip_sys._bow_sys.clear()
 	_s._units.clear()
+
+
+# ═════════════════════════════════════════════════════════════
+# ⑦ 补验收(2026-08-11): 常驻小球 · holdfade · 甲片跟随 · 穿透爆点 · 装备格读数镜像
+#    由来: VFXLAB 实拍复核 —— 1.0 秒那张没有球(case 注明"还没开打就该看得见")、
+#    藤蔓箭 9 张 0 张可见(0.14 秒 + 出生即淡出)、甲片走位时吊在身后、
+#    073/075/076 的核心机制在局内零读数。
+# ═════════════════════════════════════════════════════════════
+func _t_readouts_fixture() -> void:
+	print("── ⑦ 补验收: 常驻件/淡出/跟随/读数(2026-08-11) ──")
+	var vfx = _s._equip_sys._bow_sys._vfx
+
+	# ⑦a 073 小球是常驻件 ------------------------------------------------
+	_s._units.clear()
+	_s._equip_sys._bow_sys.clear()
+	var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, -440.0)), "p2eq_073", 3)
+	_s._equip_sys._bow_sys.tick(0.6)                     # > SWEEP_IV=0.5 ⇒ 自扫跑了一班
+	_ok("⑦a ★★073 小球【常驻】: 一次普攻没打, 0.6 秒自扫后球已挂进 _world(规格首句是'获得'不是'普攻后获得')",
+		is_instance_valid(u.get("_vine_orb", null)) and _s._world.is_ancestor_of(u["_vine_orb"]),
+		str(u.get("_vine_orb", null)))
+	var v0: Dictionary = _mk("fortune", "left", Vector2(-260.0, -440.0))
+	_s._equip_sys._bow_sys.tick(0.6)
+	_ok("⑦a ★分母: 没带 073 的单位不长球(自扫不是见人就发)", not v0.has("_vine_orb"))
+
+	# ⑦b holdfade(量真实节点的材质, 不是抄公式) ---------------------------
+	var ring = vfx.rain_marker(Vector2(0.0, 0.0), 400.0, 1.0)
+	var rm: StandardMaterial3D = ring.material_override
+	var a0: float = rm.albedo_color.a
+	_ok("⑦b ★分母: 出生 alpha = 作者写的 0.85(旧版第一帧就被顶成 1.0)",
+		absf(a0 - 0.85) < 0.001, "a0=%.3f" % a0)
+	vfx.tick(0.5)                                        # 50% 寿命
+	var a_mid: float = rm.albedo_color.a
+	_ok("⑦b ★★holdfade: 50%% 寿命仍是出生亮度(%.3f = %.3f) —— 不再一出生就淡" % [a_mid, a0],
+		absf(a_mid - a0) < 0.001, "mid=%.3f" % a_mid)
+	vfx.tick(0.4)                                        # 90% 寿命 ⇒ 收到 (1-0.9)/0.3 = 1/3
+	var a_late: float = rm.albedo_color.a
+	_ok("⑦b ★90%% 寿命时收到出生亮度的 1/3 档(实测 %.3f)" % a_late,
+		a_late < a0 * 0.5 and a_late > a0 * 0.1, "late=%.3f a0=%.3f" % [a_late, a0])
+
+	# ⑦c 074 护盾罩三态: 获得 → 跟人 → 破裂(2026-08-12 用户点名的三个时刻) -----
+	_s._units.clear()
+	_s._equip_sys._bow_sys.clear()
+	var b: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, -400.0), 5000.0), "p2eq_074", 3)
+	var bt: Dictionary = _mk("basic", "right", Vector2(-100.0, -400.0))
+	_s._equip_sys._eq_on_basic_attack(b, bt)             # 真入口: 叠盾 + 建罩子 + 登记 owner
+	_s._equip_sys._bow_sys.tick(0.016)                   # 看门人这一帧把 _bone_dome_on 立起来
+	var dome0 = b.get("_bone_dome", null)
+	_ok("⑦c ★【获得护盾】走真入口一次普攻就有罩子(不是只写了函数没人调)",
+		dome0 is Dictionary and is_instance_valid((dome0 as Dictionary).get("shell", null))
+		and bool(b.get("_bone_dome_on", false)), "")
+	var pl0: Vector3 = ((dome0 as Dictionary)["shell"] as Node3D).position
+	b["pos"] = (b["pos"] as Vector2) + Vector2(500.0, 0.0)
+	_s._equip_sys._bow_sys.tick(0.016)
+	var pl1: Vector3 = ((dome0 as Dictionary)["shell"] as Node3D).position
+	var moved: float = (pl1 - pl0).length() / float(_s.WS)
+	_ok("⑦c ★【持续护盾】罩子跟人走: 携带者瞬移 500 码后【一帧】跟了 %.1f 码" % moved,
+		absf(moved - 500.0) < 1.0, "moved=%.2f" % moved)
+	## 【护盾破裂】盾被打光那一帧 —— 破裂必须由看门人发, 不能等下次普攻
+	var shell_ref = (dome0 as Dictionary)["shell"]
+	b["shield"] = 0.0
+	_s._equip_sys._bow_sys.tick(0.016)
+	_ok("⑦c ★【护盾破裂】盾归零那一帧罩子就炸掉(不是等下次普攻才发现): broke_n=%d"
+		% int(b.get("_bone_dome_broke_n", 0)),
+		int(b.get("_bone_dome_broke_n", 0)) == 1 and not b.has("_bone_dome")
+		and (not is_instance_valid(shell_ref) or (shell_ref as Node).is_queued_for_deletion())
+		and not bool(b.get("_bone_dome_on", true)), "")
+	## ★分母: 破裂后不再重复触发(每次盾归零只炸一次)
+	_s._equip_sys._bow_sys.tick(0.016)
+	_s._equip_sys._bow_sys.tick(0.016)
+	_ok("⑦c ★分母: 之后两帧不再重复炸(broke_n 仍为 1)",
+		int(b.get("_bone_dome_broke_n", 0)) == 1, "broke_n=%d" % int(b.get("_bone_dome_broke_n", 0)))
+
+	# ⑦d 073 攻速 buff 的读数镜像(vine_buff_pct 0~100) --------------------
+	_s._units.clear()
+	_s._equip_sys._bow_sys.clear()
+	var tsave: float = _s._t
+	var c: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, -360.0)), "p2eq_073", 3)
+	c["atk"] = 100.0
+	c["base_atk"] = 100.0
+	c["crit"] = 1.0
+	var ct: Dictionary = _mk("basic", "right", Vector2(-100.0, -360.0))
+	_s._equip_sys._eq_on_basic_attack(c, ct)
+	_ok("⑦d 073 暴击瞬间 vine_buff_pct = 100(触发瞬间读数就位)",
+		absf(float((c["eq_state"]["p2eq_073"] as Dictionary).get("vine_buff_pct", -1.0)) - 100.0) < 0.001,
+		"pct=%.2f" % float((c["eq_state"]["p2eq_073"] as Dictionary).get("vine_buff_pct", -1.0)))
+	_s._t += 1.0
+	_s._equip_sys._bow_sys.tick(0.016)                   # 镜像每帧衰减(走 _tick_orbs)
+	var halfp: float = float((c["eq_state"]["p2eq_073"] as Dictionary).get("vine_buff_pct", -1.0))
+	_ok("⑦d 1 秒后镜像 ≈ 50(剩 1/2 秒, 实测 %.1f)" % halfp, absf(halfp - 50.0) < 2.0, "pct=%.2f" % halfp)
+	_s._t = float((c["eq_state"]["p2eq_073"] as Dictionary)["vine_aspd_until"]) + 0.01
+	_s._equip_sys._bow_sys.tick(0.016)
+	_ok("⑦d 到期后镜像回 0(条不许停在满格骗人)",
+		absf(float((c["eq_state"]["p2eq_073"] as Dictionary).get("vine_buff_pct", -1.0))) < 0.001,
+		"pct=%.2f" % float((c["eq_state"]["p2eq_073"] as Dictionary).get("vine_buff_pct", -1.0)))
+	_s._t = tsave
+
+	# ⑦e 076 被动"每第三下"的进度镜像(cross_step) -------------------------
+	var saved = _s._synergy._by_side
+	_s._units.clear()
+	_s._synergy._by_side = {"left": {"弓箭": 1}, "right": {}}
+	var w: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, -320.0)), "p2eq_076", 3)
+	var wt: Dictionary = _mk("basic", "right", Vector2(-100.0, -320.0))
+	var steps: Array = []
+	for _k in range(3):
+		_s._equip_sys._eq_on_basic_attack(w, wt)
+		steps.append(int((w["eq_state"]["p2eq_076"] as Dictionary).get("cross_step", -1)))
+	_ok("⑦e 076 被动进度 cross_step 走 1→2→0(第三下触发那格清零)", steps == [1, 2, 0], str(steps))
+	_s._units.clear()
+	_s._synergy._by_side = {"left": {}, "right": {}}
+	var w2: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, -280.0)), "p2eq_076", 3)
+	var wt2: Dictionary = _mk("basic", "right", Vector2(-100.0, -280.0))
+	_s._equip_sys._eq_on_basic_attack(w2, wt2)
+	_ok("⑦e ★羁绊未激活 ⇒ 进度恒 0(不给玩家兑不了现的进度条)",
+		int((w2["eq_state"]["p2eq_076"] as Dictionary).get("cross_step", -1)) == 0,
+		"step=%d" % int((w2["eq_state"]["p2eq_076"] as Dictionary).get("cross_step", -1)))
+	_s._synergy._by_side = saved
+
+	# ⑦f 076 待射发数徽章(volley_left) ------------------------------------
+	_s._units.clear()
+	_s._equip_sys._bow_sys.clear()
+	var q: Dictionary = _equip(_mk("fortune", "left", Vector2(-700.0, -240.0)), "p2eq_076", 3)
+	q["atk"] = 120.0
+	q["base_atk"] = 120.0
+	q["energy_cost"] = {"fakeSkill": 50.0}
+	q["pending"] = "K:fakeSkill"
+	var _qe: Dictionary = _mk("basic", "right", Vector2(-500.0, -240.0), 1.0e9)
+	_s._equip_sys._eq_on_cast(q, _qe)
+	var q_st: Dictionary = q["eq_state"]["p2eq_076"]
+	_ok("⑦f 排队瞬间徽章 = 6(50 龟能 ÷ 8)", int(q_st.get("volley_left", -1)) == 6,
+		"left=%d" % int(q_st.get("volley_left", -1)))
+	for _k2 in range(60):                                # 0.6 秒: 射了 2~3 发
+		_s._equip_sys._bow_sys.tick(0.01)
+	q_st = q["eq_state"]["p2eq_076"]
+	var q_mid: int = int(q_st.get("volley_left", -1))
+	## ★不钉死"0.6 秒 = 正好 N 发"(0.01 的二进制误差会让边界发漂一格) ——
+	##   判据换成时刻恒等式: 徽章 ≡ 排的 − 射出的(对任意时刻成立, 帧率无关)
+	_ok("⑦f ★逐发倒数中(0<left<6, 实测 %d)" % q_mid, q_mid > 0 and q_mid < 6, "left=%d" % q_mid)
+	_ok("⑦f ★★恒等式: 徽章 = volley_planned − volley_fired(%d = %d − %d)"
+			% [q_mid, int(q_st.get("volley_planned", -1)), int(q_st.get("volley_fired", -1))],
+		q_mid == int(q_st.get("volley_planned", -1)) - int(q_st.get("volley_fired", -1)),
+		str(q_st))
+	for _k3 in range(300):                               # 再 3 秒: 必然射完
+		_s._equip_sys._bow_sys.tick(0.01)
+	_ok("⑦f 射完归 0(条不许停在非零骗人)",
+		int((q["eq_state"]["p2eq_076"] as Dictionary).get("volley_left", -1)) == 0,
+		"left=%d" % int((q["eq_state"]["p2eq_076"] as Dictionary).get("volley_left", -1)))
+
+	# ⑦h ★★「每第三下【普攻】」真的只有普攻能触发(2026-08-12 用户问:「确定是只有普攻能触发的吧」)
+	#     由来: 061 那一族(015/038/056/061/062/063/070)当初错挂在 _eq_on_hit 上,
+	#     赛博龟的浮游炮/多段技/DoT 全能触发, 与规格「每次普攻」不符, 已补 basic 闸。
+	#     弓箭这三件挂的是 _eq_on_basic_attack(全仓库唯一调用点 = _basic_attack), 本来就对 ——
+	#     但"代码看着对"不算证据: 这里【走真实伤害入口】反证一遍, 谁把它改挂到 on_hit 就会红。
+	_s._equip_sys._bow_sys.clear()
+	_s._units.clear()
+	var pb: Dictionary = _equip(_mk("fortune", "left", Vector2(-800.0, 600.0), 4000.0), "p2eq_076", 3)
+	var pe: Dictionary = _mk("basic", "right", Vector2(-700.0, 600.0), 100000.0)
+	## ⚠ eq_state 的每件槽位是【懒建】的: 没触发过就还没有这个键。
+	##   直接 pb["eq_state"]["p2eq_076"] 会运行时报错, 而那会【静默掐断整个测试函数】——
+	##   剩余断言一条不跑, 却照样打 ALL PASS(memory fb-null-readback-makes-test-silently-abort)。
+	##   我刚就是这么把 ⑦g/⑦h 整段弄没的, 靠"断言总数变少"才发现。
+	_s._equip_sys._eq_on_basic_attack(pb, pe)          # 先走一发真普攻, 把槽位建出来
+	var st_p: Dictionary = (pb.get("eq_state", {}) as Dictionary).get("p2eq_076", {})
+	_ok("⑦h ★分母: 076 的 eq_state 槽位已建出来(否则下面全是空检查)", not st_p.is_empty(), "")
+	st_p["cross_hits"] = 0
+	## ① 技能/DoT/装备伤害走 _apply_damage_from(from_equip=true) —— 打十下
+	for _sk in range(10):
+		_s._damage._apply_damage_from(pb, pe, 50, Color("#ffffff"), 0.0, false, true)
+	var after_skill: int = int((pb["eq_state"]["p2eq_076"] as Dictionary).get("cross_hits", 0))
+	_ok("⑦h ★★10 下【非普攻】伤害后, 076 的普攻计数仍是 0(浮游炮/多段技/DoT 不该触发)",
+		after_skill == 0, "cross_hits=%d" % after_skill)
+	## ② 同样十下, 但走【普攻真入口】
+	for _ba in range(10):
+		_s._equip_sys._eq_on_basic_attack(pb, pe)
+	var after_basic: int = int((pb["eq_state"]["p2eq_076"] as Dictionary).get("cross_hits", 0))
+	_ok("⑦h ★分母: 10 下真普攻后计数 = 10(证明上一条不是「这个计数根本不会动」)",
+		after_basic == 10, "cross_hits=%d" % after_basic)
+	## ③ 073/074 同族同理(它们的规格也写着"每次普攻")
+	var pb2: Dictionary = _equip(_mk("fortune", "left", Vector2(-860.0, 600.0), 4000.0), "p2eq_074", 3)
+	var sh_before: float = float(pb2.get("shield", 0.0))
+	for _sk2 in range(6):
+		_s._damage._apply_damage_from(pb2, pe, 50, Color("#ffffff"), 0.0, false, true)
+	_ok("⑦h ★074「每次普攻叠盾」同样只认普攻: 6 下非普攻伤害后护盾没涨",
+		absf(float(pb2.get("shield", 0.0)) - sh_before) < 0.01,
+		"shield %.1f → %.1f" % [sh_before, float(pb2.get("shield", 0.0))])
+	_s._equip_sys._eq_on_basic_attack(pb2, pe)
+	_ok("⑦h ★分母: 一下真普攻后 074 护盾确实涨了(%.1f → %.1f)"
+			% [sh_before, float(pb2.get("shield", 0.0))],
+		float(pb2.get("shield", 0.0)) > sh_before + 0.5, "")
+
+	# ⑦i ★★发数 = 【那个技能真实消耗的龟能】÷ 8(2026-08-12 用户问:「消耗了80龟能就获得16个充能吗」)
+	#     判据不拿合成数字, 走【真龟 + 真技能 + 真消耗查询】: 消耗改多少, 发数就跟着变。
+	#     ★不在测试里抄一份消耗表 —— 那样产品改了消耗、门禁照样绿(手抄副本必漂)。
+	_s._equip_sys._bow_sys.clear()
+	_s._units.clear()
+	var cb: Dictionary = _equip(_mk("basic", "left", Vector2(-900.0, -700.0), 4000.0), "p2eq_076", 3)
+	## ★2026-08-12 用户削弱: ÷5 → ÷8(80 龟能 16 发 → 10 发)
+	for pair in [[80.0, 10], [78.0, 9], [40.0, 5], [8.0, 1], [7.0, 0]]:
+		var cost: float = float(pair[0])
+		var want_shots: int = int(pair[1])
+		## 给这只龟这条技能设一个真实消耗(energy_cost 就是战斗读的那张表)
+		cb["energy_cost"] = {"probeSkill": cost}
+		cb["pending"] = "K:probeSkill"
+		var real_cost: float = float(_s._skill_cost(cb, "probeSkill"))
+		var got: int = _s._equip_sys._bow_sys.shots_for(cb, "probeSkill")
+		_ok("⑦i 消耗 %.0f 龟能 → %d 发(= %.0f ÷ 8 向下取整; 战斗侧实测消耗 %.0f)"
+				% [cost, want_shots, cost, real_cost],
+			got == want_shots and absf(real_cost - cost) < 0.001, "实测 %d 发" % got)
+	## ★分母: 没在放技能(pending 不是 K:) ⇒ 一发都不排(不会平白连射)
+	cb["pending"] = ""
+	_ok("⑦i ★分母: 没放技能时 0 发(cast_stype 空 ⇒ 不排连射)",
+		_s._equip_sys._bow_sys.shots_for(cb, _s._equip_sys._bow_sys.cast_stype(cb)) == 0, "")
+	## ★真入口一遍: on_cast_076 排的发数 = shots_for 给的数(徽章/计数都对得上)
+	cb["energy_cost"] = {"probeSkill": 80.0}
+	cb["pending"] = "K:probeSkill"
+	_s._equip_sys._bow_sys.on_cast_076(cb, 2)
+	var cst: Dictionary = (cb.get("eq_state", {}) as Dictionary).get("p2eq_076", {})
+	_ok("⑦i ★★走真入口: 80 龟能的技能排了 %d 发, 徽章也是 %d(读数与机制同源)"
+			% [int(cst.get("volley_planned", -1)), int(cst.get("volley_left", -1))],
+		int(cst.get("volley_planned", -1)) == 10 and int(cst.get("volley_left", -1)) == 10, str(cst))
+	## ★分母: 除数本身就是 8 —— 谁把它改回 5, 上面整张表连同这条一起红
+	_ok("⑦i ★除数焊死为 8 龟能/发", absf(EqBowBatch.ENERGY_PER_SHOT - 8.0) < 1e-9,
+		"ENERGY_PER_SHOT=%.2f" % EqBowBatch.ENERGY_PER_SHOT)
+
+	# ⑦g 贯穿命中记号: **弩矢飞到谁, 谁那一刻才炸**(2026-08-12 重做; 旧版一发射出就全亮=激光读法)
+	_s._equip_sys._bow_sys.clear()
+	## ⚠ 量【增量】不量绝对数: queue_free 是延迟的, 前面用例射过的记号这一帧还挂在树上
+	var base_mk: int = _count_kind("bolt_hit")
+	var tr2 = vfx.pierce_tracer(Vector2(-600.0, 100.0), Vector2.RIGHT, 2000.0, [0.25, 0.5])
+	_ok("⑦g ★分母: 弩矢节点建出来了(它不在, 下面全是空检查)",
+		is_instance_valid(tr2) and _s._world.is_ancestor_of(tr2), str(tr2))
+	_ok("⑦g ★发射瞬间【一个记号都没有】(激光才会开场全亮)",
+		_count_kind("bolt_hit") - base_mk == 0, "新增=%d" % (_count_kind("bolt_hit") - base_mk))
+	## 飞到 30% 处: 只该炸掉 0.25 那个点, 0.5 那个还没到
+	vfx.tick(2000.0 * 0.30 / BowEqVfx.BOLT_SPEED)
+	var mk1: int = _count_kind("bolt_hit") - base_mk
+	_ok("⑦g ★★飞过第 1 个命中点(30% 行程)后只炸了 1 枚记号", mk1 == 1, "新增=%d" % mk1)
+	## 飞完全程: 两个点都炸过
+	vfx.tick(2000.0 * 0.75 / BowEqVfx.BOLT_SPEED)
+	var mk2: int = _count_kind("bolt_hit") - base_mk
+	_ok("⑦g ★★飞完全程后记号数 = 穿透点数 2(数得出穿了几个人)", mk2 == 2, "新增=%d" % mk2)
+
+	# ⑦h 读数表两头焊死(写的字段 = 表里读的字段) --------------------------
+	var ER := preload("res://scripts/gamedata/equip_readouts.gd")
+	_ok("⑦h COUNT 表: 076 → volley_left", str(ER.COUNT.get("p2eq_076", "")) == "volley_left",
+		str(ER.COUNT.get("p2eq_076", "缺行")))
+	var r73: Array = ER.CHARGE.get("p2eq_073", [])
+	_ok("⑦h CHARGE 表: 073 → vine_buff_pct / 满值 100",
+		r73.size() >= 2 and str(r73[0]) == "vine_buff_pct" and absf(float(r73[1]) - 100.0) < 0.001,
+		str(r73))
+	var r75: Array = ER.CHARGE.get("p2eq_075", [])
+	_ok("⑦h ★★CHARGE 表: 075 读 iv_t 且分母 = EQ_IV_BATCH1 的周期(改周期漏改这里, 条就走不满/提前满)",
+		r75.size() >= 2 and str(r75[0]) == "iv_t"
+			and absf(float(r75[1]) - float(EquipSystem.EQ_IV_BATCH1.get("p2eq_075", -1.0))) < 0.001,
+		str(r75))
+	var r76: Array = ER.CHARGE.get("p2eq_076", [])
+	_ok("⑦h CHARGE 表: 076 → cross_step / 分母 3(每第三下)",
+		r76.size() >= 2 and str(r76[0]) == "cross_step" and absf(float(r76[1]) - 3.0) < 0.001,
+		str(r76))
+	_s._equip_sys._bow_sys.clear()
+	_s._units.clear()
+
+
+## 数场上某一类演出节点(按 BowEqVfx 打的 meta 认, 不按名字/下标 —— 下标会随节点数变)
+func _count_kind(kind: String) -> int:
+	var n := 0
+	for i in range(_s._world.get_child_count()):
+		var c = _s._world.get_child(i)
+		if c is Node and (c as Node).has_meta(BowEqVfx.META_KEY) 				and str((c as Node).get_meta(BowEqVfx.META_KEY)) == kind:
+			n += 1
+	return n

@@ -25,7 +25,11 @@ const P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const P2EQ := preload("res://scripts/gamedata/phase2_equip.gd")
 
 const SKILLS := ["magic_stone", "hook", "fury_potion", "whistle", "glacier"]
-const STRATEGIES := ["merge_first", "greedy_cost", "random"]
+## ★"synergy"(羁绊流) 2026-08-12 加入: 原三种买法**一件都不看羁绊** ——
+##   机器人于是永远凑不出类型档位, 而羁绊是 2026-08-03 起【唯一】的构筑维度。
+##   快照池里全是"无羁绊队" ⇒ 玩家打到的鬼影不体现这套系统。补上第四种玩家原型。
+const STRATEGIES := ["merge_first", "greedy_cost", "random", "synergy"]
+const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")
 const FRAME_CAP := 60000
 const SHELF := 10
 const MAX_REFRESH := 2
@@ -345,6 +349,37 @@ func _snapshot_of(bot: Dictionary, label: String) -> Dictionary:
 
 
 # ════════════════════ 商店 / 背包 (与 _autoplay 同口径) ════════════════════
+## 羁绊流的出价分(越大越先买)。★纯函数 ⇒ 门禁(verify_bot_buy_synergy)直接调, 不跑整场模拟。
+##   `seen_ids` = 已拥有的装备 id 集合(去重口径); `tcount` = 类型 → 已有件数。
+##
+## 分档理由(不是拍脑袋的权重):
+##   · 已有同款 id → 羁绊收益**恒为 0**(calc_active 按 id 去重), 只剩合成价值 ⇒ 压到最低档
+##   · 这一件正好**跨过下一档阈值** → 立刻拿到整档属性 ⇒ 最高档
+##   · 否则按"离下一档还差几件"给分, 差得越少越先买(差 1 件 > 差 3 件)
+##   · 类型已顶档(没有更高阈值) → 再买不涨档, 与"无类型"同档
+static func syn_key(edef, seen_ids: Dictionary, tcount: Dictionary) -> float:
+	if not (edef is Dictionary):
+		return 0.0
+	var eid := str((edef as Dictionary).get("id", ""))
+	if eid == "" or seen_ids.has(eid):
+		return 0.0                                   # 重复件: 无羁绊收益
+	var typ := str(Phase2Types.type_of(eid))
+	if typ == "" or not Phase2Types.TYPES.has(typ):
+		return 0.0
+	var tiers: Array = (Phase2Types.TYPES[typ] as Dictionary).get("tiers", [])
+	var n: int = int(tcount.get(typ, 0))
+	var need := -1
+	for t in tiers:
+		if n < int(t):
+			need = int(t) - n                        # 还差几件到下一档
+			break
+	if need < 0:
+		return 0.5                                   # 该类型已顶档: 买了也不涨档
+	if need <= 1:
+		return 100.0                                 # 这一件就跨档 —— 立刻拿整档属性
+	return 10.0 / float(need)                        # 差得越少越先买
+
+
 func _item_strength(item) -> float:
 	if not (item is Dictionary):
 		return 0.0
@@ -420,6 +455,25 @@ func _buy_once(gs, strategy: String) -> int:
 				var t = idxs[i]; idxs[i] = idxs[j]; idxs[j] = t
 		"greedy_cost":
 			idxs.sort_custom(func(a, b): return int(offer[a].get("cost", 1)) > int(offer[b].get("cost", 1)))
+		"synergy":
+			## 羁绊流: 优先买【能把某个类型推过下一档阈值】的件, 其次是离阈值最近的类型。
+			## 计数口径与 Phase2Types.calc_active 一致(按 id 去重) ⇒ 重复 id 不涨羁绊数。
+			var seen_ids := {}
+			var tcount := {}
+			for it in _all_items(gs):
+				var iid := str((it as Dictionary).get("id", ""))
+				if iid == "" or seen_ids.has(iid):
+					continue
+				seen_ids[iid] = true
+				var ty := str(Phase2Types.type_of(iid))
+				if ty != "":
+					tcount[ty] = int(tcount.get(ty, 0)) + 1
+			idxs.sort_custom(func(a, b):
+				var ka: float = syn_key(offer[a], seen_ids, tcount)
+				var kb: float = syn_key(offer[b], seen_ids, tcount)
+				if absf(ka - kb) > 1e-6:
+					return ka > kb
+				return int(offer[a].get("cost", 1)) > int(offer[b].get("cost", 1)))
 		_:
 			var owned := {}
 			for it in _all_items(gs):
