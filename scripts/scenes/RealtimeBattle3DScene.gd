@@ -2734,7 +2734,6 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 		_equip_tick_sys._tick_shell(u, delta)
 		_equip_tick_sys._tick_thunder(u, delta)
 		_equip_tick_sys._tick_baton(u, delta)
-		_equip_tick_sys._tick_ice_fissure(u, delta)
 		_equip_tick_sys._tick_gear(u, delta)
 		_equip_sys._tick_eq_turret(u, delta)   # 058炮台: 双抗随携带者存活 + 携带者近身攻速 + 锁定红线
 		_equip_sys._tick_eq_intervals(u, delta)
@@ -3322,7 +3321,11 @@ func _conch_transform(pos2d: Vector2) -> void:
 	for k in range(6):
 		_bone_speck(pos2d + Vector2(randf_range(-30, 30), randf_range(-30, 30)))
 
-const _EQ_CUSTOM_IV := {"p2eq_004": 6.0, "p2eq_048": 8.0, "p2eq_049": 8.0, "p2eq_050": 8.0, "p2eq_051": 8.0, "p2eq_053": 8.0, "p2eq_057": 8.0, "p2eq_022": 8.0, "p2eq_028": 6.0, "p2eq_030": 7.0, "p2eq_031": 8.0, "p2eq_037": 5.0, "p2eq_040": 6.0, "p2eq_042": 8.0, "p2eq_052": 4.0}
+## ★法器【一件都不在这张表里】(2026-08-12): 法器的主动只能由法力条满触发
+##   (用户:「只有法力条触发的主动效果, 可能有常驻的被动效果」)。030 迷你水晶球A(7秒)
+##   与 031 迷你水晶球B(8秒)原来在这里, 那是第二个触发口, 已摘掉 —— **别补回来**,
+##   补回来就是同一件装备两条路各放各的。verify_staff_synergy ⑭ 会红。
+const _EQ_CUSTOM_IV := {"p2eq_004": 6.0, "p2eq_048": 8.0, "p2eq_049": 8.0, "p2eq_050": 8.0, "p2eq_051": 8.0, "p2eq_053": 8.0, "p2eq_057": 8.0, "p2eq_022": 8.0, "p2eq_028": 6.0, "p2eq_037": 5.0, "p2eq_040": 6.0, "p2eq_042": 8.0, "p2eq_052": 4.0}
 func _ripple_heal_vfx(pos2d: Vector2, size_px: float) -> void:
 	var tex: Texture2D = load("res://assets/sprites/vfx/ripple-heal-anim.png")
 	var fh: int = maxi(1, tex.get_height())
@@ -8691,11 +8694,10 @@ func _make_panel_equip_slot(u: Dictionary, eid: String) -> Control:   # 头像�
 		box.add_child(cnt)
 		(u["panel_count_labels"] as Array).append({"lbl": cnt, "iid": eid, "key": PANEL_COUNT[eid]})
 	if PANEL_CHARGE.has(eid):   # 充能进度条: 宽刃弯刀等
-		## 表里的值可以是【一条规格】[key, cap, 色] 或【一串规格】[[...], [...]] ——
-		## 023/026 是两条(自己的老充能 + 法器法力)。构建在 _hud, 这里只翻表。
-		var raw: Array = PANEL_CHARGE[eid]
-		for spec_v in (raw if (raw.size() > 0 and raw[0] is Array) else [raw]):
-			_hud.add_equip_charge_bar(u, slot, eid, spec_v)
+		## 值 = [字段名, 满值, 可选条色]。★这里【曾经】支持"一件多条"(023/026 各有
+		## 一条自己的老充能条 + 一条法器法力条), 2026-08-12 把那两条老充能并进法力条后
+		## 零使用者 ⇒ 撤掉, 免得留一条"写了没人读"的死泛化。构建在 _hud。
+		_hud.add_equip_charge_bar(u, slot, eid, PANEL_CHARGE[eid])
 	return slot
 
 func _make_mini_lv_badge(level: int) -> Panel:

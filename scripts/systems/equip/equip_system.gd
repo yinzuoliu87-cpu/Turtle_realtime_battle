@@ -1003,11 +1003,18 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false)
 			"p2eq_023":   # 灼热火珊瑚(被动): 每段额外灼烧 + 充能
 				var burn: int = maxi(1, roundi([2.0, 5.0, 8.0][si] + [0.07, 0.11, 0.15][si] * src["atk"]))
 				battle._damage._apply_dot_stacks(tgt, "burn", battle._cyeq_n(burn), src)
-				_eq_charge(stt, "fire_mana", 10.0, 100.0, func(): _eq_fire_coral_active(src, si))   # 法力: 每段命中+10, 满100放主动(用户2026-07-19: 原每段+1满8)
+				## 被动的第二半: 每段命中 +10 **法器法力**(文案逐字:「并获得10点法力」)。
+				## ★2026-08-12 从它自己的 `fire_mana` 条改过来 —— 法器只有一条法力条,
+				##   主动(火焰波)由法力满触发, 见 fire_equip_effect 的 "p2eq_023" 分支。
+				##   add_mana 自带 `_staff_busy` 闸 ⇒ 火焰波打出的灼烧不会回充法力(防连放)。
+				battle._staff_syn.add_mana(src, 10.0)
 			"p2eq_009":   # 宽刃弯刀: 充刃能, 满100→直线伤害
 				_eq_charge(stt, "blade_energy", [20.0, 20.0, 25.0][si] * (0.5 if is_aoe else 1.0), 100.0, func(): _eq_wide_blade(src, tgt, si))
-			"p2eq_026":   # 雷电法杖: 充能25, 满100→连锁闪电
-				_eq_charge(stt, "thunder", 25.0, 100.0, func(): battle._chain_windup(src, si))
+			"p2eq_026":   # 雷电法杖(被动): 每段伤害为【法器法力条】充能 15(用户 2026-08-12 削弱: 原 25)
+				## ★2026-08-12 从它自己的 `thunder` 条改过来 —— 法器只有一条法力条,
+				##   主动(连锁闪电)由法力满触发, 见 fire_equip_effect 的 "p2eq_026" 分支。
+				##   文案原文就是「每段伤害充能25点;充能满100点时…」, 代码原来另开了一条条子。
+				battle._staff_syn.add_mana(src, 15.0)
 			"p2eq_029":   # 冰封水母: 概率额外魔伤+冻结, 冻结→自护盾
 					pass
 			"p2eq_054":   # 瞄准镜: 必中→命中时目标身上一瞬锁定框(表现无视闪避)
@@ -1417,8 +1424,12 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 				pass
 			"p2eq_008":   # 双穿珊瑚刺: 移到每6秒 _tick_coral(用户); on_cast不处理
 				pass
-			"p2eq_011":   # 饮血护符坠: 一段一段顺序连斩(async, 每刀~0.11s), 见 _eq_bloodletting
-				_eq_bloodletting(u, si)
+			"p2eq_011":   # 饮血护符坠: 连斩已改由【法力条满】触发(2026-08-12); on_cast 不处理
+				# ★规则(用户):「法器只有法力条触发的主动效果, 可能有常驻的被动效果」——
+				#   法器的主动**只有一个触发口**。011 的连斩本来挂在"施法后", 那是第二个口,
+				#   拆掉; 现在唯一入口是 fire_equip_effect → _eq_bloodletting(法力满时调)。
+				#   被动(溢出治疗转血护盾, 见 equip_stats_apply)是常驻字段, 不受影响。
+				pass
 			"p2eq_014":   # 深海堡垒甲: 汲取移到 _tick_fortress(硬化满20层后每8秒汲取, 用户2026-07-02); on_cast不处理
 				pass
 			"p2eq_022":   # 余烬燃油瓶: 改为每8秒定时(battle._EQ_CUSTOM_IV→_eq_fuel_throw, 用户2026-07-19); on_cast不处理
@@ -1756,11 +1767,10 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 				battle._equip_tick_sys._egg_add_progress(u, 5.0)   # 每周期+5 (其余源: 敌死+10/己死+15/造成×0.1/承受×0.1)
 			"p2eq_042":   # 移到 _tick_eq_intervals(自定义间隔)
 				pass
-			"p2eq_043":   # 海浪护符: 每周期+1巨浪层, 满→横排扫敌我
-				stt["wave"] = int(stt.get("wave", 0)) + 1
-				if int(stt["wave"]) >= [3, 2, 2][si]:
-					stt["wave"] = 0
-					_eq_water_wave(u, si)
+			"p2eq_043":   # 海浪护符: 改为【法力条满直接涌浪】(2026-08-12); 周期tick不处理
+				# ★原来是"每周期 +1 巨浪层, 满 3/2/2 层才涌浪" —— 那是第二条充能条。
+				#   法器只能有一条充能条(法力条), 所以巨浪层整套取消, 不是搬家。
+				pass
 			"p2eq_052":   # 移到 _tick_eq_intervals(自定义间隔)
 				pass
 			"p2eq_037":   # 移到 _tick_eq_intervals(自定义间隔)
@@ -1922,14 +1932,10 @@ func fire_equip_effect(u: Dictionary, iid: String, star: int, stt = null) -> voi
 		"p2eq_023": _eq_fire_coral_active(u, si)
 		"p2eq_026": battle._chain_windup(u, si)
 		"p2eq_029": _eq_ice_fissure(u, si)
-		"p2eq_043":
-			# ★043 的"这件法器的效果"= 周期分支本身(+1 巨浪层, 满层才涌浪), 不是直接放浪。
-			#   照抄 _eq_on_interval 里那一段, 保持两条路径逐字同义。
-			stt["wave"] = int(stt.get("wave", 0)) + 1
-			if int(stt["wave"]) >= [3, 2, 2][si]:
-				stt["wave"] = 0
-				_eq_water_wave(u, si)
-			u["eq_state"][iid] = stt
+		# 043: 法力满【直接涌浪】。★今天早些时候这里写的是"+1 巨浪层, 满层才涌浪"(照抄它
+		#   原来的周期分支保持同义), 但那样就是法力条和巨浪层两道闸串起来 = 法力满了还不放,
+		#   与规则相反。巨浪层已整套取消 —— 法器只能有一条充能条。
+		"p2eq_043": _eq_water_wave(u, si)
 		# ★092【剧毒飞行物】没有分支 —— 它不是"周期到点触发一次"的形状(0.25 秒节拍 + 每帧飞行),
 		#   驱动挂在 RelicSynergySystem.tick() → _venom.tick(delta)。见 eq_venom_drone.gd 文件头。
 		# ★094【祖龟碑】也没有分支 —— 改成【阵亡触发】, 走 _eq_on_death → _relic_sys.on_death。

@@ -163,6 +163,81 @@ const CASES := {
 	"note": "★看点在装备格那条紫条: 没激活羁绊也该照涨(每 2.5 秒 +25, 满 100 触发贴符)。不配 tier 是故意的 —— 配了就验不到没羁绊这个情形。",
 },
 
+## ══ 法器【逐件】台子(2026-08-12 用户:「来一件件看吧, 每一个法器来看看」) ══
+##   一律【单装一件 · 不配 tier】= 羁绊没激活, 正是拆闸后要验的情形。
+##   mana_kick 100 = 档 0 的满值, 灌下去走**真实入口** battle._staff_syn.add_mana 触发,
+##   不是伪造一个"看起来放了"的演出(memory [[fb-verify-must-run-the-real-path]])。
+"staff_011": {
+	"eq": "p2eq_011", "star": 3, "carrier": "basic", "allies": 1, "enemies": 3,
+	"enemy_dist": 200.0, "mana_kick": 100.0, "ui": true, "attacker": true, "fast_energy": true, "enemy_attacks": true,
+	"dur": 18.0, "zoom": 0.9, "focus": "carrier", "focus_h": 0.8,
+	"shots": [1.2, 1.6, 2.2, 3.2, 6.0, 10.0, 15.0],
+	"note": "【p2eq_011 饮血护符坠】原生=施法后连斩 5/6/8 次(每刀约 0.11 秒顺序打出); 法力满=再来一次连斩。看点: 一串顺序斩击 + 结尾吸血溢出转血护盾。fast_energy 让它真放技能, 否则连斩的原生路径根本不跑。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。",
+},
+"staff_023": {
+	"eq": "p2eq_023", "star": 3, "carrier": "basic", "allies": 1, "enemies": 3,
+	"enemy_dist": 200.0, "mana_kick": 100.0, "ui": true, "attacker": true, "enemy_attacks": true,
+	"dur": 18.0, "zoom": 0.9, "focus": "carrier", "focus_h": 0.8,
+	"shots": [1.2, 1.6, 2.2, 3.2, 6.0, 10.0, 15.0],
+	"note": "【p2eq_023 灼热火珊瑚】原生=它【自己的火法力】(每段命中 +10, 满 100)挥出 60 度扇形火焰波; 法力满=再挥一次。看点: 装备格【两条】条子 —— 上橙=火法力(靠命中涨), 下紫=法器法力。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。",
+},
+"staff_026": {
+	"eq": "p2eq_026", "star": 3, "carrier": "basic", "allies": 1, "enemies": 3,
+	"enemy_dist": 200.0, "mana_kick": 100.0, "ui": true, "attacker": true, "enemy_attacks": true,
+	"dur": 18.0, "zoom": 0.9, "focus": "carrier", "focus_h": 0.8,
+	"shots": [1.2, 1.6, 2.2, 3.2, 6.0, 10.0, 15.0],
+	"note": "【p2eq_026 雷电法杖】原生=它【自己的雷电充能】(每段伤害 +25, 满 100)朝随机目标发连锁闪电(最多命中 4/5/6 个); 法力满=再发一次。看点: 装备格两条(上黄=雷电充能, 下紫=法力) + 闪电在敌人之间跳。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。",
+},
+"staff_029": {
+	"eq": "p2eq_029", "star": 3, "carrier": "basic", "allies": 1, "enemies": 3,
+	"enemy_dist": 200.0, "mana_kick": 100.0, "ui": true, "attacker": true, "enemy_attacks": true,
+	"dur": 18.0, "zoom": 0.9, "focus": "carrier", "focus_h": 0.8,
+	"shots": [1.2, 1.6, 2.2, 3.2, 6.0, 10.0, 15.0],
+	"note": "【p2eq_029 冰封水母】原生=每 12 秒自身上盾 100/160/250 并砸地推出一条冰道(长 500 码); 法力满=再来一次。看点: 上盾那一下 + 冰道推进到谁才结算谁(击飞+冰封)。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。",
+},
+"staff_030": {
+	"eq": "p2eq_030", "star": 3, "carrier": "basic", "allies": 1, "enemies": 3,
+	"enemy_dist": 200.0, "mana_kick": 100.0, "ui": true, "attacker": true, "enemy_attacks": true,
+	"dur": 18.0, "zoom": 0.9, "focus": "carrier", "focus_h": 0.8,
+	"shots": [1.2, 1.6, 2.2, 3.2, 6.0, 10.0, 15.0],
+	"note": "【p2eq_030 迷你水晶球A】原生=每 7 秒朝最近敌方向连发 2/2/3 段贯穿光束(间隔 0.2 秒); 法力满=再来一轮。看点: 一条直线上的贯穿 + 敌人身上叠迷你水晶层, 满 3 层引爆。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。",
+},
+"staff_031": {
+	"eq": "p2eq_031", "star": 3, "carrier": "basic", "allies": 1, "enemies": 3,
+	"enemy_dist": 200.0, "mana_kick": 100.0, "ui": true, "attacker": true, "enemy_attacks": true,
+	"dur": 18.0, "zoom": 0.9, "focus": "carrier", "focus_h": 0.8,
+	"shots": [1.2, 1.6, 2.2, 3.2, 6.0, 10.0, 15.0],
+	"note": "【p2eq_031 迷你水晶球B】原生=每 8 秒以自身为中心 360 度扫射一圈(半径 1000 码, 耗时 1.5 秒, 射线跟着龟走); 法力满=再扫一圈。看点: 扫射那一圈 + 偷魔抗。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。",
+},
+"staff_043": {
+	"eq": "p2eq_043", "star": 3, "carrier": "basic", "allies": 1, "enemies": 3,
+	"enemy_dist": 200.0, "mana_kick": 100.0, "ui": true, "attacker": true, "enemy_attacks": true,
+	"dur": 18.0, "zoom": 0.9, "focus": "carrier", "focus_h": 0.8,
+	"shots": [1.2, 1.6, 2.2, 3.2, 6.0, 10.0, 15.0],
+	"note": "【p2eq_043 海浪护符】原生=每 2.5 秒 +1 巨浪层, 满 3/2/2 层清零并从身后 400 码涌起浪墙横扫全场(敌我都扫: 友军上盾+永久护甲魔抗, 敌人吃伤害+永久减)。★法力满 = +1 层, 不是直接涌浪 —— 它的效果就是那个周期分支本身。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。",
+},
+"staff_088": {
+	"eq": "p2eq_088", "star": 3, "carrier": "basic", "allies": 1, "enemies": 3,
+	"enemy_dist": 200.0, "mana_kick": 100.0, "ui": true, "attacker": true, "enemy_attacks": true,
+	"dur": 18.0, "zoom": 0.9, "focus": "carrier", "focus_h": 0.8,
+	"shots": [1.2, 1.6, 2.2, 3.2, 6.0, 10.0, 15.0],
+	"note": "【p2eq_088 涨潮碑】★只有法力条这一条触发路径。法力满=脚下立一块潮汐碑(钉地不跟随, 5 秒, 半径 250 码): 碑内敌人每秒掉血、友军每秒上盾+攻速。碑在的时候法力条锁住不涨。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。",
+},
+"staff_089": {
+	"eq": "p2eq_089", "star": 3, "carrier": "basic", "allies": 1, "enemies": 3,
+	"enemy_dist": 200.0, "mana_kick": 100.0, "ui": true, "attacker": true, "enemy_attacks": true,
+	"dur": 18.0, "zoom": 0.9, "focus": "carrier", "focus_h": 0.8,
+	"shots": [1.2, 1.6, 2.2, 3.2, 6.0, 10.0, 15.0],
+	"note": "【p2eq_089 蚀月符纸】★只有法力条这一条触发路径。法力满=给一个敌人贴符纸: 15 秒内共造成 400/700/1000 魔法伤害并每秒削 1 点魔抗; 被贴的敌人死了, 符纸带剩余时长转移到最近的敌人。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。",
+},
+"staff_090": {
+	"eq": "p2eq_090", "star": 3, "carrier": "basic", "allies": 1, "enemies": 3,
+	"enemy_dist": 200.0, "mana_kick": 100.0, "ui": true, "attacker": true, "enemy_attacks": true,
+	"dur": 18.0, "zoom": 0.9, "focus": "carrier", "focus_h": 0.8,
+	"shots": [1.2, 1.6, 2.2, 3.2, 6.0, 10.0, 15.0],
+	"note": "【p2eq_090 镇海杵】★主动只有法力条这一条: 法力满=跳到空中猛砸(500 码内 3 倍攻击力+魔法伤害, 眩晕+击飞)。另有被动: 每第三次普攻发一片浪潮, 在敌我之间连跳(打敌伤害/打友治疗)。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。",
+},
+
 ## 遗物羁绊 —— 觉醒/传送门。
 "syn_relic": {
 	"eq": "p2eq_004", "star": 3, "carrier": "basic", "allies": 2, "enemies": 3,

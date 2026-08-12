@@ -68,6 +68,24 @@ func tier_of(u: Dictionary) -> int:
 	return int(battle._synergy.tier_for(u, "法器"))
 
 
+## 【按件】的法力条满值倍率 —— 装备自己的负面/正面被动。★★这是"满值按件算"的唯一来源:
+## 没登记的装备一律 1.0(= 老行为, 满值只看羁绊档位)。
+## · 043 海浪护符: 上限 +50/25/0%(★1/★2/★3) —— 浪墙是敌我通吃的全场 AOE, 代价是低星攒得慢。
+##   ⚠ 三元数组就近声明在这里而不是 `_eq_water_wave` 里: 它是**法力条**的属性(这个类的地盘),
+##     不是浪墙本身的参数。tooltip_number_audit 的"远处命中"白名单里记了这一条。
+## ★写成【百分比】而不是倍率: 文案逐字是"上限提升50/25/0%", 代码里放同一个三元组,
+##   tooltip_number_audit 才对得上(它比的就是文案三元组 ↔ 代码三元数组)。
+const MANA_FULL_PCT := {"p2eq_043": [50.0, 25.0, 0.0]}
+
+
+## 某个【单位 × 某件法器】的法力条满值 = 档位满值 × (1 + 该件的上限提升%)。
+func mana_full_for(u: Dictionary, iid: String, star: int) -> float:
+	var m: Array = MANA_FULL_PCT.get(str(iid), [])
+	if m.is_empty():
+		return mana_full(u)
+	return mana_full(u) * (1.0 + float(m[clampi(star, 1, 3) - 1]) * 0.01)
+
+
 ## 该单位身上第 idx 件法器的法力条满值。
 ## ★档 0(没激活羁绊)= 100, 与首档同值 —— clamp 把 -1 夹到 0 就是这个意思, 不是巧合:
 ##   规格里首档写的就是 100, 羁绊的收益是从二档起【降满值】(80/60/50), 一档只给属性与团队效果。
@@ -89,13 +107,15 @@ func add_mana(u: Dictionary, n: float) -> void:
 	##   文案承诺的主动永远兑现不了。⇒ 法力条是【每件法器自带】的, 满值 100;
 	##   羁绊的作用是把满值降到 80/60/50(mana_full 的 clamp 本来就让档 0 = 100)。
 	##   ⚠ 只拆法力条这一道 —— 灵泉/共鸣是**全队**收益, 照旧要档位。
-	var full: float = mana_full(u)
 	for e in u.get("equips", []):
 		if not (e is Dictionary):
 			continue
 		var iid: String = str(e.get("id", ""))
 		if battle.Phase2Types.type_of(iid) != "法器":
 			continue
+		## ★满值【按件算】: 档位满值 × 该件自己的倍率(043 的负面被动 +50/25/0%)。
+		##   循环内取而不是循环外 —— 同一个单位身上两件法器的满值可以不一样。
+		var full: float = mana_full_for(u, iid, int(e.get("star", 1)))
 		var stt: Dictionary = u["eq_state"].get(iid, {})
 		stt["mana"] = float(stt.get("mana", 0.0)) + n
 		## ★★镜像一份【归一化百分比】给装备图标框的法力条(2026-08-10 补)。

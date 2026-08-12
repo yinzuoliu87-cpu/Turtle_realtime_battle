@@ -219,14 +219,9 @@ func _tick_thunder(u: Dictionary, delta: float) -> void:   # 雷鸣贝壳p2eq_02
 			tw.tween_callback(battle._thunder_bolt.bind(u))
 
 # 029 冰封水母(布隆大招式): 每12秒→自身上盾→砸地→朝最近敌生成冰道(500x90)→命中魔法伤+击飞0.6s+冰封2.5s
-func _tick_ice_fissure(u: Dictionary, delta: float) -> void:
-	if u.get("equips", []).is_empty(): return
-	for e in u["equips"]:
-		if str(e["id"]) != "p2eq_029": continue
-		e["fissure_t"] = float(e.get("fissure_t", 0.0)) + delta
-		if float(e["fissure_t"]) < 12.0: continue
-		e["fissure_t"] = 0.0
-		battle._equip_sys._eq_ice_fissure(u, battle._equip_sys._eq_si(int(e.get("star", 1))))
+## ★029 冰封水母的「每 12 秒」驱动 `_tick_ice_fissure` 已整体删除(2026-08-12):
+##   法器的主动只能由法力条满触发(用户定的规则), 那个计时器是第二个触发口。
+##   效果本体 `EquipSystem._eq_ice_fissure` 还在, 现在只由 fire_equip_effect 调。
 
 func _tick_gear(u: Dictionary, delta: float) -> void:   # 黄铜齿轮035(用户2026-07-18改: 随时间铸币·每6秒左队携带者直接+1/2/3深海币+飘字·跟死亡无关·原"攒齿轮层战斗结束折币"改掉)
 	if u.get("equips", []).is_empty(): return

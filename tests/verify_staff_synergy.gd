@@ -18,6 +18,7 @@ extends Node
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")
 const Staff := preload("res://scripts/systems/equip/staff_synergy_system.gd")
+const StaffSyn := preload("res://scripts/systems/equip/staff_synergy_system.gd")
 const EquipReadouts := preload("res://scripts/gamedata/equip_readouts.gd")
 
 var _n := 0
@@ -278,19 +279,64 @@ func _ready() -> void:
 	_ok("⑬ ★十件法器【每一件】的法力条在装备格里都有出口(mana_pct)",
 		no_bar.is_empty(), "看不到法力的: %s" % str(no_bar))
 	# 老条不许被顶掉: 023/026 文案里写着"进度显示在图标下方", 说的是它们自己那条
-	var r23: Array = EquipReadouts.CHARGE.get("p2eq_023", [])
-	var r26: Array = EquipReadouts.CHARGE.get("p2eq_026", [])
-	_ok("⑬ 023/026 是【两条】(老充能 + 法力), 老那条没被顶掉",
-		r23.size() == 2 and r26.size() == 2
-			and str((r23[0] as Array)[0]) == "fire_mana" and str((r26[0] as Array)[0]) == "thunder",
-		"023=%s 026=%s" % [str(r23), str(r26)])
-	# 渲染层要真的会画多条 —— 光改表不改渲染 = 表写了没人读(memory 里那条"写进去了没人读")
-	var src_rb: String = FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")
+	## ★023/026 原来各有一条【自己的】充能条(火法力 / 雷电充能)自己攒自己放, 于是同一件
+	##   装备上跑着两条条子。2026-08-12 按规则并进法力条:「法器只有法力条触发的主动效果,
+	##   可能有常驻的被动效果」—— 它们每段命中 +10 / 每段伤害 +25 是【被动在给法力条充能】,
+	##   不是第二条独立的条。⇒ 十件各只有【一条】, 而且【同一个颜色】(用户:「法器统一用
+	##   一个颜色的法力条吧」)。颜色不统一玩家会以为是不同机制。
+	var bar_colors: Dictionary = {}
+	var multi: Array = []
+	for sid4 in staff_ids:
+		var rc: Array = EquipReadouts.CHARGE.get(str(sid4), [])
+		if rc.size() > 0 and rc[0] is Array:
+			multi.append(str(sid4))
+			continue
+		bar_colors[str(rc[2]) if rc.size() > 2 else "(缺省青)"] = true
+	_ok("⑬ ★十件法器各只有【一条】条子(自己的老充能条已并进法力条)",
+		multi.is_empty(), "还有多条的: %s" % str(multi))
+	_ok("⑬ ★十件法器的法力条【统一一个颜色】", bar_colors.keys().size() == 1,
+		"实得 %d 种: %s" % [bar_colors.keys().size(), str(bar_colors.keys())])
+	var src_eq2: String = FileAccess.get_file_as_string("res://scripts/systems/equip/equip_system.gd")
+	_ok("⑬ ★023/026 的每段命中/每段伤害灌的是【法器法力】, 老条子已无人写",
+		src_eq2.find("battle._staff_syn.add_mana(src, 10.0)") >= 0
+			and src_eq2.find("battle._staff_syn.add_mana(src, 15.0)") >= 0
+			and src_eq2.find('_eq_charge(stt, "fire_mana"') < 0
+			and src_eq2.find('_eq_charge(stt, "thunder"') < 0)
 	var src_hud: String = FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_hud.gd")
-	_ok("⑬ ★渲染层按【一串规格】逐条展开(不是只画一条)",
-		src_rb.find("for spec_v in (raw if (raw.size() > 0 and raw[0] is Array) else [raw]):") >= 0
-			and src_rb.find("_hud.add_equip_charge_bar(u, slot, eid, spec_v)") >= 0
-			and src_hud.find("func add_equip_charge_bar(") >= 0)
+	_ok("⑬ 条子的构建在 _hud(主文件只翻表 —— 上帝文件不许涨行数)",
+		src_hud.find("func add_equip_charge_bar(") >= 0)
+
+	# ══ ⑭ 法器【没有第二个触发口】: 一件都不许在周期表里 ═════════════════
+	#   规则(用户 2026-08-12):「并不是有两个触发路径, 只有法力条触发的主动效果,
+	#   可能有常驻的被动效果」。周期表(_EQ_CUSTOM_IV / EQ_IV_BATCH1)驱动的是"每 N 秒放一次",
+	#   那就是第二个触发口。029(12秒·驱动函数已删) / 030(7秒) / 031(8秒) 都是这么来的。
+	var in_iv: Array = []
+	for sid5 in staff_ids:
+		if float((_s._EQ_CUSTOM_IV as Dictionary).get(str(sid5), 0.0)) > 0.0 \
+				or float((_s._equip_sys.EQ_IV_BATCH1 as Dictionary).get(str(sid5), 0.0)) > 0.0:
+			in_iv.append(str(sid5))
+	_ok("⑭ ★十件法器一件都不在周期表里(周期=第二个触发口)",
+		in_iv.is_empty(), "还挂着周期的: %s" % str(in_iv))
+
+	# ══ ⑮ 043 的负面被动: 它【自己那条】法力条上限 +50/25/0% ═══════════════
+	#   用户 2026-08-12:「海浪…满法力就直接放海浪, 但这里弄个负面被动: 法力值上限提升50/25/0%」。
+	#   ★满值因此从【按人算】变成【按件算】—— 同一个单位身上两件法器的满值可以不一样。
+	var a43: Dictionary = _mk("left", [staffs[0]])
+	_run([a43])
+	for cs in [[1, 150.0], [2, 125.0], [3, 100.0]]:
+		_ok("⑮ 043 ★%d 的满值 = %.0f(档0基准100 × (1+%.0f%%))" % [int(cs[0]), float(cs[1]),
+				float(StaffSyn.MANA_FULL_PCT["p2eq_043"][int(cs[0]) - 1])],
+			absf(_s._staff_syn.mana_full_for(a43, "p2eq_043", int(cs[0])) - float(cs[1])) < 0.01,
+			"实得 %.1f" % _s._staff_syn.mana_full_for(a43, "p2eq_043", int(cs[0])))
+	_ok("⑮ ★分母: 没登记倍率的法器仍按【人】的满值(100), 没被这条改动波及",
+		absf(_s._staff_syn.mana_full_for(a43, "p2eq_089", 1) - 100.0) < 0.01,
+		"089★1 实得 %.1f" % _s._staff_syn.mana_full_for(a43, "p2eq_089", 1))
+	# 有羁绊时按档位满值【成比例】放大, 不是写死 150
+	_s._synergy._by_side = {"left": {"法器": 4}, "right": {}}       # 档4 ⇒ 基准 50
+	_ok("⑮ ★顶档时也成比例(50 × 1.5 = 75), 不是写死的 150",
+		absf(_s._staff_syn.mana_full_for(a43, "p2eq_043", 1) - 75.0) < 0.01,
+		"实得 %.1f" % _s._staff_syn.mana_full_for(a43, "p2eq_043", 1))
+	_s._synergy._by_side = {"left": {}, "right": {}}
 
 	_s._units.clear()
 	_s.set_process(false)
