@@ -654,34 +654,21 @@ func team_equipped_count() -> int:
 ## 盾羁绊档位 → 该发几个圣光护盾(3档1个 / 6档2个 / 9档2个)。
 ## ★数的是【当前阵容全队】的盾件数, 按装备 id 去重(与战斗侧同口径)。
 func shield_grant_count() -> int:
-	var seen: Dictionary = {}
-	var n := 0
-	var arrs: Array = []
-	for pid in (season_leaders if season_leaders is Array else []):
-		arrs.append(persistent_equipped.get(str(pid), []))
-	var dl: Dictionary = get_dual_lineup()
-	for lane in ["top", "bottom"]:
-		for u in (dl.get(lane, []) as Array):
-			if u is Dictionary:
-				arrs.append((u as Dictionary).get("equips", []))
-	arrs.append(persistent_bench)
-	for a in arrs:
-		if not (a is Array):
+	## ★★圣光护盾是【盾羁绊档位】的产物 —— 所以它必须【由档位推导】, 不能另抄一套数盾逻辑。
+	##   (2026-08-12 用户:「盾是根据羁绊档位来发放的临时装备, 为啥会没有羁绊而出现圣盾,
+	##    这是底层没理解到位啊」——说到根子上了。)
+	##   原来这里手写了一份"数盾件数 + 自己的 3/6 阈值 + 自己的去重", 而且把【背包】也算了 ⇒
+	##   出现"羁绊档位 0 却送了圣盾"。手抄的副本必然落后(memory fb-hand-rolled-copies-drift):
+	##   阈值一改、计数域一改, 两边就分家。
+	##   现在只问一句: 盾羁绊现在是第几档? 档位怎么算是 Phase2Types 的事, 这里不重复实现。
+	##   逐档赠送数(权威文档 TIER_DESCS["盾"]): 档1 送 1 件 / 档2 再送 1 件(共 2) / 档3 不再增。
+	var tier := 0
+	for a in _P2T.calc_active([{"_p2_equips": team_p2_equips_for_synergy()}]):
+		if not (a is Dictionary):
 			continue
-		for it in (a as Array):
-			if not (it is Dictionary):
-				continue
-			var iid := str((it as Dictionary).get("id", ""))
-			if seen.has(iid):
-				continue
-			seen[iid] = true
-			if _P2T.type_of(iid) == "盾":
-				n += 1
-	if n >= 6:
-		return 2
-	if n >= 3:
-		return 1
-	return 0
+		if str((a as Dictionary).get("type", "")) == "盾":
+			tier = int((a as Dictionary).get("tier", 0))
+	return [0, 1, 2, 2][clampi(tier, 0, 3)]
 
 
 ## 按当前盾羁绊档位【补发 / 收回】圣光护盾。任何会改变盾件数的操作之后都要调。

@@ -135,6 +135,14 @@ func _sell_selected() -> void:
 	if host._sel_bench < 0 or host._sel_bench >= GameState.persistent_bench.size():
 		return
 	var _it: Dictionary = GameState.persistent_bench[host._sel_bench]
+	## ★羁绊赠送件(圣光护盾)【不能卖】(2026-08-12 实测: 卖它得 0 币、随即被 sync 补发回来,
+	##   玩家看到的是"点了卖 → 东西闪一下又回来 → 一分钱没有" —— 那是 bug 观感)。
+	##   它的进出只由盾羁绊档位决定(掉档自动收回), 不该出现在交易路径上。
+	if GameState.is_synergy_grant(_it):
+		host._sel_bench = -1
+		host._toast("圣光护盾是羁绊赠送的，不能卖（盾羁绊掉档时会自动收回）")
+		host._rebuild()
+		return
 	GameState.meta_deepsea_coins += _sell_value(_it)
 	# ★私人池(2026-08-03 批2·D22): 卖出【按份数退】—— 1★退1 / 2★退3 / 3★退9。
 	#   守恒律: 买 9 张合出 3★ 再卖掉, 池子恰好回到原样。退 1 张的话池子会漏水,

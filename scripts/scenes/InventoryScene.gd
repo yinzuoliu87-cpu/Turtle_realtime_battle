@@ -41,6 +41,14 @@ func _ready() -> void:
 	UIFrame.attach(self)
 
 func _inject_demo_inventory() -> void:   # 仅 INV_DEMO 环境: 填装备看满仓布局(不调 save)
+	## ★★演示环境【强制 test_mode】—— 2026-08-12 血泪: 我开着 INV_DEMO 的窗口给用户看,
+	##   窗口里任何一次装/卸/换位都会 GameState.save() ⇒ **演示数据被写进玩家真实存档**
+	##   (basic 身上凭空多了 3 件盾 + 2 个圣光护盾), 之后所有读存档的门禁都跟着红
+	##   (verify_eq_blade_batch / verify_eq_gadget_batch 护盾数值全对不上, 我一度以为是自己改坏了)。
+	##   注释里那句"不调 save"只是【本函数】不调, 挡不住界面上的任何一次操作。
+	##   ⚠ 同类事故 2026-07-10 发生过一次(存档目录里还留着 `.bak-被测试污染`)。
+	##   test_mode 是 GameState.save() 的第一道闸(save 头一行就 return), 所以这里直接立起来。
+	GameState.test_mode = true
 	GameState.season_level = 8
 	var ids := ["p2eq_001", "p2eq_004", "p2eq_005", "p2eq_007", "p2eq_009", "p2eq_011", "p2eq_013", "p2eq_014", "p2eq_016", "p2eq_017", "p2eq_021", "p2eq_022", "p2eq_028", "p2eq_032", "p2eq_035", "p2eq_039", "p2eq_044", "p2eq_048", "p2eq_050", "p2eq_052", "p2eq_005", "p2eq_007"]
 	GameState.persistent_bench = []
@@ -56,6 +64,48 @@ func _inject_demo_inventory() -> void:   # 仅 INV_DEMO 环境: 填装备看满�
 				u["equips"] = [{"id": "p2eq_004", "star": 1}, {"id": "p2eq_009", "star": 2}]
 				break
 	GameState.dual_lineup = lineup
+	## ★INV_DEMO_HOLY=1: 第一只统领装满 3 件【盾】⇒ 盾羁绊档1 ⇒ 发圣光护盾,
+	##   用来【肉眼验收】"三格恒定 + 赠送件挂徽章"这件事(2026-08-12)。
+	##   放这里而不是另写一套: 演示数据本来就归 _inject_demo_inventory 管。
+	if OS.has_environment("INV_DEMO_HOLY"):
+		## ★演示环境里 season_leaders 常常是空的(全是"?"占位) —— 那样装备写进空 id,
+		##   界面上一件都看不到。先保证有三只真统领, 否则这个演示等于没开。
+		##   (2026-08-12: 我第一版就这么白开了一个窗口给用户看。)
+		if leaders.is_empty():
+			var picks: Array = []
+			for pdef in DataRegistry.launch_pets:
+				if picks.size() < 3:
+					picks.append(str((pdef as Dictionary).get("id", "")))
+			leaders = picks
+		## ★统领槽显示的 id 由 `_resolve_leader_slots` 按 **season_leaders** 回填,
+		##   而 `_lineup_ids()` 可能是从 lastLineup.json 拿的 —— 两者不同步时界面全是"?"。
+		##   演示里把它对齐(dev-only)。(2026-08-12: 我白开了两次窗口才查出这条。)
+		GameState.season_leaders = leaders.duplicate()
+		## 槽位 id 由 get_dual_lineup() 按 season_leaders 回填 ⇒ 改完要再取一次刷新
+		GameState.get_dual_lineup()
+		var shield_ids: Array = []
+		for e in DataRegistry.phase2_equipment:
+			var iid := str((e as Dictionary).get("id", ""))
+			if iid != "p2eq_095" and Phase2Types.type_of(iid) == "盾" and shield_ids.size() < 6:
+				shield_ids.append(iid)
+		GameState.persistent_equipped[str(leaders[0])] = [
+			{"id": str(shield_ids[0]), "star": 1}, {"id": str(shield_ids[1]), "star": 2},
+			{"id": str(shield_ids[2]), "star": 1}]
+		if leaders.size() > 1:
+			GameState.persistent_equipped[str(leaders[1])] = [
+				{"id": str(shield_ids[3]), "star": 1}, {"id": str(shield_ids[4]), "star": 1},
+				{"id": str(shield_ids[5]), "star": 1}]
+		GameState.sync_synergy_grants()
+		## ★背包里也放几件盾 —— 否则这个演示只能"看", 没法自己动手装/卸试(用户 2026-08-12:
+		##   「你打开的这个窗口咋放盾啊」)。装/卸都会触发 sync, 圣光护盾会当场增减。
+		for sid in shield_ids:
+			GameState.persistent_bench.append({"id": str(sid), "star": 1})
+		## 两个赠品都装到第一只身上 —— 正是用户问的"一只龟放两个圣盾"
+		for i in range(GameState.persistent_bench.size() - 1, -1, -1):
+			if GameState.is_synergy_grant(GameState.persistent_bench[i]):
+				(GameState.persistent_equipped[str(leaders[0])] as Array).append(
+					GameState.persistent_bench[i])
+				GameState.persistent_bench.remove_at(i)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):   # ESC 返回主菜单 (与图鉴一致)
@@ -277,8 +327,11 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 				eqs = GameState.persistent_equipped.get(pid, [])
 		elif unit.get("equips", null) is Array:
 			eqs = unit.get("equips", [])
-		# ★格数固定 3 (单只上限), 不再随等级增减 —— 布局稳定, 玩家一眼看出"这只还能装几件"。
-		#   "全队还能不能装"是另一回事, 由空格子的样式 + 右上计数器表达。
+		# ★格数【恒定 = 单只上限 3】: 三格就是"你的装备位", 布局稳定、一眼看出还能装几件。
+		#   羁绊赠送件(圣光护盾)不占装备位 ⇒ 它不进这三格, 由 _build_equip_cells 画在三格
+		#   【之后】的一枚小徽章上(金边 + "赠"角标)。
+		#   (2026-08-12 修: 之前写死 3 格却把赠送件排在数组第 4 位 ⇒ 界面上根本看不见它;
+		#    中途改成 3+N 格也不对 —— 队列里有的 3 格有的 4 格, 且第 4 格看着像"能装 4 件"。)
 		_build_equip_cells(box, 60.0, eqs, P2.UNIT_EQUIP_CAP, kind == "leader", pid, lane, idx, rx)
 	# 小将 前排/后排 pill (右上·精英小将=统领替身不显·用户2026-07-18)
 	if is_reg_minion:
@@ -308,14 +361,23 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, is_leade
 	var cw := 28.0
 	var gap := 5.0
 	var team_full: bool = not GameState.team_has_equip_room()   # 全队预算是否已用尽(空格样式据此区分)
+	## ★三格只放【占装备位】的件; 羁绊赠送件(圣光护盾)另挂徽章 —— 它不是装备位。
+	##   `slot_idx` 记录每格对应 eqs 里的真实下标: 卸下要按真实下标走, 不能按格号。
+	var wear: Array = []        # [{i(真实下标), it}]
+	var grants: Array = []      # 同上, 羁绊赠送件
+	for i in range(eqs.size()):
+		if GameState.is_synergy_grant(eqs[i]):
+			grants.append({"i": i, "it": eqs[i]})
+		else:
+			wear.append({"i": i, "it": eqs[i]})
 	var total := float(slots) * cw + maxf(0.0, float(slots - 1)) * gap
 	var x0 := x_start if x_start >= 0.0 else (UBOX_W / 2.0 - total / 2.0)   # x_start≥0=横排卡片右列左对齐, 否则居中
 	for ci in range(slots):
 		var cell := Panel.new()
 		var csb := StyleBoxFlat.new()
-		var filled := ci < eqs.size()
+		var filled := ci < wear.size()
 		if filled:
-			var eid := str((eqs[ci] as Dictionary).get("id", ""))
+			var eid := str(((wear[ci] as Dictionary)["it"] as Dictionary).get("id", ""))
 			var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
 			csb.bg_color = _cost_color(int(edef.get("cost", 1)))
 			csb.border_color = Color(1, 1, 1, 0.5)
@@ -329,7 +391,7 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, is_leade
 		cell.add_theme_stylebox_override("panel", csb)
 		cell.position = Vector2(x0 + float(ci) * (cw + gap), y); cell.size = Vector2(cw, cw)
 		if filled:
-			var eid2 := str((eqs[ci] as Dictionary).get("id", ""))
+			var eid2 := str(((wear[ci] as Dictionary)["it"] as Dictionary).get("id", ""))
 			var edef2: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid2, {})
 			## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(060~095 有 36 件没配图)
 			var ic2 := EquipIcon.make(edef2, Vector2(cw - 2, cw - 2), true)
@@ -339,7 +401,7 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, is_leade
 			cell.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 装备模式: 透传→点框body装上
 		elif filled:
 			cell.tooltip_text = "点击卸下这件 → 回背包"
-			var cci := ci
+			var cci := int((wear[ci] as Dictionary)["i"])    # ★真实下标, 不是格号
 			cell.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: (_inv_ops._unequip_at(pet_id, cci) if is_leader else _inv_ops._unequip_minion_at(lane, idx, cci)))
 		else:
 			cell.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 空格透传
@@ -347,6 +409,47 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, is_leade
 				GameState.team_equipped_count(), GameState.team_equip_cap()]) if team_full \
 				else "空槽 · 先点背包里的装备, 再点这只单位"
 		box.add_child(cell)
+
+	## ★羁绊赠送件的徽章: 排在三格【之后】, 更小 + 金边 + 右下角"赠"字 ——
+	##   一眼分得出"它不占我的装备位"。点它同样能卸(卸掉也会被 sync 立刻补发回背包)。
+	for gi in range(grants.size()):
+		var g: Dictionary = grants[gi]
+		## ★徽章比装备格【明显小一圈】+ 与三格之间留出明显空档 ——
+		##   实拍自查: 只小 6px、只隔一个 gap 时, 5 个方块连成一排, 读起来像"我有 5 个装备位"。
+		var gw := cw - 10.0
+		var gcell := Panel.new()
+		var gsb := StyleBoxFlat.new()
+		gsb.bg_color = Color("#3a2f10")
+		gsb.border_color = Color("#ffd93d")
+		gsb.set_border_width_all(1)
+		gsb.set_corner_radius_all(3)
+		gcell.add_theme_stylebox_override("panel", gsb)
+		## ★放在三格【下面一行】而不是右边: 右边放不下 —— 卡片宽 244, 右列起点 110,
+		##   三格占到 204, 两枚徽章排下去右沿到 258 ⇒ 溢出卡片 14px(实测算过)。
+		##   下一行还有个好处: "这一排是你的装备位, 下面那个是羁绊送的"读起来更清楚。
+		gcell.position = Vector2(x0 + float(gi) * (gw + 4.0), y + cw + 4.0)
+		gcell.size = Vector2(gw, gw)
+		var gdef: Dictionary = DataRegistry.phase2_equipment_by_id.get(
+			str((g["it"] as Dictionary).get("id", "")), {})
+		var gic := EquipIcon.make(gdef, Vector2(gw - 2, gw - 2), true)
+		gic.position = Vector2(1, 1)
+		gcell.add_child(gic)
+		## ★角标用【形】不用【字】: 22px 的格子里塞个汉字既挤又土, 而"它不占装备位"这件事
+		##   靠"更小 + 金边 + 右上角金角"已经说得清; 具体说明留给 tooltip。
+		##   (2026-08-12 用户:「为什么要赠字」—— 拿文字补设计是偷懒。)
+		var corner := ColorRect.new()
+		corner.color = Color("#ffd93d")
+		corner.position = Vector2(gw - 5.0, 0.0)
+		corner.size = Vector2(5, 5)
+		corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		gcell.add_child(corner)
+		if _sel_bench >= 0:
+			gcell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		else:
+			gcell.tooltip_text = "%s · 羁绊赠送(不占装备位) · 盾羁绊掉档时自动收回" % str(gdef.get("name", ""))
+			var gci := int(g["i"])
+			gcell.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: (_inv_ops._unequip_at(pet_id, gci) if is_leader else _inv_ops._unequip_minion_at(lane, idx, gci)))
+		box.add_child(gcell)
 
 ## 卸下统领第 cell_idx 件装备 → 回背包.
 func _dl_first_minion_idx(lane: String) -> int:
