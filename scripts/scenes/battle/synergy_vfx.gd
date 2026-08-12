@@ -52,6 +52,9 @@ var _mesh_emitter: ArrayMesh = null
 var _mesh_star_wave: ArrayMesh = null
 var _mesh_rune: ArrayMesh = null
 var _mesh_blood: ArrayMesh = null
+var _mesh_reap: ArrayMesh = null
+## 正在飞的收殓金球
+var _reaps: Array = []
 var _mesh_ring_flat: ArrayMesh = null
 ## 正在扩散的星浪(炮台二) —— 每帧由 gun_turret_tick 推进
 var _waves: Array = []
@@ -1133,6 +1136,113 @@ func blood_rite_free(u: Dictionary) -> int:
 		n += 1
 	u.erase("_blood_vfx")
 	return n
+
+
+
+## ══════════════════════════════════════════════════════════════════
+##  §盾·收殓 —— 尸体上的金球【跳着转移】到带盾者(2026-08-12 用户重做)
+## ══════════════════════════════════════════════════════════════════
+## 用户原话:「从尸体生成一个金球但透明的转移到自己身上, 是向上跳一下的转移,
+##   转移到自己身上后再获得护盾」
+## ⇒ ① 尸体处生成【半透明金球】(不是实心球: 边亮芯透, 看得见后面的东西)
+##    ② 抛物线【跳】过去 —— 起跳有初速、中途最高、落点是带盾者
+##    ③ **落到那一刻才给护盾**(机制侧用 _pending_shots 排, 与演出同一个时长常量)
+##
+## ★同 070 冲击环/炮台二星浪的纪律: 效果时刻 = 演出到达时刻, 不是"先给了再画"。
+
+## 金球飞行时长(秒) / 跳起高度(米) / 球半径(码)
+const REAP_FLY_SEC := 0.62
+## ★弧要【高】(2026-08-12 用户:「是高有个抛物线的飞」) —— 1.9 米太平, 读起来像贴地滑过去
+const REAP_HOP_H := 3.4
+const REAP_R_PX := 26.0
+## 金球颜色(半透明金)
+const COL_REAP_ORB := Color(1.0, 0.84, 0.36, 0.55)
+
+
+## 半透明金球: 双层同心球壳(外壳更透) —— 单层实心球在暗底上会读成"一个光点"
+static func _build_reap_orb() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for layer in [[1.0, 0.30], [0.72, 0.75]]:
+		var rr: float = float(layer[0])
+		var aa: float = float(layer[1])
+		var nlat := 7
+		var nlon := 14
+		for i in range(nlat):
+			var p0: float = float(i) / float(nlat) * PI
+			var p1: float = float(i + 1) / float(nlat) * PI
+			for j in range(nlon):
+				var t0: float = float(j) / float(nlon) * TAU
+				var t1: float = float(j + 1) / float(nlon) * TAU
+				var v := []
+				for pr in [[p0, t0], [p0, t1], [p1, t1], [p1, t0]]:
+					var ph: float = float(pr[0])
+					var th: float = float(pr[1])
+					## 赤道亮、两极淡 —— 球看着才有体积而不是一团糊
+					var a: float = aa * (0.45 + 0.55 * sin(ph))
+					v.append([Vector3(sin(ph) * cos(th) * rr, cos(ph) * rr, sin(ph) * sin(th) * rr),
+						Color(1, 1, 1, a)])
+				_tri3(st, v[0], v[1], v[2])
+				_tri3(st, v[0], v[2], v[3])
+	return _commit3(st)
+
+
+## 收殓的金球转移。from2d = 尸体, to_unit = 收下这份护盾的单位(跟着它走, 它会动)。
+## 返回金球节点(门禁量它的真实轨迹)。
+func reap_orb(from2d: Vector2, to_unit: Dictionary) -> MeshInstance3D:
+	if not _has_world():
+		return null
+	if _mesh_reap == null:
+		_mesh_reap = _build_reap_orb()
+	var mat := _mat_add()
+	mat.albedo_color = COL_REAP_ORB
+	var mi := MeshInstance3D.new()
+	mi.mesh = _mesh_reap
+	mi.material_override = mat
+	var r: float = REAP_R_PX * float(battle.WS)
+	mi.scale = Vector3(r, r, r)
+	mi.position = battle._world_pos(from2d, 0.35)
+	_adopt(mi, "reap_orb")
+	_reaps.append({"node": mi, "mat": mat, "from": from2d, "unit": to_unit,
+		"t": 0.0, "life": REAP_FLY_SEC})
+	return mi
+
+
+## 金球的归一飞行高度: 一条纯抛物线(从尸体起飞→中途最高→落到人身上), 端点 0、中点 1。
+## ★不是"原地跳一下"——起点是尸体、终点是收殓者, 高度只是这条飞行线的抬升。
+## ★纯函数: 门禁采样它, 与真实节点对照。
+static func reap_hop(x: float) -> float:
+	var xx: float = clampf(x, 0.0, 1.0)
+	return 4.0 * xx * (1.0 - xx)
+
+
+## 每帧推进金球(由 ShieldSynergySystem.tick 顺带调)
+func tick_reaps(delta: float) -> void:
+	if _reaps.is_empty():
+		return
+	var keep: Array = []
+	for h in _reaps:
+		var n = h["node"]
+		if not is_instance_valid(n):
+			continue
+		var t: float = float(h["t"]) + maxf(delta, 0.0)
+		h["t"] = t
+		var x: float = clampf(t / float(h["life"]), 0.0, 1.0)
+		var u = h.get("unit", null)
+		## 终点【跟着人走】—— 收殓的受益者是活人, 它会移动; 锁死落点会落空
+		var to2: Vector2 = (u as Dictionary)["pos"] if (u is Dictionary and (u as Dictionary).get("alive", false)) else (h["from"] as Vector2)
+		var p2: Vector2 = (h["from"] as Vector2).lerp(to2, x)
+		n.position = battle._world_pos(p2, 0.35 + REAP_HOP_H * reap_hop(x))
+		## 落地前收小一点(被"吸进"身体的感觉), 全程保持半透明
+		var k: float = (1.0 - 0.35 * x) * REAP_R_PX * float(battle.WS)
+		n.scale = Vector3(k, k, k)
+		(h["mat"] as StandardMaterial3D).albedo_color = Color(COL_REAP_ORB.r, COL_REAP_ORB.g,
+			COL_REAP_ORB.b, COL_REAP_ORB.a * (1.0 - smoothstep(0.82, 1.0, x)))
+		if x >= 1.0:
+			n.queue_free()
+			continue
+		keep.append(h)
+	_reaps = keep
 
 
 ## 炮管(单位长: 沿 +X 伸出 1, 方管) + 炮口环

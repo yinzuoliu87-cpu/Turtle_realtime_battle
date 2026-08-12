@@ -193,6 +193,7 @@ func _t_riposte_real_entry() -> void:
 	var me: Dictionary = duo[0]
 	var foe: Dictionary = duo[1]
 	me["shield"] = 100.0
+	me["_holyShieldVal"] = 100.0   # ★盾板/反击现在都看【圣盾值】(2026-08-12)
 	var hp0: float = float(foe["hp"])
 	_sys.on_damaged(me, foe, 10)          # ← 真入口(挂在 _apply_damage_from 的承伤钩上)
 	## ★★2026-08-09 用户拍板:「要光弹啊，弹命中了再出伤啊」+「两个都用光弹就好啊」——
@@ -236,6 +237,7 @@ func _t_riposte_real_entry() -> void:
 	me = duo[0]; foe = duo[1]
 	me["equips"] = []
 	me["shield"] = 100.0
+	me["_holyShieldVal"] = 100.0   # ★盾板/反击现在都看【圣盾值】(2026-08-12)
 	hp0 = float(foe["hp"])
 	_sys.on_damaged(me, foe, 10)
 	_ok("③ 对照: 有盾但【没装 095】⇒ 不反击(反击来自这件装备, 不是档位)",
@@ -248,13 +250,21 @@ func _t_riposte_real_entry() -> void:
 # ─────────────────────────────────────────────────────────────
 func _t_aegis_tracks_riposte_switch() -> void:
 	print("── ④ 盾板 ⇔ 反击开关 同步 ──")
+	## ★★2026-08-12 重做后【盾板与反击不再同步】, 各跟各的条件(这一节因此重写):
+	##   · 盾板(持有球罩) ← 【圣盾值 > 0】(用户:「不需要圣光护盾这个装备,
+	##     只要持有这个特殊护盾条就有特效的」) ⇒ 收殓/9档转化拿到的圣盾值也该有罩子
+	##   · 反击(每段伤害 2 点真伤) ← 同样跟【圣盾值】(用户 2026-08-12:「反击也是只要有
+	##     圣光护盾就反击, 不一定要装备啊」; 规格原文「圣光护盾存在时」说的是这份护盾)
+	##   `board`/`ripo` 因此分开写, 不再共用一个 want。
 	var cases := [
-		{"holy": true,  "shield": 80.0, "want": true,
-		 "name": "④ 装了 095 且有盾 ⇒ 盾板在, 且会反击"},
-		{"holy": true,  "shield": 0.0,  "want": false,
+		{"holy": true,  "shield": 80.0, "hv": 80.0, "board": true,  "ripo": true,
+		 "name": "④ 装了 095 且有圣盾值 ⇒ 盾板在, 且会反击"},
+		{"holy": true,  "shield": 0.0,  "hv": 0.0,  "board": false, "ripo": false,
 		 "name": "④ 装了 095 但盾见底 ⇒ 盾板撤掉, 也不反击"},
-		{"holy": false, "shield": 80.0, "want": false,
-		 "name": "④ 没装 095 就算有盾 ⇒ 没有盾板, 也不反击"},
+		{"holy": false, "shield": 80.0, "hv": 80.0, "board": true,  "ripo": true,
+		 "name": "④ ★没装 095 但【圣盾值在】(收殓/9档转来的) ⇒ 盾板在, 也照样反击"},
+		{"holy": false, "shield": 80.0, "hv": 0.0,  "board": false, "ripo": false,
+		 "name": "④ ★分母: 只有普通盾、没有圣盾值 ⇒ 没有盾板"},
 	]
 	var checked := 0
 	for c in cases:
@@ -264,12 +274,14 @@ func _t_aegis_tracks_riposte_switch() -> void:
 		if not bool(c["holy"]):
 			me["equips"] = []
 		me["shield"] = float(c["shield"])
+		me["_holyShieldVal"] = float(c["hv"])      # ★盾板现在读它(hp_bar 白黄段同一个字段)
 		# 先喂两帧让常驻层跟上, 再喂足收尾时长(0.26 秒)让该撤的真的撤掉
 		for _i in range(3):
 			_vfx.tick(0.12)
 		var has_board: bool = _vfx.aegis_node_of(me) != null
 		var hp0: float = float(foe["hp"])
 		me["shield"] = float(c["shield"])      # 上面几帧不会动它, 保险起见复位
+		me["_holyShieldVal"] = float(c["hv"])
 		_sys.on_damaged(me, foe, 10)
 		## ★2026-08-09 反击改成"光弹飞到才出伤"(用户拍板) ⇒ 必须**推进飞行时间**再量掉血,
 		##   否则这里永远读到 0, 会把"会反击"误判成"不反击"。
@@ -279,10 +291,11 @@ func _t_aegis_tracks_riposte_switch() -> void:
 			_s._ballistics._step_pending_shots(0.02)
 			_vfx.tick(0.02)
 		var will_riposte: bool = (hp0 - float(foe["hp"])) > 0.5
-		_ok(str(c["name"]), has_board == bool(c["want"]) and will_riposte == bool(c["want"]),
-			"盾板 %s / 反击 %s" % [str(has_board), str(will_riposte)])
+		_ok(str(c["name"]), has_board == bool(c["board"]) and will_riposte == bool(c["ripo"]),
+			"盾板 %s(应 %s) / 反击 %s(应 %s)" % [str(has_board), str(c["board"]),
+				str(will_riposte), str(c["ripo"])])
 		checked += 1
-	_ok("★分母: 三种组合都验过了", checked == 3, "实得 %d" % checked)
+	_ok("★分母: 四种组合都验过了", checked == 4, "实得 %d" % checked)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -294,6 +307,7 @@ func _t_geometry() -> void:
 	var duo := _stage(1)
 	var me: Dictionary = duo[0]
 	me["shield"] = 80.0
+	me["_holyShieldVal"] = 80.0   # ★盾板/反击现在都看【圣盾值】(2026-08-12)
 	_vfx.tick(0.20)
 	var s: Node3D = _vfx.aegis_node_of(me)
 	_ok("★分母: 拿到了盾板节点", s != null)
@@ -370,6 +384,7 @@ func _t_holdfade() -> void:
 	var me: Dictionary = duo[0]
 	var foe: Dictionary = duo[1]
 	me["shield"] = 80.0
+	me["_holyShieldVal"] = 80.0   # ★盾板/反击现在都看【圣盾值】(2026-08-12)
 	# ★分两趟量, 不是图省事: 光屑是**错开入场**的(最后一粒延迟 0.12 秒), 与"最短寿命 0.24 秒
 	#   的光矢还没走到 37%"这两个条件在同一个时刻上冲突 —— 第一版一趟量, 结果把
 	#   "还没出场的光屑 alpha=0" 读成了淡出病(假 FAIL)。
@@ -475,6 +490,7 @@ func _t_clear() -> void:
 	var me: Dictionary = duo[0]
 	var foe: Dictionary = duo[1]
 	me["shield"] = 80.0
+	me["_holyShieldVal"] = 80.0   # ★盾板/反击现在都看【圣盾值】(2026-08-12)
 	_vfx.tick(0.2)
 	_vfx.grant_burst(me, 55.0)
 	_vfx.riposte(me, foe, 2.0)
@@ -572,6 +588,7 @@ func _t_build_is_real_assembly() -> void:
 	## ★护盾必须先 > 0 —— 罩子的存在条件就是它(与反击的开关同源)。
 	##   生产链路是 `_grant_shield` 先跑、grant_burst 后跑, 所以那一刻已经 > 0。
 	me["shield"] = 55.0
+	me["_holyShieldVal"] = 55.0   # ★盾板/反击现在都看【圣盾值】(2026-08-12)
 	_vfx.clear()
 	_vfx.grant_burst(me, 55.0)
 	var pn = _vfx.panels_node_of(me)

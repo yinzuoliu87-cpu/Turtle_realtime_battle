@@ -84,7 +84,7 @@ func on_damaged(u: Dictionary, src, dmg: int) -> void:
 	if tier <= 0:
 		return
 	_rage(u, tier, float(dmg))
-	_riposte(u, src)          # ★反击的条件是"身上有圣光护盾【装备】且当前有护盾值", 与档位无关
+	_riposte(u, src)          # ★反击的条件 = "圣光护盾【值】>0"(与持有球罩同源), 与档位/装备无关
 
 
 ## 怒气：累计伤害到阈值 → 冲击波。
@@ -146,10 +146,12 @@ func _shockwave(u: Dictionary, tier: int):
 func _riposte(u: Dictionary, src) -> void:
 	if not (src is Dictionary) or not (src as Dictionary).get("alive", false):
 		return
-	if holy_count(u) <= 0:
-		return                                      # 反击来自【圣光护盾装备】, 没装就没有
-	if float(u.get("shield", 0.0)) <= 0.0:
-		return                                      # 「圣光护盾存在时」—— 没盾不反击
+	## ★★判据 = 【圣光护盾值 > 0】, 不看身上装没装 095
+	##   (2026-08-12 用户:「反击也是只要有圣光护盾就反击, 不一定要装备啊」)。
+	##   规格原文是「**圣光护盾存在时**反击」—— 说的是这份护盾在不在, 不是这件装备在不在。
+	##   收殓/9 档转化拿到的圣盾值同样算数, 与持有球罩(holy_shield_vfx._should_hold)同源。
+	if float(u.get("_holyShieldVal", 0.0)) <= 0.0:
+		return
 	## ★★2026-08-09 用户:「要光弹啊，弹命中了再出伤啊」——
 	##   反击改成**一枚光弹从罩面飞回攻击者, 飞到那一刻才结算伤害**。
 	##   飞行时间由演出侧的纯函数 `bolt_flight` 给, **两边用同一个数** ⇒
@@ -189,6 +191,7 @@ func tick(delta: float) -> void:
 	##   ⇒ 以后别的羁绊也要每帧驱动时, **仍然走这一处**, 不要再加第二个 tick 源(会双倍推进)。
 	if battle._vfx != null and battle._vfx._syn != null:
 		battle._vfx._syn.tick(delta)
+		battle._vfx._syn.tick_reaps(delta)      # 收殓金球每帧推进(走 sim delta, 不用 tween)
 	## ★接线(2026-08-09·095 逐件重做): 圣光护盾演出层的【每帧驱动】, 理由与上面那行完全一样,
 	##   而且必须同样在提前 return 之【前】—— 放后面的话常驻盾板每 3 秒才动一帧。
 	_holy_vfx.tick(delta)
@@ -208,6 +211,12 @@ func tick(delta: float) -> void:
 		##   通用环本身不动(它封着 44 个给盾点), 只在这里声明"这一下我自己画"。
 		u["_own_grant_vfx"] = true
 		battle._damage._grant_shield(u, amt)
+		## ★★圣盾值【单独记账】(2026-08-12): 在此之前它直接并进通用 `shield`, 而
+		##   `_holyShieldVal`(血条白黄段与持有球罩共用的字段)**全仓库没有任何地方写** ——
+		##   于是血条那条"圣盾段"一直是 0、也没人发现。现在这里记上, 两个消费方才有数可读。
+		##   ⚠ 钳在 shield 之内: 盾被打光时圣盾值也该归零(hp_bar 每帧还会再收敛一次)。
+		u["_holyShieldVal"] = minf(float(u.get("_holyShieldVal", 0.0)) + amt,
+			float(u.get("shield", 0.0)))
 		## ★演出在 `_grant_shield` 之【后】: 那时 `shield` 已经 > 0, 盾板的出现条件才成立。
 		##   顺序反了的话补盾那一帧盾板还不在 —— 而那正是最该看到它的一帧。
 		_holy_vfx.grant_burst(u, amt)
@@ -246,13 +255,25 @@ func on_enemy_died(victim: Dictionary) -> void:
 			best_d = d
 			best = u
 	if best is Dictionary:
-		battle._damage._grant_shield(best, float(victim.get("maxHp", 0.0)) * REAP_PCT)
+		## ★★2026-08-12 用户重做:「从尸体生成一个金球但透明的转移到自己身上, 是向上跳一下的
+		##   转移, **转移到自己身上后再获得护盾**」⇒ 护盾不再当场结算, 延到金球落地那一刻。
+		##   (与 070 冲击环、炮台二星浪同一条纪律: 效果时刻 = 演出到达时刻。)
+		##   ⚠ 金额在【死亡那一刻】就算好(尸体的 maxHp), 落地时只负责发 —— 免得中途属性变了对不上。
+		var reap_amt: float = float(victim.get("maxHp", 0.0)) * REAP_PCT
+		var taker: Dictionary = best
+		var vpos: Vector2 = Vector2(victim.get("pos", Vector2.ZERO))
+		if battle._vfx != null and battle._vfx._syn != null:
+			battle._vfx._syn.reap_orb(vpos, taker)
+		battle._pending_shots.append({"delay": SynergyVfx.REAP_FLY_SEC, "src": taker,
+			"fn": func() -> void:
+				if not taker.get("alive", false):
+					return
+				battle._damage._grant_shield(taker, reap_amt)
+				taker["_reap_taken_n"] = int(taker.get("_reap_taken_n", 0)) + 1})
 		# ★演出(批 B3): 现状只有 _grant_shield 的通用金环 —— **看不出是从那具尸体收来的**,
 		#   而"从哪来"正是收殓这条唯一要传达的信息。⇒ 尸体 → 受益者的一道灵魂流。
 		#   ⚠ 护盾上面已经结算完了, 这一行只画不算。
-		if battle._vfx != null and battle._vfx._syn != null:
-			battle._vfx._syn.shield_reap(Vector2(victim.get("pos", Vector2.ZERO)),
-				Vector2(best.get("pos", Vector2.ZERO)))
+		## (旧的"灵魂流"能量带已由上面的金球转移取代 —— 两条一起放会糊成一团)
 
 
 ## 换路 / 重开：怒气累计器归零（单位字典会被整个重建，但显式清一次更稳）。

@@ -224,6 +224,16 @@ func _apply_tier() -> void:
 	##   不重跑就永远是 0 ⇒ 血气在台上永远不画, 又会被误判成"没做"。
 	## ⚠ `SynergySystem.apply_all` **不幂等**(每件属性是 += ) ⇒ 重跑会把该类型的属性加两遍。
 	##   台子是【看演出】的地方, 数值本来就不该在这里读 —— 打一行警告免得有人拿台上的数当真。
+	## ★盾这一系: 台子把【羁绊赠品 095】也发到位 —— 真实局里圣光护盾【值】就是它每 3 秒产的,
+	##   不发赠品台上就永远没有圣盾值, 也就看不到持有球罩(2026-08-12 我撤过一次, 撤错了)。
+	##   ⚠ 产品侧的判据已改成【看护盾条的值】而不是【看装没装 095】(用户点名), 这里发赠品
+	##     只是把"玩家凑齐盾羁绊 → 拿到赠品 → 装上"这条真实链路在台上补齐。
+	if str(cfg.get("tier_syn", "")) == "盾":
+		for u in battle._units:
+			if u is Dictionary and str((u as Dictionary).get("side", "")) == "left" 					and (u as Dictionary).get("alive", false):
+				var eqs: Array = (u as Dictionary).get("equips", [])
+				eqs.append({"id": "p2eq_095", "star": 1})
+				(u as Dictionary)["equips"] = eqs
 	if battle._synergy != null:
 		battle._synergy.apply_all()
 		print("[VFXLAB] ⚠ 已为演出重跑 synergy.apply_all() —— 该类型的【每件属性】在台上会是两份,")
@@ -325,6 +335,12 @@ func _build_grid() -> void:
 ##   **在台子上永远看不到** —— 台子的判据反而挡住了要评审的东西。
 func _hide_ui_once() -> void:
 	if battle._ui_layer == null or not is_instance_valid(battle._ui_layer):
+		return
+	## ★`bars: true`(或 VFXLAB_BARS=1): 【整层 UI 都留着】—— 血条/特殊护盾段/飘字全在。
+	##   由来(2026-08-12 用户:「我现在看窗口没有看到罩子啊…血条呢」): 盾羁绊的读数就在血条上
+	##   (圣盾 = 白黄段), 而台子默认把整层 UI 关掉 ⇒ 想验"持有特效"却连血条都没有。
+	##   这类"读数在血条上"的效果(068 法力盾/071 奶油盾/072 终极盾/盾羁绊圣盾)都该开它。
+	if bool(cfg.get("bars", false)) or OS.has_environment("VFXLAB_BARS"):
 		return
 	if bool(cfg.get("ui", false)) or OS.has_environment("VFXLAB_UI"):
 		# ★不是"整层 UI 全开" —— 那样 VS 条/血条/飘字全回来了, 台子就不是干净黑场。

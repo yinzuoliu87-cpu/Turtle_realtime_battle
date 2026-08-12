@@ -457,11 +457,14 @@ func _holy_of(u) -> int:
 ## 「该不该有盾板」—— 与 `ShieldSynergySystem._riposte` 的两个条件**逐字相同**:
 ## 身上有 095 且当前有护盾值。两边同源, 才不会出现"盾板亮着却不反击"。
 func _should_hold(u) -> bool:
+	## ★★判据 = 【这条特殊护盾条本身有值】, 不看身上装没装 095
+	##   (2026-08-12 用户:「不需要圣光护盾这个装备, 只要持有这个特殊护盾条就有特效的」)。
+	##   由来: 原来要求"身上有 095", 于是 收殓/圣光·强化 这些【不经过 095 装备】
+	##   拿到的圣盾值一律没有球罩 —— 玩家看到血条上有那条白黄段, 身上却什么都没有。
+	##   `_holyShieldVal` 正是 hp_bar 画那条白黄段读的同一个字段(单一事实源)。
 	if not (u is Dictionary) or not (u as Dictionary).get("alive", false):
 		return false
-	if _holy_of(u) <= 0:
-		return false
-	return float((u as Dictionary).get("shield", 0.0)) > 0.0
+	return float((u as Dictionary).get("_holyShieldVal", 0.0)) > 0.0
 
 
 func _aegis_of(u) -> Dictionary:

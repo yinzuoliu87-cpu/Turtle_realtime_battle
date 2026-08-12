@@ -476,7 +476,12 @@ func _holy_convert(u: Dictionary, amt: float) -> void:
 	if int(battle._synergy.tier_for(u, "盾")) < 3:
 		return                                  # 9 档才有
 	_holy_busy = true
-	_grant_shield(u, amt * battle._shield_syn.T3_CONVERT)
+	var conv: float = amt * battle._shield_syn.T3_CONVERT
+	_grant_shield(u, conv)
+	## ★这份也记进圣盾账(2026-08-12 用户:「9 档时自己获得普通护盾也会获得罩子」)——
+	##   血条白黄段与持有球罩读的都是 `_holyShieldVal`, 不记这里就只有 095 那条路算数。
+	u["_holyShieldVal"] = minf(float(u.get("_holyShieldVal", 0.0)) + conv,
+		float(u.get("shield", 0.0)))
 	_holy_busy = false
 
 

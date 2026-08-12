@@ -121,9 +121,14 @@ const CASES := {
 ## 盾羁绊 —— 圣光(每 5 秒给最低血友军护盾) + 受击反应。
 "syn_shield": {
 	"eq": "p2eq_014", "star": 3, "carrier": "basic", "allies": 2, "enemies": 3,
-	"enemy_attacks": true, "enemy_dist": 170.0, "tier": 3, "tier_syn": "盾", "ui": true,
+	"enemy_attacks": true, "enemy_dist": 170.0, "tier": 3, "tier_syn": "盾", "ui": true, "bars": true,
+	## ★三条效果各有各的触发条件, 台子必须同时凑齐, 否则台上什么都不发生(实拍验过):
+	##   · 圣光护盾: 每 3 秒一次(时间到就有)
+	##   · 怒气冲击波: 【累计挨够 400 伤害】⇒ 必须真的挨打(enemy_attacks) 且血厚到扛得住
+	##   · 收殓: 【敌人阵亡】⇒ 敌人要脆(enemy_hp 低) 且我方要出手(attacker)
+	"attacker": true, "enemy_hp": 70.0, "carrier_hp": 1.0,
 	"dur": 20.0, "zoom": 0.9, "focus": "carrier", "focus_h": 0.8,
-	"shots": [1.0, 5.05, 5.3, 10.05, 10.3, 15.05, 19.0],
+	"shots": [1.0, 3.05, 3.3, 6.05, 6.3, 9.05, 12.0, 15.0, 19.0],
 	"note": "★圣光 5 秒一跳 ⇒ 拍点压在 5 的整数倍及其后 0.25 秒(看跳出来那一下与残留)。allies=2 才有'发给谁'可看。",
 },
 

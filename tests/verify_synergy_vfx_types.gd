@@ -407,10 +407,10 @@ func _g4_real_paths() -> void:
 	_ok("④ ★分母: 从真实映射里取到一件盾装备 (%s)" % sid, sid != "")
 	left["equips"] = [{"id": sid, "star": 1}]
 	_s._shield_syn.on_enemy_died(right)
-	print("     _shield_syn.on_enemy_died(敌尸) → 灵魂流 %d / 火花 %d" % [
-		_count("energy_band"), _count("spark_burst")])
-	_ok("④ 盾·收殓: 尸体→受益者的一道灵魂流",
-		_count("energy_band") >= 1 and _count("spark_burst") >= 1)
+	## ★2026-08-12 收殓重做: 旧的"一道灵魂流"已被【金球高抛物线转移】取代。
+	print("     _shield_syn.on_enemy_died(敌尸) → 金球 %d 个" % _count("reap_orb"))
+	_ok("④ 盾·收殓: 尸体上生成【金球】飞向受益者(不再是一道灵魂流)",
+		_count("reap_orb") >= 1)
 
 	# ── 弓箭·腐蚀满 5 层 ───────────────────────────────────────────
 	await _reset()

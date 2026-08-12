@@ -90,14 +90,23 @@ func _ready() -> void:
 	#   "有反击"那条假 FAIL, 而"不反击"那两条变成**假通过**(没飞到也是 0)。
 	var _drain := func() -> void:
 		s._ballistics._step_pending_shots(2.0)
+	## ★★2026-08-12 语义改动(用户:「反击也是只要有圣光护盾就反击, 不一定要装备啊」):
+	##   反击的条件从【装着 095】改成【圣光护盾值 > 0】—— 规格原文「圣光护盾存在时」
+	##   说的是这份护盾在不在, 而不是这件装备在不在。收殓/9 档转来的圣盾值同样算。
 	foe["hp"] = 100000.0
-	me["shield"] = 500.0; me["_shield_rage"] = 0.0
+	me["shield"] = 500.0; me["_holyShieldVal"] = 0.0; me["_shield_rage"] = 0.0
 	s._shield_syn._riposte(me, foe)
 	_drain.call()
-	_ok("★没装圣光护盾装备 → 就算有护盾也【不反击】",
+	_ok("★只有【普通护盾】、圣盾值为 0 → 不反击(分母)",
 		absf(100000.0 - float(foe["hp"])) < 0.5, "敌掉 %.0f" % (100000.0 - float(foe["hp"])))
+	## ★没装 095 但【圣盾值在】(收殓/9档转来的) ⇒ 照样反击
+	foe["hp"] = 100000.0; me["shield"] = 500.0; me["_holyShieldVal"] = 120.0
+	s._shield_syn._riposte(me, foe)
+	_drain.call()
+	_ok("★没装 095 但圣盾值在 ⇒ 照样反击(用户 2026-08-12 拍板)",
+		(100000.0 - float(foe["hp"])) > 0.5, "敌掉 %.0f" % (100000.0 - float(foe["hp"])))
 	me["equips"] = [{"id": "p2eq_095", "star": 1}]     # 装上圣光护盾
-	foe["hp"] = 100000.0; me["shield"] = 500.0
+	foe["hp"] = 100000.0; me["shield"] = 500.0; me["_holyShieldVal"] = 500.0
 	s._shield_syn._riposte(me, foe)
 	## ★先抓一把"还没推队列时的血" —— 它必须还是满的,
 	##   否则就是"光弹还没到伤害先出了", 那正是这次要防的毛病。
@@ -108,10 +117,11 @@ func _ready() -> void:
 		absf(hp_before_flight - 100000.0) < 0.5, "发弹那一帧敌已掉 %.0f" % (100000.0 - hp_before_flight))
 	_ok("反击: 装了圣光护盾且有护盾 → 2 点真伤(固定, 不随件数放大)",
 		absf(rip - 2.0) < 0.5, "实得 %.0f" % rip)
-	foe["hp"] = 100000.0; me["shield"] = 0.0
+	## ★清盾要连【圣盾值】一起清 —— 反击现在看的是它, 只清 shield 会留着上一条用例的残值
+	foe["hp"] = 100000.0; me["shield"] = 0.0; me["_holyShieldVal"] = 0.0
 	s._shield_syn._riposte(me, foe)
 	_drain.call()
-	_ok("★对照: 装了但当前没有护盾值 → 不反击(「圣光护盾存在时」)",
+	_ok("★对照: 装了但圣盾值为 0 → 不反击(「圣光护盾存在时」)",
 		absf(100000.0 - float(foe["hp"])) < 0.5, "敌掉 %.0f" % (100000.0 - float(foe["hp"])))
 	# 圣光护盾装备的周期护盾
 	me["shield"] = 0.0
@@ -130,12 +140,53 @@ func _ready() -> void:
 	_run(s, [me, _mk("left", SH.slice(3, 6)), _mk("left", SH.slice(6, 9)), dead])
 	me["shield"] = 0.0
 	s._shield_syn.on_enemy_died(dead)
-	_ok("收殓: 敌人(3000血)阵亡 → 最近携带盾者 +900 护盾(30%)",
+	## ★★2026-08-12 重做: 护盾不再当场到账 —— 尸体上的金球要【高抛物线飞】到收殓者身上,
+	##   落地那一刻才给(用户:「转移到自己身上后再获得护盾」)。判据随之分两段。
+	_ok("收殓 ★金球飞行途中【还没到账】(效果时刻 = 演出到达时刻)",
+		absf(float(me["shield"])) < 0.5, "实得 %.0f" % float(me["shield"]))
+	var steps: int = int(ceil((SynergyVfx.REAP_FLY_SEC + 0.08) / 0.02))
+	for _i in range(steps):
+		s._ballistics._step_pending_shots(0.02)
+	_ok("收殓: 敌人(3000血)阵亡 → 金球落地后最近携带盾者 +900 护盾(30%)",
 		absf(float(me["shield"]) - 900.0) < 1.0, "实得 %.0f" % float(me["shield"]))
+	## ★★金球的【高抛物线飞行】—— 量真实节点(金球与圣盾罩子同为金色, 像素法分不开)。
+	##   用户 2026-08-12:「我要球从尸体飞到单位上, 是高有个抛物线的飞」
+	var sv = s._vfx._syn
+	var corpse := Vector2(200.0, 400.0)
+	var taker2: Dictionary = {"pos": Vector2(700.0, 400.0), "alive": true}
+	var orb = sv.reap_orb(corpse, taker2)
+	_ok("收殓 ★金球节点真的挂进 _world",
+		orb != null and s._world.is_ancestor_of(orb), str(orb))
+	if orb != null:
+		var y0: float = orb.position.y
+		var ys: Array = [y0]
+		var xs: Array = [orb.position.x]
+		for _k in range(5):
+			sv.tick_reaps(SynergyVfx.REAP_FLY_SEC / 6.0)
+			ys.append(orb.position.y)
+			xs.append(orb.position.x)
+		var peak: float = ys[0]
+		var peak_i := 0
+		for i in range(ys.size()):
+			if float(ys[i]) > peak:
+				peak = float(ys[i])
+				peak_i = i
+		_ok("收殓 ★★是【抛物线】: 高度 %.2f→峰值 %.2f(第 %d 段)→回落, 峰在中段"
+				% [y0, peak, peak_i], peak > y0 + 1.0 and peak_i >= 1 and peak_i <= 4, str(ys))
+		_ok("收殓 ★弧【高】: 峰值比起点高 %.2f 米(REAP_HOP_H=%.1f)" % [peak - y0, SynergyVfx.REAP_HOP_H],
+			peak - y0 > SynergyVfx.REAP_HOP_H * 0.6, "")
+		_ok("收殓 ★是【从尸体飞到人】不是原地跳: 水平位移 %.2f m > 0"
+				% absf(float(xs[xs.size() - 1]) - float(xs[0])),
+			absf(float(xs[xs.size() - 1]) - float(xs[0])) > 1.0, str(xs))
+	_ok("收殓 ★同步触发证据: 收殓者身上记了 1 次", int(me.get("_reap_taken_n", 0)) == 1,
+		"n=%d" % int(me.get("_reap_taken_n", 0)))
 	# 只给敌人的对面, 不给同阵营
 	var ally_dead := _mk("left", [], 3000.0)
 	me["shield"] = 0.0
 	s._shield_syn.on_enemy_died(ally_dead)
+	## ★对照组也要把定时器推完 —— 否则"没盾"可能只是"还在飞"(假对照)
+	for _j in range(int(ceil((SynergyVfx.REAP_FLY_SEC + 0.08) / 0.02))):
+		s._ballistics._step_pending_shots(0.02)
 	_ok("★对照: 【我方】单位阵亡不给我方盾(收殓只吃敌人的死)",
 		absf(float(me["shield"])) < 0.5, "实得 %.0f" % float(me["shield"]))
 
