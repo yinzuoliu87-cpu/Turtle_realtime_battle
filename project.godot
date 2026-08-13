@@ -42,30 +42,7 @@ window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
-; ★锁死横屏。曾于 2026-07-29 改成 "sensor" 想让摸鱼模式能切竖屏, 结果是【回归】:
-; iOS 在【启动那一刻】就按 Info.plist 决定方向 —— plist 一旦允许竖屏, 用户竖着拿手机
-; 启动, App 就直接竖屏起来了; 而代码里"锁回横屏"跑得再早也是启动【之后】,
-; iOS 16+ 收窄方向掩码不会自动转回去(要 setNeedsUpdateOfSupportedInterfaceOrientations,
-; 引擎侧的事, GDScript 够不着)。用户实测: "摸鱼模式关的时候, iOS 上还是竖着的"。
-; → 摸鱼模式不能靠切设备方向实现, 必须在【横屏内】把画面缩小居中 + 四周留黑。
 window/handheld/orientation="sensor_landscape"
-; ═══ PC 板窗口行为 (用户 2026-08-01:「pc端要随便拉，支持全屏」) ═══
-; · resizable: 允许任意拉伸。配 stretch=canvas_items+expand → 拉宽只是"多出空地",
-;   内容由 UIFrame 锁在 1280×720 设计框里居中(见 scripts/util/ui_frame.gd), 不会被拉变形。
-; · size/window_*_override 不设 → 启动仍是 1280×720。
-; · ★最小窗口 = 设计尺寸的一半(640×360)。为什么要有下限: expand 在窗口【比 16:9 窄】时
-;   锁宽 1280 让高度长, 视口宽永远 ≥1280, 内容不会被挤扁; 但窗口本身太小时 UI 字号会小到
-;   点不动。640×360 是"还能看清"的下沿, 也正好是像素画常用的 1/2 整数比。
-window/size/resizable=true
-window/size/window_width_override=0
-window/size/window_height_override=0
-; ★整数缩放(用户要"精美像素风"): 像素画在非整数倍缩放下会出现【行/列像素被吞或被复制】,
-;   表现为同一条边有的地方 1px 有的地方 2px。Godot 文档对像素游戏的建议就是 scale_mode=integer。
-;   ★但它有代价: 缩放倍率被向下取整, 屏幕四周会留出黑边(1080p 上 1280×720 只能 ×1 → 大量留黑)。
-;   本项目立绘是 4000×1000 的高分辨率插画、不是低分辨率像素图(2026-07-31 实测过低分辨率渲染
-;   会把龟糊成一团), 所以【不开】integer —— 留黑的代价远大于收益。这行留作记录, 免得下次
-;   又有人"按像素游戏最佳实践"顺手加上。
-; window/stretch/scale_mode="integer"
 
 [gui]
 

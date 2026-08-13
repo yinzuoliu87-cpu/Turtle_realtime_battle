@@ -285,7 +285,8 @@ var _waves: Array = []
 var _motes: Array = []
 ## 微粒的横向漂移**不走 rng** —— 用自增计数派生, 保住确定性(战斗 rng 序列一动, 别处钉序列的门禁就错位)。
 var _mote_seq: int = 0
-## 094 每座碑一套常驻碑体: {root, rune, t, si}
+## 094 每座碑一套常驻碑体: {root, crest, t, si}
+## ★注释里那个 `rune` 字段 2026-08-09 第三次重做时就没了(刻纹→碑顶符石), 一直没跟着改。
 var _steles: Array = []
 ## 094 在途石块: {node, t, T, from(Vector3), to(Vector3), col}
 var _rocks: Array = []
