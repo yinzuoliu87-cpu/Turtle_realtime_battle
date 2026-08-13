@@ -363,10 +363,24 @@ func nirvana_begin(u: Dictionary, pct: float) -> void:
 		u["airborne"] = false; u["vy"] = 0.0; u["vx"] = 0.0; u["vz"] = 0.0   # 半空死的别卡在天上
 		u["stun_until"] = 0.0                          # 带着眩晕复活 = 复活了也动不了
 		u["untargetable_until"] = battle._t + NIRVANA_SHOW_SEC   # 演出期不可选中/不被 AOE 二次打死
+		## ★★★用户实测「凤凰龟复活是问题」的根因(2026-08-13):
+		##   `untargetable_until` 只挡【选靶】—— `_apply_damage`(DoT/真伤那条路)
+		##   **根本不看它**, 它只挡 `_assembling`(battle_damage.gd:12)。
+		##   而演出期我把血设成了 1 并让它在场上站 2.5 秒 ⇒ 任何一跳灼烧/一发溅射
+		##   就把它打死, 而且是**真死**(首死复活已经用掉)。玩家看到的就是"复活了又没复活"。
+		##   ⇒ 借机甲那套【组装期免疫一切伤害】的旗子: `_assembling` 的四个消费者
+		##     (两道伤害闸 + 异常检测跳过 + _is_untargetable)正好全是涅槃演出需要的。
+		u["_assembling"] = true
 		u["_phx_reborn_t0"] = battle._t
 		nirvana_show(u, pct)              # 三拍演出(灰烬 → 聚火 → 展翼)
 		battle._pending_shots.append({"delay": NIRVANA_SHOW_SEC, "src": u, "fn": func() -> void:
-			if not (u is Dictionary) or not u.get("alive", false):
+			if not (u is Dictionary):
+				return
+			## ★★★这一行【无条件】放在最前面 —— 演出免疫必须解除, 否则凤凰永久无敌
+			##   (那比原来的 bug 更糟)。★不能放在下面的 alive 判断之后:
+			##   那样一旦有别的路径把它弄死, 旗子就永远留着了。
+			u["_assembling"] = false
+			if not u.get("alive", false):
 				return
 			u["hp"] = u["maxHp"] * pct                 # ★展翼那一刻才跳血条
 			battle._vfx._float_text(u["pos"] + Vector2(0, -64), "涅槃!", Color("#ffd93d"))

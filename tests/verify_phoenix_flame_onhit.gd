@@ -191,6 +191,36 @@ func _ready() -> void:
 		int((pe.get("dot_stacks", {}) as Dictionary).get("burn", 0)) > burn0,
 		"burn %d → %d" % [burn0, int((pe.get("dot_stacks", {}) as Dictionary).get("burn", 0))])
 	_ok("涅槃 ★演出结束后恢复可选中", not s._is_untargetable(pu))
+	## ★★★用户实测「凤凰龟复活是问题」(2026-08-13)。根因: `untargetable_until`
+	##   只挡【选靶】, 而 `_apply_damage`(DoT/真伤)**根本不看它** —— 它只挡 `_assembling`。
+	##   演出期血是 1 且要站 2.5 秒 ⇒ 一跳灼烧就真死(首死复活已用掉)。
+	##   ★判据必须是"演出期挨了 DoT 还活着", 只断言"不可选中"守不住 —— 上一版就是这么绿的。
+	var qu: Dictionary = s._spawn._make_unit("phoenix", "left", c + Vector2(-400, 0))
+	qu["maxHp"] = 1000.0
+	qu["hp"] = 1000.0
+	qu["atk"] = 100.0
+	var qe: Dictionary = s._spawn._make_unit("basic", "right", c + Vector2(-300, 0))
+	qe["maxHp"] = 1.0e7
+	qe["hp"] = 1.0e7
+	s._units.clear()
+	s._units.append_array([qu, qe])
+	s._edit_mode = false
+	s._over = false
+	s._kill(qu, qe)
+	_ok("涅槃 ★分母: 进入了演出期(血=1)", float(qu["hp"]) <= 2.0, "hp=%.0f" % float(qu["hp"]))
+	# 演出期照 DoT 那条路砸它 —— 999 点真伤, 不免疫的话必死
+	s._damage._apply_damage(qu, 999, Color.RED, qe, "tru")
+	_ok("涅槃 ★★★演出期【免疫 DoT/真伤】(v0.19.146 之前这里就真死了)",
+		qu.get("alive", false) and float(qu["hp"]) > 0.0,
+		"alive=%s hp=%.0f" % [str(qu.get("alive", false)), float(qu["hp"])])
+	for _f3 in range(int(2.6 * 60.0)):
+		s._sim_step(1.0 / 60.0, false, false)
+	_ok("涅槃 ★★演出结束后【免疫解除】(否则永久无敌, 比原 bug 更糟)",
+		not qu.get("_assembling", false), "_assembling=%s" % str(qu.get("_assembling", false)))
+	var hp_b: float = float(qu["hp"])
+	s._damage._apply_damage(qu, 50, Color.RED, qe, "tru")
+	_ok("涅槃 ★演出结束后【真的会掉血】(反面: 证明上面那条不是恒真)",
+		float(qu["hp"]) < hp_b - 0.01, "%.0f → %.0f" % [hp_b, float(qu["hp"])])
 
 	s._units.clear()
 	s.set_process(false)
