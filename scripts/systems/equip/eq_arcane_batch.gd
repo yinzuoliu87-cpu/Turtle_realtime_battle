@@ -114,6 +114,9 @@ const TALISMAN_MR_PER_TICK := 1.0
 ##   预警圈整个落在画面外(实拍确认)。500 ⇒ 直径 1000: 横向放得下(1596),
 ##   纵向仍超出(728) ⇒ 是一个上下被战场边界切平的圆, 但已经读得出"这是一个范围"。
 const PESTLE_RADIUS := 500.0
+## 起跳最多把携带者带出去多远(码) —— 用户 2026-08-13:「跳的时候移动的落点为250码内」。
+## ★不是"跳到最密的敌群中心": 那可能在 800 码外, 跳过去等于瞬移。
+const PESTLE_LEAP_MAX := 250.0
 const PESTLE_ATK_SCALE := 3.0
 ## ★★2026-08-08 用户:「这个起跳不够高, 不够物理, 哪有这么快的跳」。
 ##   旧版是 h=2.4 米 / T=0.6 秒, **反推出来的重力是 −26.7 m/s² ≈ 2.7 个地球重力**
@@ -552,8 +555,11 @@ func _pestle_leap(u: Dictionary, si: int) -> void:
 	##   击飞再落地时, 不至于被误判成"我砸下来了"(方案书 20260809 风险 4)。
 	_pestle_air_seq += 1
 	u["_pestle_air_id"] = _pestle_air_seq
+	var _p0: Vector2 = Vector2(u["pos"])
+	var _dest: Vector2 = pestle_dest(u)
 	_slams.append({"u": u, "si": si, "flat": flat, "stun": stun,
-		"t_left": pestle_jump_sec(), "air_id": _pestle_air_seq})
+		"t_left": pestle_jump_sec(), "air_id": _pestle_air_seq,
+		"p0": _p0, "dest": _dest, "t_total": pestle_jump_sec()})
 	## 起跳: 直接写击飞物理字段, 由主循环那段 airborne 积分抛起再落回(不用 tween)。
 	## 峰高 h 与滞空 T 解耦: vy = 2h/T, g = −4h/T² ⇒ 落地时刻恰好 = T = 砸落时刻。
 	if not u.get("airborne", false):
@@ -563,7 +569,32 @@ func _pestle_leap(u: Dictionary, si: int) -> void:
 		u["vz"] = 0.0
 		u["knock_g"] = -PESTLE_G                          # 重力是**给定的**, 不是倒推的
 	if vfx != null:
-		vfx.pestle_leap(u, pestle_jump_sec())
+		vfx.pestle_leap(u, pestle_jump_sec(), _dest)   # ★预警圈画在【落点】, 不是起跳点
+
+
+## 这一跳落在哪 —— 敌人最密集处, 但最多离携带者 `PESTLE_LEAP_MAX` 码。
+##
+## ★密度选点【复用】`BowEqVfx.densest_point`(最大覆盖 → 覆盖集质心, 纯几何零 RNG):
+##   075 箭雨与 067 毒药瓶用的就是它。再写一份必然漂(memory [[fb-hand-rolled-copies-drift]])。
+## ★用 `_enemies_of`(真 AOE 的名单): 砸落本身是范围结算, 选落点时把训龟大师算进"人堆"
+##   是合理的 —— 它站在哪儿确实影响"哪里人多"; 而它照样只吃 AOE 波及, 没有被"锁定"。
+## ★没有敌人 ⇒ 原地跳(返回自身位置), 不是跳到 (0,0)。
+func pestle_dest(u: Dictionary) -> Vector2:
+	var here: Vector2 = Vector2(u["pos"])
+	var pts: Array = []
+	for o in battle._targeting._enemies_of(u):
+		if o is Dictionary and (o as Dictionary).get("alive", false):
+			pts.append(Vector2((o as Dictionary)["pos"]))
+	if pts.is_empty():
+		return here
+	var want: Vector2 = BowEqVfx.densest_point(pts, PESTLE_RADIUS)
+	var d: Vector2 = want - here
+	if d.length() > PESTLE_LEAP_MAX:
+		want = here + d.normalized() * PESTLE_LEAP_MAX
+	## 钳进战场(别跳到墙外/屏外)
+	want.x = clampf(want.x, battle.ARENA.position.x + 40.0, battle.ARENA.end.x - 40.0)
+	want.y = clampf(want.y, battle.ARENA.position.y + 40.0, battle.ARENA.end.y - 40.0)
+	return want
 
 
 ## 在途猛砸的倒计时。携带者中途死了就丢掉这条(并解锁, 免得留一把锁在尸体上)。
@@ -574,9 +605,21 @@ func _tick_slams(delta: float) -> void:
 		if not (u is Dictionary) or not (u as Dictionary).get("alive", false):
 			if u is Dictionary:
 				_mana_unlock(u, "p2eq_090")
+				## ★演出善终、效果作废(用户 2026-08-13):「携带者阵亡, 预警特效还是持续到
+				##   正常消失, 只是没有拍地和击飞特效了」。
+				##   不孤儿化的话, 预警圈永远等不到落地事件 ⇒ 一直亮到 watchdog(≈7.0 秒),
+				##   而这一跳本来只有 1.67 秒 —— 圈会在尸体上多亮 5 秒多。
+				if vfx != null:
+					vfx.orphan_leap(u)
 			_slams.remove_at(i)
 			continue
 		sl["t_left"] = float(sl["t_left"]) - delta
+		## ★横向位移用【显式插值】而不是给 vx/vz 初速: 滞空积分每帧对横速做阻尼(_kdamp),
+		##   给初速会落不准; 仓库先例 `_pull_airborne` 的注释就写着"vx/vz 须为 0, 靠此改 pos"。
+		var _tt: float = maxf(0.001, float(sl.get("t_total", 1.0)))
+		var _q: float = clampf(1.0 - float(sl["t_left"]) / _tt, 0.0, 1.0)
+		if sl.has("p0") and sl.has("dest") and (u as Dictionary).get("airborne", false):
+			(u as Dictionary)["pos"] = (sl["p0"] as Vector2).lerp(sl["dest"] as Vector2, _q)
 		## ★★砸落**不再由倒计时触发** —— 由 `on_unit_landed`(真实落地事件)结算。
 		##   历史: 倒计时走 `tick_global` 的 delta, 而跳跃走被顿帧/时停门控的 `_tick_unit`,
 		##   两条时钟在顿帧期间分叉 ⇒ 砸落提前(实测结算那一刻龟还在 3.59 米高)。

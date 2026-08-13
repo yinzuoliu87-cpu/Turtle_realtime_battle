@@ -181,7 +181,13 @@ const LEAP_TELE_R0 := 2.6            # 收势环起手是终了半径的这个�
 ##   为什么要镜像而不是直接引用: 本文件与 `EqArcaneBatch` 的引用是**单向**的
 ##   (见文件头 —— 效果本体引演出层的 COL_*), 反向再引一次 const 会形成循环依赖、Godot 解析期就炸。
 ##   ⇒ 拿"门禁焊死"换"不循环依赖", 与 `BladeEqVfx.WAVE_SPD` 是同一条老路。
-const SLAM_R_PX := 500.0
+## ★★半径 = **伤害判定的那一个常量**, 不另写一份(2026-08-13)。
+##   用户问「伤害半径是500吗, 特效是1000吧」—— 查下来两边都是 500(碰巧相等), 但
+##   **没有任何东西保证它们不漂**: 改了伤害忘了改演出, 预警区就会骗人, 而且不报错。
+##   触手那边早有这条纪律(`WARN_HALF_W` 必须等于攻击长度), 定海针一直没有。
+##   ⚠ 500 是**半径**; 横跨是直径 1000 —— "1000" 那个数是这么来的(它也曾是旧半径,
+##     2026-08-09 用户拍板 1000→500, 因为拉不进一屏就"读不成一个圈")。
+const SLAM_R_PX := EqArcaneBatch.PESTLE_RADIUS
 ## ★2026-08-08 用户「这个起跳不够高, 不够物理, 哪有这么快的跳」⇒ 与结算侧同步抬高。
 const LEAP_APEX_M := 7.0
 ## ── 雷电预警圈(用户 2026-08-08:「我要做一个那种雷电圈预警的圈圈, 就是实际范围的」)
@@ -1014,7 +1020,9 @@ func _warn_band(root: Node3D, a: Vector2, b: Vector2, half_w_px: float, col: Col
 	root.add_child(mi)
 
 
-func pestle_leap(u, sec: float) -> Node3D:
+## `dest`: 这一跳的**落点**。预警圈钉在它上面(用户 2026-08-13:「需要正确的显示预警区,
+## 即落点的多少范围而不是起跳的」); 影子仍跟着龟走 —— 那两样本来就该分开。
+func pestle_leap(u, sec: float, dest = null) -> Node3D:
 	if not _has_world() or not (u is Dictionary):
 		return null
 	var pos2: Vector2 = (u as Dictionary)["pos"]
@@ -1050,6 +1058,7 @@ func pestle_leap(u, sec: float) -> Node3D:
 	root.add_child(mist)
 	root.set_meta("radius_px", SLAM_R_PX)
 	_fx.append({"node": root, "unit": u, "shadow": sh, "warn": warn,
+		"dest": (dest if dest is Vector2 else pos2),
 		"warn_col": side_col, "warn_t": 0.0,
 		## ★★`life` 只用来算进度 q(电弧越接近落地越快越亮), **不再用它退场**。
 		##   2026-08-09 用户:「还没落地怎么雷雾和预警消失了」—— 就是它:
@@ -1071,6 +1080,23 @@ func pestle_leap(u, sec: float) -> Node3D:
 ## 收掉某只龟的起跳演出(预警圈 + 影子)。★由**真实落地事件**调, 不靠自己数秒 ——
 ## 演出的寿命和物理的落地是两条时钟, 一旦分叉就会出现"人落地了圈还亮着"。
 ## (2026-08-09: 砸落改成落地事件触发后, 门禁当场量到 结算那一帧 预警圈=1。)
+## 携带者在【半空阵亡】: 起跳演出改成【按自己的自然寿命走完】再消失。
+##
+## ★为什么需要这个: 退场本来只认两条路 —— `drop_leap()`(真实落地事件) 或 watchdog 兜底。
+##   人死在半空就永远不会有落地事件 ⇒ 预警圈要一直亮到 watchdog(= jump_sec×3+2 ≈ **7.0 秒**),
+##   而这一跳本来只有 1.67 秒 ⇒ 圈在尸体上多亮 5 秒多。
+## ★用户 2026-08-13 定的语义:「携带者阵亡, 预警特效还是持续到正常消失, 只是没有拍地和
+##   击飞特效了」= **演出善终、效果作废**。效果侧本来就对(`_tick_slams` 每帧验 alive 就丢记录),
+##   这里补的是演出侧。
+func orphan_leap(u) -> void:
+	for f in _fx:
+		if str(f.get("kind", "")) != "leap":
+			continue
+		if not is_same(f.get("unit", null), u):
+			continue
+		f["orphan"] = true      # ⇒ tick 的 "leap" 分支改按 life 退场
+
+
 func drop_leap(u) -> void:
 	for i in range(_fx.size() - 1, -1, -1):
 		var f: Dictionary = _fx[i]
@@ -1484,6 +1510,12 @@ func tick(delta: float) -> void:
 				var q: float = clampf(t / life, 0.0, 1.0)
 				if lu is Dictionary:
 					(n as Node3D).position = battle._world_pos((lu as Dictionary)["pos"] as Vector2, 0.0)
+				## ★预警圈钉在【落点】: root 跟着龟走(影子要跟), 所以这里给 warn 一个反向偏移,
+				##   让它在世界里停在 dest 上。用户点名"预警区是落点的范围, 不是起跳的"。
+				var lwarn = f.get("warn", null)
+				if is_instance_valid(lwarn) and f.has("dest"):
+					(lwarn as Node3D).position = battle._world_pos(f["dest"] as Vector2, 0.0) \
+						- (n as Node3D).position
 				var lsh = f.get("shadow", null)
 				if is_instance_valid(lsh):
 					var ss: float = LEAP_SHADOW_PX * 0.5 * leap_shadow_scale(hm, LEAP_APEX_M) * float(battle.WS)
@@ -1505,8 +1537,12 @@ func tick(delta: float) -> void:
 							sp3.modulate.a = bright
 						elif ch is Node3D:
 							_set_alpha(ch, bright)
-				## ★不看 life —— 见建它那段的注释。只有真实落地(`drop_leap`)或兜底超时才收。
-				if t >= float(f.get("watchdog", life * 3.0 + 2.0)):
+				## ★正常情况不看 life —— 见建它那段的注释: 只有真实落地(`drop_leap`)或兜底才收。
+				##   **例外**: 携带者半空阵亡(`orphan`)⇒ 永远等不到落地事件, 改按自然寿命走完就收
+				##   (用户 2026-08-13:「预警特效还是持续到正常消失, 只是没有拍地和击飞」)。
+				if bool(f.get("orphan", false)) and t >= life:
+					_free_fx(i)
+				elif t >= float(f.get("watchdog", life * 3.0 + 2.0)):
 					_free_fx(i)
 			_:
 				_set_alpha(n, 1.0 - clampf(t / life, 0.0, 1.0))

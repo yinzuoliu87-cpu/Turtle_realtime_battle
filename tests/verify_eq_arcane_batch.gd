@@ -203,6 +203,8 @@ func _ready() -> void:
 	_t090_slam()
 	_t090_mana_lock()
 	_t090_wave()
+	_t090_die_midair()
+	_t090_leap_dest()
 	_t_discipline()
 	_t_vfx_pure()
 	_t_vfx_nodes()
@@ -731,8 +733,11 @@ func _t090_slam() -> void:
 	var u := _mk("fortune", "left", Vector2(0, 0))
 	_equip(u, "p2eq_090", 3)
 	u["atk"] = 100.0
-	var inr := _mk("fortune", "right", Vector2(400, 0))       # 500 码内
-	var outr := _mk("fortune", "right", Vector2(700, 0))      # 500 码外
+	## ★★2026-08-13 起跳会【朝敌人最密处移动最多 250 码】(用户第 8 条) ⇒ 圈内外要按
+	##   **落点**算, 不能再按起跳点。700 码那个原本"圈外", 跳完 700-250=450 就进圈了 ——
+	##   门禁当场红, 这是行为变化不是 bug。远的那个挪到 900(跳完 650 仍在 500 外)。
+	var inr := _mk("fortune", "right", Vector2(400, 0))       # 落点 500 码内
+	var outr := _mk("fortune", "right", Vector2(900, 0))      # 跳完仍在 500 码外
 
 	_s._equip_sys.fire_equip_effect(u, "p2eq_090", 3)
 	_ok("③ 起跳: _slams 里出现 1 条在途记录", _arc()._slams.size() == 1,
@@ -1416,3 +1421,85 @@ func _t_clear_all() -> void:
 		"n=%d" % _arc().vfx.alive_count())
 	_ok("⑦ 撤场把两把法力锁都解开(不解就把锁带进下一路)",
 		not _arc().mana_locked(u, "p2eq_088") and not _arc().mana_locked(u, "p2eq_090"))
+
+
+## ③d 携带者【半空阵亡】: 演出善终、效果作废(用户 2026-08-13)。
+##
+## 用户原话:「定海针在释放主动时携带者阵亡, 我希望的是那预警特效还是持续到正常消失,
+##            只是没有拍地和击飞特效了」。
+## ★三条都要量, 缺一条就守不住:
+##   ① 不砸(没伤害/没击飞) —— 结算侧本来就对(每帧验 alive 丢记录), 这里当分母钉住
+##   ② 死后预警圈【还在】—— 不许立刻消失
+##   ③ 到【自然寿命】就消失, 而不是拖到 watchdog(≈7.0 秒, 是这一跳 1.67 秒的 4 倍多)
+##     ★这一条才是这次修的东西: 退场原本只认"真实落地事件", 人死在半空永远等不到。
+func _t090_die_midair() -> void:
+	print("── ③d 090: 半空阵亡 ⇒ 预警圈走完自然寿命, 但不砸落 ──")
+	_fresh()
+	var u := _mk("fortune", "left", Vector2(0, 0))
+	_equip(u, "p2eq_090", 3)
+	u["atk"] = 100.0
+	var vic := _mk("fortune", "right", Vector2(300, 0))
+	var hp0: float = float(vic["hp"])
+	_s._equip_sys.fire_equip_effect(u, "p2eq_090", 3)
+	_ok("③d ★分母: 起跳了(在途 1 条)", _arc()._slams.size() == 1, "n=%d" % _arc()._slams.size())
+	var leap0: int = _count_fx_kind("leap")
+	_ok("③d ★分母: 预警演出建出来了", leap0 >= 1, "leap=%d" % leap0)
+	# 半空弄死携带者
+	u["alive"] = false
+	_feed(0.10)
+	_ok("③d ★在途记录被丢掉(⇒ 不会砸落)", _arc()._slams.is_empty(),
+		"n=%d" % _arc()._slams.size())
+	_ok("③d ★★死后预警圈【还在】(不许立刻消失)", _count_fx_kind("leap") >= 1,
+		"leap=%d" % _count_fx_kind("leap"))
+	# 推到自然寿命之后、但【远早于】watchdog(7.0 秒)
+	_feed(EqArcaneBatch.pestle_jump_sec() + 0.30)
+	_ok("③d ★★到自然寿命就消失(不是拖到 %.1f 秒的兜底)" % (EqArcaneBatch.pestle_jump_sec() * 3.0 + 2.0),
+		_count_fx_kind("leap") == 0, "leap=%d" % _count_fx_kind("leap"))
+	_ok("③d ★受害者一点血都没掉(效果作废)", absf(float(vic["hp"]) - hp0) < 0.01,
+		"hp %.0f → %.0f" % [hp0, float(vic["hp"])])
+
+
+## 数演出层里某一类还活着的句柄。
+func _count_fx_kind(kind: String) -> int:
+	var n := 0
+	for f in _arc().vfx._fx:
+		var nd = f.get("node", null)
+		if str(f.get("kind", "")) == kind and nd != null and is_instance_valid(nd) 				and not (nd as Node).is_queued_for_deletion():
+			n += 1
+	return n
+
+
+## ③e 起跳落点: 朝敌人最密处、最多 250 码, 预警圈画在【落点】(用户 2026-08-13 第 8 条)。
+func _t090_leap_dest() -> void:
+	print("── ③e 090: 跃向敌人最密处(≤250 码) + 预警画在落点 ──")
+	_fresh()
+	var u := _mk("fortune", "left", Vector2(0, 0))
+	_equip(u, "p2eq_090", 3)
+	# 右边远处堆三个(最密), 近处只有一个 —— 落点该朝那三个去
+	var far_a := _mk("fortune", "right", Vector2(800, 0))
+	var far_b := _mk("fortune", "right", Vector2(860, 40))
+	var far_c := _mk("fortune", "right", Vector2(820, -50))
+	var lone := _mk("fortune", "right", Vector2(200, 300))
+	var dest: Vector2 = _arc().pestle_dest(u)
+	var here: Vector2 = Vector2(u["pos"])
+	_ok("③e ★不再原地跳(落点 ≠ 起跳点)", dest.distance_to(here) > 1.0,
+		"位移 %.0f 码" % dest.distance_to(here))
+	_ok("③e ★★位移不超过 250 码(用户给的上限)",
+		dest.distance_to(here) <= EqArcaneBatch.PESTLE_LEAP_MAX + 0.51,
+		"位移 %.1f / 上限 %.0f" % [dest.distance_to(here), EqArcaneBatch.PESTLE_LEAP_MAX])
+	_ok("③e ★朝【最密】那一堆去(三只那边, 不是落单那只)",
+		dest.x > here.x and absf(dest.y - here.y) < absf(300.0 - here.y),
+		"落点 %s" % str(dest))
+	# 没有敌人 ⇒ 原地跳(不是跳到 (0,0))
+	for e in [far_a, far_b, far_c, lone]:
+		e["alive"] = false
+	var solo: Vector2 = _arc().pestle_dest(u)
+	_ok("③e ★分母: 没有敌人时原地跳(不是跳到原点)", solo.distance_to(here) < 0.51,
+		"落点 %s / 自身 %s" % [str(solo), str(here)])
+	# 预警圈: 演出层拿到的 dest 就是这个落点
+	var src_v: String = FileAccess.get_file_as_string("res://scripts/scenes/battle/arcane_eq_vfx.gd")
+	_ok("③e ★预警圈钉在【落点】(演出层按 dest 定位, 不跟起跳点)",
+		src_v.find('f.has("dest")') >= 0 and src_v.find('battle._world_pos(f["dest"] as Vector2, 0.0)') >= 0)
+	_ok("③e ★★演出半径 = 伤害半径(同一个常量, 不许各写一份)",
+		absf(ArcaneEqVfx.SLAM_R_PX - EqArcaneBatch.PESTLE_RADIUS) < 1e-6,
+		"演出 %.0f / 伤害 %.0f" % [ArcaneEqVfx.SLAM_R_PX, EqArcaneBatch.PESTLE_RADIUS])
