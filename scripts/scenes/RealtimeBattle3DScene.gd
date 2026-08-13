@@ -7244,7 +7244,7 @@ func _tick_cyber_drones(u: Dictionary, delta: float) -> void:   # 浮游炮纯�
 				p.modulate = Color(1, 1, 1, 0.65)
 				p.position = spr.position
 				_world.add_child(p)
-				var dmg: int = _resolve_dmg(u, u["atk"] * 0.25 * 0.12, tgt, false)   # 12%×炮攻(25%A)物理
+				var dmg: int = _resolve_dmg(u, u["atk"] * CyberSystem.DRONE_SHOT_COEF, tgt, false)   # 弹伤=赛博ATK×4%(系数与来由见 CyberSystem.DRONE_SHOT_COEF)
 				_projectiles.append({"node": p, "from": p.position, "tgt": tgt, "dmg": maxi(1, dmg), "col": Color("#9fe8ff"),
 					"src": u, "t": 0.0, "dur": clampf((u["pos"] - tgt["pos"]).length() / 900.0, 0.15, 0.5),
 					"basic_onhit": false, "oriented": false, "card_spin": false, "dtype": "physical", "drone_shot": true})

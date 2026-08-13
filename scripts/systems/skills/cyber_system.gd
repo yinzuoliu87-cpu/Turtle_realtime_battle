@@ -5,6 +5,15 @@ extends RefCounted
 
 ## ★赛博数值单一事实源(用户2026-07-28 第三轮削弱·侵入 94.0% 第5)。文案在 data/pets.json。
 const HIJACK_SEC := 4.0   # 侵入: 倒戈秒数(5→4), 同时也是赛博自身锁龟能的秒数
+## 浮游炮弹伤 = 赛博龟攻击力 × 此系数(用户 2026-08-13 拍平)。
+## ★原来是两层: "浮游炮攻击力 = 25%×本体" 再取 "12%×炮攻" = 3%×本体。
+##   用户:「不再需要给每个浮游炮攻击力, 浮游炮的伤害直接等于赛博龟攻击力的 4%」
+##   ⇒ 去掉"浮游炮自己有攻击力"这个中间概念, 一层到底; 顺带 3% → 4%。
+const DRONE_SHOT_COEF := 0.04
+## 阵亡齐射: 每道贯穿激光 = 赛博龟攻击力 × 此系数(用户 2026-08-13 确认, 本来就是 0.4)。
+## ★满编 20 门炮若最近敌是同一个 ⇒ 该目标最多吃 20 × 0.4 = **8×ATK**;
+##   多敌时各炮打各自最近的, 会分散(贯穿线上的其他人也吃)。
+const VOLLEY_COEF := 0.4
 
 var battle
 
@@ -206,7 +215,7 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 				battle._shake(0.03)
 				for o2 in battle._units:
 					if battle._is_hostile(uu, o2) and o2.get("alive", false) and battle._on_line(dpos, ldir, o2["pos"], 40.0):
-						battle._damage._apply_damage_from(uu, o2, battle._resolve_dmg(uu, atk_ref * 0.4, o2, true), Color("#7ee8ff"))      # 0.4A魔法(蓝字)
+						battle._damage._apply_damage_from(uu, o2, battle._resolve_dmg(uu, atk_ref * VOLLEY_COEF, o2, true), Color("#7ee8ff"))      # 0.4A魔法(蓝字)
 						battle._vfx._hit_spark(o2))
 	, "src": u})
 	# ③ 飞向集结点消失(2.4s起·等激光演出完)
@@ -220,9 +229,13 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 	, "src": u})
 	# ④ 机甲组装(2.8s起·5秒血/攻/甲/抗从10%涨到设定值·期间_slam锁不能动不能打)
 	var _lv: int = int(u.get("level", 1))
-	var final_hp: float = (40.0 + 1.0 * float(_lv)) * float(n)   # 用户2026-07-18定: 生命=(40+1×每级)×炮数
-	var final_atk: float = (4.0 + 0.1 * float(_lv)) * float(n)   # 用户2026-07-18定: 攻击=(4+0.1×每级)×炮数
-	var final_def: float = 60.0 + 2.0 * float(_lv)               # 护甲魔抗=60+2×等级(用户2026-07-16定)
+	## ★机甲属性(用户 2026-08-13 上调; 原 40+1/炮 · 4+0.1/炮 · 60+2)。
+	##   生命与攻击【吃炮数】, 护甲魔抗【不吃】—— 这是用户定的口径, 不是遗漏:
+	##   机甲的"硬"是固定的, "大"才随攒了多少炮走。
+	##   ⚠ 组装期 5 秒 `untargetable_until` **不可被索敌**(见下), 所以那 5 秒不承担风险。
+	var final_hp: float = (100.0 + 2.0 * float(_lv)) * float(n)   # 生命=(100+2×等级)×炮数
+	var final_atk: float = (8.0 + 0.1 * float(_lv)) * float(n)    # 攻击=(8+0.1×等级)×炮数
+	var final_def: float = 110.0 + 2.0 * float(_lv)               # 护甲魔抗=110+2×等级
 	battle._pending_shots.append({"delay": 2.8, "fn": func() -> void:
 		battle._gambler_sys._gambler_pop(gather, 0.8, Color(0.7, 0.98, 1.0, 0.95))
 		battle._skill_ring(gather, Color(0.5, 0.9, 1.0, 0.7), 80.0)
