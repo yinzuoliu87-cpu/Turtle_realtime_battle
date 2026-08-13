@@ -67,6 +67,13 @@ func _phoenix_flame_cone(u: Dictionary, tgt: Dictionary) -> void:
 	var nearest = null
 	var nearest_d: float = INF
 	var burned: int = 0
+	## ★★两趟, 不是一趟(v0.19.145 改): `_apply_damage_from` 内部【本来就会调 `_eq_on_hit`】
+	##   (battle_damage.gd:303)。所以 on-hit 装备在凤凰身上**一直是通的**, 只是走 `basic=false`。
+	##   v0.19.144 之前我在循环外又补了一次 `_eq_on_hit(u, nearest, ..., true)` ——
+	##   那是**第二次**调用: 不看 `basic` 标志的 on-hit 装备, 最近那个敌人每跳被触发两次。
+	##   正解: 先定出最近的, 再打伤害时把 `basic` 直接**传进去** ⇒ 每人恰好一次,
+	##   最近的那次带普攻标志。
+	var cone: Array = []
 	for e in battle._targeting._enemies_of(u):
 		if not e.get("alive", false):
 			continue
@@ -76,13 +83,17 @@ func _phoenix_flame_cone(u: Dictionary, tgt: Dictionary) -> void:
 			continue
 		if dir.dot(to_e / d) < half_cos:
 			continue
-		battle._damage._apply_damage_from(u, e, battle._resolve_dmg(u, mag, e, true), Color("#4dabf7"))
-		battle._damage._apply_dot_stacks(e, "burn", burn_stacks, u)
-		battle._vfx._flash(e, Color("#ff8a3a"))
-		burned += 1
+		cone.append(e)
 		if d < nearest_d:
 			nearest_d = d
 			nearest = e
+	for e2 in cone:
+		var is_near: bool = nearest != null and is_same(e2, nearest)   # ★单位字典比较一律 is_same(CLAUDE.md §3.2)
+		battle._damage._apply_damage_from(u, e2, battle._resolve_dmg(u, mag, e2, true), Color("#4dabf7"),
+			0.0, false, false, false, false, false, is_near)
+		battle._damage._apply_dot_stacks(e2, "burn", burn_stacks, u)
+		battle._vfx._flash(e2, Color("#ff8a3a"))
+		burned += 1
 	## ★on-hit 放在伤害结算【之后】: 有些 on-hit 装备读的是"这一下打了多少",
 	##   放前面它读到的是上一跳的账。
 	## ★★`basic = true` —— 用户 2026-08-13 明确「我的意思就是触发普攻的 onhit」:
@@ -90,7 +101,8 @@ func _phoenix_flame_cone(u: Dictionary, tgt: Dictionary) -> void:
 	##   连"每第 N 次普攻"那类计数器(090 的浪潮、077 的充能…)也一起推进。
 	##   我第一版写的 false(按技能命中算), 那样竹叶这类只认普攻的装备照样不触发。
 	if nearest is Dictionary and (nearest as Dictionary).get("alive", false):
-		battle._equip_sys._eq_on_hit(u, nearest, roundi(mag), true)
+		## ★on-hit 不在这里调了 —— 它已经在上面那趟 `_apply_damage_from(..., basic=is_near)`
+		##   里走过一次。这里只补【普攻计数器】那条钩子, 它不在伤害链上。
 		## ★★v0.19.144 补上 v0.19.141 漏掉的另一半(用户实测「143 为什么没触发竹制弓箭」):
 		##   装备有【两个】普攻钩子, 上一版只接了 `_eq_on_hit`(每次命中: 腐蚀/毒/金弹…),
 		##   而 039 竹制弓箭的判据是「每第 3 段普攻」——它住在 `_eq_on_basic_attack` 的

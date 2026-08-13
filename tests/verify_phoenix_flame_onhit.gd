@@ -14,6 +14,21 @@ var _n := 0
 var _fail := 0
 
 
+## 数【非注释行】里的 `_eq_on_hit(` 调用。
+## ★为什么要滤注释: 第一版直接 `find("_eq_on_hit(")`, 结果匹配到了我自己写在注释里的
+##   「`_apply_damage_from` 内部本来就会调 `_eq_on_hit`(battle_damage.gd:303)」——
+##   门禁被自己的说明文字判红。源码事实类断言一律先剥注释。
+func _calls_onhit(src: String) -> int:
+	var n := 0
+	for ln in src.split("\n"):
+		var t: String = str(ln).strip_edges()
+		if t.begins_with("#"):
+			continue
+		if t.find("_eq_on_hit(") >= 0:
+			n += 1
+	return n
+
+
 func _ok(name: String, cond: bool, detail: String = "") -> void:
 	_n += 1
 	print(("  [PASS] " if cond else "  [FAIL] ") + name + ("  " + detail if detail != "" else ""))
@@ -73,9 +88,38 @@ func _ready() -> void:
 	## ★★走的必须是【普攻】那条 on-hit(用户:「我的意思就是触发普攻的 onhit」)——
 	##   凤凰的喷火就是它的普攻, 只有 basic=true 才会推进"每第 N 次普攻"那类计数器,
 	##   竹叶这类只认普攻的装备才吃得到。第一版写的 false, 它们照样不触发。
+	## ══ v0.19.145: on-hit【每人恰好一次】—— 不是零次, 也不是最近那个两次 ═════════
+	##   ★由来: `_apply_damage_from` 内部本来就调 `_eq_on_hit`(battle_damage.gd:303),
+	##     所以 on-hit 装备在凤凰身上**一直是通的**(走 basic=false)。v0.19.144 之前
+	##     我在循环外又补调了一次 ⇒ **最近的那个敌人每跳被触发两次**。
+	##   ★056 飞镖【只数普攻命中】(它自己查 basic) ⇒ 一跳恰好 +1 = "这一跳只有一个人吃到
+	##     普攻标志的 on-hit"。数出 2 就是重复调用。用的是产品自己的账, 不是我插的标记。
+	##   ★★另一半靠源码事实兜: `_eq_on_hit` 里 18 个分支有 11 件**不看 basic**
+	##     (004/002/003/005/023/009/026/029/054/055/075), 它们对最近那个敌人会被打两次。
+	##     只要凤凰不再直接调 `_eq_on_hit`, on-hit 就只可能来自伤害链 ⇒ 每人恰好一次。
 	var src_px: String = FileAccess.get_file_as_string("res://scripts/systems/skills/phoenix_system.gd")
-	_ok("★★喷火的 on-hit 按【普攻】算(basic=true)",
-		src_px.find("_eq_on_hit(u, nearest, roundi(mag), true)") >= 0)
+	for e5 in es:
+		(e5 as Dictionary)["pos"] = c + Vector2(120.0, 0)
+		(e5 as Dictionary)["hp"] = 1.0e7
+		(e5 as Dictionary)["alive"] = true
+	es[0]["pos"] = c + Vector2(90.0, 0)      # 让它明确是"最近的那个"
+	u["equips"] = [{"id": "p2eq_056", "star": 1}]
+	u["eq_state"] = {"p2eq_056": {"dart_hits": 0}}
+	s._phoenix_sys._phoenix_flame_cone(u, es[0])
+	var dh1: int = int(u["eq_state"]["p2eq_056"].get("dart_hits", -1))
+	_ok("★分母: 三个敌人都在锥里(上面已验 hurt==3)", es.size() == 3, "实得 %d" % es.size())
+	_ok("★★一跳只有【一个】敌人吃到普攻标志的 on-hit(数到 2 = 重复调用)",
+		dh1 == 1, "实得 %d(期望 1)" % dh1)
+	s._phoenix_sys._phoenix_flame_cone(u, es[0])
+	var dh2: int = int(u["eq_state"]["p2eq_056"].get("dart_hits", -1))
+	_ok("★第二跳同样 +1(累计 2, 说明不是首跳特例)", dh2 == 2, "实得 %d(期望 2)" % dh2)
+	_ok("★★凤凰【不再直接调】_eq_on_hit —— on-hit 只来自伤害链(每人恰好一次)。" +
+		"v0.19.144 之前循环外补调一次, 11 件不看 basic 的装备对最近那个敌人打两次",
+		_calls_onhit(src_px) == 0, "源码里还有 %d 处 _eq_on_hit( 调用" % _calls_onhit(src_px))
+	_ok("★★伤害那趟把普攻标志【传进去】(而不是另调一次)",
+		src_px.find("false, false, false, false, is_near") >= 0)
+	u["equips"] = []
+	u["eq_state"] = {}
 
 	## ══ v0.19.144: 拿【真装备】验, 不再数我自己插的标记 ═══════════════════════
 	##   ★这是上一版(v0.19.141)漏检的根: 那时门禁断言的是 `_phx_onhit_n` ——
