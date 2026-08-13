@@ -88,6 +88,11 @@ func _equip(u: Dictionary, iid: String, star: int) -> Dictionary:
 ## 每组开局清干净: 撤场 + 清单位表 + 清一帧伤害计数。
 ## ★不清单位表的话, 上一组留下的单位会被 090 那发 1000 码猛砸扫到(战场才 1140×520)。
 func _fresh() -> void:
+	## ★关掉编辑模式: 门禁默认 DEBUG_EDIT=true, 而 2026-08-13 起 `_sim_step` 里
+	##   羁绊 tick 与 `tick_global` 被「摆位期/编辑模式不许推进战斗」那道闸门住
+	##   (用户第 4 条「召唤物还没开打就攻击」) ⇒ 不关的话猛砸倒计时不推进、永远落不了地。
+	_s._edit_mode = false
+	_s._over = false
 	_arc().clear_all()
 	_s._units.clear()
 	_s._adf_ct = 0

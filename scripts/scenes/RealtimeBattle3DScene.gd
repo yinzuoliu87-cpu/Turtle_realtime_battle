@@ -745,8 +745,7 @@ var _lightning_sys := LightningSystem.new(self)   # 闪电龟技能系统(2026-0
 var _rocket_sys := RocketSystem.new(self)   # 小将火箭技能系统(2026-07-25 抽出)
 var _bubble_sys := BubbleSystem.new(self)   # 泡泡龟技能系统(2026-07-25 抽出)
 var _diamond_sys := DiamondSystem.new(self)   # 钻石龟技能系统(2026-07-25 抽出)
-var _world_permanent: Dictionary = {}   # 建场阶段 _world 的常驻子节点(instance_id) —— 换路清场时只清不在此集内的(=特效/单位残留)
-## ★UI 层的同款清扫在 `BattleHud.sweep_ui_vfx()`(飘字挂 _ui_layer, 这里只扫 _world)。
+var _world_permanent: Dictionary = {}   # 建场阶段 _world 的常驻子节点(instance_id) —— 换路清场时只清不在此集内的(=特效/单位残留) ★UI层同款清扫在 BattleHud.sweep_ui_vfx(飘字挂 _ui_layer)
 var _dmg_stats := DmgStatsPanel.new()   # 战中📊统计浮层(已抽到 scripts/scenes/dmg_stats_panel.gd)
 var _sim_tweens: Array = []               # VFX tween注册表(时停暂停非active用; 见 _reg_tween)
 var _shake_amp := 0.0                     # 当前震屏幅度 (米); 每帧指数衰减归 0
@@ -2175,28 +2174,31 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 	_cur_eq_item = ""   # ★每帧重置"当前装备效果来源"(同 _adf_ct 的模式) —— 不清会让下一帧
 						#   非装备来源的护盾/治疗被误判成"盾装备给的"而白拿 20% 圣光护盾
 	_sd_tick()   # §SUDDEN 战场决胜(40s起治疗-50% + 每5s +25%增伤)
-	_synergy.tick(dt)   # ★类型羁绊的周期效果(批4-1: 法器潮涌 / 食物盛宴 / 盾圣光) —— 走 dt 不走墙钟
-	_swordsman.tick(dt)   # 剑士追打队列(以 5 倍攻速依次打出)
-	_shield_syn.tick(dt)  # 圣光护盾装备: 每 3 秒 55 点护盾
-	_bow_syn.tick(dt)     # 弓箭顶档【腐蚀叠层】: 每 2.5 秒给全场敌人 +1 层
-	_gun_syn.tick(dt)     # 枪羁绊: 第一座炮台轰击 / 第二座能量循环(每 2.5 秒)
-	_staff_syn.tick(dt)   # 法器: 法力自然增长 + 灵泉(2.5s) + 共鸣(7.5s)
-	_potion_syn.tick(dt)  # 药水: 每 2.5 秒重选猎物(敌方血量最高者)
-	_gadget_syn.tick(dt)  # 奇械: 铸币累计 + 僵硬到期清理
-	_food_syn.tick(dt)    # 食物: 每 2.5 秒每件食物为携带者永久 +最大生命
-	_spirit_syn.tick(dt)  # 灵物: 触手拍击(每 2.5 秒) + 追击次数重置
-	_spec.tick(dt)        # ★特殊余额: 线性衰减 + 耗尽回调(自然衰减完也算"被打破")
-	_equip_sys.tick_global(dt)   # ★装备的【全局】在途表(弧形波/箭雨/连射 + 批④ 的召唤物·区域·碑)
-								 #   —— 与"某只龟身上有没有装备"无关: 携带者死后碑/直升机/炮台还要继续动
-	_relic_syn.tick(dt)   # 遗物: 远古之力累积(每 2.5 秒) + 觉醒判定
-	_tentacle_vfx.tick(dt)  # 触手拍击: 每帧重算网格(甩动)
-	_trainer_sys._tick_trainer_attacks(dt) # 训龟大师普攻: 站定扔石头抛物线弹道(用户2026-07-23)
-	_trainer_sys._tick_hunt_taunt(dt)      # 猎龟令: 每帧刷新目标周围 400 码我方友军的嘲讽(圈随目标移动)
-	_trainer_sys._tick_tame_decay(dt)      # 驯服: 归顺者每秒损失 2% 最大生命
-	_trainer_sys._tick_trainer_ai(dt)      # 敌方(快照)大师 AI: 乱走 + 逮机会甩钩锁(点3·场外援助·用户2026-07-23)
-	_trainer_sys._ms_tick_aura(dt)         # 魔法石: 按叠层阈值(10/25/50)建撤大师本体特效 + 推进绕转
-	_trainer_sys._tick_wave_flights(dt)     # 口哨②: 灵体气波蓄力/逐帧飞行/每帧碰撞(真 skillshot·命中才结算)
-	_trainer_sys._tick_hooks(dt)           # 钩锁: CD 扣减 + 被钩单位每帧朝大师拖(点3)
+	## ★摆位/呈现期不推进战斗(第4条「召唤物没开打就攻击」): 单位tick早有这道闸, 而羁绊tick(炮台/触手)/tick_global(批④召唤物)/大师AI 都在闸外 ⇒ 同一个条件门住, 下方复用同一个变量
+	var _fight_on: bool = not _edit_mode and _dl_state != "place" and not _dl_sys._dl_is_present()   # ★不看 _over: 在途效果(猛砸倒计时/引爆)不该被"战斗已判定"掐断, 同本文件靶向器那段先例
+	if _fight_on:
+		_synergy.tick(dt)   # ★类型羁绊的周期效果(批4-1: 法器潮涌 / 食物盛宴 / 盾圣光) —— 走 dt 不走墙钟
+		_swordsman.tick(dt)   # 剑士追打队列(以 5 倍攻速依次打出)
+		_shield_syn.tick(dt)  # 圣光护盾装备: 每 3 秒 55 点护盾
+		_bow_syn.tick(dt)     # 弓箭顶档【腐蚀叠层】: 每 2.5 秒给全场敌人 +1 层
+		_gun_syn.tick(dt)     # 枪羁绊: 第一座炮台轰击 / 第二座能量循环(每 2.5 秒)
+		_staff_syn.tick(dt)   # 法器: 法力自然增长 + 灵泉(2.5s) + 共鸣(7.5s)
+		_potion_syn.tick(dt)  # 药水: 每 2.5 秒重选猎物(敌方血量最高者)
+		_gadget_syn.tick(dt)  # 奇械: 铸币累计 + 僵硬到期清理
+		_food_syn.tick(dt)    # 食物: 每 2.5 秒每件食物为携带者永久 +最大生命
+		_spirit_syn.tick(dt)  # 灵物: 触手拍击(每 2.5 秒) + 追击次数重置
+		_spec.tick(dt)        # ★特殊余额: 线性衰减 + 耗尽回调(自然衰减完也算"被打破")
+		_equip_sys.tick_global(dt)   # ★装备的【全局】在途表(弧形波/箭雨/连射 + 批④ 的召唤物·区域·碑)
+									 #   —— 与"某只龟身上有没有装备"无关: 携带者死后碑/直升机/炮台还要继续动
+		_relic_syn.tick(dt)   # 遗物: 远古之力累积(每 2.5 秒) + 觉醒判定
+		_tentacle_vfx.tick(dt)  # 触手拍击: 每帧重算网格(甩动)
+		_trainer_sys._tick_trainer_attacks(dt) # 训龟大师普攻: 站定扔石头抛物线弹道(用户2026-07-23)
+		_trainer_sys._tick_hunt_taunt(dt)      # 猎龟令: 每帧刷新目标周围 400 码我方友军的嘲讽(圈随目标移动)
+		_trainer_sys._tick_tame_decay(dt)      # 驯服: 归顺者每秒损失 2% 最大生命
+		_trainer_sys._tick_trainer_ai(dt)      # 敌方(快照)大师 AI: 乱走 + 逮机会甩钩锁(点3·场外援助·用户2026-07-23)
+		_trainer_sys._ms_tick_aura(dt)         # 魔法石: 按叠层阈值(10/25/50)建撤大师本体特效 + 推进绕转
+		_trainer_sys._tick_wave_flights(dt)     # 口哨②: 灵体气波蓄力/逐帧飞行/每帧碰撞(真 skillshot·命中才结算)
+		_trainer_sys._tick_hooks(dt)           # 钩锁: CD 扣减 + 被钩单位每帧朝大师拖(点3)
 	# Phase4 顿帧 hit-stop: 计时 >0 时冻结"模拟"给重量感(镜头震屏照常推进·在 _render._render_step)。
 	if frozen:
 		_hitstop = maxf(0.0, _hitstop - dt)
@@ -2224,7 +2226,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 		#   杀掉它战斗就结束(_over=true), 挂在 _pending_shots 里的引爆就永远兑现不了 ——
 		#   最高潮那一下的画面会凭空消失(伤害无所谓, 但演出没了)。
 		_hookbomb_sys.tick_pending(dt)
-		if not _over and not _edit_mode and _dl_state != "place" and not _dl_sys._dl_is_present():
+		if _fight_on and not _over:
 			_t += dt
 			_timestop._ts_update_trigger(dt)   # 沙漏: 第10秒触发时停蓄力 → 蓄力满释放
 			for u in _units.duplicate():
@@ -4633,10 +4635,8 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 	#   (CLAUDE.md §3.3), 在别处拦就只拦得住其中一条; 而"含真伤"要求它在真伤也走的这条收口上生效。
 	#   `_dmg_cap_one` 保留不动 —— 亡灵骷髅 032 用的是它, 语义是"命数式单位", 与带值封顶不是一回事。
 	var _capv: float = float(u.get("_dmg_cap_val", 0.0))
-	## ★★【有护盾就不封顶】(用户 2026-08-12 削弱:「小手枪在拥有护盾时将不再有将伤害
-	##   降低到 1 这个被动」)。理由: 小手枪一旦被 079 医疗炮台 / 枪羁绊的白色冲击波 /
-	##   盾羁绊套上护盾, 就成了"护盾先吸 + 溢出还被封到 2 点" = 实质无敌。
-	##   ⇒ 护盾期间按原样吃伤害(护盾自己会挡), 盾破了封顶才重新生效。
+	## ★★有护盾就不封顶(用户 2026-08-12 削弱): 小手枪被 079 炮台/枪羁绊冲击波/盾羁绊套上盾后,
+	##   "护盾先吸 + 溢出还封到 2 点" = 实质无敌。护盾期间照吃伤害, 盾破了封顶才重新生效。
 	if _capv > 0.0 and float(u.get("shield", 0.0)) <= 0.0:
 		return minf(d, _capv)
 	return d

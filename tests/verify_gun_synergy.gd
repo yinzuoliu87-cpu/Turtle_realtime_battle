@@ -300,6 +300,36 @@ func _ready() -> void:
 	s._units.clear(); s.set_process(false)
 	await get_tree().process_frame
 	s.queue_free()
+	# ══ ★摆位期不许开火(用户 2026-08-13 第 4 条) ═══════════════════════════
+	#   「为什么有些召唤物入炮台和触手等在还没开打就可以去攻击了?」
+	#   根因: `_sim_step` 每帧无条件跑, 而 `_dl_state != "place"` 那道闸只包住【单位 tick】,
+	#   羁绊 tick(炮台/触手)与 `tick_global`(批④召唤物)都在闸**外面**。
+	#   ★判据是【推了很多帧, 炮台一次都没响】—— 只断言"有这道闸"守不住(条件写错照样有闸)。
+	_scene._synergy._by_side = {"left": {"枪": 3}, "right": {}}
+	_scene._gun_syn.apply_all()
+	var c9: Vector2 = _scene.ARENA.position + _scene.ARENA.size * 0.5
+	var g9: Dictionary = _scene._spawn._make_unit("basic", "left", c9 + Vector2(-100, 0))
+	g9["equips"] = [{"id": "p2eq_048", "star": 1}]
+	g9["eq_state"] = {}
+	var e9: Dictionary = _scene._spawn._make_unit("basic", "right", c9 + Vector2(100, 0))
+	e9["maxHp"] = 1.0e9
+	e9["hp"] = 1.0e9
+	_scene._units.clear()
+	_scene._units.append_array([g9, e9])
+	_scene._edit_mode = false                  # ★门禁默认开 DEBUG_EDIT, 而这道闸本来就该挡编辑模式
+	_scene._over = false
+	_scene._dl_state = "place"                     # ← 摆位期
+	var hp9: float = float(e9["hp"])
+	for _i9 in range(600):                     # 10 秒: 炮台节拍 2.5 秒, 够响四次
+		_scene._sim_step(1.0 / 60.0, false, false)
+	_ok("★★摆位期推 10 秒: 敌人一点血都没掉(炮台/触手/召唤物都不许动手)",
+		absf(float(e9["hp"]) - hp9) < 0.01, "掉了 %.1f" % (hp9 - float(e9["hp"])))
+	_scene._dl_state = ""                          # ← 开打
+	for _j9 in range(600):
+		_scene._sim_step(1.0 / 60.0, false, false)
+	_ok("★分母: 开打后同样推 10 秒【真的打出了伤害】(否则上一条是空检查)",
+		float(e9["hp"]) < hp9 - 0.5, "掉了 %.1f" % (hp9 - float(e9["hp"])))
+
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 枪羁绊" if _fail == 0 else "FAIL x%d" % _fail)
