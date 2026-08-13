@@ -91,7 +91,16 @@ func _phoenix_flame_cone(u: Dictionary, tgt: Dictionary) -> void:
 	##   我第一版写的 false(按技能命中算), 那样竹叶这类只认普攻的装备照样不触发。
 	if nearest is Dictionary and (nearest as Dictionary).get("alive", false):
 		battle._equip_sys._eq_on_hit(u, nearest, roundi(mag), true)
+		## ★★v0.19.144 补上 v0.19.141 漏掉的另一半(用户实测「143 为什么没触发竹制弓箭」):
+		##   装备有【两个】普攻钩子, 上一版只接了 `_eq_on_hit`(每次命中: 腐蚀/毒/金弹…),
+		##   而 039 竹制弓箭的判据是「每第 3 段普攻」——它住在 `_eq_on_basic_attack` 的
+		##   计数器里, 那个函数只被 `_basic_attack` 调, 而凤凰在 `_sim_step` 里
+		##   (`elif u["id"] == "phoenix"`)就分支去喷火了, **一次都没走到 `_basic_attack`**。
+		##   ⇒ 同函数里的 008 珊瑚刺 / 017 不沉之锚 / 027 电棍 在凤凰身上也一并复活。
+		##   顺序: 放在伤害之后, 与上面 `_eq_on_hit` 同一条纪律(读得到这一跳的账)。
+		battle._equip_sys._eq_on_basic_attack(u, nearest)
 		u["_phx_onhit_n"] = int(u.get("_phx_onhit_n", 0)) + 1   # 同步触发证据(门禁数它)
+		u["_phx_basic_n"] = int(u.get("_phx_basic_n", 0)) + 1   # 普攻计数钩子的独立证据(门禁数它)
 
 # 单颗喷火苗: 嘴部喷出→沿锥角向外冲(火舌位移感), 软发光blob叠成顺滑火流, 黄白→橙→红透+边冲边长大
 # 单颗喷火苗: 嘴部喷出→沿锥角向外冲(火舌位移感), 软发光blob叠成顺滑火流, 黄白→橙→红透+边冲边长大
