@@ -746,6 +746,7 @@ var _rocket_sys := RocketSystem.new(self)   # 小将火箭技能系统(2026-07-2
 var _bubble_sys := BubbleSystem.new(self)   # 泡泡龟技能系统(2026-07-25 抽出)
 var _diamond_sys := DiamondSystem.new(self)   # 钻石龟技能系统(2026-07-25 抽出)
 var _world_permanent: Dictionary = {}   # 建场阶段 _world 的常驻子节点(instance_id) —— 换路清场时只清不在此集内的(=特效/单位残留)
+## ★UI 层的同款清扫在 `BattleHud.sweep_ui_vfx()`(飘字挂 _ui_layer, 这里只扫 _world)。
 var _dmg_stats := DmgStatsPanel.new()   # 战中📊统计浮层(已抽到 scripts/scenes/dmg_stats_panel.gd)
 var _sim_tweens: Array = []               # VFX tween注册表(时停暂停非active用; 见 _reg_tween)
 var _shake_amp := 0.0                     # 当前震屏幅度 (米); 每帧指数衰减归 0

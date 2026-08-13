@@ -2110,3 +2110,24 @@ func refresh_synergy_chips() -> void:
 		var row: Control = make_synergy_chip_row(str(side))
 		col.add_child(row)
 		col.move_child(row, 0)
+
+
+## UI 层短命件的组名 —— 飘字这类"该随本路消失"的东西加进来。
+## ★为什么不照 `_world` 那样用【建场快照】判常驻: UI 层的 HUD(PK条/暗角/按钮/调试条)是在
+##   快照那一刻**之后**才建的 ⇒ 快照法会把整个 HUD 判成"非常驻"、换路时一起扫掉。
+##   我第一版就是这么写的, 探针当场量出 `_ui_layer` 从 13 个变 0 个(HUD 也没了)。
+##   ⇒ 改成【显式标记】: 只有主动入组的节点才会被扫; 漏标最多是不清, 不会误伤 HUD。
+const UI_TRANSIENT_GROUP := "battle_ui_transient"
+
+
+## 换路兜底: 清掉 UI 层里所有【标记为短命】的节点(飘字等)。返回清了几个(门禁要量这个)。
+## ★为什么需要: 兜底扫 `_sweep_world_vfx()` 只遍历 `_world`, 而飘字挂的是 `_ui_layer`
+##   ⇒ 换路后伤害/治疗数字照样留在屏幕上(用户 2026-08-13 第 9 条, 探针实测拿到过两个
+##   活过换路的 Label)。它们的 queue_free 挂在 create_tween 回调上, 演出期一顿就一直挂着。
+func sweep_ui_vfx() -> int:
+	var freed := 0
+	for n in battle.get_tree().get_nodes_in_group(UI_TRANSIENT_GROUP):
+		if n is Node and is_instance_valid(n) and not (n as Node).is_queued_for_deletion():
+			(n as Node).queue_free()
+			freed += 1
+	return freed

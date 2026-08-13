@@ -899,7 +899,12 @@ func _dl_clear_units() -> void:
 	#   一杀, 那个 callback 就永远不会执行 → 精灵永久留在 _world 里跨路残留。
 	#   这里按建场快照兜底: 凡不在常驻集内的 _world 子节点一律释放。
 	var _swept = battle._sweep_world_vfx()
-	if OS.has_environment("XDBG"): print("XDBG_DL 换路清扫遗留节点: ", _swept)
+	## ★UI 层也扫(2026-08-13 用户第 9 条「很多特效或数字残留到下一个战场」):
+	##   飘字挂在 `_ui_layer`, 而上面那句只扫 `_world` ⇒ 伤害/治疗数字换路后照样留着。
+	##   探针实测清场后 _ui_layer 里还躺着上一路的伤害数字 Label。
+	var _swept_ui: int = battle._hud.sweep_ui_vfx()
+	if OS.has_environment("XDBG"):
+		print("XDBG_DL 换路清扫遗留节点: world=", _swept, " ui=", _swept_ui)
 	_dl_clear_present_overlay()
 
 func _dl_next_lane(finished_lane: String = "") -> void:

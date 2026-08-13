@@ -257,6 +257,9 @@ func _float_text(pos2d: Vector2, text: String, col: Color, is_crit: bool = false
 		num_lbl = battle._make_num_label(text, col, fsize)
 		fly = num_lbl
 	battle._ui_layer.add_child(fly)
+	## ★入组 = 换路兜底清场认得它(用户 2026-08-13 第 9 条「数字残留到下一个战场」)。
+	##   飘字的 queue_free 挂在 create_tween 的回调上, 换路演出期一顿就一直挂着。
+	fly.add_to_group(BattleHud.UI_TRANSIENT_GROUP)
 	if _mk != "" and num_lbl != null:   # 注册本帧该目标该类型的数字, 供同帧后续伤害合并
 		battle._float_merge[_mk] = {"lbl": num_lbl, "amount": amount, "t": battle._t, "crit": is_dmg_crit}
 	# 居中起跳 + pivot 居中 (pop 绕中心, 1:1 PoC origin 0.5)

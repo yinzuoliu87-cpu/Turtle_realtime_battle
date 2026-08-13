@@ -60,6 +60,7 @@ func _ready() -> void:
 	_t_summons_cleared()
 	_t_aura_cleared()
 	_t_clear_all_not_empty()
+	_t_ui_residue()
 
 	_s.queue_free()
 	await get_tree().process_frame
@@ -207,3 +208,39 @@ func _t_clear_all_not_empty() -> void:
 			empty.append("%s 的 clear_all 是空壳" % k)
 	_ok("③ 六个 clear_all 都真的干了活(不是只写 pass)", empty.is_empty(), str(empty))
 	_ok("③ ★分母: 真的取到了 6 个函数体", checked == 6, "checked=%d" % checked)
+
+
+## ③ 换路残留: UI 层的飘字必须被清, 而 HUD 必须留着(用户 2026-08-13 第 9 条)。
+##
+## ★为什么 UI 层要单独守: 兜底扫 `_sweep_world_vfx()` 只遍历 `_world`, 而飘字挂的是
+##   `_ui_layer`(battle_vfx.gd) ⇒ 换路后伤害/治疗数字照样留在屏幕上。探针实测拿到过
+##   两个匿名 Label 活过换路。
+## ★两个方向都要守: 我第一版用"建场快照"判常驻, 结果 HUD 是快照之后才建的 ⇒
+##   整个 HUD(PK条/暗角/按钮)被当成非常驻一起扫掉, `_ui_layer` 从 13 个变 0 个。
+##   所以下面第二条("HUD 还在")和第一条同样重要。
+func _t_ui_residue() -> void:
+	print("── ③ 换路残留: UI 层 ──")
+	var c: Vector2 = _s.ARENA.position + _s.ARENA.size * 0.5
+	var a: Dictionary = _s._spawn._make_unit("basic", "left", c + Vector2(-150, 0))
+	var b: Dictionary = _s._spawn._make_unit("basic", "right", c + Vector2(150, 0))
+	_s._units.clear()
+	_s._units.append_array([a, b])
+	_s._damage._apply_damage_from(a, b, 120.0, Color("#ff4444"), 0.0, false, false)
+	_s._damage._apply_damage_from(b, a, 90.0, Color("#7ecbff"), 0.0, false, false)
+	var floats0: int = get_tree().get_nodes_in_group(BattleHud.UI_TRANSIENT_GROUP).size()
+	_ok("③ ★分母: 打两下真的产生了飘字(0 的话下面是空检查)", floats0 >= 2,
+		"飘字 %d 个" % floats0)
+	var hud_before: int = int(_s._ui_layer.get_child_count())
+	_s._dl_sys._dl_clear_units()
+	var alive_floats := 0
+	for n in get_tree().get_nodes_in_group(BattleHud.UI_TRANSIENT_GROUP):
+		if n is Node and is_instance_valid(n) and not (n as Node).is_queued_for_deletion():
+			alive_floats += 1
+	_ok("③ ★★换路清场后飘字一个不剩(它们挂在 _ui_layer, 以前从没被扫过)",
+		alive_floats == 0, "还活着 %d 个" % alive_floats)
+	var pk_alive := false
+	for ch in _s._ui_layer.get_children():
+		if str(ch.name) == "PkBar" and not ch.is_queued_for_deletion():
+			pk_alive = true
+	_ok("③ ★★HUD 不许被误伤(PkBar 还在) —— 第一版用快照判常驻就把整个 HUD 扫没了",
+		pk_alive, "清场前 UI 层 %d 个子节点" % hud_before)
