@@ -94,10 +94,52 @@ func apply_all() -> void:
 ##   ⚠ 只有【阈值计数】去重；**每件属性（per-piece）不去重** ——
 ##     「每个剑装备额外提供 X 攻击力」说的是你身上带几件就吃几份，带 3 件同款照样吃 3 份。
 ##     两者口径不同是有意的：去重防的是"刷同一件凑档位", 不是"限制你堆属性"。
+## 这一方【整场】的装备 id 清单 —— 羁绊按全阵容算, 不按"这一路场上有谁"。
+##
+## ★用户 2026-08-13 第 5 条:「羁绊的效果是3个战场共享的」。双路两路阵容本来就不同
+##   (上路统领 / 下路小将), 按场上单位算就会出现"上半场枪炮台、下半场触手",
+##   而商店里明明写着你有枪羁绊 —— 商店/背包数的一直是**全阵容**。
+## ★我方直接用 `GameState.team_p2_equips_for_synergy()` —— **与商店/背包同一个函数**,
+##   口径不可能再漂(memory [[fb-hand-rolled-copies-drift]])。
+## ★敌方从 `dual_ghost` 的两路规格里取(它就是对手的全阵容)。
+## ★取不到名单就返回空 ⇒ 调用方退回"场上单位"口径: 合成单位的门禁 / VFXLAB / 单路模式
+##   都没有 GameState 名单, 不留这条退路会让一大批门禁拿到空羁绊。
+func _roster_equip_ids(side: String) -> Array:
+	var out: Array = []
+	if str(side) == "left":
+		if GameState != null and GameState.has_method("team_p2_equips_for_synergy"):
+			for it in GameState.team_p2_equips_for_synergy():
+				if it is Dictionary:
+					out.append(str((it as Dictionary).get("id", "")))
+		return out
+	if GameState == null or not (GameState.dual_ghost is Dictionary):
+		return out
+	for lane in ["top", "bottom"]:
+		for spec in battle._dual_foe_lane(lane):
+			if not (spec is Dictionary):
+				continue
+			for e in (spec as Dictionary).get("equips", []):
+				if e is Dictionary:
+					out.append(str((e as Dictionary).get("id", "")))
+	return out
+
+
 func _calc_tiers(side: String) -> Dictionary:
 	var cnt: Dictionary = {}
 	var seen: Dictionary = {}      # 该方已经数过的装备 id（去重用）
+	var roster: Array = _roster_equip_ids(side)
+	if not roster.is_empty():
+		for eid_r in roster:
+			var rid: String = str(eid_r)
+			if rid == "" or seen.has(rid):
+				continue
+			seen[rid] = true
+			var tr: String = battle.Phase2Types.type_of(rid)
+			if tr != "":
+				cnt[tr] = int(cnt.get(tr, 0)) + 1
 	for u in battle._units:
+		if not roster.is_empty():
+			break                 # ★有全阵容名单就以它为准, 不再补场上的(否则两套口径混着数)
 		if not (u is Dictionary) or str(u.get("side", "")) != side:
 			continue
 		if u.get("_isEgg", false) or u.get("is_trainer", false):

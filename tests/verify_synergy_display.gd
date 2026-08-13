@@ -204,6 +204,49 @@ func _ready() -> void:
 		_ok("⑤ ★分母: 登场钩真的建得出直升机(建不出来上面那条就没意义)",
 			gsys._helis.size() == 1, "实得 %d 架" % gsys._helis.size())
 
+	# ══ ⑥ 羁绊【三个战场共享】(用户 2026-08-13 第 5 条) ═══════════════════
+	#   「为什么我发现在上半场有枪的炮台而在下半场有触手, 但不应该啊,
+	#     羁绊的效果是3个战场共享的啊」。
+	#   ★根因是**口径**不是清不清: 战斗侧数"这一路场上的单位", 商店/背包数"全阵容"。
+	#     双路两路阵容本来就不同 ⇒ 上路枪、下路触手, 而商店里写着你有枪羁绊。
+	#   ★这推翻了 v0.19.130 的方向(那次让两路各算各的); 正确终点是三路本来就该一样。
+	GameState.test_mode = true
+	var saved_ld = GameState.season_leaders
+	var saved_eq = GameState.persistent_equipped.duplicate(true)
+	GameState.season_leaders = ["green"]
+	GameState.persistent_equipped = {"green": [
+		{"id": "p2eq_048", "star": 1}, {"id": "p2eq_050", "star": 1},
+		{"id": "p2eq_051", "star": 1},          # 3 枪 ⇒ 首档
+	]}
+	# 上路: 场上只有这只带枪的
+	var lane_a: Dictionary = _s._spawn._make_unit("basic", "left", Vector2(600, 400))
+	lane_a["equips"] = [{"id": "p2eq_048", "star": 1}]
+	lane_a["eq_state"] = {}
+	_s._units.clear()
+	_s._units.append(lane_a)
+	_s._synergy.clear()
+	_s._synergy.apply_all()
+	var t_top: Dictionary = (_s._synergy._by_side["left"] as Dictionary).duplicate()
+	_ok("⑥ ★分母: 上路算出了枪羁绊(全阵容 3 件 ⇒ 首档)", int(t_top.get("枪", 0)) >= 1, str(t_top))
+	# 下路: 换成【完全不带枪】的另一只(按老口径这里会算出 0 档)
+	var lane_b: Dictionary = _s._spawn._make_unit("basic", "left", Vector2(600, 400))
+	lane_b["equips"] = [{"id": "p2eq_014", "star": 1}]     # 一件盾
+	lane_b["eq_state"] = {}
+	_s._units.clear()
+	_s._units.append(lane_b)
+	_s._synergy.clear()
+	_s._synergy.apply_all()
+	var t_bot: Dictionary = (_s._synergy._by_side["left"] as Dictionary)
+	_ok("⑥ ★★换路后档位【一模一样】(羁绊三个战场共享, 不看这一路场上有谁)",
+		t_bot == t_top, "上路 %s / 下路 %s" % [str(t_top), str(t_bot)])
+	_ok("⑥ ★★下路场上一件枪都没有, 枪羁绊照样在(这就是「共享」的意思)",
+		int(t_bot.get("枪", 0)) >= 1, "下路 %s" % str(t_bot))
+	_ok("⑥ ★口径与商店同源(都走 team_p2_equips_for_synergy)",
+		FileAccess.get_file_as_string("res://scripts/systems/equip/synergy_system.gd")
+			.find("GameState.team_p2_equips_for_synergy()") >= 0)
+	GameState.season_leaders = saved_ld
+	GameState.persistent_equipped = saved_eq
+
 	_s._units.clear()
 	_s.set_process(false)
 	await get_tree().process_frame
