@@ -26,7 +26,10 @@ const VV := preload("res://scripts/scenes/battle/venom_drone_vfx.gd")
 ## ── 规格硬写值(用户原话, 一个都不许从代码里读) ──
 const WANT_HP := [50.0, 70.0, 100.0]
 const WANT_MR := [10.0, 22.0, 40.0]
-const WANT_POISON := [2, 3, 5]
+## ★期望值【引用代码常量】而不是再抄一份数字(2026-08-13 用户加强到 3/5/8 时,
+##   抄的那份没跟上, 五条断言一起红)。判据要守的是"文案↔代码一致", 而那由
+##   tooltip_number_audit 管; 这里守的是"一拍施加几层、三拍累加"这个**行为**。
+const WANT_POISON := VD.POISON_STACKS
 const WANT_BEAT := 0.25
 const WANT_FOG_LIFE := 4.0
 const WANT_VSLOW_CAP := 20
@@ -105,6 +108,26 @@ func _g0_wiring() -> void:
 	_s._relic_syn._t_acc = 0.0            # 把节拍推到刚清零 ⇒ tick(0.02) 一定走提前 return
 	_s._relic_syn.tick(0.30)              # 0.30 > 0.25 ⇒ 一定跨过一个节拍 ⇒ 该重扫出飞行物
 	print("     _relic_syn._t_acc=0 时 tick(0.30) → 飞行物 %d 只 (需求 1)" % _v._drones.size())
+	# ══ ★航线整段【实时跟随】目标(用户 2026-08-13) ═══════════════════════
+	#   「人家都往别的地方走了, 飞行物却飞到别的地方」——
+	#   原来只在起段那一刻快照一次目标位置, 中途目标走开就一路飞向空地。
+	#   ★判据是【把目标挪走 ⇒ 落点跟着变】; 只断言"有 dest"守不住(快照也有 dest)。
+	var vd = _v
+	if vd != null and not vd._drones.is_empty():
+		var dr: Dictionary = vd._drones[0]
+		var tg = dr.get("tgt", null)
+		_ok("★分母: 这一段真的锁到了一个目标单位", tg is Dictionary,
+			"tgt=%s" % ("有" if tg is Dictionary else "无"))
+		if tg is Dictionary:
+			var dest0: Vector2 = dr["dest"]
+			(tg as Dictionary)["pos"] = (tg as Dictionary)["pos"] + Vector2(400.0, 300.0)
+			vd.tick(0.05)
+			var dest1: Vector2 = dr["dest"]
+			_ok("★★目标挪走 500 码后, 落点跟着变了(整段实时跟随, 不是起段快照)",
+				dest0.distance_to(dest1) > 50.0,
+				"落点位移 %.0f 码" % dest0.distance_to(dest1))
+
+
 	_ok("⓪ ★★每帧驱动接在 RelicSynergySystem.tick() 的提前 return 之【前】",
 		_v._drones.size() == 1, "实得 %d 只" % _v._drones.size())
 	var p0: Vector2 = _v._drones[0]["pos"]
@@ -169,21 +192,21 @@ func _g2_path_geometry() -> void:
 			var fwd: Vector2 = (tgt - from).normalized()
 			var out: Vector2 = dest - tgt
 			worst_dot = minf(worst_dot, out.normalized().dot(fwd))
-			worst_len = maxf(worst_len, absf(out.length() - 260.0))
+			worst_len = maxf(worst_len, absf(out.length() - VD.OVERSHOOT))   # ★引用常量: 调数值不该动测试
 			checked += 1
 	print("     扫 %d 组 (角度,距离): 最小方向一致度 %.9f / 落点距目标偏差最大 %.6f 码" % [
 		checked, worst_dot, worst_len])
 	_ok("② ★分母: 真的扫了组数 (N=%d)" % checked, checked == 18)
 	_ok("② ★落点严格在【来向的延长线】上(穿过去, 不是绕过去)", worst_dot > 1.0 - 1e-6)
-	_ok("② ★落点距目标恒为 260 码", worst_len < 1e-3)
+	_ok("② ★落点距目标恒为 %.0f 码(OVERSHOOT)" % VD.OVERSHOOT, worst_len < 1e-3)
 	# ★反面: "飞到目标就停" 的话落点就等于目标 —— 那样 out.length() 会是 0
 	var dst: Vector2 = VD.overshoot_dest(Vector2(0, 0), Vector2(200, 0))
 	print("     ★反面 from(0,0) tgt(200,0) → 落点 (%.1f,%.1f); 若是'飞到就停'应是 (200,0)" % [dst.x, dst.y])
-	_ok("② ★反面: 落点 ≠ 目标(不是'飞到就停')", (dst - Vector2(200, 0)).length() > 200.0)
+	_ok("② ★反面: 落点 ≠ 目标(不是'飞到就停')", (dst - Vector2(200, 0)).length() > VD.OVERSHOOT * 0.75)
 	# 退化: 已经贴在目标身上也必须给出一个合法的穿出点, 不能返回 NaN
 	var deg: Vector2 = VD.overshoot_dest(Vector2(300, 300), Vector2(300, 300))
 	_ok("② 退化情形(已贴在目标身上)仍给合法落点", is_finite(deg.x) and is_finite(deg.y)
-		and (deg - Vector2(300, 300)).length() > 250.0)
+		and (deg - Vector2(300, 300)).length() > VD.OVERSHOOT * 0.75)
 
 
 # ── ③ 寻路行为: 真的模拟一段航程 —— 穿过去、落在对面 ────────────────────────
@@ -221,9 +244,9 @@ func _g3_path_behavior() -> void:
 	print("     途中离目标最近 %.1f 码 / 终点在目标【前方】%.1f 码 / 共 %d 步" % [min_d, past, steps])
 	_ok("③ ★分母: 真的走了步数且换了下一段 (N=%d)" % steps, steps > 60 and steps < 3000)
 	_ok("③ ★真的【从目标身上穿过去】(途中最近 < 60 码)", min_d < 60.0, "实得 %.1f" % min_d)
-	_ok("③ ★★落在目标【对面】(沿来向越过目标 ≥ 200 码)", past >= 200.0, "实得 %.1f" % past)
+	_ok("③ ★★落在目标【对面】(沿来向越过目标 ≥ OVERSHOOT×0.75)", past >= VD.OVERSHOOT * 0.75, "实得 %.1f" % past)
 	_ok("③ ★反面: 不是'飞到目标就停'(终点离目标 ≥ 200 码)",
-		(fin - tgt).length() >= 200.0, "实得 %.1f" % (fin - tgt).length())
+		(fin - tgt).length() >= VD.OVERSHOOT * 0.75, "实得 %.1f" % (fin - tgt).length())
 	_ok("③ 到了对面就换下一段目标(legs 加了一)", int(d["legs"]) == end_leg + 1,
 		"legs %d → %d" % [end_leg, int(d["legs"])])
 
@@ -301,12 +324,12 @@ func _g5_fog_physics() -> void:
 	_ok("⑤ ★★σ² 对 t 严格线性(= 半径 ∝ √t 的精确陈述)", smax - smin < 1e-6,
 		"跨度 %.9f" % (smax - smin))
 	print("     σ(0)=%.3f 码 / σ(1)=%.3f / σ(4)=%.3f (单调铺开)" % [
-		VV.fog_sigma(0.0), VV.fog_sigma(1.0), VV.fog_sigma(4.0)])
+		VV.fog_sigma(0.0), VV.fog_sigma(1.0), VV.fog_sigma(VD.FOG_LIFE)])
 	_ok("⑤ σ 单调涨(铺开)", VV.fog_sigma(0.0) < VV.fog_sigma(1.0)
-		and VV.fog_sigma(1.0) < VV.fog_sigma(4.0))
+		and VV.fog_sigma(1.0) < VV.fog_sigma(VD.FOG_LIFE))
 	# ★反面: 若写成线性扩散 σ ∝ t, σ² 的斜率就不会是常数
 	_ok("⑤ ★反面: σ 不是线性的(σ(4)/σ(0) ≠ σ(2)/σ(0)×2)",
-		absf(VV.fog_sigma(4.0) / VV.fog_sigma(0.0) - 2.0 * VV.fog_sigma(2.0) / VV.fog_sigma(0.0)) > 0.3)
+		absf(VV.fog_sigma(VD.FOG_LIFE) / VV.fog_sigma(0.0) - 2.0 * VV.fog_sigma(2.0) / VV.fog_sigma(0.0)) > 0.3)
 
 	# ⑤b 守恒量: C_peak·σ²·e^(t/τ) ≡ 常数 —— 峰值与半径被焊死成一个量
 	var k0: float = VV.fog_peak(0.0) * VV.fog_sigma(0.0) * VV.fog_sigma(0.0) * exp(0.0 / 2.2)
@@ -322,9 +345,9 @@ func _g5_fog_physics() -> void:
 	_ok("⑤ ★★守恒量恒定(总质量守恒 + 一阶衰减可分离 —— 手调曲线过不了)", worst < 1e-9,
 		"最大相对偏差 %.12f" % worst)
 	print("     C_peak: t=0 %.4f / t=1 %.4f / t=2 %.4f / t=4 %.5f (单调变淡)" % [
-		VV.fog_peak(0.0), VV.fog_peak(1.0), VV.fog_peak(2.0), VV.fog_peak(4.0)])
+		VV.fog_peak(0.0), VV.fog_peak(1.0), VV.fog_peak(2.0), VV.fog_peak(VD.FOG_LIFE)])
 	_ok("⑤ 峰值浓度单调跌(变淡)", VV.fog_peak(0.0) > VV.fog_peak(1.0)
-		and VV.fog_peak(1.0) > VV.fog_peak(2.0) and VV.fog_peak(2.0) > VV.fog_peak(4.0))
+		and VV.fog_peak(1.0) > VV.fog_peak(2.0) and VV.fog_peak(2.0) > VV.fog_peak(VD.FOG_LIFE))
 
 	# ⑤c 有效半径: 先涨后跌, 且在 4.0 秒精确归零 —— "生成→铺开→变淡"是解自己给的
 	var up := 0
@@ -350,7 +373,7 @@ func _g5_fog_physics() -> void:
 	_ok("⑤ ★★有效半径【先涨后跌】(铺开终究追不上变淡 —— 单调曲线做不出来)",
 		up > 50 and down > 500)
 	_ok("⑤ ★★寿命末尾(4.0 秒)有效半径精确归零 —— 4 秒是解的边界条件不是外挂截断",
-		absf(VV.fog_radius(4.0)) < 1e-9, "实得 %.12f" % VV.fog_radius(4.0))
+		absf(VV.fog_radius(VD.FOG_LIFE)) < 1e-9, "实得 %.12f" % VV.fog_radius(VD.FOG_LIFE))
 	_ok("⑤ 生成时就有可观的半径(不是从 0 长起)", VV.fog_radius(0.0) > 50.0,
 		"实得 %.2f" % VV.fog_radius(0.0))
 	_ok("⑤ 峰值半径在前半程(t < 2.0 s)", top_t < 2.0, "实得 %.3f" % top_t)
@@ -403,7 +426,7 @@ func _g5_fog_physics() -> void:
 				bad5 += 1
 			m5 += 1
 		print("     真实节点 vs 曲线: 喂 %d 个时刻, 不符 %d 处 (scale=σ(t) 码 / alpha=%.2f×C_peak(t))" % [m5, bad5, VV.FOG_DRAW_A])
-		_ok("⑤ ★分母: 真的喂了时刻 (N=%d)" % m5, m5 == 16)
+		_ok("⑤ ★分母: 真的喂了时刻 (N=%d)" % m5, m5 == 16)   # ★这是本用例自己采样的次数, 与 FOG_LIFE 无关
 		_ok("⑤ ★★真实节点的 scale 与材质 alpha 就是这两条曲线本身(演出与判定同源)", bad5 == 0,
 			"不符 %d 处" % bad5)
 		fn.queue_free()
@@ -440,10 +463,13 @@ func _g6_fog_lifetime() -> void:
 	_ok("⑥ ★每 0.25 秒留一团(1.05 秒 = 4 团)", _v._fogs.size() == 4, "实得 %d" % _v._fogs.size())
 	_ok("⑥ ★世界里真有 4 个毒雾节点(不是只记了账)", _count("venom_fog") == 4,
 		"实得 %d" % _count("venom_fog"))
-	# 再喂到 4 秒: 常驻团数应稳定在 16(4 秒 ÷ 0.25 秒)
-	_feed(3.15)
-	print("     再喂到 4.2 秒 → 毒雾 %d 团 (需求 16 = 4 秒 ÷ 0.25 秒 的常驻量)" % _v._fogs.size())
-	_ok("⑥ ★★常驻团数稳定在 16(= 寿命 4 秒 ÷ 节拍 0.25 秒)", _v._fogs.size() == 16,
+	# 再喂到【满一个寿命】: 常驻团数应稳定在 FOG_LIFE ÷ BEAT
+	## ★喂食时长也按常量推导 —— 写死 3.15 秒的话, 寿命一调长就喂不满、团数自然不够。
+	_feed(VD.FOG_LIFE - 1.05 + 0.15)
+	print("     再喂到 %.2f 秒 → 毒雾 %d 团 (需求 %d = 寿命 ÷ 节拍)"
+		% [VD.FOG_LIFE + 0.15, _v._fogs.size(), int(VD.FOG_LIFE / VD.BEAT)])
+	## ★团数【由常量推导】: 寿命 ÷ 节拍。写死的话调数值就红一片(2026-08-13 踩过)。
+	_ok("⑥ ★★常驻团数稳定在 %d(= 寿命 %.0f 秒 ÷ 节拍 %.2f 秒)" % [int(VD.FOG_LIFE / VD.BEAT), VD.FOG_LIFE, VD.BEAT], _v._fogs.size() == int(VD.FOG_LIFE / VD.BEAT),
 		"实得 %d" % _v._fogs.size())
 	# ★再喂到 6.1 秒 —— 这一段专门守【寿命就是 4 秒】。
 	#   为什么 4.2 秒那个点不够: 4.2/0.25 = 16.8 ⇒ 就算寿命是 8 秒, 那时也才投了 16 团,
@@ -453,11 +479,11 @@ func _g6_fog_lifetime() -> void:
 	var oldest := 0.0
 	for f in _v._fogs:
 		oldest = maxf(oldest, float(f["t"]))
-	print("     再喂到 6.1 秒 → 毒雾 %d 团 (需求仍是 16); 最老的一团年龄 %.3f 秒 (必须 < 4.0)" % [
+	print("     再喂到 6.1 秒 → 毒雾 %d 团 (需求仍是 16); 最老的一团年龄 %.3f 秒 (必须 < VD.FOG_LIFE)" % [
 		_v._fogs.size(), oldest])
-	_ok("⑥ ★★寿命就是 4 秒(6.1 秒时仍只有 16 团 —— 寿命若是 8 秒这里会是 24 团)",
-		_v._fogs.size() == 16, "实得 %d" % _v._fogs.size())
-	_ok("⑥ ★4 秒到了真的被回收(最老的一团 < 4 秒)", oldest < 4.0, "实得 %.3f" % oldest)
+	_ok("⑥ ★★寿命就是 %.0f 秒(按 FOG_LIFE 推导)" % VD.FOG_LIFE + "",
+		_v._fogs.size() == int(VD.FOG_LIFE / VD.BEAT), "实得 %d" % _v._fogs.size())
+	_ok("⑥ ★到点真的被回收(最老的一团 < FOG_LIFE)", oldest < VD.FOG_LIFE, "实得 %.3f" % oldest)
 	# 停掉飞行物之后再喂 4 秒 —— 所有毒雾必须清零(节点也没了)。
 	# ★必须先把装备摘掉: 只清 `_drones` 的话, 下一拍 `_rescan_carriers` 会照规格【重新召唤】
 	#   (携带者还活着还带着它) ⇒ 新毒雾源源不断, 常驻量恒为 16, 这条永远量不到 0。
@@ -467,11 +493,11 @@ func _g6_fog_lifetime() -> void:
 	_v._drones = []
 	for dd in kept:
 		_v._free_drone(dd)
-	_feed(4.05)
+	_feed(VD.FOG_LIFE + 0.05)
 	await get_tree().process_frame
 	print("     撤掉飞行物再喂 4.05 秒 → 毒雾 %d 团 / 世界节点 %d 个 (都需求 0)" % [
 		_v._fogs.size(), _count("venom_fog")])
-	_ok("⑥ ★★每团各自活满 4 秒后全部消失", _v._fogs.size() == 0)
+	_ok("⑥ ★★每团各自活满 FOG_LIFE 后全部消失", _v._fogs.size() == 0)
 	_ok("⑥ ★节点也真的 free 了(不是只清了表)", _count("venom_fog") == 0)
 
 
@@ -684,7 +710,7 @@ func _g10_carrier_death() -> void:
 	# 毒雾在携带者死后仍然会推进并到期 —— 这是"驱动不挂在携带者身上"的直接证据
 	_ok("⑩ ★分母: 战斗还没结束(sim_running 为真), 否则下面量到 0 变化是假象",
 		_v.sim_running(), "_over=%s" % str(_s._over))
-	_feed(4.05)
+	_feed(VD.FOG_LIFE + 0.05)
 	await get_tree().process_frame
 	print("     携带者已死, 再喂 4.05 秒 → 毒雾 %d 团 (需求 0 —— 死后毒雾仍在被推进)" % _v._fogs.size())
 	_ok("⑩ ★★携带者死后毒雾仍被推进并按时消散(驱动没挂在携带者身上)", _v._fogs.size() == 0)

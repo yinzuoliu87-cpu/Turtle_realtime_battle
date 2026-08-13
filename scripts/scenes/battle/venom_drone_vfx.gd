@@ -158,7 +158,10 @@ const RIM_SEGS := 40
 
 ## 飞行速度(码/秒)。★"缓慢的飞行": 龟的移速档位是 60~120(turtle_stats.ROLE_SPEC),
 ##   110 落在中上 —— 比慢龟快、比快龟慢, 读起来是"晃悠着飘", 不是导弹。
-const DRONE_SPEED := 110.0
+## ★2026-08-13 用户:「飞行速度需要加快30%」⇒ 110 → 143。
+## ⚠ 转弯半径 = DRONE_SPEED / DRONE_TURN_RATE(见文件末尾那个函数) ⇒ 提速会让弯变大,
+##   毒雾的铺法也随之变疏。这是提速的连带, 不是 bug。
+const DRONE_SPEED := 143.0
 ## 航向角速率上限(弧度/秒) ⇒ 最小转弯半径 = SPEED/TURN_RATE = 91.67 码
 const DRONE_TURN_RATE := 1.2
 ## 巡航高度(米)。★2026-08-09 从 1.55 抬到 2.35: 龟身高 TARGET_BODY_H = 2.0 米,

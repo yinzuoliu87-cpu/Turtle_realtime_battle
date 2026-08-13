@@ -63,12 +63,12 @@ const VFX := preload("res://scripts/scenes/battle/venom_drone_vfx.gd")
 ##   能在该装备 id 字面量附近(±2500 字符)找到同样的三元数组。
 const IID := "p2eq_092"
 ## 毒雾每次结算施加的中毒层数(逐星)
-const POISON_STACKS := [2, 3, 5]
+const POISON_STACKS := [3, 5, 8]   # 用户 2026-08-13 加强(原 2/3/5)
 
 ## 一切节拍都是 0.25 秒(规格): 留毒雾 / 毒雾结算 / 剧毒缓速掉层
 const BEAT := 0.25
 ## 毒雾寿命(秒) —— 与 VFX 的 FOG_LIFE 同值, 此处故意写死字面量(门禁要能验两侧一致)
-const FOG_LIFE := 4.0
+const FOG_LIFE := 6.0   # 毒雾停留(秒) —— 用户 2026-08-13 加强(原 4.0)
 ## 剧毒缓速: 上限 / 每层减移速 / 每层减魔抗 / 多久不刷新开始掉层
 const VSLOW_CAP := 20
 const VSLOW_MOVE_PER := 0.02
@@ -78,7 +78,7 @@ const VSLOW_GRACE := 1.5
 ## "飞过目标到达它的对面落点": 落点在目标【身后】这么远(码)。
 ## ★龟的分离半径 SEP_RADIUS=92、近战射程 70 ⇒ 260 码 ≈ 三个身位,
 ##   足够读出"它是穿过去的"而不是"贴着目标停下"。
-const OVERSHOOT := 260.0
+const OVERSHOOT := 160.0   # 过冲(码) —— 用户 2026-08-13 收短(原 260): 飞过头太远会让航线常从旁人头顶穿过
 ## 到落点多近算到达(码)
 const ARRIVE_R := 40.0
 ## 一段航程的兜底超时(秒)。★Dubins 载具有最小转弯半径 —— 落点若正好落进转弯圆内,
@@ -184,6 +184,12 @@ func _tick_drones(dt: float) -> void:
 			continue
 		d["leg_t"] = float(d["leg_t"]) + dt
 		var pos: Vector2 = d["pos"]
+		## 目标还活着 ⇒ 每帧按它【当前】位置重算落点(整段实时跟随); 死了/没有就沿用上次的。
+		var _tg = d.get("tgt", null)
+		if _tg is Dictionary and (_tg as Dictionary).get("alive", false):
+			d["tgt_pos"] = (_tg as Dictionary)["pos"]
+			d["dest"] = _clamp_arena(overshoot_dest(
+				d.get("leg_p0", pos) as Vector2, (_tg as Dictionary)["pos"] as Vector2))
 		var dest: Vector2 = d["dest"]
 		if pos.distance_to(dest) <= ARRIVE_R or float(d["leg_t"]) >= LEG_TIMEOUT:
 			_new_leg(d)
@@ -416,7 +422,15 @@ func _new_leg(d: Dictionary) -> void:
 		return
 	var t: Dictionary = cands[battle._battle_rng.randi() % cands.size()]
 	d["tgt_pos"] = t["pos"]
-	d["dest"] = _clamp_arena(overshoot_dest(d["pos"], t["pos"]))
+	## ★★整段【持续跟着目标】重算落点(用户 2026-08-13:「人家都往别的地方走了,
+	##   飞行物却飞到别的地方」)。原来只在起段那一刻快照一次目标位置, 中途目标走开
+	##   就一路飞向空地 —— 这也是"看起来在冲大师/蛋"的来源之一(航线从他们头顶穿过)。
+	##   ⚠ 存的是目标【单位字典的引用】; 比较一律 `is_same`, 绝不拿它当 key(CLAUDE.md §3.2)。
+	d["tgt"] = t
+	## ★过冲相对【起段位置】算, 不是相对当前位置 —— 相对当前算的话落点会随飞行一直往后退,
+	##   永远到不了、也就永远不换段。
+	d["leg_p0"] = Vector2(d["pos"])
+	d["dest"] = _clamp_arena(overshoot_dest(d["leg_p0"], t["pos"]))
 	d["legs"] = int(d.get("legs", 0)) + 1
 
 
