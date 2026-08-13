@@ -7,6 +7,11 @@ extends RefCounted
 ## 两形态都读这一档: 小形态虽 melee=false/射程400, 移速仍按近战档(见 ROLE_MELEE_EXEMPT)。
 const _TS := preload("res://scripts/gamedata/turtle_stats.gd")
 static var LAVA_SPD: float = float(_TS.STATS["lava"][1])
+## 变身砸地(用户 2026-08-13 削弱): 伤害 1.2 → 1.0 ATK · 灼烧 0.67 → 0.3 ATK 层。
+## ★灼烧用【本技专用】系数而不是全局 `_default_burn_stacks`(0.67) —— 那个凤凰等火系也在用,
+##   改全局会连带削掉别人(凤凰的涅槃早就用自己的 NIRVANA_BURN_COEF, 同一手法)。
+const SLAM_ATK_COEF := 1.0
+const SLAM_BURN_COEF := 0.3
 const VOLCANO_SPD_MULT := 1.2   # 火山形态相对提速(原 175/145≈1.21 的等效保留)
 
 var battle
@@ -582,8 +587,11 @@ func _lava_slam_impact(u: Dictionary, center: Vector2) -> void:   # 落地: 击�
 			o["vy"] = battle.LAVA_SLAM_KNOCK_VY
 			o["vx"] = dir.x * battle.KNOCK_PUSH * 0.7
 			o["vz"] = dir.y * battle.KNOCK_PUSH * 0.7
-		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 1.2, o, true), Color("#ff7a33"))
-		battle._damage._apply_dot_stacks(o, "burn", battle._default_burn_stacks(u), u)
+		## ★2026-08-13 用户削弱: 砸地伤害 1.2 → 1.0 ATK, 灼烧 0.67 → 0.3 ATK 层。
+		##   ★灼烧不再走全局 `_default_burn_stacks`(那是 0.67, 凤凰/别的火系也在用) ——
+		##   改成砸地【专用】系数, 就近声明在这里(同凤凰 NIRVANA_BURN_COEF 的做法)。
+		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, SLAM_ATK_COEF, o, true), Color("#ff7a33"))
+		battle._damage._apply_dot_stacks(o, "burn", maxi(1, roundi(float(u["atk"]) * SLAM_BURN_COEF)), u)
 		battle._damage._heal(u, (o["maxHp"] - o["hp"]) * 0.08)
 
 func _sk_lava_cast(u: Dictionary, tgt: Dictionary, set_id: String = "A") -> void:   # 熔岩龟·按选中技分派(A地裂/B岩浆涌动/C喷射)×形态变体
