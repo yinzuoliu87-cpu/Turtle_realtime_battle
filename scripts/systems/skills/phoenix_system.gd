@@ -5,6 +5,12 @@ extends RefCounted
 
 ## ★凤凰数值单一事实源(用户2026-07-28 削弱·整只 94.8% 全表第一)。文案在 data/pets.json。
 const SCALD_BURN_COEF := 0.5      # 烫伤: 灼烧层数 = ×ATK (1.0→0.6→0.5·用户2026-07-28)
+## 涅槃演出总时长(秒) —— 用户 2026-08-13:「复活需要改为有一个2.5秒的演出」。
+## 三拍: 0~0.6 灰烬定格 / 0.6~1.9 聚火升腾 / 1.9~2.5 破壳展翼。
+## ★结算(跳血条 + 全体灼烧 + 治疗削减)落在**展翼那一刻**, 不是死的瞬间。
+const NIRVANA_SHOW_SEC := 2.5
+const NIRVANA_ASH_SEC := 0.6      ## 第一拍: 灰烬定格
+const NIRVANA_GATHER_SEC := 1.3   ## 第二拍: 聚火升腾(0.6 → 1.9)
 const NIRVANA_BURN_COEF := 0.3    # 涅槃(首死复活): 对全体敌灼烧层数 = ×ATK (原走全局 _default_burn_stacks 0.67)
 const NIRVANA_HP_PCT := 0.25      # 涅槃: 复活生命 = ×最大生命 (0.30→0.25)
 const NIRVANA_ENH_HP_PCT := 0.60  # 强化涅槃: 复活生命 = ×最大生命 (1.00→0.60)
@@ -52,6 +58,15 @@ func _phoenix_flame_cone(u: Dictionary, tgt: Dictionary) -> void:
 	dir = Vector2(cos(aim), sin(aim))
 	var rng: float = battle._eff_range(u)
 	var half_cos: float = cos(deg_to_rad(battle.PHX_CONE_HALF_DEG))
+	## ★★这一跳里【离凤凰最近的那个】要走一次 on-hit(用户 2026-08-13:
+	##   「火焰每0.5跳的时候给最近的onhit, 比如触发竹叶装备」)。
+	##   由来: 喷火走的是范围结算, **一次都不碰 on-hit 钩子** ⇒ 竹弓/金弹/腐蚀这类
+	##   "命中时触发"的装备在凤凰身上等于完全不生效。
+	##   ★只给【一个】: 扇形里可能站着五个人, 每人都触发一次会让装备特效直接翻五倍。
+	##   ★节拍不变(仍是 0.5 秒一跳)、伤害数值也不变 —— 用户明确「那以0.5来吧」。
+	var nearest = null
+	var nearest_d: float = INF
+	var burned: int = 0
 	for e in battle._targeting._enemies_of(u):
 		if not e.get("alive", false):
 			continue
@@ -64,6 +79,19 @@ func _phoenix_flame_cone(u: Dictionary, tgt: Dictionary) -> void:
 		battle._damage._apply_damage_from(u, e, battle._resolve_dmg(u, mag, e, true), Color("#4dabf7"))
 		battle._damage._apply_dot_stacks(e, "burn", burn_stacks, u)
 		battle._vfx._flash(e, Color("#ff8a3a"))
+		burned += 1
+		if d < nearest_d:
+			nearest_d = d
+			nearest = e
+	## ★on-hit 放在伤害结算【之后】: 有些 on-hit 装备读的是"这一下打了多少",
+	##   放前面它读到的是上一跳的账。
+	## ★★`basic = true` —— 用户 2026-08-13 明确「我的意思就是触发普攻的 onhit」:
+	##   凤凰的喷火**就是它的普攻**(它没有另外的普攻动作), 所以这一跳要当成一次普攻命中,
+	##   连"每第 N 次普攻"那类计数器(090 的浪潮、077 的充能…)也一起推进。
+	##   我第一版写的 false(按技能命中算), 那样竹叶这类只认普攻的装备照样不触发。
+	if nearest is Dictionary and (nearest as Dictionary).get("alive", false):
+		battle._equip_sys._eq_on_hit(u, nearest, roundi(mag), true)
+		u["_phx_onhit_n"] = int(u.get("_phx_onhit_n", 0)) + 1   # 同步触发证据(门禁数它)
 
 # 单颗喷火苗: 嘴部喷出→沿锥角向外冲(火舌位移感), 软发光blob叠成顺滑火流, 黄白→橙→红透+边冲边长大
 # 单颗喷火苗: 嘴部喷出→沿锥角向外冲(火舌位移感), 软发光blob叠成顺滑火流, 黄白→橙→红透+边冲边长大
@@ -275,3 +303,57 @@ func _sk_phoenix_haste(u: Dictionary) -> void:                   # 凤凰龟·�
 	u["spd_move_mult"] = 1.5; u["spd_dbf_until"] = battle._t + 4.0     # +50%移速(复用spd_move_mult机制)
 	battle._aura_vfx("res://assets/sprites/vfx/fx-glow-ring.png", u, 84.0, Color(1.0, 0.55, 0.15, 0.6), 4.0)   # 烈焰加速火环(强化涅槃+50%攻速移速4秒)
 
+
+## 涅槃三拍演出。★不用 tween: 计时走 `_pending_shots`(sim 时钟) ——
+##   tween 在无头下推不动, 门禁就永远验不了"到点才施加"(CLAUDE.md §3.5)。
+##   这里只建节点与逐帧推进的句柄, 真正的"回来"由主场景那条 pending 完成。
+func nirvana_show(u: Dictionary, _pct: float) -> void:
+	if not is_instance_valid(battle._world):
+		return
+	var p: Vector2 = Vector2(u["pos"])
+	## ① 灰烬定格: 脚下一圈缓慢收拢的余烬环(暗红), 明确"它死了"
+	battle._vfx._syn.ground_ring(p, Color(0.55, 0.12, 0.05, 0.85), 46.0, true, NIRVANA_ASH_SEC)
+	## ② 聚火升腾: 火星向中心汇聚 + 一根上升火柱
+	for i in range(10):
+		battle._pending_shots.append({"delay": NIRVANA_ASH_SEC + 0.10 * float(i), "src": u,
+			"fn": func() -> void:
+				if u.get("alive", false):
+					_phoenix_flame_burst(Vector2(u["pos"]))})
+	## ③ 破壳展翼: 顶端炸开(横向展开的火焰)
+	battle._pending_shots.append({"delay": NIRVANA_SHOW_SEC - 0.12, "src": u, "fn": func() -> void:
+		if not u.get("alive", false):
+			return
+		var q: Vector2 = Vector2(u["pos"])
+		_phoenix_flame_burst(q)
+		for dx in [-70.0, 70.0]:
+			_phoenix_flame_burst(q + Vector2(dx, -18.0))   # 双翼: 左右各炸开一簇
+		battle._vfx._syn.ground_ring(q, Color(1.0, 0.72, 0.25, 0.9), 120.0, false, 0.5)})
+
+
+## 涅槃的【结算侧】: 留 1 血 + 清残留状态 + 演出期不可选中, 到点(2.5 秒)才真正回来。
+## ★整段从主场景 `_kill` 搬过来(2026-08-13): 它不在 `_sim_step` 调用链上,
+##   按 CLAUDE.md §5「不在 sim 链上的不进主文件」就该住这儿(主文件当时超预算 18 行)。
+func nirvana_begin(u: Dictionary, pct: float) -> void:
+	## ★★凤凰涅槃 = 一段 2.5 秒的演出(用户 2026-08-13)。原来是一帧完成:
+		##   血条瞬间跳满、灼烧同帧施加, 玩家眼里就是"死了又突然站着"。
+		##   现在三拍走完才真正回来 —— 结算落在**展翼那一刻**, 与画面同步
+		##   (同 070 冲击环 / 收殓金球那条纪律: 效果等演出到达)。
+		u["hp"] = 1.0                                  # 演出期留 1 血: 还没"回来"
+		u["airborne"] = false; u["vy"] = 0.0; u["vx"] = 0.0; u["vz"] = 0.0   # 半空死的别卡在天上
+		u["stun_until"] = 0.0                          # 带着眩晕复活 = 复活了也动不了
+		u["untargetable_until"] = battle._t + NIRVANA_SHOW_SEC   # 演出期不可选中/不被 AOE 二次打死
+		u["_phx_reborn_t0"] = battle._t
+		nirvana_show(u, pct)              # 三拍演出(灰烬 → 聚火 → 展翼)
+		battle._pending_shots.append({"delay": NIRVANA_SHOW_SEC, "src": u, "fn": func() -> void:
+			if not (u is Dictionary) or not u.get("alive", false):
+				return
+			u["hp"] = u["maxHp"] * pct                 # ★展翼那一刻才跳血条
+			battle._vfx._float_text(u["pos"] + Vector2(0, -64), "涅槃!", Color("#ffd93d"))
+			if u.get("_enh_rebirth", false):
+				u["base_atk"] = u["base_atk"] * 1.2; battle._recalc_stats(u)   # 强化涅槃: 永久+20%攻击
+			for o in battle._targeting._enemies_of(u):
+				battle._damage._apply_dot_stacks(o, "burn", maxi(1, roundi(float(u["atk"]) * NIRVANA_BURN_COEF)), u)   # ★凤凰专用系数, 不走全局 _default_burn_stacks(0.67) —— 那个熔岩龟也在用
+				o["heal_reduce_until"] = battle._t + battle.BUFF_SEC
+				o["heal_reduce_pct"] = maxf(float(o.get("heal_reduce_pct", 0.0)), 0.5)
+			u["_phx_reborn_done"] = int(u.get("_phx_reborn_done", 0)) + 1   # 同步证据(门禁数它)
+		})

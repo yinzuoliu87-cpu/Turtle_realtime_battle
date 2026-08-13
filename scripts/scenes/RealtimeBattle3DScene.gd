@@ -4710,18 +4710,16 @@ func _kill(u: Dictionary, killer = null) -> void:
 	if not bool(u.get("reborn_used", false)) and ((u["id"] == "angel" and u.get("_angel_revive", false)) or u["id"] == "phoenix" or u.get("_chest_revive", false)):
 		u["reborn_used"] = true
 		var pct: float = (PhoenixSystem.NIRVANA_ENH_HP_PCT if u.get("_enh_rebirth", false) else PhoenixSystem.NIRVANA_HP_PCT) if u["id"] == "phoenix" else 0.25   # 凤凰60/25%(用户2026-07-28 100/30→) · 天使圣光/宝箱凤凰雕像 25%
-		u["hp"] = u["maxHp"] * pct
 		u["dots"] = []
 		u["dot_stacks"] = {}
 		_audio_sys._sfx_simple("rebirth")              # §AUDIO: 首死复活音 (天使圣光/凤凰涅槃, 低频不节流)
-		_vfx._float_text(u["pos"] + Vector2(0, -64), "复活!", Color("#ffd93d"))
-		if u["id"] == "phoenix":                          # 涅槃: 对全体敌灼烧 + 治疗削减5秒
-			if u.get("_enh_rebirth", false):
-				u["base_atk"] = u["base_atk"] * 1.2; _recalc_stats(u)   # 强化涅槃: 永久+20%攻击
-			for o in _targeting._enemies_of(u):
-				_damage._apply_dot_stacks(o, "burn", maxi(1, roundi(float(u["atk"]) * PhoenixSystem.NIRVANA_BURN_COEF)), u)   # ★凤凰专用系数, 不走全局 _default_burn_stacks(0.67) —— 那个熔岩龟也在用
-				o["heal_reduce_until"] = _t + BUFF_SEC
-				o["heal_reduce_pct"] = maxf(float(o.get("heal_reduce_pct", 0.0)), 0.5)
+		if u["id"] != "phoenix":
+			u["hp"] = u["maxHp"] * pct                 # 天使/宝箱雕像: 保持原来的"一帧复活"
+			_vfx._float_text(u["pos"] + Vector2(0, -64), "复活!", Color("#ffd93d"))
+			return
+		## ★★凤凰涅槃 = 一段 2.5 秒的演出(用户 2026-08-13)。整段住在 PhoenixSystem ——
+		##   它不在 _sim_step 调用链上, 按 CLAUDE.md §5 就不该进主文件(实测加进来超预算 18 行)。
+		_phoenix_sys.nirvana_begin(u, pct)
 		return
 	u["alive"] = false
 	u["_dead_done"] = true                       # 标记死亡已处理(防重入·配合顶部 _dead_done 守卫)
