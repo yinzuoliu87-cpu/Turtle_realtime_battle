@@ -74,7 +74,9 @@ func _ready() -> void:
 	for e in eqs:
 		var eid: String = str((e as Dictionary).get("id", ""))
 		var c: int = clampi(int((e as Dictionary).get("cost", 1)), 1, 5)
-		var t: String = str(ty.get(eid, ""))
+		## ★值可能是数组(一件多羁绊, 2026-08-13): 费用分布验的是**品类**, 取首要类型。
+		var _tv = ty.get(eid, "")
+		var t: String = str(_tv[0]) if (_tv is Array and not (_tv as Array).is_empty()) else str(_tv)
 		by_cost[c - 1] += 1
 		if not by_tc.has(t):
 			by_tc[t] = [0, 0, 0, 0, 0]

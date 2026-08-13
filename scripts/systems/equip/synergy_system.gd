@@ -134,8 +134,8 @@ func _calc_tiers(side: String) -> Dictionary:
 			if rid == "" or seen.has(rid):
 				continue
 			seen[rid] = true
-			var tr: String = battle.Phase2Types.type_of(rid)
-			if tr != "":
+			## ★按【全部类型】数: 093 香火石同时算遗物与香火(用户 2026-08-13)
+			for tr in battle.Phase2Types.types_of(rid):
 				cnt[tr] = int(cnt.get(tr, 0)) + 1
 	for u in battle._units:
 		if not roster.is_empty():
@@ -151,8 +151,8 @@ func _calc_tiers(side: String) -> Dictionary:
 			if seen.has(eid):
 				continue          # ★同一件装备只算一次（不看星、不看带了几份）
 			seen[eid] = true
-			var t: String = battle.Phase2Types.type_of(eid)
-			if t != "":
+			## ★同上: 一件装备可能属于多条羁绊
+			for t in battle.Phase2Types.types_of(eid):
 				cnt[t] = int(cnt.get(t, 0)) + 1
 	var out: Dictionary = {}
 	for t in cnt:

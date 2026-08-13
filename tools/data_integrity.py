@@ -35,9 +35,9 @@ SHOP_EQ = [e for e in eq if int(e.get('shopAvailable', 0)) == 1]
 GRANT_EQ = [e for e in eq if int(e.get('shopAvailable', 0)) != 1]
 eqids = {e['id'] for e in SHOP_EQ}
 chk('p2eq-types 键 == 装备id', sorted(set(types)^eqids))
-TYPESET = {'剑','奇械','食物','盾','药水','枪','弓箭','法器','灵物','遗物'}
-chk('p2eq-types 的值恰好落在这 10 个类型里(学派已删·护符/饰品已解散)', sorted(set(types.values()) - TYPESET))
-chk('10 个类型每个都至少有 1 件装备(分母, 防打错字造出空类型)', sorted(TYPESET - set(types.values())))
+TYPESET = {'香火', '剑','奇械','食物','盾','药水','枪','弓箭','法器','灵物','遗物'}
+chk('p2eq-types 的值恰好落在这 10 个类型里(学派已删·护符/饰品已解散)', sorted({t for v in types.values() for t in (v if isinstance(v, list) else [v])} - TYPESET))
+chk('10 个类型每个都至少有 1 件装备(分母, 防打错字造出空类型)', sorted(TYPESET - {t for v in types.values() for t in (v if isinstance(v, list) else [v])}))
 ptypes = {str(p.get('passive',{}).get('type','')) for p in pets}
 chk('每只龟的被动都有图标', sorted(ptypes - set(picons)))
 chk('被动图标无孤儿键', sorted(set(picons) - ptypes))

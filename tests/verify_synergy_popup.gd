@@ -92,7 +92,8 @@ func _ready() -> void:
 		box_h[tname] = box.size.y
 		_clear(host)
 
-	_ok("① ★分母: 十个类型全都弹得出框(建出 %d 个)" % built, built == 10, "只建出 %d 个" % built)
+	## ★2026-08-13 新增第 11 条「香火」(093 = 遗物 + 香火)
+	_ok("① ★分母: 每个类型都弹得出框(建出 %d 个)" % built, built == Phase2Types.TYPES.size(), "只建出 %d / 应 %d 个" % [built, Phase2Types.TYPES.size()])
 	_ok("① ★分母: 逐条比对了 %d 档文案" % total_tiers, total_tiers >= 30, "只比到 %d 档" % total_tiers)
 	_ok("② ★每个类型的【每一档】都画得出来(档数写死成 3 时, 四个四档类型立刻红)",
 		miss_tier.is_empty(), "%d 条: %s" % [miss_tier.size(), str(miss_tier.slice(0, 6))])

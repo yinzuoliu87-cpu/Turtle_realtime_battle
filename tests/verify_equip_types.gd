@@ -86,8 +86,11 @@ func _ready() -> void:
 	var keys: Array = Phase2Types.TYPES.keys()
 	keys.sort()
 	var want_keys: Array = WANT_COUNT.keys()
+	want_keys.append("香火")
 	want_keys.sort()
-	_ok("① 类型集合恰好 10 个且逐个吻合", keys == want_keys,
+	## ★2026-08-13 新增第 11 条「香火」(用户:「093应该有两个羁绊: 遗物和香火」)。
+	##   它只有 1 档、没有逐档属性(收益全部来自刻痕), 所以不进 WANT_COUNT 的费用分布表。
+	_ok("① 类型集合 = 10 条常规 + 香火", keys == want_keys,
 		"实得 %d 个: %s" % [keys.size(), str(keys)])
 	for g in GONE:
 		_ok("① ★已解散的「%s」不在 TYPES 里(反向断言)" % g, not Phase2Types.TYPES.has(g))
@@ -98,10 +101,13 @@ func _ready() -> void:
 	# ── ② 每件恰好 1 个类型 · 全覆盖 · 无孤儿 ────────────────────
 	_ok("② ★分母: p2eq-types.json 有 %d 条映射" % WANT_ITEMS, map.size() == WANT_ITEMS,
 		"实得 %d 条" % map.size())
+	## ★值可以是【字符串或数组】(一件装备可属多条羁绊, 2026-08-13): 逐个类型验存在。
 	var orphan: Array = []       # 指向不存在类型的条目
 	for iid in map:
-		if not Phase2Types.TYPES.has(str(map[iid])):
-			orphan.append("%s→%s" % [iid, str(map[iid])])
+		var vs: Array = (map[iid] if map[iid] is Array else [map[iid]])
+		for one in vs:
+			if not Phase2Types.TYPES.has(str(one)):
+				orphan.append("%s→%s" % [iid, str(one)])
 	_ok("② ★没有指向已删类型的装备(9 件重新归类的判据)", orphan.is_empty(),
 		"孤儿 %d 件: %s" % [orphan.size(), str(orphan.slice(0, 6))])
 	# 装备表里的每件都要有类型（反过来: json 里不能有表里没有的 id）
@@ -125,9 +131,10 @@ func _ready() -> void:
 
 	# ── ③ 每类型件数 ────────────────────────────────────────────
 	var cnt: Dictionary = {}
+	## ★值可以是数组(一件多羁绊) ⇒ 逐个类型计数; 093 因此同时进遗物与香火两格。
 	for iid in map:
-		var t := str(map[iid])
-		cnt[t] = int(cnt.get(t, 0)) + 1
+		for one in (map[iid] if map[iid] is Array else [map[iid]]):
+			cnt[str(one)] = int(cnt.get(str(one), 0)) + 1
 	var bad_cnt: Array = []
 	for t in WANT_COUNT:
 		var got: int = int(cnt.get(t, 0))

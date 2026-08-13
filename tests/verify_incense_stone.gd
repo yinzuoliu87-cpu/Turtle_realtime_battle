@@ -222,10 +222,16 @@ func _t_inject() -> void:
 			carried = int(e.get("chg", -1))
 	_ok("④ ★★_inject_equipment 把充能带进战斗(3999)", carried == 3999, "实测 %d" % carried)
 
+	## ★★2026-08-13 充能改挂【羁绊/赛季池】(用户:「羁绊里有多少刻痕和充能都是重新激活
+	##   状态…就接着激活啊」)。on_spawn 从此读 `GameState.incense_charge`, 不再读装备实例的
+	##   `chg` —— 否则"卖掉再买"会把充能清零而刻痕还在, 同一条香火线两半各走各的。
+	##   ⚠ 攒充能的**来源没变**: 仍是【火石携带者自己打出的伤害】(不是全队)。
+	GameState.incense_charge = 3999
 	_s._equip_sys._incense.on_spawn(u, "p2eq_093", 0)
 	var stt: Dictionary = u["eq_state"].get("p2eq_093", {})
-	_ok("④ on_spawn 把它读进 eq_state", int(stt.get("chg", -1)) == 3999,
+	_ok("④ on_spawn 从羁绊池读进 eq_state(3999)", int(stt.get("chg", -1)) == 3999,
 		"实测 %d" % int(stt.get("chg", -1)))
+	GameState.incense_charge = 0   # ★池子是全局的, 用完立刻清 —— 不清会污染后面的用例
 	_ok("④ ★分母: 战斗里的 equips 是【副本】不是存档那个对象(改一个不该动另一个)",
 		not is_same(u["equips"][0], _gs.persistent_equipped["basic"][0]), "")
 

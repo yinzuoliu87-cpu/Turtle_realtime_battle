@@ -70,6 +70,10 @@ const EMP_LS := 0.10
 var battle
 ## 本场刻痕池(按 side)。left 与 GameState.incense_marks 同步, right 每场从 0 起(D3)。
 var _marks: Dictionary = {"left": 0, "right": 0}
+## 【共享充能条】按阵营一条(用户 2026-08-13:「对局内两个火石也是一起叠充能, 共享充能条」)。
+## ★这里【曾经】记在每个携带者自己的 `eq_state.chg` 里 ⇒ 两块石头 = 两条独立的条,
+##   与"共用同一条充能条与刻痕池"对不上。现在系统级一条, 各石头的图标条镜像它。
+var _chg: Dictionary = {"left": 0, "right": 0}
 ## 已经施加给某单位的本件贡献 —— 撤回时要按这个减, 不能凭空减(同 038 信号放大器 signal_amp 的做法)
 var _given: Array = []   # [{u, amp, dr}]
 
@@ -98,12 +102,12 @@ func on_spawn(u: Dictionary, eid: String, _si: int) -> void:
 	if side == "left" and GameState != null:
 		_marks["left"] = clampi(int(GameState.incense_marks), 0, MARK_CAP)
 	var stt: Dictionary = u["eq_state"].get(EID, {})
-	# 充能条: 从装备实例带进来的 `chg`(跨对局保留)。同龟多件共用一个槽, 见 D2。
-	var chg := 0
-	for e in u.get("equips", []):
-		if e is Dictionary and str((e as Dictionary).get("id", "")) == EID:
-			chg = maxi(chg, int((e as Dictionary).get("chg", 0)))
-	stt["chg"] = chg
+	## 充能条: 从【羁绊池】带进来(用户 2026-08-13:「羁绊里有多少刻痕和充能都是重新激活
+	## 状态…就接着激活啊」)。★这里【曾经】读装备实例的 `chg` ⇒ 卖掉再买充能归零、
+	## 刻痕却还在, 同一条香火线两半各走各的。现在与刻痕同一个池子。
+	if side == "left" and GameState != null:
+		_chg["left"] = clampi(int(GameState.incense_charge), 0, PER_MARK)
+	stt["chg"] = int(_chg.get(side, 0))   # eq_state 里那份只是**显示镜像**(装备格的充能条读它)
 	# ★伤害计数用现成的 `_st_dealt`(两条伤害路径都在记, battle_damage.gd:52/185/211) 做【增量】基准。
 	#   不另起一套计数: 另起一套就要在两条路各插一次, 那是 §3.3 的十次机会漏一次。
 	stt["dealt0"] = int(u.get("_st_dealt", 0))
@@ -133,7 +137,7 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 	if d > 0:
 		stt["dealt0"] = now
 		if int(_marks.get(side, 0)) < MARK_CAP:
-			stt["chg"] = int(stt.get("chg", 0)) + d
+			_chg[side] = int(_chg.get(side, 0)) + d      # ★灌进【共享】条: 两块石头一起攒
 			# ★★2026-08-09【一帧多道要合成一次】。实拍探针: 携带者一次斩击打出 2 万伤害
 			#   ⇒ 这个 while 在 **同一帧** 转了 5 圈(t=13.58 连打 marks=1,2,3,4,5)。
 			#   原来每圈都调一次 `_on_mark_scored` ⇒ 同一个点上叠 5 道一模一样的刻痕、
@@ -141,20 +145,21 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 			#   而 `_reapply` 也白跑 5 遍(每遍都要 revoke + 遍历全场重发)。
 			#   ⇒ 先把这一帧刻了几道数出来, 循环结束后**只结算/只演出一次**。
 			var gained := 0
-			while int(stt["chg"]) >= PER_MARK and int(_marks.get(side, 0)) < MARK_CAP:
-				stt["chg"] = int(stt["chg"]) - PER_MARK
+			while int(_chg.get(side, 0)) >= PER_MARK and int(_marks.get(side, 0)) < MARK_CAP:
+				_chg[side] = int(_chg.get(side, 0)) - PER_MARK
 				_marks[side] = int(_marks.get(side, 0)) + 1
 				gained += 1
 			# ★★钳一次: 上面这个 while 可能是【在循环中途撞到 300 上限】退出的,
 			#   那时 chg 还剩一大截(实测灌 500 道的量时是 816000)。不钳就会显示成
 			#   "充能条 816000/4000" —— 而且一旦上限以后被调高, 这堆存量会瞬间全变成刻痕。
 			if int(_marks.get(side, 0)) >= MARK_CAP:
-				stt["chg"] = PER_MARK
+				_chg[side] = PER_MARK
 			if gained > 0:
 				_on_mark_scored(u, side, gained)
 		else:
 			# ★进 tick 时就已经满 300: 不再消耗充能, 条冻结显示满(方案书 R4 的定论)
-			stt["chg"] = PER_MARK
+			_chg[side] = PER_MARK
+	stt["chg"] = int(_chg.get(side, 0))   # ★共享条 → 显示镜像(每块石头的图标条都显示同一个值)
 	# 刻痕数镜像进 eq_state: 头像下装备格的层数徽章(PANEL_COUNT)只会读 eq_state,
 	# 而刻痕本身是【按阵营】存的池子, 单位身上没有。无条件写(不只在刻痕时写),
 	# 否则登场那一刻的存量刻痕在格子里显示成 0。
@@ -284,7 +289,10 @@ func _persist_chg(u: Dictionary) -> void:
 	var stt = u.get("eq_state", {}).get(EID, null)
 	if not (stt is Dictionary):
 		return
-	var chg: int = clampi(int(stt.get("chg", 0)), 0, PER_MARK)
+	var chg: int = clampi(int(_chg.get(_side_of(u), 0)), 0, PER_MARK)
+	## ★写回【羁绊池】—— 与刻痕同一条线(2026-08-13)。下面写装备实例那份保留着,
+	##   是为了老存档里已经攒下的 `chg` 不至于凭空丢(读的时候已经不看它了)。
+	GameState.incense_charge = chg
 	var pet := str(u.get("id", ""))
 	var pe = GameState.get("persistent_equipped")
 	if pe is Dictionary and (pe as Dictionary).has(pet):

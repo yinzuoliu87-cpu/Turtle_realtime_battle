@@ -49,6 +49,11 @@ const TYPES := {
 	"弓箭": {"tiers": [3, 6, 9],     "stats": [{"crit": 0.09}, {"crit": 0.16}, {"crit": 0.22}]},
 	"法器": {"tiers": [2, 5, 8, 10], "stats": [{"magicPen": 4, "_maxEnergy": 4}, {"magicPen": 7, "_maxEnergy": 6}, {"magicPen": 11, "_maxEnergy": 8}, {"magicPen": 14, "_maxEnergy": 10}]},
 	"灵物": {"tiers": [2, 5, 8, 10], "stats": [{"dodgePct": 5}, {"dodgePct": 9}, {"dodgePct": 13}, {"dodgePct": 18}]},
+	## ★★香火(2026-08-13 用户:「093应该有两个羁绊: 遗物和香火」)。
+	##   **只有 1 档**(装备文案原文「羁绊只激活1档」) ⇒ 带 1 块和带 3 块一样。
+	##   它没有逐档属性: 收益全部来自**刻痕数**(每道给全队 +0.1% 增伤 / +0.05% 减伤),
+	##   由 incense_stone_system 按刻痕实时发放 —— 所以 stats 是空的, 不是漏写。
+	"香火": {"tiers": [1], "stats": [{}]},
 	"遗物": {"tiers": [2, 5, 8, 10], "stats": [{"_lifestealPct": 3}, {"_lifestealPct": 5}, {"_lifestealPct": 8}, {"_lifestealPct": 10}]},
 }
 
@@ -118,6 +123,11 @@ const TIER_DESCS := {
 		"每件灵物额外提供 +13% 闪避率 · 2 个触手, 拍击伤害 +30% · 闪避追击同上 · 【亡灵】继承 65% 攻击力与生命 · 亡魂阵亡后再循环 2 次",
 		"每件灵物额外提供 +18% 闪避率 · 2 个触手, 拍击伤害 +60% · 【闪避追击】上限提到每 2.5 秒 5 次(全队共用) · 【亡灵】继承 100% 攻击力与生命 · 亡魂阵亡后再循环 3 次",
 	],
+	## 香火(1 档) —— 刻痕机制的说明住在这里, 装备描述只讲它的主动(用户 2026-08-13:
+	##   「该装备的描述里应该只有主动效果, 香火羁绊里是描述详细的刻痕的」)。
+	"香火": [
+		"香火石的携带者每造成 4000 点伤害, 刻下一道香火刻痕(最多 300 道, 跨对局保留, 赛季重置) · 每道刻痕使香火石额外提供 0.2% 增伤与 0.1% 减伤给它的携带者, 并使全队获得 0.1% 增伤与 0.05% 减伤 · 多件香火石【共用同一条充能条与刻痕池】, 羁绊只激活 1 档",
+	],
 	"遗物": [
 		"每件遗物额外提供 +3% 生命偷取 · 【生死界】携带遗物者生命 >50% 时额外 +3% 攻击力; 生命 <50% 时其生命偷取【翻倍】",
 		"每件遗物额外提供 +5% 生命偷取 · 【生死界】>50% 时 +5% 攻击力(<50% 吸血翻倍) · 【远古之力】每 2.5 秒全队永久 +1% 增伤(本场累积·跨路保留, 上限 +15%) · 【龟蛋加固】本方龟蛋 +1200 最大生命值, 且龟蛋开始还击(40 攻击力, 射程 420)",
@@ -160,10 +170,30 @@ static func _ensure_loaded() -> void:
 	if parsed is Dictionary:
 		_type_of = parsed
 
-## 某装备 id 的类型 (剑/盾/奇械/...), 无则 ""。
+## 某装备 id 的【首要类型】(剑/盾/奇械/...), 无则 ""。
+## ★一件装备可以属于**多条**羁绊(093 香火石 = 遗物 + 香火, 用户 2026-08-13)。
+##   这个函数返回的是**首要类型**(表里数组的第一个) —— 全仓 52 处调用里有 48 处问的是
+##   "这件是不是枪/法器"这类**归属判断**, 语义就是首要类型, 所以签名不动。
+##   **数羁绊件数**的地方必须改用 `types_of()`(共 4 处: 战斗 _calc_tiers /
+##   GameState.synergy_rows / 背包 InvSynergy / 本文件 calc_active)。
 static func type_of(eid: String) -> String:
+	var ts: Array = types_of(eid)
+	return str(ts[0]) if not ts.is_empty() else ""
+
+
+## 某装备 id 的【全部类型】。单类型也返回单元素数组; 没登记返回空数组。
+static func types_of(eid: String) -> Array:
 	_ensure_loaded()
-	return str(_type_of.get(eid, ""))
+	var v = _type_of.get(eid, null)
+	if v is Array:
+		var out: Array = []
+		for x in v:
+			if str(x) != "":
+				out.append(str(x))
+		return out
+	if v == null or str(v) == "":
+		return []
+	return [str(v)]
 
 ## 统计某队(team = fighter 数组)的装备类型 → 已激活类型。
 ## 返回 [{type, count, tier(1-based, 0=未激活不返回), tiers}]，按 count 降序。
@@ -184,8 +214,9 @@ static func calc_active(team: Array) -> Array:
 			if seen.has(iid):
 				continue
 			seen[iid] = true
-			var t := type_of(iid)
-			if t != "":
+			## ★按【全部类型】计数: 093 香火石同时算遗物与香火(用户 2026-08-13)。
+			##   这是"数件数"的地方 ⇒ 必须 types_of, 不能 type_of(那只给首要类型)。
+			for t in types_of(iid):
 				counts[t] = int(counts.get(t, 0)) + 1
 	var active: Array = []
 	for t in counts:

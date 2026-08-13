@@ -559,6 +559,10 @@ var season_wins: int = 0                              # 本赛季胜场数 (实�
 ##   ⇒ 刻痕是全队共用的一个池(多件香火石各自攒充能、共投这一个池), 与某一件的存亡无关。
 ## ★上限 300(用户原文)。上限判定在写入侧(IncenseStoneSystem), 这里只负责存。
 var incense_marks: int = 0                            # 093 香火石: 本赛季已刻的香火刻痕数 (0~300)
+## 093 香火【充能条】(0~4000)。★与刻痕同一个池子: 整条香火挂在羁绊上, 装备只是开关
+##   (用户 2026-08-13:「羁绊里有多少刻痕和充能都是重新激活状态…就接着激活啊」)。
+##   ★这里【曾经】存在装备实例的 `chg` 字段里 ⇒ 卖掉再买充能归零、刻痕却还在, 两半各走各的。
+var incense_charge: int = 0
 var season_level: int = 1                             # 大轮等级 1-10 (每场+2经验累积, 可买经验; 驱动商店出货档 + 装备槽; 用户 2026-06-27)
 # ★装备私人池 (2026-08-03 批2, 方案书 §4.6·D6/D20~D23): {装备id: 剩余张数}, -1 = 已满3★冻结。
 #   在此之前商店是【无限张有放回】—— 想要几件同款就有几件, 3★ 只受钱和运气限制。
@@ -640,9 +644,9 @@ func synergy_rows() -> Array:
 		if iid == "" or seen.has(iid):
 			continue
 		seen[iid] = true
-		var t := str(_P2T.type_of(iid))
-		if t != "":
-			counts[t] = int(counts.get(t, 0)) + 1
+		## ★按【全部类型】数: 093 香火石同时算遗物与香火(用户 2026-08-13)
+		for t in _P2T.types_of(iid):
+			counts[str(t)] = int(counts.get(str(t), 0)) + 1
 	var rows: Array = []
 	for t2 in counts.keys():
 		if not _P2T.TYPES.has(t2):
@@ -1032,6 +1036,7 @@ func save() -> void:
 		"season_eggs_killed": season_eggs_killed,
 		"season_wins": season_wins,
 		"incense_marks": incense_marks,   # 093 香火石: 赛季级刻痕池
+		"incense_charge": incense_charge, # 093 香火石: 赛季级充能池(与刻痕同一条线)
 		"season_level": season_level,
 		"season_xp": season_xp,
 		"chest_treasure_value": chest_treasure_value,
@@ -1096,6 +1101,7 @@ func _load() -> void:
 	season_eggs_killed = int(data.get("season_eggs_killed", 0))
 	season_wins = int(data.get("season_wins", 0))
 	incense_marks = int(data.get("incense_marks", 0))   # 093 香火石: 赛季级刻痕池
+	incense_charge = int(data.get("incense_charge", 0))
 	season_level = int(data.get("season_level", 1))
 	# ★老存档没有这个键 → 空字典, 由 ensure_equip_pool() 在下次用到时补满(D12: 不做旧档兜底)。
 	equip_pool = data.get("equip_pool", {})
@@ -1153,6 +1159,7 @@ func reset_save() -> void:
 	season_eggs_killed = 0
 	season_wins = 0
 	incense_marks = 0                 # 093 香火石: 刻痕随大轮(赛季)清零 —— 用户「一大轮重置」
+	incense_charge = 0                # 同上: 充能与刻痕同一条线, 一起重置
 	season_level = 1
 	season_xp = 0
 	season_leaders = []
@@ -1488,6 +1495,7 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	season_eggs_killed = 0
 	season_wins = 0
 	incense_marks = 0                 # 093 香火石: 刻痕随大轮(赛季)清零 —— 用户「一大轮重置」
+	incense_charge = 0                # 同上: 充能与刻痕同一条线, 一起重置
 	season_level = 1
 	season_xp = 0
 	meta_deepsea_coins = 0
