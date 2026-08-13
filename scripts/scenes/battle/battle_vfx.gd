@@ -497,8 +497,16 @@ func _hit_spark(tgt, at_pos = null) -> void:
 	tgt["_spark_t"] = battle._t + 0.05
 	var pos2d: Vector2 = at_pos if at_pos != null else tgt.get("pos", Vector2.ZERO)
 	var h: float = float(tgt.get("height", 0.0)) + 0.6
+	## ★★2026-08-13 命中反馈重做: 原来是【完整圆环 + 发光球】—— 正好踩中两条禁区
+	##   (程序生成的圆 / 白球), 而且**两者都一出生就线性淡出**(淡出病)。
+	##   它挂在 `_impact()` 上, **每一次命中都走** ⇒ 路线图里挂着的两条"未查线索"
+	##   其实是同一个东西: 「假人身上那个大白圆环」= 这个 ring(077 自带 50% 暴击、
+	##   射速又快, 几乎每发都刷); 「小龟普攻里那颗灰白半透明球」= 下面那颗 spark。
+	##   按装备去查当然查不到主人 —— 它谁都不属于。
+	##   ⇒ 换形状语言: 圆环 → **四尖冲击星**(复用现成的 `_make_star_texture`, 眩晕圈同款,
+	##     不新造纹理); 发光球 → 同族的小星芒。形状一眼和场上所有圆形区分得开。
 	if battle._hitring_tex == null:
-		battle._hitring_tex = VfxTex._make_ring_texture(Color(1, 1, 1, 1))
+		battle._hitring_tex = VfxTex._make_star_texture()
 	var r = Sprite3D.new()
 	r.texture = battle._hitring_tex
 	r.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -508,13 +516,17 @@ func _hit_spark(tgt, at_pos = null) -> void:
 	r.pixel_size = 0.006
 	battle._world.add_child(r)
 	var tw = battle._reg_tween(); tw.set_parallel(true)
-	tw.tween_property(r, "pixel_size", 0.018, 0.14).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.tween_property(r, "modulate:a", 0.0, 0.14)
+	tw.tween_property(r, "pixel_size", 0.020, 0.14).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	## ★保亮到 65% 再淡: 一出生就线性淡出会被实拍读成"一团灰"(memory 里那条"淡出病",
+	##   一天踩过四次)。0.09 秒满亮 + 0.05 秒收。
+	tw.tween_property(r, "modulate:a", 0.0, 0.05).set_delay(0.09)
 	tw.chain().tween_callback(r.queue_free)
-	if battle._spark_tex == null:
-		battle._spark_tex = VfxTex._make_glow_texture()
+	## ★用【专用】纹理字段, 不跟 `_spark_tex` 共用 —— 主场景另一处会把它懒创建成发光球,
+	##   共用的话"谁先跑谁定", 命中星芒会随机变回白球(这种"看起来时好时坏"最难查)。
+	if battle._hitspark_tex == null:
+		battle._hitspark_tex = VfxTex._make_star_texture()
 	var sp = Sprite3D.new()
-	sp.texture = battle._spark_tex
+	sp.texture = battle._hitspark_tex
 	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	sp.shaded = false; sp.transparent = true
 	sp.modulate = Color(1.0, 1.0, 0.85, 0.9)
@@ -524,7 +536,7 @@ func _hit_spark(tgt, at_pos = null) -> void:
 	battle._world.add_child(sp)
 	var tw2 = battle._reg_tween(); tw2.set_parallel(true)
 	tw2.tween_property(sp, "scale", Vector3.ONE * 1.1, 0.07).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw2.tween_property(sp, "modulate:a", 0.0, 0.12)
+	tw2.tween_property(sp, "modulate:a", 0.0, 0.05).set_delay(0.07)   # 同上: 先满亮再收
 	tw2.chain().tween_callback(sp.queue_free)
 
 

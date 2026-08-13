@@ -7417,6 +7417,7 @@ func _spawn_phase_afterimage(spr) -> void:
 	tw.tween_callback(ai.queue_free)
 
 var _hitring_tex: ImageTexture = null
+var _hitspark_tex: ImageTexture = null   # ★命中星芒【专用】: 不与 _spark_tex 共用(那个另一处会懒创建成发光球, 谁先跑谁定)
 var _spark_tex: ImageTexture = null   # #6修: 命中辉光改 Image 真圆(原 GradientTexture2D 露方角)
 var _reticle_tex: ImageTexture = null     # 瞄准准星(圆环+四刻线) — 瞄准镜054一瞬瞄准闪专用
 var _bracket_tex: ImageTexture = null      # 目标锁定角标([ ]四角方括号) — 持续标记专用(靶向器055/飞镖056), 跟054准星区分
