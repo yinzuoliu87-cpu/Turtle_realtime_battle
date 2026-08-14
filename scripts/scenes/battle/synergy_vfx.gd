@@ -379,6 +379,72 @@ func rage_shockwave(src2: Vector2, tgt2: Vector2, fired: int) -> Dictionary:
 ## 每帧推进正在播的冲击波。接线在 `shield_synergy_system.tick()` 第一行。
 ## ★不走 tween: 无头 CI 下 tween 推进不稳(CLAUDE.md §3.5), 而且走 sim 的 delta
 ##   才能跟时停/换路同步 —— 同 `_tentacle_vfx.tick(dt)` 的做法。
+## 【处决演出】药水《斩首》与弓箭《处决》共用。三拍, 总长约 0.45 秒:
+##   ① 铡刀从目标头顶 ~90 码高处**砸下**(EXEC_FALL_SEC, 快)
+##   ② 落到目标身上那一刻: 一道**横向切割线**瞬间拉开 + 屏幕轻震
+##   ③ 目标轮廓**崩裂**成 EXEC_SHARDS 片带尖角的碎块, 向两侧下落
+## ★结算不在这里。这个函数【只画】—— 调用方在调它的同一帧就把目标 kill 掉,
+##   所以门禁验伤害不必等演出(CLAUDE.md §3.5: 数值测试不该依赖任何 tween 跑完)。
+## ★返回刀身节点(可为 null): 给门禁一个**可数的产物**, 不用我另插标记。
+func execution(pos2d: Vector2, col: Color) -> Node3D:
+	if not _has_world():
+		return null
+	## ① 铡刀: 刃朝下, 从高处落。BILLBOARD_DISABLED + 竖直站立 —— 它是一把"立着的刀",
+	##    不是贴地印记(2026-08-11 踩过 axis=AXIS_Y 让环立不起来那条, 这里反过来: 就是要竖着)。
+	var blade := Sprite3D.new()
+	blade.texture = VfxTex._make_cleaver_texture(COL_EXEC_BLADE)
+	blade.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	blade.shaded = false
+	blade.transparent = true
+	blade.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素感, 别糊
+	blade.pixel_size = 0.055
+	blade.position = battle._world_pos(pos2d, 2.6)
+	_adopt(blade, "exec_blade")
+	var bt = battle._reg_tween()
+	bt.tween_property(blade, "position", battle._world_pos(pos2d, 0.55), EXEC_FALL_SEC) 		.set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_IN)     # 加速下落 = 重量感
+	## ② 切割线 + 碎裂: 用 `_pending_shots`(sim 时钟)排在落刀那一刻, **不用 tween 回调** ——
+	##    tween 在无头下推不进, 用它排的话门禁永远数不到碎片(今天已在法器上踩过两次)。
+	battle._pending_shots.append({"delay": EXEC_FALL_SEC, "src": null, "fn": func() -> void:
+		if is_instance_valid(blade):
+			var ft = battle._reg_tween()
+			ft.tween_property(blade, "modulate:a", 0.0, 0.14)
+			ft.tween_callback(blade.queue_free)
+		battle._shake(battle.JUICE_SHAKE_HEAVY)
+		# 横向切割线: 一道细长白热带, 瞬间拉开再收掉
+		var cut := Sprite3D.new()
+		cut.texture = VfxTex._make_glow_texture()
+		cut.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		cut.shaded = false; cut.transparent = true
+		cut.modulate = Color(1, 1, 1, 0.95)
+		cut.pixel_size = 0.02
+		cut.scale = Vector3(0.4, 0.06, 1.0)
+		cut.position = battle._world_pos(pos2d, 0.55)
+		_adopt(cut, "exec_cut")
+		var ct = battle._reg_tween()
+		ct.tween_property(cut, "scale", Vector3(6.0, 0.05, 1.0), 0.09).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+		ct.tween_property(cut, "modulate:a", 0.0, 0.13)
+		ct.tween_callback(cut.queue_free)
+		# 轮廓崩裂: 带尖角的碎块向两侧下落
+		for i in range(EXEC_SHARDS):
+			var sh := Sprite3D.new()
+			sh.texture = VfxTex._make_shard_texture(col, i)
+			sh.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			sh.shaded = false; sh.transparent = true
+			sh.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			sh.pixel_size = 0.035
+			sh.position = battle._world_pos(pos2d, 0.7)
+			_adopt(sh, "exec_shard")
+			var ang: float = -PI * 0.15 - PI * 0.7 * (float(i) / float(maxi(1, EXEC_SHARDS - 1)))
+			var away: Vector2 = pos2d + Vector2(cos(ang), sin(ang)) * (46.0 + 26.0 * float(i % 3))
+			var st = battle._reg_tween()
+			st.set_parallel(true)
+			st.tween_property(sh, "position", battle._world_pos(away, 0.12), 0.34).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			st.tween_property(sh, "modulate:a", 0.0, 0.34)
+			st.chain().tween_callback(sh.queue_free)
+	})
+	return blade
+
+
 func tick(delta: float) -> void:
 	if _shocks.is_empty():
 		return
@@ -440,6 +506,12 @@ const COL_STAFF_PURE  := Color(1.0, 1.0, 0.925, 0.95)      # 净化 = 近白
 const COL_RELIC       := Color(0.831, 0.639, 0.290, 0.95)  # #d4a34a 遗物(古金)
 const COL_RELIC_LOW   := Color(0.878, 0.192, 0.192, 0.95)  # #e03131 生死界跌破 50%(绯红)
 const COL_FOOD        := Color(0.310, 0.851, 0.498, 0.95)  # #4fd97f 食物(翠绿)
+## 处决(药水【斩首】/ 弓箭【处决】共用一套)。刀身冷钢白、刃口白热、碎片随羁绊本色。
+## ★★两条羁绊同族: 都是"血线以下直接抹杀", 玩家看到的应当是**同一件事**。
+##   做一次覆盖两条 —— 不是省事, 是让"被处决"成为一个可辨认的语言。
+const COL_EXEC_BLADE  := Color(0.86, 0.90, 0.98, 1.0)
+const EXEC_FALL_SEC   := 0.16      # 铡刀从头顶砸下的时间(短促 = 果断)
+const EXEC_SHARDS     := 9         # 轮廓崩裂的碎片数
 const COL_POTION      := Color(0.902, 0.294, 0.816, 0.95)  # #e64bd0 药水(品红)
 const COL_BOW         := Color(0.659, 0.878, 0.388, 0.95)  # #a8e063 弓箭(酸绿)
 const COL_GADGET      := Color(0.498, 0.890, 1.0, 0.95)    # #7fe3ff 奇械(冰青)

@@ -91,6 +91,11 @@ func try_behead(src, tgt) -> bool:
 	var mx: float = float(tgt.get("maxHp", 0.0))
 	if mx <= 0.0 or float(tgt.get("hp", 0.0)) >= mx * BEHEAD_HP_PCT:
 		return false
+	## ★★处决演出(2026-08-14): 药水【斩首】与弓箭【处决】是同族 —— 都是"血线以下直接抹杀",
+	##   玩家看到的应当是**同一件事**, 所以共用 `SynergyVfx.execution`。
+	##   在此之前两条都只有一句 `-999999` 浮字, 与普通真伤大字长得一样, 读不出"这是处决"。
+	if battle._vfx != null and battle._vfx._syn != null:
+		battle._vfx._syn.execution(tgt["pos"], SynergyVfx.COL_POTION)
 	battle._vfx._float_text(tgt["pos"], "-999999",
 		battle._VC.color_of(battle._VC.cls_for("damage", "true", true)), true, "damage", "true")
 	tgt["hp"] = 0.0

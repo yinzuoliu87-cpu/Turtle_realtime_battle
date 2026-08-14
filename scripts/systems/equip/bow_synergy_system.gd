@@ -84,6 +84,11 @@ func on_hit(src, tgt) -> void:
 		return
 	if float(tgt["hp"]) >= float(tgt["maxHp"]) * line:
 		return
+	## ★★处决演出(2026-08-14): 药水【斩首】与弓箭【处决】是同族 —— 都是"血线以下直接抹杀",
+	##   玩家看到的应当是**同一件事**, 所以共用 `SynergyVfx.execution`。
+	##   在此之前两条都只有一句 `-999999` 浮字, 与普通真伤大字长得一样, 读不出"这是处决"。
+	if battle._vfx != null and battle._vfx._syn != null:
+		battle._vfx._syn.execution(tgt["pos"], SynergyVfx.COL_BOW)
 	# 处决表现照 004 暴君之牙的既有做法：固定跳 -999999 真伤大字（实际伤害 = 剩余血）
 	battle._vfx._float_text(tgt["pos"], "-999999",
 		battle._VC.color_of(battle._VC.cls_for("damage", "true", true)), true, "damage", "true")

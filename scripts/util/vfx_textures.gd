@@ -333,6 +333,80 @@ static func _make_vblade_texture(col: Color) -> ImageTexture:   # 竖剑刃(尖�
 				img.set_pixel(x, y, c)
 	return ImageTexture.create_from_image(img)
 
+## 处决铡刀(刃朝【下】): 上宽下窄的厚重刀身 + 底缘一条白热刃线 + 顶部握柄座。
+## ★★为什么专门画一张而不是拿 `_make_vblade_texture` 翻个面(用户 2026-08-03 铁律
+##   「素材不复用除非点名」): 剑刃是【细长对称】的兵器轮廓, 处决要的是**铡刀** ——
+##   刀背厚、刃口在下、整体压迫感朝下。翻转剑刃会得到一个"倒插的剑", 语义不对。
+## ★也不是"程序生成的圆敷衍"(用户 2026-08-06 的原话针对的是无含义圆环与白球):
+##   这里画的是有明确形状语义的刀身轮廓, 与 `_make_slash_sheet` 同一类做法。
+static func _make_cleaver_texture(col: Color) -> ImageTexture:
+	var W := 40; var H := 64
+	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var cx := float(W - 1) / 2.0
+	for y in range(H):
+		var fy := float(y) / float(H - 1)          # 0=顶(柄) 1=底(刃)
+		var halfw: float
+		if fy < 0.14:
+			halfw = 4.0                              # 柄座: 窄
+		elif fy < 0.24:
+			halfw = 4.0 + (fy - 0.14) / 0.10 * 12.0  # 肩: 张开
+		else:
+			halfw = 16.0 - (fy - 0.24) / 0.76 * 2.0  # 刀身: 略收, 保持厚重
+		for x in range(W):
+			var dx := absf(float(x) - cx)
+			if dx > halfw:
+				continue
+			var c: Color
+			if fy > 0.90:
+				c = Color(1, 1, 1)                   # 刃口: 白热
+				c.a = 1.0
+			else:
+				var shade := 0.55 + 0.45 * (1.0 - dx / maxf(1.0, halfw))   # 中间亮=金属高光
+				c = col * shade
+				c.a = clampf(0.80 + shade * 0.2, 0.0, 1.0)
+			img.set_pixel(x, y, c)
+	return ImageTexture.create_from_image(img)
+
+
+## 处决碎片: 不规则多边碎块(轮廓崩裂用)。seed_i 换形状, 六种循环。
+## ★★不用圆/方块: 用户明确反对无含义的圆。碎块要有【尖角】才读得出"碎裂"。
+static func _make_shard_texture(col: Color, seed_i: int) -> ImageTexture:
+	var S := 14
+	var img := Image.create(S, S, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var k := seed_i % 6
+	var cx := float(S - 1) / 2.0
+	var cy := float(S - 1) / 2.0
+	# 六个预置的不规则三角/四边形(顶点角度 + 半径), 保证每片形状不同且都有尖角
+	var angs := [[0.2, 2.1, 4.3], [0.9, 2.8, 5.0], [0.0, 1.6, 3.0, 4.6],
+				 [0.5, 2.4, 4.9], [1.2, 3.1, 5.4], [0.3, 1.9, 3.4, 5.2]]
+	var rads := [[6.5, 5.0, 6.0], [6.0, 6.5, 4.5], [5.5, 6.5, 5.0, 6.0],
+				 [6.5, 4.5, 6.0], [5.0, 6.5, 5.5], [6.0, 5.0, 6.5, 4.5]]
+	var va: Array = angs[k]
+	var vr: Array = rads[k]
+	var pts: Array = []
+	for i in range(va.size()):
+		pts.append(Vector2(cx + cos(float(va[i])) * float(vr[i]), cy + sin(float(va[i])) * float(vr[i])))
+	for y in range(S):
+		for x in range(S):
+			var p := Vector2(float(x), float(y))
+			var inside := true
+			for i in range(pts.size()):
+				var a2: Vector2 = pts[i]
+				var b2: Vector2 = pts[(i + 1) % pts.size()]
+				if (b2 - a2).cross(p - a2) < 0.0:
+					inside = false
+					break
+			if not inside:
+				continue
+			var d := p.distance_to(Vector2(cx, cy))
+			var c := col.lerp(Color(1, 1, 1), clampf(1.0 - d / 7.0, 0.0, 1.0) * 0.5)
+			c.a = 1.0
+			img.set_pixel(x, y, c)
+	return ImageTexture.create_from_image(img)
+
+
 static func _make_bladewall_texture(col: Color) -> ImageTexture:   # 阔剑007剑气墙: 宽幅浅新月(凸刃朝上=纹理+Y=行进方向·配wisp_dir朝向)·白蓝亮刃+向后短拖
 	var W := 132; var H := 80
 	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
