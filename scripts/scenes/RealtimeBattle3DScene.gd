@@ -2181,6 +2181,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 		_swordsman.tick(dt)   # 剑士追打队列(以 5 倍攻速依次打出)
 		_shield_syn.tick(dt)  # 圣光护盾装备: 每 3 秒 55 点护盾
 		_bow_syn.tick(dt)     # 弓箭顶档【腐蚀叠层】: 每 2.5 秒给全场敌人 +1 层
+		_crystal_sys.tick(dt) # 031 水晶球B 扫描推进(结算走 sim 时钟, 不走 tween)
 		_gun_syn.tick(dt)     # 枪羁绊: 第一座炮台轰击 / 第二座能量循环(每 2.5 秒)
 		_staff_syn.tick(dt)   # 法器: 法力自然增长 + 灵泉(2.5s) + 共鸣(7.5s)
 		_potion_syn.tick(dt)  # 药水: 每 2.5 秒重选猎物(敌方血量最高者)

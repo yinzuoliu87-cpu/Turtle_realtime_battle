@@ -174,6 +174,48 @@ func _crystal_detonate(pos2d: Vector2) -> void:
 		for k3 in range(6):
 			_crystal_shrapnel(dref))
 
+## 【031 水晶球B 的扫描登记表】—— 结算走 sim 时钟, 不走 tween。
+## ★★★由来(2026-08-14): 原来整段扫描挂在 `tween_method` 上, 而 **tween 在无头下推不动**
+##   ⇒ 门禁永远量不到它的伤害。我一度用"同窗隔离"想绕过去, 结果本地判绿、**CI 判红**
+##   (A/B 两个值在两次运行间互换 = 在量噪声)。绕不过去, 只能把结算搬出来。
+## ★缓动照抄 Godot 的 `TRANS_CUBIC + EASE_IN_OUT`, 保证观感与改前一致:
+##   t<0.5 → 4t³ ; 否则 → 1 - (-2t+2)³/2
+var _sweeps: Array = []
+const SWEEP_SEC := 1.5
+
+
+## 登记一次扫描。`_eq_crystal_sweep` 只管建节点与起始角, 推进交给这里。
+func sweep_begin(u: Dictionary, si: int, reach: float, state: Dictionary,
+		im: MeshInstance3D, imesh: ImmediateMesh, mat: StandardMaterial3D, start_a: float) -> void:
+	_sweeps.append({"u": u, "si": si, "reach": reach, "state": state,
+		"im": im, "imesh": imesh, "mat": mat, "a0": start_a, "el": 0.0})
+
+
+func tick(delta: float) -> void:
+	for i in range(_sweeps.size() - 1, -1, -1):
+		var sw: Dictionary = _sweeps[i]
+		var im2 = sw["im"]
+		if not is_instance_valid(im2):
+			_sweeps.remove_at(i)
+			continue
+		sw["el"] = float(sw["el"]) + delta
+		var t: float = clampf(float(sw["el"]) / SWEEP_SEC, 0.0, 1.0)
+		## Godot TRANS_CUBIC / EASE_IN_OUT 的原式 —— 不近似, 保证观感不变
+		var k: float = 4.0 * t * t * t if t < 0.5 else 1.0 - pow(-2.0 * t + 2.0, 3.0) / 2.0
+		_crystal_sweep_step(float(sw["a0"]) + TAU * k, sw["u"], int(sw["si"]),
+			float(sw["reach"]), sw["state"], im2, sw["imesh"], sw["mat"])
+		if t >= 1.0:
+			_sweeps.remove_at(i)
+			im2.queue_free()
+
+
+func clear_all() -> void:
+	for sw in _sweeps:
+		if is_instance_valid(sw["im"]):
+			(sw["im"] as Node).queue_free()
+	_sweeps.clear()
+
+
 func _crystal_sweep_step(ang: float, u: Dictionary, si: int, reach: float, state: Dictionary, im: MeshInstance3D, imesh: ImmediateMesh, mat: StandardMaterial3D) -> void:
 	if not is_instance_valid(im): return
 	var center: Vector2 = u["pos"]   # 跟随携带者当前位置(非施法点定死)

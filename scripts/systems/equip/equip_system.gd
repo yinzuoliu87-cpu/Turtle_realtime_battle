@@ -221,10 +221,11 @@ func _eq_crystal_sweep(u: Dictionary, si: int) -> void:
 	var start_a: float = randf() * TAU
 	var state: Dictionary = {"prev": start_a}
 	battle._crystal_sys._crystal_spark(center, 1.1)
-	var tw = battle._reg_tween()
-	# 先慢后快再慢(ease-in-out): 匀速被否, 甩动有加速度
-	tw.tween_method(battle._crystal_sys._crystal_sweep_step.bind(u, si, reach, state, im, imesh, mat), start_a, start_a + TAU, 1.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	tw.tween_callback(im.queue_free)
+	## ★结算走 sim 时钟(2026-08-14): 原来这里是
+	##   `tween_method(..., 1.5).set_trans(CUBIC).set_ease(EASE_IN_OUT)` ——
+	##   **tween 在无头下推不动**, 门禁永远量不到这件的伤害(CI 上还因此翻车过一次)。
+	##   缓动曲线在 `CrystalSystem.tick` 里照抄原式, 观感不变。
+	battle._crystal_sys.sweep_begin(u, si, reach, state, im, imesh, mat, start_a)
 
 # 032: 登场召唤亡灵骷髅 (双抗20000近乎免疫, 存活15s自灭, 死亡200码内%最大生命真伤)
 func _eq_summon_turret(u: Dictionary, si: int) -> void:   # 穿甲遗弹058(重做): 登场召唤不可移动的炮台

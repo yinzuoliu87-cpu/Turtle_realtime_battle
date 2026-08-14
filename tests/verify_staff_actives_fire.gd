@@ -25,7 +25,10 @@ const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")
 ##   (同一场战斗两组都带 031, 只一组灌满法力 ⇒ 差值就是主动; 反向验证打瘸后归零)。
 ##   这里保留空名单 + 断言, 是为了【名单一旦回涨就红】—— 谁再把某件的伤害埋回 tween,
 ##   这条会逼他回来看。空名单不是"没这回事", 是"这条缺口已经关上了"。
-const TWEEN_BURIED := ["p2eq_031"]
+## ★★2026-08-14 清空: 031 的结算已从 tween 搬到 `CrystalSystem.tick`(sim 时钟),
+##   由 `verify_crystal_sweep_031` 用直接判据验(只推 sim 时钟就能打出 1100~1400 伤害)。
+##   空名单 + 断言保留: 谁再把某件的伤害埋回 tween, 这条就红并逼他回来看。
+const TWEEN_BURIED := []
 
 var _n := 0
 var _fail := 0

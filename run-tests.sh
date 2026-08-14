@@ -56,6 +56,7 @@ frames_for () {
     verify_staff_active_isolated) echo 10000 ;;
     # 089 符纸要等满 15 秒【真实帧】才到期(它的 el 跟真实帧走, 不跟 sim 时钟)
     verify_talisman_089) echo 8000 ;;
+    verify_crystal_sweep_031) echo 2000 ;;
     # 触手节奏: 建战斗场景 + 走完 2 秒出土 + 20 次强制重建网格并量几何(同步断言, 不等演出)
     verify_tentacle_rhythm) echo 3000 ;;
     # 转移阵地: 建战斗场景 + 造携带者走真实档位链路 + 喂完钻地/破土动画

@@ -33,7 +33,10 @@ const HARD_IDS := ["p2eq_023", "p2eq_029", "p2eq_090"]
 ##     那是两回事, 我下结论下早了。裕度只有 0.14 就该警觉。
 ##   根因: 031 的伤害由 `tween_method` 连续扫角驱动, **无头下 tween 推不动**
 ##   ⇒ 最初把它登记进 `TWEEN_BURIED` 的判断才是对的。真要验它只能先把结算从 tween 里抽出来。
-const UNRESOLVED := ["p2eq_031"]
+## ★031 不走本条的 A/B 判据 —— 实测三次 0.979/0.840、0.840/0.840、1.118/1.257 不同向,
+##   这个量级(~1)是噪声不是扫描伤害。它改由 verify_crystal_sweep_031 用【直接判据】验
+##   (静音战场里除了它没别的能造成伤害 ⇒ 敌人掉多少血就是它打的, 裕度极大)。
+const UNRESOLVED := []
 
 var _n := 0
 var _fail := 0
@@ -98,7 +101,7 @@ func _ready() -> void:
 	var c: Vector2 = s.ARENA.position + s.ARENA.size * 0.5
 
 	_ok("★分母: 本条解掉 %d 件, 另有 %d 件隔离失败(显式登记)" % [HARD_IDS.size(), UNRESOLVED.size()],
-		HARD_IDS.size() == 3 and UNRESOLVED == ["p2eq_031"],
+		HARD_IDS.size() == 3 and UNRESOLVED.is_empty(),
 		"解掉 %s / 未解决 %s" % [str(HARD_IDS), str(UNRESOLVED)])
 
 	var still: Array = []
@@ -137,7 +140,7 @@ func _ready() -> void:
 		still.is_empty(), "仍隔离不了: %s" % str(still))
 	## ★把未解决的焊成断言: 谁给 089 补了专属判据就该回来把它移出去, 这条会红并逼他来改。
 	_ok("★★已知缺口: %d 件(031 tween 驱动, 无头推不动 —— 要先把结算从 tween 抽出来)" % UNRESOLVED.size(),
-		UNRESOLVED == ["p2eq_031"], "待解决: %s" % str(UNRESOLVED))
+		UNRESOLVED.is_empty(), "待解决: %s" % str(UNRESOLVED))
 
 	s._units.clear()
 	s.set_process(false)
