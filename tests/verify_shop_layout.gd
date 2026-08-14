@@ -357,11 +357,13 @@ func _ready() -> void:
 		if r.position.y >= 96.0 or r.size.x <= 0.0 or r.size.y <= 0.0:
 			continue   # 只看头部行
 		var key := ""
-		if r.position.x >= 740.0 and r.position.x < 880.0:
+		## ★2026-08-15 标题删掉后三组铺开到中间空位: 币 340..530 / 等级 661..901 / 买经验 1032..1252。
+		##   区间跟着搬(x 下界 740→300) —— 不搬的话三组一个都收不到, 第⑩条变成"分母为 0"的空检查。
+		if r.position.x >= 300.0 and r.position.x < 600.0:
 			key = "币"
-		elif r.position.x >= 880.0 and r.position.x < 1030.0:
+		elif r.position.x >= 600.0 and r.position.x < 1000.0:
 			key = "等级"
-		elif r.position.x >= 1030.0:
+		elif r.position.x >= 1000.0:
 			key = "买经验"
 		if key == "":
 			continue
@@ -416,37 +418,28 @@ func _ready() -> void:
 	print("  按钮数 = %d" % nbtn)
 	_chk("⑤ ★分母: 按钮数 > 0 (0 个 = 第②条是空检查)", nbtn > 0)
 
-	# ── ⑫ 羁绊信息(2026-08-11 用户: 商店信息栏要显示羁绊) ──
-	#   口径 = GameState.team_p2_equips_for_synergy(只数已装上·id 去重), 与背包/战斗同一份。
-	#   合成队伍: 3 件弓箭(039/049/054) → 弓箭阈值 [3,6,9] ⇒ ×3 档1。
-	gs.season_leaders = ["synergy_probe_t1"]
-	gs.persistent_equipped["synergy_probe_t1"] = [
-		{"id": "p2eq_039", "star": 1}, {"id": "p2eq_049", "star": 1},
-		{"id": "p2eq_054", "star": 1}, {"id": "p2eq_039", "star": 2}]   # 第4件是重复 id: 去重后仍 ×3
-	var s1: Dictionary = sc._synergy_info("p2eq_073")
-	_chk("⑫ 弓箭 ×3(重复 id 去重) · 档1", int(s1.get("count", -1)) == 3 and int(s1.get("tier", -1)) == 1)
-	_chk("⑫ 未拥有的 073: 买入并装上 → ×4(3+1, 不升档)",
-		bool(s1.get("owned", true)) == false and int(s1.get("count2", -1)) == 4 and int(s1.get("tier2", -1)) == 1)
-	var s2: Dictionary = sc._synergy_info("p2eq_039")
-	_chk("⑫ 已拥有同款 039: 去重 ⇒ 买入不涨(×3 不变)",
-		bool(s2.get("owned", false)) == true and int(s2.get("count2", -1)) == 3)
-	# 凑到 5 件再看一件新的 → ×6 正好跨阈值 ⇒ 升档提示必须出现
-	gs.persistent_equipped["synergy_probe_t1"].append({"id": "p2eq_055", "star": 1})
-	gs.persistent_equipped["synergy_probe_t1"].append({"id": "p2eq_056", "star": 1})
-	var s3: Dictionary = sc._synergy_info("p2eq_073")
-	## ★2026-08-14: 羁绊不再往描述框里塞三行 bbcode(与右上角小签重复 + 白吃 ~90px 描述高度),
-	##   改成右上角小签自己两行说完 ⇒ 判据跟着搬到 `_synergy_two_lines`。
-	var bb: String = sc._synergy_two_lines(s3)
-	_chk("⑫ ×5 → 买入装上 ×6 = 升到档2(跨阈值)", int(s3.get("tier2", -1)) == 2)
-	_chk("⑫ 小签两行含阈值 3/6/9 与升档提示", bb.contains("阈值 3/6/9") and bb.contains("→档2"))
-	_chk("⑫ ★小签正好两行(挤成一行会被 clip_text 切掉后半)", bb.split("
-").size() == 2)
-	var s4: Dictionary = sc._synergy_info("no_such_equip")
-	_chk("⑫ ★分母: 无类型 id → 空(面板不显示羁绊行)", s4.is_empty())
-	## ★描述框里【不许】再出现羁绊文案 —— 那正是用户说的"一堆乱七八糟的东西"里的一条。
-	_chk("⑫ ★描述框只放装备描述(不再拼羁绊 bbcode)",
-		src_shop.find("desc.text = _rich_desc(") >= 0 and src_shop.find("_synergy_bbcode") < 0)
-	gs.persistent_equipped.erase("synergy_probe_t1")   # 探针队伍清场, 不污染后续用例
+	# ── ⑫ 详情面板【不许】再有羁绊小签(用户 2026-08-15) ──
+	#   原文:「不要小签啊, 搞让人反感 ai 味的东西干嘛」/「还差几件生效给我去掉啊」。
+	#   ⇒ 小签整块删掉, 连同 `_synergy_two_lines` / `_synergy_info` 两个函数
+	#     （留着不调 = 死函数, 照样能被"断言它存在"的门禁假保护住)。
+	#   羁绊信息的去处: 页面底部本来就有 `_build_synergy_bar()`(2026-08-12 用户点名要的),
+	#   逐档效果在图鉴·羁绊页 —— 不需要在详情面板再教一遍。
+	_chk("⑫ ★羁绊小签的两个函数已删净(不是留着不调)",
+		src_shop.find("func _synergy_two_lines") < 0
+		and src_shop.find("func _synergy_info") < 0
+		and src_shop.find("_synergy_bbcode") < 0)
+	_chk("⑫ ★没有带感叹号的推销话术(「买这件就生效！」那类)",
+		src_shop.find("就生效！") < 0 and src_shop.find("就更强！") < 0)
+	_chk("⑫ ★也没有「还差 N 件」的复述(进度本身已经说完了)",
+		src_shop.find("还差 %d 件") < 0 and src_shop.find("再装 %d 件") < 0)
+	## ★但【类型】不能跟着一起没了 —— 它是买之前要知道的事实。改挂在价格行后面。
+	_chk("⑫ ★类型仍然写得出来(挂在价格行: 「1 深海币 · 🏹弓箭」)",
+		src_shop.find('cl.text = "%d 深海币%s"') >= 0
+		## ★只认羁绊名本身 —— `display_name` 会返回「弓箭·神射手」, 而"神射手"是花名, 游戏里没有。
+		and src_shop.find("Phase2Types.emoji_of(_tp2), _tp2") >= 0
+		and src_shop.find("display_name(_tp2)") < 0)
+	## ★分母: 羁绊总览条还在(它才是这一页说羁绊的地方)
+	_chk("⑫ ★分母: 页面底部的羁绊总览条还在", src_shop.find("func _build_synergy_bar") >= 0)
 
 	_done(sc)
 

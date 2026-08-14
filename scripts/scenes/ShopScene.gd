@@ -222,13 +222,9 @@ func _rebuild() -> void:
 	var bg := ColorRect.new(); bg.color = Color("#0a1622")
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(bg)
 
-	# ── 头部 y 0–96 (原 0–130, 压缩 34px 腾给卡区; 币与等级并到同一行) ──
-	var title := Label.new(); title.text = "🛒 深海商店"
-	title.add_theme_font_size_override("font_size", 30); title.add_theme_color_override("font_color", Color("#ffd93d"))
-	# 框宽 320→200: 文字居中所以视觉不动, 但 320 宽的框右边止于 800、把币图标(起 760)整个圈进去了,
-	# 右上角三组因此挤成一坨。收窄后止于 740, 给右侧留出干净的 40px 间隙。
-	title.position = Vector2(W / 2.0 - 100, 16); title.size = Vector2(200, 40)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; add_child(title)
+	# ── 头部 y 0–96 ──
+	## ★标题「🛒 深海商店」删掉(用户 2026-08-15)。玩家是自己点进来的, 不需要一块牌子告诉他站在哪;
+	##   这 200px 让给右上角三组去排版 —— 它们原来因为标题框占着中间, 被挤在 756..1252 的窄带里。
 
 	var back := Button.new(); back.text = "← 返回"; back.add_theme_font_size_override("font_size", 20)
 	back.position = Vector2(28, 20); back.size = Vector2(126, 52)
@@ -238,49 +234,73 @@ func _rebuild() -> void:
 	inv.position = Vector2(166, 20); inv.size = Vector2(126, 52)
 	inv.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Inventory.tscn")); _skin_button(inv); add_child(inv)
 
-	# ★图标在左、数字在右, 两者【不能重叠】——
-	#   第一版我把图标放在 W-424, 而数字标签右对齐正好收在 W-390 → 数字整个被图标盖住,
-	#   截图上只剩一枚币、看不到余额。门禁④当时只查"按钮被压", 压的是 Label 就漏了(已补⑦)。
-	# ★右上三组【统一竖直中心 = 48】(用户 2026-07-29「右上角需要改」)。
-	#   原先币 41 / 等级 41 / 买经验 48, 三个中心各走各的, 看着就是没对齐。
-	#   横向排布: 币 756..874 | 等级 894..1016 | 买经验 1036..1252 (右边距 28), 组间隙 20。
-	_coin_icon(self, Vector2(756, 32), 32.0)
+	## ── 头部三组重排(用户 2026-08-15「右上角咋做的, 中间给你这么空位你在干啥啊」)──
+	##
+	## 删掉标题后中间空出一大片, 而三组还挤在右侧 500px 里 —— 白空着。
+	## 现在把它们**均匀铺开在 340..1252**(返回/背包止于 292, 右边距 28), 组间距等宽 131:
+	##   币 392..560  |  等级 711..881  |  买经验 1032..1252 —— 组间距等宽 151
+	## ★三组竖直中心统一 = 48(门禁⑩量的就是这条基准线)。
+	const HDR_CY := 48.0
+
+	# 组1: 深海币 —— 图标 40 + 间隙 12 + 数字 30 号。原来图标 756/数字 794 只隔 6px 挤成一坨。
+	_coin_icon(self, Vector2(392, HDR_CY - 20.0), 40.0)
 	var coin := Label.new(); coin.text = "%d" % int(GameState.meta_deepsea_coins)
-	coin.add_theme_font_size_override("font_size", 24); coin.add_theme_color_override("font_color", Color("#5fd0e0"))
-	coin.position = Vector2(794, 31); coin.size = Vector2(80, 34)
+	coin.add_theme_font_size_override("font_size", 30); coin.add_theme_color_override("font_color", Color("#5fd0e0"))
+	## ★高度按【字体最小高度】给(30 号字实测 44), 不是我想给多少给多少 ——
+	##   给 38 的话 Label 自己撑到 44, 并集矩形底沿多出 6px, 组中心偏到 50.5 ⇒ 门禁⑩红。
+	coin.position = Vector2(444, HDR_CY - 22.0); coin.size = Vector2(116, 44)
 	coin.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	coin.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; add_child(coin)
 	_tut_coin = coin   # 教学高亮"币"锚点
 
-	# ★等级从一行小字改成【文字 + 进度条】: 原来只有 "Lv3 XP 6/10" 一行 17 号字,
-	#   离下一级还差多少全靠玩家自己算; 买经验按钮就在旁边, 没有进度反馈等于让人盲买。
-	var _lx := 894.0
-	var _lw := 122.0
+	# 组2: 等级 + 经验进度条。宽度从 122 → 240(空间铺开了就别再挤), 条高 8 → 12。
 	var _need: int = maxi(1, P2.xp_to_next(int(GameState.season_level)))
 	var _have: int = int(GameState.season_xp)
+	## ★组宽 240 → 170: 铺开不等于把一组【拉长】。240 宽时「Lv1」与「经验 0/2」
+	##   中间空着 180px 的死档, 进度条也变成一条长空线 —— 实拍一眼就是散的。
+	var _lx := 711.0
+	var _lw := 170.0
 	var lv := Label.new(); lv.text = "Lv%d" % int(GameState.season_level)
-	lv.add_theme_font_size_override("font_size", 18); lv.add_theme_color_override("font_color", Color("#ffd93d"))
-	lv.position = Vector2(_lx, 32); lv.size = Vector2(46, 20)
-	lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT; add_child(lv)
-
-	var xpn := Label.new(); xpn.text = "%d/%d" % [_have, _need]
+	lv.add_theme_font_size_override("font_size", 22); lv.add_theme_color_override("font_color", Color("#ffd93d"))
+	lv.position = Vector2(_lx, HDR_CY - 22.0); lv.size = Vector2(60, 24)
+	lv.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; add_child(lv)
+	var xpn := Label.new(); xpn.text = "经验 %d/%d" % [_have, _need]
 	xpn.add_theme_font_size_override("font_size", 15); xpn.add_theme_color_override("font_color", Color("#9fb4c8"))
-	xpn.position = Vector2(_lx + 46.0, 34); xpn.size = Vector2(_lw - 46.0, 18)
-	xpn.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT; add_child(xpn)
-
+	xpn.position = Vector2(_lx + 60.0, HDR_CY - 21.0); xpn.size = Vector2(_lw - 60.0, 22)
+	xpn.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	xpn.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; add_child(xpn)
 	var xbg := ColorRect.new(); xbg.color = Color("#16293a")
-	xbg.position = Vector2(_lx, 56); xbg.size = Vector2(_lw, 8); add_child(xbg)
+	xbg.position = Vector2(_lx, HDR_CY + 8.0); xbg.size = Vector2(_lw, 12); add_child(xbg)
 	var xfl := ColorRect.new(); xfl.color = Color("#ffd93d")
-	xfl.position = Vector2(_lx, 56)
-	xfl.size = Vector2(_lw * clampf(float(_have) / float(_need), 0.0, 1.0), 8); add_child(xfl)
+	xfl.position = Vector2(_lx, HDR_CY + 8.0)
+	xfl.size = Vector2(_lw * clampf(float(_have) / float(_need), 0.0, 1.0), 12); add_child(xfl)
 
-	# 买经验: 200×36 字号15 → 216×60 字号18 (用户2026-07-28「买经验按钮很小」·移动端触摸目标 ≥44px)
-	var bxp := Button.new(); bxp.text = "买经验 4 → +4XP"
-	bxp.add_theme_font_size_override("font_size", 18)
-	bxp.position = Vector2(W - 244, 18); bxp.size = Vector2(216, 60)
-	_coin_button_icon(bxp, 20)
+	# 组3: 买经验。两行 —— 上行【拿到什么】, 下行【花多少】。
+	## ★原文案「买经验 4 → +4XP」把两个 4 摆在一行还夹着英文 XP, 一眼分不清哪个是花的哪个是拿的。
+	## ★两行不是 Button 自带的 —— 用两个 Label 当子节点(mouse_filter=IGNORE 不吃点击),
+	##   这样字号可以一大一小, 且两行都在按钮框内 ⇒ 三组的并集矩形仍然共心(门禁⑩量这个)。
+	## ★数值从 P2 常量取, 不写死 —— 手抄的副本必然落后。
+	var _xp_gain: int = int(P2.BUY_XP_AMOUNT)
+	var _xp_cost: int = int(P2.BUY_XP_COST)
+	var bxp := Button.new()
+	bxp.size = Vector2(220, 60); bxp.position = Vector2(1032.0, HDR_CY - 30.0)
 	bxp.pressed.connect(func(): if GameState.buy_season_xp(): _rebuild())
 	_skin_button(bxp); add_child(bxp)
+	## ★用户 2026-08-15 指定:「购买4xp, 上面写4深海币图标就好了啊」。
+	##   上行 = 花多少(数字 + 币图标), 下行 = 买到什么。照做。
+	var bl2 := Label.new(); bl2.text = "%d" % _xp_cost
+	bl2.add_theme_font_size_override("font_size", 15)
+	bl2.add_theme_color_override("font_color", Color("#9fc4d4"))
+	bl2.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	bl2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bl2.position = Vector2(0, 8); bl2.size = Vector2(100, 18); bxp.add_child(bl2)
+	_coin_icon(bxp, Vector2(104, 8), 17.0)
+	var bl1 := Label.new(); bl1.text = "购买 %dxp" % _xp_gain
+	bl1.add_theme_font_size_override("font_size", 20)
+	bl1.add_theme_color_override("font_color", Color("#ffe9a8"))
+	bl1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	bl1.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bl1.position = Vector2(0, 30); bl1.size = Vector2(220, 25); bxp.add_child(bl1)
 
 	_build_odds_row()   # 出货概率行 y 96–124 (原在 116, 现紧贴卡区上方)
 
@@ -769,31 +789,20 @@ func _build_detail_panel() -> void:
 	box.add_child(nm)
 	# 直接写清单位: 「2 深海币」比「费用 2」更明确 —— 费用和售价在本作恒等(PRICE_MULT=1),
 	# 与其用一个抽象档位名, 不如告诉玩家【要付多少、付的是什么】。(用户 2026-07-29)
-	var cl := Label.new(); cl.text = "%d 深海币" % _price(edef)
+	## ★类型直接跟在价格后面写一行平白的事实 ——「1 深海币 · 🏹弓箭」。
+	##   原来右上角挂着一个两行小签(×N / 阈值 / 一句带感叹号的推销话术)。用户 2026-08-15:
+	##   「不要小签啊, 搞让人反感 ai 味的东西干嘛」——整块删掉, 连带那句带感叹号的推销话术。
+	##   羁绊阈值与逐档效果在【图鉴·羁绊页】写全了, 商店不需要再教一遍。
+	var _tp2: String = Phase2Types.type_of(str(edef.get("id", "")))
+	## ★只写羁绊名本身(「弓箭」), 不用 `display_name`——那个返回「弓箭·神射手」,
+	##   而"神射手"是 TYPE_NAME 里的花名, 游戏里根本没有这个东西(用户 2026-08-15 当场指出)。
+	var _tps: String = ("  ·  %s%s" % [Phase2Types.emoji_of(_tp2), _tp2]) if _tp2 != "" else ""
+	var cl := Label.new(); cl.text = "%d 深海币%s" % [_price(edef), _tps]
 	cl.add_theme_font_size_override("font_size", 17)
 	cl.add_theme_color_override("font_color", Color("#9fb6c9"))
-	cl.position = Vector2(112, 70); cl.size = Vector2(160, 22)
+	cl.clip_text = true
+	cl.position = Vector2(112, 70); cl.size = Vector2(PANEL_W - 148, 22)
 	box.add_child(cl)
-
-	# ★羁绊小签(2026-08-11 用户: 「商店页面的信息栏优化, 要去显示羁绊」):
-	#   费用行右侧一眼可见【类型 ×现有件数 · 档位】; 完整阈值与"装上后升不升档"在描述区首行。
-	## ★2026-08-14 用户「描述那里有一堆乱七八糟的东西」——**羁绊在同一屏说了两遍**:
-	##   这个小签写「🏹弓箭 ×0 · 未激活」, 描述框首行又写「羁绊·🏹弓箭 阈值3/6/9 · 队伍现有×0(未激活)」。
-	##   而且首行那块被硬折成两行、「×0(未激活)」孤悬在行首, 还白吃掉描述框 ~90px 的高度。
-	##   ⇒ 合并到这里两行说完(阈值/现状/买入后), 描述框里只留【装备本身的描述】。
-	var syn: Dictionary = _synergy_info(str(edef.get("id", "")))
-	if not syn.is_empty():
-		var sg := Label.new()
-		sg.text = _synergy_two_lines(syn)
-		sg.add_theme_font_size_override("font_size", 13)
-		sg.add_theme_color_override("font_color",
-			Color("#ffd93d") if int(syn["tier"]) > 0 else Color("#7a92a8"))
-		sg.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		## ★Label 会被字体最小宽度撑破给定 size(实测 15 号字撑到 201px, 右沿压进面板框边)
-		##   ⇒ 定宽 + clip_text 双保险; 门禁⑧量的是真实节点矩形, 压框直接红。
-		sg.clip_text = true
-		sg.position = Vector2(196, 62); sg.size = Vector2(PANEL_W - 34 - 196, 38)
-		box.add_child(sg)
 
 	_panel_sep(box, 104)
 
@@ -876,24 +885,6 @@ func _build_detail_panel() -> void:
 	box.add_child(buy)
 
 
-
-
-## 羁绊小签的两行文案。★描述框里那三行原来说的是同样的事, 这里一次说完。
-## 行1 = 类型 · 现状; 行2 = 阈值 · 买入装上会怎样。
-func _synergy_two_lines(syn: Dictionary) -> String:
-	var parts: PackedStringArray = []
-	for t in (syn["tiers"] as Array):
-		parts.append(str(int(t)))
-	var l1 := "%s%s ×%d · %s" % [str(syn["emoji"]), str(syn["name"]), int(syn["count"]),
-		("档%d" % int(syn["tier"])) if int(syn["tier"]) > 0 else "未激活"]
-	var l2 := ""
-	if bool(syn["owned"]):
-		l2 = "阈值 %s · 已有同款(不涨数)" % "/".join(parts)
-	elif int(syn["tier2"]) > int(syn["tier"]):
-		l2 = "阈值 %s · 买入装上 →档%d" % ["/".join(parts), int(syn["tier2"])]
-	else:
-		l2 = "阈值 %s · 买入装上 →×%d" % ["/".join(parts), int(syn["count2"])]
-	return l1 + "\n" + l2
 
 
 ## 描述放不下就【先缩字号再说滚动】(20→18→16→15)。
@@ -1003,44 +994,7 @@ func _panel_sep(parent: Control, y: float) -> Control:
 	return ln
 
 
-## 这件装备的羁绊信息(2026-08-11 用户: 「商店页面的信息栏优化, 要去显示羁绊」)。
-## 返回 {} = 无类型(不显示)。count/tier 是【队伍已装上】的现状(替补席不算 · id 去重),
-## 口径 = GameState.team_p2_equips_for_synergy + Phase2Types.calc_active(背包/战斗同一份)。
-func _synergy_info(eid: String) -> Dictionary:
-	var typ: String = Phase2Types.type_of(eid)
-	if typ == "" or not Phase2Types.TYPES.has(typ):
-		return {}
-	var seen: Dictionary = {}
-	var n := 0
-	for it in GameState.team_p2_equips_for_synergy():
-		if not (it is Dictionary):
-			continue
-		var iid := str((it as Dictionary).get("id", ""))
-		if iid == "" or seen.has(iid):
-			continue
-		seen[iid] = true
-		if Phase2Types.type_of(iid) == typ:
-			n += 1
-	var tiers: Array = (Phase2Types.TYPES[typ] as Dictionary).get("tiers", [])
-	var tier := 0
-	for i in range(tiers.size()):
-		if n >= int(tiers[i]):
-			tier = i + 1
-	# 装上后(去重: 已拥有同款 id 时 +0)
-	var owned: bool = seen.has(eid)
-	var n2: int = n if owned else n + 1
-	var tier2 := 0
-	for i in range(tiers.size()):
-		if n2 >= int(tiers[i]):
-			tier2 = i + 1
-	## ★名字用【纯类型名】(枪/盾/法器…), 不用 display_name ——
-	##   那个是"盾·守护""奇械·魔抗"这类带后缀的花名(2026-08-12 用户:「而不是什么守护那种词,
-	##   就是枪, 盾什么的」)。玩家凑羁绊时脑子里想的就是"我还差几件盾"。
-	return {"type": typ, "name": typ, "emoji": Phase2Types.emoji_of(typ),
-		"tiers": tiers, "count": n, "tier": tier, "owned": owned, "count2": n2, "tier2": tier2}
-
-
-## 完整描述。★实测: 59 件装备的 effectDesc1 【全是纯文本】—— 无 HTML 标签、无方括号
+## 完整描述。★实测: 95 件装备的 effectDesc1 【全是纯文本】—— 无 HTML 标签、无方括号
 ## (龟技能才有 <span class="val-atk"> 那套)。所以不需要 html_to_bbcode(空转), 也不怕 BBCode 吃掉 [xxx]。
 ## 保留 bbcode_enabled 只为将来装备文案要上色时不用改结构。
 func _rich_desc(edef: Dictionary, star: int = 1) -> String:
@@ -1050,7 +1004,7 @@ func _rich_desc(edef: Dictionary, star: int = 1) -> String:
 	# ★按星级高亮(用户 2026-07-29「上面的效果能按照描述规则渲染吗」)。
 	#   装备描述里的 `1/1.2/1.5` 是【一/二/三星三档值】。商店卖 ★1, 原来三档同色平铺,
 	#   玩家看不出哪个数才是自己买到的。highlight_star 把当前星那档高亮、另两档压暗。
-	#   ★背包页(InventoryScene:507/575)一直在用这个函数, 商店漏了 —— 同一份文案两套渲染。
+	#   ★背包页(InventoryScene)一直在用这个函数, 商店漏了 —— 同一份文案两套渲染。
 	return SkillText.highlight_star(raw, star)
 
 
