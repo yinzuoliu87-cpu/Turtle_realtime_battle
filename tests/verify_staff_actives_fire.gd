@@ -21,7 +21,7 @@ const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")
 ## 本门禁只能验到"法力条走到满并清零", 验不到效果本身。
 ## ★登记在这里而不是注释里, 是为了让【名单变化】能把门禁弄红(见文件末那条断言)。
 ## ★根治办法是把结算从演出里抽出来(同 3.5 里海盗钩索那次): 留给后续。
-const TWEEN_BURIED := ["p2eq_023", "p2eq_026", "p2eq_030", "p2eq_031"]
+const TWEEN_BURIED := ["p2eq_031"]
 
 var _n := 0
 var _fail := 0
@@ -46,8 +46,11 @@ func _snap(s, u: Dictionary, es: Array) -> Array:
 		for k in (e.get("dot_stacks", {}) as Dictionary).keys():
 			dots += int((e["dot_stacks"] as Dictionary)[k])
 		stun += float(e.get("stun_until", 0.0))
-	return [hp, dots, stun, float(u.get("shield", 0.0)) + float(u.get("hp", 0.0)),
-		s._projectiles.size(), s._pending_shots.size()]
+	## ★★判据【只看单位身上的实际状态】, 不看 `_projectiles` / `_pending_shots` 的队列长度。
+	##   2026-08-14: 我一度把这两个队列长度也算进"世界变了" —— 而等真实帧之后场景自己的
+	##   `_process` 会让队列自然涨落 ⇒ 023 把主动改成 `pass` 反向验证**照样绿**。
+	##   队列长度是"有东西在飞", 不是"打到了谁"。判据要落在被打的人身上。
+	return [hp, dots, stun, float(u.get("shield", 0.0)) + float(u.get("hp", 0.0))]
 
 
 func _changed(a: Array, b: Array) -> bool:
@@ -117,13 +120,33 @@ func _ready() -> void:
 		s._equip_sys._stats._eq_apply_all_stats()
 
 		var full: float = s._staff_syn.mana_full_for(u, iid, 3)
+		## ★★【对照组】先不灌法力, 同样推 90 帧, 量一遍"什么都不做时世界会自己变多少"。
+		##   2026-08-14 血泪: 等真实帧之后场景自己的 `_process` 会让状态漂移
+		##   ⇒ 023 把主动改成 `pass` 反向验证**照样绿**(两次都判"变了")。
+		##   有了对照组, 判据就变成"灌满法力带来的变化 ≠ 什么都不做时的变化" —— 这才是隔离。
+		##   ⚠ 对照期必须【冻住法力】: 自然增长是每 2.5 秒 +MANA_PER_TICK, 90 帧里
+		##     它自己就能把条攒满并触发(实测 6 件在对照期 `条余 0.0` = 真的放了)。
+		##     用产品自己的防连放闸 `_staff_busy` —— `add_mana` 开头就 return, 不另造机关。
+		u["_staff_busy"] = true
+		var ctl0: Array = _snap(s, u, es)
+		for _cf in range(90):
+			s._sim_step(1.0 / 60.0, false, false)
+			if _cf % 3 == 0:
+				await get_tree().process_frame
+		var ctl_moved: bool = _changed(ctl0, _snap(s, u, es))
+		u["_staff_busy"] = false
 		var before: Array = _snap(s, u, es)
 		## ★走【真入口】add_mana —— 不直接调 fire_equip_effect。
 		##   直接调等于绕过"法力条满才触发"这条链, 而那条链正是这次要验的东西。
 		s._staff_syn.add_mana(u, full + 1.0)
-		# 有些法器把伤害排进 _pending_shots(效果等演出到达), 推几帧让它落地
+		## 推进时间让延后结算落地。★★必须【等真实帧】而不是纯同步调 `_sim_step`:
+		##   023 灼热火珊瑚走的是 `await battle._wait_sim(0.4)` + `await process_frame`
+		##   的**协程**, 同步循环里真实帧一帧都没过 ⇒ 协程永远不恢复 ⇒ 我一度把它误判成
+		##   "效果埋在 tween 里量不到"。分类错了, 判据自然也就错了。
 		for _f in range(90):
 			s._sim_step(1.0 / 60.0, false, false)
+			if _f % 3 == 0:
+				await get_tree().process_frame
 		var after: Array = _snap(s, u, es)
 		var mana_left: float = float((u["eq_state"].get(iid, {}) as Dictionary).get("mana", -1.0))
 		var fired: bool = mana_left >= 0.0 and mana_left < full
@@ -137,9 +160,18 @@ func _ready() -> void:
 			_ok("%s: 法力满→条清零(效果埋在 tween 里, 无头量不到 —— 已知缺口)" % iid, fired,
 				"条余 %.1f/%.1f" % [mana_left, full])
 			continue
+		## ★对照组也在变 ⇒ 这一件身上有【持续性被动】(023 灼烧场 / 029 冰封 /
+		##   088·089·090 的常驻物), 宽判据分不开"主动放了"与"被动一直在跑"。
+		##   ⇒ 只能验到"条走到满并清零"(= `_fire` 真被调到)。**诚实登记成缺口**,
+		##     不许静默当通过 —— 023 一度就是这么假绿的(主动改成 pass 照样绿)。
+		##   ★根治要给这几件各写一条**专属判据**(量它主动特有的产物), 留作后续。
+		if ctl_moved:
+			_ok("%s: 法力满→条清零(★有持续被动, 宽判据隔离不了主动 —— 已知缺口)" % iid, fired,
+				"条余 %.1f/%.1f" % [mana_left, full])
+			continue
 		if not (fired and did):
 			dead.append("%s(条清了=%s 世界变了=%s)" % [iid, str(fired), str(did)])
-		_ok("%s: 法力满→条清零 且【世界真的变了】" % iid, fired and did,
+		_ok("%s: 法力满→条清零 且【世界真的变了】(对照组不动)" % iid, fired and did,
 			"条余 %.1f/%.1f · 变化=%s" % [mana_left, full, str(did)])
 
 	_ok("★★可同步验的法器【全部】都能被法力条触发出实际效果(死件 %d 件)" % dead.size(),

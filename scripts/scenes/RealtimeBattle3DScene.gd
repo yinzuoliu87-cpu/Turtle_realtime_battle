@@ -8306,9 +8306,9 @@ func _chain_windup(u: Dictionary, si: int) -> void:
 	tw.tween_property(orb, "modulate:a", 1.0, 0.36)
 	tw.chain().tween_callback(orb.queue_free)
 	_skill_ring(u["pos"], Color(0.4, 0.8, 1.0, 0.5), 60.0)
-	var tf := _reg_tween()
-	tf.tween_interval(0.4)
-	tf.tween_callback(_equip_sys._eq_chain_lightning.bind(u, si))
+	## ★结算走 sim 时钟, 不走 tween(CLAUDE.md §3.5): tween 在无头下推不进 ⇒ 门禁量不到闪电。
+	##   视觉那条 tween 保留 —— 演出可以用 tween, 结算不行。
+	_pending_shots.append({"delay": 0.4, "src": u, "fn": _equip_sys._eq_chain_lightning.bind(u, si)})
 
 # 锯齿闪电弧: PixelLab chain-bolt 贴图, 定向拉伸连 a→b(面朝相机), 闪一下淡出
 func _chain_arc(a2d: Vector2, b2d: Vector2) -> void:

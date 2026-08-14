@@ -190,13 +190,17 @@ func _eq_crystal_line(u: Dictionary, si: int) -> void:   # 迷你水晶球A030: 
 	if t4 == null: return
 	var dir2: Vector2 = (t4["pos"] - u["pos"]).normalized()
 	if dir2 == Vector2.ZERO: dir2 = Vector2.RIGHT
+	## ★★2026-08-14 从 tween 改走 `_pending_shots`(sim 时钟)。
+	##   原来用 `_reg_tween().tween_interval().tween_callback()` 排这 2/3 段 ——
+	##   **tween 在无头下推不进**(CLAUDE.md §3.5), 所以门禁永远量不到这件装备的效果,
+	##   `verify_staff_actives_fire` 只能把它登记进 TWEEN_BURIED 当已知缺口。
+	##   `_pending_shots` 走的是战斗时钟, 无头下照常到点 ⇒ 判据可以落在真实伤害上。
+	##   ★节拍与数值一个都没动: 仍是每段 0.2 秒、仍调同一个 `_crystal_line_seg`。
+	## ★2026-07-27 那条旧注释仍然成立: `_crystal_line_seg` 住在 CrystalSystem(2026-07-25 抽出),
+	##   写成 `battle._crystal_line_seg` 会每次触发刷 SCRIPT ERROR 且光束完全不结算。
 	for _seg in range([2, 2, 3][si]):
-		var twc = battle._reg_tween()
-		twc.tween_interval(float(_seg) * 0.2)   # 施加水晶间隔0.2s(用户)
-		# ★2026-07-27 修断线: _crystal_line_seg 住在 CrystalSystem(2026-07-25 抽出), 不在主场景上。
-		#   原来写 battle._crystal_line_seg → 每次触发刷 SCRIPT ERROR 且光束【完全不结算】,
-		#   等于迷你水晶球A030 这件装备的主效果一直是死的。自动玩家跑 3 把就撞出 17 条。
-		twc.tween_callback(battle._crystal_sys._crystal_line_seg.bind(u, si, dir2))
+		battle._pending_shots.append({"delay": float(_seg) * 0.2, "src": u, "fn":
+			battle._crystal_sys._crystal_line_seg.bind(u, si, dir2)})
 
 # 031: 水晶射线360度扫一圈(1.5s), 射线扫到敌人即结算魔法伤+叠层
 func _eq_crystal_sweep(u: Dictionary, si: int) -> void:
