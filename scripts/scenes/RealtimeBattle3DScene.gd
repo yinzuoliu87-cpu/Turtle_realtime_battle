@@ -2512,7 +2512,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 					var _hf: float = maxf(1.0, float(u.get("haste_mult", 1.0))) if _t < float(u.get("haste_until", 0.0)) else 1.0   # 临时攻速buff(祝福等)
 					if u["id"] == "hunter" and tgt != null and tgt.get("alive", false) and float(tgt.get("hp", 0.0)) < float(tgt.get("maxHp", 1.0)) * 0.5:
 						_hf *= 1.5   # 猎人残血追猎(封板): 目标<50%生命 → +50%攻速
-					u["atk_cd"] = (_gambler_sys._gambler_multi_cd(u) if (u["id"] == "gambler" and _fired) else u["atk_interval"]) / maxf(0.1, _hf * (float(u.get("spd_aspd_mult", 1.0)) if _t < float(u.get("spd_dbf_until", 0.0)) else 1.0) * float(u.get("aspd_perm", 1.0)) * _anchor_aspd(u) * float(u.get("_turret_aspd_mult", 1.0)))   # ×永久攻速(贝母021等,本场) ×沉锚充能期+100%攻速 ×058在炮台400码内的攻速加成
+					u["atk_cd"] = (_gambler_sys._gambler_multi_cd(u) if (u["id"] == "gambler" and _fired) else u["atk_interval"]) / maxf(0.1, aspd_mult(u) * (_hf / maxf(1.0, float(u.get("haste_mult", 1.0))) if _t < float(u.get("haste_until", 0.0)) else _hf))   # aspd_mult=单一事实源(见其注释); 这里额外乘的是猎人残血追猎那 1.5(它只在本分支算)
 					u["state"] = "move"   # LoL忠实: 伤害点后立即自由(可动/被分离=orb walk), 无rooted后摇; 后摇=视觉lunge回收+squash不锁移动; 下次普攻等atk_cd(=1/攻速)
 				else:
 					var stype := p.substr(2)
@@ -2768,15 +2768,6 @@ func _separation(u: Dictionary) -> Vector2:
 # ============================================================================
 #  普攻 (复用 2D BASIC_ATK 表 + 伤害公式; 远程发 3D 投射物) + 复杂普攻特判 + on-hit 被动
 # ============================================================================
-func _anchor_aspd(u: Dictionary) -> float:   # 不沉之锚017: 持有沉锚充能期间普攻+100%攻速(用户2026-07-19)
-	var ast: Dictionary = u.get("eq_state", {}).get("p2eq_017", {})
-	if ast.is_empty():
-		return 1.0
-	if int(ast.get("anchor_charges", 0)) > 0:
-		return 2.0
-	# 刚用掉最后一点充能的这一发也算"持有充能"(避免末发掉速)
-	return 2.0 if absf(_t - float(u.get("anchor_swing_t", -99.0))) < 0.001 else 1.0
-
 func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	_anticipate(u)                  # Phase4: 普攻预备(缩)+挥出(伸) 前后摇形变
 	_vfx._play_action(u, "attack")       # 有动作帧的龟(basic/ghost/ninja)播普攻动画, 其余靠 juice 形变
@@ -8942,6 +8933,11 @@ func _add_body_text(parent: VBoxContainer, text: String, col: Color = Color("#c2
 	return l   # ★返回 Label 供每帧重渲染技能伤害数值
 
 # 攻速等小数: 去多余 0 (0.850000 → 0.85)
+## 攻速倍率与沉锚加速已搬去 `battle_damage`(纯函数·不持每帧状态·CLAUDE.md §5)。
+func aspd_mult(u: Dictionary) -> float: return _damage.aspd_mult(u)
+func _anchor_aspd(u: Dictionary) -> float: return _damage.anchor_aspd(u)
+
+
 func _fmt_num(v: float) -> String:
 	var s := "%.2f" % v
 	while s.ends_with("0"):

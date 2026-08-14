@@ -632,3 +632,21 @@ func _dot_after_resist(u: Dictionary, dmg: float, magic: bool, src = null) -> in
 	return maxi(1, int(round(out)))
 
 # 层数 DoT 每秒结算 (1:1 dot.gd tick). 固定顺序 burn→poison→bleed; 出伤后层数衰减, ≤0 移除.
+
+
+## 【攻速总倍率·单一事实源】真实冷却 = atk_interval / aspd_mult(u); 面板显示 = aspd_mult(u) / atk_interval。
+## 由来与反向验证见 tests/verify_aspd_panel_live.gd(面板曾只读 atk_interval ⇒ 加成全看不见)。
+func aspd_mult(u: Dictionary) -> float:
+	var hf: float = maxf(1.0, float(u.get("haste_mult", 1.0))) if battle._t < float(u.get("haste_until", 0.0)) else 1.0
+	var dbf: float = float(u.get("spd_aspd_mult", 1.0)) if battle._t < float(u.get("spd_dbf_until", 0.0)) else 1.0
+	return maxf(0.1, hf * dbf * float(u.get("aspd_perm", 1.0)) * anchor_aspd(u) * float(u.get("_turret_aspd_mult", 1.0)))
+
+
+func anchor_aspd(u: Dictionary) -> float:   # 不沉之锚017: 持有沉锚充能期间普攻+100%攻速(用户2026-07-19)
+	var ast: Dictionary = u.get("eq_state", {}).get("p2eq_017", {})
+	if ast.is_empty():
+		return 1.0
+	if int(ast.get("anchor_charges", 0)) > 0:
+		return 2.0
+	# 刚用掉最后一点充能的这一发也算"持有充能"(避免末发掉速)
+	return 2.0 if absf(battle._t - float(u.get("anchor_swing_t", -99.0))) < 0.001 else 1.0
