@@ -131,6 +131,87 @@ func _ready() -> void:
 		int(GameState.incense_charge) != gs_c0 or int(inc._chg.get("left", 0)) == gs_c0,
 		"存档充能 %d(局内 %d) · 起始 %d" % [int(GameState.incense_charge), int(inc._chg.get("left", 0)), gs_c0])
 
+	# ── ⑧ 全队共享: 【没带石头】的队友也要吃到羁绊那一半 ─────────────────────
+	##   ★设计: 每道刻痕 → 携带者 +0.2%/+0.1%(装备) + 全队 +0.1%/+0.05%(羁绊)。
+	##     所以一个**空手队友**必须有增伤; 没有就等于羁绊那一半根本没发出去。
+	##   ★这条是用户 2026-08-14 点名要我自己想到的粒度 —— 我原来只测了携带者。
+	var mate: Dictionary = s._spawn._make_unit("basic", "left", c + Vector2(-260, 0))
+	mate["equips"] = []
+	mate["eq_state"] = {}
+	s._units.append(mate)
+	s._equip_sys._stats._eq_apply_all_stats()
+	s._sim_step(1.0 / 60.0, false, false)
+	var mk_now: int = inc.marks_of("left")
+	var mate_amp: float = float(mate.get("damage_amp", 0.0))
+	var carry_amp: float = float(u.get("damage_amp", 0.0))
+	_ok("★分母: 此刻本方 %d 道刻痕" % mk_now, mk_now > 0, "刻痕=%d" % mk_now)
+	_ok("★★【没带石头的队友】也吃到羁绊那一半增伤(全队共享)", mate_amp > 0.0,
+		"队友增伤=%.4f · 携带者=%.4f" % [mate_amp, carry_amp])
+	_ok("★★携带者拿的比队友多(装备那一半是携带者独享)", carry_amp > mate_amp,
+		"携带者 %.4f > 队友 %.4f" % [carry_amp, mate_amp])
+	## 比例校验: 携带者 0.3%/道, 队友 0.1%/道 ⇒ 携带者应是队友的 3 倍
+	_ok("★★比例对得上(携带者 0.3%/道 ÷ 队友 0.1%/道 = 3 倍)",
+		mate_amp > 0.0 and absf(carry_amp / maxf(mate_amp, 1e-9) - 3.0) < 0.25,
+		"实得 %.2f 倍" % (carry_amp / maxf(mate_amp, 1e-9)))
+
+	# ── ⑨ 局内【继承上次的充能进度】—— 用户 2026-08-14 点名 ─────────────────
+	##   ★用户 2026-08-13 拍板过:「到了第二路可能充能到了1000就1000继续啊」。
+	##     所以新一场开打时, 条要从**存档里的余额**起步, 不是从 0。
+	##   ★做法: 把赛季池设成一个"差一点就满一道"的值, 再让一只新龟登场, 看条从哪起。
+	##   ⚠ 顺序很要命: `clear_all()` 内部会 `_persist_chg()` 把【局内的值】写回存档。
+	##     我第一版先播种再 clear_all ⇒ 种子被自己覆盖, 报出一个**假 bug**(条=0 存档 3500)。
+	##     必须 **先 clear_all, 再播种**。
+	var inc2 = s._equip_sys._incense
+	inc2.clear_all()                           # 模拟换场: 撤干净
+	inc2._chg["left"] = 0
+	inc2._marks["left"] = 0
+	var SEED: int = Inc.PER_MARK - 500        # 差 500 就满一道
+	GameState.incense_charge = SEED
+	GameState.incense_marks = 7
+	var v: Dictionary = s._spawn._make_unit("basic", "left", c + Vector2(-320, 0))
+	v["atk"] = 100.0
+	v["equips"] = [{"id": Inc.EID, "star": 1}]
+	v["eq_state"] = {Inc.EID: {}}
+	s._units.append(v)
+	s._equip_sys._stats._eq_apply_all_stats()
+	_ok("★★新一场登场: 充能条【从存档余额起步】(不是从 0 重攒)",
+		int(inc2._chg.get("left", 0)) == SEED,
+		"条=%d(存档 %d)" % [int(inc2._chg.get("left", 0)), SEED])
+	_ok("★★刻痕也一并继承(跨对局保留)",
+		inc2.marks_of("left") == 7, "刻痕=%d(存档 7)" % inc2.marks_of("left"))
+	## 再打 500 就该立刻刻一道 —— 证明"继承的余额是真能用的", 不是只做个显示
+	s._damage._apply_damage_from(v, e, 500, Color.RED, 0.0, true)
+	s._sim_step(1.0 / 60.0, false, false)
+	_ok("★★继承来的余额【真能用】: 再打 500 立刻刻第 8 道(不是白显示)",
+		inc2.marks_of("left") == 8, "刻痕=%d(应 8)" % inc2.marks_of("left"))
+
+	# ── ⑩ 【中途才出现】的友军拿不拿得到? (用户 2026-08-14 追问"全队共享你确定") ──
+	##   ★`_reapply` 只在两个时机跑: 刻了新痕 / 带石头的龟登场。
+	##     ⇒ 战斗中途才生成的单位(召唤物·机甲·大熊·海螺虫)如果之后没再刻痕,
+	##       就【永远拿不到】那一份全队增伤。我上面那条队友是靠 _eq_apply_all_stats
+	##       顺带触发 on_spawn 才拿到的, 没隔离这个情形。
+	var late: Dictionary = s._spawn._make_unit("basic", "left", c + Vector2(-380, 0))
+	late["equips"] = []
+	late["eq_state"] = {}
+	late["damage_amp"] = 0.0
+	s._units.append(late)                       # ★只加进场, 不调 _eq_apply_all_stats
+	s._sim_step(1.0 / 60.0, false, false)
+	var late_amp0: float = float(late.get("damage_amp", 0.0))
+	## ★★这条原来写成恒真(观察用)。修好之后必须变成真断言, 否则等于没测。
+	##   修之前实测: 场上 8 道刻痕, 中途加入的友军增伤 **0.0000** —— 要等下一道刻痕才补。
+	_ok("★★中途加入的友军【立刻】拿到全队增伤(不用等下一道刻痕)",
+		late_amp0 > 0.0, "增伤=%.4f (刻痕 %d)" % [late_amp0, inc.marks_of("left")])
+	## 面板显示: 小数值不许被 %d 抹成 0(用户 2026-08-14「增伤减伤显示那里不是 0 吗」)
+	var ip := FileAccess.get_file_as_string("res://scripts/scenes/battle/info_panel.gd")
+	_ok("★★属性面板的增伤/减伤【保留小数】(0.2% 不再显示成 0%)",
+		ip.find("\"增伤 \" + _pct(") >= 0 and ip.find("\"减伤 \" + _pct(") >= 0)
+	# 再刻一道 ⇒ _reapply 跑一次, 这时它必须补上
+	s._damage._apply_damage_from(u, e, Inc.PER_MARK, Color.RED, 0.0, true)
+	s._sim_step(1.0 / 60.0, false, false)
+	_ok("★★刻了新痕之后, 中途加入的友军【补上了】全队增伤",
+		float(late.get("damage_amp", 0.0)) > 0.0,
+		"增伤 %.4f → %.4f" % [late_amp0, float(late.get("damage_amp", 0.0))])
+
 	## ★还原真存档 —— 不还原就是拿测试改玩家数据(用户明令: 演示/测试不许写真存档)。
 	GameState.incense_marks = _save_m
 	GameState.incense_charge = _save_c

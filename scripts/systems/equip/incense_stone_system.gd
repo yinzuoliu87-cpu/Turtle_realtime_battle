@@ -316,8 +316,28 @@ func _persist_chg(u: Dictionary) -> void:
 # ══════════════════════════════════════════════════════════════════
 #  未用到的统一钩子(接口由 EquipSystem 统一调, 见 docs/plans/20260806-实装契约-批④.md)
 # ══════════════════════════════════════════════════════════════════
+## 系统级每帧: 只做一件事 —— 【阵容变了就重发】。
+## ★★用户 2026-08-14 追问「全队共享你确定」时挖出来的真 bug:
+##   `_reapply` 原本只在两个时机跑 —— 刻了新痕 / 带石头的龟登场。
+##   ⇒ 战斗**中途**才出现的单位(召唤物 / 机甲 / 大熊 / 海螺虫)在下一道刻痕之前
+##     **完全吃不到**香火的全队增伤与减伤。实测: 场上 8 道刻痕, 中途加入的友军增伤 0.0000。
+##   后期一道刻痕要 4000 伤害, 这个空窗可以长到一整场。
+## ★为什么用"人数"当触发条件而不是每帧无条件 reapply:
+##   `_reapply` 会 `_revoke()` 再遍历全场重发, 每帧跑是纯浪费;
+##   而阵容只在生成/死亡时变 —— 人数变了就够了(死亡也要重发: `_revoke` 靠 `_given` 记账,
+##   死人留在表里会让下次 revoke 去减一个已经不在场的单位)。
+var _roster_n: Dictionary = {"left": -1, "right": -1}
 func tick(_delta: float) -> void:
-	pass
+	for side in ["left", "right"]:
+		if int(_marks.get(side, 0)) <= 0:
+			continue
+		var n := 0
+		for o in battle._units:
+			if o is Dictionary and o.get("alive", false) and str(o.get("side", "")) == side:
+				n += 1
+		if n != int(_roster_n.get(side, -1)):
+			_roster_n[side] = n
+			_reapply(str(side))
 
 
 func on_hit(_src: Dictionary, _tgt: Dictionary, _dmg: float, _eid: String, _si: int) -> void:

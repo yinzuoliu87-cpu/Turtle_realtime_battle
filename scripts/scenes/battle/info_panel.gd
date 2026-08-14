@@ -250,11 +250,27 @@ func _info_stat_rows(u: Dictionary) -> Array:
 	# 加算类: 基准 0
 	rows.append(["", "护甲穿透 %d" % int(u.get("armor_pen", 0.0)), Color("#ffc48a")])
 	rows.append(["", "魔法穿透 %d" % int(u.get("magic_pen", 0.0)), Color("#c9a0ff")])
-	rows.append(["", "反伤 %d%%" % int(round(float(u.get("reflect", 0.0)) * 100.0)), Color("#ff9d8a")])
-	rows.append(["", "韧性 %d%%" % int(round(float(u.get("tenacity", 0.0)) * 100.0)), Color("#d6e4f0")])
-	rows.append(["", "减伤 %d%%" % int(round(float(u.get("damage_reduction", 0.0)) * 100.0)), Color("#9bdcff")])
-	rows.append(["", "增伤 %d%%" % int(round(float(u.get("damage_amp", 0.0)) * 100.0)), Color("#ff7a7a")])
+	rows.append(["", "反伤 " + _pct(float(u.get("reflect", 0.0))), Color("#ff9d8a")])
+	rows.append(["", "韧性 " + _pct(float(u.get("tenacity", 0.0))), Color("#d6e4f0")])
+	rows.append(["", "减伤 " + _pct(float(u.get("damage_reduction", 0.0))), Color("#9bdcff")])
+	rows.append(["", "增伤 " + _pct(float(u.get("damage_amp", 0.0))), Color("#ff7a7a")])
 	return rows
+
+
+## 百分比显示 —— 小数值保留一位。
+## ★★用户 2026-08-14 实测:「增伤减伤显示那里不是 0 吗」。
+##   这四行原来一律 `%d` + `int(round())` ⇒ **不足 0.5% 的一律显示 0%**。
+##   香火石每道刻痕只给携带者 0.3% / 队友 0.1%(减伤更小, 0.15% / 0.05%),
+##   ⇒ 攒到 5 道刻痕之前面板全是 0, 玩家以为没生效。
+##   **加成是真的在吃的**(`battle_damage._atk_dmg` 里 `base *= 1 + damage_amp`),
+##   坏的只是这一行显示。这正是"数值对了但玩家看不见" —— 与没生效在体感上没区别。
+## ★为什么不无脑一位小数: 大数值(决胜增伤 60%)写成 "60.0%" 反而啰嗦。
+##   分界放在 10%: 小于它保留一位, 大于等于它取整。
+func _pct(v: float) -> String:
+	var p: float = v * 100.0
+	if absf(p) < 10.0 and absf(p) > 0.0:
+		return "%.1f%%" % p
+	return "%d%%" % int(round(p))
 
 
 func _info_stat_cell(grid: GridContainer, icon: String, val: String, col: Color = Color("#d6e4f0"), icon_tex: String = "") -> Label:
