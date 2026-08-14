@@ -21,6 +21,10 @@ const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")
 ## 本门禁只能验到"法力条走到满并清零", 验不到效果本身。
 ## ★登记在这里而不是注释里, 是为了让【名单变化】能把门禁弄红(见文件末那条断言)。
 ## ★根治办法是把结算从演出里抽出来(同 3.5 里海盗钩索那次): 留给后续。
+## ★★2026-08-14 解掉: 031 的主动已由 `verify_staff_active_isolated` 用【同窗隔离】验起来
+##   (同一场战斗两组都带 031, 只一组灌满法力 ⇒ 差值就是主动; 反向验证打瘸后归零)。
+##   这里保留空名单 + 断言, 是为了【名单一旦回涨就红】—— 谁再把某件的伤害埋回 tween,
+##   这条会逼他回来看。空名单不是"没这回事", 是"这条缺口已经关上了"。
 const TWEEN_BURIED := ["p2eq_031"]
 
 var _n := 0
@@ -165,6 +169,9 @@ func _ready() -> void:
 		##   ⇒ 只能验到"条走到满并清零"(= `_fire` 真被调到)。**诚实登记成缺口**,
 		##     不许静默当通过 —— 023 一度就是这么假绿的(主动改成 pass 照样绿)。
 		##   ★根治要给这几件各写一条**专属判据**(量它主动特有的产物), 留作后续。
+		## ★★"对照组也在漂移"这条出口 2026-08-14 起【只是降级说明】, 不再是缺口 ——
+		##   023/029/089/090 的主动已由 `verify_staff_active_isolated` 用同窗隔离单独验过。
+		##   这里保留是因为本条的宽判据确实分不开, 但那 4 件在另一条门禁里是有真断言的。
 		if ctl_moved:
 			_ok("%s: 法力满→条清零(★有持续被动, 宽判据隔离不了主动 —— 已知缺口)" % iid, fired,
 				"条余 %.1f/%.1f" % [mana_left, full])
@@ -182,8 +189,10 @@ func _ready() -> void:
 	for iid2 in staffs:
 		if iid2 in TWEEN_BURIED:
 			still.append(iid2)
-	_ok("★★已知缺口名单没变(%d 件效果埋在 tween 里, 无头验不了)" % TWEEN_BURIED.size(),
-		still == TWEEN_BURIED, "实得 %s / 登记 %s" % [str(still), str(TWEEN_BURIED)])
+	_ok("★★【本条】量不到的仍是 %d 件(031 的主动已由 verify_staff_active_isolated 同窗隔离验过)"
+			% TWEEN_BURIED.size(),
+		still == TWEEN_BURIED,
+		"实得 %s / 登记 %s" % [str(still), str(TWEEN_BURIED)])
 
 	# 反面: 法力【没满】就不该触发 —— 否则上面全绿也可能只是"什么都会响"
 	var u2: Dictionary = s._spawn._make_unit("basic", "left", c + Vector2(-120, 0))

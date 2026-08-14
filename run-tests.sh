@@ -52,6 +52,8 @@ frames_for () {
     verify_uncovered_equips) echo 14000 ;;
     # 八件装备 × (同窗两组建场 + 180 帧逐帧 await); 022 的协程要逐帧轮询才推得完
     verify_fire_equips_exact) echo 16000 ;;
+    # 五件法器 × (同窗两组建场 + 180 帧逐帧 await)
+    verify_staff_active_isolated) echo 10000 ;;
     # 触手节奏: 建战斗场景 + 走完 2 秒出土 + 20 次强制重建网格并量几何(同步断言, 不等演出)
     verify_tentacle_rhythm) echo 3000 ;;
     # 转移阵地: 建战斗场景 + 造携带者走真实档位链路 + 喂完钻地/破土动画
