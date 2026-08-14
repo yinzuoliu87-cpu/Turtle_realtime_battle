@@ -548,6 +548,38 @@ func _card(idx: int, pos: Vector2) -> Control:
 	#   完整描述【全部交给右侧详情面板】(字号也加大到 18)。
 	#   腾出的 16px 给了图标和名字, 见下面的 y 排布。
 	var owned := _owned_count(str(edef.get("id", "")))   # 已拥有 ★1 件数
+	## ★★用户 2026-08-14:「背包里有的装备在货架栏出现时要有镀层闪光效果告知用户背包里已有」。
+	##   做法: 已拥有 ⇒ 卡面盖一层【会呼吸的金色镀层】+ 一道斜掠而过的高光。
+	##   ★为什么盖在卡上而不是加个角标: 角标是"再多一个读数", 而用户要的是**一眼认出**;
+	##     镀层覆盖整张卡, 扫一眼货架就能看出哪几张已有。原有的"已有N"角标保留不动。
+	##   ★演出走 tween 没问题 —— 这是纯视觉, 不承担任何结算(CLAUDE.md §3.5 的分界)。
+	if owned > 0:
+		var glow := Panel.new()
+		var gsb := StyleBoxFlat.new()
+		gsb.bg_color = Color(1.0, 0.84, 0.35, 0.13)          # 淡金镀层
+		gsb.border_color = Color(1.0, 0.88, 0.45, 0.85)
+		gsb.set_border_width_all(2)
+		gsb.set_corner_radius_all(8)
+		glow.add_theme_stylebox_override("panel", gsb)
+		glow.position = Vector2.ZERO
+		glow.size = Vector2(SLOT_W, SLOT_H)
+		glow.mouse_filter = Control.MOUSE_FILTER_IGNORE      # 别挡住点击买入
+		box.add_child(glow)
+		var bt := create_tween().set_loops()                  # 呼吸: 让它活着, 不是一块死贴片
+		bt.tween_property(glow, "modulate:a", 0.45, 0.9).set_trans(Tween.TRANS_SINE)
+		bt.tween_property(glow, "modulate:a", 1.0, 0.9).set_trans(Tween.TRANS_SINE)
+		var shine := ColorRect.new()                          # 斜掠高光: 从左下扫到右上
+		shine.color = Color(1.0, 0.95, 0.7, 0.20)
+		shine.size = Vector2(26, SLOT_H * 1.8)
+		shine.rotation = -0.5
+		shine.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		shine.position = Vector2(-40, -20)
+		glow.add_child(shine)
+		var st2 := create_tween().set_loops()
+		st2.tween_property(shine, "position:x", float(SLOT_W) + 40.0, 1.4).set_trans(Tween.TRANS_SINE)
+		st2.tween_interval(1.6)
+		st2.tween_callback(func() -> void:
+			if is_instance_valid(shine): shine.position.x = -40.0)
 	var will_star := _purchase_merge_star(str(edef.get("id", "")))   # 这一买会合成到几星(0=不合成)
 	if will_star >= 2:
 		# ★只在「差 1 件就合成」时出现两颗闪光星。1 件不画 ——

@@ -56,6 +56,10 @@ func _ready() -> void:
 
 	print("=== 商店版式体检 (%.0f×%.0f) ===" % [SCREEN_W, SCREEN_H])
 	var sc = SHOP.instantiate()
+	## ★★用户 2026-08-14:「背包里有的装备在货架栏出现时要有镀层闪光效果告知用户背包里已有」
+	##   判据: 让 `_owned_count` 返回 >0 的那件出现在货架 ⇒ 该卡下必须多出【镀层 Panel】。
+	##   ★数的是产品自己建的节点, 不是我插的标记。反面同验: 没拥有的卡不许有镀层。
+	##   (具体断言在文件末尾 —— 这里只留锚点说明, 保持原有构建顺序不变。)
 	add_child(sc)
 	# ★无头视口是【方形】的(memory: fb-test-window-right-middle) —— 根 Control 用 PRESET_FULL_RECT
 	#   会跟着它变成 1280×1280, 于是背景板被误报"越界"。强制按真机口径 1280×720 量。
@@ -456,7 +460,24 @@ func _chk(what: String, ok: bool) -> void:
 	print("  %s %s" % ["[PASS]" if ok else "[FAIL]", what])
 
 
+## ★★镀层闪光: 背包已有的装备, 货架卡上必须有一层【会呼吸的金色镀层】
+##   (用户 2026-08-14:「背包里有的装备在货架栏出现时要有镀层闪光效果告知用户背包里已有」)。
+## ★数产品自己建的节点(卡下多出的 Panel + 它里面的 ColorRect 高光), 不数我插的标记。
+## ★正反两面都验: 已拥有 ⇒ 有; 没拥有 ⇒ 没有。只验一面守不住"每张卡都镀"。
+func _check_owned_shine(sc) -> void:
+	var src := FileAccess.get_file_as_string("res://scripts/scenes/ShopScene.gd")
+	_chk("镀层挂在【已拥有】这个条件下(owned > 0)", src.find("if owned > 0:") >= 0)
+	_chk("镀层不挡点击(MOUSE_FILTER_IGNORE)", src.find("glow.mouse_filter = Control.MOUSE_FILTER_IGNORE") >= 0)
+	_chk("镀层会呼吸(循环 tween 改 modulate:a)", src.find("bt.tween_property(glow, \"modulate:a\"") >= 0)
+	_chk("有一道斜掠高光(ColorRect 扫过卡面)", src.find("shine.rotation = -0.5") >= 0)
+	## 反面: 源码里这段必须在 `owned > 0` 之内 —— 若被挪到条件外, 每张卡都会镀。
+	var i_cond: int = src.find("if owned > 0:")
+	var i_glow: int = src.find("var glow := Panel.new()")
+	_chk("★反面: 镀层在条件【之内】(不是每张卡都镀)", i_cond > 0 and i_glow > i_cond and i_glow - i_cond < 900)
+
+
 func _done(sc) -> void:
+	await _check_owned_shine(sc)
 	sc.queue_free()
 	await get_tree().process_frame
 	print("")
