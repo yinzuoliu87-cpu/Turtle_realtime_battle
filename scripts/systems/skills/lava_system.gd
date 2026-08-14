@@ -10,6 +10,13 @@ static var LAVA_SPD: float = float(_TS.STATS["lava"][1])
 ## 变身砸地(用户 2026-08-13 削弱): 伤害 1.2 → 1.0 ATK · 灼烧 0.67 → 0.3 ATK 层。
 ## ★灼烧用【本技专用】系数而不是全局 `_default_burn_stacks`(0.67) —— 那个凤凰等火系也在用,
 ##   改全局会连带削掉别人(凤凰的涅槃早就用自己的 NIRVANA_BURN_COEF, 同一手法)。
+## 火山爆发(用户 2026-08-14 削弱): 原 5 段 0.5ATK + 全局灼烧 + 12% 回血
+## ⇒ 一段 1.2ATK 魔法 · 0.2ATK 层灼烧(本技专用) · 8% 回血。
+## ★★为什么灼烧要用本技专用系数: 全局 `_default_burn_stacks`(0.67) **凤凰等火系也在用**,
+##   为熔岩调它会静默削掉别人 —— 2026-08-13 已经在砸地上踩过一次同样的坑。
+const ERUPT_ATK_COEF := 1.2
+const ERUPT_BURN_COEF := 0.2
+const ERUPT_HEAL_PCT := 0.08
 const SLAM_ATK_COEF := 1.0
 const SLAM_BURN_COEF := 0.3
 const VOLCANO_SPD_MULT := 1.2   # 火山形态相对提速(原 175/145≈1.21 的等效保留)
@@ -242,12 +249,13 @@ func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火�
 				o["vy"] = 6.0
 				o["vx"] = tdir.x * battle.KNOCK_PUSH * 1.6
 				o["vz"] = tdir.y * battle.KNOCK_PUSH * 1.6
-			for i in range(5):
-				if not o["alive"]: break
-				battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 0.5, o, true), Color("#ff7a33"))
+			## ★用户 2026-08-14 削弱: 5 段 0.5ATK(共 2.5ATK) → **一段 1.2ATK**;
+			##   灼烧改用【本技专用系数】0.2ATK 层(原走全局 `_default_burn_stacks` 0.67 ——
+			##   那个凤凰等火系也在用, 改它会静默削掉别人); 回血 12% → 8%。
+			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, ERUPT_ATK_COEF, o, true), Color("#ff7a33"))
 			if o["alive"]:
-				battle._damage._apply_dot_stacks(o, "burn", battle._default_burn_stacks(u), u)
-			battle._damage._heal(u, u["maxHp"] * 0.12)
+				battle._damage._apply_dot_stacks(o, "burn", maxi(1, roundi(float(u["atk"]) * ERUPT_BURN_COEF)), u)
+			battle._damage._heal(u, u["maxHp"] * ERUPT_HEAL_PCT)
 	battle._gambler_sys._gambler_pop(start, 0.6, Color(1.0, 0.85, 0.5, 0.95))         # ★出生爆闪(娜美R观察: 浪在白亮爆闪中诞生·非淡入)
 	battle._skill_ring(start, Color(1.0, 0.6, 0.2, 0.8), 70.0)
 	for bi in range(6):                                           # 放射光条
