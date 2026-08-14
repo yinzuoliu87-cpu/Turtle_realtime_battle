@@ -407,6 +407,37 @@ static func _make_shard_texture(col: Color, seed_i: int) -> ImageTexture:
 	return ImageTexture.create_from_image(img)
 
 
+## 糖粒(菱形方糖·带斜条纹与高光): 糖果龟【甜蜜掠夺】把生命抽成一颗颗糖粒飞走。
+## ★★为什么专门画: 原来用的是 `_glow_bb`(发光公告板)= **一堆圆光球** ——
+##   用户 2026-08-06 明确反对"程序生成的圆敷衍"。圆球没有语义, 读不出"糖"也读不出"被抽走";
+##   菱形糖块 + 条纹是**糖果的形状语言**, 一眼认得出。
+## ★也不复用 `candy-burst.png` —— 那是普攻爆开的糖花, 语义是"炸开"不是"被抽走"
+##   (用户铁律: 素材不复用除非点名)。
+static func _make_candy_bit_texture(col: Color) -> ImageTexture:
+	var S := 16
+	var img := Image.create(S, S, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var c := float(S - 1) / 2.0
+	for y in range(S):
+		for x in range(S):
+			## 菱形: |dx| + |dy| <= r  (曼哈顿距离 = 方糖立起来的轮廓)
+			var dx := absf(float(x) - c)
+			var dy := absf(float(y) - c)
+			var m := dx + dy
+			if m > 6.6:
+				continue
+			var edge := clampf(1.0 - m / 6.6, 0.0, 1.0)
+			## 斜条纹(糖果纹): 沿 x+y 方向每 4 px 一道亮带
+			var stripe: float = 1.0 if int((x + y) / 3.0) % 2 == 0 else 0.72
+			var cc := col * stripe
+			## 左上角高光: 让它看着是【硬糖】不是软光斑
+			if dx < 2.5 and float(y) < c - 1.0:
+				cc = cc.lerp(Color(1, 1, 1), 0.75)
+			cc.a = clampf(0.35 + edge * 0.9, 0.0, 1.0)
+			img.set_pixel(x, y, cc)
+	return ImageTexture.create_from_image(img)
+
+
 static func _make_bladewall_texture(col: Color) -> ImageTexture:   # 阔剑007剑气墙: 宽幅浅新月(凸刃朝上=纹理+Y=行进方向·配wisp_dir朝向)·白蓝亮刃+向后短拖
 	var W := 132; var H := 80
 	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)

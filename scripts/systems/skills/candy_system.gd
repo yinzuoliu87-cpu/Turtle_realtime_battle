@@ -163,16 +163,46 @@ func _candy_drain_fx(candy: Dictionary, fat: Dictionary, amt: int) -> void:   # 
 	if not candy.get("alive", false): return
 	var from2d: Vector2 = fat["pos"]
 	var kp: Vector2 = candy["pos"]
-	for k in range(4):
-		var off = Vector2(randf_range(-18.0, 18.0), randf_range(-14.0, 14.0))
-		var mote = battle._glow_bb(from2d + off, 0.9, 24.0, Color(1.0, 0.55, 0.82, 0.95))
+	## ★★★用户 2026-08-14:「糖果龟的被动展现方式也要改」。
+	##   原来是 4 颗 `_glow_bb`(发光公告板)= **一堆圆光球**飘过来 + 一行字。
+	##   圆球没有语义 —— 读不出"糖", 也读不出"生命被抽走"(用户 2026-08-06 反对过
+	##   "程序生成的圆敷衍")。
+	## 现在改成三拍, 每拍都有含义:
+	##   ① 目标脚下【糖化环】收缩 —— "这一只正在被抽"
+	##   ② 生命碎成【一颗颗菱形糖粒】(专属纹理·带糖果斜条纹与硬糖高光), 沿弧线被吸走
+	##   ③ 糖果龟身上【吸收闪光】+ 回血数字 —— 收在自己身上, 闭环
+	## ★糖粒数按吸取量走(6~14 颗): 抽得多就飞得多, 玩家不用读数字也能看出量级。
+	var bits: int = clampi(6 + int(amt / 60), 6, 14)
+	var tex: Texture2D = VfxTex._make_candy_bit_texture(Color(1.0, 0.55, 0.82))
+	# ① 目标脚下糖化环: 先标出"谁被抽了"
+	battle._skill_ring(from2d, Color(1.0, 0.45, 0.78, 0.75), 62.0)
+	for k in range(bits):
+		var ang: float = TAU * float(k) / float(bits) + randf_range(-0.2, 0.2)
+		var r0: float = 26.0 + randf_range(0.0, 22.0)
+		var start: Vector2 = from2d + Vector2(cos(ang), sin(ang)) * r0
+		var bit := Sprite3D.new()
+		bit.texture = tex
+		bit.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		bit.shaded = false
+		bit.transparent = true
+		bit.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素感, 别糊
+		bit.pixel_size = 0.055
+		bit.position = battle._world_pos(start, 0.7 + randf_range(0.0, 0.5))
+		battle._world.add_child(bit)
+		## 弧线: 先向外弹一点再被吸走 —— 直线飞读起来像"发射", 弧线才像"被抽"
+		var mid: Vector2 = start + (start - from2d).normalized() * 30.0
 		var tw = battle._reg_tween()
-		tw.tween_interval(float(k) * 0.06)
-		var mv = tw.tween_property(mote, "position", battle._world_pos(kp, 1.1), 0.5)
-		mv.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		tw.parallel().tween_property(mote, "scale", Vector3(0.4, 0.4, 0.4), 0.5)
-		tw.chain().tween_callback(mote.queue_free)
+		tw.tween_interval(float(k) * 0.035)
+		tw.tween_property(bit, "position", battle._world_pos(mid, 1.15), 0.16) 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(bit, "position", battle._world_pos(kp, 1.0), 0.42) 			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+		var t2 = battle._reg_tween()
+		t2.tween_interval(float(k) * 0.035 + 0.40)
+		t2.tween_property(bit, "scale", Vector3(0.35, 0.35, 0.35), 0.18)
+		t2.parallel().tween_property(bit, "modulate:a", 0.0, 0.18)
+		t2.tween_callback(bit.queue_free)
 	battle._vfx._float_text(from2d + Vector2(0, -50), "甜蜜掠夺 -" + str(amt), Color("#ff6bb0"))
+	# ③ 吸收闪光收在糖果龟身上 —— 让"抽给了谁"看得见
+	battle._vfx._flash(candy, Color(1.6, 1.1, 1.4))
 	battle._skill_ring(kp, Color(1.0, 0.55, 0.82, 0.55), 46.0)
 
 func _candy_bomb_bubble(u: Dictionary) -> void:   # 糖果炸弹糖泡(粉糖色·上飘·区别中毒绿/酒琥珀)

@@ -1,4 +1,5 @@
 extends Node
+const VfxTexRef := preload("res://scripts/util/vfx_textures.gd")
 ## verify_candy_jar.gd — 自证: 糖果罐/临时等级器 端到端 (逻辑 + 数据形状 + 3合1不炸).
 ## 跑法: godot --headless --path . res://tests/verify_candy_jar.tscn --quit-after 120
 ##
@@ -128,6 +129,28 @@ func _ready() -> void:
 	_ok("迁移后无裸 String", not (gs.persistent_bench[0] is String))
 	gs.auto_merge_all()
 	_ok("迁移后 auto_merge_all 不崩", true)
+
+	# ── 甜蜜掠夺演出重做(用户 2026-08-14:「糖果龟的被动展现方式也要改」)──────
+	##   ★原来是 4 颗 `_glow_bb` 圆光球 —— 没有语义, 读不出"糖"也读不出"被抽走"。
+	##   ★判据数【产品自己建的节点】: 糖粒是 Sprite3D 且用专属纹理, 不是发光公告板。
+	var src_cd := FileAccess.get_file_as_string("res://scripts/systems/skills/candy_system.gd")
+	_ok("★★甜蜜掠夺不再用发光圆球(_glow_bb)",
+		src_cd.find("_glow_bb(from2d") < 0, "源码里还有 _glow_bb(from2d")
+	_ok("★★改用专属【糖粒】纹理(菱形方糖+糖果条纹)",
+		src_cd.find("VfxTex._make_candy_bit_texture") >= 0)
+	_ok("★糖粒数按吸取量走(抽得多飞得多, 不用读数字也看得出量级)",
+		src_cd.find("var bits: int = clampi(6 + int(amt / 60), 6, 14)") >= 0)
+	_ok("★★吸收闪光收在【糖果龟自己】身上(让\"抽给了谁\"看得见)",
+		src_cd.find("battle._vfx._flash(candy,") >= 0)
+	var tex_ok: Texture2D = VfxTexRef._make_candy_bit_texture(Color.WHITE)
+	var img_c: Image = tex_ok.get_image()
+	var opaque := 0
+	for yy in range(img_c.get_height()):
+		for xx in range(img_c.get_width()):
+			if img_c.get_pixel(xx, yy).a > 0.2: opaque += 1
+	var frac := float(opaque) / float(img_c.get_width() * img_c.get_height())
+	_ok("★★糖粒是【菱形】不是圆/方块(实心占比 %.0f%%, 菱形约 40~60%%)" % (frac * 100.0),
+		frac > 0.25 and frac < 0.72, "实心占比 %.1f%%" % (frac * 100.0))
 
 	print("")
 	if _fail == 0:
