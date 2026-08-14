@@ -316,6 +316,149 @@ func _ready() -> void:
 		_gs.find("sell") < 0 or _gs.count("incense_charge") <= 6,
 		"GameState 里出现 %d 次" % _gs.count("incense_charge"))
 
+	# ── ⑭ 满 300 刻痕封顶: 到顶后【不再涨】, 但增伤要停在顶值 ──────────────
+	##   ★上限判定在写入侧(IncenseStoneSystem), `MARK_CAP = 300`。
+	##     只验"到了 300"不够 —— 还要验**到顶之后继续打伤害不会溢出**。
+	inc.clear_all()
+	inc._loaded = {"left": false, "right": false}
+	inc._marks["left"] = 0
+	inc._chg["left"] = 0
+	GameState.incense_marks = Inc.MARK_CAP        # 已经满了
+	GameState.incense_charge = 0
+	s._units.clear()
+	var cap_u: Dictionary = s._spawn._make_unit("basic", "left", c + Vector2(-150, 0))
+	cap_u["atk"] = 100.0
+	cap_u["equips"] = [{"id": Inc.EID, "star": 1}]
+	cap_u["eq_state"] = {Inc.EID: {}}
+	s._units.append_array([cap_u, e])
+	s._equip_sys._stats._eq_apply_all_stats()
+	s._sim_step(1.0 / 60.0, false, false)
+	_ok("★分母: 刻痕已在上限 %d" % Inc.MARK_CAP, inc.marks_of("left") == Inc.MARK_CAP,
+		"刻痕=%d" % inc.marks_of("left"))
+	## 满刻痕时携带者增伤 = 300 × (ITEM_AMP + TEAM_AMP) —— 从常量推导, 不写死
+	var cap_expect: float = float(Inc.MARK_CAP) * (Inc.ITEM_AMP + Inc.TEAM_AMP)
+	_ok("★★满刻痕增伤 = %d × (%.3f + %.3f) = %.2f%%" % [Inc.MARK_CAP, Inc.ITEM_AMP, Inc.TEAM_AMP, cap_expect * 100.0],
+		absf(float(cap_u.get("damage_amp", 0.0)) - cap_expect) < 1e-4,
+		"实得 %.4f(应 %.4f)" % [float(cap_u.get("damage_amp", 0.0)), cap_expect])
+	# 到顶后继续打 3 道份的伤害 ⇒ 不许溢出
+	s._damage._apply_damage_from(cap_u, e, Inc.PER_MARK * 3, Color.RED, 0.0, true)
+	s._sim_step(1.0 / 60.0, false, false)
+	_ok("★★到顶后继续打伤害【不再涨】(不溢出上限)", inc.marks_of("left") == Inc.MARK_CAP,
+		"刻痕=%d(应仍是 %d)" % [inc.marks_of("left"), Inc.MARK_CAP])
+	_ok("★★增伤也停在顶值(没跟着溢出)",
+		absf(float(cap_u.get("damage_amp", 0.0)) - cap_expect) < 1e-4,
+		"实得 %.4f" % float(cap_u.get("damage_amp", 0.0)))
+
+	# ── ⑮ 一帧打出多道刻痕: 要合成一次, 不是刷 N 条重叠飘字 ──────────────────
+	##   ★代码注释说处理过(2026-08-09 实拍: 一次斩击 2 万伤害 ⇒ while 在同一帧转 5 圈),
+	##     但**没有断言守着**。这里补上: 一次打 5 道份, 刻痕必须正好 +5。
+	inc.clear_all()
+	inc._loaded = {"left": false, "right": false}
+	inc._marks["left"] = 0
+	inc._chg["left"] = 0
+	GameState.incense_marks = 0
+	GameState.incense_charge = 0
+	s._units.clear()
+	var mf: Dictionary = s._spawn._make_unit("basic", "left", c + Vector2(-150, 0))
+	mf["atk"] = 100.0
+	mf["equips"] = [{"id": Inc.EID, "star": 1}]
+	mf["eq_state"] = {Inc.EID: {}}
+	s._units.append_array([mf, e])
+	s._equip_sys._stats._eq_apply_all_stats()
+	s._damage._apply_damage_from(mf, e, Inc.PER_MARK * 5, Color.RED, 0.0, true)
+	s._sim_step(1.0 / 60.0, false, false)
+	## ★判据是【不变式】而不是"我以为打了多少": 刻痕 = 携带者累计伤害 ÷ PER_MARK。
+	##   我第一版写死"应 +5", 实测 6 —— 因为 `_apply_damage_from` 会走暴击/增伤,
+	##   实发伤害不等于我传进去的数。**先打分母再定判据**, 别拿输入当输出。
+	var dealt: int = int(mf.get("_st_dealt", 0))
+	var want_marks: int = int(dealt / Inc.PER_MARK)
+	_ok("★分母: 这一发实际打出 %d 伤害(不是我传的 %d —— 走了暴击/增伤)" % [dealt, Inc.PER_MARK * 5],
+		dealt > 0, "_st_dealt=%d" % dealt)
+	_ok("★★一帧内多道刻痕【一次合成到位】: 刻痕 = 实发伤害 ÷ %d = %d" % [Inc.PER_MARK, want_marks],
+		inc.marks_of("left") == want_marks, "刻痕=%d(应 %d)" % [inc.marks_of("left"), want_marks])
+	_ok("★★这些刻痕也真的换成了增伤(%d × %.3f)" % [want_marks, Inc.ITEM_AMP + Inc.TEAM_AMP],
+		absf(float(mf.get("damage_amp", 0.0)) - float(want_marks) * (Inc.ITEM_AMP + Inc.TEAM_AMP)) < 1e-4,
+		"实得 %.4f(应 %.4f)" % [float(mf.get("damage_amp", 0.0)), float(want_marks) * (Inc.ITEM_AMP + Inc.TEAM_AMP)])
+
+	# ── ⑯ 敌方也带石头: 两个池子不许串 ──────────────────────────────────────
+	var foe: Dictionary = s._spawn._make_unit("basic", "right", c + Vector2(200, 0))
+	foe["atk"] = 100.0
+	foe["equips"] = [{"id": Inc.EID, "star": 1}]
+	foe["eq_state"] = {Inc.EID: {}}
+	s._units.append(foe)
+	s._equip_sys._stats._eq_apply_all_stats()
+	var my_before: int = inc.marks_of("left")
+	var ally: Dictionary = s._spawn._make_unit("basic", "left", c + Vector2(-260, 0))
+	s._units.append(ally)
+	s._damage._apply_damage_from(foe, ally, Inc.PER_MARK * 2, Color.RED, 0.0, true)
+	s._sim_step(1.0 / 60.0, false, false)
+	_ok("★★敌方携带者打出伤害 ⇒ 只涨【敌方】的池", inc.marks_of("right") >= 2,
+		"right=%d" % inc.marks_of("right"))
+	_ok("★★本方的池【纹丝不动】(两侧不串)", inc.marks_of("left") == my_before,
+		"left %d → %d" % [my_before, inc.marks_of("left")])
+	_ok("★★敌方的刻痕【不许写进本方存档】(存档是本方赛季池)",
+		int(GameState.incense_marks) == my_before,
+		"存档=%d(本方局内 %d)" % [int(GameState.incense_marks), my_before])
+
+	# ── ⑰ 图标读数【真的在更新】吗(不是只在配置表里有一行) ──────────────────
+	##   ★用户 2026-08-13 问过「香火石图标那里有放数字吗」。
+	##     前面只验了 `equip_readouts` 里有 p2eq_093 —— 那只证明**配好了**,
+	##     不证明**数字会动**。装备格的层数徽章读 `eq_state[iid][key]`,
+	##     所以真正要验的是: 刻痕/充能涨了之后, 那两个镜像字段跟着涨。
+	##     (这正是"写进去了没人读"的镜像版: 配置指着一个永远不更新的字段。)
+	var ro2 := FileAccess.get_file_as_string("res://scripts/gamedata/equip_readouts.gd")
+	var cnt_key := "marks"      # PANEL_COUNT 里 093 指的字段
+	var chg_key := "chg"        # PANEL_CHARGE 里 093 指的字段(分母 4000)
+	_ok("★分母: 读数表把 093 指向 %s / %s" % [cnt_key, chg_key],
+		ro2.find('"p2eq_093": "%s"' % cnt_key) >= 0 and ro2.find('"p2eq_093": ["%s"' % chg_key) >= 0)
+	var mstt: Dictionary = mf.get("eq_state", {}).get(Inc.EID, {})
+	_ok("★★层数徽章读的 `%s` 字段【跟着刻痕涨了】(不是永远 0)" % cnt_key,
+		int(mstt.get(cnt_key, -1)) == inc.marks_of("left"),
+		"stt[%s]=%d · 真实刻痕=%d" % [cnt_key, int(mstt.get(cnt_key, -1)), inc.marks_of("left")])
+	_ok("★★充能条读的 `%s` 字段【跟着充能走】(不是停在登场那一刻)" % chg_key,
+		int(mstt.get(chg_key, -1)) == int(inc._chg.get("left", 0)),
+		"stt[%s]=%d · 真实充能=%d" % [chg_key, int(mstt.get(chg_key, -1)), int(inc._chg.get("left", 0))])
+
+	# ── ⑱ 星级: 刻痕收益【不看星】(当前设计), 星只给基础属性 ──────────────────
+	##   ★钉住现状: `on_spawn(u, eid, _si)` 的 `_si` 带下划线 = 明确不用;
+	##     ITEM_AMP/TEAM_AMP 都是常量。哪天有人给星级加收益, 这条会红并逼他来改。
+	inc.clear_all()
+	inc._loaded = {"left": false, "right": false}
+	inc._marks["left"] = 0
+	inc._chg["left"] = 0
+	GameState.incense_marks = 10
+	GameState.incense_charge = 0
+	s._units.clear()
+	var s1: Dictionary = s._spawn._make_unit("basic", "left", c + Vector2(-150, 0))
+	s1["equips"] = [{"id": Inc.EID, "star": 1}]
+	s1["eq_state"] = {Inc.EID: {}}
+	var s3: Dictionary = s._spawn._make_unit("basic", "left", c + Vector2(-210, 0))
+	s3["equips"] = [{"id": Inc.EID, "star": 3}]
+	s3["eq_state"] = {Inc.EID: {}}
+	s._units.append_array([s1, s3, e])
+	s._equip_sys._stats._eq_apply_all_stats()
+	s._sim_step(1.0 / 60.0, false, false)
+	_ok("★分母: 两只各带 ★1 / ★3, 场上 10 道刻痕", inc.marks_of("left") == 10,
+		"刻痕=%d" % inc.marks_of("left"))
+	## ★★先要求【非零】再比"一样" —— 两个都是 0 时"一样"恒成立, 那是假绿。
+	##   (今天第三次栽在这个形状上: 0==0 / 空名单全通过 / 恒真观察句。)
+	var a1: float = float(s1.get("damage_amp", 0.0))
+	var a3: float = float(s3.get("damage_amp", 0.0))
+	## ★★★双方同时有香火时, 两侧的登记表必须【各自独立】。
+	##   2026-08-14 探针抓到的真 bug: `_given` 曾是一张全局表, `_reapply(side)` 开头的
+	##   `_revoke()` 把两侧全撤掉再只重发自己这侧 ⇒ **后跑的一侧抹掉先跑那侧的加成**。
+	##   实测当时: 左 10 道 / 右 2 道 ⇒ 左边两只 `damage_amp` 都是 0.0000, `_given.size()==1`。
+	_ok("★★双方同侧登记表独立: 左侧发了 %d 份(场上左侧 %d 只)"
+			% [(inc._given.get("left", []) as Array).size(), _count_side(s, "left")],
+		(inc._given.get("left", []) as Array).size() == _count_side(s, "left"),
+		"left 登记 %d / 存活 %d · right 登记 %d"
+			% [(inc._given.get("left", []) as Array).size(), _count_side(s, "left"),
+			   (inc._given.get("right", []) as Array).size()])
+	_ok("★分母: 两只都真的拿到了刻痕增伤(非零)", a1 > 0.0 and a3 > 0.0,
+		"★1=%.4f ★3=%.4f" % [a1, a3])
+	_ok("★★★1 与 ★3 的刻痕增伤【一样】(当前设计: 刻痕收益不看星)",
+		a1 > 0.0 and absf(a1 - a3) < 1e-6, "★1=%.4f ★3=%.4f" % [a1, a3])
+
 	## ★还原真存档 —— 不还原就是拿测试改玩家数据(用户明令: 演示/测试不许写真存档)。
 	GameState.incense_marks = _save_m
 	GameState.incense_charge = _save_c
@@ -333,6 +476,14 @@ func _ready() -> void:
 	else:
 		print("FAIL x%d" % _fail)
 	get_tree().quit()
+
+
+func _count_side(s, side: String) -> int:
+	var n := 0
+	for o in s._units:
+		if o is Dictionary and o.get("alive", false) and str(o.get("side", "")) == side:
+			n += 1
+	return n
 
 
 func _amp_keys(u: Dictionary) -> Array:

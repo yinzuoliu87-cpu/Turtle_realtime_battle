@@ -75,7 +75,14 @@ var _marks: Dictionary = {"left": 0, "right": 0}
 ##   与"共用同一条充能条与刻痕池"对不上。现在系统级一条, 各石头的图标条镜像它。
 var _chg: Dictionary = {"left": 0, "right": 0}
 ## 已经施加给某单位的本件贡献 —— 撤回时要按这个减, 不能凭空减(同 038 信号放大器 signal_amp 的做法)
-var _given: Array = []   # [{u, amp, dr}]
+## 已发放登记表 —— **按侧分开**。
+## ★★★2026-08-14 探针实测的真 bug: 这里【曾经是一张全局表】, 而 `_reapply(side)`
+##   开头的 `_revoke()` 会把**两侧的加成全撤掉**, 然后只重发自己这一侧。
+##   ⇒ 敌我双方同时有香火时, **后跑的那一侧把先跑那一侧的加成整个抹掉**。
+##   实测: 左边 10 道刻痕 + 右边 2 道 ⇒ 左边两只携带者 `damage_amp` 都是 **0.0000**,
+##   而 `_given.size() == 1`(只剩右边那一只)。
+##   ⇒ 改成 {side: [{u, amp, dr}]}, 撤销与发放都只动自己这一侧。
+var _given: Dictionary = {"left": [], "right": []}
 
 
 func _init(b) -> void:
@@ -241,7 +248,7 @@ func _set_emp_haste(u: Dictionary, on: bool) -> void:
 #    凭空减会把别人的贡献也减掉(038 信号放大器就是这么记账的)。
 # ══════════════════════════════════════════════════════════════════
 func _reapply(side: String) -> void:
-	_revoke()
+	_revoke(side)          # ★只撤这一侧 —— 撤两侧会抹掉对面已发的(见 _given 的注释)
 	var m: int = int(_marks.get(side, 0))
 	if m <= 0:
 		return
@@ -260,16 +267,19 @@ func _reapply(side: String) -> void:
 			dr += ITEM_DR * m
 		o["damage_amp"] = float(o.get("damage_amp", 0.0)) + amp
 		o["damage_reduction"] = float(o.get("damage_reduction", 0.0)) + dr
-		_given.append({"u": o, "amp": amp, "dr": dr})
+		(_given[side] as Array).append({"u": o, "amp": amp, "dr": dr})
 
 
-func _revoke() -> void:
-	for g in _given:
-		var o = g["u"]
-		if o is Dictionary:
-			o["damage_amp"] = maxf(0.0, float(o.get("damage_amp", 0.0)) - float(g["amp"]))
-			o["damage_reduction"] = maxf(0.0, float(o.get("damage_reduction", 0.0)) - float(g["dr"]))
-	_given.clear()
+## 撤销【某一侧】已发的加成。side 传空串 = 两侧都撤(换路/换场用)。
+## ★参数不是可选的装饰: `_reapply(side)` 必须只撤自己这一侧, 否则就是上面注释里那个 bug。
+func _revoke(side: String = "") -> void:
+	for sd in (["left", "right"] if side == "" else [side]):
+		for g in (_given.get(sd, []) as Array):
+			var o = g["u"]
+			if o is Dictionary:
+				o["damage_amp"] = maxf(0.0, float(o.get("damage_amp", 0.0)) - float(g["amp"]))
+				o["damage_reduction"] = maxf(0.0, float(o.get("damage_reduction", 0.0)) - float(g["dr"]))
+		_given[sd] = []
 
 
 func _has_stone(o: Dictionary) -> bool:
