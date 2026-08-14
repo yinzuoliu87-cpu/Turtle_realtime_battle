@@ -16,6 +16,9 @@ const EquipStats = preload("res://scripts/gamedata/equip_stats.gd")   # 装备�
 const Phase2Minion = preload("res://scripts/gamedata/phase2_minion.gd")
 
 var _sel_bench: int = -1   # 当前选中的背包装备索引 (-1=无)
+## 糖果罐是否被选中。★单独一个标记而不是塞进 `_sel_bench` ——
+##   `_sel_bench` 直接索引 `GameState.persistent_bench`, 而糖果罐是合成条目不在里面。
+var _sel_jar: bool = false
 var _inv_ops := InvOps.new(self)   # 背包·装备/卸下/卖出 业务逻辑(2026-07-25 抽出)
 var _inv_jar := InvCandyJar.new(self)   # 背包·糖果罐(打碎领奖)(2026-07-25 抽出)
 var _inv_synergy := InvSynergy.new(self)   # 背包·类型羁绊面板+详情弹框(2026-07-25 抽出)
@@ -616,6 +619,11 @@ func _build_bench() -> void:
 
 # ─── 底部选中操作条 (大改: 替代满屏文字说明; 选中装备才显名/效果/卖出/取消) ───
 func _build_op_bar() -> void:
+	## ★选中糖果罐 ⇒ 同一条操作栏, 把"卖出"换成"打碎"(用户 2026-08-14)。
+	##   走同一个 bar 而不是另起一条 —— 用户要的就是"和装备一样"。
+	if _sel_jar and GameState.has_candy_jar():
+		_build_jar_op_bar()
+		return
 	if _sel_bench < 0 or _sel_bench >= GameState.persistent_bench.size():
 		return   # 无选中装备 → 不显底部操作条(原那行"3件同款合成"已收进"?"帮助·用户2026-07-19)
 	var by := 636.0
@@ -661,6 +669,42 @@ func _build_op_bar() -> void:
 		cancel.add_theme_font_size_override("font_size", 16)
 		cancel.position = Vector2(bw - 108, 14); cancel.size = Vector2(92, 38)
 		cancel.pressed.connect(func(): _sel_bench = -1; _rebuild()); bar.add_child(cancel)
+
+## 糖果罐的底部操作栏 —— 与装备那条【同一个位置、同一套尺寸】, 只是把"卖出"换成"打碎"。
+## ★用户 2026-08-14:「点击装备, 下面把出售和什么按钮换成打碎就好了啊」。
+##   照做: 不另起弹窗、不另起面板 —— 选中可撤销, 误触点一下再点"取消"即可。
+func _build_jar_op_bar() -> void:
+	var by := 636.0
+	var bar := Panel.new()
+	var sb := StyleBoxFlat.new(); sb.bg_color = Color("#1c1226"); sb.border_color = Color("#e79bd6")
+	sb.set_border_width_all(2); sb.set_corner_radius_all(8)
+	bar.add_theme_stylebox_override("panel", sb)
+	var bw := _vw - 48.0
+	bar.position = Vector2(24, by); bar.size = Vector2(bw, 66); add_child(bar)
+	var tier: int = GameState.candy_jar_tier()
+	var l := Label.new()
+	l.text = "🍬 糖果罐(第 %d 档) —— 打碎后本大轮消失。当前档位奖励: %s" % [
+		tier + 1, GameState.candy_jar_tier_preview(tier)]
+	l.add_theme_font_size_override("font_size", 15)
+	l.add_theme_color_override("font_color", Color("#f0d6ff"))
+	l.position = Vector2(16, 10); l.size = Vector2(bw - 320, 48)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_child(l)
+	var smash := Button.new(); smash.text = "🔨 打碎"
+	smash.add_theme_font_size_override("font_size", 16)
+	smash.position = Vector2(bw - 290, 14); smash.size = Vector2(170, 38)   # ★与"卖出"同一位置同一尺寸
+	smash.pressed.connect(func() -> void:
+		_sel_jar = false
+		if _inv_jar != null:
+			_inv_jar._on_break_jar())
+	bar.add_child(smash)
+	var cancel := Button.new(); cancel.text = "取消"
+	cancel.add_theme_font_size_override("font_size", 16)
+	cancel.position = Vector2(bw - 108, 14); cancel.size = Vector2(92, 38)
+	cancel.pressed.connect(func(): _sel_jar = false; _rebuild())
+	bar.add_child(cancel)
+
 
 func _cost_color(cost: int) -> Color:   # 按费用上色(用户2026-07-19: 稀有度字段废弃, 费用才是真档位; 与旧稀有度严格1:1 → 颜色不变)
 	match cost:
@@ -746,6 +790,7 @@ func _wire_bench_tap(box: Control, idx: int) -> void:
 
 # ─── 交互: 点背包装备选中 → 点龟装上 (再点已选=取消; 点龟身无选中=卸最后一件回背包) ───
 func _on_bench_click(idx: int) -> void:
+	_sel_jar = false                       # 选装备 ⇒ 取消糖果罐选中(互斥, 底部只有一条操作栏)
 	_sel_bench = -1 if _sel_bench == idx else idx
 	_rebuild()
 
@@ -801,61 +846,13 @@ func _tutorial_anchor(anchor: String) -> Rect2:
 	return Rect2()
 
 
-## 打碎前的确认 —— 打碎【不可逆】(本大轮消失), 而这张卡现在混在装备卡中间,
-## 那里的点击语义是"选中"(可撤销)。不加确认 = 一次误触毁掉整轮的奖励。
-## ★旧的右上角面板上是个写着"打碎"的按钮, 误触风险本来就低; 换成卡片后必须补这道闸。
-func _confirm_smash_jar() -> void:
-	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.62)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	## ★挡住穿透 —— 否则弹窗开着还能点到背后的背包(选中/装备/卖出)。
-	##   旧的奖励弹窗(candy_jar.gd:60)显式设过同一行, 说明这个坑踩过。
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	## ★点遮罩空白处 = 取消(移动端惯例; 手机上没有 Esc, 也不好点小叉)
-	dim.gui_input.connect(func(ev: InputEvent) -> void:
-		if ev is InputEventMouseButton and not ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			dim.queue_free())
-	add_child(dim)
-	var pan := Panel.new()
-	var psb := StyleBoxFlat.new()
-	psb.bg_color = Color("#2a1c36"); psb.border_color = Color("#e79bd6")
-	psb.set_border_width_all(2); psb.set_corner_radius_all(10)
-	pan.add_theme_stylebox_override("panel", psb)
-	pan.mouse_filter = Control.MOUSE_FILTER_STOP   # 点面板本身不该冒泡到遮罩(否则点标题就取消了)
-	pan.size = Vector2(360, 168)
-	## ★没有 _vh 这个成员(只有 _vw) —— 用真实视口高度算居中, 手机竖屏也居中。
-	pan.position = Vector2((_vw - 360.0) * 0.5,
-		(float(get_viewport_rect().size.y) - 168.0) * 0.5)
-	dim.add_child(pan)
-	var tl := Label.new()
-	tl.text = "打碎糖果罐？
-打碎后本大轮消失，不可撤销。"
-	tl.add_theme_font_size_override("font_size", 16)
-	tl.position = Vector2(16, 22); tl.size = Vector2(328, 70)
-	tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	pan.add_child(tl)
-	var no := Button.new()
-	no.text = "再想想"
-	no.position = Vector2(24, 108); no.size = Vector2(140, 48)   # ★48px 高: 手指点得中
-	pan.add_child(no)
-	no.pressed.connect(func() -> void: dim.queue_free())
-	var yes := Button.new()
-	yes.text = "打碎"
-	yes.position = Vector2(196, 108); yes.size = Vector2(140, 48)
-	pan.add_child(yes)
-	yes.pressed.connect(func() -> void:
-		dim.queue_free()
-		if _inv_jar != null:
-			_inv_jar._on_break_jar())
-
-
 ## 糖果罐格子 —— 长得像装备卡(同一个 `_slot_panel` 尺寸与描边), 但点击是【打碎领奖】。
 ## ★沿用装备卡的外框而不是自画一个: 用户要的就是"以装备的形式", 视觉必须同源;
 ##   自画一套会又变成"背包里有两种长得不一样的东西"。
 func _candy_jar_cell(it: Dictionary, pos: Vector2) -> Control:
 	var tier: int = GameState.candy_jar_tier()
-	var jbox := _slot_panel(pos, Color("#2a1c36"), Color("#e79bd6"))
+	var jbox := _slot_panel(pos, Color("#3a2446") if _sel_jar else Color("#2a1c36"),
+		Color("#ffd93d") if _sel_jar else Color("#e79bd6"))   # 选中态: 与装备卡同一套金边
 	jbox.tooltip_text = "糖果罐 · 已攒 %d 颗糖(第 %d 档)
 本大轮只能打碎一次, 碎后消失。
 当前档位奖励: %s" % [
@@ -879,11 +876,12 @@ func _candy_jar_cell(it: Dictionary, pos: Vector2) -> Control:
 	jnm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	jnm.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	jbox.add_child(jnm)
-	## ★★★移动端(用户 2026-08-14「考虑移动端了吗」): 背包是**可滑动列表**,
-	##   所以装备卡走的是 `_wire_bench_tap` —— 按下记位置、抬起时位移 <16px 才算点击。
-	##   我第一版给糖果罐写的是裸 `gui_input` + `ev.pressed`(**按下即触发**)
-	##   ⇒ **手机上想滑动背包、手指恰好按在罐子上, 当场就碎了**, 而打碎【不可逆】。
-	##   现在: 同一套点击判定 + **抬起才触发** + 一道确认。
+	## ★★★点它 = 【选中】, 和点装备完全一样(用户 2026-08-14:
+	##   「点击装备, 下面把出售和什么按钮换成打碎就好了啊」)。
+	##   ⇒ 复用 `_wire_bench_tap`: 它本来就处理"滑列表 vs 点一下"(位移<16px 才算点),
+	##     所以手机上滑动不会误触; 选中本身可撤销, 也就不需要确认弹窗。
+	##   ★用 `_sel_jar` 单独标记, **不占 `_sel_bench`** —— 后者直接索引
+	##     `GameState.persistent_bench`, 而糖果罐不在里面(占了就是索引错位)。
 	jbox.mouse_filter = Control.MOUSE_FILTER_PASS
 	jbox.gui_input.connect(func(ev: InputEvent) -> void:
 		if not (ev is InputEventMouseButton) or ev.button_index != MOUSE_BUTTON_LEFT:
@@ -893,5 +891,7 @@ func _candy_jar_cell(it: Dictionary, pos: Vector2) -> Control:
 			return
 		if ev.position.distance_to(_press_pos) >= 16.0:
 			return                                   # 位移过大 = 在滑列表, 不是点它
-		_confirm_smash_jar())
+		_sel_jar = not _sel_jar
+		_sel_bench = -1                              # 选糖果罐 ⇒ 取消装备选中(互斥)
+		_rebuild())
 	return jbox

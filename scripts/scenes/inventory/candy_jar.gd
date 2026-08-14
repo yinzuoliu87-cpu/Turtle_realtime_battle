@@ -8,42 +8,10 @@ var host
 func _init(b) -> void:
 	host = b
 
-func _build_candy_jar() -> void:
-	if not GameState.has_candy_jar():
-		return                                   # 统领没锁糖果龟(或已碎) → 不显示这行
-	var cnt: int = int(GameState.candy_jar_count)
-	var tier: int = GameState.candy_jar_tier()
-	var box = Panel.new()
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = Color("#2a1c36"); sb.border_color = Color("#e79bd6")
-	sb.set_border_width_all(2); sb.set_corner_radius_all(8)
-	box.add_theme_stylebox_override("panel", sb)
-	box.position = Vector2(host._vw - 400.0, 58.0); box.size = Vector2(372, 44)   # 右上·避开居中标题(2026-07-18大改)
-	box.tooltip_text = "打碎后本大轮消失。\n当前档位奖励: %s" % GameState.candy_jar_tier_preview(tier)
-	host.add_child(box)
-
-	var lb = Label.new()
-	lb.text = "🍬 糖果罐  %d/30  ·  档%d" % [cnt, tier]
-	lb.add_theme_font_size_override("font_size", 18)
-	lb.add_theme_color_override("font_color", Color("#ffd6f2"))
-	lb.position = Vector2(12, 4); lb.size = Vector2(220, 24)
-	lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(lb)
-
-	var sub = Label.new()
-	sub.text = GameState.candy_jar_tier_preview(tier)
-	sub.add_theme_font_size_override("font_size", 11)
-	sub.add_theme_color_override("font_color", Color("#c9a8c0"))
-	sub.position = Vector2(12, 28); sub.size = Vector2(272, 20)
-	sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(sub)
-
-	var btn = Button.new()
-	btn.text = "打碎"
-	btn.add_theme_font_size_override("font_size", 16)
-	btn.position = Vector2(292, 10); btn.size = Vector2(76, 32)
-	btn.pressed.connect(_on_break_jar)
-	box.add_child(btn)
+## ★旧的「右上角独立小面板」已删(2026-08-14)。
+##   用户:「点击装备, 下面把出售和什么按钮换成打碎就好了啊」——
+##   糖果罐现在是背包格子里的一张卡, 选中后走底部同一条操作栏(InventoryScene._build_jar_op_bar)。
+##   这个函数删掉而不是留着不调 —— GDScript 鸭子类型, 留着的死函数照样能被门禁"断言存在"保护住。
 
 
 func _on_break_jar() -> void:

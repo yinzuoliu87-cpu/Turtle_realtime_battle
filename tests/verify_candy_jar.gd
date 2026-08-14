@@ -160,7 +160,7 @@ func _ready() -> void:
 	_ok("★★糖果罐排进背包格子(合成条目 kind=candy_jar)",
 		src_inv.find('{"kind": "candy_jar"') >= 0)
 	_ok("★★用装备卡同一个外框 `_slot_panel`(视觉同源, 不自画一套)",
-		src_inv.find("func _candy_jar_cell") >= 0 and src_inv.find("_slot_panel(pos, Color(\"#2a1c36\")") >= 0)
+		src_inv.find("func _candy_jar_cell") >= 0 and src_inv.find("var jbox := _slot_panel(pos,") >= 0)
 	_ok("★★打碎【复用】_on_break_jar(不复制领奖逻辑)",
 		src_inv.find("_inv_jar._on_break_jar()") >= 0)
 	_ok("★合成条目【不写进存档】(糖果罐不是可交易装备, 写进去会被卖出/升星逻辑当普通装备)",
@@ -172,29 +172,35 @@ func _ready() -> void:
 	##   `_sel_bench` 又直接索引 `persistent_bench` ⇒ 若把渲染下标当数据下标传,
 	##   **点第 1 件装备会装备/卖掉第 2 件** —— 坏存档。
 	##   判据: 渲染循环里必须有独立的数据下标 `bidx`, 且合成条目不占号。
-	## ── 移动端与误触用例(用户 2026-08-14「考虑移动端了吗」「所有用户用例都要想到」)──
-	_ok("★★★滑列表不误触: 走点击/拖动判定(位移 ≥16px 不算点击)",
+	## ── 交互用例(用户 2026-08-14:「点击装备, 下面把出售和什么按钮换成打碎就好了啊」)──
+	##   ★最终形态就是【和装备一模一样】: 点一下 = 选中, 底部同一条操作栏把"卖出"换成"打碎"。
+	##     我先做的自定义 gui_input + 确认弹窗是**过度设计** —— 选中本身可撤销,
+	##     误触点一下再点"取消"就行, 不需要再弹一层。
+	_ok("★★★点它 = 选中(不是直接碎) —— 用独立标记 `_sel_jar`",
+		src_inv.find("_sel_jar = not _sel_jar") >= 0)
+	_ok("★★★`_sel_jar` 不占 `_sel_bench`(后者直接索引 persistent_bench, 占了就索引错位)",
+		src_inv.find("var _sel_jar: bool = false") >= 0
+		and src_inv.find("_sel_bench = -1                              # 选糖果罐") >= 0)
+	_ok("★★滑列表不误触: 位移 ≥16px 不算点击(与装备卡同一套)",
 		src_inv.find("if ev.position.distance_to(_press_pos) >= 16.0:") >= 0)
-	_ok("★★抬起才触发, 不是按下就碎(手指一碰就没了)",
-		src_inv.find("if ev.pressed:
-			_press_pos = ev.position
-			return") >= 0
-		or src_inv.find("_press_pos = ev.position") >= 0)
-	_ok("★★打碎【不可逆】⇒ 必须有确认(卡片混在装备中间, 那里点击语义是可撤销的'选中')",
-		src_inv.find("func _confirm_smash_jar") >= 0
-		and src_inv.find("打碎后本大轮消失，不可撤销") >= 0)
-	_ok("★确认按钮 48px 高(手指点得中)", src_inv.find("no.size = Vector2(140, 48)") >= 0)
-	_ok("★★弹窗挡住穿透(否则开着还能点到背后的背包选中/卖出)",
-		src_inv.find("dim.mouse_filter = Control.MOUSE_FILTER_STOP") >= 0)
-	_ok("★点遮罩空白 = 取消(手机没有 Esc)",
-		src_inv.find("dim.gui_input.connect") >= 0)
-	_ok("★★★卡面显示【档位】而不是 ×N —— 一大轮只能碎一次, N 是累积糖数不是罐子数",
+	_ok("★★底部【同一条操作栏】把卖出换成打碎(不另起弹窗/面板)",
+		src_inv.find("func _build_jar_op_bar") >= 0
+		and src_inv.find('smash.text = "🔨 打碎"') >= 0)
+	_ok("★打碎按钮与\"卖出\"同一位置同一尺寸(bw-290, 170×38)",
+		src_inv.find("smash.position = Vector2(bw - 290, 14); smash.size = Vector2(170, 38)") >= 0)
+	_ok("★★选装备与选糖果罐【互斥】(底部只有一条操作栏)",
+		src_inv.find("_sel_jar = false                       # 选装备") >= 0)
+	_ok("★★已删掉过度设计的确认弹窗(_confirm_smash_jar 不再存在)",
+		src_inv.find("func _confirm_smash_jar") < 0)
+	_ok("★卡面显示【档位】而不是 ×N(一大轮只能碎一次, N 是累积糖数)",
 		src_inv.find('jnm.text = "糖果罐 %d档"') >= 0)
 
 	## ★糖果罐不许【同时出现在两个地方】—— 旧的右上角独立面板必须撤掉,
 	##   否则玩家在背包里看到一张卡、右上角还有一块板, 是同一个东西的两份。
-	_ok("★★右上角的旧独立面板已撤(不再调 _build_candy_jar)",
-		src_inv.find("_inv_jar._build_candy_jar()") < 0)
+	var src_jar := FileAccess.get_file_as_string("res://scripts/scenes/inventory/candy_jar.gd")
+	_ok("★★右上角的旧独立面板【已删】(不是留着不调 —— 死函数会被门禁假保护)",
+		src_inv.find("_inv_jar._build_candy_jar()") < 0
+		and src_jar.find("func _build_candy_jar") < 0)
 	_ok("★但 InvCandyJar 本身保留(打碎的领奖/存档/弹窗仍由它负责)",
 		src_inv.find("_inv_jar._on_break_jar()") >= 0)
 	_ok("★★★渲染下标与【数据下标】分开(合成条目不占号, 否则点第1件会动到第2件)",
