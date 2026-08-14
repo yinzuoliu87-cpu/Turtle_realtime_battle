@@ -255,6 +255,51 @@ func _ready() -> void:
 	_ok("★★★充能条也要从存档余额起步(不是从 0)", int(inc._chg.get("left", 0)) == 200,
 		"条=%d(存档 200)" % int(inc._chg.get("left", 0)))
 
+	# ── ⑫ 卖掉石头之后(用户 2026-08-13 专门问过) ────────────────────────────
+	##   ★方案书拍板:「只有充能会丢, 已投进羁绊的刻痕不退」。
+	##     用户原话:「如果卖掉了就丢失这 20」(指没满一道的充能), 刻痕是已经兑现的收益。
+	inc.clear_all()
+	inc._loaded = {"left": false, "right": false}
+	inc._marks["left"] = 0
+	inc._chg["left"] = 0
+	GameState.incense_marks = 12
+	GameState.incense_charge = 1500     # 没满一道的零头
+	s._units.clear()
+	var holder: Dictionary = s._spawn._make_unit("basic", "left", c + Vector2(-150, 0))
+	holder["atk"] = 100.0
+	holder["equips"] = [{"id": Inc.EID, "star": 1}]
+	holder["eq_state"] = {Inc.EID: {}}
+	s._units.append_array([holder, e])
+	s._equip_sys._stats._eq_apply_all_stats()
+	s._sim_step(1.0 / 60.0, false, false)
+	_ok("★分母: 带着石头时刻痕 12 / 充能 1500",
+		inc.marks_of("left") == 12 and int(inc._chg.get("left", 0)) == 1500,
+		"刻痕=%d 充能=%d" % [inc.marks_of("left"), int(inc._chg.get("left", 0))])
+	# 卖掉: 把石头从身上摘下来, 再走一次换路
+	holder["equips"] = []
+	holder["eq_state"] = {}
+	inc.clear_all()
+	inc._marks["left"] = 0
+	inc._chg["left"] = 0
+	s._equip_sys._stats._eq_apply_all_stats()
+	s._sim_step(1.0 / 60.0, false, false)
+	_ok("★★卖掉石头后【刻痕不退】(已兑现的收益不收回)", inc.marks_of("left") == 12,
+		"刻痕=%d(应 12)" % inc.marks_of("left"))
+	## ⚠⚠【规则冲突·待用户拍板】卖掉之后充能保不保留, 用户给过两条相反的话:
+	##   · 2026-08-06「如果卖掉了就丢失这 20」—— 那时充能存在【装备实例】上
+	##   · 2026-08-13「羁绊里有多少刻痕和充能都是重新激活状态…就接着激活啊」
+	##     +「两个火石一起叠充能, 共享充能条」—— 充能被搬到【羁绊池】
+	##   后一条的必然结果: 共享池不该因为卖掉其中一块就清空(否则带两块的人卖一块,
+	##   另一块的进度也跟着没了)。⇒ **当前实装跟随后一条**。
+	##   ★这条断言钉住的是【当前规则】, 不是"验证过的正确"。用户改主意就来改这里。
+	_ok("★当前规则: 卖掉石头后充能【保留】(2026-08-13 搬进羁绊共享池的必然结果)",
+		int(inc._chg.get("left", 0)) == 1500,
+		"局内条=%d 存档=%d ⚠ 与 2026-08-06「卖掉就丢失」冲突, 待拍板"
+			% [int(inc._chg.get("left", 0)), int(GameState.incense_charge)])
+	_ok("★★卖掉之后全队【仍吃到刻痕的加成】(刻痕跟羁绊走)",
+		float(holder.get("damage_amp", 0.0)) > 0.0,
+		"增伤=%.4f" % float(holder.get("damage_amp", 0.0)))
+
 	## ★还原真存档 —— 不还原就是拿测试改玩家数据(用户明令: 演示/测试不许写真存档)。
 	GameState.incense_marks = _save_m
 	GameState.incense_charge = _save_c
