@@ -152,6 +152,22 @@ func _ready() -> void:
 	_ok("★★糖粒是【菱形】不是圆/方块(实心占比 %.0f%%, 菱形约 40~60%%)" % (frac * 100.0),
 		frac > 0.25 and frac < 0.72, "实心占比 %.1f%%" % (frac * 100.0))
 
+	# ── 糖果罐以【装备的形式】进背包(用户 2026-08-14)──────────────────────
+	##   ★原来是右上角一块 372×44 的独立面板 —— 和背包里的东西不是一套语言。
+	##   ★判据落在源码事实 + 复用关系上: 走同一个 `_slot_panel`(视觉同源),
+	##     且打碎复用 `_on_break_jar`(不复制一份领奖逻辑)。
+	var src_inv := FileAccess.get_file_as_string("res://scripts/scenes/InventoryScene.gd")
+	_ok("★★糖果罐排进背包格子(合成条目 kind=candy_jar)",
+		src_inv.find('{"kind": "candy_jar"') >= 0)
+	_ok("★★用装备卡同一个外框 `_slot_panel`(视觉同源, 不自画一套)",
+		src_inv.find("func _candy_jar_cell") >= 0 and src_inv.find("_slot_panel(pos, Color(\"#2a1c36\")") >= 0)
+	_ok("★★打碎【复用】_on_break_jar(不复制领奖逻辑)",
+		src_inv.find("_inv_jar._on_break_jar()") >= 0)
+	_ok("★合成条目【不写进存档】(糖果罐不是可交易装备, 写进去会被卖出/升星逻辑当普通装备)",
+		src_inv.find("GameState.persistent_bench.append({\"kind\": \"candy_jar\"") < 0)
+	_ok("★没有糖果罐时不占格子(has_candy_jar 才注入)",
+		src_inv.find("if GameState.has_candy_jar():") >= 0)
+
 	print("")
 	if _fail == 0:
 		print("ALL PASS — 糖果罐/临时等级器 端到端")

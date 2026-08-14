@@ -553,6 +553,16 @@ func _build_bench() -> void:
 	hdr.position = Vector2(40, 386); hdr.size = Vector2(_vw - 80, 26)
 	add_child(hdr)
 	var bench: Array = GameState.persistent_bench if GameState.persistent_bench is Array else []
+	## ★★用户 2026-08-14:「还有糖果罐, 在背包里我希望是以一个装备的形式」。
+	##   原来糖果罐是右上角一块 372×44 的独立面板 —— 和背包里的东西不是一套语言,
+	##   玩家要在两个地方找自己的资产。现在把它**排进背包格子**, 和装备一样。
+	##   ★用合成条目而不是真的写进 `persistent_bench`: 糖果罐不是可交易/可合成的装备,
+	##     写进去会污染存档、被卖出/升星逻辑当成普通装备处理。
+	##     合成条目只活在这一次渲染里, `kind` 打成 `candy_jar` 由 `_equip_cell` 分派。
+	##   ★排在**最前面**: 它是限时资源(本大轮打碎才有奖, 切轮消失), 该第一眼看到。
+	if GameState.has_candy_jar():
+		bench = ([{"kind": "candy_jar", "id": "candy_jar",
+			"count": int(GameState.candy_jar_count)}] as Array) + bench
 	var gx := 40.0
 	var top := 418.0
 	var pitch := SLOT + 16.0
@@ -655,8 +665,11 @@ func _empty_bench_cell(pos: Vector2) -> Control:
 	return box
 
 func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
+	if str(it.get("kind", "")) == "candy_jar":  # 糖果罐: 以装备卡的形式排进背包(用户 2026-08-14)
+		return _candy_jar_cell(it, pos)
 	if str(it.get("kind", "")) == "item":       # 消耗品(临时等级器): 不是装备, 不查装备表/不显星
 		return _item_cell(it, idx, pos)
+
 	var sel := idx == _sel_bench
 	var eid := str(it.get("id", ""))
 	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
@@ -772,3 +785,38 @@ func _tutorial_anchor(anchor: String) -> Rect2:
 		"backpack":  # 装备背包区(教"装装备")
 			return Rect2(40.0, 386.0, _vw - 80.0, 244.0)
 	return Rect2()
+
+
+## 糖果罐格子 —— 长得像装备卡(同一个 `_slot_panel` 尺寸与描边), 但点击是【打碎领奖】。
+## ★沿用装备卡的外框而不是自画一个: 用户要的就是"以装备的形式", 视觉必须同源;
+##   自画一套会又变成"背包里有两种长得不一样的东西"。
+func _candy_jar_cell(it: Dictionary, pos: Vector2) -> Control:
+	var tier: int = GameState.candy_jar_tier()
+	var jbox := _slot_panel(pos, Color("#2a1c36"), Color("#e79bd6"))
+	jbox.tooltip_text = "糖果罐 ×%d
+打碎后本大轮消失。
+当前档位奖励: %s" % [
+		int(it.get("count", 0)), GameState.candy_jar_tier_preview(tier)]
+	var jic := Label.new()
+	jic.text = "🍬"
+	jic.add_theme_font_size_override("font_size", 30)
+	jic.position = Vector2(0, 16); jic.size = Vector2(SLOT, 36)
+	jic.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	jic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	jbox.add_child(jic)
+	var jnm := Label.new()
+	jnm.text = "糖果罐 ×%d" % int(it.get("count", 0))
+	jnm.add_theme_font_size_override("font_size", 12)
+	jnm.add_theme_color_override("font_color", Color("#e79bd6"))
+	jnm.position = Vector2(2, SLOT - 36); jnm.size = Vector2(SLOT - 4, 32)
+	jnm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	jnm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	jnm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	jbox.add_child(jnm)
+	jbox.gui_input.connect(func(ev: InputEvent) -> void:
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			## ★复用 `InvCandyJar._on_break_jar` —— 打碎的全部逻辑(领奖/存档/弹窗/重建)
+			##   都在它里面。这里只换入口, **不复制一份领奖逻辑**(手抄的副本必然落后)。
+			if _inv_jar != null:
+				_inv_jar._on_break_jar())
+	return jbox
