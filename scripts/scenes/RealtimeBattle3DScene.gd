@@ -6309,7 +6309,7 @@ const _CHEST_TREASURE_DESC := {
 	"thunder": "命中叠金色闪电, 满 5 层引爆 1.0×ATK 真实伤害",
 	"starlight": "自身造成的所有伤害转为真实伤害",
 }
-const _CHEST_THRESH := [1000.0, 2500.0, 4500.0, 7000.0, 12000.0]   # 大轮制开箱阈值(与 _chest_sys._chest_treasure_tick 同源)
+const _CHEST_THRESH := [3000.0, 6000.0, 10000.0, 18000.0, 30000.0]   # 大轮制开箱阈值(用户 2026-08-14 上调: 原 1000/2500/4500/7000/12000)
 
 func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁锁(Whipfist Longshot·CD5s用户拍板): 索敌 150~350码之间→链射→顿+目标眩晕0.4s→拉体落身后+1A魔法(用户2026-07-18: 触发范围>350改为150~350码之间)
 	if not (u.get("is_elite", false) and u.get("alive", false)): return

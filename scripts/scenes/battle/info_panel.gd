@@ -222,7 +222,13 @@ func _info_stat_rows(u: Dictionary) -> Array:
 		[sic + "atk-icon.png",      "攻击 %d" % int(u.get("atk", 0)),                                Color("#ff9d8a")],
 		[sic + "def-icon.png",      "护甲 %d" % int(u.get("def", 0)),                                W],
 		[sic + "mr-icon.png",       "魔抗 %d" % int(u.get("mr", 0)),                                 Color("#9bdcff")],
-		[sic + "crit-icon.png",     "暴击 %d%%" % int(float(u.get("crit", 0.0)) * 100.0),            W],
+		## ★★用户 2026-08-14 实测「为什么会看到暴击率 124%」。
+		##   内部计算是对的: `_resolve_dmg` 把有效暴击率钳到 100%,
+		##   **溢出的每 1% 按 `DamageMath.crit_multiplier` 转成 1.5% 暴伤**。
+		##   但面板原来把 `crit` 原样 ×100 显示 ⇒ 玩家看到"暴击率 124%",
+		##   而那作为【概率】是没有意义的数字。
+		##   ⇒ 暴击这一行钳到 100%; 溢出的部分并进【暴伤】那一行(见下), 与实战一致。
+		[sic + "crit-icon.png",     "暴击 %d%%" % int(minf(float(u.get("crit", 0.0)), 1.0) * 100.0),  W],
 		## ★★☆攻速要显【次/秒】, 不是【秒】(2026-08-10 修)。
 		##   原来写的是 `atk_interval` —— 那是**攻击间隔**, 却标着"攻速":
 		##   数字越大反而越慢, 玩家会**整个读反**。
@@ -245,7 +251,11 @@ func _info_stat_rows(u: Dictionary) -> Array:
 	# 乘算类: 显示最终倍率(100% = 没有加成)
 	rows.append(["", "治疗强度 %d%%" % int(round((1.0 + float(u.get("heal_amp", 0.0))) * 100.0)), Color("#7fe39a")])
 	rows.append(["", "护盾强度 %d%%" % int(round((1.0 + float(u.get("shield_amp", 0.0))) * 100.0)), Color("#ffd93d")])
-	rows.append(["", "暴伤 %d%%" % int(round(float(u.get("crit_dmg", 1.5)) * 100.0)), Color("#ffb37a")])
+	## ★暴伤 = 基础暴伤 + 暴击率溢出 100% 的部分 ×1.5(与 `DamageMath.crit_multiplier` 同一公式,
+	##   不另抄一份 —— 手抄的副本必然落后)。这样"124% 暴击"在面板上读作
+	##   "暴击 100% · 暴伤 186%", 玩家看到的就是实战真正生效的两个数。
+	var _crit_over: float = maxf(0.0, float(u.get("crit", 0.0)) - 1.0) * 1.5
+	rows.append(["", "暴伤 %d%%" % int(round((float(u.get("crit_dmg", 1.5)) + _crit_over) * 100.0)), Color("#ffb37a")])
 	rows.append(["", "龟能充能 %d%%" % int(round((1.0 + float(u.get("echarge_perm", 0.0))) * 100.0)), Color("#ffce4d")])
 	# 加算类: 基准 0
 	rows.append(["", "护甲穿透 %d" % int(u.get("armor_pen", 0.0)), Color("#ffc48a")])

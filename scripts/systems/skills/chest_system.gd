@@ -10,7 +10,7 @@ func _init(b) -> void:
 
 # 宝箱·藏宝图(封板L590-594·完整15件专属池): 造成伤害积累财宝值(=dmg_dealt), 过阈值开专属战利品(分档池·不重复)+回血, 一场最多5件
 func _chest_treasure_tick(u: Dictionary) -> void:
-	# 大轮制(用户2026-07-16): 我方真实对局=财宝值跨场累积(GameState)·阈值1000/2500/4500/7000/12000·开出=一大轮常驻; demo/敌侧=单场旧制
+	# 大轮制(用户2026-07-16): 我方真实对局=财宝值跨场累积(GameState)·阈值3000/6000/10000/18000/30000(用户2026-08-14上调)·开出=一大轮常驻; demo/敌侧=单场旧制
 	var season_mode: bool = (not battle._review_demo()) and str(u.get("side", "")) == "left" and GameState != null and not u.get("is_summon", false)
 	var opened: int
 	if season_mode:
