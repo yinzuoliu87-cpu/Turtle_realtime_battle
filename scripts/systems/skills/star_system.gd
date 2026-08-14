@@ -8,6 +8,12 @@ var battle
 func _init(b) -> void:
 	battle = b
 
+## 虫洞锁龟能的兜底时长(秒)。虫洞正常会在爆炸那一刻主动解锁; 这个数只是
+## "万一虫洞被换路/死亡等路径提前销毁"时的保险丝 —— 宁可早解锁也不能永久锁死。
+## ★地图对角线约 2600 码 ÷ 140 码/s ≈ 19 秒, 取 25 秒留余量。
+const WORMHOLE_LOCK_FALLBACK := 25.0
+
+
 func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭曲空间「奇点」(封板数值不动: 普通=敌阵中心500码全体0.8A魔法; 强化星能满=+拽向中心min(d×0.6,200)+清空星能; 120龟能)
 	# 演出重设计照发条R官方逐帧(C:/tmp/ori_burst: b13施放三件套/b13-b24吸入0.37s/b25-27屏息/b28爆发帧/b29-b34拉拽0.2s)·星际×2放慢换算
 	# 用户2026-07-16批准: 伤害挪到爆发帧结算+施法锁(技2先例); 同日整改: ①普通版施法可积攒星能·强化版才锁星能 ②强化换位=重力抛物线甩飞过中心点落对端·落地即恢复行动("延中心点到对端") ③特效范围=伤害范围500码对齐 ④节奏再减慢30%→吸入1.03s/爆发帧1.24s/拉拽0.57s
@@ -596,8 +602,21 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·
 	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
 	if dir.length() < 0.1: dir = Vector2.RIGHT
 	var start: Vector2 = u["pos"]
-	var mult: float = 1.5 * (1.0 + 0.05 * battle._t)                       # 爆炸伤害=1.5A×(1+5%每秒)·发射时刻定格(用户2026-07-16保持)
+	## ★★★用户 2026-08-14:「虫洞是战斗时间越久…每一路的时间」
+	##   —— 机制按代码走(战斗时长, 不是虫洞寿命), 但基准改成【本路】开打时刻。
+	##   原来用 `battle._t`, 那是**跨上路→下路→决胜一直累加、永不重置**的全局时钟
+	##   (CLAUDE.md §3.4 专门警告过)⇒ 下路一开场倍率就已经 10.5×、决胜 24×,
+	##   而不是文案与设计意图的 1.5×。
+	##   `battle._sd_t0` = 本战场开打时刻, `_dl_start_fight` 每路重置 —— 现成的正确基准。
+	var lane_sec: float = maxf(0.0, battle._t - battle._sd_t0)             # 本路已打秒数
+	var mult: float = 1.5 * (1.0 + 0.05 * lane_sec)                        # 爆炸伤害=1.5A×(1+5%每秒)·发射时刻定格
 	var uu := u
+	## ★★用户 2026-08-14:「释放虫洞时锁龟能, 直到虫洞消失」。
+	##   虫洞飞到地图边界才炸, 时长不固定(140 码/s × 到边界的距离) ⇒ **不能设固定秒数**,
+	##   只能发射时锁死、爆炸那一刻解锁。用现成的 `energy_lock_until`(泡泡盾/星波彗星同款)。
+	##   ★锁到一个远期时刻而不是 INF: 万一虫洞被别的路径提前销毁(换路/单位死亡),
+	##     也有兜底解锁, 不会把龟能永久锁死 —— 今晚凤凰那次"忘了清旗子=永久无敌"的教训。
+	u["energy_lock_until"] = battle._t + WORMHOLE_LOCK_FALLBACK
 	battle._anticipate(u)                                                  # 短暂蓄力前摇
 	var fire := func() -> void:
 		if not uu.get("alive", false): return
@@ -708,6 +727,9 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·
 				if not o3.get("alive", false) or boomed.has(o3): continue
 				if (o3["pos"] as Vector2).distance_to(c3) > 150.0: continue
 				battle._damage._apply_damage_from(uu, o3, battle._atk_dmg(uu, mult, o3, true), Color("#c9a0ff"))
+			## ★虫洞消失 ⇒ 解锁龟能(设成当前时刻 = 立即到期, 与星波彗星同一写法)
+			if uu.get("alive", false):
+				uu["energy_lock_until"] = battle._t
 			if is_instance_valid(hole): hole.queue_free()
 		var tw = battle._reg_tween()
 		tw.tween_method(step, 0.0, end_d, end_d / 140.0).set_trans(Tween.TRANS_LINEAR)   # 140码/s推进到边界
