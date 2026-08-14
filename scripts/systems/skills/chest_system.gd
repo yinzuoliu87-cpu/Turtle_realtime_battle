@@ -75,6 +75,14 @@ func _chest_pick_treasure(u: Dictionary, group: String) -> String:   # 该档随
 	if avail.is_empty(): return ""
 	return str(avail[battle._battle_rng.randi() % avail.size()])
 
+## 战利品数值(用户 2026-08-14 调整) —— 集中在这里, 别散在各自的钩子里。
+## ★消费点在别处(battle_damage / RealtimeBattle3DScene 的周期 tick), 但**数值只有这一份**,
+##   否则就是"手抄的副本必然落后"。
+const RUM_HEAL_PCT := 0.005     # 朗姆酒: 每秒回 0.5% 最大生命(原每 10 秒 8%)
+const GEM_HP := 500.0           # 宝石甲: +500 最大生命(原 +60)
+const FLINT_BURN_COEF := 0.05   # 火石: 命中给 0.05×ATK 层灼烧(原 0.1)
+
+
 func _chest_apply_treasure(u: Dictionary, tid: String) -> void:   # 逐件bespoke效果(属性即时应用·机制类置flag由钩子读)
 	if not u.has("chest_treasures"): u["chest_treasures"] = {}
 	u["chest_treasures"][tid] = true
@@ -88,7 +96,7 @@ func _chest_apply_treasure(u: Dictionary, tid: String) -> void:   # 逐件bespok
 		"long_sword":     battle._damage._buff(u, "atk", 0.45, true, 99999.0)                                               # 长剑: +45%攻
 		"bloodblade":     u["lifesteal"] = float(u.get("lifesteal", 0.0)) + 0.25                             # 嗜血之刃: +25%吸血
 		"flint":          pass                                                                               # 火石: 命中→灼烧(_apply_damage_from钩子·防循环)
-		"gem_armor":      battle._damage._buff(u, "def", 0.25, true, 99999.0); battle._damage._buff(u, "mr", 0.25, true, 99999.0); u["maxHp"] += 60.0; u["hp"] += 60.0   # 宝石甲: +25%双抗+60血
+		"gem_armor":      battle._damage._buff(u, "def", 0.25, true, 99999.0); battle._damage._buff(u, "mr", 0.25, true, 99999.0); u["maxHp"] += GEM_HP; u["hp"] += GEM_HP   # 宝石甲: +25%双抗+60血
 		"poison":         pass                                                                               # 毒箭: 命中→治疗削减-50%5秒(_apply_damage_from钩子·防循环)
 		"phoenix_statue": u["_chest_revive"] = true                                                          # 凤凰雕像: 首死25%最大生命复活(_kill钩子)
 		"crown":          battle._damage._buff(u, "atk", 0.40, true, 99999.0); u["crit"] = float(u.get("crit", 0.0)) + 0.40; u["crit_dmg"] = float(u.get("crit_dmg", 1.5)) + 0.25; u["lifesteal"] = float(u.get("lifesteal", 0.0)) + 0.15   # 王冠: +40攻/+40暴/+25爆伤/+15吸血

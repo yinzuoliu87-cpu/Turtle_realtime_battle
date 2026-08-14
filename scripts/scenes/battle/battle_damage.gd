@@ -126,8 +126,12 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		dmg = int(round(float(dmg) * float(src.get("dmg_out_mult", 1.0))))
 	if battle._sd_stacks > 0:
 		dmg = maxi(1, int(round(float(dmg) * (1.0 + battle._sd_amp()))))   # §SUDDEN 决胜增伤(这条路走普攻/技能主线)
-	# 星辉战利品(宝箱传说): 所有伤害转真实=跳过减伤(钻石18%/岩层/铁壁flat) — 完整"绕护甲"局限留F5(伤害多已由_atk_dmg预减)
-	if src.get("chest_starlight", false):
+	## 星辉战利品(宝箱传说): 转真实 = 跳过减伤(钻石18%/岩层/铁壁flat)。
+	## ★用户 2026-08-14 收窄: **只有普攻与技能**转真实 —— 原来是"所有伤害",
+	##   连装备触发的段(`from_equip`)也白嫖穿甲。现在装备段照常吃减伤。
+	## ⚠ 已知局限(文案里也写了): 它走的是 raw 通道, **护盾与 flat 减伤仍会吃**,
+	##   不是完全绕护甲(伤害多已由 `_atk_dmg` 预减)。
+	if src.get("chest_starlight", false) and not from_equip:
 		raw = true
 	# ★靶向器055(+20%) 与 终极暴露蛋(×5) 已并入 §MITIGATE, 与 _apply_damage 共用同一份实现。
 	#   拆成两半是因为下面的暴击/墨迹要插在中间(它们是攻击者侧, 只有这条路有)。
@@ -318,12 +322,14 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		# 宝箱藏宝图 on-hit 战利品 (火石灼烧/毒箭治疗削减/雷刃金闪电引爆·此块已在not from_equip内→天然防循环)
 		var _cht = src.get("chest_treasures", null)
 		if _cht is Dictionary and not is_same(src, u) and u.get("alive", false):
-			if _cht.has("flint"):    # 火石: 命中→灼烧层=round(0.1×ATK)(用户2026-07-16: 0.67→0.1)
-				_apply_dot_stacks(u, "burn", maxi(1, roundi(float(src["atk"]) * 0.1)), src)
+			if _cht.has("flint"):    # 火石: 命中→灼烧层(用户2026-08-14: 0.1→0.05, 走 ChestSystem 常量)
+				_apply_dot_stacks(u, "burn", maxi(1, roundi(float(src["atk"]) * ChestSystem.FLINT_BURN_COEF)), src)
 			if _cht.has("poison"):   # 毒箭: 命中→治疗削减-50%·5秒
 				u["heal_reduce_until"] = maxf(float(u.get("heal_reduce_until", 0.0)), battle._t + 5.0)
 				u["heal_reduce_pct"] = maxf(float(u.get("heal_reduce_pct", 0.0)), 0.5)
-			if _cht.has("thunder"):  # 雷刃: 命中叠金闪电·满5→引爆1.0A真伤(from_equip=true防循环)
+			## 雷刃: 命中叠金闪电·满5→引爆1.0A真伤(引爆那下 from_equip=true 防循环)
+			## ★用户 2026-08-14 收窄: 只有【普攻与技能】命中才叠层 —— 装备触发的段不再叠。
+			if _cht.has("thunder") and not from_equip:
 				var _tl = battle._add_stack(u, "chest_thunder", 1, 5)
 				if _tl >= 5:
 					battle._consume_stacks(u, "chest_thunder")

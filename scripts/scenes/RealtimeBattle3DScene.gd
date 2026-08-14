@@ -7029,9 +7029,10 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	# 海盗船(实体)已改为 技能三 pirateShipPassive 首次充能满召唤(_pirate_sys._sk_pirate_ship·选中才召·封板L378"火炮/朗姆的船=纯装饰演出"); 原无条件4s自动召唤删除
 	# --- 宝箱藏宝图·朗姆酒战利品: 每10秒回8%最大生命(封板L592·flag由开箱设) ---
 	if u["id"] == "chest" and (u.get("chest_treasures", {}) as Dictionary).has("rum"):
+		## ★用户 2026-08-14 削弱: 每 10 秒回 8% → **每秒回 0.5%**(等效 10 秒 5%, 且更平滑)
 		u["chest_rum_t"] = float(u.get("chest_rum_t", 0.0)) + delta
-		if u["chest_rum_t"] >= 10.0:
-			u["chest_rum_t"] = 0.0; _damage._heal(u, u["maxHp"] * 0.08)
+		if u["chest_rum_t"] >= 1.0:
+			u["chest_rum_t"] -= 1.0; _damage._heal(u, u["maxHp"] * ChestSystem.RUM_HEAL_PCT)
 	# --- 钻石滚球被动(封板): 选滚球 且 100码内无敌 → 免费自动滚(不耗龟能不充能)撞向最近·0.8s防抖内CD ---
 	if u["id"] == "diamond" and not u.get("roll_active", false) and _t > float(u.get("roll_free_cd", 0.0)) and "diamondPowerball" in _chosen_skill_types(u["id"], u["side"] == "left"):
 		var _dne = _targeting._nearest_enemy(u)
