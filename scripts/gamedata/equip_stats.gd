@@ -79,7 +79,14 @@ static func stat_lines_all_stars(item_id: String) -> Array:
 			by_name[n][s - 1] = str(kv[1])
 	var out: Array = []
 	for n in names:
-		out.append([n, "/".join(PackedStringArray(by_name[n]))])
+		var v: Array = by_name[n]
+		## ★三档【完全相同】就只写一遍(2026-08-14, 用户「图鉴描述需要优化」)。
+		##   实拍图鉴里圣光护盾写着「最大生命 +250/+250/+250」—— 同一个数抄三遍,
+		##   读者要先比对三段才发现"哦是不变的"。分档有意义时才分档。
+		if str(v[0]) == str(v[1]) and str(v[1]) == str(v[2]):
+			out.append([n, str(v[0])])
+		else:
+			out.append([n, "/".join(PackedStringArray(v))])
 	return out
 
 ## 三星合并单行: "攻击力 +8/+14/+30 · 暴击率 +15%/+25%/+40%"

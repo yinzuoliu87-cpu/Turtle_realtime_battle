@@ -1,5 +1,6 @@
 class_name CodexDetail
 extends RefCounted
+const SkillTextRef := preload("res://scripts/util/skill_text.gd")   # 三档数值按★1高亮(与商店/背包同一份)
 ## 图鉴·右栏详情视图(龟/装备/羁绊(类型)/状态/规则/小将 13渲染函数)
 ## 类内名不变;外部名加 battle.
 
@@ -171,6 +172,27 @@ func _show_pet(pet: Dictionary) -> void:
 
 
 # ─── 技能卡 (1:1 PoC renderSkillListSection) ───
+## 技能卡的简述被切断时, 在卡片底部那条留白里画一行"点开看全部 ▸"。
+##
+## ★必须等一帧才问 `get_content_height()` —— 刚 add_child 时还没排版, 拿到 0 ⇒ 永远判"没被切",
+##   提示永远不出现(这就是个不会红的假检查)。同 ShopScene._add_scroll_hint 那条。
+func _mark_card_clipped(rt: RichTextLabel, cx: float, y: float, card_w: float) -> void:
+	await host.get_tree().process_frame
+	if not is_instance_valid(rt) or not is_instance_valid(host) or host.detail == null:
+		return
+	if rt.get_content_height() <= rt.size.y + 0.5:
+		return
+	var l := Label.new()
+	l.text = "点开看全部 ▸"
+	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_color_override("font_color", Color("#7fb5d8"))
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.position = Vector2(cx + 8, y)
+	l.size = Vector2(card_w - 16, 16)
+	host.detail.add_child(l)
+
+
 func _render_skill_cards(pet: Dictionary, ctx: Dictionary) -> void:
 	# 内联技能详情页 (1:1 PoC showPetDetail view={skillIdx} → renderSkillDetailSection): 顶部"← 返回列表" + 完整 host.detail
 	if not host._codex_skill_detail.is_empty():
@@ -253,16 +275,25 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary) -> void:
 		var brief = SkillText.render_bbcode(str(sk.get("brief", "")), ctx, sk, 13)
 		var rt = RichTextLabel.new()
 		rt.bbcode_enabled = true
-		rt.fit_content = true
+		## ★fit_content 必须是 false: 它会把控件撑到内容高度, 于是
+		##   `get_content_height() <= size.y` **恒成立** —— 我加的"被切了就提示"永远不触发,
+		##   而文字照样被卡片边缘切掉。这就是个不会红的假检查(等一帧也救不了)。
+		rt.fit_content = false
 		rt.scroll_active = false
 		rt.position = Vector2(cx + 8, start_y + 82)
-		rt.custom_minimum_size = Vector2(card_w - 16, card_h - 82 - 8)
-		rt.size = Vector2(card_w - 16, card_h - 82 - 8)
+		## ★底部再留 18px(2026-08-14, 用户「图鉴描述需要优化」):
+		##   卡片 `clip_contents = true` + 定高 ⇒ 长简述被**静默切断**, 实拍「过肩摔」停在
+		##   "施法期间小龟露体（不可" 就没了, 玩家看不出后面还有内容, 也不知道点卡片能看全。
+		##   这条带子平时是空的, 真被切了才画一行"点开看全部"。
+		var rt_h: float = card_h - 82 - 8 - 18
+		rt.custom_minimum_size = Vector2(card_w - 16, rt_h)
+		rt.size = Vector2(card_w - 16, rt_h)
 		rt.clip_contents = true
 		rt.add_theme_font_size_override("normal_font_size", 13)
 		rt.add_theme_color_override("default_color", Color("#aaaaaa"))
 		rt.text = brief
 		host.detail.add_child(rt)
+		_mark_card_clipped(rt, cx, start_y + card_h - 22.0, card_w)
 		# drill-down: 点技能卡 → 内联换页显示完整 host.detail (1:1 PoC showPetDetail view={skillIdx}→renderSkillDetailSection)
 		var hit = Control.new()
 		hit.position = Vector2(cx, start_y)
@@ -436,7 +467,15 @@ func _show_p2eq(eq: Dictionary) -> void:
 	host._add_text(20, 134, "属性", 14, "#58d3ff", 0.0, 0.0, true)
 	var _eid: String = str(eq.get("id", ""))
 	var _stat_str: String = host.EquipStats.stat_line_all_stars(_eid)
-	host._add_text(20, 160, _stat_str, 16, "#ffd93d", 0.0, 0.0, true)
+	## ★属性行也走三色分档 —— 与下面「效果」里的三档同一套配色, 否则同一屏两种读法。
+	##   原来是纯 Label(单色 #ffd93d), `+5/+10/+20` 三档挤成一串。
+	var srt := RichTextLabel.new()
+	srt.bbcode_enabled = true; srt.fit_content = true; srt.scroll_active = false
+	srt.position = Vector2(20, 154)
+	srt.custom_minimum_size = Vector2(host.DETAIL_W - 40, 0)
+	srt.add_theme_font_size_override("normal_font_size", 17)
+	srt.text = SkillTextRef.color_all_stars(_stat_str)
+	host.detail.add_child(srt)
 
 	# 效果 (effectDesc1 = 1星基础 / effectDesc3 = 3星升级)
 	host._add_text(20, 200, "效果", 14, "#58d3ff", 0.0, 0.0, true)   # ★上移 24: 学派行删除(见上)
@@ -448,11 +487,42 @@ func _show_p2eq(eq: Dictionary) -> void:
 	rt.bbcode_enabled = true; rt.fit_content = true; rt.scroll_active = false
 	rt.position = Vector2(20, 224)   # ★上移 24: 同上
 	rt.custom_minimum_size = Vector2(host.DETAIL_W - 40, 0)
-	rt.add_theme_font_size_override("normal_font_size", 14)
-	rt.add_theme_color_override("default_color", Color("#ffffff"))
-	rt.add_theme_constant_override("line_separation", 4)
-	rt.text = bb
+	## ★字号 14 → 19(2026-08-14, 用户「图鉴描述需要优化」)。
+	##   实拍: 图鉴的效果正文是全项目【最小】的一处 —— 商店 20 / 背包 18 / 图鉴 14,
+	##   而图鉴恰恰是"专门来看资料"的地方。同一屏右侧还空着 ~60%, 小字纯属没道理。
+	rt.add_theme_font_size_override("normal_font_size", 19)
+	rt.add_theme_color_override("default_color", Color("#e8f2ff"))
+	rt.add_theme_constant_override("line_separation", 6)
+	## ★三档数值【三色等亮】—— 图鉴是资料页, 玩家在这里没有"我的星级",
+	##   用 highlight_star 压暗另两档等于暗示错误信息; 但三档同色平铺又读不出边界。
+	##   ⇒ color_all_stars(★1白/★2青/★3金) + 下面一行图例。
+	var has_tiers: bool = bb.find("/") >= 0
+	rt.text = SkillTextRef.color_all_stars(bb) if has_tiers else bb
 	host.detail.add_child(rt)
+	## ── 羁绊(类型阈值) ────────────────────────────────────────────────
+	## ★图鉴原来【一个字都不提羁绊】, 而羁绊是这件装备最重要的搭配信息。
+	##   商店详情里有(右上角小签), 图鉴反而没有 —— 同一份信息两个界面不一致。
+	var _next_y := 224.0 + rt.get_combined_minimum_size().y + 20.0
+	if has_tiers:
+		var lg := RichTextLabel.new()
+		lg.bbcode_enabled = true; lg.fit_content = true; lg.scroll_active = false
+		lg.position = Vector2(20, _next_y)
+		lg.custom_minimum_size = Vector2(host.DETAIL_W - 40, 0)
+		lg.add_theme_font_size_override("normal_font_size", 15)
+		lg.text = "数值分档: " + SkillTextRef.star_legend_bbcode()
+		host.detail.add_child(lg)
+		_next_y += 30.0
+	if _tp != "":
+		var tiers: Array = (host.Phase2Types.TYPES.get(_tp, {}) as Dictionary).get("tiers", [])
+		if not tiers.is_empty():
+			var ty := _next_y + 12.0
+			host._add_text(20, ty, "羁绊", 14, "#58d3ff", 0.0, 0.0, true)
+			var ps: PackedStringArray = []
+			for t in tiers:
+				ps.append(str(int(t)))
+			host._add_text(20, ty + 26.0, "%s %s —— 队伍装满 %s 件同类型即激活对应档位" % [
+				host.Phase2Types.emoji_of(_tp), host.Phase2Types.display_name(_tp),
+				"/".join(ps)], 17, "#9fb6c9", 0.0, 0.0, true)
 
 
 # ── 消耗品详情 (all_equipment category=consumable; 有 PNG icon + desc + target) ──

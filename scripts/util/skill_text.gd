@@ -318,6 +318,37 @@ static func render_plain(template: String, f: Dictionary, s: Dictionary) -> Stri
 ##   格式一变它就抠不出来 → total 归零 → 打印 ALL OK 但什么都没查(方案书 R1 记过这个静默失效)。
 ##
 ## star 取 1/2/3; 传 0 或越界 = 不高亮(图鉴那种没有玩家星级的场合)。
+## 三档数值【按星级上色】——★1 白 / ★2 青 / ★3 金, 三档**同样亮**。
+##
+## ★与 `highlight_star` 的分工: 商店/背包玩家有确定的星级 ⇒ 高亮那一档、压暗另两档;
+##   图鉴是**资料页**, 没有"我的星级"这回事 ⇒ 压暗任何一档都是在暗示错误信息。
+##   但三档同色平铺又读不出边界(实拍 `20/35/60+0.5/0.8/1.1×攻击力` 像一串乱码),
+##   所以改成三色等亮 + 页面上给一行图例。
+const STAR_COLORS := ["#ffffff", "#7fe3ff", "#ffd93d"]
+
+static func color_all_stars(desc: String) -> String:
+	if desc == "":
+		return ""
+	var re := RegEx.create_from_string("(\\d+(?:\\.\\d+)?)/(\\d+(?:\\.\\d+)?)/(\\d+(?:\\.\\d+)?)")
+	var out := ""
+	var pos := 0
+	for m in re.search_all(desc):
+		out += desc.substr(pos, m.get_start() - pos)
+		for i in 3:
+			if i > 0:
+				out += "[color=#5f7186]/[/color]"
+			out += "[color=%s]%s[/color]" % [STAR_COLORS[i], m.get_string(i + 1)]
+		pos = m.get_end()
+	out += desc.substr(pos)
+	return out
+
+
+## 图例行(与 `color_all_stars` 同一套色), 放在用到三档数值的页面上。
+static func star_legend_bbcode() -> String:
+	return "[color=%s]★1[/color] [color=#5f7186]/[/color] [color=%s]★2[/color] [color=#5f7186]/[/color] [color=%s]★3[/color]" % [
+		STAR_COLORS[0], STAR_COLORS[1], STAR_COLORS[2]]
+
+
 ## ★压暗色 #5a6472 → #7d8ea0(2026-08-14)。
 ##   由来: 用户「描述那里有一堆乱七八糟的东西」。实拍放大后 `/30/45` 几乎只剩噪点 ——
 ##   #5a6472 压在商店面板底色 #10202e 上对比度只有 **2.76:1**(WCAG 正文要 4.5:1)。
