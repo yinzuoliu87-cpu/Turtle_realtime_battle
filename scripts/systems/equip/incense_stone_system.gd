@@ -328,6 +328,20 @@ func _persist_chg(u: Dictionary) -> void:
 ##   死人留在表里会让下次 revoke 去减一个已经不在场的单位)。
 var _roster_n: Dictionary = {"left": -1, "right": -1}
 func tick(_delta: float) -> void:
+	## ★★★用户 2026-08-14 实测:「攒了 20 刀也是 0, 为什么上半有下半没有」。
+	##   根因: `_marks["left"]` **只在 `on_spawn` 里从存档读**, 而 `on_spawn` 只对
+	##   【带石头的龟】触发。石头装在只打上路的龟身上 ⇒ 下路一个携带者都没有
+	##   ⇒ 刻痕根本没被读进来(探针实测: 存档 20 道, 局内 `_marks["left"] = 0`)
+	##   ⇒ 下路全队增伤减伤都是 0, 攒多少道都没用。
+	## ★为什么这是错的: 香火是【羁绊】。按 v0.19.138 羁绊按**全阵容**算、三个战场共享,
+	##   所以"这一路有没有人带着石头"根本不该决定全队吃不吃得到。
+	## ★单调采纳(只往上取)而不是无条件覆盖: 局内刻下的新痕会先写存档再回来,
+	##   无条件覆盖在时序上没问题, 但只往上取更稳 —— 任何情况下都不会把局内进度抹掉。
+	if GameState != null:
+		var saved: int = clampi(int(GameState.incense_marks), 0, MARK_CAP)
+		if saved > int(_marks.get("left", 0)):
+			_marks["left"] = saved
+			_roster_n["left"] = -1        # 逼下面那段重发一次
 	for side in ["left", "right"]:
 		if int(_marks.get(side, 0)) <= 0:
 			continue

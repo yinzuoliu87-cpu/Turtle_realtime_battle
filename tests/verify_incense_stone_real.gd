@@ -212,6 +212,44 @@ func _ready() -> void:
 		float(late.get("damage_amp", 0.0)) > 0.0,
 		"增伤 %.4f → %.4f" % [late_amp0, float(late.get("damage_amp", 0.0))])
 
+	# ── ⑪ 【这一路没有携带者】时, 全队还拿不拿得到? ─────────────────────────
+	##   ★★★用户 2026-08-14 实测:「攒了20刀也是0, 为什么上半有下半没有」。
+	##     假说: `_reapply` 只有两个触发点 —— 刻新痕 / **带石头的龟登场**。
+	##     石头若装在只打上路的龟身上, 下路没有携带者登场 ⇒ `_reapply` 一次都不跑
+	##     ⇒ 下路全队 0, 攒多少道刻痕都没用。
+	##   ★而香火是【羁绊】: 按 v0.19.138 羁绊按全阵容算、三个战场共享 ——
+	##     所以下路本就该吃到全队那一份。
+	inc.clear_all()
+	inc._chg["left"] = 0
+	inc._marks["left"] = 0
+	inc._roster_n = {"left": -1, "right": -1}
+	GameState.incense_marks = 20        # 存档里躺着 20 道
+	GameState.incense_charge = 0
+	s._units.clear()
+	# 下路阵容: 三只龟, 【一块石头都没有】(携带者留在上路)
+	var lane2: Array = []
+	for i in range(3):
+		var w: Dictionary = s._spawn._make_unit("basic", "left", c + Vector2(-150.0 - 60.0 * float(i), 0))
+		w["equips"] = []
+		w["eq_state"] = {}
+		w["damage_amp"] = 0.0
+		w["damage_reduction"] = 0.0
+		lane2.append(w)
+		s._units.append(w)
+	s._units.append(e)
+	s._equip_sys._stats._eq_apply_all_stats()
+	for _f in range(10):
+		s._sim_step(1.0 / 60.0, false, false)
+	var w0: Dictionary = lane2[0]
+	_ok("★分母: 存档里有 20 道刻痕, 但这一路没有任何携带者",
+		int(GameState.incense_marks) == 20, "存档刻痕=%d" % int(GameState.incense_marks))
+	_ok("★★★这一路没有携带者时, 全队仍拿到香火增伤(20 道 × 0.1% = 2%)",
+		float(w0.get("damage_amp", 0.0)) > 0.0,
+		"增伤=%.4f · 局内刻痕=%d" % [float(w0.get("damage_amp", 0.0)), inc.marks_of("left")])
+	_ok("★★减伤那一半也要到位(20 道 × 0.05% = 1%)",
+		float(w0.get("damage_reduction", 0.0)) > 0.0,
+		"减伤=%.4f" % float(w0.get("damage_reduction", 0.0)))
+
 	## ★还原真存档 —— 不还原就是拿测试改玩家数据(用户明令: 演示/测试不许写真存档)。
 	GameState.incense_marks = _save_m
 	GameState.incense_charge = _save_c
