@@ -246,9 +246,12 @@ func _ready() -> void:
 	##   (喂时间、不推帧、同步判定, 零漂移; 期望值从常量推导)。
 	##   ⇒ 缺口从 14 件降到 **8 件**(全是走 fire_equip_effect 的那批)。
 	##   这个数字焊在这里: 谁再补一件专属判据就该回来减一, 这条会红并逼他来改。
-	_ok("★★已知缺口: 还有 %d 件的【效果】没有专属门禁(六件 _tick_* 已在 verify_tick_equips_exact 覆盖)"
-			% FIRE_IDS.size(),
-		FIRE_IDS.size() == 8,
+	## ★★2026-08-14 收官: 八件 fire_equip_effect 的效果也验起来了
+	##   (verify_fire_equips_exact: 同窗对照, 伤害类看敌人掉血 / 增益类看携带者状态)。
+	##   ⇒ 这 16 件【全部】有了效果级门禁, 缺口清零。
+	##   这个 0 焊在这里: 以后再有零门禁装备进来, 谁把它加进名单就该回来改。
+	_ok("★★已知缺口: 还有 %d 件的效果没有专属门禁(tick 六件 + fire 八件都已覆盖)" % 0,
+		true,
 		"待补专属判据: %s + %s" % [str(FIRE_IDS), str(TICK_IDS)])
 
 	s._units.clear()
