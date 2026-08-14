@@ -30,7 +30,19 @@ func _ready() -> void:
 		push_error("场景加载不了: " + path)
 		get_tree().quit(1)
 		return
-	add_child(ps.instantiate())
+	var inst: Node = ps.instantiate()
+	add_child(inst)
+	## 可选: 实例化【之后】再跑一段脚本, 拿到场景实例本身(SHOT_POST=res://tests/_post_xxx.gd,
+	## 需要 `static func run(scene: Node) -> void`)。
+	## ★为什么要它: 很多页的"要看的那一态"只有点过才出现(商店的详情面板、图鉴的选中龟)。
+	##   没有这个钩子就只能截到空态, 然后我会把"我没配对环境"报成"这块没做"。
+	if OS.has_environment("SHOT_POST"):
+		var post_path := OS.get_environment("SHOT_POST")
+		var pscr: GDScript = load(post_path)
+		if pscr != null:
+			await get_tree().process_frame
+			pscr.run(inst)
+			print("[SHOT] post: " + post_path)
 	for _i in range(maxi(1, wait)):
 		await get_tree().process_frame
 	await RenderingServer.frame_post_draw

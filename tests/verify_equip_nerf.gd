@@ -50,10 +50,10 @@ func _ready() -> void:
 	# ── tooltip 同步(effectDesc1 里出现新数字) ──
 	var eq := FileAccess.get_file_as_string("res://data/phase2-equipment.json")
 	_ok("★龙蛋文案含 20/35/50 层灼烧", eq.contains("20/35/50层灼烧"))
-	_ok("★龙蛋文案含 45/80/120+1×攻击力", eq.contains("(45/80/120+1×攻击力)魔法伤害"))
+	_ok("★龙蛋文案含 45/80/120+1×攻击力", eq.contains("（45/80/120+1×攻击力）魔法伤害"))
 	_ok("★龙蛋 baseStats1 镜像已同步", eq.contains("+攻20/45/70·魔穿8/15/27·+20龟能"))
 	_ok("★暴君文案含 1/1.8/4×攻击力", eq.contains("1/1.8/4×攻击力魔法伤害"))
-	_ok("★暴君文案含 4/6/12% 斩杀线", eq.contains("4/6/12%最大生命值×(1+暴击率)"))   # 2026-07-24 术语补全: 最大生命→最大生命值
+	_ok("★暴君文案含 4/6/12% 斩杀线", eq.contains("4/6/12%最大生命值×（1+暴击率）"))   # 2026-07-24 术语补全: 最大生命→最大生命值
 
 	print("ALL PASS — 装备削弱(龙蛋/暴君之牙)" if _fail == 0 else "FAILED: %d" % _fail)
 	get_tree().quit(0 if _fail == 0 else 1)

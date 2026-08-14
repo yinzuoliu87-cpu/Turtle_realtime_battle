@@ -52,7 +52,7 @@ func _test_highlight_picks_right_one() -> void:
 				continue
 			var other: String = ["0.6", "0.75", "1.0"][i]
 			_ok("★%d 时第 %d 档是暗的" % [star, i + 1],
-				out.contains("[color=#5a6472]%s[/color]" % other),
+				out.contains("[color=#7d8ea0]%s[/color]" % other),
 				"第 %d 档 %s 没变暗" % [i + 1, other])
 	# 越界/无星级 → 原样返回(图鉴没有玩家星级)
 	_ok("star=0 时不高亮(图鉴那种没有玩家星级的场合)", SkillTextC.highlight_star(desc, 0) == desc)

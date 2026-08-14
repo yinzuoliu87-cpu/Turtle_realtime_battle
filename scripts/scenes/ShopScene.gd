@@ -777,11 +777,14 @@ func _build_detail_panel() -> void:
 
 	# ★羁绊小签(2026-08-11 用户: 「商店页面的信息栏优化, 要去显示羁绊」):
 	#   费用行右侧一眼可见【类型 ×现有件数 · 档位】; 完整阈值与"装上后升不升档"在描述区首行。
+	## ★2026-08-14 用户「描述那里有一堆乱七八糟的东西」——**羁绊在同一屏说了两遍**:
+	##   这个小签写「🏹弓箭 ×0 · 未激活」, 描述框首行又写「羁绊·🏹弓箭 阈值3/6/9 · 队伍现有×0(未激活)」。
+	##   而且首行那块被硬折成两行、「×0(未激活)」孤悬在行首, 还白吃掉描述框 ~90px 的高度。
+	##   ⇒ 合并到这里两行说完(阈值/现状/买入后), 描述框里只留【装备本身的描述】。
 	var syn: Dictionary = _synergy_info(str(edef.get("id", "")))
 	if not syn.is_empty():
 		var sg := Label.new()
-		sg.text = "%s%s ×%d·%s" % [str(syn["emoji"]), str(syn["name"]), int(syn["count"]),
-			("档%d" % int(syn["tier"])) if int(syn["tier"]) > 0 else "未激活"]
+		sg.text = _synergy_two_lines(syn)
 		sg.add_theme_font_size_override("font_size", 13)
 		sg.add_theme_color_override("font_color",
 			Color("#ffd93d") if int(syn["tier"]) > 0 else Color("#7a92a8"))
@@ -789,7 +792,7 @@ func _build_detail_panel() -> void:
 		## ★Label 会被字体最小宽度撑破给定 size(实测 15 号字撑到 201px, 右沿压进面板框边)
 		##   ⇒ 定宽 + clip_text 双保险; 门禁⑧量的是真实节点矩形, 压框直接红。
 		sg.clip_text = true
-		sg.position = Vector2(205, 72); sg.size = Vector2(PANEL_W - 34 - 205, 20)
+		sg.position = Vector2(196, 62); sg.size = Vector2(PANEL_W - 34 - 196, 38)
 		box.add_child(sg)
 
 	_panel_sep(box, 104)
@@ -801,12 +804,16 @@ func _build_detail_panel() -> void:
 	desc.scroll_active = true
 	# 字号 16 → 18(用户 2026-07-28:「这么小的字?」)。卡面摘要砍掉后, 完整描述全靠这一块。
 	desc.add_theme_font_size_override("normal_font_size", 20)
-	desc.position = Vector2(34, 112); desc.size = Vector2(PANEL_W - 68, 264)
-	desc.text = _synergy_bbcode(syn) + _rich_desc(edef, own_star if own_mode else 1)
+	## ★框高 264 → 246: 【底部 18px 永久留给滚动提示】。
+	##   原来提示画在 `y + height - 16`(**框内**), 与正文最后一行像素级重叠 ——
+	##   实拍就是「▼ 下滑看完整描述」和「并使携带者获得20/25/30%」糊成一团, 正是用户说的"乱七八糟"。
+	##   留白区不显示提示时就是空的, 比"叠在字上"好看得多。
+	desc.position = Vector2(34, 112); desc.size = Vector2(PANEL_W - 68, DESC_BOX_H)
+	desc.text = _rich_desc(edef, own_star if own_mode else 1)
 	box.add_child(desc)
-	# ★59 件里有 1 件(玩偶小熊 297px > 框 230)一屏放不下 —— 门禁⑥量出来的。
-	#   不加提示的话, 玩家看到的是"描述断在半句", 会以为是 bug 而不是"可以滚"。
-	_add_scroll_hint(box, desc)
+	# ★装备从 59 件涨到 95 件后, 探针实测 **13 件(14%)** 放不下 —— 而这行注释一直写着"只剩 1 件"。
+	#   先自动缩字号让它放下(20→18→16→15), 真放不下才挂提示; 提示落在框【外】的留白区。
+	_fit_desc_font(desc, box)
 
 	var _sep_a := _panel_sep(box, 384)
 
@@ -871,6 +878,46 @@ func _build_detail_panel() -> void:
 
 
 
+## 羁绊小签的两行文案。★描述框里那三行原来说的是同样的事, 这里一次说完。
+## 行1 = 类型 · 现状; 行2 = 阈值 · 买入装上会怎样。
+func _synergy_two_lines(syn: Dictionary) -> String:
+	var parts: PackedStringArray = []
+	for t in (syn["tiers"] as Array):
+		parts.append(str(int(t)))
+	var l1 := "%s%s ×%d · %s" % [str(syn["emoji"]), str(syn["name"]), int(syn["count"]),
+		("档%d" % int(syn["tier"])) if int(syn["tier"]) > 0 else "未激活"]
+	var l2 := ""
+	if bool(syn["owned"]):
+		l2 = "阈值 %s · 已有同款(不涨数)" % "/".join(parts)
+	elif int(syn["tier2"]) > int(syn["tier"]):
+		l2 = "阈值 %s · 买入装上 →档%d" % ["/".join(parts), int(syn["tier2"])]
+	else:
+		l2 = "阈值 %s · 买入装上 →×%d" % ["/".join(parts), int(syn["count2"])]
+	return l1 + "\n" + l2
+
+
+## 描述放不下就【先缩字号再说滚动】(20→18→16→15)。
+##
+## ★为什么不是直接开滚: 滚动是"玩家得动手才看得全", 而商店是做购买决定的地方 ——
+##   看不全 = 决策信息缺失。95 件里 13 件溢出, 缩一档字号绝大多数就进去了。
+## ★必须等一帧才问 get_content_height()(刚 add_child 时还没排版, 拿到 0 ⇒ 永远判"放得下"),
+##   与 `_add_scroll_hint` 同一个坑。
+## ★`box` 不是可选装饰: 缩完字号才知道"到底还需不需要滚动提示"。
+##   两个协程各自 `await` 一帧并发跑的话, 提示会拿【还没缩完】的高度判 —— 挂上一个多余的提示。
+func _fit_desc_font(desc: RichTextLabel, box: Control) -> void:
+	await get_tree().process_frame
+	if not is_instance_valid(desc):
+		return
+	for fs in DESC_FONT_STEPS:
+		desc.add_theme_font_size_override("normal_font_size", int(fs))
+		await get_tree().process_frame
+		if not is_instance_valid(desc):
+			return
+		if desc.get_content_height() <= desc.size.y + 0.5:
+			break                                    # 放下了, 停在这一档
+	_add_scroll_hint(box, desc)
+
+
 ## 描述一屏放不下时, 在框右下角挂一个"▼ 下滑"提示。
 ##
 ## ★必须等一帧才问 get_content_height() —— 刚 add_child 时还没排版, 拿到的是 0,
@@ -887,7 +934,8 @@ func _add_scroll_hint(box: Control, desc: RichTextLabel) -> void:
 	h.add_theme_color_override("font_color", Color("#7fb5d8"))
 	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	h.position = Vector2(desc.position.x, desc.position.y + desc.size.y - 16.0)
+	## ★落在框【外】下方的留白区(+2px), 不再是 `+ size.y - 16`(框内、压住正文最后一行)。
+	h.position = Vector2(desc.position.x, desc.position.y + desc.size.y + 2.0)
 	h.size = Vector2(desc.size.x, 16)
 	box.add_child(h)
 
@@ -902,6 +950,11 @@ func _add_scroll_hint(box: Control, desc: RichTextLabel) -> void:
 ##   (实测量纲不能靠数值范围猜: crit 存 0~1, 而 dodgePct/healAmp 存 0~100, 都是百分比。)
 ## 两列 x。★右列 226 + 宽 180 = 406 < 面板框安全区右界 415(PANEL_W 440 - margin 25)。
 ## 原来宽 196 → 右端 422, 压进右边框 7px, 是门禁⑧挖出来的(肉眼看不出)。
+## 描述框高。★底部 18px 是【永久留给滚动提示】的留白 —— 提示原来画在框内、压住正文最后一行。
+const DESC_BOX_H := 246.0
+## 描述自动缩字号的候选(从大往小试)。下限 15 —— 再小就回到用户 2026-07-28 骂过的「这么小的字?」。
+const DESC_FONT_STEPS := [20, 18, 16, 15]
+
 const STAT_COL_X := [34.0, 226.0]
 const STAT_ROW_Y := [412.0, 431.0, 450.0]   # 紧跟「属性」标题(y390, 高18) —— 隔 4px 不断开
 
@@ -985,26 +1038,6 @@ func _synergy_info(eid: String) -> Dictionary:
 	##   就是枪, 盾什么的」)。玩家凑羁绊时脑子里想的就是"我还差几件盾"。
 	return {"type": typ, "name": typ, "emoji": Phase2Types.emoji_of(typ),
 		"tiers": tiers, "count": n, "tier": tier, "owned": owned, "count2": n2, "tier2": tier2}
-
-
-## 描述区首行的羁绊详情(bbcode)。空信息返回空串(描述原样)。
-func _synergy_bbcode(syn: Dictionary) -> String:
-	if syn.is_empty():
-		return ""
-	var parts: PackedStringArray = []
-	for t in (syn["tiers"] as Array):
-		parts.append(str(int(t)))
-	var line := "[color=#58d3ff]羁绊·%s%s[/color]  阈值 %s · 队伍现有 ×%d(%s)" % [
-		str(syn["emoji"]), str(syn["name"]), "/".join(parts), int(syn["count"]),
-		("档%d" % int(syn["tier"])) if int(syn["tier"]) > 0 else "未激活"]
-	var second := ""
-	if bool(syn["owned"]):
-		second = "[color=#8fa2b5]已有同款 —— 羁绊按种类去重, 重复买不涨羁绊数[/color]"
-	elif int(syn["tier2"]) > int(syn["tier"]):
-		second = "[color=#7fe39a]买入并装上 → ×%d · 升到档%d[/color]" % [int(syn["count2"]), int(syn["tier2"])]
-	else:
-		second = "买入并装上 → ×%d" % int(syn["count2"])
-	return line + "\n" + second + "\n\n"
 
 
 ## 完整描述。★实测: 59 件装备的 effectDesc1 【全是纯文本】—— 无 HTML 标签、无方括号
@@ -1244,7 +1277,10 @@ func _purchase_merge_star(eid: String) -> int:
 ## ★必须等一帧再问 get_content_height(): 刚 add_child 时还没排版, 拿到 0 会把这一坨
 ##   一路顶到描述正下方、和描述叠在一起(这是 CLAUDE.md §3.5 那类坑的近亲)。
 func _center_middle(desc: RichTextLabel, nodes: Array) -> void:
-	await get_tree().process_frame
+	## ★等 6 帧不是 1 帧: `_fit_desc_font` 最多要试 4 档字号(每档一帧), 只等 1 帧会拿到
+	##   缩之前的内容高度 ⇒ 算出来的 slack 是错的, 属性块会被移错位置。
+	for _f in range(6):
+		await get_tree().process_frame
 	# ★去重: 同一个节点若在数组里出现两次会被【移两倍】。
 	#   实测踩过 —— _stat_hdr 既被 append 进 _stat_nodes、调用时又单独列了一次,
 	#   于是"属性"标题跑到属性行上方 110px(本该只隔 22px), 看着像布局崩了。

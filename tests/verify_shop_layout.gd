@@ -21,8 +21,12 @@ const SCREEN_H := 720.0
 const MIN_TOUCH_H := 44.0     # 移动端触摸目标最低高度
 ## 第⑥条用: 必须与 ShopScene._build_detail_panel 里描述框的口径一致
 const DESC_W := 372.0         # PANEL_W(440) - 左右各 34
-const DESC_H := 264.0
+## ★264 → 246(2026-08-14): 底部 18px 永久留给滚动提示, 提示不再压住正文最后一行。
+## 这两个常量必须与 ShopScene 的真值一致 —— 手抄的副本必然落后, 所以第⑥条会【从源码回读】校对。
+const DESC_H := 246.0
 const DESC_FONT := 20
+## 与 ShopScene.DESC_FONT_STEPS 同口径: 放不下就先缩字号, 缩到底才开滚。
+const DESC_FONT_STEPS := [20, 18, 16, 15]
 ## 第⑧条用: 必须与 ShopScene 的 PANEL_* 一致
 const PANEL_W := 440.0
 const PANEL_H := 592.0
@@ -220,16 +224,24 @@ func _ready() -> void:
 	var dr := get_node_or_null("/root/DataRegistry")
 	var eqs: Array = dr.phase2_equipment if dr != null else []
 	print("")
-	print("  ⑥ 描述容纳体检: 框 %.0f×%.0f / 字号 %d / 装备 %d 件 (★分母)" % [DESC_W, DESC_H, DESC_FONT, eqs.size()])
+	## ★口径必须与产品一致, 否则量的是我脑子里的版式不是屏幕上的版式。
+	##   先从 ShopScene 源码回读框高与字号阶梯, 对不上就直接红(手抄的副本必然落后)。
+	var src_shop := FileAccess.get_file_as_string("res://scripts/scenes/ShopScene.gd")
+	_chk("⑥ ★口径自检: 框高与 ShopScene.DESC_BOX_H 一致",
+		src_shop.find("const DESC_BOX_H := %.1f" % DESC_H) >= 0)
+	_chk("⑥ ★口径自检: 字号阶梯与 ShopScene.DESC_FONT_STEPS 一致",
+		src_shop.find("const DESC_FONT_STEPS := [20, 18, 16, 15]") >= 0)
+	print("  ⑥ 描述容纳体检: 框 %.0f×%.0f / 字号阶梯 %s / 装备 %d 件 (★分母)" % [
+		DESC_W, DESC_H, str(DESC_FONT_STEPS), eqs.size()])
 	if eqs.is_empty():
 		print("  [FAIL] 取不到装备表 —— 本条是空检查"); _fail += 1
 	else:
 		var probe := RichTextLabel.new()
 		probe.bbcode_enabled = true
-		probe.add_theme_font_size_override("normal_font_size", DESC_FONT)
 		probe.size = Vector2(DESC_W, DESC_H)
 		add_child(probe)
 		var over: Array = []
+		var shrunk := 0
 		var worst := 0.0
 		var worst_nm := ""
 		for e in eqs:
@@ -237,21 +249,33 @@ func _ready() -> void:
 			var raw := str(ed.get("effectDesc1", ""))
 			if raw == "":
 				continue
-			probe.text = raw
-			await get_tree().process_frame
-			var ch: float = probe.get_content_height()
+			## 逐档缩字号 —— 复刻 ShopScene._fit_desc_font 的行为, 不是量"字号 20 放不放得下"。
+			var used := 0
+			var ch := 0.0
+			for fs in DESC_FONT_STEPS:
+				probe.add_theme_font_size_override("normal_font_size", int(fs))
+				probe.text = raw
+				await get_tree().process_frame
+				ch = probe.get_content_height()
+				used = int(fs)
+				if ch <= DESC_H + 0.5:
+					break
+			if used != int(DESC_FONT_STEPS[0]):
+				shrunk += 1
 			if ch > worst:
 				worst = ch; worst_nm = str(ed.get("name", ed.get("id", "?")))
 			if ch > DESC_H + 0.5:
-				over.append("%s 需 %.0fpx" % [str(ed.get("name", "?")), ch])
-		print("     一屏放得下: %d / %d 件   最高的是「%s」需 %.0fpx (框 %.0f)" % [
-			eqs.size() - over.size(), eqs.size(), worst_nm, worst, DESC_H])
-		for o in over.slice(0, 6):
-			print("       ↕需滚动: " + o)
-		if over.size() > 6:
-			print("       …另有 %d 件需滚动" % (over.size() - 6))
+				over.append("%s 缩到 %d 号仍需 %.0fpx" % [str(ed.get("name", "?")), used, ch])
+		print("     缩字号后一屏放得下: %d / %d 件 (其中 %d 件靠缩字号才放下)   最难的「%s」需 %.0fpx (框 %.0f)" % [
+			eqs.size() - over.size(), eqs.size(), shrunk, worst_nm, worst, DESC_H])
+		for o in over.slice(0, 8):
+			print("       ↕仍需滚动: " + o)
+		if over.size() > 8:
+			print("       …另有 %d 件仍需滚动" % (over.size() - 8))
 		probe.queue_free()
-		_chk("⑥ 没有描述超出框高 ×3 (超了滚起来太痛苦)", worst <= DESC_H * 3.0)
+		## ★判据从"别超 3 倍"收紧成"缩到底之后最多 3 件要滚"——
+		##   用户 2026-08-14 抱怨的正是"断在半句"。开滚是退路不是常态。
+		_chk("⑥ ★缩字号后仍需滚动的 ≤ 3 件", over.size() <= 3)
 
 	# ── ⑧ ★详情面板的内容不许压进面板框的边框 ──
 	#    由来: 购买按钮 y=512 高 68 → 下沿 580, 而面板框九宫格 margin=25,
@@ -410,11 +434,18 @@ func _ready() -> void:
 	gs.persistent_equipped["synergy_probe_t1"].append({"id": "p2eq_055", "star": 1})
 	gs.persistent_equipped["synergy_probe_t1"].append({"id": "p2eq_056", "star": 1})
 	var s3: Dictionary = sc._synergy_info("p2eq_073")
-	var bb: String = sc._synergy_bbcode(s3)
+	## ★2026-08-14: 羁绊不再往描述框里塞三行 bbcode(与右上角小签重复 + 白吃 ~90px 描述高度),
+	##   改成右上角小签自己两行说完 ⇒ 判据跟着搬到 `_synergy_two_lines`。
+	var bb: String = sc._synergy_two_lines(s3)
 	_chk("⑫ ×5 → 买入装上 ×6 = 升到档2(跨阈值)", int(s3.get("tier2", -1)) == 2)
-	_chk("⑫ bbcode 含阈值 3/6/9 与升档提示", bb.contains("阈值 3/6/9") and bb.contains("升到档2"))
+	_chk("⑫ 小签两行含阈值 3/6/9 与升档提示", bb.contains("阈值 3/6/9") and bb.contains("→档2"))
+	_chk("⑫ ★小签正好两行(挤成一行会被 clip_text 切掉后半)", bb.split("
+").size() == 2)
 	var s4: Dictionary = sc._synergy_info("no_such_equip")
-	_chk("⑫ ★分母: 无类型 id → 空(面板不显示羁绊行)", s4.is_empty() and sc._synergy_bbcode(s4) == "")
+	_chk("⑫ ★分母: 无类型 id → 空(面板不显示羁绊行)", s4.is_empty())
+	## ★描述框里【不许】再出现羁绊文案 —— 那正是用户说的"一堆乱七八糟的东西"里的一条。
+	_chk("⑫ ★描述框只放装备描述(不再拼羁绊 bbcode)",
+		src_shop.find("desc.text = _rich_desc(") >= 0 and src_shop.find("_synergy_bbcode") < 0)
 	gs.persistent_equipped.erase("synergy_probe_t1")   # 探针队伍清场, 不污染后续用例
 
 	_done(sc)

@@ -318,6 +318,10 @@ static func render_plain(template: String, f: Dictionary, s: Dictionary) -> Stri
 ##   格式一变它就抠不出来 → total 归零 → 打印 ALL OK 但什么都没查(方案书 R1 记过这个静默失效)。
 ##
 ## star 取 1/2/3; 传 0 或越界 = 不高亮(图鉴那种没有玩家星级的场合)。
+## ★压暗色 #5a6472 → #7d8ea0(2026-08-14)。
+##   由来: 用户「描述那里有一堆乱七八糟的东西」。实拍放大后 `/30/45` 几乎只剩噪点 ——
+##   #5a6472 压在商店面板底色 #10202e 上对比度只有 **2.76:1**(WCAG 正文要 4.5:1)。
+##   #7d8ea0 是 **4.9:1**, 读得出来又仍然明显暗于高亮档(高亮还额外有 [b] 加粗 + UIPalette.DEF 色)。
 static func highlight_star(desc: String, star: int) -> String:
 	if desc == "":
 		return ""
@@ -332,11 +336,11 @@ static func highlight_star(desc: String, star: int) -> String:
 		var seg := ""
 		for i in 3:
 			if i > 0:
-				seg += "[color=#5a6472]/[/color]"
+				seg += "[color=#7d8ea0]/[/color]"
 			if i == star - 1:
 				seg += "[b][color=%s]%s[/color][/b]" % [UIPalette.DEF, parts[i]]
 			else:
-				seg += "[color=#5a6472]%s[/color]" % parts[i]
+				seg += "[color=#7d8ea0]%s[/color]" % parts[i]
 		out += seg
 		pos = m.get_end()
 	out += desc.substr(pos)
