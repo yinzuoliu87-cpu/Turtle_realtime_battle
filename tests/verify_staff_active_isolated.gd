@@ -22,7 +22,11 @@ const HARD_IDS := ["p2eq_023", "p2eq_029", "p2eq_031", "p2eq_090"]
 ##   它的主动产出不在本判据覆盖的量里(敌血/DoT/控/己方盾血), 需要给它写专属判据。
 ##   ⚠ 这不是"089 坏了" —— `verify_staff_actives_fire` 已证明它法力满会清零并触发;
 ##     只是**这条门禁量不到它做了什么**。两件事必须分清。
-const UNRESOLVED := ["p2eq_089"]
+## ★★2026-08-14 收官: 089 已由 `verify_talisman_089` 用【专属判据】验起来 ——
+##   查根因发现它的主动是"贴符纸 + 每跳削魔抗", 而本条的状态向量里
+##   **根本没有魔抗这一维** ⇒ 量不到不是它坏了, 是判据选错层(与凤凰那次同族)。
+##   空名单 + 断言保留: 谁再往这里加一件, 这条就红并逼他回来看。
+const UNRESOLVED := []
 
 var _n := 0
 var _fail := 0
@@ -87,7 +91,7 @@ func _ready() -> void:
 	var c: Vector2 = s.ARENA.position + s.ARENA.size * 0.5
 
 	_ok("★分母: 本条解掉 %d 件, 另有 %d 件隔离失败(显式登记)" % [HARD_IDS.size(), UNRESOLVED.size()],
-		HARD_IDS.size() == 4 and UNRESOLVED.size() == 1,
+		HARD_IDS.size() == 4 and UNRESOLVED.is_empty(),
 		"解掉 %s / 未解决 %s" % [str(HARD_IDS), str(UNRESOLVED)])
 
 	var still: Array = []
@@ -125,8 +129,8 @@ func _ready() -> void:
 	_ok("★★这 %d 件全部隔离出了主动效果(仍隔离不了的: %d 件)" % [HARD_IDS.size(), still.size()],
 		still.is_empty(), "仍隔离不了: %s" % str(still))
 	## ★把未解决的焊成断言: 谁给 089 补了专属判据就该回来把它移出去, 这条会红并逼他来改。
-	_ok("★★已知缺口: %d 件的主动【本判据量不到】(不是坏了, 是量不到)" % UNRESOLVED.size(),
-		UNRESOLVED == ["p2eq_089"], "待补专属判据: %s" % str(UNRESOLVED))
+	_ok("★★已知缺口已清零(%d 件; 089 转由 verify_talisman_089 专属判据覆盖)" % UNRESOLVED.size(),
+		UNRESOLVED.is_empty(), "待补专属判据: %s" % str(UNRESOLVED))
 
 	s._units.clear()
 	s.set_process(false)
