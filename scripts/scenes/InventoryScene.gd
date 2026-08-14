@@ -801,16 +801,65 @@ func _tutorial_anchor(anchor: String) -> Rect2:
 	return Rect2()
 
 
+## 打碎前的确认 —— 打碎【不可逆】(本大轮消失), 而这张卡现在混在装备卡中间,
+## 那里的点击语义是"选中"(可撤销)。不加确认 = 一次误触毁掉整轮的奖励。
+## ★旧的右上角面板上是个写着"打碎"的按钮, 误触风险本来就低; 换成卡片后必须补这道闸。
+func _confirm_smash_jar() -> void:
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.62)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	## ★挡住穿透 —— 否则弹窗开着还能点到背后的背包(选中/装备/卖出)。
+	##   旧的奖励弹窗(candy_jar.gd:60)显式设过同一行, 说明这个坑踩过。
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	## ★点遮罩空白处 = 取消(移动端惯例; 手机上没有 Esc, 也不好点小叉)
+	dim.gui_input.connect(func(ev: InputEvent) -> void:
+		if ev is InputEventMouseButton and not ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			dim.queue_free())
+	add_child(dim)
+	var pan := Panel.new()
+	var psb := StyleBoxFlat.new()
+	psb.bg_color = Color("#2a1c36"); psb.border_color = Color("#e79bd6")
+	psb.set_border_width_all(2); psb.set_corner_radius_all(10)
+	pan.add_theme_stylebox_override("panel", psb)
+	pan.mouse_filter = Control.MOUSE_FILTER_STOP   # 点面板本身不该冒泡到遮罩(否则点标题就取消了)
+	pan.size = Vector2(360, 168)
+	## ★没有 _vh 这个成员(只有 _vw) —— 用真实视口高度算居中, 手机竖屏也居中。
+	pan.position = Vector2((_vw - 360.0) * 0.5,
+		(float(get_viewport_rect().size.y) - 168.0) * 0.5)
+	dim.add_child(pan)
+	var tl := Label.new()
+	tl.text = "打碎糖果罐？
+打碎后本大轮消失，不可撤销。"
+	tl.add_theme_font_size_override("font_size", 16)
+	tl.position = Vector2(16, 22); tl.size = Vector2(328, 70)
+	tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	pan.add_child(tl)
+	var no := Button.new()
+	no.text = "再想想"
+	no.position = Vector2(24, 108); no.size = Vector2(140, 48)   # ★48px 高: 手指点得中
+	pan.add_child(no)
+	no.pressed.connect(func() -> void: dim.queue_free())
+	var yes := Button.new()
+	yes.text = "打碎"
+	yes.position = Vector2(196, 108); yes.size = Vector2(140, 48)
+	pan.add_child(yes)
+	yes.pressed.connect(func() -> void:
+		dim.queue_free()
+		if _inv_jar != null:
+			_inv_jar._on_break_jar())
+
+
 ## 糖果罐格子 —— 长得像装备卡(同一个 `_slot_panel` 尺寸与描边), 但点击是【打碎领奖】。
 ## ★沿用装备卡的外框而不是自画一个: 用户要的就是"以装备的形式", 视觉必须同源;
 ##   自画一套会又变成"背包里有两种长得不一样的东西"。
 func _candy_jar_cell(it: Dictionary, pos: Vector2) -> Control:
 	var tier: int = GameState.candy_jar_tier()
 	var jbox := _slot_panel(pos, Color("#2a1c36"), Color("#e79bd6"))
-	jbox.tooltip_text = "糖果罐 ×%d
-打碎后本大轮消失。
+	jbox.tooltip_text = "糖果罐 · 已攒 %d 颗糖(第 %d 档)
+本大轮只能打碎一次, 碎后消失。
 当前档位奖励: %s" % [
-		int(it.get("count", 0)), GameState.candy_jar_tier_preview(tier)]
+		int(it.get("count", 0)), tier + 1, GameState.candy_jar_tier_preview(tier)]
 	var jic := Label.new()
 	jic.text = "🍬"
 	jic.add_theme_font_size_override("font_size", 30)
@@ -819,7 +868,10 @@ func _candy_jar_cell(it: Dictionary, pos: Vector2) -> Control:
 	jic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	jbox.add_child(jic)
 	var jnm := Label.new()
-	jnm.text = "糖果罐 ×%d" % int(it.get("count", 0))
+	## ★★"×N" 是**误导**: `break_candy_jar` 设的是 `candy_jar_broken = true` ——
+	##   **一大轮只能碎一次**; `candy_jar_count` 是累积糖数、**决定档位**, 不是"N 个罐子"。
+	##   写成 ×N 会被读成一叠可碎 N 次的消耗品。改成显示【档位】, 糖数放 tooltip。
+	jnm.text = "糖果罐 %d档" % (GameState.candy_jar_tier() + 1)
 	jnm.add_theme_font_size_override("font_size", 12)
 	jnm.add_theme_color_override("font_color", Color("#e79bd6"))
 	jnm.position = Vector2(2, SLOT - 36); jnm.size = Vector2(SLOT - 4, 32)
@@ -827,10 +879,19 @@ func _candy_jar_cell(it: Dictionary, pos: Vector2) -> Control:
 	jnm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	jnm.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	jbox.add_child(jnm)
+	## ★★★移动端(用户 2026-08-14「考虑移动端了吗」): 背包是**可滑动列表**,
+	##   所以装备卡走的是 `_wire_bench_tap` —— 按下记位置、抬起时位移 <16px 才算点击。
+	##   我第一版给糖果罐写的是裸 `gui_input` + `ev.pressed`(**按下即触发**)
+	##   ⇒ **手机上想滑动背包、手指恰好按在罐子上, 当场就碎了**, 而打碎【不可逆】。
+	##   现在: 同一套点击判定 + **抬起才触发** + 一道确认。
+	jbox.mouse_filter = Control.MOUSE_FILTER_PASS
 	jbox.gui_input.connect(func(ev: InputEvent) -> void:
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			## ★复用 `InvCandyJar._on_break_jar` —— 打碎的全部逻辑(领奖/存档/弹窗/重建)
-			##   都在它里面。这里只换入口, **不复制一份领奖逻辑**(手抄的副本必然落后)。
-			if _inv_jar != null:
-				_inv_jar._on_break_jar())
+		if not (ev is InputEventMouseButton) or ev.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if ev.pressed:
+			_press_pos = ev.position
+			return
+		if ev.position.distance_to(_press_pos) >= 16.0:
+			return                                   # 位移过大 = 在滑列表, 不是点它
+		_confirm_smash_jar())
 	return jbox

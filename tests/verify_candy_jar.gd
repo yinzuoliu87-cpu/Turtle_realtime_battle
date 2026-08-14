@@ -172,6 +172,25 @@ func _ready() -> void:
 	##   `_sel_bench` 又直接索引 `persistent_bench` ⇒ 若把渲染下标当数据下标传,
 	##   **点第 1 件装备会装备/卖掉第 2 件** —— 坏存档。
 	##   判据: 渲染循环里必须有独立的数据下标 `bidx`, 且合成条目不占号。
+	## ── 移动端与误触用例(用户 2026-08-14「考虑移动端了吗」「所有用户用例都要想到」)──
+	_ok("★★★滑列表不误触: 走点击/拖动判定(位移 ≥16px 不算点击)",
+		src_inv.find("if ev.position.distance_to(_press_pos) >= 16.0:") >= 0)
+	_ok("★★抬起才触发, 不是按下就碎(手指一碰就没了)",
+		src_inv.find("if ev.pressed:
+			_press_pos = ev.position
+			return") >= 0
+		or src_inv.find("_press_pos = ev.position") >= 0)
+	_ok("★★打碎【不可逆】⇒ 必须有确认(卡片混在装备中间, 那里点击语义是可撤销的'选中')",
+		src_inv.find("func _confirm_smash_jar") >= 0
+		and src_inv.find("打碎后本大轮消失，不可撤销") >= 0)
+	_ok("★确认按钮 48px 高(手指点得中)", src_inv.find("no.size = Vector2(140, 48)") >= 0)
+	_ok("★★弹窗挡住穿透(否则开着还能点到背后的背包选中/卖出)",
+		src_inv.find("dim.mouse_filter = Control.MOUSE_FILTER_STOP") >= 0)
+	_ok("★点遮罩空白 = 取消(手机没有 Esc)",
+		src_inv.find("dim.gui_input.connect") >= 0)
+	_ok("★★★卡面显示【档位】而不是 ×N —— 一大轮只能碎一次, N 是累积糖数不是罐子数",
+		src_inv.find('jnm.text = "糖果罐 %d档"') >= 0)
+
 	## ★糖果罐不许【同时出现在两个地方】—— 旧的右上角独立面板必须撤掉,
 	##   否则玩家在背包里看到一张卡、右上角还有一块板, 是同一个东西的两份。
 	_ok("★★右上角的旧独立面板已撤(不再调 _build_candy_jar)",
