@@ -15,18 +15,25 @@ extends Node
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 
 ## 此前登记为"隔离不了"或"tween 埋着"的五件
-const HARD_IDS := ["p2eq_023", "p2eq_029", "p2eq_031", "p2eq_090"]
+const HARD_IDS := ["p2eq_023", "p2eq_029", "p2eq_090"]
 ## ★★089 隔离【失败】, 显式登记 —— 不许当通过。
 ##   实测两次跑出相反结果(第一次 A 0.247 / B 0.000, 第二次 A 0.247 / B 0.979)
 ##   ⇒ **同一份代码两次结果不同 = 我的判据在量噪声, 不是信号**。
 ##   它的主动产出不在本判据覆盖的量里(敌血/DoT/控/己方盾血), 需要给它写专属判据。
 ##   ⚠ 这不是"089 坏了" —— `verify_staff_actives_fire` 已证明它法力满会清零并触发;
 ##     只是**这条门禁量不到它做了什么**。两件事必须分清。
-## ★★2026-08-14 收官: 089 已由 `verify_talisman_089` 用【专属判据】验起来 ——
-##   查根因发现它的主动是"贴符纸 + 每跳削魔抗", 而本条的状态向量里
-##   **根本没有魔抗这一维** ⇒ 量不到不是它坏了, 是判据选错层(与凤凰那次同族)。
-##   空名单 + 断言保留: 谁再往这里加一件, 这条就红并逼他回来看。
-const UNRESOLVED := []
+## ★089 已由 `verify_talisman_089` 用【专属判据】验起来 —— 查根因发现它的主动是
+##   "贴符纸 + 每跳削魔抗", 而本条的状态向量里**根本没有魔抗这一维**
+##   ⇒ 量不到不是它坏了, 是判据选错层(与凤凰那次同族)。
+##
+## ★★★031 退回缺口 —— 我上一轮【过度声称】, 被 CI 抓到:
+##   本地跑出 A 0.979 / B 0.840 判"隔离成功", CI 上跑出 **A 0.840 / B 0.979**(正好相反)。
+##   两个值在两次运行间互换 ⇒ **我在量噪声, 不是信号**(与 089 当时同一形状)。
+##   ⚠ 我当时的反向验证只证明了"打瘸后两边都归零", **没证明 A>B 这个方向稳定** ——
+##     那是两回事, 我下结论下早了。裕度只有 0.14 就该警觉。
+##   根因: 031 的伤害由 `tween_method` 连续扫角驱动, **无头下 tween 推不动**
+##   ⇒ 最初把它登记进 `TWEEN_BURIED` 的判断才是对的。真要验它只能先把结算从 tween 里抽出来。
+const UNRESOLVED := ["p2eq_031"]
 
 var _n := 0
 var _fail := 0
@@ -91,7 +98,7 @@ func _ready() -> void:
 	var c: Vector2 = s.ARENA.position + s.ARENA.size * 0.5
 
 	_ok("★分母: 本条解掉 %d 件, 另有 %d 件隔离失败(显式登记)" % [HARD_IDS.size(), UNRESOLVED.size()],
-		HARD_IDS.size() == 4 and UNRESOLVED.is_empty(),
+		HARD_IDS.size() == 3 and UNRESOLVED == ["p2eq_031"],
 		"解掉 %s / 未解决 %s" % [str(HARD_IDS), str(UNRESOLVED)])
 
 	var still: Array = []
@@ -129,8 +136,8 @@ func _ready() -> void:
 	_ok("★★这 %d 件全部隔离出了主动效果(仍隔离不了的: %d 件)" % [HARD_IDS.size(), still.size()],
 		still.is_empty(), "仍隔离不了: %s" % str(still))
 	## ★把未解决的焊成断言: 谁给 089 补了专属判据就该回来把它移出去, 这条会红并逼他来改。
-	_ok("★★已知缺口已清零(%d 件; 089 转由 verify_talisman_089 专属判据覆盖)" % UNRESOLVED.size(),
-		UNRESOLVED.is_empty(), "待补专属判据: %s" % str(UNRESOLVED))
+	_ok("★★已知缺口: %d 件(031 tween 驱动, 无头推不动 —— 要先把结算从 tween 抽出来)" % UNRESOLVED.size(),
+		UNRESOLVED == ["p2eq_031"], "待解决: %s" % str(UNRESOLVED))
 
 	s._units.clear()
 	s.set_process(false)
