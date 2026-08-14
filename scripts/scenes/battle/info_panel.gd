@@ -324,6 +324,15 @@ func _info_status_chips(vb: VBoxContainer, u: Dictionary) -> void:
 	if float(u.get("shield", 0.0)) > 0.0: chips.append(["🛡 护盾 %d" % int(u.get("shield", 0.0)), "#7fe0ff"])
 	if float(u.get("rage", 0.0)) > 0.0: chips.append(["😤 怒气 %d" % int(u.get("rage", 0.0)), "#ff9d5c"])
 	if float(u.get("star_energy", 0.0)) > 0.0: chips.append(["⭐ 星能 %d" % int(u.get("star_energy", 0.0)), "#b28bff"])
+	## ★★用户 2026-08-14:「这个金币哪里有显示吗」——查证: 局内金币 `u["gold"]`
+	##   在 info_panel / battle_hud / hp_bar **一处都没有显示**。
+	##   而它是有用的: 财富龟普攻带 `"gold": 0.02`(每点金币 +2% 攻击加成)、
+	##   `fortuneAllIn` 还要判金币数 ⇒ 玩家看不到自己攒了多少, 也就无法决策什么时候梭哈。
+	##   (局外【深海币】是有显示的: 背包页与主菜单; 缺的只有局内这个。)
+	if float(u.get("gold", 0.0)) > 0.0: chips.append(["🪙 金币 %d" % int(u.get("gold", 0.0)), "#ffd24d"])
+	## 宝箱龟的【财宝值】同理 —— 它驱动开箱与"清点财宝"的治疗加成, 之前也看不到。
+	if float(u.get("dmg_dealt", 0.0)) > 0.0 and str(u.get("id", "")) == "chest":
+		chips.append(["💰 财宝 %d" % int(u.get("dmg_dealt", 0.0)), "#ffcf6b"])
 	if float(u.get("store_energy", 0.0)) > 0.0: chips.append(["🟡 储能 %d" % int(u.get("store_energy", 0.0)), "#ffd93d"])
 	var flow = HFlowContainer.new()
 	flow.add_theme_constant_override("h_separation", 6); flow.add_theme_constant_override("v_separation", 4)

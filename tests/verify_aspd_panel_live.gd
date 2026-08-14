@@ -19,6 +19,17 @@ var _n := 0
 var _fail := 0
 
 
+## 递归找含关键字的 Label 文本(找不到返回空串)。
+func _find_label(n: Node, key: String) -> String:
+	if n is Label and str((n as Label).text).find(key) >= 0:
+		return str((n as Label).text)
+	for ch in n.get_children():
+		var r := _find_label(ch, key)
+		if r != "":
+			return r
+	return ""
+
+
 func _ok(name: String, cond: bool, detail: String = "") -> void:
 	_n += 1
 	print(("  [PASS] " if cond else "  [FAIL] ") + name + ("  " + detail if detail != "" else ""))
@@ -160,6 +171,23 @@ func _ready() -> void:
 			"%s → %s" % [b4, af])
 	_ok("★★【所有 %d 行属性】都是实时的(卡住不动的: %d 行)" % [probe.size(), stuck.size()],
 		stuck.is_empty(), "卡住: %s" % str(stuck))
+
+	# ── ⑥ 局内资源要在面板上看得见(用户 2026-08-14:「这个金币哪里有显示吗」)────
+	##   ★查证: 局内金币 `u["gold"]` 原本在 info_panel / battle_hud / hp_bar **一处都没有**,
+	##     而财富龟普攻带 `"gold": 0.02`(每点金币 +2% 攻击)、fortuneAllIn 还要判它。
+	##   ★判据取自面板真正会渲染的 chips 表, 不是我另算一份。
+	## `_info_status_chips` 直接往 VBox 塞节点, 没有返回值 ⇒ 数它建了几个含"金币"的 Label。
+	u["gold"] = 37.0
+	var vb := VBoxContainer.new()
+	add_child(vb)
+	ip._info_status_chips(vb, u)
+	## ★递归找 —— Label 埋在 vb → flow → chip容器 → Label 三层下,
+	##   我第一版只遍历两层, 读到"没有金币这一项", 差点把自己的遍历 bug 报成"没显示"。
+	var gold_txt := _find_label(vb, "金币")
+	_ok("★★局内【金币】在信息面板上看得见(原来一处都没有)", gold_txt.find("37") >= 0,
+		"实得 %s" % (gold_txt if gold_txt != "" else "(没有金币这一项)"))
+	vb.queue_free()
+	u["gold"] = 0.0
 
 	s._units.clear()
 	s.set_process(false)
