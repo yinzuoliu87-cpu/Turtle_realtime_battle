@@ -48,6 +48,8 @@ frames_for () {
     #   ★2026-08-14 加对照组后帧数翻倍, 4000 不够被掐断 —— 表现是"没打 ALL PASS"
     #     而不是某条断言 FAIL, 极易误判成真失败(CLAUDE.md §2 明写过这个坑)。
     verify_staff_actives_fire) echo 9000 ;;
+    # 16 件装备逐件建场 + 每件跑【对照 180 帧 + 正式 180 帧】并等真实帧
+    verify_uncovered_equips) echo 14000 ;;
     # 触手节奏: 建战斗场景 + 走完 2 秒出土 + 20 次强制重建网格并量几何(同步断言, 不等演出)
     verify_tentacle_rhythm) echo 3000 ;;
     # 转移阵地: 建战斗场景 + 造携带者走真实档位链路 + 喂完钻地/破土动画
