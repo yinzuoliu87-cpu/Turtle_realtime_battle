@@ -184,7 +184,10 @@ func _rebuild() -> void:
 		("\n升到 Lv%d → %d 件" % [_nxt, P2.team_equip_cap(_nxt)]) if _nxt <= P2.MAX_LEVEL else "（已满级）"]
 	add_child(capl)
 
-	_inv_jar._build_candy_jar()
+	## ★糖果罐已改为【背包格子里的一张卡】(用户 2026-08-14「以一个装备的形式」),
+	##   右上角那块 372×44 的独立面板不再画 —— 否则同一个东西**同时出现在两个地方**。
+	##   `InvCandyJar` 本身保留: 打碎的领奖/存档/弹窗逻辑(`_on_break_jar`)仍由它负责,
+	##   新卡片只是换了个入口去调它。
 
 	var leaders := _lineup_ids()
 	_build_lineup(leaders)
@@ -583,11 +586,22 @@ func _build_bench() -> void:
 	var used_rows := int(ceil(float(maxi(bench.size(), 1)) / float(per_row)))
 	var total_cells := maxi(min_rows, used_rows) * per_row
 	content.custom_minimum_size = Vector2(scroll_w - 4.0, float(int(ceil(float(total_cells) / float(per_row)))) * pitch)
+	## ★★★渲染索引与【数据索引】必须分开 —— 血泪(2026-08-14 自己刚踩):
+	##   糖果罐是插在最前面的**合成条目**, 它不在 `GameState.persistent_bench` 里。
+	##   而 `_equip_cell(it, idx, ...)` 的 idx 会被 `_on_bench_click` 存成 `_sel_bench`,
+	##   `_sel_bench` 又是**直接索引 `persistent_bench`** 的(equip_ops.gd:137 / 本文件 615)。
+	##   ⇒ 若把渲染下标当数据下标传, 每件装备偏 1, **点第 1 件会装备/卖掉第 2 件** —— 坏存档。
+	##   所以: `i` 只管摆位置, `bidx` 才是喂给 `_equip_cell` 的真实背包下标(合成条目不占号)。
 	var i := 0
+	var bidx := 0
 	for it in bench:
 		var col := i % per_row
 		var row := i / per_row
-		content.add_child(_equip_cell(it, i, Vector2(float(col) * cpitch, float(row) * pitch)))
+		var synth: bool = str(it.get("kind", "")) == "candy_jar"
+		content.add_child(_equip_cell(it, -1 if synth else bidx,
+			Vector2(float(col) * cpitch, float(row) * pitch)))
+		if not synth:
+			bidx += 1
 		i += 1
 	while i < total_cells:
 		var col2 := i % per_row

@@ -167,6 +167,21 @@ func _ready() -> void:
 		src_inv.find("GameState.persistent_bench.append({\"kind\": \"candy_jar\"") < 0)
 	_ok("★没有糖果罐时不占格子(has_candy_jar 才注入)",
 		src_inv.find("if GameState.has_candy_jar():") >= 0)
+	## ★★★最要命的一条: 糖果罐是插在【最前面】的合成条目, 它不在 persistent_bench 里。
+	##   而 `_equip_cell` 的 idx 会被 `_on_bench_click` 存成 `_sel_bench`,
+	##   `_sel_bench` 又直接索引 `persistent_bench` ⇒ 若把渲染下标当数据下标传,
+	##   **点第 1 件装备会装备/卖掉第 2 件** —— 坏存档。
+	##   判据: 渲染循环里必须有独立的数据下标 `bidx`, 且合成条目不占号。
+	## ★糖果罐不许【同时出现在两个地方】—— 旧的右上角独立面板必须撤掉,
+	##   否则玩家在背包里看到一张卡、右上角还有一块板, 是同一个东西的两份。
+	_ok("★★右上角的旧独立面板已撤(不再调 _build_candy_jar)",
+		src_inv.find("_inv_jar._build_candy_jar()") < 0)
+	_ok("★但 InvCandyJar 本身保留(打碎的领奖/存档/弹窗仍由它负责)",
+		src_inv.find("_inv_jar._on_break_jar()") >= 0)
+	_ok("★★★渲染下标与【数据下标】分开(合成条目不占号, 否则点第1件会动到第2件)",
+		src_inv.find("var bidx := 0") >= 0
+		and src_inv.find("if not synth:") >= 0
+		and src_inv.find("-1 if synth else bidx") >= 0)
 
 	print("")
 	if _fail == 0:
