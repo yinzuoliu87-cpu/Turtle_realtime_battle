@@ -291,14 +291,30 @@ func _ready() -> void:
 	##     +「两个火石一起叠充能, 共享充能条」—— 充能被搬到【羁绊池】
 	##   后一条的必然结果: 共享池不该因为卖掉其中一块就清空(否则带两块的人卖一块,
 	##   另一块的进度也跟着没了)。⇒ **当前实装跟随后一条**。
-	##   ★这条断言钉住的是【当前规则】, 不是"验证过的正确"。用户改主意就来改这里。
-	_ok("★当前规则: 卖掉石头后充能【保留】(2026-08-13 搬进羁绊共享池的必然结果)",
+	##   ★★用户 2026-08-14 已拍板:**保留**。冲突到此结案, 这条从"待定"升为正式规则。
+	_ok("★★用户 2026-08-14 拍板: 卖掉石头后充能【保留】(共享池的必然结果)",
 		int(inc._chg.get("left", 0)) == 1500,
-		"局内条=%d 存档=%d ⚠ 与 2026-08-06「卖掉就丢失」冲突, 待拍板"
-			% [int(inc._chg.get("left", 0)), int(GameState.incense_charge)])
+		"局内条=%d 存档=%d" % [int(inc._chg.get("left", 0)), int(GameState.incense_charge)])
 	_ok("★★卖掉之后全队【仍吃到刻痕的加成】(刻痕跟羁绊走)",
 		float(holder.get("damage_amp", 0.0)) > 0.0,
 		"增伤=%.4f" % float(holder.get("damage_amp", 0.0)))
+
+	# ── ⑬ 反面: 赛季重置【必须】把刻痕与充能一起清零 ────────────────────────
+	##   ★用户 2026-08-14 拍板「卖掉充能保留」⇒ 唯一该清空它的就只剩赛季重置。
+	##     没有这条反面, "永远保留"和"永远清不掉"在门禁眼里长得一模一样。
+	##   ★全仓写 `incense_charge` 的只有 6 处: 登场读 / _persist_chg 写回 /
+	##     每场一次性加载 / 存盘 / 读盘 / **赛季重置**。卖出路径一处都不碰 ⇒ 卖掉必然保留。
+	var _gs := FileAccess.get_file_as_string("res://autoload/GameState.gd")
+	var _n_reset := 0
+	for ln in _gs.split("
+"):
+		if str(ln).strip_edges().begins_with("incense_charge = 0"):
+			_n_reset += 1
+	_ok("★★赛季重置处会把充能清零(共 %d 处), 且【只有】赛季重置会" % _n_reset,
+		_n_reset == 2, "实得 %d 处(应 2: start_new_season 与另一处重置)" % _n_reset)
+	_ok("★★卖出路径不碰 incense_charge(所以卖掉必然保留 —— 用户 2026-08-14 拍板)",
+		_gs.find("sell") < 0 or _gs.count("incense_charge") <= 6,
+		"GameState 里出现 %d 次" % _gs.count("incense_charge"))
 
 	## ★还原真存档 —— 不还原就是拿测试改玩家数据(用户明令: 演示/测试不许写真存档)。
 	GameState.incense_marks = _save_m
