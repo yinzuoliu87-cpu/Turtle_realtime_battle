@@ -104,6 +104,44 @@ func _ready() -> void:
 	_ok("★移速也实时(改 move_spd ⇒ 那一行跟着变)", mv1 != mv0 and mv0 != "",
 		"%s → %s" % [mv0, mv1])
 
+	# ── ⑤ 【全部属性行】逐个验实时 —— 用户 2026-08-14:「除了攻速数字, 其他属性
+	#      确保了局内实时变吗」。读代码看到的是"都读活字段", 但读代码不算证明。
+	##   做法: 逐个把字段改一个【足够大】的量(小改动会被 `int()` 取整吃掉),
+	##   断言那一行的**字符串真的变了**。判据是面板真正会渲染的那张表, 不是我另算一份。
+	var probe: Array = [
+		["攻击", "atk", 999.0], ["护甲", "def", 777.0], ["魔抗", "mr", 555.0],
+		["暴击", "crit", 0.77], ["射程", "atk_range", 1234.0], ["移速", "move_spd", 321.0],
+		["吸血", "lifesteal", 0.44], ["闪避", "dodge_bonus", 0.33],
+		["治疗强度", "heal_amp", 0.66], ["护盾强度", "shield_amp", 0.88],
+		["暴伤", "crit_dmg", 2.75], ["龟能充能", "echarge_perm", 0.5],
+		["护甲穿透", "armor_pen", 42.0], ["魔法穿透", "magic_pen", 37.0],
+		["反伤", "reflect", 0.25], ["韧性", "tenacity", 0.35],
+		["减伤", "damage_reduction", 0.15], ["增伤", "damage_amp", 0.45],
+	]
+	var stuck: Array = []
+	for pr in probe:
+		var label: String = str(pr[0])
+		var field: String = str(pr[1])
+		var val: float = float(pr[2])
+		## ★匹配要带空格: `begins_with("护甲")` 会把【护甲穿透】也匹配上,
+		##   而循环取的是最后一个 ⇒ 量到了错的那一行(实测报"护甲 0 → 护甲 0", 其实是护甲穿透)。
+		##   这是我的测试 bug, 不是产品问题 —— 但它长得和真 bug 一模一样, 幸好打印了行文本。
+		var b4 := ""
+		for ra in ip._info_stat_rows(u):
+			if str((ra as Array)[1]).begins_with(label + " "):
+				b4 = str((ra as Array)[1])
+		u[field] = val
+		var af := ""
+		for rb in ip._info_stat_rows(u):
+			if str((rb as Array)[1]).begins_with(label + " "):
+				af = str((rb as Array)[1])
+		if b4 == "" or af == b4:
+			stuck.append("%s(%s): %s → %s" % [label, field, b4, af])
+		_ok("★%s 行实时跟着 `%s` 变" % [label, field], b4 != "" and af != b4,
+			"%s → %s" % [b4, af])
+	_ok("★★【所有 %d 行属性】都是实时的(卡住不动的: %d 行)" % [probe.size(), stuck.size()],
+		stuck.is_empty(), "卡住: %s" % str(stuck))
+
 	s._units.clear()
 	s.set_process(false)
 	await get_tree().process_frame
