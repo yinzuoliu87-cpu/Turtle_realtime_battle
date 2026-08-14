@@ -459,6 +459,83 @@ func _ready() -> void:
 	_ok("★★★1 与 ★3 的刻痕增伤【一样】(当前设计: 刻痕收益不看星)",
 		a1 > 0.0 and absf(a1 - a3) < 1e-6, "★1=%.4f ★3=%.4f" % [a1, a3])
 
+	# ── ⑲ 【换路走真流程】: 不再手工调 clear_all, 走 `_dl_build_lane_field()` ────
+	##   ★★这条是我自己列的缺口(前面几轮一直是手工模拟)。手工调 `clear_all` 证明不了
+	##     真流程的**顺序**对不对 —— 而 093 已经在"顺序"上栽过一次
+	##     (v0.19.139 之前批④ teardown 排在 `_eq_apply_all_stats` 之后 ⇒ 刚生成就被清掉)。
+	##   ★判据: 换路之后, 刻痕与充能必须【从存档接上】而不是归零, 且全队重新吃到加成。
+	inc.clear_all()
+	inc._loaded = {"left": false, "right": false}
+	inc._marks["left"] = 0
+	inc._chg["left"] = 0
+	GameState.incense_marks = 33
+	GameState.incense_charge = 1200
+	var _lane_save = GameState.current_lane
+	GameState.current_lane = "bottom"
+	s._units.clear()
+	## 走真流程重建战场。★它会跑完整条: 批④ clear_all → _inject_equipment →
+	##   _apply_spawn_passives → _eq_apply_all_stats → 各系统 clear。
+	s._dl_sys._dl_build_lane_field()
+	for _fl in range(20):
+		s._sim_step(1.0 / 60.0, false, false)
+	_ok("★分母: 真流程重建后场上有单位(%d 只)" % s._units.size(), s._units.size() > 0,
+		"单位 %d" % s._units.size())
+	_ok("★★换路后刻痕【从存档接上】= 33(不是归零重攒)",
+		inc.marks_of("left") == 33, "刻痕=%d(存档 33)" % inc.marks_of("left"))
+	_ok("★★换路后充能余额也接上 = 1200",
+		int(inc._chg.get("left", 0)) == 1200, "条=%d(存档 1200)" % int(inc._chg.get("left", 0)))
+	## 全队真的重新吃到加成了吗 —— 只验"刻痕数对"守不住(数字对但没人读就是白搭)
+	var got := 0
+	var tot := 0
+	for o in s._units:
+		if not (o is Dictionary) or str(o.get("side", "")) != "left":
+			continue
+		if o.get("_isEgg", false) or o.get("is_trainer", false):
+			continue
+		tot += 1
+		if float(o.get("damage_amp", 0.0)) > 0.0:
+			got += 1
+	_ok("★★换路后【全队都重新吃到了增伤】(%d/%d)" % [got, tot], tot > 0 and got == tot,
+		"吃到 %d / 本方 %d" % [got, tot])
+	GameState.current_lane = _lane_save
+
+	# ── ⑳ 每 12 秒的【强化窗】—— 最后一条香火缺口, 我一次都没触发过 ──────────
+	##   ★机制: `emp_t` 每帧累加, 满 `EMP_IV` 进入强化窗 ⇒ `_set_emp_haste(u, true)`
+	##     给 **+EMP_ASPD 攻速**(走 `aspd_perm`, 主循环算 atk_cd 时除进去), 4 次用完立刻撤。
+	##   ★判据落在 `aspd_perm` 上 —— 那是**产品自己的账**, 不是 `_incense_emp_n` 那个我插的标记。
+	##     (数标记正是 v0.19.141 凤凰那个洞的形状。)
+	inc.clear_all()
+	inc._loaded = {"left": false, "right": false}
+	inc._marks["left"] = 0
+	inc._chg["left"] = 0
+	GameState.incense_marks = 5
+	GameState.incense_charge = 0
+	s._units.clear()
+	var eu: Dictionary = s._spawn._make_unit("basic", "left", c + Vector2(-150, 0))
+	eu["atk"] = 100.0
+	eu["no_basic"] = true
+	eu["no_move"] = true
+	eu["equips"] = [{"id": Inc.EID, "star": 1}]
+	eu["eq_state"] = {Inc.EID: {}}
+	s._units.append_array([eu, e])
+	s._equip_sys._stats._eq_apply_all_stats()
+	var asp0: float = float(eu.get("aspd_perm", 1.0))
+	## 差一点点不到 12 秒 ⇒ 不该进窗
+	inc.tick_unit(eu, Inc.EMP_IV - 0.1)
+	_ok("★未到 %.0f 秒【不该】进强化窗(攻速不动)" % Inc.EMP_IV,
+		absf(float(eu.get("aspd_perm", 1.0)) - asp0) < 1e-6,
+		"aspd_perm %.2f → %.2f" % [asp0, float(eu.get("aspd_perm", 1.0))])
+	inc.tick_unit(eu, 0.2)                       # 跨过 12 秒
+	var asp1: float = float(eu.get("aspd_perm", 1.0))
+	_ok("★★到点进强化窗: 攻速 +%.1f(从 EMP_ASPD 推导, 不写死)" % Inc.EMP_ASPD,
+		absf(asp1 - asp0 - Inc.EMP_ASPD) < 1e-6,
+		"aspd_perm %.2f → %.2f(增 %.2f, 应 %.2f)" % [asp0, asp1, asp1 - asp0, Inc.EMP_ASPD])
+	## ★★强化窗的攻速要真的传到【玩家看得到的地方】——
+	##   v0.19.151 刚修过"面板攻速不读倍率", 这里顺手把两件事焊在一起。
+	_ok("★★这份攻速真的进了战斗用的总倍率 `aspd_mult`",
+		absf(s._damage.aspd_mult(eu) - asp1) < 1e-6,
+		"aspd_mult=%.2f · aspd_perm=%.2f" % [s._damage.aspd_mult(eu), asp1])
+
 	## ★还原真存档 —— 不还原就是拿测试改玩家数据(用户明令: 演示/测试不许写真存档)。
 	GameState.incense_marks = _save_m
 	GameState.incense_charge = _save_c
