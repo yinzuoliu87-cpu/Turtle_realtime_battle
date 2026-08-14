@@ -359,11 +359,14 @@ func _ready() -> void:
 		var key := ""
 		## ★2026-08-15 标题删掉后三组铺开到中间空位: 币 340..530 / 等级 661..901 / 买经验 1032..1252。
 		##   区间跟着搬(x 下界 740→300) —— 不搬的话三组一个都收不到, 第⑩条变成"分母为 0"的空检查。
-		if r.position.x >= 300.0 and r.position.x < 600.0:
+		## ★区间必须跟着版式走: 现在是 币 320..520 / 等级 560..900 / 购买说明+按钮 940..1252。
+		##   分界线取在组与组【中间的空档】上, 不是拍脑袋取整 —— 取 600 的话等级组起点 560
+		##   会被算进"币", 三组的并集全错而门禁照样有输出(最阴的那种假绿灯)。
+		if r.position.x >= 300.0 and r.position.x < 540.0:
 			key = "币"
-		elif r.position.x >= 600.0 and r.position.x < 1000.0:
+		elif r.position.x >= 540.0 and r.position.x < 930.0:
 			key = "等级"
-		elif r.position.x >= 1000.0:
+		elif r.position.x >= 930.0:
 			key = "买经验"
 		if key == "":
 			continue

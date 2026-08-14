@@ -35,6 +35,7 @@ import io
 import json
 import os
 import random
+import re
 import sys
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
@@ -47,6 +48,7 @@ EQUIP_PATH = os.path.join(ROOT, "data", "phase2-equipment.json")
 PER_BRACKET = 20        # 每档留多少条(现役种子池每档 12~20)
 SAME_BOT_CAP = 2        # 同一只机器人在同一档最多留几条
 MIN_PER_BRACKET = 6     # 低于这个数就警告(候选不足 = 多样性不够)
+MIN_EQ_COVERAGE = 0.95  # 池里必须出现【95% 以上】的可购买装备, 达不到拒写(2026-08-15)
 
 K = {1: 0.85, 2: 0.90, 3: 1.00, 4: 1.15, 5: 1.30}
 
@@ -188,6 +190,23 @@ def select(cands):
     return picked
 
 
+SCHEMA_SRC = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                          "scripts", "net", "backend.gd")
+
+
+def backend_schema_ver():
+    """从 scripts/net/backend.gd 读 `const SCHEMA_VER`。
+
+    ★不写死 —— 手抄的副本必然落后。读不到就直接退出而不是猜一个默认值:
+      猜错的代价是整池被静默丢光, 宁可现在就红。
+    """
+    txt = io.open(SCHEMA_SRC, encoding="utf-8").read()
+    m = re.search(r"const\s+SCHEMA_VER\s*:=\s*(\d+)", txt)
+    if not m:
+        sys.exit("★读不到 backend.gd 的 SCHEMA_VER —— 拒绝写种子池(盖错版本号会让整池被静默丢光)")
+    return int(m.group(1))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--write", action="store_true")
@@ -266,14 +285,80 @@ def main():
     print("  按当前断点重新分桶: %d/%d 条改了档位" % (moved, total))
     print("  重分桶后各档候选: %s" % {k: len(v) for k, v in sorted(rebucket.items(), key=lambda x: int(x[0]))})
 
+    # ── ★装备覆盖补选(2026-08-15)──────────────────────────────────────────
+    #   实测: 全量 3396 条快照【覆盖 94/94 件, 一件不缺】, 但按 PER_BRACKET=20 挑完
+    #   只剩 57 件 —— 缺的 37 件是在【挑选】这一步丢的, 不是机器人没买到。
+    #   (我一开始判断成"机器人数量不够", 差点又去加机器人 —— 先量全量再下结论。)
+    #   ⇒ 正常挑完之后, 从剩余候选里【贪心补进能带来新装备的队伍】。
+    #   只补到够为止, 不无限膨胀池子(每档最多多带 TOPUP_CAP 条)。
+    TOPUP_CAP = 25
+    eq_all_ = json.load(io.open(os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "data", "phase2-equipment.json"), encoding="utf-8"))
+    buyable_ = set(e["id"] for e in eq_all_ if int(e.get("shopAvailable", 0)) == 1)
+
+    def ids_of(sn):
+        out = set()
+        for it in items_of(sn):
+            out.add(str(it.get("id", "")) if isinstance(it, dict) else str(it))
+        out.discard("")
+        return out
+
+    def topup(new_brackets_, rebucket_):
+        seen = set()
+        for bk_ in new_brackets_:
+            for sn_ in new_brackets_[bk_]:
+                seen |= ids_of(sn_)
+        added = 0
+        # 轮流在各档里找"带来新装备最多"的候选, 直到补满或没得补
+        while len(seen & buyable_) < len(buyable_):
+            best = None
+            for bk_ in sorted(rebucket_, key=int):
+                if len(new_brackets_.get(bk_, [])) >= PER_BRACKET + TOPUP_CAP:
+                    continue
+                chosen_ids = set(id(x) for x in new_brackets_.get(bk_, []))
+                for sn_ in rebucket_[bk_]:
+                    if id(sn_) in chosen_ids:
+                        continue
+                    gain = len((ids_of(sn_) & buyable_) - seen)
+                    if gain > 0 and (best is None or gain > best[0]):
+                        best = (gain, bk_, sn_)
+            if best is None:
+                break
+            _g, bk_, sn_ = best
+            new_brackets_.setdefault(bk_, []).append(sn_)
+            seen |= ids_of(sn_)
+            added += 1
+        return added, len(seen & buyable_)
+
     namer = make_namer()
+    schema_ver = backend_schema_ver()
     new_brackets = {}
     for bk in sorted(rebucket, key=int):
         picked = select(rebucket[bk])
         for sn in picked:
             sn.setdefault("profile", {})["name"] = namer(sn, int(bk))   # 机器人07 → 像真人的网名
             sn["profile"]["avatar"] = str((sn.get("leaders") or ["basic"])[0])
+            # ★盖上当前 schema_ver + 补齐宝箱进度字段(2026-08-15)。
+            #   本脚本是【原样搬运】上游快照的, 一个字都不碰结构; 而上游 tests/_cohort.gd
+            #   自己拼快照、不走 Backend.build_ghost_snapshot ⇒ 重跑出来的种子很可能
+            #   一条 schema_ver=2 都没有, 一进 load_pool 就被 _drop_stale_schema 全部丢光。
+            #   失败表现是【永远打 bot 且一个报错都没有】—— 所以必须在这里盖章。
+            sn["schema_ver"] = schema_ver
+            sn.setdefault("chest_treasures_won", [])
+            sn.setdefault("chest_treasure_value", 0.0)
         new_brackets[bk] = picked
+
+    n_add, cov_after = topup(new_brackets, rebucket)
+    print("  ★覆盖补选: 追加 %d 支队 ⇒ 装备覆盖 %d / %d 件" % (n_add, cov_after, len(buyable_)))
+    # 补进来的队也要盖名字/头像/schema/宝箱字段(上面那轮只处理了 picked)
+    for bk in new_brackets:
+        for sn in new_brackets[bk]:
+            if not (sn.get("profile") or {}).get("name"):
+                sn.setdefault("profile", {})["name"] = namer(sn, int(bk))
+                sn["profile"]["avatar"] = str((sn.get("leaders") or ["basic"])[0])
+            sn["schema_ver"] = schema_ver
+            sn.setdefault("chest_treasures_won", [])
+            sn.setdefault("chest_treasure_value", 0.0)
 
     # ── 对照表 ──
     print()
@@ -291,6 +376,33 @@ def main():
     print()
     print("=== 自检 (与 verify_bracket_gear 同口径; 不过关拒写) ===")
     fail = 0
+
+    # ── ⑤ ★装备覆盖率(2026-08-15 用户:「改好能买新装备啊」)──────────────────
+    #   现役池实测只出现过 56/94 件, 38 件从没出现过(几乎整个 060~094 新批次) ——
+    #   根因是那池子生成于 2026-07-27, 那时那批装备还不存在。
+    #   机器人是从 DataRegistry.phase2_equipment 全表 roll_shop 的, 重跑就摇得到;
+    #   但"摇得到"不等于"摇到了" —— 机器人不够多/场次不够, 照样会缺一大片。
+    #   ⇒ 这里直接量【新池子里实际出现过多少种装备】, 不够就拒写。
+    #   ★不许静默产出一个又缺一半装备的池子(那正是这次要修的东西)。
+    eq_all = json.load(io.open(os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "data", "phase2-equipment.json"), encoding="utf-8"))
+    buyable = set(e["id"] for e in eq_all if int(e.get("shopAvailable", 0)) == 1)
+    seen_ids = set()
+    for bk in new_brackets:
+        for sn in new_brackets[bk]:
+            for it in items_of(sn):
+                seen_ids.add(str(it.get("id", "")) if isinstance(it, dict) else str(it))
+    seen_ids.discard("")
+    cover = len(seen_ids & buyable)
+    need = int(round(len(buyable) * MIN_EQ_COVERAGE))
+    ok = (cover >= need)
+    print("  %s ⑤装备覆盖: 池里出现 %d / %d 件可购买装备 (下限 %d = %.0f%%)" % (
+        "✔" if ok else "★", cover, len(buyable), need, MIN_EQ_COVERAGE * 100))
+    if not ok:
+        miss = sorted(buyable - seen_ids)
+        print("     缺 %d 件: %s" % (len(miss), miss[:30]))
+        print("     ⇒ 机器人数量/场次不够。加 COHORT_BOTS 再跑一批, 别降这个下限。")
+        fail += 1
 
     t0 = new_brackets.get("0", [])
     t0_items = sum(len(items_of(t)) for t in t0)

@@ -93,9 +93,20 @@ func _ready() -> void:
 		src.find("_mark_card_clipped(rt, cx, start_y + card_h - 22.0, card_w)") >= 0)
 
 	# ── ⑤ 羁绊: 商店有、图鉴原来一个字都不提 ──────────────────────────────
+	## ★2026-08-15 判据从"搜两个整句"改成【切出 _show_p2eq 这一段再搜三件事】。
+	##   原来搜的是 `host._add_text(20, ty, "羁绊"` 和 `TYPES.get(_tp, {})` 两条整句 ——
+	##   同一天把绝对 y 改成顺排(ty→_next_y)、把单类型改成多类型(_tp→tp1)就红了,
+	##   而【羁绊阈值照样画得好好的】。整句 grep 守的是"我当时怎么写的", 不是"这件事还在不在"。
+	##   切段(锚在 _show_p2eq 里)+ 分三件事查, 才是守住"阈值来自 Phase2Types 且真画了标题"。
+	var i_eq: int = src.find("func _show_p2eq")
+	var i_end: int = src.find("func _show_consumable", i_eq)
+	var eq_body: String = src.substr(i_eq, maxi(0, i_end - i_eq))
+	_ok("★分母: 切得出 _show_p2eq 这一段源码", i_eq > 0 and i_end > i_eq,
+		"%d 字符" % eq_body.length())
 	_ok("★★⑤ 图鉴装备页也说羁绊阈值(与商店同一份 Phase2Types)",
-		src.find('host._add_text(20, ty, "羁绊"') >= 0
-		and src.find("host.Phase2Types.TYPES.get(_tp, {})") >= 0)
+		eq_body.find('"羁绊"') >= 0
+		and eq_body.find("host.Phase2Types.TYPES.get(") >= 0
+		and eq_body.find('.get("tiers", [])') >= 0)
 
 	print("")
 	print("  (共 %d 条断言)" % _n)

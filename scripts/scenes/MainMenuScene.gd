@@ -14,10 +14,30 @@ const BTN_H := 87           # 360×161/666
 const WALL := 16
 const TILE := 104
 
+## ── 左栏按钮栈的几何 (2026-08-15 版式体检) ──
+## ★抽成常量是因为【右信息板要和这个栈对齐到同一条竖直带】: 两边各写各的坐标,
+##   就是上一版右下角空出 560×161 一大块、而左栏比右栏长 140px 的根因。
+##   verify_mainmenu_layout 会量真实 rect 断言两栏首尾各差 ≤2px。
+const HERO_SIZE := Vector2(384.0, 100.0)   # 主 CTA。原 384×96 (4.00:1) 略扁, 加高到 3.84:1 且过 44pt 触摸线
+const HERO_CY := 302.0
+const HERO_GRID_GAP := 24.0
+const GRID_SIZE := Vector2(196.0, 82.0)    # 2×2 次级键
+const GRID_GAP := Vector2(14.0, 14.0)
+## 训龟大师: 原 300×62 (4.84:1, 全场最扁) 且离 2×2 网格 71px = 看着像掉队的孤儿。
+## 改成与网格同高 82 (3.66:1), 并按网格自己的 14px 节奏紧贴其下 —— 归队, 不再单飞。
+const TRAINER_SIZE := Vector2(300.0, 82.0)
+const PANEL_W := 560.0                     # 右信息板宽 (右边缘贴墙)
+const REC_H := 82.0                        # 战绩行高 = 触摸线 81px 之上
+const ROW_TAIL_W := 18.0                   # 信息板每行右侧留的尾列(只有战绩行填 ›) → 各行【值】右沿严格对齐
+
+## 字号层级 (原来 hero27 / 面板标题25 / 次级22 / 行20 —— 主次只差 5 号, 分不出层)
+const FONT_HERO := 30
+const FONT_PANEL_TITLE := 24
+const FONT_BTN := 22
+const FONT_ROW := 21
+const FONT_VERSION := 16
+
 var page_box: Control       # 当前页按钮容器
-var _active_page: String = ""   # 当前页 (空=未加载); 过场用
-var _title_node: Control = null # 标题节点 (主菜单专属, 参与过场飞出/入)
-var _card_nodes: Array = []     # 右列龟币框 + 4 磁贴 (主菜单专属, 参与过场 — 1:1 PoC main 行含 cards)
 var content_root: Control   # 内容层 (1280×720 设计框, 居中于真实视口); 背景另铺满全窗口
 var _bg_tile: TextureRect   # 平铺图 (resize 时重设尺寸)
 
@@ -41,7 +61,7 @@ func _ready() -> void:
 	_right_column()
 	page_box = Control.new()
 	content_root.add_child(page_box)
-	_show_page("main")
+	_build_page_buttons()
 	# 🛠 调试场入口: 【只在开发构建/显式 DEVTOOLS 下出现】。
 	#   原来无条件建 → 正式包里玩家能点进自由摆位调试场。OS.is_debug_build() 在导出 release 模板下为 false。
 	if OS.is_debug_build() or OS.has_environment("DEVTOOLS"):
@@ -141,7 +161,6 @@ func _title() -> void:
 		var start_top_y := -50.0 - 101.5                # PoC 起点 center=-50 (TITLE_BASE_Y-180)
 		t.position = Vector2(LEFT_CX - 180, start_top_y)
 		t.scale = Vector2(0.85, 0.85); t.modulate.a = 0.0
-		_title_node = t; t.set_meta("home_y", end_top_y)   # 参与过场: 记归位 y
 		var tw := create_tween()
 		tw.tween_interval(0.25)                          # PoC delay 250ms
 		tw.tween_property(t, "position:y", end_top_y, 0.55).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -151,38 +170,54 @@ func _title() -> void:
 	else:
 		var l := Label.new(); l.text = "斗龟场"; l.add_theme_font_size_override("font_size", 80)
 		l.add_theme_color_override("font_color", Color("#ffd93d")); l.position = Vector2(LEFT_CX - 150, 90); content_root.add_child(l)
-		_title_node = l; l.set_meta("home_y", 90.0)
 
 
 # ─── 左栏按钮页 (实时版: 单一干净主菜单, 无子页过场) ───
 ## 实时版重做: 去掉回合制残留的多页(online/local)+过场飞出/飞入逻辑.
 ##   主菜单就一组清晰按钮(各自从左滑入入场), 点击直接 _go 切场景, 不再有页间过场.
-func _show_page(page: String) -> void:
-	_active_page = page
-	_build_page_buttons(page, false)
+##   (2026-08-15 删掉了只剩一页还在传"页名"的 _show_page/_active_page —— 单页了就别再演多页。)
+
+
+## 左栏按钮栈的上/下沿 —— 右信息板靠这两个数与左栏对齐, 所以必须【一个来源】。
+func _stack_top() -> float:
+	return HERO_CY - HERO_SIZE.y / 2.0
+
+
+## 2×2 网格第一行的中心 y
+func _grid_cy0() -> float:
+	return HERO_CY + HERO_SIZE.y / 2.0 + HERO_GRID_GAP + GRID_SIZE.y / 2.0
+
+
+## 2×2 网格的下沿 (第二行底)
+func _grid_bottom() -> float:
+	return _grid_cy0() + (GRID_SIZE.y + GRID_GAP.y) + GRID_SIZE.y / 2.0
+
+
+func _stack_bottom() -> float:
+	return _grid_bottom() + GRID_GAP.y + TRAINER_SIZE.y
 
 
 ## 建左栏英雄区 (正式化重排·用户2026-07-18「左英雄+右信息板·保留金框」):
-##   Logo 下 → 大「开始战斗」英雄键(焦点·380×96) → 2×2 次级键(背包/商店/图鉴/排行榜·统一金框).
+##   Logo 下 → 大「开始战斗」英雄键(焦点·主 CTA) → 2×2 次级键(背包/商店/图鉴/排行榜·统一金框)
+##   → 训龟大师(紧贴网格下方, 同高同节奏).
 ##   设置/教程 挪到右上工具簇, 战绩 挪到右信息板 (见 _right_column). 各键从左滑入错峰入场.
-func _build_page_buttons(_page: String, _on_first_load: bool) -> void:
+func _build_page_buttons() -> void:
 	var eliminated := GameState.is_eliminated()   # 0命=本大轮淘汰(用户2026-07-24拍板"淘汰锁定") → 锁匹配+商店, 只"设置→重置存档"解锁
 	# ── 英雄键: ⚔ 开始战斗 (最大·居左栏中轴·主 CTA) ──
-	var hero_size := Vector2(384.0, 96.0)
-	var hero_center := Vector2(LEFT_CX, 300.0)
-	var hero := _frame_button("⚔  开始战斗", func(): _start_battle_flow(), false, hero_size, 27, "", eliminated)
+	var hero_size := HERO_SIZE
+	var hero_center := Vector2(LEFT_CX, HERO_CY)
+	var hero := _frame_button("⚔  开始战斗", func(): _start_battle_flow(), false, hero_size, FONT_HERO, "", eliminated)
 	hero.position = hero_center - hero_size / 2.0
-	hero.set_meta("home_y", hero.position.y)
 	page_box.add_child(hero)
 	if eliminated:
 		_add_lock_badge(hero, hero_size)
 	_slide_in_left(hero, 0)
 	# ── 2×2 次级键: 背包/商店/图鉴/排行榜 (同金框·64px像素图标+文字·左右两列·用户2026-07-18图标化) ──
-	var gsz := Vector2(196.0, 82.0)
-	var gap_x := 14.0
-	var gap_y := 14.0
+	var gsz := GRID_SIZE
+	var gap_x := GRID_GAP.x
+	var gap_y := GRID_GAP.y
 	var col_dx := (gsz.x + gap_x) / 2.0                      # 两列中心相对左栏中轴 ±col_dx
-	var grid_cy0 := hero_center.y + hero_size.y / 2.0 + 24.0 + gsz.y / 2.0
+	var grid_cy0 := _grid_cy0()
 	var mic := "res://assets/sprites/menu/"
 	var subs: Array = [
 		["背包", func(): _go("Inventory"), mic + "ic-bag.png"],
@@ -197,19 +232,18 @@ func _build_page_buttons(_page: String, _on_first_load: bool) -> void:
 		var c := i % 2                                       # 列 0,1,0,1
 		var center := Vector2(LEFT_CX - col_dx + float(c) * (gsz.x + gap_x), grid_cy0 + float(r) * (gsz.y + gap_y))
 		var locked := (str(s[0]) == "商店") and shop_locked   # 商店锁 → 灰显+🔒角标, 但仍可点→toast提示为啥锁
-		var b := _frame_button(s[0], s[1], false, gsz, 22, str(s[2]), locked)
+		var b := _frame_button(s[0], s[1], false, gsz, FONT_BTN, str(s[2]), locked)
 		b.position = center - gsz / 2.0
-		b.set_meta("home_y", b.position.y)
 		page_box.add_child(b)
 		if locked:
 			_add_lock_badge(b, gsz)
 		_slide_in_left(b, i + 1)
-	# ── 训龟大师 独立键(用户2026-07-23: 配形象 + 主动技能) —— 不挤进 2×2 ──
-	var tsz := Vector2(300.0, 62.0)
-	var tcy := grid_cy0 + 2.0 * (gsz.y + gap_y) + 16.0 + tsz.y / 2.0
-	var tb := _frame_button("🐢 训龟大师", func(): _go("TrainerConfig"), false, tsz, 23, "")
-	tb.position = Vector2(LEFT_CX, tcy) - tsz / 2.0
-	tb.set_meta("home_y", tb.position.y)
+	# ── 训龟大师 独立键(用户2026-07-23: 配形象 + 主动技能) —— 不挤进 2×2, 但【紧贴】其下 ──
+	#    原来 300×62 且离网格 71px(网格自己行距才 14) —— 又扁又落单, 看着像忘了删的一条。
+	#    现在同高 82、同 14px 节奏 ⇒ 归到同一组; 顺带让整栈下沿从 683 收到 650, 不再压住左下角调试场。
+	var tsz := TRAINER_SIZE
+	var tb := _frame_button("🐢 训龟大师", func(): _go("TrainerConfig"), false, tsz, FONT_BTN, "")
+	tb.position = Vector2(LEFT_CX - tsz.x / 2.0, _grid_bottom() + gap_y)
 	page_box.add_child(tb)
 	_slide_in_left(tb, subs.size() + 1)
 
@@ -238,101 +272,6 @@ func _add_lock_badge(holder: Control, size: Vector2) -> void:
 
 
 ## btn-frame.png 金色边框按钮 (NinePatchRect 9宫格保证渲染 + 透明Button点击 + 文字)
-## 进游戏问是否全屏 (1:1 PoC maybeAskFullscreen:260) — 每会话一次(static flag), 已全屏则跳过.
-static var _fs_asked := false
-
-func _maybe_ask_fullscreen() -> void:
-	if _fs_asked:
-		return
-	var m := get_window().mode
-	if m == Window.MODE_FULLSCREEN or m == Window.MODE_EXCLUSIVE_FULLSCREEN:
-		return
-	_fs_asked = true
-	var layer := CanvasLayer.new()
-	layer.layer = 100
-	add_child(layer)
-	var veil := ColorRect.new()
-	veil.set_anchors_preset(Control.PRESET_FULL_RECT)
-	veil.color = Color(4.0 / 255.0, 8.0 / 255.0, 14.0 / 255.0, 0.6)
-	veil.mouse_filter = Control.MOUSE_FILTER_STOP
-	layer.add_child(veil)
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	layer.add_child(center)
-	var box := PanelContainer.new()
-	var bsb := StyleBoxFlat.new()
-	bsb.bg_color = Color("#12202a")
-	bsb.border_color = Color("#ffd93d")
-	bsb.set_border_width_all(2)
-	bsb.set_corner_radius_all(14)
-	bsb.content_margin_left = 30; bsb.content_margin_right = 30
-	bsb.content_margin_top = 24; bsb.content_margin_bottom = 24
-	bsb.shadow_color = Color(1, 217.0 / 255.0, 107.0 / 255.0, 0.3); bsb.shadow_size = 16
-	box.add_theme_stylebox_override("panel", bsb)
-	center.add_child(box)
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 8)
-	box.add_child(vb)
-	var title := Label.new()
-	title.text = "全屏体验更佳"
-	title.add_theme_font_size_override("font_size", 20)
-	title.add_theme_color_override("font_color", Color("#ffd93d"))
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(title)
-	var txt := Label.new()
-	txt.text = "现在进入全屏吗？\n(随时可在「设置」里切换)"
-	txt.add_theme_font_size_override("font_size", 14)
-	txt.add_theme_color_override("font_color", Color("#ccddee"))
-	txt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(txt)
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 12)
-	vb.add_child(row)
-	var no := _fs_dialog_btn("暂不", Color("#9aabbb"), Color("#1a2330"), Color("#3a4a5e"))
-	no.pressed.connect(func() -> void: layer.queue_free())
-	row.add_child(no)
-	var yes := _fs_dialog_btn("进入全屏", Color("#ffd93d"), Color("#2a1a40"), Color("#ffd93d"))
-	yes.pressed.connect(func() -> void:
-		get_window().mode = Window.MODE_FULLSCREEN
-		layer.queue_free())
-	row.add_child(yes)
-	# fade-in .2s (PoC overlay opacity 0→1)
-	layer_modulate_fade(veil, center)
-
-
-## 全屏弹窗按钮 (1:1 PoC no/yes 钮样式)
-func _fs_dialog_btn(label: String, fg: Color, bg: Color, border: Color) -> Button:
-	var b := Button.new()
-	b.text = label
-	b.add_theme_font_size_override("font_size", 15)
-	b.add_theme_color_override("font_color", fg)
-	b.add_theme_color_override("font_hover_color", fg)
-	b.add_theme_color_override("font_pressed_color", fg)
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = bg
-	sb.border_color = border
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(8)
-	sb.content_margin_left = 26; sb.content_margin_right = 26
-	sb.content_margin_top = 8; sb.content_margin_bottom = 8
-	b.add_theme_stylebox_override("normal", sb)
-	b.add_theme_stylebox_override("hover", sb)
-	b.add_theme_stylebox_override("pressed", sb)
-	b.add_theme_stylebox_override("focus", sb)
-	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	return b
-
-
-func layer_modulate_fade(veil: ColorRect, center: CenterContainer) -> void:
-	veil.modulate.a = 0.0
-	center.modulate.a = 0.0
-	var tw := create_tween()
-	tw.tween_property(veil, "modulate:a", 1.0, 0.2)
-	tw.parallel().tween_property(center, "modulate:a", 1.0, 0.2)
-
-
 func _frame_button(label: String, cb: Callable, disabled: bool, size: Vector2 = Vector2(BTN_W, BTN_H), font_size: int = 22, icon_path: String = "", locked: bool = false) -> Control:
 	var holder := Control.new()
 	holder.custom_minimum_size = size
@@ -476,17 +415,19 @@ func _right_column() -> void:
 	# ── 右上一排: [教程][设置] 方形磁贴 + 龟币框 (右边缘贴墙) ──
 	var coin := _coin_frame()
 	coin.position = Vector2(W - WALL - 152, 30)
-	content_root.add_child(coin); _card_nodes.append(coin); coin.set_meta("home_y", coin.position.y)
+	content_root.add_child(coin)
 	_slide_in(coin, 0)
-	var usz := 62.0
+	# 磁贴 62 → 82: 62px 在手机上只有 34pt, 低于 iOS HIG 的 44pt(=本项目 81 视口像素, 见 tests/_probe_ui_layout.gd)。
+	# 82 同时更贴近旁边 85 高的龟币框, 三者读起来才是一排。
+	var usz := 82.0
 	var uy := 30.0 + (85.0 - usz) / 2.0                       # 与龟币框竖直居中对齐
 	var set_x := float(W - WALL - 152) - 14.0 - usz
 	var help_x := set_x - 10.0 - usz
 	var set_tile := _tile("", "⚙", func(): _go("Settings"), Vector2(set_x, uy), "", usz)
-	content_root.add_child(set_tile); _card_nodes.append(set_tile); set_tile.set_meta("home_y", set_tile.position.y)
+	content_root.add_child(set_tile)
 	_slide_in(set_tile, 1)
 	var help_tile := _tile("ui/help-button", "❓", func(): _on_tutorial(), Vector2(help_x, uy), "", usz)
-	content_root.add_child(help_tile); _card_nodes.append(help_tile); help_tile.set_meta("home_y", help_tile.position.y)
+	content_root.add_child(help_tile)
 	_slide_in(help_tile, 2)
 	# ── 右信息板: 赛季进度(大轮/Lv/命/深海币) + 战绩(可点→Record) ──
 	_info_panel()
@@ -501,7 +442,7 @@ func _version_stamp() -> void:
 	var v := str(ProjectSettings.get_setting("application/config/version", ""))
 	if v == "":
 		return
-	var l := _menu_label("v%s" % v, 16, Color("#7f8a99"))
+	var l := _menu_label("v%s" % v, FONT_VERSION, Color("#7f8a99"))
 	# ★★2026-08-01 修「版本号在主菜单上根本看不见」(审计器量出来的, 不是看像素猜的):
 	#   _menu_label 里设了 set_anchors_preset(PRESET_FULL_RECT) —— 锚点 right/bottom = 1,
 	#   于是【下一帧布局会按父容器重算 size】, 把这里设的 (200,22) 冲掉, 实测变成 1480×744。
@@ -545,32 +486,43 @@ func _coin_frame() -> Control:
 
 
 ## 右信息板: 金边深蓝卡(保留金框) — 赛季进度(大轮/Lv/命/深海币) + 战绩(可点→Record)
+##
+## ★2026-08-15 版式体检修的两件事:
+##   ① 板高原来"随内容"(≈307), 顶 236 底 543, 而左栏按钮栈跑到 683 —— 右下角白白空出
+##      560×161 一大块, 两栏首尾各差 100+px。现在板【首尾都焊在左栏按钮栈上】(_stack_top/_stack_bottom),
+##      两栏成为同一条竖直带; 多出来的高度由一个 EXPAND 空档吃掉, 把战绩行压到板底。
+##   ② 战绩行原来是 `"📜  战绩          %s      ›"` —— 用空格凑对齐, 值落在 x≈880,
+##      而它上面三行的值是右对齐到 x≈1230 的。同一张卡里两套对齐 = 一眼就看得出歪。
+##      现在战绩行直接复用 _panel_row 建, 列宽由同一个函数决定, 想歪也歪不了。
 func _info_panel() -> void:
-	var PW := 560.0
-	var px := float(W - WALL) - PW                            # 右边缘贴墙
-	var py := 236.0
+	var px := float(W - WALL) - PANEL_W                        # 右边缘贴墙
+	var py := _stack_top()                                     # 顶沿 = 左栏按钮栈顶沿
 	var panel := PanelContainer.new()
 	panel.position = Vector2(px, py)
-	panel.custom_minimum_size = Vector2(PW, 0.0)             # 宽固定·高随内容
+	panel.custom_minimum_size = Vector2(PANEL_W, _stack_bottom() - _stack_top())
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.04, 0.10, 0.16, 0.96)             # 深海蓝近实心(正式化·防背景图标透出)
 	sb.border_color = Color("#ffd93d"); sb.set_border_width_all(2)   # 金边(保留金框)
 	sb.set_corner_radius_all(14)
 	sb.content_margin_left = 28; sb.content_margin_right = 28
-	sb.content_margin_top = 22; sb.content_margin_bottom = 24
+	sb.content_margin_top = 24; sb.content_margin_bottom = 24
 	panel.add_theme_stylebox_override("panel", sb)
 	content_root.add_child(panel)
-	_card_nodes.append(panel); panel.set_meta("home_y", py)
-	var vb := VBoxContainer.new(); vb.add_theme_constant_override("separation", 15)
+	var vb := VBoxContainer.new(); vb.add_theme_constant_override("separation", 18)
 	panel.add_child(vb)
 	var hd := Label.new(); hd.text = "🐢  赛季进度"
-	hd.add_theme_font_size_override("font_size", 25); hd.add_theme_color_override("font_color", Color("#ffd93d"))
+	hd.add_theme_font_size_override("font_size", FONT_PANEL_TITLE); hd.add_theme_color_override("font_color", Color("#ffd93d"))
 	vb.add_child(hd)
 	# 大轮=奖杯图标 / 深海币=深海币图标(64px像素·用户2026-07-18) · 命=红心符号(无图标资产·确定性单色)
 	var mic := "res://assets/sprites/menu/"
 	vb.add_child(_panel_row("🏆", "第 %d 大轮" % int(GameState.season_id), "Lv %d" % int(GameState.season_level), Color("#ffd93d"), mic + "ic-trophy.png"))
 	vb.add_child(_panel_row("♥", "剩余命数", "%d / 8" % int(GameState.hearts), Color("#ff6b6b")))
 	vb.add_child(_panel_row("◆", "深海币", "%d" % int(GameState.meta_deepsea_coins), Color("#4fc3f7"), mic + "ic-deepsea.png"))
+	# 多余的高度全给这个空档 → 上半是赛季数据、板底是战绩键, 板不再"随内容长短乱缩"
+	var pad := Control.new()
+	pad.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(pad)
 	var sep := HSeparator.new()
 	var sls := StyleBoxLine.new(); sls.color = Color(1.0, 0.85, 0.24, 0.35); sls.thickness = 1
 	sep.add_theme_stylebox_override("separator", sls)
@@ -579,26 +531,28 @@ func _info_panel() -> void:
 	var _total: int = GameState.battles_total
 	var _rec := "%d 胜 %d 负" % [_w, maxi(0, _total - _w)] if _total > 0 else "暂无战绩"
 	var rec := Button.new()
-	rec.text = "📜  战绩          %s      ›" % _rec
-	rec.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	rec.add_theme_font_size_override("font_size", 20)
-	rec.add_theme_color_override("font_color", Color("#dfe6f0"))
-	rec.add_theme_color_override("font_hover_color", Color("#ffe9a8"))
-	rec.add_theme_color_override("font_pressed_color", Color("#ffe9a8"))
+	rec.custom_minimum_size = Vector2(0.0, REC_H)             # ≥81 视口像素 = 44pt 触摸线(原来只有 48)
+	rec.focus_mode = Control.FOCUS_NONE
+	rec.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	# 左右 content_margin 归零 → 行内容与上面三行【共用同一条左右基准线】(否则整行内缩 10px 又是一种歪)
 	var rn := StyleBoxFlat.new(); rn.bg_color = Color(1, 1, 1, 0.04); rn.set_corner_radius_all(8)
-	rn.content_margin_left = 10; rn.content_margin_right = 10; rn.content_margin_top = 9; rn.content_margin_bottom = 9
 	var rh := rn.duplicate() as StyleBoxFlat; rh.bg_color = Color(1.0, 0.85, 0.24, 0.16)
 	rec.add_theme_stylebox_override("normal", rn)
 	rec.add_theme_stylebox_override("hover", rh)
 	rec.add_theme_stylebox_override("pressed", rh)
-	rec.focus_mode = Control.FOCUS_NONE
-	rec.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	rec.pressed.connect(func(): _go("Record"))
+	var rrow := _panel_row("📜", "战绩", _rec, Color("#dfe6f0"), "", "›")
+	rrow.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rec.add_child(rrow)
 	vb.add_child(rec)
 
 
-## 信息板一行: 图标 + 名称(左, 撑开) + 值(右)
-func _panel_row(icon: String, name_txt: String, value: String, icon_col: Color = Color("#dfe6f0"), icon_tex: String = "") -> Control:
+## 信息板一行: 图标 + 名称(左, 撑开) + 值(右) + 尾列
+## ★尾列 (ROW_TAIL_W) 每行都有, 只有战绩行往里填 "›"。
+##   它存在的唯一理由: 让【值】的右沿在所有行上严格相等 —— 战绩行多一个箭头,
+##   不给别的行留出同宽的位, 它的值就会比上面三行往左偏一个箭头的宽度。
+func _panel_row(icon: String, name_txt: String, value: String, icon_col: Color = Color("#dfe6f0"), icon_tex: String = "", tail: String = "") -> Control:
 	var h := HBoxContainer.new(); h.add_theme_constant_override("separation", 10)
 	if icon_tex != "" and ResourceLoader.exists(icon_tex):   # 64px像素图标(用户2026-07-18)
 		var it := TextureRect.new(); it.texture = load(icon_tex)
@@ -606,18 +560,27 @@ func _panel_row(icon: String, name_txt: String, value: String, icon_col: Color =
 		it.custom_minimum_size = Vector2(34, 32); it.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		h.add_child(it)
 	else:
-		var ic := Label.new(); ic.text = icon; ic.add_theme_font_size_override("font_size", 21)
+		var ic := Label.new(); ic.text = icon; ic.add_theme_font_size_override("font_size", FONT_ROW)
 		ic.add_theme_color_override("font_color", icon_col)
 		ic.custom_minimum_size = Vector2(34, 0); ic.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		ic.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		h.add_child(ic)
-	var nm := Label.new(); nm.text = name_txt; nm.add_theme_font_size_override("font_size", 20)
+	var nm := Label.new(); nm.text = name_txt; nm.add_theme_font_size_override("font_size", FONT_ROW)
 	nm.add_theme_color_override("font_color", Color("#dfe6f0"))
 	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	nm.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	h.add_child(nm)
-	var vv := Label.new(); vv.text = value; vv.add_theme_font_size_override("font_size", 20)
+	var vv := Label.new(); vv.text = value; vv.add_theme_font_size_override("font_size", FONT_ROW)
 	vv.add_theme_color_override("font_color", Color("#ffe9a8"))
 	vv.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	vv.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	h.add_child(vv)
+	var tl := Label.new(); tl.text = tail; tl.add_theme_font_size_override("font_size", FONT_ROW)
+	tl.add_theme_color_override("font_color", Color("#ffd93d"))
+	tl.custom_minimum_size = Vector2(ROW_TAIL_W, 0)
+	tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	tl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	h.add_child(tl)
 	return h
 
 
@@ -712,8 +675,13 @@ func _debug_arena_entry() -> void:
 	b.add_theme_stylebox_override("hover", sb)
 	b.add_theme_stylebox_override("pressed", sb)
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	b.size = Vector2(120, 38)
-	b.position = Vector2(16, H - 38 - 16)   # 左下角 (不挤左栏 5 按钮)
+	# ★原来钉在左下角 (16, 666) 120×38, 而「训龟大师」键跨 y 621..683 x 90..390
+	#   —— 两者实打实重叠 46×17 px, 调试构建里点训龟大师的左下角会点到调试场。
+	#   现在挪到左右两栏之间那条空档 (左栏右沿 443 / 信息板左沿 704), 谁也不压。
+	#   高度 38→46: 仍低于 81 视口像素的触摸线, 但它是【开发工具·正式包不出现】,
+	#   为它把玩家版式撑大不划算 —— 门禁里显式豁免并写明原因, 不是"忘了量"。
+	b.size = Vector2(120, 46)
+	b.position = Vector2(452, H - 46 - WALL)
 	content_root.add_child(b)
 	b.pressed.connect(_open_debug_arena)
 

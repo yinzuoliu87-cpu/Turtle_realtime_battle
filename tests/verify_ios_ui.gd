@@ -165,16 +165,63 @@ func _check_teamselect_edge_btns(inst: Node) -> void:
 	_ok("TeamSelect: 贴边按钮在 root 末尾(画在最上层, 不会被木托盘压住)",
 		missing.is_empty(), "末4个子节点=%s 缺=%s" % [str(tail), str(missing)])
 
+## 各页"建全了"的可见按钮下限。0 = 不设限。
+## ★这些数是【实测出来的】: 先把页面种到正常态量一遍, 再往下留一点余量。
+const MIN_BUTTONS := {
+	"MainMenu": 8,
+	"Shop": 7,       # ★实测 7: 返回/背包/刷新/买经验/购买/我的背包/出战阵容(货架卡是 Panel 不是 Button)。
+	                 #   上锁态只有 1 —— 这个 7 就是"页面建全了"与"只有一个返回"的分界线。
+	                 #   ★我第一版拍脑袋写 10 结果红了: 错的是我的猜测不是产品。先量再定下限。
+	"Codex": 6,      # 五个页签 + 返回
+	"Inventory": 4,
+	"TeamSelect": 8,
+}
+
+
+## 实例化【之前】种状态: 有些页在空存档下走的是上锁/空分支, 量了等于没量。
+func _seed_scene_state(scene_name: String) -> void:
+	var gs = get_node_or_null("/root/GameState")
+	if gs == null:
+		return
+	gs.test_mode = true            # ★绝不写玩家真存档
+	if scene_name == "Shop":
+		gs.season_total_battles = 1     # < 1 ⇒ _build_locked(), 整页只有一个「返回」
+		gs.meta_shop_battles = -1       # ≠ season_total_battles ⇒ 强制重新 roll 一套货
+		gs.meta_shop_offer = []
+		gs.meta_deepsea_coins = 9999
+
+
+## 实例化【之后】再拨一下: 详情面板这类"要点过才出现"的区域, 不拨就永远量不到。
+func _post_scene_state(scene_name: String, inst: Node) -> void:
+	if scene_name == "Shop":
+		inst.set("_sel", 0)
+		if inst.has_method("_rebuild"):
+			inst.call("_rebuild")
+
+
 func _check_scene_buttons(scene_name: String, vp: Vector2) -> void:
 	var ps = load("res://scenes/%s.tscn" % scene_name)
 	if ps == null:
 		_ok("%s 载入" % scene_name, false, "load失败")
 		return
+	## ★上锁/空态的页要先种数据再量 —— 否则量的是一块"什么都没有"的屏(2026-08-15)。
+	##   实测: 商店没打第一场时是 `_build_locked()`, 整页只有一个「返回」⇒ 这一条
+	##   看着 PASS, 其实【整个商店头部与详情面板一个都没量到】。同一形状: 图鉴不选中就只有页签。
+	##   这不是"没查出问题", 是"根本没查"。分母必须打出来并焊死下限。
+	_seed_scene_state(scene_name)
 	var inst = ps.instantiate()
 	add_child(inst)
 	await get_tree().create_timer(1.7).timeout   # 等入场动画落定(主菜单右栏磁贴滑入到1.39s才完; 1.1s抓中间帧误报)
+	_post_scene_state(scene_name, inst)
+	await get_tree().process_frame
+	await get_tree().process_frame
 	var btns: Array = []
 	_visible_buttons(inst, btns)
+	## ★分母下限: 低于这个数说明页面没建全(上锁态/空态), 后面两条就是空检查。
+	var floor_n: int = MIN_BUTTONS.get(scene_name, 0)
+	if floor_n > 0:
+		_ok("%s: ★分母 可见按钮 %d ≥ %d(不足=页面没建全, 下面两条是空检查)" % [scene_name, btns.size(), floor_n],
+			btns.size() >= floor_n)
 	var bad := _offscreen_buttons(inst, vp)
 	_ok("%s: %d 个可见按钮全在屏内" % [scene_name, btns.size()], bad.is_empty(), "; ".join(bad) if not bad.is_empty() else "")
 	var occ := _occluded_buttons(inst, vp)

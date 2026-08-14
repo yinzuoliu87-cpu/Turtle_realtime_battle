@@ -35,6 +35,13 @@ PASS=0; FAIL=0
 frames_for () {
   case "$1" in
     verify_ios_ui) echo 4000 ;;
+    # ★2026-08-15 新增的三个版式门禁: 都要【逐个实例化整屏场景 + 等入场 tween 落定】,
+    #   500 帧只够跑完前一两屏 —— 表现是"没打 ALL PASS"(rc=0 / 致命报错 0), 极易误判成断言失败。
+    #   verify_mainmenu_layout 自己还要等入场动画 settle, 帧不够会量到【半空中的坐标】,
+    #   于是"66 个控件越界"这种吓人的数字其实是按钮还在飞。
+    verify_mainmenu_layout)   echo 6000 ;;
+    verify_inventory_layout)  echo 4000 ;;
+    verify_codex_layout)      echo 6000 ;;
     # 结算屏按钮可达: 建战斗场 + 造 28 个单位塑长名单 + 开统计面板
     #   + **喂过面板的 0.4 秒自刷周期**(它就是在那一刻把自己提到最前的)。
     #   ★喂不够就拍不到覆盖, 断言会假绿 —— 这正是帧预算不够的典型危害。

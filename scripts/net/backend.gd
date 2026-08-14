@@ -11,6 +11,10 @@ extends RefCounted
 ## 纯逻辑(分档/快照/池增删/bot/榜) 操作内存 Dictionary → 可单测;
 ## 文件 I/O (load_pool/save_pool) 是薄包装; rng 由调用方传入 → 确定可测.
 
+## 快照结构版本。★升它 = 老快照全部作废(载入时丢掉) —— 不做向后兼容是用户 2026-08-14 拍的板:
+##   「直接全部老快照全消除掉, A, 重新制作新快照」。
+##   ⚠ 升版本后池子会空一阵, 所有玩家下一局先遇 bot, 直到新快照灌进来。
+const SCHEMA_VER := 2
 const POOL_PATH := "user://ghost_pool.json"
 const SEED_PATH := "res://data/ghost_seed.json"   # 内置 10 支策划队(按档分桶), 冷启动/老档无种子时并入
 const BUCKET_CAP := 50          # 每档桶封顶 (防无限增长, 旧的挤出)
@@ -139,7 +143,7 @@ static func make_bot(bracket: int, rng: RandomNumberGenerator) -> Dictionary:
 				m["equips"] = meqs
 			(minions[lk] as Array).append(m)
 	return {
-		"schema_ver": 1,
+		"schema_ver": SCHEMA_VER,
 		"ghost_id": "bot_%d_%d" % [bracket, rng.randi() % 1000000],
 		"is_bot": true,
 		"bracket": bracket,
@@ -184,8 +188,32 @@ static func load_pool(path: String = POOL_PATH) -> Dictionary:
 				pool = parsed
 	if not pool.has("brackets"):
 		pool["brackets"] = {}
+	_drop_stale_schema(pool)   # ★老版本快照整批丢掉(用户 2026-08-14 拍板 A: 不做向后兼容)
 	_ensure_seeded(pool)   # 冷启动/老档无种子 → 并入内置策划队(幂等, 已并过不重复); 下次 upload_ghost 落盘
 	return pool
+
+
+## 丢掉 schema_ver < SCHEMA_VER 的快照。
+##
+## ★为什么不做向后兼容(用户 2026-08-14 原话:「直接全部老快照全消除掉, A, 重新制作新快照」):
+##   老快照缺 `chest_treasures_won` —— 兼容就意味着"缺字段时假装对手没开过箱",
+##   那还是在编一个假的对手, 只是换了个假法。宁可池子空一阵。
+## ★丢多少要【打印出来】, 不许静默(CLAUDE.md: 无声上限 = 假装覆盖全了)。
+static func _drop_stale_schema(pool: Dictionary) -> int:
+	var brackets: Dictionary = pool.get("brackets", {})
+	var dropped := 0
+	for b in brackets.keys():
+		var arr: Array = brackets[b]
+		var keep: Array = []
+		for g in arr:
+			if g is Dictionary and int((g as Dictionary).get("schema_ver", 0)) >= SCHEMA_VER:
+				keep.append(g)
+			else:
+				dropped += 1
+		brackets[b] = keep
+	if dropped > 0:
+		print("[Backend] 丢弃 %d 条老版本快照(schema < %d) —— 池子会先空一阵, 遇到的都是 bot" % [dropped, SCHEMA_VER])
+	return dropped
 
 ## 内置种子池 (res:// 只读, 导出包里也在). 解析失败=空.
 static func _load_seed() -> Dictionary:
@@ -199,7 +227,11 @@ static func _load_seed() -> Dictionary:
 		return parsed
 	return {"brackets": {}}
 
-const SEED_VER := 7   # 2026-08-12 v7: 32 只机器人真实队列重跑(30 轮打到只剩 1 队·510 条快照)——含新装备 060~076 与第四种买法【羁绊流】(149/510 条)。
+const SEED_VER := 8   # ★2026-08-15 v8: 20 批×11 只 + 覆盖补选 ⇒ 193 支(9档各≥20)。
+                      #   与 v7 的实质差别: ①全部 schema_ver=2, 带 chest_treasures_won/value
+                      #   ②装备覆盖 57 → **94/94 件**(v7 缺 060~084 那批新装备, 因为它生成于那批装备存在之前)
+                      #   ③敌我宝箱阈值统一(删掉单场旧制 [80,130,240,360,590])
+                      # 2026-08-12 v7: 32 只机器人真实队列重跑(30 轮打到只剩 1 队·510 条快照)——含新装备 060~076 与第四种买法【羁绊流】(149/510 条)。
 ## 沿革: v6(2026-07-27) = 队列模拟产出的真实玩家快照 180 支/9 档各 20; 装备是真背包历史
 ## (1~5 费混搭·便宜的星高贵的星低), 非按目标强度反推。升版 → 老档清旧 seed_ 并入新种子
 ## (玩家上传的真 ghost 保留)。
@@ -321,7 +353,10 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 					mlist.append(m)
 			minions[lk] = mlist
 	return {
-		"schema_ver": 1,
+		## ★schema 1 → 2(2026-08-15, 用户拍板 A): 快照开始带【宝箱进度】。
+		##   老快照没有这两个字段, 而敌方宝箱龟要靠它决定开几件 ——
+		##   不做向后兼容, 直接升版本号, 载入时把 <2 的整批丢掉(见 `SCHEMA_VER` / `load_pool`)。
+		"schema_ver": SCHEMA_VER,
 		"ghost_id": ghost_id,
 		"is_bot": false,
 		"bracket": bracket_for_battles(int(GameState.season_total_battles)),
@@ -334,4 +369,10 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 		"pet_levels": levels,
 		"season_total_battles": int(GameState.season_total_battles),
 		"season_eggs_killed": int(GameState.season_eggs_killed),
+		## ★宝箱进度(用户 2026-08-14 查清后拍板 A)。
+		##   查清楚的事实: 敌方 = 真人玩家的 ghost 快照, 带了龟/装备/等级, **唯独宝箱战利品一件不带**,
+		##   代码却用「单场 590 伤害开满 5 件」去补偿 —— 对面那只宝箱龟凭空多出五件传说。
+		##   现在带上真实进度, 敌方按对手【真的攒到哪】开箱。
+		"chest_treasures_won": (GameState.chest_treasures_won as Array).duplicate() if GameState.chest_treasures_won is Array else [],
+		"chest_treasure_value": float(GameState.chest_treasure_value),
 	}

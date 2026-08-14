@@ -11,7 +11,15 @@ func _init(b) -> void:
 # 宝箱·藏宝图(封板L590-594·完整15件专属池): 造成伤害积累财宝值(=dmg_dealt), 过阈值开专属战利品(分档池·不重复)+回血, 一场最多5件
 func _chest_treasure_tick(u: Dictionary) -> void:
 	# 大轮制(用户2026-07-16): 我方真实对局=财宝值跨场累积(GameState)·阈值3000/6000/10000/18000/30000(用户2026-08-14上调)·开出=一大轮常驻; demo/敌侧=单场旧制
-	var season_mode: bool = (not battle._review_demo()) and str(u.get("side", "")) == "left" and GameState != null and not u.get("is_summon", false)
+	## ★2026-08-15 起【敌我同一套阈值】(用户拍板 A)。
+	##   原来敌侧走的是"单场旧制": 一套比我方低 12~50 倍的阈值,
+	##   于是对面那只宝箱龟在一场里就能开满 5 件传说, 而我方要跨大轮攒 30000。
+	##   根因查清楚了: 敌方 = 真人玩家的 ghost 快照, 带了龟/装备/等级, **唯独宝箱进度一件不带**,
+	##   代码就用这套低阈值去"补偿"——等于凭空编一个假对手。
+	##   现在快照带上真实进度(backend.SCHEMA_VER = 2), 敌方按对手【真的攒到哪】走同一套阈值。
+	var is_real: bool = (not battle._review_demo()) and GameState != null and not u.get("is_summon", false)
+	var is_left: bool = str(u.get("side", "")) == "left"
+	var season_mode: bool = is_real and is_left
 	var opened: int
 	if season_mode:
 		var synced: float = float(u.get("_ttl_synced", 0.0))
@@ -24,13 +32,22 @@ func _chest_treasure_tick(u: Dictionary) -> void:
 			return
 		if float(GameState.chest_treasure_value) < float(battle._CHEST_THRESH[opened]):
 			return
-	else:
+	elif is_real and not is_left:
+		## 敌方: 起点 = 快照里对手的累积财宝值, 再加上本场打出的伤害。
+		## 已开出的那几件在登场时就装上了(battle_spawn), 这里只管【还能不能再开】。
 		opened = int(u.get("chest_opened", 0))
 		if opened >= 5:
 			return
-		var lvl_mult: float = 1.0 + 0.03 * float(maxi(0, int(u.get("level", 1)) - 1))   # 阈值随等级+3%/级(单场旧制)
-		var thresh: Array = [80.0, 130.0, 240.0, 360.0, 590.0]
-		if float(u.get("dmg_dealt", 0.0)) < float(thresh[opened]) * lvl_mult:
+		var base: float = float(u.get("_chest_ghost_value", 0.0))
+		if base + float(u.get("dmg_dealt", 0.0)) < float(battle._CHEST_THRESH[opened]):
+			return
+	else:
+		## 评审台 / demo / 召唤物: 没有大轮进度可言, 用本场伤害走同一套阈值。
+		## ★不再有第二套低阈值 —— 一套数就是一套数。
+		opened = int(u.get("chest_opened", 0))
+		if opened >= 5:
+			return
+		if float(u.get("dmg_dealt", 0.0)) < float(battle._CHEST_THRESH[opened]):
 			return
 	u["chest_opened"] = opened + 1
 	var group: String = ["basic", "basic", "adv", "adv", "legend"][opened]   # 第1-2箱基础/3-4进阶/5传说

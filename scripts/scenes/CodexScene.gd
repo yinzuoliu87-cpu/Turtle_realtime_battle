@@ -82,8 +82,23 @@ const TYPE_STYLE := {
 	"弓箭": {"color": "#9d4edd", "emoji": "🏹"},
 	"法器": {"color": "#34d399", "emoji": "🔮"},
 	"灵物": {"color": "#c084fc", "emoji": "🐙"},
+	## ★2026-08-15 补上「香火」—— 它 2026-08-13 进了 Phase2Types.TYPES(第 11 个类型),
+	##   但这张表没跟着加, 于是羁绊页拿默认值画成 🔗 灰蓝, 而装备页走 Phase2Types.emoji_of
+	##   拿到的默认值是【🗡️ 剑】—— 一件香火装备顶着把剑的图标。两处默认值还不一样。
+	"香火": {"color": "#f59e0b", "emoji": "🕯️"},
 	"遗物": {"color": "#a3e635", "emoji": "🏺"},
 }
+
+
+## 类型的 emoji / 强调色 —— 图鉴内【只认这一张表】。
+## ★别再直接调 Phase2Types.emoji_of(): 它对表里没有的类型兜底成 🗡️(剑),
+##   香火就是这么变成一把剑的。这里兜底成中性的 🔗, 而且缺哪个类型是看得见的。
+func _type_emoji(t: String) -> String:
+	return str((TYPE_STYLE.get(t, {}) as Dictionary).get("emoji", "🔗"))
+
+
+func _type_color(t: String) -> String:
+	return str((TYPE_STYLE.get(t, {}) as Dictionary).get("color", "#4cc9f0"))
 
 var current_tab: String = "pets"
 var _items: Array = []
@@ -424,13 +439,12 @@ func _switch_tab(tab: String) -> void:
 		"equips":
 			_codex_list._add_equip_rows()
 		"synergies":
-			# 10 装备类型羁绊 (2026-08-03 批1 取代 11 学派). 名序按 Phase2Types.TYPES 声明序.
+			# 11 装备类型羁绊 (2026-08-03 批1 取代 11 学派). 名序按 Phase2Types.TYPES 声明序.
 			for sname in Phase2Types.TYPES.keys():
 				_items.append({"_type": sname})
-				var style: Dictionary = TYPE_STYLE.get(sname, {})
-				var emoji: String = str(style.get("emoji", "🔗"))
-				var col: String = str(style.get("color", "#4cc9f0"))
-				# 无 tag PNG → emoji 前缀进名字; 描边用学派色 (列表行 _codex_list._add_simple_row 复用)
+				var emoji: String = _type_emoji(sname)
+				var col: String = _type_color(sname)
+				# 无 tag PNG → emoji 前缀进名字; 描边用类型色 (列表行 _codex_list._add_simple_row 复用)
 				_codex_list._add_simple_row("%s %s" % [emoji, sname], col, Color(col), "", _items.size() - 1)
 		"status":
 			_codex_list._add_status_rows()
@@ -581,6 +595,26 @@ func _process(_dt: float) -> void:
 	var want := bottom + DETAIL_SCROLL_PAD
 	if absf(detail.custom_minimum_size.y - want) > 0.5:
 		detail.custom_minimum_size.y = want
+	_fit_detail_frame(bottom)
+
+
+## ★详情框跟着内容收高(2026-08-15, 用户「图鉴也没搞」)。
+## 原来框恒定 550 高, 而多数条目根本填不满 —— 实测最差的一条:
+##   规则「烈焰之日」内容底 208 / 框 550 ⇒ 底下空 342px = 【框的 62%】;
+##   消耗品 378px(69%) · 状态 356px(65%) · 龟(小将)270px(49%)。
+## 一屏之内一半以上是空的黑框, 这就是"版式没搞"最直观的那一眼。
+## 收到贴着内容为止; 不低于 DETAIL_MIN_H(太矮的框比空框更怪), 不高于设计高 DETAIL_MAX_H
+## (超出的靠 _detail_scroll 滚 —— 那条 2026-08-03 就做好了, 这里不许把它顶破屏幕)。
+const DETAIL_MIN_H := 200.0
+const DETAIL_MAX_H := 550.0
+
+func _fit_detail_frame(content_bottom: float) -> void:
+	var h := clampf(content_bottom + DETAIL_SCROLL_PAD, DETAIL_MIN_H, DETAIL_MAX_H)
+	if absf(detail_frame.size.y - h) > 0.5:
+		detail_frame.size.y = h
+	# 边框是 DetailBg 的全锚子节点 ⇒ 背景一收边框跟着收。不收背景就会剩一圈空框。
+	if detail_bg != null and absf(detail_bg.size.y - h) > 0.5:
+		detail_bg.size.y = h
 
 
 func _clear_detail() -> void:

@@ -227,28 +227,30 @@ func _rebuild() -> void:
 	##   这 200px 让给右上角三组去排版 —— 它们原来因为标题框占着中间, 被挤在 756..1252 的窄带里。
 
 	var back := Button.new(); back.text = "← 返回"; back.add_theme_font_size_override("font_size", 20)
-	back.position = Vector2(28, 20); back.size = Vector2(126, 52)
+	back.position = Vector2(28, 18); back.size = Vector2(132, 60)   # ★加高填满头部带(原 52 高, 96px 的带子里空着一截)
 	back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")); _skin_button(back); add_child(back)
 
 	var inv := Button.new(); inv.text = "🎒 背包"; inv.add_theme_font_size_override("font_size", 20)
-	inv.position = Vector2(166, 20); inv.size = Vector2(126, 52)
+	inv.position = Vector2(172, 18); inv.size = Vector2(132, 60)
 	inv.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Inventory.tscn")); _skin_button(inv); add_child(inv)
 
 	## ── 头部三组重排(用户 2026-08-15「右上角咋做的, 中间给你这么空位你在干啥啊」)──
 	##
 	## 删掉标题后中间空出一大片, 而三组还挤在右侧 500px 里 —— 白空着。
 	## 现在把它们**均匀铺开在 340..1252**(返回/背包止于 292, 右边距 28), 组间距等宽 131:
-	##   币 392..560  |  等级 711..881  |  买经验 1032..1252 —— 组间距等宽 151
+	##   币 320..520 | 等级 560..900(条长 340) | 购买说明 940..1096 | 按钮 1112..1252
+	## ★用户 2026-08-15 再打回:「进度条太短, 留了很多空位, 右上字体太小, 按钮那么小那么扁干嘛」
+	##   ⇒ 全部放大并铺满可用宽度(返回/背包止于 304, 右边距 28)。
 	## ★三组竖直中心统一 = 48(门禁⑩量的就是这条基准线)。
 	const HDR_CY := 48.0
 
 	# 组1: 深海币 —— 图标 40 + 间隙 12 + 数字 30 号。原来图标 756/数字 794 只隔 6px 挤成一坨。
-	_coin_icon(self, Vector2(392, HDR_CY - 20.0), 40.0)
+	_coin_icon(self, Vector2(320, HDR_CY - 26.0), 52.0)
 	var coin := Label.new(); coin.text = "%d" % int(GameState.meta_deepsea_coins)
-	coin.add_theme_font_size_override("font_size", 30); coin.add_theme_color_override("font_color", Color("#5fd0e0"))
+	coin.add_theme_font_size_override("font_size", 38); coin.add_theme_color_override("font_color", Color("#5fd0e0"))
 	## ★高度按【字体最小高度】给(30 号字实测 44), 不是我想给多少给多少 ——
 	##   给 38 的话 Label 自己撑到 44, 并集矩形底沿多出 6px, 组中心偏到 50.5 ⇒ 门禁⑩红。
-	coin.position = Vector2(444, HDR_CY - 22.0); coin.size = Vector2(116, 44)
+	coin.position = Vector2(382, HDR_CY - 28.0); coin.size = Vector2(138, 56)
 	coin.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	coin.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; add_child(coin)
 	_tut_coin = coin   # 教学高亮"币"锚点
@@ -258,22 +260,22 @@ func _rebuild() -> void:
 	var _have: int = int(GameState.season_xp)
 	## ★组宽 240 → 170: 铺开不等于把一组【拉长】。240 宽时「Lv1」与「经验 0/2」
 	##   中间空着 180px 的死档, 进度条也变成一条长空线 —— 实拍一眼就是散的。
-	var _lx := 711.0
-	var _lw := 170.0
+	var _lx := 560.0
+	var _lw := 340.0
 	var lv := Label.new(); lv.text = "Lv%d" % int(GameState.season_level)
-	lv.add_theme_font_size_override("font_size", 22); lv.add_theme_color_override("font_color", Color("#ffd93d"))
-	lv.position = Vector2(_lx, HDR_CY - 22.0); lv.size = Vector2(60, 24)
+	lv.add_theme_font_size_override("font_size", 28); lv.add_theme_color_override("font_color", Color("#ffd93d"))
+	lv.position = Vector2(_lx, HDR_CY - 27.0); lv.size = Vector2(76, 32)
 	lv.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; add_child(lv)
 	var xpn := Label.new(); xpn.text = "经验 %d/%d" % [_have, _need]
-	xpn.add_theme_font_size_override("font_size", 15); xpn.add_theme_color_override("font_color", Color("#9fb4c8"))
-	xpn.position = Vector2(_lx + 60.0, HDR_CY - 21.0); xpn.size = Vector2(_lw - 60.0, 22)
+	xpn.add_theme_font_size_override("font_size", 19); xpn.add_theme_color_override("font_color", Color("#9fb4c8"))
+	xpn.position = Vector2(_lx + 76.0, HDR_CY - 26.0); xpn.size = Vector2(_lw - 76.0, 30)
 	xpn.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	xpn.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; add_child(xpn)
 	var xbg := ColorRect.new(); xbg.color = Color("#16293a")
-	xbg.position = Vector2(_lx, HDR_CY + 8.0); xbg.size = Vector2(_lw, 12); add_child(xbg)
+	xbg.position = Vector2(_lx, HDR_CY + 7.0); xbg.size = Vector2(_lw, 20); add_child(xbg)   # ★条: 长 170→340, 粗 12→20
 	var xfl := ColorRect.new(); xfl.color = Color("#ffd93d")
-	xfl.position = Vector2(_lx, HDR_CY + 8.0)
-	xfl.size = Vector2(_lw * clampf(float(_have) / float(_need), 0.0, 1.0), 12); add_child(xfl)
+	xfl.position = Vector2(_lx, HDR_CY + 7.0)
+	xfl.size = Vector2(_lw * clampf(float(_have) / float(_need), 0.0, 1.0), 20); add_child(xfl)
 
 	# 组3: 买经验。两行 —— 上行【拿到什么】, 下行【花多少】。
 	## ★原文案「买经验 4 → +4XP」把两个 4 摆在一行还夹着英文 XP, 一眼分不清哪个是花的哪个是拿的。
@@ -282,25 +284,36 @@ func _rebuild() -> void:
 	## ★数值从 P2 常量取, 不写死 —— 手抄的副本必然落后。
 	var _xp_gain: int = int(P2.BUY_XP_AMOUNT)
 	var _xp_cost: int = int(P2.BUY_XP_COST)
+	## 买经验 —— 用户 2026-08-15 逐字指定:「购买4xp 放在按钮左侧, 4图标放在按钮上」。
+	##   ⇒ 「购买 4xp」是按钮【左边】的一行说明文字, 按钮本身只放价格「4💠」。
+	var _bw := 140.0
+	var _bx := W - 28.0 - _bw
+	var pl := Label.new(); pl.text = "购买 %dxp" % _xp_gain
+	pl.add_theme_font_size_override("font_size", 24)
+	pl.add_theme_color_override("font_color", Color("#cfe4f0"))
+	pl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	pl.position = Vector2(_bx - 172.0, HDR_CY - 18.0); pl.size = Vector2(156, 36)
+	add_child(pl)
+
 	var bxp := Button.new()
-	bxp.size = Vector2(220, 60); bxp.position = Vector2(1032.0, HDR_CY - 30.0)
+	## ★不用 Button 自带的 text + icon: `icon_alignment = RIGHT` 会把图标顶到右边框、
+	##   文字留在正中 —— 中间空一大条(用户 2026-08-15:「4和图标为什么隔这么远」)。
+	##   改成两个子节点手动排成【一个贴紧的组】, 再把这个组在按钮里上下左右居中。
+	##   数字宽 24 + 间隙 6 + 图标 30 = 60 ⇒ 起点 (140-60)/2 = 40, 组中心正好落在按钮中心 70。
+	bxp.size = Vector2(_bw, 68); bxp.position = Vector2(_bx, HDR_CY - 34.0)
 	bxp.pressed.connect(func(): if GameState.buy_season_xp(): _rebuild())
 	_skin_button(bxp); add_child(bxp)
-	## ★用户 2026-08-15 指定:「购买4xp, 上面写4深海币图标就好了啊」。
-	##   上行 = 花多少(数字 + 币图标), 下行 = 买到什么。照做。
-	var bl2 := Label.new(); bl2.text = "%d" % _xp_cost
-	bl2.add_theme_font_size_override("font_size", 15)
-	bl2.add_theme_color_override("font_color", Color("#9fc4d4"))
-	bl2.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	bl2.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bl2.position = Vector2(0, 8); bl2.size = Vector2(100, 18); bxp.add_child(bl2)
-	_coin_icon(bxp, Vector2(104, 8), 17.0)
-	var bl1 := Label.new(); bl1.text = "购买 %dxp" % _xp_gain
-	bl1.add_theme_font_size_override("font_size", 20)
-	bl1.add_theme_color_override("font_color", Color("#ffe9a8"))
-	bl1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	bl1.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bl1.position = Vector2(0, 30); bl1.size = Vector2(220, 25); bxp.add_child(bl1)
+	var _gw2 := 60.0
+	var _gx := (_bw - _gw2) * 0.5
+	var bn := Label.new(); bn.text = "%d" % _xp_cost
+	bn.add_theme_font_size_override("font_size", 28)
+	bn.add_theme_color_override("font_color", Color("#ffe9a8"))
+	bn.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	bn.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	bn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bn.position = Vector2(_gx, (68.0 - 34.0) * 0.5); bn.size = Vector2(24, 34)
+	bxp.add_child(bn)
+	_coin_icon(bxp, Vector2(_gx + 30.0, (68.0 - 30.0) * 0.5), 30.0)
 
 	_build_odds_row()   # 出货概率行 y 96–124 (原在 116, 现紧贴卡区上方)
 
