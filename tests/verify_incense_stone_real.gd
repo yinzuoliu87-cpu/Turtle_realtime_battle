@@ -224,7 +224,7 @@ func _ready() -> void:
 	inc._marks["left"] = 0
 	inc._roster_n = {"left": -1, "right": -1}
 	GameState.incense_marks = 20        # 存档里躺着 20 道
-	GameState.incense_charge = 0
+	GameState.incense_charge = 200      # ★还有 200 点没满一道的零头(用户举的例子)
 	s._units.clear()
 	# 下路阵容: 三只龟, 【一块石头都没有】(携带者留在上路)
 	var lane2: Array = []
@@ -249,6 +249,11 @@ func _ready() -> void:
 	_ok("★★减伤那一半也要到位(20 道 × 0.05% = 1%)",
 		float(w0.get("damage_reduction", 0.0)) > 0.0,
 		"减伤=%.4f" % float(w0.get("damage_reduction", 0.0)))
+	## ★★用户 2026-08-14 追问:「在上路战场应该从 200 充能开始而不是 0」——
+	##   `_chg` 与 `_marks` 是同一个毛病: 只在 `on_spawn` 里从存档读。
+	##   ⇒ 这一路没有携带者时充能条也是 0, 上一把剩的零头全丢。
+	_ok("★★★充能条也要从存档余额起步(不是从 0)", int(inc._chg.get("left", 0)) == 200,
+		"条=%d(存档 200)" % int(inc._chg.get("left", 0)))
 
 	## ★还原真存档 —— 不还原就是拿测试改玩家数据(用户明令: 演示/测试不许写真存档)。
 	GameState.incense_marks = _save_m

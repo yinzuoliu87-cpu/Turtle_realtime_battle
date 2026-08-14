@@ -327,6 +327,8 @@ func _persist_chg(u: Dictionary) -> void:
 ##   而阵容只在生成/死亡时变 —— 人数变了就够了(死亡也要重发: `_revoke` 靠 `_given` 记账,
 ##   死人留在表里会让下次 revoke 去减一个已经不在场的单位)。
 var _roster_n: Dictionary = {"left": -1, "right": -1}
+## 本场是否已经从存档加载过(刻痕 + 充能)。★换路/换场由 `clear_all()` 复位。
+var _loaded: Dictionary = {"left": false, "right": false}
 func tick(_delta: float) -> void:
 	## ★★★用户 2026-08-14 实测:「攒了 20 刀也是 0, 为什么上半有下半没有」。
 	##   根因: `_marks["left"]` **只在 `on_spawn` 里从存档读**, 而 `on_spawn` 只对
@@ -337,11 +339,14 @@ func tick(_delta: float) -> void:
 	##   所以"这一路有没有人带着石头"根本不该决定全队吃不吃得到。
 	## ★单调采纳(只往上取)而不是无条件覆盖: 局内刻下的新痕会先写存档再回来,
 	##   无条件覆盖在时序上没问题, 但只往上取更稳 —— 任何情况下都不会把局内进度抹掉。
-	if GameState != null:
-		var saved: int = clampi(int(GameState.incense_marks), 0, MARK_CAP)
-		if saved > int(_marks.get("left", 0)):
-			_marks["left"] = saved
-			_roster_n["left"] = -1        # 逼下面那段重发一次
+	## ★充能条不能用"只往上取": 它在刻痕时要 **减** PER_MARK, 单调采纳会把刚扣掉的又灌回来
+	##   ⇒ 无限刻痕。所以用【每场只加载一次】的闸, 由 `clear_all()`(换路/换场)重置。
+	##   用户 2026-08-14 举的例子:「在上路战场应该从 200 充能开始而不是 0」。
+	if GameState != null and not bool(_loaded.get("left", false)):
+		_loaded["left"] = true
+		_marks["left"] = maxi(int(_marks.get("left", 0)), clampi(int(GameState.incense_marks), 0, MARK_CAP))
+		_chg["left"] = maxi(int(_chg.get("left", 0)), clampi(int(GameState.incense_charge), 0, PER_MARK))
+		_roster_n["left"] = -1            # 逼下面那段重发一次
 	for side in ["left", "right"]:
 		if int(_marks.get(side, 0)) <= 0:
 			continue
@@ -381,6 +386,10 @@ func clear_all() -> void:
 		if o is Dictionary and _has_stone(o):
 			_persist_chg(o)
 	_revoke()
+	## ★复位加载闸 —— 下一路要重新从存档把刻痕与充能读进来。
+	##   (上面 `_persist_chg` 已经先把本路的余额写回存档, 所以读到的是最新值。)
+	_loaded = {"left": false, "right": false}
+	_roster_n = {"left": -1, "right": -1}
 	# ★演出也要撤。香台是**常驻节点**(挂在 `_world` 上、由 emp 驱动), 换路时那批单位字典
 	#   会被换掉 —— 不显式拔掉的话它就靠"节点被 _world 一起 free"兜底, 而那是**别人的**
 	#   生命周期, 不是本层保证的。本层自己建的东西本层自己收。
