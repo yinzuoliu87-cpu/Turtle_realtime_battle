@@ -1,5 +1,5 @@
 {
- "_note": "ghost 种子池 v6 (2026-07-27) —— 【队列模拟产出的真实玩家快照】, 非人工配平。62 只机器人从 0 场 8 命起步互相打, 输光即淘汰; 每场开打前存下双方当时的真实家当。装备的费用/星级混搭是背包历史的自然结果(早期便宜货合成★3, 后期贵货还是★1), 不是按目标强度反推的。档0 = 人生第一把(双方全裸)。生成: tools/cohort_to_seed.py; 原料: tools/autoplay/cohort-snapshots.json。",
+ "_note": "ghost 种子池 v6 (2026-07-27) —— 【队列模拟产出的真实玩家快照】, 非人工配平。68 只机器人从 0 场 8 命起步互相打, 输光即淘汰; 每场开打前存下双方当时的真实家当。装备的费用/星级混搭是背包历史的自然结果(早期便宜货合成★3, 后期贵货还是★1), 不是按目标强度反推的。档0 = 人生第一把(双方全裸)。生成: tools/cohort_to_seed.py; 原料: tools/autoplay/cohort-snapshots.json。",
  "brackets": {
   "0": [
    {
@@ -16877,6 +16877,1780 @@
     "season_level": 10,
     "season_total_battles": 28,
     "trainer_skill": "hook",
+    "chest_treasures_won": [],
+    "chest_treasure_value": 0.0
+   },
+   {
+    "_strategy": "greedy_cost",
+    "bracket": 8,
+    "equipped": {
+     "angel": [
+      {
+       "id": "p2eq_086",
+       "star": 1
+      },
+      {
+       "id": "p2eq_059",
+       "star": 1
+      },
+      {
+       "id": "p2eq_017",
+       "star": 1
+      }
+     ],
+     "diamond": [
+      {
+       "id": "p2eq_084",
+       "star": 2
+      },
+      {
+       "id": "p2eq_010",
+       "star": 2
+      },
+      {
+       "id": "p2eq_080",
+       "star": 2
+      }
+     ],
+     "stone": [
+      {
+       "id": "p2eq_087",
+       "star": 2
+      },
+      {
+       "id": "p2eq_072",
+       "star": 1
+      },
+      {
+       "id": "p2eq_033",
+       "star": 2
+      }
+     ]
+    },
+    "ghost_id": "seed_h1_coh_5_b28",
+    "is_bot": false,
+    "lane_assign": {
+     "bottom": [
+      "stone"
+     ],
+     "top": [
+      "diamond",
+      "angel"
+     ]
+    },
+    "leaders": [
+     "diamond",
+     "angel",
+     "stone"
+    ],
+    "loadouts": {},
+    "minions": {
+     "bottom": [
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_079",
+         "star": 2
+        },
+        {
+         "id": "p2eq_064",
+         "star": 2
+        },
+        {
+         "id": "p2eq_017",
+         "star": 1
+        }
+       ],
+       "role": "front"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_021",
+         "star": 2
+        }
+       ],
+       "role": "back"
+      }
+     ],
+     "top": [
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_029",
+         "star": 1
+        },
+        {
+         "id": "p2eq_003",
+         "star": 1
+        },
+        {
+         "id": "p2eq_027",
+         "star": 2
+        }
+       ],
+       "role": "front"
+      }
+     ]
+    },
+    "pet_levels": {
+     "angel": 1,
+     "diamond": 1,
+     "stone": 1
+    },
+    "profile": {
+     "avatar": "diamond",
+     "id": "COH05",
+     "name": "阿宝啦"
+    },
+    "schema_ver": 2,
+    "season_eggs_killed": 0,
+    "season_level": 9,
+    "season_total_battles": 28,
+    "trainer_skill": "magic_stone",
+    "chest_treasures_won": [],
+    "chest_treasure_value": 0.0
+   },
+   {
+    "_strategy": "synergy",
+    "bracket": 8,
+    "equipped": {
+     "cyber": [
+      {
+       "id": "p2eq_094",
+       "star": 2
+      },
+      {
+       "id": "p2eq_086",
+       "star": 1
+      },
+      {
+       "id": "p2eq_068",
+       "star": 1
+      }
+     ],
+     "ninja": [
+      {
+       "id": "p2eq_056",
+       "star": 1
+      },
+      {
+       "id": "p2eq_010",
+       "star": 1
+      },
+      {
+       "id": "p2eq_052",
+       "star": 1
+      }
+     ],
+     "pirate": [
+      {
+       "id": "p2eq_072",
+       "star": 1
+      },
+      {
+       "id": "p2eq_033",
+       "star": 1
+      },
+      {
+       "id": "p2eq_017",
+       "star": 1
+      }
+     ]
+    },
+    "ghost_id": "seed_h1_coh_30_b28",
+    "is_bot": false,
+    "lane_assign": {
+     "bottom": [
+      "cyber",
+      "ninja",
+      "pirate"
+     ],
+     "top": []
+    },
+    "leaders": [
+     "cyber",
+     "ninja",
+     "pirate"
+    ],
+    "loadouts": {},
+    "minions": {
+     "bottom": [],
+     "top": [
+      {
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_063",
+         "star": 1
+        },
+        {
+         "id": "p2eq_023",
+         "star": 1
+        },
+        {
+         "id": "p2eq_024",
+         "star": 2
+        }
+       ],
+       "role": "back"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_006",
+         "star": 1
+        },
+        {
+         "id": "p2eq_014",
+         "star": 1
+        },
+        {
+         "id": "p2eq_004",
+         "star": 1
+        }
+       ],
+       "role": "front"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_040",
+         "star": 1
+        }
+       ],
+       "role": "back"
+      }
+     ]
+    },
+    "pet_levels": {
+     "cyber": 1,
+     "ninja": 1,
+     "pirate": 1
+    },
+    "profile": {
+     "avatar": "cyber",
+     "id": "COH30",
+     "name": "豆豆007"
+    },
+    "schema_ver": 2,
+    "season_eggs_killed": 0,
+    "season_level": 9,
+    "season_total_battles": 28,
+    "trainer_skill": "whistle",
+    "chest_treasures_won": [],
+    "chest_treasure_value": 0.0
+   },
+   {
+    "_strategy": "synergy",
+    "bracket": 8,
+    "equipped": {
+     "angel": [
+      {
+       "id": "p2eq_059",
+       "star": 1
+      },
+      {
+       "id": "p2eq_059",
+       "star": 1
+      },
+      {
+       "id": "p2eq_052",
+       "star": 1
+      }
+     ],
+     "bubble": [
+      {
+       "id": "p2eq_080",
+       "star": 1
+      },
+      {
+       "id": "p2eq_072",
+       "star": 1
+      },
+      {
+       "id": "p2eq_056",
+       "star": 1
+      }
+     ],
+     "phoenix": [
+      {
+       "id": "p2eq_015",
+       "star": 2
+      },
+      {
+       "id": "p2eq_086",
+       "star": 2
+      },
+      {
+       "id": "p2eq_017",
+       "star": 2
+      }
+     ]
+    },
+    "ghost_id": "seed_h2_coh_23_b28",
+    "is_bot": false,
+    "lane_assign": {
+     "bottom": [
+      "phoenix",
+      "bubble",
+      "angel"
+     ],
+     "top": []
+    },
+    "leaders": [
+     "phoenix",
+     "bubble",
+     "angel"
+    ],
+    "loadouts": {},
+    "minions": {
+     "bottom": [],
+     "top": [
+      {
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_058",
+         "star": 1
+        },
+        {
+         "id": "p2eq_083",
+         "star": 1
+        },
+        {
+         "id": "p2eq_025",
+         "star": 1
+        }
+       ],
+       "role": "front"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_064",
+         "star": 1
+        },
+        {
+         "id": "p2eq_094",
+         "star": 1
+        },
+        {
+         "id": "p2eq_070",
+         "star": 1
+        }
+       ],
+       "role": "front"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_076",
+         "star": 1
+        },
+        {
+         "id": "p2eq_068",
+         "star": 1
+        },
+        {
+         "id": "p2eq_056",
+         "star": 1
+        }
+       ],
+       "role": "front"
+      }
+     ]
+    },
+    "pet_levels": {
+     "angel": 1,
+     "bubble": 1,
+     "phoenix": 1
+    },
+    "profile": {
+     "avatar": "phoenix",
+     "id": "COH23",
+     "name": "咸鱼酱"
+    },
+    "schema_ver": 2,
+    "season_eggs_killed": 0,
+    "season_level": 10,
+    "season_total_battles": 28,
+    "trainer_skill": "magic_stone",
+    "chest_treasures_won": [],
+    "chest_treasure_value": 0.0
+   },
+   {
+    "_strategy": "synergy",
+    "bracket": 8,
+    "equipped": {
+     "diamond": [
+      {
+       "id": "p2eq_059",
+       "star": 1
+      },
+      {
+       "id": "p2eq_010",
+       "star": 2
+      },
+      {
+       "id": "p2eq_080",
+       "star": 2
+      }
+     ],
+     "hiding": [
+      {
+       "id": "p2eq_068",
+       "star": 1
+      },
+      {
+       "id": "p2eq_087",
+       "star": 1
+      },
+      {
+       "id": "p2eq_090",
+       "star": 2
+      }
+     ],
+     "ninja": [
+      {
+       "id": "p2eq_033",
+       "star": 1
+      },
+      {
+       "id": "p2eq_017",
+       "star": 1
+      },
+      {
+       "id": "p2eq_056",
+       "star": 1
+      }
+     ]
+    },
+    "ghost_id": "seed_h2_coh_29_b28",
+    "is_bot": false,
+    "lane_assign": {
+     "bottom": [
+      "hiding"
+     ],
+     "top": [
+      "diamond",
+      "ninja"
+     ]
+    },
+    "leaders": [
+     "diamond",
+     "ninja",
+     "hiding"
+    ],
+    "loadouts": {},
+    "minions": {
+     "bottom": [
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_063",
+         "star": 1
+        },
+        {
+         "id": "p2eq_003",
+         "star": 1
+        },
+        {
+         "id": "p2eq_026",
+         "star": 1
+        }
+       ],
+       "role": "front"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_071",
+         "star": 1
+        }
+       ],
+       "role": "back"
+      }
+     ],
+     "top": [
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_053",
+         "star": 1
+        },
+        {
+         "id": "p2eq_011",
+         "star": 1
+        },
+        {
+         "id": "p2eq_029",
+         "star": 1
+        }
+       ],
+       "role": "front"
+      }
+     ]
+    },
+    "pet_levels": {
+     "diamond": 1,
+     "hiding": 1,
+     "ninja": 1
+    },
+    "profile": {
+     "avatar": "diamond",
+     "id": "COH29",
+     "name": "沉默的小龟"
+    },
+    "schema_ver": 2,
+    "season_eggs_killed": 0,
+    "season_level": 9,
+    "season_total_battles": 28,
+    "trainer_skill": "magic_stone",
+    "chest_treasures_won": [],
+    "chest_treasure_value": 0.0
+   },
+   {
+    "_strategy": "synergy",
+    "bracket": 8,
+    "equipped": {
+     "ghost": [
+      {
+       "id": "p2eq_094",
+       "star": 2
+      },
+      {
+       "id": "p2eq_052",
+       "star": 2
+      },
+      {
+       "id": "p2eq_056",
+       "star": 2
+      }
+     ],
+     "headless": [
+      {
+       "id": "p2eq_072",
+       "star": 1
+      },
+      {
+       "id": "p2eq_086",
+       "star": 1
+      },
+      {
+       "id": "p2eq_033",
+       "star": 1
+      }
+     ],
+     "lava": [
+      {
+       "id": "p2eq_068",
+       "star": 1
+      },
+      {
+       "id": "p2eq_080",
+       "star": 1
+      },
+      {
+       "id": "p2eq_033",
+       "star": 1
+      }
+     ]
+    },
+    "ghost_id": "seed_h3_coh_16_b28",
+    "is_bot": false,
+    "lane_assign": {
+     "bottom": [
+      "lava"
+     ],
+     "top": [
+      "ghost",
+      "headless"
+     ]
+    },
+    "leaders": [
+     "ghost",
+     "headless",
+     "lava"
+    ],
+    "loadouts": {},
+    "minions": {
+     "bottom": [
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_038",
+         "star": 1
+        },
+        {
+         "id": "p2eq_066",
+         "star": 1
+        },
+        {
+         "id": "p2eq_069",
+         "star": 2
+        }
+       ],
+       "role": "front"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_029",
+         "star": 2
+        }
+       ],
+       "role": "back"
+      }
+     ],
+     "top": [
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_037",
+         "star": 1
+        },
+        {
+         "id": "p2eq_058",
+         "star": 1
+        },
+        {
+         "id": "p2eq_024",
+         "star": 2
+        }
+       ],
+       "role": "back"
+      }
+     ]
+    },
+    "pet_levels": {
+     "ghost": 1,
+     "headless": 1,
+     "lava": 1
+    },
+    "profile": {
+     "avatar": "ghost",
+     "id": "COH16",
+     "name": "★泡芙1998"
+    },
+    "schema_ver": 2,
+    "season_eggs_killed": 0,
+    "season_level": 9,
+    "season_total_battles": 28,
+    "trainer_skill": "hook",
+    "chest_treasures_won": [],
+    "chest_treasure_value": 0.0
+   },
+   {
+    "_strategy": "random",
+    "bracket": 8,
+    "equipped": {
+     "chest": [
+      {
+       "id": "p2eq_010",
+       "star": 1
+      },
+      {
+       "id": "p2eq_056",
+       "star": 2
+      },
+      {
+       "id": "p2eq_068",
+       "star": 1
+      }
+     ],
+     "hunter": [
+      {
+       "id": "p2eq_040",
+       "star": 2
+      },
+      {
+       "id": "p2eq_084",
+       "star": 2
+      },
+      {
+       "id": "p2eq_071",
+       "star": 2
+      }
+     ],
+     "shell": [
+      {
+       "id": "p2eq_068",
+       "star": 1
+      },
+      {
+       "id": "p2eq_090",
+       "star": 1
+      },
+      {
+       "id": "p2eq_080",
+       "star": 1
+      }
+     ]
+    },
+    "ghost_id": "seed_h6_coh_25_b28",
+    "is_bot": false,
+    "lane_assign": {
+     "bottom": [],
+     "top": [
+      "hunter",
+      "shell",
+      "chest"
+     ]
+    },
+    "leaders": [
+     "hunter",
+     "shell",
+     "chest"
+    ],
+    "loadouts": {},
+    "minions": {
+     "bottom": [
+      {
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_029",
+         "star": 1
+        },
+        {
+         "id": "p2eq_027",
+         "star": 1
+        },
+        {
+         "id": "p2eq_020",
+         "star": 2
+        }
+       ],
+       "role": "front"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_066",
+         "star": 1
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        },
+        {
+         "id": "p2eq_053",
+         "star": 2
+        }
+       ],
+       "role": "front"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_058",
+         "star": 2
+        }
+       ],
+       "role": "back"
+      }
+     ],
+     "top": []
+    },
+    "pet_levels": {
+     "chest": 1,
+     "hunter": 1,
+     "shell": 1
+    },
+    "profile": {
+     "avatar": "hunter",
+     "id": "COH25",
+     "name": "阿宝"
+    },
+    "schema_ver": 2,
+    "season_eggs_killed": 0,
+    "season_level": 9,
+    "season_total_battles": 28,
+    "trainer_skill": "glacier",
+    "chest_treasures_won": [],
+    "chest_treasure_value": 0.0
+   },
+   {
+    "_strategy": "greedy_cost",
+    "bracket": 8,
+    "equipped": {
+     "pirate": [
+      {
+       "id": "p2eq_038",
+       "star": 2
+      },
+      {
+       "id": "p2eq_090",
+       "star": 2
+      },
+      {
+       "id": "p2eq_056",
+       "star": 2
+      }
+     ],
+     "stone": [
+      {
+       "id": "p2eq_084",
+       "star": 2
+      },
+      {
+       "id": "p2eq_072",
+       "star": 1
+      },
+      {
+       "id": "p2eq_040",
+       "star": 2
+      }
+     ],
+     "two_head": [
+      {
+       "id": "p2eq_052",
+       "star": 1
+      },
+      {
+       "id": "p2eq_010",
+       "star": 1
+      },
+      {
+       "id": "p2eq_067",
+       "star": 2
+      }
+     ]
+    },
+    "ghost_id": "seed_h6_coh_29_b28",
+    "is_bot": false,
+    "lane_assign": {
+     "bottom": [
+      "pirate",
+      "stone",
+      "two_head"
+     ],
+     "top": []
+    },
+    "leaders": [
+     "pirate",
+     "stone",
+     "two_head"
+    ],
+    "loadouts": {},
+    "minions": {
+     "bottom": [],
+     "top": [
+      {
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_053",
+         "star": 1
+        },
+        {
+         "id": "p2eq_029",
+         "star": 1
+        },
+        {
+         "id": "p2eq_065",
+         "star": 1
+        }
+       ],
+       "role": "back"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_026",
+         "star": 1
+        },
+        {
+         "id": "p2eq_071",
+         "star": 1
+        },
+        {
+         "id": "p2eq_083",
+         "star": 2
+        }
+       ],
+       "role": "back"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_079",
+         "star": 2
+        }
+       ],
+       "role": "front"
+      }
+     ]
+    },
+    "pet_levels": {
+     "pirate": 1,
+     "stone": 1,
+     "two_head": 1
+    },
+    "profile": {
+     "avatar": "pirate",
+     "id": "COH29",
+     "name": "★Ryan呀"
+    },
+    "schema_ver": 2,
+    "season_eggs_killed": 0,
+    "season_level": 9,
+    "season_total_battles": 28,
+    "trainer_skill": "magic_stone",
+    "chest_treasures_won": [],
+    "chest_treasure_value": 0.0
+   },
+   {
+    "_strategy": "greedy_cost",
+    "bracket": 8,
+    "equipped": {
+     "angel": [
+      {
+       "id": "p2eq_086",
+       "star": 1
+      },
+      {
+       "id": "p2eq_059",
+       "star": 1
+      },
+      {
+       "id": "p2eq_017",
+       "star": 1
+      }
+     ],
+     "diamond": [
+      {
+       "id": "p2eq_084",
+       "star": 2
+      },
+      {
+       "id": "p2eq_010",
+       "star": 2
+      },
+      {
+       "id": "p2eq_080",
+       "star": 2
+      }
+     ],
+     "stone": [
+      {
+       "id": "p2eq_087",
+       "star": 2
+      },
+      {
+       "id": "p2eq_072",
+       "star": 1
+      },
+      {
+       "id": "p2eq_033",
+       "star": 2
+      }
+     ]
+    },
+    "ghost_id": "seed_h1_coh_5_b29",
+    "is_bot": false,
+    "lane_assign": {
+     "bottom": [
+      "stone"
+     ],
+     "top": [
+      "diamond",
+      "angel"
+     ]
+    },
+    "leaders": [
+     "diamond",
+     "angel",
+     "stone"
+    ],
+    "loadouts": {},
+    "minions": {
+     "bottom": [
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_079",
+         "star": 2
+        },
+        {
+         "id": "p2eq_064",
+         "star": 2
+        },
+        {
+         "id": "p2eq_017",
+         "star": 1
+        }
+       ],
+       "role": "front"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_021",
+         "star": 2
+        },
+        {
+         "id": "p2eq_010",
+         "star": 1
+        },
+        {
+         "id": "p2eq_080",
+         "star": 1
+        }
+       ],
+       "role": "back"
+      }
+     ],
+     "top": [
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_029",
+         "star": 1
+        },
+        {
+         "id": "p2eq_003",
+         "star": 1
+        },
+        {
+         "id": "p2eq_027",
+         "star": 2
+        }
+       ],
+       "role": "front"
+      }
+     ]
+    },
+    "pet_levels": {
+     "angel": 1,
+     "diamond": 1,
+     "stone": 1
+    },
+    "profile": {
+     "avatar": "diamond",
+     "id": "COH05",
+     "name": "Max007"
+    },
+    "schema_ver": 2,
+    "season_eggs_killed": 0,
+    "season_level": 10,
+    "season_total_battles": 29,
+    "trainer_skill": "magic_stone",
+    "chest_treasures_won": [],
+    "chest_treasure_value": 0.0
+   },
+   {
+    "_strategy": "synergy",
+    "bracket": 8,
+    "equipped": {
+     "cyber": [
+      {
+       "id": "p2eq_094",
+       "star": 2
+      },
+      {
+       "id": "p2eq_086",
+       "star": 1
+      },
+      {
+       "id": "p2eq_068",
+       "star": 2
+      }
+     ],
+     "ninja": [
+      {
+       "id": "p2eq_056",
+       "star": 1
+      },
+      {
+       "id": "p2eq_010",
+       "star": 1
+      },
+      {
+       "id": "p2eq_052",
+       "star": 1
+      }
+     ],
+     "pirate": [
+      {
+       "id": "p2eq_072",
+       "star": 1
+      },
+      {
+       "id": "p2eq_033",
+       "star": 1
+      },
+      {
+       "id": "p2eq_017",
+       "star": 1
+      }
+     ]
+    },
+    "ghost_id": "seed_h1_coh_30_b29",
+    "is_bot": false,
+    "lane_assign": {
+     "bottom": [
+      "cyber",
+      "ninja",
+      "pirate"
+     ],
+     "top": []
+    },
+    "leaders": [
+     "cyber",
+     "ninja",
+     "pirate"
+    ],
+    "loadouts": {},
+    "minions": {
+     "bottom": [],
+     "top": [
+      {
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_063",
+         "star": 1
+        },
+        {
+         "id": "p2eq_023",
+         "star": 1
+        },
+        {
+         "id": "p2eq_024",
+         "star": 2
+        }
+       ],
+       "role": "back"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_006",
+         "star": 1
+        },
+        {
+         "id": "p2eq_014",
+         "star": 1
+        },
+        {
+         "id": "p2eq_004",
+         "star": 1
+        }
+       ],
+       "role": "front"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_040",
+         "star": 1
+        },
+        {
+         "id": "p2eq_090",
+         "star": 1
+        },
+        {
+         "id": "p2eq_052",
+         "star": 1
+        }
+       ],
+       "role": "back"
+      }
+     ]
+    },
+    "pet_levels": {
+     "cyber": 1,
+     "ninja": 1,
+     "pirate": 1
+    },
+    "profile": {
+     "avatar": "cyber",
+     "id": "COH30",
+     "name": "佛系潜水员"
+    },
+    "schema_ver": 2,
+    "season_eggs_killed": 0,
+    "season_level": 10,
+    "season_total_battles": 29,
+    "trainer_skill": "whistle",
+    "chest_treasures_won": [],
+    "chest_treasure_value": 0.0
+   },
+   {
+    "_strategy": "synergy",
+    "bracket": 8,
+    "equipped": {
+     "angel": [
+      {
+       "id": "p2eq_059",
+       "star": 1
+      },
+      {
+       "id": "p2eq_059",
+       "star": 1
+      },
+      {
+       "id": "p2eq_052",
+       "star": 1
+      }
+     ],
+     "bubble": [
+      {
+       "id": "p2eq_080",
+       "star": 1
+      },
+      {
+       "id": "p2eq_072",
+       "star": 1
+      },
+      {
+       "id": "p2eq_056",
+       "star": 1
+      }
+     ],
+     "phoenix": [
+      {
+       "id": "p2eq_015",
+       "star": 2
+      },
+      {
+       "id": "p2eq_086",
+       "star": 2
+      },
+      {
+       "id": "p2eq_017",
+       "star": 2
+      }
+     ]
+    },
+    "ghost_id": "seed_h2_coh_23_b29",
+    "is_bot": false,
+    "lane_assign": {
+     "bottom": [
+      "phoenix",
+      "bubble",
+      "angel"
+     ],
+     "top": []
+    },
+    "leaders": [
+     "phoenix",
+     "bubble",
+     "angel"
+    ],
+    "loadouts": {},
+    "minions": {
+     "bottom": [],
+     "top": [
+      {
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_058",
+         "star": 1
+        },
+        {
+         "id": "p2eq_083",
+         "star": 1
+        },
+        {
+         "id": "p2eq_025",
+         "star": 1
+        }
+       ],
+       "role": "front"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_064",
+         "star": 1
+        },
+        {
+         "id": "p2eq_094",
+         "star": 1
+        },
+        {
+         "id": "p2eq_070",
+         "star": 1
+        }
+       ],
+       "role": "front"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_076",
+         "star": 1
+        },
+        {
+         "id": "p2eq_068",
+         "star": 1
+        },
+        {
+         "id": "p2eq_056",
+         "star": 1
+        }
+       ],
+       "role": "front"
+      }
+     ]
+    },
+    "pet_levels": {
+     "angel": 1,
+     "bubble": 1,
+     "phoenix": 1
+    },
+    "profile": {
+     "avatar": "phoenix",
+     "id": "COH23",
+     "name": "熬夜冠军666"
+    },
+    "schema_ver": 2,
+    "season_eggs_killed": 0,
+    "season_level": 10,
+    "season_total_battles": 29,
+    "trainer_skill": "magic_stone",
+    "chest_treasures_won": [],
+    "chest_treasure_value": 0.0
+   },
+   {
+    "_strategy": "synergy",
+    "bracket": 8,
+    "equipped": {
+     "diamond": [
+      {
+       "id": "p2eq_010",
+       "star": 2
+      },
+      {
+       "id": "p2eq_010",
+       "star": 2
+      },
+      {
+       "id": "p2eq_080",
+       "star": 2
+      }
+     ],
+     "hiding": [
+      {
+       "id": "p2eq_068",
+       "star": 1
+      },
+      {
+       "id": "p2eq_087",
+       "star": 1
+      },
+      {
+       "id": "p2eq_090",
+       "star": 2
+      }
+     ],
+     "ninja": [
+      {
+       "id": "p2eq_033",
+       "star": 1
+      },
+      {
+       "id": "p2eq_017",
+       "star": 1
+      },
+      {
+       "id": "p2eq_056",
+       "star": 1
+      }
+     ]
+    },
+    "ghost_id": "seed_h2_coh_29_b29",
+    "is_bot": false,
+    "lane_assign": {
+     "bottom": [
+      "hiding"
+     ],
+     "top": [
+      "diamond",
+      "ninja"
+     ]
+    },
+    "leaders": [
+     "diamond",
+     "ninja",
+     "hiding"
+    ],
+    "loadouts": {},
+    "minions": {
+     "bottom": [
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_063",
+         "star": 1
+        },
+        {
+         "id": "p2eq_003",
+         "star": 1
+        },
+        {
+         "id": "p2eq_026",
+         "star": 1
+        }
+       ],
+       "role": "front"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_071",
+         "star": 1
+        },
+        {
+         "id": "p2eq_059",
+         "star": 1
+        },
+        {
+         "id": "p2eq_033",
+         "star": 1
+        }
+       ],
+       "role": "back"
+      }
+     ],
+     "top": [
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_053",
+         "star": 1
+        },
+        {
+         "id": "p2eq_011",
+         "star": 1
+        },
+        {
+         "id": "p2eq_029",
+         "star": 1
+        }
+       ],
+       "role": "front"
+      }
+     ]
+    },
+    "pet_levels": {
+     "diamond": 1,
+     "hiding": 1,
+     "ninja": 1
+    },
+    "profile": {
+     "avatar": "diamond",
+     "id": "COH29",
+     "name": "丶小明666"
+    },
+    "schema_ver": 2,
+    "season_eggs_killed": 0,
+    "season_level": 10,
+    "season_total_battles": 29,
+    "trainer_skill": "magic_stone",
+    "chest_treasures_won": [],
+    "chest_treasure_value": 0.0
+   },
+   {
+    "_strategy": "random",
+    "bracket": 8,
+    "equipped": {
+     "chest": [
+      {
+       "id": "p2eq_010",
+       "star": 1
+      },
+      {
+       "id": "p2eq_056",
+       "star": 2
+      },
+      {
+       "id": "p2eq_068",
+       "star": 1
+      }
+     ],
+     "hunter": [
+      {
+       "id": "p2eq_040",
+       "star": 2
+      },
+      {
+       "id": "p2eq_084",
+       "star": 2
+      },
+      {
+       "id": "p2eq_071",
+       "star": 2
+      }
+     ],
+     "shell": [
+      {
+       "id": "p2eq_068",
+       "star": 1
+      },
+      {
+       "id": "p2eq_090",
+       "star": 1
+      },
+      {
+       "id": "p2eq_080",
+       "star": 1
+      }
+     ]
+    },
+    "ghost_id": "seed_h6_coh_25_b29",
+    "is_bot": false,
+    "lane_assign": {
+     "bottom": [],
+     "top": [
+      "hunter",
+      "shell",
+      "chest"
+     ]
+    },
+    "leaders": [
+     "hunter",
+     "shell",
+     "chest"
+    ],
+    "loadouts": {},
+    "minions": {
+     "bottom": [
+      {
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_029",
+         "star": 1
+        },
+        {
+         "id": "p2eq_027",
+         "star": 1
+        },
+        {
+         "id": "p2eq_020",
+         "star": 2
+        }
+       ],
+       "role": "front"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_066",
+         "star": 1
+        },
+        {
+         "id": "p2eq_005",
+         "star": 2
+        },
+        {
+         "id": "p2eq_053",
+         "star": 2
+        }
+       ],
+       "role": "front"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_058",
+         "star": 2
+        },
+        {
+         "id": "p2eq_017",
+         "star": 1
+        },
+        {
+         "id": "p2eq_033",
+         "star": 1
+        }
+       ],
+       "role": "back"
+      }
+     ],
+     "top": []
+    },
+    "pet_levels": {
+     "chest": 1,
+     "hunter": 1,
+     "shell": 1
+    },
+    "profile": {
+     "avatar": "hunter",
+     "id": "COH25",
+     "name": "快乐的海风啦"
+    },
+    "schema_ver": 2,
+    "season_eggs_killed": 0,
+    "season_level": 10,
+    "season_total_battles": 29,
+    "trainer_skill": "glacier",
+    "chest_treasures_won": [],
+    "chest_treasure_value": 0.0
+   },
+   {
+    "_strategy": "greedy_cost",
+    "bracket": 8,
+    "equipped": {
+     "pirate": [
+      {
+       "id": "p2eq_038",
+       "star": 2
+      },
+      {
+       "id": "p2eq_090",
+       "star": 2
+      },
+      {
+       "id": "p2eq_056",
+       "star": 2
+      }
+     ],
+     "stone": [
+      {
+       "id": "p2eq_084",
+       "star": 2
+      },
+      {
+       "id": "p2eq_072",
+       "star": 1
+      },
+      {
+       "id": "p2eq_040",
+       "star": 2
+      }
+     ],
+     "two_head": [
+      {
+       "id": "p2eq_052",
+       "star": 1
+      },
+      {
+       "id": "p2eq_010",
+       "star": 1
+      },
+      {
+       "id": "p2eq_067",
+       "star": 2
+      }
+     ]
+    },
+    "ghost_id": "seed_h6_coh_29_b29",
+    "is_bot": false,
+    "lane_assign": {
+     "bottom": [
+      "pirate",
+      "stone",
+      "two_head"
+     ],
+     "top": []
+    },
+    "leaders": [
+     "pirate",
+     "stone",
+     "two_head"
+    ],
+    "loadouts": {},
+    "minions": {
+     "bottom": [],
+     "top": [
+      {
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_053",
+         "star": 1
+        },
+        {
+         "id": "p2eq_029",
+         "star": 1
+        },
+        {
+         "id": "p2eq_065",
+         "star": 1
+        }
+       ],
+       "role": "back"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_026",
+         "star": 1
+        },
+        {
+         "id": "p2eq_071",
+         "star": 1
+        },
+        {
+         "id": "p2eq_083",
+         "star": 2
+        }
+       ],
+       "role": "back"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_079",
+         "star": 2
+        }
+       ],
+       "role": "front"
+      }
+     ]
+    },
+    "pet_levels": {
+     "pirate": 1,
+     "stone": 1,
+     "two_head": 1
+    },
+    "profile": {
+     "avatar": "pirate",
+     "id": "COH29",
+     "name": "老龟呀"
+    },
+    "schema_ver": 2,
+    "season_eggs_killed": 0,
+    "season_level": 9,
+    "season_total_battles": 29,
+    "trainer_skill": "magic_stone",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
    }
