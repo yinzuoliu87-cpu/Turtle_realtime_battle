@@ -221,7 +221,11 @@ def main():
         paths = []
         for dirpath, _dirs, files in os.walk(base):
             if os.path.basename(dirpath).startswith("_"):
-                continue          # ★跳过 _oldrules 之类的归档目录: 旧规则数据混进来会污染整池
+                continue          # ★跳过 _oldrules / _c1.._c5 之类的归档目录: 旧数据混进来会污染整池
+                                  #   2026-08-15 血泪: c1~c5 是 2026-07-27 那几次跑的, 早于 060~094
+                                  #   那批装备存在。它们没带下划线 ⇒ 被自动并入 ⇒ 占满每档 20 个名额,
+                                  #   新数据几乎没进去。表现是"新池装备覆盖 94/94 但只有 6% 的队真带新装备"
+                                  #   —— 覆盖率是种类数, 骗过了自检; 真正该量的是【遇到率】。已改名归档。
             if "cohort-snapshots.json" in files:
                 paths.append(os.path.join(dirpath, "cohort-snapshots.json"))
         paths.sort()
@@ -229,6 +233,9 @@ def main():
         print("★一份快照都没找到 —— 先跑 tests/_cohort.gd")
         return 1
 
+    print("原料(%d 份):" % len(paths))
+    for _p in paths:
+        print("   " + os.path.relpath(_p, ROOT))
     raw = {"brackets": {}}
     seen_ids = set()
     for pth in paths:

@@ -41,8 +41,57 @@ func _ready() -> void:
 	var total := 0
 	for b in brackets.keys():
 		total += (brackets[b] as Array).size()
-	_ok("种子池 = 193 支队", total == 193, "实际 %d" % total)
+	_ok("种子池 ≥ 150 支队", total >= 150, "实际 %d" % total)
 	_ok("覆盖档 0-8", brackets.has("0") and brackets.has("8"))
+
+	## ── ★【遇到率】—— 不是覆盖率(2026-08-15 血泪)────────────────────────────
+	##   我曾用"池里出现多少【种】装备"当验收, 它显示 94/94 全覆盖 ⇒ 自检全绿 ⇒ 我报了完成。
+	##   但玩家真正体验到的是【多大比例的对手身上有新装备】: 当时实测只有 6%, 五个档是 0。
+	##   94 种全靠补选进来的十几支队撑着, 基础的每档 20 支几乎不带。
+	##   ⇒ 覆盖率是"库存清单", 遇到率才是"你打得到吗"。两个都要焊。
+	var new_batch: Array = []
+	for e in DataRegistry.phase2_equipment:
+		var eid := str((e as Dictionary).get("id", ""))
+		if eid >= "p2eq_060" and int((e as Dictionary).get("shopAvailable", 0)) == 1:
+			new_batch.append(eid)
+	_ok("★分母: 认得出'新批次'装备(060 之后可购买的)", new_batch.size() >= 30,
+		"%d 件" % new_batch.size())
+	var t_all := 0
+	var t_hit := 0
+	var worst_b := ""
+	var worst_p := 999.0
+	for b in brackets.keys():
+		if str(b) == "0":
+			continue   # 档0 = 人生第一把, 双方全裸, 本来就该 0
+		var n := 0
+		var h := 0
+		for g in (brackets[b] as Array):
+			n += 1
+			var ids: Dictionary = {}
+			for pid in ((g as Dictionary).get("equipped", {}) as Dictionary).keys():
+				for it in (((g as Dictionary)["equipped"] as Dictionary)[pid] as Array):
+					ids[str((it as Dictionary).get("id", ""))] = true
+			for lk in ((g as Dictionary).get("minions", {}) as Dictionary).keys():
+				for m in (((g as Dictionary)["minions"] as Dictionary)[lk] as Array):
+					for it in ((m as Dictionary).get("equips", []) as Array):
+						ids[str((it as Dictionary).get("id", ""))] = true
+			for nid in new_batch:
+				if ids.has(nid):
+					h += 1
+					break
+		t_all += n
+		t_hit += h
+		var pct: float = 100.0 * float(h) / float(maxi(1, n))
+		if pct < worst_p:
+			worst_p = pct
+			worst_b = str(b)
+	var overall: float = 100.0 * float(t_hit) / float(maxi(1, t_all))
+	print("     遇到率: %d/%d 支队(%.0f%%)带新批次装备; 最差的档%s 只有 %.0f%%" % [
+		t_hit, t_all, overall, worst_b, worst_p])
+	_ok("★★★遇到率 ≥ 50%(档0 除外) —— 打几把就该见到新装备, 光「池里有」不算数",
+		overall >= 50.0, "实测 %.0f%%" % overall)
+	_ok("★★除档0 外没有【一支都不带新装备】的档(那个档等于回到了旧版本)",
+		worst_p > 0.0, "最差 档%s = %.0f%%" % [worst_b, worst_p])
 
 	# 2. 每支队合法
 	var bad: Array = []
