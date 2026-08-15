@@ -7764,7 +7764,7 @@ func _settle_season(won: bool) -> void:
 			if gs.get("left_team") is Array and (gs.left_team as Array).is_empty():
 				var _ldr: Array = gs.get("season_leaders")
 				gs.left_team.assign(_ldr.slice(0, 3))
-			var _gid := "g_%d" % int(gs.season_id)   # ★稳定id(用户2026-07-18"同一对手连续2把匹配到"): 原带_t战斗秒数→每场upload都是新id但同阵→池里同队堆几十个id→排除最近3个没用. 改按大轮id稳定=同一玩家阵容恒为1个ghost_id, 配pool_add去重→排除最近3场真生效
+			var _gid := Backend.player_ghost_id(int(gs.season_id), gs.season_leaders)
 			var _av := str(gs.season_leaders[0]) if (gs.season_leaders as Array).size() > 0 else "basic"
 			Backend.upload_ghost(Backend.build_ghost_snapshot(_gid, {"name": "玩家阵容", "avatar": _av, "id": _gid}))
 	# 奇械羁绊【铸币】: 本场累积的深海币(有硬上限, 见 gadget_synergy_system.gd)一次性进账。

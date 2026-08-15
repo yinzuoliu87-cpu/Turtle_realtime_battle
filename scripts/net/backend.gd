@@ -77,6 +77,10 @@ static func pool_add(pool: Dictionary, snapshot: Dictionary) -> void:
 
 ## 玩家自己上传的快照? 本地池里 profile 名恒为"玩家阵容"(单机没别的真人)→匹配一律跳过, 防撞自己阵容(用户2026-07-18: 只按id排除挡不住修复前遗留的旧volatile id自传·按名一网打尽).
 static func _is_self_ghost(g) -> bool:
+	## ★SELF_GHOST=1: 允许匹配到自己录的阵容(2026-08-15 用户要手打录入多套, 得能自测)。
+	##   默认仍然跳过 —— 单机下撞上自己那套是明显的穿帮。这是个**开发/自测开关**, 不是玩法。
+	if OS.has_environment("SELF_GHOST"):
+		return false
 	return g is Dictionary and str(((g as Dictionary).get("profile", {}) as Dictionary).get("name", "")) == "玩家阵容"
 
 ## 从池抽一个同档对手 (排除 exclude_ids). 桶空/全排除 → null (调用方 make_bot 兜底).
@@ -319,6 +323,24 @@ static func find_opponent(bracket: int, exclude_ids: Array, rng: RandomNumberGen
 		var g = pool_find(pool, b, exclude_ids, rng)
 		if g != null: return g
 	return make_bot(bracket, rng)
+
+## 玩家自己那份快照的 ghost_id = 大轮 + 【三龟组合】。
+##
+## ★放这里而不是放战斗场: 这条 id 规则的唯一消费者是下面的 `pool_add`(它按 id 去重),
+##   规则和消费者贴在一起才不会各改各的; 而且它不在 `_sim_step` 调用链上, 按项目约定不进主文件。
+##
+## 沿革与两条【都要同时守住】的约束:
+##   · 2026-07-18 原来 id 带战斗秒数 ⇒ 每场 upload 都是新 id 但同一套阵容 ⇒
+##     池里同队堆几十条, "排除最近 3 场"形同虚设。改成 `g_<赛季>` 稳定 id 治好了这个。
+##   · 但 `g_<赛季>` 一个大轮只有一个 id ⇒ 玩家在同一赛季里录第二套阵容会把第一套**顶掉**。
+##     这条是用户 2026-08-15 要「我手打」录入多套阵容时才暴露出来的。
+## ⇒ 粒度从"一个赛季"细到"一套阵容": 同一套重打仍是同一条(更新, 不堆), 换一套龟就是另一条(并存)。
+## ★三龟【先排序】再拼 —— 同样三只龟换个上场顺序不该算两套阵容。
+static func player_ghost_id(season_id: int, leaders) -> String:
+	var arr: Array = (leaders as Array).slice(0, 3) if leaders is Array else []
+	arr.sort()
+	return "g_%d_%s" % [season_id, "-".join(PackedStringArray(arr))]
+
 
 ## 上传自己阵容快照进池 (玩家配好 build / 赢一场后).
 static func upload_ghost(snapshot: Dictionary) -> void:

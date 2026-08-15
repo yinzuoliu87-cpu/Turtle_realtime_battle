@@ -109,6 +109,43 @@ func _ready() -> void:
 	_ok("★★④ 敌方 chest_opened 从快照件数起算(不是从 0 重开)",
 		src_sp.find('u["chest_opened"] = _gw.size()') >= 0)
 
+	# ── ⑥ 玩家手打录入多套阵容: id 要按【阵容】区分, 不是按赛季 ──────────────
+	##   用户 2026-08-15「我手打」。原来 `g_<赛季>` 一个大轮只有一个 id, 而 pool_add 按 id 去重
+	##   ⇒ 录第二套会把第一套顶掉。改成 `g_<赛季>_<排序后的三龟>`。
+	## ★判据量【函数返回值】不是源码字符串 —— 规则搬了家(战斗场 → backend)也不该红。
+	var id_a: String = Backend.player_ghost_id(1, ["basic", "ninja", "stone"])
+	var id_b: String = Backend.player_ghost_id(1, ["candy", "lava", "star"])
+	var id_c: String = Backend.player_ghost_id(1, ["stone", "basic", "ninja"])   # 同三龟, 换顺序
+	var id_d: String = Backend.player_ghost_id(2, ["basic", "ninja", "stone"])   # 换赛季
+	_ok("★★★⑥ 两套【不同】阵容 ⇒ 两个不同 id", id_a != id_b, "%s vs %s" % [id_a, id_b])
+	_ok("★★★⑥ 同三龟【换上场顺序】⇒ 同一个 id(不该算两套)", id_a == id_c, "%s vs %s" % [id_a, id_c])
+	_ok("★★⑥ 换赛季 ⇒ 另一个 id(大轮之间不串)", id_a != id_d, "%s vs %s" % [id_a, id_d])
+	var src_rb := FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")
+	_ok("★★⑥ 战斗场真的调它(不是写了函数没人用)",
+		src_rb.find("Backend.player_ghost_id(int(gs.season_id), gs.season_leaders)") >= 0
+		and src_rb.find('var _gid := "g_%d" % int(gs.season_id)') < 0)
+	## ★真的会去重/不去重 —— 量 pool_add 自己的账, 不是数源码。
+	var pool_id := {"brackets": {}}
+	var mk := func(gid: String) -> Dictionary:
+		return {"ghost_id": gid, "bracket": 3, "schema_ver": Backend.SCHEMA_VER,
+			"profile": {"name": "玩家阵容"}}
+	Backend.pool_add(pool_id, mk.call(id_a))
+	Backend.pool_add(pool_id, mk.call(id_b))
+	var n_two: int = ((pool_id["brackets"] as Dictionary).get("3", []) as Array).size()
+	_ok("★★★⑥ 两套【不同】阵容并存(录第二套不会顶掉第一套)", n_two == 2, "池里 %d 条" % n_two)
+	Backend.pool_add(pool_id, mk.call(id_c))   # 同一套(换了上场顺序)重打
+	var n_again: int = ((pool_id["brackets"] as Dictionary).get("3", []) as Array).size()
+	_ok("★★★⑥ 同一套重打仍是【一条】(更新不堆积, 守住 2026-07-18 那条修复)",
+		n_again == 2, "池里 %d 条" % n_again)
+
+	# ── ⑦ 自测开关: 默认跳过自己的 ghost, SELF_GHOST=1 才允许匹配到 ────────────
+	var self_g := {"ghost_id": "g_1_x", "profile": {"name": "玩家阵容"}}
+	_ok("★★⑦ 默认仍然跳过自己录的阵容(单机撞上自己是穿帮)",
+		Backend._is_self_ghost(self_g) == true)
+	var src_bk := FileAccess.get_file_as_string("res://scripts/net/backend.gd")
+	_ok("★⑦ 有 SELF_GHOST 开关可放开(要自测录进去的阵容)",
+		src_bk.find('if OS.has_environment("SELF_GHOST"):') >= 0)
+
 	gs.chest_treasures_won = won_bak
 	gs.chest_treasure_value = val_bak
 	print("")
