@@ -138,12 +138,17 @@ func _refresh_info_panel() -> void:
 			_bar.value = clampf(float(_d.get("cur", 0.0)), 0.0, _bar.max_value)
 		var _vl = _row.get("val")
 		if _vl != null and is_instance_valid(_vl):
-			_vl.text = "%d / %d" % [int(_d.get("cur", 0.0)), int(_d.get("cap", 1.0))]
+			_vl.text = _res_value_text(_d)
 		var _hl = _row.get("hint")
 		if _hl != null and is_instance_valid(_hl):
 			_hl.text = str(_d.get("hint", ""))
 	# 属性行
-	var rows: Array = _info_stat_rows(ud)
+	## ★只比【常驻的主要 8 项】—— 次要 11 项 2026-08-16 搬进了点开的浮层, 不在常驻 Label 里。
+	##   拿 19 去比 8 会永远判"行数变了"⇒ 每帧整块重建 ⇒ 面板每帧从屏外重新滑入, 永远到不了位。
+	##   实测症状: 面板 x 从 1252 越飘越远到 1304(每次重建都 offset += PW+40 再滑)。
+	##   ⚠ 这个 bug 【门禁一条都没红】—— 因为门禁是直接调 _show_unit_info_panel 再同步断言,
+	##     不跑"连续多帧刷新"那条路。是截图看不到面板才发现的。
+	var rows: Array = _info_stat_rows_main(ud)
 	if rows.size() != battle._info_stat_labels.size():
 		# 行数变了(有属性从0变非0) → 引用会错位, 整块重建
 		battle._hud._show_unit_info_panel(ud)
@@ -216,9 +221,25 @@ func _refresh_info_panel() -> void:
 
 
 # 面板内非按钮控件设 IGNORE → 触摸透传到 ScrollContainer(手机可竖滑·2026-07-18); 关闭按钮(Button)保留可点
+#
+# ★★2026-08-16 修一个【把交互全部打死】的 bug:
+#   这个函数原来"除了 Button 一律 IGNORE"。而 2026-08-16 面板重做之后, 可点的东西
+#   【一个 Button 都没有】—— 技能三槽 / 装备三槽 / 更多属性 / 战利品 全是
+#   `PanelContainer + gui_input`(为了长得像槽而不是网页按钮)。
+#   ⇒ 它们建好时设的 MOUSE_FILTER_STOP 在这里被【无差别抹成 IGNORE】,
+#     用户点名要的「这些图标点击出现描述」「装备也是点击出现描述框」是死的:
+#     点上去什么都不会发生, 而代码里 _show_detail 写得好好的。
+#   ★探针数字: 面板里 266 个 PanelContainer, 可点的(filter=STOP)只有【最外层面板 1 个】。
+#   ★这正是 memory fb-verify-must-run-the-real-path 那一条 —— 门禁断言过
+#     "_show_detail 存在""点开会显示描述", 但【没有一条走真实点击分派】,
+#     所以死路被门禁保护着。
+#   ⇒ 判据改成:【自己接了 gui_input 的控件不动它】, 其余照旧透传。
 func _info_passthrough(node: Node) -> void:
 	for c in node.get_children():
 		if c is Button:
+			continue
+		if c is Control and not (c as Control).gui_input.get_connections().is_empty():
+			_info_passthrough(c)   # 它自己要吃点击, 但它的孩子还是要透传
 			continue
 		if c is Control:
 			(c as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -235,7 +256,58 @@ func _info_passthrough(node: Node) -> void:
 ##   而且用户 2026-08-16 明确"不要复用、不需要海底装饰"。
 ##
 ## 返回 [{bar, val_lbl, hint_lbl, name}] 供每帧刷新按下标对位改数, 不重建节点。
+## 资源条那一行印什么字 —— 【建的时候和每帧刷新的时候都调这一个】。
+##
+## ★由来 2026-08-16(实拍抓到): 建条时写的是"无上限就只印数字", 刷新时写的是死的 `%d / %d`
+##   ⇒ 面板一开是对的「37」, 下一帧就被刷成「37 / 0」。金币【本来就没有上限】,
+##   硬编一个分母 0 出来是骗人(memory fb-hand-rolled-copies-drift: 手抄的副本必然落后)。
+##   ⚠ 这是我第二次在同一个面板上踩"建一套/刷一套" —— 装备槽那次也是实拍才发现。
+##   ⇒ 这次不是把两边改成一样, 是让两边【只剩一个出处】, 想漂也没得漂。
+func _res_value_text(r: Dictionary) -> String:
+	var cap: float = float(r.get("cap", 0.0))
+	if cap <= 0.0:
+		return "%d" % int(r.get("cur", 0.0))
+	return "%d / %d" % [int(r.get("cur", 0.0)), int(cap)]
+
+
 func _info_resource_row(parent: Control, r: Dictionary) -> Dictionary:
+	## ★inline 形态: 条上压一行数字, 没有名字标签也没有结论行 —— 与血条同构。
+	if bool(r.get("inline", false)):
+		var hold = Control.new()
+		hold.custom_minimum_size = Vector2(0, 22)
+		hold.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		parent.add_child(hold)
+		## ★框单独一层 NinePatchRect, 进度条【内缩 6px】画在框里面。
+		##   第 2 轮实拍: 直接把框当 ProgressBar 的 background, 矩形填充会从胶囊框两端顶出来。
+		##   框归框、填充归填充, 才不会打架。
+		var ifr := _bar_frame(hold)
+		var ipb = ProgressBar.new()
+		ipb.set_anchors_preset(Control.PRESET_FULL_RECT)
+		ipb.offset_left = 6.0; ipb.offset_right = -6.0
+		ipb.offset_top = 5.0; ipb.offset_bottom = -5.0
+		ipb.min_value = 0.0; ipb.max_value = maxf(1.0, float(r.get("cap", 1.0)))
+		ipb.value = clampf(float(r.get("cur", 0.0)), 0.0, ipb.max_value)
+		ipb.show_percentage = false
+		var ibg = StyleBoxFlat.new(); ibg.bg_color = Color("#0b1220")
+		ibg.set_border_width_all(1); ibg.border_color = Color("#243247"); ibg.set_corner_radius_all(0)
+		var ifl = StyleBoxFlat.new(); ifl.bg_color = r.get("color", Color.WHITE); ifl.set_corner_radius_all(0)
+		ibg.bg_color = Color(0, 0, 0, 0.55) if ifr != null else ibg.bg_color
+		ibg.set_border_width_all(0 if ifr != null else 1)
+		ipb.add_theme_stylebox_override("background", ibg)
+		ipb.add_theme_stylebox_override("fill", ifl)
+		ipb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hold.add_child(ipb)
+		var ivl = Label.new()
+		ivl.text = _res_value_text(r)
+		ivl.set_anchors_preset(Control.PRESET_FULL_RECT)
+		ivl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		ivl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		ivl.add_theme_font_size_override("font_size", 12)
+		ivl.add_theme_color_override("font_color", Color("#ffffff"))
+		ivl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hold.add_child(ivl)
+		return {"bar": ipb, "val": ivl, "hint": null, "name": str(r.get("name", ""))}
+
 	var box = VBoxContainer.new()
 	box.add_theme_constant_override("separation", 1)
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -252,14 +324,22 @@ func _info_resource_row(parent: Control, r: Dictionary) -> Dictionary:
 	top.add_child(sp)
 	var no_cap: bool = float(r.get("cap", 0.0)) <= 0.0   # 没有上限的资源(金币)只显数字, 不画条
 	var vl = Label.new()
-	vl.text = ("%d" % int(r.get("cur", 0.0))) if no_cap else ("%d / %d" % [int(r.get("cur", 0.0)), int(r.get("cap", 1.0))])
+	vl.text = _res_value_text(r)
 	vl.add_theme_font_size_override("font_size", 13)
 	vl.add_theme_color_override("font_color", Color("#e8f2ff"))
 	top.add_child(vl)
 
+	var bhold = Control.new()
+	bhold.custom_minimum_size = Vector2(0, 0 if no_cap else 14)
+	bhold.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bhold.visible = not no_cap
+	box.add_child(bhold)
+	var bfr := _bar_frame(bhold)
 	var pb = ProgressBar.new()
 	pb.visible = not no_cap
-	pb.custom_minimum_size = Vector2(0, 0 if no_cap else 8)
+	pb.set_anchors_preset(Control.PRESET_FULL_RECT)
+	pb.offset_left = 5.0; pb.offset_right = -5.0
+	pb.offset_top = 4.0; pb.offset_bottom = -4.0
 	pb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	pb.min_value = 0.0; pb.max_value = maxf(1.0, float(r.get("cap", 1.0)))
 	pb.value = clampf(float(r.get("cur", 0.0)), 0.0, pb.max_value)
@@ -267,18 +347,33 @@ func _info_resource_row(parent: Control, r: Dictionary) -> Dictionary:
 	var bgsb = StyleBoxFlat.new(); bgsb.bg_color = Color("#0b1220")
 	bgsb.set_border_width_all(1); bgsb.border_color = Color("#243247"); bgsb.set_corner_radius_all(0)
 	var flsb = StyleBoxFlat.new(); flsb.bg_color = r.get("color", Color.WHITE); flsb.set_corner_radius_all(0)
+	bgsb.bg_color = Color(0, 0, 0, 0.55) if bfr != null else bgsb.bg_color
+	bgsb.set_border_width_all(0 if bfr != null else 1)
 	pb.add_theme_stylebox_override("background", bgsb)
 	pb.add_theme_stylebox_override("fill", flsb)
 	pb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(pb)
+	bhold.add_child(pb)
 
+	## hint 为空就不建 —— 建一个空 Label 会白占约 14px, 面板里最缺的就是高度。
+	if str(r.get("hint", "")) == "":
+		return {"bar": pb, "val": vl, "hint": null, "name": str(r.get("name", ""))}
 	var hl = Label.new(); hl.text = str(r.get("hint", ""))
 	hl.add_theme_font_size_override("font_size", 11)
 	hl.add_theme_color_override("font_color", Color("#8fa2b5"))
-	hl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	hl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	hl.autowrap_mode = TextServer.AUTOWRAP_OFF
-	hl.clip_text = true
-	box.add_child(hl)
+	## ★★不许 clip_text —— 它会把 Label 的【最小宽度压成 1px】, 而这一行里有一个
+	##   EXPAND_FILL 的弹簧, 于是结论那句被挤成 1px 宽:【字还在, 但一个像素都看不见】。
+	##   实拍量到 `Label [1006,179 1x17] 攒满变火山形态` 才发现 —— 我以为我"把它并进了名字行",
+	##   实际是把它挤没了(memory fb-write-without-reader-and-fake-gates: 写了没人读/看不见)。
+	hl.clip_text = false
+	hl.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	## ★★结论那句【跟在名字后面】, 不再独占一行(2026-08-16)。
+	##   原来一条资源占三行: 名+值 / 条 / 结论。结论行 17px × 每条资源, 而面板最缺的就是高度
+	##   (宝箱龟 657px 塞 628px 的视口)。并进第一行之后一条资源省 17px, 读起来也少一次换行。
+	##   ★不是删掉它 —— 「攒满变火山形态」这类是玩家推不出来的机制, 必须留(2026-08-16 的判断没变)。
+	top.add_child(hl)
+	top.move_child(hl, 1)
 	return {"bar": pb, "val": vl, "hint": hl, "name": str(r.get("name", ""))}
 
 
@@ -288,13 +383,19 @@ func _info_bar(parent: Control, cur: float, mx: float, fill_col: Color, label: S
 	holder.custom_minimum_size = Vector2(0, 22)
 	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	parent.add_child(holder)
+	var hfr := _bar_frame(holder)
 	var pb = ProgressBar.new()
 	pb.set_anchors_preset(Control.PRESET_FULL_RECT)
+	pb.offset_left = 6.0; pb.offset_right = -6.0
+	pb.offset_top = 5.0; pb.offset_bottom = -5.0
 	pb.min_value = 0.0; pb.max_value = maxf(1.0, mx); pb.value = clampf(cur, 0.0, mx)
 	pb.show_percentage = false
 	var bgsb = StyleBoxFlat.new(); bgsb.bg_color = Color("#0b1220"); bgsb.set_corner_radius_all(5)
 	bgsb.set_border_width_all(1); bgsb.border_color = Color("#243247")
 	var flsb = StyleBoxFlat.new(); flsb.bg_color = fill_col; flsb.set_corner_radius_all(5)
+	## ★血条底也走九宫格像素框(用户:「血条，龟能条都跟网页一样」)。
+	bgsb.bg_color = Color(0, 0, 0, 0.55) if hfr != null else bgsb.bg_color
+	bgsb.set_border_width_all(0 if hfr != null else 1)
 	pb.add_theme_stylebox_override("background", bgsb)
 	pb.add_theme_stylebox_override("fill", flsb)
 	pb.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -321,49 +422,47 @@ func _info_bar(parent: Control, cur: float, mx: float, fill_col: Color, label: S
 func _info_stat_rows_main(u: Dictionary) -> Array:
 	var sic := "res://assets/sprites/stats/"
 	var W := Color("#d6e4f0")
-	## ★暴伤 = 基础暴伤 + 暴击率溢出 100% 的部分 ×1.5(与 DamageMath.crit_multiplier 同一公式)。
-	##   这样"124% 暴击"读作"暴击 100% · 暴伤 186%", 就是实战真正生效的两个数。
-	var crit_over: float = maxf(0.0, float(u.get("crit", 0.0)) - 1.0) * 1.5
-	## ★石头龟叠出来的护甲标在护甲这一行后面 —— 它是【累计增量】不是"攒满触发"型资源,
-	##   做成资源条是把两种东西混成一种。
+	## ★石头龟叠出来的护甲标在护甲这一行后面 —— 它是【累计增量】不是"攒满触发"型资源。
 	var def_now: int = int(u.get("def", 0))
 	var def_gain: int = int(round(float(u.get("def", 0.0)) - float(u.get("stone_init_def", u.get("def", 0.0)))))
 	var def_txt: String = "护甲 %d" % def_now
 	if def_gain > 0:
 		def_txt += " (+%d)" % def_gain
+	## ★增伤/减伤非 0 时标色 —— 不为 0 就说明此刻正被强化或削弱, 得能一眼扫到。
+	var amp: float = float(u.get("damage_amp", 0.0))
+	var dr: float = float(u.get("damage_reduction", 0.0))
 	return [
-		[sic + "atk-icon.png",      "攻击 %d" % int(u.get("atk", 0)),                 Color("#ff9d8a")],
-		[sic + "aspd-icon.png",     "攻速 %s 次/秒" % battle._fmt_num(battle.aspd_mult(u) / maxf(0.001, float(u.get("atk_interval", 1.0)))), W],
-		[sic + "crit-icon.png",     "暴击 " + _pct(minf(float(u.get("crit", 0.0)), 1.0)), W],
-		[sic + "crit-dmg-icon.png", "暴伤 " + _pct_mult(float(u.get("crit_dmg", 1.5)) + crit_over), Color("#ffb37a")],
-		[sic + "def-icon.png",      def_txt,                                          W],
-		[sic + "mr-icon.png",       "魔抗 %d" % int(u.get("mr", 0)),                  Color("#9bdcff")],
-		[sic + "move-icon.png",     "移速 %d" % int(round(_eff_move_spd(u))),         W],
-		[sic + "range-icon.png",    "射程 %d" % int(round(battle._eff_range(u))),     W],
+		[sic + "atk-icon.png",   "攻击 %d" % int(u.get("atk", 0)),                 Color("#ff9d8a")],
+		[sic + "aspd-icon.png",  "攻速 %s 次/秒" % battle._fmt_num(battle.aspd_mult(u) / maxf(0.001, float(u.get("atk_interval", 1.0)))), W],
+		[sic + "crit-icon.png",  "暴击 " + _pct(minf(float(u.get("crit", 0.0)), 1.0)), W],
+		["",                     "增伤 " + _pct(amp),   Color("#ff7a7a") if amp > 0.0005 else Color("#7a8694")],
+		[sic + "def-icon.png",   def_txt,                                          W],
+		[sic + "mr-icon.png",    "魔抗 %d" % int(u.get("mr", 0)),                  Color("#9bdcff")],
+		["",                     "减伤 " + _pct(dr),    Color("#9bdcff") if dr > 0.0005 else Color("#7a8694")],
+		[sic + "range-icon.png", "射程 %d" % int(round(battle._eff_range(u))),     W],
 	]
-
 
 ## 属性【次要 11 项】—— 基本是装备/羁绊给的固定值, 开局定了就不动。小字排。
 ## ★一项都不删(用户 2026-07-21「全都要显示啊」) —— 变的只是字号和分组, 不是可见性。
 ## ★增伤/减伤非 0 时标色: 不为 0 就说明此刻正被强化或削弱, 得能一眼扫到。
 func _info_stat_rows_minor(u: Dictionary) -> Array:
+	var sic := "res://assets/sprites/stats/"
 	var ls: float = float(u.get("lifesteal", 0.0)) + float(u.get("ls_bonus", 0.0))
-	var amp: float = float(u.get("damage_amp", 0.0))
-	var dr: float = float(u.get("damage_reduction", 0.0))
+	## ★暴伤 = 基础暴伤 + 暴击率溢出 100% 的部分 ×1.5(与 DamageMath.crit_multiplier 同一公式)。
+	var crit_over: float = maxf(0.0, float(u.get("crit", 0.0)) - 1.0) * 1.5
 	return [
-		["", "吸血 " + _pct(ls),                                            Color("#ff8fb0")],
-		["", "闪避 " + _pct(float(u.get("dodge_bonus", 0.0))),              Color("#a0e8ff")],
-		["", "增伤 " + _pct(amp),      Color("#ff7a7a") if amp > 0.0005 else Color("#7a8694")],
-		["", "减伤 " + _pct(dr),       Color("#9bdcff") if dr > 0.0005 else Color("#7a8694")],
-		["", "治疗强度 " + _pct_mult(1.0 + float(u.get("heal_amp", 0.0))),  Color("#7fe39a")],
-		["", "护盾强度 " + _pct_mult(1.0 + float(u.get("shield_amp", 0.0))), Color("#ffd93d")],
-		["", "龟能充能 " + _pct_mult(1.0 + float(u.get("echarge_perm", 0.0))), Color("#ffce4d")],
-		["", "护甲穿透 %d" % int(u.get("armor_pen", 0.0)),                  Color("#ffc48a")],
-		["", "魔法穿透 %d" % int(u.get("magic_pen", 0.0)),                  Color("#c9a0ff")],
-		["", "反伤 " + _pct(float(u.get("reflect", 0.0))),                  Color("#ff9d8a")],
-		["", "韧性 " + _pct(float(u.get("tenacity", 0.0))),                 Color("#d6e4f0")],
+		[sic + "crit-dmg-icon.png", "暴伤 " + _pct_mult(float(u.get("crit_dmg", 1.5)) + crit_over), Color("#ffb37a")],
+		[sic + "move-icon.png",     "移速 %d" % int(round(_eff_move_spd(u))),      Color("#d6e4f0")],
+		[sic + "lifesteal-icon.png", "吸血 " + _pct(ls),                           Color("#ff8fb0")],
+		["", "闪避 " + _pct(float(u.get("dodge_bonus", 0.0))),                     Color("#a0e8ff")],
+		["", "治疗强度 " + _pct_mult(1.0 + float(u.get("heal_amp", 0.0))),         Color("#7fe39a")],
+		["", "护盾强度 " + _pct_mult(1.0 + float(u.get("shield_amp", 0.0))),       Color("#ffd93d")],
+		["", "龟能充能 " + _pct_mult(1.0 + float(u.get("echarge_perm", 0.0))),     Color("#ffce4d")],
+		["", "护甲穿透 %d" % int(u.get("armor_pen", 0.0)),                         Color("#ffc48a")],
+		["", "魔法穿透 %d" % int(u.get("magic_pen", 0.0)),                         Color("#c9a0ff")],
+		["", "反伤 " + _pct(float(u.get("reflect", 0.0))),                         Color("#ff9d8a")],
+		["", "韧性 " + _pct(float(u.get("tenacity", 0.0))),                        Color("#d6e4f0")],
 	]
-
 
 ## 全部属性行 = 主要 + 次要, 【顺序必须与建面板时创建 Label 的顺序一致】——
 ## 每帧刷新是按 `_info_stat_labels` 的下标一一对位改文字的, 顺序错位就会张冠李戴。
@@ -453,11 +552,17 @@ func _resource_bars(u: Dictionary) -> Array:
 	var acts: Array = u.get("active_skills", [])
 	if not battle._is_passive_pick(u) and acts.size() > 0:
 		var es: Array = _energy_state(u, str(acts[0]))
-		var left: float = float(es[2])
+		## ★龟能这条【不带结论文字】(用户 2026-08-16:「龟能那里不需要文字不需要几秒后释放」)。
+		##   条本身 + `当前/上限` 已经说完了; 再加一句"6.0 秒后可放"是同一件事说第三遍。
+		##   ⚠ 专属资源(怒气/星能/储能/泡泡/财宝)仍然要那句 —— 它们的"满了会怎样"是
+		##     玩家推不出来的机制(变身/放强化版/冲击波+护盾), 不是把条再念一遍。
 		out.append({
 			"name": "龟能", "cur": float(es[0]), "cap": float(es[1]),
-			"hint": ("可放「%s」" % _skill_name_of(u, str(acts[0]))) if left <= 0.01 else ("%.1f 秒后可放" % left),
-			"color": Color("#ffce4d"),
+			"hint": "", "color": Color("#ffce4d"),
+			## ★inline: 数字【压在条里】, 不要名字标签、不要结论那行(用户 2026-08-16)。
+			##   和血条同一种长相 —— 血条本来就是"条上压一行 HP 861/1005"。
+			##   龟能是最常看的一条, 长得和血条一样才不用二次识别。
+			"inline": true,
 		})
 
 	# ② 怒气(熔岩) —— 阈值型。★火山形态下 rage 被 _sim_step 复用成倒计时百分比,
@@ -621,14 +726,15 @@ func _info_equip_slots(vb: VBoxContainer, u: Dictionary) -> void:
 	var wrap = VBoxContainer.new()
 	wrap.add_theme_constant_override("separation", 4)
 	vb.add_child(wrap)
+	## ★一行小标签「装备：」(用户 2026-08-16:「装备区也没有文字提示？…你写装备：行吗」)。
+	##   ⚠ 是【小灰标签】不是金色段标题 —— 段标题正是被删掉的那个网页式 h3。
+	var eqt = Label.new(); eqt.text = "装备："
+	eqt.add_theme_font_size_override("font_size", 12)
+	eqt.add_theme_color_override("font_color", Color("#7f92a5"))
+	wrap.add_child(eqt)
 	var rowc = HBoxContainer.new()
 	rowc.add_theme_constant_override("separation", 8)
 	wrap.add_child(rowc)
-	var boxes: Array = []
-	var holder = VBoxContainer.new()
-	holder.add_theme_constant_override("separation", 4)
-	wrap.add_child(holder)
-
 	for i in range(cap):
 		var it = equips[i] if i < equips.size() else null
 		var slot = PanelContainer.new()
@@ -638,8 +744,9 @@ func _info_equip_slots(vb: VBoxContainer, u: Dictionary) -> void:
 		ssb.set_border_width_all(1)
 		ssb.border_color = Color("#3a4c60") if filled else Color("#222c38")
 		ssb.set_corner_radius_all(0)
-		slot.add_theme_stylebox_override("panel", ssb)
-		slot.custom_minimum_size = Vector2(72, 72)
+		slot.add_theme_stylebox_override("panel", _nine_box(HUD_TEX + "slot-frame.png", 12, ssb))
+		## ★与技能槽同一口径: 正方 88×88, 面板宽度跟着槽走。
+		slot.custom_minimum_size = Vector2(88, 88)
 		slot.mouse_filter = Control.MOUSE_FILTER_STOP if filled else Control.MOUSE_FILTER_IGNORE
 		if filled:
 			slot.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -685,35 +792,12 @@ func _info_equip_slots(vb: VBoxContainer, u: Dictionary) -> void:
 			rl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			inner.add_child(rl)
 			_info_eq_readouts.append({"lbl": rl, "eid": eid})
-		# 描述框(默认收起)
-		var dbox = PanelContainer.new()
-		var dsb = StyleBoxFlat.new()
-		dsb.bg_color = Color("#0b1220")
-		dsb.set_border_width_all(1); dsb.border_color = Color("#2b3d52"); dsb.set_corner_radius_all(0)
-		dsb.content_margin_left = 10; dsb.content_margin_right = 10
-		dsb.content_margin_top = 8; dsb.content_margin_bottom = 8
-		dbox.add_theme_stylebox_override("panel", dsb)
-		dbox.visible = false
-		holder.add_child(dbox)
-		var dt = RichTextLabel.new()
-		dt.bbcode_enabled = true; dt.fit_content = true; dt.scroll_active = false
-		dt.add_theme_font_size_override("normal_font_size", 13)
-		dt.add_theme_color_override("default_color", Color("#c3d3e3"))
-		dt.text = "[b]%s[/b] %s
-%s" % [str(edef.get("name", eid)),
-			"★".repeat(maxi(1, int((it as Dictionary).get("star", 1)))),
-			str(edef.get("effectDesc1", ""))]
-		dt.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		dbox.add_child(dt)
-		boxes.append(dbox)
-		var my_i: int = boxes.size() - 1
+		var d_title := "%s %s" % [str(edef.get("name", eid)),
+			"★".repeat(maxi(1, int((it as Dictionary).get("star", 1))))]
+		var d_body := str(edef.get("effectDesc1", ""))
 		slot.gui_input.connect(func(ev: InputEvent) -> void:
-			if not (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT):
-				return
-			var opening: bool = not boxes[my_i].visible
-			for bi in range(boxes.size()):
-				boxes[bi].visible = false
-			boxes[my_i].visible = opening)
+			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+				_show_detail(battle._info_panel, "eq:" + eid, d_title, d_body, {}, u))
 
 
 func _equip_readout_text(u: Dictionary, eid: String) -> String:
@@ -734,35 +818,19 @@ func _equip_readout_text(u: Dictionary, eid: String) -> String:
 	return "  ".join(parts)
 
 
-## 装备区 —— 在原来的「图标+名+星级」下面补一行【局内读数】。
-## ★用户 2026-08-08 的铁律是"充能条和层数不要放头顶, 在装备图标框里", 说的是**别在龟头顶
-##   另画一套条**。这里是玩家主动点开的详情面板, 且读的就是图标框那两张表的同一个字段,
-##   一根新条都没建, 只是把那个数字用文字写清楚。
-func _info_equip_section(box: VBoxContainer, u: Dictionary) -> void:
-	_info_eq_readouts.clear()
-	var equips: Array = u.get("equips", [])
-	battle._add_section_title(box, "装备 (%d)" % equips.size())
-	if equips.is_empty():
-		battle._add_body_text(box, "无装备", Color("#7a8694"))
-		return
-	for e in equips:
-		var eid := str((e as Dictionary).get("id", ""))
-		battle._add_equip_row(box, eid, int((e as Dictionary).get("star", 1)))
-		var rd := _equip_readout_text(u, eid)
-		if rd != "":
-			_info_eq_readouts.append({"lbl": battle._add_body_text(box, "    " + rd, Color("#ffd27a")), "eid": eid})
-
-
 func _info_stat_cell(grid: GridContainer, icon: String, val: String, col: Color = Color("#d6e4f0"), icon_tex: String = "") -> Label:
 	var h = HBoxContainer.new(); h.add_theme_constant_override("separation", 6)
 	if icon_tex != "" and ResourceLoader.exists(icon_tex):
 		var it = TextureRect.new(); it.texture = load(icon_tex)
 		it.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; it.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		it.custom_minimum_size = Vector2(26, 26); it.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		## ★属性图标 20 不是 26(2026-08-16): 属性区是 4 行 × 2 列的密表, 行高由图标决定 ——
+		##   26→20 让整块从 110px 收到 86px, 而文字字号一点没动(可读性不变)。
+		##   宝箱/熔岩龟正是靠这 24px 才装进视口的。
+		it.custom_minimum_size = Vector2(20, 20); it.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		h.add_child(it)
 	else:
 		var ic = Label.new(); ic.text = icon; ic.add_theme_font_size_override("font_size", 16)
-		ic.custom_minimum_size = Vector2(26, 0); ic.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		ic.custom_minimum_size = Vector2(20, 0); ic.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		h.add_child(ic)
 	var c = Label.new(); c.text = val; c.add_theme_font_size_override("font_size", 14)
 	c.add_theme_color_override("font_color", col); c.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -819,10 +887,13 @@ func _info_status_chips(vb: VBoxContainer, u: Dictionary) -> void:
 	flow.add_theme_constant_override("h_separation", 6); flow.add_theme_constant_override("v_separation", 4)
 	vb.add_child(flow)
 	if chips.is_empty():
-		var e = Label.new(); e.text = "无异常状态"
-		e.add_theme_font_size_override("font_size", 13); e.add_theme_color_override("font_color", Color("#7a8694"))
-		flow.add_child(e)
+		## ★没有状态就【整块不占位】—— 印一行灰字"无异常状态"是在用一行高度说"这里没东西",
+		##   而面板里最缺的就是高度。没状态本身就是最清楚的表达。
+		flow.visible = false
+		vb.visible = false
 		return
+	vb.visible = true
+	flow.visible = true
 	for ch in chips:
 		var p = PanelContainer.new()
 		var sb = StyleBoxFlat.new(); sb.bg_color = Color(str(ch[1])); sb.bg_color.a = 0.20
@@ -908,17 +979,25 @@ func _skill_bar_entries(u: Dictionary) -> Array:
 		if praw.ends_with(".png"):
 			pic = "res://assets/sprites/" + praw
 		out.append({"name": "被动 · " + str(passive.get("name", "")), "cost": -1.0, "icon": pic,
-			"desc": battle._render._render_skill_text(ptpl, u, passive), "tpl": ptpl, "sk": passive})
+			"desc": battle._render._render_skill_text(ptpl, u, passive), "tpl": ptpl, "sk": passive,
+			"two_level": _has_two_levels(passive)})
 
-	# ② 普攻(skillPool[0] 一般是 physical/magic)
+	# ② 普攻 = skillPool[0]。★【无条件】取, 不看 type。
+	#
+	# ★★2026-08-16 修一个"有条件隐藏"的 bug: 原来的判据是
+	#     `if t0 == "physical" or t0 == "magic":` —— 只有普攻的 type 恰好是这两个字符串
+	#     才建这一槽。而实测【28 只龟里有 17 只不是】(熔岩弹 lavaBolt / 一叶刃 bambooLeaf /
+	#     冰锥 iceSpike / 星光弹 starBeam …), 于是六成的龟面板上【普攻那一格直接消失】,
+	#     三槽变两槽、右边空一格, 而且不报任何错。实拍熔岩龟才看见。
+	#   ⇒ pool[0] 按约定【就是】普攻(28 只无一例外), type 是它的实现细节, 不该拿来当过滤器。
+	#     这正是用户 2026-07-21 骂过的那种病: "某些龟身上根本不出现那一行, 你无从知道它存在"。
 	if not pool.is_empty() and pool[0] is Dictionary:
 		var s0: Dictionary = pool[0]
-		var t0 := str(s0.get("type", ""))
-		if t0 == "physical" or t0 == "magic":
-			var btpl = battle.SkillText.text_of(s0, battle._skill_detail())
-			out.append({"name": str(s0.get("name", "普攻")) + " (普攻)", "cost": -1.0,
-				"icon": _skill_icon_path(s0),
-				"desc": battle._render._render_skill_text(btpl, u, s0), "tpl": btpl, "sk": s0})
+		var btpl = battle.SkillText.text_of(s0, battle._skill_detail())
+		out.append({"name": str(s0.get("name", "普攻")) + " (普攻)", "cost": -1.0,
+			"icon": _skill_icon_path(s0),
+			"desc": battle._render._render_skill_text(btpl, u, s0), "tpl": btpl, "sk": s0,
+			"two_level": _has_two_levels(s0)})
 
 	# ③ 携带的主动技(3选1 选中的那一个; 小将走独立文案表)
 	if pool.is_empty():
@@ -934,7 +1013,8 @@ func _skill_bar_entries(u: Dictionary) -> Array:
 					var stpl = battle.SkillText.text_of(sk, battle._skill_detail())
 					out.append({"name": str(sk.get("name", t)), "cost": battle._skill_cost(u, str(t)),
 						"icon": _skill_icon_path(sk),
-						"desc": battle._render._render_skill_text(stpl, u, sk), "tpl": stpl, "sk": sk})
+						"desc": battle._render._render_skill_text(stpl, u, sk), "tpl": stpl, "sk": sk,
+						"two_level": _has_two_levels(sk)})
 					break
 	return out
 
@@ -943,103 +1023,301 @@ func _skill_bar_entries(u: Dictionary) -> Array:
 ## ★不弹浮层 —— 描述框就在被点那一行下面把后面的内容往下推(守「侧边不遮战场」)。
 ## ★行上没有充能条、没有"就绪"标记(用户原话:「不需要什么就绪，进度条」)。
 func _info_skill_bar(vb: VBoxContainer, u: Dictionary) -> void:
+	## 技能区 = 【三个图标横排】(用户 2026-08-16「三个图标横着弄啊」): 被动 / 普攻 / 携带的那一个主动技。
+	##
+	## ★与装备三槽【同构】—— 同样是 72×72 槽 + 读数压图标上 + 点开描述框。
+	##   同一个面板里两种"可点的东西"长成一样, 玩家只需要学一次。
+	## ★点的就是【图标本身】(用户 #11「这些图标点击出现描述」)。
+	##   我上一版做成整行可点是擅自扩大了范围 —— 现在图标就是命中区。
+	## ★图标下给一行小字名字: 光看图标认不出是哪个技能, 而名字是扫一眼就要的。
+	## ★龟能消耗压在图标下沿(只有主动技有) —— 与装备的充能读数同一个位置语言。
 	var entries: Array = _skill_bar_entries(u)
 	if entries.is_empty():
 		return
-	var boxes: Array = []          # 每行对应的描述框, 供手风琴互斥
+	var wrap = VBoxContainer.new()
+	wrap.add_theme_constant_override("separation", 4)
+	vb.add_child(wrap)
+	var rowc = HBoxContainer.new()
+	rowc.add_theme_constant_override("separation", 8)
+	wrap.add_child(rowc)
+	var holder = VBoxContainer.new()
+	holder.add_theme_constant_override("separation", 4)
+	wrap.add_child(holder)
+	var boxes: Array = []
 	battle._info_skill_lbls.clear()
+
 	for e in entries:
 		var ent: Dictionary = e
-		# ── 行 ───────────────────────────────────────────────────────────
-		var row = PanelContainer.new()
-		var rsb = StyleBoxFlat.new()
-		rsb.bg_color = Color("#121b28")
-		rsb.set_border_width_all(1); rsb.border_color = Color("#22303f")
-		rsb.set_corner_radius_all(0)
-		rsb.content_margin_left = 8; rsb.content_margin_right = 8
-		rsb.content_margin_top = 6; rsb.content_margin_bottom = 6
-		row.add_theme_stylebox_override("panel", rsb)
-		row.mouse_filter = Control.MOUSE_FILTER_STOP
-		row.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		vb.add_child(row)
-		var hb = HBoxContainer.new(); hb.add_theme_constant_override("separation", 8)
-		row.add_child(hb)
+		var cell = VBoxContainer.new()
+		cell.add_theme_constant_override("separation", 2)
+		## ★槽是【正方】的 —— 图标本来就是方的, 拉成扁矩形只是为了填宽面板, 本末倒置。
+		##   正确做法是【面板跟着槽走】: 3×88 + 2×8 = 280, 加左右边距 32 ⇒ 面板 312。
+		##   88 也过了本项目的触摸线(44pt = 81 视口像素)。
+		rowc.add_child(cell)
+
+		var slot = PanelContainer.new()
+		var ssb = StyleBoxFlat.new()
+		ssb.bg_color = Color("#121b28")
+		## ★被动槽用【紫边】与另两个区分 —— 被动是"一直生效"、普攻和技能是"要放出来的",
+		##   两回事。光看图标认不出来, 而技能栏三个槽长得一模一样。
+		var is_passive: bool = str(ent.get("name", "")).begins_with("被动 · ")
+		ssb.set_border_width_all(1)
+		ssb.border_color = Color("#8b6ec7") if is_passive else Color("#3a4c60")
+		ssb.set_corner_radius_all(0)
+		slot.add_theme_stylebox_override("panel", _nine_box(HUD_TEX + "slot-frame.png", 12, ssb))
+		## ★被动槽染紫 —— 换成贴图槽框后, 我设在 StyleBoxFlat 上的紫色描边【失效了】
+		##   (贴图不吃 border_color), 三个槽变得一模一样。这是我上一轮自己改出来的回归。
+		##   用 self_modulate 给整张框上色, 保留铆钉与内沿的明暗关系。
+		if is_passive:
+			slot.self_modulate = Color(0.86, 0.72, 1.15)
+		slot.custom_minimum_size = Vector2(88, 88)
+		slot.mouse_filter = Control.MOUSE_FILTER_STOP
+		slot.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		cell.add_child(slot)
+		var inner = Control.new()
+		inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(inner)
 		var ip := str(ent.get("icon", ""))
 		if ip != "" and ResourceLoader.exists(ip):
 			var ir = TextureRect.new()
 			ir.texture = load(ip)
-			ir.custom_minimum_size = Vector2(32, 32)
+			ir.set_anchors_preset(Control.PRESET_FULL_RECT)
 			ir.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			ir.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			ir.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			ir.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			hb.add_child(ir)
-		else:
-			## ★缺图标就留一个等宽空位, 不画占位方块 —— 缺就是缺, 别糊弄成"有图"。
-			var ph = Control.new(); ph.custom_minimum_size = Vector2(32, 32)
-			ph.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			hb.add_child(ph)
-		var nl = Label.new(); nl.text = str(ent.get("name", ""))
-		nl.add_theme_font_size_override("font_size", 15)
-		nl.add_theme_color_override("font_color", Color("#dbe9f7"))
-		nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		nl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		nl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		hb.add_child(nl)
+			inner.add_child(ir)
+		## 龟能消耗压图标下沿(只有主动技有; 被动/普攻不占龟能就不画)
 		var cost: float = float(ent.get("cost", -1.0))
-		var cl = Label.new()
-		cl.text = "—" if cost < 0.0 else str(int(cost))
-		cl.add_theme_font_size_override("font_size", 15)
-		cl.add_theme_color_override("font_color", Color("#5f7186") if cost < 0.0 else Color("#ffce4d"))
-		cl.custom_minimum_size = Vector2(42, 0)
-		cl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		cl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		cl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		hb.add_child(cl)
-		var ar = Label.new(); ar.text = "›"
-		ar.add_theme_font_size_override("font_size", 15)
-		ar.add_theme_color_override("font_color", Color("#5f7186"))
-		ar.custom_minimum_size = Vector2(12, 0)
-		ar.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		ar.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		ar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		hb.add_child(ar)
+		if cost >= 0.0:
+			var cl = Label.new(); cl.text = "%d" % int(cost)
+			cl.add_theme_font_size_override("font_size", 11)
+			cl.add_theme_color_override("font_color", Color("#ffce4d"))
+			cl.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+			cl.offset_top = -14.0; cl.offset_bottom = -1.0
+			cl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			cl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			inner.add_child(cl)
+		## 图标下一行小字名字 —— 光看图标认不出是哪个技能
+		## ★槽下【两行】: 上行是角色(被动/普攻/技能), 下行是名字。
+		##   用户 2026-08-16:「哪个是被动，哪个是普通攻击，哪个是技能你不写吗」——
+		##   光有图标和名字, 玩家不知道这三个的性质不同(一个一直生效、一个不耗龟能、一个要攒)。
+		var role := "技能"
+		if str(ent.get("name", "")).begins_with("被动 · "):
+			role = "被动"
+		elif str(ent.get("name", "")).find("(普攻)") >= 0:
+			role = "普攻"
+		var rl2 = Label.new(); rl2.text = role
+		rl2.add_theme_font_size_override("font_size", 10)
+		rl2.add_theme_color_override("font_color",
+			Color("#b79bf0") if role == "被动" else (Color("#9fb6c9") if role == "普攻" else Color("#ffce4d")))
+		rl2.custom_minimum_size = Vector2(88, 0)
+		rl2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		rl2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cell.add_child(rl2)
+		var nl = Label.new()
+		nl.text = str(ent.get("name", "")).replace("被动 · ", "").replace(" (普攻)", "")
+		nl.add_theme_font_size_override("font_size", 11)
+		nl.add_theme_color_override("font_color", Color("#dbe9f7"))
+		nl.custom_minimum_size = Vector2(88, 0)
+		nl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		nl.clip_text = true
+		nl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cell.add_child(nl)
 
-		# ── 描述框(默认收起) ─────────────────────────────────────────────
-		var dbox = PanelContainer.new()
-		var dsb = StyleBoxFlat.new()
-		dsb.bg_color = Color("#0b1220")
-		dsb.set_border_width_all(1); dsb.border_color = Color("#2b3d52")
-		dsb.set_corner_radius_all(0)
-		dsb.content_margin_left = 10; dsb.content_margin_right = 10
-		dsb.content_margin_top = 8; dsb.content_margin_bottom = 8
-		dbox.add_theme_stylebox_override("panel", dsb)
-		dbox.visible = false
-		vb.add_child(dbox)
-		var dt = RichTextLabel.new()
-		dt.bbcode_enabled = true; dt.fit_content = true; dt.scroll_active = false
-		dt.add_theme_font_size_override("normal_font_size", 13)
-		dt.add_theme_color_override("default_color", Color("#c3d3e3"))
-		dt.text = str(ent.get("desc", ""))
-		dt.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		dbox.add_child(dt)
-		boxes.append(dbox)
-		## 每帧按当前属性重渲染描述里的伤害数值(与旧版同一套引用表)
-		battle._info_skill_lbls.append({"lbl": dt, "tpl": str(ent.get("tpl", "")), "sk": ent.get("sk", {})})
-
-		var my_i: int = boxes.size() - 1
-		row.gui_input.connect(func(ev: InputEvent) -> void:
-			if not (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT):
-				return
-			var opening: bool = not boxes[my_i].visible
-			for bi in range(boxes.size()):
-				boxes[bi].visible = false          # 手风琴: 一次只开一个
-			boxes[my_i].visible = opening
-			ar.text = "⌄" if opening else "›")
+		var cur_sk: Dictionary = ent.get("sk", {})
+		var d_title := str(ent.get("name", ""))
+		var d_body := str(ent.get("desc", ""))
+		var d_key := "sk:" + d_title
+		battle._info_skill_lbls.append({"lbl": null, "tpl": str(ent.get("tpl", "")), "sk": cur_sk})
+		slot.gui_input.connect(func(ev: InputEvent) -> void:
+			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+				_show_detail(battle._info_panel, d_key, d_title, d_body, cur_sk, u))
 
 
 ## 技能字典 → 图标绝对路径; 没配图标返回 ""。
 ## ★实测 112 条技能里 110 条有真图标(98%), 缺的两条: 凤凰「强化涅槃」、熔岩「熔岩爆发」。
+## 九宫格像素框 —— 有贴图就用, 没有退回给定的 StyleBoxFlat。
+##
+## ★这三张是【新生成的】(PixelLab, 2026-08-16), 不复用商店那套, 也不带海底母题:
+##   深蓝金属 + 青色内沿 + 四角铜铆钉。用户逐条要求过「不要复用」「不需要海底」
+##   「没任何游戏味道」「血条龟能条都跟网页一样」。
+## ★退回分支不是摆设: 贴图没导入时 ResourceLoader.exists 是 false(踩过 —— 新 PNG 没
+##   .import 文件, 运行时读不到, 框就是没换上, 而且一句报错都没有)。
+## 面板里的【可点入口条】: 一行标题 + 右侧 ›, 点开走同一个详情浮层。
+##
+## ★只此一份。面板里"内容太多、点开看"的地方有三处(更多属性 / 宝箱战利品 / 以后还会有),
+##   原来「更多属性」是就地手写的一段 —— 再写第二段就是 memory
+##   fb-hand-rolled-copies-drift 说的"手抄一次永远落后一次"。
+## ★高度固定(约 32px)与内容多少无关 —— 这正是把它做成入口条的理由:
+##   宝箱战利品原来铺 0~5 行、每行 46px, 是面板里唯一【高度无界】的一段。
+func _info_more_row(parent: VBoxContainer, title: String, body: String,
+		key: String, u: Dictionary) -> PanelContainer:
+	var row := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("#121b28")
+	sb.set_border_width_all(1); sb.border_color = Color("#22303f"); sb.set_corner_radius_all(0)
+	sb.content_margin_left = 10; sb.content_margin_right = 10
+	sb.content_margin_top = 4; sb.content_margin_bottom = 4
+	## ★九宫格自带的内容边距会盖掉上面 fallback 的 4/4 —— 实拍两条入口都是 46px 高,
+	##   而它们只装一行 14px 的字。九宫格取回来之后【显式压回去】。
+	var _rsb := _nine_box(HUD_TEX + "bar-frame.png", 12, sb)
+	if _rsb is StyleBoxTexture:
+		var _rt := _rsb as StyleBoxTexture
+		_rt.content_margin_left = 10; _rt.content_margin_right = 10
+		## ★上下 6 不是 2 —— 我为了抠高度压到 2, 结果这条【可点】的入口只有 26px 高 = 14pt,
+		##   而触控目标下限是 44pt(本项目 1pt = 1.846px ⇒ 44pt = 81px)。压到点不准就是本末倒置。
+		##   现在 34px = 18.4pt: 仍低于 44pt, 但这一条是【整幅宽 280px】的长条, 横向很好命中。
+		##   ⚠ 这个差距是【登记在案的已知缺口】, 由 verify_info_panel_fits 的断言看着,
+		##     不是"我没想到"(CLAUDE.md: 缺口显式登记成断言, 不许静默截断)。
+		_rt.content_margin_top = 6; _rt.content_margin_bottom = 6
+	row.add_theme_stylebox_override("panel", _rsb)
+	row.mouse_filter = Control.MOUSE_FILTER_STOP
+	row.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	parent.add_child(row)
+	var hb := HBoxContainer.new()
+	row.add_child(hb)
+	var l := Label.new(); l.text = title
+	l.add_theme_font_size_override("font_size", 14)
+	l.add_theme_color_override("font_color", Color("#9fb6c9"))
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hb.add_child(l)
+	var a := Label.new(); a.text = "›"
+	a.add_theme_font_size_override("font_size", 14)
+	a.add_theme_color_override("font_color", Color("#5f7186"))
+	a.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hb.add_child(a)
+	row.gui_input.connect(func(ev: InputEvent) -> void:
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			_show_detail(battle._info_panel, key, title, body, {}, u))
+	return row
+
+
+func _nine_box(tex_path: String, margin: int, fallback: StyleBox) -> StyleBox:
+	if not ResourceLoader.exists(tex_path):
+		return fallback
+	var st := StyleBoxTexture.new()
+	st.texture = load(tex_path)
+	st.set_texture_margin_all(margin)
+	return st
+
+
+const HUD_TEX := "res://assets/sprites/battlehud/"
+
+
+## 在给定容器里铺一层条框(九宫格)。没贴图返回 null, 调用方退回纯色底。
+func _bar_frame(holder: Control) -> NinePatchRect:
+	var p := HUD_TEX + "bar-frame.png"
+	if not ResourceLoader.exists(p):
+		return null
+	var np := NinePatchRect.new()
+	np.texture = load(p)
+	np.patch_margin_left = 14; np.patch_margin_right = 14
+	np.patch_margin_top = 12; np.patch_margin_bottom = 12
+	np.set_anchors_preset(Control.PRESET_FULL_RECT)
+	np.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(np)
+	return np
+
+
+## 详情浮层 —— 点图标/点槽后【浮在信息面板自己身上】显示描述(2026-08-16)。
+##
+## ★为什么不是内联撑开: 撑开必然把后面的内容往下顶 ⇒ 面板超高 ⇒ 要上下滑动。
+##   用户 2026-08-16:「不要向下撑开, 不希望有要上下滑动的」。
+##   而且他 #21 的原话本来就是「点击图片【出现面板】后可以有按钮切换」—— 是"出现面板"。
+## ★浮层只盖【信息面板自己】, 不盖战场 —— 守 2026-07-18「侧边不遮战场」。
+## ★字号自适应: 放不下就 13→12→11 缩一档, 而不是开滚动条(同上, 不许滑)。
+##
+## 每个面板只有一个浮层, 内容按需替换 —— 天然就是"一次只开一个"。
+func _detail_overlay(host_panel: Control) -> Control:
+	var ov = host_panel.get_node_or_null("DetailOverlay")
+	if ov != null:
+		return ov
+	ov = PanelContainer.new()
+	ov.name = "DetailOverlay"
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color("#0b1220")
+	sb.set_border_width_all(2); sb.border_color = Color("#3a5470"); sb.set_corner_radius_all(0)
+	sb.content_margin_left = 12; sb.content_margin_right = 12
+	sb.content_margin_top = 10; sb.content_margin_bottom = 10
+	ov.add_theme_stylebox_override("panel", _nine_box(HUD_TEX + "panel-frame.png", 20, sb))
+	ov.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	ov.offset_left = 10.0; ov.offset_right = -10.0
+	ov.offset_top = -300.0; ov.offset_bottom = -10.0
+	ov.mouse_filter = Control.MOUSE_FILTER_STOP    # 吃掉点击, 不穿到下面的图标
+	ov.visible = false
+	host_panel.add_child(ov)
+	var vb = VBoxContainer.new()
+	vb.name = "Body"
+	vb.add_theme_constant_override("separation", 6)
+	ov.add_child(vb)
+	return ov
+
+
+## 把浮层内容换成这一条, 并显示出来。再点同一个图标就收起(toggle)。
+func _show_detail(host_panel: Control, key: String, title: String, body: String,
+		sk: Dictionary, unit: Dictionary) -> void:
+	var ov := _detail_overlay(host_panel)
+	if ov.visible and str(ov.get_meta("key", "")) == key:
+		ov.visible = false                          # 再点一次 = 收起
+		return
+	ov.set_meta("key", key)
+	var vb: VBoxContainer = ov.get_node("Body")
+	for ch in vb.get_children():
+		vb.remove_child(ch); ch.queue_free()
+	var hb = HBoxContainer.new(); vb.add_child(hb)
+	var ttl = Label.new(); ttl.text = title
+	ttl.add_theme_font_size_override("font_size", 15)
+	ttl.add_theme_color_override("font_color", Color("#ffd93d"))
+	ttl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hb.add_child(ttl)
+	var cb = Button.new(); cb.text = "✕"
+	cb.add_theme_font_size_override("font_size", 14)
+	cb.focus_mode = Control.FOCUS_NONE
+	cb.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	cb.pressed.connect(func() -> void: ov.visible = false)
+	hb.add_child(cb)
+	var dt = RichTextLabel.new()
+	dt.bbcode_enabled = true; dt.fit_content = true; dt.scroll_active = false
+	dt.add_theme_font_size_override("normal_font_size", 13)
+	dt.add_theme_color_override("default_color", Color("#c3d3e3"))
+	dt.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	dt.text = body
+	vb.add_child(dt)
+	## 两级切换: 只在【真有两级】的条目上出现(140 条里只有 28 条)
+	if not sk.is_empty() and _has_two_levels(sk):
+		var brow = HBoxContainer.new()
+		brow.alignment = BoxContainer.ALIGNMENT_END
+		vb.add_child(brow)
+		var tb = Button.new()
+		tb.text = "简明 ▸" if battle._skill_detail() else "详细 ▾"
+		tb.tooltip_text = "简明只给算好的数值; 详细展开公式与比率"
+		tb.add_theme_font_size_override("font_size", 12)
+		tb.focus_mode = Control.FOCUS_NONE
+		tb.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		brow.add_child(tb)
+		tb.pressed.connect(func() -> void:
+			if GameState != null:
+				GameState.skill_text_detail = not battle._skill_detail()
+			var ntpl = battle.SkillText.text_of(sk, battle._skill_detail())
+			dt.text = battle._render._render_skill_text(ntpl, unit, sk)
+			tb.text = "简明 ▸" if battle._skill_detail() else "详细 ▾")
+	ov.visible = true
+
+
+## 这条技能/被动【真的有两级文案】吗?
+##
+## ★实测: 技能+被动共 140 条, 只有 **28 条**配了第二级(全是被动: 不屈/坚壁/生长/审判…),
+##   其余 112 条 desc 是空的 —— 对它们点"详细"什么都不会变。
+##   ⇒ 切换按钮【只在真有两级的条目上出现】。一个点了没反应的按钮比没有按钮更糟:
+##     玩家会以为是卡了, 或者以为自己没看懂。
+func _has_two_levels(sk: Dictionary) -> bool:
+	var b := str(sk.get("brief", "")).strip_edges()
+	var d := str(sk.get("desc", "")).strip_edges()
+	return d != "" and d != b
+
+
 func _skill_icon_path(sk: Dictionary) -> String:
 	var ic := str(sk.get("icon", ""))
 	if ic.ends_with(".png"):

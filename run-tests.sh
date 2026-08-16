@@ -39,6 +39,9 @@ frames_for () {
     #   500 帧只够跑完前一两屏 —— 表现是"没打 ALL PASS"(rc=0 / 致命报错 0), 极易误判成断言失败。
     #   verify_mainmenu_layout 自己还要等入场动画 settle, 帧不够会量到【半空中的坐标】,
     #   于是"66 个控件越界"这种吓人的数字其实是按钮还在飞。
+    # 28 只龟【逐只】开面板 + 每只轮询到滑入动画落定(最多 180 帧) ⇒ 28×180 起步。
+    #   ★帧不够会在半路被掐断 = 没打 ALL PASS, 看着像断言失败(CLAUDE.md §2 那个坑)。
+    verify_info_panel_fits)   echo 20000 ;;
     verify_mainmenu_layout)   echo 6000 ;;
     verify_inventory_layout)  echo 4000 ;;
     verify_codex_layout)      echo 6000 ;;

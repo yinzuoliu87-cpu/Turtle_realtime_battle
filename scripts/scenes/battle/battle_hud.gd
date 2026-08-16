@@ -1038,7 +1038,9 @@ func _build_log_panel() -> void:
 	psb.bg_color = Color(0.03, 0.05, 0.08, 0.92)
 	psb.border_color = Color(0.4, 0.55, 0.72, 0.5)
 	psb.set_border_width_all(2)
-	psb.set_corner_radius_all(8)
+	## ★直角, 不要圆角(2026-08-16)。圆角矩形是 CSS 的长相 —— 用户说的"网页味"里就有这一条,
+	##   而我自己在方案里写过"直角"却没做。像素风的框不该有抗锯齿圆角。
+	psb.set_corner_radius_all(0)
 	battle._log_panel.add_theme_stylebox_override("panel", psb)
 	var vb = VBoxContainer.new()
 	vb.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1857,6 +1859,21 @@ func _close_info_panel() -> void:
 	battle._info_panel = null
 	battle._selected_unit = null
 
+## 递归数一个容器里有几个真 chip(Label)。用来判断状态区是不是空的。
+##
+## ★为什么不用 get_child_count()/get_combined_minimum_size(): 见 _show_unit_info_panel 里的注释,
+##   两个都试过、两个都判错(一个恒非空, 一个恒为空)。数 Label 是唯一和"看得见几个状态"对得上的尺子。
+func _count_chips(n: Node) -> int:
+	if n == null or not is_instance_valid(n):
+		return 0
+	var c := 0
+	for ch in n.get_children():
+		if ch is Label:
+			c += 1
+		c += _count_chips(ch)
+	return c
+
+
 func _show_unit_info_panel(u: Dictionary) -> void:
 	# 引导第 2 步等的就是"玩家点开了详情面板"这个动作(advanceOn: info_panel_opened)。
 	if battle._tutorial != null and is_instance_valid(battle._tutorial):
@@ -1871,7 +1888,11 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	var side_col = Color("#4ade80") if is_left else Color("#ff6b6b")
 
 	# ── 侧边面板(右锚·不遮全场·无backdrop·用户2026-07-18「侧边不遮战场」) ──
-	var PW = 400.0
+	## ★面板宽度【由槽反推】(用户 2026-08-16:「是整个大框变窄啊，图标肯定是正方的啊」):
+	##   3 个正方槽 88 + 2 个间距 8 = 280, 加左右内边距各 16 ⇒ 312。
+	##   原来 400 是拍的, 于是三个 72 的槽右边白空 136px —— 我一开始想把槽拉宽去填面板,
+	##   那是本末倒置: 图标本来就是方的, 该让面板跟着槽走。窄下来战场也多露一条。
+	var PW = 312.0
 	var panel = PanelContainer.new()
 	panel.name = "InfoPanel"
 	var psb = StyleBoxFlat.new()
@@ -1882,10 +1903,28 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	psb.set_corner_radius_all(14)
 	psb.content_margin_left = 16; psb.content_margin_right = 16
 	psb.content_margin_top = 14; psb.content_margin_bottom = 14
-	panel.add_theme_stylebox_override("panel", psb)
+	## ★★有九宫格像素框就用它, 没有才退回 StyleBoxFlat(2026-08-16)。
+	##   用户逐条说过:「很 ai 味和网页味」「不要复用」「不需要海底」「还是用网页框吗」
+	##   「没任何游戏味道」。之前一直是 StyleBoxFlat + 1px 线 —— 那就是个 CSS 方块。
+	##   ★这张是【新生成的】(PixelLab), 不是复用商店那张: 深蓝金属 + 青色内沿 + 四角铜铆钉,
+	##     没有海草贝壳。铆钉是这套 UI 的签名细节(菜单木牌上就有)。
+	##   ★用 StyleBoxTexture 九宫格而不是贴死图 —— 面板高度随视口变。
+	var _ptex := "res://assets/sprites/battlehud/panel-frame.png"
+	if ResourceLoader.exists(_ptex):
+		var pst := StyleBoxTexture.new()
+		pst.texture = load(_ptex)
+		pst.set_texture_margin_all(20)
+		## ★内边距给足 —— 第 1 轮实拍内容贴到边框上, 把四角铆钉压住了。
+		pst.content_margin_left = 22; pst.content_margin_right = 22
+		pst.content_margin_top = 20; pst.content_margin_bottom = 18
+		panel.add_theme_stylebox_override("panel", pst)
+	else:
+		panel.add_theme_stylebox_override("panel", psb)
 	panel.anchor_left = 1.0; panel.anchor_right = 1.0; panel.anchor_top = 0.0; panel.anchor_bottom = 1.0
 	panel.offset_left = -(PW + 16.0); panel.offset_right = -16.0
-	panel.offset_top = 56.0; panel.offset_bottom = -16.0
+	## ★上下各再要一点空间(2026-08-16): 56/-16 是拍的, 顶部 HUD 那排按钮到 y≈46 就结束了,
+	##   底下也没有任何东西。宝箱龟正好差 28px 才装得下, 这里白让出来的 18px 是最便宜的一笔。
+	panel.offset_top = 46.0; panel.offset_bottom = -8.0
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP   # 吃掉面板内点击(不穿到战场·点空白才关)
 	battle._ui_layer.add_child(panel)
 	battle._info_panel = panel
@@ -1895,7 +1934,9 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	panel.add_child(scroll)
 	var vb = VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 8)
+	## ★行距 6 不是 8 —— 这个面板有 14 个区段, 每格省 2px 就是 28px。
+	##   "不许上下滑动"是硬要求(用户 2026-08-16:「不要向下撑开，不希望有要上下滑动的」)。
+	vb.add_theme_constant_override("separation", 4)
 	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(vb)
 
@@ -1903,7 +1944,10 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	var head = HBoxContainer.new(); head.add_theme_constant_override("separation", 10); vb.add_child(head)
 	var big = TextureRect.new()
 	big.texture = battle._unit_portrait_texture(u)
-	big.custom_minimum_size = Vector2(64, 64)
+	## ★头像 56 不是 64(2026-08-16): 它只是"这是谁"的标识, 旁边就写着名字;
+	##   而面板最缺的是高度(宝箱龟 639px 塞 628px)。头像不是可点元素, 不受触控尺寸约束 ——
+	##   ⚠ 槽位就受: 88px = 47.7pt, 触控最小 44pt = 81px, 所以【槽一格都不能缩】。
+	big.custom_minimum_size = Vector2(56, 56)
 	big.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; big.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	big.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	head.add_child(big)
@@ -1933,7 +1977,9 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	battle._add_panel_sep(vb)
 
 	# 当前状态 chips
-	battle._add_section_title(vb, "当前状态")
+	## ★「当前状态」这个金色段标题删了 —— 其余三个(技能/装备/详细属性)早就删了,
+	##   它是最后一个 `h3`。状态本来就带图标, 一排图标就说明了这是状态区, 不需要标题再说一遍。
+	##   (用户 2026-08-16 指出"很网页味", 段标题+正文+分隔线正是 HTML 的结构。)
 	# ★状态 chips 也要实时(用户「面板里所有的数值需要实时变化」) —— 护盾/灼烧/眩晕
 	#   在战斗中变得最频繁, 原来却是开面板那一刻建一次就再也不动。
 	#   chips 【条目数会变】(状态来了又走), 只能整块重建, 所以单独存容器 + 节流重建。
@@ -1944,10 +1990,25 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 
 	battle._info_sys._info_status_chips(battle._info_status_box, u)
 	battle._info_status_sig = battle._status_signature(u)
+	## ★没有任何状态时, 上面那条分隔线要【撤掉】—— 否则两条发丝线贴在一起中间夹一个
+	##   0 高的空容器, 白吃 9px。实测宝箱龟面板 736px 塞进 610px 的视口, 每一格都要抠。
+	##   (Godot 的 VBox 会跳过不可见子节点, 但两条 sep 本身还是两个可见子节点。)
+	##   ⚠ 判据踩过两次:
+	##     ① get_child_count()==0 —— 状态区里【永远有一个 HFlowContainer】, 只是它空着 ⇒ 恒不成立。
+	##     ② get_combined_minimum_size().y<=0 —— HFlowContainer 的最小高要【知道自己多宽】才算得出,
+	##        建完那一帧还没排版, 它对【有状态的情况也返回 0】⇒ 把真实的状态区一起删了。
+	##        (门禁 verify_info_panel_live 当场红:「状态带剩余秒数」找不到文本 —— 因为整块没了。)
+	##   ⇒ 问的应该是"里面到底有没有东西", 那就【递归数一数】, 不要问排版。
+	if _count_chips(battle._info_status_box) == 0:
+		battle._info_status_box.queue_free()
+		var _prev := vb.get_child(vb.get_child_count() - 2)
+		if _prev is ColorRect:
+			_prev.queue_free()
 
 	# 宝箱龟专属: 财宝值进度 + 已开出的战利品(用户2026-07-19"信息面板得显示当前累计的财宝值/当前抽取的装备和图标/专属装备的描述")
 	if battle._is_chest_turtle(u):
-		battle._add_panel_sep(vb)
+		## ★这里【不加分隔线】—— 战利品是一个 26px 的入口条, 前后已经各有一条线,
+		##   三条发丝线夹两个小块看着是"过度分栏", 而不是分组。省下 7px。
 		battle._info_sys._info_chest_section(vb, u)
 
 	## ── 第四行【技能栏】(2026-08-16)─────────────────────────────────────
@@ -1958,9 +2019,9 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	##   ★旧版是「金色段标题 + 简明/详细开关 + 整段正文」, 那是网页的 h3+p 结构,
 	##     也正是用户说的"网页味"的来源之一。
 	battle._add_panel_sep(vb)
-	## ★简明/详细开关保留 —— 它管的是【展开后那个描述框】里给缩略还是全文(用户需求1 两级描述)。
-	##   我删旧技能段时把它一起拆了, verify_two_level_desc 当场红。放技能栏上方, 手够得着。
-	battle._add_detail_toggle(vb, u)
+	## ★两级切换按钮不在这里 —— 它搬进了【展开后的描述框】(用户 2026-08-16:
+	##   「点击图片出现面板后可以有按钮切换」)。悬在面板顶上那个全局开关删了:
+	##   140 条技能/被动里只有 28 条真有第二级, 对其余 112 条点它毫无反应。
 	battle._info_sys._info_skill_bar(vb, u)
 
 	## ── 第五行【装备三槽】(2026-08-16)─────────────────────────────────────
@@ -1969,7 +2030,16 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	##   点整槽 → 撑开有边框的描述框, 与技能栏同一套手风琴。空槽画灰框。
 	## ★战斗中装备会变(财神招财临时升星、宝箱龟开出新装备) ⇒ 条目数/星级都会变,
 	##   所以整块重建 + 签名节流, 容器单独存。
-	battle._add_panel_sep(vb)
+	## ★这里【不再 _add_panel_sep】—— 下面 hair2 就是这条线。实拍量到两条发丝线相隔 7px,
+	##   等于同一条分隔画了两遍(而且两条紧挨着看起来像描边, 不像分隔)。
+	## ★技能三槽与装备三槽之间一条发丝线 —— 两排槽长得一模一样, 不隔开扫一眼分不出
+	##   哪三个是技能哪三个是装备。用发丝线不用段标题(段标题就是被删掉的那个网页式 h3)。
+	## ⚠ 必须加在【容器 add_child 之前】: VBox 的顺序由入树先后决定, 不是由"谁先被填充"决定。
+	##   我第一版加在填充调用那一行, 结果线跑到属性区后面去了。
+	var hair2 = ColorRect.new()
+	hair2.color = Color(1, 1, 1, 0.07)
+	hair2.custom_minimum_size = Vector2(0, 1)
+	vb.add_child(hair2)
 	battle._info_equip_box = VBoxContainer.new()
 	battle._info_equip_box.add_theme_constant_override("separation", 4)
 	vb.add_child(battle._info_equip_box)
@@ -1988,21 +2058,25 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	battle._add_panel_sep(vb)
 	battle._info_stat_labels.clear()
 	var gmain = GridContainer.new(); gmain.columns = 2
-	gmain.add_theme_constant_override("h_separation", 18); gmain.add_theme_constant_override("v_separation", 5)
+	## ★行距 2 不是 5: 属性是 4 行两列的密表, 行距大了反而更难成对读(同族两项在同一行)。
+	gmain.add_theme_constant_override("h_separation", 18); gmain.add_theme_constant_override("v_separation", 2)
 	vb.add_child(gmain)
 	for row in battle._info_sys._info_stat_rows_main(u):
 		battle._info_stat_labels.append(battle._info_sys._info_stat_cell(gmain, "", str(row[1]), row[2], str(row[0])))
-	var hair = ColorRect.new()
-	hair.color = Color(1, 1, 1, 0.07)
-	hair.custom_minimum_size = Vector2(0, 1)
-	vb.add_child(hair)
-	var gmin = GridContainer.new(); gmin.columns = 2
-	gmin.add_theme_constant_override("h_separation", 18); gmin.add_theme_constant_override("v_separation", 2)
-	vb.add_child(gmin)
-	for row2 in battle._info_sys._info_stat_rows_minor(u):
-		var lb2 = battle._info_sys._info_stat_cell(gmin, "", str(row2[1]), row2[2], str(row2[0]))
-		lb2.add_theme_font_size_override("font_size", 12)
-		battle._info_stat_labels.append(lb2)
+	## ★次要属性【不直接铺在下面】(用户 2026-08-16:「更多属性不要直接放在这下面」)——
+	##   做成一个可点条目, 点开走【和技能/装备同一个浮层】。面板里只有一种"看更多"的语言。
+	##   ⚠ 用户 2026-07-21 定过「属性全都要显示啊」: 这不是条件隐藏(那次他不满的是
+	##     "某些龟身上根本不出现那一行, 你无从知道它存在"), 而是固定入口 + 条数写在标题上。
+	## ★「更多属性」改走共用的入口条 _info_more_row(2026-08-16)。
+	##   原来这里是就地手写的一段(建 PanelContainer/StyleBox/HBox/两个 Label/接 gui_input),
+	##   而宝箱战利品也要同一个东西 —— 再抄一遍就是 memory fb-hand-rolled-copies-drift
+	##   说的"手抄一次永远落后一次"。现在两处只剩一个出处。
+	## ⚠ 用户 2026-07-21 定过「属性全都要显示啊」: 这不是条件隐藏, 是固定入口 + 条数写在标题上。
+	var minor: Array = battle._info_sys._info_stat_rows_minor(u)
+	var mtxt := ""
+	for r2 in minor:
+		mtxt += str(r2[1]) + char(10)
+	battle._info_sys._info_more_row(vb, "更多属性（%d 项）" % minor.size(), mtxt, "more_stats", u)
 	battle._info_stat_grid = gmain
 
 	battle._info_sys._info_equip_slots(battle._info_equip_box, u)

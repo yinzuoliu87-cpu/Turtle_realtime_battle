@@ -211,6 +211,28 @@ func _chest_greed_apply(u: Dictionary, n: int) -> void:        # 贪婪(技三�
 	u["hp"] = float(u["hp"]) + hb
 	battle._recalc_stats(u)
 
+## 战利品清单的【纯文本形态】—— 供面板的入口条点开后在浮层里显示(2026-08-16)。
+##
+## ★与 _chest_loot_row 同源取名/取描述(_CHEST_TREASURE_NAME / _CHEST_TREASURE_DESC),
+##   不另抄一份表 —— 抄一份就等着它漂。
+func loot_detail_text(owned: Dictionary) -> String:
+	if owned == null or owned.is_empty():
+		return "本场还没开出任何战利品。
+攒够财宝值就会自动开箱, 最多 5 件。"
+	var out: String = ""
+	for tid in owned.keys():
+		var k := str(tid)
+		out += str(battle._CHEST_TREASURE_NAME.get(k, k)) + "
+"
+		var d := str(battle._CHEST_TREASURE_DESC.get(k, ""))
+		if d != "":
+			out += d + "
+"
+		out += "
+"
+	return out.strip_edges()
+
+
 func _chest_loot_row(parent: VBoxContainer, tid: String) -> void:
 	var row = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)

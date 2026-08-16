@@ -8793,25 +8793,21 @@ func _fill_chest_section(sec: VBoxContainer, u: Dictionary) -> void:
 	var season_mode: bool = (not _review_demo()) and str(u.get("side", "")) == "left" and GameState != null and not u.get("is_summon", false)
 	var tv: float = float(GameState.chest_treasure_value) if season_mode else float(u.get("dmg_dealt", 0.0))
 	var opened: int = (GameState.chest_treasures_won as Array).size() if season_mode else int(u.get("chest_opened", 0))
-	_add_section_title(vb, "藏宝图 · 财宝值")
-	if opened >= 5:
-		_info_sys._info_bar(vb, 1.0, 1.0, Color("#ffd93d"), "财宝 %d  ·  宝箱已开满 (5/5)" % int(tv))
-	else:
-		var need: float = float(_CHEST_THRESH[opened]) if season_mode else 0.0
-		if season_mode:
-			var prev: float = float(_CHEST_THRESH[opened - 1]) if opened > 0 else 0.0
-			_info_sys._info_bar(vb, clampf(tv - prev, 0.0, maxf(1.0, need - prev)), maxf(1.0, need - prev), Color("#ffd93d"),
-				"财宝 %d / %d  ·  下一个宝箱 (%d/5)" % [int(tv), int(need), opened + 1])
-		else:
-			_info_sys._info_bar(vb, 1.0, 1.0, Color("#ffd93d"), "财宝 %d  ·  已开 %d/5 (单场制)" % [int(tv), opened])
-	# 已开出的战利品: 面板显【本单位身上生效的那些】(chest_treasures), 跨场常驻的也已注入到单位上
+	## ★★这里【不再画财宝条】(2026-08-16)。第二行的资源条里已经有一条「财宝 x / y」,
+	##   分母走的是同一张 _CHEST_THRESH ⇒ 原来同一个数字在同一屏上出现两次,
+	##   还各带一句结论("下一个宝箱 3/5" vs "攒满开箱")。实测这一段白吃 61px,
+	##   而宝箱龟正是唯一撑破面板高度的龟(736px 塞 610px 的视口)。
+	##   删掉重复的那条之后, 这一段只剩【别处没有的信息】: 已经开出了什么。
+	##   (tv/opened 仍要算 —— 战利品行要用, 且 season_mode 决定读存档还是读本场。)
+	## ★★战利品做成【一个可点入口】, 不再把 0~5 行清单铺在面板里(2026-08-16)。
+	##   由来: 这是面板里唯一【高度无界】的一段 —— 每开一件就长约 46px,
+	##   开满 5 件相当于凭空多出 230px, 而"不许上下滑动"是硬要求。
+	##   抠间距治不了无界增长, 只能换形态。
+	##   ★不是新发明的交互: 技能三槽、装备三槽、更多属性【都是点开同一个浮层】,
+	##     这一段跟着走, 面板里"看详情"就只有一种语言。
 	var owned: Dictionary = u.get("chest_treasures", {})
-	_add_section_title(vb, "  已获战利品 (%d)" % owned.size(), Color("#ffd93d"), 14)
-	if owned.is_empty():
-		_add_body_text(vb, "尚未开出", Color("#7a8694"))
-		return
-	for tid in owned.keys():
-		_chest_sys._chest_loot_row(vb, str(tid))
+	_info_sys._info_more_row(vb, "战利品 %d/5" % owned.size(),
+		_chest_sys.loot_detail_text(owned), "chest_loot", u)
 
 ## 一件战利品: 金框图标 + 名 + 效果描述 (样式对齐 _add_equip_row)
 const MINION_SKILL_DESC := {
@@ -8832,32 +8828,6 @@ const MINION_SKILL_DESC := {
 func _skill_detail() -> bool:
 	return GameState != null and bool(GameState.get("skill_text_detail"))
 
-
-## 面板顶部的「简明 / 详细」切换。切完【整块重建】面板 ——
-## 详细文案长度差很多, 只换文字会让布局错位。
-func _add_detail_toggle(vb: VBoxContainer, u: Dictionary) -> void:
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_END
-	vb.add_child(row)
-	var btn := Button.new()
-	var on := _skill_detail()
-	btn.text = "详细 ▾" if on else "简明 ▸"
-	btn.tooltip_text = "切换技能说明: 简明只给算好的数值, 详细展开公式与比率"
-	btn.add_theme_font_size_override("font_size", 13)
-	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	btn.focus_mode = Control.FOCUS_NONE
-	btn.pressed.connect(func() -> void:
-		if GameState != null:
-			GameState.skill_text_detail = not _skill_detail()
-		# 重开同一只龟的面板 = 整块按新模式重建
-		var keep = _selected_unit
-		_hud._close_info_panel()
-		if keep is Dictionary and (keep as Dictionary).get("alive", false):
-			_hud._show_unit_info_panel(keep))
-	row.add_child(btn)
-
-
-## 装备行: 图标 + 名 + ★×star + 效果 稀有度色描边图标框.
 func _add_equip_row(parent: VBoxContainer, eid: String, star: int) -> void:
 	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
 	var row := HBoxContainer.new()
@@ -8930,7 +8900,12 @@ func _add_body_text(parent: VBoxContainer, text: String, col: Color = Color("#c2
 	l.add_theme_font_size_override("font_size", 12)
 	l.add_theme_color_override("font_color", col)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.custom_minimum_size = Vector2(380, 0)
+	## ★不许写死宽度。原来是 `Vector2(380, 0)` —— 那是面板还 400 宽时代的数字,
+	##   2026-08-16 面板收窄到 312 时【没跟着改】, 于是这一行反过来把面板顶宽:
+	##   实测宝箱龟 min=380 ⇒ 面板 312→432, 比别的龟宽 120px(同一个界面两种宽度)。
+	##   min 给 0 + 横向填充 ⇒ 换行按【容器实际宽度】走, 面板多宽它就多宽。
+	l.custom_minimum_size = Vector2(0, 0)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	parent.add_child(l)
 	return l   # ★返回 Label 供每帧重渲染技能伤害数值
 

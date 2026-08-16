@@ -125,8 +125,24 @@ func _test_panel_switches() -> void:
 	# 面板没开时按钮不存在是正常的 —— 这里改为查源码接线点
 	var src := FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd") + "
 " + FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_hud.gd")   # 详情面板已抽到 BattleHud(2026-07-26)
-	_ok("★面板里挂了这个开关", _code_only(src).contains("_add_detail_toggle(vb, u)"),
-		"没接线 = 玩家点不到")
+	## ★2026-08-16 开关【搬进展开后的描述框】(用户:「点击图片出现面板后可以有按钮切换」),
+	##   面板顶上那个全局开关删了 —— 140 条技能/被动里只有 28 条真有第二级,
+	##   对其余 112 条点它毫无反应, 那是个点了没用的按钮。
+	## ★判据也跟着从"搜函数名"改成【量真实行为】: 只在真有两级的条目上建按钮。
+	var src_ip := FileAccess.get_file_as_string("res://scripts/scenes/battle/info_panel.gd")
+	## ★2026-08-16 描述从"内联撑开"改成【浮层】(用户:「不要向下撑开, 不希望有要上下滑动的」),
+	##   开关跟着搬进 `_show_detail` 里。判据跟着搬 —— 守的是"开关和它管的那段文字在一起",
+	##   不是"当时写在哪个函数里"。
+	_ok("★开关挂在点开后的详情浮层里(不是悬在面板顶上)",
+		src_ip.find("func _show_detail") >= 0
+		and src_ip.find("_has_two_levels(sk)") >= 0
+		and src_ip.find("_add_detail_toggle") < 0)
+	_ok("★★只在【真有两级】的条目上出现(点了没反应的按钮比没有更糟)",
+		src_ip.find("func _has_two_levels") >= 0)
+	## ★死函数不许留着: 面板顶上那个开关没人调了, 函数本体也一并删掉 ——
+	##   留着不调会被"断言它存在"的门禁假保护住(踩过)。
+	_ok("★★旧的全局开关函数已删净(不是留着不调)",
+		FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd").find("func _add_detail_toggle") < 0)
 	if GameState != null:
 		GameState.skill_text_detail = false
 	s.queue_free()

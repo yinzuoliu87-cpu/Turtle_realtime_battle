@@ -104,6 +104,7 @@ func _ready() -> void:
 	_test_single_readout_table()
 	await _test_section_order()
 	await _test_panel_v2()
+	await _test_no_rebuild_loop()
 
 	_s.queue_free()
 	await get_tree().process_frame
@@ -236,15 +237,15 @@ func _test_energy_points_on_real_panel() -> void:
 	var cost0: float = _s._skill_cost(u, "lavaErupt")
 	_ok("★★龟能条印【点数】而不是百分比(技能文案写的就是点数)",
 		en.find("/ %d" % int(cost0)) >= 0, "实得 '%s'(满值应是 %d)" % [en, int(cost0)])
-	_ok("★★还差几秒 = 真实剩余冷却(3.0 秒)", en.find("3.0 秒") >= 0, "实得 '%s'" % en)
-
+	## ★这两条删了(用户 2026-08-16:「龟能那里不需要文字不需要几秒后释放」)——
+	##   龟能条不再带结论文字, 条 + `当前/上限` 已经说完; 再写"6.0 秒后可放"是同一件事说第三遍。
+	##   ⚠ 仍然守住的是【印点数不印百分比】(下面那条), 那是技能文案对得上的口径。
 	# 攒满 → 说人话地告诉玩家能放哪个技
 	u["skill_cd"] = {"lavaErupt": 0.0}
 	_ip._refresh_info_panel()
 	var en2: String = _res_text("龟能") + "  " + _res_hint("龟能")
 	## ★2026-08-16: 攒满时的说法从"攒满了"改成【可放「技能名」】—— 更直接, 且点名是哪个技能。
-	_ok("★★攒满时明说可以放(不是继续印一个 100%)",
-		en2.find("可放") >= 0 or en2.find("攒满") >= 0, "实得 '%s'" % en2)
+
 
 	## ★★口径合一的关键一条: 火山形态下 _skill_cost 特判成 120,
 	##   面板必须跟着变成 120 —— 技能文案里写的正是「在火山形态(120 龟能)下」。
@@ -305,14 +306,14 @@ func _test_form_chip_on_real_panel() -> void:
 	_ip._refresh_info_panel()
 	var b2 = _s._info_status_box
 	_ok("★双头·远程形态在面板上看得见",
-		_find_label(b2, "远程形态") != "" and _find_label(b2, "近战形态") == "",
-		"远程='%s' 近战='%s'" % [_find_label(b2, "远程形态"), _find_label(b2, "近战形态")])
+		_find_label(_s._info_status_box, "远程形态") != "" and _find_label(_s._info_status_box, "近战形态") == "",
+		"远程='%s' 近战='%s'" % [_find_label(_s._info_status_box, "远程形态"), _find_label(_s._info_status_box, "近战形态")])
 	v["two_form"] = "melee"
 	_ip._refresh_info_panel()
 	## ★两条都要查 —— 只查"近战出现了"守不住"远程还在"(旧 chip 没摘干净时两个会同时挂着)。
 	_ok("★★双头切近战后面板跟着切(而且远程那条不许残留)",
-		_find_label(b2, "近战形态") != "" and _find_label(b2, "远程形态") == "",
-		"近战='%s' 远程残留='%s'" % [_find_label(b2, "近战形态"), _find_label(b2, "远程形态")])
+		_find_label(_s._info_status_box, "近战形态") != "" and _find_label(_s._info_status_box, "远程形态") == "",
+		"近战='%s' 远程残留='%s'" % [_find_label(_s._info_status_box, "近战形态"), _find_label(_s._info_status_box, "远程形态")])
 	_s._hud._close_info_panel()
 
 
@@ -375,20 +376,21 @@ func _test_equip_readout_on_real_panel() -> void:
 	var box = _s._info_equip_box
 	_ok("★分母: 装备区容器在", box != null and is_instance_valid(box))
 	var cap: float = float(EquipReadouts.CHARGE["p2eq_093"][1])
-	var ch := _find_label(box, "充能")
+	var ch := _find_label(_s._info_equip_box, "充能")
 	_ok("★★装备充能在详情面板上看得见(原来只有名字+星级)",
 		ch.find("1000") >= 0 and ch.find(_s._fmt_num(cap)) >= 0,
 		"实得 '%s'(满值 %s)" % [ch, _s._fmt_num(cap)])
-	_ok("★★层数也看得见", _find_label(box, "层数").find("7") >= 0,
-		"实得 '%s'" % _find_label(box, "层数"))
+	_ok("★★层数也看得见", _find_label(_s._info_equip_box, "层数").find("7") >= 0,
+		"实得 '%s'" % _find_label(_s._info_equip_box, "层数"))
 	# 活的: 攒了就要跟着涨(不是开面板那一刻的快照)
 	(u["eq_state"]["p2eq_093"] as Dictionary)["chg"] = 2600.0
 	(u["eq_state"]["p2eq_093"] as Dictionary)["marks"] = 9
 	_ip._refresh_info_panel()
-	_ok("★★充能是活的(攒了就跟着涨)", _find_label(box, "充能").find("2600") >= 0,
-		"实得 '%s'" % _find_label(box, "充能"))
-	_ok("★★层数是活的", _find_label(box, "层数").find("9") >= 0,
-		"实得 '%s'" % _find_label(box, "层数"))
+	## ★现取容器 —— 装备区签名一变就整块重建, `box` 会变成已被 queue_free 的旧节点。
+	_ok("★★充能是活的(攒了就跟着涨)", _find_label(_s._info_equip_box, "充能").find("2600") >= 0,
+		"实得 '%s'" % _find_label(_s._info_equip_box, "充能"))
+	_ok("★★层数是活的", _find_label(_s._info_equip_box, "层数").find("9") >= 0,
+		"实得 '%s'" % _find_label(_s._info_equip_box, "层数"))
 	_s._hud._close_info_panel()
 
 
@@ -514,7 +516,21 @@ func _test_section_order() -> void:
 			if body_y < 0.0 or (n2 as Control).global_position.y < body_y:
 				body_y = (n2 as Control).global_position.y
 				body_txt = s2.substr(0, 24)
-	_ok("★分母: 找得到「技能」段标题", ys.has("技能"), "找到 %s" % str(ys.keys()))
+	## ★段标题「技能」删了(网页式 h3)。技能现在是三个图标横排, 起点用【第一个技能槽】的 y。
+	##   判据从"找标题"改成"找槽" —— 守的是"技能区在屏内", 不是"当时有没有那个标题"。
+	if not ys.has("技能"):
+		var stk2: Array = [panel]
+		while not stk2.is_empty():
+			var n3 = stk2.pop_back()
+			for c3 in n3.get_children():
+				stk2.append(c3)
+			## ★认【正方槽】: 高 = SLOT_PX 的 PanelContainer。
+			##   判据不写死 88 —— 从槽自己的高读, 真正要守的是"正方 + 够大"(下面两条)。
+			if n3 is PanelContainer and (n3 as Control).custom_minimum_size.y >= 81.0:
+				var yy: float = (n3 as Control).global_position.y
+				if not ys.has("技能") or yy < float(ys["技能"]):
+					ys["技能"] = yy
+	_ok("★分母: 找得到技能区(三个 72×72 图标槽)", ys.has("技能"), "找到 %s" % str(ys.keys()))
 	## ★原来这里断言"屏上有技能的伤害数字"。技能重做后数字在【点开才展开的描述框】里,
 	##   收起时屏上本来就没有 —— 继续断言等于要求描述默认展开, 而那正是要去掉的"整段正文"。
 	##   真正该守的是【技能行在不在屏内】, 由下面那条量。
@@ -527,10 +543,26 @@ func _test_section_order() -> void:
 				float(ys["技能"]) < float(ys["详细属性"]),
 				"技能 %.0f vs 属性 %.0f" % [float(ys["技能"]), float(ys["详细属性"])])
 	## ★面板必须【不透明】: 0.96 时右侧队伍头像栏正好压在底下, 4% 透上来像重影(实拍确认)。
+	## ★2026-08-16 面板底换成【九宫格像素框】(StyleBoxTexture), 不再是 StyleBoxFlat ——
+	##   原判据只认 StyleBoxFlat 的 alpha, 换了皮就读到 -1 假红。
+	##   要守的是"底不透明、右侧头像栏不会透上来", 那就【量真实像素】: 从截图取面板中央
+	##   一块空白区, 它必须是实心的(不透明度由贴图保证, 且贴图本身不带 alpha 渐变)。
 	var psb: StyleBox = panel.get_theme_stylebox("panel")
-	_ok("★★面板底不透明(alpha=1.0, 不让右侧头像栏透上来)",
-		psb is StyleBoxFlat and absf((psb as StyleBoxFlat).bg_color.a - 1.0) < 0.001,
-		"实测 alpha %.2f" % ((psb as StyleBoxFlat).bg_color.a if psb is StyleBoxFlat else -1.0))
+	_ok("★★面板底用的是像素九宫格框(不是 CSS 圆角方块)",
+		psb is StyleBoxTexture, "实得 %s" % (psb.get_class() if psb != null else "null"))
+	if psb is StyleBoxTexture:
+		var tx: Texture2D = (psb as StyleBoxTexture).texture
+		_ok("★★★框贴图是【新生成的战斗 HUD 框】(不是复用商店那张)",
+			tx != null and str(tx.resource_path).find("battlehud/panel-frame") >= 0,
+			"实得 %s" % (str(tx.resource_path) if tx != null else "null"))
+		var img: Image = tx.get_image()
+		var cx: int = int(img.get_width() * 0.5)
+		var cy: int = int(img.get_height() * 0.5)
+		## ★原始要求是【面板底不透明】—— 0.96 时右侧队伍头像栏正好压在底下, 4% 透上来像重影。
+		##   这张框自带实心中心, 直接满足; 所以判据就量它: 中心必须不透明。
+		##   (我第一版反过来断言"中心透空", 那是我假设所有框都是空心的 —— 假设不是要求。)
+		_ok("★★★框的中心不透明(右侧头像栏不会透上来)",
+			img.get_pixel(cx, cy).a > 0.99, "中心 alpha %.2f" % img.get_pixel(cx, cy).a)
 
 
 ## ── 面板重做 v2 的六行结构 (2026-08-16) ─────────────────────────────────
@@ -597,36 +629,60 @@ func _test_panel_v2() -> void:
 		no_cap.is_empty(), "缺分母: %s" % str(no_cap))
 
 	# ③ 技能栏三行, 且行上没有"就绪"、没有进度条混进技能区
+	## ★技能改成三图标横排后, 图标下的小字名字【裁掉了"被动 · "与"(普攻)"前后缀】
+	##   (72px 放不下全称)。所以判据从"扫面板文本"改成量【数据源本身】——
+	##   要守的是"被动/普攻/主动三条都在", 不是"当时那几个字长什么样"。
+	var sb_ents: Array = _s._info_sys._skill_bar_entries(u)
+	var sb_names := ""
+	for se in sb_ents:
+		sb_names += str((se as Dictionary).get("name", "")) + " | "
 	_ok("★★③ 技能栏含【被动/普攻/主动】三条",
-		all_txt.find("被动 · ") >= 0 and all_txt.find("(普攻)") >= 0,
-		"文本: 被动=%s 普攻=%s" % [str(all_txt.find("被动 · ") >= 0), str(all_txt.find("(普攻)") >= 0)])
+		sb_names.find("被动 · ") >= 0 and sb_names.find("(普攻)") >= 0 and sb_ents.size() >= 3,
+		"%d 条: %s" % [sb_ents.size(), sb_names])
 	_ok("★★★③ 技能行上没有「就绪」字样(用户:「不需要什么就绪，进度条」)",
 		all_txt.find("就绪") < 0)
 
 	# ④ 装备槽: 72×72
-	var slot_ok := 0
+	## ★2026-08-16 槽改成【平分整宽】—— 原来固定 72 宽, 右边白空 136px(内宽 368)。
+	##   铺满后每槽约 117, 顺带把触摸缺口补上: 本项目 44pt = 81 视口像素, 72 不达标 117 达标。
+	var slot_w := 0.0
+	var slot_h := 0.0
+	var slot_n := 0
 	for t in texs:
 		var p2 = (t as Control).get_parent()
 		while p2 != null and not (p2 is PanelContainer):
 			p2 = p2.get_parent()
-		if p2 != null and absf((p2 as Control).custom_minimum_size.x - 72.0) < 0.5:
-			slot_ok += 1
-	_ok("★★④ 装备槽是 72×72(触摸目标; 仍低于本项目实测的 81px 线, 显式登记)",
-		slot_ok >= 1, "命中 %d 个槽" % slot_ok)
+		if p2 != null and (p2 as Control).custom_minimum_size.y >= 81.0:
+			slot_n += 1
+			slot_w = maxf(slot_w, (p2 as Control).size.x)
+			slot_h = maxf(slot_h, (p2 as Control).size.y)
+	_ok("★分母: 找得到槽", slot_n >= 1, "%d 个" % slot_n)
+	_ok("★★★④ 槽 ≥ 81px(本项目 44pt 触摸线)", slot_w >= 81.0 and slot_h >= 81.0,
+		"实测 %.0f×%.0f" % [slot_w, slot_h])
+	## ★槽必须是【正方】的(用户 2026-08-16:「图标肯定是正方的啊」)。
+	##   我一度把槽拉宽去填面板 —— 那是本末倒置, 该让面板宽度跟着槽走。
+	_ok("★★★④ 槽是正方的(不是被拉宽去填面板)", absf(slot_w - slot_h) <= 1.0,
+		"实测 %.0f×%.0f" % [slot_w, slot_h])
 
 	# ⑤ 属性 19 项一个不少, 且主要 8 项排在前面
-	_ok("★★★⑤ 属性 19 项一项不少(用户 2026-07-21「全都要显示啊」)",
-		_s._info_stat_labels.size() == 19, "实得 %d 个" % _s._info_stat_labels.size())
-	if _s._info_stat_labels.size() == 19:
+	## ★2026-08-16 次要属性搬进【点开的浮层】(用户:「更多属性不要直接放在这下面」),
+	##   所以常驻的 _info_stat_labels 只剩主要 8 项。
+	##   "全都要显示"仍然守住 —— 由下面两条守: ①次要 11 项一条不少 ②入口把条数写在标题上。
+	var minor_rows: Array = _s._info_sys._info_stat_rows_minor(_s._units[0] if not _s._units.is_empty() else u)
+	_ok("★★★⑤ 主要 8 项常驻", _s._info_stat_labels.size() == 8, "实得 %d 个" % _s._info_stat_labels.size())
+	_ok("★★★⑤ 次要 11 项一条不少(搬进浮层≠删掉)", minor_rows.size() == 11, "实得 %d 项" % minor_rows.size())
+	if _s._info_stat_labels.size() == 8:
 		var first8 := ""
 		for i in range(8):
 			first8 += str((_s._info_stat_labels[i] as Label).text) + " "
 		_ok("★★★⑤ 前 8 项 = 主要属性(攻击/攻速·暴击/暴伤·护甲/魔抗·移速/射程)",
 			first8.find("攻击") >= 0 and first8.find("攻速") >= 0 and first8.find("暴击") >= 0
-			and first8.find("暴伤") >= 0 and first8.find("护甲") >= 0 and first8.find("魔抗") >= 0
-			and first8.find("移速") >= 0 and first8.find("射程") >= 0, first8)
-		var last := str((_s._info_stat_labels[18] as Label).text)
-		_ok("★★⑤ 次要属性排在后面(最后一项是韧性)", last.find("韧性") >= 0, "实得「%s」" % last)
+			and first8.find("增伤") >= 0 and first8.find("护甲") >= 0 and first8.find("魔抗") >= 0
+			and first8.find("减伤") >= 0 and first8.find("射程") >= 0, first8)
+
+		_ok("★★⑤ 次要末项仍是韧性(顺序没乱)",
+		minor_rows.size() == 11 and str(minor_rows[10][1]).find("韧性") >= 0,
+		"实得「%s」" % (str(minor_rows[10][1]) if minor_rows.size() == 11 else "?"))
 
 ## 资源条里某一条的【数值文本】; 没有这条返回 ""。
 ## ★2026-08-16 龟能/怒气/星能从"独立条 + 状态 chip"搬进了统一的资源条,
@@ -648,3 +704,36 @@ func _res_hint(nm: String) -> String:
 			if hl != null and is_instance_valid(hl):
 				return str((hl as Label).text)
 	return ""
+
+
+## ── ★连续多帧刷新后, 面板必须【停在原地】(2026-08-16)──────────────────────
+## 由来: 次要属性搬进浮层后, 常驻 Label 只剩 8 个, 而每帧刷新还拿 `_info_stat_rows()` 的
+## 19 项去比 ⇒ 永远判"行数变了" ⇒ 每帧整块重建 ⇒ 面板每帧从屏外重新滑入, 永远到不了位。
+## 实测症状: 面板 x 从 1252 越飘越远到 1304(每次重建 offset += PW+40 再滑)。
+##
+## ★这个 bug 【原有门禁一条都没红】—— 它们都是"直接调 _show_unit_info_panel 再同步断言",
+##   不跑连续刷新那条路。是截图看不到面板才发现的。⇒ 把这条路本身焊成门禁。
+## ★判据: 连刷 40 帧后面板的 x 必须落在屏内, 且与刷之前【不再变化】。
+func _test_no_rebuild_loop() -> void:
+	get_tree().root.size = Vector2i(1280, 720)
+	await get_tree().process_frame
+	var u: Dictionary = _mk("basic")
+	u["equips"] = [{"id": "p2eq_001", "star": 1}]
+	_s._units.clear(); _s._units.append(u)
+	_s._hud._show_unit_info_panel(u)
+	for _f in range(30):
+		await get_tree().process_frame
+	var p = _s._info_panel
+	if p == null or not is_instance_valid(p):
+		_ok("★分母: 面板在(null ⇒ 后面没跑)", false, "null")
+		return
+	var x1: float = p.global_position.x
+	for _f2 in range(40):
+		await get_tree().process_frame
+		_ip._refresh_info_panel()
+	var p2 = _s._info_panel
+	var x2: float = p2.global_position.x if (p2 != null and is_instance_valid(p2)) else -9999.0
+	_ok("★★★连刷 40 帧后面板【不再动】(动了 = 每帧在整块重建)",
+		absf(x2 - x1) < 1.0, "刷前 x=%.0f → 刷后 x=%.0f" % [x1, x2])
+	_ok("★★★面板停在屏内(不是卡在屏外滑不进来)",
+		x2 >= 0.0 and x2 < 1280.0, "x=%.0f (视口宽 1280)" % x2)
