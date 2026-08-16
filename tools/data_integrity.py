@@ -202,6 +202,11 @@ for _f in ('data/pets.json', 'data/phase2-equipment.json', 'data/equipment.json'
     # 形状特征: 玩家文案里不该出现【YYYY-MM-DD 日期】
     if re.search(r'20\d\d-\d\d-\d\d', _raw):
         _devnote.append('%s 出现日期(像变更记录)' % _f.split('/')[-1])
+    # ★关键词表【第三次漏同类】: 我先写「参考英雄联盟」, 又漏了「参考虐杀原形」——
+    #   出处标注引的是哪个游戏根本不重要, 形状是【"参考" + 作品名】。
+    #   ⇒ 判据改成: 玩家文案里【只要出现"参考"】就红。真要写机制不用这两个字。
+    if '参考' in _raw:
+        _devnote.append('%s 出现「参考」(出处标注)' % _f.split('/')[-1])
 chk('★玩家文案里没有开发笔记(参考XX/原设计/已由用户/回合制…)', sorted(set(_devnote))[:6])
 
 # ★2026-08-17 补【标点用全角 + 不夹英文术语】。
