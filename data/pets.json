@@ -360,7 +360,7 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "获得 <span class=\"val-atk\">20% 攻击速度</span>、<span class=\"val-atk\">5% 移动速度</span> 和 <span class=\"val-atk\">25 码射程</span>，持续到战斗结束，且可反复叠加。\n选择本技能后，天使龟每次普攻命中还会为自己提供 <span class=\"val-atk\">5 点龟能</span>与 <span class=\"val-atk\">+1% 攻击力</span>，持续到战斗结束。",
+        "brief": "获得 <span class=\"val-atk\">20% 攻击速度</span>、<span class=\"val-atk\">5% 移动速度</span> 和 <span class=\"val-atk\">25 码射程</span>，持续到战斗结束，且可反复叠加。\n选择本技能后，天使龟每次普攻命中还为自己提供 <span class=\"val-atk\">5 点龟能</span>与 <span class=\"val-atk\">+1% 攻击力</span>，持续到战斗结束。",
         "detail": "天使龟展翼飞升，自身获得 <span class=\"val-atk\">+20%</span> 攻击速度、<span class=\"val-atk\">+5%</span> 移动速度、<span class=\"val-atk\">+25</span> 码射程，持续到战斗结束。\n每次释放都会叠加，无硬上限（越飞越强）。\n纯自增益，不造成伤害。\n<b>打包被动·飞升成长</b>（选择本技能后）：天使龟<span class=\"val-atk\">每次普攻命中</span>为自己提供 <span class=\"val-atk\">5 点龟能</span>与 <span class=\"val-atk\">+1% 攻击力</span>，<span class=\"val-normal\">持续到战斗结束</span>（可无限叠加）。",
         "energyCost": 80
       }
@@ -1061,7 +1061,7 @@
       "defPct": 12,
       "healPct": 5,
       "brief": "的棱镜每 <span class=\"val-atk\">6秒</span> 随机获得一种颜色，为普攻附带对应效果：🔴 红色附加相当于 <span class=\"val-atk\">25% 攻击力</span> 的真实伤害，🔵 蓝色使每次普攻获得 <span class=\"val-atk\">20% 攻击力</span> 护盾，🟢 绿色使每次普攻回复 <span class=\"val-heal\">2.5% 已损生命值</span>；彩虹龟持续获得相当于 <span class=\"val-hp\">2% 最大生命值</span> 的攻击力，以及相当于 <span class=\"val-atk\">(0.3×攻击力)%</span> 的攻击速度。",
-      "desc": "每6秒随机获得一种颜色（🔴红/🔵蓝/🟢绿），普攻附带对应效果：🔴红光额外造成（25%×攻击力({ATK}) = {T:0.25*ATK}）真实伤害\n🔵蓝光每次普攻获得（20%×攻击力({ATK}) = {S:0.2*ATK}）护盾（持续4秒）\n🟢绿光每次普攻回复 <span class=\"val-heal\">2.5% 已损生命值</span>。\n彩虹龟持续获得（2%×最大生命值）的攻击力，以及（0.3×攻击力）%的攻击速度。\n两者实时生效：\n中途提升最大生命值会同时抬高攻击力与攻速。"
+      "desc": "每6秒随机获得一种颜色（🔴红/🔵蓝/🟢绿），普攻附带对应效果：🔴红光额外造成（25%×攻击力({ATK}) = {T:0.25*ATK}）真实伤害\n🔵蓝光每次普攻获得（20%×攻击力({ATK}) = {S:0.2*ATK}）护盾（持续4秒）\n🟢绿光每次普攻回复 <span class=\"val-heal\">2.5% 已损生命值</span>。\n彩虹龟持续获得（2%×最大生命值）的攻击力和（0.3×攻击力）%的攻击速度。\n两者实时生效：\n中途提升最大生命值会同时抬高攻击力与攻速。"
     },
     "skillPool": [
       {
@@ -2222,7 +2222,7 @@
         "pierce": 0,
         "cd": 0,
         "atkScale": 1.5,
-        "brief": "短暂蓄力后发射一个缓慢移动的虫洞，沿目标所在的直线推进。\n沿途的敌人会被吸向虫洞，靠得更近的敌人则被<span class=\"val-atk\">捕获</span>、被虫洞吸着一起移动。\n虫洞抵达地图边界时爆炸，对被捕获者与爆点附近的敌人造成 {M:1.5*ATK} ×（1+5%×本路已打秒数）魔法伤害。\n<span style=\"color:#8a93a0\">吸取与捕获过程本身不造成伤害；<span class=\"val-atk\">本路战斗进行越久</span>，爆炸伤害越高（按发射时刻定格）。\n</span>\n<span style=\"color:#8a93a0\">释放虫洞后<span class=\"val-atk\">锁定龟能</span>，直到虫洞消失才恢复充能。\n</span>",
+        "brief": "短暂蓄力后发射一个缓慢移动的虫洞，沿目标所在的直线推进。\n沿途的敌人会被吸向虫洞，靠得更近的敌人则被<span class=\"val-atk\">捕获</span>、被虫洞吸着一起移动。\n虫洞抵达地图边界时爆炸，对被捕获者与爆点附近的敌人造成 {M:1.5*ATK} ×（1+5%×本路已打秒数）魔法伤害。\n<span style=\"color:#8a93a0\">吸取与捕获过程本身不造成伤害；<span class=\"val-atk\">本路战斗打得越久</span>，爆炸伤害越高（按发射时刻定格）。\n</span>\n<span style=\"color:#8a93a0\">释放虫洞后<span class=\"val-atk\">锁定龟能</span>，直到虫洞消失才恢复充能。\n</span>",
         "detail": "星际龟短暂蓄力（0.3秒）后，朝目标所在的直线发射一个缓慢移动的虫洞。\n虫洞以 140 码/秒直线飞向<b>地图边界</b>：沿途 150 码内的敌人被真重力吸引（弧线卷入，<b>此过程不造成伤害</b>），100 码内被捕获吸着一起走。\n虫洞抵达边界时<b>爆炸</b>，对携带者与爆点 150 码内的敌人造成（150%×攻击力({ATK}) = {M:1.5*ATK}，再乘以（1 + 5%×战斗已过秒数））魔法伤害。\n<span style=\"color:#8a93a0\">伤害倍率在发射瞬间定格 —— 开战越久，虫洞越强。\n</span>"
       },
       {
@@ -2479,7 +2479,7 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "随机复制敌方两个可用技能，依次轮流释放，每个都以 <span class=\"val-atk\">60%</span> 的效果发挥。",
+        "brief": "随机复制敌方两个可用技能，依次轮流释放，每个只发挥 <span class=\"val-atk\">60%</span> 效果。",
         "detail": "龟壳随机复制敌方的两个可用技能（走可复制白名单·排除变身/召唤/自增益），轮流（依次·不同帧糊）释放，各以 <span class=\"val-atk\">60%</span> 效果。",
         "energyCost": 130
       },
