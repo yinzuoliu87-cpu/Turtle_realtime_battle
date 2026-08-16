@@ -41,6 +41,9 @@ frames_for () {
     #   于是"66 个控件越界"这种吓人的数字其实是按钮还在飞。
     # 28 只龟【逐只】开面板 + 每只轮询到滑入动画落定(最多 180 帧) ⇒ 28×180 起步。
     #   ★帧不够会在半路被掐断 = 没打 ALL PASS, 看着像断言失败(CLAUDE.md §2 那个坑)。
+    # 逐个实例化 7 个整屏场景(各等 8 帧建树) + 再建一次战斗场开面板 ⇒ 帧要给够。
+    #   ★帧不够会在半路被掐断 = 没打 ALL PASS, 看着像断言失败(CLAUDE.md §2 那个坑)。
+    verify_click_targets_alive) echo 12000 ;;
     verify_info_panel_fits)   echo 20000 ;;
     verify_mainmenu_layout)   echo 6000 ;;
     verify_inventory_layout)  echo 4000 ;;
