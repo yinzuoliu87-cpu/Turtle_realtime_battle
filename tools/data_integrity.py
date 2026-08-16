@@ -84,20 +84,30 @@ chk('装备文案无未闭合占位符', [e['id'] for e in eq if str(e.get('effe
 #   ★为什么两个数值审计都没接住: 它们只比【数字】和【效果关键词】,
 #     而这是纯语法坏死 —— 一个数字都没动, 两边都报 ALL OK。空档正在这里。
 #   判据: 的/之/得/地 这四个结构助词【永远不能起句】(「将/其中/它」能, 不列入)。
+#   ⚠ 判据要【刚好卡住病句、不误伤好句】。第一版把「之」一律判死, 结果 2026-08-17
+#     把描述按分号断行之后, 「之后每次释放…」当场被判红 —— 而那是完全正常的句首。
+#     「之」只有在【不接方位/时间词】时才是残渣(之力涌动 ✗ / 之后 ✓ / 之前 ✓)。
 _PARTICLE = ('的', '之', '得', '地')
+_ZHI_OK = ('后', '前', '中', '内', '间', '上', '下', '外')
 _dangle = []
 def _lines(t):
     return [x.strip() for x in re.sub(r'<[^>]*>', '', str(t)).strip().split(chr(10)) if x.strip()]
+def _is_dangle(ln):
+    if ln[0] not in _PARTICLE:
+        return False
+    if ln[0] == '之':
+        return len(ln) < 2 or ln[1] not in _ZHI_OK
+    return True
 for p in pets:
     rows = [(s.get('name',''), s.get('brief','')) for s in (p.get('skillPool') or [])]
     _pa = p.get('passive')
     if isinstance(_pa, dict): rows.append((_pa.get('name','被动'), _pa.get('desc','')))
     for _nm, _t in rows:
         for _ln in _lines(_t):
-            if _ln[0] in _PARTICLE: _dangle.append('%s·%s: %s' % (p['id'], _nm, _ln[:20]))
+            if _is_dangle(_ln): _dangle.append('%s·%s: %s' % (p['id'], _nm, _ln[:20]))
 for e in eq:
     for _ln in _lines(e.get('effectDesc1','')):
-        if _ln[0] in _PARTICLE: _dangle.append('%s: %s' % (e['id'], _ln[:20]))
+        if _is_dangle(_ln): _dangle.append('%s: %s' % (e['id'], _ln[:20]))
 print('  [分母] 扫描 %d 龟 + %d 装备的描述行' % (len(pets), len(eq)))
 chk('★描述没有以悬空助词(的/之/得/地)起句的病句 —— 删主语删过头的信号', sorted(_dangle)[:8])
 
