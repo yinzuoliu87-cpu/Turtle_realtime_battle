@@ -93,6 +93,7 @@ func _ready() -> void:
 	var tap_short: Array = []
 	var no_basic: Array = []
 	var hint_squashed: Array = []
+	var stat_noicon: Array = []
 	var tap_seen := 0
 	var tap_min := 99999.0
 	var measured := 0
@@ -181,6 +182,10 @@ func _ready() -> void:
 						hint_squashed.append("%s: 「%s」只有 %.0fpx 宽" % [pid, _lt, (_hn as Control).size.x])
 			for _hc in _hn.get_children():
 				_hst.append(_hc)
+		for _sr in s._info_sys._info_stat_rows_main(u):
+			var _ip2 := str((_sr as Array)[0])
+			if _ip2 == "" or not ResourceLoader.exists(_ip2):
+				stat_noicon.append("%s: 「%s」图标=%s" % [pid, str((_sr as Array)[1]), _ip2 if _ip2 != "" else "(空)"])
 		## ★技能栏必须【三格齐】: 被动 / 普攻 / 携带的主动技。
 		##   实测 2026-08-16: 28 只里 17 只只有两格 —— 普攻槽的判据写成"type 必须是
 		##   physical/magic", 而 17 只龟的普攻 type 是自己的名字(lavaBolt/iceSpike…) ⇒ 静默消失。
@@ -237,6 +242,13 @@ func _ready() -> void:
 
 	_ok("★资源条的结论文字真的看得见(没被弹簧挤成 1px)",
 		hint_squashed.is_empty(), "被挤没的: %s" % str(hint_squashed.slice(0, 4)))
+
+	## ★主要 8 项属性【每一项都要有图标, 且文件真的在盘上】。
+	##   由来: 增伤/减伤两项的图标位一直是空串 —— 面板上那两行光秃秃一个图标都没有,
+	##   而旁边六项都有。不是"没做完", 是【没人发现】: 空字符串不报错、不红任何门禁
+	##   (同 data_integrity 那条"空值和错值是两类病, 只查后者等于放过前者")。
+	_ok("★主要 8 项属性每项都配了图标, 且文件在盘上", stat_noicon.is_empty(),
+		"缺图标的: %s" % str(stat_noicon.slice(0, 6)))
 
 	# ── ③ 可点条目不许小到点不准 ───────────────────────────────────────────
 	##   ★由来: 为了让宝箱龟装进视口, 我把「更多属性 / 战利品」这两条【可点】的入口

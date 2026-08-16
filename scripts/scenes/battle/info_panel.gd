@@ -435,10 +435,10 @@ func _info_stat_rows_main(u: Dictionary) -> Array:
 		[sic + "atk-icon.png",   "攻击 %d" % int(u.get("atk", 0)),                 Color("#ff9d8a")],
 		[sic + "aspd-icon.png",  "攻速 %s 次/秒" % battle._fmt_num(battle.aspd_mult(u) / maxf(0.001, float(u.get("atk_interval", 1.0)))), W],
 		[sic + "crit-icon.png",  "暴击 " + _pct(minf(float(u.get("crit", 0.0)), 1.0)), W],
-		["",                     "增伤 " + _pct(amp),   Color("#ff7a7a") if amp > 0.0005 else Color("#7a8694")],
+		[sic + "dmg-amp-icon.png", "增伤 " + _pct(amp), Color("#ff7a7a") if amp > 0.0005 else Color("#7a8694")],
 		[sic + "def-icon.png",   def_txt,                                          W],
 		[sic + "mr-icon.png",    "魔抗 %d" % int(u.get("mr", 0)),                  Color("#9bdcff")],
-		["",                     "减伤 " + _pct(dr),    Color("#9bdcff") if dr > 0.0005 else Color("#7a8694")],
+		[sic + "dmg-red-icon.png", "减伤 " + _pct(dr),  Color("#9bdcff") if dr > 0.0005 else Color("#7a8694")],
 		[sic + "range-icon.png", "射程 %d" % int(round(battle._eff_range(u))),     W],
 	]
 
@@ -691,7 +691,11 @@ func _form_chip(u: Dictionary) -> Array:
 			if bool(u.get("volcano", false)):
 				var left: float = maxf(0.0, float(u.get("volcano_until", 0.0)) - battle._t)
 				return ["火山形态 · 还剩 %.1f 秒" % left, "#ff7a3d"]
-			return ["熔岩形态 · 攒满怒气变火山", "#9bb0c4"]
+			## ★这里【不再写"攒满怒气变火山"】(2026-08-17 实拍): 怒气条自己带着这句
+			##   「攒满变火山形态」, 而怒气条【恰好只在非火山形态时出现】—— 也就是说
+			##   这个 chip 和那句提示【永远同屏】, 同一件事在一屏上说了两遍。
+			##   chip 的职责是"我现在是什么形态", 条的职责是"攒满会怎样", 各说各的。
+			return ["熔岩形态", "#9bb0c4"]
 		"two_head":
 			return ["近战形态 · 锤击", "#ffb37a"] if str(u.get("two_form", "ranged")) == "melee" else ["远程形态 · 灵能弹", "#b28bff"]
 		"shell":

@@ -51,6 +51,26 @@ func _find_label(n: Node, key: String) -> String:
 	return ""
 
 
+## 把面板里【所有 Label / RichTextLabel 的文字】拼成一大串。
+##
+## ★用途: 判"这条信息玩家看不看得到"时, 不该钉死它长在哪个容器里 ——
+##   信息搬家(chip → 资源条)不是回归, 信息消失才是。钉位置的断言会把重构判成 bug。
+func _panel_all_text(root: Node) -> String:
+	if root == null or not is_instance_valid(root):
+		return ""
+	var out := ""
+	var stack: Array = [root]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is Label:
+			out += str((n as Label).text) + " "
+		elif n is RichTextLabel:
+			out += str((n as RichTextLabel).get_parsed_text()) + " "
+		for c in n.get_children():
+			stack.append(c)
+	return out
+
+
 func _row(u: Dictionary, prefix: String) -> String:
 	for r in _ip._info_stat_rows(u):
 		if str((r as Array)[1]).begins_with(prefix):
@@ -276,7 +296,15 @@ func _test_form_chip_on_real_panel() -> void:
 	var box = _s._info_status_box
 	_ok("★分母: 状态区容器在", box != null and is_instance_valid(box))
 	var t0 := _find_label(_s._info_status_box, "熔岩形态")
-	_ok("★常态也说清楚(告诉玩家攒满怒气会变身)", t0.find("攒满怒气") >= 0, "实得 '%s'" % t0)
+	## ★判据落在【需求】上, 不落在我当初把字放在哪:
+	##   要求是"玩家得知道攒满怒气会变身", 不是"这句话必须长在状态 chip 上"。
+	##   2026-08-17 这句从 chip 搬到了怒气条(chip 只说"我现在是什么形态", 条说"攒满会怎样")——
+	##   原因是这两处【永远同屏】(怒气条恰好只在非火山形态出现), 同一件事说了两遍。
+	##   所以这里改成【整块面板里找得到】就行, 搬家不该判红; 真删掉才该判红。
+	var whole := _panel_all_text(_s._info_panel)
+	_ok("★常态也说清楚(面板上告诉玩家攒满怒气会变身 —— 在哪一处都行)",
+		whole.find("攒满") >= 0 and whole.find("火山") >= 0,
+		"chip='%s' | 面板全文里 攒满=%s 火山=%s" % [t0, str(whole.find("攒满") >= 0), str(whole.find("火山") >= 0)])
 
 	# 变身 → 同一个面板不重开, 只靠刷新, chip 必须跟着变
 	u["volcano"] = true
