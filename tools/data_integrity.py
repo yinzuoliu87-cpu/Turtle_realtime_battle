@@ -150,6 +150,31 @@ for e in eq:
         _dbl.append('%s: %s' % (e['id'], _m.group(0)))
 chk('★描述里没有连着两个标点(如「：；」) —— 批量断行/接回时最容易补过头', sorted(set(_dbl))[:8])
 
+# ★★2026-08-17 补【行长上限·递归扫全部字段】—— 这条是为了守住一类【空档】而不是一个 bug。
+#   由来: 今晚清理描述时我是【按字段名一个个处理】的, 结果两次漏字段:
+#     · `passive.brief` —— 而它才是被动在图鉴里【默认显示】的那一份(desc 只在点"详细"时出现)
+#     · `volcanoSkills` —— 熔岩龟变身后的技能, 图鉴与选技界面都显示
+#   两次都是"我记得列哪些字段"出的错, 而不是规则写错。
+#   ⇒ 判据改成【从结果上守】: 递归走整棵 json, 凡是含中文的字符串都算描述,
+#     任何一行超过上限就红。**漏掉的字段一定表现为超长行**, 于是不用再靠我记全。
+#   上限 130: 当前全局最长 124(修完之后), 而漏字段时是 169 —— 卡在中间。
+_CJK = re.compile(r'[一-龥]')
+_LIMIT = 130
+_long = []
+def _walk_text(node, path):
+    if isinstance(node, dict):
+        for k, v in node.items(): _walk_text(v, path + [str(k)])
+    elif isinstance(node, list):
+        for i, v in enumerate(node): _walk_text(v, path + ['[%d]' % i])
+    elif isinstance(node, str) and len(_CJK.findall(node)) >= 6:
+        for ln in re.sub(r'\{[^}]*\}', '#', re.sub(r'<[^>]*>', '', node)).split(chr(10)):
+            ln = ln.strip()
+            if len(ln) > _LIMIT:
+                _long.append('%s: %d 字' % ('.'.join(path), len(ln)))
+_walk_text(J('data/pets.json'), [])
+print('  [分母] 递归扫 pets.json 全部中文字段, 上限 %d 字' % _LIMIT)
+chk('★描述没有超长行(递归扫全部字段 —— 漏处理的字段一定表现为超长行)', sorted(_long)[:6])
+
 print('  [分母] 扫描 %d 龟 + %d 装备的描述行' % (len(pets), len(eq)))
 chk('★描述没有以悬空助词(的/之/得/地)起句的病句 —— 删主语删过头的信号', sorted(_dangle)[:8])
 
