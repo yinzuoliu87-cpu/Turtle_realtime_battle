@@ -95,6 +95,7 @@ func _ready() -> void:
 	var hint_squashed: Array = []
 	var stat_noicon: Array = []
 	var skill_noicon: Array = []
+	var det_bad: Array = []
 	var tap_seen := 0
 	var tap_min := 99999.0
 	var measured := 0
@@ -170,6 +171,26 @@ func _ready() -> void:
 				(panel as Control).get_parent_area_size().x,
 				(panel as Control).get_parent_area_size().y])
 		widths[str(pid)] = (panel as Control).size.x
+		## 点开一次描述框, 量它多高(只在前 6 只上做, 够了)
+		if measured <= 6:
+			var _ent2: Array = s._info_sys._skill_bar_entries(u)
+			if not _ent2.is_empty():
+				var _e: Dictionary = _ent2[_ent2.size() - 1]
+				s._info_sys._show_detail(panel, "gate_%s" % pid, str(_e.get("name", "")),
+					str(_e.get("desc", "")), _e, u)
+				await get_tree().process_frame
+				await get_tree().process_frame
+				var _ovn = panel.get_node_or_null("DetailOverlay")
+				var _bx = null if _ovn == null else _ovn.get_node_or_null("Box")
+				if _bx == null:
+					det_bad.append("%s: 找不到描述框" % pid)
+				else:
+					var _bh: float = (_bx as Control).size.y
+					var _ph: float = (panel as Control).size.y
+					if _bh > _ph * 0.75 or _bh < 60.0:
+						det_bad.append("%s: 框高 %.0f / 面板 %.0f" % [pid, _bh, _ph])
+				if _ovn != null:
+					(_ovn as Control).visible = false
 		## ★资源条的【结论那句】必须真的看得见 —— 有宽度, 不是被弹簧挤成 1px。
 		##   实拍抓到过: 「攒满变火山形态」在树里好端端存在, 量出来 1x17 ⇒ 屏幕上一个像素都没有。
 		##   判据量【真实矩形宽度】, 不是"文本非空"(文本一直非空, 那条断言永远绿)。
@@ -261,6 +282,16 @@ func _ready() -> void:
 	##   由来: 增伤/减伤两项的图标位一直是空串 —— 面板上那两行光秃秃一个图标都没有,
 	##   而旁边六项都有。不是"没做完", 是【没人发现】: 空字符串不报错、不红任何门禁
 	##   (同 data_integrity 那条"空值和错值是两类病, 只查后者等于放过前者")。
+	## ── 描述框不许铺满整个面板 ────────────────────────────────────────────
+	##   ★由来 2026-08-17(实拍): 描述框是 `PanelContainer` 的直接子节点, 而
+	##     **容器会强行把子节点拉满自己的内容区** ⇒ 代码里写好的 `offset_top = -300`
+	##     一个像素都没生效, 浮层从面板顶铺到底(约 640px), 内容只占顶部 20%,
+	##     下面一大片带边框的空白, 看着像没做完。
+	##   ★判据量【真实矩形】: 框高 ≤ 面板高的 75%(留出上面的头像/血条/槽还看得见),
+	##     且 ≥ 60px(不能塌成一条缝)。断言"框存在"守不住这个 —— 它一直都存在。
+	_ok("★★点开的描述框【不铺满面板】(上面的头像/条/槽还看得见)",
+		det_bad.is_empty(), "不对的: %s" % str(det_bad.slice(0, 4)))
+
 	_ok("★★技能三槽每一格都有图标(空图标 = 可点的大方块里一片空白)",
 		skill_noicon.is_empty(), "缺图标的: %s" % str(skill_noicon.slice(0, 6)))
 	_ok("★主要 8 项属性每项都配了图标, 且文件在盘上", stat_noicon.is_empty(),

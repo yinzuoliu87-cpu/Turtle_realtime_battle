@@ -1238,24 +1238,37 @@ func _detail_overlay(host_panel: Control) -> Control:
 	var ov = host_panel.get_node_or_null("DetailOverlay")
 	if ov != null:
 		return ov
-	ov = PanelContainer.new()
+	## ★★两层结构, 不是一层(2026-08-17 实拍才发现)。
+	##   ⚠ 宿主是 `PanelContainer` —— **容器会强行把子节点拉满自己的内容区**,
+	##     anchors / offsets 【全部失效】。原来这里写的 `offset_top = -300`(想要 300px 高)
+	##     一个像素都没生效: 实拍浮层从面板顶铺到面板底(约 640px), 而内容只占顶部 20%,
+	##     下面是一大片带边框的空白, 看着像没做完。
+	##   ⇒ 外层 `ov` 做成【透明的普通 Control】(它被容器拉满, 无所谓, 反正看不见),
+	##     真正带框的 `Box` 挂在外层里 —— 外层不是容器, 于是 anchors/offsets 才说了算,
+	##     高度在 _show_detail 里按【内容实际最小高】现算(见那边)。
+	ov = Control.new()
 	ov.name = "DetailOverlay"
+	ov.set_anchors_preset(Control.PRESET_FULL_RECT)
+	ov.mouse_filter = Control.MOUSE_FILTER_STOP    # 吃掉点击, 不穿到下面的图标
+	ov.visible = false
+	host_panel.add_child(ov)
+	var box = PanelContainer.new()
+	box.name = "Box"
 	var sb = StyleBoxFlat.new()
 	sb.bg_color = Color("#0b1220")
 	sb.set_border_width_all(2); sb.border_color = Color("#3a5470"); sb.set_corner_radius_all(0)
 	sb.content_margin_left = 12; sb.content_margin_right = 12
 	sb.content_margin_top = 10; sb.content_margin_bottom = 10
-	ov.add_theme_stylebox_override("panel", _nine_box(HUD_TEX + "panel-frame.png", 20, sb))
-	ov.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	ov.offset_left = 10.0; ov.offset_right = -10.0
-	ov.offset_top = -300.0; ov.offset_bottom = -10.0
-	ov.mouse_filter = Control.MOUSE_FILTER_STOP    # 吃掉点击, 不穿到下面的图标
-	ov.visible = false
-	host_panel.add_child(ov)
+	box.add_theme_stylebox_override("panel", _nine_box(HUD_TEX + "panel-frame.png", 20, sb))
+	box.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	box.offset_left = 0.0; box.offset_right = 0.0
+	box.offset_top = -300.0; box.offset_bottom = 0.0
+	box.mouse_filter = Control.MOUSE_FILTER_STOP
+	ov.add_child(box)
 	var vb = VBoxContainer.new()
 	vb.name = "Body"
 	vb.add_theme_constant_override("separation", 6)
-	ov.add_child(vb)
+	box.add_child(vb)
 	return ov
 
 
@@ -1267,7 +1280,7 @@ func _show_detail(host_panel: Control, key: String, title: String, body: String,
 		ov.visible = false                          # 再点一次 = 收起
 		return
 	ov.set_meta("key", key)
-	var vb: VBoxContainer = ov.get_node("Body")
+	var vb: VBoxContainer = ov.get_node("Box/Body")
 	for ch in vb.get_children():
 		vb.remove_child(ch); ch.queue_free()
 	var hb = HBoxContainer.new(); vb.add_child(hb)
@@ -1306,8 +1319,30 @@ func _show_detail(host_panel: Control, key: String, title: String, body: String,
 				GameState.skill_text_detail = not battle._skill_detail()
 			var ntpl = battle.SkillText.text_of(sk, battle._skill_detail())
 			dt.text = battle._render._render_skill_text(ntpl, unit, sk)
-			tb.text = "简明 ▸" if battle._skill_detail() else "详细 ▾")
+			tb.text = "简明 ▸" if battle._skill_detail() else "详细 ▾"
+			_fit_detail_box(ov))
 	ov.visible = true
+	_fit_detail_box(ov)
+
+
+## 把描述框的高度收到【内容实际需要的那么高】, 不许铺满整个面板。
+##
+## ★由来 2026-08-17(实拍): 描述框原来是 PanelContainer 的直接子节点, 而
+##   **容器会强行把子节点拉满** ⇒ 写好的 `offset_top = -300` 一个像素都没生效,
+##   浮层从面板顶铺到底(约 640px), 内容只占顶部 20%, 下面一大片带边框的空白。
+## ★高度要【等一帧再量】—— RichTextLabel 的 fit_content 高度要排版完才算得出来,
+##   建完当帧量到的是 0。所以这里 await 一帧再收。
+func _fit_detail_box(ov: Control) -> void:
+	var box: Control = ov.get_node_or_null("Box")
+	if box == null:
+		return
+	await ov.get_tree().process_frame
+	if not is_instance_valid(box) or not is_instance_valid(ov):
+		return
+	var want: float = box.get_combined_minimum_size().y
+	## 内容太长时封顶(不许超过宿主面板的 70%), 太短时给个下限免得框比标题还矮。
+	var cap: float = maxf(120.0, ov.size.y * 0.7)
+	box.offset_top = -clampf(want, 90.0, cap)
 
 
 ## 这条技能/被动【真的有两级文案】吗?

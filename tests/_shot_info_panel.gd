@@ -97,6 +97,24 @@ func _ready() -> void:
 			for i in range(kids.size() - 1, -1, -1):
 				stack.append([kids[i], d + 1])
 
+	## SHOT_DETAIL=skill|equip|more: 顺带把【点开后的描述浮层】也打开再拍 ——
+	## 我修好了"点得动"(见 _info_passthrough 的注释), 但点开长什么样一直没拍过。
+	if OS.has_environment("SHOT_DETAIL"):
+		var which := OS.get_environment("SHOT_DETAIL")
+		var ents: Array = s._info_sys._skill_bar_entries(u)
+		if which == "skill" and ents.size() > 0:
+			var e0: Dictionary = ents[ents.size() - 1]
+			s._info_sys._show_detail(s._info_panel, "skill_shot", str(e0.get("name", "")),
+				str(e0.get("desc", "")), e0, u)
+		elif which == "more":
+			var mtxt := ""
+			for r2 in s._info_sys._info_stat_rows_minor(u):
+				mtxt += str((r2 as Array)[1]) + "
+"
+			s._info_sys._show_detail(s._info_panel, "more_stats", "更多属性", mtxt, {}, u)
+		for _j in range(8):
+			await get_tree().process_frame
+
 	var out := "res://_panel.png"
 	if OS.has_environment("SHOT_OUT"):
 		out = OS.get_environment("SHOT_OUT")
