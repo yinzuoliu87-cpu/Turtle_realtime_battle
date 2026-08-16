@@ -32,10 +32,22 @@ func _ready() -> void:
 	## 把这只龟喂饱, 让面板【每一行都有东西可画】——
 	## 空面板拍出来看不出素材好坏(条是空的、槽是空的), 等于没拍。
 	u["hp"] = float(u.get("maxHp", 1000)) * 0.62
-	u["energy"] = 46.0
+	## ★龟能【不是 u["energy"]】—— 它由 `_energy_state` 从技能冷却进度推出来
+	##   (rdy = cooldown_ready(剩余, 满冷却), 显示值 = rdy × 消耗)。
+	##   我一开始写 u["energy"]=46, 拍出来一直是 0/80 —— 喂错字段, 图上看着像"条是空的"。
+	for _t in (u.get("active_skills", []) as Array):
+		var _full: float = s._skill_cd(u, str(_t))
+		(u["skill_cd"] as Dictionary)[str(_t)] = _full * 0.45   # 剩 45% 冷却 ⇒ 龟能约 55%
+	## ★按【这只龟自己的】专属资源喂 —— 一只龟最多只有一种。
+	##   给所有龟都塞怒气会拍出"星际龟/赌神龟也有怒气条"的假象, 看图时会误判。
 	if OS.has_environment("SHOT_RES"):
-		u["rage"] = 30.0
-		u["gold"] = 37.0
+		match pet:
+			"lava":    u["rage"] = 30.0
+			"space":   u["star_energy"] = float(u.get("maxHp", 1000)) * 0.18
+			"shell":   u["shell_storage"] = float(u.get("maxHp", 1000)) * 0.25
+			"bubble":  u["bubble_val"] = float(u.get("maxHp", 1000)) * 0.5
+			"chest":   u["dmg_dealt"] = 800.0
+			"fortune": u["gold"] = 37.0
 	## ★装备的真格式是 [{id, star}] 的字典数组, 不是 id 字符串数组 ——
 	##   喂错格式会让产品代码 `e as Dictionary` 每只龟报一次 cast 错误(实测 28 条),
 	##   而断言照样全绿: 这是【测试数据错】伪装成产品报错, 门禁的致命正则才逮住它。
