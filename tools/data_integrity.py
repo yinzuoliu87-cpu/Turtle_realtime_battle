@@ -108,6 +108,27 @@ for p in pets:
 for e in eq:
     for _ln in _lines(e.get('effectDesc1','')):
         if _is_dangle(_ln): _dangle.append('%s: %s' % (e['id'], _ln[:20]))
+# ★★2026-08-17 补【括号必须配对】—— 又是我自己制造的:
+#   为了"一行一件事", 我按分号把长句断开, 但【没检查括号深度】⇒ 把「（…；…）」
+#   从中间劈成两行, 上一行留个孤零零的「（」, 下一行以「）」开头。
+#   实拍才看见:「…最大生命值（+0.60×基础攻击力」后面就没了。
+#   ★数值审计接不住: 数字一个没动, 两边照样 ALL OK(与悬空助词那次同一个空档)。
+_PAIRS = (('（', '）'), ('(', ')'), ('【', '】'), ('「', '」'))
+_unbal = []
+for p in pets:
+    rows = [(s.get('name',''), s.get('brief','')) for s in (p.get('skillPool') or [])]
+    _pa = p.get('passive')
+    if isinstance(_pa, dict): rows.append((_pa.get('name','被动'), _pa.get('desc','')))
+    for _nm, _t in rows:
+        for _ln in _lines(_t):
+            if any(_ln.count(_a) != _ln.count(_b) for _a, _b in _PAIRS):
+                _unbal.append('%s·%s: %s' % (p['id'], _nm, _ln[:22]))
+for e in eq:
+    for _ln in _lines(e.get('effectDesc1','')):
+        if any(_ln.count(_a) != _ln.count(_b) for _a, _b in _PAIRS):
+            _unbal.append('%s: %s' % (e['id'], _ln[:22]))
+chk('★描述每一行的括号都配对 —— 不配对 = 断行时把括号劈开了', sorted(_unbal)[:8])
+
 print('  [分母] 扫描 %d 龟 + %d 装备的描述行' % (len(pets), len(eq)))
 chk('★描述没有以悬空助词(的/之/得/地)起句的病句 —— 删主语删过头的信号', sorted(_dangle)[:8])
 
