@@ -43,6 +43,17 @@ def load_types():
     return json.load(io.open(TYPES_JSON, encoding='utf-8'))
 
 
+
+def _cell(t):
+    """把描述写进 markdown 表格单元格。
+
+    ★换行必须转义成 <br> —— markdown 表格的一个单元格【不能跨行】, 原样写进去
+      整张表就从那一行断掉, 而 data_integrity 的"评审表 ↔ json 一致"当场红。
+      (2026-08-16: 描述改成"一句一行"后踩到, 生成器不转义就永远对不上。)
+    """
+    return str(t).strip().replace(chr(13) + chr(10), chr(10)).replace(chr(10), "<br>")
+
+
 def main():
     check_only = '--check' in sys.argv
     items = load_items()
@@ -91,7 +102,7 @@ def main():
         new_cost = ' %d ' % int(it.get('cost', 1))
         new_type = ' %s ' % str(types.get(eid, '?')).strip()
         new_stats = ' %s ' % str(it.get('baseStats1', '')).strip()
-        new_eff = ' %s ' % str(it.get('effectDesc1', '')).strip()
+        new_eff = ' %s ' % _cell(it.get('effectDesc1', ''))
         if (parts[3] != new_name or parts[4] != new_cost or parts[5] != new_type
                 or parts[6] != new_stats or parts[7] != new_eff):
             changed.append(eid)
@@ -129,7 +140,7 @@ def main():
             add.append('| %02d | %s | %s | %d | %s | %s | %s |' % (
                 nxt, k, str(it.get('name', '')), int(it.get('cost', 1)),
                 str(types.get(k, '?')), str(it.get('baseStats1', '')).strip(),
-                str(it.get('effectDesc1', '')).strip()))
+                _cell(it.get('effectDesc1', ''))))
             nxt += 1
         out[last_row + 1:last_row + 1] = add
         changed.extend(missing)

@@ -75,6 +75,32 @@ for e in eq:
         pass
 chk('装备文案无未闭合占位符', [e['id'] for e in eq if str(e.get('effectDesc1','')).count('{')!=str(e.get('effectDesc1','')).count('}')])
 
+# ★★2026-08-16 补: 【句子不许以悬空助词开头】—— 这是我自己刚制造的回归。
+#   由来: 图鉴描述里 96% 的技能以龟名开头(「小龟发起一次普攻」)、装备以「携带者」开头,
+#   在这一页上再写一遍它叫什么是纯废话 ⇒ 批量删主语。但删得过头了:
+#     「天使龟的审判之力。」→「的审判之力。」  「闪电龟之力涌动」→「之力涌动」
+#     「财神龟的聚宝盆…」→「的聚宝盆…」      「携带者的伤害处决…」→「的伤害处决…」
+#   共 14 条描述变成病句, 直接印在玩家看的图鉴上。
+#   ★为什么两个数值审计都没接住: 它们只比【数字】和【效果关键词】,
+#     而这是纯语法坏死 —— 一个数字都没动, 两边都报 ALL OK。空档正在这里。
+#   判据: 的/之/得/地 这四个结构助词【永远不能起句】(「将/其中/它」能, 不列入)。
+_PARTICLE = ('的', '之', '得', '地')
+_dangle = []
+def _lines(t):
+    return [x.strip() for x in re.sub(r'<[^>]*>', '', str(t)).strip().split(chr(10)) if x.strip()]
+for p in pets:
+    rows = [(s.get('name',''), s.get('brief','')) for s in (p.get('skillPool') or [])]
+    _pa = p.get('passive')
+    if isinstance(_pa, dict): rows.append((_pa.get('name','被动'), _pa.get('desc','')))
+    for _nm, _t in rows:
+        for _ln in _lines(_t):
+            if _ln[0] in _PARTICLE: _dangle.append('%s·%s: %s' % (p['id'], _nm, _ln[:20]))
+for e in eq:
+    for _ln in _lines(e.get('effectDesc1','')):
+        if _ln[0] in _PARTICLE: _dangle.append('%s: %s' % (e['id'], _ln[:20]))
+print('  [分母] 扫描 %d 龟 + %d 装备的描述行' % (len(pets), len(eq)))
+chk('★描述没有以悬空助词(的/之/得/地)起句的病句 —— 删主语删过头的信号', sorted(_dangle)[:8])
+
 
 print('')
 print('=== 自称"由 json 直接生成"的表, 是不是真的还一致 ===')
@@ -106,7 +132,9 @@ else:
             drift.append('%s 不在评审表里' % e['id'])
             continue
         for field, label in (('baseStats1', '属性'), ('effectDesc1', '效果')):
-            v = str(e.get(field, '')).strip()
+            # ★描述改成"一句一行"后, 表格里换行写作 <br>(markdown 单元格不能跨行)。
+            #   比对要按【同一口径归一】, 否则永远对不上 —— 而那是格式差异不是内容漂移。
+            v = str(e.get(field, '')).strip().replace(chr(13) + chr(10), chr(10)).replace(chr(10), '<br>')
             if v and v not in L:
                 drift.append('%s %s 与 json 不一致' % (e['id'], label))
     print('  [分母] 评审表 %d 行 / 上架 %d 件 (另有 %d 件羁绊赠送, 不进表)' % (len(rows), len(SHOP_EQ), len(GRANT_EQ)))
