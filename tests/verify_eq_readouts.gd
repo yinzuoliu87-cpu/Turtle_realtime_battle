@@ -136,6 +136,38 @@ func _ready() -> void:
 		n_pct >= n_chg,
 		"镜像少了 %d 处 ⇒ 那几条路上条不会动" % (n_chg - n_pct))
 
+	# ── ⑥ 087 压载舱: 同族的第二条(2026-08-17 补) ────────────────────────
+	##   ★由来: 087 的压载舱是个【看不见的血池】—— 伤害先灌进舱、舱满才真掉血,
+	##     而玩家局内完全看不到攒到哪。头顶那个 dive_gauge 是演出层的, 而用户
+	##     2026-08-08 定过「充能条和层数不要放头顶, 在装备图标框里」。
+	##   ★判据走【面板真正会印的那行字】, 不是读字段 —— 字段对了但表没登记 = 玩家还是看不见。
+	var c2: Vector2 = _s.ARENA.position + _s.ARENA.size * 0.5
+	var u87: Dictionary = _s._spawn._make_unit("basic", "left", c2)
+	u87["equips"] = [{"id": "p2eq_087", "star": 2}]
+	_s._units.clear()
+	_s._units.append(u87)
+	var gs87 = _s._equip_sys._gadget_sys
+	for _i in range(4):
+		gs87.tick_unit(u87, 0.5)
+	var st87: Dictionary = (u87.get("eq_state", {}) as Dictionary).get("p2eq_087", {})
+	_ok("⑥ ★分母: 087 的舱容算出来了(不是 0 ⇒ 下面不是空检查)",
+		float(st87.get("cap", 0.0)) > 1.0, "cap=%.0f" % float(st87.get("cap", 0.0)))
+	_ok("⑥ ★★087 进了局内充能条表 —— 漏了就是「攒了没人看得见」",
+		_s.PANEL_CHARGE.has("p2eq_087"))
+	var r0 := str(_s._info_sys._equip_readout_text(u87, "p2eq_087"))
+	_ok("⑥ ★分母: 开局读数为 0(没挨打之前舱是空的)", r0.find("0%") >= 0, "实得 '%s'" % r0)
+	_s._damage._apply_damage(u87, 300, Color.WHITE)
+	for _j in range(2):
+		gs87.tick_unit(u87, 0.5)
+	var pct87: float = float(((u87.get("eq_state", {}) as Dictionary).get("p2eq_087", {}) as Dictionary).get("ballast_pct", 0.0))
+	var r1 := str(_s._info_sys._equip_readout_text(u87, "p2eq_087"))
+	_ok("⑥ ★★挨打之后【面板那行字真的变了】(不是恒 0 的死字段)",
+		r1 != r0 and pct87 > 1.0, "'%s' → '%s' (镜像 %.1f%%)" % [r0, r1, pct87])
+	## 300 / (maxHp × 90%) —— 和系统自己算的舱容对账, 不抄一份公式
+	var want87: float = 300.0 / maxf(1.0, float(st87.get("cap", 1.0))) * 100.0
+	_ok("⑥ ★读数与真实舱内水量一致(不是随便变一下)", absf(pct87 - want87) < 2.0,
+		"面板 %.1f%% vs 应为 %.1f%%" % [pct87, want87])
+
 	_s.queue_free()
 	await get_tree().process_frame
 	print("")

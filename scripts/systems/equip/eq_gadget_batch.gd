@@ -522,7 +522,16 @@ func _tick_dive(u: Dictionary, delta: float, si: int) -> void:
 		dive_pump(u)
 	st["pump_t"] = p
 	_dive_sync_stacks(u, si)
-	vfx.dive_gauge(u, dive_water(u), float(st.get("cap", 0.0)))
+	var _w: float = dive_water(u)
+	var _cap: float = float(st.get("cap", 0.0))
+	vfx.dive_gauge(u, _w, _cap)
+	## ★★压载舱的【归一化镜像】(2026-08-17): 供装备图标框上的充能条读。
+	##   由来: 087 的舱是个"看不见的血池"—— 伤害先灌进舱、舱满才真掉血,
+	##   而玩家在局内【完全看不到攒到哪】。头顶那个 dive_gauge 是演出层的,
+	##   用户 2026-08-08 定过「充能条和层数不要放头顶, 在装备图标框里」。
+	##   ★为什么存百分比而不是直接挂 dive_water: PANEL_CHARGE 的分母【只能是常量】,
+	##     而舱容 = 最大生命 × 60/90/150%(随羁绊变) ⇒ 只能像 081 的 chg_pct 那样存 0~100。
+	st["ballast_pct"] = (clampf(_w / _cap, 0.0, 1.0) * 100.0) if _cap > 0.0 else 0.0
 
 
 ## 舱内现有多少水 = 舱容 − 剩余可灌量。★剩余可灌量就是 SpecialBalance 里那条余额。
