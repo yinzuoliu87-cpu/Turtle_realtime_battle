@@ -129,6 +129,27 @@ for e in eq:
             _unbal.append('%s: %s' % (e['id'], _ln[:22]))
 chk('★描述每一行的括号都配对 —— 不配对 = 断行时把括号劈开了', sorted(_unbal)[:8])
 
+# ★2026-08-17 补【不许连着两个标点】—— 也是我自己造的:
+#   接回被劈开的括号时无条件补了「；」, 而前面已经有「：」⇒「Powerball：；移动速度」。
+#   规则化改动最容易在【修复动作本身】上出新问题, 所以修完要复扫。
+_DBL = re.compile(r'[：。；，、]；|；[：。；，、]')
+_dbl = []
+for p in pets:
+    rows = [(s.get('name',''), s.get('brief','')) for s in (p.get('skillPool') or [])]
+    for s2 in (p.get('skillPool') or []):
+        if s2.get('detail'): rows.append((str(s2.get('name',''))+'.detail', s2['detail']))
+    _pa = p.get('passive')
+    if isinstance(_pa, dict):
+        for _k in ('brief','desc','detail'):
+            if _pa.get(_k): rows.append(('passive.'+_k, _pa[_k]))
+    for _nm, _t in rows:
+        for _m in _DBL.finditer(re.sub(r'<[^>]*>', '', str(_t))):
+            _dbl.append('%s·%s: %s' % (p['id'], _nm, _m.group(0)))
+for e in eq:
+    for _m in _DBL.finditer(re.sub(r'<[^>]*>', '', str(e.get('effectDesc1','')))):
+        _dbl.append('%s: %s' % (e['id'], _m.group(0)))
+chk('★描述里没有连着两个标点(如「：；」) —— 批量断行/接回时最容易补过头', sorted(set(_dbl))[:8])
+
 print('  [分母] 扫描 %d 龟 + %d 装备的描述行' % (len(pets), len(eq)))
 chk('★描述没有以悬空助词(的/之/得/地)起句的病句 —— 删主语删过头的信号', sorted(_dangle)[:8])
 
