@@ -4,7 +4,7 @@
     "name": "灼烧",
     "iconKey": "status-burn",
     "category": "dot",
-    "desc": "每秒受到火焰魔法伤害; 层数随每 tick 衰减 1/3。",
+    "desc": "每秒受到火焰魔法伤害；层数每秒衰减 1/3。",
     "formula": "伤害 = 层数 + 0.1% × 最大生命 × 层数 (魔法)"
   },
   {
@@ -12,7 +12,7 @@
     "name": "中毒",
     "iconKey": "status-poison",
     "category": "dot",
-    "desc": "每秒受到法术伤害; 层数随每 tick 衰减 1/4。",
+    "desc": "每秒受到法术伤害；层数每秒衰减 1/4。",
     "formula": "伤害 = 层数"
   },
   {
@@ -20,7 +20,7 @@
     "name": "流血",
     "iconKey": "status-bleed",
     "category": "dot",
-    "desc": "每秒受到物理伤害; 层数随每 tick 衰减 1/4。",
+    "desc": "每秒受到物理伤害；层数每秒衰减 1/4。",
     "formula": "伤害 = 层数 (物理 DoT, 过护盾但不经护甲减免)"
   },
   {
@@ -28,7 +28,7 @@
     "name": "诅咒",
     "iconKey": "status-curse-debuff",
     "category": "dot",
-    "desc": "每秒受到真实伤害; 不衰减, 按持续时间走完。",
+    "desc": "每秒受到真实伤害；不衰减，按持续时间走完。",
     "formula": "伤害 = 层数 (穿透所有防御)"
   },
   {
@@ -57,7 +57,7 @@
     "name": "护盾",
     "iconKey": "status-shield",
     "category": "buff",
-    "desc": "吸收伤害, 优先于生命值消耗; 多层叠加。"
+    "desc": "吸收伤害，优先于生命值消耗；多层叠加。"
   },
   {
     "id": "dodge",
@@ -71,7 +71,7 @@
     "name": "虚化",
     "iconKey": "status-stealth",
     "category": "buff",
-    "desc": "受到的物理伤害大幅减免（幽灵龟虚化 -90%）; 真实伤害无视此减免。"
+    "desc": "受到的物理伤害大幅减免（幽灵龟虚化 -90%）；真实伤害无视此减免。"
   },
   {
     "id": "reflect",

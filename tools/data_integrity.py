@@ -183,7 +183,12 @@ chk('★描述没有超长行(递归扫全部字段 —— 漏处理的字段一
 #   这类文字对玩家零信息(还假设他玩过别的游戏), 属于用户说的"废话"里最刺眼的一种。
 #   ★注意区分: 括号里【夹着真机制】的不能整段删(龙龟Q 那条里有"4秒加速到满速、免疫定身"),
 #     只摘掉出处标注。所以这条门禁只认【标注词】本身, 不按括号删。
-_DEVWORD = ('参考英雄联盟', '原设计', '已由用户', '未采用', '回合制', 'PoC', 'TODO')
+# ★关键词表【扩过一次】: 第一版只有"参考XX/原设计/…", 结果漏了另一批同类 ——
+#   「〖用户 2026-06-30 逐字设计〗」「★2026-07-30 订正: 此前文案写…已按代码真值改正并补全。」
+#   都是设计出处与变更记录, 一样印在玩家看的「详细」里。
+#   ⇒ 判据加上【日期格式】与【〖〗书名号】这两个形状特征 —— 比继续列词更不容易漏。
+_DEVWORD = ('参考英雄联盟', '原设计', '已由用户', '未采用', '回合制', 'PoC', 'TODO',
+            '订正', '勘误', '此前文案', '已按代码', '逐字', '〖')
 _devnote = []
 for _f in ('data/pets.json', 'data/phase2-equipment.json', 'data/equipment.json',
            'data/status.json', 'data/battle-rules.json'):
@@ -194,7 +199,37 @@ for _f in ('data/pets.json', 'data/phase2-equipment.json', 'data/equipment.json'
     for _w in _DEVWORD:
         if _w in _raw:
             _devnote.append('%s 出现「%s」' % (_f.split('/')[-1], _w))
+    # 形状特征: 玩家文案里不该出现【YYYY-MM-DD 日期】
+    if re.search(r'20\d\d-\d\d-\d\d', _raw):
+        _devnote.append('%s 出现日期(像变更记录)' % _f.split('/')[-1])
 chk('★玩家文案里没有开发笔记(参考XX/原设计/已由用户/回合制…)', sorted(set(_devnote))[:6])
+
+# ★2026-08-17 补【标点用全角 + 不夹英文术语】。
+#   实拍扫出来的: status.json 写着「层数随每 tick 衰减 1/3」(tick 是开发术语),
+#   p2eq_009 写着「扇形band罩住敌群…对band内每名敌人」, 消耗品里 17 处半角逗号。
+#   ★半角标点只在【紧跟中文】时才算错 —— 数字里的逗号/小数点是对的, 不能一刀切。
+_punc = []
+_ENWORD = ('tick', 'band', 'buff', 'debuff', 'DPS', 'cooldown')
+for _f in ('data/pets.json', 'data/phase2-equipment.json', 'data/equipment.json',
+           'data/status.json', 'data/battle-rules.json'):
+    try:
+        _d = J(_f)
+    except Exception:
+        continue
+    def _w2(node, path):
+        if isinstance(node, dict):
+            for k, v in node.items(): _w2(v, path + [str(k)])
+        elif isinstance(node, list):
+            for i, v in enumerate(node): _w2(v, path + ['[%d]' % i])
+        elif isinstance(node, str) and len(re.findall(r'[一-龥]', node)) >= 4:
+            _c = re.sub(r'<[^>]*>', '', node)
+            if re.search(r'[一-龥][,;:]', _c):
+                _punc.append('%s 半角标点' % _f.split('/')[-1])
+            for _w in _ENWORD:
+                if re.search(r'(?<![A-Za-z])' + _w + r'(?![A-Za-z])', _c):
+                    _punc.append('%s 夹英文「%s」' % (_f.split('/')[-1], _w))
+    _w2(_d, [])
+chk('★文案标点用全角、不夹英文术语(tick/band/buff…)', sorted(set(_punc))[:6])
 
 print('  [分母] 扫描 %d 龟 + %d 装备的描述行' % (len(pets), len(eq)))
 chk('★描述没有以悬空助词(的/之/得/地)起句的病句 —— 删主语删过头的信号', sorted(_dangle)[:8])

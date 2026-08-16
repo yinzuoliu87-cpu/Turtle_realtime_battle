@@ -859,7 +859,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "蜷成钻石球滚向最近的敌人，从静止起步、<span class=\"val-atk\">4秒</span>加速到满速，撞击时对落点敌人造成伤害，并将其<span class=\"val-atk\">击飞 1秒</span>、<span class=\"val-atk\">眩晕 0.5~3秒</span>。\n伤害与眩晕时长均随撞击瞬间的移动速度插值：\n静止时造成 <span class=\"val-atk\">0.1×护甲 + 0.1×魔抗 + 2% 最大生命值</span>，满速时造成 <span class=\"val-atk\">1.0×护甲 + 1.0×魔抗 + 20% 最大生命值</span>。\n<span style=\"color:#8a93a0\">滚动期间免疫定身与沉默。\n当 200 码内没有敌人时，钻石龟自动免费启动滚球撞向最近的敌人，不消耗龟能。\n</span>",
-        "detail": "钻石龟蜷成钻石球滚向最近敌人（移动速度从0起4秒加速到满速，滚动期间免疫定身与沉默）\n撞到的120码小范围内敌人受到伤害（按当前移动速度插值：0速时 0.1护甲+0.1魔抗+2%<b>目标</b>最大生命值，满速时 1.0护甲+1.0魔抗+20%<b>目标</b>最大生命值）并被击飞1秒、眩晕（0.5~3秒随移动速度插值）。\n<span style=\"color:#8a93a0\">被动（选此技才有）：<span class=\"val-normal\">当 200 码内没有敌人时</span>，钻石龟自动免费启动滚球撞向最近敌（不耗龟能，0.8秒防抖冷却）。\n〖用户逐字：\n被动为当100码内没有目标时就会启动主动撞向最近目标〗（用户2026-07-12改：范围100→200码）</span>",
+        "detail": "钻石龟蜷成钻石球滚向最近敌人（移动速度从0起4秒加速到满速，滚动期间免疫定身与沉默）\n撞到的120码小范围内敌人受到伤害（按当前移动速度插值：0速时 0.1护甲+0.1魔抗+2%<b>目标</b>最大生命值，满速时 1.0护甲+1.0魔抗+20%<b>目标</b>最大生命值）并被击飞1秒、眩晕（0.5~3秒随移动速度插值）。\n<span style=\"color:#8a93a0\">被动（选此技才有）：<span class=\"val-normal\">当 200 码内没有敌人时</span>，钻石龟自动免费启动滚球撞向最近敌（不耗龟能，0.8秒防抖冷却）。\n</span>",
         "energyCost": 100
       },
       {
@@ -959,7 +959,7 @@
         "cd": 0,
         "selfCast": true,
         "brief": "首次释放时随机获得 1 件 1/2/3 费的 <span class=\"val-atk\">1★ 临时装备</span>，龟能消耗随之变为 <span class=\"val-atk\">120/180/300</span>。\n之后每次释放使该装备提升 1 星，升满 <span class=\"val-atk\">3★</span> 后消耗回落到 <span class=\"val-atk\">60 龟能</span>，且此后每次释放额外回复 <span class=\"val-heal\">1×攻击力</span> 生命值。\n<span style=\"color:#8a93a0\">临时装备在战斗结束后消失。\n</span>",
-        "detail": "〖用户 2026-06-30 逐字设计〗。\n<span class=\"val-normal\">首次释放</span>：\n随机获得 1 件 1费/2费/3费 的 <span class=\"val-atk\">1★ 临时装备</span>（战斗结束后消失，不占背包槽）。\n本技的龟能消耗随抽到的装备费用变为 <span class=\"val-atk\">120 / 180 / 300</span>。\n<span class=\"val-normal\">后续释放</span>：\n使该装备提升 1 星级。\n<span class=\"val-normal\">升满 3★ 后</span>：龟能消耗回落到 <span class=\"val-atk\">60</span>，且此后每次释放回复（100%×攻击力({ATK}) = {H:ATK}）生命值。"
+        "detail": "<span class=\"val-normal\">首次释放</span>：\n随机获得 1 件 1费/2费/3费 的 <span class=\"val-atk\">1★ 临时装备</span>（战斗结束后消失，不占背包槽）。\n本技的龟能消耗随抽到的装备费用变为 <span class=\"val-atk\">120 / 180 / 300</span>。\n<span class=\"val-normal\">后续释放</span>：\n使该装备提升 1 星级。\n<span class=\"val-normal\">升满 3★ 后</span>：龟能消耗回落到 <span class=\"val-atk\">60</span>，且此后每次释放回复（100%×攻击力({ATK}) = {H:ATK}）生命值。"
       }
     ],
     "defaultSkills": [
@@ -1179,7 +1179,7 @@
         "cd": 0,
         "atkScale": 0.5,
         "brief": "丢出一张万能牌，对目标造成<span class=\"val-normal\">1 段</span> {N:2*ATK} 物理伤害，自身获得 {S:1*ATK} 永久护盾并回复 <span class=\"val-heal\">5% 最大生命值</span>，同时使目标攻击力 <span class=\"val-atk\">-15%</span>。",
-        "detail": "赌神龟丢出一张万能牌，对目标造成 <span class=\"val-normal\">1 段</span>（200%×攻击力({ATK}) = {N:2*ATK}）物理伤害〖用户2026-07-09：万能牌改为丢出一张牌只造成1段伤害〗。\n自身获得（100%×攻击力 = {S:1*ATK}）<span class=\"val-def\">永久护盾</span>，回复 <span class=\"val-heal\">5% 最大生命值</span>，并使目标<span class=\"val-atk\">攻击力 -15%</span>。"
+        "detail": "赌神龟丢出一张万能牌，对目标造成 <span class=\"val-normal\">1 段</span>（200%×攻击力({ATK}) = {N:2*ATK}）物理伤害。\n自身获得（100%×攻击力 = {S:1*ATK}）<span class=\"val-def\">永久护盾</span>，回复 <span class=\"val-heal\">5% 最大生命值</span>，并使目标<span class=\"val-atk\">攻击力 -15%</span>。"
       },
       {
         "name": "赌注",
@@ -1204,7 +1204,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "每次释放进入抽取阶段，花色转盘落定后永久提升一项属性：\n♠ 黑桃：\n攻击力 <span class=\"val-atk\">+3</span>、最大生命值 <span class=\"val-heal\">+10</span>。\n♥ 红心：\n护甲 <span class=\"val-def\">+1</span>、魔抗 <span class=\"val-magic\">+1</span>。\n♦ 方块：\n暴击率 <span class=\"val-atk\">+2%</span>、护甲穿透 <span class=\"val-atk\">+1</span>。\n♣ 梅花：\n生命偷取 <span class=\"val-heal\">+0.5%</span>、攻击速度 <span class=\"val-atk\">+2%</span>。\n<span style=\"color:#8a93a0\">抽取阶段锁定龟能。\n选择本技能后，登场损失 30% 最大生命值，换取基础多重打击概率由 40% 提升至 60%。\n</span>",
-        "detail": "〖用户 2026-07-09 逐字〗<span class=\"val-normal\">选择本技能时</span>：赌神龟登场即<span class=\"val-true\">损失 30% 最大生命值</span>，换取<span class=\"val-atk\">额外 +20% 多重打击概率</span>（基础 40% → 60%）。\n<span class=\"val-normal\">主动</span>（龟能满自动释放）：随机抽取一个花色，永久提升一项属性：♠黑桃 攻击力 <span class=\"val-atk\">+3</span>、最大生命值 <span class=\"val-heal\">+10</span>。\n♥红心 护甲 <span class=\"val-def\">+1</span>、魔抗 <span class=\"val-magic\">+1</span>。\n♦方块 暴击率 <span class=\"val-atk\">+2%</span>、护甲穿透 <span class=\"val-atk\">+1</span>。\n♣梅花 生命偷取 <span class=\"val-heal\">+0.5%</span>、攻击速度 <span class=\"val-atk\">+2%</span>。\n<span style=\"color:#8a93a0\">玩家赌神抽到的花色会在【本大轮】跨场累积，下一场登场时自动套用；换大轮时重置。\n</span>\n<span style=\"color:#8a93a0\">抽取阶段（转盘旋转约 1.15 秒）内<b>锁龟能不充能</b>，花色落定后自动解锁。\n</span>"
+        "detail": "<span class=\"val-normal\">选择本技能时</span>：赌神龟登场即<span class=\"val-true\">损失 30% 最大生命值</span>，换取<span class=\"val-atk\">额外 +20% 多重打击概率</span>（基础 40% → 60%）。\n<span class=\"val-normal\">主动</span>（龟能满自动释放）：随机抽取一个花色，永久提升一项属性：♠黑桃 攻击力 <span class=\"val-atk\">+3</span>、最大生命值 <span class=\"val-heal\">+10</span>。\n♥红心 护甲 <span class=\"val-def\">+1</span>、魔抗 <span class=\"val-magic\">+1</span>。\n♦方块 暴击率 <span class=\"val-atk\">+2%</span>、护甲穿透 <span class=\"val-atk\">+1</span>。\n♣梅花 生命偷取 <span class=\"val-heal\">+0.5%</span>、攻击速度 <span class=\"val-atk\">+2%</span>。\n<span style=\"color:#8a93a0\">玩家赌神抽到的花色会在【本大轮】跨场累积，下一场登场时自动套用；换大轮时重置。\n</span>\n<span style=\"color:#8a93a0\">抽取阶段（转盘旋转约 1.15 秒）内<b>锁龟能不充能</b>，花色落定后自动解锁。\n</span>"
       }
     ],
     "defaultSkills": [
@@ -2419,7 +2419,7 @@
         "cd": 0,
         "atkScale": 0.9,
         "brief": "龟能充满后（约 6秒），接下来 <b>3 次</b>普攻额外附带 {M:0.5*ATK} 魔法伤害和 <span class=\"val-magic\">10% 目标当前生命值</span> 的魔法伤害。\n第 3 下落地后挥出<span class=\"val-atk\">镰刀横扫</span>。\n<span style=\"color:#8a93a0\">强化窗口全程锁龟能，镰刀扫完才重新充能。\n</span>",
-        "detail": "无头龟蓄积灵魂之力（充能型）：\n龟能充满（80龟能≈6秒）后，接下来 <b>3 次</b>普攻额外附带（50%×攻击力({ATK}) = {M:0.5*ATK}）<span class=\"val-magic\">魔法</span>伤害 + <span class=\"val-magic\">10%目标当前生命值</span> 魔法伤害（叠加在撕咬的 1×攻击力物理 + 3%最大生命值之上·单体），射程额外 +60。\n第 <b>3</b> 下命中落地后，无头龟挥出<span class=\"val-atk\">镰刀横扫</span>：\n正面 100° 锥形、300 码内的敌人被<span class=\"val-atk\">击退 300 码</span>，并被施加 <span class=\"val-magic\">3 秒诅咒</span>（每秒造成其最大生命值 5% 的真实伤害，无视双抗）。\n<span class=\"val-normal\">强化窗口全程锁龟能</span>，镰刀扫完才解锁并清零重新充能。\n<span style=\"color:#8a93a0\">★2026-07-30 订正: 此前文案写「0.9×攻击力 物理 + 20%目标当前生命值」，而代码一直是「0.5×攻击力 魔法 + 10%当前生命」—— 伤害差一倍、类型也错。\n而且镰刀横扫（击退 + 诅咒）与锁龟能这两段【完全没写】。\n已按代码真值改正并补全。\n</span>"
+        "detail": "无头龟蓄积灵魂之力（充能型）：\n龟能充满（80龟能≈6秒）后，接下来 <b>3 次</b>普攻额外附带（50%×攻击力({ATK}) = {M:0.5*ATK}）<span class=\"val-magic\">魔法</span>伤害 + <span class=\"val-magic\">10%目标当前生命值</span> 魔法伤害（叠加在撕咬的 1×攻击力物理 + 3%最大生命值之上·单体），射程额外 +60。\n第 <b>3</b> 下命中落地后，无头龟挥出<span class=\"val-atk\">镰刀横扫</span>：\n正面 100° 锥形、300 码内的敌人被<span class=\"val-atk\">击退 300 码</span>，并被施加 <span class=\"val-magic\">3 秒诅咒</span>（每秒造成其最大生命值 5% 的真实伤害，无视双抗）。\n<span class=\"val-normal\">强化窗口全程锁龟能</span>，镰刀扫完才解锁并清零重新充能。\n<span style=\"color:#8a93a0\">\n</span>"
       }
     ],
     "defaultSkills": [

@@ -5,7 +5,7 @@
     "icon": "equip/equip-heal-potion.png",
     "category": "consumable",
     "target": "ally",
-    "desc": "拖到友方单位上使用, 立即回复 (50 + 10% 目标最大生命值) 生命值。"
+    "desc": "拖到友方单位上使用，立即回复 (50 + 10% 目标最大生命值) 生命值。"
   },
   {
     "id": "c_speed",
@@ -13,7 +13,7 @@
     "icon": "equip/equip-speed-potion.png",
     "category": "consumable",
     "target": "ally",
-    "desc": "拖到友方单位上使用, 其所有技能的剩余冷却时间 -1 回合 (最低 0)。"
+    "desc": "拖到友方单位上使用，其所有技能的剩余冷却时间 -1 回合 (最低 0)。"
   },
   {
     "id": "c_bomb",
@@ -21,7 +21,7 @@
     "icon": "equip/consumable-bomb.png",
     "category": "consumable",
     "target": "enemy",
-    "desc": "拖到敌方单位上使用, 造成 60 物理伤害 (不归属任何龟, 不触发生命偷取与 on-hit 链, 仅按目标护甲减免)。"
+    "desc": "拖到敌方单位上使用，造成 60 物理伤害 (不归属任何龟，不触发生命偷取与 on-hit 链，仅按目标护甲减免)。"
   },
   {
     "id": "c_rage",
@@ -29,7 +29,7 @@
     "icon": "equip/consumable-rage.png",
     "category": "consumable",
     "target": "ally",
-    "desc": "拖到友方单位上使用, 攻击力 +25%, 持续 3 回合。"
+    "desc": "拖到友方单位上使用，攻击力 +25%，持续 3 回合。"
   },
   {
     "id": "c_emergency",
@@ -37,7 +37,7 @@
     "icon": "equip/consumable-shield.png",
     "category": "consumable",
     "target": "ally",
-    "desc": "拖到友方单位上使用, 立即添加 +80 护盾。"
+    "desc": "拖到友方单位上使用，立即添加 +80 护盾。"
   },
   {
     "id": "c_firstaid",
@@ -45,7 +45,7 @@
     "icon": "equip/consumable-firstaid.png",
     "category": "consumable",
     "target": "ally",
-    "desc": "拖到友方单位上使用, 立即回复 15% 目标最大生命值。"
+    "desc": "拖到友方单位上使用，立即回复 15% 目标最大生命值。"
   },
   {
     "id": "c_cleanse",
@@ -53,7 +53,7 @@
     "icon": "equip/consumable-cleanse.png",
     "category": "consumable",
     "target": "ally",
-    "desc": "拖到友方单位上使用, 立即清除身上所有负面状态。\n※ 负面效果包括: 灼烧 / 中毒 / 流血 / 诅咒 DoT / 冰寒 / 攻防魔抗削减 / 治疗削减 / 易伤标记 / 泡泡束缚"
+    "desc": "拖到友方单位上使用，立即清除身上所有负面状态。\n※ 负面效果包括：灼烧 / 中毒 / 流血 / 诅咒 DoT / 冰寒 / 攻防魔抗削减 / 治疗削减 / 易伤标记 / 泡泡束缚"
   },
   {
     "id": "c_mark",
@@ -61,6 +61,6 @@
     "icon": "equip/consumable-mark.png",
     "category": "consumable",
     "target": "enemy",
-    "desc": "拖到敌方单位上使用, 标记 2 回合, 期间受到的所有伤害 +20% (任何来源)。"
+    "desc": "拖到敌方单位上使用，标记 2 回合，期间受到的所有伤害 +20% (任何来源)。"
   }
 ]
