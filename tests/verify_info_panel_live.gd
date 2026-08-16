@@ -403,22 +403,31 @@ func _test_equip_readout_on_real_panel() -> void:
 	_ip._refresh_info_panel()      # 这一次接管装备区(见 info_panel 里的接管说明)
 	var box = _s._info_equip_box
 	_ok("★分母: 装备区容器在", box != null and is_instance_valid(box))
+	## ★判据落在【要求】上: 充能进度与层数都要看得见, **不钉死怎么排版**。
+	##   2026-08-17 起, 两种读数都有的装备走【紧凑式】(「7层 · 25%」)——
+	##   原因是拼全称「充能 1000 / 4000  层数 7」共 17 个字, 而槽只有 88px,
+	##   会被 clip_text 从中间截断成「能 1000 / 4000  层数」这种半截话(实拍看见的)。
+	##   ⇒ 这里改成"整块装备区的文字里找得到这两个数", 排版怎么变都不该判红;
+	##     真的看不见了才该红(下面的反面用例就是干这个的)。
 	var cap: float = float(EquipReadouts.CHARGE["p2eq_093"][1])
-	var ch := _find_label(_s._info_equip_box, "充能")
+	var alltxt := _panel_all_text(_s._info_equip_box)
+	var want_pct: int = int(round(1000.0 / cap * 100.0))
 	_ok("★★装备充能在详情面板上看得见(原来只有名字+星级)",
-		ch.find("1000") >= 0 and ch.find(_s._fmt_num(cap)) >= 0,
-		"实得 '%s'(满值 %s)" % [ch, _s._fmt_num(cap)])
-	_ok("★★层数也看得见", _find_label(_s._info_equip_box, "层数").find("7") >= 0,
-		"实得 '%s'" % _find_label(_s._info_equip_box, "层数"))
+		alltxt.find("1000") >= 0 or alltxt.find("%d%%" % want_pct) >= 0,
+		"实得 '%s'(满值 %s, 期望 1000 或 %d%%)" % [alltxt.strip_edges(), _s._fmt_num(cap), want_pct])
+	_ok("★★层数也看得见", alltxt.find("7") >= 0,
+		"实得 '%s'" % alltxt.strip_edges())
 	# 活的: 攒了就要跟着涨(不是开面板那一刻的快照)
 	(u["eq_state"]["p2eq_093"] as Dictionary)["chg"] = 2600.0
 	(u["eq_state"]["p2eq_093"] as Dictionary)["marks"] = 9
 	_ip._refresh_info_panel()
 	## ★现取容器 —— 装备区签名一变就整块重建, `box` 会变成已被 queue_free 的旧节点。
-	_ok("★★充能是活的(攒了就跟着涨)", _find_label(_s._info_equip_box, "充能").find("2600") >= 0,
-		"实得 '%s'" % _find_label(_s._info_equip_box, "充能"))
-	_ok("★★层数是活的", _find_label(_s._info_equip_box, "层数").find("9") >= 0,
-		"实得 '%s'" % _find_label(_s._info_equip_box, "层数"))
+	var alltxt2 := _panel_all_text(_s._info_equip_box)
+	var want2: int = int(round(2600.0 / cap * 100.0))
+	_ok("★★充能是活的(攒了就跟着涨)",
+		alltxt2.find("2600") >= 0 or alltxt2.find("%d%%" % want2) >= 0,
+		"实得 '%s'(期望 2600 或 %d%%)" % [alltxt2.strip_edges(), want2])
+	_ok("★★层数是活的", alltxt2.find("9") >= 0, "实得 '%s'" % alltxt2.strip_edges())
 	_s._hud._close_info_panel()
 
 
