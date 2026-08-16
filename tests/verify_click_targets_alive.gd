@@ -45,10 +45,16 @@ func _ok(name: String, cond: bool, detail: String = "") -> void:
 		print("  [FAIL] ", name, "  ", detail)
 
 
-## 一棵树里: [接了 gui_input 的控件数, 其中收不到点击的清单]
+## 一棵树里: [接了 gui_input 的控件数, 收不到点击的清单, 有字却挤没了的清单]
+##
+## ★第三项是另一类同族 bug(2026-08-17 实拍抓到): 资源条的结论那句
+##   「攒满变火山形态」在节点树里好端端存在, 量出来 **1x17** —— 屏幕上一个像素都没有。
+##   根因是 `clip_text` 把 Label 的最小宽压成 1, 同一行里的弹簧就把它吃光了。
+##   ★判据必须量【真实矩形】: "文本非空"那种断言永远绿, 因为文本一直非空。
 func _scan(root: Node) -> Array:
 	var wired := 0
 	var dead: Array = []
+	var squashed: Array = []
 	var stack: Array = [root]
 	while not stack.is_empty():
 		var n: Node = stack.pop_back()
@@ -58,9 +64,14 @@ func _scan(root: Node) -> Array:
 				wired += 1
 				if c.mouse_filter == Control.MOUSE_FILTER_IGNORE:
 					dead.append("%s(%s)" % [c.name, c.get_class()])
+			if n is Label and c.is_visible_in_tree():
+				var tx := str((n as Label).text).strip_edges()
+				## 一个汉字最小也要十几像素; 有字而宽/高不足 6px = 屏幕上根本看不见。
+				if tx.length() >= 2 and (c.size.x < 6.0 or c.size.y < 6.0):
+					squashed.append("「%s」%.0fx%.0f" % [tx.substr(0, 12), c.size.x, c.size.y])
 		for ch in n.get_children():
 			stack.append(ch)
-	return [wired, dead]
+	return [wired, dead, squashed]
 
 
 func _ready() -> void:
@@ -71,6 +82,7 @@ func _ready() -> void:
 
 	var total_wired := 0
 	var all_dead: Array = []
+	var all_squashed: Array = []
 	var opened := 0
 	for path in SCENES:
 		if not ResourceLoader.exists(str(path)):
@@ -86,6 +98,8 @@ func _ready() -> void:
 		var r := _scan(inst)
 		var wired: int = int(r[0])
 		var dead: Array = r[1]
+		for sq in (r[2] as Array):
+			all_squashed.append("%s → %s" % [str(path).get_file(), str(sq)])
 		total_wired += wired
 		opened += 1
 		if not dead.is_empty():
@@ -113,6 +127,12 @@ func _ready() -> void:
 	var c: Vector2 = bs.ARENA.position + bs.ARENA.size * 0.5
 	var bu: Dictionary = bs._spawn._make_unit("lava", "left", c)
 	bu["equips"] = [{"id": "p2eq_004", "star": 2}, {"id": "p2eq_021", "star": 1}]
+	## ★必须喂【专属资源】—— 不喂的话带结论文字的那一行根本不会建出来,
+	##   "有字却挤没了"这条断言就走不到, 变成空检查。
+	##   (第一版就是这样: 反向验证把 clip_text 放回 true, 门禁照样全绿。)
+	bu["rage"] = 30.0
+	bu["shield"] = 240.0
+	bu["burn_stacks"] = 5.0
 	bs._units.append(bu)
 	bs._hud._show_unit_info_panel(bu)
 	for _k in range(8):
@@ -123,6 +143,8 @@ func _ready() -> void:
 		opened += 1
 		for d2 in (rb2[1] as Array):
 			all_dead.append("战斗信息面板 → %s" % str(d2))
+		for s2 in (rb2[2] as Array):
+			all_squashed.append("战斗信息面板 → %s" % str(s2))
 		print("    [分母] %-22s 接了点击的控件 %d 个, 其中收不到点击 %d 个"
 			% ["战斗信息面板", int(rb2[0]), (rb2[1] as Array).size()])
 	else:
@@ -137,6 +159,9 @@ func _ready() -> void:
 
 	_ok("★★没有【接了点击却收不到点击】的死处理器", all_dead.is_empty(),
 		"死的: %s" % str(all_dead.slice(0, 8)))
+
+	_ok("★★没有【有字却被挤成看不见】的标签", all_squashed.is_empty(),
+		"挤没的: %s" % str(all_squashed.slice(0, 8)))
 
 	print("")
 	print("  (共 %d 条断言 · 扫了 %d 个场景 · %d 个接点击的控件)" % [_n, opened, total_wired])
