@@ -121,15 +121,27 @@ func _refresh_info_panel() -> void:
 		battle._info_hp_bar.value = clampf(float(ud.get("hp", 0.0)), 0.0, mx)
 	if battle._info_hp_lbl != null and is_instance_valid(battle._info_hp_lbl):
 		battle._info_hp_lbl.text = "HP  %d / %d" % [int(ud.get("hp", 0)), int(ud.get("maxHp", 0))]
-	# 龟能条
-	if battle._info_en_bar != null and is_instance_valid(battle._info_en_bar):
-		var acts: Array = ud.get("active_skills", [])   # 与建面板处同源(L22405), 不要另造函数
-		if not acts.is_empty():
-			battle._info_en_bar.value = float(_energy_state(ud, str(acts[0]))[3])
-			## ★改印【点数】不再印百分比(2026-08-15): 技能文案里写的是「(80 龟能)」,
-			##   条上却写 "46%" —— 同一件事两个口径, 玩家对不上。见 _energy_bar_text 的说明。
-			if battle._info_en_lbl != null and is_instance_valid(battle._info_en_lbl):
-				battle._info_en_lbl.text = _energy_bar_text(ud)
+	## 资源条(龟能 + 专属) —— 每帧按下标对位改数, 不重建节点。
+	## ★条目数会变(储能从 0 变非 0、宝箱开完第 5 箱就没有下一箱了) ⇒ 数量对不上就整块重建,
+	##   否则引用错位会把"星能"的数写进"怒气"那条(属性行那边踩过同一个坑, 见下面几行)。
+	var _rr: Array = battle._hud._info_res_rows
+	var _rb: Array = _resource_bars(ud)
+	if _rr.size() != _rb.size():
+		battle._hud._show_unit_info_panel(ud)
+		return
+	for _i in range(_rb.size()):
+		var _row: Dictionary = _rr[_i]
+		var _d: Dictionary = _rb[_i]
+		var _bar = _row.get("bar")
+		if _bar != null and is_instance_valid(_bar):
+			_bar.max_value = maxf(1.0, float(_d.get("cap", 1.0)))
+			_bar.value = clampf(float(_d.get("cur", 0.0)), 0.0, _bar.max_value)
+		var _vl = _row.get("val")
+		if _vl != null and is_instance_valid(_vl):
+			_vl.text = "%d / %d" % [int(_d.get("cur", 0.0)), int(_d.get("cap", 1.0))]
+		var _hl = _row.get("hint")
+		if _hl != null and is_instance_valid(_hl):
+			_hl.text = str(_d.get("hint", ""))
 	# 属性行
 	var rows: Array = _info_stat_rows(ud)
 	if rows.size() != battle._info_stat_labels.size():
@@ -177,11 +189,11 @@ func _refresh_info_panel() -> void:
 				ch.queue_free()
 			_info_status_chips(battle._info_status_box, ud)
 	# ★装备区: 星级/件数变了才重建(财神招财临时升星、宝箱龟开出新装备)
-	## ★★接管说明(2026-08-15): 面板【首建】时 battle_hud 调的是 battle._fill_equip_section,
-	##   那一版只有"名字+星级"、没有充能/层数。装备容器是每次开面板新建的,
-	##   所以拿容器实例 id 变没变当"这是个新面板"的判据, 新面板就用本文件的
-	##   _info_equip_section 重铺一次(多铺这一次的代价 = 开面板后一帧, 面板本身滑入要 0.22 秒)。
-	##   ⚠ 同时把 battle._info_equip_sig 写成当前签名, 否则下面那条旧分支会跟我抢着重建。
+	## ★★2026-08-16: 首建与刷新【走同一个函数】(_info_equip_slots)。
+	##   之前是两条路各建各的 —— 首建走 battle._fill_equip_section(只有名字+星级),
+	##   刷新走本文件的 _info_equip_section(带充能), 于是开面板后一帧样式会跳一下。
+	##   我这轮把首建改成新的三槽后, 刷新那条【还在调旧的】, 直接把新槽覆盖回旧列表 ——
+	##   截图当场抓到。⇒ 两条路收成一个函数, 不留第二份。
 	if battle._info_equip_box != null and is_instance_valid(battle._info_equip_box):
 		var esig = battle._equip_signature(ud)
 		var fresh: bool = battle._info_equip_box.get_instance_id() != _info_eq_box_iid
@@ -191,14 +203,14 @@ func _refresh_info_panel() -> void:
 			for ch in battle._info_equip_box.get_children():
 				battle._info_equip_box.remove_child(ch)
 				ch.queue_free()
-			_info_equip_section(battle._info_equip_box, ud)
+			_info_equip_slots(battle._info_equip_box, ud)
 		else:
 			## 充能/层数每帧都在动 —— 只改文字, 不重建节点。
 			for ent2 in _info_eq_readouts:
 				var elb = (ent2 as Dictionary).get("lbl", null)
 				if elb == null or not is_instance_valid(elb):
 					continue
-				var etx := "    " + _equip_readout_text(ud, str((ent2 as Dictionary).get("eid", "")))
+				var etx := _equip_readout_text(ud, str((ent2 as Dictionary).get("eid", "")))
 				if elb.text != etx:
 					elb.text = etx
 
@@ -212,7 +224,64 @@ func _info_passthrough(node: Node) -> void:
 			(c as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_info_passthrough(c)
 
-# 面板内一条进度条(HP/龟能): 深底+彩色填充+居中文字覆盖
+## 第二行【资源区】—— 把 `_resource_bars()` 那张表画成一排条(2026-08-16)。
+##
+## 每条两层:
+##   上层 = [名] ……… [当前/上限]   ← 名左对齐、数右对齐, 数值成列好比
+##   下层 = 一条 8px 的细条 + 右边一句结论("攒满变火山" / "2.3秒后结算: 回血47·伤害47")
+## ★结论那句是【条自己带的】, 不套统一模板 —— 泡泡是定时结算型, 永远不会"满了触发",
+##   套"满了会…"就是在承诺一件不会发生的事(见 _resource_bars 的注释)。
+## ★纯代码画: 深底 + 1px 边 + 填充。不做贴图 —— 条长随面板宽变, 九宫格反而僵,
+##   而且用户 2026-08-16 明确"不要复用、不需要海底装饰"。
+##
+## 返回 [{bar, val_lbl, hint_lbl, name}] 供每帧刷新按下标对位改数, 不重建节点。
+func _info_resource_row(parent: Control, r: Dictionary) -> Dictionary:
+	var box = VBoxContainer.new()
+	box.add_theme_constant_override("separation", 1)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(box)
+
+	var top = HBoxContainer.new()
+	top.add_theme_constant_override("separation", 6)
+	box.add_child(top)
+	var nm = Label.new(); nm.text = str(r.get("name", ""))
+	nm.add_theme_font_size_override("font_size", 13)
+	nm.add_theme_color_override("font_color", r.get("color", Color.WHITE))
+	top.add_child(nm)
+	var sp = Control.new(); sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(sp)
+	var no_cap: bool = float(r.get("cap", 0.0)) <= 0.0   # 没有上限的资源(金币)只显数字, 不画条
+	var vl = Label.new()
+	vl.text = ("%d" % int(r.get("cur", 0.0))) if no_cap else ("%d / %d" % [int(r.get("cur", 0.0)), int(r.get("cap", 1.0))])
+	vl.add_theme_font_size_override("font_size", 13)
+	vl.add_theme_color_override("font_color", Color("#e8f2ff"))
+	top.add_child(vl)
+
+	var pb = ProgressBar.new()
+	pb.visible = not no_cap
+	pb.custom_minimum_size = Vector2(0, 0 if no_cap else 8)
+	pb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pb.min_value = 0.0; pb.max_value = maxf(1.0, float(r.get("cap", 1.0)))
+	pb.value = clampf(float(r.get("cur", 0.0)), 0.0, pb.max_value)
+	pb.show_percentage = false
+	var bgsb = StyleBoxFlat.new(); bgsb.bg_color = Color("#0b1220")
+	bgsb.set_border_width_all(1); bgsb.border_color = Color("#243247"); bgsb.set_corner_radius_all(0)
+	var flsb = StyleBoxFlat.new(); flsb.bg_color = r.get("color", Color.WHITE); flsb.set_corner_radius_all(0)
+	pb.add_theme_stylebox_override("background", bgsb)
+	pb.add_theme_stylebox_override("fill", flsb)
+	pb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(pb)
+
+	var hl = Label.new(); hl.text = str(r.get("hint", ""))
+	hl.add_theme_font_size_override("font_size", 11)
+	hl.add_theme_color_override("font_color", Color("#8fa2b5"))
+	hl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	hl.autowrap_mode = TextServer.AUTOWRAP_OFF
+	hl.clip_text = true
+	box.add_child(hl)
+	return {"bar": pb, "val": vl, "hint": hl, "name": str(r.get("name", ""))}
+
+
 # 面板内一条进度条(HP/龟能): 深底+彩色填充+居中文字覆盖
 func _info_bar(parent: Control, cur: float, mx: float, fill_col: Color, label: String) -> Array:
 	var holder = Control.new()
@@ -243,74 +312,67 @@ func _info_bar(parent: Control, cur: float, mx: float, fill_col: Color, label: S
 ##   原实现是【一次性快照, 从不刷新】(源码里作者自己写了这句), 于是开着面板时
 ##   掉血/加buff/减速 全看不出来。现在把动态部件的节点引用存下来, 每帧改它们的文本/值,
 ##   而不是整块重建(重建会打断滚动位置 + 每帧分配节点)。
-func _info_stat_rows(u: Dictionary) -> Array:
-	var sic = "res://assets/sprites/stats/"   # 统一到唯一一套属性图标(32px·用户2026-07-24: 战斗内也用这套, 删了旧的 ui/stats/ 64px 异画风)
-	var W = Color("#d6e4f0")
-	var rows: Array = [
-		[sic + "atk-icon.png",      "攻击 %d" % int(u.get("atk", 0)),                                Color("#ff9d8a")],
-		[sic + "def-icon.png",      "护甲 %d" % int(u.get("def", 0)),                                W],
-		[sic + "mr-icon.png",       "魔抗 %d" % int(u.get("mr", 0)),                                 Color("#9bdcff")],
-		## ★★用户 2026-08-14 实测「为什么会看到暴击率 124%」。
-		##   内部计算是对的: `_resolve_dmg` 把有效暴击率钳到 100%,
-		##   **溢出的每 1% 按 `DamageMath.crit_multiplier` 转成 1.5% 暴伤**。
-		##   但面板原来把 `crit` 原样 ×100 显示 ⇒ 玩家看到"暴击率 124%",
-		##   而那作为【概率】是没有意义的数字。
-		##   ⇒ 暴击这一行钳到 100%; 溢出的部分并进【暴伤】那一行(见下), 与实战一致。
-		[sic + "crit-icon.png",     "暴击 " + _pct(minf(float(u.get("crit", 0.0)), 1.0)),             W],
-		## ★★☆攻速要显【次/秒】, 不是【秒】(2026-08-10 修)。
-		##   原来写的是 `atk_interval` —— 那是**攻击间隔**, 却标着"攻速":
-		##   数字越大反而越慢, 玩家会**整个读反**。
-		##   而且图鉴那边一直是 "0.94 次/秒" ⇒ 同一个属性两处两个口径。
-		##   (用户 2026-08-10:「应该是多少下每秒」)
+## 属性【主要 8 项】—— 输出 / 暴击 / 生存 / 机动 四对, 每行一对同族。
+##
+## ★为什么是这 8 项(用户 2026-08-16 定): 玩家心智里的"主要属性"就是输出·生存·机动,
+##   不是我一开始按"战斗中会不会变"划的那套(那把增伤/减伤划进了主要, 用户当场否掉)。
+## ★印证: assets/sprites/stats/ 里正好有这 8 张图标(atk/aspd/crit/crit-dmg/def/mr/move/range),
+##   其中 crit-dmg 一直躺着没接线 —— 美术当初配的就是这一套核心属性。
+func _info_stat_rows_main(u: Dictionary) -> Array:
+	var sic := "res://assets/sprites/stats/"
+	var W := Color("#d6e4f0")
+	## ★暴伤 = 基础暴伤 + 暴击率溢出 100% 的部分 ×1.5(与 DamageMath.crit_multiplier 同一公式)。
+	##   这样"124% 暴击"读作"暴击 100% · 暴伤 186%", 就是实战真正生效的两个数。
+	var crit_over: float = maxf(0.0, float(u.get("crit", 0.0)) - 1.0) * 1.5
+	## ★石头龟叠出来的护甲标在护甲这一行后面 —— 它是【累计增量】不是"攒满触发"型资源,
+	##   做成资源条是把两种东西混成一种。
+	var def_now: int = int(u.get("def", 0))
+	var def_gain: int = int(round(float(u.get("def", 0.0)) - float(u.get("stone_init_def", u.get("def", 0.0)))))
+	var def_txt: String = "护甲 %d" % def_now
+	if def_gain > 0:
+		def_txt += " (+%d)" % def_gain
+	return [
+		[sic + "atk-icon.png",      "攻击 %d" % int(u.get("atk", 0)),                 Color("#ff9d8a")],
 		[sic + "aspd-icon.png",     "攻速 %s 次/秒" % battle._fmt_num(battle.aspd_mult(u) / maxf(0.001, float(u.get("atk_interval", 1.0)))), W],
-		## ★★射程/移速要显【实战真正用的那个数】, 不是基础字段(2026-08-15)。
-		##   原来直接印 `atk_range` / `move_spd`:
-		##     · 射程漏掉了 `range_add`(装备加射程)与 `range_perm`(永久倍率) —— 战斗判定走的是
-		##       `battle._eff_range()`, 面板与判定两个数;
-		##     · 移速漏掉了减速/加速 —— 被冰冻减速时面板照旧印 110, 而龟实际只走 66。
-		##   ⇒ 用户看到的"数值看不到"里, 有一部分其实是"数值不对"。
-		[sic + "range-icon.png",    "射程 %d" % int(round(battle._eff_range(u))),                    W],
-		[sic + "move-icon.png",     "移速 %d" % int(round(_eff_move_spd(u))),                        W],
+		[sic + "crit-icon.png",     "暴击 " + _pct(minf(float(u.get("crit", 0.0)), 1.0)), W],
+		[sic + "crit-dmg-icon.png", "暴伤 " + _pct_mult(float(u.get("crit_dmg", 1.5)) + crit_over), Color("#ffb37a")],
+		[sic + "def-icon.png",      def_txt,                                          W],
+		[sic + "mr-icon.png",       "魔抗 %d" % int(u.get("mr", 0)),                  Color("#9bdcff")],
+		[sic + "move-icon.png",     "移速 %d" % int(round(_eff_move_spd(u))),         W],
+		[sic + "range-icon.png",    "射程 %d" % int(round(battle._eff_range(u))),     W],
 	]
-	# ── 用户 2026-07-21 要求补的「更多属性」 ──
-	# ★★全部【恒显示】(用户第二轮明确:「全都要显示啊」)。原来做成"有值才显示",
-	#   结果没装备的龟根本看不到治疗强度/护盾强度/闪避这几行。
-	# ★★口径修正: 治疗强度/护盾强度是【乘算】的 —— 实装是 amt *= (1 + heal_amp),
-	#   所以【基准是 100%】而不是 0。原来显示成 "+0%" 属于口径错误(用户指出:「不是100%吗」)。
-	#   同理 暴伤基准 150%(crit_dmg 默认 1.5)、龟能充能基准 100%。
-	#   而闪避/吸血/穿透/反伤/韧性/减伤/增伤 是【加算】的, 基准就是 0。
-	## ★★这六行原来全是 `%d` + `int(round())` —— 和用户 2026-08-14 骂过的增伤/减伤是**同一个 bug**,
-	##   当时只改了下面四行, 这六行漏了。不足 0.5% 一律显示成 0/100%:
-	##   吸血 0.4%(海带卷刀单星)、闪避 0.3%、治疗强度 100.4%… 玩家看到 0 就以为没生效。
-	##   全部改走 `_pct()`(小于 10% 保留一位小数)。
+
+
+## 属性【次要 11 项】—— 基本是装备/羁绊给的固定值, 开局定了就不动。小字排。
+## ★一项都不删(用户 2026-07-21「全都要显示啊」) —— 变的只是字号和分组, 不是可见性。
+## ★增伤/减伤非 0 时标色: 不为 0 就说明此刻正被强化或削弱, 得能一眼扫到。
+func _info_stat_rows_minor(u: Dictionary) -> Array:
 	var ls: float = float(u.get("lifesteal", 0.0)) + float(u.get("ls_bonus", 0.0))
-	rows.append([sic + "lifesteal-icon.png", "吸血 " + _pct(ls), Color("#ff8fb0")])
-	rows.append(["", "闪避 " + _pct(float(u.get("dodge_bonus", 0.0))), Color("#a0e8ff")])
-	# 乘算类: 显示最终倍率(100% = 没有加成) —— 走 _pct_mult, 见那个函数的说明
-	rows.append(["", "治疗强度 " + _pct_mult(1.0 + float(u.get("heal_amp", 0.0))), Color("#7fe39a")])
-	rows.append(["", "护盾强度 " + _pct_mult(1.0 + float(u.get("shield_amp", 0.0))), Color("#ffd93d")])
-	## ★暴伤 = 基础暴伤 + 暴击率溢出 100% 的部分 ×1.5(与 `DamageMath.crit_multiplier` 同一公式,
-	##   不另抄一份 —— 手抄的副本必然落后)。这样"124% 暴击"在面板上读作
-	##   "暴击 100% · 暴伤 186%", 玩家看到的就是实战真正生效的两个数。
-	var _crit_over: float = maxf(0.0, float(u.get("crit", 0.0)) - 1.0) * 1.5
-	rows.append(["", "暴伤 " + _pct_mult(float(u.get("crit_dmg", 1.5)) + _crit_over), Color("#ffb37a")])
-	rows.append(["", "龟能充能 " + _pct_mult(1.0 + float(u.get("echarge_perm", 0.0))), Color("#ffce4d")])
-	# 加算类: 基准 0
-	rows.append(["", "护甲穿透 %d" % int(u.get("armor_pen", 0.0)), Color("#ffc48a")])
-	rows.append(["", "魔法穿透 %d" % int(u.get("magic_pen", 0.0)), Color("#c9a0ff")])
-	rows.append(["", "反伤 " + _pct(float(u.get("reflect", 0.0))), Color("#ff9d8a")])
-	rows.append(["", "韧性 " + _pct(float(u.get("tenacity", 0.0))), Color("#d6e4f0")])
-	rows.append(["", "减伤 " + _pct(float(u.get("damage_reduction", 0.0))), Color("#9bdcff")])
-	rows.append(["", "增伤 " + _pct(float(u.get("damage_amp", 0.0))), Color("#ff7a7a")])
-	return rows
+	var amp: float = float(u.get("damage_amp", 0.0))
+	var dr: float = float(u.get("damage_reduction", 0.0))
+	return [
+		["", "吸血 " + _pct(ls),                                            Color("#ff8fb0")],
+		["", "闪避 " + _pct(float(u.get("dodge_bonus", 0.0))),              Color("#a0e8ff")],
+		["", "增伤 " + _pct(amp),      Color("#ff7a7a") if amp > 0.0005 else Color("#7a8694")],
+		["", "减伤 " + _pct(dr),       Color("#9bdcff") if dr > 0.0005 else Color("#7a8694")],
+		["", "治疗强度 " + _pct_mult(1.0 + float(u.get("heal_amp", 0.0))),  Color("#7fe39a")],
+		["", "护盾强度 " + _pct_mult(1.0 + float(u.get("shield_amp", 0.0))), Color("#ffd93d")],
+		["", "龟能充能 " + _pct_mult(1.0 + float(u.get("echarge_perm", 0.0))), Color("#ffce4d")],
+		["", "护甲穿透 %d" % int(u.get("armor_pen", 0.0)),                  Color("#ffc48a")],
+		["", "魔法穿透 %d" % int(u.get("magic_pen", 0.0)),                  Color("#c9a0ff")],
+		["", "反伤 " + _pct(float(u.get("reflect", 0.0))),                  Color("#ff9d8a")],
+		["", "韧性 " + _pct(float(u.get("tenacity", 0.0))),                 Color("#d6e4f0")],
+	]
 
 
-## 实战移速 —— 战斗里龟【真正走多快】。
-## ★这是 `RealtimeBattle3DScene._sim_step` 那条移动公式的镜像
-##   (源码里 `var spd: float = u["move_spd"] * move_perm * 减速 * spd_move_mult * move_buff_mult`)。
-## ★手抄的副本必然落后 ⇒ `verify_info_panel_live` 把 sim 那一行里出现的乘数字段名【逐个】
-##   和本函数对账: sim 那边以后再加一档乘数而这里没跟, 门禁直接红。
-##   (不能直接调 sim 那条 —— 它写死在每帧移动分支的中段, 没有函数出口; 加出口要动主战斗文件。)
+## 全部属性行 = 主要 + 次要, 【顺序必须与建面板时创建 Label 的顺序一致】——
+## 每帧刷新是按 `_info_stat_labels` 的下标一一对位改文字的, 顺序错位就会张冠李戴。
+func _info_stat_rows(u: Dictionary) -> Array:
+	var out: Array = _info_stat_rows_main(u)
+	out.append_array(_info_stat_rows_minor(u))
+	return out
+
+
 func _eff_move_spd(u: Dictionary) -> float:
 	var spd: float = float(u.get("move_spd", 0.0)) * float(u.get("move_perm", 1.0))
 	if battle._t < float(u.get("slow_until", 0.0)):
@@ -366,6 +428,94 @@ func _pct_mult(v: float) -> String:
 ## 某技能的龟能读数 → [当前点数, 满点数, 还差几秒, 就绪比例 0~1]。
 ## ★点数口径与战斗完全同源: `battle._skill_cost` 是花费、`battle._skill_cd` 是"充满要几秒"
 ##   (= 花费 × 0.075), 冷却剩余秒按同一个比例折回点数。不另立公式。
+## ══════════════════════════════════════════════════════════════════════
+##  资源条 —— 单一事实源 (2026-08-16)
+##
+##  ★为什么要收成一处: 这些资源现在【同一个东西两套画法】——
+##    ①头顶血条上有一套资源条(battle_render.gd:461 那几行镜像字段 _auraEnergy/_lavaRage/
+##      _starEnergy/bubbleStore) ②信息面板里另有一套文字 chip。
+##    而面板那套还漏了分母: 金币/财宝/储能只印当前值, "财宝 470" 玩家不知道 470 算多还是少。
+##
+##  ★两类资源不能用同一句模板(踩过的坑):
+##    · 阈值型(怒气/星能/储能/财宝) —— "攒满会怎样"
+##    · 定时结算型(泡泡) —— 它【永远不会"满了触发"】, 每 5 秒按当前量结算一次。
+##      套"满了会…"就是在承诺一件永远不会发生的事。
+##
+##  返回 [{name, cur, cap, hint, color}]；龟能永远第一条, 专属条有才出现。
+##  上限一律取【代码事实】, 不手抄:
+##    储能 maxHp×50%(battle_damage:290) · 泡泡 maxHp(battle_damage:242)
+##    星能 maxHp×40%(star_system 判定线) · 怒气 battle.RAGE_MAX · 财宝 _CHEST_THRESH[已开数]
+func _resource_bars(u: Dictionary) -> Array:
+	var out: Array = []
+	var mhp: float = maxf(1.0, float(u.get("maxHp", 1.0)))
+
+	# ① 龟能 —— 恒在(有主动技就有), 永远第一条
+	var acts: Array = u.get("active_skills", [])
+	if not battle._is_passive_pick(u) and acts.size() > 0:
+		var es: Array = _energy_state(u, str(acts[0]))
+		var left: float = float(es[2])
+		out.append({
+			"name": "龟能", "cur": float(es[0]), "cap": float(es[1]),
+			"hint": ("可放「%s」" % _skill_name_of(u, str(acts[0]))) if left <= 0.01 else ("%.1f 秒后可放" % left),
+			"color": Color("#ffce4d"),
+		})
+
+	# ② 怒气(熔岩) —— 阈值型。★火山形态下 rage 被 _sim_step 复用成倒计时百分比,
+	#    那时挂"怒气"是骗人 —— 形态那一行已经说了还剩几秒, 这里让路。
+	if float(u.get("rage", 0.0)) > 0.0 and not bool(u.get("volcano", false)):
+		out.append({
+			"name": "怒气", "cur": float(u.get("rage", 0.0)), "cap": float(battle.RAGE_MAX),
+			"hint": "攒满变火山形态", "color": Color("#ff9d5c"),
+		})
+
+	# ③ 星能(星际) —— 阈值型
+	if float(u.get("star_energy", 0.0)) > 0.0:
+		out.append({
+			"name": "星能", "cur": float(u.get("star_energy", 0.0)), "cap": maxf(1.0, mhp * STAR_FULL_PCT),
+			"hint": "攒满放强化版", "color": Color("#b28bff"),
+		})
+
+	# ④ 储能(龟壳) —— 阈值型。释放时清零: 冲击波(储能×40% 物理) + 储能×80% 护盾(5秒流失)
+	if float(u.get("store_energy", 0.0)) > 0.0:
+		var se: float = float(u.get("store_energy", 0.0))
+		out.append({
+			"name": "储能", "cur": se, "cap": mhp * 0.50,
+			"hint": "释放: 冲击波 %d + 护盾 %d" % [int(se * 0.40), int(se * 0.80)],
+			"color": Color("#ffd93d"),
+		})
+
+	# ⑤ 泡泡储量 —— ★定时结算型, 不是阈值型。每 5 秒: 回血 10%×储量 + 对最近敌 10%×储量 魔法
+	if float(u.get("bubble_store", 0.0)) > 0.0:
+		var bs: float = float(u.get("bubble_store", 0.0))
+		var nxt: float = maxf(0.0, 5.0 - float(u.get("_bbtimer", 0.0)))
+		out.append({
+			"name": "泡泡", "cur": bs, "cap": mhp,
+			"hint": "%.1f 秒后结算: 回血 %d · 伤害 %d" % [nxt, int(bs * 0.10), int(bs * 0.10)],
+			"color": Color("#aef1ff"),
+		})
+
+	# ⑥ 金币(财富) —— ★没有上限, 所以 cap = 0 表示【只显数字、不画条】。
+	#    硬给它编一个分母就是骗人; 但它必须看得见 —— 用户 2026-08-14「这个金币哪里有显示吗」,
+	#    查证当时 info_panel / battle_hud / hp_bar 一处都没显示, 而财富龟普攻带 "gold": 0.02
+	#    (每点金币 +2% 攻击加成)、fortuneAllIn 还要判金币数 ⇒ 看不到就没法决策何时梭哈。
+	if float(u.get("gold", 0.0)) > 0.0:
+		out.append({
+			"name": "金币", "cur": float(u.get("gold", 0.0)), "cap": 0.0,
+			"hint": "每点 +2% 攻击", "color": Color("#ffd24d"),
+		})
+
+	# ⑦ 财宝(宝箱) —— 阈值型。分母 = 下一箱阈值; 开满 5 件就没有下一箱了
+	if str(u.get("id", "")) == "chest" and float(u.get("dmg_dealt", 0.0)) > 0.0:
+		var opened: int = int(u.get("chest_opened", 0))
+		var th: Array = battle._CHEST_THRESH
+		if opened < th.size():
+			out.append({
+				"name": "财宝", "cur": float(u.get("dmg_dealt", 0.0)), "cap": float(th[opened]),
+				"hint": "再攒开第 %d 箱" % (opened + 1), "color": Color("#ffcf6b"),
+			})
+	return out
+
+
 func _energy_state(u: Dictionary, stype: String) -> Array:
 	var cost: float = battle._skill_cost(u, stype)
 	var full: float = battle._skill_cd(u, stype)
@@ -453,6 +603,119 @@ const STAR_FULL_PCT := 0.40
 
 ## 一件装备的局内读数(充能 / 层数)。★数据源就是装备图标格用的那两张表
 ##   (`EquipReadouts.CHARGE` / `.COUNT`) —— 不新开一张表, 也不在别处自造读数条。
+## 第五行【装备三槽】—— 72×72 图标横排, 星级角标压右上, 局内读数压图标下沿(2026-08-16)。
+##
+## ★点整槽 → 在槽下面撑开【有边框的描述框】(与技能栏同一套手风琴, 一次只开一个, 内联不弹层)。
+## ★读数走 EquipReadouts.CHARGE / COUNT 那两张表 —— 与装备图标框同一个数据源,
+##   不自造条、不放头顶(用户 2026-08-08 的铁律)。
+## ★空槽画灰框: 一眼看出"还能装几件", 而不是让人数图标。
+## ★槽做 72 是为了触摸: 这个项目实测 44pt = 81 视口像素, 72 仍不达标 ——
+##   显式登记为缺口(低频操作, 误触代价只是开错一条描述)。
+func _info_equip_slots(vb: VBoxContainer, u: Dictionary) -> void:
+	## ★读数 Label 必须登记进 _info_eq_readouts —— 每帧刷新是按这张表【只改文字不重建】的。
+	##   不登记的话充能/层数永远停在开面板那一刻(签名只认 id+星级, 充能变了签名不变 ⇒ 不重建)。
+	##   这正是"写进去了没人读"的反面: 建了节点却没接上消费者。
+	_info_eq_readouts.clear()
+	var equips: Array = u.get("equips", [])
+	var cap: int = maxi(3, equips.size())
+	var wrap = VBoxContainer.new()
+	wrap.add_theme_constant_override("separation", 4)
+	vb.add_child(wrap)
+	var rowc = HBoxContainer.new()
+	rowc.add_theme_constant_override("separation", 8)
+	wrap.add_child(rowc)
+	var boxes: Array = []
+	var holder = VBoxContainer.new()
+	holder.add_theme_constant_override("separation", 4)
+	wrap.add_child(holder)
+
+	for i in range(cap):
+		var it = equips[i] if i < equips.size() else null
+		var slot = PanelContainer.new()
+		var ssb = StyleBoxFlat.new()
+		var filled: bool = it is Dictionary
+		ssb.bg_color = Color("#121b28") if filled else Color("#0d141d")
+		ssb.set_border_width_all(1)
+		ssb.border_color = Color("#3a4c60") if filled else Color("#222c38")
+		ssb.set_corner_radius_all(0)
+		slot.add_theme_stylebox_override("panel", ssb)
+		slot.custom_minimum_size = Vector2(72, 72)
+		slot.mouse_filter = Control.MOUSE_FILTER_STOP if filled else Control.MOUSE_FILTER_IGNORE
+		if filled:
+			slot.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		rowc.add_child(slot)
+		if not filled:
+			continue
+		var eid := str((it as Dictionary).get("id", ""))
+		var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
+		var inner = Control.new()
+		inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(inner)
+		var img := str(edef.get("img", ""))
+		var ipath := "res://assets/sprites/%s" % img if img.ends_with(".png") else ""
+		if ipath != "" and ResourceLoader.exists(ipath):
+			var ir = TextureRect.new()
+			ir.texture = load(ipath)
+			ir.set_anchors_preset(Control.PRESET_FULL_RECT)
+			ir.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			ir.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			ir.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			ir.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			inner.add_child(ir)
+		# 星级角标(右上)
+		var st = Label.new()
+		st.text = "★".repeat(maxi(1, int((it as Dictionary).get("star", 1))))
+		st.add_theme_font_size_override("font_size", 10)
+		st.add_theme_color_override("font_color", Color("#ffd93d"))
+		st.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+		st.offset_left = -34.0; st.offset_top = 1.0; st.offset_right = -2.0; st.offset_bottom = 13.0
+		st.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		st.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		inner.add_child(st)
+		# 局内读数(压图标下沿) —— 与装备图标框同一个数据源
+		var ro := _equip_readout_text(u, eid)
+		if ro != "":
+			var rl = Label.new(); rl.text = ro
+			rl.add_theme_font_size_override("font_size", 9)
+			rl.add_theme_color_override("font_color", Color("#ffe9a8"))
+			rl.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+			rl.offset_top = -13.0; rl.offset_bottom = -1.0
+			rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			rl.clip_text = true
+			rl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			inner.add_child(rl)
+			_info_eq_readouts.append({"lbl": rl, "eid": eid})
+		# 描述框(默认收起)
+		var dbox = PanelContainer.new()
+		var dsb = StyleBoxFlat.new()
+		dsb.bg_color = Color("#0b1220")
+		dsb.set_border_width_all(1); dsb.border_color = Color("#2b3d52"); dsb.set_corner_radius_all(0)
+		dsb.content_margin_left = 10; dsb.content_margin_right = 10
+		dsb.content_margin_top = 8; dsb.content_margin_bottom = 8
+		dbox.add_theme_stylebox_override("panel", dsb)
+		dbox.visible = false
+		holder.add_child(dbox)
+		var dt = RichTextLabel.new()
+		dt.bbcode_enabled = true; dt.fit_content = true; dt.scroll_active = false
+		dt.add_theme_font_size_override("normal_font_size", 13)
+		dt.add_theme_color_override("default_color", Color("#c3d3e3"))
+		dt.text = "[b]%s[/b] %s
+%s" % [str(edef.get("name", eid)),
+			"★".repeat(maxi(1, int((it as Dictionary).get("star", 1)))),
+			str(edef.get("effectDesc1", ""))]
+		dt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		dbox.add_child(dt)
+		boxes.append(dbox)
+		var my_i: int = boxes.size() - 1
+		slot.gui_input.connect(func(ev: InputEvent) -> void:
+			if not (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT):
+				return
+			var opening: bool = not boxes[my_i].visible
+			for bi in range(boxes.size()):
+				boxes[bi].visible = false
+			boxes[my_i].visible = opening)
+
+
 func _equip_readout_text(u: Dictionary, eid: String) -> String:
 	var stt: Dictionary = (u.get("eq_state", {}) as Dictionary).get(eid, {})
 	var parts: Array = []
@@ -509,51 +772,49 @@ func _info_stat_cell(grid: GridContainer, icon: String, val: String, col: Color 
 
 # 当前生效的状态 → chips (只显生效的); 无则"无异常状态"
 # 当前生效的状态 → chips (只显生效的); 无则"无异常状态"
+## 状态 chips —— ★用真图标, 不用 emoji(2026-08-16)。
+##
+## ★项目早已定「全去 emoji(根治绿块 + 跨平台一致)」, 而 assets/sprites/status/ 里
+##   13 张状态图标【一直躺着没人用】, 和 data/status.json 的 13 条一一对得上。
+##   这里是漏网的一处。
+## ★资源(怒气/星能/储能/泡泡/财宝/金币)【从状态里摘出去】了 —— 它们归第二行的资源条。
+##   资源是"我攒到哪了", 状态是"我正在被怎样", 两回事, 不该在同一排 chip 里平级排列。
+## ★带剩余秒数: 有 *_until 的一律显示"还剩几秒", 光写"眩晕"看不出还要晕多久。
 func _info_status_chips(vb: VBoxContainer, u: Dictionary) -> void:
-	var chips: Array = []
+	var sic := "res://assets/sprites/status/"
+	var chips: Array = []   # [文字, 颜色, 图标路径]
 	## ★形态排在最前 —— 它决定这只龟此刻的射程/移速/技能组, 是"当前状态"里最该先看到的一条。
-	##   实拍证据: 熔岩龟在火山形态下面板只有射程 70/移速 120 两个数, 没有任何一个字说它变身了。
+	##   实拍证据: 熔岩龟在火山形态下面板只有射程 70/移速 120 两个数, 没有一个字说它变身了。
 	var _fc: Array = _form_chip(u)
-	if not _fc.is_empty(): chips.append(_fc)
-	if battle._t < float(u.get("stun_until", 0.0)): chips.append(["😵 眩晕", "#ff8a3d"])
-	# ★2026-07-22 修: 原先读 burn_until —— 那是【零处写入的死字段】(全项目只有初始化和这里读),
-	#   所以「🔥 灼烧」chip 从来没出现过, 哪怕身上叠了 200 层。真实层数在 dot_stacks。
-	#   顺带补上中毒/流血 —— 它们连 chip 都没有过。
+	if not _fc.is_empty():
+		chips.append([str(_fc[0]), str(_fc[1]), ""])
+	## 计时类: 统一带"还剩 N.N 秒"
+	var _timed: Array = [
+		["stun_until", "眩晕", "#ff8a3d", "stun-icon.png"],
+		["slow_until", "减速", "#7fd0ff", "chilled-icon.png"],
+		["taunt_until", "嘲讽", "#ff5c8a", "taunt-icon.png"],
+		["untargetable_until", "不可选中", "#b28bff", "stealth-icon.png"],
+		["heal_reduce_until", "治疗削减", "#ff6b6b", "heal-reduce-icon.png"],
+		## ★龟能锁没有专属图标 —— 用 curse-debuff(它就是个 debuff)。缺图标登记在案, 不是漏了。
+		["energy_lock_until", "龟能锁", "#ffcf5a", "curse-debuff-icon.png"],
+		## ★真火同样没有专属图标 —— 用 burn(它就是火)。
+		["true_fire_until", "真火", "#ffffff", "burn-icon.png"],
+	]
+	for t in _timed:
+		var left: float = float(u.get(str(t[0]), 0.0)) - battle._t
+		if left > 0.0:
+			chips.append(["%s %.1fs" % [str(t[1]), left], str(t[2]), sic + str(t[3])])
+	## DoT 层数: 真实层数在 dot_stacks —— 2026-07-22 查过, burn_until 是零处写入的死字段,
+	## 所以旧版「灼烧」chip 从来没出现过, 哪怕身上叠了 200 层。
 	var _ds: Dictionary = u.get("dot_stacks", {})
-	var _bn: int = int(_ds.get("burn", 0))
-	var _po: int = int(_ds.get("poison", 0))
-	var _bl: int = int(_ds.get("bleed", 0))
-	if _bn > 0: chips.append(["🔥 灼烧 %d" % _bn, "#ff6b3d"])
-	if _po > 0: chips.append(["🧪 中毒 %d" % _po, "#7ee87e"])
-	if _bl > 0: chips.append(["🩸 流血 %d" % _bl, "#ff6b6b"])
-	if battle._t < float(u.get("true_fire_until", 0.0)): chips.append(["🔥 真火", "#ffffff"])
-	if battle._t < float(u.get("slow_until", 0.0)): chips.append(["🐌 减速", "#7fd0ff"])
-	if battle._t < float(u.get("taunt_until", 0.0)): chips.append(["😡 嘲讽", "#ff5c8a"])
-	if battle._t < float(u.get("untargetable_until", 0.0)): chips.append(["🌀 隐身/不可选", "#b28bff"])
-	if battle._t < float(u.get("heal_reduce_until", 0.0)): chips.append(["💔 治疗削减", "#ff6b6b"])
-	if battle._t < float(u.get("energy_lock_until", 0.0)): chips.append(["🔒 龟能锁", "#ffcf5a"])
-	if float(u.get("shield", 0.0)) > 0.0: chips.append(["🛡 护盾 %d" % int(u.get("shield", 0.0)), "#7fe0ff"])
-	## ★怒气要带分母。满 100 变身火山(battle.RAGE_MAX), 只印一个 36 玩家不知道离变身还有多远。
-	##   ★★火山形态下 `rage` 被 _sim_step 复用成【倒计时百分比】(rage = 100 × 剩余/总时长),
-	##     那时再挂"怒气"就是骗人 —— 剩余时间已经由上面的形态 chip 说清楚了, 这里让路。
-	if float(u.get("rage", 0.0)) > 0.0 and not bool(u.get("volcano", false)):
-		chips.append(["😤 怒气 %d / %d" % [int(u.get("rage", 0.0)), int(battle.RAGE_MAX)], "#ff9d5c"])
-	## ★星能上限 = 最大生命 40%(star_system 里 `star_energy >= u["maxHp"] * 0.40` 那两处判定),
-	##   攒满才放强化版技能。原来只印当前值, 看不出离强化还有多远。
-	if float(u.get("star_energy", 0.0)) > 0.0:
-		var _sf: float = maxf(1.0, float(u.get("maxHp", 1.0)) * STAR_FULL_PCT)
-		var _se: float = float(u.get("star_energy", 0.0))
-		chips.append([("⭐ 星能 %d / %d" % [int(_se), int(_sf)]) + ("  攒满了" if _se >= _sf else ""), "#b28bff"])
-	## ★★用户 2026-08-14:「这个金币哪里有显示吗」——查证: 局内金币 `u["gold"]`
-	##   在 info_panel / battle_hud / hp_bar **一处都没有显示**。
-	##   而它是有用的: 财富龟普攻带 `"gold": 0.02`(每点金币 +2% 攻击加成)、
-	##   `fortuneAllIn` 还要判金币数 ⇒ 玩家看不到自己攒了多少, 也就无法决策什么时候梭哈。
-	##   (局外【深海币】是有显示的: 背包页与主菜单; 缺的只有局内这个。)
-	if float(u.get("gold", 0.0)) > 0.0: chips.append(["🪙 金币 %d" % int(u.get("gold", 0.0)), "#ffd24d"])
-	## 宝箱龟的【财宝值】同理 —— 它驱动开箱与"清点财宝"的治疗加成, 之前也看不到。
-	if float(u.get("dmg_dealt", 0.0)) > 0.0 and str(u.get("id", "")) == "chest":
-		chips.append(["💰 财宝 %d" % int(u.get("dmg_dealt", 0.0)), "#ffcf6b"])
-	if float(u.get("store_energy", 0.0)) > 0.0: chips.append(["🟡 储能 %d" % int(u.get("store_energy", 0.0)), "#ffd93d"])
+	for d in [["burn", "灼烧", "#ff6b3d", "burn-icon.png"],
+			["poison", "中毒", "#7ee87e", "poison-icon.png"],
+			["bleed", "流血", "#ff6b6b", "bleed-icon.png"]]:
+		var n: int = int(_ds.get(str(d[0]), 0))
+		if n > 0:
+			chips.append(["%s %d 层" % [str(d[1]), n], str(d[2]), sic + str(d[3])])
+	if float(u.get("shield", 0.0)) > 0.0:
+		chips.append(["护盾 %d" % int(u.get("shield", 0.0)), "#7fe0ff", sic + "shield-icon.png"])
 	var flow = HFlowContainer.new()
 	flow.add_theme_constant_override("h_separation", 6); flow.add_theme_constant_override("v_separation", 4)
 	vb.add_child(flow)
@@ -566,11 +827,23 @@ func _info_status_chips(vb: VBoxContainer, u: Dictionary) -> void:
 		var p = PanelContainer.new()
 		var sb = StyleBoxFlat.new(); sb.bg_color = Color(str(ch[1])); sb.bg_color.a = 0.20
 		sb.border_color = Color(str(ch[1])); sb.set_border_width_all(1); sb.set_corner_radius_all(6)
-		sb.content_margin_left = 8; sb.content_margin_right = 8; sb.content_margin_top = 2; sb.content_margin_bottom = 2
+		sb.content_margin_left = 6; sb.content_margin_right = 8; sb.content_margin_top = 2; sb.content_margin_bottom = 2
 		p.add_theme_stylebox_override("panel", sb)
+		## 图标 + 文字并排(形态那条没有图标, 只有文字)
+		var hb2 = HBoxContainer.new(); hb2.add_theme_constant_override("separation", 4)
+		var _ip: String = str(ch[2]) if ch.size() > 2 else ""
+		if _ip != "" and ResourceLoader.exists(_ip):
+			var ir = TextureRect.new()
+			ir.texture = load(_ip)
+			ir.custom_minimum_size = Vector2(16, 16)
+			ir.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			ir.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			ir.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			hb2.add_child(ir)
 		var l = Label.new(); l.text = str(ch[0]); l.add_theme_font_size_override("font_size", 12)
 		l.add_theme_color_override("font_color", Color(str(ch[1])))
-		p.add_child(l); flow.add_child(p)
+		hb2.add_child(l)
+		p.add_child(hb2); flow.add_child(p)
 
 ## 状态区的重建签名 = 战斗那份(battle._status_signature) + 本文件新加的那几项。
 ## ★为什么要拼而不是另写一份: chips 是【签名变了才重建】的, 新加的 chip 只要没进签名,
@@ -609,6 +882,172 @@ func _info_chest_section(vb: VBoxContainer, u: Dictionary) -> void:
 		if is_instance_valid(sec):
 			battle._fill_chest_section(sec, u))
 	sec.add_child(t)
+
+## 第四行【技能栏】—— 被动 / 普攻 / 携带的那一个主动技, 一行一条(2026-08-16)。
+##
+## 每行三段: [图标 32] [技能名] [龟能消耗]。
+## ★行上【不许有充能条、不许有"就绪"标记】(用户原话:「不需要什么就绪，进度条」)——
+##   龟能进度已经在第二行的资源条上了, 技能行再放一遍是同一个数在同一屏说两遍。
+## ★点整行 → 在这一行下面撑开一个【有边框的描述框】(用户两次说的都是"描述框");
+##   一次只开一个(手风琴), 且【内联撑开不弹浮层】—— 弹层会遮战场, 违反 2026-07-18
+##   定的「侧边不遮战场」。
+##
+## 返回 [{name, cost, icon, desc, tpl, sk}]，顺序固定: 被动 → 普攻 → 主动。
+func _skill_bar_entries(u: Dictionary) -> Array:
+	var out: Array = []
+	var id := str(u.get("id", ""))
+	var pet: Dictionary = DataRegistry.pet_by_id.get(id, {})
+	var pool: Array = pet.get("skillPool", [])
+
+	# ① 被动
+	var passive: Dictionary = u.get("passive", {})
+	if passive is Dictionary and not (passive as Dictionary).is_empty():
+		var ptpl = battle.SkillText.text_of(passive, battle._skill_detail())
+		var pic := ""
+		var praw := str(DataRegistry.passive_icons.get(str(passive.get("type", "")), ""))
+		if praw.ends_with(".png"):
+			pic = "res://assets/sprites/" + praw
+		out.append({"name": "被动 · " + str(passive.get("name", "")), "cost": -1.0, "icon": pic,
+			"desc": battle._render._render_skill_text(ptpl, u, passive), "tpl": ptpl, "sk": passive})
+
+	# ② 普攻(skillPool[0] 一般是 physical/magic)
+	if not pool.is_empty() and pool[0] is Dictionary:
+		var s0: Dictionary = pool[0]
+		var t0 := str(s0.get("type", ""))
+		if t0 == "physical" or t0 == "magic":
+			var btpl = battle.SkillText.text_of(s0, battle._skill_detail())
+			out.append({"name": str(s0.get("name", "普攻")) + " (普攻)", "cost": -1.0,
+				"icon": _skill_icon_path(s0),
+				"desc": battle._render._render_skill_text(btpl, u, s0), "tpl": btpl, "sk": s0})
+
+	# ③ 携带的主动技(3选1 选中的那一个; 小将走独立文案表)
+	if pool.is_empty():
+		for t in u.get("active_skills", []):
+			var md = battle.MINION_SKILL_DESC.get(str(t), null)
+			if md != null:
+				out.append({"name": str(md["name"]), "cost": battle._skill_cost(u, str(t)), "icon": "",
+					"desc": str(md["desc"]), "tpl": "", "sk": {}})
+	else:
+		for t in battle._chosen_skill_types(id, str(u.get("side", "")) == "left"):
+			for sk in pool:
+				if sk is Dictionary and str(sk.get("type", "")) == str(t):
+					var stpl = battle.SkillText.text_of(sk, battle._skill_detail())
+					out.append({"name": str(sk.get("name", t)), "cost": battle._skill_cost(u, str(t)),
+						"icon": _skill_icon_path(sk),
+						"desc": battle._render._render_skill_text(stpl, u, sk), "tpl": stpl, "sk": sk})
+					break
+	return out
+
+
+## 把技能栏画出来: 一行一条 + 点行撑开【有边框的描述框】(手风琴, 一次只开一个)。
+## ★不弹浮层 —— 描述框就在被点那一行下面把后面的内容往下推(守「侧边不遮战场」)。
+## ★行上没有充能条、没有"就绪"标记(用户原话:「不需要什么就绪，进度条」)。
+func _info_skill_bar(vb: VBoxContainer, u: Dictionary) -> void:
+	var entries: Array = _skill_bar_entries(u)
+	if entries.is_empty():
+		return
+	var boxes: Array = []          # 每行对应的描述框, 供手风琴互斥
+	battle._info_skill_lbls.clear()
+	for e in entries:
+		var ent: Dictionary = e
+		# ── 行 ───────────────────────────────────────────────────────────
+		var row = PanelContainer.new()
+		var rsb = StyleBoxFlat.new()
+		rsb.bg_color = Color("#121b28")
+		rsb.set_border_width_all(1); rsb.border_color = Color("#22303f")
+		rsb.set_corner_radius_all(0)
+		rsb.content_margin_left = 8; rsb.content_margin_right = 8
+		rsb.content_margin_top = 6; rsb.content_margin_bottom = 6
+		row.add_theme_stylebox_override("panel", rsb)
+		row.mouse_filter = Control.MOUSE_FILTER_STOP
+		row.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		vb.add_child(row)
+		var hb = HBoxContainer.new(); hb.add_theme_constant_override("separation", 8)
+		row.add_child(hb)
+		var ip := str(ent.get("icon", ""))
+		if ip != "" and ResourceLoader.exists(ip):
+			var ir = TextureRect.new()
+			ir.texture = load(ip)
+			ir.custom_minimum_size = Vector2(32, 32)
+			ir.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			ir.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			ir.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			ir.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			hb.add_child(ir)
+		else:
+			## ★缺图标就留一个等宽空位, 不画占位方块 —— 缺就是缺, 别糊弄成"有图"。
+			var ph = Control.new(); ph.custom_minimum_size = Vector2(32, 32)
+			ph.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			hb.add_child(ph)
+		var nl = Label.new(); nl.text = str(ent.get("name", ""))
+		nl.add_theme_font_size_override("font_size", 15)
+		nl.add_theme_color_override("font_color", Color("#dbe9f7"))
+		nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		nl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		nl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hb.add_child(nl)
+		var cost: float = float(ent.get("cost", -1.0))
+		var cl = Label.new()
+		cl.text = "—" if cost < 0.0 else str(int(cost))
+		cl.add_theme_font_size_override("font_size", 15)
+		cl.add_theme_color_override("font_color", Color("#5f7186") if cost < 0.0 else Color("#ffce4d"))
+		cl.custom_minimum_size = Vector2(42, 0)
+		cl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		cl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		cl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hb.add_child(cl)
+		var ar = Label.new(); ar.text = "›"
+		ar.add_theme_font_size_override("font_size", 15)
+		ar.add_theme_color_override("font_color", Color("#5f7186"))
+		ar.custom_minimum_size = Vector2(12, 0)
+		ar.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		ar.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		ar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hb.add_child(ar)
+
+		# ── 描述框(默认收起) ─────────────────────────────────────────────
+		var dbox = PanelContainer.new()
+		var dsb = StyleBoxFlat.new()
+		dsb.bg_color = Color("#0b1220")
+		dsb.set_border_width_all(1); dsb.border_color = Color("#2b3d52")
+		dsb.set_corner_radius_all(0)
+		dsb.content_margin_left = 10; dsb.content_margin_right = 10
+		dsb.content_margin_top = 8; dsb.content_margin_bottom = 8
+		dbox.add_theme_stylebox_override("panel", dsb)
+		dbox.visible = false
+		vb.add_child(dbox)
+		var dt = RichTextLabel.new()
+		dt.bbcode_enabled = true; dt.fit_content = true; dt.scroll_active = false
+		dt.add_theme_font_size_override("normal_font_size", 13)
+		dt.add_theme_color_override("default_color", Color("#c3d3e3"))
+		dt.text = str(ent.get("desc", ""))
+		dt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		dbox.add_child(dt)
+		boxes.append(dbox)
+		## 每帧按当前属性重渲染描述里的伤害数值(与旧版同一套引用表)
+		battle._info_skill_lbls.append({"lbl": dt, "tpl": str(ent.get("tpl", "")), "sk": ent.get("sk", {})})
+
+		var my_i: int = boxes.size() - 1
+		row.gui_input.connect(func(ev: InputEvent) -> void:
+			if not (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT):
+				return
+			var opening: bool = not boxes[my_i].visible
+			for bi in range(boxes.size()):
+				boxes[bi].visible = false          # 手风琴: 一次只开一个
+			boxes[my_i].visible = opening
+			ar.text = "⌄" if opening else "›")
+
+
+## 技能字典 → 图标绝对路径; 没配图标返回 ""。
+## ★实测 112 条技能里 110 条有真图标(98%), 缺的两条: 凤凰「强化涅槃」、熔岩「熔岩爆发」。
+func _skill_icon_path(sk: Dictionary) -> String:
+	var ic := str(sk.get("icon", ""))
+	if ic.ends_with(".png"):
+		var p := "res://assets/sprites/" + ic
+		if ResourceLoader.exists(p):
+			return p
+	return ""
+
 
 func _panel_skill_entries(u: Dictionary) -> Array:
 	var id = str(u.get("id", ""))

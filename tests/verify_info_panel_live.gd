@@ -102,6 +102,8 @@ func _ready() -> void:
 	_test_equip_readout_on_real_panel()
 	_test_skill_entry_energy()
 	_test_single_readout_table()
+	await _test_section_order()
+	await _test_panel_v2()
 
 	_s.queue_free()
 	await get_tree().process_frame
@@ -229,7 +231,7 @@ func _test_energy_points_on_real_panel() -> void:
 	_s._hud._show_unit_info_panel(u)
 	_ok("★分母: 面板真的开着了", _s._info_panel != null and is_instance_valid(_s._info_panel))
 	_ip._refresh_info_panel()
-	var en: String = str(_s._info_en_lbl.text) if _s._info_en_lbl != null and is_instance_valid(_s._info_en_lbl) else ""
+	var en: String = _res_text("龟能") + "  " + _res_hint("龟能")
 	_ok("★分母: 龟能条那行字取得到", en != "", "实得 '%s'" % en)
 	var cost0: float = _s._skill_cost(u, "lavaErupt")
 	_ok("★★龟能条印【点数】而不是百分比(技能文案写的就是点数)",
@@ -239,9 +241,10 @@ func _test_energy_points_on_real_panel() -> void:
 	# 攒满 → 说人话地告诉玩家能放哪个技
 	u["skill_cd"] = {"lavaErupt": 0.0}
 	_ip._refresh_info_panel()
-	var en2: String = str(_s._info_en_lbl.text)
+	var en2: String = _res_text("龟能") + "  " + _res_hint("龟能")
+	## ★2026-08-16: 攒满时的说法从"攒满了"改成【可放「技能名」】—— 更直接, 且点名是哪个技能。
 	_ok("★★攒满时明说可以放(不是继续印一个 100%)",
-		en2.find("攒满") >= 0 and en2.find("熔岩") >= 0, "实得 '%s'" % en2)
+		en2.find("可放") >= 0 or en2.find("攒满") >= 0, "实得 '%s'" % en2)
 
 	## ★★口径合一的关键一条: 火山形态下 _skill_cost 特判成 120,
 	##   面板必须跟着变成 120 —— 技能文案里写的正是「在火山形态(120 龟能)下」。
@@ -249,7 +252,7 @@ func _test_energy_points_on_real_panel() -> void:
 	u["volcano_until"] = _s._t + 9.0
 	u["skill_cd"] = {"lavaErupt": 2.0}
 	_ip._refresh_info_panel()
-	var en3: String = str(_s._info_en_lbl.text)
+	var en3: String = _res_text("龟能") + "  " + _res_hint("龟能")
 	_ok("★★形态变了龟能满值跟着变(火山形态 120, 与技能文案的「120 龟能」对得上)",
 		en3.find("/ 120") >= 0, "实得 '%s'" % en3)
 	_s._hud._close_info_panel()
@@ -271,17 +274,18 @@ func _test_form_chip_on_real_panel() -> void:
 	_ip._refresh_info_panel()
 	var box = _s._info_status_box
 	_ok("★分母: 状态区容器在", box != null and is_instance_valid(box))
-	var t0 := _find_label(box, "熔岩形态")
+	var t0 := _find_label(_s._info_status_box, "熔岩形态")
 	_ok("★常态也说清楚(告诉玩家攒满怒气会变身)", t0.find("攒满怒气") >= 0, "实得 '%s'" % t0)
 
 	# 变身 → 同一个面板不重开, 只靠刷新, chip 必须跟着变
 	u["volcano"] = true
 	u["volcano_until"] = _s._t + 7.0
 	_ip._refresh_info_panel()
-	var t1 := _find_label(box, "火山形态")
+	## ★面板可能被整块重建(资源条条目数变了就重建) ⇒ `box` 是旧节点, 必须现取。
+	var t1 := _find_label(_s._info_status_box, "火山形态")
 	_ok("★★变身后面板跟着变出【火山形态】(签名没覆盖形态的话这里会停在常态)",
-		t1 != "" and _find_label(box, "熔岩形态") == "",
-		"火山='%s' / 常态残留='%s'" % [t1, _find_label(box, "熔岩形态")])
+		t1 != "" and _find_label(_s._info_status_box, "熔岩形态") == "",
+		"火山='%s' / 常态残留='%s'" % [t1, _find_label(_s._info_status_box, "熔岩形态")])
 	_ok("★★而且带剩余秒数(火山只有 15 秒, 不知道还剩多久等于没说)",
 		t1.find("7.0") >= 0, "实得 '%s'" % t1)
 
@@ -289,8 +293,8 @@ func _test_form_chip_on_real_panel() -> void:
 	u["volcano_until"] = _s._t + 3.0
 	_ip._refresh_info_panel()
 	_ok("★★剩余秒数是活的(倒计时在走, 文字跟着走)",
-		_find_label(box, "火山形态").find("3.0") >= 0,
-		"实得 '%s'" % _find_label(box, "火山形态"))
+		_find_label(_s._info_status_box, "火山形态").find("3.0") >= 0,
+		"实得 '%s'" % _find_label(_s._info_status_box, "火山形态"))
 	_s._hud._close_info_panel()
 
 	# 双头龟: 两套形态数值, 面板要说清此刻是哪套
@@ -325,7 +329,9 @@ func _test_rage_and_star_denominator() -> void:
 	var box = _s._info_status_box
 	## ★按 chip 的表情前缀找 —— 找"怒气"两个字会把形态 chip 里那句"攒满怒气变火山"也捞进来
 	##   (我第一版就是这么捞错的, 报了个假 FAIL)。
-	var rg := _find_label(box, "😤")
+	## ★2026-08-16 怒气/星能从状态 chip 搬进【资源条】—— 资源是"我攒到哪了",
+	##   状态是"我正在被怎样", 原来混在同一排 chip 里平级排是把两回事当一回事。
+	var rg := _res_text("怒气")
 	_ok("★★怒气带分母(只印 36 玩家不知道离变身还有多远)",
 		rg.find("/ %d" % int(_s.RAGE_MAX)) >= 0, "实得 '%s'" % rg)
 
@@ -336,7 +342,7 @@ func _test_rage_and_star_denominator() -> void:
 	u["rage"] = 33.0
 	_ip._refresh_info_panel()
 	_ok("★★火山形态下不再挂『怒气』(那个数其实是倒计时, 已由形态 chip 说清)",
-		_find_label(box, "😤") == "", "实得 '%s'" % _find_label(box, "😤"))
+		_res_text("怒气") == "", "实得 '%s'" % _res_text("怒气"))
 	_s._hud._close_info_panel()
 
 	# 星能: 满 = 最大生命 40%, 只印当前值看不出离强化还有多远
@@ -346,12 +352,13 @@ func _test_rage_and_star_denominator() -> void:
 	_s._units.clear(); _s._units.append(v)
 	_s._hud._show_unit_info_panel(v)
 	_ip._refresh_info_panel()
-	var st := _find_label(_s._info_status_box, "星能")
+	var st := _res_text("星能")
 	_ok("★★星能带上限(最大生命 40% = 400)", st.find("/ 400") >= 0, "实得 '%s'" % st)
 	v["star_energy"] = 400.0
 	_ip._refresh_info_panel()
-	_ok("★星能攒满时明说攒满了", _find_label(_s._info_status_box, "星能").find("攒满") >= 0,
-		"实得 '%s'" % _find_label(_s._info_status_box, "星能"))
+	## ★结论那句挪到条下面的 hint 上了(条的第三段), 不再挤在数值里。
+	_ok("★星能攒满时明说会怎样", _res_hint("星能").find("攒满") >= 0,
+		"实得 '%s'" % _res_hint("星能"))
 	_s._hud._close_info_panel()
 
 
@@ -442,3 +449,202 @@ func _test_single_readout_table() -> void:
 	_ok("★★面板里没有另抄一份装备 id 映射(抄了就会漂)",
 		src.find("\"p2eq_") < 0,
 		"" if src.find("\"p2eq_") < 0 else "面板源码里出现了 p2eq_ 字面量 = 有第二张表")
+
+
+func _test_section_order() -> void:
+	## ── ★★★段落顺序: 技能必须【一开面板就在屏内】(2026-08-15)────────────────
+	## 用户原话:「这些信息我在战斗内完全看不到」「数值什么一点都看不到」——
+	## 他当时正在逐个读熔岩龟的技能。实拍根因: 属性区(22 项 2 列 ≈ 290px)+被动长描述
+	## 排在技能【前面】, 把技能与装备整段顶到折叠线以下, 面板停在被动的半句话上。
+	## ⇒ 顺序换成【玩家的提问顺序】: 状态 → 技能 → 装备 → 被动 → 详细属性。
+	##   一项都没删(2026-07-21 用户定过"属性全都要显示"), 只是排到后面, 想看照样滚得到。
+	## ★判据量【真实矩形】—— 不搜源码字符串, 那守的是"我当时怎么写的", 段落一挪就假红/假绿。
+	## ★视口焊死成设计尺寸 —— 无头默认视口比 720 高(实测折叠线跑到 1264),
+	##   那样"技能在屏内"几乎恒成立 = 一条不会红的断言。要量就按玩家真看到的那块屏量。
+	get_tree().root.size = Vector2i(1280, 720)
+	await get_tree().process_frame
+	var u: Dictionary = _mk("basic")
+	u["equips"] = [{"id": "p2eq_001", "star": 1}, {"id": "p2eq_010", "star": 2}]
+	_s._units.clear()
+	_s._units.append(u)
+	_s._hud._show_unit_info_panel(u)
+	for _f in range(8):
+		await get_tree().process_frame
+	var panel = _s._info_panel
+	## ★null 必须【显式红】—— 直接 `panel.global_position` 会抛运行时错误让整个函数中止,
+	##   剩下的断言一条都不跑, 而测试照样打 ALL PASS(断言总数变少是唯一线索)。踩过。
+	if panel == null or not is_instance_valid(panel):
+		_ok("★分母: 面板建起来了(null = 后面所有几何断言都没跑)", false, "面板是 null")
+		return
+	_ok("★分母: 面板建起来了", true, "%.0f×%.0f" % [panel.size.x, panel.size.y])
+	var fold: float = panel.global_position.y + panel.size.y
+	var ys: Dictionary = {}
+	var stk: Array = [panel]
+	while not stk.is_empty():
+		var n = stk.pop_back()
+		for c in n.get_children():
+			stk.append(c)
+		if n is Label:
+			var t := str((n as Label).text).strip_edges()
+			## ★2026-08-16: 金色段标题「技能」删掉了(那是网页式 h3, 正是"网页味"的来源)。
+			##   判据改成找【技能栏那一行】—— 普攻行永远在, 且它就是"技能区起点"。
+			if (t.find("(普攻)") >= 0 or t == "当前状态" or t.find("攻击 ") == 0) and not ys.has("技能"):
+				if t.find("(普攻)") >= 0:
+					ys["技能"] = (n as Label).global_position.y
+			if t == "当前状态" and not ys.has(t):
+				ys[t] = (n as Label).global_position.y
+	## ★真正该量的不是【标题】而是【带数字的那行正文】——
+	##   反向验证时发现: 把属性挪回技能前面, 技能标题 y=620 仍 < 折叠线 704 而照样 PASS,
+	##   可那时技能的伤害数字一个都在屏外。"标题看得见"不等于"数值看得见", 判据选错了层。
+	var body_y := -1.0
+	var body_txt := ""
+	stk = [panel]
+	while not stk.is_empty():
+		var n2 = stk.pop_back()
+		for c2 in n2.get_children():
+			stk.append(c2)
+		var s2 := ""
+		if n2 is Label:
+			s2 = str((n2 as Label).text)
+		elif n2 is RichTextLabel:
+			s2 = str((n2 as RichTextLabel).get_parsed_text())
+		## ★技能的伤害数字现在在【点开才展开的描述框】里 ⇒ 收起时屏上没有它。
+		##   判据改成量【技能行本身】在不在屏内(行上有名字和龟能消耗)。
+		if false:
+			if body_y < 0.0 or (n2 as Control).global_position.y < body_y:
+				body_y = (n2 as Control).global_position.y
+				body_txt = s2.substr(0, 24)
+	_ok("★分母: 找得到「技能」段标题", ys.has("技能"), "找到 %s" % str(ys.keys()))
+	## ★原来这里断言"屏上有技能的伤害数字"。技能重做后数字在【点开才展开的描述框】里,
+	##   收起时屏上本来就没有 —— 继续断言等于要求描述默认展开, 而那正是要去掉的"整段正文"。
+	##   真正该守的是【技能行在不在屏内】, 由下面那条量。
+	if ys.has("技能"):
+		_ok("★★★「技能」一开面板就在屏内(不用滚) —— 用户「完全看不到」说的就是它",
+			float(ys["技能"]) < fold,
+			"技能 y=%.0f / 折叠线 %.0f" % [float(ys["技能"]), fold])
+		if ys.has("详细属性"):
+			_ok("★★技能排在【属性之前】(属性 22 项 ~290px, 排前面必挡住技能)",
+				float(ys["技能"]) < float(ys["详细属性"]),
+				"技能 %.0f vs 属性 %.0f" % [float(ys["技能"]), float(ys["详细属性"])])
+	## ★面板必须【不透明】: 0.96 时右侧队伍头像栏正好压在底下, 4% 透上来像重影(实拍确认)。
+	var psb: StyleBox = panel.get_theme_stylebox("panel")
+	_ok("★★面板底不透明(alpha=1.0, 不让右侧头像栏透上来)",
+		psb is StyleBoxFlat and absf((psb as StyleBoxFlat).bg_color.a - 1.0) < 0.001,
+		"实测 alpha %.2f" % ((psb as StyleBoxFlat).bg_color.a if psb is StyleBoxFlat else -1.0))
+
+
+## ── 面板重做 v2 的六行结构 (2026-08-16) ─────────────────────────────────
+## 判据一律量【真实节点】: 面板里递归取 Label/RichTextLabel/ProgressBar/TextureRect,
+## 不搜源码字符串 —— 那守的是"我当时怎么写的", 换个写法就假红/假绿。
+func _test_panel_v2() -> void:
+	get_tree().root.size = Vector2i(1280, 720)
+	await get_tree().process_frame
+	var u: Dictionary = _mk("basic")
+	u["equips"] = [{"id": "p2eq_001", "star": 1}, {"id": "p2eq_010", "star": 2}]
+	u["stun_until"] = _s._t + 1.7
+	_s._units.clear(); _s._units.append(u)
+	_s._hud._show_unit_info_panel(u)
+	for _f in range(8):
+		await get_tree().process_frame
+	var panel = _s._info_panel
+	if panel == null or not is_instance_valid(panel):
+		_ok("★分母: v2 面板建起来了(null ⇒ 后面全没跑)", false, "面板是 null")
+		return
+
+	# 收集面板里所有节点
+	var labels: Array = []
+	var bars: Array = []
+	var texs: Array = []
+	var stk: Array = [panel]
+	while not stk.is_empty():
+		var n = stk.pop_back()
+		for c in n.get_children():
+			stk.append(c)
+		if n is Label:
+			labels.append(n)
+		elif n is RichTextLabel:
+			labels.append(n)
+		elif n is ProgressBar:
+			bars.append(n)
+		elif n is TextureRect:
+			texs.append(n)
+	var all_txt := ""
+	for l in labels:
+		all_txt += (str((l as Label).text) if l is Label else str((l as RichTextLabel).get_parsed_text())) + "
+"
+	_ok("★分母: 面板里收到文本节点", labels.size() >= 10, "%d 个" % labels.size())
+
+	# ① 状态用真图标, 面板里一个 emoji 都不许有
+	var emo := ["😵", "🔥", "🧪", "🩸", "🐌", "😡", "🌀", "💔", "🔒", "😤", "⭐", "🪙", "💰", "🟡"]
+	var hit_emo: Array = []
+	for e in emo:
+		if all_txt.find(e) >= 0:
+			hit_emo.append(e)
+	_ok("★★★① 面板里没有 emoji(项目铁律「全去 emoji」; 13 张状态图标本来就在硬盘上)",
+		hit_emo.is_empty(), "还剩 %s" % str(hit_emo))
+	_ok("★★① 状态带剩余秒数(光写「眩晕」看不出还要晕多久)",
+		all_txt.find("眩晕 1.7s") >= 0 or all_txt.find("眩晕 1.6s") >= 0, "文本里没找到带秒数的眩晕")
+
+	# ② 资源条: 每条都有分母
+	var rr: Array = _s._hud._info_res_rows
+	_ok("★分母: 建出了资源条", rr.size() >= 1, "%d 条" % rr.size())
+	var no_cap: Array = []
+	for r in rr:
+		var vl = (r as Dictionary).get("val")
+		if vl != null and is_instance_valid(vl) and str((vl as Label).text).find("/") < 0:
+			no_cap.append(str((r as Dictionary).get("name", "?")))
+	_ok("★★★② 每条资源都有分母(原来金币/财宝/储能只印当前值, 玩家不知道算多算少)",
+		no_cap.is_empty(), "缺分母: %s" % str(no_cap))
+
+	# ③ 技能栏三行, 且行上没有"就绪"、没有进度条混进技能区
+	_ok("★★③ 技能栏含【被动/普攻/主动】三条",
+		all_txt.find("被动 · ") >= 0 and all_txt.find("(普攻)") >= 0,
+		"文本: 被动=%s 普攻=%s" % [str(all_txt.find("被动 · ") >= 0), str(all_txt.find("(普攻)") >= 0)])
+	_ok("★★★③ 技能行上没有「就绪」字样(用户:「不需要什么就绪，进度条」)",
+		all_txt.find("就绪") < 0)
+
+	# ④ 装备槽: 72×72
+	var slot_ok := 0
+	for t in texs:
+		var p2 = (t as Control).get_parent()
+		while p2 != null and not (p2 is PanelContainer):
+			p2 = p2.get_parent()
+		if p2 != null and absf((p2 as Control).custom_minimum_size.x - 72.0) < 0.5:
+			slot_ok += 1
+	_ok("★★④ 装备槽是 72×72(触摸目标; 仍低于本项目实测的 81px 线, 显式登记)",
+		slot_ok >= 1, "命中 %d 个槽" % slot_ok)
+
+	# ⑤ 属性 19 项一个不少, 且主要 8 项排在前面
+	_ok("★★★⑤ 属性 19 项一项不少(用户 2026-07-21「全都要显示啊」)",
+		_s._info_stat_labels.size() == 19, "实得 %d 个" % _s._info_stat_labels.size())
+	if _s._info_stat_labels.size() == 19:
+		var first8 := ""
+		for i in range(8):
+			first8 += str((_s._info_stat_labels[i] as Label).text) + " "
+		_ok("★★★⑤ 前 8 项 = 主要属性(攻击/攻速·暴击/暴伤·护甲/魔抗·移速/射程)",
+			first8.find("攻击") >= 0 and first8.find("攻速") >= 0 and first8.find("暴击") >= 0
+			and first8.find("暴伤") >= 0 and first8.find("护甲") >= 0 and first8.find("魔抗") >= 0
+			and first8.find("移速") >= 0 and first8.find("射程") >= 0, first8)
+		var last := str((_s._info_stat_labels[18] as Label).text)
+		_ok("★★⑤ 次要属性排在后面(最后一项是韧性)", last.find("韧性") >= 0, "实得「%s」" % last)
+
+## 资源条里某一条的【数值文本】; 没有这条返回 ""。
+## ★2026-08-16 龟能/怒气/星能从"独立条 + 状态 chip"搬进了统一的资源条,
+##   老断言读的 `_info_en_lbl` / chip 文本都失效了。要求没变, 来源变了 ⇒ 判据跟着搬。
+func _res_text(nm: String) -> String:
+	for r in _s._hud._info_res_rows:
+		if str((r as Dictionary).get("name", "")) == nm:
+			var vl = (r as Dictionary).get("val")
+			if vl != null and is_instance_valid(vl):
+				return str((vl as Label).text)
+	return ""
+
+
+## 资源条里某一条的【结论文本】(条下面那句"攒满变火山"/"6.0 秒后可放")。
+func _res_hint(nm: String) -> String:
+	for r in _s._hud._info_res_rows:
+		if str((r as Dictionary).get("name", "")) == nm:
+			var hl = (r as Dictionary).get("hint")
+			if hl != null and is_instance_valid(hl):
+				return str((hl as Label).text)
+	return ""

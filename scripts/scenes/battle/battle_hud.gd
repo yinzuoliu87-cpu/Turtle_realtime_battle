@@ -11,6 +11,11 @@ const _P2T_HUD := preload("res://scripts/gamedata/phase2_types.gd")   # 羁绊 c
 const SHOP_SCENE := "res://scenes/Shop.tscn"
 const SHOP_BTN_TEXT := "前往商店"
 
+## 第二行资源条的节点引用 —— 每帧按下标对位改数, 不重建节点。
+## ★存在 hud 这个 RefCounted 上而不是主战斗文件里: 主文件有 arch_budget 冻结的行数台账,
+##   往上帝文件加成员就是在往那笔欠债上加; 而这几行只有面板用得着, 本就该待在面板这边。
+var _info_res_rows: Array = []
+
 
 ## 被动技能 id → 圆盘图标。
 ## ★为什么单列一张: battle.TRAINER_SKILLS 只收【主动技】, 被动的图标一直只存在
@@ -1870,7 +1875,9 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	var panel = PanelContainer.new()
 	panel.name = "InfoPanel"
 	var psb = StyleBoxFlat.new()
-	psb.bg_color = Color(0.055, 0.086, 0.13, 0.96)
+	## ★不透明(1.0)。原来 0.96 ⇒ 右侧队伍头像栏正好压在面板底下, 4% 的敌方框与装备图标
+	##   透上来, 读起来像重影(实拍确认)。侧边面板本来就"不遮全场", 这 4% 换不到任何好处。
+	psb.bg_color = Color(0.055, 0.086, 0.13, 1.0)
 	psb.set_border_width_all(2); psb.border_color = Color("#ffd93d")   # 金框(与主菜单一致)
 	psb.set_corner_radius_all(14)
 	psb.content_margin_left = 16; psb.content_margin_right = 16
@@ -1915,29 +1922,13 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	# HP 条(阵营色)
 	var _hpref: Array = battle._info_sys._info_bar(vb, float(u.get("hp", 0.0)), float(u.get("maxHp", 1.0)), side_col, "HP  %d / %d" % [int(u.get("hp", 0)), int(u.get("maxHp", 0))])
 	battle._info_hp_bar = _hpref[0]; battle._info_hp_lbl = _hpref[1]
-	# 龟能条(有主动技才显): 主技充能% = 1 − 剩余冷却/满冷却
-	var acts: Array = u.get("active_skills", [])
-	if not battle._is_passive_pick(u) and acts.size() > 0:
-		var st0 = str(acts[0])
-		var mxcd = battle._skill_cd(u, st0)
-		var cd = float((u.get("skill_cd", {}) as Dictionary).get(st0, mxcd))
-		var rdy = CombatMath.cooldown_ready(cd, mxcd)
-		var _enref: Array = battle._info_sys._info_bar(vb, rdy, 1.0, Color("#ffce4d"), "龟能  %d%%" % int(rdy * 100.0))
-		battle._info_en_bar = _enref[0]; battle._info_en_lbl = _enref[1]
-
-	battle._add_panel_sep(vb)
-
-	# 属性格 (2列·图标)
-	var grid = GridContainer.new(); grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 18); grid.add_theme_constant_override("v_separation", 5)
-	vb.add_child(grid)
-	# ★属性行走 battle._info_sys._info_stat_rows() 单一事实源(建面板与每帧刷新同源, 不会漂移)。
-	#   图标: 8项有真图标, 其余留空占位 —— 本项目已「全去emoji(根治绿块+跨平台一致)」。
-	battle._info_stat_labels.clear()
-	for row in battle._info_sys._info_stat_rows(u):
-		var lb = battle._info_sys._info_stat_cell(grid, "", str(row[1]), row[2], str(row[0]))
-		battle._info_stat_labels.append(lb)
-	battle._info_stat_grid = grid
+	## ── 第二行【资源区】(2026-08-16 用户「龟能条放血条下面啊」)──────────────
+	##   龟能恒在第一条; 专属资源(怒气/星能/储能/泡泡/财宝)有才出现, 每条都带分母。
+	##   ★分母是这次补的: 原来金币/财宝/储能只印当前值, "财宝 470" 玩家不知道 470 算多还是少。
+	##   ★资源与状态【分家】: 它们原来混在同一排状态 chip 里和"眩晕/灼烧"平级排, 是两回事。
+	_info_res_rows.clear()
+	for _r in battle._info_sys._resource_bars(u):
+		_info_res_rows.append(battle._info_sys._info_resource_row(vb, _r))
 
 	battle._add_panel_sep(vb)
 
@@ -1949,52 +1940,72 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	battle._info_status_box = VBoxContainer.new()
 	battle._info_status_box.add_theme_constant_override("separation", 4)
 	vb.add_child(battle._info_status_box)
+
+
 	battle._info_sys._info_status_chips(battle._info_status_box, u)
 	battle._info_status_sig = battle._status_signature(u)
-
-	# 被动
-	var passive: Dictionary = u.get("passive", {})
-	if passive is Dictionary and not (passive as Dictionary).is_empty():
-		battle._add_panel_sep(vb)
-		battle._add_section_title(vb, "被动 · " + str(passive.get("name", "")))
-		# ★走模板渲染: 把 {N:0.7*ATK} 这类占位符按【本龟当前属性】算成真数字
-		# ★统一口径: 原来这里【写死取 desc(详细)】而技能段写死取 brief(缩略),
-		#   同一个面板里两种口径 —— 现在都听 battle._skill_detail() 的。
-		var _ptpl = battle.SkillText.text_of(passive, battle._skill_detail())
-		var pdesc = battle._render._render_skill_text(_ptpl, u, passive)
-		if pdesc != "":
-			battle._info_passive_lbl = battle._add_body_text(vb, pdesc)
-			battle._info_passive_tpl = _ptpl
 
 	# 宝箱龟专属: 财宝值进度 + 已开出的战利品(用户2026-07-19"信息面板得显示当前累计的财宝值/当前抽取的装备和图标/专属装备的描述")
 	if battle._is_chest_turtle(u):
 		battle._add_panel_sep(vb)
 		battle._info_sys._info_chest_section(vb, u)
 
-	# 技能
-	var skills = battle._info_sys._panel_skill_entries(u)
-	if not skills.is_empty():
-		battle._add_panel_sep(vb)
-		battle._add_section_title(vb, "技能")
-		# ★简明/详细开关(用户需求1 两级描述)。放在技能段上方 —— 它同时管被动段与技能段,
-		#   但被动段在上面已经画完了, 放这里是为了【靠近文字最多的地方】, 手够得着。
-		battle._add_detail_toggle(vb, u)
-		battle._info_skill_lbls.clear()
-		for sk in skills:
-			battle._add_section_title(vb, "  " + str(sk["name"]), Color("#9fd0ff"), 14)
-			if str(sk["desc"]) != "":
-				var slb = battle._add_body_text(vb, str(sk["desc"]))
-				# 存"模板原文+Label+技能字典" → 每帧按当前属性重渲染伤害数值
-				battle._info_skill_lbls.append({"lbl": slb, "tpl": str(sk.get("tpl", "")), "sk": sk.get("sk", {})})
-
-	# 装备 —— ★也纳入实时(用户「面板里所有的数值需要实时变化」, 我不该给它开例外)。
-	#   战斗中装备会变: 财神招财临时升星、宝箱龟开出新装备。条目数/星级都会变 → 整块重建, 签名节流。
+	## ── 第四行【技能栏】(2026-08-16)─────────────────────────────────────
+	##   被动 / 普攻 / 携带的那一个主动技, 一行一条: [图标][技能名][龟能消耗]。
+	##   点整行 → 在下面撑开【有边框的描述框】, 一次只开一个, 内联不弹层。
+	##   ★行上没有充能条、没有"就绪"标记(用户:「不需要什么就绪，进度条」)——
+	##     龟能进度在第二行的资源条上已经有了, 再放一遍是同一个数说两遍。
+	##   ★旧版是「金色段标题 + 简明/详细开关 + 整段正文」, 那是网页的 h3+p 结构,
+	##     也正是用户说的"网页味"的来源之一。
 	battle._add_panel_sep(vb)
-	var equips: Array = u.get("equips", [])
+	## ★简明/详细开关保留 —— 它管的是【展开后那个描述框】里给缩略还是全文(用户需求1 两级描述)。
+	##   我删旧技能段时把它一起拆了, verify_two_level_desc 当场红。放技能栏上方, 手够得着。
+	battle._add_detail_toggle(vb, u)
+	battle._info_sys._info_skill_bar(vb, u)
+
+	## ── 第五行【装备三槽】(2026-08-16)─────────────────────────────────────
+	##   72×72 图标横排, 星级角标压右上, 局内读数压图标下沿(走 EquipReadouts 那两张表,
+	##   与装备图标框同源 —— 不自造条、不放头顶, 守 2026-08-08 的铁律)。
+	##   点整槽 → 撑开有边框的描述框, 与技能栏同一套手风琴。空槽画灰框。
+	## ★战斗中装备会变(财神招财临时升星、宝箱龟开出新装备) ⇒ 条目数/星级都会变,
+	##   所以整块重建 + 签名节流, 容器单独存。
+	battle._add_panel_sep(vb)
 	battle._info_equip_box = VBoxContainer.new()
 	battle._info_equip_box.add_theme_constant_override("separation", 4)
 	vb.add_child(battle._info_equip_box)
-	battle._fill_equip_section(battle._info_equip_box, u)
+
+	## ★底部那段【被动 · XXX + 整段正文】删掉了(2026-08-16):
+	##   被动现在是技能栏的第一行(被动/普攻/主动 三行一起), 点开才展开描述。
+	##   留在这里就是同一个被动在同一屏出现两次 —— 而且下面那份是网页式的"标题+段落"。
+	## ── 第六行【属性: 主要 4 行大字 + 次要小字】(2026-08-16)──────────────
+	## ★用户 2026-07-21 定过「属性全都要显示啊」—— 一项都不删、不折叠。
+	##   变的只是【字号与分组】: 主要 8 项(攻击/攻速 · 暴击/暴伤 · 护甲/魔抗 · 移速/射程)
+	##   带图标大字, 每行一对同族; 次要 11 项小字两列。高度 290 → 约 220。
+	## ★主要那 8 项正好有 8 张现成图标(atk/aspd/crit/crit-dmg/def/mr/move/range),
+	##   其中 crit-dmg 一直躺着没接线 —— 美术当初配的就是这一套核心属性。
+	## ★两个 grid 的 Label 【按主→次的顺序】统一存进 _info_stat_labels,
+	##   因为每帧刷新是按下标一一对位改文字的, 顺序错位会张冠李戴。
+	battle._add_panel_sep(vb)
+	battle._info_stat_labels.clear()
+	var gmain = GridContainer.new(); gmain.columns = 2
+	gmain.add_theme_constant_override("h_separation", 18); gmain.add_theme_constant_override("v_separation", 5)
+	vb.add_child(gmain)
+	for row in battle._info_sys._info_stat_rows_main(u):
+		battle._info_stat_labels.append(battle._info_sys._info_stat_cell(gmain, "", str(row[1]), row[2], str(row[0])))
+	var hair = ColorRect.new()
+	hair.color = Color(1, 1, 1, 0.07)
+	hair.custom_minimum_size = Vector2(0, 1)
+	vb.add_child(hair)
+	var gmin = GridContainer.new(); gmin.columns = 2
+	gmin.add_theme_constant_override("h_separation", 18); gmin.add_theme_constant_override("v_separation", 2)
+	vb.add_child(gmin)
+	for row2 in battle._info_sys._info_stat_rows_minor(u):
+		var lb2 = battle._info_sys._info_stat_cell(gmin, "", str(row2[1]), row2[2], str(row2[0]))
+		lb2.add_theme_font_size_override("font_size", 12)
+		battle._info_stat_labels.append(lb2)
+	battle._info_stat_grid = gmain
+
+	battle._info_sys._info_equip_slots(battle._info_equip_box, u)
 	battle._info_equip_sig = battle._equip_signature(u)
 
 	battle._info_sys._info_passthrough(vb)   # 面板内非按钮控件透传触摸→ScrollContainer可滑(手机·用户2026-07-18「列表滑动考虑手机端」)

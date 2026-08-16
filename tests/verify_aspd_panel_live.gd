@@ -176,16 +176,30 @@ func _ready() -> void:
 	##   ★查证: 局内金币 `u["gold"]` 原本在 info_panel / battle_hud / hp_bar **一处都没有**,
 	##     而财富龟普攻带 `"gold": 0.02`(每点金币 +2% 攻击)、fortuneAllIn 还要判它。
 	##   ★判据取自面板真正会渲染的 chips 表, 不是我另算一份。
-	## `_info_status_chips` 直接往 VBox 塞节点, 没有返回值 ⇒ 数它建了几个含"金币"的 Label。
+	## ★2026-08-16 金币从【状态 chip】搬进了【资源条】—— 资源是"我攒到哪了",
+	##   状态是"我正在被怎样", 原来混在同一排 chip 里平级排是把两回事当一回事。
+	##   要求没变(金币必须看得见), 来源变了 ⇒ 判据跟着搬到 _resource_bars。
+	##   ★金币【没有上限】, 所以它在资源表里 cap = 0, 表示"只显数字不画条" ——
+	##     硬给它编一个分母就是骗人。
 	u["gold"] = 37.0
 	var vb := VBoxContainer.new()
 	add_child(vb)
-	ip._info_status_chips(vb, u)
-	## ★递归找 —— Label 埋在 vb → flow → chip容器 → Label 三层下,
-	##   我第一版只遍历两层, 读到"没有金币这一项", 差点把自己的遍历 bug 报成"没显示"。
-	var gold_txt := _find_label(vb, "金币")
-	_ok("★★局内【金币】在信息面板上看得见(原来一处都没有)", gold_txt.find("37") >= 0,
-		"实得 %s" % (gold_txt if gold_txt != "" else "(没有金币这一项)"))
+	for _r in ip._resource_bars(u):
+		ip._info_resource_row(vb, _r)
+	## ★资源条把【名】和【数值】拆成两个 Label(名左对齐、数右对齐, 数值成列好比),
+	##   所以不能只找含"金币"那一个 Label —— 它里面没有数字。要看整行的合并文本。
+	##   (我第一版就是只找一个 Label, 读到"金币"却没有 37, 判成没显示。)
+	var gold_all := ""
+	var gstk: Array = [vb]
+	while not gstk.is_empty():
+		var gn = gstk.pop_back()
+		for gc in gn.get_children():
+			gstk.append(gc)
+		if gn is Label:
+			gold_all += str((gn as Label).text) + " "
+	_ok("★★局内【金币】在信息面板上看得见(原来一处都没有)",
+		gold_all.find("金币") >= 0 and gold_all.find("37") >= 0,
+		"实得 '%s'" % gold_all.strip_edges())
 	vb.queue_free()
 	u["gold"] = 0.0
 
