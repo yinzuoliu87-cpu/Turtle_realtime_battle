@@ -51,8 +51,19 @@ func _ready() -> void:
 	## ★装备的真格式是 [{id, star}] 的字典数组, 不是 id 字符串数组 ——
 	##   喂错格式会让产品代码 `e as Dictionary` 每只龟报一次 cast 错误(实测 28 条),
 	##   而断言照样全绿: 这是【测试数据错】伪装成产品报错, 门禁的致命正则才逮住它。
-	u["equips"] = [{"id": "p2eq_004", "star": 2}, {"id": "p2eq_021", "star": 1},
-		{"id": "p2eq_040", "star": 3}]
+	## SHOT_EQ=1: 换成带局内读数的三件(087 压载舱 / 083 连击层 / 093 香火石刻痕)
+	if OS.has_environment("SHOT_EQ"):
+		u["equips"] = [{"id": "p2eq_087", "star": 2}, {"id": "p2eq_083", "star": 3},
+			{"id": "p2eq_093", "star": 1}]
+		var _gs = s._equip_sys._gadget_sys
+		for _q in range(4):
+			_gs.tick_unit(u, 0.5)
+		s._damage._apply_damage(u, 300, Color.WHITE)
+		for _q2 in range(2):
+			_gs.tick_unit(u, 0.5)
+	else:
+		u["equips"] = [{"id": "p2eq_004", "star": 2}, {"id": "p2eq_021", "star": 1},
+			{"id": "p2eq_040", "star": 3}]
 	if OS.has_environment("SHOT_STATUS"):
 		u["slow_until"] = s._t + 99.0
 		u["slow_mult"] = 0.6

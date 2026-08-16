@@ -819,6 +819,20 @@ func _equip_readout_text(u: Dictionary, eid: String) -> String:
 		parts.append("层数 %d" % int(stt.get(str(EquipReadouts.COUNT[eid]), 0)))
 	if parts.is_empty():
 		return ""
+	## ★★两种读数【都有】的那 5 件要走紧凑式(2026-08-17 实拍抓到)。
+	##   由来: 093 香火石两张表里都有 ⇒ 拼出「充能 0 / 4000  层数 0」共 17 个字,
+	##   而槽只有 88px 宽 ⇒ 被 clip_text 从中间截断, 屏幕上印的是「能 0 / 4000  层数」——
+	##   **看着像个 bug, 实际是两条正确的读数挤在一起**。
+	##   紧凑式去掉"充能/层数"四个字, 分母大的转成百分比: 「0层 · 0%」最长 8 个字。
+	##   (分母 ≤ 20 的保留分数形式 —— 「0层 · 0/3」比「0层 · 0%」告诉你的多。)
+	if parts.size() >= 2:
+		var cnt: int = int(stt.get(str(EquipReadouts.COUNT[eid]), 0))
+		var cc: Array = EquipReadouts.CHARGE[eid]
+		var ccap: float = float(cc[1])
+		var ccur: float = clampf(float(stt.get(str(cc[0]), 0.0)), 0.0, ccap)
+		if ccap <= 20.0:
+			return "%d层 · %s/%s" % [cnt, battle._fmt_num(ccur), battle._fmt_num(ccap)]
+		return "%d层 · %d%%" % [cnt, int(round(ccur / maxf(1.0, ccap) * 100.0))]
 	return "  ".join(parts)
 
 

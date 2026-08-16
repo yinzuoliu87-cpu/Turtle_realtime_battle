@@ -168,6 +168,44 @@ func _ready() -> void:
 	_ok("⑥ ★读数与真实舱内水量一致(不是随便变一下)", absf(pct87 - want87) < 2.0,
 		"面板 %.1f%% vs 应为 %.1f%%" % [pct87, want87])
 
+	# ── ⑦ 读数不许长到把槽撑爆(2026-08-17) ──────────────────────────────
+	##   ★由来(实拍): 093 香火石两张表里都有 ⇒ 拼出「充能 0 / 4000  层数 0」17 个字,
+	##     而槽只有 88px 宽 ⇒ 被 clip_text 从中间截断, 屏幕上印的是「能 0 / 4000  层数」。
+	##     两条读数各自都对, 挤在一起就成了乱码。
+	##   ★判据量【真实像素宽】(拿槽上那个 Label 的实际字体去算), 不是数字符数 ——
+	##     中英文/数字宽度差很多, 数字符数会漏。
+	var probe := Label.new()
+	probe.add_theme_font_size_override("font_size", 11)
+	add_child(probe)
+	await get_tree().process_frame
+	var fnt: Font = probe.get_theme_font("font")
+	var fsz: int = probe.get_theme_font_size("font_size")
+	_ok("⑦ ★分母: 拿到了槽上读数用的字体(拿不到就是空检查)", fnt != null)
+	var too_wide: Array = []
+	var checked := 0
+	if fnt != null:
+		var ids: Array = []
+		for k in _s.PANEL_COUNT.keys():
+			ids.append(str(k))
+		for k2 in _s.PANEL_CHARGE.keys():
+			if not ids.has(str(k2)):
+				ids.append(str(k2))
+		for eid in ids:
+			var uu: Dictionary = _s._spawn._make_unit("basic", "left", c2)
+			uu["equips"] = [{"id": str(eid), "star": 3}]
+			var txt := str(_s._info_sys._equip_readout_text(uu, str(eid)))
+			if txt == "":
+				continue
+			checked += 1
+			var w: float = fnt.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fsz).x
+			## 槽 88px, 左右各留 4px 内边距 ⇒ 可用 80px
+			if w > 80.0:
+				too_wide.append("%s「%s」%.0fpx" % [eid, txt, w])
+	probe.queue_free()
+	_ok("⑦ ★分母: 逐件量了读数宽度(N=0 是空检查)", checked >= 15, "量了 %d 件" % checked)
+	_ok("⑦ ★★没有读数宽到把 88px 的槽撑爆(会被截成乱码)", too_wide.is_empty(),
+		"太宽的: %s" % str(too_wide.slice(0, 5)))
+
 	_s.queue_free()
 	await get_tree().process_frame
 	print("")
