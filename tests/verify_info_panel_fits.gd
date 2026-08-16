@@ -94,6 +94,7 @@ func _ready() -> void:
 	var no_basic: Array = []
 	var hint_squashed: Array = []
 	var stat_noicon: Array = []
+	var skill_noicon: Array = []
 	var tap_seen := 0
 	var tap_min := 99999.0
 	var measured := 0
@@ -186,6 +187,19 @@ func _ready() -> void:
 			var _ip2 := str((_sr as Array)[0])
 			if _ip2 == "" or not ResourceLoader.exists(_ip2):
 				stat_noicon.append("%s: 「%s」图标=%s" % [pid, str((_sr as Array)[1]), _ip2 if _ip2 != "" else "(空)"])
+		## ★三格里【每一格都要有图标】—— 空图标 = 槽里一片空白, 而它是可点的大方块。
+		##   实测 2026-08-17: 112 个技能里有 2 个(凤凰「强化涅槃」/ 熔岩「熔岩爆发」)
+		##   连 icon 字段都没有。和增伤/减伤同一类洞: 空值不报错, 只查错值等于放过它。
+		##   ⚠ 判据不能只看【当前选中的那一个】主动技 —— 技能槽一次只显示一个,
+		##     而 3 选 1 的另外两个【同样会出现在槽里】。第一版只遍历 _skill_bar_entries,
+		##     结果那两个真的没图标的技能压根没被走到, 断言当场"全绿"。
+		##     ⇒ 遍历【整个技能池】, 每一个都要有图标。
+		var _pet: Dictionary = DataRegistry.pet_by_id.get(str(pid), {})
+		for _sk in (_pet.get("skillPool", []) as Array):
+			if not (_sk is Dictionary):
+				continue
+			if s._info_sys._skill_icon_path(_sk as Dictionary) == "":
+				skill_noicon.append("%s·%s" % [pid, str((_sk as Dictionary).get("name", ""))])
 		## ★技能栏必须【三格齐】: 被动 / 普攻 / 携带的主动技。
 		##   实测 2026-08-16: 28 只里 17 只只有两格 —— 普攻槽的判据写成"type 必须是
 		##   physical/magic", 而 17 只龟的普攻 type 是自己的名字(lavaBolt/iceSpike…) ⇒ 静默消失。
@@ -247,6 +261,8 @@ func _ready() -> void:
 	##   由来: 增伤/减伤两项的图标位一直是空串 —— 面板上那两行光秃秃一个图标都没有,
 	##   而旁边六项都有。不是"没做完", 是【没人发现】: 空字符串不报错、不红任何门禁
 	##   (同 data_integrity 那条"空值和错值是两类病, 只查后者等于放过前者")。
+	_ok("★★技能三槽每一格都有图标(空图标 = 可点的大方块里一片空白)",
+		skill_noicon.is_empty(), "缺图标的: %s" % str(skill_noicon.slice(0, 6)))
 	_ok("★主要 8 项属性每项都配了图标, 且文件在盘上", stat_noicon.is_empty(),
 		"缺图标的: %s" % str(stat_noicon.slice(0, 6)))
 
