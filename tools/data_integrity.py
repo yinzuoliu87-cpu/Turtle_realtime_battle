@@ -175,6 +175,27 @@ _walk_text(J('data/pets.json'), [])
 print('  [分母] 递归扫 pets.json 全部中文字段, 上限 %d 字' % _LIMIT)
 chk('★描述没有超长行(递归扫全部字段 —— 漏处理的字段一定表现为超长行)', sorted(_long)[:6])
 
+# ★★2026-08-17 补【玩家文案里不许出现开发笔记】。
+#   实拍发现点「详细」能看到这些(全在 detail 字段里, 一直躺着):
+#     ·「小龟抓住目标施展过肩摔(参考英雄联盟瑟提R)：」—— 6 处 LoL 技能出处标注
+#     ·「回合制原设计的「释放梭哈后额外给10%最大生命值护盾」【已由用户去掉】：…」
+#       —— 写给开发者的设计变更记录, 而读它的正是那个"用户"
+#   这类文字对玩家零信息(还假设他玩过别的游戏), 属于用户说的"废话"里最刺眼的一种。
+#   ★注意区分: 括号里【夹着真机制】的不能整段删(龙龟Q 那条里有"4秒加速到满速、免疫定身"),
+#     只摘掉出处标注。所以这条门禁只认【标注词】本身, 不按括号删。
+_DEVWORD = ('参考英雄联盟', '原设计', '已由用户', '未采用', '回合制', 'PoC', 'TODO')
+_devnote = []
+for _f in ('data/pets.json', 'data/phase2-equipment.json', 'data/equipment.json',
+           'data/status.json', 'data/battle-rules.json'):
+    try:
+        _raw = io.open(_f, encoding='utf-8').read()
+    except Exception:
+        continue
+    for _w in _DEVWORD:
+        if _w in _raw:
+            _devnote.append('%s 出现「%s」' % (_f.split('/')[-1], _w))
+chk('★玩家文案里没有开发笔记(参考XX/原设计/已由用户/回合制…)', sorted(set(_devnote))[:6])
+
 print('  [分母] 扫描 %d 龟 + %d 装备的描述行' % (len(pets), len(eq)))
 chk('★描述没有以悬空助词(的/之/得/地)起句的病句 —— 删主语删过头的信号', sorted(_dangle)[:8])
 
