@@ -64,6 +64,8 @@ func _scan(root: Node) -> Array:
 				wired += 1
 				if c.mouse_filter == Control.MOUSE_FILTER_IGNORE:
 					dead.append("%s(%s)" % [c.name, c.get_class()])
+			## ★探针(先只统计, 不判): 【容器的子节点设了非默认 anchors】= 那些设置静默失效。
+			##   今晚描述框就栽在这: 写着 offset_top=-300, 挂在 PanelContainer 下 ⇒ 一个像素没生效。
 			if n is Label and c.is_visible_in_tree():
 				var tx := str((n as Label).text).strip_edges()
 				## 一个汉字最小也要十几像素; 有字而宽/高不足 6px = 屏幕上根本看不见。
@@ -135,7 +137,17 @@ func _ready() -> void:
 	bu["burn_stacks"] = 5.0
 	bs._units.append(bu)
 	bs._hud._show_unit_info_panel(bu)
-	for _k in range(8):
+	for _k in range(6):
+		await get_tree().process_frame
+	## ★还要【把描述浮层打开】—— 它是点开才建的。不开的话浮层里的节点一个都扫不到,
+	##   而"容器子节点的锚静默失效"那条判据的起因正在浮层里 ⇒ 又是一次判据走不到。
+	##   (今晚第二次栽在同一形状: 断言本身没错, 是被测对象没被造出来。)
+	var _ents: Array = bs._info_sys._skill_bar_entries(bu)
+	if not _ents.is_empty():
+		var _e0: Dictionary = _ents[_ents.size() - 1]
+		bs._info_sys._show_detail(bs._info_panel, "scan", str(_e0.get("name", "")),
+			str(_e0.get("desc", "")), _e0, bu)
+	for _k2 in range(6):
 		await get_tree().process_frame
 	if bs._info_panel != null and is_instance_valid(bs._info_panel):
 		var rb2 := _scan(bs._info_panel)
@@ -162,6 +174,16 @@ func _ready() -> void:
 
 	_ok("★★没有【有字却被挤成看不见】的标签", all_squashed.is_empty(),
 		"挤没的: %s" % str(all_squashed.slice(0, 8)))
+
+	## ★★这里【本来想加第三条】: "给容器的子节点设贴边/居中锚 = 静默失效"
+	##   (今晚描述框就栽在这: 写着 offset_top=-300, 挂在 PanelContainer 下, 一个像素没生效)。
+	##   **做不成, 已放弃, 原因记在这里免得下次再试**:
+	##   Godot 的 `Container::fit_child_in_rect` 在排版时会把子节点的锚点
+	##   【重置成 TOP_LEFT】—— 我设的贴边锚在运行时已经被抹掉, 证据在测量之前就没了。
+	##   实测: 把描述框退回原 bug 的形状(外层换成 PanelContainer), 这条断言【照样全绿】。
+	##   ⇒ 一个永远不会红的断言比没有更糟(它制造虚假信心), 所以不留。
+	##   这一类只能靠 verify_info_panel_fits 那条"描述框不许铺满面板"从【后果】上守 ——
+	##   量不到原因就量后果, 别留一条量不到的。
 
 	print("")
 	print("  (共 %d 条断言 · 扫了 %d 个场景 · %d 个接点击的控件)" % [_n, opened, total_wired])
