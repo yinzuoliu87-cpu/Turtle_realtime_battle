@@ -1184,10 +1184,18 @@ func _info_more_row(parent: VBoxContainer, title: String, body: String,
 	sb.content_margin_top = 4; sb.content_margin_bottom = 4
 	## ★九宫格自带的内容边距会盖掉上面 fallback 的 4/4 —— 实拍两条入口都是 46px 高,
 	##   而它们只装一行 14px 的字。九宫格取回来之后【显式压回去】。
-	var _rsb := _nine_box(HUD_TEX + "bar-frame.png", 12, sb)
+	## ★2026-08-17 从条框换成**槽框**。两个理由, 第二个才是根本的:
+	##   ① 技术: 新条框只有 24px 高, 而这里的边距写的是 12 ⇒ 12+12=24 = 整张图,
+	##      中段一行都不剩, 四角被硬拉 —— 实拍是一条又黑又厚的空条。
+	##   ② 语义: 这一行是**可点的入口**, 和技能/装备槽同类, 本来就该用槽框。
+	##      条框中间那道凹槽的含义是"这里要填一个量" —— 套在可点行上就被读成"没填的进度条"。
+	##      (图换成真凹槽之后这个错配才显形; 旧的圆角胶囊糊在那儿反而看不出来。)
+	var _rsb := _nine_box(HUD_TEX + "slot-frame.png", 12, sb)
 	if _rsb is StyleBoxTexture:
 		var _rt := _rsb as StyleBoxTexture
-		_rt.content_margin_left = 10; _rt.content_margin_right = 10
+		## ★左右 16 不是 10(2026-08-17): 换成槽框后框比原来厚, 10 让左侧那道青内沿
+		##   直接压在「更」字上(实拍 5 倍放大才看见)。边距要大于框自己的厚度。
+		_rt.content_margin_left = 16; _rt.content_margin_right = 16
 		## ★上下 6 不是 2 —— 我为了抠高度压到 2, 结果这条【可点】的入口只有 26px 高 = 14pt,
 		##   而触控目标下限是 44pt(本项目 1pt = 1.846px ⇒ 44pt = 81px)。压到点不准就是本末倒置。
 		##   现在 34px = 18.4pt: 仍低于 44pt, 但这一条是【整幅宽 280px】的长条, 横向很好命中。
