@@ -97,6 +97,7 @@ func _ready() -> void:
 	var skill_noicon: Array = []
 	var det_bad: Array = []
 	var tint_bad: Array = []
+	var bar_noframe: Array = []
 	var tap_seen := 0
 	var tap_min := 99999.0
 	var measured := 0
@@ -209,6 +210,23 @@ func _ready() -> void:
 			var _ip2 := str((_sr as Array)[0])
 			if _ip2 == "" or not ResourceLoader.exists(_ip2):
 				stat_noicon.append("%s: 「%s」图标=%s" % [pid, str((_sr as Array)[1]), _ip2 if _ip2 != "" else "(空)"])
+		## 条框: 找所有 NinePatchRect, 每个都要有 texture
+		if measured <= 6:
+			var _np := 0
+			var _bad := 0
+			var _st5: Array = [panel]
+			while not _st5.is_empty():
+				var _n5: Node = _st5.pop_back()
+				if _n5 is NinePatchRect:
+					_np += 1
+					if (_n5 as NinePatchRect).texture == null:
+						_bad += 1
+				for _c5 in _n5.get_children():
+					_st5.append(_c5)
+			if _np == 0:
+				bar_noframe.append("%s: 一个条框都没有(下面是空检查)" % pid)
+			elif _bad > 0:
+				bar_noframe.append("%s: %d/%d 个条框没贴图" % [pid, _bad, _np])
 		## 被动槽的紫调: 取【最上面那一排】三个 88px 槽(技能栏), 后两格应相同、第一格应不同
 		if measured <= 6:
 			var _slots: Array = []
@@ -335,6 +353,17 @@ func _ready() -> void:
 	##     被动那一档必须明显大于基线 —— 只断言"被动有 self_modulate"守不住
 	##     (设成和别人一样的值也算"有")。
 	##   实拍佐证(1280×720): 被动框内圈 RGB(39,51,104) / 另两格 (46,70,93), 色距 23.7 vs 基线 0.0。
+	## ── 条框贴图必须真的加载上 ────────────────────────────────────────────
+	##   ★由来(第 1 轮的坑): 新 PNG 没有 `.import` 时 `ResourceLoader.exists()` 返回 false,
+	##     `_bar_frame()` 直接返回 null ⇒ 框根本不建, **而且一句报错都没有**。
+	##     当时是靠实拍才发现"框没换上"。
+	##   ★判据: 每条资源条底下都要有一个 NinePatchRect 且它的 texture 非空。
+	##     只断言"节点在"守不住 —— 贴图丢了节点照样在(它就是个空壳)。
+	##   ★实拍佐证: 把 bar-frame.png 临时挪走后重拍, 血条纵向明暗跨度 160 → 72、
+	##     逐行平均差 28.8 ⇒ 框确实在画, 不是摆设。
+	_ok("★★血条/龟能条的九宫格框贴图真的加载上了(丢 .import 会静默失效)",
+		bar_noframe.is_empty(), "没贴图的: %s" % str(bar_noframe.slice(0, 4)))
+
 	_ok("★★被动槽与普攻/技能槽【看得出不一样】(同款之间是基线)",
 		tint_bad.is_empty(), "不对的: %s" % str(tint_bad.slice(0, 4)))
 
