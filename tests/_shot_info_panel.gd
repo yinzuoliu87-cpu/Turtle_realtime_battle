@@ -52,6 +52,13 @@ func _ready() -> void:
 			"bubble":  u["bubble_store"] = float(u.get("maxHp", 1000)) * 0.5
 			"chest":   u["dmg_dealt"] = 800.0
 			"fortune": u["gold"] = 37.0
+	## SHOT_VOLCANO=1: 熔岩龟【变身后】的分支 —— 面板里唯一一处"资源行让位给形态签"
+	##   (`_resource_bars` 里: `if rage > 0 and not volcano` ⇒ 火山形态下怒气条不画,
+	##    因为那时 rage 被 _sim_step 复用成倒计时百分比, 挂"怒气"是骗人)。
+	##   这个分支今晚一直没验过, 而它会同时改变**两处**版式(少一条资源条 + 多一个形态签)。
+	if OS.has_environment("SHOT_VOLCANO"):
+		u["volcano"] = true
+		u["volcano_until"] = s._t + 4.7
 	## ★装备的真格式是 [{id, star}] 的字典数组, 不是 id 字符串数组 ——
 	##   喂错格式会让产品代码 `e as Dictionary` 每只龟报一次 cast 错误(实测 28 条),
 	##   而断言照样全绿: 这是【测试数据错】伪装成产品报错, 门禁的致命正则才逮住它。

@@ -535,6 +535,42 @@ func _ready() -> void:
 		s._hud._close_info_panel()
 		await get_tree().process_frame
 
+	## ── 熔岩龟【变身后】: 面板里唯一一处"资源行让位给形态签"(2026-08-17) ──────
+	##   `_resource_bars`: `if rage > 0 and not volcano` ⇒ 火山形态下怒气条不画
+	##   (那时 rage 被 _sim_step 复用成倒计时百分比, 挂"怒气"是骗人)。
+	##   ★这个分支**同时改两处版式**: 少一条资源条(-约40px) + 形态签变长把状态区挤成两行(+约26px),
+	##     两个方向相反 —— 只有量了才知道净效果。上面 28 只的循环里【喂的是常态】, 走不到它。
+	var uv: Dictionary = s._spawn._make_unit("lava", "left", c)
+	uv["hp"] = float(uv.get("maxHp", 1000)) * 0.62
+	uv["equips"] = [{"id": "p2eq_004", "star": 2}, {"id": "p2eq_093", "star": 1},
+		{"id": "p2eq_040", "star": 3}]
+	uv["shield"] = 240.0
+	uv["burn_stacks"] = 7.0
+	uv["slow_until"] = s._t + 99.0
+	uv["slow_mult"] = 0.6
+	uv["rage"] = 30.0
+	uv["volcano"] = true
+	uv["volcano_until"] = s._t + 4.7
+	s._units.clear()
+	s._units.append(uv)
+	s._hud._show_unit_info_panel(uv)
+	for _kv in range(6):
+		await get_tree().process_frame
+	var _pv = s._info_panel
+	var _vok := false
+	var _vneed := 0.0
+	var _vhave := 0.0
+	if _pv != null and is_instance_valid(_pv):
+		var _pp := _panel_parts(_pv)
+		if _pp[0] != null and _pp[1] != null:
+			_vneed = (_pp[1] as Control).get_combined_minimum_size().y
+			_vhave = (_pp[0] as Control).size.y
+			_vok = _vneed > 0.0
+	_ok("★分母: 火山形态的面板真的建出来了(0 = 空检查)", _vok,
+		"内容 %.0f / 视口 %.0f" % [_vneed, _vhave])
+	_ok("★★熔岩龟变身后的面板也装得进视口(它换掉了一整块版式)", _vok and _vneed <= _vhave,
+		"内容 %.0f / 视口 %.0f (超 %.0f)" % [_vneed, _vhave, _vneed - _vhave])
+
 	_ok("★分母: 真的量到了每一只(不是 0 只)", measured >= 20, "量了 %d 只" % measured)
 
 	# ── ① 装得下 ────────────────────────────────────────────────────────────
