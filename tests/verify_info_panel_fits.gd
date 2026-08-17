@@ -134,6 +134,8 @@ func _ready() -> void:
 	var outline_box: Array = []
 	var tex_missing: Array = []
 	var tex_seen: int = 0
+	var stock_btn: Array = []
+	var btn_seen: int = 0
 	## ★★分母计数器(2026-08-17 自审补): 下面几条判据的【被测对象本身可能不存在】——
 	##   那时集合是空的, `is_empty()` 照样为真 ⇒ 断言一路绿着骗人。
 	##   (上一轮在图鉴那条上刚栽过: 图鉴被切到别的 Tab ⇒ 扫 28 只也是 0 张, 靠分母才发现。)
@@ -394,6 +396,13 @@ func _ready() -> void:
 						var _sx = (_nq as Control).get_theme_stylebox(_sl)
 						if _sx is StyleBoxTexture and (_sx as StyleBoxTexture).texture != null:
 							_mounted[(_sx as StyleBoxTexture).texture.resource_path.get_file()] = true
+				## ★探针: Button 若【没有 stylebox 覆盖】, 用的就是 Godot 默认主题 ——
+				##   圆角纯色, 是"没游戏味"最直接的来源。上面那条网页盒判据先查
+				##   has_theme_stylebox_override, 所以**根本扫不到它们**(判据的盲区)。
+				if _nq is Button:
+					btn_seen += 1
+					if not (_nq as Control).has_theme_stylebox_override("normal"):
+						stock_btn.append("%s「%s」" % [pid, str((_nq as Button).text).substr(0, 6)])
 				for _cq in _nq.get_children():
 					_stq.append(_cq)
 			tex_seen = maxi(tex_seen, _mounted.size())
@@ -552,6 +561,9 @@ func _ready() -> void:
 	_ok("★面板里不中英夹杂(白名单: Lv/★, 游戏既有约定)", en_mix.is_empty(),
 		"夹英文的: %s" % str(en_mix.slice(0, 4)))
 
+	_ok("★分母: 真的扫到了按钮(0 个 = 空检查)", btn_seen >= 6, "扫到 %d 个" % btn_seen)
+	_ok("★★面板里没有【用 Godot 默认主题】的按钮(圆角纯色 = 最直接的「没游戏味」)",
+		stock_btn.is_empty(), "还是默认皮的: %s" % str(stock_btn.slice(0, 6)))
 	_ok("★分母: 面板上真的挂了九宫格贴图(0 张 = 空检查)", tex_seen >= 4,
 		"挂了 %d 张不同的贴图" % tex_seen)
 	_ok("★★五张面板素材都真的挂在活面板上(文件在≠有人挂)", tex_missing.is_empty(),

@@ -1292,6 +1292,31 @@ func _bar_frame(holder: Control) -> NinePatchRect:
 ## ★字号自适应: 放不下就 13→12→11 缩一档, 而不是开滚动条(同上, 不许滑)。
 ##
 ## 每个面板只有一个浮层, 内容按需替换 —— 天然就是"一次只开一个"。
+## 给按钮套上面板自己的金属皮(2026-08-17)。
+##
+## ★由来: 描述浮层里的「✕」和「详细 ▾」是 **Godot 默认主题的按钮** —— 圆角 3、纯色、无框,
+##   是整个面板里最"没游戏味"的两个元素。实拍 3 倍放大才看清。
+## ★★它们**逃过了那条网页盒门禁**: 判据先查 `has_theme_stylebox_override`,
+##   而默认主题不是 override ⇒ 根本没被扫到。**判据看不见的地方就是它的盲区** ——
+##   今晚第四次栽在"判据没错、被测对象不在场"上, 这次是"被测对象在判据的视野外"。
+## ★用签牌贴图而不是新做一张: 签牌本来就是"凸起的金属牌", 正是按钮该有的样子;
+##   而且它是今晚为这个面板做的, 不是跨屏拿别处的素材来顶。
+##   三个状态靠 modulate 区分(常态/悬停亮一档/按下暗一档), 一张图管三态。
+func _btn_skin(b: Button, tint: Color) -> void:
+	var tex := HUD_TEX + "chip-frame.png"
+	if not ResourceLoader.exists(tex):
+		return
+	var t: Texture2D = load(tex)
+	for st in [["normal", 1.0], ["hover", 1.25], ["pressed", 0.72], ["focus", 1.0], ["disabled", 0.55]]:
+		var sb := StyleBoxTexture.new()
+		sb.texture = t
+		sb.set_texture_margin_all(7)
+		sb.modulate_color = Color(tint.r * float(st[1]), tint.g * float(st[1]), tint.b * float(st[1]), 1.0)
+		sb.content_margin_left = 10; sb.content_margin_right = 10
+		sb.content_margin_top = 3; sb.content_margin_bottom = 3
+		b.add_theme_stylebox_override(str(st[0]), sb)
+
+
 func _detail_overlay(host_panel: Control) -> Control:
 	var ov = host_panel.get_node_or_null("DetailOverlay")
 	if ov != null:
@@ -1349,6 +1374,7 @@ func _show_detail(host_panel: Control, key: String, title: String, body: String,
 	hb.add_child(ttl)
 	var cb = Button.new(); cb.text = "✕"
 	cb.add_theme_font_size_override("font_size", UIPalette.F_BODY)
+	_btn_skin(cb, Color("#8fa4bb"))
 	cb.focus_mode = Control.FOCUS_NONE
 	cb.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	cb.pressed.connect(func() -> void: ov.visible = false)
@@ -1371,6 +1397,7 @@ func _show_detail(host_panel: Control, key: String, title: String, body: String,
 		tb.add_theme_font_size_override("font_size", UIPalette.F_SUB)
 		tb.focus_mode = Control.FOCUS_NONE
 		tb.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		_btn_skin(tb, Color("#c2a35e"))   # 金调: 它是"看更多"的正向操作, 与灰调的关闭区分
 		brow.add_child(tb)
 		tb.pressed.connect(func() -> void:
 			if GameState != null:
