@@ -167,6 +167,21 @@ func _ready() -> void:
 			var e0: Dictionary = ents[ents.size() - 1]
 			s._info_sys._show_detail(s._info_panel, "skill_shot", str(e0.get("name", "")),
 				str(e0.get("desc", "")), e0, u)
+		elif which == "equip":
+			## ★装备详情浮层 —— 注释里写了 `equip` 这一支, 但**一直没实现**(小号的"写了没人读")。
+			##   它吃的是 `effectDesc1`, 也就是今晚断过行的那批文案 ⇒ 是核对断行效果的正路。
+			##   口径与产品一致: 标题 = 名+星, 正文 = effectDesc1 原样(见 info_panel.gd:833)。
+			var eid := OS.get_environment("SHOT_EQID")
+			if eid == "":
+				eid = "p2eq_017"
+			var edef: Dictionary = {}
+			for _e in DataRegistry.phase2_equipment:
+				if str((_e as Dictionary).get("id", "")) == eid:
+					edef = _e as Dictionary
+					break
+			s._info_sys._show_detail(s._info_panel, "eq:" + eid,
+				"%s %s" % [str(edef.get("name", eid)), "★★★"],
+				str(edef.get("effectDesc1", "")), {}, u)
 		elif which == "more":
 			var mtxt := ""
 			for r2 in s._info_sys._info_stat_rows_minor(u):
