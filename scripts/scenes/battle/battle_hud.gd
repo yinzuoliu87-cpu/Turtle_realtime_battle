@@ -1966,7 +1966,9 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	#   所以点在面板【内】不会误关。
 
 	# HP 条(阵营色)
-	var _hpref: Array = battle._info_sys._info_bar(vb, float(u.get("hp", 0.0)), float(u.get("maxHp", 1.0)), side_col, "HP  %d / %d" % [int(u.get("hp", 0)), int(u.get("maxHp", 0))])
+	## ★「生命」不是「HP」(2026-08-17): 实测全游戏只有面板这两处写 HP,
+	##   别处一律「生命 / 最大生命值」。一个界面里同一件事两种叫法, 是最省事也最没必要的不一致。
+	var _hpref: Array = battle._info_sys._info_bar(vb, float(u.get("hp", 0.0)), float(u.get("maxHp", 1.0)), side_col, "生命  %d / %d" % [int(u.get("hp", 0)), int(u.get("maxHp", 0))])
 	battle._info_hp_bar = _hpref[0]; battle._info_hp_lbl = _hpref[1]
 	## ── 第二行【资源区】(2026-08-16 用户「龟能条放血条下面啊」)──────────────
 	##   龟能恒在第一条; 专属资源(怒气/星能/储能/泡泡/财宝)有才出现, 每条都带分母。

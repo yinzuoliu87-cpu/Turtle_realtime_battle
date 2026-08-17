@@ -120,7 +120,7 @@ func _refresh_info_panel() -> void:
 		battle._info_hp_bar.max_value = mx
 		battle._info_hp_bar.value = clampf(float(ud.get("hp", 0.0)), 0.0, mx)
 	if battle._info_hp_lbl != null and is_instance_valid(battle._info_hp_lbl):
-		battle._info_hp_lbl.text = "HP  %d / %d" % [int(ud.get("hp", 0)), int(ud.get("maxHp", 0))]
+		battle._info_hp_lbl.text = "生命  %d / %d" % [int(ud.get("hp", 0)), int(ud.get("maxHp", 0))]
 	## 资源条(龟能 + 专属) —— 每帧按下标对位改数, 不重建节点。
 	## ★条目数会变(储能从 0 变非 0、宝箱开完第 5 箱就没有下一箱了) ⇒ 数量对不上就整块重建,
 	##   否则引用错位会把"星能"的数写进"怒气"那条(属性行那边踩过同一个坑, 见下面几行)。

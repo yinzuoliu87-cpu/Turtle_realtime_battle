@@ -81,6 +81,21 @@ func _ready() -> void:
 	for _i in range(6):
 		await get_tree().process_frame
 
+	if OS.has_environment("SHOT_TEXT"):
+		print("--- 面板里所有可见文本 ---")
+		var q3: Array = [s._info_panel]
+		var seen3: Array = []
+		while not q3.is_empty():
+			var n3: Node = q3.pop_back()
+			if n3 is Label and (n3 as Control).is_visible_in_tree():
+				var t3 := str((n3 as Label).text).strip_edges()
+				if t3 != "" and not seen3.has(t3):
+					seen3.append(t3)
+			for c3 in n3.get_children():
+				q3.append(c3)
+		for t4 in seen3:
+			print("   |%s|" % t4)
+
 	if OS.has_environment("SHOT_FONTS"):
 		print("--- 面板里所有 Label 的字号 ---")
 		var fs: Dictionary = {}

@@ -100,6 +100,7 @@ func _ready() -> void:
 	var bar_noframe: Array = []
 	var round_bad: Array = []
 	var font_sizes: Array = []
+	var en_mix: Array = []
 	var tap_seen := 0
 	var tap_min := 99999.0
 	var measured := 0
@@ -212,6 +213,20 @@ func _ready() -> void:
 			var _ip2 := str((_sr as Array)[0])
 			if _ip2 == "" or not ResourceLoader.exists(_ip2):
 				stat_noicon.append("%s: 「%s」图标=%s" % [pid, str((_sr as Array)[1]), _ip2 if _ip2 != "" else "(空)"])
+		## 中英夹杂: 收面板里所有可见文本, 剔掉白名单后不该再有英文词
+		if measured <= 6:
+			var _ste: Array = [panel]
+			var _re := RegEx.new()
+			_re.compile("[A-Za-z]{2,}")
+			while not _ste.is_empty():
+				var _ne: Node = _ste.pop_back()
+				if _ne is Label and (_ne as Control).is_visible_in_tree():
+					var _tx := str((_ne as Label).text)
+					var _clean := _tx.replace("Lv", "").replace("LV", "")
+					if _re.search(_clean) != null:
+						en_mix.append("%s: 「%s」" % [pid, _tx.substr(0, 18)])
+				for _ce in _ne.get_children():
+					_ste.append(_ce)
 		## 字号: 收集面板里所有可见 Label 的真实 font_size
 		if measured <= 6:
 			var _stf: Array = [panel]
@@ -398,6 +413,14 @@ func _ready() -> void:
 	##     「63 / 115」是 12。收成 5 档后一档只表示一种角色:
 	##     21 标题 / 14 正文 / 12 次要 / 11 说明 / 10 角标。
 	##   ★判据量【真实 Label 的 font_size】, 不搜源码 —— 源码里的 override 有的会被主题顶掉。
+	## ── 面板里不许中英夹杂 ──────────────────────────────────────────────
+	##   ★由来: 实测面板可见文本 31 条, 含英文的 2 条 ——「HP  507 / 819」与「友军 · S · Lv 1」。
+	##     再量全游戏: **HP 只有面板这两处**(别处一律"生命/最大生命值"), 而 **Lv 有 6 处以上**
+	##     (LV UP / Lv%d / Lv%d×%d) 是既有约定 ⇒ 改 HP、留 Lv。**是量出来的, 不是我觉得。**
+	##   ★判据量【渲染出来的文本】不搜源码 —— 源码里的字符串未必都显示。
+	_ok("★面板里不中英夹杂(白名单: Lv/★, 游戏既有约定)", en_mix.is_empty(),
+		"夹英文的: %s" % str(en_mix.slice(0, 4)))
+
 	_ok("★面板字号不超过 5 档(一档只表示一种角色)", font_sizes.size() <= 5,
 		"实得 %d 档: %s" % [font_sizes.size(), str(font_sizes)])
 
