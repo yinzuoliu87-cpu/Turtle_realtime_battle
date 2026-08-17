@@ -390,9 +390,9 @@ func _info_bar(parent: Control, cur: float, mx: float, fill_col: Color, label: S
 	pb.offset_top = 5.0; pb.offset_bottom = -5.0
 	pb.min_value = 0.0; pb.max_value = maxf(1.0, mx); pb.value = clampf(cur, 0.0, mx)
 	pb.show_percentage = false
-	var bgsb = StyleBoxFlat.new(); bgsb.bg_color = Color("#0b1220"); bgsb.set_corner_radius_all(5)
+	var bgsb = StyleBoxFlat.new(); bgsb.bg_color = Color("#0b1220"); bgsb.set_corner_radius_all(0)   # 直角(同上)
 	bgsb.set_border_width_all(1); bgsb.border_color = Color("#243247")
-	var flsb = StyleBoxFlat.new(); flsb.bg_color = fill_col; flsb.set_corner_radius_all(5)
+	var flsb = StyleBoxFlat.new(); flsb.bg_color = fill_col; flsb.set_corner_radius_all(0)
 	## ★血条底也走九宫格像素框(用户:「血条，龟能条都跟网页一样」)。
 	bgsb.bg_color = Color(0, 0, 0, 0.55) if hfr != null else bgsb.bg_color
 	bgsb.set_border_width_all(0 if hfr != null else 1)
@@ -915,7 +915,10 @@ func _info_status_chips(vb: VBoxContainer, u: Dictionary) -> void:
 	for ch in chips:
 		var p = PanelContainer.new()
 		var sb = StyleBoxFlat.new(); sb.bg_color = Color(str(ch[1])); sb.bg_color.a = 0.20
-		sb.border_color = Color(str(ch[1])); sb.set_border_width_all(1); sb.set_corner_radius_all(6)
+		## ★直角, 不要圆角(2026-08-17)。这条规矩我在 log 面板上写过 ——「圆角矩形是 CSS 的长相,
+		##   用户说的"网页味"里就有这一条」—— 但**漏了状态签**: 面板里别处全换成硬边像素框之后,
+		##   只剩这一排小签还是平滑抗锯齿的圆角胶囊, 放大一看和上下格格不入。
+		sb.border_color = Color(str(ch[1])); sb.set_border_width_all(1); sb.set_corner_radius_all(0)
 		sb.content_margin_left = 6; sb.content_margin_right = 8; sb.content_margin_top = 2; sb.content_margin_bottom = 2
 		p.add_theme_stylebox_override("panel", sb)
 		## 图标 + 文字并排(形态那条没有图标, 只有文字)

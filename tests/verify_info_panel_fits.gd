@@ -98,6 +98,7 @@ func _ready() -> void:
 	var det_bad: Array = []
 	var tint_bad: Array = []
 	var bar_noframe: Array = []
+	var round_bad: Array = []
 	var tap_seen := 0
 	var tap_min := 99999.0
 	var measured := 0
@@ -210,6 +211,24 @@ func _ready() -> void:
 			var _ip2 := str((_sr as Array)[0])
 			if _ip2 == "" or not ResourceLoader.exists(_ip2):
 				stat_noicon.append("%s: 「%s」图标=%s" % [pid, str((_sr as Array)[1]), _ip2 if _ip2 != "" else "(空)"])
+		## 面板里【不许有圆角 CSS 方块】—— 圆角矩形是网页的长相, 用户点名骂过"网页味"。
+		##   面板/槽/条都换成硬边像素框之后, 只剩状态签还是平滑抗锯齿的圆角胶囊(实拍放大才看见)。
+		##   ★判据量【真实 StyleBox 的圆角半径】, 不搜源码 —— 源码里 set_corner_radius_all 有好几处,
+		##     哪几处真正生效要看运行时挂上去的是哪个 stylebox(有九宫格时兜底那份根本不显示)。
+		if measured <= 6:
+			var _st6: Array = [panel]
+			while not _st6.is_empty():
+				var _n6: Node = _st6.pop_back()
+				if _n6 is Control:
+					for _slot in ["panel", "normal", "background", "fill"]:
+						if not (_n6 as Control).has_theme_stylebox_override(_slot):
+							continue
+						var _sb = (_n6 as Control).get_theme_stylebox(_slot)
+						if _sb is StyleBoxFlat and (_sb as StyleBoxFlat).corner_radius_top_left > 0:
+							round_bad.append("%s: %s 的 %s 圆角 %d" % [pid, _n6.get_class(), _slot,
+								(_sb as StyleBoxFlat).corner_radius_top_left])
+				for _c6 in _n6.get_children():
+					_st6.append(_c6)
 		## 条框: 找所有 NinePatchRect, 每个都要有 texture
 		if measured <= 6:
 			var _np := 0
@@ -361,6 +380,9 @@ func _ready() -> void:
 	##     只断言"节点在"守不住 —— 贴图丢了节点照样在(它就是个空壳)。
 	##   ★实拍佐证: 把 bar-frame.png 临时挪走后重拍, 血条纵向明暗跨度 160 → 72、
 	##     逐行平均差 28.8 ⇒ 框确实在画, 不是摆设。
+	_ok("★面板里没有圆角 CSS 方块(圆角矩形是网页的长相)",
+		round_bad.is_empty(), "还有圆角的: %s" % str(round_bad.slice(0, 4)))
+
 	_ok("★★血条/龟能条的九宫格框贴图真的加载上了(丢 .import 会静默失效)",
 		bar_noframe.is_empty(), "没贴图的: %s" % str(bar_noframe.slice(0, 4)))
 
