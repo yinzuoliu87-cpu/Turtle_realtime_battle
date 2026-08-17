@@ -101,6 +101,13 @@ func _ready() -> void:
 	var round_bad: Array = []
 	var font_sizes: Array = []
 	var en_mix: Array = []
+	## ★★分母计数器(2026-08-17 自审补): 下面几条判据的【被测对象本身可能不存在】——
+	##   那时集合是空的, `is_empty()` 照样为真 ⇒ 断言一路绿着骗人。
+	##   (上一轮在图鉴那条上刚栽过: 图鉴被切到别的 Tab ⇒ 扫 28 只也是 0 张, 靠分母才发现。)
+	var n_hint := 0        # 扫到几个"结论文字"标签
+	var n_stylebox := 0    # 扫到几个挂了 stylebox 的控件
+	var n_skill := 0       # 扫到几个技能(查图标用)
+	var n_statrow := 0     # 扫到几行主要属性
 	var tap_seen := 0
 	var tap_min := 99999.0
 	var measured := 0
@@ -205,11 +212,13 @@ func _ready() -> void:
 			if _hn is Label:
 				var _lt := str((_hn as Label).text)
 				if _lt.find("攒满") >= 0 or _lt.find("每点") >= 0:
+					n_hint += 1
 					if (_hn as Control).size.x < 20.0:
 						hint_squashed.append("%s: 「%s」只有 %.0fpx 宽" % [pid, _lt, (_hn as Control).size.x])
 			for _hc in _hn.get_children():
 				_hst.append(_hc)
 		for _sr in s._info_sys._info_stat_rows_main(u):
+			n_statrow += 1
 			var _ip2 := str((_sr as Array)[0])
 			if _ip2 == "" or not ResourceLoader.exists(_ip2):
 				stat_noicon.append("%s: 「%s」图标=%s" % [pid, str((_sr as Array)[1]), _ip2 if _ip2 != "" else "(空)"])
@@ -251,6 +260,7 @@ func _ready() -> void:
 						if not (_n6 as Control).has_theme_stylebox_override(_slot):
 							continue
 						var _sb = (_n6 as Control).get_theme_stylebox(_slot)
+						n_stylebox += 1
 						if _sb is StyleBoxFlat and (_sb as StyleBoxFlat).corner_radius_top_left > 0:
 							round_bad.append("%s: %s 的 %s 圆角 %d" % [pid, _n6.get_class(), _slot,
 								(_sb as StyleBoxFlat).corner_radius_top_left])
@@ -319,6 +329,7 @@ func _ready() -> void:
 		for _sk in (_pet.get("skillPool", []) as Array):
 			if not (_sk is Dictionary):
 				continue
+			n_skill += 1
 			if s._info_sys._skill_icon_path(_sk as Dictionary) == "":
 				skill_noicon.append("%s·%s" % [pid, str((_sk as Dictionary).get("name", ""))])
 		## ★技能栏必须【三格齐】: 被动 / 普攻 / 携带的主动技。
@@ -375,6 +386,7 @@ func _ready() -> void:
 	_ok("★★每只龟的技能栏都是【三格齐】(被动/普攻/技能) —— 普攻槽不许静默消失",
 		no_basic.is_empty(), "缺格的: %s" % str(no_basic.slice(0, 6)))
 
+	_ok("★分母: 真的扫到了结论文字标签(0 个 = 下面是空检查)", n_hint > 0, "扫到 %d 个" % n_hint)
 	_ok("★资源条的结论文字真的看得见(没被弹簧挤成 1px)",
 		hint_squashed.is_empty(), "被挤没的: %s" % str(hint_squashed.slice(0, 4)))
 
@@ -421,9 +433,12 @@ func _ready() -> void:
 	_ok("★面板里不中英夹杂(白名单: Lv/★, 游戏既有约定)", en_mix.is_empty(),
 		"夹英文的: %s" % str(en_mix.slice(0, 4)))
 
+	_ok("★分母: 真的扫到了字号(至少 3 档才谈得上层级)", font_sizes.size() >= 3,
+		"扫到 %d 档" % font_sizes.size())
 	_ok("★面板字号不超过 5 档(一档只表示一种角色)", font_sizes.size() <= 5,
 		"实得 %d 档: %s" % [font_sizes.size(), str(font_sizes)])
 
+	_ok("★分母: 真的扫到了 stylebox(0 个 = 下面是空检查)", n_stylebox > 0, "扫到 %d 个" % n_stylebox)
 	_ok("★面板里没有圆角 CSS 方块(圆角矩形是网页的长相)",
 		round_bad.is_empty(), "还有圆角的: %s" % str(round_bad.slice(0, 4)))
 
@@ -433,8 +448,10 @@ func _ready() -> void:
 	_ok("★★被动槽与普攻/技能槽【看得出不一样】(同款之间是基线)",
 		tint_bad.is_empty(), "不对的: %s" % str(tint_bad.slice(0, 4)))
 
+	_ok("★分母: 真的逐个查了技能图标(0 个 = 空检查)", n_skill >= 20, "查了 %d 个技能" % n_skill)
 	_ok("★★技能三槽每一格都有图标(空图标 = 可点的大方块里一片空白)",
 		skill_noicon.is_empty(), "缺图标的: %s" % str(skill_noicon.slice(0, 6)))
+	_ok("★分母: 真的逐行查了主要属性(0 行 = 空检查)", n_statrow >= 20, "查了 %d 行" % n_statrow)
 	_ok("★主要 8 项属性每项都配了图标, 且文件在盘上", stat_noicon.is_empty(),
 		"缺图标的: %s" % str(stat_noicon.slice(0, 6)))
 
