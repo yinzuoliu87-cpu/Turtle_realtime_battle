@@ -234,7 +234,7 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 		"p2eq_017":   # 不沉之锚: 免击飞+免斩杀 (flag) + 受伤治疗最低血%友军累积充能
 			u["_knock_immune"] = true
 			u["eq_exec_immune"] = true
-			stt["anchor_accum"] = 0.0    # 累积治疗, 满100→+1充能
+			stt["anchor_accum"] = 0.0    # 累积治疗, 满 ANCHOR_ACC_PER_CHARGE(250)→+1充能
 			stt["anchor_charges"] = 0    # 沉锚充能 (施法时消耗)
 		"p2eq_011":   # 饮血护符坠: 溢出治疗转血护盾 (累积上限200/350/500, 多件取最大上限)
 			u["overheal2shield_cap"] = maxf(float(u.get("overheal2shield_cap", 0.0)), [200.0, 350.0, 500.0][si])

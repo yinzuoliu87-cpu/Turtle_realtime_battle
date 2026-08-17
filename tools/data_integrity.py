@@ -252,6 +252,40 @@ else:
                 if not any(abs(_got - _w) < 0.01 or abs(_got - _w * 100) < 0.01 for _w in _want):
                     _syn_bad.append('%s 第%d档: 文案 +%g / 表 %s' % (_cur, _idx + 1, _got, _want))
             _idx += 1
+# ★★2026-08-17 补【面板充能条的分母 ↔ 系统常量 对账】。
+#   由来: 刚在训龟大师那边抓到"同一个冷却两个来源"(圆盘分母读注册表, 施放写另一个常量)。
+#   面板这边是同一个形状: `EquipReadouts.CHARGE` 里每件装备的满值是**写死的数字**,
+#   而真正的阈值在各自系统里(ANCHOR_ACC_PER_CHARGE / CLAM_PER_CHARGE / CORRODE_EVERY /
+#   PER_MARK / EQ_IV)。改一边另一边不跟 ⇒ 条按错的分母走(永远填不满或提前满), 且不报错。
+#   ★实测当前 5 条非 100 的分母【全部正确】—— 这条是防漂, 不是修 bug。
+#   (满值 100 的那些是归一化百分比, 构造上不会漂, 不入账。)
+_CAP_SRC = {
+    'p2eq_017': ('scripts/systems/equip/equip_tick_system.gd', r'ANCHOR_ACC_PER_CHARGE\s*:?=\s*([0-9.]+)'),
+    'p2eq_082': ('scripts/systems/equip/eq_blade_batch.gd', r'CLAM_PER_CHARGE\s*:?=\s*([0-9.]+)'),
+    'p2eq_076': ('scripts/systems/equip/eq_bow_batch.gd', r'CORRODE_EVERY\s*:?=\s*([0-9.]+)'),
+    'p2eq_093': ('scripts/systems/equip/incense_stone_system.gd', r'PER_MARK\s*:?=\s*([0-9.]+)'),
+    'p2eq_075': ('scripts/systems/equip/equip_system.gd', r'"p2eq_075":\s*([0-9.]+)'),
+}
+_ro = io.open('scripts/gamedata/equip_readouts.gd', encoding='utf-8').read()
+_cap_bad = []
+_cap_n = 0
+for _eid, (_src, _pat) in _CAP_SRC.items():
+    _mc = re.search(r'"%s":\s*\[\s*"[a-z_]+",\s*([0-9.]+)' % _eid, _ro)
+    if _mc is None:
+        _cap_bad.append('%s 不在 CHARGE 表里(结构变了)' % _eid); continue
+    try:
+        _ms = re.search(_pat, io.open(_src, encoding='utf-8').read())
+    except Exception:
+        _cap_bad.append('%s 的来源文件读不到: %s' % (_eid, _src)); continue
+    if _ms is None:
+        _cap_bad.append('%s 在 %s 里找不到常量(改名了?)' % (_eid, _src.split('/')[-1])); continue
+    _cap_n += 1
+    if abs(float(_mc.group(1)) - float(_ms.group(1))) > 0.01:
+        _cap_bad.append('%s: 面板分母 %s / 系统常量 %s' % (_eid, _mc.group(1), _ms.group(1)))
+print('  [分母] 充能条分母对账 %d 条' % _cap_n)
+chk('★分母: 充能条对账真的比到了(0 条 = 空检查)', [] if _cap_n == len(_CAP_SRC) else ['只比到 %d/%d' % (_cap_n, len(_CAP_SRC))])
+chk('★面板充能条的分母与系统常量一致(改一边另一边不跟 = 条按错分母走)', sorted(_cap_bad)[:6])
+
 print('  [分母] 羁绊档位文案对账 %d 条' % _syn_n)
 chk('★分母: 羁绊文案真的抠到了数值(0 条 = 空检查)', [] if _syn_n >= 20 else ['只抠到 %d 条' % _syn_n])
 chk('★羁绊档位文案与 TYPES 表一致(文件自己写着"数值以本表为准")', sorted(_syn_bad)[:6])
