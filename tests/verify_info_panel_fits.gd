@@ -571,6 +571,55 @@ func _ready() -> void:
 	_ok("★★熔岩龟变身后的面板也装得进视口(它换掉了一整块版式)", _vok and _vneed <= _vhave,
 		"内容 %.0f / 视口 %.0f (超 %.0f)" % [_vneed, _vhave, _vneed - _vhave])
 
+	## ── 敌方单位的面板(2026-08-17) ────────────────────────────────────────
+	##   28 只的循环**全是 `"left"` 生成的** ⇒ 阵营那一支从没走到过。
+	##   `_show_unit_info_panel` 里 `side_col = 绿 if is_left else 红`, 血条与副标题都吃它。
+	##   ★判据不是"敌方面板建得出来"(那太弱) —— 是**血条填充色真的和友方不同**:
+	##     有人把颜色写死成绿色, 敌人面板就会看着像友军, 而且**不报任何错**。
+	var _sides: Array = []
+	for _sd in ["left", "right"]:
+		var us: Dictionary = s._spawn._make_unit("lava", str(_sd), c)
+		us["hp"] = float(us.get("maxHp", 1000)) * 0.62
+		s._units.clear()
+		s._units.append(us)
+		s._hud._show_unit_info_panel(us)
+		for _ks in range(5):
+			await get_tree().process_frame
+		var _ps = s._info_panel
+		var _fill := Color(0, 0, 0, 0)
+		var _need := 0.0
+		var _have := 0.0
+		if _ps != null and is_instance_valid(_ps):
+			var _pp2 := _panel_parts(_ps)
+			if _pp2[0] != null and _pp2[1] != null:
+				_need = (_pp2[1] as Control).get_combined_minimum_size().y
+				_have = (_pp2[0] as Control).size.y
+			## 第一条 ProgressBar 就是血条
+			var _sq: Array = [_ps]
+			while not _sq.is_empty():
+				var _nn: Node = _sq.pop_back()
+				if _nn is ProgressBar:
+					var _fs = (_nn as Control).get_theme_stylebox("fill")
+					if _fs is StyleBoxFlat:
+						_fill = (_fs as StyleBoxFlat).bg_color
+				for _cc in _nn.get_children():
+					_sq.append(_cc)
+		_sides.append([str(_sd), _fill, _need, _have])
+	var _dif: float = 0.0
+	if _sides.size() == 2:
+		var _c0: Color = _sides[0][1]
+		var _c1: Color = _sides[1][1]
+		_dif = absf(_c0.r - _c1.r) + absf(_c0.g - _c1.g) + absf(_c0.b - _c1.b)
+	_ok("★分母: 敌我两侧的面板都建出来了且量到了血条色", _sides.size() == 2
+		and float(_sides[0][2]) > 0.0 and float(_sides[1][2]) > 0.0,
+		"左 %.0f / 右 %.0f" % [float(_sides[0][2]) if _sides.size() > 0 else -1.0,
+			float(_sides[1][2]) if _sides.size() > 1 else -1.0])
+	_ok("★★敌方面板也装得进视口", _sides.size() == 2 and float(_sides[1][2]) <= float(_sides[1][3]),
+		"内容 %.0f / 视口 %.0f" % [float(_sides[1][2]) if _sides.size() > 1 else -1.0,
+			float(_sides[1][3]) if _sides.size() > 1 else -1.0])
+	_ok("★★敌我的血条颜色真的不同(写死一个色 = 敌人面板看着像友军, 且不报错)", _dif > 0.30,
+		"色差 %.3f" % _dif)
+
 	_ok("★分母: 真的量到了每一只(不是 0 只)", measured >= 20, "量了 %d 只" % measured)
 
 	# ── ① 装得下 ────────────────────────────────────────────────────────────

@@ -27,7 +27,10 @@ func _ready() -> void:
 	if OS.has_environment("SHOT_PET"):
 		pet = OS.get_environment("SHOT_PET")
 	var c: Vector2 = s.ARENA.position + s.ARENA.size * 0.5
-	var u: Dictionary = s._spawn._make_unit(pet, "left", c)
+	## SHOT_SIDE=right: 敌方单位的面板 —— 血条与副标题取阵营色(绿/红), 标题写"敌方"。
+	##   28 只的门禁循环**全是 left 生成的**, 这一支从没验过。
+	var _side := OS.get_environment("SHOT_SIDE")
+	var u: Dictionary = s._spawn._make_unit(pet, "right" if _side == "right" else "left", c)
 
 	## 把这只龟喂饱, 让面板【每一行都有东西可画】——
 	## 空面板拍出来看不出素材好坏(条是空的、槽是空的), 等于没拍。
