@@ -44,6 +44,19 @@ func _walk_labels(root: Node) -> Array:
 	return out
 
 
+## 一棵树里所有【可见的】ColorRect(分隔线判据用: 量真实高度, 不看源码)
+func _walk_rects(root: Node) -> Array:
+	var out: Array = []
+	var st: Array = [root]
+	while not st.is_empty():
+		var n: Node = st.pop_back()
+		if n is ColorRect and (n as Control).is_visible_in_tree():
+			out.append(n)
+		for c in n.get_children():
+			st.append(c)
+	return out
+
+
 func _ok(name: String, cond: bool, detail: String = "") -> void:
 	_n += 1
 	if cond:
@@ -116,6 +129,8 @@ func _ready() -> void:
 	var en_mix: Array = []
 	var clipped: Array = []
 	var clip_seen: int = 0
+	var sep_lone: Array = []
+	var sep_seen: int = 0
 	## ★★分母计数器(2026-08-17 自审补): 下面几条判据的【被测对象本身可能不存在】——
 	##   那时集合是空的, `is_empty()` 照样为真 ⇒ 断言一路绿着骗人。
 	##   (上一轮在图鉴那条上刚栽过: 图鉴被切到别的 Tab ⇒ 扫 28 只也是 0 张, 靠分母才发现。)
@@ -278,6 +293,25 @@ func _ready() -> void:
 				_cl.get_theme_font_size("font_size")).x
 			if _cw > _cl.size.x + 0.5:
 				clipped.append("%s: 「%s」需 %.0fpx / 只有 %.0fpx" % [pid, _ct, _cw, _cl.size.x])
+
+		## ── 分隔线必须是【凹刻双色】, 不许退回一条平线(2026-08-17) ──────────
+		##   ★由来: 面板里的框/槽/签全换成像素金属之后, 只剩分隔线还是
+		##     `ColorRect` 一条 1px 白 8% —— `<hr>` 的长相, 最后一处网页味。
+		##     现在是【上暗下亮】紧挨的两条(光从上打下来的刻痕)。
+		##   ★判据落在【真实节点的高度与颜色】: 面板里每一条 1px 高的 ColorRect
+		##     都必须有一个同为 1px 的同胞 —— 落单的那条就是退回平线了。
+		##     (不搜源码: 分隔线是运行时建的, 源码里搜不出"现在画了几条"。)
+		for _sn in _walk_rects(panel):
+			var _sr := _sn as ColorRect
+			if _sr.size.y > 1.5 or _sr.size.y < 0.5:
+				continue
+			sep_seen += 1
+			var _sib := 0
+			for _c in _sr.get_parent().get_children():
+				if _c is ColorRect and (_c as ColorRect).size.y <= 1.5:
+					_sib += 1
+			if _sib < 2:
+				sep_lone.append("%s: 1px 线在 %s 下落单(同胞 %d 条) —— 退回平线了" % [pid, _sr.get_parent().name, _sib])
 
 		## 字号: 收集面板里所有可见 Label 的真实 font_size
 		if measured <= 6:
@@ -475,6 +509,11 @@ func _ready() -> void:
 	##   ★判据量【渲染出来的文本】不搜源码 —— 源码里的字符串未必都显示。
 	_ok("★面板里不中英夹杂(白名单: Lv/★, 游戏既有约定)", en_mix.is_empty(),
 		"夹英文的: %s" % str(en_mix.slice(0, 4)))
+
+	_ok("★分母: 真的扫到了 1px 分隔线(0 条 = 空检查)", sep_seen >= 3,
+		"扫到 %d 条" % sep_seen)
+	_ok("★★分隔线是凹刻双色(上暗下亮), 不是一条平线 —— 平线是 <hr> 的长相", sep_lone.is_empty(),
+		"落单的: %s" % str(sep_lone.slice(0, 4)))
 
 	_ok("★分母: 真的量到了带 clip_text 的标签(0 个 = 空检查)", clip_seen >= 20,
 		"量了 %d 个" % clip_seen)

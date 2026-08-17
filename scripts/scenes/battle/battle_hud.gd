@@ -1859,6 +1859,52 @@ func _close_info_panel() -> void:
 	battle._info_panel = null
 	battle._selected_unit = null
 
+## 面板区块之间的分隔线 —— **凹刻双色线**(2026-08-17)。
+##
+## ★由来: 面板里的框/槽/签全换成像素金属之后, 只剩这几道分隔线还是
+##   `ColorRect` 一条 1px 白 8% —— 也就是 `<hr>` 的长相, 面板上最后一处网页味。
+##
+## ★为什么**不用**生成的素材(试过, 否掉了, 原因记在这免得下次再试):
+##   生成的 64×16 分隔条 ①中段有**等距白铆钉** ⇒ 九宫格中段一拉就拖成条纹
+##   (和签牌第一版斜向高光同一个毛病: 九宫格中段必须是均匀的)
+##   ②暖灰紫(实测饱和度 0.174)跟面板的蓝不搭 ③本体 5px 厚, 三道分隔线要给面板加 15px 高,
+##   而面板高度是**焊着门禁的**(verify_info_panel_fits: 内容必须塞进视口, 不许上下滑)。
+##   ⇒ 这个尺度上素材帮不上忙。金属界面里"分隔"的正解本来就是【凹刻】: 一条暗的刻痕 +
+##     紧挨着一条亮的高光, 光从上打下来的样子。2px 总高, 比原来只多 1px。
+##
+## ⚠★这里有一条【我自己制造又自己推翻】的记录, 留着比删了有用:
+##   第一版用 `Panel` + `StyleBoxFlat(bg=亮, border_width_top=1, border=暗)`。
+##   我量了一列纵向亮度剖面, 只看到 1 行变化, 就断定"2px 高的盒子里上边框没画出来",
+##   于是改成了下面这个两 ColorRect 的写法。
+##   **后来把三个版本对同一条线复量才发现: Panel 版本来就是对的**(y=178 暗 23.6 / y=179 亮 64.3)——
+##   我第一次采样的 y 区间里**根本没有分隔线**, 拿别的东西的一行当成了它。
+##   ⇒ 教训不是"StyleBoxFlat 不能用", 是**采样区必须先确认被测对象在里面**
+##     (今晚第四次栽在"判据没错、被测对象不在场"上)。
+##   两种写法实测等价, 保留 ColorRect 版只因为读的人一眼看得懂它画了哪两行。
+##
+## 用一个 `separation = 0` 的内层 VBox 装这两条: 外层容器的 separation(4px) 影响不到它,
+## 两行必然紧挨着 —— 直接塞进外层就成了两条相隔 4px 的独立线, 不是一道刻痕。
+##
+## `strength` 是**同一道刻痕的深浅**, 不是另一种线: 技能三槽与装备三槽之间那条
+## 按设计要比区块分隔线淡(它分的是"同一区里的两排", 不是两个区)。
+## 给参数而不是各写一份 —— 各写一份就是"手抄的副本必然落后"。
+func _panel_sep(parent: VBoxContainer, strength: float = 1.0) -> void:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 0)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var dark := ColorRect.new()          # 上面这条是刻痕
+	dark.color = Color(0, 0, 0, 0.45 * strength)
+	dark.custom_minimum_size = Vector2(0, 1)
+	dark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(dark)
+	var lite := ColorRect.new()          # 紧挨着的这条是高光, 合起来 = 光从上打下来的刻痕
+	lite.color = Color(1, 1, 1, 0.13 * strength)
+	lite.custom_minimum_size = Vector2(0, 1)
+	lite.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(lite)
+	parent.add_child(box)
+
+
 ## 递归数一个容器里有几个真 chip(Label)。用来判断状态区是不是空的。
 ##
 ## ★为什么不用 get_child_count()/get_combined_minimum_size(): 见 _show_unit_info_panel 里的注释,
@@ -1978,7 +2024,7 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	for _r in battle._info_sys._resource_bars(u):
 		_info_res_rows.append(battle._info_sys._info_resource_row(vb, _r))
 
-	battle._add_panel_sep(vb)
+	_panel_sep(vb)
 
 	# 当前状态 chips
 	## ★「当前状态」这个金色段标题删了 —— 其余三个(技能/装备/详细属性)早就删了,
@@ -2022,7 +2068,7 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	##     龟能进度在第二行的资源条上已经有了, 再放一遍是同一个数说两遍。
 	##   ★旧版是「金色段标题 + 简明/详细开关 + 整段正文」, 那是网页的 h3+p 结构,
 	##     也正是用户说的"网页味"的来源之一。
-	battle._add_panel_sep(vb)
+	_panel_sep(vb)
 	## ★两级切换按钮不在这里 —— 它搬进了【展开后的描述框】(用户 2026-08-16:
 	##   「点击图片出现面板后可以有按钮切换」)。悬在面板顶上那个全局开关删了:
 	##   140 条技能/被动里只有 28 条真有第二级, 对其余 112 条点它毫无反应。
@@ -2034,16 +2080,16 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	##   点整槽 → 撑开有边框的描述框, 与技能栏同一套手风琴。空槽画灰框。
 	## ★战斗中装备会变(财神招财临时升星、宝箱龟开出新装备) ⇒ 条目数/星级都会变,
 	##   所以整块重建 + 签名节流, 容器单独存。
-	## ★这里【不再 _add_panel_sep】—— 下面 hair2 就是这条线。实拍量到两条发丝线相隔 7px,
+	## ★这里【不再 _panel_sep】—— 下面 hair2 就是这条线。实拍量到两条发丝线相隔 7px,
 	##   等于同一条分隔画了两遍(而且两条紧挨着看起来像描边, 不像分隔)。
 	## ★技能三槽与装备三槽之间一条发丝线 —— 两排槽长得一模一样, 不隔开扫一眼分不出
 	##   哪三个是技能哪三个是装备。用发丝线不用段标题(段标题就是被删掉的那个网页式 h3)。
 	## ⚠ 必须加在【容器 add_child 之前】: VBox 的顺序由入树先后决定, 不是由"谁先被填充"决定。
 	##   我第一版加在填充调用那一行, 结果线跑到属性区后面去了。
-	var hair2 = ColorRect.new()
-	hair2.color = Color(1, 1, 1, 0.07)
-	hair2.custom_minimum_size = Vector2(0, 1)
-	vb.add_child(hair2)
+	## ★2026-08-17: 这条以前是内联的一条 1px 白 7% —— 和区块分隔线一样是 <hr> 的长相,
+	##   而我上一轮只换了区块分隔线, **把它漏了**(门禁「1px 线必须成对」当场把它揪出来:
+	##   28 只龟每只一条落单)。现在走同一个 _panel_sep, 强度 0.7 保住"它该更淡"这个设计。
+	_panel_sep(vb, 0.7)
 	battle._info_equip_box = VBoxContainer.new()
 	battle._info_equip_box.add_theme_constant_override("separation", 4)
 	vb.add_child(battle._info_equip_box)
@@ -2059,7 +2105,7 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	##   其中 crit-dmg 一直躺着没接线 —— 美术当初配的就是这一套核心属性。
 	## ★两个 grid 的 Label 【按主→次的顺序】统一存进 _info_stat_labels,
 	##   因为每帧刷新是按下标一一对位改文字的, 顺序错位会张冠李戴。
-	battle._add_panel_sep(vb)
+	_panel_sep(vb)
 	battle._info_stat_labels.clear()
 	var gmain = GridContainer.new(); gmain.columns = 2
 	## ★行距 2 不是 5: 属性是 4 行两列的密表, 行距大了反而更难成对读(同族两项在同一行)。

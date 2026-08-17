@@ -8887,11 +8887,6 @@ func _add_equip_row(parent: VBoxContainer, eid: String, star: int) -> void:
 		tcol.add_child(el)
 
 # 小工具: 分隔线 / 小标题 / 正文 / 数字格式
-func _add_panel_sep(parent: VBoxContainer) -> void:
-	var sep := ColorRect.new()
-	sep.color = Color(1, 1, 1, 0.08)
-	sep.custom_minimum_size = Vector2(0, 1)
-	parent.add_child(sep)
 
 func _add_section_title(parent: VBoxContainer, text: String, col: Color = Color("#ffce4d"), fs: int = 15) -> void:
 	var l := Label.new()
