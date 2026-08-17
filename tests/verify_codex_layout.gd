@@ -75,6 +75,45 @@ func _ready() -> void:
 	await _check_font_hierarchy()
 	await _check_no_duplicate_type_line()
 
+	# ── ⑨ 被截断的卡片必须都画出「点开看全部 ▸」──────────────────────────
+	##   ★这段代码自己的注释写过它曾是【不会红的假检查】: 刚 add_child 时
+	##     `get_content_height()` 返回 0 ⇒ 永远判"没被切"⇒ 提示永远不出现。
+	##   ★判据: 用产品自己的判据数被截断的卡(content_height > size.y), 再数提示条, 两者必须相等。
+	##     只断言"有提示"守不住 —— 一条都不画时"有提示"的断言也可能因为别的卡而通过。
+	##   实测(全 28 只): 卡片正文 112 个 · 被截断 24 个 · 提示 24 条, 一一对上。
+	## ★★必须先切回龟页 —— 跑到这里时前面的断言已经把图鉴切到 equips 了,
+	##   `_items` 不再是龟列表、detail 里也没有技能卡 ⇒ 扫 28 只也是 0 张。
+	##   (分母断言当场把这个抓出来了; 没有它这条就是一路绿的假检查。)
+	_inst._switch_tab("pets")
+	await _settle(8)
+	var _clip_total := 0
+	var _hint_total := 0
+	var _mismatch: Array = []
+	## ★不能只扫前 6 只 —— 实测前 6 只一张都没被截断, 那条分母断言当场红(幸好写了分母)。
+	##   改成【逐只扫到找够 3 张为止】: 既保证判据真的走到, 又不用把 28 只全跑完。
+	for _i in range(_inst._items.size()):
+		if _clip_total >= 3:
+			break
+		_inst._select(_i)
+		await _settle(6)
+		var _cl := 0
+		var _hi := 0
+		for _c in _inst.detail.get_children():
+			if _c is RichTextLabel:
+				var _rt := _c as RichTextLabel
+				if _rt.size.y > 40.0 and _rt.size.y < 400.0 and _rt.get_content_height() > _rt.size.y + 0.5:
+					_cl += 1
+			elif _c is Label and str((_c as Label).text).begins_with("点开看全部"):
+				_hi += 1
+		_clip_total += _cl
+		_hint_total += _hi
+		if _cl != _hi:
+			_mismatch.append("第 %d 只: 被截 %d / 提示 %d" % [_i, _cl, _hi])
+	_ok("★⑨ 分母: 前 6 只里确实有被截断的卡(没有就是空检查)", _clip_total > 0,
+		"被截 %d 张" % _clip_total)
+	_ok("★★⑨ 被截断的卡都画出了「点开看全部」(数量一一对上)", _mismatch.is_empty(),
+		"对不上的: %s" % str(_mismatch.slice(0, 4)))
+
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	if _fail == 0:
