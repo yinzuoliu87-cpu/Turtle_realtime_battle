@@ -339,6 +339,7 @@ run_audit "tools/tooltip_number_audit.py" "ALL OK" "tooltip_number_audit (装备
 #   但【龟技能一直没有】。无头·灵魂打击文案写 0.9A+20%当前生命, 代码是 0.5A+10%, 四轮门禁全绿没发现。
 run_audit "tools/pet_number_audit.py" "ALL OK" "pet_number_audit (龟技能文案数值 ↔ 代码)"
 run_audit "tools/brief_detail_audit.py"   "ALL OK" "brief_detail_audit (龟技能 brief ↔ detail 数值)"
+run_audit "tools/passive_number_audit.py" "ALL OK" "passive_number_audit (龟被动文案数值 ↔ 代码)"
 # ★地图构图与可玩性 (2026-07-31 新增)。由来: 重画 arena.json 时发现三条约束没人守 ——
 #   战场内不能有 void(单位被 clamp 进去=站黑洞)、站位格不能是水、接战区不能是水(亮度98压深色龟)。
 #   改前的老图恰好三条全踩(亮青池子铺满接战区)。第 4 条守"地图必须与生成器一致", 防手刷脱钩。
