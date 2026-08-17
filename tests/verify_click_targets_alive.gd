@@ -55,6 +55,7 @@ func _scan(root: Node) -> Array:
 	var wired := 0
 	var dead: Array = []
 	var squashed: Array = []
+	var labels := 0
 	var stack: Array = [root]
 	while not stack.is_empty():
 		var n: Node = stack.pop_back()
@@ -68,12 +69,14 @@ func _scan(root: Node) -> Array:
 			##   今晚描述框就栽在这: 写着 offset_top=-300, 挂在 PanelContainer 下 ⇒ 一个像素没生效。
 			if n is Label and c.is_visible_in_tree():
 				var tx := str((n as Label).text).strip_edges()
+				if tx.length() >= 2:
+					labels += 1
 				## 一个汉字最小也要十几像素; 有字而宽/高不足 6px = 屏幕上根本看不见。
 				if tx.length() >= 2 and (c.size.x < 6.0 or c.size.y < 6.0):
 					squashed.append("「%s」%.0fx%.0f" % [tx.substr(0, 12), c.size.x, c.size.y])
 		for ch in n.get_children():
 			stack.append(ch)
-	return [wired, dead, squashed]
+	return [wired, dead, squashed, labels]
 
 
 func _ready() -> void:
@@ -85,6 +88,7 @@ func _ready() -> void:
 	var total_wired := 0
 	var all_dead: Array = []
 	var all_squashed: Array = []
+	var total_labels := 0
 	var opened := 0
 	for path in SCENES:
 		if not ResourceLoader.exists(str(path)):
@@ -100,6 +104,7 @@ func _ready() -> void:
 		var r := _scan(inst)
 		var wired: int = int(r[0])
 		var dead: Array = r[1]
+		total_labels += int(r[3])
 		for sq in (r[2] as Array):
 			all_squashed.append("%s → %s" % [str(path).get_file(), str(sq)])
 		total_wired += wired
@@ -155,6 +160,7 @@ func _ready() -> void:
 		opened += 1
 		for d2 in (rb2[1] as Array):
 			all_dead.append("战斗信息面板 → %s" % str(d2))
+		total_labels += int(rb2[3])
 		for s2 in (rb2[2] as Array):
 			all_squashed.append("战斗信息面板 → %s" % str(s2))
 		print("    [分母] %-22s 接了点击的控件 %d 个, 其中收不到点击 %d 个"
@@ -172,6 +178,8 @@ func _ready() -> void:
 	_ok("★★没有【接了点击却收不到点击】的死处理器", all_dead.is_empty(),
 		"死的: %s" % str(all_dead.slice(0, 8)))
 
+	_ok("★分母: 真的扫到了带字的标签(0 个 = 下面是空检查)", total_labels >= 40,
+		"扫到 %d 个" % total_labels)
 	_ok("★★没有【有字却被挤成看不见】的标签", all_squashed.is_empty(),
 		"挤没的: %s" % str(all_squashed.slice(0, 8)))
 

@@ -115,18 +115,23 @@ for e in eq:
 #   ★数值审计接不住: 数字一个没动, 两边照样 ALL OK(与悬空助词那次同一个空档)。
 _PAIRS = (('（', '）'), ('(', ')'), ('【', '】'), ('「', '」'))
 _unbal = []
+_nline_brk = 0
 for p in pets:
     rows = [(s.get('name',''), s.get('brief','')) for s in (p.get('skillPool') or [])]
     _pa = p.get('passive')
     if isinstance(_pa, dict): rows.append((_pa.get('name','被动'), _pa.get('desc','')))
     for _nm, _t in rows:
         for _ln in _lines(_t):
+            _nline_brk += 1
             if any(_ln.count(_a) != _ln.count(_b) for _a, _b in _PAIRS):
                 _unbal.append('%s·%s: %s' % (p['id'], _nm, _ln[:22]))
 for e in eq:
     for _ln in _lines(e.get('effectDesc1','')):
+        _nline_brk += 1
         if any(_ln.count(_a) != _ln.count(_b) for _a, _b in _PAIRS):
             _unbal.append('%s: %s' % (e['id'], _ln[:22]))
+print('  [分母] 括号配对: 扫了 %d 行' % _nline_brk)
+chk('★分母: 括号配对真的扫到行了(0 行 = 空检查)', [] if _nline_brk > 100 else ['只扫到 %d 行' % _nline_brk])
 chk('★描述每一行的括号都配对 —— 不配对 = 断行时把括号劈开了', sorted(_unbal)[:8])
 
 # ★2026-08-17 补【不许连着两个标点】—— 也是我自己造的:
@@ -190,12 +195,18 @@ chk('★描述没有超长行(递归扫全部字段 —— 漏处理的字段一
 _DEVWORD = ('参考英雄联盟', '原设计', '已由用户', '未采用', '回合制', 'PoC', 'TODO',
             '订正', '勘误', '此前文案', '已按代码', '逐字', '〖')
 _devnote = []
-for _f in ('data/pets.json', 'data/phase2-equipment.json', 'data/equipment.json',
-           'data/status.json', 'data/battle-rules.json'):
+_TEXT_FILES = ('data/pets.json', 'data/phase2-equipment.json', 'data/equipment.json',
+               'data/status.json', 'data/battle-rules.json')
+_scanned = 0
+for _f in _TEXT_FILES:
     try:
         _raw = io.open(_f, encoding='utf-8').read()
     except Exception:
+        # ★不许静默跳过 —— 读不到就是"这一份没被检查", 那才是最该红的情况。
+        #   原来这里是 `continue`: 文件没了/改名了, 检查照样全绿。
+        _devnote.append('%s 读不到(这一份根本没被检查)' % _f)
         continue
+    _scanned += 1
     for _w in _DEVWORD:
         if _w in _raw:
             _devnote.append('%s 出现「%s」' % (_f.split('/')[-1], _w))
@@ -207,6 +218,9 @@ for _f in ('data/pets.json', 'data/phase2-equipment.json', 'data/equipment.json'
     #   ⇒ 判据改成: 玩家文案里【只要出现"参考"】就红。真要写机制不用这两个字。
     if '参考' in _raw:
         _devnote.append('%s 出现「参考」(出处标注)' % _f.split('/')[-1])
+print('  [分母] 玩家文案文件扫了 %d / %d 份' % (_scanned, len(_TEXT_FILES)))
+chk('★分母: 五份玩家文案文件全都读到了(少一份 = 那一份没被检查)',
+    [] if _scanned == len(_TEXT_FILES) else ['只扫到 %d 份' % _scanned])
 chk('★玩家文案里没有开发笔记(参考XX/原设计/已由用户/回合制…)', sorted(set(_devnote))[:6])
 
 # ★2026-08-17 补【标点用全角 + 不夹英文术语】。
