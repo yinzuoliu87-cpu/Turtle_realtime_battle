@@ -44,8 +44,12 @@ func _ready() -> void:
 		match pet:
 			"lava":    u["rage"] = 30.0
 			"space":   u["star_energy"] = float(u.get("maxHp", 1000)) * 0.18
-			"shell":   u["shell_storage"] = float(u.get("maxHp", 1000)) * 0.25
-			"bubble":  u["bubble_val"] = float(u.get("maxHp", 1000)) * 0.5
+			## ⚠★2026-08-17: 原来写的是 `shell_storage` / `bubble_val` —— **全仓 0 次出现**,
+			##   是凭空编的字段名(面板读 `store_energy` / `bubble_store`)。
+			##   后果: 这两只龟截出来的图【少了一整行专属资源】, 而我拿这种图判"版式对不对"。
+			##   同一个错在三个地方各写了一遍(门禁 / 高度探针 / 本工装) —— 抄的时候连错一起抄。
+			"shell":   u["store_energy"] = float(u.get("maxHp", 1000)) * 0.25
+			"bubble":  u["bubble_store"] = float(u.get("maxHp", 1000)) * 0.5
 			"chest":   u["dmg_dealt"] = 800.0
 			"fortune": u["gold"] = 37.0
 	## ★装备的真格式是 [{id, star}] 的字典数组, 不是 id 字符串数组 ——

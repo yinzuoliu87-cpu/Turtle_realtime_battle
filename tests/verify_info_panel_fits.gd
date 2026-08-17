@@ -57,6 +57,19 @@ func _walk_rects(root: Node) -> Array:
 	return out
 
 
+## 一棵树里所有【可见的】NinePatchRect(判"框画不画得出来"要量真实矩形)
+func _walk_ninepatch(root: Node) -> Array:
+	var out: Array = []
+	var st: Array = [root]
+	while not st.is_empty():
+		var n: Node = st.pop_back()
+		if n is NinePatchRect and (n as Control).is_visible_in_tree():
+			out.append(n)
+		for c in n.get_children():
+			st.append(c)
+	return out
+
+
 func _ok(name: String, cond: bool, detail: String = "") -> void:
 	_n += 1
 	if cond:
@@ -136,6 +149,8 @@ func _ready() -> void:
 	var tex_seen: int = 0
 	var stock_btn: Array = []
 	var btn_seen: int = 0
+	var np_flat: Array = []
+	var np_seen: int = 0
 	## ★★分母计数器(2026-08-17 自审补): 下面几条判据的【被测对象本身可能不存在】——
 	##   那时集合是空的, `is_empty()` 照样为真 ⇒ 断言一路绿着骗人。
 	##   (上一轮在图鉴那条上刚栽过: 图鉴被切到别的 Tab ⇒ 扫 28 只也是 0 张, 靠分母才发现。)
@@ -174,8 +189,13 @@ func _ready() -> void:
 		match str(pid):
 			"lava":    u["rage"] = 30.0
 			"space":   u["star_energy"] = float(u.get("maxHp", 1000)) * 0.18
-			"shell":   u["shell_storage"] = float(u.get("maxHp", 1000)) * 0.25
-			"bubble":  u["bubble_val"] = float(u.get("maxHp", 1000)) * 0.5
+			## ⚠★2026-08-17 订正: 这里原来写的是 `shell_storage` / `bubble_val` ——
+			##   **全仓 0 次出现**, 是测试里凭空编的字段名(面板读的是 `store_energy` / `bubble_store`)。
+			##   后果: 这两只龟的**专属资源行从来没被建出来**, 也就是说它们的【最坏版式
+			##   从来没被量过】—— 断言一直绿着, 但绿的是两只"少了一行"的假龟。
+			##   (今晚第五次"判据没错、被测对象不在场"。喂给被测对象的字段名, 要按【消费侧】抄。)
+			"shell":   u["store_energy"] = float(u.get("maxHp", 1000)) * 0.25
+			"bubble":  u["bubble_store"] = float(u.get("maxHp", 1000)) * 0.5
 			"chest":   u["dmg_dealt"] = 800.0
 			"fortune": u["gold"] = 37.0
 		s._units.clear()
@@ -371,6 +391,23 @@ func _ready() -> void:
 						_bad += 1
 				for _c5 in _n5.get_children():
 					_st5.append(_c5)
+			## ★★九宫格【画得出来吗】—— 有贴图 ≠ 看得见(2026-08-17 实拍抓到)。
+			##   资源条(泡泡/怒气/星能/储能)确实调了 `_bar_frame`, 但那一行只有 14px 高,
+			##   而条框九宫格上下边距 7+7 = 14 ⇒ **中段一行不剩, 框被压没** ——
+			##   屏幕上是裸的色块压黑底, 正是用户「血条龟能条都跟网页一样」那条抱怨。
+			##   而上面那条 `bar_noframe` 只数"有没有贴图", **这种退化它查不到**。
+			##   判据: 渲染出来的高/宽必须 **大于** 上下/左右边距之和, 否则中段是负的。
+			##   (同一个坑今晚第二次: 头像框 64px 源塞进 56px 目标也是它。)
+			for _n7 in _walk_ninepatch(panel):
+				var _p7 := _n7 as NinePatchRect
+				if _p7.texture == null or _p7.size.y <= 0.0:
+					continue
+				np_seen += 1
+				var _mv: float = _p7.patch_margin_top + _p7.patch_margin_bottom
+				var _mh: float = _p7.patch_margin_left + _p7.patch_margin_right
+				if _p7.size.y <= _mv or _p7.size.x <= _mh:
+					np_flat.append("%s: %s 实高%.0f/边距和%.0f 宽%.0f/%.0f" % [pid,
+						_p7.texture.resource_path.get_file(), _p7.size.y, _mv, _p7.size.x, _mh])
 			if _np == 0:
 				bar_noframe.append("%s: 一个条框都没有(下面是空检查)" % pid)
 			elif _bad > 0:
@@ -560,6 +597,10 @@ func _ready() -> void:
 	##   ★判据量【渲染出来的文本】不搜源码 —— 源码里的字符串未必都显示。
 	_ok("★面板里不中英夹杂(白名单: Lv/★, 游戏既有约定)", en_mix.is_empty(),
 		"夹英文的: %s" % str(en_mix.slice(0, 4)))
+
+	_ok("★分母: 真的量到了九宫格框(0 个 = 空检查)", np_seen >= 10, "量了 %d 个" % np_seen)
+	_ok("★★没有【被压扁到画不出来】的九宫格(边距和 ≥ 实际尺寸 = 中段是负的)",
+		np_flat.is_empty(), "压扁的: %s" % str(np_flat.slice(0, 5)))
 
 	_ok("★分母: 真的扫到了按钮(0 个 = 空检查)", btn_seen >= 6, "扫到 %d 个" % btn_seen)
 	_ok("★★面板里没有【用 Godot 默认主题】的按钮(圆角纯色 = 最直接的「没游戏味」)",

@@ -270,6 +270,21 @@ func _res_value_text(r: Dictionary) -> String:
 	return "%d / %d" % [int(r.get("cur", 0.0)), int(cap)]
 
 
+## 条的【填充】统一做出液面分层: 主体压暗一档 + 顶部 3px 亮带 = 光打在液面上。
+##
+## ★为什么抽成函数: v0.19.203 我只给 `_info_bar`(生命/龟能)做了, **漏了资源条**
+##   —— 于是同一块面板里, 上面两条有液面、下面泡泡条是纯色平填。
+##   写第二遍就会漏第三处, 所以做成唯一出处(memory: 手抄的副本必然落后)。
+## ⚠ `StyleBoxFlat` 只有一个 border_color, 做不了"上亮下暗"两色 ⇒ 只做上亮;
+##   下方的暗由条框自己那道下沿给。
+## ★亮暗从 `col` **算**出来不写死 —— 血条绿/龟能黄/怒气橙/星能紫/储能黄/泡泡蓝
+##   六种颜色走同一条路径, 写死等于给其中一种调好、其余全错。
+func _bar_fill_skin(sb: StyleBoxFlat, col: Color) -> void:
+	sb.bg_color = col.darkened(0.16)
+	sb.border_width_top = 3
+	sb.border_color = col.lightened(0.22)
+
+
 func _info_resource_row(parent: Control, r: Dictionary) -> Dictionary:
 	## ★inline 形态: 条上压一行数字, 没有名字标签也没有结论行 —— 与血条同构。
 	if bool(r.get("inline", false)):
@@ -291,6 +306,7 @@ func _info_resource_row(parent: Control, r: Dictionary) -> Dictionary:
 		var ibg = StyleBoxFlat.new(); ibg.bg_color = Color("#0b1220")
 		ibg.set_border_width_all(1); ibg.border_color = Color("#243247"); ibg.set_corner_radius_all(0)
 		var ifl = StyleBoxFlat.new(); ifl.bg_color = r.get("color", Color.WHITE); ifl.set_corner_radius_all(0)
+		_bar_fill_skin(ifl, r.get("color", Color.WHITE))
 		ibg.bg_color = Color(0, 0, 0, 0.55) if ifr != null else ibg.bg_color
 		ibg.set_border_width_all(0 if ifr != null else 1)
 		ipb.add_theme_stylebox_override("background", ibg)
@@ -332,7 +348,13 @@ func _info_resource_row(parent: Control, r: Dictionary) -> Dictionary:
 	top.add_child(vl)
 
 	var bhold = Control.new()
-	bhold.custom_minimum_size = Vector2(0, 0 if no_cap else 14)
+	## ⚠★14 → 20(2026-08-17): 这一行**调了 `_bar_frame`, 但框根本渲染不出来** ——
+	##   条框九宫格上下边距 7+7 = 14, 正好等于这里的高度 ⇒ 中段一行不剩, 框被压没。
+	##   实拍泡泡龟才看见: 生命/龟能有金属框, 而专属资源条是**裸的色块压黑底**,
+	##   正是用户「血条龟能条都跟网页一样」那条抱怨, 只是发生在一行我一直没看见的地方
+	##   (它一直没被渲染: 门禁/探针/截图工装三处都喂错了字段名, 这一行从没建出来过)。
+	##   ★同一个坑今晚第二次: **九宫格源图的边距之和必须小于目标高度**(头像框那次是 32→56)。
+	bhold.custom_minimum_size = Vector2(0, 0 if no_cap else 20)
 	bhold.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bhold.visible = not no_cap
 	box.add_child(bhold)
@@ -349,6 +371,7 @@ func _info_resource_row(parent: Control, r: Dictionary) -> Dictionary:
 	var bgsb = StyleBoxFlat.new(); bgsb.bg_color = Color("#0b1220")
 	bgsb.set_border_width_all(1); bgsb.border_color = Color("#243247"); bgsb.set_corner_radius_all(0)
 	var flsb = StyleBoxFlat.new(); flsb.bg_color = r.get("color", Color.WHITE); flsb.set_corner_radius_all(0)
+	_bar_fill_skin(flsb, r.get("color", Color.WHITE))
 	bgsb.bg_color = Color(0, 0, 0, 0.55) if bfr != null else bgsb.bg_color
 	bgsb.set_border_width_all(0 if bfr != null else 1)
 	pb.add_theme_stylebox_override("background", bgsb)
@@ -403,9 +426,7 @@ func _info_bar(parent: Control, cur: float, mx: float, fill_col: Color, label: S
 	##     所以只做上亮; 下方的暗是条框自己那道下沿给的(它本来就画在填充下面)。
 	##   ★颜色从 `fill_col` 算出来, 不写死: 血条绿/龟能黄/各种资源色都走这一条路径,
 	##     写死就等于给其中一种调好、其余全错。
-	flsb.bg_color = fill_col.darkened(0.16)
-	flsb.border_width_top = 3
-	flsb.border_color = fill_col.lightened(0.22)
+	_bar_fill_skin(flsb, fill_col)
 	## ★血条底也走九宫格像素框(用户:「血条，龟能条都跟网页一样」)。
 	bgsb.bg_color = Color(0, 0, 0, 0.55) if hfr != null else bgsb.bg_color
 	bgsb.set_border_width_all(0 if hfr != null else 1)
