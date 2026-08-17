@@ -85,7 +85,7 @@
     "name": "冰寒",
     "iconKey": "status-chilled",
     "category": "debuff",
-    "desc": "攻击力降低 20%。"
+    "desc": "削弱类负面：削哪项、削多少由来源决定（常见 -20%）。"
   },
   {
     "id": "heal-reduce",
