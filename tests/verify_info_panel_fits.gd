@@ -132,6 +132,8 @@ func _ready() -> void:
 	var sep_lone: Array = []
 	var sep_seen: int = 0
 	var outline_box: Array = []
+	var tex_missing: Array = []
+	var tex_seen: int = 0
 	## ★★分母计数器(2026-08-17 自审补): 下面几条判据的【被测对象本身可能不存在】——
 	##   那时集合是空的, `is_empty()` 照样为真 ⇒ 断言一路绿着骗人。
 	##   (上一轮在图鉴那条上刚栽过: 图鉴被切到别的 Tab ⇒ 扫 28 只也是 0 张, 靠分母才发现。)
@@ -371,6 +373,35 @@ func _ready() -> void:
 				bar_noframe.append("%s: 一个条框都没有(下面是空检查)" % pid)
 			elif _bad > 0:
 				bar_noframe.append("%s: %d/%d 个条框没贴图" % [pid, _bad, _np])
+		## ── 今晚做的四张素材必须【真的挂在活面板上】(2026-08-17) ──────────
+		##   ★由来: 一个晚上把面板从"网页味"改成金属框, 靠的是 5 张九宫格贴图。
+		##     以后有人图省事把某一处换回 `StyleBoxFlat`, **界面只是变回网页样, 不报任何错** ——
+		##     正是今晚开头那批"绿着的假门禁"同一个形状。
+		##   ★判据量【运行时真的挂上去的贴图路径】: 遍历活面板, 收集
+		##     NinePatchRect.texture 与 StyleBoxTexture.texture 的 resource_path。
+		##     **不查文件存在** —— 文件在、没人挂, 玩家照样看不到(写进去了没人读)。
+		if measured <= 6:
+			var _mounted: Dictionary = {}
+			var _stq: Array = [panel]
+			while not _stq.is_empty():
+				var _nq: Node = _stq.pop_back()
+				if _nq is NinePatchRect and (_nq as NinePatchRect).texture != null:
+					_mounted[(_nq as NinePatchRect).texture.resource_path.get_file()] = true
+				if _nq is Control:
+					for _sl in ["panel", "normal", "background", "fill"]:
+						if not (_nq as Control).has_theme_stylebox_override(_sl):
+							continue
+						var _sx = (_nq as Control).get_theme_stylebox(_sl)
+						if _sx is StyleBoxTexture and (_sx as StyleBoxTexture).texture != null:
+							_mounted[(_sx as StyleBoxTexture).texture.resource_path.get_file()] = true
+				for _cq in _nq.get_children():
+					_stq.append(_cq)
+			tex_seen = maxi(tex_seen, _mounted.size())
+			for _need in ["panel-frame.png", "slot-frame.png", "bar-frame.png",
+					"chip-frame.png", "portrait-frame.png"]:
+				if not _mounted.has(_need) and not tex_missing.has(_need):
+					tex_missing.append(_need)
+
 		## 被动槽的紫调: 取【最上面那一排】三个 88px 槽(技能栏), 后两格应相同、第一格应不同
 		if measured <= 6:
 			var _slots: Array = []
@@ -520,6 +551,11 @@ func _ready() -> void:
 	##   ★判据量【渲染出来的文本】不搜源码 —— 源码里的字符串未必都显示。
 	_ok("★面板里不中英夹杂(白名单: Lv/★, 游戏既有约定)", en_mix.is_empty(),
 		"夹英文的: %s" % str(en_mix.slice(0, 4)))
+
+	_ok("★分母: 面板上真的挂了九宫格贴图(0 张 = 空检查)", tex_seen >= 4,
+		"挂了 %d 张不同的贴图" % tex_seen)
+	_ok("★★五张面板素材都真的挂在活面板上(文件在≠有人挂)", tex_missing.is_empty(),
+		"没挂上的: %s" % str(tex_missing))
 
 	_ok("★★面板里没有【四边描边 + 半透明填充】的网页盒(直角只是必要条件)",
 		outline_box.is_empty(), "还剩: %s" % str(outline_box.slice(0, 5)))
