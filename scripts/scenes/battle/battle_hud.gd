@@ -1958,7 +1958,9 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	nm.add_theme_color_override("font_color", battle._pet_rarity_color(rar)); hi.add_child(nm)
 	var sub = Label.new()
 	sub.text = "%s · %s · Lv %d" % ["友军" if is_left else "敌方", rar, int(u.get("level", 1))]
-	sub.add_theme_font_size_override("font_size", 13); sub.add_theme_color_override("font_color", side_col); hi.add_child(sub)
+	## ★副标题 12(与资源名/状态签/「装备：」同属"次要信息"这一档) —— 面板字号收成
+	##   21 标题 / 14 正文 / 12 次要 / 11 说明 / 10 角标 五档, 一档只表示一种角色。
+	sub.add_theme_font_size_override("font_size", 12); sub.add_theme_color_override("font_color", side_col); hi.add_child(sub)
 	# ★不再放 ✖ 按钮(用户 2026-07-21:「点空白处就直接退出信息面板, 不要那个×」)。
 	#   关闭走两条: ①点面板外空白(_unhandled_input) ②ESC。面板本身 MOUSE_FILTER_STOP,
 	#   所以点在面板【内】不会误关。

@@ -99,6 +99,7 @@ func _ready() -> void:
 	var tint_bad: Array = []
 	var bar_noframe: Array = []
 	var round_bad: Array = []
+	var font_sizes: Array = []
 	var tap_seen := 0
 	var tap_min := 99999.0
 	var measured := 0
@@ -211,6 +212,17 @@ func _ready() -> void:
 			var _ip2 := str((_sr as Array)[0])
 			if _ip2 == "" or not ResourceLoader.exists(_ip2):
 				stat_noicon.append("%s: 「%s」图标=%s" % [pid, str((_sr as Array)[1]), _ip2 if _ip2 != "" else "(空)"])
+		## 字号: 收集面板里所有可见 Label 的真实 font_size
+		if measured <= 6:
+			var _stf: Array = [panel]
+			while not _stf.is_empty():
+				var _nf: Node = _stf.pop_back()
+				if _nf is Label and (_nf as Control).is_visible_in_tree():
+					var _sz: int = (_nf as Label).get_theme_font_size("font_size")
+					if not font_sizes.has(_sz):
+						font_sizes.append(_sz)
+				for _cf in _nf.get_children():
+					_stf.append(_cf)
 		## 面板里【不许有圆角 CSS 方块】—— 圆角矩形是网页的长相, 用户点名骂过"网页味"。
 		##   面板/槽/条都换成硬边像素框之后, 只剩状态签还是平滑抗锯齿的圆角胶囊(实拍放大才看见)。
 		##   ★判据量【真实 StyleBox 的圆角半径】, 不搜源码 —— 源码里 set_corner_radius_all 有好几处,
@@ -380,6 +392,15 @@ func _ready() -> void:
 	##     只断言"节点在"守不住 —— 贴图丢了节点照样在(它就是个空壳)。
 	##   ★实拍佐证: 把 bar-frame.png 临时挪走后重拍, 血条纵向明暗跨度 160 → 72、
 	##     逐行平均差 28.8 ⇒ 框确实在画, 不是摆设。
+	## ── 字号层级不许发散 ────────────────────────────────────────────────
+	##   ★由来: 实测面板里同时用了 6 种字号(21/14/13/12/11/10), 其中 13 与 12 几乎分不出 ——
+	##     而且【同一类信息用了两个号】: 资源行的「30 / 100」是 13, 隔 20 像素的龟能条
+	##     「63 / 115」是 12。收成 5 档后一档只表示一种角色:
+	##     21 标题 / 14 正文 / 12 次要 / 11 说明 / 10 角标。
+	##   ★判据量【真实 Label 的 font_size】, 不搜源码 —— 源码里的 override 有的会被主题顶掉。
+	_ok("★面板字号不超过 5 档(一档只表示一种角色)", font_sizes.size() <= 5,
+		"实得 %d 档: %s" % [font_sizes.size(), str(font_sizes)])
+
 	_ok("★面板里没有圆角 CSS 方块(圆角矩形是网页的长相)",
 		round_bad.is_empty(), "还有圆角的: %s" % str(round_bad.slice(0, 4)))
 

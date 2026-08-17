@@ -317,7 +317,9 @@ func _info_resource_row(parent: Control, r: Dictionary) -> Dictionary:
 	top.add_theme_constant_override("separation", 6)
 	box.add_child(top)
 	var nm = Label.new(); nm.text = str(r.get("name", ""))
-	nm.add_theme_font_size_override("font_size", 13)
+	## ★12 不是 13: 同一条资源行里的【名】与【值】要和龟能条内那份(12)同号 ——
+	##   实测面板里「30 / 100」是 13、隔 20 像素的「63 / 115」是 12, 同一类信息两个号。
+	nm.add_theme_font_size_override("font_size", 12)
 	nm.add_theme_color_override("font_color", r.get("color", Color.WHITE))
 	top.add_child(nm)
 	var sp = Control.new(); sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -325,7 +327,7 @@ func _info_resource_row(parent: Control, r: Dictionary) -> Dictionary:
 	var no_cap: bool = float(r.get("cap", 0.0)) <= 0.0   # 没有上限的资源(金币)只显数字, 不画条
 	var vl = Label.new()
 	vl.text = _res_value_text(r)
-	vl.add_theme_font_size_override("font_size", 13)
+	vl.add_theme_font_size_override("font_size", 12)
 	vl.add_theme_color_override("font_color", Color("#e8f2ff"))
 	top.add_child(vl)
 

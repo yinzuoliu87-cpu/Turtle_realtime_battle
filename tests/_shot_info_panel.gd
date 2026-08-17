@@ -81,6 +81,27 @@ func _ready() -> void:
 	for _i in range(6):
 		await get_tree().process_frame
 
+	if OS.has_environment("SHOT_FONTS"):
+		print("--- 面板里所有 Label 的字号 ---")
+		var fs: Dictionary = {}
+		var q: Array = [s._info_panel]
+		while not q.is_empty():
+			var n: Node = q.pop_back()
+			if n is Label and (n as Control).is_visible_in_tree():
+				var sz: int = (n as Label).get_theme_font_size("font_size")
+				var t := str((n as Label).text).replace("
+", " ").substr(0, 14)
+				if not fs.has(sz): fs[sz] = []
+				(fs[sz] as Array).append(t)
+			for ch2 in n.get_children():
+				q.append(ch2)
+		var keys: Array = fs.keys()
+		keys.sort()
+		keys.reverse()
+		for k in keys:
+			var arr: Array = fs[k]
+			print("   %2dpx ×%-3d  %s" % [k, arr.size(), " | ".join(arr.slice(0, 5))])
+
 	## ★量, 不要眯眼看图。把面板里每个可见 Control 的【矩形 + 文字】打出来 ——
 	##   "属性区不见了"这种判断, 靠看截图会判反(我已栽过一次), 靠这份清单不会。
 	if OS.has_environment("SHOT_TREE"):
