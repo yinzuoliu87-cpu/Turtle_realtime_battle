@@ -128,6 +128,32 @@ func _ready() -> void:
 	for sid in SK.keys():
 		_chk("① 主动技「%s」在配置页有描述" % sid, descs.has(sid) and str(descs[sid]).length() > 10)
 
+	# ── ①.5 CD/射程【从注册表推导】对账, 不再手抄 ──────────────────────────
+	##   ⚠ 我一开始以为下面 ② 是"手写片段表"、会漂 —— **看了才发现它本来就是从
+	##     `SK[sid]["cd"]` 推的**, 我判断错了。这一段留下的真实价值是【覆盖面】:
+	##     ② 的 want 是逐个技能手列的, 以后新增第 7 个主动技不会自动进去; 这一段是遍历
+	##     `SK.keys()`, 新技能自动纳入。
+	##   ★顺带查出来一件真事: 猎龟令/驯服的冷却原来存了【两份】(HUNT_CD/TAME_CD 与
+	##     注册表的 cd), 而冷却圆盘的分母读注册表、施放写常量 —— 改一个另一个不跟, 圆盘就会错。
+	##     已把常量改成直接引用注册表(只此一个出处)。
+	##   ★分母: 逐个技能都要比到, 比不到 0 条就是空检查。
+	var _derived := 0
+	for sid2 in SK.keys():
+		var e2: Dictionary = SK[sid2]
+		var d2: String = str(descs.get(sid2, "")).replace(" ", "").replace(" ", "")
+		if d2 == "":
+			continue
+		var cd2: float = float(e2.get("cd", 0.0))
+		var rg2: float = float(e2.get("range", 0.0))
+		_derived += 1
+		_chk("①.5 「%s」文案里的 CD 与注册表一致(CD%d)" % [str(e2.get("name", sid2)), int(cd2)],
+			d2.find("CD%d" % int(cd2)) >= 0)
+		if rg2 > 0.0:
+			_derived += 1
+			_chk("①.5 「%s」文案里的射程与注册表一致(%d 码)" % [str(e2.get("name", sid2)), int(rg2)],
+				d2.find("%d码" % int(rg2)) >= 0 or d2.find("射程%d" % int(rg2)) >= 0)
+	_chk("①.5 ★分母: 真的逐个技能对账了(0 条 = 空检查)", _derived >= 10)
+
 	# ── ② 描述里的数字必须与代码常量一致 ──
 	for sid in want.keys():
 		if not descs.has(sid):

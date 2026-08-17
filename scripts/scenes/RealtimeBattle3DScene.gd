@@ -367,16 +367,22 @@ const TRAINER_SKILLS := {
 }
 
 # ── 猎龟令(用户 2026-07-28) ──
-const HUNT_CD := 30.0
-const HUNT_RANGE := 600.0
+## ★★2026-08-17: 冷却与射程【直接引用注册表】, 不再写第二遍。
+##   由来: 冷却圆盘(battle_render.gd) 的分母读的是 `TRAINER_SKILLS[sid]["cd"]`,
+##   而猎龟令/驯服施放时写的是 `battle.HUNT_CD` —— **同一个冷却两个来源**。
+##   现在两边恰好都是 30/60, 但改一个另一个不会跟着变 ⇒ 圆盘会按错的分母走
+##   (显示走完了技能却还在冷却, 或反过来), 而且不报任何错。
+##   (另外四个主动本来就直接读表, 只有这两个是自己写的常量。)
+const HUNT_CD: float = TRAINER_SKILLS["hunt_order"]["cd"]
+const HUNT_RANGE: float = TRAINER_SKILLS["hunt_order"]["range"]
 const HUNT_SEC := 15.0            # 标记持续
 const HUNT_TAUNT_R := 400.0       # 以【目标】为圆心的嘲讽半径(圈随目标移动)
 const HUNT_VULN := 1.15           # 被标记者受伤 ×1.15
 const HUNT_MISSILE_SPD := 1400.0  # 锁头弹道飞行速度(码/秒)
 
 # ── 驯服(用户 2026-07-28) ──
-const TAME_CD := 60.0
-const TAME_RANGE := 600.0
+const TAME_CD: float = TRAINER_SKILLS["tame"]["cd"]        # 同上: 只此一个出处
+const TAME_RANGE: float = TRAINER_SKILLS["tame"]["range"]
 const TAME_REVIVE_PCT := 0.30     # 死后按 30% 最大生命重生
 const TAME_REVIVE_SEC := 2.5      # 重生演出时长(期间无敌不可选中)
 const TAME_DECAY_PCT := 0.02      # 归顺后每秒损失 2% 最大生命
