@@ -782,7 +782,15 @@ func _info_equip_slots(vb: VBoxContainer, u: Dictionary) -> void:
 		ssb.set_border_width_all(1)
 		ssb.border_color = Color("#3a4c60") if filled else Color("#222c38")
 		ssb.set_corner_radius_all(0)
-		slot.add_theme_stylebox_override("panel", _nine_box(HUD_TEX + "slot-frame.png", 12, ssb))
+		## ⚠★2026-08-17 实拍抓到: 上面 `ssb` 里写的【空/满两种底色+边色】**是死代码** ——
+		##   `_nine_box` 只在**贴图不存在时**才回退到 `ssb`, 而 `slot-frame.png` 一直在,
+		##   所以那两行 `if filled` 永远没生效。头上注释写着「空槽画灰框, 一眼看出还能装几件」,
+		##   实拍出来**空槽和满槽一模一样**。典型的"写进去了没人读", 而且注释还在替它背书。
+		##   ⇒ 让它真生效: 九宫格贴图挂上之后, 空槽把整块压暗一档(modulate)。
+		var _slot_sb := _nine_box(HUD_TEX + "slot-frame.png", 12, ssb)
+		if not filled and _slot_sb is StyleBoxTexture:
+			(_slot_sb as StyleBoxTexture).modulate_color = Color(0.55, 0.60, 0.70, 1.0)
+		slot.add_theme_stylebox_override("panel", _slot_sb)
 		## ★与技能槽同一口径: 正方 88×88, 面板宽度跟着槽走。
 		slot.custom_minimum_size = Vector2(88, 88)
 		slot.mouse_filter = Control.MOUSE_FILTER_STOP if filled else Control.MOUSE_FILTER_IGNORE

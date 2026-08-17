@@ -65,8 +65,20 @@ func _ready() -> void:
 	## ★装备的真格式是 [{id, star}] 的字典数组, 不是 id 字符串数组 ——
 	##   喂错格式会让产品代码 `e as Dictionary` 每只龟报一次 cast 错误(实测 28 条),
 	##   而断言照样全绿: 这是【测试数据错】伪装成产品报错, 门禁的致命正则才逮住它。
+	## SHOT_NOEQ=1: **一件装备都不带** —— 开局就是这样, 也是玩家最常看到的那一屏,
+	##   而今晚每一张截图都喂了三件 ⇒ **空槽长什么样我一次都没看过**。
+	##   (产品代码里写着"空槽画灰框", 但"写着"不等于"画出来是对的"。)
 	## SHOT_EQ=1: 换成带局内读数的三件(087 压载舱 / 083 连击层 / 093 香火石刻痕)
-	if OS.has_environment("SHOT_EQ"):
+	if OS.has_environment("SHOT_NOEQ"):
+		u["equips"] = []
+	elif OS.has_environment("SHOT_EQN"):
+		## SHOT_EQN=n: 只带 n 件 —— **混合场景**(装了几件、还空几格)才是"空槽要不要压暗"
+		##   真正起作用的地方; 全空或全满都看不出差别。
+		var _n := int(OS.get_environment("SHOT_EQN"))
+		var _pool: Array = [{"id": "p2eq_087", "star": 2}, {"id": "p2eq_083", "star": 3},
+			{"id": "p2eq_093", "star": 1}]
+		u["equips"] = _pool.slice(0, clampi(_n, 0, 3))
+	elif OS.has_environment("SHOT_EQ"):
 		u["equips"] = [{"id": "p2eq_087", "star": 2}, {"id": "p2eq_083", "star": 3},
 			{"id": "p2eq_093", "star": 1}]
 		var _gs = s._equip_sys._gadget_sys

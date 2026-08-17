@@ -654,6 +654,43 @@ func _ready() -> void:
 	_ok("★面板右边距 = SafeArea.margins(vp,16).z(桌面恒 16; 真机那一支无头走不到, 已登记)",
 		absf(_pr + _want_m) < 0.51, "实得 offset_right=%.1f / 期望 -%.1f" % [_pr, _want_m])
 
+	## ── 空装备槽要比满槽暗(2026-08-17) ─────────────────────────────────
+	##   ★由来: `_info_equip_slots` 里写着两套底色(`if filled`), 头上注释还写着
+	##     「空槽画灰框, 一眼看出还能装几件」—— 但那是**死代码**:
+	##     `_nine_box` 只在贴图不存在时才回退到那个 StyleBoxFlat, 而 slot-frame.png 一直在
+	##     ⇒ 实拍空槽和满槽**一模一样**。典型的"写进去了没人读", 注释还在替它背书。
+	##   ★判据量【运行时挂上去的 StyleBoxTexture.modulate_color】: 空槽必须比满槽暗。
+	##     28 只的循环喂的是**三件满装**, 走不到空槽 ⇒ 这里单独造一只只带 1 件的。
+	var u1: Dictionary = s._spawn._make_unit("basic", "left", c)
+	u1["equips"] = [{"id": "p2eq_093", "star": 1}]
+	s._units.clear()
+	s._units.append(u1)
+	s._hud._show_unit_info_panel(u1)
+	for _ke in range(6):
+		await get_tree().process_frame
+	var _mods: Array = []
+	if s._info_panel != null and is_instance_valid(s._info_panel):
+		var _sq2: Array = [s._info_panel]
+		while not _sq2.is_empty():
+			var _n8: Node = _sq2.pop_back()
+			if _n8 is PanelContainer:
+				var _c8 := _n8 as Control
+				if _c8.size.x > 80.0 and _c8.size.x < 96.0 and _c8.size.y > 80.0 and _c8.size.y < 96.0:
+					var _s8 = _c8.get_theme_stylebox("panel")
+					if _s8 is StyleBoxTexture:
+						_mods.append((_s8 as StyleBoxTexture).modulate_color.v)
+			for _c9 in _n8.get_children():
+				_sq2.append(_c9)
+	_mods.sort()
+	_ok("★分母: 量到了 88px 的槽(技能三格 + 装备三格 = 6)", _mods.size() >= 6,
+		"量到 %d 个" % _mods.size())
+	var _dim_ok := false
+	if _mods.size() >= 2:
+		_dim_ok = _mods[_mods.size() - 1] - _mods[0] > 0.20
+	_ok("★★空装备槽比满槽暗 —— 一眼看出还能装几件(注释承诺过, 但曾是死代码)", _dim_ok,
+		"最暗 %.2f / 最亮 %.2f" % [float(_mods[0]) if _mods.size() > 0 else -1.0,
+			float(_mods[_mods.size() - 1]) if _mods.size() > 0 else -1.0])
+
 	_ok("★分母: 真的量到了每一只(不是 0 只)", measured >= 20, "量了 %d 只" % measured)
 
 	# ── ① 装得下 ────────────────────────────────────────────────────────────
