@@ -906,7 +906,7 @@
       "type": "fortuneGold",
       "name": "聚宝盆",
       "brief": "的聚宝盆源源不断产出金币：每 <span class=\"val-atk\">3秒</span> 获得 <span class=\"val-atk\">4~7</span> 枚，场上任意单位阵亡时额外获得 <span class=\"val-atk\">9</span> 枚。\n<span style=\"color:#8a93a0\">金币只在本场战斗内有效，供「打击」与「梭哈」消耗。\n</span>\n首次血量降至 20% 以下时立即获得 <span class=\"val-atk\">70 点龟能</span>。",
-      "desc": "持续产出<span class=\"val-atk\">局内金币</span>：每 <span class=\"val-atk\">3秒</span> 获得 <span class=\"val-atk\">4~7</span> 枚；场上任意单位阵亡时额外获得 <span class=\"val-atk\">9</span> 枚。\n<span style=\"color:#8a93a0\">金币只在本场战斗内有效，喂给「打击」与「梭哈」。\n</span>\n财神龟<span class=\"val-atk\">首次</span>血量降至 <span class=\"val-atk\">20% 以下</span>时，立即获得 <span class=\"val-atk\">70 点龟能</span>（每场一次）。"
+      "desc": "持续产出<span class=\"val-atk\">局内金币</span>：每 <span class=\"val-atk\">3秒</span> 获得 <span class=\"val-atk\">4~7</span> 枚；\n场上任意单位阵亡时额外获得 <span class=\"val-atk\">9</span> 枚。\n<span style=\"color:#8a93a0\">金币只在本场战斗内有效，喂给「打击」与「梭哈」。\n</span>\n财神龟<span class=\"val-atk\">首次</span>血量降至 <span class=\"val-atk\">20% 以下</span>时，立即获得 <span class=\"val-atk\">70 点龟能</span>（每场一次）。"
     },
     "skillPool": [
       {
@@ -945,7 +945,7 @@
         "cd": 999,
         "perCoinAtkPierce": 0.18,
         "perCoinAtkNormal": 0.18,
-        "brief": "蓄力后逐枚投出全部金币，每枚对目标造成 {N:ATK*0.30} 物理伤害 和 {T:ATK*0.30} 真实伤害。\n<span style=\"color:#8a93a0\">目标阵亡时改投最近的敌人；<span class=\"val-normal\">投币全程免疫控制</span>，首次释放时<span class=\"val-atk\">同时按当时金币数获得等量金盾</span>（6 秒）。\n一场战斗限用一次。\n梭哈用过后本技能变为「金盾」（消耗 80 龟能，护盾值等于当前金币数，不消耗金币，持盾期间锁定龟能）。\n</span>",
+        "brief": "蓄力后逐枚投出全部金币，每枚对目标造成 {N:ATK*0.30} 物理伤害 和 {T:ATK*0.30} 真实伤害。\n<span style=\"color:#8a93a0\">目标阵亡时改投最近的敌人；\n<span class=\"val-normal\">投币全程免疫控制</span>，首次释放时<span class=\"val-atk\">同时按当时金币数获得等量金盾</span>（6 秒）。\n一场战斗限用一次。\n梭哈用过后本技能变为「金盾」（消耗 80 龟能，护盾值等于当前金币数，不消耗金币，持盾期间锁定龟能）。\n</span>",
         "detail": "财神龟蓄力后<span class=\"val-normal\">逐枚投出</span>全部金币，每枚对目标造成（30%×攻击力({ATK}) = {N:ATK*0.30}）物理 +（30%×攻击力({ATK}) = {T:ATK*0.30}）真实伤害。\n投币期间目标阵亡则改投最近的敌人。\n<span class=\"val-normal\">逐枚投币的全程免疫控制</span>。\n首次释放时<span class=\"val-atk\">同时按当时金币数获得等量金盾</span>（持续 6 秒，<span style=\"color:#8a93a0\">此金盾不锁龟能</span>）。\n<span style=\"color:#8a93a0\">一场限用一次。\n</span>\n梭哈释放后，该技能槽变为「金盾（持续 4 秒）」：消耗 80 龟能，获得等于当前金币数的通用护盾（不消耗金币），持有该护盾期间锁龟能（护盾被打光或到期即恢复）。"
       },
       {
@@ -2222,7 +2222,7 @@
         "pierce": 0,
         "cd": 0,
         "atkScale": 1.5,
-        "brief": "短暂蓄力后发射一个缓慢移动的虫洞，沿目标所在的直线推进。\n沿途的敌人会被吸向虫洞，靠得更近的敌人则被<span class=\"val-atk\">捕获</span>、被虫洞吸着一起移动。\n虫洞抵达地图边界时爆炸，对被捕获者与爆点附近的敌人造成 {M:1.5*ATK} ×（1+5%×本路已打秒数）魔法伤害。\n<span style=\"color:#8a93a0\">吸取与捕获过程本身不造成伤害；<span class=\"val-atk\">本路战斗打得越久</span>，爆炸伤害越高（按发射时刻定格）。\n</span>\n<span style=\"color:#8a93a0\">释放虫洞后<span class=\"val-atk\">锁定龟能</span>，直到虫洞消失才恢复充能。\n</span>",
+        "brief": "短暂蓄力后发射一个缓慢移动的虫洞，沿目标所在的直线推进。\n沿途的敌人会被吸向虫洞，靠得更近的敌人则被<span class=\"val-atk\">捕获</span>、被虫洞吸着一起移动。\n虫洞抵达地图边界时爆炸，对被捕获者与爆点附近的敌人造成 {M:1.5*ATK} ×（1+5%×本路已打秒数）魔法伤害。\n<span style=\"color:#8a93a0\">吸取与捕获过程本身不造成伤害；\n<span class=\"val-atk\">本路战斗打得越久</span>，爆炸伤害越高（按发射时刻定格）。\n</span>\n<span style=\"color:#8a93a0\">释放虫洞后<span class=\"val-atk\">锁定龟能</span>，直到虫洞消失才恢复充能。\n</span>",
         "detail": "星际龟短暂蓄力（0.3秒）后，朝目标所在的直线发射一个缓慢移动的虫洞。\n虫洞以 140 码/秒直线飞向<b>地图边界</b>：沿途 150 码内的敌人被真重力吸引（弧线卷入，<b>此过程不造成伤害</b>），100 码内被捕获吸着一起走。\n虫洞抵达边界时<b>爆炸</b>，对携带者与爆点 150 码内的敌人造成（150%×攻击力({ATK}) = {M:1.5*ATK}，再乘以（1 + 5%×战斗已过秒数））魔法伤害。\n<span style=\"color:#8a93a0\">伤害倍率在发射瞬间定格 —— 开战越久，虫洞越强。\n</span>"
       },
       {
