@@ -96,6 +96,7 @@ func _ready() -> void:
 	var stat_noicon: Array = []
 	var skill_noicon: Array = []
 	var det_bad: Array = []
+	var tint_bad: Array = []
 	var tap_seen := 0
 	var tap_min := 99999.0
 	var measured := 0
@@ -208,6 +209,41 @@ func _ready() -> void:
 			var _ip2 := str((_sr as Array)[0])
 			if _ip2 == "" or not ResourceLoader.exists(_ip2):
 				stat_noicon.append("%s: 「%s」图标=%s" % [pid, str((_sr as Array)[1]), _ip2 if _ip2 != "" else "(空)"])
+		## 被动槽的紫调: 取【最上面那一排】三个 88px 槽(技能栏), 后两格应相同、第一格应不同
+		if measured <= 6:
+			var _slots: Array = []
+			var _sk2: Array = [panel]
+			while not _sk2.is_empty():
+				var _n2: Node = _sk2.pop_back()
+				if _n2 is PanelContainer:
+					var _cc2 := _n2 as Control
+					if _cc2.size.y > 80.0 and _cc2.size.y < 96.0 and _cc2.size.x > 80.0 and _cc2.size.x < 96.0:
+						_slots.append(_n2)
+				for _c2 in _n2.get_children():
+					_sk2.append(_c2)
+			## 技能三槽在装备三槽【上面】⇒ 取 y 最小的那一排
+			var _ymin: float = 1e9
+			for _s3 in _slots:
+				_ymin = minf(_ymin, (_s3 as Control).global_position.y)
+			var _row: Array = []
+			for _s4 in _slots:
+				if absf((_s4 as Control).global_position.y - _ymin) < 4.0:
+					_row.append(_s4)
+			## 同一排里按 x 从左到右(被动在最左)
+			for _a in range(_row.size()):
+				for _b in range(_row.size() - 1 - _a):
+					if (_row[_b] as Control).global_position.x > (_row[_b + 1] as Control).global_position.x:
+						var _t3 = _row[_b]; _row[_b] = _row[_b + 1]; _row[_b + 1] = _t3
+			if _row.size() >= 3:
+				var m0: Color = (_row[0] as CanvasItem).self_modulate
+				var m1: Color = (_row[1] as CanvasItem).self_modulate
+				var m2: Color = (_row[2] as CanvasItem).self_modulate
+				var base: float = absf(m1.r - m2.r) + absf(m1.g - m2.g) + absf(m1.b - m2.b)
+				var diff: float = absf(m0.r - m1.r) + absf(m0.g - m1.g) + absf(m0.b - m1.b)
+				if diff <= base + 0.15:
+					tint_bad.append("%s: 被动差 %.3f / 同款基线 %.3f" % [pid, diff, base])
+			else:
+				tint_bad.append("%s: 技能排只找到 %d 个槽(下面是空检查)" % [pid, _row.size()])
 		## ★三格里【每一格都要有图标】—— 空图标 = 槽里一片空白, 而它是可点的大方块。
 		##   实测 2026-08-17: 112 个技能里有 2 个(凤凰「强化涅槃」/ 熔岩「熔岩爆发」)
 		##   连 icon 字段都没有。和增伤/减伤同一类洞: 空值不报错, 只查错值等于放过它。
@@ -291,6 +327,16 @@ func _ready() -> void:
 	##     且 ≥ 60px(不能塌成一条缝)。断言"框存在"守不住这个 —— 它一直都存在。
 	_ok("★★点开的描述框【不铺满面板】(上面的头像/条/槽还看得见)",
 		det_bad.is_empty(), "不对的: %s" % str(det_bad.slice(0, 4)))
+
+	## ── 被动槽要和另外两个【看得出不一样】────────────────────────────────
+	##   ★由来: 技能栏三格长得一模一样, 被动那格靠 self_modulate 上一层紫调区分。
+	##     这种纯视觉的东西【重构时最容易悄悄丢】, 而丢了不报任何错。
+	##   ★判据用【同款之间的差】当噪声基线: 普攻 vs 技能应当完全相同(基线 0),
+	##     被动那一档必须明显大于基线 —— 只断言"被动有 self_modulate"守不住
+	##     (设成和别人一样的值也算"有")。
+	##   实拍佐证(1280×720): 被动框内圈 RGB(39,51,104) / 另两格 (46,70,93), 色距 23.7 vs 基线 0.0。
+	_ok("★★被动槽与普攻/技能槽【看得出不一样】(同款之间是基线)",
+		tint_bad.is_empty(), "不对的: %s" % str(tint_bad.slice(0, 4)))
 
 	_ok("★★技能三槽每一格都有图标(空图标 = 可点的大方块里一片空白)",
 		skill_noicon.is_empty(), "缺图标的: %s" % str(skill_noicon.slice(0, 6)))
