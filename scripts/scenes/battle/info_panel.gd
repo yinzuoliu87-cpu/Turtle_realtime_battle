@@ -1375,6 +1375,10 @@ func _detail_overlay(host_panel: Control) -> Control:
 	sb.set_border_width_all(2); sb.border_color = Color("#3a5470"); sb.set_corner_radius_all(0)
 	sb.content_margin_left = 12; sb.content_margin_right = 12
 	sb.content_margin_top = 10; sb.content_margin_bottom = 10
+	## ★上面 `sb` 的 `content_margin 12/12/10/10` **只在兜底支生效**(贴图缺失时,
+	##   那时边框只有 2px, 12/10 正合适)。挂上九宫格后实际生效的是纹理边距 **20/20/20/20**
+	##   —— 而这是**对的**: 面板框的框艺术本身约 14px 厚, 20 只留 6px 余量;
+	##   真按 12 走文字会压在框上。(2026-08-17 实测确认, 别当成"没同步"去改。)
 	box.add_theme_stylebox_override("panel", _nine_box(HUD_TEX + "panel-frame.png", 20, sb))
 	box.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	box.offset_left = 0.0; box.offset_right = 0.0

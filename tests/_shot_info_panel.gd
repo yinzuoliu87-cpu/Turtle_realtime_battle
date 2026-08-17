@@ -203,6 +203,29 @@ func _ready() -> void:
 		for _j in range(8):
 			await get_tree().process_frame
 
+	## SHOT_BOXPAD=1: 打印描述浮层 Box 的【真实内容边距】。
+	##   由来: 建 Box 时兜底 StyleBoxFlat 上写着 content_margin 12/12/10/10, 但 `_nine_box`
+	##   换成 StyleBoxTexture 之后**没人把它补回去** —— 而 StyleBoxTexture 的 content_margin
+	##   默认取纹理边距(这里 20)。⇒ 代码写的和实际生效的可能不是一回事, 量了才知道。
+	##   ★必须放在 SHOT_DETAIL **之后** —— 浮层是点开才建的, 放前面永远量到"没开"。
+	##     (第一版就放前面了, 靠脚本里那句 `assert 锚点在 SHOT_DETAIL 之后` 当场拦住。)
+	##   ★★【2026-08-17 已查明, 结论: 不是 bug, 别再查一遍】实测 20/20/20/20。
+	##     我一度判成"死承诺"(代码写 12/10、实际 20), 再量一步就翻回来了 ——
+	##     **面板框的框艺术本身约 14px 厚**(内沿亮线在 x=7~8、暗框延到 x≈13),
+	##     内容边距 20 只留 6px 余量; 真按 12 走, **文字会压在框艺术上**。
+	##     ⇒ 兜底那份 12/10 是给【2px 描边的 StyleBoxFlat 兜底支】用的, 在它自己那支里对;
+	##       贴图支用 20 也对。**两支各自正确, 不是死代码。**
+	if OS.has_environment("SHOT_BOXPAD"):
+		var _ovp = s._info_panel.get_node_or_null("DetailOverlay")
+		var _bx = null if _ovp == null else _ovp.get_node_or_null("Box")
+		if _bx != null:
+			var _sbx = (_bx as Control).get_theme_stylebox("panel")
+			print("[BOXPAD] 类型=%s  左%.0f 右%.0f 上%.0f 下%.0f" % [_sbx.get_class(),
+				_sbx.get_margin(SIDE_LEFT), _sbx.get_margin(SIDE_RIGHT),
+				_sbx.get_margin(SIDE_TOP), _sbx.get_margin(SIDE_BOTTOM)])
+		else:
+			print("[BOXPAD] 浮层没开")
+
 	var out := "res://_panel.png"
 	if OS.has_environment("SHOT_OUT"):
 		out = OS.get_environment("SHOT_OUT")
