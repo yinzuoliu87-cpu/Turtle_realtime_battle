@@ -816,7 +816,7 @@
       "type": "diamondStructure",
       "name": "钻石结构",
       "defBuffAmp": 50,
-      "brief": "的钻石结构强化全队护甲体系。\n登场时，全队（含自己）护甲和魔抗各 <span class=\"val-atk\">+50%</span>，并使自身受到的每段伤害固定减少 <span class=\"val-atk\">18%</span>。\n<span style=\"color:#8a93a0\">真实伤害不受该减免影响。\n</span>",
+      "brief": "钻石结构强化全队护甲体系。\n登场时，全队（含自己）护甲和魔抗各 <span class=\"val-atk\">+50%</span>，并使自身受到的每段伤害固定减少 <span class=\"val-atk\">18%</span>。\n<span style=\"color:#8a93a0\">真实伤害不受该减免影响。\n</span>",
       "desc": "<span class=\"val-def\">登场时全队（含自己）护甲、魔抗各 +50%</span>。\n钻石龟自身受到的每段伤害固定减少 <span class=\"val-def\">18%</span>。\n<span style=\"color:#888\">真实伤害与穿透伤害不受此减免影响。\n</span>"
     },
     "skillPool": [
@@ -905,7 +905,7 @@
     "passive": {
       "type": "fortuneGold",
       "name": "聚宝盆",
-      "brief": "的聚宝盆源源不断产出金币：每 <span class=\"val-atk\">3秒</span> 获得 <span class=\"val-atk\">4~7</span> 枚，场上任意单位阵亡时额外获得 <span class=\"val-atk\">9</span> 枚。\n<span style=\"color:#8a93a0\">金币只在本场战斗内有效，供「打击」与「梭哈」消耗。\n</span>\n首次血量降至 20% 以下时立即获得 <span class=\"val-atk\">70 点龟能</span>。",
+      "brief": "聚宝盆源源不断产出金币：每 <span class=\"val-atk\">3秒</span> 获得 <span class=\"val-atk\">4~7</span> 枚，场上任意单位阵亡时额外获得 <span class=\"val-atk\">9</span> 枚。\n<span style=\"color:#8a93a0\">金币只在本场战斗内有效，供「打击」与「梭哈」消耗。\n</span>\n首次血量降至 20% 以下时立即获得 <span class=\"val-atk\">70 点龟能</span>。",
       "desc": "持续产出<span class=\"val-atk\">局内金币</span>：每 <span class=\"val-atk\">3秒</span> 获得 <span class=\"val-atk\">4~7</span> 枚；\n场上任意单位阵亡时额外获得 <span class=\"val-atk\">9</span> 枚。\n<span style=\"color:#8a93a0\">金币只在本场战斗内有效，喂给「打击」与「梭哈」。\n</span>\n财神龟<span class=\"val-atk\">首次</span>血量降至 <span class=\"val-atk\">20% 以下</span>时，立即获得 <span class=\"val-atk\">70 点龟能</span>（每场一次）。"
     },
     "skillPool": [
@@ -982,7 +982,7 @@
     "passive": {
       "type": "gamblerBlood",
       "name": "赌徒之血",
-      "brief": "的赌徒之血在危机中觉醒，根据已损失的生命值获得额外暴击率，在损失 <span class=\"val-atk\">30%</span> 生命值时达到满额 <span class=\"val-atk\">+70% 暴击率</span>。",
+      "brief": "赌徒之血在危机中觉醒，根据已损失的生命值获得额外暴击率，在损失 <span class=\"val-atk\">30%</span> 生命值时达到满额 <span class=\"val-atk\">+70% 暴击率</span>。",
       "desc": "根据已损失的生命值获得额外暴击机率，在损失 <span class=\"val-atk\">30%</span> 生命值时达到满额 <span class=\"val-atk\">+70%</span> 暴击机率。\n<span style=\"color:#8a93a0\">当前暴击机率：\n</span><span class=\"val-atk\">{crit*100}%</span>"
     },
     "skillPool": [
@@ -1060,7 +1060,7 @@
       "atkPct": 12,
       "defPct": 12,
       "healPct": 5,
-      "brief": "的棱镜每 <span class=\"val-atk\">6秒</span> 随机获得一种颜色，为普攻附带对应效果：\n🔴 红色附加<span class=\"val-atk\">25% 攻击力</span> 的真实伤害，🔵 蓝色使每次普攻获得 <span class=\"val-atk\">20% 攻击力</span> 护盾，🟢 绿色使每次普攻回复 <span class=\"val-heal\">2.5% 已损生命值</span>。\n彩虹龟持续获得<span class=\"val-hp\">2% 最大生命值</span> 的攻击力，以及<span class=\"val-atk\">(0.3×攻击力)%</span> 的攻击速度。",
+      "brief": "棱镜每 <span class=\"val-atk\">6秒</span> 随机获得一种颜色，为普攻附带对应效果：\n🔴 红色附加<span class=\"val-atk\">25% 攻击力</span> 的真实伤害，🔵 蓝色使每次普攻获得 <span class=\"val-atk\">20% 攻击力</span> 护盾，🟢 绿色使每次普攻回复 <span class=\"val-heal\">2.5% 已损生命值</span>。\n彩虹龟持续获得<span class=\"val-hp\">2% 最大生命值</span> 的攻击力，以及<span class=\"val-atk\">(0.3×攻击力)%</span> 的攻击速度。",
       "desc": "每6秒随机获得一种颜色（🔴红/🔵蓝/🟢绿），普攻附带对应效果：🔴红光额外造成（25%×攻击力({ATK}) = {T:0.25*ATK}）真实伤害。\n🔵蓝光每次普攻获得（20%×攻击力({ATK}) = {S:0.2*ATK}）护盾（持续4秒）\n🟢绿光每次普攻回复 <span class=\"val-heal\">2.5% 已损生命值</span>。\n彩虹龟持续获得（2%×最大生命值）的攻击力和（0.3×攻击力）%的攻击速度。\n两者实时生效：\n中途提升最大生命值会同时抬高攻击力与攻速。"
     },
     "skillPool": [
@@ -1573,7 +1573,7 @@
       "name": "墨迹",
       "pctPerStack": 5,
       "maxStacks": 5,
-      "brief": "的普攻与技能都会为目标叠加<span class=\"val-normal\">墨迹</span>。\n目标每受到一次伤害，每层墨迹便使其在原伤害之外额外承受 <span class=\"val-atk\">5%</span> 真实伤害，且该真伤穿透减伤与护盾。\n<span style=\"color:#8a93a0\">墨迹上限为 7 层，选择「墨水炸弹」时提升至 10 层；叠满 10 层即额外承受 50%。\n</span>\n线条龟自身实时获得<span class=\"val-atk\">(0.5×攻击力)%</span> 的额外攻击速度。",
+      "brief": "普攻与技能都会为目标叠加<span class=\"val-normal\">墨迹</span>。\n目标每受到一次伤害，每层墨迹便使其在原伤害之外额外承受 <span class=\"val-atk\">5%</span> 真实伤害，且该真伤穿透减伤与护盾。\n<span style=\"color:#8a93a0\">墨迹上限为 7 层，选择「墨水炸弹」时提升至 10 层；叠满 10 层即额外承受 50%。\n</span>\n线条龟自身实时获得<span class=\"val-atk\">(0.5×攻击力)%</span> 的额外攻击速度。",
       "desc": "普攻与技能为目标叠加墨迹（上限 7 层；若选择「墨水炸弹」则上限提升至 10 层）。\n目标每受到一次伤害，在原伤害之外，每层墨迹使其额外承受 <span class=\"val-true\">5% 真实伤害</span>（穿透减伤与护盾；满 10 层 = 额外 +50%）。\n线条龟自身<span class=\"val-normal\">实时</span>获得<span class=\"val-atk\">(0.5×攻击力)%</span> 的额外攻击速度（攻击力提升会同步抬高攻速）。"
     },
     "skillPool": [

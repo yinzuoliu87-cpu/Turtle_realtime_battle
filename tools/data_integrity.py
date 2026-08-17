@@ -98,12 +98,30 @@ def _is_dangle(ln):
     if ln[0] == '之':
         return len(ln) < 2 or ln[1] not in _ZHI_OK
     return True
-for p in pets:
-    rows = [(s.get('name',''), s.get('brief','')) for s in (p.get('skillPool') or [])]
+# ⚠★2026-08-17 覆盖面订正: 这里原来只扫 skillPool.brief 和 **passive.desc** ——
+#   而 `SkillText.brief_of` 优先取 `brief`, 所以**默认显示给玩家的是 `passive.brief`**。
+#   后果: 今晚批量删龟名主语时留下的 **5 条病句全在 passive.brief**
+#   (「**的**聚宝盆源源不断产出金币」「**的**棱镜每6秒…」等), 门禁一条都没报,
+#   而它们**就印在图鉴第一屏**。是顺着用户「这句是废话」的线查别的东西时撞见的。
+#   ⇒ 扫全: skillPool 的 brief/detail、passive 的 brief/desc/detail、volcanoSkills。
+def _pet_text_rows(p):
+    out = []
+    for s in (p.get('skillPool') or []):
+        for k in ('brief', 'detail'):
+            if str(s.get(k, '')).strip(): out.append((str(s.get('name', '')) + '.' + k, s[k]))
     _pa = p.get('passive')
-    if isinstance(_pa, dict): rows.append((_pa.get('name','被动'), _pa.get('desc','')))
-    for _nm, _t in rows:
+    if isinstance(_pa, dict):
+        for k in ('brief', 'desc', 'detail'):
+            if str(_pa.get(k, '')).strip(): out.append(('被动.' + k, _pa[k]))
+    for s in (p.get('volcanoSkills') or []):
+        for k in ('brief', 'detail'):
+            if str(s.get(k, '')).strip(): out.append(('熔岩' + str(s.get('name', '')) + '.' + k, s[k]))
+    return out
+_dangle_n = 0
+for p in pets:
+    for _nm, _t in _pet_text_rows(p):
         for _ln in _lines(_t):
+            _dangle_n += 1
             if _is_dangle(_ln): _dangle.append('%s·%s: %s' % (p['id'], _nm, _ln[:20]))
 for e in eq:
     for _ln in _lines(e.get('effectDesc1','')):
