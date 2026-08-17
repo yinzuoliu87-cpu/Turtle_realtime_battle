@@ -131,6 +131,7 @@ func _ready() -> void:
 	var clip_seen: int = 0
 	var sep_lone: Array = []
 	var sep_seen: int = 0
+	var outline_box: Array = []
 	## ★★分母计数器(2026-08-17 自审补): 下面几条判据的【被测对象本身可能不存在】——
 	##   那时集合是空的, `is_empty()` 照样为真 ⇒ 断言一路绿着骗人。
 	##   (上一轮在图鉴那条上刚栽过: 图鉴被切到别的 Tab ⇒ 扫 28 只也是 0 张, 靠分母才发现。)
@@ -341,6 +342,16 @@ func _ready() -> void:
 						if _sb is StyleBoxFlat and (_sb as StyleBoxFlat).corner_radius_top_left > 0:
 							round_bad.append("%s: %s 的 %s 圆角 %d" % [pid, _n6.get_class(), _slot,
 								(_sb as StyleBoxFlat).corner_radius_top_left])
+						## ★★【四边描边 + 半透明填充】= CSS `border:1px solid` + `rgba()` 的长相,
+						##   也就是用户说的"网页味"里除圆角之外的另一半。状态签原来就是这个组合。
+						##   ⚠ 判据必须是**四边都有边框且底半透明** —— 第一版只判"有上边框",
+						##     结果把我自己给血条填充加的【顶部 3px 液面高光】(单边、底不透明)
+						##     当成网页盒报了 6 个。**判据宽一格就制造假 bug**(今晚第二次)。
+						if _sb is StyleBoxFlat:
+							var _f6 := _sb as StyleBoxFlat
+							if _f6.border_width_top > 0 and _f6.border_width_bottom > 0 									and _f6.border_width_left > 0 and _f6.border_width_right > 0 									and _f6.bg_color.a < 0.95:
+								outline_box.append("%s: %s 的 %s(边%d 底a%.2f)" % [pid, _n6.get_class(),
+									_slot, _f6.border_width_top, _f6.bg_color.a])
 				for _c6 in _n6.get_children():
 					_st6.append(_c6)
 		## 条框: 找所有 NinePatchRect, 每个都要有 texture
@@ -510,6 +521,8 @@ func _ready() -> void:
 	_ok("★面板里不中英夹杂(白名单: Lv/★, 游戏既有约定)", en_mix.is_empty(),
 		"夹英文的: %s" % str(en_mix.slice(0, 4)))
 
+	_ok("★★面板里没有【四边描边 + 半透明填充】的网页盒(直角只是必要条件)",
+		outline_box.is_empty(), "还剩: %s" % str(outline_box.slice(0, 5)))
 	_ok("★分母: 真的扫到了 1px 分隔线(0 条 = 空检查)", sep_seen >= 3,
 		"扫到 %d 条" % sep_seen)
 	_ok("★★分隔线是凹刻双色(上暗下亮), 不是一条平线 —— 平线是 <hr> 的长相", sep_lone.is_empty(),
