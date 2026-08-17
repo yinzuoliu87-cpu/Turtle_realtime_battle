@@ -271,7 +271,12 @@ func _ready() -> void:
 			var _hn: Node = _hst.pop_back()
 			if _hn is Label:
 				var _lt := str((_hn as Label).text)
-				if _lt.find("攒满") >= 0 or _lt.find("每点") >= 0:
+				## ⚠★判据不能挂在我刚删掉的串上(2026-08-17): 原来认「攒满」/「每点」,
+				##   而「攒满变火山形态」「攒满放强化版」已按用户要求删掉(纯废话、不带数)。
+				##   改成认**剩下那四条真结论文字**的特征词 —— 它们都带算好的实数:
+				##   储能「释放: 冲击波 N + 护盾 M」/ 泡泡「X 秒后结算: …」/
+				##   金币「每点 +2% 攻击」/ 财宝「再攒开第 N 箱」。
+				if _lt.find("释放:") >= 0 or _lt.find("秒后结算") >= 0 						or _lt.find("每点") >= 0 or _lt.find("再攒开") >= 0:
 					n_hint += 1
 					if (_hn as Control).size.x < 20.0:
 						hint_squashed.append("%s: 「%s」只有 %.0fpx 宽" % [pid, _lt, (_hn as Control).size.x])

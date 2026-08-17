@@ -604,14 +604,18 @@ func _resource_bars(u: Dictionary) -> Array:
 	if float(u.get("rage", 0.0)) > 0.0 and not bool(u.get("volcano", false)):
 		out.append({
 			"name": "怒气", "cur": float(u.get("rage", 0.0)), "cap": float(battle.RAGE_MAX),
-			"hint": "攒满变火山形态", "color": Color("#ff9d5c"),
+			## ★用户 2026-08-17:「攒满变火山形态这种 ai 味的废话给我去掉啊」。
+			##   条上已经写着 30 / 100, 这句一个数都没给 —— 只是把"满了会发生事"再说一遍。
+			##   留空 ⇒ `_info_resource_row` 里 `if hint == ""` 直接不建那个 Label(也省 14px 高)。
+			"hint": "", "color": Color("#ff9d5c"),
 		})
 
 	# ③ 星能(星际) —— 阈值型
 	if float(u.get("star_energy", 0.0)) > 0.0:
 		out.append({
 			"name": "星能", "cur": float(u.get("star_energy", 0.0)), "cap": maxf(1.0, mhp * STAR_FULL_PCT),
-			"hint": "攒满放强化版", "color": Color("#b28bff"),
+			## 同上 —— 而且"强化版"是什么都没说, 比怒气那条更糊。
+			"hint": "", "color": Color("#b28bff"),
 		})
 
 	# ④ 储能(龟壳) —— 阈值型。释放时清零: 冲击波(储能×40% 物理) + 储能×80% 护盾(5秒流失)
