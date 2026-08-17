@@ -620,6 +620,40 @@ func _ready() -> void:
 	_ok("★★敌我的血条颜色真的不同(写死一个色 = 敌人面板看着像友军, 且不报错)", _dif > 0.30,
 		"色差 %.3f" % _dif)
 
+	## ── 面板右边距吃安全区(2026-08-17) ────────────────────────────────────
+	##   面板贴右边缘, 而 iPhone 横屏刘海侧 inset 可达 44pt(≈81 逻辑像素);
+	##   原来写死 -16(=8.7pt) ⇒ 真机上会有一条压在刘海下。改成 `SafeArea.margins(vp,16).z`。
+	## ★★【这条是"缺口登记", 不是完整验证】—— 说清它能守什么、不能守什么:
+	##   能守: 右边距**没有被改回别的写死数**(比如有人顺手改成 8 或 24)。
+	##   **不能守**: 真机那一支。`SafeArea.insets` 里 `is_mobile()` 在桌面/CI 上恒为 false,
+	##   整段直接短路返回 0 ⇒ **无头环境永远走不到刘海分支**, 这里量到的 16 既可能来自
+	##   安全区计算、也可能来自写死的 16, 判据分不开。
+	##   ⇒ 真机行为只能靠 iOS 包实测(取包见 docs/测试指南-取包与报bug.md)。
+	##   不写这条断言的话, 这个缺口就是**静默**的 —— 那才是真正危险的。
+	## ⚠ 必须等滑入停稳再量: 面板是从右侧滑进来的(`offset_right += PW + 40` 再补间回去),
+	##   第一版没等 ⇒ 量到 **187.7**(半路), 断言当场红。这不是产品的问题, 是我在动画中途拿尺。
+	##   同 CLAUDE.md §3.5: **不等 tween 信号, 轮询真实矩形**, 连续 3 帧不动就算到位。
+	if s._info_panel != null and is_instance_valid(s._info_panel):
+		var _lo := -99999.0
+		var _sti := 0
+		var _wt := 0
+		while _wt < 180 and _sti < 3:
+			await get_tree().process_frame
+			_wt += 1
+			var _cur: float = (s._info_panel as Control).offset_right
+			if absf(_cur - _lo) < 0.01:
+				_sti += 1
+			else:
+				_sti = 0
+				_lo = _cur
+	var _vp2 := Vector2(s.get_viewport().get_visible_rect().size)
+	var _want_m: float = SafeArea.margins(_vp2, 16.0).z
+	var _pr: float = 0.0
+	if s._info_panel != null and is_instance_valid(s._info_panel):
+		_pr = (s._info_panel as Control).offset_right
+	_ok("★面板右边距 = SafeArea.margins(vp,16).z(桌面恒 16; 真机那一支无头走不到, 已登记)",
+		absf(_pr + _want_m) < 0.51, "实得 offset_right=%.1f / 期望 -%.1f" % [_pr, _want_m])
+
 	_ok("★分母: 真的量到了每一只(不是 0 只)", measured >= 20, "量了 %d 只" % measured)
 
 	# ── ① 装得下 ────────────────────────────────────────────────────────────

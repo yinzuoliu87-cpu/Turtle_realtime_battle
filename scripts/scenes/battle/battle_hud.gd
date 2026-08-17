@@ -2017,7 +2017,14 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	else:
 		panel.add_theme_stylebox_override("panel", psb)
 	panel.anchor_left = 1.0; panel.anchor_right = 1.0; panel.anchor_top = 0.0; panel.anchor_bottom = 1.0
-	panel.offset_left = -(PW + 16.0); panel.offset_right = -16.0
+	## ★★右边距吃安全区(2026-08-17)。原来写死 -16, 而这块面板是**贴右边缘**的 ——
+	##   iPhone 横屏时刘海/圆角那一侧的 inset 可达 44pt(≈81 逻辑像素), 16px 只有 8.7pt
+	##   ⇒ 面板会有一条压在刘海底下。同一个文件里训龟大师摇杆、法术圆盘、调试笔刷条
+	##   **都已经走 `SafeArea.margins`**, 只有这块面板没跟上(它是后加的)。
+	##   ⚠ `SafeArea.insets` 在桌面恒返回 0 ⇒ 桌面上 margins(vp,16).z 就是 16, **行为一字不变**;
+	##     只有真机才会多缩。宽度仍是 PW(左右一起挪), 不会把面板挤窄。
+	var _sm: float = SafeArea.margins(Vector2(battle.get_viewport().get_visible_rect().size), 16.0).z
+	panel.offset_left = -(PW + _sm); panel.offset_right = -_sm
 	## ★上下各再要一点空间(2026-08-16): 56/-16 是拍的, 顶部 HUD 那排按钮到 y≈46 就结束了,
 	##   底下也没有任何东西。宝箱龟正好差 28px 才装得下, 这里白让出来的 18px 是最便宜的一笔。
 	panel.offset_top = 46.0; panel.offset_bottom = -8.0
@@ -2177,10 +2184,15 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	battle._info_sys._info_passthrough(vb)   # 面板内非按钮控件透传触摸→ScrollContainer可滑(手机·用户2026-07-18「列表滑动考虑手机端」)
 
 	# 从右滑入
+	## ★★补间的终点也要吃安全区(2026-08-17)。**面板的停靠位置写在两个地方**:
+	##   上面的初始 offset + 这里补间的**终点值** —— 而终点值会立刻覆盖初始值,
+	##   所以真正决定"面板停在哪"的是这两行。我第一版只改了初始值 = **空操作**,
+	##   是反向验证(把初始值改成 -8 而断言照样绿)当场把它揪出来的。
+	##   今晚反复出现的同一个形状: **同一个值两个出处**, 只改一处等于没改。
 	panel.offset_left += PW + 40.0; panel.offset_right += PW + 40.0
 	var tw = battle._reg_tween()
-	tw.tween_property(panel, "offset_left", -(PW + 16.0), 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(panel, "offset_right", -16.0, 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(panel, "offset_left", -(PW + _sm), 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(panel, "offset_right", -_sm, 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 ## 是不是宝箱龟(藏宝图被动会往 chest_treasures 里塞东西; 用 id 判定最稳)
 
