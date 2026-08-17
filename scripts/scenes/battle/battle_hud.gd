@@ -1859,6 +1859,56 @@ func _close_info_panel() -> void:
 	battle._info_panel = null
 	battle._selected_unit = null
 
+## 头像 + 头像框(2026-08-17)。从 `_show_unit_info_panel` 抽出来 ——
+## 加完框那个函数 270 行 > arch_budget 的 250 上限。
+## **抽函数而不是抬阈值**: CLAUDE.md「不在 _sim_step 调用链上的不进主文件」的同一条精神,
+## 这段是纯建树、零每帧耦合, 本来就该独立。
+##
+## ★由来: 面板里的槽/条/签全换成金属框之后, **只剩这张头像还光着** ——
+##   立绘边缘硬裁在底色上, 是整幅里唯一"没被框起来"的元素。
+## ★框是新生成的素材, 不是拿槽框顶替: 头像 56px、槽 88px, 同一张九宫格拉到两个尺寸
+##   铆钉大小会不一样, 反而更不成体系。
+func _framed_portrait(u: Dictionary) -> Control:
+	var big := TextureRect.new()
+	big.texture = battle._unit_portrait_texture(u)
+	## ★头像 56 不是 64(2026-08-16): 它只是"这是谁"的标识, 旁边就写着名字;
+	##   而面板最缺的是高度。头像不是可点元素, 不受触控尺寸约束 ——
+	##   ⚠ 槽位就受: 88px = 47.7pt, 触控最小 44pt = 81px, 所以【槽一格都不能缩】。
+	big.custom_minimum_size = Vector2(56, 56)
+	big.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	big.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	big.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var tex := "res://assets/sprites/battlehud/portrait-frame.png"
+	if not ResourceLoader.exists(tex):
+		return big
+	## ⚠ 生成出来的框【中心是实心的】(no_background 只去外部背景) ⇒ 会把立绘整个盖住。
+	##   从中心 flood fill 抠空 + 清孤立像素才可用。框厚实测 左7 右7 上7 下6 ⇒ margin 11。
+	var hold := Control.new()
+	hold.custom_minimum_size = Vector2(56, 56)
+	hold.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	## ⚠★必须先把最小尺寸清零, 否则【最小尺寸胜过 offset】: big 仍写着 56x56,
+	##   给的 ±4 偏移想把它收进 48, 结果它从左边 +4 起照样画 56 宽 = 60 > 56,
+	##   实拍立绘正好从右边溢出框外 4px。(容器/锚点的坑今晚第三次: 尺寸约束优先级要记牢。)
+	big.custom_minimum_size = Vector2(0, 0)
+	big.set_anchors_preset(Control.PRESET_FULL_RECT)
+	big.offset_left = 4.0; big.offset_top = 4.0
+	big.offset_right = -4.0; big.offset_bottom = -4.0
+	hold.add_child(big)
+	var fr := NinePatchRect.new()
+	fr.texture = load(tex)
+	fr.set_anchors_preset(Control.PRESET_FULL_RECT)
+	fr.patch_margin_left = 11; fr.patch_margin_right = 11
+	fr.patch_margin_top = 11; fr.patch_margin_bottom = 11
+	## ⚠★中段要【平铺】不是拉伸: 源图 64px、目标 56px ⇒ 中段是被**压缩**的,
+	##   而上下沿有等距小铆钉花纹 —— 压缩会把像素丢掉, 实拍就是一条断续的点线。
+	fr.axis_stretch_horizontal = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
+	fr.axis_stretch_vertical = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
+	fr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	fr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hold.add_child(fr)
+	return hold
+
+
 ## 面板区块之间的分隔线 —— **凹刻双色线**(2026-08-17)。
 ##
 ## ★由来: 面板里的框/槽/签全换成像素金属之后, 只剩这几道分隔线还是
@@ -1988,15 +2038,7 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 
 	# 头部: 头像 + 名 + 阵营/稀有度/Lv + ✖
 	var head = HBoxContainer.new(); head.add_theme_constant_override("separation", 10); vb.add_child(head)
-	var big = TextureRect.new()
-	big.texture = battle._unit_portrait_texture(u)
-	## ★头像 56 不是 64(2026-08-16): 它只是"这是谁"的标识, 旁边就写着名字;
-	##   而面板最缺的是高度(宝箱龟 639px 塞 628px)。头像不是可点元素, 不受触控尺寸约束 ——
-	##   ⚠ 槽位就受: 88px = 47.7pt, 触控最小 44pt = 81px, 所以【槽一格都不能缩】。
-	big.custom_minimum_size = Vector2(56, 56)
-	big.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; big.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	big.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	head.add_child(big)
+	head.add_child(_framed_portrait(u))
 	var hi = VBoxContainer.new(); hi.add_theme_constant_override("separation", 2)
 	hi.size_flags_horizontal = Control.SIZE_EXPAND_FILL; head.add_child(hi)
 	var nm = Label.new(); nm.text = str(u.get("name", id)); nm.add_theme_font_size_override("font_size", UIPalette.F_TITLE)
