@@ -40,7 +40,7 @@
     "passive": {
       "type": "basicTurtle",
       "name": "不屈",
-      "brief": "越战越勇——普攻对目标造成的伤害随其稀有度提升（C <span class=\"val-atk\">20%</span> 至 SSS <span class=\"val-atk\">34%</span>）。\n每 <span class=\"val-atk\">6 秒</span>，小龟的下一次普攻附带「<span class=\"val-normal\">龟盾</span>」，额外造成 {N:1.5*ATK} 加 13% 目标已损生命的物理伤害，将目标<span class=\"val-atk\">击飞</span>，并为自己获得该伤害 <span class=\"val-atk\">80%</span> 的护盾。",
+      "brief": "越战越勇——普攻伤害随稀有度提升（C <span class=\"val-atk\">20%</span> 至 SSS <span class=\"val-atk\">34%</span>）。\n每 <span class=\"val-atk\">6 秒</span>，小龟的下一次普攻附带「<span class=\"val-normal\">龟盾</span>」，额外造成 {N:1.5*ATK} 加 13% 目标已损生命的物理伤害，将目标<span class=\"val-atk\">击飞</span>，并为自己获得该伤害 <span class=\"val-atk\">80%</span> 的护盾。",
       "desc": "攻击时根据目标稀有度获得增伤：\n<span style=\"color:#06d6a0\">C</span> <span class=\"val-atk\">+20%</span>　<span style=\"color:#4cc9f0\">B</span> <span class=\"val-atk\">+23%</span>　<span style=\"color:#3a9abf\">A</span> <span class=\"val-atk\">+26%</span>　<span style=\"color:#c77dff\">S</span> <span class=\"val-atk\">+29%</span>　<span style=\"color:#ffd93d\">SS</span> <span class=\"val-atk\">+32%</span>　<span style=\"color:#ff6b6b\">SSS</span> <span class=\"val-atk\">+34%</span>。\n<span class=\"val-normal\">龟盾</span>（已融入被动）：\n每 <span class=\"val-atk\">6秒</span> 蓄力一次，下一发普攻获得强化——额外造成（150%×攻击力({ATK}) = {N:1.5*ATK}）+ 13%×目标已损生命值 物理伤害，将目标<span class=\"val-atk\">击飞</span>（约0.55秒滞空 + 击退），\n并让小龟获得（这两段伤害之和 × <span class=\"val-atk\">80%</span>）的护盾（不限时）。"
     },
     "skillPool": [
@@ -53,7 +53,7 @@
         "cd": 0,
         "atkScale": 1.0,
         "icon": "skills/basic-attack.png",
-        "brief": "发起一次普攻，造成 {N:1.0*ATK} 物理伤害。",
+        "brief": "攻击当前目标，造成 {N:1.0*ATK} 物理伤害。",
         "detail": "小龟的普攻。\n对目标造成（100%×攻击力({ATK}) = {N:1.0*ATK}）物理伤害。\n被动·不屈按目标稀有度增伤。\n每6秒下次普攻强化(附0.7A+20%已损物理+击飞+盾)。",
         "energyCost": 0
       },
@@ -229,7 +229,7 @@
         "pierce": 0,
         "cd": 0,
         "atkScale": 0.4,
-        "brief": "甩出一道叶刃，对目标造成 {N:0.4*ATK+HP*0.03} 物理伤害。",
+        "brief": "甩出一道叶刃，造成 {N:0.4*ATK+HP*0.03} 物理伤害。",
         "detail": "竹叶龟甩出叶刃，造成（40%×攻击力({ATK}) + 3%×最大生命值({HP}) = {N:0.4*ATK+HP*0.03}）物理伤害",
         "energyCost": 0
       },
@@ -945,8 +945,8 @@
         "cd": 999,
         "perCoinAtkPierce": 0.18,
         "perCoinAtkNormal": 0.18,
-        "brief": "蓄力后逐枚投出全部金币，每枚对目标造成 {N:ATK*0.30} 物理伤害 和 {T:ATK*0.30} 真实伤害。\n<span style=\"color:#8a93a0\">目标阵亡时改投最近的敌人；\n<span class=\"val-normal\">投币全程免疫控制</span>，首次释放时<span class=\"val-atk\">同时按当时金币数获得等量金盾</span>（6 秒）。\n一场战斗限用一次。\n梭哈用过后本技能变为「金盾」（消耗 80 龟能，护盾值等于当前金币数，不消耗金币，持盾期间锁定龟能）。\n</span>",
-        "detail": "财神龟蓄力后<span class=\"val-normal\">逐枚投出</span>全部金币，每枚对目标造成（30%×攻击力({ATK}) = {N:ATK*0.30}）物理 +（30%×攻击力({ATK}) = {T:ATK*0.30}）真实伤害。\n投币期间目标阵亡则改投最近的敌人。\n<span class=\"val-normal\">逐枚投币的全程免疫控制</span>。\n首次释放时<span class=\"val-atk\">同时按当时金币数获得等量金盾</span>（持续 6 秒，<span style=\"color:#8a93a0\">此金盾不锁龟能</span>）。\n<span style=\"color:#8a93a0\">一场限用一次。\n</span>\n梭哈释放后，该技能槽变为「金盾（持续 4 秒）」：消耗 80 龟能，获得等于当前金币数的通用护盾（不消耗金币），持有该护盾期间锁龟能（护盾被打光或到期即恢复）。"
+        "brief": "蓄力后逐枚投出全部金币，每枚造成 {N:ATK*0.30} 物理伤害 和 {T:ATK*0.30} 真实伤害。\n<span style=\"color:#8a93a0\">目标阵亡时改投最近的敌人；\n<span class=\"val-normal\">投币全程免疫控制</span>，首次释放时<span class=\"val-atk\">同时按当时金币数获得等量金盾</span>（6 秒）。\n一场战斗限用一次。\n梭哈用过后本技能变为「金盾」（消耗 80 龟能，护盾值等于当前金币数，不消耗金币，持盾期间锁定龟能）。\n</span>",
+        "detail": "财神龟蓄力后<span class=\"val-normal\">逐枚投出</span>全部金币，每枚造成（30%×攻击力({ATK}) = {N:ATK*0.30}）物理 +（30%×攻击力({ATK}) = {T:ATK*0.30}）真实伤害。\n投币期间目标阵亡则改投最近的敌人。\n<span class=\"val-normal\">逐枚投币的全程免疫控制</span>。\n首次释放时<span class=\"val-atk\">同时按当时金币数获得等量金盾</span>（持续 6 秒，<span style=\"color:#8a93a0\">此金盾不锁龟能</span>）。\n<span style=\"color:#8a93a0\">一场限用一次。\n</span>\n梭哈释放后，该技能槽变为「金盾（持续 4 秒）」：消耗 80 龟能，获得等于当前金币数的通用护盾（不消耗金币），持有该护盾期间锁龟能（护盾被打光或到期即恢复）。"
       },
       {
         "name": "招财进宝",
@@ -1178,8 +1178,8 @@
         "pierce": 0,
         "cd": 0,
         "atkScale": 0.5,
-        "brief": "丢出一张万能牌，对目标造成<span class=\"val-normal\">1 段</span> {N:2*ATK} 物理伤害，自身获得 {S:1*ATK} 永久护盾并回复 <span class=\"val-heal\">5% 最大生命值</span>，同时使目标攻击力 <span class=\"val-atk\">-15%</span>。",
-        "detail": "赌神龟丢出一张万能牌，对目标造成 <span class=\"val-normal\">1 段</span>（200%×攻击力({ATK}) = {N:2*ATK}）物理伤害。\n自身获得（100%×攻击力 = {S:1*ATK}）<span class=\"val-def\">永久护盾</span>，回复 <span class=\"val-heal\">5% 最大生命值</span>，并使目标<span class=\"val-atk\">攻击力 -15%</span>。"
+        "brief": "丢出一张万能牌，造成<span class=\"val-normal\">1 段</span> {N:2*ATK} 物理伤害，自身获得 {S:1*ATK} 永久护盾并回复 <span class=\"val-heal\">5% 最大生命值</span>，同时使目标攻击力 <span class=\"val-atk\">-15%</span>。",
+        "detail": "赌神龟丢出一张万能牌，造成 <span class=\"val-normal\">1 段</span>（200%×攻击力({ATK}) = {N:2*ATK}）物理伤害。\n自身获得（100%×攻击力 = {S:1*ATK}）<span class=\"val-def\">永久护盾</span>，回复 <span class=\"val-heal\">5% 最大生命值</span>，并使目标<span class=\"val-atk\">攻击力 -15%</span>。"
       },
       {
         "name": "赌注",
@@ -1881,7 +1881,7 @@
         "cd": 0,
         "atkScale": 1.5,
         "brief": "蓄力后使目标脚下喷出岩浆柱，将附近敌人<span class=\"val-atk\">击飞</span>并造成 {M:1.5*ATK} 魔法伤害，同时自身获得 {S:0.8*ATK} 护盾。\n<span style=\"color:#8a93a0\">该盾不限持续时间。\n</span>",
-        "detail": "熔岩龟蓄力后，在目标脚下喷出岩浆柱：\n击飞附近的敌人（约0.82秒滞空），对目标造成（150%×攻击力({ATK}) = {M:1.5*ATK}）魔法伤害，熔岩龟自身获得（80%×攻击力({ATK}) = {S:0.8*ATK}）护盾（不限时）。\n<span style=\"color:#8a93a0\">火山形态下本技变为「重击」：蓄力猛砸目标，将其击飞，造成（130%×攻击力 + 8%×熔岩龟自身最大生命值）物理伤害，并附带 20% 生命偷取。\n</span>"
+        "detail": "熔岩龟蓄力后，在目标脚下喷出岩浆柱：\n击飞附近的敌人（约0.82秒滞空），造成（150%×攻击力({ATK}) = {M:1.5*ATK}）魔法伤害，熔岩龟自身获得（80%×攻击力({ATK}) = {S:0.8*ATK}）护盾（不限时）。\n<span style=\"color:#8a93a0\">火山形态下本技变为「重击」：蓄力猛砸目标，将其击飞，造成（130%×攻击力 + 8%×熔岩龟自身最大生命值）物理伤害，并附带 20% 生命偷取。\n</span>"
       },
       {
         "name": "熔岩爆发",
@@ -1892,7 +1892,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "在普通形态（80 龟能）下智能冲刺，重置下一次普攻，并使下一发熔岩弹贯穿全场，对沿途每个敌人造成 0.6×攻击力 魔法伤害 加 4% 最大生命值 并施加灼烧层。\n在火山形态（120 龟能）下，熔岩龟进入暴走，获得 <span class=\"val-atk\">20% 最大生命值</span>、<span class=\"val-atk\">30% 攻击速度</span> 和 <span class=\"val-atk\">30% 移动速度</span>，均持续 <span class=\"val-atk\">5 秒</span>。\n<span style=\"color:#8a93a0\">智能冲刺会依局势残血保命后撤或贴身追击。\n</span>",
-        "detail": "熔岩龟·技能三（双形态）：\n普通形态（80龟能）：\n进行一次智能冲刺（残血或近身有威胁时背离撤退保命，否则冲贴目标追击）\n重置自己的下一次普攻时间，并使下一发熔岩弹变为贯穿全场的岩浆光矢——沿途每名敌人受到（60%×攻击力({ATK}) = {M:0.6*ATK}）魔法伤害 + 4%目标最大生命值，并施加 <span style=\"color:#ff6600\">（0.07×攻击力）层灼烧</span>。\n火山形态（120龟能）：烈焰暴走——自身获得 +20% 最大生命值、+30% 攻击速度、+30% 移动速度，均持续5秒。",
+        "detail": "熔岩龟·技能三（双形态）：\n普通形态（80龟能）：\n智能冲刺（残血或近身有威胁时背离撤退保命，否则冲贴目标追击）\n重置自己的下一次普攻时间，并使下一发熔岩弹变为贯穿全场的岩浆光矢——沿途每名敌人受到（60%×攻击力({ATK}) = {M:0.6*ATK}）魔法伤害 + 4%目标最大生命值，并施加 <span style=\"color:#ff6600\">（0.07×攻击力）层灼烧</span>。\n火山形态（120龟能）：烈焰暴走——自身获得 +20% 最大生命值、+30% 攻击速度、+30% 移动速度，均持续5秒。",
         "icon": "skills/lava-3.png"
       }
     ],
@@ -2043,7 +2043,7 @@
         "pierce": 0,
         "cd": 0,
         "atkScale": 0.5,
-        "brief": "刺出一根水晶刺，对目标造成 {N:0.6*ATK} 物理伤害和 <span class=\"val-magic\">1.5% 最大生命值</span> 的魔法伤害，并叠加一层<span class=\"val-normal\">结晶印记</span>。\n<span style=\"color:#8a93a0\">结晶印记叠满 5 层时引爆。\n</span>",
+        "brief": "刺出一根水晶刺，造成 {N:0.6*ATK} 物理伤害和 <span class=\"val-magic\">1.5% 最大生命值</span> 的魔法伤害，并叠加一层<span class=\"val-normal\">结晶印记</span>。\n<span style=\"color:#8a93a0\">结晶印记叠满 5 层时引爆。\n</span>",
         "detail": "水晶龟刺出水晶刺，造成（60%×攻击力({ATK}) = {N:0.6*ATK}）物理伤害 + 1.5%目标最大生命值 魔法伤害，并叠加1层结晶印记（结晶满5层引爆，造成目标19%最大生命值魔法伤害并削减魔抗）。"
       },
       {
@@ -2209,7 +2209,7 @@
         "pierce": 0,
         "cd": 0,
         "atkScale": 0.9,
-        "brief": "发射一枚星光弹，对目标造成 {M:0.9*ATK} 外加 <span class=\"val-magic\">5% 当前生命值</span> 的魔法伤害，并追加一次当前<span class=\"val-normal\">星能</span> <span class=\"val-true\">12%</span> 的真实伤害。",
+        "brief": "发射一枚星光弹，造成 {M:0.9*ATK} 外加 <span class=\"val-magic\">5% 当前生命值</span> 的魔法伤害，并追加一次当前<span class=\"val-normal\">星能</span> <span class=\"val-true\">12%</span> 的真实伤害。",
         "detail": "星际龟发射一枚星光弹，造成（90%×攻击力({ATK}) = {M:0.9*ATK}）+ 5%目标当前生命值 魔法伤害。\n普攻也算施法，附带追加储存星能 12% 的真实伤害。"
       },
       {
