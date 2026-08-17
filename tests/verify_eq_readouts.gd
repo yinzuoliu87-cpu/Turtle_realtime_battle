@@ -168,6 +168,52 @@ func _ready() -> void:
 	_ok("⑥ ★读数与真实舱内水量一致(不是随便变一下)", absf(pct87 - want87) < 2.0,
 		"面板 %.1f%% vs 应为 %.1f%%" % [pct87, want87])
 
+	# ── ⑧ 015 荆棘海胆: 同族的第三条(2026-08-17 补) ───────────────────────
+	##   ★由来: 用脚本重扫 `eq_state` 的写入字段 vs 两张读数表(上一次 2026-08-10 是
+	##     **人眼扫的、漏了 068**), 扫出 015 在两张表里【一个字都没有】——
+	##     反伤累计满 300/270/230 → 护盾 + 强化下一次普攻, 而玩家既看不到攒到哪,
+	##     也不知道下一击有没有被强化。它与 017 完全同构(就绪次数 + 攒进度),
+	##     却只有 017 有出口。
+	##   ★判据同 ⑥: 量【面板真正会印的那行字】随真实战斗事件变, 不读字段、不查表。
+	var u15: Dictionary = _s._spawn._make_unit("basic", "left", c2)
+	u15["equips"] = [{"id": "p2eq_015", "star": 1}]   # 1★ 阈值 300, 反伤 12%
+	var atk15: Dictionary = _s._spawn._make_unit("basic", "right", c2 + Vector2(40, 0))
+	_s._units.clear()
+	_s._units.append(u15)
+	_s._units.append(atk15)
+	## ★装备要真的生效必须走这两步(spawn 期的既有做法, 见 equip_system.gd:896 的注释):
+	##   ①属性 ②flag/eq_state 初始状态。少走第二步的话 eq_state 是空的, 下面全是空检查。
+	_s._equip_sys._stats._eq_apply_one_stats(u15, "p2eq_015", 1)   # star=1 ⇒ si=0
+	_s._equip_sys._stats._eq_apply_flags(u15, "p2eq_015", 1)   # star=1 ⇒ si=0
+	var g0 := str(_s._info_sys._equip_readout_text(u15, "p2eq_015"))
+	_ok("⑧ ★分母: 015 装上后面板真的会印出一行读数(空串 = 没进表)", g0 != "", "实得 '%s'" % g0)
+	_ok("⑧ ★分母: 开局读数是 0 层 0%%(还没挨打)",
+		g0.find("0层") >= 0 and g0.find("0%") >= 0, "实得 '%s'" % g0)
+	## 挨一发 1000 —— 反伤 12% = 120 点, 占 1★ 阈值 300 的 40%
+	_s._equip_sys._eq_on_target(u15, atk15, 1000)
+	var g1 := str(_s._info_sys._equip_readout_text(u15, "p2eq_015"))
+	var st15: Dictionary = (u15.get("eq_state", {}) as Dictionary).get("p2eq_015", {})
+	var acc15: float = float(st15.get("thorn_accum", 0.0))
+	_ok("⑧ ★分母: 挨打后系统侧真的攒了(0 = 下面是空检查)", acc15 > 1.0, "accum=%.0f" % acc15)
+	_ok("⑧ ★★挨打后【面板那行字真的变了】(不是恒 0 的死字段)", g1 != g0, "'%s' → '%s'" % [g0, g1])
+	## 与系统自己的阈值对账, 不抄一份公式
+	var want15: float = acc15 / _s._equip_sys.THORN_THRESHOLD[0] * 100.0
+	var got15: float = float(st15.get("thorn_pct", -1.0))
+	_ok("⑧ ★读数 = 累计/阈值(不是随便变一下)", absf(got15 - want15) < 1.0,
+		"镜像 %.1f%% vs 应为 %.1f%%" % [got15, want15])
+	## 再挨两发把它推过阈值 ⇒ 强化次数徽章要跳起来, 且进度条要回落(不是卡在 100%)
+	_s._equip_sys._eq_on_target(u15, atk15, 1000)
+	_s._equip_sys._eq_on_target(u15, atk15, 1000)
+	var st15b: Dictionary = (u15.get("eq_state", {}) as Dictionary).get("p2eq_015", {})
+	var g2 := str(_s._info_sys._equip_readout_text(u15, "p2eq_015"))
+	_ok("⑧ ★分母: 累计已经越过阈值(没越过的话下面两条是空检查)",
+		int(st15b.get("thorn_empower", 0)) >= 1, "强化次数=%d" % int(st15b.get("thorn_empower", 0)))
+	_ok("⑧ ★★强化次数【印在面板上】了 —— 玩家要知道下一击被强化了", g2.find("0层") < 0,
+		"实得 '%s'" % g2)
+	_ok("⑧ ★越过阈值后进度条回落(卡在 100%% = 归一化写在了扣减之前)",
+		float(st15b.get("thorn_pct", 100.0)) < 99.0,
+		"实得 %.1f%%" % float(st15b.get("thorn_pct", -1.0)))
+
 	# ── ⑦ 读数不许长到把槽撑爆(2026-08-17) ──────────────────────────────
 	##   ★由来(实拍): 093 香火石两张表里都有 ⇒ 拼出「充能 0 / 4000  层数 0」17 个字,
 	##     而槽只有 88px 宽 ⇒ 被 clip_text 从中间截断, 屏幕上印的是「能 0 / 4000  层数」。

@@ -1358,6 +1358,12 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 						stt["thorn_empower"] = int(stt.get("thorn_empower", 0)) + fired   # 攒着的强化次数
 						battle._skill_ring(u["pos"], Color(0.86, 0.72, 0.45, 0.7), 54.0)
 					stt["thorn_accum"] = acc
+					## ★2026-08-17 补【局内读数】: 015 以前在两张读数表里【一个字都没有】——
+					##   玩家看不到离下次触发还差多少, 也不知道下一击有没有被强化。
+					##   这正是 068/065/069/074 当初的形状(「越攒越强, 但攒到哪看不见」),
+					##   由 `probe_noui` 脚本重扫 eq_state 写入字段扫出来(上一次是人眼扫的, 漏了)。
+					##   阈值随星级变(300/270/230) ⇒ 按 EquipReadouts 表头的规矩存归一化镜像。
+					stt["thorn_pct"] = clampf(acc / maxf(1.0, thr), 0.0, 1.0) * 100.0
 					u["eq_state"][iid] = stt
 			"p2eq_017":   # 不沉之锚: 回血移到 _tick_anchor(每0.25秒, 用户2026-08-01); on-hurt 不再处理
 				# ★别在这里加回"受伤即回血" —— 那会变成"定时 + 受伤"双份触发。

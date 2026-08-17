@@ -286,6 +286,37 @@ print('  [分母] 充能条分母对账 %d 条' % _cap_n)
 chk('★分母: 充能条对账真的比到了(0 条 = 空检查)', [] if _cap_n == len(_CAP_SRC) else ['只比到 %d/%d' % (_cap_n, len(_CAP_SRC))])
 chk('★面板充能条的分母与系统常量一致(改一边另一边不跟 = 条按错分母走)', sorted(_cap_bad)[:6])
 
+# ★★2026-08-17 补【读数字段名 ↔ 系统侧真的有人写】。同族的第二个形状:
+#   两张读数表存的是**字段名字符串**, 而写这个字段的是各自系统。系统里把字段
+#   改个名(重构/合并/搬家), 表这边不跟 ⇒ 那格读数**永远是 0**, 不报错不崩溃,
+#   只是玩家看着一条空条。这正是 065/069/074/068 当初的形状(攒了没人看得见),
+#   区别只在那几件是【压根没进表】, 而这条防的是【进了表但名字漂了】。
+#   ⚠ 判据必须放宽到"字段名作为字符串出现过", 不能只找 `x["f"] = `:
+#     实测 009 的 blade_energy 是经 `_eq_charge(stt, "blade_energy", …)` 辅助函数写的,
+#     窄判据把它误报成死字段 —— 我第一版就栽了, 差点去"修"一个没坏的东西。
+#   ★实测 31 个字段【全部活着】—— 这条是防漂, 不是修 bug。
+_ro2 = io.open('scripts/gamedata/equip_readouts.gd', encoding='utf-8').read()
+def _sect(nm):
+    _i = _ro2.index('const %s :=' % nm)
+    return _ro2[_i:_ro2.index(chr(10) + '}', _i)]
+_rf = {}
+for _m in re.finditer(r'"(p2eq_[0-9]+)":\s*"([a-z_]+)"', _sect('COUNT')):
+    _rf.setdefault(_m.group(2), []).append(_m.group(1))
+for _m in re.finditer(r'"(p2eq_[0-9]+)":\s*\[\s*"([a-z_]+)"', _sect('CHARGE')):
+    _rf.setdefault(_m.group(2), []).append(_m.group(1))
+_gd = []
+for _dp, _dn, _fn in os.walk('scripts'):
+    for _f in _fn:
+        if _f.endswith('.gd') and _f != 'equip_readouts.gd':
+            _gd.append(io.open(os.path.join(_dp, _f), encoding='utf-8', errors='replace').read())
+_dead_f = ['%s (%s)' % (_k, ','.join(sorted(set(_v))))
+           for _k, _v in sorted(_rf.items())
+           if sum(_s.count('"%s"' % _k) for _s in _gd) == 0]
+print('  [分母] 读数字段活性: %d 个字段 · 扫了 %d 个 .gd' % (len(_rf), len(_gd)))
+chk('★分母: 读数字段真的抠出来了且扫到了源码(0 = 空检查)',
+    [] if (len(_rf) >= 25 and len(_gd) >= 50) else ['字段 %d / 文件 %d' % (len(_rf), len(_gd))])
+chk('★读数表里的每个字段名, 系统侧都真的有人写(没人写 = 那格读数恒 0)', _dead_f[:6])
+
 print('  [分母] 羁绊档位文案对账 %d 条' % _syn_n)
 chk('★分母: 羁绊文案真的抠到了数值(0 条 = 空检查)', [] if _syn_n >= 20 else ['只抠到 %d 条' % _syn_n])
 chk('★羁绊档位文案与 TYPES 表一致(文件自己写着"数值以本表为准")', sorted(_syn_bad)[:6])

@@ -182,6 +182,8 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 			#   (reflect_bleed 这个每击流血字段已废除 —— 留着会是死字段。)
 			stt["reflect_pct"] = EquipSystem.THORN_REFLECT[si]
 			stt["thorn_accum"] = 0.0
+			stt["thorn_pct"] = 0.0        # 归一化镜像(0~100), 给装备格充能条; 阈值随星级变所以不能直接挂 accum
+			stt["thorn_empower"] = 0      # 攒着的"强化下一次普攻"次数, 给装备格层数徽章
 		"p2eq_038":   # 信号放大器(用户2026-07-30 重做): 固定 30% 攻速(不分星) + 放大层数从 0 起
 			# ★2026-08-03 D16: 乘 → 加(统一口径)。单件时两者同值, 多件/叠层时加法更弱。
 			#   ⚠ 这是一次【静默的削弱】, 而 tooltip_number_audit 抓不到(它只比三元组字面量,
