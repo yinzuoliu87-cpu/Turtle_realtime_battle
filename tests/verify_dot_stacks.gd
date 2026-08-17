@@ -5,6 +5,22 @@ extends Node
 
 const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 
+## ★★2026-08-17: 这份测试原来【一条断言都没有】—— 它只 print 数值和"(期望=X)"给人看,
+##   从不比较、从不失败。DoT 衰减模型坏掉它照样绿。
+##   而它能在门禁里算 PASS, 是因为 run-tests.sh 的判据写的是
+##   `ALL PASS 或 自证完成`, 而它打印的正是「自证完成」——**全套 196 个测试里只有它走这条后门**。
+##   ⇒ 现在改成真断言, 并把 run-tests.sh 里那条后门一并拆掉。
+var _n := 0
+var _fail := 0
+
+func _ok(name: String, cond: bool, detail: String = "") -> void:
+	_n += 1
+	if cond:
+		print("  [PASS] ", name, ("  " + detail) if detail != "" else "")
+	else:
+		_fail += 1
+		print("  [FAIL] ", name, "  ", detail)
+
 func _ready() -> void:
 	await get_tree().process_frame   # 让被实例化场景的 _ready 跑完 (spawn 整队)
 	var scene = RTScene.new()
@@ -45,6 +61,9 @@ func _ready() -> void:
 			burn_seq.append(0)
 			break
 	print("[burn] 层数序列: %s" % str(burn_seq))
+	_ok("★分母: burn 真的跑了多轮 tick(不是 0 轮)", burn_seq.size() >= 3, "%d 轮" % burn_seq.size())
+	_ok("★★burn 层数逐 tick 递减(衰减模型没坏)", _strictly_down(burn_seq), str(burn_seq))
+	_ok("★★burn 从 100 层起步", int(burn_seq[0]) == 100, "起步 %s" % str(burn_seq[0]))
 
 	# ---- POISON: 100 层, 衰减 floor(×3/4) ----
 	u["hp"] = u["maxHp"]; u["dot_stacks"] = {}
@@ -57,6 +76,7 @@ func _ready() -> void:
 		if int(u["dot_stacks"].get("poison", 0)) <= 0:
 			poison_seq.append(0); break
 	print("[poison] 层数序列 (衰减1/4): %s" % str(poison_seq))
+	_ok("★★poison 层数逐 tick 递减", _strictly_down(poison_seq), str(poison_seq))
 
 	# ---- BLEED: 100 层, 衰减 floor(×3/4) (与 poison 同衰减率) ----
 	u["hp"] = u["maxHp"]; u["dot_stacks"] = {}
@@ -69,6 +89,9 @@ func _ready() -> void:
 		if int(u["dot_stacks"].get("bleed", 0)) <= 0:
 			bleed_seq.append(0); break
 	print("[bleed] 层数序列 (衰减1/4): %s" % str(bleed_seq))
+	_ok("★★bleed 层数逐 tick 递减", _strictly_down(bleed_seq), str(bleed_seq))
+	_ok("★poison 与 bleed 同衰减率(规格如此)", str(poison_seq) == str(bleed_seq),
+		"poison=%s bleed=%s" % [str(poison_seq), str(bleed_seq)])
 
 	# ---- TRUE FIRE: burn 在真火态下走 _raw_lose (真伤路径, 不弹字/不触发 on-hit 钩子). ----
 	# 注: 1:1 回合制 dot.gd, true 型伤害仍被护盾吸收 (damage.gd:136 "真伤(true)也走护盾,同JS");
@@ -81,21 +104,40 @@ func _ready() -> void:
 	scene.call("_tick_dot_stacks", u)
 	var hp_lost: float = hp0 - u["hp"]
 	var expect_tf: int = 50 + roundi(float(u["maxHp"]) * 50 * 0.001)
-	print("[truefire] 50层burn(无盾): HP掉=%d (期望=%d) → %s" % [int(hp_lost), expect_tf, ("真火走真伤路径✓" if int(hp_lost) == expect_tf else "✗")])
+	print("[truefire] 50层burn(无盾): HP掉=%d (期望=%d)" % [int(hp_lost), expect_tf])
+	_ok("★★真火 burn 走真伤路径, 出伤 = 层数 + maxHp×层数×0.001",
+		int(hp_lost) == expect_tf, "实得 %d / 期望 %d" % [int(hp_lost), expect_tf])
 
 	# ---- 多层叠加: 同类再施加 → 累加 ----
 	u["dot_stacks"] = {"burn": 0}
 	scene._damage.call("_apply_dot_stacks", u, "burn", 30, null)
 	scene._damage.call("_apply_dot_stacks", u, "burn", 20, null)
 	print("[stack] 施加30层再施加20层 → %d (期望50)" % int(u["dot_stacks"].get("burn", 0)))
+	_ok("★★同类 DoT 再施加是【累加】(30+20=50)", int(u["dot_stacks"].get("burn", 0)) == 50,
+		"实得 %d" % int(u["dot_stacks"].get("burn", 0)))
 
 	# ---- _has_dot 走 dot_stacks ----
-	print("[has_dot] burn有层时 _has_dot=%s (期望true)" % str(scene.call("_has_dot", u, "burn")))
+	_ok("★_has_dot: 有层时为 true", bool(scene.call("_has_dot", u, "burn")))
 	u["dot_stacks"] = {}
-	print("[has_dot] burn无层时 _has_dot=%s (期望false)" % str(scene.call("_has_dot", u, "burn")))
+	_ok("★_has_dot: 无层时为 false", not bool(scene.call("_has_dot", u, "burn")))
 
-	print("════ 自证完成 ════\n")
+	print("")
+	print("  (共 %d 条断言)" % _n)
+	if _fail == 0:
+		print("ALL PASS — DoT 层数衰减")
+	else:
+		print("FAIL x%d" % _fail)
 	_quit()
 
+## 严格递减(末尾可能补了一个 0 表示清空)
+func _strictly_down(seq: Array) -> bool:
+	if seq.size() < 2:
+		return false
+	for i in range(seq.size() - 1):
+		if int(seq[i]) <= int(seq[i + 1]):
+			return false
+	return true
+
+
 func _quit() -> void:
-	get_tree().quit()
+	get_tree().quit(1 if _fail > 0 else 0)

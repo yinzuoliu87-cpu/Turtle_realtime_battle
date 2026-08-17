@@ -240,7 +240,12 @@ run_test () {  # $1 = 测试名
   #    是我"顺手加固"加出来的 —— 防御性代码也要验, 它一样会引入 bug)
   fatal="$(grep -cE "$FATAL" "$RAW/$name.log" 2>/dev/null)"
   [ -n "$fatal" ] || fatal=0
-  if [ "$rc" -eq 0 ] && [ "$fatal" -eq 0 ] && { grep -q "ALL PASS" "$RAW/$name.log" || grep -q "自证完成" "$RAW/$name.log"; }; then
+  # ★★2026-08-17 拆掉「自证完成」这条后门:
+  #   原判据是 `ALL PASS 或 自证完成`。全套 196 个测试里【只有 verify_dot_stacks 走这条】,
+  #   而它当时**一条断言都没有** —— 只 print 数值和"(期望=X)"给人看, 从不比较、从不失败。
+  #   DoT 衰减模型坏掉它照样绿, 却在门禁里占着一格 PASS。
+  #   现在那份已改成真断言(10 条), 后门也就没有任何测试需要了 ⇒ 判据只认 ALL PASS。
+  if [ "$rc" -eq 0 ] && [ "$fatal" -eq 0 ] && grep -q "ALL PASS" "$RAW/$name.log"; then
     PASS=$((PASS+1)); echo "  PASS  $name"
   else
     FAIL=$((FAIL+1)); echo "  FAIL  $name  (rc=$rc, 致命报错=$fatal)"
