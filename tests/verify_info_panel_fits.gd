@@ -31,6 +31,19 @@ var _n := 0
 var _fail := 0
 
 
+## 一棵树里所有【可见的】Label(判断"字被切没切"必须逐个量真实矩形, 隐藏的不算)
+func _walk_labels(root: Node) -> Array:
+	var out: Array = []
+	var st: Array = [root]
+	while not st.is_empty():
+		var n: Node = st.pop_back()
+		if n is Label and (n as Control).is_visible_in_tree():
+			out.append(n)
+		for c in n.get_children():
+			st.append(c)
+	return out
+
+
 func _ok(name: String, cond: bool, detail: String = "") -> void:
 	_n += 1
 	if cond:
@@ -101,6 +114,8 @@ func _ready() -> void:
 	var round_bad: Array = []
 	var font_sizes: Array = []
 	var en_mix: Array = []
+	var clipped: Array = []
+	var clip_seen: int = 0
 	## ★★分母计数器(2026-08-17 自审补): 下面几条判据的【被测对象本身可能不存在】——
 	##   那时集合是空的, `is_empty()` 照样为真 ⇒ 断言一路绿着骗人。
 	##   (上一轮在图鉴那条上刚栽过: 图鉴被切到别的 Tab ⇒ 扫 28 只也是 0 张, 靠分母才发现。)
@@ -120,7 +135,12 @@ func _ready() -> void:
 		## ★装备的真格式是 [{id, star}] 的字典数组, 不是 id 字符串数组 ——
 		##   喂错格式会让产品代码 `e as Dictionary` 每只龟报一次 cast 错误(实测 28 条),
 		##   而断言照样全绿: 这是【测试数据错】伪装成产品报错, 门禁的致命正则才逮住它。
-		u["equips"] = [{"id": "p2eq_004", "star": 2}, {"id": "p2eq_021", "star": 1},
+		## ★★至少有一件【带局内读数】的(2026-08-17): 原来这三件 004/021/040 在
+		##   `EquipReadouts` 两张表里**一个都没有** ⇒ 槽底那行读数 Label 根本不会被造出来
+		##   ⇒ 下面的字号档数、读数宽度这些判据**扫不到那一档**, 断言看着绿实际没覆盖。
+		##   (今晚第三次栽在同一形状: 判据本身没错, 是被测对象没造出来。)
+		##   093 香火石两张表都有 ⇒ 走紧凑式那条路径, 是最能撑爆槽的一件。
+		u["equips"] = [{"id": "p2eq_004", "star": 2}, {"id": "p2eq_093", "star": 1},
 			{"id": "p2eq_040", "star": 3}]
 		u["shield"] = 240.0
 		u["burn_stacks"] = 7.0
@@ -236,6 +256,29 @@ func _ready() -> void:
 						en_mix.append("%s: 「%s」" % [pid, _tx.substr(0, 18)])
 				for _ce in _ne.get_children():
 					_ste.append(_ce)
+		## ── 带 clip_text 的标签不许真的被截掉(2026-08-17) ────────────────────
+		##   ★由来: 把面板字号从 6 档并成 4 档时, 技能名 11 → 12px。技能名槽宽写死 88 且
+		##     `clip_text = true` ⇒ 字号一涨就可能【无声地】被切掉尾字, 屏幕上看着像个短名字。
+		##     `clip_text` 的整个作用就是"宁可切也不撑开布局", 所以它永远不会报错。
+		##   ★判据量【真实字符串像素宽 vs 真实矩形宽】: 拿这个 Label 自己的字体和字号去算,
+		##     不数字符数(中/英/数字宽度差很多), 也不搜源码。
+		##   ⚠ 只查 clip_text 的 —— 会自动换行(autowrap)的标签本来就该多行, 不是截断。
+		for _cn in _walk_labels(panel):
+			var _cl := _cn as Label
+			if not _cl.clip_text or _cl.autowrap_mode != TextServer.AUTOWRAP_OFF:
+				continue
+			var _ct := str(_cl.text).strip_edges()
+			if _ct == "" or _cl.size.x <= 1.0:
+				continue
+			clip_seen += 1
+			var _cf: Font = _cl.get_theme_font("font")
+			if _cf == null:
+				continue
+			var _cw: float = _cf.get_string_size(_ct, HORIZONTAL_ALIGNMENT_LEFT, -1,
+				_cl.get_theme_font_size("font_size")).x
+			if _cw > _cl.size.x + 0.5:
+				clipped.append("%s: 「%s」需 %.0fpx / 只有 %.0fpx" % [pid, _ct, _cw, _cl.size.x])
+
 		## 字号: 收集面板里所有可见 Label 的真实 font_size
 		if measured <= 6:
 			var _stf: Array = [panel]
@@ -432,6 +475,11 @@ func _ready() -> void:
 	##   ★判据量【渲染出来的文本】不搜源码 —— 源码里的字符串未必都显示。
 	_ok("★面板里不中英夹杂(白名单: Lv/★, 游戏既有约定)", en_mix.is_empty(),
 		"夹英文的: %s" % str(en_mix.slice(0, 4)))
+
+	_ok("★分母: 真的量到了带 clip_text 的标签(0 个 = 空检查)", clip_seen >= 20,
+		"量了 %d 个" % clip_seen)
+	_ok("★★没有【被 clip_text 无声切掉】的标签(字号一涨最先出事的就是它)", clipped.is_empty(),
+		"被切的: %s" % str(clipped.slice(0, 5)))
 
 	_ok("★分母: 真的扫到了字号(至少 3 档才谈得上层级)", font_sizes.size() >= 3,
 		"扫到 %d 档" % font_sizes.size())

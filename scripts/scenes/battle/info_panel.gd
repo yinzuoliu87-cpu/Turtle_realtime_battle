@@ -302,7 +302,7 @@ func _info_resource_row(parent: Control, r: Dictionary) -> Dictionary:
 		ivl.set_anchors_preset(Control.PRESET_FULL_RECT)
 		ivl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		ivl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		ivl.add_theme_font_size_override("font_size", 12)
+		ivl.add_theme_font_size_override("font_size", UIPalette.F_SUB)
 		ivl.add_theme_color_override("font_color", Color("#ffffff"))
 		ivl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		hold.add_child(ivl)
@@ -319,7 +319,7 @@ func _info_resource_row(parent: Control, r: Dictionary) -> Dictionary:
 	var nm = Label.new(); nm.text = str(r.get("name", ""))
 	## ★12 不是 13: 同一条资源行里的【名】与【值】要和龟能条内那份(12)同号 ——
 	##   实测面板里「30 / 100」是 13、隔 20 像素的「63 / 115」是 12, 同一类信息两个号。
-	nm.add_theme_font_size_override("font_size", 12)
+	nm.add_theme_font_size_override("font_size", UIPalette.F_SUB)
 	nm.add_theme_color_override("font_color", r.get("color", Color.WHITE))
 	top.add_child(nm)
 	var sp = Control.new(); sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -327,7 +327,7 @@ func _info_resource_row(parent: Control, r: Dictionary) -> Dictionary:
 	var no_cap: bool = float(r.get("cap", 0.0)) <= 0.0   # 没有上限的资源(金币)只显数字, 不画条
 	var vl = Label.new()
 	vl.text = _res_value_text(r)
-	vl.add_theme_font_size_override("font_size", 12)
+	vl.add_theme_font_size_override("font_size", UIPalette.F_SUB)
 	vl.add_theme_color_override("font_color", Color("#e8f2ff"))
 	top.add_child(vl)
 
@@ -360,7 +360,7 @@ func _info_resource_row(parent: Control, r: Dictionary) -> Dictionary:
 	if str(r.get("hint", "")) == "":
 		return {"bar": pb, "val": vl, "hint": null, "name": str(r.get("name", ""))}
 	var hl = Label.new(); hl.text = str(r.get("hint", ""))
-	hl.add_theme_font_size_override("font_size", 11)
+	hl.add_theme_font_size_override("font_size", UIPalette.F_SUB)
 	hl.add_theme_color_override("font_color", Color("#8fa2b5"))
 	hl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	hl.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -404,7 +404,7 @@ func _info_bar(parent: Control, cur: float, mx: float, fill_col: Color, label: S
 	holder.add_child(pb)
 	var lb = Label.new(); lb.text = label; lb.set_anchors_preset(Control.PRESET_FULL_RECT)
 	lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	lb.add_theme_font_size_override("font_size", 12); lb.add_theme_color_override("font_color", Color("#ffffff"))
+	lb.add_theme_font_size_override("font_size", UIPalette.F_SUB); lb.add_theme_color_override("font_color", Color("#ffffff"))
 	lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(lb)
 	return [pb, lb]   # ★返回 [进度条, 文本] 供每帧刷新(见 _refresh_info_panel)
@@ -735,7 +735,7 @@ func _info_equip_slots(vb: VBoxContainer, u: Dictionary) -> void:
 	## ★一行小标签「装备：」(用户 2026-08-16:「装备区也没有文字提示？…你写装备：行吗」)。
 	##   ⚠ 是【小灰标签】不是金色段标题 —— 段标题正是被删掉的那个网页式 h3。
 	var eqt = Label.new(); eqt.text = "装备："
-	eqt.add_theme_font_size_override("font_size", 12)
+	eqt.add_theme_font_size_override("font_size", UIPalette.F_SUB)
 	eqt.add_theme_color_override("font_color", Color("#7f92a5"))
 	wrap.add_child(eqt)
 	var rowc = HBoxContainer.new()
@@ -778,7 +778,7 @@ func _info_equip_slots(vb: VBoxContainer, u: Dictionary) -> void:
 		# 星级角标(右上)
 		var st = Label.new()
 		st.text = "★".repeat(maxi(1, int((it as Dictionary).get("star", 1))))
-		st.add_theme_font_size_override("font_size", 10)
+		st.add_theme_font_size_override("font_size", UIPalette.F_MICRO)
 		st.add_theme_color_override("font_color", Color("#ffd93d"))
 		st.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 		st.offset_left = -34.0; st.offset_top = 1.0; st.offset_right = -2.0; st.offset_bottom = 13.0
@@ -789,7 +789,7 @@ func _info_equip_slots(vb: VBoxContainer, u: Dictionary) -> void:
 		var ro := _equip_readout_text(u, eid)
 		if ro != "":
 			var rl = Label.new(); rl.text = ro
-			rl.add_theme_font_size_override("font_size", 9)
+			rl.add_theme_font_size_override("font_size", UIPalette.F_MICRO)
 			rl.add_theme_color_override("font_color", Color("#ffe9a8"))
 			rl.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 			rl.offset_top = -13.0; rl.offset_bottom = -1.0
@@ -852,7 +852,7 @@ func _info_stat_cell(grid: GridContainer, icon: String, val: String, col: Color 
 		var ic = Label.new(); ic.text = icon; ic.add_theme_font_size_override("font_size", 16)
 		ic.custom_minimum_size = Vector2(20, 0); ic.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		h.add_child(ic)
-	var c = Label.new(); c.text = val; c.add_theme_font_size_override("font_size", 14)
+	var c = Label.new(); c.text = val; c.add_theme_font_size_override("font_size", UIPalette.F_BODY)
 	c.add_theme_color_override("font_color", col); c.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	h.add_child(c)
 	grid.add_child(h)
@@ -934,7 +934,7 @@ func _info_status_chips(vb: VBoxContainer, u: Dictionary) -> void:
 			ir.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			ir.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			hb2.add_child(ir)
-		var l = Label.new(); l.text = str(ch[0]); l.add_theme_font_size_override("font_size", 12)
+		var l = Label.new(); l.text = str(ch[0]); l.add_theme_font_size_override("font_size", UIPalette.F_SUB)
 		l.add_theme_color_override("font_color", Color(str(ch[1])))
 		hb2.add_child(l)
 		p.add_child(hb2); flow.add_child(p)
@@ -1114,7 +1114,7 @@ func _info_skill_bar(vb: VBoxContainer, u: Dictionary) -> void:
 		var cost: float = float(ent.get("cost", -1.0))
 		if cost >= 0.0:
 			var cl = Label.new(); cl.text = "%d" % int(cost)
-			cl.add_theme_font_size_override("font_size", 11)
+			cl.add_theme_font_size_override("font_size", UIPalette.F_SUB)
 			cl.add_theme_color_override("font_color", Color("#ffce4d"))
 			cl.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 			cl.offset_top = -14.0; cl.offset_bottom = -1.0
@@ -1131,7 +1131,7 @@ func _info_skill_bar(vb: VBoxContainer, u: Dictionary) -> void:
 		elif str(ent.get("name", "")).find("(普攻)") >= 0:
 			role = "普攻"
 		var rl2 = Label.new(); rl2.text = role
-		rl2.add_theme_font_size_override("font_size", 10)
+		rl2.add_theme_font_size_override("font_size", UIPalette.F_MICRO)
 		rl2.add_theme_color_override("font_color",
 			Color("#b79bf0") if role == "被动" else (Color("#9fb6c9") if role == "普攻" else Color("#ffce4d")))
 		rl2.custom_minimum_size = Vector2(88, 0)
@@ -1140,7 +1140,7 @@ func _info_skill_bar(vb: VBoxContainer, u: Dictionary) -> void:
 		cell.add_child(rl2)
 		var nl = Label.new()
 		nl.text = str(ent.get("name", "")).replace("被动 · ", "").replace(" (普攻)", "")
-		nl.add_theme_font_size_override("font_size", 11)
+		nl.add_theme_font_size_override("font_size", UIPalette.F_SUB)
 		nl.add_theme_color_override("font_color", Color("#dbe9f7"))
 		nl.custom_minimum_size = Vector2(88, 0)
 		nl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1201,13 +1201,13 @@ func _info_more_row(parent: VBoxContainer, title: String, body: String,
 	var hb := HBoxContainer.new()
 	row.add_child(hb)
 	var l := Label.new(); l.text = title
-	l.add_theme_font_size_override("font_size", 14)
+	l.add_theme_font_size_override("font_size", UIPalette.F_BODY)
 	l.add_theme_color_override("font_color", Color("#9fb6c9"))
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hb.add_child(l)
 	var a := Label.new(); a.text = "›"
-	a.add_theme_font_size_override("font_size", 14)
+	a.add_theme_font_size_override("font_size", UIPalette.F_BODY)
 	a.add_theme_color_override("font_color", Color("#5f7186"))
 	a.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hb.add_child(a)
@@ -1309,7 +1309,7 @@ func _show_detail(host_panel: Control, key: String, title: String, body: String,
 	ttl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hb.add_child(ttl)
 	var cb = Button.new(); cb.text = "✕"
-	cb.add_theme_font_size_override("font_size", 14)
+	cb.add_theme_font_size_override("font_size", UIPalette.F_BODY)
 	cb.focus_mode = Control.FOCUS_NONE
 	cb.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	cb.pressed.connect(func() -> void: ov.visible = false)
@@ -1329,7 +1329,7 @@ func _show_detail(host_panel: Control, key: String, title: String, body: String,
 		var tb = Button.new()
 		tb.text = "简明 ▸" if battle._skill_detail() else "详细 ▾"
 		tb.tooltip_text = "简明只给算好的数值; 详细展开公式与比率"
-		tb.add_theme_font_size_override("font_size", 12)
+		tb.add_theme_font_size_override("font_size", UIPalette.F_SUB)
 		tb.focus_mode = Control.FOCUS_NONE
 		tb.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		brow.add_child(tb)

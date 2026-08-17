@@ -1422,7 +1422,7 @@ func _stats_column(header: String, units: Array, hc: Color) -> Control:
 	for i in range(5):
 		var l := Label.new()
 		l.text = hdrs[i]
-		l.add_theme_font_size_override("font_size", 14)
+		l.add_theme_font_size_override("font_size", UIPalette.F_BODY)
 		l.add_theme_color_override("font_color", hc if i == 0 else Color("#ffd93d"))   # 金表头(回合制)
 		if i == 0:
 			l.custom_minimum_size = Vector2(126, 0)
@@ -1461,7 +1461,7 @@ func _stats_column(header: String, units: Array, hc: Color) -> Control:
 		if is_mvp:
 			var tag := Label.new()
 			tag.text = "MVP"
-			tag.add_theme_font_size_override("font_size", 10)
+			tag.add_theme_font_size_override("font_size", UIPalette.F_MICRO)
 			tag.add_theme_color_override("font_color", Color("#ffd93d"))
 			tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			name_cell.add_child(tag)
@@ -1570,7 +1570,7 @@ func _build_stats_panel() -> Control:
 		for i in range(pages.size()):
 			var b = Button.new()
 			b.text = str(pages[i]["title"])
-			b.add_theme_font_size_override("font_size", 14)
+			b.add_theme_font_size_override("font_size", UIPalette.F_BODY)
 			b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 			b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 			var idx = i
@@ -1728,7 +1728,7 @@ func _build_brush_bar() -> void:
 	strip.add_child(battle._debug._edit_brush_cell(battle.TRAINER_ID, battle.TRAINER_SPRITE, "大师"))
 	var hint = Label.new()
 	hint.text = "← 手指横滑挑龟(共28只+小将+大师) →   点一格选笔刷 → 点战场连点连摆 · 点已摆的龟→出配置面板"
-	hint.add_theme_font_size_override("font_size", 12)
+	hint.add_theme_font_size_override("font_size", UIPalette.F_SUB)
 	hint.add_theme_color_override("font_color", Color("#ffe9a8"))
 	root.add_child(hint)
 	# ★栏高必须【跟着内容走】, 不能写死 94 (2026-08-03 门禁探针查出来的):
@@ -1814,7 +1814,7 @@ func _make_team_frame(u: Dictionary) -> Control:
 	u["panel_lv_badge"] = lv_badge
 	var nm = Label.new()
 	nm.text = str(u.get("name", u.get("id", "")))
-	nm.add_theme_font_size_override("font_size", 12)
+	nm.add_theme_font_size_override("font_size", UIPalette.F_SUB)
 	nm.add_theme_color_override("font_color", Color("#e8f2ff"))
 	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(nm)
@@ -1953,14 +1953,14 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	head.add_child(big)
 	var hi = VBoxContainer.new(); hi.add_theme_constant_override("separation", 2)
 	hi.size_flags_horizontal = Control.SIZE_EXPAND_FILL; head.add_child(hi)
-	var nm = Label.new(); nm.text = str(u.get("name", id)); nm.add_theme_font_size_override("font_size", 21)
+	var nm = Label.new(); nm.text = str(u.get("name", id)); nm.add_theme_font_size_override("font_size", UIPalette.F_TITLE)
 	var rar = str(pet.get("rarity", u.get("rarity", "C")))
 	nm.add_theme_color_override("font_color", battle._pet_rarity_color(rar)); hi.add_child(nm)
 	var sub = Label.new()
 	sub.text = "%s · %s · Lv %d" % ["友军" if is_left else "敌方", rar, int(u.get("level", 1))]
 	## ★副标题 12(与资源名/状态签/「装备：」同属"次要信息"这一档) —— 面板字号收成
 	##   21 标题 / 14 正文 / 12 次要 / 11 说明 / 10 角标 五档, 一档只表示一种角色。
-	sub.add_theme_font_size_override("font_size", 12); sub.add_theme_color_override("font_color", side_col); hi.add_child(sub)
+	sub.add_theme_font_size_override("font_size", UIPalette.F_SUB); sub.add_theme_color_override("font_color", side_col); hi.add_child(sub)
 	# ★不再放 ✖ 按钮(用户 2026-07-21:「点空白处就直接退出信息面板, 不要那个×」)。
 	#   关闭走两条: ①点面板外空白(_unhandled_input) ②ESC。面板本身 MOUSE_FILTER_STOP,
 	#   所以点在面板【内】不会误关。

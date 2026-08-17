@@ -220,8 +220,11 @@ func _ready() -> void:
 	##     两条读数各自都对, 挤在一起就成了乱码。
 	##   ★判据量【真实像素宽】(拿槽上那个 Label 的实际字体去算), 不是数字符数 ——
 	##     中英文/数字宽度差很多, 数字符数会漏。
+	##   ⚠★2026-08-17 订正: 这里【原来写死 font_size 11】, 而槽底读数真实用的是 **9**
+	##     ⇒ 量的不是同一个东西(偏保守所以没出事, 但判据和被判对象是两个来源, 迟早漂)。
+	##     现在两边都从 `UIPalette.F_MICRO` 取 —— 改字号时这条门禁自动跟着走。
 	var probe := Label.new()
-	probe.add_theme_font_size_override("font_size", 11)
+	probe.add_theme_font_size_override("font_size", UIPalette.F_MICRO)
 	add_child(probe)
 	await get_tree().process_frame
 	var fnt: Font = probe.get_theme_font("font")
