@@ -395,6 +395,17 @@ func _info_bar(parent: Control, cur: float, mx: float, fill_col: Color, label: S
 	var bgsb = StyleBoxFlat.new(); bgsb.bg_color = Color("#0b1220"); bgsb.set_corner_radius_all(0)   # 直角(同上)
 	bgsb.set_border_width_all(1); bgsb.border_color = Color("#243247")
 	var flsb = StyleBoxFlat.new(); flsb.bg_color = fill_col; flsb.set_corner_radius_all(0)
+	## ★★2026-08-17 给【填充本身】做出液面分层。
+	##   由来: 框换成真凹槽之后再看, 剩下的网页味就在瓤上 —— 填充是**一整块纯色**,
+	##   和 `<div style="background:#4caf50">` 一模一样。框对了、瓤没对, 整条还是像进度条。
+	##   做法: 主体压暗一档 + 顶部 3px 亮带 = 光打在液面上的样子。
+	##   ⚠ `StyleBoxFlat` **只有一个 border_color**, 做不了"上亮下暗"两色 ——
+	##     所以只做上亮; 下方的暗是条框自己那道下沿给的(它本来就画在填充下面)。
+	##   ★颜色从 `fill_col` 算出来, 不写死: 血条绿/龟能黄/各种资源色都走这一条路径,
+	##     写死就等于给其中一种调好、其余全错。
+	flsb.bg_color = fill_col.darkened(0.16)
+	flsb.border_width_top = 3
+	flsb.border_color = fill_col.lightened(0.22)
 	## ★血条底也走九宫格像素框(用户:「血条，龟能条都跟网页一样」)。
 	bgsb.bg_color = Color(0, 0, 0, 0.55) if hfr != null else bgsb.bg_color
 	bgsb.set_border_width_all(0 if hfr != null else 1)
