@@ -1236,8 +1236,13 @@ func _bar_frame(holder: Control) -> NinePatchRect:
 		return null
 	var np := NinePatchRect.new()
 	np.texture = load(p)
-	np.patch_margin_left = 14; np.patch_margin_right = 14
-	np.patch_margin_top = 12; np.patch_margin_bottom = 12
+	## ★2026-08-17 换图后重量的边距。旧图 281x29 是个**圆角胶囊**(用户原话:
+	##   「血条，龟能条都跟网页一样」—— 说的就是它: CSS border-radius 进度条的长相)。
+	##   新图 96x32: 四角 45° 斜切(金属倒角, 不是网页圆角) + 真黑深槽 + 上沿高光。
+	##   边距是**量出来的**不是拍的: 黑槽范围 x 8..87 / y 8..22 ⇒ 框厚 左右8 上8 下9,
+	##   各留 2~3px 余量把斜切角整个盖进四角块, 否则拉伸时角会被拉花。
+	np.patch_margin_left = 11; np.patch_margin_right = 11
+	np.patch_margin_top = 7; np.patch_margin_bottom = 7
 	np.set_anchors_preset(Control.PRESET_FULL_RECT)
 	np.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(np)
