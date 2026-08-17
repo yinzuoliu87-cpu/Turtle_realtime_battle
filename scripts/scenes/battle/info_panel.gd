@@ -354,7 +354,7 @@ func _info_resource_row(parent: Control, r: Dictionary) -> Dictionary:
 	##   正是用户「血条龟能条都跟网页一样」那条抱怨, 只是发生在一行我一直没看见的地方
 	##   (它一直没被渲染: 门禁/探针/截图工装三处都喂错了字段名, 这一行从没建出来过)。
 	##   ★同一个坑今晚第二次: **九宫格源图的边距之和必须小于目标高度**(头像框那次是 32→56)。
-	bhold.custom_minimum_size = Vector2(0, 0 if no_cap else 20)
+	bhold.custom_minimum_size = Vector2(0, 0 if no_cap else 16)
 	bhold.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bhold.visible = not no_cap
 	box.add_child(bhold)
@@ -1297,7 +1297,11 @@ func _bar_frame(holder: Control) -> NinePatchRect:
 	##   边距是**量出来的**不是拍的: 黑槽范围 x 8..87 / y 8..22 ⇒ 框厚 左右8 上8 下9,
 	##   各留 2~3px 余量把斜切角整个盖进四角块, 否则拉伸时角会被拉花。
 	np.patch_margin_left = 11; np.patch_margin_right = 11
-	np.patch_margin_top = 7; np.patch_margin_bottom = 7
+	## ★★上下 6 不是 7(2026-08-17): 条框上下沿**实测只有 5px 厚**, 7 是多给的,
+	##   而边距每多 1px, 资源条就要多长 2px 才画得出框 —— 宝箱龟的余量只剩 4px,
+	##   而 CI 在 Linux 上字体度量不同, 4px 足以让门禁**只在 CI 上红**。
+	##   6 = 5 + 1px 保险, 既盖得住沿又不白吃高度。
+	np.patch_margin_top = 6; np.patch_margin_bottom = 6
 	np.set_anchors_preset(Control.PRESET_FULL_RECT)
 	np.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(np)
