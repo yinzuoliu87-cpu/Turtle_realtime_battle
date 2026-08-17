@@ -134,11 +134,14 @@ for e in eq:
 _PAIRS = (('（', '）'), ('(', ')'), ('【', '】'), ('「', '」'))
 _unbal = []
 _nline_brk = 0
+# ⚠★2026-08-17 覆盖面订正(与悬空助词那条同一个洞): 这里原来只扫
+#   `skillPool.brief` + `passive.desc` ⇒ 漏了 **skillPool.detail / passive.brief /
+#   passive.detail / volcanoSkills**, 而 `passive.brief` 正是图鉴默认显示的那份。
+#   ★三条文案判据各自**手抄了一份字段清单** —— 这就是"手抄的副本必然落后":
+#     悬空助词那条被我扩过、这条没有, 于是同一批字段在一个文件里有两种覆盖面。
+#   ⇒ 全部改走 `_pet_text_rows` 这一个出处。
 for p in pets:
-    rows = [(s.get('name',''), s.get('brief','')) for s in (p.get('skillPool') or [])]
-    _pa = p.get('passive')
-    if isinstance(_pa, dict): rows.append((_pa.get('name','被动'), _pa.get('desc','')))
-    for _nm, _t in rows:
+    for _nm, _t in _pet_text_rows(p):
         for _ln in _lines(_t):
             _nline_brk += 1
             if any(_ln.count(_a) != _ln.count(_b) for _a, _b in _PAIRS):
@@ -157,15 +160,9 @@ chk('★描述每一行的括号都配对 —— 不配对 = 断行时把括号�
 #   规则化改动最容易在【修复动作本身】上出新问题, 所以修完要复扫。
 _DBL = re.compile(r'[：。；，、]；|；[：。；，、]')
 _dbl = []
+# 同上: 这条原来手抄的清单少了 volcanoSkills ⇒ 一并改走 `_pet_text_rows`。
 for p in pets:
-    rows = [(s.get('name',''), s.get('brief','')) for s in (p.get('skillPool') or [])]
-    for s2 in (p.get('skillPool') or []):
-        if s2.get('detail'): rows.append((str(s2.get('name',''))+'.detail', s2['detail']))
-    _pa = p.get('passive')
-    if isinstance(_pa, dict):
-        for _k in ('brief','desc','detail'):
-            if _pa.get(_k): rows.append(('passive.'+_k, _pa[_k]))
-    for _nm, _t in rows:
+    for _nm, _t in _pet_text_rows(p):
         for _m in _DBL.finditer(re.sub(r'<[^>]*>', '', str(_t))):
             _dbl.append('%s·%s: %s' % (p['id'], _nm, _m.group(0)))
 for e in eq:
