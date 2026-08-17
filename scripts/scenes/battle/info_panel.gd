@@ -922,7 +922,22 @@ func _info_status_chips(vb: VBoxContainer, u: Dictionary) -> void:
 		##   只剩这一排小签还是平滑抗锯齿的圆角胶囊, 放大一看和上下格格不入。
 		sb.border_color = Color(str(ch[1])); sb.set_border_width_all(1); sb.set_corner_radius_all(0)
 		sb.content_margin_left = 6; sb.content_margin_right = 8; sb.content_margin_top = 2; sb.content_margin_bottom = 2
-		p.add_theme_stylebox_override("panel", sb)
+		## ★★2026-08-17 换成九宫格签牌。上面那条注释只解决了"圆角" —— 直角之后它仍然是
+		##   【1px 描边的矩形】, 也就是 CSS `border: 1px solid` 的长相。面板里别处都换成
+		##   有铆钉/倒角的像素框之后, 只剩这一排签还在用描边, 放大一看还是网页味。
+		## ★为什么用 `modulate_color` 而不是各做一张图: 签是**按状态染色**的
+		##   (减速蓝 / 护盾青 / 形态灰…), 直接铺一张蓝色贴图会把这套配色信息吃掉。
+		##   所以贴图画成【中性灰】(实测平均饱和度 0.206), 再按 ch[1] 整体染色 ——
+		##   亮的倒角沿染成该状态的亮色, 暗的中心染成同色的暗底, 一张图管所有状态。
+		var _csb := _nine_box(HUD_TEX + "chip-frame.png", 7, sb)
+		if _csb is StyleBoxTexture:
+			var _ct := _csb as StyleBoxTexture
+			_ct.modulate_color = Color(str(ch[1]))
+			## 内容边距要大于沿厚(实测沿含铆钉约 4~6px), 否则字压在倒角上 ——
+			## 「更多属性」那一行刚栽过一次, 同一个坑不踩第二遍。
+			_ct.content_margin_left = 9; _ct.content_margin_right = 9
+			_ct.content_margin_top = 3; _ct.content_margin_bottom = 3
+		p.add_theme_stylebox_override("panel", _csb)
 		## 图标 + 文字并排(形态那条没有图标, 只有文字)
 		var hb2 = HBoxContainer.new(); hb2.add_theme_constant_override("separation", 4)
 		var _ip: String = str(ch[2]) if ch.size() > 2 else ""
