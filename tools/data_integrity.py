@@ -218,6 +218,44 @@ for _f in _TEXT_FILES:
     #   ⇒ 判据改成: 玩家文案里【只要出现"参考"】就红。真要写机制不用这两个字。
     if '参考' in _raw:
         _devnote.append('%s 出现「参考」(出处标注)' % _f.split('/')[-1])
+# ★★2026-08-17 补【羁绊档位文案 ↔ TYPES 表 对账】。
+#   phase2_types.gd 自己写着「效果文本见 TIER_DESCS(那是设计定稿, 属性数值以本表为准)」——
+#   一份数据两处写、且明说以其中一处为准 = memory fb-self-claiming-authority-docs-rot 那个形状,
+#   迟早漂。玩家在图鉴羁绊页和背包里读的是 TIER_DESCS, 漂了就是骗人。
+#   ★判据: 从文案里抠出「每件X额外提供 +N」, 和 TYPES 的 stats 逐档比(百分比档自动换算)。
+#   实测当前 34 条全部对得上 —— 这条现在是防漂, 不是修 bug。
+_pt = io.open('scripts/gamedata/phase2_types.gd', encoding='utf-8').read()
+_types = {}
+for _m in re.finditer(r'"([^"]+)":\s*\{"tiers":\s*\[([^\]]+)\],\s*"stats":\s*\[(.*?)\]\}', _pt):
+    _vals = []
+    for _blk in re.findall(r'\{([^}]*)\}', _m.group(3)):
+        _vals.append([float(x) for x in re.findall(r':\s*([0-9.]+)', _blk)])
+    _types[_m.group(1)] = _vals
+_md = re.search(r'TIER_DESCS\s*:?=\s*\{(.*?)' + chr(10) + r'\}', _pt, re.S)
+_syn_bad = []
+_syn_n = 0
+if _md is None:
+    _syn_bad.append('找不到 TIER_DESCS(结构变了, 下面是空检查)')
+else:
+    _cur = None
+    _idx = 0
+    for _ln in _md.group(1).split(chr(10)):
+        _mk = re.match(r'\s*"([^"]+)":\s*\[', _ln)
+        if _mk:
+            _cur = _mk.group(1); _idx = 0; continue
+        if _cur and '"' in _ln and '每件' in _ln:
+            _m2 = re.search(r'每件[^+]*\+\s*([0-9.]+)', _ln)
+            if _m2 and _cur in _types and _idx < len(_types[_cur]):
+                _syn_n += 1
+                _got = float(_m2.group(1))
+                _want = _types[_cur][_idx]
+                if not any(abs(_got - _w) < 0.01 or abs(_got - _w * 100) < 0.01 for _w in _want):
+                    _syn_bad.append('%s 第%d档: 文案 +%g / 表 %s' % (_cur, _idx + 1, _got, _want))
+            _idx += 1
+print('  [分母] 羁绊档位文案对账 %d 条' % _syn_n)
+chk('★分母: 羁绊文案真的抠到了数值(0 条 = 空检查)', [] if _syn_n >= 20 else ['只抠到 %d 条' % _syn_n])
+chk('★羁绊档位文案与 TYPES 表一致(文件自己写着"数值以本表为准")', sorted(_syn_bad)[:6])
+
 print('  [分母] 玩家文案文件扫了 %d / %d 份' % (_scanned, len(_TEXT_FILES)))
 chk('★分母: 五份玩家文案文件全都读到了(少一份 = 那一份没被检查)',
     [] if _scanned == len(_TEXT_FILES) else ['只扫到 %d 份' % _scanned])
