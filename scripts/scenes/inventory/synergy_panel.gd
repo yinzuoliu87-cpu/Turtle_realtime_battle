@@ -141,7 +141,24 @@ func _build_synergy_panel(_leaders: Array) -> void:
 		## 未激活压到 #333c47 —— 原来用同一个 col 只是变暗, 与"银"几乎分不开(实拍确认)。
 		csb.border_color = col if on else Color("#333c47")
 		csb.set_border_width_all(3 if on else 2); csb.set_corner_radius_all(8)
-		chip.add_theme_stylebox_override("panel", csb)
+		## ★2026-08-18 羁绊档位条换金属框。
+		##   ⚠ 第一版选了 **chip-frame(48×24 小签)** —— 实拍放大才看清: 这行是 424×50,
+		##     中段被横向拉了 **12 倍**, 框细得几乎看不见。**贴图要按目标尺寸选, 不能按"它是什么"选。**
+		##   ⇒ 改用 **slot-frame**: 这一行语义上是【可点入口】(tooltip: 点开看每一档给什么),
+		##     和战斗面板的「更多属性」行同类, 那边用的正是槽框。57×57 拉到 424×50 中段够厚。
+		##   未激活的走 dim: 和背包空格同一套语言 —— 一眼看出哪几条还没开。
+		chip.add_theme_stylebox_override("panel",
+			UISkin.nine("slot-frame.png", 12, csb))
+		var _cst = chip.get_theme_stylebox("panel")
+		if _cst is StyleBoxTexture:
+			var _ct: Color = UISkin.tint_of(col) if on else Color(0.52, 0.56, 0.64)
+			(_cst as StyleBoxTexture).modulate_color = _ct
+			(_cst as StyleBoxTexture).content_margin_left = 12
+			(_cst as StyleBoxTexture).content_margin_right = 12
+			(_cst as StyleBoxTexture).content_margin_top = 6
+			(_cst as StyleBoxTexture).content_margin_bottom = 6
+		##   ⚠ 原来这里还有一行 `add_theme_stylebox_override("panel", csb)` —— 它在**后面**,
+		##     会把上面这次覆盖直接盖掉。插新代码时要看清楚原赋值在前还是在后。
 		chip.position = Vector2(0, y); chip.size = Vector2(w - 8.0, SYN_ROW_H)
 		chip.tooltip_text = "点开看这个羁绊每一档给什么"
 		inner.add_child(chip)

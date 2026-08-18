@@ -58,6 +58,31 @@ static func slot(fallback: StyleBox, tint: Color = Color.WHITE, dim: bool = fals
 	return sb
 
 
+## 给按钮套上金属签牌皮(三态)。
+##
+## ★由来: 用户 2026-08-18 问「所有可以点击和交互的地方都考虑了吗」——
+##   实测答案是**没有**: 全项目 157 个可交互元素里, **12 个按钮还是 Godot 默认皮**
+##   (主菜单 8 · 背包 2 · 图鉴 2), 圆角纯色, 是"没游戏味"最直接的来源。
+##   (战斗面板的「✕」「详细」两个按钮当初也是这样, 而且**逃过了网页盒判据** ——
+##    那条判据先查 `has_theme_stylebox_override`, 而默认主题不是 override。)
+## ★三态靠 modulate 区分, 一张中性签牌管三态; `tint` 给按钮的语义色。
+static func button(b: Button, tint: Color = Color.WHITE, margin: int = 7) -> void:
+	var tex := TEX_DIR + "chip-frame.png"
+	if not ResourceLoader.exists(tex):
+		return                      # 贴图不在就保持调用方原样, 不动它
+	var t: Texture2D = load(tex)
+	for st in [["normal", 1.0], ["hover", 1.22], ["pressed", 0.74],
+			["focus", 1.0], ["disabled", 0.55]]:
+		var sb := StyleBoxTexture.new()
+		sb.texture = t
+		sb.set_texture_margin_all(margin)
+		var k := float(st[1])
+		sb.modulate_color = Color(tint.r * k, tint.g * k, tint.b * k, 1.0)
+		sb.content_margin_left = 10; sb.content_margin_right = 10
+		sb.content_margin_top = 4; sb.content_margin_bottom = 4
+		b.add_theme_stylebox_override(str(st[0]), sb)
+
+
 ## 把一个"状态边框色"折算成适合 modulate 的色调。
 ##
 ## 调用方原来传的是 `border_color`(黄=选中 / 紫=道具 / 深灰=空)。直接拿它 modulate 会过饱和,

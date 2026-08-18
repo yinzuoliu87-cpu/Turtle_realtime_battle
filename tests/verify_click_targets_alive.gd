@@ -54,6 +54,8 @@ func _ok(name: String, cond: bool, detail: String = "") -> void:
 func _scan(root: Node) -> Array:
 	var wired := 0
 	var dead: Array = []
+	var btn_seen := 0
+	var stock_btn: Array = []
 	var squashed: Array = []
 	var labels := 0
 	var stack: Array = [root]
@@ -61,6 +63,21 @@ func _scan(root: Node) -> Array:
 		var n: Node = stack.pop_back()
 		if n is Control:
 			var c := n as Control
+			## ★★2026-08-18 补【Button 也要算】: 原判据只看 `gui_input`,
+			##   而按钮走 `pressed` 信号 —— 一个 `MOUSE_FILTER_IGNORE` 的 Button 同样是死的,
+			##   却完全在这条判据的视野外。(用户问「所有可以点击和交互的地方都考虑了吗」,
+			##   实测答案是没有: 加上 Button 后可交互元素从 93 涨到 157。)
+			## ★同时守【不许退回 Godot 默认皮】: 吃 stylebox 的 Button 必须有 normal 覆盖。
+			##   ⚠ 排除两类, 它们不是"没游戏味":
+			##     · `flat = true` = 透明点击层(主菜单靠下面那张金框图给视觉)
+			##     · `TextureButton` 用贴图不吃 stylebox, has_theme_stylebox_override 恒 false
+			##   (这两条都是我判据太宽误报出来的, 一次报 12 个、真值只有 4 个。)
+			if c is Button and not (c as Button).flat:
+				btn_seen += 1
+				if not c.has_theme_stylebox_override("normal"):
+					stock_btn.append("%s「%s」" % [c.get_class(), str((c as Button).text).substr(0, 10)])
+			if c is BaseButton and c.mouse_filter == Control.MOUSE_FILTER_IGNORE:
+				dead.append("%s(按钮·收不到点击)" % c.name)
 			if c.gui_input.get_connections().size() > 0:
 				wired += 1
 				if c.mouse_filter == Control.MOUSE_FILTER_IGNORE:
@@ -76,7 +93,7 @@ func _scan(root: Node) -> Array:
 					squashed.append("「%s」%.0fx%.0f" % [tx.substr(0, 12), c.size.x, c.size.y])
 		for ch in n.get_children():
 			stack.append(ch)
-	return [wired, dead, squashed, labels]
+	return [wired, dead, squashed, labels, btn_seen, stock_btn]
 
 
 func _ready() -> void:
@@ -89,6 +106,8 @@ func _ready() -> void:
 	var all_dead: Array = []
 	var all_squashed: Array = []
 	var total_labels := 0
+	var tot_btn := 0
+	var all_stock: Array = []
 	var opened := 0
 	for path in SCENES:
 		if not ResourceLoader.exists(str(path)):
@@ -105,6 +124,9 @@ func _ready() -> void:
 		var wired: int = int(r[0])
 		var dead: Array = r[1]
 		total_labels += int(r[3])
+		tot_btn += int(r[4])
+		for _sb in (r[5] as Array):
+			all_stock.append("%s → %s" % [str(path).get_file(), str(_sb)])
 		for sq in (r[2] as Array):
 			all_squashed.append("%s → %s" % [str(path).get_file(), str(sq)])
 		total_wired += wired
@@ -161,6 +183,9 @@ func _ready() -> void:
 		for d2 in (rb2[1] as Array):
 			all_dead.append("战斗信息面板 → %s" % str(d2))
 		total_labels += int(rb2[3])
+		tot_btn += int(rb2[4])
+		for _sb2 in (rb2[5] as Array):
+			all_stock.append("战斗信息面板 → %s" % str(_sb2))
 		for s2 in (rb2[2] as Array):
 			all_squashed.append("战斗信息面板 → %s" % str(s2))
 		print("    [分母] %-22s 接了点击的控件 %d 个, 其中收不到点击 %d 个"
@@ -177,6 +202,10 @@ func _ready() -> void:
 
 	_ok("★★没有【接了点击却收不到点击】的死处理器", all_dead.is_empty(),
 		"死的: %s" % str(all_dead.slice(0, 8)))
+
+	_ok("★分母: 真的扫到了按钮(0 个 = 空检查)", tot_btn >= 10, "扫到 %d 个" % tot_btn)
+	_ok("★★没有【还用 Godot 默认皮】的按钮 —— 圆角纯色是最直接的「没游戏味」",
+		all_stock.is_empty(), "默认皮的: %s" % str(all_stock.slice(0, 6)))
 
 	_ok("★分母: 真的扫到了带字的标签(0 个 = 下面是空检查)", total_labels >= 40,
 		"扫到 %d 个" % total_labels)

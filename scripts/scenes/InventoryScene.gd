@@ -163,6 +163,9 @@ func _rebuild() -> void:
 	back.add_theme_font_size_override("font_size", 22)
 	back.position = Vector2(28, 26); back.size = Vector2(120, 44)
 	back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
+	## ★2026-08-18 换金属签牌皮(用户问「所有可以点击和交互的地方都考虑了吗」——
+	##   实测这两个顶部标签还是 Godot 默认皮)。
+	UISkin.button(back, Color("#9fb6c9"))
 	add_child(back)
 
 	# 🛒 商店 —— 商店有「→🎒背包」(ShopScene.gd:139), 反向却一直没有:
@@ -177,6 +180,9 @@ func _rebuild() -> void:
 	shop.disabled = shop_locked
 	shop.tooltip_text = "打完本大轮第一场后解锁" if shop_locked else "去商店买装备"
 	shop.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Shop.tscn"))
+	## ★2026-08-18 换金属签牌皮(用户问「所有可以点击和交互的地方都考虑了吗」——
+	##   实测这两个顶部标签还是 Godot 默认皮)。
+	UISkin.button(shop, Color("#9fb6c9"))
 	add_child(shop)
 
 	## ── 右上角这一组: 深海币 / 全队装备容量 / 「?」 **排成横着一条**(用户 2026-08-15)──
@@ -276,7 +282,8 @@ func _build_lineup(_leaders: Array) -> void:
 		bsb.bg_color = Color(bandbg.r, bandbg.g, bandbg.b, 0.5)
 		bsb.border_color = Color(lcol.r, lcol.g, lcol.b, 0.45)
 		bsb.set_border_width_all(2); bsb.set_corner_radius_all(12)
-		band.add_theme_stylebox_override("panel", bsb)
+		## ★2026-08-18 上/下战场的分组带换面板框("一块区域")。
+		band.add_theme_stylebox_override("panel", UISkin.nine("panel-frame.png", 20, bsb))
 		band.position = Vector2(30, by - 24); band.size = Vector2(box_span + 20, UBOX_H + 28)
 		band.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(band)
@@ -317,7 +324,15 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = bg; sb.border_color = bd
 	sb.set_border_width_all(4 if sel else (3 if can_equip else 2)); sb.set_corner_radius_all(8)
-	box.add_theme_stylebox_override("panel", sb)
+	## ★2026-08-18 战场卡片也换金属框(跨屏统一第 2 刀)。
+	##   ★这里用**面板框**不是槽框: 它是"一块区域"不是"一个格子" ——
+	##     卡片 UBOX_W×UBOX_H 是横长条, 拿 88 方槽的九宫格拉过来铆钉会被拉变形。
+	##     (战斗面板那边同一个判断: 可点行用槽框、描述浮层用面板框。)
+	##   状态色仍走 modulate: 选中=金 / 可装=亮 / 占位=灰蓝。
+	box.add_theme_stylebox_override("panel",
+		UISkin.nine("panel-frame.png", 20, sb))
+	if box.get_theme_stylebox("panel") is StyleBoxTexture:
+		(box.get_theme_stylebox("panel") as StyleBoxTexture).modulate_color = UISkin.tint_of(bd)
 	box.position = pos; box.size = Vector2(UBOX_W, UBOX_H)
 	# ── 横排卡片(用户2026-07-19: 宽框别太空): 左=大立绘/占位?, 右=名+装备格; 小将前后排pill在右上 ──
 	var left_w := 102.0
@@ -383,9 +398,24 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		tsb.bg_color = Color("#5a3410") if front else Color("#0f3646")
 		tsb.border_color = Color("#e0954a") if front else Color("#4ab0d0")
 		tsb.set_border_width_all(1); tsb.set_corner_radius_all(6)
-		tgl.add_theme_stylebox_override("normal", tsb)
-		tgl.add_theme_stylebox_override("hover", tsb)
-		tgl.add_theme_stylebox_override("pressed", tsb)
+		## ★2026-08-18 前排/后排改金属签牌。它是 56×44 的小签, chip-frame(48×24) 尺寸相当,
+		##   不会像羁绊那行一样被拉 12 倍。三态靠 modulate 区分(常态/悬停亮/按下暗),
+		##   与战斗面板描述浮层的两个按钮同一套做法。
+		var _tf := UISkin.nine("chip-frame.png", 7, tsb)
+		if _tf is StyleBoxTexture:
+			var _tc: Color = UISkin.tint_of(tsb.border_color)
+			for _st in [["normal", 1.0], ["hover", 1.22], ["pressed", 0.74]]:
+				var _c := StyleBoxTexture.new()
+				_c.texture = (_tf as StyleBoxTexture).texture
+				_c.set_texture_margin_all(7)
+				_c.modulate_color = Color(_tc.r * float(_st[1]), _tc.g * float(_st[1]), _tc.b * float(_st[1]), 1.0)
+				_c.content_margin_left = 6; _c.content_margin_right = 6
+				_c.content_margin_top = 2; _c.content_margin_bottom = 2
+				tgl.add_theme_stylebox_override(str(_st[0]), _c)
+		else:
+			tgl.add_theme_stylebox_override("normal", tsb)
+			tgl.add_theme_stylebox_override("hover", tsb)
+			tgl.add_theme_stylebox_override("pressed", tsb)
 		tgl.add_theme_color_override("font_color", Color("#ffdba8") if front else Color("#b8e8ff"))
 		# ★手机板触控热区(2026-08-01): 50×22 = 手机上 27×12pt, 是这屏最难点的一个 →
 		#   加到 56×44(30×24pt)。宽只加 6 是因为右边就是单位框边缘, 再宽会溢出框。
@@ -427,6 +457,12 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, is_leade
 		else:
 			csb.bg_color = Color(0, 0, 0, 0.35); csb.border_color = Color("#3a4452")
 		csb.set_border_width_all(1); csb.set_corner_radius_all(3)
+		## ⚠★2026-08-18 这里**试过换金属槽框, 实拍对比后退回了**, 原因记下免得再试:
+		##   格子只有约 26px, 而槽框原生 57×57 —— 四角铆钉在这个尺寸下**吃掉大半格子**,
+		##   图标被挤没空间; 更要命的是**费用色从"整块实心"退化成"一圈细边"**,
+		##   而那块实心色本身就是信息(一眼分得出 2/3/4/5 费)。改完信息强度反而掉一档。
+		##   ⇒ **贴图框有它的最小可用尺寸**; 小于它就该保持纯色块, 不是硬套。
+		##   (背包大格 88px、卡片 88px 都够, 只有这 18 个迷你格不够。)
 		cell.add_theme_stylebox_override("panel", csb)
 		cell.position = Vector2(x0 + float(ci) * (cw + gap), y); cell.size = Vector2(cw, cw)
 		if filled:
@@ -577,7 +613,8 @@ func _show_lineup_help() -> void:
 	var box := Panel.new()
 	var sb := StyleBoxFlat.new(); sb.bg_color = Color("#1c2836"); sb.border_color = Color("#ffd93d")
 	sb.set_border_width_all(3); sb.set_corner_radius_all(12)
-	box.add_theme_stylebox_override("panel", sb)
+	## ★2026-08-18 弹窗换面板框(同上: 一块区域)。
+	box.add_theme_stylebox_override("panel", UISkin.nine("panel-frame.png", 20, sb))
 	box.position = Vector2(_vw / 2.0 - bw / 2.0, 180.0); box.size = Vector2(bw, bh)
 	box.mouse_filter = Control.MOUSE_FILTER_STOP
 	dim.add_child(box)
@@ -697,7 +734,8 @@ func _build_op_bar() -> void:
 	var bar := Panel.new()
 	var sb := StyleBoxFlat.new(); sb.bg_color = Color("#101c2a"); sb.border_color = Color("#2a3a4e")
 	sb.set_border_width_all(2); sb.set_corner_radius_all(8)
-	bar.add_theme_stylebox_override("panel", sb)
+	## ★2026-08-18 底部操作条换面板框 —— 它是"一块区域"不是格子, 与战斗面板描述浮层同类。
+	bar.add_theme_stylebox_override("panel", UISkin.nine("panel-frame.png", 20, sb))
 	var bw := _vw - 48.0
 	bar.position = Vector2(24, by); bar.size = Vector2(bw, OP_BAR_H); add_child(bar)
 	if _sel_bench >= 0 and _sel_bench < GameState.persistent_bench.size():
@@ -866,7 +904,8 @@ func _show_equip_detail(item: Dictionary) -> void:
 	var box := Panel.new()
 	var sb := StyleBoxFlat.new(); sb.bg_color = Color("#1c2836"); sb.border_color = Color("#ffd93d")
 	sb.set_border_width_all(3); sb.set_corner_radius_all(12)
-	box.add_theme_stylebox_override("panel", sb)
+	## ★2026-08-18 弹窗换面板框(同上: 一块区域)。
+	box.add_theme_stylebox_override("panel", UISkin.nine("panel-frame.png", 20, sb))
 	box.position = Vector2(_vw / 2.0 - bw / 2.0, maxf(24.0, H / 2.0 - bh / 2.0))
 	box.size = Vector2(bw, bh)
 	box.mouse_filter = Control.MOUSE_FILTER_STOP

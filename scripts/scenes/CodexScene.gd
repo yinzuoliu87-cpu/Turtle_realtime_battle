@@ -115,6 +115,8 @@ func _add_back_button() -> void:
 	back.custom_minimum_size = Vector2(44.0, 44.0)
 	back.focus_mode = Control.FOCUS_NONE
 	back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
+	## ★2026-08-18 换金属签牌皮(实测它还是 Godot 默认皮)。
+	UISkin.button(back, Color("#9fb6c9"))
 	$UI.add_child(back)
 	# 🛠 调试面板 (右上角, 仅 debug 构建显示 — 1:1 PoC DEV_VISIBLE; 设等级/加币/重置/快速对战)
 	if OS.is_debug_build():
@@ -126,6 +128,8 @@ func _add_back_button() -> void:
 		dbg.focus_mode = Control.FOCUS_NONE
 		dbg.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		dbg.pressed.connect(_toggle_debug_overlay)
+		## ★2026-08-18 换金属签牌皮(实测它还是 Godot 默认皮)。
+		UISkin.button(dbg, Color("#9fb6c9"))
 		$UI.add_child(dbg)
 
 
