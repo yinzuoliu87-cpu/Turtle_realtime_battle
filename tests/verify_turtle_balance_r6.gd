@@ -55,7 +55,11 @@ func _ready() -> void:
 		tot += str(v).length()
 	print("  ★分母: 读到 %d 份源码 / %d 字符 + pets.json %d 字符" % [_S.size(), tot, _pets.length()])
 	_chk("★分母: 五份源码都非空", _S.size() == 5 and tot > 150000)
-	_chk("★分母: pets.json 非空", _pets.length() > 100000)
+	## ★分母改成"真的解析出 28 只龟", 不再按字符数。
+	##   原来写 `length() > 100000` —— 2026-08-18 把简述从"塞四段"精简成"一句话"之后,
+	##   文件正常地变小了, 这条分母就红了。**按体积当分母, 等于禁止文件变小。**
+	var _pj = JSON.parse_string(_pets)
+	_chk("★分母: pets.json 解析得出 28 只龟", _pj is Array and (_pj as Array).size() == 28)
 
 	_nums()
 	_text()
@@ -167,8 +171,11 @@ func _text() -> void:
 		not barrage.contains("2% 最大生命值的护盾")
 		and not barrage.contains("范围内友军获得糖果龟2%最大生命值的护盾"))
 	# 龟派气波
+	## ★原来要求【两处】都写着 20% —— 一处在简述、一处在详情。简述精简成一句话后
+	##   吸血那句只留在详情里, 这条就红了。判据的**意思**是"吸血写的是 20% 不是 10%",
+	##   所以只要文案里出现 20% 的任一写法即可, 旧值 10% 仍必须彻底消失(下一条)。
 	_chk("② 文案·龟派气波吸血 20%",
-		wave.contains("20% 生命偷取") and wave.contains(">+20%</span>生命偷取"))
+		wave.contains("20% 生命偷取") or wave.contains(">+20%</span>生命偷取"))
 	_chk("② 文案·龟派气波旧值 10% 生命偷取已消失",
 		not wave.contains("10% 生命偷取") and not wave.contains(">+10%</span>生命偷取"))
 	_chk("② ★文案·龟派气波不再宣称暴击伤害 buff", not wave.contains("暴击伤害"))

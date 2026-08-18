@@ -29,7 +29,7 @@ func _ready() -> void:
 				sc.run()
 		var inst = (load(path) as PackedScene).instantiate()
 		add_child(inst)
-		for _i in range(14):
+		for _i in range(150):
 			await get_tree().process_frame
 		print("=== %s ===" % path.get_file())
 		var web := {}

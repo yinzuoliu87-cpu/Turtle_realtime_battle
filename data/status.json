@@ -71,7 +71,7 @@
     "name": "虚化",
     "iconKey": "status-stealth",
     "category": "buff",
-    "desc": "受到的物理伤害大幅减免（幽灵龟虚化 -90%）；真实伤害无视此减免。"
+    "desc": "受到的物理伤害减免（幽灵龟虚化 -90%）；真实伤害无视此减免。"
   },
   {
     "id": "reflect",
