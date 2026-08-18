@@ -141,18 +141,130 @@ func _ink_rect(l: Label) -> Rect2:
 	return Rect2(x, y, w, h)
 
 
+## 等到【版面真的不动了】再量。
+##
+## ★由来(2026-08-18): 原来固定等 14 帧就量, 而好几个屏有**入场动画**(木牌从左边滑进来)。
+##   实测主菜单的「排行榜」「图鉴」两个标签此时 global x = **−485**, 还在屏幕外,
+##   而且两者**报同一个矩形** ⇒ 压字判据当场报"排行榜压图鉴", 可实拍两块木牌离得远远的。
+##   **量了一个还在动的东西 = 量了个不存在的画面。**
+## ⇒ 改成轮询: 每帧把所有可见控件的矩形加起来求和, 连续 6 帧不变才算稳住(上限 240 帧兜底)。
+func _settle(root: Node) -> void:
+	var last := -1.0
+	var same := 0
+	for _i in range(240):
+		await get_tree().process_frame
+		var acc := 0.0
+		var st: Array = [root]
+		while not st.is_empty():
+			var n: Node = st.pop_back()
+			if n is Control and (n as Control).is_visible_in_tree():
+				var r := (n as Control).get_global_rect()
+				acc += r.position.x + r.position.y * 3.0 + r.size.x * 7.0 + r.size.y * 11.0
+			for ch in n.get_children():
+				st.append(ch)
+		if absf(acc - last) < 0.5:
+			same += 1
+			if same >= 6:
+				return
+		else:
+			same = 0
+		last = acc
+
+
+var _bbox_cache: Dictionary = {}
+
+
+## 贴图里【真正有像素的那一块】在 0~1 归一坐标下的包围盒。
+##
+## ★由来: 龟/小将立绘四周都有大片透明留白(94x104 的框里, 实际画面可能只占中间 70%)。
+##   只把控件矩形按 stretch 换算, 得到的还是"含留白的那块", 于是 28 张龟卡的头像、
+##   6 张小将卡的立绘、28 个稀有度角标**全被报成压边带 3~7px** —— 而实拍它们稳稳在框里。
+##   这是同一个错的第 9、10 次: **量真正画出来的东西, 不是量装它的盒子。**
+func _opaque_bbox(tex: Texture2D) -> Rect2:
+	var key := tex.resource_path
+	if _bbox_cache.has(key):
+		return _bbox_cache[key]
+	var img := tex.get_image()
+	var bb := Rect2(0, 0, 1, 1)
+	if img != null and img.get_width() > 0:
+		var w := img.get_width()
+		var h := img.get_height()
+		var x0 := w
+		var y0 := h
+		var x1 := -1
+		var y1 := -1
+		var step: int = maxi(1, int(maxf(float(w), float(h)) / 96.0))   # 大图抽样, 够用且不慢
+		for y in range(0, h, step):
+			for x in range(0, w, step):
+				if img.get_pixel(x, y).a > 0.06:
+					x0 = mini(x0, x)
+					y0 = mini(y0, y)
+					x1 = maxi(x1, x)
+					y1 = maxi(y1, y)
+		if x1 >= x0 and y1 >= y0:
+			bb = Rect2(float(x0) / float(w), float(y0) / float(h),
+				float(x1 - x0 + 1) / float(w), float(y1 - y0 + 1) / float(h))
+	_bbox_cache[key] = bb
+	return bb
+
+
+## 把"画出来的矩形"再按贴图的不透明包围盒收一圈。
+func _crop_alpha(drawn: Rect2, tex: Texture2D) -> Rect2:
+	var bb := _opaque_bbox(tex)
+	return Rect2(drawn.position + Vector2(bb.position.x * drawn.size.x, bb.position.y * drawn.size.y),
+		Vector2(bb.size.x * drawn.size.x, bb.size.y * drawn.size.y))
+
+
+## 真正画出来的那块图的矩形(不是 TextureRect 控件的矩形)。
+func _art_rect(t: TextureRect) -> Rect2:
+	var r := t.get_global_rect()
+	var ts: Vector2 = t.texture.get_size()
+	if ts.x <= 0.0 or ts.y <= 0.0:
+		return r
+	match t.stretch_mode:
+		TextureRect.STRETCH_KEEP:
+			return _crop_alpha(Rect2(r.position,
+				Vector2(minf(ts.x, r.size.x), minf(ts.y, r.size.y))), t.texture)
+		TextureRect.STRETCH_KEEP_CENTERED:
+			var kc: Vector2 = Vector2(minf(ts.x, r.size.x), minf(ts.y, r.size.y))
+			return _crop_alpha(Rect2(r.position + (r.size - kc) * 0.5, kc), t.texture)
+		TextureRect.STRETCH_KEEP_ASPECT, TextureRect.STRETCH_KEEP_ASPECT_CENTERED:
+			var k: float = minf(r.size.x / ts.x, r.size.y / ts.y)
+			var sz: Vector2 = ts * k
+			if t.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_CENTERED:
+				return _crop_alpha(Rect2(r.position + (r.size - sz) * 0.5, sz), t.texture)
+			return _crop_alpha(Rect2(r.position, sz), t.texture)
+		_:
+			pass          # SCALE / COVERED: 铺满整个矩形, 直接进下面的留白裁剪
+	return _crop_alpha(r, t.texture)
+
+
 func _audit(root: Node) -> Dictionary:
 	var d := {"web": 0, "round": 0, "ctrl": 0, "btn": 0, "lbl": 0,
 		"stock": [], "dead": [], "small": [], "clip": [], "squash": [],
 		"flat9": [], "spill": [], "overlap": [], "frame": []}
 	var labels: Array = []
 	var framed: Array = []
+	var arts: Array = []
 	var st: Array = [root]
 	while not st.is_empty():
 		var n: Node = st.pop_back()
 		if n is Control and (n as Control).is_visible_in_tree():
 			var c := n as Control
 			d["ctrl"] = int(d["ctrl"]) + 1
+			if n is TextureRect and (n as TextureRect).texture != null and c.size.x >= 12.0 and c.size.y >= 12.0:
+				# 头像/图标顶破框也是"压边带"的一种(图鉴列表行的头像实拍把行框切开了)。
+				# ★但要量【真正画出来的那块图】: TextureRect 用 KEEP_ASPECT_CENTERED 时
+				#   图是**按比例缩到框内居中**的, 控件矩形比图大一圈 ——
+				#   拿控件矩形量, 28 张龟卡的头像全被报成"压边带 3px", 而实拍头像稳稳在卡里。
+				#   和文字那次一模一样的错(第 9 次): **尺子要匹配被测概念。**
+				# ★角标要放过: 稀有度小签、被动小图标这类**本来就是设计成压在卡角上的**
+				#   (选龟 28 张卡各一个, 实拍就该那样)。判据: 自己 ≤24px 且住在一个独立的小盒子里。
+				#   不放过的话它们会一直红, 逼我去"修"一个根本不是问题的东西。
+				var is_badge: bool = c.size.x <= 24.0 and c.size.y <= 24.0 \
+					and (c.get_parent() is PanelContainer or c.get_parent() is Panel)
+				if not is_badge:
+					arts.append([_art_rect(n as TextureRect), "图<%s|%.0fx%.0f>" % [str(c.name), c.size.x, c.size.y]])
 			if n is NinePatchRect and (n as NinePatchRect).texture != null:
 				var np := n as NinePatchRect
 				framed.append([c.get_global_rect(), _band_of(np.texture)])
@@ -160,12 +272,29 @@ func _audit(root: Node) -> Dictionary:
 				var mh: float = np.patch_margin_left + np.patch_margin_right
 				if np.size.y > 0.0 and (np.size.y <= mv or np.size.x <= mh):
 					(d["flat9"] as Array).append("%.0fx%.0f" % [np.size.x, np.size.y])
-			if n is Label and str((n as Label).text).strip_edges().length() >= 4:
+			# ★两个覆盖缺口(2026-08-18 实拍图鉴才发现, 判据全绿而肉眼三处毛病):
+			#   ① 技能卡正文是 **RichTextLabel**, 不是 Label ⇒ 「点开看全部」压在正文上,
+			#      压字判据**根本没把正文收进来**, 报 0。
+			#   ② 门槛写的 `length() >= 4` —— 而龟名是 2~3 个字(「财神龟」)、稀有度是 1 个字母(「C」)。
+			#      底部统计行压在「财神龟」上、右边框切掉「C」, 两条都因为**字太短被过滤掉了**。
+			#   ⇒ 文字类一律收进来(Label + RichTextLabel), 门槛降到 1。
+			if n is RichTextLabel and str((n as RichTextLabel).get_parsed_text()).strip_edges() != "":
+				var rl := n as RichTextLabel
+				d["lbl"] = int(d["lbl"]) + 1
+				var rr := rl.get_global_rect()
+				var used := minf(rl.get_content_height(), rr.size.y) if rl.get_content_height() > 0.0 else rr.size.y
+				labels.append([Rect2(rr.position, Vector2(rr.size.x, used)),
+					str(rl.get_parsed_text()).strip_edges()])
+			if n is Label and str((n as Label).text).strip_edges().length() >= 1:
 				var lb := n as Label
 				d["lbl"] = int(d["lbl"]) + 1
 				labels.append([_ink_rect(lb), str(lb.text)])
 				var fs2: int = lb.get_theme_font_size("font_size")
-				if lb.size.x < 6.0 or lb.size.y < 6.0:
+				# ⚠ 判据太宽第 8 次: 报选龟稀有度栏杆的「A」「B」「C」被挤没 —— 实拍那几个
+				#   字母**显示得好好的**。原因是这些 Label 是手工定位的, `size` 就是 (0,0),
+				#   而 **Godot 的 Label 不裁剪**: 矩形再小照样把字画出来。
+				#   只有 `clip_text` 打开时"矩形太小"才真会吃掉字。
+				if (lb.size.x < 6.0 or lb.size.y < 6.0) and lb.clip_text:
 					(d["squash"] as Array).append(str(lb.text).substr(0, 8))
 				if lb.get_line_count() > lb.get_visible_line_count():
 					(d["spill"] as Array).append(str(lb.text).substr(0, 8))
@@ -213,8 +342,10 @@ func _audit(root: Node) -> Dictionary:
 			if amin > 0.0 and (inter.size.x * inter.size.y) / amin > 0.25:
 				(d["overlap"] as Array).append("%s|%s" % [
 					str(labels[i][1]).substr(0, 5), str(labels[j][1]).substr(0, 5)])
-	for k in range(labels.size()):
-		var lr: Rect2 = labels[k][0]
+	var boxed: Array = labels.duplicate()
+	boxed.append_array(arts)
+	for k in range(boxed.size()):
+		var lr: Rect2 = boxed[k][0]
 		var cc := lr.position + lr.size * 0.5
 		var best := -1
 		var best_a := 1.0e18
@@ -242,7 +373,7 @@ func _audit(root: Node) -> Dictionary:
 			maxf(inner.position.x - lr.position.x,
 			(lr.position.x + lr.size.x) - (inner.position.x + inner.size.x)))
 		if over > 2.0:
-			(d["frame"] as Array).append("%s+%.0f" % [str(labels[k][1]).substr(0, 6), over])
+			(d["frame"] as Array).append("%s+%.0f" % [str(boxed[k][1]).substr(0, 50), over])
 	return d
 
 
@@ -277,8 +408,7 @@ func _ready() -> void:
 		#   说明货架不走全局 RNG。**别再试这条路**; 改成给商店一个容差基线(见 BASE 注释)。
 		var inst = (load(path) as PackedScene).instantiate()
 		add_child(inst)
-		for _i in range(14):
-			await get_tree().process_frame
+		await _settle(inst)
 		var d := _audit(inst)
 		var b: Dictionary = BASE[scn]
 		tot_ctrl += int(d["ctrl"])

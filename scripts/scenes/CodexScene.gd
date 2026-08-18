@@ -228,9 +228,14 @@ func _ready() -> void:
 	if DataRegistry.all_pets.is_empty():
 		status_bar.text = "❌ DataRegistry 未加载"
 		return
+	## ★这行「✓ 28 龟 / 103 装备 / 11 羁绊 / 13 状态 / 7 规则」**和页签上的数字完全重复**
+	##   (页签就写着 龟(28) / 装备(103) / 羁绊(11) / 状态(13) / 规则(7)),
+	##   而且它浮在左边列表上面 —— 实拍压在最后一只龟「财神龟」那一行上(判据 12 逮到)。
+	##   纯冗余 + 遮挡 ⇒ 平时收起来; 只有**数据没加载出来**时才需要它(上面那个 ❌ 分支)。
 	status_bar.text = "✓ %d 龟 / %d 装备 / %d 羁绊 / %d 状态 / %d 规则" % [
 		DataRegistry.all_pets.size(), _equip_tab_count(),
 		Phase2Types.TYPES.size(), DataRegistry.status_defs.size(), DataRegistry.battle_rules.size()]
+	status_bar.visible = false
 	# 视口比例由项目级 EXPAND(window/stretch/aspect)保证, 场景切换不翻转 aspect → 入场丝滑(同 TeamSelect)。
 	#   同步建完(无 await), 首帧即完整布局, 无半成品/撕裂帧。背景铺满+居中见 _fill_bg_and_center。
 	_build_detail_scroll()
@@ -509,7 +514,10 @@ func _make_row(row_h: float, fill_a: float, stroke: Color) -> Panel:
 	sb.content_margin_left = 8; sb.content_margin_right = 8
 	# 图鉴列表这 36 行是全屏最大的一片「网页味」——半透明底 + 四边描边 = CSS border+rgba。
 	# 换成和战斗面板/背包同一张金属九宫格; 选中态(stroke 金)靠 modulate 传递, 不另做图。
-	var row_sb := UISkin.nine_if_big(LIST_W - 16, row_h, "panel-frame.png", 20, sb)
+	## ★用 slot-frame 不用 panel-frame: 行高只有 52, 而 panel-frame 的金属边带**实测 13px 厚**,
+	##   上下各 13 = 26, 只剩 26px 装内容 —— 可头像是 40px ⇒ 实拍头像把上下边框**顶破切开**。
+	##   slot-frame 边带 6px, 52 − 12 = 40, 正好装得下头像。**框有它的最小适用行高。**
+	var row_sb := UISkin.nine_if_big(LIST_W - 16, row_h, "slot-frame.png", 12, sb)
 	if row_sb is StyleBoxTexture:
 		var ts := row_sb as StyleBoxTexture
 		ts.modulate_color = UISkin.tint_of(stroke)

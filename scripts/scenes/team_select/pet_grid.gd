@@ -108,12 +108,13 @@ func _make_pet_card(pet: Dictionary) -> Control:
 	# 内容: MarginContainer(满卡 + PoC padding:10px 8px 8px) → VBox(头像 → meta, 顶对齐自然流)
 	var pad_wrap = MarginContainer.new()
 	pad_wrap.set_anchors_preset(Control.PRESET_FULL_RECT)
-	pad_wrap.add_theme_constant_override("margin_left", host._sp(8))
-	pad_wrap.add_theme_constant_override("margin_right", host._sp(8))
+	## 左右也要让开边带: 卡框边带 7px 而 _sp(8)≈6px, 名字长的龟(「缩头乌龟」)会压上去。
+	pad_wrap.add_theme_constant_override("margin_left", host._sp(13))
+	pad_wrap.add_theme_constant_override("margin_right", host._sp(13))
 	pad_wrap.add_theme_constant_override("margin_top", host._sp(10))
 	# ★底边距从 8 提到 14: 卡框的金属边带实测 7px 厚, 而原来名字行离底只有 _sp(8)≈6px
 	#   ⇒ 「Lv.1 名字」正压在边带上(判据 13 量到超出 7px)。**换框不只是换花纹, 内容区变小了。**
-	pad_wrap.add_theme_constant_override("margin_bottom", host._sp(14))
+	pad_wrap.add_theme_constant_override("margin_bottom", host._sp(18))
 	pad_wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(pad_wrap)
 	var vb = VBoxContainer.new()
@@ -124,7 +125,10 @@ func _make_pet_card(pet: Dictionary) -> Control:
 
 	# 头像区 (PoC .pet-avatar min-height:76 position:relative → 被动相对它定位)
 	var av_area = Control.new()
-	av_area.custom_minimum_size = Vector2(0, host._sp(76))
+	## ★头像区 76→68: 卡高 116, 上留白 10 + 下留白 18 ⇒ 内容只剩 88;
+	##   而 76(头像) + 4(间距) + 15(名字行) = 95 > 88 ⇒ **名字被顶到卡底、压在金属边带上**
+	##   (探针实测: 名字底 673.4 而框内沿 671.4)。改边距没用 —— 内容本身就超了。
+	av_area.custom_minimum_size = Vector2(0, host._sp(68))
 	av_area.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	av_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(av_area)

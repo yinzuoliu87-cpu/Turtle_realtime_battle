@@ -66,8 +66,10 @@ func _add_pet_row(pet: Dictionary) -> void:
 	var idx_path = "res://assets/sprites/avatars/%s.png" % pet.get("id", "")
 	# 圆头像 (40 直径), PoC addCircularAvatar — 这里用 TextureRect 方框近似 (Godot 无内置圆裁, 1:1 数据正确)
 	var av = TextureRect.new()
-	av.position = Vector2(6, 6)
-	av.custom_minimum_size = Vector2(40, 40); av.size = Vector2(40, 40)
+	## 头像 40→36 且内缩到 8: 行框(slot-frame)的金属边带 6px, 40px 头像贴着 6 摆
+	## 正好压在上下边带外沿(门禁量到超 3px)。36 + 上下各 8 = 52, 严丝合缝。
+	av.position = Vector2(9, 8)
+	av.custom_minimum_size = Vector2(36, 36); av.size = Vector2(36, 36)
 	av.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	av.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	av.texture = _icon(idx_path)      # 走缓存(同上: 行被 free 会把贴图逐出缓存 → 每次切页签重读盘)

@@ -287,14 +287,22 @@ func _build_lineup(_leaders: Array) -> void:
 		bsb.border_color = Color(lcol.r, lcol.g, lcol.b, 0.45)
 		bsb.set_border_width_all(2); bsb.set_corner_radius_all(12)
 		## ★2026-08-18 上/下战场的分组带换面板框("一块区域")。
-		band.add_theme_stylebox_override("panel", UISkin.nine("panel-frame.png", 20, bsb))
-		band.position = Vector2(30, by - 24); band.size = Vector2(box_span + 20, UBOX_H + 28)
+		band.add_theme_stylebox_override("panel", UISkin.nine("slot-frame.png", 12, bsb))
+		## ★这条带子的标题「⬆ 上战场」两次没放对, 记下来:
+		##   ① 原样 —— panel-frame 边带 13px 厚, 标题写在带顶 24px 里, **整行压在边带上**
+		##   ② 把标题往下挪 —— 被统领卡挡住了(实拍半截藏在卡后面)
+		##   ③ 把带顶抬高 14px —— **压住了上面的「← 返回」「🛒 商店」两个按钮**
+		##   ⇒ 正解是**换一张薄边带的框**(slot-frame 实测 6px), 位置一点不用动。
+		##      框不合适就换框, 别拿版式去迁就框。
+		band.position = Vector2(30, by - 28); band.size = Vector2(box_span + 20, UBOX_H + 32)
 		band.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(band)
 		var ll := Label.new()
 		ll.text = "%s  %s" % ["⬆" if lkey == "top" else "⬇", bf]
 		ll.add_theme_font_size_override("font_size", 16); ll.add_theme_color_override("font_color", lcol)
-		ll.position = Vector2(44, by - 21); ll.size = Vector2(180, 18); add_child(ll)
+		## ★带子从 by-24 起, 而它的金属边带实测 13px 厚 ⇒ 内容区从 by-11 才开始。
+		## 原来这两行字摆在 by-21 / by-20, **整行压在边带上**(门禁量到超出 9~10px)。
+		ll.position = Vector2(46, by - 20); ll.size = Vector2(180, 18); add_child(ll)
 		var minion_n := arr.size() - lead_n
 		var ctext := ""
 		if lead_n > 0:
@@ -305,7 +313,7 @@ func _build_lineup(_leaders: Array) -> void:
 		cnt.text = ctext
 		cnt.add_theme_font_size_override("font_size", 13)
 		cnt.add_theme_color_override("font_color", Color(lcol.r, lcol.g, lcol.b, 0.72))
-		cnt.position = Vector2(30 + box_span + 20 - 200, by - 20); cnt.size = Vector2(186, 16)
+		cnt.position = Vector2(30 + box_span + 20 - 206, by - 19); cnt.size = Vector2(186, 16)
 		cnt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT; add_child(cnt)
 		for i in range(arr.size()):
 			add_child(_dl_unit_box(lkey, i, arr[i], lead_n, Vector2(40 + i * (UBOX_W + UBOX_GAP), by)))
@@ -723,7 +731,9 @@ func _build_bench() -> void:
 		var hint := Label.new()
 		hint.text = "背包是空的 —— 去商店买几件装备"
 		hint.add_theme_font_size_override("font_size", 14); hint.add_theme_color_override("font_color", Color("#5a6675"))
-		hint.position = Vector2(6, 6); hint.size = Vector2(600, 22); hint.mouse_filter = Control.MOUSE_FILTER_IGNORE; content.add_child(hint)
+		## 提示原来摆在 (6,6) —— 那正是第一排格子的位置, 实拍字压在两个空格上。
+		## 挪到格子上方那条空白里(负 y 是相对 content 的顶部留白)。
+		hint.position = Vector2(6, -24); hint.size = Vector2(600, 22); hint.mouse_filter = Control.MOUSE_FILTER_IGNORE; content.add_child(hint)
 
 # ─── 底部选中操作条 (大改: 替代满屏文字说明; 选中装备才显名/效果/卖出/取消) ───
 func _build_op_bar() -> void:

@@ -83,14 +83,23 @@ func _ready() -> void:
 	## ★这条是本文件最重要的一条: fit_content = true 时控件被撑到内容高度,
 	##   `get_content_height() <= size.y` **恒成立** ⇒ "被切了就提示"永远不触发,
 	##   而文字照样被卡片边缘切掉 —— 一个不会红的假检查。我第一版就是这么写的, 截图才看出来。
-	_ok("★★★④ 卡底留了提示带(不许把提示画在正文上)",
-		src.find("var rt_h: float = card_h - 82 - 8 - 18") >= 0)
+	## ★这条原来搜的是源码里那一行算式 `card_h - 82 - 8 - 18` —— **搜字符串的判据**,
+	##   我一改算式(给金属边带让位)它就红, 可版面其实是变好了。
+	##   改成量【这段代码真正保证的事】: 正文高度 = 卡高 − 头部 − 提示带 − 边带,
+	##   也就是**四项都得扣掉**, 一项都不能少。少扣哪项, 提示就会压到正文上。
+	##   (真正的几何验证在 verify_codex_layout 的活场景里, 那边量真实矩形。)
+	var i_fit: int = src.find("func _fit_skill_cards")
+	var fit_body: String = src.substr(i_fit, 900) if i_fit > 0 else ""
+	_ok("★★★④ 卡底留了提示带(正文高度扣掉了头部/提示带/边带三项)",
+		i_fit > 0 and fit_body.find("CARD_BODY_TOP") >= 0
+		and fit_body.find("CARD_HINT_BAND") >= 0 and fit_body.find("CARD_PAD") >= 0,
+		"切出 %d 字符" % fit_body.length())
 	_ok("★★④ 被切断时挂「点开看全部」", src.find('l.text = "点开看全部 ▸"') >= 0)
 	_ok("★★④ 提示要等一帧再判(刚 add_child 时 content_height = 0)",
 		src.find("func _mark_card_clipped") >= 0
 		and src.find("await host.get_tree().process_frame") >= 0)
 	_ok("★④ 真的在卡片渲染里调了它(不是死函数)",
-		src.find("_mark_card_clipped(rt, cx, start_y + card_h - 22.0, card_w)") >= 0)
+		src.find("_mark_card_clipped(rt, cx,") >= 0)
 
 	# ── ⑤ 羁绊: 商店有、图鉴原来一个字都不提 ──────────────────────────────
 	## ★2026-08-15 判据从"搜两个整句"改成【切出 _show_p2eq 这一段再搜三件事】。

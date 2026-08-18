@@ -198,7 +198,10 @@ func _check_skill_cards() -> void:
 	_inst._select(0)
 	await _settle(6)
 	var cards := _skill_cards()
-	_ok("★分母: 量得到技能卡(小龟应有 4 张)", cards.size() >= 4, "%d 张" % cards.size())
+	## ★2026-08-18 改成 3 张: 用户「右下角这些被动普攻技能这样子放你不觉得怪吗」——
+	##   普攻本来和 3 个候选并排成 4 张等宽卡, 读起来像"四选一", 可它是固定自带的。
+	##   现在普攻单独做成一条(和被动条同一层级), 卡片区**只剩真正要选的那 3 个**。
+	_ok("★分母: 量得到技能卡(拆走普攻后应有 3 张)", cards.size() >= 3, "%d 张" % cards.size())
 	if cards.is_empty():
 		return
 	# ── 横向: 最后一张卡的右边缘要顶到板子右侧留白 ──
@@ -235,8 +238,21 @@ func _check_skill_cards() -> void:
 	for h in heights:
 		hmin = minf(hmin, float(h))
 		hmax = maxf(hmax, float(h))
-	_ok("★★② 分母: 卡高确实按各自内容不同(最短 %.0f / 最高 %.0f)" % [hmin, hmax],
-		hmax - hmin >= 20.0, "差 %.0f px" % (hmax - hmin))
+	## ★这条原来靠「普攻卡只有两行字」制造高度差来当分母。普攻拆走之后, 剩下 3 张
+	##   候选卡正文都很长、**一律顶到上限**, 高度差恒为 0 ⇒ 这个分母失效了。
+	##   换一个**不依赖某张卡刚好短**的分母: 直接证明"卡高是跟着正文算的"——
+	##   每张卡的高度必须 ≥ 正文实际内容高 + 头部, 且 ≤ 允许的最大高。
+	##   (原来那条只要所有卡一样高就红, 而"一样高"在新版是正常的。)
+	var fit_bad: Array = []
+	for c2 in cards:
+		var p2: Panel = c2["panel"]
+		var rt2: RichTextLabel = c2["rt"]
+		if rt2 == null:
+			continue
+		if p2.size.y < rt2.size.y + 60.0:
+			fit_bad.append("卡高 %.0f 装不下正文 %.0f" % [p2.size.y, rt2.size.y])
+	_ok("★★② 分母: 每张卡都装得下自己的正文(最短 %.0f / 最高 %.0f)" % [hmin, hmax],
+		fit_bad.is_empty() and hmin >= 100.0, str(fit_bad.slice(0, 3)))
 
 
 ## 技能卡 = detail 里成排的 Panel(同一 y、宽度相同)+ 它下面那个 RichTextLabel。
