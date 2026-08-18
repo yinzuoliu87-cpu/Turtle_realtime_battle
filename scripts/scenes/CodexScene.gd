@@ -410,8 +410,22 @@ func _style_tab(b: Button, active: bool) -> void:
 	sb.set_border_width_all(2)
 	sb.set_corner_radius_all(2)
 	var fg := Color("#1a1a2e") if active else Color("#ffd93d")
+	# 页签换金属签牌: 选中态整块转金(和原来「底金字深」一个意思, 但材质不是纯色块),
+	# 未选中压暗到 0.42 —— 明暗差比"底色换个颜色"更容易一眼看出当前在哪一页。
+	var tab_sb := UISkin.nine_if_big(170.0, 56.0, "chip-frame.png", 7, sb)
+	if tab_sb is StyleBoxTexture:
+		# ★第一版把选中态做砸了: chip-frame 本身是中灰板, 乘 (1.0,0.92,0.62) 只得到
+		#   暗橄榄色 —— 实拍后「龟(28)」和没选中的几乎分不出来, 而原来是【实心金底深字】,
+		#   一眼可辨。**换皮不许把"当前在哪一页"这个信息换没了。**
+		#   modulate 允许 >1(HDR), 所以选中态直接过曝成金, 未选中压到 0.34, 明暗差 ~5 倍。
+		if active:
+			(tab_sb as StyleBoxTexture).modulate_color = Color(2.35, 1.92, 0.86, 1.0)
+			fg = Color("#2b2410")
+		else:
+			(tab_sb as StyleBoxTexture).modulate_color = Color(0.34, 0.36, 0.42, 1.0)
+			fg = Color("#ffd93d")
 	for st in ["normal", "hover", "pressed", "focus", "disabled"]:
-		b.add_theme_stylebox_override(st, sb)
+		b.add_theme_stylebox_override(st, tab_sb)
 	b.add_theme_color_override("font_color", fg)
 	b.add_theme_color_override("font_hover_color", fg)
 	b.add_theme_color_override("font_pressed_color", fg)
@@ -493,7 +507,15 @@ func _make_row(row_h: float, fill_a: float, stroke: Color) -> Panel:
 	sb.set_border_width_all(2)
 	sb.set_corner_radius_all(3)
 	sb.content_margin_left = 8; sb.content_margin_right = 8
-	p.add_theme_stylebox_override("panel", sb)
+	# 图鉴列表这 36 行是全屏最大的一片「网页味」——半透明底 + 四边描边 = CSS border+rgba。
+	# 换成和战斗面板/背包同一张金属九宫格; 选中态(stroke 金)靠 modulate 传递, 不另做图。
+	var row_sb := UISkin.nine_if_big(LIST_W - 16, row_h, "panel-frame.png", 20, sb)
+	if row_sb is StyleBoxTexture:
+		var ts := row_sb as StyleBoxTexture
+		ts.modulate_color = UISkin.tint_of(stroke)
+		ts.content_margin_left = 12; ts.content_margin_right = 12
+		ts.content_margin_top = 2; ts.content_margin_bottom = 2
+	p.add_theme_stylebox_override("panel", row_sb)
 	# 居中行 (左右各 8 留白对应 listW-16)
 	var wrap := MarginContainer.new()
 	wrap.add_theme_constant_override("margin_left", 8)
@@ -532,12 +554,24 @@ func _connect_row(p: Panel, idx: int, stroke: Color) -> void:
 			_row_press_pos = ev.position
 		elif up and ev.position.distance_to(_row_press_pos) < 14.0:
 			_select(idx))
+	# ★hover 高亮必须跟着"这一行现在是什么样式"走。
+	#   原来写死 `var sb: StyleBoxFlat = p.get_theme_stylebox("panel")` —— 行换成九宫格
+	#   贴图后这个带类型的赋值直接得到 **null**, 一 hover 就 `border_color on Nil` 报错,
+	#   而且**只在鼠标真的划过行时才炸**(所以我改完当场截图看不出来, 是全套门禁里
+	#   verify_codex_browse 把它逮住的 —— 它会模拟划过)。
+	#   同一个坑今晚在龟卡 hover 上踩过一次、当时只修了那一处; 这是第二处。
 	p.mouse_entered.connect(func():
-		var sb: StyleBoxFlat = p.get_theme_stylebox("panel")
-		sb.border_color = Color("#ffd93d"))
+		var hb = p.get_theme_stylebox("panel")
+		if hb is StyleBoxTexture:
+			(hb as StyleBoxTexture).modulate_color = Color(1.45, 1.38, 1.18, 1.0)
+		elif hb is StyleBoxFlat:
+			(hb as StyleBoxFlat).border_color = Color("#ffd93d"))
 	p.mouse_exited.connect(func():
-		var sb: StyleBoxFlat = p.get_theme_stylebox("panel")
-		sb.border_color = stroke)
+		var hb2 = p.get_theme_stylebox("panel")
+		if hb2 is StyleBoxTexture:
+			(hb2 as StyleBoxTexture).modulate_color = UISkin.tint_of(stroke)
+		elif hb2 is StyleBoxFlat:
+			(hb2 as StyleBoxFlat).border_color = stroke)
 
 
 func _select(idx: int) -> void:
@@ -725,7 +759,16 @@ func _add_rect(cx: float, cy: float, w: float, h: float, color: String, a: float
 	if stroke != "":
 		sb.border_color = Color(stroke); sb.border_color.a = stroke_a
 		sb.set_border_width_all(int(stroke_w))
-	p.add_theme_stylebox_override("panel", sb)
+	# 这个函数是详情页所有矩形的**唯一漏斗** —— 描边矩形(卡片/图标框)换金属框,
+	# 无描边的(分隔线 h=1、实心色块)保持原样: 它们本来就不是"盒子"。
+	# 尺寸门槛交给 nine_if_big, 26px 那种小格子会自动退回纯色。
+	var box_sb: StyleBox = sb
+	if stroke != "" and stroke_w >= 1.0:
+		box_sb = UISkin.nine_if_big(w, h, "panel-frame.png", 20, sb)
+		if box_sb is StyleBoxTexture:
+			var bc := Color(stroke)
+			(box_sb as StyleBoxTexture).modulate_color = UISkin.tint_of(bc)
+	p.add_theme_stylebox_override("panel", box_sb)
 	detail.add_child(p)
 	return p
 

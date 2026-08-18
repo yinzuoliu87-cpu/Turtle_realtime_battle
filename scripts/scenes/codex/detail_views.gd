@@ -175,7 +175,7 @@ func _show_pet(pet: Dictionary) -> void:
 		# hint: 展开→"收起 ▾"金 / 否则"展开全文 ▸"(与技能卡的"点开看全部 ▸"同一句式)
 		var p_hint: String = "收起 ▾" if host._codex_passive_view else "展开全文 ▸"
 		var p_hint_col: String = "#ffd93d" if host._codex_passive_view else "#7fb5d8"
-		host._add_text(host.DETAIL_W - 30, mid_y, p_hint, 14, p_hint_col, 1.0, 0.5)
+		host._add_text(host.DETAIL_W - 30 - CARD_PAD, mid_y, p_hint, 14, p_hint_col, 1.0, 0.5)
 		# drill-down: 点被动条 → 内联展开/收起完整 passive desc (1:1 PoC showPetDetail view='passive' toggle, 非弹窗)
 		var p_hit = Control.new()
 		p_hit.position = Vector2(20, passive_y)
@@ -206,6 +206,13 @@ func _show_pet(pet: Dictionary) -> void:
 const PASSIVE_BAR_H := 56.0
 ## 卡片底部那条提示带的高度(平时空着, 正文真被切了才画"点开看全部 ▸")。
 const CARD_HINT_BAND := 18.0
+## 卡片内容离卡边的留白。
+##
+## ★原来是散在八处的字面量 8 —— 而卡框换成九宫格金属框之后, 边带**实测 13px 厚**,
+##   于是「3选1候选」「点开看全部 ▸」这些贴边摆的文字全压在边带上(判据 13 量到 5~15px)。
+##   **换框不是换花纹, 是内容区真的变小了。** 提到 14(> 13) 并收进一个常量,
+##   免得下次换框又要满文件找 `cx + 8`。
+const CARD_PAD := 14.0
 ## 卡片正文的起始 y(卡内相对) —— 图标 44 + 名字 + 类型 chip 之后。
 const CARD_BODY_TOP := 82.0
 ## 卡片最矮不低于这个(只有两行字的普攻卡也不该缩成一条)。
@@ -236,8 +243,8 @@ func _mark_card_clipped(rt: RichTextLabel, cx: float, y: float, card_w: float) -
 	l.add_theme_color_override("font_color", Color("#7fb5d8"))
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	l.position = Vector2(cx + 8, y)
-	l.size = Vector2(card_w - 16, 16)
+	l.position = Vector2(cx + CARD_PAD, y - CARD_PAD)
+	l.size = Vector2(card_w - CARD_PAD * 2.0, 16)
 	host.detail.add_child(l)
 
 
@@ -297,7 +304,7 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 			var pic: String = DataRegistry.passive_icons.get(pet.get("passive", {}).get("type", ""), "")
 			if pic.ends_with(".png"):
 				icon_src = pic
-		var name_x: float = cx + 8
+		var name_x: float = cx + CARD_PAD
 		if icon_src != "":
 			# PoC skillIconHtml: 图标带金框 socket (深底+金边1.5px radius8); 原裸图无框 (用户报"很多地方技能都没有框")
 			var sock = Panel.new()
@@ -306,16 +313,22 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 			sock_sb.border_color = Color(1.0, 0.851, 0.4, 0.5)   # PoC border rgba(255,217,102,.5)
 			sock_sb.set_border_width_all(2)
 			sock_sb.set_corner_radius_all(8)
+			# 装备槽换成和背包/战斗面板同一张槽框(44px 够 MIN_FRAME_PX)。
+			# 金色描边的语义(「这是个能放东西的槽」)由贴图本身表达, 不再靠 CSS 边框。
+			var sock_nine := UISkin.nine_if_big(44.0, 44.0, "slot-frame.png", 12, sock_sb)
+			if sock_nine is StyleBoxTexture:
+				(sock_nine as StyleBoxTexture).modulate_color = Color(1.0, 0.94, 0.72, 1.0)
+				sock_sb = sock_nine
 			sock.add_theme_stylebox_override("panel", sock_sb)
-			sock.position = Vector2(cx + 8 + 19 - 22, start_y + 8 + 19 - 22)
+			sock.position = Vector2(cx + CARD_PAD + 19 - 22, start_y + CARD_PAD + 19 - 22)
 			sock.custom_minimum_size = Vector2(44, 44); sock.size = Vector2(44, 44)
 			host.detail.add_child(sock)
-			host._add_image(cx + 8 + 19, start_y + 8 + 19, "res://assets/sprites/%s" % icon_src, 38, 38)
-			name_x = cx + 61
+			host._add_image(cx + CARD_PAD + 19, start_y + CARD_PAD + 19, "res://assets/sprites/%s" % icon_src, 38, 38)
+			name_x = cx + CARD_PAD + 47
 			if enhances or sk.get("iconPlus", false):
-				host._add_text(cx + 8 + 38 - 6, start_y + 8 - 2, "+", 15, "#06d6a0", 0.5, 0.5, true)
+				host._add_text(cx + CARD_PAD + 38 - 6, start_y + CARD_PAD - 2, "+", 15, "#06d6a0", 0.5, 0.5, true)
 		# 名字 16px (锁=灰)
-		var nlbl = host._add_text(name_x, start_y + 18, sk.get("name", "?"), 16, ("#bbbbbb" if is_locked else "#ffd93d"), 0.0, 0.5, true)
+		var nlbl = host._add_text(name_x, start_y + 18 + 4.0, sk.get("name", "?"), 16, ("#bbbbbb" if is_locked else "#ffd93d"), 0.0, 0.5, true)
 		nlbl.custom_minimum_size = Vector2(card_w - (name_x - cx) - 8, 0)
 		# 类型 chip 行 (锁→Lv.N解锁 / 否则 基础/主动CDn/被动)
 		var chip_text = ""
@@ -328,7 +341,7 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 				"passive": chip_text = "被动"; chip_color = "#c77dff"
 				"basic": chip_text = "基础 · 普攻"; chip_color = "#58d3ff"
 				_: chip_text = "3选1候选 · 龟能%d" % host._skill_energy(sk); chip_color = "#06d6a0"
-		host._add_text(cx + 8, start_y + 60, chip_text, 13, chip_color, 0.0, 0.0)
+		host._add_text(cx + CARD_PAD, start_y + 60, chip_text, 13, chip_color, 0.0, 0.0)
 		# 简述 — 富文本 BBCode, 多行 clamp
 		var brief = SkillText.render_bbcode(str(sk.get("brief", "")), ctx, sk, 13)
 		var rt = RichTextLabel.new()
@@ -338,14 +351,14 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 		##   而文字照样被卡片边缘切掉。这就是个不会红的假检查(等一帧也救不了)。
 		rt.fit_content = false
 		rt.scroll_active = false
-		rt.position = Vector2(cx + 8, start_y + CARD_BODY_TOP)
+		rt.position = Vector2(cx + CARD_PAD, start_y + CARD_BODY_TOP)
 		## ★底部再留 18px(2026-08-14, 用户「图鉴描述需要优化」):
 		##   卡片 `clip_contents = true` + 定高 ⇒ 长简述被**静默切断**, 实拍「过肩摔」停在
 		##   "施法期间小龟露体（不可" 就没了, 玩家看不出后面还有内容, 也不知道点卡片能看全。
 		##   这条带子平时是空的, 真被切了才画一行"点开看全部"。
 		var rt_h: float = card_h - 82 - 8 - 18
-		rt.custom_minimum_size = Vector2(card_w - 16, rt_h)
-		rt.size = Vector2(card_w - 16, rt_h)
+		rt.custom_minimum_size = Vector2(card_w - CARD_PAD * 2.0, rt_h)
+		rt.size = Vector2(card_w - CARD_PAD * 2.0, rt_h)
 		rt.clip_contents = true
 		rt.add_theme_font_size_override("normal_font_size", 13)
 		rt.add_theme_color_override("default_color", Color("#aaaaaa"))

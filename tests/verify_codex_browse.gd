@@ -196,8 +196,20 @@ func _ready() -> void:
 		else:
 			want = Color(inst.COST_COLOR.get(int(eq.get("cost", 0)), "#4cc9f0"))
 		want.a = 0.7                        # _add_simple_row 里描边统一压到 0.7
-		var sb: StyleBoxFlat = rows[i].get_theme_stylebox("panel") as StyleBoxFlat
-		var got: Color = sb.border_color
+		# 行换成九宫格金属框之后, "这一行是几费"不再靠 border_color 表达, 而是靠贴图的
+		# modulate。**断言的意思不变**(每行的颜色标识 == 它的费用色), 只是换了载体;
+		# 直接 `as StyleBoxFlat` 会拿到 null 然后 `border_color on Nil` ——
+		# 这条门禁就是这么把我的改动逮住的。
+		var raw = rows[i].get_theme_stylebox("panel")
+		var got: Color
+		if raw is StyleBoxTexture:
+			got = (raw as StyleBoxTexture).modulate_color
+			want = UISkin.tint_of(want)
+		elif raw is StyleBoxFlat:
+			got = (raw as StyleBoxFlat).border_color
+		else:
+			bad.append("%s 的行没有样式" % str(eq.get("name", "?")))
+			continue
 		if not got.is_equal_approx(want):
 			bad.append("%s 期望 %s 实得 %s" % [str(eq.get("name", "?")), want.to_html(), got.to_html()])
 	_ok("⑤ ★逐行框色 == 费用色(%d 行全对)" % rows.size(), bad.is_empty(),
@@ -211,6 +223,20 @@ func _ready() -> void:
 		if not uniq.has(c):
 			uniq.append(c)
 	_ok("⑤ ★1~5 费五档色两两不同", uniq.size() == 5, str(seen))
+	# ★换框新增: modulate 会把颜色往白里提(tint_of 的 k=0.55) —— 提过头的话
+	#   五档费用色在屏幕上就**糊成一片浅色**, 上面两条断言照样全绿而玩家一档也分不出。
+	#   所以这里直接量【提亮之后】的五个颜色两两还差多少。
+	var tinted: Array = []
+	for c2 in [1, 2, 3, 4, 5]:
+		tinted.append(UISkin.tint_of(Color(str(inst.COST_COLOR.get(c2, "#4cc9f0")))))
+	var min_d := 9.0
+	for a3 in range(tinted.size()):
+		for b3 in range(a3 + 1, tinted.size()):
+			var ca: Color = tinted[a3]
+			var cb: Color = tinted[b3]
+			min_d = minf(min_d, maxf(maxf(absf(ca.r - cb.r), absf(ca.g - cb.g)), absf(ca.b - cb.b)))
+	_ok("⑤ ★提亮后五档费用色仍两两可分(最小通道差 ≥ 0.10)", min_d >= 0.10,
+		"最小差 %.3f" % min_d)
 
 	inst.queue_free()
 	await get_tree().process_frame

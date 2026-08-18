@@ -63,11 +63,28 @@ func _make_pet_card(pet: Dictionary) -> Control:
 		sb.border_color = Color(1, 216.0/255, 107.0/255, 0.2)
 	sb.set_border_width_all(2)
 	sb.set_corner_radius_all(host._sp(12))
+	# 28 张龟卡是选龟屏最大的一片「网页味」——半透底 + 2px 金边 + 12 圆角 = CSS 卡片。
+	# 换成和图鉴/背包/战斗面板同一张金属九宫格; 选中/hover 靠 modulate 提亮而不是换边框色
+	#   (StyleBoxTexture 没有 border_color, 下面 hover 那两个闭包必须一起改, 否则悄悄失效)。
+	# ★第一版用了战斗 HUD 的 panel-frame(深海军蓝 + 青内沿 + 四角铆钉), 实拍后否掉:
+	#   ① 选龟屏是**暖色木桌**世界, 冷蓝框读成"木头上贴了块黑板"——我把战斗面板做统一,
+	#      反而把这一屏做割裂了。
+	#   ② 卡片四角本来就挂着东西(左上稀有度角标·右上被动图标·底部名字行),
+	#      铆钉正好跟它们打架: 上面两颗被角标盖住、下面两颗夹着名字, 看着像缺角。
+	#   ⇒ 新生成一张暖铜细边、**无铆钉**的卡框(PixelLab, 512 出图降到 72x72, 边带 7px)。
+	var card_sb: StyleBox = UISkin.nine_if_big(host._grid_card_w, host._sp(116),
+		"teamselect/card-frame.png", 14, sb)
+	var card_tex: StyleBoxTexture = card_sb as StyleBoxTexture
+	var _mod_base := Color(1.28, 1.12, 0.78, 1.0) if selected else Color(0.86, 0.82, 0.76, 1.0)
+	if card_tex != null:
+		card_tex.modulate_color = _mod_base
+		card_tex.content_margin_left = 4; card_tex.content_margin_right = 4
+		card_tex.content_margin_top = 4; card_tex.content_margin_bottom = 4
 	# 背景框铺满卡 (Panel; 让 badge/被动可绝对叠在卡边而非被 padding 推偏)
 	var bg = Panel.new()
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bg.add_theme_stylebox_override("panel", sb)
+	bg.add_theme_stylebox_override("panel", card_sb)
 	card.add_child(bg)
 	# ★手机端滑动(用户2026-07-22「选龟页面也是」):
 	#   Control 默认 MOUSE_FILTER_STOP → GUI 事件不冒泡到外层 ScrollContainer, 龟池在触屏上滑不动。
@@ -94,7 +111,9 @@ func _make_pet_card(pet: Dictionary) -> Control:
 	pad_wrap.add_theme_constant_override("margin_left", host._sp(8))
 	pad_wrap.add_theme_constant_override("margin_right", host._sp(8))
 	pad_wrap.add_theme_constant_override("margin_top", host._sp(10))
-	pad_wrap.add_theme_constant_override("margin_bottom", host._sp(8))
+	# ★底边距从 8 提到 14: 卡框的金属边带实测 7px 厚, 而原来名字行离底只有 _sp(8)≈6px
+	#   ⇒ 「Lv.1 名字」正压在边带上(判据 13 量到超出 7px)。**换框不只是换花纹, 内容区变小了。**
+	pad_wrap.add_theme_constant_override("margin_bottom", host._sp(14))
 	pad_wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(pad_wrap)
 	var vb = VBoxContainer.new()
@@ -176,10 +195,14 @@ func _make_pet_card(pet: Dictionary) -> Control:
 		if card.get_meta("hovered", false): return
 		card.set_meta("hovered", true)
 		card.set_meta("rest_y", card.position.y)
-		sb.border_color = Color("#ffd86b")
-		sb.shadow_color = Color(1.0, 216.0 / 255.0, 107.0 / 255.0, 0.18)
-		sb.shadow_size = host._sp(6)
-		sb.shadow_offset = Vector2(0, host._sp(4))
+		if card_tex != null:
+			card_tex.modulate_color = Color(minf(_mod_base.r * 1.35, 1.0),
+				minf(_mod_base.g * 1.35, 1.0), minf(_mod_base.b * 1.35, 1.0), 1.0)
+		else:
+			sb.border_color = Color("#ffd86b")
+			sb.shadow_color = Color(1.0, 216.0 / 255.0, 107.0 / 255.0, 0.18)
+			sb.shadow_size = host._sp(6)
+			sb.shadow_offset = Vector2(0, host._sp(4))
 		var t = av.get_meta("idle_tw", null)
 		if t is Tween and (t as Tween).is_valid(): (t as Tween).play()
 		var tw = card.create_tween()
@@ -188,8 +211,11 @@ func _make_pet_card(pet: Dictionary) -> Control:
 		if not is_instance_valid(card): return
 		if not card.get_meta("hovered", false): return
 		card.set_meta("hovered", false)
-		sb.border_color = base_border
-		sb.shadow_size = 0
+		if card_tex != null:
+			card_tex.modulate_color = _mod_base
+		else:
+			sb.border_color = base_border
+			sb.shadow_size = 0
 		if not selected:
 			var t = av.get_meta("idle_tw", null)
 			if t is Tween and (t as Tween).is_valid():

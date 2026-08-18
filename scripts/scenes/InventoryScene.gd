@@ -13,6 +13,10 @@ const COIN_TEX = preload("res://assets/sprites/menu/ic-deepsea.png")
 const W := 1280.0
 const H := 720.0
 const SLOT := 96.0
+## 格子里的文字离格边的留白。
+## ★槽框贴图的金属边带**实测 6px 厚**(不是配置边距 12 —— 那是切九宫格的位置, 不是画了多宽)。
+##   原来装备名摆在 x=2、底边贴着格底 ⇒ 名字压在边带上(判据 13 量到 4px)。
+const SLOT_PAD := 7.0
 ## ── 本屏的几条布局基准线(2026-08-15 重排, 用户「利用这个空间可以把右边的排版过来」)──
 ##   原来顶部有一整行「🎒 背包 / 出战配置」的牌子 —— 玩家是自己点进来的, 不需要被告知
 ##   自己在哪一页 ⇒ 删掉, 整屏内容上提, 右侧那条从 y≈180 空到底的死列由羁绊区补上。
@@ -1012,7 +1016,7 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	nm.text = str(edef.get("name", eid))
 	nm.add_theme_font_size_override("font_size", 12)
 	nm.add_theme_color_override("font_color", Color("#e8f2ff"))
-	nm.position = Vector2(2, SLOT - 36); nm.size = Vector2(SLOT - 4, 32)
+	nm.position = Vector2(SLOT_PAD, SLOT - 36 - 3.0); nm.size = Vector2(SLOT - SLOT_PAD * 2.0, 32)
 	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(nm)
@@ -1079,7 +1083,7 @@ func _item_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	nm.text = "临时等级器"
 	nm.add_theme_font_size_override("font_size", 12)
 	nm.add_theme_color_override("font_color", Color("#e6d8ff"))
-	nm.position = Vector2(2, SLOT - 36); nm.size = Vector2(SLOT - 4, 32)
+	nm.position = Vector2(SLOT_PAD, SLOT - 36 - 3.0); nm.size = Vector2(SLOT - SLOT_PAD * 2.0, 32)
 	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(nm)
@@ -1142,7 +1146,7 @@ func _candy_jar_cell(it: Dictionary, pos: Vector2) -> Control:
 	jnm.text = "糖果罐 %d档" % GameState.candy_jar_tier()
 	jnm.add_theme_font_size_override("font_size", 12)
 	jnm.add_theme_color_override("font_color", Color("#e79bd6"))
-	jnm.position = Vector2(2, SLOT - 36); jnm.size = Vector2(SLOT - 4, 32)
+	jnm.position = Vector2(SLOT_PAD, SLOT - 36 - 3.0); jnm.size = Vector2(SLOT - SLOT_PAD * 2.0, 32)
 	jnm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	jnm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	jnm.mouse_filter = Control.MOUSE_FILTER_IGNORE

@@ -31,10 +31,30 @@ extends RefCounted
 
 const TEX_DIR := "res://assets/sprites/battlehud/"
 
+## 【九宫格的最小可用尺寸】小于它就**不该**套框, 保持纯色块。
+##
+## ★由来(2026-08-18 实测退回): 背包卡片上 18 个迷你装备格只有 26px,
+##   套上原生 57x57 的槽框后 —— 四角铆钉吃掉大半格子、图标没地方放,
+##   更要命的是**费用色从「整块实心」退化成「一圈细边」, 而那块实心色本身就是信息**。
+##   实拍对比后退回。
+## ⇒ 这条教训不该只活在我脑子里, 焊成常量: 调用方用 `nine_if_big()` 自动降级。
+##   40px 的来历: 槽框边距 12x2=24 + 中间至少留 16px 给内容。
+const MIN_FRAME_PX := 40.0
+
+
+## 尺寸够大才套九宫格, 否则原样退回 `fallback`(纯色块)。
+static func nine_if_big(w: float, h: float, tex_name: String, margin: int, fallback: StyleBox) -> StyleBox:
+	if w < MIN_FRAME_PX or h < MIN_FRAME_PX:
+		return fallback
+	return nine(tex_name, margin, fallback)
+
+
 
 ## 九宫格 StyleBox。贴图不在就原样返回 `fallback`(调用方给的 StyleBoxFlat)。
 static func nine(tex_name: String, margin: int, fallback: StyleBox) -> StyleBox:
-	var p := TEX_DIR + tex_name
+	# 名字里带 "/" 就当成 assets/sprites/ 下的相对路径(战斗 HUD 那套冷色框不适合所有屏,
+	# 木桌世界的几屏要用自己的暖色框 —— 见 teamselect/card-frame.png 的由来)。
+	var p := ("res://assets/sprites/" + tex_name) if "/" in tex_name else (TEX_DIR + tex_name)
 	if not ResourceLoader.exists(p):
 		return fallback
 	var st := StyleBoxTexture.new()
