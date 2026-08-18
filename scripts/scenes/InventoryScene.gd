@@ -548,7 +548,18 @@ func _slot_panel(pos: Vector2, bg: Color, border: Color) -> Panel:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = bg; sb.border_color = border
 	sb.set_border_width_all(2); sb.set_corner_radius_all(8)
-	box.add_theme_stylebox_override("panel", sb)
+	## ★★2026-08-17 换成与战斗面板同一张九宫格槽框。
+	##   由来: 把判据推到 7 个屏幕实测 —— 背包 44 个网页盒、54 个圆角盒、**零张九宫格**,
+	##   而战斗面板是全游戏唯一一个金属框界面 ⇒ 从战斗切回背包像两个游戏。
+	##   这是我通宵那轮制造的新不一致, 现在收口。
+	##   ★状态色走 `modulate_color`(黄=选中/紫=道具), **不是各做一张图** ——
+	##     否则"按状态配色"这套信息会被贴图吃掉(战斗面板状态签那次的教训)。
+	##   ★空槽压暗: 战斗面板里"空槽画灰框"曾是**死代码**(兜底 StyleBoxFlat 永远不被用),
+	##     实拍空满槽一模一样。这里一次做对。
+	##   ★贴图缺失时原样退回上面这份 StyleBoxFlat, 不崩不空白。
+	var _empty: bool = bg.a < 0.30
+	box.add_theme_stylebox_override("panel",
+		UISkin.slot(sb, UISkin.tint_of(border), _empty))
 	box.position = pos
 	box.size = Vector2(SLOT, SLOT)
 	return box

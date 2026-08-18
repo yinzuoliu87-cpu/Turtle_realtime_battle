@@ -1284,13 +1284,11 @@ func _info_more_row(parent: VBoxContainer, title: String, body: String,
 	return row
 
 
+## ★2026-08-17 改成**委托**给 `UISkin.nine` —— 别的屏也要用这套九宫格,
+##   两份实现迟早漂(memory: 手抄的副本必然落后)。这里只留一层薄包装,
+##   调用方(本文件里 5 处)一个字不用改。
 func _nine_box(tex_path: String, margin: int, fallback: StyleBox) -> StyleBox:
-	if not ResourceLoader.exists(tex_path):
-		return fallback
-	var st := StyleBoxTexture.new()
-	st.texture = load(tex_path)
-	st.set_texture_margin_all(margin)
-	return st
+	return UISkin.nine(tex_path.get_file(), margin, fallback)
 
 
 const HUD_TEX := "res://assets/sprites/battlehud/"
