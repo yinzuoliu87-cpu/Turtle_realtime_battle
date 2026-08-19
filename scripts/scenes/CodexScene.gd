@@ -112,7 +112,10 @@ func _add_back_button() -> void:
 	back.add_theme_font_size_override("font_size", 26)
 	var _m := SafeArea.margins(Vector2(get_viewport().get_visible_rect().size), 18.0)
 	back.position = Vector2(maxf(20.0, _m.x), _m.y)   # 手机刘海/圆角: 左上角留安全区(桌面仍是 20/18)
-	back.custom_minimum_size = Vector2(44.0, 44.0)
+	## ★这里原来写 44 —— 是把 iOS 的「44pt」当成了 44【像素】。
+	##   视口 720 高 ↔ 手机 390pt ⇒ 1pt = 1.846px ⇒ 44pt = **81px**, 44px 只有 24pt。
+	##   角落有余量, 直接做大(不搞隐形点击层 —— 那会在 PC 上变成"点空白也触发")。
+	back.custom_minimum_size = Vector2(81.0, 81.0)
 	back.focus_mode = Control.FOCUS_NONE
 	back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
 	## ★2026-08-18 换金属签牌皮(实测它还是 Godot 默认皮)。
@@ -123,8 +126,11 @@ func _add_back_button() -> void:
 		var dbg := Button.new()
 		dbg.text = "🛠"
 		dbg.add_theme_font_size_override("font_size", 22)
-		dbg.position = Vector2(float(get_viewport().get_visible_rect().size.x) - 64.0 - SafeArea.insets(Vector2(get_viewport().get_visible_rect().size)).z, 18.0)
-		dbg.custom_minimum_size = Vector2(44.0, 44.0)
+		## ★位置要跟着宽度走: 原来写死 -64 是按 44 宽算的, 按钮放大到 81 之后
+		##   右边缘就顶出屏幕 17px(verify_ui_layout 实测)。改成 -(宽+右安全区+18)。
+		dbg.position = Vector2(float(get_viewport().get_visible_rect().size.x) - 81.0 - 18.0
+			- SafeArea.insets(Vector2(get_viewport().get_visible_rect().size)).z, 18.0)
+		dbg.custom_minimum_size = Vector2(81.0, 81.0)   # 同上: 44px 只有 24pt
 		dbg.focus_mode = Control.FOCUS_NONE
 		dbg.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		dbg.pressed.connect(_toggle_debug_overlay)
