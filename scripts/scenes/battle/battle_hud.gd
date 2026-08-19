@@ -803,8 +803,18 @@ func _pk_refresh() -> void:
 	_pk_lab_l2.text = _pk_num(l.x)
 	_pk_lab_r2.text = _pk_num(r.x)
 	# 右侧标签宽度随内容变 → 每次刷新后重新贴右端(内缩一个斜切量)
+	## ★★用 `get_combined_minimum_size().x` 而不是 `size.x`, 并且【显式把 size 写回去】。
+	##   由来(2026-08-19 实拍量出来的): 这块 PanelContainer 不在任何 Container 里,
+	##   它的 size 由 offset 决定 —— 而 `position = ...` 每次都把当前 size 重新写进 offset,
+	##   于是 **size 只涨不缩**, 永远停在这一路里出现过的最宽内容上。
+	##   实测(1560×720): 内容 "644"+"22%" 只要 55px, 而标签仍是 70px(开局 "2,405"+"100%" 撑的),
+	##   HBox 被撑到 66 且内容靠左 ⇒ 右侧读数的右沿停在 1221, 而它该贴到 1238 —— **差 17px**,
+	##   左边那个是贴死在 322 的, 于是左右两个读数一眼看去不对称(左紧贴条头、右边空一块)。
+	##   ★不能靠"右对齐 HBox"糊过去: 那样标签框仍然过宽, 掉数字位时读数会左右跳。
 	if _pk_tag_r != null and is_instance_valid(_pk_tag_r):
-		_pk_tag_r.position.x = _pk_w_cur - _pk_tag_r.size.x - 6.0 - PK_SLANT
+		var _tw: float = _pk_tag_r.get_combined_minimum_size().x
+		_pk_tag_r.size.x = _tw
+		_pk_tag_r.position.x = _pk_w_cur - _tw - 6.0 - PK_SLANT
 	# ── 副条: 龟蛋 ──
 	var el := _pk_egg_sum("left")
 	var er := _pk_egg_sum("right")
@@ -1260,6 +1270,20 @@ func _show_banner(won: bool) -> void:
 			scroll.custom_minimum_size = Vector2(0,
 				minf(scroll_max, maxf(120.0, card.get_combined_minimum_size().y)))
 	_fit_scroll.call_deferred()
+	## ★★算【一次】不够 —— 数据表会在下一帧自己缩(2026-08-19 实拍量出来的)。
+	##   `_build_stats_panel` 里那个内层 ScrollContainer 建出来时 custom_minimum_size.y
+	##   是个**与内容无关的常数** `clampf(vp.y-440,140,400)`(720 视口 = 280);
+	##   真正按内容收到 147 的是 `_stats_fit_body`, 而它开头 `await process_frame`
+	##   ⇒ **比 call_deferred 晚一帧**。于是这里量到的卡高含着 280-147=133 的虚高,
+	##   而 custom_minimum_size 一旦定死就不会自己回落 ⇒ 数据表和按钮之间空出 133px。
+	##   实测(1560×720·5 行名单): 滚动区 472 / 内容 339 ⇒ 差 **133**, 与上式逐位对得上。
+	##   ⇒ 改成【事件驱动】: 卡片最小高一变就重算, 不猜"等几帧/等几毫秒"。
+	##   ★不会自激: `_fit_scroll` 改的是 scroll 的最小高, 而 card 是 scroll 的**子节点**,
+	##     父的最小高变了不会回头改子的最小高(实测卡片 339 待在 472 的滚动区里没被拉伸)。
+	##   ★不能改成 `await` 让本函数变协程 —— 门禁(verify_result_reachable)是
+	##     "调 _show_banner 然后立刻量矩形", 变协程会让它量到一张还没建出来的卡。
+	if not card.minimum_size_changed.is_connected(_fit_scroll):
+		card.minimum_size_changed.connect(_fit_scroll)
 
 	# ── ① 结果标题
 	var big = Label.new()
@@ -1828,6 +1852,9 @@ func _make_team_frame(u: Dictionary) -> Control:
 	var hp_fill = ColorRect.new()
 	hp_fill.color = Color("#4ade80")
 	hp_fill.position = Vector2(0, 0)
+	## ★这是【建框那一帧的占位宽】—— 槽还没排版, 只知道最小宽 80。真实宽度(实测 90)
+	##   由 info_panel._update_team_panels 每帧按槽的 size.x 重算, 见那边的注释。
+	##   ★别在这里"顺手改成 90": 框宽随装备格数变(3 格 152 / 4 格 200), 写死哪个都是错的。
 	hp_fill.size = Vector2(battle._PANEL_HP_W, 5)
 	hp_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hp_bg.add_child(hp_fill)
@@ -2172,10 +2199,11 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	##   说的"手抄一次永远落后一次"。现在两处只剩一个出处。
 	## ⚠ 用户 2026-07-21 定过「属性全都要显示啊」: 这不是条件隐藏, 是固定入口 + 条数写在标题上。
 	var minor: Array = battle._info_sys._info_stat_rows_minor(u)
-	var mtxt := ""
-	for r2 in minor:
-		mtxt += str(r2[1]) + char(10)
-	battle._info_sys._info_more_row(vb, "更多属性（%d 项）" % minor.size(), mtxt, "more_stats", u)
+	## ★末尾那个参数是【取数 Callable】—— 次要属性里有活的(移速会被减速/加速改),
+	##   传字符串等于把开面板那一刻的数钉死。见 info_panel._info_more_row 的注释。
+	battle._info_sys._info_more_row(vb, "更多属性（%d 项）" % minor.size(),
+		battle._info_sys._more_stats_text(u), "more_stats", u,
+		func() -> String: return battle._info_sys._more_stats_text(u))
 	battle._info_stat_grid = gmain
 
 	battle._info_sys._info_equip_slots(battle._info_equip_box, u)

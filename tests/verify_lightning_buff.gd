@@ -107,7 +107,7 @@ func _ready() -> void:
 	_chk("⑧ 雷暴文案 = 单道 %.2f×ATK ×%d" % [WANT_BARRAGE_TOTAL / WANT_BARRAGE_BOLTS, WANT_BARRAGE_BOLTS],
 		pj.contains("{M:%.2f*ATK*%d}" % [WANT_BARRAGE_TOTAL / WANT_BARRAGE_BOLTS, WANT_BARRAGE_BOLTS]))
 	_chk("⑧ 雷盾文案 = %.1f×ATK" % WANT_COUNTER, pj.contains("{M:%.1f*ATK}" % WANT_COUNTER))
-	_chk("⑧ 涌动文案 = %d 秒" % int(WANT_SURGE_SEC), pj.contains("接下来%d秒内被动电击" % int(WANT_SURGE_SEC)))
+	_chk("⑧ 涌动文案 = %d 秒" % int(WANT_SURGE_SEC), _has_txt(pj, "接下来%d秒内被动电击" % int(WANT_SURGE_SEC)))
 
 	# ── ⑨ 换算成人话, 打印出来给人看(数字不打出来就没法复核) ──
 	var A: float = float(lg["atk"])
@@ -151,3 +151,11 @@ func _done() -> void:
 	else:
 		print("FAIL x%d" % _fail)
 		get_tree().quit(1)
+
+
+## 文案子串比对: 先把**空格全去掉**再比。
+## ★2026-08-19 排版统一(数字与汉字之间补空格)一次打断了三条这样的断言。
+##   它们真正要守的是"这个数值有没有出现在文案里", **不是"空格打在哪"** ——
+##   拿排版当判据, 每次改一次文案排版就要改一遍测试, 而且红了还看不出是真是假。
+func _has_txt(hay: String, needle: String) -> bool:
+	return hay.replace(" ", "").replace("　", "").contains(needle.replace(" ", ""))

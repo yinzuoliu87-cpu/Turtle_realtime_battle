@@ -165,8 +165,8 @@ func _text() -> void:
 	##   纯赘词焊进了断言, 于是 2026-08-17 文案精简(删掉 28 处"相当于")时当场判红,
 	##   而数字一个都没动。断言该守的是 1.5% 这个数, 不是我当初怎么造句。
 	_chk("② 文案·糖衣炮弹护盾 1.5%",
-		barrage.contains("1.5% 最大生命值的护盾")
-		and barrage.contains("范围内友军获得糖果龟1.5%最大生命值的护盾"))
+		_has_txt(barrage, "1.5%最大生命值的护盾")
+		and _has_txt(barrage, "范围内友军获得糖果龟1.5%最大生命值的护盾"))
 	_chk("② 文案·糖衣炮弹护盾旧值 2% 已消失（伤害那处的 2% 不算）",
 		not barrage.contains("2% 最大生命值的护盾")
 		and not barrage.contains("范围内友军获得糖果龟2%最大生命值的护盾"))
@@ -221,3 +221,11 @@ func _chk(name: String, ok: bool) -> void:
 	print("  [%s] %s" % ["PASS" if ok else "FAIL", name])
 	if not ok:
 		_fail += 1
+
+
+## 文案子串比对: 先把**空格全去掉**再比。
+## ★2026-08-19 排版统一(数字与汉字之间补空格)一次打断了三条这样的断言。
+##   它们真正要守的是"这个数值有没有出现在文案里", **不是"空格打在哪"** ——
+##   拿排版当判据, 每次改一次文案排版就要改一遍测试, 而且红了还看不出是真是假。
+func _has_txt(hay: String, needle: String) -> bool:
+	return hay.replace(" ", "").replace("　", "").contains(needle.replace(" ", ""))

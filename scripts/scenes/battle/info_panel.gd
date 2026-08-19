@@ -64,7 +64,18 @@ func _update_team_panels() -> void:
 		if fill != null and is_instance_valid(fill):
 			var maxhp: float = maxf(1.0, float(u.get("maxHp", 1.0)))
 			var ratio: float = clampf(float(u.get("hp", 0.0)) / maxhp, 0.0, 1.0)
-			fill.size.x = battle._PANEL_HP_W * ratio
+			## ★★满血也填不满(2026-08-19 实拍量出来的)。
+			##   `_PANEL_HP_W`(80) 只是槽底 ColorRect 的 **custom_minimum_size**;
+			##   槽在 VBox 里是 SIZE_FILL, 真实宽度由头像框宽度反推 —— 实测 **90px**
+			##   (框 152 − 内边距 12 − 头像 44 − 间距 6)。拿常量 80 当分母去画填充,
+			##   满血的龟画出来只有 80/90 = **88.9%**, 右端永远空 10px。
+			##   ⇒ 分母必须是槽【当前的真实宽度】; 常量只当兜底(建框那一帧槽还没排版)。
+			##   ★装备格数一变框就变宽(3 格 152 / 4 格 200), 所以这个数不能写死。
+			var slot_w: float = battle._PANEL_HP_W
+			var slot = fill.get_parent()
+			if slot is Control and (slot as Control).size.x > 1.0:
+				slot_w = (slot as Control).size.x
+			fill.size.x = slot_w * ratio
 			# 血色随比例 (绿→黄→红)
 			if ratio > 0.5:
 				fill.color = Color("#4ade80")
@@ -160,6 +171,22 @@ func _refresh_info_panel() -> void:
 		var txt = str((rows[i] as Array)[1])
 		if lb.text != txt:
 			lb.text = txt
+	## ★「更多属性」浮层【开着的时候】也要跟着走(2026-08-19)。
+	##   点开时现算只解了"点开那一刻是对的"; 浮层是常驻可见的, 开着不动就还是一张快照
+	##   —— 而移速正是最容易在开着面板时变的那一项(减速/加速一直在跑)。
+	##   ★只在 key=="more_stats" 时刷: 技能/装备描述有自己的模板重算路径(见下面几行),
+	##     无差别覆盖会把它们的正文冲掉。
+	if battle._info_panel != null and is_instance_valid(battle._info_panel):
+		var _ov = battle._info_panel.get_node_or_null("DetailOverlay")
+		if _ov != null and _ov.visible and str(_ov.get_meta("key", "")) == "more_stats":
+			var _bd = _ov.get_node_or_null("Box/Body")
+			if _bd != null:
+				for _ch in _bd.get_children():
+					if _ch is RichTextLabel:
+						var _mt := _more_stats_text(ud)
+						if (_ch as RichTextLabel).text != _mt:
+							(_ch as RichTextLabel).text = _mt
+						break
 	# ★技能/被动描述里的伤害数值也要跟着属性变(用户 2026-07-21:「下面的技能伤害数值」)。
 	#   模板里的 {N:0.7*ATK} 按【当前】ATK 重算 —— 吃了增伤/破防 buff 后数字会跟着动。
 	if battle._info_passive_lbl != null and is_instance_valid(battle._info_passive_lbl) and battle._info_passive_tpl != "":
@@ -1235,7 +1262,7 @@ func _info_skill_bar(vb: VBoxContainer, u: Dictionary) -> void:
 ## ★高度固定(约 32px)与内容多少无关 —— 这正是把它做成入口条的理由:
 ##   宝箱战利品原来铺 0~5 行、每行 46px, 是面板里唯一【高度无界】的一段。
 func _info_more_row(parent: VBoxContainer, title: String, body: String,
-		key: String, u: Dictionary) -> PanelContainer:
+		key: String, u: Dictionary, body_fn: Callable = Callable()) -> PanelContainer:
 	var row := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color("#121b28")
@@ -1279,10 +1306,27 @@ func _info_more_row(parent: VBoxContainer, title: String, body: String,
 	a.add_theme_color_override("font_color", Color("#5f7186"))
 	a.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hb.add_child(a)
+	## ★★`body` 是【建面板那一刻】的快照 —— 对"更多属性"这种活数值是错的(2026-08-19)。
+	##   用户 2026-07-21 点名要实时的三样是「血条, 移速攻速」: 血条和攻速在主属性 8 项里,
+	##   由 `_refresh_info_panel` 每帧对位改文字 ✅; 而 **移速在次要 11 项里**,
+	##   次要那 11 项被拼成一个字符串塞进这个 lambda ⇒ 面板开着不动、点开也还是开面板那一刻的数。
+	##   实测(verify_panel_stats_onscreen C 组): 开面板时移速 100, 之后减速 50%,
+	##   面板上仍印「移速 100」—— 把本次修改回退掉那两条断言当场变红, 反向验证过。
+	##   ⇒ 给一个【取数用的 Callable】, 点开时现算; 不传就还是老行为(战利品那条本来就是静态的)。
 	row.gui_input.connect(func(ev: InputEvent) -> void:
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			_show_detail(battle._info_panel, key, title, body, {}, u))
+			_show_detail(battle._info_panel, key, title,
+				(str(body_fn.call()) if body_fn.is_valid() else body), {}, u))
 	return row
+
+
+## 次要 11 项属性的整段文字。★单一出处 —— 建入口条、点开、以及浮层开着时每帧刷新
+##   三处都调它, 不许任何一处自己再拼一遍(手抄的副本必然落后)。
+func _more_stats_text(u: Dictionary) -> String:
+	var out := ""
+	for r in _info_stat_rows_minor(u):
+		out += str((r as Array)[1]) + char(10)
+	return out
 
 
 ## ★2026-08-17 改成**委托**给 `UISkin.nine` —— 别的屏也要用这套九宫格,

@@ -87,10 +87,28 @@ static func slot(fallback: StyleBox, tint: Color = Color.WHITE, dim: bool = fals
 ##    那条判据先查 `has_theme_stylebox_override`, 而默认主题不是 override。)
 ## ★三态靠 modulate 区分, 一张中性签牌管三态; `tint` 给按钮的语义色。
 static func button(b: Button, tint: Color = Color.WHITE, margin: int = 7) -> void:
-	var tex := TEX_DIR + "chip-frame.png"
+	## ★★按尺寸挑框(2026-08-19): 原来一律用 `chip-frame`(源图 **48x24**)。
+	##   小签牌上没问题, 但返回键这类 120x81 的大按钮把它拉了 2.5~3.4 倍 ——
+	##   **金属细节全被拉平, 看起来就是一块灰板**(实拍图鉴/排行榜/背包的返回键, 三个一模一样)。
+	##   而 `menu/btn-frame.png` 源图 **893x212**, 本来就是给这个尺寸的按钮画的。
+	##   判据用**按钮的真实尺寸**, 不是名字: 短边 ≥56 且面积 ≥5000 就换大框。
+	##   ⚠ 要读 `b.size`, 而 `custom_minimum_size` 常常才是调用方设的值 —— 两个取大。
+	var w: float = maxf(b.size.x, b.custom_minimum_size.x)
+	var h: float = maxf(b.size.y, b.custom_minimum_size.y)
+	var big: bool = minf(w, h) >= 56.0 and w * h >= 5000.0
+	var tex := ("res://assets/sprites/menu/frame-rect.png" if big else TEX_DIR + "chip-frame.png")
+	if not ResourceLoader.exists(tex):
+		tex = TEX_DIR + "chip-frame.png"
 	if not ResourceLoader.exists(tex):
 		return                      # 贴图不在就保持调用方原样, 不动它
 	var t: Texture2D = load(tex)
+	## ★挑 `frame-rect` 而不是 `btn-frame`, 是**量出来的**, 不是挑好看的:
+	##   btn-frame 666→893 宽里端花占 **101px**, 而返回键只有 120 宽 —— 左右各 101 根本放不下,
+	##   九宫格会把两端花纹叠在一起(实拍是一坨糊的金色方块, 比原来那块灰板还糟)。
+	##   frame-rect 666x161 的边带是 **27x28**: 27+27=54 < 120、28+28=56 < 81, 装得下。
+	##   ⇒ **贴图有它的最小可用尺寸**; 判据是"边带×2 装不装得进按钮", 不是"哪张更华丽"。
+	if big:
+		margin = 27
 	for st in [["normal", 1.0], ["hover", 1.22], ["pressed", 0.74],
 			["focus", 1.0], ["disabled", 0.55]]:
 		var sb := StyleBoxTexture.new()

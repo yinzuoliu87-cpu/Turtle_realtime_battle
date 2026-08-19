@@ -6,6 +6,28 @@ extends Control
 
 const W := 1280
 const H := 720
+
+## ═══ 2026-08-19 实拍复看(真渲染截图, 搜索态/VS 态各连拍多个时刻)修掉的五件事 ═══
+## ① 「匹」字被画成黄色笑脸 emoji —— 见 `_bold_font()` 里的探针记录。
+## ② VS 那一屏**整体偏上**: 标题 110、卡片 230..510, 屏幕下方**空了 210px** 而上方只空 110。
+## ③ 两张资料卡是"深色圆角矩形 + 3px 细边", 头像**一张有实心底、一张没有**
+##    (avatars 尺寸 95×86 ~ 275×222 不等, 不透明面积 46%~93%) ⇒ 左右两边看着不是一套东西。
+##    ★不动美术: 给两边套**同一个 portrait-frame**, 差异就从"一边有盒子"变成"画风不同的两张肖像"。
+## ④ 对手 ID 直接把后端内部串印在脸上: 实拍「ID autoplay-b2_COH7」, 而自己那张是「#195060」。
+## ⑤ 取消键 44px(=24pt)低于 44pt 触控下限, 且挂在**视口坐标**上 ——
+##    别的屏(图鉴/背包/排行榜)的返回键都在 1280 设计框里, 只有它贴着真实屏幕边。
+const FOUND_Y := 152.0    # ②
+const CARD_Y := 236.0
+const CARD_W := 370.0
+const CARD_H := 316.0
+## 头像框边长。卡内竖向账: 18 上留白 + AV_BOX + 12 + 名 36 + 18 + ID 24 = 18+200+78 = 296,
+## 而 panel-frame 实测边带 13px ⇒ 内容底 296 < 316-13 = 303。**这条账要算, 不是眼估**。
+## (第一版 168: 370 宽的卡里左右各空 101px, 实拍看就是"一张小图钉在大板子中间"。)
+const AV_BOX := 200.0
+const RADAR_C := Vector2(640.0, 350.0)
+## 雷达环最大半径: 圆心 y=350, 取 330 ⇒ 上沿 y=20 / 下沿 680, 不贴屏幕边。
+## (原来是圆心 340 + 半径 340 = 上沿正好 y=0, 环压在屏幕顶边上。)
+const RADAR_R := 330.0
 const FAKE_NAMES := [
 	"深海霸主", "龟界传说", "咸鱼翻身", "老司机带带我", "萌新龟龟", "海底捞月", "龟速前进", "一击三连",
 	"佛系养龟", "头号玩家", "水深危险", "乌龟跑得快", "退役龟皇", "龟龟不下班", "南极来的", "稳健型选手",
@@ -17,6 +39,7 @@ var _font_cache: FontVariation = null
 var _dots_lbl: Label = null
 var _dots_tween: Tween = null
 var _cancelled := false
+var _cancel_btn: Button = null   # 跟着设计框走(见 _center)
 var _searching := false   # 雷达环循环的闸: _build_vs 里置 false 立即断. 原先靠 is_instance_valid(_dots_lbl) 判断,
                           #   但 queue_free 是延迟的 → 换幕后还会多播一圈残留弧.
 
@@ -137,6 +160,11 @@ class _RingFx extends Control:
 func _center() -> void:
 	if content_root != null:
 		content_root.position = ((get_viewport_rect().size - Vector2(W, H)) / 2.0).round()
+	## 取消键跟着设计框一起挪 —— 它虽然挂在 self 上(见下), 位置得和框里的内容同一套坐标,
+	## 否则 21:9 上它离屏幕边 28px、而别的东西整体内缩 200px, 两边不是一个体系。
+	if is_instance_valid(_cancel_btn) and content_root != null:
+		var m: Vector4 = SafeArea.margins(Vector2(get_viewport_rect().size), 18.0)
+		_cancel_btn.position = content_root.position + Vector2(maxf(20.0, m.x), maxf(18.0, m.y))
 
 
 ## 取消匹配键 (左上角): 加到 self 而非 content_root → 不被 _build_searching/_build_vs 的清屏移除.
@@ -147,16 +175,16 @@ func _build_cancel_btn() -> void:
 	btn.add_theme_font_size_override("font_size", 20)
 	btn.add_theme_color_override("font_color", Color("#cfe0ee"))
 	btn.add_theme_color_override("font_hover_color", Color("#ffffff"))
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color("#16283a"); sb.set_corner_radius_all(10); sb.set_border_width_all(2); sb.border_color = Color("#2d4658")
-	sb.content_margin_left = 16; sb.content_margin_right = 16; sb.content_margin_top = 8; sb.content_margin_bottom = 8
-	btn.add_theme_stylebox_override("normal", sb)
-	var sbh: StyleBoxFlat = sb.duplicate(); sbh.bg_color = Color("#1d3447"); sbh.border_color = Color("#3d5a70")
-	btn.add_theme_stylebox_override("hover", sbh)
-	btn.add_theme_stylebox_override("pressed", sbh)
-	btn.position = Vector2(28, 28)
+	## ★原来是「#16283a 底 + 圆角 10 + 2px 描边」= 网页盒, 且高只有 44px(=24pt)。
+	##   44pt 触控下限 = 81px(视口恒 720 高 ↔ iPhone 横屏 390pt ⇒ 1pt = 1.846px)。
+	btn.custom_minimum_size = Vector2(140.0, 81.0)
+	btn.size = Vector2(140.0, 81.0)
+	btn.focus_mode = Control.FOCUS_NONE
+	UISkin.button(btn, Color("#9fb6c9"))   # 金属签牌皮(和图鉴/背包/排行榜的返回键同一套)
 	btn.pressed.connect(_on_cancel)
 	add_child(btn)
+	_cancel_btn = btn
+	_center()
 
 
 func _on_cancel() -> void:
@@ -181,10 +209,21 @@ func _opponent_from_ghost(ghost: Dictionary) -> Dictionary:
 	var nm := str(prof.get("name", ""))
 	if nm == "":
 		nm = FAKE_NAMES[randi() % FAKE_NAMES.size()]
-	var oid := str(prof.get("id", ""))
-	if oid == "" or oid == "BOT":
-		oid = "#%06d" % (randi() % 1000000)
-	return {"name": nm, "avatar": avatar, "id": oid}
+	return {"name": nm, "avatar": avatar, "id": _display_id(str(prof.get("id", "")))}
+
+
+## 玩家看得懂的 ID。
+##
+## ★由来(2026-08-19 实拍): VS 卡上印着「ID autoplay-b2_COH7」—— 后端内部串直接怼玩家脸上,
+##   而同屏自己那张写的是「#195060」。原来只挡了 `""` 和 `"BOT"` 两种, 挡不住别的内部串。
+## ★改成**白名单**: 只有已经长成 `#6位数字` 的才原样用, 其余一律折算。
+##   折算用 hash 而不是 randi ⇒ **同一个对手每次显示同一个号**(randi 会让同一支队伍每场换号)。
+func _display_id(raw: String) -> String:
+	if raw.length() == 7 and raw.begins_with("#") and raw.substr(1).is_valid_int():
+		return raw
+	if raw == "":
+		return "#%06d" % (randi() % 1000000)
+	return "#%06d" % (absi(hash(raw)) % 1000000)
 
 
 ## 我方资料卡: 头像取本场锁定的首领 (season_leaders[0]), 否则随机.
@@ -195,7 +234,9 @@ func _player_profile() -> Dictionary:
 		pid = str(leaders[0])
 	elif not DataRegistry.launch_pets.is_empty():
 		pid = str(DataRegistry.launch_pets[randi() % DataRegistry.launch_pets.size()].get("id", "basic"))
-	return {"name": "你", "avatar": pid, "id": "#%06d" % (randi() % 1000000)}
+	## ★自己的 ID 也别每场重摇 —— 原来是 randi(), 同一个玩家每场看到一个新号,
+	##   而"ID"这个词在玩家眼里就是"我的号码"。按存档里的稳定量折算。
+	return {"name": "你", "avatar": pid, "id": _display_id("me_%d" % int(GameState.season_id))}
 
 
 func _bg() -> void:
@@ -224,10 +265,36 @@ func _bold_font() -> FontVariation:
 		var cjk := SystemFont.new()
 		cjk.font_names = PackedStringArray(["Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "WenQuanYi Micro Hei", "sans-serif"])
 		cjk.fallbacks = [load("res://assets/fonts/NotoSansSC-Regular.otf")]   # CJK 网页/iOS 兜底 (SystemFont 在 web 取不到系统字体→中文乱码)
-		cjk.font_weight = 700; cjk.allow_system_fallback = true; cjk.antialiasing = TextServer.FONT_ANTIALIASING_GRAY
+		## ★`allow_system_fallback` 必须是 false —— 见下面 fallbacks 那段的探针记录。
+		cjk.font_weight = 700; cjk.allow_system_fallback = false; cjk.antialiasing = TextServer.FONT_ANTIALIASING_GRAY
 		_font_cache = FontVariation.new()
 		_font_cache.base_font = load("res://assets/fonts/m6x11.ttf") as FontFile
-		_font_cache.fallbacks = [cjk]
+		## 【2026-08-19 实拍复看修掉的字形串台】——「匹配中」的**「匹」被画成一个黄色笑脸 emoji**。
+		##
+		## ═══ 现象 ═══
+		## 间歇性: SHOT_WAIT=60/200 帧干净, **430 帧起 5/5 必现**; 而且笑脸的内容每次还不一样
+		## (有时整张笑脸有眼有嘴, 有时只有半张)。⇒ 跑一次看一眼的检查必漏, 只有连拍多个时刻才逮得到。
+		##
+		## ═══ 探针(不是推理出来的) ═══
+		## ① 标题换成 "PROBE匹配中" 重拍 → 笑脸**跟着「匹」的排版位置一起右移**
+		##    ⇒ 不是 🔍 画歪了, 是「匹」这个字自己解析到了**彩色 emoji 字体**的字形。
+		## ② 只把打包 Noto SC 提到回退链最前(系统回退仍开着) → **照样出笑脸** ⇒ 顺序不是根因。
+		## ③ `cjk.allow_system_fallback = false` → 430/470/480 帧三连**干净** ⇒ 根因在这。
+		##
+		## ═══ 为什么本屏中招而别的屏没事 ═══
+		## 主题 `assets/themes/default_theme.tres` 的 SystemFont **没设 font_weight**;
+		## 本屏为了"真 700 粗体"设了 `font_weight = 700` —— 带权重去问系统要"支持「匹」的粗体",
+		## Windows 的字体匹配会把彩色 emoji 字体也算进候选。关掉动态系统回退即可, 粗体不受影响
+		## (雅黑本身就在 font_names 里, 由它出 700 字重)。
+		##
+		## ═══ 关掉之后靠什么兜底 ═══
+		## 雅黑/苹方(桌面, 真 700) → 打包 Noto SC(web/iOS 取不到系统字体时的中文) →
+		## 打包 Noto Emoji(emoji 兜底, 防豆腐块)。实拍确认 🔍 在桌面仍是**彩色**的。
+		_font_cache.fallbacks = [
+			cjk,
+			load("res://assets/fonts/NotoSansSC-Regular.otf") as FontFile,
+			load("res://assets/fonts/NotoEmoji-Regular.ttf") as FontFile,
+		]
 	return _font_cache
 
 
@@ -239,7 +306,12 @@ func _build_searching() -> void:
 	title.size = Vector2(W, 56); title.position = Vector2(0, 300); title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content_root.add_child(title)
 	_dots_lbl = _font(40, Color("#ffd93d"))
-	_dots_lbl.text = ""; _dots_lbl.size = Vector2(60, 56); _dots_lbl.position = Vector2(W / 2.0 + 96, 300)
+	## ★点点的 x 原来写死 `W/2 + 96` —— 那是照着当时那条字的宽度目测出来的。
+	##   本轮换了字体回退链(见 _bold_font), 字宽跟着变, 写死的偏移就会离题。
+	##   改成【量标题实际字宽】再贴到它右边: 换字/改文案都不会错位。
+	var tw: float = _bold_font().get_string_size(title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 40).x
+	_dots_lbl.text = ""; _dots_lbl.size = Vector2(60, 56)
+	_dots_lbl.position = Vector2(W / 2.0 + tw / 2.0 + 6.0, 300)
 	content_root.add_child(_dots_lbl)
 	var sub := _font(20, Color("#9fb6c9"))
 	sub.text = "正在为你寻找势均力敌的对手..."
@@ -260,7 +332,7 @@ func _build_searching() -> void:
 func _radar_ping(delay: float) -> void:
 	await get_tree().create_timer(delay).timeout
 	while _searching and is_inside_tree() and not _cancelled and content_root != null:
-		_shockwave(Vector2(W / 2.0, 340), Color("#ffd93d"), 340.0, 1.5)
+		_shockwave(RADAR_C, Color("#ffd93d"), RADAR_R, 1.5)
 		await get_tree().create_timer(1.5).timeout
 
 
@@ -273,10 +345,10 @@ func _build_vs(opp: Dictionary) -> void:
 	# ① 命中瞬间: 绿闪 + 小震 + 一圈绿波 —— 让"找到了"有落点, 不是悄悄换个字
 	_flash(Color(0.55, 0.95, 0.62, 0.42), 0.30)
 	_shake(7.0, 0.20)
-	_shockwave(Vector2(W / 2.0, 340), Color("#7fd98a"), 520.0, 0.45)
+	_shockwave(RADAR_C, Color("#7fd98a"), 520.0, 0.45)
 	var found := _font(26, Color("#7fd98a"))
 	found.text = "✓ 已匹配到对手!"
-	found.size = Vector2(W, 34); found.position = Vector2(0, 110); found.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	found.size = Vector2(W, 34); found.position = Vector2(0, FOUND_Y); found.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content_root.add_child(found)
 	found.pivot_offset = Vector2(W / 2.0, 17)
 	found.scale = Vector2(1.8, 1.8); found.modulate.a = 0.0
@@ -285,11 +357,13 @@ func _build_vs(opp: Dictionary) -> void:
 	ftw.parallel().tween_property(found, "modulate:a", 1.0, 0.18)
 	# ② 两张资料卡对撞滑入 (左=你, 右=对手), 0.5s 后同时到位
 	var me := _player_profile()
-	_build_card(me, Vector2(170, 230), Color("#5aa9ff"), -500.0)
-	_build_card(opp, Vector2(740, 230), Color("#ff6b6b"), 500.0)
+	_build_card(me, Vector2(170, CARD_Y), Color("#5aa9ff"), -500.0)
+	_build_card(opp, Vector2(W - 170 - CARD_W, CARD_Y), Color("#ff6b6b"), 500.0)
 	# ③ VS 在两卡到位的同一拍砸下来 → 红闪 + 大震 + 红波, 做出"对撞"的响
 	var vs := _font(64, Color("#ff6b6b"))
-	vs.text = "VS"; vs.size = Vector2(160, 80); vs.position = Vector2(W / 2.0 - 80, 320); vs.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vs.text = "VS"; vs.size = Vector2(160, 80)
+	vs.position = Vector2(W / 2.0 - 80, CARD_Y + CARD_H / 2.0 - 40.0)
+	vs.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content_root.add_child(vs)
 	vs.scale = Vector2(3.4, 3.4); vs.modulate.a = 0.0; vs.pivot_offset = Vector2(80, 40)
 	var vtw := vs.create_tween()
@@ -299,7 +373,7 @@ func _build_vs(opp: Dictionary) -> void:
 	vtw.tween_callback(func() -> void:
 		_flash(Color(1.0, 0.42, 0.42, 0.5), 0.26)
 		_shake(15.0, 0.30)
-		_shockwave(Vector2(W / 2.0, 360), Color("#ff6b6b"), 480.0, 0.42))
+		_shockwave(Vector2(W / 2.0, CARD_Y + CARD_H / 2.0), Color("#ff6b6b"), 480.0, 0.42))
 	# 落定后微微回弹, 免得砸完就死板杵着
 	vtw.tween_property(vs, "scale", Vector2(1.12, 1.12), 0.12)
 	vtw.tween_property(vs, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -309,25 +383,51 @@ func _build_card(prof: Dictionary, pos: Vector2, accent: Color, slide_from_dx: f
 	var card := Panel.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color("#10202c"); sb.set_corner_radius_all(14); sb.set_border_width_all(3); sb.border_color = accent
-	card.add_theme_stylebox_override("panel", sb)
-	card.size = Vector2(370, 280); card.position = pos
+	## 金属大框(背包/图鉴/战绩/排行榜同一张 panel-frame); 阵营色留在 modulate 里。
+	## ★modulate 别超 1.3 —— 过了会把框芯冲亮、金属细节糊平(实拍确认过)。
+	var ctex := UISkin.nine("panel-frame.png", 20, sb)
+	if ctex is StyleBoxTexture:
+		(ctex as StyleBoxTexture).modulate_color = UISkin.tint_of(accent)
+	card.add_theme_stylebox_override("panel", ctex)
+	card.size = Vector2(CARD_W, CARD_H); card.position = pos
 	content_root.add_child(card)
-	# 头像
+	# 头像 —— 统一套一个 portrait 框。
+	# ★为什么要框: avatars 的画幅差得离谱(95×86 ~ 275×222, 不透明面积 46%~93%),
+	#   实拍 VS 屏里对手那张是**满底的实心方块**、自己那张是**去底的立绘** ——
+	#   看着不像同一套 UI。套上同一个框, 差异就退成"两张画风不同的肖像"。
+	var frame := Panel.new()
+	var fsb := StyleBoxFlat.new()
+	fsb.bg_color = Color(0.04, 0.09, 0.14, 0.75); fsb.set_corner_radius_all(10)
+	fsb.set_border_width_all(2); fsb.border_color = Color(accent.r, accent.g, accent.b, 0.55)
+	var ftex := UISkin.nine("portrait-frame.png", 16, fsb)
+	if ftex is StyleBoxTexture:
+		(ftex as StyleBoxTexture).modulate_color = UISkin.tint_of(accent)
+	frame.add_theme_stylebox_override("panel", ftex)
+	frame.size = Vector2(AV_BOX, AV_BOX); frame.position = Vector2((CARD_W - AV_BOX) / 2.0, 18)
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(frame)
 	var avatar_path := "res://assets/sprites/avatars/%s.png" % str(prof.get("avatar", "basic"))
 	if ResourceLoader.exists(avatar_path):
 		var tr := TextureRect.new(); tr.texture = load(avatar_path)
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		tr.size = Vector2(140, 140); tr.position = Vector2(115, 20)
-		card.add_child(tr)
+		tr.size = Vector2(AV_BOX - 24.0, AV_BOX - 24.0); tr.position = Vector2(12, 12)
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		frame.add_child(tr)
 	else:
-		var emo := _font(96, Color.WHITE); emo.text = "🐢"; emo.size = Vector2(370, 140); emo.position = Vector2(0, 24)
-		emo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; card.add_child(emo)
+		var emo := _font(80, Color.WHITE); emo.text = "🐢"
+		emo.size = Vector2(AV_BOX, AV_BOX - 20.0); emo.position = Vector2(0, 14)
+		emo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; frame.add_child(emo)
 	var name_l := _font(28, accent)
-	name_l.text = str(prof.get("name", "?")); name_l.size = Vector2(370, 36); name_l.position = Vector2(0, 178)
+	name_l.text = str(prof.get("name", "?")); name_l.size = Vector2(CARD_W, 36)
+	name_l.position = Vector2(0, 18 + AV_BOX + 12.0)
+	## ghost 名来自玩家自定义 profile, 长度不受控 —— 截断加省略号, 别糊出卡片。
+	name_l.clip_text = true
+	name_l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; card.add_child(name_l)
 	var id_l := _font(18, Color("#9fb6c9"))
-	id_l.text = "ID %s" % str(prof.get("id", "")); id_l.size = Vector2(370, 24); id_l.position = Vector2(0, 220)
+	id_l.text = "ID %s" % str(prof.get("id", "")); id_l.size = Vector2(CARD_W, 24)
+	id_l.position = Vector2(0, 18 + AV_BOX + 54.0)
 	id_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; card.add_child(id_l)
 	# 滑入动画: EASE_IN 加速冲进来(不是滑进来), 到位后 BACK 回弹一下做"撞停"
 	var home_x := pos.x

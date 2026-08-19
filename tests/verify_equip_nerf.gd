@@ -49,7 +49,7 @@ func _ready() -> void:
 
 	# ── tooltip 同步(effectDesc1 里出现新数字) ──
 	var eq := FileAccess.get_file_as_string("res://data/phase2-equipment.json")
-	_ok("★龙蛋文案含 20/35/50 层灼烧", eq.contains("20/35/50层灼烧"))
+	_ok("★龙蛋文案含 20/35/50 层灼烧", _has_txt(eq, "20/35/50层灼烧"))
 	_ok("★龙蛋文案含 45/80/120+1×攻击力", eq.contains("（45/80/120+1×攻击力）魔法伤害"))
 	_ok("★龙蛋 baseStats1 镜像已同步", eq.contains("+攻20/45/70·魔穿8/15/27·+20龟能"))
 	_ok("★暴君文案含 1/1.8/4×攻击力", eq.contains("1/1.8/4×攻击力魔法伤害"))
@@ -57,3 +57,11 @@ func _ready() -> void:
 
 	print("ALL PASS — 装备削弱(龙蛋/暴君之牙)" if _fail == 0 else "FAILED: %d" % _fail)
 	get_tree().quit(0 if _fail == 0 else 1)
+
+
+## 文案子串比对: 先把**空格全去掉**再比。
+## ★2026-08-19 排版统一(数字与汉字之间补空格)一次打断了三条这样的断言。
+##   它们真正要守的是"这个数值有没有出现在文案里", **不是"空格打在哪"** ——
+##   拿排版当判据, 每次改一次文案排版就要改一遍测试, 而且红了还看不出是真是假。
+func _has_txt(hay: String, needle: String) -> bool:
+	return hay.replace(" ", "").replace("　", "").contains(needle.replace(" ", ""))
