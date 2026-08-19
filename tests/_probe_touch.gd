@@ -51,7 +51,10 @@ func _ready() -> void:
 					eh = maxf(eh, (padn as Control).size.y)
 				if hit and ew > 1.0 and eh > 1.0 \
 						and minf(ew, eh) < TOUCH_MIN and maxf(ew, eh) < 200.0:
-					var k := "%.0fx%.0f %s" % [ew, eh, c.get_class()]
+					## 只报"56x44 Button x3"改起来是抓瞎 —— 把节点路径也带上, 直接指到该改的 func。
+					## (2026-08-19: _probe_webbox 这么改之后立刻找到了最后 4 个, 这里照做。)
+					var k := "%.0fx%.0f %s <%s>" % [ew, eh, c.get_class(),
+						str(inst.get_path_to(c)).substr(0, 62)]
 					small[k] = int(small.get(k, 0)) + 1
 					n_small += 1
 					if ew < TOUCH_MIN and eh < TOUCH_MIN:

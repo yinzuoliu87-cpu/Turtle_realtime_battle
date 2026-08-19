@@ -35,7 +35,9 @@ func _build_skill_picker(pet: Dictionary) -> void:
 	var grid_center = CenterContainer.new()
 	host._detail_bottom.add_child(grid_center)
 	var icon_grid = GridContainer.new()
-	icon_grid.columns = 3
+	## 3 列 → 2 列: 图标从 50 加到 81(44pt) 后, 三列 259px 塞不进 178px 宽的右列。
+	## 4 个技能排成 2x2, 宽 2x81+8=170 ≤ 178。
+	icon_grid.columns = 2
 	icon_grid.add_theme_constant_override("h_separation", host._sp(8))
 	icon_grid.add_theme_constant_override("v_separation", host._sp(8))
 	grid_center.add_child(icon_grid)
@@ -68,7 +70,9 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 	var dev_locked: bool = (not is_fixed) and idx != 1 and not sk.get("impl", false)   # 非默认候选: 未标impl:true(未实装)才"开发中"锁; 实装好的技解锁3选1
 
 	var btn: Button = host.SkillTipButton.new()   # styled tooltip (PoC .dp-skill-tip 悬浮显名+CD+描述)
-	btn.custom_minimum_size = Vector2(host._sp(64), host._sp(64))   # PoC .dp-skill-ico 64px (index.html:606)
+	## ★写 81.0 而不是 _sp(81): _sp() 会再乘一次 0.777 —— 原来这里写的 _sp(64) 实测只渲染出 50px。
+	##   触控下限是**视口像素**的硬指标(81px = 44pt), 不能过设计空间的缩放。
+	btn.custom_minimum_size = Vector2(81.0, 81.0)   # PoC .dp-skill-ico 64px → 触控下限抬到 81
 	btn.tooltip_text = _skill_tooltip(pet, sk, idx)
 	# 图标
 	var icon_rel: String = str(sk.get("icon", ""))
@@ -112,13 +116,17 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 	sbn.set_corner_radius_all(host._sp(12))
 	## ★换槽框(跨屏统一): 技能图标本来就是"一个格子", 与背包/图鉴的装备槽同一套语言。
 	##   三种状态(选中金 / 基础绿 / 普通灰)靠 modulate 传递, 不再靠半透底+1px 描边。
-	var ssb := UISkin.nine_if_big(50.0, 50.0, "slot-frame.png", 12, sbn)
+	var ssb := UISkin.nine_if_big(81.0, 81.0, "slot-frame.png", 12, sbn)
 	if ssb is StyleBoxTexture:
-		var tint := Color(0.72, 0.72, 0.76, 1.0)
+		## ★三档着色是**裁图实拍调出来的**, 别凭感觉改:
+		##   · 槽框的芯是半透深蓝灰 ⇒ modulate 一过 1.3 芯就跟着提亮, 整格糊成土黄
+		##     (第一版写 1.9, 实拍下来选中格比没选的还难看)。金要靠**压蓝**出来, 不靠加亮。
+		##   · 层级必须 选中 > 基础 > 普通。第一版基础绿(亮度 1.19)反而压过选中金(1.07) —— 反了。
+		var tint := Color(0.55, 0.55, 0.60, 1.0)   # 普通: 压暗, 给另外两档让出对比空间
 		if is_sel:
-			tint = Color(1.9, 1.62, 0.82, 1.0)
+			tint = Color(1.35, 1.05, 0.40, 1.0)   # 选中: 压蓝出金(亮度 1.07 = 普通的 1.9 倍)
 		elif is_fixed:
-			tint = Color(0.72, 1.35, 0.92, 1.0)
+			tint = Color(0.55, 1.02, 0.72, 1.0)   # 基础: 绿, 亮度 0.90 —— 压在选中之下
 		(ssb as StyleBoxTexture).modulate_color = tint
 		sbn = ssb
 	btn.add_theme_stylebox_override("normal", sbn)
@@ -152,7 +160,7 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 	elif is_fixed:
 		btn.add_child(_make_skill_corner("基础", Color("#7dffb3"), Color("#0a2417")))
 	elif is_sel:
-		btn.add_child(_make_skill_corner("✓", Color("#ffd86b"), Color("#2a1605")))
+		btn.add_child(_make_skill_corner("已选", Color("#ffd86b"), Color("#2a1605")))
 	# 强化被动 "+" 角标 (PoC .ico-plus 右上金圈, index.html:614-618)
 	if sk.get("enhancesPassive", false) or sk.get("iconPlus", false):
 		btn.add_child(_make_ico_plus())

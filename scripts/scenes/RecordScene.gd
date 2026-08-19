@@ -250,16 +250,21 @@ func _stroked_label(t: String, size: int, color: String, stroke: String, thick: 
 ## ★手机板触控热区(2026-08-01): 半径 18(36×36=20pt) → 24(48×48=26pt), 同 SettingsScene。
 func _icon_button(cx: float, cy: float, icon: String, cb: Callable) -> void:
 	var r := 24.0
+	## ★2026-08-19 命中区与视觉解耦: 原来 btn.size 就是圆环的外接方(48x48=26pt), 够不着 44pt。
+	##   圆环半径 r 一个字不改(构图不能动), 只把**控件本身**撑到 81x81(=44pt), 圆画在正中间。
+	##   —— 图标按钮周围本来就是空白, 扩命中区不影响任何相邻元素。
+	const HIT := 81.0
+	var c0 := HIT * 0.5          # 圆心在控件里的坐标
 	var btn := Control.new()
-	btn.size = Vector2(r * 2.0, r * 2.0)
-	btn.pivot_offset = Vector2(r, r)
-	btn.position = Vector2(cx - r, cy - r)
+	btn.size = Vector2(HIT, HIT)
+	btn.pivot_offset = Vector2(c0, c0)
+	btn.position = Vector2(cx - c0, cy - c0)
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(btn)
 	var stroke := {"c": Color("#58d3ff")}
 	btn.draw.connect(func():
-		btn.draw_circle(Vector2(r, r), r, Color(0, 0, 0, 0.55))
-		btn.draw_arc(Vector2(r, r), r - 1.0, 0, TAU, 32, stroke["c"], 2.0))
+		btn.draw_circle(Vector2(c0, c0), r, Color(0, 0, 0, 0.55))
+		btn.draw_arc(Vector2(c0, c0), r - 1.0, 0, TAU, 32, stroke["c"], 2.0))
 	var txt := Label.new()
 	txt.text = icon
 	txt.add_theme_font_size_override("font_size", 18)
@@ -267,7 +272,7 @@ func _icon_button(cx: float, cy: float, icon: String, cb: Callable) -> void:
 	txt.add_theme_color_override("font_color", Color("#ffffff"))
 	txt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	txt.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	txt.size = Vector2(r * 2.0, r * 2.0)
+	txt.size = Vector2(HIT, HIT)
 	txt.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	btn.add_child(txt)
 	btn.mouse_entered.connect(func(): stroke["c"] = Color("#ffd93d"); btn.queue_redraw())

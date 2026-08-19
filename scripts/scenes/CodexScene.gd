@@ -1,7 +1,7 @@
 extends Node2D
 
 ## CodexScene — 图鉴 (5 Tab: 龟/装备/羁绊/状态/规则). 1:1 PoC CodexScene.ts 像素布局移植.
-## 详情容器 (UI/Detail) 左上 = PoC detailX,detailY = (340,150) → PoC 详情局部坐标直接对应.
+## 详情容器 (UI/Detail) 左上 = (340,158) — PoC 原为 (340,150), 2026-08-19 为页签让出 8px → PoC 详情局部坐标直接对应.
 
 @onready var title_lbl: Label = $UI/Title
 @onready var tab_bar: Control = $UI/TabBar
@@ -384,8 +384,10 @@ func _build_tab_bar() -> void:
 	var tab_gap := 8.0
 	# ★手机板触控热区: 页签高 36 视口像素 = 手机上 20pt, 远低于 iOS HIG 44pt。
 	#   页签是主导航, 点不中的代价最大 → 加到 56(30pt)。宽 170 本来就够。
-	var tab_h := 56.0   # ★试过加到 81(44pt), 但页签下面紧接着详情面板 —— 加高会压住它。
-	#   页签是 170 宽的横条(短边 30pt), 横向很好命中, 风险远低于方块小按钮 ⇒ 维持 56。
+	## ★2026-08-19 加到 81(44pt) 了。之前记的"加高会压住详情面板"是真的, 但那是把页签当成
+	##   **不能动的格子**在算 —— 真正的解法是给它腾垂直预算: 标题上移 6、页签上移 18、
+	##   四块面板下移 8。列表只少 8px(照样滚), 页签从 30pt 变成 44pt。
+	var tab_h := 81.0
 	var total_w := TABS.size() * tab_w + (TABS.size() - 1) * tab_gap
 	# ★2026-08-01 门禁抓到: 这里写死 1280 —— 而 TabBar 是全宽锚(跟着视口长),
 	#   于是 21:9(视口 1680)上整条页签坐在中心【左边 200px】。用真实视口宽算。

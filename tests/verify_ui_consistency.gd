@@ -53,7 +53,7 @@ const BASE: Dictionary = {
 	"TeamSelect": {"web": 0, "round": 61, "frame": 0},
 	# 商店货架随机 ⇒ 它这两格是**容差基线**(实测跨多次运行 0~3 网页盒 / 11~14 圆角盒)。
 	# 卡到实测上沿会偶发红; 而真回归是数量级的(31 vs 0), 容差 +1 挡不住的场面不存在。
-	"Shop": {"web": 1, "round": 12, "frame": 0},
+	"Shop": {"web": 0, "round": 11, "frame": 0},
 	"Settings": {"web": 0, "round": 0, "frame": 0},
 	"Record": {"web": 0, "round": 0, "frame": 0},
 }

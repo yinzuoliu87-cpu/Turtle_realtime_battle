@@ -56,7 +56,13 @@ func _ready() -> void:
 	if int(GameState.season_total_battles) <= 0 and not _in_tut:
 		_build_locked()   # 商店锁: 本大轮未打第一场 → 不开店(用户2026-07-18「商店打完第一场后解锁」)
 		return             # ★教学沙盒不计战斗数(不给奖励)→ 会永远锁; 教学模式旁路开店(用户2026-07-23"教买装备")
-	_rng.randomize()
+	## ★test_mode 下用固定种子, 不 randomize(): 货架是随机掷的 ⇒ 每次跑出来的卡片/样式数都不同,
+	##   任何"数一数商店里有几个 X"的门禁都会**随机红**。2026-08-19 实测同一份代码连跑三次拿到 0/1/3。
+	##   ⇒ 把被测对象钉死, 比把阈值放宽诚实(放宽只是让判据看不见问题)。
+	if GameState.test_mode:
+		_rng.seed = 20260819
+	else:
+		_rng.randomize()
 	# ★货架要跨场景保留 —— 原来这里无条件 _roll(), 于是每次退出重进都重掷:
 	#   买掉的位子会复活、看中的货被冲掉(用户 2026-07-21 报的 bug)。
 	#   现在只有【打完新的一场】(season_total_battles 变了)才自动换货, 否则恢复上次的货架。

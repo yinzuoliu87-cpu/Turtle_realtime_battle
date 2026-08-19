@@ -20,14 +20,17 @@ const SLOT_PAD := 7.0
 ## ── 本屏的几条布局基准线(2026-08-15 重排, 用户「利用这个空间可以把右边的排版过来」)──
 ##   原来顶部有一整行「🎒 背包 / 出战配置」的牌子 —— 玩家是自己点进来的, 不需要被告知
 ##   自己在哪一页 ⇒ 删掉, 整屏内容上提, 右侧那条从 y≈180 空到底的死列由羁绊区补上。
-const LANE_TOP := 96.0         # 上战场单位框的 y (带子从 y-24 开始)
+const LANE_TOP := 116.0        # 上战场单位框的 y (带子从 y-24 开始)
+## ★2026-08-19 从 96 下移 20: 顶栏「返回/商店/帮助」原来只有 y 0..68 可用(实测战场带顶边 68),
+##   撑不到 44pt(81px)。台面是 ScrollContainer(min_rows 按可视高算) ⇒ **下移由台面吸收, 不丢内容**,
+##   这是这屏唯一一块"可借"的垂直预算。借完顶栏拿到 81px, 台面少 20px 照样滚。
 const LANE_GAP := 146.0        # 上→下战场的行距
 const SYN_X := 828.0           # 右侧羁绊列左沿(原 952 → 左移 124, 顺带吃掉阵容右边那块 138px 空白)
 const SYN_W := 424.0           # 羁绊列宽(原 300)
-const SYN_TOP := 74.0          # 羁绊列顶(原 100; 标题删了才能提上来), 与上战场带顶齐平
-const SYN_BOTTOM := 362.0      # 羁绊列底 = 下战场带的底边, 两侧齐平
-const BENCH_HDR_Y := 366.0     # 「装备背包」标题(22 号字实测占 30 高, 给够别压到第一排格子)
-const BENCH_TOP := 398.0
+const SYN_TOP := 94.0          # 羁绊列顶(原 100→74→94), 与上战场带顶齐平(带顶 = LANE_TOP-24)
+const SYN_BOTTOM := 382.0      # 羁绊列底 = 下战场带的底边, 两侧齐平
+const BENCH_HDR_Y := 386.0     # 「装备背包」标题(22 号字实测占 30 高, 给够别压到第一排格子)
+const BENCH_TOP := 418.0       # 跟着 BENCH_HDR_Y 一起下移 20 —— 漏改它会让标题压进格子框边带
 const BENCH_PITCH := 108.0     # 格子行距(96 格 + 12 间隙): 3 行 = 312 ≤ 316, 刚好铺进去
 const OP_BAR_Y := 632.0        # 底部操作条(原 636·高 66 → 现 632·高 80: 装备文案多一行)
 const OP_BAR_H := 80.0
@@ -165,7 +168,7 @@ func _rebuild() -> void:
 	var back := Button.new()
 	back.text = "← 返回"
 	back.add_theme_font_size_override("font_size", 22)
-	back.position = Vector2(28, 26); back.size = Vector2(120, 44)
+	back.position = Vector2(28, 6); back.size = Vector2(120, 81)   # 81px = 44pt
 	back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
 	## ★2026-08-18 换金属签牌皮(用户问「所有可以点击和交互的地方都考虑了吗」——
 	##   实测这两个顶部标签还是 Godot 默认皮)。
@@ -180,7 +183,7 @@ func _rebuild() -> void:
 	var shop_locked: bool = int(GameState.season_total_battles) <= 0
 	shop.text = "🛒 商店" if not shop_locked else "🔒 商店"
 	shop.add_theme_font_size_override("font_size", 22)
-	shop.position = Vector2(160, 26); shop.size = Vector2(120, 44)
+	shop.position = Vector2(160, 6); shop.size = Vector2(120, 81)   # 81px = 44pt
 	shop.disabled = shop_locked
 	shop.tooltip_text = "打完本大轮第一场后解锁" if shop_locked else "去商店买装备"
 	shop.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Shop.tscn"))
@@ -270,7 +273,7 @@ func _build_lineup(_leaders: Array) -> void:
 	# ★手机板触控热区(2026-08-01): 28×28 = 手机上 15pt, 点不中 → 48×48(26pt)。
 	# ★2026-08-15 归队: 原来它单独浮在 (966,20), 和右上角那组各占一块谁也不挨着谁
 	#   (用户「这么多空的地方把问号排好版啊」)。现在排进同一条横线的最右端。
-	help.position = Vector2(SYN_X + SYN_W - 46.0, 20.0); help.size = Vector2(46, 46)
+	help.position = Vector2(SYN_X + SYN_W - 81.0, 6.0); help.size = Vector2(81, 81)   # 81px = 44pt
 	help.pressed.connect(func(): _show_lineup_help())
 	add_child(help)
 	# 两条"战场带"(染色圆角底 + 战场名 + 编成计数) → 一眼看出上/下是两个各自开打的战场
