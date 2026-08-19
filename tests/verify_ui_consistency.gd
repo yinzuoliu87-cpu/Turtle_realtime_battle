@@ -40,16 +40,22 @@ const TOUCH_MIN := 81.0
 
 ## 每屏基线(上界)。**只许改小, 不许改大** —— 要放大必须在 CHANGELOG 里写清为什么。
 ## 商店库存是随机的(实测 0~2 网页盒 / 11~13 圆角盒), 所以它那两格取上沿。
+## ★两处**不是余量、是有理由的豁免**(别当成"还没改完"):
+##   · MainMenu 的 1 个 = 右下角调试入口 120x46。它**不是玩家路径**, 刻意保持朴素,
+##     和正式按钮长得不一样正是想要的效果。
+##   · Inventory 的 10 个 = 单位卡上的 40x40 迷你装备格。2026-08-18 实拍对比后**退回过一次**:
+##     换金属框会让**费用色从整块实心退化成一圈细边**, 而那块实心色本身就是信息
+##     (一眼分得出 2/3/4/5 费)。⇒ 贴图框有它的最小可用尺寸, 小于它就该保持纯色块。
 const BASE: Dictionary = {
-	"MainMenu":   {"web": 1, "round": 3, "frame": 0},
-	"Inventory":  {"web": 10, "round": 19, "frame": 4},
-	"Codex":      {"web": 0, "round": 0, "frame": 2},
-	"TeamSelect": {"web": 15, "round": 77, "frame": 1},
+	"MainMenu": {"web": 1, "round": 3, "frame": 0},
+	"Inventory": {"web": 10, "round": 19, "frame": 1},
+	"Codex": {"web": 0, "round": 0, "frame": 0},
+	"TeamSelect": {"web": 0, "round": 61, "frame": 0},
 	# 商店货架随机 ⇒ 它这两格是**容差基线**(实测跨多次运行 0~3 网页盒 / 11~14 圆角盒)。
 	# 卡到实测上沿会偶发红; 而真回归是数量级的(31 vs 0), 容差 +1 挡不住的场面不存在。
-	"Shop":       {"web": 4, "round": 16, "frame": 0},
-	"Settings":   {"web": 0, "round": 0, "frame": 0},
-	"Record":     {"web": 1, "round": 1, "frame": 0},
+	"Shop": {"web": 1, "round": 12, "frame": 0},
+	"Settings": {"web": 0, "round": 0, "frame": 0},
+	"Record": {"web": 0, "round": 0, "frame": 0},
 }
 
 ## 分母下限: 这一屏至少该扫到这么多可见控件。少于它 = 场景没建起来, 下面的"0 问题"全是假的。

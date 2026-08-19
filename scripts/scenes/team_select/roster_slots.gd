@@ -95,27 +95,38 @@ func _refresh_slots() -> void:
 
 
 ## 槽样式 (1:1 PoC .fg-slot.filled/.fg-selected/.fg-active index.html:280-291)
-func _slot_box(kind: String) -> StyleBoxFlat:
+## 三个统领槽的框。原来是纯色圆角盒 + StyleBoxFlat 的外发光, 一眼网页味;
+## 现在跟 pet_grid 的龟卡用**同一张卡框**(84x121 本来就是卡的形状), 四个状态靠 modulate 分。
+## ★StyleBoxTexture 没有 shadow_* —— "选中"原本全靠外发光顶出来, 换框后只能靠**过曝**,
+##   所以选中态的 modulate 给到 2.2 而不是 1.5(HDR, >1 才是真的比周围亮一档)。
+func _slot_box(kind: String) -> StyleBox:
 	var sb = StyleBoxFlat.new()
 	sb.set_border_width_all(2)
 	sb.set_corner_radius_all(host._sp(12))
+	var tint := Color(1, 1, 1, 1)
 	if kind == "empty":   # 实时空格: 暗内陷格 + 微木边 (替代背景图烤死的 "+" 格, 已被 slotBay 托盘盖住)
 		sb.bg_color = Color8(24, 17, 12)
 		sb.border_color = Color8(72, 50, 30)
-		return sb
-	if kind == "selected":   # PoC .fg-selected #ffcc00 + glow rgba(255,204,0,.55)
+		tint = Color(0.42, 0.34, 0.26, 1.0)          # 空槽: 压暗成"待填的凹坑"
+	elif kind == "selected":   # PoC .fg-selected #ffcc00 + glow rgba(255,204,0,.55)
 		sb.bg_color = Color(1, 204.0/255, 0, 0.18)
 		sb.border_color = Color("#ffcc00")
 		sb.shadow_color = Color(1, 204.0/255, 0, 0.55); sb.shadow_size = host._sp(6)
+		tint = Color(2.2, 1.80, 0.55, 1.0)           # 选中: 过曝金(顶替原来的外发光)
 	elif kind == "active":   # PoC .fg-active #fff3a0 + glow rgba(255,243,160,.6)
 		sb.bg_color = Color(0, 0, 0, 0)
 		sb.border_color = Color("#fff3a0")
 		sb.shadow_color = Color(1, 243.0/255, 160.0/255, 0.6); sb.shadow_size = host._sp(6)
+		tint = Color(2.1, 2.00, 1.30, 1.0)           # 待放入: 过曝的淡黄
 	else:   # filled: 金边半透底 + 外发光
 		sb.bg_color = Color(1, 216.0/255, 107.0/255, 0.1)
 		sb.border_color = Color(1, 216.0/255, 107.0/255, 0.7)
 		sb.shadow_color = Color(1, 216.0/255, 107.0/255, 0.3); sb.shadow_size = host._sp(4)
-	return sb
+		tint = Color(1.35, 1.16, 0.72, 1.0)          # 已就位: 温金
+	var tsb := UISkin.nine_if_big(host._sp(84), host._sp(116), "teamselect/card-frame.png", 14, sb)
+	if tsb is StyleBoxTexture:
+		(tsb as StyleBoxTexture).modulate_color = tint
+	return tsb
 
 
 ## 渲染特殊占位槽内容 (1:1 PoC .fg-summon TeamSelectScene.ts:591-598): 随从?/水晶球img/糖果炸弹emoji + 彩色名

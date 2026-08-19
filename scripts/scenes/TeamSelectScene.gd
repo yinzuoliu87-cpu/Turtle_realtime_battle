@@ -872,6 +872,9 @@ func _style_overlay_btn(btn: Button) -> void:
 	btn.add_theme_stylebox_override("normal", sb)
 	btn.add_theme_stylebox_override("hover", sbh)
 	btn.add_theme_stylebox_override("pressed", sbh)
+	## 上面这套纯色圆角是**兜底**(贴图不在时原样留着); 贴图在就整套覆盖成金属小框,
+	## 五个状态一起给 —— 只换 normal 会出现"平时是金属、按下去变回网页盒"。
+	UISkin.button(btn, Color(1.55, 1.30, 0.78), 7)
 
 
 ## PoC .ts-frame-btn — 透明底无边 + 白字阴影 (清空/上次阵容, 坐画好的框上)

@@ -45,6 +45,7 @@ func _ready() -> void:
 		var n_web := 0      # 网页盒
 		var n_round := 0    # 圆角盒
 		var texs: Dictionary = {}
+		var webs: PackedStringArray = []
 		var st: Array = [inst]
 		while not st.is_empty():
 			var n: Node = st.pop_back()
@@ -66,10 +67,16 @@ func _ready() -> void:
 								and f.border_width_left > 0 and f.border_width_right > 0 \
 								and f.bg_color.a < 0.95:
 							n_web += 1
+							## 只报个数字改起来是抓瞎 —— 把每个网页盒的尺寸/类型/节点路径也打出来,
+							## 才知道该去哪个 func 改。(2026-08-19: 为了收掉最后 2 个才补的)
+							webs.append("%.0fx%.0f %s <%s>" % [(n as Control).size.x, (n as Control).size.y,
+								n.get_class(), str(inst.get_path_to(n)).substr(0, 70)])
 			for c in n.get_children():
 				st.append(c)
 		print("  %-18s stylebox %3d 个 · 网页盒 %2d · 圆角盒 %2d · 九宫格贴图 %d 种 %s"
 			% [str(path).get_file(), n_box, n_web, n_round, texs.size(), str(texs.keys()).substr(0, 60)])
+		for w in webs:
+			print("        网页盒 · %s" % w)
 		inst.queue_free()
 		await get_tree().process_frame
 	print("PROBE DONE")

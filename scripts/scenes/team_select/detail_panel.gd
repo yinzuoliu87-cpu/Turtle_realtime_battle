@@ -140,7 +140,15 @@ func _refresh_detail() -> void:
 		chip_sb.set_corner_radius_all(host._sp(8))
 		chip_sb.content_margin_left = host._sp(8); chip_sb.content_margin_right = host._sp(8)   # PoC .dp-passive-chip padding:5px 8px (L/R 8)
 		chip_sb.content_margin_top = host._sp(5); chip_sb.content_margin_bottom = host._sp(5)   # T/B 5
-		chip.add_theme_stylebox_override("panel", chip_sb)
+		## 换成金属小框(和图鉴/背包的 chip 同一张), 绿色留在 modulate 里 —— 被动一眼还是绿的。
+		var chip_tex := UISkin.nine("chip-frame.png", 7, chip_sb)
+		if chip_tex is StyleBoxTexture:
+			(chip_tex as StyleBoxTexture).modulate_color = Color(0.62, 1.45, 0.92, 1.0)
+			(chip_tex as StyleBoxTexture).content_margin_left = host._sp(8)
+			(chip_tex as StyleBoxTexture).content_margin_right = host._sp(8)
+			(chip_tex as StyleBoxTexture).content_margin_top = host._sp(5)
+			(chip_tex as StyleBoxTexture).content_margin_bottom = host._sp(5)
+		chip.add_theme_stylebox_override("panel", chip_tex)
 		var prow = HBoxContainer.new()
 		prow.add_theme_constant_override("separation", host._sp(6))
 		var pi_path: String = DataRegistry.passive_icons.get(passive.get("type", ""), "")

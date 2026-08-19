@@ -49,7 +49,16 @@ func _ready() -> void:
 	ovsb.set_corner_radius_all(12)
 	ovsb.content_margin_left = 20; ovsb.content_margin_right = 20
 	ovsb.content_margin_top = 16; ovsb.content_margin_bottom = 16
-	overview.add_theme_stylebox_override("panel", ovsb)
+	## 总览卡换金属大框(和背包/图鉴的面板同一张)。冷色底留在 modulate 里 ——
+	## 战绩屏整体是冷蓝调, 直接用白 modulate 会跳成暖金。
+	var ovtex := UISkin.nine("panel-frame.png", 20, ovsb)
+	if ovtex is StyleBoxTexture:
+		(ovtex as StyleBoxTexture).modulate_color = Color(0.72, 0.92, 1.12, 1.0)
+		(ovtex as StyleBoxTexture).content_margin_left = 20
+		(ovtex as StyleBoxTexture).content_margin_right = 20
+		(ovtex as StyleBoxTexture).content_margin_top = 16
+		(ovtex as StyleBoxTexture).content_margin_bottom = 16
+	overview.add_theme_stylebox_override("panel", ovtex)
 	overview.custom_minimum_size = Vector2(PANEL_W, 0)
 	root.add_child(overview)
 	var ovrow := HBoxContainer.new()
