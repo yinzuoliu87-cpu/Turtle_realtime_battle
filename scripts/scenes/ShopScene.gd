@@ -306,7 +306,10 @@ func _rebuild() -> void:
 	##   文字留在正中 —— 中间空一大条(用户 2026-08-15:「4和图标为什么隔这么远」)。
 	##   改成两个子节点手动排成【一个贴紧的组】, 再把这个组在按钮里上下左右居中。
 	##   数字宽 24 + 间隙 6 + 图标 30 = 60 ⇒ 起点 (140-60)/2 = 40, 组中心正好落在按钮中心 70。
-	bxp.size = Vector2(_bw, 68); bxp.position = Vector2(_bx, HDR_CY - 34.0)
+	## ★68 → 81(44pt): 绕 HDR_CY 对称长, 上下各多 6.5 —— 头部这一条本来就是空的。
+	##   ⚠ 下面两个子节点的 y 是拿 68 算的居中偏移, **必须一起改成 81**, 否则数字和币会偏上 6.5。
+	const BXP_H := 81.0
+	bxp.size = Vector2(_bw, BXP_H); bxp.position = Vector2(_bx, HDR_CY - BXP_H * 0.5)
 	bxp.pressed.connect(func(): if GameState.buy_season_xp(): _rebuild())
 	_skin_button(bxp); add_child(bxp)
 	var _gw2 := 60.0
@@ -317,9 +320,9 @@ func _rebuild() -> void:
 	bn.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	bn.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	bn.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bn.position = Vector2(_gx, (68.0 - 34.0) * 0.5); bn.size = Vector2(24, 34)
+	bn.position = Vector2(_gx, (BXP_H - 34.0) * 0.5); bn.size = Vector2(24, 34)
 	bxp.add_child(bn)
-	_coin_icon(bxp, Vector2(_gx + 30.0, (68.0 - 30.0) * 0.5), 30.0)
+	_coin_icon(bxp, Vector2(_gx + 30.0, (BXP_H - 30.0) * 0.5), 30.0)
 
 	_build_odds_row()   # 出货概率行 y 96–124 (原在 116, 现紧贴卡区上方)
 
