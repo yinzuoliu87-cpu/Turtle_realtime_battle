@@ -65,10 +65,15 @@ func _fullscreen_label() -> String:
 	return "全屏"
 
 
+## ★2026-08-19 缩短: 原文「🪶 低画质模式: 关 (高画质)」在 260 宽的木牌里**装不下** ——
+##   木牌两端的花纹柱实测各占 29px, 内部只有 202px, 而这行字的墨迹约 240px ⇒ 字骑在花纹上。
+##   (实拍看出来的; 门禁原来查不到, 因为它只把 StyleBoxTexture/NinePatchRect 当框,
+##    而这里的框是一个**拉伸的 TextureRect**。已一并补进 verify_ui_consistency。)
+##   "开/关" 也去掉了 —— 按钮显示的是**当前是什么**, 不是"这个开关的开关状态", 后者要绕一圈才读懂。
 func _perf_label() -> String:
 	if GameState.perf_lite:
-		return "🪶 低画质模式: 开 (流畅)"
-	return "🪶 低画质模式: 关 (高画质)"
+		return "🪶 画质: 低"
+	return "🪶 画质: 高"
 
 
 ## 低画质模式 = 真开关 (原来只改自己的 label, grep 全库无第二处引用 = 死按钮)
@@ -78,7 +83,10 @@ func _toggle_perf() -> void:
 	GameState.save()
 	if _perf_btn != null:
 		_perf_btn.text = _perf_label()
-	_toast("低画质: %s (下次进战斗生效)" % ("开" if GameState.perf_lite else "关"))
+	## 按钮上只剩"高/低", 于是把"低=更流畅"这条信息挪到 toast 里, 不然玩家不知道调它图什么。
+	_toast("画质已设为%s%s · 下次进战斗生效" % [
+		"低" if GameState.perf_lite else "高",
+		" (更流畅)" if GameState.perf_lite else ""])
 
 
 func _toggle_fullscreen() -> void:

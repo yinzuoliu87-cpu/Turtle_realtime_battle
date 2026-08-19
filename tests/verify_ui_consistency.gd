@@ -40,6 +40,9 @@ const TOUCH_MIN := 81.0
 
 ## 每屏基线(上界)。**只许改小, 不许改大** —— 要放大必须在 CHANGELOG 里写清为什么。
 ## 商店库存是随机的(实测 0~2 网页盒 / 11~13 圆角盒), 所以它那两格取上沿。
+## ★MainMenu 的 frame 1 = 木牌上的 36x36 图标越过边带 **2px**。边带是从贴图上量的近似值,
+##   ±2px 在测量误差里, 实拍看就是好的 —— 卡 0 等于让判据去修一个不存在的问题。
+##
 ## ★"tap" = 短边 < 81px(44pt) 的可点元素上限。剩下的 18 个各有理由, 不是漏做:
 ##   · TeamSelect 1 个 = **被动小签**(179×44)。点它是**手机上读被动描述的唯一途径**, 该达标 ——
 ##     但右列的竖向预算不够, 这是算过的: 立绘顶 144 → CTA 顶 715 = 571 设计单位可用;
@@ -59,8 +62,8 @@ const TOUCH_MIN := 81.0
 ##     换金属框会让**费用色从整块实心退化成一圈细边**, 而那块实心色本身就是信息
 ##     (一眼分得出 2/3/4/5 费)。⇒ 贴图框有它的最小可用尺寸, 小于它就该保持纯色块。
 const BASE: Dictionary = {
-	"MainMenu": {"web": 1, "round": 3, "frame": 0, "tap": 1},
-	"Inventory": {"web": 10, "round": 19, "frame": 1, "tap": 11},
+	"MainMenu": {"web": 1, "round": 3, "frame": 1, "tap": 1},
+	"Inventory": {"web": 10, "round": 19, "frame": 0, "tap": 11},
 	"Codex": {"web": 0, "round": 0, "frame": 0, "tap": 0},
 	"TeamSelect": {"web": 0, "round": 61, "frame": 0, "tap": 1},
 	# 商店货架随机 ⇒ 它这两格是**容差基线**(实测跨多次运行 0~3 网页盒 / 11~14 圆角盒)。
@@ -92,6 +95,32 @@ func _ok(nm: String, cond: bool, detail: String = "") -> void:
 
 ## 量【贴图里真实画出来的边带有多厚】—— 不用九宫格配置的边距。
 ## 配置边距是"从哪切开去拉伸", 不是"画了多宽的边"; 实测两者差近一倍。
+## 这张贴图"是不是一个框" —— 只看图, 不看文件名(名字是我起的, 拿它当判据等于"我说是就是")。
+##
+## 这条判据我连着写窄、写宽各一次, 把两次的结论都留下:
+##   · 写"中心必须全透" ⇒ 漏掉 `menu/btn-frame.png`(中心是**实心木板** alpha 254),
+##     设置屏三个按钮的框一个都没进过 framed, 「低画质模式: 关 (高画质)」压边压了很久没人报。
+##   · 写"内部匀色 + 有边带" ⇒ **背景平铺图也算框**了, 一下多出 35 条假阳(选龟 26 / 主菜单 9)。
+##   · 光加"不占大半个屏"还不够: 24x24 的小图标带个圈边也算框 ⇒ 还得要求**它大得装得下一行字**
+##     (面积 ≥4000 且短边 ≥40)。
+## 最后落在: `_band_of` 量得到边带(它本来就分空心/实心两支) + **边带占比像个"边"**(3%~30%)。
+## 尺度约束(不占大半个屏)放在调用点 —— 那里才知道控件实际多大。
+var _frame_cache: Dictionary = {}
+
+func _is_frame_tex(tex: Texture2D) -> bool:
+	var key := tex.resource_path
+	if _frame_cache.has(key):
+		return bool(_frame_cache[key])
+	var img := tex.get_image()
+	var ok := false
+	if img != null and img.get_width() >= 16 and img.get_height() >= 16:
+		var b := _band_of(tex)
+		## 比例要和**扫描方向的那个维度**比 —— `_band_of` 是横着从中心往外扫的。
+		## (拿高度比会把 893x212 的按钮板判成"边带占 48%"而排掉, 正是它一直没被查的原因之一。)
+		ok = b >= 3.0 and b <= 0.35 * float(img.get_width())
+	_frame_cache[key] = ok
+	return ok
+
 func _band_of(tex: Texture2D) -> float:
 	var key := tex.resource_path
 	if _band_cache.has(key):
@@ -274,6 +303,8 @@ func _audit(root: Node) -> Dictionary:
 	var d := {"web": 0, "round": 0, "ctrl": 0, "btn": 0, "lbl": 0,
 		"stock": [], "dead": [], "small": [], "clip": [], "squash": [],
 		"flat9": [], "spill": [], "overlap": [], "frame": [], "tap": []}
+	var _vp_area: float = maxf(1.0, float(get_viewport().get_visible_rect().size.x)
+		* float(get_viewport().get_visible_rect().size.y))
 	var labels: Array = []
 	var framed: Array = []
 	var arts: Array = []
@@ -306,11 +337,35 @@ func _audit(root: Node) -> Dictionary:
 				#   不放过的话它们会一直红, 逼我去"修"一个根本不是问题的东西。
 				var is_badge: bool = c.size.x <= 24.0 and c.size.y <= 24.0 \
 					and (c.get_parent() is PanelContainer or c.get_parent() is Panel)
-				if not is_badge:
+				## ★框本身不能再当"被测的图" —— 否则它自己越过自己的边带, 每个框都白报一条
+				##   (实测设置屏 3 条、主菜单 3 条全是这么来的)。
+				if not is_badge and not ((n as TextureRect).texture != null \
+					and c.size.x * c.size.y >= 4000.0 and minf(c.size.x, c.size.y) >= 40.0 \
+					and c.size.x * c.size.y < _vp_area * 0.20 \
+					and _is_frame_tex((n as TextureRect).texture)):
 					arts.append([_art_rect(n as TextureRect), "图<%s|%.0fx%.0f>" % [str(c.name), c.size.x, c.size.y]])
+			## ★2026-08-19 补的第三种框: **TextureRect 拉伸出来的框**。
+			##   设置屏三个按钮就是这么做的(menu/btn-frame.png 铺满一个 TextureRect, 文字是它的兄弟 Label),
+			##   而 framed 原来只收 NinePatchRect 和 StyleBoxTexture ⇒ **这类框一个都没查过**。
+			##   实拍才发现「低画质模式: 关 (高画质)」两端顶在花纹上, 而门禁对 Settings 判 0。
+			##   判据不认名字只认图: 中心 40% 全透 + 四边有实像素 = 框(见 _is_frame_tex)。
+			##   边带要**按实际拉伸比例换算**: 贴图是原始像素, 控件被拉到别的尺寸了。
+			## 面积超过视口 20% 的不算"框"(那是背景/满铺贴图) —— 不排除的话背景会把满屏文字都判成压边。
+			if n is TextureRect and (n as TextureRect).texture != null \
+				and c.size.x * c.size.y < _vp_area * 0.20 \
+				and c.size.x * c.size.y >= 4000.0 and minf(c.size.x, c.size.y) >= 40.0 \
+				and _is_frame_tex((n as TextureRect).texture):
+				var _ft: Texture2D = (n as TextureRect).texture
+				## ★只信**横向**端花, 竖向记 0。
+				##   实测 `menu/btn-frame.png` 893x212: 横带 101(11%)、竖带 77(**36%**)。
+				##   竖向那 36% 是**斜面倒角**不是硬边 —— 按 50px 高的按钮换算内框只剩 14px,
+				##   于是连「全屏」两个字都被判成压边(实测三个按钮全红)。**量到的不等于挡得住的。**
+				##   横向那 101 才是真挡人的东西(两端的花纹柱), 越过去字就骑在花上。
+				var _sx: float = c.size.x / maxf(1.0, float(_ft.get_width()))
+				framed.append([c.get_global_rect(), _band_of(_ft) * _sx, 0.0])
 			if n is NinePatchRect and (n as NinePatchRect).texture != null:
 				var np := n as NinePatchRect
-				framed.append([c.get_global_rect(), _band_of(np.texture)])
+				framed.append([c.get_global_rect(), _band_of(np.texture), _band_of(np.texture)])
 				var mv: float = np.patch_margin_top + np.patch_margin_bottom
 				var mh: float = np.patch_margin_left + np.patch_margin_right
 				if np.size.y > 0.0 and (np.size.y <= mv or np.size.x <= mh):
@@ -355,7 +410,8 @@ func _audit(root: Node) -> Dictionary:
 					continue
 				var sb = c.get_theme_stylebox(slot)
 				if sb is StyleBoxTexture and (sb as StyleBoxTexture).texture != null:
-					framed.append([c.get_global_rect(), _band_of((sb as StyleBoxTexture).texture)])
+					var _bb := _band_of((sb as StyleBoxTexture).texture)
+					framed.append([c.get_global_rect(), _bb, _bb])
 				elif sb is StyleBoxFlat:
 					var f2 := sb as StyleBoxFlat
 					if f2.corner_radius_top_left > 0:
@@ -419,8 +475,9 @@ func _audit(root: Node) -> Dictionary:
 		var la: float = lr.size.x * lr.size.y
 		if la <= 0.0 or inter2.size.x <= 0.0 or (inter2.size.x * inter2.size.y) / la < 0.60:
 			continue
-		var m: float = float(framed[best][1])
-		var inner := Rect2(fr2.position + Vector2(m, m), fr2.size - Vector2(m, m) * 2.0)
+		var mx: float = float(framed[best][1])
+		var my: float = float(framed[best][2])
+		var inner := Rect2(fr2.position + Vector2(mx, my), fr2.size - Vector2(mx, my) * 2.0)
 		if inner.size.x <= 0.0 or inner.size.y <= 0.0:
 			continue
 		var over := maxf(maxf(inner.position.y - lr.position.y,

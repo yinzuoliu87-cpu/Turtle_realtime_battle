@@ -61,9 +61,15 @@ func _ready() -> void:
 	add_child(sc)
 	await get_tree().process_frame
 	_ok("SettingsScene 在 headless 构建无报错", is_instance_valid(sc))
-	_ok("perf_lite=true → label 显示「开」", sc._perf_label().find("开") >= 0, sc._perf_label())
+	## ★判据换过一次(2026-08-19): 原来查「开」/「关」。文案改成「画质: 低/高」后它必然红 ——
+	##   红得对(文案是玩家看的东西, 改了就该复核), 但要跟着换成新的表征, 不是放宽。
+	##   现在断言两件事: ① 低画质态里出现「低」 ② 两态**文案确实不同**(否则按钮等于没反馈)。
+	var _lab_on: String = str(sc._perf_label())
+	_ok("perf_lite=true → label 说「低」", _lab_on.find("低") >= 0, _lab_on)
 	gs.perf_lite = false
-	_ok("perf_lite=false → label 显示「关」", sc._perf_label().find("关") >= 0, sc._perf_label())
+	var _lab_off: String = str(sc._perf_label())
+	_ok("perf_lite=false → label 说「高」", _lab_off.find("高") >= 0, _lab_off)
+	_ok("两态文案确实不同(不是死文字)", _lab_on != _lab_off, "%s / %s" % [_lab_on, _lab_off])
 
 	print("=== 4/5/6. ★重置存档 必须二次确认 ===")
 	gs.meta_deepsea_coins = 777

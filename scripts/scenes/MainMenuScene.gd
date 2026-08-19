@@ -264,7 +264,9 @@ func _add_lock_badge(holder: Control, size: Vector2) -> void:
 	var lock := Label.new()
 	lock.text = "🔒"
 	lock.add_theme_font_size_override("font_size", 26)
-	lock.position = Vector2(size.x - 36.0, 2.0)
+	## ★2026-08-19 从 (w-36, 2) 挪到 (w-44, 10): 原位置让锁**骑在木牌右上角的花纹柱上、还探出板外**
+	##   (实拍确认, 门禁也报了「🔒+8」)。木牌的花纹边实测约占 22px, 往里让开就落在木面上。
+	lock.position = Vector2(size.x - 44.0, 10.0)
 	lock.size = Vector2(32, 32)
 	lock.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lock.mouse_filter = Control.MOUSE_FILTER_IGNORE
