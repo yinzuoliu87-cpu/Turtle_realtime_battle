@@ -511,13 +511,20 @@ func _fit_skill_cards(parts: Array, top: float, max_h: float) -> void:
 		panel.custom_minimum_size.y = want
 		panel.size.y = want
 		hit.size.y = want
-		## ★高度要**对齐整行**: 直接用剩下的像素数会把最后一行**从中间横着切一刀**,
-		##   实拍是半截字母悬在卡底(比少一行难看得多)。按行高向下取整。
+		## ★高度对齐整行, 但**只在真的装不下时才这么做**。
+		##   第一版无条件向下取整 ⇒ 明明放得下的卡也被削掉最后一行的零头,
+		##   于是"被截了却没画提示"(门禁 verify_codex_layout 逐只龟数出来的)。
+		##   现在: 没顶到上限就按内容实际高度给足(不切、也就不需要提示);
+		##   顶到上限了才向下取整到整行(避免半截字悬在卡底), 这时提示才该出现。
 		var body_h: float = want - CARD_BODY_TOP - 8.0 - CARD_HINT_BAND - CARD_PAD
-		var lf: Font = rt.get_theme_font("normal_font")
-		var lh: float = (lf.get_height(13) if lf != null else 18.0) + rt.get_theme_constant("line_separation")
-		if lh > 1.0:
-			body_h = maxf(lh, floorf(body_h / lh) * lh)
+		var clamped: bool = want >= max_h - 0.5
+		if clamped:
+			var lf: Font = rt.get_theme_font("normal_font")
+			var lh: float = (lf.get_height(13) if lf != null else 18.0) + rt.get_theme_constant("line_separation")
+			if lh > 1.0:
+				body_h = maxf(lh, floorf(body_h / lh) * lh)
+		else:
+			body_h = maxf(body_h, rt.get_content_height())
 		rt.custom_minimum_size.y = body_h
 		rt.size.y = body_h
 		# 提示带跟着这张卡自己的底边走 —— 各卡高度不同, 不能再用一个统一的 y
@@ -688,7 +695,15 @@ func _show_p2eq(eq: Dictionary) -> void:
 	# 效果 (effectDesc1 = 1星基础 / effectDesc3 = 3星升级)
 	host._add_text(20, y, "效果", HEAD_SIZE, "#58d3ff", 0.0, 0.0, true)
 	y += 26.0
-	var bb = str(eq.get("effectDesc1", ""))
+	## ★图鉴是"查资料"的地方, 全文要留; 但**第一眼读到的必须是一句话**。
+	##   用户 2026-08-19:「图鉴所有的描述都不应该有 ai 味和教导玩家的味道」——
+	##   实抓 489 条同类文案量出来: 中文同类 12~85 字, 而我们中位 129 字。
+	##   现在: 简述(粗体, 一句话) → 空行 → 完整机制。
+	var _eb := SkillText.equip_brief(eq)
+	var _ef := SkillText.equip_full(eq)
+	var bb = ("[b]%s[/b]
+
+%s" % [_eb, _ef]) if _eb != _ef else _ef
 	var d3: String = str(eq.get("effectDesc3", ""))
 	if d3.strip_edges() != "":
 		bb += "\n\n[color=%s][b]%s[/b][/color]" % [rcol, d3]

@@ -793,7 +793,8 @@ func _build_op_bar() -> void:
 			##   ⚠ 别再改回 `fit_content = true`: 那会让"内容高 ≤ 框高"恒成立, 检查永远不触发。
 			l.fit_content = false
 			l.scroll_active = false
-			var plain := str(sdef.get("effectDesc1", ""))
+			## 背包格子里的一行说明 —— 用一句话简述(原文中位 129 字, 这里放不下)。
+			var plain := SkillText.equip_brief(sdef)
 			l.text = SkillText.highlight_star(plain, _star)
 			l.add_theme_font_size_override("normal_font_size", OP_BODY_FS)
 			l.add_theme_color_override("default_color", Color("#cfe0ef"))
@@ -902,7 +903,8 @@ func _show_equip_detail(item: Dictionary) -> void:
 		for kv in rows:
 			parts.append("[color=#9fb6c9]%s[/color]  [color=#7fe39a][b]%s[/b][/color]" % [kv[0], kv[1]])
 		bbody = "  　　".join(parts)
-	var eff := SkillText.highlight_star(str(edef.get("effectDesc1", "")), star)
+	## 详情弹窗是"点开看全部"那一层, 给**全文**; 操作栏/tooltip 才给一句话简述。
+	var eff := SkillText.highlight_star(SkillText.equip_full(edef), star)
 	if eff.strip_edges() == "":
 		eff = "[color=#8fa6bb]这件没有额外效果，属性直接生效。[/color]"
 	var bb := "[color=#9fb6c9][b]带来的属性[/b][/color]\n%s\n\n[color=#9fb6c9][b]效果[/b][/color]\n[color=#cfe0ef]%s[/color]" % [bbody, eff]
@@ -912,7 +914,7 @@ func _show_equip_detail(item: Dictionary) -> void:
 	var bw := 700.0
 	var body_plain := "带来的属性\n%s\n\n效果\n%s" % [
 		("这件不加属性，只有下面的效果。" if rows.is_empty() else _stat_block(eid, star)),
-		str(edef.get("effectDesc1", ""))]
+		SkillText.equip_full(edef)]
 	var bh: float = clampf(_measured_text_h(body_plain, bw - 48.0, DETAIL_BODY_FS) + 140.0,
 		300.0, H - 96.0)
 	var box := Panel.new()
@@ -1046,7 +1048,7 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	box.set_script(RichTooltip)
 	box.tooltip_text = "[b]%s[/b]  ★%d  (费用%d)\n\n属性加成:\n%s\n\n效果: %s" % [
 		str(edef.get("name", eid)), star, int(edef.get("cost", 1)),
-		_stat_block(eid, star), SkillText.highlight_star(str(edef.get("effectDesc1", "（无主动效果）")), star)]
+		_stat_block(eid, star), SkillText.highlight_star(SkillText.equip_brief(edef) if str(edef.get("effectBrief", "")) != "" else "（无主动效果）", star)]
 	_wire_bench_tap(box, idx)
 	return box
 

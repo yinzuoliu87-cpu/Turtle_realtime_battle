@@ -304,6 +304,25 @@ static func render_bbcode(template: String, f: Dictionary, s: Dictionary, font_p
 
 
 ## 便捷: 模板 → 纯文本 (无色, 仅展开数字; Label 用). 去掉所有 <…> 标签.
+## 【装备文案的唯一取值口】—— 简述 / 全文。
+##
+## ★由来(2026-08-19): 95 件装备原来只有 `effectDesc1` 一个字段, 它同时干着
+##   "一句话简述"和"完整机制说明"两件事 —— 实测中位 129 字、最长 329 字,
+##   而同类游戏(实抓 489 条 / 14 款)是 12~85 字。挤在背包格子、战斗信息面板里根本读不完。
+##   现在每件装备补了 `effectBrief`(一句话, 中位 36 字), 原文留作全文。
+## ★为什么做成函数而不是让七个消费点各自 `get("effectBrief")`:
+##   memory `fb-hand-rolled-copies-drift`「手抄的副本必然落后 —— 抄一次永远落后一次」。
+##   没有简述的装备(理论上不该有, 门禁守着)自动退回全文, 不会显示空白。
+static func equip_brief(edef: Dictionary) -> String:
+	var b := str(edef.get("effectBrief", "")).strip_edges()
+	return b if b != "" else str(edef.get("effectDesc1", ""))
+
+
+## 完整机制说明(图鉴详情 / 点开看全部 用)。
+static func equip_full(edef: Dictionary) -> String:
+	return str(edef.get("effectDesc1", ""))
+
+
 static func render_plain(template: String, f: Dictionary, s: Dictionary) -> String:
 	_ensure_re()
 	var html := render_html(template, f, s)

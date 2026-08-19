@@ -290,7 +290,7 @@ func _dl_equip_chip(eid: String, star: int) -> Control:
 	var bsb = StyleBoxFlat.new(); bsb.bg_color = Color("#0c141c"); bsb.set_border_width_all(2); bsb.set_corner_radius_all(4)
 	bsb.border_color = battle._equip_cost_color(int(edef.get("cost", 1)))
 	box.add_theme_stylebox_override("panel", bsb)
-	box.tooltip_text = "%s  ★%d\n%s" % [str(edef.get("name", eid)), star, str(edef.get("effectDesc1", ""))]
+	box.tooltip_text = "%s  ★%d\n%s" % [str(edef.get("name", eid)), star, SkillText.equip_brief(edef)]
 	var img = str(edef.get("img", ""))
 	if img != "" and ResourceLoader.exists("res://assets/sprites/" + img):
 		var ic = TextureRect.new(); ic.texture = load("res://assets/sprites/" + img)

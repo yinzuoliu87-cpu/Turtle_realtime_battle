@@ -37,7 +37,21 @@ NL = chr(10)
 # 一句"简述"的字数上限。中文同类实测 12~85 字, 取 60 —— 比最宽松的云顶还宽一点,
 # 因为我们一件装备常带 1/2/3 星三档数值。超过就是"讲不完的第二件事"。
 BRIEF_MAX = 60
-DETAIL_MAX = 200
+# 【全文档】的上限 —— 龟的 `detail`/`desc` 和装备的 `effectDesc1` 是**同一层东西**:
+# 都是"点开看全部"里那份完整机制说明。原来给 detail 定 200、给装备定 400 是两套尺子,
+# 那不是标准, 是我随手拍的。统一到 400(实测最长一件装备 329 字, 是真机制不是废话)。
+DETAIL_MAX = 400
+
+## 【明确豁免】超过上限但**经过复核认为该留**的全文, 连理由一起登记。
+##
+## ★为什么用名单而不是把上限调高: 调高上限是"把尺子改到能量过为止", 那不是标准;
+##   名单摆在这里, 谁都能看见到底破了几个例、各是什么理由。
+DETAIL_ALLOW = {
+    ('龟技能', 'pirate/海盗船', 'detail'):
+        '召唤物完整属性表(生命/攻击/双抗/攻速/射程)+ 三段行为, 删任何一段都会让玩家算不出账',
+    ('龟技能', 'shell/暗影', 'detail'):
+        '一个技能同时带主动与被动两套机制(潜影/暗影), 本身就是两条技能的信息量',
+}
 
 # 教导句: 直接告诉玩家该怎么打。489 条样本里只出现过 1 次。
 # ⚠ 判据太宽第 11 次: 「优先」原本在名单里, 结果逮到的是
@@ -87,7 +101,7 @@ def collect():
                     if v:
                         rows.append(['龟技能', '%s/%s' % (pid, s.get('name', '')), k, v])
     for e in load('data/phase2-equipment.json'):
-        for k in ('effectDesc1', 'effectDesc3'):
+        for k in ('effectBrief', 'effectDesc1', 'effectDesc3'):
             v = str(e.get(k, '') or '')
             if v:
                 rows.append(['装备', '%s/%s' % (e.get('id', ''), e.get('name', '')), k, v])
@@ -120,8 +134,16 @@ def main():
         p = plain(txt)
         n = len(p)
         is_brief = field in ('brief', 'effectDesc1', 'effectDesc3', 'desc') and tag != '龟被动'
-        cap = BRIEF_MAX if (field == 'brief' or field.startswith('effectDesc')) else DETAIL_MAX
-        if n > cap:
+        # ★2026-08-19: 装备补了 `effectBrief`(一句话) 之后, `effectDesc1` 的身份从
+        #   "简述"变成了"全文"(点开看全部那一层) ⇒ 它按详情的上限算, 不再按简述。
+        #   全文档放到 400: 实测最长一件 329 字, 而这些是真机制说明, 不是废话。
+        if field in ('brief', 'effectBrief'):
+            cap = BRIEF_MAX
+        elif field.startswith('effectDesc'):
+            cap = 400
+        else:
+            cap = DETAIL_MAX
+        if n > cap and (tag, ident, field) not in DETAIL_ALLOW:
             hits['太长(上限%d)' % cap].append((tag, ident, field, n, p[:40]))
         for w in TEACH:
             if w in p:
@@ -159,6 +181,10 @@ def main():
         for r in v[:6] if '--list' not in sys.argv else v:
             print('       %s %s.%s  「%s」  %s' % (r[0], r[1], r[2], r[3], r[4]))
     print('  ── 合计 %d 处 ──' % total)
+    if DETAIL_ALLOW:
+        print('  明确豁免 %d 条(超上限但复核认为该留):' % len(DETAIL_ALLOW))
+        for k, why in DETAIL_ALLOW.items():
+            print('       %s %s.%s —— %s' % (k[0], k[1], k[2], why))
     return 0
 
 

@@ -206,19 +206,19 @@ func _ready() -> void:
 		_ok("⑨ ★正文框高 = 整行的整数倍(%.0f / 行高 %.0f), 不会把某一行切成半条"
 			% [br.size.y, lh], lh > 0.0 and absf(fmod(br.size.y, lh)) < 0.5,
 			"框高 %.1f 行高 %.1f 余 %.2f" % [br.size.y, lh, fmod(br.size.y, lh)])
-		## ★放不下就必须说 —— 且说的行数要对得上字体量出来的真实行数
-		var plain: String = str((DataRegistry.phase2_equipment_by_id.get(long_id, {}) as Dictionary).get("effectDesc1", ""))
-		var total: int = int(sc.call("_op_total_lines", body, plain, br.size.x))
+		## ★2026-08-19 改判据: 底栏现在放的是【一句话简述】(effectBrief), 不再是那段
+		##   中位 129 字、最长 329 字的全文 —— 所以"放不下要明说"这条不再适用于底栏,
+		##   **它现在就该一行不截地放得下**。全文由「详情」那一层承接(下面有断言)。
+		##   判据的意思没变: **不许静默截断**。只是从"截断了要提示"变成"根本不截断"。
+		var eb: String = SkillText.equip_brief(DataRegistry.phase2_equipment_by_id.get(long_id, {}))
+		var total: int = int(sc.call("_op_total_lines", body, eb, br.size.x))
 		var rows: int = int(InvScene.OP_BODY_ROWS)
-		_ok("⑩ ★分母: 最长那件在底栏这个宽度下确实放不下(%d 行 > %d 行)" % [total, rows],
-			total > rows, "只要 %d 行 ⇒ 拿它测'放不下'等于没测" % total)
-		_ok("⑪ ★★放不下【明说还有几行】(不是静默截断)",
-			more != null and is_instance_valid(more) and str(more.text).find("详情") >= 0,
-			"没有提示: more=%s" % ("null" if more == null else str(more.text)))
-		if more != null and is_instance_valid(more):
-			_ok("⑫ ★提示里的行数 = 真实行数 − 显示行数(不是随便写个数)",
-				str(more.text).find(str(total - rows)) >= 0,
-				"提示写的是「%s」, 真实应为 %d 行" % [str(more.text), total - rows])
+		_ok("⑩ ★分母: 简述确实拿到了(空串 = 下面是空检查)", eb.strip_edges() != "",
+			"%d 字" % eb.length())
+		_ok("⑪ ★★最长那件的简述在底栏也放得下(%d 行 ≤ %d 行), 不需要截断" % [total, rows],
+			total <= rows, "要 %d 行 > 能放 %d 行" % [total, rows])
+		_ok("⑫ ★没截断就不该再挂「还有几行」的提示", more == null or not is_instance_valid(more),
+			"仍挂着: %s" % ("无" if more == null else str(more.text)))
 	var has_detail_btn := false
 	for c in _all(sc):
 		if c is Button and str((c as Button).text) == "详情":

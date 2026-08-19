@@ -101,7 +101,14 @@ func _ready() -> void:
 		for _c in _inst.detail.get_children():
 			if _c is RichTextLabel:
 				var _rt := _c as RichTextLabel
-				if _rt.size.y > 40.0 and _rt.size.y < 400.0 and _rt.get_content_height() > _rt.size.y + 0.5:
+				## ★这条只数【技能卡】的正文, 两个边界都栽过:
+				##   ① 下限原本是 40 —— 简述精简后有的卡正文只剩 1~2 行(不足 40px), 被排除掉,
+				##      于是"被截 0 / 提示 2"对不上, 看着像多画了提示, 其实是分母漏数。降到 16。
+				##   ② 只按高度筛还不够: **被动条**也是 RichTextLabel(实测 516x24 / 内容 46 ⇒ 也算"被截"),
+				##      但它的提示写的是「展开全文 ▸」而不是「点开看全部」⇒ 又报"被截 1 / 提示 0"。
+				##      技能卡并排三张(宽约 253), 被动条是整条(宽 516) —— **用宽度把两者分开**。
+				if _rt.size.x < 400.0 and _rt.size.y > 16.0 and _rt.size.y < 400.0 \
+					and _rt.get_content_height() > _rt.size.y + 0.5:
 					_cl += 1
 			elif _c is Label and str((_c as Label).text).begins_with("点开看全部"):
 				_hi += 1
