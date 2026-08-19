@@ -358,6 +358,10 @@ run_audit "tools/docs_authority_lint.py"  "ALL OK" "docs_authority_lint (单一�
 #   文案写「普攻伤害」而代码挂在伤害总闸上(普攻/技能/真伤全覆盖), 而当时 211 项全绿:
 #   已有审计器只对数值和效果类别, 「文案说 A 代码做 B」这一整类没人看。
 #   ★它报的是【疑点】: 逐条读代码判完, 要么改文案, 要么进 ACCEPT 并写清理由(不许放宽判据)。
+# 文案里【写的百分比】↔【同句占位符公式算出来的系数】—— "文案自己内部就对不上"这一类。
+#   2026-08-19 逐只读代码时抓到两个真 bug 而当时 212 项全绿: 石头龟岩石护盾"文字新公式旧"
+#   (玩家看到的数字停在改版前)、海盗龟朗姆酒 detail 把 15% 配到了 0.65 的公式上。
+run_audit "tools/text_formula_audit.py"  "ALL OK" "text_formula_audit (文案文字↔它自己的占位符公式)"
 run_audit "tools/text_claim_audit.py"    "ALL OK" "text_claim_audit (文案声称↔代码实际·触发周期/选靶/作用范围)"
 run_audit "tools/plans_lint.py"          "ALL OK" "plans_lint (方案书生命周期·状态/骨架/实施回填)"
 
