@@ -680,7 +680,7 @@ func _debug_arena_entry() -> void:
 	#   现在挪到左右两栏之间那条空档 (左栏右沿 443 / 信息板左沿 704), 谁也不压。
 	#   高度 38→46: 仍低于 81 视口像素的触摸线, 但它是【开发工具·正式包不出现】,
 	#   为它把玩家版式撑大不划算 —— 门禁里显式豁免并写明原因, 不是"忘了量"。
-	b.size = Vector2(120, 46)
+	b.size = Vector2(120, 46)   # ★维持 46: 见上方注释 —— 调试构建专用, 已在门禁显式豁免; 撑到 81 会顶出屏底
 	b.position = Vector2(452, H - 46 - WALL)
 	content_root.add_child(b)
 	b.pressed.connect(_open_debug_arena)

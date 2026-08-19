@@ -227,11 +227,11 @@ func _rebuild() -> void:
 	##   这 200px 让给右上角三组去排版 —— 它们原来因为标题框占着中间, 被挤在 756..1252 的窄带里。
 
 	var back := Button.new(); back.text = "← 返回"; back.add_theme_font_size_override("font_size", 20)
-	back.position = Vector2(28, 18); back.size = Vector2(132, 60)   # ★加高填满头部带(原 52 高, 96px 的带子里空着一截)
+	back.position = Vector2(28, 18); back.size = Vector2(132, 81)   # ★加高填满头部带(原 52 高, 96px 的带子里空着一截)
 	back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")); _skin_button(back); add_child(back)
 
 	var inv := Button.new(); inv.text = "🎒 背包"; inv.add_theme_font_size_override("font_size", 20)
-	inv.position = Vector2(172, 18); inv.size = Vector2(132, 60)
+	inv.position = Vector2(172, 18); inv.size = Vector2(132, 81)
 	inv.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Inventory.tscn")); _skin_button(inv); add_child(inv)
 
 	## ── 头部三组重排(用户 2026-08-15「右上角咋做的, 中间给你这么空位你在干啥啊」)──
