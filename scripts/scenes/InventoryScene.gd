@@ -439,8 +439,12 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 
 ## 单位身上的装备格一行: 填充格显图标·点它=卸那一件(无选中时); 选中装备时格子透传→点框body装备.
 func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, is_leader: bool, pet_id: String, lane: String, idx: int, x_start: float = -1.0) -> void:
-	var cw := 28.0
-	var gap := 5.0
+	## ★28 → 40: 手机触控下限是 44pt(81px), 而卡片右列只有约 134px 宽 ——
+	##   3 格要到 81px 得 243px, **版式里塞不下**(加高卡片又会撞到下面的背包区)。
+	##   所以取版式允许的最大值: 3×40 + 2×4 = 128 ≤ 134。从 15pt 提到 22pt。
+	##   ★真正的 44pt 路径另给: 选中卡片后, 底部操作条会列出它的装备 + 大号「卸下」按钮。
+	var cw := 40.0
+	var gap := 4.0
 	var team_full: bool = not GameState.team_has_equip_room()   # 全队预算是否已用尽(空格样式据此区分)
 	## ★三格只放【占装备位】的件; 羁绊赠送件(圣光护盾)另挂徽章 —— 它不是装备位。
 	##   `slot_idx` 记录每格对应 eqs 里的真实下标: 卸下要按真实下标走, 不能按格号。
@@ -741,6 +745,13 @@ func _build_op_bar() -> void:
 	##   走同一个 bar 而不是另起一条 —— 用户要的就是"和装备一样"。
 	if _sel_jar and GameState.has_candy_jar():
 		_build_jar_op_bar()
+		return
+	## ★选中【战场卡片】时, 这条操作栏改列它身上的装备 + 大号「卸下」按钮。
+	##   由来: 卡片上那 3 个装备格受版式限制只能做到 40px(22pt), 低于手机 44pt 下限,
+	##   而它们**曾是卸下装备的唯一入口**。这里给出一条 44pt 达标的主路径:
+	##   点卡片(244×96 的大目标) → 底部出现每件装备一个 81px 高的「卸下」键。
+	if _sel_bench < 0 and not _dl_sel.is_empty():
+		_build_unit_equip_bar()
 		return
 	if _sel_bench < 0 or _sel_bench >= GameState.persistent_bench.size():
 		return   # 无选中装备 → 不显底部操作条(原那行"3件同款合成"已收进"?"帮助·用户2026-07-19)
@@ -1182,3 +1193,53 @@ func _candy_jar_cell(it: Dictionary, pos: Vector2) -> Control:
 		_sel_bench = -1                              # 选糖果罐 ⇒ 取消装备选中(互斥)
 		_rebuild())
 	return jbox
+
+
+## 选中战场卡片时的操作栏: 列出它身上的装备, 每件一个 81px 高的「卸下」键(手机 44pt 达标路径)。
+func _build_unit_equip_bar() -> void:
+	var lane := str(_dl_sel.get("lane", ""))
+	var idx := int(_dl_sel.get("idx", -1))
+	var arr: Array = GameState.get_dual_lineup().get(lane, [])
+	if idx < 0 or idx >= arr.size() or not (arr[idx] is Dictionary):
+		return
+	var unit: Dictionary = arr[idx]
+	var eqs: Array = unit.get("equips", []) if unit.get("equips", null) is Array else []
+	if eqs.is_empty():
+		return
+	var bar := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("#101c2a")
+	sb.border_color = Color("#2a3a4e")
+	sb.set_border_width_all(2)
+	bar.add_theme_stylebox_override("panel", UISkin.nine("panel-frame.png", 20, sb))
+	bar.position = Vector2(24, OP_BAR_Y)
+	bar.size = Vector2(_vw - 48.0, OP_BAR_H)
+	add_child(bar)
+	var ttl := Label.new()
+	ttl.text = "点「卸下」把装备收回背包"
+	ttl.add_theme_font_size_override("font_size", 15)
+	ttl.add_theme_color_override("font_color", Color("#9fb6c9"))
+	ttl.position = Vector2(20, 16)
+	ttl.size = Vector2(260, 22)
+	bar.add_child(ttl)
+	var x := 300.0
+	for ci in range(mini(eqs.size(), 3)):
+		var eid := str((eqs[ci] as Dictionary).get("id", ""))
+		var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
+		var b := Button.new()
+		b.text = "卸下 %s" % str(edef.get("name", eid))
+		b.add_theme_font_size_override("font_size", 15)
+		b.position = Vector2(x, 12)
+		b.custom_minimum_size = Vector2(190.0, 81.0)   # 44pt 触控下限
+		b.size = Vector2(190.0, 81.0)
+		UISkin.button(b, Color("#9fb6c9"))
+		var cci := ci
+		var is_leader: bool = str(unit.get("kind", "")) == "leader"
+		var pid := str(unit.get("id", ""))
+		b.pressed.connect(func() -> void:
+			if is_leader:
+				_inv_ops._unequip_at(pid, cci)
+			else:
+				_inv_ops._unequip_minion_at(lane, idx, cci))
+		bar.add_child(b)
+		x += 200.0
