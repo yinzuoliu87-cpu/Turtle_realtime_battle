@@ -488,7 +488,7 @@ func _sk_crystal_bulwark(u: Dictionary) -> void:                 # 水晶龟·�
 		battle._damage._buff(o, "def", 0.15, true, 4.0); battle._damage._buff(o, "mr", 0.15, true, 4.0)
 		battle._skill_ring(o["pos"], Color(0.62, 0.88, 1.0, 0.55), 40.0)   # 友军冰蓝强化环
 
-func _sk_crystal_burst(u: Dictionary, tgt) -> void:   # 碎晶爆破: 目标周围350码内每敌3段错峰碎晶坠落(三段共 0.8A魔+0.3A真+每段叠1层结晶·共3层满5引爆·用户2026-07-28加强)
+func _sk_crystal_burst(u: Dictionary, tgt) -> void:   # 碎晶爆破: 目标周围350码内每敌3段错峰碎晶坠落(三段共 1.2A魔+1.2A真+每段叠1层结晶·共3层满5引爆·用户2026-07-28加强)
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	var center: Vector2 = tgt["pos"]
@@ -517,8 +517,8 @@ func _sk_crystal_burst(u: Dictionary, tgt) -> void:   # 碎晶爆破: 目标周�
 					if is_instance_valid(sh): sh.queue_free()
 					if not oref.get("alive", false): return
 					_crystal_spark(oref["pos"], 0.7)
-					battle._damage._apply_damage_from(uu, oref, battle._atk_dmg(uu, BURST_MAGIC / 3.0, oref, true), Color("#9bdcff"))     # 每段 = 总0.8A魔法/3
-					battle._damage._apply_damage_from(uu, oref, int(maxf(1.0, uu["atk"] * BURST_TRUE / 3.0)), Color("#ffffff"), 0.0, true)   # 每段 = 总0.3A真实/3
+					battle._damage._apply_damage_from(uu, oref, battle._atk_dmg(uu, BURST_MAGIC / 3.0, oref, true), Color("#9bdcff"))     # 每段 = 总 BURST_MAGIC(1.2A) 魔法 / 3
+					battle._damage._apply_damage_from(uu, oref, int(maxf(1.0, uu["atk"] * BURST_TRUE / 3.0)), Color("#ffffff"), 0.0, true)   # 每段 = 总 BURST_TRUE(1.2A) 真实 / 3
 					_crystal_stack(uu, oref, 1))
 			, "src": u})
 

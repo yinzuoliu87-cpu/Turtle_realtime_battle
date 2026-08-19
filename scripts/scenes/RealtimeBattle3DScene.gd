@@ -297,7 +297,7 @@ const BASIC_ATK := {
 	"candy":    {"phys": 1.1, "selfhp": 0.03, "hits": 1, "rider": "atkdn"},         # +自HP+减攻debuff (用户2026-07-28: 0.05→0.03)
 	"bubble":   {"phys": 1.5, "hits": 3},
 	"line":     {"magic": 1.0, "hits": 1},                                          # 素描:1A魔法单段(叠1墨迹走_on_basic_hit·用户设计)
-	"lava":     {"magic": 0.6, "hp": 0.04, "hits": 1, "rider": "burn", "burnScale": 0.07},   # 熔岩弹: 0.6魔+4%目标HP+0.125ATK灼烧层 (用户2026-06-30)
+	"lava":     {"magic": 0.6, "hp": 0.04, "hits": 1, "rider": "burn", "burnScale": 0.07},   # 熔岩弹: 0.6魔+4%目标HP+0.07ATK灼烧层(burnScale) (用户2026-06-30)
 	"crystal":  {"phys": 0.6, "hits": 1},                                          # 水晶刺(封板L559):0.6A物理+1.5%目标maxHp魔法+叠1结晶(魔法段与结晶都走_on_basic_hit·原hp bonus折进物理=类型错)
 	"space":    {"magic": 0.9, "tcurhp": 0.05, "hits": 1},                          # 星光弹: 单段0.9A魔法+5%目标当前HP (封板2026-07-07)
 	"hiding":   {"phys": 1.0, "hits": 1, "rider": "shrink"},                        # 缩壳: 1A物理+每击+1甲+1抗+0.1A盾(越打越硬)
