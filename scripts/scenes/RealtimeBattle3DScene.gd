@@ -5854,7 +5854,7 @@ func _sk_basic_slam(u: Dictionary, tgt) -> void:  # 小龟·过肩摔(#7重做·
 	land.y = clampf(land.y, ARENA.position.y + 20.0, ARENA.end.y - 20.0)
 	_basic_slam_run(u, tgt, dir, u_start, land, tmax)   # async 编排(fire-and-forget)
 
-## 过肩摔伤害结算(主目标 0.7A+26%maxHp / 周围250码 0.2A+19%主maxHp) — 落地时调.
+## 过肩摔伤害结算(主目标 1.0A + 0.2%×ATK×目标maxHp / 周围350码 0.3A + 0.13%×ATK×主目标maxHp) — 落地时调.
 func _slam_apply_damage(u: Dictionary, tgt: Dictionary, tmax: float) -> void:
 	if tgt.get("alive", false):
 		_damage._apply_damage_from(u, tgt, _atk_dmg(u, 1.0, tgt) + int(u["atk"] * 0.002 * tmax), Color("#ff9d5c"))   # 过肩摔主目标(用户2026-07-29 第五轮): 0.7A+23%最大生命 → 1.0A + 0.2%×ATK×最大生命
@@ -7056,7 +7056,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		_line_sys._line_aspd_convert(u)
 	# --- 彩虹棱镜(封板L267): 每6秒随机红/蓝/绿·普攻附对应效果(红+0.25A真伤/蓝+0.2A盾4s/绿回2.5%已损·见_on_basic_hit) ---
 	if u["id"] == "rainbow":
-		_rainbow_sys._rainbow_prism_convert(u)   # 棱镜转化(实时·每帧): 10%最大生命→攻击力, 0.3×攻击力%→攻速
+		_rainbow_sys._rainbow_prism_convert(u)   # 棱镜转化(实时·每帧): 2%最大生命→攻击力(PRISM_ATK_FROM_HP), 0.3×攻击力%→攻速
 		u["_rbtimer"] = u.get("_rbtimer", 0.0) + delta
 		if u["_rbtimer"] >= 6.0:
 			u["_rbtimer"] = 0.0

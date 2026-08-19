@@ -98,7 +98,7 @@ func _sk_bubble_shield(u: Dictionary, _tgt: Dictionary) -> void: # 泡泡龟·�
 		tw.tween_property(dome, "modulate:a", 0.0, 0.34)
 		tw.tween_callback(dome.queue_free)
 
-func _sk_bubble_burst(u: Dictionary, tgt) -> void:              # 泡泡龟·泡泡爆破(马尔扎哈Q式·用户设计): 消耗当前泡泡值40%→目标两侧泡沫门·门间敌每个受=消耗泡泡值魔法+0.8A物理(无沉默)
+func _sk_bubble_burst(u: Dictionary, tgt) -> void:              # 泡泡龟·泡泡爆破(马尔扎哈Q式·用户设计): 消耗当前泡泡值40%→目标两侧泡沫门·门间敌每个受=消耗量×1.5魔法+1.5A物理(无沉默)
 	if tgt == null or not tgt.get("alive", false): return
 	var consumed: float = float(u.get("bubble_store", 0.0)) * 0.40   # 修: 原读"bubble"(从不设=恒0→爆破无泡泡伤害bug)→"bubble_store"(受伤累积的真泡泡值·同被动/累积口径)
 	u["bubble_store"] = maxf(0.0, float(u.get("bubble_store", 0.0)) - consumed)

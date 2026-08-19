@@ -244,8 +244,8 @@
         "cd": 0,
         "healPct": 10,
         "shieldTurns": 3,
-        "brief": "为自己回复 {H:HP*0.1} 生命值，并为队友提供 {S:HP*0.12} 护盾，持续 <span class=\"val-atk\">4 秒</span>。\n<span style=\"color:#8a93a0\">若没有队友存活，则改为治疗自己 {H:HP*0.15} 生命值。\n</span>",
-        "detail": "竹叶龟为自己回复（10%×最大生命值({HP}) = {H:HP*0.1}）生命值。\n为存活队友施加（12%×最大生命值({HP}) = {S:HP*0.12}）护盾，持续 <span class=\"val-def\">4秒</span>。\n若无存活队友，改为回复（15%×最大生命值({HP}) = {H:HP*0.15}）生命值。\n<span style=\"color:#8a93a0\">若没有队友存活，则改为治疗自己 {H:HP*0.15} 生命值。</span>",
+        "brief": "为自己回复 {H:HP*0.1} 生命值，并为每名队友罩上【其自身】12% 最大生命值的护盾，持续 <span class=\"val-atk\">4 秒</span>。\n<span style=\"color:#8a93a0\">若没有队友存活，则改为治疗自己 {H:HP*0.15} 生命值。\n</span>",
+        "detail": "竹叶龟为自己回复（10%×最大生命值({HP}) = {H:HP*0.1}）生命值。\n为每名存活队友罩上其自身 12% 最大生命值的护盾，持续 <span class=\"val-def\">4秒</span>。\n若无存活队友，改为回复（15%×最大生命值({HP}) = {H:HP*0.15}）生命值。\n<span style=\"color:#8a93a0\">若没有队友存活，则改为治疗自己 {H:HP*0.15} 生命值。</span>",
         "energyCost": 110
       },
       {
@@ -347,7 +347,7 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "对目标打击两段，共造成 {N:ATK*2} 物理伤害，本次施法附带 <span class=\"val-heal\">10% 生命偷取</span>。\n若目标稀有度为 <span class=\"val-atk\">A 级及以上</span>，则追加第三段，额外造成 {T:0.5*ATK} 加上 <span class=\"val-true\">10% 目标已损生命值</span>的真实伤害。",
+        "brief": "对目标打出 4 道圣光斩弧，共造成 {N:ATK*2} 物理伤害，本次施法附带 <span class=\"val-heal\">10% 生命偷取</span>。\n若目标稀有度为 <span class=\"val-atk\">A 级及以上</span>，则追加第三段，额外造成 {T:0.5*ATK} 加上 <span class=\"val-true\">10% 目标已损生命值</span>的真实伤害。",
         "detail": "天使龟挥起圣裁，使本次施法获得 <span class=\"val-heal\">10% 生命偷取</span>。\n随后天使龟对目标打击<b>四段</b>（每段50%攻击力），共造成（200%×攻击力 = {N:2*ATK}）物理伤害。\n如果目标的稀有度是 <span class=\"val-atk\">A 级及以上</span>，则追加第三段攻击造成：（50%×攻击力 = {T:0.5*ATK}）+ <span class=\"val-true\">10% 目标已损生命值</span>真实伤害。",
         "energyCost": 60
       },
@@ -449,7 +449,7 @@
         "selfCast": true,
         "shieldScale": 0.5,
         "shieldDuration": 3,
-        "brief": "为全体友军（含自己）罩上冰霜护盾，护盾量等于自身 <span class=\"val-def\">5% 最大生命值</span>，持续 <span class=\"val-atk\">4 秒</span>。\n<span style=\"color:#8a93a0\">护盾结束时会爆裂。\n</span>",
+        "brief": "为全体友军（含自己）罩上冰霜护盾，护盾量等于自身 <span class=\"val-def\">5% 最大生命值</span>，持续 <span class=\"val-atk\">4 秒</span>。\n<span style=\"color:#8a93a0\">护盾到期、被打破或持盾者阵亡时爆裂，对其 250 码内的敌人造成 1×攻击力魔法伤害。\n若场上没有其他友军，护盾改为 20% 最大生命值、爆裂伤害改为 5×攻击力。\n</span>",
         "detail": "寒冰龟为全体友军（含自己）施加等于【寒冰龟 <span class=\"val-def\">5% 最大生命值</span>】的冰霜护盾，持续 <span class=\"val-def\">4秒</span>。\n场上没有其他友军时护盾 ×4（20% 最大生命值）。\n护盾<span class=\"val-atk\">到期、被打破、或持盾者阵亡</span>时都会爆裂，对持盾者周围 250 码内的敌人造成 <span class=\"val-atk\">100%×攻击力</span> 魔法伤害（独狼时 500%）。",
         "energyCost": 120
       }
@@ -554,7 +554,7 @@
         "pierce": 0,
         "cd": 0,
         "atkScale": 1.6,
-        "brief": "向当前目标投掷手里剑，造成 {N:1.6*ATK} 物理伤害；若本次暴击，则整发伤害转为真实伤害。\n<span style=\"color:#8a93a0\">暴击几率为 40%+2%/级。\n打包被动·忍者足：\n登场即获得 +15% 闪避和 +30% 暴击率。\n</span>",
+        "brief": "向当前目标投掷手里剑，造成 {N:1.6*ATK} 物理伤害；若本次暴击，则暴击总伤中的 (40+2%/级)% 转为真实伤害（无视护甲），其余仍是物理伤害。\n<span style=\"color:#8a93a0\">暴击按忍者自身暴击率判定。\n打包被动·忍者足：\n登场即获得 +15% 闪避和 +30% 暴击率。\n</span>",
         "detail": "忍者龟向当前目标投掷手里剑，造成（160%×攻击力({ATK}) = {N:1.6*ATK}）物理伤害。\n本次攻击按<b>忍者龟自身的暴击率</b>判定。\n暴击时，暴击总伤害中的 (40% + 每级2%，封顶100%) 转为 <span class=\"val-true\">真实伤害</span>，<b>其余部分仍是物理伤害</b>（不是整发转真伤）。\n<span style=\"color:#8a93a0\">打包被动·忍者足：\n选择本技能后，忍者龟登场额外获得 15% 闪避几率与 30% 暴击率。\n</span>"
       },
       {
@@ -766,7 +766,7 @@
         "dodgePct": 25,
         "dodgeTurns": 2,
         "brief": "突袭目标，造成 {M:1.5*ATK} 魔法伤害，<span class=\"val-heal\">回复所造成伤害 80% 的生命值</span>，并获得 <span class=\"val-atk\">25% 闪避</span>持续 <span class=\"val-atk\">4 秒</span>。",
-        "detail": "幽灵龟对目标造成（150%×攻击力 = {M:1.5*ATK}）魔法伤害，回复造成伤害的 80% 生命值，并获得 25% 闪避，持续 <span class=\"val-def\">4秒</span>。\n<span style=\"color:#8a93a0\">命中还会把目标<b>击退抛飞</b>。\n</span>"
+        "detail": "幽灵龟对目标造成（150%×攻击力 = {M:1.5*ATK}）魔法伤害，回复造成伤害的 80% 生命值，将目标击退抛飞，并获得 25% 闪避，持续 <span class=\"val-def\">4秒</span>。\n<span style=\"color:#8a93a0\">命中还会把目标<b>击退抛飞</b>。\n</span>"
       },
       {
         "name": "灵魂风暴",
@@ -792,7 +792,7 @@
         "cd": 0,
         "atkScale": 0.6,
         "brief": "进入<span class=\"val-normal\">虚化</span>状态持续 <span class=\"val-atk\">4 秒</span>，并对目标攻击两段，共造成 {T:1.2*ATK} 真实伤害。",
-        "detail": "幽灵龟进入虚化（期间<b>锁龟能 4 秒</b>不充能）状态4秒，并对目标攻击两段，造成共（120%×攻击力 = {T:1.2*ATK}）真实伤害。\n<span style=\"color:#8a93a0\">虚化：\n使受到的物理伤害减少 90%</span>。"
+        "detail": "幽灵龟进入虚化 4 秒：受到的物理伤害降低 90%，期间<b>锁龟能</b>不充能，并对目标攻击两段，造成共（120%×攻击力 = {T:1.2*ATK}）真实伤害。\n<span style=\"color:#8a93a0\">虚化：\n使受到的物理伤害减少 90%</span>。"
       }
     ],
     "defaultSkills": [
@@ -945,8 +945,8 @@
         "cd": 999,
         "perCoinAtkPierce": 0.18,
         "perCoinAtkNormal": 0.18,
-        "brief": "蓄力后逐枚投出全部金币，每枚造成 {N:ATK*0.30} 物理伤害 和 {T:ATK*0.30} 真实伤害。\n<span style=\"color:#8a93a0\">目标阵亡时改投最近的敌人；\n<span class=\"val-normal\">投币全程免疫控制</span>，首次释放时<span class=\"val-atk\">同时按当时金币数获得等量金盾</span>（6 秒）。\n一场战斗限用一次。\n梭哈用过后本技能变为「金盾」（消耗 80 龟能，护盾值等于当前金币数，不消耗金币，持盾期间锁定龟能）。\n</span>",
-        "detail": "财神龟蓄力后<span class=\"val-normal\">逐枚投出</span>全部金币，每枚造成（30%×攻击力({ATK}) = {N:ATK*0.30}）物理 +（30%×攻击力({ATK}) = {T:ATK*0.30}）真实伤害。\n投币期间目标阵亡则改投最近的敌人。\n<span class=\"val-normal\">逐枚投币的全程免疫控制</span>。\n首次释放时<span class=\"val-atk\">同时按当时金币数获得等量金盾</span>（持续 6 秒，<span style=\"color:#8a93a0\">此金盾不锁龟能</span>）。\n<span style=\"color:#8a93a0\">一场限用一次。\n</span>\n梭哈释放后，该技能槽变为「金盾（持续 4 秒）」：消耗 80 龟能，获得等于当前金币数的通用护盾（不消耗金币），持有该护盾期间锁龟能（护盾被打光或到期即恢复）。\n梭哈用过后本技能变为「金盾」（消耗 80 龟能，护盾值等于当前金币数，不消耗金币，持盾期间锁定龟能）。"
+        "brief": "蓄力后逐枚投出全部金币，每枚造成 {N:ATK*0.30} 物理伤害 和 {T:ATK*0.30} 真实伤害。\n<span style=\"color:#8a93a0\">目标阵亡时改投最近的敌人；\n<span class=\"val-normal\">投币全程免疫控制</span>，首次释放时<span class=\"val-atk\">同时按当时金币数 ×5 获得金盾</span>（6 秒）。\n一场战斗限用一次。\n梭哈用过后本技能变为「金盾」（消耗 80 龟能，护盾值等于当前金币数，不消耗金币，持盾期间锁定龟能）。\n</span>",
+        "detail": "财神龟蓄力后<span class=\"val-normal\">逐枚投出</span>全部金币，每枚造成（30%×攻击力({ATK}) = {N:ATK*0.30}）物理 +（30%×攻击力({ATK}) = {T:ATK*0.30}）真实伤害。\n投币期间目标阵亡则改投最近的敌人。\n<span class=\"val-normal\">逐枚投币的全程免疫控制</span>。\n首次释放时<span class=\"val-atk\">同时按当时金币数 ×5 获得金盾</span>（持续 6 秒，<span style=\"color:#8a93a0\">此金盾不锁龟能</span>）。\n<span style=\"color:#8a93a0\">一场限用一次。\n</span>\n梭哈释放后，该技能槽变为「金盾（持续 4 秒）」：消耗 80 龟能，获得等于当前金币数的通用护盾（不消耗金币），持有该护盾期间锁龟能（护盾被打光或到期即恢复）。\n梭哈用过后本技能变为「金盾」（消耗 80 龟能，护盾值等于当前金币数，不消耗金币，持盾期间锁定龟能）。"
       },
       {
         "name": "招财进宝",

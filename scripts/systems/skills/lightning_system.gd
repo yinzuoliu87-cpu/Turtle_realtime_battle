@@ -117,7 +117,7 @@ func _sk_lightning_barrage(u: Dictionary) -> void:             # 闪电龟·雷�
 		tw.tween_interval(0.075)
 	tw.tween_callback(battle._barrage_cloud_fade.bind(cloud))
 
-func _sk_lightning_shield(u: Dictionary) -> void:              # 闪电龟·雷盾 (2.0ATK+5%maxHp护盾5秒·用户2026-07-28改; 原2026-07-07: 3ATK, 盾在时反击0.1A魔法叠电击=见_apply_damage_from; 2026-07-15补以雷电包裹自身VFX)
+func _sk_lightning_shield(u: Dictionary) -> void:              # 闪电龟·雷盾 (2.0ATK+5%maxHp护盾5秒·用户2026-07-28改; 原2026-07-07: 3ATK; 盾在时反击 0.3A 魔法叠电击(见 battle_damage 的 thunder_shield 分支)=见_apply_damage_from; 2026-07-15补以雷电包裹自身VFX)
 	battle._damage._grant_shield(u, u["atk"] * 2.0 + u["maxHp"] * 0.05, 5.0)   # 雷盾5秒(用户2026-07-28: 3.0ATK → 2.0ATK+5%最大生命, 改吃血量成长)
 	u["thunder_shield_until"] = battle._t + 5.0
 	battle._skill_ring(u["pos"], Color(0.45, 0.85, 1.0, 0.5), 50.0)

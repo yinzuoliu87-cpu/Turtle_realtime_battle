@@ -121,7 +121,7 @@ func _sk_ghost_soulstorm(u: Dictionary, tgt: Dictionary) -> void: # 幽灵龟·�
 	else:
 		for i in range(2):
 			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, STORM_DMG / 2.0, tgt, true), Color("#c77dff"))   # 无诅咒→2段共2.0A魔法(用户2026-07-09"打无诅咒目标是魔法"·2026-07-28 2.5→2.0)
-		battle._damage._add_curse(tgt, STORM_CURSE_SEC, u)   # 技2诅咒6秒(用户2026-07-28: 10→6)
+		battle._damage._add_curse(tgt, STORM_CURSE_SEC, u)   # 技2诅咒 4 秒(见 STORM_CURSE_SEC; 10→6→4)
 	battle._vfx._play_anim_vfx("res://assets/sprites/vfx/ghost-storm.png", tgt["pos"], 135.0, 15.0, 1.1)   # 灵魂风暴(回合制vfx/8帧·逐帧播·用户2026-07-11纠正:原误用skills/单帧图)
 	battle._skill_ring(tgt["pos"], Color(0.78, 0.49, 1.0, 0.6), 92.0)
 	battle._shake(0.1)
