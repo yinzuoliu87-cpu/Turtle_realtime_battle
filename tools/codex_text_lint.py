@@ -224,11 +224,16 @@ def main():
         st = p.strip()
         if st and st[-1] in '，、；:：':
             hits['句子没写完'].append((tag, ident, field, st[-1], st[-30:]))
+        # ★内部简写漏给玩家: 「1.8A」这种 A 是我们内部代指攻击力的写法, 玩家看不懂。
+        #   实测漏了 5 组(小龟被动/糖果锤/糖衣炮弹/雷电龟连锁)。
+        m_ab = re.search(r'[0-9.]+[A-Z](?![A-Za-z%])', p)
+        if m_ab is not None:
+            hits['内部简写漏给玩家'].append((tag, ident, field, m_ab.group(0), p[:40]))
 
     print('=== 图鉴文案体检(判据取自 489 条真实同类游戏文案) ===')
     print('受检文本 %d 条' % len(rows))
     total = 0
-    for k in ['句子没写完', '开发备注混进玩家文案', '教导玩家', '自夸/评价', '模糊量词', '称呼玩家', '抒情/风味混进机制',
+    for k in ['内部简写漏给玩家', '句子没写完', '开发备注混进玩家文案', '教导玩家', '自夸/评价', '模糊量词', '称呼玩家', '抒情/风味混进机制',
               '偏长(提示线%d)' % BRIEF_MAX, '偏长(提示线%d)' % DETAIL_MAX]:
         v = hits.get(k, [])
         if not k.startswith('偏长'):

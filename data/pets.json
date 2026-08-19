@@ -40,8 +40,8 @@
     "passive": {
       "type": "basicTurtle",
       "name": "不屈",
-      "brief": "普攻伤害随稀有度提升（C <span class=\"val-atk\">20%</span> 至 SSS <span class=\"val-atk\">34%</span>）。\n每 <span class=\"val-atk\">6 秒</span>，小龟的下一次普攻附带「<span class=\"val-normal\">龟盾</span>」，额外造成 {N:1.5*ATK} 加 13% 目标已损生命的物理伤害，将目标<span class=\"val-atk\">击飞</span>，并为自己获得该伤害 <span class=\"val-atk\">80%</span> 的护盾。",
-      "desc": "攻击时根据目标稀有度获得增伤：\n<span style=\"color:#06d6a0\">C</span> <span class=\"val-atk\">+20%</span>　<span style=\"color:#4cc9f0\">B</span> <span class=\"val-atk\">+23%</span>　<span style=\"color:#3a9abf\">A</span> <span class=\"val-atk\">+26%</span>　<span style=\"color:#c77dff\">S</span> <span class=\"val-atk\">+29%</span>　<span style=\"color:#ffd93d\">SS</span> <span class=\"val-atk\">+32%</span>　<span style=\"color:#ff6b6b\">SSS</span> <span class=\"val-atk\">+34%</span>。\n<span class=\"val-normal\">龟盾</span>（已融入被动）：\n每 <span class=\"val-atk\">6秒</span> 蓄力一次，下一发普攻获得强化——额外造成（150%×攻击力({ATK}) = {N:1.5*ATK}）+ 13%×目标已损生命值 物理伤害，将目标<span class=\"val-atk\">击飞</span>（约0.55秒滞空 + 击退），\n并让小龟获得（这两段伤害之和 × <span class=\"val-atk\">80%</span>）的护盾（不限时）。"
+      "brief": "对敌人造成的<span class=\"val-normal\">所有伤害</span>（普攻、技能、真实伤害都算）按<span class=\"val-normal\">目标的稀有度</span>提升：C <span class=\"val-atk\">+20%</span> 至 SSS <span class=\"val-atk\">+34%</span>。\n每 <span class=\"val-atk\">6 秒</span>，小龟的下一次普攻附带「<span class=\"val-normal\">龟盾</span>」，额外造成 {N:1.5*ATK} 加 13% 目标已损生命的物理伤害，将目标<span class=\"val-atk\">击飞</span>，并为自己获得该伤害 <span class=\"val-atk\">80%</span> 的护盾。",
+      "desc": "对敌人造成的任何伤害都按目标稀有度增伤（普攻、技能、真实伤害、固定伤害全覆盖，每次只算一次）：\n<span style=\"color:#06d6a0\">C</span> <span class=\"val-atk\">+20%</span>　<span style=\"color:#4cc9f0\">B</span> <span class=\"val-atk\">+23%</span>　<span style=\"color:#3a9abf\">A</span> <span class=\"val-atk\">+26%</span>　<span style=\"color:#c77dff\">S</span> <span class=\"val-atk\">+29%</span>　<span style=\"color:#ffd93d\">SS</span> <span class=\"val-atk\">+32%</span>　<span style=\"color:#ff6b6b\">SSS</span> <span class=\"val-atk\">+34%</span>。\n<span class=\"val-normal\">龟盾</span>（已融入被动）：\n每 <span class=\"val-atk\">6秒</span> 蓄力一次，下一发普攻获得强化——额外造成（150%×攻击力({ATK}) = {N:1.5*ATK}）+ 13%×目标已损生命值 物理伤害，将目标<span class=\"val-atk\">击飞</span>（约0.55秒滞空 + 击退），\n并让小龟获得（这两段伤害之和 × <span class=\"val-atk\">80%</span>）的护盾（不限时）。"
     },
     "skillPool": [
       {
@@ -54,7 +54,7 @@
         "atkScale": 1.0,
         "icon": "skills/basic-attack.png",
         "brief": "攻击当前目标，造成 {N:1.0*ATK} 物理伤害。",
-        "detail": "小龟的普攻。\n对目标造成（100%×攻击力({ATK}) = {N:1.0*ATK}）物理伤害。\n被动·不屈按目标稀有度增伤。\n每6秒下次普攻强化(附0.7A+20%已损物理+击飞+盾)。",
+        "detail": "小龟的普攻。\n对目标造成（100%×攻击力({ATK}) = {N:1.0*ATK}）物理伤害。\n被动·不屈按目标稀有度增伤。\n每6秒下次普攻强化(附 0.7×攻击力 + 20% 已损生命的物理伤害、击飞、护盾)。",
         "energyCost": 0
       },
       {
@@ -1430,7 +1430,7 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "蓄力后猛砸前方直线上的敌人，总计（1.8A+12%自身最大生命值）物理伤害由命中的敌人均分，并<span class=\"val-heal\">回复造成伤害的 40%</span>作为生命。",
+        "brief": "蓄力后猛砸前方直线上的敌人，总计（1.8×攻击力 + 12% 自身最大生命值）物理伤害由命中的敌人均分，并<span class=\"val-heal\">回复造成伤害的 40%</span>作为生命。",
         "detail": "糖果龟举起大糖果锤蓄力，猛砸前方一条直线200码内的敌人：\n总伤害（180%×攻击力({ATK}) = {N:1.8*ATK}）+（12%×自身最大生命值({HP}) = {N:HP*0.12}）物理，由所有被命中的敌人均分。\n随后回复造成伤害的40%生命。"
       },
       {
@@ -1443,8 +1443,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "在敌方最密集处降下糖衣炮弹雨，<span class=\"val-atk\">持续 4 秒</span>、每 0.5 秒一跳共 <span class=\"val-atk\">8 跳</span>。\n每一跳为友军提供其 1.5% 最大生命值的护盾，并对敌军造成（0.2A+2%自身最大生命值）魔法伤害 和 <span class=\"val-atk\">20% 减速</span>。\n<span style=\"color:#8a93a0\">减速效果每 0.5 秒刷新。\n</span>",
-        "detail": "糖果龟指挥在敌方最密集区域降下糖衣炮弹雨：\n半径600码，持续4秒，每 <b>0.42 秒</b>一跳（共8跳，合计约 3.4 秒）。\n每跳：\n范围内友军获得糖果龟1.5%最大生命值的护盾。\n范围内敌军受到（20%×攻击力({ATK}) = {N:0.2*ATK}）+ 2%糖果龟最大生命值 魔法伤害，并被减速20%（每次受击刷新0.5秒）。\n每一跳为友军提供其 1.5% 最大生命值的护盾，并对敌军造成（0.2A+2%自身最大生命值）魔法伤害 和 <span class=\"val-atk\">20% 减速</span>。\n<span style=\"color:#8a93a0\">减速效果每 0.5 秒刷新。\n</span>"
+        "brief": "在敌方最密集处降下糖衣炮弹雨，<span class=\"val-atk\">持续 4 秒</span>、每 0.5 秒一跳共 <span class=\"val-atk\">8 跳</span>。\n每一跳为友军提供其 1.5% 最大生命值的护盾，并对敌军造成（0.2×攻击力 + 2% 自身最大生命值）魔法伤害 和 <span class=\"val-atk\">20% 减速</span>。\n<span style=\"color:#8a93a0\">减速效果每 0.5 秒刷新。\n</span>",
+        "detail": "糖果龟指挥在敌方最密集区域降下糖衣炮弹雨：\n半径600码，持续4秒，每 <b>0.42 秒</b>一跳（共8跳，合计约 3.4 秒）。\n每跳：\n范围内友军获得糖果龟1.5%最大生命值的护盾。\n范围内敌军受到（20%×攻击力({ATK}) = {N:0.2*ATK}）+ 2%糖果龟最大生命值 魔法伤害，并被减速20%（每次受击刷新0.5秒）。\n每一跳为友军提供其 1.5% 最大生命值的护盾，并对敌军造成（0.2×攻击力 + 2% 自身最大生命值）魔法伤害 和 <span class=\"val-atk\">20% 减速</span>。\n<span style=\"color:#8a93a0\">减速效果每 0.5 秒刷新。\n</span>"
       },
       {
         "name": "糖果炸弹",
@@ -1667,7 +1667,7 @@
         "cd": 0,
         "atkScale": 0.9,
         "brief": "射出一道闪电，造成 {M:0.9*ATK} 魔法伤害，随后接力连锁 <span class=\"val-atk\">2 跳</span>，每段各叠加 <span class=\"val-normal\">1 层电击</span>。\n<span style=\"color:#8a93a0\">每跳伤害在前一跳基础上 ×0.6 递减。\n</span>",
-        "detail": "闪电龟普攻射出一道闪电，造成（90%×攻击力({ATK}) = {M:0.9*ATK}）魔法伤害。\n随后依次接力连锁 2 跳——主目标 → 其 260 码内最近的敌人 → 再向外最近的敌人，每跳伤害 ×0.6 递减（0.54A / 0.324A），每段命中叠加 1 层电击。\n<span style=\"color:#8a93a0\">电击满 8 层→天降大雷引爆并清零；每 4 秒自动电击一名随机敌。\n</span>",
+        "detail": "闪电龟普攻射出一道闪电，造成（90%×攻击力({ATK}) = {M:0.9*ATK}）魔法伤害。\n随后依次接力连锁 2 跳——主目标 → 其 260 码内最近的敌人 → 再向外最近的敌人，每跳伤害 ×0.6 递减（0.54×攻击力 / 0.324×攻击力），每段命中叠加 1 层电击。\n<span style=\"color:#8a93a0\">电击满 8 层→天降大雷引爆并清零；每 4 秒自动电击一名随机敌。\n</span>",
         "energyCost": 0
       },
       {
