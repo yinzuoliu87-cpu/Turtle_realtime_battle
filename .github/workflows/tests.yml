@@ -48,8 +48,18 @@ jobs:
           #   2026-07-29 就栽在这: default_theme.tres 引用的 m6x11.ttf 没导出来 →
           #   所有用主题的测试连环崩(单次 run 里 40+ 个 FAIL、致命报错上千),
           #   而同一份代码上一次 run 是好的 = 典型偶发。
-          "$GODOT" --headless --import --path . || true
-          "$GODOT" --headless --import --path . || true
+          # ★★2026-08-20 从"固定导两遍"改成"重试到导够为止"。
+          #   根因: 冷缓存下 `--import` 会**随机段错误**(rc=139, 产物 0)。本机同一份文件连跑三次
+          #   实测 rc=0 / **段错误** / rc=0 —— 大约三分之一的概率。固定两遍 ⇒ 两遍都崩就必红,
+          #   而 `|| true` 把崩溃吞掉, 报错只剩下游那句"导入产物过少", 看不出根因在崩溃。
+          #   ⚠ 这也是一次教训: 我一度拿"换回旧数据文件跑一遍没崩"当证据, 差点判成数据问题 ——
+          #     **在会随机崩的进程上做 N=1 对比, 什么都证明不了。**
+          for i in 1 2 3 4 5; do
+            "$GODOT" --headless --import --path . && rc=0 || rc=$?
+            n=$(ls .godot/imported/ 2>/dev/null | wc -l)
+            echo "导入第 $i 遍: rc=$rc 产物 $n 个"
+            if [ "$n" -ge 50 ]; then break; fi
+          done
           # ★导完【立刻验关键资源真的导出来了】, 而不是等 40 个测试红了再回头猜。
           #   原来这步只有 `|| true` —— 导入失败被吞掉, 下游一片红却看不出根因在这。
           for f in assets/fonts/m6x11.ttf assets/fonts/NotoSansSC-Regular.otf assets/themes/default_theme.tres; do
