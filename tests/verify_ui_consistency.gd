@@ -301,7 +301,12 @@ func _audit(root: Node) -> Dictionary:
 			if n is Label and str((n as Label).text).strip_edges().length() >= 1:
 				var lb := n as Label
 				d["lbl"] = int(d["lbl"]) + 1
-				labels.append([_ink_rect(lb), str(lb.text), _is_toast(lb)])
+				## 角标小签(选中 ✓ / 基础 / 稀有度)本来就是刻意压在格子角上的, 和图片角标同一类 ——
+				## 之前只豁免了 TextureRect, 这里把 Label 版补上: 它住在一个 <40px 的独立小盒子里。
+				var _par := lb.get_parent() as Control
+				var _badge: bool = _par != null and (_par is PanelContainer or _par is Panel) \
+						and _par.size.x < 40.0 and _par.size.y < 40.0
+				labels.append([_ink_rect(lb), str(lb.text), _is_toast(lb) or _badge])
 				var fs2: int = lb.get_theme_font_size("font_size")
 				# ⚠ 判据太宽第 8 次: 报选龟稀有度栏杆的「A」「B」「C」被挤没 —— 实拍那几个
 				#   字母**显示得好好的**。原因是这些 Label 是手工定位的, `size` 就是 (0,0),
@@ -377,6 +382,8 @@ func _audit(root: Node) -> Dictionary:
 				best = fi
 		if best < 0:
 			continue
+		if boxed[k].size() > 2 and bool(boxed[k][2]):
+			continue          # 角标/toast: 压在边上是设计如此
 		var fr2: Rect2 = framed[best][0]
 		var inter2: Rect2 = fr2.intersection(lr)
 		var la: float = lr.size.x * lr.size.y

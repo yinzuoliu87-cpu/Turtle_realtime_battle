@@ -110,13 +110,29 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 		sbn.border_color = Color(1, 1, 1, 0.1)
 	sbn.set_border_width_all(2)
 	sbn.set_corner_radius_all(host._sp(12))
+	## ★换槽框(跨屏统一): 技能图标本来就是"一个格子", 与背包/图鉴的装备槽同一套语言。
+	##   三种状态(选中金 / 基础绿 / 普通灰)靠 modulate 传递, 不再靠半透底+1px 描边。
+	var ssb := UISkin.nine_if_big(50.0, 50.0, "slot-frame.png", 12, sbn)
+	if ssb is StyleBoxTexture:
+		var tint := Color(0.72, 0.72, 0.76, 1.0)
+		if is_sel:
+			tint = Color(1.9, 1.62, 0.82, 1.0)
+		elif is_fixed:
+			tint = Color(0.72, 1.35, 0.92, 1.0)
+		(ssb as StyleBoxTexture).modulate_color = tint
+		sbn = ssb
 	btn.add_theme_stylebox_override("normal", sbn)
 	# hover: 金边高亮 (PoC .dp-skill-ico:hover border #ffd86b.7); locked 不高亮
 	if is_locked:
 		btn.add_theme_stylebox_override("hover", sbn)
 	else:
-		var sbh: StyleBoxFlat = sbn.duplicate()
-		sbh.border_color = Color(1.0, 216.0 / 255.0, 107.0 / 255.0, 0.7)
+		## hover: 贴图态靠提亮(它没有 border_color 可改 —— 直接改会拿到 null)
+		var sbh = sbn.duplicate()
+		if sbh is StyleBoxTexture:
+			var hc: Color = (sbh as StyleBoxTexture).modulate_color
+			(sbh as StyleBoxTexture).modulate_color = Color(hc.r * 1.35, hc.g * 1.35, hc.b * 1.35, 1.0)
+		elif sbh is StyleBoxFlat:
+			(sbh as StyleBoxFlat).border_color = Color(1.0, 216.0 / 255.0, 107.0 / 255.0, 0.7)
 		btn.add_theme_stylebox_override("hover", sbh)
 	btn.add_theme_stylebox_override("pressed", sbn)
 	btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())

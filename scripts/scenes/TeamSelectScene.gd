@@ -911,9 +911,16 @@ func _style_rarity_btn(b: Button, active: bool) -> void:
 		b.add_theme_color_override("font_color", Color(1, 1, 1, 0.7))
 		b.add_theme_color_override("font_hover_color", Color("#ffd86b"))
 		b.add_theme_color_override("font_pressed_color", Color("#ffd86b"))
-	b.add_theme_stylebox_override("normal", sb)
-	b.add_theme_stylebox_override("hover", sb)
-	b.add_theme_stylebox_override("pressed", sb)
+	## ★换金属签牌(跨屏统一): 半透明底 + 1px 描边 + 圆角 = 典型"网页盒",
+	##   而这一屏是暖色木桌世界。选中态靠 modulate 过曝成金(和图鉴页签同一套),
+	##   未选中压暗 —— 明暗差比"底色换个颜色"更容易一眼看出当前筛的是哪档。
+	var rb := UISkin.nine_if_big(81.0, 81.0, "slot-frame.png", 12, sb)
+	if rb is StyleBoxTexture:
+		(rb as StyleBoxTexture).modulate_color = (Color(2.1, 1.72, 0.82, 1.0) if active
+			else Color(0.62, 0.60, 0.56, 1.0))
+	b.add_theme_stylebox_override("normal", rb)
+	b.add_theme_stylebox_override("hover", rb)
+	b.add_theme_stylebox_override("pressed", rb)
 	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 
 
