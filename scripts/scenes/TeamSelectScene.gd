@@ -27,7 +27,11 @@ const RL := {
 	##   (返回/清空/上次阵容的木牌、右侧详情面板的边框)。2026-08-19 实拍验证: 我把三个按钮
 	##   从 58 加高到 86 并上移, 结果**文字浮到了画好的板子上方**、立绘飘出了面板框 ——
 	##   问题不是尺寸算错, 是**动了有美术依赖的东西**。要真加大得先重画 select-bg.png。
-	##   ⇒ 这三个按钮 + CTA 维持 45px(24pt), 属于**美术依赖型缺口**, 不是漏做。
+	##   ⇒ **但底板焊死的是"文字画在哪", 不是"热区多大"**。所以 RL 保持原值(文字位置不动),
+	##   热区在 `_grow_to_touch()` 里**按原始像素绕中心撑到 81**。
+	##   ★为什么不在 RL 里加大: RL 是设计空间, 实际像素 = 设计值 × 舞台缩放, 而缩放随比例变
+	##   (PC 16:9 是 0.777, iPhone 19.5:9 是 0.947) —— 同一个数在两端给出 67px 和 81px。
+	##   我试过写 86(照 iPhone 算), PC 上量出来只有 67 —— 触控下限是**像素**的硬指标, 得在像素上兜底。
 	## ★★另一条硬约束: `_stage_scale` = min(cover, fit_w, fit_h), fit_h = 720/内容带高。
 	##   带高超过 **760** 就掉到 cover 以下 ⇒ 舞台盖不满窗 ⇒ iPhone 左右露木条
 	##   (实测露 100px, 正是用户 2026-07-22 抱怨的"画布大小很奇怪")。现带高 = 783-63 = 720。
@@ -442,6 +446,31 @@ func _place(ctrl: Control, key: String) -> void:
 
 ## 贴边功能按钮: 放置后夹回可视区 —— cover×1.17舞台在比16:9更宽的屏(iPhone 2.17:1)垂直裁挖>设计余量,
 ## 贴边按钮(返回/清空/上次/开始)会被裁出屏; 背景画裁边可接受, 按钮必须可点(用户2026-07-16"按钮不超屏不卡住")
+## 触控下限(视口像素): 视口高恒 720 ↔ iPhone 横屏 390pt ⇒ 1pt = 1.846px ⇒ 44pt = 81px。
+const TOUCH_MIN := 81.0
+
+
+## 把一个**已定位**的控件在原始像素上撑到触控下限, 绕**中心**长。
+##
+## ★绕中心而不是往下长: 这几个按钮的底板**烤在 select-bg.png 上**, 中心一动文字就跑出木牌
+##   (2026-08-19 实拍验证过: 我把它们上移加高, 文字浮到了画好的木牌上方)。绕中心长则文字纹丝不动。
+## ★不改 RL: RL 进 `_content_band()`, 带高一超过 760 舞台缩放就掉到 cover 以下 ⇒ iPhone 左右露木条。
+##   在这里改是**纯像素**操作, 带高不受影响。
+func _grow_to_touch(ctrl: Control) -> void:
+	var need := Vector2(maxf(ctrl.size.x, TOUCH_MIN), maxf(ctrl.size.y, TOUCH_MIN))
+	if need.is_equal_approx(ctrl.size):
+		return
+	ctrl.position -= (need - ctrl.size) * 0.5
+	ctrl.size = need
+	ctrl.custom_minimum_size = need
+	## ★长完必须重夹一次安全区: 绕中心长会往上顶, 21:9(1680×720) 上实测把返回键顶出屏 6px。
+	##   —— `_place_clamped` 是在**原尺寸**上夹的, 尺寸一变那次夹的结论就过期了。
+	var vp := _vp()
+	var m := SafeArea.margins(vp, 6.0)
+	ctrl.position.x = clampf(ctrl.position.x, m.x, maxf(m.x, vp.x - ctrl.size.x - m.z))
+	ctrl.position.y = clampf(ctrl.position.y, m.y, maxf(m.y, vp.y - ctrl.size.y - m.w))
+
+
 func _place_clamped(ctrl: Control, key: String) -> void:
 	_place(ctrl, key)
 	var vp := _vp()
@@ -630,6 +659,7 @@ func _build_ui() -> void:
 	_style_overlay_btn(back)
 	root.add_child(back)
 	_place_clamped(back, "back")
+	_grow_to_touch(back)
 	back.pressed.connect(_on_back)
 
 	# 清空 (PoC .ts-frame-btn: 透明底无边, 白字阴影, 坐在画好的框上)
@@ -639,6 +669,7 @@ func _build_ui() -> void:
 	_style_frame_btn(clear)
 	root.add_child(clear)
 	_place_clamped(clear, "clear")
+	_grow_to_touch(clear)
 	clear.pressed.connect(_on_clear_all)
 
 	# 上次阵容 (PoC .ts-frame-btn)
@@ -648,6 +679,7 @@ func _build_ui() -> void:
 	_style_frame_btn(_last_btn)
 	root.add_child(_last_btn)
 	_place_clamped(_last_btn, "last")
+	_grow_to_touch(_last_btn)
 	_last_btn.pressed.connect(_on_restore_last)
 	_ent_top = [back, clear, _last_btn]
 
@@ -684,6 +716,7 @@ func _build_ui() -> void:
 	_start_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	root.add_child(_start_btn)
 	_place_clamped(_start_btn, "start")
+	_grow_to_touch(_start_btn)
 	_start_btn.pressed.connect(_on_start)
 
 	_raise_edge_btns()   # ★所有区域都建完了才提层 —— 早提会被后面的 slotBay/详情区盖回去
@@ -887,7 +920,9 @@ func _style_overlay_btn(btn: Button) -> void:
 	btn.add_theme_stylebox_override("pressed", sbh)
 	## 上面这套纯色圆角是**兜底**(贴图不在时原样留着); 贴图在就整套覆盖成金属小框,
 	## 五个状态一起给 —— 只换 normal 会出现"平时是金属、按下去变回网页盒"。
-	UISkin.button(btn, Color(1.55, 1.30, 0.78), 7)
+	## 1.15 而不是 1.55: 同一条教训 —— chip-frame 的芯是半透的, modulate 一过 1.3 就把金属细节冲平
+	## (技能格上实拍确认过)。要暖靠压蓝, 不靠加亮。
+	UISkin.button(btn, Color(1.15, 0.96, 0.62), 7)
 
 
 ## PoC .ts-frame-btn — 透明底无边 + 白字阴影 (清空/上次阵容, 坐画好的框上)
