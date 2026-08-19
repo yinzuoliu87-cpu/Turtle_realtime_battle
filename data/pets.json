@@ -41,7 +41,7 @@
       "type": "basicTurtle",
       "name": "不屈",
       "brief": "对敌人造成的<span class=\"val-normal\">所有伤害</span>（普攻、技能、真实伤害都算）按<span class=\"val-normal\">目标的稀有度</span>提升：C <span class=\"val-atk\">+20%</span> 至 SSS <span class=\"val-atk\">+34%</span>。\n每 <span class=\"val-atk\">6 秒</span>，小龟的下一次普攻附带「<span class=\"val-normal\">龟盾</span>」，额外造成 {N:1.5*ATK} 加 13% 目标已损生命的物理伤害，将目标<span class=\"val-atk\">击飞</span>，并为自己获得该伤害 <span class=\"val-atk\">80%</span> 的护盾。",
-      "desc": "对敌人造成的任何伤害都按目标稀有度增伤（普攻、技能、真实伤害、固定伤害全覆盖，每次只算一次）：\n<span style=\"color:#06d6a0\">C</span> <span class=\"val-atk\">+20%</span>　<span style=\"color:#4cc9f0\">B</span> <span class=\"val-atk\">+23%</span>　<span style=\"color:#3a9abf\">A</span> <span class=\"val-atk\">+26%</span>　<span style=\"color:#c77dff\">S</span> <span class=\"val-atk\">+29%</span>　<span style=\"color:#ffd93d\">SS</span> <span class=\"val-atk\">+32%</span>　<span style=\"color:#ff6b6b\">SSS</span> <span class=\"val-atk\">+34%</span>。\n<span class=\"val-normal\">龟盾</span>（已融入被动）：\n每 <span class=\"val-atk\">6秒</span> 蓄力一次，下一发普攻获得强化——额外造成（150%×攻击力({ATK}) = {N:1.5*ATK}）+ 13%×目标已损生命值 物理伤害，将目标<span class=\"val-atk\">击飞</span>（约0.55秒滞空 + 击退），\n并让小龟获得（这两段伤害之和 × <span class=\"val-atk\">80%</span>）的护盾（不限时）。"
+      "desc": "对敌人造成的任何伤害都按目标稀有度增伤（普攻、技能、真实伤害、固定伤害全覆盖，每次只算一次）：\n<span style=\"color:#06d6a0\">C</span> <span class=\"val-atk\">+20%</span>　<span style=\"color:#4cc9f0\">B</span> <span class=\"val-atk\">+23%</span>　<span style=\"color:#3a9abf\">A</span> <span class=\"val-atk\">+26%</span>　<span style=\"color:#c77dff\">S</span> <span class=\"val-atk\">+29%</span>　<span style=\"color:#ffd93d\">SS</span> <span class=\"val-atk\">+32%</span>　<span style=\"color:#ff6b6b\">SSS</span> <span class=\"val-atk\">+34%</span>。\n<span class=\"val-normal\">龟盾</span>（已融入被动）：\n每 <span class=\"val-atk\">6 秒</span> 蓄力一次，下一发普攻获得强化——额外造成（150%×攻击力({ATK}) = {N:1.5*ATK}）+ 13%×目标已损生命值 物理伤害，将目标<span class=\"val-atk\">击飞</span>（约 0.55 秒滞空 + 击退），\n并让小龟获得（这两段伤害之和 × <span class=\"val-atk\">80%</span>）的护盾（不限时）。"
     },
     "skillPool": [
       {
@@ -54,7 +54,7 @@
         "atkScale": 1.0,
         "icon": "skills/basic-attack.png",
         "brief": "攻击当前目标，造成 {N:1.0*ATK} 物理伤害。",
-        "detail": "小龟的普攻。\n对目标造成（100%×攻击力({ATK}) = {N:1.0*ATK}）物理伤害。\n被动·不屈按目标稀有度增伤。\n每6秒下次普攻强化(附 0.7×攻击力 + 20% 已损生命的物理伤害、击飞、护盾)。",
+        "detail": "小龟的普攻。\n对目标造成（100%×攻击力({ATK}) = {N:1.0*ATK}）物理伤害。\n被动·不屈按目标稀有度增伤。\n每 6 秒下次普攻强化(附 0.7×攻击力 + 20% 已损生命的物理伤害、击飞、护盾)。",
         "energyCost": 0
       },
       {
@@ -68,7 +68,7 @@
         "cd": 0,
         "atkScale": 0.4,
         "brief": "随机朝敌人发射 <span class=\"val-atk\">10</span> 道气波，每道气波对命中的第一个敌人造成 {N:0.4*ATK} 物理伤害。\n<span style=\"color:#8a93a0\">施法期间小龟定身，每 0.15 秒发射一道；气波可被拦截、穿过障碍、不阻挡友军。\n</span>",
-        "detail": "小龟举拳蓄力(全程定身)，连发10道气波，每0.15秒一道：\n每道随机挑1名存活敌人作为方向，气波沿直线缓慢飞行、命中路径上第一个敌人或龟蛋即结算（可被挡；障碍物穿过、我方不阻挡），造成（40%×攻击力({ATK}) = {N:0.4*ATK}）物理伤害(叠加不屈稀有度增伤)。\n末波发完解除定身、龟能开始充能。\n<span style=\"color:#8a93a0\">慢飞气波弹道视觉留美术。\n</span>",
+        "detail": "小龟举拳蓄力(全程定身)，连发 10道气波，每 0.15 秒一道：\n每道随机挑 1名存活敌人作为方向，气波沿直线缓慢飞行、命中路径上第一个敌人或龟蛋即结算（可被挡；障碍物穿过、我方不阻挡），造成（40%×攻击力({ATK}) = {N:0.4*ATK}）物理伤害(叠加不屈稀有度增伤)。\n末波发完解除定身、龟能开始充能。\n<span style=\"color:#8a93a0\">慢飞气波弹道视觉留美术。\n</span>",
         "energyCost": 80
       },
       {
@@ -82,7 +82,7 @@
         "cd": 0,
         "atkScale": 3.5,
         "brief": "打出一道贯穿气波，对沿途所有敌人造成 {N:2.0*ATK} 物理伤害并将其<span class=\"val-atk\">击飞</span> 1.5 秒。\n施法期间小龟获得 <span class=\"val-atk\">25% 暴击率</span>、<span class=\"val-heal\">20% 生命偷取</span> 和 {N:0.1*ATK} 护甲穿透，持续 3 秒。\n<span style=\"color:#8a93a0\">发波前，小龟会先冲向能让气波贯穿最多敌人的位置（≤300 码）。\n</span>",
-        "detail": "小龟短时间(3秒)获得 <span class=\"val-atk\">+25%</span>暴击率、<span class=\"val-heal\">+20%</span>生命偷取、+（10%×攻击力 = {N:0.1*ATK}）护甲穿透。\n随后朝当前目标发射一道青白气功波，穿透打击沿途所有敌人(含龟蛋)，每命中造成（200%×攻击力({ATK}) = {N:2.0*ATK}）物理伤害并将其击飞1.5秒+击退。\n<span style=\"color:#8a93a0\">蓄力时小龟会做一次 ≤300码 的智能位移冲刺：采样 12 方向 × 3 档距离，冲向能让气波直线命中最多敌人的落点。\n距任一敌 &lt;120码 的落点排除（不贴脸、考虑碰撞体积）。\n</span>",
+        "detail": "小龟短时间(3 秒)获得 <span class=\"val-atk\">+25%</span>暴击率、<span class=\"val-heal\">+20%</span>生命偷取、+（10%×攻击力 = {N:0.1*ATK}）护甲穿透。\n随后朝当前目标发射一道青白气功波，穿透打击沿途所有敌人(含龟蛋)，每命中造成（200%×攻击力({ATK}) = {N:2.0*ATK}）物理伤害并将其击飞 1.5 秒+击退。\n<span style=\"color:#8a93a0\">蓄力时小龟会做一次 ≤300 码 的智能位移冲刺：采样 12 方向 × 3 档距离，冲向能让气波直线命中最多敌人的落点。\n距任一敌 &lt;120 码 的落点排除（不贴脸、考虑碰撞体积）。\n</span>",
         "energyCost": 100
       },
       {
@@ -96,7 +96,7 @@
         "cd": 0,
         "atkScale": 0.7,
         "brief": "将目标过肩摔到身后，<span class=\"val-atk\">眩晕</span> 0.5 秒，造成 {N:1.0*ATK} 加 0.2%×攻击力×目标最大生命值的物理伤害。\n落点周围的敌人受到 {N:0.3*ATK} 加 0.13%×攻击力×主目标最大生命值的物理伤害。\n<span style=\"color:#8a93a0\">施法期间小龟霸体（不可被打断，但仍会受到伤害）；龟蛋免疫此控制。\n</span>",
-        "detail": "小龟抓住目标施展过肩摔：\n将目标挑空并摔到龟背后约55码处、眩晕0.5秒，对主目标造成（100%×攻击力({ATK}) = {N:1.0*ATK}）+ 0.2%×攻击力×目标最大生命值 物理伤害。\n落点周围350码内其余敌人受到（30%×攻击力({ATK}) = {N:0.3*ATK}）+ 0.13%×攻击力×主目标最大生命值 物理伤害。\n<span style=\"color:#8a93a0\">施法期间小龟霸体(不可被打断但仍吃伤)；龟蛋免疫控制(不被挑空/摔·只吃原地伤害)。\n</span>。\n<span style=\"color:#8a93a0\">施法期间小龟霸体（不可被打断，但仍会受到伤害）；龟蛋免疫此控制。</span>",
+        "detail": "小龟抓住目标施展过肩摔：\n将目标挑空并摔到龟背后约 55 码处、眩晕 0.5 秒，对主目标造成（100%×攻击力({ATK}) = {N:1.0*ATK}）+ 0.2%×攻击力×目标最大生命值 物理伤害。\n落点周围 350 码内其余敌人受到（30%×攻击力({ATK}) = {N:0.3*ATK}）+ 0.13%×攻击力×主目标最大生命值 物理伤害。\n<span style=\"color:#8a93a0\">施法期间小龟霸体(不可被打断但仍吃伤)；龟蛋免疫控制(不被挑空/摔·只吃原地伤害)。\n</span>。\n<span style=\"color:#8a93a0\">施法期间小龟霸体（不可被打断，但仍会受到伤害）；龟蛋免疫此控制。</span>",
         "energyCost": 120
       }
     ],
@@ -156,7 +156,7 @@
         "power": 0,
         "cd": 0,
         "brief": "为全体友军罩上 {S:1.0*ATK+HP*0.06} 护盾，持续 <span class=\"val-atk\">4 秒</span>。\n自身护甲与魔抗各提升 <span class=\"val-atk\">20%</span>，持续 <span class=\"val-atk\">5 秒</span>。",
-        "detail": "石头龟岩甲护体：为全体友军施加（100%×攻击力({ATK}) + 6%×最大生命值({HP}) = {S:1.0*ATK+HP*0.06}）护盾，持续4秒。\n并使自身护甲、魔抗各提升 20%，持续5秒。",
+        "detail": "石头龟岩甲护体：为全体友军施加（100%×攻击力({ATK}) + 6%×最大生命值({HP}) = {S:1.0*ATK+HP*0.06}）护盾，持续 4 秒。\n并使自身护甲、魔抗各提升 20%，持续 5 秒。",
         "energyCost": 100
       },
       {
@@ -171,7 +171,7 @@
         "defScale": 0.5,
         "mrScale": 0.5,
         "brief": "释放岩石冲击波，对一横排敌人造成 {N:(0.5*DEF+0.5*MR)*(1+0.04*rockLayers)} 物理伤害，并必定将其<span class=\"val-atk\">眩晕 2 秒</span>。\n<span style=\"color:#8a93a0\">被动：\n石头龟每次受到伤害获得 1 层岩层（上限 30 层），每层提供 +1% 伤害减免和 +2% 体型。\n</span>",
-        "detail": "被动效果：\n石头龟每次受到伤害会获得1层岩层，上限为30层。\n每层岩层提供+1%伤害减免和+2%体型。\n主动释放：\n石头龟释放岩石冲击波，对一横排敌人造成（50%×护甲({DEF}) + 50%×魔抗({MR})）×(1 + 4%×岩层层数) = {N:(0.5*DEF+0.5*MR)*(1+0.04*rockLayers)} 物理伤害，并必定使其眩晕 2 秒。\n<span style=\"color:#8a93a0\">命中的敌人会被击飞</span>。",
+        "detail": "被动效果：\n石头龟每次受到伤害会获得 1 层岩层，上限为 30 层。\n每层岩层提供+1%伤害减免和+2%体型。\n主动释放：\n石头龟释放岩石冲击波，对一横排敌人造成（50%×护甲({DEF}) + 50%×魔抗({MR})）×(1 + 4%×岩层层数) = {N:(0.5*DEF+0.5*MR)*(1+0.04*rockLayers)} 物理伤害，并必定使其眩晕 2 秒。\n<span style=\"color:#8a93a0\">命中的敌人会被击飞</span>。",
         "energyCost": 80
       },
       {
@@ -185,7 +185,7 @@
         "cd": 0,
         "selfCast": true,
         "brief": "发出<span class=\"val-normal\">嘲讽</span>，强迫周围敌人只能攻击自己，持续 <span class=\"val-atk\">4 秒</span>。\n自身获得 {S:ATK} <span class=\"val-atk\">永久</span>护盾和 (0.5×护甲)% 伤害减免，持续 <span class=\"val-atk\">4 秒</span>。\n嘲讽在第 3.5 秒收尾砸地，对附近敌人造成 {N:1.0*ATK} 魔法伤害并将其<span class=\"val-atk\">击飞 1.2 秒</span>。\n<span style=\"color:#8a93a0\">被嘲讽者的单体伤害技能、装备效果与普攻只能朝石头龟释放，AoE 不受影响；砸地完成后龟能才重新开始充能。\n</span>",
-        "detail": "石头龟嘲讽 <span class=\"val-atk\">500码</span> 内的所有敌人，持续 <span class=\"val-atk\">4秒</span>：期间它们的单体伤害技能、装备效果与普攻全部只能朝石头龟释放。\n同时为自己提供（100%×攻击力({ATK}) = {S:ATK}）<span class=\"val-def\">永久护盾</span>，并获得 (0.5×护甲)% 的伤害减免（上限50%，真实伤害不减），持续 4秒。\n嘲讽开始后第 <span class=\"val-atk\">3.5秒</span> 石头龟蓄力猛砸地面：400码内敌人受到（100%×攻击力({ATK}) = {N:1.0*ATK}）魔法伤害并被 <span class=\"val-atk\">击飞 1.2秒</span>。\n<span style=\"color:#8a93a0\">砸击之后，龟能才重新开始充能。\n</span>\n<span style=\"color:#8a93a0\">AoE 技能不受嘲讽影响（不转移）</span>",
+        "detail": "石头龟嘲讽 <span class=\"val-atk\">500 码</span> 内的所有敌人，持续 <span class=\"val-atk\">4 秒</span>：期间它们的单体伤害技能、装备效果与普攻全部只能朝石头龟释放。\n同时为自己提供（100%×攻击力({ATK}) = {S:ATK}）<span class=\"val-def\">永久护盾</span>，并获得 (0.5×护甲)% 的伤害减免（上限 50%，真实伤害不减），持续 4 秒。\n嘲讽开始后第 <span class=\"val-atk\">3.5 秒</span> 石头龟蓄力猛砸地面：400 码内敌人受到（100%×攻击力({ATK}) = {N:1.0*ATK}）魔法伤害并被 <span class=\"val-atk\">击飞 1.2 秒</span>。\n<span style=\"color:#8a93a0\">砸击之后，龟能才重新开始充能。\n</span>\n<span style=\"color:#8a93a0\">AoE 技能不受嘲讽影响（不转移）</span>",
         "energyCost": 120
       }
     ],
@@ -217,7 +217,7 @@
       "name": "生长",
       "atkPct": 75,
       "brief": "每 <span class=\"val-atk\">6 秒</span>蓄力一次，强化下一发普攻：额外造成 {M:ATK*0.75+HP*0.08} 魔法伤害，飞回一颗生命球回复 <span class=\"val-heal\">8% 最大生命值</span>，并<span class=\"val-heal\">永久</span>提升最大生命值。\n<span style=\"color:#8a93a0\">生命上限每次提升 +0.60×基础攻击力，但攻击力本身不增长。\n</span>",
-      "desc": "每6秒蓄力一次。\n蓄力后，下一发普攻获得强化：额外造成（75%×攻击力({ATK}) + 8%×最大生命值({HP}) = {M:ATK*0.75+HP*0.08}）魔法伤害。\n命中后飞出一颗绿色生命球回到竹叶龟身上（<span style=\"color:#8a93a0\">落到自己身上才生效</span>），回复 <span class=\"val-heal\">8%</span> 最大生命值，并<span class=\"val-heal\">永久</span>提升最大生命值（+0.60×基础攻击力；攻击力本身不涨）。\n若出战选了「竹击」，强化提升为 100%×攻击力 + 13%×最大生命值 魔法伤害、回血 12%、永久 +1.05×基础攻击力 最大生命值。"
+      "desc": "每 6 秒蓄力一次。\n蓄力后，下一发普攻获得强化：额外造成（75%×攻击力({ATK}) + 8%×最大生命值({HP}) = {M:ATK*0.75+HP*0.08}）魔法伤害。\n命中后飞出一颗绿色生命球回到竹叶龟身上（<span style=\"color:#8a93a0\">落到自己身上才生效</span>），回复 <span class=\"val-heal\">8%</span> 最大生命值，并<span class=\"val-heal\">永久</span>提升最大生命值（+0.60×基础攻击力；攻击力本身不涨）。\n若出战选了「竹击」，强化提升为 100%×攻击力 + 13%×最大生命值 魔法伤害、回血 12%、永久 +1.05×基础攻击力 最大生命值。"
     },
     "skillPool": [
       {
@@ -245,7 +245,7 @@
         "healPct": 10,
         "shieldTurns": 3,
         "brief": "为自己回复 {H:HP*0.1} 生命值，并为每名队友罩上【其自身】12% 最大生命值的护盾，持续 <span class=\"val-atk\">4 秒</span>。\n<span style=\"color:#8a93a0\">若没有队友存活，则改为治疗自己 {H:HP*0.15} 生命值。\n</span>",
-        "detail": "竹叶龟为自己回复（10%×最大生命值({HP}) = {H:HP*0.1}）生命值。\n为每名存活队友罩上其自身 12% 最大生命值的护盾，持续 <span class=\"val-def\">4秒</span>。\n若无存活队友，改为回复（15%×最大生命值({HP}) = {H:HP*0.15}）生命值。\n<span style=\"color:#8a93a0\">若没有队友存活，则改为治疗自己 {H:HP*0.15} 生命值。</span>",
+        "detail": "竹叶龟为自己回复（10%×最大生命值({HP}) = {H:HP*0.1}）生命值。\n为每名存活队友罩上其自身 12% 最大生命值的护盾，持续 <span class=\"val-def\">4 秒</span>。\n若无存活队友，改为回复（15%×最大生命值({HP}) = {H:HP*0.15}）生命值。\n<span style=\"color:#8a93a0\">若没有队友存活，则改为治疗自己 {H:HP*0.15} 生命值。</span>",
         "energyCost": 110
       },
       {
@@ -259,7 +259,7 @@
         "cd": 0,
         "atkScale": 1,
         "brief": "伸出竹藤钩住<span class=\"val-normal\">全场最远的敌人</span>，造成 {N:ATK} 物理伤害并<span class=\"val-atk\">眩晕 0.5 秒</span>，同时将其拉拽到自己身前。\n被钩中的敌人陷入冰寒，攻击力和移动速度各降低 <span class=\"val-atk\">20%</span>，持续 <span class=\"val-atk\">4 秒</span>。",
-        "detail": "竹叶龟伸出一条竹藤，钩住<span class=\"val-normal\">全场最远</span>的敌人：造成（100%×攻击力({ATK}) = {N:ATK}）物理伤害、<span class=\"val-atk\">眩晕 0.5秒</span>，并将其拉到竹叶龟身前贴身。\n同时施加<span class=\"val-magic\">冰寒</span> 4秒。\n<span style=\"color:#8a93a0\">冰寒：\n目标 -20% 攻击力、-20% 移动速度。\n龟蛋免疫控制，只吃伤害。\n</span>",
+        "detail": "竹叶龟伸出一条竹藤，钩住<span class=\"val-normal\">全场最远</span>的敌人：造成 {N:1.0*ATK} 物理伤害、<span class=\"val-atk\">眩晕 0.5 秒</span>，并将其拉到竹叶龟身前贴身。\n同时施加<span class=\"val-magic\">冰寒</span> 4 秒。\n<span style=\"color:#8a93a0\">冰寒：\n目标 -20% 攻击力、-20% 移动速度。\n龟蛋免疫控制，只吃伤害。\n</span>",
         "energyCost": 120
       },
       {
@@ -274,7 +274,7 @@
         "aoe": true,
         "atkScale": 0.18,
         "brief": "以当前目标为中心蓄力 0.6 秒，随后召唤竹刺破地而出，对范围内敌人造成 {N:0.9*ATK} + 15%×最大生命值 物理伤害，并将其<span class=\"val-atk\">击飞 1.5 秒</span>。",
-        "detail": "竹叶龟以<span class=\"val-normal\">当前目标</span>为中心、半径 <span class=\"val-atk\">300码</span> 画出预警圈，蓄力 0.6 秒后召唤竹刺从地面刺出。\n圈内敌人受到（90%×攻击力({ATK}) = {N:0.9*ATK}）+（15%×最大生命值({HP}) = {N:HP*0.15}）物理伤害，并被 <span class=\"val-atk\">击飞 1.5秒</span>。\n<span style=\"color:#8a93a0\">龟蛋免疫击飞，只吃伤害。\n</span>",
+        "detail": "竹叶龟以<span class=\"val-normal\">当前目标</span>为中心、半径 <span class=\"val-atk\">300 码</span> 画出预警圈，蓄力 0.6 秒后召唤竹刺从地面刺出。\n圈内敌人受到（90%×攻击力({ATK}) = {N:0.9*ATK}）+（15%×最大生命值({HP}) = {N:HP*0.15}）物理伤害，并被 <span class=\"val-atk\">击飞 1.5 秒</span>。\n<span style=\"color:#8a93a0\">龟蛋免疫击飞，只吃伤害。\n</span>",
         "energyCost": 130
       }
     ],
@@ -335,7 +335,7 @@
         "shieldTurns": 3,
         "defBoostTurns": 4,
         "brief": "为<span class=\"val-normal\">当前输出最高的友军</span>罩上 {S:2.5*ATK} 护盾，并提升其 <span class=\"val-atk\">50% 攻击速度</span>，两者均持续 <span class=\"val-atk\">5 秒</span>。\n<span style=\"color:#8a93a0\">选择本技能后，天使龟自身首次死亡时会以 25% 最大生命值复活一次。\n</span>",
-        "detail": "天使龟为当前输出最高的友军施加（250%×攻击力 = {S:2.5*ATK}）护盾，持续 <span class=\"val-def\">5秒</span>。\n并提升其 +50% 攻击速度。\n<b>选择本技能时，天使龟自身首次死亡会以 25% 最大生命值复活一次</b>，持续5秒。",
+        "detail": "天使龟为当前输出最高的友军施加（250%×攻击力 = {S:2.5*ATK}）护盾，持续 <span class=\"val-def\">5 秒</span>。\n并提升其 +50% 攻击速度。\n<b>选择本技能时，天使龟自身首次死亡会以 25% 最大生命值复活一次</b>，持续 5 秒。",
         "energyCost": 80
       },
       {
@@ -348,7 +348,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "对目标打出 4 道圣光斩弧，共造成 {N:ATK*2} 物理伤害，本次施法附带 <span class=\"val-heal\">10% 生命偷取</span>。\n若目标稀有度为 <span class=\"val-atk\">A 级及以上</span>，则追加第三段，额外造成 {T:0.5*ATK} 加上 <span class=\"val-true\">10% 目标已损生命值</span>的真实伤害。",
-        "detail": "天使龟挥起圣裁，使本次施法获得 <span class=\"val-heal\">10% 生命偷取</span>。\n随后天使龟对目标打击<b>四段</b>（每段50%攻击力），共造成（200%×攻击力 = {N:2*ATK}）物理伤害。\n如果目标的稀有度是 <span class=\"val-atk\">A 级及以上</span>，则追加第三段攻击造成：（50%×攻击力 = {T:0.5*ATK}）+ <span class=\"val-true\">10% 目标已损生命值</span>真实伤害。",
+        "detail": "天使龟挥起圣裁，使本次施法获得 <span class=\"val-heal\">10% 生命偷取</span>。\n随后天使龟对目标打击<b>四段</b>（每段 50%攻击力），共造成（200%×攻击力 = {N:2*ATK}）物理伤害。\n如果目标的稀有度是 <span class=\"val-atk\">A 级及以上</span>，则追加第三段攻击造成：（50%×攻击力 = {T:0.5*ATK}）+ <span class=\"val-true\">10% 目标已损生命值</span>真实伤害。",
         "energyCost": 60
       },
       {
@@ -420,7 +420,7 @@
           "turns": 4
         },
         "brief": "在目标处降下一片冰霜领域：基础半径 150 码、持续 5 秒，<span class=\"val-normal\">每层冰柱使半径 +20%、持续 +0.5 秒</span>。\n领域内的敌人魔抗降低 25%，并每 0.5 秒受到 {M:0.25*ATK} 魔法伤害。",
-        "detail": "寒冰龟在当前目标处降下一片圆形冰霜领域：\n基础<span class=\"val-magic\">半径 150 码</span>、基础持续 <span class=\"val-magic\">5秒</span>，<span class=\"val-normal\">每层冰柱使半径 +20%、持续 +0.5 秒</span>（满 20 层 = 半径 750 码 / 持续 15 秒）。\n领域内敌方 <span class=\"val-def\">-25% 魔抗</span>。\n每 0.5 秒一跳（跳数跟着持续时长走：0 层 10 跳、满层 30 跳），每跳造成（25%×攻击力({ATK}) = {M:0.25*ATK}）魔法伤害。",
+        "detail": "寒冰龟在当前目标处降下一片圆形冰霜领域：\n基础<span class=\"val-magic\">半径 150 码</span>、基础持续 <span class=\"val-magic\">5 秒</span>，<span class=\"val-normal\">每层冰柱使半径 +20%、持续 +0.5 秒</span>（满 20 层 = 半径 750 码 / 持续 15 秒）。\n领域内敌方 <span class=\"val-def\">-25% 魔抗</span>。\n每 0.5 秒一跳（跳数跟着持续时长走：0 层 10 跳、满层 30 跳），每跳造成（25%×攻击力({ATK}) = {M:0.25*ATK}）魔法伤害。",
         "energyCost": 100
       },
       {
@@ -450,7 +450,7 @@
         "shieldScale": 0.5,
         "shieldDuration": 3,
         "brief": "为全体友军（含自己）罩上冰霜护盾，护盾量等于自身 <span class=\"val-def\">5% 最大生命值</span>，持续 <span class=\"val-atk\">4 秒</span>。\n<span style=\"color:#8a93a0\">护盾到期、被打破或持盾者阵亡时爆裂，对其 250 码内的敌人造成 1×攻击力魔法伤害。\n若场上没有其他友军，护盾改为 20% 最大生命值、爆裂伤害改为 5×攻击力。\n</span>",
-        "detail": "寒冰龟为全体友军（含自己）施加等于【寒冰龟 <span class=\"val-def\">5% 最大生命值</span>】的冰霜护盾，持续 <span class=\"val-def\">4秒</span>。\n场上没有其他友军时护盾 ×4（20% 最大生命值）。\n护盾<span class=\"val-atk\">到期、被打破、或持盾者阵亡</span>时都会爆裂，对持盾者周围 250 码内的敌人造成 <span class=\"val-atk\">100%×攻击力</span> 魔法伤害（独狼时 500%）。",
+        "detail": "寒冰龟为全体友军（含自己）施加等于【寒冰龟 <span class=\"val-def\">5% 最大生命值</span>】的冰霜护盾，持续 <span class=\"val-def\">4 秒</span>。\n场上没有其他友军时护盾 ×4（20% 最大生命值）。\n护盾<span class=\"val-atk\">到期、被打破、或持盾者阵亡</span>时都会爆裂，对持盾者周围 250 码内的敌人造成 <span class=\"val-atk\">100%×攻击力</span> 魔法伤害（独狼时 500%）。",
         "energyCost": 120
       }
     ],
@@ -529,7 +529,7 @@
       "name": "忍术",
       "armorPen": 10,
       "brief": "精通忍术，开局<span class=\"val-atk\">永久</span>获得 <span class=\"val-atk\">20% 暴击率</span>、<span class=\"val-atk\">15% 暴击伤害</span> 和 <span class=\"val-atk\">10 护甲穿透</span>。\n<span class=\"val-normal\">冲击</span>：\n当附近出现可冲刺的敌人时，忍者龟自动朝最近的敌人冲刺 300 码斩击，对主目标造成 130%×攻击力、对路径上其余敌人造成 80%×攻击力 物理伤害，并将命中的敌人全部<span class=\"val-atk\">击飞 0.8 秒</span>。",
-      "desc": "开局永久获得：\n暴击率 <span class=\"val-atk\">+20%</span>，暴击伤害 <span class=\"val-atk\">+15%</span>，护甲穿透 <span class=\"val-atk\">+10</span>。\n<span class=\"val-normal\">冲击</span>（自动冲刺斩·亚索E式）：290码内出现可冲的敌人时，朝最近敌做一次 <span class=\"val-atk\">固定300码</span> 位移冲刺。\n路径上（判定带宽62码）被冲的主目标受 130%×攻击力、其余敌受 80%×攻击力 物理伤害，并全部<span class=\"val-atk\">击飞0.8秒</span>，不加伤害递增。\n本体每次冲刺 0.4 秒冷却，同一敌人被冲后 10 秒内不再被冲。\n<span style=\"color:#888\">放技能不会被冲击打断。\n</span>"
+      "desc": "开局永久获得：\n暴击率 <span class=\"val-atk\">+20%</span>，暴击伤害 <span class=\"val-atk\">+15%</span>，护甲穿透 <span class=\"val-atk\">+10</span>。\n<span class=\"val-normal\">冲击</span>（自动冲刺斩）：290 码内出现可冲的敌人时，朝最近敌做一次 <span class=\"val-atk\">固定 300 码</span> 位移冲刺。\n路径上（判定带宽 62 码）被冲的主目标受 130%×攻击力、其余敌受 80%×攻击力 物理伤害，并全部<span class=\"val-atk\">击飞 0.8 秒</span>，不加伤害递增。\n本体每次冲刺 0.4 秒冷却，同一敌人被冲后 10 秒内不再被冲。\n<span style=\"color:#888\">放技能不会被冲击打断。\n</span>"
     },
     "skillPool": [
       {
@@ -542,7 +542,7 @@
         "cd": 0,
         "atkScale": 1,
         "brief": "近战斩击，造成 {N:ATK} 物理伤害，并施加 2 层流血。\n<span style=\"color:#8a93a0\">若本次斩击暴击，则改为施加 3 层流血。\n</span>",
-        "detail": "忍者龟的普攻。\n近战挥刀斩击，造成（100%×攻击力({ATK}) = {N:ATK}）物理伤害，并对目标施加固定2层流血（暴击时3层）。\n<span style=\"color:#8a93a0\">流血：\n身上每层每秒造成等于层数的物理伤害，层数每秒衰减×0.8，可叠加。\n靠高频斩击与被动冲击叠满形成压力。\n冲击已改为被动（亚索E式自动冲刺斩），不再占技能位。\n</span>"
+        "detail": "忍者龟的普攻。\n近战挥刀斩击，造成 {N:1.0*ATK} 物理伤害，并对目标施加固定 2 层流血（暴击时 3 层）。\n<span style=\"color:#8a93a0\">流血：\n身上每层每秒造成等于层数的物理伤害，层数每秒衰减×0.8，可叠加。\n</span>"
       },
       {
         "name": "手里剑",
@@ -555,7 +555,7 @@
         "cd": 0,
         "atkScale": 1.6,
         "brief": "向当前目标投掷手里剑，造成 {N:1.6*ATK} 物理伤害；若本次暴击，则暴击总伤中的 (40+2%/级)% 转为真实伤害（无视护甲），其余仍是物理伤害。\n<span style=\"color:#8a93a0\">暴击按忍者自身暴击率判定。\n打包被动·忍者足：\n登场即获得 +15% 闪避和 +30% 暴击率。\n</span>",
-        "detail": "忍者龟向当前目标投掷手里剑，造成（160%×攻击力({ATK}) = {N:1.6*ATK}）物理伤害。\n本次攻击按<b>忍者龟自身的暴击率</b>判定。\n暴击时，暴击总伤害中的 (40% + 每级2%，封顶100%) 转为 <span class=\"val-true\">真实伤害</span>，<b>其余部分仍是物理伤害</b>（不是整发转真伤）。\n<span style=\"color:#8a93a0\">打包被动·忍者足：\n选择本技能后，忍者龟登场额外获得 15% 闪避几率与 30% 暴击率。\n</span>"
+        "detail": "忍者龟向当前目标投掷手里剑，造成（160%×攻击力({ATK}) = {N:1.6*ATK}）物理伤害。\n本次攻击按<b>忍者龟自身的暴击率</b>判定。\n暴击时，暴击总伤害中的 (40% + 每级 2%，封顶 100%) 转为 <span class=\"val-true\">真实伤害</span>，<b>其余部分仍是物理伤害</b>（不是整发转真伤）。\n<span style=\"color:#8a93a0\">打包被动·忍者足：\n选择本技能后，忍者龟登场额外获得 15% 闪避几率与 30% 暴击率。\n</span>"
       },
       {
         "name": "炸弹",
@@ -573,7 +573,7 @@
           "turns": 3
         },
         "brief": "扔出炸弹，在目标处引爆，对落点范围内的敌人造成 {N:2.0*ATK} 物理伤害，并使其护甲降低 <span class=\"val-atk\">20%</span>，持续 <span class=\"val-atk\">5 秒</span>。",
-        "detail": "忍者龟扔出炸弹，在目标处引爆，对落点 <span class=\"val-def\">400 码</span> 内的敌人造成（200%×攻击力({ATK}) = {N:2.0*ATK}）物理伤害，并施加 <span class=\"val-atk\">-20%护甲</span> 效果，持续5秒。"
+        "detail": "忍者龟扔出炸弹，在目标处引爆，对落点 <span class=\"val-def\">400 码</span> 内的敌人造成（200%×攻击力({ATK}) = {N:2.0*ATK}）物理伤害，并施加 <span class=\"val-atk\">-20%护甲</span> 效果，持续 5 秒。"
       },
       {
         "name": "背刺",
@@ -586,7 +586,7 @@
         "cd": 0,
         "atkScale": 0.6667,
         "brief": "获得 <span class=\"val-atk\">15 护甲穿透</span>持续 <span class=\"val-atk\">5 秒</span>，随后闪现到<span class=\"val-normal\">全场最远的敌人</span>身后背刺三段，共造成 {N:0.6667*ATK*3} 物理伤害，之后留在原地继续追砍该目标。",
-        "detail": "忍者龟准备偷袭，获得+15护甲穿透持续5秒，随后闪现到<span class=\"val-normal\">全场最远敌</span>身后背刺三段，造成共（200%×攻击力 = {N:0.6667*ATK*3}）物理伤害，之后留在该敌处继续追砍它。"
+        "detail": "忍者龟准备偷袭，获得+15护甲穿透持续 5 秒，随后闪现到<span class=\"val-normal\">全场最远敌</span>身后背刺三段，造成共（200%×攻击力 = {N:0.6667*ATK*3}）物理伤害，之后留在该敌处继续追砍它。"
       }
     ],
     "defaultSkills": [
@@ -640,7 +640,7 @@
         "cd": 0,
         "atkScale": 0.85,
         "brief": "远程形态释放灵能冲击，对炮弹命中处的敌人造成 {N:1.0*ATK} + 10% 目标最大生命值 物理伤害。\n近战形态挥出锤击，造成 {N:1.4*ATK} 物理伤害，并获得所造成伤害 50% 的护盾，持续 <span class=\"val-atk\">4 秒</span>。",
-        "detail": "双头龟技能一，随形态变体：\n· 远程形态【灵能冲击】：\n射出一颗紫色炮弹，碰到第一个敌人即爆炸，对爆点 <span class=\"val-def\">200 码</span> 内的敌人造成（100%×攻击力 = {N:1.0*ATK}）+ 10%目标最大生命值 物理伤害。\n· 近战形态【锤击】：\n对目标造成（140%×攻击力 = {N:1.4*ATK}）物理伤害，并获得造成伤害50%的护盾（4秒）。\n<span style=\"color:#8a93a0\">释放后自动切换形态（被动·双生），并附带切换攻击+位移。\n</span>"
+        "detail": "双头龟技能一，随形态变体：\n· 远程形态【灵能冲击】：\n射出一颗紫色炮弹，碰到第一个敌人即爆炸，对爆点 <span class=\"val-def\">200 码</span> 内的敌人造成（100%×攻击力 = {N:1.0*ATK}）+ 10%目标最大生命值 物理伤害。\n· 近战形态【锤击】：\n对目标造成（140%×攻击力 = {N:1.4*ATK}）物理伤害，并获得造成伤害 50%的护盾（4 秒）。\n<span style=\"color:#8a93a0\">释放后自动切换形态（被动·双生），并附带切换攻击+位移。\n</span>"
       },
       {
         "name": "精神干扰/吸收",
@@ -652,8 +652,8 @@
         "pierce": 0,
         "cd": 0,
         "atkScale": 1,
-        "brief": "远程形态释放精神干扰，造成 {T:2.0*ATK} 真实伤害，使目标承受 <span class=\"val-atk\">50% 治疗削减</span>持续 <span class=\"val-atk\">5 秒</span>，并破除其 50% 护盾。\n近战形态施展吸收，造成 {N:0.6*ATK} + 8% 目标最大生命值 物理伤害，并<span class=\"val-heal\">回复40% 攻击力加 18% 已损生命值的生命</span>。",
-        "detail": "双头龟技能二，随形态变体：\n· 远程形态【精神干扰】：\n对目标造成（200%×攻击力 = {T:2.0*ATK}）真实伤害，施加治疗削减50%（5秒），并破坏其50%护盾。\n· 近战形态【吸收】：\n对目标造成（60%×攻击力 = {N:0.6*ATK}）+ 8%目标最大生命值 物理伤害，回复（40%×攻击力 = {H:ATK*0.4}）+ 18%已损生命值。\n<span style=\"color:#8a93a0\">释放后自动切换形态（被动·双生），并附带切换攻击+位移。\n</span>"
+        "brief": "远程形态释放精神干扰，造成 {T:2.0*ATK} 真实伤害，使目标承受 <span class=\"val-atk\">50% 治疗削减</span>持续 <span class=\"val-atk\">5 秒</span>，并破除其 50% 护盾。\n近战形态施展吸收，造成 {N:0.6*ATK} + 8% 目标最大生命值 物理伤害，并<span class=\"val-heal\">回复 40% 攻击力加 18% 已损生命值的生命</span>。",
+        "detail": "双头龟技能二，随形态变体：\n· 远程形态【精神干扰】：\n对目标造成（200%×攻击力 = {T:2.0*ATK}）真实伤害，施加治疗削减 50%（5 秒），并破坏其 50%护盾。\n· 近战形态【吸收】：\n对目标造成（60%×攻击力 = {N:0.6*ATK}）+ 8%目标最大生命值 物理伤害，回复（40%×攻击力 = {H:ATK*0.4}）+ 18%已损生命值。\n<span style=\"color:#8a93a0\">释放后自动切换形态（被动·双生），并附带切换攻击+位移。\n</span>"
       },
       {
         "name": "融合",
@@ -666,7 +666,7 @@
         "cd": 0,
         "atkScale": 0.4,
         "brief": "锁定当前形态不再切换，获得近战合体属性（生命值、双抗、护盾）。\n主动释放魔法波，每段在 80% 物理与真实伤害之间交替，并造成<span class=\"val-atk\">击飞</span>。\n<span style=\"color:#8a93a0\">融合后获得双头坚韧：每受到一段伤害永久 +1 护甲、+1 魔抗，上限 20。\n魔法波每次消耗 85 龟能，波数每次释放 +1、累积至战斗结束。\n</span>",
-        "detail": "双头龟技能三【融合】：\n双头合体，登场即锁定形态不再自动切换，获得近战形态的额外（250%×攻击力 = {H:ATK*2.5}）最大生命值、（25%×攻击力 = {D:ATK*0.25}）护甲、（25%×攻击力 = {M:ATK*0.25}）魔抗与（110%×攻击力 = {S:ATK*1.1}）护盾，\n并获得【双头坚韧】被动：\n每受到一段攻击永久+1护甲+1魔抗（各上限20）。\n主动·魔法波（消耗85龟能）：发射数段弧形魔法波，交替造成每段（80%×攻击力 = {N:0.8*ATK}）物理 /（80%×攻击力 = {T:0.8*ATK}）真实伤害，并附带击飞。\n波的数量基础4段，之后每次释放+1，持续累积到战斗结束。"
+        "detail": "双头龟技能三【融合】：\n双头合体，登场即锁定形态不再自动切换，获得近战形态的额外（250%×攻击力 = {H:ATK*2.5}）最大生命值、（25%×攻击力 = {D:ATK*0.25}）护甲、（25%×攻击力 = {M:ATK*0.25}）魔抗与（110%×攻击力 = {S:ATK*1.1}）护盾，\n并获得【双头坚韧】被动：\n每受到一段攻击永久+1护甲+1魔抗（各上限 20）。\n主动·魔法波（消耗 85龟能）：发射数段弧形魔法波，交替造成每段（80%×攻击力 = {N:0.8*ATK}）物理 /（80%×攻击力 = {T:0.8*ATK}）真实伤害，并附带击飞。\n波的数量基础 4段，之后每次释放+1，持续累积到战斗结束。"
       }
     ],
     "defaultSkills": [
@@ -766,7 +766,7 @@
         "dodgePct": 25,
         "dodgeTurns": 2,
         "brief": "突袭目标，造成 {M:1.5*ATK} 魔法伤害，<span class=\"val-heal\">回复所造成伤害 80% 的生命值</span>，并获得 <span class=\"val-atk\">25% 闪避</span>持续 <span class=\"val-atk\">4 秒</span>。",
-        "detail": "幽灵龟对目标造成（150%×攻击力 = {M:1.5*ATK}）魔法伤害，回复造成伤害的 80% 生命值，将目标击退抛飞，并获得 25% 闪避，持续 <span class=\"val-def\">4秒</span>。\n<span style=\"color:#8a93a0\">命中还会把目标<b>击退抛飞</b>。\n</span>"
+        "detail": "幽灵龟对目标造成（150%×攻击力 = {M:1.5*ATK}）魔法伤害，回复造成伤害的 80% 生命值，将目标击退抛飞，并获得 25% 闪避，持续 <span class=\"val-def\">4 秒</span>。\n<span style=\"color:#8a93a0\">命中还会把目标<b>击退抛飞</b>。\n</span>"
       },
       {
         "name": "灵魂风暴",
@@ -779,7 +779,7 @@
         "cd": 0,
         "atkScale": 1.25,
         "brief": "对目标释放灵魂风暴，造成两段共 {M:2*ATK} 魔法伤害，并施加诅咒持续 <span class=\"val-atk\">4 秒</span>。\n若目标身上已有诅咒，则改为造成 {T:2*ATK} 真实伤害。\n诅咒每秒结算；对已有诅咒的目标不重复施加或刷新。",
-        "detail": "幽灵龟对目标释放灵魂风暴，造成两段共（200%×攻击力 = {M:2*ATK}）魔法伤害，并施加诅咒持续4秒(每秒结算)。\n如果目标身上已有诅咒效果，则改为造成（200%×攻击力 = {T:2*ATK}）真实伤害，且不重复施加/刷新诅咒。\n<span style=\"color:#8a93a0\">诅咒：\n每秒目标受到 5% 最大生命值真实伤害</span>。"
+        "detail": "幽灵龟对目标释放灵魂风暴，造成两段共（200%×攻击力 = {M:2*ATK}）魔法伤害，并施加诅咒持续 4 秒(每秒结算)。\n如果目标身上已有诅咒效果，则改为造成（200%×攻击力 = {T:2*ATK}）真实伤害，且不重复施加/刷新诅咒。\n<span style=\"color:#8a93a0\">诅咒：\n每秒目标受到 5% 最大生命值真实伤害</span>。"
       },
       {
         "name": "虚化",
@@ -845,8 +845,8 @@
         "cd": 0,
         "shieldHpPct": 20,
         "defUpTurns": 3,
-        "brief": "获得 {S:HP*0.2} 护盾持续 <span class=\"val-atk\">4秒</span>，并提升 {D:ATK*0.2} 护甲 和 {M:ATK*0.2} 魔抗，持续 <span class=\"val-atk\">5秒</span>。\n<span style=\"color:#8a93a0\">持盾期间龟能停止充能，护盾破裂或到期后恢复。\n</span>",
-        "detail": "钻石龟获得（20%×最大生命值({HP}) = {S:HP*0.2}）护盾（持续4秒·通用护盾规则），并提升护甲（20%×攻击力({ATK}) = {D:ATK*0.2}）和魔抗（20%×攻击力({ATK}) = {M:ATK*0.2}）（固定值），持续5秒。\n持盾期间锁定龟能充能（盾破或到期即恢复）。",
+        "brief": "获得 {S:HP*0.2} 护盾持续 <span class=\"val-atk\">4 秒</span>，并提升 {D:ATK*0.2} 护甲 和 {M:ATK*0.2} 魔抗，持续 <span class=\"val-atk\">5 秒</span>。\n<span style=\"color:#8a93a0\">持盾期间龟能停止充能，护盾破裂或到期后恢复。\n</span>",
+        "detail": "钻石龟获得（20%×最大生命值({HP}) = {S:HP*0.2}）护盾（持续 4 秒·通用护盾规则），并提升护甲（20%×攻击力({ATK}) = {D:ATK*0.2}）和魔抗（20%×攻击力({ATK}) = {M:ATK*0.2}）（固定值），持续 5 秒。\n持盾期间锁定龟能充能（盾破或到期即恢复）。",
         "energyCost": 60
       },
       {
@@ -858,8 +858,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "蜷成钻石球滚向最近的敌人，从静止起步、<span class=\"val-atk\">4秒</span>加速到满速，撞击时对落点敌人造成伤害，并将其<span class=\"val-atk\">击飞 1秒</span>、<span class=\"val-atk\">眩晕 0.5~3秒</span>。\n伤害与眩晕时长均随撞击瞬间的移动速度插值：\n静止时造成 <span class=\"val-atk\">0.1×护甲 + 0.1×魔抗 + 2% 最大生命值</span>，满速时造成 <span class=\"val-atk\">1.0×护甲 + 1.0×魔抗 + 20% 最大生命值</span>。\n<span style=\"color:#8a93a0\">滚动期间免疫定身与沉默。\n当 200 码内没有敌人时，钻石龟自动免费启动滚球撞向最近的敌人，不消耗龟能。\n</span>",
-        "detail": "钻石龟蜷成钻石球滚向最近敌人（移动速度从0起4秒加速到满速，滚动期间免疫定身与沉默）\n撞到的120码小范围内敌人受到伤害（按当前移动速度插值：0速时 0.1护甲+0.1魔抗+2%<b>目标</b>最大生命值，满速时 1.0护甲+1.0魔抗+20%<b>目标</b>最大生命值）并被击飞1秒、眩晕（0.5~3秒随移动速度插值）。\n<span style=\"color:#8a93a0\">被动（选此技才有）：<span class=\"val-normal\">当 200 码内没有敌人时</span>，钻石龟自动免费启动滚球撞向最近敌（不耗龟能，0.8秒防抖冷却）。\n</span>",
+        "brief": "蜷成钻石球滚向最近的敌人，从静止起步、<span class=\"val-atk\">4 秒</span>加速到满速，撞击时对落点敌人造成伤害，并将其<span class=\"val-atk\">击飞 1 秒</span>、<span class=\"val-atk\">眩晕 0.5~3 秒</span>。\n伤害与眩晕时长均随撞击瞬间的移动速度插值：\n静止时造成 <span class=\"val-atk\">0.1×护甲 + 0.1×魔抗 + 2% 最大生命值</span>，满速时造成 <span class=\"val-atk\">1.0×护甲 + 1.0×魔抗 + 20% 最大生命值</span>。\n<span style=\"color:#8a93a0\">滚动期间免疫定身与沉默。\n当 200 码内没有敌人时，钻石龟自动免费启动滚球撞向最近的敌人，不消耗龟能。\n</span>",
+        "detail": "钻石龟蜷成钻石球滚向最近敌人（移动速度从 0起 4 秒加速到满速，滚动期间免疫定身与沉默）\n撞到的 120 码小范围内敌人受到伤害（按当前移动速度插值：0速时 0.1护甲+0.1魔抗+2%<b>目标</b>最大生命值，满速时 1.0护甲+1.0魔抗+20%<b>目标</b>最大生命值）并被击飞 1 秒、眩晕（0.5~3 秒随移动速度插值）。\n<span style=\"color:#8a93a0\">被动（选此技才有）：<span class=\"val-normal\">当 200 码内没有敌人时</span>，钻石龟自动免费启动滚球撞向最近敌（不耗龟能，0.8 秒防抖冷却）。\n</span>",
         "energyCost": 100
       },
       {
@@ -874,8 +874,8 @@
         "defScale": 1,
         "mrScale": 1,
         "atkScale": 0.1,
-        "brief": "短暂蓄力后冲撞目标，造成 {N:DEF+MR+0.1*ATK} 物理伤害，将其沿冲撞方向<span class=\"val-atk\">击退 300 码</span>并<span class=\"val-atk\">击飞</span>，\n同时施加流血（层数为 <span class=\"val-atk\">0.5×攻击力 + 0.1×护甲 + 0.1×魔抗</span>）与 <span class=\"val-atk\">50% 减速</span>，持续 <span class=\"val-atk\">3秒</span>。\n<span style=\"color:#8a93a0\">强化钻石结构（被动）：选择本技能后，登场时自身护甲/魔抗加成额外 +100%。\n</span>",
-        "detail": "钻石龟短暂蓄力后冲撞目标，造成（100%×护甲({DEF}) = {D:DEF}）+（100%×魔抗({MR}) = {M:MR}）+（10%×攻击力({ATK}) = {N:0.1*ATK}）物理伤害。\n命中后将目标沿冲撞方向击退约300码并带一点点击飞。\n施加流血，流血层数 = 0.5×攻击力 + 0.1×护甲 + 0.1×魔抗（走既有层数式流血，每秒结算并衰减）\n并施加持续3秒的50%减速。\n打包被动·强化钻石结构：\n选择本技能后，钻石龟登场自身护甲/魔抗额外 +100%（全队基础 +50% 不变）。",
+        "brief": "短暂蓄力后冲撞目标，造成 {N:DEF+MR+0.1*ATK} 物理伤害，将其沿冲撞方向<span class=\"val-atk\">击退 300 码</span>并<span class=\"val-atk\">击飞</span>，\n同时施加流血（层数为 <span class=\"val-atk\">0.5×攻击力 + 0.1×护甲 + 0.1×魔抗</span>）与 <span class=\"val-atk\">50% 减速</span>，持续 <span class=\"val-atk\">3 秒</span>。\n<span style=\"color:#8a93a0\">强化钻石结构（被动）：选择本技能后，登场时自身护甲/魔抗加成额外 +100%。\n</span>",
+        "detail": "钻石龟短暂蓄力后冲撞目标，造成（100%×护甲({DEF}) = {D:DEF}）+（100%×魔抗({MR}) = {M:MR}）+（10%×攻击力({ATK}) = {N:0.1*ATK}）物理伤害。\n命中后将目标沿冲撞方向击退约 300 码并带一点点击飞。\n施加流血，流血层数 = 0.5×攻击力 + 0.1×护甲 + 0.1×魔抗（走既有层数式流血，每秒结算并衰减）\n并施加持续 3 秒的 50%减速。\n打包被动·强化钻石结构：\n选择本技能后，钻石龟登场自身护甲/魔抗额外 +100%（全队基础 +50% 不变）。",
         "energyCost": 80
       }
     ],
@@ -905,8 +905,8 @@
     "passive": {
       "type": "fortuneGold",
       "name": "聚宝盆",
-      "brief": "聚宝盆源源不断产出金币：每 <span class=\"val-atk\">3秒</span> 获得 <span class=\"val-atk\">4~7</span> 枚，场上任意单位阵亡时额外获得 <span class=\"val-atk\">9</span> 枚。\n<span style=\"color:#8a93a0\">金币只在本场战斗内有效，供「打击」与「梭哈」消耗。\n</span>\n首次血量降至 20% 以下时立即获得 <span class=\"val-atk\">70 点龟能</span>。",
-      "desc": "持续产出<span class=\"val-atk\">局内金币</span>：每 <span class=\"val-atk\">3秒</span> 获得 <span class=\"val-atk\">4~7</span> 枚；\n场上任意单位阵亡时额外获得 <span class=\"val-atk\">9</span> 枚。\n<span style=\"color:#8a93a0\">金币只在本场战斗内有效，喂给「打击」与「梭哈」。\n</span>\n财神龟<span class=\"val-atk\">首次</span>血量降至 <span class=\"val-atk\">20% 以下</span>时，立即获得 <span class=\"val-atk\">70 点龟能</span>（每场一次）。"
+      "brief": "聚宝盆源源不断产出金币：每 <span class=\"val-atk\">3 秒</span> 获得 <span class=\"val-atk\">4~7</span> 枚，场上任意单位阵亡时额外获得 <span class=\"val-atk\">9</span> 枚。\n<span style=\"color:#8a93a0\">金币只在本场战斗内有效，供「打击」与「梭哈」消耗。\n</span>\n首次血量降至 20% 以下时立即获得 <span class=\"val-atk\">70 点龟能</span>。",
+      "desc": "持续产出<span class=\"val-atk\">局内金币</span>：每 <span class=\"val-atk\">3 秒</span> 获得 <span class=\"val-atk\">4~7</span> 枚；\n场上任意单位阵亡时额外获得 <span class=\"val-atk\">9</span> 枚。\n<span style=\"color:#8a93a0\">金币只在本场战斗内有效，喂给「打击」与「梭哈」。\n</span>\n财神龟<span class=\"val-atk\">首次</span>血量降至 <span class=\"val-atk\">20% 以下</span>时，立即获得 <span class=\"val-atk\">70 点龟能</span>（每场一次）。"
     },
     "skillPool": [
       {
@@ -996,7 +996,7 @@
         "cd": 0,
         "atkScale": 0.9,
         "brief": "掷出 3 颗骰子打击目标，共造成 {N:0.9*ATK+crit*55} 物理伤害。",
-        "detail": "骰子龟掷出3颗骰子打击目标，共造成（90%×攻击力 + 5500%×暴击机率 = {N:0.9*ATK+crit*55}）物理伤害。"
+        "detail": "骰子龟掷出 3颗骰子打击目标，共造成（90%×攻击力 + 5500%×暴击机率 = {N:0.9*ATK+crit*55}）物理伤害。"
       },
       {
         "name": "孤注一掷",
@@ -1022,7 +1022,7 @@
         "cd": 0,
         "duration": 5,
         "brief": "掷出命运骰子，获得随机 <span class=\"val-atk\">40%~130% 暴击率</span> 提升，<span class=\"val-atk\">持续到下次释放本技能</span>。\n<span style=\"color:#8a93a0\">再次释放会撤销旧增益并重新掷骰。\n</span>\n释放后的首次攻击额外附带 <span class=\"val-heal\">50% 生命偷取</span>。",
-        "detail": "骰子龟掷出命运骰子，获得随机 <span class=\"val-atk\">40%~130%</span> 暴击机率提升，<span class=\"val-atk\">持续到下次释放本技能</span>（再次释放会先撤销旧增益，再重新掷一次）。\n<span style=\"color:#8a93a0\">暴击机率超过100%的部分，每1%转化为 1.5% 暴击伤害。\n</span>\n释放后的<span class=\"val-atk\">首次攻击</span>额外附带 <span class=\"val-heal\">50% 生命偷取</span>。"
+        "detail": "骰子龟掷出命运骰子，获得随机 <span class=\"val-atk\">40%~130%</span> 暴击机率提升，<span class=\"val-atk\">持续到下次释放本技能</span>（再次释放会先撤销旧增益，再重新掷一次）。\n<span style=\"color:#8a93a0\">暴击机率超过 100%的部分，每 1%转化为 1.5% 暴击伤害。\n</span>\n释放后的<span class=\"val-atk\">首次攻击</span>额外附带 <span class=\"val-heal\">50% 生命偷取</span>。"
       },
       {
         "name": "稳定骰子",
@@ -1060,8 +1060,8 @@
       "atkPct": 12,
       "defPct": 12,
       "healPct": 5,
-      "brief": "棱镜每 <span class=\"val-atk\">6秒</span> 随机获得一种颜色，为普攻附带对应效果：\n🔴 红色附加<span class=\"val-atk\">25% 攻击力</span> 的真实伤害，🔵 蓝色使每次普攻获得 <span class=\"val-atk\">20% 攻击力</span> 护盾，🟢 绿色使每次普攻回复 <span class=\"val-heal\">2.5% 已损生命值</span>。\n彩虹龟持续获得<span class=\"val-hp\">2% 最大生命值</span> 的攻击力，以及<span class=\"val-atk\">(0.3×攻击力)%</span> 的攻击速度。",
-      "desc": "每6秒随机获得一种颜色（🔴红/🔵蓝/🟢绿），普攻附带对应效果：🔴红光额外造成（25%×攻击力({ATK}) = {T:0.25*ATK}）真实伤害。\n🔵蓝光每次普攻获得（20%×攻击力({ATK}) = {S:0.2*ATK}）护盾（持续4秒）\n🟢绿光每次普攻回复 <span class=\"val-heal\">2.5% 已损生命值</span>。\n彩虹龟持续获得（2%×最大生命值）的攻击力和（0.3×攻击力）%的攻击速度。\n两者实时生效：\n中途提升最大生命值会同时抬高攻击力与攻速。"
+      "brief": "棱镜每 <span class=\"val-atk\">6 秒</span> 随机获得一种颜色，为普攻附带对应效果：\n🔴 红色附加 <span class=\"val-atk\">25% 攻击力</span> 的真实伤害，🔵 蓝色使每次普攻获得 <span class=\"val-atk\">20% 攻击力</span> 护盾，🟢 绿色使每次普攻回复 <span class=\"val-heal\">2.5% 已损生命值</span>。\n彩虹龟持续获得 <span class=\"val-hp\">2% 最大生命值</span> 的攻击力，以及<span class=\"val-atk\">(0.3×攻击力)%</span> 的攻击速度。",
+      "desc": "每 6 秒随机获得一种颜色（🔴红/🔵蓝/🟢绿），普攻附带对应效果：🔴红光额外造成（25%×攻击力({ATK}) = {T:0.25*ATK}）真实伤害。\n🔵蓝光每次普攻获得（20%×攻击力({ATK}) = {S:0.2*ATK}）护盾（持续 4 秒）\n🟢绿光每次普攻回复 <span class=\"val-heal\">2.5% 已损生命值</span>。\n彩虹龟持续获得（2%×最大生命值）的攻击力和（0.3×攻击力）%的攻击速度。\n两者实时生效：\n中途提升最大生命值会同时抬高攻击力与攻速。"
     },
     "skillPool": [
       {
@@ -1085,8 +1085,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "以棱镜之光为全体友军施加 {S:1.0*ATK} 护盾，持续 <span class=\"val-atk\">4秒</span>。",
-        "detail": "彩虹龟用棱镜之光为全体友方（含自己）施加（100%×攻击力({ATK}) = {S:1.0*ATK}）护盾，持续 <span class=\"val-def\">4秒</span>。",
+        "brief": "以棱镜之光为全体友军施加 {S:1.0*ATK} 护盾，持续 <span class=\"val-atk\">4 秒</span>。",
+        "detail": "彩虹龟用棱镜之光为全体友方（含自己）施加（100%×攻击力({ATK}) = {S:1.0*ATK}）护盾，持续 <span class=\"val-def\">4 秒</span>。",
         "energyCost": 50
       },
       {
@@ -1104,8 +1104,8 @@
           "pct": 15,
           "turns": 3
         },
-        "brief": "在自身周围掀起七彩风暴，持续 <span class=\"val-atk\">4秒</span>，每 <span class=\"val-atk\">0.5秒</span> 对范围内敌人造成 {M:0.1*ATK} 魔法伤害 和 {T:0.05*ATK} 真实伤害，并使其护甲和魔抗各降低 <span class=\"val-atk\">20%</span>。\n使范围内友军回复 {H:0.25*ATK} 生命值。",
-        "detail": "彩虹龟在<span class=\"val-normal\">自身所在位置</span>形成七彩风暴区（半径300码），持续 <span class=\"val-magic\">4秒</span>。\n每 0.5 秒对区内敌人造成（{M:0.1*ATK}）魔法 +（{T:0.05*ATK}）真实伤害，并使其<span class=\"val-def\">护甲、魔抗各 -20%</span>。\n使区内友军回复（25%×攻击力 = {H:0.25*ATK}）生命值。\n<span style=\"color:#8a93a0\">风暴期间彩虹龟龟能锁定、不被控制打断。\n</span>",
+        "brief": "在自身周围掀起七彩风暴，持续 <span class=\"val-atk\">4 秒</span>，每 <span class=\"val-atk\">0.5 秒</span> 对范围内敌人造成 {M:0.1*ATK} 魔法伤害 和 {T:0.05*ATK} 真实伤害，并使其护甲和魔抗各降低 <span class=\"val-atk\">20%</span>。\n使范围内友军回复 {H:0.25*ATK} 生命值。",
+        "detail": "彩虹龟在<span class=\"val-normal\">自身所在位置</span>形成七彩风暴区（半径 300 码），持续 <span class=\"val-magic\">4 秒</span>。\n每 0.5 秒对区内敌人造成（{M:0.1*ATK}）魔法 +（{T:0.05*ATK}）真实伤害，并使其<span class=\"val-def\">护甲、魔抗各 -20%</span>。\n使区内友军回复（25%×攻击力 = {H:0.25*ATK}）生命值。\n<span style=\"color:#8a93a0\">风暴期间彩虹龟龟能锁定、不被控制打断。\n</span>",
         "energyCost": 80
       },
       {
@@ -1120,7 +1120,7 @@
         "aoe": true,
         "atkScale": 0.5,
         "brief": "射出一道彩虹光，从自身开始在敌我之间交替弹射 <span class=\"val-atk\">共 6 段</span>：命中友军（含自身）时回复 {H:0.5*ATK} 生命值，命中敌人时造成 {M:0.5*ATK} 魔法伤害。\n<span style=\"color:#8a93a0\">每段效果相同、不递减。\n</span>",
-        "detail": "彩虹龟以自身开始，射出一道彩虹光在敌我之间交替弹射，<span class=\"val-atk\">共 6 段</span>：\n治疗友军（含自身）（50%×攻击力({ATK}) = {H:0.5*ATK}）生命、对敌人造成（50%×攻击力 = {M:0.5*ATK}）魔法伤害。\n<span style=\"color:#8a93a0\">每段效果相同、不递减。\n</span>\n<span style=\"color:#8a93a0\">打包被动「强化棱镜」：\n选择本技能后，彩虹龟每 5秒额外抽取一色 —— 🟠橙=全队 +10% 生命偷取(5秒) / 🟡黄=随机敌 0.67×攻击力灼烧 / 🔵青=随机敌冰寒(5秒) / 🟣紫=随机敌诅咒(5秒)。\n</span>",
+        "detail": "彩虹龟以自身开始，射出一道彩虹光在敌我之间交替弹射，<span class=\"val-atk\">共 6 段</span>：\n治疗友军（含自身）（50%×攻击力({ATK}) = {H:0.5*ATK}）生命、对敌人造成（50%×攻击力 = {M:0.5*ATK}）魔法伤害。\n<span style=\"color:#8a93a0\">每段效果相同、不递减。\n</span>\n<span style=\"color:#8a93a0\">打包被动「强化棱镜」：\n选择本技能后，彩虹龟每 5 秒额外抽取一色 —— 🟠橙=全队 +10% 生命偷取(5 秒) / 🟡黄=随机敌 0.67×攻击力灼烧 / 🔵青=随机敌冰寒(5 秒) / 🟣紫=随机敌诅咒(5 秒)。\n</span>",
         "energyCost": 110
       }
     ],
@@ -1152,7 +1152,7 @@
       "name": "多重打击",
       "dmgScale": 0.5,
       "brief": "每次普攻命中后有 <span class=\"val-atk\">40%</span> 概率<span class=\"val-normal\">立刻以约 3.3 倍攻击速度再打一次普攻</span>。\n再次命中可继续触发，每连锁一次概率 ×0.8（<span class=\"val-atk\">40% → 32% → 25.6% → …</span>）。\n<span style=\"color:#8a93a0\">未触发时概率重置回基础值。\n</span>",
-      "desc": "每次普攻命中后有 <span class=\"val-atk\">40%</span> 概率<span class=\"val-normal\">立刻以约6倍攻击速度再打一次普攻</span>。\n再次命中可继续触发，每连锁一次概率 ×0.8（40% → 32% → 25.6% → …），没触发则重置回基础概率、等下一次普攻。\n<span style=\"color:#8a93a0\">基础概率 40%。\n出战选「命运之轮」→ 基础概率变 60%（代价是登场损失 30% 最大生命值）\n释放「赌注」→ 之后 3 秒内再 +20%。\n</span>"
+      "desc": "每次普攻命中后有 <span class=\"val-atk\">40%</span> 概率<span class=\"val-normal\">立刻以约 6倍攻击速度再打一次普攻</span>。\n再次命中可继续触发，每连锁一次概率 ×0.8（40% → 32% → 25.6% → …），没触发则重置回基础概率、等下一次普攻。\n<span style=\"color:#8a93a0\">基础概率 40%。\n出战选「命运之轮」→ 基础概率变 60%（代价是登场损失 30% 最大生命值）\n释放「赌注」→ 之后 3 秒内再 +20%。\n</span>"
     },
     "skillPool": [
       {
@@ -1166,7 +1166,7 @@
         "minScale": 0.3,
         "maxScale": 0.6,
         "brief": "甩出一张旋转的扑克牌飞向目标，造成 {N:ATK} 物理伤害。",
-        "detail": "赌神龟甩出一张旋转扑克牌飞向目标，造成（100%×攻击力({ATK}) = {N:ATK}）物理伤害。"
+        "detail": "赌神龟甩出一张旋转扑克牌飞向目标，造成 {N:1.0*ATK} 物理伤害。"
       },
       {
         "name": "万能牌",
@@ -1178,7 +1178,7 @@
         "pierce": 0,
         "cd": 0,
         "atkScale": 0.5,
-        "brief": "丢出一张万能牌，造成<span class=\"val-normal\">1 段</span> {N:2*ATK} 物理伤害，自身获得 {S:1*ATK} 永久护盾并回复 <span class=\"val-heal\">5% 最大生命值</span>，同时使目标攻击力 <span class=\"val-atk\">-15%</span>。",
+        "brief": "丢出一张万能牌，造成 <span class=\"val-normal\">1 段</span> {N:2*ATK} 物理伤害，自身获得 {S:1*ATK} 永久护盾并回复 <span class=\"val-heal\">5% 最大生命值</span>，同时使目标攻击力 <span class=\"val-atk\">-15%</span>。",
         "detail": "赌神龟丢出一张万能牌，造成 <span class=\"val-normal\">1 段</span>（200%×攻击力({ATK}) = {N:2*ATK}）物理伤害。\n自身获得（100%×攻击力 = {S:1*ATK}）<span class=\"val-def\">永久护盾</span>，回复 <span class=\"val-heal\">5% 最大生命值</span>，并使目标<span class=\"val-atk\">攻击力 -15%</span>。"
       },
       {
@@ -1190,8 +1190,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "消耗当前 <span class=\"val-atk\">40%</span> 生命值，将其化为七段物理伤害打向目标，之后 <span class=\"val-atk\">3秒</span> 内多重打击概率 <span class=\"val-atk\">+20%</span>。\n<span style=\"color:#8a93a0\">当自身生命低于 40% 时，改为回复 8% 最大生命值而不甩牌。\n</span>",
-        "detail": "赌神龟消耗当前 <span class=\"val-atk\">40%</span> 生命值，将其分为<span class=\"val-normal\">七段</span>物理伤害打向目标（总量≈所消耗的生命值）\n释放后 <span class=\"val-atk\">3秒</span> 内多重打击概率额外 +20%。\n<span style=\"color:#8a93a0\">当前生命 <b>低于 40% 最大生命值</b> 时改为【低血模式】：不甩牌、不消耗生命，改为回复 8% 最大生命值，同样获得 3 秒多重打击 +20%。\n</span>"
+        "brief": "消耗当前 <span class=\"val-atk\">40%</span> 生命值，将其化为七段物理伤害打向目标，之后 <span class=\"val-atk\">3 秒</span> 内多重打击概率 <span class=\"val-atk\">+20%</span>。\n<span style=\"color:#8a93a0\">当自身生命低于 40% 时，改为回复 8% 最大生命值而不甩牌。\n</span>",
+        "detail": "赌神龟消耗当前 <span class=\"val-atk\">40%</span> 生命值，将其分为<span class=\"val-normal\">七段</span>物理伤害打向目标（总量≈所消耗的生命值）\n释放后 <span class=\"val-atk\">3 秒</span> 内多重打击概率额外 +20%。\n<span style=\"color:#8a93a0\">当前生命 <b>低于 40% 最大生命值</b> 时改为【低血模式】：不甩牌、不消耗生命，改为回复 8% 最大生命值，同样获得 3 秒多重打击 +20%。\n</span>"
       },
       {
         "name": "命运之轮",
@@ -1235,7 +1235,7 @@
       "name": "猎杀",
       "lifesteal": 8,
       "brief": "只要场上有敌人生命值低于 <span class=\"val-atk\">14%</span>，猎人龟就自动射出一支强化箭将其<span class=\"val-normal\">处决</span>。\n处决或击杀时，窃取对方 <span class=\"val-atk\">14% 基础属性</span> 并叠加 <span class=\"val-heal\">8% 生命偷取</span>，永久累积到战斗结束。",
-      "desc": "场上只要有敌人生命低于斩杀线，猎人龟就每 0.1 秒扫描一次并自动射出一支金色强化箭，命中才处决（飞行途中被治疗回到线上就不处决）。\n斩杀线为生命值低于 <span class=\"val-atk\">14%</span> 的敌人（被【精准射击】猎杀印记标记时抬到24%）\n处决/击杀时窃取对方 <span class=\"val-atk\">14%</span> 基础属性并叠加 <span class=\"val-heal\">8%</span> 生命偷取，永久累积到战斗结束。\n已猎杀 {B:hunterKills} 只 — 累计 攻击 +{N:hunterStolenAtk} / 护甲 +{D:hunterStolenDef} / 魔抗 +{M:hunterStolenMr} / 最大生命值 +{H:hunterStolenHp} / 生命偷取 {B:lifesteal}%"
+      "desc": "场上只要有敌人生命低于斩杀线，猎人龟就每 0.1 秒扫描一次并自动射出一支金色强化箭，命中才处决（飞行途中被治疗回到线上就不处决）。\n斩杀线为生命值低于 <span class=\"val-atk\">14%</span> 的敌人（被【精准射击】猎杀印记标记时抬到 24%）\n处决/击杀时窃取对方 <span class=\"val-atk\">14%</span> 基础属性并叠加 <span class=\"val-heal\">8%</span> 生命偷取，永久累积到战斗结束。\n已猎杀 {B:hunterKills} 只 — 累计 攻击 +{N:hunterStolenAtk} / 护甲 +{D:hunterStolenDef} / 魔抗 +{M:hunterStolenMr} / 最大生命值 +{H:hunterStolenHp} / 生命偷取 {B:lifesteal}%"
     },
     "skillPool": [
       {
@@ -1248,7 +1248,7 @@
         "cd": 0,
         "atkScale": 1,
         "brief": "射出一箭，造成 {N:ATK} 物理伤害。\n当目标生命低于 <span class=\"val-atk\">50%</span> 时，猎人龟获得 <span class=\"val-atk\">+50% 攻击速度</span> 追猎残血目标。",
-        "detail": "猎人龟的普攻。\n远程射出一箭，造成（100%×攻击力({ATK}) = {N:ATK}）物理伤害。\n<span style=\"color:#8a93a0\">残血追猎：\n当前目标生命值低于50%时，猎人龟攻击速度+50%。\n被动猎杀会处决生命低于14%的目标（见被动）。\n</span>"
+        "detail": "猎人龟的普攻。\n远程射出一箭，造成 {N:1.0*ATK} 物理伤害。\n<span style=\"color:#8a93a0\">残血追猎：\n当前目标生命值低于 50%时，猎人龟攻击速度+50%。\n被动猎杀会处决生命低于 14%的目标（见被动）。\n</span>"
       },
       {
         "name": "精准射击",
@@ -1260,8 +1260,8 @@
         "pierce": 0,
         "cd": 0,
         "atkScale": 2,
-        "brief": "蓄力狙击，造成 {N:2*ATK} 物理伤害，并附加 <span class=\"val-atk\">中毒</span> 5秒、<span class=\"val-atk\">50% 治疗削减</span> 5秒 与 <span class=\"val-normal\">猎杀印记</span>。\n<span style=\"color:#8a93a0\">猎杀印记持续 5秒，期间目标生命低于 24% 即被处决。\n</span>",
-        "detail": "猎人龟眯眼瞄准，蓄力狙击一发造成（200%×攻击力({ATK}) = {N:2*ATK}）物理伤害。\n附加：\n中毒（每秒造成等于层数的魔法伤害，之后层数衰减到 80%，直到归零 —— 以常见攻击力计约持续 <b>11秒</b>，伤害逐秒递减）\n治疗削减50%（5秒）、猎杀印记（5秒内目标生命值低于24%即被处决，斩杀线临时从14%抬到24%）。\n<span style=\"color:#8a93a0\">射箭+毒箭+猎杀印记 三合一。\n冲刺追猎靠残血追猎普攻+被动处决。\n</span>"
+        "brief": "蓄力狙击，造成 {N:2*ATK} 物理伤害，并附加 <span class=\"val-atk\">中毒</span> 5 秒、<span class=\"val-atk\">50% 治疗削减</span> 5 秒 与 <span class=\"val-normal\">猎杀印记</span>。\n<span style=\"color:#8a93a0\">猎杀印记持续 5 秒，期间目标生命低于 24% 即被处决。\n</span>",
+        "detail": "猎人龟眯眼瞄准，蓄力狙击一发造成（200%×攻击力({ATK}) = {N:2*ATK}）物理伤害。\n附加：\n中毒（每秒造成等于层数的魔法伤害，之后层数衰减到 80%，直到归零 —— 以常见攻击力计约持续 <b>11 秒</b>，伤害逐秒递减）\n治疗削减 50%（5 秒）、猎杀印记（5 秒内目标生命值低于 24%即被处决，斩杀线临时从 14%抬到 24%）。\n<span style=\"color:#8a93a0\">射箭+毒箭+猎杀印记 三合一。\n冲刺追猎靠残血追猎普攻+被动处决。\n</span>"
       },
       {
         "name": "隐蔽",
@@ -1276,8 +1276,8 @@
         "dodgePct": 25,
         "dodgeTurns": 5,
         "shieldScale": 0.7,
-        "brief": "智能翻滚约 <span class=\"val-atk\">250 码</span>，下次普攻附带 {N:0.9*ATK} 物理伤害，并获得 <span class=\"val-atk\">25% 闪避</span> 持续 5秒 与 {S:0.7*ATK} 护盾。\n<span style=\"color:#8a93a0\">翻滚方向根据威胁自动选择。\n</span>",
-        "detail": "猎人龟灵巧翻滚约250码（近战威胁贴近→拉距、残血→撤退、安全→调整到当前目标最佳射程），下次普攻附带（90%×攻击力({ATK}) = {N:0.9*ATK}）物理伤害（吃生命偷取），\n并获得 <span class=\"val-atk\">25%</span> 闪避（持续5秒）与（70%×攻击力({ATK}) = {S:0.7*ATK}）护盾。"
+        "brief": "智能翻滚约 <span class=\"val-atk\">250 码</span>，下次普攻附带 {N:0.9*ATK} 物理伤害，并获得 <span class=\"val-atk\">25% 闪避</span> 持续 5 秒 与 {S:0.7*ATK} 护盾。\n<span style=\"color:#8a93a0\">翻滚方向根据威胁自动选择。\n</span>",
+        "detail": "猎人龟灵巧翻滚约 250 码（近战威胁贴近→拉距、残血→撤退、安全→调整到当前目标最佳射程），下次普攻附带（90%×攻击力({ATK}) = {N:0.9*ATK}）物理伤害（吃生命偷取），\n并获得 <span class=\"val-atk\">25%</span> 闪避（持续 5 秒）与（70%×攻击力({ATK}) = {S:0.7*ATK}）护盾。"
       },
       {
         "name": "狩猎弹幕",
@@ -1289,7 +1289,7 @@
         "pierce": 0,
         "cd": 0,
         "arrowScale": 0.3,
-        "brief": "每 <span class=\"val-atk\">0.2秒</span> 发射 1 根、共 <span class=\"val-atk\">10</span> 根追踪箭，缓慢抛物线飞行追踪目标，每根造成 {T:0.36*ATK} 真实伤害（共 {T:0.36*ATK*10}）。\n<span style=\"color:#8a93a0\">追踪箭随机锁定敌人；每根命中生命低于 14% 的敌人即将其处决。\n</span>",
+        "brief": "每 <span class=\"val-atk\">0.2 秒</span> 发射 1 根、共 <span class=\"val-atk\">10</span> 根追踪箭，缓慢抛物线飞行追踪目标，每根造成 {T:0.36*ATK} 真实伤害（共 {T:0.36*ATK*10}）。\n<span style=\"color:#8a93a0\">追踪箭随机锁定敌人；每根命中生命低于 14% 的敌人即将其处决。\n</span>",
         "detail": "猎人龟连珠速射 10 根绿箭，每根都<span class=\"val-normal\">随机锁定一个敌人</span>并追踪飞行，造成（36%×攻击力({ATK}) = {T:0.36*ATK}）真实伤害，10 根共（360%×攻击力({ATK}) = {T:0.36*ATK*10}）\n每根命中生命值低于 14% 的敌人即处决。\n<span style=\"color:#8a93a0\">每 0.2 秒发射一根，共 10 根。\n箭走慢速抛物线追踪各自锁定的目标（不会被路径上的其它单位挡下），飞行中持续修正方向。\n</span>"
       }
     ],
@@ -1327,7 +1327,7 @@
         "cd": 0,
         "atkScale": 0.35,
         "brief": "挥舞弯刀劈砍目标，造成 {N:ATK} 物理伤害，并自愈 {N:0.2*ATK} 生命值。",
-        "detail": "海盗龟挥舞弯刀劈砍目标，造成（100%×攻击力({ATK}) = {N:ATK}）物理伤害，同时每次普攻自愈（20%×攻击力 = {N:0.2*ATK}）生命。"
+        "detail": "海盗龟挥舞弯刀劈砍目标，造成 {N:1.0*ATK} 物理伤害，同时每次普攻自愈（20%×攻击力 = {N:0.2*ATK}）生命。"
       },
       {
         "name": "火炮齐射",
@@ -1358,8 +1358,8 @@
           "pctMaxHp": 9,
           "turns": 4
         },
-        "brief": "海盗船扔来一瓶朗姆酒，海盗龟每秒回复 {H:HP*0.04} 生命值，持续 <span class=\"val-heal\">6秒</span>（合计 <span class=\"val-heal\">24%</span>），同时获得 {D:ATK*0.65} 护甲 和 {D:ATK*0.15} 魔抗，持续 <span class=\"val-atk\">6秒</span>。",
-        "detail": "海盗船扔来一瓶朗姆酒。\n海盗龟<span class=\"val-heal\">每秒</span>回复（4%×最大生命值({HP}) = {H:HP*0.04}）生命值，持续 <span class=\"val-heal\">6秒</span>（合计 24%）\n提升 <span class=\"val-def\">护甲</span> 与 <span class=\"val-magic\">魔抗</span> 各（15%×攻击力({ATK})）—— 其中护甲额外再 +50%×攻击力，共 {D:ATK*0.65}，持续 6秒。\n<span style=\"color:#8a93a0\">持续回复效果可叠加。\n</span>"
+        "brief": "海盗船扔来一瓶朗姆酒，海盗龟每秒回复 {H:HP*0.04} 生命值，持续 <span class=\"val-heal\">6 秒</span>（合计 <span class=\"val-heal\">24%</span>），同时获得 {D:ATK*0.65} 护甲 和 {D:ATK*0.15} 魔抗，持续 <span class=\"val-atk\">6 秒</span>。",
+        "detail": "海盗船扔来一瓶朗姆酒。\n海盗龟<span class=\"val-heal\">每秒</span>回复（4%×最大生命值({HP}) = {H:HP*0.04}）生命值，持续 <span class=\"val-heal\">6 秒</span>（合计 24%）\n提升 <span class=\"val-def\">护甲</span> 与 <span class=\"val-magic\">魔抗</span> 各（15%×攻击力({ATK})）—— 其中护甲额外再 +50%×攻击力，共 {D:ATK*0.65}，持续 6 秒。\n<span style=\"color:#8a93a0\">持续回复效果可叠加。\n</span>"
       },
       {
         "name": "海盗船",
@@ -1371,8 +1371,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "选择本技能后，<span class=\"val-normal\">首次充能满即召唤一艘实体海盗船</span>（生命值 {H:HP*1.5}、攻击力 {N:ATK}）：\n海盗船登场冲锋撞击目标，造成 {M:ATK} 魔法伤害并<span class=\"val-atk\">击飞 2秒</span>，之后留在场上射击最近的敌人，每发造成 {N:0.4*ATK} 物理伤害。\n此后海盗龟每次充能满便打出一轮霰弹，扇形射出 <span class=\"val-atk\">8</span> 颗弹丸，每颗对命中的第一个敌人造成 {N:0.5*ATK} 物理伤害并<span class=\"val-atk\">击退 40 码</span>。\n<span style=\"color:#8a93a0\">海盗船无护甲与魔抗，攻击速度 0.8，射程 300。\n</span>",
-        "detail": "海盗龟选此技后，首次充能满召唤一艘实体海盗船（生命值 = 150%×海盗龟最大生命值({HP}) = {H:HP*1.5}，攻击力 = 100%×海盗龟攻击力({ATK}) = {N:ATK}，无护甲魔抗，攻击速度0.8，近战（射程110））：\n登场冲锋直撞目标，对第一个敌人200码范围造成（100%×攻击力 = {M:ATK}）魔法伤害并击飞2秒，之后留场每次射击最近敌（40%×攻击力 = {N:0.4*ATK}）物理。\n<span style=\"color:#8a93a0\">此后每次充能满，海盗龟本体朝当前目标放霰弹：8颗子弹60度扇形，每颗命中路径第一个敌人（50%×攻击力 = {N:0.5*ATK}）物理并击退40码，射程400。\n</span>。\n海盗船登场冲锋撞击目标，造成 {M:ATK} 魔法伤害并<span class=\"val-atk\">击飞 2秒</span>，之后留在场上射击最近的敌人，每发造成 {N:0.4*ATK} 物理伤害。\n此后海盗龟每次充能满便打出一轮霰弹，扇形射出 <span class=\"val-atk\">8</span> 颗弹丸，每颗对命中的第一个敌人造成 {N:0.5*ATK} 物理伤害并<span class=\"val-atk\">击退 40 码</span>。\n<span style=\"color:#8a93a0\">海盗船无护甲与魔抗，攻击速度 0.8，射程 300。\n</span>"
+        "brief": "选择本技能后，<span class=\"val-normal\">首次充能满即召唤一艘实体海盗船</span>（生命值 {H:HP*1.5}、攻击力 {N:ATK}）：\n海盗船登场冲锋撞击目标，造成 {M:ATK} 魔法伤害并<span class=\"val-atk\">击飞 2 秒</span>，之后留在场上射击最近的敌人，每发造成 {N:0.4*ATK} 物理伤害。\n此后海盗龟每次充能满便打出一轮霰弹，扇形射出 <span class=\"val-atk\">8</span> 颗弹丸，每颗对命中的第一个敌人造成 {N:0.5*ATK} 物理伤害并<span class=\"val-atk\">击退 40 码</span>。\n<span style=\"color:#8a93a0\">海盗船无护甲与魔抗，攻击速度 0.8，射程 300。\n</span>",
+        "detail": "海盗龟选此技后，首次充能满召唤一艘实体海盗船（生命值 = 150%×海盗龟最大生命值({HP}) = {H:HP*1.5}，攻击力 = 100%×海盗龟攻击力({ATK}) = {N:ATK}，无护甲魔抗，攻击速度 0.8，近战（射程 110））：\n登场冲锋直撞目标，对第一个敌人 200 码范围造成（100%×攻击力 = {M:ATK}）魔法伤害并击飞 2 秒，之后留场每次射击最近敌（40%×攻击力 = {N:0.4*ATK}）物理。\n<span style=\"color:#8a93a0\">此后每次充能满，海盗龟本体朝当前目标放霰弹：8颗子弹 60度扇形，每颗命中路径第一个敌人（50%×攻击力 = {N:0.5*ATK}）物理并击退 40 码，射程 400。\n</span>。\n海盗船登场冲锋撞击目标，造成 {M:ATK} 魔法伤害并<span class=\"val-atk\">击飞 2 秒</span>，之后留在场上射击最近的敌人，每发造成 {N:0.4*ATK} 物理伤害。\n此后海盗龟每次充能满便打出一轮霰弹，扇形射出 <span class=\"val-atk\">8</span> 颗弹丸，每颗对命中的第一个敌人造成 {N:0.5*ATK} 物理伤害并<span class=\"val-atk\">击退 40 码</span>。\n<span style=\"color:#8a93a0\">海盗船无护甲与魔抗，攻击速度 0.8，射程 300。\n</span>"
       }
     ],
     "defaultSkills": [
@@ -1419,7 +1419,7 @@
           "turns": 2
         },
         "brief": "挥拳砸向目标，造成 {N:1.1*ATK} 加 {N:HP*0.03} 物理伤害，并使其攻击力降低 <span class=\"val-atk\">15%</span>，持续 <span class=\"val-atk\">5 秒</span>。",
-        "detail": "糖果龟的普攻。\n挥拳砸向目标，造成（110%×攻击力({ATK}) = {N:1.1*ATK}）+（3%×自身最大生命值({HP}) = {N:HP*0.03}）物理伤害，施加攻击力 <span class=\"val-atk\">-15%</span>(持续5秒)。"
+        "detail": "糖果龟的普攻。\n挥拳砸向目标，造成（110%×攻击力({ATK}) = {N:1.1*ATK}）+（3%×自身最大生命值({HP}) = {N:HP*0.03}）物理伤害，施加攻击力 <span class=\"val-atk\">-15%</span>(持续 5 秒)。"
       },
       {
         "name": "糖果锤",
@@ -1431,7 +1431,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "蓄力后猛砸前方直线上的敌人，总计（1.8×攻击力 + 12% 自身最大生命值）物理伤害由命中的敌人均分，并<span class=\"val-heal\">回复造成伤害的 40%</span>作为生命。",
-        "detail": "糖果龟举起大糖果锤蓄力，猛砸前方一条直线200码内的敌人：\n总伤害（180%×攻击力({ATK}) = {N:1.8*ATK}）+（12%×自身最大生命值({HP}) = {N:HP*0.12}）物理，由所有被命中的敌人均分。\n随后回复造成伤害的40%生命。"
+        "detail": "糖果龟举起大糖果锤蓄力，猛砸前方一条直线 200 码内的敌人：\n总伤害（180%×攻击力({ATK}) = {N:1.8*ATK}）+（12%×自身最大生命值({HP}) = {N:HP*0.12}）物理，由所有被命中的敌人均分。\n随后回复造成伤害的 40%生命。"
       },
       {
         "name": "糖衣炮弹",
@@ -1444,7 +1444,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "在敌方最密集处降下糖衣炮弹雨，<span class=\"val-atk\">持续 4 秒</span>、每 0.5 秒一跳共 <span class=\"val-atk\">8 跳</span>。\n每一跳为友军提供【糖果龟】1.5% 最大生命值的护盾，并对敌军造成（0.2×攻击力 + 2% 自身最大生命值）魔法伤害 和 <span class=\"val-atk\">20% 减速</span>。\n<span style=\"color:#8a93a0\">减速效果每 0.5 秒刷新。\n</span>",
-        "detail": "糖果龟指挥在敌方最密集区域降下糖衣炮弹雨：\n半径600码，持续4秒，每 <b>0.42 秒</b>一跳（共8跳，合计约 3.4 秒）。\n每跳：\n范围内友军获得糖果龟1.5%最大生命值的护盾。\n范围内敌军受到（20%×攻击力({ATK}) = {N:0.2*ATK}）+ 2%糖果龟最大生命值 魔法伤害，并被减速20%（每次受击刷新0.5秒）。\n每一跳为友军提供【糖果龟】1.5% 最大生命值的护盾，并对敌军造成（0.2×攻击力 + 2% 自身最大生命值）魔法伤害 和 <span class=\"val-atk\">20% 减速</span>。\n<span style=\"color:#8a93a0\">减速效果每 0.5 秒刷新。\n</span>"
+        "detail": "糖果龟指挥在敌方最密集区域降下糖衣炮弹雨：\n半径 600 码，持续 4 秒，每 <b>0.42 秒</b>一跳（共 8跳，合计约 3.4 秒）。\n每跳：\n范围内友军获得糖果龟 1.5%最大生命值的护盾。\n范围内敌军受到（20%×攻击力({ATK}) = {N:0.2*ATK}）+ 2%糖果龟最大生命值 魔法伤害，并被减速 20%（每次受击刷新 0.5 秒）。\n每一跳为友军提供【糖果龟】1.5% 最大生命值的护盾，并对敌军造成（0.2×攻击力 + 2% 自身最大生命值）魔法伤害 和 <span class=\"val-atk\">20% 减速</span>。\n<span style=\"color:#8a93a0\">减速效果每 0.5 秒刷新。\n</span>"
       },
       {
         "name": "糖果炸弹",
@@ -1456,7 +1456,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "在战斗开始时召唤一颗糖果炸弹，其生命值为糖果龟 50% 最大生命值。\n每当龟能充满，若炸弹存活，便为其提升糖果龟 <span class=\"val-atk\">25%</span> 最大生命值的生命上限并<span class=\"val-heal\">治疗 10%</span>。\n若炸弹已阵亡，则召唤一颗新炸弹（生命值为 20% 最大生命值）。\n炸弹死亡时爆炸，对全体敌人均摊其 100% 最大生命值的魔法伤害。\n<span style=\"color:#8a93a0\">炸弹每秒衰减 8% 生命，不攻击也不移动。\n</span>",
-        "detail": "糖果炸弹（召唤实体·技能三）：\n选择本技能后战斗开始即召唤一只糖果炸弹（最大生命值=糖果龟登场最大生命值×50%，0攻击/护甲/魔抗，不主动攻击，每秒自衰减8%最大生命值）。\n每次本技能龟能充满：若炸弹存活→其最大生命值上限 +25%糖果龟最大生命值 并 治疗10%糖果龟最大生命值（喂续命）\n若炸弹已阵亡→召唤新炸弹（HP=20%糖果龟最大生命值）。\n<span style=\"color:#8a93a0\">炸弹死亡（自损或被击杀）时爆炸：对全体敌方造成总计100%炸弹最大生命值的魔法伤害，由存活敌人均摊。\n</span>"
+        "detail": "糖果炸弹（召唤实体·技能三）：\n选择本技能后战斗开始即召唤一只糖果炸弹（最大生命值=糖果龟登场最大生命值×50%，0攻击/护甲/魔抗，不主动攻击，每秒自衰减 8%最大生命值）。\n每次本技能龟能充满：若炸弹存活→其最大生命值上限 +25%糖果龟最大生命值 并 治疗 10%糖果龟最大生命值（喂续命）\n若炸弹已阵亡→召唤新炸弹（HP=20%糖果龟最大生命值）。\n<span style=\"color:#8a93a0\">炸弹死亡（自损或被击杀）时爆炸：对全体敌方造成总计 100%炸弹最大生命值的魔法伤害，由存活敌人均摊。\n</span>"
       }
     ],
     "defaultSkills": [
@@ -1487,9 +1487,9 @@
       "name": "泡沫",
       "pct": 100,
       "healPct": 15,
-      "brief": "将受到伤害的 <span class=\"val-atk\">100%</span> 储存为<span class=\"val-normal\">泡泡值</span>，上限为自身最大生命值。\n每 <span class=\"val-atk\">5 秒</span>，泡泡龟将 <span class=\"val-atk\">10%</span> 泡泡值化作魔法伤害打击最近的敌人，并<span class=\"val-heal\">治疗自己10% 泡泡值</span>的生命。\n<span style=\"color:#8a93a0\">每次触发共消耗 20% 泡泡值。\n</span>",
-      "desc": "将受到伤害的 <span class=\"val-atk\">100%</span> 储存为泡泡值（上限 = 自身最大生命值）\n每5秒消耗泡泡值的 <span class=\"val-heal\">10%</span> 回复等量生命，并消耗泡泡值的 <span class=\"val-magic\">10%</span> 化作魔法伤害打击最近的敌人（每次共消耗 20% 泡泡值）。",
-      "detail": "每 <span class=\"val-atk\">5 秒</span>，泡泡龟将 <span class=\"val-atk\">10%</span> 泡泡值化作魔法伤害打击最近的敌人，并<span class=\"val-heal\">治疗自己10% 泡泡值</span>的生命。"
+      "brief": "将受到伤害的 <span class=\"val-atk\">100%</span> 储存为<span class=\"val-normal\">泡泡值</span>，上限为自身最大生命值。\n每 <span class=\"val-atk\">5 秒</span>，泡泡龟将 <span class=\"val-atk\">10%</span> 泡泡值化作魔法伤害打击最近的敌人，并<span class=\"val-heal\">治疗自己 10% 泡泡值</span>的生命。\n<span style=\"color:#8a93a0\">每次触发共消耗 20% 泡泡值。\n</span>",
+      "desc": "将受到伤害的 <span class=\"val-atk\">100%</span> 储存为泡泡值（上限 = 自身最大生命值）\n每 5 秒消耗泡泡值的 <span class=\"val-heal\">10%</span> 回复等量生命，并消耗泡泡值的 <span class=\"val-magic\">10%</span> 化作魔法伤害打击最近的敌人（每次共消耗 20% 泡泡值）。",
+      "detail": "每 <span class=\"val-atk\">5 秒</span>，泡泡龟将 <span class=\"val-atk\">10%</span> 泡泡值化作魔法伤害打击最近的敌人，并<span class=\"val-heal\">治疗自己 10% 泡泡值</span>的生命。"
     },
     "skillPool": [
       {
@@ -1517,7 +1517,7 @@
         "duration": 3,
         "burstScale": 2,
         "brief": "为最脆弱的友军套上 {S:1.8*ATK} 泡泡护盾，持续 <span class=\"val-atk\">4 秒</span>。\n护盾爆裂时，对全体敌人造成 {M:2.0*ATK} 魔法伤害。\n<span style=\"color:#8a93a0\">该盾在到期、被打破或挂盾目标阵亡时爆裂；持盾期间泡泡龟龟能锁定，盾破或到期时解锁。\n</span>",
-        "detail": "泡泡龟为最脆友方套上（180%×攻击力({ATK}) = {S:1.8*ATK}）泡泡护盾，持续4秒。\n护盾到期、被打破或挂盾对象阵亡时爆裂，对全体敌方造成（200%×攻击力({ATK}) = {M:2.0*ATK}）魔法伤害。\n<span style=\"color:#8a93a0\">爆裂由挂盾对象驱动，施法泡泡龟阵亡也照常触发。\n</span>。\n<span style=\"color:#8a93a0\">该盾在到期、被打破或挂盾目标阵亡时爆裂；持盾期间泡泡龟龟能锁定，盾破或到期时解锁。</span>"
+        "detail": "泡泡龟为最脆友方套上（180%×攻击力({ATK}) = {S:1.8*ATK}）泡泡护盾，持续 4 秒。\n护盾到期、被打破或挂盾对象阵亡时爆裂，对全体敌方造成（200%×攻击力({ATK}) = {M:2.0*ATK}）魔法伤害。\n<span style=\"color:#8a93a0\">爆裂由挂盾对象驱动，施法泡泡龟阵亡也照常触发。\n</span>。\n<span style=\"color:#8a93a0\">该盾在到期、被打破或挂盾目标阵亡时爆裂；持盾期间泡泡龟龟能锁定，盾破或到期时解锁。</span>"
       },
       {
         "name": "泡泡束缚",
@@ -1530,7 +1530,7 @@
         "cd": 0,
         "duration": 8,
         "brief": "将目标<span class=\"val-atk\">束缚 3 秒</span>，期间目标每受到一段伤害，其护甲与魔抗便各减少 <span class=\"val-atk\">X</span> 点。\n<span style=\"color:#8a93a0\">X 随等级提升：1~5 级为 1，6~10 级为 2；单次累计上限各为 30。\n</span>",
-        "detail": "泡泡龟将目标束缚3秒，期间每受到一段伤害其护甲与魔抗各减少 <span class=\"val-atk\">X</span>（1~5级 X=1，6~10级 X=2），单次累计上限各 <span class=\"val-atk\">30</span>。\n<span style=\"color:#8a93a0\">X 按泡泡龟自身等级取值；减益为永久衰减，不随束缚结束恢复。\n</span>"
+        "detail": "泡泡龟将目标束缚 3 秒，期间每受到一段伤害其护甲与魔抗各减少 <span class=\"val-atk\">X</span>（1~5级 X=1，6~10级 X=2），单次累计上限各 <span class=\"val-atk\">30</span>。\n<span style=\"color:#8a93a0\">X 按泡泡龟自身等级取值；减益为永久衰减，不随束缚结束恢复。\n</span>"
       },
       {
         "name": "泡泡爆破",
@@ -1588,7 +1588,7 @@
         "cd": 0,
         "atkScale": 0.5,
         "brief": "对目标造成 {M:1.0*ATK} 魔法伤害，命中叠加 <span class=\"val-normal\">1 层墨迹</span>。",
-        "detail": "线条龟落笔勾勒，造成（100%×攻击力({ATK}) = {M:1.0*ATK}）魔法伤害，命中为目标叠加1层墨迹。"
+        "detail": "线条龟落笔勾勒，造成（100%×攻击力({ATK}) = {M:1.0*ATK}）魔法伤害，命中为目标叠加 1 层墨迹。"
       },
       {
         "name": "连笔",
@@ -1603,7 +1603,7 @@
         "duration": 3,
         "transferPct": 30,
         "brief": "画线连接最近的两个敌人，持续 <span class=\"val-atk\">3 秒</span>，对两个目标各造成 {N:0.8*ATK} 物理伤害并各叠加 <span class=\"val-normal\">1 层墨迹</span>。\n连接期间，一方所受伤害的 <span class=\"val-atk\">30%</span> 会以真实伤害传导给另一方，且一方获得墨迹时另一方同步获得。",
-        "detail": "线条龟画线连接<span class=\"val-normal\">最近的两个敌人</span>，持续 <span class=\"val-atk\">3秒</span>，对两个目标各造成（80%×攻击力({ATK}) = {N:0.8*ATK}）物理伤害并各叠加1层墨迹。\n连接期间，一方受到伤害的 <span class=\"val-true\">30%</span> 以<span class=\"val-true\">真实伤害</span>传导给另一方。\n一方获得墨迹时另一方同步获得。\n<span style=\"color:#8a93a0\">速写已融入被动，墨迹系伤害恒为真实伤害；连接线跟随双方脚底，到期或一方死亡即断链。\n</span>。\n连接期间，一方所受伤害的 <span class=\"val-atk\">30%</span> 会以真实伤害传导给另一方，且一方获得墨迹时另一方同步获得。"
+        "detail": "线条龟画线连接<span class=\"val-normal\">最近的两个敌人</span>，持续 <span class=\"val-atk\">3 秒</span>，对两个目标各造成（80%×攻击力({ATK}) = {N:0.8*ATK}）物理伤害并各叠加 1 层墨迹。\n连接期间，一方受到伤害的 <span class=\"val-true\">30%</span> 以<span class=\"val-true\">真实伤害</span>传导给另一方。\n一方获得墨迹时另一方同步获得。\n<span style=\"color:#8a93a0\">速写已融入被动，墨迹系伤害恒为真实伤害；连接线跟随双方脚底，到期或一方死亡即断链。\n</span>。\n连接期间，一方所受伤害的 <span class=\"val-atk\">30%</span> 会以真实伤害传导给另一方，且一方获得墨迹时另一方同步获得。"
       },
       {
         "name": "画龙点睛",
@@ -1629,7 +1629,7 @@
         "aoe": true,
         "atkScale": 0.25,
         "brief": "远程投掷墨水炸弹，对落点范围内的敌人溅射四段，共造成 {M:0.25*ATK*4} 魔法伤害，每段命中各叠加 <span class=\"val-normal\">1 层墨迹</span>（四段共 4 层）。",
-        "detail": "线条龟远程投掷墨水炸弹（射程2000），对落点300码范围内敌方溅射四段共（100%×攻击力({ATK}) = {M:0.25*ATK*4}）魔法伤害，每段命中为目标叠加1层墨迹（四段共4层）。\n<span style=\"color:#8a93a0\">投掷落点自动锁定敌方最密集处；选择本技能后，被动「墨迹」的层数上限由 7 提升至 10。\n</span>"
+        "detail": "线条龟远程投掷墨水炸弹（射程 2000），对落点 300 码范围内敌方溅射四段共（100%×攻击力({ATK}) = {M:0.25*ATK*4}）魔法伤害，每段命中为目标叠加 1 层墨迹（四段共 4 层）。\n<span style=\"color:#8a93a0\">投掷落点自动锁定敌方最密集处；选择本技能后，被动「墨迹」的层数上限由 7 提升至 10。\n</span>"
       }
     ],
     "defaultSkills": [
@@ -1654,7 +1654,7 @@
       "name": "雷电",
       "stackMax": 8,
       "brief": "每 <span class=\"val-atk\">4 秒</span>自动电击一名随机敌人，造成 {T:ATK*1.0} 真实伤害。\n闪电龟的每段攻击都会为敌人叠加 <span class=\"val-normal\">1 层电击标记</span>，叠满 <span class=\"val-atk\">8 层</span>时引爆雷暴，造成 {T:ATK*1.0} 真实伤害并清零层数。",
-      "desc": "每4秒自动电击随机敌人，造成（100%×攻击力({ATK}) = {T:ATK*1.0}）真实伤害。\n每段攻击为敌人叠加1层电击标记，满8层时引爆雷暴，造成（100%×攻击力({ATK}) = {T:ATK*1.0}）真实伤害并清零层数。"
+      "desc": "每 4 秒自动电击随机敌人，造成（100%×攻击力({ATK}) = {T:ATK*1.0}）真实伤害。\n每段攻击为敌人叠加 1 层电击标记，满 8 层时引爆雷暴，造成（100%×攻击力({ATK}) = {T:ATK*1.0}）真实伤害并清零层数。"
     },
     "skillPool": [
       {
@@ -1680,7 +1680,7 @@
         "power": 0,
         "pierce": 0,
         "brief": "在接下来的 <span class=\"val-atk\">8 秒</span>内使被动电击造成的真实伤害提升 <span class=\"val-atk\">50%</span>，并立即对目标打出一次 {T:ATK*1.5} 真实伤害。",
-        "detail": "闪电龟之力涌动，接下来8秒内被动电击（含满层引爆）造成的真实伤害额外提升 <span class=\"val-atk\">+50%</span>，并立即对目标打出一次被动电击（100%×攻击力({ATK}) × 1.5 = {T:ATK*1.5}）真实伤害。",
+        "detail": "闪电龟之力涌动，接下来 8 秒内被动电击（含满层引爆）造成的真实伤害额外提升 <span class=\"val-atk\">+50%</span>，并立即对目标打出一次被动电击（100%×攻击力({ATK}) × 1.5 = {T:ATK*1.5}）真实伤害。",
         "energyCost": 110
       },
       {
@@ -1694,7 +1694,7 @@
         "cd": 0,
         "arrowScale": 0.15,
         "brief": "释放 <span class=\"val-atk\">二十道</span>闪电随机轰击敌方，共造成 {M:0.15*ATK*20} 魔法伤害，每道命中各叠加 <span class=\"val-normal\">1 层电击</span>。",
-        "detail": "闪电龟释放二十道闪电随机轰击敌方，共造成（300%×攻击力({ATK}) = {M:0.15*ATK*20}）魔法伤害，每道命中叠加1层电击。",
+        "detail": "闪电龟释放二十道闪电随机轰击敌方，共造成（300%×攻击力({ATK}) = {M:0.15*ATK*20}）魔法伤害，每道命中叠加 1 层电击。",
         "energyCost": 110
       },
       {
@@ -1710,7 +1710,7 @@
         "shieldScale": 0.9,
         "counterScale": 0.3,
         "brief": "以雷电包裹自身，获得 {S:2.0*ATK} 外加 <span class=\"val-hp\">5% 最大生命值</span> 的护盾，持续 5 秒。\n护盾存在时，闪电龟每受到一段攻击便反击 {M:0.3*ATK} 魔法伤害，并为攻击者叠加 1 层电击。",
-        "detail": "闪电龟以雷电包裹自身，获得（200%×攻击力({ATK}) = {S:2.0*ATK}）+ <span class=\"val-hp\">5%最大生命值</span> 的护盾，持续5秒。\n护盾存在时，每受到一段攻击便反击（30%×攻击力({ATK}) = {M:0.3*ATK}）魔法伤害并叠加1层电击。",
+        "detail": "闪电龟以雷电包裹自身，获得（200%×攻击力({ATK}) = {S:2.0*ATK}）+ <span class=\"val-hp\">5%最大生命值</span> 的护盾，持续 5 秒。\n护盾存在时，每受到一段攻击便反击（30%×攻击力({ATK}) = {M:0.3*ATK}）魔法伤害并叠加 1 层电击。",
         "energyCost": 90
       }
     ],
@@ -1735,7 +1735,7 @@
       "type": "phoenixRebirth",
       "name": "涅槃",
       "brief": "在首次死亡时浴火重生，以 <span class=\"val-heal\">25% 最大生命值</span>复活，并对全体敌人施加（0.3×攻击力）层灼烧，以及持续 <span class=\"val-atk\">5 秒</span>的 <span class=\"val-atk\">50%</span> 治疗削减。",
-      "desc": "首次死亡时以（25%×最大生命值({HP}) = {H:HP*0.25}）生命值复活，并对全体敌人施加 <span style=\"color:#ff6600\">（0.3×攻击力）层灼烧</span>，以及持续5秒的治疗削减（<span class=\"val-atk\">-50%</span>）。",
+      "desc": "首次死亡时以（25%×最大生命值({HP}) = {H:HP*0.25}）生命值复活，并对全体敌人施加 <span style=\"color:#ff6600\">（0.3×攻击力）层灼烧</span>，以及持续 5 秒的治疗削减（<span class=\"val-atk\">-50%</span>）。",
       "detail": "以及持续 <span class=\"val-atk\">5 秒</span>的 <span class=\"val-atk\">50%</span> 治疗削减。"
     },
     "skillPool": [
@@ -1765,7 +1765,7 @@
         "duration": 4,
         "counterScale": 0.14,
         "brief": "获得 {S:3.5*ATK} 熔岩护盾，持续 <span class=\"val-atk\">4 秒</span>。\n护盾存在时，凤凰龟每受到一段攻击便反击 {M:0.14*ATK} 魔法伤害。",
-        "detail": "凤凰龟获得（350%×攻击力({ATK}) = {S:3.5*ATK}）熔岩护盾，持续4秒。\n熔岩护盾存在时，会对受到的每段攻击进行反击，造成（14%×攻击力({ATK}) = {M:0.14*ATK}）魔法伤害。",
+        "detail": "凤凰龟获得（350%×攻击力({ATK}) = {S:3.5*ATK}）熔岩护盾，持续 4 秒。\n熔岩护盾存在时，会对受到的每段攻击进行反击，造成（14%×攻击力({ATK}) = {M:0.14*ATK}）魔法伤害。",
         "energyCost": 90
       },
       {
@@ -1793,7 +1793,7 @@
         "shieldBreak": 50,
         "burn": true,
         "brief": "蓄力投掷火球，命中造成 {M:1.5*ATK} 魔法伤害，施加 {N:0.5*ATK} 层灼烧，并破坏目标 <span class=\"val-atk\">50%</span> 护盾，\n同时使其攻击力、护甲、魔抗各降低 <span class=\"val-atk\">15%</span> 并受到 <span class=\"val-atk\">50%</span> 治疗削减，以上负面效果均持续 <span class=\"val-atk\">5 秒</span>。",
-        "detail": "凤凰龟蓄力投掷火球：\n命中先破坏目标 <span class=\"val-atk\">50%</span> 护盾，\n随后造成（150%×攻击力({ATK}) = {M:1.5*ATK}）魔法伤害，并施加 <span style=\"color:#ff6600\">（0.5×攻击力）层灼烧</span>，以及攻击力 -15%、护甲 -15%、魔抗 -15%、治疗削减 50%（均持续5秒）。",
+        "detail": "凤凰龟蓄力投掷火球：\n命中先破坏目标 <span class=\"val-atk\">50%</span> 护盾，\n随后造成（150%×攻击力({ATK}) = {M:1.5*ATK}）魔法伤害，并施加 <span style=\"color:#ff6600\">（0.5×攻击力）层灼烧</span>，以及攻击力 -15%、护甲 -15%、魔抗 -15%、治疗削减 50%（均持续 5 秒）。",
         "energyCost": 100
       },
       {
@@ -1806,7 +1806,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "获得 <span class=\"val-atk\">50% 攻击速度</span> 和 <span class=\"val-atk\">50% 移动速度</span>，持续 <span class=\"val-atk\">4 秒</span>。\n强化涅槃被动，使其改为以 <span class=\"val-heal\">60% 最大生命值</span>复活并永久提升 <span class=\"val-atk\">20%</span> 攻击力。",
-        "detail": "主动（120龟能）：凤凰龟周身烈焰暴涨，自身获得 <span class=\"val-atk\">+50%</span> 攻击速度与 <span class=\"val-atk\">+50%</span> 移动速度，持续4秒（配合喷火随攻击速度增伤）。\n被动强化涅槃：\n浴火重生时转而以60%最大生命值复活，并永久获得 <span class=\"val-atk\">+20%</span> 攻击力。",
+        "detail": "主动（120龟能）：凤凰龟周身烈焰暴涨，自身获得 <span class=\"val-atk\">+50%</span> 攻击速度与 <span class=\"val-atk\">+50%</span> 移动速度，持续 4 秒（配合喷火随攻击速度增伤）。\n被动强化涅槃：\n浴火重生时转而以 60%最大生命值复活，并永久获得 <span class=\"val-atk\">+20%</span> 攻击力。",
         "energyCost": 120,
         "icon": "skills/phoenix-3.png"
       }
@@ -1838,7 +1838,7 @@
       "transformMrScale": 0.2,
       "transformDuration": 15,
       "brief": "将造成伤害的 <span class=\"val-atk\">10%</span> 与承受伤害的 <span class=\"val-atk\">10%</span> 转化为<span class=\"val-normal\">怒气</span>。\n怒气积满 <span class=\"val-atk\">100</span> 时，熔岩龟变身为火山龟，转为近战形态、全属性提升并获得火山技能组，持续 <span class=\"val-atk\">15 秒</span>。",
-      "desc": "将造成伤害的 10% 与承受伤害的 10% 转化为怒气。\n怒气满100时变身为火山龟，持续15秒，变身时获得加成：\n最大生命值 +（250%×攻击力({ATK}) = {H:ATK*2.5}），攻击力 +（20%×攻击力({ATK}) = {N:ATK*0.2}），护甲 +（20%×攻击力({ATK}) = {D:ATK*0.2}），魔抗 +（20%×攻击力({ATK}) = {M:ATK*0.2}）\n转为近战形态（射程 70 码、移动速度 175）。\n变身演出：\n跃起 → 在敌人最密集处出现半径 400 码的预警圈 → 砸地：\n圈内敌人全部被击飞（约0.86秒滞空），各受到（100%×攻击力）魔法伤害与 <span style=\"color:#ff6600\">（0.3×攻击力）层灼烧</span>。\n熔岩龟每命中一名敌人，便回复 <span class=\"val-heal\">该敌人已损生命值的 8%</span>。\n15秒后变回原来的远程形态。"
+      "desc": "将造成伤害的 10% 与承受伤害的 10% 转化为怒气。\n怒气满 100时变身为火山龟，持续 15 秒，变身时获得加成：\n最大生命值 +（250%×攻击力({ATK}) = {H:ATK*2.5}），攻击力 +（20%×攻击力({ATK}) = {N:ATK*0.2}），护甲 +（20%×攻击力({ATK}) = {D:ATK*0.2}），魔抗 +（20%×攻击力({ATK}) = {M:ATK*0.2}）\n转为近战形态（射程 70 码、移动速度 175）。\n变身演出：\n跃起 → 在敌人最密集处出现半径 400 码的预警圈 → 砸地：\n圈内敌人全部被击飞（约 0.86 秒滞空），各受到（100%×攻击力）魔法伤害与 <span style=\"color:#ff6600\">（0.3×攻击力）层灼烧</span>。\n熔岩龟每命中一名敌人，便回复 <span class=\"val-heal\">该敌人已损生命值的 8%</span>。\n15 秒后变回原来的远程形态。"
     },
     "skillPool": [
       {
@@ -1870,7 +1870,7 @@
           "turns": 3
         },
         "brief": "在敌人最密处生成一片岩浆池，持续 <span class=\"val-atk\">5 秒</span>。\n岩浆池每 0.5 秒对池内敌人造成 {M:0.06*ATK} 魔法伤害，并使其<span class=\"val-atk\">减速 35%</span>、魔抗降低 <span class=\"val-atk\">30%</span>。",
-        "detail": "熔岩龟撕裂大地，在敌人最密集处生成一个半径 180 码的岩浆池，持续 5 秒。\n每 0.5 秒结算一次（共10跳）：池内所有敌人各受到（6%×攻击力({ATK}) = {M:0.06*ATK}）魔法伤害，并被减速 <span class=\"val-atk\">35%</span>、魔抗 <span class=\"val-atk\">-30%</span>（每跳刷新，离开岩浆池即失效）。\n<span style=\"color:#8a93a0\">火山形态下本技变为「火山爆发」：\n一道熔岩浪从场地远端横扫到近端，波前每扫过一名敌人即将其击飞，并造成五段共 250%×攻击力 的魔法伤害与（0.67×攻击力）层灼烧。\n熔岩龟每命中一名敌人回复 12% 最大生命值。\n</span>"
+        "detail": "熔岩龟撕裂大地，在敌人最密集处生成一个半径 180 码的岩浆池，持续 5 秒。\n每 0.5 秒结算一次（共 10跳）：池内所有敌人各受到（6%×攻击力({ATK}) = {M:0.06*ATK}）魔法伤害，并被减速 <span class=\"val-atk\">35%</span>、魔抗 <span class=\"val-atk\">-30%</span>（每跳刷新，离开岩浆池即失效）。\n<span style=\"color:#8a93a0\">火山形态下本技变为「火山爆发」：\n一道熔岩浪从场地远端横扫到近端，波前每扫过一名敌人即将其击飞，并造成五段共 250%×攻击力 的魔法伤害与（0.67×攻击力）层灼烧。\n熔岩龟每命中一名敌人回复 12% 最大生命值。\n</span>"
       },
       {
         "name": "岩浆涌动",
@@ -1883,7 +1883,7 @@
         "cd": 0,
         "atkScale": 1.5,
         "brief": "蓄力后使目标脚下喷出岩浆柱，将附近敌人<span class=\"val-atk\">击飞</span>并造成 {M:1.5*ATK} 魔法伤害，同时自身获得 {S:0.8*ATK} 护盾。\n<span style=\"color:#8a93a0\">该盾不限持续时间。\n</span>",
-        "detail": "熔岩龟蓄力后，在目标脚下喷出岩浆柱：\n击飞附近的敌人（约0.82秒滞空），造成（150%×攻击力({ATK}) = {M:1.5*ATK}）魔法伤害，熔岩龟自身获得（80%×攻击力({ATK}) = {S:0.8*ATK}）护盾（不限时）。\n<span style=\"color:#8a93a0\">火山形态下本技变为「重击」：蓄力猛砸目标，将其击飞，造成（130%×攻击力 + 8%×熔岩龟自身最大生命值）物理伤害，并附带 20% 生命偷取。\n</span>"
+        "detail": "熔岩龟蓄力后，在目标脚下喷出岩浆柱：\n击飞附近的敌人（约 0.82 秒滞空），造成（150%×攻击力({ATK}) = {M:1.5*ATK}）魔法伤害，熔岩龟自身获得（80%×攻击力({ATK}) = {S:0.8*ATK}）护盾（不限时）。\n<span style=\"color:#8a93a0\">火山形态下本技变为「重击」：蓄力猛砸目标，将其击飞，造成（130%×攻击力 + 8%×熔岩龟自身最大生命值）物理伤害，并附带 20% 生命偷取。\n</span>"
       },
       {
         "name": "熔岩爆发",
@@ -1894,7 +1894,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "在普通形态（80 龟能）下智能冲刺，重置下一次普攻，并使下一发熔岩弹贯穿全场，对沿途每个敌人造成 0.6×攻击力 魔法伤害 加 4% 最大生命值 并施加灼烧层。\n在火山形态（120 龟能）下，熔岩龟进入暴走，获得 <span class=\"val-atk\">20% 最大生命值</span>、<span class=\"val-atk\">30% 攻击速度</span> 和 <span class=\"val-atk\">30% 移动速度</span>，均持续 <span class=\"val-atk\">5 秒</span>。\n<span style=\"color:#8a93a0\">智能冲刺会依局势残血保命后撤或贴身追击。\n</span>",
-        "detail": "熔岩龟·技能三（双形态）：\n普通形态（80龟能）：\n智能冲刺（残血或近身有威胁时背离撤退保命，否则冲贴目标追击）\n重置自己的下一次普攻时间，并使下一发熔岩弹变为贯穿全场的岩浆光矢——沿途每名敌人受到（60%×攻击力({ATK}) = {M:0.6*ATK}）魔法伤害 + 4%目标最大生命值，并施加 <span style=\"color:#ff6600\">（0.07×攻击力）层灼烧</span>。\n火山形态（120龟能）：烈焰暴走——自身获得 +20% 最大生命值、+30% 攻击速度、+30% 移动速度，均持续5秒。\n在普通形态（80 龟能）下智能冲刺，重置下一次普攻，并使下一发熔岩弹贯穿全场，对沿途每个敌人造成 0.6×攻击力 魔法伤害 加 4% 最大生命值 并施加灼烧层。",
+        "detail": "熔岩龟·技能三（双形态）：\n普通形态（80龟能）：\n智能冲刺（残血或近身有威胁时背离撤退保命，否则冲贴目标追击）\n重置自己的下一次普攻时间，并使下一发熔岩弹变为贯穿全场的岩浆光矢——沿途每名敌人受到（60%×攻击力({ATK}) = {M:0.6*ATK}）魔法伤害 + 4%目标最大生命值，并施加 <span style=\"color:#ff6600\">（0.07×攻击力）层灼烧</span>。\n火山形态（120龟能）：烈焰暴走——自身获得 +20% 最大生命值、+30% 攻击速度、+30% 移动速度，均持续 5 秒。\n在普通形态（80 龟能）下智能冲刺，重置下一次普攻，并使下一发熔岩弹贯穿全场，对沿途每个敌人造成 0.6×攻击力 魔法伤害 加 4% 最大生命值 并施加灼烧层。",
         "icon": "skills/lava-3.png"
       }
     ],
@@ -1923,13 +1923,13 @@
         "icon": "skills/volcano-0.png",
         "type": "volcanoSmash",
         "brief": "火山龟蓄力猛砸目标，将其击飞，造成（{N:1.3*ATK} + 8%自身最大生命值）物理伤害，并附带 <span class=\"val-heal\">20%</span> 生命偷取。",
-        "detail": "（对应小形态「岩浆涌动」）火山龟蓄力后猛砸目标：\n将其击飞（约0.82秒滞空），造成（130%×攻击力({ATK}) = {N:1.3*ATK}）+（8%×自身最大生命值({HP}) = {N:HP*0.08}）物理伤害，并附带 <span class=\"val-heal\">20%</span> 生命偷取。"
+        "detail": "（对应小形态「岩浆涌动」）火山龟蓄力后猛砸目标：\n将其击飞（约 0.82 秒滞空），造成（130%×攻击力({ATK}) = {N:1.3*ATK}）+（8%×自身最大生命值({HP}) = {N:HP*0.08}）物理伤害，并附带 <span class=\"val-heal\">20%</span> 生命偷取。"
       },
       {
         "name": "烈焰暴走",
         "icon": "skills/volcano-1.png",
         "type": "lavaErupt",
-        "brief": "火山龟周身烈焰暴涨：自身 +20% 最大生命值、<span class=\"val-atk\">+30%</span> 攻击速度、<span class=\"val-atk\">+30%</span> 移动速度，均持续5秒。",
+        "brief": "火山龟周身烈焰暴涨：自身 +20% 最大生命值、<span class=\"val-atk\">+30%</span> 攻击速度、<span class=\"val-atk\">+30%</span> 移动速度，均持续 5 秒。",
         "detail": "（对应小形态「熔岩爆发」）火山形态下技能三变为烈焰暴走（120龟能）：火山龟获得 +20% 最大生命值、<span class=\"val-atk\">+30%</span> 攻击速度、<span class=\"val-atk\">+30%</span> 移动速度，均持续 5 秒。"
       }
     ]
@@ -1949,7 +1949,7 @@
       "type": "cyberDrone",
       "name": "浮游炮",
       "brief": "每 <span class=\"val-atk\">2 秒</span>自动生成 <span class=\"val-atk\">1</span> 个<span class=\"val-normal\">浮游炮</span>，每个浮游炮每 1.6 秒对随机敌人射出一发（<span class=\"val-atk\">4%</span>×赛博龟攻击力）物理伤害。\n赛博龟阵亡时，全部浮游炮集结齐射贯穿激光（各 0.4×攻击力 魔法伤害），随后组装为近战机甲继续战斗。\n<span style=\"color:#8a93a0\">浮游炮上限 20 个，环绕飞行、为非实体、不可被攻击。\n机甲有 5 秒组装期，期间属性由低逐步增长到位、且不可被选中。\n</span>",
-      "desc": "每2秒自动生成 1 个浮游炮（当前 {B:droneCount} 个，上限 20 个）。\n浮游炮环绕赛博龟飞行，不是实体单位，不可被敌人选中或攻击。\n每个浮游炮每 1.6 秒对随机敌人射出一发，伤害 = 赛博龟攻击力的 <span class=\"val-atk\">4%</span>（浮游炮本身没有独立攻击力）。\n赛博龟阵亡时：\n本体消散，所有浮游炮游动集结，各自对最近的敌人蓄力后射出一发贯穿激光（0.4×攻击力 魔法伤害，穿透一直线）\n随后飞向集结点开始组装机甲——5 秒组装期间生命、攻击、护甲、魔抗从低不断增长到设定值（期间不能移动或攻击，且<b>不可被敌人选中</b>），就位后为近战（射程100）。\n机甲生命 =（100 + 2×等级）×浮游炮数，攻击力 =（8 + 0.1×等级）×浮游炮数，护甲与魔抗 = 110 + 2×等级。\n机甲每 2.5 秒锁定生命值最低的敌人，造成 150%×机甲攻击力 物理伤害。"
+      "desc": "每 2 秒自动生成 1 个浮游炮（当前 {B:droneCount} 个，上限 20 个）。\n浮游炮环绕赛博龟飞行，不是实体单位，不可被敌人选中或攻击。\n每个浮游炮每 1.6 秒对随机敌人射出一发，伤害 = 赛博龟攻击力的 <span class=\"val-atk\">4%</span>（浮游炮本身没有独立攻击力）。\n赛博龟阵亡时：\n本体消散，所有浮游炮游动集结，各自对最近的敌人蓄力后射出一发贯穿激光（0.4×攻击力 魔法伤害，穿透一直线）\n随后飞向集结点开始组装机甲——5 秒组装期间生命、攻击、护甲、魔抗从低不断增长到设定值（期间不能移动或攻击，且<b>不可被敌人选中</b>），就位后为近战（射程 100）。\n机甲生命 =（100 + 2×等级）×浮游炮数，攻击力 =（8 + 0.1×等级）×浮游炮数，护甲与魔抗 = 110 + 2×等级。\n机甲每 2.5 秒锁定生命值最低的敌人，造成 150%×机甲攻击力 物理伤害。"
     },
     "skillPool": [
       {
@@ -1975,7 +1975,7 @@
         "cd": 0,
         "atkScale": 1.0,
         "brief": "蓄力后朝一条直线射出长激光射线，对线上所有敌人各造成 {N:ATK} 物理伤害，并按每个浮游炮追加 {T:0.10*ATK} 真实伤害。\n<span style=\"color:#8a93a0\">浮游炮越多，真伤越高。\n</span>",
-        "detail": "赛博龟蓄力后朝一条直线（<b>射程上限 900 码</b>）射出一道长激光能量射线，对这条线上（判定带宽 ±70 码）的所有敌人各造成（100%×攻击力({ATK}) = {N:ATK}）物理伤害 +（10%×攻击力 × 浮游炮数({B:droneCount}) = {T:0.10*ATK*droneCount}）真实伤害（浮游炮越多真实伤害越猛）。"
+        "detail": "赛博龟蓄力后朝一条直线（<b>射程上限 900 码</b>）射出一道长激光能量射线，对这条线上（判定带宽 ±70 码）的所有敌人各造成 {N:1.0*ATK} 物理伤害 +（10%×攻击力 × 浮游炮数({B:droneCount}) = {T:0.10*ATK*droneCount}）真实伤害（浮游炮越多真实伤害越猛）。"
       },
       {
         "name": "侵入",
@@ -1988,7 +1988,7 @@
         "cd": 0,
         "selfCast": true,
         "brief": "黑掉一个随机敌方单位，使其倒戈、加入赛博龟一方战斗 <span class=\"val-atk\">4 秒</span>，期满后变回。\n<span style=\"color:#8a93a0\">被控期间，该单位会用它自己的普攻与技能攻击原来的队友。\n</span>\n侵入期间赛博龟自身<span class=\"val-normal\">锁龟能不充能</span>。",
-        "detail": "赛博龟射出黑客数据流，黑掉一个随机敌方单位，使其倒戈为赛博龟一方战斗 <span class=\"val-atk\">4秒</span>：用它自己的普攻与技能攻击原队友，4秒后数据链断开变回原队。\n<span style=\"color:#8a93a0\">被黑单位不算赛博方友军(不能被治疗/护盾·不算存活数)，仍会被原队友攻击。\n被黑单位的击杀归赛博龟方。\n蛋/免控免疫。\n可同时黑多个(每次黑1随机·可叠)。\n召唤物也可黑。\n</span>\n<span class=\"val-normal\">侵入期间（4秒）赛博龟自身锁龟能不充能。\n</span>",
+        "detail": "赛博龟射出黑客数据流，黑掉一个随机敌方单位，使其倒戈为赛博龟一方战斗 <span class=\"val-atk\">4 秒</span>：用它自己的普攻与技能攻击原队友，4 秒后数据链断开变回原队。\n<span style=\"color:#8a93a0\">被黑单位不算赛博方友军(不能被治疗/护盾·不算存活数)，仍会被原队友攻击。\n被黑单位的击杀归赛博龟方。\n蛋/免控免疫。\n可同时黑多个(每次黑 1随机·可叠)。\n召唤物也可黑。\n</span>\n<span class=\"val-normal\">侵入期间（4 秒）赛博龟自身锁龟能不充能。\n</span>",
         "energyCost": 135
       },
       {
@@ -2002,7 +2002,7 @@
         "cd": 0,
         "selfCast": true,
         "brief": "登场即获得 <span class=\"val-normal\">3 层充能</span> 和 <span class=\"val-atk\">20% 移动速度</span>，并常驻走位闪避。\n每次释放（110 龟能）再获得 <span class=\"val-normal\">1 层充能</span>，并立即冲刺重定位到理想输出距离。\n<span style=\"color:#8a93a0\">敌人贴近时，赛博龟消耗 1 层充能自动冲刺躲避。\n</span>",
-        "detail": "赛博龟的智能行动脑（充能型）：登场即拥有 <span class=\"val-atk\">3</span> 层充能，并获得 +20% 移动速度与常驻走位闪避（敌人贴近时消耗1层充能自动冲刺躲避）\n每次释放（110龟能）积累 1 层充能，并立即冲刺重定位——拉开到理想输出距离（射程内不贴脸）、躲开贴身威胁。\n<span style=\"color:#8a93a0\">\n\n</span>",
+        "detail": "赛博龟的智能行动脑（充能型）：登场即拥有 <span class=\"val-atk\">3</span> 层充能，并获得 +20% 移动速度与常驻走位闪避（敌人贴近时消耗 1 层充能自动冲刺躲避）\n每次释放（110龟能）积累 1 层充能，并立即冲刺重定位——拉开到理想输出距离（射程内不贴脸）、躲开贴身威胁。\n<span style=\"color:#8a93a0\">\n\n</span>",
         "energyCost": 110
       }
     ],
@@ -2032,8 +2032,8 @@
     "passive": {
       "type": "crystalResonance",
       "name": "水晶共鸣",
-      "brief": "对受到的魔法伤害额外减免 <span class=\"val-magic\">20%</span>。\n水晶龟每次攻击都为目标叠加一层<span class=\"val-normal\">结晶印记</span>，叠满 <span class=\"val-atk\">5</span> 层时引爆，造成目标 <span class=\"val-magic\">22% 最大生命值</span> 的魔法伤害，并<span class=\"val-atk\">永久</span>削减其魔抗。",
-      "desc": "受到魔法伤害时额外减免 <span class=\"val-magic\">20%</span>（在魔抗基础上叠加）\n每段攻击为目标叠加1层结晶印记，满 <span class=\"val-atk\">5</span> 层引爆，造成目标最大生命值 <span class=\"val-magic\">22%</span> 的魔法伤害（吃魔抗），并<span class=\"val-atk\">持续 5 秒</span>削减其魔抗 <span class=\"val-atk\">-20%</span>，引爆后清零重新叠加。\n<span style=\"color:#8a93a0\">普攻、碎晶爆破、水晶球（本体光线与随从光线）叠的结晶层数共享同一份计数。\n</span>"
+      "brief": "对受到的魔法伤害额外减免 <span class=\"val-magic\">20%</span>。\n水晶龟每次攻击都为目标叠加一层<span class=\"val-normal\">结晶印记</span>，叠满 <span class=\"val-atk\">5</span> 层时引爆，造成目标 <span class=\"val-magic\">22% 最大生命值</span> 的魔法伤害，并<span class=\"val-atk\">永久</span>削减其 20% 魔抗。",
+      "desc": "受到魔法伤害时额外减免 <span class=\"val-magic\">20%</span>（在魔抗基础上叠加）\n每段攻击为目标叠加 1 层结晶印记，满 <span class=\"val-atk\">5</span> 层引爆，造成目标最大生命值 <span class=\"val-magic\">22%</span> 的魔法伤害（吃魔抗），并<span class=\"val-atk\">持续 5 秒</span>削减其 20% 魔抗 <span class=\"val-atk\">-20%</span>，引爆后清零重新叠加。\n<span style=\"color:#8a93a0\">普攻、碎晶爆破、水晶球（本体光线与随从光线）叠的结晶层数共享同一份计数。\n</span>"
     },
     "skillPool": [
       {
@@ -2046,7 +2046,7 @@
         "cd": 0,
         "atkScale": 0.5,
         "brief": "刺出一根水晶刺，造成 {N:0.6*ATK} 物理伤害和 <span class=\"val-magic\">1.5% 最大生命值</span> 的魔法伤害，并叠加一层<span class=\"val-normal\">结晶印记</span>。\n<span style=\"color:#8a93a0\">结晶印记叠满 5 层时引爆。\n</span>",
-        "detail": "水晶龟刺出水晶刺，造成（60%×攻击力({ATK}) = {N:0.6*ATK}）物理伤害 + 1.5%目标最大生命值 魔法伤害，并叠加1层结晶印记（结晶满5层引爆，造成目标19%最大生命值魔法伤害并削减魔抗）。"
+        "detail": "水晶龟刺出水晶刺，造成（60%×攻击力({ATK}) = {N:0.6*ATK}）物理伤害 + 1.5%目标最大生命值 魔法伤害，并叠加 1 层结晶印记（结晶满 5 层引爆，造成目标 19%最大生命值魔法伤害并削减魔抗）。"
       },
       {
         "name": "水晶壁垒",
@@ -2057,8 +2057,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "竖起水晶壁垒，为自己获得 {S:2*ATK} 外加 <span class=\"val-atk\">10% 最大生命值</span> 的护盾，持续 4秒，并使全体友方的护甲与魔抗提升 <span class=\"val-atk\">15%</span>，持续 4秒。\n护盾结束或被打破时，水晶龟朝目标射出一条直线水晶刺，命中的敌人受到 {T:1.5*ATK} 真实伤害、叠加 <span class=\"val-atk\">2</span> 层<span class=\"val-normal\">结晶印记</span>、被<span class=\"val-atk\">击飞</span> 0.8秒 并<span class=\"val-atk\">减速 50%</span>，持续 3秒。\n<span style=\"color:#8a93a0\">持盾期间龟能锁定。\n</span>",
-        "detail": "水晶龟竖起水晶壁垒：自身获得（200%×攻击力({ATK}) = {S:2*ATK}）+ 10%最大生命值 的护盾（持续4秒），持盾期间龟能锁定（盾破或到期恢复充能）\n全体友方的护甲与魔抗提升 <span class=\"val-atk\">+15%</span>，持续4秒。\n护盾结束或被打破的瞬间，朝当前目标方向放出一条 700 码的直线水晶刺——水晶一段段从地底刺出：\n命中的敌人受到（150%×攻击力({ATK}) = {T:1.5*ATK}）真实伤害、叠加 2 层结晶印记、被击飞 0.8 秒，并受到 50% 移动速度削减，持续 3 秒。\n护盾结束或被打破时，水晶龟朝目标射出一条直线水晶刺，命中的敌人受到 {T:1.5*ATK} 真实伤害、叠加 <span class=\"val-atk\">2</span> 层<span class=\"val-normal\">结晶印记</span>、被<span class=\"val-atk\">击飞</span> 0.8秒 并<span class=\"val-atk\">减速 50%</span>，持续 3秒。",
+        "brief": "竖起水晶壁垒，为自己获得 {S:2*ATK} 外加 <span class=\"val-atk\">10% 最大生命值</span> 的护盾，持续 4 秒，并使全体友方的护甲与魔抗提升 <span class=\"val-atk\">15%</span>，持续 4 秒。\n护盾结束或被打破时，水晶龟朝目标射出一条直线水晶刺，命中的敌人受到 {T:1.5*ATK} 真实伤害、叠加 <span class=\"val-atk\">2</span> 层<span class=\"val-normal\">结晶印记</span>、被<span class=\"val-atk\">击飞</span> 0.8 秒 并<span class=\"val-atk\">减速 50%</span>，持续 3 秒。\n<span style=\"color:#8a93a0\">持盾期间龟能锁定。\n</span>",
+        "detail": "水晶龟竖起水晶壁垒：自身获得（200%×攻击力({ATK}) = {S:2*ATK}）+ 10%最大生命值 的护盾（持续 4 秒），持盾期间龟能锁定（盾破或到期恢复充能）\n全体友方的护甲与魔抗提升 <span class=\"val-atk\">+15%</span>，持续 4 秒。\n护盾结束或被打破的瞬间，朝当前目标方向放出一条 700 码的直线水晶刺——水晶一段段从地底刺出：\n命中的敌人受到（150%×攻击力({ATK}) = {T:1.5*ATK}）真实伤害、叠加 2 层结晶印记、被击飞 0.8 秒，并受到 50% 移动速度削减，持续 3 秒。\n护盾结束或被打破时，水晶龟朝目标射出一条直线水晶刺，命中的敌人受到 {T:1.5*ATK} 真实伤害、叠加 <span class=\"val-atk\">2</span> 层<span class=\"val-normal\">结晶印记</span>、被<span class=\"val-atk\">击飞</span> 0.8 秒 并<span class=\"val-atk\">减速 50%</span>，持续 3 秒。",
         "shieldHpPct": 5
       },
       {
@@ -2073,7 +2073,7 @@
         "aoe": true,
         "atkScale": 0.2667,
         "brief": "对目标周围 350 码内的敌人连续释放三段碎晶，共造成 {M:0.4*ATK*3} 魔法伤害和 {T:0.4*ATK*3} 真实伤害，每一段都为命中的敌人叠加一层<span class=\"val-normal\">结晶印记</span>。",
-        "detail": "水晶龟对当前目标周围 <span class=\"val-def\">350 码</span> 内的敌人释放三段碎晶，共造成（40%×攻击力({ATK})×3 = {M:0.4*ATK*3}）魔法 +（40%×攻击力({ATK})×3 = {T:0.4*ATK*3}）真实伤害，每段叠加1层结晶印记（三段共3层）。\n<span style=\"color:#8a93a0\">结晶满5层自动引爆，引爆伤害并入当段数字。\n</span>\n<span style=\"color:#8a93a0\">释放期间龟能锁定，放完解锁。\n</span>"
+        "detail": "水晶龟对当前目标周围 <span class=\"val-def\">350 码</span> 内的敌人释放三段碎晶，共造成（40%×攻击力({ATK})×3 = {M:0.4*ATK*3}）魔法 +（40%×攻击力({ATK})×3 = {T:0.4*ATK*3}）真实伤害，每段叠加 1 层结晶印记（三段共 3 层）。\n<span style=\"color:#8a93a0\">结晶满 5 层自动引爆，引爆伤害并入当段数字。\n</span>\n<span style=\"color:#8a93a0\">释放期间龟能锁定，放完解锁。\n</span>"
       },
       {
         "name": "水晶球",
@@ -2085,8 +2085,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "选择本技能后，水晶龟登场便召唤一颗实体<span class=\"val-normal\">水晶球</span>。\n水晶球每 <span class=\"val-atk\">5秒</span> 射出一道贯穿直线的魔法光线，两段共造成 {M:ATK} 魔法伤害，命中直线上的所有敌人并各叠加 <span class=\"val-atk\">2</span> 层<span class=\"val-normal\">结晶印记</span>。\n水晶龟主动施放时，自己也射出同样的一道光线。\n<span style=\"color:#8a93a0\">水晶球生命值为本体最大生命值的 50%，攻击力等于本体攻击力，射程覆盖全场。\n</span>",
-        "detail": "选择本技能后，水晶龟登场即召唤一颗实体水晶球：生命值 = 本体最大生命值的 50%，攻击力 = 本体攻击力，射程 2000 码，本身不做普攻。\n每 5 秒射出一道贯穿一条直线（2000 码）的魔法光线——直线上所有敌人各受两段共（100%×攻击力({ATK}) = {M:ATK}）魔法伤害，并各叠加 2 层结晶印记。\n主动释放本技能时，水晶龟自己朝当前目标方向射出同样的一道贯穿光线。\n<span style=\"color:#8a93a0\">水晶球与本体共享同一份结晶层数（满5层引爆）；水晶球是独立单位，水晶龟阵亡后它仍会继续战斗。\n</span>"
+        "brief": "选择本技能后，水晶龟登场便召唤一颗实体<span class=\"val-normal\">水晶球</span>。\n水晶球每 <span class=\"val-atk\">5 秒</span> 射出一道贯穿直线的魔法光线，两段共造成 {M:ATK} 魔法伤害，命中直线上的所有敌人并各叠加 <span class=\"val-atk\">2</span> 层<span class=\"val-normal\">结晶印记</span>。\n水晶龟主动施放时，自己也射出同样的一道光线。\n<span style=\"color:#8a93a0\">水晶球生命值为本体最大生命值的 50%，攻击力等于本体攻击力，射程覆盖全场。\n</span>",
+        "detail": "选择本技能后，水晶龟登场即召唤一颗实体水晶球：生命值 = 本体最大生命值的 50%，攻击力 = 本体攻击力，射程 2000 码，本身不做普攻。\n每 5 秒射出一道贯穿一条直线（2000 码）的魔法光线——直线上所有敌人各受两段共（100%×攻击力({ATK}) = {M:ATK}）魔法伤害，并各叠加 2 层结晶印记。\n主动释放本技能时，水晶龟自己朝当前目标方向射出同样的一道贯穿光线。\n<span style=\"color:#8a93a0\">水晶球与本体共享同一份结晶层数（满 5 层引爆）；水晶球是独立单位，水晶龟阵亡后它仍会继续战斗。\n</span>"
       }
     ],
     "defaultSkills": [
@@ -2116,7 +2116,7 @@
       "type": "chestTreasure",
       "name": "藏宝图",
       "brief": "根据造成的伤害积累<span class=\"val-normal\">财宝值</span>，每达到一个阈值便从战利品池中随机获得一件装备，并回复生命值。\n<span style=\"color:#8a93a0\"><b>一大轮</b>最多获得 5 件装备（跨场累积，新大轮重置）。\n</span>",
-      "desc": "造成的伤害转化为财宝值，并<span class=\"val-atk\">随一大轮持续累积</span>。\n财宝值达到 3000/6000/10000/18000/30000 时开箱：\n第1-2箱开基础池、第3-4箱开进阶池、第5箱开传说池（15件专属战利品，不重复），并额外回复 8/8/11/11/15% 最大生命值。\n开出的战利品为<span class=\"val-atk\">一大轮常驻装备</span>，整轮每场战斗自动生效；新大轮重置。"
+      "desc": "造成的伤害转化为财宝值，并<span class=\"val-atk\">随一大轮持续累积</span>。\n财宝值达到 3000/6000/10000/18000/30000 时开箱：\n第 1-2箱开基础池、第 3-4箱开进阶池、第 5箱开传说池（15 件专属战利品，不重复），并额外回复 8/8/11/11/15% 最大生命值。\n开出的战利品为<span class=\"val-atk\">一大轮常驻装备</span>，整轮每场战斗自动生效；新大轮重置。"
     },
     "skillPool": [
       {
@@ -2129,7 +2129,7 @@
         "cd": 0,
         "atkScale": 1,
         "brief": "朝目标方向猛砸宝箱，对前方直线上的所有敌人各造成 {N:ATK} 物理伤害。\n<span style=\"color:#8a93a0\">近战横扫一小片，并非单体。\n</span>",
-        "detail": "宝箱龟朝目标方向猛砸宝箱，对前方一条短直线范围内的所有敌人各造成（100%×攻击力({ATK}) = {N:ATK}）物理伤害。\n<span style=\"color:#8a93a0\">这是宝箱龟的普攻，非单体攻击而是前方短直线小范围横扫；锁链战利品可使其距离与射程翻倍。\n</span>"
+        "detail": "宝箱龟朝目标方向猛砸宝箱，对前方一条短直线范围内的所有敌人各造成 {N:1.0*ATK} 物理伤害。\n<span style=\"color:#8a93a0\">这是宝箱龟的普攻，非单体攻击而是前方短直线小范围横扫；锁链战利品可使其距离与射程翻倍。\n</span>"
       },
       {
         "name": "清点财宝",
@@ -2141,7 +2141,7 @@
         "cd": 0,
         "healPct": 14,
         "brief": "回复 {H:HP*0.05} 生命值并获得 {S:0.6*ATK} 护盾。\n宝箱龟每拥有 <span class=\"val-atk\">1000</span> 点<span class=\"val-normal\">财宝值</span>，治疗效果提升 <span class=\"val-heal\">10%</span>。",
-        "detail": "宝箱龟回复（5%×最大生命值({HP}) = {H:HP*0.05}）生命值并获得（60%×攻击力({ATK}) = {S:0.6*ATK}）护盾。\n每拥有1000点财宝值，治疗效果提升 10%。"
+        "detail": "宝箱龟回复（5%×最大生命值({HP}) = {H:HP*0.05}）生命值并获得（60%×攻击力({ATK}) = {S:0.6*ATK}）护盾。\n每拥有 1000点财宝值，治疗效果提升 10%。"
       },
       {
         "name": "财宝风暴",
@@ -2154,8 +2154,8 @@
         "cd": 0,
         "aoe": true,
         "atkScale": 0.2,
-        "brief": "以当前目标为中心卷起一片圆形财宝风暴，持续 2.5秒、每 0.5秒 一跳，对范围内的敌人每跳造成 {N:0.2*ATK} 物理伤害，共 <span class=\"val-atk\">5</span> 跳、合计 {N:0.2*ATK*5} 伤害。",
-        "detail": "宝箱龟以当前目标位置为中心卷起一个半径400码的圆形财宝风暴，持续2.5秒，每0.5秒结算一次（共5跳）。\n风暴范围内的所有敌人每跳受到（20%×攻击力({ATK}) = {N:0.2*ATK}）物理伤害，5跳共（100%×攻击力({ATK}) = {N:0.2*ATK*5}）。"
+        "brief": "以当前目标为中心卷起一片圆形财宝风暴，持续 2.5 秒、每 0.5 秒 一跳，对范围内的敌人每跳造成 {N:0.2*ATK} 物理伤害，共 <span class=\"val-atk\">5</span> 跳、合计 {N:0.2*ATK*5} 伤害。",
+        "detail": "宝箱龟以当前目标位置为中心卷起一个半径 400 码的圆形财宝风暴，持续 2.5 秒，每 0.5 秒结算一次（共 5跳）。\n风暴范围内的所有敌人每跳受到（20%×攻击力({ATK}) = {N:0.2*ATK}）物理伤害，5跳共（100%×攻击力({ATK}) = {N:0.2*ATK*5}）。"
       },
       {
         "name": "财宝炮击",
@@ -2225,7 +2225,7 @@
         "cd": 0,
         "atkScale": 1.5,
         "brief": "短暂蓄力后发射一个缓慢移动的虫洞，沿目标所在的直线推进。\n沿途的敌人会被吸向虫洞，靠得更近的敌人则被<span class=\"val-atk\">捕获</span>、被虫洞吸着一起移动。\n虫洞抵达地图边界时爆炸，对被捕获者与爆点附近的敌人造成 {M:1.5*ATK} ×（1+5%×本路已打秒数）魔法伤害。\n<span style=\"color:#8a93a0\">吸取与捕获过程本身不造成伤害；\n<span class=\"val-atk\">本路战斗打得越久</span>，爆炸伤害越高（按发射时刻定格）。\n</span>\n<span style=\"color:#8a93a0\">释放虫洞后<span class=\"val-atk\">锁定龟能</span>，直到虫洞消失才恢复充能。\n</span>",
-        "detail": "星际龟短暂蓄力（0.3秒）后，朝目标所在的直线发射一个缓慢移动的虫洞。\n虫洞以 140 码/秒直线飞向<b>地图边界</b>：沿途 150 码内的敌人被真重力吸引（弧线卷入，<b>此过程不造成伤害</b>），100 码内被捕获吸着一起走。\n虫洞抵达边界时<b>爆炸</b>，对携带者与爆点 150 码内的敌人造成（150%×攻击力({ATK}) = {M:1.5*ATK}，再乘以（1 + 5%×战斗已过秒数））魔法伤害。\n<span style=\"color:#8a93a0\">伤害倍率在发射瞬间定格 —— 开战越久，虫洞越强。\n</span>。\n<span style=\"color:#8a93a0\">释放虫洞后<span class=\"val-atk\">锁定龟能</span>，直到虫洞消失才恢复充能。</span>"
+        "detail": "星际龟短暂蓄力（0.3 秒）后，朝目标所在的直线发射一个缓慢移动的虫洞。\n虫洞以 140 码/秒直线飞向<b>地图边界</b>：沿途 150 码内的敌人被真重力吸引（弧线卷入，<b>此过程不造成伤害</b>），100 码内被捕获吸着一起走。\n虫洞抵达边界时<b>爆炸</b>，对携带者与爆点 150 码内的敌人造成（150%×攻击力({ATK}) = {M:1.5*ATK}，再乘以（1 + 5%×战斗已过秒数））魔法伤害。\n<span style=\"color:#8a93a0\">伤害倍率在发射瞬间定格 —— 开战越久，虫洞越强。\n</span>。\n<span style=\"color:#8a93a0\">释放虫洞后<span class=\"val-atk\">锁定龟能</span>，直到虫洞消失才恢复充能。</span>"
       },
       {
         "name": "星波",
@@ -2297,7 +2297,7 @@
         "cd": 0,
         "atkScale": 1,
         "brief": "缩着壳挥出普攻，造成 {N:ATK} 物理伤害。\n每次普攻还使自身<span class=\"val-atk\">永久</span>获得 <span class=\"val-atk\">1</span> 护甲和 <span class=\"val-atk\">1</span> 魔抗，并获得 {N:ATK*0.1} 护盾。",
-        "detail": "缩头乌龟的普攻·缩壳：\n对目标造成（100%×攻击力({ATK}) = {N:ATK}）物理伤害。\n每次普攻自身永久累积 +1护甲 +1魔抗，并获得（10%×攻击力 = {N:ATK*0.1}）护盾（缩壳越打越硬）。"
+        "detail": "缩头乌龟的普攻·缩壳：\n对目标造成 {N:1.0*ATK} 物理伤害。\n每次普攻自身永久累积 +1护甲 +1魔抗，并获得（10%×攻击力 = {N:ATK*0.1}）护盾（缩壳越打越硬）。"
       },
       {
         "name": "缩头",
@@ -2309,8 +2309,8 @@
         "pierce": 0,
         "cd": 0,
         "selfCast": true,
-        "brief": "立即为<span class=\"val-normal\">随从</span>灌注 <span class=\"val-atk\">50%</span> 技能龟能以加速其放招，随后自己缩进壳中 3秒，期间获得 <span class=\"val-atk\">80% 减伤</span>。\n<span style=\"color:#8a93a0\">缩头期间缩头乌龟无法攻击或移动。\n</span>",
-        "detail": "缩头乌龟立即给随从 +50% 技能龟能（加速随从释放技能），随后自身缩入壳中3秒：受到伤害减少 <span class=\"val-atk\">80%</span>，期间不能攻击或移动。\n<span style=\"color:#8a93a0\">缩头期间龟能条锁定：不再充能，出壳后才继续攒。\n</span>"
+        "brief": "立即为<span class=\"val-normal\">随从</span>灌注 <span class=\"val-atk\">50%</span> 技能龟能以加速其放招，随后自己缩进壳中 3 秒，期间获得 <span class=\"val-atk\">80% 减伤</span>。\n<span style=\"color:#8a93a0\">缩头期间缩头乌龟无法攻击或移动。\n</span>",
+        "detail": "缩头乌龟立即给随从 +50% 技能龟能（加速随从释放技能），随后自身缩入壳中 3 秒：受到伤害减少 <span class=\"val-atk\">80%</span>，期间不能攻击或移动。\n<span style=\"color:#8a93a0\">缩头期间龟能条锁定：不再充能，出壳后才继续攒。\n</span>"
       },
       {
         "name": "防御",
@@ -2325,8 +2325,8 @@
         "shieldHpPct": 20,
         "shieldDuration": 4,
         "shieldHealPct": 20,
-        "brief": "缩入壳中，获得 {S:HP*0.2} 护盾并使护甲提升 <span class=\"val-atk\">20%</span>，护盾持续 4秒、护甲加成持续 5秒。\n护盾到期时，将剩余护盾的 <span class=\"val-heal\">20%</span> 转化为生命值。\n<span style=\"color:#8a93a0\">持盾期间龟能锁定，护盾被打破或到期后恢复充能。\n</span>",
-        "detail": "缩头乌龟缩入壳中，获得（20%×最大生命值({HP}) = {S:HP*0.2}）护盾（持续4秒）并提升护甲 <span class=\"val-atk\">+20%</span>（持续5秒）\n护盾到期时将剩余护盾值的 <span class=\"val-heal\">20%</span> 转化为生命值回复。\n持有此特殊护盾期间<span class=\"val-atk\">龟能锁定</span>(不充能),护盾被打破或到期即恢复。"
+        "brief": "缩入壳中，获得 {S:HP*0.2} 护盾并使护甲提升 <span class=\"val-atk\">20%</span>，护盾持续 4 秒、护甲加成持续 5 秒。\n护盾到期时，将剩余护盾的 <span class=\"val-heal\">20%</span> 转化为生命值。\n<span style=\"color:#8a93a0\">持盾期间龟能锁定，护盾被打破或到期后恢复充能。\n</span>",
+        "detail": "缩头乌龟缩入壳中，获得（20%×最大生命值({HP}) = {S:HP*0.2}）护盾（持续 4 秒）并提升护甲 <span class=\"val-atk\">+20%</span>（持续 5 秒）\n护盾到期时将剩余护盾值的 <span class=\"val-heal\">20%</span> 转化为生命值回复。\n持有此特殊护盾期间<span class=\"val-atk\">龟能锁定</span>(不充能),护盾被打破或到期即恢复。"
       },
       {
         "name": "强化随从",
@@ -2338,8 +2338,8 @@
         "pierce": 0,
         "cd": 0,
         "selfCast": true,
-        "brief": "为<span class=\"val-normal\">随从</span>注入力量，持续 5秒：攻击力 <span class=\"val-atk\">+10%</span>、护甲与魔抗 <span class=\"val-atk\">+10%</span>、生命偷取 <span class=\"val-heal\">+10%</span> 和暴击率 <span class=\"val-atk\">+20%</span>。",
-        "detail": "缩头乌龟为随从注入力量，持续5秒：攻击力 <span class=\"val-atk\">+10%</span>、护甲与魔抗 <span class=\"val-atk\">+10%</span>、生命偷取 <span class=\"val-heal\">+10%</span>、暴击率 <span class=\"val-atk\">+20%</span>。\n<span style=\"color:#8a93a0\">随从阵亡则无效；随从先死则缩头龟永久继承这套增益(可多次累积)。\n</span>"
+        "brief": "为<span class=\"val-normal\">随从</span>注入力量，持续 5 秒：攻击力 <span class=\"val-atk\">+10%</span>、护甲与魔抗 <span class=\"val-atk\">+10%</span>、生命偷取 <span class=\"val-heal\">+10%</span> 和暴击率 <span class=\"val-atk\">+20%</span>。",
+        "detail": "缩头乌龟为随从注入力量，持续 5 秒：攻击力 <span class=\"val-atk\">+10%</span>、护甲与魔抗 <span class=\"val-atk\">+10%</span>、生命偷取 <span class=\"val-heal\">+10%</span>、暴击率 <span class=\"val-atk\">+20%</span>。\n<span style=\"color:#8a93a0\">随从阵亡则无效；随从先死则缩头龟永久继承这套增益(可多次累积)。\n</span>"
       }
     ],
     "defaultSkills": [
@@ -2368,8 +2368,8 @@
     "passive": {
       "type": "undeadRage",
       "name": "亡灵",
-      "brief": "登场时便获得 <span class=\"val-heal\">22% 生命偷取</span>。\n无头龟每损失 <span class=\"val-atk\">1%</span> 生命值，攻击力便提升 <span class=\"val-atk\">1%</span>，最高叠加至 <span class=\"val-atk\">+100%</span>。\n无头龟首次濒死时进入<span class=\"val-normal\">亡灵状态</span>，持续 5秒。",
-      "desc": "拥有亡灵之力，登场时获得 <span class=\"val-heal\">22%</span> 生命偷取。\n每损失1%生命值，攻击力 <span class=\"val-atk\">+1%</span>（最高 <span class=\"val-atk\">+100%</span>）。\n首次濒死时获得亡灵状态，持续5秒。\n<span style=\"color:#8a93a0\">亡灵：\n无法将生命值降至1以下。\n</span>"
+      "brief": "登场时便获得 <span class=\"val-heal\">22% 生命偷取</span>。\n无头龟每损失 <span class=\"val-atk\">1%</span> 生命值，攻击力便提升 <span class=\"val-atk\">1%</span>，最高叠加至 <span class=\"val-atk\">+100%</span>。\n无头龟首次濒死时进入<span class=\"val-normal\">亡灵状态</span>，持续 5 秒。",
+      "desc": "拥有亡灵之力，登场时获得 <span class=\"val-heal\">22%</span> 生命偷取。\n每损失 1%生命值，攻击力 <span class=\"val-atk\">+1%</span>（最高 <span class=\"val-atk\">+100%</span>）。\n首次濒死时获得亡灵状态，持续 5 秒。\n<span style=\"color:#8a93a0\">亡灵：\n无法将生命值降至 1以下。\n</span>"
     },
     "skillPool": [
       {
@@ -2383,7 +2383,7 @@
         "atkScale": 1,
         "hpPct": 3,
         "brief": "撕咬目标，造成 {N:ATK} 物理伤害外加 <span class=\"val-magic\">3% 最大生命值</span> 的魔法伤害。",
-        "detail": "无头龟的普攻。\n撕咬目标，造成（100%×攻击力({ATK}) = {N:ATK}）物理伤害 + 3%目标最大生命值 魔法伤害。"
+        "detail": "无头龟的普攻。\n撕咬目标，造成 {N:1.0*ATK} 物理伤害 + 3%目标最大生命值 魔法伤害。"
       },
       {
         "name": "恐吓",
@@ -2394,8 +2394,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "发出咆哮威吓周围的所有敌人，施加<span class=\"val-atk\">恐吓</span> 3秒，其间敌人被<span class=\"val-atk\">定身</span>、<span class=\"val-atk\">缴械</span>并<span class=\"val-atk\">锁定技能</span>。\n<span style=\"color:#8a93a0\">锁技期间敌人龟能照常充能，但即使满能也无法释放。\n</span>",
-        "detail": "无头龟咆哮威吓，对半径200码内的所有敌人施加恐吓，持续3秒：\n目标呆在原地不动、不能攻击、无法释放技能（龟能照常充能，但充满也不会释放，恐吓结束瞬间可能满能待发）。\n蛋类免疫。\n<span style=\"color:#8a93a0\">纯硬控，无伤害。\n</span>"
+        "brief": "发出咆哮威吓周围的所有敌人，施加<span class=\"val-atk\">恐吓</span> 3 秒，其间敌人被<span class=\"val-atk\">定身</span>、<span class=\"val-atk\">缴械</span>并<span class=\"val-atk\">锁定技能</span>。\n<span style=\"color:#8a93a0\">锁技期间敌人龟能照常充能，但即使满能也无法释放。\n</span>",
+        "detail": "无头龟咆哮威吓，对半径 200 码内的所有敌人施加恐吓，持续 3 秒：\n目标呆在原地不动、不能攻击、无法释放技能（龟能照常充能，但充满也不会释放，恐吓结束瞬间可能满能待发）。\n蛋类免疫。\n<span style=\"color:#8a93a0\">纯硬控，无伤害。\n</span>"
       },
       {
         "name": "万千触须",
@@ -2407,8 +2407,8 @@
         "pierce": 0,
         "cd": 0,
         "aoe": true,
-        "brief": "以自身为中心爆发出万千触须，几乎铺满整片战场，历经伸出、停顿、收回约 4秒，本次施法期间额外获得 <span class=\"val-heal\">+22% 生命偷取</span>。\n触须伸出穿过时无差别命中：对敌人造成 1 倍攻击力的物理伤害并<span class=\"val-atk\">眩晕</span>，对友军造成 0.5 倍攻击力伤害并<span class=\"val-atk\">眩晕</span>。\n触须收回时，对敌人造成 1.5 倍攻击力伤害，对友军造成 0.5 倍攻击力伤害并为其<span class=\"val-atk\">解除控制、恢复行动</span>。\n<span style=\"color:#8a93a0\">施法全程无头龟自身也处于硬控状态。\n</span>",
-        "detail": "无头龟亡灵暴走，以自身为中心爆发触须近乎铺满整个战场（半径约1500码）\n本次技能额外 +22% 生命偷取。\n触须<b>穿过时</b>（施法后约0.3秒·无差别）：敌人受（100%×攻击力({ATK}) = {N:ATK}）物理伤害 + 眩晕，友军受（50%×攻击力 = {N:0.5*ATK}）物理伤害 + 眩晕。\n触须<b>脱离时</b>（施法后约3秒）：敌人受（150%×攻击力 = {N:1.5*ATK}）物理伤害，友军受（50%×攻击力 = {N:0.5*ATK}）物理伤害，并解除眩晕恢复行动。\n<span style=\"color:#8a93a0\">无头龟自身全程被硬控 4秒（不能移动/攻击）；眩晕不叠加只刷新，蛋类免疫眩晕。\n</span>。\n触须伸出穿过时无差别命中：对敌人造成 1 倍攻击力的物理伤害并<span class=\"val-atk\">眩晕</span>，对友军造成 0.5 倍攻击力伤害并<span class=\"val-atk\">眩晕</span>。\n触须收回时，对敌人造成 1.5 倍攻击力伤害，对友军造成 0.5 倍攻击力伤害并为其<span class=\"val-atk\">解除控制、恢复行动</span>。\n<span style=\"color:#8a93a0\">施法全程无头龟自身也处于硬控状态。\n</span>"
+        "brief": "以自身为中心爆发出万千触须，几乎铺满整片战场，历经伸出、停顿、收回约 4 秒，本次施法期间额外获得 <span class=\"val-heal\">+22% 生命偷取</span>。\n触须伸出穿过时无差别命中：对敌人造成 1 倍攻击力的物理伤害并<span class=\"val-atk\">眩晕</span>，对友军造成 0.5 倍攻击力伤害并<span class=\"val-atk\">眩晕</span>。\n触须收回时，对敌人造成 1.5 倍攻击力伤害，对友军造成 0.5 倍攻击力伤害并为其<span class=\"val-atk\">解除控制、恢复行动</span>。\n<span style=\"color:#8a93a0\">施法全程无头龟自身也处于硬控状态。\n</span>",
+        "detail": "无头龟亡灵暴走，以自身为中心爆发触须近乎铺满整个战场（半径约 1500 码）\n本次技能额外 +22% 生命偷取。\n触须<b>穿过时</b>（施法后约 0.3 秒·无差别）：敌人受（100%×攻击力({ATK}) = {N:ATK}）物理伤害 + 眩晕，友军受（50%×攻击力 = {N:0.5*ATK}）物理伤害 + 眩晕。\n触须<b>脱离时</b>（施法后约 3 秒）：敌人受（150%×攻击力 = {N:1.5*ATK}）物理伤害，友军受（50%×攻击力 = {N:0.5*ATK}）物理伤害，并解除眩晕恢复行动。\n<span style=\"color:#8a93a0\">无头龟自身全程被硬控 4 秒（不能移动/攻击）；眩晕不叠加只刷新，蛋类免疫眩晕。\n</span>。\n触须伸出穿过时无差别命中：对敌人造成 1 倍攻击力的物理伤害并<span class=\"val-atk\">眩晕</span>，对友军造成 0.5 倍攻击力伤害并<span class=\"val-atk\">眩晕</span>。\n触须收回时，对敌人造成 1.5 倍攻击力伤害，对友军造成 0.5 倍攻击力伤害并为其<span class=\"val-atk\">解除控制、恢复行动</span>。\n<span style=\"color:#8a93a0\">施法全程无头龟自身也处于硬控状态。\n</span>"
       },
       {
         "name": "灵魂打击",
@@ -2420,8 +2420,8 @@
         "pierce": 0,
         "cd": 0,
         "atkScale": 0.9,
-        "brief": "龟能充满后（约 6秒），接下来 <b>3 次</b>普攻额外附带 {M:0.5*ATK} 魔法伤害和 <span class=\"val-magic\">10% 目标当前生命值</span> 的魔法伤害。\n第 3 下落地后挥出<span class=\"val-atk\">镰刀横扫</span>。\n<span style=\"color:#8a93a0\">强化窗口全程锁龟能，镰刀扫完才重新充能。\n</span>",
-        "detail": "无头龟蓄积灵魂之力（充能型）：\n龟能充满（80龟能≈6秒）后，接下来 <b>3 次</b>普攻额外附带（50%×攻击力({ATK}) = {M:0.5*ATK}）<span class=\"val-magic\">魔法</span>伤害 + <span class=\"val-magic\">10%目标当前生命值</span> 魔法伤害（叠加在撕咬的 1×攻击力物理 + 3%最大生命值之上·单体），射程额外 +60。\n第 <b>3</b> 下命中落地后，无头龟挥出<span class=\"val-atk\">镰刀横扫</span>：\n正面 100° 锥形、300 码内的敌人被<span class=\"val-atk\">击退 300 码</span>，并被施加 <span class=\"val-magic\">3 秒诅咒</span>（每秒造成其最大生命值 5% 的真实伤害，无视双抗）。\n<span class=\"val-normal\">强化窗口全程锁龟能</span>，镰刀扫完才解锁并清零重新充能。\n<span style=\"color:#8a93a0\">\n</span>"
+        "brief": "龟能充满后（约 6 秒），接下来 <b>3 次</b>普攻额外附带 {M:0.5*ATK} 魔法伤害和 <span class=\"val-magic\">10% 目标当前生命值</span> 的魔法伤害。\n第 3 下落地后挥出<span class=\"val-atk\">镰刀横扫</span>。\n<span style=\"color:#8a93a0\">强化窗口全程锁龟能，镰刀扫完才重新充能。\n</span>",
+        "detail": "无头龟蓄积灵魂之力（充能型）：\n龟能充满（80龟能≈6 秒）后，接下来 <b>3 次</b>普攻额外附带（50%×攻击力({ATK}) = {M:0.5*ATK}）<span class=\"val-magic\">魔法</span>伤害 + <span class=\"val-magic\">10%目标当前生命值</span> 魔法伤害（叠加在撕咬的 1×攻击力物理 + 3%最大生命值之上·单体），射程额外 +60。\n第 <b>3</b> 下命中落地后，无头龟挥出<span class=\"val-atk\">镰刀横扫</span>：\n正面 100° 锥形、300 码内的敌人被<span class=\"val-atk\">击退 300 码</span>，并被施加 <span class=\"val-magic\">3 秒诅咒</span>（每秒造成其最大生命值 5% 的真实伤害，无视双抗）。\n<span class=\"val-normal\">强化窗口全程锁龟能</span>，镰刀扫完才解锁并清零重新充能。\n<span style=\"color:#8a93a0\">\n</span>"
       }
     ],
     "defaultSkills": [
@@ -2457,9 +2457,9 @@
       "armorPenPct": 0,
       "energyStore": true,
       "energyMaxStorePct": 0.5,
-      "brief": "在登场后第 10秒 和第 20秒 两次自动<span class=\"val-normal\">觉醒</span>，每次使六项属性各提升 <span class=\"val-atk\">6%</span>、暴击率提升 <span class=\"val-atk\">12.5%</span>。\n龟壳受伤时将伤害转化为<span class=\"val-normal\">储能</span>，蓄满 6秒 后发出一道缓慢移动的冲击波，触碰到的敌人受到<span class=\"val-normal\">储能</span> <span class=\"val-atk\">40%</span> 的物理伤害，\n同时龟壳获得<span class=\"val-normal\">储能</span> <span class=\"val-atk\">80%</span> 的护盾，随后进入 15秒 冷却循环。\n<span style=\"color:#8a93a0\">储能来自受到的伤害，上限为 50% 最大生命值；护盾在 5秒内逐渐流失；强化觉醒已并入本被动。\n</span>",
-      "desc": "蕴含远古气场之力：开战 <span class=\"val-atk\">10秒</span> 与 <span class=\"val-atk\">20秒</span> 各触发一次气场觉醒（强化觉醒已并入被动，自动触发）。\n每次觉醒提升：\n攻击力 <span class=\"val-atk\">+6%</span>，护甲 <span class=\"val-atk\">+6%</span>，魔抗 <span class=\"val-magic\">+6%</span>，最大生命值 <span class=\"val-heal\">+6%</span>，生命偷取 <span class=\"val-heal\">+6%</span>，反伤 <span class=\"val-atk\">+6%</span>，暴击率 <span class=\"val-atk\">+12.5%</span>。\n此外龟壳按相位循环储能：<b>储能相位 6 秒</b>内把受到的伤害全额转化为储能值（上限为最大生命值的 <span class=\"val-atk\">50%</span>）\n相位结束时消耗全部储能，发出一道缓慢向外扩散的冲击波（半径最大 520 码，触碰到的敌人各受 储能×<span class=\"val-atk\">40%</span> 物理伤害，每名敌人只命中一次），\n并获得 储能×<span class=\"val-atk\">80%</span> 的<span class=\"val-shield\">气场护盾</span>（5 秒内线性流失）。\n随后进入 <b>15 秒冷却相位</b>（不储能），再回到储能相位。",
-      "detail": "龟壳受伤时将伤害转化为<span class=\"val-normal\">储能</span>，蓄满 6秒 后发出一道缓慢移动的冲击波，触碰到的敌人受到<span class=\"val-normal\">储能</span> <span class=\"val-atk\">40%</span> 的物理伤害，\n同时龟壳获得<span class=\"val-normal\">储能</span> <span class=\"val-atk\">80%</span> 的护盾，随后进入 15秒 冷却循环。"
+      "brief": "在登场后第 10 秒 和第 20 秒 两次自动<span class=\"val-normal\">觉醒</span>，每次使六项属性各提升 <span class=\"val-atk\">6%</span>、暴击率提升 <span class=\"val-atk\">12.5%</span>。\n龟壳受伤时将伤害转化为<span class=\"val-normal\">储能</span>，蓄满 6 秒 后发出一道缓慢移动的冲击波，触碰到的敌人受到<span class=\"val-normal\">储能</span> <span class=\"val-atk\">40%</span> 的物理伤害，\n同时龟壳获得<span class=\"val-normal\">储能</span> <span class=\"val-atk\">80%</span> 的护盾，随后进入 15 秒 冷却循环。\n<span style=\"color:#8a93a0\">储能来自受到的伤害，上限为 50% 最大生命值；护盾在 5 秒内逐渐流失。\n</span>",
+      "desc": "蕴含远古气场之力：开战 <span class=\"val-atk\">10 秒</span> 与 <span class=\"val-atk\">20 秒</span> 各触发一次气场觉醒（自动触发）。\n每次觉醒提升：\n攻击力 <span class=\"val-atk\">+6%</span>，护甲 <span class=\"val-atk\">+6%</span>，魔抗 <span class=\"val-magic\">+6%</span>，最大生命值 <span class=\"val-heal\">+6%</span>，生命偷取 <span class=\"val-heal\">+6%</span>，反伤 <span class=\"val-atk\">+6%</span>，暴击率 <span class=\"val-atk\">+12.5%</span>。\n此外龟壳按相位循环储能：<b>储能相位 6 秒</b>内把受到的伤害全额转化为储能值（上限为最大生命值的 <span class=\"val-atk\">50%</span>）\n相位结束时消耗全部储能，发出一道缓慢向外扩散的冲击波（半径最大 520 码，触碰到的敌人各受 储能×<span class=\"val-atk\">40%</span> 物理伤害，每名敌人只命中一次），\n并获得 储能×<span class=\"val-atk\">80%</span> 的<span class=\"val-shield\">气场护盾</span>（5 秒内线性流失）。\n随后进入 <b>15 秒冷却相位</b>（不储能），再回到储能相位。",
+      "detail": "龟壳受伤时将伤害转化为<span class=\"val-normal\">储能</span>，蓄满 6 秒 后发出一道缓慢移动的冲击波，触碰到的敌人受到<span class=\"val-normal\">储能</span> <span class=\"val-atk\">40%</span> 的物理伤害，\n同时龟壳获得<span class=\"val-normal\">储能</span> <span class=\"val-atk\">80%</span> 的护盾，随后进入 15 秒 冷却循环。"
     },
     "skillPool": [
       {
@@ -2495,7 +2495,7 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "吸取单体目标的生命力，夺取其<span class=\"val-heal\">10% 最大生命值</span> 的生命并转移给自己。",
+        "brief": "吸取单体目标的生命力，夺取其 <span class=\"val-heal\">10% 最大生命值</span> 的生命并转移给自己。",
         "detail": "龟壳吸收单体目标的生命力，偷取其 <span class=\"val-atk\">10%</span> 最大生命值转移给自身：目标的最大生命值与当前生命同步减少，龟壳的最大生命值与当前生命同步增加。",
         "energyCost": 90
       },
@@ -2508,8 +2508,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "主被动·<span class=\"val-normal\">潜影</span>：\n龟壳 6秒 未受到伤害便进入隐身，无法被选中。\n其间受到 AoE 伤害不会破隐，而自己释放技能或普攻则会破隐。\n破隐后的首次普攻额外附带 0.5 倍攻击力的魔法伤害、0.5 倍攻击力的毒伤害和 <span class=\"val-atk\">50% 治疗削减</span>，持续 3秒。\n主动·<span class=\"val-normal\">暗影俯冲</span>：\n龟壳向前俯冲 <span class=\"val-atk\">600 码</span>，落地时对范围内敌人造成 2 倍攻击力的魔法伤害并将路径上的敌人<span class=\"val-atk\">击退</span>，\n随后在落点生成一片暗影燃烧区，持续 5秒，每 0.5秒 对区内敌人施加 <span style=\"color:#ff6600\">0.1 倍攻击力的灼烧层</span> 并<span class=\"val-atk\">减速 20%</span>，龟壳则就此进入隐身。",
-        "detail": "龟壳的主被动技能。\n<b>被动·潜影</b>：\n6秒内未受到伤害→进入隐身（不可被敌人选中、敌方看不见；能吃AOE伤害但AOE不破隐；只有龟壳自己放技能/普攻才破隐）。\n破隐后第一发普攻额外附加：+50%攻击力魔法伤害 + 0.5×攻击力层中毒 + 3秒50%治疗削减。\n<b>主动·暗影俯冲（130龟能）</b>：\n朝目标俯冲600码，落地对目标及路径敌人造成（200%×攻击力({ATK}) = {M:2.0*ATK}）魔法伤害并击退，\n随后留下暗影燃烧区（半径150码·5秒·每0.5秒对区内敌施加0.1×攻击力灼烧层+减速20%），并进入隐身。\n龟壳 6秒 未受到伤害便进入隐身，无法被选中。\n其间受到 AoE 伤害不会破隐，而自己释放技能或普攻则会破隐。\n破隐后的首次普攻额外附带 0.5 倍攻击力的魔法伤害、0.5 倍攻击力的毒伤害和 <span class=\"val-atk\">50% 治疗削减</span>，持续 3秒。\n主动·<span class=\"val-normal\">暗影俯冲</span>：\n龟壳向前俯冲 <span class=\"val-atk\">600 码</span>，落地时对范围内敌人造成 2 倍攻击力的魔法伤害并将路径上的敌人<span class=\"val-atk\">击退</span>，\n随后在落点生成一片暗影燃烧区，持续 5秒，每 0.5秒 对区内敌人施加 <span style=\"color:#ff6600\">0.1 倍攻击力的灼烧层</span> 并<span class=\"val-atk\">减速 20%</span>，龟壳则就此进入隐身。",
+        "brief": "主被动·<span class=\"val-normal\">潜影</span>：\n龟壳 6 秒 未受到伤害便进入隐身，无法被选中。\n其间受到 AoE 伤害不会破隐，而自己释放技能或普攻则会破隐。\n破隐后的首次普攻额外附带 0.5 倍攻击力的魔法伤害、0.5 倍攻击力的毒伤害和 <span class=\"val-atk\">50% 治疗削减</span>，持续 3 秒。\n主动·<span class=\"val-normal\">暗影俯冲</span>：\n龟壳向前俯冲 <span class=\"val-atk\">600 码</span>，落地时对范围内敌人造成 2 倍攻击力的魔法伤害并将路径上的敌人<span class=\"val-atk\">击退</span>，\n随后在落点生成一片暗影燃烧区，持续 5 秒，每 0.5 秒 对区内敌人施加 <span style=\"color:#ff6600\">0.1 倍攻击力的灼烧层</span> 并<span class=\"val-atk\">减速 20%</span>，龟壳则就此进入隐身。",
+        "detail": "龟壳的主被动技能。\n<b>被动·潜影</b>：\n6 秒内未受到伤害→进入隐身（不可被敌人选中、敌方看不见；能吃AOE伤害但AOE不破隐；只有龟壳自己放技能/普攻才破隐）。\n破隐后第一发普攻额外附加：+50%攻击力魔法伤害 + 0.5×攻击力层中毒 + 3 秒 50%治疗削减。\n<b>主动·暗影俯冲（130龟能）</b>：\n朝目标俯冲 600 码，落地对目标及路径敌人造成（200%×攻击力({ATK}) = {M:2.0*ATK}）魔法伤害并击退，\n随后留下暗影燃烧区（半径 150 码·5 秒·每 0.5 秒对区内敌施加 0.1×攻击力灼烧层+减速 20%），并进入隐身。\n龟壳 6 秒 未受到伤害便进入隐身，无法被选中。\n其间受到 AoE 伤害不会破隐，而自己释放技能或普攻则会破隐。\n破隐后的首次普攻额外附带 0.5 倍攻击力的魔法伤害、0.5 倍攻击力的毒伤害和 <span class=\"val-atk\">50% 治疗削减</span>，持续 3 秒。\n主动·<span class=\"val-normal\">暗影俯冲</span>：\n龟壳向前俯冲 <span class=\"val-atk\">600 码</span>，落地时对范围内敌人造成 2 倍攻击力的魔法伤害并将路径上的敌人<span class=\"val-atk\">击退</span>，\n随后在落点生成一片暗影燃烧区，持续 5 秒，每 0.5 秒 对区内敌人施加 <span style=\"color:#ff6600\">0.1 倍攻击力的灼烧层</span> 并<span class=\"val-atk\">减速 20%</span>，龟壳则就此进入隐身。",
         "energyCost": 130
       }
     ],
