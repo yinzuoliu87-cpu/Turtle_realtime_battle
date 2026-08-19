@@ -40,6 +40,12 @@ const TOUCH_MIN := 81.0
 
 ## 每屏基线(上界)。**只许改小, 不许改大** —— 要放大必须在 CHANGELOG 里写清为什么。
 ## 商店库存是随机的(实测 0~2 网页盒 / 11~13 圆角盒), 所以它那两格取上沿。
+## ★"tap" = 短边 < 81px(44pt) 的可点元素上限。剩下的 18 个各有理由, 不是漏做:
+##   · TeamSelect 5 个(返回/清空/上次阵容/开始冒险/被动签): 它们的**底板烤在 select-bg.png 上**,
+##     2026-08-19 实拍验证过 —— 一加高文字就浮到画好的木牌外面。要真加大得先重画背景图。
+##   · Inventory 8 个迷你装备格 + 3 个前/后排小钮: 版式极限(见下), 已另给 81px 的「卸下」主路径。
+##   · MainMenu 1 个调试入口 / Shop 1 个: 见下。
+##
 ## ★两处**不是余量、是有理由的豁免**(别当成"还没改完"):
 ##   · MainMenu 的 1 个 = 右下角调试入口 120x46。它**不是玩家路径**, 刻意保持朴素,
 ##     和正式按钮长得不一样正是想要的效果。
@@ -47,15 +53,15 @@ const TOUCH_MIN := 81.0
 ##     换金属框会让**费用色从整块实心退化成一圈细边**, 而那块实心色本身就是信息
 ##     (一眼分得出 2/3/4/5 费)。⇒ 贴图框有它的最小可用尺寸, 小于它就该保持纯色块。
 const BASE: Dictionary = {
-	"MainMenu": {"web": 1, "round": 3, "frame": 0},
-	"Inventory": {"web": 10, "round": 19, "frame": 1},
-	"Codex": {"web": 0, "round": 0, "frame": 0},
-	"TeamSelect": {"web": 0, "round": 61, "frame": 0},
+	"MainMenu": {"web": 1, "round": 3, "frame": 0, "tap": 1},
+	"Inventory": {"web": 10, "round": 19, "frame": 1, "tap": 11},
+	"Codex": {"web": 0, "round": 0, "frame": 0, "tap": 0},
+	"TeamSelect": {"web": 0, "round": 61, "frame": 0, "tap": 5},
 	# 商店货架随机 ⇒ 它这两格是**容差基线**(实测跨多次运行 0~3 网页盒 / 11~14 圆角盒)。
 	# 卡到实测上沿会偶发红; 而真回归是数量级的(31 vs 0), 容差 +1 挡不住的场面不存在。
-	"Shop": {"web": 0, "round": 11, "frame": 0},
-	"Settings": {"web": 0, "round": 0, "frame": 0},
-	"Record": {"web": 0, "round": 0, "frame": 0},
+	"Shop": {"web": 0, "round": 11, "frame": 0, "tap": 1},
+	"Settings": {"web": 0, "round": 0, "frame": 0, "tap": 0},
+	"Record": {"web": 0, "round": 0, "frame": 0, "tap": 0},
 }
 
 ## 分母下限: 这一屏至少该扫到这么多可见控件。少于它 = 场景没建起来, 下面的"0 问题"全是假的。
@@ -261,7 +267,7 @@ func _art_rect(t: TextureRect) -> Rect2:
 func _audit(root: Node) -> Dictionary:
 	var d := {"web": 0, "round": 0, "ctrl": 0, "btn": 0, "lbl": 0,
 		"stock": [], "dead": [], "small": [], "clip": [], "squash": [],
-		"flat9": [], "spill": [], "overlap": [], "frame": []}
+		"flat9": [], "spill": [], "overlap": [], "frame": [], "tap": []}
 	var labels: Array = []
 	var framed: Array = []
 	var arts: Array = []
@@ -271,6 +277,18 @@ func _audit(root: Node) -> Dictionary:
 		if n is Control and (n as Control).is_visible_in_tree():
 			var c := n as Control
 			d["ctrl"] = int(d["ctrl"]) + 1
+			## 触控热区: 短边 < 81px(=44pt) 的可点元素。★TouchPad 本身不算(它是别人的热区),
+			##   有效热区 = 控件矩形 与 它挂的 TouchPad 取大 —— 不这么算数字会反着涨(实测 43→51)。
+			if str(c.name) != "TouchPad":
+				var _hit: bool = c is BaseButton or c.gui_input.get_connections().size() > 0
+				var _ew: float = c.size.x
+				var _eh: float = c.size.y
+				var _pad = c.get_node_or_null("TouchPad")
+				if _pad != null and _pad is Control:
+					_ew = maxf(_ew, (_pad as Control).size.x)
+					_eh = maxf(_eh, (_pad as Control).size.y)
+				if _hit and _ew > 1.0 and _eh > 1.0 and minf(_ew, _eh) < 81.0 and maxf(_ew, _eh) < 200.0:
+					(d["tap"] as Array).append("%.0fx%.0f %s" % [_ew, _eh, c.get_class()])
 			if n is TextureRect and (n as TextureRect).texture != null and c.size.x >= 12.0 and c.size.y >= 12.0:
 				# 头像/图标顶破框也是"压边带"的一种(图鉴列表行的头像实拍把行框切开了)。
 				# ★但要量【真正画出来的那块图】: TextureRect 用 KEEP_ASPECT_CENTERED 时
@@ -435,8 +453,9 @@ func _ready() -> void:
 			var sc = load("res://tests/_setup_inv_demo.gd")
 			if sc != null and sc.has_method("run"):
 				sc.run()
-		# ⚠ 试过 `seed(20260818)` 想钉死商店货架 —— **没用**, 三次仍是 0/11、2/13、1/12。
-		#   说明货架不走全局 RNG。**别再试这条路**; 改成给商店一个容差基线(见 BASE 注释)。
+		# ★商店货架已在 ShopScene 里钉死(test_mode ⇒ _rng.seed 固定, 不 randomize)。
+		#   之前试 `seed(20260818)` 没用是因为**那是全局 RNG, 而商店有自己的 RandomNumberGenerator** ——
+		#   钉错了对象, 不是"钉不住"。现三次连跑都是 0/11。
 		var inst = (load(path) as PackedScene).instantiate()
 		add_child(inst)
 		await _settle(inst)
@@ -451,6 +470,9 @@ func _ready() -> void:
 			"实测 %d" % int(d["web"]))
 		_ok("%s 圆角盒 ≤ %d" % [str(scn), int(b["round"])], int(d["round"]) <= int(b["round"]),
 			"实测 %d" % int(d["round"]))
+		_ok("%s 热区不足(短边<44pt) ≤ %d" % [str(scn), int(b["tap"])],
+			(d["tap"] as Array).size() <= int(b["tap"]),
+			"实测 %d %s" % [(d["tap"] as Array).size(), str((d["tap"] as Array).slice(0, 4))])
 		_ok("%s 文字压边带 ≤ %d" % [str(scn), int(b["frame"])],
 			(d["frame"] as Array).size() <= int(b["frame"]),
 			"实测 %d %s" % [(d["frame"] as Array).size(), str((d["frame"] as Array).slice(0, 4))])
