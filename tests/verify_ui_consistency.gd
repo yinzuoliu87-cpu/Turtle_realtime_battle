@@ -114,6 +114,19 @@ func _band_of(tex: Texture2D) -> float:
 
 
 ## 真正画出来的那块字的矩形(不是 Label 控件的矩形)。
+## 是不是"浮在内容上的提示层"(toast) —— 这类重叠是设计如此, 不是 bug。
+func _is_toast(c: Control) -> bool:
+	var n := c
+	var hop := 0
+	while n != null and hop < 4:
+		var nm := str(n.name).to_lower()
+		if nm.findn("status") >= 0 or nm.findn("toast") >= 0 or nm.findn("flash") >= 0:
+			return true
+		n = n.get_parent() as Control
+		hop += 1
+	return false
+
+
 func _ink_rect(l: Label) -> Rect2:
 	var r := l.get_global_rect()
 	var f: Font = l.get_theme_font("font")
@@ -284,11 +297,11 @@ func _audit(root: Node) -> Dictionary:
 				var rr := rl.get_global_rect()
 				var used := minf(rl.get_content_height(), rr.size.y) if rl.get_content_height() > 0.0 else rr.size.y
 				labels.append([Rect2(rr.position, Vector2(rr.size.x, used)),
-					str(rl.get_parsed_text()).strip_edges()])
+					str(rl.get_parsed_text()).strip_edges(), _is_toast(rl)])
 			if n is Label and str((n as Label).text).strip_edges().length() >= 1:
 				var lb := n as Label
 				d["lbl"] = int(d["lbl"]) + 1
-				labels.append([_ink_rect(lb), str(lb.text)])
+				labels.append([_ink_rect(lb), str(lb.text), _is_toast(lb)])
 				var fs2: int = lb.get_theme_font_size("font_size")
 				# ⚠ 判据太宽第 8 次: 报选龟稀有度栏杆的「A」「B」「C」被挤没 —— 实拍那几个
 				#   字母**显示得好好的**。原因是这些 Label 是手工定位的, `size` 就是 (0,0),
@@ -332,6 +345,11 @@ func _audit(root: Node) -> Dictionary:
 	for i in range(labels.size()):
 		for j in range(i + 1, labels.size()):
 			if str(labels[i][1]) == str(labels[j][1]):
+				continue
+			# ★toast(StatusBar/飘字提示)本来就是【浮在内容上】的一层, 2 秒后淡出 ——
+			#   把它算成"两段文字压在一起"是判据没分清"重叠"和"覆盖式提示"。
+			#   只豁免这一类(名字里带 status/toast), 其它重叠仍然要红。
+			if labels[i][2] or labels[j][2]:
 				continue
 			var ra: Rect2 = labels[i][0]
 			var rb: Rect2 = labels[j][0]

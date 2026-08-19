@@ -795,7 +795,12 @@ func _build_grid_region() -> void:
 	var rail_w := 46.0 * s
 	var row_gap := 10.0 * s         # #ts-rg-grid gap:10 (rail↔grid)
 	# 稀有度竖排导轨 — 放在 grid 区**内**左缘 (非旧版 grid.x-46 的区外)
-	var rail := VBoxContainer.new()
+	## ★★2026-08-19 竖排 → 横排。
+	##   原因: 手机触控下限 44pt = 81px, 7 个按钮竖着排要 7×81 = **567px**,
+	##   而网格区实测只有 **313px 高** —— 竖排在这个版式里**装不下**, 怎么调都不够。
+	##   横过来: 7×81 = 567 ≤ 网格区宽 816, 装得下。代价是吃掉 81px 高(网格少一行, 本来就能滚)。
+	##   (顺带: PoC 里这东西本来就叫 `.pg-filter-bar` —— 一条【横】的过滤条。)
+	var rail := HBoxContainer.new()
 	rail.position = rc.position
 	rail.add_theme_constant_override("separation", _sp(6))
 	root.add_child(rail)
@@ -807,7 +812,8 @@ func _build_grid_region() -> void:
 		# ★手机板触控热区(用户2026-08-01「手机加pc」): 46×30 视口像素 = 手机上仅 25×16pt,
 		#   iOS HIG 最小 44pt / Material 48dp —— 这是全项目最小的一组可点元素, 手指基本点不中。
 		#   加到 52×52(28pt): 竖排 7 个共 400px, 网格区放得下; 再大就要重排整屏了。
-		b.custom_minimum_size = Vector2(_sp(52), _sp(52))
+		## ★用实际像素不过 _sp —— 上次写 _sp(52) 缩放后只剩 40px, 等于没修到。
+		b.custom_minimum_size = Vector2(81.0, 81.0)
 		b.add_theme_font_size_override("font_size", _sf(13))
 		_style_rarity_btn(b, false)
 		var key: String = r
@@ -818,10 +824,11 @@ func _build_grid_region() -> void:
 		_rarity_btns.append({"btn": b, "key": r})
 
 	# 网格 (ScrollContainer + GridContainer) — 起点右移 (rail宽+row_gap), 宽减同量 (PoC pet-grid 接 rail 右)
-	var grid_off := rail_w + row_gap
+	## 过滤条横过来之后, 网格从它【下方】开始(不再右移让位)。
+	var bar_h := 81.0 + row_gap
 	var scroll := ScrollContainer.new()
-	scroll.position = rc.position + Vector2(grid_off, 0)
-	scroll.size = Vector2(rc.size.x - grid_off, rc.size.y)
+	scroll.position = rc.position + Vector2(0.0, bar_h)
+	scroll.size = Vector2(rc.size.x, maxf(120.0, rc.size.y - bar_h))
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER   # 隐藏滚动条(进度带)·滚动仍启用(手机拖·PC滚轮)·用户2026-07-18
 	root.add_child(scroll)
