@@ -90,6 +90,21 @@ def skill_code(S, src, sk_type, pid, consts):
     return NL.join(b for _n, b in funcs)
 
 
+def basic_atk_code(S, src, pid):
+    """普攻这条链: `BASIC_ATK` 表里这只龟那一行 + 主场景里它的 `u["id"] == "<pid>"` 分支。
+
+    ★为什么不把 `_basic_attack` / `_do_basic` 整个函数体也算进去:
+      那两个函数是**所有龟共用**的, 把它算成证据等于给每只龟都发一张通行证 ——
+      判据会被稀释成"什么都能找到"(这正是这条工具前面栽过三次的病)。
+    """
+    rb = src.get('scripts/scenes/RealtimeBattle3DScene.gd', '')
+    row = ''
+    m = re.search(r'^\s*"%s":\s*\{[^}]*\}.*$' % re.escape(pid), rb, re.M)
+    if m:
+        row = m.group(0)
+    return row + NL + passive_code(S, src, pid, {})
+
+
 def passive_code(S, src, pid, consts):
     """被动没有 dispatch —— 取主场景里 `u["id"] == "<pid>"` 那个分支的整段。"""
     lines = src.get('scripts/scenes/RealtimeBattle3DScene.gd', '').split(NL)
@@ -132,8 +147,11 @@ def main():
         if isinstance(pa, dict):
             entries.append(('被动', pa, passive_code(S, src, pid, consts)))
         for sk in (p.get('skillPool') or []):
-            entries.append((str(sk.get('name', '')), sk,
-                            skill_code(S, src, str(sk.get('type', '')), pid, consts)))
+            _c = skill_code(S, src, str(sk.get('type', '')), pid, consts)
+            if len(_c.strip()) < 40:
+                # 普攻不在分派表里(仓库注释早写明), 走 BASIC_ATK 这条链
+                _c = basic_atk_code(S, src, pid)
+            entries.append((str(sk.get('name', '')), sk, _c))
         if any(len(c.strip()) > 40 for _n, _o, c in entries):
             n_pet += 1
         for nm, obj, code in entries:
