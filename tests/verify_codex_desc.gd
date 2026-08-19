@@ -101,6 +101,38 @@ func _ready() -> void:
 	_ok("★④ 真的在卡片渲染里调了它(不是死函数)",
 		src.find("_mark_card_clipped(rt, cx,") >= 0)
 
+	# ── ④b 渲染后不许剩花括号 ────────────────────────────────────────────
+	## ★为什么不在 python 侧用正则查: 2026-08-19 我那么干过, 报 {crit*100} 会漏到文面,
+	##   **是错的** —— SkillText 的 token 正则第二个分支 `\{([^}]+)\}` 本来就支持
+	##   裸表达式。**占位符会不会漏, 只能看渲染之后的产物。**
+	var _ph_bad: Array = []
+	var _expr_re := RegEx.create_from_string("[A-Z]{2,}[ ]*[:*]")
+	var _ph_n := 0
+	for _p in DataRegistry.all_pets:
+		var _pa: Dictionary = _p.get("passive", {})
+		var _tx: Array = []
+		for _k in ["brief", "desc", "detail"]:
+			if str(_pa.get(_k, "")) != "":
+				_tx.append([str(_p.get("id", "")) + ".passive." + _k, str(_pa.get(_k, ""))])
+		for _s in _p.get("skillPool", []):
+			for _k2 in ["brief", "desc", "detail"]:
+				if str(_s.get(_k2, "")) != "":
+					_tx.append(["%s/%s.%s" % [_p.get("id", ""), _s.get("name", ""), _k2],
+						str(_s.get(_k2, ""))])
+		for _row in _tx:
+			_ph_n += 1
+			var _out := SkillText.render_plain(str(_row[1]), _p, {})
+			## ★★判据第一版只查花括号残留 —— **反向验证当场拆穿**: 塞一个
+			##   `{N:BADVAR*2}` 进去, 门禁照样绿。实测渲染结果是「BADVAR*2」——
+			##   花括号被吃掉了, **原始表达式直接当文字显示给玩家**。
+			##   ⇒ 还要查"渲染完还留着表达式长相的东西": 连续大写字母后面跟 : 或 *。
+			##   (我们的文案是中文, 正常内容里不会出现这种形状。)
+			if _out.find("{") >= 0 or _out.find("}") >= 0 					or _expr_re.search(_out) != null:
+				_ph_bad.append("%s → %s" % [str(_row[0]), _out.substr(0, 24)])
+	_ok("★分母: 真的渲染了文案(0 段 = 空检查)", _ph_n >= 200, "%d 段" % _ph_n)
+	_ok("★★④b 渲染后没有残留花括号(占位符都替换掉了)", _ph_bad.is_empty(),
+		"残留: %s" % str(_ph_bad.slice(0, 5)))
+
 	# ── ⑤ 羁绊: 商店有、图鉴原来一个字都不提 ──────────────────────────────
 	## ★2026-08-15 判据从"搜两个整句"改成【切出 _show_p2eq 这一段再搜三件事】。
 	##   原来搜的是 `host._add_text(20, ty, "羁绊"` 和 `TYPES.get(_tp, {})` 两条整句 ——

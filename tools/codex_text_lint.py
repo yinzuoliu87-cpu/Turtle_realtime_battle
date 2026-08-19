@@ -22,6 +22,16 @@
   「图鉴所有的描述都不应该有 ai 味和教导玩家的味道」
   ⇒ "教导味" = 规律 4 的反面; "ai 味" = 规律 3、5 的反面(空泛吹捧 + 模糊量词)。
 
+═══ ★★ 2026-08-19 的纠正: 我把"短"当成了目标, 砍掉的是机制 ═══
+  用户: 「小龟的被动是只有普攻增伤吗, 龟派气波的智能冲刺该怎么说呢,
+        你确定把关键信息改掉, **这是你学到的东西吗**」
+  实测: 我按 60 字上限收完之后, **83 条简述比它自己的全文少讲了机制** ——
+  小龟被动少了「龟盾」那半边、龟派气波少了施法期间三项增益和智能冲刺。
+  **参考里那些文案短, 是因为那些游戏的机制本身就短**(SAP「Faint → 给一个随机友军
+  +1/+1」一句话就是全部)。我们的技能有三四段机制, 把它砍到一句 = 玩家读不到真相。
+  ⇒ **完整性是硬指标, 长度是软指标**: 先保证机制一条不少, 再靠删废字压短。
+     长度上限从"违规"降级为"提示"; 新增硬判据【简述不许比全文少讲机制】。
+
 跑法: python tools/codex_text_lint.py [--list]
 """
 import io
@@ -36,7 +46,14 @@ NL = chr(10)
 # ── 判据 ────────────────────────────────────────────────────────────────
 # 一句"简述"的字数上限。中文同类实测 12~85 字, 取 60 —— 比最宽松的云顶还宽一点,
 # 因为我们一件装备常带 1/2/3 星三档数值。超过就是"讲不完的第二件事"。
+# 简述字数【提示线】—— 超了只提示不算违规(见上面 2026-08-19 的纠正)。
+# 真正的硬线是下面的"漏讲机制"。
 BRIEF_MAX = 60
+
+## 【漏讲机制】基线: 简述里没提、而它自己全文里有的效果类别数。
+## 只许降不许升。40 是 2026-08-19 把被我砍掉的机制补回去之后的实测值 ——
+## 这 40 条是**我改之前就存在的**老缺口(不是这次造成的), 留作下一轮的活。
+MISS_MAX = 40
 # 【全文档】的上限 —— 龟的 `detail`/`desc` 和装备的 `effectDesc1` 是**同一层东西**:
 # 都是"点开看全部"里那份完整机制说明。原来给 detail 定 200、给装备定 400 是两套尺子,
 # 那不是标准, 是我随手拍的。统一到 400(实测最长一件装备 329 字, 是真机制不是废话)。
@@ -68,7 +85,7 @@ JUDGE = ['强力', '极强', '很强', '强势', '核心地位', '至关重要',
          '无解', '逆天', '神级', '顶级']
 # 模糊量词: 样本里数值一律给死, 没有一个"少量/大量"。
 VAGUE = ['少量', '大量', '略微', '稍微', '轻微', '巨额', '海量', '若干', '一定量',
-         '不少', '很多', '极大地', '大幅度', '小幅']
+         '一定生命', '一定护盾', '不少', '很多', '极大地', '大幅度', '小幅']
 # 第二人称: 样本里要么零, 要么用「携带者」这类第三人称顶替。
 YOU = ['你的', '你会', '你能', '你可以', '玩家']
 # 风味/吹捧从句: 机制行里不该出现的抒情
@@ -127,6 +144,34 @@ def plain(t):
     return t
 
 
+def mech_gaps():
+    """简述比它自己的全文少讲了哪些机制。
+
+    判据用 `pet_code_scope.CATEGORY_WORDS` —— 那张表是**按代码里真有的效果分类**建的,
+    不是我临时想的词。全文里出现某类效果、简述里一个同类词都没有 = 玩家在默认那一屏
+    读不到这条机制。
+    """
+    import pet_code_scope as S
+    gaps = []
+    for p in load('data/pets.json'):
+        items = []
+        pa = p.get('passive')
+        if isinstance(pa, dict) and pa.get('brief'):
+            items.append(('%s·被动' % p.get('name', p.get('id')), pa))
+        for g in ('skillPool', 'volcanoSkills', 'meleeSkills'):
+            for sk in (p.get(g) or []):
+                if sk.get('brief'):
+                    items.append(('%s·%s' % (p.get('name', ''), sk.get('name', '')), sk))
+        for nm, obj in items:
+            b = plain(str(obj.get('brief', '')))
+            f = plain(str(obj.get('detail', '') or '') + ' ' + str(obj.get('desc', '') or ''))
+            miss = [cat for cat, ws in S.CATEGORY_WORDS.items()
+                    if any(w in f for w in ws) and not any(w in b for w in ws)]
+            if miss:
+                gaps.append((nm, miss))
+    return gaps
+
+
 def main():
     rows = collect()
     hits = collections.defaultdict(list)
@@ -143,8 +188,9 @@ def main():
             cap = 400
         else:
             cap = DETAIL_MAX
+        # 长度只提示不算违规(完整性优先); 真正的硬线是"漏讲机制"。
         if n > cap and (tag, ident, field) not in DETAIL_ALLOW:
-            hits['太长(上限%d)' % cap].append((tag, ident, field, n, p[:40]))
+            hits['偏长(提示线%d)' % cap].append((tag, ident, field, n, p[:40]))
         for w in TEACH:
             if w in p:
                 hits['教导玩家'].append((tag, ident, field, w, p[:40]))
@@ -169,18 +215,35 @@ def main():
             if w in p:
                 hits['开发备注混进玩家文案'].append((tag, ident, field, w, p[:40]))
                 break
+        # ⚠ 判据太宽第 12 次(2026-08-19): 这里原来用正则查"没有类型前缀的占位符",
+        #   报出 {crit*100} 说它会漏到文面 —— **错的**。SkillText 的正则第二个分支
+        #   `\{([^}]+)\}` 本来就支持裸表达式, 实测把 283 段全渲染一遍, 花括号残留 **0**。
+        #   ⇒ 这类事只能量**渲染后的产物**, 光看源串判不出来。真检查搬到 Godot 侧
+        #     (tests/verify_codex_desc.gd 的"渲染后不许有花括号")。
+        # ★句子没写完: 结尾是逗号/顿号 = 话说了一半(实测凤凰龟·烫伤就是这样)。
+        st = p.strip()
+        if st and st[-1] in '，、；:：':
+            hits['句子没写完'].append((tag, ident, field, st[-1], st[-30:]))
 
     print('=== 图鉴文案体检(判据取自 489 条真实同类游戏文案) ===')
     print('受检文本 %d 条' % len(rows))
     total = 0
-    for k in ['开发备注混进玩家文案', '教导玩家', '自夸/评价', '模糊量词', '称呼玩家', '抒情/风味混进机制',
-              '太长(上限%d)' % BRIEF_MAX, '太长(上限%d)' % DETAIL_MAX]:
+    for k in ['句子没写完', '开发备注混进玩家文案', '教导玩家', '自夸/评价', '模糊量词', '称呼玩家', '抒情/风味混进机制',
+              '偏长(提示线%d)' % BRIEF_MAX, '偏长(提示线%d)' % DETAIL_MAX]:
         v = hits.get(k, [])
-        total += len(v)
+        if not k.startswith('偏长'):
+            total += len(v)
         print('  %-18s %4d 条' % (k, len(v)))
         for r in v[:6] if '--list' not in sys.argv else v:
             print('       %s %s.%s  「%s」  %s' % (r[0], r[1], r[2], r[3], r[4]))
+    gaps = mech_gaps()
+    print('  %-18s %4d 条 (上限 %d, 只许降)' % ('★简述漏讲机制', len(gaps), MISS_MAX))
+    for nm, miss in gaps[:6]:
+        print('       %s 缺: %s' % (nm, ','.join(miss)))
     print('  ── 合计 %d 处 ──' % total)
+    if len(gaps) > MISS_MAX:
+        print('  ★★漏讲机制超过基线 —— 这是硬线: 简述可以长, 但不许比全文少一条机制。')
+        return 1
     if DETAIL_ALLOW:
         print('  明确豁免 %d 条(超上限但复核认为该留):' % len(DETAIL_ALLOW))
         for k, why in DETAIL_ALLOW.items():
