@@ -516,6 +516,12 @@ func _ready() -> void:
 			var sc = load("res://tests/_setup_inv_demo.gd")
 			if sc != null and sc.has_method("run"):
 				sc.run()
+		## ★★商店有"本大轮没打过第一场就锁店"的分支(`_build_locked()` 直接 return)。
+		##   开没开店取决于**本机存档** ⇒ 我这台机器量的是真商店, CI 上是全新档量的是占位屏 ——
+		##   **两边根本不是同一块屏**, 棘轮数字自然对不上。(2026-08-19 在 _probe_webbox 上先撞到:
+		##   它报"商店只有 1 个 stylebox", 那是占位屏。) ⇒ 在这里显式推进有内容的那一支。
+		if int(gs.season_total_battles) <= 0:
+			gs.season_total_battles = 3
 		# ★商店货架已在 ShopScene 里钉死(test_mode ⇒ _rng.seed 固定, 不 randomize)。
 		#   之前试 `seed(20260818)` 没用是因为**那是全局 RNG, 而商店有自己的 RandomNumberGenerator** ——
 		#   钉错了对象, 不是"钉不住"。现三次连跑都是 0/11。
