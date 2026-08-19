@@ -69,21 +69,24 @@ func _ready() -> void:
 	print("  ④ 重建后技能图标数 = %d" % btns2.size())
 	_chk("④ 重建后仍是 4 个(没堆叠两批)", btns2.size() == 4)
 
-	# ── ② 选中那个的边框色 ──
+	# ── ② 选中那个"看起来"是不是被点亮了 ──
+	## ★判据换过一次(2026-08-19): 原来直接读 StyleBoxFlat.border_color 比对 #ffd86b。
+	##   技能图标换成九宫贴图框之后, StyleBoxTexture **没有 border_color** —— 老判据会
+	##   一律拿到透明黑, 于是"选中态"整条断言变成永假。它红了是对的, 不是误报。
+	##   新判据不认表征、只认"点亮"这件事本身: 取该态的着色(贴图取 modulate_color /
+	##   纯色取 border_color), 要求选中项**又暖又亮**, 且明显亮过没选中的那个。
 	if btns2.size() == 4:
 		print("")
+		var tints: Array[Color] = []
 		for i in range(btns2.size()):
-			var sb = btns2[i].get_theme_stylebox("normal")
-			var col: Color = (sb as StyleBoxFlat).border_color if sb is StyleBoxFlat else Color(0, 0, 0, 0)
-			var bg: Color = (sb as StyleBoxFlat).bg_color if sb is StyleBoxFlat else Color(0, 0, 0, 0)
-			print("     [%d] 边框 %s  底色a=%.2f" % [i, col.to_html(false), bg.a])
-		var sel_sb = btns2[2].get_theme_stylebox("normal")
-		var gold := Color("#ffd86b")
-		var sc: Color = (sel_sb as StyleBoxFlat).border_color if sel_sb is StyleBoxFlat else Color(0, 0, 0, 0)
-		_chk("② idx=2 边框是金色(选中态)", sc.is_equal_approx(gold))
-		var other_sb = btns2[1].get_theme_stylebox("normal")
-		var oc: Color = (other_sb as StyleBoxFlat).border_color if other_sb is StyleBoxFlat else Color(0, 0, 0, 0)
-		_chk("② idx=1 不再是金色(已让出选中)", not oc.is_equal_approx(gold))
+			tints.append(_tint_of(btns2[i].get_theme_stylebox("normal")))
+			print("     [%d] 着色 %s  亮度 %.2f" % [i, tints[i].to_html(false), _lum(tints[i])])
+		var sel := tints[2]
+		var oth := tints[1]
+		var warm: bool = sel.r > sel.b + 0.4                      # 金 = 红远多于蓝
+		var brighter: bool = _lum(sel) > _lum(oth) * 1.4          # 且确实比没选的亮
+		_chk("② idx=2 被点亮成暖金(选中态)", warm and brighter)
+		_chk("② idx=1 不再点亮(已让出选中)", not (oth.r > oth.b + 0.4 and _lum(oth) > _lum(sel) * 1.4))
 
 	_done(scene)
 
@@ -118,3 +121,17 @@ func _done(scene) -> void:
 	print("")
 	print("  ALL PASS" if _fail == 0 else "  ★ %d 项 FAIL" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+## 取一个 StyleBox 的"着色" —— 贴图框用 modulate_color, 纯色框用 border_color。
+## 两种表征都归到同一把尺子上, 以后再换皮不用再改判据。
+func _tint_of(sb) -> Color:
+	if sb is StyleBoxTexture:
+		return (sb as StyleBoxTexture).modulate_color
+	if sb is StyleBoxFlat:
+		return (sb as StyleBoxFlat).border_color
+	return Color(0, 0, 0, 0)
+
+
+func _lum(c: Color) -> float:
+	return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
