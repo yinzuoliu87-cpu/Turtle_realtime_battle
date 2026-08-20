@@ -1151,7 +1151,7 @@
       "type": "gamblerMultiHit",
       "name": "多重打击",
       "dmgScale": 0.5,
-      "brief": "每次普攻命中后有 <span class=\"val-atk\">40%</span> 概率<span class=\"val-normal\">立刻以约 3.3 倍攻击速度再打一次普攻</span>。\n再次命中可继续触发，每连锁一次概率 ×0.8（<span class=\"val-atk\">40% → 32% → 25.6% → …</span>）。\n<span style=\"color:#8a93a0\">未触发时概率重置回基础值。\n</span>",
+      "brief": "每次普攻命中后有 <span class=\"val-atk\">40%</span> 概率<span class=\"val-normal\">立刻以约 6 倍攻击速度再打一次普攻</span>。\n再次命中可继续触发，每连锁一次概率 ×0.8（<span class=\"val-atk\">40% → 32% → 25.6% → …</span>）。\n<span style=\"color:#8a93a0\">未触发时概率重置回基础值。\n</span>",
       "desc": "每次普攻命中后有 <span class=\"val-atk\">40%</span> 概率<span class=\"val-normal\">立刻以约 6 倍攻击速度再打一次普攻</span>。\n再次命中可继续触发，每连锁一次概率 ×0.8（40% → 32% → 25.6% → …），没触发则重置回基础概率、等下一次普攻。\n<span style=\"color:#8a93a0\">基础概率 40%。\n出战选「命运之轮」→ 基础概率变 60%（代价是登场损失 30% 最大生命值）\n释放「赌注」→ 之后 3 秒内再 +20%。\n</span>"
     },
     "skillPool": [
