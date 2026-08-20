@@ -183,6 +183,14 @@ func _crystal_detonate(pos2d: Vector2) -> void:
 var _sweeps: Array = []
 const SWEEP_SEC := 1.5
 
+## ★★2026-08-20 把结晶印记那三个魔数提成具名常量。
+##   不是为了好看 —— 是为了让**文案能引用它们**(`{C:CrystalSystem.STACK_MAX}`),
+##   从此"代码改了文案不跟"这件事在结构上不可能发生。
+##   ⚠ 值一个没动(5 / 0.22 / -0.2), 行为必须完全一致 —— 全套门禁验这一点。
+const STACK_MAX := 5            ## 结晶印记叠满几层引爆
+const BURST_MAXHP_PCT := 0.22   ## 引爆伤害 = ×目标最大生命(魔法, 吃魔抗)
+const BURST_MR_SHRED := 0.20    ## 引爆同时削目标魔抗(走 _buff, 默认 BUFF_SEC 秒)
+
 
 ## 登记一次扫描。`_eq_crystal_sweep` 只管建节点与起始角, 推进交给这里。
 func sweep_begin(u: Dictionary, si: int, reach: float, state: Dictionary,
@@ -404,11 +412,11 @@ func _crystal_spike_line(u: Dictionary) -> void:   # 照小菊R第三击(2026-07
 func _crystal_stack(src: Dictionary, tgt: Dictionary, n: int) -> void:
 	if tgt == null or not tgt.get("alive", false):
 		return
-	var cv = battle._add_stack(tgt, "crystal", n, 5)
-	if cv >= 5:
+	var cv = battle._add_stack(tgt, "crystal", n, STACK_MAX)
+	if cv >= STACK_MAX:
 		battle._consume_stacks(tgt, "crystal")
-		battle._damage._apply_damage_from(src, tgt, battle._mitigate(src, tgt["maxHp"] * 0.22, tgt, true), Color("#9bdcff"), 0.0, false)   # 引爆22%最大生命魔法(吃魔抗·19%→22% 用户2026-07-29 第五轮)
-		battle._damage._buff(tgt, "mr", -0.2, true)
+		battle._damage._apply_damage_from(src, tgt, battle._mitigate(src, tgt["maxHp"] * BURST_MAXHP_PCT, tgt, true), Color("#9bdcff"), 0.0, false)   # 引爆22%最大生命魔法(吃魔抗·19%→22% 用户2026-07-29 第五轮)
+		battle._damage._buff(tgt, "mr", -BURST_MR_SHRED, true)
 		_crystal_detonate(tgt["pos"])
 
 func _crystal_orb_halo(orb: Dictionary) -> void:   # 水晶球常驻脉动光环(跟随·死亡随_follow_vfx自动清·循环tween必bind_node)

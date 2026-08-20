@@ -450,6 +450,12 @@ static var _const_cache: Dictionary = {}
 ## ★数组按本项目惯例渲染成三档: [3, 5, 8] → "3/5/8"。
 ## ★取不到时**原样吐回 {C:...}**, 不静默变成 0 —— 静默归零是最难查的一类错。
 static func const_of(ref: String) -> String:
+	## ★结尾带 % ⇒ 把常量×100 再渲染。代码里大量比例存的是**小数**(0.22), 而文案写**百分比**(22%),
+	##   没有这一档的话这些常量全都引用不了 —— 转第一条真文案时就撞上了。
+	##   写法: {C:CrystalSystem.BURST_MAXHP_PCT%} → 22
+	var as_pct := ref.ends_with("%")
+	if as_pct:
+		ref = ref.substr(0, ref.length() - 1)
 	var dot := ref.rfind(".")
 	if dot <= 0:
 		return "{C:%s}" % ref
@@ -467,6 +473,8 @@ static func const_of(ref: String) -> String:
 	if not m.has(key):
 		return "{C:%s}" % ref
 	var v = m[key]
+	if as_pct and (v is float or v is int):
+		return _fmt_num(float(v) * 100.0)
 	if v is Array:
 		var parts: PackedStringArray = []
 		for x in (v as Array):

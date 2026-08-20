@@ -159,8 +159,14 @@ func _buffs() -> void:
 	_chk("④ 泡泡爆破魔法 = 消耗量 ×%.1f / 物理 = %.1fA" % [WANT_BUBBLE_MAGIC_MULT, WANT_BUBBLE_PHYS],
 		bu.contains("cons * %.1f" % WANT_BUBBLE_MAGIC_MULT) and bu.contains("_atk_dmg(uu, %.1f, o)" % WANT_BUBBLE_PHYS))
 	_chk("④ 泡泡爆破旧值(×1.0 + 0.8A) 已消失", not bu.contains("_atk_dmg(uu, 0.8, o)"))
-	_chk("④ 水晶引爆 = %d%% 目标最大生命" % int(WANT_CRYSTAL_POP * 100.0),
-		cr.contains('tgt["maxHp"] * %.2f' % WANT_CRYSTAL_POP))
+	## ★2026-08-20 判据升级: 原来查源码里有没有 `tgt["maxHp"] * 0.22` 这个**字面量**。
+	##   那个魔数已提成具名常量 `BURST_MAXHP_PCT`(为了让文案能用 {C:...} 引用它),
+	##   所以改成**验那个常量的值 + 确认代码真的在用它** —— 比验字面量更强:
+	##   字面量版只要有人把 0.22 抄到别处也算过, 常量版盯的是唯一那一份。
+	_chk("④ 水晶引爆 = %d%% 目标最大生命(常量值)" % int(WANT_CRYSTAL_POP * 100.0),
+		cr.contains("const BURST_MAXHP_PCT := %.2f" % WANT_CRYSTAL_POP))
+	_chk("④ 引爆真的在用那个常量(不是又抄了一个字面量)",
+		cr.contains('tgt["maxHp"] * BURST_MAXHP_PCT'))
 	_chk("④ 水晶引爆旧值 0.19 已消失", not cr.contains('tgt["maxHp"] * 0.19'))
 	_chk("④ 碎晶三段合计 = %.1fA 魔 + %.1fA 真(每段 0.4+0.4)" % [WANT_BURST_MAGIC, WANT_BURST_TRUE],
 		cr.contains("const BURST_MAGIC := %.1f" % WANT_BURST_MAGIC)

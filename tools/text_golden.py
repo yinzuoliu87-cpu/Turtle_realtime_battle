@@ -25,7 +25,8 @@ sys.stdout.reconfigure(encoding='utf-8')
 GOLD = 'tests/golden/text_snapshot.txt'
 TEXT_KEYS = ['brief', 'desc', 'detail', 'effect', 'effectBrief',
              'effectDesc1', 'effectDesc2', 'effectDesc3']
-CREF = re.compile(r'\{C:([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\}')
+# 结尾可带 % ⇒ 值×100(代码里比例存小数, 文案写百分比)
+CREF = re.compile(r'\{C:([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)(%?)\}')
 
 
 def const_map():
@@ -57,7 +58,15 @@ def expand(t, cmap):
     def rep(m):
         v = cmap.get(m.group(1), {}).get(m.group(2))
         # ★取不到就原样留着 —— 不静默变成空, 否则"引用写错了"会伪装成"文案没变"
-        return v if v is not None else m.group(0)
+        if v is None:
+            return m.group(0)
+        if m.group(3) == "%":
+            try:
+                f = float(v) * 100.0
+                return str(int(f)) if f == int(f) else str(f)
+            except ValueError:
+                return m.group(0)
+        return v
     return CREF.sub(rep, t)
 
 
