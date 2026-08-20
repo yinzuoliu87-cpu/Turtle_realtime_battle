@@ -375,6 +375,11 @@ run_audit "tools/type_tables_audit.py"   "ALL OK" "type_tables (装备类型四�
 #   玩家看到的每个数字必须处在三态之一 —— 占位符(不可能错)/有审计器对代码验/没人验。
 #   第三类焊成只降不升。降的办法只有"换占位符"或"补覆盖", **不许靠放宽基线**。
 run_audit "tools/number_coverage_audit.py" "ALL OK" "number_coverage (玩家文案里没人验的数字·只降不升)"
+# ★Golden/Approval Test: 把**玩家看到的**文案整份存快照, 一个字不一样就红。
+#   它不理解文案含义, 所以覆盖面是 100%(数值审计器只能覆盖它认识的形状)。
+#   改代码常量而不碰文案也会被抓到 —— {C:} 展开后玩家看到的数变了。
+#   确认改动是有意的: python tools/text_golden.py --update, 并把快照一起提交。
+run_audit "tools/text_golden.py"        "ALL OK" "text_golden (玩家文案快照对账·483 段)"
 
 echo ""
 if [ "$FAIL" -eq 0 ]; then
