@@ -1435,7 +1435,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 				pass
 			"p2eq_007":   # 锈蚀阔剑: 移到每6秒 _tick_broadsword(用户); on_cast不处理
 				pass
-			"p2eq_008":   # 双穿珊瑚刺: 移到每6秒 _tick_coral(用户); on_cast不处理
+			"p2eq_008":   # 双穿珊瑚刺: 移到 _tick_coral(**每 9 秒**, 用户 2026-07-19 从 6→9); on_cast 不处理
 				pass
 			"p2eq_011":   # 饮血护符坠: 连斩已改由【法力条满】触发(2026-08-12); on_cast 不处理
 				# ★规则(用户):「法器只有法力条触发的主动效果, 可能有常驻的被动效果」——

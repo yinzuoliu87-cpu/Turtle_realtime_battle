@@ -2778,7 +2778,9 @@ func _separation(u: Dictionary) -> Vector2:
 func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	_anticipate(u)                  # Phase4: 普攻预备(缩)+挥出(伸) 前后摇形变
 	_vfx._play_action(u, "attack")       # 有动作帧的龟(basic/ghost/ninja)播普攻动画, 其余靠 juice 形变
-	_equip_sys._eq_on_basic_attack(u, tgt)   # 普攻计数装备(008每5次普攻射珊瑚刺, 不算多段)
+	_equip_sys._eq_on_basic_attack(u, tgt)   # 普攻计数装备(不算多段)
+		## ⚠ 这里原来写着"008每5次普攻射珊瑚刺" —— **早就不是了**: 那个计数器 2026-07-19 已删,
+		##   008 现在走 `_tick_coral` 的**每 9 秒**。过期注释比没注释更糟, 我自己就被它带偏过一次。
 	_swordsman.on_basic_attack(u, tgt)       # 剑士: 排 1/1/2 次追打(★追打自己不走这里, 防自递归与赌神连击互喂)
 	if u.get("_eq_turret", false):   # 058炮台: 每次普攻自身永久+护穿+暴击(到本场战斗结束)
 		_turret_on_shot(u, tgt)
