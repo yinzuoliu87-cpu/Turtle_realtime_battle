@@ -17,6 +17,16 @@ v2 判定(保守):
 
 ★自检探针: 阳性(shell/candy-bomb/volcano-0/basic 头像)必须判活; 阴性(不存在的假文件 / 中文名副本)必须判死。
 """
+# ==========================================================================
+# ⚠⚠ 2026-08-20 警告: 本脚本按【文件名词干】判定引用, 对**拼出来的路径判错**。
+#   实测它报的 60 个"死文件"里有 **24 个是假阳**: 
+#     · equip/chest-t-*.png  ← `"…equip/chest-t-%s.png" % tid`
+#     · trainer/anim/trainer-*  ← `"…trainer-" + id + "-idle.png"`
+#   照它删 = 战利品图标全丢 + 训龟大师定格不动。
+#   ⇒ **判孤儿请用 `tools/asset_orphan_audit.py`**(它把模板用真实字面量代入后再判, 并分级给出
+#     STATIC / RESOLVED / DYN_SAMEDIR / DYN_ANCESTOR / ORPHAN, 拿不准的一律不判死)。
+#   本脚本保留给"快速看一眼资源规模"用, **不要拿它的结论删文件**。
+# ==========================================================================
 import io, os, re, json, hashlib, collections
 
 ASSET_DIR = "assets"

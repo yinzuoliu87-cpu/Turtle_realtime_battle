@@ -105,12 +105,27 @@ def const_map(files):
     return m
 
 
+FOLD_RE = re.compile(r'"([^"\n]*)"[ \t]*\+[ \t]*"([^"\n]*)"')
+
+
 def substitute_consts(text, cm):
-    """把 SPRITE_DIR + "pets/" 变成 "res://assets/sprites/" + "pets/", 好让模板正则吃到前缀。"""
-    if not cm:
-        return text
-    pat = re.compile(r'\b(' + "|".join(re.escape(k) for k in sorted(cm, key=len, reverse=True)) + r')\b')
-    return pat.sub(lambda mo: '"' + cm[mo.group(1)] + '"', text)
+    """常量替换 + 相邻字面量折叠, 好让模板正则吃到**完整**前缀。
+
+    ★两步缺一不可, 缺第二步会漏模板(实测踩到)。常量替换后代码长这样:
+        battle."res://assets/sprites/" + "pets/" + id + ".png"
+    CAT2_RE 想要的是 `"含 assets 的前缀" + 变量 + "后缀"`, 而这里前缀被拆成**相邻两个字面量**,
+    中间那段匹配不到 ⇒ `assets/sprites/pets/<*>.png` 这条模板整个丢掉 ⇒ pets/ 下的文件
+    全从"同目录动态索引"掉进"祖先通配符"档, 差点被当疑似孤儿报上去。
+    ⇒ 先把相邻字面量折叠成一个 ("a" + "b" → "ab"), 再抽模板。
+    """
+    if cm:
+        pat = re.compile(r'\b(' + "|".join(re.escape(k) for k in sorted(cm, key=len, reverse=True)) + r')\b')
+        text = pat.sub(lambda mo: '"' + cm[mo.group(1)] + '"', text)
+    for _ in range(6):          # 折叠到不动点(最多 6 段相邻拼接, 够用)
+        text, n = FOLD_RE.subn(lambda mo: '"' + mo.group(1) + mo.group(2) + '"', text)
+        if not n:
+            break
+    return text
 
 
 # ── 拼路径模板抽取 ────────────────────────────────────────────────────────────
@@ -296,6 +311,50 @@ def selftest(a):
     return "自检通过: %d 阳性判活 / %d 阴性未判活" % (len(LIVE_PROBES), len(DEAD_PROBES))
 
 
+# ══ ③ 交叉: 只被【无人读的 json 字段】引用的素材 ═══════════════════════════════
+def assets_only_via_dead_fields(dead_keys):
+    """素材的**唯一**引用来自一个没有代码消费者的 json 字段 ⇒ 引用链断在消费端。
+
+    ★这类文件最阴: ①段会把它判成 STATIC(活), 因为 data/*.json 在语料里、路径确实写着;
+      但写它的那个字段**没有任何代码读** ⇒ 运行时永远加载不到。
+      实测抓到 4 张(ghost/knockup·ghost/phase·ninja/backstab·ninja/knockup):
+      pets.json 的 knockupAnim/extraSprites 里明明白白写着 src, 而实时版的动画表是
+      RealtimeBattle3DScene 里**硬编码**的 ACTION_* 常量, 从来不看 pets.json 这几个字段。
+      (memory: 「写进去了没人读」)
+    """
+    # 收集: 每个 dead 字段里出现的 src/icon 之类的路径值
+    from_dead = {}
+    def rec(o, path_keys):
+        if isinstance(o, dict):
+            for k, v in o.items():
+                rec(v, path_keys + [str(k)])
+        elif isinstance(o, list):
+            for v in o:
+                rec(v, path_keys)
+        elif isinstance(o, str) and o.endswith((".png", ".webp", ".jpg")):
+            # 该值所在的字段链里, 只要有一层是 dead key, 就记账
+            for k in path_keys:
+                if k in dead_keys:
+                    from_dead.setdefault(o, set()).add(k)
+                    break
+    for p in glob.glob("data/**/*.json", recursive=True):
+        try:
+            rec(json.load(io.open(p, encoding="utf-8")), [])
+        except Exception:
+            pass
+    code = code_blob()
+    out = []
+    for s, ks in sorted(from_dead.items()):
+        full = "assets/sprites/" + s if not s.startswith("assets/") else s
+        if not os.path.exists(full):
+            continue
+        # 代码里另有引用 → 不算(它还活着, 只是 json 那条是多余的)
+        if s in code or ("/" + os.path.basename(s)) in code or ('"%s"' % os.path.basename(s)) in code:
+            continue
+        out.append((full, sorted(ks)))
+    return out
+
+
 # ══ ② data/*.json 字段消费者 ═══════════════════════════════════════════════════
 def json_keys():
     """收集 data/*.json 的所有键名 + 它的路径签名(pets[].skills[].icon 这种)。"""
@@ -331,18 +390,50 @@ def code_blob():
     return "\n".join(txt)
 
 
+def data_values():
+    """data/*.json 里出现过的**字符串值**集合。
+
+    ★没有这一层会造出 21 个假阳性(实测): passive-icons.json 是一张
+      `passive.type → 图标路径` 的**查表**, 它的键(lavaRage/ghostCurse/…)是 **id**,
+      代码里根本不会写 `get("lavaRage")` —— 代码写的是
+      `DataRegistry.passive_icons.get(passive["type"])`, 键从 pets.json 的值里来。
+      只看"键名有没有在代码里出现"会把整张活表判成死字段。
+    """
+    vals = set()
+    def rec(o):
+        if isinstance(o, dict):
+            for v in o.values():
+                rec(v)
+        elif isinstance(o, list):
+            for v in o:
+                rec(v)
+        elif isinstance(o, str):
+            vals.add(o)
+    for p in glob.glob("data/**/*.json", recursive=True):
+        try:
+            rec(json.load(io.open(p, encoding="utf-8")))
+        except Exception:
+            pass
+    return vals
+
+
 def audit_json_fields():
     keys = json_keys()
     blob = code_blob()
     lits = literals_of(blob)
-    # 「有消费者」= 键名以带引号字面量出现在代码里(覆盖 get("k") / ["k"] / has("k") / 常量表)
-    unread, read = [], []
+    dvals = data_values()
+    # 「有消费者」两条任一:
+    #   ① 键名以带引号字面量出现在代码 (get("k") / ["k"] / has("k") / 常量表) —— 字段被直接读
+    #   ② 键名同时是别处 json 里的**值** —— 它是查表的 id, 由数据驱动地被 get 到
+    unread, read, lookup = [], [], []
     for k, sigs in sorted(keys.items()):
         if k in lits:
             read.append(k)
+        elif k in dvals:
+            lookup.append(k)
         else:
             unread.append((k, sorted(sigs)[:3], len(sigs)))
-    return keys, read, unread
+    return keys, read, lookup, unread
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -431,23 +522,34 @@ def main():
                           len(buckets["ORPHAN"])))
 
     if only != "--assets":
-        keys, read, unread = audit_json_fields()
+        keys, read, lookup, unread = audit_json_fields()
         L.append("")
         L.append("═══ ② data/*.json 字段消费者普查 ═══")
         L.append("【分母】")
         L.append("  data/**/*.json 里出现的**不同键名** %d 个" % len(keys))
-        L.append("  在 scripts/ autoload/ tests/ tools/ 里作为带引号字面量出现的 %d 个" % len(read))
-        L.append("  找不到任何字面量消费者的 %d 个" % len(unread))
+        L.append("  ① 代码里作为带引号字面量出现(字段被直接读) %d 个" % len(read))
+        L.append("  ② 键名同时是别处 json 的值(= 查表 id, 数据驱动地被 get) %d 个" % len(lookup))
+        L.append("  ③ 两条都不沾 —— 无消费者 %d 个" % len(unread))
         L.append("")
-        L.append("  ⚠ 口径说明: 键名可能同时是 id(ghost_seed 用龟 id 当键), 所以这里的")
-        L.append("     '无消费者' 只说明**这个字符串在代码里一次都没出现**, 不等于字段无用 ——")
-        L.append("     还要人工看它的路径签名是不是 '容器键'。签名一并列出。")
+        L.append("  ⚠ 口径: ③ 只说明这个字符串在**代码和 data 值域里都一次没出现**。")
+        L.append("     仍可能被'遍历整个 dict'的代码消费(for k in d: ...), 那种没有字面量痕迹。")
+        L.append("     所以下面这张表是**待人工确认**, 不是判决书。签名一并列出。")
         L.append("")
         L.append("═══ 无消费者键名 (%d 个) ═══" % len(unread))
         for k, sigs, nsig in unread:
             L.append("  %-34s  出现 %3d 处, 例: %s" % (k, nsig, "; ".join(sigs)))
-        summary.append("json keys: N=%d  consumed=%d  no-consumer=%d"
-                       % (len(keys), len(read), len(unread)))
+        summary.append("json keys: N=%d  read-in-code=%d  lookup-id=%d  no-consumer=%d"
+                       % (len(keys), len(read), len(lookup), len(unread)))
+
+        cross = assets_only_via_dead_fields({k for k, _, _ in unread})
+        L.append("")
+        L.append("═══ ③ 交叉: 唯一引用来自【无人读的 json 字段】的素材 (%d 张) ═══" % len(cross))
+        L.append("  ①段会把它们判成 STATIC(活) —— 路径确实写在 data/*.json 里;")
+        L.append("  但写它的字段没有任何代码消费者 ⇒ 运行时永远加载不到。属于**断在消费端**的假活。")
+        L.append("")
+        for f, ks in cross:
+            L.append("    %-52s  ← 只出现在 %s" % (f, "/".join(ks)))
+        summary.append("cross: assets-alive-only-via-dead-json-field = %d" % len(cross))
 
     out = "c:/tmp/asset_orphan_audit.txt"
     try:

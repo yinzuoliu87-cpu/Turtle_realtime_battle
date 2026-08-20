@@ -400,7 +400,11 @@ const WS := 0.024                         # 像素 → 米 比例 (ARENA 1140×5
 const PIXEL_SIZE := 0.012                 # (旧) 头像兜底像素→米; 全身图改按帧高归一到 TARGET_BODY_H
 
 # 动作动画表 (1:1 复用回合制 BattleScene _ACTION_ATTACK/_ACTION_HURT/_ACTION_DEATH).
-#   只有 basic/ghost/ninja/treasure_golem 有真动作帧 (其余龟靠 idle + juice 形变).
+#   只有 basic/ghost/ninja 有真动作帧 (其余龟靠 idle + juice 形变).
+#   ⚠ 这行原来还写着 treasure_golem —— **是假的**(2026-08-20 核实): 它在下面三张 ACTION_* 表里
+#     出现 0 次, 磁盘上的 attack/death/hurt/knockup 四张帧从没接过线; 而且全项目没有任何地方
+#     把 spr_id 设成 "treasure-golem"(召唤物用的是龟 id), 所以连 :1894 那个 idle 分支也走不到。
+#     没有顺手"接上" —— 没有消费者的接线等于凭空发明玩法, 该由用户决定这套美术要不要用。
 #   值 = [相对路径, 每秒帧率] (帧尺寸 = 图高=方帧; hframes = 宽/帧高). 播一次后回 idle.
 const ACTION_ATTACK := {
 	"basic":  ["pets/animations/basic/attack.png", 14.0],
