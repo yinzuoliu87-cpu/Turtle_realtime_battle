@@ -365,6 +365,10 @@ run_audit "tools/text_formula_audit.py"  "ALL OK" "text_formula_audit (文案文
 run_audit "tools/text_claim_audit.py"    "ALL OK" "text_claim_audit (文案声称↔代码实际·触发周期/选靶/作用范围)"
 run_audit "tools/plans_lint.py"          "ALL OK" "plans_lint (方案书生命周期·状态/骨架/实施回填)"
 run_audit "tools/dead_preload_audit.py"  "ALL OK" "dead_preload (preload 了却没人用的常量)"
+# ★2026-08-20 补挂: 这个脚本 2026-08-19 就写了, 我还多次在提交信息里声称把检查"焊进门禁",
+#   但它**从来没进过 run-tests.sh** —— 改动史词/别家游戏黑话/数字间距 一条都没被强制执行过。
+#   (它原本也不打 ALL OK、恒返回 0, 一并补了判定行。)
+run_audit "tools/codex_text_lint.py"     "ALL OK" "codex_text_lint (图鉴文案: 教学味/自夸/开发备注/别家黑话/数字贴字)"
 
 echo ""
 if [ "$FAIL" -eq 0 ]; then

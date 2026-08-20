@@ -273,6 +273,15 @@ def main():
         print('  明确豁免 %d 条(超上限但复核认为该留):' % len(DETAIL_ALLOW))
         for k, why in DETAIL_ALLOW.items():
             print('       %s %s.%s —— %s' % (k[0], k[1], k[2], why))
+
+    # 2026-08-20 补上真正的判定行 + 非零退出码。
+    #   在此之前本脚本从不打 ALL OK、恒返回 0, 是个报告工具 —— 而我今晚多次声称把
+    #   改动史词 / 别家游戏黑话 / 数字间距「焊进门禁」, 实际 run-tests.sh 里根本没有它,
+    #   那些检查一条都没被强制执行过。(memory: 写进去了没人读 + 假门禁)
+    if total > 0:
+        print(chr(10) + "[FAIL] 图鉴文案体检: 上面 %d 处硬问题" % total)
+        return 1
+    print(chr(10) + "ALL OK — 图鉴文案体检(无教学味/自夸/开发备注/别家黑话/数字贴字; 漏讲机制未超基线)")
     return 0
 
 
