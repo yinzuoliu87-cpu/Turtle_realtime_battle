@@ -738,8 +738,8 @@
       "name": "怨灵",
       "hpPct": 5,
       "turns": 3,
-      "brief": "登场时对全体敌人各施加 2.5 秒诅咒，并在自己阵亡时对<span class=\"val-normal\">随机 1 个敌人</span>再施加 5 秒。\n诅咒每秒造成目标最大生命值 <span class=\"val-true\">5%</span> 的真实伤害。\n诅咒无视双抗；<span class=\"val-normal\">不叠层数，重复施加累加剩余时长</span>。",
-      "desc": "登场诅咒：\n登场瞬间对全部敌人各施加 2.5 秒诅咒。\n死亡诅咒：\n幽灵龟死亡瞬间，对<span class=\"val-normal\">随机 1 个敌人</span>施加 5 秒诅咒。\n诅咒：\n每秒造成目标 <span class=\"val-true\">5% 最大生命值</span>的真实伤害（无视双抗）。\n<span class=\"val-normal\">不叠层数，重复施加改为累加剩余时长</span>（可无限累加）。\n只在登场、死亡、灵魂风暴命中时施加；没有周期性续诅咒，普攻也不叠诅咒。"
+      "brief": "登场时对全体敌人各施加 {C:GhostSystem.SPAWN_CURSE_SEC} 秒诅咒，并在自己阵亡时对<span class=\"val-normal\">随机 1 个敌人</span>再施加 5 秒。\n诅咒每秒造成目标最大生命值 <span class=\"val-true\">5%</span> 的真实伤害。\n诅咒无视双抗；<span class=\"val-normal\">不叠层数，重复施加累加剩余时长</span>。",
+      "desc": "登场诅咒：\n登场瞬间对全部敌人各施加 {C:GhostSystem.SPAWN_CURSE_SEC} 秒诅咒。\n死亡诅咒：\n幽灵龟死亡瞬间，对<span class=\"val-normal\">随机 1 个敌人</span>施加 5 秒诅咒。\n诅咒：\n每秒造成目标 <span class=\"val-true\">5% 最大生命值</span>的真实伤害（无视双抗）。\n<span class=\"val-normal\">不叠层数，重复施加改为累加剩余时长</span>（可无限累加）。\n只在登场、死亡、灵魂风暴命中时施加；没有周期性续诅咒，普攻也不叠诅咒。"
     },
     "skillPool": [
       {
@@ -1734,8 +1734,8 @@
     "passive": {
       "type": "phoenixRebirth",
       "name": "涅槃",
-      "brief": "在首次死亡时浴火重生，以 <span class=\"val-heal\">25% 最大生命值</span>复活，并对全体敌人施加（0.3×攻击力）层灼烧，以及持续 <span class=\"val-atk\">5 秒</span>的 <span class=\"val-atk\">50%</span> 治疗削减。",
-      "desc": "首次死亡时以（25%×最大生命值({HP}) = {H:HP*0.25}）生命值复活，并对全体敌人施加 <span style=\"color:#ff6600\">（0.3×攻击力）层灼烧</span>，以及持续 5 秒的治疗削减（<span class=\"val-atk\">-50%</span>）。",
+      "brief": "在首次死亡时浴火重生，以 <span class=\"val-heal\">25% 最大生命值</span>复活，并对全体敌人施加（{C:PhoenixSystem.NIRVANA_BURN_COEF}×攻击力）层灼烧，以及持续 <span class=\"val-atk\">5 秒</span>的 <span class=\"val-atk\">50%</span> 治疗削减。",
+      "desc": "首次死亡时以（25%×最大生命值({HP}) = {H:HP*0.25}）生命值复活，并对全体敌人施加 <span style=\"color:#ff6600\">（{C:PhoenixSystem.NIRVANA_BURN_COEF}×攻击力）层灼烧</span>，以及持续 5 秒的治疗削减（<span class=\"val-atk\">-50%</span>）。",
       "detail": "以及持续 <span class=\"val-atk\">5 秒</span>的 <span class=\"val-atk\">50%</span> 治疗削减。"
     },
     "skillPool": [
@@ -1838,7 +1838,7 @@
       "transformMrScale": 0.2,
       "transformDuration": 15,
       "brief": "将造成伤害的 <span class=\"val-atk\">10%</span> 与承受伤害的 <span class=\"val-atk\">10%</span> 转化为<span class=\"val-normal\">怒气</span>。\n怒气积满 <span class=\"val-atk\">100</span> 时，熔岩龟变身为火山龟，转为近战形态、全属性提升并获得火山技能组，持续 <span class=\"val-atk\">15 秒</span>。",
-      "desc": "将造成伤害的 10% 与承受伤害的 10% 转化为怒气。\n怒气满 100 时变身为火山龟，持续 15 秒，变身时获得加成：\n最大生命值 +（250%×攻击力({ATK}) = {H:ATK*2.5}），攻击力 +（20%×攻击力({ATK}) = {N:ATK*0.2}），护甲 +（20%×攻击力({ATK}) = {D:ATK*0.2}），魔抗 +（20%×攻击力({ATK}) = {M:ATK*0.2}）\n转为近战形态（射程 70 码、移动速度 175）。\n变身演出：\n跃起 → 在敌人最密集处出现半径 400 码的预警圈 → 砸地：\n圈内敌人全部被击飞（约 0.86 秒滞空），各受到（100%×攻击力）魔法伤害与 <span style=\"color:#ff6600\">（0.3×攻击力）层灼烧</span>。\n熔岩龟每命中一名敌人，便回复 <span class=\"val-heal\">该敌人已损生命值的 8%</span>。\n15 秒后变回原来的远程形态。"
+      "desc": "将造成伤害的 10% 与承受伤害的 10% 转化为怒气。\n怒气满 100 时变身为火山龟，持续 15 秒，变身时获得加成：\n最大生命值 +（250%×攻击力({ATK}) = {H:ATK*2.5}），攻击力 +（20%×攻击力({ATK}) = {N:ATK*0.2}），护甲 +（20%×攻击力({ATK}) = {D:ATK*0.2}），魔抗 +（20%×攻击力({ATK}) = {M:ATK*0.2}）\n转为近战形态（射程 70 码、移动速度 175）。\n变身演出：\n跃起 → 在敌人最密集处出现半径 400 码的预警圈 → 砸地：\n圈内敌人全部被击飞（约 0.86 秒滞空），各受到（100%×攻击力）魔法伤害与 <span style=\"color:#ff6600\">（{C:LavaSystem.SLAM_BURN_COEF}×攻击力）层灼烧</span>。\n熔岩龟每命中一名敌人，便回复 <span class=\"val-heal\">该敌人已损生命值的 8%</span>。\n15 秒后变回原来的远程形态。"
     },
     "skillPool": [
       {

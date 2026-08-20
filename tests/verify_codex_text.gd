@@ -120,7 +120,8 @@ func _ready() -> void:
 	#      判定必须放在【模板层】: 在渲染结果里找 "{…}" 是找不到的, 那样写出来的是假绿灯(实测过)。
 	#    2026-07-28 用它抓到: 石头龟被动的 {D:initDef*maxDefInitPct/100/capTurns} 求不出值,
 	#      玩家在图鉴上直接看到公式原文。
-	var tok := RegEx.create_from_string("\\{([NPHSBDMT]):([^}]+)\\}|\\{([^}]+)\\}")
+	## ⚠ 这条正则是**本文件自己的一份**, 和 skill_text.gd 里那条是两份手抄 —— 加 token 要两边都改。
+	var tok := RegEx.create_from_string("\\{([NPHSBDMTC]):([^}]+)\\}|\\{([^}]+)\\}")
 	var dr = get_node_or_null("/root/DataRegistry")
 	var gs = get_node_or_null("/root/GameState")
 	var unresolved: Array = []
@@ -157,7 +158,18 @@ func _ready() -> void:
 					var expr: String = mm.get_string(2)
 					if expr == "":
 						expr = mm.get_string(3)
-					var v = SkillText.eval_expr(expr, vars2)
+					## ★2026-08-20: {C:类名.常量名} 走的是另一条求值路(直接读代码常量, 不经 vars),
+					##   `eval_expr` 对它只会原样吐回字符串。判据得认这一支, 否则会把**正确的引用**判成"求不出数字"。
+					##   —— 这是同一晚第三次踩"消费方各写各的求值器": 商店、verify_equip_batch3、这里。
+					var v
+					if mm.get_string(1) == "C":
+						var cv: String = SkillText.const_of(expr)
+						## 取不到时 const_of 原样吐回 "{C:...}" ⇒ 这里就会判成没求出来, 正是我们要的
+						v = (float(cv) if cv.is_valid_float() else (cv if cv.contains("/") and not cv.begins_with("{") else cv))
+						if v is String and (v as String).contains("/") and not (v as String).begins_with("{"):
+							v = 0.0   # 三档 "3/5/8" 是合法渲染结果, 算求得出
+					else:
+						v = SkillText.eval_expr(expr, vars2)
 					if not (v is int or v is float):
 						unresolved.append("%s %s %s→印出\"%s\"" % [str(pet.get("id", "?")), str(fd[0]), mm.get_string(), str(v)])
 	else:
