@@ -8579,7 +8579,6 @@ func _burn_frame(fr: float, spr: Sprite3D) -> void:
 #    2) _info_sys._update_team_panels: 每帧刷 HP 条宽 / 死亡变暗 / 选中高亮
 #    3) _hud._show_unit_info_panel: 居中详情面板 (detail_panel_frame 斜面边框), 显等级/属性/被动/技能/装备
 # ============================================================================
-const DetailPanelFrame := preload("res://scripts/scenes/detail_panel_frame.gd")
 const _PANEL_HP_W := 80.0    # 框内迷你血条宽
 
 # 立绘稀有度 (字母码 C/B/A/S/SS/SSS) → 描边色

@@ -11,7 +11,6 @@ extends RefCounted
 ##   - 终极战场 final 的演出 + 永恒 buff 叠加 (见 phase2_config G 段)
 ##   - BattleScene 在 mode=="duallane" 时按 current_lane 取 3 龟开打 (已加 guarded 钩子)
 
-const P2 := preload("res://scripts/gamedata/phase2_config.gd")
 
 
 ## 自动分路 (壳): ids → {top:[...], bottom:[...]}, 奇偶均分.

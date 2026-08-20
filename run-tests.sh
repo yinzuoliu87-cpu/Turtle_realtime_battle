@@ -364,6 +364,7 @@ run_audit "tools/docs_authority_lint.py"  "ALL OK" "docs_authority_lint (单一�
 run_audit "tools/text_formula_audit.py"  "ALL OK" "text_formula_audit (文案文字↔它自己的占位符公式)"
 run_audit "tools/text_claim_audit.py"    "ALL OK" "text_claim_audit (文案声称↔代码实际·触发周期/选靶/作用范围)"
 run_audit "tools/plans_lint.py"          "ALL OK" "plans_lint (方案书生命周期·状态/骨架/实施回填)"
+run_audit "tools/dead_preload_audit.py"  "ALL OK" "dead_preload (preload 了却没人用的常量)"
 
 echo ""
 if [ "$FAIL" -eq 0 ]; then
