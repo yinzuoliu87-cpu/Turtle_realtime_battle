@@ -380,6 +380,9 @@ run_audit "tools/number_coverage_audit.py" "ALL OK" "number_coverage (玩家文�
 #   改代码常量而不碰文案也会被抓到 —— {C:} 展开后玩家看到的数变了。
 #   确认改动是有意的: python tools/text_golden.py --update, 并把快照一起提交。
 run_audit "tools/text_golden.py"        "ALL OK" "text_golden (玩家文案快照对账·483 段)"
+# ★装备属性展示串 ↔ EquipStats.STATS(CLAUDE.md 说的真事实源)。这条缝以前谁都没管:
+#   tooltip_number_audit 只查 effectDesc1 的**效果**三元组, 属性这块它明确不管。
+run_audit "tools/basestats_audit.py"    "ALL OK" "basestats (装备属性展示串 ↔ EquipStats.STATS·597 个数)"
 
 echo ""
 if [ "$FAIL" -eq 0 ]; then
