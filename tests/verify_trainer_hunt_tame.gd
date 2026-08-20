@@ -250,10 +250,20 @@ func _tame_into_final(s) -> void:
 	s._dl_sys._dl_clear_units()
 	s._dl_sys._dl_build_lane_field()
 	await get_tree().process_frame
+	## ★2026-08-20 修间歇红(实测单跑 2 次里红 1 次): 原来「按 id 找到第一只就用」——
+	##   而同一只龟在阵容里可能有**多个**, 重建后很可能抓到同 id 但【没被驯服的那一只】,
+	##   于是分母(找得到)通过、断言(tamed_side 非空)失败, 看着像回归其实是测试不稳。
+	##   需求是「归顺者跨进决胜」, 不是「第几只跨进去」⇒ 判据改成**在同 id 的候选里找带标记的那只**,
+	##   对"抓到哪一只"不敏感; 找不到任何一只带标记才算真失败。
 	var rb = null
+	var same_id := 0
 	for u in s._units:
 		if str(u.get("id", "")) == fid and str(u.get("side", "")) == "left":
-			rb = u; break
+			same_id += 1
+			if rb == null or str(u.get("tamed_side", "")) != "":
+				rb = u
+	if same_id > 1:
+		print("     (同 id 的左侧单位有 %d 只 —— 判据已按'其中带标记的那只'取)" % same_id)
 	_chk("⑩ ★分母: 决胜战场里找得到归顺者", rb != null)
 	if rb == null:
 		return

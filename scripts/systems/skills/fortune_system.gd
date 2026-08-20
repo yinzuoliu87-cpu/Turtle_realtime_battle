@@ -43,7 +43,9 @@ func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招�
 		u["buyequip_id"] = iid; u["buyequip_star"] = 1
 		var tier: int = int(DataRegistry.phase2_equipment_by_id.get(iid, {}).get("cost", 1))
 		u["energy_cost"]["fortuneBuyEquip"] = 60.0 + [60.0, 120.0, 240.0][clampi(tier - 1, 0, 2)]   # 消耗随抽到费拉长(用户2026-07-29 第四轮: 160/240/460 → 120/180/300)
-		# ★注意这是【抽完之后】才改写 energy_cost —— 首次释放本身花的是 skill_energy 里的基准 60。
+		# ★注意这是【抽完之后】才改写 energy_cost —— 首次释放本身花的是 skill_energy 里的基准,
+		#   实测 `skill_energy.gd` 的 "fortuneBuyEquip": **10.0**(2026-08-20 核对时发现本注释
+		#   原来写的是 60, 与那张表对不上 —— 注释也是手抄的副本, 一样会漂)。
 		#   我 2026-07-29 一度把这组数说成"首释价", 是错的; 它是【第2、3次(升星)】的价。
 		battle._vfx._float_text(u["pos"] + Vector2(0, -72), "招财! " + str(DataRegistry.phase2_equipment_by_id.get(iid, {}).get("name", iid)), Color("#ffd93d"))
 	elif star >= 3:                                             # 3★满: 回复1×ATK生命
