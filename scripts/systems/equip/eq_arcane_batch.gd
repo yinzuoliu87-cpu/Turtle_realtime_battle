@@ -179,13 +179,16 @@ func _init(b) -> void:
 ##   本函数没有 ⇒ 088/089/090 打水晶龟的魔法段比全局口径高 25%(÷0.8)。要么补上, 要么明确豁免。
 ##   **负魔抗照吃**(resist_multiplier 对负值返回 1+|r|/(|r|+40)),
 ##   089 削穿之后靠的就是这条。
+## 魔法伤害结算 —— **直接转调主场景那一份**, 不再自己算。
+##
+## ★2026-08-20 修的一个真数值 bug: 这个函数原来自己抄了一遍公式, 注释还写着
+##   "与 _resolve_dmg 魔法分支**逐字一致**" —— **假的**: 主场景那边还有一行
+##   `if magic and tgt.id == "crystal": base *= 0.8`(水晶共鸣受魔法额外 -20%),
+##   这份没有 ⇒ **088/089/090 打水晶龟的魔法段是应有伤害的 125%(÷0.8)**。
+## ★修法不是补那一行, 是把副本删掉转调 —— 补一行只是让今天对上, 明天主场景再加一条又漂。
+##   (memory: 手抄的副本必然落后)
 func _magic_after_mr(u: Dictionary, raw: float, tgt: Dictionary) -> int:
-	var resist: float = DamageMath.effective_resist(float(tgt.get("mr", 0.0)),
-		float(u.get("magic_pen_pct", 0.0)), float(u.get("magic_pen", 0.0)))
-	var d: float = raw * DamageMath.resist_multiplier(resist)
-	d *= 1.0 + float(u.get("damage_amp", 0.0))
-	d *= 1.0 - float(tgt.get("damage_reduction", 0.0))
-	return maxi(1, int(round(d)))
+	return battle._resolve_dmg(u, raw, tgt, true)
 
 
 ## 锁住【这一件法器】的法力条(见文件头「锁法力条」那节)。
