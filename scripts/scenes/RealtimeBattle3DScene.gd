@@ -8818,20 +8818,8 @@ func _fill_chest_section(sec: VBoxContainer, u: Dictionary) -> void:
 		_chest_sys.loot_detail_text(owned), "chest_loot", u)
 
 ## 一件战利品: 金框图标 + 名 + 效果描述 (样式对齐 _add_equip_row)
-const MINION_SKILL_DESC := {
-	"minionBodysurf": {
-		"name": "人体浪板",
-		"desc": "高跳回复 2×攻击力 生命 → 射出铁链定身 → 拉向目标 → 接触造成目标 10% 最大生命的物理伤害 → 踩着滑行(对被踩者持续 2×攻击力物理, 沿途 1.5×攻击力并击退) → 跳下。射程 2000 · 120 龟能",
-	},
-	"minionRocket": {
-		"name": "追踪火箭筒",
-		"desc": "蓄力 1.5 秒(枪口聚能) → 发射慢速追踪导弹(带尾焰) → 命中核爆: 400 码范围 4×攻击力物理伤害, 并施加 4 秒 50% 治疗削减。射程 2000 · 120 龟能",
-	},
-	"eliteHammer": {
-		"name": "精英铁锤",
-		"desc": "精英小将专属: 抡锤砸地, 范围击飞并造成物理伤害。射程 500 · 100 龟能",
-	},
-}
+## MINION_SKILL_DESC 已删(2026-08-20): 它是图鉴那张表的**第二份手抄**, 而且已经漂了
+## (这份连铁锤的伤害数字都没有, 图鉴那份没有龟能消耗)。现在统一走 `MinionCodex.skill_desc(type)`。
 
 func _skill_detail() -> bool:
 	return GameState != null and bool(GameState.get("skill_text_detail"))

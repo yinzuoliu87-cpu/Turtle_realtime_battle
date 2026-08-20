@@ -694,13 +694,13 @@ func _energy_state(u: Dictionary, stype: String) -> Array:
 	return [rdy * cost, cost, maxf(0.0, left), rdy]
 
 
-## 技能 type → 玩家看得懂的名字(pets.json 技能池; 小将走 MINION_SKILL_DESC 兜底)。
+## 技能 type → 玩家看得懂的名字(pets.json 技能池; 小将走 MinionCodex.skill_desc 兜底(单一文案源))。
 func _skill_name_of(u: Dictionary, stype: String) -> String:
 	var pet: Dictionary = DataRegistry.pet_by_id.get(str(u.get("id", "")), {})
 	for sk in pet.get("skillPool", []):
 		if sk is Dictionary and str((sk as Dictionary).get("type", "")) == stype:
 			return str((sk as Dictionary).get("name", stype))
-	var md = battle.MINION_SKILL_DESC.get(stype, null)
+	var md = MinionCodex.skill_desc(stype)
 	if md != null:
 		return str((md as Dictionary).get("name", stype))
 	return stype
@@ -1112,7 +1112,7 @@ func _skill_bar_entries(u: Dictionary) -> Array:
 	# ③ 携带的主动技(3选1 选中的那一个; 小将走独立文案表)
 	if pool.is_empty():
 		for t in u.get("active_skills", []):
-			var md = battle.MINION_SKILL_DESC.get(str(t), null)
+			var md = MinionCodex.skill_desc(str(t))
 			if md != null:
 				out.append({"name": str(md["name"]), "cost": battle._skill_cost(u, str(t)), "icon": "",
 					"desc": str(md["desc"]), "tpl": "", "sk": {}})
@@ -1543,7 +1543,7 @@ func _panel_skill_entries(u: Dictionary) -> Array:
 	# ★小将走独立文案表(pets.json 里没有 __minion__)
 	if pool.is_empty():
 		for t in u.get("active_skills", []):
-			var md = battle.MINION_SKILL_DESC.get(str(t), null)
+			var md = MinionCodex.skill_desc(str(t))
 			if md != null:
 				out.append({"name": str(md["name"]), "desc": str(md["desc"])})
 		if not out.is_empty():

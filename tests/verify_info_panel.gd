@@ -98,10 +98,17 @@ func _test_stat_rows(s) -> void:
 
 ## 2b. 小将技能描述
 func _test_minion_skills(s) -> void:
-	var tbl: Dictionary = RTScene.MINION_SKILL_DESC
-	_ok("小将技能文案表存在", tbl.size() >= 3, "%d 条" % tbl.size())
+	## ★2026-08-20 改源: 小将文案原来在 `RTScene.MINION_SKILL_DESC`, 那是图鉴那张表的**第二份手抄**
+	##   (且已漂: 那份连铁锤伤害数字都没有)。现在统一走 `MinionCodex.skill_desc()`。
+	##   判据不变 —— 还是问"三个 type 各自取不取得到一段够长的文案"。
+	var got := 0
 	for k in ["minionBodysurf", "minionRocket", "eliteHammer"]:
-		_ok("小将技能『%s』有文案" % k, tbl.has(k) and str(tbl[k].get("desc", "")).length() > 10)
+		var d = MinionCodex.skill_desc(k)
+		var okd: bool = d is Dictionary and str((d as Dictionary).get("desc", "")).length() > 10
+		if okd:
+			got += 1
+		_ok("小将技能『%s』有文案" % k, okd)
+	_ok("小将技能文案表存在", got >= 3, "%d 条" % got)
 
 	# ★真正走一遍面板取条目的路径: 小将 pets.json 里没有条目, 必须靠这张表兜底
 	var minion := {"id": "__minion__", "side": "left", "active_skills": ["minionRocket"]}
