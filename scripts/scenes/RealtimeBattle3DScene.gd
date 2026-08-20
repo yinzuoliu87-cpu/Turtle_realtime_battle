@@ -1,4 +1,8 @@
 extends Node3D
+## ★2026-08-20 加 class_name: 让玩家文案能用 {C:RealtimeBattle3DScene.BUFF_SEC} 直接引用
+##   全局战斗常量(BUFF_SEC/HP_MULT…)。在此之前这些时长只能在文案里手抄一遍,
+##   而手抄的副本必然落后 —— 水晶龟 brief 就写成了「永久削减魔抗」而代码是 5 秒。
+class_name RealtimeBattle3DScene
 const HpBarScene := preload("res://scripts/scenes/hp_bar.gd")   # 回合制版好看血条 (自定义 _draw, 复用)
 const Backend := preload("res://scripts/net/backend.gd")    # 赛季结算上传 ghost (异步PvP池)
 ## RealtimeBattle3DScene — 2.5D 战斗核心 (Phase 2, 见 docs/design/2.5D战斗架构方案.md §四.2-4)
@@ -286,7 +290,12 @@ const BASIC_ATK := {
 	"angel":    {"phys": 1.0, "hits": 1},                                          # 远程平A 1.0ATK单段(用户)+审判被动
 	"ice":      {"phys": 1.0, "magic": 1.0, "hits": 1, "alt_each": true},           # 单段逐次交替物/魔 1.0ATK(用户2026-07-28: 0.8→1.0·配冰柱层加强)
 	"ninja":    {"phys": 1.0, "hits": 1, "rider": "bleed"},                         # 斩击(封板): 近战1A物理+2层流血; 冲击已转被动auto-dash
-	"ghost":    {"phys": 0.5, "true": 0.7, "hits": 1},                             # 物+真 (用户2026-07-28削弱: 0.4物+0.9真 → 0.5物+0.7真)
+	"ghost":    {"phys": 0.4, "true": 0.9, "hits": 1},                             # ★这一行【对幽灵不生效】: _basic_attack 在读本表之前就为 ghost 早退
+	                                                                               #   (见本文件 `if u["id"] == "ghost": _ballistics._fire_ghost_wisp(...); return`),
+	                                                                               #   真正结算的是 battle_ballistics.gd 的 gt_phys/gt_true = 0.4A物 + 0.9A真。
+	                                                                               #   2026-07-28 那次「0.4物+0.9真 → 0.5物+0.7真」的削弱**只改到了这张死表上**,
+	                                                                               #   玩家从来没吃到过, 文案却照抄了它。已把本行改回与活代码一致以免继续骗人;
+	                                                                               #   **那次削弱要不要真的落地, 待用户拍板**(动它=改平衡, 不是改文案)。
 	"diamond":  {"phys": 0.7, "def": 0.6, "mr": 0.6, "hits": 1},                    # +护甲魔抗
 	"fortune":  {"phys": 1.0, "gold": 0.02, "hits": 1},                            # 1下(用户; 回合制原2下)
 	"dice":     {"phys": 0.9, "critflat": 55.0, "hits": 1},                         # 90%物理+5500%暴击率flat·单段近战(对齐回合制 diceAttack critBonusMult=55·无实时原话)
@@ -6308,14 +6317,14 @@ const _CHEST_TREASURE_NAME := {
 const _CHEST_TREASURE_DESC := {
 	"dagger": "攻击力 +25%",
 	"wood_shield": "护甲与魔抗 +20%",
-	"rum": "每 10 秒回复 8% 最大生命",
+	"rum": "每秒回复 0.5% 最大生命",
 	"blood_dice": "暴击率 +35%",
 	"chain": "砸击的范围与射程 ×2",
 	"stone": "砸击额外 +100% 护甲与 +100% 魔抗",
 	"long_sword": "攻击力 +45%",
 	"bloodblade": "吸血 +25%",
 	"flint": "普攻命中施加灼烧",
-	"gem_armor": "护甲与魔抗 +25%, 最大生命 +60",
+	"gem_armor": "护甲与魔抗 +25%, 最大生命 +500",
 	"poison": "普攻命中使目标受到的治疗 -50%, 持续 5 秒",
 	"phoenix_statue": "首次死亡以 25% 最大生命复活",
 	"crown": "攻击力 +40%, 暴击 +40%, 暴击伤害 +25%, 吸血提升",

@@ -71,8 +71,9 @@ func _minion_rocket_fly(u: Dictionary, tref: Dictionary, from: Vector2) -> void:
 	lastdir = lastdir.normalized() if lastdir.length() > 1.0 else Vector2.RIGHT
 	var trailc: float = 0.0
 	var puls: float = 0.0
-	while flew < 2400.0 and is_instance_valid(miss) and battle.is_inside_tree():
+	while is_instance_valid(battle) and flew < 2400.0 and is_instance_valid(miss) and battle.is_inside_tree():
 		await battle.get_tree().process_frame
+		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		if battle._over: break
 		if battle._hitstop > 0.0 or (not battle._timestop._ts_active.is_empty() and not battle._arr_has_unit(battle._timestop._ts_active, u)): continue   # 时停: 只冻非active单位; 携带沙漏的自己要照常落地(否则_slam永不解锁=卡空中·用户2026-07-19)   # 顿帧/时停期悬停
 		var dt: float = battle.get_process_delta_time()
@@ -201,8 +202,9 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 	var from: Vector2 = u["pos"]
 	var h0: float = float(u.get("height", 0.0))           # 从空中悬停高度俯冲下来
 	var d = 0.0
-	while d < 0.3 and u.get("alive", false):             # 0.3s从空中俯冲扑到目标身上(边冲边下落·减速40%·用户2026-07-18)
+	while is_instance_valid(battle) and d < 0.3 and u.get("alive", false):             # 0.3s从空中俯冲扑到目标身上(边冲边下落·减速40%·用户2026-07-18)
 		await battle.get_tree().process_frame
+		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		if battle._over: break
 		if battle._hitstop > 0.0 or (not battle._timestop._ts_active.is_empty() and not battle._arr_has_unit(battle._timestop._ts_active, u)): continue   # 时停: 只冻非active单位; 携带沙漏的自己要照常落地(否则_slam永不解锁=卡空中·用户2026-07-19)
 		d += battle.get_process_delta_time()
@@ -225,8 +227,9 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 	var dot_t = 0.0
 	var sd = 0.0
 	var slide_dur = 0.833   # 滑行减速40%(0.5→0.833s·同距离更慢·用户2026-07-18)
-	while sd < slide_dur and u.get("alive", false) and tref.get("alive", false):
+	while is_instance_valid(battle) and sd < slide_dur and u.get("alive", false) and tref.get("alive", false):
 		await battle.get_tree().process_frame
+		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		if battle._over: break
 		if battle._hitstop > 0.0 or (not battle._timestop._ts_active.is_empty() and not battle._arr_has_unit(battle._timestop._ts_active, u)): continue   # 时停: 只冻非active单位; 携带沙漏的自己要照常落地(否则_slam永不解锁=卡空中·用户2026-07-19)
 		var dt = battle.get_process_delta_time()

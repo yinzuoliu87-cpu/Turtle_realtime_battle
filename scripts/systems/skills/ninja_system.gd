@@ -76,6 +76,7 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 			if not u.get("alive", false): break
 			if is_instance_valid(_nspr): _nspr.frame = _wf
 			await battle._wait_sim(0.045)
+			if not is_instance_valid(battle): return   ## await 回来 battle 可能已被 queue_free(战斗结束)
 	var traveled = 0.0
 	# ★冲击特效(用户2026-07-11): 角色前方一道疾风拖影伴随滑行(fx-trail·贴地朝行进方向·每帧跟随身前)
 	var lead = Sprite3D.new()
@@ -90,8 +91,9 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 	lead.rotation.y = -atan2(dir.y, dir.x)                      # 朝行进方向
 	lead.position = battle._world_pos(start + dir * 60.0, 1.0)
 	battle._world.add_child(lead)
-	while traveled < total and u.get("alive", false) and battle.is_inside_tree():
+	while is_instance_valid(battle) and traveled < total and u.get("alive", false) and battle.is_inside_tree():
 		await battle.get_tree().process_frame
+		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		traveled = minf(total, traveled + 600.0 * battle.get_process_delta_time())   # 恒速 600 码/秒
 		u["pos"] = start + dir * traveled
 		if is_instance_valid(lead): lead.position = battle._world_pos(u["pos"] + dir * 60.0, 1.0)   # 拖影跟在身前
@@ -133,6 +135,7 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 				var _lim: int = _nspr_last(_nspr)
 				_nspr.frame = clampi(_lim - _step, 0, _lim)
 			await battle._wait_sim(0.05)
+			if not is_instance_valid(battle): return   ## await 回来 battle 可能已被 queue_free(战斗结束)
 		u["_manual_anim"] = false
 		if is_instance_valid(_nspr): battle._set_anim_sheet(u, u.get("idle_sd", {}), "", true)   # 回idle
 	u["_ninja_gliding"] = false                               # 冲刺(含落地)结束→放开触发

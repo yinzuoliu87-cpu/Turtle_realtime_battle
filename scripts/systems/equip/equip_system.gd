@@ -557,6 +557,7 @@ func _eq_dumbbell_routine(u: Dictionary, si: int) -> void:   # 原地锻炼(锁�
 		if not u.get("alive", false): u["_slam"] = false; return
 		battle._anticipate(u)
 		await battle._wait_sim(0.3)
+		if not is_instance_valid(battle): return   ## await 回来 battle 可能已被 queue_free(战斗结束)
 	if not is_instance_valid(self): return
 	var stt: Dictionary = u["eq_state"].get("p2eq_020", {})   # 锻炼层(eq_state局内计数, 每场战斗重置)
 	stt["exercise"] = int(stt.get("exercise", 0)) + 1
@@ -663,8 +664,9 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007(重做�
 	var traveled := 0.0
 	var trail_next := 0.0
 	var hit: Array = []
-	while traveled < reach and is_instance_valid(qi) and is_instance_valid(self):
+	while is_instance_valid(battle) and traveled < reach and is_instance_valid(qi) and is_instance_valid(self):
 		await battle.get_tree().process_frame
+		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		if not u.get("alive", false): break
 		traveled += 820.0 * battle.get_process_delta_time()
 		var pos: Vector2 = front + dir * traveled
@@ -738,8 +740,9 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 	var reach := 1050.0
 	var traveled := 0.0
 	var hit: Array = []
-	while traveled < reach and is_instance_valid(self):
+	while is_instance_valid(battle) and traveled < reach and is_instance_valid(self):
 		await battle.get_tree().process_frame
+		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		traveled += 650.0 * battle.get_process_delta_time()   # 剑速(用户:慢点)
 		var front_along: float = -130.0 + traveled
 		for i in range(swords.size()):
@@ -1180,8 +1183,9 @@ func _eq_laser_chop(u: Dictionary, tgt: Dictionary, si: int, base_range: float) 
 	var traveled: float = 0.0
 	var last_tr: float = -100.0
 	var hit: Array = []
-	while traveled < reach and is_instance_valid(wave) and is_instance_valid(self):
+	while is_instance_valid(battle) and traveled < reach and is_instance_valid(wave) and is_instance_valid(self):
 		await battle.get_tree().process_frame
+		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		traveled += 550.0 * battle.get_process_delta_time()
 		wave.position = battle._world_pos(origin + dir * traveled, _wwh * 0.5)   # 底边贴地不入地(用户2026-07-12)
 		if traveled - last_tr >= 80.0:   # 气波拖尾: 每隔80码一道淡残影(减少·不糊成雾·用户2026-07-12)
@@ -1286,8 +1290,9 @@ func _eq_fire_coral_active(src: Dictionary, si: int) -> void:   # 灼热火珊�
 	var hit: Array = []
 	var traveled := 0.0
 	var half := deg_to_rad(30.0)   # 60°扇形半角
-	while traveled < 550.0 and is_instance_valid(wave) and is_instance_valid(self):
+	while is_instance_valid(battle) and traveled < 550.0 and is_instance_valid(wave) and is_instance_valid(self):
 		await battle.get_tree().process_frame
+		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		traveled += 320.0 * battle.get_process_delta_time()   # 缓慢外移
 		wave.position = battle._world_pos(origin + dir * traveled, 0.4)
 		wave.scale = Vector3(2.2 + traveled / 550.0 * 4.5, 3.2, 1.0)   # 边挥边扩
@@ -1421,6 +1426,7 @@ func _eq_bloodletting(u: Dictionary, si: int) -> void:   # 饮血护符坠(011):
 		battle._blood_slash(u["pos"], o["pos"], 0.0)   # 这一刀立即砍
 		battle._damage._apply_damage_from(u, o, int((battle._resolve_dmg(u, u["atk"] * [0.5, 0.7, 1.0][si] + [40.0, 50.0, 70.0][si], o, false)) * decay), Color("#ff8aa0"), 0.33, false, true)
 		await battle._wait_sim(0.3)   # 一段一段: 每0.3s一刀
+		if not is_instance_valid(battle): return   ## await 回来 battle 可能已被 queue_free(战斗结束)
 	if not is_instance_valid(self): return
 	var shg: int = int(u["shield"] - sh0)   # 连斩吸血溢出转的盾, 结尾汇总一次
 	if shg > 0: battle._vfx._float_text(u["pos"] + Vector2(28, -46), "护盾+" + str(shg), Color("#8ad7ff"), false, "shield")

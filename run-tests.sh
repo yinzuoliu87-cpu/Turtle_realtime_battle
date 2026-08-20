@@ -391,6 +391,11 @@ run_audit "tools/text_golden.py"        "ALL OK" "text_golden (玩家文案快�
 #   tooltip_number_audit 只查 effectDesc1 的**效果**三元组, 属性这块它明确不管。
 run_audit "tools/basestats_audit.py"    "ALL OK" "basestats (装备属性展示串 ↔ EquipStats.STATS·597 个数)"
 
+# ★await 之后 battle 可能已被 queue_free —— 2026-08-20 smoke 间歇红 1/3 的根因
+#   (`get_process_delta_time` in base `previously freed`)。这类错只在"战斗刚结束"那一瞬
+#   命中, 本地手跑十次可能一次都不出, 所以必须静态守住而不是靠冒烟撞。
+run_audit "tools/await_guard_audit.py" "ALL OK" "await_guard (协程 await 回来先确认 battle 还活着)"
+
 echo ""
 if [ "$FAIL" -eq 0 ]; then
   echo "ALL PASS ($PASS/$PASS)"

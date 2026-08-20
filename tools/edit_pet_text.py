@@ -33,13 +33,33 @@ def main(argv):
     for p in pets:
         if str(p.get('id', '')) != pid:
             continue
+        ## <列表名:技能名> 形式: 同名技能撞车时用它指名(如 volcanoSkills:火山爆发)
+        if ':' in where and where != 'passive':
+            lname, sname = where.split(':', 1)
+            for sk in (p.get(lname) or []):
+                if isinstance(sk, dict) and str(sk.get('name', '')) == sname:
+                    target = sk
+                    break
+            break
         if where == 'passive':
             target = p.get('passive')
         else:
-            for sk in (p.get('skills') or []):
-                if str(sk.get('name', '')) == where:
-                    target = sk
-                    break
+            ## ★技能不止住在 'skills' 里 —— 实际数据用的是 skillPool, 熔岩还有 volcanoSkills。
+            ##   只搜 'skills' 会【一个都找不到】然后报「找不到」, 看着像我打错了技能名。
+            ##   改成搜遍所有【元素是带 name 的字典】的列表; 同名撞车就报错不猜。
+            hits = []
+            for key, val in p.items():
+                if not isinstance(val, list):
+                    continue
+                for sk in val:
+                    if isinstance(sk, dict) and str(sk.get('name', '')) == where:
+                        hits.append((key, sk))
+            if len(hits) > 1:
+                print('[FAIL] %s 有 %d 个技能都叫「%s」(%s) —— 不猜, 用 <列表名:技能名> 指名'
+                      % (pid, len(hits), where, ', '.join(h[0] for h in hits)))
+                return 1
+            if hits:
+                target = hits[0][1]
         break
     if target is None:
         print('[FAIL] 找不到 %s / %s' % (pid, where))

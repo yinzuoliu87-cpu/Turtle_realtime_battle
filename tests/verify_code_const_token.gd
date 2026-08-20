@@ -54,6 +54,55 @@ func _ready() -> void:
 	var b := ST.const_of("VenomDroneSystem.OVERSHOOT")
 	_ok("⑥ 不同常量渲染出不同值(不是写死的)", a != b, "%s vs %s" % [a, b])
 
+	## ⑦ ★★真数据 × 真入口: 全量扫 data/*.json, 断言【玩家最终看到的字里没有残留 {C:】
+	##
+	## 由来(2026-08-20 当场踩到): 我给 RealtimeBattle3DScene.gd 加了 class_name 好让文案引用
+	## BUFF_SEC。python 侧的 tools/text_golden.py 说"渲染成 5 秒, 一字不差", 而**真引擎里**
+	## 全局类缓存没刷新 ⇒ const_of 解析失败 ⇒ 原样吐回 ⇒ 玩家在图鉴上看到字面的
+	## 「{C:RealtimeBattle3DScene.BUFF_SEC}」。python 那套是**重写的渲染器**, 它绿不代表引擎绿。
+	##
+	## ★这个机制是 fail-open 的(解析不到就静默留原文), 所以必须有人盯着出口。
+	##   判据落在**玩家看到的成品字符串**上, 不落在"解析函数返回了什么"。
+	var n_seg := 0
+	var n_ctok := 0
+	var leaked: Array = []
+	for jf in ["res://data/pets.json", "res://data/phase2-equipment.json"]:
+		var fh := FileAccess.open(jf, FileAccess.READ)
+		if fh == null:
+			continue
+		var root = JSON.parse_string(fh.get_as_text())
+		fh.close()
+		var stack: Array = [root]
+		while not stack.is_empty():
+			var node = stack.pop_back()
+			if node is Array:
+				for e in node:
+					stack.append(e)
+			elif node is Dictionary:
+				for k in node.keys():
+					var v = node[k]
+					if v is String:
+						n_seg += 1
+						if not (v as String).contains("{C:"):
+							continue
+						n_ctok += 1
+						## 走玩家真正会经过的两个出口, 不是内部函数
+						var ctx := {"atk": 100.0, "def": 50.0, "mr": 30.0, "maxHp": 1000.0, "spd": 100.0}
+						var r1 := ST.render_bbcode(v, ctx, node, 17)
+						var r2 := ST.render_plain(v, ctx, node)
+						if r1.contains("{C:") or r2.contains("{C:"):
+							leaked.append(str(node.get("name", k)) + "." + str(k))
+					else:
+						stack.append(v)
+	## ★分母断言: 数据里必须真的有 {C:} 可扫, 否则这条是【空检查】而不是通过
+	_ok("⑦ 分母: 数据里确实有 {C:} 段可验", n_ctok > 0,
+		"扫了 %d 段字符串, 含 {C: 的 %d 段" % [n_seg, n_ctok])
+	_ok("⑦ ★玩家看到的字里没有残留 {C:", leaked.is_empty(),
+		("全部展开(%d 段)" % n_ctok) if leaked.is_empty() else ("残留: " + ", ".join(leaked)))
+	## ⑧ 反向验证: 故意喂一个解析不到的引用, 出口必须把它原样留下(=⑦ 一定抓得到)
+	var bogus := ST.render_plain("时长 {C:NoSuchClass.NO_SUCH} 秒", {}, {})
+	_ok("⑧ 反向: 假引用会被 ⑦ 的判据抓到", bogus.contains("{C:"), bogus)
+
 	print("%d passed, %d failed" % [_n - _fail, _fail])
 	print("ALL PASS — 代码常量占位符" if _fail == 0 else "FAIL")
 	get_tree().quit(0 if _fail == 0 else 1)

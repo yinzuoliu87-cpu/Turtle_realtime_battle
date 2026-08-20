@@ -608,7 +608,7 @@ func _vfx_preview_loop() -> void:
 	var si: int = (int(OS.get_environment("VFXPREVIEW_STAR")) - 1) if OS.has_environment("VFXPREVIEW_STAR") else 1
 	var period: float = float(OS.get_environment("VFXPREVIEW_PERIOD")) if OS.has_environment("VFXPREVIEW_PERIOD") else 1.2
 	await battle.get_tree().create_timer(0.4).timeout
-	while is_instance_valid(self):
+	while is_instance_valid(self) and is_instance_valid(battle):
 		var origin: Vector2 = battle._arena_center
 		var dir: Vector2 = Vector2.RIGHT
 		if OS.has_environment("VFXPREVIEW_DIR"):   # 验证任意方向: 角度(度)→单位向量
@@ -649,6 +649,7 @@ func _vfx_preview_loop() -> void:
 			"tr_stone": _vfx_preview_trainer(origin, dir, 6)
 			_: battle._laser_blade_sweep(fu, origin, dir, 350.0, 60.0)
 		await battle.get_tree().create_timer(period).timeout
+		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 
 ## 灵物【触手】预览：左边放一只**真的带 5 件灵物装备**的龟，右边放一个假人当靶。
 ##

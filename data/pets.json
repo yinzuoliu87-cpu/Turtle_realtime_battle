@@ -48,7 +48,7 @@
         "cd": 0,
         "icon": "skills/basic-attack.png",
         "brief": "攻击当前目标，造成 {N:1.0*ATK} 物理伤害。",
-        "detail": "小龟的普攻。\n对目标造成（100%×攻击力({ATK}) = {N:1.0*ATK}）物理伤害。\n被动·不屈按目标稀有度增伤。\n每 6 秒下次普攻强化(附 0.7×攻击力 + 20% 已损生命的物理伤害、击飞、护盾)。",
+        "detail": "小龟的普攻。\n对目标造成（100%×攻击力({ATK}) = {N:1.0*ATK}）物理伤害。\n被动·不屈按目标稀有度增伤。\n每 6 秒下次普攻强化(附 1.5×攻击力 + 13% 已损生命的物理伤害、击飞、护盾)。",
         "energyCost": 0
       },
       {
@@ -681,8 +681,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "对目标造成 {N:0.5*ATK} 物理伤害加 {T:0.7*ATK} 真实伤害。",
-        "detail": "幽灵龟用灵体触碰目标，造成（50%×攻击力 = {N:0.5*ATK}）物理伤害 +（70%×攻击力 = {T:0.7*ATK}）真实伤害。"
+        "brief": "对目标造成 {N:0.4*ATK} 物理伤害加 {T:0.9*ATK} 真实伤害。",
+        "detail": "幽灵龟用灵体触碰目标，造成（40%×攻击力 = {N:0.4*ATK}）物理伤害 +（90%×攻击力 = {T:0.9*ATK}）真实伤害。"
       },
       {
         "name": "幽冥突袭",
@@ -856,8 +856,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 999,
-        "brief": "蓄力后逐枚投出全部金币，每枚造成 {N:ATK*0.30} 物理伤害 和 {T:ATK*0.30} 真实伤害。\n<span style=\"color:#8a93a0\">目标阵亡时改投最近的敌人；\n<span class=\"val-normal\">投币全程免疫控制</span>，首次释放时<span class=\"val-atk\">同时按当时金币数 ×5 获得金盾</span>（6 秒）。\n一场战斗限用一次。\n梭哈用过后本技能变为「金盾」（消耗 80 龟能，护盾值等于当前金币数，不消耗金币，持盾期间锁定龟能）。\n</span>",
-        "detail": "财神龟蓄力后<span class=\"val-normal\">逐枚投出</span>全部金币，每枚造成（30%×攻击力({ATK}) = {N:ATK*0.30}）物理 +（30%×攻击力({ATK}) = {T:ATK*0.30}）真实伤害。\n投币期间目标阵亡则改投最近的敌人。\n<span class=\"val-normal\">逐枚投币的全程免疫控制</span>。\n首次释放时<span class=\"val-atk\">同时按当时金币数 ×5 获得金盾</span>（持续 6 秒，<span style=\"color:#8a93a0\">此金盾不锁龟能</span>）。\n<span style=\"color:#8a93a0\">一场限用一次。\n</span>\n梭哈释放后，该技能槽变为「金盾（持续 4 秒）」：消耗 80 龟能，获得等于当前金币数的通用护盾（不消耗金币），持有该护盾期间锁龟能（护盾被打光或到期即恢复）。\n梭哈用过后本技能变为「金盾」（消耗 80 龟能，护盾值等于当前金币数，不消耗金币，持盾期间锁定龟能）。"
+        "brief": "蓄力后逐枚投出全部金币，每枚造成 {N:ATK*0.30} 物理伤害 和 {T:ATK*0.30} 真实伤害。\n<span style=\"color:#8a93a0\">目标阵亡时改投最近的敌人；\n<span class=\"val-normal\">投币全程免疫控制</span>，首次释放时<span class=\"val-atk\">同时按当时金币数获得金盾</span>（6 秒）。\n一场战斗限用一次。\n梭哈用过后本技能变为「金盾」（消耗 80 龟能，护盾值 = 当前金币数 ×{C:FortuneSystem.GOLD_SHIELD_MULT}，不消耗金币，持盾期间锁定龟能）。\n</span>",
+        "detail": "财神龟蓄力后<span class=\"val-normal\">逐枚投出</span>全部金币，每枚造成（30%×攻击力({ATK}) = {N:ATK*0.30}）物理 +（30%×攻击力({ATK}) = {T:ATK*0.30}）真实伤害。\n投币期间目标阵亡则改投最近的敌人。\n<span class=\"val-normal\">逐枚投币的全程免疫控制</span>。\n首次释放时<span class=\"val-atk\">同时按当时金币数获得金盾</span>（持续 6 秒，<span style=\"color:#8a93a0\">此金盾不锁龟能</span>）。\n<span style=\"color:#8a93a0\">一场限用一次。\n</span>\n梭哈释放后，该技能槽变为「金盾（持续 4 秒）」：消耗 80 龟能，获得 当前金币数 ×{C:FortuneSystem.GOLD_SHIELD_MULT} 的通用护盾（不消耗金币），持有该护盾期间锁龟能（护盾被打光或到期即恢复）。\n梭哈用过后本技能变为「金盾」（消耗 80 龟能，护盾值等于当前金币数，不消耗金币，持盾期间锁定龟能）。"
       },
       {
         "name": "招财进宝",
@@ -972,7 +972,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "射出一道七彩光束，<span class=\"val-normal\">单段</span>造成 {N:0.9*ATK} 物理伤害，并根据当前棱镜颜色附加对应效果。",
-        "detail": "彩虹龟射出七彩光束，<span class=\"val-normal\">单段</span>造成（90%×攻击力({ATK}) = {N:0.9*ATK}）物理伤害，并根据当前棱镜颜色附加效果。\n🔴红光额外造成（25%×攻击力 = {T:0.25*ATK}）真实伤害；\n🔵蓝光使自身获得（20%×攻击力({ATK}) = {S:0.2*ATK}）护盾；\n🟢绿光回复自身 <span class=\"val-heal\">2%</span> 最大生命值。",
+        "detail": "彩虹龟射出七彩光束，<span class=\"val-normal\">单段</span>造成（90%×攻击力({ATK}) = {N:0.9*ATK}）物理伤害，并根据当前棱镜颜色附加效果。\n🔴红光额外造成（25%×攻击力 = {T:0.25*ATK}）真实伤害；\n🔵蓝光使自身获得（20%×攻击力({ATK}) = {S:0.2*ATK}）护盾；\n🟢绿光回复自身 <span class=\"val-heal\">2.5% 已损生命值</span>。",
         "energyCost": 0
       },
       {
@@ -1142,7 +1142,7 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "蓄力狙击，造成 {N:2*ATK} 物理伤害，并附加 <span class=\"val-atk\">中毒</span> 5 秒、<span class=\"val-atk\">50% 治疗削减</span> 5 秒 与 <span class=\"val-normal\">猎杀印记</span>。\n<span style=\"color:#8a93a0\">猎杀印记持续 5 秒，期间目标生命低于 24% 即被处决。\n</span>",
+        "brief": "蓄力狙击，造成 {N:2*ATK} 物理伤害，并附加 <span class=\"val-atk\">中毒</span>（层数逐秒衰减至归零）、<span class=\"val-atk\">50% 治疗削减</span> 5 秒 与 <span class=\"val-normal\">猎杀印记</span>。\n<span style=\"color:#8a93a0\">猎杀印记持续 5 秒，期间目标生命低于 24% 即被处决。\n</span>",
         "detail": "猎人龟眯眼瞄准，蓄力狙击一发造成（200%×攻击力({ATK}) = {N:2*ATK}）物理伤害。\n附加：\n中毒（每秒造成等于层数的魔法伤害，之后层数衰减到 80%，直到归零 —— 以常见攻击力计约持续 <b>11 秒</b>，伤害逐秒递减）\n治疗削减 50%（5 秒）、猎杀印记（5 秒内目标生命值低于 24%即被处决，斩杀线临时从 14%抬到 24%）。\n<span style=\"color:#8a93a0\">射箭+毒箭+猎杀印记 三合一。\n冲刺追猎靠残血追猎普攻+被动处决。\n</span>"
       },
       {
@@ -1244,7 +1244,7 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "选择本技能后，<span class=\"val-normal\">首次充能满即召唤一艘实体海盗船</span>（生命值 {H:HP*1.5}、攻击力 {N:ATK}）：\n海盗船登场冲锋撞击目标，造成 {M:ATK} 魔法伤害并<span class=\"val-atk\">击飞 2 秒</span>，之后留在场上射击最近的敌人，每发造成 {N:0.4*ATK} 物理伤害。\n此后海盗龟每次充能满便打出一轮霰弹，扇形射出 <span class=\"val-atk\">8</span> 颗弹丸，每颗对命中的第一个敌人造成 {N:0.5*ATK} 物理伤害并<span class=\"val-atk\">击退 40 码</span>。\n<span style=\"color:#8a93a0\">海盗船无护甲与魔抗，攻击速度 0.8，射程 300。\n</span>",
+        "brief": "选择本技能后，<span class=\"val-normal\">首次充能满即召唤一艘实体海盗船</span>（生命值 {H:HP*1.5}、攻击力 {N:ATK}）：\n海盗船登场冲锋撞击目标，造成 {M:ATK} 魔法伤害并<span class=\"val-atk\">击飞 2 秒</span>，之后留在场上射击最近的敌人，每发造成 {N:0.4*ATK} 物理伤害。\n此后海盗龟每次充能满便打出一轮霰弹，扇形射出 <span class=\"val-atk\">8</span> 颗弹丸，每颗对命中的第一个敌人造成 {N:0.5*ATK} 物理伤害并<span class=\"val-atk\">击退 40 码</span>。\n<span style=\"color:#8a93a0\">海盗船无护甲与魔抗，攻击速度 0.8，射程 110。\n</span>",
         "detail": "海盗龟选此技后，首次充能满召唤一艘实体海盗船（生命值 = 150%×海盗龟最大生命值({HP}) = {H:HP*1.5}，攻击力 = 100%×海盗龟攻击力({ATK}) = {N:ATK}，无护甲魔抗，攻击速度 0.8，近战（射程 110））：\n登场冲锋直撞目标，对第一个敌人 200 码范围造成（100%×攻击力 = {M:ATK}）魔法伤害并击飞 2 秒，之后留场每次射击最近敌（40%×攻击力 = {N:0.4*ATK}）物理。\n<span style=\"color:#8a93a0\">此后每次充能满，海盗龟本体朝当前目标放霰弹：8 颗子弹 60 度扇形，每颗命中路径第一个敌人（50%×攻击力 = {N:0.5*ATK}）物理并击退 40 码，射程 400。\n</span>。\n海盗船登场冲锋撞击目标，造成 {M:ATK} 魔法伤害并<span class=\"val-atk\">击飞 2 秒</span>，之后留在场上射击最近的敌人，每发造成 {N:0.4*ATK} 物理伤害。\n此后海盗龟每次充能满便打出一轮霰弹，扇形射出 <span class=\"val-atk\">8</span> 颗弹丸，每颗对命中的第一个敌人造成 {N:0.5*ATK} 物理伤害并<span class=\"val-atk\">击退 40 码</span>。\n<span style=\"color:#8a93a0\">海盗船无护甲与魔抗，攻击速度 0.8，射程 300。\n</span>"
       }
     ],
@@ -1311,8 +1311,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "在敌方最密集处降下糖衣炮弹雨，<span class=\"val-atk\">持续 4 秒</span>、每 0.5 秒一跳共 <span class=\"val-atk\">8 跳</span>。\n每一跳为友军提供【糖果龟】1.5% 最大生命值的护盾，并对敌军造成（0.2×攻击力 + 2% 自身最大生命值）魔法伤害 和 <span class=\"val-atk\">20% 减速</span>。\n<span style=\"color:#8a93a0\">减速效果每 0.5 秒刷新。\n</span>",
-        "detail": "糖果龟指挥在敌方最密集区域降下糖衣炮弹雨：\n半径 600 码，持续 4 秒，每 <b>0.42 秒</b>一跳（共 8 跳，合计约 3.4 秒）。\n每跳：\n范围内友军获得糖果龟 1.5%最大生命值的护盾。\n范围内敌军受到（20%×攻击力({ATK}) = {N:0.2*ATK}）+ 2%糖果龟最大生命值 魔法伤害，并被减速 20%（每次受击刷新 0.5 秒）。\n每一跳为友军提供【糖果龟】1.5% 最大生命值的护盾，并对敌军造成（0.2×攻击力 + 2% 自身最大生命值）魔法伤害 和 <span class=\"val-atk\">20% 减速</span>。\n<span style=\"color:#8a93a0\">减速效果每 0.5 秒刷新。\n</span>"
+        "brief": "在敌方最密集处降下糖衣炮弹雨，<span class=\"val-atk\">持续约 3.4 秒</span>、每 0.42 秒一跳共 <span class=\"val-atk\">8 跳</span>。\n每一跳为友军提供【糖果龟】1.5% 最大生命值的护盾，并对敌军造成（0.2×攻击力 + 2% 自身最大生命值）魔法伤害 和 <span class=\"val-atk\">20% 减速</span>。\n<span style=\"color:#8a93a0\">减速每跳重新施加，每次持续 0.5 秒。\n</span>",
+        "detail": "糖果龟指挥在敌方最密集区域降下糖衣炮弹雨：\n半径 600 码，持续约 3.4 秒，每 <b>0.42 秒</b>一跳（共 8 跳）。\n每跳：\n范围内友军获得糖果龟 1.5%最大生命值的护盾。\n范围内敌军受到（20%×攻击力({ATK}) = {N:0.2*ATK}）+ 2%糖果龟最大生命值 魔法伤害，并被减速 20%（每次受击刷新 0.5 秒）。\n每一跳为友军提供【糖果龟】1.5% 最大生命值的护盾，并对敌军造成（0.2×攻击力 + 2% 自身最大生命值）魔法伤害 和 <span class=\"val-atk\">20% 减速</span>。\n<span style=\"color:#8a93a0\">减速每跳重新施加，每次持续 0.5 秒。\n</span>"
       },
       {
         "name": "糖果炸弹",
@@ -1668,7 +1668,7 @@
       "transformMrScale": 0.2,
       "transformDuration": 15,
       "brief": "将造成伤害的 <span class=\"val-atk\">10%</span> 与承受伤害的 <span class=\"val-atk\">10%</span> 转化为<span class=\"val-normal\">怒气</span>。\n怒气积满 <span class=\"val-atk\">100</span> 时，熔岩龟变身为火山龟，转为近战形态、全属性提升并获得火山技能组，持续 <span class=\"val-atk\">15 秒</span>。",
-      "desc": "将造成伤害的 10% 与承受伤害的 10% 转化为怒气。\n怒气满 100 时变身为火山龟，持续 15 秒，变身时获得加成：\n最大生命值 +（250%×攻击力({ATK}) = {H:ATK*2.5}），攻击力 +（20%×攻击力({ATK}) = {N:ATK*0.2}），护甲 +（20%×攻击力({ATK}) = {D:ATK*0.2}），魔抗 +（20%×攻击力({ATK}) = {M:ATK*0.2}）\n转为近战形态（射程 70 码、移动速度 175）。\n变身演出：\n跃起 → 在敌人最密集处出现半径 400 码的预警圈 → 砸地：\n圈内敌人全部被击飞（约 0.86 秒滞空），各受到（100%×攻击力）魔法伤害与 <span style=\"color:#ff6600\">（{C:LavaSystem.SLAM_BURN_COEF}×攻击力）层灼烧</span>。\n熔岩龟每命中一名敌人，便回复 <span class=\"val-heal\">该敌人已损生命值的 8%</span>。\n15 秒后变回原来的远程形态。"
+      "desc": "将造成伤害的 10% 与承受伤害的 10% 转化为怒气。\n怒气满 100 时变身为火山龟，持续 15 秒，变身时获得加成：\n最大生命值 +（250%×攻击力({ATK}) = {H:ATK*2.5}），攻击力 +（20%×攻击力({ATK}) = {N:ATK*0.2}），护甲 +（20%×攻击力({ATK}) = {D:ATK*0.2}），魔抗 +（20%×攻击力({ATK}) = {M:ATK*0.2}）\n转为近战形态（射程 70 码、移动速度 120）。\n变身演出：\n跃起 → 在敌人最密集处出现半径 400 码的预警圈 → 砸地：\n圈内敌人全部被击飞（约 0.86 秒滞空），各受到（100%×攻击力）魔法伤害与 <span style=\"color:#ff6600\">（{C:LavaSystem.SLAM_BURN_COEF}×攻击力）层灼烧</span>。\n熔岩龟每命中一名敌人，便回复 <span class=\"val-heal\">该敌人已损生命值的 8%</span>。\n15 秒后变回原来的远程形态。"
     },
     "skillPool": [
       {
@@ -1696,7 +1696,7 @@
           "turns": 3
         },
         "brief": "在敌人最密处生成一片岩浆池，持续 <span class=\"val-atk\">5 秒</span>。\n岩浆池每 0.5 秒对池内敌人造成 {M:0.06*ATK} 魔法伤害，并使其<span class=\"val-atk\">减速 35%</span>、魔抗降低 <span class=\"val-atk\">30%</span>。",
-        "detail": "熔岩龟撕裂大地，在敌人最密集处生成一个半径 180 码的岩浆池，持续 5 秒。\n每 0.5 秒结算一次（共 10 跳）：池内所有敌人各受到（6%×攻击力({ATK}) = {M:0.06*ATK}）魔法伤害，并被减速 <span class=\"val-atk\">35%</span>、魔抗 <span class=\"val-atk\">-30%</span>（每跳刷新，离开岩浆池即失效）。\n<span style=\"color:#8a93a0\">火山形态下本技变为「火山爆发」：\n一道熔岩浪从场地远端横扫到近端，波前每扫过一名敌人即将其击飞，并造成五段共 250%×攻击力 的魔法伤害与（0.67×攻击力）层灼烧。\n熔岩龟每命中一名敌人回复 12% 最大生命值。\n</span>"
+        "detail": "熔岩龟撕裂大地，在敌人最密集处生成一个半径 180 码的岩浆池，持续 5 秒。\n每 0.5 秒结算一次（共 10 跳）：池内所有敌人各受到（6%×攻击力({ATK}) = {M:0.06*ATK}）魔法伤害，并被减速 <span class=\"val-atk\">35%</span>、魔抗 <span class=\"val-atk\">-30%</span>（每跳刷新，离开岩浆池即失效）。\n<span style=\"color:#8a93a0\">火山形态下本技变为「火山爆发」：\n一道熔岩浪从场地远端横扫到近端，波前每扫过一名敌人即将其击飞，并造成（{C:LavaSystem.ERUPT_ATK_COEF}×攻击力）魔法伤害与（{C:LavaSystem.ERUPT_BURN_COEF}×攻击力）层灼烧。\n熔岩龟每命中一名敌人回复 {C:LavaSystem.ERUPT_HEAL_PCT%}% 最大生命值。\n</span>"
       },
       {
         "name": "岩浆涌动",
@@ -1732,14 +1732,14 @@
         "icon": "skills/lava-0.png",
         "type": "lavaBolt",
         "brief": "火山形态普攻变为烈焰重击：造成（{M:1.0*ATK} + 3%自身最大生命值）魔法伤害，并施加 <span style=\"color:#ff6600\">（0.07×攻击力）层灼烧</span>。\n射程缩短为 70 码（近战）",
-        "detail": "火山形态下普攻变为烈焰重击（单段近战重锤）：造成（100%×攻击力({ATK}) = {M:1.0*ATK}）+ 3%熔岩龟自身最大生命值 魔法伤害，并施加 <span style=\"color:#ff6600\">（0.07×攻击力）层灼烧</span>。\n变身后转为近战形态：射程 70 码、移动速度 175；变身生命加成越高，重击越疼。"
+        "detail": "火山形态下普攻变为烈焰重击（单段近战重锤）：造成（100%×攻击力({ATK}) = {M:1.0*ATK}）+ 3%熔岩龟自身最大生命值 魔法伤害，并施加 <span style=\"color:#ff6600\">（0.07×攻击力）层灼烧</span>。\n变身后转为近战形态：射程 70 码、移动速度 120；变身生命加成越高，重击越疼。"
       },
       {
         "name": "火山爆发",
         "icon": "skills/volcano-2.png",
         "type": "volcanoErupt",
-        "brief": "火山龟指定一个方向，竞技场外涌来一道熔岩浪横扫全场，击退沿途敌人并造成五段共（{M:0.5*ATK*5}）魔法伤害 + 灼烧层，每命中一名敌人回复 <span class=\"val-heal\">12%</span> 最大生命值。",
-        "detail": "（对应小形态「地裂」）火山龟朝目标指定一个方向，出现一条超长矩形预警区。\n随后一道岩浆浪墙从场地远端推进到近端。\n波前每扫过一名敌人：将其击退，造成五段共（50%×攻击力({ATK})×5 = {M:0.5*ATK*5}）魔法伤害，施加 <span style=\"color:#ff6600\">（0.67×攻击力）层灼烧</span>，并使火山龟回复 <span class=\"val-heal\">12%</span> 最大生命值。"
+        "brief": "火山龟指定一个方向，竞技场外涌来一道熔岩浪横扫全场，击退沿途敌人并造成（{M:1.2*ATK}）魔法伤害 + 灼烧层，每命中一名敌人回复 <span class=\"val-heal\">{C:LavaSystem.ERUPT_HEAL_PCT%}%</span> 最大生命值。",
+        "detail": "（对应小形态「地裂」）火山龟朝目标指定一个方向，出现一条超长矩形预警区。\n随后一道岩浆浪墙从场地远端推进到近端。\n波前每扫过一名敌人：将其击退，造成（120%×攻击力({ATK}) = {M:1.2*ATK}）魔法伤害，施加 <span style=\"color:#ff6600\">（{C:LavaSystem.ERUPT_BURN_COEF}×攻击力）层灼烧</span>，并使火山龟回复 <span class=\"val-heal\">{C:LavaSystem.ERUPT_HEAL_PCT%}%</span> 最大生命值。"
       },
       {
         "name": "重击",
@@ -1848,8 +1848,8 @@
     "passive": {
       "type": "crystalResonance",
       "name": "水晶共鸣",
-      "brief": "对受到的魔法伤害额外减免 <span class=\"val-magic\">20%</span>。\n水晶龟每次攻击都为目标叠加一层<span class=\"val-normal\">结晶印记</span>，叠满 <span class=\"val-atk\">{C:CrystalSystem.STACK_MAX}</span> 层时引爆，造成目标 <span class=\"val-magic\">{C:CrystalSystem.BURST_MAXHP_PCT%}% 最大生命值</span> 的魔法伤害，并<span class=\"val-atk\">永久</span>削减其 {C:CrystalSystem.BURST_MR_SHRED%}% 魔抗。",
-      "desc": "受到魔法伤害时额外减免 <span class=\"val-magic\">20%</span>（在魔抗基础上叠加）\n每段攻击为目标叠加 1 层结晶印记，满 <span class=\"val-atk\">{C:CrystalSystem.STACK_MAX}</span> 层引爆，造成目标最大生命值 <span class=\"val-magic\">{C:CrystalSystem.BURST_MAXHP_PCT%}%</span> 的魔法伤害（吃魔抗），并<span class=\"val-atk\">持续 5 秒</span>削减其 20% 魔抗 <span class=\"val-atk\">-20%</span>，引爆后清零重新叠加。\n<span style=\"color:#8a93a0\">普攻、碎晶爆破、水晶球（本体光线与随从光线）叠的结晶层数共享同一份计数。\n</span>"
+      "brief": "对受到的魔法伤害额外减免 <span class=\"val-magic\">20%</span>。\n水晶龟每次攻击都为目标叠加一层<span class=\"val-normal\">结晶印记</span>，叠满 <span class=\"val-atk\">{C:CrystalSystem.STACK_MAX}</span> 层时引爆，造成目标 <span class=\"val-magic\">{C:CrystalSystem.BURST_MAXHP_PCT%}% 最大生命值</span> 的魔法伤害，并<span class=\"val-atk\">持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒</span>削减其 {C:CrystalSystem.BURST_MR_SHRED%}% 魔抗。",
+      "desc": "受到魔法伤害时额外减免 <span class=\"val-magic\">20%</span>（在魔抗基础上叠加）\n每段攻击为目标叠加 1 层结晶印记，满 <span class=\"val-atk\">{C:CrystalSystem.STACK_MAX}</span> 层引爆，造成目标最大生命值 <span class=\"val-magic\">{C:CrystalSystem.BURST_MAXHP_PCT%}%</span> 的魔法伤害（吃魔抗），并<span class=\"val-atk\">持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒</span>削减其 <span class=\"val-magic\">{C:CrystalSystem.BURST_MR_SHRED%}%</span> 魔抗，引爆后清零重新叠加。\n<span style=\"color:#8a93a0\">普攻、碎晶爆破、水晶球（本体光线与随从光线）叠的结晶层数共享同一份计数。\n</span>"
     },
     "skillPool": [
       {
@@ -1860,7 +1860,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "刺出一根水晶刺，造成 {N:0.6*ATK} 物理伤害和 <span class=\"val-magic\">1.5% 最大生命值</span> 的魔法伤害，并叠加一层<span class=\"val-normal\">结晶印记</span>。\n<span style=\"color:#8a93a0\">结晶印记叠满 5 层时引爆。\n</span>",
-        "detail": "水晶龟刺出水晶刺，造成（60%×攻击力({ATK}) = {N:0.6*ATK}）物理伤害 + 1.5%目标最大生命值 魔法伤害，并叠加 1 层结晶印记（结晶满 5 层引爆，造成目标 19%最大生命值魔法伤害并削减魔抗）。"
+        "detail": "水晶龟刺出水晶刺，造成（60%×攻击力({ATK}) = {N:0.6*ATK}）物理伤害 + 1.5%目标最大生命值 魔法伤害，并叠加 1 层结晶印记（结晶满 5 层引爆，造成目标 {C:CrystalSystem.BURST_MAXHP_PCT%}%最大生命值魔法伤害并削减魔抗）。"
       },
       {
         "name": "水晶壁垒",

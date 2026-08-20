@@ -131,8 +131,21 @@ def main():
           % (len(added), len(removed), len(changed)))
     for k in changed[:6]:
         print('   改  %s' % k)
-        print('       旧: %s' % ok[k][:110])
-        print('       新: %s' % nk[k][:110])
+        ## ★只印开头 110 字等于没印 —— 改动往往在句子中段, 人得自己数字符找。
+        ##   改成【只印真正不同的那一段 + 左右各 30 字上下文】。
+        a, b = ok[k], nk[k]
+        i = 0
+        while i < min(len(a), len(b)) and a[i] == b[i]:
+            i += 1
+        j = 0
+        while j < min(len(a), len(b)) - i and a[len(a)-1-j] == b[len(b)-1-j]:
+            j += 1
+        lo = max(0, i - 30)
+        pre = ('…' if lo > 0 else '')
+        print('       旧: %s%s【%s】%s%s' % (pre, a[lo:i], a[i:len(a)-j], a[len(a)-j:len(a)-j+30],
+                                            '…' if len(a)-j+30 < len(a) else ''))
+        print('       新: %s%s【%s】%s%s' % (pre, b[lo:i], b[i:len(b)-j], b[len(b)-j:len(b)-j+30],
+                                            '…' if len(b)-j+30 < len(b) else ''))
     for k in added[:4]:
         print('   增  %s' % k)
     for k in removed[:4]:

@@ -54,8 +54,9 @@ func _two_head_cannon(u: Dictionary, from2d: Vector2, dir: Vector2) -> void:
 	var traveled = 0.0
 	var pos = from2d
 	var hit = null
-	while traveled < 2000.0 and u.get("alive", false) and battle.is_inside_tree():
+	while is_instance_valid(battle) and traveled < 2000.0 and u.get("alive", false) and battle.is_inside_tree():
 		await battle.get_tree().process_frame
+		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		traveled = minf(2000.0, traveled + 760.0 * battle.get_process_delta_time())
 		pos = from2d + dir * traveled
 		pos.x = clampf(pos.x, battle.ARENA.position.x, battle.ARENA.end.x)
