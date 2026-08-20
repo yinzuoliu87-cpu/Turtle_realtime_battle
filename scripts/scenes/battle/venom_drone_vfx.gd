@@ -361,8 +361,11 @@ static func fog_rim_alpha(t: float) -> float:
 
 
 ## 一团毒雾在半径 r 处的【合成显示亮度】= 高斯烟团(haze) + 判定边界环(rim)。
-## ★门禁 ⑤f 拿它沿航线叠 16 团量"局部极小值有几个" —— 那就是"一团一团数不数得出来"。
-##   旧演出(只有 haze)在这条尺子下是 **0 个**, 而且是数学上必然的(心距/σ ≤ 1.06 < 2)。
+## ⚠★★**本函数现在零调用者**(全仓 `fog_draw_at` 只出现在下面这一行 def 里)。
+##   原注释写「门禁 ⑤f 拿它沿航线叠 16 团量'局部极小值有几个'」—— 那条门禁**已经没有了**:
+##   verify_eq_venom_drone.gd 的 `_g5b_fog_rim()` 自己写着「判定边界环已移除(用户:「为啥要环啊」),
+##   `fog_rim_profile` / `_build_rim_mesh` 保留不删但已无人调用」。rim 一去, 本函数的
+##   haze+rim 合成也就没有消费者了。留着当纯函数可以, 但别再说它有门禁守着。
 static func fog_draw_at(r: float, t: float) -> float:
 	var v: float = FOG_DRAW_A * fog_alpha_at(r, t)
 	var rr: float = fog_radius(t)

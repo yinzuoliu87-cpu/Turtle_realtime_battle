@@ -395,7 +395,10 @@ func _build_bench_preview(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 		if str(it.get("id", "")) == _sel_own and int(it.get("star", 1)) == _sel_own_star:
 			csb.border_color = Color("#ffd93d"); csb.set_border_width_all(3)
 		_wire_own_tap(cell, str(it.get("id", "")), int(it.get("star", 1)))
-		## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(060~095 有 36 件没配图)
+		## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(EquipIcon.make 的 else 分支)
+##   ⚠"060~095 有 36 件没配图"这句已作废: 实测 phase2-equipment.json 95 件**全部**有 img,
+##     且 95 张图在盘上一个不缺(060~095 那 36 件也是) ⇒ emoji 兜底现在一次都不会触发。
+##     留着这条调用仍然对(数据缺图时不至于开天窗), 但别再拿它当"有 36 件没图"的证据。
 		var ic2 := EquipIcon.make(edef, Vector2(36, 32))
 		ic2.position = Vector2(14, 6)
 		cell.add_child(ic2)
@@ -485,7 +488,10 @@ func _build_lineup_equips(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 					enm.mouse_filter = Control.MOUSE_FILTER_IGNORE
 					enm.position = Vector2(ox + cx + ci * 40, y + 59); enm.size = Vector2(36, 14)
 					host.add_child(enm)
-					## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(060~095 有 36 件没配图)
+					## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(EquipIcon.make 的 else 分支)
+##   ⚠"060~095 有 36 件没配图"这句已作废: 实测 phase2-equipment.json 95 件**全部**有 img,
+##     且 95 张图在盘上一个不缺(060~095 那 36 件也是) ⇒ emoji 兜底现在一次都不会触发。
+##     留着这条调用仍然对(数据缺图时不至于开天窗), 但别再拿它当"有 36 件没图"的证据。
 					var ic2 := EquipIcon.make(edef, Vector2(28, 24), true)
 					ic2.position = Vector2(4, 2)
 					cell.add_child(ic2)
@@ -565,13 +571,18 @@ func _card(idx: int, pos: Vector2) -> Control:
 		return box
 	var edef: Dictionary = _offer[idx]
 	# ★卡上【不再写「N 费」】(用户 2026-07-29:「1费和1图标都存在」)。
-	#   实测 PRICE_MULT = 1 → 售价恒等于费用, 59/59 件都相等 ——
+	#   实测 PRICE_MULT = 1 → 售价恒等于费用。★分母是 **95** 不是 59(59 是加 060~095 那批之前的数):
+	#     95 件里 94 件 cost≥1 ⇒ 售价 == 费用; 只有 p2eq_095 的 cost = 0,
+	#     被 `_price_of` 的 `maxi(1, cost)` 抬成 1 —— 但它是"羁绊赠送不上货架"的那类, 玩家买不到。
 	#   卡上同时写「1 费」和「◎ 1」等于把同一个数字显示两遍。
 	#   保留下面那个带币图标的价格(购买决策要看的是它); 费用档由【卡框颜色】表达
 	#   (灰/绿/蓝/紫/金 = 1~5 费, 与出货概率行同一套色)。
 	# 「N 费」撤掉后顶部空出 17px, 全给图标 —— 卡片上最该被一眼认出的是【这是什么东西】
 	# 卡框边 10 → 内容从 18 起, 底部对称留 8。原来上留 12 / 下留 5.5, 差一倍。
-	## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(060~095 有 36 件没配图)
+	## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(EquipIcon.make 的 else 分支)
+##   ⚠"060~095 有 36 件没配图"这句已作废: 实测 phase2-equipment.json 95 件**全部**有 img,
+##     且 95 张图在盘上一个不缺(060~095 那 36 件也是) ⇒ emoji 兜底现在一次都不会触发。
+##     留着这条调用仍然对(数据缺图时不至于开天窗), 但别再拿它当"有 36 件没图"的证据。
 	var ic2 := EquipIcon.make(edef, Vector2(60, 56))
 	ic2.position = Vector2(SLOT_W / 2.0 - 30, 18)
 	box.add_child(ic2)
@@ -800,7 +811,10 @@ func _build_detail_panel() -> void:
 	var coins := int(GameState.meta_deepsea_coins)
 
 	# 图标 + 名称 + 费用
-	## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(060~095 有 36 件没配图)
+	## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(EquipIcon.make 的 else 分支)
+##   ⚠"060~095 有 36 件没配图"这句已作废: 实测 phase2-equipment.json 95 件**全部**有 img,
+##     且 95 张图在盘上一个不缺(060~095 那 36 件也是) ⇒ emoji 兜底现在一次都不会触发。
+##     留着这条调用仍然对(数据缺图时不至于开天窗), 但别再拿它当"有 36 件没图"的证据。
 	var ic2 := EquipIcon.make(edef, Vector2(66, 58))
 	ic2.position = Vector2(34, 32)
 	box.add_child(ic2)

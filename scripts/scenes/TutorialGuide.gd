@@ -172,7 +172,19 @@ func _apply_highlight(hl_name: String) -> void:
 	var rect: Rect2 = _anchor_fn.call(hl_name)
 	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
 		# 锚点解析失败(控件还没布局好/名字错) → 别挖个空洞把全屏挡死, 退回无高亮
-		push_warning("[Tutorial] 高亮锚点 '%s' 解析出空矩形 → 本步不挖洞" % hl_name)
+		## ★★【看到这条 WARNING 先别当 bug 查】(2026-08-20 有人照它下过"聚光灯没挖出来"的错误结论)
+		##   **首帧解析出空矩形是正常的、而且会自愈**: 场景 `_ready` 里就 attach 引导(如
+		##   TeamSelectScene.gd:176 → attach → start → _render → 这里), 而那一刻 Godot 的容器
+		##   还没跑布局 ⇒ `get_global_rect()` 必然是 0×0。下一帧 `_process`(本文件 L40-42)
+		##   照 `_cur_hl` 重贴一次, 洞就补上了 —— 这是**设计好的**每帧重贴, 不是碰巧被某次
+		##   resize 救回来的(`_on_resize` 根本不碰引导), 所以换分辨率/换屏一样成立。
+		##   ⇒ 实测证据(SHIP=1 ONBOARD=1 tests/_tutorial_playthrough): 整个流程只有 2 条本
+		##     WARNING, **两条的 backtrace 都是 `_render`(:139), 零条来自 `_process`(:42)**
+		##     —— `_process` 每帧都跑, 它要是还量到空矩形就会自己再刷一条。零条 = 第二帧
+		##     就已经是有效矩形了。配合截图 `C:/tmp/tut_flow_0_1_team_select.png`(角标还停在
+		##     1/4 = 没翻过步, 洞却已经挖在 3 只教学龟那一排上)可确认画面是对的。
+		##   ⇒ 只有当这条**每帧连刷**(而不是每进一次场景刷一条)时才说明真出事了。
+		push_warning("[Tutorial] 高亮锚点 '%s' 解析出空矩形 → 本步不挖洞(首帧正常, 下一帧 _process 会补上)" % hl_name)
 		_set_mask_visible(false)
 		return
 	var pad := 8.0

@@ -2192,12 +2192,13 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 		_shield_syn.tick(dt)  # 圣光护盾装备: 每 3 秒 55 点护盾
 		_bow_syn.tick(dt)     # 弓箭顶档【腐蚀叠层】: 每 2.5 秒给全场敌人 +1 层
 		_crystal_sys.tick(dt) # 031 水晶球B 扫描推进(结算走 sim 时钟, 不走 tween)
-		_gun_syn.tick(dt)     # 枪羁绊: 第一座炮台轰击 / 第二座能量循环(每 2.5 秒)
+		_gun_syn.tick(dt)     # 枪羁绊: 第一座炮台轰击(每 2.5 秒·TICK) / 第二座能量循环(每 5 秒·T2_PERIOD)
 		_staff_syn.tick(dt)   # 法器: 法力自然增长 + 灵泉(2.5s) + 共鸣(7.5s)
 		_potion_syn.tick(dt)  # 药水: 每 2.5 秒重选猎物(敌方血量最高者)
 		_gadget_syn.tick(dt)  # 奇械: 铸币累计 + 僵硬到期清理
 		_food_syn.tick(dt)    # 食物: 每 2.5 秒每件食物为携带者永久 +最大生命
-		_spirit_syn.tick(dt)  # 灵物: 触手拍击(每 2.5 秒) + 追击次数重置
+		_spirit_syn.tick(dt)  # 灵物: 触手拍击(每 5 秒·SLAP_PERIOD) + 闪避追击次数重置(每 2.5 秒·CHASE_WINDOW)
+		                      #   ★原注释把拍击写成"每 2.5 秒"—— 那是 CHASE_WINDOW, 拍击是 SLAP_PERIOD=5.0
 		_spec.tick(dt)        # ★特殊余额: 线性衰减 + 耗尽回调(自然衰减完也算"被打破")
 		_equip_sys.tick_global(dt)   # ★装备的【全局】在途表(弧形波/箭雨/连射 + 批④ 的召唤物·区域·碑)
 									 #   —— 与"某只龟身上有没有装备"无关: 携带者死后碑/直升机/炮台还要继续动
@@ -6682,9 +6683,12 @@ func _taunt(by: Dictionary, targets: Array, sec: float = BUFF_SEC) -> void:
 
 ## 闪避硬上限 75%。★★出处不是我拍的 —— 规格里早就写了, 只是【从没实装】:
 ##   · docs/specs/类型效果-实装规格.md:134「灵物类装备额外提供 5%/10% 闪避率(宠物闪避率上限 75%)」
-##   · phase2_types.gd:97 灵物档位文案同样写着「上限 75%」
+##   ★原来这里还列了第二条出处「phase2_types.gd:97 灵物档位文案同样写着上限 75%」——
+##     **那条是假的, 已删**: 实测 `grep 75 phase2_types.gd` 只有一处(L360), 而且它是
+##     反过来指回本常量的注释(「上限不在这里钳 —— 战斗侧 DODGE_CAP = 0.75」);
+##     TYPES/TIER_DESCS 的灵物档位文案(L124-128)一个 75 都没有。真出处只有上面那一条。
 ##   又一例写了没人读(同 apply_team_start 零调用)。2026-08-02 补上实装。
-## 想改这个数只改这里 —— 它是 dodge_bonus 的唯一钳制点。
+## 想改这个数只改这里 —— 它是 dodge_bonus 的唯一钳制点(全仓仅 L6755 一处 minf)。
 const DODGE_CAP := 0.75
 
 ## 血祭节流: 只有【损失百分比的整数位】变了才重算。
@@ -6747,7 +6751,7 @@ func _recalc_stats(u: Dictionary) -> void:
 	u["def"] = maxf(0.0, u["base_def"] * (1.0 + acc["def"][0]) + acc["def"][1]) - float(u.get("def_shred", 0.0))
 	u["mr"]  = maxf(0.0, u["base_mr"]  * (1.0 + acc["mr"][0])  + acc["mr"][1]) - float(u.get("mr_shred", 0.0))
 	# ★★闪避上限(2026-08-02 用户问「每个角色我记得有闪避上限做了吗」——答: 没有, 现在加)。
-	#   判定是 `randf() < dodge_bonus`(battle_damage.gd:71), randf 取值 [0,1)
+	#   判定是 `randf() < dodge_bonus`(battle_damage.gd:116 —— 旧注释写的 :71 已漂), randf 取值 [0,1)
 	#   ⇒ dodge_bonus ≥ 1.0 就是【永远打不中】。
 	#   ★这不是接通用 dodgePct 才有的风险, 探针实测【今天就已经是 bug】:
 	#     单只装备上限 3 件, 带 2 件 3★ 幽灵墨鱼(各 50%) → dodge_bonus = 1.00 = 100% 免疫。

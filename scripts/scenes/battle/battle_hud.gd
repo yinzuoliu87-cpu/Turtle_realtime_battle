@@ -53,7 +53,9 @@ func _build_ui_layer() -> void:
 		battle._dl_hud = Label.new()
 		battle._dl_hud.add_theme_font_size_override("font_size", 17)
 		battle._dl_hud.add_theme_color_override("font_color", Color("#ffe08a"))
-		# ★y 44→64: PK 主条占 16..42, 龟蛋副条占 46..60(第三版副条加高到 14 塞蛋图标)
+		# ★y 44→70: 让开整条 PK 条。实测(按 PK_Y=16 / PK_H=32 / PK_EGG_GAP=4 / PK_EGG_H=15 算):
+		#   主条占 16..48, 龟蛋副条占 52..67 ⇒ 这行字必须从 68 起, 现取 70。
+		#   ★注释原写"主条 16..42 / 副条 46..60"是陈的(那是 PK_H=26、PK_EGG_H=14 那两版的数)。
 		# ★宽度 700 居中于【真实视口】: 原来写死 x=290(=(1280-700)/2), 手机 1560 宽时左偏 140
 		var _vw0: float = float(battle.get_viewport().get_visible_rect().size.x)
 		battle._dl_hud.size = Vector2(700, 24)
@@ -298,7 +300,9 @@ const PK_W := PK_SEG * 2.0 + PK_VS      # 总宽上限 948(★注释原写"600"�
 const PK_H := 32.0           # 主条高
 const PK_EGG_H := 15.0       # 副条(龟蛋)高。★要塞得下两端的蛋图标(9×12 太小看不出是蛋)
 const PK_EGG_GAP := 4.0      # 主条与副条间距
-const PK_Y := 16.0           # 主条顶。占 16..42; 副条 46..55; 双路 HUD 文字下移到 60
+const PK_Y := 16.0           # 主条顶。占 16..48(=PK_Y+PK_H); 副条 52..67(=+PK_EGG_GAP, 高 PK_EGG_H);
+                             #   双路 HUD 文字下移到 70(本文件 L56)。★旧注释写的 "16..42 / 46..55"
+                             #   是 PK_H=26、PK_EGG_H=9 那两版的数, 已随两个常量一起过期。
 const PK_SAMPLE := 0.1       # 扫 _units 的采样间隔(秒)。别每帧扫: 主文件热路径预算 <0.2%
 const PK_SMOOTH := 6.0       # 填充平滑速率
 const PK_TRAIL_SMOOTH := 2.2 # 残影追赶速率(慢于填充 → 才看得出"刚掉了这一段")。

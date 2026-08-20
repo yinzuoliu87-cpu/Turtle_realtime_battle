@@ -487,7 +487,9 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, is_leade
 		if filled:
 			var eid2 := str(((wear[ci] as Dictionary)["it"] as Dictionary).get("id", ""))
 			var edef2: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid2, {})
-			## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(060~095 有 36 件没配图)
+			## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(EquipIcon.make 的 else 分支)
+##   ⚠"060~095 有 36 件没配图"这句已作废: 实测 95 件装备**全部**有 img 且图都在盘上
+##     ⇒ emoji 兜底一次都不会触发(留着仍对, 但别当"有 36 件没图"的证据)。
 			var ic2 := EquipIcon.make(edef2, Vector2(cw - 2, cw - 2), true)
 			ic2.position = Vector2(1, 1)
 			cell.add_child(ic2)
@@ -1034,7 +1036,9 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
 	var rcol := _cost_color(int(edef.get("cost", 1)))
 	var box := _slot_panel(pos, Color("#2a3a1c") if sel else Color("#1c2836"), Color("#ffd93d") if sel else rcol)
-	## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(060~095 有 36 件没配图)
+	## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(EquipIcon.make 的 else 分支)
+##   ⚠"060~095 有 36 件没配图"这句已作废: 实测 95 件装备**全部**有 img 且图都在盘上
+##     ⇒ emoji 兜底一次都不会触发(留着仍对, 但别当"有 36 件没图"的证据)。
 	var ic2 := EquipIcon.make(edef, Vector2(44, 36))
 	ic2.position = Vector2(SLOT / 2.0 - 22, 18)
 	box.add_child(ic2)

@@ -697,7 +697,12 @@ func _step_pending() -> void:
 ## ①横斩(250 码 120° 扇形) / ③竖斩(250 码 60° 扇形)。返回命中数(同步证据, 门禁直接调)。
 ## (装备 "p2eq_084" —— tooltip_number_audit 的就近锚点)
 func cross_slash_hit(u: Dictionary, dir: Vector2, sx: int, seg: int) -> int:
-	var half: float = (1.0471975512 if seg == 1 else 0.5235987756)   # 120°/2 与 60°/2, 弧度字面量
+	## ★2026-08-20 改成引用演出侧那一份, 不再自己写字面量。
+	##   `blade_eq_vfx.gd` 的注释一直写着"扇形半角与结算侧**焊死**""250 码结算与演出**共用这一个数**",
+	##   **但那是假的**: 这里原本自己写死 250.0 / 1.0471975512 / 0.5235987756 三个字面量,
+	##   既不引用那边的常量, 全仓也没有任何门禁把两边焊起来 —— 玩家看到的判定范围和画出来的扇形
+	##   可以各改各的而没人知道。(同一晚在 FOG_LIFE 上踩过一次: 演出侧没跟上, 加强从没生效。)
+	var half: float = (BladeEqVfx.SLASH_HALF_WIDE if seg == 1 else BladeEqVfx.SLASH_HALF_NARROW)
 	var flat: float = ([40.0, 70.0, 130.0][sx] if seg == 1 else [50.0, 85.0, 160.0][sx])
 	var sc: float = ([0.6, 0.9, 1.4][sx] if seg == 1 else [0.7, 1.1, 1.7][sx])
 	var n: int = 0
@@ -705,7 +710,7 @@ func cross_slash_hit(u: Dictionary, dir: Vector2, sx: int, seg: int) -> int:
 		if not (o is Dictionary) or not (o as Dictionary).get("alive", false):
 			continue
 		var rel: Vector2 = (o as Dictionary)["pos"] - u["pos"]
-		if rel.length() > 250.0:
+		if rel.length() > BladeEqVfx.SLASH_REACH:
 			continue
 		if rel.length() > 0.01 and absf(rel.angle_to(dir)) > half:
 			continue
