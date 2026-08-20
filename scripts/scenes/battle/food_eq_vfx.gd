@@ -151,6 +151,15 @@ var _cache_spoke: ArrayMesh = null
 
 ## 活动中的演出句柄(每帧 advance)
 var _live: Array = []
+## 069 糖糕的三块绕转 —— **必须单独登记**, 不能塞进 `_live`:
+##   `_live` 是**限时**特效表(每帧按 `dur` 到期回收, 默认 0.4 秒), 绕转是常驻的, 放进去 0.4 秒就没了。
+## ★2026-08-20: 把绕转句柄登记进来, 让 `clear_all()` **名副其实**(它声称"把还在飞的演出全清掉",
+##   而绕转的三个精灵原本不在它的清理范围内)。
+## ⚠ **这不是在修一个现存的 bug** —— 我一开始是这么判的, 错了:
+##   `clear_all()` 本来就**没有调用者**(见它自己的头注), 因为换路会整个重建 `_world`,
+##   本层节点全是它的子节点、跟着一起销毁 ⇒ 不存在"糕冻在战场上"这回事。
+##   登记只是为了将来真接上撤场点时它是完整的。
+var _orbits: Array = []
 
 
 func _init(b) -> void:
@@ -494,6 +503,7 @@ func cake_orbit_make(u: Dictionary, left: int) -> Dictionary:
 		s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		(h["spr"] as Array).append(s)
 	cake_orbit_update(u, h, 0.0)
+	_orbits.append(h)   # 登记 ⇒ clear_all 收得到
 	return h
 
 
@@ -1202,3 +1212,6 @@ func clear_all() -> void:
 		_free_list(h, "drops")   # 071 奶油滴
 		_free_list(h, "deco")    # 072 法阵饰点
 	_live.clear()
+	for ob in _orbits:
+		cake_orbit_free(ob)
+	_orbits.clear()

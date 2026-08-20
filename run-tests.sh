@@ -254,6 +254,13 @@ run_test () {  # $1 = 测试名
   else
     FAIL=$((FAIL+1)); echo "  FAIL  $name  (rc=$rc, 致命报错=$fatal)"
     grep -E "\[FAIL\]|✗|$FATAL" "$RAW/$name.log" 2>/dev/null | head -5 | sed 's/^/        /'
+    # ★★2026-08-20: 失败就把整份日志留下来。
+    #   由来: verify_trainer_hunt_tame 在全套里红过三次(rc=1 而**日志里连一条 [FAIL] 都没有**),
+    #   单跑十次全绿、四路并行也复现不出来 —— 而 `$RAW` 是 mktemp 目录、脚本一退出就删,
+    #   于是每次红都只剩一行"rc=1"、**证据当场销毁**, 下次还是从零开始猜。
+    #   追不动的偶发, 至少要让它下次红的时候留下现场。(.gate-fail-*.log 已进 .gitignore)
+    cp "$RAW/$name.log" "$DIR/.gate-fail-$name.log" 2>/dev/null
+    echo "        ↳ 完整日志已留在 .gate-fail-$name.log"
   fi
 }
 
