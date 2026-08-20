@@ -376,7 +376,12 @@ func _g5_fog_physics() -> void:
 		absf(VV.fog_radius(VD.FOG_LIFE)) < 1e-9, "实得 %.12f" % VV.fog_radius(VD.FOG_LIFE))
 	_ok("⑤ 生成时就有可观的半径(不是从 0 长起)", VV.fog_radius(0.0) > 50.0,
 		"实得 %.2f" % VV.fog_radius(0.0))
-	_ok("⑤ 峰值半径在前半程(t < 2.0 s)", top_t < 2.0, "实得 %.3f" % top_t)
+	## ★2026-08-20: 原来写死「t < 2.0」, 那是照 FOG_LIFE=4.0 算的一半。
+	##   用户 2026-08-13 把毒雾寿命加强到 6 秒, 而演出侧的常量一直没跟上(见 venom_drone_vfx.gd),
+	##   ⇒ 加强从没生效; 修好之后这条断言反而红了 —— **判据自己抄了那个过期的数**。
+	##   改成从常量推导: 峰值必须落在寿命前半程, 不管寿命是几秒。
+	_ok("⑤ 峰值半径在前半程(t < FOG_LIFE/2 = %.1f s)" % (VD.FOG_LIFE * 0.5),
+		top_t < VD.FOG_LIFE * 0.5, "实得 %.3f (寿命 %.1f)" % [top_t, VD.FOG_LIFE])
 
 	# ⑤d ★★尺子匹配被测概念: 伤害半径 == 渲染 alpha 的等值线
 	#     反解 —— 在 fog_radius(t) 处的渲染 alpha 应当恰好等于阈值 fog_a_min()
@@ -1368,13 +1373,18 @@ func _g5c_fog_particles() -> void:
 		m += 1
 	_ok("⑤P ★★发射盘半径 ≡ 判定半径 fog_radius(t)(喂 %d 个时刻, 雾铺到哪就打到哪)" % m,
 		bad == 0, "不符 %d 处" % bad)
-	## 判定半径先涨后跌、t=4 精确归零 ⇒ 雾自己收干净
-	_v._vfx.apply_fog(root, 3.99)
+	## 判定半径先涨后跌、寿命末尾精确归零 ⇒ 雾自己收干净
+	## ★2026-08-20: 原来这三个时刻写死 3.99 / 2.0(照 FOG_LIFE=4.0 算的)。用户 2026-08-13 把寿命
+	##   加强到 6 秒, 而演出侧常量一直没跟上 ⇒ 加强从没生效; 修好后这条断言反而红了 ——
+	##   **判据自己抄了那个过期的数**。改成从 FOG_LIFE 推导, 寿命再改也不用动这里。
+	var t_end: float = VD.FOG_LIFE - 0.01
+	var t_mid: float = VD.FOG_LIFE * 0.5
+	_v._vfx.apply_fog(root, t_end)
 	var r_end: float = pm.emission_ring_radius
-	_v._vfx.apply_fog(root, 2.0)
+	_v._vfx.apply_fog(root, t_mid)
 	var r_mid: float = pm.emission_ring_radius
-	_ok("⑤P 雾的范围先涨后收(中段 > 末段), 4 秒时自己收干净",
-		r_mid > r_end * 3.0, "t=2 %.4f / t=3.99 %.4f" % [r_mid, r_end])
+	_ok("⑤P 雾的范围先涨后收(中段 > 末段), 寿命末尾(%.1f s)自己收干净" % VD.FOG_LIFE,
+		r_mid > r_end * 3.0, "t=%.2f %.4f / t=%.2f %.4f" % [t_mid, r_mid, t_end, r_end])
 	## 亮度跟着归一浓度走(与 haze 同一条 C_peak, 只是增益不同)
 	_v._vfx.apply_fog(root, 0.0)
 	var a0: float = dm.albedo_color.a
