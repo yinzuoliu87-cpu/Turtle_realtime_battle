@@ -370,6 +370,7 @@ run_audit "tools/dead_preload_audit.py"  "ALL OK" "dead_preload (preload 了却�
 #   (它原本也不打 ALL OK、恒返回 0, 一并补了判定行。)
 run_audit "tools/codex_text_lint.py"     "ALL OK" "codex_text_lint (图鉴文案: 教学味/自夸/开发备注/别家黑话/数字贴字)"
 run_audit "tools/twin_const_audit.py"    "ALL OK" "twin_const (同功能的逻辑侧↔演出侧同名常量取值打架)"
+run_audit "tools/type_tables_audit.py"   "ALL OK" "type_tables (装备类型四张平行表键集一致)"
 
 echo ""
 if [ "$FAIL" -eq 0 ]; then
