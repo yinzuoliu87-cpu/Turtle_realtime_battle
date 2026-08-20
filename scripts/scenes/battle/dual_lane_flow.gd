@@ -477,8 +477,19 @@ func _dl_build_lane_field() -> void:
 	#   是禁改文件 ⇒ 它们只能在自己文件里"自扫"或干脆没接。现在由主会话统一接一次。
 	#   ★用 has_method 而不是硬调: 明天还要接着实装剩下 17 件, 那时可能又多几路,
 	#     硬调会让"某一路还没写 clear"变成崩溃而不是"少清一次"。
+	## ★★2026-08-20 补进来 6 个**一直没接线**的: 它们的 clear_all 注释白纸黑字写着自己是"换路撤场"用的,
+	##   还写明了漏调的后果 —— 而这张名单里从来没有它们:
+	##   · _arcane_sys 「漏了就会把上一路的碑带进下一路, **攻速增量永远收不回来 = 每换一路白涨一次**」
+	##   · _relic_sys  「漏了就会把上一路的碑(和它的 +35% 增伤 / +50 双抗)带进下一路」
+	##   · _gun_sys / _blade_sys 「留着就是**悬空引用**, 下一路会对着上一路的字典结算」
+	##   · _gadget_sys 演出节点与自扫名册; · battle._crystal_sys 结晶扫描的网格节点
+	##   ⚠ **香火石 `_incense` 故意不在这里** —— 它是跨对局养成、要落存档的, 清了就把玩家的进度抹了。
+	##   (这张手写名单会漂, 已由 tests/verify_lane_clear_wired.gd 焊住: 有 clear_all 的系统
+	##    要么在这张名单里, 要么在那份测试的"故意不清"清单里带理由。)
 	for _sysref in [battle._equip_sys._spirit_sys, battle._equip_sys._potion_sys,
-			battle._equip_sys._food_sys, battle._equip_sys._bow_sys, battle._equip_sys._venom]:
+			battle._equip_sys._food_sys, battle._equip_sys._bow_sys, battle._equip_sys._venom,
+			battle._equip_sys._arcane_sys, battle._equip_sys._blade_sys, battle._equip_sys._gadget_sys,
+			battle._equip_sys._gun_sys, battle._equip_sys._relic_sys, battle._crystal_sys]:
 		if _sysref == null:
 			continue
 		if _sysref.has_method("clear_all"):

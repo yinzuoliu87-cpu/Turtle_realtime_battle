@@ -863,7 +863,8 @@ const DART_EVERY := 5              # 每 5 下普攻强化一次
 const DART_KNOCKUP_SEC := 1.0      # 强化那一击把目标击飞 1 秒(= 位移 + 同时长 stun)
 ## ⚠ 这个数【不产生位移】: 它传给 `_knockback` 的第三参, 而那个参数在 battle_damage.gd 里
 ##   叫 `_dist` 且从不被读 —— 真实位移由 battle.KNOCK_VY / KNOCK_PUSH 决定。留着只是占位。
-const DART_KNOCKUP_DIST := 120.0   # (传给 _knockback 的 _dist, 实际被忽略)
+## DART_KNOCKUP_DIST 已删(2026-08-20): 它传给 `_knockback` 的第三参, 而那个参数从不被读 ——
+## 一个"看起来能调、实际调了没反应"的常量比没有更坏。击飞位移由 KNOCK_PUSH 决定。
 
 
 ## ── 荆棘海胆015(用户 2026-07-30 效果重做) ──
@@ -983,7 +984,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false)
 				if dh % DART_EVERY == 0 and tgt.get("alive", false):
 					# ★本项目没有独立的"击飞"函数 —— 击飞 = _knockback(位移+抛物演出) + stun_until(期间不能动不能打)。
 					#   我一开始写了 _knockup 并用 has_method 兜底 —— 那是【假设 API 存在】, 查了才知道只有 _knockback。
-					battle._damage._knockback(src, tgt, DART_KNOCKUP_DIST)
+					battle._damage._knockback(src, tgt, 0.0)   # 第三参被忽略, 见 battle_damage._knockback 头注
 					tgt["stun_until"] = maxf(float(tgt.get("stun_until", 0.0)), battle._t + DART_KNOCKUP_SEC)
 					tgt["_dart_kb_n"] = int(tgt.get("_dart_kb_n", 0)) + 1   # 同步触发证据(供门禁)
 					battle._skill_ring(tgt["pos"], Color(1.0, 0.85, 0.4, 0.8), 52.0)

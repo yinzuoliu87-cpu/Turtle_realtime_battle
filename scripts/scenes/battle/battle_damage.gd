@@ -344,7 +344,11 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		battle._kill(u, src)
 
 # DoT 落血 (穿护盾, 不弹字防刷屏; 血条体现)
-func _knockback(by: Dictionary, tgt: Dictionary, _dist: float, vy_mult: float = 1.0, push_mult: float = 1.0) -> void:
+## ⚠★第三个参数**从来不被读**(2026-08-20 核实)。击飞位移实际来自 `battle.KNOCK_PUSH * push_mult`,
+##   想调距离请改 `push_mult`。25 处调用点都在传一个被忽略的数 —— 谁去"调"它都不会有任何反应,
+##   这比没有参数更坑。保留形参是为了不动那 25 处(GDScript 参数个数不匹配是**运行时**才炸, 批量改风险大),
+##   但名字改成自说明的, 并且删掉了那个假装能调距离的 `DART_KNOCKUP_DIST` 常量。
+func _knockback(by: Dictionary, tgt: Dictionary, _ignored_dist: float, vy_mult: float = 1.0, push_mult: float = 1.0) -> void:
 	if tgt["airborne"]:
 		return
 	if tgt.get("_knock_immune", false):   # 不沉之锚017免击飞(原flag只写不读=死标记, 用户2026-07-19"说好的免疫呢"补)
