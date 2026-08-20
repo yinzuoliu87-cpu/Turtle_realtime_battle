@@ -1,4 +1,7 @@
 extends Node
+## ★2026-08-20: 文案里现在可能有 {C:类名.常量名}(直接引用代码常量, 见 skill_text.gd)。
+##   判据必须先 `SkillText.render_consts()` 再量 —— 否则量的是模板不是玩家看到的字,
+##   会把"3/5/8"读成一长串 {C:...}。(引入机制那天这两条门禁当场就红了, 红得对。)
 ## verify_equip_batch3.gd — 35 件新装备（批 3 · 方案书 20260802-装备扩充 §7 批3）
 ##
 ## ★这一批的价值不是"选择变多"，而是**类型曝光被拉平**（方案书 §4.4.3）：
@@ -161,7 +164,7 @@ func _ready() -> void:
 		var idx2: int = int(str(d2.get("id", "")).replace("p2eq_", ""))
 		if idx2 < NEW_FIRST:
 			continue
-		var txt: String = str(d2.get("effectDesc1", "")) + str(d2.get("effectDesc3", ""))
+		var txt: String = SkillText.render_consts(str(d2.get("effectDesc1", "")) + str(d2.get("effectDesc3", "")))
 		var eid2: String = str(d2.get("id", ""))
 		if _has_effect_impl(eid2):
 			continue        # 已实装的件, 文案【就该】写机制 —— 见下方 _has_effect_impl 的说明
@@ -189,7 +192,7 @@ func _ready() -> void:
 		if not _has_effect_impl(eid3):
 			continue
 		impl += 1
-		var txt3: String = str(d3.get("effectDesc1", "")) + str(d3.get("effectDesc3", ""))
+		var txt3: String = SkillText.render_consts(str(d3.get("effectDesc1", "")) + str(d3.get("effectDesc3", "")))
 		if trip.search(txt3) == null:
 			silent.append(eid3)
 	_ok("⑤ ★★分母: 批3 里已实装效果的件 = %d 件(0 件的话下面那条是空检查)" % impl, impl > 0,

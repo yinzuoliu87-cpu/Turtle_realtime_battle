@@ -159,7 +159,7 @@ static var _keyword_re: Array = []
 
 static func _ensure_re() -> void:
 	if _token_re == null:
-		_token_re = RegEx.create_from_string("\\{([NPHSBDMT]):([^}]+)\\}|\\{([^}]+)\\}")
+		_token_re = RegEx.create_from_string("\\{([NPHSBDMTC]):([^}]+)\\}|\\{([^}]+)\\}")
 		_span_re = RegEx.create_from_string("<span\\s+(?:class=\"([^\"]+)\"|style=\"color:\\s*(#[0-9a-fA-F]+)[^\"]*\")[^>]*>([^<]*)</span>|([^<]+)")
 		for rule in KEYWORD_RULES:
 			_keyword_re.append([RegEx.create_from_string(rule[0]), rule[1], (rule[2] if rule.size() > 2 else "")])
@@ -178,8 +178,10 @@ static func render_html(template: String, f: Dictionary, s: Dictionary) -> Strin
 		var expr := m.get_string(2)
 		if expr == "":
 			expr = m.get_string(3)
-		var val = eval_expr(expr, vars)
-		if color != "" and COLOR_CLASS.has(color):
+		## ★{C:类名.常量名} —— 直接读**代码里的常量**, 中间不经任何副本。
+		##   写 {C:VenomDroneSystem.FOG_LIFE} 的文案, 改代码常量它自己就跟着变, 不存在"忘了同步"。
+		var val = (const_of(expr) if color == "C" else eval_expr(expr, vars))
+		if color != "" and color != "C" and COLOR_CLASS.has(color):
 			result += "<span class=\"%s\">%s</span>" % [COLOR_CLASS[color], str(val)]
 		else:
 			result += str(val)
@@ -314,13 +316,15 @@ static func render_bbcode(template: String, f: Dictionary, s: Dictionary, font_p
 ##   memory `fb-hand-rolled-copies-drift`「手抄的副本必然落后 —— 抄一次永远落后一次」。
 ##   没有简述的装备(理论上不该有, 门禁守着)自动退回全文, 不会显示空白。
 static func equip_brief(edef: Dictionary) -> String:
-	var b := str(edef.get("effectBrief", "")).strip_edges()
-	return b if b != "" else str(edef.get("effectDesc1", ""))
+	## ★这两个是**共享入口** —— {C:...} 在这里展开, 所有消费方(图鉴/商店/战斗)一次全好,
+	##   不用每个调用点各记一次。(2026-08-20: 我先只补了商店和战斗, 图鉴走的是这里, 差点漏。)
+	var b := render_consts(str(edef.get("effectBrief", "")).strip_edges())
+	return b if b != "" else equip_full(edef)
 
 
 ## 完整机制说明(图鉴详情 / 点开看全部 用)。
 static func equip_full(edef: Dictionary) -> String:
-	return str(edef.get("effectDesc1", ""))
+	return render_consts(str(edef.get("effectDesc1", "")))
 
 
 static func render_plain(template: String, f: Dictionary, s: Dictionary) -> String:
@@ -432,3 +436,68 @@ static func text_of(d: Dictionary, want_detail: bool) -> String:
 		return brief_of(d)
 	var t := detail_of(d)
 	return t if t != "" else brief_of(d)
+
+## class_name → 它的脚本常量表(缓存)。
+static var _const_cache: Dictionary = {}
+
+
+## 读一个代码常量: "VenomDroneSystem.FOG_LIFE" → 6。
+##
+## ★为什么要有这个(2026-08-20): 玩家文案里 2487 个数字是**手抄代码的**, 只有 220 个是占位符。
+##   手抄的每一个在写下那天都是对的, 原件一改就烂, 而且烂了没人知道。
+##   已有的 {N:1.5*ATK} 只能算**单位属性**和**本条技能自己的 json 字段**,
+##   而 json 字段本身又是代码常量的手抄(实测已有 10 条对不上) ⇒ 差的就是"直接引用代码常量"这一环。
+## ★数组按本项目惯例渲染成三档: [3, 5, 8] → "3/5/8"。
+## ★取不到时**原样吐回 {C:...}**, 不静默变成 0 —— 静默归零是最难查的一类错。
+static func const_of(ref: String) -> String:
+	var dot := ref.rfind(".")
+	if dot <= 0:
+		return "{C:%s}" % ref
+	var cls := ref.substr(0, dot).strip_edges()
+	var key := ref.substr(dot + 1).strip_edges()
+	if not _const_cache.has(cls):
+		var path := ""
+		for c in ProjectSettings.get_global_class_list():
+			if str(c.get("class", "")) == cls:
+				path = str(c.get("path", ""))
+				break
+		var scr: Script = (load(path) as Script) if path != "" and ResourceLoader.exists(path) else null
+		_const_cache[cls] = scr.get_script_constant_map() if scr != null else {}
+	var m: Dictionary = _const_cache[cls]
+	if not m.has(key):
+		return "{C:%s}" % ref
+	var v = m[key]
+	if v is Array:
+		var parts: PackedStringArray = []
+		for x in (v as Array):
+			parts.append(_fmt_num(x))
+		return "/".join(parts)
+	return _fmt_num(v)
+
+
+## 6.0 → "6"; 0.25 → "0.25" (整数不拖 .0)
+static func _fmt_num(v) -> String:
+	if v is float and is_equal_approx(v, roundf(float(v))):
+		return str(int(roundf(float(v))))
+	return str(v)
+
+## 只展开 {C:类名.常量名}, 其它 token 原样留着。
+##
+## ★为什么要单独有这个(2026-08-20): 一大批消费方拿的是**原始文本**, 不走 render_* ——
+##   商店的 `_equip_full_desc` 注释白纸黑字写着"95 件装备的 effectDesc1 全是纯文本"。
+##   我一把 092 的文案改成 {C:...}, 商店就会把 `{C:VenomDroneSystem.POISON_STACKS}` 原样显示给玩家
+##   (是 verify_shop_layout 的"文字变长要滚动"抓到的)。
+## ★{C:...} 不需要单位/技能上下文, 所以可以在任何地方安全展开 —— {N:1.5*ATK} 不行, 那才是
+##   那些消费方不敢渲染的原因。⇒ 给它们一条只做常量替换的轻量入口。
+static func render_consts(t: String) -> String:
+	if not t.contains("{C:"):
+		return t
+	## 用字符类 [{] [}] 而不是转义 —— GDScript 字符串里 \{ 是**非法转义**, 直接 Parse Error。
+	var re := RegEx.create_from_string("[{]C:([^}]+)[}]")
+	var out := ""
+	var last := 0
+	for m in re.search_all(t):
+		out += t.substr(last, m.get_start() - last)
+		out += const_of(m.get_string(1))
+		last = m.get_end()
+	return out + t.substr(last)

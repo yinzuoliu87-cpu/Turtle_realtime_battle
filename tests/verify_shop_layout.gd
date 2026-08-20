@@ -1,4 +1,7 @@
 extends Node
+## ★2026-08-20: 文案里现在可能有 {C:类名.常量名}(直接引用代码常量, 见 skill_text.gd)。
+##   判据必须先 `SkillText.render_consts()` 再量 —— 否则量的是模板不是玩家看到的字,
+##   会把"3/5/8"读成一长串 {C:...}。(引入机制那天这两条门禁当场就红了, 红得对。)
 ## verify_shop_layout.gd — 商店页版式不许超界 + 触摸目标不许太小
 ##
 ## 由来 (2026-07-28 重设计)：用户问「确定不会超界面吗」—— 我出草图时【没算过】，
@@ -246,7 +249,7 @@ func _ready() -> void:
 		var worst_nm := ""
 		for e in eqs:
 			var ed: Dictionary = e if e is Dictionary else {}
-			var raw := str(ed.get("effectDesc1", ""))
+			var raw := SkillText.render_consts(str(ed.get("effectDesc1", "")))
 			if raw == "":
 				continue
 			## 逐档缩字号 —— 复刻 ShopScene._fit_desc_font 的行为, 不是量"字号 20 放不放得下"。

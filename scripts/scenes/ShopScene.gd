@@ -1020,7 +1020,10 @@ func _panel_sep(parent: Control, y: float) -> Control:
 ## (龟技能才有 <span class="val-atk"> 那套)。所以不需要 html_to_bbcode(空转), 也不怕 BBCode 吃掉 [xxx]。
 ## 保留 bbcode_enabled 只为将来装备文案要上色时不用改结构。
 func _rich_desc(edef: Dictionary, star: int = 1) -> String:
-	var raw := str(edef.get("effectDesc1", ""))
+	## ★2026-08-20: 加一道 `render_consts` —— 文案里现在可能有 {C:类名.常量名}(直接引用代码常量,
+	##   见 skill_text.gd)。不展开就会把 `{C:...}` 原样显示给玩家。
+	##   ⚠ 上面那句"全是纯文本"从此不再成立, 别再据此省掉渲染。
+	var raw := SkillText.render_consts(str(edef.get("effectDesc1", "")))
 	if raw == "":
 		return "[color=#5b7a92](这件装备还没有效果描述)[/color]"
 	# ★按星级高亮(用户 2026-07-29「上面的效果能按照描述规则渲染吗」)。
