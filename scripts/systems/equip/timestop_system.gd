@@ -10,7 +10,7 @@ var _ts_charging := false                 # 蓄力中(1s, 世界仍正常)
 var _ts_charge_t := 0.0
 var _ts_charge_casters: Array = []
 var _ts_fired := false                    # 一场一次
-var _ts_maxstar := 0                      # 生效沙漏星级(定时长4/10/30)
+var _ts_maxstar := 0                      # 生效沙漏星级(定时长 5/10/30 秒·用户2026-07-19: 1★ 4→5)
 var _ts_frozen_tweens: Array = []         # 时停期间被暂停的tween(结束resume)
 var _ts_frozen_particles: Array = []      # 时停期间被暂停的GPUParticles3D(speed_scale归零, 结束还原)
 var _ts_overlay: CanvasLayer = null       # 时停灰世界叠加层(压暗褪色从携带者扩散; layer5=在UI下→只灰3D世界, 数字/血条保彩)

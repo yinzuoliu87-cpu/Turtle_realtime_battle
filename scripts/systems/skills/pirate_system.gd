@@ -8,7 +8,7 @@ var battle
 func _init(b) -> void:
 	battle = b
 
-func _sk_pirate_rum(u: Dictionary) -> void:                     # 海盗龟·朗姆酒(120龟能): 海盗船扔酒瓶→每秒回4%maxHP×6秒(HoT绿回血) + 护甲魔抗各+0.15A×6秒(暖色酒气护光)
+func _sk_pirate_rum(u: Dictionary) -> void:                     # 海盗龟·朗姆酒(120龟能): 海盗船扔酒瓶→每秒回4%maxHP×6秒(HoT绿回血) + 护甲+0.65A/魔抗+0.15A×6秒(0.15A双抗 + 另给护甲 0.5A·见下方两行·暖色酒气护光)
 	u["rum_until"] = battle._t + 6.0; u["rum_dps"] = u["maxHp"] * 0.04   # 每秒回4%maxHP×6秒(分秒HoT·per-frame _heal结算)
 	u["rum_glow_until"] = battle._t + 6.0                               # 暖色酒气护光标记
 	var _rum_dr: float = u["atk"] * 0.15                          # 回合制 pirate·heal defUpAtkPct{pct:15} → +15%×ATK 双抗·6秒
@@ -159,7 +159,7 @@ func _pirate_cannonball(from2d: Vector2, from_h: float, to2d: Vector2, on_land: 
 		if is_instance_valid(ball): ball.queue_free()
 		if on_land.is_valid(): on_land.call())
 
-# 海盗船·技能三(封板L379): 首次充能满召唤实体船→冲锋撞目标(第一敌200码1.0A魔法+击飞2秒)→留场; 船=HP1.5×/ATK1.0×/无双抗/攻速0.8射程300/普攻射最近敌0.4A
+# 海盗船·技能三(封板L379): 首次充能满召唤实体船→冲锋撞目标(第一敌200码1.0A魔法+击飞2秒)→留场; 船=HP1.5×/ATK1.0×/无双抗/攻速0.8射程110(近战·battle_spawn._spawn_pirate_ship_entity)/普攻射最近敌0.4A
 func _sk_pirate_ship(u: Dictionary, tgt) -> void:
 	if not u.get("ship_summoned", false):
 		u["ship_summoned"] = true

@@ -132,9 +132,11 @@ var battle
 var vfx
 
 ## 084【后撤十字斩】的技能 type。
-## ★引擎那张 `_IMPL_SKILLS` 表与 `_do_skill` 的 match 都在 `RealtimeBattle3DScene.gd`(共享文件, 不许动),
-##   所以这个 type 现在**进不了引擎的选技/施放链**: `_pick_ready_skill` 查 `_IMPL_SKILLS` 查不到 → 跳过。
-## ⇒ 本文件自己驱动(`_hh_self_drive`), 但**龟能经济仍然全走引擎的真机制**:
+## ★★现状(已核实): 主会话**已经把两行都接上了** —— `RealtimeBattle3DScene.gd:5373`
+##   `"eqCrossSlash": true,` 进了 `_IMPL_SKILLS`, `:5541` 也在 `_do_skill` 里分派到
+##   `_equip_sys._blade_sys.cast_cross_slash(u, tgt)`。⇒ 施放走的是**引擎真入口**,
+##   下面的自驱 `_hh_self_drive` 已经在首行 `if battle._IMPL_SKILLS.has(HH_SKILL): return` 自动停手,
+##   现在等于死路径(留着是接线被撤时的兜底)。**龟能经济一直全走引擎的真机制**:
 ##   · 花费走 `u["energy_cost"][HH_SKILL] = 80`, 由 `battle._skill_cost` 读(不是我自己发明一个数)
 ##   · 充能走 `u["skill_cd"][HH_SKILL]`, 由 `_tick_skill_cd` 每帧扣(含 echarge_perm / 眩晕锁 / 龟能银行)
 ##   · 冷却重置与全局 GCD 也照引擎的写法(`_skill_cd` / `SKILL_GCD`)

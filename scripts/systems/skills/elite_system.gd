@@ -181,7 +181,7 @@ func _elite_whirl(u: Dictionary) -> void:                        # 被动3·旋�
 		_elite_slash_arc(o["pos"], dv.normalized() if dv.length() > 1.0 else Vector2.RIGHT)
 	if total > 0:
 		battle._damage._heal(u, float(total) * 0.5)                              # 吸血50%(生物质回收)
-func _elite_try_consume(u: Dictionary, tgt: Dictionary) -> bool:   # 被动1·吞噬(Consume·用户拍板: 1.5s演出不中断/可被攻击/回复=触发瞬间目标剩余HP/只偷主动技)
+func _elite_try_consume(u: Dictionary, tgt: Dictionary) -> bool:   # 被动1·吞噬(Consume·用户拍板: 1.5s演出不中断/演出期95%减伤/回复=触发瞬间目标剩余HP×2(用户2026-07-19)/只偷主动技)
 	if tgt == null or not tgt.get("alive", false): return false
 	if tgt.get("_eggImmune", false) or tgt.get("_consuming", false): return false
 	if float(tgt.get("hp", 0.0)) >= float(tgt.get("maxHp", 1.0)) * 0.15: return false

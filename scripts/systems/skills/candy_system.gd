@@ -72,7 +72,7 @@ func _candy_hammer_pose(hammer: Sprite3D, pos2d: Vector2, dir: Vector2, slamming
 		tf.basis = battle._cam.global_transform.basis * Basis(Vector3(0, 0, 1), ang)
 		hammer.global_transform = tf
 
-func _sk_candy_barrage(u: Dictionary, tgt) -> void:            # 糖果龟·技能二糖衣炮弹(封板·120龟能): 敌最密集区降糖衣炮弹雨8跳·可见糖弹从天落下·落点局部命中(用户2026-07-14全套标准)·友2%maxHp盾/敌0.2A+2%maxHp魔法+减速20%
+func _sk_candy_barrage(u: Dictionary, tgt) -> void:            # 糖果龟·技能二糖衣炮弹(封板·120龟能): 敌最密集区降糖衣炮弹雨8跳·可见糖弹从天落下·落点局部命中(用户2026-07-14全套标准)·友1.5%maxHp盾/敌0.2A+2%maxHp魔法+减速20%
 	var es: Array = []
 	for o in battle._targeting._enemies_of(u):
 		if o.get("alive", false): es.append(o)

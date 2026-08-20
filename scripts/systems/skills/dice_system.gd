@@ -163,9 +163,9 @@ func _sk_dice_allin(u: Dictionary) -> void:                      # 骰子龟·�
 	battle._skill_ring(u["pos"], Color(1.0, 0.3, 0.3, 0.35), 52.0)
 
 # 骰子龟·稳定骰子(刀妹Q式·〖#4"刀妹Q式·你仔细设计"〗; 数值取回合制 diceFlashStrike: baseHits=4 / perHitScale=0.9 / falloffPct=10)
-#   掷骰 1-6 → 冲刺 (4 + 点数) 次; 首段 0.9×ATK 物理(吃暴击), 之后每段递减 10% (0.9 × 0.9^i)
+#   直接掷段数 FLASH_SEG_MIN~MAX (7~11) 次冲刺; 首段 0.9×ATK 物理(吃暴击), 之后每段递减 10% (0.9 × 0.9^i)
 #   每刺间隔 DICE_STRIKE_GAP 秒【分帧铺开】(原来全部在同一帧解算 → 视觉糊成一坨/飘字堆叠)
-func _sk_dice_flash_strike(u: Dictionary) -> void:   # 稳定骰子(刀妹Irelia Q·破空斩式·用户2026-07-13): 掷骰(4+点数)段, 每段真冲刺穿到随机敌+挥剑斩·递减10%
+func _sk_dice_flash_strike(u: Dictionary) -> void:   # 稳定骰子(刀妹Irelia Q·破空斩式·用户2026-07-13): 掷 7~11 段, 每段真冲刺穿到随机敌+挥剑斩·递减10%
 	# 用户2026-07-28: 4+d6(5~10段) → 7~11段。直接掷段数而不是"6+d5" —— 后者会让飘字显示 1~5 点,
 	# 与"骰子"的六面设定矛盾; 现在飘字直接报段数, 不再假装是点数。
 	var count: int = randi_range(FLASH_SEG_MIN, FLASH_SEG_MAX)

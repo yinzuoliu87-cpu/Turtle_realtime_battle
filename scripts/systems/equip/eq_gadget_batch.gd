@@ -412,7 +412,8 @@ func sext_ultimate(u: Dictionary, si: int) -> int:
 			battle._battle_rng.randf_range(battle.ARENA.position.y, battle.ARENA.end.y))
 		d["sx"] = sp.x
 		d["sy"] = sp.y
-		# ★★2026-08-08【错峰飞散】照赛博龟: 起飞**间隔** randf()*0.35、飞行**时长** 0.6~1.2 各不相同
+		# ★★2026-08-08【错峰飞散】照赛博龟: 起飞**间隔** randf()*SEXT_SCATTER_LAG(0.35)、
+		#   飞行**时长** SEXT_SCATTER_MIN~MAX(0.60~1.00) 各不相同(赛博龟原值是 0.6~1.2)
 		#   ⇒ 六门不是"同一帧瞬移到位", 而是一个个错开飞出去。
 		#   起点记它当时的环绕位(_px/_py 由演出层每帧回填) —— 没有起点就没法插值。
 		d["fd"] = battle._battle_rng.randf() * GadgetEqVfx.SEXT_SCATTER_LAG

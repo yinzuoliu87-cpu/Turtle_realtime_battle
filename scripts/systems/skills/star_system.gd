@@ -14,7 +14,7 @@ func _init(b) -> void:
 const WORMHOLE_LOCK_FALLBACK := 25.0
 
 
-func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭曲空间「奇点」(封板数值不动: 普通=敌阵中心500码全体0.8A魔法; 强化星能满=+拽向中心min(d×0.6,200)+清空星能; 120龟能)
+func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭曲空间「奇点」(封板数值不动: 普通=敌阵中心500码全体0.8A魔法; 强化星能满=+过中心镜像换位(落点=center*2-pos, 钳进 ARENA)+清空星能; 120龟能)
 	# 演出重设计照发条R官方逐帧(C:/tmp/ori_burst: b13施放三件套/b13-b24吸入0.37s/b25-27屏息/b28爆发帧/b29-b34拉拽0.2s)·星际×2放慢换算
 	# 用户2026-07-16批准: 伤害挪到爆发帧结算+施法锁(技2先例); 同日整改: ①普通版施法可积攒星能·强化版才锁星能 ②强化换位=重力抛物线甩飞过中心点落对端·落地即恢复行动("延中心点到对端") ③特效范围=伤害范围500码对齐 ④节奏再减慢30%→吸入1.03s/爆发帧1.24s/拉拽0.57s
 	var es: Array = []
@@ -33,7 +33,7 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 	var rtex := VfxTex._make_pixel_ring_tex()
 	var stex := VfxTex._make_star_texture()
 	var wtex := VfxTex._make_ring_texture(Color(1, 1, 1, 1))
-	# ── 预告(0.15s): 奇点从地里升起由小长大 + 白紫细范围环从中心扩到500码(h≥0.06防掉地下)
+	# ── 预告(0.21s): 奇点从地里升起由小长大 + 白紫细范围环从中心扩到500码(h≥0.06防掉地下)
 	var core := Sprite3D.new()
 	core.texture = load("res://assets/sprites/vfx/fx-black-hole.png")
 	core.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
@@ -82,7 +82,7 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 			if not o.get("alive", false) or (o["pos"] as Vector2).distance_to(center) > 500.0: continue
 			var pd: Vector2 = (center - (o["pos"] as Vector2)).normalized()
 			battle._beam_vfx("res://assets/sprites/vfx/fx-trail.png", o["pos"], (o["pos"] as Vector2) + pd * 46.0, 14.0, Color(0.62, 0.42, 1.0, 0.5), 0.86, 0.06)
-	# ── 吸入(0→0.72s): 白色烟圈螺旋内收拖彗尾(EASE_IN先慢后快·同时到达) + 紫星尘被吸向中心
+	# ── 吸入(0→1.03s): 白色烟圈螺旋内收拖彗尾(EASE_IN先慢后快·同时到达) + 紫星尘被吸向中心
 	var wisp_n: int = 8 if charged else 6
 	for wi in range(wisp_n):
 		var a0: float = TAU * float(wi) / float(wisp_n) + randf() * 0.6
@@ -270,7 +270,7 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 	master.tween_interval(0.21)
 	master.tween_callback(do_burst)
 
-func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·星波(封板数值·2026-07-16演出重设计"星潮扩散/天崩"): 普通=扩散环0.58s波扫到才结算1.0A魔法; 星能满追加巨彗星敌阵中心1.5A(落地结算)+清空星能
+func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·星波(封板数值·2026-07-16演出重设计"星潮扩散/天崩"): 普通=扩散环1.16s波扫到才结算1.0A魔法; 星能满追加巨彗星敌阵中心【真伤=100%消耗的星能】(落地结算·400码)+清空星能
 	var charged: bool = float(u.get("star_energy", 0.0)) >= u["maxHp"] * 0.40
 	var uu2 := u
 	var origin: Vector2 = u["pos"]
@@ -278,7 +278,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 	u["star_lock_until"] = float(u["energy_lock_until"])                                                    # 星能同锁(积累暂停)
 	var stex := VfxTex._make_star_texture()
 	var glow0 := VfxTex._make_fire_glow_tex()
-	# ── 起手(0.2s): 4颗小星被吸进龟身(聚能预兆)
+	# ── 起手(0.36s): 4颗小星被吸进龟身(聚能预兆)
 	for gi in range(4):
 		var ga: float = TAU * float(gi) / 4.0 + randf() * 0.5
 		var gs := Sprite3D.new()
@@ -292,7 +292,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 		gt.tween_property(gs, "position", battle._world_pos(origin, 0.8), 0.36).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		gt.tween_property(gs, "modulate:a", 0.0, 0.12).set_delay(0.28)
 		gt.chain().tween_callback(gs.queue_free)
-	# ── 波环扩散(0.2s起·0.58s推到520码): 双层贴地环+环带12星随波转·波前扫到才结算·尽头碎星屑
+	# ── 波环扩散(0.4s起·1.16s推到520码): 双层贴地环+环带12星随波转·波前扫到才结算·尽头碎星屑
 	var rtex := VfxTex._make_pixel_ring_tex()
 	var wave := func() -> void:
 		if not uu2.get("alive", false): return
@@ -444,7 +444,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				rst.tween_property(rs, "modulate:a", 0.0, 0.5)
 				rst.chain().tween_callback(rs.queue_free)
 		, 0.0, 1.0, 2.0)
-		var comet := func() -> void:                              # 1.0s后: 坠落0.25s(大火球头+束状粗光柱+嵌星+坠落微震)
+		var comet := func() -> void:                              # 2.0s后(见文末 _pending_shots delay): 坠落0.5s(大火球头+束状粗光柱+嵌星+坠落微震)
 			if is_instance_valid(pillar):                          # 天光柱: 坠落瞬间快速隐去(彗星接管); 紫环保留到撞击后慢散
 				var pf = battle._reg_tween()
 				pf.tween_property(pillar, "modulate:a", 0.0, 0.15)

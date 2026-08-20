@@ -261,7 +261,7 @@ const FROST_CHIP := "res://assets/sprites/vfx/frost-chip.png"
 
 ## 一跳的视觉: 按半径决定落几根, 每根独立预警→坠落→命中→残留.
 func _ice_frost_rain(center: Vector2, radius: float) -> void:
-	# ④ 片数跟半径走(旧版恒 5): 150码→5 根, 750码→16 根. 上限 16 防帧率.
+	# ④ 片数跟半径走(旧版恒 5): 150码→5 根, 满层 750码→15 根(3+int(750/60)). 上限 16 防帧率(实际到不了).
 	var n: int = clampi(3 + int(radius / 60.0), 5, 16)
 	for i in range(n):
 		# 极坐标均匀采样(旧版是方形取样再 continue 掉圈外的, 实际根数经常不足)

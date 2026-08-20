@@ -106,14 +106,14 @@ func _chest_apply_treasure(u: Dictionary, tid: String) -> void:   # 逐件bespok
 	match tid:
 		"dagger":         battle._damage._buff(u, "atk", 0.25, true, 99999.0)                                              # 短刃: +25%攻
 		"wood_shield":    battle._damage._buff(u, "def", 0.20, true, 99999.0); battle._damage._buff(u, "mr", 0.20, true, 99999.0)          # 木盾: +20%双抗
-		"rum":            u["chest_rum_t"] = 0.0                                                             # 朗姆酒: 每10秒回8%maxHp(周期tick读flag)
+		"rum":            u["chest_rum_t"] = 0.0                                                             # 朗姆酒: 每秒回 RUM_HEAL_PCT(0.5%) maxHp(周期tick读flag)
 		"blood_dice":     u["crit"] = float(u.get("crit", 0.0)) + 0.35                                       # 血筛子: +35%暴击
 		"chain":          u["chest_aoe_mult"] = 2.0                                                          # 锁链: 砸击AOE距离/射程翻倍(_chest_basic钩子)
 		"stone":          u["chest_rock_bonus"] = float(u.get("chest_rock_bonus", 0.0)) + 1.0                # 石头: 砸击额外+100%护甲+100%魔抗(_chest_basic钩子)
 		"long_sword":     battle._damage._buff(u, "atk", 0.45, true, 99999.0)                                               # 长剑: +45%攻
 		"bloodblade":     u["lifesteal"] = float(u.get("lifesteal", 0.0)) + 0.25                             # 嗜血之刃: +25%吸血
 		"flint":          pass                                                                               # 火石: 命中→灼烧(_apply_damage_from钩子·防循环)
-		"gem_armor":      battle._damage._buff(u, "def", 0.25, true, 99999.0); battle._damage._buff(u, "mr", 0.25, true, 99999.0); u["maxHp"] += GEM_HP; u["hp"] += GEM_HP   # 宝石甲: +25%双抗+60血
+		"gem_armor":      battle._damage._buff(u, "def", 0.25, true, 99999.0); battle._damage._buff(u, "mr", 0.25, true, 99999.0); u["maxHp"] += GEM_HP; u["hp"] += GEM_HP   # 宝石甲: +25%双抗 + GEM_HP(500)血
 		"poison":         pass                                                                               # 毒箭: 命中→治疗削减-50%5秒(_apply_damage_from钩子·防循环)
 		"phoenix_statue": u["_chest_revive"] = true                                                          # 凤凰雕像: 首死25%最大生命复活(_kill钩子)
 		"crown":          battle._damage._buff(u, "atk", 0.40, true, 99999.0); u["crit"] = float(u.get("crit", 0.0)) + 0.40; u["crit_dmg"] = float(u.get("crit_dmg", 1.5)) + 0.25; u["lifesteal"] = float(u.get("lifesteal", 0.0)) + 0.15   # 王冠: +40攻/+40暴/+25爆伤/+15吸血

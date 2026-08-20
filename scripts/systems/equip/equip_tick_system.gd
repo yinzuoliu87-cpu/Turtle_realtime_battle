@@ -77,7 +77,7 @@ func _tick_bear_anim(u: Dictionary, delta: float) -> void:   # 大熊状态机: 
 	if not u.get("_slam_manual", false):   # 砸地手控voff期间不覆盖
 		u["_bear_voff"] = voff
 
-func _tick_fortress(u: Dictionary, delta: float) -> void:   # 深海堡垒甲p2eq_014: 硬化满20层后每8秒汲取全体敌(魔伤0.8/1.0/1.5×(护甲+魔抗))+每敌回血; 满层瞬间立即首次; 每件独立
+func _tick_fortress(u: Dictionary, delta: float) -> void:   # 深海堡垒甲p2eq_014: 硬化满25层(harden_cap·见 equip_stats_apply)后每8秒汲取全体敌(魔伤0.8/1/2.5×(护甲+魔抗))+每敌回血 50/100/250+已损5%; 满层瞬间立即首次; 每件独立
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_014": continue
@@ -128,7 +128,7 @@ func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016:
 const ANCHOR_IV := 0.25                # 不沉之锚回血节拍(秒) —— 用户 2026-08-01「恢复触发改为每0.25秒去回复生命值」
 const ANCHOR_ACC_PER_CHARGE := 250.0   # 累积治疗满这么多 → +1 沉锚充能(用户2026-07-19: 100→250)
 
-## 不沉之锚 p2eq_017: 治疗【生命百分比最低的友军(含自己)】1/2/15% 携带者maxHp; 累积治疗满250→+1充能。
+## 不沉之锚 p2eq_017: 治疗【生命百分比最低的友军(含自己)】0.1/0.2/3% 携带者maxHp(用户 2026-08-12 削弱, 原 1/2/15%); 累积治疗满250→+1充能。
 ## ★★2026-08-01 把触发从【每次受伤】改成【每 0.25 秒】(用户点名)。
 ##   原来挂在 on-hurt 上 → 回血量与"挨了几下"绑定: 被一群小兵点死的场面奶得飞快,
 ##   被一发大招秒的场面一次都没回 —— 同一件装备在两种局里完全是两个东西。

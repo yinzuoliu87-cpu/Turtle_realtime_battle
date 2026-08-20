@@ -81,7 +81,7 @@ func _lava_quake(u: Dictionary) -> void:                         # 小·岩浆�
 	})
 	battle._skill_ring(center, Color(1.0, 0.45, 0.15, 0.5), radius)
 
-func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火山爆发(用户2026-07-15定稿): 目标那头的尽头生成岩浆浪潮→朝火山龟压过来(250码/s)→穿过龟到另一头尽头消散; 碾过每敌击飞+5段0.5A魔+灼烧+回血12%
+func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火山爆发(用户2026-07-15定稿): 目标那头的尽头生成岩浆浪潮→朝火山龟压过来(250码/s)→穿过龟到另一头尽头消散; 碾过每敌击飞+一段 ERUPT_ATK_COEF(1.2)A 魔+ERUPT_BURN_COEF(0.2)A 灼烧+回血 ERUPT_HEAL_PCT(8%)
 	var dir: Vector2 = battle._densest_enemy_point(u, 400.0) - u["pos"]   # 瞄准轴: 朝敌最密方向
 	dir = dir.normalized() if dir.length() > 0.1 else Vector2.RIGHT
 	var tdir: Vector2 = -dir                                       # ★行进方向=朝火山龟压过来(用户: 目标尽头生成→移向龟→穿过到另一端)
@@ -382,8 +382,8 @@ func _lava_flame_strike(u: Dictionary, tgt: Dictionary) -> void: # 火山·重�
 	u["_slam"] = false
 
 
-# 熔岩之心·变身火山龟: 全属性提升(数据驱动 passive transform*) + 持续N秒 + 变身瞬间全体爆发灼烧吸血. 怒气清空.
-# 熔岩之心·变身火山龟: 全属性提升(数据驱动 passive transform*) + 持续N秒 + 变身瞬间全体爆发灼烧吸血. 怒气清空.
+# 熔岩之心·变身火山龟: 全属性提升(数据驱动 passive transform*) + 持续N秒 + 变身瞬间全体爆发灼烧吸血.
+# ★怒气【不】在变身时清空 —— 火山期间怒气条当倒计时条匀速流失(用户2026-07-15), 归零在 _lava_revert。
 func _lava_transform(u: Dictionary) -> void:
 	if u.get("volcano", false):
 		return

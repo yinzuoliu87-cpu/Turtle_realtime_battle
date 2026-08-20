@@ -205,11 +205,11 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 			u["flat_dr"] = float(u.get("flat_dr", 0.0)) + [3.0, 6.0, 10.0][si]
 		"p2eq_024":   # 龙蛋: 装备即3层吐息
 			stt["dragon_stacks"] = 3
-		"p2eq_039":   # 竹制弓箭: 生长充能数 (3★=3次)
+		"p2eq_039":   # 竹制弓箭: 生长充能数 (6/10/15 次·用户2026-07-19 从 1/1/3 提上来)
 			stt["bamboo_charges"] = [6, 10, 15][si]   # 用户2026-07-19: 1/1/3 → 6/10/15 (一局重置: eq_state每场重建)
 		"p2eq_052":   # 左轮: 6发子弹
 			stt["revolver_bullets"] = 6
-		"p2eq_027":   # 电棍: 3层电击
+		"p2eq_027":   # 电棍: 3/4/5 层电击(逐星)
 			stt["baton_charges"] = [3, 4, 5][si]
 		"p2eq_058":   # 穿甲遗弹(重做·用户2026-07-19): 登场召唤炮台 (延到首帧spawn, 同032)
 			u["_turret_pending"] = true

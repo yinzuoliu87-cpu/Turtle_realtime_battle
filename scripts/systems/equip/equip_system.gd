@@ -184,7 +184,7 @@ func _eq_ice_fissure(u: Dictionary, si: int) -> void:
 
 # 水晶碎片火花: 弹出+缓旋+淡出 (光束/引爆/扫射点缀)
 # 030 单段水晶光束结算: 从携带者当前位置沿 dir 无限直线, 全线敌魔法伤+1层水晶
-func _eq_crystal_line(u: Dictionary, si: int) -> void:   # 迷你水晶球A030: 每7秒朝最近敌方向连发2/2/3段贯穿光束(错峰0.2s)
+func _eq_crystal_line(u: Dictionary, si: int) -> void:   # 迷你水晶球A030: 【法力条集满】时朝最近敌方向连发2/2/3段贯穿光束(错峰0.2s)。★不是周期件: 030/031 都不在 _EQ_CUSTOM_IV / EQ_IV_BATCH1 里, 触发口是 fire_equip_effect(由 StaffSynergySystem 在法力满时调)
 	if not u.get("alive", false): return
 	var t4 = battle._targeting._nearest_enemy(u)
 	if t4 == null: return
@@ -227,7 +227,7 @@ func _eq_crystal_sweep(u: Dictionary, si: int) -> void:
 	##   缓动曲线在 `CrystalSystem.tick` 里照抄原式, 观感不变。
 	battle._crystal_sys.sweep_begin(u, si, reach, state, im, imesh, mat, start_a)
 
-# 032: 登场召唤亡灵骷髅 (双抗20000近乎免疫, 存活15s自灭, 死亡200码内%最大生命真伤)
+# 032: 登场召唤亡灵骷髅 (双抗为 0, 靠 _dmg_cap_one 把任何一击钳成 1 = 近乎免疫; 存活 13/17/23s 自灭, 死亡 200 码内 8/13/20% 最大生命真伤)
 func _eq_summon_turret(u: Dictionary, si: int) -> void:   # 穿甲遗弹058(重做): 登场召唤不可移动的炮台
 	if not u.get("alive", false): return
 	var tr = battle._spawn._spawn_summon(u, "turret", [500.0, 1000.0, 1800.0][si], [20.0, 30.0, 45.0][si],
@@ -486,7 +486,7 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 			if a37["pos"].distance_to(u["pos"]) <= 250.0:
 				a37["candle_hot_rate"] = (hv37 * 0.5) / 5.0
 				a37["candle_hot_until"] = battle._t + 5.0
-	elif ph == 2:   # 燃烧: 火苗爆燃(蜡烛过亮+弹一下) + 原地爆炸, 499码内敌各受魔法伤+灼烧
+	elif ph == 2:   # 燃烧: 火苗爆燃(蜡烛过亮+弹一下) + 原地爆炸, 500码内敌各受魔法伤+灼烧
 		if c != null and is_instance_valid(c):
 			var ct = battle._reg_tween(); ct.set_parallel(true)
 			ct.tween_property(c, "modulate", Color(1.4, 1.15, 0.85, 1.0), 0.12)
@@ -861,7 +861,9 @@ func _eq_charge(stt: Dictionary, key: String, amt: float, cap: float, on_full: C
 ## ── 飞镖056(用户 2026-07-30 新效果) ──
 const DART_EVERY := 5              # 每 5 下普攻强化一次
 const DART_KNOCKUP_SEC := 1.0      # 强化那一击把目标击飞 1 秒(= 位移 + 同时长 stun)
-const DART_KNOCKUP_DIST := 120.0   # 击飞位移距离(码)
+## ⚠ 这个数【不产生位移】: 它传给 `_knockback` 的第三参, 而那个参数在 battle_damage.gd 里
+##   叫 `_dist` 且从不被读 —— 真实位移由 battle.KNOCK_VY / KNOCK_PUSH 决定。留着只是占位。
+const DART_KNOCKUP_DIST := 120.0   # (传给 _knockback 的 _dist, 实际被忽略)
 
 
 ## ── 荆棘海胆015(用户 2026-07-30 效果重做) ──
@@ -899,8 +901,11 @@ func _conch_grant_equips(worm: Dictionary, si: int) -> void:
 		_stats._eq_apply_flags(worm, eid, star)
 
 
-## 083 潮汐细剑的层数上限(方案书: 最多 5 层)。
-const TIDE_MAX_LAYERS := 5
+## ★这里原来是 `const TIDE_MAX_LAYERS := 5`(注释写"方案书: 最多 5 层")。删了, 两个理由:
+##   ① 零引用 —— 全仓 grep 只有它自己那一行, 没有任何消费者。
+##   ② 值是错的 —— 083 的真上限是 **20**(eq_blade_batch.gd:38/:84「层数上限 20 是硬顶」,
+##      data/phase2-equipment.json 也写 20)。留着一个没人读、数还反的常量, 下一个人照它改代码就出事。
+##   本文件下方 083 的 on-hit 注释里已经写着"至多 20 层", 事实源在 eq_blade_batch.gd。
 
 
 ## 批② 的【本次伤害 +N%】/【额外真实伤害】统一投递口。
@@ -1090,7 +1095,7 @@ func _eq_chain_lightning(u: Dictionary, si: int) -> void:
 		if nxt == null:
 			break
 		seq.append(nxt); hit.append(nxt); cur = nxt
-	# 逐跳错峰(0.12s): 画锯齿弧+命中爆闪+魔法伤害
+	# 逐跳错峰(0.2s): 画锯齿弧+命中爆闪+魔法伤害
 	var prev_pos: Vector2 = u["pos"]
 	for i in range(seq.size()):
 		var tgt = seq[i]
@@ -1259,7 +1264,7 @@ func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽�
 		battle._damage._apply_damage_from(src, o, int([30, 45, 60][si] * mult), Color("#ffffff"), 0.0, true, true)
 # 灼热火珊瑚 023(主动满法力)
 # 灼热火珊瑚 023(主动满法力)
-func _eq_fire_coral_active(src: Dictionary, si: int) -> void:   # 灼热火珊瑚023主动: 蓄力→挥出60°扇形火焰波(缓移550码,边挥边扩)→接触敌施60灼烧
+func _eq_fire_coral_active(src: Dictionary, si: int) -> void:   # 灼热火珊瑚023主动: 蓄力→挥出60°扇形火焰波(缓移550码,边挥边扩)→接触敌施 40/60/90 层灼烧(用户2026-07-19: 原固定60不吃星级)
 	if not src.get("alive", false): return
 	var es = battle._targeting._enemies_of(src)
 	var dir := Vector2.RIGHT
@@ -1318,7 +1323,7 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 			u["_b4_dot"] = false   # ★口径标志: 这一段来自【普攻/技能】路(另一条见 _b4_on_damaged_any)
 			_b4t.on_damaged(u, src, float(dmg), iid, si)
 		match iid:
-			"p2eq_013", "p2eq_014":   # 受击硬化: +def/mr (cap20层); 013满层给护盾
+			"p2eq_013", "p2eq_014":   # 受击硬化: +def/mr (层上限读 stt["harden_cap"]: 013=20 / 014=25, 见 equip_stats_apply); 013满层给护盾
 				var cur: int = int(stt.get("harden_stacks", 0))
 				var hcap: int = int(stt.get("harden_cap", 20))
 				if cur < hcap:
@@ -1403,7 +1408,7 @@ func _eq_on_dodge(u: Dictionary) -> void:
 # ============================================================================
 #  on-cast (放主动技后)
 # ============================================================================
-func _eq_bloodletting(u: Dictionary, si: int) -> void:   # 饮血护符坠(011): 一段一段连斩(每刀~0.11s顺序打出,各命中随机敌,衰减0.85^k); 吸血溢出转盾结尾汇总
+func _eq_bloodletting(u: Dictionary, si: int) -> void:   # 饮血护符坠(011): 一段一段连斩(每刀 0.3s 顺序打出,各命中随机敌,衰减0.85^k); 吸血溢出转盾结尾汇总
 	var n: int = [5, 6, 8][si]
 	var sh0: float = u["shield"]
 	for k in range(n):
@@ -1443,15 +1448,15 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 				#   拆掉; 现在唯一入口是 fire_equip_effect → _eq_bloodletting(法力满时调)。
 				#   被动(溢出治疗转血护盾, 见 equip_stats_apply)是常驻字段, 不受影响。
 				pass
-			"p2eq_014":   # 深海堡垒甲: 汲取移到 _tick_fortress(硬化满20层后每8秒汲取, 用户2026-07-02); on_cast不处理
+			"p2eq_014":   # 深海堡垒甲: 汲取移到 _tick_fortress(硬化满25层后每8秒汲取, 用户2026-07-02); on_cast不处理
 				pass
 			"p2eq_022":   # 余烬燃油瓶: 改为每8秒定时(battle._EQ_CUSTOM_IV→_eq_fuel_throw, 用户2026-07-19); on_cast不处理
 				pass
 			"p2eq_028":   # 冰霜冻露瓶: 改为每6秒定时(battle._EQ_CUSTOM_IV→_eq_ice_throw, 用户2026-07-19); on_cast不处理
 				pass
-			"p2eq_030":   # 迷你水晶球A: 改为每7秒定时(battle._EQ_CUSTOM_IV→_eq_crystal_line, 用户2026-07-19); on_cast不处理
+			"p2eq_030":   # 迷你水晶球A: 法力条集满触发(fire_equip_effect→_eq_crystal_line); 不在任何周期表里; on_cast不处理
 				pass
-			"p2eq_031":   # 迷你水晶球B: 改为每8秒定时(battle._EQ_CUSTOM_IV→_eq_crystal_sweep, 用户2026-07-19); on_cast不处理
+			"p2eq_031":   # 迷你水晶球B: 法力条集满触发(fire_equip_effect→_eq_crystal_sweep); 不在任何周期表里; on_cast不处理
 				pass
 			"p2eq_039":   # 竹制弓箭: 改为每第3段普攻消耗1次充能(_eq_on_basic_attack, 用户2026-07-19); on_cast不处理
 				pass
@@ -1749,7 +1754,7 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 		battle._cur_eq_item = iid   # 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
 		var stt: Dictionary = u["eq_state"].get(iid, {})
 		match iid:
-			"p2eq_001":   # 锈蚀短剑: 移到每帧 _tick_rustblade (每3s就绪 + 100码射程内有敌即劈); 周期tick不处理
+			"p2eq_001":   # 锈蚀短剑: 移到每帧 _tick_rustblade (每3s就绪 + 2000码(全场)射程内有敌即劈·用户2026-07-19 近战→远程剑气); 周期tick不处理
 				pass
 			"p2eq_012":   # 龟苓膏块: 移到 _tick_jelly (每4s, 用户2026-07-02); 周期tick不处理
 				pass
@@ -1759,7 +1764,7 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 				pass
 			"p2eq_019":   # 海葵药膏: 移到 _tick_anemone(每7秒, 用户2026-07-02); 周期tick不处理
 				pass
-			"p2eq_020":   # 哑铃: 移到 _tick_dumbbell(每10秒编排:锻炼锁攻锁充能→掷哑铃击退, 用户2026-07-02); 周期tick不处理
+			"p2eq_020":   # 哑铃: 移到 _tick_dumbbell(每8秒编排:锻炼锁攻锁充能→掷哑铃击退, 用户2026-07-19 从10秒改; 周期tick不处理)
 				pass
 			"p2eq_021":   # 守护贝母: 移到 _tick_barnacle(每5秒连接→自己+最高攻友军 +10龟能+10%攻速本场, 用户2026-07-02); 周期tick不处理
 				pass
@@ -2052,13 +2057,10 @@ func _eq_on_magic_hurt(u: Dictionary, src, dmg: int, bkt: String) -> void:
 
 
 
-## 086 极地反冲装置(奇械·5费): 受到法术伤害时, 对施法者施加 1/1.5/2 秒【减速 30%】,
-## 并反弹本段伤害的 10/16/25%(4 秒内置冷却)。
-## ★反弹走 `raw=true, from_equip=true`: 真实伤害 + 不回钩 on-hit ⇒ 不会与反伤/雷盾成环。
-## ★减速写 `spd_move_mult` 这个【单槽】通道, 取更强的那个(同 061 的做法), 免得把
-##   别人打的 50% 减速盖成 30%。
-const RECOIL_ICD := 4.0
-const RECOIL_SLOW_MULT := 0.7      # 减速 30%
+## ★【已作废】这里原是 086「极地反冲装置」的两个常量(`RECOIL_ICD := 4.0` / `RECOIL_SLOW_MULT := 0.7`)
+##   与它的效果说明。086 已被用户整条重做成【六分仪浮游炮】(环绕炮群 + 终极射线, 效果本体在
+##   eq_gadget_batch.gd) —— 见本文件上方 `_eq_on_magic_hurt` 里那段 2026-08-06 批④ 记录。
+##   两个常量全仓零引用, 且描述的是一个不存在的效果 ⇒ 一并删除, 不留"看着还在用"的假线索。
 
 
 ## ★★2026-08-06 批④: 上面这一批位置原有【18 个旧效果函数】(_double_barrel_shot / _eq_derringer_volley+_derringer_shot / _eq_armory_burst+_armory_shot /

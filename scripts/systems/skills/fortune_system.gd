@@ -63,7 +63,7 @@ func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招�
 	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.6), 56.0)
 	battle._refresh_panel_equips(u)   # ★抽到/升星的临时装备图标即时显进左右信息框(用户2026-07-12)
 
-func _sk_fortune_dice(u: Dictionary) -> void:                    # 财神龟·骰子(用户2026-07-12补特效): 掷骰3~8金币+回8%maxHP
+func _sk_fortune_dice(u: Dictionary) -> void:                    # 财神龟·骰子(用户2026-07-12补特效): 掷骰5~8金币+回15%maxHP
 	var g: int = randi_range(5, 8)   # 2~6→3~8→5~8 (用户2026-07-29 第五轮)
 	u["gold"] += g
 	battle._damage._heal(u, u["maxHp"] * 0.15)   # 骰子回血 8%→10%→15% 最大生命(用户2026-07-29 第五轮·财神实测33秒就死, 回血=活久点)
@@ -77,7 +77,7 @@ func _sk_fortune_dice(u: Dictionary) -> void:                    # 财神龟·�
 # 财神·梭哈: 一场限一次, 消耗全部金币, 每枚 0.30×ATK物理 + 0.30×ATK真实 (cd999·数值在 RealtimeBattle3DScene 的 coin_true/coin_phys)
 const GOLD_SHIELD_MULT := 5.0   # 金盾盾量 = 金币数 × 这个倍率(用户 2026-08-01: 1 → 5)
 
-func _sk_fortune_goldshield(u: Dictionary) -> void:   # 财神·金盾(梭哈用过后该技变身·用户2026-07-12): 80龟能·护盾=当前金币数(不消耗金币)·持盾期锁龟能(盾破/4s到期解锁)
+func _sk_fortune_goldshield(u: Dictionary) -> void:   # 财神·金盾(梭哈用过后该技变身·用户2026-07-12): 80龟能·护盾=当前金币数×GOLD_SHIELD_MULT(5)(不消耗金币)·持盾期锁龟能(盾破/4s到期解锁)
 	# ★盾量 = 金币数 ×5(用户 2026-08-01 拍板加强; 原来是 ×1)。
 	#   背景: 修好"金盾压根没生效"之后, 梭哈这一路仍是全表倒数第 4(16.9%),
 	#   而且"放技/场 1.99"是全表最低 —— 一场只放两次(梭哈限一次 + 金盾)。
@@ -99,7 +99,7 @@ func _sk_fortune_goldshield(u: Dictionary) -> void:   # 财神·金盾(梭哈用
 ##
 ## ★龟能是【逐技冷却】不是累加值(SkillEnergy.CD_FACTOR=0.075) → "得70龟能" = 各技冷却各减 70×0.075=5.25 秒。
 ##   同一换算见 _tick_skill_cd 的 init_energy_bonus、天使飞升的 _ascend_growth_tick。
-## ★只触发一次: _allin_lowhp_fired 标记。触发点在 battle_damage._apply_damage_from 的 HP 阈值钩里,
+## ★只触发一次: u["_lowhp_fired"] 标记(读者在 battle_damage.gd 的 HP 阈值钩)。触发点在 battle_damage._apply_damage_from 的 HP 阈值钩里,
 ##   与装备的"首次<50%"同处 —— 那里是每次受伤后【无条件】查的, 不会漏掉某条伤害路径
 ##   (本项目有两条独立伤害路径 _apply_damage / _apply_damage_from, 各自扣血)。
 func _fortune_lowhp_burst(u: Dictionary) -> void:

@@ -293,7 +293,7 @@ func _crystal_spike_line(u: Dictionary) -> void:   # 照小菊R第三击(2026-07
 	bw.tween_property(burst, "pixel_size", (90.0 * battle.WS) / float(maxi(1, glow0.get_width())), 0.2)
 	bw.tween_property(burst, "modulate:a", 0.0, 0.2)
 	bw.chain().tween_callback(burst.queue_free)
-	# ② 发光波头贴地冲出(小菊: 滚动推进的能量团·全程0.5s)
+	# ② 发光波头贴地冲出(小菊: 滚动推进的能量团·0.12s鼓起 + battle.SPIKE_WAVE_TIME(0.6s)推完)
 	var wend: Vector2 = origin + dirv * battle.SPIKE_LINE_RANGE
 	wend.x = clampf(wend.x, battle.ARENA.position.x + 20.0, battle.ARENA.end.x - 20.0)
 	wend.y = clampf(wend.y, battle.ARENA.position.y + 14.0, battle.ARENA.end.y - 14.0)

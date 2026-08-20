@@ -214,12 +214,11 @@ func _cake_hot(u: Dictionary, stt: Dictionary, tag: String, delta: float) -> voi
 const GREY_STORE := [0.30, 0.40, 0.50]
 
 ## ⚠⚠ 诚实记录, 两条与文案字面不完全等价的地方(都是【按契约执行】的结果, 不是我随手定的):
-##   ① **灰条同时也是一层护盾**。契约 §2 把 070 的灰色血条列为 `SpecialBalance` 的五个用户之一,
-##      而 `SpecialBalance.absorb` 是【对所有余额一视同仁】的 —— 挂上去就会挡伤害。
-##      用户的文案只说"把受到伤害的 N% 存起来、每秒 5% 转回生命"(= 可回收血量), 没说它挡伤害。
-##      ⇒ 实际强度高于文案字面: 挨 100 点 ⇒ 灰条先扛掉最多 100、同时再存进 30~50。
-##      **要改成"纯回收池不挡伤害", 得给 SpecialBalance 加一个 `absorb=false` 的选项**
-##      (那是主会话的文件), 所以这里按契约照做并把差异写在这里。
+##   ① **灰条【不】挡伤害** —— 这一条已经解决, 不再是差异。
+##      `SpecialBalance` 后来加了 `absorb: bool` 选项(special_balance.gd:53/:77, 消费在 :127
+##      `if not bool(e.get("absorb", true)): continue`), 本文件两处 grant 都传 `{"absorb": false}`
+##      (见 `_grey_store` 与转血那两处) ⇒ 灰条是**纯回收池**, 与文案字面一致。
+##      (旧注写"挂上去就会挡伤害 / 得先给 SpecialBalance 加 absorb=false 选项" 已经过时, 已订正。)
 ##   ② `_st_taken` 记的是【减伤后的名义伤害】, 与"实际掉了多少血"不同 ——
 ##      被普通护盾/灰条挡掉的那部分【也算】受到伤害, 照样进灰条。
 ##      这与文案"受到的伤害"是一致的读法, 但和"掉了多少血"不是一回事, 记一笔免得以后当 bug 查。

@@ -43,8 +43,7 @@ func _sk_angel_ascend(u: Dictionary) -> void:                   # 天使龟·飞
 	u["atk_range"] = float(u["atk_range"]) + 25.0              # +25码射程(永久·叠加)
 	battle._aura_vfx("res://assets/sprites/vfx/fx-glow-ring.png", u, 88.0, Color(1.0, 0.92, 0.55, 0.62), 2.4)   # 金光飞升圣环(施法瞬间圣环渐亮)
 
-# 天使龟·平等 ✅ (封板2026-07-06 选A远程投射·60龟能): 站原地射2道圣光斩弧共200%物理·带10%施法吸血; 目标A级及以上追加从天而降审判光柱=(50%ATK+目标已损生命10%)真伤·无视双抗·同10%吸血
-# 天使龟·平等 ✅ (封板2026-07-06 选A远程投射·60龟能): 站原地射2道圣光斩弧共200%物理·带10%施法吸血; 目标A级及以上追加从天而降审判光柱=(50%ATK+目标已损生命10%)真伤·无视双抗·同10%吸血
+# 天使龟·平等 ✅ (封板2026-07-06 选A远程投射·60龟能): 站原地射4道圣光斩弧各50%ATK·合计200%物理·带10%施法吸血; 目标A级及以上追加从天而降审判光柱=(50%ATK+目标已损生命10%)真伤·无视双抗·同10%吸血
 func _sk_angel_equality(u: Dictionary, tgt) -> void:
 	if tgt == null or not tgt.get("alive", false):
 		return
@@ -56,7 +55,7 @@ func _sk_angel_equality(u: Dictionary, tgt) -> void:
 			if tgt == null or not tgt.get("alive", false): return
 			battle._bolt_line(u["pos"], tgt["pos"], Color(1.0, 0.92, 0.66))      # 金白斩弧曳光
 			battle._skill_ring(tgt["pos"], Color(1.0, 0.9, 0.6, 0.5), 44.0)
-			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 0.5, tgt, false), Color("#ffe9a8"), 0.10)   # 100%物理·10%吸血
+			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 0.5, tgt, false), Color("#ffe9a8"), 0.10)   # 单道50%物理(4道合计200%)·10%吸血
 			battle._damage._apply_damage_from(u, tgt, battle._mitigate(u, tgt["hp"] * 0.08, tgt, true), Color("#9be7ff"), 0.0, false)   # 审判(每段攻击命中都吃·独立结算不触发其他被动·用户2026-07-10"每次攻击都要吃")
 		})
 	# A级及以上→第3段从天而降审判光柱: (50%ATK + 目标已损生命10%)真伤·无视双抗·同10%吸血
@@ -67,7 +66,7 @@ func _sk_angel_equality(u: Dictionary, tgt) -> void:
 			var lost: float = maxf(0.0, float(tgt["maxHp"]) - float(tgt["hp"]))
 			var tru: int = maxi(1, int(float(u["atk"]) * 0.5 + lost * 0.10))
 			battle._damage._apply_damage_from(u, tgt, tru, Color(1.0, 0.96, 0.76), 0.10, true)   # 真伤无视双抗·10%吸血
-			battle._damage._apply_damage_from(u, tgt, battle._mitigate(u, tgt["hp"] * 0.08, tgt, true), Color("#9be7ff"), 0.0, false)   # 光柱也带审判(用户2026-07-11:附带被动·10%当前HP)
+			battle._damage._apply_damage_from(u, tgt, battle._mitigate(u, tgt["hp"] * 0.08, tgt, true), Color("#9be7ff"), 0.0, false)   # 光柱也带审判(用户2026-07-11:附带被动·8%当前HP·与上面每段斩弧同一系数)
 			battle._vfx._flash(tgt, Color(1.0, 0.96, 0.76))
 		})
 

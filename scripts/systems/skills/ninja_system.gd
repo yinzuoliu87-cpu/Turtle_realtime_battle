@@ -66,7 +66,7 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 	u["no_basic"] = true
 	u["_ninja_gliding"] = true                                 # 滑行中(含起手/落地)→触发器不再触发下一次冲刺(用户2026-07-11)
 	var _nspr = u.get("sprite", null)
-	var _ndsd = battle._resolve_action("pets/animations/ninja/dash.png", 16.0)   # 忍者冲刺动作(起手1-4/滑行5-8/落地9-11·丢12-18)
+	var _ndsd = battle._resolve_action("pets/animations/ninja/dash.png", 16.0)   # 忍者冲刺动作。★真实表只有 7 帧(0~6) —— 帧号一律经 _nspr_last() 钳制, 别照旧注释的"5-8/9-11"写死(见下方 2026-08-07 那段)
 	var _ndash: bool = (not _ndsd.is_empty()) and is_instance_valid(_nspr)
 	if _ndash:
 		u["_manual_anim"] = true                          # 手动逐帧(阻止_advance_anim自动推进)
@@ -137,7 +137,7 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 		if is_instance_valid(_nspr): battle._set_anim_sheet(u, u.get("idle_sd", {}), "", true)   # 回idle
 	u["_ninja_gliding"] = false                               # 冲刺(含落地)结束→放开触发
 
-func _sk_ninja_backstab(u: Dictionary, tgt: Dictionary) -> void: # 技三·背刺(1:1回合制 ninjaBackstab): +5穿甲5秒→闪现到【全场最远敌】身后→背刺【3段·每段300ms(hitStaggerMs)】各0.6667A物理(共2.0A)→留该处追砍
+func _sk_ninja_backstab(u: Dictionary, tgt: Dictionary) -> void: # 技三·背刺(1:1回合制 ninjaBackstab): +15穿甲5秒(用户2026-07-11: 5→15)→闪现到【全场最远敌】身后→背刺【3段·每段300ms(hitStaggerMs)】各0.6667A物理(共2.0A)→留该处追砍
 	var far = null
 	var fd = -1.0
 	for o in battle._targeting._pick_enemies_of(u):   # ★单体定向(闪现到最远敌身后)走 battle._targeting._pick_enemies_of: 否则忍者会瞬移到场外训龟大师身后背刺(场外·永远最远); 见 §PICK-TARGET(用户2026-07-24)
@@ -233,14 +233,14 @@ func _bomb_explode(spr, u: Dictionary, at2d: Vector2, opts: Dictionary) -> void:
 	# ★400码爆炸范围可视: 扩张冲击波环到 battle.NINJA_BOMB_RADIUS + 内圈亮闪 → 看清波及范围
 	battle._skill_ring(at2d, Color(1.0, 0.55, 0.2, 0.9), battle.NINJA_BOMB_RADIUS)
 	battle._skill_ring(at2d, Color(1.0, 0.82, 0.4, 0.75), battle.NINJA_BOMB_RADIUS * 0.55)
-	# 落点 400码内敌人: 先 -25%护甲(吃在这发上) 再 1.1A 物理; 圈外不受影响
+	# 落点 400码内敌人: 先 -20%护甲(吃在这发上) 再 2.0A 物理; 圈外不受影响
 	var col: Color = opts.get("color", Color("#ff9a3c"))
 	var hit: Array = []
 	for e in battle._targeting._enemies_of(u):
 		if e != null and e.get("alive", false) and e["pos"].distance_to(at2d) <= battle.NINJA_BOMB_RADIUS:
 			hit.append(e)
 	for e in hit:
-		battle._apply_skill_extras(u, e, opts)        # -25%护甲(defDown 0.25→BUFF_SEC=5秒)
+		battle._apply_skill_extras(u, e, opts)        # -20%护甲(defDown 0.20·BUFF_SEC=5秒)
 		battle._skill_ring(e["pos"], Color(col.r, col.g, col.b, 0.5), 46.0)   # 每敌破甲小环
 	for e in hit:
 		if e.get("alive", false):

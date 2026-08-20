@@ -43,8 +43,7 @@ func _phoenix_flame_channel(u: Dictionary, tgt: Dictionary, delta: float) -> voi
 		u["phx_burn_t"] -= 0.5
 		_phoenix_flame_cone(u, tgt)
 
-# 喷火伤害结算: 扇形内全部敌人 0.2ATK×(1+攻速) 魔法 + round(0.07ATK) 灼烧层 (用户2026-06-30)
-# 喷火伤害结算: 扇形内全部敌人 0.2ATK×(1+攻速) 魔法 + round(0.07ATK) 灼烧层 (用户2026-06-30)
+# 喷火伤害结算: 扇形内全部敌人 PHX_FLAME_MAG_COEF(0.2)ATK×(1+攻速) 魔法 + round(PHX_FLAME_BURN_COEF(0.04)×ATK) 灼烧层 (用户2026-06-30; 灼烧 0.07→0.04 用户2026-07-28削弱)
 func _phoenix_flame_cone(u: Dictionary, tgt: Dictionary) -> void:
 	var atk: float = u["atk"]
 	var aspd: float = 1.0 / maxf(0.05, float(u.get("atk_interval", 0.5)))   # 攻速=1/间隔
@@ -288,7 +287,7 @@ func _phoenix_flame_burst(pos2d: Vector2) -> void:
 
 # 火球抛物线飞行 (t:0→1; 高度 lerp + sin峰=抛起弧线) + 火焰拖尾
 
-# 凤凰·烫伤 ✅: 蓄力投掷火球(1.5ATK魔法+1ATK灼烧+破盾/减攻防抗/治疗削减), 命中爆开 (用户)
+# 凤凰·烫伤 ✅: 蓄力投掷火球(1.5ATK魔法+SCALD_BURN_COEF(0.5)ATK灼烧+破盾/减攻防抗/治疗削减), 命中爆开 (用户)
 func _sk_phoenix_scald(u: Dictionary, tgt) -> void:
 	if tgt == null or not tgt.get("alive", false):
 		return

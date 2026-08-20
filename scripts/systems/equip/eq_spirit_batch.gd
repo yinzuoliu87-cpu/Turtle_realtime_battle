@@ -39,8 +39,9 @@ func _init(b) -> void:
 	_vfx = SpiritEqVfx.new(b)
 
 
-func _si(star: int) -> int:
-	return clampi(star - 1, 0, 2)
+## ★这里原有 `func _si(star)` (= clampi(star-1, 0, 2))。删了: 全仓零调用者 ——
+##   本文件所有 `si` 都是分派参数直接传进来的, 没人需要现算。
+##   (同名副本还在 eq_food_batch.gd:51, 那一份有调用者, 是活的。)
 
 
 # ══════════════════════════════════════════════════════════════════════════

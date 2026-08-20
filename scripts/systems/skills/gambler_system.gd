@@ -221,7 +221,7 @@ func _sk_gambler_bet(u: Dictionary, tgt: Dictionary) -> void:    # 赌神龟·�
 		#   显式传 false 走物理。(另一处调用 :37 本来就显式传了 false,false, 只有这行漏了)
 		battle._pending_shots.append({"delay": float(i) * 0.11, "fn": func() -> void: _gambler_throw_hit(u, tgt, per, true, false), "src": u})
 
-func _sk_gambler_fate_wheel(u: Dictionary) -> void:             # 赌神龟·命运之轮(用户封板·80龟能): 抽1花色永久加属性(♠攻+5&血+30/♥护甲魔抗+2/♦暴击+8%&护穿+2/♣吸血+4%)·跨场累积=存GameState.gambler_wheel_stacks(本大轮累积·切轮重置·方案B·用户2026-07-09)
+func _sk_gambler_fate_wheel(u: Dictionary) -> void:             # 赌神龟·命运之轮(用户封板·80龟能): 抽1花色永久加属性(♠攻+3&血+10/♥护甲魔抗各+1/♦暴击+2%&护穿+1/♣吸血+0.5%&攻速+2%)·跨场累积=存GameState.gambler_wheel_stacks(本大轮累积·切轮重置·方案B·用户2026-07-09)
 	var _suit = battle._battle_rng.randi() % 4
 	if u.get("side", "") == "left":   # 跨场累积: 抽中即记录(只玩家赌神写本大轮累积·敌/ghost镜像不写·切轮reset)
 		var _sk: String = ["spade", "heart", "diamond", "club"][_suit]

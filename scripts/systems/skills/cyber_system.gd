@@ -82,7 +82,7 @@ func _sk_cyber_cannon(u: Dictionary, tgt) -> void:              # 赛博龟·能
 	battle._muzzle_flash(u["pos"], dir, Color("#9bf0ff"))             # 起手枪口闪
 	battle._pending_shots.append({"delay": 0.9, "fn": fire, "src": u})   # 蓄力0.9s→发射(Lux R节奏)
 
-func _sk_cyber_hijack(u: Dictionary) -> void:                   # 赛博龟·侵入(135龟能·用户2026-07-16: 4秒→5秒/120→135·Botworld黑客): 黑1随机敌5秒倒戈(side改赛博方·标hijacked→打原队友+被原队友打·不算存活数·击杀归赛博·蛋免控·可黑多个)
+func _sk_cyber_hijack(u: Dictionary) -> void:                   # 赛博龟·侵入(135龟能·HIJACK_SEC=4秒·用户2026-07-16 4→5, 2026-07-28 削弱回 4·Botworld黑客): 黑1随机敌4秒倒戈(side改赛博方·标hijacked→打原队友+被原队友打·不算存活数·击杀归赛博·蛋免控·可黑多个)
 	var es: Array = []
 	for o in battle._targeting._pick_enemies_of(u):
 		if o.get("alive", false) and not o.get("_eggImmune", false) and not o.get("hijacked", false):

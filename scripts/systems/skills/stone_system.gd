@@ -8,7 +8,7 @@ var battle
 func _init(b) -> void:
 	battle = b
 
-func _sk_stone_rock_shield(u: Dictionary) -> void:               # 石头龟·岩石护盾(用户设计: 合并岩石护甲+磐石·100龟能): 全队盾0.2A+5%maxHp + 自身双抗+20%5秒
+func _sk_stone_rock_shield(u: Dictionary) -> void:               # 石头龟·岩石护盾(用户设计: 合并岩石护甲+磐石·100龟能): 全队盾1A+6%maxHp(4秒) + 自身双抗+20%5秒
 	for o in battle._targeting._allies_of(u):
 		battle._damage._grant_shield(o, u["atk"] * 1.0 + u["maxHp"] * 0.06, 4.0)   # 全队盾=1×石头ATK+6%【石头龟】最大生命(用户2026-07-11: 0.2A+5%→1A+6%)·每友军等量·4秒
 		o["rock_shield_until"] = battle._t + 4.0                          # 标记"石头岩石护盾"来源: LoL式六棱屏障VFX + 锁龟能(持盾期不充能), 盾破/到期即释放(用户2026-07-11)
