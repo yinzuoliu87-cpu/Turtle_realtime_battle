@@ -371,6 +371,10 @@ run_audit "tools/dead_preload_audit.py"  "ALL OK" "dead_preload (preload 了却�
 run_audit "tools/codex_text_lint.py"     "ALL OK" "codex_text_lint (图鉴文案: 教学味/自夸/开发备注/别家黑话/数字贴字)"
 run_audit "tools/twin_const_audit.py"    "ALL OK" "twin_const (同功能的逻辑侧↔演出侧同名常量取值打架)"
 run_audit "tools/type_tables_audit.py"   "ALL OK" "type_tables (装备类型四张平行表键集一致)"
+# ★★这条是"文案漂移"这个病的**总指标**(2026-08-20 用户连问两次「怎么根除」后建的):
+#   玩家看到的每个数字必须处在三态之一 —— 占位符(不可能错)/有审计器对代码验/没人验。
+#   第三类焊成只降不升。降的办法只有"换占位符"或"补覆盖", **不许靠放宽基线**。
+run_audit "tools/number_coverage_audit.py" "ALL OK" "number_coverage (玩家文案里没人验的数字·只降不升)"
 
 echo ""
 if [ "$FAIL" -eq 0 ]; then
