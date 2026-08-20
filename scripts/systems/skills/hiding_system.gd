@@ -161,6 +161,36 @@ func _minion_rocket_nuke(u: Dictionary, center: Vector2) -> void:   # 核爆(用
 		o["heal_reduce_until"] = maxf(float(o.get("heal_reduce_until", 0.0)), battle._t + 4.0)   # 4秒50%治疗削减
 		o["heal_reduce_pct"] = maxf(float(o.get("heal_reduce_pct", 0.0)), 0.5)
 
+## 夭折落地时长(秒)。文案不引用它, 但门禁要按它等 —— 具名常量便于两边同源。
+const FALL_T := 0.22
+
+## 人体浪板中途夭折(目标先死/自己先死)时把小将放回地面。
+##
+## ★为什么不直接 `height = 0`: 那是瞬移, 会看到小将从半空"闪"到地上。
+##   给一段短下落(0.22s, 二次加速=重力感), 和正常落地读起来一致。
+## ★为什么不复用击飞的物理: 那条路要设 airborne/vy, 会把单位交给击飞状态机,
+##   而这里只是收尾, 不该产生"被击飞"的语义(免控/受击判定都会跟着变)。
+func _minion_abort_fall(u: Dictionary) -> void:
+	u["_slam"] = false
+	var h0: float = float(u.get("height", 0.0))
+	if h0 <= 0.01:
+		u["height"] = 0.0
+		return
+	var tw = battle._reg_tween()
+	tw.tween_method(func(q: float) -> void:
+		if u.get("alive", false):
+			u["height"] = h0 * (1.0 - q * q)          # 二次加速下落
+	, 0.0, 1.0, FALL_T)
+	## ★★归零【不能只挂在 tween 末尾】: 无头 CI 下 tween 推进不稳(CLAUDE.md §3.5,
+	##   海盗钩索为此连红三次)。⇒ tween 只负责"看着顺滑", **真正的归零走 sim 驱动的
+	##   `_pending_shots`**(每帧按游戏时钟处理, 无头照样跑)。两条都到位 = 演出好看且结果确定。
+	battle._pending_shots.append({"delay": FALL_T, "src": u, "fn": func() -> void:
+		if u.get("alive", false):
+			u["height"] = 0.0
+			battle._melee_anim(u, "land")
+	})
+
+
 func _sk_minion_bodysurf(u: Dictionary, tgt) -> void:   # 近战小将·人体浪板: 高跳回2A血→(太近后跳)→射铁链晕→拉己向目标→接触10%目标maxHP物理→踩滑(对被踩逐渐2A物理·沿途1.5A+击退)→跳下
 	if tgt == null or not tgt.get("alive", false): return
 	var uu = u
@@ -185,7 +215,12 @@ func _sk_minion_bodysurf(u: Dictionary, tgt) -> void:   # 近战小将·人体�
 	, 0.0, 1.0, 0.34)
 	battle._pending_shots.append({"delay": 0.68, "fn": func() -> void:   # 到顶后→从小将射铁链向目标+晕住顿一下(蓄力变久后挪·2026-07-18)
 		if not (uu.get("alive", false) and tref.get("alive", false)):
-			uu["_slam"] = false; return
+			## ★2026-08-21 用户报「小将跳起时敌人死亡会飞到天上」—— 根因就在这里:
+			##   起跳 tween 把 height 抬到 5.76 后【故意悬停不落】(等 _minion_bodysurf_ride 拉下来),
+			##   而这两个提前返回只解锁了 _slam, **height 一个字没碰** ⇒ 永远挂在天上。
+			##   全局那个 height<=0 归零只在【击飞路径】(airborne)里跑, 本技能不走击飞 ⇒ 没人管它。
+			_minion_abort_fall(uu)
+			return
 		battle._melee_anim(uu, "throw")                          # 0.68 滞空甩索(与射链同帧)
 		battle._surf_chain_shoot(uu["pos"], float(uu.get("height", 0.0)) + 0.6, tref["pos"], Color(0.6, 0.15, 0.15, 0.95))   # 从小将(空中·当前height)射铁链向目标
 		battle._damage._stun(tref, 1.1, "_sk_minion_bodysurf", true)   # 晕住覆盖整个空中顿+俯冲
@@ -193,7 +228,12 @@ func _sk_minion_bodysurf(u: Dictionary, tgt) -> void:   # 近战小将·人体�
 	, "src": u})
 	battle._pending_shots.append({"delay": 1.28, "fn": func() -> void:   # 空中顿~0.6s(0.68射链→1.28拉)→拉己俯冲向目标→接触→踩滑(coroutine·用户2026-07-18)
 		if not (uu.get("alive", false) and tref.get("alive", false)):
-			uu["_slam"] = false; return
+			## ★2026-08-21 用户报「小将跳起时敌人死亡会飞到天上」—— 根因就在这里:
+			##   起跳 tween 把 height 抬到 5.76 后【故意悬停不落】(等 _minion_bodysurf_ride 拉下来),
+			##   而这两个提前返回只解锁了 _slam, **height 一个字没碰** ⇒ 永远挂在天上。
+			##   全局那个 height<=0 归零只在【击飞路径】(airborne)里跑, 本技能不走击飞 ⇒ 没人管它。
+			_minion_abort_fall(uu)
+			return
 		battle._melee_anim(uu, "dive")                           # 1.28-1.58 被绳拉着俯冲, 双脚前伸
 		_minion_bodysurf_ride(uu, tref)
 	, "src": u})

@@ -316,6 +316,9 @@ if [ "$SMOKE_RC" -eq 0 ] && [ "$SMOKE_FATAL" -eq 0 ] && echo "$SMOKE_OUT" | grep
 else
   FAIL=$((FAIL+1)); echo "  FAIL  smoke_scenes  (rc=$SMOKE_RC, 致命报错=$SMOKE_FATAL)"
   echo "$SMOKE_OUT" | grep -E "$FATAL" | sort | uniq -c | sort -rn | head -5 | sed 's/^/        /'
+  # ★冒烟失败时把整份日志落盘: $RAW 是 mktemp 目录, 脚本退出就没了 ——
+  #   而冒烟是间歇性红(1/3), 事后想查根因时日志已经不在了。
+  cp "$RAW/smoke.log" ".gate-fail-smoke_scenes.log" 2>/dev/null || true
 fi
 
 
