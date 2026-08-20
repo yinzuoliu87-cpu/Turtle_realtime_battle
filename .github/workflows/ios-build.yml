@@ -110,4 +110,14 @@ jobs:
           gh release create ios-latest --title "iOS unsigned (latest)" \
             --notes "自动构建 unsigned IPA · Sideloadly 装机(免费证书7天)。每次 push main 覆盖更新。" \
             2>/dev/null || true
-          gh release upload ios-latest build/ios/turtle-ios-unsigned.ipa --clobber
+          # ★2026-08-20 加重试: 连着 push 几个提交时会有**两次构建并发抢同一个 ios-latest**,
+          #   后到的那次 `--clobber` 撞上前一次正在写 ⇒ 整个 run 红, 而产物其实是对的。
+          #   (那次实测: 失败的是先到的, 后到的传成功, release 上是最新包。)
+          #   ⇒ 重试三次, 每次间隔 15 秒; 三次都不行才真的红。
+          for i in 1 2 3; do
+            if gh release upload ios-latest build/ios/turtle-ios-unsigned.ipa --clobber; then
+              echo "上传成功(第 $i 次)"; break
+            fi
+            echo "第 $i 次上传失败(多半是并发抢同一个 release), 15 秒后重试"; sleep 15
+            if [ "$i" = "3" ]; then exit 1; fi
+          done
