@@ -102,3 +102,6 @@ _vfxshots/
 # Claude Code 本地权限设置(每台机器不同, 不进版本库)
 .claude/settings.local.json
 .dyebak
+
+# Godot --import 跑到一半留下的中间文件; git add -A 会把它们一起收走(2026-08-20 误提交过两个)
+*.tmp
