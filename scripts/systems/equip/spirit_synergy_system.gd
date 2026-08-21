@@ -321,6 +321,11 @@ func _slap_resolve(side: String, origin: Vector2, dir: Vector2, rng: float, mult
 		else:
 			## 没有携带者(理论上不该发生)时退回不经减免的老路, 免得静默变 0
 			battle._damage._apply_damage(f, maxi(1, int(base * mult)), Color("#b388ff"))
+		## ★2026-08-21: 逐个被命中者各来一次撞击表现。
+		##   在这里调而不是在演出侧, 是因为**只有这里知道带上真正扫到了谁**
+		##   (名单是命中那一刻由 `_band_foes` 重算的)。
+		##   用户 2026-08-21:「想想两个人被命中为什么只有一个」—— 就是这条缺的。
+		battle._tentacle_vfx.impact_on_victim(Vector2(f["pos"]), mult >= 0.9)
 		hits += 1
 	return hits
 

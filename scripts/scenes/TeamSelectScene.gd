@@ -731,7 +731,18 @@ func _on_resize() -> void:
 	if _resize_pending or not is_inside_tree():
 		return
 	_resize_pending = true
-	get_tree().create_timer(0.1).timeout.connect(func() -> void:
+	## ★★2026-08-21 修冒烟间歇红 `Lambda capture at index 0 was freed`:
+	##   原来用的是 `get_tree().create_timer()` —— 那是**树级计时器, 会活过本场景的释放**,
+	##   而这个闭包捕获了 `self`(本场景是个 Node)。窗口一改尺寸就起这个计时器,
+	##   场景若在 0.1 秒内被释放, 计时器照响、去绑已释放的捕获 ⇒ 报错。
+	##   ★报错发生在【绑定捕获】那一刻, 函数体没执行 ⇒ 里面写多少 is_inside_tree() 都没用。
+	##   ⇒ 换成【挂在自己身上的 Timer 子节点】: 场景没了它跟着没, 根本不会响。
+	var _rt := Timer.new()
+	_rt.one_shot = true
+	_rt.wait_time = 0.1
+	add_child(_rt)
+	_rt.start()
+	_rt.timeout.connect(func() -> void:
 		_resize_pending = false
 		if not is_inside_tree():
 			return

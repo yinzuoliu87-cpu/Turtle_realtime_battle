@@ -421,6 +421,7 @@ const ACTION_ATTACK := {
 	"ninja":  ["pets/animations/ninja/slash.png", 16.0],
 	"__minion_elite__": ["pets/animations/elite/attack.png", 12.0],
 	"__minion_front__": ["pets/animations/melee/attack.png", 12.0],
+	"__minion_back__": ["pets/animations/ranged/attack.png", 12.0],
 }
 # 精英小将的 5 个非标准动作 (2026-07-21 PixelLab pro 生成, south-west 朝向 = 原图朝左口径)。
 #   不走 _vfx._play_action —— 那个只认 attack/hurt/death 三种; 这些照忍者 dash/backstab 的做法,
@@ -482,6 +483,7 @@ const ACTION_RUN := {
 	#   三种小将共用 id, 用 id 会让普通小将也套精英的帧, 见 _anim_key()。
 	"__minion_elite__": ["pets/animations/elite/run.png", 12.0],
 	"__minion_front__": ["pets/animations/melee/run.png", 12.0],
+	"__minion_back__": ["pets/animations/ranged/run.png", 12.0],
 	# 训龟大师(2026-07-23): 走路循环。id 是 __trainer__, _anim_key 直接返回 id → 走到这里。
 	#   移动由玩家 _trainer_sys._trainer_move_by 驱动, 但立绘照样流经 _render._update_run_anim(在 for u in _units 里),
 	#   靠"帧间位移>0.8"自动切走路/停回 idle —— 不用另写触发。
@@ -1997,6 +1999,9 @@ const ELITE_ACT_FEET_ROW := 71.0  # 动作帧里脚底所在行
 const ANIM_NORM := {
 	"__minion_elite__": [47.0, 71.0, 71.0],
 	"__minion_front__": [45.0, 65.0, 60.0],
+	## 远程小将(2026-08-21 PixelLab pro, 以近战小将为风格参照生成)。
+	## ⚠ 这三个数由门禁 verify_elite_anim 拿 png 的真实 bbox 对账, 不是我拍脑袋填的。
+	"__minion_back__": [54.0, 78.0, 52.0],   # 实测 bbox: 动作帧 100px 高·本体 54·脚底行 78; idle 88px 高·本体 52
 }
 
 
@@ -2006,14 +2011,26 @@ const ANIM_NORM := {
 ##   → 同样归一到 2m, idle 角色 1.78m 而动作角色只有 0.98m(精英实测), 用户 2026-07-21 一眼看出。
 ##   ★不能靠放大 png 解决: 71/47 非整数倍, 像素画重采样会糊。改归一系数, 纯数字不动图。
 ##   ★2026-07-22 泛化成查 ANIM_NORM 表 —— 每套图数值不同, 不能沿用别人的常量。
+## 小将的非标准动作分派(近战 leap/throw/dive/surf/land · 远程 skill)。
+## ★2026-08-21 扩到远程小将: 原来硬卡 `!= "__minion_front__"` 直接 return,
+##   所以远程小将**没有任何入口能播动作**(精英走 _elite_anim, 它两头不靠)。
+##   按 `_anim_key` 选表, 不新写第三个近似函数(手抄的副本必然落后)。
 func _melee_anim(u: Dictionary, action: String) -> void:
-	if _anim_key(u) != "__minion_front__" or not u.get("alive", false):
+	var _k := _anim_key(u)
+	if not u.get("alive", false):
+		return
+	var _tbl: Dictionary = {}
+	if _k == "__minion_front__":
+		_tbl = ACTION_MELEE
+	elif _k == "__minion_back__":
+		_tbl = MinionCodex.ACTION_RANGED
+	else:
 		return
 	if not is_instance_valid(u.get("sprite", null)):
 		return
 	if u.get("anim_action", "") == "death":
 		return
-	var e = ACTION_MELEE.get(action, null)
+	var e = _tbl.get(action, null)
 	if e == null:
 		return
 	var asd := _resolve_action(str(e[0]), float(e[1]))
@@ -7267,6 +7284,8 @@ func _tick_cyber_drones(u: Dictionary, delta: float) -> void:   # 浮游炮纯�
 					"basic_onhit": false, "oriented": false, "card_spin": false, "dtype": "physical", "drone_shot": true})
 
 func _art_faces_right(u: Dictionary) -> bool:
+	if MinionCodex.ART_FACES_RIGHT_KEY.has(_anim_key(u)):
+		return true
 	if ART_FACES_RIGHT.has(str(u.get("id", ""))):
 		return true
 	return u.get("is_summon", false) and ART_FACES_RIGHT.has(str(u.get("summon_kind", "")))

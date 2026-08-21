@@ -282,7 +282,16 @@ func _icon_button(cx: float, cy: float, icon: String, cb: Callable) -> void:
 			var tw := create_tween()
 			tw.tween_property(btn, "scale", Vector2(0.85, 0.85), 0.06)
 			tw.tween_property(btn, "scale", Vector2(1, 1), 0.06)
-			get_tree().create_timer(0.08).timeout.connect(cb))
+			## ★2026-08-21: 原来接的是 `get_tree().create_timer()` —— 树级计时器**活过场景释放**,
+			##   而 cb 捕获了本场景/场景里的节点 ⇒ 场景被释放后它照响, 报
+			##   `Lambda capture at index 0 was freed`(报错在【绑定捕获】那一刻, 函数体没执行,
+			##   所以在 cb 里加任何 is_instance_valid 都救不了)。改成挂自己身上的 Timer 子节点。
+			var _dt := Timer.new()
+			_dt.one_shot = true
+			_dt.wait_time = 0.08
+			add_child(_dt)
+			_dt.start()
+			_dt.timeout.connect(cb))
 
 
 func _bg() -> void:

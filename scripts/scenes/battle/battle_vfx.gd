@@ -23,7 +23,7 @@ func _play_action(u: Dictionary, kind: String) -> void:
 	# committed 动作: 播完前不被普攻/受击换掉(死亡除外·用户2026-07-11 动作播完前不打断)
 	#   backstab=忍者背刺; battle.ACTION_ELITE 五个=精英小将旋刃/铁锤/强化铁锤/铁链/吞噬
 	var _cur_act = str(u.get("anim_action", ""))
-	if (_cur_act == "backstab" or battle.ACTION_ELITE.has(_cur_act) or battle.ACTION_MELEE.has(_cur_act) or u.get("_manual_anim", false)) and kind != "death":
+	if (_cur_act == "backstab" or battle.ACTION_ELITE.has(_cur_act) or battle.ACTION_MELEE.has(_cur_act) or MinionCodex.ACTION_RANGED.has(_cur_act) or u.get("_manual_anim", false)) and kind != "death":
 		return
 	var id = battle._anim_key(u)   # ★不能直接用 u["id"]: 三种小将(前排/后排/精英)共用 "__minion__",
 							 #   按 id 查表会让普通小将也命中精英的动作帧。见 battle._anim_key。

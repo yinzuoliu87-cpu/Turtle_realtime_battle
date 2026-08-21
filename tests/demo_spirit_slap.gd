@@ -31,6 +31,8 @@ const TIER_PIECES := [2, 5, 8, 10]
 var _scn = null
 var _t0 := 0.0
 var _last_hp := {}
+var _shot_left := 0
+var _shot_i := 0
 
 
 func _env_i(k: String, d: int) -> int:
@@ -131,8 +133,14 @@ func _ready() -> void:
 		if not (u2 is Dictionary) or not u2.has("_demo_tag"):
 			continue
 		var b2: float = dhp * _scn._spirit_syn.HIT_HP_PCT + _scn._spirit_syn.HIT_FLAT
+		## ★暴击必须钉成 0 再算 —— `_resolve_dmg` 会掷 `_battle_rng.randf() < crit`,
+		##   不钉的话这行对照值时高时低(实测同一场景一会儿 250 一会儿 375),
+		##   验收时和下面那句"实测约 300"直接打架, 看的人只会犯迷糊。
+		var _cs: float = float(carrier.get("crit", 0.0))
+		carrier["crit"] = 0.0
 		var exp2: int = maxi(1, int(_scn._resolve_dmg(carrier, b2, u2, false)
 			* _scn._spirit_syn.HIT_MULT[tier - 1]))
+		carrier["crit"] = _cs
 		print("  %-10s 护甲 %5.1f ⇒ 【拍击应掉 %d】" % [str(u2["_demo_tag"]), float(u2.get("def", 0.0)), exp2])
 	print("  ⚠ 其它数字来自灵物装备自身效果(凑档位必须带真装备), 认准上面这个数才是拍击。")
 	print('  ⚠ 实测会比上面这个数【再高 20%】—— 携带者是小龟, 被动【不屈】按目标稀有度增伤(C 档 +20%)。')
@@ -157,6 +165,18 @@ func _process(_d: float) -> void:
 				% [tag, prev - hp,
 					_scn._spirit_syn.stack_of("left", 0), _scn._spirit_syn.stack_of("left", 1)])
 			_last_hp[tag] = hp
+			## SPIRIT_SHOT=1: 掉血那一刻起连拍几帧 —— 命中特效只有 0.3 秒左右,
+			## 事后随便截一张多半拍到空气(memory: 实拍要等落位, 且要拍对时刻)。
+			## ★只在【大额掉血】时连拍 —— 场上还有灵物装备自己的伤害(约 48),
+			##   按最亮帧取会拍到装备的金色电柱, 不是拍击(我第一版就抓错了时刻)。
+			if OS.has_environment("SPIRIT_SHOT") and _shot_left <= 0 and (prev - hp) > 150.0:
+				_shot_left = 10
+				_shot_i = 0
+	if _shot_left > 0:
+		_shot_left -= 1
+		var img := get_viewport().get_texture().get_image()
+		img.save_png("user://spirit_hit_%02d.png" % _shot_i)
+		_shot_i += 1
 	var el: float = float(Time.get_ticks_msec()) / 1000.0 - _t0
 	if el >= float(_env_i("SPIRIT_SECS", 24)):
 		print("")

@@ -37,6 +37,11 @@ func _sk_minion_rocket(u: Dictionary, tgt) -> void:   # 远程小将·追踪火�
 	var uu = u
 	var tref: Dictionary = tgt
 	uu["_slam"] = true                                  # 蓄力期定身(举火箭筒瞄准)
+	## ★2026-08-21 补上动画调用: 这个技能此前**一次动画调用都没有**, 只有 VFX ——
+	##   远程小将从头到尾没有任何动作图, 蓄力 1.5 秒里它是站着不动的。
+	##   动画时长(6 帧 ÷ 4fps = 1.5 秒)与这里的蓄力节拍**焊死相等**,
+	##   由 verify_elite_anim 的 RANGED_BEATS 守着 —— 不等的话动画先播完、角色站着发呆。
+	battle._melee_anim(uu, "skill")
 	var aim: Vector2 = (tref["pos"] as Vector2) - (uu["pos"] as Vector2)
 	aim = aim.normalized() if aim.length() > 1.0 else (Vector2.RIGHT if uu.get("face_right", true) else Vector2.LEFT)
 	uu["face_right"] = aim.x >= 0.0

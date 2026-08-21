@@ -39,6 +39,18 @@ func _dl_enter_present(mode: String) -> void:
 		tw.tween_property(battle._dl_present_root, "modulate:a", 1.0, 0.28) \
 			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
+## 等布局算出 size 之后把这些浮层的缩放轴心挪到中心。
+## ★存成员而不是闭包捕获: 见上面那段病历(闭包捕获 Node 会变野捕获)。
+var _pivot_pending: Array = []
+
+
+func _fix_pending_pivots() -> void:
+	for c in _pivot_pending:
+		if c != null and is_instance_valid(c):
+			(c as Control).pivot_offset = (c as Control).size * 0.5
+	_pivot_pending.clear()
+
+
 func _dl_present_advance() -> void:
 	var mode = battle._dl_state
 	_dl_clear_present_overlay()
@@ -157,8 +169,15 @@ func _dl_stagger_in(vb: VBoxContainer) -> void:
 		ctrl.modulate.a = 0.0
 		# pivot 要等布局算出 size 才能定 —— 这里 size 还是 0, 直接乘会把轴心钉在左上角,
 		#   缩放就变成"从左边长出来"而不是原地弹。挂 resized 一次性回调。
-		var _c = ctrl
-		_c.resized.connect(func() -> void: _c.pivot_offset = _c.size * 0.5, CONNECT_ONE_SHOT)
+		## ★★2026-08-21: 原来是 `_c.resized.connect(func(): _c.pivot_offset = ...)` ——
+		##   闭包**捕获了局部的 `_c`(一个 Control 节点)**。场景被立即释放(`free()`)时,
+		##   若 `resized` 恰在拆除过程中发出, 引擎去绑那个已释放的捕获就报
+		##   `Lambda capture at index 0 was freed`。★报错在【绑定捕获】那一刻,
+		##   函数体没执行 ⇒ 在闭包里加 is_instance_valid 救不了。
+		##   ⇒ 改成只捕获 `self`(本类是 RefCounted, 被 Callable 引用着不会没),
+		##     节点引用存成员数组, 回调里再逐个 is_instance_valid。
+		_pivot_pending.append(ctrl)
+		ctrl.resized.connect(_fix_pending_pivots, CONNECT_ONE_SHOT)
 		ctrl.scale = Vector2(0.88, 0.88)
 		# tween 绑在 ctrl 上而不是场景上: 幕布被提前点掉时随节点一起销毁, 不会对着已释放的目标报错。
 		var tw = ctrl.create_tween()

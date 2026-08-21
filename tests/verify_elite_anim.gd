@@ -25,10 +25,16 @@ var _fails: Array[String] = []
 
 
 func _ready() -> void:
-	var src := FileAccess.get_file_as_string(SCENE_PATH) + "
-" + FileAccess.get_file_as_string("res://scripts/systems/skills/elite_system.gd") + "
-" + FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_vfx.gd") + "
-" + FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_render.gd")   # elite 已抽出(2026-07-25)·_play_action→BattleVfx·_advance_anim→BattleRender(2026-07-26)
+	## ★2026-08-21 扫描面跟着内容走: `ACTION_RANGED` 与 `ART_FACES_RIGHT_KEY` 已从主战斗文件
+	##   挪到 gamedata/minion_codex.gd(架构预算不许往上帝文件加表)。判据是"在源码文本里找表",
+	##   不跟着挪就会报「解析不到 fps」—— CLAUDE.md §2 记过这个坑(函数外迁后审计器误报)。
+	var src := ""
+	for _sf in [SCENE_PATH,
+		"res://scripts/systems/skills/elite_system.gd",
+		"res://scripts/scenes/battle/battle_vfx.gd",
+		"res://scripts/scenes/battle/battle_render.gd",
+		"res://scripts/gamedata/minion_codex.gd"]:
+		src += FileAccess.get_file_as_string(str(_sf)) + "\n"
 	if src == "":
 		_fail("读不到 %s" % SCENE_PATH)
 		_done()
@@ -56,6 +62,12 @@ const ELITE_BEATS := {
 	"whirl": 0.42, "hammer": 0.43, "hammer_big": 1.47, "whip": 0.48, "consume": 1.50,
 }
 
+## 远程小将(2026-08-21)。技能 = 火箭蓄力 1.5 秒(`_sk_minion_rocket` 的蓄力段)。
+## ★动画时长必须 == 代码节拍, 否则动画先播完、角色站着发呆(精英/近战都栽过)。
+const RANGED_BEATS := {
+	"skill": 1.5,
+}
+
 const MELEE_BEATS := {
 	"leap": 0.64,    # 0.00-0.64 蓄力(tween_interval 0.3) + 起跳(tween_method 0.34)
 	"throw": 0.64,   # 0.64-1.28 滞空(_pending_shots delay 0.68 → 1.28)
@@ -66,6 +78,7 @@ const MELEE_BEATS := {
 
 func _check_melee_timing(src: String) -> void:
 	_check_timing_group(src, "melee", "ACTION_MELEE", MELEE_BEATS)
+	_check_timing_group(src, "ranged", "ACTION_RANGED", RANGED_BEATS)
 	_check_timing_group(src, "elite", "ACTION_ELITE", ELITE_BEATS)
 
 
@@ -119,7 +132,13 @@ func _check_facing() -> void:
 	#   实际 14 张里有 7 张朝向反了(melee 的 dive/leap/run/throw + elite 的
 	#   hammer/hammer_big/whip/whirl)。挑一张代表 = 用一个样本给整个目录背书。
 	var cases: Array = []
-	for d in ["melee", "elite"]:
+	## ★2026-08-21 补两个扫描盲区:
+	##   ① 加 "ranged"(远程小将新做的三张动作图, 此前这个目录不存在)
+	##   ② **三张 idle 立绘 `pets/minion*.png` 原来根本不在扫描范围内** ——
+	##      这就是精英小将 idle 朝向反了却一直绿的原因(实测 reach +37, 另两张 -28/-34)。
+	##      它们朝右是**素材事实**, 由 `_art_faces_right` 按动画键分流处理(用户拍板方案 b),
+	##      所以这里【登记期望朝向】而不是一律要求朝左。
+	for d in ["melee", "elite", "ranged"]:
 		var dir := DirAccess.open("res://assets/sprites/pets/animations/%s" % d)
 		if dir == null:
 			continue
@@ -189,6 +208,10 @@ func _check_body_norm(src: String) -> void:
 			"ref": "attack", "acts": ["attack", "whirl", "hammer", "hammer_big", "whip", "consume", "run"]},
 		"__minion_front__": {"dir": "melee", "idle": "pets/minion.png",
 			"ref": "attack", "acts": ["attack", "leap", "throw", "dive", "surf", "land"]},
+		## ★2026-08-21 新增远程小将。它此前**一张动作图都没有**, 也不在这张表里 ——
+		##   所以它的朝向/归一/时长【从来没有人守过】。
+		"__minion_back__": {"dir": "ranged", "idle": "pets/minion-back.png",
+			"ref": "attack", "acts": ["attack", "run", "skill"]},
 	}
 	var checked := 0
 	for key in groups.keys():

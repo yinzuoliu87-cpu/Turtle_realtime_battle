@@ -399,6 +399,10 @@ run_audit "tools/basestats_audit.py"    "ALL OK" "basestats (装备属性展示�
 #   命中, 本地手跑十次可能一次都不出, 所以必须静态守住而不是靠冒烟撞。
 run_audit "tools/await_guard_audit.py" "ALL OK" "await_guard (协程 await 回来先确认 battle 还活着)"
 
+# ★树级计时器接闭包 = 活过场景释放的野捕获 —— 2026-08-21 冒烟间歇红的根因之一
+#   ()。手工找只找到 1 处, 审计器一扫又抓出 3 处。
+run_audit "tools/tree_timer_audit.py" "ALL OK" "tree_timer (树级计时器不许接闭包·会活过场景释放)"
+
 echo ""
 if [ "$FAIL" -eq 0 ]; then
   echo "ALL PASS ($PASS/$PASS)"

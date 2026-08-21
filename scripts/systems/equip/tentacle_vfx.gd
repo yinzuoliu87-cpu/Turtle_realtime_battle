@@ -750,59 +750,36 @@ func _rebuild_halo(t: Dictionary, pts: Array, rs: Array) -> void:
 	st.commit(hmesh)
 
 
-## 命中爆闪：一个朝向相机的发光球，瞬间放大到最亮再收掉。
-## ★用 billboard 而不是贴地环 —— 本作是 2.5D 俯角，贴地的东西会被压扁到看不见。
-## 命中爆闪。
+## 命中冲击（贴地版）。
 ##
-## ★★★2026-08-04【量出来的形态，和我做的完全不是一回事】
-##   我做的是**一个实心圆球**（billboard + 径向渐变贴图）。
-##   官方逐帧量白区(>200 三通道)：
-##     包围盒 **36×84 / 29×83 / 30×93** ⇒ **高是宽的 2.8 倍的【竖长条】**
-##     填充率只有 **5~23%**、由 **7~15 个连通碎块**组成 ⇒ 是**破碎的**不是实心的
-##     持续 f040~f051 共 **12 帧 ≈ 0.4 秒**，碎块数从 13 缓降到 6
-##   —— 触手是从下往上抽过来的，命中点的光**沿垂直方向溅开**，所以是竖条不是球。
-##   ⇒ 主体拉成竖长条 + 几片错开的碎光；碎片位置用**确定性**派生（不用随机，
-##     保住 determinism —— 换路重放要一样）。
-func _flash(pos2: Vector2, scale: float) -> void:
-	var base3: Vector3 = battle._world_pos(pos2, battle.GROUND_LIFT + 0.6)
-	# ── 主体：竖长条（高/宽 ≈ 2.8，量出来的）──────────────────
+## ★★2026-08-21 用户:「命中特效很奇怪，得想办法」。原来是一根**朝向相机的竖直白色长条**
+##   (高/宽≈2.8)——可触手是**横着砸地**的, 弹出一根竖条完全读不出"砸"。
+##   而且它属于 memory [[fb-vfx-defect-families]] 点名的「无含义白球」那一族。
+##   ⇒ 改成【躺平贴地 + 沿攻击方向拉长】的冲击: 长轴顺着触手来的方向, 短轴横向,
+##     这样一眼能读出"从哪儿砸过来的"。
+## ★躺平只需要 `axis = AXIS_Y`, **不要再加 rotation.x = -90** ——
+##   那两个会互相抵消, 把贴地印记重新掰成竖的(memory [[fb-axis-y-plus-rotation-cancels]] 踩过)。
+func _flash(pos2: Vector2, scale: float, dir2: Vector2 = Vector2.RIGHT) -> void:
 	var sp := Sprite3D.new()
 	sp.texture = VfxTex._make_glow_texture()
-	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	sp.render_priority = 4
+	sp.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	sp.axis = Vector3.AXIS_Y                      # 躺平贴地
 	sp.shaded = false
-	sp.modulate = Color(1.34, 1.42, 1.44, 1.0)
-	sp.pixel_size = 0.0039 * scale
-	sp.position = base3
+	sp.transparent = true
+	sp.no_depth_test = true
+	sp.render_priority = 8
+	sp.modulate = Color(1.30, 1.42, 1.44, 1.0)
+	sp.pixel_size = 0.0042 * scale
+	sp.position = battle._world_pos(pos2, battle.GROUND_LIFT + 0.10)
+	## 长轴顺着攻击方向 —— 贴地精灵绕 Y 轴转
+	sp.rotation.y = -atan2(dir2.y, dir2.x)
 	battle._world.add_child(sp)
 	var tw: Tween = battle._reg_tween()
-	tw.tween_property(sp, "scale", Vector3(0.62, 1.74, 1.0), 0.05).from(Vector3(0.18, 0.34, 1.0))
-	tw.tween_property(sp, "scale", Vector3(0.78, 2.18, 1.0), 0.26)
-	tw.parallel().tween_property(sp, "modulate:a", 0.74, 0.26)
-	tw.tween_property(sp, "modulate:a", 0.0, 0.30)
+	tw.tween_property(sp, "scale", Vector3(2.30, 1.0, 0.86), 0.05).from(Vector3(0.30, 1.0, 0.24))
+	tw.tween_property(sp, "scale", Vector3(3.05, 1.0, 0.72), 0.22)
+	tw.parallel().tween_property(sp, "modulate:a", 0.70, 0.22)
+	tw.tween_property(sp, "modulate:a", 0.0, 0.24)
 	tw.tween_callback(sp.queue_free)
-	# ── 碎光：沿竖直方向散开的几片（官方 7~15 个连通块）────────
-	#   ★位置/大小全部由 i 确定性派生 —— 不用 randf()，换路重放必须一致。
-	for i in range(11):
-		var fi: float = float(i)
-		var frag := Sprite3D.new()
-		frag.texture = VfxTex._make_glow_texture()
-		frag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		frag.render_priority = 5
-		frag.shaded = false
-		frag.modulate = Color(1.38, 1.46, 1.48, 0.98)
-		frag.pixel_size = 0.0039 * scale * (0.34 + 0.16 * sin(fi * 2.7))
-		# 竖直方向散得远、横向散得近（官方包围盒 30×85）
-		frag.position = base3 + Vector3(
-			sin(fi * 5.3) * 0.30 * scale, cos(fi * 3.1) * 0.86 * scale, 0.0)
-		battle._world.add_child(frag)
-		var ft: Tween = battle._reg_tween()
-		var dly: float = 0.02 * fi
-		ft.tween_interval(dly)
-		ft.tween_property(frag, "scale", Vector3(1.0, 1.0, 1.0), 0.05).from(Vector3(0.2, 0.2, 0.2))
-		ft.tween_property(frag, "modulate:a", 0.0, 0.40 + 0.05 * fi)
-		ft.tween_callback(frag.queue_free)
-
 
 ## 预警区：T_WARN(1.00 秒) 的预警期里，在地面画出【即将被扫到的那条直线】。
 ## ★用户 2026-08-04 点名要的（「应该有前摇，预警区，拍下去，命中特效，后摇回到idel」）——
@@ -863,6 +840,11 @@ const WARN_ENV := [
 ## 预警带颜色: 我方蓝 / 敌方红(用户 2026-08-20)。
 const WARN_COL_ALLY := Color(0.02, 0.46, 0.95)
 const WARN_COL_FOE := Color(0.95, 0.20, 0.18)
+## 预警带的像素图案(2026-08-21 新生成·PixelLab)。中性灰白 ⇒ 顶点色能把它 tint 成蓝/红。
+const WARN_TEX: Texture2D = preload("res://assets/sprites/vfx/tentacle-warn-band.png")
+## 图案沿带长重复几次 / 每秒往目标方向滚几个身位(负=朝目标)
+const WARN_TILE_N := 5.0
+const WARN_SCROLL := -0.9
 const WARN_CORE_FRAC := 0.48
 
 
@@ -897,6 +879,12 @@ func _telegraph_tick(t: Dictionary, ts: float) -> void:
 		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD    # 贴地淡带，加色才不挡住地面
 		m.cull_mode = BaseMaterial3D.CULL_DISABLED
 		m.vertex_color_use_as_albedo = true
+		## ★★2026-08-21 用户:「预警区不对，我的要求不只这些」——
+		##   原话是「必须要**生成精美的**蓝色(如果对方则红色)**像素风图案动画**」,
+		##   而我之前只改了这条程序化网格的颜色和亮度, **一张像素图都没生成** = 偷工。
+		##   现在挂上新生成的像素图案(危险箭头条纹, 中性灰白版, 由顶点色 tint 成蓝/红),
+		##   并让箭头**沿攻击方向流动**(UV 随时间滚) —— "图案动画"落在这两件事上。
+		m.albedo_texture = WARN_TEX
 		# ★官方实测【贴地】：带子穿过目标腿部时**被腿挡住**，是正常深度排序的地面 decal。
 		#   原来开 no_depth_test 会画在最上层 = 浮空贴图，穿帮。
 		m.no_depth_test = false
@@ -955,18 +943,20 @@ func _telegraph_tick(t: Dictionary, ts: float) -> void:
 			# 亮核(±48% 半宽) + 一路羽化到边缘 —— 官方没有硬边界
 			# ★横向也再软一档 —— 加宽 ×3 之后中心区域饱和成实心块，读起来是"贴图"不是"雾"
 			var av: float = (pow(core, 1.5) * 0.52 + pow(1.0 - af, 2.0) * 0.48) * fade_u
+			## UV: u 沿带长(重复 WARN_TILE_N 次并随时间滚 = 箭头朝目标流), v 横向
+			var uv := Vector2(u * WARN_TILE_N + ts * WARN_SCROLL, float(j) / float(LAT - 1))
 			row.append([battle._world_pos(pos2, battle.GROUND_LIFT + 0.04),
-				Color(col.r, col.g, col.b, av)])
+				Color(col.r, col.g, col.b, av), uv])
 		if not prev_row.is_empty():
 			for j2 in range(LAT - 1):
 				var a00 = prev_row[j2]; var a01 = prev_row[j2 + 1]
 				var a10 = row[j2]; var a11 = row[j2 + 1]
-				stool.set_color(a00[1]); stool.add_vertex(a00[0])
-				stool.set_color(a01[1]); stool.add_vertex(a01[0])
-				stool.set_color(a10[1]); stool.add_vertex(a10[0])
-				stool.set_color(a01[1]); stool.add_vertex(a01[0])
-				stool.set_color(a11[1]); stool.add_vertex(a11[0])
-				stool.set_color(a10[1]); stool.add_vertex(a10[0])
+				stool.set_uv(a00[2]); stool.set_color(a00[1]); stool.add_vertex(a00[0])
+				stool.set_uv(a01[2]); stool.set_color(a01[1]); stool.add_vertex(a01[0])
+				stool.set_uv(a10[2]); stool.set_color(a10[1]); stool.add_vertex(a10[0])
+				stool.set_uv(a01[2]); stool.set_color(a01[1]); stool.add_vertex(a01[0])
+				stool.set_uv(a11[2]); stool.set_color(a11[1]); stool.add_vertex(a11[0])
+				stool.set_uv(a10[2]); stool.set_color(a10[1]); stool.add_vertex(a10[0])
 		prev_row = row
 	stool.commit(mesh)
 
@@ -979,6 +969,32 @@ func _telegraph_hide(t: Dictionary) -> void:
 
 ## 落地冲击：贴地冲击环 + 一撮碎屑。
 ## ★只是演出 —— 伤害早就在逻辑侧结完了（CLAUDE.md §3.5：测数值的用例不该依赖动画）。
+## 【逐个被命中者】的撞击表现。由结算侧在命中那一刻按真实名单逐个调。
+##
+## ★为什么不放在 `_impact()` 里一次画完: 演出侧只知道"朝谁拍", **不知道带上还扫到了谁** ——
+##   名单是结算侧 `_band_foes()` 在命中那一刻重算的。放这边就必然只画主目标一个
+##   (用户 2026-08-21 一眼看出:「两个人被命中为什么只有一个」)。
+func impact_on_victim(pos2: Vector2, big: bool) -> void:
+	## 贴地压扁的冲击环(不是竖条白柱 —— 触手是**横着砸地**的)
+	battle._splash_ring_bold(pos2, Color(0.78, 1.0, 1.0, 0.55), 74.0 if big else 44.0)
+	battle._vfx._impact_particles(pos2, 0.0)
+	## ★被砸中的单位【压低一下】—— "重"的感觉主要来自这个, 不是来自更亮的白光。
+	##   只碰 sprite 的 scale, 不碰单位的逻辑状态(pos/height 都不动)。
+	for _u in battle._units:
+		if not (_u is Dictionary) or not _u.get("alive", false):
+			continue
+		if Vector2(_u["pos"]).distance_squared_to(pos2) > 900.0:
+			continue
+		var _sp = _u.get("sprite", null)
+		if not is_instance_valid(_sp):
+			continue
+		var _s0: Vector3 = (_sp as Node3D).scale
+		var _tw2: Tween = battle._reg_tween()
+		_tw2.tween_property(_sp, "scale", Vector3(_s0.x * 1.16, _s0.y * 0.74, _s0.z), 0.05)
+		_tw2.tween_property(_sp, "scale", _s0, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		break
+
+
 func _impact(t: Dictionary) -> void:
 	var from2: Vector2 = root_pos(str(t["side"]), int(t["idx"]))
 	var to2: Vector2 = t["aim"]
@@ -998,11 +1014,30 @@ func _impact(t: Dictionary) -> void:
 	# ★★爆闪必须是【朝向相机的】—— 探针实测贴地环确实建出来了(+6 节点)，
 	#   但这个俯角下它压成一条缝，画面上根本看不见。官方那一下是正对镜头的大白闪。
 	# ★6.2 那版把半个屏幕炸成白色（自截图实测）——官方那团白只裹住目标本身。
-	_flash(hit2, 3.8 if big else 1.8)
+	## ★★2026-08-21 用户:「想想两个人被命中为什么只有一个」——
+	##   根因: 命中特效一直打在 `hit2`(**主目标那一个点**)上, 而伤害打的是**一整条带**
+	##   (`_band_foes`: 根部→射程、半宽 120 的矩形)。带上其他人照样掉血、却一点特效都没有。
+	##   ⇒ 主爆闪留在主目标处, **逐个被命中者**另走 `impact_on_victim()`(下面), 由
+	##   `spirit_synergy_system._slap_resolve` 在【命中那一刻重算的名单】上逐个调 ——
+	##   名单必须来自结算侧, 演出侧不知道谁被打到(方案 A, 用户 2026-08-10 拍板)。
+	_flash(hit2, 3.8 if big else 1.8, d.normalized())
 	battle._skill_ring(hit2, Color(0.70, 1.0, 1.0, 0.50), 120.0 if big else 60.0)
+	if big:
+		battle._shake(battle.JUICE_SHAKE_HEAVY * 0.55)   # 砸地要有分量, 但别抢戏
 	battle._vfx._impact_particles(hit2, 0.0)
 	if big:
 		battle._vfx._impact_particles(hit2, 0.6)
+	## 落地扬尘: 沿【整条带】撒一排贴地冲击, 让"砸的是一条线"看得出来
+	## 落地扬尘: 沿带子撒几处贴地冲击, 让"砸的是一条线"看得出来。
+	## ★2026-08-21 第一版撒了 5 个**大小差不多的圆环**, 实拍读成"一串泡泡" ——
+	##   正是 memory [[fb-vfx-defect-families]] 说的「无含义圆环」。
+	##   ⇒ 改成 3 处、**近端大远端快速衰减**(半径与透明度同时掉), 读起来像尘浪不是泡泡。
+	var _n_dust := 3
+	for _i in range(_n_dust):
+		var _q: float = float(_i + 1) / float(_n_dust + 1)
+		var _fall: float = pow(1.0 - _q, 1.6)          # 远端快速衰减
+		battle._splash_ring_bold(from2.lerp(hit2, _q),
+			Color(0.72, 0.98, 1.0, 0.14 + 0.30 * _fall), 26.0 + 46.0 * _fall)
 	# ★沿途那条【直线命中范围】也画出来 —— 机制上打的是"根部到目标直线上所有敌人"，
 	#   不画的话玩家永远不知道被扫到的是一条线。
 	battle._bolt_line(from2, hit2, Color(0.62, 1.0, 0.96, 0.55))
