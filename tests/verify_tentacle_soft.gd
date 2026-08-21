@@ -46,6 +46,17 @@ const FRONT_SPREAD_MIN := 0.10
 ## ⇒ 判据换成【抬起全程不许定格】: 后半段最低的每帧位移, 不许掉到峰值的这个比例以下。
 ## ★阈值定在**基线之上**: 基线 1/18 = 0.055, 改后 0.42 ⇒ 取 0.25。
 const LIFT_FLOW_MIN := 0.25
+
+## ★★★2026-08-22【惯性拖尾】用户原话:
+##   「触手在抬起到最高处时由于惯性触手的头部会向后弯由于重力,
+##     然后触手拍下来由于惯性头部会怎么样你自己不会吗」
+## 我此前做的全是**相位延迟**(梢端晚一点做同一个动作), 而惯性是**速度的函数**:
+##   加速时头部被甩向运动的**反方向**, 急停时攒的弯**弹回来过头** = 甩尾。
+## ⇒ 判据必须量**方向**与**过冲**, 不是量形状(形状指标在基线就达标却与画面相反)。
+## 抬起期头部至少要向后弯这么多度(负值)
+const INERTIA_LIFT_MIN := 8.0
+## 砸到底之后必须出现反向过冲(甩尾)这么多度
+const INERTIA_OVER_MIN := 5.0
 ## 判定"这个站点下落过"的最小落差 —— 根部几乎不动, 拿它算到达时刻只会得到噪声。
 const STATION_DROP_MIN := 0.25
 ## 伤害结算与梢端真正落地之间允许的最大时差(秒)。
@@ -102,6 +113,12 @@ func _ready() -> void:
 	## ══ 先量【抬起】: 全程不许定格 ══════════════════════════════
 	## ★量的是**整条中心线每帧动了多远**(真几何), 不是形状指标 ——
 	##   形状指标在基线就达标却与画面相反, 那是空判据(见文件头三次翻车记录)。
+	## ★★惯性拖尾的三个数【顺带在已有的两趟循环里记】—— 我第一版另开了一个 900 帧循环,
+	##   它把整个下砸阶段吃掉了, 后面那段采到 0 个样本(分母断言当场抓到)。
+	##   等效果的循环不能随便加, 每一趟都会推进同一条时间线。
+	var lag_up := 0.0        # 抬起期最负: 头部向后/向下弯
+	var lag_dn := 0.0        # 下砸期最正: 头部向后/向上翘
+	var lag_over := 0.0      # 砸到底后的反向过冲(甩尾)
 	var lprev := PackedVector3Array()
 	var lmove: Array = []
 	for i in range(900):
@@ -110,6 +127,7 @@ func _ready() -> void:
 			if not lmove.is_empty():
 				break
 			continue
+		lag_up = minf(lag_up, float(tv.lag_of("left", 0)))
 		var cc: PackedVector3Array = tv.centerline_of("left", 0)
 		if lprev.size() == cc.size() and cc.size() > 0:
 			var dsum := 0.0
@@ -141,8 +159,14 @@ func _ready() -> void:
 		tv.tick(1.0 / 120.0)                       # 半帧步长: 采样够密才看得见回抬
 		if tv.state_of("left", 0) != 3:
 			if not ys.is_empty():
-				break                              # 已经走完 SLAM
+				## ★不直接 break —— 甩尾发生在【砸到底之后】(ST_RECOVER),
+				##   在这里就跳出会永远量不到过冲。再走一小截把它记下来。
+				for _r in range(60):
+					tv.tick(1.0 / 120.0)
+					lag_over = minf(lag_over, float(tv.lag_of("left", 0)))
+				break
 			continue
+		lag_dn = maxf(lag_dn, float(tv.lag_of("left", 0)))
 		var y: float = tv.tip_y_of("left", 0)
 		profs.append(tv.height_profile_of("left", 0))
 		if not ys.is_empty():
@@ -260,6 +284,14 @@ func _ready() -> void:
 		"SLAM_FRONT_SPAN=%.2f" % float(tv.SLAM_FRONT_SPAN))
 	_ok("★前沿是【越跑越快】的(鞭子渐细), 不是匀速绳子", float(tv.SLAM_FRONT_P) < 1.0,
 		"SLAM_FRONT_P=%.2f" % float(tv.SLAM_FRONT_P))
+	print("     惯性: 抬起向后弯 %+.2f° · 下砸向后翘 %+.2f° · 砸底后甩尾 %+.2f°" % [
+		lag_up, lag_dn, lag_over])
+	_ok("★★★抬起时头部【向后弯】≥ %.0f°(惯性追不上, 方向与运动相反)" % INERTIA_LIFT_MIN,
+		lag_up <= -INERTIA_LIFT_MIN, "实测 %+.2f°" % lag_up)
+	_ok("★★★下砸时头部【向后翘】≥ %.0f°(同样追不上)" % INERTIA_LIFT_MIN,
+		lag_dn >= INERTIA_LIFT_MIN, "实测 %+.2f°" % lag_dn)
+	_ok("★★★砸到底后【甩尾过冲】≥ %.0f°(荡过头再收 = 鞭子)" % INERTIA_OVER_MIN,
+		lag_over <= -INERTIA_OVER_MIN, "实测 %+.2f°" % lag_over)
 	_ok("★柔软没被关死: 拍击期横向摆动有地板值 > 0", float(tv.SLAM_WAVY_MIN) > 0.0,
 		"SLAM_WAVY_MIN=%.2f" % float(tv.SLAM_WAVY_MIN))
 	_done(scn)

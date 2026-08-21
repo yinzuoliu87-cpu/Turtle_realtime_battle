@@ -401,6 +401,26 @@ const SLAM_FRONT_P := 0.60
 ##     丙(抬起末甩尾过冲) 0.204 → 0.128 → 0.045 → 0.029 → **0.020(被摧毁 10 倍)**
 ##   ⇒ 它买到的微乎其微, 代价是把**原本就有的甩尾抹平**。定为 0。
 ##   (甲 在基线就已经 80.3%, 本来就不缺; 真正缺的是乙。)
+## ★★★2026-08-22【惯性拖尾 —— 用户: 「抬起到最高处时由于惯性触手的头部会向后弯」】
+##
+## 【我之前一直做错的是什么】我做的是**相位延迟**(梢端晚一点做同一个动作);
+## 用户要的是**惯性拖尾**: 梢端因为追不上而被甩向**运动的反方向**,
+## 弯的方向由【当前速度】决定, 不是由时间偏移决定。
+##   往上抬(加速) → 头部向后/向下弯   · 到顶急停 → 攒的弯弹回来 = **过冲/甩尾**
+##   拍下去(加速) → 头部向后/向上翘   · 砸到底急停 → 继续冲过头再回弹
+## ⇒ 这也解释了为什么我那三个"形状"指标全部脱靶: 它们量形状, 而惯性是**速度的函数**。
+##
+## 【模型】一个**阻尼弹簧**跟随目标 `-MAXLAG·tanh(ω/OMEGA_REF)`:
+##   · 匀速运动时稳定在一个滞后角(头部一直向后弯)
+##   · 速度突然归零时目标回 0, 弹簧**荡过头再收敛** ⇒ 甩尾是模型自己长出来的, 不是手写的动作
+##   · `tanh` 做饱和 —— 抬起 ω≈25°/s 而下砸 ω≈1800°/s, 不饱和的话拍击会甩出天际
+## ★用户要「自然」: 幅度与阻尼都取"看得出来但不像橡皮"的一档(见下方实测扫描)。
+const INERTIA_MAXLAG := 17.0     # 滞后角上限(度)
+const INERTIA_OMEGA_REF := 34.0  # 饱和参考角速度(度/秒)
+const INERTIA_STIFF := 46.0      # 弹簧刚度 —— 越大回弹越快
+const INERTIA_DAMP := 7.4        # 阻尼 —— 太小像橡皮, 太大就没有甩尾了
+const INERTIA_P := 2.0           # 沿长度的分配: u^P, 越靠梢端滞后越多(根部几乎不滞后)
+
 const WARN_FRONT_SPAN := 0.00
 ## 抬起前沿的加速度。比下砸的 0.60 更接近 1(匀速) —— 抬起没有"动量往梢端集中"那件事。
 const WARN_FRONT_P := 0.80
@@ -671,6 +691,7 @@ func tick(delta: float) -> void:
 		t["ts"] = float(t["ts"]) + delta
 		var st: int = int(t["state"])
 		var ts: float = float(t["ts"])
+		_inertia_step(t, delta)
 		# ── 状态转移 ──────────────────────────────────
 		match st:
 			ST_EMERGE:
@@ -1482,6 +1503,8 @@ func _seg_angle(t: Dictionary, stt: int, u: float, ts_now: float,
 	#   现在由调用方传入上一段的累积值，本段只加自己这一小段的贡献。
 	kacc += _curvature(t, stt, u, ts_now, curl_u, cfrom) / float(SEG)
 	ang -= kacc
+	## ★惯性拖尾: 越靠梢端滞后越多。加速时头部向后弯, 急停时弹回来过冲(= 甩尾)。
+	ang += float(t.get("lag", 0.0)) * pow(u, INERTIA_P)
 	var wavy: float = 1.0
 	if stt == ST_SLAM:
 		## ★2026-08-21 句7: 原来拍击期把摆动**压到 0**(整条锁死在一个竖直平面)。
@@ -1493,6 +1516,28 @@ func _seg_angle(t: Dictionary, stt: int, u: float, ts_now: float,
 	ang += 7.0 * wavy * sin(u * TAU * 2.1 + swayt * 1.7)
 	return [ang, yaw, curl_u, kacc]
 
+
+## 惯性拖尾的一步积分(见文件头 INERTIA_* 的长注)。
+## ★角速度从**姿态函数自己**求数值导数 —— 不另开一套手抄的速度表(手抄的副本必然漂)。
+func _inertia_step(t: Dictionary, delta: float) -> void:
+	if delta <= 0.0:
+		return
+	var h := 1.0 / 60.0
+	var ts: float = float(t["ts"])
+	var now: Array = _phase_at(t, ts)
+	var bef: Array = _phase_at(t, maxf(ts - h, 0.0))
+	var omega: float = (float(now[2]) - float(bef[2])) / h      # 梢端基准角的角速度(度/秒)
+	var target: float = -INERTIA_MAXLAG * tanh(omega / INERTIA_OMEGA_REF)
+	var lag: float = float(t.get("lag", 0.0))
+	var vel: float = float(t.get("lag_v", 0.0))
+	## 半隐式欧拉 + 步长细分: delta 大时(慢机器/时停恢复)显式积分会发散
+	var n: int = clampi(int(ceil(delta / 0.008)), 1, 8)
+	var dt: float = delta / float(n)
+	for _i in range(n):
+		vel += (INERTIA_STIFF * (target - lag) - INERTIA_DAMP * vel) * dt
+		lag += vel * dt
+	t["lag"] = clampf(lag, -INERTIA_MAXLAG * 2.2, INERTIA_MAXLAG * 2.2)
+	t["lag_v"] = vel
 
 ## ★★★【触地: 沿地面摊开, 不许扎进去】(2026-08-21 用户:「拍下去的时候鞭子有一部分直接在地下了」)
 ## 原来 `_rebuild` 里是 `if pos.y < root3.y - 0.4: pos.y = root3.y - 0.4  # 别扎穿地板太多`
@@ -1809,6 +1854,12 @@ func centerline_of(side: String, idx: int) -> PackedVector3Array:
 	if not _tents.has(k):
 		return PackedVector3Array()
 	return (_tents[k] as Dictionary).get("center", PackedVector3Array())
+
+
+## 当前的惯性滞后角(度)。负 = 头部向后弯(追不上), 正 = 荡回来过头(甩尾)。给门禁读。
+func lag_of(side: String, idx: int) -> float:
+	var k: String = "%s|%d" % [side, idx]
+	return float((_tents[k] as Dictionary).get("lag", 0.0)) if _tents.has(k) else 0.0
 
 
 ## 当前状态已经走了多久(秒)。验收场景要按"SLAM 的第几秒"记账, 拿墙钟对不上时停/慢放。
