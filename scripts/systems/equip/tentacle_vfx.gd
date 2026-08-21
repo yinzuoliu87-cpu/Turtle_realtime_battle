@@ -324,6 +324,17 @@ const LAG := 0.26
 ## ⚠ 这个值和【余振周期】是同量级的（余振约 2~3 帧 = 0.07~0.10 秒）——
 ##   0.085 那档会让不同段的余振互相抵消。0.035（约 1 帧）既做得出 S 形又不吃掉余振。
 const WHIP_LAG := 0.035
+## 句7(2026-08-21) 拍击期的逐段滞后比例。**实测后定为 0** —— 理由是量出来的, 不是拍脑袋:
+##   门禁 `verify_tentacle_soft` 逐帧量梢端世界高度, 下砸期的"回抬幅度"实测:
+##     全关(=2026-08-05 焊死版, 基线) 0.0287 / 滞后0.10 → 0.0534 / 0.18 → 0.0588
+##     / 0.30 → 0.0975 / 0.50 → 0.1188
+##   ⇒ **逐段滞后(S形)按比例放大回抬**, 那正是用户当年报的「拍下去两次」的来源。
+##   而**横向摆动是免费的**(0.22 与 0 同为 0.0287) ⇒ 柔软这件事只能先要横摆那一半。
+## ★另一个必须说清的事实: 焊死版**本身就有 0.0287 的回抬** —— 当年那次修复只是压小了、没消除。
+
+const SLAM_LAG_K := 0.0
+## 拍击期横向摆动的地板值(原来是压到 0)
+const SLAM_WAVY_MIN := 0.22
 ## 待机摇曳
 const SWAY_SPEED := 1.15
 const SWAY_AMP := 0.30
@@ -1331,7 +1342,13 @@ func _curvature(t: Dictionary, stt: int, u: float, ts_now: float,
 
 func _seg_angle(t: Dictionary, stt: int, u: float, ts_now: float,
 		swayt: float, kacc: float) -> Array:
-	var lag_u: float = 0.0 if stt == ST_SLAM else (u * WHIP_LAG)
+	## ★★2026-08-21 句7(用户「拍击时触手没有很柔软的弯曲…这样是不行的」, 选 (b) 连砸下去也柔软):
+	##   逐段滞后是**唯一能造 S 形**的机制, 2026-08-05 为修「拍下去两次」把它在拍击期关死了。
+	##   现在重新打开(取一半幅度) —— 而"不许拍两次"改由**新判据**守:
+	##   `verify_tentacle_soft` 断言【梢端高度在下砸期单调不上升】。
+	##   ★当年"拍两次"的真因不是 S 形本身, 是梢端在下压过程中**往回抬**; 盯住高度即可,
+	##     不必禁止柔软(禁曲率变号 = 禁 S 形 = 禁柔软, 是把孩子和洗澡水一起倒了)。
+	var lag_u: float = (u * WHIP_LAG * SLAM_LAG_K) if stt == ST_SLAM else (u * WHIP_LAG)
 	var ph_u: Array = _phase_at(t, ts_now - lag_u)
 	var a0u: float = float(ph_u[1])
 	var a1u: float = float(ph_u[2])
@@ -1363,7 +1380,9 @@ func _seg_angle(t: Dictionary, stt: int, u: float, ts_now: float,
 	ang -= kacc
 	var wavy: float = 1.0
 	if stt == ST_SLAM:
-		wavy = 1.0 - clampf(float(t["ts"]) / SNAP_T, 0.0, 1.0)
+		## ★2026-08-21 句7: 原来拍击期把摆动**压到 0**(整条锁死在一个竖直平面)。
+		##   现在留一个地板值 SLAM_WAVY_MIN —— 砸下去仍有轻微横摆, 不再像一根铁棍。
+		wavy = maxf(SLAM_WAVY_MIN, 1.0 - clampf(float(t["ts"]) / SNAP_T, 0.0, 1.0))
 	var yaw: float = deg_to_rad(S_AMP * sin(u * TAU * 0.6 + swayt) * wavy)
 	# ★主干的波浪起伏 —— 逐帧看官方 idle，主干【不是光滑的弧】，
 	#   沿长度有明显的一波一波（像水流）。叠在切角上，幅度不大但读得出来。
@@ -1597,6 +1616,12 @@ func _rebuild(t: Dictionary) -> void:
 		pos += tan * ds
 		if pos.y < root3.y - 0.4:
 			pos.y = root3.y - 0.4                 # 别扎穿地板太多
+	## ★2026-08-21 句7: 把**梢端的真实世界高度**记下来, 给门禁读。
+	##   判据必须量真几何, 不是量我重推一遍的公式(重推的副本会和渲染漂开)。
+	##   新门禁 `verify_tentacle_soft` 断言: 下砸期这个值**单调不上升**。
+	##   —— 当年"拍下去两次"的真因就是梢端在下压中途往回抬; 盯住它, 就不必禁止 S 形。
+	if not halo_pts.is_empty():
+		t["tip_y"] = float((halo_pts[halo_pts.size() - 1][0] as Vector3).y)
 	if any:
 		stool.generate_normals()
 		stool.commit(mesh)
@@ -1631,6 +1656,12 @@ func probe() -> String:
 			"1" if (is_instance_valid(mi) and (mi as MeshInstance3D).visible) else "0",
 			"1" if (is_instance_valid(ha) and (ha as MeshInstance3D).visible) else "0"])
 	return " ".join(out)
+
+
+## 这根触手梢端的当前世界高度(由 `_rebuild` 每帧写)。门禁用它验"下砸期单调不上升"。
+func tip_y_of(side: String, idx: int) -> float:
+	var k: String = _key(side, idx)
+	return float((_tents[k] as Dictionary).get("tip_y", 0.0)) if _tents.has(k) else 0.0
 
 
 func state_of(side: String, idx: int) -> int:
