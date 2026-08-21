@@ -169,6 +169,39 @@ func _minion_rocket_nuke(u: Dictionary, center: Vector2) -> void:   # 核爆(用
 ## 夭折落地时长(秒)。文案不引用它, 但门禁要按它等 —— 具名常量便于两边同源。
 const FALL_T := 0.22
 
+## 【不可阻挡】施法期间的免控窗口。★每帧续 0.3 秒而不是一次性写个长时间戳 ——
+## 技能被打断/提前结束时它自然到期, 不会留一个悬空的免控窗口(照财神梭哈的形状)。
+const UNSTOPPABLE_TICK := 0.3
+## 【目标免控分支】原地结算的伤害: 目标最大生命 × 这个 + 1.5×ATK 物理(用户 2026-08-20 拍板)
+const IMMUNE_BRANCH_MAXHP_PCT := 0.10
+const IMMUNE_BRANCH_ATK_COEF := 1.5
+
+## 【不可阻挡】开启/续期。按 LoL 奥拉夫 R 那一档: 清掉已有控制 + 免疫一切(含减速、含位移)。
+##
+## ★为什么要反复调而不是开一次: 减速有**两条并行通道**(slow_until 与 spd_move_mult/spd_aspd_mult),
+##   免控窗口只挡得住"新的眩晕", 挡不住"已经挂上的减速" ⇒ 要在技能的几个节点各清一次。
+##   (066 鲸涎浓浆的注释写过: 施加点散在几十处, 别在每个施加点判免疫, 改成周期清。)
+func _unstoppable_apply(u: Dictionary) -> void:
+	if not u.get("_unstoppable", false):
+		return
+	u["cc_immune_until"] = battle._t + UNSTOPPABLE_TICK
+	u["_knock_immune"] = true
+	u["stun_until"] = 0.0
+	u["taunt_until"] = 0.0
+	u["slow_until"] = 0.0
+	u["spd_dbf_until"] = 0.0
+	u["spd_move_mult"] = maxf(1.0, float(u.get("spd_move_mult", 1.0)))
+	u["spd_aspd_mult"] = maxf(1.0, float(u.get("spd_aspd_mult", 1.0)))
+
+
+## 【不可阻挡】解除。★每一条退出路径都要调 —— 正常收尾 / 中途夭折 / 自己阵亡,
+##   漏一条就会留一个"永久免控"的单位(memory: 写进去了没人读 / 悬空状态)。
+func _unstoppable_clear(u: Dictionary) -> void:
+	u["_unstoppable"] = false
+	u["cc_immune_until"] = 0.0
+	u.erase("_knock_immune")
+
+
 ## 人体浪板中途夭折(目标先死/自己先死)时把小将放回地面。
 ##
 ## ★为什么不直接 `height = 0`: 那是瞬移, 会看到小将从半空"闪"到地上。
@@ -177,6 +210,7 @@ const FALL_T := 0.22
 ##   而这里只是收尾, 不该产生"被击飞"的语义(免控/受击判定都会跟着变)。
 func _minion_abort_fall(u: Dictionary) -> void:
 	u["_slam"] = false
+	_unstoppable_clear(u)   # 夭折也要解除不可阻挡, 否则留一个永久免控的单位
 	var h0: float = float(u.get("height", 0.0))
 	if h0 <= 0.01:
 		u["height"] = 0.0
@@ -201,6 +235,14 @@ func _sk_minion_bodysurf(u: Dictionary, tgt) -> void:   # 近战小将·人体�
 	var uu = u
 	var tref: Dictionary = tgt
 	uu["_slam"] = true
+	## ★★【不可阻挡】(用户 2026-08-20:「在释放技能时会给自己不可阻挡的状态，就是免疫控制，
+	##   跳起来放完技能完成最后的跳出动作后解除不可阻挡」)。
+	##   按 LoL 的**奥拉夫 R 那一档**(用户:「按LOL 的」+「免推开，推开不就是控制技能吗」):
+	##   先清掉身上已有的控制 + 免疫一切控制(含减速、含位移), 免控 ≠ 无敌(照样能被打死)。
+	##   ⚠ 减速有**两条并行通道**(slow_* 与 spd_*), 只挡一条 = 半个免疫
+	##   (这条坑写在 eq_potion_batch.gd:165-172, 066 鲸涎浓浆踩过)。
+	uu["_unstoppable"] = true
+	_unstoppable_apply(uu)
 	battle._melee_anim(uu, "leap")                              # 0.00-0.64 蓄力+蹬地起跳
 	battle._damage._heal(uu, float(uu.get("atk", 30.0)) * 2.0)          # 高跳: 回复2ATK生命
 	battle._skill_ring(uu["pos"], Color(0.7, 0.85, 1.0, 0.5), 40.0)
@@ -226,7 +268,21 @@ func _sk_minion_bodysurf(u: Dictionary, tgt) -> void:   # 近战小将·人体�
 			##   全局那个 height<=0 归零只在【击飞路径】(airborne)里跑, 本技能不走击飞 ⇒ 没人管它。
 			_minion_abort_fall(uu)
 			return
+		_unstoppable_apply(uu)                                   # 续免控(减速要周期清)
 		battle._melee_anim(uu, "throw")                          # 0.68 滞空甩索(与射链同帧)
+		## ★★【目标免控分支】(用户 2026-08-20:「如果这个技能的目标免疫控制则在绳索拉到对方后
+		##   直接造成10%最大生命值加1.5ATK物理伤害而不会把自己拉向对方」)。
+		##   在这里判是因为「绳索拉到对方」就是这一刻(射链命中)。
+		##   10% 是**目标的**最大生命(用户确认), 走物理结算。
+		##   ⚠ 判定必须走 `_is_cc_immune` —— `_stun()` 被免疫时静默 return, 拿不到信息。
+		if battle._damage._is_cc_immune(tref):
+			battle._surf_chain_shoot(uu["pos"], float(uu.get("height", 0.0)) + 0.6, tref["pos"], Color(0.6, 0.15, 0.15, 0.95))
+			var _ib: float = float(tref.get("maxHp", 0.0)) * IMMUNE_BRANCH_MAXHP_PCT + float(uu.get("atk", 0.0)) * IMMUNE_BRANCH_ATK_COEF
+			battle._damage._apply_damage_from(uu, tref,
+				maxi(1, int(battle._resolve_dmg(uu, _ib, tref, false))), Color("#ff4444"))
+			battle._vfx._hit_spark(tref)
+			_minion_abort_fall(uu)                               # 不拉自己过去, 原地掉回地面
+			return
 		battle._surf_chain_shoot(uu["pos"], float(uu.get("height", 0.0)) + 0.6, tref["pos"], Color(0.6, 0.15, 0.15, 0.95))   # 从小将(空中·当前height)射铁链向目标
 		battle._damage._stun(tref, 1.1, "_sk_minion_bodysurf", true)   # 晕住覆盖整个空中顿+俯冲
 		battle._vfx._hit_spark(tref)
@@ -237,6 +293,11 @@ func _sk_minion_bodysurf(u: Dictionary, tgt) -> void:   # 近战小将·人体�
 			##   起跳 tween 把 height 抬到 5.76 后【故意悬停不落】(等 _minion_bodysurf_ride 拉下来),
 			##   而这两个提前返回只解锁了 _slam, **height 一个字没碰** ⇒ 永远挂在天上。
 			##   全局那个 height<=0 归零只在【击飞路径】(airborne)里跑, 本技能不走击飞 ⇒ 没人管它。
+			_minion_abort_fall(uu)
+			return
+		_unstoppable_apply(uu)
+		## 途中目标才变免控 ⇒ 中断伤害并跳回地面(用户 2026-08-20 原话)
+		if battle._damage._is_cc_immune(tref):
 			_minion_abort_fall(uu)
 			return
 		battle._melee_anim(uu, "dive")                           # 1.28-1.58 被绳拉着俯冲, 双脚前伸
@@ -277,6 +338,12 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		if battle._over: break
 		if battle._hitstop > 0.0 or (not battle._timestop._ts_active.is_empty() and not battle._arr_has_unit(battle._timestop._ts_active, u)): continue   # 时停: 只冻非active单位; 携带沙漏的自己要照常落地(否则_slam永不解锁=卡空中·用户2026-07-19)
+		## 每帧续免控(减速要周期清), 并检查目标是否中途变成免控
+		_unstoppable_apply(u)
+		if battle._damage._is_cc_immune(tref):
+			## 用户 2026-08-20:「途中目标免疫则中断伤害并跳回地面」
+			_minion_abort_fall(u)
+			return
 		var dt = battle.get_process_delta_time()
 		sd += dt
 		var _sq: float = clampf(sd / slide_dur, 0.0, 1.0)
@@ -294,7 +361,10 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 			if (o["pos"] as Vector2).distance_to(mypos) <= 70.0:
 				hit_others.append(o)
 				battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 1.5, o, false), Color("#ff4444"))
-				battle._damage._knockback(u, o, 150.0, 1.5, 1.1)          # 撞飞(vy×1.5腾空)
+				## ★2026-08-21: 免控的第三方**不被撞飞** —— 用户已定「推开就是控制技能」,
+				##   那免控就该免它。(伤害照吃, 免控 ≠ 免伤。)
+				if not battle._damage._is_cc_immune(o):
+					battle._damage._knockback(u, o, 150.0, 1.5, 1.1)      # 撞飞(vy×1.5腾空)
 	battle._melee_anim(u, "land")                                # 2.41 侧跳→单膝落地
 	# 完美收尾: 从目标身上跳到【目标周围】(不重叠·用户2026-07-18)→龟能随后正常回充
 	var land_from: Vector2 = u["pos"]
@@ -313,6 +383,8 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 	ho.tween_callback(func() -> void:
 		if u.get("alive", false): u["height"] = 0.0)
 	u["_slam"] = false
+	## ★「完成最后的跳出动作后解除不可阻挡」——用户原话就在这一步
+	_unstoppable_clear(u)
 
 func _hiding_dome(u: Dictionary, col: Color, dur: float) -> void:   # 缩头·壳护罩: hex-bubble罩身呼吸dur秒→碎裂放大淡出(跟随单位·2026-07-17 Q4草案)
 	var dm = Sprite3D.new()

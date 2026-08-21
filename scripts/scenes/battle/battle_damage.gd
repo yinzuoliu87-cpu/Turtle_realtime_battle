@@ -556,6 +556,18 @@ func _heal_flush(u: Dictionary) -> void:   # LoL式: 治疗累加器→静默0.1
 ## 以后想加递减(DR)也得改 17 处。现在: 韧性(battle._cc_dur)、来源记录、将来的 DR 规则都只在这里。
 ##
 ## tenacity=false 用于【自身施法定身】(缩头/亡灵拉全场等), 那是自己给自己上的动作锁, 不该吃自己的韧性。
+## 这只单位现在免控吗。
+##
+## ★2026-08-21 新增。由来: `_stun()` 被免疫时是**静默 return**, 不返回任何东西 ⇒
+##   调用方**拿不到"它被免疫了"这件事**。而近战小将的新机制需要"目标免控就改成
+##   直接结算伤害、不把自己拉过去"(用户 2026-08-20 拍板), 没有这个查询就写不出来。
+## ★读的是 `_stun` 用的**同一个字段**, 不另起一套 —— 手抄的副本必然落后。
+func _is_cc_immune(u) -> bool:
+	if not (u is Dictionary):
+		return false
+	return battle._t < float((u as Dictionary).get("cc_immune_until", 0.0))
+
+
 func _stun(u: Dictionary, sec: float, src_tag: String, no_tenacity: bool = false) -> void:
 	# ★免控窗口(2026-07-28): 单位在 cc_immune_until 之前免疫一切眩晕/冻结。
 	#   加在【唯一入口】而不是各技能自己判 —— 财神梭哈投币期免控是第一个用例, 但这是通用能力,
