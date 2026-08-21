@@ -116,6 +116,12 @@ func _ready() -> void:
 
 	## ★★档位必须重算 —— 装备是 `_make_unit` 之后才塞进去的, 不重算档位是 0,
 	##   触手压根不登场(demo_spirit_slap 第一版就栽在这)。
+	## ★★必须先 `clear()` 再 `apply_all()` —— `apply_all` 里有一道 `is_empty()` 守卫,
+	##   缓存非空就**不重算**。战斗启动时已按默认队算过一次 ⇒ 我换掉的阵容会被忽略。
+	##   实测症状: 敌方档位 = 0、右边那条触手压根不出现(A6 场景第一版就栽在这)。
+	##   左边"碰巧"能用只是因为默认左队没羁绊、缓存正好是空的 —— 那是运气不是正确。
+	##   正规顺序见 `dual_lane_flow.gd:540`(换路时就是 clear + apply_all)。
+	_scn._synergy.clear()
 	_scn._synergy.apply_all()
 	var tier: int = _scn._spirit_syn._side_tier("left")
 	print("  ★分母自证: 重算后我方灵物档位 = %d (0 就是没配上, 下面什么都不会发生)" % tier)

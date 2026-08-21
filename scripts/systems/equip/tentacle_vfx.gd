@@ -1739,6 +1739,46 @@ func height_profile_of(side: String, idx: int) -> PackedFloat32Array:
 	return (_tents[k] as Dictionary).get("prof_y", PackedFloat32Array())
 
 
+## 当前状态已经走了多久(秒)。验收场景要按"SLAM 的第几秒"记账, 拿墙钟对不上时停/慢放。
+func slam_ts_of(side: String, idx: int) -> float:
+	var k: String = "%s|%d" % [side, idx]
+	return float((_tents[k] as Dictionary).get("ts", 0.0)) if _tents.has(k) else 0.0
+
+
+## 预警带现在可见吗。★读的是**真节点的 visible**, 不是重推状态机。
+func warn_visible_of(side: String, idx: int) -> bool:
+	var k: String = "%s|%d" % [side, idx]
+	if not _tents.has(k):
+		return false
+	var mi = (_tents[k] as Dictionary).get("warn_mi", null)
+	return is_instance_valid(mi) and (mi as MeshInstance3D).visible
+
+
+## 预警带【真正画出来的】颜色 —— 从已建好的网格里读顶点色, 不是回读常量。
+## ★为什么不直接给常量: 验收要证明的是"屏幕上这一条是蓝的", 回读 `WARN_COL_ALLY`
+##   只能证明"我写了个蓝常量"(memory [[fb-gate-must-measure-requirement-not-my-hook]])。
+## 取带子中心那一圈里最不透明的那个顶点(边缘顶点 alpha 渐隐到 0, 取到会得到假色)。
+func warn_color_of(side: String, idx: int) -> Color:
+	var k: String = "%s|%d" % [side, idx]
+	if not _tents.has(k):
+		return Color(0, 0, 0, 0)
+	var mi = (_tents[k] as Dictionary).get("warn_mi", null)
+	if not is_instance_valid(mi):
+		return Color(0, 0, 0, 0)
+	var msh: ArrayMesh = (mi as MeshInstance3D).mesh
+	if msh == null or msh.get_surface_count() == 0:
+		return Color(0, 0, 0, 0)
+	var arr: Array = msh.surface_get_arrays(0)
+	var cols = arr[Mesh.ARRAY_COLOR]
+	if cols == null or cols.size() == 0:
+		return Color(0, 0, 0, 0)
+	var best: Color = Color(0, 0, 0, 0)
+	for c in cols:
+		if (c as Color).a > best.a:
+			best = c
+	return best
+
+
 func tip_y_of(side: String, idx: int) -> float:
 	var k: String = _key(side, idx)
 	return float((_tents[k] as Dictionary).get("tip_y", 0.0)) if _tents.has(k) else 0.0
