@@ -72,6 +72,14 @@ func _ready() -> void:
 		float(mn.get("spd_move_mult", 1.0)) >= 1.0,
 		"spd_move_mult=%.2f" % float(mn.get("spd_move_mult", 1.0)))
 	hs._unstoppable_clear(mn)
+	## ★★2026-08-21 验收场景当场抓到的洞(门禁原来抓不到, 因为它只在起手那一刻查):
+	##   免控靠"每个续期点往后延 UNSTOPPABLE_TICK 秒"维持, 而续期点是
+	##   0.00 / 0.68(射链) / 1.28(俯冲) / 踩滑每帧 —— **最大间隔 0.68 秒**。
+	##   窗口若小于它, 起跳途中就会出现一段真空, 那时丢眩晕**照样生效**(实测抓到)。
+	##   ⇒ 焊死: 窗口必须大于最大续期间隔。
+	_ok("① ★免控窗口 > 最大续期间隔 0.68 秒(否则起跳途中有真空)",
+		hs.UNSTOPPABLE_TICK > 0.68,
+		"UNSTOPPABLE_TICK=%.2f" % hs.UNSTOPPABLE_TICK)
 	_ok("① 解除后 cc_immune_until 归零且不再免击飞",
 		float(mn.get("cc_immune_until", 0.0)) <= 0.0 and not mn.has("_knock_immune"))
 
