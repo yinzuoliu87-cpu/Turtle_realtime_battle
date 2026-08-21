@@ -73,7 +73,7 @@ const MINION_INFO := {
 ## 远程小将的非标准动作(技能)。★放这里不放主战斗文件: 项目规矩「纯数据/常量表 → gamedata/」,
 ## 而且主文件有行数预算(arch_budget), 加表会被拦。
 const ACTION_RANGED := {
-	"skill": ["pets/animations/ranged/skill.png", 4.0],   # 6 帧 ÷ 4fps = 1.5 秒 == 火箭蓄力节拍(门禁焊死)
+	"skill": ["pets/animations/ranged/skill.png", 4.6667],   # 7 帧 ÷ 4.6667fps = 1.5 秒 == 火箭蓄力节拍(门禁焊死)
 }
 
 ## 原始立绘【朝右】的动画键(全项目默认朝左)。

@@ -229,6 +229,25 @@ func _rel_time(ts: int) -> String:
 	return "%d 天前" % int(d / 86400000.0)
 
 
+## 圆形按钮的自绘登记表(见下面 `_paint_round_btn` 的病历)。
+var _draw_btns: Array = []
+
+
+## 按下标重绘一个圆形按钮。★只接受 int 下标 —— 闭包不许捕获节点。
+func _paint_round_btn(i: int) -> void:
+	if i < 0 or i >= _draw_btns.size():
+		return
+	var d: Dictionary = _draw_btns[i]
+	var n = d.get("n", null)
+	if n == null or not is_instance_valid(n):
+		return
+	var c0: float = float(d["c0"])
+	var r: float = float(d["r"])
+	(n as Control).draw_circle(Vector2(c0, c0), r, Color(0, 0, 0, 0.55))
+	(n as Control).draw_arc(Vector2(c0, c0), r - 1.0, 0, TAU, 32,
+		(d["stroke"] as Dictionary)["c"], 2.0)
+
+
 func _mono_font() -> Font:
 	var f := SystemFont.new()
 	f.font_names = PackedStringArray(["monospace", "Consolas", "Courier New"])
@@ -262,9 +281,15 @@ func _icon_button(cx: float, cy: float, icon: String, cb: Callable) -> void:
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(btn)
 	var stroke := {"c": Color("#58d3ff")}
-	btn.draw.connect(func():
-		btn.draw_circle(Vector2(c0, c0), r, Color(0, 0, 0, 0.55))
-		btn.draw_arc(Vector2(c0, c0), r - 1.0, 0, TAU, 32, stroke["c"], 2.0))
+	## ★★2026-08-21 修野捕获: 原来是 `btn.draw.connect(func(): btn.draw_circle(...))` ——
+	##   闭包**捕获了 `btn` 这个节点**, 而 `draw` 信号是**每次重绘就发、不需要任何输入**。
+	##   场景被立即释放(冒烟的 `inst.free()`)时若正好有一次重绘排队, 引擎去绑那个已释放的
+	##   捕获就报 `Lambda capture at index 0 was freed`。★报错在【绑定捕获】那一刻发生,
+	##   函数体没执行 ⇒ 在闭包里加 is_instance_valid 救不了。
+	##   ⇒ 节点存进成员数组, 闭包只捕获 `self` 与一个**整数下标**(值类型, 不会变野)。
+	var _bi: int = _draw_btns.size()
+	_draw_btns.append({"n": btn, "stroke": stroke, "r": r, "c0": c0})
+	btn.draw.connect(func(): _paint_round_btn(_bi))
 	var txt := Label.new()
 	txt.text = icon
 	txt.add_theme_font_size_override("font_size", 18)
