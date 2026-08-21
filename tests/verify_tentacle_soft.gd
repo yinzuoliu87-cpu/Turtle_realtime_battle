@@ -29,16 +29,23 @@ const RISE_CAP := 0.032
 ## 前沿从根到梢的最小时差(秒)。T_SLAM=0.50。
 const FRONT_SPREAD_MIN := 0.10
 
-## ★★2026-08-21 用户:「这个触手在抬起的时候也需要做柔软」
-## 抬起(ST_WARN 1.00s)原来只有 `WHIP_LAG=0.035s` 的滞后 = 全程 3.5% ⇒ 整条一起立 = 举棍子。
-## 判据与下砸**同一套**: 沿长度取站点, 算每个站点"抬到中点"的时刻, 必须依次推后。
-## 只是方向相反 —— 下砸是根先落梢后落, 抬起是**根先起梢后起**(梢端最后离地)。
-## ★★阈值必须定在【关掉行波时的基线】之上, 否则这条是空判据。
-##   我第一版定 0.12, 而反向验证(WARN_FRONT_SPAN=0)实测**基线就有 0.192** ——
-##   于是关掉行波它照样过, 真正变红的是"开关有没有打开"那条,
-##   **那是在量我自己的旋钮不是量需求**(铁律: 判据必须量产品自己的账)。
-##   实测: 关掉 0.192 / 0.10 档 0.225 / **0.34 档 0.283** / 0.60 档 0.342。
-const LIFT_SPREAD_MIN := 0.24
+## ★★★2026-08-21 用户:「抬起的时候你没有柔软感」——【真身是定格, 不是弯度】
+##
+## 我在这条门禁上先后错了三次, 记下来免得再来:
+##  ① 加 `WARN_FRONT_SPAN`(相位滞后) —— 实测扫描: 梢端拖后只买到 +2.6pp 就饱和、
+##     曲率峰值移动**一点不动**、而抬起末的甩尾过冲被**摧毁 10 倍**(0.204→0.020)。已归零。
+##  ② 造了三个"形状"指标(梢端拖后 80.3% / 拐点移动 0.53 / 甩尾 0.204) ——
+##     **基线就全部达标**, 而画面明明是硬的 ⇒ 指标和眼睛打架时, 错的一定是指标。
+##  ③ 阈值定在基线之下 ⇒ 空判据(第一次定 0.12, 基线就有 0.192)。
+##
+## 实拍逐帧看才找到真身: 抬起 +0.12~+0.96 那七帧**几乎一模一样**, 一根粗锥立在那儿。
+## 探针实测每帧整条平均位移: 峰值 0.109 → 后段掉到 0.006 = **峰值的 1/18**。
+## 前 62% 就把动作走完(还用了末端减速的 smoothstep), 后 38% 只转 5 度。
+## **一根静止的东西不可能显得软。**
+##
+## ⇒ 判据换成【抬起全程不许定格】: 后半段最低的每帧位移, 不许掉到峰值的这个比例以下。
+## ★阈值定在**基线之上**: 基线 1/18 = 0.055, 改后 0.42 ⇒ 取 0.25。
+const LIFT_FLOW_MIN := 0.25
 ## 判定"这个站点下落过"的最小落差 —— 根部几乎不动, 拿它算到达时刻只会得到噪声。
 const STATION_DROP_MIN := 0.25
 ## 伤害结算与梢端真正落地之间允许的最大时差(秒)。
@@ -92,50 +99,37 @@ func _ready() -> void:
 	var root: Vector2 = tv.default_root("left", 0)
 	tv.strike("left", 0, root + Vector2(300.0, 0.0), 1.0)
 
-	## ══ 先量【抬起】: ST_WARN(6) 期间逐帧记高度剖面 ══════════════
-	var lift: Array = []
+	## ══ 先量【抬起】: 全程不许定格 ══════════════════════════════
+	## ★量的是**整条中心线每帧动了多远**(真几何), 不是形状指标 ——
+	##   形状指标在基线就达标却与画面相反, 那是空判据(见文件头三次翻车记录)。
+	var lprev := PackedVector3Array()
+	var lmove: Array = []
 	for i in range(900):
 		tv.tick(1.0 / 120.0)
-		var stl: int = tv.state_of("left", 0)
-		if stl == 6:
-			lift.append(tv.height_profile_of("left", 0))
-		elif not lift.is_empty():
-			break
-	var la: Array = _arrivals(lift, true)
-	var lshow := PackedStringArray()
-	for li in range(la.size()):
-		lshow.append("%d:%s" % [li,
-			"—" if float(la[li]) < 0.0 else ("%.3f" % float(la[li]))])
-	print("     【抬起】站点到达时刻(根→梢): %s" % ", ".join(lshow))
-	var lvalid := 0
-	for li2 in range(la.size()):
-		if float(la[li2]) >= 0.0:
-			lvalid += 1
-	_ok("★分母: 抬起期采到样本且 ≥5 个站点真的抬升过", lift.size() >= 8 and lvalid >= 5,
-		"帧 %d · 有效站点 %d" % [lift.size(), lvalid])
-	var lmono := true
-	var llast := -1.0
-	var lfirst := -1.0
-	var lend := -1.0
-	for li3 in range(la.size()):
-		var lt: float = float(la[li3])
-		if lt < 0.0:
+		if tv.state_of("left", 0) != 6:
+			if not lmove.is_empty():
+				break
 			continue
-		if lt < llast - 0.0001:
-			lmono = false
-		llast = lt
-		if lfirst < 0.0:
-			lfirst = lt
-		lend = lt
-	var lspread: float = (lend - lfirst) if lfirst >= 0.0 else 0.0
-	print("     【抬起】根→梢时差 = %.3f 秒 (T_WARN=%.2f, 占 %.0f%%)" % [
-		lspread, float(tv.T_WARN), lspread / float(tv.T_WARN) * 100.0])
-	_ok("★★抬起的前沿也【单调推进】(根先起、梢后起)", lmono)
-	_ok("★★★抬起根梢时差 ≥ %.2fs =【抬起也是鞭子不是棍子】" % LIFT_SPREAD_MIN,
-		lspread >= LIFT_SPREAD_MIN, "实测 %.3f 秒" % lspread)
-	_ok("★分母: 抬起行波没被关掉", float(tv.WARN_FRONT_SPAN) > 0.0,
-		"WARN_FRONT_SPAN=%.2f" % float(tv.WARN_FRONT_SPAN))
-
+		var cc: PackedVector3Array = tv.centerline_of("left", 0)
+		if lprev.size() == cc.size() and cc.size() > 0:
+			var dsum := 0.0
+			for jj in range(cc.size()):
+				dsum += (cc[jj] - lprev[jj]).length()
+			lmove.append(dsum / float(cc.size()))
+		lprev = cc
+	_ok("★分母: 抬起期真的采到帧(否则下面全是空的)", lmove.size() >= 40,
+		"只采到 %d 帧" % lmove.size())
+	var lpeak := 0.0
+	for mv in lmove:
+		lpeak = maxf(lpeak, float(mv))
+	var llow := 9.0
+	for mi in range(int(lmove.size() * 0.5), lmove.size()):
+		llow = minf(llow, float(lmove[mi]))
+	var lflow: float = llow / maxf(lpeak, 1e-9)
+	print("     【抬起】每帧位移 峰值 %.4f · 后半段最低 %.4f ⇒ 比值 %.3f (= 1/%.0f)" % [
+		lpeak, llow, lflow, 1.0 / maxf(lflow, 1e-9)])
+	_ok("★★★抬起【全程不许定格】: 后半段位移 ≥ 峰值的 %.0f%%" % (LIFT_FLOW_MIN * 100.0),
+		lflow >= LIFT_FLOW_MIN, "实测 %.3f (基线 0.055)" % lflow)
 	## ══ 再量【下砸】 ══════════════════════════════════════════
 
 	# 逐帧推进, 只在【下砸期 ST_SLAM=3】采样梢端高度
@@ -167,6 +161,24 @@ func _ready() -> void:
 	## ══ 鞭子那一半: 【行波前沿必须在跑】 ══════════════════════════
 	## ★这条是本门禁的**核心**。上一版只有"不回抬", 而把触手焊成铁棍照样不回抬 ——
 	##   判据守不住需求。现在正面量: 前沿有没有沿长度依次推进。
+	## ══ 不许有任何一段在地面【以下】 ══════════════════════════
+	## 用户 2026-08-21:「拍下去的时候鞭子有一部分直接在地下了」。
+	## 原来 `_rebuild` 里那句注释写着"别扎穿地板太多"、**允许扎 0.4** ——
+	## 探针实测下砸末到起身头 0.2 秒有 3/9 站点在地下(梢端 −0.34, 地面 0.06)。
+	## 真鞭子打到地面是**沿地面摊开**, 不会扎进去。
+	## ★量的是 `height_profile_of` 的真实世界高度, 不是重推公式。
+	var under_n := 0
+	var under_deep := 0.0
+	var gy: float = float(scn.GROUND_LIFT)
+	for pf in profs:
+		for v in (pf as PackedFloat32Array):
+			if float(v) < gy - 0.02:
+				under_n += 1
+				under_deep = maxf(under_deep, gy - float(v))
+	print("     地面 y=%.2f · 下砸期共 %d 个采样点在地下, 最深 %.3f" % [gy, under_n, under_deep])
+	_ok("★★没有任何一段扎进地面以下(鞭子打地会摊开, 不会扎进去)", under_n == 0,
+		"%d 个点在地下, 最深 %.3f" % [under_n, under_deep])
+
 	var dt: float = 1.0 / 120.0
 	var arrive: Array = []
 	var valid := 0

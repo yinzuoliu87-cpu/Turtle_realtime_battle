@@ -328,6 +328,14 @@ const RING_AMP := 210.0        # 脉冲峰值曲率(度/单位弧长)
 const RING_WIDTH := 0.20       # 脉冲宽度(占全长比例)
 const RING_TRAVEL := 0.30      # 从根部传到梢端要多久(秒)
 const RING_DECAY := 3.4        # 幅度的指数衰减率
+## ⚠【试过并撤掉】抬起期的曲率行波脉冲(2026-08-21):
+##   动机是用户要的"波纹一路往外走"。实装后逐项量:
+##     拐点沿长度移动 0.53 → 0.58(基线本来就有 0.53, 只加了 0.05)
+##     抬起末甩尾 0.204 → 0.279
+##     **而"全程流动"指标从 0.925 掉到 0.363** —— 它把动作又 front-load 了一次
+##   最要命的是: 同参数 A/B 实拍逐帧对照, **两排看不出任何区别**。
+##   ⇒ 撤掉。看不见的代码不留(否则下一个人会以为"波纹是它做的")。
+##   真正让抬起变软的是下面 `_phase_at(ST_WARN)` 的【匀速升起】(修掉了定格)。
 const REAR_END_CURL := 68.0
 ## 抽直波前从梢端扫到根部要多久。官方 f040→f042 约 2 帧完成 ⇒ 0.07 秒。
 ## ★0.075 那档太快(2.25 帧)：波前扫过时端点距离剧烈跳（实测 8.99→6.27→8.49），
@@ -386,7 +394,14 @@ const SLAM_FRONT_P := 0.60
 ##   `WHIP_LAG = 0.035s` 的线性滞后 = 全程的 **3.5%** ⇒ 和当初的下砸一个毛病: 前沿等于不存在。
 ## ⇒ 同样给它一条行波前沿。常量分开是因为**抬起和下砸不是同一件事**:
 ##   下砸是发力甩出去(前沿越跑越快); 抬起是拖着走(梢端被动跟随, 前沿更匀)。
-const WARN_FRONT_SPAN := 0.34
+## ★★★2026-08-21【实测推翻了我自己的上一版】相位滞后是**抬起的错误工具**:
+##   扫描 SPAN 0.00→0.34, 三个指标的实测:
+##     甲(梢端拖后) 80.3% → 82.9% 就**饱和**(只买到 +2.6pp)
+##     乙(曲率峰值沿长度移动) 0.22 → 0.22 **一点不动**
+##     丙(抬起末甩尾过冲) 0.204 → 0.128 → 0.045 → 0.029 → **0.020(被摧毁 10 倍)**
+##   ⇒ 它买到的微乎其微, 代价是把**原本就有的甩尾抹平**。定为 0。
+##   (甲 在基线就已经 80.3%, 本来就不缺; 真正缺的是乙。)
+const WARN_FRONT_SPAN := 0.00
 ## 抬起前沿的加速度。比下砸的 0.60 更接近 1(匀速) —— 抬起没有"动量往梢端集中"那件事。
 const WARN_FRONT_P := 0.80
 
@@ -1207,18 +1222,28 @@ func _phase_at(t: Dictionary, ts: float) -> Array:
 			#   ★更要命的是我之前一直用**投影臂长**当尺子，它压根测不到"拍下去"——
 			#     触手抻直时臂长最长，与高度无关。用户看到两次拍击、我的数据却说"0 次回涨"。
 			#   ⇒ 设计目标改成【梢端高度单调上升】：一路举起并后仰，举到位后保持蓄力。
+			## ★★★2026-08-21【用户: 抬起没有柔软感】—— 真身是**定格**, 不是弯度。
+			## 原来这段是两截: 前 62% 用 smoothstep 抬到 96°/88°(且 smoothstep **末端减速到 0**),
+			## 后 38% 只从 96→101 / 88→99 = **0.38 秒转 5 度**。
+			## 探针实测每帧整条平均位移: 峰值 0.109 → 后段掉到 **0.006(峰值的 1/18)**;
+			## 实拍 +0.12~+0.96 那七帧几乎一模一样, 就是一根粗锥立在那儿。
+			## **一根静止的东西不可能显得软**, 它曲率里藏多少 S 形都没用。
+			## (同一个病当年在拍击上查过 ——「定格了 8 帧, 是节奏不像里最大的一条」, 抬起漏了。)
+			##
+			## ⇒ 改成【前 25% 缓入 + 之后匀速升到底】: 速度在 25% 之后**恒定**, 全程不停,
+			##   终点姿态与卷曲量**一个字没动**(101°/99°/50) —— REAR 的边界连续性不许碰。
+			##   "举到位后保持蓄力"的意图仍在(末段仍在缓缓后仰), 只是不再彻底冻住。
+			## ★用分段解析式而不是 smoothstep: 缓入段末尾的斜率与匀速段**精确相等**,
+			##   否则 25% 处会有一个速度跳变(那正是我要根治的那类毛病)。
 			var wp: float = clampf(ts / T_WARN, 0.0, 1.0)
-			if wp < 0.62:
-				var q: float = smoothstep(0.0, 1.0, wp / 0.62)
-				# ★★角度 >90° 是【向后倒】—— 我设 132° 想表达"后仰"，
-				#   结果梢端往后下方去了，实测预警期高度 0.760 → 0.589 **在降**。
-				#   "高高举起"= 梢端接近 90°(竖直)；"有点后仰"= 只略超一点。
-				return [1.0, lerpf(ANG_IDLE[0], 96.0, q), lerpf(ANG_IDLE[1], 88.0, q),
-					lerpf(CURL_TIGHT, 62.0, q)]
-			var q2: float = smoothstep(0.0, 1.0, (wp - 0.62) / 0.38)
-			# 举到位后只再后仰一点点（96→101 / 88→99），高度不再往下走
-			return [1.0, lerpf(96.0, 101.0, q2), lerpf(88.0, 99.0, q2),
-				lerpf(62.0, 50.0, q2)]
+			const WARM := 0.25
+			var q: float
+			if wp < WARM:
+				q = wp * wp / (WARM * (2.0 - WARM))
+			else:
+				q = (2.0 * wp - WARM) / (2.0 - WARM)
+			return [1.0, lerpf(ANG_IDLE[0], 101.0, q), lerpf(ANG_IDLE[1], 99.0, q),
+				lerpf(CURL_TIGHT, 50.0, q)]
 		ST_REAR:
 			# ★★★2026-08-04【整条曲线逐帧对齐之后的重做】
 			#   官方前摇 5 帧（−5→−1）：青覆盖 **1.55 → 2.73（+76%）**、
@@ -1469,6 +1494,34 @@ func _seg_angle(t: Dictionary, stt: int, u: float, ts_now: float,
 	return [ang, yaw, curl_u, kacc]
 
 
+## ★★★【触地: 沿地面摊开, 不许扎进去】(2026-08-21 用户:「拍下去的时候鞭子有一部分直接在地下了」)
+## 原来 `_rebuild` 里是 `if pos.y < root3.y - 0.4: pos.y = root3.y - 0.4  # 别扎穿地板太多`
+## —— **它允许扎进地下 0.4**。探针实测: 下砸末到起身头 0.2 秒, 9 个站点里 3 个在地面以下,
+## 最深 0.40(梢端 −0.34, 地面 0.06)。不是溢出, 是当初就这么设计的。
+##
+## 【为什么不能只把 0.4 改成 0】硬钳 y 会把那几段挤在同一个高度上, 步长 ds 白走了
+##   ⇒ 弧长不再守恒, 触地那一截会缩成一坨。
+## 【真鞭子怎么做】打到地面会**沿着地面摊开** ⇒ 触地时把切向的向下分量清零再归一化:
+##   方向改成贴地走, |tan| 仍是 1, 弧长精确守恒, 多出来的长度自然摊在地面上。
+## 门禁 `verify_tentacle_soft` 焊住这条(反向验证退回旧写法: 7 个点在地下、最深 0.400)。
+
+## 把这一帧的**真实几何**记给门禁/验收场景读: 梢端高度 / 沿长度 9 站点高度剖面 / 整条中心线。
+## ★从 `_rebuild` 里抽出来 —— 那个函数撞了架构预算的 250 行上限(`tools/arch_budget.py`)。
+## ★记的是 `halo_pts` 里**已经建好的点**, 不是重推一遍公式(重推的副本必然与渲染漂开)。
+func _record_probe(t: Dictionary, halo_pts: Array) -> void:
+	if halo_pts.is_empty():
+		return
+	t["tip_y"] = float((halo_pts[halo_pts.size() - 1][0] as Vector3).y)
+	var prof := PackedFloat32Array()
+	for pi in range(PROF_N):
+		var hi: int = int(round(float(pi) / float(PROF_N - 1) * float(halo_pts.size() - 1)))
+		prof.append(float((halo_pts[hi][0] as Vector3).y))
+	t["prof_y"] = prof
+	var cen := PackedVector3Array()
+	for ci in range(halo_pts.size()):
+		cen.append(halo_pts[ci][0] as Vector3)
+	t["center"] = cen
+
 func _rebuild(t: Dictionary) -> void:
 	var mi: MeshInstance3D = t["mi"]
 	if not is_instance_valid(mi):
@@ -1691,24 +1744,19 @@ func _rebuild(t: Dictionary) -> void:
 		prev = ring
 		prev_cols = cols
 		prev_uvs = uvs
+		var gy: float = root3.y          # 触地贴地摊开(见 _rebuild 上方长注)
+		if pos.y <= gy + 0.001 and tan.y < 0.0:
+			tan.y = 0.0
+			tan = tan.normalized() if tan.length() > 0.001 else fwd
 		# ★沿切向走一步 —— 弧长天然守恒，这就是"长度固定"的来源
 		pos += tan * ds
-		if pos.y < root3.y - 0.4:
-			pos.y = root3.y - 0.4                 # 别扎穿地板太多
+		if pos.y < gy:
+			pos.y = gy                            # 贴地: 不许在地面以下
 	## ★2026-08-21 句7: 把**梢端的真实世界高度**记下来, 给门禁读。
 	##   判据必须量真几何, 不是量我重推一遍的公式(重推的副本会和渲染漂开)。
 	##   新门禁 `verify_tentacle_soft` 断言: 下砸期这个值**单调不上升**。
 	##   —— 当年"拍下去两次"的真因就是梢端在下压中途往回抬; 盯住它, 就不必禁止 S 形。
-	if not halo_pts.is_empty():
-		t["tip_y"] = float((halo_pts[halo_pts.size() - 1][0] as Vector3).y)
-		## ★门禁要量的是【前沿有没有在跑】, 只有梢端一个数看不出来 ——
-		##   沿长度取 9 个站点的世界高度, 逐帧比对即可还原前沿位置。
-		##   (量的是 halo_pts 里**真实建好的几何**, 不是重推一遍公式。)
-		var prof := PackedFloat32Array()
-		for pi in range(PROF_N):
-			var hi: int = int(round(float(pi) / float(PROF_N - 1) * float(halo_pts.size() - 1)))
-			prof.append(float((halo_pts[hi][0] as Vector3).y))
-		t["prof_y"] = prof
+	_record_probe(t, halo_pts)
 	if any:
 		stool.generate_normals()
 		stool.commit(mesh)
@@ -1752,6 +1800,15 @@ func height_profile_of(side: String, idx: int) -> PackedFloat32Array:
 	if not _tents.has(k):
 		return PackedFloat32Array()
 	return (_tents[k] as Dictionary).get("prof_y", PackedFloat32Array())
+
+
+## 整条中心线(世界坐标, SEG+1 个点)。★给门禁量【曲率变号 = S 形 = 柔软】用 ——
+## 只有高度剖面看不出 S 形(它是曲率的性质, 不是高度的性质)。
+func centerline_of(side: String, idx: int) -> PackedVector3Array:
+	var k: String = "%s|%d" % [side, idx]
+	if not _tents.has(k):
+		return PackedVector3Array()
+	return (_tents[k] as Dictionary).get("center", PackedVector3Array())
 
 
 ## 当前状态已经走了多久(秒)。验收场景要按"SLAM 的第几秒"记账, 拿墙钟对不上时停/慢放。
