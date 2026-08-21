@@ -25,23 +25,27 @@ var battle
 ## 拍击周期。★用户 2026-08-04 定为 **5 秒**（原 2.5）——
 ##   触手是常驻 AOE，2.5 秒一次在 6 只对 6 只的场面上刷得太密。
 const SLAP_PERIOD := 5.0
-## 闪避追击的**次数窗口**仍是 2.5 秒（规格原文），**不跟着拍击周期走** ——
-## 共用一个计时器的话，追击上限就被动砍半了，而那不是用户改的那件事。
-## （同枪的两座炮台各走各的节拍。）
-const CHASE_WINDOW := 2.5
 ## 触手数量（逐档）
 const TENTACLES := [1, 2, 2, 2]
-## 拍击伤害 = 目标最大生命 × HIT_HP_PCT + HIT_FLAT，再乘档位系数
-const HIT_HP_PCT := 0.04
-const HIT_FLAT := 55.0
-const HIT_MULT := [1.0, 1.0, 1.30, 1.60]
+## 拍击伤害 = 目标最大生命 × HIT_HP_PCT + HIT_FLAT，再乘档位系数。
+## ★用户 2026-08-20 拍板:「拍击伤害为目标5%最大生命值+100物理伤害」
+##   +「8件这里改为使拍击伤害提升50%」「10件这里使拍击伤害提升100%」
+##   (原 4% + 55 / [1,1,1.30,1.60])。100 是**固定基础值**, 缩放全交给档位系数 ——
+##   用户原话「固定100，但我后面有说整体伤害会随档位怎么提升」。
+const HIT_HP_PCT := 0.05
+const HIT_FLAT := 100.0
+const HIT_MULT := [1.0, 1.0, 1.50, 2.00]
 ## 伤害带半宽（码）。★用户 2026-08-05 拍板 ×3（40→120）。
 ## ⚠ 必须与 `tentacle_vfx.WARN_HALF_W` 相等 —— 一个是打的范围、一个是画给玩家看的预警区。
 const HIT_HALF_W := 120.0
 
-## 【闪避追击】追击伤害占拍击的比例 + 每 2.5 秒的次数上限（档1 无）
-const CHASE_SHARE := 0.25
-const CHASE_CAP := [0, 3, 3, 5]
+## 【闪避蓄能】★2026-08-20 用户改机制:「5件的时候友方有闪避成功时触手会获得一层拍击层数。
+##   拍击现在造成完整伤害。不再有2.5秒的限制」
+##   ⇒ 原来的「立刻打 25 折追击 + 每 2.5 秒最多 N 次」整组删掉(
+##   `CHASE_SHARE 0.25` / `CHASE_CAP [0,3,3,5]` / `CHASE_WINDOW 2.5`)。
+##   闪避改成 **+1 层拍击层数**, 走与周期产层同一条消费管线 ⇒ 完整伤害、有预警、无次数上限。
+## 闪避从第几档开始给层(用户:「应该5层以上吧」= 羁绊 5 件及以上, 2 件不给)
+const DODGE_STACK_MIN_TIER := 2
 ## 【亡灵】亡魂继承阵亡者的属性比例（逐档）
 const WRAITH_INHERIT := [0.20, 0.38, 0.65, 1.00]
 ## 亡魂阵亡后还能再循环几次（逐档），每次属性 ×0.9
@@ -56,9 +60,9 @@ const RELOC_NEAR := 0.70             # 搬到"距目标 0.70×射程"处（留�
 var _dry: Dictionary = {}
 
 var _t_slap := 0.0
-var _t_chase := 0.0
-## 各方本周期已用掉的追击次数
-var _chase_used := {"left": 0, "right": 0}
+## 【拍击层数】key = "side|idx" —— **每根触手各自一份**(用户 2026-08-20 拍板)。
+## 无上限(用户:「无上限」)。产层: 每 SLAP_PERIOD 秒 +1; 闪避成功再 +1(5 件起)。
+var _stacks: Dictionary = {}
 
 
 func _init(b) -> void:
@@ -82,6 +86,39 @@ func tentacle_pos(side: String, idx: int) -> Vector2:
 	return battle._tentacle_vfx.root_pos(side, idx)
 
 
+## ── 拍击层数(每根触手各自一份) ──
+func _sk(side: String, idx: int) -> String:
+	return "%s|%d" % [side, idx]
+
+
+## 这根触手现在攒了几层。
+func stack_of(side: String, idx: int) -> int:
+	return int(_stacks.get(_sk(side, idx), 0))
+
+
+## 给这根触手 +1 层。**无上限**(用户 2026-08-20:「无上限」)。
+func add_stack(side: String, idx: int) -> void:
+	_stacks[_sk(side, idx)] = stack_of(side, idx) + 1
+
+
+## 这根触手的射程内有没有活着的敌人。
+##
+## ★单一来源: 消费层数(要"射程内有敌人")与转移阵地(要"射程内没敌人")问的是**同一件事**,
+##   分别手写一遍就是抄一次永远落后一次(memory [[fb-hand-rolled-copies-drift]])。
+func _foe_in_range(side: String, idx: int) -> bool:
+	var tv = battle._tentacle_vfx
+	var rng: float = float(tv.attack_range_2d)
+	var origin: Vector2 = tv.root_pos(side, idx)
+	for u in battle._units:
+		if not (u is Dictionary) or not u.get("alive", false):
+			continue
+		if str(u.get("side", "")) == side:
+			continue
+		if origin.distance_squared_to(Vector2(u["pos"])) <= rng * rng:
+			return true
+	return false
+
+
 func tick(delta: float) -> void:
 	# ★每帧让场上的触手数量 == 本档位应有的数量（多了撤场、少了出土）。
 	#   文案写的是「N 个无敌触手【登场】」——"登场"意味着它在场上；
@@ -90,22 +127,36 @@ func tick(delta: float) -> void:
 	for sd in ["left", "right"]:
 		var tt: int = _side_tier(str(sd))
 		battle._tentacle_vfx.ensure(str(sd), TENTACLES[clampi(tt - 1, 0, 3)] if tt > 0 else 0)
-	# 追击次数窗口(2.5 秒)与拍击周期(5 秒)【各走各的】
-	_t_chase += delta
-	if _t_chase >= CHASE_WINDOW:
-		_t_chase -= CHASE_WINDOW
-		_chase_used = {"left": 0, "right": 0}
 	_reloc_tick(delta)
+	## ── 产层: 每 SLAP_PERIOD 秒, 每根触手各 +1(无上限) ──
 	_t_slap += delta
-	if _t_slap < SLAP_PERIOD:
-		return
-	_t_slap -= SLAP_PERIOD
+	if _t_slap >= SLAP_PERIOD:
+		_t_slap -= SLAP_PERIOD
+		for side in ["left", "right"]:
+			var s0: String = str(side)
+			var t0: int = _side_tier(s0)
+			if t0 <= 0:
+				continue
+			for i in range(TENTACLES[clampi(t0 - 1, 0, 3)]):
+				add_stack(s0, i)
+	## ── 消费: 触手【空闲】时消耗 1 层拍一次 ──
+	## 用户对「空闲」的定义(2026-08-20 逐句过 + 追问补充):
+	##   ① 不在拍击动作中 ② 不在搬家 ③ **射程内有敌人**(否则会对着空气拍)
+	## ★ ①② 由 `state_of == ST_IDLE(1)` 一并覆盖 —— 搬家走的是 ST_RETRACT,
+	##   拍击走 WARN/REAR/SLAM/RECOVER, 都不等于 1。
 	for side in ["left", "right"]:
 		var s: String = str(side)
 		var ti: int = _side_tier(s)
 		if ti <= 0:
 			continue
 		for i in range(TENTACLES[clampi(ti - 1, 0, 3)]):
+			if stack_of(s, i) <= 0:
+				continue
+			if battle._tentacle_vfx.state_of(s, i) != 1:      # 1 = ST_IDLE
+				continue
+			if not _foe_in_range(s, i):
+				continue
+			_stacks[_sk(s, i)] = stack_of(s, i) - 1
 			_slap(s, i, 1.0)
 
 
@@ -131,12 +182,7 @@ func _reloc_tick(delta: float) -> void:
 				_dry[k] = 0.0
 				continue
 			var origin: Vector2 = tv.root_pos(s2, i)
-			var has_target := false
-			for f in foes:
-				if origin.distance_squared_to(Vector2(f["pos"])) <= rng * rng:
-					has_target = true
-					break
-			if has_target:
+			if _foe_in_range(s2, i):        # 与"消费层数"问的是同一件事, 只留一份实现
 				_dry[k] = 0.0
 				continue
 			_dry[k] = float(_dry.get(k, 0.0)) + delta
@@ -261,31 +307,37 @@ func _slap_resolve(side: String, origin: Vector2, dir: Vector2, rng: float, mult
 	var shooter = _any_carrier(side)
 	var hits := 0
 	for f in _band_foes(side, origin, dir, rng):
-		var dmg: int = maxi(1, int((float(f.get("maxHp", 0.0)) * HIT_HP_PCT + HIT_FLAT) * mult))
+		## ★★2026-08-20 用户:「这是物理伤害就要按规则走啊」
+		##   原来这条**不走 `_resolve_dmg`** ⇒ 既不吃护甲、也不吃魔抗、也不是真伤,
+		##   而文案(phase2_types.gd:125)写的是「物理伤害」—— 代码从来没落实过。
+		## ★顺带修掉第二个 bug: `_apply_damage_from` 的 `col` 参数**全函数体零引用**,
+		##   飘字颜色一律查全局 `_last_dmg_type`; 而这条不写那个字段 ⇒ 触手的伤害数字
+		##   **继承上一次别的伤害留下的类型**, 打出来是红是蓝是白看运气。
+		##   走 `_resolve_dmg(..., false)` 后 `_last_dmg_type` 自动是物理 ⇒ 飘字自动是规则里的红。
+		var base: float = float(f.get("maxHp", 0.0)) * HIT_HP_PCT + HIT_FLAT
 		if shooter is Dictionary:
+			var dmg: int = maxi(1, int(battle._resolve_dmg(shooter, base, f, false) * mult))
 			battle._damage._apply_damage_from(shooter, f, dmg, Color("#b388ff"))
 		else:
-			battle._damage._apply_damage(f, dmg, Color("#b388ff"))
+			## 没有携带者(理论上不该发生)时退回不经减免的老路, 免得静默变 0
+			battle._damage._apply_damage(f, maxi(1, int(base * mult)), Color("#b388ff"))
 		hits += 1
 	return hits
 
 
-## 【闪避追击】某只单位闪避成功时调（挂 `_eq_on_dodge` 旁边）。
-## ★次数上限是**整支队伍共用**的，不是每只各 3 次 —— 否则 6 只全闪 = 18 次追击。
+## 【闪避蓄能】某只单位闪避成功时调（挂 `_eq_on_dodge` 旁边）。
+## ★2026-08-20 用户改机制: 不再"立刻打 25 折追击", 而是**给每根触手各 +1 层**。
+##   「友方有闪避成功」= **全队任何一只**(用户原话「任何一只」), 不限于带灵物装备的。
+##   **不设上限**(用户原话「不需要上限」)。
 func on_dodge(u) -> void:
 	if not (u is Dictionary):
 		return
 	var side: String = str((u as Dictionary).get("side", ""))
 	var ti: int = _side_tier(side)
-	if ti <= 0:
+	if ti < DODGE_STACK_MIN_TIER:
 		return
-	var cap: int = CHASE_CAP[clampi(ti - 1, 0, 3)]
-	if cap <= 0:
-		return
-	if int(_chase_used.get(side, 0)) >= cap:
-		return
-	_chase_used[side] = int(_chase_used.get(side, 0)) + 1
-	_slap(side, 0, CHASE_SHARE)
+	for i in range(TENTACLES[clampi(ti - 1, 0, 3)]):
+		add_stack(side, i)
 
 
 ## 【亡灵】友方单位阵亡 → 原地召唤 1 只亡魂，继承其 N% 攻击力与生命。
@@ -341,6 +393,7 @@ func _any_carrier(side: String):
 
 func clear() -> void:
 	_t_slap = 0.0
-	_t_chase = 0.0
 	_dry.clear()
-	_chase_used = {"left": 0, "right": 0}
+	## ★换路要把层数也清掉 —— 否则上一路攒的层会跟到下一路开场连拍。
+	##   (这正是 memory [[fb-write-without-reader-and-fake-gates]] 那类"换路没清干净"的坑。)
+	_stacks.clear()

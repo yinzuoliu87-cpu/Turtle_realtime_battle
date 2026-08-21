@@ -213,8 +213,16 @@ func build() -> void:
 	var t := Timer.new()
 	t.wait_time = 0.4
 	t.autostart = true
+	## ★★2026-08-21 修一条冒烟间歇红(实测 6 次红 3 次):
+	##   `ERROR: Lambda capture at index 0 was freed. Passed "null" instead.`
+	##   原来这个闭包**捕获了局部变量 `panel`(一个 Node)**。冒烟用的是 `inst.free()`
+	##   ——立即释放、最恶劣时序; Timer 与 panel 同一帧没掉时, 引擎去绑那个已释放的捕获就报错。
+	##
+	## ★规律: **闭包捕获 Node 不安全, 捕获 RefCounted 安全** ——
+	##   Node 被 free 就没了(捕获变野); 而 RefCounted 被 Callable 引用着, 引用不掉到 0 就不会没。
+	##   `self` 是 RefCounted(本类) ⇒ 改成只捕获 self、用成员 `panel`, 并在里面 is_instance_valid。
 	t.timeout.connect(func() -> void:
-		if panel != null and panel.visible:
+		if panel != null and is_instance_valid(panel) and panel.visible:
 			render())
 	panel.add_child(t)
 

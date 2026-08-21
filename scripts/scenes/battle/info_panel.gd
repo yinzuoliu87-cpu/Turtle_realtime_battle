@@ -1059,9 +1059,18 @@ func _info_chest_section(vb: VBoxContainer, u: Dictionary) -> void:
 	t.wait_time = 0.5
 	t.autostart = true
 	t.process_mode = Node.PROCESS_MODE_ALWAYS   # 暂停时也刷(面板本来就能在暂停下看)
+	## ★★2026-08-21 修冒烟间歇红 `Lambda capture at index 0 was freed`:
+	##   原来这个闭包**直接捕获了 `sec` 这个 Node**。冒烟用 `inst.free()`(立即释放·最恶劣时序),
+	##   而本 Timer 还是 `PROCESS_MODE_ALWAYS`(暂停也跑) ⇒ 同一帧里 sec 已没、timer 还响。
+	## ★关键: 报错发生在【绑定捕获】那一刻, **函数体根本没执行** ——
+	##   所以写在里面的 `is_instance_valid(sec)` 一点用都没有, 必须改成【不捕获 Node】。
+	## ⇒ 节点引用挂到单位字典上(与 `u["panel_frame"]` 同一手法), 闭包只捕获
+	##   Dictionary(值类型) 与 self(RefCounted, 被 Callable 引用着不会没)。
+	u["_chest_sec"] = sec
 	t.timeout.connect(func() -> void:
-		if is_instance_valid(sec):
-			battle._fill_chest_section(sec, u))
+		var s2 = u.get("_chest_sec", null)
+		if s2 != null and is_instance_valid(s2):
+			battle._fill_chest_section(s2, u))
 	sec.add_child(t)
 
 ## 第四行【技能栏】—— 被动 / 普攻 / 携带的那一个主动技, 一行一条(2026-08-16)。

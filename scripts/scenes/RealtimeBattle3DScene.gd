@@ -2206,8 +2206,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 		_potion_syn.tick(dt)  # 药水: 每 2.5 秒重选猎物(敌方血量最高者)
 		_gadget_syn.tick(dt)  # 奇械: 铸币累计 + 僵硬到期清理
 		_food_syn.tick(dt)    # 食物: 每 2.5 秒每件食物为携带者永久 +最大生命
-		_spirit_syn.tick(dt)  # 灵物: 触手拍击(每 5 秒·SLAP_PERIOD) + 闪避追击次数重置(每 2.5 秒·CHASE_WINDOW)
-		                      #   ★原注释把拍击写成"每 2.5 秒"—— 那是 CHASE_WINDOW, 拍击是 SLAP_PERIOD=5.0
+		_spirit_syn.tick(dt)  # 灵物: 触手拍击层数(每 SLAP_PERIOD=5 秒 +1, 闪避再 +1) + 空闲时消费 1 层拍一次
 		_spec.tick(dt)        # ★特殊余额: 线性衰减 + 耗尽回调(自然衰减完也算"被打破")
 		_equip_sys.tick_global(dt)   # ★装备的【全局】在途表(弧形波/箭雨/连射 + 批④ 的召唤物·区域·碑)
 									 #   —— 与"某只龟身上有没有装备"无关: 携带者死后碑/直升机/炮台还要继续动

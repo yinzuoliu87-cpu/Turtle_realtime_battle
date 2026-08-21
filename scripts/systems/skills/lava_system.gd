@@ -284,6 +284,7 @@ func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火�
 	if is_instance_valid(wave):
 		wave.emitting = false
 		await battle._wait_sim(wave.lifetime + 0.1)
+		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 		if is_instance_valid(wave):
 			wave.queue_free()
 

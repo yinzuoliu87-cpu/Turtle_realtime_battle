@@ -222,7 +222,10 @@ func _show_synergy_popup(type_key: String, cur_tier: int) -> void:
 	# 拼一段 bbcode：每档一小节，当前档高亮。★档数来自数据，不是写死的 [1,2,3]。
 	var bb := ""
 	for i in range(descs.size()):
-		var txt: String = str(descs[i])
+		## ★2026-08-21 接上 {C:} 消费链: TIER_DESCS 原来是**直接拿原文显示**的,
+		##   写 `{C:类名.常量}` 会原样漏给玩家(这正是 verify_code_const_token ⑦ 在守的那类事故)。
+		##   过一遍 render_consts 之后, 羁绊文案就能直接引用代码常量、不再手抄。
+		var txt: String = SkillText.render_consts(str(descs[i]))
 		if txt.strip_edges() == "":
 			continue
 		var th: int = int(thresh[i]) if i < thresh.size() else 0

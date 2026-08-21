@@ -48,49 +48,44 @@ def scan():
                         continue
                     n_await += 1
                     my = indent_of(line)
-                    # ★守卫可以在两个位置之一(两种都对, 判据必须都认):
-                    #   ① 循环头里 `while is_instance_valid(battle) and ...`(while 能这么写)
-                    #   ② await 的**下一行**就地 `if not is_instance_valid(battle): return`
-                    #      —— for 循环没法在头上加条件, 只能这么写。
-                    #   第一版判据只认 ①, 于是把 4 个已经修好的 for 报成红 —— 判据窄一格
-                    #   就会放着真 bug 不管去追假 bug。
-                    nxt = ''
-                    for k in range(i + 1, min(i + 3, len(L))):
-                        if L[k].strip():
-                            nxt = L[k]
-                            break
-                    ## ★★2026-08-20 修一个【我自己开的假绿灯】: 第一版判据也认「守卫写在循环头上」,
-                    ##   而那种写法对这个 bug **完全无效** —— 循环头在 await **之前**求值,
-                    ##   battle 是在 await 期间死的, 同一次迭代的下一行就炸。
-                    ##   实测: 加完循环头守卫再跑冒烟, 照样 1/3 红, 堆栈指到 equip_system.gd:1292
-                    ##   (那个循环的头明明已经有 is_instance_valid(battle))。
-                    ##   ⇒ 唯一正确的位置是 **await 的下一行**。判据只认这一个位置。
-                    guarded_after = GUARD in nxt
-                    for j in range(i - 1, -1, -1):
-                        s = L[j]
-                        if not s.strip() or s.strip().startswith('#'):
+                    ## ★★2026-08-21 扩大判据: 原来只查【循环里】的 await。
+                    ##   实测冒烟 5 次红 2 次, 两条错都在同一处(第 3 次硬释放之后):
+                    ##     · Lambda capture at index 0 was freed
+                    ##     · Condition "!is_inside_tree()" is true (get_global_transform)
+                    ##   后一条来自 `battle._cam.global_transform` —— **在循环外面**。
+                    ##   ⇒ 危险的不是"循环", 是"await 之后还继续用 battle"。判据按这个来。
+                    nxt = ""
+                    has_more = False
+                    for k in range(i + 1, len(L)):
+                        t = L[k]
+                        if not t.strip():
                             continue
-                        if indent_of(s) >= my:
+                        ind = indent_of(t)
+                        if ind < my:
+                            break                    # 出了这个块, 后面不是同一段
+                        if t.strip().startswith("#"):
                             continue
-                        st = s.strip()
-                        if st.startswith('while ') or st.startswith('for '):
-                            n_loop += 1
-                            if not guarded_after:
-                                bad.append((p, j + 1, st[:90]))
-                        break                       # 只看最近的外层块
+                        nxt = t
+                        has_more = True
+                        break
+                    if not has_more:
+                        continue                     # await 是这段的最后一句, 回来什么都不做
+                    n_loop += 1                      # 分母: 需要守卫的 await 点
+                    if GUARD not in nxt:
+                        bad.append((p, i + 1, line.strip()[:90]))
     return n_await, n_loop, bad
 
 
 def main():
     n_await, n_loop, bad = scan()
-    print('[分母] `await battle.` 共 %d 处 · 其中被 while/for 包着的 %d 处' % (n_await, n_loop))
+    print('[分母] `await battle.` 共 %d 处 · 其中【回来还要继续用 battle】的 %d 处' % (n_await, n_loop))
     if n_loop == 0:
-        print('[FAIL] 一个循环都没扫到 —— 这是空检查, 不是通过')
+        print('[FAIL] 一个需要守卫的 await 都没扫到 —— 这是空检查, 不是通过')
         return 1
     if not bad:
         print('ALL OK — 每个 await battle 的循环都先确认 battle 还活着')
         return 0
-    print('[FAIL] %d 个循环在 await 后继续用 battle, 却没先确认它还活着:' % len(bad))
+    print('[FAIL] %d 处在 await 后继续用 battle, 却没先确认它还活着:' % len(bad))
     for p, ln, st in bad:
         print('   %s:%d  %s' % (p, ln, st))
     print('  修法: 在 `await battle....` 的【下一行】加 `if not is_instance_valid(battle): return`')

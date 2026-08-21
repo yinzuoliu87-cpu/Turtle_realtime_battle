@@ -292,29 +292,38 @@ func _ready() -> void:
 	##   ★同步推一次待发队列即可, 不等帧也不等 tween ⇒ 仍然是确定性断言。
 	_s._ballistics._step_pending_shots(_s._tentacle_vfx.hit_delay(1.0) + 0.05)
 	var dealt: float = sh1 - float(s1[1]["hp"])
-	# ★期望值写死 175(= 4%×3000 + 55)。原来写的是"100~260 之间"——太松:
-	#   把基数 55 改成 5 时实伤 125 仍落在区间内, 变异实测 0 FAIL。区间断言必须紧到能抓住改动。
-	_ok("触手(首档): 拍击伤害 = 4%%×3000 + 55 = 175", absf(dealt - 175.0) < 2.0,
-		"实掉 %.0f" % dealt)
+	# ★期望值写死。原来写的是"100~260 之间"——太松: 把基数改小实伤仍落在区间内, 变异实测 0 FAIL。
+	# ★2026-08-20 用户改数值:「拍击伤害为目标5%最大生命值+100物理伤害」(原 4% + 55),
+	#   且「这是物理伤害就要按规则走啊」⇒ 现在**过 `_resolve_dmg` 吃护甲**。
+	#   ⇒ 期望值不再写死一个数, 而是**拿产品自己的公式当基准**: 同一份 raw 喂 `_resolve_dmg`,
+	#     断言实掉 == 它。这样以后再加任何一条物理修正, 这条断言自动跟上(比抄一遍公式强)。
+	var _want_base: float = 3000.0 * _s._spirit_syn.HIT_HP_PCT + _s._spirit_syn.HIT_FLAT
+	var _want: float = float(maxi(1, int(_s._resolve_dmg(s1[0], _want_base, s1[1], false) * 1.0)))
+	_ok("触手(首档): 拍击 = (5%%×3000 + 100) 过物理减免 = %.0f" % _want, absf(dealt - _want) < 2.0,
+		"实掉 %.0f / 期望 %.0f" % [dealt, _want])
 	_ok("★触手数(首档 1 / 档2 起 2)",
 		_s._spirit_syn.TENTACLES[0] == 1 and _s._spirit_syn.TENTACLES[1] == 2)
 
-	# 闪避追击: 档2(5 件) 每周期上限 3 次, 队伍共用
+	# 【闪避蓄能】★2026-08-20 用户改机制: 闪避不再"立刻打 25 折追击", 而是**给每根触手 +1 层**;
+	#   「任何一只」闪避都算、**不设上限**、5 件及以上才有。
+	#   判据量的是**产品自己的层数账**(stack_of), 不是我插的标记。
 	var s2 := _run([_mk("left", sp.slice(0, 3)), _mk("left", sp.slice(3, 5)), _mk("right", [])])
-	_s._spirit_syn._chase_used = {"left": 0, "right": 0}
-	var ch0: float = float(s2[2]["hp"])
+	_s._spirit_syn._stacks.clear()
 	for i5 in range(8):
 		_s._spirit_syn.on_dodge(s2[0] if i5 % 2 == 0 else s2[1])
-	_ok("闪避追击(档2): 8 次闪避只追 3 次(每周期上限【全队共用】)",
-		int(_s._spirit_syn._chase_used.get("left", 0)) == 3,
-		"用了 %d 次" % int(_s._spirit_syn._chase_used.get("left", 0)))
-	_ok("★追击真的打出伤害了", float(s2[2]["hp"]) < ch0, "%.0f → %.0f" % [ch0, float(s2[2]["hp"])])
-	# 档1 没有追击
+	_ok("闪避蓄能(档2): 8 次闪避 = 8 层(不设上限)",
+		_s._spirit_syn.stack_of("left", 0) == 8,
+		"第0根 %d 层" % _s._spirit_syn.stack_of("left", 0))
+	_ok("★每根触手各自一份(第1根也拿到 8 层)",
+		_s._spirit_syn.stack_of("left", 1) == 8,
+		"第1根 %d 层" % _s._spirit_syn.stack_of("left", 1))
+	# 档1(2 件) 闪避不给层
 	var s3 := _run([_mk("left", sp.slice(0, 2)), _mk("right", [])])
-	_s._spirit_syn._chase_used = {"left": 0, "right": 0}
+	_s._spirit_syn._stacks.clear()
 	_s._spirit_syn.on_dodge(s3[0])
-	_ok("★首档没有闪避追击(CHASE_CAP[0]=0)",
-		int(_s._spirit_syn._chase_used.get("left", 0)) == 0)
+	_ok("★首档(2 件)闪避不给层(DODGE_STACK_MIN_TIER=2)",
+		_s._spirit_syn.stack_of("left", 0) == 0,
+		"%d 层" % _s._spirit_syn.stack_of("left", 0))
 
 	# 亡灵: 首档(2 件) 阵亡 → 召唤亡魂, 继承 20%
 	var s4 := _run([_mk("left", sp.slice(0, 2)), _mk("left", [])])

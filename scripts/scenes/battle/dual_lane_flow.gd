@@ -501,7 +501,7 @@ func _dl_build_lane_field() -> void:
 	battle._food_syn.clear()      # 换路: 成长节拍归零
 	battle._spirit_syn.clear()    # 换路: 触手节拍与追击次数归零
 	# ★★2026-08-06 补(压测抓到: 11 局刷了 1393 条 `Trying to assign invalid previously freed instance`)。
-	#   `_spirit_syn.clear()` 只清节拍计数(_t_slap/_t_chase/_dry/_chase_used), **不碰 TentacleVfx._tents**;
+	#   `_spirit_syn.clear()` 只清节拍计数与拍击层数(_t_slap/_dry/_stacks), **不碰 TentacleVfx._tents**;
 	#   而触手节点挂在 `battle._world` 上, 换路时下面的 `_sweep_world_vfx()` 会把它们 free 掉
 	#   ⇒ `_tents` 里留着一堆悬空引用, `tentacle_vfx.gd` 的 `_rebuild` 每帧
 	#   `var mi: MeshInstance3D = t["mi"]` —— **带类型的赋值本身就报错**, 下一行的

@@ -567,6 +567,7 @@ func _eq_dumbbell_routine(u: Dictionary, si: int) -> void:   # 原地锻炼(锁�
 	battle._skill_ring(u["pos"], Color(0.8, 0.9, 1.0, 0.42), 48.0)   # 锻炼强化光
 	battle._anticipate(u); battle._shake(battle.JUICE_SHAKE_HEAVY)   # 蓄力
 	await battle._wait_sim(0.35)
+	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 	u["_slam"] = false
 	if not u.get("alive", false): return
 	var t = battle._targeting._nearest_enemy(u)
@@ -579,6 +580,7 @@ func _eq_fuel_throw(u: Dictionary, si: int) -> void:   # 余烬燃油瓶022: 每
 	if battle._targeting._nearest_enemy(u) == null: return
 	battle._anticipate(u)   # 短蓄力
 	await battle._wait_sim(0.3)
+	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 	if not is_instance_valid(self) or not u.get("alive", false): return
 	var t = battle._targeting._nearest_enemy(u)
 	if t == null: return
@@ -633,6 +635,7 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007(重做�
 	gt.tween_property(sword, "modulate:a", 1.0, 0.28)
 	gt.tween_property(sword, "scale", Vector3(1.5, 1.5, 1.5), 0.4)
 	await battle._wait_sim(0.6)
+	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 	if not u.get("alive", false):
 		if is_instance_valid(sword): sword.queue_free()
 		return
@@ -710,6 +713,7 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 	gt.tween_property(glow, "modulate:a", 0.85, 0.4)
 	gt.parallel().tween_property(glow, "scale", Vector3(2.8, 2.8, 2.8), 0.45)
 	await battle._wait_sim(0.45)
+	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 	if is_instance_valid(glow): glow.queue_free()
 	if not u.get("alive", false): return
 	var n := 7
@@ -730,11 +734,13 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 		st.tween_property(sp, "scale", Vector3.ONE, 0.25).set_delay(float(k) * 0.03)
 		swords.append(sp)
 	await battle._wait_sim(0.42)   # 等一排剑生成完
+	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 	if not u.get("alive", false): return
 	for spr in swords:   # 调转方向: 一排剑同时旋转对准行进方向(带回弹)
 		if is_instance_valid(spr):
 			battle._reg_tween().tween_property(spr, "rotation:y", ang, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	await battle._wait_sim(0.34)
+	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 	if not u.get("alive", false): return
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
 	var reach := 1050.0
@@ -1157,6 +1163,7 @@ func _eq_laser_sweep(u: Dictionary, tgt: Dictionary, si: int) -> void:   # 扇�
 		tele.scale = Vector3(1.0, 0.35, 1.0); tele.modulate = Color(1.0, 0.3, 0.3, 0.0)
 		battle._reg_tween().tween_property(tele, "modulate:a", 0.5, 0.18)
 		await battle._wait_sim(0.2)
+		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 		if is_instance_valid(tele):
 			var telf = battle._reg_tween()
 			telf.tween_property(tele, "modulate:a", 0.0, 0.1)
@@ -1234,6 +1241,7 @@ func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽�
 		tt.tween_property(tel, "modulate:a", 0.28, 0.14)
 		tt.tween_property(tel, "modulate:a", 0.6, 0.14)
 	await battle._wait_sim(0.56)
+	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 	if not src.get("alive", false):
 		if is_instance_valid(tel): tel.queue_free()
 		return
@@ -1279,6 +1287,7 @@ func _eq_fire_coral_active(src: Dictionary, si: int) -> void:   # 灼热火珊�
 		dir = (cen / float(es.size()) - src["pos"]).normalized()
 	battle._anticipate(src); battle._shake(battle.JUICE_SHAKE_HEAVY)   # 蓄力
 	await battle._wait_sim(0.4)
+	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 	if not is_instance_valid(self) or not src.get("alive", false): return
 	var origin: Vector2 = src["pos"]
 	var wave := Sprite3D.new()   # 橙火弯月波(躺平朝dir, 边挥边扩)

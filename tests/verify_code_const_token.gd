@@ -66,6 +66,26 @@ func _ready() -> void:
 	var n_seg := 0
 	var n_ctok := 0
 	var leaked: Array = []
+	## ★★2026-08-21 补扫描面: 羁绊逐档文案 `TIER_DESCS` 住在 **.gd** 里, 不在 data/*.json ——
+	##   只扫 json 的话, 写在那边的 {C:} 漏出去照样没人抓。
+	##   (同一形状的坑 CLAUDE.md §2 记过: 函数外迁到新文件后审计器找不到 = 误报/漏报。
+	##    凡是"在某处找某个模式"的判据, 扫描面必须跟着内容走。)
+	var n_gd := 0
+	for gd in ["res://scripts/gamedata/phase2_types.gd"]:
+		var gh := FileAccess.open(gd, FileAccess.READ)
+		if gh == null:
+			continue
+		var src := gh.get_as_text()
+		gh.close()
+		for raw in src.split("
+"):
+			if not raw.contains("{C:"):
+				continue
+			n_gd += 1
+			n_ctok += 1
+			if ST.render_consts(raw).contains("{C:"):
+				leaked.append(gd.get_file() + " 第 %d 段" % n_gd)
+	_ok("⑦ 分母: .gd 里也有 {C:} 段被扫到", n_gd > 0, "扫到 %d 行" % n_gd)
 	for jf in ["res://data/pets.json", "res://data/phase2-equipment.json"]:
 		var fh := FileAccess.open(jf, FileAccess.READ)
 		if fh == null:

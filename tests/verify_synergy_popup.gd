@@ -71,7 +71,11 @@ func _ready() -> void:
 		built += 1
 		var body: String = rt.get_parsed_text()          # ★读【渲染后】的纯文本, 不是我塞进去的 bbcode
 		for i in range(descs.size()):
-			var d: String = str(descs[i])
+			## ★2026-08-21: 面板现在把文案过一遍 `SkillText.render_consts`(让羁绊文案能用
+			##   `{C:类名.常量}` 直接引用代码常量)。判据这边**也必须渲染后再比** ——
+			##   否则拿含 `{C:...}` 的原文去渲染后的文本里找, 永远找不到,
+			##   会被误报成「出现了但不完整」(我 2026-08-21 就这么误判过一次)。
+			var d: String = SkillText.render_consts(str(descs[i]))
 			if d.strip_edges() == "":
 				continue
 			total_tiers += 1
