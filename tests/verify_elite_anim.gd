@@ -126,52 +126,86 @@ func _fps_in_table(src: String, table: String, act: String) -> float:
 ## 判据: 拿【武器伸出最远的那一帧】比, 看极值落在身体中线的哪一侧。
 ##   不用"各帧 bbox 中心的平均"—— 那个会被来回摆动的动作抵消掉
 ##   (实测它把明明朝右刺的 melee/attack 判成"居中")。
+## 【朝向】改成金样本, 不再自动判。
+##
+## ★★2026-08-21 用户对着逐帧接触印相把三处朝向错误一个个指出来之后, 我得承认:
+##   **自动判朝向的判据今晚错了三次** ——
+##     ① `_reach_dir`(最外缘) 被精英背后的**披风**骗, 把朝右的图一路判绿;
+##     ② 换成"面罩重心"后, 被中间帧那对**紫色拳套**骗, hammer_big 全判成朝左;
+##     ③ 我照着②的数值把**本来正确**的 idle/attack/hammer 镜像坏了(已还原)。
+##   ⇒ 不再让机器猜"它朝哪边"。**朝向的权威是人眼**;
+##     门禁的职责改成【把人确认过的那一版冻住】—— 与 tools/text_golden.py 同一个思路。
+##   谁重新生成/镜像了素材, 这里就会红, 逼一次人工复核, 而不是被一个坏判据静默放过。
+const FACING_GOLDEN_PATH := "res://tests/golden/minion_facing.txt"
+
+
 func _check_facing() -> void:
-	# ★【全量扫目录】而不是挑一张。2026-07-22 用户报「近战小将怎么走路是反的」——
-	#   这条断言当时只查 melee/attack 一张, 而那张恰好是对的, 于是一直绿着;
-	#   实际 14 张里有 7 张朝向反了(melee 的 dive/leap/run/throw + elite 的
-	#   hammer/hammer_big/whip/whirl)。挑一张代表 = 用一个样本给整个目录背书。
-	var cases: Array = []
-	## ★2026-08-21 补两个扫描盲区:
-	##   ① 加 "ranged"(远程小将新做的三张动作图, 此前这个目录不存在)
-	##   ② **三张 idle 立绘 `pets/minion*.png` 原来根本不在扫描范围内** ——
-	##      这就是精英小将 idle 朝向反了却一直绿的原因(实测 reach +37, 另两张 -28/-34)。
-	##      它们朝右是**素材事实**, 由 `_art_faces_right` 按动画键分流处理(用户拍板方案 b),
-	##      所以这里【登记期望朝向】而不是一律要求朝左。
-	for d in ["melee", "elite", "ranged"]:
+	var cur: Array = []
+	for d in ["melee", "elite", "ranged", "wraith"]:
 		var dir := DirAccess.open("res://assets/sprites/pets/animations/%s" % d)
 		if dir == null:
 			continue
 		for f in dir.get_files():
-			if f.ends_with(".png"):
-				cases.append([d, f.get_basename()])
-	cases.sort_custom(func(a, b): return str(a[0]) + str(a[1]) < str(b[0]) + str(b[1]))
-	var n := 0
-	for c in cases:
-		var p := "res://assets/sprites/pets/animations/%s/%s.png" % [str(c[0]), str(c[1])]
-		if not ResourceLoader.exists(p):
-			continue
-		## ★★2026-08-21【最外缘量不出朝向的图, 改用面罩位置判】
-		##   由来: 用户对着接触印相逐帧问「hammer 这4帧全部朝右吗」。
-		##   `_reach_dir` 量的是"最外缘落在中线哪边"; 而精英小将**背后有披风**,
-		##   最外缘量到的是披风、跟朝向无关 ⇒ 它把朝右的 attack/hammer 一路判绿,
-		##   等我按面罩位置确认并镜像修正之后, 它反而判红。
-		##   ⇒ 这些图改用**面罩(高饱和高亮像素)重心 − 整体重心**: 侧身角色脸朝哪边就是朝哪边。
-		##   不是开例外跳过, 是换一个**卡得住这个形状**的判据。
-		var key := "%s/%s" % [str(c[0]), str(c[1])]
-		var by_face: bool = FACE_JUDGE_SHEETS.has(key)
-		var d := (_face_dir(p) if by_face else _reach_dir(p))
-		n += 1
-		print("  [朝向] %s %s %+.1f (负=朝左)" % [key,
-			"面罩偏移" if by_face else "伸展方向", d])
-		if d > 0.0:
-			_fail("%s/%s 是【朝右】的, 但项目约定原图朝左(ART_FACES_RIGHT 里没有小将) —— 引擎会再翻一次, 变成背对敌人出招。修法: 逐帧水平镜像" % [str(c[0]), str(c[1])])
-	print("  [分母] 朝向检查覆盖了 %d 张动作图" % n)
-	if n == 0:
-		_fail("朝向检查一张图都没跑到 —— 空检查不是通过")
-	elif n < 10:
-		_fail("只扫到 %d 张动作图, 预期 ≥10(melee 7 + elite 6) —— 目录没读到就等于漏检" % n)
+			if not f.ends_with(".png"):
+				continue
+			cur.append("%s/%s %s" % [d, f.get_basename(),
+				_sil_fingerprint("res://assets/sprites/pets/animations/%s/%s" % [d, f])])
+	for n in ["minion", "minion-elite", "minion-back", "wraith"]:
+		var ip := "res://assets/sprites/pets/%s.png" % n
+		if ResourceLoader.exists(ip):
+			cur.append("idle/%s %s" % [n, _sil_fingerprint(ip)])
+	cur.sort()
+	## ★分母断言: 扫不到图就等于空检查
+	print("  [朝向] 扫到 %d 张图(动作+立绘)" % cur.size())
+	if cur.size() < 15:
+		_fail("只扫到 %d 张图, 预期 ≥15 —— 目录没读到就等于漏检" % cur.size())
+	var want := ""
+	if FileAccess.file_exists(FACING_GOLDEN_PATH):
+		want = FileAccess.get_file_as_string(FACING_GOLDEN_PATH).strip_edges()
+	var got := "\n".join(PackedStringArray(cur))
+	if want == "":
+		var fh := FileAccess.open(FACING_GOLDEN_PATH, FileAccess.WRITE)
+		if fh != null:
+			fh.store_string(got)
+			fh.close()
+		print("  [朝向] 首次建立金样本(%d 张) —— 内容是【人眼已确认】的那一版" % cur.size())
+		return
+	if got == want:
+		print("  [朝向] 与金样本一字不差(%d 张) —— 没人动过素材" % cur.size())
+		return
+	var wl := want.split("\n")
+	var changed: Array = []
+	for line in cur:
+		if not wl.has(line):
+			changed.append(str(line).split(" ")[0])
+	_fail("素材变了(%s) —— 朝向的权威是人眼: 逐帧看过确认无误后, 删掉 %s 让它重建"
+		% [", ".join(PackedStringArray(changed)).substr(0, 120), FACING_GOLDEN_PATH])
 
+
+## 轮廓指纹: 逐帧取 alpha 轮廓的左右重心差(量化成整数), 拼成一串。
+## ★只用来发现"素材被改了", **不用来判朝向** —— 判朝向那件事已经证明机器做不可靠。
+func _sil_fingerprint(path: String) -> String:
+	var tex: Texture2D = load(path)
+	if tex == null:
+		return "?"
+	var img := tex.get_image()
+	if img == null:
+		return "?"
+	var h := img.get_height()
+	var frames: int = maxi(1, img.get_width() / h)
+	var parts: Array = []
+	for f in range(frames):
+		var l := 0
+		var r := 0
+		for x in range(h):
+			for y in range(h):
+				if img.get_pixel(f * h + x, y).a > 0.16:
+					if x < h / 2:
+						l += 1
+					else:
+						r += 1
+		parts.append(str(l - r))
+	return ",".join(PackedStringArray(parts))
 
 ## 背后有披风/尾焰的图 —— 最外缘量到的是那个附件, 不是朝向。改用面罩位置判。
 const FACE_JUDGE_SHEETS := ["elite/attack", "elite/hammer"]
