@@ -65,6 +65,13 @@ func _ready() -> void:
 	##   (headless 才自动开; 见 `GameState.gd:912`)。2026-08-21 我跑了一次带窗口的 demo,
 	##   往 `match_history` 写进一条对局记录, `verify_ui_consistency` 当场红。
 	##   铁律: 测试/演示不许污染玩家存档。
+	## ★★验收场景【不判胜负】—— `NOVERDICT` 走的是 `_check_end` 里那道守卫。
+	##   由来(2026-08-21 用户实拍截图): `demo_spirit_stacks` 阶段①要"场上一个敌人都没有"
+	##   才演得出"射程内没敌人就只攒不放", 结果正好撞上「敌方全灭 = 胜利」⇒
+	##   演到一半弹出「胜利」结算屏把画面全盖住了。
+	## ⚠ 不借 `VFXPREVIEW`: 那个开关会连带开一整套技能预览并改相机 fov(battle_vfx.gd:603)。
+	## ⚠ 也不新增成员变量: 上帝文件有行数预算(`tools/arch_budget.py`), 改已有那行守卫净增 0 行。
+	OS.set_environment("NOVERDICT", "1")
 	var _gs = get_node_or_null("/root/GameState")
 	if _gs != null:
 		_gs.test_mode = true
@@ -231,6 +238,9 @@ func _process(_dt: float) -> void:
 	if el >= _env_f("STK_SECS", 34.0):
 		print("")
 		print("  ── 收尾自证 ──")
+		## ★这条是 2026-08-21 用户实拍截图逼出来的: 阶段①"场上没有敌人"撞上「敌方全灭=胜利」,
+		##   演到一半弹「胜利」结算屏把画面全盖住。⇒ 断言全程没被判过胜负。
+		print("  演出没被结算屏打断: %s" % ("是" if not bool(_scn._over) else "★否 —— 弹过结算屏"))
 		print("  搬家出现过: %s" % ("是" if _reloc_seen else "★否 —— 没看到搬家, A5 这次没验到"))
 		print("  非待机时掉层 %d 次(应为 0) · 射程内没敌人却掉层 %d 次(应为 0)"
 			% [_bad_state_drop, _out_of_range_drop])

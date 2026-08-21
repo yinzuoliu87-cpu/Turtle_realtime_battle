@@ -58,6 +58,13 @@ func _ready() -> void:
 	##   (headless 才自动开; 见 `GameState.gd:912`)。2026-08-21 我跑了一次带窗口的 demo,
 	##   往 `match_history` 写进一条对局记录, `verify_ui_consistency` 当场红。
 	##   铁律: 测试/演示不许污染玩家存档。
+	## ★★验收场景【不判胜负】—— `NOVERDICT` 走的是 `_check_end` 里那道守卫。
+	##   由来(2026-08-21 用户实拍截图): `demo_spirit_stacks` 阶段①要"场上一个敌人都没有"
+	##   才演得出"射程内没敌人就只攒不放", 结果正好撞上「敌方全灭 = 胜利」⇒
+	##   演到一半弹出「胜利」结算屏把画面全盖住了。
+	## ⚠ 不借 `VFXPREVIEW`: 那个开关会连带开一整套技能预览并改相机 fov(battle_vfx.gd:603)。
+	## ⚠ 也不新增成员变量: 上帝文件有行数预算(`tools/arch_budget.py`), 改已有那行守卫净增 0 行。
+	OS.set_environment("NOVERDICT", "1")
 	var _gs = get_node_or_null("/root/GameState")
 	if _gs != null:
 		_gs.test_mode = true

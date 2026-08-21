@@ -7759,7 +7759,7 @@ func _make_glow_quad(size_m: float) -> QuadMesh:
 	return qm
 
 func _check_end() -> void:
-	if OS.has_environment("VFXPREVIEW"): return   # 预览模式不判胜负
+	if OS.has_environment("VFXPREVIEW") or OS.has_environment("NOVERDICT"): return   # 预览/验收演出: 不判胜负
 	if _is_dual_lane_mode():
 		_dl_sys._dl_flow_check()
 		return
