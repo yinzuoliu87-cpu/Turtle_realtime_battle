@@ -151,9 +151,19 @@ func _check_facing() -> void:
 		var p := "res://assets/sprites/pets/animations/%s/%s.png" % [str(c[0]), str(c[1])]
 		if not ResourceLoader.exists(p):
 			continue
-		var d := _reach_dir(p)
+		## ★★2026-08-21【最外缘量不出朝向的图, 改用面罩位置判】
+		##   由来: 用户对着接触印相逐帧问「hammer 这4帧全部朝右吗」。
+		##   `_reach_dir` 量的是"最外缘落在中线哪边"; 而精英小将**背后有披风**,
+		##   最外缘量到的是披风、跟朝向无关 ⇒ 它把朝右的 attack/hammer 一路判绿,
+		##   等我按面罩位置确认并镜像修正之后, 它反而判红。
+		##   ⇒ 这些图改用**面罩(高饱和高亮像素)重心 − 整体重心**: 侧身角色脸朝哪边就是朝哪边。
+		##   不是开例外跳过, 是换一个**卡得住这个形状**的判据。
+		var key := "%s/%s" % [str(c[0]), str(c[1])]
+		var by_face: bool = FACE_JUDGE_SHEETS.has(key)
+		var d := (_face_dir(p) if by_face else _reach_dir(p))
 		n += 1
-		print("  [朝向] %s/%s 伸展方向 %+.1f (负=朝左, 与全局约定一致)" % [str(c[0]), str(c[1]), d])
+		print("  [朝向] %s %s %+.1f (负=朝左)" % [key,
+			"面罩偏移" if by_face else "伸展方向", d])
 		if d > 0.0:
 			_fail("%s/%s 是【朝右】的, 但项目约定原图朝左(ART_FACES_RIGHT 里没有小将) —— 引擎会再翻一次, 变成背对敌人出招。修法: 逐帧水平镜像" % [str(c[0]), str(c[1])])
 	print("  [分母] 朝向检查覆盖了 %d 张动作图" % n)
@@ -161,6 +171,43 @@ func _check_facing() -> void:
 		_fail("朝向检查一张图都没跑到 —— 空检查不是通过")
 	elif n < 10:
 		_fail("只扫到 %d 张动作图, 预期 ≥10(melee 7 + elite 6) —— 目录没读到就等于漏检" % n)
+
+
+## 背后有披风/尾焰的图 —— 最外缘量到的是那个附件, 不是朝向。改用面罩位置判。
+const FACE_JUDGE_SHEETS := ["elite/attack", "elite/hammer"]
+
+
+## 面罩(高饱和高亮像素)重心 − 整体重心, 逐帧平均。负 = 脸偏左 = 朝左。
+func _face_dir(path: String) -> float:
+	var tex: Texture2D = load(path)
+	if tex == null:
+		return 0.0
+	var img := tex.get_image()
+	if img == null:
+		return 0.0
+	var h := img.get_height()
+	var frames: int = maxi(1, img.get_width() / h)
+	var acc := 0.0
+	var used := 0
+	for f in range(frames):
+		var fx := 0.0
+		var fn := 0
+		var bx := 0.0
+		var bn := 0
+		for x in range(h):
+			for y in range(h):
+				var col := img.get_pixel(f * h + x, y)
+				if col.a < 0.16:
+					continue
+				bx += float(x)
+				bn += 1
+				if col.s > 0.30 and col.v > 0.42:
+					fx += float(x)
+					fn += 1
+		if fn >= 6 and bn >= 10:
+			acc += (fx / float(fn)) - (bx / float(bn))
+			used += 1
+	return (acc / float(used)) if used > 0 else 0.0
 
 
 ## 武器伸得最远那一帧, 极值在中线哪一侧 (正=朝右)
