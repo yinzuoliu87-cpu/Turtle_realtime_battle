@@ -28,6 +28,17 @@ const RISE_CAP := 0.032
 ##   棍子: 所有站点同时到达(时差≈0); 鞭子: 到达时刻沿长度**依次推后**。
 ## 前沿从根到梢的最小时差(秒)。T_SLAM=0.50。
 const FRONT_SPREAD_MIN := 0.10
+
+## ★★2026-08-21 用户:「这个触手在抬起的时候也需要做柔软」
+## 抬起(ST_WARN 1.00s)原来只有 `WHIP_LAG=0.035s` 的滞后 = 全程 3.5% ⇒ 整条一起立 = 举棍子。
+## 判据与下砸**同一套**: 沿长度取站点, 算每个站点"抬到中点"的时刻, 必须依次推后。
+## 只是方向相反 —— 下砸是根先落梢后落, 抬起是**根先起梢后起**(梢端最后离地)。
+## ★★阈值必须定在【关掉行波时的基线】之上, 否则这条是空判据。
+##   我第一版定 0.12, 而反向验证(WARN_FRONT_SPAN=0)实测**基线就有 0.192** ——
+##   于是关掉行波它照样过, 真正变红的是"开关有没有打开"那条,
+##   **那是在量我自己的旋钮不是量需求**(铁律: 判据必须量产品自己的账)。
+##   实测: 关掉 0.192 / 0.10 档 0.225 / **0.34 档 0.283** / 0.60 档 0.342。
+const LIFT_SPREAD_MIN := 0.24
 ## 判定"这个站点下落过"的最小落差 —— 根部几乎不动, 拿它算到达时刻只会得到噪声。
 const STATION_DROP_MIN := 0.25
 ## 伤害结算与梢端真正落地之间允许的最大时差(秒)。
@@ -80,6 +91,52 @@ func _ready() -> void:
 
 	var root: Vector2 = tv.default_root("left", 0)
 	tv.strike("left", 0, root + Vector2(300.0, 0.0), 1.0)
+
+	## ══ 先量【抬起】: ST_WARN(6) 期间逐帧记高度剖面 ══════════════
+	var lift: Array = []
+	for i in range(900):
+		tv.tick(1.0 / 120.0)
+		var stl: int = tv.state_of("left", 0)
+		if stl == 6:
+			lift.append(tv.height_profile_of("left", 0))
+		elif not lift.is_empty():
+			break
+	var la: Array = _arrivals(lift, true)
+	var lshow := PackedStringArray()
+	for li in range(la.size()):
+		lshow.append("%d:%s" % [li,
+			"—" if float(la[li]) < 0.0 else ("%.3f" % float(la[li]))])
+	print("     【抬起】站点到达时刻(根→梢): %s" % ", ".join(lshow))
+	var lvalid := 0
+	for li2 in range(la.size()):
+		if float(la[li2]) >= 0.0:
+			lvalid += 1
+	_ok("★分母: 抬起期采到样本且 ≥5 个站点真的抬升过", lift.size() >= 8 and lvalid >= 5,
+		"帧 %d · 有效站点 %d" % [lift.size(), lvalid])
+	var lmono := true
+	var llast := -1.0
+	var lfirst := -1.0
+	var lend := -1.0
+	for li3 in range(la.size()):
+		var lt: float = float(la[li3])
+		if lt < 0.0:
+			continue
+		if lt < llast - 0.0001:
+			lmono = false
+		llast = lt
+		if lfirst < 0.0:
+			lfirst = lt
+		lend = lt
+	var lspread: float = (lend - lfirst) if lfirst >= 0.0 else 0.0
+	print("     【抬起】根→梢时差 = %.3f 秒 (T_WARN=%.2f, 占 %.0f%%)" % [
+		lspread, float(tv.T_WARN), lspread / float(tv.T_WARN) * 100.0])
+	_ok("★★抬起的前沿也【单调推进】(根先起、梢后起)", lmono)
+	_ok("★★★抬起根梢时差 ≥ %.2fs =【抬起也是鞭子不是棍子】" % LIFT_SPREAD_MIN,
+		lspread >= LIFT_SPREAD_MIN, "实测 %.3f 秒" % lspread)
+	_ok("★分母: 抬起行波没被关掉", float(tv.WARN_FRONT_SPAN) > 0.0,
+		"WARN_FRONT_SPAN=%.2f" % float(tv.WARN_FRONT_SPAN))
+
+	## ══ 再量【下砸】 ══════════════════════════════════════════
 
 	# 逐帧推进, 只在【下砸期 ST_SLAM=3】采样梢端高度
 	var ys: Array = []
@@ -194,6 +251,31 @@ func _ready() -> void:
 	_ok("★柔软没被关死: 拍击期横向摆动有地板值 > 0", float(tv.SLAM_WAVY_MIN) > 0.0,
 		"SLAM_WAVY_MIN=%.2f" % float(tv.SLAM_WAVY_MIN))
 	_done(scn)
+
+
+## 沿长度算每个站点"走完一半行程"的时刻。`rising=true` 量抬升, false 量下落。
+## ★两段共用同一份实现 —— 手抄两遍必然漂(memory [[fb-hand-rolled-copies-drift]])。
+func _arrivals(profs: Array, rising: bool) -> Array:
+	var out: Array = []
+	if profs.size() < 8 or (profs[0] as PackedFloat32Array).size() == 0:
+		return out
+	var dt: float = 1.0 / 120.0
+	for st in range((profs[0] as PackedFloat32Array).size()):
+		var y0: float = float((profs[0] as PackedFloat32Array)[st])
+		var y1: float = float((profs[profs.size() - 1] as PackedFloat32Array)[st])
+		var move: float = (y1 - y0) if rising else (y0 - y1)
+		if move < STATION_DROP_MIN:
+			out.append(-1.0)      # 这个站点没怎么动(根部) —— 显式登记, 不静默跳过
+			continue
+		var half: float = y0 + (y1 - y0) * 0.5
+		var tt := -1.0
+		for fi in range(profs.size()):
+			var yv: float = float((profs[fi] as PackedFloat32Array)[st])
+			if (yv >= half) if rising else (yv <= half):
+				tt = float(fi) * dt
+				break
+		out.append(tt)
+	return out
 
 
 func _done(scn) -> void:

@@ -379,6 +379,17 @@ const SLAM_FRONT_SPAN := 0.46
 ##   =1 是匀速(那是绳子不是鞭子), >1 是越跑越慢(反了)。
 const SLAM_FRONT_P := 0.60
 
+## ★★★2026-08-21 用户:「这个触手在抬起的时候也需要做柔软」
+## 【抬起也是鞭子】把鞭子举起来时, 手先动、鞭身依次跟上、**梢端最后离地**;
+##   整条同时立起来那是举一根棍子。
+## 抬起走的是 `ST_WARN`(1.00s) + `ST_REAR`(0.13s), 而这两段原来只有
+##   `WHIP_LAG = 0.035s` 的线性滞后 = 全程的 **3.5%** ⇒ 和当初的下砸一个毛病: 前沿等于不存在。
+## ⇒ 同样给它一条行波前沿。常量分开是因为**抬起和下砸不是同一件事**:
+##   下砸是发力甩出去(前沿越跑越快); 抬起是拖着走(梢端被动跟随, 前沿更匀)。
+const WARN_FRONT_SPAN := 0.34
+## 抬起前沿的加速度。比下砸的 0.60 更接近 1(匀速) —— 抬起没有"动量往梢端集中"那件事。
+const WARN_FRONT_P := 0.80
+
 ## (旧) 拍击期整条同相位的线性滞后比例 —— 已被上面的行波前沿取代, 保留为 0 备查。
 const SLAM_LAG_K := 0.0
 ## 拍击期横向摆动的地板值(原来是压到 0)
@@ -1411,6 +1422,10 @@ func _seg_angle(t: Dictionary, stt: int, u: float, ts_now: float,
 	var lag_u: float
 	if stt == ST_SLAM:
 		lag_u = T_SLAM * SLAM_FRONT_SPAN * pow(u, SLAM_FRONT_P)
+	elif stt == ST_WARN or stt == ST_REAR:
+		## ★抬起同样是行波(用户 2026-08-21)。未被前沿扫到的段局部时间为负 ⇒
+		##   `_phase_at(ST_WARN)` 的 `wp` clamp 到 0 ⇒ 保持待机姿态, 与 IDLE 边界天然连续。
+		lag_u = T_WARN * WARN_FRONT_SPAN * pow(u, WARN_FRONT_P)
 	else:
 		lag_u = u * WHIP_LAG
 	var ph_u: Array = _phase_at(t, ts_now - lag_u)
