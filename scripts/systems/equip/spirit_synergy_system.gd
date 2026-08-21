@@ -377,7 +377,9 @@ func on_death(dead) -> void:
 	var atk: float = float(dead.get("base_atk", dead.get("atk", 0.0))) * inherit
 	if hp < 1.0 or atk < 1.0:
 		return
-	var w = battle._spawn._spawn_summon(dead, "wraith", hp, atk, {"col_size": 20.0})
+		## ★2026-08-21 补 spr_id: 此前没传 ⇒ 落到 battle_spawn 的兜底 = **队色软发光球**,
+	##   用户 2026-08-20:「亡魂也需要建模和动作或者动画立绘」。
+	var w = battle._spawn._spawn_summon(dead, "wraith", hp, atk, {"col_size": 20.0, "spr_id": "wraith"})
 	if w is Dictionary:
 		w["_is_wraith"] = true
 		w["_wraith_loops"] = loops_left

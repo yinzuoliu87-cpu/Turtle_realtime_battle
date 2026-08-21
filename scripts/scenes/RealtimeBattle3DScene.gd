@@ -422,6 +422,7 @@ const ACTION_ATTACK := {
 	"__minion_elite__": ["pets/animations/elite/attack.png", 12.0],
 	"__minion_front__": ["pets/animations/melee/attack.png", 12.0],
 	"__minion_back__": ["pets/animations/ranged/attack.png", 12.0],
+	"_summon_wraith": ["pets/animations/wraith/attack.png", 10.0],   # 亡魂(2026-08-21·灵物羁绊召唤)
 }
 # 精英小将的 5 个非标准动作 (2026-07-21 PixelLab pro 生成, south-west 朝向 = 原图朝左口径)。
 #   不走 _vfx._play_action —— 那个只认 attack/hurt/death 三种; 这些照忍者 dash/backstab 的做法,
@@ -484,6 +485,7 @@ const ACTION_RUN := {
 	"__minion_elite__": ["pets/animations/elite/run.png", 12.0],
 	"__minion_front__": ["pets/animations/melee/run.png", 12.0],
 	"__minion_back__": ["pets/animations/ranged/run.png", 12.0],
+	"_summon_wraith": ["pets/animations/wraith/run.png", 10.0],
 	# 训龟大师(2026-07-23): 走路循环。id 是 __trainer__, _anim_key 直接返回 id → 走到这里。
 	#   移动由玩家 _trainer_sys._trainer_move_by 驱动, 但立绘照样流经 _render._update_run_anim(在 for u in _units 里),
 	#   靠"帧间位移>0.8"自动切走路/停回 idle —— 不用另写触发。
@@ -1999,11 +2001,10 @@ const ELITE_ACT_FEET_ROW := 71.0  # 动作帧里脚底所在行
 const ANIM_NORM := {
 	"__minion_elite__": [47.0, 71.0, 71.0],
 	"__minion_front__": [45.0, 65.0, 60.0],
-	## 远程小将(2026-08-21 PixelLab pro, 以近战小将为风格参照生成)。
-	## ⚠ 这三个数由门禁 verify_elite_anim 拿 png 的真实 bbox 对账, 不是我拍脑袋填的。
-	## ★2026-08-21 用户「站立的动作完全衔接不上」: 立绘原是**正面(south)**而动作图是**侧面(west)**,
-	##   一动就从正对镜头瞬间转侧身。改用侧面立绘后 idle **等于**动作第0帧, 大小也一致(62→52)。
+	## 远程小将/亡魂(2026-08-21)。★立绘一律取**侧面(west)** ⇒ idle 等于动作第0帧, 不再有转身与大小跳变
+	##   (用户报过「站立的动作完全衔接不上」, 根因就是原来立绘取的是正面而动作图是侧面)。数值由门禁对账。
 	"__minion_back__": [52.0, 76.0, 52.0],   # 实测: 动作第0帧 本体52/脚底76; idle(侧面) 本体52
+	"_summon_wraith": [48.0, 76.0, 48.0],   # 亡魂: idle 也取侧面 ⇒ 与动作第0帧同形(不再有转身跳变)
 }
 
 
