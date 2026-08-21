@@ -40,6 +40,13 @@ func _env_f(k: String, d: float) -> float:
 
 func _ready() -> void:
 	await get_tree().process_frame
+	## ★★验收场景一律强制 `test_mode` —— **窗口模式下它默认是 false, 会写真存档**
+	##   (headless 才自动开; 见 `GameState.gd:912`)。2026-08-21 我跑了一次带窗口的 demo,
+	##   往 `match_history` 写进一条对局记录, `verify_ui_consistency` 当场红。
+	##   铁律: 测试/演示不许污染玩家存档。
+	var _gs = get_node_or_null("/root/GameState")
+	if _gs != null:
+		_gs.test_mode = true
 	get_tree().root.size = Vector2i(1280, 720)
 	_scn = load("res://scenes/RealtimeBattle3D.tscn").instantiate()
 	add_child(_scn)
