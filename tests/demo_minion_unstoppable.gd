@@ -165,6 +165,12 @@ func _process(_dt: float) -> void:
 			% [_stun_n, "★被挡下(施法中·不可阻挡)" if blocked else "生效了(此刻没在施法·对照组)",
 				str(bool(_mn.get("_unstoppable", false))), float(_mn.get("height", 0.0))])
 	## ══ A10/A11 的记账: 放在【事件发生处且无条件】, 不采样猜 ══
+	## ★★回读外部状态一律 null 安全: 实测这两个 dict 有几帧没有 `pos` 键,
+	##   直接下标会抛 "Invalid access to key" —— 而那**会让 `_process` 当场中止**,
+	##   下面 A10/A11 的记账那几帧被**静默跳过**, 自证却照样打绿。
+	##   (memory [[fb-null-readback-makes-test-silently-abort]] 那一族。)
+	if not (_mn.has("pos") and _tgt.has("pos")):
+		return
 	var dist: float = Vector2(_mn["pos"]).distance_to(Vector2(_tgt["pos"]))
 	_min_dist = minf(_min_dist, dist)
 	var hp_now: float = float(_tgt.get("hp", 0.0))
