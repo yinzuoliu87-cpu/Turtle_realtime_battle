@@ -435,8 +435,49 @@ const INERTIA_GAIN_SLAM := 0.28
 ##   这正好就是"举到最高处(仰角 99°)时头自己向后倒"的机制。
 ## ★与惯性是**两个独立的项**: 惯性由速度驱动(动的时候才有), 重力由姿态驱动(停着也有)。
 ##   所以到顶停住时惯性归零、而重力仍在把头往后按 —— 这才是用户看到的那一下。
-const GRAV_K := 26.0      # 重力垂头强度(度)
-const GRAV_P := 2.4       # 沿长度分配 u^P: 根部撑得住, 越靠梢端越垂           # 沿长度的分配: u^P, 越靠梢端滞后越多(根部几乎不滞后)
+## ══════════════════════════════════════════════════════════════════
+##  ★★★2026-08-22【链式模拟】—— 把驱动层从"画形状"换成"解方程"
+## ══════════════════════════════════════════════════════════════════
+## 用户:「一条触手我把他举起来时…每部分的运动轨迹到底怎么实现」+「直接全改」
+##
+## 【为什么非换不可】原来是**运动学**: 我写一个姿态函数 θ(u,t) 直接画出形状,
+##   各段之间**没有真的互相拉扯**。于是不管叠多少修正项(行波前沿/惯性弹簧/重力垂头),
+##   都出不来自然 —— 因为自然本身就是"各部分互相作用的结果", 而我把结果直接画了出来。
+##   今晚在这条路上失败了五六次, 每次都只能再加一个补丁去追。**病在模型层。**
+##
+## 【新模型: Verlet 链 + PBD 约束】每个子步做四件事:
+##   ① Verlet 积分 —— `p += (p - p_prev)*damp + g*dt²`。
+##      `(p - p_prev)` 就是速度 ⇒ **惯性不用写, 是积分格式自带的**。
+##   ② 重力 —— 每个节点无条件受力, 不看状态、不看姿态。
+##   ③ 距离约束 —— 反复把相邻节点拉回 ds ⇒ **弧长守恒**(不可伸长)。
+##   ④ 形状约束(肌肉) —— 往"指定姿势"拉, **权重沿长度衰减**:
+##      根部几乎完全跟随(触手要能自己立起来, 纯鞭子是被动的、立不起来),
+##      梢端权重≈0 ⇒ 完全由惯性+重力支配 ⇒ **拖尾/到顶后倒/甩尾全是它自己长出来的**。
+##
+## 【为什么不是 1000 段】用户问的是理论极限。实际 36 段 + 8 次迭代已经够:
+##   段越短越容易数值抖动(要更多迭代压)、而屏幕上这条触手只有几百像素, 肉眼分不出。
+## 【确定性】固定子步长推进(不吃可变 delta), 否则不同机器结果不同, 会破 rng_discipline。
+const SIM_ON := true
+const SIM_H := 1.0 / 120.0         # 固定子步长
+const SIM_SUBMAX := 6              # 单帧最多几个子步(卡顿时别追太多)
+## 下砸期的子步长缩放。★实测 0.25 能把弧长波动从 35%%压到 9%%, **但把折角从 29.3° 压到 16.6°**
+## —— 用户已经验收过 29.3° 那个手感, 不能为了指标偷偷改掉。定为 1.0(不缩), 缺口见门禁登记。
+const SIM_H_SLAM_K := 1.0
+const SIM_ITER := 20
+## 地面钳位之后补的距离迭代次数(收回被钳位破坏的弧长)
+const SIM_GRAV := 26.0             # 重力加速度(世界单位/秒²)
+const SIM_DAMP := 0.986            # 速度阻尼(1 = 无损)
+
+## 主动力(肌肉)的基准速率与沿长度分布。★用户「整个是鞭子」⇒ **整根都软, 分布尽量均匀**,
+## 不做成"根部硬棍+梢端面条"。FALL 控制衰减到梢端还剩多少(0.75 = 梢端仍有 25% 的基准)。
+const SIM_MUSCLE_RATE := 22.0
+const SIM_MUSCLE_P := 0.5
+const SIM_MUSCLE_FALL := 0.75
+## ★弯曲刚度 —— 用户「太软了」的解药在这里, **不在肌肉**。
+##   纯距离约束是"绳子"(允许任意折角); 触手/鞭子有截面刚度, 弯有半径。
+##   每子步把每个节点往相邻两点的中线拉这么多。太大 → 变回硬棍。
+const SIM_BEND := 0.30
+
 
 const WARN_FRONT_SPAN := 0.00
 ## 抬起前沿的加速度。比下砸的 0.60 更接近 1(匀速) —— 抬起没有"动量往梢端集中"那件事。
@@ -709,6 +750,10 @@ func tick(delta: float) -> void:
 		var st: int = int(t["state"])
 		var ts: float = float(t["ts"])
 		_inertia_step(t, delta)
+		## ★★给链式模拟【累加】而不是覆盖 —— `_rebuild`(模拟跑在里面)在待机时**降频**,
+		##   被跳过那些帧的 delta 会被下一帧覆盖掉 ⇒ 物理丢时间。
+		##   物理不该依赖渲染降频。`_sim_chain` 用完会清零。
+		t["dt"] = float(t.get("dt", 0.0)) + delta
 		# ── 状态转移 ──────────────────────────────────
 		match st:
 			ST_EMERGE:
@@ -1534,12 +1579,11 @@ func _seg_angle(t: Dictionary, stt: int, u: float, ts_now: float,
 	#   现在由调用方传入上一段的累积值，本段只加自己这一小段的贡献。
 	kacc += _curvature(t, stt, u, ts_now, curl_u, cfrom) / float(SEG)
 	ang -= kacc
-	## ★惯性拖尾: 越靠梢端滞后越多。加速时头部向后弯, 急停时弹回来过冲(= 甩尾)。
-	ang += float(t.get("lag", 0.0)) * pow(u, INERTIA_P)
-	## ★重力垂头(见文件头 GRAV_K 长注): 越过竖直就继续往后倒, 没到竖直就往前垂。
-	##   只在非拍击态生效 —— 拍击是发力甩出去, 那 0.5 秒里重力不该主导。
-	if stt != ST_SLAM:
-		ang += GRAV_K * pow(u, GRAV_P) * sin(deg_to_rad(clampf(ang, -180.0, 180.0) - 90.0))
+	## ★★2026-08-22 换成链式模拟之后, 这里**只剩"指定姿势"(肌肉的目标)**。
+	##   原来叠在这儿的两个手写项已删:
+	##     · 惯性拖尾弹簧 `lag * u^p`  —— 模拟的 Verlet 积分自带惯性, 留着是双重计算
+	##     · 重力垂头 `GRAV_K * sin(...)` —— 模拟里每个节点受真重力, 留着同样是双重
+	##   **让物理去长这些东西, 不要在目标姿势里预先画好。**
 	var wavy: float = 1.0
 	if stt == ST_SLAM:
 		## ★2026-08-21 句7: 原来拍击期把摆动**压到 0**(整条锁死在一个竖直平面)。
@@ -1586,6 +1630,105 @@ func _inertia_step(t: Dictionary, delta: float) -> void:
 ##   方向改成贴地走, |tan| 仍是 1, 弧长精确守恒, 多出来的长度自然摊在地面上。
 ## 门禁 `verify_tentacle_soft` 焊住这条(反向验证退回旧写法: 7 个点在地下、最深 0.400)。
 
+## 链式模拟一帧(内部按 SIM_H 固定子步推进)。返回 SEG+1 个节点的世界坐标。
+## ★见文件头 SIM_ON 的长注: 惯性/弧长/拖尾/甩尾**都不是这里写出来的**, 是约束解出来的。
+func _sim_chain(t: Dictionary, root3: Vector3, fwd: Vector3, lat: Vector3, up: Vector3,
+		ds: float, ts_now: float, stt: int, swayt: float) -> PackedVector3Array:
+	var n: int = SEG + 1
+	## ── 指定姿势(肌肉的目标) ── 仍然用原来的姿态函数, 但它现在只是"意图"不是"结果"
+	var dirs := PackedVector3Array()
+	var kacc := 0.0
+	for i in range(n):
+		var u: float = float(i) / float(SEG)
+		var seg: Array = _seg_angle(t, stt, u, ts_now, swayt, kacc)
+		kacc = float(seg[3])
+		var ar: float = deg_to_rad(float(seg[0]))
+		var yw: float = float(seg[1])
+		dirs.append((fwd * cos(ar) * cos(yw) + lat * sin(yw) * cos(ar) + up * sin(ar)).normalized())
+
+	var pp: PackedVector3Array = t.get("simP", PackedVector3Array())
+	var qq: PackedVector3Array = t.get("simQ", PackedVector3Array())
+	## 首帧 / 换过路 / 搬过家 ⇒ 直接摆到指定姿势(速度归零), 不要从旧位置弹过去
+	if pp.size() != n or bool(t.get("sim_reset", false)):
+		pp = PackedVector3Array()
+		qq = PackedVector3Array()
+		var p0: Vector3 = root3
+		for i2 in range(n):
+			pp.append(p0)
+			qq.append(p0)
+			p0 += dirs[i2] * ds
+		t["sim_reset"] = false
+
+	var gy: float = root3.y
+	## ★★下砸是**冲击运动**(0.07 秒转 130°), 用待机那档子步长解不动 ——
+	##   实测弧长被拉到 11.87(目标 9.60, +24%)。物理上正确的解法是**缩小步长**,
+	##   不是加迭代(会变硬)、更不是硬钳位(实测把折角从 30° 压到 10.8°)。
+	var h: float = SIM_H * (SIM_H_SLAM_K if int(t["state"]) == ST_SLAM else 1.0)
+	var submax: int = SIM_SUBMAX * (2 if int(t["state"]) == ST_SLAM else 1)
+	var acc: float = float(t.get("sim_acc", 0.0)) + float(t.get("dt", 0.0))
+	t["dt"] = 0.0                       # 消费掉, 免得重复计入
+	var steps: int = 0
+	while acc >= h and steps < submax:
+		acc -= h
+		steps += 1
+		## ① Verlet 积分 + 重力 —— 惯性就在 (p - q) 里, 不用另写
+		for i3 in range(1, n):
+			var cur: Vector3 = pp[i3]
+			var vel: Vector3 = (cur - qq[i3]) * SIM_DAMP
+			qq[i3] = cur
+			pp[i3] = cur + vel + Vector3(0.0, -SIM_GRAV, 0.0) * h * h
+		## ② 驱动 —— ★★★**只驱动根部那一节(手)**, 其余全是链。
+		## 用户 2026-08-22:「你不能整根都用连锁的吗, 我一直说的整个是鞭子啊」——
+		##   我在自己写的理论里说过"只有根部的运动是我指定的, 其余由牛顿定律推出来",
+		##   实现时却怕它立不起来、加了一条**沿长度的肌肉** ⇒ 根部 14 毫秒贴死指定姿势
+		##   = **根部是硬棍、只有外面那段在鞭** = 「棍子接鞭子」, 不是一根鞭子。
+		## ⇒ 现在只把节点 1 拉向根部指定的朝向(那是"手腕"), 2..n 全部自由。
+		##   立不立得起来交给**根部甩得够不够快** —— 真鞭子也是甩起来的, 不是自己站起来的。
+		## ★★★实测: 只驱动根部 ⇒ **整条塌成一根直杆躺在地上**(弯折度 0.004 ≈ 全直,
+		##   根/中/梢位移几乎相同 = 刚性移动)。物理事实: 真鞭子是**手在空间里大幅甩**上去的,
+		##   而这条触手的根部是地上一个**固定的洞** —— 只在固定点铰接、其余完全被动的链
+		##   **不可能自己站起来**。所以"整根零主动力"这条路走不通。
+		## ⇒ 折中(也是用户真正要的): 整根都有主动力, 但**弱而且分布均匀** ——
+		##   不是「根部硬棍 + 梢端面条」, 是**整条一起软**。
+		##   衰减指数从 1.5 降到 0.5(接近均匀), 速率从 70 降到 22(整体放软)。
+		for i4 in range(n - 1):
+			var u4: float = float(i4) / float(SEG)
+			var rate: float = SIM_MUSCLE_RATE * pow(1.0 - u4 * SIM_MUSCLE_FALL, SIM_MUSCLE_P)
+			var w: float = 1.0 - exp(-maxf(rate, 0.5) * h)
+			pp[i4 + 1] = pp[i4 + 1].lerp(pp[i4] + dirs[i4] * ds, w)
+		## ③ 距离约束(弧长守恒) —— 这个才需要迭代
+		## ★★两端**按逆质量分摊**修正量, 不能只推外侧那个点。
+		##   我第一版只动外侧 ⇒ 修正量一路往梢端累积, 8 次迭代把梢端甩飞:
+		##   探针实测梢端 0.167 秒里飞 6~9 个单位(触手全长才 9.6), 弯折度到段长的 20%
+		##   —— 那就是用户看到的「异常乱扭动」。
+		##   根部用**逆质量 0** 钉住(标准 PBD 做法), 而不是每次迭代硬写回去。
+		for _it in range(SIM_ITER):
+			for i5 in range(n - 1):
+				var d: Vector3 = pp[i5 + 1] - pp[i5]
+				var L: float = d.length()
+				if L <= 0.0001:
+					continue
+				var corr: Vector3 = d * (1.0 - ds / L)
+				if i5 == 0:
+					pp[i5 + 1] -= corr            # 根部不动, 全给外侧
+				else:
+					pp[i5] += corr * 0.5
+					pp[i5 + 1] -= corr * 0.5
+			pp[0] = root3
+		## ③b 弯曲刚度: 压掉高频锯齿(相邻三点往中线靠一点点)。
+		##   ★纯距离约束是"绳子", 允许任意折角; 触手不该出现一节一节的锯齿。
+		for i7 in range(1, n - 1):
+			var mid: Vector3 = (pp[i7 - 1] + pp[i7 + 1]) * 0.5
+			pp[i7] = pp[i7].lerp(mid, SIM_BEND)
+		## ④ 地面 —— ★放在主迭代**之外**: 放在里面会和距离约束互相顶(那是"乱扭"的一半原因)。
+		for i6 in range(n):
+			if pp[i6].y < gy:
+				pp[i6].y = gy
+	t["sim_acc"] = acc
+	t["simP"] = pp
+	t["simQ"] = qq
+	return pp
+
 ## 把这一帧的**真实几何**记给门禁/验收场景读: 梢端高度 / 沿长度 9 站点高度剖面 / 整条中心线。
 ## ★从 `_rebuild` 里抽出来 —— 那个函数撞了架构预算的 250 行上限(`tools/arch_budget.py`)。
 ## ★记的是 `halo_pts` 里**已经建好的点**, 不是重推一遍公式(重推的副本必然与渲染漂开)。
@@ -1602,6 +1745,24 @@ func _record_probe(t: Dictionary, halo_pts: Array) -> void:
 	for ci in range(halo_pts.size()):
 		cen.append(halo_pts[ci][0] as Vector3)
 	t["center"] = cen
+
+## 触手所在的局部标架(根部世界点 / 前 / 侧 / 上)。
+## ★从 `_rebuild` 抽出来 —— 那个函数第三次撞架构预算的 250 行上限。
+func _basis_of(from2: Vector2, to2: Vector2) -> Array:
+	var d2: Vector2 = to2 - from2
+	if d2.length() < 1.0:
+		d2 = Vector2.RIGHT
+	var dir2: Vector2 = d2.normalized()
+	var nrm2 := Vector2(-dir2.y, dir2.x)
+	var root3: Vector3 = battle._world_pos(from2, battle.GROUND_LIFT)
+	var wa: Vector3 = battle._world_pos(from2 + dir2 * 100.0, battle.GROUND_LIFT)
+	var wn: Vector3 = battle._world_pos(from2 + nrm2 * 100.0, battle.GROUND_LIFT)
+	return [root3, (wa - root3).normalized(), (wn - root3).normalized(), Vector3.UP]
+
+## ★★★2026-08-22 起, `_rebuild` 的**几何来自 `_sim_chain`**(链式模拟), 不再靠
+## `pos += tan*ds` 描形状。姿态函数(`_seg_angle`)从此只负责**粗细/配色/肌肉目标**,
+## 不再决定它长什么样。切向由相邻模拟节点差分求。
+## (旧的运动学路径保留在 `SIM_ON=false` 分支里, 只为出问题时能一键对照。)
 
 func _rebuild(t: Dictionary) -> void:
 	var mi: MeshInstance3D = t["mi"]
@@ -1621,18 +1782,11 @@ func _rebuild(t: Dictionary) -> void:
 	var a1: float = float(ph[2])       # 梢端切角(度)
 	var curl: float = float(ph[3])     # 卷曲量(度) —— 随状态变, 砸下时松开
 
-	# 世界系的"前"与"上"
-	var d2: Vector2 = to2 - from2
-	if d2.length() < 1.0:
-		d2 = Vector2.RIGHT
-	var dir2: Vector2 = d2.normalized()
-	var nrm2 := Vector2(-dir2.y, dir2.x)
-	var root3: Vector3 = battle._world_pos(from2, battle.GROUND_LIFT)
-	var wa: Vector3 = battle._world_pos(from2 + dir2 * 100.0, battle.GROUND_LIFT)
-	var fwd: Vector3 = (wa - root3).normalized()
-	var wn: Vector3 = battle._world_pos(from2 + nrm2 * 100.0, battle.GROUND_LIFT)
-	var lat: Vector3 = (wn - root3).normalized()
-	var up := Vector3.UP
+	var bas: Array = _basis_of(from2, to2)
+	var root3: Vector3 = bas[0]
+	var fwd: Vector3 = bas[1]
+	var lat: Vector3 = bas[2]
+	var up: Vector3 = bas[3]
 
 	var swayt: float = battle._t * SWAY_SPEED + float(t["phase"])
 	var kacc_run: float = 0.0     # 曲率沿长度的累积积分（逐段递推）
@@ -1649,6 +1803,11 @@ func _rebuild(t: Dictionary) -> void:
 	if battle._cam != null and is_instance_valid(battle._cam):
 		camp = (battle._cam as Camera3D).global_position
 		camp_ok = true
+
+	## ★★★链式模拟: 几何由它给, 不再靠 `pos += tan*ds` 描形状(见文件头 SIM_ON 长注)。
+	var simpts: PackedVector3Array = PackedVector3Array()
+	if SIM_ON:
+		simpts = _sim_chain(t, root3, fwd, lat, up, ds, ts_now, stt, swayt)
 
 	var stool := SurfaceTool.new()
 	stool.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -1678,6 +1837,13 @@ func _rebuild(t: Dictionary) -> void:
 		kacc_run = float(seg[3])
 		var ar: float = deg_to_rad(ang)
 		var tan: Vector3 = (fwd * cos(ar) * cos(yaw) + lat * sin(yaw) * cos(ar) + up * sin(ar)).normalized()
+		if SIM_ON and simpts.size() == SEG + 1:   # 模拟接管几何(见 _rebuild 上方长注)
+			pos = simpts[sidx]
+			var ia: int = maxi(0, sidx - 1)
+			var ib: int = mini(SEG, sidx + 1)
+			var dd: Vector3 = simpts[ib] - simpts[ia]
+			if dd.length() > 0.0001:
+				tan = dd.normalized()
 		# ══ 截面：★★★2026-08-04【放大看图之后的路线更换】═════════════
 		#   原来是【闭合圆环】(RING 个点绕切向一圈) + `CULL_DISABLED` ⇒
 		#   放大之后是**两根空心塑料水管**：看得见内壁、看得见圆周多边形棱、
@@ -1825,14 +1991,14 @@ func _rebuild(t: Dictionary) -> void:
 		prev = ring
 		prev_cols = cols
 		prev_uvs = uvs
-		var gy: float = root3.y          # 触地贴地摊开(见 _rebuild 上方长注)
-		if pos.y <= gy + 0.001 and tan.y < 0.0:
-			tan.y = 0.0
-			tan = tan.normalized() if tan.length() > 0.001 else fwd
-		# ★沿切向走一步 —— 弧长天然守恒，这就是"长度固定"的来源
-		pos += tan * ds
-		if pos.y < gy:
-			pos.y = gy                            # 贴地: 不许在地面以下
+		if not SIM_ON or simpts.size() != SEG + 1:   # 旧路径(仅关掉模拟时走)
+			var gy: float = root3.y
+			if pos.y <= gy + 0.001 and tan.y < 0.0:
+				tan.y = 0.0
+				tan = tan.normalized() if tan.length() > 0.001 else fwd
+			pos += tan * ds
+			if pos.y < gy:
+				pos.y = gy
 	## ★2026-08-21 句7: 把**梢端的真实世界高度**记下来, 给门禁读。
 	##   判据必须量真几何, 不是量我重推一遍的公式(重推的副本会和渲染漂开)。
 	##   新门禁 `verify_tentacle_soft` 断言: 下砸期这个值**单调不上升**。

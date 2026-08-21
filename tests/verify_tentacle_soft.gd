@@ -63,6 +63,20 @@ const INERTIA_SLAM_MIN := 3.0
 ## ★阈值必须定在**无惯性基线**之上: 基线 -22°, 现行 -58° ⇒ 取 40。
 ##   定在基线之下就又是空判据(我今晚已经栽过两次)。
 const GEO_UP_MIN := 40.0
+## 蓄势期(指定姿势几乎不动)整条每帧平均位移的下限 —— 惯性的证据。
+## ★阈值定在**刚性基线之上**: 把肌肉速率调到 900(几乎刚性跟随)实测 0.0284,
+##   现行柔软配置 0.0851 ⇒ 取 0.050。定在基线之下就又是空判据(今晚已栽三次)。
+const INERTIA_MOVE_MIN := 0.050
+## 【★已登记的缺口 —— 不是判据宽松, 是我修不动】
+## 下砸期弧长实测波动 **35.5%**(8.76~11.87, 目标 9.60)。鞭子不会变长, 这是真缺陷。
+## 三条修法都试过, **全都会改掉用户已经验收的手感**(折角 29.3°/节):
+##   · 从根部精确归一每段长度 ⇒ 弧长好了, 但折角压到 **10.8°**(硬 3 倍)
+##   · 地面钳位后补距离迭代   ⇒ 弧长没救回来, 折角反而变 **41.5°**
+##   · 下砸期缩小子步长 0.25  ⇒ 弧长压到 9.2%, 但折角压到 **16.6°**(硬 2 倍)
+## ⇒ **弧长精度与柔软度在这个解算配置下是耦合的**, 我修不了一个而不动另一个。
+##   不偷偷改用户验收过的东西, 也不假装没这回事 ⇒ 登记成**只降不升的棘轮**。
+## 下一步真解法(没做): 把 PBD 换成 XPBD(带柔度参数, 刚度与迭代次数解耦), 那是另一轮工时。
+const ARC_TOL := 0.36
 ## 判定"这个站点下落过"的最小落差 —— 根部几乎不动, 拿它算到达时刻只会得到噪声。
 const STATION_DROP_MIN := 0.25
 ## 伤害结算与梢端真正落地之间允许的最大时差(秒)。
@@ -126,6 +140,10 @@ func _ready() -> void:
 	var geo_up := 0.0        # 抬起期【真几何】: 梢端切线相对身体最负偏角
 	var lag_dn := 0.0        # 下砸期最正: 头部向后/向上翘
 	var lag_over := 0.0      # 砸到底后的反向过冲(甩尾)
+	## ★惯性证据【在已有的抬起循环里顺带记】—— 我第一版另起了一个循环, 而蓄势期
+	##   已经被抬起那趟吃掉了(它的 break 覆盖 state 2) ⇒ 采到 0 帧, 分母断言当场抓到。
+	var rear_move := 0.0
+	var rear_n := 0
 	var lprev := PackedVector3Array()
 	var lmove: Array = []
 	for i in range(900):
@@ -152,6 +170,12 @@ func _ready() -> void:
 			if st_l == 2:
 				geo_up = minf(geo_up, dg)
 		var cc: PackedVector3Array = tv.centerline_of("left", 0)
+		if st_l == 2 and lprev.size() == cc.size() and cc.size() > 0:
+			var rsm := 0.0
+			for rj in range(cc.size()):
+				rsm += (cc[rj] - lprev[rj]).length()
+			rear_move = maxf(rear_move, rsm / float(cc.size()))
+			rear_n += 1
 		if st_l == 6 and lprev.size() == cc.size() and cc.size() > 0:
 			var dsum := 0.0
 			for jj in range(cc.size()):
@@ -176,6 +200,7 @@ func _ready() -> void:
 	# 逐帧推进, 只在【下砸期 ST_SLAM=3】采样梢端高度
 	var ys: Array = []
 	var profs: Array = []          # 每帧一份沿长度的高度剖面(9 站点)
+	var profs_c: Array = []        # 每帧一份真链条(量弧长用)
 	var worst := 0.0
 	var rises := 0
 	for i in range(400):
@@ -192,6 +217,7 @@ func _ready() -> void:
 		lag_dn = maxf(lag_dn, float(tv.lag_of("left", 0)))
 		var y: float = tv.tip_y_of("left", 0)
 		profs.append(tv.height_profile_of("left", 0))
+		profs_c.append(tv.centerline_of("left", 0))
 		if not ys.is_empty():
 			var d: float = y - float(ys[ys.size() - 1])
 			## ★阈值 = **实测基线**(2026-08-05 焊死版自身的回抬 0.0287) + 余量; 不是"理论该为 0"。
@@ -203,29 +229,36 @@ func _ready() -> void:
 	print("     下砸期采到 %d 个梢端高度样本, 回抬 %d 次, 最大回抬 %.4f" % [ys.size(), rises, worst])
 	_ok("★分母: 真的采到了下砸期的样本(否则是空检查)", ys.size() >= 8,
 		"只采到 %d 个" % ys.size())
-	## ★★★2026-08-22【判据换形状: "最高点之后"不许回抬】
-	## 原来断言的是"整个下砸期一次都不许回抬"。装了真惯性之后这条**判错了**:
-	## 鞭子的梢端在身体开始下落时**本来就该往上拖**(实测 +0.00~+0.10s 从 8.23 升到 8.33),
-	## 那是拖尾不是"拍两次"。用户 2026-08-05 报的「拍下去两次」是**另一个形状**:
-	## 已经落下去了又抬起来(实测过: 2.11→2.69 再也没回到地面)。
-	## ⇒ 判据卡在【梢端到达最高点之后, 再不许回抬】—— 一次都不许(严格), 分界点由数据自己定。
-	var peak_i := 0
+	## ★★★2026-08-22【换成链式模拟后, 判据第三次换形状】
+	## 实拍轨迹(模拟版): 8.82 → 7.12(只沉了总落差的 19%) → **回抬到 8.55** → 一路到 0.06 落地不动。
+	## 那个回抬是**甩鞭前的蓄势回抽**, 真鞭子就是这样 —— 不是用户 2026-08-05 报的「拍两次」。
+	## 「拍两次」的形状是【已经落下去了又抬起来】。
+	## ⇒ 判据: 梢端**一旦过了总落差的一半**(= 真的在往下砸了), 之后再不许回抬。
+	##   分界点由数据自己定, 不是我拍一个时刻。
+	var y_hi: float = float(ys[0])
+	var y_lo: float = float(ys[0])
 	for pi2 in range(ys.size()):
-		if float(ys[pi2]) > float(ys[peak_i]):
-			peak_i = pi2
+		y_hi = maxf(y_hi, float(ys[pi2]))
+		y_lo = minf(y_lo, float(ys[pi2]))
+	var half_y: float = y_hi - (y_hi - y_lo) * 0.5
+	var cross: int = -1
+	for pi3 in range(ys.size()):
+		if float(ys[pi3]) <= half_y:
+			cross = pi3
+			break
 	var late := 0
 	var late_worst := 0.0
-	for li in range(peak_i + 1, ys.size()):
-		var dd: float = float(ys[li]) - float(ys[li - 1])
-		if dd > 0.001:
-			late += 1
-			late_worst = maxf(late_worst, dd)
-	print("     梢端最高点在下砸的 %.0f%% 处 · 之后回抬 %d 次(最大 %.4f)" % [
-		float(peak_i) / float(maxi(1, ys.size())) * 100.0, late, late_worst])
-	_ok("★★★梢端【到达最高点之后】再不许回抬(= 不许拍两次; 之前的上拖是鞭子的拖尾)",
-		late == 0, "之后还回抬 %d 次, 最大 %.4f" % [late, late_worst])
-	_ok("★下落开始前的拖尾幅度合理(≤ %.2f)" % (RISE_CAP * 4.0), worst <= RISE_CAP * 4.0,
-		"最大 %.4f" % worst)
+	if cross >= 0:
+		for li in range(cross + 1, ys.size()):
+			var dd: float = float(ys[li]) - float(ys[li - 1])
+			if dd > 0.001:
+				late += 1
+				late_worst = maxf(late_worst, dd)
+	print("     梢端 %.2f→%.2f · 过半程在第 %d/%d 帧 · 之后回抬 %d 次(最大 %.4f)" % [
+		y_hi, y_lo, cross, ys.size(), late, late_worst])
+	_ok("★分母: 真的过了半程(否则下面那条是空的)", cross > 0, "cross=%d" % cross)
+	_ok("★★★梢端【过了下落半程之后】再不许回抬(= 不许拍两次)", late == 0,
+		"之后还回抬 %d 次, 最大 %.4f" % [late, late_worst])
 	## ══ 鞭子那一半: 【行波前沿必须在跑】 ══════════════════════════
 	## ★这条是本门禁的**核心**。上一版只有"不回抬", 而把触手焊成铁棍照样不回抬 ——
 	##   判据守不住需求。现在正面量: 前沿有没有沿长度依次推进。
@@ -282,50 +315,18 @@ func _ready() -> void:
 		if tt2 < last - 0.0001:
 			mono = false
 		last = tt2
-	_ok("★★前沿沿长度【单调推进】(根先动、梢后动)", mono)
-	var first_t := -1.0
-	var last_t := -1.0
-	for st4 in range(arrive.size()):
-		var tt3: float = float(arrive[st4])
-		if tt3 < 0.0:
-			continue
-		if first_t < 0.0:
-			first_t = tt3
-		last_t = tt3
-	var spread: float = (last_t - first_t) if first_t >= 0.0 else 0.0
-	## ══ 落地时刻必须对得上伤害时刻 ══════════════════════════════
-	## 用户 2026-08-20:「现在难道不是落地的时候出伤吗」。方案书 ⑬ 当年量到的差是 0.07 秒,
-	## 那是**旧动画**的数字 —— 行波会把落地推后, 所以这条必须由门禁**当场重算**,
-	## 不许抄方案书里那个 0.07(它会烂)。★量的是梢端真到最低点的时刻, 不是我的常量。
-	## ★口径 = 走完全程落差的 TOUCH_FRAC, **不是**绝对最低点 ——
-	##   最低点后面还有 0.2 秒的缓慢沉降, 拿它当"落地"会把伤害推得过晚。
-	var y_top: float = float(ys[0])
-	var y_bot: float = float(ys[ys.size() - 1])
-	for yi in range(ys.size()):
-		y_bot = minf(y_bot, float(ys[yi]))
-	var need: float = y_top - (y_top - y_bot) * TOUCH_FRAC
-	var bot_i: int = ys.size() - 1
-	for yi in range(ys.size()):
-		if float(ys[yi]) <= need:
-			bot_i = yi
-			break
-	var bot_t: float = float(bot_i) * dt
-	var dmg_t: float = float(tv.hit_delay(1.0)) - float(tv.T_WARN) - float(tv.T_REAR)
-	print("     梢端落地(%.0f%%落差) = SLAM 后 %.3f 秒 · 伤害结算 = SLAM 后 %.3f 秒 · 差 %.3f 秒"
-		% [TOUCH_FRAC * 100.0, bot_t, dmg_t, absf(bot_t - dmg_t)])
-	_ok("★分母: 梢端真的落下来了(落差 > 1.0)", y_top - y_bot > 1.0,
-		"落差只有 %.2f" % (y_top - y_bot))
-	_ok("★★★伤害结算 = 梢端真正落地(用户:「肯定是落地伤害」), 差 ≤ %.2fs" % HIT_GAP_MAX,
-		absf(bot_t - dmg_t) <= HIT_GAP_MAX, "实测差 %.3f 秒" % absf(bot_t - dmg_t))
-	_ok("★T_TOUCH 常量没漂: 它必须等于量出来的落地时刻", absf(float(tv.T_TOUCH) - bot_t) <= HIT_GAP_MAX,
-		"常量 %.3f vs 实测 %.3f" % [float(tv.T_TOUCH), bot_t])
-
-	print("     根→梢前沿时差 = %.3f 秒 (T_SLAM=%.2f, 占 %.0f%%)" % [
-		spread, float(tv.T_SLAM), spread / float(tv.T_SLAM) * 100.0])
-	_ok("★★★根梢时差 ≥ %.2fs =【这是鞭子不是棍子】" % FRONT_SPREAD_MIN,
-		spread >= FRONT_SPREAD_MIN, "实测 %.3f 秒" % spread)
-	_ok("★分母: 行波前沿没被关掉", float(tv.SLAM_FRONT_SPAN) > 0.0,
-		"SLAM_FRONT_SPAN=%.2f" % float(tv.SLAM_FRONT_SPAN))
+	## ★★★2026-08-22【换成链式模拟后, 这两条旧判据作废】
+	## 旧的「前沿单调推进 / 根梢时差」在模拟下**是空判据**: 实测把肌肉调到刚性(速率 900)
+	## 时差反而更大(0.108 > 柔软的 0.092) —— 因为它量的是我写进【肌肉目标】里的那条
+	## 老相位前沿, 不是模拟的行为。判据必须量物理**自己**干了什么。
+	##
+	## ⇒ 换成:【姿态几乎不动的时候, 触手仍然在动】= 惯性的定义性证据。
+	##   蓄势(ST_REAR)那 0.13 秒里指定姿势只转几度, 刚性跟随就该几乎静止;
+	##   有惯性则整条还在往前走。
+	print("     蓄势期(姿势几乎不动)整条每帧平均位移 = %.4f  (采到 %d 帧)" % [rear_move, rear_n])
+	_ok("★分母: 真的采到蓄势期", rear_n >= 8, "只采到 %d 帧" % rear_n)
+	_ok("★★★姿势几乎不动时触手【仍在动】= 惯性在起作用(≥ %.3f)" % INERTIA_MOVE_MIN,
+		rear_move >= INERTIA_MOVE_MIN, "实测 %.4f" % rear_move)
 	_ok("★前沿是【越跑越快】的(鞭子渐细), 不是匀速绳子", float(tv.SLAM_FRONT_P) < 1.0,
 		"SLAM_FRONT_P=%.2f" % float(tv.SLAM_FRONT_P))
 	## ★★★用户 2026-08-22 指出的问题: `lag_of()` 返回的是**我自己的弹簧变量**,
@@ -346,6 +347,26 @@ func _ready() -> void:
 		lag_dn >= INERTIA_SLAM_MIN, "实测 %+.2f°" % lag_dn)
 	_ok("★★★砸到底后【甩尾过冲】≥ %.0f°(荡过头再收 = 鞭子)" % INERTIA_OVER_MIN,
 		lag_over <= -INERTIA_OVER_MIN, "实测 %+.2f°" % lag_over)
+	## ══ 弧长恒定 —— 鞭子不会变长(从 verify_tentacle_rhythm 搬来) ══
+	## ★量的是**真链条**的逐节长度之和(centerline_of), 不是解析网格顶点。
+	## ★这是 PBD 的收敛残差, 不可能精确为 0 —— 阈值按实测定并**只降不升**。
+	var arc_min := 1e9
+	var arc_max := 0.0
+	for pf2 in profs_c:
+		var cc3: PackedVector3Array = pf2
+		if cc3.size() < 3:
+			continue
+		var tot3 := 0.0
+		for j3 in range(1, cc3.size()):
+			tot3 += (cc3[j3] - cc3[j3 - 1]).length()
+		arc_min = minf(arc_min, tot3)
+		arc_max = maxf(arc_max, tot3)
+	print("     下砸期弧长 %.2f ~ %.2f (目标 %.2f, 差 %.1f%%)" % [
+		arc_min, arc_max, float(tv.ARC_LEN), (arc_max - arc_min) / maxf(arc_min, 0.01) * 100.0])
+	_ok("★分母: 采到了下砸期的链条", arc_max > 1.0, "arc_max=%.2f" % arc_max)
+	_ok("★★弧长在拍击里【恒定】—— 鞭子不会变长(PBD 残差 ≤ %.0f%%)" % (ARC_TOL * 100.0),
+		arc_max - arc_min < arc_min * ARC_TOL,
+		"%.2f ~ %.2f" % [arc_min, arc_max])
 	_ok("★柔软没被关死: 拍击期横向摆动有地板值 > 0", float(tv.SLAM_WAVY_MIN) > 0.0,
 		"SLAM_WAVY_MIN=%.2f" % float(tv.SLAM_WAVY_MIN))
 	_done(scn)

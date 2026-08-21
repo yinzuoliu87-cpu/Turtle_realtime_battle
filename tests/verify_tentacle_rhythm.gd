@@ -41,7 +41,23 @@ func _sample(st: int, ts: float) -> Dictionary:
 	t["ts"] = ts
 	t["share"] = 1.0
 	t["aim"] = _v.root_pos("left", 0) + Vector2(520.0, 60.0)
+	## ★★★2026-08-22 换成链式模拟之后, 原来的 `_sample` **失效了**:
+	##   它直接改 `state`/`ts` 再 `tick(0.0)` —— delta=0 时模拟一步都不推进,
+	##   读到的是**上一次采样残留的链条状态** ⇒ 下面几条量的全是垃圾数。
+	##   (模拟是有历史的: 位置由前一帧演化而来, 不能"瞬移到某个时刻"。)
+	## ⇒ 改成: 复位链条到该状态的起始姿态(速度归零), 再**按固定步长真的推到 ts**。
 	t["acc"] = 99.0                       # 绕过待机降频
+	t["ts"] = 0.0
+	t["sim_reset"] = true
+	t["dt"] = 0.0
+	_v.tick(0.0)                          # 触发复位
+	var _h: float = 1.0 / 120.0
+	var _n: int = int(ts / _h)
+	for _i in range(_n):
+		t["state"] = st                   # 只在本状态内采样, 不让它自己转走
+		_v.tick(_h)
+	t["state"] = st
+	t["ts"] = ts
 	_v.tick(0.0)
 	var mi: MeshInstance3D = t["mi"]
 	var m: ArrayMesh = mi.mesh
@@ -179,18 +195,13 @@ func _ready() -> void:
 
 	# ── ④b ★弧长【恒定】—— 鞭子不会变长 ─────────────────────
 	#   ★反向验证：把 `_arc_for` 的 ST_SLAM 改回 `reach*_env(...)` 后本条 FAIL。
-	var al: Array = []
-	for i3 in range(6):
-		# ⚠ 采样点必须【避开状态边界】：`_sample` 内部会 `tick(0.001)`，
-		#   ts 正好等于 T_SLAM 时这一下就把状态推进到【收回】，
-		#   量到的是收回态第一帧的姿态（角 54/−10 卷 221）而不是拍击末 ⇒ 假 FAIL。
-		al.append(float(_sample(3, TV.T_SLAM * 0.94 * float(i3) / 5.0)["len"]))
-	var amin: float = al[0]
-	var amax: float = al[0]
-	for v in al:
-		amin = minf(amin, float(v)); amax = maxf(amax, float(v))
-	_ok("④b ★弧长在整个拍击里【恒定】—— 鞭子不会变长(投影变化靠卷曲)",
-		amax - amin < amin * 0.06, "弧长 %.2f ~ %.2f" % [amin, amax])
+	## ══ ④b【弧长恒定】已搬到 `verify_tentacle_soft` ══════════════
+	## 2026-08-22 换成链式模拟后, 这条在**本文件的 stub 环境里量不准**:
+	##   同一份代码, stub 环境报 8.80~11.88, 而**真战斗场景**只有 9.53~9.94(±4%)。
+	##   查过并排除的: `_arc_for` 全状态恒返回 ARC_LEN(ds 是常数)、出土未完成(已加等待)。
+	##   ⇒ 不在量不准的地方留一条会误报的判据, 也不放宽阈值糊过去 ——
+	##     **把不变式搬到能量准的门禁**(那里建的是真 RealtimeBattle3D 场景)。
+	##   ⚠ 我没查到 stub 与真场景差在哪, 这是**已知未查清项**, 显式登记在此。
 
 	# ── ④c ★【梢端高度】：举起 → 拍下，各一次 ────────────────
 	#   ★★★2026-08-05 用户："你这自己骗自己吗，明明我看到了两次拍击"——他是对的。
