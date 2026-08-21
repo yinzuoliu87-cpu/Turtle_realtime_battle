@@ -114,7 +114,14 @@ func _ready() -> void:
 	var _tt: int = _scn._spirit_syn._side_tier("left")
 	print("  ★分母自证: 重算后我方灵物档位 = %d (0 就是没配上, 下面什么都不会发生)" % _tt)
 
-	# 相机拉近到触手根部一带
+	## ══ 相机 ══════════════════════════════════════════════════════
+	## ★2026-08-21: 这里原本【只改 fov、没挪相机】= 等于没拉近, 实拍出来触手只有几个像素。
+	##   我一度想在这里加"近景模式", **那是死代码** —— `battle_render.gd:425` 每帧无条件
+	##   `_cam.position = _cam_zoom_base`, 只写一次 `_cam.position` 下一帧就被冲掉。
+	##   (`battle_vfx_lab.gd:69` 早把这个坑写下来了, 我又踩了一遍 = 没先搜仓库。)
+	## ⇒ **要看触手形状请用 VFXLAB**, 它是为这件事造的、且已处理相机每帧覆盖:
+	##   VFXLAB=1 VFXLAB_CASE=syn_spirit VFXLAB_ZOOM=1.8 VFXLAB_GLOW=1 VFXLAB_HOLD=1
+	##   本 demo 只负责**数值**(掉血/层数/护甲), 不负责看画面。
 	if _scn._cam != null and is_instance_valid(_scn._cam):
 		_scn._cam.fov = 30.0
 
@@ -170,7 +177,7 @@ func _process(_d: float) -> void:
 			## ★只在【大额掉血】时连拍 —— 场上还有灵物装备自己的伤害(约 48),
 			##   按最亮帧取会拍到装备的金色电柱, 不是拍击(我第一版就抓错了时刻)。
 			if OS.has_environment("SPIRIT_SHOT") and _shot_left <= 0 and (prev - hp) > 150.0:
-				_shot_left = 10
+				_shot_left = 32
 				_shot_i = 0
 	if _shot_left > 0:
 		_shot_left -= 1

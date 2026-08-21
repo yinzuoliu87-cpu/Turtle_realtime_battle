@@ -319,7 +319,16 @@ func _ready() -> void:
 			"visible=%s" % (wm.visible if is_instance_valid(wm) else false))
 	_v.tick(TV.T_WARN + 0.02)                     # 预警 → 蓄势
 	_v.tick(TV.T_REAR + 0.02)                     # 蓄势 → 拍击
-	_v.tick(TV.T_SLAM * 0.4)                      # 过 0.08s → 命中特效
+	## ★★2026-08-21 用户拍板「肯定是落地伤害」⇒ 爆闪/伤害都挪到了 `T_TOUCH`(梢端真落地),
+	##   不再是 ST_SLAM 第 0 帧(那一刻梢端还在 y=9.18 半空 = 人没到、地先炸)。
+	##   ⚠ 这里原来写死 `T_SLAM * 0.4`(=0.20s) 并注"过 0.08s" —— 两个数都过时了,
+	##     改成**从 T_TOUCH 推导**, 以后动画再改也不会因为写死而误判。
+	## ★先证明【半空的时候不许炸】—— 只断言"炸过"守不住"炸得对时候"。
+	_v.tick(TV.T_TOUCH * 0.5)
+	var n_mid: int = _s._world.get_child_count()
+	_ok("⑤b ★梢端还在半空时【不许】出命中特效(用户: 落地才算命中)", n_mid - n1 <= 0,
+		"提前多了 %d 个节点" % (n_mid - n1))
+	_v.tick(TV.T_TOUCH * 0.5 + 0.03)              # 越过 T_TOUCH → 落地 → 命中特效
 	var n2: int = _s._world.get_child_count()
 	_ok("⑤b ★命中特效真的建出节点(爆闪 + 环 + 粒子 + 直线)", n2 - n1 >= 4,
 		"只多了 %d 个节点" % (n2 - n1))

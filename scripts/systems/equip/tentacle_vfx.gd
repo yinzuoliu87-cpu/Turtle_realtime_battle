@@ -112,6 +112,20 @@ const T_RETRACT := 0.6
 ## 搬家每局要发生好几次，2 秒会让触手大半时间待在地里。
 const T_EMERGE_MOVE := 1.0
 ## 闪避追击用的短促点刺（不立起、不预告）
+## ★★★2026-08-21【梢端真正落地的时刻】(从 ST_SLAM 起算, 秒)。用户拍板:「肯定是落地伤害」。
+##
+## 【为什么需要这个常量】伤害原来在 `T_WARN + T_REAR` 结算 = **ST_SLAM 第 0 帧**,
+##   而探针逐帧读 `tip_y` 实测那一刻梢端在 **y=9.18(半空)**:
+##     SLAM+0.00 → 9.18 ┆ +0.12 → 8.57 ┆ +0.22 → 4.31 ┆ +0.28 → 0.61 ┆ +0.47 → −0.34
+##   ⇒ **伤害比视觉落地早 0.3 秒(≈20 帧), 一直在出货。**
+## ⚠ 我 2026-08-20 答错过一次: 拿 `SNAP_T=0.07`(抽直完成)当成落地写进方案书,
+##   还回答用户"时机本来就是对的"。**抽直 ≠ 梢端到底** —— `settle` 在整个 T_SLAM 里持续下压。
+##
+## 【口径】梢端走完全程落差的 **90%** 的时刻(后面那 10% 是缓慢沉降, 视觉上已经算砸到了)。
+## ⚠ 这是个手填的数, 会随动画常量漂 ⇒ `verify_tentacle_soft` **逐帧量真几何反查它**,
+##   对不上直接红。别手改这里而不跑那条门禁。
+const T_TOUCH := 0.29
+
 const T_JAB := 0.30
 
 ## ══════════════════════════════════════════════════════════════════
@@ -130,7 +144,9 @@ const T_JAB := 0.30
 ##   ★不靠 tween 回调 —— 无头 CI 下 tween 推进不稳(CLAUDE.md §3.5)。
 ##   ★闪避追击(share < 0.9)走点刺: `strike()` 直接把状态设成 ST_SLAM ⇒ 0, 本来就是对的。
 static func hit_delay(share: float) -> float:
-	return 0.0 if share < 0.9 else (T_WARN + T_REAR)
+	## ★2026-08-21 加上 T_TOUCH: 伤害落在【梢端真正砸到地面】那一刻, 不再是 ST_SLAM 第 0 帧。
+	##   (闪避追击的点刺 share<0.9 仍是 0 —— 它本来就是第 0 帧命中。)
+	return 0.0 if share < 0.9 else (T_WARN + T_REAR + T_TOUCH)
 
 # ── 形状 ──────────────────────────────────────────────────────────
 ##
@@ -147,6 +163,8 @@ static func hit_delay(share: float) -> float:
 ##      θ(u) 由状态机给：待机前倾下垂、蓄势竖直后仰、砸下整条前倒。
 ##      这样长度天然守恒，看起来才像一根真的触手在动。
 const SEG := 36
+## 高度剖面的站点数(门禁量前沿用)
+const PROF_N := 9
 ## 截面边数。★8 那版并排比对时**看得见多边形棱面**（轮廓是折的不是圆的）。
 const RING := 7                      # 扁带横向的采样点数（不再是圆周边数）
 ## ★★★【官方被动预览 `ref-tentacle-passive.png` 逐帧看出来的】体型完全反了 ——
@@ -332,6 +350,36 @@ const WHIP_LAG := 0.035
 ##   而**横向摆动是免费的**(0.22 与 0 同为 0.0287) ⇒ 柔软这件事只能先要横摆那一半。
 ## ★另一个必须说清的事实: 焊死版**本身就有 0.0287 的回抬** —— 当年那次修复只是压小了、没消除。
 
+## ★★★2026-08-21 句7【重做】—— 用户:「是像鞭子一样柔软拍下去，什么叫鞭子？」
+##   我上一版(SLAM_LAG_K)理解错了, 交出去的仍然是**一根一起转的棍子**。
+##
+## 【什么叫鞭子】鞭子不是"会弯的棍子", 是一台把动量往梢端搬的**行波机器**:
+##   ① 根部只发一下短促的力, 然后就停/回收 —— 手一路挥到底那叫棍子;
+##   ② 一个"弯"(loop)从根部往梢端跑, **任一瞬间弯的两侧处在两个不同姿态**;
+##   ③ 这个弯越跑越快(鞭子渐细, 同样的动量交给越来越轻的质量) —— 这就是鞭响;
+##   ④ 梢端**最后到、也最快到**: 根部已经在收了, 梢端还在往下走;
+##   ⑤ 弧长恒定。
+## ★实拍验证(不是照文字凭空做): YouTube `4CluGeUoaiA` 1000fps 慢动作,
+##   背景板差分 + 骨架描线逐帧看 —— loop 沿鞭身行进**肉眼可见**
+##   (f010 环在右上 → f040 环到中上 → f100 环走到左下, 环两侧姿态明显不同)。
+##
+## 【旧模型错在哪】`_phase_at` 在拍击期只是 `ts` 的函数, **整条读同一时刻的同一相位**;
+##   唯一的滞后 `WHIP_LAG=0.035s` 对 `T_SLAM=0.50s` 只有 **7%** ⇒ 前沿等于不存在。
+##   加上 `CURL_FROM=0.68`(只有梢端 32% 参与弯曲) ⇒ 正是用户原话
+##   「只超一个方向弯曲头部」。
+##
+## 【新模型】给每一段自己的**局部时间**: 前沿到达 u 段之前, 它保持前摇姿态;
+##   前沿扫过之后它才开始抽直。前沿位置 u(t) 由下面两个常量定形。
+## ⚠ 负的局部时间是**安全**的: `_phase_at(ST_SLAM)` 里 e2/settle 都 clamp 到 0,
+##   `_slam_curl` 也 clamp 到 0 ⇒ 未被扫到的段 = 前摇末姿态, 与 REAR 边界天然连续。
+
+## 前沿从根跑到梢用掉 T_SLAM 的多少比例。0 = 退化成旧的棍子。
+const SLAM_FRONT_SPAN := 0.46
+## 前沿的加速度: <1 ⇒ 到达时间是**凹**的 = 前沿越跑越快(鞭子渐细的直接后果)。
+##   =1 是匀速(那是绳子不是鞭子), >1 是越跑越慢(反了)。
+const SLAM_FRONT_P := 0.60
+
+## (旧) 拍击期整条同相位的线性滞后比例 —— 已被上面的行波前沿取代, 保留为 0 备查。
 const SLAM_LAG_K := 0.0
 ## 拍击期横向摆动的地板值(原来是压到 0)
 const SLAM_WAVY_MIN := 0.22
@@ -619,10 +667,20 @@ func tick(delta: float) -> void:
 				#   时间对齐对比实测：官方是【命中即炸】(0.03s)，我原来放在动作 60%
 				#   ⇒ 0.33 秒才响，观感是"打完了才有反馈"。
 				#   伸直只要 0.07 秒，所以 0.08 秒就该炸。
-				_telegraph_hide(t)                 # 拍下去了，带子撤
+				## ★★2026-08-21 用户原话:「…像素风图案动画**知道拍击命中时才消失**」。
+				##   原来这里在 ST_SLAM 第 0 帧就把带子撤了 —— 而现在命中在 +T_TOUCH,
+				##   撤早了就等于"带子没了才挨打"。⇒ 撑到命中那一刻再撤。
+				##   (亮度包络 30 格 = 1.0 秒, 之后 `_env` 保持末值 0.950 = 最亮 ⇒ 越到命中越亮。)
+				var touch_ts: float = 0.0 if float(t["share"]) < 0.9 else T_TOUCH
+				if ts < touch_ts:
+					_telegraph_tick(t, T_WARN + T_REAR + ts)
+				else:
+					_telegraph_hide(t)             # 砸到了，带子撤
 				# ★★官方 **f040（拍击第一帧）白像素就是峰值 700** ⇒ 抽直与爆闪【同一帧】。
 				#   我设在 0.08 秒 ⇒ 实测 +0~+2 帧一个白像素都没有，慢了 3 帧。
-				if not bool(t.get("hit", true)) and ts >= 0.0:
+				## ★爆闪同样挪到【落地】那一刻 —— 原来在第 0 帧, 那时梢端还在 y=9.18 半空,
+				##   等于"人没到、地先炸"。
+				if not bool(t.get("hit", true)) and ts >= touch_ts:
 					t["hit"] = true
 					_impact(t)
 				if ts >= dur:
@@ -1348,7 +1406,13 @@ func _seg_angle(t: Dictionary, stt: int, u: float, ts_now: float,
 	##   `verify_tentacle_soft` 断言【梢端高度在下砸期单调不上升】。
 	##   ★当年"拍两次"的真因不是 S 形本身, 是梢端在下压过程中**往回抬**; 盯住高度即可,
 	##     不必禁止柔软(禁曲率变号 = 禁 S 形 = 禁柔软, 是把孩子和洗澡水一起倒了)。
-	var lag_u: float = (u * WHIP_LAG * SLAM_LAG_K) if stt == ST_SLAM else (u * WHIP_LAG)
+	## ★行波前沿(见文件头 SLAM_FRONT_SPAN 的长注释)。拍击期每段的局部时间 =
+	##   全局时间 − 前沿到达本段的时刻; 未被扫到的段局部时间为负 ⇒ 保持前摇姿态。
+	var lag_u: float
+	if stt == ST_SLAM:
+		lag_u = T_SLAM * SLAM_FRONT_SPAN * pow(u, SLAM_FRONT_P)
+	else:
+		lag_u = u * WHIP_LAG
 	var ph_u: Array = _phase_at(t, ts_now - lag_u)
 	var a0u: float = float(ph_u[1])
 	var a1u: float = float(ph_u[2])
@@ -1622,6 +1686,14 @@ func _rebuild(t: Dictionary) -> void:
 	##   —— 当年"拍下去两次"的真因就是梢端在下压中途往回抬; 盯住它, 就不必禁止 S 形。
 	if not halo_pts.is_empty():
 		t["tip_y"] = float((halo_pts[halo_pts.size() - 1][0] as Vector3).y)
+		## ★门禁要量的是【前沿有没有在跑】, 只有梢端一个数看不出来 ——
+		##   沿长度取 9 个站点的世界高度, 逐帧比对即可还原前沿位置。
+		##   (量的是 halo_pts 里**真实建好的几何**, 不是重推一遍公式。)
+		var prof := PackedFloat32Array()
+		for pi in range(PROF_N):
+			var hi: int = int(round(float(pi) / float(PROF_N - 1) * float(halo_pts.size() - 1)))
+			prof.append(float((halo_pts[hi][0] as Vector3).y))
+		t["prof_y"] = prof
 	if any:
 		stool.generate_normals()
 		stool.commit(mesh)
@@ -1659,6 +1731,14 @@ func probe() -> String:
 
 
 ## 这根触手梢端的当前世界高度(由 `_rebuild` 每帧写)。门禁用它验"下砸期单调不上升"。
+## 沿长度的高度剖面(9 个站点, prof_y[0]=根 … prof_y[8]=梢)。门禁用它还原前沿。
+func height_profile_of(side: String, idx: int) -> PackedFloat32Array:
+	var k: String = "%s|%d" % [side, idx]
+	if not _tents.has(k):
+		return PackedFloat32Array()
+	return (_tents[k] as Dictionary).get("prof_y", PackedFloat32Array())
+
+
 func tip_y_of(side: String, idx: int) -> float:
 	var k: String = _key(side, idx)
 	return float((_tents[k] as Dictionary).get("tip_y", 0.0)) if _tents.has(k) else 0.0

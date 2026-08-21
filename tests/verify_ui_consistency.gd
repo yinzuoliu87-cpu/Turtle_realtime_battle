@@ -70,13 +70,18 @@ const BASE: Dictionary = {
 	# 卡到实测上沿会偶发红; 而真回归是数量级的(31 vs 0), 容差 +1 挡不住的场面不存在。
 	"Shop": {"web": 0, "round": 11, "frame": 0, "tap": 0},
 	"Settings": {"web": 0, "round": 0, "frame": 0, "tap": 0},
-	"Record": {"web": 0, "round": 0, "frame": 0, "tap": 0},
+	## ★★2026-08-21 重定基线 —— 旧的 0 是**空档占位屏**的数字(可见控件只有 10 个),
+	##   钉死合成对局记录之后量到的是**真正的 Record 屏**(98 个控件): 圆角盒 18 个。
+	##   ⇒ 这 18 个是**一直存在、却因为量错了屏而从没被这条门禁看见**的换皮欠债,
+	##     不是新增的回归。按真实数字登记, 从此只降不升。
+	"Record": {"web": 0, "round": 18, "frame": 0, "tap": 0},
 }
 
 ## 分母下限: 这一屏至少该扫到这么多可见控件。少于它 = 场景没建起来, 下面的"0 问题"全是假的。
 const MIN_CTRL: Dictionary = {
 	"MainMenu": 20, "Inventory": 120, "Codex": 120,
-	"TeamSelect": 150, "Shop": 60, "Settings": 10, "Record": 10,
+	## ★Record 下限从 10 提到 80: 10 是占位屏也能过的数, 等于分母没起作用。
+	"TeamSelect": 150, "Shop": 60, "Settings": 10, "Record": 80,
 }
 
 var _pass := 0
@@ -522,6 +527,19 @@ func _ready() -> void:
 		##   它报"商店只有 1 个 stylebox", 那是占位屏。) ⇒ 在这里显式推进有内容的那一支。
 		if int(gs.season_total_battles) <= 0:
 			gs.season_total_battles = 3
+		## ★★2026-08-21 与上面商店同一类坑, Record 漏了:
+		##   Record 屏画的是 `GameState.match_history`(`RecordScene.gd:73`) ⇒ **依赖本机存档**。
+		##   我这台打过几局就有卡片, CI 全新档是空的 ⇒ 两边不是同一块屏,
+		##   而基线 0 正好是**空档占位屏**的数字 = 棘轮在守占位屏, 真正的 Record 从没被量过。
+		##   (实测: 我跑了一次带窗口的 demo 写进 1 条对局记录, 这条门禁当场红 ——
+		##    窗口模式 `test_mode=false` 会写真存档, headless 才不写。)
+		## ⇒ 在内存里**钉死**一份合成记录(不写盘: test_mode 已开), 两边量同一块屏。
+		if str(scn) == "Record":
+			var synth: Array = []
+			for mi in range(6):
+				synth.append({"result": "win" if mi % 2 == 0 else "lose",
+					"lineup": ["basic", "fire"], "mode": "实时", "turn": 30 + mi})
+			gs.match_history = synth
 		# ★商店货架已在 ShopScene 里钉死(test_mode ⇒ _rng.seed 固定, 不 randomize)。
 		#   之前试 `seed(20260818)` 没用是因为**那是全局 RNG, 而商店有自己的 RandomNumberGenerator** ——
 		#   钉错了对象, 不是"钉不住"。现三次连跑都是 0/11。
