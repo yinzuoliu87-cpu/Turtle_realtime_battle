@@ -415,11 +415,18 @@ const SLAM_FRONT_P := 0.60
 ##   · 速度突然归零时目标回 0, 弹簧**荡过头再收敛** ⇒ 甩尾是模型自己长出来的, 不是手写的动作
 ##   · `tanh` 做饱和 —— 抬起 ω≈25°/s 而下砸 ω≈1800°/s, 不饱和的话拍击会甩出天际
 ## ★用户要「自然」: 幅度与阻尼都取"看得出来但不像橡皮"的一档(见下方实测扫描)。
-const INERTIA_MAXLAG := 17.0     # 滞后角上限(度)
-const INERTIA_OMEGA_REF := 34.0  # 饱和参考角速度(度/秒)
+const INERTIA_MAXLAG := 60.0     # 滞后角上限(度)
+const INERTIA_OMEGA_REF := 12.0  # 饱和参考角速度(度/秒)
 const INERTIA_STIFF := 46.0      # 弹簧刚度 —— 越大回弹越快
-const INERTIA_DAMP := 7.4        # 阻尼 —— 太小像橡皮, 太大就没有甩尾了
-const INERTIA_P := 2.0           # 沿长度的分配: u^P, 越靠梢端滞后越多(根部几乎不滞后)
+const INERTIA_DAMP := 14.0        # 阻尼 —— 太小像橡皮, 太大就没有甩尾了
+const INERTIA_P := 3.0
+## ★★下砸期的增益要单独压低 —— 这里有一条**硬约束**: 用户 2026-08-05 报过「拍下去两次」,
+##   门禁 `RISE_CAP` 焊着"梢端在下砸期不许回抬"。
+##   实测吃满幅度时下砸期梢端 y 2.11→2.69 **又抬起来**(最高点之后回抬 15 次) = 就是那个病;
+##   而且**加阻尼救不了**(DAMP 7.4→26 只从 16 次降到 13 次) —— 因为它不是弹簧振铃,
+##   是下砸期持续压低让目标滞后一直挂在高位。
+## ⇒ 抬起/起身吃满(那里没这条约束, 正是用户要看的地方), 下砸按比例压低。
+const INERTIA_GAIN_SLAM := 0.28           # 沿长度的分配: u^P, 越靠梢端滞后越多(根部几乎不滞后)
 
 const WARN_FRONT_SPAN := 0.00
 ## 抬起前沿的加速度。比下砸的 0.60 更接近 1(匀速) —— 抬起没有"动量往梢端集中"那件事。
@@ -1527,7 +1534,8 @@ func _inertia_step(t: Dictionary, delta: float) -> void:
 	var now: Array = _phase_at(t, ts)
 	var bef: Array = _phase_at(t, maxf(ts - h, 0.0))
 	var omega: float = (float(now[2]) - float(bef[2])) / h      # 梢端基准角的角速度(度/秒)
-	var target: float = -INERTIA_MAXLAG * tanh(omega / INERTIA_OMEGA_REF)
+	var gain: float = INERTIA_GAIN_SLAM if int(t["state"]) == ST_SLAM else 1.0
+	var target: float = -INERTIA_MAXLAG * gain * tanh(omega / INERTIA_OMEGA_REF)
 	var lag: float = float(t.get("lag", 0.0))
 	var vel: float = float(t.get("lag_v", 0.0))
 	## 半隐式欧拉 + 步长细分: delta 大时(慢机器/时停恢复)显式积分会发散

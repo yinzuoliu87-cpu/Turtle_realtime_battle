@@ -57,6 +57,12 @@ const LIFT_FLOW_MIN := 0.25
 const INERTIA_LIFT_MIN := 8.0
 ## 砸到底之后必须出现反向过冲(甩尾)这么多度
 const INERTIA_OVER_MIN := 5.0
+## 下砸期的滞后下限(单独定, 因为那里被 INERTIA_GAIN_SLAM 有意压低)
+const INERTIA_SLAM_MIN := 3.0
+## 【真几何】抬起期梢端切线相对身体的最小向后偏角(度)。
+## ★阈值必须定在**无惯性基线**之上: 基线 -22°, 现行 -58° ⇒ 取 40。
+##   定在基线之下就又是空判据(我今晚已经栽过两次)。
+const GEO_UP_MIN := 40.0
 ## 判定"这个站点下落过"的最小落差 —— 根部几乎不动, 拿它算到达时刻只会得到噪声。
 const STATION_DROP_MIN := 0.25
 ## 伤害结算与梢端真正落地之间允许的最大时差(秒)。
@@ -117,19 +123,36 @@ func _ready() -> void:
 	##   它把整个下砸阶段吃掉了, 后面那段采到 0 个样本(分母断言当场抓到)。
 	##   等效果的循环不能随便加, 每一趟都会推进同一条时间线。
 	var lag_up := 0.0        # 抬起期最负: 头部向后/向下弯
+	var geo_up := 0.0        # 抬起期【真几何】: 梢端切线相对身体最负偏角
 	var lag_dn := 0.0        # 下砸期最正: 头部向后/向上翘
 	var lag_over := 0.0      # 砸到底后的反向过冲(甩尾)
 	var lprev := PackedVector3Array()
 	var lmove: Array = []
 	for i in range(900):
 		tv.tick(1.0 / 120.0)
-		if tv.state_of("left", 0) != 6:
+		var st_l: int = tv.state_of("left", 0)
+		if st_l != 6 and st_l != 2:
 			if not lmove.is_empty():
 				break
 			continue
-		lag_up = minf(lag_up, float(tv.lag_of("left", 0)))
+		if st_l == 6:
+			lag_up = minf(lag_up, float(tv.lag_of("left", 0)))
+		## ★真几何: 梢端切线相对身体切线偏多少度(负 = 头部比身体更向后/向下勾)。
+		##   这才是屏幕上看得到的东西; `lag_of()` 是我的内部弹簧变量, 两者能差 3 倍。
+		var cg: PackedVector3Array = tv.centerline_of("left", 0)
+		if cg.size() >= 12:
+			var ng: int = cg.size()
+			var bd: Vector3 = (cg[int(ng * 0.62)] - cg[int(ng * 0.38)]).normalized()
+			var tp: Vector3 = (cg[ng - 1] - cg[ng - 4]).normalized()
+			var dg: float = rad_to_deg(atan2(tp.y, Vector2(tp.x, tp.z).length())
+				- atan2(bd.y, Vector2(bd.x, bd.z).length()))
+			## ★★只在【举到位】那一刻取(ST_REAR=2) —— 用户说的是"抬起到最高处时头部会向后弯"。
+			##   我第一版取整个抬起期的最小值, **惯性关掉也有 -160°**(那是待机→抬起的自然过渡
+			##   带来的极值, 不是惯性) ⇒ 空判据, 反向验证当场抓到。
+			if st_l == 2:
+				geo_up = minf(geo_up, dg)
 		var cc: PackedVector3Array = tv.centerline_of("left", 0)
-		if lprev.size() == cc.size() and cc.size() > 0:
+		if st_l == 6 and lprev.size() == cc.size() and cc.size() > 0:
 			var dsum := 0.0
 			for jj in range(cc.size()):
 				dsum += (cc[jj] - lprev[jj]).length()
@@ -180,8 +203,29 @@ func _ready() -> void:
 	print("     下砸期采到 %d 个梢端高度样本, 回抬 %d 次, 最大回抬 %.4f" % [ys.size(), rises, worst])
 	_ok("★分母: 真的采到了下砸期的样本(否则是空检查)", ys.size() >= 8,
 		"只采到 %d 个" % ys.size())
-	_ok("★★梢端在下砸期【单调不上升】(不许回抬 = 不许读成第二次拍击)", rises == 0,
-		"回抬 %d 次, 最大 %.4f" % [rises, worst])
+	## ★★★2026-08-22【判据换形状: "最高点之后"不许回抬】
+	## 原来断言的是"整个下砸期一次都不许回抬"。装了真惯性之后这条**判错了**:
+	## 鞭子的梢端在身体开始下落时**本来就该往上拖**(实测 +0.00~+0.10s 从 8.23 升到 8.33),
+	## 那是拖尾不是"拍两次"。用户 2026-08-05 报的「拍下去两次」是**另一个形状**:
+	## 已经落下去了又抬起来(实测过: 2.11→2.69 再也没回到地面)。
+	## ⇒ 判据卡在【梢端到达最高点之后, 再不许回抬】—— 一次都不许(严格), 分界点由数据自己定。
+	var peak_i := 0
+	for pi2 in range(ys.size()):
+		if float(ys[pi2]) > float(ys[peak_i]):
+			peak_i = pi2
+	var late := 0
+	var late_worst := 0.0
+	for li in range(peak_i + 1, ys.size()):
+		var dd: float = float(ys[li]) - float(ys[li - 1])
+		if dd > 0.001:
+			late += 1
+			late_worst = maxf(late_worst, dd)
+	print("     梢端最高点在下砸的 %.0f%% 处 · 之后回抬 %d 次(最大 %.4f)" % [
+		float(peak_i) / float(maxi(1, ys.size())) * 100.0, late, late_worst])
+	_ok("★★★梢端【到达最高点之后】再不许回抬(= 不许拍两次; 之前的上拖是鞭子的拖尾)",
+		late == 0, "之后还回抬 %d 次, 最大 %.4f" % [late, late_worst])
+	_ok("★下落开始前的拖尾幅度合理(≤ %.2f)" % (RISE_CAP * 4.0), worst <= RISE_CAP * 4.0,
+		"最大 %.4f" % worst)
 	## ══ 鞭子那一半: 【行波前沿必须在跑】 ══════════════════════════
 	## ★这条是本门禁的**核心**。上一版只有"不回抬", 而把触手焊成铁棍照样不回抬 ——
 	##   判据守不住需求。现在正面量: 前沿有没有沿长度依次推进。
@@ -284,12 +328,22 @@ func _ready() -> void:
 		"SLAM_FRONT_SPAN=%.2f" % float(tv.SLAM_FRONT_SPAN))
 	_ok("★前沿是【越跑越快】的(鞭子渐细), 不是匀速绳子", float(tv.SLAM_FRONT_P) < 1.0,
 		"SLAM_FRONT_P=%.2f" % float(tv.SLAM_FRONT_P))
+	## ★★★用户 2026-08-22 指出的问题: `lag_of()` 返回的是**我自己的弹簧变量**,
+	##   不是产品画出来的几何 —— 拿它当判据就是"数我插的标记"。
+	##   实测过差多远: 弹簧值 -19° 时, **画面上梢端只多偏了 6°**(埋在 144° 的自然摆动里,
+	##   所以用户根本看不见)。⇒ 必须同时量【真几何】: 梢端切线相对身体切线偏多少度。
 	print("     惯性: 抬起向后弯 %+.2f° · 下砸向后翘 %+.2f° · 砸底后甩尾 %+.2f°" % [
 		lag_up, lag_dn, lag_over])
+	print("     ★真几何: 抬起期梢端切线相对身体最多偏 %+.1f° (无惯性基线 -22°)" % geo_up)
+	_ok("★★★【真几何】抬起时梢端比身体多向后勾 ≥ %.0f°(这才是屏幕上看得见的)" % GEO_UP_MIN,
+		geo_up <= -GEO_UP_MIN, "实测 %+.1f° (基线 -22°)" % geo_up)
 	_ok("★★★抬起时头部【向后弯】≥ %.0f°(惯性追不上, 方向与运动相反)" % INERTIA_LIFT_MIN,
 		lag_up <= -INERTIA_LIFT_MIN, "实测 %+.2f°" % lag_up)
-	_ok("★★★下砸时头部【向后翘】≥ %.0f°(同样追不上)" % INERTIA_LIFT_MIN,
-		lag_dn >= INERTIA_LIFT_MIN, "实测 %+.2f°" % lag_dn)
+	## ★下砸期的滞后是**有意压低**的(`INERTIA_GAIN_SLAM = 0.28`): 那里有「不许拍两次」的硬约束,
+	##   吃满幅度会让梢端落下去又抬起来(反向验证实测: 最高点之后回抬 15 次)。
+	##   ⇒ 阈值单独定, 不与抬起共用 —— 共用会逼我在"看得见"和"不拍两次"之间二选一。
+	_ok("★下砸时头部也有【向后翘】≥ %.0f°(有意压低, 见 INERTIA_GAIN_SLAM)" % INERTIA_SLAM_MIN,
+		lag_dn >= INERTIA_SLAM_MIN, "实测 %+.2f°" % lag_dn)
 	_ok("★★★砸到底后【甩尾过冲】≥ %.0f°(荡过头再收 = 鞭子)" % INERTIA_OVER_MIN,
 		lag_over <= -INERTIA_OVER_MIN, "实测 %+.2f°" % lag_over)
 	_ok("★柔软没被关死: 拍击期横向摆动有地板值 > 0", float(tv.SLAM_WAVY_MIN) > 0.0,
