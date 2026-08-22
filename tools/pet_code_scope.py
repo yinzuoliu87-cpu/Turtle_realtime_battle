@@ -27,6 +27,7 @@
   抽不到的东西【不代表不存在】—— 那正是白名单要人工核的部分。
 """
 import io, os, re
+import derived_consts as _DC
 
 BS = chr(92)
 
@@ -114,8 +115,15 @@ def func_scope(src, fname, depth=2):
         body = _one_body(s, fname)
         if body is None:
             continue
-        consts = {cm.group(1): cm.group(2)
-                  for cm in re.finditer(r'^const ([A-Z][A-Z0-9_]*)\s*:?=\s*([\d.]+)', s, re.M)}
+        ## ★★这条正则原来【没有锚定行尾】: `const BURN_SLOW_MULT := 1.0 - BURN_SLOW_PCT`
+        ##   被它截下开头的 `1.0` 塞进表里, 而下面的 derive 又跳过"已在表里"的名字 ⇒
+        ##   推导式常量永远拿不到真值。实测后果: 把「减速 20%」读成「加速 ×1.0」,
+        ##   于是 pet_number_audit 报「代码有效果但文案没写」的假警。
+        ##   ⇒ 统一改用 derived_consts.numeric_consts(它的正则锚了 `$`)。
+        consts = _DC.numeric_consts(s)
+        ## ★2026-08-22 推导式常量也要认(`const BURN_SLOW_MULT := 1.0 - BURN_SLOW_PCT`) ——
+        ##   不认的话拿到的是常量名而不是数, 实测把「减速 20%」读成了「加速 ×1.0」。
+        consts = _DC.derive(s, consts)
         bodies = [(fname, body)]
         seen = {fname}
         frontier = [body]
@@ -147,8 +155,8 @@ def expand_consts(text, consts):
 def battle_consts(src):
     """主战斗文件里的数值常量表。给下面 expand_cross 用。"""
     rb = src.get('scripts/scenes/RealtimeBattle3DScene.gd', '')
-    return {m.group(1): m.group(2)
-            for m in re.finditer(r'^const ([A-Z][A-Z0-9_]*)\s*:?=\s*([\d.]+)', rb, re.M)}
+    base = _DC.numeric_consts(rb)     # 同上: 必须锚行尾, 否则推导式常量被截成半截
+    return _DC.derive(rb, base)      # ★推导式常量同样纳入
 
 
 def expand_cross(text, bc):

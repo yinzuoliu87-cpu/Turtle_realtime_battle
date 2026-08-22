@@ -29,6 +29,9 @@ TEXT_KEYS = ['brief', 'desc', 'detail', 'effect', 'effectBrief',
 CREF = re.compile(r'\{C:([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)(%?)\}')
 
 
+CONST_RE = re.compile(r'(?m)^\s*const\s+([A-Z][A-Z0-9_]*)\s*(?::=|=|:\s*\w+\s*=)\s*([^#\n]+)')
+
+
 def const_map():
     """class_name → {常量名: 渲染后的字符串}。数组按本项目惯例渲染成 a/b/c。"""
     out = {}
@@ -50,6 +53,36 @@ def const_map():
                     fx = float(x)
                     parts.append(str(int(fx)) if fx == int(fx) else str(fx))
                 d[nm] = '/'.join(parts)
+        ## ★★2026-08-22 支持【推导式常量】: const BURN_LIFE := float(BURN_TICKS) * BURN_TICK_SEC
+        ##   推导是**正确设计**(总时长由次数×间隔算出, 不存第二份), 所以该教这个工具,
+        ##   不该为了迁就工具而在代码里手写第二个 5.0。
+        ##   只认“由本类已知常量 + 数字 + 四则运算 + float()/int()”组成的表达式。
+        for m2 in re.finditer(CONST_RE, s):
+            nm, val = m2.group(1), m2.group(2).strip().rstrip(chr(44))
+            if nm in d:
+                continue
+            expr = re.sub(r"(?:float|int)\s*\(", "(", val)
+            names = set(re.findall(r"[A-Za-z_][A-Za-z0-9_]*", expr))
+            if not names or not names.issubset(set(d.keys())):
+                continue
+            if not re.fullmatch(r"[A-Za-z0-9_.+*/() -]+", expr):
+                continue
+            env = {}
+            ok = True
+            for k in names:
+                try:
+                    env[k] = float(d[k])
+                except ValueError:
+                    ok = False
+                    break
+            if not ok:
+                continue
+            try:
+                v2 = eval(expr, {"__builtins__": {}}, env)
+            except Exception:
+                continue
+            if isinstance(v2, (int, float)):
+                d[nm] = str(int(v2)) if float(v2) == int(v2) else str(float(v2))
         out[cm.group(1)] = d
     return out
 

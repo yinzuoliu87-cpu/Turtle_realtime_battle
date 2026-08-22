@@ -29,6 +29,7 @@ import io, sys, os, json, re, collections
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pet_code_scope as S
+import derived_consts
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
@@ -120,8 +121,13 @@ def func_body(src, fname, depth=2):
                     nxt.append(sub)
             frontier = nxt
         # ★展开同文件的具名常量: 冰封写的是 FREEZE_DMG 不是 2.5
-        for cm in re.finditer(r'^const ([A-Z][A-Z0-9_]*)\s*:?=\s*([\d.]+)', s, re.M):
-            scope = scope.replace(cm.group(1), cm.group(2))
+        # ★★2026-08-22 接 derived_consts: 只认「const X := 纯数字」会把**推导式**常量
+        #   (BURN_SLOW_MULT := 1.0 - BURN_SLOW_PCT) 留成常量名 ⇒ 这里读成 ×1.0,
+        #   把「减速 20%」报成了「加速」(本审计器实测报过这一条)。推导是正确设计,
+        #   为了迁就工具而在代码里再手写一个 0.8 才是我在根除的那类病。
+        cmap = derived_consts.derive(s, derived_consts.numeric_consts(s))
+        for _nm in sorted(cmap.keys(), key=len, reverse=True):   # 长名先替, 免得 A 吃掉 AB 的前缀
+            scope = scope.replace(_nm, cmap[_nm])
         return p, scope
     return None, None
 
