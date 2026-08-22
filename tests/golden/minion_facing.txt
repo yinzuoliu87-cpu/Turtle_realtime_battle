@@ -6,9 +6,9 @@ elite/run 193,166,233,303,337,338,277,277,259
 elite/whip 193,222,224,242,245,331,288
 elite/whirl -41,1357,-613,560
 idle/minion -108
-idle/minion-back -329
+idle/minion-back 289
 idle/minion-elite 54
-idle/wraith -47
+idle/wraith -315
 melee/attack -621,309,-519,369
 melee/dive 30,-760,-115,-521
 melee/land -51,-611,-162,726

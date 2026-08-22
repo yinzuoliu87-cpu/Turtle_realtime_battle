@@ -401,7 +401,15 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		"grounded_mat": grounded_mat,       # 接地 shader 材质 (设 frame uniform 切帧)
 		"idle_sd": sd,                      # idle 帧字典 {tex,frames,fps,frame_h,hframes,vframes}
 		"idle_px": px,                      # idle 全身图 pixel_size (动作切回时复原)
-		"idle_offy": (frame_h * 0.5) if tex != null else 0.0,
+		## ★★★2026-08-22 用户:「站立的图片和其他动作完全接不上, 位置大小都不一样」
+		## 通用规则 `frame_h*0.5` 假设**本体顶到帧底**; 但 PixelLab 出的图脚下空一截,
+		## 所以动作走 `_elite_fix_norm` 按 `feet_row - frame_h*0.5` 修正(远程小将 = 26),
+		## 而立绘用的是没修正的 50 ⇒ **一切换就上下跳 24 像素**。
+		## ★立绘既然就是【动作第 0 帧】(见 ANIM_NORM 的注释与 verify_minion_idle_align),
+		##   它就该吃**同一套归一**。查得到 ANIM_NORM 就用修正值。
+		## ⚠ 我上一版只换了 PNG(尺寸对齐了)却没碰偏移 —— 门禁验的是"文件对不对",
+		##   验不到"游戏里用的是不是那张、摆在哪" ⇒ 用户当场看出没修好。
+		"idle_offy": (frame_h * 0.5) if tex != null else 0.0,   # ★小将/亡魂在下方按 ANIM_NORM 修正
 		"anim_t": 0.0,                      # 当前动画累计时间 (驱动帧)
 		"anim_sd": sd,                      # 当前正播的帧字典 (idle 或动作)
 		"anim_action": "",                  # 非空=正在播动作 (attack/hurt/death), 播完回 idle
@@ -438,6 +446,17 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		u["_isMinion"] = true
 		u["minion_role"] = str(spec.get("role", "front"))
 		u["is_elite"] = bool(spec.get("elite", false))
+		## ★★★2026-08-22 用户:「站立的图片和其他动作完全接不上, 位置大小都不一样」
+		## 通用规则 `idle_offy = frame_h*0.5` 假设**本体顶到帧底**; PixelLab 出的图脚下空一截,
+		## 所以动作走 `_elite_fix_norm` 按 `feet_row - frame_h*0.5` 修正(远程小将 = 26),
+		## 而立绘用的是没修正的 50 ⇒ **切换时上下跳 24 像素**。
+		## ★立绘就是【动作第 0 帧】(由 verify_minion_idle_align 焊住), 就该吃同一套归一。
+		## ⚠ 我上一版只换了 PNG(尺寸对齐了)却没碰偏移 —— 那条门禁验的是"文件对不对",
+		##   **验不到"游戏里摆在哪"** ⇒ 用户当场看出没修好。
+		var _nk = battle.ANIM_NORM.get(battle._anim_key(u), null)
+		if _nk != null and tex != null:
+			u["idle_offy"] = float(_nk[1]) - float(frame_h) * 0.5
+			spr.offset = Vector2(0.0, float(u["idle_offy"]))
 		if u["is_elite"]:                              # 精英小将(虐杀原形改造2026-07-16): 唯一技能铁锤100龟能+被动计数器
 			u["active_skills"] = ["eliteHammer"]
 			u["energy_cost"]["eliteHammer"] = 100.0
