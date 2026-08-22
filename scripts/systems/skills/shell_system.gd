@@ -8,6 +8,24 @@ const AWAKEN_PCT := 0.06            # 气场觉醒: 每次六属性 +% (0.12→0
 const AWAKEN_CRIT := 0.125          # 气场觉醒: 每次暴击率 + (0.25→0.125·两次觉醒后暴击 0.25→0.50 而非 0.75)
 const STEALTH_BREAK_MAGIC := 0.5    # 暗影·破隐首发: 额外 ×ATK 魔法 (1.0→0.5)
 const DIVE_MAGIC := 2.0             # 暗影俯冲: 落地 ×ATK 魔法 (2.5→2.0)
+## ★★★2026-08-22 文案根除分歧: 下面这些原来是**散在代码里的字面量**, 而 pets.json 的文案
+##   各写了一遍 —— 两边都能改, 谁也不知道对方 ⇒ 正是"分歧"的来源。
+##   抽成常量后文案用 {C:ShellSystem.XXX} 直接引用, 改一处两边同时变, 结构上不可能漂。
+const STEALTH_IDLE_SEC := 6.0       # 潜影: 多少秒未受伤进入隐身
+const STEALTH_POISON_MULT := 0.5    # 破隐首发: 中毒层数 = ×ATK
+const STEALTH_HEALCUT_SEC := 3.0    # 破隐首发: 治疗削减持续秒
+const STEALTH_HEALCUT_PCT := 0.5    # 破隐首发: 治疗削减比例
+const DIVE_RANGE := 600.0           # 暗影俯冲: 俯冲距离(码)
+const BURN_RADIUS := 150.0          # 暗影燃烧区: 半径(码)
+const BURN_TICK_SEC := 0.5          # 暗影燃烧区: 每几秒结算一次
+const BURN_TICKS := 10              # 暗影燃烧区: 结算几次 ⇒ 总时长 = TICKS × TICK_SEC
+const BURN_ATK_MULT := 0.1          # 暗影燃烧区: 每次灼烧层数 = ×ATK
+## ★存**语义值**(减速 20%)而不是实现值(移速 ×0.8) —— 文案要写的是前者。
+##   存 0.8 的话 {C:...%} 渲染出来是 80, 文案就得手写 20 ⇒ 又是一个没人验的字面量。
+const BURN_SLOW_PCT := 0.2          # 暗影燃烧区: 减速比例
+const BURN_SLOW_MULT := 1.0 - BURN_SLOW_PCT   # 移速乘数(由上面推导, 不另存一份)
+## 燃烧区总时长 = 次数 × 每次间隔。**推导出来**, 不手写第二份。
+const BURN_LIFE := BURN_TICKS * BURN_TICK_SEC
 
 var battle
 
@@ -51,9 +69,9 @@ func _shell_basic(u: Dictionary, tgt: Dictionary) -> void:
 	if u.get("shell_stealth_broke", false):                    # 破隐后第一发普攻: +0.5A魔法 + 0.5A毒层 + 3秒50%治疗削减(用户2026-07-28 1.0→0.5)
 		u["shell_stealth_broke"] = false
 		battle._damage._apply_damage_from(u, tgt, int(u["atk"] * STEALTH_BREAK_MAGIC), Color("#9b3bff"))
-		battle._damage._apply_dot_stacks(tgt, "poison", maxi(1, int(round(u["atk"] * 0.5))), u)
-		tgt["heal_reduce_until"] = battle._t + 3.0
-		tgt["heal_reduce_pct"] = maxf(float(tgt.get("heal_reduce_pct", 0.0)), 0.5)
+		battle._damage._apply_dot_stacks(tgt, "poison", maxi(1, int(round(u["atk"] * STEALTH_POISON_MULT))), u)
+		tgt["heal_reduce_until"] = battle._t + STEALTH_HEALCUT_SEC
+		tgt["heal_reduce_pct"] = maxf(float(tgt.get("heal_reduce_pct", 0.0)), STEALTH_HEALCUT_PCT)
 		battle._vfx._float_text(u["pos"] + Vector2(0, -58), "破隐!", Color("#9b3bff"))
 	u["basic_alt"] = not u.get("basic_alt", false)
 	var is_true: bool = bool(u["basic_alt"])
@@ -192,7 +210,7 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影�
 	var dir: Vector2 = tgt["pos"] - start
 	if dir.length() < 1.0: dir = Vector2.RIGHT
 	dir = dir.normalized()
-	var dest: Vector2 = start + dir * 600.0
+	var dest: Vector2 = start + dir * DIVE_RANGE
 	dest.x = clampf(dest.x, battle.ARENA.position.x, battle.ARENA.end.x)
 	dest.y = clampf(dest.y, battle.ARENA.position.y, battle.ARENA.end.y)
 	for o in battle._targeting._enemies_of(u):                                    # 落地+路径敌: 2.0A魔法+击退
@@ -237,14 +255,14 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影�
 		st.tween_interval(0.22 * (float(si) + 0.5) / 5.0)
 		st.tween_callback(func() -> void: _shell_burn_patch(sp, 1.8))
 	var zc: Vector2 = dest
-	for i in range(10):                                         # 暗影燃烧区150码·5秒·每0.5秒结算(数值/时机封板不动)
+	for i in range(BURN_TICKS):                                 # 暗影燃烧区(半径/时长/节拍全在常量里, 文案 {C:} 引用同一份)
 		var fn = func():
 			for o in battle._targeting._enemies_of(u):
-				if o.get("alive", false) and o["pos"].distance_to(zc) <= 150.0:
-					battle._damage._apply_dot_stacks(o, "burn", maxi(1, int(round(u["atk"] * 0.1))), u)   # 0.1A灼烧层
-					o["spd_move_mult"] = 0.8
-					o["spd_dbf_until"] = battle._t + 0.5              # 减速20%(0.5s)
-		battle._pending_shots.append({"delay": float(i) * 0.5, "fn": fn, "src": u})
+				if o.get("alive", false) and o["pos"].distance_to(zc) <= BURN_RADIUS:
+					battle._damage._apply_dot_stacks(o, "burn", maxi(1, int(round(u["atk"] * BURN_ATK_MULT))), u)
+					o["spd_move_mult"] = BURN_SLOW_MULT
+					o["spd_dbf_until"] = battle._t + BURN_TICK_SEC
+		battle._pending_shots.append({"delay": float(i) * BURN_TICK_SEC, "fn": fn, "src": u})
 	battle._beam_vfx("res://assets/sprites/vfx/fx-trail.png", start, dest, 60.0, Color(0.62, 0.22, 0.72, 0.7), 0.34)   # 暗影猛扑拖影
 
 
@@ -466,6 +484,10 @@ func _shell_spawn_shockwave(u: Dictionary, dmg: int) -> void:
 		"radius": 0.0,
 		"hit": {},          # 用 get_instance_id() 当键, 每敌只算一次
 		"dmg": dmg,
+		## ★冲击波是【创建时算伤害、扩张途中才逐敌命中】—— 与弹道同一个形状:
+		##   飞行期间全局 `_last_dmg_type` 会被场上别的伤害覆写 ⇒ 命中时飘字捡别人的颜色。
+		##   捕获创建那一刻的类型, 命中前还原(哨兵 DMGSENTINEL 实测抓到这一条)。
+		"dtype": battle._last_dmg_type,
 	}
 
 # 冲击波每帧推进: 半径 0→520 / 1.8s; ring 直径=2×radius; 距中心被环刚扫过的敌人吃一次伤害
@@ -505,6 +527,7 @@ func _shell_shockwave_tick(u: Dictionary, delta: float) -> void:
 				continue
 			if (e["pos"] - center).length() <= r:
 				hit[eid] = true
+				battle._damage.set_dtype(str(sw.get("dtype", battle._last_dmg_type)), e)   # 还原发射时的类型(见上面 "dtype")
 				battle._damage._apply_damage_from(u, e, dmg, Color("#b0ffe0"))
 	# 结束: 清理节点+状态(node2/stars一并清·不瞬删=波前已淡到0.65alpha自然收)
 	if frac >= 1.0:

@@ -19,7 +19,16 @@ extends Node
 ##   ② 伤害在 `hit_delay()` 那一刻发生
 ##   ③ **t=0 在带子里、命中前走出去的敌人不挨打** ← 方案 A 的全部意义
 ##
-## ★不用 tween、不等帧: `_step_pending_shots(dt)` 是同步的, 喂多少推进多少 ⇒ 确定性。
+## ★不用 tween、不等帧: `tick(dt)` 是同步的, 喂多少推进多少 ⇒ 确定性。
+##
+## ★★2026-08-22 机制变更: 伤害原来走 `_queue_shots` 这条**独立的第二时钟**, 到点再用
+##   `is_striking()` 复核。那条路余量只有 0.15 秒、且时停时与演出冻结规则不同 ⇒
+##   探针实测一场里 13% 的拍击【完整演出、零伤害】(用户 2026-08-22 报的正是这个)。
+##   现在伤害挂在触手自己的"梢端触地"一次性标志上(与爆闪同一个)。
+##   ⇒ 本用例的**判据一个字没改**(还是"t=0 不掉血 / 命中前 0.05 秒不掉血 /
+##     推过去必须掉血 / 走出带子不挨打 / 撤回后不出伤"),
+##     只把【推进时间的手柄】从 `_step_pending_shots` 换成 `tv.tick` —— 换的是尺子的握法,
+##     不是尺子的刻度。
 ##   (CLAUDE.md §3.5: 测数值的用例不该依赖任何动画跑完。)
 ##
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_tentacle_hit_timing.tscn --quit-after 3000
@@ -29,6 +38,14 @@ const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 var _s
 var _n := 0
 var _fail := 0
+
+
+## 把触手自己的时钟推进 sec 秒(小步喂 —— 状态机要逐段切换, 一大步会跳过 WARN→REAR→SLAM)
+func _adv(sec: float) -> void:
+	var n: int = maxi(1, int(ceil(sec / 0.01)))
+	var h: float = sec / float(n)
+	for _i in range(n):
+		_s._tentacle_vfx.tick(h)
 
 
 func _ok(name: String, cond: bool, detail: String = "") -> void:
@@ -116,13 +133,13 @@ func _ready() -> void:
 		"hp %.0f → %.0f" % [hp0, float(tgt["hp"])])
 
 	# 推到命中前一点点 —— 仍然不该掉血
-	_s._ballistics._step_pending_shots(delay - 0.05)
+	_adv(delay - 0.05)
 	_ok("① ★命中前 0.05 秒仍然不掉血(证明不是随便延一点而是卡在那一刻)",
 		absf(float(tgt["hp"]) - hp0) < 0.01,
 		"hp %.0f" % float(tgt["hp"]))
 
 	# 再推过去 —— 必须掉血
-	_s._ballistics._step_pending_shots(0.10)
+	_adv(0.10)
 	_ok("① ★★推过 hit_delay 之后【必须】掉血",
 		float(tgt["hp"]) < hp0 - 0.5,
 		"hp %.0f → %.0f" % [hp0, float(tgt["hp"])])
@@ -146,7 +163,7 @@ func _ready() -> void:
 		"横向 %.0f < %.0f" % [absf((Vector2(runner["pos"]) - origin).cross(Vector2.RIGHT)), syn.HIT_HALF_W])
 	# 预警期间它走开(横向拉到半宽之外)
 	runner["pos"] = origin + Vector2(320.0, syn.HIT_HALF_W * 2.0)
-	_s._ballistics._step_pending_shots(delay + 0.05)
+	_adv(delay + 0.05)
 	_ok("② ★★预警期间走出带子 ⇒ 不挨打(这一条就是方案 A 的全部意义)",
 		absf(float(runner["hp"]) - r_hp0) < 0.01,
 		"hp %.0f → %.0f" % [r_hp0, float(runner["hp"])])
@@ -165,7 +182,7 @@ func _ready() -> void:
 	var g_hp0: float = float(ghost["hp"])
 	syn._slap("left", 0, 1.0)
 	tv.ensure_forced("left", 0)          # 档掉到 0 ⇒ 触手撤回
-	_s._ballistics._step_pending_shots(delay + 0.05)
+	_adv(delay + 0.05)
 	_ok("③ ★触手撤回后, 在途那一击不再出伤(否则触手都没了还打人)",
 		absf(float(ghost["hp"]) - g_hp0) < 0.01,
 		"hp %.0f → %.0f" % [g_hp0, float(ghost["hp"])])

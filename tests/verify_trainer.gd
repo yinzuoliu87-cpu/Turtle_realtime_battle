@@ -229,7 +229,10 @@ func _ready() -> void:
 			print("  [实测] 石头 dmg=%s arc=%.2f米 dtype=%s" % [rock.get("dmg"), rock.get("arc", 0.0), str(rock.get("dtype"))])
 			_ok("★石头伤害 = 1", int(rock.get("dmg", -1)) == 1)
 			_ok("★★石头走抛物线(arc>0, 用户点名要的)", float(rock.get("arc", 0.0)) > 0.0, "arc=%.2f" % float(rock.get("arc", 0.0)))
-			_ok("★石头是物理伤害", str(rock.get("dtype", "")) == "phys")
+					## ★2026-08-22 改成 "physical": 合法值只有 physical/magic/true 三个。
+			##   原来写的 "phys" 不在其中, `VisualConstants.cls_for` 当【未知类型】回落成红 ⇒
+			##   **碰巧**看着是对的, 而这条断言把笔误焊住了。真按枚举写才守得住。
+			_ok("★石头是物理伤害", str(rock.get("dtype", "")) == "physical", str(rock.get("dtype", "")))
 			_ok("★石头飞向敌方", s._is_hostile(tr, rock.get("tgt", {})))
 	# ★不发默认子弹: 训龟大师【只】走扔石头, 不能同时跑 AI 默认普攻(BASIC_ATK 发子弹)。
 	#   2026-07-23 用户:「为什么同时在扔石头和发射子弹」—— 单位字典漏了 no_basic,

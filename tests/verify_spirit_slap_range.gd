@@ -214,6 +214,11 @@ func _slap_and_land(syn, side: String, idx: int, share: float) -> int:
 		_s._tentacle_vfx.tick(0.12)
 	var n: int = syn._slap(side, idx, share)
 	var d: float = _s._tentacle_vfx.hit_delay(share)
+	## ★2026-08-22: 伤害改挂在触手自己的"梢端触地"标志上(原来走 _queue_shots 这条会漂的
+	##   第二时钟, 实测 13% 的拍击完整演出零伤害)。⇒ 推进时间的手柄换成 tv.tick,
+	##   小步喂(状态机要逐段过 WARN→REAR→SLAM, 一大步会跳过切换)。判据不变。
 	if d > 0.0:
-		_s._ballistics._step_pending_shots(d + 0.02)
+		var _n: int = maxi(1, int(ceil((d + 0.02) / 0.01)))
+		for _i in range(_n):
+			_s._tentacle_vfx.tick((d + 0.02) / float(_n))
 	return n

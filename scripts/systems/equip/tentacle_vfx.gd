@@ -709,7 +709,8 @@ func _spawn(side: String, idx: int) -> void:
 ## `share` 只影响幅度（正常 1.0，闪避追击 0.25 → 走短促点刺）。
 ## ★伤害【不在这里结算】—— 逻辑侧早就结完了。
 ##   CLAUDE.md §3.5：一个测数值的用例不该依赖任何动画跑完。
-func strike(side: String, idx: int, aim2: Vector2, share: float = 1.0) -> void:
+## `on_touch`: 梢端真正砸到地面那一刻调一次(伤害结算挂这里, 见 ST_SLAM 分支的长注释)。
+func strike(side: String, idx: int, aim2: Vector2, share: float = 1.0, on_touch: Callable = Callable()) -> void:
 	var k: String = _key(side, idx)
 	if not _tents.has(k):
 		return
@@ -726,6 +727,7 @@ func strike(side: String, idx: int, aim2: Vector2, share: float = 1.0) -> void:
 	t["ts"] = 0.0
 	t["hit"] = false
 	t["warned"] = false
+	t["on_touch"] = on_touch        # 新一击换掉旧回调 ⇒ 被覆盖的那一击不会再出伤(原 serial 闸门的语义)
 	## ★这一击的流水号: 延后结算的伤害要靠它确认"还是同一击"
 	##   (期间可能被撤回/被新指令覆盖 —— 那时候就不该再出伤了)。
 	t["serial"] = int(t.get("serial", 0)) + 1
@@ -800,6 +802,29 @@ func tick(delta: float) -> void:
 				if not bool(t.get("hit", true)) and ts >= touch_ts:
 					t["hit"] = true
 					_impact(t)
+					## ★★★伤害就挂在这里(2026-08-22)。用户:「有的时候触手打中没任何伤害」。
+					## 【原来的做法与它为什么必然漏】伤害走 `_queue_shots(delay=hit_delay())`,
+					##   到点再用 `is_striking(serial)` 复核"还在拍吗"。那是**第二条时钟**:
+					##   延时 1.48s, 而闸门窗口(WARN+REAR+SLAM)只有 1.63s ⇒ 余量 0.15s;
+					##   且 `_step_pending_shots` 在时停时对 `src=null` 的条目**冻结不减**,
+					##   触手动画却照常推进 ⇒ 两条钟必然错开, 错过就把整发伤害静默扔掉。
+					##   探针实测(60 秒一场): 排队 15 / 被闸门丢掉 2 —— 13% 的拍击完整演出、零伤害。
+					## 【为什么这里是对的】`t["hit"]` 本来就是"梢端真正砸到地面"的**同一个**
+					##   一次性标志(爆闪就用它)。挂在这里 = 演出与结算共用一条时钟, 不存在错开;
+					##   被打断/被新指令覆盖时 `strike()` 会重置 hit 并换掉回调, 老伤害自然不再发生。
+					##   ⇒ CLAUDE.md §3.5 的原则反过来用: 不是"让数值别依赖演出",
+					##     而是"命中时刻本来就是演出事实, 让它当唯一事实源"。
+					## ★拆场守卫: 回调里会结算伤害并调 `impact_on_victim`(读 3D 节点的
+					##   global_transform)。战斗场被释放的那一帧 tick 仍可能跑到这里 ⇒
+					##   `Condition "!is_inside_tree()" is true` (smoke 实测抓到)。
+					##   世界节点不在树上 = 这一击已经没有意义, 直接丢。
+					var _cb = t.get("on_touch", null)
+					if battle._world == null or not is_instance_valid(battle._world) 							or not battle._world.is_inside_tree():
+						t["on_touch"] = Callable()
+						_cb = null
+					if _cb is Callable and _cb.is_valid():
+						t["on_touch"] = Callable()      # 先清再调: 回调里若又发起新一击也不会重入
+						_cb.call()
 				if ts >= dur:
 					t["state"] = ST_RECOVER; t["ts"] = 0.0
 			ST_RECOVER:

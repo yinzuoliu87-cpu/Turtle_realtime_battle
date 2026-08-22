@@ -290,7 +290,13 @@ func _ready() -> void:
 	##   伤害不再在 `_slap()` 里立即打出, 而是等 T_WARN + T_REAR = 1.13 秒。
 	##   原因: 改之前**伤害比视觉命中早 1.13 秒**, 预警圈彻底成了摆设。
 	##   ★同步推一次待发队列即可, 不等帧也不等 tween ⇒ 仍然是确定性断言。
-	_s._ballistics._step_pending_shots(_s._tentacle_vfx.hit_delay(1.0) + 0.05)
+	## ★2026-08-22: 拍击伤害改挂在触手自己的"梢端触地"标志上(原走 _queue_shots 这条会漂的
+	##   第二时钟, 实测一场里 13% 的拍击完整演出零伤害)。推进手柄换成 tv.tick, 小步喂
+	##   (状态机要逐段过 WARN→REAR→SLAM)。判据(伤害数值)一个字没改。
+	var _d5: float = _s._tentacle_vfx.hit_delay(1.0) + 0.05
+	var _n5: int = maxi(1, int(ceil(_d5 / 0.01)))
+	for _i5 in range(_n5):
+		_s._tentacle_vfx.tick(_d5 / float(_n5))
 	var dealt: float = sh1 - float(s1[1]["hp"])
 	# ★期望值写死。原来写的是"100~260 之间"——太松: 把基数改小实伤仍落在区间内, 变异实测 0 FAIL。
 	# ★2026-08-20 用户改数值:「拍击伤害为目标5%最大生命值+100物理伤害」(原 4% + 55),

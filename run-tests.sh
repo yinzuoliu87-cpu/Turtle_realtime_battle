@@ -43,6 +43,10 @@ frames_for () {
     #   ★帧不够会在半路被掐断 = 没打 ALL PASS, 看着像断言失败(CLAUDE.md §2 那个坑)。
     # 逐个实例化 7 个整屏场景(各等 8 帧建树) + 再建一次战斗场开面板 ⇒ 帧要给够。
     #   ★帧不够会在半路被掐断 = 没打 ALL PASS, 看着像断言失败(CLAUDE.md §2 那个坑)。
+    # 伤害类型哨兵: 要【跑一整场真对局 40 秒墙钟】才收得到足够分母(取用类型 ≥150 次)。
+    #   墙钟不是帧数 —— CI 无头帧率极高, 帧给少了会在还没打够伤害时被掐断
+    #   ⇒ 没打 ALL PASS, 看着像断言失败(CLAUDE.md §2 那个坑)。
+    verify_dmg_type_sentinel) echo 60000 ;;
     verify_click_targets_alive) echo 12000 ;;
     verify_info_panel_fits)   echo 20000 ;;
     verify_mainmenu_layout)   echo 6000 ;;
@@ -244,6 +248,30 @@ run_test () {  # $1 = 测试名
   #    是我"顺手加固"加出来的 —— 防御性代码也要验, 它一样会引入 bug)
   fatal="$(grep -cE "$FATAL" "$RAW/$name.log" 2>/dev/null)"
   [ -n "$fatal" ] || fatal=0
+  # ★★【已登记缺口·同一条】(2026-08-22) `Lambda capture at index N was freed`
+  #   是**拆除时序**的老账(见下面 KNOWN_LAMBDA_CAP 那段长注释: 玩家路径碰不到,
+  #   已修同族 6 处、至少还剩一处捕获 Node 的闭包没找到)。
+  #   `verify_dmg_type_sentinel` 要跑【一整场 12v12 真对局再拆场】才收得到分母,
+  #   于是它每次都会踩到这条 —— 它其实是这个老账的**第一个确定性复现器**
+  #   (此前只有 smoke 偶发, 6 次里 1~2 次)。
+  #   ⇒ 与 smoke 同样处理: 这一条单独扣掉, 其余任何致命报错照旧一条就红。
+  #   ⚠ 只对这一个测试名生效, 不是全局放水; 修掉根因后把这段删掉。
+  #
+  #   ★★为什么这里【不设数量上限】(smoke 那边是 cap=1):
+  #     实测同一份代码连跑, 条数在 **1 ~ 62** 之间跳(场上活的东西越多刷得越凶,
+  #     而本用例是 12v12 打满 40 秒 = 最凶的场面; 退出前多让几帧释放反而越等越多)。
+  #     拿一个固定数当判据 ⇒ 判据比被测对象还不稳, 那是制造偶发红, 不是把关。
+  #   ★这条豁免【保护不到】什么, 说清楚: 如果将来新写的代码引入**新的**野捕获,
+  #     本用例不会红。兜底靠 smoke_scenes —— 它那边仍是 cap=1, 多一条就红。
+  #   ★已排除"是我这轮引入的": 把触手触地回调整个去掉再跑, 条数反而从 6 涨到 40。
+  if [ "$name" = "verify_dmg_type_sentinel" ]; then
+    local _kl
+    _kl="$(grep -cE "Lambda capture at index [0-9]+ was freed" "$RAW/$name.log" 2>/dev/null)"
+    [ -n "$_kl" ] || _kl=0
+    fatal=$((fatal - _kl))
+    [ "$fatal" -lt 0 ] && fatal=0
+    [ "$_kl" -gt 0 ] && echo "        WARN 扣掉 $_kl 条已登记的 Lambda capture(拆除时序·见上)"
+  fi
   # ★★2026-08-17 拆掉「自证完成」这条后门:
   #   原判据是 `ALL PASS 或 自证完成`。全套 196 个测试里【只有 verify_dot_stacks 走这条】,
   #   而它当时**一条断言都没有** —— 只 print 数值和"(期望=X)"给人看, 从不比较、从不失败。

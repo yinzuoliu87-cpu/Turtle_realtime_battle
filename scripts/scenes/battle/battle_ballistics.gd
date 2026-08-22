@@ -4,9 +4,29 @@ extends RefCounted
 ## 类内名不变;外部名加 battle.
 
 var battle
+## 延时结算队列的两个【静默丢弃点】记账(探针2026-08-22)
+var _ps_drop_invalid := 0    # 回调失效
+var _ps_drop_cleared := 0    # 换路清空队列
 
 func _init(b) -> void:
 	battle = b
+
+
+## ★★所有弹道【必须】经这里登记 —— 它给每发弹盖上"发射那一刻的伤害类型"。
+##
+## 由来(2026-08-22 用户实拍):「有的时候物理伤害被跳成了蓝色数字/紫色的」。
+## 飘字颜色只看全局 `battle._last_dmg_type`, 而弹在【飞行途中】那个全局会被
+## 场上任何一发别的伤害覆写 ⇒ 命中时捡到别人的类型。物理暴击捡到 magic
+## 就是 `crit-magic` = 紫字, 与用户描述逐字吻合。
+##
+## 命中处(`_step_projectiles` frac>=1.0)本来就有一行"用 pr.dtype 还原",
+## 但**15 个创建点里只有 3 个真的写了 dtype**, 其余全部落空 ⇒ 那行等于没有。
+## ⇒ 不去补 15 处(手抄的副本必然漏一个), 改成【唯一入口】在这里兜底。
+## 哨兵 `DMGSENTINEL=1` 量的就是这条路: 修前一场对局 30 发捡类型, 全部出自弹道。
+func _push_proj(d: Dictionary) -> void:
+	if not d.has("dtype"):
+		d["dtype"] = battle._last_dmg_type
+	battle._projectiles.append(d)
 
 func _fire_trainer_rock(u: Dictionary, tgt: Dictionary, ms_onhit: bool = false) -> void:
 	var p = Sprite3D.new()
@@ -27,11 +47,11 @@ func _fire_trainer_rock(u: Dictionary, tgt: Dictionary, ms_onhit: bool = false) 
 	battle._world.add_child(p)
 	var dist: float = start2d.distance_to(tgt["pos"])
 	var pdur = clampf(dist / 650.0, 0.25, 0.9)
-	battle._projectiles.append({
+	_push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "dmg": 1, "col": Color("#d9d2c4"),
 		"src": u, "t": 0.0, "dur": pdur, "basic_onhit": false,
 		"arc": clampf(dist * 0.010, 0.8, 3.2),    # ★抛物线拱高(用户2026-07-23:「弹道是抛物线的」): 远则拱高
-		"dtype": "phys", "spin": true, "ms_onhit": ms_onhit,
+		"dtype": "physical", "spin": true, "ms_onhit": ms_onhit,
 	})
 
 
@@ -49,7 +69,7 @@ func _fire_coral_spike(src: Dictionary, tgt: Dictionary, si: int) -> void:   # �
 	p.pixel_size = 0.05
 	p.position = battle._world_pos(start2d, 1.0)
 	battle._world.add_child(p)
-	battle._projectiles.append({
+	_push_proj({
 		"node": p, "from": battle._world_pos(start2d, 1.0), "tgt": tgt, "dmg": 0, "col": Color(1.0, 0.5, 0.36),
 		"src": src, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 900.0, 0.22, 0.8),
 		"coral_spike": true, "wisp_dir": true, "co_si": si,
@@ -106,7 +126,7 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 	var _stt: int = 0
 	if basic_onhit and src is Dictionary and str(src.get("id", "")) == "space" and float(src.get("star_energy", 0.0)) > 0.0:
 		_stt = int(float(src["star_energy"]) * 0.12)   # 星能追加真伤=12%当前星能(用户2026-07-16: 30%→12%)·打包进普攻弹道命中才结算
-	battle._projectiles.append({
+	_push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "dmg": dmg, "col": col,
 		"src": src, "t": 0.0, "dur": pdur, "basic_onhit": basic_onhit, "star_true": _stt,
 		"oriented": oriented, "card_spin": card_spin, "dtype": battle._last_dmg_type,
@@ -126,7 +146,7 @@ func _fire_ghost_wisp(u: Dictionary, tgt: Dictionary) -> void:
 	var world_from = battle._world_pos(start2d, 1.0)
 	p.position = world_from
 	battle._world.add_child(p)
-	battle._projectiles.append({
+	_push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "src": u, "t": 0.0,
 		"dur": clampf(start2d.distance_to(tgt["pos"]) / 620.0, 0.2, 0.62),
 		"ghost_touch": true, "gt_phys": 0.4 * atk, "gt_true": 0.9 * atk, "basic_onhit": true, "wisp_dir": true,
@@ -174,7 +194,8 @@ func _step_projectiles(delta: float) -> void:
 		if frac >= 1.0:
 			node.queue_free()
 			if tgt["alive"]:
-				if pr.has("dtype"): battle._last_dmg_type = str(pr["dtype"])   # ★弹道命中: 还原发射时捕获的伤害类型(飞行期全局可能被别的伤害覆写→飘字色错·用户2026-07-11)
+				if pr.has("dtype"):
+					battle._damage.set_dtype(str(pr["dtype"]), tgt)   # ★弹道命中: 还原发射时捕获的类型(飞行期全局会被别的伤害覆写→飘字色错·用户2026-07-11)
 				if pr.get("fireball", false):   # 抛物线火球045: 落点火爆+魔法伤(蓝字)+灼烧
 					battle._damage._apply_damage_from(pr["src"], tgt, battle._resolve_dmg(pr["src"], float(pr["dmg"]), tgt, true), pr["col"], 0.0, false, true)
 					if pr.get("fire_burst", 0) > 0:
@@ -199,13 +220,13 @@ func _step_projectiles(delta: float) -> void:
 						battle._vfx._flash(_bsrc, Color(0.5, 1.7, 0.65)))                      # 吸收瞬间携带者绿闪
 				elif pr.get("shuriken_hit", false):   # 手里剑: 物理段(红·减甲)+暴击时真伤段(白·穿甲)→同发跳两数字(飘字系统按类型自动错开行·不合并)
 					battle._last_atk_crit = bool(pr.get("is_crit", false))   # 两段都按暴击显示(大字+暴击图标)
-					battle._last_dmg_type = "physical"
+					battle._damage.set_dtype("physical", tgt)
 					battle._damage._apply_damage_from(pr["src"], tgt, battle._phys_after_armor(pr["src"], float(pr["nj_phys"]), tgt), Color("#ff4444"), 0.0, false, false, false, false, false, true)   # 物理段(红·basic=普攻)
 					if float(pr.get("nj_true", 0.0)) >= 1.0 and tgt.get("alive", false):
 						battle._last_atk_crit = bool(pr.get("is_crit", false))   # 物理段hook可能改写→真伤段前重置
 						battle._damage._apply_damage_from(pr["src"], tgt, int(round(float(pr["nj_true"]))), Color("#ffffff"), 0.0, true, false, true, false, false, true)   # 真伤段(白·pre_crit=已含暴击不再二次掷·basic=普攻)
 				elif pr.get("ghost_touch", false):   # 幽魂触碰: 物理(红·减甲)+真实(白·穿甲) 命中同发跳两数字
-					battle._last_dmg_type = "physical"
+					battle._damage.set_dtype("physical", tgt)
 					battle._damage._apply_damage_from(pr["src"], tgt, battle._phys_after_armor(pr["src"], float(pr["gt_phys"]), tgt), Color("#ff4444"), 0.0, false, false, false, false, false, true)
 					if tgt.get("alive", false):
 						battle._damage._apply_damage_from(pr["src"], tgt, int(round(float(pr["gt_true"]))), Color("#ffffff"), 0.0, true, false, false, false, false, true)
@@ -266,6 +287,9 @@ func _step_pending_shots(delta: float) -> void:
 			var fn = s["fn"]
 			if fn is Callable and fn.is_valid():
 				fn.call()
+			else:
+				## 静默丢弃点(探针·2026-08-22): 回调失效 ⇒ 演出照演、结算永不发生。
+				_ps_drop_invalid += 1
 
 # 排队 count 发子弹, 每发间隔 interval 秒, 逐发 call fn (fn 内部自选目标, 支持死亡守卫)
 func _shotgun_pellet(from2d: Vector2, to2d: Vector2, col: Color, dur: float = 0.42, on_land: Callable = Callable()) -> void:
@@ -300,7 +324,7 @@ func _fire_venom_fang(src: Dictionary, tgt: Dictionary, base: float) -> void:   
 	p.pixel_size = 0.052
 	p.position = battle._world_pos(start2d, 1.0)
 	battle._world.add_child(p)
-	battle._projectiles.append({
+	_push_proj({
 		"node": p, "from": battle._world_pos(start2d, 1.0), "tgt": tgt, "dmg": 0, "col": Color("#c96bff"),
 		"src": src, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 700.0, 0.28, 0.84),   # 飞行速度减慢50%(用户2026-07-19: /1400→/700)
 		"venom_fang": true, "wisp_dir": true, "fang_base": base,
@@ -320,7 +344,7 @@ func _fire_ice_shard(src: Dictionary, tgt: Dictionary, dmg: int, freeze_sec: flo
 	p.position = world_from
 	battle._world.add_child(p)
 	var dur = clampf(start2d.distance_to(tgt["pos"]) / 600.0, 0.35, 0.9)   # 恒速~600px/s, 慢到看得清(原0.2太快)
-	battle._projectiles.append({
+	_push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "dmg": dmg, "col": Color("#4dabf7"),
 		"src": src, "t": 0.0, "dur": dur, "basic_onhit": false, "freeze_on_hit": freeze_sec, "oriented": true, "dtype": battle._last_dmg_type,
 	})
@@ -340,7 +364,7 @@ func _fire_shuriken(src: Dictionary, tgt: Dictionary, phys_raw: float, true_raw:
 	p.position = world_from
 	battle._world.add_child(p)
 	var dur = clampf(start2d.distance_to(tgt["pos"]) / 850.0, 0.12, 0.5)   # 快镖
-	battle._projectiles.append({
+	_push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "src": src, "t": 0.0, "dur": dur,
 		"shuriken_hit": true, "shuriken_anim": true,
 		"nj_phys": phys_raw, "nj_true": true_raw, "is_crit": is_crit,
@@ -361,7 +385,7 @@ func _fire_hunter_arrow(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   # �
 	var from2d: Vector2 = u["pos"]
 	p.position = battle._world_pos(from2d, 1.2)
 	battle._world.add_child(p)
-	battle._projectiles.append({
+	_push_proj({
 		"node": p, "tgt": tgt, "src": u, "dmg": dmg, "col": Color("#ffffff"),
 		"t": 0.0, "homing_arc": true, "pos2d": from2d, "h0": 1.2,
 		"init_dist": maxf(120.0, from2d.distance_to(tgt["pos"])),
@@ -418,7 +442,7 @@ func _fire_hunter_exec_arrow(u: Dictionary, tgt: Dictionary) -> void:   # 强化
 	p.position = battle._world_pos(from2d, 1.3)
 	battle._world.add_child(p)
 	battle._gambler_sys._gambler_pop(from2d, float(u.get("height", 0.0)) + 0.6, Color(1.0, 0.86, 0.3, 0.8))   # 金色蓄力枪口光
-	battle._projectiles.append({
+	_push_proj({
 		"node": p, "tgt": tgt, "src": u, "dmg": 0, "col": Color("#ffd700"),
 		"t": 0.0, "homing_arc": true, "hunt_exec": true, "pos2d": from2d, "h0": 1.3,
 		"init_dist": maxf(120.0, from2d.distance_to(tgt["pos"])),

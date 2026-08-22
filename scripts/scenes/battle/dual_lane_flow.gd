@@ -893,6 +893,7 @@ func _dl_clear_units() -> void:
 		if is_instance_valid(pn):
 			pn.queue_free()
 	battle._projectiles.clear()
+	battle._ballistics._ps_drop_cleared += battle._pending_shots.size()   # 换路清队列: 记账(探针2026-08-22)
 	battle._pending_shots.clear()
 	for f in battle._follow_vfx:
 		var fs = f.get("spr", null)

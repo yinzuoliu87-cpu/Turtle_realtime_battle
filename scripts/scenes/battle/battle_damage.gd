@@ -8,6 +8,100 @@ var battle
 func _init(b) -> void:
 	battle = b
 
+## ★★★2026-08-22【伤害类型哨兵】—— 用户:「物理伤害被跳成了蓝色数字, 这是很严重的 bug, 得彻查」
+##
+## 【架构上的病】飘字颜色只看全局 `battle._last_dmg_type`(物红/魔蓝/真白),
+##   而**只有 `_resolve_dmg` 会写它**; `_apply_damage` / `_apply_damage_from` 只读不写。
+##   ⇒ 任何不先调 `_resolve_dmg` 的伤害, 颜色就**继承上一次别人的**。
+##   全仓实测: 230 个伤害调用点里, 上游 30 行内没有任何东西设过类型的有 **158 处(69%)**。
+##
+## 【为什么要哨兵而不是直接改 158 处】那 158 处里很多**碰巧是对的**
+##   (上一次刚好也是同类型)。不先筛就动手, 等于在正确的地方白干、还可能改错。
+##   ⇒ 哨兵: `_resolve_dmg` 置 fresh=true, 伤害落地时取用并清掉。
+##     落地时发现 fresh 已经是 false ⇒ 这一发的类型是**捡来的**, 记一笔。
+## ★只在 `DMGSENTINEL=1` 时记账 —— 正式对局零开销。
+var _dt_fresh := false
+var _dt_stale: Dictionary = {}          # "来源标签" → 捡类型的次数
+var _dt_total := 0                      # 分母: 一共取用了几次类型(N=0 是空检查, 不是通过)
+## ★哨兵的第二只眼: `_dt_fresh` 只能发现"没人设过类型", 发现不了
+##   "**别人刚设了、被我捡走**"(同一帧里另一发伤害先 _resolve_dmg 了)。
+##   ⇒ `_resolve_dmg` 顺手记下"这份类型是算给谁的"; 取用时目标对不上 = 捡了别人的。
+var _dt_owner = null
+var _dt_wrongowner: Dictionary = {}     # 归属不符(比 fresh 更严)的记账
+
+
+## 取用伤害类型。★返回值就是飘字要用的类型; 顺带把 fresh 消费掉。
+## 哨兵报告 —— 由 tests/verify_dmg_type_sentinel 调。
+func sentinel_report() -> Dictionary:
+	return _dt_stale.duplicate()
+
+## 分母。★memory [[fb-verify-check-can-fail]]: 报"0 分歧"前必须打印分母。
+func sentinel_total() -> int:
+	return _dt_total
+
+
+## 归属不符的记账(比 `_dt_stale` 更严: 连"捡了同帧别人刚算的类型"也算)。
+func sentinel_wrongowner() -> Dictionary:
+	return _dt_wrongowner.duplicate()
+
+
+## ★★不走 `_resolve_dmg` 但类型是确定的那些伤害, **一律用这个**声明类型, 别手写
+##   `battle._last_dmg_type = ...`。手写会漏掉 fresh / owner 两个记账位, 于是
+##   哨兵既看不出问题、也统计不准(2026-08-22 实测: 我自己修的几处就是这样进的"归属不符"名单)。
+##   典型场景: 弹道命中还原发射时的类型、冲击波扩张到才命中、%maxHp 的定额伤害。
+func set_dtype(t: String, victim) -> void:
+	battle._last_dmg_type = t
+	_dt_fresh = true
+	_dt_owner = victim
+
+## `is_raw` 的那些**不算**捡类型: 真伤飘字恒为白, 与 `_last_dmg_type` 无关(下面 `_dt` 里
+## 直接写死 "true")。不排掉的话哨兵会把海盗钩索/训龟大师这类纯真伤记成问题, 淹掉真的。
+func _take_dtype(who: String, is_raw: bool = false, victim = null) -> String:
+	if OS.has_environment("DMGSENTINEL"):
+		_dt_total += 1
+		if not is_raw and victim != null and not is_same(_dt_owner, victim):
+			_dt_wrongowner[who] = int(_dt_wrongowner.get(who, 0)) + 1
+	if not _dt_fresh and not is_raw and OS.has_environment("DMGSENTINEL"):
+		## ★标签要能【直接定位到那一行】。原来只记 "来源龟→目标龟", 结果每跑一轮
+		##   随机出来的阵容不同 ⇒ 名单每轮都变, 靠反复跑去凑齐是在赌。
+		##   `get_stack()` 在带调试器的运行里给出真实调用栈 ⇒ 一轮就拿到 文件:行号。
+		##   (导出版拿不到栈, 退回龟名标签; 哨兵本来就只在 DMGSENTINEL 下开。)
+		## 栈: [0]=_take_dtype [1]=_apply_damage_from 本身 [2]=真正的调用者。
+		## 再带上 [3] —— 因为有 `_apply_basic_hit_from` 这类薄包装, [2] 会停在包装上。
+		var _st: Array = get_stack()
+		var _tag: String = who
+		if _st.size() >= 3:
+			var _parts := PackedStringArray()
+			for _i in range(2, mini(4, _st.size())):
+				var _fr: Dictionary = _st[_i]
+				_parts.append("%s:%d" % [str(_fr.get("source", "?")).get_file(), int(_fr.get("line", 0))])
+			_tag = "%s  (%s)" % [" ← ".join(_parts), who]
+		_dt_stale[_tag] = int(_dt_stale.get(_tag, 0)) + 1
+	## ★★结构性保险(2026-08-22): 没人给这一发定类型时, **不许继承上一发别人的**。
+	##   继承 = 同一件效果这次跳红、下次跳蓝、暴击时跳紫, 玩家看到的是随机色
+	##   (用户原话:「有的时候物理伤害被跳成了蓝色数字」)。
+	##   回落到 `physical` 至少是**确定**的, 而且与 `VisualConstants.cls_for` 对未知类型
+	##   的既有回落一致(红)。真正该是魔法/真伤的那几处仍会被上面的哨兵点名, 逐个修到 0;
+	##   但在修完之前, 玩家不会再看到"看运气的颜色"。
+	##   ⚠ 这道保险**不能替代**哨兵 —— 它只保证确定性, 不保证正确性。
+	var _stale_now: bool = not _dt_fresh and not is_raw
+	_dt_fresh = false
+	return "physical" if _stale_now else battle._last_dmg_type
+
+## 伤害统计的分桶归属: 输出归攻击者、承受归目标, 按【真实伤害类型】分桶(不是按 col ——
+## col 是主题色, 大量物理攻击传偏蓝色, 按颜色判会把它们全算成法术)。
+## ★抽成独立函数: 它是纯记账, 与伤害结算零耦合(CLAUDE.md §5「不在 _sim_step 调用链上的
+##   不进主体」的同一条判据), 顺带让 _apply_damage_from 回到 250 行架构预算内。
+func _record_buckets(src, u: Dictionary, dmg: int, bkt: String, was_crit: bool) -> void:
+	if src is Dictionary and src.has("side") and not is_same(src, u):
+		src["_st_dealt"] = int(src.get("_st_dealt", 0)) + dmg
+		battle._st_add_type(src, "_st_dealt_by_type", bkt, dmg)
+		if was_crit:
+			src["_st_crit"] = int(src.get("_st_crit", 0)) + 1
+	u["_st_taken"] = int(u.get("_st_taken", 0)) + dmg
+	battle._st_add_type(u, "_st_taken_by_type", bkt, dmg)
+
+
 func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: String = "dot", is_self: bool = false, dot_accum: bool = false, mute_sfx: bool = false) -> void:
 	if u.get("_assembling", false):
 		return   # 机甲组装期免疫一切伤害。★这条路径(DoT/真伤)原先没有这个闸, 只有 _apply_damage_from 有 → DoT 能打穿组装免疫(2026-07-19)
@@ -100,7 +194,14 @@ func _apply_basic_hit_from(src: Dictionary, u: Dictionary, dmg: int, col: Color,
 	_apply_damage_from(src, u, dmg, col, extra_ls, raw, false, false, false, false, true)
 
 
+## ★★伤害类型在【函数第一行】就取走(`_dtv`) —— 本函数后面会跑 `_ink_link_transfer`
+##   (连笔: 受伤 30% 传导给连接对象)、`_staff_syn.add_mana`(法器涨法力可触发技能) 等
+##   **会自己打伤害**的逻辑; 那些嵌套伤害各自走一遍 `_resolve_dmg`, 等回到这里时
+##   全局 `_last_dmg_type` 早被改了 ⇒ 这一发的飘字捡到别人的颜色。
+##   2026-08-22 哨兵实测: 弹道那批修掉后剩的最后几发就是这个形状(连笔龟 line 在名单里)。
+##   取在第一行 = 拿到的就是【产生 dmg 那次 _resolve_dmg 写的类型】, 嵌套再多也偷不走。
 func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, extra_ls: float = 0.0, raw: bool = false, from_equip: bool = false, pre_crit: bool = false, no_dodge: bool = false, no_popup: bool = false, basic: bool = false) -> void:
+	var _dtv: String = _take_dtype(("%s→%s" % [str(src.get("id", "?")) if src is Dictionary else "-", str(u.get("id", "?"))]), raw, u)
 	battle._adf_ct += 1
 	if battle._adf_ct > 20000:                        # 防御: 一帧伤害调用爆炸(死亡链无限级联)→本帧后续伤害丢弃防卡死(用户2026-07-19卡死猎手)
 		if not battle._adf_warned:
@@ -197,14 +298,10 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	if u.get("_review_dummy", false): u["hp"] = u["maxHp"]   # 训练靶: 受击即回满, 打不死不结算(看完整)
 	if not from_equip and d > 0.0: battle._line_sys._ink_link_transfer(u, d)   # 连笔: 受伤30%以真实伤害传导给连接对象(附录B-05)
 	# §STATS: 战斗统计 — 输出归攻击者/承受归目标 (用显示数 dmg); 按伤害类型分桶(战中分段条用) + 暴击计数
-	var _bkt: String = ("tru" if raw else ("mag" if battle._last_dmg_type == "magic" else "phy"))   # 伤害分桶=真实类型(battle._last_dmg_type/raw), 非col: col是主题色·大量物理攻击传偏蓝色(忍者冲击#9fe8ff/#cfd8e8等)→原按col.b>col.r误判成法术=统计条+飘字全蓝(用户2026-07-11抓出)
-	if src is Dictionary and src.has("side") and not is_same(src, u):
-		src["_st_dealt"] = int(src.get("_st_dealt", 0)) + dmg
-		battle._st_add_type(src, "_st_dealt_by_type", _bkt, dmg)
-		if was_crit:
-			src["_st_crit"] = int(src.get("_st_crit", 0)) + 1
-	u["_st_taken"] = int(u.get("_st_taken", 0)) + dmg
-	battle._st_add_type(u, "_st_taken_by_type", _bkt, dmg)
+	## ★哨兵在这里取用类型: 谁在没设类型的情况下打伤害, 这里会记一笔(见 _take_dtype)。
+	##   标签用【来源单位 id + 目标 id】—— 足够把调用点定位到具体的龟/装备。
+	var _bkt: String = ("tru" if raw else ("mag" if _dtv == "magic" else "phy"))   # 伤害分桶=真实类型(battle._last_dmg_type/raw), 非col: col是主题色·大量物理攻击传偏蓝色(忍者冲击#9fe8ff/#cfd8e8等)→原按col.b>col.r误判成法术=统计条+飘字全蓝(用户2026-07-11抓出)
+	_record_buckets(src, u, dmg, _bkt, was_crit)
 	# headless 亡灵: 首次濒死→5秒内HP不降到1以下(免死), 5秒后正常死
 	if u["id"] == "headless" and u["hp"] <= 0.0 and not u.get("undead_used", false):
 		u["undead_used"] = true; u["deathfloor_until"] = battle._t + 5.0
@@ -212,7 +309,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		battle._headless_sys._headless_undead_vfx(u)                                    # 免死金骨光环5秒(2026-07-17)
 	if battle._t < float(u.get("deathfloor_until", 0.0)):
 		u["hp"] = maxf(1.0, u["hp"])
-	var _dt: String = "true" if raw else battle._last_dmg_type   # 飘字类型=真实伤害类型(_resolve_dmg设的_last_dmg_type·即时伤害对); 远程弹道在飞时会被别的伤害覆写→弹道在_step_projectiles命中前用捕获的pr.dtype还原(见那里)
+	var _dt: String = "true" if raw else _dtv   # 飘字类型=真实伤害类型(_resolve_dmg设的_last_dmg_type·即时伤害对); 远程弹道在飞时会被别的伤害覆写→弹道在_step_projectiles命中前用捕获的pr.dtype还原(见那里)
 	var _ncol: Color = battle._VC.color_of(battle._VC.cls_for("damage", _dt, was_crit))   # 飘字按伤害类型统一取色 (物红/魔蓝/真白, 1:1 回合制)
 	var _jdir: float = 0.0
 	if src is Dictionary and not is_same(src, u) and src.has("pos"):
@@ -267,7 +364,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	battle._vfx._flash(u)
 	battle._vfx._impact(u, dmg, "auto")
 	# 来源累积 ----
-	src["dmg_dealt"] += float(dmg)
+	src["dmg_dealt"] = float(src.get("dmg_dealt", 0.0)) + float(dmg)   # ★.get 不是 +=: 合成来源(触手ghost等)没这个键, += 缺键=运行时错误⇒本函数当场中止(后面吸血/统计/死亡全不跑)而测试照样 ALL PASS
 	# 吸血 (lifesteal 基础 + buff + 技能 extra) — silent: 高频回血不刷治疗音
 	var ls: float = src.get("lifesteal", 0.0) + src.get("ls_bonus", 0.0) + extra_ls
 	if ls > 0.0 and src["alive"]:

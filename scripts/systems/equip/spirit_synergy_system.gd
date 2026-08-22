@@ -63,6 +63,11 @@ var _t_slap := 0.0
 ## 【拍击层数】key = "side|idx" —— **每根触手各自一份**(用户 2026-08-20 拍板)。
 ## 无上限(用户:「无上限」)。产层: 每 SLAP_PERIOD 秒 +1; 闪避成功再 +1(5 件起)。
 var _stacks: Dictionary = {}
+## 拍击结算账本(探针): queued=排了几次延时结算 / dropped=被 is_striking 闸门丢掉
+## / resolved=真跑了结算 / zero_hit=跑了但一个都没打到。用户 2026-08-22:
+## 「有的时候触手打中没任何伤害」—— 这三个数分别对应三种完全不同的根因,
+## 不数清楚就只能猜。无条件记账(不采样), 正式对局开销=四次整数加。
+var _pk: Dictionary = {}
 
 
 func _init(b) -> void:
@@ -109,10 +114,18 @@ func _foe_in_range(side: String, idx: int) -> bool:
 	var tv = battle._tentacle_vfx
 	var rng: float = float(tv.attack_range_2d)
 	var origin: Vector2 = tv.root_pos(side, idx)
-	for u in battle._units:
+	## ★★2026-08-22 用户:「这触手很多时候该攻击的时候又不攻击，比如机甲，龟蛋破蛋」。
+	## 【病根】这里原来手写 `alive + 阵营`, 而 `_slap` 选靶走 `_pick_enemies_of_side`
+	##   (§PICK-TARGET 闸门: 排除【围栏未破的蛋】【机甲 5 秒组装期 untargetable】【训龟大师】)。
+	##   两个谓词不一样 ⇒ 场上只剩蛋/组装中机甲时:
+	##     · 这里说"有敌人" ⇒ tick 扣掉层数并调 `_slap`;
+	##     · `_slap` 拿到的名单是空的 ⇒ return 0, **一下都没拍**;
+	##     · `_reloc_tick` 也因为这里说"有敌人"而**不搬家** ⇒ 触手杵着空烧层数。
+	##   玩家看到的就是「该攻击的时候不攻击」。
+	## 【修法】同一个问题只留一份实现(memory [[fb-hand-rolled-copies-drift]]):
+	##   判据从"活着的敌人"改成"**打得着的**敌人", 与 `_slap` 用同一份名单。
+	for u in battle._targeting._pick_enemies_of_side(side):
 		if not (u is Dictionary) or not u.get("alive", false):
-			continue
-		if str(u.get("side", "")) == side:
 			continue
 		if origin.distance_squared_to(Vector2(u["pos"])) <= rng * rng:
 			return true
@@ -156,8 +169,12 @@ func tick(delta: float) -> void:
 				continue
 			if not _foe_in_range(s, i):
 				continue
-			_stacks[_sk(s, i)] = stack_of(s, i) - 1
-			_slap(s, i, 1.0)
+			## ★★只有【真的拍出去了】才扣层(2026-08-22)。
+			##   原来是先扣再拍, 而 `_slap` 有好几条 `return 0` 的早退路径
+			##   (射程内没有【可选中】的敌人等) ⇒ 层数白烧、一下都没打。
+			##   用户:「这触手很多时候该攻击的时候又不攻击」。`_slap` 不依赖层数, 换序安全。
+			if _slap(s, i, 1.0) > 0:
+				_stacks[_sk(s, i)] = stack_of(s, i) - 1
 
 
 ## 【转移阵地】每帧看每根触手射程内有没有敌人；连续 `RELOC_IDLE_T` 秒没有 → 搬家。
@@ -258,20 +275,21 @@ func _slap(side: String, idx: int, share: float) -> int:
 	##     所以"看到预警走开"真的有用。这是方案 A 与方案 B 的唯一区别。
 	## ⚠ 代价: 触手会变弱(1.13 秒足够走出 107~136 码, 而带子半宽只有 120)。
 	##   这是**有意的平衡改动**, 不是副作用。
-	battle._tentacle_vfx.strike(side, idx, Vector2(aim["pos"]), share)
-	var _serial: int = battle._tentacle_vfx.strike_serial(side, idx)
-	var _delay: float = battle._tentacle_vfx.hit_delay(share)
-	if _delay <= 0.0:
-		# 闪避追击走点刺, 视觉命中就在第 0 帧 ⇒ 立即结算(它本来就是对的)
-		return _slap_resolve(side, origin, dir, rng, mult)
-	## ★走 `_queue_shots` 而不是 tween: 它按**钳制后的 sim delta** 推进、尊重时停,
-	##   且换路时 `dual_lane_flow` 会 `_pending_shots.clear()` ⇒ 无跨路残留。
-	battle._queue_shots(1, 0.0, func() -> void:
-		## 期间可能被撤回/搬家/被新指令覆盖 —— 那时候不该再出伤
-		if not battle._tentacle_vfx.is_striking(side, idx, _serial):
-			return
-		_slap_resolve(side, origin, dir, rng, mult), null, "", Callable(), _delay)
-	## 返回的是**按 t=0 站位预计会打中几个** —— 真实命中数要等 `_delay` 之后才知道。
+	## ★★2026-08-22 改: 伤害不再另起一条延时队列, 直接挂在【梢端触地】那一刻。
+	##   旧做法(_queue_shots + is_striking 复核)是**第二条时钟**, 与演出时钟只有 0.15 秒
+	##   余量、且时停时两者冻结规则不同 ⇒ 探针实测 60 秒一场有 13% 的拍击【完整演出、
+	##   零伤害】(用户 2026-08-22:「有的时候触手打中没任何伤害」)。
+	##   现在演出与结算共用同一个一次性标志, 结构上不可能错开; 被新指令覆盖时
+	##   `strike()` 会换掉回调, 老伤害自然不发生 —— 原 serial 闸门的语义原样保留。
+	_pk["queued"] = int(_pk.get("queued", 0)) + 1
+	var _on_touch := func() -> void:
+		_pk["resolved"] = int(_pk.get("resolved", 0)) + 1
+		if _slap_resolve(side, origin, dir, rng, mult) <= 0:
+			_pk["zero_hit"] = int(_pk.get("zero_hit", 0)) + 1
+	## 闪避追击(share<0.9)走点刺: `strike()` 置 ST_SLAM 且 touch_ts=0 ⇒ 下一帧 tick 即触地结算,
+	## 与正常拍击【同一条路】, 不再有"第 0 帧特判"这条第二实现。
+	battle._tentacle_vfx.strike(side, idx, Vector2(aim["pos"]), share, _on_touch)
+	## 返回的是**按 t=0 站位预计会打中几个** —— 真实命中数要等触地才知道。
 	return _band_foes(side, origin, dir, rng).size()
 
 
@@ -302,25 +320,40 @@ func _band_foes(side: String, origin: Vector2, dir: Vector2, rng: float) -> Arra
 	return out
 
 
+## 拍击的【伤害来源】。
+##
+## ★★2026-08-22 重写。触手是**无敌**的, 会活过携带者的死亡 ⇒ `_any_carrier` 返回 null
+##   在真实对局里**经常**发生。上一版为此手搓了一个 ghost 字典当来源, 结果:
+##     · 缺 `dmg_dealt` ⇒ `+=` 运行时错误, 函数当场中止(后面吸血/统计/死亡全不跑);
+##     · 更糟的是**反伤**会把它当【受害者】打回来 ⇒ 缺 `shield`/`id`, smoke 一场刷 11 条红。
+##   手搓精简单位这条路仓库里已经栽过一次(battle_vfx.gd:881 的注释就是那次)。
+##   ⇒ 不再造合成单位: 没有活着的携带者就退回**本方任一存活单位**当来源
+##     (它是真单位, 每个键都齐)。一个活人都没有 = 这一侧已被团灭, 那时不打也罢。
+func _slap_source(side: String):
+	var c = _any_carrier(side)
+	if c is Dictionary:
+		return c
+	for u in battle._units:
+		if u is Dictionary and u.get("alive", false) and str(u.get("side", "")) == side:
+			return u
+	return null
+
+
 ## 真正结算一次拍击的伤害。返回打中了几个。
 func _slap_resolve(side: String, origin: Vector2, dir: Vector2, rng: float, mult: float) -> int:
-	var shooter = _any_carrier(side)
+	var shooter = _slap_source(side)
+	if not (shooter is Dictionary):
+		return 0                      # 这一侧一个活人都没有 ⇒ 胜负已定, 不必再打
 	var hits := 0
 	for f in _band_foes(side, origin, dir, rng):
 		## ★★2026-08-20 用户:「这是物理伤害就要按规则走啊」
 		##   原来这条**不走 `_resolve_dmg`** ⇒ 既不吃护甲、也不吃魔抗、也不是真伤,
 		##   而文案(phase2_types.gd:125)写的是「物理伤害」—— 代码从来没落实过。
-		## ★顺带修掉第二个 bug: `_apply_damage_from` 的 `col` 参数**全函数体零引用**,
-		##   飘字颜色一律查全局 `_last_dmg_type`; 而这条不写那个字段 ⇒ 触手的伤害数字
-		##   **继承上一次别的伤害留下的类型**, 打出来是红是蓝是白看运气。
 		##   走 `_resolve_dmg(..., false)` 后 `_last_dmg_type` 自动是物理 ⇒ 飘字自动是规则里的红。
+		##   (`col` 参数在两条伤害路里**都没被读**, 颜色一律查全局 —— 传什么都不影响。)
 		var base: float = float(f.get("maxHp", 0.0)) * HIT_HP_PCT + HIT_FLAT
-		if shooter is Dictionary:
-			var dmg: int = maxi(1, int(battle._resolve_dmg(shooter, base, f, false) * mult))
-			battle._damage._apply_damage_from(shooter, f, dmg, Color("#b388ff"))
-		else:
-			## 没有携带者(理论上不该发生)时退回不经减免的老路, 免得静默变 0
-			battle._damage._apply_damage(f, maxi(1, int(base * mult)), Color("#b388ff"))
+		var dmg: int = maxi(1, int(battle._resolve_dmg(shooter, base, f, false) * mult))
+		battle._damage._apply_damage_from(shooter, f, dmg, Color("#b388ff"))
 		## ★2026-08-21: 逐个被命中者各来一次撞击表现。
 		##   在这里调而不是在演出侧, 是因为**只有这里知道带上真正扫到了谁**
 		##   (名单是命中那一刻由 `_band_foes` 重算的)。

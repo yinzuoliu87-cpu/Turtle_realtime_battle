@@ -100,18 +100,23 @@ func _two_head_hammer(u: Dictionary, tgt: Dictionary) -> void:
 	var dmg: int = battle._atk_dmg(u, 1.4, tgt)
 	var tw = battle._reg_tween()
 	tw.tween_method(_two_head_hammer_arc.bind(u, from2d, land2d), 0.0, 1.0, 0.42)
-	tw.tween_callback(_two_head_hammer_land.bind(u, tgt, land2d, dmg))
+	tw.tween_callback(_two_head_hammer_land.bind(u, tgt, land2d, dmg, battle._last_dmg_type))   # 捕获举锤时的伤害类型(空中会被覆写)
 
 func _two_head_hammer_arc(pf: float, u: Dictionary, from2d: Vector2, land2d: Vector2) -> void:
 	u["pos"] = from2d.lerp(land2d, pf)
 	u["_slam_voff"] = Vector3(0.0, sin(pf * PI) * 4.2, 0.0)     # 跳起弧线(render偏移·峰高4.2)
 
-func _two_head_hammer_land(u: Dictionary, tgt: Dictionary, at2d: Vector2, dmg: int) -> void:
+## `dt` = 举锤那一刻 `_resolve_dmg` 定下的伤害类型。锤子在空中飞 ~1.5 秒, 期间全局
+## `battle._last_dmg_type` 会被场上任何一发伤害覆写 ⇒ 落地时飘字捡别人的颜色
+## (哨兵 DMGSENTINEL 实测抓到)。与弹道 `pr["dtype"]` 同一套办法: 发射时捕获、命中时还原。
+func _two_head_hammer_land(u: Dictionary, tgt: Dictionary, at2d: Vector2, dmg: int, dt: String = "") -> void:
 	u["_slam_voff"] = Vector3.ZERO
 	u["_slam"] = false
 	u["pos"] = at2d
 	_two_head_slam_impact(at2d)                                # 高质量砸地冲击(AI星爆+三层环+尘+岩屑+顿帧+大震屏·用户2026-07-11)
 	if tgt.get("alive", false):
+		if dt != "":
+			battle._damage.set_dtype(dt, tgt)
 		battle._damage._apply_damage_from(u, tgt, dmg, Color("#ffb05c"))
 		battle._damage._grant_shield(u, dmg * 0.5, 4.0)                        # 获造成伤害50%护盾(4秒)
 		battle._vfx._flash(tgt)

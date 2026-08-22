@@ -2868,12 +2868,12 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		return
 	if u["id"] == "headless":       # 撕咬: 1A物理(红) + 3%目标最大生命魔法(蓝·按UI规则); 灵魂强化窗口(用户2026-07-17机制大改): 下3次攻击各额外0.5A魔法+10%当前生命魔法(蓝)+牙齿闭合, 第3下→镰刀横扫
 		_damage._apply_damage_from(u, tgt, _atk_dmg(u, 1.0, tgt), Color("#ff4444"))
-		if tgt.get("alive", false): _damage._apply_damage_from(u, tgt, int(tgt["maxHp"] * 0.03), Color("#9bdcff"))   # 3%maxHp魔法(蓝)
+		if tgt.get("alive", false): _damage.set_dtype("magic", tgt); _damage._apply_damage_from(u, tgt, int(tgt["maxHp"] * 0.03), Color("#9bdcff"))   # 3%maxHp魔法(蓝)·★只设类型不走_resolve_dmg: 数值(不吃魔抗)由 verify_turtle_balance_r6 焊着, 这里只修"继承上一行物理红"的颜色bug(2026-08-22哨兵抓出)
 		if int(u.get("headless_soul_stacks", 0)) > 0:              # 灵魂强化: 下3次攻击各附加(用户2026-07-17)
 			u["headless_soul_stacks"] = int(u["headless_soul_stacks"]) - 1
 			if tgt.get("alive", false):
 				_damage._apply_damage_from(u, tgt, _atk_dmg(u, 0.5, tgt, true), Color("#9bdcff"))   # 额外0.5A魔法
-				_damage._apply_damage_from(u, tgt, int(tgt["hp"] * 0.10), Color("#9bdcff"))          # 额外10%当前生命魔法
+				_damage.set_dtype("magic", tgt); _damage._apply_damage_from(u, tgt, int(tgt["hp"] * 0.10), Color("#9bdcff"))          # 额外10%当前生命魔法(同上·只设类型不改数值)
 				_headless_sys._headless_soul_bite(tgt)                            # 像素牙齿闭合命中特效
 			if int(u["headless_soul_stacks"]) <= 0:
 				_headless_sys._headless_scythe(u)                                 # 第3下打完→蓄力→镰刀横扫
@@ -3899,7 +3899,7 @@ func _weapon_flyslash(src: Dictionary, tgt: Dictionary, dmg: int, col: Color) ->
 	p.pixel_size = 0.055
 	p.position = _world_pos(start2d, 1.0)
 	_world.add_child(p)
-	_projectiles.append({
+	_ballistics._push_proj({
 		"node": p, "from": _world_pos(start2d, 1.0), "tgt": tgt, "dmg": dmg, "col": col,
 		"src": src, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 520.0, 0.8, 2.6),   # 飞行速度: 降60%后再减半(用户2026-07-19: /2600→/1040→/520)
 		"flyslash": true, "wisp_dir": true, "o2d": start2d,
@@ -4357,7 +4357,7 @@ func _lstrike_frame(spr: Sprite3D, f: int) -> void:
 		spr.frame = clampi(f, 0, maxi(0, int(spr.hframes) * int(spr.vframes) - 1))
 
 func _resolve_dmg(u: Dictionary, base: float, tgt: Dictionary, magic: bool) -> int:
-	_last_dmg_type = "magic" if magic else "physical"   # 记类型供飘字取色
+	_last_dmg_type = "magic" if magic else "physical"; _damage._dt_fresh = true; _damage._dt_owner = tgt   # 记类型供飘字取色(+哨兵置新鲜/记归属: 这份类型是算给谁的)
 	var eff_crit: float = minf(float(u["crit"]), 1.0)
 	_last_atk_crit = _battle_rng.randf() < eff_crit
 	if _last_atk_crit:
@@ -4465,7 +4465,7 @@ func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   #
 			if not hit and bear.frame >= 3:
 				hit = true
 				if tgt.get("alive", false):
-					_last_dmg_type = "physical"   # 小熊走路期全局类型会被别的伤害覆写→结算前复位(飘字色/统计分桶)
+					_last_dmg_type = "physical"; _damage._dt_fresh = true   # 小熊走路期全局类型会被别的伤害覆写→结算前复位(飘字色/统计分桶)
 					_damage._apply_damage_from(u, tgt, dmg, Color("#ffb0c8"), 0.0, false, true)
 					_damage._knockback(u, tgt, 60.0, 1.6, 1.9)   # 踢一脚: 上抛×1.6/横推×1.9
 	# 小熊消失 (淡出)
@@ -4569,7 +4569,7 @@ func _spawn_eq_bolt(src: Dictionary, tgt: Dictionary, dmg: int, tex_path: String
 	else:
 		pd["wisp_dir"] = true             # 子弹/弩矢: 弹头朝目标屏幕方向(等距下不歪)
 		pd["wisp_off"] = PI / 2.0         # bullet/crossbow-bolt 都是横向贴图(+X朝前)
-	_projectiles.append(pd)
+	_ballistics._push_proj(pd)
 
 # 激光束: a→b 一道立起来的发光带(叠加混合), 快速淡出. 用于激光手枪/狙击曳光
 func _laser_beam(a2d: Vector2, b2d: Vector2, col: Color, half_w: float = 0.16, dur: float = 0.2, h: float = 1.0) -> void:
@@ -6634,7 +6634,7 @@ func _throw_gold_coin(src: Dictionary, tgt: Dictionary) -> void:
 	p.position = world_from
 	_world.add_child(p)
 	var dur := clampf(start2d.distance_to(tgt["pos"]) / 650.0, 0.18, 0.6)
-	_projectiles.append({
+	_ballistics._push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "dmg": _atk_dmg(src, 0.30, tgt, false),
 		"col": Color("#ff4444"), "src": src, "t": 0.0, "dur": dur, "basic_onhit": false,
 		"coin_true": int(src["atk"] * 0.30),   # 梭哈每枚 0.18+0.18 → 0.3+0.3(用户2026-07-29 第五轮)
@@ -6984,7 +6984,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		if is_instance_valid(_hspr): _hspr.modulate = Color(1, 1, 1)   # 还原红光染色
 		_vfx._float_text(u["pos"] + Vector2(0, -48), "归队", Color("#8a93a0"))
 	# --- 龟壳·潜影(暗影主被动·选中暗影才有): 6秒未受伤→进入隐身 ---
-	if u["id"] == "shell" and not u.get("shell_stealth", false) and _t - float(u.get("shell_last_dmg_t", 0.0)) >= 6.0 and "shellShadow" in _chosen_skill_types(u["id"], u["side"] == "left"):
+	if u["id"] == "shell" and not u.get("shell_stealth", false) and _t - float(u.get("shell_last_dmg_t", 0.0)) >= ShellSystem.STEALTH_IDLE_SEC and "shellShadow" in _chosen_skill_types(u["id"], u["side"] == "left"):
 		_shell_sys._shell_enter_stealth(u)
 	# --- 小龟·不屈(龟盾融入被动): 每6秒强化下次普攻(在_on_basic_hit消费=0.7A+20%已损+击飞+盾) ---
 	if u["id"] == "basic":
@@ -7117,7 +7117,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 				for _bh in range(2): _bubble_sys._bubble_rise(u["pos"])   # 泡沫被动proc: 自身回血泡泡(用户2026-07-14)
 				var bt = _targeting._nearest_enemy(u)             # 修: 随机敌→最近敌(封板)
 				if bt != null:
-					_damage._apply_damage_from(u, bt, int(_mitigate(u, bs * 0.10, bt, true)), Color("#aef1ff"))   # 修: 35%真伤→10%化魔法(吃魔抗·封板)
+					_damage.set_dtype("magic", bt); _damage._apply_damage_from(u, bt, int(_mitigate(u, bs * 0.10, bt, true)), Color("#aef1ff"))   # 修: 35%真伤→10%化魔法(吃魔抗·封板)·★类型要自己设: 走_mitigate不走_resolve_dmg⇒原来跳的是上一发别人的颜色(2026-08-22哨兵抓出)
 					_fly_vfx("res://assets/sprites/skills/bubble-1.png", u["pos"], bt["pos"], 46.0, 0.34, 1.0)   # 泡泡弹飞向最近敌
 					_bubble_sys._bubble_rise(bt["pos"]); _bubble_sys._bubble_rise(bt["pos"])   # 命中泡沫破
 				u["bubble_store"] = bs * 0.80          # 修: 消耗50%→共消耗20%(10%伤+10%治·封板)
@@ -7282,7 +7282,7 @@ func _tick_cyber_drones(u: Dictionary, delta: float) -> void:   # 浮游炮纯�
 				p.position = spr.position
 				_world.add_child(p)
 				var dmg: int = _resolve_dmg(u, u["atk"] * CyberSystem.DRONE_SHOT_COEF, tgt, false)   # 弹伤=赛博ATK×4%(系数与来由见 CyberSystem.DRONE_SHOT_COEF)
-				_projectiles.append({"node": p, "from": p.position, "tgt": tgt, "dmg": maxi(1, dmg), "col": Color("#9fe8ff"),
+				_ballistics._push_proj({"node": p, "from": p.position, "tgt": tgt, "dmg": maxi(1, dmg), "col": Color("#9fe8ff"),
 					"src": u, "t": 0.0, "dur": clampf((u["pos"] - tgt["pos"]).length() / 900.0, 0.15, 0.5),
 					"basic_onhit": false, "oriented": false, "card_spin": false, "dtype": "physical", "drone_shot": true})
 
@@ -7611,7 +7611,7 @@ func _spawn_fireball(src: Dictionary, tgt: Dictionary, dmg: int, burn: int) -> v
 	var from := _world_pos(src["pos"], 1.0)
 	p.position = from
 	_world.add_child(p)
-	_projectiles.append({
+	_ballistics._push_proj({
 		"node": p, "from": from, "tgt": tgt, "dmg": dmg, "col": Color("#ff7a33"),
 		"src": src, "t": 0.0, "dur": clampf(src["pos"].distance_to(tgt["pos"]) / 600.0, 0.35, 0.7),
 		"arc": 2.2, "fireball": true, "fire_burst": burn,
@@ -7629,7 +7629,7 @@ func _spawn_bamboo_arrow(src: Dictionary, tgt: Dictionary, dmg: int, grow: float
 	var from := _world_pos(src["pos"], 1.0)
 	p.position = from
 	_world.add_child(p)
-	_projectiles.append({
+	_ballistics._push_proj({
 		"node": p, "from": from, "tgt": tgt, "dmg": dmg, "col": Color("#a8ffb0"),
 		"src": src, "t": 0.0, "dur": clampf(src["pos"].distance_to(tgt["pos"]) / 850.0, 0.14, 0.5),
 		"bamboo": true, "wisp_dir": true, "wisp_off": PI / 2.0, "bamboo_grow": grow,   # bamboo-arrow.png 是96x24横向贴图(+X朝前)
