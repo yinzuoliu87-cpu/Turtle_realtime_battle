@@ -187,6 +187,41 @@ func _ready() -> void:
 		absf(float(ghost["hp"]) - g_hp0) < 0.01,
 		"hp %.0f → %.0f" % [g_hp0, float(ghost["hp"])])
 
+	# ══════════════════════════════════════════════════════════
+	#  ④ 场上只剩【打不着的】敌人(未破壳的蛋 / 组装中的机甲):
+	#     不许空烧拍击层数, 也不许当作"射程内有敌人"
+	# ══════════════════════════════════════════════════════════
+	## 用户 2026-08-22:「这触手很多时候该攻击的时候又不攻击, 比如机甲, 龟蛋破蛋」。
+	## 【病根】判断"射程内有没有敌人"是手写的 `alive + 阵营`, 而 `_slap` 选靶走
+	##   `_pick_enemies_of_side`(§PICK-TARGET: 排除围栏未破的蛋、机甲 5 秒组装期、训龟大师)。
+	##   两个谓词不一样 ⇒ 只剩这两种敌人时: 前者说"有敌人"⇒ tick 扣层并调 `_slap`,
+	##   `_slap` 拿到空名单直接 return 0 ⇒ 一下没打; `_reloc_tick` 也因"有敌人"而不搬家。
+	##   ⇒ 触手杵在原地, 一边空烧层数一边什么都不做。
+	print("── ④ 只剩打不着的敌人: 不空烧层数 ──")
+	for u in _s._units.duplicate():
+		if str(u.get("side", "")) == "right":
+			_s._units.erase(u)
+	var egg := _dummy("right", origin + Vector2(200.0, 0.0))
+	egg["_egg_fence"] = true                     # 围栏未破: 可以被 AoE 波及, 但不可被主动索敌
+	## ★分母①: 它确实在射程内 —— 不先证明这点, 下面"没打"可能只是因为它站太远
+	_ok("④ ★分母: 蛋就在触手射程内",
+		origin.distance_to(Vector2(egg["pos"])) <= float(tv.attack_range_2d),
+		"距离 %.0f ≤ 射程 %.0f" % [origin.distance_to(Vector2(egg["pos"])), float(tv.attack_range_2d)])
+	## ★分母②: 它确实【打不着】(闸门真的把它排除了), 否则这条用例测的是别的东西
+	var pickable := false
+	for f in _s._targeting._pick_enemies_of_side("left"):
+		if is_same(f, egg):
+			pickable = true
+	_ok("④ ★分母: 蛋确实被选靶闸门排除(不可主动索敌)", not pickable)
+	## 攒一层再 tick —— 修之前这一层会被吃掉
+	syn._stacks[syn._sk("left", 0)] = 1
+	_stand_up("left", 0)
+	syn.tick(0.05)
+	_ok("④ ★★只剩打不着的敌人时【不许扣层】(修之前: 层数没了、一下也没打)",
+		syn.stack_of("left", 0) == 1, "剩 %d 层" % syn.stack_of("left", 0))
+	_ok("④ ★★也不算作\"射程内有敌人\"(否则触手永远不会搬家去够得着的地方)",
+		not syn._foe_in_range("left", 0))
+
 	_s.queue_free()
 	await get_tree().process_frame
 	print("")

@@ -754,6 +754,14 @@ func is_striking(side: String, idx: int, serial: int) -> bool:
 
 
 func tick(delta: float) -> void:
+	## ★★拆场守卫放在【入口】而不是某一处调用点。
+	##   触手每帧要读写一堆 3D 节点(网格/预警带/命中演出)的 global_transform;
+	##   战斗场被释放的那一帧 sim 仍可能再跑一次 tick ⇒
+	##   `Condition "!is_inside_tree()" is true. Returning: Transform3D()`。
+	##   2026-08-22: 我第一版只在触地回调前挡了一道, smoke 仍**间歇**红(gate7 绿 gate8 红)——
+	##   挡一个调用点治不了"整棵树都不在了"这件事。世界不在树上 = 这一帧什么都别做。
+	if battle._world == null or not is_instance_valid(battle._world) or not battle._world.is_inside_tree():
+		return
 	for k in _tents.keys():
 		var t: Dictionary = _tents[k]
 		t["ts"] = float(t["ts"]) + delta
