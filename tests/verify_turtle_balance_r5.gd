@@ -174,7 +174,8 @@ func _buffs() -> void:
 	_chk("④ 碎晶旧值 0.8/0.3 已消失",
 		not cr.contains("const BURST_MAGIC := 0.8") and not cr.contains("const BURST_TRUE := 0.3"))
 	_chk("④ 水晶刺 = %.1fA 真实(原零伤害)" % WANT_SPIKE_TRUE,
-		cr.contains('uu["atk"] * %.1f' % WANT_SPIKE_TRUE))
+		## ★比【常量的值】不比源码字面串(2026-08-22 根除已提成具名常量)
+		is_equal_approx(CrystalSystem.SPIKE_TRUE_COEF, WANT_SPIKE_TRUE))
 
 
 ## ⑤ 两处「本轮故意不动」—— 它们是下一轮的判据, 必须保证没被顺手改掉

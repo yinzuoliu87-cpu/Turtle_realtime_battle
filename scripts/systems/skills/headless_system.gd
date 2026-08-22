@@ -481,8 +481,19 @@ func _sk_headless_fear(u: Dictionary, _tgt = null) -> void:      # 无头·恐�
 		battle._damage._stun(o, 3.0, "_sk_headless_fear")
 		_headless_fear_mark(o)
 
+## ★★2026-08-22 文案根除: 万千触须这一组原来全是函数体里的裸字面量。
+const TENDRIL_RADIUS := 1500.0    # 无差别命中半径(码)
+const TENDRIL_LIFESTEAL := 0.22   # 本次施法额外 + 生命偷取
+const TENDRIL_PASS_SEC := 0.3     # 伸出/穿过 在施法后第几秒
+const TENDRIL_DETACH_SEC := 3.0   # 收回/脱离 在施法后第几秒
+const TENDRIL_SELF_STUN := 4.0    # 自身硬控全程(秒)
+const TENDRIL_PASS_FOE := 1.0     # 穿过时 对敌 ×ATK
+const TENDRIL_PASS_ALLY := 0.5    # 穿过时 对友 ×ATK
+const TENDRIL_DETACH_FOE := 1.5   # 收回时 对敌 ×ATK
+const TENDRIL_DETACH_ALLY := 0.5  # 收回时 对友 ×ATK
+
 func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万千触须(封板·160龟能·虐杀原形毁灭者Q1): 1500码内无差别触须(用户2026-07-19; 原为全场)·伸0.3s→停→收3.0s·自身硬控·+22%吸血; 2026-07-17演出: 起手紫黑气爆+裂纹环→100根触须朝上半球随机方向爆出布满全场(Q9"特效得布满")波前由近及远爆出→痉挛定格→3.0s撕扯缩回+吸血红珠回流
-	battle._damage._stun(u, 4.0, "_sk_headless_tendrils", true)   # 自身硬控全程(施法动作·亡灵拉全场自己也搭进去)
+	battle._damage._stun(u, TENDRIL_SELF_STUN, "_sk_headless_tendrils", true)   # 自身硬控全程(施法动作·亡灵拉全场自己也搭进去)
 	var center: Vector2 = u["pos"]
 	var uu: Dictionary = u
 	# 用户2026-07-17: 中心一个病毒状黑色球体随触须爆发脉动(变大变小)
@@ -542,28 +553,28 @@ func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万�
 	var pass_fn = func():                                      # 伸/穿过(≈0.3s铺满): 无差别 敌1A+眩晕 / 友0.5A+眩晕(刷新不叠)
 		for o in battle._units:
 			if not o.get("alive", false) or is_same(o, uu): continue
-			if (o["pos"] as Vector2).distance_to(center) > 1500.0: continue   # 射程1500码(用户2026-07-19; 原为全场无差别)
-			var sc: float = 1.0 if battle._is_hostile(uu, o) else 0.5
-			battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, sc, o), Color("#9b3bff"), 0.22)
+			if (o["pos"] as Vector2).distance_to(center) > TENDRIL_RADIUS: continue   # 射程1500码(用户2026-07-19; 原为全场无差别)
+			var sc: float = TENDRIL_PASS_FOE if battle._is_hostile(uu, o) else TENDRIL_PASS_ALLY
+			battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, sc, o), Color("#9b3bff"), TENDRIL_LIFESTEAL)
 			if not o.get("_eggImmune", false):
 				battle._damage._stun(o, 2.7, "_sk_headless_tendrils", true)   # 眩晕持续到脱离
 				o["_tendril_stun"] = true
 			_headless_tendril_shoot(center, ((o["pos"] as Vector2) - center).normalized() if ((o["pos"] as Vector2) - center).length() > 1.0 else Vector2.RIGHT, deg_to_rad(18.0), maxf(90.0, (o["pos"] as Vector2).distance_to(center)), true, 0.0, 2.4)   # 命中者: 从龟身甩一根粗触须缠住
 			if battle._is_hostile(uu, o): _headless_drain_dot(o["pos"], uu)   # 吸血红珠回流
-	battle._pending_shots.append({"delay": 0.3, "fn": pass_fn, "src": u})
+	battle._pending_shots.append({"delay": TENDRIL_PASS_SEC, "fn": pass_fn, "src": u})
 	var detach_fn = func():                                    # 收/脱离(≈3.0s): 无差别 敌1.5A / 友0.5A + 回复行动(解眩晕)
 		battle._shake(0.12)
 		for o in battle._units:
 			if not o.get("alive", false) or is_same(o, uu): continue
-			if (o["pos"] as Vector2).distance_to(center) > 1500.0: continue   # 射程1500码(用户2026-07-19; 原为全场无差别)
-			var sc: float = 1.5 if battle._is_hostile(uu, o) else 0.5
-			battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, sc, o), Color("#ff3b6b"), 0.22)
+			if (o["pos"] as Vector2).distance_to(center) > TENDRIL_RADIUS: continue   # 射程1500码(用户2026-07-19; 原为全场无差别)
+			var sc: float = TENDRIL_DETACH_FOE if battle._is_hostile(uu, o) else TENDRIL_DETACH_ALLY
+			battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, sc, o), Color("#ff3b6b"), TENDRIL_LIFESTEAL)
 			battle._vfx._hit_spark(o)
 			if o.get("_tendril_stun", false):
 				o["_tendril_stun"] = false
 				o["stun_until"] = battle._t   # 解眩晕→回复行动
 			if battle._is_hostile(uu, o): _headless_drain_dot(o["pos"], uu)   # 脱离撕扯再吸一口
-	battle._pending_shots.append({"delay": 3.0, "fn": detach_fn, "src": u})
+	battle._pending_shots.append({"delay": TENDRIL_DETACH_SEC, "fn": detach_fn, "src": u})
 
 func _sk_headless_soul_charge(u: Dictionary) -> void:           # 无头·灵魂打击(机制大改·用户2026-07-17拍板·80龟能): 触发→下3次攻击强化(射程+60·各额外0.5A+10%当前HP魔法·牙齿闭合)→第3下落地蓄力→镰刀横扫(100°300码击退300+幽灵诅咒3s·Camille W); 全程锁龟能, 扫完解锁清零重充
 	u["headless_soul_stacks"] = 3

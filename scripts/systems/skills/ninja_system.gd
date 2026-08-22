@@ -32,6 +32,21 @@ func _ninja_mark_shatter(spr) -> void:
 		st.tween_property(sh, "modulate:a", 0.0, 0.24)
 		st.chain().tween_callback(sh.queue_free)
 
+## ★★2026-08-22 文案根除: 忍术(被动)这一组原来散在本文件与主场景/battle_spawn 三处。
+## 【开局永久属性】真正的落点是 `battle_spawn.gd` 的 spawn 分支(不在本文件, 极难 grep 到)
+const INSTINCT_CRIT := 0.20       # 暴击率 +
+const INSTINCT_CRIT_DMG := 0.15   # 暴击伤害 +
+const INSTINCT_ARMOR_PEN := 10.0  # 护甲穿透 +(flat)
+## 【冲击·自动冲刺斩】
+const DASH_SENSE := 290.0         # 触发射程(码)·**故意 < 冲刺距离**, 所以冲刺会略穿过目标
+const DASH_RANGE := 300.0         # 冲刺位移(码)
+const DASH_WIDTH := 62.0          # 判定带半宽(码)
+const DASH_MAIN_COEF := 1.3       # 主目标 ×ATK 物理
+const DASH_SIDE_COEF := 0.8       # 路径其余 ×ATK 物理
+const DASH_KNOCK_SEC := 0.8       # 击飞滞空(秒)
+const DASH_SELF_CD := 0.4         # 本体两次冲刺的最小间隔(秒)
+const DASH_TARGET_CD := 10.0      # 同一敌人被冲后的冷却(秒)
+
 func _ninja_dash(u: Dictionary, target: Dictionary) -> void:    # 被动·冲击(亚索E式): 朝最近敌固定位移300码(2026-07-22订正: 头注释一直没跟上同日的 450→300)·主目标1.3A/路径其余0.8A物理+击飞0.8s·每敌10s冷却·无伤害递增
 	# 〖用户2026-07-06〗"450码固定距离，最近，所以理想的效果就是他会连着滑几下，不用加递增"; 伤害取回合制 ninjaImpact(atkScale=1.3 / behindScale=0.8)
 	u["_ninja_last_dash"] = battle._t
@@ -40,16 +55,16 @@ func _ninja_dash(u: Dictionary, target: Dictionary) -> void:    # 被动·冲击
 	if dir.length() < 1.0: dir = Vector2.RIGHT
 	dir = dir.normalized()
 	# ★#5修〖用户2026-07-11〗: 亚索 E 式【滑行穿过】(非瞬移), 滑速 600 码/秒. 固定路径 300 码(同日 450→300).
-	var endp: Vector2 = start + dir * 300.0                     # 冲刺距离 300码(用户2026-07-11: 450→300)
+	var endp: Vector2 = start + dir * DASH_RANGE                     # 冲刺距离 300码(用户2026-07-11: 450→300)
 	endp.x = clampf(endp.x, battle.ARENA.position.x, battle.ARENA.end.x)
 	endp.y = clampf(endp.y, battle.ARENA.position.y, battle.ARENA.end.y)
 	# 路径上的敌 (按沿路投影排序 → 滑到谁割谁)
 	var hits: Array = []
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
-		if not battle._on_line(start, dir, o["pos"], 62.0): continue
+		if not battle._on_line(start, dir, o["pos"], DASH_WIDTH): continue
 		var proj: float = (o["pos"] - start).dot(dir)
-		if proj < 0.0 or proj > 300.0: continue
+		if proj < 0.0 or proj > DASH_RANGE: continue
 		hits.append({"o": o, "proj": proj, "done": false})
 	hits.sort_custom(func(a, b): return float(a["proj"]) < float(b["proj"]))
 	battle._bolt_line(start, endp, Color(0.7, 0.95, 1.0, 0.5))         # 冲刺残影(淡)
@@ -110,9 +125,9 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 				h["done"] = true
 				var o: Dictionary = h["o"]
 				if o.get("alive", false):
-					battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 1.3 if is_same(o, target) else 0.8, o), Color("#9fe8ff"))
+					battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, DASH_MAIN_COEF if is_same(o, target) else DASH_SIDE_COEF, o), Color("#9fe8ff"))
 					battle._damage._knockback(u, o, 40.0, 1.468, 1.0)          # 击飞 0.8s 滞空
-					if is_same(o, target): o["_ninja_dash_until"] = battle._t + 10.0          # 只有【目标】进10s冷却·顺路割到的不占(用户2026-07-11)
+					if is_same(o, target): o["_ninja_dash_until"] = battle._t + DASH_TARGET_CD          # 只有【目标】进10s冷却·顺路割到的不占(用户2026-07-11)
 					battle._burst_vfx("res://assets/sprites/vfx/ninja-slash.png", o["pos"], 88.0, 1.0)
 	u["pos"] = endp
 	u["no_move"] = was_nm

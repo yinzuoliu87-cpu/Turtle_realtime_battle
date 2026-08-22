@@ -562,7 +562,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 			if "rockShockwave" in battle._chosen_skill_types(u["id"], u["side"] == "left") or (battle._review_demo() and u["id"] == battle._review_turtle()):
 				u["stone_rockbody"] = true   # 岩石之躯(实战: 选rockShockwave技2才有·打包被动); 特效验收时给受审石头强制开→单独看被动体型增长
 		"ninja":
-			u["crit"] += 0.20; u["crit_dmg"] += 0.15; u["armor_pen"] += 10.0   # 忍术(基础被动·用户2026-07-29 第四轮: 暴击30→20 / 暴伤20→15 / 护穿8→10)
+			u["crit"] += NinjaSystem.INSTINCT_CRIT; u["crit_dmg"] += NinjaSystem.INSTINCT_CRIT_DMG; u["armor_pen"] += NinjaSystem.INSTINCT_ARMOR_PEN   # 忍术(基础被动·用户2026-07-29 第四轮: 暴击30→20 / 暴伤20→15 / 护穿8→10)
 			if "ninjaShuriken" in battle._chosen_skill_types(u["id"], u["side"] == "left"):   # 忍者足(技三打包·选中才有): +15%闪避+30%暴击
 				# ★用户2026-07-29 第四轮: 25%/40% → 15%/30%。叠上忍术后暴击总量 95% → 75%。
 				battle._damage._buff(u, "dodge", 0.15, false, 9999.0); u["crit"] += 0.30

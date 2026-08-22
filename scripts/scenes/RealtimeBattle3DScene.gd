@@ -7003,9 +7003,9 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		_chest_sys._chest_treasure_tick(u)
 	# --- 忍者·冲击(亚索E式被动auto-dash): 290码内有"可冲"敌(不在其10s冷却)且距上次冲刺≥0.4s → 自动朝最近敌冲刺斩(用户2026-07-06"半径500码，最近敌人") ---
 	if u["id"] == "ninja" and u.get("alive", false) and _t >= float(u.get("stun_until", 0.0)):
-		if _t - float(u.get("_ninja_last_dash", -99.0)) >= 0.4 and not u.get("_ninja_gliding", false):
+		if _t - float(u.get("_ninja_last_dash", -99.0)) >= NinjaSystem.DASH_SELF_CD and not u.get("_ninja_gliding", false):
 			var _nbest = null
-			var _nbd := 290.0   # 被动冲击触发射程(用户2026-07-11: 500→290码; <冲刺距离300→冲刺会略穿过目标)
+			var _nbd := NinjaSystem.DASH_SENSE   # 被动冲击触发射程(用户2026-07-11: 500→290码; <冲刺距离300→冲刺会略穿过目标)
 			for o in _targeting._pick_enemies_of(u):
 				if not o.get("alive", false): continue
 				if _t < float(o.get("_ninja_dash_until", 0.0)): continue

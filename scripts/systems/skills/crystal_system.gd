@@ -6,6 +6,15 @@ extends RefCounted
 ## ★水晶数值单一事实源(用户2026-07-28 第一轮加强)。文案在 data/pets.json，改这里要同步改那边。
 const BULWARK_ATK := 2.0        # 水晶壁垒: 盾 = ×ATK  (1.0→2.0)
 const BULWARK_HP_PCT := 0.10    # 水晶壁垒: 盾 += ×最大生命 (0.05→0.10)
+## ★★2026-08-22 文案根除: 壁垒这一组原来是 `_sk_crystal_bulwark` / `_crystal_spike_line` 里的裸字面量。
+const BULWARK_SEC := 4.0        # 护盾与全队增益的持续(秒)·持盾期锁龟能
+const BULWARK_TEAM_RESIST := 0.15   # 全体友方 护甲与魔抗 +
+const SPIKE_TRUE_COEF := 1.5    # 水晶刺: ×ATK 真实伤害
+const SPIKE_STACKS := 2         # 水晶刺: 叠几层结晶印记
+const SPIKE_KNOCK_SEC := 0.8    # 水晶刺: 击飞滞空(秒)
+const SPIKE_SLOW_PCT := 0.50    # 水晶刺: 减速比例(语义值)
+const SPIKE_SLOW_MULT := 1.0 - SPIKE_SLOW_PCT
+const SPIKE_SLOW_SEC := 3.0     # 水晶刺: 减速持续(秒)
 const BURST_MAGIC := 1.2        # 碎晶爆破: 三段合计 ×ATK 魔法 (0.7→0.8→1.2·用户2026-07-29 第五轮: 每段 0.4)
 const BURST_TRUE := 1.2         # 碎晶爆破: 三段合计 ×ATK 真实 (0.1→0.3→1.2·用户2026-07-29 第五轮: 每段 0.4)
 
@@ -400,11 +409,11 @@ func _crystal_spike_line(u: Dictionary) -> void:   # 照小菊R第三击(2026-07
 				o["_spike_tok"] = tok
 				# ★水晶刺从【纯控制零伤害】改成带 1.5A 真实伤害(用户2026-07-29 第五轮)。
 				#   壁垒 80 龟能 + 持盾4秒锁龟能, 而唯一输出是"+2层印记" —— 一个技能的伤害部分完全是 0。
-				battle._damage._apply_damage_from(uu, o, int(maxf(1.0, uu["atk"] * 1.5)), Color("#ffffff"), 0.0, true)
-				_crystal_stack(uu, o, 2)                              # +2层结晶
+				battle._damage._apply_damage_from(uu, o, int(maxf(1.0, uu["atk"] * SPIKE_TRUE_COEF)), Color("#ffffff"), 0.0, true)
+				_crystal_stack(uu, o, SPIKE_STACKS)                              # +2层结晶
 				battle._knock_up(o, pref, 8.8)                               # 击飞0.8s(滞空=2×8.8/22)
-				o["spd_move_mult"] = 0.5
-				o["spd_dbf_until"] = battle._t + 3.0                         # 50%减速3秒
+				o["spd_move_mult"] = SPIKE_SLOW_MULT
+				o["spd_dbf_until"] = battle._t + SPIKE_SLOW_SEC                         # 50%减速3秒
 		, "src": u})
 
 # 水晶结晶叠层+满5引爆 (普攻/水晶球ray/本体主动共享·同一目标"crystal"层→天然共享层数): 叠n层(上限5)·满5→清零+22%目标最大生命魔法(吃魔抗·封板)+削魔抗-20%+紫辉爆
@@ -472,8 +481,8 @@ func _crystal_ray_vfx(src: Dictionary, tgt: Dictionary, seg_dmg_fn: Callable) ->
 # 水晶龟·水晶球 本体主动(封板L571·70龟能): 朝目标射一道水晶光线=2段共1.0A魔法 + 叠2层结晶(与水晶球随从共享满5引爆)·水晶球随从在spawn gate召唤
 
 func _sk_crystal_bulwark(u: Dictionary) -> void:                 # 水晶龟·水晶壁垒(用户2026-07-16改制/2026-07-28加强): 2A+10%maxHp护盾4秒·持盾锁龟能·盾结束/被打破→700码直线水晶刺·全体友军甲抗+15%4秒
-	battle._damage._grant_shield(u, u["atk"] * BULWARK_ATK + u["maxHp"] * BULWARK_HP_PCT, 4.0)
-	u["bulwark_until"] = battle._t + 4.0
+	battle._damage._grant_shield(u, u["atk"] * BULWARK_ATK + u["maxHp"] * BULWARK_HP_PCT, BULWARK_SEC)
+	u["bulwark_until"] = battle._t + BULWARK_SEC
 	u["_bulwark_armed"] = true
 	var dome = Sprite3D.new()                                   # 冰蓝水晶罩(随身4秒)
 	var dtex: Texture2D = load("res://assets/sprites/vfx/fx-hex-bubble.png")
@@ -493,7 +502,7 @@ func _sk_crystal_bulwark(u: Dictionary) -> void:                 # 水晶龟·�
 		dw.tween_callback(func() -> void:
 			if is_instance_valid(dome): dome.queue_free())
 	for o in battle._targeting._allies_of(u):
-		battle._damage._buff(o, "def", 0.15, true, 4.0); battle._damage._buff(o, "mr", 0.15, true, 4.0)
+		battle._damage._buff(o, "def", BULWARK_TEAM_RESIST, true, BULWARK_SEC); battle._damage._buff(o, "mr", BULWARK_TEAM_RESIST, true, BULWARK_SEC)
 		battle._skill_ring(o["pos"], Color(0.62, 0.88, 1.0, 0.55), 40.0)   # 友军冰蓝强化环
 
 func _sk_crystal_burst(u: Dictionary, tgt) -> void:   # 碎晶爆破: 目标周围350码内每敌3段错峰碎晶坠落(三段共 1.2A魔+1.2A真+每段叠1层结晶·共3层满5引爆·用户2026-07-28加强)

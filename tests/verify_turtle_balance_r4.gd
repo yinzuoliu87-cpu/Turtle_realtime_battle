@@ -149,8 +149,10 @@ func _ninja() -> void:
 	var bs: String = _src["res://scripts/scenes/battle/battle_spawn.gd"]
 	_chk("忍者·忍术 = +%d%%暴击 / +%d%%暴伤 / +%d护穿" % [
 			int(WANT_NINJA_CRIT * 100.0), int(WANT_NINJA_CRITDMG * 100.0), int(WANT_NINJA_PEN)],
-		bs.contains('u["crit"] += %.2f; u["crit_dmg"] += %.2f; u["armor_pen"] += %.1f' % [
-			WANT_NINJA_CRIT, WANT_NINJA_CRITDMG, WANT_NINJA_PEN]))
+		## ★比【常量的值】不比源码字面串(2026-08-22 根除已提成具名常量)
+		is_equal_approx(NinjaSystem.INSTINCT_CRIT, WANT_NINJA_CRIT)
+			and is_equal_approx(NinjaSystem.INSTINCT_CRIT_DMG, WANT_NINJA_CRITDMG)
+			and is_equal_approx(NinjaSystem.INSTINCT_ARMOR_PEN, WANT_NINJA_PEN))
 	_chk("忍者·忍术旧值 30/20/8 已消失",
 		not bs.contains('u["crit"] += 0.30; u["crit_dmg"] += 0.20; u["armor_pen"] += 8.0'))
 	_chk("忍者·手里剑打包 = +%d%%闪避 / +%d%%暴击" % [
