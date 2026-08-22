@@ -20,6 +20,14 @@ const ERUPT_HEAL_PCT := 0.08
 const SLAM_ATK_COEF := 1.0
 const SLAM_BURN_COEF := 0.3
 const VOLCANO_SPD_MULT := 1.2   # 火山形态相对提速(原 175/145≈1.21 的等效保留)
+## ★怒气获取比例(2026-08-22 文案根除): 造成/承受伤害各按此比例转怒气。
+##   原来是 `battle_damage.gd` 里两个裸 0.10, 文案又手写"10%" ⇒ 三份副本。
+const RAGE_GAIN_PCT := 0.10
+## 火山形态的近战射程(码)。原来是 `_lava_volcano_form` 里的裸 70.0。
+const VOLCANO_RANGE := 70.0
+## 变身时的预警圈半径(码)。原来是 `_lava_volcano_erupt` 里 `_densest_enemy_point` 的裸 400.0。
+const SLAM_WARN_RADIUS := 400.0
+## 命中回复: 该敌人已损生命值的比例(与 ERUPT_HEAL_PCT 是同一个数, 但那个名字是"爆发", 别混)。
 
 var battle
 var _lava_zones: Array = []               # 持续熔岩地面区域 (熔岩龟·岩浆池等) {center,...}
@@ -82,7 +90,7 @@ func _lava_quake(u: Dictionary) -> void:                         # 小·岩浆�
 	battle._skill_ring(center, Color(1.0, 0.45, 0.15, 0.5), radius)
 
 func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火山爆发(用户2026-07-15定稿): 目标那头的尽头生成岩浆浪潮→朝火山龟压过来(250码/s)→穿过龟到另一头尽头消散; 碾过每敌击飞+一段 ERUPT_ATK_COEF(1.2)A 魔+ERUPT_BURN_COEF(0.2)A 灼烧+回血 ERUPT_HEAL_PCT(8%)
-	var dir: Vector2 = battle._densest_enemy_point(u, 400.0) - u["pos"]   # 瞄准轴: 朝敌最密方向
+	var dir: Vector2 = battle._densest_enemy_point(u, SLAM_WARN_RADIUS) - u["pos"]   # 瞄准轴: 朝敌最密方向
 	dir = dir.normalized() if dir.length() > 0.1 else Vector2.RIGHT
 	var tdir: Vector2 = -dir                                       # ★行进方向=朝火山龟压过来(用户: 目标尽头生成→移向龟→穿过到另一端)
 	var full_len := 1200.0                                         # 行进全长(目标侧尽头600→穿过龟→背后尽头600)
@@ -398,7 +406,7 @@ func _lava_transform(u: Dictionary) -> void:
 	u["volcano"] = true                                           # 怒气条不清零: 火山15秒内当倒计时条匀速流失(用户2026-07-15)
 	u["volcano_until"] = battle._t + dur
 	u["_volcano_dur"] = dur
-	u["melee"] = true; u["atk_range"] = 70.0; u["move_spd"] = LAVA_SPD * VOLCANO_SPD_MULT   # 火山形态=近战冲脸(用户2026-07-28: 两形态都按近战档·冲脸保+20%相对提速)
+	u["melee"] = true; u["atk_range"] = VOLCANO_RANGE; u["move_spd"] = LAVA_SPD * VOLCANO_SPD_MULT   # 火山形态=近战冲脸(用户2026-07-28: 两形态都按近战档·冲脸保+20%相对提速)
 	# 属性提升 (1:1 pets.json: +ATK*2.5 最大HP / +ATK*0.2 攻防魔抗 flat); 用 buff(到期自动撤) + 直接加血上限(到期revert)
 	battle._damage._buff(u, "atk", base_atk * atk_scale, false, dur)
 	battle._damage._buff(u, "def", base_atk * def_scale, false, dur)

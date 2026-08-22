@@ -1,4 +1,13 @@
 # -*- coding: utf-8 -*-
+import sys
+## ★Windows 控制台默认 GBK, 打印 emoji/生僻字会**直接抛 UnicodeEncodeError**,
+##   于是门禁不是"报出问题"而是**崩在打印那一行** —— 我 2026-08-22 往方案书状态里写了个 🟢
+##   就把这条门禁弄崩了, 而崩溃的报错和"真有问题"长得完全不一样, 极易误判。
+##   同仓库其它审计器(await_guard_audit 等)早就这么处理了, 这份漏了。
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 """方案书生命周期门禁 —— 每个需求都要走完「方案 → 执行 → 测试 → 验收 → 标记完成」。
 
 用户 2026-08-13:「我们现在这个项目需要正式化, 那每个需求都有产生方案, 执行, 测试和验收,

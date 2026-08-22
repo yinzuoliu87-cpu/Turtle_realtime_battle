@@ -6,6 +6,14 @@ extends RefCounted
 ## ★龟壳数值单一事实源(用户2026-07-28 第一轮削弱·整只 85.5% 全表第三)。文案在 data/pets.json。
 const AWAKEN_PCT := 0.06            # 气场觉醒: 每次六属性 +% (0.12→0.06)
 const AWAKEN_CRIT := 0.125          # 气场觉醒: 每次暴击率 + (0.25→0.125·两次觉醒后暴击 0.25→0.50 而非 0.75)
+## 觉醒时刻(开战后第几秒)。★放在这里而不是主文件: 主文件有架构预算(只改字面量净增 0 行);
+##   而且这两个数是【龟壳的规格】, 归属本文件才对。主场景 `_shell_awaken_tick` 直接引用。
+const AWAKEN_AT_1 := 10.0
+const AWAKEN_AT_2 := 20.0
+## 气场储能三件套(原来散在三个文件里的字面量, 文案又各抄一遍):
+const STORE_CAP_PCT := 0.50         # 储能上限 = 最大生命 × 此值 (battle_damage.gd 里那条 minf)
+const RELEASE_DMG_PCT := 0.40       # 释放: 冲击波对每名敌人 = 储能 × 此值 (物理)
+const RELEASE_SHIELD_PCT := 0.80    # 释放: 气场护盾 = 储能 × 此值
 const STEALTH_BREAK_MAGIC := 0.5    # 暗影·破隐首发: 额外 ×ATK 魔法 (1.0→0.5)
 const DIVE_MAGIC := 2.0             # 暗影俯冲: 落地 ×ATK 魔法 (2.5→2.0)
 ## ★★★2026-08-22 文案根除分歧: 下面这些原来是**散在代码里的字面量**, 而 pets.json 的文案
@@ -402,9 +410,9 @@ func _shell_release(u: Dictionary) -> void:
 		return
 	# 1) 缓慢移动冲击波 (Image环贴图, 半径0→520px / 1.8s; 每敌只命中一次)
 	_shell_haze(u)                                   # 起手空气扭曲(用户2026-07-17 Q3"开始阶段扭曲角色周围视角和空气")
-	_shell_spawn_shockwave(u, int(se * 0.40))
+	_shell_spawn_shockwave(u, int(se * RELEASE_DMG_PCT))
 	# 2) 衰减护盾 = 80%储能, 5秒线性流失到0
-	var amt: float = se * 0.80
+	var amt: float = se * RELEASE_SHIELD_PCT
 	u["_auraShieldVal"] = float(u.get("_auraShieldVal", 0.0)) + amt   # 金色储能护盾(特殊色, 1:1回合制aura盾)
 	u["shell_shield_decay_rate"] = amt / battle.SHELL_SHIELD_SEC   # 每秒扣量 (按授予值算, 5秒清)
 

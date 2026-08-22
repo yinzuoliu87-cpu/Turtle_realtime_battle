@@ -379,9 +379,9 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	# 猎人猎杀(重做·用户2026-07-14): 处决不再在此中央路径逐次判; 改由 _update_hunter_passive 每帧扫场→任一敌<斩杀线→自动射强化箭→命中处决. 窃取仍走 battle._kill→_on_unit_death 钩子.
 	# 怒气 (熔岩造伤25% / 受伤20%)
 	if src["id"] == "lava" and not src.get("volcano", false):     # 火山形态不获怒气(条=形态倒计时·用户2026-07-15)
-		src["rage"] = minf(battle.RAGE_MAX, src["rage"] + float(dmg) * 0.10)
+		src["rage"] = minf(battle.RAGE_MAX, src["rage"] + float(dmg) * LavaSystem.RAGE_GAIN_PCT)
 	if u["id"] == "lava" and not u.get("volcano", false):
-		u["rage"] = minf(battle.RAGE_MAX, u["rage"] + float(dmg) * 0.10)
+		u["rage"] = minf(battle.RAGE_MAX, u["rage"] + float(dmg) * LavaSystem.RAGE_GAIN_PCT)
 	if src is Dictionary and src.get("has_egg", false) and src.get("alive", false):   # 温泉蛋(036): 造成伤害×0.1进度
 		battle._equip_tick_sys._egg_add_progress(src, float(dmg) * 0.1)
 	if u.get("has_egg", false):   # 温泉蛋(036): 承受伤害×0.1进度
@@ -391,7 +391,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		src["star_energy"] = minf(src["maxHp"] * 0.40, src["star_energy"] + float(dmg) * 0.35)
 	# 储能 (龟壳受伤转储能, 上限50%最大HP) — 仅"store"相位累积 ("cd"相位不储)
 	if u["id"] == "shell" and u.get("shell_phase", "store") == "store":
-		u["store_energy"] = minf(u["maxHp"] * 0.50, u["store_energy"] + float(dmg))
+		u["store_energy"] = minf(u["maxHp"] * ShellSystem.STORE_CAP_PCT, u["store_energy"] + float(dmg))
 		u["_auraEnergy"] = u["store_energy"]   # 镜像给Hp条储能条显示(1:1回合制字段)
 	if u["id"] == "shell" and float(dmg) > 0.0:
 		u["shell_last_dmg_t"] = battle._t                 # 潜影(暗影被动): 记最后受伤时间(6秒无伤→隐身). AOE命中也计→不误进隐身(设计: AOE吃伤但不破隐, 未说进隐身; 计伤保守=受伤即重置)

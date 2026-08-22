@@ -7062,10 +7062,10 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		# 觉醒按【本龟入场后】计时, 非全局_t(用户2026-07-18修bug): _t跨双路半场累加不重置→下半场入场的龟壳_t已>20会秒觉醒; 入场首tick记基准
 		if not u.has("_awaken_t0"): u["_awaken_t0"] = _t
 		var _adt: float = _t - float(u["_awaken_t0"])
-		if not u.get("awakened", false) and _adt >= 10.0:
+		if not u.get("awakened", false) and _adt >= ShellSystem.AWAKEN_AT_1:
 			u["awakened"] = true
 			_shell_sys._shell_apply_awaken(u)   # 入场10秒觉醒 (+金光爆发特效)
-		if not u.get("awakened2", false) and _adt >= 20.0:
+		if not u.get("awakened2", false) and _adt >= ShellSystem.AWAKEN_AT_2:
 			u["awakened2"] = true
 			_shell_sys._shell_apply_awaken(u)   # 入场20秒第二次觉醒(封板: 强化觉醒已并入被动·自动触发·不再gate选中)
 		# 储能相位机: store(6s 受伤转储能) → 释放(冲击波+护盾) → cd(15s 不储) → store…

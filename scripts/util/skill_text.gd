@@ -109,6 +109,14 @@ static func build_vars(f: Dictionary, s: Dictionary) -> Dictionary:
 		"atkUpPct": fn.call("atkUpPct"), "atkUpTurns": fn.call("atkUpTurns"),
 		"bindPct": fn.call("bindPct"), "dodgePct": fn.call("dodgePct"), "dodgeTurns": fn.call("dodgeTurns"),
 		"minScale": fn.call("minScale"), "maxScale": fn.call("maxScale"),
+		## ★熔岩龟变身(2026-08-22 文案根除): 这几个值就在**同一个 passive 对象**里
+		##   (`transformHpScale: 2.5` …), 而文案里又手写了一遍 "250%"/"20%"/"15 秒"/"100" ——
+		##   同一个对象内部自己跟自己分歧, 是最没道理的一类。补进变量表后文案直接引用。
+		##   ⚠ 这张表是**固定白名单**, 天生会漏(memory [[fb-recursive-scan-not-structured-walk]]);
+		##     新字段要用就得来这里加一行, 别指望它自动认。
+		"transformHpScale": fn.call("transformHpScale"), "transformAtkScale": fn.call("transformAtkScale"),
+		"transformDefScale": fn.call("transformDefScale"), "transformMrScale": fn.call("transformMrScale"),
+		"transformDuration": fn.call("transformDuration"), "rageMax": fn.call("rageMax"),
 		"healPct": fn.call("healPct"), "heal": fn.call("heal"), "shield": fn.call("shield"),
 		"crit": f.get("crit", 0.25),
 		"armorBreakPct": armor_break.get("pct", 0), "armorBreakTurns": armor_break.get("turns", 0),
