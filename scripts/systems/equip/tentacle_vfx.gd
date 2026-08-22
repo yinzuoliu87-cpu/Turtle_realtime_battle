@@ -466,11 +466,19 @@ const SIM_H_SLAM_K := 1.0
 const SIM_ITER := 20
 ## 地面钳位之后补的距离迭代次数(收回被钳位破坏的弧长)
 const SIM_GRAV := 26.0             # 重力加速度(世界单位/秒²)
-const SIM_DAMP := 0.986            # 速度阻尼(1 = 无损)
+const SIM_DAMP := 0.986
+## ⚠【试过并撤掉】沿链条的速度空间低通(粘性): 想用它"降速度不降幅度"。
+##   实测 0.35 没效果(9.4→9.8 次/秒)、**0.55 以上直接 inf/nan** ——
+##   那个平滑核是显式扩散算子, 系数 > 0.5 就发散。此路不通, 别再走。
 
 ## 主动力(肌肉)的基准速率与沿长度分布。★用户「整个是鞭子」⇒ **整根都软, 分布尽量均匀**,
 ## 不做成"根部硬棍+梢端面条"。FALL 控制衰减到梢端还剩多少(0.75 = 梢端仍有 25% 的基准)。
-const SIM_MUSCLE_RATE := 22.0
+const SIM_MUSCLE_RATE := 15.0
+## 待机的肌肉速率 —— 要"轻微晃"不是"死住"。实测 140: 幅度 0.0050 / 换向 3.9 次每秒。
+const SIM_MUSCLE_RATE_IDLE := 3.0
+## 破土/钻地的肌肉速率 —— 最紧。链条一边被拉长一边甩, 松了就乱扭。
+## 实测 200: 换向 **0.5 次每秒**(松档是 6.1)。
+const SIM_MUSCLE_RATE_EMERGE := 5.0
 const SIM_MUSCLE_P := 0.5
 const SIM_MUSCLE_FALL := 0.75
 ## ★弯曲刚度 —— 用户「太软了」的解药在这里, **不在肌肉**。
@@ -816,7 +824,13 @@ func tick(delta: float) -> void:
 					continue
 		# ── 重建网格（待机降频）────────────────────────
 		t["acc"] = float(t["acc"]) + delta
-		if int(t["state"]) == ST_IDLE and float(t["acc"]) < 1.0 / IDLE_REBUILD_HZ:
+		## ★★★2026-08-22 用户:「触手在疯狂的扭动」—— 根因不是"太软", 是**待机降频**。
+		##   `IDLE_REBUILD_HZ=12` 时实测: 大多数帧位移 0.0000(几何冻结),
+		##   每 5 帧跳一次 0.44 —— 最大/平均 **8.9 倍**。
+		##   运动学版本没这毛病(12Hz 下姿态公式插出来仍平滑); 而模拟是**积分**的,
+		##   攒够时间就一次性补完 ⇒ 一顿一顿地跳。
+		## ⇒ 开着模拟就不许降频(物理需要连续显示)。
+		if SIM_ON == false and int(t["state"]) == ST_IDLE and float(t["acc"]) < 1.0 / IDLE_REBUILD_HZ:
 			continue
 		t["acc"] = 0.0
 		_rebuild(t)
@@ -1291,8 +1305,18 @@ func _phase_at(t: Dictionary, ts: float) -> Array:
 			var k: float = smoothstep(0.0, 1.0, e)
 			return [e, lerpf(ANG_EMERGE[0], ANG_IDLE[0], k), lerpf(ANG_EMERGE[1], ANG_IDLE[1], k), CURL_TIGHT * k]
 		ST_IDLE:
-			# ★呼吸：卷成环 ⇄ 舒展。用触手自己的相位错开，两根不同步。
-			var br: float = 0.5 - 0.5 * cos(TAU * (battle._t + float(t["phase"])) / BREATH_PERIOD)
+			## ★呼吸：卷成环 ⇄ 舒展。用触手自己的相位错开，两根不同步。
+			## ★★★2026-08-22 用户:「待机你是把整个触手给了个姿势吗, 能不能优化?」—— 是的,
+			##   原来是**一条纯余弦**(周期 3.6 秒)。纯周期 = 完美重复 = 看久了像节拍器,
+			##   而生物的晃动从不精确重复。
+			## ⇒ 叠三个**互不通约**的频率(1 : 0.618 : 0.377, 黄金比及其平方 —— 保证永不同时归零),
+			##   合起来的周期在数学上是无理数倍 ⇒ **永远不会精确重复一次**。
+			##   权重递减(0.58/0.27/0.15), 所以主节奏仍是 BREATH_PERIOD, 只是不再机械。
+			var bt: float = battle._t + float(t["phase"])
+			var br: float = 0.5 - 0.5 * (
+				0.58 * cos(TAU * bt / BREATH_PERIOD)
+				+ 0.27 * cos(TAU * bt / (BREATH_PERIOD * 0.618) + 1.7)
+				+ 0.15 * cos(TAU * bt / (BREATH_PERIOD * 0.377) + 3.9))
 			# 舒展时不只是松卷，整条也会更斜地伸出去（逐帧看到的）
 			return [1.0, lerpf(ANG_IDLE[0], ANG_IDLE[0] - 1.8, br),
 				lerpf(ANG_IDLE[1], ANG_IDLE[1] + 3.0, br),
@@ -1693,7 +1717,26 @@ func _sim_chain(t: Dictionary, root3: Vector3, fwd: Vector3, lat: Vector3, up: V
 		##   衰减指数从 1.5 降到 0.5(接近均匀), 速率从 70 降到 22(整体放软)。
 		for i4 in range(n - 1):
 			var u4: float = float(i4) / float(SEG)
-			var rate: float = SIM_MUSCLE_RATE * pow(1.0 - u4 * SIM_MUSCLE_FALL, SIM_MUSCLE_P)
+			## ★★待机时肌肉要**紧**得多 —— 那时触手是"端着姿势"不是鞭子。
+			##   用户 2026-08-22:「触手在疯狂的扭动」。除了 12Hz 降频造成的跳动之外,
+			##   还有一半是**待机期链条绕着呼吸目标持续振荡**(有惯性有重力, 它停不下来):
+			##   实测待机每帧位移 0.1035, 而旧的运动学版本是 **0.0000**(基本静止)。
+						## ★★三档分开(用户 2026-08-22:「待机可以晃但别很剧烈的晃, 然后是破土生成也扭动很剧烈」):
+			##   · 破土/钻地 —— 最紧。那时链条一边被拉长一边甩, 松了就乱扭
+			##     (实测松档 幅度 0.072 / 换向 6.1 次每秒 → 紧档 0.035 / **0.5 次每秒**)
+			##   · 待机 —— 中等。要"轻微晃"不是"死住"(140: 幅度 0.0050 / 3.9 次每秒;
+			##     调到 200 就只剩 0.0010 = 万分之一, 看着是死的)
+			##   · 攻击 —— 最松, 那时它才是鞭子
+			## ★用户问「怎么降低扭动速度」: 这里降的是**频率**不是幅度 ——
+			##   肌肉越紧, 链条被拉回目标越快、自由振荡的余地越小 ⇒ 换向次数(每秒)直接掉。
+			##   (另外两个旋钮试过: 加阻尼/降重力确实降频, **但会把攻击手感一起带走**
+			##    —— 实测折角 29.3 → 15.4, 那是用户已经验收过的东西, 不动。)
+			var base_rate: float = SIM_MUSCLE_RATE
+			if stt == ST_EMERGE or stt == ST_RETRACT:
+				base_rate = SIM_MUSCLE_RATE_EMERGE
+			elif stt == ST_IDLE:
+				base_rate = SIM_MUSCLE_RATE_IDLE
+			var rate: float = base_rate * pow(1.0 - u4 * SIM_MUSCLE_FALL, SIM_MUSCLE_P)
 			var w: float = 1.0 - exp(-maxf(rate, 0.5) * h)
 			pp[i4 + 1] = pp[i4 + 1].lerp(pp[i4] + dirs[i4] * ds, w)
 		## ③ 距离约束(弧长守恒) —— 这个才需要迭代
