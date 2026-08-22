@@ -3,6 +3,30 @@ extends RefCounted
 ## 钻石龟技能系统
 ## 类内簇函数名不变;外部名加 battle. 前缀。
 
+## ★★2026-08-22 文案根除: 下面这些原来全是函数体里的裸字面量。
+## 【钻石滚球】按撞击瞬间的移动速度在 0 速 ↔ 满速之间**线性插值**
+const ROLL_ACCEL_SEC := 4.0       # 从静止加速到满速要几秒
+const ROLL_HIT_RADIUS := 120.0    # 撞击点小 AOE 半径(码)
+const ROLL_RESIST_MIN := 0.1      # 0 速时 ×护甲 与 ×魔抗
+const ROLL_RESIST_MAX := 1.0      # 满速时 ×护甲 与 ×魔抗
+const ROLL_MAXHP_MIN := 0.02      # 0 速时 + 目标最大生命 ×
+const ROLL_MAXHP_MAX := 0.20      # 满速时 + 目标最大生命 ×
+const ROLL_KNOCK_SEC := 1.0       # 击飞滞空(秒)
+const ROLL_STUN_MIN := 0.5        # 眩晕(秒)·0 速
+const ROLL_STUN_MAX := 3.0        # 眩晕(秒)·满速
+const ROLL_AUTO_RANGE := 200.0    # 被动: 最近敌**远于**此距离(=此范围内无敌)就免费自动滚
+const ROLL_AUTO_CD := 0.8         # 被动: 防抖冷却(秒)
+## 【钻石冲撞】
+const SMASH_RESIST_COEF := 1.0    # ×护甲 + ×魔抗
+const SMASH_ATK_COEF := 0.1       # + ×ATK 物理
+const SMASH_KNOCK_DIST := 300.0   # 沿冲撞方向击退(码)·真值走 battle.DIAMOND_SMASH_PUSH
+const SMASH_BLEED_ATK := 0.5      # 流血层数 = ×ATK + ×护甲 + ×魔抗(下两行)
+const SMASH_BLEED_RESIST := 0.1
+const SMASH_SLOW_PCT := 0.50      # 减速比例(语义值)
+const SMASH_SLOW_MULT := 1.0 - SMASH_SLOW_PCT
+const SMASH_SLOW_SEC := 3.0       # 减速持续(秒)
+const SMASH_SELF_RESIST_BONUS := 1.00   # 打包被动: 选此技 → 登场自身护甲/魔抗额外 +100%
+
 var battle
 
 func _init(b) -> void:
@@ -10,13 +34,13 @@ func _init(b) -> void:
 
 # 滚球位移tick(每帧·在_tick_unit免CC段调): 0→满速4s加速·朝最近敌滚·进120码撞击结算
 func _diamond_roll_tick(u: Dictionary, delta: float) -> void:
-	var sf: float = clampf((battle._t - float(u.get("roll_start", battle._t))) / 4.0, 0.0, 1.0)   # 0→满速4秒线性加速
+	var sf: float = clampf((battle._t - float(u.get("roll_start", battle._t))) / ROLL_ACCEL_SEC, 0.0, 1.0)   # 0→满速4秒线性加速
 	var tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null:   # 无敌可撞→退出滚动 (用户2026-07-12: 取消6秒超时限制, 滚到撞上为止)
 		u["roll_active"] = false; u["state"] = "move"
 		return
 	var to_t: Vector2 = tgt["pos"] - u["pos"]
-	if to_t.length() <= 120.0:                                     # 进入120码→撞击结算
+	if to_t.length() <= ROLL_HIT_RADIUS:                                     # 进入120码→撞击结算
 		_diamond_roll_impact(u, tgt["pos"], sf)
 		u["roll_active"] = false; u["state"] = "move"
 		return
@@ -31,11 +55,11 @@ func _diamond_roll_tick(u: Dictionary, delta: float) -> void:
 func _diamond_roll_impact(u: Dictionary, cp: Vector2, sf: float) -> void:
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
-		if o["pos"].distance_to(cp) > 120.0: continue             # 撞击点120码小AOE
-		var dmg: int = int(u["def"] * (0.1 + 0.9 * sf) + u["mr"] * (0.1 + 0.9 * sf) + o["maxHp"] * (0.02 + 0.18 * sf))   # 按速插值(封板: 0速0.1甲0.1抗2%→满速1.0甲1.0抗20%)
+		if o["pos"].distance_to(cp) > ROLL_HIT_RADIUS: continue             # 撞击点120码小AOE
+		var dmg: int = int(u["def"] * (ROLL_RESIST_MIN + (ROLL_RESIST_MAX - ROLL_RESIST_MIN) * sf) + u["mr"] * (ROLL_RESIST_MIN + (ROLL_RESIST_MAX - ROLL_RESIST_MIN) * sf) + o["maxHp"] * (ROLL_MAXHP_MIN + (ROLL_MAXHP_MAX - ROLL_MAXHP_MIN) * sf))   # 按速插值(封板: 0速0.1甲0.1抗2%→满速1.0甲1.0抗20%)
 		battle._damage._apply_damage_from(u, o, dmg, Color("#9bdcff"))
 		battle._damage._knockback(u, o, 50.0, 1.8, 1.0)                          # 击飞1秒(vy高)
-		battle._freeze(o, 0.5 + 2.5 * sf)                                # 眩晕0.5~3s(随速插值·满速3s)
+		battle._freeze(o, ROLL_STUN_MIN + (ROLL_STUN_MAX - ROLL_STUN_MIN) * sf)                                # 眩晕0.5~3s(随速插值·满速3s)
 	battle._burst_vfx("res://assets/sprites/vfx/diamond-impact.png", cp, 120.0 + 70.0 * sf, 0.5)   # 水晶碎裂撞击(按速插值·越快越大)
 	battle._skill_ring(cp, Color(0.6, 0.86, 1.0, 0.6), 120.0)
 	battle._shake(battle.JUICE_SHAKE_HEAVY if sf > 0.6 else battle.JUICE_SHAKE_LIGHT)  # 满速更炸(封板美术L231)
@@ -46,14 +70,14 @@ func _diamond_smash_impact(u: Dictionary, tgt) -> void:         # 蓄力结束�
 		tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	battle._dash_to(u, tgt, 45.0)
-	var dmg: int = int(u["def"] + u["mr"] + u["atk"] * 0.1)     # 保留原撞击伤害(1.0甲+1.0抗+0.1A物理·用户2026-07-12保留)
+	var dmg: int = int(u["def"] * SMASH_RESIST_COEF + u["mr"] * SMASH_RESIST_COEF + u["atk"] * SMASH_ATK_COEF)     # 保留原撞击伤害(1.0甲+1.0抗+0.1A物理·用户2026-07-12保留)
 	battle._damage._apply_damage_from(u, tgt, dmg, Color("#9bdcff"))
-	var bstacks: int = maxi(1, roundi(0.5 * float(u["atk"]) + 0.1 * float(u["def"]) + 0.1 * float(u["mr"])))   # 流血层数=0.5A+0.1甲+0.1抗(用户2026-07-12·走既有层数式流血)
+	var bstacks: int = maxi(1, roundi(SMASH_BLEED_ATK * float(u["atk"]) + SMASH_BLEED_RESIST * float(u["def"]) + SMASH_BLEED_RESIST * float(u["mr"])))   # 流血层数=0.5A+0.1甲+0.1抗(用户2026-07-12·走既有层数式流血)
 	battle._damage._apply_dot_stacks(tgt, "bleed", bstacks, u)
 	var prev_slow: float = float(tgt.get("slow_mag", 1.0)) if battle._t < float(tgt.get("slow_until", 0.0)) else 1.0
 	battle._damage._knockback(u, tgt, 0.0, battle.DIAMOND_SMASH_KNOCK_VY, battle.DIAMOND_SMASH_PUSH)   # 击退~300码(顺冲撞方向)+一点点击飞
-	tgt["slow_until"] = maxf(float(tgt.get("slow_until", 0.0)), battle._t + 3.0)   # 3秒50%减速
-	tgt["slow_mag"] = minf(prev_slow, 0.5)
+	tgt["slow_until"] = maxf(float(tgt.get("slow_until", 0.0)), battle._t + SMASH_SLOW_SEC)   # 3秒50%减速
+	tgt["slow_mag"] = minf(prev_slow, SMASH_SLOW_MULT)
 	battle._burst_vfx("res://assets/sprites/vfx/diamond-impact.png", tgt["pos"], 110.0, 0.5)   # 水晶碎裂撞击
 	battle._skill_ring(tgt["pos"], Color(0.7, 0.9, 1.0, 0.55), 54.0)
 	battle._shake(battle.JUICE_SHAKE_HEAVY)

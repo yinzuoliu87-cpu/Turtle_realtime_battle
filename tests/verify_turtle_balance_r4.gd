@@ -171,11 +171,13 @@ func _basic() -> void:
 	print("  ── 普通龟 ──")
 	var rb: String = _src["res://scripts/scenes/RealtimeBattle3DScene.gd"]
 	_chk("普通龟·龟盾 = %.1f×ATK + %d%%已损生命" % [WANT_SHIELD_ATK, int(WANT_SHIELD_LOST * 100.0)],
-		rb.contains('(tgt["maxHp"] - tgt["hp"]) * %.2f' % WANT_SHIELD_LOST)
-		and rb.contains('u["atk"] * %.1f' % WANT_SHIELD_ATK)
-		and rb.contains('_atk_dmg(u, %.1f, tgt) + int(lost)' % WANT_SHIELD_ATK))
+		## ★比【常量的值】不比源码字面串(2026-08-22 根除: 小龟没有 <x>_system.gd,
+		## 数值按 CLAUDE.md §5 的分工表落在 scripts/gamedata/basic_consts.gd)
+		is_equal_approx(BasicConsts.SHIELD_LOST_PCT, WANT_SHIELD_LOST)
+		and is_equal_approx(BasicConsts.SHIELD_ATK_COEF, WANT_SHIELD_ATK))
+
 	_chk("普通龟·龟盾旧值 0.7A/20%已损 已消失",
-		not rb.contains('(tgt["maxHp"] - tgt["hp"]) * 0.20'))
+		not is_equal_approx(BasicConsts.SHIELD_LOST_PCT, 0.20))
 	# ⇢ 第五轮把气波 3.0→2.0 —— 已移交 r5。这里只保留"第四轮砍掉的 3.5 没回来"。
 	_chk("普通龟·气波旧值 3.5 已消失", not rb.contains("_atk_dmg(uu2, 3.5, o)"))
 	# ⇢ 第五轮把过肩摔改成【乘法结构】(1.0A + 0.2%×ATK×最大生命), 不再是纯 %最大生命 —— 已移交 r5。

@@ -84,7 +84,7 @@ const ATK_LUNGE_AMP := 0.30                # 近战踏步幅度(米)
 const MELEE_ATK_RANGE_MIN := 100.0         # 近战最小攻击射程(用户2026-07-11: 原70→贴脸重叠·站位=射程×0.85, 100→站位85不挤; SEP_RADIUS 92 是站位上限)
 const CAST_WINDUP := 0.34                   # 技能前摇(蓄力, 比普攻久 → 有重量感)
 const CAST_RECOVER := 0.24                  # 技能后摇
-const _BASIC_RARITY_BONUS := {"C": 0.20, "B": 0.23, "A": 0.26, "S": 0.29, "SS": 0.32, "SSS": 0.34}   # 小龟不屈: 按目标稀有度
+const _BASIC_RARITY_BONUS := {"C": BasicConsts.RARITY_AMP_C, "B": BasicConsts.RARITY_AMP_B, "A": BasicConsts.RARITY_AMP_A, "S": BasicConsts.RARITY_AMP_S, "SS": BasicConsts.RARITY_AMP_SS, "SSS": BasicConsts.RARITY_AMP_SSS}   # 小龟不屈: 按目标稀有度
 const SEP_RADIUS := 92.0                    # 单位软分离半径 (像素口径; 防扎堆, 调大点更散) — 调宽让近战围目标散开成环不叠成一坨(>血条宽66→血条留出间隙)
 ## 龟蛋相关(用户2026-07-19 调参): 围栏额外双抗 / 决胜期自损间隔与比例
 const EGG_FENCE_RES := 200.0    # 围栏未破时蛋额外获得的双抗(原 80)
@@ -5679,11 +5679,11 @@ func _basic_shield_impact_hit(u: Dictionary, tgt) -> void:
 	# 龟盾强化普攻(用户2026-07-29 第四轮): 0.7A + 20%已损 → 1.5A + 13%已损。
 	# ★不是单纯削弱, 是把重心从"敌人已损生命"挪到"自己的攻击力":
 	#   敌 90%血 47→72(更强) / 50%血 122→121(持平) / 10%血 198→170(更弱) —— 削掉滚雪球, 前期更稳。
-	var lost: float = (tgt["maxHp"] - tgt["hp"]) * 0.13
-	var raw: float = u["atk"] * 1.5
-	var dmg := _atk_dmg(u, 1.5, tgt) + int(lost)
+	var lost: float = (tgt["maxHp"] - tgt["hp"]) * BasicConsts.SHIELD_LOST_PCT
+	var raw: float = u["atk"] * BasicConsts.SHIELD_ATK_COEF
+	var dmg := _atk_dmg(u, BasicConsts.SHIELD_ATK_COEF, tgt) + int(lost)
 	_damage._apply_damage_from(u, tgt, dmg, Color("#ff4444"))
-	_damage._grant_shield(u, (raw + lost) * 0.80)
+	_damage._grant_shield(u, (raw + lost) * BasicConsts.SHIELD_GAIN_PCT)
 	_damage._knockback(u, tgt, 60.0)
 	_vfx._play_anim_vfx("res://assets/sprites/vfx/basic-shieldbash-impact.png", tgt["pos"], 130.0, 20.0, 1.05)
 	_skill_ring(u["pos"], Color(1.0, 0.9, 0.45, 0.5), 50.0)
@@ -7077,11 +7077,11 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		u["chest_rum_t"] = float(u.get("chest_rum_t", 0.0)) + delta
 		if u["chest_rum_t"] >= 1.0:
 			u["chest_rum_t"] -= 1.0; _damage._heal(u, u["maxHp"] * ChestSystem.RUM_HEAL_PCT)
-	# --- 钻石滚球被动(封板): 选滚球 且 100码内无敌 → 免费自动滚(不耗龟能不充能)撞向最近·0.8s防抖内CD ---
+	# --- 钻石滚球被动(封板): 选滚球 且 200码内无敌 → 免费自动滚(不耗龟能不充能)撞向最近·防抖内CD ★2026-08-22订正: 原注释写"100码"而代码 07-12 就已是 200 ---
 	if u["id"] == "diamond" and not u.get("roll_active", false) and _t > float(u.get("roll_free_cd", 0.0)) and "diamondPowerball" in _chosen_skill_types(u["id"], u["side"] == "left"):
 		var _dne = _targeting._nearest_enemy(u)
-		if _dne != null and _dne["pos"].distance_to(u["pos"]) > 200.0:   # 200码内无敌=最近敌>200码(用户2026-07-12: 100→200)
-			u["roll_active"] = true; u["roll_start"] = _t; u["roll_free_cd"] = _t + 0.8
+		if _dne != null and _dne["pos"].distance_to(u["pos"]) > DiamondSystem.ROLL_AUTO_RANGE:   # 200码内无敌=最近敌>200码(用户2026-07-12: 100→200)
+			u["roll_active"] = true; u["roll_start"] = _t; u["roll_free_cd"] = _t + DiamondSystem.ROLL_AUTO_CD
 	# --- 财神聚宝盆: 每3秒 +4~7金币 (用户) ---
 	if u["id"] == "fortune":
 		u["_goldtimer"] = u.get("_goldtimer", 0.0) + delta
