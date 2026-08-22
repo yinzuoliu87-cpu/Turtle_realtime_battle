@@ -97,7 +97,9 @@ func _nums() -> void:
 	_chk("① 糖衣炮弹龟能旧值 120 已消失", not se.contains('"candyBarrage": 120.0'))
 	# 4. 糖衣炮弹护盾（★只查护盾那一行；同函数里伤害也有 maxHp*0.02，不能一刀切）
 	_chk("① 糖衣炮弹每跳护盾 = %.1f%% 自身最大生命" % (WANT_BARRAGE_SHIELD * 100.0),
-		ca.contains('_grant_shield(o, uu["maxHp"] * %.3f, 2.0)' % WANT_BARRAGE_SHIELD))
+		## ★比【常量的值】不比源码里的字面串 —— 2026-08-22 文案根除把它们提成了具名常量,
+		## 比字面串等于把写法焊死(挡的是正常重构), 比值才是在挡数值被改。
+		is_equal_approx(CandySystem.BARRAGE_SHIELD_PCT, WANT_BARRAGE_SHIELD))
 	_chk("① 糖衣炮弹护盾旧值 0.02 已消失（伤害那处的 0.02 不算）",
 		not ca.contains('_grant_shield(o, uu["maxHp"] * 0.02, 2.0)'))
 	# 5. 镰刀横扫诅咒
@@ -134,7 +136,10 @@ func _sk_text(pid: String, sname: String) -> String:
 			continue
 		for s in x.get("skillPool", []):
 			if str(s.get("name", "")) == sname:
-				return str(s.get("brief", "")) + "\n" + str(s.get("detail", ""))
+				## ★先【渲染】再比: 数字现在是 {C:类名.常量} 占位符(2026-08-22 文案根除),
+				## 比原始串必然落空。判据一字未改 —— 换的是"拿哪份文本来比"。
+				return SkillText.render_consts(str(s.get("brief", "")) + "
+" + str(s.get("detail", "")))
 	return ""
 
 

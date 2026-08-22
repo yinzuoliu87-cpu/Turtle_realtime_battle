@@ -14,6 +14,22 @@ const DRONE_SHOT_COEF := 0.04
 ## ★满编 20 门炮若最近敌是同一个 ⇒ 该目标最多吃 20 × 0.4 = **8×ATK**;
 ##   多敌时各炮打各自最近的, 会分散(贯穿线上的其他人也吃)。
 const VOLLEY_COEF := 0.4
+## ★★2026-08-22 文案根除: 下面这些原来散在主场景/本文件的函数体里, 文案又各手写一遍。
+## 【浮游炮的节奏与规模】
+const DRONE_SPAWN_SEC := 2.0     # 每几秒 +1 门炮
+const DRONE_CAP := 20            # 上限几门
+const DRONE_FIRE_SEC := 1.6      # 每门炮每几秒射一发(实际再加 0~0.2 抖动错峰)
+## 【阵亡后组装的机甲】
+const MECH_ASSEMBLE_SEC := 5.0   # 组装期(期间不可被选中、不能动也不能打)
+const MECH_RANGE := 100.0        # 就位后射程(近战最低标准 100·70 会卡位)
+const MECH_HP_BASE := 100.0      # 生命 = (BASE + PER_LV×等级) × 炮数
+const MECH_HP_PER_LV := 2.0
+const MECH_ATK_BASE := 8.0       # 攻击 = (BASE + PER_LV×等级) × 炮数
+const MECH_ATK_PER_LV := 0.1
+const MECH_DEF_BASE := 110.0     # 护甲/魔抗 = BASE + PER_LV×等级(**不吃炮数**·用户定的口径)
+const MECH_DEF_PER_LV := 2.0
+const MECH_BLAST_CD := 2.5       # 每几秒锁血最低的敌人放一次
+const MECH_BLAST_COEF := 1.5     # 那一下 = ×机甲攻击力 物理
 
 var battle
 
@@ -233,23 +249,23 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 	##   生命与攻击【吃炮数】, 护甲魔抗【不吃】—— 这是用户定的口径, 不是遗漏:
 	##   机甲的"硬"是固定的, "大"才随攒了多少炮走。
 	##   ⚠ 组装期 5 秒 `untargetable_until` **不可被索敌**(见下), 所以那 5 秒不承担风险。
-	var final_hp: float = (100.0 + 2.0 * float(_lv)) * float(n)   # 生命=(100+2×等级)×炮数
-	var final_atk: float = (8.0 + 0.1 * float(_lv)) * float(n)    # 攻击=(8+0.1×等级)×炮数
-	var final_def: float = 110.0 + 2.0 * float(_lv)               # 护甲魔抗=110+2×等级
+	var final_hp: float = (MECH_HP_BASE + MECH_HP_PER_LV * float(_lv)) * float(n)   # 生命=(100+2×等级)×炮数
+	var final_atk: float = (MECH_ATK_BASE + MECH_ATK_PER_LV * float(_lv)) * float(n)    # 攻击=(8+0.1×等级)×炮数
+	var final_def: float = MECH_DEF_BASE + MECH_DEF_PER_LV * float(_lv)               # 护甲魔抗=110+2×等级
 	battle._pending_shots.append({"delay": 2.8, "fn": func() -> void:
 		battle._gambler_sys._gambler_pop(gather, 0.8, Color(0.7, 0.98, 1.0, 0.95))
 		battle._skill_ring(gather, Color(0.5, 0.9, 1.0, 0.7), 80.0)
 		battle._shake(battle.JUICE_SHAKE_HEAVY)
 		var mech = battle._spawn._spawn_summon(uu, "mech", final_hp, final_atk, {
 			"label": "机甲", "spr_id": "mech", "col_size": 40.0, "hp_w": 46.0, "melee": true,
-			"move_spd": 95.0, "atk_interval": 1.0, "atk_range": 100.0,   # 机甲=近战坦克档(用户2026-07-28移速定位化: 原130比全表任何龟都快); 近战最低标准100防卡位(用户2026-07-16"70会卡位")
-			"special": "mech_blast", "special_cd": 2.5, "special_scale": 1.5,
+			"move_spd": 95.0, "atk_interval": 1.0, "atk_range": MECH_RANGE,   # 机甲=近战坦克档(用户2026-07-28移速定位化: 原130比全表任何龟都快); 近战最低标准100防卡位(用户2026-07-16"70会卡位")
+			"special": "mech_blast", "special_cd": MECH_BLAST_CD, "special_scale": MECH_BLAST_COEF,
 		})
 		if mech == null: return
 		mech["pos"] = gather
 		mech["_slam"] = true                                     # 组装期锁AI(不能移动/攻击)
 		mech["_assembling"] = true                               # 组装期免疫攻击(伤害闸·用户2026-07-16"期间也不能被攻击")
-		mech["untargetable_until"] = battle._t + 5.05                   # 不可被索敌
+		mech["untargetable_until"] = battle._t + MECH_ASSEMBLE_SEC + 0.05                   # 不可被索敌
 		mech["maxHp"] = final_hp; mech["hp"] = maxf(1.0, final_hp * 0.01)   # ★maxHp固定=满, hp从~0涨→血条0%填到100%(用户2026-07-18: 是血条填充·不是扩maxHp)
 		mech["atk"] = 0.0; mech["base_atk"] = 0.0
 		mech["def"] = 0.0; mech["base_def"] = 0.0; mech["mr"] = 0.0; mech["base_mr"] = 0.0

@@ -613,9 +613,9 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 			# 甜蜜掠夺·甜蜜吸取(用户2026-07-15改"第8秒生效"): 登场不触发→改由 _tick_unit 战斗第8秒调 _candy_sys._candy_sweet_drain 一次
 			# 【用户2026纠错】普攻自愈=我自造的(原话普攻只有1.1A+5%maxHp+攻击-15%·无自愈)→删除; 自我回血在焦糖铠/甜蜜吸取
 			if "candyBomb" in battle._chosen_skill_types(u["id"], u["side"] == "left"):   # 糖果炸弹(技三·选中才召): HP=50%糖果龟maxHp·每秒衰减8%·死亡爆炸100%
-				_spawn_summon(u, "candybomb", u["maxHp"] * 0.50, 0.0, {
+				_spawn_summon(u, "candybomb", u["maxHp"] * CandySystem.BOMB_HP_PCT, 0.0, {
 					"label": "糖果炸弹", "spr_id": "candy-bomb", "col_size": 20.0, "hp_w": 24.0,
-					"no_basic": true, "no_move": true, "self_decay": 0.08,
+					"no_basic": true, "no_move": true, "self_decay": CandySystem.BOMB_DECAY_PCT,
 					"death_aoe": battle._candy_sys.BOMB_DEATH_AOE,
 				})
 		"chest":

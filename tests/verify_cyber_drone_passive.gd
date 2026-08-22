@@ -85,11 +85,13 @@ func _ready() -> void:
 	##   ★判据从源码常量读, 而不是抄一份数字放这儿 —— 抄了就等于两份事实源。
 	var src_cy: String = FileAccess.get_file_as_string("res://scripts/systems/skills/cyber_system.gd")
 	_ok("★★机甲生命 = (100 + 2×等级) × 炮数",
-		src_cy.find("(100.0 + 2.0 * float(_lv)) * float(n)") >= 0)
+		## ★比【常量的值】不比源码里的字面串 —— 2026-08-22 文案根除把它们提成了具名常量,
+		## 比字面串等于把写法焊死(挡的是正常重构), 比值才是在挡数值被改。
+		is_equal_approx(CyberSystem.MECH_HP_BASE, 100.0) and is_equal_approx(CyberSystem.MECH_HP_PER_LV, 2.0))
 	_ok("★★机甲攻击 = (8 + 0.1×等级) × 炮数",
-		src_cy.find("(8.0 + 0.1 * float(_lv)) * float(n)") >= 0)
+		is_equal_approx(CyberSystem.MECH_ATK_BASE, 8.0) and is_equal_approx(CyberSystem.MECH_ATK_PER_LV, 0.1))
 	_ok("★★机甲护甲魔抗 = 110 + 2×等级(【不吃】炮数 —— 用户定的口径)",
-		src_cy.find("110.0 + 2.0 * float(_lv)") >= 0)
+		is_equal_approx(CyberSystem.MECH_DEF_BASE, 110.0) and is_equal_approx(CyberSystem.MECH_DEF_PER_LV, 2.0))
 	_ok("★组装期【不可被索敌】(用户 2026-08-13 指出: 所以那 5 秒不承担风险)",
 		src_cy.find("untargetable_until") >= 0)
 

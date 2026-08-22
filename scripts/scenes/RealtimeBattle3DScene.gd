@@ -7031,9 +7031,9 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		# (暴击率>100%转暴伤由 _resolve_dmg 全局处理, 这里只设暴击率)
 	# --- 赛博浮游炮(用户2026-07-15重构: 非实体·纯视觉跟随+攻击动作·不可被选中/打死): 每2秒+1 上限20 (用户2026-07-28削弱: 原每3秒+2) ---
 	if u["id"] == "cyber":
-		if u["_ptimer"] >= 2.0:
+		if u["_ptimer"] >= CyberSystem.DRONE_SPAWN_SEC:
 			u["_ptimer"] = 0.0
-			u["drone_n"] = mini(20, int(u.get("drone_n", 0)) + 1)
+			u["drone_n"] = mini(CyberSystem.DRONE_CAP, int(u.get("drone_n", 0)) + 1)
 		_tick_cyber_drones(u, delta)
 		if not u.get("_slam", false) and "cyberSmartAI" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 常驻走位闪避(用户2026-07-16: 被动冲刺是消耗充能层数的): 敌贴近130码+有层数→消耗1层自动躲避冲刺(冷却2.5s)
 			var _ne5 = _targeting._nearest_enemy(u)
@@ -7239,7 +7239,7 @@ func _tick_cyber_drones(u: Dictionary, delta: float) -> void:   # 浮游炮纯�
 		s.position = _world_pos(u["pos"], 1.5)
 		_world.add_child(s)
 		var ft := _reg_tween(); ft.tween_property(s, "modulate:a", 1.0, 0.3)
-		arr.append({"spr": s, "fire_t": 1.6 * randf(), "ph": randf() * TAU})
+		arr.append({"spr": s, "fire_t": CyberSystem.DRONE_FIRE_SEC * randf(), "ph": randf() * TAU})
 	while arr.size() > want:
 		var od: Dictionary = arr.pop_back()
 		if is_instance_valid(od.get("spr")): (od["spr"] as Sprite3D).queue_free()
@@ -7260,7 +7260,7 @@ func _tick_cyber_drones(u: Dictionary, delta: float) -> void:   # 浮游炮纯�
 		spr.flip_h = off.x < 0.0
 		d["fire_t"] = float(d["fire_t"]) - delta                  # 各自1.6秒射击(错峰)
 		if d["fire_t"] <= 0.0:
-			d["fire_t"] = 1.6 + randf() * 0.2
+			d["fire_t"] = CyberSystem.DRONE_FIRE_SEC + randf() * 0.2
 			var es := _targeting._pick_enemies_of(u)
 			var tgt = null
 			if not es.is_empty(): tgt = es[_juice_rng.randi() % es.size()]

@@ -6,6 +6,30 @@ extends RefCounted
 ## ★糖果数值单一事实源(用户2026-07-28 削弱·整只 81.5%)。文案在 data/pets.json。
 ## ★两条召唤路径共用它: 登场召(battle_spawn.gd) / 阵亡补召(本文件) —— 只改一处会造出"第一颗弱、第二颗强"的诡异行为。
 const BOMB_DEATH_AOE := 1.0   # 炸弹死亡爆炸: 总伤 = ×炸弹最大生命 (1.5→1.0)
+## ★★2026-08-22 文案根除: 下面这些原来散在函数体里, 文案又各手写一遍。
+## 【糖果锤】
+const HAMMER_ATK_COEF := 1.8     # 总伤 = ×ATK + ×自身最大生命(下一行), 由命中的敌人均分
+const HAMMER_HP_PCT := 0.12
+const HAMMER_LIFESTEAL := 0.40   # 回复造成伤害的比例
+const HAMMER_RANGE := 200.0      # 猛砸的直线长度(码)
+## 【糖衣炮弹】
+const BARRAGE_TICKS := 8         # 共几跳
+const BARRAGE_TICK_SEC := 0.42   # 每跳间隔(秒)
+const BARRAGE_RADIUS := 600.0    # 笼罩区半径(码)
+const BARRAGE_SHIELD_PCT := 0.015  # 每跳给友军 = 糖果龟最大生命 ×
+const BARRAGE_ATK_COEF := 0.2    # 每跳对敌 = ×ATK + ×自身最大生命(下一行) 魔法
+const BARRAGE_HP_PCT := 0.02
+const BARRAGE_SLOW_PCT := 0.20   # 减速比例(语义值; 移速乘数由它推导)
+const BARRAGE_SLOW_MULT := 1.0 - BARRAGE_SLOW_PCT
+const BARRAGE_SLOW_SEC := 0.5    # 每次减速持续(每跳刷新)
+## 总时长 = (跳数 − 1) × 间隔 ⇒ 文案里那个"约 3.4 秒"由它算, 不另写一份
+const BARRAGE_LIFE := (BARRAGE_TICKS - 1) * BARRAGE_TICK_SEC
+## 【糖果炸弹】
+const BOMB_HP_PCT := 0.50        # 开局召唤: 生命 = 糖果龟最大生命 ×
+const BOMB_REVIVE_HP_PCT := 0.20 # 阵亡后重召: 生命 = ×
+const BOMB_FEED_MAXHP_PCT := 0.25  # 每次充能满: 上限 +
+const BOMB_FEED_HEAL_PCT := 0.10   # 每次充能满: 治疗
+const BOMB_DECAY_PCT := 0.08     # 每秒自衰减比例
 
 var battle
 
@@ -52,15 +76,15 @@ func _sk_candy_hammer(u: Dictionary, tgt) -> void:              # 糖果龟·技
 		if not uu.get("alive", false): return
 		var hits: Array = []
 		for o in battle._targeting._enemies_of(uu):
-			if o.get("alive", false) and battle._on_line(uu["pos"], d2, o["pos"], 70.0) and o["pos"].distance_to(uu["pos"]) <= 200.0:
+			if o.get("alive", false) and battle._on_line(uu["pos"], d2, o["pos"], 70.0) and o["pos"].distance_to(uu["pos"]) <= HAMMER_RANGE:
 				hits.append(o)
 		if hits.is_empty(): return
-		var per_raw: float = (uu["atk"] * 1.8 + uu["maxHp"] * 0.12) / float(hits.size())
+		var per_raw: float = (uu["atk"] * HAMMER_ATK_COEF + uu["maxHp"] * HAMMER_HP_PCT) / float(hits.size())
 		var dealt: int = 0
 		for o in hits:
 			var dm: int = battle._mitigate(uu, per_raw, o, false)
 			battle._damage._apply_damage_from(uu, o, dm, Color("#ff9ed6")); dealt += dm
-		battle._damage._heal(uu, float(dealt) * 0.40))
+		battle._damage._heal(uu, float(dealt) * HAMMER_LIFESTEAL))
 
 func _candy_hammer_pose(hammer: Sprite3D, pos2d: Vector2, dir: Vector2, slamming: bool, p: float) -> void:   # 糖果锤姿态: raise=从身侧升头顶后方后仰 / slam=挥到前方下落
 	if not is_instance_valid(hammer): return
@@ -87,10 +111,10 @@ func _sk_candy_barrage(u: Dictionary, tgt) -> void:            # 糖果龟·技�
 		var c = Vector2.ZERO
 		for o in es: c += o["pos"]
 		center = c / float(es.size())                            # 单位最密集区域(简化=敌质心)
-	battle._skill_ring(center, Color(1.0, 0.62, 0.84, 0.32), 600.0)     # 600码笼罩区淡指示
+	battle._skill_ring(center, Color(1.0, 0.62, 0.84, 0.32), BARRAGE_RADIUS)     # 600码笼罩区淡指示
 	var uu: Dictionary = u; var ctr: Vector2 = center
-	for i in range(8):                                          # 8跳·每跳8颗糖弹密集散落该区·落点局部结算(用户2026-07-15两次加密→3→6→8颗+炮弹/糖爆调大)
-		battle._pending_shots.append({"delay": float(i) * 0.42, "src": u, "fn": func() -> void:
+	for i in range(BARRAGE_TICKS):                              # 8跳·每跳8颗糖弹密集散落该区·落点局部结算(用户2026-07-15两次加密→3→6→8颗+炮弹/糖爆调大)
+		battle._pending_shots.append({"delay": float(i) * BARRAGE_TICK_SEC, "src": u, "fn": func() -> void:
 			for b in range(8):
 				var ang = randf() * TAU
 				var land: Vector2 = ctr + Vector2(cos(ang), sin(ang)) * randf_range(15.0, 430.0)
@@ -100,12 +124,12 @@ func _sk_candy_barrage(u: Dictionary, tgt) -> void:            # 糖果龟·技�
 						if not o.get("alive", false): continue
 						if o["pos"].distance_to(land) > 120.0: continue
 						if not battle._is_hostile(uu, o):
-							battle._damage._grant_shield(o, uu["maxHp"] * 0.015, 2.0)   # 友军护盾 2%→1.5% 自身最大生命/跳(用户2026-07-30 第六轮)
+							battle._damage._grant_shield(o, uu["maxHp"] * BARRAGE_SHIELD_PCT, 2.0)   # 友军护盾 2%→1.5% 自身最大生命/跳(用户2026-07-30 第六轮)
 							# ★削的是它"同时当辅助"那一半: 一场送出的护盾 2378→1647(−31%), 输出身份保留。
 							#   龟能同时 120→130 → 释放 4.22→3.90 次, 伤害也跟着 −8%。
 						else:
-							battle._damage._apply_damage_from(uu, o, battle._resolve_dmg(uu, uu["atk"] * 0.2 + uu["maxHp"] * 0.02, o, true), Color("#ff9ed6"), 0.0, false, true)
-							o["spd_move_mult"] = 0.8; o["spd_dbf_until"] = battle._t + 0.5)
+							battle._damage._apply_damage_from(uu, o, battle._resolve_dmg(uu, uu["atk"] * BARRAGE_ATK_COEF + uu["maxHp"] * BARRAGE_HP_PCT, o, true), Color("#ff9ed6"), 0.0, false, true)
+							o["spd_move_mult"] = BARRAGE_SLOW_MULT; o["spd_dbf_until"] = battle._t + BARRAGE_SLOW_SEC)
 			})
 
 func _candy_shell_drop(land2d: Vector2, on_land: Callable) -> void:   # 糖衣炮弹: 从高空翻滚落下到落点→自销调on_land
@@ -140,14 +164,14 @@ func _sk_candy_bomb_feed(u: Dictionary) -> void:               # 糖果龟·技�
 		if o.get("is_summon", false) and is_same(o.get("summon_owner", null), u) and o.get("summon_kind", "") == "candybomb" and o.get("alive", false):
 			bomb = o; break
 	if bomb != null:
-		bomb["maxHp"] = float(bomb["maxHp"]) + u["maxHp"] * 0.25   # 上限+25%糖果龟maxHp
-		bomb["hp"] = minf(float(bomb["maxHp"]), float(bomb["hp"]) + u["maxHp"] * 0.10)   # 治疗10%(喂续命)
+		bomb["maxHp"] = float(bomb["maxHp"]) + u["maxHp"] * BOMB_FEED_MAXHP_PCT   # 上限+25%糖果龟maxHp
+		bomb["hp"] = minf(float(bomb["maxHp"]), float(bomb["hp"]) + u["maxHp"] * BOMB_FEED_HEAL_PCT)   # 治疗10%(喂续命)
 		battle._vfx._float_text(bomb["pos"] + Vector2(0, -40), "喂!", Color("#ff9ed6"))
 		battle._gambler_sys._gambler_pop(bomb["pos"], float(bomb.get("height", 0.0)) + 0.4, Color(1.0, 0.7, 0.88, 0.85))   # 喂养涨大糖光
 		battle._skill_ring(bomb["pos"], Color(1.0, 0.62, 0.84, 0.5), 40.0)
 		for _cb in range(4): _candy_bomb_bubble(bomb)            # 一簇糖泡
 	else:
-		battle._spawn._spawn_summon(u, "candybomb", u["maxHp"] * 0.20, 0.0, {   # 炸弹阵亡→召新(HP=20%糖果龟maxHp)
+		battle._spawn._spawn_summon(u, "candybomb", u["maxHp"] * BOMB_REVIVE_HP_PCT, 0.0, {   # 炸弹阵亡→召新(HP=20%糖果龟maxHp)
 			"label": "糖果炸弹", "spr_id": "candy-bomb", "col_size": 20.0, "hp_w": 24.0,
 			"no_basic": true, "no_move": true, "self_decay": 0.08, "death_aoe": BOMB_DEATH_AOE,
 		})
