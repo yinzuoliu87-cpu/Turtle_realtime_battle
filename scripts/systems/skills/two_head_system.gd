@@ -5,6 +5,25 @@ extends RefCounted
 
 ## ★双头数值单一事实源(用户2026-07-28)。文案在 data/pets.json，改这里要同步改那边。
 const DISRUPT_TRUE := 2.0   # 精神干扰(远程形态): ×ATK 真实伤害 (原 1.0×ATK 魔法)
+## ★★2026-08-22 文案根除: 双生(被动)的这一组原来散在 `_two_head_after_cast` /
+##   `_two_head_enhanced_basic` / `_two_head_retreat` 的函数体里, 文案又各手写一遍。
+## 【切近战时的属性变化】(基准都是 ATK)
+const MELEE_HP_COEF := 2.5       # 最大生命 +
+const MELEE_DEF_COEF := 0.25     # 护甲 +
+const MELEE_MR_COEF := 0.25      # 魔抗 +
+const MELEE_ATK_PENALTY := 0.30  # 攻击力 −
+const MELEE_SHIELD_COEF := 1.1   # 切近战时立即获得的护盾 = ATK ×
+## 【两形态射程】
+const RANGED_RANGE := 400.0
+const MELEE_RANGE := 70.0
+## 【切换强化: 下一发普攻】
+const ENH_RANGED_COEF := 1.4     # 切远程 → 额外 ×ATK 物理
+const ENH_ARMOR_DOWN := 0.25     # 并使目标 −% 护甲
+const ENH_MELEE_COEF := 0.6      # 切近战 → 额外 ×ATK 魔法
+const ENH_SHIELD_COEF := 1.1     # 并给自己 ×ATK 护盾
+const ENH_SEC := 4.0             # 破甲/护盾持续秒
+## 【切远程的滑退距离】
+const RETREAT_DIST := 200.0
 
 var battle
 
@@ -16,11 +35,11 @@ func _two_head_apply_melee(u: Dictionary, on: bool) -> void:
 	if on and not buffed:
 		var a: float = u["base_atk"]
 		u["two_melee_buffed"] = true
-		u["_th_hp"] = a * 2.5; u["_th_def"] = a * 0.25; u["_th_mr"] = a * 0.25; u["_th_atk"] = a * 0.30   # 近战生命加成 1.5→2.5×ATK(用户2026-07-29 第四轮·攻击惩罚 0.30 不动)
+		u["_th_hp"] = a * MELEE_HP_COEF; u["_th_def"] = a * MELEE_DEF_COEF; u["_th_mr"] = a * MELEE_MR_COEF; u["_th_atk"] = a * MELEE_ATK_PENALTY   # 近战生命加成 1.5→2.5×ATK(用户2026-07-29 第四轮·攻击惩罚 0.30 不动)
 		u["maxHp"] += u["_th_hp"]; u["hp"] += u["_th_hp"]
 		u["base_def"] += u["_th_def"]; u["base_mr"] += u["_th_mr"]
 		u["base_atk"] = maxf(1.0, u["base_atk"] - u["_th_atk"])
-		battle._recalc_stats(u); battle._damage._grant_shield(u, a * 1.1)
+		battle._recalc_stats(u); battle._damage._grant_shield(u, a * MELEE_SHIELD_COEF)
 	elif not on and buffed:
 		u["two_melee_buffed"] = false
 		u["maxHp"] = maxf(1.0, u["maxHp"] - float(u.get("_th_hp", 0.0)))
@@ -313,7 +332,7 @@ func _two_head_after_cast(u: Dictionary, tgt) -> void:          # 被动·双生
 	u["two_form"] = "ranged" if to_ranged else "melee"
 	_two_head_apply_melee(u, not to_ranged)
 	u["melee"] = not to_ranged
-	u["atk_range"] = 400.0 if to_ranged else 70.0
+	u["atk_range"] = RANGED_RANGE if to_ranged else MELEE_RANGE
 	u["_th_enh"] = "ranged" if to_ranged else "melee"          # 挂强化: 下1下普攻搬旧切形态那一下的伤害+效果(远程=1.4A物理+破甲 / 近战=0.6A魔法+1.1A盾)
 	if to_ranged:
 		var et = (tgt if (tgt is Dictionary and tgt.get("alive", false)) else battle._targeting._nearest_enemy(u))
@@ -330,7 +349,7 @@ func _two_head_retreat(u: Dictionary, et) -> void:
 	if et != null:
 		away = (from2d - et["pos"]).normalized()
 		if away.length() < 0.1: away = Vector2.RIGHT
-	var dest: Vector2 = from2d + away * 200.0                  # 切远程滑退距离(用户2026-07-11: 350→200码)
+	var dest: Vector2 = from2d + away * RETREAT_DIST                  # 切远程滑退距离(用户2026-07-11: 350→200码)
 	dest.x = clampf(dest.x, battle.ARENA.position.x, battle.ARENA.end.x)
 	dest.y = clampf(dest.y, battle.ARENA.position.y, battle.ARENA.end.y)
 	u["_slam"] = true
@@ -344,13 +363,13 @@ func _two_head_retreat(u: Dictionary, et) -> void:
 func _two_head_enhanced_basic(u: Dictionary, tgt: Dictionary, form: String) -> void:
 	if form == "melee":
 		if tgt.get("alive", false):
-			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 0.6, tgt, true), Color("#ffb05c"))   # 近战强化: +0.6A魔法伤害
-		battle._damage._grant_shield(u, u["atk"] * 1.1, 4.0)                                            # + 自己获 1.1×ATK 护盾(4s)
+			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, ENH_MELEE_COEF, tgt, true), Color("#ffb05c"))   # 近战强化: +0.6A魔法伤害
+		battle._damage._grant_shield(u, u["atk"] * ENH_SHIELD_COEF, ENH_SEC)                                            # + 自己获 1.1×ATK 护盾(4s)
 		battle._skill_ring(u["pos"], Color(0.72, 0.8, 1.0, 0.6), 62.0)
 	else:
 		if tgt.get("alive", false):
-			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.4, tgt), Color("#c0d0ff"))          # 远程强化: +1.4A物理伤害
-			battle._damage._buff(tgt, "def", -0.25, true, 4.0)                                          # + 命中目标 -25% 护甲(4s·破甲)
+			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, ENH_RANGED_COEF, tgt), Color("#c0d0ff"))          # 远程强化: +1.4A物理伤害
+			battle._damage._buff(tgt, "def", -ENH_ARMOR_DOWN, true, ENH_SEC)                                          # + 命中目标 -25% 护甲(4s·破甲)
 
 func _two_head_slide_step(pf: float, u: Dictionary, from2d: Vector2, dest: Vector2) -> void:
 	u["pos"] = from2d.lerp(dest, pf)

@@ -185,7 +185,7 @@ func _frozen() -> void:
 	_chk("⑤ ★水晶壁垒仍然锁龟能(数据信号最强·下轮若仍垫底即确认根因在此)",
 		rb.contains('u.get("_bulwark_armed", false)') and rb.contains("水晶壁垒: 持盾期锁龟能"))
 	_chk("⑤ ★双头近战攻击惩罚仍是 0.30(第四轮加血无效已指向它)",
-		th.contains('u["_th_atk"] = a * 0.30'))
+		is_equal_approx(TwoHeadSystem.MELEE_ATK_PENALTY, 0.30))   # ★比【常量的值】不比源码里的字面量: 后者把写法焊死, 挡的是正常重构(2026-08-22 文案根除把它提成了具名常量)
 	# 冰霜特效重做: 三张【新生成】素材必须在位(用户「别复用，自己搞新的」)
 	var ic: String = _S["ice_system.gd"]
 	for tex in ["frost-icicle-fall", "frost-field-ground", "frost-chip"]:

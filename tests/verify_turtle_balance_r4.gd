@@ -115,13 +115,16 @@ func _two_head(P: Dictionary) -> void:
 	print("  ── 双头 ──")
 	var ts: String = _src["res://scripts/systems/skills/two_head_system.gd"]
 	_chk("双头·近战生命加成 = %.1f×ATK" % WANT_TH_HP_SCALE,
-		ts.contains('u["_th_hp"] = a * %.1f' % WANT_TH_HP_SCALE))
-	_chk("双头·旧值 1.5×ATK 已消失", not ts.contains('u["_th_hp"] = a * 1.5'))
+		is_equal_approx(TwoHeadSystem.MELEE_HP_COEF, WANT_TH_HP_SCALE))
+	_chk("双头·旧值 1.5×ATK 已消失", not is_equal_approx(TwoHeadSystem.MELEE_HP_COEF, 1.5))
 	_chk("双头·攻击惩罚仍是 %.2f×ATK(本轮不动)" % WANT_TH_ATK_LOSS,
-		ts.contains('u["_th_atk"] = a * %.2f' % WANT_TH_ATK_LOSS))
+		is_equal_approx(TwoHeadSystem.MELEE_ATK_PENALTY, WANT_TH_ATK_LOSS))
 	# ★被动文案补全 —— 本轮明确的交付物, 缺一条就红
 	var pas: Dictionary = (P["two_head"] as Dictionary)["passive"]
-	var txt: String = str(pas.get("brief", "")) + "\n" + str(pas.get("desc", ""))
+	## ★文案要先【渲染】再比 —— 数字现在是 {C:TwoHeadSystem.X} 占位符, 比原始串必然落空。
+	## 判据一字未改(文案必须写到这几个数), 只是从"源文本"挪到"玩家真正看到的文本"。
+	var txt: String = SkillText.render_consts(str(pas.get("brief", "")) + "
+" + str(pas.get("desc", "")))
 	_chk("双头·被动 hpScale 字段 = %.1f" % WANT_TH_HP_SCALE,
 		abs(float(pas.get("hpScale", 0.0)) - WANT_TH_HP_SCALE) < 0.001)
 	_chk("双头·被动文案含 250%×攻击力", txt.contains("250%×攻击力"))

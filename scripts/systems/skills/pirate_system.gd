@@ -3,17 +3,48 @@ extends RefCounted
 ## 海盗龟技能系统
 ## 类内名不变;外部名加 battle.
 
+## ★★2026-08-22 文案根除分歧: 下面这些原来是散在函数体里的字面量, 而 pets.json 的文案
+##   各手写了一遍 —— 两边都能改、谁也不知道对方。抽成常量后文案用 {C:PirateSystem.X} 引用。
+##   ⚠ 转的时候当场抓到一处真分歧: 海盗船 detail 末尾灰字写"射程 300",
+##     而实际 `_spawn_pirate_ship_entity` 给的是 `atk_range: 110`(brief 也写 110) —— 文案自己打架。
+
+## 【火炮齐射】
+const VOLLEY_SHOTS := 6              # 几发炮弹
+const VOLLEY_RADIUS := 250.0         # 每发落点的 AOE 半径(码)
+const VOLLEY_ATK_COEF := 0.5         # 每发 ×ATK 物理
+const VOLLEY_MAXHP_PCT := 0.02       # 每发 + 目标最大生命 ×
+## 【朗姆酒】
+const RUM_SEC := 6.0                 # 持续秒数(HoT 与双抗同长)
+const RUM_HOT_PCT := 0.04            # 每秒回复 = 最大生命 ×
+const RUM_MR_COEF := 0.15            # 魔抗 += ATK ×
+const RUM_DEF_EXTRA := 0.5           # 护甲在双抗之外**再**加 ATK × (⇒ 护甲共 0.65A)
+const RUM_DEF_COEF := RUM_MR_COEF + RUM_DEF_EXTRA   # 护甲合计(推导, 不另写一份 0.65)
+## 【海盗船】实体船的规格 —— 真值在 `battle_spawn._spawn_pirate_ship_entity`, 这里是它引用的常量
+const SHIP_HP_SCALE := 1.5           # 生命 = 海盗龟最大生命 ×
+const SHIP_ATK_SCALE := 1.0          # 攻击 = 海盗龟攻击 ×
+const SHIP_RANGE := 110.0            # 射程(码)·近战
+const SHIP_SHOT_CD := 1.25           # 每发间隔(秒) ⇒ 攻速 = 1/1.25 = 0.8
+const SHIP_SHOT_COEF := 0.4          # 每发 ×ATK 物理
+const SHIP_CHARGE_RADIUS := 200.0    # 登场冲锋撞击半径(码)
+const SHIP_CHARGE_STUN := 2.0        # 击飞秒数
+## 【霰弹】(选海盗船后每次充能满)
+const SHOT_PELLETS := 8              # 弹丸数
+const SHOT_ARC_DEG := 60.0           # 扇面角度
+const SHOT_COEF := 0.5               # 每颗 ×ATK 物理
+const SHOT_KNOCK := 40.0             # 击退(码)
+const SHOT_RANGE := 400.0            # 射程(码)
+
 var battle
 
 func _init(b) -> void:
 	battle = b
 
 func _sk_pirate_rum(u: Dictionary) -> void:                     # 海盗龟·朗姆酒(120龟能): 海盗船扔酒瓶→每秒回4%maxHP×6秒(HoT绿回血) + 护甲+0.65A/魔抗+0.15A×6秒(0.15A双抗 + 另给护甲 0.5A·见下方两行·暖色酒气护光)
-	u["rum_until"] = battle._t + 6.0; u["rum_dps"] = u["maxHp"] * 0.04   # 每秒回4%maxHP×6秒(分秒HoT·per-frame _heal结算)
-	u["rum_glow_until"] = battle._t + 6.0                               # 暖色酒气护光标记
-	var _rum_dr: float = u["atk"] * 0.15                          # 回合制 pirate·heal defUpAtkPct{pct:15} → +15%×ATK 双抗·6秒
-	battle._damage._buff(u, "def", _rum_dr, false, 6.0); battle._damage._buff(u, "mr", _rum_dr, false, 6.0)
-	battle._damage._buff(u, "def", u["atk"] * 0.5, false, 6.0)                  # +0.5A护甲(用户2026-07-14确认保留·连同上方0.15A=护甲共+0.65A/魔抗+0.15A)
+	u["rum_until"] = battle._t + RUM_SEC; u["rum_dps"] = u["maxHp"] * RUM_HOT_PCT   # 每秒回4%maxHP×6秒(分秒HoT·per-frame _heal结算)
+	u["rum_glow_until"] = battle._t + RUM_SEC                               # 暖色酒气护光标记
+	var _rum_dr: float = u["atk"] * RUM_MR_COEF                          # 回合制 pirate·heal defUpAtkPct{pct:15} → +15%×ATK 双抗·6秒
+	battle._damage._buff(u, "def", _rum_dr, false, RUM_SEC); battle._damage._buff(u, "mr", _rum_dr, false, RUM_SEC)
+	battle._damage._buff(u, "def", u["atk"] * RUM_DEF_EXTRA, false, RUM_SEC)                  # +0.5A护甲(用户2026-07-14确认保留·连同上方0.15A=护甲共+0.65A/魔抗+0.15A)
 	var ship = _pirate_get_ship(u)                             # 海盗船扔酒瓶(从持久船抛向海盗)
 	var ship2d: Vector2 = (ship.get_meta("ship2d") if ship != null else u["pos"] + Vector2(0.0, -220.0))
 	var ship_h: float = (ship.get_meta("ship_h") if ship != null else 5.0)
@@ -68,7 +99,7 @@ func _sk_pirate_volley(u: Dictionary, tgt) -> void:              # 海盗龟·�
 	var ship = _pirate_get_ship(u)                            # 持久演出船(一只·驻场·各招共用·不淡出)
 	var ship2d: Vector2 = (ship.get_meta("ship2d") if ship != null else Vector2(tgt["pos"].x, battle.ARENA.position.y + 55.0))
 	var ship_h: float = (ship.get_meta("ship_h") if ship != null else 6.5)
-	for i in range(6):                                          # 6发炮弹·各朝随机敌发射·落点250码AOE(命中打伤害·用户2026-07-14)
+	for i in range(VOLLEY_SHOTS):                                          # 6发炮弹·各朝随机敌发射·落点250码AOE(命中打伤害·用户2026-07-14)
 		battle._pending_shots.append({"delay": 0.4 + float(i) * 0.28, "src": u, "fn": func() -> void:
 			var cand: Array = []
 			for o in battle._targeting._pick_enemies_of(u):
@@ -80,10 +111,10 @@ func _sk_pirate_volley(u: Dictionary, tgt) -> void:              # 海盗龟·�
 			_pirate_cannonball(ship2d, ship_h, land, func() -> void:   # 炮弹到点才结算(命中才跳)
 				battle._burst_vfx("res://assets/sprites/vfx/cannon-blast.png", land, 230.0, 0.3)
 				battle._shake(0.05)
-				battle._skill_ring(land, Color(1.0, 0.55, 0.3, 0.5), 250.0)   # 落点250码范围环
+				battle._skill_ring(land, Color(1.0, 0.55, 0.3, 0.5), VOLLEY_RADIUS)   # 落点250码范围环
 				for o in battle._targeting._enemies_of(u):                        # 落点250码内: 0.5A+2%目标maxHp 物理(红)
-					if o.get("alive", false) and o["pos"].distance_to(land) <= 250.0:
-						battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 0.5, o) + int(o["maxHp"] * 0.02), Color("#ff4444")))
+					if o.get("alive", false) and o["pos"].distance_to(land) <= VOLLEY_RADIUS:
+						battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, VOLLEY_ATK_COEF, o) + int(o["maxHp"] * VOLLEY_MAXHP_PCT), Color("#ff4444")))
 			})
 
 func _pirate_get_ship(u: Dictionary) -> Sprite3D:   # 该海盗的持久演出船(一只·首次建后驻场·火炮/朗姆/登场轰击共用·不重复生成不淡出·用户2026-07-14"船是一只在的")
@@ -180,10 +211,10 @@ func _pirate_shotgun(u: Dictionary, tgt) -> void:
 	battle._muzzle_flash(u["pos"], base_dir, Color("#ffd9a0"))
 	battle._skill_ring(u["pos"] + base_dir * 22.0, Color(1.0, 0.82, 0.4, 0.7), 26.0)
 	var half: float = deg_to_rad(30.0)                      # 60度扇面=±30度
-	for i in range(8):
+	for i in range(SHOT_PELLETS):
 		var frac: float = (float(i) / 7.0) * 2.0 - 1.0      # -1..1 均分
 		var d: Vector2 = base_dir.rotated(half * frac)
-		battle._ballistics._shotgun_pellet(u["pos"], u["pos"] + d * 400.0, Color(1.0, 0.86, 0.5, 0.95), 0.72)   # 弹丸VFX(射程400·慢速用户2026-07-14)
+		battle._ballistics._shotgun_pellet(u["pos"], u["pos"] + d * SHOT_RANGE, Color(1.0, 0.86, 0.5, 0.95), 0.72)   # 弹丸VFX(射程400·慢速用户2026-07-14)
 		var hit = battle._basic_first_blocker(u, d)                # 该方向路径第一敌(含蛋·障碍穿我方不挡)
 		if hit != null and hit["pos"].distance_to(u["pos"]) <= 400.0:
 			battle._damage._apply_damage_from(u, hit, battle._atk_dmg(u, 0.5, hit), Color("#ffd07a"))   # 0.5A物理

@@ -727,15 +727,15 @@ func _spawn_pirate_ship(u: Dictionary, tgt = null) -> void:   # 首次: 后方�
 			if e["pos"].distance_to(impact2d) > 200.0: continue
 			battle._damage._apply_damage_from(src, e, battle._atk_dmg(uu, 1.0, e, true), Color("#e8c07a"), 0.0, true)
 			battle._damage._knockback(src, e, 40.0, 3.667, 1.0)
-			battle._damage._stun(e, 2.0, "_spawn_pirate_ship")
+			battle._damage._stun(e, PirateSystem.SHIP_CHARGE_STUN, "_spawn_pirate_ship")
 		if deco != null and is_instance_valid(deco): deco.queue_free()   # 演出船"化作"实体→消失
 		uu["_perf_ship"] = null)
 
 func _spawn_pirate_ship_entity(u: Dictionary, at2d: Vector2):   # 实体海盗船(封板值·pirate-ship.png立绘)落在撞击点·淡入
-	var ship = _spawn_summon(u, "ship", u["maxHp"] * 1.5, u["atk"], {
+	var ship = _spawn_summon(u, "ship", u["maxHp"] * PirateSystem.SHIP_HP_SCALE, u["atk"] * PirateSystem.SHIP_ATK_SCALE, {
 		"label": "海盗船", "spr_id": "pirate-ship", "col_size": 54.0, "hp_w": 58.0, "melee": true,   # 近战(用户2026-07-14)
-		"move_spd": 40.0, "atk_range": 110.0, "no_basic": true,                 # 重船慢移(用户"再慢一点"·40)+近战射程110(用户2026-07-14)
-		"special": "ship_shot", "special_cd": 1.25, "special_scale": 0.4,       # 攻速0.8≈1.25s/发·近身0.4A(封板伤害)
+		"move_spd": 40.0, "atk_range": PirateSystem.SHIP_RANGE, "no_basic": true,                 # 重船慢移(用户"再慢一点"·40)+近战射程110(用户2026-07-14)
+		"special": "ship_shot", "special_cd": PirateSystem.SHIP_SHOT_CD, "special_scale": PirateSystem.SHIP_SHOT_COEF,       # 攻速0.8≈1.25s/发·近身0.4A(封板伤害)
 	})
 	if ship == null:
 		return null
