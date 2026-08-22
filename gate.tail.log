@@ -1,0 +1,120 @@
+  PASS  verify_ninja_shuriken
+  PASS  verify_onboarding
+  PASS  verify_orientation_lock
+  PASS  verify_palette
+  PASS  verify_panel_stats_onscreen
+  PASS  verify_phoenix_flame_onhit
+  PASS  verify_pirate_hook
+  PASS  verify_result_reachable
+  PASS  verify_salvo_trainer
+  PASS  verify_season_elim
+  PASS  verify_season_flow
+  PASS  verify_settings
+  PASS  verify_shield_absorb
+  PASS  verify_shield_synergy
+  PASS  verify_shockwave_vfx
+  PASS  verify_shop_layout
+  PASS  verify_shop_merge_pips
+  PASS  verify_shop_persist
+  PASS  verify_signal_amplifier
+  PASS  verify_skill_energy
+  PASS  verify_skill_pick
+  PASS  verify_skill_ring_curve
+  PASS  verify_skill_text_color
+  PASS  verify_skill_text_leak
+  PASS  verify_special_balance
+  PASS  verify_spirit_dmg_color
+  PASS  verify_spirit_slap_range
+  PASS  verify_sprite_sheets
+  PASS  verify_staff_active_isolated
+  PASS  verify_staff_actives_fire
+  PASS  verify_staff_synergy
+  PASS  verify_star_space
+  PASS  verify_sudden_death
+  PASS  verify_swordsman
+  PASS  verify_synergy_display
+  PASS  verify_synergy_live
+  PASS  verify_synergy_magnitude
+  PASS  verify_synergy_popup
+  PASS  verify_synergy_rest5
+  PASS  verify_synergy_text
+  PASS  verify_synergy_vfx
+  PASS  verify_synergy_vfx_types
+  PASS  verify_talisman_089
+  PASS  verify_tame_defection
+  PASS  verify_tentacle_continuity
+  PASS  verify_tentacle_hit_timing
+  PASS  verify_tentacle_relocate
+  PASS  verify_tentacle_rhythm
+  PASS  verify_tentacle_soft
+  PASS  verify_tentacle_vfx
+  PASS  verify_thorn_reflect
+  PASS  verify_tick_equips_exact
+  PASS  verify_tile_texture
+  PASS  verify_touch_scroll
+  PASS  verify_trainer
+  PASS  verify_trainer_audit
+  PASS  verify_trainer_config
+  PASS  verify_trainer_desc
+  PASS  verify_trainer_hunt_tame
+  PASS  verify_trainer_magicstone
+  PASS  verify_trainer_move
+  PASS  verify_trainer_place
+  PASS  verify_trainer_skills
+  PASS  verify_trainer_target
+  PASS  verify_true_dmg_shield
+  PASS  verify_turtle_balance_r4
+  PASS  verify_turtle_balance_r5
+  PASS  verify_turtle_balance_r6
+  PASS  verify_turtle_roles
+  PASS  verify_tutorial
+  PASS  verify_tutorial_anchors
+  PASS  verify_tutorial_director
+  PASS  verify_tutorial_highlight
+  PASS  verify_two_head_enhanced
+  PASS  verify_two_head_fusion
+  PASS  verify_two_head_strike
+  PASS  verify_two_level_desc
+  FAIL  verify_ui_consistency  (rc=1, 致命报错=0)
+          [FAIL] 没有【两段文字压在一起】  ["MainMenu:排行榜|图鉴", "MainMenu:排行榜|图鉴", "MainMenu:排行榜|图鉴", "MainMenu:排行榜|图鉴", "MainMenu:排行榜|图鉴"]
+        ↳ 完整日志已留在 .gate-fail-verify_ui_consistency.log
+  PASS  verify_ui_layout
+  PASS  verify_uncovered_equips
+  PASS  verify_unit_scaling
+  PASS  verify_untargetable
+  PASS  verify_version
+  PASS  verify_vfx_frames
+  PASS  verify_vfx_readability
+  PASS  verify_whistle_no_aim
+  PASS  verify_whistle_wave
+  (发现 209 个测试, 并行度 2)
+=== 全流程闪退冒烟 (SHIP=1 真实对局) ===
+  PASS  smoke_scenes (9场景进出×4 + 战斗中途硬释放×3 + 60秒完整战斗)
+=== 三方一致性对账 ===
+  PASS  tri_audit (差异 0 处)
+=== 只读数据审计 ===
+  PASS  data_integrity (json交叉引用/资源路径/孤儿字段)
+  PASS  tooltip_number_audit (装备文案数值 ↔ 代码)
+  PASS  pet_number_audit (龟技能文案数值 ↔ 代码)
+  PASS  brief_detail_audit (龟技能 brief ↔ detail 数值)
+  PASS  passive_number_audit (龟被动文案数值 ↔ 代码)
+  PASS  map_composition_audit (地图构图·战场无void/站位不在水/接战区不亮/与生成器一致)
+  PASS  workflow_lint (CI 工作流 YAML 语法)
+  PASS  arch_budget (架构预算·不许上帝对象·欠债只减不增)
+  PASS  style_lint (代码风格·全tab/snake_case/PascalCase 焊死)
+  PASS  rng_discipline (裸随机冻结·护确定性不回退)
+  PASS  docs_authority_lint (单一事实源纪律·三权威在位/消费链活/README无漂移/无冒名)
+  PASS  text_formula_audit (文案文字↔它自己的占位符公式)
+  PASS  text_claim_audit (文案声称↔代码实际·触发周期/选靶/作用范围)
+  PASS  plans_lint (方案书生命周期·状态/骨架/实施回填)
+  PASS  dead_preload (preload 了却没人用的常量)
+  PASS  codex_text_lint (图鉴文案: 教学味/自夸/开发备注/别家黑话/数字贴字)
+  PASS  twin_const (同功能的逻辑侧↔演出侧同名常量取值打架)
+  PASS  type_tables (装备类型四张平行表键集一致)
+  PASS  number_coverage (玩家文案里没人验的数字·只降不升)
+  PASS  text_golden (玩家文案快照对账·483 段)
+  PASS  basestats (装备属性展示串 ↔ EquipStats.STATS·597 个数)
+  PASS  await_guard (协程 await 回来先确认 battle 还活着)
+  PASS  tree_timer (树级计时器不许接闭包·会活过场景释放)
+
+FAIL x1  (PASS 233)

@@ -1,0 +1,3 @@
+202:  FAIL  verify_ui_consistency  (rc=1, 致命报错=0)
+203:          [FAIL] 没有【两段文字压在一起】  ["MainMenu:排行榜|图鉴", "MainMenu:排行榜|图鉴", "MainMenu:排行榜|图鉴", "MainMenu:排行榜|图鉴", "MainMenu:排行榜|图鉴"]
+244:FAIL x1  (PASS 233)
