@@ -27,6 +27,17 @@ const RAGE_GAIN_PCT := 0.10
 const VOLCANO_RANGE := 70.0
 ## 变身时的预警圈半径(码)。原来是 `_lava_volcano_erupt` 里 `_densest_enemy_point` 的裸 400.0。
 const SLAM_WARN_RADIUS := 400.0
+## 【穿透普攻(技能三·普通形态)】沿途每敌
+const PIERCE_ATK_COEF := 0.6        # ×ATK 魔法
+const PIERCE_MAXHP_PCT := 0.04      # + 目标最大生命 ×
+const PIERCE_BURN_COEF := 0.07      # 灼烧层数 = ×ATK
+## 【烈焰暴走(技能三·火山形态)】
+const RAMPAGE_HP_PCT := 0.20        # 最大生命 +
+const RAMPAGE_HASTE := 0.30         # 攻速 +
+const RAMPAGE_SPD := 0.30           # 移速 +
+const RAMPAGE_SEC := 5.0            # 三项都持续
+const RAMPAGE_HASTE_MULT := 1.0 + RAMPAGE_HASTE   # 推导, 不另写 1.3
+const RAMPAGE_SPD_MULT := 1.0 + RAMPAGE_SPD
 ## 命中回复: 该敌人已损生命值的比例(与 ERUPT_HEAL_PCT 是同一个数, 但那个名字是"爆发", 别混)。
 
 var battle
@@ -442,8 +453,8 @@ func _lava_pierce_bolt(u: Dictionary, tgt) -> void:             # 熔岩·穿透
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		if is_same(o, tgt) or battle._on_line(u["pos"], dir, o["pos"], 70.0):
-			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 0.6, o, true) + int(o["maxHp"] * 0.04), Color("#ff7a3c"))
-			battle._damage._apply_dot_stacks(o, "burn", maxi(1, int(round(float(u["atk"]) * 0.07))), u)
+			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, PIERCE_ATK_COEF, o, true) + int(o["maxHp"] * PIERCE_MAXHP_PCT), Color("#ff7a3c"))
+			battle._damage._apply_dot_stacks(o, "burn", maxi(1, int(round(float(u["atk"]) * PIERCE_BURN_COEF))), u)
 
 func _lava_slam_telegraph(pos2d: Vector2, radius: float, dur: float) -> void:   # 落点预警(像素化·用户2026-07-15): 外硬边像素环+内环倒计时收缩到圆心+中心裂纹微光
 	var outer = battle._px_ground_sprite(VfxTex._make_pixel_ring_tex(), pos2d, radius * 2.0, Color(1.0, 0.32, 0.1, 0.0), 0.045)
@@ -626,11 +637,11 @@ func _sk_lava_cast(u: Dictionary, tgt: Dictionary, set_id: String = "A") -> void
 # 通用·击飞: 把 o 从 center 上抛+外推 (1:1 _lava_slam_impact 的击飞段, 抽公共)
 func _sk_lava_erupt(u: Dictionary, tgt) -> void:                # 熔岩龟·技三(用户设计): 火山形态=暴走(+20%maxHp5s+30%攻速+30%移速) / 普通形态=智能冲刺(保命撤/追击贴)+下发普攻穿透
 	if u.get("volcano", false):
-		var gain: float = u["maxHp"] * 0.20
+		var gain: float = u["maxHp"] * RAMPAGE_HP_PCT
 		u["_lava_ult_hp"] = float(u.get("_lava_ult_hp", 0.0)) + gain
 		u["maxHp"] += gain; u["hp"] += gain
-		u["haste_mult"] = 1.3; u["haste_until"] = battle._t + 5.0        # +30%攻速
-		u["spd_move_mult"] = 1.3; u["spd_dbf_until"] = battle._t + 5.0   # +30%移速
+		u["haste_mult"] = RAMPAGE_HASTE_MULT; u["haste_until"] = battle._t + RAMPAGE_SEC        # +30%攻速
+		u["spd_move_mult"] = RAMPAGE_SPD_MULT; u["spd_dbf_until"] = battle._t + RAMPAGE_SEC   # +30%移速
 		var tw = battle._reg_tween()
 		tw.tween_interval(5.0)
 		tw.tween_callback(_lava_ult_revert.bind(u))

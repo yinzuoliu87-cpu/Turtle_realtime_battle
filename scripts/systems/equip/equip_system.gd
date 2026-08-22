@@ -509,24 +509,37 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 ##  原来是"每 6 秒随机一段 3.5 秒增伤", 现在改成"普攻叠层 + 每 5 层放弧形波"(SignalWaveSystem)。
 ##  ★死代码留着会被门禁的"函数存在"断言保护住, 也可能被 VFXPREVIEW 指过去 = 无效目视验证。)
 # 信号脉冲(038): 头顶弹出青蓝 signal-wave 广播图标(升起放大淡出, 2个错峰=脉冲广播) + 脚下青光环
+## ★★2026-08-22 文案根除: FPGA板(040) 这一组原来全是函数体里的裸字面量,
+##   而 `phase2-equipment.json` 的 effectDesc1 又手写了一遍(15 个数, 全库最多的一段)。
+## ★数组常量会被 `{C:}` 渲染成 "1/2/4"(三档写法) —— 正好是文案要的形状。
+const FPGA_IV := 6.0             # 每几秒抽一次(真值在主场景 _EQ_CUSTOM_IV, 那里引用本常量)
+const FPGA_PICKS := [1, 2, 4]    # 逐星: 每次抽几个 2-bit 状态(可重复)
+const FPGA_00_HEAL_PCT := 0.05   # 00: 回复最大生命 ×
+const FPGA_00_RESIST := 12       # 00: 累计 + 护甲与魔抗
+const FPGA_01_ATK := 15          # 01: 累计 + 攻击力
+const FPGA_01_LIFESTEAL := 0.07  # 01: 累计 + 生命偷取
+const FPGA_BUFF_SEC := 3.5       # 10/11 的持续秒数
+const FPGA_10_AMP := 0.15        # 10: 增伤(放大自身造成的所有伤害)
+const FPGA_11_DR := 0.25         # 11: 受到伤害减免(真实伤害除外)
+
 func _eq_fpga_tick(u: Dictionary, si: int) -> void:
 	battle._skill_ring(u["pos"], Color(0.4, 0.9, 1.0, 0.42), 46.0)
 	var codes := ["00", "01", "10", "11"]
 	var ccols := [Color("#7ad0ff"), Color("#a0ff8a"), Color("#ffd05a"), Color("#ff8ad0")]
-	var n: int = [1, 2, 4][si]
+	var n: int = FPGA_PICKS[si]
 	for k in range(n):
 		var pick: int = battle._battle_rng.randi() % 4
 		var xoff: float = (float(k) - float(n - 1) / 2.0) * 34.0
 		battle._vfx._float_text(u["pos"] + Vector2(xoff, -72.0), codes[pick], ccols[pick])   # 二进制码头顶跳
 		match pick:
-			0: battle._damage._heal(u, u["maxHp"] * 0.05); u["base_def"] += 12; u["base_mr"] += 12; battle._recalc_stats(u)   # 用户2026-07-19: +2 → +12
-			1: u["base_atk"] += 15; u["lifesteal"] += 0.07; battle._recalc_stats(u)                            # 用户2026-07-19: +5/+4% → +15/+7%
+			0: battle._damage._heal(u, u["maxHp"] * FPGA_00_HEAL_PCT); u["base_def"] += FPGA_00_RESIST; u["base_mr"] += FPGA_00_RESIST; battle._recalc_stats(u)   # 用户2026-07-19: +2 → +12
+			1: u["base_atk"] += FPGA_01_ATK; u["lifesteal"] += FPGA_01_LIFESTEAL; battle._recalc_stats(u)                            # 用户2026-07-19: +5/+4% → +15/+7%
 			2:
-				u["damage_amp"] = float(u.get("damage_amp", 0.0)) + 0.15   # 10: 真·增伤(放大所有伤害·用户2026-07-19"amp要"); 原 battle._damage._buff(atk,15%) 只放大吃ATK的段, 而040自己不给攻击力
-				battle._pending_shots.append({"delay": 3.5, "fn": func(): u["damage_amp"] = maxf(0.0, float(u.get("damage_amp", 0.0)) - 0.15), "src": u})
+				u["damage_amp"] = float(u.get("damage_amp", 0.0)) + FPGA_10_AMP   # 10: 真·增伤(放大所有伤害·用户2026-07-19"amp要"); 原 battle._damage._buff(atk,15%) 只放大吃ATK的段, 而040自己不给攻击力
+				battle._pending_shots.append({"delay": FPGA_BUFF_SEC, "fn": func(): u["damage_amp"] = maxf(0.0, float(u.get("damage_amp", 0.0)) - FPGA_10_AMP), "src": u})
 			3:
-				u["damage_reduction"] = float(u.get("damage_reduction", 0.0)) + 0.25   # 11: 受到伤害-25%(真伤除外·用户2026-07-19: 原误做+25%护甲对魔/真伤无效→改真减伤)
-				battle._pending_shots.append({"delay": 3.5, "fn": func(): u["damage_reduction"] = maxf(0.0, float(u.get("damage_reduction", 0.0)) - 0.25), "src": u})
+				u["damage_reduction"] = float(u.get("damage_reduction", 0.0)) + FPGA_11_DR   # 11: 受到伤害-25%(真伤除外·用户2026-07-19: 原误做+25%护甲对魔/真伤无效→改真减伤)
+				battle._pending_shots.append({"delay": FPGA_BUFF_SEC, "fn": func(): u["damage_reduction"] = maxf(0.0, float(u.get("damage_reduction", 0.0)) - FPGA_11_DR), "src": u})
 
 
 func _eq_ebb_surge(u: Dictionary, hp_add: float, atk_add: float, dur: float) -> void:   # 退潮浊液041: 涨潮期开始

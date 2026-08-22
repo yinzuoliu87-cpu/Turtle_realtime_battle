@@ -85,8 +85,9 @@ func _nums() -> void:
 
 	# 1. 冰霜每跳伤害
 	_chk("① 冰霜每跳 = %.2fA 魔法" % WANT_FROST_ATK,
-		ic.contains("battle._atk_dmg(u, %.2f, o, true)" % WANT_FROST_ATK))
-	_chk("① 冰霜旧值 0.18 已消失", not ic.contains("battle._atk_dmg(u, 0.18, o, true)"))
+		## ★比【常量的值】不比源码字面串(2026-08-22 根除已提成 IceSystem.FROST_ATK_COEF)
+		is_equal_approx(IceSystem.FROST_ATK_COEF, WANT_FROST_ATK))
+	_chk("① 冰霜旧值 0.18 已消失", not is_equal_approx(IceSystem.FROST_ATK_COEF, 0.18))
 	# 2. 冰柱每层攻速
 	_chk("① 冰柱每层攻速 = %d%%" % int(WANT_ICICLE_ASPD * 100.0),
 		ic.contains("const ICICLE_ASPD := %.2f" % WANT_ICICLE_ASPD))

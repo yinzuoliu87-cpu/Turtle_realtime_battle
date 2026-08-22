@@ -193,6 +193,12 @@ const ICICLE_FROST_RADIUS := 0.20   # 每层 冰霜半径 +20%
 const ICICLE_FROST_SEC := 0.5       # 每层 冰霜持续 +0.5 秒
 const FREEZE_DMG := 2.5             # 冰封: ×ATK 魔法(常驻·用户2026-07-28: 原0.6常态/2.5满层→统一2.5)
 const FREEZE_STUN_SEC := 2.5        # 冰封: 满 ICICLE_MAX 层冰柱时额外眩晕秒数
+## ★★2026-08-22 文案根除: 冰霜领域这一组原来是 `_sk_ice_frost` 里的裸字面量。
+const FROST_BASE_RADIUS := 150.0    # 基础半径(码)·每层冰柱再 +ICICLE_FROST_RADIUS
+const FROST_BASE_SEC := 5.0         # 基础持续(秒)·每层冰柱再 +ICICLE_FROST_SEC
+const FROST_TICK_SEC := 0.5         # 每几秒一跳(跳数 = 持续 ÷ 它)
+const FROST_MR_DOWN := 0.25         # 圈内敌方魔抗 −
+const FROST_ATK_COEF := 0.25        # 每跳 ×ATK 魔法
 
 ## 攒一层冰柱并把属性差量结算上去(只加增量, 不重复叠)
 func _ice_gain_icicle(u: Dictionary) -> void:
@@ -222,9 +228,9 @@ func _sk_ice_frost(u: Dictionary, tgt: Dictionary) -> void:      # 寒冰龟·�
 		if not es.is_empty(): center = es[0]["pos"]
 	# 冰柱层加强(用户2026-07-28): 每层 半径+20% / 持续+0.5秒 → 跳数随持续一起涨(恒每0.5秒一跳)
 	var ic: int = int(u.get("icicle", 0))
-	var radius: float = 150.0 * (1.0 + ICICLE_FROST_RADIUS * float(ic))
-	var secs: float = 5.0 + ICICLE_FROST_SEC * float(ic)
-	var ticks: int = maxi(1, roundi(secs / 0.5))
+	var radius: float = FROST_BASE_RADIUS * (1.0 + ICICLE_FROST_RADIUS * float(ic))
+	var secs: float = FROST_BASE_SEC + ICICLE_FROST_SEC * float(ic)
+	var ticks: int = maxi(1, roundi(secs / FROST_TICK_SEC))
 	_ice_frost_field(center, radius, secs)   # ★领域底层只建【一次】(旧版每跳重画范围环 → 闪烁)
 	var tw = battle._reg_tween()
 	for i in range(ticks):
@@ -237,8 +243,8 @@ func _ice_frost_tick(u: Dictionary, center: Vector2, radius: float) -> void:
 		if not o.get("alive", false):
 			continue
 		if o["pos"].distance_to(center) <= radius:
-			battle._damage._buff(o, "mr", -0.25, true, 0.65)   # 圈内 -25%魔抗(刷新, 略>0.5s跳间隔)
-			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 0.25, o, true), Color("#bfe9ff"))   # 每跳 0.18→0.25A(用户2026-07-30 第六轮·寒冰整只 10.8% 垫底)
+			battle._damage._buff(o, "mr", -FROST_MR_DOWN, true, 0.65)   # 圈内 -25%魔抗(刷新, 略>0.5s跳间隔)
+			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, FROST_ATK_COEF, o, true), Color("#bfe9ff"))   # 每跳 0.18→0.25A(用户2026-07-30 第六轮·寒冰整只 10.8% 垫底)
 
 ## ══ 冰霜领域视觉 (2026-07-29 重做·用户「那种冰霜砸下来怎么做」) ══
 ##

@@ -474,7 +474,7 @@
     "baseStats1": "+生命100/200/500",
     "shopAvailable": 1,
     "emoji": "🔧",
-    "effectDesc1": "每 6 秒随机抽取 1/2/4 个 2-bit状态（可重复抽中同一个）：00=回复 5%最大生命值，并累计+12 护甲与魔抗；\n01=累计+15 攻击力与+7%生命偷取；\n10=3.5 秒内增伤+15%（放大自身造成的所有伤害）；\n11=3.5 秒内受到的伤害-25%（真实伤害除外）。\n其中 00 与 01 的加成在本场战斗内持续累计，该场战斗结束后重置。",
+    "effectDesc1": "每 {C:EquipSystem.FPGA_IV} 秒随机抽取 {C:EquipSystem.FPGA_PICKS} 个 2-bit状态（可重复抽中同一个）：00=回复 {C:EquipSystem.FPGA_00_HEAL_PCT%}%最大生命值，并累计+{C:EquipSystem.FPGA_00_RESIST} 护甲与魔抗；\n01=累计+{C:EquipSystem.FPGA_01_ATK} 攻击力与+{C:EquipSystem.FPGA_01_LIFESTEAL%}%生命偷取；\n10={C:EquipSystem.FPGA_BUFF_SEC} 秒内增伤+{C:EquipSystem.FPGA_10_AMP%}%（放大自身造成的所有伤害）；\n11={C:EquipSystem.FPGA_BUFF_SEC} 秒内受到的伤害-{C:EquipSystem.FPGA_11_DR%}%（真实伤害除外）。\n其中 00 与 01 的加成在本场战斗内持续累计，该场战斗结束后重置。",
     "effectDesc3": "",
     "img": "equip/dungeon-fpga.png",
     "effectBrief": "每 6 秒随机抽 1/2/4 个状态，分别给双抗、攻击与吸血、增伤或减伤。"

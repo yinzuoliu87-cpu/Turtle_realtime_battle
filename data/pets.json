@@ -380,8 +380,8 @@
           "pct": 25,
           "turns": 4
         },
-        "brief": "在目标处降下一片冰霜领域：基础半径 150 码、持续 5 秒，<span class=\"val-normal\">每层冰柱使半径 +20%、持续 +0.5 秒</span>。\n领域内的敌人魔抗降低 25%，并每 0.5 秒受到 {M:0.25*ATK} 魔法伤害。",
-        "detail": "寒冰龟在当前目标处降下一片圆形冰霜领域：\n基础<span class=\"val-magic\">半径 150 码</span>、基础持续 <span class=\"val-magic\">5 秒</span>，<span class=\"val-normal\">每层冰柱使半径 +20%、持续 +0.5 秒</span>（满 20 层 = 半径 750 码 / 持续 15 秒）。\n领域内敌方 <span class=\"val-def\">-25% 魔抗</span>。\n每 0.5 秒一跳（跳数跟着持续时长走：0 层 10 跳、满层 30 跳），每跳造成（25%×攻击力({ATK}) = {M:0.25*ATK}）魔法伤害。",
+        "brief": "在目标处降下一片冰霜领域：基础半径 {C:IceSystem.FROST_BASE_RADIUS} 码、持续 {C:IceSystem.FROST_BASE_SEC} 秒，<span class=\"val-normal\">每层冰柱使半径 +{C:IceSystem.ICICLE_FROST_RADIUS%}%、持续 +{C:IceSystem.ICICLE_FROST_SEC} 秒</span>。\n领域内的敌人魔抗降低 {C:IceSystem.FROST_MR_DOWN%}%，并每 {C:IceSystem.FROST_TICK_SEC} 秒受到 {M:0.25*ATK} 魔法伤害。",
+        "detail": "寒冰龟在当前目标处降下一片圆形冰霜领域：\n基础<span class=\"val-magic\">半径 {C:IceSystem.FROST_BASE_RADIUS} 码</span>、基础持续 <span class=\"val-magic\">{C:IceSystem.FROST_BASE_SEC} 秒</span>，<span class=\"val-normal\">每层冰柱使半径 +{C:IceSystem.ICICLE_FROST_RADIUS%}%、持续 +{C:IceSystem.ICICLE_FROST_SEC} 秒</span>（满 {C:IceSystem.ICICLE_MAX} 层 = 半径 750 码 / 持续 15 秒）。\n领域内敌方 <span class=\"val-def\">-{C:IceSystem.FROST_MR_DOWN%}% 魔抗</span>。\n每 {C:IceSystem.FROST_TICK_SEC} 秒一跳（跳数跟着持续时长走：0 层 10 跳、满层 30 跳），每跳造成（{C:IceSystem.FROST_ATK_COEF%}%×攻击力({ATK}) = {M:0.25*ATK}）魔法伤害。",
         "energyCost": 100
       },
       {
@@ -1716,8 +1716,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "在普通形态（80 龟能）下智能冲刺，重置下一次普攻，并使下一发熔岩弹贯穿全场，对沿途每个敌人造成 0.6×攻击力 魔法伤害 加 4% 最大生命值 并施加灼烧层。\n在火山形态（120 龟能）下，熔岩龟进入暴走，获得 <span class=\"val-atk\">20% 最大生命值</span>、<span class=\"val-atk\">30% 攻击速度</span> 和 <span class=\"val-atk\">30% 移动速度</span>，均持续 <span class=\"val-atk\">5 秒</span>。\n<span style=\"color:#8a93a0\">智能冲刺会依局势残血保命后撤或贴身追击。\n</span>",
-        "detail": "熔岩龟·技能三（双形态）：\n普通形态（80 龟能）：\n智能冲刺（残血或近身有威胁时背离撤退保命，否则冲贴目标追击）\n重置自己的下一次普攻时间，并使下一发熔岩弹变为贯穿全场的岩浆光矢——沿途每名敌人受到（60%×攻击力({ATK}) = {M:0.6*ATK}）魔法伤害 + 4%目标最大生命值，并施加 <span style=\"color:#ff6600\">（0.07×攻击力）层灼烧</span>。\n火山形态（120 龟能）：烈焰暴走——自身获得 +20% 最大生命值、+30% 攻击速度、+30% 移动速度，均持续 5 秒。\n在普通形态（80 龟能）下智能冲刺，重置下一次普攻，并使下一发熔岩弹贯穿全场，对沿途每个敌人造成 0.6×攻击力 魔法伤害 加 4% 最大生命值 并施加灼烧层。",
+        "brief": "在普通形态（80 龟能）下智能冲刺，重置下一次普攻，并使下一发熔岩弹贯穿全场，对沿途每个敌人造成 {C:LavaSystem.PIERCE_ATK_COEF}×攻击力 魔法伤害 加 {C:LavaSystem.PIERCE_MAXHP_PCT%}% 最大生命值 并施加灼烧层。\n在火山形态（120 龟能）下，熔岩龟进入暴走，获得 <span class=\"val-atk\">{C:LavaSystem.RAMPAGE_HP_PCT%}% 最大生命值</span>、<span class=\"val-atk\">{C:LavaSystem.RAMPAGE_HASTE%}% 攻击速度</span> 和 <span class=\"val-atk\">{C:LavaSystem.RAMPAGE_SPD%}% 移动速度</span>，均持续 <span class=\"val-atk\">{C:LavaSystem.RAMPAGE_SEC} 秒</span>。\n<span style=\"color:#8a93a0\">智能冲刺会依局势残血保命后撤或贴身追击。\n</span>",
+        "detail": "熔岩龟·技能三（双形态）：\n普通形态（80 龟能）：\n智能冲刺（残血或近身有威胁时背离撤退保命，否则冲贴目标追击）\n重置自己的下一次普攻时间，并使下一发熔岩弹变为贯穿全场的岩浆光矢——沿途每名敌人受到（{C:LavaSystem.PIERCE_ATK_COEF%}%×攻击力({ATK}) = {M:0.6*ATK}）魔法伤害 + {C:LavaSystem.PIERCE_MAXHP_PCT%}%目标最大生命值，并施加 <span style=\"color:#ff6600\">（{C:LavaSystem.PIERCE_BURN_COEF}×攻击力）层灼烧</span>。\n火山形态（120 龟能）：烈焰暴走——自身获得 +{C:LavaSystem.RAMPAGE_HP_PCT%}% 最大生命值、+{C:LavaSystem.RAMPAGE_HASTE%}% 攻击速度、+{C:LavaSystem.RAMPAGE_SPD%}% 移动速度，均持续 {C:LavaSystem.RAMPAGE_SEC} 秒。\n在普通形态（80 龟能）下智能冲刺，重置下一次普攻，并使下一发熔岩弹贯穿全场，对沿途每个敌人造成 {C:LavaSystem.PIERCE_ATK_COEF}×攻击力 魔法伤害 加 {C:LavaSystem.PIERCE_MAXHP_PCT%}% 最大生命值 并施加灼烧层。",
         "icon": "skills/lava-3.png"
       }
     ],

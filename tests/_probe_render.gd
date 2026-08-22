@@ -44,5 +44,18 @@ func _ready() -> void:
 			elif _leak.search(t) != null:
 				bad += 1
 				print("  ★表达式没算出来(原样吐回): %s → %s" % [str(b[0]), str(_leak.search(t).get_string())])
+	## ★★装备文案是【另一条消费管线】(商店 `_equip_full_desc` 走 `render_consts`),
+	##   龟的那条绿不代表它也绿 —— 2026-08-22 转 FPGA 板时才发现探针根本没扫装备。
+	for eid in d.phase2_equipment_by_id.keys():
+		var e: Dictionary = d.phase2_equipment_by_id[eid]
+		for k in ["effectDesc1", "effectDesc2", "effectDesc3", "desc"]:
+			var raw: String = str(e.get(k, ""))
+			if raw == "":
+				continue
+			seg += 1
+			var t2: String = SkillText.render_consts(raw)
+			if t2.contains("{C:"):
+				bad += 1
+				print("  ★装备没渲染出来: %s.%s → %s" % [str(eid), k, t2.substr(maxi(0, t2.find("{C:")), 60)])
 	print("★引擎内渲染: 查了 %d 段, 残留花括号(未渲染)的有 %d 段" % [seg, bad])
 	get_tree().quit(0 if bad == 0 else 1)
