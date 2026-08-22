@@ -213,11 +213,32 @@ func _ink_rect(l: Label) -> Rect2:
 ##   而且两者**报同一个矩形** ⇒ 压字判据当场报"排行榜压图鉴", 可实拍两块木牌离得远远的。
 ##   **量了一个还在动的东西 = 量了个不存在的画面。**
 ## ⇒ 改成轮询: 每帧把所有可见控件的矩形加起来求和, 连续 6 帧不变才算稳住(上限 240 帧兜底)。
-func _settle(root: Node) -> void:
+##
+## ★★2026-08-22 第二次栽在同一处, 这次是【尺子】不是判据: 上限原本是 **240 帧**。
+##   无头 CI 帧率极高、每帧只推进极少动画时间 ⇒ 240 帧根本等不到落位,
+##   于是**又一次量了还在半空中的画面**, 报出「排行榜压图鉴」(CI 红、本地绿)。
+##   这正是 CLAUDE.md §3.5 那条: **等游戏内效果一律用墙钟, 别用帧数**。
+##   而且原来等不到也**不吭声**, 直接往下量 —— 静默截断比报错更坏, 因为它会
+##   把"没等到"伪装成"真的压字了"。⇒ 改墙钟 + 返回是否真的稳住, 调用方必须断言。
+## 【尺子】墙钟, 不是帧数。tween 走**真实时间**, 与帧率无关 ⇒
+##   本地 240 帧 ≈ 4 秒(够), CI 无头帧率极高 240 帧 ≈ 0.2 秒(远远不够)。
+## 【判据】**不能**要求"完全静止" —— 实测 7 个屏里有 4 个带常驻动效(永远在动),
+##   原来的 240 帧上限只是把这件事盖住了。⇒ 分两段:
+##   ① 先无条件等够 `MIN_WAIT` 墙钟秒(入场动画都 ≤1 秒, 2 秒足够它跑完);
+##   ② 再尽量等"稳住"(给常驻动效的屏一个提前退出的机会), 上限 `MAX_WAIT`。
+##   返回值 = 有没有真的稳住, 只作**信息**用 —— 它为 false 是正常的(常驻动效),
+##   不该当失败。真正保证"量的不是半空中的画面"的是 ①。
+const MIN_WAIT := 2.0
+const MAX_WAIT := 8.0
+
+func _settle(root: Node) -> bool:
 	var last := -1.0
 	var same := 0
-	for _i in range(240):
+	var _t0: float = float(Time.get_ticks_msec()) / 1000.0
+	while float(Time.get_ticks_msec()) / 1000.0 - _t0 < MAX_WAIT:
 		await get_tree().process_frame
+		if float(Time.get_ticks_msec()) / 1000.0 - _t0 < MIN_WAIT:
+			continue                      # ①入场期: 只等, 不判稳
 		var acc := 0.0
 		var st: Array = [root]
 		while not st.is_empty():
@@ -230,10 +251,11 @@ func _settle(root: Node) -> void:
 		if absf(acc - last) < 0.5:
 			same += 1
 			if same >= 6:
-				return
+				return true
 		else:
 			same = 0
 		last = acc
+	return false
 
 
 var _bbox_cache: Dictionary = {}
@@ -545,7 +567,10 @@ func _ready() -> void:
 		#   钉错了对象, 不是"钉不住"。现三次连跑都是 0/11。
 		var inst = (load(path) as PackedScene).instantiate()
 		add_child(inst)
-		await _settle(inst)
+		## ★等够 MIN_WAIT 墙钟秒再量(见 _settle 的长注释)。返回值只打印不当判据 ——
+		##   带常驻动效的屏永远"稳不住", 拿它当失败就是判据不匹配被测对象。
+		var _stable: bool = await _settle(inst)
+		print("    [落位] %s: %s" % [str(scn), "已静止" if _stable else "仍有常驻动效(入场已过, 照量)"])
 		var d := _audit(inst)
 		var b: Dictionary = BASE[scn]
 		tot_ctrl += int(d["ctrl"])
