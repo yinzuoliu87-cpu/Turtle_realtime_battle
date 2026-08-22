@@ -69,15 +69,23 @@ func _ready() -> void:
 		if sp != null and is_instance_valid(sp):
 			sp.queue_free()
 	scn._units.clear()
-	## 名单挑的是【伤害路径自己重写过】的龟(哨兵历轮抓出来的那些 + 各类远程/DoT/延时结算),
-	## 不是随手抓 —— 判据要能照到被测对象(memory [[fb-gate-subject-never-constructed]])。
-	var ROSTER := ["shell", "headless", "two_head", "bubble", "line", "stone",
-		"lava", "pirate", "ninja", "crystal", "bamboo", "phoenix"]
+	## ★★覆盖面: 直接从 `pets.json` 取【全部 28 只】, 不写死名单。
+	##   第一版我手挑了 12 只(哨兵历轮抓出来的那几个) —— 那只能证明"我知道的那些修好了",
+	##   证明不了"没有类似问题"。用户 2026-08-22 问的正是这个:「确定修好了吗, 没有类似问题吗」。
+	##   从数据源取还有个好处: **以后新增的龟自动纳入**, 不需要有人记得来改这份名单。
+	var ROSTER: Array = []
+	for pid in DataRegistry.pet_by_id.keys():
+		ROSTER.append(str(pid))
+	ROSTER.sort()   # 确定顺序(字典遍历顺序不保证) —— 这条门禁要可复现
+	## 28 只对半分两边 ⇒ 每只龟本场都在场(一边一半, 谁也不缺席)。
 	for si in range(2):
 		var sd: String = "left" if si == 0 else "right"
-		for i in range(ROSTER.size()):
+		var half: int = int(ceil(float(ROSTER.size()) * 0.5))
+		var lo: int = 0 if si == 0 else half
+		var hi: int = half if si == 0 else ROSTER.size()
+		for i in range(lo, hi):
 			var px: float = scn.ARENA.position.x + scn.ARENA.size.x * (0.22 if si == 0 else 0.78)
-			var py: float = scn.ARENA.position.y + scn.ARENA.size.y * (0.14 + 0.062 * float(i))
+			var py: float = scn.ARENA.position.y + scn.ARENA.size.y * (0.12 + 0.055 * float(i - lo))
 			var nu: Dictionary = scn._spawn._make_unit(str(ROSTER[i]), sd, Vector2(px, py))
 			## 灵物件塞满 ⇒ 两边都长触手(不塞的话触手那半边断言全是空检查)
 			nu["equips"] = [{"id": "p2eq_032", "star": 1}, {"id": "p2eq_025", "star": 1},
@@ -102,6 +110,9 @@ func _ready() -> void:
 	print("=== verify_dmg_type_sentinel ===")
 	print("  分母: 灵物档位 左=%d 右=%d" % [tl, tr])
 	_ok(tl > 0 and tr > 0, "分母·两边都有触手 (左=%d 右=%d)" % [tl, tr])
+	print("  分母: 本场上场龟种 %d / 全库 %d" % [ROSTER.size(), DataRegistry.pet_by_id.size()])
+	_ok(ROSTER.size() == DataRegistry.pet_by_id.size() and ROSTER.size() >= 28,
+		"分母·全部龟种都在场 %d/%d（少一只就是那只没被测到）" % [ROSTER.size(), DataRegistry.pet_by_id.size()])
 
 	# ── ① 飘字类型不许是捡来的 ──────────────────────────────────
 	var rep: Dictionary = scn._damage.sentinel_report()
@@ -140,6 +151,31 @@ func _ready() -> void:
 			print("      ★归属不符 %d 次: %s" % [int(r[0]), str(r[1])])
 	_ok(wo_n == 0, "①b 归属校验: 用了【算给别人的】类型 %d 发（必须 0）" % wo_n)
 
+	# ── ①c 暴击态: 同一个病的双胞胎 ──────────────────────────────
+	## `_last_atk_crit` 与 `_last_dmg_type` 是**同一行**由 `_resolve_dmg` 写的(主文件
+	## 829/830 两行), 病也一样: 弹在飞, 全局被别人改掉, 命中时捡到别人的暴击。
+	## 后果不止显示(大字+暴击图标+暴击音), 忍者斩击的流血层数就读它(暴击 3 层/否则 2 层)。
+	## 修前实测: 51 发弹道命中里 12 发(24%)不一致。
+	## ★这条断言【不是同义反复】: drift 是还原**之前**的不一致(病的频率, 当分母),
+	##   applied_wrong 是还原**之后**的不一致 —— 谁把还原那行删了, 它立刻非 0。
+	var cd: int = int(scn._ballistics._crit_drift)
+	var cw: int = int(scn._ballistics._crit_applied_wrong)
+	print("  暴击对账: 还原前不一致 %d 发(分母·病的频率) / 还原后仍不一致 %d 发" % [cd, cw])
+	_ok(cd > 0, "分母·本场真的发生过跨帧弹道暴击漂移 %d 发（=0 则下面那条是空检查）" % cd)
+	_ok(cw == 0, "①c 暴击态: 命中时用的暴击 ≠ 发射时掷的 %d 发（必须 0）" % cw)
+
+	# ── ①d on-hit 的暴击态: 闭掉 equip_system 里那个自己登记的缺口 ─────
+	## 原注释:「从掷骰到调 on-hit 之间, 若【防守方】带反伤(荆棘海胆/石头)或凤凰熔岩盾/
+	## 闪电雷盾, 那几段反击也走 raw 掷骰, 会把这个全局值改成"反击那一发是否暴击"。
+	## 要根治得给 on-hit 加一个入参(= 改 battle_damage.gd 的中央管线签名), 本批不动那条路。」
+	## ⇒ 现在就是加了那个入参。`gap` = 传进来的快照与此刻全局不一致的次数 = **缺口的真实频率**,
+	##   它 > 0 就证明这个缺口真的会发生(分母, 不是我假想的); `nopass` 必须为 0 ——
+	##   有人调 on-hit 却不传 crit, 就是又退回读全局。
+	var eg: int = int(scn._equip_sys._eq_crit_gap)
+	var en: int = int(scn._equip_sys._eq_crit_nopass)
+	print("  on-hit 暴击态: 快照≠全局 %d 次(缺口真实频率) / 没传参 %d 次" % [eg, en])
+	_ok(en == 0, "①d on-hit 暴击态: 有 %d 次调用没传快照(会退回读全局·必须 0)" % en)
+
 	# ── ② 触手拍击不许静默丢伤害 ────────────────────────────────
 	var pk: Dictionary = scn._spirit_syn._pk
 	var queued: int = int(pk.get("queued", 0))
@@ -149,6 +185,12 @@ func _ready() -> void:
 		queued, dropped, resolved, int(pk.get("zero_hit", 0))])
 	_ok(queued >= MIN_SLAPS, "分母·本场拍了 %d 次 ≥ %d（太少=空检查）" % [queued, MIN_SLAPS])
 	_ok(dropped == 0, "②拍击伤害: 被静默丢弃 %d 次（必须 0）" % dropped)
+	## ★②b 这条不只管触手 —— `_pending_shots` 是**全仓 25 个延时结算**(枪械连射/法器/
+	##   药水落地/护盾羁绊…)共用的队列。回调失效 = 演出照演、结算永不发生, 且**一声不吭**。
+	##   放在这里断言, 等于替那 25 处一起把关。
+	_ok(int(scn._ballistics._ps_drop_invalid) == 0,
+		"②b 延时结算队列: 回调失效被丢 %d 次（必须 0·覆盖全仓 25 个 _queue_shots 使用者）"
+		% int(scn._ballistics._ps_drop_invalid))
 	## 发起的每一击, 要么已结算, 要么还在动作中（截断那一刻正好在拍）。
 	## 允许的在途上限 = 场上触手根数（每根最多欠一击）。
 	var in_flight: int = queued - resolved

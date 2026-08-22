@@ -3538,7 +3538,7 @@ func _fuel_flask_step(pf: float, spr, from2d: Vector2, to2d: Vector2, peak: floa
 	var h: float = lerpf(1.15, 0.55, pf) + peak * 4.0 * pf * (1.0 - pf)   # 4·p·(1-p)=标准抛物, 顶点在中段
 	spr.position = _world_pos(p2, h)
 	if _cam != null:   # 面向镜头 + 绕视线轴自转(投掷物无固定朝向, 翻滚即可, 不用wisp_dir)
-		spr.global_transform.basis = _cam.global_transform.basis * Basis(Vector3(0, 0, 1), -pf * TAU * 2.2)
+		spr.global_transform.basis = _vfx.cam_basis() * Basis(Vector3(0, 0, 1), -pf * TAU * 2.2)
 	if randf() < 0.5: _ember_drop(p2, h)
 
 func _ember_drop(at2d: Vector2, h: float) -> void:   # 火瓶拖尾: 一粒余烬边落边淡
@@ -7222,7 +7222,7 @@ func _face_screen_dir(node: Node3D, world_from2d: Vector2, world_to2d: Vector2) 
 	var d: Vector2 = _cam.unproject_position(_world_pos(world_to2d, 1.0)) - _cam.unproject_position(_world_pos(world_from2d, 1.0))
 	if d.length() < 1.0: return
 	var tf: Transform3D = node.global_transform
-	tf.basis = _cam.global_transform.basis * Basis(Vector3(0, 0, 1), atan2(-d.y, d.x) - PI / 2.0)
+	tf.basis = _vfx.cam_basis() * Basis(Vector3(0, 0, 1), atan2(-d.y, d.x) - PI / 2.0)
 	node.global_transform = tf
 
 func _tick_cyber_drones(u: Dictionary, delta: float) -> void:   # 浮游炮纯视觉系统(用户2026-07-15: 非实体·环绕跟飞+攻击动作·数量只是计数)
@@ -7389,7 +7389,7 @@ func _apply_cam_zoom() -> void:
 func _cam_pan_by(dx: float, dy: float) -> void:
 	if _cam == null or not is_instance_valid(_cam):
 		return
-	var b := _cam.global_transform.basis
+	var b := _vfx.cam_basis()
 	var right: Vector3 = b.x                                  # 屏幕右
 	var fwd: Vector3 = -b.z                                   # 相机朝向
 	var ground_up: Vector3 = Vector3(fwd.x, 0.0, fwd.z)       # 投到地面 = 屏幕"上方"

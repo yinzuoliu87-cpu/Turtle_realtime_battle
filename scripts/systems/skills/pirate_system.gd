@@ -45,7 +45,7 @@ func _pirate_rum_bottle(from2d: Vector2, from_h: float, to2d: Vector2, on_land: 
 		b.position = battle._world_pos(flat, maxf(0.4, hh))
 		if battle._cam != null:                                # 面向相机+屏幕内翻滚
 			var tf: Transform3D = b.global_transform
-			tf.basis = battle._cam.global_transform.basis * Basis(Vector3(0, 0, 1), p * TAU * 2.5)
+			tf.basis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), p * TAU * 2.5)
 			b.global_transform = tf
 	, 0.0, 1.0, dur).set_trans(Tween.TRANS_SINE)
 	tw.tween_callback(func() -> void:

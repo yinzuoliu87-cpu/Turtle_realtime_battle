@@ -29,6 +29,8 @@ func _ready() -> void:
 	print("  队列丢弃: 回调失效 %d / 换路清空 %d / 结束时仍在队列 %d" % [
 		int(scn._ballistics._ps_drop_invalid), int(scn._ballistics._ps_drop_cleared),
 		scn._pending_shots.size()])
+	print("★暴击探针: 弹道命中 %d 发, 其中【发射时的暴击 ≠ 命中时全局暴击】%d 发" % [
+		int(scn._ballistics._ps_probe_crit_total), int(scn._ballistics._ps_probe_crit_mismatch)])
 	var rep: Dictionary = scn._damage.sentinel_report()
 	var rows: Array = []
 	var tot := 0

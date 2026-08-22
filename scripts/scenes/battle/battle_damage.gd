@@ -49,8 +49,15 @@ func sentinel_wrongowner() -> Dictionary:
 ##   `battle._last_dmg_type = ...`。手写会漏掉 fresh / owner 两个记账位, 于是
 ##   哨兵既看不出问题、也统计不准(2026-08-22 实测: 我自己修的几处就是这样进的"归属不符"名单)。
 ##   典型场景: 弹道命中还原发射时的类型、冲击波扩张到才命中、%maxHp 的定额伤害。
-func set_dtype(t: String, victim) -> void:
+## `crit`: 传 null = 不动暴击态(DoT/定额伤害这类本来就无暴击的场合);
+##   传 bool = 一起还原。★暴击态 `_last_atk_crit` 与类型是**同一个生产者**(_resolve_dmg)
+##   在同一行写的, 病也一样: 弹道飞行途中被别人的伤害改掉, 命中时捡到别人的暴击。
+##   实测(2026-08-22 探针): 51 发弹道命中里 12 发(24%)的暴击标记是捡来的。
+##   后果不止显示 —— 忍者斩击的流血层数就读它(暴击 3 层/否则 2 层), 是玩法。
+func set_dtype(t: String, victim, crit = null) -> void:
 	battle._last_dmg_type = t
+	if crit != null:
+		battle._last_atk_crit = bool(crit)
 	_dt_fresh = true
 	_dt_owner = victim
 
@@ -401,7 +408,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	# 装备事件钩子 (on-hit 攻击方 / on-target 防守方 / HP阈值) — 装备自身造的段不再回钩
 	if not from_equip:
 		if src["alive"] and u["alive"]:
-			battle._equip_sys._eq_on_hit(src, u, dmg, basic) # on-hit: 攻击者装备 (流血/灼烧/连锁/追击/穿透/标记 等; basic 闸【普攻】类)
+			battle._equip_sys._eq_on_hit(src, u, dmg, basic, was_crit) # on-hit: 攻击者装备(★was_crit 是掷骰当时的快照, 别让它自己读全局: 中间的反伤/熔岩盾/雷盾会改写) (流血/灼烧/连锁/追击/穿透/标记 等; basic 闸【普攻】类)
 			battle._bow_syn.on_hit(src, u)                   # 弓箭【处决】: 全队(用户2026-08-03改), 斩杀线按各自暴击率
 			battle._potion_syn.try_behead(src, u)            # 药水顶档【斩首】: 攻击猎物且其 <20% 血 → 直接处决
 			battle._gadget_syn.on_hit(src, u)                # 奇械【冰封】掷骰冻结 + 【僵硬】叠 1 层

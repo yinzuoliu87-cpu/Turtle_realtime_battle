@@ -221,6 +221,28 @@ func _ready() -> void:
 		syn.stack_of("left", 0) == 1, "剩 %d 层" % syn.stack_of("left", 0))
 	_ok("④ ★★也不算作\"射程内有敌人\"(否则触手永远不会搬家去够得着的地方)",
 		not syn._foe_in_range("left", 0))
+	## ★★④b 搬家挑的目标也必须是【打得着的】。
+	##   我第一版只修了 `_foe_in_range`, 漏了 `_reloc_tick` 里那份手写名单 ⇒
+	##   触手会搬到蛋旁边、到了发现打不着、再搬 —— **反复搬家却永远不打**。
+	##   同一个问题在三处各写一遍(在范围内/选靶/搬家)就是这个下场。
+	##   判据: 全场只有一个打不着的蛋时, 连续推进 3 秒(RELOC_IDLE_T=1.0, 足够触发多次),
+	##   触手的位置**不许**被搬到蛋附近。
+	var pos_before: Vector2 = syn.tentacle_pos("left", 0)
+	## ⚠ 必须**同时推进演出时钟**: `relocate()` 只是【发起】搬家(状态转 ST_RETRACT),
+	##   位置要等撤回→再破土那套动作走完才变。第一版只调 `_reloc_tick` 不推 `tv.tick`,
+	##   于是坐标永远不动 —— 反向验证时把坏代码也判成了绿(memory [[fb-gate-subject-never-constructed]]:
+	##   判据没错, 被测的那件事根本没发生)。
+	for _r in range(80):
+		syn._reloc_tick(0.05)
+		_adv(0.05)
+	## ⚠ 判据是「**动没动**」不是「有没有靠近蛋」—— 第一版我写成"靠近蛋"就红不了:
+	##   搬家公式是"退到距目标 0.70×射程处", 蛋在 200 码而 0.70×400=280 ⇒ 它其实是
+	##   **搬离**蛋的(200→280)。判据比现象宽一格就抓不住(memory [[fb-judge-must-fit-the-shape]])。
+	##   真正的病是"为一个打不着的敌人搬了家"——搬完还是打不着, 下一轮接着搬。
+	var moved: float = syn.tentacle_pos("left", 0).distance_to(pos_before)
+	_ok("④b ★★不许为了一个打不着的蛋搬家(搬完照样打不着, 会一直搬)",
+		moved < 1.0 and int(tv.state_of("left", 0)) == 1,
+		"位移 %.1f 码 · 状态 %d(1=一直待机, 变了就是发起过搬家)" % [moved, int(tv.state_of("left", 0))])
 
 	_s.queue_free()
 	await get_tree().process_frame

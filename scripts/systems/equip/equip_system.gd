@@ -4,6 +4,10 @@ extends RefCounted
 ## 【装备与角色技能分开管理·用户定向】所有 _eq_/_tick_eq_ 效果在此; 类内名字不变, 外部名加 battle.
 
 var battle
+## on-hit 暴击态对账(仅供门禁读): gap=传进来的与全局不一致的次数(=缺口真实频率)
+## nopass=有人调 on-hit 却没传 crit(将来新代码忘了传就会被抓)
+var _eq_crit_gap := 0
+var _eq_crit_nopass := 0
 var _sigwave: SignalWaveSystem   # 信号放大器038 的弧形电磁波(2026-07-31 重做·单独成文件: 上帝文件已卡在 arch_budget 8600)
 var _stats: EquipStatsApply   # 被动属性/flag 应用子系统(2026-07-26 从本文件分出·spawn期·区别于主动效果)
 var _spirit_sys: EqSpiritBatch   # 灵物 5 件(060~064)用户重做版(2026-08-05·效果本体在 eq_spirit_batch.gd)
@@ -656,13 +660,13 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007(重做�
 	qi.pixel_size = 0.058
 	qi.modulate = Color(1.0, 0.96, 0.9, 0.98)   # 近白暖调, 让贴图赤金本色出来(不二次染色)
 	battle._world.add_child(qi)
-	var obasis: Basis = (battle._cam.global_transform.basis if battle._cam != null else Basis.IDENTITY)   # dir恒定→朝向算一次
+	var obasis: Basis = (battle._vfx.cam_basis() if battle._cam != null else Basis.IDENTITY)   # dir恒定→朝向算一次
 	if battle._cam != null:
 		var s0: Vector2 = battle._cam.unproject_position(battle._world_pos(front, 0.9))
 		var s1: Vector2 = battle._cam.unproject_position(battle._world_pos(front + dir * 60.0, 0.9))
 		var sd: Vector2 = s1 - s0
 		if sd.length() > 0.5:
-			obasis = battle._cam.global_transform.basis * Basis(Vector3(0, 0, 1), atan2(-sd.y, sd.x) - PI / 2.0)
+			obasis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), atan2(-sd.y, sd.x) - PI / 2.0)
 	var reach := 2000.0
 	var traveled := 0.0
 	var trail_next := 0.0
@@ -941,7 +945,9 @@ func _eq_bonus_hit(src: Dictionary, tgt: Dictionary, amount: float, col: Color) 
 	return d
 
 
-func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false) -> void:
+## `crit`: **攻击方这一发**是否暴击, 由 `_apply_damage_from` 在掷骰当时快照后传进来。
+## 传参而不是读全局 —— 见下面 `was_crit` 处的长注释(那个已登记缺口就是这样闭掉的)。
+func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false, crit = null) -> void:
 	if src.get("equips", []).is_empty():
 		return
 	# AoE 判定(启发式): 同帧内 src 命中≥2个不同目标 → 范围技能 (供 002 等"范围减半"用; 首个目标算单体)
@@ -954,11 +960,18 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false)
 	# ★暴击态快照(批② 074 骨簇箭袋 / 076 腐蚀重弩要用)。
 	#   `battle._last_atk_crit` 是【全局·最近一次暴击掷骰】, 而下面的循环里别的装备会调
 	#   `_atk_dmg`/`_resolve_dmg`(005 双生匕首就是)把它改写 ⇒ 必须在进循环【之前】抓一次。
-	#   ⚠ 已知缺口(诚实记录, 不假装没有): 从 `_apply_damage_from` 掷骰到它调 on-hit 之间,
-	#     若【防守方】带反伤(荆棘海胆/石头)或凤凰熔岩盾/闪电雷盾, 那几段反击也走 raw 掷骰,
-	#     会把这个全局值改成"反击那一发是否暴击"。要根治得给 on-hit 加一个入参
-	#     (= 改 battle_damage.gd 的中央管线签名), 本批不动那条路。
-	var was_crit: bool = bool(battle._last_atk_crit)
+	#   ★★2026-08-22 这个缺口已闭: 原注释写的「要根治得给 on-hit 加一个入参
+	#     (= 改 battle_damage.gd 的中央管线签名)」现在就是这么做的 —— `_apply_damage_from`
+	#     在**掷骰那一刻**把 `was_crit` 快照下来(它自己第 252 行早就抓了), 直接传进来。
+	#     缺口原文: 从掷骰到调 on-hit 之间, 若【防守方】带反伤(荆棘海胆/石头)或
+	#     凤凰熔岩盾/闪电雷盾, 那几段反击也走 raw 掷骰, 会把全局改成"反击那发是否暴击"。
+	#     实测频率见 `_eq_crit_gap`(仅 DMGSENTINEL 记账), 门禁 verify_dmg_type_sentinel 盯着。
+	#   `crit == null` 只可能来自将来新写的调用方忘了传 —— 那时退回旧行为并记一笔。
+	if crit == null:
+		_eq_crit_nopass += 1
+	elif bool(crit) != bool(battle._last_atk_crit):
+		_eq_crit_gap += 1
+	var was_crit: bool = bool(crit) if crit != null else bool(battle._last_atk_crit)
 	for e in src["equips"]:
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
 		battle._cur_eq_item = iid   # 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)

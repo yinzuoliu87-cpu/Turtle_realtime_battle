@@ -189,10 +189,13 @@ func _reloc_tick(delta: float) -> void:
 		if ti <= 0:
 			continue
 		# 本方能打的敌人（活着的对方单位）
-		var foes: Array = []
-		for u in battle._units:
-			if u is Dictionary and u.get("alive", false) and str(u.get("side", "")) != s2:
-				foes.append(u)
+		## 搬家要挑的是【打得着的】敌人 —— 与 `_foe_in_range` / `_slap` 选靶
+		## **同一份名单**(§PICK-TARGET: 排除围栏未破的蛋、机甲组装期、训龟大师)。
+		## ★★2026-08-22 第二次踩同一个坑: 我修了 `_foe_in_range` 却漏了这里 ⇒
+		##   场上只剩蛋/组装机甲时: 搬到蛋旁边 → 到了发现打不着 → 再搬,
+		##   **反复搬家却永远不打**。同一个问题在三处各写一遍就是这个下场
+		##   (memory [[fb-hand-rolled-copies-drift]])。三处现在都问同一句话。
+		var foes: Array = battle._targeting._pick_enemies_of_side(s2)
 		for i in range(TENTACLES[clampi(ti - 1, 0, 3)]):
 			var k: String = "%s|%d" % [s2, i]
 			if tv.state_of(s2, i) != 1:          # 只有【待机】中的才考虑搬家

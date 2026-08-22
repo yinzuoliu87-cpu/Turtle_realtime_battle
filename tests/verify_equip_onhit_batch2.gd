@@ -177,7 +177,10 @@ func _t_dispatch() -> void:
 	var dmg_src: String = _strip("res://scripts/scenes/battle/battle_damage.gd")
 	var rb_src: String = _strip("res://scripts/scenes/RealtimeBattle3DScene.gd")
 	_ok("⓪ ★★接线: battle_damage 的普攻/技能路真的调 _eq_on_hit",
-		dmg_src.contains("_eq_on_hit(src, u, dmg, basic)"), "len=%d" % dmg_src.length())
+		## ★比前缀不比整串: 断言写死 `..., basic)` 的话, **给钩子加一个入参**就红 ——
+		## 而那是正常演进(2026-08-22 给 on-hit 加了 crit 快照入参闭掉一个已登记缺口)。
+		## 判据要卡的是"中央管线真的调了它", 不是"参数一个都不许变"。
+		dmg_src.contains("_eq_on_hit(src, u, dmg, basic"), "len=%d" % dmg_src.length())
 	_ok("⓪ ★★接线: battle_damage 的闪避分支真的调 _eq_on_dodge",
 		dmg_src.contains("_eq_on_dodge(u)"))
 	_ok("⓪ ★★接线: 主场景的普攻真的调 _eq_on_basic_attack",

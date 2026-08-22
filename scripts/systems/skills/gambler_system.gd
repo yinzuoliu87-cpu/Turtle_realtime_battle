@@ -85,7 +85,7 @@ func _gambler_throw_hit(u: Dictionary, tgt: Dictionary, dmg: int, roll_multi: bo
 		card.position = pos
 		if battle._cam != null:
 			var ct: Transform3D = card.global_transform
-			ct.basis = battle._cam.global_transform.basis * Basis(Vector3(0, 0, 1), f * 11.0)
+			ct.basis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), f * 11.0)
 			card.global_transform = ct
 		, 0.0, 1.0, 0.52)   # 0.34→0.52放慢(用户2026-07-14)
 	ctw.tween_callback(func() -> void:
@@ -183,7 +183,7 @@ func _gambler_wild_vfx(u: Dictionary, tgt: Dictionary) -> void:
 			card.position = from3.lerp(to3, f)
 			if battle._cam != null:
 				var ct: Transform3D = card.global_transform
-				ct.basis = battle._cam.global_transform.basis * Basis(Vector3(0, 0, 1), f * 9.0)   # 面向相机+滚转
+				ct.basis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), f * 9.0)   # 面向相机+滚转
 				card.global_transform = ct
 			, 0.0, 1.0, 0.62)   # 飞行0.35→0.62s放慢看清(用户2026-07-14)
 		ctw.tween_callback(func() -> void:

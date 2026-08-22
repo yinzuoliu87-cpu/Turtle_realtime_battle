@@ -14,6 +14,20 @@ func _init(b) -> void:
 	battle = b
 	_syn = SynergyVfx.new(b)
 
+## 相机朝向 —— **所有公告板/定向立牌都走这里**, 不许各自读 `battle._cam.global_transform`。
+##
+## ★由来(2026-08-22): smoke 与新哨兵门禁间歇刷
+##   `Condition "!is_inside_tree()" is true. Returning: Transform3D()`。
+##   根因是**拆场时相机先离树, 而演出/弹道还会再跑一帧**去读它的朝向。
+##   全仓这样的读点有 16 处(ballistics 9 / 主场景 7), 逐处加守卫 = 又一份手抄副本,
+##   漏一处就继续偶发红(我第一版猜是触手, 加完守卫那一轮碰巧全绿 —— 运气不是修好)。
+##   ⇒ 收口成一个入口: 相机不在树上就返回单位基, 演出画得不对无所谓(那一帧场景正在拆)。
+func cam_basis() -> Basis:
+	if battle._cam == null or not is_instance_valid(battle._cam) or not battle._cam.is_inside_tree():
+		return Basis()
+	return battle._cam.global_transform.basis
+
+
 func _play_action(u: Dictionary, kind: String) -> void:
 	if u == null or not is_instance_valid(u.get("sprite", null)):
 		return

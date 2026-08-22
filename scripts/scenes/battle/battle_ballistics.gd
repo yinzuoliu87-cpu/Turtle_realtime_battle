@@ -7,6 +7,9 @@ var battle
 ## 延时结算队列的两个【静默丢弃点】记账(探针2026-08-22)
 var _ps_drop_invalid := 0    # 回调失效
 var _ps_drop_cleared := 0    # 换路清空队列
+## 暴击对账(仅 DMGSENTINEL): drift=病的频率(分母) / applied_wrong=修完必须恒 0
+var _crit_drift := 0
+var _crit_applied_wrong := 0
 
 func _init(b) -> void:
 	battle = b
@@ -26,6 +29,11 @@ func _init(b) -> void:
 func _push_proj(d: Dictionary) -> void:
 	if not d.has("dtype"):
 		d["dtype"] = battle._last_dmg_type
+	## 暴击态同理(见 battle_damage.set_dtype 的长注释)。`is_crit` 这个键手里剑早就在用,
+	## 所以只在【没人写过】时才盖 —— 显式指定的优先。
+	if not d.has("is_crit"):
+		d["is_crit"] = battle._last_atk_crit
+	d["_crit_rolled"] = d["is_crit"]   # 独立副本, 只给门禁对账用(还原用 is_crit)
 	battle._projectiles.append(d)
 
 func _fire_trainer_rock(u: Dictionary, tgt: Dictionary, ms_onhit: bool = false) -> void:
@@ -152,7 +160,21 @@ func _fire_ghost_wisp(u: Dictionary, tgt: Dictionary) -> void:
 		"ghost_touch": true, "gt_phys": 0.4 * atk, "gt_true": 0.9 * atk, "basic_onhit": true, "wisp_dir": true,
 	})
 
+## 战斗场还在不在树上。
+##
+## ★由来(2026-08-22): smoke 间歇刷 `Condition "!is_inside_tree()" is true. Returning: Transform3D()`。
+##   根因不是触手 —— 是**弹道每帧读相机朝向**(旋转扑克牌/手里剑要 `battle._vfx.cam_basis()`)。
+##   战斗场被硬释放时相机先离树, 而 `_step_projectiles` 还会再跑一帧 ⇒ 引擎报错。
+##   ⚠ 我第一版猜是触手, 给 `tentacle_vfx.tick` 加了守卫, 那一轮门禁碰巧全绿 ——
+##     **那是运气不是修好了**(下一轮又红)。真正的读点靠 `grep global_transform` 数出来:
+##     ballistics 9 处、主场景 7 处, 全是 `battle._cam.` 那一族。
+func _scene_live() -> bool:
+	return battle._world != null and is_instance_valid(battle._world) and battle._world.is_inside_tree() 		and battle._cam != null and is_instance_valid(battle._cam) and battle._cam.is_inside_tree()
+
+
 func _step_projectiles(delta: float) -> void:
+	if not _scene_live():
+		return
 	var ts_on: bool = not battle._timestop._ts_active.is_empty()
 	var keep: Array = []
 	for pr in battle._projectiles:
@@ -183,11 +205,11 @@ func _step_projectiles(delta: float) -> void:
 			if sd2.length() > 1.0:
 				var roll2: float = atan2(-sd2.y, sd2.x) - PI / 2.0 + float(pr.get("wisp_off", 0.0))   # wisp_off: 纹理朝前方向修正(默认+Y; 横向贴图=+X 传 PI/2)
 				var wtf2: Transform3D = node.global_transform
-				wtf2.basis = battle._cam.global_transform.basis * Basis(Vector3(0, 0, 1), roll2)
+				wtf2.basis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), roll2)
 				node.global_transform = wtf2
 		if pr.get("card_spin", false) and battle._cam != null:            # 赌神: 面向相机+滚转(旋转扑克牌·复用wisp_dir的相机basis法)
 			var ctf: Transform3D = node.global_transform
-			ctf.basis = battle._cam.global_transform.basis * Basis(Vector3(0, 0, 1), pr["t"] * 13.0)
+			ctf.basis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), pr["t"] * 13.0)
 			node.global_transform = ctf
 		if pr.get("shuriken_anim", false):                         # 手里剑: 4帧忍者飞镖旋转动画
 			node.frame = int(pr["t"] * 18.0) % 4
@@ -195,7 +217,17 @@ func _step_projectiles(delta: float) -> void:
 			node.queue_free()
 			if tgt["alive"]:
 				if pr.has("dtype"):
-					battle._damage.set_dtype(str(pr["dtype"]), tgt)   # ★弹道命中: 还原发射时捕获的类型(飞行期全局会被别的伤害覆写→飘字色错·用户2026-07-11)
+					## ★对账(DMGSENTINEL 才记): drift = 还原【之前】全局的暴击与本弹发射时
+					##   掷的不一致 —— 这是病本身的频率, 也是本条门禁的**分母**(它为 0 说明
+					##   这一场根本没有跨帧弹道, 断言就是空的)。
+					##   applied = 还原【之后】仍不一致 —— 必须恒为 0; 谁把还原删了它就非 0。
+					if OS.has_environment("DMGSENTINEL"):
+						if bool(pr.get("_crit_rolled", false)) != bool(battle._last_atk_crit):
+							_crit_drift += 1
+					battle._damage.set_dtype(str(pr["dtype"]), tgt, bool(pr.get("is_crit", false)))
+					if OS.has_environment("DMGSENTINEL"):
+						if bool(pr.get("_crit_rolled", false)) != bool(battle._last_atk_crit):
+							_crit_applied_wrong += 1   # ★弹道命中: 还原发射时捕获的类型(飞行期全局会被别的伤害覆写→飘字色错·用户2026-07-11)
 				if pr.get("fireball", false):   # 抛物线火球045: 落点火爆+魔法伤(蓝字)+灼烧
 					battle._damage._apply_damage_from(pr["src"], tgt, battle._resolve_dmg(pr["src"], float(pr["dmg"]), tgt, true), pr["col"], 0.0, false, true)
 					if pr.get("fire_burst", 0) > 0:
@@ -276,6 +308,8 @@ func _step_projectiles(delta: float) -> void:
 # 依次射出的子弹: 每帧减 delay, 到点 call 回调(回调内部再选目标+射线+伤害, 死亡守卫在回调里判)
 # 依次射出的子弹: 每帧减 delay, 到点 call 回调(回调内部再选目标+射线+伤害, 死亡守卫在回调里判)
 func _step_pending_shots(delta: float) -> void:
+	if not _scene_live():
+		return
 	var ts_on: bool = not battle._timestop._ts_active.is_empty()
 	for i in range(battle._pending_shots.size() - 1, -1, -1):
 		var s: Dictionary = battle._pending_shots[i]
@@ -420,7 +454,7 @@ func _step_homing_arrow(pr: Dictionary, node: Sprite3D, delta: float) -> bool:  
 		if sv.length() > 0.4:
 			var roll: float = atan2(-sv.y, sv.x) + float(pr.get("roll_off", 0.0))
 			var tf: Transform3D = node.global_transform
-			tf.basis = battle._cam.global_transform.basis * Basis(Vector3(0, 0, 1), roll)
+			tf.basis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), roll)
 			node.global_transform = tf
 	return true
 

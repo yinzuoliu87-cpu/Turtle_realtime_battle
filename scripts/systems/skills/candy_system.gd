@@ -26,8 +26,14 @@ func _sk_candy_hammer(u: Dictionary, tgt) -> void:              # 糖果龟·技
 		hammer.texture = htex; hammer.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		hammer.billboard = BaseMaterial3D.BILLBOARD_DISABLED; hammer.shaded = false; hammer.transparent = true
 		hammer.pixel_size = (155.0 * battle.WS) / float(maxi(1, htex.get_height()))
-		_candy_hammer_pose(hammer, u["pos"], dir, false, 0.0)
+		## ★★先入树再摆姿势(2026-08-22)。原来是反的 ⇒ `_candy_hammer_pose` 里读
+		##   `hammer.global_transform` 时节点还不在树上, 引擎报
+		##   `Condition "!is_inside_tree()" is true. Returning: Transform3D()`,
+		##   **首帧的锤子朝向被静默丢掉**(下一帧 tween 才纠正)。
+		##   这不是拆场问题 —— 回溯写得很清楚: _sim_step → _do_skill → 这里, 正常战斗中就会发生。
+		##   (我一开始猜是拆场时序, 给触手/弹道各加了守卫都没治好 —— 猜三次不如看一次回溯。)
 		battle._world.add_child(hammer)
+		_candy_hammer_pose(hammer, u["pos"], dir, false, 0.0)
 	var uu: Dictionary = u; var d2: Vector2 = dir
 	var tw = battle._reg_tween()
 	if hammer != null:
@@ -69,7 +75,7 @@ func _candy_hammer_pose(hammer: Sprite3D, pos2d: Vector2, dir: Vector2, slamming
 	hammer.position = battle._world_pos(flat, hh)
 	if battle._cam != null:
 		var tf: Transform3D = hammer.global_transform
-		tf.basis = battle._cam.global_transform.basis * Basis(Vector3(0, 0, 1), ang)
+		tf.basis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), ang)
 		hammer.global_transform = tf
 
 func _sk_candy_barrage(u: Dictionary, tgt) -> void:            # 糖果龟·技能二糖衣炮弹(封板·120龟能): 敌最密集区降糖衣炮弹雨8跳·可见糖弹从天落下·落点局部命中(用户2026-07-14全套标准)·友1.5%maxHp盾/敌0.2A+2%maxHp魔法+减速20%
@@ -121,7 +127,7 @@ func _candy_shell_drop(land2d: Vector2, on_land: Callable) -> void:   # 糖衣�
 		s.position = battle._world_pos(land2d, maxf(0.2, from_h * (1.0 - p * p)))   # 重力加速下落
 		if battle._cam != null:
 			var tf = s.global_transform
-			tf.basis = battle._cam.global_transform.basis * Basis(Vector3(0, 0, 1), p * TAU * 2.0)   # 翻滚
+			tf.basis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), p * TAU * 2.0)   # 翻滚
 			s.global_transform = tf
 	, 0.0, 1.0, randf_range(0.42, 0.6)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.tween_callback(func() -> void:
