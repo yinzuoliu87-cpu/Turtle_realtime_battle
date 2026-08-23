@@ -4,6 +4,14 @@ extends RefCounted
 ## 类内名不变;外部名加 battle.
 
 ## ★彩虹数值单一事实源(用户2026-07-28 第一轮加强·整只 14.1% 倒二)。文案在 data/pets.json，改这里要同步改那边。
+## 【反射弹射】敌我之间交替弹射, 每段效果相同不递减。
+const REFLECT_BOUNCES := 6       # 共几段
+const REFLECT_COEF := 0.5        # 每段: 治友 ×ATK 生命 / 伤敌 ×ATK 魔法
+## 【强化棱镜(打包被动)】每 N 秒抽一色
+const PRISM_PROC_SEC := 5.0
+const PRISM_LIFESTEAL := 0.10    # 橙: 全队 + 生命偷取
+const PRISM_BUFF_SEC := 5.0      # 橙/青/紫 的持续(秒)
+const PRISM_BURN_COEF := 0.67    # 黄: 随机敌灼烧层数 = ×ATK
 const PRISM_SHIELD_SCALE := 1.0     # 棱镜护盾: 每人 ×ATK 护盾 (0.65→1.0)
 const STORM_RADIUS := 300.0         # 全色风暴: 半径码 (140→300)
 const STORM_ALLY_HEAL := 0.25       # 全色风暴: 每跳圈内友军回 ×ATK 生命 (新增)
@@ -42,20 +50,20 @@ func _rainbow_enh_prism_proc(u: Dictionary) -> void:          # 强化棱镜4色
 	match c:
 		0:
 			for o in battle._targeting._allies_of(u):
-				battle._damage._buff(o, "lifesteal", 0.1, false, 5.0)
+				battle._damage._buff(o, "lifesteal", PRISM_LIFESTEAL, false, PRISM_BUFF_SEC)
 			battle._vfx._float_text(u["pos"] + Vector2(0, -60), "橙·全体吸血", Color("#ff9d3c"))
 		1:
 			if not es.is_empty():
 				var t = es[battle._battle_rng.randi() % es.size()]
-				battle._damage._apply_dot_stacks(t, "burn", maxi(1, int(round(float(u["atk"]) * 0.67))), u)
+				battle._damage._apply_dot_stacks(t, "burn", maxi(1, int(round(float(u["atk"]) * PRISM_BURN_COEF))), u)
 		2:
 			if not es.is_empty():
 				var t2 = es[battle._battle_rng.randi() % es.size()]
-				t2["spd_aspd_mult"] = 0.7; t2["spd_dbf_until"] = battle._t + 5.0   # 冰寒-30%攻速5秒
+				t2["spd_aspd_mult"] = 0.7; t2["spd_dbf_until"] = battle._t + PRISM_BUFF_SEC   # 冰寒-30%攻速5秒
 		3:
 			if not es.is_empty():
 				var t3 = es[battle._battle_rng.randi() % es.size()]
-				battle._damage._add_curse(t3, 5.0, u)             # 诅咒每秒5%maxHp真伤5秒
+				battle._damage._add_curse(t3, PRISM_BUFF_SEC, u)             # 诅咒每秒5%maxHp真伤5秒
 	battle._skill_ring(u["pos"], Color(0.8, 0.6, 1.0, 0.4), 48.0)
 
 # 棱镜护盾施法特效: 七彩爆发从彩虹龟扩散 + 每友军护盾罩+棱镜色pop (用户2026-07-13补·"棱镜"主题)
@@ -193,7 +201,7 @@ func _sk_rainbow_reflect(u: Dictionary) -> void:               # 彩虹龟·反�
 	var allies = battle._targeting._allies_of(u)
 	var enemies = battle._targeting._enemies_of(u)
 	var prev: Vector2 = u["pos"]                # 弹射起点=彩虹龟
-	for i in range(6):
+	for i in range(REFLECT_BOUNCES):
 		var _ally: bool = (i % 2 == 0)
 		var target = null
 		if _ally:
@@ -211,10 +219,10 @@ func _sk_rainbow_reflect(u: Dictionary) -> void:               # 彩虹龟·反�
 		tw.tween_callback(func() -> void:
 			battle._beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", from_p, tp, 30.0, Color(_col.r, _col.g, _col.b, 0.9), 0.55, 0.9)   # 棱镜反射光束(当跳色·时长0.3→0.55更慢更看得清)
 			if _ally:
-				if tref.get("alive", false): battle._damage._heal(tref, u["atk"] * 0.5)
+				if tref.get("alive", false): battle._damage._heal(tref, u["atk"] * REFLECT_COEF)
 				battle._reflect_pop(tp, float(tref.get("height", 0.0)), Color(0.3, 1.0, 0.5, 0.9))    # 治友=绿pop
 			else:
-				if tref.get("alive", false): battle._damage._apply_damage_from(u, tref, battle._atk_dmg(u, 0.5, tref, true), Color("#ff8ad8"))
+				if tref.get("alive", false): battle._damage._apply_damage_from(u, tref, battle._atk_dmg(u, REFLECT_COEF, tref, true), Color("#ff8ad8"))
 				battle._reflect_pop(tp, float(tref.get("height", 0.0)), Color(_col.r, _col.g, _col.b, 0.95)))   # 伤敌=当跳色pop
 
 # 反射弹射命中pop(加性glow缩放淡出)

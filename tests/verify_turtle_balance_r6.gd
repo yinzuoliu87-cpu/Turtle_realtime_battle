@@ -105,8 +105,9 @@ func _nums() -> void:
 		not ca.contains('_grant_shield(o, uu["maxHp"] * 0.02, 2.0)'))
 	# 5. 镰刀横扫诅咒
 	_chk("① 镰刀横扫诅咒 = %.1f 秒" % WANT_SCYTHE_CURSE,
-		hl.contains("_add_curse(o, %.1f, uu)" % WANT_SCYTHE_CURSE))
-	_chk("① 镰刀诅咒旧值 5.0 已消失", not hl.contains("_add_curse(o, 5.0, uu)"))
+		## ★比【常量的值】不比源码字面串(2026-08-22 根除已提成具名常量)
+		is_equal_approx(HeadlessSystem.SCYTHE_CURSE_SEC, WANT_SCYTHE_CURSE))
+	_chk("① 镰刀诅咒旧值 5.0 已消失", not is_equal_approx(HeadlessSystem.SCYTHE_CURSE_SEC, 5.0))
 	# 6. 灵魂风暴龟能
 	_chk("① 灵魂风暴龟能 = %d" % int(WANT_STORM_ENERGY),
 		se.contains('"ghostStorm": %.1f' % WANT_STORM_ENERGY))
@@ -202,10 +203,10 @@ func _frozen() -> void:
 	print("  ── ③ 本轮故意不动的(用户明说不动·下轮判据) ──")
 	var rb: String = _S["RealtimeBattle3DScene.gd"]
 	_chk("③ ★灵魂打击普攻附带仍是 %.1fA 魔法(用户: 不动)" % FROZEN_SOUL_ATK,
-		rb.contains("_atk_dmg(u, %.1f, tgt, true)" % FROZEN_SOUL_ATK))
+		is_equal_approx(HeadlessSystem.SOUL_ATK_COEF, FROZEN_SOUL_ATK))
 	_chk("③ ★灵魂打击普攻附带仍是 %d%% 目标【当前】生命(不是最大生命)" % int(FROZEN_SOUL_HPPCT * 100.0),
-		rb.contains('int(tgt["hp"] * %.2f)' % FROZEN_SOUL_HPPCT))
-	# 用户先说削到 15%, 紧接着改口"那就不动" —— 15% 若出现在代码里就是我没跟上改口
+		is_equal_approx(HeadlessSystem.SOUL_CURHP_PCT, FROZEN_SOUL_HPPCT))
+
 	_chk("③ ★没有误实施被改口撤销的 15%", not rb.contains('int(tgt["hp"] * 0.15)'))
 
 

@@ -2872,8 +2872,8 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		if int(u.get("headless_soul_stacks", 0)) > 0:              # 灵魂强化: 下3次攻击各附加(用户2026-07-17)
 			u["headless_soul_stacks"] = int(u["headless_soul_stacks"]) - 1
 			if tgt.get("alive", false):
-				_damage._apply_damage_from(u, tgt, _atk_dmg(u, 0.5, tgt, true), Color("#9bdcff"))   # 额外0.5A魔法
-				_damage.set_dtype("magic", tgt); _damage._apply_damage_from(u, tgt, int(tgt["hp"] * 0.10), Color("#9bdcff"))          # 额外10%当前生命魔法(同上·只设类型不改数值)
+				_damage._apply_damage_from(u, tgt, _atk_dmg(u, HeadlessSystem.SOUL_ATK_COEF, tgt, true), Color("#9bdcff"))   # 额外0.5A魔法
+				_damage.set_dtype("magic", tgt); _damage._apply_damage_from(u, tgt, int(tgt["hp"] * HeadlessSystem.SOUL_CURHP_PCT), Color("#9bdcff"))          # 额外10%当前生命魔法(同上·只设类型不改数值)
 				_headless_sys._headless_soul_bite(tgt)                            # 像素牙齿闭合命中特效
 			if int(u["headless_soul_stacks"]) <= 0:
 				_headless_sys._headless_scythe(u)                                 # 第3下打完→蓄力→镰刀横扫
@@ -6915,7 +6915,7 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 		"bamboo":                                         # 生长(改造): 蓄力时下一发普攻强化(追加魔法+回血+永久成长)
 			if u.get("bamboo_charge", false):
 				u["bamboo_charge"] = false
-				_damage._apply_damage_from(u, tgt, _mitigate(u, u["atk"] * (1.0 if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else 0.75) + u["maxHp"] * (0.13 if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else 0.08), tgt, true), Color("#9be7ff"), 0.0, false)   # 追击魔法·选竹击=强化生长(1.0A+13%maxHp)否则基础(0.75A+8%maxHp)·用户核对JS bambooCharged
+				_damage._apply_damage_from(u, tgt, _mitigate(u, u["atk"] * (BambooSystem.GROW_SMACK_ATK_COEF if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else BambooSystem.GROW_ATK_COEF) + u["maxHp"] * (BambooSystem.GROW_SMACK_HP_PCT if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else BambooSystem.GROW_HP_PCT), tgt, true), Color("#9be7ff"), 0.0, false)   # 追击魔法·选竹击=强化生长(1.0A+13%maxHp)否则基础(0.75A+8%maxHp)·用户核对JS bambooCharged
 				_melee_lunge(u, tgt, 0.66)                                     # 不灭之握式: 强化发踏步加倍(0.30→0.66)明显扑上去
 				_hitstop = maxf(_hitstop, 0.06)                                # 顿帧=命中厚重感
 				_shake(0.06)
@@ -6926,8 +6926,8 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 				_spawn_bamboo_orb(tgt["pos"], u["pos"], func() -> void:
 					if not u.get("alive", false):
 						return
-					_damage._heal(u, u["maxHp"] * (0.12 if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else 0.08))
-					var _gr := (1.05 if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else 0.60); u["maxHp"] += u["base_atk"] * _gr; u["hp"] += u["base_atk"] * _gr; _recalc_stats(u); _vfx._flash(u, Color(0.5, 1.7, 0.65)))   # 永久+maxHp=系数×ATK + 吸收瞬间竹叶龟再绿闪(得到生命·不灭之握=绿闪非环)
+					_damage._heal(u, u["maxHp"] * (BambooSystem.GROW_SMACK_HEAL_PCT if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else BambooSystem.GROW_HEAL_PCT))
+					var _gr := (BambooSystem.GROW_SMACK_MAXHP_PER_ATK if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else BambooSystem.GROW_MAXHP_PER_ATK); u["maxHp"] += u["base_atk"] * _gr; u["hp"] += u["base_atk"] * _gr; _recalc_stats(u); _vfx._flash(u, Color(0.5, 1.7, 0.65)))   # 永久+maxHp=系数×ATK + 吸收瞬间竹叶龟再绿闪(得到生命·不灭之握=绿闪非环)
 		"rainbow":                                        # 棱镜(改造): 普攻附当前颜色效果(红真伤/蓝小盾/绿回血)
 			match int(u.get("prism_color", -1)):
 				0: _damage._apply_damage_from(u, tgt, int(u["atk"] * 0.25), Color("#ff6b6b"), 0.0, true)   # 红: 额外真伤
@@ -7054,7 +7054,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 				_skill_ring(u["pos"], Color(0.79, 0.64, 0.42, 0.4), 42.0)   # 视觉: 硬化贴地褐环 (不飘名字文字)
 	# --- 竹叶生长: 每N秒充能 → 永久+ATK/HP ---
 	elif u["id"] == "bamboo":
-		if u["_ptimer"] >= 6.0 and not u.get("bamboo_charge", false):
+		if u["_ptimer"] >= BambooSystem.GROW_CD and not u.get("bamboo_charge", false):
 			u["_ptimer"] = 0.0
 			u["bamboo_charge"] = true
 	# --- 龟壳气场觉醒 + 储能消耗周期 ---
@@ -7103,7 +7103,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			_vfx._flash(u, Color(_pcc.r + 0.4, _pcc.g + 0.4, _pcc.b + 0.4))
 		if u["id"] == "rainbow" and u.get("_enh_prism", false):   # 强化棱镜(选反射打包): 每5秒抽1色(橙吸血/黄灼烧/青冰寒/紫诅咒)
 			u["_epTimer"] = float(u.get("_epTimer", 0.0)) + delta
-			if u["_epTimer"] >= 5.0:
+			if u["_epTimer"] >= RainbowSystem.PRISM_PROC_SEC:
 				u["_epTimer"] = 0.0
 				_rainbow_sys._rainbow_enh_prism_proc(u)
 	# --- 泡泡·泡沫: 每5秒→泡泡值10%化魔法打最近敌 + 治疗自己10%泡泡值 (共消耗20%泡泡值·用户2026-07-15改3→5秒) ---

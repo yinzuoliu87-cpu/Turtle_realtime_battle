@@ -3,6 +3,19 @@ extends RefCounted
 ## 竹龟技能系统
 ## 类内名不变;外部名加 battle.
 
+## ★★2026-08-22 文案根除: 生长(被动)这一组原来全在**主场景**的 `_tick_unit` 里,
+##   一行三元表达式写着两套数(选没选「竹击」)。文案又各手写一遍。
+## 【生长·蓄力强化下一发普攻】基础值 / 选了「竹击」后的强化值, 一一对应
+const GROW_CD := 6.0             # 每几秒蓄力一次
+const GROW_ATK_COEF := 0.75      # 追加魔法 = ×ATK + ×最大生命(下一行)
+const GROW_HP_PCT := 0.08
+const GROW_HEAL_PCT := 0.08      # 命中后生命球回复 = 最大生命 ×
+const GROW_MAXHP_PER_ATK := 0.60 # 永久 + 最大生命 = 基础攻击力 ×(攻击力本身不涨)
+const GROW_SMACK_ATK_COEF := 1.0   # ↓ 选「竹击」后的四个强化值
+const GROW_SMACK_HP_PCT := 0.13
+const GROW_SMACK_HEAL_PCT := 0.12
+const GROW_SMACK_MAXHP_PER_ATK := 1.05
+
 var battle
 
 func _init(b) -> void:

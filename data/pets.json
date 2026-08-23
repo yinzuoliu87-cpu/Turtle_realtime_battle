@@ -196,8 +196,8 @@
     "passive": {
       "type": "bambooCharge",
       "name": "生长",
-      "brief": "每 <span class=\"val-atk\">6 秒</span>蓄力一次，强化下一发普攻：额外造成 {M:ATK*0.75+HP*0.08} 魔法伤害，飞回一颗生命球回复 <span class=\"val-heal\">8% 最大生命值</span>，并<span class=\"val-heal\">永久</span>提升最大生命值。\n<span style=\"color:#8a93a0\">生命上限每次提升 +0.60×基础攻击力，但攻击力本身不增长。\n</span>",
-      "desc": "每 6 秒蓄力一次。\n蓄力后，下一发普攻获得强化：额外造成（75%×攻击力({ATK}) + 8%×最大生命值({HP}) = {M:ATK*0.75+HP*0.08}）魔法伤害。\n命中后飞出一颗绿色生命球回到竹叶龟身上（<span style=\"color:#8a93a0\">落到自己身上才生效</span>），回复 <span class=\"val-heal\">8%</span> 最大生命值，并<span class=\"val-heal\">永久</span>提升最大生命值（+0.60×基础攻击力；攻击力本身不涨）。\n若出战选了「竹击」，强化提升为 100%×攻击力 + 13%×最大生命值 魔法伤害、回血 12%、永久 +1.05×基础攻击力 最大生命值。"
+      "brief": "每 <span class=\"val-atk\">{C:BambooSystem.GROW_CD} 秒</span>蓄力一次，强化下一发普攻：额外造成 {M:ATK*0.75+HP*0.08} 魔法伤害，飞回一颗生命球回复 <span class=\"val-heal\">{C:BambooSystem.GROW_HEAL_PCT%}% 最大生命值</span>，并<span class=\"val-heal\">永久</span>提升最大生命值。\n<span style=\"color:#8a93a0\">生命上限每次提升 +{C:BambooSystem.GROW_MAXHP_PER_ATK}×基础攻击力，但攻击力本身不增长。\n</span>",
+      "desc": "每 {C:BambooSystem.GROW_CD} 秒蓄力一次。\n蓄力后，下一发普攻获得强化：额外造成（{C:BambooSystem.GROW_ATK_COEF%}%×攻击力({ATK}) + {C:BambooSystem.GROW_HP_PCT%}%×最大生命值({HP}) = {M:ATK*0.75+HP*0.08}）魔法伤害。\n命中后飞出一颗绿色生命球回到竹叶龟身上（<span style=\"color:#8a93a0\">落到自己身上才生效</span>），回复 <span class=\"val-heal\">{C:BambooSystem.GROW_HEAL_PCT%}%</span> 最大生命值，并<span class=\"val-heal\">永久</span>提升最大生命值（+{C:BambooSystem.GROW_MAXHP_PER_ATK}×基础攻击力；攻击力本身不涨）。\n若出战选了「竹击」，强化提升为 {C:BambooSystem.GROW_SMACK_ATK_COEF%}%×攻击力 + {C:BambooSystem.GROW_SMACK_HP_PCT%}%×最大生命值 魔法伤害、回血 {C:BambooSystem.GROW_SMACK_HEAL_PCT%}%、永久 +{C:BambooSystem.GROW_SMACK_MAXHP_PER_ATK}×基础攻击力 最大生命值。"
     },
     "skillPool": [
       {
@@ -364,8 +364,8 @@
         "pierce": 0,
         "cd": 0,
         "totalScale": 1.4,
-        "brief": "普攻交替造成 {P:1.0*ATK} 物理与魔法伤害，每段使自己获得 1 层<span class=\"val-normal\">冰柱</span>。\n每层冰柱：\n+5% 攻速、+1% 护甲、+1% 魔抗，并使【冰霜】范围 +20%、持续 +0.5 秒（上限 <span class=\"val-atk\">20 层</span>，每路战斗结束刷新）。",
-        "detail": "寒冰龟射出冰锥，单段造成（100%×攻击力({ATK}) = {P:1.0*ATK}）伤害，伤害类型逐次交替：本次物理、下次魔法。\n每段攻击使自己获得 1 层<span class=\"val-normal\">冰柱</span>，上限 <span class=\"val-atk\">20 层</span>，每路战斗结束刷新。\n每层冰柱：\n<span class=\"val-atk\">+5% 攻击速度</span>、<span class=\"val-def\">+1% 护甲</span>、<span class=\"val-def\">+1% 魔抗</span>，并使【冰霜】<span class=\"val-magic\">范围 +20%</span>、<span class=\"val-magic\">持续 +0.5 秒</span>。\n+5% 攻速、+1% 护甲、+1% 魔抗，并使【冰霜】范围 +20%、持续 +0.5 秒（上限 <span class=\"val-atk\">20 层</span>，每路战斗结束刷新）。",
+        "brief": "普攻交替造成 {P:1.0*ATK} 物理与魔法伤害，每段使自己获得 1 层<span class=\"val-normal\">冰柱</span>。\n每层冰柱：\n+{C:IceSystem.ICICLE_ASPD%}% 攻速、+{C:IceSystem.ICICLE_DEFMR%}% 护甲、+{C:IceSystem.ICICLE_DEFMR%}% 魔抗，并使【冰霜】范围 +{C:IceSystem.ICICLE_FROST_RADIUS%}%、持续 +{C:IceSystem.ICICLE_FROST_SEC} 秒（上限 <span class=\"val-atk\">{C:IceSystem.ICICLE_MAX} 层</span>，每路战斗结束刷新）。",
+        "detail": "寒冰龟射出冰锥，单段造成（100%×攻击力({ATK}) = {P:1.0*ATK}）伤害，伤害类型逐次交替：本次物理、下次魔法。\n每段攻击使自己获得 1 层<span class=\"val-normal\">冰柱</span>，上限 <span class=\"val-atk\">{C:IceSystem.ICICLE_MAX} 层</span>，每路战斗结束刷新。\n每层冰柱：\n<span class=\"val-atk\">+{C:IceSystem.ICICLE_ASPD%}% 攻击速度</span>、<span class=\"val-def\">+{C:IceSystem.ICICLE_DEFMR%}% 护甲</span>、<span class=\"val-def\">+{C:IceSystem.ICICLE_DEFMR%}% 魔抗</span>，并使【冰霜】<span class=\"val-magic\">范围 +{C:IceSystem.ICICLE_FROST_RADIUS%}%</span>、<span class=\"val-magic\">持续 +{C:IceSystem.ICICLE_FROST_SEC} 秒</span>。\n+{C:IceSystem.ICICLE_ASPD%}% 攻速、+{C:IceSystem.ICICLE_DEFMR%}% 护甲、+{C:IceSystem.ICICLE_DEFMR%}% 魔抗，并使【冰霜】范围 +{C:IceSystem.ICICLE_FROST_RADIUS%}%、持续 +{C:IceSystem.ICICLE_FROST_SEC} 秒（上限 <span class=\"val-atk\">{C:IceSystem.ICICLE_MAX} 层</span>，每路战斗结束刷新）。",
         "energyCost": 0
       },
       {
@@ -1012,8 +1012,8 @@
         "pierce": 0,
         "cd": 0,
         "aoe": true,
-        "brief": "射出一道彩虹光，从自身开始在敌我之间交替弹射 <span class=\"val-atk\">共 6 段</span>：命中友军（含自身）时回复 {H:0.5*ATK} 生命值，命中敌人时造成 {M:0.5*ATK} 魔法伤害。\n<span style=\"color:#8a93a0\">每段效果相同、不递减。\n</span>",
-        "detail": "彩虹龟以自身开始，射出一道彩虹光在敌我之间交替弹射，<span class=\"val-atk\">共 6 段</span>：\n治疗友军（含自身）（50%×攻击力({ATK}) = {H:0.5*ATK}）生命、对敌人造成（50%×攻击力 = {M:0.5*ATK}）魔法伤害。\n<span style=\"color:#8a93a0\">每段效果相同、不递减。\n</span>\n<span style=\"color:#8a93a0\">打包被动「强化棱镜」：\n选择本技能后，彩虹龟每 5 秒额外抽取一色 —— 🟠橙=全队 +10% 生命偷取(5 秒) / 🟡黄=随机敌 0.67×攻击力灼烧 / 🔵青=随机敌冰寒(5 秒) / 🟣紫=随机敌诅咒(5 秒)。\n</span>",
+        "brief": "射出一道彩虹光，从自身开始在敌我之间交替弹射 <span class=\"val-atk\">共 {C:RainbowSystem.REFLECT_BOUNCES} 段</span>：命中友军（含自身）时回复 {H:0.5*ATK} 生命值，命中敌人时造成 {M:0.5*ATK} 魔法伤害。\n<span style=\"color:#8a93a0\">每段效果相同、不递减。\n</span>",
+        "detail": "彩虹龟以自身开始，射出一道彩虹光在敌我之间交替弹射，<span class=\"val-atk\">共 {C:RainbowSystem.REFLECT_BOUNCES} 段</span>：\n治疗友军（含自身）（{C:RainbowSystem.REFLECT_COEF%}%×攻击力({ATK}) = {H:0.5*ATK}）生命、对敌人造成（{C:RainbowSystem.REFLECT_COEF%}%×攻击力 = {M:0.5*ATK}）魔法伤害。\n<span style=\"color:#8a93a0\">每段效果相同、不递减。\n</span>\n<span style=\"color:#8a93a0\">打包被动「强化棱镜」：\n选择本技能后，彩虹龟每 {C:RainbowSystem.PRISM_PROC_SEC} 秒额外抽取一色 —— 🟠橙=全队 +{C:RainbowSystem.PRISM_LIFESTEAL%}% 生命偷取({C:RainbowSystem.PRISM_BUFF_SEC} 秒) / 🟡黄=随机敌 {C:RainbowSystem.PRISM_BURN_COEF}×攻击力灼烧 / 🔵青=随机敌冰寒({C:RainbowSystem.PRISM_BUFF_SEC} 秒) / 🟣紫=随机敌诅咒({C:RainbowSystem.PRISM_BUFF_SEC} 秒)。\n</span>",
         "energyCost": 110
       }
     ],
@@ -2199,8 +2199,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "龟能充满后（约 6 秒），接下来 <b>3 次</b>普攻额外附带 {M:0.5*ATK} 魔法伤害和 <span class=\"val-magic\">10% 目标当前生命值</span> 的魔法伤害。\n第 3 下落地后挥出<span class=\"val-atk\">镰刀横扫</span>。\n<span style=\"color:#8a93a0\">强化窗口全程锁龟能，镰刀扫完才重新充能。\n</span>",
-        "detail": "无头龟蓄积灵魂之力（充能型）：\n龟能充满（80 龟能≈6 秒）后，接下来 <b>3 次</b>普攻额外附带（50%×攻击力({ATK}) = {M:0.5*ATK}）<span class=\"val-magic\">魔法</span>伤害 + <span class=\"val-magic\">10%目标当前生命值</span> 魔法伤害（叠加在撕咬的 1×攻击力物理 + 3%最大生命值之上·单体），射程额外 +60。\n第 <b>3</b> 下命中落地后，无头龟挥出<span class=\"val-atk\">镰刀横扫</span>：\n正面 100° 锥形、300 码内的敌人被<span class=\"val-atk\">击退 300 码</span>，并被施加 <span class=\"val-magic\">3 秒诅咒</span>（每秒造成其最大生命值 5% 的真实伤害，无视双抗）。\n<span class=\"val-normal\">强化窗口全程锁龟能</span>，镰刀扫完才解锁并清零重新充能。\n<span style=\"color:#8a93a0\">\n</span>"
+        "brief": "龟能充满后（约 6 秒），接下来 <b>{C:HeadlessSystem.SOUL_HITS} 次</b>普攻额外附带 {M:0.5*ATK} 魔法伤害和 <span class=\"val-magic\">{C:HeadlessSystem.SOUL_CURHP_PCT%}% 目标当前生命值</span> 的魔法伤害。\n第 {C:HeadlessSystem.SOUL_HITS} 下落地后挥出<span class=\"val-atk\">镰刀横扫</span>。\n<span style=\"color:#8a93a0\">强化窗口全程锁龟能，镰刀扫完才重新充能。\n</span>",
+        "detail": "无头龟蓄积灵魂之力（充能型）：\n龟能充满（80 龟能≈6 秒）后，接下来 <b>{C:HeadlessSystem.SOUL_HITS} 次</b>普攻额外附带（{C:HeadlessSystem.SOUL_ATK_COEF%}%×攻击力({ATK}) = {M:0.5*ATK}）<span class=\"val-magic\">魔法</span>伤害 + <span class=\"val-magic\">{C:HeadlessSystem.SOUL_CURHP_PCT%}%目标当前生命值</span> 魔法伤害（叠加在撕咬的 1×攻击力物理 + 3%最大生命值之上·单体），射程额外 +{C:HeadlessSystem.SOUL_RANGE_BONUS}。\n第 <b>{C:HeadlessSystem.SOUL_HITS}</b> 下命中落地后，无头龟挥出<span class=\"val-atk\">镰刀横扫</span>：\n正面 {C:HeadlessSystem.SCYTHE_ARC_DEG}° 锥形、{C:HeadlessSystem.SCYTHE_RANGE} 码内的敌人被<span class=\"val-atk\">击退 {C:HeadlessSystem.SCYTHE_KNOCK} 码</span>，并被施加 <span class=\"val-magic\">{C:HeadlessSystem.SCYTHE_CURSE_SEC} 秒诅咒</span>（每秒造成其最大生命值 5% 的真实伤害，无视双抗）。\n<span class=\"val-normal\">强化窗口全程锁龟能</span>，镰刀扫完才解锁并清零重新充能。\n<span style=\"color:#8a93a0\">\n</span>"
       }
     ],
     "defaultSkills": [

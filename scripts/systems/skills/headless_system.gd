@@ -3,6 +3,16 @@ extends RefCounted
 ## 无头骑士·恐惧/镰刀/触须系统(从主场景抽出)
 ## 类内簇函数名不变→内部互调零改动;外部名加 battle. 前缀。
 
+## 【灵魂打击】龟能充满后接下来 N 次普攻强化, 第 N 下落地挥镰刀。
+const SOUL_HITS := 3             # 强化几次普攻
+const SOUL_ATK_COEF := 0.5       # 每次额外 ×ATK 魔法
+const SOUL_CURHP_PCT := 0.10     # 每次额外 + 目标【当前】生命 × 魔法
+const SOUL_RANGE_BONUS := 60.0   # 强化窗口期间射程 +
+const SCYTHE_ARC_DEG := 100.0    # 镰刀横扫: 正面锥角(半角 50°)
+const SCYTHE_RANGE := 300.0      # 镰刀横扫: 半径(码)
+const SCYTHE_KNOCK := 300.0      # 镰刀横扫: 击退(码·从龟朝外)
+const SCYTHE_CURSE_SEC := 3.0    # 镰刀横扫: 诅咒秒数(每秒 5% 目标最大生命 真伤)
+
 var battle
 
 func _init(b) -> void:
@@ -259,17 +269,17 @@ func _headless_scythe(u: Dictionary) -> void:                  # 镰刀横扫(Ca
 		if not uu.get("alive", false): return
 		_headless_scythe_sweep(uu["pos"], aim2)
 		battle._shake(0.13); battle._add_hitstop(battle.JUICE_HITSTOP_KNOCK)
-		var half2 := deg_to_rad(50.0)
+		var half2 := deg_to_rad(SCYTHE_ARC_DEG * 0.5)
 		for o in battle._targeting._enemies_of(uu):
 			if not o.get("alive", false): continue
 			var to: Vector2 = (o["pos"] as Vector2) - (uu["pos"] as Vector2)
-			if to.length() > 300.0: continue
+			if to.length() > SCYTHE_RANGE: continue
 			if to.length() < 1.0: continue
 			if absf(aim2.angle_to(to.normalized())) > half2: continue   # 100度锥(半角50度)
 			battle._vfx._hit_spark(o)
 			if not o.get("_eggImmune", false):
-				_headless_knock_out(o, to.normalized(), 300.0)     # 击退300码从龟朝外
-				battle._damage._add_curse(o, 3.0, uu)   # 幽灵式诅咒3秒(5→3·用户2026-07-30 第六轮·总量 288→173)
+				_headless_knock_out(o, to.normalized(), SCYTHE_KNOCK)     # 击退300码从龟朝外
+				battle._damage._add_curse(o, SCYTHE_CURSE_SEC, uu)   # 幽灵式诅咒3秒(5→3·用户2026-07-30 第六轮·总量 288→173)
 				_headless_fear_mark(o)                             # 紫标记示意中咒
 				_headless_reap_soul(o["pos"], uu)                  # 收割感: 从敌身扯灵魂飞回无头龟(用户2026-07-17 F)
 	, "src": u})
@@ -577,9 +587,9 @@ func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万�
 	battle._pending_shots.append({"delay": TENDRIL_DETACH_SEC, "fn": detach_fn, "src": u})
 
 func _sk_headless_soul_charge(u: Dictionary) -> void:           # 无头·灵魂打击(机制大改·用户2026-07-17拍板·80龟能): 触发→下3次攻击强化(射程+60·各额外0.5A+10%当前HP魔法·牙齿闭合)→第3下落地蓄力→镰刀横扫(100°300码击退300+幽灵诅咒3s·Camille W); 全程锁龟能, 扫完解锁清零重充
-	u["headless_soul_stacks"] = 3
+	u["headless_soul_stacks"] = SOUL_HITS
 	u["headless_soul_base_range"] = float(u.get("atk_range", 100.0))
-	u["atk_range"] = float(u["headless_soul_base_range"]) + 60.0   # 强化窗口+60射程(用户"60+基础射程")
+	u["atk_range"] = float(u["headless_soul_base_range"]) + SOUL_RANGE_BONUS   # 强化窗口+60射程(用户"60+基础射程")
 	u["energy_lock_until"] = battle._t + 999.0                            # 锁龟能条到镰刀扫完(_headless_scythe置回_t)
 	var old = u.get("_soul_spr", null)
 	if old is Sprite3D and is_instance_valid(old): (old as Sprite3D).queue_free()
