@@ -5,6 +5,13 @@ extends RefCounted
 
 ## ★线条数值单一事实源(用户2026-07-28 第三轮加强·整只 20.9%)。文案在 data/pets.json。
 ## 【画龙点睛(收尾)】对墨迹最多的敌人: (BASE + PER_INK×层数) ×ATK 物理, 不消耗墨迹。
+## 【被动·墨迹】每层墨迹让目标每次受伤额外承受 % 真实伤害(穿减伤穿盾)。
+const INK_TRUE_PER_STACK := 0.05   # 每层额外承受的真实伤害比例
+const INK_CAP := 7                 # 层数上限
+const INK_CAP_BOMB := 10           # 选了「墨水炸弹」后的上限
+## 【墨水炸弹】落点 AOE 四段, 每段叠 1 层。
+const BOMB_SEGMENTS := 4           # 溅射几段
+const BOMB_SEG_COEF := 0.25        # 每段 ×ATK 魔法
 const DOT_BASE_COEF := 0.7    # 基础系数
 const DOT_PER_INK := 0.45     # 每层墨迹再加
 const ASPD_PER_ATK := 0.005   # 被动·墨迹: 自身获得 =(0.5×攻击力)% 的攻速 → 每1点攻击力 +0.5%
@@ -32,7 +39,7 @@ func _init(b) -> void:
 # 墨迹上限: 选「墨水炸弹」→ 全来源上限提到10层(满10层=50%真伤); 否则7层 (用户2026-07-10)
 func _ink_cap(src: Dictionary) -> int:
 	if src == null: return 7
-	return 10 if "lineInkBomb" in battle._chosen_skill_types(str(src.get("id", "")), src.get("side", "") == "left") else 7
+	return INK_CAP_BOMB if "lineInkBomb" in battle._chosen_skill_types(str(src.get("id", "")), src.get("side", "") == "left") else INK_CAP
 
 func _sk_line_link(u: Dictionary) -> void:                       # 线条龟·连笔 ✅(连接+传导+同步已补·附录B-05)
 	var foes: Array = []

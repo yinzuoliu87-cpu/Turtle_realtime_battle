@@ -5,6 +5,10 @@ extends RefCounted
 
 ## ★凤凰数值单一事实源(用户2026-07-28 削弱·整只 94.8% 全表第一)。文案在 data/pets.json。
 ## 【烫伤】命中先破盾, 再打魔法伤 + 灼烧层 + 四项负面(均同一时长)。
+## 【灼烧(普攻·持续喷火)】不随攻速停顿, 每 TICK 秒结算一次。
+const FLAME_TICK_SEC := 0.5       # 每几秒结算一次
+const FLAME_ARC_DEG := 70.0       # 身前扇形张角(全角·度)
+const FLAME_MOVE_MULT := 0.5      # 喷火时移动速度 ×
 const SCALD_ATK_COEF := 1.5       # ×ATK 魔法
 const SCALD_SHIELD_BREAK := 0.5   # 破坏目标护盾的比例
 const SCALD_STAT_DOWN := 0.15     # 攻击力/护甲/魔抗 各降低
@@ -45,8 +49,8 @@ func _phoenix_flame_channel(u: Dictionary, tgt: Dictionary, delta: float) -> voi
 		u["phx_spark_t"] -= 0.09
 		_phoenix_flame_puff(u, tgt)
 	u["phx_burn_t"] = float(u.get("phx_burn_t", 0.0)) + delta
-	while u["phx_burn_t"] >= 0.5:                    # 每0.5s 伤害结算
-		u["phx_burn_t"] -= 0.5
+	while u["phx_burn_t"] >= FLAME_TICK_SEC:                    # 每0.5s 伤害结算
+		u["phx_burn_t"] -= FLAME_TICK_SEC
 		_phoenix_flame_cone(u, tgt)
 
 # 喷火伤害结算: 扇形内全部敌人 PHX_FLAME_MAG_COEF(0.2)ATK×(1+攻速) 魔法 + round(PHX_FLAME_BURN_COEF(0.04)×ATK) 灼烧层 (用户2026-06-30; 灼烧 0.07→0.04 用户2026-07-28削弱)

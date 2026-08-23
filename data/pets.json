@@ -1427,8 +1427,8 @@
     "passive": {
       "type": "inkMark",
       "name": "墨迹",
-      "brief": "普攻与技能都会为目标叠加<span class=\"val-normal\">墨迹</span>。\n目标每受到一次伤害，每层墨迹便使其在原伤害之外额外承受 <span class=\"val-atk\">5%</span> 真实伤害，且该真伤穿透减伤与护盾。\n<span style=\"color:#8a93a0\">墨迹上限为 7 层，选择「墨水炸弹」时提升至 10 层；叠满 10 层即额外承受 50%。\n</span>\n线条龟自身实时获得<span class=\"val-atk\">(0.5×攻击力)%</span> 的额外攻击速度。",
-      "desc": "普攻与技能为目标叠加墨迹（上限 7 层；若选择「墨水炸弹」则上限提升至 10 层）。\n目标每受到一次伤害，在原伤害之外，每层墨迹使其额外承受 <span class=\"val-true\">5% 真实伤害</span>（穿透减伤与护盾；满 10 层 = 额外 +50%）。\n线条龟自身<span class=\"val-normal\">实时</span>获得<span class=\"val-atk\">(0.5×攻击力)%</span> 的额外攻击速度（攻击力提升会同步抬高攻速）。"
+      "brief": "普攻与技能都会为目标叠加<span class=\"val-normal\">墨迹</span>。\n目标每受到一次伤害，每层墨迹便使其在原伤害之外额外承受 <span class=\"val-atk\">{C:LineSystem.INK_TRUE_PER_STACK%}%</span> 真实伤害，且该真伤穿透减伤与护盾。\n<span style=\"color:#8a93a0\">墨迹上限为 {C:LineSystem.INK_CAP} 层，选择「墨水炸弹」时提升至 {C:LineSystem.INK_CAP_BOMB} 层；叠满 {C:LineSystem.INK_CAP_BOMB} 层即额外承受 50%。\n</span>\n线条龟自身实时获得<span class=\"val-atk\">(0.5×攻击力)%</span> 的额外攻击速度。",
+      "desc": "普攻与技能为目标叠加墨迹（上限 {C:LineSystem.INK_CAP} 层；若选择「墨水炸弹」则上限提升至 {C:LineSystem.INK_CAP_BOMB} 层）。\n目标每受到一次伤害，在原伤害之外，每层墨迹使其额外承受 <span class=\"val-true\">{C:LineSystem.INK_TRUE_PER_STACK%}% 真实伤害</span>（穿透减伤与护盾；满 {C:LineSystem.INK_CAP_BOMB} 层 = 额外 +50%）。\n线条龟自身<span class=\"val-normal\">实时</span>获得<span class=\"val-atk\">(0.5×攻击力)%</span> 的额外攻击速度（攻击力提升会同步抬高攻速）。"
     },
     "skillPool": [
       {
@@ -1473,8 +1473,8 @@
         "pierce": 0,
         "cd": 0,
         "aoe": true,
-        "brief": "远程投掷墨水炸弹，对落点范围内的敌人溅射四段，共造成 {M:0.25*ATK*4} 魔法伤害，每段命中各叠加 <span class=\"val-normal\">1 层墨迹</span>（四段共 4 层）。",
-        "detail": "线条龟远程投掷墨水炸弹（射程 2000），对落点 300 码范围内敌方溅射四段共（100%×攻击力({ATK}) = {M:0.25*ATK*4}）魔法伤害，每段命中为目标叠加 1 层墨迹（四段共 4 层）。\n<span style=\"color:#8a93a0\">投掷落点自动锁定敌方最密集处；选择本技能后，被动「墨迹」的层数上限由 7 提升至 10。\n</span>"
+        "brief": "远程投掷墨水炸弹，对落点范围内的敌人溅射四段，共造成 {M:0.25*ATK*4} 魔法伤害，每段命中各叠加 <span class=\"val-normal\">1 层墨迹</span>（四段共 {C:LineSystem.BOMB_SEGMENTS} 层）。",
+        "detail": "线条龟远程投掷墨水炸弹（射程 2000），对落点 {C:RealtimeBattle3DScene.INK_BOMB_RADIUS} 码范围内敌方溅射四段共（100%×攻击力({ATK}) = {M:0.25*ATK*4}）魔法伤害，每段命中为目标叠加 1 层墨迹（四段共 {C:LineSystem.BOMB_SEGMENTS} 层）。\n<span style=\"color:#8a93a0\">投掷落点自动锁定敌方最密集处；选择本技能后，被动「墨迹」的层数上限由 {C:LineSystem.INK_CAP} 提升至 {C:LineSystem.INK_CAP_BOMB}。\n</span>"
       }
     ],
     "defaultSkills": [
@@ -1584,8 +1584,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "持续喷射火焰，每 0.5 秒对身前的敌人造成（0.2×ATK×(1+攻击速度)）魔法伤害，并施加（0.04×攻击力）层灼烧。\n<span style=\"color:#8a93a0\">喷火不随攻击速度停顿，凤凰龟可边喷边走位。\n</span>",
-        "detail": "凤凰龟持续喷吐烈焰（不随攻击速度停顿，边喷边走位；喷火时移动速度 ×0.5）：\n每 0.5 秒对身前 70° 扇形、射程之内的所有敌人造成（0.2×攻击力×(1+攻击速度)）魔法伤害，并施加 <span style=\"color:#ff6600\">（0.04×攻击力）层灼烧</span>。\n<span style=\"color:#8a93a0\">灼烧：\n每秒造成（层数 + 0.1%×<b>被灼烧者</b>最大生命值×层数）魔法伤害，结算后层数衰减到 80%。\n</span>",
+        "brief": "持续喷射火焰，每 {C:PhoenixSystem.FLAME_TICK_SEC} 秒对身前的敌人造成（{C:RealtimeBattle3DScene.PHX_FLAME_MAG_COEF}×ATK×(1+攻击速度)）魔法伤害，并施加（{C:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF}×攻击力）层灼烧。\n<span style=\"color:#8a93a0\">喷火不随攻击速度停顿，凤凰龟可边喷边走位。\n</span>",
+        "detail": "凤凰龟持续喷吐烈焰（不随攻击速度停顿，边喷边走位；喷火时移动速度 ×{C:PhoenixSystem.FLAME_MOVE_MULT}）：\n每 {C:PhoenixSystem.FLAME_TICK_SEC} 秒对身前 {C:PhoenixSystem.FLAME_ARC_DEG}° 扇形、射程之内的所有敌人造成（{C:RealtimeBattle3DScene.PHX_FLAME_MAG_COEF}×攻击力×(1+攻击速度)）魔法伤害，并施加 <span style=\"color:#ff6600\">（{C:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF}×攻击力）层灼烧</span>。\n<span style=\"color:#8a93a0\">灼烧：\n每秒造成（层数 + 0.1%×<b>被灼烧者</b>最大生命值×层数）魔法伤害，结算后层数衰减到 80%。\n</span>",
         "energyCost": 0
       },
       {

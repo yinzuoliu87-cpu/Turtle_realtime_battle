@@ -254,7 +254,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	var _ink = int((u.get("stacks", {}) as Dictionary).get("ink", 0))
 	var _ink_true: float = 0.0
 	if _ink > 0:
-		_ink_true = float(dmg) * 0.05 * float(_ink)   # 墨迹: 原伤害之外·每层额外承受5%【真实伤害】(穿减伤穿盾·满10层=50%·用户2026-07-10纠正: 非×1.05增伤)
+		_ink_true = float(dmg) * LineSystem.INK_TRUE_PER_STACK * float(_ink)   # 墨迹: 原伤害之外·每层额外承受5%【真实伤害】(穿减伤穿盾·满10层=50%·用户2026-07-10纠正: 非×1.05增伤)
 	# ★受害者侧减伤(靶向器/暴露蛋/钻石/岩层/嘲讽/铁壁盾)全部收口到 §MITIGATE,
 	#   与 _apply_damage 共用 —— 原先这段只在本函数里, 导致 DOT 完全不吃任何减伤。
 	# 药水羁绊【猎物】: 全队对猎物造成的伤害 +15/25/40%。
