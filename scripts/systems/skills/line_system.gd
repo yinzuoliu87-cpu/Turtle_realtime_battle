@@ -4,6 +4,9 @@ extends RefCounted
 ## 类内名不变;外部名加 battle.
 
 ## ★线条数值单一事实源(用户2026-07-28 第三轮加强·整只 20.9%)。文案在 data/pets.json。
+## 【画龙点睛(收尾)】对墨迹最多的敌人: (BASE + PER_INK×层数) ×ATK 物理, 不消耗墨迹。
+const DOT_BASE_COEF := 0.7    # 基础系数
+const DOT_PER_INK := 0.45     # 每层墨迹再加
 const ASPD_PER_ATK := 0.005   # 被动·墨迹: 自身获得 =(0.5×攻击力)% 的攻速 → 每1点攻击力 +0.5%
 
 var battle
@@ -133,7 +136,7 @@ func _sk_line_finish(u: Dictionary) -> void:
 		best_ink = 0
 	if best == null:
 		return
-	var scale: float = 0.7 + 0.45 * maxi(0, best_ink)   # 基础0.7+每层墨迹0.45×ATK (恢复文本设计值, 原0.8/0.35)
+	var scale: float = DOT_BASE_COEF + DOT_PER_INK * maxi(0, best_ink)   # 基础0.7+每层墨迹0.45×ATK (恢复文本设计值, 原0.8/0.35)
 	battle._weapon_slash(u["pos"], best["pos"], Color(0.32, 0.24, 0.46))   # 画龙点睛·大终笔墨挥(用户2026-07-15做终笔分量)
 	battle._damage._apply_damage_from(u, best, battle._atk_dmg(u, scale, best), Color("#eeeeee"))
 	battle._burst_vfx("res://assets/sprites/vfx/ink-splat.png", best["pos"], 210.0, 0.7)   # 点睛大墨爆

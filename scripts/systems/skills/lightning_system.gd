@@ -3,6 +3,12 @@ extends RefCounted
 ## 闪电龟技能系统
 ## 类内簇函数名不变;外部名加 battle. 前缀。
 
+## 【闪电(普攻)】主目标 → 连锁 HOPS 跳, 每跳伤害 ×DECAY 递减, 每段叠 1 层电击。
+const BOLT_ATK_COEF := 0.9    # 主目标 ×ATK 魔法
+const CHAIN_HOPS := 2         # 连锁几跳
+const CHAIN_RANGE := 260.0    # 每跳找下一个目标的射程上限(码)
+const CHAIN_DECAY := 0.6      # 每跳在前一跳基础上 ×
+
 var battle
 
 func _init(b) -> void:
@@ -12,9 +18,9 @@ func _lightning_basic(u: Dictionary, tgt: Dictionary) -> void:
 	# 建链(顺序最近未连): 打1 → 1找最近2 → 2找最近3, 最多连锁2跳
 	var chain: Array = [tgt]
 	var prev: Dictionary = tgt
-	for _i in range(2):
+	for _i in range(CHAIN_HOPS):
 		var nxt = null
-		var bestd := 260.0                       # 连锁射程上限(像素)
+		var bestd := CHAIN_RANGE                       # 连锁射程上限(像素)
 		for o in battle._targeting._pick_enemies_of(u):
 			if battle._arr_has_unit(chain, o) or not o["alive"]:
 				continue
@@ -32,7 +38,7 @@ func _lightning_basic(u: Dictionary, tgt: Dictionary) -> void:
 		tw.tween_callback(_lightning_hop.bind(u, from_pos, chain[i], fr, i))
 		tw.tween_interval(0.07)
 		from_pos = chain[i]["pos"]
-		fr *= 0.6
+		fr *= CHAIN_DECAY
 
 func _lightning_electric(u: Dictionary, target: Dictionary) -> void:   # 叠1层电击; 满8引爆(天降+清零)
 	var lv = battle._add_stack(target, "electric", 1, 8)
@@ -47,7 +53,7 @@ func _lightning_hop(u: Dictionary, from_pos: Vector2, target: Dictionary, fr: fl
 	if not target.get("alive", false):
 		return
 	_lightning_arc(from_pos, target["pos"], Color("#aef0ff"))   # 锯齿电弧
-	battle._damage._apply_basic_hit_from(u, target, battle._atk_dmg(u, 0.9 * fr, target, true), Color("#4dabf7"))
+	battle._damage._apply_basic_hit_from(u, target, battle._atk_dmg(u, BOLT_ATK_COEF * fr, target, true), Color("#4dabf7"))
 	battle._vfx._hit_spark(target)
 	if hop_i > 0:
 		_lightning_electric(u, target)   # 连锁每跳也叠电击层(主目标由_on_basic_hit叠, 避免重复)

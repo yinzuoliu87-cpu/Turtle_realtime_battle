@@ -1461,8 +1461,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "对<span class=\"val-normal\">墨迹层数最多</span>的敌人点下终笔，造成（70% + 每层墨迹 45%）×攻击力 物理伤害。\n<span style=\"color:#8a93a0\">该伤害不消耗墨迹。\n</span>",
-        "detail": "线条龟对<span class=\"val-normal\">墨迹层数最多</span>的敌人点下终笔，造成（70%×攻击力 + 每层墨迹 45%×攻击力）物理伤害。\n<span class=\"val-atk\">不消耗墨迹</span>。\n<span style=\"color:#8a93a0\">满 7 层 = 385%×攻击力。\n若选择「墨水炸弹」把上限提到 10 层，满层 = 520%×攻击力。\n场上无墨迹时改打最近敌人（70%×攻击力）。\n</span>"
+        "brief": "对<span class=\"val-normal\">墨迹层数最多</span>的敌人点下终笔，造成（{C:LineSystem.DOT_BASE_COEF%}% + 每层墨迹 {C:LineSystem.DOT_PER_INK%}%）×攻击力 物理伤害。\n<span style=\"color:#8a93a0\">该伤害不消耗墨迹。\n</span>",
+        "detail": "线条龟对<span class=\"val-normal\">墨迹层数最多</span>的敌人点下终笔，造成（{C:LineSystem.DOT_BASE_COEF%}%×攻击力 + 每层墨迹 {C:LineSystem.DOT_PER_INK%}%×攻击力）物理伤害。\n<span class=\"val-atk\">不消耗墨迹</span>。\n<span style=\"color:#8a93a0\">满 7 层 = 385%×攻击力。\n若选择「墨水炸弹」把上限提到 10 层，满层 = 520%×攻击力。\n场上无墨迹时改打最近敌人（{C:LineSystem.DOT_BASE_COEF%}%×攻击力）。\n</span>"
       },
       {
         "name": "墨水炸弹",
@@ -1508,8 +1508,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "射出一道闪电，造成 {M:0.9*ATK} 魔法伤害，随后接力连锁 <span class=\"val-atk\">2 跳</span>，每段各叠加 <span class=\"val-normal\">1 层电击</span>。\n<span style=\"color:#8a93a0\">每跳伤害在前一跳基础上 ×0.6 递减。\n</span>",
-        "detail": "闪电龟普攻射出一道闪电，造成（90%×攻击力({ATK}) = {M:0.9*ATK}）魔法伤害。\n随后依次接力连锁 2 跳——主目标 → 其 260 码内最近的敌人 → 再向外最近的敌人，每跳伤害 ×0.6 递减（0.54×攻击力 / 0.324×攻击力），每段命中叠加 1 层电击。\n<span style=\"color:#8a93a0\">电击满 8 层→天降大雷引爆并清零；每 4 秒自动电击一名随机敌。\n</span>",
+        "brief": "射出一道闪电，造成 {M:0.9*ATK} 魔法伤害，随后接力连锁 <span class=\"val-atk\">{C:LightningSystem.CHAIN_HOPS} 跳</span>，每段各叠加 <span class=\"val-normal\">1 层电击</span>。\n<span style=\"color:#8a93a0\">每跳伤害在前一跳基础上 ×{C:LightningSystem.CHAIN_DECAY} 递减。\n</span>",
+        "detail": "闪电龟普攻射出一道闪电，造成（{C:LightningSystem.BOLT_ATK_COEF%}%×攻击力({ATK}) = {M:0.9*ATK}）魔法伤害。\n随后依次接力连锁 {C:LightningSystem.CHAIN_HOPS} 跳——主目标 → 其 {C:LightningSystem.CHAIN_RANGE} 码内最近的敌人 → 再向外最近的敌人，每跳伤害 ×{C:LightningSystem.CHAIN_DECAY} 递减（0.54×攻击力 / 0.324×攻击力），每段命中叠加 1 层电击。\n<span style=\"color:#8a93a0\">电击满 8 层→天降大雷引爆并清零；每 4 秒自动电击一名随机敌。\n</span>",
         "energyCost": 0
       },
       {
@@ -1623,8 +1623,8 @@
         },
         "shieldBreak": 50,
         "burn": true,
-        "brief": "蓄力投掷火球，命中造成 {M:1.5*ATK} 魔法伤害，施加 {N:0.5*ATK} 层灼烧，并破坏目标 <span class=\"val-atk\">50%</span> 护盾，\n同时使其攻击力、护甲、魔抗各降低 <span class=\"val-atk\">15%</span> 并受到 <span class=\"val-atk\">50%</span> 治疗削减，以上负面效果均持续 <span class=\"val-atk\">5 秒</span>。",
-        "detail": "凤凰龟蓄力投掷火球：\n命中先破坏目标 <span class=\"val-atk\">50%</span> 护盾，\n随后造成（150%×攻击力({ATK}) = {M:1.5*ATK}）魔法伤害，并施加 <span style=\"color:#ff6600\">（0.5×攻击力）层灼烧</span>，以及攻击力 -15%、护甲 -15%、魔抗 -15%、治疗削减 50%（均持续 5 秒）。",
+        "brief": "蓄力投掷火球，命中造成 {M:1.5*ATK} 魔法伤害，施加 {N:0.5*ATK} 层灼烧，并破坏目标 <span class=\"val-atk\">{C:PhoenixSystem.SCALD_SHIELD_BREAK%}%</span> 护盾，\n同时使其攻击力、护甲、魔抗各降低 <span class=\"val-atk\">{C:PhoenixSystem.SCALD_STAT_DOWN%}%</span> 并受到 <span class=\"val-atk\">{C:PhoenixSystem.SCALD_HEALCUT%}%</span> 治疗削减，以上负面效果均持续 <span class=\"val-atk\">{C:PhoenixSystem.SCALD_DEBUFF_SEC} 秒</span>。",
+        "detail": "凤凰龟蓄力投掷火球：\n命中先破坏目标 <span class=\"val-atk\">{C:PhoenixSystem.SCALD_SHIELD_BREAK%}%</span> 护盾，\n随后造成（{C:PhoenixSystem.SCALD_ATK_COEF%}%×攻击力({ATK}) = {M:1.5*ATK}）魔法伤害，并施加 <span style=\"color:#ff6600\">（{C:PhoenixSystem.SCALD_BURN_COEF}×攻击力）层灼烧</span>，以及攻击力 -{C:PhoenixSystem.SCALD_STAT_DOWN%}%、护甲 -{C:PhoenixSystem.SCALD_STAT_DOWN%}%、魔抗 -{C:PhoenixSystem.SCALD_STAT_DOWN%}%、治疗削减 {C:PhoenixSystem.SCALD_HEALCUT%}%（均持续 {C:PhoenixSystem.SCALD_DEBUFF_SEC} 秒）。",
         "energyCost": 100
       },
       {

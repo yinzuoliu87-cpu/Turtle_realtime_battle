@@ -4,6 +4,12 @@ extends RefCounted
 ## 类内簇函数名不变→内部互调零改动;外部名加 battle. 前缀。
 
 ## ★凤凰数值单一事实源(用户2026-07-28 削弱·整只 94.8% 全表第一)。文案在 data/pets.json。
+## 【烫伤】命中先破盾, 再打魔法伤 + 灼烧层 + 四项负面(均同一时长)。
+const SCALD_ATK_COEF := 1.5       # ×ATK 魔法
+const SCALD_SHIELD_BREAK := 0.5   # 破坏目标护盾的比例
+const SCALD_STAT_DOWN := 0.15     # 攻击力/护甲/魔抗 各降低
+const SCALD_HEALCUT := 0.5        # 治疗削减比例
+const SCALD_DEBUFF_SEC := 5.0     # 以上负面效果的持续(秒)
 const SCALD_BURN_COEF := 0.5      # 烫伤: 灼烧层数 = ×ATK (1.0→0.6→0.5·用户2026-07-28)
 ## 涅槃演出总时长(秒) —— 用户 2026-08-13:「复活需要改为有一个2.5秒的演出」。
 ## 三拍: 0~0.6 灰烬定格 / 0.6~1.9 聚火升腾 / 1.9~2.5 破壳展翼。
@@ -254,7 +260,7 @@ func _phoenix_scald_hit(u: Dictionary, tgt, fb) -> void:
 	if tgt == null or not tgt.get("alive", false):
 		return
 	# 封板: 火球命中先破50%护盾(破盾碎裂)→再落1.5A魔法穿透→灼烧+攻防抗各-15%+治疗削减
-	battle._apply_skill_extras(u, tgt, {"shieldBreak": 0.5, "atkDown": 0.15, "defDown": 0.15, "mrDown": 0.15, "healCut": 0.5})
+	battle._apply_skill_extras(u, tgt, {"shieldBreak": SCALD_SHIELD_BREAK, "atkDown": SCALD_STAT_DOWN, "defDown": SCALD_STAT_DOWN, "mrDown": SCALD_STAT_DOWN, "healCut": SCALD_HEALCUT})
 	battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.5, tgt, true), Color("#4dabf7"))   # 1.5ATK魔法(打已破的盾, 更多穿透到血)
 	battle._damage._apply_dot_stacks(tgt, "burn", maxi(1, roundi(float(u["atk"]) * SCALD_BURN_COEF)), u)   # 烫伤灼烧层
 	battle._vfx._flash(tgt, Color("#ff8a3a"))

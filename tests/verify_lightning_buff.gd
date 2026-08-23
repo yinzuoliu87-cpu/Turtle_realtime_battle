@@ -78,10 +78,11 @@ func _ready() -> void:
 		lsys.length() > 3000 and rb.length() > 100000 and dmg.length() > 3000)
 
 	_chk("③ 普攻主目标 = %.1f×ATK" % WANT_ATK_SCALE,
-		lsys.contains("battle._atk_dmg(u, %.1f * fr, target, true)" % WANT_ATK_SCALE))
-	_chk("③ 普攻旧值 0.6 已消失", not lsys.contains("_atk_dmg(u, 0.6 * fr"))
+		## ★比【常量的值】不比源码字面串(2026-08-22 根除已提成 LightningSystem)
+		is_equal_approx(LightningSystem.BOLT_ATK_COEF, WANT_ATK_SCALE))
+	_chk("③ 普攻旧值 0.6 已消失", not is_equal_approx(LightningSystem.BOLT_ATK_COEF, 0.6))
 	_chk("③ 连锁递减仍是 ×%.1f(本轮不动)" % WANT_CHAIN_DECAY,
-		lsys.contains("fr *= %.1f" % WANT_CHAIN_DECAY))
+		is_equal_approx(LightningSystem.CHAIN_DECAY, WANT_CHAIN_DECAY))
 
 	_chk("④ 雷暴 = %.1f×ATK / %d 道" % [WANT_BARRAGE_TOTAL, WANT_BARRAGE_BOLTS],
 		rb.contains("_atk_dmg(u, %.1f / %d.0, e, true)" % [WANT_BARRAGE_TOTAL, WANT_BARRAGE_BOLTS]))
