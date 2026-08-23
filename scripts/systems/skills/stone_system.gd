@@ -3,6 +3,17 @@ extends RefCounted
 ## 石头龟技能系统
 ## 类内名不变;外部名加 battle.
 
+## ★★2026-08-22 文案根除: 嘲讽这一组原来全是 `_sk_stone_taunt` 里的裸字面量。
+const TAUNT_RADIUS := 500.0      # 嘲讽半径(码)
+const TAUNT_SEC := 4.0           # 嘲讽 / 自身减伤 的持续(秒)
+const TAUNT_SHIELD_COEF := 1.0   # 自身永久护盾 = ×ATK (dur=0, 不随嘲讽消失)
+const TAUNT_DR_PER_DEF := 0.5    # 减伤% = 此系数 × 护甲(再 ×1%)
+const TAUNT_DR_CAP := 0.50       # 减伤上限
+const SLAM_DELAY := 3.5          # 嘲讽开始后第几秒砸地(砸完龟能才重新充能)
+const SLAM_RADIUS := 400.0       # 砸地半径(码)
+const SLAM_ATK_COEF := 1.0       # 砸地 ×ATK 魔法
+const SLAM_KNOCK_SEC := 1.2      # 砸地击飞滞空(秒)
+
 var battle
 
 func _init(b) -> void:
@@ -42,25 +53,25 @@ func _rock_chunk_erupt(pos2d: Vector2) -> void:   # 岩石破土冒起(石棕灰
 func _sk_stone_taunt(u: Dictionary) -> void:                    # 石头龟·嘲讽(用户设计·120龟能): 500码敌4秒硬嘲讽 + 自身1A永久盾 + 0.5×护甲减伤4秒 + 将结束砸地(400码1A魔法+击飞1.2s)
 	var victims: Array = []
 	for o in battle._targeting._enemies_of(u):
-		if o.get("alive", false) and o["pos"].distance_to(u["pos"]) <= 500.0:
+		if o.get("alive", false) and o["pos"].distance_to(u["pos"]) <= TAUNT_RADIUS:
 			victims.append(o)
-	battle._taunt(u, victims, 4.0)
-	battle._damage._grant_shield(u, u["atk"] * 1.0)          # 1A永久盾(dur=0·不随嘲讽消失)
-	u["stone_dr_until"] = battle._t + 4.0            # 0.5×护甲%减伤4秒
-	u["energy_lock_until"] = battle._t + 3.5        # 砸击(3.5s)之后龟能才重新充能(用户#8"砸击后龟能才重新充能")
-	battle._aura_vfx("res://assets/sprites/vfx/fx-glow-ring.png", u, 500.0, Color(0.86, 0.68, 0.42, 0.42), 4.0)   # 500码仇恨光环(嘲讽4秒·贴地跟随·用户#8)
+	battle._taunt(u, victims, TAUNT_SEC)
+	battle._damage._grant_shield(u, u["atk"] * TAUNT_SHIELD_COEF)          # 1A永久盾(dur=0·不随嘲讽消失)
+	u["stone_dr_until"] = battle._t + TAUNT_SEC            # 0.5×护甲%减伤4秒
+	u["energy_lock_until"] = battle._t + SLAM_DELAY        # 砸击(3.5s)之后龟能才重新充能(用户#8"砸击后龟能才重新充能")
+	battle._aura_vfx("res://assets/sprites/vfx/fx-glow-ring.png", u, TAUNT_RADIUS, Color(0.86, 0.68, 0.42, 0.42), TAUNT_SEC)   # 500码仇恨光环(嘲讽4秒·贴地跟随·用户#8)
 	var uu = u
 	var slam = func() -> void:                # 蓄力3.5s→砸地(在4秒嘲讽内·K'Sante Q3式)
 		if not uu.get("alive", false): return
 		battle._burst_vfx("res://assets/sprites/vfx/stone-slam-impact.png", uu["pos"], 220.0)   # 砸地岩石冲击(用户2026-07-06"像地面猛砸")
 		for o in battle._targeting._enemies_of(uu):
-			if o.get("alive", false) and o["pos"].distance_to(uu["pos"]) <= 400.0:
-				battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, 1.0, o, true), Color("#c8a878"))
+			if o.get("alive", false) and o["pos"].distance_to(uu["pos"]) <= SLAM_RADIUS:
+				battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, SLAM_ATK_COEF, o, true), Color("#c8a878"))
 				if not o.get("airborne", false):
 						battle._damage._knockback(uu, o, 80.0, 3.6111)   # 击飞【1.2秒·峰高6.5】(用户2026-07-11) — vy=6.0×3.6111=21.667
 						o["knock_g"] = -36.111            # 配重力-36.111→ 滞空=2×21.667/36.111=1.2s·峰高=21.667²/(2×36.111)=6.5(解耦时长与抛高)
 		battle._shake(0.06)
-	battle._pending_shots.append({"delay": 3.5, "fn": slam, "src": u})
+	battle._pending_shots.append({"delay": SLAM_DELAY, "fn": slam, "src": u})
 
 func _sk_rock_shockwave(u: Dictionary) -> void:                  # 石头龟·岩石之躯 主动: 前方带状(±90)岩脊向前破土推进, (0.5DEF+0.5MR)×(1+4%岩层)物理 + 【必中眩晕2s】+ 击退60
 #   (2026-07-19订正: 头注释原写"1%×层眩晕1.5s"是旧版, 用户2026-07-11已改成必中2秒, 见下方 battle._damage._stun 那行); 伤害随波前经过逐个同步(用户2026-07-11补VFX·原=只1个130px环)

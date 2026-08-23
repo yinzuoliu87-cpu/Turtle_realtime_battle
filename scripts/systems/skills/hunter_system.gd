@@ -3,6 +3,15 @@ extends RefCounted
 ## 猎人龟技能系统
 ## 类内名不变;外部名加 battle.
 
+## ★★2026-08-22 文案根除: 精准射击这一组原来是 `_sk_hunter_shot` / `_hunter_execute` 里的裸字面量。
+const SHOT_ATK_COEF := 2.0       # 蓄力狙 ×ATK 物理
+const SHOT_POISON_COEF := 0.5    # 中毒层数 = ×ATK
+const SHOT_HEALCUT_PCT := 0.50   # 治疗削减比例
+const SHOT_HEALCUT_SEC := 5.0    # 治疗削减持续(秒)
+const MARK_SEC := 5.0            # 猎杀印记持续(秒)
+const EXEC_MARKED := 0.24        # 有印记时的斩杀线
+const EXEC_BASE := 0.14          # 无印记时的斩杀线
+
 var battle
 
 func _init(b) -> void:
@@ -136,11 +145,11 @@ func _sk_hunter_shot(u: Dictionary, tgt) -> void:              # 猎人龟·精�
 		battle._shake(0.06)
 		battle._pending_shots.append({"delay": 0.16, "fn": func() -> void:
 			if not tref.get("alive", false): return
-			battle._damage._apply_damage_from(uu, tref, battle._atk_dmg(uu, 2.0, tref), Color("#ff4444"))   # 物理红(2.0A物理狙击·飘字色规范)
-			battle._damage._apply_dot_stacks(tref, "poison", maxi(1, int(round(uu["atk"] * 0.5))), uu)   # 中毒5s
+			battle._damage._apply_damage_from(uu, tref, battle._atk_dmg(uu, SHOT_ATK_COEF, tref), Color("#ff4444"))   # 物理红(2.0A物理狙击·飘字色规范)
+			battle._damage._apply_dot_stacks(tref, "poison", maxi(1, int(round(uu["atk"] * SHOT_POISON_COEF))), uu)   # 中毒5s
 			tref["heal_reduce_until"] = battle._t + 5.0                         # 治疗削减50%·5秒
 			tref["heal_reduce_pct"] = maxf(float(tref.get("heal_reduce_pct", 0.0)), 0.5)
-			tref["hunt_mark_until"] = battle._t + 5.0                           # 猎杀印记5秒: <24%即处决(头顶状态图标行贴十字准星·_layout_head_badges·不用文字)
+			tref["hunt_mark_until"] = battle._t + MARK_SEC                           # 猎杀印记5秒: <24%即处决(头顶状态图标行贴十字准星·_layout_head_badges·不用文字)
 			battle._skill_ring(tref["pos"], Color(0.5, 0.9, 0.2, 0.6), 40.0)   # 命中毒绿环(小·非大绿球)
 			for _pb in range(4): battle._spawn_poison_bubble(tref)             # 命中即冒一簇毒泡
 			battle._shake(battle.JUICE_SHAKE_HEAVY)
@@ -206,7 +215,7 @@ func _hunter_exec_arrow_hit(src, tgt) -> void:   # 强化箭命中: 目标仍<�
 	tgt["_hunt_exec_pending"] = false
 	if tgt.get("egg", false) or tgt.get("_eggImmune", false) or tgt.get("eq_exec_immune", false) or battle._is_untargetable(tgt):   # 免疫处决: 蛋/不沉之锚/不可选(含机甲组装期) → 命中但不斩
 		battle._vfx._hit_spark(tgt); return
-	var thr: float = 0.24 if battle._t < float(tgt.get("hunt_mark_until", 0.0)) else 0.14
+	var thr: float = EXEC_MARKED if battle._t < float(tgt.get("hunt_mark_until", 0.0)) else EXEC_BASE
 	if float(tgt["hp"]) >= float(tgt["maxHp"]) * thr:   # 飞行途中被治疗回到斩杀线上→不处决(仅命中火花)
 		battle._vfx._hit_spark(tgt); return
 	if tgt.get("_hunt_demo_victim", false):   # 被动demo靶: 处决→窃取+复位残血(循环看·在deathfloor判前, demo也带deathfloor)

@@ -4,6 +4,11 @@ extends RefCounted
 ## 类内名不变;外部名加 battle.
 
 ## ★赌神数值单一事实源(用户2026-07-28 第三轮加强)。文案在 data/pets.json。
+## 【多重打击】普攻命中后掷概率, 中了就以 MULTI_ASPD 的间隔倍率再打一发。
+const MULTI_BASE := 0.40      # 基础触发概率
+const MULTI_DECAY := 0.8      # 每连锁一次概率 ×(40% → 32% → 25.6% → …)
+const MULTI_WHEEL := 0.60     # 出战选「命运之轮」→ 基础概率变这个
+const MULTI_BET_BONUS := 0.20 # 释放「赌注」→ 之后 3 秒内再 +
 const MULTI_ASPD := 0.1667   # 多重打击再打一次的攻击间隔倍率(0.30→0.1667 = ~3.3×→~6×攻速)
 const JOKER_DMG := 2.0       # 万能牌: ×ATK 物理 (1.0→2.0)
 const JOKER_SHIELD := 1.0    # 万能牌: ×ATK 永久护盾 (0.25→1.0)
@@ -15,7 +20,7 @@ func _init(b) -> void:
 
 # gambler 多重打击(云顶剑士式连击): 普攻命中后掷概率→中则快攻速再打一发(连锁每次概率×0.8递减), 没中→回正常普攻冷却+重置
 func _gambler_multi_cd(u: Dictionary) -> float:
-	var base_ch: float = float(u.get("multi_base", 0.40))     # 命运之轮选中→0.60; 否则0.40
+	var base_ch: float = float(u.get("multi_base", MULTI_BASE))     # 命运之轮选中→0.60; 否则0.40
 	if battle._t < float(u.get("gambler_bet_until", 0.0)):
 		base_ch += 0.20                                       # 赌注放技→3秒内临时+20%(封顶示例0.80)
 	var ch: float = float(u.get("multi_chance", base_ch))
@@ -35,7 +40,7 @@ func _gambler_multi_cd(u: Dictionary) -> float:
 
 # 当前多重打击概率(命运之轮0.60/否则0.40 + 赌注放技3秒内+0.20)
 func _gambler_bet_ch(u: Dictionary) -> float:
-	var ch = float(u.get("multi_base", 0.40))
+	var ch = float(u.get("multi_base", MULTI_BASE))
 	if battle._t < float(u.get("gambler_bet_until", 0.0)): ch += 0.20
 	return ch
 

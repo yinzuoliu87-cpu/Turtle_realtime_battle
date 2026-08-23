@@ -166,8 +166,8 @@
         "pierce": 0,
         "cd": 0,
         "selfCast": true,
-        "brief": "发出<span class=\"val-normal\">嘲讽</span>，强迫周围敌人只能攻击自己，持续 <span class=\"val-atk\">4 秒</span>。\n自身获得 {S:ATK} <span class=\"val-atk\">永久</span>护盾和 (0.5×护甲)% 伤害减免，持续 <span class=\"val-atk\">4 秒</span>。\n嘲讽在第 3.5 秒收尾砸地，对附近敌人造成 {N:1.0*ATK} 魔法伤害并将其<span class=\"val-atk\">击飞 1.2 秒</span>。\n<span style=\"color:#8a93a0\">被嘲讽者的单体伤害技能、装备效果与普攻只能朝石头龟释放，AoE 不受影响；砸地完成后龟能才重新开始充能。\n</span>",
-        "detail": "石头龟嘲讽 <span class=\"val-atk\">500 码</span> 内的所有敌人，持续 <span class=\"val-atk\">4 秒</span>：期间它们的单体伤害技能、装备效果与普攻全部只能朝石头龟释放。\n同时为自己提供（100%×攻击力({ATK}) = {S:ATK}）<span class=\"val-def\">永久护盾</span>，并获得 (0.5×护甲)% 的伤害减免（上限 50%，真实伤害不减），持续 4 秒。\n嘲讽开始后第 <span class=\"val-atk\">3.5 秒</span> 石头龟蓄力猛砸地面：400 码内敌人受到（100%×攻击力({ATK}) = {N:1.0*ATK}）魔法伤害并被 <span class=\"val-atk\">击飞 1.2 秒</span>。\n<span style=\"color:#8a93a0\">砸击之后，龟能才重新开始充能。\n</span>\n<span style=\"color:#8a93a0\">AoE 技能不受嘲讽影响（不转移）</span>",
+        "brief": "发出<span class=\"val-normal\">嘲讽</span>，强迫周围敌人只能攻击自己，持续 <span class=\"val-atk\">{C:StoneSystem.TAUNT_SEC} 秒</span>。\n自身获得 {S:ATK} <span class=\"val-atk\">永久</span>护盾和 ({C:StoneSystem.TAUNT_DR_PER_DEF}×护甲)% 伤害减免，持续 <span class=\"val-atk\">{C:StoneSystem.TAUNT_SEC} 秒</span>。\n嘲讽在第 {C:StoneSystem.SLAM_DELAY} 秒收尾砸地，对附近敌人造成 {N:1.0*ATK} 魔法伤害并将其<span class=\"val-atk\">击飞 {C:StoneSystem.SLAM_KNOCK_SEC} 秒</span>。\n<span style=\"color:#8a93a0\">被嘲讽者的单体伤害技能、装备效果与普攻只能朝石头龟释放，AoE 不受影响；砸地完成后龟能才重新开始充能。\n</span>",
+        "detail": "石头龟嘲讽 <span class=\"val-atk\">{C:StoneSystem.TAUNT_RADIUS} 码</span> 内的所有敌人，持续 <span class=\"val-atk\">{C:StoneSystem.TAUNT_SEC} 秒</span>：期间它们的单体伤害技能、装备效果与普攻全部只能朝石头龟释放。\n同时为自己提供（{C:StoneSystem.TAUNT_SHIELD_COEF%}%×攻击力({ATK}) = {S:ATK}）<span class=\"val-def\">永久护盾</span>，并获得 ({C:StoneSystem.TAUNT_DR_PER_DEF}×护甲)% 的伤害减免（上限 {C:StoneSystem.TAUNT_DR_CAP%}%，真实伤害不减），持续 {C:StoneSystem.TAUNT_SEC} 秒。\n嘲讽开始后第 <span class=\"val-atk\">{C:StoneSystem.SLAM_DELAY} 秒</span> 石头龟蓄力猛砸地面：{C:StoneSystem.SLAM_RADIUS} 码内敌人受到（{C:StoneSystem.SLAM_ATK_COEF%}%×攻击力({ATK}) = {N:1.0*ATK}）魔法伤害并被 <span class=\"val-atk\">击飞 {C:StoneSystem.SLAM_KNOCK_SEC} 秒</span>。\n<span style=\"color:#8a93a0\">砸击之后，龟能才重新开始充能。\n</span>\n<span style=\"color:#8a93a0\">AoE 技能不受嘲讽影响（不转移）</span>",
         "energyCost": 120
       }
     ],
@@ -1043,8 +1043,8 @@
       "type": "gamblerMultiHit",
       "name": "多重打击",
       "dmgScale": 0.5,
-      "brief": "每次普攻命中后有 <span class=\"val-atk\">40%</span> 概率<span class=\"val-normal\">立刻以约 6 倍攻击速度再打一次普攻</span>。\n再次命中可继续触发，每连锁一次概率 ×0.8（<span class=\"val-atk\">40% → 32% → 25.6% → …</span>）。\n<span style=\"color:#8a93a0\">未触发时概率重置回基础值。\n</span>",
-      "desc": "每次普攻命中后有 <span class=\"val-atk\">40%</span> 概率<span class=\"val-normal\">立刻以约 6 倍攻击速度再打一次普攻</span>。\n再次命中可继续触发，每连锁一次概率 ×0.8（40% → 32% → 25.6% → …），没触发则重置回基础概率、等下一次普攻。\n<span style=\"color:#8a93a0\">基础概率 40%。\n出战选「命运之轮」→ 基础概率变 60%（代价是登场损失 30% 最大生命值）\n释放「赌注」→ 之后 3 秒内再 +20%。\n</span>"
+      "brief": "每次普攻命中后有 <span class=\"val-atk\">{C:GamblerSystem.MULTI_BASE%}%</span> 概率<span class=\"val-normal\">立刻以约 6 倍攻击速度再打一次普攻</span>。\n再次命中可继续触发，每连锁一次概率 ×{C:GamblerSystem.MULTI_DECAY}（<span class=\"val-atk\">{C:GamblerSystem.MULTI_BASE%}% → 32% → 25.6% → …</span>）。\n<span style=\"color:#8a93a0\">未触发时概率重置回基础值。\n</span>",
+      "desc": "每次普攻命中后有 <span class=\"val-atk\">{C:GamblerSystem.MULTI_BASE%}%</span> 概率<span class=\"val-normal\">立刻以约 6 倍攻击速度再打一次普攻</span>。\n再次命中可继续触发，每连锁一次概率 ×{C:GamblerSystem.MULTI_DECAY}（{C:GamblerSystem.MULTI_BASE%}% → 32% → 25.6% → …），没触发则重置回基础概率、等下一次普攻。\n<span style=\"color:#8a93a0\">基础概率 {C:GamblerSystem.MULTI_BASE%}%。\n出战选「命运之轮」→ 基础概率变 {C:GamblerSystem.MULTI_WHEEL%}%（代价是登场损失 30% 最大生命值）\n释放「赌注」→ 之后 3 秒内再 +{C:GamblerSystem.MULTI_BET_BONUS%}%。\n</span>"
     },
     "skillPool": [
       {
@@ -1142,8 +1142,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "蓄力狙击，造成 {N:2*ATK} 物理伤害，并附加 <span class=\"val-atk\">中毒</span>（层数逐秒衰减至归零）、<span class=\"val-atk\">50% 治疗削减</span> 5 秒 与 <span class=\"val-normal\">猎杀印记</span>。\n<span style=\"color:#8a93a0\">猎杀印记持续 5 秒，期间目标生命低于 24% 即被处决。\n</span>",
-        "detail": "猎人龟眯眼瞄准，蓄力狙击一发造成（200%×攻击力({ATK}) = {N:2*ATK}）物理伤害。\n附加：\n中毒（每秒造成等于层数的魔法伤害，之后层数衰减到 80%，直到归零 —— 以常见攻击力计约持续 <b>11 秒</b>，伤害逐秒递减）\n治疗削减 50%（5 秒）、猎杀印记（5 秒内目标生命值低于 24%即被处决，斩杀线临时从 14%抬到 24%）。\n<span style=\"color:#8a93a0\">射箭+毒箭+猎杀印记 三合一。\n冲刺追猎靠残血追猎普攻+被动处决。\n</span>"
+        "brief": "蓄力狙击，造成 {N:2*ATK} 物理伤害，并附加 <span class=\"val-atk\">中毒</span>（层数逐秒衰减至归零）、<span class=\"val-atk\">{C:HunterSystem.SHOT_HEALCUT_PCT%}% 治疗削减</span> {C:HunterSystem.SHOT_HEALCUT_SEC} 秒 与 <span class=\"val-normal\">猎杀印记</span>。\n<span style=\"color:#8a93a0\">猎杀印记持续 {C:HunterSystem.MARK_SEC} 秒，期间目标生命低于 {C:HunterSystem.EXEC_MARKED%}% 即被处决。\n</span>",
+        "detail": "猎人龟眯眼瞄准，蓄力狙击一发造成（{C:HunterSystem.SHOT_ATK_COEF%}%×攻击力({ATK}) = {N:2*ATK}）物理伤害。\n附加：\n中毒（每秒造成等于层数的魔法伤害，之后层数衰减到 80%，直到归零 —— 以常见攻击力计约持续 <b>11 秒</b>，伤害逐秒递减）\n治疗削减 {C:HunterSystem.SHOT_HEALCUT_PCT%}%（{C:HunterSystem.SHOT_HEALCUT_SEC} 秒）、猎杀印记（{C:HunterSystem.MARK_SEC} 秒内目标生命值低于 {C:HunterSystem.EXEC_MARKED%}%即被处决，斩杀线临时从 {C:HunterSystem.EXEC_BASE%}%抬到 {C:HunterSystem.EXEC_MARKED%}%）。\n<span style=\"color:#8a93a0\">射箭+毒箭+猎杀印记 三合一。\n冲刺追猎靠残血追猎普攻+被动处决。\n</span>"
       },
       {
         "name": "隐蔽",

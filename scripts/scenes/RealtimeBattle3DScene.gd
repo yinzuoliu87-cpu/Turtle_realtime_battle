@@ -4646,7 +4646,7 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 	if u["id"] == "stone" and u.get("stone_rockbody", false) and not raw:
 		d *= (1.0 - 0.01 * float(mini(30, int(u.get("rock_layers", 0)))))   # 岩石之躯: 每层-1%, 上限30%
 	if u["id"] == "stone" and _t < float(u.get("stone_dr_until", 0.0)) and not raw:
-		d *= (1.0 - clampf(0.5 * float(u["def"]) * 0.01, 0.0, 0.5))         # 嘲讽期 (0.5×护甲)% 减免, 上限50%
+		d *= (1.0 - clampf(StoneSystem.TAUNT_DR_PER_DEF * float(u["def"]) * 0.01, 0.0, StoneSystem.TAUNT_DR_CAP))         # 嘲讽期 (0.5×护甲)% 减免, 上限50%
 	if not raw and float(u.get("flat_dr", 0.0)) > 0.0:
 		d = maxf(0.0, d - float(u["flat_dr"]))       # 铁壁盾016: 每段固定减 X 点(护盾前)
 	# ★训龟大师: 受到的【所有类型】伤害降为 1(用户2026-07-22 含真实伤害)。

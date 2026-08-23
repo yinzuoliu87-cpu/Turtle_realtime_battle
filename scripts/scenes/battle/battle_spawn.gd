@@ -592,7 +592,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 		"gambler":
 			if "gamblerFateWheel" in battle._chosen_skill_types(u["id"], u["side"] == "left"):   # 命运之轮(技三打包被动·选中才有)·用户2026-07-09重设计
 				u["hp"] = maxf(1.0, u["hp"] - u["maxHp"] * 0.30)   # 登场损30%当前血(=30%maxHp·上限不变)
-				u["multi_base"] = 0.60                              # 永久基础多重概率40%→60%(与赌注+20%叠加可到80%)
+				u["multi_base"] = GamblerSystem.MULTI_WHEEL                              # 永久基础多重概率40%→60%(与赌注+20%叠加可到80%)
 				battle._vfx._float_text(u["pos"] + Vector2(0, -64), "命运之轮 -30%HP", Color("#ff5566"))
 				if u["side"] == "left": battle._gambler_sys._gambler_apply_wheel_stacks(u)   # 跨场累积: 登场套用本大轮已抽花色(切轮重置·方案B·只玩家)
 		"pirate":
