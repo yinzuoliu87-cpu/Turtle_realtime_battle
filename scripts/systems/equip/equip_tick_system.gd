@@ -3,6 +3,26 @@ extends RefCounted
 ## 装备周期效果tick系统
 ## 类内名不变;外部名加 battle.
 
+## ★★2026-08-22 文案根除: 034/036 的标量原来散在本文件与主场景里。
+## 【034 玩偶小熊】
+const DOLL_IV := 4.0            # 每几秒派一只小熊
+const DOLL_CHARGE_SEC := 1.2    # 大熊层满后, 携带者蓄力几秒才召大熊
+const BEAR_ASPD := 0.7          # 大熊攻速(次/秒) ⇒ atk_interval = 1/它
+const BEAR_RANGE := 70.0        # 大熊射程(码·近战)
+const BEAR_PAW_STACKS := 2      # 熊掌累积几层后, 下一击改成冲击波
+const BEAR_WAVE_COEF := 1.5     # 冲击波 ×ATK 物理
+const BEAR_WAVE_RANGE := 600.0  # 冲击波那一击射程临时扩到(码)
+const BEAR_WAVE_KNOCK_SEC := 0.8  # 冲击波击飞滞空(秒)
+const BEAR_WAVE_PULL := 70.0    # 冲击波把命中者拉回身前(码)
+## 【036 温泉蛋】孵化进度的五个来源 + 满进度阈值 + 每级成长
+const EGG_FULL := 100.0         # 进度满多少 → +1 临时等级
+const EGG_PER_CYCLE := 5.0      # 每周期 +
+const EGG_IV := 2.5             # 那个"周期"是几秒
+const EGG_ON_FOE_DEATH := 10.0  # 敌方死亡 +
+const EGG_ON_ALLY_DEATH := 15.0 # 己方死亡 +
+const EGG_DMG_RATIO := 0.1      # 造成/承受伤害 × 此比例计入进度
+const EGG_LV_GROWTH := 0.05     # 每级 + 基础属性(线性, 非复利)
+
 var battle
 
 func _init(b) -> void:
@@ -15,7 +35,7 @@ func _tick_doll(u: Dictionary, delta: float) -> void:   # 玩偶小熊: 每4s派
 	var stt: Dictionary = es["p2eq_034"]
 	if bool(stt.get("bear_done", false)) or bool(stt.get("bear_charging", false)): return
 	var si: int = int(stt.get("doll_si", 0))
-	var _iv: float = 1.0 if OS.has_environment("EQDEMO_FAST") else 4.0   # FAST=快速看波
+	var _iv: float = 1.0 if OS.has_environment("EQDEMO_FAST") else DOLL_IV   # FAST=快速看波
 	stt["doll_t"] = float(stt.get("doll_t", 0.0)) + delta
 	if float(stt["doll_t"]) < _iv: return
 	stt["doll_t"] = 0.0
@@ -426,9 +446,9 @@ func _egg_replay_levels(u: Dictionary, n: int) -> void:
 	if not stt.has("ref_atk"):
 		stt["ref_atk"] = u["base_atk"]; stt["ref_def"] = u["base_def"]; stt["ref_mr"] = u["base_mr"]
 		stt["ref_hp"] = u["maxHp"]; stt["ref_iv"] = float(u.get("atk_interval", 1.0))
-	u["base_atk"] += float(stt["ref_atk"]) * 0.05 * float(n)
-	u["base_def"] += float(stt["ref_def"]) * 0.05 * float(n)
-	u["base_mr"] += float(stt["ref_mr"]) * 0.05 * float(n)
+	u["base_atk"] += float(stt["ref_atk"]) * EGG_LV_GROWTH * float(n)
+	u["base_def"] += float(stt["ref_def"]) * EGG_LV_GROWTH * float(n)
+	u["base_mr"] += float(stt["ref_mr"]) * EGG_LV_GROWTH * float(n)
 	var hpg: float = float(stt["ref_hp"]) * 0.05 * float(n)
 	u["maxHp"] += hpg; u["hp"] += hpg
 	u["atk_interval"] = maxf(0.1, float(stt["ref_iv"]) / (1.0 + 0.02 * float(n)))
@@ -443,16 +463,16 @@ func _egg_add_progress(u: Dictionary, amt: float) -> void:   # 温泉蛋(036): �
 	# 等级上限随星级 3/4/5(用户2026-08-01); 缺省 3 = 老存档/未走 apply 的合成单位仍按原行为
 	var cap: int = int(stt.get("egg_cap", 3))
 	stt["incub"] = float(stt.get("incub", 0.0)) + amt
-	while float(stt["incub"]) >= 100.0 and int(stt.get("egg_levels", 0)) < cap:
-		stt["incub"] = float(stt["incub"]) - 100.0
+	while float(stt["incub"]) >= EGG_FULL and int(stt.get("egg_levels", 0)) < cap:
+		stt["incub"] = float(stt["incub"]) - EGG_FULL
 		if not stt.has("ref_atk"):   # 首次升级锁基准 → 线性+5%/级(同统领 1+0.05×级, 非复利)
 			stt["ref_atk"] = u["base_atk"]; stt["ref_def"] = u["base_def"]; stt["ref_mr"] = u["base_mr"]
 			stt["ref_hp"] = u["maxHp"]; stt["ref_iv"] = float(u.get("atk_interval", 1.0))
 		stt["egg_levels"] = int(stt.get("egg_levels", 0)) + 1
 		var el: int = int(stt["egg_levels"])
-		u["base_atk"] += float(stt["ref_atk"]) * 0.05          # 线性+5%基础属性/级
-		u["base_def"] += float(stt["ref_def"]) * 0.05
-		u["base_mr"] += float(stt["ref_mr"]) * 0.05
+		u["base_atk"] += float(stt["ref_atk"]) * EGG_LV_GROWTH          # 线性+5%基础属性/级
+		u["base_def"] += float(stt["ref_def"]) * EGG_LV_GROWTH
+		u["base_mr"] += float(stt["ref_mr"]) * EGG_LV_GROWTH
 		var hpg: float = float(stt["ref_hp"]) * 0.05; u["maxHp"] += hpg; u["hp"] += hpg
 		u["atk_interval"] = maxf(0.1, float(stt["ref_iv"]) / (1.0 + 0.02 * float(el)))   # 攻速+2%/级(同统领)
 		battle._recalc_stats(u)

@@ -2950,7 +2950,7 @@ func _big_bear_charge_and_spawn(u: Dictionary, si: int) -> void:   # 满层: 携
 	#   · 最大生命 650/1100/10000 → 1600/3000/15000
 	#   · 双抗 20 → 70(护甲与魔抗各 70)
 	#   ★攻击力用户没提 → 不动(70/120/2000)。
-	var bear = _spawn._spawn_summon(u, "bear", [1600.0, 3000.0, 15000.0][si], [70.0, 120.0, 2000.0][si], {"label": "大熊", "spr_id": "doll-bear", "col_size": 48.0, "hp_w": 36.0, "melee": true, "atk_interval": 1.0 / 0.7, "atk_range": 70.0})
+	var bear = _spawn._spawn_summon(u, "bear", [1600.0, 3000.0, 15000.0][si], [70.0, 120.0, 2000.0][si], {"label": "大熊", "spr_id": "doll-bear", "col_size": 48.0, "hp_w": 36.0, "melee": true, "atk_interval": 1.0 / EquipTickSystem.BEAR_ASPD, "atk_range": EquipTickSystem.BEAR_RANGE})
 	if bear != null:
 		bear["eq_state"] = {}; bear["equips"] = []
 		bear["base_def"] = 70.0; bear["def"] = 70.0
@@ -2995,7 +2995,7 @@ func _big_bear_attack(u: Dictionary, tgt: Dictionary) -> void:   # 大熊: <2层
 	var si: int = int(u.get("bear_star", 0))
 	var d2: Vector2 = (tgt["pos"] - u["pos"]).normalized()
 	u["_bear_ldir"] = (_world_pos(u["pos"] + d2 * 10.0, 0.0) - _world_pos(u["pos"], 0.0)).normalized()   # 扑击/砸地世界朝向
-	if int(u.get("bear_stacks", 0)) >= 2:
+	if int(u.get("bear_stacks", 0)) >= EquipTickSystem.BEAR_PAW_STACKS:
 		_bear_shockwave(u, tgt, si)
 		u["bear_stacks"] = 0
 		u["atk_range"] = 70.0                       # 冲击波后回近战射程
@@ -4051,7 +4051,7 @@ func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大�
 				hit_arr.append(o)
 				_damage._apply_damage_from(u, o, dmg, Color("#ffd27a"), 0.0, false, true)
 				_damage._knockback(u, o, 0.0, 1.5, 0.0)          # 击飞 ~0.8s (vy×1.5), 无横推(vx/vz=0, 拉回交给_pull_airborne)
-				_pull_airborne(o, origin, 70.0, 0.45)    # 拉回70码: 滞空(击飞态)期平滑滑向大熊(留24px不重叠)
+				_pull_airborne(o, origin, EquipTickSystem.BEAR_WAVE_PULL, 0.45)    # 拉回70码: 滞空(击飞态)期平滑滑向大熊(留24px不重叠)
 				_gold_chunk_erupt(o["pos"])              # 命中点额外炸一簇
 	u["_bear_voff"] = Vector3.ZERO
 	u["_slam_manual"] = false
@@ -4781,7 +4781,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 	_on_unit_death(u, killer)
 	for _egc in _units:   # 温泉蛋(036): 任意单位阵亡→持蛋者加进度(己方死+15/敌死+10)
 		if _egc.get("has_egg", false) and _egc.get("alive", false):
-			_equip_tick_sys._egg_add_progress(_egc, 15.0 if str(_egc.get("side", "")) == str(u.get("side", "")) else 10.0)
+			_equip_tick_sys._egg_add_progress(_egc, EquipTickSystem.EGG_ON_ALLY_DEATH if str(_egc.get("side", "")) == str(u.get("side", "")) else EquipTickSystem.EGG_ON_FOE_DEATH)
 	# 有死亡帧的龟(basic/ghost/ninja)播 death 动画 → 影/环/血条立即淡, 立绘延后淡(让动画演完)
 	_vfx._play_action(u, "death")
 	var has_death_anim: bool = (u.get("anim_action", "") == "death")

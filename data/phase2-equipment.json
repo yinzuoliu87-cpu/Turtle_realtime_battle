@@ -402,7 +402,7 @@
     "baseStats1": "+攻20/50/300·生命120/250/1000",
     "shopAvailable": 1,
     "emoji": "🧸",
-    "effectDesc1": "每 4 秒派出一只小熊走向最近的敌人，造成（1/2/5×攻击力+100/210/1000）物理伤害并将其击飞，同时携带者+1 大熊层；大熊层满 5/3/1 层时装备销毁，携带者蓄力 1.2 秒后在空位召唤一只大熊（生命 1600/3000/15000·攻击力 70/120/2000·护甲与魔抗各 70·攻击速度 0.7/秒·近战）登场；若无空位则继续小熊攻击直到出现空位。\n大熊普攻为熊掌（1×攻击力物理）并每次累积 1 层，满 2 层时下一击改为冲击波（射程临时扩至 600 码）：造成 1.5×攻击力物理伤害，将命中的敌人击飞 0.8 秒并拉回身前 70 码，随后层数清零。",
+    "effectDesc1": "每 {C:EquipTickSystem.DOLL_IV} 秒派出一只小熊走向最近的敌人，造成（1/2/5×攻击力+100/210/1000）物理伤害并将其击飞，同时携带者+1 大熊层；大熊层满 5/3/1 层时装备销毁，携带者蓄力 {C:EquipTickSystem.DOLL_CHARGE_SEC} 秒后在空位召唤一只大熊（生命 1600/3000/15000·攻击力 70/120/2000·护甲与魔抗各 70·攻击速度 {C:EquipTickSystem.BEAR_ASPD}/秒·近战）登场；若无空位则继续小熊攻击直到出现空位。\n大熊普攻为熊掌（1×攻击力物理）并每次累积 1 层，满 {C:EquipTickSystem.BEAR_PAW_STACKS} 层时下一击改为冲击波（射程临时扩至 {C:EquipTickSystem.BEAR_WAVE_RANGE} 码）：造成 {C:EquipTickSystem.BEAR_WAVE_COEF}×攻击力物理伤害，将命中的敌人击飞 {C:EquipTickSystem.BEAR_WAVE_KNOCK_SEC} 秒并拉回身前 {C:EquipTickSystem.BEAR_WAVE_PULL} 码，随后层数清零。",
     "effectDesc3": "",
     "img": "equip/dungeon-doll.png",
     "effectBrief": "每 4 秒派出小熊撞击最近的敌人；攒满 5/3/1 层后召唤一只大熊。"
@@ -426,7 +426,7 @@
     "baseStats1": "+生命70/120/180",
     "shopAvailable": 1,
     "emoji": "🥚",
-    "effectDesc1": "每秒回复 5/7/10 点生命；\n并持续获得孵化进度（每 2.5 秒+5、敌方死亡+10、己方死亡+15、造成伤害×0.1、承受伤害×0.1），进度满 100 获得 1 点临时等级（上限+3/4/5，每级+5%基础属性，同一局对局内跨战场保留、开新对局才重置）；\n孵满后为全队均摊 300/400/600 点护盾（一次）——分摊名单不含龟蛋与训龟大师。",
+    "effectDesc1": "每秒回复 5/7/10 点生命；\n并持续获得孵化进度（每 {C:EquipTickSystem.EGG_IV} 秒+{C:EquipTickSystem.EGG_PER_CYCLE}、敌方死亡+{C:EquipTickSystem.EGG_ON_FOE_DEATH}、己方死亡+{C:EquipTickSystem.EGG_ON_ALLY_DEATH}、造成伤害×{C:EquipTickSystem.EGG_DMG_RATIO}、承受伤害×{C:EquipTickSystem.EGG_DMG_RATIO}），进度满 {C:EquipTickSystem.EGG_FULL} 获得 1 点临时等级（上限+3/4/5，每级+{C:EquipTickSystem.EGG_LV_GROWTH%}%基础属性，同一局对局内跨战场保留、开新对局才重置）；\n孵满后为全队均摊 300/400/600 点护盾（一次）——分摊名单不含龟蛋与训龟大师。",
     "effectDesc3": "",
     "img": "equip/equip-incubator.png",
     "effectBrief": "每秒回复 5/7/10 点生命；孵化进度满 100 得 1 点临时等级，上限 +3/4/5。"

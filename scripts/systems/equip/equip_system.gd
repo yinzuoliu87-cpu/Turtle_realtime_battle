@@ -1824,7 +1824,7 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 			"p2eq_034":   # 玩偶小熊: 移到每帧 _tick_doll(4s派小熊 + 满层蓄力召大熊); 周期tick不处理
 				pass
 			"p2eq_036":   # 温泉蛋: 孵化进度, 满100→全队均摊护盾(一次)
-				battle._equip_tick_sys._egg_add_progress(u, 5.0)   # 每周期+5 (其余源: 敌死+10/己死+15/造成×0.1/承受×0.1)
+				battle._equip_tick_sys._egg_add_progress(u, EquipTickSystem.EGG_PER_CYCLE)   # 每周期+5 (其余源: 敌死+10/己死+15/造成×0.1/承受×0.1)
 			"p2eq_042":   # 移到 _tick_eq_intervals(自定义间隔)
 				pass
 			"p2eq_043":   # 海浪护符: 改为【法力条满直接涌浪】(2026-08-12); 周期tick不处理
