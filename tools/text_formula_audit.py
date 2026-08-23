@@ -23,7 +23,50 @@
 
 跑法: python tools/text_formula_audit.py
 """
-import io, json, re, sys
+import io, json, re, sys, os
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import derived_consts as _DC
+
+_CRE = re.compile(r'[{]C:([A-Za-z_][A-Za-z0-9_]*)\.([A-Z][A-Z0-9_]*)(%?)[}]')
+_CCACHE = {}
+
+
+def _consts_of(cls):
+    """按 class_name 找到 .gd 并取它的常量表(含推导式)。找不到就返回空表。"""
+    if cls in _CCACHE:
+        return _CCACHE[cls]
+    tbl = {}
+    for root, _, fs in os.walk('scripts'):
+        for f in fs:
+            if not f.endswith('.gd'):
+                continue
+            fp = os.path.join(root, f)
+            head = io.open(fp, encoding='utf-8').read(4096)
+            if ('class_name ' + cls) in head:
+                src = io.open(fp, encoding='utf-8').read()
+                tbl = _DC.derive(src, _DC.numeric_consts(src))
+                break
+        if tbl:
+            break
+    _CCACHE[cls] = tbl
+    return tbl
+
+
+def expand_c(text):
+    """把 {C:类名.常量} / {C:类名.常量%} 展开成数字, 取不到就原样留着。"""
+    def rep(m):
+        v = _consts_of(m.group(1)).get(m.group(2))
+        if v is None:
+            return m.group(0)
+        try:
+            fv = float(v)
+        except ValueError:
+            return m.group(0)
+        if m.group(3) == '%':
+            fv *= 100.0
+        return str(int(fv)) if fv == int(fv) else str(fv)
+    return _CRE.sub(rep, text)
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
@@ -63,6 +106,11 @@ for x in pets:
             t = str(obj.get(k, '') or '')
             if not t:
                 continue
+            ## ★★先把 {C:类名.常量} 展开成数字再比(2026-08-22 文案根除)。
+            ##   不展开的话, 转成占位符的那些百分比在本审计器眼里就"消失了" ——
+            ##   分母从满值掉到 94, 它自己打印了「分母太小, 判据可能失效」。
+            ##   判据没错, 是**被测文本换了形态**; 展开后仍按原样逐句比。
+            t = expand_c(t)
             for line in re.split(r'[\n。]', t):
                 phs = PH.findall(line)
                 plain = re.sub(r'<[^>]*>', '', line)

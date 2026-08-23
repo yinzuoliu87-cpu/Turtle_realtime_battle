@@ -29,3 +29,12 @@ const SHIELD_ATK_COEF := 1.5     # 额外 ×ATK 物理 (2026-07-29 第四轮: 0.
 const SHIELD_LOST_PCT := 0.13    # 额外 + 目标【已损生命】× (第四轮: 0.20 → 0.13)
 const SHIELD_GAIN_PCT := 0.80    # 自己获得 (上面两段之和) × 的护盾(不限时)
 const SHIELD_KNOCK_SEC := 0.55   # 击飞滞空(秒)
+
+## ── 龟派气波(主动) ────────────────────────────────────────
+const CHI_ATK_COEF := 2.0        # 沿途每敌 ×ATK 物理 (3.5 → 3.0 → 2.0, 第五轮)
+const CHI_KNOCK_SEC := 1.5       # 击飞滞空(秒)
+const CHI_BUFF_SEC := 3.0        # 施法期自增 buff 的持续(秒)
+const CHI_CRIT := 0.25           # 自增暴击率
+const CHI_LIFESTEAL := 0.20      # 自增生命偷取
+const CHI_ARMOR_PEN_COEF := 0.1  # 自增护甲穿透 = ×ATK
+const CHI_DASH_MAX := 300.0      # 发波前智能位移的最远距离(码)

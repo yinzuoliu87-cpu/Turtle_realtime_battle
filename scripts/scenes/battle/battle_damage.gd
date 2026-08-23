@@ -398,7 +398,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	# 双头坚韧 (融合打包被动·选中融合才有): 每受一段攻击 +1护甲+1魔抗 (各上限20)
 	if u["id"] == "two_head" and u.get("two_fused", false):
 		var th: int = int(u.get("two_tough", 0))
-		if th < 20:
+		if th < TwoHeadSystem.FUSION_TOUGH_CAP:
 			th += 1; u["two_tough"] = th
 			u["base_def"] += 1.0; u["base_mr"] += 1.0; battle._recalc_stats(u)
 			if battle._t - float(u.get("_tough_glint_t", -1.0)) > 0.35:   # 坚韧变硬微光(节流·用户2026-07-11)

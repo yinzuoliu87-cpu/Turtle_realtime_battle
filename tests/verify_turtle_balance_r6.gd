@@ -114,10 +114,11 @@ func _nums() -> void:
 	_chk("① 灵魂风暴龟能旧值 95 已消失", not se.contains('"ghostStorm": 95.0'))
 	# 7. 龟派气波: 删暴伤 + 吸血 20%
 	_chk("① 龟派气波吸血 = %d%%" % int(WANT_CHIWAVE_LIFESTEAL * 100.0),
-		rb.contains('u["lifesteal"] = float(u["lifesteal"]) + %.2f' % WANT_CHIWAVE_LIFESTEAL)
-		and rb.contains('uu["lifesteal"] = float(uu["lifesteal"]) - %.2f' % WANT_CHIWAVE_LIFESTEAL))
+		## ★比【常量的值】不比源码字面串(2026-08-22 根除已提成 BasicConsts)
+		is_equal_approx(BasicConsts.CHI_LIFESTEAL, WANT_CHIWAVE_LIFESTEAL))
+
 	_chk("① 龟派气波吸血旧值 0.10 已消失",
-		not rb.contains('u["lifesteal"] = float(u["lifesteal"]) + 0.10'))
+		not is_equal_approx(BasicConsts.CHI_LIFESTEAL, 0.10))
 	# ★暴伤要【加减两处都没了】—— 只删掉"加"那半边会让龟越打越弱, 是比不删更糟的 bug
 	_chk("① ★龟派气波暴伤 buff 加/减两处都已删除",
 		not rb.contains('u["crit_dmg"] = float(u["crit_dmg"]) + 0.20')

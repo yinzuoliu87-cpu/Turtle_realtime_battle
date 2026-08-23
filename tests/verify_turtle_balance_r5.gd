@@ -131,8 +131,8 @@ func _nerfs() -> void:
 		rb.contains("_atk_dmg(u, %.1f, o) + int(u[\"atk\"] * %s * tmax)" % [WANT_SPLASH_ATK, str(WANT_SPLASH_HPMUL)]))
 	_chk("③ 过肩摔旧的纯%最大生命公式已消失",
 		not rb.contains("int(tmax * 0.23)") and not rb.contains("int(tmax * 0.18)"))
-	_chk("③ 龟派气波 = %.1fA" % WANT_CHIWAVE, rb.contains("_atk_dmg(uu2, %.1f, o)" % WANT_CHIWAVE))
-	_chk("③ 龟派气波旧值 3.0 已消失", not rb.contains("_atk_dmg(uu2, 3.0, o)"))
+	_chk("③ 龟派气波 = %.1fA" % WANT_CHIWAVE, is_equal_approx(BasicConsts.CHI_ATK_COEF, WANT_CHIWAVE))
+	_chk("③ 龟派气波旧值 3.0 已消失", not is_equal_approx(BasicConsts.CHI_ATK_COEF, 3.0))
 
 
 func _buffs() -> void:

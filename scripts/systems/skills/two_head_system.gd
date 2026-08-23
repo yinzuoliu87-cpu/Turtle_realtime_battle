@@ -24,6 +24,19 @@ const ENH_SHIELD_COEF := 1.1     # 并给自己 ×ATK 护盾
 const ENH_SEC := 4.0             # 破甲/护盾持续秒
 ## 【切远程的滑退距离】
 const RETREAT_DIST := 200.0
+## 【技能二·远程形态: 精神干扰】(真伤系数见上面 DISRUPT_TRUE)
+const DISRUPT_HEALCUT_PCT := 0.5   # 治疗削减比例
+const DISRUPT_HEALCUT_SEC := 5.0   # 治疗削减持续(秒)
+const DISRUPT_SHIELD_BREAK := 0.5  # 破除目标护盾的比例
+## 【技能二·近战形态: 吸收】
+const ABSORB_ATK_COEF := 0.6       # ×ATK 物理
+const ABSORB_MAXHP_PCT := 0.08     # + 目标最大生命 ×
+const ABSORB_HEAL_ATK := 0.4       # 回血 = ×ATK
+const ABSORB_HEAL_LOST := 0.18     # 回血 + 自身已损生命 ×
+## 【技能三·融合】
+const FUSION_WAVE_BASE := 4        # 魔法波基础段数(每次释放 +1, 累积到战斗结束)
+const FUSION_WAVE_COEF := 0.8      # 每段 ×ATK (物理与真实交替)
+const FUSION_TOUGH_CAP := 20       # 双头坚韧: 护甲/魔抗各自的上限
 
 var battle
 
@@ -174,16 +187,16 @@ func _sk_two_head_disrupt(u: Dictionary, tgt) -> void:           # 双头·技�
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	if u["melee"]:
-		var dmg: int = battle._atk_dmg(u, 0.6, tgt) + int(tgt["maxHp"] * 0.08)
+		var dmg: int = battle._atk_dmg(u, ABSORB_ATK_COEF, tgt) + int(tgt["maxHp"] * ABSORB_MAXHP_PCT)
 		battle._damage._apply_damage_from(u, tgt, dmg, Color("#c0d0ff"))
-		battle._damage._heal(u, u["atk"] * 0.4 + (u["maxHp"] - u["hp"]) * 0.18)   # 回血40%攻击力+18%已损生命
+		battle._damage._heal(u, u["atk"] * ABSORB_HEAL_ATK + (u["maxHp"] - u["hp"]) * ABSORB_HEAL_LOST)   # 回血40%攻击力+18%已损生命
 		_two_head_absorb_vfx(u, tgt)                               # 吸收VFX(用户2026-07-11): 生命虹吸束+微粒回流+回血绿环
 	else:
 		var broke: bool = float(tgt.get("shield", 0.0)) > 0.0
-		if broke: tgt["shield"] = float(tgt["shield"]) * 0.5       # 破盾50%
+		if broke: tgt["shield"] = float(tgt["shield"]) * DISRUPT_SHIELD_BREAK       # 破盾50%
 		battle._damage._apply_damage_from(u, tgt, int(maxf(1.0, u["atk"] * DISRUPT_TRUE)), Color("#ffffff"), 0.0, true)   # 真伤(raw=true): 无装备对局里治疗削减/破盾常常空转, 伤害本体要立得住
-		tgt["heal_reduce_until"] = battle._t + 5.0
-		tgt["heal_reduce_pct"] = maxf(float(tgt.get("heal_reduce_pct", 0.0)), 0.5)             # 治疗削减50%5秒
+		tgt["heal_reduce_until"] = battle._t + DISRUPT_HEALCUT_SEC
+		tgt["heal_reduce_pct"] = maxf(float(tgt.get("heal_reduce_pct", 0.0)), DISRUPT_HEALCUT_PCT)             # 治疗削减50%5秒
 		_two_head_disrupt_vfx(u, tgt, broke)                       # 精神干扰VFX(用户2026-07-11): 精神波+紫涟漪+(破盾)盾碎裂+裂心标记
 
 # 精神干扰VFX(用户2026-07-11「AI跑素材」): 头顶精神波(AI psychic-blast) + 紫色心灵涟漪环×2 + 破盾时盾碎裂(AI shield-shatter) + 治疗削减裂心标记
@@ -247,7 +260,7 @@ func _two_head_absorb_vfx(u: Dictionary, tgt: Dictionary) -> void:
 func _sk_two_head_fusion(u: Dictionary, tgt) -> void:            # 双头·技能三融合(封板): 主动魔法波(4段·物理80%+真实80%共1.6A); 锁形态/坚韧/合体近战属性在登场gate
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
-	var n: int = int(u.get("two_wave_count", 4))               # 波数量: 基础4段·每次释放+1累积到战斗结束(用户2026-07-11)
+	var n: int = int(u.get("two_wave_count", FUSION_WAVE_BASE))               # 波数量: 基础4段·每次释放+1累积到战斗结束(用户2026-07-11)
 	for i in range(n):                                          # n段交替弧形魔法波(物理紫/真实白)依次飞向目标·波到结算该段
 		battle._pending_shots.append({"delay": float(i) * 0.11, "src": u, "fn": _two_head_fusion_wave.bind(u, tgt, i % 2 == 1)})
 	u["two_wave_count"] = n + 1                                 # 后续释放波数量+1
