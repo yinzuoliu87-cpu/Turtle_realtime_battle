@@ -226,7 +226,7 @@ pet|宝箱龟/宝箱砸击|detail|宝箱龟朝目标方向猛砸宝箱，对前�
 pet|宝箱龟/清点财宝|brief|回复 {H:HP*0.05} 生命值并获得 {S:0.6*ATK} 护盾。\n宝箱龟每拥有 <span class="val-atk">1000</span> 点<span class="val-normal">财宝值</span>，治疗效果提升 <span class="val-heal">10%</span>。
 pet|宝箱龟/清点财宝|detail|宝箱龟回复（5%×最大生命值({HP}) = {H:HP*0.05}）生命值并获得（60%×攻击力({ATK}) = {S:0.6*ATK}）护盾。\n每拥有 1000 点财宝值，治疗效果提升 10%。
 pet|宝箱龟/藏宝图|brief|根据造成的伤害积累<span class="val-normal">财宝值</span>，每达到一个阈值便从战利品池中随机获得一件装备，并回复生命值。\n<span style="color:#8a93a0"><b>一大轮</b>最多获得 5 件装备（跨场累积，新大轮重置）。\n</span>
-pet|宝箱龟/藏宝图|desc|造成的伤害转化为财宝值，并<span class="val-atk">随一大轮持续累积</span>。\n财宝值达到 3000/6000/10000/18000/30000 时开箱：\n第 1-2 箱开基础池、第 3-4 箱开进阶池、第 5 箱开传说池（15 件专属战利品，不重复），并额外回复 8/8/11/11/15% 最大生命值。\n开出的战利品为<span class="val-atk">一大轮常驻装备</span>，整轮每场战斗自动生效；新大轮重置。
+pet|宝箱龟/藏宝图|desc|造成的伤害转化为财宝值，并<span class="val-atk">随一大轮持续累积</span>。\n财宝值达到 {C:RealtimeBattle3DScene._CHEST_THRESH} 时开箱：\n第 1-2 箱开基础池、第 3-4 箱开进阶池、第 5 箱开传说池（15 件专属战利品，不重复），并额外回复 {C:ChestSystem.CHEST_HEAL_PCT%}% 最大生命值。\n开出的战利品为<span class="val-atk">一大轮常驻装备</span>，整轮每场战斗自动生效；新大轮重置。
 pet|宝箱龟/财宝炮击|brief|蓄力后朝一条直线射出长能量射线，对直线上的所有敌人各造成 {N:3*ATK} 物理伤害，并将其<span class="val-atk">击飞击退</span>。\n打包被动·<span class="val-normal">贪婪</span>：\n宝箱龟每携带一件装备，便<span class="val-atk">永久</span>获得 <span class="val-atk">4% 攻击力</span> 和 <span class="val-atk">7% 最大生命值</span>。
 pet|宝箱龟/财宝炮击|detail|宝箱龟蓄力后朝一条直线发出一道长激光能量射线，对直线上所有敌人各造成（300%×攻击力({ATK}) = {N:3*ATK}）物理伤害，并将其击飞与击退。\n<span style="color:#8a93a0">打包被动·贪婪：\n选择本技能后，宝箱龟每携带一件装备便永久获得攻击力 +4% 与最大生命值 +7%（含藏宝图开出的装备，实时累计）。\n</span>
 pet|宝箱龟/财宝风暴|brief|以当前目标为中心卷起一片圆形财宝风暴，持续 2.5 秒、每 0.5 秒 一跳，对范围内的敌人每跳造成 {N:0.2*ATK} 物理伤害，共 <span class="val-atk">5</span> 跳、合计 {N:0.2*ATK*5} 伤害。

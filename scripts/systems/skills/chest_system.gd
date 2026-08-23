@@ -51,7 +51,7 @@ func _chest_treasure_tick(u: Dictionary) -> void:
 			return
 	u["chest_opened"] = opened + 1
 	var group: String = ["basic", "basic", "adv", "adv", "legend"][opened]   # 第1-2箱基础/3-4进阶/5传说
-	var heal_pct: float = [0.08, 0.08, 0.11, 0.11, 0.15][opened]
+	var heal_pct: float = CHEST_HEAL_PCT[opened]
 	var tid: String = _chest_pick_treasure(u, group)
 	if tid != "":
 		_chest_apply_treasure(u, tid)
@@ -97,6 +97,14 @@ func _chest_pick_treasure(u: Dictionary, group: String) -> String:   # 该档随
 ##   否则就是"手抄的副本必然落后"。
 const RUM_HEAL_PCT := 0.005     # 朗姆酒: 每秒回 0.5% 最大生命(原每 10 秒 8%)
 const GEM_HP := 500.0           # 宝石甲: +500 最大生命(原 +60)
+## 【财宝风暴】以目标为心的圆形风暴, 逐跳结算。
+const STORM_RADIUS := 400.0     # 半径(码)
+const STORM_TICKS := 5          # 共几跳
+const STORM_TICK_SEC := 0.5     # 每几秒一跳
+const STORM_ATK_COEF := 0.2     # 每跳 ×ATK 物理
+const STORM_LIFE := STORM_TICKS * STORM_TICK_SEC   # 总时长(推导, 文案里那个 2.5 秒)
+## 【藏宝图】开箱后额外回复的最大生命比例(逐箱)。阈值在主场景 `_CHEST_THRESH`。
+const CHEST_HEAL_PCT := [0.08, 0.08, 0.11, 0.11, 0.15]
 const FLINT_BURN_COEF := 0.05   # 火石: 命中给 0.05×ATK 层灼烧(原 0.1)
 
 
@@ -451,18 +459,18 @@ func _sk_chest_storm(u: Dictionary, tgt) -> void:              # 技二·财宝�
 			var rt2 = battle._reg_tween()
 			rt2.tween_property(rs, "modulate:a", 0.0, 0.7)
 			rt2.tween_callback(rs.queue_free))
-	for i in range(5):                                          # ⑥ 5跳结算(数值不动)+命中特效+脉冲
+	for i in range(STORM_TICKS):                                # ⑥ 5跳结算(数值不动)+命中特效+脉冲
 		var fn = func():
 			if is_instance_valid(disc):
 				disc.modulate.a = minf(0.85, disc.modulate.a + 0.25)   # 风暴脉冲闪亮(驱动器逐帧回落)
 			for o in battle._targeting._enemies_of(uu):
-				if o.get("alive", false) and o["pos"].distance_to(center) <= 400.0:
-					battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, 0.2, o), Color("#ffd93d"))
+				if o.get("alive", false) and o["pos"].distance_to(center) <= STORM_RADIUS:
+					battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, STORM_ATK_COEF, o), Color("#ffd93d"))
 					battle._burst_vfx("res://assets/sprites/vfx/treasure-slam.png", o["pos"], 74.0)   # 命中金光爆
 					_chest_coin_spray(o["pos"], 2)                                              # 敌身金币被抽飞
-			battle._skill_ring(center, Color(1.0, 0.82, 0.2, 0.35), 400.0)
+			battle._skill_ring(center, Color(1.0, 0.82, 0.2, 0.35), STORM_RADIUS)
 			for _d in range(2):                                                                 # 边缘扬尘
 				var da: float = randf() * TAU
 				battle._skill_ring(center + Vector2(cos(da), sin(da)) * randf_range(330.0, 390.0), Color(1.0, 0.85, 0.4, 0.3), 22.0)
-		battle._pending_shots.append({"delay": float(i) * 0.5, "fn": fn, "src": u})
+		battle._pending_shots.append({"delay": float(i) * STORM_TICK_SEC, "fn": fn, "src": u})
 

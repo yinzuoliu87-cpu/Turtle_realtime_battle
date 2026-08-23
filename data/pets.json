@@ -856,8 +856,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 999,
-        "brief": "蓄力后逐枚投出全部金币，每枚造成 {N:ATK*0.30} 物理伤害 和 {T:ATK*0.30} 真实伤害。\n<span style=\"color:#8a93a0\">目标阵亡时改投最近的敌人；\n<span class=\"val-normal\">投币全程免疫控制</span>，首次释放时<span class=\"val-atk\">同时按当时金币数获得金盾</span>（6 秒）。\n一场战斗限用一次。\n梭哈用过后本技能变为「金盾」（消耗 80 龟能，护盾值 = 当前金币数 ×{C:FortuneSystem.GOLD_SHIELD_MULT}，不消耗金币，持盾期间锁定龟能）。\n</span>",
-        "detail": "财神龟蓄力后<span class=\"val-normal\">逐枚投出</span>全部金币，每枚造成（30%×攻击力({ATK}) = {N:ATK*0.30}）物理 +（30%×攻击力({ATK}) = {T:ATK*0.30}）真实伤害。\n投币期间目标阵亡则改投最近的敌人。\n<span class=\"val-normal\">逐枚投币的全程免疫控制</span>。\n首次释放时<span class=\"val-atk\">同时按当时金币数获得金盾</span>（持续 6 秒，<span style=\"color:#8a93a0\">此金盾不锁龟能</span>）。\n<span style=\"color:#8a93a0\">一场限用一次。\n</span>\n梭哈释放后，该技能槽变为「金盾（持续 4 秒）」：消耗 80 龟能，获得 当前金币数 ×{C:FortuneSystem.GOLD_SHIELD_MULT} 的通用护盾（不消耗金币），持有该护盾期间锁龟能（护盾被打光或到期即恢复）。\n梭哈用过后本技能变为「金盾」（消耗 80 龟能，护盾值等于当前金币数，不消耗金币，持盾期间锁定龟能）。"
+        "brief": "蓄力后逐枚投出全部金币，每枚造成 {N:ATK*0.30} 物理伤害 和 {T:ATK*0.30} 真实伤害。\n<span style=\"color:#8a93a0\">目标阵亡时改投最近的敌人；\n<span class=\"val-normal\">投币全程免疫控制</span>，首次释放时<span class=\"val-atk\">同时按当时金币数获得金盾</span>（{C:FortuneSystem.ALLIN_SHIELD_SEC} 秒）。\n一场战斗限用一次。\n梭哈用过后本技能变为「金盾」（消耗 80 龟能，护盾值 = 当前金币数 ×{C:FortuneSystem.GOLD_SHIELD_MULT}，不消耗金币，持盾期间锁定龟能）。\n</span>",
+        "detail": "财神龟蓄力后<span class=\"val-normal\">逐枚投出</span>全部金币，每枚造成（30%×攻击力({ATK}) = {N:ATK*0.30}）物理 +（30%×攻击力({ATK}) = {T:ATK*0.30}）真实伤害。\n投币期间目标阵亡则改投最近的敌人。\n<span class=\"val-normal\">逐枚投币的全程免疫控制</span>。\n首次释放时<span class=\"val-atk\">同时按当时金币数获得金盾</span>（持续 {C:FortuneSystem.ALLIN_SHIELD_SEC} 秒，<span style=\"color:#8a93a0\">此金盾不锁龟能</span>）。\n<span style=\"color:#8a93a0\">一场限用一次。\n</span>\n梭哈释放后，该技能槽变为「金盾（持续 4 秒）」：消耗 80 龟能，获得 当前金币数 ×{C:FortuneSystem.GOLD_SHIELD_MULT} 的通用护盾（不消耗金币），持有该护盾期间锁龟能（护盾被打光或到期即恢复）。\n梭哈用过后本技能变为「金盾」（消耗 80 龟能，护盾值等于当前金币数，不消耗金币，持盾期间锁定龟能）。"
       },
       {
         "name": "招财进宝",
@@ -1925,7 +1925,7 @@
       "type": "chestTreasure",
       "name": "藏宝图",
       "brief": "根据造成的伤害积累<span class=\"val-normal\">财宝值</span>，每达到一个阈值便从战利品池中随机获得一件装备，并回复生命值。\n<span style=\"color:#8a93a0\"><b>一大轮</b>最多获得 5 件装备（跨场累积，新大轮重置）。\n</span>",
-      "desc": "造成的伤害转化为财宝值，并<span class=\"val-atk\">随一大轮持续累积</span>。\n财宝值达到 3000/6000/10000/18000/30000 时开箱：\n第 1-2 箱开基础池、第 3-4 箱开进阶池、第 5 箱开传说池（15 件专属战利品，不重复），并额外回复 8/8/11/11/15% 最大生命值。\n开出的战利品为<span class=\"val-atk\">一大轮常驻装备</span>，整轮每场战斗自动生效；新大轮重置。"
+      "desc": "造成的伤害转化为财宝值，并<span class=\"val-atk\">随一大轮持续累积</span>。\n财宝值达到 {C:RealtimeBattle3DScene._CHEST_THRESH} 时开箱：\n第 1-2 箱开基础池、第 3-4 箱开进阶池、第 5 箱开传说池（15 件专属战利品，不重复），并额外回复 {C:ChestSystem.CHEST_HEAL_PCT%}% 最大生命值。\n开出的战利品为<span class=\"val-atk\">一大轮常驻装备</span>，整轮每场战斗自动生效；新大轮重置。"
     },
     "skillPool": [
       {
@@ -1957,8 +1957,8 @@
         "pierce": 0,
         "cd": 0,
         "aoe": true,
-        "brief": "以当前目标为中心卷起一片圆形财宝风暴，持续 2.5 秒、每 0.5 秒 一跳，对范围内的敌人每跳造成 {N:0.2*ATK} 物理伤害，共 <span class=\"val-atk\">5</span> 跳、合计 {N:0.2*ATK*5} 伤害。",
-        "detail": "宝箱龟以当前目标位置为中心卷起一个半径 400 码的圆形财宝风暴，持续 2.5 秒，每 0.5 秒结算一次（共 5 跳）。\n风暴范围内的所有敌人每跳受到（20%×攻击力({ATK}) = {N:0.2*ATK}）物理伤害，5 跳共（100%×攻击力({ATK}) = {N:0.2*ATK*5}）。"
+        "brief": "以当前目标为中心卷起一片圆形财宝风暴，持续 {C:ChestSystem.STORM_LIFE} 秒、每 {C:ChestSystem.STORM_TICK_SEC} 秒 一跳，对范围内的敌人每跳造成 {N:0.2*ATK} 物理伤害，共 <span class=\"val-atk\">{C:ChestSystem.STORM_TICKS}</span> 跳、合计 {N:0.2*ATK*5} 伤害。",
+        "detail": "宝箱龟以当前目标位置为中心卷起一个半径 {C:ChestSystem.STORM_RADIUS} 码的圆形财宝风暴，持续 {C:ChestSystem.STORM_LIFE} 秒，每 {C:ChestSystem.STORM_TICK_SEC} 秒结算一次（共 {C:ChestSystem.STORM_TICKS} 跳）。\n风暴范围内的所有敌人每跳受到（{C:ChestSystem.STORM_ATK_COEF%}%×攻击力({ATK}) = {N:0.2*ATK}）物理伤害，{C:ChestSystem.STORM_TICKS} 跳共（100%×攻击力({ATK}) = {N:0.2*ATK*5}）。"
       },
       {
         "name": "财宝炮击",
