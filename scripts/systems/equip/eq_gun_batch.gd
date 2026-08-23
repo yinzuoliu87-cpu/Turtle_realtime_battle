@@ -309,9 +309,9 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 		return
 	# ★自管累加器, 不读 battle._t(它跨路累加永不重置, CLAUDE.md §3.4)
 	u["_g078_t"] = float(u.get("_g078_t", 0.0)) + delta
-	if float(u["_g078_t"]) < 2.0:
+	if float(u["_g078_t"]) < EEL_IV:
 		return
-	u["_g078_t"] = float(u["_g078_t"]) - 2.0
+	u["_g078_t"] = float(u["_g078_t"]) - EEL_IV
 	_eel_fire(u, int(u.get("_g078_si", 0)))
 
 
@@ -508,7 +508,7 @@ func _eel_left(u: Dictionary, si: int, aim: Vector2) -> void:
 		return
 	var flat: float = [15.0, 25.0, 40.0][si]
 	var scale: float = [0.3, 0.6, 1.0][si]
-	var half_cos: float = cos(deg_to_rad(30.0))     # 60 度锥 ⇒ 半角 30 度
+	var half_cos: float = cos(deg_to_rad(EEL_CONE_DEG * 0.5))     # 60 度锥 ⇒ 半角 30 度
 	var apex: Vector2 = GunEqVfx.barrel_muzzle(Vector2(u["pos"]), aim, true)
 	var gpct: float = float(u.get("_golden_pct", 0.0))
 	var muz_h: float = GunEqVfx.body_mid_h(u)
@@ -520,7 +520,7 @@ func _eel_left(u: Dictionary, si: int, aim: Vector2) -> void:
 			continue
 		var rel: Vector2 = Vector2(o["pos"]) - apex
 		var d: float = rel.length()
-		if d > 400.0:
+		if d > EEL_CONE_RANGE:
 			continue
 		if d > 1.0 and rel.normalized().dot(aim) < half_cos:
 			continue
@@ -544,7 +544,7 @@ func _eel_left(u: Dictionary, si: int, aim: Vector2) -> void:
 	# 弹丸落到**最近那个命中者的身体中段**(由它的立绘算, 不写死);
 	# 一个都没打中 ⇒ 保持出膛高度平着飞完 400 码(没有落点可言)。
 	var h_to: float = muz_h if hit_h < 0.0 else hit_h
-	vfx.cone_blast(Vector2(u["pos"]), aim, 400.0, 30.0, COL_PHYS, gpct, 14, muz_h, h_to)
+	vfx.cone_blast(Vector2(u["pos"]), aim, EEL_CONE_RANGE, EEL_CONE_DEG * 0.5, COL_PHYS, gpct, 14, muz_h, h_to)
 
 
 ## 右管: 首目标 0.5ATK 物理 + 50/100/180 魔法; 魔法段按最近顺序连锁到**所有还没被这一发电过**
@@ -582,6 +582,12 @@ func _eel_right(u: Dictionary, si: int) -> void:
 
 ## 电链每 0.09 秒跳一格。★不是随手取的: 这个间隔要**看得出先后**又不能拖到
 ## 下一次开火(每 2 秒一发)之后 —— 最多 8 个敌人 ⇒ 满链 0.72 秒, 留足余量。
+## 078 电鳗双管铳: 左右管共享计数, 每 EEL_IV 秒交替射一管。
+## 左管 = EEL_CONE_RANGE 码 × EEL_CONE_DEG 度锥形霰弹; 右管 = 电击弹, 首目标物理 + 魔法连锁。
+const EEL_IV := 2.0            # 交替节拍(秒)
+const EEL_CONE_RANGE := 400.0  # 左管锥形射程(码)
+const EEL_CONE_DEG := 60.0     # 左管锥角(全角; 代码里取半角 = ÷2)
+const EEL_BOLT_ATK := 0.5      # 右管电击弹: 首目标 ×ATK 物理
 const EEL_HOP_GAP := 0.09
 const EEL_HOP_MAX := 64
 
