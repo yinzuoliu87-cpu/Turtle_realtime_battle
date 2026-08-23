@@ -145,6 +145,12 @@ var vfx
 ##   施放改由引擎的真入口走 —— **两边都调同一个 `cast_cross_slash`**, 不会有第二份实现。
 const HH_SKILL := "eqCrossSlash"
 const HH_ENERGY := 80.0
+## 084 近战侧: 获得的射程 / 后撤距离。远程侧: 有效射程 / 每转化多少码提升多少。
+const HH_MELEE_RANGE := 450.0     # 近战携带 → 射程变成
+const HH_BACKSTEP := 150.0        # 后撤十字斩的后撤距离(码)
+const HH_RANGED_RANGE := 100.0    # 远程携带 → 有效射程固定为
+const HH_CONV_PER := 100.0        # 每转化这么多码射程
+const HH_CONV_BONUS := 0.20       # 就让那几项属性提升
 
 ## 084 十字斩四段的节拍(秒): ①横斩+②横波 → ③竖斩+④竖波
 const CROSS_T1 := 0.25
@@ -539,7 +545,7 @@ func _spawn084(u: Dictionary, si: int) -> void:
 	if bool(u.get("melee", false)):
 		u["_b84_mode"] = "melee"
 		# ★只改射程【数值】, 不改 melee 标记(用户拍板: 改标记会连"近战最小射程钳制"等规则一起变)
-		u["atk_range"] = 450.0
+		u["atk_range"] = HH_MELEE_RANGE
 		if not u.has("_b84_o_skills"):
 			u["_b84_o_skills"] = (u.get("active_skills", []) as Array).duplicate()
 		var ec: Dictionary = u.get("energy_cost", {})
@@ -557,7 +563,7 @@ func _spawn084(u: Dictionary, si: int) -> void:
 		# ★影子字段从"有效射程恰好 100"的基线起算, 登场时的真实射程由 _b84_refresh 按
 		#   【增量】折进来(atk_range−100 / range_add−0 / range_perm−1)。
 		#   ⚠ 这里【不要】直接把 atk_range 抄进 _b84_nat_range —— 那样 refresh 会再折一次, 转化量翻倍。
-		u["_b84_nat_range"] = 100.0
+		u["_b84_nat_range"] = HH_RANGED_RANGE
 		u["_b84_nat_add"] = 0.0
 		u["_b84_nat_perm"] = 1.0
 		u["_b84_hp_given"] = 0.0
@@ -581,7 +587,7 @@ func _b84_refresh(u: Dictionary, sx: int) -> void:
 	var nat: float = (float(u["_b84_nat_range"]) + float(u["_b84_nat_add"])) * float(u["_b84_nat_perm"])
 	var conv: float = maxf(0.0, nat - 100.0)
 	u["_b84_conv"] = conv
-	u["_b84_mult"] = 1.0 + 0.20 * (conv / 100.0)
+	u["_b84_mult"] = 1.0 + HH_CONV_BONUS * (conv / HH_CONV_PER)
 	var mult: float = float(u["_b84_mult"])
 	# ③ 三项属性按差量施加(镜像撤旧, 不在旧值上叠)。★装备 hp 已是最终值, 不乘 HP_MULT(§3.1)
 	var want_hp: float = [200.0, 400.0, 1000.0][sx] * mult
@@ -663,7 +669,7 @@ func cast_cross_slash(u: Dictionary, tgt) -> void:
 func cross_retreat_dest(u: Dictionary, tgt: Dictionary) -> Vector2:
 	var away: Vector2 = u["pos"] - tgt["pos"]
 	away = away.normalized() if away.length() > 0.01 else Vector2.LEFT
-	var p: Vector2 = u["pos"] + away * 150.0
+	var p: Vector2 = u["pos"] + away * HH_BACKSTEP
 	p.x = clampf(p.x, battle.ARENA.position.x, battle.ARENA.end.x)
 	p.y = clampf(p.y, battle.ARENA.position.y, battle.ARENA.end.y)
 	return p

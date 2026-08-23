@@ -450,7 +450,7 @@
     "baseStats1": "+生命80/140/200",
     "shopAvailable": 1,
     "emoji": "📡",
-    "effectDesc1": "提供 30%攻击速度；\n携带者每次普攻获得 1 层放大，每层使自己获得 1/2/5%增伤和 5%攻击速度，最多叠加 20 层；\n每获得 5 层，由携带者中心朝目标爆发一道张角 90 度、缓慢移动的弧形电磁波，命中造成 125/250/500 魔法伤害并眩晕 2.5 秒；\n每释放一次张角增加 90 度（最多 360 度），并使自己永久获得 5/7/10 点魔抗穿透。",
+    "effectDesc1": "提供 {C:SignalWaveSystem.ASPD_FLAT%}%攻击速度；\n携带者每次普攻获得 1 层放大，每层使自己获得 1/2/5%增伤和 {C:SignalWaveSystem.ASPD_PER_STACK%}%攻击速度，最多叠加 {C:SignalWaveSystem.MAX_STACKS} 层；\n每获得 {C:SignalWaveSystem.EVERY} 层，由携带者中心朝目标爆发一道张角 {C:SignalWaveSystem.ARC_STEP_DEG} 度、缓慢移动的弧形电磁波，命中造成 125/250/500 魔法伤害并眩晕 {C:SignalWaveSystem.WAVE_STUN} 秒；\n每释放一次张角增加 {C:SignalWaveSystem.ARC_STEP_DEG} 度（最多 {C:SignalWaveSystem.ARC_MAX_DEG} 度），并使自己永久获得 5/7/10 点魔抗穿透。",
     "effectDesc3": "",
     "img": "equip/dungeon-amplifier.png",
     "effectBrief": "普攻叠放大层（每层 +1/2/5% 增伤）；每 5 层爆发一道弧形电磁波。"
@@ -1002,7 +1002,7 @@
     "baseStats1": "+攻速10/18/30%·+移速7/13/22%",
     "shopAvailable": 1,
     "emoji": "🗡️",
-    "effectDesc1": "效果随携带者是近战或远程而改变。\n近战携带：获得 450 码射程，技能被替换为 80 龟能的【后撤十字斩】——后撤 150 码，横斩以 250 码 120 度扫过造成 40/70/130+0.6/0.9/1.4 倍攻击力物理伤害并生成一道横波造成 25/45/85+0.4/0.6/0.9 倍攻击力物理伤害，随后竖斩造成 50/85/160+0.7/1.1/1.7 倍攻击力物理伤害并生成一道竖波造成 30/55/100+0.5/0.7/1.1 倍攻击力物理伤害。\n远程携带：射程固定为 100 码，获得 200/400/1000 最大生命值、登场时攻击力的 10/15/20%作为额外攻击力、10/12.5/15%生命偷取，且每转化 100 码射程使这些属性提升 20%（射程变化实时重算），主动技能不替换。",
+    "effectDesc1": "效果随携带者是近战或远程而改变。\n近战携带：获得 {C:EqBladeBatch.HH_MELEE_RANGE} 码射程，技能被替换为 {C:EqBladeBatch.HH_ENERGY} 龟能的【后撤十字斩】——后撤 {C:EqBladeBatch.HH_BACKSTEP} 码，横斩以 {C:BladeEqVfx.SLASH_REACH} 码 {C:BladeEqVfx.SLASH_DEG_WIDE} 度扫过造成 40/70/130+0.6/0.9/1.4 倍攻击力物理伤害并生成一道横波造成 25/45/85+0.4/0.6/0.9 倍攻击力物理伤害，随后竖斩造成 50/85/160+0.7/1.1/1.7 倍攻击力物理伤害并生成一道竖波造成 30/55/100+0.5/0.7/1.1 倍攻击力物理伤害。\n远程携带：射程固定为 {C:EqBladeBatch.HH_RANGED_RANGE} 码，获得 200/400/1000 最大生命值、登场时攻击力的 10/15/20%作为额外攻击力、10/12.5/15%生命偷取，且每转化 {C:EqBladeBatch.HH_CONV_PER} 码射程使这些属性提升 {C:EqBladeBatch.HH_CONV_BONUS%}%（射程变化实时重算），主动技能不替换。",
     "effectDesc3": "",
     "img": "equip/p2eq_084.png",
     "effectBrief": "近战携带换成后撤十字斩；远程携带则把射程换成生命、攻击与吸血。"
