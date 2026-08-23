@@ -94,7 +94,11 @@ func _ready() -> void:
 	var src_st := FileAccess.get_file_as_string("res://scripts/systems/skills/star_system.gd")
 	_ok("★★★虫洞倍率用【本路已打秒数】(battle._t - battle._sd_t0), 不是全局 _t",
 		src_st.find("battle._t - battle._sd_t0") >= 0
-		and src_st.find("1.5 * (1.0 + 0.05 * lane_sec)") >= 0)
+		and src_st.find("WORM_BOOM_COEF * (1.0 + WORM_BOOM_PER_SEC * lane_sec)") >= 0)
+	## ★判据的重点是【用 lane_sec 而不是全局 _t】—— 係数本身现在是具名常量,
+	## 它们的值另行断言(2026-08-22 文案根除)。
+	_ok("★虫洞倍率系数 = 1.5×ATK 且每秒 +5%",
+		is_equal_approx(StarSystem.WORM_BOOM_COEF, 1.5) and is_equal_approx(StarSystem.WORM_BOOM_PER_SEC, 0.05))
 	_ok("★★源码里不再有 `1.5 * (1.0 + 0.05 * battle._t)` 这种跨路写法",
 		src_st.find("1.5 * (1.0 + 0.05 * battle._t)") < 0)
 	## 数值层面: 模拟"全局跑了 300 秒, 但本路刚开打"

@@ -27,6 +27,15 @@ const RAGE_GAIN_PCT := 0.10
 const VOLCANO_RANGE := 70.0
 ## 变身时的预警圈半径(码)。原来是 `_lava_volcano_erupt` 里 `_densest_enemy_point` 的裸 400.0。
 const SLAM_WARN_RADIUS := 400.0
+## 【地裂(普通形态)】敌最密处生成一片岩浆池。
+const QUAKE_RADIUS := 180.0        # 岩浆池半径(码)
+const QUAKE_SEC := 5.0             # 持续(秒)
+const QUAKE_TICK_SEC := 0.5        # 每几秒结算一次
+const QUAKE_ATK_COEF := 0.06       # 每跳 ×ATK 魔法
+const QUAKE_SLOW_PCT := 0.35       # 减速比例(语义值)
+const QUAKE_SLOW_MULT := 1.0 - QUAKE_SLOW_PCT
+const QUAKE_MR_DOWN := 0.30        # 魔抗降低
+const QUAKE_TICKS := int(QUAKE_SEC / QUAKE_TICK_SEC)   # 共几跳(推导)
 ## 【穿透普攻(技能三·普通形态)】沿途每敌
 const PIERCE_ATK_COEF := 0.6        # ×ATK 魔法
 const PIERCE_MAXHP_PCT := 0.04      # + 目标最大生命 ×
@@ -53,7 +62,7 @@ func _tick_lava_zones(_delta: float) -> void:   # 每帧: 周期结算池内敌 
 	var keep: Array = []
 	for z in _lava_zones:
 		if battle._t >= float(z["next_tick"]):
-			z["next_tick"] = float(z["next_tick"]) + 0.5
+			z["next_tick"] = float(z["next_tick"]) + QUAKE_TICK_SEC
 			var src: Dictionary = z["src"]
 			if src != null and src.get("alive", false):
 				var c: Vector2 = z["center"]
@@ -63,9 +72,9 @@ func _tick_lava_zones(_delta: float) -> void:   # 每帧: 周期结算池内敌 
 						continue
 					if o["pos"].distance_to(c) > r:
 						continue
-					battle._damage._apply_damage_from(src, o, battle._atk_dmg(src, 0.06, o, true), Color("#ff7a33"))   # 0.06×ATK魔/0.5s
+					battle._damage._apply_damage_from(src, o, battle._atk_dmg(src, QUAKE_ATK_COEF, o, true), Color("#ff7a33"))   # 0.06×ATK魔/0.5s
 					o["slow_until"] = maxf(float(o.get("slow_until", 0.0)), battle._t + 0.6); o["slow_mag"] = 0.65   # 地裂减速35%(move×0.65·用户2026-07-09"35"·≥0.6s续)
-					battle._damage._buff(o, "mr", -0.30, true, 0.6)                                              # 魔抗-30% (每跳刷新)
+					battle._damage._buff(o, "mr", -QUAKE_MR_DOWN, true, 0.6)                                              # 魔抗-30% (每跳刷新)
 		if battle._t >= float(z["until"]):
 			var disc = z.get("disc", null)
 			if disc != null and is_instance_valid(disc):
@@ -77,8 +86,8 @@ func _tick_lava_zones(_delta: float) -> void:   # 每帧: 周期结算池内敌 
 	_lava_zones = keep
 
 func _lava_quake(u: Dictionary) -> void:                         # 小·岩浆池: 敌最密处生成5秒岩浆池, 每0.5s池内敌 0.06ATK魔+减速35%+魔抗-30%
-	var center: Vector2 = battle._densest_enemy_point(u, 180.0)
-	var radius := 180.0
+	var center: Vector2 = battle._densest_enemy_point(u, QUAKE_RADIUS)
+	var radius := QUAKE_RADIUS
 	var disc := Sprite3D.new()                                   # 持续贴地橙红岩浆盘
 	disc.texture = battle._sheet("res://assets/sprites/vfx/fx_lava_pool.png")   # AI生成熔岩池贴图
 	disc.billboard = BaseMaterial3D.BILLBOARD_DISABLED; disc.axis = Vector3.AXIS_Y   # 躺平贴地

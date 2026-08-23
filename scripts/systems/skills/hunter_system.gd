@@ -11,6 +11,10 @@ const SHOT_HEALCUT_SEC := 5.0    # 治疗削减持续(秒)
 const MARK_SEC := 5.0            # 猎杀印记持续(秒)
 const EXEC_MARKED := 0.24        # 有印记时的斩杀线
 const EXEC_BASE := 0.14          # 无印记时的斩杀线
+## 【狩猎弹幕】连珠速射, 每根随机锁敌、慢速抛物线追踪。
+const BARRAGE_ARROWS := 10       # 共几根
+const BARRAGE_GAP := 0.2         # 每几秒发一根
+const BARRAGE_COEF := 0.36       # 每根 ×ATK 真实
 
 var battle
 
@@ -157,7 +161,7 @@ func _sk_hunter_shot(u: Dictionary, tgt) -> void:              # 猎人龟·精�
 		, "src": u})
 
 func _sk_hunter_barrage(u: Dictionary, _tgt) -> void:          # 猎人龟·狩猎弹幕(封板·100龟能): 10箭·每0.2s一发·随机目标(注意龟蛋)·慢速抛物线追踪·箭头随角度·命中才跳0.36A真实(共3.6A)·每箭<14%即处决(用户2026-07-14重做)
-	for i in range(10):
+	for i in range(BARRAGE_ARROWS):
 		var uu: Dictionary = u
 		battle._pending_shots.append({"delay": float(i) * 0.2, "src": u, "fn": func() -> void:   # 每0.2s射一发
 			if not uu.get("alive", false): return
@@ -167,7 +171,7 @@ func _sk_hunter_barrage(u: Dictionary, _tgt) -> void:          # 猎人龟·狩�
 					cand.append(o)
 			if cand.is_empty(): return
 			var tgt: Dictionary = cand[battle._battle_rng.randi() % cand.size()]   # 随机选一个敌
-			battle._ballistics._fire_hunter_arrow(uu, tgt, int(round(float(uu["atk"]) * 0.36)))   # 每箭0.36A(共3.6A)
+			battle._ballistics._fire_hunter_arrow(uu, tgt, int(round(float(uu["atk"]) * BARRAGE_COEF)))   # 每箭0.36A(共3.6A)
 			})
 
 func _hunter_execute_fx(u: Dictionary) -> void:   # 被动猎杀·处决瞬间: 金色斩杀爆(环+金光pop+轻震)·配"处决!"金字(用户2026-07-14)

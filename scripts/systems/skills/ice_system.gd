@@ -199,6 +199,13 @@ const FROST_BASE_SEC := 5.0         # 基础持续(秒)·每层冰柱再 +ICICLE
 const FROST_TICK_SEC := 0.5         # 每几秒一跳(跳数 = 持续 ÷ 它)
 const FROST_MR_DOWN := 0.25         # 圈内敌方魔抗 −
 const FROST_ATK_COEF := 0.25        # 每跳 ×ATK 魔法
+## 【团队护盾】全体友军(含自己)一层冰霜盾; 到期/被打破/持盾者阵亡都会爆裂。
+const TEAM_SHIELD_PCT := 0.05      # 护盾 = 施法者最大生命 ×
+const TEAM_SHIELD_SEC := 4.0       # 护盾持续(秒)
+const TEAM_SHIELD_SOLO_PCT := 0.20 # 独狼(场上无其他友军)时护盾 ×
+const TEAM_BURST_RADIUS := 250.0   # 爆裂半径(码)
+const TEAM_BURST_COEF := 1.0       # 爆裂 ×ATK 魔法
+const TEAM_BURST_SOLO_COEF := 5.0  # 独狼时的爆裂系数
 
 ## 攒一层冰柱并把属性差量结算上去(只加增量, 不重复叠)
 func _ice_gain_icicle(u: Dictionary) -> void:
@@ -422,12 +429,12 @@ func _sk_ice_freeze(u: Dictionary, tgt: Dictionary) -> void:
 func _sk_ice_team_shield(u: Dictionary) -> void:               # 寒冰龟·团队护盾(用户2026-07-11重设计·120龟能): 全体友军5%施法者maxHp冰霜盾4秒·盾破/到期爆炸250码1×ATK魔法; 独狼(无其他友军)盾×4·爆炸5×ATK
 	var others = battle._targeting._allies_of(u, false)                         # 不含自己
 	var solo: bool = others.is_empty()
-	var shield_amt: float = u["maxHp"] * (0.20 if solo else 0.05)   # 5%施法者maxHp; 独狼×4=20%
+	var shield_amt: float = u["maxHp"] * (TEAM_SHIELD_SOLO_PCT if solo else TEAM_SHIELD_PCT)   # 5%施法者maxHp; 独狼×4=20%
 	var boom_mult: float = 5.0 if solo else 1.0                     # 爆炸1×ATK; 独狼5×ATK
 	for o in battle._targeting._allies_of(u):                                    # 含自己=全体友军
 		_frost_shield_burst(o)                                 # 若已挂上一发未爆→先结算(防覆盖丢爆裂)
-		battle._damage._grant_shield(o, shield_amt, 4.0)                      # 冰霜盾·4秒
-		o["frost_shield_until"] = battle._t + 4.0                     # 爆裂追踪(独立通用shield_until): 到期/盾清零/持盾者死 任一→爆
+		battle._damage._grant_shield(o, shield_amt, TEAM_SHIELD_SEC)                      # 冰霜盾·4秒
+		o["frost_shield_until"] = battle._t + TEAM_SHIELD_SEC                     # 爆裂追踪(独立通用shield_until): 到期/盾清零/持盾者死 任一→爆
 		o["frost_shield_src"] = u
 		o["frost_shield_boom"] = boom_mult
 		battle._aura_vfx("res://assets/sprites/vfx/fx-hex-bubble.png", o, 62.0, Color(0.68, 0.9, 1.0, 0.62), 4.0, 0.9)   # 六棱冰晶护盾泡(4秒·罩住友军)
@@ -450,7 +457,7 @@ func _frost_shield_burst(ally: Dictionary) -> void:
 	if src is Dictionary:
 		var c: Vector2 = ally["pos"]
 		for o in battle._targeting._enemies_of(src):
-			if o.get("alive", false) and o["pos"].distance_to(c) <= 250.0:
+			if o.get("alive", false) and o["pos"].distance_to(c) <= TEAM_BURST_RADIUS:
 				battle._damage._apply_damage_from(src, o, battle._atk_dmg(src, boom, o, true), Color("#bfe9ff"))   # boom×ATK 魔法(1或5)
 		battle._burst_vfx("res://assets/sprites/vfx/fx-shock-ring.png", c, 520.0, 0.14)   # 冰爆冲击环(≈250码半径)
 		battle._skill_ring(c, Color(0.68, 0.9, 1.0, 0.6), 250.0)

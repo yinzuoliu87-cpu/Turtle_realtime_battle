@@ -38,3 +38,12 @@ const CHI_CRIT := 0.25           # 自增暴击率
 const CHI_LIFESTEAL := 0.20      # 自增生命偷取
 const CHI_ARMOR_PEN_COEF := 0.1  # 自增护甲穿透 = ×ATK
 const CHI_DASH_MAX := 300.0      # 发波前智能位移的最远距离(码)
+
+## ── 过肩摔(主动) ──────────────────────────────────────────
+const SLAM_LAND_BACK := 55.0     # 摔到龟背后多少码
+const SLAM_STUN_SEC := 0.5       # 眩晕(秒)
+const SLAM_MAIN_ATK := 1.0       # 主目标 ×ATK
+const SLAM_MAIN_HP_PER_ATK := 0.002   # 主目标 + ATK × 此值 × 目标最大生命
+const SLAM_SPLASH_RADIUS := 350.0     # 落点周围波及半径(码)
+const SLAM_SPLASH_ATK := 0.3          # 周围敌人 ×ATK
+const SLAM_SPLASH_HP_PER_ATK := 0.0013  # 周围敌人 + ATK × 此值 × 主目标最大生命

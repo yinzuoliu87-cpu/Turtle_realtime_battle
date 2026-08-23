@@ -5884,7 +5884,7 @@ func _sk_basic_slam(u: Dictionary, tgt) -> void:  # 小龟·过肩摔(#7重做·
 	if dir.length() < 1.0: dir = Vector2.RIGHT
 	dir = dir.normalized()
 	var u_start: Vector2 = u["pos"]
-	var land: Vector2 = u_start - dir * 55.0    # 落点=龟背后~55码(过肩摔到身后)
+	var land: Vector2 = u_start - dir * BasicConsts.SLAM_LAND_BACK    # 落点=龟背后~55码(过肩摔到身后)
 	land.x = clampf(land.x, ARENA.position.x + 20.0, ARENA.end.x - 20.0)
 	land.y = clampf(land.y, ARENA.position.y + 20.0, ARENA.end.y - 20.0)
 	_basic_slam_run(u, tgt, dir, u_start, land, tmax)   # async 编排(fire-and-forget)
@@ -5892,11 +5892,11 @@ func _sk_basic_slam(u: Dictionary, tgt) -> void:  # 小龟·过肩摔(#7重做·
 ## 过肩摔伤害结算(主目标 1.0A + 0.2%×ATK×目标maxHp / 周围350码 0.3A + 0.13%×ATK×主目标maxHp) — 落地时调.
 func _slam_apply_damage(u: Dictionary, tgt: Dictionary, tmax: float) -> void:
 	if tgt.get("alive", false):
-		_damage._apply_damage_from(u, tgt, _atk_dmg(u, 1.0, tgt) + int(u["atk"] * 0.002 * tmax), Color("#ff9d5c"))   # 过肩摔主目标(用户2026-07-29 第五轮): 0.7A+23%最大生命 → 1.0A + 0.2%×ATK×最大生命
+		_damage._apply_damage_from(u, tgt, _atk_dmg(u, BasicConsts.SLAM_MAIN_ATK, tgt) + int(u["atk"] * BasicConsts.SLAM_MAIN_HP_PER_ATK * tmax), Color("#ff9d5c"))   # 过肩摔主目标(用户2026-07-29 第五轮): 0.7A+23%最大生命 → 1.0A + 0.2%×ATK×最大生命
 	for o in _targeting._enemies_of(u):
 		if is_same(o, tgt) or not o.get("alive", false): continue
 		if o["pos"].distance_to(tgt["pos"]) <= 350.0:   # 范围 350码(用户2026-07-11: 250→350)
-			_damage._apply_damage_from(u, o, _atk_dmg(u, 0.3, o) + int(u["atk"] * 0.0013 * tmax), Color("#ff9d5c"))   # 过肩摔周围(用户2026-07-29 第五轮): 0.2A+18% → 0.3A + 0.13%×ATK×主目标最大生命
+			_damage._apply_damage_from(u, o, _atk_dmg(u, BasicConsts.SLAM_SPLASH_ATK, o) + int(u["atk"] * BasicConsts.SLAM_SPLASH_HP_PER_ATK * tmax), Color("#ff9d5c"))   # 过肩摔周围(用户2026-07-29 第五轮): 0.2A+18% → 0.3A + 0.13%×ATK×主目标最大生命
 
 ## 过肩摔完整编排(#7·用户2026-07-11): 擒抱→双方跳空(_slam_voff)→空中反转180°(flip_v)→坠落→落地范围伤+大尘爆+震屏. 双方 _slam 冻结.
 func _basic_slam_run(u: Dictionary, tgt: Dictionary, dir: Vector2, u_start: Vector2, land: Vector2, tmax: float) -> void:

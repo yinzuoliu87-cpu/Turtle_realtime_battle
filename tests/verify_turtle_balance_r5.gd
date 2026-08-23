@@ -126,9 +126,12 @@ func _nerfs() -> void:
 	_chk("③ 灵魂风暴诅咒旧值 6.0 已消失", not gh.contains("const STORM_CURSE_SEC := 6.0"))
 	# 过肩摔: 新公式是【乘法结构】(ATK × 最大生命), 不再是纯 %最大生命
 	_chk("③ 过肩摔主目标 = %.1fA + %.1f%%×ATK×最大生命" % [WANT_SLAM_ATK, WANT_SLAM_HPMUL * 100.0],
-		rb.contains("_atk_dmg(u, %.1f, tgt) + int(u[\"atk\"] * %s * tmax)" % [WANT_SLAM_ATK, str(WANT_SLAM_HPMUL)]))
+		## ★比【常量的值】不比源码字面串(2026-08-22 根除已提成具名常量)
+		is_equal_approx(BasicConsts.SLAM_MAIN_ATK, WANT_SLAM_ATK)
+			and is_equal_approx(BasicConsts.SLAM_MAIN_HP_PER_ATK, WANT_SLAM_HPMUL))
 	_chk("③ 过肩摔周围 = %.1fA + %.2f%%×ATK×主目标最大生命" % [WANT_SPLASH_ATK, WANT_SPLASH_HPMUL * 100.0],
-		rb.contains("_atk_dmg(u, %.1f, o) + int(u[\"atk\"] * %s * tmax)" % [WANT_SPLASH_ATK, str(WANT_SPLASH_HPMUL)]))
+		is_equal_approx(BasicConsts.SLAM_SPLASH_ATK, WANT_SPLASH_ATK)
+			and is_equal_approx(BasicConsts.SLAM_SPLASH_HP_PER_ATK, WANT_SPLASH_HPMUL))
 	_chk("③ 过肩摔旧的纯%最大生命公式已消失",
 		not rb.contains("int(tmax * 0.23)") and not rb.contains("int(tmax * 0.18)"))
 	_chk("③ 龟派气波 = %.1fA" % WANT_CHIWAVE, is_equal_approx(BasicConsts.CHI_ATK_COEF, WANT_CHIWAVE))

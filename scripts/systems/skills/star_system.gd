@@ -3,6 +3,13 @@ extends RefCounted
 ## 星龟·引力/星浪/虫洞技能系统(从 RealtimeBattle3DScene 抽出·2026-07-25)。持 battle 引用回调。
 ## 类内 _sk_star_* 名字不变;外部名加 battle. 前缀。无状态成员。
 
+## 【虫洞】蓄力 → 直线飞向地图边界 → 引力场吸 → 捕获 → 边界爆炸。
+const WORM_SPD := 140.0          # 推进速度(码/秒)
+const WORM_GRAV_R := 150.0       # 引力场半径(码·此过程不造成伤害)
+const WORM_CAPTURE_R := 100.0    # 捕获半径(码)
+const WORM_BOOM_COEF := 1.5      # 爆炸 ×ATK 魔法
+const WORM_BOOM_PER_SEC := 0.05  # 每过一秒爆炸伤害再 +(发射时刻定格)
+
 var battle
 
 func _init(b) -> void:
@@ -609,7 +616,7 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·
 	##   而不是文案与设计意图的 1.5×。
 	##   `battle._sd_t0` = 本战场开打时刻, `_dl_start_fight` 每路重置 —— 现成的正确基准。
 	var lane_sec: float = maxf(0.0, battle._t - battle._sd_t0)             # 本路已打秒数
-	var mult: float = 1.5 * (1.0 + 0.05 * lane_sec)                        # 爆炸伤害=1.5A×(1+5%每秒)·发射时刻定格
+	var mult: float = WORM_BOOM_COEF * (1.0 + WORM_BOOM_PER_SEC * lane_sec)                        # 爆炸伤害=1.5A×(1+5%每秒)·发射时刻定格
 	var uu := u
 	## ★★用户 2026-08-14:「释放虫洞时锁龟能, 直到虫洞消失」。
 	##   虫洞飞到地图边界才炸, 时长不固定(140 码/s × 到边界的距离) ⇒ **不能设固定秒数**,
@@ -640,7 +647,7 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·
 		var pd := [0.0]
 		var suck := [0.0]
 		var step := func(d: float) -> void:
-			var dt: float = maxf(0.0, (d - pd[0]) / 140.0)          # 本帧时长(推进速度140码/s换算)
+			var dt: float = maxf(0.0, (d - pd[0]) / WORM_SPD)          # 本帧时长(推进速度140码/s换算)
 			pd[0] = d
 			var c: Vector2 = start + dir * d
 			if is_instance_valid(hole): hole.position = battle._world_pos(c, 0.4)
@@ -651,8 +658,8 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·
 					if cg["o"] == o: carried = true; break
 				if carried: continue
 				var r: float = (o["pos"] as Vector2).distance_to(c)
-				if r > 150.0: continue
-				if r <= 100.0:                                       # ② 捕获(100码·用户定): 吸着走·绕洞打转
+				if r > WORM_GRAV_R: continue
+				if r <= WORM_CAPTURE_R:                                       # ② 捕获(100码·用户定): 吸着走·绕洞打转
 					var rel: Vector2 = (o["pos"] as Vector2) - c
 					caught.append({"o": o, "ang": atan2(rel.y, rel.x), "rr": maxf(50.0, r)})
 					battle._skill_ring(o["pos"], Color(0.75, 0.6, 1.0, 0.6), 44.0)

@@ -83,8 +83,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "将目标过肩摔到身后，<span class=\"val-atk\">眩晕</span> 0.5 秒，造成 {N:1.0*ATK} 加 0.2%×攻击力×目标最大生命值的物理伤害。\n落点周围的敌人受到 {N:0.3*ATK} 加 0.13%×攻击力×主目标最大生命值的物理伤害。\n<span style=\"color:#8a93a0\">施法期间小龟霸体（不可被打断，但仍会受到伤害）；龟蛋免疫此控制。\n</span>",
-        "detail": "小龟抓住目标施展过肩摔：\n将目标挑空并摔到龟背后约 55 码处、眩晕 0.5 秒，对主目标造成（100%×攻击力({ATK}) = {N:1.0*ATK}）+ 0.2%×攻击力×目标最大生命值 物理伤害。\n落点周围 350 码内其余敌人受到（30%×攻击力({ATK}) = {N:0.3*ATK}）+ 0.13%×攻击力×主目标最大生命值 物理伤害。\n<span style=\"color:#8a93a0\">施法期间小龟霸体(不可被打断但仍吃伤)；龟蛋免疫控制(不被挑空/摔·只吃原地伤害)。\n</span>。\n<span style=\"color:#8a93a0\">施法期间小龟霸体（不可被打断，但仍会受到伤害）；龟蛋免疫此控制。</span>",
+        "brief": "将目标过肩摔到身后，<span class=\"val-atk\">眩晕</span> {C:BasicConsts.SLAM_STUN_SEC} 秒，造成 {N:1.0*ATK} 加 0.2%×攻击力×目标最大生命值的物理伤害。\n落点周围的敌人受到 {N:0.3*ATK} 加 0.13%×攻击力×主目标最大生命值的物理伤害。\n<span style=\"color:#8a93a0\">施法期间小龟霸体（不可被打断，但仍会受到伤害）；龟蛋免疫此控制。\n</span>",
+        "detail": "小龟抓住目标施展过肩摔：\n将目标挑空并摔到龟背后约 {C:BasicConsts.SLAM_LAND_BACK} 码处、眩晕 {C:BasicConsts.SLAM_STUN_SEC} 秒，对主目标造成（100%×攻击力({ATK}) = {N:1.0*ATK}）+ 0.2%×攻击力×目标最大生命值 物理伤害。\n落点周围 {C:BasicConsts.SLAM_SPLASH_RADIUS} 码内其余敌人受到（30%×攻击力({ATK}) = {N:0.3*ATK}）+ 0.13%×攻击力×主目标最大生命值 物理伤害。\n<span style=\"color:#8a93a0\">施法期间小龟霸体(不可被打断但仍吃伤)；龟蛋免疫控制(不被挑空/摔·只吃原地伤害)。\n</span>。\n<span style=\"color:#8a93a0\">施法期间小龟霸体（不可被打断，但仍会受到伤害）；龟蛋免疫此控制。</span>",
         "energyCost": 120
       }
     ],
@@ -406,8 +406,8 @@
         "pierce": 0,
         "selfCast": true,
         "shieldDuration": 3,
-        "brief": "为全体友军（含自己）罩上冰霜护盾，护盾量等于自身 <span class=\"val-def\">5% 最大生命值</span>，持续 <span class=\"val-atk\">4 秒</span>。\n<span style=\"color:#8a93a0\">护盾到期、被打破或持盾者阵亡时爆裂，对其 250 码内的敌人造成 1×攻击力魔法伤害。\n若场上没有其他友军，护盾改为 20% 最大生命值、爆裂伤害改为 5×攻击力。\n</span>",
-        "detail": "寒冰龟为全体友军（含自己）施加等于【寒冰龟 <span class=\"val-def\">5% 最大生命值</span>】的冰霜护盾，持续 <span class=\"val-def\">4 秒</span>。\n场上没有其他友军时护盾 ×4（20% 最大生命值）。\n护盾<span class=\"val-atk\">到期、被打破、或持盾者阵亡</span>时都会爆裂，对持盾者周围 250 码内的敌人造成 <span class=\"val-atk\">100%×攻击力</span> 魔法伤害（独狼时 500%）。",
+        "brief": "为全体友军（含自己）罩上冰霜护盾，护盾量等于自身 <span class=\"val-def\">{C:IceSystem.TEAM_SHIELD_PCT%}% 最大生命值</span>，持续 <span class=\"val-atk\">{C:IceSystem.TEAM_SHIELD_SEC} 秒</span>。\n<span style=\"color:#8a93a0\">护盾到期、被打破或持盾者阵亡时爆裂，对其 {C:IceSystem.TEAM_BURST_RADIUS} 码内的敌人造成 {C:IceSystem.TEAM_BURST_COEF}×攻击力魔法伤害。\n若场上没有其他友军，护盾改为 {C:IceSystem.TEAM_SHIELD_SOLO_PCT%}% 最大生命值、爆裂伤害改为 {C:IceSystem.TEAM_BURST_SOLO_COEF}×攻击力。\n</span>",
+        "detail": "寒冰龟为全体友军（含自己）施加等于【寒冰龟 <span class=\"val-def\">{C:IceSystem.TEAM_SHIELD_PCT%}% 最大生命值</span>】的冰霜护盾，持续 <span class=\"val-def\">{C:IceSystem.TEAM_SHIELD_SEC} 秒</span>。\n场上没有其他友军时护盾 ×4（{C:IceSystem.TEAM_SHIELD_SOLO_PCT%}% 最大生命值）。\n护盾<span class=\"val-atk\">到期、被打破、或持盾者阵亡</span>时都会爆裂，对持盾者周围 {C:IceSystem.TEAM_BURST_RADIUS} 码内的敌人造成 <span class=\"val-atk\">{C:IceSystem.TEAM_BURST_COEF%}%×攻击力</span> 魔法伤害（独狼时 {C:IceSystem.TEAM_BURST_SOLO_COEF%}%）。",
         "energyCost": 120
       }
     ],
@@ -1168,8 +1168,8 @@
         "pierce": 0,
         "cd": 0,
         "arrowScale": 0.3,
-        "brief": "每 <span class=\"val-atk\">0.2 秒</span> 发射 1 根、共 <span class=\"val-atk\">10</span> 根追踪箭，缓慢抛物线飞行追踪目标，每根造成 {T:0.36*ATK} 真实伤害（共 {T:0.36*ATK*10}）。\n<span style=\"color:#8a93a0\">追踪箭随机锁定敌人；每根命中生命低于 14% 的敌人即将其处决。\n</span>",
-        "detail": "猎人龟连珠速射 10 根绿箭，每根都<span class=\"val-normal\">随机锁定一个敌人</span>并追踪飞行，造成（36%×攻击力({ATK}) = {T:0.36*ATK}）真实伤害，10 根共（360%×攻击力({ATK}) = {T:0.36*ATK*10}）\n每根命中生命值低于 14% 的敌人即处决。\n<span style=\"color:#8a93a0\">每 0.2 秒发射一根，共 10 根。\n箭走慢速抛物线追踪各自锁定的目标（不会被路径上的其它单位挡下），飞行中持续修正方向。\n</span>"
+        "brief": "每 <span class=\"val-atk\">{C:HunterSystem.BARRAGE_GAP} 秒</span> 发射 1 根、共 <span class=\"val-atk\">{C:HunterSystem.BARRAGE_ARROWS}</span> 根追踪箭，缓慢抛物线飞行追踪目标，每根造成 {T:0.36*ATK} 真实伤害（共 {T:0.36*ATK*10}）。\n<span style=\"color:#8a93a0\">追踪箭随机锁定敌人；每根命中生命低于 {C:HunterSystem.EXEC_BASE%}% 的敌人即将其处决。\n</span>",
+        "detail": "猎人龟连珠速射 {C:HunterSystem.BARRAGE_ARROWS} 根绿箭，每根都<span class=\"val-normal\">随机锁定一个敌人</span>并追踪飞行，造成（{C:HunterSystem.BARRAGE_COEF%}%×攻击力({ATK}) = {T:0.36*ATK}）真实伤害，{C:HunterSystem.BARRAGE_ARROWS} 根共（360%×攻击力({ATK}) = {T:0.36*ATK*10}）\n每根命中生命值低于 {C:HunterSystem.EXEC_BASE%}% 的敌人即处决。\n<span style=\"color:#8a93a0\">每 {C:HunterSystem.BARRAGE_GAP} 秒发射一根，共 {C:HunterSystem.BARRAGE_ARROWS} 根。\n箭走慢速抛物线追踪各自锁定的目标（不会被路径上的其它单位挡下），飞行中持续修正方向。\n</span>"
       }
     ],
     "defaultSkills": [
@@ -1695,8 +1695,8 @@
           "pct": 20,
           "turns": 3
         },
-        "brief": "在敌人最密处生成一片岩浆池，持续 <span class=\"val-atk\">5 秒</span>。\n岩浆池每 0.5 秒对池内敌人造成 {M:0.06*ATK} 魔法伤害，并使其<span class=\"val-atk\">减速 35%</span>、魔抗降低 <span class=\"val-atk\">30%</span>。",
-        "detail": "熔岩龟撕裂大地，在敌人最密集处生成一个半径 180 码的岩浆池，持续 5 秒。\n每 0.5 秒结算一次（共 10 跳）：池内所有敌人各受到（6%×攻击力({ATK}) = {M:0.06*ATK}）魔法伤害，并被减速 <span class=\"val-atk\">35%</span>、魔抗 <span class=\"val-atk\">-30%</span>（每跳刷新，离开岩浆池即失效）。\n<span style=\"color:#8a93a0\">火山形态下本技变为「火山爆发」：\n一道熔岩浪从场地远端横扫到近端，波前每扫过一名敌人即将其击飞，并造成（{C:LavaSystem.ERUPT_ATK_COEF}×攻击力）魔法伤害与（{C:LavaSystem.ERUPT_BURN_COEF}×攻击力）层灼烧。\n熔岩龟每命中一名敌人回复 {C:LavaSystem.ERUPT_HEAL_PCT%}% 最大生命值。\n</span>"
+        "brief": "在敌人最密处生成一片岩浆池，持续 <span class=\"val-atk\">{C:LavaSystem.QUAKE_SEC} 秒</span>。\n岩浆池每 {C:LavaSystem.QUAKE_TICK_SEC} 秒对池内敌人造成 {M:0.06*ATK} 魔法伤害，并使其<span class=\"val-atk\">减速 {C:LavaSystem.QUAKE_SLOW_PCT%}%</span>、魔抗降低 <span class=\"val-atk\">{C:LavaSystem.QUAKE_MR_DOWN%}%</span>。",
+        "detail": "熔岩龟撕裂大地，在敌人最密集处生成一个半径 {C:LavaSystem.QUAKE_RADIUS} 码的岩浆池，持续 {C:LavaSystem.QUAKE_SEC} 秒。\n每 {C:LavaSystem.QUAKE_TICK_SEC} 秒结算一次（共 {C:LavaSystem.QUAKE_TICKS} 跳）：池内所有敌人各受到（{C:LavaSystem.QUAKE_ATK_COEF%}%×攻击力({ATK}) = {M:0.06*ATK}）魔法伤害，并被减速 <span class=\"val-atk\">{C:LavaSystem.QUAKE_SLOW_PCT%}%</span>、魔抗 <span class=\"val-atk\">-{C:LavaSystem.QUAKE_MR_DOWN%}%</span>（每跳刷新，离开岩浆池即失效）。\n<span style=\"color:#8a93a0\">火山形态下本技变为「火山爆发」：\n一道熔岩浪从场地远端横扫到近端，波前每扫过一名敌人即将其击飞，并造成（{C:LavaSystem.ERUPT_ATK_COEF}×攻击力）魔法伤害与（{C:LavaSystem.ERUPT_BURN_COEF}×攻击力）层灼烧。\n熔岩龟每命中一名敌人回复 {C:LavaSystem.ERUPT_HEAL_PCT%}% 最大生命值。\n</span>"
       },
       {
         "name": "岩浆涌动",
@@ -2020,8 +2020,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "短暂蓄力后发射一个缓慢移动的虫洞，沿目标所在的直线推进。\n沿途的敌人会被吸向虫洞，靠得更近的敌人则被<span class=\"val-atk\">捕获</span>、被虫洞吸着一起移动。\n虫洞抵达地图边界时爆炸，对被捕获者与爆点附近的敌人造成 {M:1.5*ATK} ×（1+5%×本路已打秒数）魔法伤害。\n<span style=\"color:#8a93a0\">吸取与捕获过程本身不造成伤害；\n<span class=\"val-atk\">本路战斗打得越久</span>，爆炸伤害越高（按发射时刻定格）。\n</span>\n<span style=\"color:#8a93a0\">释放虫洞后<span class=\"val-atk\">锁定龟能</span>，直到虫洞消失才恢复充能。\n</span>",
-        "detail": "星际龟短暂蓄力（0.3 秒）后，朝目标所在的直线发射一个缓慢移动的虫洞。\n虫洞以 140 码/秒直线飞向<b>地图边界</b>：沿途 150 码内的敌人被真重力吸引（弧线卷入，<b>此过程不造成伤害</b>），100 码内被捕获吸着一起走。\n虫洞抵达边界时<b>爆炸</b>，对携带者与爆点 150 码内的敌人造成（150%×攻击力({ATK}) = {M:1.5*ATK}，再乘以（1 + 5%×战斗已过秒数））魔法伤害。\n<span style=\"color:#8a93a0\">伤害倍率在发射瞬间定格 —— 开战越久，虫洞越强。\n</span>。\n<span style=\"color:#8a93a0\">释放虫洞后<span class=\"val-atk\">锁定龟能</span>，直到虫洞消失才恢复充能。</span>"
+        "brief": "短暂蓄力后发射一个缓慢移动的虫洞，沿目标所在的直线推进。\n沿途的敌人会被吸向虫洞，靠得更近的敌人则被<span class=\"val-atk\">捕获</span>、被虫洞吸着一起移动。\n虫洞抵达地图边界时爆炸，对被捕获者与爆点附近的敌人造成 {M:1.5*ATK} ×（1+{C:StarSystem.WORM_BOOM_PER_SEC%}%×本路已打秒数）魔法伤害。\n<span style=\"color:#8a93a0\">吸取与捕获过程本身不造成伤害；\n<span class=\"val-atk\">本路战斗打得越久</span>，爆炸伤害越高（按发射时刻定格）。\n</span>\n<span style=\"color:#8a93a0\">释放虫洞后<span class=\"val-atk\">锁定龟能</span>，直到虫洞消失才恢复充能。\n</span>",
+        "detail": "星际龟短暂蓄力（0.3 秒）后，朝目标所在的直线发射一个缓慢移动的虫洞。\n虫洞以 {C:StarSystem.WORM_SPD} 码/秒直线飞向<b>地图边界</b>：沿途 {C:StarSystem.WORM_GRAV_R} 码内的敌人被真重力吸引（弧线卷入，<b>此过程不造成伤害</b>），{C:StarSystem.WORM_CAPTURE_R} 码内被捕获吸着一起走。\n虫洞抵达边界时<b>爆炸</b>，对携带者与爆点 {C:StarSystem.WORM_GRAV_R} 码内的敌人造成（{C:StarSystem.WORM_BOOM_COEF%}%×攻击力({ATK}) = {M:1.5*ATK}，再乘以（1 + {C:StarSystem.WORM_BOOM_PER_SEC%}%×战斗已过秒数））魔法伤害。\n<span style=\"color:#8a93a0\">伤害倍率在发射瞬间定格 —— 开战越久，虫洞越强。\n</span>。\n<span style=\"color:#8a93a0\">释放虫洞后<span class=\"val-atk\">锁定龟能</span>，直到虫洞消失才恢复充能。</span>"
       },
       {
         "name": "星波",
