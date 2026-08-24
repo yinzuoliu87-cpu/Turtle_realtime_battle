@@ -95,15 +95,19 @@ func _ready() -> void:
 			and dmg.contains('LightningSystem.SHIELD_RETALIATE, src, true'))
 	_chk("⑤ 雷盾反击旧值 0.1 已消失", not is_equal_approx(LightningSystem.SHIELD_RETALIATE, 0.1))
 
+	## ★2026-08-24 起这些系数抽成了常量, 源码里没有字面量了 —— 比【值】, 并确认代码确实在引用它。
 	_chk("⑥ 涌动持续 = %.1f 秒" % WANT_SURGE_SEC,
-		lsys.contains('u["shock_boost_until"] = battle._t + %.1f' % WANT_SURGE_SEC))
-	_chk("⑥ 涌动旧值 5 秒已消失", not lsys.contains('u["shock_boost_until"] = battle._t + 5.0'))
+		is_equal_approx(LightningSystem.SURGE_SEC, WANT_SURGE_SEC)
+			and lsys.contains('u["shock_boost_until"] = battle._t + SURGE_SEC'))
+	_chk("⑥ 涌动旧值 5 秒已消失", not is_equal_approx(LightningSystem.SURGE_SEC, 5.0))
 	_chk("⑥ 涌动光环时长跟到 %.1f 秒(灭了但buff还在=误导)" % WANT_SURGE_SEC,
-		lsys.contains("Color(0.3, 0.67, 0.97, 0.5), %.1f)" % WANT_SURGE_SEC))
+		lsys.contains("Color(0.3, 0.67, 0.97, 0.5), SURGE_SEC)"))
 
+	## SURGE_HIT_COEF 是推导常量(SHOCK_COEF × (1+SURGE_BOOST)) —— 比它算出来的值。
 	_chk("⑦ 涌动立即伤害 = %.1f×ATK(与文案一致)" % WANT_SURGE_HIT,
-		lsys.contains('int(u["atk"] * %.1f)' % WANT_SURGE_HIT))
-	_chk("⑦ 涌动旧遗留常量 1.23 已消失", not lsys.contains('u["atk"] * 1.23'))
+		is_equal_approx(LightningSystem.SURGE_HIT_COEF, WANT_SURGE_HIT)
+			and lsys.contains('int(u["atk"] * SURGE_HIT_COEF)'))
+	_chk("⑦ 涌动旧遗留常量 1.23 已消失", not is_equal_approx(LightningSystem.SURGE_HIT_COEF, 1.23))
 
 	# ── ⑧ 文案必须跟着数值走(否则玩家看到的是旧数字) ──
 	var pj := FileAccess.get_file_as_string("res://data/pets.json")
@@ -111,7 +115,10 @@ func _ready() -> void:
 	_chk("⑧ 雷暴文案 = 单道 %.2f×ATK ×%d" % [WANT_BARRAGE_TOTAL / WANT_BARRAGE_BOLTS, WANT_BARRAGE_BOLTS],
 		pj.contains("{M:%.2f*ATK*%d}" % [WANT_BARRAGE_TOTAL / WANT_BARRAGE_BOLTS, WANT_BARRAGE_BOLTS]))
 	_chk("⑧ 雷盾文案 = %.1f×ATK" % WANT_COUNTER, pj.contains("{M:%.1f*ATK}" % WANT_COUNTER))
-	_chk("⑧ 涌动文案 = %d 秒" % int(WANT_SURGE_SEC), _has_txt(pj, "接下来%d秒内被动电击" % int(WANT_SURGE_SEC)))
+	## ★文案里现在是占位符 {C:LightningSystem.SURGE_SEC} —— 要先渲染再比,
+	##   直接 grep 原文会因为"代码变干净了"而假红。
+	_chk("⑧ 涌动文案 = %d 秒" % int(WANT_SURGE_SEC),
+		_has_txt(SkillText.render_consts(pj), "接下来%d秒内被动电击" % int(WANT_SURGE_SEC)))
 
 	# ── ⑨ 换算成人话, 打印出来给人看(数字不打出来就没法复核) ──
 	var A: float = float(lg["atk"])

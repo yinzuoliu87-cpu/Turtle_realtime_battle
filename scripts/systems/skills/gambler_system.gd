@@ -7,6 +7,9 @@ extends RefCounted
 ## 【多重打击】普攻命中后掷概率, 中了就以 MULTI_ASPD 的间隔倍率再打一发。
 const MULTI_BASE := 0.40      # 基础触发概率
 const MULTI_DECAY := 0.8      # 每连锁一次概率 ×(40% → 32% → 25.6% → …)
+## 连锁到第 2、3 次的概率 —— **推导, 不手写**(文案原来写死 32% / 25.6%)。
+const MULTI_CHAIN2 := MULTI_BASE * MULTI_DECAY
+const MULTI_CHAIN3 := MULTI_BASE * MULTI_DECAY * MULTI_DECAY
 const MULTI_WHEEL := 0.60     # 出战选「命运之轮」→ 基础概率变这个
 const MULTI_BET_BONUS := 0.20 # 释放「赌注」→ 之后 3 秒内再 +
 ## 【赌注】消耗当前生命打出多段物理; 血不够则转低血模式。
@@ -26,6 +29,8 @@ const WHEEL_CLUB_ASPD := 0.02      # ♣ 攻击速度 +
 const WHEEL_HP_COST := 0.30        # 选本技 → 登场损失 × 最大生命
 const MULTI_ASPD := 0.1667   # 多重打击再打一次的攻击间隔倍率(0.30→0.1667 = ~3.3×→~6×攻速)
 const JOKER_DMG := 2.0       # 万能牌: ×ATK 物理 (1.0→2.0)
+const JOKER_HEAL := 0.05     # 万能牌: 回复自身最大生命 ×
+const JOKER_ATK_DOWN := 0.15 # 万能牌: 目标攻击力 −
 const JOKER_SHIELD := 1.0    # 万能牌: ×ATK 永久护盾 (0.25→1.0)
 
 var battle
@@ -210,13 +215,13 @@ func _gambler_wild_vfx(u: Dictionary, tgt: Dictionary) -> void:
 			if is_instance_valid(card): card.queue_free()
 			if tgt.get("alive", false):
 				battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, JOKER_DMG, tgt), Color("#ff4444"))   # ★命中才跳伤害
-				battle._damage._buff(tgt, "atk", -0.15, true)                                        # 减攻也命中才上
+				battle._damage._buff(tgt, "atk", -JOKER_ATK_DOWN, true)                                        # 减攻也命中才上
 			_gambler_pop(tp, th, Color(1.0, 0.85, 0.35, 0.95))        # 命中金光
 			_gambler_pop(tp, th + 0.25, Color(1.0, 0.30, 0.30, 0.8)))  # 减攻红标
 	else:   # 无牌素材兜底: 即时结算目标伤害+减攻
 		if tgt.get("alive", false):
 			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, JOKER_DMG, tgt), Color("#ff4444"))
-			battle._damage._buff(tgt, "atk", -0.15, true)
+			battle._damage._buff(tgt, "atk", -JOKER_ATK_DOWN, true)
 	battle._shield_dome(u)                                                   # 护盾罩
 	_gambler_pop(u["pos"], float(u.get("height", 0.0)), Color(0.30, 1.0, 0.5, 0.85))   # 回血绿
 
@@ -259,6 +264,6 @@ func _sk_gambler_fate_wheel(u: Dictionary) -> void:             # 赌神龟·命
 
 func _sk_gambler_wild(u: Dictionary, tgt: Dictionary) -> void:   # 赌神龟·万能牌: 丢1张牌=1段2.0A物理(用户2026-07-09"只造成1段伤害"·2026-07-28 1.0→2.0)+自身1.0A护盾(0.25→1.0)+回5%maxHp+目标攻-15%
 	battle._damage._grant_shield(u, u["atk"] * JOKER_SHIELD)   # 自身护盾/回血即时(施法者)
-	battle._damage._heal(u, u["maxHp"] * 0.05)
+	battle._damage._heal(u, u["maxHp"] * JOKER_HEAL)
 	_gambler_wild_vfx(u, tgt)   # 丢小丑牌; ★目标伤害+减攻在牌命中回调里结算(命中才跳伤害·用户2026-07-14)
 

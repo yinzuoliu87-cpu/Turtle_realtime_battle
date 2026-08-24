@@ -346,10 +346,10 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		u["bubble_store"] = minf(u["maxHp"], float(u.get("bubble_store", 0.0)) + d * BubbleSystem.FOAM_STORE_PCT)
 	# 反伤(通用): 受击反弹 reflect% × 受到伤害 给攻击者(真实伤害); from_equip守卫防循环; stone坚壁随防御涨(被动)
 	var _refl_pct: float = float(u.get("reflect", 0.0))
-	if u["id"] == "stone": _refl_pct += 0.05 + (u["def"] + u["mr"] * 0.5) * 0.01
-	if u["id"] == "stone" and u.get("stone_rockbody", false) and not from_equip and dmg > 0 and int(u.get("rock_layers", 0)) < 30:
+	if u["id"] == "stone": _refl_pct += StoneSystem.REFLECT_BASE + (u["def"] + u["mr"] * StoneSystem.REFLECT_MR_WEIGHT) * StoneSystem.REFLECT_PER_DEF
+	if u["id"] == "stone" and u.get("stone_rockbody", false) and not from_equip and dmg > 0 and int(u.get("rock_layers", 0)) < StoneSystem.ROCK_LAYER_CAP:
 		u["rock_layers"] = int(u.get("rock_layers", 0)) + 1   # 岩层(岩石之躯被动·选此才有): 每受伤+1层上限30
-		u["size_mult"] = 1.0 + 0.02 * float(u["rock_layers"])   # +2%体型/层(回合制 rockShockwave.rockSizePctPerLayer=2·满30层=+60%)
+		u["size_mult"] = 1.0 + StoneSystem.ROCK_SIZE_PER_LAYER * float(u["rock_layers"])   # +2%体型/层(回合制 rockShockwave.rockSizePctPerLayer=2·满30层=+60%)
 	if _refl_pct > 0.0 and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
 		var _refl = int(dmg * _refl_pct)
 		if _refl > 0:

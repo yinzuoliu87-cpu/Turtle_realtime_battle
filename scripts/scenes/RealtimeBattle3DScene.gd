@@ -2854,7 +2854,7 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		#   原实现是遍历全体敌人判在不在线上, 命中顺序取决于 _units 的数组顺序, 没有先后可言。
 		var _hits: Array = []
 		for o in _targeting._enemies_of(u):
-			if o.get("alive", false) and _on_line(u["pos"], _cdir, o["pos"], 55.0):
+			if o.get("alive", false) and _on_line(u["pos"], _cdir, o["pos"], CyberSystem.LASER_BAND):
 				_hits.append(o)
 		_hits.sort_custom(func(a, b): return (a["pos"] - u["pos"]).length() < (b["pos"] - u["pos"]).length())
 		for _i2 in range(_hits.size()):
@@ -4643,7 +4643,7 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 	if u["id"] == "diamond" and not raw:
 		d *= 0.82                                    # 钻石·结构减伤18%(真伤/穿透不减)
 	if u["id"] == "stone" and u.get("stone_rockbody", false) and not raw:
-		d *= (1.0 - 0.01 * float(mini(30, int(u.get("rock_layers", 0)))))   # 岩石之躯: 每层-1%, 上限30%
+		d *= (1.0 - StoneSystem.ROCK_DR_PER_LAYER * float(mini(StoneSystem.ROCK_LAYER_CAP, int(u.get("rock_layers", 0)))))   # 岩石之躯: 每层-1%, 上限30%
 	if u["id"] == "stone" and _t < float(u.get("stone_dr_until", 0.0)) and not raw:
 		d *= (1.0 - clampf(StoneSystem.TAUNT_DR_PER_DEF * float(u["def"]) * 0.01, 0.0, StoneSystem.TAUNT_DR_CAP))         # 嘲讽期 (0.5×护甲)% 减免, 上限50%
 	if not raw and float(u.get("flat_dr", 0.0)) > 0.0:
@@ -7044,11 +7044,11 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	elif u["id"] == "stone":
 		if not u.has("stone_init_def"):
 			u["stone_init_def"] = u["base_def"]            # 记开局护甲(含等级缩放)
-		if u["_ptimer"] >= 2.5:
+		if u["_ptimer"] >= StoneSystem.BULWARK_IV:
 			u["_ptimer"] = 0.0
-			var _cap: float = u["stone_init_def"] * 2.0
+			var _cap: float = u["stone_init_def"] * StoneSystem.BULWARK_CAP_MULT
 			if u["base_def"] < _cap:
-				u["base_def"] = minf(_cap, u["base_def"] + u["stone_init_def"] / 6.0)
+				u["base_def"] = minf(_cap, u["base_def"] + u["stone_init_def"] / StoneSystem.BULWARK_GAIN_DIV)
 				_recalc_stats(u)
 				_skill_ring(u["pos"], Color(0.79, 0.64, 0.42, 0.4), 42.0)   # 视觉: 硬化贴地褐环 (不飘名字文字)
 	# --- 竹叶生长: 每N秒充能 → 永久+ATK/HP ---

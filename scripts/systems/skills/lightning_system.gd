@@ -6,6 +6,10 @@ extends RefCounted
 ## 【闪电(普攻)】主目标 → 连锁 HOPS 跳, 每跳伤害 ×DECAY 递减, 每段叠 1 层电击。
 ## 【雷电(被动)】自动电击 + 电击标记满层引爆。
 ## ★★2026-08-24: 标记上限 8 原来散在【四个文件五处】, 全是裸字面量。收成一份。
+## 【涌动】一段时间内被动电击增伤, 并立即打一次。
+const SURGE_SEC := 8.0        # 增伤持续(秒)
+const SURGE_BOOST := 0.5      # 被动电击真伤 +
+const SURGE_HIT_COEF := SHOCK_COEF * (1.0 + SURGE_BOOST)   # 推导: 立即那一发的 ×ATK
 const SHOCK_IV := 4.0         # 每几秒自动电击一名随机敌
 const SHOCK_COEF := 1.0       # 电击真伤 = ×ATK(自发与满层引爆共用)
 const SHOCK_STACK_MAX := 8    # 电击标记叠到几层引爆雷暴并清零
@@ -162,14 +166,14 @@ func _sk_lightning_shield(u: Dictionary) -> void:              # 闪电龟·雷�
 
 func _sk_lightning_surge(u: Dictionary, tgt: Dictionary) -> void: # 闪电龟·涌动 ✅
 	if tgt != null and tgt.get("alive", false):
-		battle._damage._apply_damage_from(u, tgt, int(u["atk"] * 1.5), Color("#4dabf7"), 0.0, true)   # 立即1次被动电击=真实(原误为魔法)
+		battle._damage._apply_damage_from(u, tgt, int(u["atk"] * SURGE_HIT_COEF), Color("#4dabf7"), 0.0, true)   # 立即1次被动电击=真实(原误为魔法)
 	# ★1.23 → 1.5(2026-07-29 修): 1.23 = 0.82 × 1.5, 是【被动电击 0.82×ATK 时代】的遗留常量。
 	#   2026-07-28 被动已改成 1.0×ATK(见 _shock_dmg), 这里没跟着改 → 文案承诺 1.5×ATK、实发 1.23×ATK, 少 18%。
 	#   现在与 _shock_dmg 的 1.0×ATK × 1.5 口径一致。
-	u["shock_boost_until"] = battle._t + 8.0      # 8秒内被动电击真伤+50%(窄化; 原误为通用+50%攻击+stray层)
+	u["shock_boost_until"] = battle._t + SURGE_SEC      # 8秒内被动电击真伤+50%(窄化; 原误为通用+50%攻击+stray层)
 	                                              # ★2026-08-02 更正注释: 值早已是 8.0(第四轮 5→8), 注释还写着"5秒内"
-	u["shock_boost_pct"] = 0.5
+	u["shock_boost_pct"] = SURGE_BOOST
 	battle._skill_ring(u["pos"], Color(0.45, 0.85, 1.0, 0.5), 52.0)
-	battle._aura_vfx("res://assets/sprites/skills/lightning-3.png", u, 54.0, Color(0.3, 0.67, 0.97, 0.5), 8.0)   # 涌动增伤电流光环5秒(标示buff激活期)
+	battle._aura_vfx("res://assets/sprites/skills/lightning-3.png", u, 54.0, Color(0.3, 0.67, 0.97, 0.5), SURGE_SEC)   # 涌动增伤电流光环5秒(标示buff激活期)
 	battle._vfx._hit_spark(u)                                                                                          # 自身电流上涌
 

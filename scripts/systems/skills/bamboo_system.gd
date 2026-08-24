@@ -17,6 +17,17 @@ const GROW_SMACK_HEAL_PCT := 0.12
 const GROW_SMACK_MAXHP_PER_ATK := 1.05
 
 ## ★★2026-08-24 文案根除: 【竹刺阵】原来这几个数散在函数体里(半径写了两遍)。
+## 【自然恢复】治自己 + 给每名队友按【队友自己的】最大生命上盾; 无队友则改治自己更多。
+const REGEN_SELF := 0.10         # 有队友时治自己 = 最大生命 ×
+const REGEN_SOLO := 0.15         # 无队友时改治自己 ×
+const REGEN_ALLY_SHIELD := 0.12  # 每名队友的盾 = 【该队友】最大生命 ×
+const REGEN_SHIELD_SEC := 4.0    # 盾持续(秒)
+## 【竹击】钩全场最远敌拉到身前 + 冰寒。
+const SMACK_ATK_COEF := 1.0      # ×ATK 物理
+const SMACK_STUN := 0.5          # 眩晕(秒)
+const SMACK_CHILL_SEC := 4.0     # 冰寒持续(秒)
+const SMACK_CHILL_DOWN := 0.20   # 冰寒: 攻击力与移速 各降低
+const SMACK_CHILL_MULT := 1.0 - SMACK_CHILL_DOWN   # 推导: 移速倍率
 const SPIKE_RADIUS := 300.0     # 预警圈半径(码)·同时是伤害判定半径, 现在只存一份
 const SPIKE_WINDUP := 0.6       # 蓄力(秒)
 const SPIKE_ATK_COEF := 0.9     # ×ATK 物理
@@ -100,11 +111,11 @@ func _sk_bamboo_smack(u: Dictionary, tgt) -> void:              # 竹叶龟·竹
 	var far_pos0: Vector2 = far["pos"]                          # 拉近前的原位(画竹藤用)
 	battle._bolt_line(u["pos"], far_pos0, Color(0.22, 0.83, 0.33))     # 伸出竹藤(用户2026-07-06"伸出一条竹藤·打最远的敌人")
 	battle._burst_vfx("res://assets/sprites/vfx/bamboo-vine.png", far_pos0, 120.0, 1.0)   # 藤钩勾住
-	battle._damage._apply_damage_from(u, far, battle._atk_dmg(u, 1.0, far), Color("#39d353"))
+	battle._damage._apply_damage_from(u, far, battle._atk_dmg(u, SMACK_ATK_COEF, far), Color("#39d353"))
 	if not far.get("_eggImmune", false):                        # 蛋/免控只吃伤
-		battle._damage._stun(far, 0.5, "_sk_bamboo_smack")
-		battle._damage._buff(far, "atk", -0.20, true, 4.0)                     # 冰寒-20%攻4秒
-		far["spd_move_mult"] = 0.8; far["spd_dbf_until"] = battle._t + 4.0   # 冰寒-20%移速4秒
+		battle._damage._stun(far, SMACK_STUN, "_sk_bamboo_smack")
+		battle._damage._buff(far, "atk", -SMACK_CHILL_DOWN, true, SMACK_CHILL_SEC)                     # 冰寒-20%攻4秒
+		far["spd_move_mult"] = SMACK_CHILL_MULT; far["spd_dbf_until"] = battle._t + SMACK_CHILL_SEC   # 冰寒-20%移速4秒
 		battle._hitstop = maxf(battle._hitstop, 0.05)                          # 抓住瞬间小顿(用户2026-07-11: 拽住得顿一下)
 		var ff = far
 		var uu = u
@@ -143,10 +154,10 @@ func _sk_bamboo_heal(u: Dictionary) -> void:                     # 竹叶龟·�
 	var allies = battle._targeting._allies_of(u, false)
 	battle._vfx._play_heal_glow(u["pos"])
 	if allies.is_empty():
-		battle._damage._heal(u, u["maxHp"] * 0.15)
+		battle._damage._heal(u, u["maxHp"] * REGEN_SOLO)
 	else:
-		battle._damage._heal(u, u["maxHp"] * 0.10)
+		battle._damage._heal(u, u["maxHp"] * REGEN_SELF)
 		for o in allies:
-			battle._damage._grant_shield(o, o["maxHp"] * 0.12, 4.0)   # 竹叶自然恢复·友军护盾(通用护盾4秒·封板L74)·[原注释误标"寒冰团队护盾"→那是ice commonTeamShield另有其函]
+			battle._damage._grant_shield(o, o["maxHp"] * REGEN_ALLY_SHIELD, REGEN_SHIELD_SEC)   # 竹叶自然恢复·友军护盾(通用护盾4秒·封板L74)·[原注释误标"寒冰团队护盾"→那是ice commonTeamShield另有其函]
 			battle._vfx._play_heal_glow(o["pos"])
 

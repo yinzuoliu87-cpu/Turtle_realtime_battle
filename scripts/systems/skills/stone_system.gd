@@ -5,6 +5,22 @@ extends RefCounted
 
 ## ★★2026-08-22 文案根除: 嘲讽这一组原来全是 `_sk_stone_taunt` 里的裸字面量。
 ## 【岩石护盾】全队盾 + 自身双抗, 两者时长不同。
+## 【坚壁(被动)】周期性永久涨护甲(有上限) + 受击按双抗反弹。
+## ★这些原来散在【两个别的文件】: 涨护甲在主场景 `_tick_periodic_passive`, 反伤在 battle_damage。
+const BULWARK_IV := 2.5          # 每几秒涨一次
+const BULWARK_GAIN_DIV := 6.0    # 每次涨 = 开局护甲 ÷ 它
+const BULWARK_CAP_MULT := 2.0    # 累积上限 = 开局护甲 ×
+const REFLECT_BASE := 0.05       # 反弹基础比例
+const REFLECT_PER_DEF := 0.01    # 每点护甲再 +
+const REFLECT_MR_WEIGHT := 0.5   # 魔抗按此权重折算成护甲
+## 【磐石之躯】岩层被动 + 横排冲击波。
+const ROCK_LAYER_CAP := 30       # 岩层上限
+const ROCK_DR_PER_LAYER := 0.01  # 每层伤害减免
+const ROCK_SIZE_PER_LAYER := 0.02  # 每层体型 +
+const ROCK_WAVE_DEF_COEF := 0.5  # 冲击波 = ×护甲
+const ROCK_WAVE_MR_COEF := 0.5   # + ×魔抗
+const ROCK_WAVE_PER_LAYER := 0.04  # 再 ×(1 + 此值 × 岩层数)
+const ROCK_WAVE_STUN := 2.0      # 必定眩晕(秒)
 const RS_ATK_COEF := 1.0         # 全队盾 = ×【石头龟】ATK
 const RS_MAXHP_PCT := 0.06       # + ×【石头龟】最大生命
 const RS_SHIELD_SEC := 4.0       # 盾持续(秒)·持盾期锁龟能
@@ -119,7 +135,7 @@ func _sk_rock_shockwave(u: Dictionary) -> void:                  # 石头龟·�
 			battle._pending_shots.append({"delay": dl, "src": u, "fn": fb})
 		d += step
 	# ── 伤害: 前方带状(几何不变)·随波前经过逐个同步结算 ──
-	var dmgv: int = int((u["def"] * 0.5 + u["mr"] * 0.5) * (1.0 + 0.04 * layers))
+	var dmgv: int = int((u["def"] * ROCK_WAVE_DEF_COEF + u["mr"] * ROCK_WAVE_MR_COEF) * (1.0 + ROCK_WAVE_PER_LAYER * layers))
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		var rel: Vector2 = o["pos"] - origin
@@ -130,7 +146,7 @@ func _sk_rock_shockwave(u: Dictionary) -> void:                  # 石头龟·�
 		var hf = func() -> void:
 			if not oo.get("alive", false): return
 			battle._damage._apply_damage_from(uu, oo, dmgv, Color("#c8a878"))
-			battle._damage._stun(oo, 2.0, "_sk_rock_shockwave")   # 命中即眩晕2秒(用户2026-07-11: 除击退外必附2s眩晕·原1%×层概率改必中·头顶通用眩晕圈由_update_stun_vfx画)
+			battle._damage._stun(oo, ROCK_WAVE_STUN, "_sk_rock_shockwave")   # 命中即眩晕2秒(用户2026-07-11: 除击退外必附2s眩晕·原1%×层概率改必中·头顶通用眩晕圈由_update_stun_vfx画)
 			battle._damage._knockback(uu, oo, 60.0)
 			_rock_chunk_erupt(oo["pos"])                     # 命中点额外破土
 			battle._vfx._flash(oo)

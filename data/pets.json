@@ -115,8 +115,8 @@
       "name": "坚壁",
       "capTurns": 6,
       "maxDefInitPct": 100,
-      "brief": "每 2.5 秒永久获得 {D:DEF/6} 护甲（= 开局护甲的 1/6），最多再累积 {D:DEF}（达到开局护甲的 2 倍）。\n此外，石头龟每次受到伤害时都会向攻击者反弹 {N:5+DEF+MR*0.5}% 的伤害。",
-      "desc": "每 2.5 秒永久获得 {D:DEF/6} 护甲（= 开局护甲 ÷ 6），最多再累积 {D:DEF} 护甲，即<span class=\"val-def\">上限为开局护甲的 2 倍</span>。\n受到伤害时将反弹（5% + 1%×护甲({DEF}) + 0.5%×魔抗({MR}) = {N:5+DEF+MR*0.5}%）伤害给攻击者。"
+      "brief": "每 {C:StoneSystem.BULWARK_IV} 秒永久获得 {D:DEF/6} 护甲（= 开局护甲的 1/{C:StoneSystem.BULWARK_GAIN_DIV}），最多再累积 {D:DEF}（达到开局护甲的 {C:StoneSystem.BULWARK_CAP_MULT} 倍）。\n此外，石头龟每次受到伤害时都会向攻击者反弹 {N:5+DEF+MR*0.5}% 的伤害。",
+      "desc": "每 {C:StoneSystem.BULWARK_IV} 秒永久获得 {D:DEF/6} 护甲（= 开局护甲 ÷ {C:StoneSystem.BULWARK_GAIN_DIV}），最多再累积 {D:DEF} 护甲，即<span class=\"val-def\">上限为开局护甲的 {C:StoneSystem.BULWARK_CAP_MULT} 倍</span>。\n受到伤害时将反弹（{C:StoneSystem.REFLECT_BASE%}% + {C:StoneSystem.REFLECT_PER_DEF%}%×护甲({DEF}) + {C:StoneSystem.REFLECT_MR_WEIGHT%}%×魔抗({MR}) = {N:5+DEF+MR*0.5}%）伤害给攻击者。"
     },
     "skillPool": [
       {
@@ -153,8 +153,8 @@
         "cd": 0,
         "defScale": 0.5,
         "mrScale": 0.5,
-        "brief": "释放岩石冲击波，对一横排敌人造成 {N:(0.5*DEF+0.5*MR)*(1+0.04*rockLayers)} 物理伤害，并必定将其<span class=\"val-atk\">眩晕 2 秒</span>。\n<span style=\"color:#8a93a0\">被动：\n石头龟每次受到伤害获得 1 层岩层（上限 30 层），每层提供 +1% 伤害减免和 +2% 体型。\n</span>",
-        "detail": "被动效果：\n石头龟每次受到伤害会获得 1 层岩层，上限为 30 层。\n每层岩层提供+1%伤害减免和+2%体型。\n主动释放：\n石头龟释放岩石冲击波，对一横排敌人造成（50%×护甲({DEF}) + 50%×魔抗({MR})）×(1 + 4%×岩层层数) = {N:(0.5*DEF+0.5*MR)*(1+0.04*rockLayers)} 物理伤害，并必定使其眩晕 2 秒。\n<span style=\"color:#8a93a0\">命中的敌人会被击飞</span>。",
+        "brief": "释放岩石冲击波，对一横排敌人造成 {N:(0.5*DEF+0.5*MR)*(1+0.04*rockLayers)} 物理伤害，并必定将其<span class=\"val-atk\">眩晕 {C:StoneSystem.ROCK_WAVE_STUN} 秒</span>。\n<span style=\"color:#8a93a0\">被动：\n石头龟每次受到伤害获得 1 层岩层（上限 {C:StoneSystem.ROCK_LAYER_CAP} 层），每层提供 +{C:StoneSystem.ROCK_DR_PER_LAYER%}% 伤害减免和 +{C:StoneSystem.ROCK_SIZE_PER_LAYER%}% 体型。\n</span>",
+        "detail": "被动效果：\n石头龟每次受到伤害会获得 1 层岩层，上限为 {C:StoneSystem.ROCK_LAYER_CAP} 层。\n每层岩层提供 +{C:StoneSystem.ROCK_DR_PER_LAYER%}% 伤害减免和 +{C:StoneSystem.ROCK_SIZE_PER_LAYER%}% 体型。\n主动释放：\n石头龟释放岩石冲击波，对一横排敌人造成（{C:StoneSystem.ROCK_WAVE_DEF_COEF%}%×护甲({DEF}) + {C:StoneSystem.ROCK_WAVE_MR_COEF%}%×魔抗({MR})）×(1 + {C:StoneSystem.ROCK_WAVE_PER_LAYER%}%×岩层层数) = {N:(0.5*DEF+0.5*MR)*(1+0.04*rockLayers)} 物理伤害，并必定使其眩晕 {C:StoneSystem.ROCK_WAVE_STUN} 秒。\n<span style=\"color:#8a93a0\">命中的敌人会被击飞</span>。",
         "energyCost": 80
       },
       {
@@ -220,8 +220,8 @@
         "pierce": 0,
         "cd": 0,
         "shieldTurns": 3,
-        "brief": "为自己回复 {H:HP*0.1} 生命值，并为每名队友罩上【其自身】12% 最大生命值的护盾，持续 <span class=\"val-atk\">4 秒</span>。\n<span style=\"color:#8a93a0\">若没有队友存活，则改为治疗自己 {H:HP*0.15} 生命值。\n</span>",
-        "detail": "竹叶龟为自己回复（10%×最大生命值({HP}) = {H:HP*0.1}）生命值。\n为每名存活队友罩上其自身 12% 最大生命值的护盾，持续 <span class=\"val-def\">4 秒</span>。\n若无存活队友，改为回复（15%×最大生命值({HP}) = {H:HP*0.15}）生命值。\n<span style=\"color:#8a93a0\">若没有队友存活，则改为治疗自己 {H:HP*0.15} 生命值。</span>",
+        "brief": "为自己回复 {H:HP*0.1} 生命值，并为每名队友罩上【其自身】{C:BambooSystem.REGEN_ALLY_SHIELD%}% 最大生命值的护盾，持续 <span class=\"val-atk\">{C:BambooSystem.REGEN_SHIELD_SEC} 秒</span>。\n<span style=\"color:#8a93a0\">若没有队友存活，则改为治疗自己 {H:HP*0.15} 生命值。\n</span>",
+        "detail": "竹叶龟为自己回复（10%×最大生命值({HP}) = {H:HP*0.1}）生命值。\n为每名存活队友罩上其自身 {C:BambooSystem.REGEN_ALLY_SHIELD%}% 最大生命值的护盾，持续 <span class=\"val-def\">{C:BambooSystem.REGEN_SHIELD_SEC} 秒</span>。\n若无存活队友，改为回复（15%×最大生命值({HP}) = {H:HP*0.15}）生命值。\n<span style=\"color:#8a93a0\">若没有队友存活，则改为治疗自己 {H:HP*0.15} 生命值。</span>",
         "energyCost": 110
       },
       {
@@ -232,8 +232,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "伸出竹藤钩住<span class=\"val-normal\">全场最远的敌人</span>，造成 {N:ATK} 物理伤害并<span class=\"val-atk\">眩晕 0.5 秒</span>，同时将其拉拽到自己身前。\n被钩中的敌人陷入冰寒，攻击力和移动速度各降低 <span class=\"val-atk\">20%</span>，持续 <span class=\"val-atk\">4 秒</span>。",
-        "detail": "竹叶龟伸出一条竹藤，钩住<span class=\"val-normal\">全场最远</span>的敌人：造成 {N:1.0*ATK} 物理伤害、<span class=\"val-atk\">眩晕 0.5 秒</span>，并将其拉到竹叶龟身前贴身。\n同时施加<span class=\"val-magic\">冰寒</span> 4 秒。\n<span style=\"color:#8a93a0\">冰寒：\n目标 -20% 攻击力、-20% 移动速度。\n龟蛋免疫控制，只吃伤害。\n</span>",
+        "brief": "伸出竹藤钩住<span class=\"val-normal\">全场最远的敌人</span>，造成 {N:ATK} 物理伤害并<span class=\"val-atk\">眩晕 {C:BambooSystem.SMACK_STUN} 秒</span>，同时将其拉拽到自己身前。\n被钩中的敌人陷入冰寒，攻击力和移动速度各降低 <span class=\"val-atk\">{C:BambooSystem.SMACK_CHILL_DOWN%}%</span>，持续 <span class=\"val-atk\">{C:BambooSystem.SMACK_CHILL_SEC} 秒</span>。",
+        "detail": "竹叶龟伸出一条竹藤，钩住<span class=\"val-normal\">全场最远</span>的敌人：造成 {N:1.0*ATK} 物理伤害、<span class=\"val-atk\">眩晕 {C:BambooSystem.SMACK_STUN} 秒</span>，并将其拉到竹叶龟身前贴身。\n同时施加<span class=\"val-magic\">冰寒</span> {C:BambooSystem.SMACK_CHILL_SEC} 秒。\n<span style=\"color:#8a93a0\">冰寒：\n目标 -{C:BambooSystem.SMACK_CHILL_DOWN%}% 攻击力、-{C:BambooSystem.SMACK_CHILL_DOWN%}% 移动速度。\n龟蛋免疫控制，只吃伤害。\n</span>",
         "energyCost": 120
       },
       {
@@ -1043,8 +1043,8 @@
       "type": "gamblerMultiHit",
       "name": "多重打击",
       "dmgScale": 0.5,
-      "brief": "每次普攻命中后有 <span class=\"val-atk\">{C:GamblerSystem.MULTI_BASE%}%</span> 概率<span class=\"val-normal\">立刻以约 6 倍攻击速度再打一次普攻</span>。\n再次命中可继续触发，每连锁一次概率 ×{C:GamblerSystem.MULTI_DECAY}（<span class=\"val-atk\">{C:GamblerSystem.MULTI_BASE%}% → 32% → 25.6% → …</span>）。\n<span style=\"color:#8a93a0\">未触发时概率重置回基础值。\n</span>",
-      "desc": "每次普攻命中后有 <span class=\"val-atk\">{C:GamblerSystem.MULTI_BASE%}%</span> 概率<span class=\"val-normal\">立刻以约 6 倍攻击速度再打一次普攻</span>。\n再次命中可继续触发，每连锁一次概率 ×{C:GamblerSystem.MULTI_DECAY}（{C:GamblerSystem.MULTI_BASE%}% → 32% → 25.6% → …），没触发则重置回基础概率、等下一次普攻。\n<span style=\"color:#8a93a0\">基础概率 {C:GamblerSystem.MULTI_BASE%}%。\n出战选「命运之轮」→ 基础概率变 {C:GamblerSystem.MULTI_WHEEL%}%（代价是登场损失 30% 最大生命值）\n释放「赌注」→ 之后 3 秒内再 +{C:GamblerSystem.MULTI_BET_BONUS%}%。\n</span>"
+      "brief": "每次普攻命中后有 <span class=\"val-atk\">{C:GamblerSystem.MULTI_BASE%}%</span> 概率<span class=\"val-normal\">立刻以约 6 倍攻击速度再打一次普攻</span>。\n再次命中可继续触发，每连锁一次概率 ×{C:GamblerSystem.MULTI_DECAY}（<span class=\"val-atk\">{C:GamblerSystem.MULTI_BASE%}% → {C:GamblerSystem.MULTI_CHAIN2%}% → {C:GamblerSystem.MULTI_CHAIN3%}% → …</span>）。\n<span style=\"color:#8a93a0\">未触发时概率重置回基础值。\n</span>",
+      "desc": "每次普攻命中后有 <span class=\"val-atk\">{C:GamblerSystem.MULTI_BASE%}%</span> 概率<span class=\"val-normal\">立刻以约 6 倍攻击速度再打一次普攻</span>。\n再次命中可继续触发，每连锁一次概率 ×{C:GamblerSystem.MULTI_DECAY}（{C:GamblerSystem.MULTI_BASE%}% → {C:GamblerSystem.MULTI_CHAIN2%}% → {C:GamblerSystem.MULTI_CHAIN3%}% → …），没触发则重置回基础概率、等下一次普攻。\n<span style=\"color:#8a93a0\">基础概率 {C:GamblerSystem.MULTI_BASE%}%。\n出战选「命运之轮」→ 基础概率变 {C:GamblerSystem.MULTI_WHEEL%}%（代价是登场损失 {C:GamblerSystem.WHEEL_HP_COST%}% 最大生命值）\n释放「赌注」→ 之后 {C:GamblerSystem.BET_BONUS_SEC} 秒内再 +{C:GamblerSystem.MULTI_BET_BONUS%}%。\n</span>"
     },
     "skillPool": [
       {
@@ -1067,8 +1067,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "丢出一张万能牌，造成 <span class=\"val-normal\">1 段</span> {N:2*ATK} 物理伤害，自身获得 {S:1*ATK} 永久护盾并回复 <span class=\"val-heal\">5% 最大生命值</span>，同时使目标攻击力 <span class=\"val-atk\">-15%</span>。",
-        "detail": "赌神龟丢出一张万能牌，造成 <span class=\"val-normal\">1 段</span>（200%×攻击力({ATK}) = {N:2*ATK}）物理伤害。\n自身获得（100%×攻击力 = {S:1*ATK}）<span class=\"val-def\">永久护盾</span>，回复 <span class=\"val-heal\">5% 最大生命值</span>，并使目标<span class=\"val-atk\">攻击力 -15%</span>。"
+        "brief": "丢出一张万能牌，造成 <span class=\"val-normal\">1 段</span> {N:2*ATK} 物理伤害，自身获得 {S:1*ATK} 永久护盾并回复 <span class=\"val-heal\">{C:GamblerSystem.JOKER_HEAL%}% 最大生命值</span>，同时使目标攻击力 <span class=\"val-atk\">-{C:GamblerSystem.JOKER_ATK_DOWN%}%</span>。",
+        "detail": "赌神龟丢出一张万能牌，造成 <span class=\"val-normal\">1 段</span>（200%×攻击力({ATK}) = {N:2*ATK}）物理伤害。\n自身获得（100%×攻击力 = {S:1*ATK}）<span class=\"val-def\">永久护盾</span>，回复 <span class=\"val-heal\">{C:GamblerSystem.JOKER_HEAL%}% 最大生命值</span>，并使目标<span class=\"val-atk\">攻击力 -{C:GamblerSystem.JOKER_ATK_DOWN%}%</span>。"
       },
       {
         "name": "赌注",
@@ -1462,7 +1462,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "对<span class=\"val-normal\">墨迹层数最多</span>的敌人点下终笔，造成（{C:LineSystem.DOT_BASE_COEF%}% + 每层墨迹 {C:LineSystem.DOT_PER_INK%}%）×攻击力 物理伤害。\n<span style=\"color:#8a93a0\">该伤害不消耗墨迹。\n</span>",
-        "detail": "线条龟对<span class=\"val-normal\">墨迹层数最多</span>的敌人点下终笔，造成（{C:LineSystem.DOT_BASE_COEF%}%×攻击力 + 每层墨迹 {C:LineSystem.DOT_PER_INK%}%×攻击力）物理伤害。\n<span class=\"val-atk\">不消耗墨迹</span>。\n<span style=\"color:#8a93a0\">满 7 层 = 385%×攻击力。\n若选择「墨水炸弹」把上限提到 10 层，满层 = 520%×攻击力。\n场上无墨迹时改打最近敌人（{C:LineSystem.DOT_BASE_COEF%}%×攻击力）。\n</span>"
+        "detail": "线条龟对<span class=\"val-normal\">墨迹层数最多</span>的敌人点下终笔，造成（{C:LineSystem.DOT_BASE_COEF%}%×攻击力 + 每层墨迹 {C:LineSystem.DOT_PER_INK%}%×攻击力）物理伤害。\n<span class=\"val-atk\">不消耗墨迹</span>。\n<span style=\"color:#8a93a0\">满 {C:LineSystem.INK_CAP} 层 = {C:LineSystem.DOT_FULL_COEF%}%×攻击力。\n若选择「墨水炸弹」把上限提到 {C:LineSystem.INK_CAP_BOMB} 层，满层 = {C:LineSystem.DOT_FULL_COEF_BOMB%}%×攻击力。\n场上无墨迹时改打最近敌人（{C:LineSystem.DOT_BASE_COEF%}%×攻击力）。\n</span>"
       },
       {
         "name": "墨水炸弹",
@@ -1520,8 +1520,8 @@
         "cd": 0,
         "power": 0,
         "pierce": 0,
-        "brief": "在接下来的 <span class=\"val-atk\">8 秒</span>内使被动电击造成的真实伤害提升 <span class=\"val-atk\">50%</span>，并立即对目标打出一次 {T:ATK*1.5} 真实伤害。",
-        "detail": "闪电龟之力涌动，接下来 8 秒内被动电击（含满层引爆）造成的真实伤害额外提升 <span class=\"val-atk\">+50%</span>，并立即对目标打出一次被动电击（100%×攻击力({ATK}) × 1.5 = {T:ATK*1.5}）真实伤害。",
+        "brief": "在接下来的 <span class=\"val-atk\">{C:LightningSystem.SURGE_SEC} 秒</span>内使被动电击造成的真实伤害提升 <span class=\"val-atk\">{C:LightningSystem.SURGE_BOOST%}%</span>，并立即对目标打出一次 {T:ATK*1.5} 真实伤害。",
+        "detail": "闪电龟之力涌动，接下来 {C:LightningSystem.SURGE_SEC} 秒内被动电击（含满层引爆）造成的真实伤害额外提升 <span class=\"val-atk\">+{C:LightningSystem.SURGE_BOOST%}%</span>，并立即对目标打出一次被动电击（{C:LightningSystem.SHOCK_COEF%}%×攻击力({ATK}) × {C:LightningSystem.SURGE_HIT_COEF} = {T:ATK*1.5}）真实伤害。",
         "energyCost": 110
       },
       {
@@ -1782,8 +1782,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "射出一道贯穿激光，穿透目标沿直线飞出场外：穿过的<span class=\"val-atk\">第一个敌人</span>受到 {N:ATK} 物理伤害，之后的每个敌人受到 <span class=\"val-normal\">50%</span> 伤害。",
-        "detail": "赛博龟的普攻·贯穿激光：\n进入 450 码射程后射出一道激光，激光穿透目标继续沿直线飞行（不受射程限制），打穿这条直线上（判定带宽 ±55 码）的所有敌人：\n<span class=\"val-atk\">穿过的第一个敌人</span>受到（100%×攻击力({ATK}) = {N:ATK}）物理伤害，<span class=\"val-normal\">之后的每个敌人受到 50% 伤害</span>。"
+        "brief": "射出一道贯穿激光，穿透目标沿直线飞出场外：穿过的<span class=\"val-atk\">第一个敌人</span>受到 {N:ATK} 物理伤害，之后的每个敌人受到 <span class=\"val-normal\">{C:RealtimeBattle3DScene.CYBER_LASER_FALLOFF%}%</span> 伤害。",
+        "detail": "赛博龟的普攻·贯穿激光：\n进入 450 码射程后射出一道激光，激光穿透目标继续沿直线飞行（不受射程限制），打穿这条直线上（判定带宽 ±{C:CyberSystem.LASER_BAND} 码）的所有敌人：\n<span class=\"val-atk\">穿过的第一个敌人</span>受到（100%×攻击力({ATK}) = {N:ATK}）物理伤害，<span class=\"val-normal\">之后的每个敌人受到 {C:RealtimeBattle3DScene.CYBER_LASER_FALLOFF%}% 伤害</span>。"
       },
       {
         "name": "能量大炮",
