@@ -6930,9 +6930,9 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 					var _gr := (BambooSystem.GROW_SMACK_MAXHP_PER_ATK if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else BambooSystem.GROW_MAXHP_PER_ATK); u["maxHp"] += u["base_atk"] * _gr; u["hp"] += u["base_atk"] * _gr; _recalc_stats(u); _vfx._flash(u, Color(0.5, 1.7, 0.65)))   # 永久+maxHp=系数×ATK + 吸收瞬间竹叶龟再绿闪(得到生命·不灭之握=绿闪非环)
 		"rainbow":                                        # 棱镜(改造): 普攻附当前颜色效果(红真伤/蓝小盾/绿回血)
 			match int(u.get("prism_color", -1)):
-				0: _damage._apply_damage_from(u, tgt, int(u["atk"] * 0.25), Color("#ff6b6b"), 0.0, true)   # 红: 额外真伤
-				1: _damage._grant_shield(u, u["atk"] * 0.2, 4.0)                                           # 蓝: 每普攻获小盾(通用护盾4秒·封板L74"基础龟被动蓄力普攻的护盾也4秒")
-				2: _damage._heal(u, (u["maxHp"] - u["hp"]) * 0.025, true)                                               # 绿: 回2%最大HP
+				0: _damage._apply_damage_from(u, tgt, int(u["atk"] * RainbowSystem.PRISM_RED_TRUE), Color("#ff6b6b"), 0.0, true)   # 红: 额外真伤
+				1: _damage._grant_shield(u, u["atk"] * RainbowSystem.PRISM_BLUE_SHIELD, RainbowSystem.PRISM_BLUE_SEC)                                           # 蓝: 每普攻获小盾(通用护盾4秒·封板L74"基础龟被动蓄力普攻的护盾也4秒")
+				2: _damage._heal(u, (u["maxHp"] - u["hp"]) * RainbowSystem.PRISM_GREEN_HEAL, true)                                               # 绿: 回2%最大HP
 			# 棱镜命中: 喷当前色(每次普攻都带色·醒目·用户2026-07-13)
 			var _rb_hc: Color = _PRISM_COLS[int(u.get("prism_color", -1))] if int(u.get("prism_color", -1)) >= 0 else Color(1, 1, 1)
 			var _rb_hb := _glow_bb(tgt["pos"], float(tgt.get("height", 0.0)) + 0.35, 135.0, Color(_rb_hc.r, _rb_hc.g, _rb_hc.b, 0.95))
@@ -7096,7 +7096,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	if u["id"] == "rainbow":
 		_rainbow_sys._rainbow_prism_convert(u)   # 棱镜转化(实时·每帧): 2%最大生命→攻击力(PRISM_ATK_FROM_HP), 0.3×攻击力%→攻速
 		u["_rbtimer"] = u.get("_rbtimer", 0.0) + delta
-		if u["_rbtimer"] >= 6.0:
+		if u["_rbtimer"] >= RainbowSystem.PRISM_COLOR_SEC:
 			u["_rbtimer"] = 0.0
 			u["prism_color"] = _battle_rng.randi() % 3   # 棱镜(改造): 自身获颜色6秒, 普攻附色(见 _on_basic_hit)
 			var _pcc: Color = _PRISM_COLS[int(u["prism_color"])]   # 换色瞬间闪新色(醒目提示切色)

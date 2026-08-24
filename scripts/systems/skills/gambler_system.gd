@@ -9,6 +9,16 @@ const MULTI_BASE := 0.40      # 基础触发概率
 const MULTI_DECAY := 0.8      # 每连锁一次概率 ×(40% → 32% → 25.6% → …)
 const MULTI_WHEEL := 0.60     # 出战选「命运之轮」→ 基础概率变这个
 const MULTI_BET_BONUS := 0.20 # 释放「赌注」→ 之后 3 秒内再 +
+## 【命运之轮】四花色各永久加两项。★代码里这组数**写了两遍**(抽到时 / 复活后套用),
+##   提成常量正好把那份重复消掉 —— 改一处两边同时变。
+const WHEEL_SPADE_ATK := 3.0       # ♠ 攻击力 +
+const WHEEL_SPADE_HP := 10.0       # ♠ 最大生命 +
+const WHEEL_HEART_RESIST := 1.0    # ♥ 护甲与魔抗 各 +
+const WHEEL_DIAMOND_CRIT := 0.02   # ♦ 暴击率 +
+const WHEEL_DIAMOND_PEN := 1.0     # ♦ 护甲穿透 +
+const WHEEL_CLUB_LIFESTEAL := 0.005  # ♣ 生命偷取 +
+const WHEEL_CLUB_ASPD := 0.02      # ♣ 攻击速度 +
+const WHEEL_HP_COST := 0.30        # 选本技 → 登场损失 × 最大生命
 const MULTI_ASPD := 0.1667   # 多重打击再打一次的攻击间隔倍率(0.30→0.1667 = ~3.3×→~6×攻速)
 const JOKER_DMG := 2.0       # 万能牌: ×ATK 物理 (1.0→2.0)
 const JOKER_SHIELD := 1.0    # 万能牌: ×ATK 永久护盾 (0.25→1.0)
@@ -132,16 +142,16 @@ func _gambler_wheel_vfx(u: Dictionary, suit: int) -> void:
 func _gambler_apply_wheel_suit(u: Dictionary, suit: int) -> void:   # 命运之轮落定实装: 加属性+跳文字(该花色色)
 	match suit:
 		0:
-			u["base_atk"] = float(u["base_atk"]) + 3.0; u["maxHp"] += 10.0; u["hp"] += 10.0
+			u["base_atk"] = float(u["base_atk"]) + WHEEL_SPADE_ATK; u["maxHp"] += WHEEL_SPADE_HP; u["hp"] += WHEEL_SPADE_HP
 			battle._vfx._float_text(u["pos"] + Vector2(0, -64), "♠ 攻+3 血+10", Color("#ffd93d"))
 		1:
-			u["base_def"] = float(u["base_def"]) + 1.0; u["base_mr"] = float(u["base_mr"]) + 1.0
+			u["base_def"] = float(u["base_def"]) + WHEEL_HEART_RESIST; u["base_mr"] = float(u["base_mr"]) + WHEEL_HEART_RESIST
 			battle._vfx._float_text(u["pos"] + Vector2(0, -64), "♥ 护甲+1 魔抗+1", Color("#ff5b6b"))
 		2:
-			u["crit"] = float(u["crit"]) + 0.02; u["armor_pen"] = float(u.get("armor_pen", 0.0)) + 1.0
+			u["crit"] = float(u["crit"]) + WHEEL_DIAMOND_CRIT; u["armor_pen"] = float(u.get("armor_pen", 0.0)) + WHEEL_DIAMOND_PEN
 			battle._vfx._float_text(u["pos"] + Vector2(0, -64), "♦ 暴击+2% 护穿+1", Color("#ff9f43"))
 		_:
-			battle._damage._buff(u, "lifesteal", 0.005, false, 9999.0); u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + 0.02
+			battle._damage._buff(u, "lifesteal", WHEEL_CLUB_LIFESTEAL, false, 9999.0); u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + WHEEL_CLUB_ASPD
 			battle._vfx._float_text(u["pos"] + Vector2(0, -64), "♣ 吸血+0.5% 攻速+2%", Color("#5be08a"))
 	battle._recalc_stats(u)
 
@@ -149,13 +159,13 @@ func _gambler_apply_wheel_stacks(u: Dictionary) -> void:   # 命运之轮跨场�
 	var ws: Dictionary = GameState.gambler_wheel_stacks
 	if ws.is_empty(): return
 	for i in range(int(ws.get("spade", 0))):
-		u["base_atk"] = float(u["base_atk"]) + 3.0; u["maxHp"] += 10.0; u["hp"] += 10.0
+		u["base_atk"] = float(u["base_atk"]) + WHEEL_SPADE_ATK; u["maxHp"] += WHEEL_SPADE_HP; u["hp"] += WHEEL_SPADE_HP
 	for i in range(int(ws.get("heart", 0))):
-		u["base_def"] = float(u["base_def"]) + 1.0; u["base_mr"] = float(u["base_mr"]) + 1.0
+		u["base_def"] = float(u["base_def"]) + WHEEL_HEART_RESIST; u["base_mr"] = float(u["base_mr"]) + WHEEL_HEART_RESIST
 	for i in range(int(ws.get("diamond", 0))):
-		u["crit"] = float(u["crit"]) + 0.02; u["armor_pen"] = float(u.get("armor_pen", 0.0)) + 1.0
+		u["crit"] = float(u["crit"]) + WHEEL_DIAMOND_CRIT; u["armor_pen"] = float(u.get("armor_pen", 0.0)) + WHEEL_DIAMOND_PEN
 	for i in range(int(ws.get("club", 0))):
-		battle._damage._buff(u, "lifesteal", 0.005, false, 9999.0); u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + 0.02
+		battle._damage._buff(u, "lifesteal", WHEEL_CLUB_LIFESTEAL, false, 9999.0); u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + WHEEL_CLUB_ASPD
 	battle._recalc_stats(u)
 
 # 赌神小型glow pop(缩放淡出·放慢放大更明显·用户2026-07-14)

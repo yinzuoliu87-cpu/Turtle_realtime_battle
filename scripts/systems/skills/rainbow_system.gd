@@ -15,6 +15,12 @@ const PRISM_BURN_COEF := 0.67    # 黄: 随机敌灼烧层数 = ×ATK
 const PRISM_SHIELD_SCALE := 1.0     # 棱镜护盾: 每人 ×ATK 护盾 (0.65→1.0)
 const STORM_RADIUS := 300.0         # 全色风暴: 半径码 (140→300)
 const STORM_ALLY_HEAL := 0.25       # 全色风暴: 每跳圈内友军回 ×ATK 生命 (新增)
+## 【被动·棱镜】每 N 秒随机换一种颜色, 普攻附带对应效果。
+const PRISM_COLOR_SEC := 6.0        # 每几秒换一次颜色
+const PRISM_RED_TRUE := 0.25        # 红: 普攻额外 ×ATK 真实伤害
+const PRISM_BLUE_SHIELD := 0.20     # 蓝: 每次普攻获得 ×ATK 护盾
+const PRISM_BLUE_SEC := 4.0         # 蓝盾持续(秒)
+const PRISM_GREEN_HEAL := 0.025     # 绿: 每次普攻回复【已损生命】×
 const PRISM_ATK_FROM_HP := 0.02     # 棱镜转化: 获得 =2%最大生命 的攻击力
 ## ★2026-07-28 第二轮实测后回调 10%→2%(用户拍板): 10% 让 Lv5 无装备下 ATK 48→163.9(3.4倍),
 ##   而彩虹全部技能都是 ×ATK 系数 → 等于所有技能同时乘 3.4 → 三技能全冲进前三
@@ -145,7 +151,7 @@ func _rainbow_storm_end(u: Dictionary) -> void:
 func _sk_rainbow_shield(u: Dictionary) -> void:                  # 彩虹龟·棱镜护盾 ✅
 	_rainbow_prism_shield_vfx(u)   # 七彩棱镜爆发+每友军护盾罩(用户2026-07-13补施法特效)
 	for o in battle._targeting._allies_of(u):
-		battle._damage._grant_shield(o, u["atk"] * PRISM_SHIELD_SCALE, 4.0)   # 彩虹棱镜护盾(通用护盾4秒·用户2026-07-28: 0.65→1.0ATK)
+		battle._damage._grant_shield(o, u["atk"] * PRISM_SHIELD_SCALE, PRISM_BLUE_SEC)   # 彩虹棱镜护盾(通用护盾4秒·用户2026-07-28: 0.65→1.0ATK)
 
 func _sk_rainbow_storm(u: Dictionary) -> void:                  # 彩虹龟·全色风暴 (重做2026-07-13: AI棱镜漩涡+GPU彩虹粒子+碎甲可视化-20%护甲魔抗+亮边AOE·期间锁龟能)
 	u["storm_until"] = battle._t + 4.0                 # 风暴4秒期间龟能锁定(用户)

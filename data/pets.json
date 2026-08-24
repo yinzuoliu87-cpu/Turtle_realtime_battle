@@ -579,8 +579,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "远程形态释放灵能冲击，对炮弹命中处的敌人造成 {N:1.0*ATK} + 10% 目标最大生命值 物理伤害。\n近战形态挥出锤击，造成 {N:1.4*ATK} 物理伤害，并获得所造成伤害 50% 的护盾，持续 <span class=\"val-atk\">4 秒</span>。",
-        "detail": "双头龟技能一，随形态变体：\n· 远程形态【灵能冲击】：\n射出一颗紫色炮弹，碰到第一个敌人即爆炸，对爆点 <span class=\"val-def\">200 码</span> 内的敌人造成（100%×攻击力 = {N:1.0*ATK}）+ 10%目标最大生命值 物理伤害。\n· 近战形态【锤击】：\n对目标造成（140%×攻击力 = {N:1.4*ATK}）物理伤害，并获得造成伤害 50%的护盾（4 秒）。\n<span style=\"color:#8a93a0\">释放后自动切换形态（被动·双生），并附带切换攻击+位移。\n</span>"
+        "brief": "远程形态释放灵能冲击，对炮弹命中处的敌人造成 {N:1.0*ATK} + {C:TwoHeadSystem.STRIKE_RANGED_MAXHP%}% 目标最大生命值 物理伤害。\n近战形态挥出锤击，造成 {N:1.4*ATK} 物理伤害，并获得所造成伤害 {C:TwoHeadSystem.STRIKE_SHIELD_PCT%}% 的护盾，持续 <span class=\"val-atk\">{C:TwoHeadSystem.STRIKE_SHIELD_SEC} 秒</span>。",
+        "detail": "双头龟技能一，随形态变体：\n· 远程形态【灵能冲击】：\n射出一颗紫色炮弹，碰到第一个敌人即爆炸，对爆点 <span class=\"val-def\">{C:TwoHeadSystem.STRIKE_BLAST_RADIUS} 码</span> 内的敌人造成（{C:TwoHeadSystem.STRIKE_RANGED_COEF%}%×攻击力 = {N:1.0*ATK}）+ {C:TwoHeadSystem.STRIKE_RANGED_MAXHP%}%目标最大生命值 物理伤害。\n· 近战形态【锤击】：\n对目标造成（{C:TwoHeadSystem.STRIKE_MELEE_COEF%}%×攻击力 = {N:1.4*ATK}）物理伤害，并获得造成伤害 {C:TwoHeadSystem.STRIKE_SHIELD_PCT%}%的护盾（{C:TwoHeadSystem.STRIKE_SHIELD_SEC} 秒）。\n<span style=\"color:#8a93a0\">释放后自动切换形态（被动·双生），并附带切换攻击+位移。\n</span>"
       },
       {
         "name": "精神干扰/吸收",
@@ -960,8 +960,8 @@
     "passive": {
       "type": "rainbowPrism",
       "name": "棱镜",
-      "brief": "棱镜每 <span class=\"val-atk\">6 秒</span> 随机获得一种颜色，为普攻附带对应效果：\n🔴 红色附加 <span class=\"val-atk\">25% 攻击力</span> 的真实伤害，🔵 蓝色使每次普攻获得 <span class=\"val-atk\">20% 攻击力</span> 护盾，🟢 绿色使每次普攻回复 <span class=\"val-heal\">2.5% 已损生命值</span>。\n彩虹龟持续获得 <span class=\"val-hp\">2% 最大生命值</span> 的攻击力，以及<span class=\"val-atk\">(0.3×攻击力)%</span> 的攻击速度。",
-      "desc": "每 6 秒随机获得一种颜色（🔴红/🔵蓝/🟢绿），普攻附带对应效果：🔴红光额外造成（25%×攻击力({ATK}) = {T:0.25*ATK}）真实伤害。\n🔵蓝光每次普攻获得（20%×攻击力({ATK}) = {S:0.2*ATK}）护盾（持续 4 秒）\n🟢绿光每次普攻回复 <span class=\"val-heal\">2.5% 已损生命值</span>。\n彩虹龟持续获得（2%×最大生命值）的攻击力和（0.3×攻击力）%的攻击速度。\n两者实时生效：\n中途提升最大生命值会同时抬高攻击力与攻速。"
+      "brief": "棱镜每 <span class=\"val-atk\">{C:RainbowSystem.PRISM_COLOR_SEC} 秒</span> 随机获得一种颜色，为普攻附带对应效果：\n🔴 红色附加 <span class=\"val-atk\">{C:RainbowSystem.PRISM_RED_TRUE%}% 攻击力</span> 的真实伤害，🔵 蓝色使每次普攻获得 <span class=\"val-atk\">{C:RainbowSystem.PRISM_BLUE_SHIELD%}% 攻击力</span> 护盾，🟢 绿色使每次普攻回复 <span class=\"val-heal\">{C:RainbowSystem.PRISM_GREEN_HEAL%}% 已损生命值</span>。\n彩虹龟持续获得 <span class=\"val-hp\">2% 最大生命值</span> 的攻击力，以及<span class=\"val-atk\">(0.3×攻击力)%</span> 的攻击速度。",
+      "desc": "每 {C:RainbowSystem.PRISM_COLOR_SEC} 秒随机获得一种颜色（🔴红/🔵蓝/🟢绿），普攻附带对应效果：🔴红光额外造成（{C:RainbowSystem.PRISM_RED_TRUE%}%×攻击力({ATK}) = {T:0.25*ATK}）真实伤害。\n🔵蓝光每次普攻获得（{C:RainbowSystem.PRISM_BLUE_SHIELD%}%×攻击力({ATK}) = {S:0.2*ATK}）护盾（持续 {C:RainbowSystem.PRISM_BLUE_SEC} 秒）\n🟢绿光每次普攻回复 <span class=\"val-heal\">{C:RainbowSystem.PRISM_GREEN_HEAL%}% 已损生命值</span>。\n彩虹龟持续获得（2%×最大生命值）的攻击力和（0.3×攻击力）%的攻击速度。\n两者实时生效：\n中途提升最大生命值会同时抬高攻击力与攻速。"
     },
     "skillPool": [
       {
@@ -1090,8 +1090,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "每次释放进入抽取阶段，花色转盘落定后永久提升一项属性：\n♠ 黑桃：\n攻击力 <span class=\"val-atk\">+3</span>、最大生命值 <span class=\"val-heal\">+10</span>。\n♥ 红心：\n护甲 <span class=\"val-def\">+1</span>、魔抗 <span class=\"val-magic\">+1</span>。\n♦ 方块：\n暴击率 <span class=\"val-atk\">+2%</span>、护甲穿透 <span class=\"val-atk\">+1</span>。\n♣ 梅花：\n生命偷取 <span class=\"val-heal\">+0.5%</span>、攻击速度 <span class=\"val-atk\">+2%</span>。\n<span style=\"color:#8a93a0\">抽取阶段锁定龟能。\n选择本技能后，登场损失 30% 最大生命值，换取基础多重打击概率由 40% 提升至 60%。\n</span>",
-        "detail": "<span class=\"val-normal\">选择本技能时</span>：赌神龟登场即<span class=\"val-true\">损失 30% 最大生命值</span>，换取<span class=\"val-atk\">额外 +20% 多重打击概率</span>（基础 40% → 60%）。\n<span class=\"val-normal\">主动</span>（龟能满自动释放）：随机抽取一个花色，永久提升一项属性：♠黑桃 攻击力 <span class=\"val-atk\">+3</span>、最大生命值 <span class=\"val-heal\">+10</span>。\n♥红心 护甲 <span class=\"val-def\">+1</span>、魔抗 <span class=\"val-magic\">+1</span>。\n♦方块 暴击率 <span class=\"val-atk\">+2%</span>、护甲穿透 <span class=\"val-atk\">+1</span>。\n♣梅花 生命偷取 <span class=\"val-heal\">+0.5%</span>、攻击速度 <span class=\"val-atk\">+2%</span>。\n<span style=\"color:#8a93a0\">赌神龟抽到的花色会在【本大轮】跨场累积，下一场登场时自动套用；换大轮时重置。\n</span>\n<span style=\"color:#8a93a0\">抽取阶段（转盘旋转约 1.15 秒）内<b>锁龟能不充能</b>，花色落定后自动解锁。\n</span>。\n<span style=\"color:#8a93a0\">抽取阶段锁定龟能。</span>"
+        "brief": "每次释放进入抽取阶段，花色转盘落定后永久提升一项属性：\n♠ 黑桃：\n攻击力 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_SPADE_ATK}</span>、最大生命值 <span class=\"val-heal\">+{C:GamblerSystem.WHEEL_SPADE_HP}</span>。\n♥ 红心：\n护甲 <span class=\"val-def\">+{C:GamblerSystem.WHEEL_HEART_RESIST}</span>、魔抗 <span class=\"val-magic\">+{C:GamblerSystem.WHEEL_HEART_RESIST}</span>。\n♦ 方块：\n暴击率 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_DIAMOND_CRIT%}%</span>、护甲穿透 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_DIAMOND_PEN}</span>。\n♣ 梅花：\n生命偷取 <span class=\"val-heal\">+{C:GamblerSystem.WHEEL_CLUB_LIFESTEAL%}%</span>、攻击速度 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_CLUB_ASPD%}%</span>。\n<span style=\"color:#8a93a0\">抽取阶段锁定龟能。\n选择本技能后，登场损失 {C:GamblerSystem.WHEEL_HP_COST%}% 最大生命值，换取基础多重打击概率由 {C:GamblerSystem.MULTI_BASE%}% 提升至 {C:GamblerSystem.MULTI_WHEEL%}%。\n</span>",
+        "detail": "<span class=\"val-normal\">选择本技能时</span>：赌神龟登场即<span class=\"val-true\">损失 {C:GamblerSystem.WHEEL_HP_COST%}% 最大生命值</span>，换取<span class=\"val-atk\">额外 +{C:GamblerSystem.MULTI_BET_BONUS%}% 多重打击概率</span>（基础 {C:GamblerSystem.MULTI_BASE%}% → {C:GamblerSystem.MULTI_WHEEL%}%）。\n<span class=\"val-normal\">主动</span>（龟能满自动释放）：随机抽取一个花色，永久提升一项属性：♠黑桃 攻击力 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_SPADE_ATK}</span>、最大生命值 <span class=\"val-heal\">+{C:GamblerSystem.WHEEL_SPADE_HP}</span>。\n♥红心 护甲 <span class=\"val-def\">+{C:GamblerSystem.WHEEL_HEART_RESIST}</span>、魔抗 <span class=\"val-magic\">+{C:GamblerSystem.WHEEL_HEART_RESIST}</span>。\n♦方块 暴击率 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_DIAMOND_CRIT%}%</span>、护甲穿透 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_DIAMOND_PEN}</span>。\n♣梅花 生命偷取 <span class=\"val-heal\">+{C:GamblerSystem.WHEEL_CLUB_LIFESTEAL%}%</span>、攻击速度 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_CLUB_ASPD%}%</span>。\n<span style=\"color:#8a93a0\">赌神龟抽到的花色会在【本大轮】跨场累积，下一场登场时自动套用；换大轮时重置。\n</span>\n<span style=\"color:#8a93a0\">抽取阶段（转盘旋转约 1.15 秒）内<b>锁龟能不充能</b>，花色落定后自动解锁。\n</span>。\n<span style=\"color:#8a93a0\">抽取阶段锁定龟能。</span>"
       }
     ],
     "defaultSkills": [
@@ -1635,8 +1635,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "获得 <span class=\"val-atk\">50% 攻击速度</span> 和 <span class=\"val-atk\">50% 移动速度</span>，持续 <span class=\"val-atk\">4 秒</span>。\n强化涅槃被动，使其改为以 <span class=\"val-heal\">60% 最大生命值</span>复活并永久提升 <span class=\"val-atk\">20%</span> 攻击力。",
-        "detail": "主动（120 龟能）：凤凰龟周身烈焰暴涨，自身获得 <span class=\"val-atk\">+50%</span> 攻击速度与 <span class=\"val-atk\">+50%</span> 移动速度，持续 4 秒（配合喷火随攻击速度增伤）。\n被动强化涅槃：\n浴火重生时转而以 60%最大生命值复活，并永久获得 <span class=\"val-atk\">+20%</span> 攻击力。",
+        "brief": "获得 <span class=\"val-atk\">{C:PhoenixSystem.NIRVANA_ENH_ASPD%}% 攻击速度</span> 和 <span class=\"val-atk\">{C:PhoenixSystem.NIRVANA_ENH_SPD%}% 移动速度</span>，持续 <span class=\"val-atk\">{C:PhoenixSystem.NIRVANA_ENH_SEC} 秒</span>。\n强化涅槃被动，使其改为以 <span class=\"val-heal\">{C:PhoenixSystem.NIRVANA_ENH_HP_PCT%}% 最大生命值</span>复活并永久提升 <span class=\"val-atk\">{C:PhoenixSystem.NIRVANA_ENH_ATK%}%</span> 攻击力。",
+        "detail": "主动（120 龟能）：凤凰龟周身烈焰暴涨，自身获得 <span class=\"val-atk\">+{C:PhoenixSystem.NIRVANA_ENH_ASPD%}%</span> 攻击速度与 <span class=\"val-atk\">+{C:PhoenixSystem.NIRVANA_ENH_SPD%}%</span> 移动速度，持续 {C:PhoenixSystem.NIRVANA_ENH_SEC} 秒（配合喷火随攻击速度增伤）。\n被动强化涅槃：\n浴火重生时转而以 {C:PhoenixSystem.NIRVANA_ENH_HP_PCT%}%最大生命值复活，并永久获得 <span class=\"val-atk\">+{C:PhoenixSystem.NIRVANA_ENH_ATK%}%</span> 攻击力。",
         "energyCost": 120,
         "icon": "skills/phoenix-3.png"
       }

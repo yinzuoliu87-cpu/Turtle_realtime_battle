@@ -24,6 +24,13 @@ const NIRVANA_GATHER_SEC := 1.3   ## 第二拍: 聚火升腾(0.6 → 1.9)
 const NIRVANA_BURN_COEF := 0.3    # 涅槃(首死复活): 对全体敌灼烧层数 = ×ATK (原走全局 _default_burn_stacks 0.67)
 const NIRVANA_HP_PCT := 0.25      # 涅槃: 复活生命 = ×最大生命 (0.30→0.25)
 const NIRVANA_ENH_HP_PCT := 0.60  # 强化涅槃: 复活生命 = ×最大生命 (1.00→0.60)
+## 【强化涅槃·主动】自身短时增益
+const NIRVANA_ENH_ASPD := 0.50    # 攻击速度 +
+const NIRVANA_ENH_SPD := 0.50     # 移动速度 +
+const NIRVANA_ENH_SEC := 4.0      # 两项持续(秒)
+const NIRVANA_ENH_ATK := 0.20     # 复活后永久 + 攻击力
+const NIRVANA_ENH_ASPD_MULT := 1.0 + NIRVANA_ENH_ASPD   # 推导, 不另写 1.5
+const NIRVANA_ENH_SPD_MULT := 1.0 + NIRVANA_ENH_SPD
 
 var battle
 
@@ -329,7 +336,7 @@ func _sk_phoenix_lavashield(u: Dictionary) -> void:              # 凤凰龟·�
 	battle._skill_ring(u["pos"], Color(1.0, 0.5, 0.2, 0.5), 50.0)
 
 func _sk_phoenix_haste(u: Dictionary) -> void:                   # 凤凰龟·技三主动 (用户2026-07-07: 自身+50%攻速+50%移速4秒·配合喷火随攻速增伤; 强化涅槃被动在spawn施加)
-	u["haste_mult"] = 1.5; u["haste_until"] = battle._t + 4.0          # +50%攻速(复用祝福haste机制)
+	u["haste_mult"] = NIRVANA_ENH_ASPD_MULT; u["haste_until"] = battle._t + NIRVANA_ENH_SEC          # +50%攻速(复用祝福haste机制)
 	u["spd_move_mult"] = 1.5; u["spd_dbf_until"] = battle._t + 4.0     # +50%移速(复用spd_move_mult机制)
 	battle._aura_vfx("res://assets/sprites/vfx/fx-glow-ring.png", u, 84.0, Color(1.0, 0.55, 0.15, 0.6), 4.0)   # 烈焰加速火环(强化涅槃+50%攻速移速4秒)
 

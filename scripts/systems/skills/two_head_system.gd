@@ -25,6 +25,14 @@ const ENH_SEC := 4.0             # 破甲/护盾持续秒
 ## 【切远程的滑退距离】
 const RETREAT_DIST := 200.0
 ## 【技能二·远程形态: 精神干扰】(真伤系数见上面 DISRUPT_TRUE)
+## 【技能一·远程形态: 灵能冲击】紫炮弹碰第一个敌人即爆。
+const STRIKE_RANGED_COEF := 1.0    # ×ATK 物理
+const STRIKE_RANGED_MAXHP := 0.10  # + 目标最大生命 ×
+const STRIKE_BLAST_RADIUS := 200.0 # 爆点半径(码)
+## 【技能一·近战形态: 锤击】
+const STRIKE_MELEE_COEF := 1.4     # ×ATK 物理
+const STRIKE_SHIELD_PCT := 0.5     # 获得 = 所造成伤害 × 的护盾
+const STRIKE_SHIELD_SEC := 4.0     # 护盾持续(秒)
 const DISRUPT_HEALCUT_PCT := 0.5   # 治疗削减比例
 const DISRUPT_HEALCUT_SEC := 5.0   # 治疗削减持续(秒)
 const DISRUPT_SHIELD_BREAK := 0.5  # 破除目标护盾的比例
@@ -114,7 +122,7 @@ func _two_head_cannon_boom(u: Dictionary, at2d: Vector2) -> void:
 	tw.tween_property(sp, "pixel_size", sp.pixel_size * 3.4, 0.32).set_ease(Tween.EASE_OUT)
 	tw.tween_property(sp, "modulate:a", 0.0, 0.32)
 	tw.chain().tween_callback(sp.queue_free)
-	battle._skill_ring(at2d, Color(0.76, 0.55, 1.0, 0.9), 200.0)       # 200码爆炸范围冲击波
+	battle._skill_ring(at2d, Color(0.76, 0.55, 1.0, 0.9), STRIKE_BLAST_RADIUS)       # 200码爆炸范围冲击波
 	battle._skill_ring(at2d, Color(0.86, 0.72, 1.0, 0.7), 110.0)
 	for o in battle._targeting._enemies_of(u):
 		if o.get("alive", false) and at2d.distance_to(o["pos"]) <= 200.0:
