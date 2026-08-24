@@ -3,6 +3,18 @@ extends RefCounted
 ## 缩头龟(含随从小将)技能系统
 ## 类内名不变;外部名加 battle.
 
+## ★★2026-08-22 文案根除: 下面这些原来是函数体里的裸字面量。
+## 【防御】护盾 + 护甲, 两者时长不同; 护盾到期把剩余部分按比例转生命。
+const DEFEND_SHIELD_PCT := 0.20   # 护盾 = 自身最大生命 ×
+const DEFEND_SHIELD_SEC := 4.0    # 护盾持续(秒)·持盾期锁龟能
+const DEFEND_DEF_UP := 0.20       # 护甲提升
+const DEFEND_DEF_SEC := 5.0       # 护甲加成持续(秒)
+const DEFEND_CONVERT := 0.20      # 到期时把【剩余护盾】× 此值转成生命
+## 【强化随从】给随从的一组增益(随从先死则本体永久继承, 可叠)。
+const EMPOWER_SEC := 5.0          # 持续(秒)
+const EMPOWER_STAT := 0.10        # 攻击力 / 护甲 / 魔抗 / 生命偷取 各 +
+const EMPOWER_CRIT := 0.20        # 暴击率 +
+
 var battle
 
 func _init(b) -> void:
@@ -492,12 +504,12 @@ func _hiding_legacy_vfx(from_pos: Vector2, owner: Dictionary) -> void:   # 遗�
 			battle._skill_ring(oref["pos"], Color(1.0, 0.85, 0.4, 0.7), 70.0))
 
 func _sk_hiding_defend(u: Dictionary) -> void:                   # 缩头乌龟·防御(封板·100龟能): 缩壳20%maxHp盾(4秒)+护甲+20%(5秒)·到期剩余盾20%转生命; 2026-07-17用户: 持盾锁龟能+盾段壳青绿特殊色
-	battle._damage._grant_shield(u, u["maxHp"] * 0.20, 4.0)
+	battle._damage._grant_shield(u, u["maxHp"] * DEFEND_SHIELD_PCT, DEFEND_SHIELD_SEC)
 	u["_hidingShellVal"] = u["maxHp"] * 0.20                     # 血条壳青绿特殊盾段(hp_bar照圣盾段收敛)
-	u["hiding_shield_until"] = battle._t + 4.0                          # 持盾锁龟能(石头rock_shield四连判据同款·盾破/到期恢复)
-	battle._damage._buff(u, "def", 0.2, true, 5.0)
+	u["hiding_shield_until"] = battle._t + DEFEND_SHIELD_SEC                          # 持盾锁龟能(石头rock_shield四连判据同款·盾破/到期恢复)
+	battle._damage._buff(u, "def", DEFEND_DEF_UP, true, DEFEND_DEF_SEC)
 	var uu: Dictionary = u
-	battle._pending_shots.append({"delay": 3.95, "fn": func(): battle._damage._heal(uu, float(uu.get("shield", 0.0)) * 0.20), "src": u})   # 到期前读剩余盾×20%转生命
+	battle._pending_shots.append({"delay": 3.95, "fn": func(): battle._damage._heal(uu, float(uu.get("shield", 0.0)) * DEFEND_CONVERT), "src": u})   # 到期前读剩余盾×20%转生命
 	battle._pending_shots.append({"delay": 4.0, "fn": func(): uu["_hidingShellVal"] = 0.0, "src": u})   # 到期清特殊段标记
 	_hiding_dome(u, Color(0.55, 0.85, 0.6, 1.0), 4.0)          # 壳青绿护罩4秒呼吸→碎裂(2026-07-17: 原零画面)
 	battle._pending_shots.append({"delay": 4.0, "fn": func(): _hiding_legacy_heal_vfx(uu), "src": u})   # 碎裂后: 绿光点流入(剩盾转血可视)
@@ -534,14 +546,14 @@ func _hiding_minion_of(u: Dictionary):                          # 取该缩头�
 
 func _hiding_apply_buff(o: Dictionary, dur: float) -> void:     # 强化随从增益(dur秒·dur<=0=永久·供随从死亡继承给主人): 攻/甲/抗+10%·吸血+10%·暴击+20%
 	var d: float = dur if dur > 0.0 else 9999.0
-	battle._damage._buff(o, "atk", 0.10, true, d)
-	battle._damage._buff(o, "def", 0.10, true, d)
-	battle._damage._buff(o, "mr", 0.10, true, d)
-	battle._damage._buff(o, "lifesteal", 0.10, false, d)
-	o["crit"] = float(o.get("crit", 0.0)) + 0.20
+	battle._damage._buff(o, "atk", EMPOWER_STAT, true, d)
+	battle._damage._buff(o, "def", EMPOWER_STAT, true, d)
+	battle._damage._buff(o, "mr", EMPOWER_STAT, true, d)
+	battle._damage._buff(o, "lifesteal", EMPOWER_STAT, false, d)
+	o["crit"] = float(o.get("crit", 0.0)) + EMPOWER_CRIT
 	if dur > 0.0:
 		var oo: Dictionary = o
-		battle._pending_shots.append({"delay": dur, "fn": func(): oo["crit"] = float(oo.get("crit", 0.0)) - 0.20, "src": o})
+		battle._pending_shots.append({"delay": dur, "fn": func(): oo["crit"] = float(oo.get("crit", 0.0)) - EMPOWER_CRIT, "src": o})
 		var gl = Sprite3D.new()                                 # 用户2026-07-17: 被强化对象冒红光持续到效果结束·渐入渐出不瞬变(跟随单位)
 		gl.texture = VfxTex._make_fire_glow_tex()
 		gl.billboard = BaseMaterial3D.BILLBOARD_ENABLED; gl.shaded = false; gl.transparent = true
@@ -582,7 +594,7 @@ func _sk_hiding_shrink(u: Dictionary) -> void:                  # 缩头(封板�
 func _sk_hiding_buff(u: Dictionary) -> void:                    # 强化随从(封板·80龟能): 随从注入力量5秒(攻/甲/抗+10%·吸血+10%·暴击+20%)
 	var m = _hiding_minion_of(u)
 	if m == null: return
-	_hiding_apply_buff(m, 5.0)
+	_hiding_apply_buff(m, EMPOWER_SEC)
 	battle._beam_vfx("res://assets/sprites/vfx/fx-trail.png", u["pos"], m["pos"], 24.0, Color(1.0, 0.85, 0.4, 0.65), 0.45)   # 金色注入光束(2026-07-17)
 	var stex = VfxTex._make_star_texture()
 	var mref: Dictionary = m

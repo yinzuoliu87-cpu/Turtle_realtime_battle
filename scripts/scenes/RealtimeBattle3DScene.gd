@@ -2525,7 +2525,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 				elif u["id"] == "phoenix":
 					_phoenix_sys._phoenix_flame_channel(u, tgt, delta)               # 凤凰: 持续喷火(VFX+每0.5s伤害)
 					if not u["melee"] and dist < rng * 0.7:
-						_do_move(u, tgt, dist, rng, spd * 0.5, delta)   # 边喷边走位(kite); 喷火时移速×0.5(寻敌时正常速)(用户)
+						_do_move(u, tgt, dist, rng, spd * PhoenixSystem.FLAME_MOVE_MULT, delta)   # 边喷边走位(kite); 喷火时移速×0.5(寻敌时正常速)(用户)
 				elif u["atk_cd"] <= 0.0:
 					u["pending"] = "B"
 					u["state"] = "windup"
@@ -2939,7 +2939,7 @@ func _big_bear_charge_and_spawn(u: Dictionary, si: int) -> void:   # 满层: 携
 	var gt := _reg_tween()
 	gt.tween_property(glow, "modulate:a", 0.95, 1.0)
 	gt.parallel().tween_property(glow, "scale", Vector3(3.2, 3.2, 3.2), 1.2)
-	await _wait_sim(1.2)
+	await _wait_sim(EquipTickSystem.DOLL_CHARGE_SEC)
 	if not is_instance_valid(self): return
 	if is_instance_valid(glow): glow.queue_free()
 	var stt: Dictionary = u.get("eq_state", {}).get("p2eq_034", {})
@@ -3007,7 +3007,7 @@ func _big_bear_attack(u: Dictionary, tgt: Dictionary) -> void:   # 大熊: <2层
 		tw.tween_callback(_bear_paw_hit.bind(u, tgt))
 		u["bear_stacks"] = int(u.get("bear_stacks", 0)) + 1
 		if int(u["bear_stacks"]) >= 2:
-			u["atk_range"] = 600.0                   # 下次冲击波: 射程600码(进程即放,不贴脸)
+			u["atk_range"] = EquipTickSystem.BEAR_WAVE_RANGE                   # 下次冲击波: 射程600码(进程即放,不贴脸)
 
 func _bear_paw_hit(u: Dictionary, tgt) -> void:   # 熊掌挥击接触瞬间: 此刻才伤害+跳数字+金爪痕
 	if not u.get("alive", false) or tgt == null or not tgt.get("alive", false): return
@@ -3361,7 +3361,7 @@ func _conch_transform(pos2d: Vector2) -> void:
 ##   (用户:「只有法力条触发的主动效果, 可能有常驻的被动效果」)。030 迷你水晶球A(7秒)
 ##   与 031 迷你水晶球B(8秒)原来在这里, 那是第二个触发口, 已摘掉 —— **别补回来**,
 ##   补回来就是同一件装备两条路各放各的。verify_staff_synergy ⑭ 会红。
-const _EQ_CUSTOM_IV := {"p2eq_004": 6.0, "p2eq_048": 8.0, "p2eq_049": 8.0, "p2eq_050": 8.0, "p2eq_051": 8.0, "p2eq_053": 8.0, "p2eq_057": 8.0, "p2eq_022": 8.0, "p2eq_028": 6.0, "p2eq_037": 5.0, "p2eq_040": EquipSystem.FPGA_IV, "p2eq_042": 8.0, "p2eq_052": 4.0}
+const _EQ_CUSTOM_IV := {"p2eq_004": 6.0, "p2eq_048": 8.0, "p2eq_049": 8.0, "p2eq_050": 8.0, "p2eq_051": 8.0, "p2eq_053": EquipSystem.SHOTGUN_IV, "p2eq_057": 8.0, "p2eq_022": 8.0, "p2eq_028": 6.0, "p2eq_037": 5.0, "p2eq_040": EquipSystem.FPGA_IV, "p2eq_042": 8.0, "p2eq_052": 4.0}
 func _ripple_heal_vfx(pos2d: Vector2, size_px: float) -> void:
 	var tex: Texture2D = load("res://assets/sprites/vfx/ripple-heal-anim.png")
 	var fh: int = maxi(1, tex.get_height())
@@ -4025,9 +4025,9 @@ func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大�
 	_vfx._impact_particles(origin, 0.0)
 	_skill_ring(origin, Color(1.0, 0.85, 0.4, 0.7), 96.0)
 	# 释放: 冲击波沿 dir 前进, 沿途暖金块一簇簇破土冒起(小菊式地面喷涌), 波前首经过即命中; 熊起身复位
-	var dmg: int = _atk_dmg(u, 1.5, tgt)
+	var dmg: int = _atk_dmg(u, EquipTickSystem.BEAR_WAVE_COEF, tgt)
 	var perp: Vector2 = dir.orthogonal()
-	var reach := 600.0   # 射程边界 600码 (用户)
+	var reach := EquipTickSystem.BEAR_WAVE_RANGE   # 射程边界 600码 (用户)
 	var traveled := 0.0
 	var last_chunk := -20.0
 	var hit_arr: Array = []
@@ -4204,7 +4204,6 @@ func _splash_adjacent(u: Dictionary, tgt: Dictionary, frac: float) -> void:
 
 # 龟壳·龟壳打击(用户改造): 1ATK单段, 物理↔真实逐攻交替(本次真→下次物→…), 主目标120px内其他敌溅射50%(同类型)
 const SHELL_SPLASH_RADIUS := 120.0
-const PHX_CONE_HALF_DEG := 35.0     # 凤凰喷火扇形半角(全70°)
 const PHX_FLAME_MAG_COEF := 0.2      # 每0.5s tick 魔法系数 ×ATK
 const PHX_FLAME_BURN_COEF := 0.04     # 每0.5s tick 灼烧层系数 ×ATK (用户2026-07-28削弱: 0.07→0.04) ★T3实装默认(从熔岩龟抄来). 用户2026-06-30那句"每次普攻加灼烧层0.07ATK"是【对熔岩龟说的】(上文在谈熔岩攻速0.85), 凤凰这里用户原话写的是"每0.5秒造成？魔法伤害并施加？灼烧层"=没给数 → 见附录A
 
@@ -5755,7 +5754,7 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 	u["lifesteal"] = float(u["lifesteal"]) + BasicConsts.CHI_LIFESTEAL
 	u["armor_pen"] = float(u.get("armor_pen", 0.0)) + ap
 	var uu: Dictionary = u
-	_pending_shots.append({"delay": 3.0, "fn": func():          # 3秒后撤销自增buff
+	_pending_shots.append({"delay": BasicConsts.CHI_BUFF_SEC, "fn": func():   # 3秒后撤销自增buff
 		uu["crit"] = float(uu["crit"]) - BasicConsts.CHI_CRIT
 		uu["lifesteal"] = float(uu["lifesteal"]) - BasicConsts.CHI_LIFESTEAL
 		uu["armor_pen"] = float(uu.get("armor_pen", 0.0)) - ap, "src": u})
@@ -5764,7 +5763,7 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 	var _bn: int = _chiwave_hits_from(u, u["pos"], tgt)
 	for _a in range(12):                                        # 12方向 × 3档距离 采样
 		var _ad: Vector2 = Vector2(cos(float(_a) * TAU / 12.0), sin(float(_a) * TAU / 12.0))
-		for _r in [120.0, 210.0, 300.0]:
+		for _r in [BasicConsts.CHI_DASH_MAX * 0.4, BasicConsts.CHI_DASH_MAX * 0.7, BasicConsts.CHI_DASH_MAX]:
 			var _cand: Vector2 = u["pos"] + _ad * _r
 			if _too_close_to_enemy(u, _cand, 120.0): continue   # 不贴脸(碰撞体积)
 			var _cn: int = _chiwave_hits_from(u, _cand, tgt)
@@ -5895,7 +5894,7 @@ func _slam_apply_damage(u: Dictionary, tgt: Dictionary, tmax: float) -> void:
 		_damage._apply_damage_from(u, tgt, _atk_dmg(u, BasicConsts.SLAM_MAIN_ATK, tgt) + int(u["atk"] * BasicConsts.SLAM_MAIN_HP_PER_ATK * tmax), Color("#ff9d5c"))   # 过肩摔主目标(用户2026-07-29 第五轮): 0.7A+23%最大生命 → 1.0A + 0.2%×ATK×最大生命
 	for o in _targeting._enemies_of(u):
 		if is_same(o, tgt) or not o.get("alive", false): continue
-		if o["pos"].distance_to(tgt["pos"]) <= 350.0:   # 范围 350码(用户2026-07-11: 250→350)
+		if o["pos"].distance_to(tgt["pos"]) <= BasicConsts.SLAM_SPLASH_RADIUS:   # 范围 350码(用户2026-07-11: 250→350)
 			_damage._apply_damage_from(u, o, _atk_dmg(u, BasicConsts.SLAM_SPLASH_ATK, o) + int(u["atk"] * BasicConsts.SLAM_SPLASH_HP_PER_ATK * tmax), Color("#ff9d5c"))   # 过肩摔周围(用户2026-07-29 第五轮): 0.2A+18% → 0.3A + 0.13%×ATK×主目标最大生命
 
 ## 过肩摔完整编排(#7·用户2026-07-11): 擒抱→双方跳空(_slam_voff)→空中反转180°(flip_v)→坠落→落地范围伤+大尘爆+震屏. 双方 _slam 冻结.
@@ -5945,7 +5944,7 @@ func _basic_slam_run(u: Dictionary, tgt: Dictionary, dir: Vector2, u_start: Vect
 	u["pos"] = land + dir * 45.0
 	if tgt.get("alive", false):
 		tgt["pos"] = land
-		_damage._stun(tgt, 0.5, "_basic_slam_run")   # 砸地眩晕0.5s
+		_damage._stun(tgt, BasicConsts.SLAM_STUN_SEC, "_basic_slam_run")   # 砸地眩晕0.5s
 		_vfx._flash(tgt)
 	_slam_apply_damage(u, tgt, tmax)
 	_shake(JUICE_SHAKE_BIG)                        # 大砸=大震屏(用户2026-07-11: 表现大范围砸击)
@@ -6637,7 +6636,7 @@ func _throw_gold_coin(src: Dictionary, tgt: Dictionary) -> void:
 	_ballistics._push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "dmg": _atk_dmg(src, 0.30, tgt, false),
 		"col": Color("#ff4444"), "src": src, "t": 0.0, "dur": dur, "basic_onhit": false,
-		"coin_true": int(src["atk"] * 0.30),   # 梭哈每枚 0.18+0.18 → 0.3+0.3(用户2026-07-29 第五轮)
+		"coin_true": int(src["atk"] * FortuneSystem.ALLIN_COIN_COEF),   # 梭哈每枚 0.18+0.18 → 0.3+0.3(用户2026-07-29 第五轮)
 		# ★这一改顺带修掉一个隐藏缺陷: 财神普攻 = 1.0A + 2%×ATK×金币数, 而梭哈【清空金币】。
 		#   每枚金币"留着"值 0.66 伤害/秒(持续到死); 旧值 17.1 点一次性 → 打平需剩余 25.7 秒,
 		#   而它只活 33 秒 → t=7.3 秒后放梭哈还不如留着普攻。改到 0.3+0.3(28.4点)后打平点 42.9 秒 > 33, 任何时候放都划算。
@@ -6946,7 +6945,7 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 	if u["id"] == "hunter" and u.get("hunter_roll_buff", false):
 		u["hunter_roll_buff"] = false
 		if tgt.get("alive", false):
-			_damage._apply_damage_from(u, tgt, _atk_dmg(u, 0.9, tgt), Color("#ff4444"))   # 物理红(翻滚强化+0.9A物理·飘字色规范)
+			_damage._apply_damage_from(u, tgt, _atk_dmg(u, HunterSystem.ROLL_ATK_COEF, tgt), Color("#ff4444"))   # 物理红(翻滚强化+0.9A物理·飘字色规范)
 	# 小龟·不屈(龟盾融入): 每6秒强化普攻 → 附0.7A+20%已损物理+击飞+盾(复用_sk_basic_shield)
 	if u["id"] == "basic" and u.get("basic_enh_ready", false):
 		u["basic_enh_ready"] = false
@@ -6989,7 +6988,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	# --- 小龟·不屈(龟盾融入被动): 每6秒强化下次普攻(在_on_basic_hit消费=0.7A+20%已损+击飞+盾) ---
 	if u["id"] == "basic":
 		u["basic_enh_t"] = float(u.get("basic_enh_t", 0.0)) + delta
-		if float(u["basic_enh_t"]) >= 6.0:
+		if float(u["basic_enh_t"]) >= BasicConsts.SHIELD_CD:
 			u["basic_enh_t"] = 0.0
 			u["basic_enh_ready"] = true
 	# --- 熔岩变身: 怒气满100 → 变火山15秒 (被动 熔岩之心) ---
@@ -7152,7 +7151,7 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 	# 财神聚宝盆: 任意单位阵亡 → 全场存活的财神龟 +9 金币 (设计"金币哗啦涌向财神龟")
 	for f in _units:
 		if f.get("alive", false) and f.get("id") == "fortune" and not is_same(f, u):
-			f["gold"] += 9
+			f["gold"] += FortuneSystem.COIN_ON_DEATH
 			for _ck in range(3):
 				_gold_fly_to(u["pos"] + Vector2(randf_range(-16.0, 16.0), randf_range(-10.0, 10.0)), f)
 	# 海盗掠夺(被动·原版·死亡钩索): 【海盗龟自己阵亡】的瞬间 → 钩锁【击杀它的那个单位】·拉近至90码 + 25%击杀者最大生命【真实伤害】

@@ -550,6 +550,6 @@ func _sk_crystal_orb(u: Dictionary, tgt) -> void:
 	battle._skill_ring(u["pos"], Color(0.72, 0.92, 1.0, 0.6), 34.0)     # 本体施法环
 	_crystal_ray_vfx(u, tgt, func(sr: Dictionary, tr: Dictionary, last: bool) -> void:
 		battle._damage._apply_damage_from(sr, tr, battle._atk_dmg(sr, 0.5, tr, true), Color("#9bdcff"), 0.0, true)   # 每段0.5A魔法(raw避免二次减免·封板)
-		if last: _crystal_stack(sr, tr, 2))                      # 末段叠2层结晶(封板)
+		if last: _crystal_stack(sr, tr, ORB_RAY_STACKS))                      # 末段叠2层结晶(封板)
 
 # 宝箱藏宝图·15件专属战利品池 (封板L592-594·效果取自Phaser chest.js实时适配): 基础/进阶/传说三档

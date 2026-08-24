@@ -126,7 +126,7 @@ func _two_head_cannon_boom(u: Dictionary, at2d: Vector2) -> void:
 	battle._skill_ring(at2d, Color(0.86, 0.72, 1.0, 0.7), 110.0)
 	for o in battle._targeting._enemies_of(u):
 		if o.get("alive", false) and at2d.distance_to(o["pos"]) <= 200.0:
-			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 1.0, o) + int(o["maxHp"] * 0.10), Color("#c0a0ff"))
+			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, STRIKE_RANGED_COEF, o) + int(o["maxHp"] * STRIKE_RANGED_MAXHP), Color("#c0a0ff"))
 			battle._vfx._flash(o, Color(0.8, 0.6, 1.0))
 
 # 双头·锤击(近战 技1·用户2026-07-11): 跳起→落在目标身前→地面锤击(1.4A物理+获50%伤害盾4s)+落地震屏/冲击环/尘爆
@@ -137,7 +137,7 @@ func _two_head_hammer(u: Dictionary, tgt: Dictionary) -> void:
 	var land2d: Vector2 = tgt["pos"] - (d.normalized() if d.length() > 1.0 else Vector2.RIGHT) * 52.0
 	u["_slam"] = true                                           # 跳跃期免分离推挤
 	u["_anim_lock_until"] = battle._t + 0.46                           # 跳跃期AI不出手/不移动
-	var dmg: int = battle._atk_dmg(u, 1.4, tgt)
+	var dmg: int = battle._atk_dmg(u, STRIKE_MELEE_COEF, tgt)
 	var tw = battle._reg_tween()
 	tw.tween_method(_two_head_hammer_arc.bind(u, from2d, land2d), 0.0, 1.0, 0.42)
 	tw.tween_callback(_two_head_hammer_land.bind(u, tgt, land2d, dmg, battle._last_dmg_type))   # 捕获举锤时的伤害类型(空中会被覆写)
@@ -158,7 +158,7 @@ func _two_head_hammer_land(u: Dictionary, tgt: Dictionary, at2d: Vector2, dmg: i
 		if dt != "":
 			battle._damage.set_dtype(dt, tgt)
 		battle._damage._apply_damage_from(u, tgt, dmg, Color("#ffb05c"))
-		battle._damage._grant_shield(u, dmg * 0.5, 4.0)                        # 获造成伤害50%护盾(4秒)
+		battle._damage._grant_shield(u, dmg * STRIKE_SHIELD_PCT, STRIKE_SHIELD_SEC)                        # 获造成伤害50%护盾(4秒)
 		battle._vfx._flash(tgt)
 
 
@@ -308,10 +308,10 @@ func _two_head_fusion_wave_hit(u: Dictionary, tgt: Dictionary, is_true: bool, wv
 	if not tgt.get("alive", false):
 		return
 	if is_true:
-		battle._damage._apply_damage_from(u, tgt, int(u["atk"] * 0.8), Color("#ffffff"), 0.0, true)   # 真实 0.8A(用户2026-07-11)
+		battle._damage._apply_damage_from(u, tgt, int(u["atk"] * FUSION_WAVE_COEF), Color("#ffffff"), 0.0, true)   # 真实 0.8A(用户2026-07-11)
 		battle._skill_ring(tgt["pos"], Color(1.0, 1.0, 1.0, 0.5), 42.0)
 	else:
-		battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 0.8, tgt), Color("#c39bff"))             # 物理 0.8A(用户2026-07-11)
+		battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, FUSION_WAVE_COEF, tgt), Color("#c39bff"))             # 物理 0.8A(用户2026-07-11)
 		battle._skill_ring(tgt["pos"], Color(0.74, 0.46, 1.0, 0.5), 42.0)
 	battle._damage._knockback(u, tgt, 0.0, 0.6, 0.4)                                                  # 附加一点击飞(轻·airborne守卫防过度juggle·用户2026-07-11)
 

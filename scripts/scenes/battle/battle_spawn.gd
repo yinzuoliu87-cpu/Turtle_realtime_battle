@@ -646,10 +646,10 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 				# ⚠ 充能的【消耗方式与收益】用户从未定义 → 现仅作计数(_cyber_sys._sk_cyber_smart 每次释放+1), 不猜、不自造。
 		"crystal":
 			if "crystalBall" in battle._chosen_skill_types(u["id"], u["side"] == "left"):   # 水晶球(技三·选中才召): 登场召唤实体水晶球(2026-07-16加大+特效)
-				var _orb = _spawn_summon(u, "crystalball", u["maxHp"] * 0.50, u["atk"], {
+				var _orb = _spawn_summon(u, "crystalball", u["maxHp"] * CrystalSystem.ORB_HP_PCT, u["atk"], {
 					"label": "水晶球", "spr_id": "crystal-ball", "col_size": 38.0, "hp_w": 40.0, "melee": false,
 					"move_spd": 90.0, "atk_range": 2000.0, "no_basic": true,   # 射程2000(用户2026-07-16)
-					"special": "ray", "special_cd": 5.0, "special_scale": 0.5,   # 攻速0.2≈5s一发(封板)·每发2段共1.0A魔法
+					"special": "ray", "special_cd": CrystalSystem.ORB_RAY_IV, "special_scale": CrystalSystem.ORB_RAY_COEF * 0.5,   # 攻速0.2≈5s一发(封板)·每发2段共1.0A魔法
 				})
 				if _orb != null:                              # 登场爆闪+常驻脉动光环(用户2026-07-16: 球太小没特效)
 					battle._skill_ring(_orb["pos"], Color(0.72, 0.92, 1.0, 0.8), 46.0)
@@ -666,8 +666,8 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 				battle._damage._buff(o, "def", 0.5, true, 9999.0)
 				battle._damage._buff(o, "mr", 0.5, true, 9999.0)
 			if "diamondSmash" in battle._chosen_skill_types(u["id"], u["side"] == "left"):   # 强化钻石结构(技三打包·选中才有): 自身护甲/魔抗额外+100%
-				battle._damage._buff(u, "def", 1.0, true, 9999.0)
-				battle._damage._buff(u, "mr", 1.0, true, 9999.0)
+				battle._damage._buff(u, "def", DiamondSystem.SMASH_SELF_RESIST_BONUS, true, 9999.0)
+				battle._damage._buff(u, "mr", DiamondSystem.SMASH_SELF_RESIST_BONUS, true, 9999.0)
 
 func _spawn_hiding_minion(u: Dictionary) -> void:
 	var pool: Array = battle._hiding_sys._hiding_pool()
@@ -718,13 +718,13 @@ func _spawn_pirate_ship(u: Dictionary, tgt = null) -> void:   # 首次: 后方�
 	var uu: Dictionary = u
 	battle._pirate_sys._pirate_ship_charge(deco, from2d, from_h, impact2d, func() -> void:   # 俯冲到撞击点→结算+转变实体
 		battle._pirate_sys._pirate_ship_splash(impact2d)                     # 大水花爆
-		battle._skill_ring(impact2d, Color(0.9, 0.7, 0.4, 0.6), 200.0)
+		battle._skill_ring(impact2d, Color(0.9, 0.7, 0.4, 0.6), PirateSystem.SHIP_CHARGE_RADIUS)
 		battle._shake(battle.JUICE_SHAKE_HEAVY)
 		var ship = _spawn_pirate_ship_entity(uu, impact2d)   # 撞击点淡入实体海盗船(pirate-ship.png)
 		var src: Dictionary = ship if ship != null else uu
 		for e in battle._targeting._enemies_of(uu):                         # 撞击: 200码内1.0A魔法+击飞2秒(封板)
 			if not e.get("alive", false): continue
-			if e["pos"].distance_to(impact2d) > 200.0: continue
+			if e["pos"].distance_to(impact2d) > PirateSystem.SHIP_CHARGE_RADIUS: continue
 			battle._damage._apply_damage_from(src, e, battle._atk_dmg(uu, 1.0, e, true), Color("#e8c07a"), 0.0, true)
 			battle._damage._knockback(src, e, 40.0, 3.667, 1.0)
 			battle._damage._stun(e, PirateSystem.SHIP_CHARGE_STUN, "_spawn_pirate_ship")

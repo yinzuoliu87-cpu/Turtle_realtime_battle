@@ -40,7 +40,7 @@ func _gambler_multi_cd(u: Dictionary) -> float:
 		base_ch += MULTI_BET_BONUS                                       # 赌注放技→3秒内临时+20%(封顶示例0.80)
 	var ch: float = float(u.get("multi_chance", base_ch))
 	if battle._battle_rng.randf() < ch:
-		u["multi_chance"] = ch * 0.8                  # 递减: 每次连锁×0.8
+		u["multi_chance"] = ch * MULTI_DECAY                  # 递减: 每次连锁×0.8
 		# ★★2026-08-03 用户拍板:【连击不触发剑士】。
 		#   赌神本身就是"云顶剑士式连击", 而剑羁绊的【剑士】也是连击 ——
 		#   两者相乘会让赌神拿满剑达到普通龟的 2.1 倍(实测 576% vs 272%)。
@@ -68,7 +68,7 @@ func _gambler_bet_multi(u: Dictionary, tgt: Dictionary, ch: float) -> void:
 	var bdmg: int = battle._atk_dmg(u, 1.0, tgt)   # 额外一发=普攻1.0A
 	battle._pending_shots.append({"delay": 0.09, "fn": func() -> void:
 		_gambler_throw_hit(u, tgt, bdmg, false, false)   # 甩基础牌(普攻物理红·非穿透·自身不再掷·递归在下句续)
-		_gambler_bet_multi(u, tgt, ch * 0.8)         # 连锁×0.8递减
+		_gambler_bet_multi(u, tgt, ch * MULTI_DECAY)         # 连锁×0.8递减
 		, "src": u})
 
 # 赌神: 甩1张牌→命中结算dmg+金光pop (赌注barrage用·命中才跳伤害; roll_multi=每张触发多重打击)

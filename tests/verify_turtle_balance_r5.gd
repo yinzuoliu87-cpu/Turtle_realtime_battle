@@ -151,12 +151,20 @@ func _buffs() -> void:
 	_chk("④ 财神骰子旧值 (3,8)/0.10 已消失",
 		not fo.contains("randi_range(3, 8)") and not fo.contains('u["maxHp"] * 0.10'))
 	_chk("④ 梭哈每枚物理 = %.2fA" % WANT_ALLIN_COIN, rb.contains("_atk_dmg(src, %.2f, tgt, false)" % WANT_ALLIN_COIN))
-	_chk("④ 梭哈每枚真伤 = %.2fA" % WANT_ALLIN_COIN, rb.contains('"coin_true": int(src["atk"] * %.2f)' % WANT_ALLIN_COIN))
+	_chk("④ 梭哈每枚真伤 = %.2fA" % WANT_ALLIN_COIN,
+		is_equal_approx(FortuneSystem.ALLIN_COIN_COEF, WANT_ALLIN_COIN)
+			and rb.contains('"coin_true": int(src["atk"] * FortuneSystem.ALLIN_COIN_COEF)'))
 	_chk("④ 梭哈旧值 0.18 已消失", not rb.contains("_atk_dmg(src, 0.18, tgt, false)"))
 	# ★首释价 = skill_energy 的基准值; 升星价 120/180/300 是抽完之后才改写的, 别混
 	_chk("④ 招财进宝【首释】龟能 = %d" % int(WANT_BUYEQUIP_FIRST),
 		se.contains('"fortuneBuyEquip": %.1f' % WANT_BUYEQUIP_FIRST))
-	_chk("④ 招财进宝升星价仍是 120/180/300(本轮不动)", fo.contains("60.0 + [60.0, 120.0, 240.0]"))
+	## ★别比 str(数组) —— 我第一版写成 `str(BUY_COST) == "[120, 180, 300]"`, 那是在赌
+	##   GDScript 怎么格式化 float 数组(实测不是那样)。比【值】才是判据。
+	_chk("④ 招财进宝升星价仍是 120/180/300(本轮不动)",
+		FortuneSystem.BUY_COST.size() == 3
+			and is_equal_approx(FortuneSystem.BUY_COST[0], 120.0)
+			and is_equal_approx(FortuneSystem.BUY_COST[1], 180.0)
+			and is_equal_approx(FortuneSystem.BUY_COST[2], 300.0))
 	_chk("④ 融合魔法波龟能 = %d" % int(WANT_FUSION_ENERGY), se.contains('"twoHeadFusion": %.1f' % WANT_FUSION_ENERGY))
 	_chk("④ 融合旧值 125 已消失", not se.contains('"twoHeadFusion": 125.0'))
 	_chk("④ 泡泡爆破魔法 = 消耗量 ×%.1f / 物理 = %.1fA" % [WANT_BUBBLE_MAGIC_MULT, WANT_BUBBLE_PHYS],

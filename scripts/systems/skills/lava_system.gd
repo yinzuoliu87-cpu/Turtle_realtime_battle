@@ -379,8 +379,8 @@ func _lava_magma_surge(u: Dictionary, tgt: Dictionary) -> void:  # 小·岩浆�
 		if o["pos"].distance_to(center) > 120.0: continue
 		battle._knock_up(o, center, 9.0)
 	if tgt != null and tgt.get("alive", false):
-		battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.5, tgt, true), Color("#ff9d5c"))
-	battle._damage._grant_shield(u, u["atk"] * 0.8)
+		battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, SURGE_ATK_COEF, tgt, true), Color("#ff9d5c"))
+	battle._damage._grant_shield(u, u["atk"] * SURGE_SHIELD_COEF)
 	u["_slam"] = false
 
 func _lava_flame_strike(u: Dictionary, tgt: Dictionary) -> void: # 火山·重击: 蓄力猛砸击飞 1.3ATK+8%自身maxHP物理 + 20%吸血
@@ -415,7 +415,7 @@ func _lava_flame_strike(u: Dictionary, tgt: Dictionary) -> void: # 火山·重�
 		battle._vfx._impact_particles(tgt["pos"], 0.0)
 		_lava_burst_vfx(tgt["pos"])                  # AI生成爆裂火球
 		battle._knock_up(tgt, tgt["pos"] - dir * 10.0, 9.0)
-		battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.3, tgt) + int(u["maxHp"] * 0.08), Color("#ff7a33"), 0.20)
+		battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, STRIKE_ATK_COEF, tgt) + int(u["maxHp"] * STRIKE_MAXHP_PCT), Color("#ff7a33"), STRIKE_LIFESTEAL)
 	u["_slam"] = false
 
 

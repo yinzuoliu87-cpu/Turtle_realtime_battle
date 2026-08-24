@@ -210,16 +210,16 @@ func _pirate_shotgun(u: Dictionary, tgt) -> void:
 	base_dir = base_dir.normalized()
 	battle._muzzle_flash(u["pos"], base_dir, Color("#ffd9a0"))
 	battle._skill_ring(u["pos"] + base_dir * 22.0, Color(1.0, 0.82, 0.4, 0.7), 26.0)
-	var half: float = deg_to_rad(30.0)                      # 60度扇面=±30度
+	var half: float = deg_to_rad(SHOT_ARC_DEG * 0.5)        # 60度扇面=±30度
 	for i in range(SHOT_PELLETS):
 		var frac: float = (float(i) / 7.0) * 2.0 - 1.0      # -1..1 均分
 		var d: Vector2 = base_dir.rotated(half * frac)
 		battle._ballistics._shotgun_pellet(u["pos"], u["pos"] + d * SHOT_RANGE, Color(1.0, 0.86, 0.5, 0.95), 0.72)   # 弹丸VFX(射程400·慢速用户2026-07-14)
 		var hit = battle._basic_first_blocker(u, d)                # 该方向路径第一敌(含蛋·障碍穿我方不挡)
-		if hit != null and hit["pos"].distance_to(u["pos"]) <= 400.0:
-			battle._damage._apply_damage_from(u, hit, battle._atk_dmg(u, 0.5, hit), Color("#ffd07a"))   # 0.5A物理
+		if hit != null and hit["pos"].distance_to(u["pos"]) <= SHOT_RANGE:
+			battle._damage._apply_damage_from(u, hit, battle._atk_dmg(u, SHOT_COEF, hit), Color("#ffd07a"))   # 0.5A物理
 			var pd: Vector2 = (hit["pos"] - u["pos"]).normalized()               # 40码轻击退(不用_knockback避免8连击飞震屏)
-			hit["pos"] += pd * 40.0
+			hit["pos"] += pd * SHOT_KNOCK
 			hit["pos"].x = clampf(hit["pos"].x, battle.ARENA.position.x, battle.ARENA.end.x)
 			hit["pos"].y = clampf(hit["pos"].y, battle.ARENA.position.y, battle.ARENA.end.y)
 			battle._vfx._hit_spark(hit)

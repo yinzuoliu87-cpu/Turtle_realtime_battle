@@ -279,7 +279,9 @@ _CAP_SRC = {
     'p2eq_082': ('scripts/systems/equip/eq_blade_batch.gd', r'CLAM_PER_CHARGE\s*:?=\s*([0-9.]+)'),
     'p2eq_076': ('scripts/systems/equip/eq_bow_batch.gd', r'CORRODE_EVERY\s*:?=\s*([0-9.]+)'),
     'p2eq_093': ('scripts/systems/equip/incense_stone_system.gd', r'PER_MARK\s*:?=\s*([0-9.]+)'),
-    'p2eq_075': ('scripts/systems/equip/equip_system.gd', r'"p2eq_075":\s*([0-9.]+)'),
+    # ★2026-08-24: 075 的周期原来是 equip_system 字典里的字面量, 已改成引用
+    #   EqBowBatch.RAIN_IV。这里跟着指到【真常量】—— 比原来更准, 原来读的是抄来的那份。
+    'p2eq_075': ('scripts/systems/equip/eq_bow_batch.gd', r'RAIN_IV\s*:?=\s*([0-9.]+)'),
 }
 _ro = io.open('scripts/gamedata/equip_readouts.gd', encoding='utf-8').read()
 _cap_bad = []

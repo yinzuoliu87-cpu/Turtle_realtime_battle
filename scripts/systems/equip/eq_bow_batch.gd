@@ -209,6 +209,7 @@ func _magic_after_mr(u: Dictionary, raw: float, tgt: Dictionary) -> int:
 # ══════════════════════════════════════════════════════════════════
 
 ## 箭雨半径(码) —— 用户原文"半径 400 码"
+const RAIN_IV := 6.0        # 075 银色箭袋: 每几秒放一轮箭雨(真值在 EQ_IV_BATCH1, 那里引用本常量)
 const RAIN_RADIUS := 400.0
 ## 每跳间隔(秒)与总跳数: 1.5 秒 ÷ 0.25 = 6 跳(用户原文)
 const RAIN_HOP_IV := 0.25

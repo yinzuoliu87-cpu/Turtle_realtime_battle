@@ -430,7 +430,7 @@ func _sk_ice_team_shield(u: Dictionary) -> void:               # 寒冰龟·团�
 	var others = battle._targeting._allies_of(u, false)                         # 不含自己
 	var solo: bool = others.is_empty()
 	var shield_amt: float = u["maxHp"] * (TEAM_SHIELD_SOLO_PCT if solo else TEAM_SHIELD_PCT)   # 5%施法者maxHp; 独狼×4=20%
-	var boom_mult: float = 5.0 if solo else 1.0                     # 爆炸1×ATK; 独狼5×ATK
+	var boom_mult: float = TEAM_BURST_SOLO_COEF if solo else TEAM_BURST_COEF                     # 爆炸1×ATK; 独狼5×ATK
 	for o in battle._targeting._allies_of(u):                                    # 含自己=全体友军
 		_frost_shield_burst(o)                                 # 若已挂上一发未爆→先结算(防覆盖丢爆裂)
 		battle._damage._grant_shield(o, shield_amt, TEAM_SHIELD_SEC)                      # 冰霜盾·4秒
@@ -460,7 +460,7 @@ func _frost_shield_burst(ally: Dictionary) -> void:
 			if o.get("alive", false) and o["pos"].distance_to(c) <= TEAM_BURST_RADIUS:
 				battle._damage._apply_damage_from(src, o, battle._atk_dmg(src, boom, o, true), Color("#bfe9ff"))   # boom×ATK 魔法(1或5)
 		battle._burst_vfx("res://assets/sprites/vfx/fx-shock-ring.png", c, 520.0, 0.14)   # 冰爆冲击环(≈250码半径)
-		battle._skill_ring(c, Color(0.68, 0.9, 1.0, 0.6), 250.0)
+		battle._skill_ring(c, Color(0.68, 0.9, 1.0, 0.6), TEAM_BURST_RADIUS)
 		battle._vfx._impact_particles(c, 0.0); battle._shake(0.05)
 	battle._burst_depth -= 1
 

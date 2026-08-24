@@ -17,7 +17,8 @@ const BEAR_WAVE_PULL := 70.0    # 冲击波把命中者拉回身前(码)
 ## 【036 温泉蛋】孵化进度的五个来源 + 满进度阈值 + 每级成长
 const EGG_FULL := 100.0         # 进度满多少 → +1 临时等级
 const EGG_PER_CYCLE := 5.0      # 每周期 +
-const EGG_IV := 2.5             # 那个"周期"是几秒
+## 那个"周期"= 全局装备周期 RealtimeBattle3DScene.EQ_TICK(2.5 秒), 温泉蛋不另设间隔,
+## 所以这里【不存副本】—— 存了就会和 EQ_TICK 各走各的。
 const EGG_ON_FOE_DEATH := 10.0  # 敌方死亡 +
 const EGG_ON_ALLY_DEATH := 15.0 # 己方死亡 +
 const EGG_DMG_RATIO := 0.1      # 造成/承受伤害 × 此比例计入进度

@@ -98,6 +98,13 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 
 ## 三道阈值线(跌破即吃)。★写成三元数组供 tooltip_number_audit 对账文案里的 "80/55/30%"。
 const CAKE_LINES := [0.80, 0.55, 0.30]
+## 三块糖糕的其余固定值(按星级变的那些是数组, 见下面各分支)。
+const CAKE_COUNT := 3           # 带几块(= CAKE_LINES 的长度)
+const CAKE_HOT1_SEC := 30.0     # 一号糕的持续回复(秒)
+const CAKE_LIFESTEAL := 0.05    # 二号糕的生命偷取(固定值·本路永久)
+const CAKE_ENERGY := 50.0       # 三号糕立得龟能
+const CAKE_ASPD_SEC := 8.0      # 三号糕的攻速加成只持续这么久(其余属性本路永久)
+const CAKE_HOT3_SEC := 20.0     # 三号糕的持续回复(秒)
 
 ## ⚠⚠ 诚实记录 —— 这里【没有】用契约 §3 说的那套共用阈值线基建, 说清楚原因与迁移方式:
 ##   · 我动手实装 069 时, 契约里写的 `battle._equip_sys.hp_line(...)` **还不存在**
@@ -155,21 +162,21 @@ func _cake_eat(u: Dictionary, si: int, stt: Dictionary, idx: int) -> void:
 			u["hp"] = float(u["hp"]) + hp_add
 			battle._recalc_stats(u)
 			stt["hot1_pct"] = [0.006, 0.008, 0.010][si]     # 每秒回 0.6/0.8/1% 最大生命
-			stt["hot1_left"] = 30.0
+			stt["hot1_left"] = CAKE_HOT1_SEC
 			stt["hot1_acc"] = 0.0
 		1:
-			battle._damage._buff(u, "lifesteal", 0.05, false, 99999.0)   # +5% 生命偷取(固定值)
+			battle._damage._buff(u, "lifesteal", CAKE_LIFESTEAL, false, 99999.0)   # +5% 生命偷取(固定值)
 			u["base_atk"] = float(u.get("base_atk", 0.0)) + [10.0, 21.0, 40.0][si]
 			battle._recalc_stats(u)
 		2:
 			battle._damage._grant_shield(u, [150.0, 250.0, 400.0][si])
-			_eq._eq_grant_energy(u, 50.0)
+			_eq._eq_grant_energy(u, CAKE_ENERGY)
 			var aspd: float = [0.40, 0.60, 0.80][si]        # +40/60/80% 攻速, ★只持续 8 秒
 			u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + aspd
 			stt["aspd_add"] = aspd
-			stt["aspd_until"] = battle._t + 8.0
+			stt["aspd_until"] = battle._t + CAKE_ASPD_SEC
 			stt["hot3_pct"] = [0.013, 0.016, 0.020][si]     # 每秒回 1.3/1.6/2% 最大生命
-			stt["hot3_left"] = 20.0
+			stt["hot3_left"] = CAKE_HOT3_SEC
 			stt["hot3_acc"] = 0.0
 	_vfx.cake_bite_fx(u, idx)
 

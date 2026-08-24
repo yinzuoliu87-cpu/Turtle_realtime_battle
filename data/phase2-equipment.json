@@ -426,7 +426,7 @@
     "baseStats1": "+生命70/120/180",
     "shopAvailable": 1,
     "emoji": "🥚",
-    "effectDesc1": "每秒回复 5/7/10 点生命；\n并持续获得孵化进度（每 {C:EquipTickSystem.EGG_IV} 秒+{C:EquipTickSystem.EGG_PER_CYCLE}、敌方死亡+{C:EquipTickSystem.EGG_ON_FOE_DEATH}、己方死亡+{C:EquipTickSystem.EGG_ON_ALLY_DEATH}、造成伤害×{C:EquipTickSystem.EGG_DMG_RATIO}、承受伤害×{C:EquipTickSystem.EGG_DMG_RATIO}），进度满 {C:EquipTickSystem.EGG_FULL} 获得 1 点临时等级（上限+3/4/5，每级+{C:EquipTickSystem.EGG_LV_GROWTH%}%基础属性，同一局对局内跨战场保留、开新对局才重置）；\n孵满后为全队均摊 300/400/600 点护盾（一次）——分摊名单不含龟蛋与训龟大师。",
+    "effectDesc1": "每秒回复 5/7/10 点生命；\n并持续获得孵化进度（每 {C:RealtimeBattle3DScene.EQ_TICK} 秒+{C:EquipTickSystem.EGG_PER_CYCLE}、敌方死亡+{C:EquipTickSystem.EGG_ON_FOE_DEATH}、己方死亡+{C:EquipTickSystem.EGG_ON_ALLY_DEATH}、造成伤害×{C:EquipTickSystem.EGG_DMG_RATIO}、承受伤害×{C:EquipTickSystem.EGG_DMG_RATIO}），进度满 {C:EquipTickSystem.EGG_FULL} 获得 1 点临时等级（上限+3/4/5，每级+{C:EquipTickSystem.EGG_LV_GROWTH%}%基础属性，同一局对局内跨战场保留、开新对局才重置）；\n孵满后为全队均摊 300/400/600 点护盾（一次）——分摊名单不含龟蛋与训龟大师。",
     "effectDesc3": "",
     "img": "equip/equip-incubator.png",
     "effectBrief": "每秒回复 5/7/10 点生命；孵化进度满 100 得 1 点临时等级，上限 +3/4/5。"
@@ -630,7 +630,7 @@
     "baseStats1": "+攻14/25/41·暴击10/15/25%",
     "shopAvailable": 1,
     "emoji": "💥",
-    "effectDesc1": "每 8 秒朝最近的敌人打出 12/14/18 颗弹珠，相邻两颗夹角 2.5 度、均匀分布在中线两侧；\n每颗弹珠沿自己的直线一直飞，撞到路径上的第一个敌人即造成 0.22×攻击力的物理伤害并消失；\n同一次齐射中被 8 颗及以上弹珠命中的敌人眩晕 1.5 秒。",
+    "effectDesc1": "每 {C:EquipSystem.SHOTGUN_IV} 秒朝最近的敌人打出 12/14/18 颗弹珠，相邻两颗夹角 {C:RealtimeBattle3DScene.SHOTGUN_PELLET_DEG} 度、均匀分布在中线两侧；\n每颗弹珠沿自己的直线一直飞，撞到路径上的第一个敌人即造成 {C:EquipSystem.SHOTGUN_COEF}×攻击力的物理伤害并消失；\n同一次齐射中被 {C:EquipSystem.SHOTGUN_STUN_HITS} 颗及以上弹珠命中的敌人眩晕 {C:RealtimeBattle3DScene.CTRL_SEC} 秒。",
     "effectDesc3": "",
     "img": "equip/conch-shotgun.png",
     "effectBrief": "每 8 秒打出 12/14/18 颗弹珠；被 8 颗以上命中的敌人眩晕 1.5 秒。"
@@ -714,7 +714,7 @@
     "baseStats1": "+护甲5/11/19·+魔抗5/11/19",
     "shopAvailable": 1,
     "emoji": "🎐",
-    "effectDesc1": "每 7 秒打开一次伞：自身与 200 码内的队友获得 11/22/35%伤害减免与 15%闪避率（固定值），持续 2.5 秒；\n效果结束时携带者回复 50/80/130 生命，然后才重新开始 7 秒计时。",
+    "effectDesc1": "每 {C:EqSpiritBatch.PARASOL_IDLE} 秒打开一次伞：自身与 {C:EqSpiritBatch.PARASOL_RADIUS} 码内的队友获得 11/22/35%伤害减免与 {C:EqSpiritBatch.PARASOL_DODGE%}%闪避率（固定值），持续 {C:EqSpiritBatch.PARASOL_OPEN} 秒；\n效果结束时携带者回复 50/80/130 生命，然后才重新开始 {C:EqSpiritBatch.PARASOL_IDLE} 秒计时。",
     "effectDesc3": "",
     "img": "equip/p2eq_060.png",
     "effectBrief": "每 7 秒撑伞 2.5 秒，自己与 200 码内队友获得 11/22/35% 伤害减免。"
@@ -822,7 +822,7 @@
     "baseStats1": "+生命偷取5/9/15%·+龟能充能8/14/24%",
     "shopAvailable": 1,
     "emoji": "🍥",
-    "effectDesc1": "带着 3 块糖糕，生命首次低于 80/55/30%时各吃一块。\n①+200/400/600 最大生命，并在 30 秒内每秒回复 0.6/0.8/1%最大生命；\n②+5%生命偷取与+10/21/40 攻击力；\n③+150/250/400 护盾、+50 龟能、8 秒内+40/60/80%攻击速度，并在 20 秒内每秒回复 1.3/1.6/2%最大生命。\n属性加成本路永久，换路重置。",
+    "effectDesc1": "带着 {C:EqFoodBatch.CAKE_COUNT} 块糖糕，生命首次低于 80/55/30%时各吃一块。\n①+200/400/600 最大生命，并在 {C:EqFoodBatch.CAKE_HOT1_SEC} 秒内每秒回复 0.6/0.8/1%最大生命；\n②+{C:EqFoodBatch.CAKE_LIFESTEAL%}%生命偷取与+10/21/40 攻击力；\n③+150/250/400 护盾、+{C:EqFoodBatch.CAKE_ENERGY} 龟能、{C:EqFoodBatch.CAKE_ASPD_SEC} 秒内+40/60/80%攻击速度，并在 {C:EqFoodBatch.CAKE_HOT3_SEC} 秒内每秒回复 1.3/1.6/2%最大生命。\n属性加成本路永久，换路重置。",
     "effectDesc3": "",
     "img": "equip/p2eq_069.png",
     "effectBrief": "生命首次低于 80/55/30% 时各吃一块糖糕，分别给生命、攻击与护盾。"
@@ -894,7 +894,7 @@
     "baseStats1": "+攻12/30/68·+射程40/60/90",
     "shopAvailable": 1,
     "emoji": "📏",
-    "effectDesc1": "每 6 秒放一轮箭雨：落点取敌人最密集处，半径 400 码，持续 1.5 秒，每 0.25 秒造成 0.25/0.35/0.5 倍攻击力的物理伤害并施加 3/4/5 层流血。\n被动：目标每距离携带者 100 码，携带者对它+3/4/5%增伤，不封顶（箭雨自己也吃这个增伤）。",
+    "effectDesc1": "每 {C:EqBowBatch.RAIN_IV} 秒放一轮箭雨：落点取敌人最密集处，半径 {C:EqBowBatch.RAIN_RADIUS} 码，持续 1.5 秒，每 {C:EqBowBatch.RAIN_HOP_IV} 秒造成 0.25/0.35/0.5 倍攻击力的物理伤害并施加 3/4/5 层流血。\n被动：目标每距离携带者 {C:EqBowBatch.AMP_PER_PX} 码，携带者对它+3/4/5%增伤，不封顶（箭雨自己也吃这个增伤）。",
     "effectDesc3": "",
     "img": "equip/p2eq_075.png",
     "effectBrief": "每 6 秒在敌人最密处落一轮箭雨；目标每远 100 码增伤 3/4/5%。"
@@ -906,7 +906,7 @@
     "baseStats1": "+攻20/50/115·+吸血6/11/18%·+暴伤15/28/50%",
     "shopAvailable": 1,
     "emoji": "🎯",
-    "effectDesc1": "被动（仅在弓箭羁绊激活时）：每第三下普攻给目标施加 1 层【腐蚀】（与弓箭羁绊共用层数）。\n主动：释放技能后每 0.15 秒射出一支箭，发数=本次技能消耗龟能÷8；\n箭沿直线飞 2000 码贯穿沿途敌人，每支造成 0.05/0.06/0.08 倍攻击力的物理伤害加 9/13/16 点真实伤害，每穿过一个敌人伤害降低 25%（最低 25%），并从该敌人身上偷取 0.5/0.5/1 点龟能给自己。",
+    "effectDesc1": "被动（仅在弓箭羁绊激活时）：每第 {C:EqBowBatch.CORRODE_EVERY} 下普攻给目标施加 1 层【腐蚀】（与弓箭羁绊共用层数）。\n主动：释放技能后每 {C:EqBowBatch.VOLLEY_IV} 秒射出一支箭，发数=本次技能消耗龟能÷{C:EqBowBatch.ENERGY_PER_SHOT}；\n箭沿直线飞 {C:EqBowBatch.PIERCE_RANGE} 码贯穿沿途敌人，每支造成 0.05/0.06/0.08 倍攻击力的物理伤害加 9/13/16 点真实伤害，每穿过一个敌人伤害降低 25%（最低 25%），并从该敌人身上偷取 0.5/0.5/1 点龟能给自己。",
     "effectDesc3": "",
     "img": "equip/p2eq_076.png",
     "effectBrief": "释放技能后连射竹箭贯穿敌人，每穿过一个偷取 0.5/0.5/1 点龟能。"

@@ -103,9 +103,14 @@ func _fortune() -> void:
 	_chk("财神·招财进宝升星价 = %d + %s = %d/%d/%d" % [int(WANT_BUYEQUIP_BASE),
 			str(WANT_BUYEQUIP_ADD), int(WANT_BUYEQUIP_BASE + WANT_BUYEQUIP_ADD[0]),
 			int(WANT_BUYEQUIP_BASE + WANT_BUYEQUIP_ADD[1]), int(WANT_BUYEQUIP_BASE + WANT_BUYEQUIP_ADD[2])],
-		fs.contains("%.1f + [%.1f, %.1f, %.1f]" % [WANT_BUYEQUIP_BASE,
-			WANT_BUYEQUIP_ADD[0], WANT_BUYEQUIP_ADD[1], WANT_BUYEQUIP_ADD[2]]))
-	_chk("财神·招财进宝旧值 100/180/400 已消失", not fs.contains("[100.0, 180.0, 400.0]"))
+		FortuneSystem.BUY_COST_MAXED == WANT_BUYEQUIP_BASE
+			and FortuneSystem.BUY_COST.size() == 3
+			and is_equal_approx(FortuneSystem.BUY_COST[0], WANT_BUYEQUIP_BASE + WANT_BUYEQUIP_ADD[0])
+			and is_equal_approx(FortuneSystem.BUY_COST[1], WANT_BUYEQUIP_BASE + WANT_BUYEQUIP_ADD[1])
+			and is_equal_approx(FortuneSystem.BUY_COST[2], WANT_BUYEQUIP_BASE + WANT_BUYEQUIP_ADD[2]))
+	_chk("财神·招财进宝旧值 100/180/400 已消失",
+		not (is_equal_approx(FortuneSystem.BUY_COST[0], 100.0)
+			and is_equal_approx(FortuneSystem.BUY_COST[1], 180.0)))
 	# ⇢ 第五轮把骰子回血 10%→15%、金币 3~8→5~8 —— 已移交 verify_turtle_balance_r5。
 	#   ★这里【不改成 15%】: 改了就毁掉第四轮的留痕(第四轮确实是 10%)。删掉这条, 由 r5 接管。
 	_chk("财神·骰子回血旧值 8% 已消失(第四轮起就不是 8%)", not fs.contains('u["maxHp"] * 0.08'))

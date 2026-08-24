@@ -4,6 +4,12 @@ extends RefCounted
 ## 类内名不变;外部名加 battle.
 
 ## ★★2026-08-22 文案根除: 嘲讽这一组原来全是 `_sk_stone_taunt` 里的裸字面量。
+## 【岩石护盾】全队盾 + 自身双抗, 两者时长不同。
+const RS_ATK_COEF := 1.0         # 全队盾 = ×【石头龟】ATK
+const RS_MAXHP_PCT := 0.06       # + ×【石头龟】最大生命
+const RS_SHIELD_SEC := 4.0       # 盾持续(秒)·持盾期锁龟能
+const RS_RESIST_UP := 0.20       # 自身护甲与魔抗各 +(百分比)
+const RS_RESIST_SEC := 5.0       # 双抗持续(秒)
 const TAUNT_RADIUS := 500.0      # 嘲讽半径(码)
 const TAUNT_SEC := 4.0           # 嘲讽 / 自身减伤 的持续(秒)
 const TAUNT_SHIELD_COEF := 1.0   # 自身永久护盾 = ×ATK (dur=0, 不随嘲讽消失)
@@ -21,11 +27,11 @@ func _init(b) -> void:
 
 func _sk_stone_rock_shield(u: Dictionary) -> void:               # 石头龟·岩石护盾(用户设计: 合并岩石护甲+磐石·100龟能): 全队盾1A+6%maxHp(4秒) + 自身双抗+20%5秒
 	for o in battle._targeting._allies_of(u):
-		battle._damage._grant_shield(o, u["atk"] * 1.0 + u["maxHp"] * 0.06, 4.0)   # 全队盾=1×石头ATK+6%【石头龟】最大生命(用户2026-07-11: 0.2A+5%→1A+6%)·每友军等量·4秒
-		o["rock_shield_until"] = battle._t + 4.0                          # 标记"石头岩石护盾"来源: LoL式六棱屏障VFX + 锁龟能(持盾期不充能), 盾破/到期即释放(用户2026-07-11)
+		battle._damage._grant_shield(o, u["atk"] * RS_ATK_COEF + u["maxHp"] * RS_MAXHP_PCT, RS_SHIELD_SEC)   # 全队盾=1×石头ATK+6%【石头龟】最大生命(用户2026-07-11: 0.2A+5%→1A+6%)·每友军等量·4秒
+		o["rock_shield_until"] = battle._t + RS_SHIELD_SEC                          # 标记"石头岩石护盾"来源: LoL式六棱屏障VFX + 锁龟能(持盾期不充能), 盾破/到期即释放(用户2026-07-11)
 		battle._skill_ring(o["pos"], Color(0.79, 0.64, 0.42, 0.45), 46.0)
-	battle._damage._buff(u, "def", 0.2, true, 5.0)   # 自身护甲+20%(pct·5秒)
-	battle._damage._buff(u, "mr", 0.2, true, 5.0)    # 自身魔抗+20%
+	battle._damage._buff(u, "def", RS_RESIST_UP, true, RS_RESIST_SEC)   # 自身护甲+20%(pct·5秒)
+	battle._damage._buff(u, "mr", RS_RESIST_UP, true, RS_RESIST_SEC)    # 自身魔抗+20%
 
 func _rock_chunk_erupt(pos2d: Vector2) -> void:   # 岩石破土冒起(石棕灰)→短留→碎(仿 _gold_chunk_erupt·换石色)
 	var tex: Texture2D = load("res://assets/sprites/vfx/gold-chunk.png")

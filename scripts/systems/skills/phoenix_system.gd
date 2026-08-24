@@ -7,13 +7,15 @@ extends RefCounted
 ## 【烫伤】命中先破盾, 再打魔法伤 + 灼烧层 + 四项负面(均同一时长)。
 ## 【灼烧(普攻·持续喷火)】不随攻速停顿, 每 TICK 秒结算一次。
 const FLAME_TICK_SEC := 0.5       # 每几秒结算一次
-const FLAME_ARC_DEG := 70.0       # 身前扇形张角(全角·度)
+const FLAME_ARC_DEG := 70.0       # 身前扇形张角(全角·度)·★事实源在这里
+const FLAME_ARC_HALF := FLAME_ARC_DEG * 0.5   # 推导, 不另写 35 —— 原来主场景存的就是这个半角
 const FLAME_MOVE_MULT := 0.5      # 喷火时移动速度 ×
 const SCALD_ATK_COEF := 1.5       # ×ATK 魔法
 const SCALD_SHIELD_BREAK := 0.5   # 破坏目标护盾的比例
 const SCALD_STAT_DOWN := 0.15     # 攻击力/护甲/魔抗 各降低
 const SCALD_HEALCUT := 0.5        # 治疗削减比例
-const SCALD_DEBUFF_SEC := 5.0     # 以上负面效果的持续(秒)
+## 灼烧负面的持续 = 主场景通用 BUFF_SEC(_apply_skill_extras 不传 Dur 就吃它),
+## 这里【不再另存一份】—— 存了就会和 BUFF_SEC 各走各的。
 const SCALD_BURN_COEF := 0.5      # 烫伤: 灼烧层数 = ×ATK (1.0→0.6→0.5·用户2026-07-28)
 ## 涅槃演出总时长(秒) —— 用户 2026-08-13:「复活需要改为有一个2.5秒的演出」。
 ## 三拍: 0~0.6 灰烬定格 / 0.6~1.9 聚火升腾 / 1.9~2.5 破壳展翼。
@@ -73,7 +75,7 @@ func _phoenix_flame_cone(u: Dictionary, tgt: Dictionary) -> void:
 	var aim: float = float(u.get("phx_aim", dir.angle()))   # 伤害锥=平滑瞄准角(与视觉锥一致·扫到哪烧到哪)
 	dir = Vector2(cos(aim), sin(aim))
 	var rng: float = battle._eff_range(u)
-	var half_cos: float = cos(deg_to_rad(battle.PHX_CONE_HALF_DEG))
+	var half_cos: float = cos(deg_to_rad(FLAME_ARC_HALF))
 	## ★★这一跳里【离凤凰最近的那个】要走一次 on-hit(用户 2026-08-13:
 	##   「火焰每0.5跳的时候给最近的onhit, 比如触发竹叶装备」)。
 	##   由来: 喷火走的是范围结算, **一次都不碰 on-hit 钩子** ⇒ 竹弓/金弹/腐蚀这类
@@ -168,7 +170,7 @@ func _phoenix_flame_puff(u: Dictionary, tgt: Dictionary) -> void:   # 飞散火�
 	dir = dir.normalized()
 	var rng: float = battle._eff_range(u)
 	var base_ang: float = float(u.get("phx_aim", dir.angle()))   # 平滑瞄准角(与锥同步扫)
-	var half: float = deg_to_rad(battle.PHX_CONE_HALF_DEG)
+	var half: float = deg_to_rad(FLAME_ARC_HALF)
 	var ang: float = base_ang + battle._juice_rng.randf_range(-half, half) * 0.65   # 收紧火锥→定向喷流(非散开)
 	var travel: float = battle._juice_rng.randf_range(rng * 0.55, rng * 1.0)
 	var mouth: Vector2 = origin + Vector2(cos(base_ang), sin(base_ang)) * 24.0
@@ -240,7 +242,7 @@ func _phoenix_build_flame_mesh(u: Dictionary) -> bool:   # 分环建扇形mesh: 
 		if float(s[1]) > 0.02: any = true
 	if not any: return false
 	var origin: Vector2 = u["pos"]
-	var half: float = deg_to_rad(battle.PHX_CONE_HALF_DEG)
+	var half: float = deg_to_rad(FLAME_ARC_HALF)
 	var rng: float = battle._eff_range(u) * 0.92
 	var mouth: Vector2 = origin + Vector2(cos(ring_a[0]), sin(ring_a[0])) * 18.0
 	im.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -272,7 +274,7 @@ func _phoenix_scald_hit(u: Dictionary, tgt, fb) -> void:
 		return
 	# 封板: 火球命中先破50%护盾(破盾碎裂)→再落1.5A魔法穿透→灼烧+攻防抗各-15%+治疗削减
 	battle._apply_skill_extras(u, tgt, {"shieldBreak": SCALD_SHIELD_BREAK, "atkDown": SCALD_STAT_DOWN, "defDown": SCALD_STAT_DOWN, "mrDown": SCALD_STAT_DOWN, "healCut": SCALD_HEALCUT})
-	battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 1.5, tgt, true), Color("#4dabf7"))   # 1.5ATK魔法(打已破的盾, 更多穿透到血)
+	battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, SCALD_ATK_COEF, tgt, true), Color("#4dabf7"))   # 1.5ATK魔法(打已破的盾, 更多穿透到血)
 	battle._damage._apply_dot_stacks(tgt, "burn", maxi(1, roundi(float(u["atk"]) * SCALD_BURN_COEF)), u)   # 烫伤灼烧层
 	battle._vfx._flash(tgt, Color("#ff8a3a"))
 	_phoenix_flame_burst(tgt["pos"])
@@ -401,7 +403,7 @@ func nirvana_begin(u: Dictionary, pct: float) -> void:
 			u["hp"] = u["maxHp"] * pct                 # ★展翼那一刻才跳血条
 			battle._vfx._float_text(u["pos"] + Vector2(0, -64), "涅槃!", Color("#ffd93d"))
 			if u.get("_enh_rebirth", false):
-				u["base_atk"] = u["base_atk"] * 1.2; battle._recalc_stats(u)   # 强化涅槃: 永久+20%攻击
+				u["base_atk"] = u["base_atk"] * (1.0 + NIRVANA_ENH_ATK); battle._recalc_stats(u)   # 强化涅槃: 永久+20%攻击
 			for o in battle._targeting._enemies_of(u):
 				battle._damage._apply_dot_stacks(o, "burn", maxi(1, roundi(float(u["atk"]) * NIRVANA_BURN_COEF)), u)   # ★凤凰专用系数, 不走全局 _default_burn_stacks(0.67) —— 那个熔岩龟也在用
 				o["heal_reduce_until"] = battle._t + battle.BUFF_SEC

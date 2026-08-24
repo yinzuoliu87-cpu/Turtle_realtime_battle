@@ -313,7 +313,7 @@ const EQ_IV_BATCH1 := {
 	#   ★四件里只有 075 是【周期到点触发一次】这个形状。073 的攻速 buff 到期与
 	#   076 的 0.25 秒逐发连射都要【比 0.25 秒更细的精度】, 走 EqBowBatch.tick() 每帧推进
 	#   (自带 t_next 累加器, 帧率无关) —— 给它们排周期反而把精度降到 0.25 秒。
-	"p2eq_075": 6.0,   # 银色箭袋: 每 6 秒一轮箭雨(用户原文「每 6 秒」·2026-08-20 更名: 本注释原写「测距绳结」, 与 json 的名字对不上)
+	"p2eq_075": EqBowBatch.RAIN_IV,   # 银色箭袋: 每 6 秒一轮箭雨(用户原文「每 6 秒」·2026-08-20 更名: 本注释原写「测距绳结」, 与 json 的名字对不上)
 	# ★★批④(2026-08-06)把 077/079/080/081/087/091/094 七件【全部从这张表摘掉】——
 	#   摘掉不是"改间隔", 是这七件的形状变了, EQ_PERIOD 这张"每 id 一个常数"的表装不下:
 	#     · 077 铜管手铳 / 079 珊瑚急救塔 / 080 打捞旋翼机 —— 从"每 8 秒放一次"改成
@@ -425,13 +425,13 @@ func _eq_shotgun_blast(u: Dictionary, si: int) -> void:   # 霰弹贝古053: 朝
 		var _tg: Dictionary = hit53
 		battle._ballistics._shotgun_pellet(u["pos"], endp, Color(1.0, 0.86, 0.5, 0.95), dur53, func() -> void:
 			if not _tg.get("alive", false): return
-			battle._damage._apply_damage_from(u, _tg, battle._atk_dmg(u, 0.22, _tg), Color("#ffd07a"), 0.0, false, true)
+			battle._damage._apply_damage_from(u, _tg, battle._atk_dmg(u, SHOTGUN_COEF, _tg), Color("#ffd07a"), 0.0, false, true)
 			_tg["_sg_hits"] = int(_tg.get("_sg_hits", 0)) + 1)
 	# 全部弹珠落地后再判眩晕(命中计数记在单位自身字段 —— 不拿单位字典当Dict键, 见 2026-07-19 卡死教训)
 	if touched.is_empty(): return
 	battle._pending_shots.append({"delay": maxdur + 0.06, "src": u, "fn": func() -> void:
 		for o in touched:
-			if int(o.get("_sg_hits", 0)) >= 8 and o.get("alive", false): battle._freeze(o, battle.CTRL_SEC)
+			if int(o.get("_sg_hits", 0)) >= SHOTGUN_STUN_HITS and o.get("alive", false): battle._freeze(o, battle.CTRL_SEC)
 			o.erase("_sg_hits")})
 
 func _eq_pistol_volley(u: Dictionary, si: int) -> void:   # 黄铜手铳048: 每8秒依次射4/5/6发, 每发命中直线首敌(错峰: 枪口闪+子弹+火花)
@@ -512,6 +512,10 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 ## ★★2026-08-22 文案根除: FPGA板(040) 这一组原来全是函数体里的裸字面量,
 ##   而 `phase2-equipment.json` 的 effectDesc1 又手写了一遍(15 个数, 全库最多的一段)。
 ## ★数组常量会被 `{C:}` 渲染成 "1/2/4"(三档写法) —— 正好是文案要的形状。
+## 【053 霰弹贝古】扇形弹珠, 每颗撞到第一个敌人才结算。
+const SHOTGUN_IV := 8.0           # 每几秒一次齐射(主场景 _EQ_CUSTOM_IV 引用本常量)
+const SHOTGUN_COEF := 0.22        # 每颗弹珠 ×ATK 物理
+const SHOTGUN_STUN_HITS := 8      # 同一次齐射被这么多颗及以上命中 → 眩晕
 const FPGA_IV := 6.0             # 每几秒抽一次(真值在主场景 _EQ_CUSTOM_IV, 那里引用本常量)
 const FPGA_PICKS := [1, 2, 4]    # 逐星: 每次抽几个 2-bit 状态(可重复)
 const FPGA_00_HEAL_PCT := 0.05   # 00: 回复最大生命 ×

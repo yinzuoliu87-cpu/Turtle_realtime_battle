@@ -103,8 +103,8 @@ func _sk_line_ink_bomb(u: Dictionary) -> void:                  # 线条龟·墨
 		for o in battle._targeting._enemies_of(uu):
 			if not o.get("alive", false): continue
 			if (o["pos"] as Vector2).distance_to(land) > battle.INK_BOMB_RADIUS: continue   # ★只打落点300码内(用户2026-07-15: 原全体)
-			for i in range(4):
-				battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, 0.25, o, true), Color("#c9b0ff"))
+			for i in range(BOMB_SEGMENTS):
+				battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, BOMB_SEG_COEF, o, true), Color("#c9b0ff"))
 			battle._add_stack(o, "ink", 4, _ink_cap(uu))
 			battle._burst_vfx("res://assets/sprites/vfx/ink-splat.png", o["pos"], 110.0, 0.9)   # 每敌身上墨溅
 		battle._skill_ring(land, Color(0.55, 0.4, 0.75, 0.5), battle.INK_BOMB_RADIUS))   # 环显300码AOE范围

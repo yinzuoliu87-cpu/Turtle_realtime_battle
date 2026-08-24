@@ -420,6 +420,7 @@ run_audit "tools/dead_preload_audit.py"  "ALL OK" "dead_preload (preload 了却�
 # ★2026-08-20 补挂: 这个脚本 2026-08-19 就写了, 我还多次在提交信息里声称把检查"焊进门禁",
 #   但它**从来没进过 run-tests.sh** —— 改动史词/别家游戏黑话/数字间距 一条都没被强制执行过。
 #   (它原本也不打 ALL OK、恒返回 0, 一并补了判定行。)
+run_audit "tools/text_const_orphan_audit.py" "ALL OK" "text_const_orphan_audit (文案指的常量有没有产品代码在读)"
 run_audit "tools/codex_text_lint.py"     "ALL OK" "codex_text_lint (图鉴文案: 教学味/自夸/开发备注/别家黑话/数字贴字)"
 run_audit "tools/twin_const_audit.py"    "ALL OK" "twin_const (同功能的逻辑侧↔演出侧同名常量取值打架)"
 run_audit "tools/type_tables_audit.py"   "ALL OK" "type_tables (装备类型四张平行表键集一致)"

@@ -141,6 +141,27 @@ def passive_code(S, src, pid, consts):
     return NL.join(out)
 
 
+## 常量展开表: 全仓 `const X := <纯数字>` 一次扫齐, 供下面把 `Foo.BAR` / 裸 `BAR` 换成数值。
+_CONST_NUM = {}
+for _p in glob.glob('scripts/**/*.gd', recursive=True):
+    try:
+        _t = io.open(_p, encoding='utf-8', errors='replace').read()
+    except Exception:
+        continue
+    for _m in re.finditer(r'^\s*const\s+([A-Z][A-Z0-9_]*)\s*:?=\s*(-?[0-9]+(?:\.[0-9]+)?)\s*(?:#|$)',
+                          _t, re.M):
+        _CONST_NUM.setdefault(_m.group(1), _m.group(2))
+
+_CONST_RE = re.compile(r'(?:[A-Za-z_][A-Za-z0-9_]*[.])?' + chr(92) + 'b([A-Z][A-Z0-9_]{2,})' + chr(92) + 'b')
+
+
+def _expand_consts(code):
+    """把代码里的常量引用换成它的数值, 好让"文案说的数字在不在代码里"这条继续成立。"""
+    if not code:
+        return code
+    return _CONST_RE.sub(lambda m: _CONST_NUM.get(m.group(1), m.group(0)), code)
+
+
 def main():
     pets = load_pets()
     funnel = io.open('scripts/scenes/battle/battle_damage.gd', encoding='utf-8').read()
@@ -178,6 +199,11 @@ def main():
             if not txt.strip():
                 continue
             n_txt += 1
+            # ★2026-08-24: 文案根除把一批字面量抽成了常量(`6.0` → `BasicConsts.SHIELD_CD`),
+            #   于是"在代码里找这个数字"当场失灵 —— 小龟的「每 6 秒」报了对不上, 而代码是对的。
+            #   ⇒ 搜之前先把代码里的常量引用**展开成它的数值**。少了这一步, 这条判据会
+            #     随着代码变干净而越来越多假红, 逼着人去放宽它。
+            code = _expand_consts(code)
             for m in re.finditer(r'每\s*([0-9.]+)\s*秒', txt):
                 v = m.group(1)
                 # ★必须带数字边界: 子串匹配会让「77」撞上 `0.775`、`#777`, 于是

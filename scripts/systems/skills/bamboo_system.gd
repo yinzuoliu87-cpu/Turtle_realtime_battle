@@ -16,6 +16,13 @@ const GROW_SMACK_HP_PCT := 0.13
 const GROW_SMACK_HEAL_PCT := 0.12
 const GROW_SMACK_MAXHP_PER_ATK := 1.05
 
+## ★★2026-08-24 文案根除: 【竹刺阵】原来这几个数散在函数体里(半径写了两遍)。
+const SPIKE_RADIUS := 300.0     # 预警圈半径(码)·同时是伤害判定半径, 现在只存一份
+const SPIKE_WINDUP := 0.6       # 蓄力(秒)
+const SPIKE_ATK_COEF := 0.9     # ×ATK 物理
+const SPIKE_MAXHP_PCT := 0.15   # + 自身最大生命 ×
+const SPIKE_KNOCK_SEC := 1.5    # 击飞滞空(秒)·真值由 _knockback(70, 2.75) 的抛物线给出
+
 var battle
 
 func _init(b) -> void:
@@ -122,15 +129,15 @@ func _sk_bamboo_spikes(u: Dictionary, tgt) -> void:            # 竹叶龟·竹�
 			var rr: float = sqrt(randf()) * 285.0
 			battle._spawn_bamboo_spike(c + Vector2(cos(ang), sin(ang)) * rr, randf_range(0.85, 1.3), 0.5)
 		for o in battle._targeting._enemies_of(uu):
-			if o.get("alive", false) and o["pos"].distance_to(c) <= 300.0:
-				battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, 0.9, o) + int(uu["maxHp"] * 0.15), Color("#39d353"))
+			if o.get("alive", false) and o["pos"].distance_to(c) <= SPIKE_RADIUS:
+				battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, SPIKE_ATK_COEF, o) + int(uu["maxHp"] * SPIKE_MAXHP_PCT), Color("#39d353"))
 				battle._spawn_bamboo_spike(o["pos"], 1.5, 0.5)   # 命中点更粗一根竹刺
 				if not o.get("_eggImmune", false):
 					battle._damage._knockback(uu, o, 70.0, 2.75)                # 击飞【1.5秒】(用户#12"击飞1.5秒"·滞空=2×(6.0×2.75)/22=1.5s·原vy_mult=1.5只给0.82s)
 		battle._shake(0.06)
 		battle._hitstop = maxf(battle._hitstop, 0.05)
-	battle._skill_ring(c, Color(0.22, 0.83, 0.33, 0.4), 300.0)         # 蓄力预警圈
-	battle._pending_shots.append({"delay": 0.6, "fn": spikes, "src": u})
+	battle._skill_ring(c, Color(0.22, 0.83, 0.33, 0.4), SPIKE_RADIUS)         # 蓄力预警圈
+	battle._pending_shots.append({"delay": SPIKE_WINDUP, "fn": spikes, "src": u})
 
 func _sk_bamboo_heal(u: Dictionary) -> void:                     # 竹叶龟·自然恢复 ✅
 	var allies = battle._targeting._allies_of(u, false)

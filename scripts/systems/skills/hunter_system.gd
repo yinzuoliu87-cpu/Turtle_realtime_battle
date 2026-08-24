@@ -16,6 +16,14 @@ const BARRAGE_ARROWS := 10       # 共几根
 const BARRAGE_GAP := 0.2         # 每几秒发一根
 const BARRAGE_COEF := 0.36       # 每根 ×ATK 真实
 
+## ★★2026-08-24 文案根除: 【隐蔽】翻滚距离原在函数内 `const ROLL`, 强化普攻的系数
+## 更远 —— 在【主场景】的普攻分支里(消费点与生产点隔了一个文件)。
+const ROLL_DIST := 250.0        # 智能翻滚距离(码)
+const ROLL_ATK_COEF := 0.9      # 下次普攻附带 ×ATK 物理(吃生命偷取)
+const ROLL_DODGE := 0.25        # 闪避
+const ROLL_DODGE_SEC := 5.0     # 闪避持续(秒)
+const ROLL_SHIELD_COEF := 0.7   # 护盾 = ×ATK
+
 var battle
 
 func _init(b) -> void:
@@ -53,15 +61,15 @@ func _sk_hunter_hide(u: Dictionary) -> void:                     # 猎人龟·�
 	u["_roll_ghost_t"] = 0.0
 	u["hunter_roll_active"] = true
 	u["hunter_roll_buff"] = true                                # 下次普攻附带0.9A物理(吃吸血)
-	battle._damage._buff(u, "dodge", 0.25, true, 5.0)                          # 25%闪避5秒
-	battle._damage._grant_shield(u, u["atk"] * 0.7)                            # 0.7A护盾
+	battle._damage._buff(u, "dodge", ROLL_DODGE, true, ROLL_DODGE_SEC)                          # 25%闪避5秒
+	battle._damage._grant_shield(u, u["atk"] * ROLL_SHIELD_COEF)                            # 0.7A护盾
 
 func _hunter_roll_best_dest(from2d: Vector2, pref_dir: Vector2) -> Vector2:
 	# 墙感智能翻滚落点(用户2026-07-14"被逼到边界/角落怎么翻滚"): 意图方向撞墙时改沿墙/朝内翻滚,
 	# 保证每次翻滚都有真实位移(不被clamp吃掉)。360°采样候选→按(实际位移 + 与意图对齐度)打分选最优。
 	if pref_dir.length() < 0.1: pref_dir = Vector2.RIGHT
 	pref_dir = pref_dir.normalized()
-	const ROLL := 250.0
+	const ROLL := ROLL_DIST
 	const ALIGN_W := 90.0              # 对齐权重: 开阔时优先意图方向; 撞墙时"实际位移"主导→自动沿墙/朝内
 	var pad = 40.0                    # 离墙内缩(不贴死边线)
 	var xlo = battle.ARENA.position.x + pad; var xhi = battle.ARENA.end.x - pad
@@ -151,8 +159,8 @@ func _sk_hunter_shot(u: Dictionary, tgt) -> void:              # 猎人龟·精�
 			if not tref.get("alive", false): return
 			battle._damage._apply_damage_from(uu, tref, battle._atk_dmg(uu, SHOT_ATK_COEF, tref), Color("#ff4444"))   # 物理红(2.0A物理狙击·飘字色规范)
 			battle._damage._apply_dot_stacks(tref, "poison", maxi(1, int(round(uu["atk"] * SHOT_POISON_COEF))), uu)   # 中毒5s
-			tref["heal_reduce_until"] = battle._t + 5.0                         # 治疗削减50%·5秒
-			tref["heal_reduce_pct"] = maxf(float(tref.get("heal_reduce_pct", 0.0)), 0.5)
+			tref["heal_reduce_until"] = battle._t + SHOT_HEALCUT_SEC                         # 治疗削减50%·5秒
+			tref["heal_reduce_pct"] = maxf(float(tref.get("heal_reduce_pct", 0.0)), SHOT_HEALCUT_PCT)
 			tref["hunt_mark_until"] = battle._t + MARK_SEC                           # 猎杀印记5秒: <24%即处决(头顶状态图标行贴十字准星·_layout_head_badges·不用文字)
 			battle._skill_ring(tref["pos"], Color(0.5, 0.9, 0.2, 0.6), 40.0)   # 命中毒绿环(小·非大绿球)
 			for _pb in range(4): battle._spawn_poison_bubble(tref)             # 命中即冒一簇毒泡
@@ -163,7 +171,7 @@ func _sk_hunter_shot(u: Dictionary, tgt) -> void:              # 猎人龟·精�
 func _sk_hunter_barrage(u: Dictionary, _tgt) -> void:          # 猎人龟·狩猎弹幕(封板·100龟能): 10箭·每0.2s一发·随机目标(注意龟蛋)·慢速抛物线追踪·箭头随角度·命中才跳0.36A真实(共3.6A)·每箭<14%即处决(用户2026-07-14重做)
 	for i in range(BARRAGE_ARROWS):
 		var uu: Dictionary = u
-		battle._pending_shots.append({"delay": float(i) * 0.2, "src": u, "fn": func() -> void:   # 每0.2s射一发
+		battle._pending_shots.append({"delay": float(i) * BARRAGE_GAP, "src": u, "fn": func() -> void:   # 每0.2s射一发
 			if not uu.get("alive", false): return
 			var cand: Array = []                                # 随机目标(非最残血): _enemies_of已跳围栏未破的蛋; 破栏后的蛋是合法目标(注意龟蛋)
 			for o in battle._targeting._pick_enemies_of(uu):

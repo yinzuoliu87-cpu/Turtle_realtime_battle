@@ -5,13 +5,20 @@ extends RefCounted
 
 ## ★财神数值单一事实源(用户2026-07-28 第三轮加强·梭哈 8.4% 第83)。文案在 data/pets.json。
 const ALLIN_SHIELD_SEC := 6.0   # 梭哈首发金盾持续秒数(不锁龟能·与变身后的金盾区分)
+const ALLIN_COIN_COEF := 0.30   # 梭哈每枚金币 ×ATK 物理 + 等量真实伤害
+## 【招财进宝】首抽 1/2/3 费临时装备, 消耗随费用拉长; 升满后价格回落并附带回血。
+## ★原来写成 `60.0 + [60,120,240]`(历史遗留的"底价+加价"), 文案却写最终值 120/180/300 ——
+##   等于同一组数存了两份不同形态。现在只存最终值一份, 底价复用 BUY_COST_MAXED。
+const BUY_COST := [120.0, 180.0, 300.0]   # 抽到 1/2/3 费装备后的龟能消耗
+const BUY_COST_MAXED := 60.0    # 升满星后消耗回落到(也是本技的起始价)
+const BUY_MAX_STAR := 3         # 升到几星算满
+const BUY_FULL_HEAL_COEF := 1.0 # 满星后每次释放回复 ×ATK 生命
 const LOWHP_PCT := 0.20          # 【通用被动·聚宝盆】: 首次跌破该血量比例触发(不论带哪个技能)
 ## 【聚宝盆】局内金币产出 + 低血一次性龟能。
 const COIN_IV := 3.0             # 每几秒产一次金币
 const COIN_MIN := 4              # 每次产出下限
 const COIN_MAX := 7              # 每次产出上限
 const COIN_ON_DEATH := 9         # 场上任意单位阵亡额外获得
-const LOWHP_TRIGGER := 0.20      # 首次血量降到 × 最大生命 以下时触发
 const LOWHP_ENERGY := 70.0       # 【通用被动·聚宝盆】: 触发时立得的龟能
 
 var battle
@@ -48,14 +55,14 @@ func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招�
 		battle._equip_sys._stats._eq_apply_one_stats(u, iid, 1)
 		u["buyequip_id"] = iid; u["buyequip_star"] = 1
 		var tier: int = int(DataRegistry.phase2_equipment_by_id.get(iid, {}).get("cost", 1))
-		u["energy_cost"]["fortuneBuyEquip"] = 60.0 + [60.0, 120.0, 240.0][clampi(tier - 1, 0, 2)]   # 消耗随抽到费拉长(用户2026-07-29 第四轮: 160/240/460 → 120/180/300)
+		u["energy_cost"]["fortuneBuyEquip"] = BUY_COST[clampi(tier - 1, 0, 2)]   # 消耗随抽到费拉长(用户2026-07-29 第四轮: 160/240/460 → 120/180/300)
 		# ★注意这是【抽完之后】才改写 energy_cost —— 首次释放本身花的是 skill_energy 里的基准,
 		#   实测 `skill_energy.gd` 的 "fortuneBuyEquip": **10.0**(2026-08-20 核对时发现本注释
 		#   原来写的是 60, 与那张表对不上 —— 注释也是手抄的副本, 一样会漂)。
 		#   我 2026-07-29 一度把这组数说成"首释价", 是错的; 它是【第2、3次(升星)】的价。
 		battle._vfx._float_text(u["pos"] + Vector2(0, -72), "招财! " + str(DataRegistry.phase2_equipment_by_id.get(iid, {}).get("name", iid)), Color("#ffd93d"))
 	elif star >= 3:                                             # 3★满: 回复1×ATK生命
-		battle._damage._heal(u, u["atk"])
+		battle._damage._heal(u, u["atk"] * BUY_FULL_HEAL_COEF)
 		battle._vfx._float_text(u["pos"] + Vector2(0, -72), "招财·满! 回血", Color("#ffd93d"))
 	else:                                                       # 升星: 应用精确数值delta(旧星→新星) + 同步equips条目星级
 		var iid2: String = str(u.get("buyequip_id", ""))
@@ -65,7 +72,7 @@ func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招�
 				e["star"] = star + 1
 				break
 		u["buyequip_star"] = star + 1
-		if star + 1 >= 3: u["energy_cost"]["fortuneBuyEquip"] = 60.0   # 满星→价回60
+		if star + 1 >= BUY_MAX_STAR: u["energy_cost"]["fortuneBuyEquip"] = BUY_COST_MAXED   # 满星→价回60
 		battle._vfx._float_text(u["pos"] + Vector2(0, -72), "招财·升星 %d★" % (star + 1), Color("#ffd93d"))
 	battle._burst_vfx("res://assets/sprites/vfx/fortune-coin-burst.png", u["pos"], 104.0, 0.7)   # 招财: 金币聚宝爆(用户2026-07-12)
 	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.6), 56.0)
@@ -83,6 +90,9 @@ func _sk_fortune_dice(u: Dictionary) -> void:                    # 财神龟·�
 	# (删: "放梭哈后给护盾"=4选1下死逻辑, 不可能同时有骰子+梭哈, 用户指出)
 
 # 财神·梭哈: 一场限一次, 消耗全部金币, 每枚 0.30×ATK物理 + 0.30×ATK真实 (cd999·数值在 RealtimeBattle3DScene 的 coin_true/coin_phys)
+## 【金盾】梭哈用过后本技能变身成的那个盾(与梭哈首发的金盾是两回事)。
+const GOLD_SHIELD_COST := 80.0  # 变身后的龟能消耗(梭哈本体 340 → 80)
+const GOLD_SHIELD_SEC := 4.0    # 持盾期锁龟能, 盾破/到期即恢复
 const GOLD_SHIELD_MULT := 5.0   # 金盾盾量 = 金币数 × 这个倍率(用户 2026-08-01: 1 → 5)
 
 func _sk_fortune_goldshield(u: Dictionary) -> void:   # 财神·金盾(梭哈用过后该技变身·用户2026-07-12): 80龟能·护盾=当前金币数×GOLD_SHIELD_MULT(5)(不消耗金币)·持盾期锁龟能(盾破/4s到期解锁)
@@ -94,7 +104,7 @@ func _sk_fortune_goldshield(u: Dictionary) -> void:   # 财神·金盾(梭哈用
 	if amt <= 0.0:
 		return
 	battle._damage._grant_shield(u, amt, 4.0)                 # 通用护盾4s
-	u["gold_shield_until"] = battle._t + 4.0          # 持盾期锁龟能(与shield同4s·盾破/到期即恢复·同钻石坚不可摧节奏)
+	u["gold_shield_until"] = battle._t + GOLD_SHIELD_SEC          # 持盾期锁龟能(与shield同4s·盾破/到期即恢复·同钻石坚不可摧节奏)
 	battle._vfx._flash(u, Color(1.6, 1.35, 0.5))
 	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.7), 60.0)
 	battle._vfx._float_text(u["pos"] + Vector2(0, -66), "金盾 +%d" % int(amt), Color("#ffd93d"))
@@ -123,7 +133,7 @@ func _sk_fortune_allin(u: Dictionary, tgt) -> void:                 # 财神龟�
 	if tgt == null or u.get("allin_used", false):
 		return
 	u["allin_used"] = true
-	u["energy_cost"]["fortuneAllIn"] = 80.0    # ★梭哈后该技变「金盾」→ 龟能消耗 340→80(用户2026-07-12)
+	u["energy_cost"]["fortuneAllIn"] = GOLD_SHIELD_COST    # ★梭哈后该技变「金盾」→ 龟能消耗 340→80(用户2026-07-12)
 	var coins: int = int(u["gold"])
 	u["gold"] = 0.0
 	if coins <= 0:
