@@ -210,7 +210,7 @@ func _eq_crystal_line(u: Dictionary, si: int) -> void:   # 迷你水晶球A030: 
 func _eq_crystal_sweep(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false): return
 	var center: Vector2 = u["pos"]
-	var reach: float = 1000.0
+	var reach: float = CrystalSystem.SWEEP_REACH
 	var im := MeshInstance3D.new()
 	var imesh := ImmediateMesh.new()
 	im.mesh = imesh
@@ -488,8 +488,8 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 		u["candle_hot_until"] = battle._t + CANDLE_IV
 		for a37 in battle._targeting._allies_of(u, false):
 			if a37["pos"].distance_to(u["pos"]) <= CANDLE_HEAL_R:
-				a37["candle_hot_rate"] = (hv37 * 0.5) / 5.0
-				a37["candle_hot_until"] = battle._t + 5.0
+				a37["candle_hot_rate"] = (hv37 * CANDLE_ALLY_HALF) / CANDLE_IV
+				a37["candle_hot_until"] = battle._t + CANDLE_IV
 	elif ph == 2:   # 燃烧: 火苗爆燃(蜡烛过亮+弹一下) + 原地爆炸, 500码内敌各受魔法伤+灼烧
 		if c != null and is_instance_valid(c):
 			var ct = battle._reg_tween(); ct.set_parallel(true)
@@ -520,6 +520,11 @@ const CANDLE_IV := 5.0         # 每几秒切一次(主场景 _EQ_CUSTOM_IV 引�
 const CANDLE_HEAL_R := 250.0   # 微弱阶段: 友军回血光圈半径(码)
 const CANDLE_ALLY_HALF := 0.5  # 圈内友军按【半数】回复
 const CANDLE_BURN_R := 500.0   # 燃烧阶段: 爆燃半径(码)
+## 【004 暴君之牙】斩杀线随暴击率抬高; 处决后按有没有龟能给不同奖励。
+const FANG_IV := 6.0            # 每几秒射一颗毒牙(主场景 _EQ_CUSTOM_IV 引用本常量)
+const FANG_LIFESTEAL := 1.00    # 毒牙回复 = 造成伤害 ×
+const FANG_EXEC_ENERGY := 20.0  # 处决后回龟能(有龟能系统的单位)
+const FANG_EXEC_HEAL := 40.0    # 没有龟能系统的改回血
 const BLADE_FULL := 100.0        # 刃能满值
 const BLADE_AOE_FACTOR := 0.5    # 范围技能充能减半
 const BLADE_R_IN := 500.0        # 扇形带内半径(码)
@@ -1554,8 +1559,8 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 # 水晶叠层 (A/B共用); splash=true(B 3★): 引爆范围扩大50%波及邻格敌
 # 水晶叠层 (A/B共用); splash=true(B 3★): 引爆范围扩大50%波及邻格敌
 func _eq_crystal_stack(src: Dictionary, o: Dictionary, si: int) -> void:
-	var lv = battle._add_stack(o, "p2crystal", 1, 3)
-	if lv >= 3:
+	var lv = battle._add_stack(o, "p2crystal", 1, CrystalSystem.MINI_STACK_MAX)
+	if lv >= CrystalSystem.MINI_STACK_MAX:
 		battle._consume_stacks(o, "p2crystal")
 		battle._crystal_sys._crystal_stack_set(o, 0)
 		battle._crystal_sys._crystal_detonate(o["pos"])
@@ -1626,9 +1631,9 @@ func _eq_on_kill(killer: Dictionary, victim: Dictionary) -> void:
 		match iid:
 			"p2eq_004":   # 暴君之牙: 处决后回20龟能 (无龟能单位改回40血)
 				if battle._has_energy_system(killer):
-					_eq_grant_energy(killer, 20.0)
+					_eq_grant_energy(killer, FANG_EXEC_ENERGY)
 				else:
-					battle._damage._heal(killer, 40.0)
+					battle._damage._heal(killer, FANG_EXEC_HEAL)
 			# ★068 已由用户整条重做成【深海气压罐】(2026-08-05 §0.5): 旧的"击杀永久+攻"
 			#   是全表用滥的模板(远古之力/战利品/旧092 同形状), 用户点名作废。
 			#   新效果落在【受伤充能 + 每 12 秒释放】上, on-kill 不再有它。

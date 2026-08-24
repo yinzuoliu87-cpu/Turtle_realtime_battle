@@ -125,7 +125,7 @@ func _two_head_cannon_boom(u: Dictionary, at2d: Vector2) -> void:
 	battle._skill_ring(at2d, Color(0.76, 0.55, 1.0, 0.9), STRIKE_BLAST_RADIUS)       # 200码爆炸范围冲击波
 	battle._skill_ring(at2d, Color(0.86, 0.72, 1.0, 0.7), 110.0)
 	for o in battle._targeting._enemies_of(u):
-		if o.get("alive", false) and at2d.distance_to(o["pos"]) <= 200.0:
+		if o.get("alive", false) and at2d.distance_to(o["pos"]) <= STRIKE_BLAST_RADIUS:
 			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, STRIKE_RANGED_COEF, o) + int(o["maxHp"] * STRIKE_RANGED_MAXHP), Color("#c0a0ff"))
 			battle._vfx._flash(o, Color(0.8, 0.6, 1.0))
 

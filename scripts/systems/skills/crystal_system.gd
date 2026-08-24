@@ -196,6 +196,14 @@ func _crystal_detonate(pos2d: Vector2) -> void:
 ## ★缓动照抄 Godot 的 `TRANS_CUBIC + EASE_IN_OUT`, 保证观感与改前一致:
 ##   t<0.5 → 4t³ ; 否则 → 1 - (-2t+2)³/2
 var _sweeps: Array = []
+## 【031 迷你水晶球B】法力满 → 以自身为心 360° 扫射一圈。
+## 扫过的角度: 代码用的是弧度 TAU(整圈), 这里是它的度数形式 —— **推导**, 别存两份
+## (存两份就会出现"代码扫整圈、文案说 270 度"这种事)。
+const SWEEP_ARC_RAD := TAU
+const SWEEP_ARC_DEG := rad_to_deg(SWEEP_ARC_RAD)
+const SWEEP_REACH := 1000.0     # 射线半径(码)
+const MINI_STACK_MAX := 3       # 迷你水晶叠满几层引爆
+const MINI_MR_STEAL := 0.10     # 每次扫到偷目标当前魔抗 ×(真偷取, 永久到战斗结束)
 const SWEEP_SEC := 1.5
 
 ## ★★2026-08-20 把结晶印记那三个魔数提成具名常量。
@@ -225,7 +233,7 @@ func tick(delta: float) -> void:
 		var t: float = clampf(float(sw["el"]) / SWEEP_SEC, 0.0, 1.0)
 		## Godot TRANS_CUBIC / EASE_IN_OUT 的原式 —— 不近似, 保证观感不变
 		var k: float = 4.0 * t * t * t if t < 0.5 else 1.0 - pow(-2.0 * t + 2.0, 3.0) / 2.0
-		_crystal_sweep_step(float(sw["a0"]) + TAU * k, sw["u"], int(sw["si"]),
+		_crystal_sweep_step(float(sw["a0"]) + SWEEP_ARC_RAD * k, sw["u"], int(sw["si"]),
 			float(sw["reach"]), sw["state"], im2, sw["imesh"], sw["mat"])
 		if t >= 1.0:
 			_sweeps.remove_at(i)
@@ -280,7 +288,7 @@ func _crystal_sweep_step(ang: float, u: Dictionary, si: int, reach: float, state
 				# 伤害 60/130/250 (用户2026-08-01: 3★由 700 削到 250 —— 一次扫过全场敌人, 700 是全表最粗的一根)
 				battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, float([60, 130, 250][si]), o, true), Color("#bfa8ff"), 0.0, false, true)
 				# 偷魔抗【固定10%】(用户2026-08-01: 原 10/15/50% 随星级 → 3★一扫走对面一半魔抗, 且可叠)
-				var steal: float = maxf(0.0, float(o["mr"])) * 0.10   # 真偷取: 目标-X 携带者+X, 永久到战场结束
+				var steal: float = maxf(0.0, float(o["mr"])) * MINI_MR_STEAL   # 真偷取: 目标-X 携带者+X, 永久到战场结束
 				if steal > 0.01:
 					o["base_mr"] = float(o["base_mr"]) - steal; o["mr"] = float(o["mr"]) - steal
 					u["base_mr"] = float(u["base_mr"]) + steal; u["mr"] = float(u["mr"]) + steal

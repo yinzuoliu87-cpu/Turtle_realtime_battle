@@ -276,7 +276,7 @@ func _step_projectiles(delta: float) -> void:
 					battle._damage._apply_damage_from(pr["src"], tgt, vd, Color("#c96bff"), 0.0, false, true)
 					battle._venom_splat(tgt["pos"])
 					if pr["src"].get("alive", false):
-						battle._damage._heal(pr["src"], float(vd))   # 回复100%造成的伤害值
+						battle._damage._heal(pr["src"], float(vd) * EquipSystem.FANG_LIFESTEAL)   # 回复100%造成的伤害值
 				elif pr.get("coral_spike", false):   # 双穿珊瑚刺008: 命中→物理(红)+ %maxHP魔法(蓝·走魔抗·修原raw白字真伤)+珊瑚碎裂
 					var cs: int = int(pr.get("co_si", 2))
 					battle._damage._apply_damage_from(pr["src"], tgt, battle._atk_dmg(pr["src"], [1.0, 1.2, 1.5][cs], tgt), Color("#ff4444"), 0.0, false, true)

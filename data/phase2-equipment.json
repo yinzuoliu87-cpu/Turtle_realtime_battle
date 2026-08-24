@@ -42,7 +42,7 @@
     "baseStats1": "+攻15/30/90·暴击25/35/60%·吸血5/9/15%",
     "shopAvailable": 1,
     "emoji": "😈",
-    "effectDesc1": "伤害可处决生命值低于斩杀线的敌人（斩杀线=4/6/12%最大生命值×（1+暴击率））；处决后回复 20 点龟能（无龟能的单位改为回复 40 点生命）。\n此外携带者每 6 秒向最近的敌人射出一颗剧毒獠牙，造成 1/1.8/4×攻击力魔法伤害，并回复自身该伤害 100%的生命。",
+    "effectDesc1": "伤害可处决生命值低于斩杀线的敌人（斩杀线=4/6/12%最大生命值×（1+暴击率））；处决后回复 {C:EquipSystem.FANG_EXEC_ENERGY} 点龟能（无龟能的单位改为回复 {C:EquipSystem.FANG_EXEC_HEAL} 点生命）。\n此外携带者每 {C:EquipSystem.FANG_IV} 秒向最近的敌人射出一颗剧毒獠牙，造成 1/1.8/4×攻击力魔法伤害，并回复自身该伤害 {C:EquipSystem.FANG_LIFESTEAL%}%的生命。",
     "effectDesc3": "",
     "img": "equip/tyrant-fang.png",
     "effectBrief": "伤害可处决生命低于 4/6/12% 最大生命的敌人；每 6 秒射出毒牙吸血。"
@@ -366,10 +366,10 @@
     "baseStats1": "+攻7/12/20·生命20/40/80·魔穿3/6/10",
     "shopAvailable": 1,
     "emoji": "🔮",
-    "effectDesc1": "该法器法力条集满时以自身为中心用水晶射线 360°扫射一圈（半径 1000 码，耗时 1.5 秒，射线跟随携带者移动），扫到的敌人各造成 60/130/250 魔法伤害并施加 1 层迷你水晶，同时偷取目标 10%当前魔抗（真偷取：目标减少、携带者获得，永久到战斗结束）；\n敌人叠满 3 层水晶时被引爆，受到 14/17/20%其最大生命值的魔法伤害并重置层数。",
+    "effectDesc1": "该法器法力条集满时以自身为中心用水晶射线 {C:CrystalSystem.SWEEP_ARC_DEG}°扫射一圈（半径 {C:CrystalSystem.SWEEP_REACH} 码，耗时 {C:CrystalSystem.SWEEP_SEC} 秒，射线跟随携带者移动），扫到的敌人各造成 60/130/250 魔法伤害并施加 1 层迷你水晶，同时偷取目标 {C:CrystalSystem.MINI_MR_STEAL%}%当前魔抗（真偷取：目标减少、携带者获得，永久到战斗结束）；\n敌人叠满 {C:CrystalSystem.MINI_STACK_MAX} 层水晶时被引爆，受到 14/17/20%其最大生命值的魔法伤害并重置层数。",
     "effectDesc3": "",
     "img": "equip/dungeon-mini-crystal-b.png",
-    "effectBrief": "法力满时 360° 扫射水晶射线并偷取魔抗；敌人叠满 3 层即引爆。"
+    "effectBrief": "法力满时 {C:CrystalSystem.SWEEP_ARC_DEG}° 扫射水晶射线并偷取魔抗；敌人叠满 {C:CrystalSystem.MINI_STACK_MAX} 层即引爆。"
   },
   {
     "id": "p2eq_032",

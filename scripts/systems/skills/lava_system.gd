@@ -112,7 +112,7 @@ func _lava_quake(u: Dictionary) -> void:                         # 小·岩浆�
 		pt.tween_property(disc, "modulate:a", 0.7, 0.25)
 		pt.tween_property(disc, "modulate:a", 0.92, 0.25)
 	_lava_zones.append({
-		"center": center, "radius": radius, "until": battle._t + 5.0,
+		"center": center, "radius": radius, "until": battle._t + QUAKE_SEC,
 		"next_tick": battle._t + 0.5, "src": u, "disc": disc,
 	})
 	battle._skill_ring(center, Color(1.0, 0.45, 0.15, 0.5), radius)
@@ -637,7 +637,7 @@ func _lava_slam_impact(u: Dictionary, center: Vector2) -> void:   # 落地: 击�
 		##   改成砸地【专用】系数, 就近声明在这里(同凤凰 NIRVANA_BURN_COEF 的做法)。
 		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, SLAM_ATK_COEF, o, true), Color("#ff7a33"))
 		battle._damage._apply_dot_stacks(o, "burn", maxi(1, roundi(float(u["atk"]) * SLAM_BURN_COEF)), u)
-		battle._damage._heal(u, (o["maxHp"] - o["hp"]) * 0.08)
+		battle._damage._heal(u, (o["maxHp"] - o["hp"]) * ERUPT_HEAL_PCT)
 
 func _sk_lava_cast(u: Dictionary, tgt: Dictionary, set_id: String = "A") -> void:   # 熔岩龟·按选中技分派(A地裂/B岩浆涌动/C喷射)×形态变体
 	var volcano: bool = u.get("volcano", false)
