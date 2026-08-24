@@ -48,7 +48,7 @@
         "cd": 0,
         "icon": "skills/basic-attack.png",
         "brief": "攻击当前目标，造成 {N:1.0*ATK} 物理伤害。",
-        "detail": "小龟的普攻。\n对目标造成（100%×攻击力({ATK}) = {N:1.0*ATK}）物理伤害。\n被动·不屈按目标稀有度增伤。\n每 6 秒下次普攻强化(附 1.5×攻击力 + 13% 已损生命的物理伤害、击飞、护盾)。",
+        "detail": "小龟的普攻。\n对目标造成（100%×攻击力({ATK}) = {N:1.0*ATK}）物理伤害。\n被动·不屈按目标稀有度增伤。\n每 {C:BasicConsts.SHIELD_CD} 秒下次普攻强化(附 {C:BasicConsts.SHIELD_ATK_COEF}×攻击力 + {C:BasicConsts.SHIELD_LOST_PCT%}% 已损生命的物理伤害、击飞、护盾)。",
         "energyCost": 0
       },
       {
@@ -83,8 +83,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "将目标过肩摔到身后，<span class=\"val-atk\">眩晕</span> {C:BasicConsts.SLAM_STUN_SEC} 秒，造成 {N:1.0*ATK} 加 0.2%×攻击力×目标最大生命值的物理伤害。\n落点周围的敌人受到 {N:0.3*ATK} 加 0.13%×攻击力×主目标最大生命值的物理伤害。\n<span style=\"color:#8a93a0\">施法期间小龟霸体（不可被打断，但仍会受到伤害）；龟蛋免疫此控制。\n</span>",
-        "detail": "小龟抓住目标施展过肩摔：\n将目标挑空并摔到龟背后约 {C:BasicConsts.SLAM_LAND_BACK} 码处、眩晕 {C:BasicConsts.SLAM_STUN_SEC} 秒，对主目标造成（100%×攻击力({ATK}) = {N:1.0*ATK}）+ 0.2%×攻击力×目标最大生命值 物理伤害。\n落点周围 {C:BasicConsts.SLAM_SPLASH_RADIUS} 码内其余敌人受到（30%×攻击力({ATK}) = {N:0.3*ATK}）+ 0.13%×攻击力×主目标最大生命值 物理伤害。\n<span style=\"color:#8a93a0\">施法期间小龟霸体(不可被打断但仍吃伤)；龟蛋免疫控制(不被挑空/摔·只吃原地伤害)。\n</span>。\n<span style=\"color:#8a93a0\">施法期间小龟霸体（不可被打断，但仍会受到伤害）；龟蛋免疫此控制。</span>",
+        "brief": "将目标过肩摔到身后，<span class=\"val-atk\">眩晕</span> {C:BasicConsts.SLAM_STUN_SEC} 秒，造成 {N:1.0*ATK} 加 {C:BasicConsts.SLAM_MAIN_HP_PER_ATK%}%×攻击力×目标最大生命值的物理伤害。\n落点周围的敌人受到 {N:0.3*ATK} 加 {C:BasicConsts.SLAM_SPLASH_HP_PER_ATK%}%×攻击力×主目标最大生命值的物理伤害。\n<span style=\"color:#8a93a0\">施法期间小龟霸体（不可被打断，但仍会受到伤害）；龟蛋免疫此控制。\n</span>",
+        "detail": "小龟抓住目标施展过肩摔：\n将目标挑空并摔到龟背后约 {C:BasicConsts.SLAM_LAND_BACK} 码处、眩晕 {C:BasicConsts.SLAM_STUN_SEC} 秒，对主目标造成（{C:BasicConsts.SLAM_MAIN_ATK%}%×攻击力({ATK}) = {N:1.0*ATK}）+ {C:BasicConsts.SLAM_MAIN_HP_PER_ATK%}%×攻击力×目标最大生命值 物理伤害。\n落点周围 {C:BasicConsts.SLAM_SPLASH_RADIUS} 码内其余敌人受到（{C:BasicConsts.SLAM_SPLASH_ATK%}%×攻击力({ATK}) = {N:0.3*ATK}）+ {C:BasicConsts.SLAM_SPLASH_HP_PER_ATK%}%×攻击力×主目标最大生命值 物理伤害。\n<span style=\"color:#8a93a0\">施法期间小龟霸体(不可被打断但仍吃伤)；龟蛋免疫控制(不被挑空/摔·只吃原地伤害)。\n</span>。\n<span style=\"color:#8a93a0\">施法期间小龟霸体（不可被打断，但仍会受到伤害）；龟蛋免疫此控制。</span>",
         "energyCost": 120
       }
     ],
@@ -694,8 +694,8 @@
         "cd": 0,
         "dodgePct": 25,
         "dodgeTurns": 2,
-        "brief": "突袭目标，造成 {M:1.5*ATK} 魔法伤害，<span class=\"val-heal\">回复所造成伤害 80% 的生命值</span>，并获得 <span class=\"val-atk\">25% 闪避</span>持续 <span class=\"val-atk\">4 秒</span>。",
-        "detail": "幽灵龟对目标造成（150%×攻击力 = {M:1.5*ATK}）魔法伤害，回复造成伤害的 80% 生命值，将目标击退抛飞，并获得 25% 闪避，持续 <span class=\"val-def\">4 秒</span>。\n<span style=\"color:#8a93a0\">命中还会把目标<b>击退抛飞</b>。\n</span>"
+        "brief": "突袭目标，造成 {M:1.5*ATK} 魔法伤害，<span class=\"val-heal\">回复所造成伤害 {C:GhostSystem.RAID_LIFESTEAL%}% 的生命值</span>，并获得 <span class=\"val-atk\">{C:GhostSystem.RAID_DODGE%}% 闪避</span>持续 <span class=\"val-atk\">{C:GhostSystem.RAID_DODGE_SEC} 秒</span>。",
+        "detail": "幽灵龟对目标造成（{C:GhostSystem.RAID_MAGIC%}%×攻击力 = {M:1.5*ATK}）魔法伤害，回复造成伤害的 {C:GhostSystem.RAID_LIFESTEAL%}% 生命值，将目标击退抛飞，并获得 {C:GhostSystem.RAID_DODGE%}% 闪避，持续 <span class=\"val-def\">{C:GhostSystem.RAID_DODGE_SEC} 秒</span>。\n<span style=\"color:#8a93a0\">命中还会把目标<b>击退抛飞</b>。\n</span>"
       },
       {
         "name": "灵魂风暴",
@@ -705,8 +705,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "对目标释放灵魂风暴，造成两段共 {M:2*ATK} 魔法伤害，并施加诅咒持续 <span class=\"val-atk\">4 秒</span>。\n若目标身上已有诅咒，则改为造成 {T:2*ATK} 真实伤害。\n诅咒每秒结算；对已有诅咒的目标不重复施加或刷新。",
-        "detail": "幽灵龟对目标释放灵魂风暴，造成两段共（200%×攻击力 = {M:2*ATK}）魔法伤害，并施加诅咒持续 4 秒(每秒结算)。\n如果目标身上已有诅咒效果，则改为造成（200%×攻击力 = {T:2*ATK}）真实伤害，且不重复施加/刷新诅咒。\n<span style=\"color:#8a93a0\">诅咒：\n每秒目标受到 5% 最大生命值真实伤害</span>。"
+        "brief": "对目标释放灵魂风暴，造成两段共 {M:2*ATK} 魔法伤害，并施加诅咒持续 <span class=\"val-atk\">{C:GhostSystem.STORM_CURSE_SEC} 秒</span>。\n若目标身上已有诅咒，则改为造成 {T:2*ATK} 真实伤害。\n诅咒每秒结算；对已有诅咒的目标不重复施加或刷新。",
+        "detail": "幽灵龟对目标释放灵魂风暴，造成两段共（200%×攻击力 = {M:2*ATK}）魔法伤害，并施加诅咒持续 {C:GhostSystem.STORM_CURSE_SEC} 秒(每秒结算)。\n如果目标身上已有诅咒效果，则改为造成（200%×攻击力 = {T:2*ATK}）真实伤害，且不重复施加/刷新诅咒。\n<span style=\"color:#8a93a0\">诅咒：\n每秒目标受到 {C:BattleDamage.CURSE_HP_PCT%}% 最大生命值真实伤害</span>。"
       },
       {
         "name": "虚化",
@@ -716,8 +716,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "进入<span class=\"val-normal\">虚化</span>状态持续 <span class=\"val-atk\">4 秒</span>，并对目标攻击两段，共造成 {T:1.2*ATK} 真实伤害。",
-        "detail": "幽灵龟进入虚化 4 秒：受到的物理伤害降低 90%，期间<b>锁龟能</b>不充能，并对目标攻击两段，造成共（120%×攻击力 = {T:1.2*ATK}）真实伤害。\n<span style=\"color:#8a93a0\">虚化：\n使受到的物理伤害减少 90%</span>。"
+        "brief": "进入<span class=\"val-normal\">虚化</span>状态持续 <span class=\"val-atk\">{C:GhostSystem.PHASE_SEC} 秒</span>，并对目标攻击 {C:GhostSystem.PHASE_SEGMENTS} 段，共造成 {T:1.2*ATK} 真实伤害。",
+        "detail": "幽灵龟进入虚化 {C:GhostSystem.PHASE_SEC} 秒：受到的物理伤害降低 {C:GhostSystem.PHASE_PHYS_CUT%}%，期间<b>锁龟能</b>不充能，并对目标攻击 {C:GhostSystem.PHASE_SEGMENTS} 段，造成共（120%×攻击力 = {T:1.2*ATK}）真实伤害。\n<span style=\"color:#8a93a0\">虚化：\n使受到的物理伤害减少 {C:GhostSystem.PHASE_PHYS_CUT%}%</span>。"
       }
     ],
     "defaultSkills": [
@@ -972,7 +972,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "射出一道七彩光束，<span class=\"val-normal\">单段</span>造成 {N:0.9*ATK} 物理伤害，并根据当前棱镜颜色附加对应效果。",
-        "detail": "彩虹龟射出七彩光束，<span class=\"val-normal\">单段</span>造成（90%×攻击力({ATK}) = {N:0.9*ATK}）物理伤害，并根据当前棱镜颜色附加效果。\n🔴红光额外造成（25%×攻击力 = {T:0.25*ATK}）真实伤害；\n🔵蓝光使自身获得（20%×攻击力({ATK}) = {S:0.2*ATK}）护盾；\n🟢绿光回复自身 <span class=\"val-heal\">2.5% 已损生命值</span>。",
+        "detail": "彩虹龟射出七彩光束，<span class=\"val-normal\">单段</span>造成（{C:RainbowSystem.BEAM_COEF%}%×攻击力({ATK}) = {N:0.9*ATK}）物理伤害，并根据当前棱镜颜色附加效果。\n🔴红光额外造成（{C:RainbowSystem.PRISM_RED_TRUE%}%×攻击力 = {T:0.25*ATK}）真实伤害；\n🔵蓝光使自身获得（{C:RainbowSystem.PRISM_BLUE_SHIELD%}%×攻击力({ATK}) = {S:0.2*ATK}）护盾；\n🟢绿光回复自身 <span class=\"val-heal\">{C:RainbowSystem.PRISM_GREEN_HEAL%}% 已损生命值</span>。",
         "energyCost": 0
       },
       {

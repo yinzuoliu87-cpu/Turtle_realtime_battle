@@ -24,6 +24,9 @@ const STORM_RADIUS := 300.0         # 全色风暴: 半径码 (140→300)
 const STORM_ALLY_HEAL := 0.25       # 全色风暴: 每跳圈内友军回 ×ATK 生命 (新增)
 ## 【被动·棱镜】每 N 秒随机换一种颜色, 普攻附带对应效果。
 const PRISM_COLOR_SEC := 6.0        # 每几秒换一次颜色
+## 【七彩光束(普攻)】单段物理 + 按当前棱镜颜色附加效果。
+const BEAM_COEF := 0.9              # 单段 ×ATK 物理(真值在主场景的普攻表, 那里引用本常量)
+const BEAM_HITS := 1                # 段数
 const PRISM_RED_TRUE := 0.25        # 红: 普攻额外 ×ATK 真实伤害
 const PRISM_BLUE_SHIELD := 0.20     # 蓝: 每次普攻获得 ×ATK 护盾
 const PRISM_BLUE_SEC := 4.0         # 蓝盾持续(秒)

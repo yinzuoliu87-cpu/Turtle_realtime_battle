@@ -259,8 +259,8 @@ pet|幽灵龟/怨灵|brief|登场时对全体敌人各施加 2.5 秒诅咒，并
 pet|幽灵龟/怨灵|desc|登场诅咒：\n登场瞬间对全部敌人各施加 2.5 秒诅咒。\n死亡诅咒：\n幽灵龟死亡瞬间，对<span class="val-normal">随机 1 个敌人</span>施加 5 秒诅咒。\n诅咒：\n每秒造成目标 <span class="val-true">5% 最大生命值</span>的真实伤害（无视双抗）。\n<span class="val-normal">不叠层数，重复施加改为累加剩余时长</span>（可无限累加）。\n只在登场、死亡、灵魂风暴命中时施加；没有周期性续诅咒，普攻也不叠诅咒。
 pet|幽灵龟/灵魂风暴|brief|对目标释放灵魂风暴，造成两段共 {M:2*ATK} 魔法伤害，并施加诅咒持续 <span class="val-atk">4 秒</span>。\n若目标身上已有诅咒，则改为造成 {T:2*ATK} 真实伤害。\n诅咒每秒结算；对已有诅咒的目标不重复施加或刷新。
 pet|幽灵龟/灵魂风暴|detail|幽灵龟对目标释放灵魂风暴，造成两段共（200%×攻击力 = {M:2*ATK}）魔法伤害，并施加诅咒持续 4 秒(每秒结算)。\n如果目标身上已有诅咒效果，则改为造成（200%×攻击力 = {T:2*ATK}）真实伤害，且不重复施加/刷新诅咒。\n<span style="color:#8a93a0">诅咒：\n每秒目标受到 5% 最大生命值真实伤害</span>。
-pet|幽灵龟/虚化|brief|进入<span class="val-normal">虚化</span>状态持续 <span class="val-atk">4 秒</span>，并对目标攻击两段，共造成 {T:1.2*ATK} 真实伤害。
-pet|幽灵龟/虚化|detail|幽灵龟进入虚化 4 秒：受到的物理伤害降低 90%，期间<b>锁龟能</b>不充能，并对目标攻击两段，造成共（120%×攻击力 = {T:1.2*ATK}）真实伤害。\n<span style="color:#8a93a0">虚化：\n使受到的物理伤害减少 90%</span>。
+pet|幽灵龟/虚化|brief|进入<span class="val-normal">虚化</span>状态持续 <span class="val-atk">4 秒</span>，并对目标攻击 2 段，共造成 {T:1.2*ATK} 真实伤害。
+pet|幽灵龟/虚化|detail|幽灵龟进入虚化 4 秒：受到的物理伤害降低 90%，期间<b>锁龟能</b>不充能，并对目标攻击 2 段，造成共（120%×攻击力 = {T:1.2*ATK}）真实伤害。\n<span style="color:#8a93a0">虚化：\n使受到的物理伤害减少 90%</span>。
 pet|彩虹龟/七彩光束|brief|射出一道七彩光束，<span class="val-normal">单段</span>造成 {N:0.9*ATK} 物理伤害，并根据当前棱镜颜色附加对应效果。
 pet|彩虹龟/七彩光束|detail|彩虹龟射出七彩光束，<span class="val-normal">单段</span>造成（90%×攻击力({ATK}) = {N:0.9*ATK}）物理伤害，并根据当前棱镜颜色附加效果。\n🔴红光额外造成（25%×攻击力 = {T:0.25*ATK}）真实伤害；\n🔵蓝光使自身获得（20%×攻击力({ATK}) = {S:0.2*ATK}）护盾；\n🟢绿光回复自身 <span class="val-heal">2.5% 已损生命值</span>。
 pet|彩虹龟/全色风暴|brief|在自身周围掀起七彩风暴，持续 <span class="val-atk">4 秒</span>，每 <span class="val-atk">0.5 秒</span> 对范围内敌人造成 {M:0.1*ATK} 魔法伤害 和 {T:0.05*ATK} 真实伤害，并使其护甲和魔抗各降低 <span class="val-atk">20%</span>。\n使范围内友军回复 {H:0.25*ATK} 生命值。

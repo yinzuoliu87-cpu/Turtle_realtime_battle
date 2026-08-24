@@ -299,7 +299,7 @@ const BASIC_ATK := {
 	"diamond":  {"phys": 0.7, "def": 0.6, "mr": 0.6, "hits": 1},                    # +护甲魔抗
 	"fortune":  {"phys": 1.0, "gold": 0.02, "hits": 1},                            # 1下(用户; 回合制原2下)
 	"dice":     {"phys": 0.9, "critflat": 55.0, "hits": 1},                         # 90%物理+5500%暴击率flat·单段近战(对齐回合制 diceAttack critBonusMult=55·无实时原话)
-	"rainbow":  {"phys": 0.9, "hits": 1},                                          # 单段0.9物理(用户2026-07-02, 原魔法1.4×2)
+	"rainbow":  {"phys": RainbowSystem.BEAM_COEF, "hits": RainbowSystem.BEAM_HITS},                                          # 单段0.9物理(用户2026-07-02, 原魔法1.4×2)
 	"gambler":  {"phys": 1.0, "hits": 1},                                          # 甩扑克牌(封板L296·用户改): 1.0A物理单段(原3段1.35A=旧值)·多重打击被动复放整发普攻(_gambler_sys._gambler_multi_cd)
 	"hunter":   {"phys": 1.0, "hits": 1},   # 封板: 普攻1.0A物理(残血追猎+50%攻速在atk_cd处)
 	"pirate":   {"phys": 1.0, "hits": 1, "selfheal": 0.2},                          # 弯刀(封板L382·近战): 1.0A物理+自愈0.2A(每击回0.2×ATK生命)·[段数1=单弯刀斩·手感留F5]
@@ -4372,7 +4372,7 @@ func _resolve_dmg(u: Dictionary, base: float, tgt: Dictionary, magic: bool) -> i
 	base *= 1.0 + float(u.get("damage_amp", 0.0))          # 攻击者增伤%
 	base *= 1.0 - float(tgt.get("damage_reduction", 0.0))  # 受害者减伤%(真伤不走此函数)
 	if not magic and _t < float(tgt.get("phase_until", 0.0)):
-		base *= 0.1                                          # 虚化(幽灵): 受物理伤害-90% (真伤/魔法不减)
+		base *= GhostSystem.PHASE_MULT                       # 虚化(幽灵): 受物理伤害-90% (真伤/魔法不减)
 	if magic and str(tgt.get("id", "")) == "crystal":
 		base *= 0.8                                          # 水晶共鸣: 受魔法额外-20%
 	return maxi(1, int(round(base)))
@@ -4391,7 +4391,7 @@ func _phys_after_armor(u: Dictionary, raw: float, tgt: Dictionary) -> int:
 	d *= 1.0 + float(u.get("damage_amp", 0.0))
 	d *= 1.0 - float(tgt.get("damage_reduction", 0.0))
 	if _t < float(tgt.get("phase_until", 0.0)):
-		d *= 0.1                                    # 虚化(幽灵): 受物理-90%
+		d *= GhostSystem.PHASE_MULT                 # 虚化(幽灵): 受物理-90%
 	return maxi(1, int(round(d)))
 
 # 立绘前冲 (近战命中视觉) — billboard offset 微推再回 (朝镜头, 不用翻 facing)

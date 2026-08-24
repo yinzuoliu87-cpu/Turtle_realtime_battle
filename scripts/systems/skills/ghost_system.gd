@@ -7,6 +7,19 @@ extends RefCounted
 const SPAWN_CURSE_SEC := 2.5   # 被动·登场诅咒秒数 (5.0 → 4.0 → 2.5·用户2026-07-29 第四轮)
 ## ★本轮【只削登场时长, 不动 CURSE_HP_PCT】—— 那个 5% 是 battle_damage.gd:425 的共享常量,
 ##   无头(64.3%)与彩虹(45.0%)也吃它, 而彩虹上一轮刚被砍 52.2pp 已经在位, 再挨一刀会掉出合理区。
+## 【虚化】一段时间内物理伤害大减(真伤/魔法不减), 期间锁龟能; 同时对目标打两段真伤。
+## ★减伤在【主场景】写成 `base *= 0.1` 两处 —— 存的是【剩余倍率】, 文案说的是"降低 90%"。
+##   这里存**语义值**(降幅), 倍率现推, 免得两边各说各的。
+const PHASE_SEC := 4.0          # 虚化持续(秒)
+const PHASE_PHYS_CUT := 0.90    # 受到的物理伤害降低
+const PHASE_MULT := 1.0 - PHASE_PHYS_CUT   # 推导: 代码要的剩余倍率
+const PHASE_SEGMENTS := 2       # 打几段
+const PHASE_SEG_COEF := 0.6     # 每段 ×ATK 真实(两段合计 1.2)
+## 【幽冥突袭】魔法伤 + 高吸血 + 自身闪避, 并把目标击退抛飞。
+const RAID_MAGIC := 1.5      # ×ATK 魔法
+const RAID_LIFESTEAL := 0.8  # 回复所造成伤害 ×
+const RAID_DODGE := 0.25     # 自身闪避 +
+const RAID_DODGE_SEC := 4.0  # 闪避持续(秒)
 const STORM_DMG := 2.0         # 灵魂风暴: ×ATK (2.5→2.0·魔法与"已中咒转真伤"两支同值)
 const STORM_CURSE_SEC := 4.0   # 灵魂风暴: 施加的诅咒秒数(10→6→4·用户2026-07-29 第五轮)
 ## ★为什么砍时长而不是砍本体: 一发 369 点里【诅咒占 77%】(6秒 × 5%目标最大生命真伤, 无视双抗),
@@ -101,7 +114,7 @@ func _ghost_phantom_hit(u: Dictionary, tgt) -> void:
 	if not u.get("alive", false): return
 	if not (tgt is Dictionary) or not tgt.get("alive", false): tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
-	battle._sk_dmg(u, tgt, {"magic": 1.5, "hits": 1, "lifesteal": 0.8, "selfDodge": 0.25, "selfDodgeDur": 4.0, "name": "幻影!", "color": Color("#c77dff")})
+	battle._sk_dmg(u, tgt, {"magic": RAID_MAGIC, "hits": 1, "lifesteal": RAID_LIFESTEAL, "selfDodge": RAID_DODGE, "selfDodgeDur": RAID_DODGE_SEC, "name": "幻影!", "color": Color("#c77dff")})
 	if tgt.get("alive", false):
 		battle._damage._knockback(u, tgt, 0.0, 1.4, 0.45)   # 击退抛飞
 
@@ -127,10 +140,10 @@ func _sk_ghost_soulstorm(u: Dictionary, tgt: Dictionary) -> void: # 幽灵龟·�
 	battle._shake(0.1)
 
 func _sk_ghost_phase(u: Dictionary, tgt: Dictionary) -> void:    # 幽灵龟·虚化 (用户2026-07-08): 虚化4秒受物理伤害-90% + 对目标2段共1.2A真伤
-	u["phase_until"] = battle._t + 4.0
-	u["energy_lock_until"] = battle._t + 4.0   # 虚化时锁龟能条(用户2026-07-11·复用energy_lock_until→_tick_skill_cd锁)
-	for i in range(2):
-		battle._damage._apply_damage_from(u, tgt, int(u["atk"] * 0.6), Color("#c77dff"), 0.0, true)   # 真实(穿减伤)
+	u["phase_until"] = battle._t + PHASE_SEC
+	u["energy_lock_until"] = battle._t + PHASE_SEC   # 虚化时锁龟能条(用户2026-07-11·复用energy_lock_until→_tick_skill_cd锁)
+	for i in range(PHASE_SEGMENTS):
+		battle._damage._apply_damage_from(u, tgt, int(u["atk"] * PHASE_SEG_COEF), Color("#c77dff"), 0.0, true)   # 真实(穿减伤)
 	battle._aura_vfx("res://assets/sprites/vfx/fx-glow-ring.png", u, 78.0, Color(0.78, 0.49, 1.0, 0.55), 4.0)   # 虚化紫环(虚化4秒·跟随)
 	battle._skill_ring(u["pos"], Color(0.7, 0.45, 1.0, 0.78), 92.0)   # 虚化入场幽紫脉冲(用户2026-07-11)
 	var _pr2 = battle._reg_tween()
