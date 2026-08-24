@@ -9,6 +9,11 @@ const MULTI_BASE := 0.40      # 基础触发概率
 const MULTI_DECAY := 0.8      # 每连锁一次概率 ×(40% → 32% → 25.6% → …)
 const MULTI_WHEEL := 0.60     # 出战选「命运之轮」→ 基础概率变这个
 const MULTI_BET_BONUS := 0.20 # 释放「赌注」→ 之后 3 秒内再 +
+## 【赌注】消耗当前生命打出多段物理; 血不够则转低血模式。
+const BET_HP_COST := 0.40     # 消耗【当前】生命 ×(也是低血模式的门槛线, 同一个数)
+const BET_SEGMENTS := 7       # 分成几段砸向目标
+const BET_BONUS_SEC := 3.0    # 之后几秒内多重打击概率 +MULTI_BET_BONUS
+const BET_LOWHP_HEAL := 0.08  # 低血模式: 改为回复最大生命 ×
 ## 【命运之轮】四花色各永久加两项。★代码里这组数**写了两遍**(抽到时 / 复活后套用),
 ##   提成常量正好把那份重复消掉 —— 改一处两边同时变。
 const WHEEL_SPADE_ATK := 3.0       # ♠ 攻击力 +
@@ -32,7 +37,7 @@ func _init(b) -> void:
 func _gambler_multi_cd(u: Dictionary) -> float:
 	var base_ch: float = float(u.get("multi_base", MULTI_BASE))     # 命运之轮选中→0.60; 否则0.40
 	if battle._t < float(u.get("gambler_bet_until", 0.0)):
-		base_ch += 0.20                                       # 赌注放技→3秒内临时+20%(封顶示例0.80)
+		base_ch += MULTI_BET_BONUS                                       # 赌注放技→3秒内临时+20%(封顶示例0.80)
 	var ch: float = float(u.get("multi_chance", base_ch))
 	if battle._battle_rng.randf() < ch:
 		u["multi_chance"] = ch * 0.8                  # 递减: 每次连锁×0.8
@@ -217,18 +222,18 @@ func _gambler_wild_vfx(u: Dictionary, tgt: Dictionary) -> void:
 
 func _sk_gambler_bet(u: Dictionary, tgt: Dictionary) -> void:    # 赌神龟·赌注(用户封板·100龟能): 需当前生命>40%; 消耗当前生命40%→7段物理砸目标(共≈0.4×当前生命); 施放3秒多重概率+20%
 	if tgt == null or not tgt.get("alive", false): return
-	if u["hp"] < u["maxHp"] * 0.40:                              # ★低血模式(用户2026-07-14): 血不够押本→转而回8%maxHp + 3秒多重+20%(不甩牌·不消耗血)
-		battle._damage._heal(u, u["maxHp"] * 0.08)
-		u["gambler_bet_until"] = battle._t + 3.0
+	if u["hp"] < u["maxHp"] * BET_HP_COST:                              # ★低血模式(用户2026-07-14): 血不够押本→转而回8%maxHp + 3秒多重+20%(不甩牌·不消耗血)
+		battle._damage._heal(u, u["maxHp"] * BET_LOWHP_HEAL)
+		u["gambler_bet_until"] = battle._t + BET_BONUS_SEC
 		battle._vfx._flash(u, Color(0.4, 1.7, 0.6))                         # 绿闪(求稳回血)
 		battle._skill_ring(u["pos"], Color(0.3, 1.0, 0.5, 0.55), 54.0)   # 绿环
 		_gambler_pop(u["pos"], float(u.get("height", 0.0)), Color(0.3, 1.0, 0.5, 0.85))   # 回血绿
 		return
-	var cost: float = u["hp"] * 0.40
+	var cost: float = u["hp"] * BET_HP_COST
 	u["hp"] = maxf(1.0, u["hp"] - cost)
 	battle._vfx._flash(u, Color(1.7, 0.4, 0.4))                            # HP牺牲红闪(押上血本)
-	var per: int = maxi(1, int(cost / 7.0))
-	u["gambler_bet_until"] = battle._t + 3.0                           # 3秒多重概率+20%(见_gambler_multi_cd·回补钩)
+	var per: int = maxi(1, int(cost / float(BET_SEGMENTS)))
+	u["gambler_bet_until"] = battle._t + BET_BONUS_SEC                           # 3秒多重概率+20%(见_gambler_multi_cd·回补钩)
 	battle._skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.55), 54.0)
 	for i in range(7):                                         # 7张牌barrage(错峰0.11s·命中才跳伤害·每张触发多重打击B·扣'七段')
 		# ★用户2026-07-28 报的 bug: 这里原来只传了 roll_multi=true, 而 _gambler_throw_hit 的

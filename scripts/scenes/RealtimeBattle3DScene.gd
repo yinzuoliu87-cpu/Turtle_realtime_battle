@@ -7085,8 +7085,8 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	# --- 财神聚宝盆: 每3秒 +4~7金币 (用户) ---
 	if u["id"] == "fortune":
 		u["_goldtimer"] = u.get("_goldtimer", 0.0) + delta
-		if u["_goldtimer"] >= 3.0:
-			u["_goldtimer"] = 0.0; u["gold"] += _juice_rng.randi_range(4, 7)
+		if u["_goldtimer"] >= FortuneSystem.COIN_IV:
+			u["_goldtimer"] = 0.0; u["gold"] += _juice_rng.randi_range(FortuneSystem.COIN_MIN, FortuneSystem.COIN_MAX)
 			for _gk in range(2):   # 聚宝盆冒金币: 脚下叮当迸2金块(设计"每隔几秒叮当冒金币")
 				_gold_chunk_erupt(u["pos"] + Vector2(randf_range(-24.0, 24.0), randf_range(6.0, 18.0)))
 	# --- 线条墨迹(用户2026-07-28): 自身实时获得 =(0.5×攻击力)% 攻速 ---

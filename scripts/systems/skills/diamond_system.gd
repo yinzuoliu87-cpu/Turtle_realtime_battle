@@ -5,6 +5,11 @@ extends RefCounted
 
 ## ★★2026-08-22 文案根除: 下面这些原来全是函数体里的裸字面量。
 ## 【钻石滚球】按撞击瞬间的移动速度在 0 速 ↔ 满速之间**线性插值**
+## 【坚不可摧】护盾 + 双抗, 两者时长不同(护盾 4 秒 / 双抗 5 秒)。
+const FORTIFY_SHIELD_PCT := 0.20   # 护盾 = 自身最大生命 ×
+const FORTIFY_SHIELD_SEC := 4.0    # 护盾持续(秒)·持盾期锁龟能
+const FORTIFY_RESIST_COEF := 0.20  # 护甲与魔抗 各 += ATK ×
+const FORTIFY_RESIST_SEC := 5.0    # 双抗持续(秒)
 const ROLL_ACCEL_SEC := 4.0       # 从静止加速到满速要几秒
 const ROLL_HIT_RADIUS := 120.0    # 撞击点小 AOE 半径(码)
 const ROLL_RESIST_MIN := 0.1      # 0 速时 ×护甲 与 ×魔抗
@@ -101,8 +106,8 @@ func _diamond_slash_fx(u: Dictionary, tgt: Dictionary) -> void:   # 钻石普攻
 	t.tween_callback(b.queue_free)
 
 func _sk_diamond_unbreak(u: Dictionary) -> void:                 # 钻石龟·坚不可摧(封板): 20%最大生命护盾(4秒·限时盾原语)+护甲/魔抗各+20%攻击力(flat·5秒)
-	battle._damage._grant_shield(u, u["maxHp"] * 0.20, 4.0)
-	u["diamond_fortify_until"] = battle._t + 4.0   # 持盾期锁龟能+青水晶护罩(与shield同4s·盾破/到期即恢复·用户2026-07-12)
+	battle._damage._grant_shield(u, u["maxHp"] * FORTIFY_SHIELD_PCT, FORTIFY_SHIELD_SEC)
+	u["diamond_fortify_until"] = battle._t + FORTIFY_SHIELD_SEC   # 持盾期锁龟能+青水晶护罩(与shield同4s·盾破/到期即恢复·用户2026-07-12)
 	battle._damage._buff(u, "def", u["atk"] * 0.2, false, 5.0)
 	battle._damage._buff(u, "mr", u["atk"] * 0.2, false, 5.0)
 	battle._burst_vfx("res://assets/sprites/vfx/diamond-fortify.png", u["pos"], 100.0, 0.5)   # 水晶护甲成型(蓝晶迸发·此前零特效)

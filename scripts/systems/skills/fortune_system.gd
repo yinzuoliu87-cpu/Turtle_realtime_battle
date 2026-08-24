@@ -6,6 +6,12 @@ extends RefCounted
 ## ★财神数值单一事实源(用户2026-07-28 第三轮加强·梭哈 8.4% 第83)。文案在 data/pets.json。
 const ALLIN_SHIELD_SEC := 6.0   # 梭哈首发金盾持续秒数(不锁龟能·与变身后的金盾区分)
 const LOWHP_PCT := 0.20          # 【通用被动·聚宝盆】: 首次跌破该血量比例触发(不论带哪个技能)
+## 【聚宝盆】局内金币产出 + 低血一次性龟能。
+const COIN_IV := 3.0             # 每几秒产一次金币
+const COIN_MIN := 4              # 每次产出下限
+const COIN_MAX := 7              # 每次产出上限
+const COIN_ON_DEATH := 9         # 场上任意单位阵亡额外获得
+const LOWHP_TRIGGER := 0.20      # 首次血量降到 × 最大生命 以下时触发
 const LOWHP_ENERGY := 70.0       # 【通用被动·聚宝盆】: 触发时立得的龟能
 
 var battle
