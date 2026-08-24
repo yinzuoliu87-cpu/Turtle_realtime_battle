@@ -28,6 +28,14 @@ const VOLCANO_RANGE := 70.0
 ## 变身时的预警圈半径(码)。原来是 `_lava_volcano_erupt` 里 `_densest_enemy_point` 的裸 400.0。
 const SLAM_WARN_RADIUS := 400.0
 ## 【地裂(普通形态)】敌最密处生成一片岩浆池。
+## 【岩浆涌动(普通形态)】目标脚下喷岩浆柱。
+const SURGE_KNOCK_SEC := 0.82      # 击飞滞空(秒)
+const SURGE_ATK_COEF := 1.5        # ×ATK 魔法
+const SURGE_SHIELD_COEF := 0.8     # 自身获得 ×ATK 护盾(不限时)
+## 【重击(火山形态)】同一技能槽的变体。
+const STRIKE_ATK_COEF := 1.3       # ×ATK 物理
+const STRIKE_MAXHP_PCT := 0.08     # + 自身最大生命 ×
+const STRIKE_LIFESTEAL := 0.20     # 附带生命偷取
 const QUAKE_RADIUS := 180.0        # 岩浆池半径(码)
 const QUAKE_SEC := 5.0             # 持续(秒)
 const QUAKE_TICK_SEC := 0.5        # 每几秒结算一次

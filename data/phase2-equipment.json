@@ -1110,7 +1110,7 @@
     "baseStats1": "+攻10/20/36·+破甲3/7/11·+法穿3/7/11",
     "shopAvailable": 1,
     "emoji": "🪔",
-    "effectDesc1": "主动：每 12 秒强化下 4 次普攻，这 4 次获得 100%攻速、10%生命偷取，并附带 30/50/80+目标最大生命值 1/1.5/2%的物理伤害。",
+    "effectDesc1": "主动：每 {C:IncenseStoneSystem.EMP_IV} 秒强化下 {C:IncenseStoneSystem.EMP_SHOTS} 次普攻，这 {C:IncenseStoneSystem.EMP_SHOTS} 次获得 {C:IncenseStoneSystem.EMP_ASPD%}%攻速、{C:IncenseStoneSystem.EMP_LS%}%生命偷取，并附带 30/50/80+目标最大生命值 1/1.5/2%的物理伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_093.png",
     "effectBrief": "每 12 秒强化下 4 次普攻：+100% 攻速、10% 生命偷取并附带额外伤害。"

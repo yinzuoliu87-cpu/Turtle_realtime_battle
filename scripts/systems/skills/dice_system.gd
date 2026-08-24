@@ -10,6 +10,12 @@ const FLASH_SEG_MIN := 7          # 稳定骰子: 段数下限 (原 4+d6 = 5)
 const FLASH_SEG_MAX := 11         # 稳定骰子: 段数上限 (原 4+d6 = 10)
 const FLASH_SHIELD_PER_HIT := 0.2 # 稳定骰子: 每穿一次获得 ×ATK 护盾
 const FATE_LIFESTEAL := 0.50      # 命运骰子: 释放后首次攻击的生命偷取
+## 【命运骰子】掷出的暴击率提升区间(持续到下次释放本技能)。
+const FATE_CRIT_MIN := 0.40       # 区间下限
+const FATE_CRIT_MAX := 1.30       # 区间上限
+## 【稳定骰子】首段系数与逐段递减(段数上下限见上面 FLASH_SEG_*)。
+const FLASH_FIRST_COEF := 0.9     # 首段 ×ATK
+const FLASH_FALLOFF := 0.10       # 之后每段递减
 
 var battle
 
@@ -67,7 +73,7 @@ func _dice_dash_tick(u: Dictionary, delta: float) -> void:
 		_dice_blade_trail(u["pos"], ddir)
 
 func _dice_dash_hit(u: Dictionary, tgt: Dictionary, dir: Vector2) -> void:
-	var scale_i: float = 0.9 * pow(0.9, float(int(u.get("dice_dash_seg", 0))))   # 每段递减10%(回合制falloffPct=10)
+	var scale_i: float = FLASH_FIRST_COEF * pow(1.0 - FLASH_FALLOFF, float(int(u.get("dice_dash_seg", 0))))   # 每段递减10%(回合制falloffPct=10)
 	battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, scale_i, tgt), Color("#ff4444"))
 	battle._damage._grant_shield(u, float(u["atk"]) * FLASH_SHIELD_PER_HIT, 6.0)   # 每穿一次 +0.2ATK 护盾(用户2026-07-28)
 	_dice_blade_slash(tgt["pos"], dir)   # AI挥剑斩(沿冲刺方向)
@@ -181,7 +187,7 @@ func _sk_dice_fate(u: Dictionary) -> void:
 	if u.get("crit_fate_until", 0.0) > battle._t:           # 撤销未到期旧增益, 防叠加
 		u["crit"] -= u.get("crit_fate_amt", 0.0)
 		u["crit_dmg"] -= u.get("crit_dmg_fate_amt", 0.0)
-	var roll: float = randf_range(0.4, 1.3)
+	var roll: float = randf_range(FATE_CRIT_MIN, FATE_CRIT_MAX)
 	var over: float = maxf(0.0, (u["crit"] + roll) - 1.0)   # 暴击封顶100%, 超出转暴伤
 	var add_crit: float = roll - over
 	var add_cd: float = over * 1.5

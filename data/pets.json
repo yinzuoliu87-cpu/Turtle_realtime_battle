@@ -925,8 +925,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "掷出命运骰子，获得随机 <span class=\"val-atk\">40%~130% 暴击率</span> 提升，<span class=\"val-atk\">持续到下次释放本技能</span>。\n<span style=\"color:#8a93a0\">再次释放会撤销旧增益并重新掷骰。\n</span>\n释放后的首次攻击额外附带 <span class=\"val-heal\">50% 生命偷取</span>。",
-        "detail": "骰子龟掷出命运骰子，获得随机 <span class=\"val-atk\">40%~130%</span> 暴击机率提升，<span class=\"val-atk\">持续到下次释放本技能</span>（再次释放会先撤销旧增益，再重新掷一次）。\n<span style=\"color:#8a93a0\">暴击机率超过 100%的部分，每 1%转化为 1.5% 暴击伤害。\n</span>\n释放后的<span class=\"val-atk\">首次攻击</span>额外附带 <span class=\"val-heal\">50% 生命偷取</span>。"
+        "brief": "掷出命运骰子，获得随机 <span class=\"val-atk\">{C:DiceSystem.FATE_CRIT_MIN%}%~{C:DiceSystem.FATE_CRIT_MAX%}% 暴击率</span> 提升，<span class=\"val-atk\">持续到下次释放本技能</span>。\n<span style=\"color:#8a93a0\">再次释放会撤销旧增益并重新掷骰。\n</span>\n释放后的首次攻击额外附带 <span class=\"val-heal\">{C:DiceSystem.FATE_LIFESTEAL%}% 生命偷取</span>。",
+        "detail": "骰子龟掷出命运骰子，获得随机 <span class=\"val-atk\">{C:DiceSystem.FATE_CRIT_MIN%}%~{C:DiceSystem.FATE_CRIT_MAX%}%</span> 暴击机率提升，<span class=\"val-atk\">持续到下次释放本技能</span>（再次释放会先撤销旧增益，再重新掷一次）。\n<span style=\"color:#8a93a0\">暴击机率超过 100%的部分，每 1%转化为 1.5% 暴击伤害。\n</span>\n释放后的<span class=\"val-atk\">首次攻击</span>额外附带 <span class=\"val-heal\">{C:DiceSystem.FATE_LIFESTEAL%}% 生命偷取</span>。"
       },
       {
         "name": "稳定骰子",
@@ -936,8 +936,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "朝随机敌人突刺 <span class=\"val-atk\">7~11</span> 次，首段造成 {N:0.9*ATK} 物理伤害，此后每段递减 <span class=\"val-atk\">10%</span>。\n每穿刺一次获得 {S:0.2*ATK} 护盾。",
-        "detail": "骰子龟对随机敌人突刺 <span class=\"val-atk\">7~11</span> 次，首段造成（90%×攻击力({ATK}) = {N:0.9*ATK}）物理伤害，之后每段伤害递减 <span class=\"val-atk\">10%</span>。\n<span class=\"val-normal\">每穿刺一次获得（20%×攻击力 = {S:0.2*ATK}）护盾</span>。\n<span style=\"color:#8a93a0\">打包被动「真正的赌徒」：选择本技能后，骰子龟登场即把<b>全部护甲与魔抗转化为等量护甲穿透</b>，双抗清零（纯物理流）。\n</span>"
+        "brief": "朝随机敌人突刺 <span class=\"val-atk\">{C:DiceSystem.FLASH_SEG_MIN}~{C:DiceSystem.FLASH_SEG_MAX}</span> 次，首段造成 {N:0.9*ATK} 物理伤害，此后每段递减 <span class=\"val-atk\">{C:DiceSystem.FLASH_FALLOFF%}%</span>。\n每穿刺一次获得 {S:0.2*ATK} 护盾。",
+        "detail": "骰子龟对随机敌人突刺 <span class=\"val-atk\">{C:DiceSystem.FLASH_SEG_MIN}~{C:DiceSystem.FLASH_SEG_MAX}</span> 次，首段造成（{C:DiceSystem.FLASH_FIRST_COEF%}%×攻击力({ATK}) = {N:0.9*ATK}）物理伤害，之后每段伤害递减 <span class=\"val-atk\">{C:DiceSystem.FLASH_FALLOFF%}%</span>。\n<span class=\"val-normal\">每穿刺一次获得（20%×攻击力 = {S:0.2*ATK}）护盾</span>。\n<span style=\"color:#8a93a0\">打包被动「真正的赌徒」：选择本技能后，骰子龟登场即把<b>全部护甲与魔抗转化为等量护甲穿透</b>，双抗清零（纯物理流）。\n</span>"
       }
     ],
     "defaultSkills": [
@@ -1707,7 +1707,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "蓄力后使目标脚下喷出岩浆柱，将附近敌人<span class=\"val-atk\">击飞</span>并造成 {M:1.5*ATK} 魔法伤害，同时自身获得 {S:0.8*ATK} 护盾。\n<span style=\"color:#8a93a0\">该盾不限持续时间。\n</span>",
-        "detail": "熔岩龟蓄力后，在目标脚下喷出岩浆柱：\n击飞附近的敌人（约 0.82 秒滞空），造成（150%×攻击力({ATK}) = {M:1.5*ATK}）魔法伤害，熔岩龟自身获得（80%×攻击力({ATK}) = {S:0.8*ATK}）护盾（不限时）。\n<span style=\"color:#8a93a0\">火山形态下本技变为「重击」：蓄力猛砸目标，将其击飞，造成（130%×攻击力 + 8%×熔岩龟自身最大生命值）物理伤害，并附带 20% 生命偷取。\n</span>"
+        "detail": "熔岩龟蓄力后，在目标脚下喷出岩浆柱：\n击飞附近的敌人（约 {C:LavaSystem.SURGE_KNOCK_SEC} 秒滞空），造成（{C:LavaSystem.SURGE_ATK_COEF%}%×攻击力({ATK}) = {M:1.5*ATK}）魔法伤害，熔岩龟自身获得（{C:LavaSystem.SURGE_SHIELD_COEF%}%×攻击力({ATK}) = {S:0.8*ATK}）护盾（不限时）。\n<span style=\"color:#8a93a0\">火山形态下本技变为「重击」：蓄力猛砸目标，将其击飞，造成（{C:LavaSystem.STRIKE_ATK_COEF%}%×攻击力 + {C:LavaSystem.STRIKE_MAXHP_PCT%}%×熔岩龟自身最大生命值）物理伤害，并附带 {C:LavaSystem.STRIKE_LIFESTEAL%}% 生命偷取。\n</span>"
       },
       {
         "name": "熔岩爆发",
@@ -1895,8 +1895,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "选择本技能后，水晶龟登场便召唤一颗实体<span class=\"val-normal\">水晶球</span>。\n水晶球每 <span class=\"val-atk\">5 秒</span> 射出一道贯穿直线的魔法光线，两段共造成 {M:ATK} 魔法伤害，命中直线上的所有敌人并各叠加 <span class=\"val-atk\">2</span> 层<span class=\"val-normal\">结晶印记</span>。\n水晶龟主动施放时，自己也射出同样的一道光线。\n<span style=\"color:#8a93a0\">水晶球生命值为本体最大生命值的 50%，攻击力等于本体攻击力，射程覆盖全场。\n</span>",
-        "detail": "选择本技能后，水晶龟登场即召唤一颗实体水晶球：生命值 = 本体最大生命值的 50%，攻击力 = 本体攻击力，射程 2000 码，本身不做普攻。\n每 5 秒射出一道贯穿一条直线（2000 码）的魔法光线——直线上所有敌人各受两段共（100%×攻击力({ATK}) = {M:ATK}）魔法伤害，并各叠加 2 层结晶印记。\n主动释放本技能时，水晶龟自己朝当前目标方向射出同样的一道贯穿光线。\n<span style=\"color:#8a93a0\">水晶球与本体共享同一份结晶层数（满 5 层引爆）；水晶球是独立单位，水晶龟阵亡后它仍会继续战斗。\n</span>"
+        "brief": "选择本技能后，水晶龟登场便召唤一颗实体<span class=\"val-normal\">水晶球</span>。\n水晶球每 <span class=\"val-atk\">{C:CrystalSystem.ORB_RAY_IV} 秒</span> 射出一道贯穿直线的魔法光线，两段共造成 {M:ATK} 魔法伤害，命中直线上的所有敌人并各叠加 <span class=\"val-atk\">{C:CrystalSystem.ORB_RAY_STACKS}</span> 层<span class=\"val-normal\">结晶印记</span>。\n水晶龟主动施放时，自己也射出同样的一道光线。\n<span style=\"color:#8a93a0\">水晶球生命值为本体最大生命值的 {C:CrystalSystem.ORB_HP_PCT%}%，攻击力等于本体攻击力，射程覆盖全场。\n</span>",
+        "detail": "选择本技能后，水晶龟登场即召唤一颗实体水晶球：生命值 = 本体最大生命值的 {C:CrystalSystem.ORB_HP_PCT%}%，攻击力 = 本体攻击力，射程 2000 码，本身不做普攻。\n每 {C:CrystalSystem.ORB_RAY_IV} 秒射出一道贯穿一条直线（2000 码）的魔法光线——直线上所有敌人各受两段共（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力({ATK}) = {M:ATK}）魔法伤害，并各叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层结晶印记。\n主动释放本技能时，水晶龟自己朝当前目标方向射出同样的一道贯穿光线。\n<span style=\"color:#8a93a0\">水晶球与本体共享同一份结晶层数（满 5 层引爆）；水晶球是独立单位，水晶龟阵亡后它仍会继续战斗。\n</span>"
       }
     ],
     "defaultSkills": [

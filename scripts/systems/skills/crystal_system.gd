@@ -7,6 +7,11 @@ extends RefCounted
 const BULWARK_ATK := 2.0        # 水晶壁垒: 盾 = ×ATK  (1.0→2.0)
 const BULWARK_HP_PCT := 0.10    # 水晶壁垒: 盾 += ×最大生命 (0.05→0.10)
 ## ★★2026-08-22 文案根除: 壁垒这一组原来是 `_sk_crystal_bulwark` / `_crystal_spike_line` 里的裸字面量。
+## 【水晶球(召唤物)】选此技登场即召唤, 独立单位, 本体阵亡后仍战斗。
+const ORB_HP_PCT := 0.50        # 生命 = 本体最大生命 ×
+const ORB_RAY_IV := 5.0         # 每几秒射一道贯穿光线
+const ORB_RAY_COEF := 1.0       # 两段合计 ×ATK 魔法
+const ORB_RAY_STACKS := 2       # 每次叠几层结晶印记
 const BULWARK_SEC := 4.0        # 护盾与全队增益的持续(秒)·持盾期锁龟能
 const BULWARK_TEAM_RESIST := 0.15   # 全体友方 护甲与魔抗 +
 const SPIKE_TRUE_COEF := 1.5    # 水晶刺: ×ATK 真实伤害

@@ -31,10 +31,19 @@ PLACEHOLDER = re.compile(r'\{[A-Z]?:?[^}]*\}')
 TAG = re.compile(r'<[^>]+>')
 NUM = re.compile(r'(?<![\w.])\d+(?:\.\d+)?')
 TRIPLE = re.compile(r'\d+(?:\.\d+)?/\d+(?:\.\d+)?/\d+(?:\.\d+)?')
+## ★★不是数值、而是【名字】的那些 token —— 提成常量没有意义, 反而会让文案更难读。
+##   目前只有 FPGA板(040) 的四个 2-bit 状态名: 00 / 01 / 10 / 11。
+##   它们出现在 "00=回复…" "01=累计…" 这种句式里, 是状态标签, 不是可调的数。
+##   ⚠ 这不是放水的口子: 判据是**紧跟等号**(`00=`), 普通数字不会长这样;
+##     而且下面会打印被跳过的条数, 涨了看得见。
+## ⚠ 这行写过一次 `\b`, 但当时是用**非 raw 字符串**写进文件的,
+##   Python 把 `\b` 解释成了**退格符 0x08** 写进去 ⇒ 正则永远匹配不上,
+##   而 grep 看不出来(退格符不显示)。不加 \b 也完全够用。
+LABEL_NUM = re.compile(r'(?:00|01|10|11)=')
 NOISE = {'0', '1', '2', '3'}
 
 # 只降不升。改动后如果这个数涨了, 说明又添了没人验的数字。
-BASELINE = 1133   # 2026-08-24 累计已转 50 段(1722→1133)。台账见 docs/plans/20260820-文案数字根除.md。**只降不升**。
+BASELINE = 1100   # 2026-08-24 累计已转 54 段(1722→1100)。台账见 docs/plans/20260820-文案数字根除.md。**只降不升**。
 #   ★这个数从 1452 涨到 1734 不是退步, 是【量准了】: 原来把 {N:0.5*ATK} 这类占位符整体
 #   记进"不可能错", 而里面的 0.5 是手写在文案里的系数、照样会漂(幽灵龟就是这么漂的)。
 #   把这 282 个藏起来的系数摊出来之后, 基线才对得上真实风险。
@@ -67,6 +76,7 @@ def main():
     n_ph = 0
     n_covered = 0
     n_unver = 0
+    n_label = 0      # 被当成【名字】跳过的 token 数(FPGA 的 00/01/10/11), 见 LABEL_NUM
     worst = []
     for src, who, t in texts:
         ## ★2026-08-20 修一个【我自己的分类错误】: 原来把占位符整体记进「不可能错」。
@@ -91,6 +101,9 @@ def main():
         if src == '装备':
             n_covered += sum(len(x.split('/')) for x in trips)
         body = TRIPLE.sub(' ', body)
+        ## 先摘掉【状态名】(见 LABEL_NUM 的注释): 它们不是可调的数值。
+        n_label += len(LABEL_NUM.findall(body))
+        body = LABEL_NUM.sub(' ', body)
         nums = [x for x in NUM.findall(body) if x not in NOISE]
         if src == '龟':
             n_covered += 0            # 龟文案的 literal 数字: 没有审计器对代码验过
