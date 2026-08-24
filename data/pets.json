@@ -325,8 +325,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "获得 <span class=\"val-atk\">20% 攻击速度</span>、<span class=\"val-atk\">5% 移动速度</span> 和 <span class=\"val-atk\">25 码射程</span>，持续到战斗结束，且可反复叠加。\n选择本技能后，天使龟每次普攻命中还为自己提供 <span class=\"val-atk\">5 点龟能</span>与 <span class=\"val-atk\">+1% 攻击力</span>，持续到战斗结束。",
-        "detail": "天使龟展翼飞升，自身获得 <span class=\"val-atk\">+20%</span> 攻击速度、<span class=\"val-atk\">+5%</span> 移动速度、<span class=\"val-atk\">+25</span> 码射程，持续到战斗结束。\n每次释放都会叠加，无硬上限（越飞越强）。\n纯自增益，不造成伤害。\n<b>打包被动·飞升成长</b>（选择本技能后）：天使龟<span class=\"val-atk\">每次普攻命中</span>为自己提供 <span class=\"val-atk\">5 点龟能</span>与 <span class=\"val-atk\">+1% 攻击力</span>，<span class=\"val-normal\">持续到战斗结束</span>（可无限叠加）。",
+        "brief": "获得 <span class=\"val-atk\">{C:AngelSystem.ASCEND_ASPD%}% 攻击速度</span>、<span class=\"val-atk\">{C:AngelSystem.ASCEND_MOVE%}% 移动速度</span> 和 <span class=\"val-atk\">{C:AngelSystem.ASCEND_RANGE} 码射程</span>，持续到战斗结束，且可反复叠加。\n选择本技能后，天使龟每次普攻命中还为自己提供 <span class=\"val-atk\">{C:AngelSystem.ASCEND_ENERGY_PER_HIT} 点龟能</span>与 <span class=\"val-atk\">+{C:AngelSystem.ASCEND_ATK_PER_HIT%}% 攻击力</span>，持续到战斗结束。",
+        "detail": "天使龟展翼飞升，自身获得 <span class=\"val-atk\">+{C:AngelSystem.ASCEND_ASPD%}%</span> 攻击速度、<span class=\"val-atk\">+{C:AngelSystem.ASCEND_MOVE%}%</span> 移动速度、<span class=\"val-atk\">+{C:AngelSystem.ASCEND_RANGE}</span> 码射程，持续到战斗结束。\n每次释放都会叠加，无硬上限（越飞越强）。\n纯自增益，不造成伤害。\n<b>打包被动·飞升成长</b>（选择本技能后）：天使龟<span class=\"val-atk\">每次普攻命中</span>为自己提供 <span class=\"val-atk\">{C:AngelSystem.ASCEND_ENERGY_PER_HIT} 点龟能</span>与 <span class=\"val-atk\">+{C:AngelSystem.ASCEND_ATK_PER_HIT%}% 攻击力</span>，<span class=\"val-normal\">持续到战斗结束</span>（可无限叠加）。",
         "energyCost": 80
       }
     ],
@@ -381,7 +381,7 @@
           "turns": 4
         },
         "brief": "在目标处降下一片冰霜领域：基础半径 {C:IceSystem.FROST_BASE_RADIUS} 码、持续 {C:IceSystem.FROST_BASE_SEC} 秒，<span class=\"val-normal\">每层冰柱使半径 +{C:IceSystem.ICICLE_FROST_RADIUS%}%、持续 +{C:IceSystem.ICICLE_FROST_SEC} 秒</span>。\n领域内的敌人魔抗降低 {C:IceSystem.FROST_MR_DOWN%}%，并每 {C:IceSystem.FROST_TICK_SEC} 秒受到 {M:0.25*ATK} 魔法伤害。",
-        "detail": "寒冰龟在当前目标处降下一片圆形冰霜领域：\n基础<span class=\"val-magic\">半径 {C:IceSystem.FROST_BASE_RADIUS} 码</span>、基础持续 <span class=\"val-magic\">{C:IceSystem.FROST_BASE_SEC} 秒</span>，<span class=\"val-normal\">每层冰柱使半径 +{C:IceSystem.ICICLE_FROST_RADIUS%}%、持续 +{C:IceSystem.ICICLE_FROST_SEC} 秒</span>（满 {C:IceSystem.ICICLE_MAX} 层 = 半径 750 码 / 持续 15 秒）。\n领域内敌方 <span class=\"val-def\">-{C:IceSystem.FROST_MR_DOWN%}% 魔抗</span>。\n每 {C:IceSystem.FROST_TICK_SEC} 秒一跳（跳数跟着持续时长走：0 层 10 跳、满层 30 跳），每跳造成（{C:IceSystem.FROST_ATK_COEF%}%×攻击力({ATK}) = {M:0.25*ATK}）魔法伤害。",
+        "detail": "寒冰龟在当前目标处降下一片圆形冰霜领域：\n基础<span class=\"val-magic\">半径 {C:IceSystem.FROST_BASE_RADIUS} 码</span>、基础持续 <span class=\"val-magic\">{C:IceSystem.FROST_BASE_SEC} 秒</span>，<span class=\"val-normal\">每层冰柱使半径 +{C:IceSystem.ICICLE_FROST_RADIUS%}%、持续 +{C:IceSystem.ICICLE_FROST_SEC} 秒</span>（满 {C:IceSystem.ICICLE_MAX} 层 = 半径 {C:IceSystem.FROST_FULL_RADIUS} 码 / 持续 {C:IceSystem.FROST_FULL_SEC} 秒）。\n领域内敌方 <span class=\"val-def\">-{C:IceSystem.FROST_MR_DOWN%}% 魔抗</span>。\n每 {C:IceSystem.FROST_TICK_SEC} 秒一跳（跳数跟着持续时长走：0 层 {C:IceSystem.FROST_BASE_TICKS} 跳、满层 {C:IceSystem.FROST_FULL_TICKS} 跳），每跳造成（{C:IceSystem.FROST_ATK_COEF%}%×攻击力({ATK}) = {M:0.25*ATK}）魔法伤害。",
         "energyCost": 100
       },
       {
@@ -1731,8 +1731,8 @@
         "name": "熔岩弹（火山形态）",
         "icon": "skills/lava-0.png",
         "type": "lavaBolt",
-        "brief": "火山形态普攻变为烈焰重击：造成（{M:1.0*ATK} + 3%自身最大生命值）魔法伤害，并施加 <span style=\"color:#ff6600\">（0.07×攻击力）层灼烧</span>。\n射程缩短为 70 码（近战）",
-        "detail": "火山形态下普攻变为烈焰重击（单段近战重锤）：造成（100%×攻击力({ATK}) = {M:1.0*ATK}）+ 3%熔岩龟自身最大生命值 魔法伤害，并施加 <span style=\"color:#ff6600\">（0.07×攻击力）层灼烧</span>。\n变身后转为近战形态：射程 70 码、移动速度 120；变身生命加成越高，重击越疼。"
+        "brief": "火山形态普攻变为烈焰重击：造成（{M:1.0*ATK} + {C:LavaSystem.MELEE_SELF_HP%}%自身最大生命值）魔法伤害，并施加 <span style=\"color:#ff6600\">（{C:LavaSystem.BOLT_BURN_COEF}×攻击力）层灼烧</span>。\n射程缩短为 {C:LavaSystem.VOLCANO_RANGE} 码（近战）",
+        "detail": "火山形态下普攻变为烈焰重击（单段近战重锤）：造成（{C:LavaSystem.MELEE_MAGIC%}%×攻击力({ATK}) = {M:1.0*ATK}）+ {C:LavaSystem.MELEE_SELF_HP%}%熔岩龟自身最大生命值 魔法伤害，并施加 <span style=\"color:#ff6600\">（{C:LavaSystem.BOLT_BURN_COEF}×攻击力）层灼烧</span>。\n变身后转为近战形态：射程 {C:LavaSystem.VOLCANO_RANGE} 码、移动速度 120；变身生命加成越高，重击越疼。"
       },
       {
         "name": "火山爆发",
@@ -1945,8 +1945,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "回复 {H:HP*0.05} 生命值并获得 {S:0.6*ATK} 护盾。\n宝箱龟每拥有 <span class=\"val-atk\">1000</span> 点<span class=\"val-normal\">财宝值</span>，治疗效果提升 <span class=\"val-heal\">10%</span>。",
-        "detail": "宝箱龟回复（5%×最大生命值({HP}) = {H:HP*0.05}）生命值并获得（60%×攻击力({ATK}) = {S:0.6*ATK}）护盾。\n每拥有 1000 点财宝值，治疗效果提升 10%。"
+        "brief": "回复 {H:HP*0.05} 生命值并获得 {S:0.6*ATK} 护盾。\n宝箱龟每拥有 <span class=\"val-atk\">{C:ChestSystem.COUNT_PER_TREASURE}</span> 点<span class=\"val-normal\">财宝值</span>，治疗效果提升 <span class=\"val-heal\">{C:ChestSystem.COUNT_HEAL_BONUS%}%</span>。",
+        "detail": "宝箱龟回复（{C:ChestSystem.COUNT_HEAL_PCT%}%×最大生命值({HP}) = {H:HP*0.05}）生命值并获得（{C:ChestSystem.COUNT_SHIELD_COEF%}%×攻击力({ATK}) = {S:0.6*ATK}）护盾。\n每拥有 {C:ChestSystem.COUNT_PER_TREASURE} 点财宝值，治疗效果提升 {C:ChestSystem.COUNT_HEAL_BONUS%}%。"
       },
       {
         "name": "财宝风暴",

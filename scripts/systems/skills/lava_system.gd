@@ -24,6 +24,12 @@ const VOLCANO_SPD_MULT := 1.2   # 火山形态相对提速(原 175/145≈1.21 �
 ##   原来是 `battle_damage.gd` 里两个裸 0.10, 文案又手写"10%" ⇒ 三份副本。
 const RAGE_GAIN_PCT := 0.10
 ## 火山形态的近战射程(码)。原来是 `_lava_volcano_form` 里的裸 70.0。
+## 【熔岩弹(普攻)】两形态两套数, 都写在【主场景】的普攻表里(那里引用本组常量)。
+const BOLT_MAGIC := 0.6         # 远程形态: ×ATK 魔法
+const BOLT_TGT_HP := 0.04       # + 目标最大生命 ×
+const BOLT_BURN_COEF := 0.07    # 灼烧层数 = ×ATK (两形态同值)
+const MELEE_MAGIC := 1.0        # 火山形态: ×ATK 魔法
+const MELEE_SELF_HP := 0.03     # + 【自身】最大生命 ×(所以变身生命加成越高越疼)
 const VOLCANO_RANGE := 70.0
 ## 变身时的预警圈半径(码)。原来是 `_lava_volcano_erupt` 里 `_densest_enemy_point` 的裸 400.0。
 const SLAM_WARN_RADIUS := 400.0

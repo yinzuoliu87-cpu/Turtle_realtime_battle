@@ -104,6 +104,11 @@ const STORM_TICK_SEC := 0.5     # 每几秒一跳
 const STORM_ATK_COEF := 0.2     # 每跳 ×ATK 物理
 const STORM_LIFE := STORM_TICKS * STORM_TICK_SEC   # 总时长(推导, 文案里那个 2.5 秒)
 ## 【藏宝图】开箱后额外回复的最大生命比例(逐箱)。阈值在主场景 `_CHEST_THRESH`。
+## 【清点财宝】回血(吃财宝加成) + 护盾(不吃加成)。
+const COUNT_HEAL_PCT := 0.05     # 回复 = 自身最大生命 ×
+const COUNT_SHIELD_COEF := 0.6   # 护盾 = ×ATK(不吃财宝加成)
+const COUNT_PER_TREASURE := 1000.0  # 每这么多财宝值
+const COUNT_HEAL_BONUS := 0.10      # 治疗效果就 +
 const CHEST_HEAL_PCT := [0.08, 0.08, 0.11, 0.11, 0.15]
 const FLINT_BURN_COEF := 0.05   # 火石: 命中给 0.05×ATK 层灼烧(原 0.1)
 
@@ -286,9 +291,9 @@ func _chest_loot_row(parent: VBoxContainer, tid: String) -> void:
 
 func _sk_chest_inventory(u: Dictionary) -> void:                 # 宝箱龟·清点财宝(用户2026-07-16改: 每1000财宝→治疗+10%·盾不吃加成; 财宝值=大轮累积)
 	var tv: float = float(GameState.chest_treasure_value) if ((not battle._review_demo()) and str(u.get("side", "")) == "left" and GameState != null) else float(u.get("dmg_dealt", 0.0))
-	var bonus: float = 1.0 + 0.10 * floorf(tv / 1000.0)
-	battle._damage._heal(u, u["maxHp"] * 0.05 * bonus)
-	battle._damage._grant_shield(u, u["atk"] * 0.6)
+	var bonus: float = 1.0 + COUNT_HEAL_BONUS * floorf(tv / COUNT_PER_TREASURE)
+	battle._damage._heal(u, u["maxHp"] * COUNT_HEAL_PCT * bonus)
+	battle._damage._grant_shield(u, u["atk"] * COUNT_SHIELD_COEF)
 
 func _sk_chest_cannon(u: Dictionary, tgt) -> void:              # 技三·财宝炮击(封板·120龟能): 蓄力→朝一条直线发长激光→线上所有敌各3A物理+击飞+击退 (贪婪打包被动在登场gate)
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)

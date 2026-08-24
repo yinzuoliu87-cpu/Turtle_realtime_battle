@@ -16,6 +16,12 @@ const EQUAL_SEG_GAP := 0.10 # 段间隔(秒)
 const EQUAL_LIFESTEAL := 0.10   # 本次施法附带生命偷取
 const EQUAL_JUDGE_COEF := 0.5   # 追加审判 ×ATK 真实
 const EQUAL_JUDGE_LOST := 0.10  # + 目标【已损】生命 ×
+## 【飞升】纯自增益, 每次释放叠加, 无硬上限。
+const ASCEND_ASPD := 0.20       # 攻速 +(乘算·永久)
+const ASCEND_MOVE := 0.05       # 移速 +(乘算·永久)
+const ASCEND_RANGE := 25.0      # 射程 +(码·加算·永久)
+const ASCEND_ASPD_MULT := 1.0 + ASCEND_ASPD   # 推导, 不另写 1.2
+const ASCEND_MOVE_MULT := 1.0 + ASCEND_MOVE   # 推导, 不另写 1.05
 const ASCEND_ENERGY_PER_HIT := 5.0   # 飞升打包被动: 每次普攻命中给自己的龟能
 const ASCEND_ATK_PER_HIT := 0.01     # 飞升打包被动: 每次普攻命中 +1% 攻击力(乘算·持续到战斗结束)
 
@@ -49,9 +55,9 @@ func _ascend_growth_tick(u: Dictionary) -> void:
 	battle._recalc_stats(u)
 
 func _sk_angel_ascend(u: Dictionary) -> void:                   # 天使龟·飞升 (用户2026-07-06: +20%攻速+25码射程·到战斗结束·可叠加无上限; 移速2026-07-11改+5%)
-	u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) * 1.2       # +20%攻速(永久·叠加)
-	u["move_spd"] = float(u["move_spd"]) * 1.05                 # +5%移速(永久·叠加·用户2026-07-11: 10%→5%)
-	u["atk_range"] = float(u["atk_range"]) + 25.0              # +25码射程(永久·叠加)
+	u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) * ASCEND_ASPD_MULT       # +20%攻速(永久·叠加)
+	u["move_spd"] = float(u["move_spd"]) * ASCEND_MOVE_MULT                 # +5%移速(永久·叠加·用户2026-07-11: 10%→5%)
+	u["atk_range"] = float(u["atk_range"]) + ASCEND_RANGE              # +25码射程(永久·叠加)
 	battle._aura_vfx("res://assets/sprites/vfx/fx-glow-ring.png", u, 88.0, Color(1.0, 0.92, 0.55, 0.62), 2.4)   # 金光飞升圣环(施法瞬间圣环渐亮)
 
 # 天使龟·平等 ✅ (封板2026-07-06 选A远程投射·60龟能): 站原地射4道圣光斩弧各50%ATK·合计200%物理·带10%施法吸血; 目标A级及以上追加从天而降审判光柱=(50%ATK+目标已损生命10%)真伤·无视双抗·同10%吸血

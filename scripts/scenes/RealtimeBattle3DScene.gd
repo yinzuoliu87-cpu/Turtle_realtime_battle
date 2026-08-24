@@ -306,7 +306,7 @@ const BASIC_ATK := {
 	"candy":    {"phys": 1.1, "selfhp": 0.03, "hits": 1, "rider": "atkdn"},         # +自HP+减攻debuff (用户2026-07-28: 0.05→0.03)
 	"bubble":   {"phys": 1.5, "hits": 3},
 	"line":     {"magic": 1.0, "hits": 1},                                          # 素描:1A魔法单段(叠1墨迹走_on_basic_hit·用户设计)
-	"lava":     {"magic": 0.6, "hp": 0.04, "hits": 1, "rider": "burn", "burnScale": 0.07},   # 熔岩弹: 0.6魔+4%目标HP+0.07ATK灼烧层(burnScale) (用户2026-06-30)
+	"lava":     {"magic": LavaSystem.BOLT_MAGIC, "hp": LavaSystem.BOLT_TGT_HP, "hits": 1, "rider": "burn", "burnScale": LavaSystem.BOLT_BURN_COEF},   # 熔岩弹: 0.6魔+4%目标HP+0.07ATK灼烧层(burnScale) (用户2026-06-30)
 	"crystal":  {"phys": 0.6, "hits": 1},                                          # 水晶刺(封板L559):0.6A物理+1.5%目标maxHp魔法+叠1结晶(魔法段与结晶都走_on_basic_hit·原hp bonus折进物理=类型错)
 	"space":    {"magic": 0.9, "tcurhp": 0.05, "hits": 1},                          # 星光弹: 单段0.9A魔法+5%目标当前HP (封板2026-07-07)
 	"hiding":   {"phys": 1.0, "hits": 1, "rider": "shrink"},                        # 缩壳: 1A物理+每击+1甲+1抗+0.1A盾(越打越硬)
@@ -2917,7 +2917,7 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		_lava_sys._lava_pierce_bolt(u, tgt); _on_basic_hit(u, tgt)
 		return
 	if u["id"] == "lava" and u.get("volcano", false):                  # 火山形态: 烈焰重击式平A (单段重击; 用户2026-07-15: 1.6A→1A+3%自身maxHp魔法·血越厚锤越疼)
-		spec = {"magic": 1.0, "selfhp": 0.03, "hits": 1, "rider": "burn", "burnScale": 0.07}   # 灼烧0.07A/锤(用户2026-07-15·与小形态一致; 原走默认0.67A偏高)
+		spec = {"magic": LavaSystem.MELEE_MAGIC, "selfhp": LavaSystem.MELEE_SELF_HP, "hits": 1, "rider": "burn", "burnScale": LavaSystem.BOLT_BURN_COEF}   # 灼烧0.07A/锤(用户2026-07-15·与小形态一致; 原走默认0.67A偏高)
 	_do_basic(u, tgt, spec)
 	if u["melee"]:
 		_on_basic_hit(u, tgt)   # 近战命中即时; 远程→弹道命中时触发(审判等与裁决同帧, 数字按规矩同时跳)

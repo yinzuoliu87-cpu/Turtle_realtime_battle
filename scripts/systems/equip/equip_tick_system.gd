@@ -150,6 +150,9 @@ func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016:
 			battle._damage._grant_shield(o, each)
 
 
+## 【017 不沉之锚】回血攒充能 → 充能期加攻速 → 普攻消耗充能击飞。
+const ANCHOR_ASPD := 1.00      # 持有充能期间普攻攻速 +(真值在 battle_damage.anchor_aspd)
+## 那一击的眩晕走【通用 CTRL_SEC】(RealtimeBattle3DScene), 这里不存副本。
 const ANCHOR_IV := 0.25                # 不沉之锚回血节拍(秒) —— 用户 2026-08-01「恢复触发改为每0.25秒去回复生命值」
 const ANCHOR_ACC_PER_CHARGE := 250.0   # 累积治疗满这么多 → +1 沉锚充能(用户2026-07-19: 100→250)
 

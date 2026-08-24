@@ -204,6 +204,13 @@ const AURA_VS_FIRE := 0.20      # 对熔岩/凤凰的额外增伤(选极寒技�
 const FROST_BASE_RADIUS := 150.0    # 基础半径(码)·每层冰柱再 +ICICLE_FROST_RADIUS
 const FROST_BASE_SEC := 5.0         # 基础持续(秒)·每层冰柱再 +ICICLE_FROST_SEC
 const FROST_TICK_SEC := 0.5         # 每几秒一跳(跳数 = 持续 ÷ 它)
+## 满层时的最终值 —— **推导, 不手写**(文案原来写死 750 码 / 15 秒 / 10 跳 / 30 跳)。
+## ★这四个数看上去都像正常的技能数值, 没人会想到它们是算出来的 ——
+##   上游改一下 ICICLE_FROST_RADIUS, 它们会静默地继续说谎, 而且说得很像真的。
+const FROST_FULL_RADIUS := FROST_BASE_RADIUS * (1.0 + ICICLE_FROST_RADIUS * ICICLE_MAX)
+const FROST_FULL_SEC := FROST_BASE_SEC + ICICLE_FROST_SEC * ICICLE_MAX
+const FROST_BASE_TICKS := int(FROST_BASE_SEC / FROST_TICK_SEC)
+const FROST_FULL_TICKS := int(FROST_FULL_SEC / FROST_TICK_SEC)
 const FROST_MR_DOWN := 0.25         # 圈内敌方魔抗 −
 const FROST_ATK_COEF := 0.25        # 每跳 ×ATK 魔法
 ## 【团队护盾】全体友军(含自己)一层冰霜盾; 到期/被打破/持盾者阵亡都会爆裂。

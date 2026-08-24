@@ -773,6 +773,6 @@ func anchor_aspd(u: Dictionary) -> float:   # 不沉之锚017: 持有沉锚充�
 	if ast.is_empty():
 		return 1.0
 	if int(ast.get("anchor_charges", 0)) > 0:
-		return 2.0
+		return 1.0 + EquipTickSystem.ANCHOR_ASPD
 	# 刚用掉最后一点充能的这一发也算"持有充能"(避免末发掉速)
 	return 2.0 if absf(battle._t - float(u.get("anchor_swing_t", -99.0))) < 0.001 else 1.0
