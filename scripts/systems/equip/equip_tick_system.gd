@@ -15,6 +15,10 @@ const BEAR_WAVE_RANGE := 600.0  # 冲击波那一击射程临时扩到(码)
 const BEAR_WAVE_KNOCK_SEC := 0.8  # 冲击波击飞滞空(秒)
 const BEAR_WAVE_PULL := 70.0    # 冲击波把命中者拉回身前(码)
 ## 【036 温泉蛋】孵化进度的五个来源 + 满进度阈值 + 每级成长
+## 【014 深海堡垒甲】受击叠硬化, 满层后周期性汲取全体敌。
+const FORTRESS_CAP := 25       # 硬化层上限(013 是 20, 见 equip_stats_apply)
+const FORTRESS_IV := 8.0       # 满层后每几秒汲取一次
+const FORTRESS_HEAL_LOST := 0.05   # 每汲取 1 名敌人, 额外回复自身【已损】生命 ×
 const EGG_FULL := 100.0         # 进度满多少 → +1 临时等级
 const EGG_PER_CYCLE := 5.0      # 每周期 +
 ## 那个"周期"= 全局装备周期 RealtimeBattle3DScene.EQ_TICK(2.5 秒), 温泉蛋不另设间隔,
@@ -103,11 +107,11 @@ func _tick_fortress(u: Dictionary, delta: float) -> void:   # 深海堡垒甲p2e
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_014": continue
 		var stt: Dictionary = u["eq_state"].get("p2eq_014", {})
-		if int(stt.get("harden_stacks", 0)) < int(stt.get("harden_cap", 25)):
-			e["fortress_t"] = 8.0   # 未叠满→预置8(叠满瞬间立即首次汲取)
+		if int(stt.get("harden_stacks", 0)) < int(stt.get("harden_cap", FORTRESS_CAP)):
+			e["fortress_t"] = FORTRESS_IV   # 未叠满→预置一整个周期(叠满瞬间立即首次汲取)
 			continue
 		e["fortress_t"] = float(e.get("fortress_t", 0.0)) + delta
-		if float(e["fortress_t"]) < 8.0: continue
+		if float(e["fortress_t"]) < FORTRESS_IV: continue
 		e["fortress_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		# ★用户 2026-07-30 削弱: 汲取倍率 0.9/1.6/3.0 → 0.8/1/2.5;
@@ -128,7 +132,7 @@ func _tick_fortress(u: Dictionary, delta: float) -> void:   # 深海堡垒甲p2e
 				continue
 			battle._bolt_line(o["pos"], u["pos"], Color("#bfe9ff"))
 			battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, k2 * (u["def"] + u["mr"]), o, true), Color("#bfe9ff"), 0.0, false, true)   # 真·魔法伤害(走魔抗); 原 raw=true 是白字真伤·与文案"魔法伤害"不符(用户2026-07-19指出)
-			battle._damage._heal(u, heal_flat + maxf(0.0, u["maxHp"] - u["hp"]) * 0.05)   # 已损生命 6% → 5%
+			battle._damage._heal(u, heal_flat + maxf(0.0, u["maxHp"] - u["hp"]) * FORTRESS_HEAL_LOST)   # 已损生命 6% → 5%
 
 func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016: 每5秒放一个总护盾池(100/250/400 + 携带者8%最大生命)由全队(含自己)均分(用户2026-07-19; 原每人固定15/20/25); 每件独立
 	if u.get("equips", []).is_empty(): return

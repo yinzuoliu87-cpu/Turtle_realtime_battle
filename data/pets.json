@@ -519,8 +519,8 @@
           "pct": 25,
           "turns": 3
         },
-        "brief": "扔出炸弹，在目标处引爆，对落点范围内的敌人造成 {N:2.0*ATK} 物理伤害，并使其护甲降低 <span class=\"val-atk\">20%</span>，持续 <span class=\"val-atk\">5 秒</span>。",
-        "detail": "忍者龟扔出炸弹，在目标处引爆，对落点 <span class=\"val-def\">400 码</span> 内的敌人造成（200%×攻击力({ATK}) = {N:2.0*ATK}）物理伤害，并施加 <span class=\"val-atk\">-20%护甲</span> 效果，持续 5 秒。"
+        "brief": "扔出炸弹，在目标处引爆，对落点范围内的敌人造成 {N:2.0*ATK} 物理伤害，并使其护甲降低 <span class=\"val-atk\">{C:NinjaSystem.BOMB_DEF_DOWN%}%</span>，持续 <span class=\"val-atk\">{C:RealtimeBattle3DScene.BUFF_SEC} 秒</span>。",
+        "detail": "忍者龟扔出炸弹，在目标处引爆，对落点 <span class=\"val-def\">{C:RealtimeBattle3DScene.NINJA_BOMB_RADIUS} 码</span> 内的敌人造成（{C:NinjaSystem.BOMB_ATK_COEF%}%×攻击力({ATK}) = {N:2.0*ATK}）物理伤害，并施加 <span class=\"val-atk\">-{C:NinjaSystem.BOMB_DEF_DOWN%}%护甲</span> 效果，持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒。"
       },
       {
         "name": "背刺",
@@ -1192,8 +1192,8 @@
     "passive": {
       "type": "pirateBarrage",
       "name": "掠夺",
-      "brief": "<span class=\"val-normal\">登场轰击</span>：\n海盗龟登场瞬间轰击 1 名随机敌人，造成其 <span class=\"val-true\">25% 最大生命值</span> 的<span class=\"val-true\">真实伤害</span>。\n<span class=\"val-normal\">死亡钩索</span>：\n海盗龟阵亡瞬间甩出钩索抓住击杀它的单位，将其拉到尸位 90 码内，并造成该单位 <span class=\"val-true\">25% 最大生命值</span> 的<span class=\"val-true\">真实伤害</span>。",
-      "desc": "<span class=\"val-normal\">登场轰击</span>：\n海盗龟登场瞬间轰击 1 名随机敌人，造成其 <span class=\"val-true\">25% 最大生命值</span>的<span class=\"val-true\">真实伤害</span>。\n<span class=\"val-normal\">死亡钩索</span>：\n海盗龟自己阵亡的瞬间，甩出钩索抓住<span class=\"val-normal\">击杀它的单位</span>，把它拉到尸位 90 码内，并造成该单位 <span class=\"val-true\">25% 最大生命值</span>的<span class=\"val-true\">真实伤害</span>。\n<span style=\"color:#8a93a0\">两段伤害均为真实伤害，无视护甲与魔抗。\n</span>\n<span style=\"color:#8a93a0\">钩索拉拽期间目标被<b>定身 0.5 秒</b>。\n</span>"
+      "brief": "<span class=\"val-normal\">登场轰击</span>：\n海盗龟登场瞬间轰击 1 名随机敌人，造成其 <span class=\"val-true\">{C:PirateSystem.PLUNDER_MAXHP_PCT%}% 最大生命值</span> 的<span class=\"val-true\">真实伤害</span>。\n<span class=\"val-normal\">死亡钩索</span>：\n海盗龟阵亡瞬间甩出钩索抓住击杀它的单位，将其拉到尸位 {C:PirateSystem.HOOK_DEST_DIST} 码内，并造成该单位 <span class=\"val-true\">{C:PirateSystem.PLUNDER_MAXHP_PCT%}% 最大生命值</span> 的<span class=\"val-true\">真实伤害</span>。",
+      "desc": "<span class=\"val-normal\">登场轰击</span>：\n海盗龟登场瞬间轰击 1 名随机敌人，造成其 <span class=\"val-true\">{C:PirateSystem.PLUNDER_MAXHP_PCT%}% 最大生命值</span>的<span class=\"val-true\">真实伤害</span>。\n<span class=\"val-normal\">死亡钩索</span>：\n海盗龟自己阵亡的瞬间，甩出钩索抓住<span class=\"val-normal\">击杀它的单位</span>，把它拉到尸位 {C:PirateSystem.HOOK_DEST_DIST} 码内，并造成该单位 <span class=\"val-true\">{C:PirateSystem.PLUNDER_MAXHP_PCT%}% 最大生命值</span>的<span class=\"val-true\">真实伤害</span>。\n<span style=\"color:#8a93a0\">两段伤害均为真实伤害，无视护甲与魔抗。\n</span>\n<span style=\"color:#8a93a0\">钩索拉拽期间目标被<b>定身 {C:PirateSystem.HOOK_STUN} 秒</b>。\n</span>"
     },
     "skillPool": [
       {
@@ -1883,8 +1883,8 @@
         "pierce": 0,
         "cd": 0,
         "aoe": true,
-        "brief": "对目标周围 350 码内的敌人连续释放三段碎晶，共造成 {M:0.4*ATK*3} 魔法伤害和 {T:0.4*ATK*3} 真实伤害，每一段都为命中的敌人叠加一层<span class=\"val-normal\">结晶印记</span>。",
-        "detail": "水晶龟对当前目标周围 <span class=\"val-def\">350 码</span> 内的敌人释放三段碎晶，共造成（40%×攻击力({ATK})×3 = {M:0.4*ATK*3}）魔法 +（40%×攻击力({ATK})×3 = {T:0.4*ATK*3}）真实伤害，每段叠加 1 层结晶印记（三段共 3 层）。\n<span style=\"color:#8a93a0\">结晶满 5 层自动引爆，引爆伤害并入当段数字。\n</span>\n<span style=\"color:#8a93a0\">释放期间龟能锁定，放完解锁。\n</span>"
+        "brief": "对目标周围 {C:RealtimeBattle3DScene.CRYSTAL_BURST_RADIUS} 码内的敌人连续释放 {C:CrystalSystem.BURST_SEGMENTS} 段碎晶，共造成 {M:0.4*ATK*3} 魔法伤害和 {T:0.4*ATK*3} 真实伤害，每一段都为命中的敌人叠加一层<span class=\"val-normal\">结晶印记</span>。",
+        "detail": "水晶龟对当前目标周围 <span class=\"val-def\">{C:RealtimeBattle3DScene.CRYSTAL_BURST_RADIUS} 码</span> 内的敌人释放 {C:CrystalSystem.BURST_SEGMENTS} 段碎晶，共造成（{C:CrystalSystem.BURST_MAGIC%}%×攻击力({ATK}) = {M:0.4*ATK*3}）魔法 +（{C:CrystalSystem.BURST_TRUE%}%×攻击力({ATK}) = {T:0.4*ATK*3}）真实伤害，每段叠加 1 层结晶印记（共 {C:CrystalSystem.BURST_SEGMENTS} 层）。\n<span style=\"color:#8a93a0\">结晶满 {C:CrystalSystem.STACK_MAX} 层自动引爆，引爆伤害并入当段数字。\n</span>\n<span style=\"color:#8a93a0\">释放期间龟能锁定，放完解锁。\n</span>"
       },
       {
         "name": "水晶球",

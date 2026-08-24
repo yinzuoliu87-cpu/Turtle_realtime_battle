@@ -39,6 +39,9 @@ const INSTINCT_CRIT_DMG := 0.15   # 暴击伤害 +
 const INSTINCT_ARMOR_PEN := 10.0  # 护甲穿透 +(flat)
 ## 【冲击·自动冲刺斩】
 ## 【手里剑】掷飞镖; 暴击时把暴击总伤【拆两段】(真伤 + 剩余物理), 不是整发转真伤。
+## 【炸弹】落点范围物理 + 破甲(时长走通用 BUFF_SEC)。
+const BOMB_ATK_COEF := 2.0    # ×ATK 物理
+const BOMB_DEF_DOWN := 0.20   # 目标护甲 −(破甲 25% → 20%·用户 2026-07-29 第五轮)
 const SHURIKEN_COEF := 1.6        # ×ATK 物理(基础·未减甲未暴击)
 const SHURIKEN_TRUE_BASE := 40.0  # 暴击总伤转真实的起始百分比
 const SHURIKEN_TRUE_PER_LV := 2.0 # 每级再 +(百分点)
@@ -212,7 +215,7 @@ func _sk_ninja_shuriken(u: Dictionary, tgt) -> void:           # 技·手里剑(
 func _sk_ninja_bomb(u: Dictionary, tgt) -> void:
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
-	var opts = {"phys": 2.0, "defDown": 0.20, "color": Color("#ff9a3c")}   # 伤害2.0A(用户2026-07-11)·破甲25%→20%(用户2026-07-29 第五轮·龟能同时 100→120)
+	var opts = {"phys": BOMB_ATK_COEF, "defDown": BOMB_DEF_DOWN, "color": Color("#ff9a3c")}   # 伤害2.0A(用户2026-07-11)·破甲25%→20%(用户2026-07-29 第五轮·龟能同时 100→120)
 	var land: Vector2 = tgt["pos"]            # 落点 = 当前目标位置 (400码爆炸半径中心)
 	battle._anticipate(u)                            # 短蓄力(掏炸弹)
 	var spr = Sprite3D.new()

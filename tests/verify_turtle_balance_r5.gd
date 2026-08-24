@@ -118,9 +118,11 @@ func _nerfs() -> void:
 	var rb: String = _S["RealtimeBattle3DScene.gd"]
 	_chk("③ 忍者炸弹龟能 = %d" % int(WANT_BOMB_ENERGY), se.contains('"ninjaBomb": %.1f' % WANT_BOMB_ENERGY))
 	_chk("③ 忍者炸弹旧值 100 已消失", not se.contains('"ninjaBomb": 100.0'))
+	## ★2026-08-24 抽成了 NinjaSystem.BOMB_DEF_DOWN, 源码里没有 "0.20" 这个字面量了 —— 比【值】。
 	_chk("③ 忍者炸弹破甲 = %d%%" % int(WANT_BOMB_DEFDOWN * 100.0),
-		nj.contains('"defDown": %.2f' % WANT_BOMB_DEFDOWN))
-	_chk("③ 忍者炸弹破甲旧值 0.25 已消失", not nj.contains('"defDown": 0.25'))
+		is_equal_approx(NinjaSystem.BOMB_DEF_DOWN, WANT_BOMB_DEFDOWN)
+			and nj.contains('"defDown": BOMB_DEF_DOWN'))
+	_chk("③ 忍者炸弹破甲旧值 0.25 已消失", not is_equal_approx(NinjaSystem.BOMB_DEF_DOWN, 0.25))
 	_chk("③ 灵魂风暴诅咒 = %.1f 秒" % WANT_STORM_CURSE,
 		gh.contains("const STORM_CURSE_SEC := %.1f" % WANT_STORM_CURSE))
 	_chk("③ 灵魂风暴诅咒旧值 6.0 已消失", not gh.contains("const STORM_CURSE_SEC := 6.0"))

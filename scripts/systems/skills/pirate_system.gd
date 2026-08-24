@@ -9,6 +9,11 @@ extends RefCounted
 ##     而实际 `_spawn_pirate_ship_entity` 给的是 `atk_range: 110`(brief 也写 110) —— 文案自己打架。
 
 ## 【火炮齐射】
+## 【掠夺(被动)】登场轰击 + 死亡钩索, 两段都是目标最大生命的同一比例。
+## ★这两处原来分别写在【别的文件】: 登场在 battle_spawn, 钩索在本文件末尾。
+const PLUNDER_MAXHP_PCT := 0.25  # 两段各造成目标最大生命 × 的真实伤害(同一个数)
+const HOOK_DEST_DIST := 90.0     # 死亡钩索把击杀者拉到尸位多少码内
+const HOOK_STUN := 0.5           # 拉拽期定身(秒)
 const VOLLEY_SHOTS := 6              # 几发炮弹
 const VOLLEY_RADIUS := 250.0         # 每发落点的 AOE 半径(码)
 const VOLLEY_ATK_COEF := 0.5         # 每发 ×ATK 物理
@@ -278,7 +283,7 @@ func _pirate_death_grapple(pirate: Dictionary, killer: Dictionary) -> void:
 			return
 		battle._skill_ring(kk["pos"], Color(1.0, 0.85, 0.4, 0.65), 42.0)
 		var dest: Vector2 = _pirate_grapple_dest(from2d, kpos)
-		battle._damage._stun(kk, 0.5, "_pirate_death_grapple", true)   # 拉拽期定身(不乱动)
+		battle._damage._stun(kk, HOOK_STUN, "_pirate_death_grapple", true)   # 拉拽期定身(不乱动)
 		var kstart: Vector2 = kk["pos"]
 		var ct2 = [0.0]
 		var pull = battle._reg_tween()
@@ -299,7 +304,7 @@ func _pirate_death_grapple(pirate: Dictionary, killer: Dictionary) -> void:
 func _pirate_grapple_dest(pirate_pos: Vector2, killer_pos: Vector2) -> Vector2:
 	var dir: Vector2 = (pirate_pos - killer_pos)
 	dir = dir.normalized() if dir.length() > 0.001 else Vector2.RIGHT
-	var dest: Vector2 = pirate_pos - dir * 90.0
+	var dest: Vector2 = pirate_pos - dir * HOOK_DEST_DIST
 	dest.x = clampf(dest.x, battle.ARENA.position.x, battle.ARENA.end.x)
 	dest.y = clampf(dest.y, battle.ARENA.position.y, battle.ARENA.end.y)
 	return dest
@@ -313,7 +318,7 @@ func _pirate_grapple_dest(pirate_pos: Vector2, killer_pos: Vector2) -> Vector2:
 func _pirate_grapple_hit(pk, kk) -> void:
 	if not (kk is Dictionary and kk.get("alive", false)):
 		return
-	battle._damage._apply_damage_from(pk, kk, int(float(kk["maxHp"]) * 0.25), Color("#ffd07a"), 0.0, true)
+	battle._damage._apply_damage_from(pk, kk, int(float(kk["maxHp"]) * PLUNDER_MAXHP_PCT), Color("#ffd07a"), 0.0, true)
 	battle._burst_vfx("res://assets/sprites/vfx/cannon-blast.png", kk["pos"], 120.0, 0.4)
 	battle._shake(0.06)
 

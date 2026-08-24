@@ -606,7 +606,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 				var uu2: Dictionary = u; var vv2: Dictionary = v
 				battle._pirate_sys._pirate_cannonball(ps2d, psh, v["pos"], func() -> void:
 					if not vv2.get("alive", false): return
-					battle._damage._apply_damage_from(uu2, vv2, int(float(vv2["maxHp"]) * 0.25), Color("#ffd07a"), 0.0, true)
+					battle._damage._apply_damage_from(uu2, vv2, int(float(vv2["maxHp"]) * PirateSystem.PLUNDER_MAXHP_PCT), Color("#ffd07a"), 0.0, true)
 					battle._burst_vfx("res://assets/sprites/vfx/cannon-blast.png", vv2["pos"], 180.0, 0.4)
 					battle._shake(0.05))
 		"candy":

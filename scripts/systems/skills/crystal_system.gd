@@ -20,6 +20,7 @@ const SPIKE_KNOCK_SEC := 0.8    # 水晶刺: 击飞滞空(秒)
 const SPIKE_SLOW_PCT := 0.50    # 水晶刺: 减速比例(语义值)
 const SPIKE_SLOW_MULT := 1.0 - SPIKE_SLOW_PCT
 const SPIKE_SLOW_SEC := 3.0     # 水晶刺: 减速持续(秒)
+const BURST_SEGMENTS := 3       # 碎晶爆破: 分几段坠落(总量 ÷ 它 = 每段)
 const BURST_MAGIC := 1.2        # 碎晶爆破: 三段合计 ×ATK 魔法 (0.7→0.8→1.2·用户2026-07-29 第五轮: 每段 0.4)
 const BURST_TRUE := 1.2         # 碎晶爆破: 三段合计 ×ATK 真实 (0.1→0.3→1.2·用户2026-07-29 第五轮: 每段 0.4)
 
@@ -521,7 +522,7 @@ func _sk_crystal_burst(u: Dictionary, tgt) -> void:   # 碎晶爆破: 目标周�
 		if not o.get("alive", false): continue
 		if (o["pos"] as Vector2).distance_to(center) > battle.CRYSTAL_BURST_RADIUS: continue
 		var oref: Dictionary = o
-		for k in range(3):                                       # 3段碎晶从天坠落(错峰0.14s)
+		for k in range(BURST_SEGMENTS):                          # 3段碎晶从天坠落(错峰0.14s)
 			battle._pending_shots.append({"delay": 0.1 + 0.14 * float(k), "fn": func() -> void:
 				if not oref.get("alive", false) or not uu.get("alive", false): return
 				var sh = Sprite3D.new()
@@ -539,8 +540,8 @@ func _sk_crystal_burst(u: Dictionary, tgt) -> void:   # 碎晶爆破: 目标周�
 					if is_instance_valid(sh): sh.queue_free()
 					if not oref.get("alive", false): return
 					_crystal_spark(oref["pos"], 0.7)
-					battle._damage._apply_damage_from(uu, oref, battle._atk_dmg(uu, BURST_MAGIC / 3.0, oref, true), Color("#9bdcff"))     # 每段 = 总 BURST_MAGIC(1.2A) 魔法 / 3
-					battle._damage._apply_damage_from(uu, oref, int(maxf(1.0, uu["atk"] * BURST_TRUE / 3.0)), Color("#ffffff"), 0.0, true)   # 每段 = 总 BURST_TRUE(1.2A) 真实 / 3
+					battle._damage._apply_damage_from(uu, oref, battle._atk_dmg(uu, BURST_MAGIC / float(BURST_SEGMENTS), oref, true), Color("#9bdcff"))     # 每段 = 总 BURST_MAGIC(1.2A) 魔法 / 3
+					battle._damage._apply_damage_from(uu, oref, int(maxf(1.0, uu["atk"] * BURST_TRUE / float(BURST_SEGMENTS))), Color("#ffffff"), 0.0, true)   # 每段 = 总 BURST_TRUE(1.2A) 真实 / 3
 					_crystal_stack(uu, oref, 1))
 			, "src": u})
 

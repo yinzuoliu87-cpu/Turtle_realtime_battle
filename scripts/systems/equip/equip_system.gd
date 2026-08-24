@@ -475,7 +475,7 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 	battle._ensure_candle(u)
 	var c = u.get("_candle_spr", null)
 	var ph: int = int(stt.get("candle", 0))
-	stt["candle"] = (ph + 1) % 3
+	stt["candle"] = (ph + 1) % CANDLE_PHASES
 	if ph == 0:   # 熄灭: 蜡烛变暗(火苗弱下去, 无效果)
 		if c != null and is_instance_valid(c):
 			battle._reg_tween().tween_property(c, "modulate", Color(0.5, 0.5, 0.58, 1.0), 0.35)
@@ -483,11 +483,11 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 		if c != null and is_instance_valid(c):
 			battle._reg_tween().tween_property(c, "modulate", Color(1, 1, 1, 1), 0.35)
 		var hv37: float = [20, 30, 44][si] + u["atk"] * [0.5, 0.7, 1.0][si]
-		battle._heal_circle_vfx(u["pos"], 250.0, 5.0)   # AI生成回血阵动画
-		u["candle_hot_rate"] = hv37 / 5.0
-		u["candle_hot_until"] = battle._t + 5.0
+		battle._heal_circle_vfx(u["pos"], CANDLE_HEAL_R, CANDLE_IV)   # AI生成回血阵动画
+		u["candle_hot_rate"] = hv37 / CANDLE_IV
+		u["candle_hot_until"] = battle._t + CANDLE_IV
 		for a37 in battle._targeting._allies_of(u, false):
-			if a37["pos"].distance_to(u["pos"]) <= 250.0:
+			if a37["pos"].distance_to(u["pos"]) <= CANDLE_HEAL_R:
 				a37["candle_hot_rate"] = (hv37 * 0.5) / 5.0
 				a37["candle_hot_until"] = battle._t + 5.0
 	elif ph == 2:   # 燃烧: 火苗爆燃(蜡烛过亮+弹一下) + 原地爆炸, 500码内敌各受魔法伤+灼烧
@@ -500,7 +500,7 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 		battle._shake(0.06)
 		var dmg37: float = float([20, 30, 44][si]) + u["atk"] * [0.5, 0.7, 1.0][si]
 		for o in battle._targeting._enemies_of(u):
-			if o["pos"].distance_to(u["pos"]) <= 500.0:   # 499→500(用户2026-07-19)
+			if o["pos"].distance_to(u["pos"]) <= CANDLE_BURN_R:   # 499→500(用户2026-07-19)
 				battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, dmg37, o, true), Color("#ffb066"), 0.0, false, true)   # 魔法伤(蓝字), 非真伤
 				battle._damage._apply_dot_stacks(o, "burn", [20, 30, 40][si], u)
 				battle._boom_wave(o["pos"], 110.0)   # 每个被波及敌小爆
@@ -514,6 +514,12 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 ## ★数组常量会被 `{C:}` 渲染成 "1/2/4"(三档写法) —— 正好是文案要的形状。
 ## 【053 霰弹贝古】扇形弹珠, 每颗撞到第一个敌人才结算。
 ## 【009 宽刃弯刀】攒刃能 → 满值斩出环形扇区(不是整块扇形, 是 500~800 的**带**)。
+## 【037 蛋糕蜡烛】三阶段循环: 熄灭 → 微弱(回血) → 燃烧(爆燃)。
+const CANDLE_PHASES := 3       # 几个阶段
+const CANDLE_IV := 5.0         # 每几秒切一次(主场景 _EQ_CUSTOM_IV 引用本常量)·也是回血铺开的秒数
+const CANDLE_HEAL_R := 250.0   # 微弱阶段: 友军回血光圈半径(码)
+const CANDLE_ALLY_HALF := 0.5  # 圈内友军按【半数】回复
+const CANDLE_BURN_R := 500.0   # 燃烧阶段: 爆燃半径(码)
 const BLADE_FULL := 100.0        # 刃能满值
 const BLADE_AOE_FACTOR := 0.5    # 范围技能充能减半
 const BLADE_R_IN := 500.0        # 扇形带内半径(码)
