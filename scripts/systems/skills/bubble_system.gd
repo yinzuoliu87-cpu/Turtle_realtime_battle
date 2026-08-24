@@ -3,6 +3,30 @@ extends RefCounted
 ## 泡泡龟技能系统
 ## 类内簇函数名不变;外部名加 battle. 前缀。
 
+## ★★2026-08-24 文案根除: 泡泡龟原来一个常量都没有, 数值散在**三个文件**里 ——
+## 被动在主场景 `_tick_unit`、束缚减甲在 `battle_damage`、技能在本文件。事实源统一收到这里。
+## 【泡沫(被动)】受伤存泡泡值(上限=自身最大生命), 每 IV 秒 拿一部分打人 + 同量治自己。
+const FOAM_IV := 5.0            # 每几秒触发一次(用户 2026-07-15: 3 → 5)
+const FOAM_STORE_PCT := 1.00    # 受到伤害的多少存为泡泡值
+const FOAM_DMG_PCT := 0.10      # 拿泡泡值的多少化作魔法伤害打最近敌
+const FOAM_HEAL_PCT := 0.10     # 同时治疗自己泡泡值的多少
+const FOAM_KEEP := 1.0 - FOAM_DMG_PCT - FOAM_HEAL_PCT   # 推导: 触发后剩下的比例(共消耗 20%)
+## 【泡泡攻击】连击三段。
+const HIT_SEGMENTS := 3         # 几段
+const HIT_SEG_COEF := 0.5       # 每段 ×ATK 物理
+## 【泡泡盾】给最脆友军, 到期/被打破/挂盾对象阵亡 都会爆裂。
+const SHIELD_COEF := 1.8        # 盾量 = ×施法者 ATK
+const SHIELD_SEC := 4.0         # 持续(秒)·持盾期施法者锁龟能
+const SHIELD_BURST_COEF := 2.0  # 爆裂对全体敌 ×ATK 魔法
+## 【泡泡束缚】定身期间每受一段伤害就永久削甲/抗。
+const BIND_SEC := 3.0           # 定身(秒)·比通用 CTRL_SEC 长, 是用户单独定的
+const BIND_SHRED_CAP := 30.0    # 单次束缚累计削减上限(护甲与魔抗各)
+## 【泡泡爆破】消耗当前泡泡值的一部分, 在目标两侧张泡沫门。
+const BURST_CONSUME := 0.40     # 消耗当前泡泡值的比例
+const BURST_MAGIC_MULT := 1.5   # 魔法伤害 = 消耗量 × (吃魔抗)
+const BURST_ATK_COEF := 1.5     # 另加 ×ATK 物理
+const BURST_RADIUS := 200.0     # 门间判定带半径(码)
+
 var battle
 
 func _init(b) -> void:
@@ -25,7 +49,7 @@ func _bubble_shield_burst(ally: Dictionary) -> void:
 		src["energy_lock_until"] = battle._t          # 盾爆裂(到期/打破/对象死)→解锁施法者龟能(可能提前爆·用户2026-07-15)
 		for o in battle._targeting._enemies_of(src):
 			if o.get("alive", false):
-				battle._damage._apply_damage_from(src, o, battle._atk_dmg(src, 2.0, o, true), Color("#cdebff"))
+				battle._damage._apply_damage_from(src, o, battle._atk_dmg(src, SHIELD_BURST_COEF, o, true), Color("#cdebff"))
 		battle._skill_ring(ally["pos"], Color(0.75, 0.92, 1.0, 0.6), 90.0)   # 泡沫破裂冲击波(全体敌)
 		for _bk in range(10): _bubble_rise(ally["pos"] + Vector2(randf_range(-60.0, 60.0), randf_range(-40.0, 40.0)))   # 泡沫爆裂四涌
 	battle._burst_depth -= 1
@@ -77,10 +101,10 @@ func _sk_bubble_shield(u: Dictionary, _tgt: Dictionary) -> void: # 泡泡龟·�
 	var ally = battle._lowest_hp_ally(u)
 	if ally == null: ally = u
 	_bubble_shield_burst(ally)                       # 若该对象已挂着上一发泡泡盾未爆→先结算(防覆盖丢爆裂)
-	battle._damage._grant_shield(ally, u["atk"] * 1.8, 4.0)         # 1.8A泡泡盾·4秒限时(通用护盾原语)
-	ally["bubble_shield_until"] = battle._t + 4.0           # 泡泡爆裂追踪(独立于通用shield_until): 到期/盾清零/对象死 任一→爆裂
+	battle._damage._grant_shield(ally, u["atk"] * SHIELD_COEF, SHIELD_SEC)         # 1.8A泡泡盾·4秒限时(通用护盾原语)
+	ally["bubble_shield_until"] = battle._t + SHIELD_SEC           # 泡泡爆裂追踪(独立于通用shield_until): 到期/盾清零/对象死 任一→爆裂
 	ally["bubble_shield_src"] = u
-	u["energy_lock_until"] = battle._t + 4.0                # 泡泡盾期间锁龟能(用户2026-07-15·盾在=不充能不放其它·爆裂时解锁·复用energy_lock_until)
+	u["energy_lock_until"] = battle._t + SHIELD_SEC                # 泡泡盾期间锁龟能(用户2026-07-15·盾在=不充能不放其它·爆裂时解锁·复用energy_lock_until)
 	battle._skill_ring(ally["pos"], Color(0.7, 0.9, 1.0, 0.55), 46.0)
 	var dtex = load("res://assets/sprites/vfx/fx-hex-bubble.png")   # 泡泡盾罩(跟随友军·4秒)
 	if dtex != null:
@@ -100,7 +124,7 @@ func _sk_bubble_shield(u: Dictionary, _tgt: Dictionary) -> void: # 泡泡龟·�
 
 func _sk_bubble_burst(u: Dictionary, tgt) -> void:              # 泡泡龟·泡泡爆破(马尔扎哈Q式·用户设计): 消耗当前泡泡值40%→目标两侧泡沫门·门间敌每个受=消耗量×1.5魔法+1.5A物理(无沉默)
 	if tgt == null or not tgt.get("alive", false): return
-	var consumed: float = float(u.get("bubble_store", 0.0)) * 0.40   # 修: 原读"bubble"(从不设=恒0→爆破无泡泡伤害bug)→"bubble_store"(受伤累积的真泡泡值·同被动/累积口径)
+	var consumed: float = float(u.get("bubble_store", 0.0)) * BURST_CONSUME   # 修: 原读"bubble"(从不设=恒0→爆破无泡泡伤害bug)→"bubble_store"(受伤累积的真泡泡值·同被动/累积口径)
 	u["bubble_store"] = maxf(0.0, float(u.get("bubble_store", 0.0)) - consumed)
 	var c: Vector2 = tgt["pos"]
 	var dirp: Vector2 = tgt["pos"] - u["pos"]
@@ -119,15 +143,15 @@ func _sk_bubble_burst(u: Dictionary, tgt) -> void:              # 泡泡龟·泡
 		battle._skill_ring(cc, Color(0.5, 0.9, 1.0, 0.6), 200.0)
 		if not uu.get("alive", false): return
 		for o in battle._targeting._enemies_of(uu):
-			if o.get("alive", false) and o["pos"].distance_to(cc) <= 200.0:   # 门间200码带内敌
-				battle._damage._apply_damage_from(uu, o, int(battle._mitigate(uu, cons * 1.5, o, true)) + battle._atk_dmg(uu, 1.5, o), Color("#cdebff")))   # 魔法=消耗量×1.5(吃魔抗) + 物理1.5A(用户2026-07-29 第五轮·原 ×1.0 + 0.8A)
+			if o.get("alive", false) and o["pos"].distance_to(cc) <= BURST_RADIUS:   # 门间200码带内敌
+				battle._damage._apply_damage_from(uu, o, int(battle._mitigate(uu, cons * BURST_MAGIC_MULT, o, true)) + battle._atk_dmg(uu, BURST_ATK_COEF, o), Color("#cdebff")))   # 魔法=消耗量×1.5(吃魔抗) + 物理1.5A(用户2026-07-29 第五轮·原 ×1.0 + 0.8A)
 				# ★物理段【不吃泡泡值】, 是开局(泡泡值=0)唯一稳定的伤害 —— 从 38 翻到 71, 第一发不再是空技能。
 
 func _sk_bubble_bind(u: Dictionary, tgt) -> void:
 	if tgt == null:
 		return
-	battle._damage._stun(tgt, 3.0, "_sk_bubble_bind")   # 泡泡束缚定身3秒(用户设计·原CTRL_SEC=1.5)
-	tgt["bind_until"] = battle._t + 3.0
+	battle._damage._stun(tgt, BIND_SEC, "_sk_bubble_bind")   # 泡泡束缚定身3秒(用户设计·原CTRL_SEC=1.5)
+	tgt["bind_until"] = battle._t + BIND_SEC
 	tgt["bind_shred"] = 1.0 if int(u.get("level", 1)) <= 5 else 2.0   # 减甲量按等级(detail: 1-5级=1/6-10级=2)
 	tgt["bind_acc"] = 0.0
 	var btex = load("res://assets/sprites/skills/bubble-bind.png")   # 气泡牢笼: 罩住目标3秒·跟随(用户设计)

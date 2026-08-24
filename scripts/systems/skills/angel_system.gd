@@ -5,6 +5,17 @@ extends RefCounted
 
 ## ★天使数值单一事实源(用户2026-07-28 第三轮加强·祝福 14.5% 第76)。文案在 data/pets.json。
 const BLESS_SHIELD := 2.5   # 祝福: 护盾 = ×ATK (1.2→2.5)
+## 【祝福】给当前输出最高的友军: 盾 + 攻速, 同一时长; 打包被动是自身首死复活。
+const BLESS_SEC := 5.0      # 盾与攻速的持续(秒)
+const BLESS_HASTE := 0.50   # 攻速 +
+const REVIVE_HP_PCT := 0.25 # 打包被动: 首次死亡以 ×最大生命 复活一次
+## 【平等】多段圣光斩弧, 目标够稀有则追加一发真伤审判。
+const EQUAL_SEGMENTS := 4   # 几段
+const EQUAL_SEG_COEF := 0.5 # 每段 ×ATK 物理
+const EQUAL_SEG_GAP := 0.10 # 段间隔(秒)
+const EQUAL_LIFESTEAL := 0.10   # 本次施法附带生命偷取
+const EQUAL_JUDGE_COEF := 0.5   # 追加审判 ×ATK 真实
+const EQUAL_JUDGE_LOST := 0.10  # + 目标【已损】生命 ×
 const ASCEND_ENERGY_PER_HIT := 5.0   # 飞升打包被动: 每次普攻命中给自己的龟能
 const ASCEND_ATK_PER_HIT := 0.01     # 飞升打包被动: 每次普攻命中 +1% 攻击力(乘算·持续到战斗结束)
 
@@ -18,8 +29,8 @@ func _sk_angel_bless(u: Dictionary) -> void:                     # 天使龟·�
 	var ally = battle._targeting._top_dps_ally(u)
 	if ally == null:
 		ally = u
-	battle._damage._grant_shield(ally, u["atk"] * BLESS_SHIELD, 5.0)   # 天使祝福护盾5秒(封板L145·与攻速/龟能buff同步)
-	ally["haste_until"] = battle._t + 5.0; ally["haste_mult"] = 1.5       # +50% 攻速 5秒(用户2026-07-11: 30%→50%)
+	battle._damage._grant_shield(ally, u["atk"] * BLESS_SHIELD, BLESS_SEC)   # 天使祝福护盾5秒(封板L145·与攻速/龟能buff同步)
+	ally["haste_until"] = battle._t + BLESS_SEC; ally["haste_mult"] = 1.0 + BLESS_HASTE       # +50% 攻速 5秒(用户2026-07-11: 30%→50%)
 	battle._skill_ring(ally["pos"], Color(1.0, 0.9, 0.5, 0.5), 48.0)   # 祝福: 金色圣光环 (用户2026-07-11: 取消原龟能充能+30%buff)
 
 ## 飞升·打包被动 (用户2026-07-28「天使龟的每次攻击还会为自己提供5点龟能和1%攻击力, 持续到战斗结束」)
@@ -50,12 +61,12 @@ func _sk_angel_equality(u: Dictionary, tgt) -> void:
 	battle._vfx._flash(u, Color(1.0, 0.92, 0.6))                            # 举裁蓄力·自身泛淡金吸血光
 	var order = {"C": 0, "B": 1, "A": 2, "S": 3, "SS": 4, "SSS": 5}
 	# 4道圣光斩弧(远程投射·站原地不突进): 各50%ATK物理·共200%(2ATK)·带10%施法吸血(用户2026-07-11:2道100%→4道50%)
-	for i in range(4):
-		battle._pending_shots.append({"delay": 0.10 * float(i), "src": u, "fn": func():
+	for i in range(EQUAL_SEGMENTS):
+		battle._pending_shots.append({"delay": EQUAL_SEG_GAP * float(i), "src": u, "fn": func():
 			if tgt == null or not tgt.get("alive", false): return
 			battle._bolt_line(u["pos"], tgt["pos"], Color(1.0, 0.92, 0.66))      # 金白斩弧曳光
 			battle._skill_ring(tgt["pos"], Color(1.0, 0.9, 0.6, 0.5), 44.0)
-			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, 0.5, tgt, false), Color("#ffe9a8"), 0.10)   # 单道50%物理(4道合计200%)·10%吸血
+			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, EQUAL_SEG_COEF, tgt, false), Color("#ffe9a8"), EQUAL_LIFESTEAL)   # 单道50%物理(4道合计200%)·10%吸血
 			battle._damage._apply_damage_from(u, tgt, battle._mitigate(u, tgt["hp"] * 0.08, tgt, true), Color("#9be7ff"), 0.0, false)   # 审判(每段攻击命中都吃·独立结算不触发其他被动·用户2026-07-10"每次攻击都要吃")
 		})
 	# A级及以上→第3段从天而降审判光柱: (50%ATK + 目标已损生命10%)真伤·无视双抗·同10%吸血
@@ -64,7 +75,7 @@ func _sk_angel_equality(u: Dictionary, tgt) -> void:
 			if tgt == null or not tgt.get("alive", false): return
 			_angel_judgment_pillar(tgt["pos"])
 			var lost: float = maxf(0.0, float(tgt["maxHp"]) - float(tgt["hp"]))
-			var tru: int = maxi(1, int(float(u["atk"]) * 0.5 + lost * 0.10))
+			var tru: int = maxi(1, int(float(u["atk"]) * EQUAL_JUDGE_COEF + lost * EQUAL_JUDGE_LOST))
 			battle._damage._apply_damage_from(u, tgt, tru, Color(1.0, 0.96, 0.76), 0.10, true)   # 真伤无视双抗·10%吸血
 			battle._damage._apply_damage_from(u, tgt, battle._mitigate(u, tgt["hp"] * 0.08, tgt, true), Color("#9be7ff"), 0.0, false)   # 光柱也带审判(用户2026-07-11:附带被动·8%当前HP·与上面每段斩弧同一系数)
 			battle._vfx._flash(tgt, Color(1.0, 0.96, 0.76))

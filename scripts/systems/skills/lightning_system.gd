@@ -4,10 +4,23 @@ extends RefCounted
 ## 类内簇函数名不变;外部名加 battle. 前缀。
 
 ## 【闪电(普攻)】主目标 → 连锁 HOPS 跳, 每跳伤害 ×DECAY 递减, 每段叠 1 层电击。
+## 【雷电(被动)】自动电击 + 电击标记满层引爆。
+## ★★2026-08-24: 标记上限 8 原来散在【四个文件五处】, 全是裸字面量。收成一份。
+const SHOCK_IV := 4.0         # 每几秒自动电击一名随机敌
+const SHOCK_COEF := 1.0       # 电击真伤 = ×ATK(自发与满层引爆共用)
+const SHOCK_STACK_MAX := 8    # 电击标记叠到几层引爆雷暴并清零
+## 【雷盾】护盾 + 被打时反击。
+const SHIELD_ATK_COEF := 2.0  # 盾量 = ×ATK
+const SHIELD_MAXHP_PCT := 0.05  # + 自身最大生命 ×
+const SHIELD_SEC := 5.0       # 持续(秒)
+const SHIELD_RETALIATE := 0.3 # 每受一段攻击反击 ×ATK 魔法(并叠 1 层电击)
 const BOLT_ATK_COEF := 0.9    # 主目标 ×ATK 魔法
 const CHAIN_HOPS := 2         # 连锁几跳
 const CHAIN_RANGE := 260.0    # 每跳找下一个目标的射程上限(码)
 const CHAIN_DECAY := 0.6      # 每跳在前一跳基础上 ×
+## 两跳各自的最终系数 —— **推导, 不手写**(文案原来写死 0.54 / 0.324, 那是第二份真相)。
+const CHAIN_HOP1_COEF := BOLT_ATK_COEF * CHAIN_DECAY
+const CHAIN_HOP2_COEF := BOLT_ATK_COEF * CHAIN_DECAY * CHAIN_DECAY
 
 var battle
 
@@ -41,7 +54,7 @@ func _lightning_basic(u: Dictionary, tgt: Dictionary) -> void:
 		fr *= CHAIN_DECAY
 
 func _lightning_electric(u: Dictionary, target: Dictionary) -> void:   # 叠1层电击; 满8引爆(天降+清零)
-	var lv = battle._add_stack(target, "electric", 1, 8)
+	var lv = battle._add_stack(target, "electric", 1, SHOCK_STACK_MAX)
 	if lv >= 8:
 		battle._consume_stacks(target, "electric")
 		battle._damage._apply_damage_from(u, target, battle._shock_dmg(u), Color("#4dabf7"), 0.0, true)
@@ -124,8 +137,8 @@ func _sk_lightning_barrage(u: Dictionary) -> void:             # 闪电龟·雷�
 	tw.tween_callback(battle._barrage_cloud_fade.bind(cloud))
 
 func _sk_lightning_shield(u: Dictionary) -> void:              # 闪电龟·雷盾 (2.0ATK+5%maxHp护盾5秒·用户2026-07-28改; 原2026-07-07: 3ATK; 盾在时反击 0.3A 魔法叠电击(见 battle_damage 的 thunder_shield 分支)=见_apply_damage_from; 2026-07-15补以雷电包裹自身VFX)
-	battle._damage._grant_shield(u, u["atk"] * 2.0 + u["maxHp"] * 0.05, 5.0)   # 雷盾5秒(用户2026-07-28: 3.0ATK → 2.0ATK+5%最大生命, 改吃血量成长)
-	u["thunder_shield_until"] = battle._t + 5.0
+	battle._damage._grant_shield(u, u["atk"] * SHIELD_ATK_COEF + u["maxHp"] * SHIELD_MAXHP_PCT, SHIELD_SEC)   # 雷盾5秒(用户2026-07-28: 3.0ATK → 2.0ATK+5%最大生命, 改吃血量成长)
+	u["thunder_shield_until"] = battle._t + SHIELD_SEC
 	battle._skill_ring(u["pos"], Color(0.45, 0.85, 1.0, 0.5), 50.0)
 	battle._aura_vfx("res://assets/sprites/skills/lightning-3.png", u, 58.0, Color(0.45, 0.85, 1.0, 0.5), 5.0)   # 脚下电爆光环随身5秒
 	var etex: Texture2D = load("res://assets/sprites/vfx/electric-zap.png")   # 以雷电包裹自身: 3道电弧环绕身体5秒

@@ -88,9 +88,12 @@ func _ready() -> void:
 		rb.contains("_atk_dmg(u, %.1f / %d.0, e, true)" % [WANT_BARRAGE_TOTAL, WANT_BARRAGE_BOLTS]))
 	_chk("④ 雷暴旧值 2.2 已消失", not rb.contains("_atk_dmg(u, 2.2 / 20.0"))
 
+	## ★比【常量的值】不比源码串: 2026-08-24 这个系数抽成了 LightningSystem.SHIELD_RETALIATE,
+	##   源码里已经没有 "0.3" 这个字面量了 —— 断言字面量的写法会随着代码变干净而假红。
 	_chk("⑤ 雷盾反击 = %.1f×ATK" % WANT_COUNTER,
-		dmg.contains('battle._atk_dmg(u, %.1f, src, true), Color("#4dabf7")' % WANT_COUNTER))
-	_chk("⑤ 雷盾反击旧值 0.1 已消失", not dmg.contains('battle._atk_dmg(u, 0.1, src, true), Color("#4dabf7")'))
+		is_equal_approx(LightningSystem.SHIELD_RETALIATE, WANT_COUNTER)
+			and dmg.contains('LightningSystem.SHIELD_RETALIATE, src, true'))
+	_chk("⑤ 雷盾反击旧值 0.1 已消失", not is_equal_approx(LightningSystem.SHIELD_RETALIATE, 0.1))
 
 	_chk("⑥ 涌动持续 = %.1f 秒" % WANT_SURGE_SEC,
 		lsys.contains('u["shock_boost_until"] = battle._t + %.1f' % WANT_SURGE_SEC))

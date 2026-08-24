@@ -335,15 +335,15 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	if battle._t < u.get("bind_until", 0.0):
 		var _sx: float = float(u.get("bind_shred", 0.0))
 		var _bacc: float = float(u.get("bind_acc", 0.0))
-		if _sx > 0.0 and _bacc < 30.0:
-			var _dec: float = minf(_sx, 30.0 - _bacc)
+		if _sx > 0.0 and _bacc < BubbleSystem.BIND_SHRED_CAP:
+			var _dec: float = minf(_sx, BubbleSystem.BIND_SHRED_CAP - _bacc)
 			u["base_def"] = maxf(0.0, u["base_def"] - _dec)
 			u["base_mr"] = maxf(0.0, u["base_mr"] - _dec)
 			u["bind_acc"] = _bacc + _dec
 			battle._recalc_stats(u)
 	# 泡泡·泡沫: 受伤的100%存为泡泡值(上限maxHp) → 周期消耗(见 _tick_periodic_passive)
 	if u["id"] == "bubble":
-		u["bubble_store"] = minf(u["maxHp"], float(u.get("bubble_store", 0.0)) + d)
+		u["bubble_store"] = minf(u["maxHp"], float(u.get("bubble_store", 0.0)) + d * BubbleSystem.FOAM_STORE_PCT)
 	# 反伤(通用): 受击反弹 reflect% × 受到伤害 给攻击者(真实伤害); from_equip守卫防循环; stone坚壁随防御涨(被动)
 	var _refl_pct: float = float(u.get("reflect", 0.0))
 	if u["id"] == "stone": _refl_pct += 0.05 + (u["def"] + u["mr"] * 0.5) * 0.01
@@ -359,8 +359,8 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		_apply_damage_from(u, src, battle._atk_dmg(u, 0.14, src, true), Color("#ff7a3c"), 0.0, false, true)
 	# 闪电雷盾: 盾在时对每段攻击反击 0.3×ATK 魔法(用户2026-07-29 平衡四轮: 0.1→0.3) + 给攻击者叠1层电击
 	if u["id"] == "lightning" and battle._t < float(u.get("thunder_shield_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0 and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
-		_apply_damage_from(u, src, battle._atk_dmg(u, 0.3, src, true), Color("#4dabf7"), 0.0, false, true)
-		battle._add_stack(src, "electric", 1, 8)
+		_apply_damage_from(u, src, battle._atk_dmg(u, LightningSystem.SHIELD_RETALIATE, src, true), Color("#4dabf7"), 0.0, false, true)
+		battle._add_stack(src, "electric", 1, LightningSystem.SHOCK_STACK_MAX)
 	# §AUDIO: 命中音 (暴击→hit-crit / 否则→hit-physical, 节流防多段刷屏); 护盾刚被打没→shield-break (真伤现在也能打盾→去掉 not raw).
 	if shield_before > 0.0 and u["shield"] <= 0.0:
 		u["shield_until"] = 0.0   # 盾被打空→清限时标记(防陈旧到期误清后续永久盾)

@@ -361,10 +361,10 @@ func _eq_crossbow_volley(u: Dictionary, si: int) -> void:   # 连发弩049: 每8
 		if not u.get("alive", false): return
 		var ft49 = _eq_first_in_line(u, dir49, 42.0)
 		if ft49 == null: return
-		var lost49: float = clampf((1.0 - ft49["hp"] / ft49["maxHp"]) / 0.3, 0.0, 1.0)
+		var lost49: float = clampf((1.0 - ft49["hp"] / ft49["maxHp"]) / XBOW_LOST_FULL, 0.0, 1.0)
 		battle._muzzle_flash(u["pos"], dir49, Color("#d8f0a8"))
-		battle._spawn_eq_bolt(u, ft49, battle._atk_dmg(u, lerpf(0.8, 1.3, lost49), ft49), "res://assets/sprites/vfx/crossbow-bolt.png", Color("#eaffd0"))
-	battle._queue_shots([1, 2, 3][si], 0.12, fire49, u, "p2eq_049")
+		battle._spawn_eq_bolt(u, ft49, battle._atk_dmg(u, lerpf(XBOW_MIN_COEF, XBOW_MAX_COEF, lost49), ft49), "res://assets/sprites/vfx/crossbow-bolt.png", Color("#eaffd0"))
+	battle._queue_shots([1, 2, 3][si], XBOW_GAP, fire49, u, "p2eq_049")
 
 func _eq_gatling_burst(u: Dictionary, si: int) -> void:   # 幽灵加特林050: 每8秒连打20/30/60发随机分布+永久减甲(单目标累计上限)
 	if not u.get("alive", false): return
@@ -513,6 +513,19 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 ##   而 `phase2-equipment.json` 的 effectDesc1 又手写了一遍(15 个数, 全库最多的一段)。
 ## ★数组常量会被 `{C:}` 渲染成 "1/2/4"(三档写法) —— 正好是文案要的形状。
 ## 【053 霰弹贝古】扇形弹珠, 每颗撞到第一个敌人才结算。
+## 【009 宽刃弯刀】攒刃能 → 满值斩出环形扇区(不是整块扇形, 是 500~800 的**带**)。
+const BLADE_FULL := 100.0        # 刃能满值
+const BLADE_AOE_FACTOR := 0.5    # 范围技能充能减半
+const BLADE_R_IN := 500.0        # 扇形带内半径(码)
+const BLADE_R_OUT := 800.0       # 扇形带外半径(码)
+const BLADE_ARC_DEG := 60.0      # 扇面全角(度)·判定用半角 = 它的一半
+const BLADE_SEEK := 2000.0       # 沿瞄准方向自选释放点的最大偏移(码)
+## 【049 连发弩】朝最远敌连射, 按目标【已损】生命插值加伤。
+const XBOW_IV := 8.0             # 每几秒一轮(主场景 _EQ_CUSTOM_IV 引用本常量)
+const XBOW_GAP := 0.12           # 同轮两发的间隔(秒)
+const XBOW_MIN_COEF := 0.8       # 满血时 ×ATK
+const XBOW_MAX_COEF := 1.3       # 已损到位时 ×ATK
+const XBOW_LOST_FULL := 0.30     # 已损这么多生命就吃满加伤
 const SHOTGUN_IV := 8.0           # 每几秒一次齐射(主场景 _EQ_CUSTOM_IV 引用本常量)
 const SHOTGUN_COEF := 0.22        # 每颗弹珠 ×ATK 物理
 const SHOTGUN_STUN_HITS := 8      # 同一次齐射被这么多颗及以上命中 → 眩晕
@@ -1059,7 +1072,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false,
 				##   add_mana 自带 `_staff_busy` 闸 ⇒ 火焰波打出的灼烧不会回充法力(防连放)。
 				battle._staff_syn.add_mana(src, 10.0)
 			"p2eq_009":   # 宽刃弯刀: 充刃能, 满100→直线伤害
-				_eq_charge(stt, "blade_energy", [20.0, 20.0, 25.0][si] * (0.5 if is_aoe else 1.0), 100.0, func(): _eq_wide_blade(src, tgt, si))
+				_eq_charge(stt, "blade_energy", [20.0, 20.0, 25.0][si] * (BLADE_AOE_FACTOR if is_aoe else 1.0), BLADE_FULL, func(): _eq_wide_blade(src, tgt, si))
 			"p2eq_026":   # 雷电法杖(被动): 每段伤害为【法器法力条】充能 15(用户 2026-08-12 削弱: 原 25)
 				## ★2026-08-12 从它自己的 `thunder` 条改过来 —— 法器只有一条法力条,
 				##   主动(连锁闪电)由法力满触发, 见 fire_equip_effect 的 "p2eq_026" 分支。
@@ -1254,7 +1267,7 @@ func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽�
 	if dir.length() < 0.1: dir = Vector2.RIGHT
 	var ang: float = -atan2(dir.y, dir.x)
 	# 释放点位: 沿aim在±2000码内自选, 令band中心(650码=500~800中点)落在敌群质心 → band形状大小不动但罩住近敌(用户2026-07-19)
-	var offset: float = clampf((aimpt - src["pos"]).length() - 650.0, -2000.0, 2000.0)
+	var offset: float = clampf((aimpt - src["pos"]).length() - (BLADE_R_IN + BLADE_R_OUT) * 0.5, -BLADE_SEEK, BLADE_SEEK)
 	var org: Vector2 = src["pos"] + dir * offset
 	var tel := Sprite3D.new()   # 1) 预警扇区(脉动黄)
 	tel.texture = VfxTex._make_sector_tex(Color(1.0, 0.78, 0.2, 1.0))
@@ -1292,13 +1305,13 @@ func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽�
 		mf.tween_callback(battle._set_sprite_frame.bind(moon, _fi))
 		mf.tween_interval(0.11)   # 放慢帧速(用户)
 	mf.tween_callback(moon.queue_free)
-	var cos30: float = cos(deg_to_rad(30.0))   # 3) 伤害(斩击命中扇区内敌)
+	var cos30: float = cos(deg_to_rad(BLADE_ARC_DEG * 0.5))   # 3) 伤害(斩击命中扇区内敌)
 	var hits: Array = []
 	for o in battle._targeting._enemies_of(src):
 		if not o.get("alive", false): continue
 		var rel: Vector2 = o["pos"] - org   # 相对释放点org判定(band中心已对齐敌群→近敌进band)
 		var dist: float = rel.length()
-		if dist < 500.0 or dist > 800.0: continue
+		if dist < BLADE_R_IN or dist > BLADE_R_OUT: continue
 		if dir.dot(rel / maxf(1.0, dist)) < cos30: continue
 		hits.append(o)
 	var mult: float = ([2.0, 2.5, 3.0][si]) if hits.size() <= 1 else 1.0

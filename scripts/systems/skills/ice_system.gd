@@ -194,6 +194,13 @@ const ICICLE_FROST_SEC := 0.5       # 每层 冰霜持续 +0.5 秒
 const FREEZE_DMG := 2.5             # 冰封: ×ATK 魔法(常驻·用户2026-07-28: 原0.6常态/2.5满层→统一2.5)
 const FREEZE_STUN_SEC := 2.5        # 冰封: 满 ICICLE_MAX 层冰柱时额外眩晕秒数
 ## ★★2026-08-22 文案根除: 冰霜领域这一组原来是 `_sk_ice_frost` 里的裸字面量。
+## 【寒域(登场被动)】全场敌方三项减速 + 对火系增伤 + 自身免疫灼烧。
+## ★三个 0.7 原来是三行裸字面量(减速后的【倍率】), 文案说的却是"降低 30%" ——
+##   存语义值(降幅), 倍率现推, 免得两边各说各的。
+const AURA_SLOW := 0.30         # 攻速 / 龟能充能 / 移速 各降低
+const AURA_MULT := 1.0 - AURA_SLOW   # 推导: 代码要的倍率
+const AURA_SEC := 12.0          # 减速持续(秒)·用户 2026-07-11 从永久改成 12 秒
+const AURA_VS_FIRE := 0.20      # 对熔岩/凤凰的额外增伤(选极寒技会覆盖成更高)
 const FROST_BASE_RADIUS := 150.0    # 基础半径(码)·每层冰柱再 +ICICLE_FROST_RADIUS
 const FROST_BASE_SEC := 5.0         # 基础持续(秒)·每层冰柱再 +ICICLE_FROST_SEC
 const FROST_TICK_SEC := 0.5         # 每几秒一跳(跳数 = 持续 ÷ 它)

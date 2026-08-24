@@ -9,6 +9,10 @@ const SHOT_POISON_COEF := 0.5    # 中毒层数 = ×ATK
 const SHOT_HEALCUT_PCT := 0.50   # 治疗削减比例
 const SHOT_HEALCUT_SEC := 5.0    # 治疗削减持续(秒)
 const MARK_SEC := 5.0            # 猎杀印记持续(秒)
+## 【猎杀(被动)】低于斩杀线自动处决, 处决/击杀窃取属性。
+const EXEC_SCAN_IV := 0.1        # 每几秒扫描一次场上有没有到线的敌人
+const EXEC_STEAL := 0.14         # 窃取对方基础属性(攻/甲/抗/最大生命)的比例·与斩杀线同值
+const EXEC_LIFESTEAL := 0.08     # 每次处决/击杀叠加的生命偷取(永久累积)
 const EXEC_MARKED := 0.24        # 有印记时的斩杀线
 const EXEC_BASE := 0.14          # 无印记时的斩杀线
 ## 【狩猎弹幕】连珠速射, 每根随机锁敌、慢速抛物线追踪。
@@ -189,12 +193,12 @@ func _hunter_execute_fx(u: Dictionary) -> void:   # 被动猎杀·处决瞬间: 
 
 func _hunter_apply_steal(killer: Dictionary, victim: Dictionary) -> void:   # 被动猎杀·窃取结算: 偷14%攻/防/魔抗/最大生命+叠8%吸血(永久累积到战斗结束)+金色精华VFX
 	if killer == null or not killer.get("alive", false) or killer.get("id", "") != "hunter": return
-	killer["base_atk"] += float(victim["base_atk"]) * 0.14
-	killer["base_def"] += float(victim["base_def"]) * 0.14   # 窃取: 护甲/魔抗/最大生命也偷14%
-	killer["base_mr"] += float(victim["base_mr"]) * 0.14
-	var hs: float = float(victim["maxHp"]) * 0.14
+	killer["base_atk"] += float(victim["base_atk"]) * EXEC_STEAL
+	killer["base_def"] += float(victim["base_def"]) * EXEC_STEAL   # 窃取: 护甲/魔抗/最大生命也偷14%
+	killer["base_mr"] += float(victim["base_mr"]) * EXEC_STEAL
+	var hs: float = float(victim["maxHp"]) * EXEC_STEAL
 	killer["maxHp"] += hs; killer["hp"] += hs
-	killer["lifesteal"] += 0.08
+	killer["lifesteal"] += EXEC_LIFESTEAL
 	battle._recalc_stats(killer)
 	_hunter_steal_fx(killer, victim["pos"])
 

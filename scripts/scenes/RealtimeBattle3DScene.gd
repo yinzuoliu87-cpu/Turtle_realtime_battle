@@ -3361,7 +3361,7 @@ func _conch_transform(pos2d: Vector2) -> void:
 ##   (用户:「只有法力条触发的主动效果, 可能有常驻的被动效果」)。030 迷你水晶球A(7秒)
 ##   与 031 迷你水晶球B(8秒)原来在这里, 那是第二个触发口, 已摘掉 —— **别补回来**,
 ##   补回来就是同一件装备两条路各放各的。verify_staff_synergy ⑭ 会红。
-const _EQ_CUSTOM_IV := {"p2eq_004": 6.0, "p2eq_048": 8.0, "p2eq_049": 8.0, "p2eq_050": 8.0, "p2eq_051": 8.0, "p2eq_053": EquipSystem.SHOTGUN_IV, "p2eq_057": 8.0, "p2eq_022": 8.0, "p2eq_028": 6.0, "p2eq_037": 5.0, "p2eq_040": EquipSystem.FPGA_IV, "p2eq_042": 8.0, "p2eq_052": 4.0}
+const _EQ_CUSTOM_IV := {"p2eq_004": 6.0, "p2eq_048": 8.0, "p2eq_049": EquipSystem.XBOW_IV, "p2eq_050": 8.0, "p2eq_051": 8.0, "p2eq_053": EquipSystem.SHOTGUN_IV, "p2eq_057": 8.0, "p2eq_022": 8.0, "p2eq_028": 6.0, "p2eq_037": 5.0, "p2eq_040": EquipSystem.FPGA_IV, "p2eq_042": 8.0, "p2eq_052": 4.0}
 func _ripple_heal_vfx(pos2d: Vector2, size_px: float) -> void:
 	var tex: Texture2D = load("res://assets/sprites/vfx/ripple-heal-anim.png")
 	var fh: int = maxi(1, tex.get_height())
@@ -4337,7 +4337,7 @@ func _barrage_bolt(u: Dictionary, cloud_h: float) -> void:   # 雷暴单道(用�
 	_vfx._hit_spark(e)
 	_shake(0.028)
 	_damage._apply_damage_from(u, e, _atk_dmg(u, 3.0 / 20.0, e, true), Color("#7ee8ff"))
-	_add_stack(e, "electric", 1, 8)
+	_add_stack(e, "electric", 1, LightningSystem.SHOCK_STACK_MAX)
 
 func _barrage_cloud_fade(cloud: Sprite3D) -> void:
 	if not is_instance_valid(cloud):
@@ -4741,7 +4741,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 	#     只看退出码/断言的话，它能一直躺在那儿。
 	if not bool(u.get("reborn_used", false)) and ((u["id"] == "angel" and u.get("_angel_revive", false)) or u["id"] == "phoenix" or u.get("_chest_revive", false)):
 		u["reborn_used"] = true
-		var pct: float = (PhoenixSystem.NIRVANA_ENH_HP_PCT if u.get("_enh_rebirth", false) else PhoenixSystem.NIRVANA_HP_PCT) if u["id"] == "phoenix" else 0.25   # 凤凰60/25%(用户2026-07-28 100/30→) · 天使圣光/宝箱凤凰雕像 25%
+		var pct: float = (PhoenixSystem.NIRVANA_ENH_HP_PCT if u.get("_enh_rebirth", false) else PhoenixSystem.NIRVANA_HP_PCT) if u["id"] == "phoenix" else AngelSystem.REVIVE_HP_PCT   # 凤凰60/25%(用户2026-07-28 100/30→) · 天使圣光/宝箱凤凰雕像 25%
 		u["dots"] = []
 		u["dot_stacks"] = {}
 		_audio_sys._sfx_simple("rebirth")              # §AUDIO: 首死复活音 (天使圣光/凤凰涅槃, 低频不节流)
@@ -6159,14 +6159,14 @@ func _is_untargetable(o: Dictionary) -> bool:
 
 func _update_hunter_passive(u: Dictionary) -> void:   # 被动猎杀(重做·用户2026-07-14): 每帧扫场→任一敌<斩杀线(蛋免疫)且无强化箭在飞→猎人自动射强化箭→命中处决
 	if not u.get("alive", false): return
-	if _t - float(u.get("_hunt_scan_t", -1.0)) < 0.1: return   # 节流0.1s
+	if _t - float(u.get("_hunt_scan_t", -1.0)) < HunterSystem.EXEC_SCAN_IV: return   # 节流0.1s
 	u["_hunt_scan_t"] = _t
 	for o in _targeting._pick_enemies_of(u):
 		if not o.get("alive", false): continue
 		if o.get("egg", false) or o.get("_eggImmune", false) or _is_untargetable(o) or o.get("eq_exec_immune", false): continue   # 免疫处决: 蛋(免控/斩)/不沉之锚(免斩杀)/不可选(含机甲组装期·见 _is_untargetable)
 		if float(o.get("deathfloor_until", 0.0)) > _t and not o.get("_hunt_demo_victim", false): continue   # 临时免死(亡灵等)→不射(免死期间免疫处决·到期再处决)
 		if o.get("_hunt_exec_pending", false): continue        # 已有强化箭在飞向它(不重复射)
-		var thr: float = 0.24 if _t < float(o.get("hunt_mark_until", 0.0)) else 0.14   # 猎杀印记期间抬到24%
+		var thr: float = HunterSystem.EXEC_MARKED if _t < float(o.get("hunt_mark_until", 0.0)) else HunterSystem.EXEC_BASE   # 猎杀印记期间抬到24%
 		if float(o["hp"]) < float(o["maxHp"]) * thr:
 			o["_hunt_exec_pending"] = true
 			_ballistics._fire_hunter_exec_arrow(u, o)
@@ -6262,7 +6262,7 @@ func _reflect_pop(pos2d: Vector2, h: float, col: Color) -> void:
 
 func _shock_dmg(u: Dictionary) -> int:   # 被动电击真伤 1.0×ATK(用户2026-07-28: 0.82→1.0·自发与满层引爆共用本函数); 涌动期间×(1+50%)
 	var b: float = 1.0 + (float(u.get("shock_boost_pct", 0.0)) if _t < float(u.get("shock_boost_until", 0.0)) else 0.0)
-	return int(u["atk"] * 1.0 * b)
+	return int(u["atk"] * LightningSystem.SHOCK_COEF * b)
 
 func _scythe_face_screen(scythe: Sprite3D, center: Vector2, aim: Vector2, theta: float) -> void:   # 镰刀朝向·手动basis=面朝相机+刀锋对齐地面径向(用户2026-07-17): billboard会吞掉node旋转→改手动: 法线朝相机(正面可读), 局部up=柄尾→地面径向投影到⊥相机平面(刀锋随θ在屏幕内转=挥砍·且与地面扇形咬合)
 	if not is_instance_valid(scythe) or _cam == null: return
@@ -6579,7 +6579,7 @@ func _sk_dmg_wave(u: Dictionary, opts: Dictionary, vh: int, col: Color, random_a
 		if tru > 0.0:
 			_damage._apply_damage_from(u, e, int(u["atk"] * tru / vh), col, 0.0, true)
 		if elec > 0:
-			_add_stack(e, "electric", elec, 8)
+			_add_stack(e, "electric", elec, LightningSystem.SHOCK_STACK_MAX)
 
 # 技能附带减益(数据化 opts): 破盾%/攻防魔抗down%/治疗削减%
 func _apply_skill_extras(u: Dictionary, e: Dictionary, opts: Dictionary) -> void:
@@ -7108,22 +7108,22 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	# --- 泡泡·泡沫: 每5秒→泡泡值10%化魔法打最近敌 + 治疗自己10%泡泡值 (共消耗20%泡泡值·用户2026-07-15改3→5秒) ---
 	if u["id"] == "bubble":
 		u["_bbtimer"] = u.get("_bbtimer", 0.0) + delta
-		if u["_bbtimer"] >= 5.0:                       # 用户2026-07-15: 3→5秒
+		if u["_bbtimer"] >= BubbleSystem.FOAM_IV:                       # 用户2026-07-15: 3→5秒
 			u["_bbtimer"] = 0.0
 			var bs: float = float(u.get("bubble_store", 0.0))
 			if bs >= 1.0:
-				_damage._heal(u, bs * 0.10, true)              # 修: 15%→10%(封板)
+				_damage._heal(u, bs * BubbleSystem.FOAM_HEAL_PCT, true)              # 修: 15%→10%(封板)
 				for _bh in range(2): _bubble_sys._bubble_rise(u["pos"])   # 泡沫被动proc: 自身回血泡泡(用户2026-07-14)
 				var bt = _targeting._nearest_enemy(u)             # 修: 随机敌→最近敌(封板)
 				if bt != null:
-					_damage.set_dtype("magic", bt); _damage._apply_damage_from(u, bt, int(_mitigate(u, bs * 0.10, bt, true)), Color("#aef1ff"))   # 修: 35%真伤→10%化魔法(吃魔抗·封板)·★类型要自己设: 走_mitigate不走_resolve_dmg⇒原来跳的是上一发别人的颜色(2026-08-22哨兵抓出)
+					_damage.set_dtype("magic", bt); _damage._apply_damage_from(u, bt, int(_mitigate(u, bs * BubbleSystem.FOAM_DMG_PCT, bt, true)), Color("#aef1ff"))   # 修: 35%真伤→10%化魔法(吃魔抗·封板)·★类型要自己设: 走_mitigate不走_resolve_dmg⇒原来跳的是上一发别人的颜色(2026-08-22哨兵抓出)
 					_fly_vfx("res://assets/sprites/skills/bubble-1.png", u["pos"], bt["pos"], 46.0, 0.34, 1.0)   # 泡泡弹飞向最近敌
 					_bubble_sys._bubble_rise(bt["pos"]); _bubble_sys._bubble_rise(bt["pos"])   # 命中泡沫破
-				u["bubble_store"] = bs * 0.80          # 修: 消耗50%→共消耗20%(10%伤+10%治·封板)
+				u["bubble_store"] = bs * BubbleSystem.FOAM_KEEP          # 修: 消耗50%→共消耗20%(10%伤+10%治·封板)
 	# --- 闪电·雷电: 每4s 自动电击随机敌 (真伤) (用户) ---
 	if u["id"] == "lightning":
 		u["_ltimer"] = u.get("_ltimer", 0.0) + delta
-		if u["_ltimer"] >= 4.0:
+		if u["_ltimer"] >= LightningSystem.SHOCK_IV:
 			u["_ltimer"] = 0.0
 			var le := _targeting._pick_enemies_of(u)
 			if not le.is_empty():

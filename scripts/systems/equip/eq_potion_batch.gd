@@ -331,6 +331,11 @@ func _eq_vial_cleanse(u: Dictionary) -> void:
 # ══════════════════════════════════════════════════════════════════
 
 ## 释放周期(秒) —— 用户规格「登场后的第 12 秒和后续的每 12 秒」。**按本路起算**。
+## 【068 深海气压罐】受伤存充能 → 每周期清空换法力护盾 + 一道法力激光。
+const CAN_SHIELD_DECAY := 8.0    # 法力护盾几秒内衰减完(其间充能条锁住)
+## ★激光的射程与时长【不在这里】: 真源是 PotionEqVfx.BEAM_RANGE / BEAM_SEC
+##   (伤害 tick 自己读的就是 Vfx.BEAM_SEC)。这里不存副本 —— 存了就会各走各的。
+const CAN_HIT_ENERGY := 5.0      # 普攻额外龟能
 const CAN_PERIOD := 12.0
 ## 法力护盾的 SpecialBalance key(契约 §2)
 const CAN_MANA_KEY := "p2eq_068_mana"
@@ -384,7 +389,7 @@ func _eq_pressure_sip(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false):
 		return
 	var _s68: Dictionary = u["eq_state"].get("p2eq_068", {})
-	battle._equip_sys._eq_grant_energy(u, 5.0)
+	battle._equip_sys._eq_grant_energy(u, CAN_HIT_ENERGY)
 	battle._damage._heal(u, [20.0, 35.0, 50.0][si])
 
 
@@ -406,7 +411,7 @@ func _eq_pressure_release(u: Dictionary, si: int, stt: Dictionary) -> void:
 	# ★读数走血条第四段(hp_bar 的法力蓝段, 见 _tick_pressure_can 的 _manaShieldVal 镜像), 不飘字 ——
 	#   飘字飘完就没了, 玩家不知道自己还剩多少盾/几秒(用户 2026-08-11:「应该是给一个特殊颜色
 	#   护盾条, 这是特殊护盾」)。血条早有圣盾白黄/壳青绿/海胆紫三段先例, 这是第四段。
-	battle._spec.grant(u, CAN_MANA_KEY, stored * [1.00, 1.20, 3.00][si], {"decay_sec": 8.0, "order": 10})
+	battle._spec.grant(u, CAN_MANA_KEY, stored * [1.00, 1.20, 3.00][si], {"decay_sec": CAN_SHIELD_DECAY, "order": 10})
 	# 法力激光: 朝【最远敌人】, 2000 码贯穿, 3 秒里共打出储存值的 100/120/600%
 	var far = _can_farthest(u)
 	if far == null:

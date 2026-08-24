@@ -168,8 +168,11 @@ func _buffs() -> void:
 	_chk("④ 融合魔法波龟能 = %d" % int(WANT_FUSION_ENERGY), se.contains('"twoHeadFusion": %.1f' % WANT_FUSION_ENERGY))
 	_chk("④ 融合旧值 125 已消失", not se.contains('"twoHeadFusion": 125.0'))
 	_chk("④ 泡泡爆破魔法 = 消耗量 ×%.1f / 物理 = %.1fA" % [WANT_BUBBLE_MAGIC_MULT, WANT_BUBBLE_PHYS],
-		bu.contains("cons * %.1f" % WANT_BUBBLE_MAGIC_MULT) and bu.contains("_atk_dmg(uu, %.1f, o)" % WANT_BUBBLE_PHYS))
-	_chk("④ 泡泡爆破旧值(×1.0 + 0.8A) 已消失", not bu.contains("_atk_dmg(uu, 0.8, o)"))
+		is_equal_approx(BubbleSystem.BURST_MAGIC_MULT, WANT_BUBBLE_MAGIC_MULT)
+			and is_equal_approx(BubbleSystem.BURST_ATK_COEF, WANT_BUBBLE_PHYS))
+	_chk("④ 泡泡爆破旧值(×1.0 + 0.8A) 已消失",
+		not (is_equal_approx(BubbleSystem.BURST_MAGIC_MULT, 1.0)
+			and is_equal_approx(BubbleSystem.BURST_ATK_COEF, 0.8)))
 	## ★2026-08-20 判据升级: 原来查源码里有没有 `tgt["maxHp"] * 0.22` 这个**字面量**。
 	##   那个魔数已提成具名常量 `BURST_MAXHP_PCT`(为了让文案能用 {C:...} 引用它),
 	##   所以改成**验那个常量的值 + 确认代码真的在用它** —— 比验字面量更强:

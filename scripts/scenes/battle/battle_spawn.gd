@@ -565,20 +565,20 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 			u["crit"] += NinjaSystem.INSTINCT_CRIT; u["crit_dmg"] += NinjaSystem.INSTINCT_CRIT_DMG; u["armor_pen"] += NinjaSystem.INSTINCT_ARMOR_PEN   # 忍术(基础被动·用户2026-07-29 第四轮: 暴击30→20 / 暴伤20→15 / 护穿8→10)
 			if "ninjaShuriken" in battle._chosen_skill_types(u["id"], u["side"] == "left"):   # 忍者足(技三打包·选中才有): +15%闪避+30%暴击
 				# ★用户2026-07-29 第四轮: 25%/40% → 15%/30%。叠上忍术后暴击总量 95% → 75%。
-				battle._damage._buff(u, "dodge", 0.15, false, 9999.0); u["crit"] += 0.30
+				battle._damage._buff(u, "dodge", NinjaSystem.FOOT_DODGE, false, 9999.0); u["crit"] += NinjaSystem.FOOT_CRIT
 		"ghost":
 			for o in battle._targeting._enemies_of(u):
 				battle._damage._add_curse(o, GhostSystem.SPAWN_CURSE_SEC, u)   # 登场诅咒(用户2026-07-28: BUFF_SEC 5s → 4s; 死亡诅咒仍 5s)
 		"ice":
-			u["_vs_fire_bonus"] = 0.2          # 寒域: 对熔岩/凤凰 +20%伤害
+			u["_vs_fire_bonus"] = IceSystem.AURA_VS_FIRE   # 寒域: 对熔岩/凤凰 +20%伤害
 			u["_burnImmune"] = true            # 极寒(用户设计L162: 改常驻被动): 免疫灼烧
 			battle._ice_sys._ice_chill_vfx(u["pos"], true)     # 寒冰自身登场寒爆(大)
 			battle._vfx._flash(u, Color(0.6, 0.86, 1.0))   # 自身蓝闪
 			for o in battle._targeting._enemies_of(u):
-				o["spd_aspd_mult"] = 0.7        # -30% 攻速
-				o["spd_echarge_mult"] = 0.7     # -30% 龟能充能速度
-				o["spd_move_mult"] = 0.7        # -30% 移速
-				o["spd_dbf_until"] = battle._t + 12.0   # 登场全场敌减速【12秒】(用户2026-07-11: 原永久改12秒)
+				o["spd_aspd_mult"] = IceSystem.AURA_MULT   # -30% 攻速
+				o["spd_echarge_mult"] = IceSystem.AURA_MULT   # -30% 龟能充能速度
+				o["spd_move_mult"] = IceSystem.AURA_MULT   # -30% 移速
+				o["spd_dbf_until"] = battle._t + IceSystem.AURA_SEC   # 登场全场敌减速【12秒】(用户2026-07-11: 原永久改12秒)
 				battle._ice_sys._ice_chill_vfx(o["pos"])        # 敌人寒气蓝环
 				battle._vfx._flash(o, Color(0.6, 0.86, 1.0))   # 敌蓝闪
 		"headless":

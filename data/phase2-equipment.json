@@ -102,10 +102,10 @@
     "baseStats1": "+攻12/25/40·+20最大龟能",
     "shopAvailable": 1,
     "emoji": "🌙",
-    "effectDesc1": "每段攻击充能 20/20/25 点刃能（范围技能减半）；\n刃能满 100 点时朝敌方斩出一道 60°扇形月光斩（在 2000 码内自动选定释放点，使其 500~800 码扇形带罩住敌群），对带内每名敌人造成（30/45/60 真实伤害+0.5/0.7/0.9×攻击力物理）；\n若仅命中 1 名敌人则伤害×2/2.5/3。",
+    "effectDesc1": "每段攻击充能 20/20/25 点刃能（范围技能减半）；\n刃能满 {C:EquipSystem.BLADE_FULL} 点时朝敌方斩出一道 {C:EquipSystem.BLADE_ARC_DEG}°扇形月光斩（在 {C:EquipSystem.BLADE_SEEK} 码内自动选定释放点，使其 {C:EquipSystem.BLADE_R_IN}~{C:EquipSystem.BLADE_R_OUT} 码扇形带罩住敌群），对带内每名敌人造成（30/45/60 真实伤害+0.5/0.7/0.9×攻击力物理）；\n若仅命中 1 名敌人则伤害×2/2.5/3。",
     "effectDesc3": "",
     "img": "equip/wide-saber.png",
-    "effectBrief": "攻击攒刃能，满 100 时斩出月光斩；只命中 1 名敌人时伤害 ×2/2.5/3。"
+    "effectBrief": "攻击攒刃能，满 {C:EquipSystem.BLADE_FULL} 时斩出月光斩；只命中 1 名敌人时伤害 ×2/2.5/3。"
   },
   {
     "id": "p2eq_010",
@@ -582,10 +582,10 @@
     "baseStats1": "+攻15/32/50·暴击15/25/40%",
     "shopAvailable": 1,
     "emoji": "🏹",
-    "effectDesc1": "每 8 秒朝距离自己最远的敌人方向依次连射 1/2/3 发，每发命中沿途第一个敌人（可被前排阻挡），按目标已损失生命造成 0.8~1.3×攻击力的物理伤害（已损 30%生命时达到最大）。",
+    "effectDesc1": "每 {C:EquipSystem.XBOW_IV} 秒朝距离自己最远的敌人方向依次连射 1/2/3 发，每发命中沿途第一个敌人（可被前排阻挡），按目标已损失生命造成 {C:EquipSystem.XBOW_MIN_COEF}~{C:EquipSystem.XBOW_MAX_COEF}×攻击力的物理伤害（已损 {C:EquipSystem.XBOW_LOST_FULL%}%生命时达到最大）。",
     "effectDesc3": "",
     "img": "equip/repeat-crossbow.png",
-    "effectBrief": "每 8 秒朝最远的敌人连射 1/2/3 发，目标越残血伤害越高。"
+    "effectBrief": "每 {C:EquipSystem.XBOW_IV} 秒朝最远的敌人连射 1/2/3 发，目标越残血伤害越高。"
   },
   {
     "id": "p2eq_050",
@@ -762,7 +762,7 @@
     "baseStats1": "+生命100/260/600·+充能10/18/30%",
     "shopAvailable": 1,
     "emoji": "🎈",
-    "effectDesc1": "首次生命值降到 35%以下时，获得 50/80/160%最大生命值的【幽灵护盾】，它会在 20 秒内线性衰减。\n持有该护盾期间获得 15%闪避率与 30/60/120 点双抗。\n该护盾被打破时（被打光或自然衰减耗尽都算）会爆炸，使 300 码内的敌人陷入 4 秒【诅咒】。\n每路一次。",
+    "effectDesc1": "首次生命值降到 {C:EqSpiritBatch.GHOST_HP_LINE%}%以下时，获得 50/80/160%最大生命值的【幽灵护盾】，它会在 {C:EqSpiritBatch.GHOST_DECAY} 秒内线性衰减。\n持有该护盾期间获得 {C:EqSpiritBatch.GHOST_DODGE%}%闪避率与 30/60/120 点双抗。\n该护盾被打破时（被打光或自然衰减耗尽都算）会爆炸，使 {C:EqSpiritBatch.GHOST_BURST_R} 码内的敌人陷入 {C:EqSpiritBatch.GHOST_CURSE_SEC} 秒【诅咒】。\n每路一次。",
     "effectDesc3": "",
     "img": "equip/p2eq_064.png",
     "effectBrief": "生命首次低于 35% 时获得 50/80/160% 最大生命的幽灵护盾，破碎时诅咒敌人。"
@@ -810,7 +810,7 @@
     "baseStats1": "+生命180/460/1100·+攻速10/18/30%·+治疗与护盾15/25/40%",
     "shopAvailable": 1,
     "emoji": "🧪",
-    "effectDesc1": "受到的伤害按 60/100/200%存进专属充能条（上限为最大生命的 20/40/100%）。\n登场第 12 秒起每 12 秒清空充能：获得充能值 100/120/300%的法力护盾（8 秒内衰减完），并朝最远敌人射出一道 2000 码法力激光，3 秒内共造成充能值 100/120/600%的魔法伤害；\n法力护盾存在期间充能条锁住。\n普攻额外获得 5 龟能并回复 20/35/50 生命。",
+    "effectDesc1": "受到的伤害按 60/100/200%存进专属充能条（上限为最大生命的 20/40/100%）。\n登场第 {C:EqPotionBatch.CAN_PERIOD} 秒起每 {C:EqPotionBatch.CAN_PERIOD} 秒清空充能：获得充能值 100/120/300%的法力护盾（{C:EqPotionBatch.CAN_SHIELD_DECAY} 秒内衰减完），并朝最远敌人射出一道 {C:PotionEqVfx.BEAM_RANGE} 码法力激光，{C:PotionEqVfx.BEAM_SEC} 秒内共造成充能值 100/120/600%的魔法伤害；\n法力护盾存在期间充能条锁住。\n普攻额外获得 {C:EqPotionBatch.CAN_HIT_ENERGY} 龟能并回复 20/35/50 生命。",
     "effectDesc3": "",
     "img": "equip/p2eq_068.png",
     "effectBrief": "把受到的伤害存成充能；每 12 秒清空换成法力护盾并射出激光。"
@@ -1098,7 +1098,7 @@
     "baseStats1": "+生命50/70/100·+魔抗10/22/40",
     "shopAvailable": 1,
     "emoji": "🦋",
-    "effectDesc1": "召唤一只剧毒飞行物，不可选中，携带者阵亡后飞行物也阵亡。\n飞行物缓慢飞行，朝随机目标飞，穿过目标落到它对面的落点后再飞向下一个目标，如此往复。\n它每 0.25 秒在路径上留下一团持续 {C:VenomDroneSystem.FOG_LIFE} 秒的毒雾；毒雾每 0.25 秒给触碰到的敌方单位施加 {C:VenomDroneSystem.POISON_STACKS} 层中毒，并施加一层剧毒缓速。\n每个单位最多 20 层剧毒缓速，每层减少目标 2%移速和 1%魔抗；若目标 1.5 秒内没有被施加剧毒缓速，则每 0.25 秒失去一层。",
+    "effectDesc1": "召唤一只剧毒飞行物，不可选中，携带者阵亡后飞行物也阵亡。\n飞行物缓慢飞行，朝随机目标飞，穿过目标落到它对面的落点后再飞向下一个目标，如此往复。\n它每 {C:VenomDroneSystem.BEAT} 秒在路径上留下一团持续 {C:VenomDroneSystem.FOG_LIFE} 秒的毒雾；毒雾每 {C:VenomDroneSystem.BEAT} 秒给触碰到的敌方单位施加 {C:VenomDroneSystem.POISON_STACKS} 层中毒，并施加一层剧毒缓速。\n每个单位最多 {C:VenomDroneSystem.VSLOW_CAP} 层剧毒缓速，每层减少目标 {C:VenomDroneSystem.VSLOW_MOVE_PER%}%移速和 {C:VenomDroneSystem.VSLOW_MR_PER%}%魔抗；若目标 {C:VenomDroneSystem.VSLOW_GRACE} 秒内没有被施加剧毒缓速，则每 {C:VenomDroneSystem.BEAT} 秒失去一层。",
     "effectDesc3": "",
     "img": "equip/p2eq_092.png",
     "effectBrief": "召唤一只剧毒飞行物，沿途留下毒雾给敌人叠中毒与缓速。"
@@ -1113,7 +1113,7 @@
     "effectDesc1": "主动：每 {C:IncenseStoneSystem.EMP_IV} 秒强化下 {C:IncenseStoneSystem.EMP_SHOTS} 次普攻，这 {C:IncenseStoneSystem.EMP_SHOTS} 次获得 {C:IncenseStoneSystem.EMP_ASPD%}%攻速、{C:IncenseStoneSystem.EMP_LS%}%生命偷取，并附带 30/50/80+目标最大生命值 1/1.5/2%的物理伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_093.png",
-    "effectBrief": "每 12 秒强化下 4 次普攻：+100% 攻速、10% 生命偷取并附带额外伤害。"
+    "effectBrief": "每 {C:IncenseStoneSystem.EMP_IV} 秒强化下 {C:IncenseStoneSystem.EMP_SHOTS} 次普攻：+{C:IncenseStoneSystem.EMP_ASPD%}% 攻速、{C:IncenseStoneSystem.EMP_LS%}% 生命偷取并附带额外伤害。"
   },
   {
     "id": "p2eq_094",

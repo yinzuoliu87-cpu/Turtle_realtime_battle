@@ -38,6 +38,14 @@ const INSTINCT_CRIT := 0.20       # 暴击率 +
 const INSTINCT_CRIT_DMG := 0.15   # 暴击伤害 +
 const INSTINCT_ARMOR_PEN := 10.0  # 护甲穿透 +(flat)
 ## 【冲击·自动冲刺斩】
+## 【手里剑】掷飞镖; 暴击时把暴击总伤【拆两段】(真伤 + 剩余物理), 不是整发转真伤。
+const SHURIKEN_COEF := 1.6        # ×ATK 物理(基础·未减甲未暴击)
+const SHURIKEN_TRUE_BASE := 40.0  # 暴击总伤转真实的起始百分比
+const SHURIKEN_TRUE_PER_LV := 2.0 # 每级再 +(百分点)
+const SHURIKEN_TRUE_CAP := 100.0  # 封顶(百分比)
+## 【忍者足】选手里剑后打包的登场被动。
+const FOOT_DODGE := 0.15          # 闪避 +
+const FOOT_CRIT := 0.30           # 暴击率 +
 const DASH_SENSE := 290.0         # 触发射程(码)·**故意 < 冲刺距离**, 所以冲刺会略穿过目标
 const DASH_RANGE := 300.0         # 冲刺位移(码)
 const DASH_WIDTH := 62.0          # 判定带半宽(码)
@@ -189,7 +197,7 @@ func _sk_ninja_backstab(u: Dictionary, tgt: Dictionary) -> void: # 技三·背�
 func _sk_ninja_shuriken(u: Dictionary, tgt) -> void:           # 技·手里剑(封板·远程·1:1回合制_ninja_shuriken): 掷旋转飞镖·命中1.6A物理; 暴击(按忍者暴击率)=暴击总伤拆两段→红物理(吃减甲)+白真伤(穿甲·占(40+2%/级)%), 同一发跳两个数字
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
-	var base_dmg: float = float(u["atk"]) * 1.6               # 1.6A 基础(未减甲/未暴击)
+	var base_dmg: float = float(u["atk"]) * SHURIKEN_COEF               # 1.6A 基础(未减甲/未暴击)
 	var is_crit: bool = battle._battle_rng.randf() < minf(float(u.get("crit", 0.0)), 1.0)   # 暴击=忍者自身暴击率(非固定概率)
 	var phys_raw: float = base_dmg                            # 非暴击: 全物理一发
 	var true_raw: float = 0.0
@@ -197,7 +205,7 @@ func _sk_ninja_shuriken(u: Dictionary, tgt) -> void:           # 技·手里剑(
 		var crit_mult: float = DamageMath.crit_multiplier(float(u.get("crit", 0.0)), float(u.get("crit_dmg", 1.5)))   # 暴击倍率(溢出100%每1%→1.5%·同_resolve_dmg)
 		var crit_total: float = round(base_dmg * crit_mult)  # 暴击总伤(已乘暴击倍率)
 		var lv: int = int(u.get("level", 1))
-		true_raw = round(crit_total * minf(100.0, 40.0 + 2.0 * float(lv)) / 100.0)   # 其中(40+2%/级)%(封顶100%)→真实伤害(穿甲)
+		true_raw = round(crit_total * minf(SHURIKEN_TRUE_CAP, SHURIKEN_TRUE_BASE + SHURIKEN_TRUE_PER_LV * float(lv)) / 100.0)   # 其中(40+2%/级)%(封顶100%)→真实伤害(穿甲)
 		phys_raw = maxf(0.0, crit_total - true_raw)           # 余下→物理(吃减甲)
 	battle._ballistics._fire_shuriken(u, tgt, phys_raw, true_raw, is_crit)
 

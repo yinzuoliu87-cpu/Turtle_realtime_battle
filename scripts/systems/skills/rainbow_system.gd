@@ -13,6 +13,13 @@ const PRISM_LIFESTEAL := 0.10    # 橙: 全队 + 生命偷取
 const PRISM_BUFF_SEC := 5.0      # 橙/青/紫 的持续(秒)
 const PRISM_BURN_COEF := 0.67    # 黄: 随机敌灼烧层数 = ×ATK
 const PRISM_SHIELD_SCALE := 1.0     # 棱镜护盾: 每人 ×ATK 护盾 (0.65→1.0)
+## 【全色风暴】自身周围的持续区域, 每跳打伤害 + 削双抗 + 治友军。
+const STORM_SEC := 4.0              # 风暴持续(秒)·期间锁龟能不被打断
+const STORM_TICK_SEC := 0.5         # 每几秒一跳
+const STORM_TICKS := int(STORM_SEC / STORM_TICK_SEC)   # 推导: 共几跳
+const STORM_MAGIC_COEF := 0.1       # 每跳 ×ATK 魔法
+const STORM_TRUE_COEF := 0.05       # 每跳 ×ATK 真实
+const STORM_SHRED := 0.20           # 每跳把圈内敌的护甲与魔抗各 -(百分比)
 const STORM_RADIUS := 300.0         # 全色风暴: 半径码 (140→300)
 const STORM_ALLY_HEAL := 0.25       # 全色风暴: 每跳圈内友军回 ×ATK 生命 (新增)
 ## 【被动·棱镜】每 N 秒随机换一种颜色, 普攻附带对应效果。
@@ -122,10 +129,10 @@ func _rainbow_storm_tick(u: Dictionary, center: Vector2, radius: float, ti: int)
 		if not o.get("alive", false):
 			continue
 		if o["pos"].distance_to(center) <= radius:
-			battle._damage._buff(o, "def", -0.20, true, 0.65)   # 圈内-20%护甲
-			battle._damage._buff(o, "mr", -0.20, true, 0.65)    # 圈内-20%魔抗
-			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 0.1, o, true), Color("#ff8ad8"))
-			battle._damage._apply_damage_from(u, o, int(u["atk"] * 0.05), Color("#fff0a0"), 0.0, true)   # 8跳共0.8魔+0.4真=原值
+			battle._damage._buff(o, "def", -STORM_SHRED, true, 0.65)   # 圈内-20%护甲
+			battle._damage._buff(o, "mr", -STORM_SHRED, true, 0.65)    # 圈内-20%魔抗
+			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, STORM_MAGIC_COEF, o, true), Color("#ff8ad8"))
+			battle._damage._apply_damage_from(u, o, int(u["atk"] * STORM_TRUE_COEF), Color("#fff0a0"), 0.0, true)   # 8跳共0.8魔+0.4真=原值
 			battle._storm_shred(o)   # ★碎甲: 把"削护甲魔抗"可视化
 	# 圈内友军: 每跳回0.25ATK (用户2026-07-28加强: 风暴从纯AOE→攻防一体的团队站场区)
 	for a in battle._targeting._allies_of(u):
@@ -154,7 +161,7 @@ func _sk_rainbow_shield(u: Dictionary) -> void:                  # 彩虹龟·�
 		battle._damage._grant_shield(o, u["atk"] * PRISM_SHIELD_SCALE, PRISM_BLUE_SEC)   # 彩虹棱镜护盾(通用护盾4秒·用户2026-07-28: 0.65→1.0ATK)
 
 func _sk_rainbow_storm(u: Dictionary) -> void:                  # 彩虹龟·全色风暴 (重做2026-07-13: AI棱镜漩涡+GPU彩虹粒子+碎甲可视化-20%护甲魔抗+亮边AOE·期间锁龟能)
-	u["storm_until"] = battle._t + 4.0                 # 风暴4秒期间龟能锁定(用户)
+	u["storm_until"] = battle._t + STORM_SEC                 # 风暴4秒期间龟能锁定(用户)
 	var center: Vector2 = u["pos"]              # 固定施法点
 	var radius = STORM_RADIUS
 	var nodes: Array = []
@@ -197,9 +204,9 @@ func _sk_rainbow_storm(u: Dictionary) -> void:                  # 彩虹龟·全
 	if ps != null: nodes.append(ps)
 	u["storm_nodes"] = nodes
 	var tw = battle._reg_tween()
-	for i in range(8):   # 4秒 / 每0.5秒 = 8跳
+	for i in range(STORM_TICKS):   # 4秒 / 每0.5秒 = 8跳
 		tw.tween_callback(_rainbow_storm_tick.bind(u, center, radius, i))
-		tw.tween_interval(0.5)
+		tw.tween_interval(STORM_TICK_SEC)
 	tw.tween_callback(_rainbow_storm_end.bind(u))
 
 # 全色风暴 GPU 粒子: 圆盘内发射, 上升, 全光谱彩虹ramp (240颗=暴风能量体积)

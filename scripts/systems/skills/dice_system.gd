@@ -4,6 +4,9 @@ extends RefCounted
 ## 类内名不变;外部名加 battle.
 
 ## ★骰子数值单一事实源(用户2026-07-28 第三轮加强·整只 13.3% 全表最弱)。文案在 data/pets.json。
+## 【孤注一掷】前方扇形镰刀斩。
+const ALLIN_RANGE := 300.0        # 扇形半径(码)
+const ALLIN_ARC_DEG := 120.0      # 扇面全角(度)·代码里用半角 = 它的一半
 const ALLIN_DMG := 1.5            # 孤注一掷: ×ATK 物理 (1.2→1.5)
 const ALLIN_LIFESTEAL := 0.30     # 孤注一掷: 生命偷取
 const FLASH_SEG_MIN := 7          # 稳定骰子: 段数下限 (原 4+d6 = 5)
@@ -157,15 +160,15 @@ func _sk_dice_allin(u: Dictionary) -> void:                      # 骰子龟·�
 	var dir: Vector2 = (Vector2.RIGHT if tgt == null else (tgt["pos"] - u["pos"]))
 	if dir.length() < 1.0: dir = Vector2.RIGHT
 	dir = dir.normalized()
-	var half_cos: float = cos(deg_to_rad(60.0))                  # 半角60°=全120°
+	var half_cos: float = cos(deg_to_rad(ALLIN_ARC_DEG * 0.5))   # 半角60°=全120°
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		var to_o: Vector2 = o["pos"] - u["pos"]
 		var d: float = to_o.length()
-		if d > 300.0 or d < 1.0: continue
+		if d > ALLIN_RANGE or d < 1.0: continue
 		if dir.dot(to_o / d) < half_cos: continue
 		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, ALLIN_DMG, o), Color("#ff4444"), ALLIN_LIFESTEAL)
-	_dice_scythe_sweep(u, u["pos"], dir, 300.0, 60.0)   # 红镰刀贴地弧扫过120°扇形(用户2026-07-13)
+	_dice_scythe_sweep(u, u["pos"], dir, ALLIN_RANGE, ALLIN_ARC_DEG * 0.5)   # 红镰刀贴地弧扫过120°扇形(用户2026-07-13)
 	battle._skill_ring(u["pos"], Color(1.0, 0.3, 0.3, 0.35), 52.0)
 
 # 骰子龟·稳定骰子(刀妹Q式·〖#4"刀妹Q式·你仔细设计"〗; 数值取回合制 diceFlashStrike: baseHits=4 / perHitScale=0.9 / falloffPct=10)

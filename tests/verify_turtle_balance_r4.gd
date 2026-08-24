@@ -162,10 +162,11 @@ func _ninja() -> void:
 		not bs.contains('u["crit"] += 0.30; u["crit_dmg"] += 0.20; u["armor_pen"] += 8.0'))
 	_chk("忍者·手里剑打包 = +%d%%闪避 / +%d%%暴击" % [
 			int(WANT_SHURIKEN_DODGE * 100.0), int(WANT_SHURIKEN_CRIT * 100.0)],
-		bs.contains('_buff(u, "dodge", %.2f, false, 9999.0); u["crit"] += %.2f' % [
-			WANT_SHURIKEN_DODGE, WANT_SHURIKEN_CRIT]))
+		is_equal_approx(NinjaSystem.FOOT_DODGE, WANT_SHURIKEN_DODGE)
+			and is_equal_approx(NinjaSystem.FOOT_CRIT, WANT_SHURIKEN_CRIT))
 	_chk("忍者·手里剑打包旧值 0.25/0.40 已消失",
-		not bs.contains('_buff(u, "dodge", 0.25, false, 9999.0); u["crit"] += 0.40'))
+		not (is_equal_approx(NinjaSystem.FOOT_DODGE, 0.25)
+			and is_equal_approx(NinjaSystem.FOOT_CRIT, 0.40)))
 	# 暴击总量: 基础 25% + 忍术 + 打包 —— 打出来给人复核
 	print("     忍者暴击总量 = 25%%(基础) + %d%%(忍术) + %d%%(打包) = %d%%" % [
 		int(WANT_NINJA_CRIT * 100.0), int(WANT_SHURIKEN_CRIT * 100.0),
