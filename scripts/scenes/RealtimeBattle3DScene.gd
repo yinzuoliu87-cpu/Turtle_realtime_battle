@@ -290,7 +290,7 @@ const BASIC_ATK := {
 	"angel":    {"phys": 1.0, "hits": 1},                                          # 远程平A 1.0ATK单段(用户)+审判被动
 	"ice":      {"phys": 1.0, "magic": 1.0, "hits": 1, "alt_each": true},           # 单段逐次交替物/魔 1.0ATK(用户2026-07-28: 0.8→1.0·配冰柱层加强)
 	"ninja":    {"phys": 1.0, "hits": 1, "rider": "bleed"},                         # 斩击(封板): 近战1A物理+2层流血; 冲击已转被动auto-dash
-	"ghost":    {"phys": 0.4, "true": 0.9, "hits": 1},                             # ★这一行【对幽灵不生效】: _basic_attack 在读本表之前就为 ghost 早退
+	"ghost":    {"phys": GhostSystem.BASIC_PHYS, "true": GhostSystem.BASIC_TRUE, "hits": 1},                             # ★这一行【对幽灵不生效】: _basic_attack 在读本表之前就为 ghost 早退
 	                                                                               #   (见本文件 `if u["id"] == "ghost": _ballistics._fire_ghost_wisp(...); return`),
 	                                                                               #   真正结算的是 battle_ballistics.gd 的 gt_phys/gt_true = 0.4A物 + 0.9A真。
 	                                                                               #   2026-07-28 那次「0.4物+0.9真 → 0.5物+0.7真」的削弱**只改到了这张死表上**,
@@ -298,7 +298,7 @@ const BASIC_ATK := {
 	                                                                               #   **那次削弱要不要真的落地, 待用户拍板**(动它=改平衡, 不是改文案)。
 	"diamond":  {"phys": DiamondSystem.CUT_ATK_COEF, "def": DiamondSystem.CUT_DEF_COEF, "mr": DiamondSystem.CUT_MR_COEF, "hits": 1},                    # +护甲魔抗
 	"fortune":  {"phys": 1.0, "gold": 0.02, "hits": 1},                            # 1下(用户; 回合制原2下)
-	"dice":     {"phys": 0.9, "critflat": 55.0, "hits": 1},                         # 90%物理+5500%暴击率flat·单段近战(对齐回合制 diceAttack critBonusMult=55·无实时原话)
+	"dice":     {"phys": DiceSystem.BASIC_ATK_COEF, "critflat": DiceSystem.BASIC_CRIT_FLAT, "hits": 1},                         # 90%物理+5500%暴击率flat·单段近战(对齐回合制 diceAttack critBonusMult=55·无实时原话)
 	"rainbow":  {"phys": RainbowSystem.BEAM_COEF, "hits": RainbowSystem.BEAM_HITS},                                          # 单段0.9物理(用户2026-07-02, 原魔法1.4×2)
 	"gambler":  {"phys": 1.0, "hits": 1},                                          # 甩扑克牌(封板L296·用户改): 1.0A物理单段(原3段1.35A=旧值)·多重打击被动复放整发普攻(_gambler_sys._gambler_multi_cd)
 	"hunter":   {"phys": HunterSystem.BASIC_ATK_COEF, "hits": 1},   # 封板: 普攻1.0A物理(残血追猎+50%攻速在atk_cd处)
@@ -7026,7 +7026,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 
 	if u["id"] == "dice":   # 赌徒之血: 按已损血加暴击(损30%满+70%·用户2026-07-28 50→70); 暴击率>100%部分每1%→1.5%暴伤
 		var _lost: float = clampf(1.0 - u["hp"] / u["maxHp"], 0.0, 1.0)
-		u["crit"] = float(u.get("dice_base_crit", u["crit"])) + minf(_lost / 0.30, 1.0) * DICE_BLOOD_CRIT
+		u["crit"] = float(u.get("dice_base_crit", u["crit"])) + minf(_lost / DiceSystem.BLOOD_LOST_GATE, 1.0) * DICE_BLOOD_CRIT
 		# (暴击率>100%转暴伤由 _resolve_dmg 全局处理, 这里只设暴击率)
 	# --- 赛博浮游炮(用户2026-07-15重构: 非实体·纯视觉跟随+攻击动作·不可被选中/打死): 每2秒+1 上限20 (用户2026-07-28削弱: 原每3秒+2) ---
 	if u["id"] == "cyber":

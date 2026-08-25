@@ -1,5 +1,9 @@
 class_name DamageMath
 extends RefCounted
+
+## 暴击率溢出 100% 的部分, 每 1 点转成多少暴击伤害
+## (文案: "暴击机率超过 100% 的部分, 每 1% 转化为 1.5% 暴击伤害")。
+const CRIT_OVERFLOW := 1.5
 ## 战斗纯数学 (SIM · 无节点 · 可 headless 单测) —— 结构治理·切片2 的【模式验证】。
 ##
 ## 大厂做法(Riot「gameplay-deterministic·纯逻辑隔离」/ Cliffski「SIM 与 GUI 分家」):
@@ -14,7 +18,7 @@ extends RefCounted
 ## 例: crit_chance=1.2(120%), crit_dmg=1.5 → 1.5 + (0.2)*1.5 = 1.8。
 ## 与 god file 原地公式逐字一致: crit_dmg + maxf(0.0, crit-1.0) * 1.5。
 static func crit_multiplier(crit_chance: float, crit_dmg: float) -> float:
-	return crit_dmg + maxf(0.0, crit_chance - 1.0) * 1.5
+	return crit_dmg + maxf(0.0, crit_chance - 1.0) * CRIT_OVERFLOW
 
 ## 护甲/魔抗 → 伤害倍率(经典递减曲线, 常数 K=40)。resist 已含穿透后的净值。
 ## resist≥0: 减伤 → 1 - resist/(resist+40)  (resist=40→0.5·resist=120→0.25·resist=0→1.0)

@@ -670,8 +670,8 @@
       "name": "怨灵",
       "hpPct": 5,
       "turns": 3,
-      "brief": "登场时对全体敌人各施加 {C:GhostSystem.SPAWN_CURSE_SEC} 秒诅咒，并在自己阵亡时对<span class=\"val-normal\">随机 1 个敌人</span>再施加 5 秒。\n诅咒每秒造成目标最大生命值 <span class=\"val-true\">5%</span> 的真实伤害。\n诅咒无视双抗；<span class=\"val-normal\">不叠层数，重复施加累加剩余时长</span>。",
-      "desc": "登场诅咒：\n登场瞬间对全部敌人各施加 {C:GhostSystem.SPAWN_CURSE_SEC} 秒诅咒。\n死亡诅咒：\n幽灵龟死亡瞬间，对<span class=\"val-normal\">随机 1 个敌人</span>施加 5 秒诅咒。\n诅咒：\n每秒造成目标 <span class=\"val-true\">5% 最大生命值</span>的真实伤害（无视双抗）。\n<span class=\"val-normal\">不叠层数，重复施加改为累加剩余时长</span>（可无限累加）。\n只在登场、死亡、灵魂风暴命中时施加；没有周期性续诅咒，普攻也不叠诅咒。"
+      "brief": "登场时对全体敌人各施加 {C:GhostSystem.SPAWN_CURSE_SEC} 秒诅咒，并在自己阵亡时对<span class=\"val-normal\">随机 1 个敌人</span>再施加 {C:RealtimeBattle3DScene.BUFF_SEC} 秒。\n诅咒每秒造成目标最大生命值 <span class=\"val-true\">{C:BattleDamage.CURSE_HP_PCT%}%</span> 的真实伤害。\n诅咒无视双抗；<span class=\"val-normal\">不叠层数，重复施加累加剩余时长</span>。",
+      "desc": "登场诅咒：\n登场瞬间对全部敌人各施加 {C:GhostSystem.SPAWN_CURSE_SEC} 秒诅咒。\n死亡诅咒：\n幽灵龟死亡瞬间，对<span class=\"val-normal\">随机 1 个敌人</span>施加 {C:RealtimeBattle3DScene.BUFF_SEC} 秒诅咒。\n诅咒：\n每秒造成目标 <span class=\"val-true\">{C:BattleDamage.CURSE_HP_PCT%}% 最大生命值</span>的真实伤害（无视双抗）。\n<span class=\"val-normal\">不叠层数，重复施加改为累加剩余时长</span>（可无限累加）。\n只在登场、死亡、灵魂风暴命中时施加；没有周期性续诅咒，普攻也不叠诅咒。"
     },
     "skillPool": [
       {
@@ -682,7 +682,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "对目标造成 {N:0.4*ATK} 物理伤害加 {T:0.9*ATK} 真实伤害。",
-        "detail": "幽灵龟用灵体触碰目标，造成（40%×攻击力 = {N:0.4*ATK}）物理伤害 +（90%×攻击力 = {T:0.9*ATK}）真实伤害。"
+        "detail": "幽灵龟用灵体触碰目标，造成（{C:GhostSystem.BASIC_PHYS%}%×攻击力 = {N:0.4*ATK}）物理伤害 +（{C:GhostSystem.BASIC_TRUE%}%×攻击力 = {T:0.9*ATK}）真实伤害。"
       },
       {
         "name": "幽冥突袭",
@@ -706,7 +706,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "对目标释放灵魂风暴，造成两段共 {M:2*ATK} 魔法伤害，并施加诅咒持续 <span class=\"val-atk\">{C:GhostSystem.STORM_CURSE_SEC} 秒</span>。\n若目标身上已有诅咒，则改为造成 {T:2*ATK} 真实伤害。\n诅咒每秒结算；对已有诅咒的目标不重复施加或刷新。",
-        "detail": "幽灵龟对目标释放灵魂风暴，造成两段共（200%×攻击力 = {M:2*ATK}）魔法伤害，并施加诅咒持续 {C:GhostSystem.STORM_CURSE_SEC} 秒(每秒结算)。\n如果目标身上已有诅咒效果，则改为造成（200%×攻击力 = {T:2*ATK}）真实伤害，且不重复施加/刷新诅咒。\n<span style=\"color:#8a93a0\">诅咒：\n每秒目标受到 {C:BattleDamage.CURSE_HP_PCT%}% 最大生命值真实伤害</span>。"
+        "detail": "幽灵龟对目标释放灵魂风暴，造成两段共（{C:GhostSystem.STORM_DMG%}%×攻击力 = {M:2*ATK}）魔法伤害，并施加诅咒持续 {C:GhostSystem.STORM_CURSE_SEC} 秒(每秒结算)。\n如果目标身上已有诅咒效果，则改为造成（{C:GhostSystem.STORM_DMG%}%×攻击力 = {T:2*ATK}）真实伤害，且不重复施加/刷新诅咒。\n<span style=\"color:#8a93a0\">诅咒：\n每秒目标受到 {C:BattleDamage.CURSE_HP_PCT%}% 最大生命值真实伤害</span>。"
       },
       {
         "name": "虚化",
@@ -717,7 +717,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "进入<span class=\"val-normal\">虚化</span>状态持续 <span class=\"val-atk\">{C:GhostSystem.PHASE_SEC} 秒</span>，并对目标攻击 {C:GhostSystem.PHASE_SEGMENTS} 段，共造成 {T:1.2*ATK} 真实伤害。",
-        "detail": "幽灵龟进入虚化 {C:GhostSystem.PHASE_SEC} 秒：受到的物理伤害降低 {C:GhostSystem.PHASE_PHYS_CUT%}%，期间<b>锁龟能</b>不充能，并对目标攻击 {C:GhostSystem.PHASE_SEGMENTS} 段，造成共（120%×攻击力 = {T:1.2*ATK}）真实伤害。\n<span style=\"color:#8a93a0\">虚化：\n使受到的物理伤害减少 {C:GhostSystem.PHASE_PHYS_CUT%}%</span>。"
+        "detail": "幽灵龟进入虚化 {C:GhostSystem.PHASE_SEC} 秒：受到的物理伤害降低 {C:GhostSystem.PHASE_PHYS_CUT%}%，期间<b>锁龟能</b>不充能，并对目标攻击 {C:GhostSystem.PHASE_SEGMENTS} 段，造成共（{C:GhostSystem.PHASE_TOTAL%}%×攻击力 = {T:1.2*ATK}）真实伤害。\n<span style=\"color:#8a93a0\">虚化：\n使受到的物理伤害减少 {C:GhostSystem.PHASE_PHYS_CUT%}%</span>。"
       }
     ],
     "defaultSkills": [
@@ -892,8 +892,8 @@
     "passive": {
       "type": "gamblerBlood",
       "name": "赌徒之血",
-      "brief": "赌徒之血在危机中觉醒，根据已损失的生命值获得额外暴击率，在损失 <span class=\"val-atk\">30%</span> 生命值时达到满额 <span class=\"val-atk\">+70% 暴击率</span>。",
-      "desc": "根据已损失的生命值获得额外暴击机率，在损失 <span class=\"val-atk\">30%</span> 生命值时达到满额 <span class=\"val-atk\">+70%</span> 暴击机率。\n<span style=\"color:#8a93a0\">当前暴击机率：\n</span><span class=\"val-atk\">{crit*100}%</span>"
+      "brief": "赌徒之血在危机中觉醒，根据已损失的生命值获得额外暴击率，在损失 <span class=\"val-atk\">{C:DiceSystem.BLOOD_LOST_GATE%}%</span> 生命值时达到满额 <span class=\"val-atk\">+{C:RealtimeBattle3DScene.DICE_BLOOD_CRIT%}% 暴击率</span>。",
+      "desc": "根据已损失的生命值获得额外暴击机率，在损失 <span class=\"val-atk\">{C:DiceSystem.BLOOD_LOST_GATE%}%</span> 生命值时达到满额 <span class=\"val-atk\">+{C:RealtimeBattle3DScene.DICE_BLOOD_CRIT%}%</span> 暴击机率。\n<span style=\"color:#8a93a0\">当前暴击机率：\n</span><span class=\"val-atk\">{crit*100}%</span>"
     },
     "skillPool": [
       {
@@ -904,7 +904,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "掷出 3 颗骰子打击目标，共造成 {N:0.9*ATK+crit*55} 物理伤害。",
-        "detail": "骰子龟掷出 3 颗骰子打击目标，共造成（90%×攻击力 + 5500%×暴击机率 = {N:0.9*ATK+crit*55}）物理伤害。"
+        "detail": "骰子龟掷出 3 颗骰子打击目标，共造成（{C:DiceSystem.BASIC_ATK_COEF%}%×攻击力 + {C:DiceSystem.BASIC_CRIT_FLAT%}%×暴击机率 = {N:0.9*ATK+crit*55}）物理伤害。"
       },
       {
         "name": "孤注一掷",
@@ -915,7 +915,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "朝最近的敌人劈出，对前方的敌人造成 {N:1.5*ATK} 物理伤害，并附带 <span class=\"val-heal\">{C:DiceSystem.ALLIN_LIFESTEAL%}% 生命偷取</span>。",
-        "detail": "骰子龟拼命一搏，朝最近敌人方向、对<span class=\"val-def\">前方 {C:DiceSystem.ALLIN_ARC_DEG}° 扇形 {C:DiceSystem.ALLIN_RANGE} 码</span>内的敌人造成（150%×攻击力({ATK}) = {N:1.5*ATK}）物理伤害，并附带 <span class=\"val-heal\">{C:DiceSystem.ALLIN_LIFESTEAL%}%</span> 生命偷取。\n<span style=\"color:#8a93a0\">生命偷取按本次造成的总伤害回复。\n</span>"
+        "detail": "骰子龟拼命一搏，朝最近敌人方向、对<span class=\"val-def\">前方 {C:DiceSystem.ALLIN_ARC_DEG}° 扇形 {C:DiceSystem.ALLIN_RANGE} 码</span>内的敌人造成（{C:DiceSystem.ALLIN_DMG%}%×攻击力({ATK}) = {N:1.5*ATK}）物理伤害，并附带 <span class=\"val-heal\">{C:DiceSystem.ALLIN_LIFESTEAL%}%</span> 生命偷取。\n<span style=\"color:#8a93a0\">生命偷取按本次造成的总伤害回复。\n</span>"
       },
       {
         "name": "命运骰子",
@@ -926,7 +926,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "掷出命运骰子，获得随机 <span class=\"val-atk\">{C:DiceSystem.FATE_CRIT_MIN%}%~{C:DiceSystem.FATE_CRIT_MAX%}% 暴击率</span> 提升，<span class=\"val-atk\">持续到下次释放本技能</span>。\n<span style=\"color:#8a93a0\">再次释放会撤销旧增益并重新掷骰。\n</span>\n释放后的首次攻击额外附带 <span class=\"val-heal\">{C:DiceSystem.FATE_LIFESTEAL%}% 生命偷取</span>。",
-        "detail": "骰子龟掷出命运骰子，获得随机 <span class=\"val-atk\">{C:DiceSystem.FATE_CRIT_MIN%}%~{C:DiceSystem.FATE_CRIT_MAX%}%</span> 暴击机率提升，<span class=\"val-atk\">持续到下次释放本技能</span>（再次释放会先撤销旧增益，再重新掷一次）。\n<span style=\"color:#8a93a0\">暴击机率超过 100%的部分，每 1%转化为 1.5% 暴击伤害。\n</span>\n释放后的<span class=\"val-atk\">首次攻击</span>额外附带 <span class=\"val-heal\">{C:DiceSystem.FATE_LIFESTEAL%}% 生命偷取</span>。"
+        "detail": "骰子龟掷出命运骰子，获得随机 <span class=\"val-atk\">{C:DiceSystem.FATE_CRIT_MIN%}%~{C:DiceSystem.FATE_CRIT_MAX%}%</span> 暴击机率提升，<span class=\"val-atk\">持续到下次释放本技能</span>（再次释放会先撤销旧增益，再重新掷一次）。\n<span style=\"color:#8a93a0\">暴击机率超过 100%的部分，每 1%转化为 {C:DamageMath.CRIT_OVERFLOW} 倍暴击伤害。\n</span>\n释放后的<span class=\"val-atk\">首次攻击</span>额外附带 <span class=\"val-heal\">{C:DiceSystem.FATE_LIFESTEAL%}% 生命偷取</span>。"
       },
       {
         "name": "稳定骰子",
@@ -937,7 +937,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "朝随机敌人突刺 <span class=\"val-atk\">{C:DiceSystem.FLASH_SEG_MIN}~{C:DiceSystem.FLASH_SEG_MAX}</span> 次，首段造成 {N:0.9*ATK} 物理伤害，此后每段递减 <span class=\"val-atk\">{C:DiceSystem.FLASH_FALLOFF%}%</span>。\n每穿刺一次获得 {S:0.2*ATK} 护盾。",
-        "detail": "骰子龟对随机敌人突刺 <span class=\"val-atk\">{C:DiceSystem.FLASH_SEG_MIN}~{C:DiceSystem.FLASH_SEG_MAX}</span> 次，首段造成（{C:DiceSystem.FLASH_FIRST_COEF%}%×攻击力({ATK}) = {N:0.9*ATK}）物理伤害，之后每段伤害递减 <span class=\"val-atk\">{C:DiceSystem.FLASH_FALLOFF%}%</span>。\n<span class=\"val-normal\">每穿刺一次获得（20%×攻击力 = {S:0.2*ATK}）护盾</span>。\n<span style=\"color:#8a93a0\">打包被动「真正的赌徒」：选择本技能后，骰子龟登场即把<b>全部护甲与魔抗转化为等量护甲穿透</b>，双抗清零（纯物理流）。\n</span>"
+        "detail": "骰子龟对随机敌人突刺 <span class=\"val-atk\">{C:DiceSystem.FLASH_SEG_MIN}~{C:DiceSystem.FLASH_SEG_MAX}</span> 次，首段造成（{C:DiceSystem.FLASH_FIRST_COEF%}%×攻击力({ATK}) = {N:0.9*ATK}）物理伤害，之后每段伤害递减 <span class=\"val-atk\">{C:DiceSystem.FLASH_FALLOFF%}%</span>。\n<span class=\"val-normal\">每穿刺一次获得（{C:DiceSystem.FLASH_SHIELD_PER_HIT%}%×攻击力 = {S:0.2*ATK}）护盾</span>。\n<span style=\"color:#8a93a0\">打包被动「真正的赌徒」：选择本技能后，骰子龟登场即把<b>全部护甲与魔抗转化为等量护甲穿透</b>，双抗清零（纯物理流）。\n</span>"
       }
     ],
     "defaultSkills": [
@@ -1572,9 +1572,9 @@
     "passive": {
       "type": "phoenixRebirth",
       "name": "涅槃",
-      "brief": "在首次死亡时浴火重生，以 <span class=\"val-heal\">25% 最大生命值</span>复活，并对全体敌人施加（{C:PhoenixSystem.NIRVANA_BURN_COEF}×攻击力）层灼烧，以及持续 <span class=\"val-atk\">5 秒</span>的 <span class=\"val-atk\">50%</span> 治疗削减。",
-      "desc": "首次死亡时以（25%×最大生命值({HP}) = {H:HP*0.25}）生命值复活，并对全体敌人施加 <span style=\"color:#ff6600\">（{C:PhoenixSystem.NIRVANA_BURN_COEF}×攻击力）层灼烧</span>，以及持续 5 秒的治疗削减（<span class=\"val-atk\">-50%</span>）。",
-      "detail": "以及持续 <span class=\"val-atk\">5 秒</span>的 <span class=\"val-atk\">50%</span> 治疗削减。"
+      "brief": "在首次死亡时浴火重生，以 <span class=\"val-heal\">{C:PhoenixSystem.NIRVANA_HP_PCT%}% 最大生命值</span>复活，并对全体敌人施加（{C:PhoenixSystem.NIRVANA_BURN_COEF}×攻击力）层灼烧，以及持续 <span class=\"val-atk\">{C:RealtimeBattle3DScene.BUFF_SEC} 秒</span>的 <span class=\"val-atk\">{C:PhoenixSystem.NIRVANA_HEALCUT%}%</span> 治疗削减。",
+      "desc": "首次死亡时以（{C:PhoenixSystem.NIRVANA_HP_PCT%}%×最大生命值({HP}) = {H:HP*0.25}）生命值复活，并对全体敌人施加 <span style=\"color:#ff6600\">（{C:PhoenixSystem.NIRVANA_BURN_COEF}×攻击力）层灼烧</span>，以及持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒的治疗削减（<span class=\"val-atk\">-{C:PhoenixSystem.NIRVANA_HEALCUT%}%</span>）。",
+      "detail": "以及持续 <span class=\"val-atk\">{C:RealtimeBattle3DScene.BUFF_SEC} 秒</span>的 <span class=\"val-atk\">{C:PhoenixSystem.NIRVANA_HEALCUT%}%</span> 治疗削减。"
     },
     "skillPool": [
       {
@@ -1597,8 +1597,8 @@
         "pierce": 0,
         "cd": 0,
         "counterScale": 0.14,
-        "brief": "获得 {S:3.5*ATK} 熔岩护盾，持续 <span class=\"val-atk\">4 秒</span>。\n护盾存在时，凤凰龟每受到一段攻击便反击 {M:0.14*ATK} 魔法伤害。",
-        "detail": "凤凰龟获得（350%×攻击力({ATK}) = {S:3.5*ATK}）熔岩护盾，持续 4 秒。\n熔岩护盾存在时，会对受到的每段攻击进行反击，造成（14%×攻击力({ATK}) = {M:0.14*ATK}）魔法伤害。",
+        "brief": "获得 {S:3.5*ATK} 熔岩护盾，持续 <span class=\"val-atk\">{C:PhoenixSystem.LAVA_SHIELD_SEC} 秒</span>。\n护盾存在时，凤凰龟每受到一段攻击便反击 {M:0.14*ATK} 魔法伤害。",
+        "detail": "凤凰龟获得（{C:PhoenixSystem.LAVA_SHIELD_COEF%}%×攻击力({ATK}) = {S:3.5*ATK}）熔岩护盾，持续 {C:PhoenixSystem.LAVA_SHIELD_SEC} 秒。\n熔岩护盾存在时，会对受到的每段攻击进行反击，造成（{C:PhoenixSystem.LAVA_RETALIATE%}%×攻击力({ATK}) = {M:0.14*ATK}）魔法伤害。",
         "energyCost": 90
       },
       {

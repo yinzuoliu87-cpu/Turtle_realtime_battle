@@ -200,7 +200,7 @@ pet|凤凰龟/灼烧|detail|凤凰龟持续喷吐烈焰（不随攻击速度停�
 pet|凤凰龟/烫伤|brief|蓄力投掷火球，命中造成 {M:1.5*ATK} 魔法伤害，施加 {N:0.5*ATK} 层灼烧，并破坏目标 <span class="val-atk">50%</span> 护盾，\n同时使其攻击力、护甲、魔抗各降低 <span class="val-atk">15%</span> 并受到 <span class="val-atk">50%</span> 治疗削减，以上负面效果均持续 <span class="val-atk">5 秒</span>。
 pet|凤凰龟/烫伤|detail|凤凰龟蓄力投掷火球：\n命中先破坏目标 <span class="val-atk">50%</span> 护盾，\n随后造成（150%×攻击力({ATK}) = {M:1.5*ATK}）魔法伤害，并施加 <span style="color:#ff6600">（0.5×攻击力）层灼烧</span>，以及攻击力 -15%、护甲 -15%、魔抗 -15%、治疗削减 50%（均持续 5 秒）。
 pet|凤凰龟/熔岩盾|brief|获得 {S:3.5*ATK} 熔岩护盾，持续 <span class="val-atk">4 秒</span>。\n护盾存在时，凤凰龟每受到一段攻击便反击 {M:0.14*ATK} 魔法伤害。
-pet|凤凰龟/熔岩盾|detail|凤凰龟获得（350%×攻击力({ATK}) = {S:3.5*ATK}）熔岩护盾，持续 4 秒。\n熔岩护盾存在时，会对受到的每段攻击进行反击，造成（14%×攻击力({ATK}) = {M:0.14*ATK}）魔法伤害。
+pet|凤凰龟/熔岩盾|detail|凤凰龟获得（350%×攻击力({ATK}) = {S:3.5*ATK}）熔岩护盾，持续 4 秒。\n熔岩护盾存在时，会对受到的每段攻击进行反击，造成（14.000000000000002%×攻击力({ATK}) = {M:0.14*ATK}）魔法伤害。
 pet|双头龟/双头攻击|brief|普攻随形态变化：远程形态射出灵能弹，造成 1.2×攻击力 物理伤害。\n近战形态挥砍，造成 0.9×攻击力 物理伤害。
 pet|双头龟/双头攻击|detail|双头龟普攻随形态变化：远程形态发射灵能弹造成（120%×攻击力({ATK}) = {N:1.2*ATK}）物理伤害。\n近战形态挥砍造成（90%×攻击力 = {N:0.9*ATK}）物理伤害。\n近战形态挥砍，造成 0.9×攻击力 物理伤害。
 pet|双头龟/双生|brief|拥有远程和近战两种形态，各带一套技能组。\n<span class="val-normal">技能一 / 技能二释放后会自动切换形态</span>，射程随之在 <span class="val-atk">400 ↔ 70</span> 之间切换。\n近战形态提升最大生命值、护甲和魔抗，远程形态则拥有更高的攻击力。\n每次切换都会为<span class="val-normal">下一发普攻</span>附带强化。
@@ -461,7 +461,7 @@ pet|闪电龟/雷电|desc|每 4 秒自动电击随机敌人，造成（100%×攻
 pet|闪电龟/雷盾|brief|以雷电包裹自身，获得 {S:2.0*ATK} 外加 <span class="val-hp">5% 最大生命值</span> 的护盾，持续 5 秒。\n护盾存在时，闪电龟每受到一段攻击便反击 {M:0.3*ATK} 魔法伤害，并为攻击者叠加 1 层电击。
 pet|闪电龟/雷盾|detail|闪电龟以雷电包裹自身，获得（200%×攻击力({ATK}) = {S:2.0*ATK}）+ <span class="val-hp">5%最大生命值</span> 的护盾，持续 5 秒。\n护盾存在时，每受到一段攻击便反击（30%×攻击力({ATK}) = {M:0.3*ATK}）魔法伤害并叠加 1 层电击。
 pet|骰子龟/命运骰子|brief|掷出命运骰子，获得随机 <span class="val-atk">40%~130% 暴击率</span> 提升，<span class="val-atk">持续到下次释放本技能</span>。\n<span style="color:#8a93a0">再次释放会撤销旧增益并重新掷骰。\n</span>\n释放后的首次攻击额外附带 <span class="val-heal">50% 生命偷取</span>。
-pet|骰子龟/命运骰子|detail|骰子龟掷出命运骰子，获得随机 <span class="val-atk">40%~130%</span> 暴击机率提升，<span class="val-atk">持续到下次释放本技能</span>（再次释放会先撤销旧增益，再重新掷一次）。\n<span style="color:#8a93a0">暴击机率超过 100%的部分，每 1%转化为 1.5% 暴击伤害。\n</span>\n释放后的<span class="val-atk">首次攻击</span>额外附带 <span class="val-heal">50% 生命偷取</span>。
+pet|骰子龟/命运骰子|detail|骰子龟掷出命运骰子，获得随机 <span class="val-atk">40%~130%</span> 暴击机率提升，<span class="val-atk">持续到下次释放本技能</span>（再次释放会先撤销旧增益，再重新掷一次）。\n<span style="color:#8a93a0">暴击机率超过 100%的部分，每 1%转化为 1.5 倍暴击伤害。\n</span>\n释放后的<span class="val-atk">首次攻击</span>额外附带 <span class="val-heal">50% 生命偷取</span>。
 pet|骰子龟/孤注一掷|brief|朝最近的敌人劈出，对前方的敌人造成 {N:1.5*ATK} 物理伤害，并附带 <span class="val-heal">30% 生命偷取</span>。
 pet|骰子龟/孤注一掷|detail|骰子龟拼命一搏，朝最近敌人方向、对<span class="val-def">前方 120° 扇形 300 码</span>内的敌人造成（150%×攻击力({ATK}) = {N:1.5*ATK}）物理伤害，并附带 <span class="val-heal">30%</span> 生命偷取。\n<span style="color:#8a93a0">生命偷取按本次造成的总伤害回复。\n</span>
 pet|骰子龟/稳定骰子|brief|朝随机敌人突刺 <span class="val-atk">7~11</span> 次，首段造成 {N:0.9*ATK} 物理伤害，此后每段递减 <span class="val-atk">10%</span>。\n每穿刺一次获得 {S:0.2*ATK} 护盾。

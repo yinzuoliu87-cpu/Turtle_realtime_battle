@@ -20,6 +20,12 @@ const SCALD_BURN_COEF := 0.5      # 烫伤: 灼烧层数 = ×ATK (1.0→0.6→0.
 ## 涅槃演出总时长(秒) —— 用户 2026-08-13:「复活需要改为有一个2.5秒的演出」。
 ## 三拍: 0~0.6 灰烬定格 / 0.6~1.9 聚火升腾 / 1.9~2.5 破壳展翼。
 ## ★结算(跳血条 + 全体灼烧 + 治疗削减)落在**展翼那一刻**, 不是死的瞬间。
+## 【熔岩盾】护盾 + 持盾期反击, 两者同一时长(反击窗口就是护盾窗口)。
+const LAVA_SHIELD_COEF := 3.5     # 盾量 = ×ATK
+const LAVA_SHIELD_SEC := 4.0      # 持续(秒)·同时是反击窗口
+const LAVA_RETALIATE := 0.14      # 每受一段攻击反击 ×ATK 魔法(真值在 battle_damage)
+## 【涅槃】首死复活 + 全体灼烧 + 治疗削减(时长走通用 BUFF_SEC)。
+const NIRVANA_HEALCUT := 0.5      # 治疗削减比例
 const NIRVANA_SHOW_SEC := 2.5
 const NIRVANA_ASH_SEC := 0.6      ## 第一拍: 灰烬定格
 const NIRVANA_GATHER_SEC := 1.3   ## 第二拍: 聚火升腾(0.6 → 1.9)
@@ -333,8 +339,8 @@ func _sk_phoenix_scald(u: Dictionary, tgt) -> void:
 	tw.tween_callback(_phoenix_scald_hit.bind(u, tgt, fb))
 
 func _sk_phoenix_lavashield(u: Dictionary) -> void:              # 凤凰龟·熔岩盾 (用户2026-07-07: 3.5A护盾4秒+反击0.14A魔法)
-	battle._damage._grant_shield(u, u["atk"] * 3.5, 4.0)   # 凤凰熔岩盾4秒(与反击窗口lava_shield_until同步·封板)
-	u["lava_shield_until"] = battle._t + 4.0          # 4秒内每受一段攻击反击0.14×ATK魔法(见_apply_damage_from)
+	battle._damage._grant_shield(u, u["atk"] * LAVA_SHIELD_COEF, LAVA_SHIELD_SEC)   # 凤凰熔岩盾4秒(与反击窗口lava_shield_until同步·封板)
+	u["lava_shield_until"] = battle._t + LAVA_SHIELD_SEC          # 4秒内每受一段攻击反击0.14×ATK魔法(见_apply_damage_from)
 	battle._skill_ring(u["pos"], Color(1.0, 0.5, 0.2, 0.5), 50.0)
 
 func _sk_phoenix_haste(u: Dictionary) -> void:                   # 凤凰龟·技三主动 (用户2026-07-07: 自身+50%攻速+50%移速4秒·配合喷火随攻速增伤; 强化涅槃被动在spawn施加)
@@ -407,6 +413,6 @@ func nirvana_begin(u: Dictionary, pct: float) -> void:
 			for o in battle._targeting._enemies_of(u):
 				battle._damage._apply_dot_stacks(o, "burn", maxi(1, roundi(float(u["atk"]) * NIRVANA_BURN_COEF)), u)   # ★凤凰专用系数, 不走全局 _default_burn_stacks(0.67) —— 那个熔岩龟也在用
 				o["heal_reduce_until"] = battle._t + battle.BUFF_SEC
-				o["heal_reduce_pct"] = maxf(float(o.get("heal_reduce_pct", 0.0)), 0.5)
+				o["heal_reduce_pct"] = maxf(float(o.get("heal_reduce_pct", 0.0)), NIRVANA_HEALCUT)
 			u["_phx_reborn_done"] = int(u.get("_phx_reborn_done", 0)) + 1   # 同步证据(门禁数它)
 		})

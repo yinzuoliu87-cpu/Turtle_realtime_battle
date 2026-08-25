@@ -11,8 +11,8 @@ func _init(b) -> void:
 func _ice_fissure_go(u: Dictionary, si: int, start: Vector2, dir: Vector2) -> void:
 	battle._shake(0.14)
 	_ice_burst(start)                              # 砸地冰爆
-	var reach: float = 500.0
-	var width: float = 90.0
+	var reach: float = FISSURE_REACH
+	var width: float = FISSURE_HALF_W
 	var fdur: float = 0.9
 	_ice_fissure_vfx(start, dir, reach, fdur)      # 冰道: 一排冰刺racing forward
 	for o in battle._targeting._enemies_of(u):
@@ -210,6 +210,10 @@ const VIAL_ASPD_DOWN := 0.10    # 攻击速度 −
 const VIAL_MOVE_MULT := 1.0 - VIAL_MOVE_DOWN   # 推导
 const VIAL_ASPD_MULT := 1.0 - VIAL_ASPD_DOWN   # 推导
 const VIAL_IV := 6.0            # 每几秒抛一次(主场景 _EQ_CUSTOM_IV 引用本常量)
+## 【029 冰封水母】法力满 → 自身上盾 + 朝最近敌推一条冰道, 推到谁才结算谁。
+const FISSURE_REACH := 500.0    # 冰道长度(码)
+const FISSURE_HALF_W := 90.0    # 冰道中线两侧各多宽(码)
+const FISSURE_KNOCK_SEC := 0.6  # 竖直击飞滞空(秒)·抛物线输出, 代码里没有这个量
 const FROST_BASE_RADIUS := 150.0    # 基础半径(码)·每层冰柱再 +ICICLE_FROST_RADIUS
 const FROST_BASE_SEC := 5.0         # 基础持续(秒)·每层冰柱再 +ICICLE_FROST_SEC
 const FROST_TICK_SEC := 0.5         # 每几秒一跳(跳数 = 持续 ÷ 它)

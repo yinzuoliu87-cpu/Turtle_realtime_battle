@@ -230,6 +230,7 @@ const GREY_STORE := [0.30, 0.40, 0.50]
 ##      被普通护盾/灰条挡掉的那部分【也算】受到伤害, 照样进灰条。
 ##      这与文案"受到的伤害"是一致的读法, 但和"掉了多少血"不是一回事, 记一笔免得以后当 bug 查。
 ## 灰条每秒转回生命的比例(固定 5%, 不随星级)
+const BRICK_SPLASH_R := 250.0   # 070 压舱咸鱼砖: 溅射半径(码)
 const GREY_CONVERT := 0.05
 ## 额外攻速系数: 最大生命 × 0.01 得到的是【百分数】⇒ 转成倍率要再 /100
 const BRICK_ASPD_PER_HP := 0.0001
@@ -301,7 +302,7 @@ func _eq_ballast_brick(src: Dictionary, tgt: Dictionary, si: int, basic: bool = 
 		if is_same(o, tgt) or not o.get("alive", false):
 			continue
 		var d: float = (o["pos"] - tgt["pos"]).length()
-		if d > 250.0:
+		if d > BRICK_SPLASH_R:
 			continue
 		## ★伤害跟冲击环走(2026-08-11 用户: 「主要是炸开一道环, 环碰到敌人才跳伤害」):
 		##   延时 = 距离 / FoodEqVfx.BRICK_WAVE_SPEED —— 与环的视觉扩张【同一个常量】。

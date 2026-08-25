@@ -354,9 +354,10 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		var _refl = int(dmg * _refl_pct)
 		if _refl > 0:
 			_apply_damage_from(u, src, _refl, Color("#c9a36b"), 0.0, true, true)
-	# 凤凰熔岩盾: 5秒内对每段攻击反击 0.14×ATK 魔法 (from_equip守卫防循环)
+	# 凤凰熔岩盾: 持盾窗口内对每段攻击反击 LAVA_RETALIATE×ATK 魔法 (from_equip守卫防循环)
+	# ★注释原写"5秒"是过期的 —— 真值是 PhoenixSystem.LAVA_SHIELD_SEC(4 秒·与护盾同步)。
 	if u["id"] == "phoenix" and battle._t < float(u.get("lava_shield_until", 0.0)) and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
-		_apply_damage_from(u, src, battle._atk_dmg(u, 0.14, src, true), Color("#ff7a3c"), 0.0, false, true)
+		_apply_damage_from(u, src, battle._atk_dmg(u, PhoenixSystem.LAVA_RETALIATE, src, true), Color("#ff7a3c"), 0.0, false, true)
 	# 闪电雷盾: 盾在时对每段攻击反击 0.3×ATK 魔法(用户2026-07-29 平衡四轮: 0.1→0.3) + 给攻击者叠1层电击
 	if u["id"] == "lightning" and battle._t < float(u.get("thunder_shield_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0 and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
 		_apply_damage_from(u, src, battle._atk_dmg(u, LightningSystem.SHIELD_RETALIATE, src, true), Color("#4dabf7"), 0.0, false, true)

@@ -15,11 +15,15 @@ const PHASE_PHYS_CUT := 0.90    # 受到的物理伤害降低
 const PHASE_MULT := 1.0 - PHASE_PHYS_CUT   # 推导: 代码要的剩余倍率
 const PHASE_SEGMENTS := 2       # 打几段
 const PHASE_SEG_COEF := 0.6     # 每段 ×ATK 真实(两段合计 1.2)
+const PHASE_TOTAL := PHASE_SEGMENTS * PHASE_SEG_COEF   # 推导: 合计, 文案原来手写 120%     # 每段 ×ATK 真实(两段合计 1.2)
 ## 【幽冥突袭】魔法伤 + 高吸血 + 自身闪避, 并把目标击退抛飞。
 const RAID_MAGIC := 1.5      # ×ATK 魔法
 const RAID_LIFESTEAL := 0.8  # 回复所造成伤害 ×
 const RAID_DODGE := 0.25     # 自身闪避 +
 const RAID_DODGE_SEC := 4.0  # 闪避持续(秒)
+## 【幽魂触碰(普攻)】同一发里两段不同类型, 真值在【主场景】的 ghost 早退分支。
+const BASIC_PHYS := 0.4        # ×ATK 物理(红)
+const BASIC_TRUE := 0.9        # + ×ATK 真实(白)
 const STORM_DMG := 2.0         # 灵魂风暴: ×ATK (2.5→2.0·魔法与"已中咒转真伤"两支同值)
 const STORM_CURSE_SEC := 4.0   # 灵魂风暴: 施加的诅咒秒数(10→6→4·用户2026-07-29 第五轮)
 ## ★为什么砍时长而不是砍本体: 一发 369 点里【诅咒占 77%】(6秒 × 5%目标最大生命真伤, 无视双抗),

@@ -5,6 +5,11 @@ extends RefCounted
 
 ## ★骰子数值单一事实源(用户2026-07-28 第三轮加强·整只 13.3% 全表最弱)。文案在 data/pets.json。
 ## 【孤注一掷】前方扇形镰刀斩。
+## 【骰子攻击(普攻)】物理 + 一段按【暴击率】走的固定加成, 真值在主场景普攻表。
+const BASIC_ATK_COEF := 0.9      # ×ATK 物理
+const BASIC_CRIT_FLAT := 55.0    # + 暴击率 × 此值(文案写成 5500%)
+## 【赌徒之血(被动)】按已损生命线性拉暴击率, 到门槛吃满。
+const BLOOD_LOST_GATE := 0.30    # 已损这么多生命 → 暴击加成吃满
 const ALLIN_RANGE := 300.0        # 扇形半径(码)
 const ALLIN_ARC_DEG := 120.0      # 扇面全角(度)·代码里用半角 = 它的一半
 const ALLIN_DMG := 1.5            # 孤注一掷: ×ATK 物理 (1.2→1.5)
