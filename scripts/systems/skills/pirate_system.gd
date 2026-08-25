@@ -30,6 +30,8 @@ const SHIP_ATK_SCALE := 1.0          # 攻击 = 海盗龟攻击 ×
 const SHIP_RANGE := 110.0            # 射程(码)·近战
 const SHIP_SHOT_CD := 1.25           # 每发间隔(秒) ⇒ 攻速 = 1/1.25 = 0.8
 const SHIP_SHOT_COEF := 0.4          # 每发 ×ATK 物理
+## 攻速是【每发间隔的倒数】—— **推导**, 文案原来手写 0.8。
+const SHIP_ASPD := 1.0 / SHIP_SHOT_CD
 const SHIP_CHARGE_RADIUS := 200.0    # 登场冲锋撞击半径(码)
 const SHIP_CHARGE_STUN := 2.0        # 击飞秒数
 ## 【霰弹】(选海盗船后每次充能满)

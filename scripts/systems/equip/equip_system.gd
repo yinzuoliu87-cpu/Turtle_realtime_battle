@@ -387,7 +387,7 @@ func _eq_gatling_burst(u: Dictionary, si: int) -> void:   # 幽灵加特林050: 
 func _eq_laser_pistol(u: Dictionary, si: int) -> void:   # 激光手枪051: 每8秒穿透红激光, 首敌满伤+流血, 身后敌半伤半流血
 	if not u.get("alive", false): return
 	var dir4: Vector2 = (battle._targeting._nearest_enemy(u)["pos"] - u["pos"]).normalized() if battle._targeting._nearest_enemy(u) != null else Vector2.RIGHT
-	var first = _eq_first_in_line(u, dir4, 50.0)
+	var first = _eq_first_in_line(u, dir4, PISTOL_LASER_BAND)
 	if first != null:
 		var endp51: Vector2 = u["pos"] + dir4 * 2600.0   # 无限穿透: 光束画到场外(伤害判定 battle._on_line 本就无距离上限, 原340码只是视觉长度→表现短于实际打击范围·用户2026-07-19"改为无限穿透")
 		battle._muzzle_flash(u["pos"], dir4, Color("#ff5a72"))
@@ -397,9 +397,9 @@ func _eq_laser_pistol(u: Dictionary, si: int) -> void:   # 激光手枪051: 每8
 		battle._damage._apply_dot_stacks(first, "bleed", maxi(1, roundi(u["atk"] * [0.5, 0.5, 0.6][si])), u)
 		battle._vfx._hit_spark(first)
 		for o in battle._targeting._enemies_of(u):
-			if not is_same(o, first) and battle._on_line(first["pos"], dir4, o["pos"], 50.0):
-				battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, [0.75, 1.0, 1.4][si], o), Color("#ff8aa0"), 0.0, false, true)
-				battle._damage._apply_dot_stacks(o, "bleed", maxi(1, roundi(u["atk"] * [0.5, 0.5, 0.6][si] * 0.5)), u)   # 身后50%流血
+			if not is_same(o, first) and battle._on_line(first["pos"], dir4, o["pos"], PISTOL_LASER_BAND):
+				battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, [1.5, 2.0, 2.8][si] * PISTOL_LASER_FALLOFF, o), Color("#ff8aa0"), 0.0, false, true)
+				battle._damage._apply_dot_stacks(o, "bleed", maxi(1, roundi(u["atk"] * [0.5, 0.5, 0.6][si] * PISTOL_LASER_FALLOFF)), u)   # 身后50%流血
 
 func _eq_shotgun_blast(u: Dictionary, si: int) -> void:   # 霰弹贝古053: 朝最近敌扇形散开, 每颗弹珠沿自己的直线飞, 撞到第一个敌人才结算伤害并消失; 被8发及以上命中→眩晕
 	if not u.get("alive", false): return
@@ -536,6 +536,13 @@ const URCHIN_DECAY := 10.0    # 海胆护盾在几秒内线性衰减完
 const CREAM_BURST_R := 300.0  # 盾破的伤害半径(码)
 const CREAM_RESIST := 10.0    # 之后 +双抗
 const CREAM_RANGE := 50.0     # 之后 +射程(码)
+## 【023 灼热火珊瑚】命中攒法力, 法力满自动挥一道缓移的扇形火焰波。
+const CORAL_MANA_PER_HIT := 10.0  # 每段攻击命中给自己多少法力
+const CORAL_ARC_DEG := 60.0       # 火焰波扇面全角(度)·判定用半角
+const CORAL_TRAVEL := 550.0       # 火焰波向前推进多远(码)
+## 【051 激光手枪】无限穿透的直线激光, 首个吃满、身后的减半。
+const PISTOL_LASER_BAND := 50.0   # 判定带半宽(码)
+const PISTOL_LASER_FALLOFF := 0.5 # 首个之后的敌人受到的比例
 const BLADE_FULL := 100.0        # 刃能满值
 const BLADE_AOE_FACTOR := 0.5    # 范围技能充能减半
 const BLADE_R_IN := 500.0        # 扇形带内半径(码)
@@ -1092,7 +1099,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false,
 				## ★2026-08-12 从它自己的 `fire_mana` 条改过来 —— 法器只有一条法力条,
 				##   主动(火焰波)由法力满触发, 见 fire_equip_effect 的 "p2eq_023" 分支。
 				##   add_mana 自带 `_staff_busy` 闸 ⇒ 火焰波打出的灼烧不会回充法力(防连放)。
-				battle._staff_syn.add_mana(src, 10.0)
+				battle._staff_syn.add_mana(src, CORAL_MANA_PER_HIT)
 			"p2eq_009":   # 宽刃弯刀: 充刃能, 满100→直线伤害
 				_eq_charge(stt, "blade_energy", [20.0, 20.0, 25.0][si] * (BLADE_AOE_FACTOR if is_aoe else 1.0), BLADE_FULL, func(): _eq_wide_blade(src, tgt, si))
 			"p2eq_026":   # 雷电法杖(被动): 每段伤害为【法器法力条】充能 15(用户 2026-08-12 削弱: 原 25)
@@ -1363,13 +1370,13 @@ func _eq_fire_coral_active(src: Dictionary, si: int) -> void:   # 灼热火珊�
 	battle._world.add_child(wave)
 	var hit: Array = []
 	var traveled := 0.0
-	var half := deg_to_rad(30.0)   # 60°扇形半角
-	while is_instance_valid(battle) and traveled < 550.0 and is_instance_valid(wave) and is_instance_valid(self):
+	var half := deg_to_rad(CORAL_ARC_DEG * 0.5)   # 60°扇形半角
+	while is_instance_valid(battle) and traveled < CORAL_TRAVEL and is_instance_valid(wave) and is_instance_valid(self):
 		await battle.get_tree().process_frame
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		traveled += 320.0 * battle.get_process_delta_time()   # 缓慢外移
 		wave.position = battle._world_pos(origin + dir * traveled, 0.4)
-		wave.scale = Vector3(2.2 + traveled / 550.0 * 4.5, 3.2, 1.0)   # 边挥边扩
+		wave.scale = Vector3(2.2 + traveled / CORAL_TRAVEL * 4.5, 3.2, 1.0)   # 边挥边扩
 		for o in battle._targeting._enemies_of(src):
 			if battle._arr_has_unit(hit, o): continue
 			var rel: Vector2 = o["pos"] - origin

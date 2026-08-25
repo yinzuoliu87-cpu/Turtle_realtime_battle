@@ -297,8 +297,12 @@ func _ready() -> void:
 	_ok("⑬ ★十件法器的法力条【统一一个颜色】", bar_colors.keys().size() == 1,
 		"实得 %d 种: %s" % [bar_colors.keys().size(), str(bar_colors.keys())])
 	var src_eq2: String = FileAccess.get_file_as_string("res://scripts/systems/equip/equip_system.gd")
+	## ★2026-08-25: 023 那 10.0 抽成了 EquipSystem.CORAL_MANA_PER_HIT ——
+	##   这条断言的**要点是"灌的是法器法力、老条子没人写"**, 不是"字面量是 10.0";
+	##   所以查【调用 add_mana】+ 值对不对, 别查源码里那个数字。
 	_ok("⑬ ★023/026 的每段命中/每段伤害灌的是【法器法力】, 老条子已无人写",
-		src_eq2.find("battle._staff_syn.add_mana(src, 10.0)") >= 0
+		src_eq2.find("battle._staff_syn.add_mana(src, CORAL_MANA_PER_HIT)") >= 0
+			and is_equal_approx(EquipSystem.CORAL_MANA_PER_HIT, 10.0)
 			and src_eq2.find("battle._staff_syn.add_mana(src, 15.0)") >= 0
 			and src_eq2.find('_eq_charge(stt, "fire_mana"') < 0
 			and src_eq2.find('_eq_charge(stt, "thunder"') < 0)
