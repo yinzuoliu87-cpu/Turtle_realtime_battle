@@ -305,7 +305,7 @@ const BASIC_ATK := {
 	"pirate":   {"phys": 1.0, "hits": 1, "selfheal": 0.2},                          # 弯刀(封板L382·近战): 1.0A物理+自愈0.2A(每击回0.2×ATK生命)·[段数1=单弯刀斩·手感留F5]
 	"candy":    {"phys": CandySystem.PUNCH_ATK_COEF, "selfhp": CandySystem.PUNCH_SELF_HP, "hits": 1, "rider": "atkdn"},         # +自HP+减攻debuff (用户2026-07-28: 0.05→0.03)
 	"bubble":   {"phys": 1.5, "hits": 3},
-	"line":     {"magic": 1.0, "hits": 1},                                          # 素描:1A魔法单段(叠1墨迹走_on_basic_hit·用户设计)
+	"line":     {"magic": LineSystem.SKETCH_MAGIC, "hits": 1},                                          # 素描:1A魔法单段(叠1墨迹走_on_basic_hit·用户设计)
 	"lava":     {"magic": LavaSystem.BOLT_MAGIC, "hp": LavaSystem.BOLT_TGT_HP, "hits": 1, "rider": "burn", "burnScale": LavaSystem.BOLT_BURN_COEF},   # 熔岩弹: 0.6魔+4%目标HP+0.07ATK灼烧层(burnScale) (用户2026-06-30)
 	"crystal":  {"phys": CrystalSystem.BASIC_ATK_COEF, "hits": 1},                                          # 水晶刺(封板L559):0.6A物理+1.5%目标maxHp魔法+叠1结晶(魔法段与结晶都走_on_basic_hit·原hp bonus折进物理=类型错)
 	"space":    {"magic": StarSystem.BOLT_MAGIC, "tcurhp": StarSystem.BOLT_CURHP, "hits": 1},                          # 星光弹: 单段0.9A魔法+5%目标当前HP (封板2026-07-07)

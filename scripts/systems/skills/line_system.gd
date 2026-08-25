@@ -9,9 +9,17 @@ extends RefCounted
 const INK_TRUE_PER_STACK := 0.05   # 每层额外承受的真实伤害比例
 const INK_CAP := 7                 # 层数上限
 const INK_CAP_BOMB := 10           # 选了「墨水炸弹」后的上限
+## 满层时的额外真伤总量 —— **推导, 不手写**(文案原来写死 +50%)。
+const INK_TRUE_FULL := INK_CAP * INK_TRUE_PER_STACK
+const INK_TRUE_FULL_BOMB := INK_CAP_BOMB * INK_TRUE_PER_STACK
+## 【素描(普攻)】真值在【主场景普攻表】(那里引用本常量)。
+const SKETCH_MAGIC := 1.0          # ×ATK 魔法
+## ★墨水炸弹【没有射程限制】: 代码遍历全场敌人选最密集处当落点(见 _sk_line_ink_bomb),
+## 文案原来写的"射程 2000"是**不存在的机制** —— 已按实情改掉, 不存这个常量。
 ## 【墨水炸弹】落点 AOE 四段, 每段叠 1 层。
 const BOMB_SEGMENTS := 4           # 溅射几段
 const BOMB_SEG_COEF := 0.25        # 每段 ×ATK 魔法
+const BOMB_TOTAL := BOMB_SEGMENTS * BOMB_SEG_COEF   # 推导: 四段合计, 文案原来手写 100%
 ## 满层时的总系数 —— **推导, 不手写**(文案原来写死 385% / 520%)。
 ## 放在 DOT_* 之后声明会前向引用, 所以这两行在下面(见 DOT_FULL_*)。
 ## 【连笔】连接最近两敌: 各吃一段物理 + 各叠墨迹, 期间伤害互相传导。
