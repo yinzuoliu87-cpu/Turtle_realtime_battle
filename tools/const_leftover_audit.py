@@ -71,6 +71,9 @@ CROSS_OK = {
         '不是机甲爆的冷却。',
     ('IceSystem', 'TEAM_BURST_RADIUS'):
         'equip_system:176 是某件装备护盾三档 [100,160,250] 里的 250, 数组元素撞值。',
+    ('StarSystem', 'BOLT_CURHP'):
+        'RealtimeBattle3DScene:4828 `if el < 0.05` 是浮点精度阈值 —— 与 WORM_BOOM_PER_SEC '
+        '撞的是同一行(两个常量恰好同值 0.05)。',
     ('StarSystem', 'WORM_BOOM_PER_SEC'):
         'RealtimeBattle3DScene:4828 `if el < 0.05` 是浮点精度阈值, 不是每秒引爆比例。',
 }

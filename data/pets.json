@@ -1859,8 +1859,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "刺出一根水晶刺，造成 {N:0.6*ATK} 物理伤害和 <span class=\"val-magic\">1.5% 最大生命值</span> 的魔法伤害，并叠加一层<span class=\"val-normal\">结晶印记</span>。\n<span style=\"color:#8a93a0\">结晶印记叠满 5 层时引爆。\n</span>",
-        "detail": "水晶龟刺出水晶刺，造成（60%×攻击力({ATK}) = {N:0.6*ATK}）物理伤害 + 1.5%目标最大生命值 魔法伤害，并叠加 1 层结晶印记（结晶满 5 层引爆，造成目标 {C:CrystalSystem.BURST_MAXHP_PCT%}%最大生命值魔法伤害并削减魔抗）。"
+        "brief": "刺出一根水晶刺，造成 {N:0.6*ATK} 物理伤害和 <span class=\"val-magic\">{C:CrystalSystem.BASIC_MAXHP_MAGIC%}% 最大生命值</span> 的魔法伤害，并叠加 {C:CrystalSystem.BASIC_STACKS} 层<span class=\"val-normal\">结晶印记</span>。\n<span style=\"color:#8a93a0\">结晶印记叠满 {C:CrystalSystem.STACK_MAX} 层时引爆。\n</span>",
+        "detail": "水晶龟刺出水晶刺，造成（{C:CrystalSystem.BASIC_ATK_COEF%}%×攻击力({ATK}) = {N:0.6*ATK}）物理伤害 + {C:CrystalSystem.BASIC_MAXHP_MAGIC%}%目标最大生命值 魔法伤害，并叠加 {C:CrystalSystem.BASIC_STACKS} 层结晶印记（结晶满 {C:CrystalSystem.STACK_MAX} 层引爆，造成目标 {C:CrystalSystem.BURST_MAXHP_PCT%}%最大生命值魔法伤害并削减魔抗）。"
       },
       {
         "name": "水晶壁垒",
@@ -1896,7 +1896,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "选择本技能后，水晶龟登场便召唤一颗实体<span class=\"val-normal\">水晶球</span>。\n水晶球每 <span class=\"val-atk\">{C:CrystalSystem.ORB_RAY_IV} 秒</span> 射出一道贯穿直线的魔法光线，两段共造成 {M:ATK} 魔法伤害，命中直线上的所有敌人并各叠加 <span class=\"val-atk\">{C:CrystalSystem.ORB_RAY_STACKS}</span> 层<span class=\"val-normal\">结晶印记</span>。\n水晶龟主动施放时，自己也射出同样的一道光线。\n<span style=\"color:#8a93a0\">水晶球生命值为本体最大生命值的 {C:CrystalSystem.ORB_HP_PCT%}%，攻击力等于本体攻击力，射程覆盖全场。\n</span>",
-        "detail": "选择本技能后，水晶龟登场即召唤一颗实体水晶球：生命值 = 本体最大生命值的 {C:CrystalSystem.ORB_HP_PCT%}%，攻击力 = 本体攻击力，射程 2000 码，本身不做普攻。\n每 {C:CrystalSystem.ORB_RAY_IV} 秒射出一道贯穿一条直线（2000 码）的魔法光线——直线上所有敌人各受两段共（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力({ATK}) = {M:ATK}）魔法伤害，并各叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层结晶印记。\n主动释放本技能时，水晶龟自己朝当前目标方向射出同样的一道贯穿光线。\n<span style=\"color:#8a93a0\">水晶球与本体共享同一份结晶层数（满 5 层引爆）；水晶球是独立单位，水晶龟阵亡后它仍会继续战斗。\n</span>"
+        "detail": "选择本技能后，水晶龟登场即召唤一颗实体水晶球：生命值 = 本体最大生命值的 {C:CrystalSystem.ORB_HP_PCT%}%，攻击力 = 本体攻击力，射程 {C:CrystalSystem.ORB_RANGE} 码，本身不做普攻。\n每 {C:CrystalSystem.ORB_RAY_IV} 秒射出一道贯穿一条直线（{C:CrystalSystem.ORB_RANGE} 码）的魔法光线——直线上所有敌人各受两段共（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力({ATK}) = {M:ATK}）魔法伤害，并各叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层结晶印记。\n主动释放本技能时，水晶龟自己朝当前目标方向射出同样的一道贯穿光线。\n<span style=\"color:#8a93a0\">水晶球与本体共享同一份结晶层数（满 {C:CrystalSystem.STACK_MAX} 层引爆）；水晶球是独立单位，水晶龟阵亡后它仍会继续战斗。\n</span>"
       }
     ],
     "defaultSkills": [
@@ -2009,8 +2009,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "发射一枚星光弹，造成 {M:0.9*ATK} 外加 <span class=\"val-magic\">5% 当前生命值</span> 的魔法伤害，并追加一次当前<span class=\"val-normal\">星能</span> <span class=\"val-true\">12%</span> 的真实伤害。",
-        "detail": "星际龟发射一枚星光弹，造成（90%×攻击力({ATK}) = {M:0.9*ATK}）+ 5%目标当前生命值 魔法伤害。\n普攻也算施法，附带追加储存星能 12% 的真实伤害。"
+        "brief": "发射一枚星光弹，造成 {M:0.9*ATK} 外加 <span class=\"val-magic\">{C:StarSystem.BOLT_CURHP%}% 当前生命值</span> 的魔法伤害，并追加一次当前<span class=\"val-normal\">星能</span> <span class=\"val-true\">{C:StarSystem.ENERGY_TRUE_PCT%}%</span> 的真实伤害。",
+        "detail": "星际龟发射一枚星光弹，造成（{C:StarSystem.BOLT_MAGIC%}%×攻击力({ATK}) = {M:0.9*ATK}）+ {C:StarSystem.BOLT_CURHP%}%目标当前生命值 魔法伤害。\n普攻也算施法，附带追加储存星能 {C:StarSystem.ENERGY_TRUE_PCT%}% 的真实伤害。"
       },
       {
         "name": "虫洞",
@@ -2032,8 +2032,8 @@
         "pierce": 0,
         "cd": 0,
         "aoe": true,
-        "brief": "以自身为中心释放一圈向外扩散的环形星波，对波及的全体敌方造成 {M:ATK} 魔法伤害。\n当<span class=\"val-normal\">星能</span>已满时，星际龟额外召唤一颗巨大彗星砸向敌阵中心，消耗全部星能，并造成<span class=\"val-true\">与消耗量等额的真实伤害</span>（星能上限为 <span class=\"val-atk\">40%</span> 最大生命值，该真实伤害无视护甲与魔抗）。",
-        "detail": "星际龟以自身为中心释放一圈环形星波向外扩散，对波及的全体敌方造成（100%×攻击力({ATK}) = {M:ATK}）魔法伤害，不减速也不击飞。\n<span style=\"color:#8a93a0\">星能充满时：\n环形波之外再召唤一颗巨大彗星砸向敌阵中心（全体敌人位置的平均点）\n爆炸释放大冲击波，对中心 400 码内的敌人额外造成 <b>当前全部星能数值的真实伤害</b>（星能上限为 <span class=\"val-atk\">40%</span> 最大生命值；施放瞬间清空星能）。\n</span>"
+        "brief": "以自身为中心释放一圈向外扩散的环形星波，对波及的全体敌方造成 {M:ATK} 魔法伤害。\n当<span class=\"val-normal\">星能</span>已满时，星际龟额外召唤一颗巨大彗星砸向敌阵中心，消耗全部星能，并造成<span class=\"val-true\">与消耗量等额的真实伤害</span>（星能上限为 <span class=\"val-atk\">{C:StarSystem.ENERGY_CAP_PCT%}%</span> 最大生命值，该真实伤害无视护甲与魔抗）。",
+        "detail": "星际龟以自身为中心释放一圈环形星波向外扩散，对波及的全体敌方造成（{C:StarSystem.WAVE_COEF%}%×攻击力({ATK}) = {M:ATK}）魔法伤害，不减速也不击飞。\n<span style=\"color:#8a93a0\">星能充满时：\n环形波之外再召唤一颗巨大彗星砸向敌阵中心（全体敌人位置的平均点）\n爆炸释放大冲击波，对中心 {C:StarSystem.COMET_RADIUS} 码内的敌人额外造成 <b>当前全部星能数值的真实伤害</b>（星能上限为 <span class=\"val-atk\">{C:StarSystem.ENERGY_CAP_PCT%}%</span> 最大生命值；施放瞬间清空星能）。\n</span>"
       },
       {
         "name": "扭曲空间",

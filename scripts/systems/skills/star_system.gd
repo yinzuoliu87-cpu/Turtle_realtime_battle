@@ -10,6 +10,12 @@ extends RefCounted
 const ENERGY_GAIN := 0.35       # 造成伤害的多少转成星能(持续伤害不计)
 const ENERGY_CAP_PCT := 0.40    # 星能上限 = 自身最大生命 ×
 const ENERGY_TRUE_PCT := 0.12   # 每次命中追加 = 当前星能 × 的真实伤害
+## 【星光弹(普攻)】真值在【主场景普攻表】里(那里引用本组常量)。
+const BOLT_MAGIC := 0.9        # ×ATK 魔法
+const BOLT_CURHP := 0.05       # + 目标【当前】生命 × 的魔法
+## 【星波】环形扩散; 星能满时追加一颗砸向敌阵中心的彗星, 真伤 = 消耗掉的全部星能。
+const WAVE_COEF := 1.0         # 环形波 ×ATK 魔法
+const COMET_RADIUS := 400.0    # 彗星落点的冲击半径(码)
 const WORM_SPD := 140.0          # 推进速度(码/秒)
 const WORM_GRAV_R := 150.0       # 引力场半径(码·此过程不造成伤害)
 const WORM_CAPTURE_R := 100.0    # 捕获半径(码)
@@ -352,7 +358,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				if not o.get("alive", false) or battle._arr_has_unit(hitset, o): continue
 				if (o["pos"] as Vector2).distance_to(origin) > r: continue
 				hitset.append(o)
-				battle._damage._apply_damage_from(uu2, o, battle._atk_dmg(uu2, 1.0, o, true), Color("#c9b0ff"))
+				battle._damage._apply_damage_from(uu2, o, battle._atk_dmg(uu2, WAVE_COEF, o, true), Color("#c9b0ff"))
 				battle._vfx._hit_spark(o)
 				for hb in range(2):                                # 命中: 2颗小星从敌身弹出
 					var ha: float = randf() * TAU
@@ -516,7 +522,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 			ct2.tween_callback(func() -> void:
 				if is_instance_valid(head): head.queue_free()
 				for o2 in battle._targeting._enemies_of(uu2):                        # 伤害撞击帧结算(用户2026-07-16: 100%消耗星能·真实伤害·400码)
-					if o2.get("alive", false) and o2["pos"].distance_to(center) <= 400.0:
+					if o2.get("alive", false) and o2["pos"].distance_to(center) <= COMET_RADIUS:
 						battle._damage._apply_damage_from(uu2, o2, maxi(1, int(burst)), Color("#ffffff"), 0.0, true)
 				if uu2.get("alive", false):
 					uu2["energy_lock_until"] = battle._t                  # 巨彗星造成伤害后才恢复龟能/星能(用户2026-07-16)

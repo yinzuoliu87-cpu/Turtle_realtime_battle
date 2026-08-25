@@ -307,8 +307,8 @@ const BASIC_ATK := {
 	"bubble":   {"phys": 1.5, "hits": 3},
 	"line":     {"magic": 1.0, "hits": 1},                                          # 素描:1A魔法单段(叠1墨迹走_on_basic_hit·用户设计)
 	"lava":     {"magic": LavaSystem.BOLT_MAGIC, "hp": LavaSystem.BOLT_TGT_HP, "hits": 1, "rider": "burn", "burnScale": LavaSystem.BOLT_BURN_COEF},   # 熔岩弹: 0.6魔+4%目标HP+0.07ATK灼烧层(burnScale) (用户2026-06-30)
-	"crystal":  {"phys": 0.6, "hits": 1},                                          # 水晶刺(封板L559):0.6A物理+1.5%目标maxHp魔法+叠1结晶(魔法段与结晶都走_on_basic_hit·原hp bonus折进物理=类型错)
-	"space":    {"magic": 0.9, "tcurhp": 0.05, "hits": 1},                          # 星光弹: 单段0.9A魔法+5%目标当前HP (封板2026-07-07)
+	"crystal":  {"phys": CrystalSystem.BASIC_ATK_COEF, "hits": 1},                                          # 水晶刺(封板L559):0.6A物理+1.5%目标maxHp魔法+叠1结晶(魔法段与结晶都走_on_basic_hit·原hp bonus折进物理=类型错)
+	"space":    {"magic": StarSystem.BOLT_MAGIC, "tcurhp": StarSystem.BOLT_CURHP, "hits": 1},                          # 星光弹: 单段0.9A魔法+5%目标当前HP (封板2026-07-07)
 	"hiding":   {"phys": 1.0, "hits": 1, "rider": "shrink"},                        # 缩壳: 1A物理+每击+1甲+1抗+0.1A盾(越打越硬)
 	# shell 走 _basic_attack 特判 _shell_sys._shell_basic (1ATK单段·物/真逐攻交替 + 120px范围溅射50%); 不进 _do_basic
 }
@@ -6904,8 +6904,8 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 		"lightning":
 			_lightning_sys._lightning_electric(u, tgt)   # 普攻主目标叠电击+可引爆(连锁跳由_lightning_hop叠)
 		"crystal":
-			_damage._apply_damage_from(u, tgt, _mitigate(u, tgt["maxHp"] * 0.015, tgt, true), Color("#9bdcff"), 0.0, false)   # 水晶刺附1.5%目标最大生命魔法(吃魔抗·封板L559·原折进物理=类型错)
-			_crystal_sys._crystal_stack(u, tgt, 1)   # 普攻叠1层结晶(满5引爆·封板)·与水晶球共享层数走同一helper(引爆改吃魔抗)
+			_damage._apply_damage_from(u, tgt, _mitigate(u, tgt["maxHp"] * CrystalSystem.BASIC_MAXHP_MAGIC, tgt, true), Color("#9bdcff"), 0.0, false)   # 水晶刺附1.5%目标最大生命魔法(吃魔抗·封板L559·原折进物理=类型错)
+			_crystal_sys._crystal_stack(u, tgt, CrystalSystem.BASIC_STACKS)   # 普攻叠1层结晶(满5引爆·封板)·与水晶球共享层数走同一helper(引爆改吃魔抗)
 		"angel":                                          # 审判: 每段攻击额外 +目标当前HP 8% 魔法(2026-07-22订正: 注释原写11%, 代码一直是 0.08)
 			_damage._apply_damage_from(u, tgt, _mitigate(u, tgt["hp"] * 0.08, tgt, true), Color("#9be7ff"), 0.0, false)   # 魔法(吃魔抗+蓝字), 原flat固定值绕魔抗+错色=bug
 			if u.get("_ascend_growth", false):

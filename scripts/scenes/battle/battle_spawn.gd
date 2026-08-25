@@ -648,7 +648,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 			if "crystalBall" in battle._chosen_skill_types(u["id"], u["side"] == "left"):   # 水晶球(技三·选中才召): 登场召唤实体水晶球(2026-07-16加大+特效)
 				var _orb = _spawn_summon(u, "crystalball", u["maxHp"] * CrystalSystem.ORB_HP_PCT, u["atk"], {
 					"label": "水晶球", "spr_id": "crystal-ball", "col_size": 38.0, "hp_w": 40.0, "melee": false,
-					"move_spd": 90.0, "atk_range": 2000.0, "no_basic": true,   # 射程2000(用户2026-07-16)
+					"move_spd": 90.0, "atk_range": CrystalSystem.ORB_RANGE, "no_basic": true,   # 射程2000(用户2026-07-16)
 					"special": "ray", "special_cd": CrystalSystem.ORB_RAY_IV, "special_scale": CrystalSystem.ORB_RAY_COEF * 0.5,   # 攻速0.2≈5s一发(封板)·每发2段共1.0A魔法
 				})
 				if _orb != null:                              # 登场爆闪+常驻脉动光环(用户2026-07-16: 球太小没特效)

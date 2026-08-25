@@ -211,6 +211,12 @@ const SWEEP_SEC := 1.5
 ##   从此"代码改了文案不跟"这件事在结构上不可能发生。
 ##   ⚠ 值一个没动(5 / 0.22 / -0.2), 行为必须完全一致 —— 全套门禁验这一点。
 const STACK_MAX := 5            ## 结晶印记叠满几层引爆
+## 【水晶刺(普攻)】—— ★别和上面的 SPIKE_*(冰刺技能·击飞减速那个)混,
+##   那组是技能, 这组是普攻; 名字撞车会让两个不同的效果静默共用一个数。
+const BASIC_ATK_COEF := 0.6       # 普攻 ×ATK 物理
+const BASIC_MAXHP_MAGIC := 0.015  # + 目标最大生命 × 的魔法(吃魔抗)
+const BASIC_STACKS := 1           # 每次普攻叠几层结晶印记
+const ORB_RANGE := 2000.0         # 水晶球射程(码)·同时也是它光线的直线长度
 const BURST_MAXHP_PCT := 0.22   ## 引爆伤害 = ×目标最大生命(魔法, 吃魔抗)
 const BURST_MR_SHRED := 0.20    ## 引爆同时削目标魔抗(走 _buff, 默认 BUFF_SEC 秒)
 
