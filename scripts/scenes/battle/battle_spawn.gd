@@ -582,7 +582,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 				battle._ice_sys._ice_chill_vfx(o["pos"])        # 敌人寒气蓝环
 				battle._vfx._flash(o, Color(0.6, 0.86, 1.0))   # 敌蓝闪
 		"headless":
-			u["lifesteal"] += 0.22
+			u["lifesteal"] += HeadlessSystem.UNDEAD_LIFESTEAL
 			u["headless_base_atk"] = float(u.get("base_atk", u.get("atk", 0.0)))   # 亡灵怒: 损血加攻的基准(每帧按损血重算, 见 _tick_periodic_passive)
 		"dice":
 			u["dice_base_crit"] = u["crit"]   # 基准(供损血暴击率算); 暴伤那半已删 —— 全局已有"暴击率溢出100%每1%→1.5%暴伤"(_resolve_dmg), 不需要单独基准(用户2026-07-19)

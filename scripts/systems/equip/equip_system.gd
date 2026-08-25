@@ -543,6 +543,9 @@ const CORAL_TRAVEL := 550.0       # 火焰波向前推进多远(码)
 ## 【051 激光手枪】无限穿透的直线激光, 首个吃满、身后的减半。
 const PISTOL_LASER_BAND := 50.0   # 判定带半宽(码)
 const PISTOL_LASER_FALLOFF := 0.5 # 首个之后的敌人受到的比例
+## 【052 左轮手枪】自带弹药, 敌人阵亡补弹(有上限), 打空停火。
+const REVOLVER_AMMO := 6      # 初始弹数 = 上限(同一个数)
+const REVOLVER_IV := 4.0      # 每几秒射一发(主场景 _EQ_CUSTOM_IV 引用本常量)
 const BLADE_FULL := 100.0        # 刃能满值
 const BLADE_AOE_FACTOR := 0.5    # 范围技能充能减半
 const BLADE_R_IN := 500.0        # 扇形带内半径(码)
@@ -1706,7 +1709,7 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 			for e2 in o.get("equips", []):
 				if str(e2["id"]) == "p2eq_052":
 					var rst: Dictionary = o["eq_state"].get("p2eq_052", {})
-					rst["revolver_bullets"] = mini(6, int(rst.get("revolver_bullets", 0)) + 1)
+					rst["revolver_bullets"] = mini(REVOLVER_AMMO, int(rst.get("revolver_bullets", 0)) + 1)
 					o["eq_state"]["p2eq_052"] = rst
 	# ★这里原来是「064 深渊招魂螺: 友方阵亡 → 额外召一只亡魂」。2026-08-05 用户把 064
 	#   整条重做成【溺者的浮囊】(残血幽灵护盾 + 破盾诅咒爆炸), 新设计里**没有亡魂** ——

@@ -49,6 +49,12 @@ const SHURIKEN_TRUE_CAP := 100.0  # 封顶(百分比)
 ## 【忍者足】选手里剑后打包的登场被动。
 const FOOT_DODGE := 0.15          # 闪避 +
 const FOOT_CRIT := 0.30           # 暴击率 +
+## 【背刺】先给自己一段穿甲, 再闪到全场最远敌身后连刺。
+const BACKSTAB_PEN := 15.0     # 护甲穿透 +(flat)
+const BACKSTAB_PEN_SEC := 5.0  # 穿甲持续(秒)
+const BACKSTAB_SEGMENTS := 3   # 背刺几段
+const BACKSTAB_TOTAL := 2.0    # 三段合计 ×ATK 物理
+const BACKSTAB_SEG_COEF := BACKSTAB_TOTAL / BACKSTAB_SEGMENTS   # 推导: 每段(0.6667)
 const DASH_SENSE := 290.0         # 触发射程(码)·**故意 < 冲刺距离**, 所以冲刺会略穿过目标
 const DASH_RANGE := 300.0         # 冲刺位移(码)
 const DASH_WIDTH := 62.0          # 判定带半宽(码)
@@ -176,9 +182,9 @@ func _sk_ninja_backstab(u: Dictionary, tgt: Dictionary) -> void: # 技三·背�
 	if far == null: far = tgt
 	if far == null: return
 	var from2d: Vector2 = u["pos"]
-	u["armor_pen"] = float(u.get("armor_pen", 0.0)) + 15.0       # +15穿甲(5秒后撤销·用户2026-07-11: 5→15)
+	u["armor_pen"] = float(u.get("armor_pen", 0.0)) + BACKSTAB_PEN       # +15穿甲(5秒后撤销·用户2026-07-11: 5→15)
 	var uu: Dictionary = u
-	battle._pending_shots.append({"delay": 5.0, "fn": func(): uu["armor_pen"] = float(uu.get("armor_pen", 0.0)) - 15.0, "src": u})
+	battle._pending_shots.append({"delay": BACKSTAB_PEN_SEC, "fn": func(): uu["armor_pen"] = float(uu.get("armor_pen", 0.0)) - BACKSTAB_PEN, "src": u})
 	battle._dash_to(u, far, -70.0)                                     # 闪现到最远敌身后
 	u["face_right"] = far["pos"].x > u["pos"].x                # 面向最远敌(背刺sheet已镜像统一朝向)
 	battle._beam_vfx("res://assets/sprites/vfx/fx-trail.png", from2d, u["pos"], 34.0, Color(0.8, 0.9, 1.0, 0.55), 0.28)   # 闪现刀光拖影(起点→落点)

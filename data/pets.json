@@ -530,8 +530,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "获得 <span class=\"val-atk\">15 护甲穿透</span>持续 <span class=\"val-atk\">5 秒</span>，随后闪现到<span class=\"val-normal\">全场最远的敌人</span>身后背刺三段，共造成 {N:0.6667*ATK*3} 物理伤害，之后留在原地继续追砍该目标。",
-        "detail": "忍者龟准备偷袭，获得+15 护甲穿透持续 5 秒，随后闪现到<span class=\"val-normal\">全场最远敌</span>身后背刺三段，造成共（200%×攻击力 = {N:0.6667*ATK*3}）物理伤害，之后留在该敌处继续追砍它。"
+        "brief": "获得 <span class=\"val-atk\">{C:NinjaSystem.BACKSTAB_PEN} 护甲穿透</span>持续 <span class=\"val-atk\">{C:NinjaSystem.BACKSTAB_PEN_SEC} 秒</span>，随后闪现到<span class=\"val-normal\">全场最远的敌人</span>身后背刺 {C:NinjaSystem.BACKSTAB_SEGMENTS} 段，共造成 {N:0.6667*ATK*3} 物理伤害，之后留在原地继续追砍该目标。",
+        "detail": "忍者龟准备偷袭，获得+{C:NinjaSystem.BACKSTAB_PEN} 护甲穿透持续 {C:NinjaSystem.BACKSTAB_PEN_SEC} 秒，随后闪现到<span class=\"val-normal\">全场最远敌</span>身后背刺 {C:NinjaSystem.BACKSTAB_SEGMENTS} 段，造成共（{C:NinjaSystem.BACKSTAB_TOTAL%}%×攻击力 = {N:0.6667*ATK*3}）物理伤害，之后留在该敌处继续追砍它。"
       }
     ],
     "defaultSkills": [
@@ -2153,8 +2153,8 @@
     "passive": {
       "type": "undeadRage",
       "name": "亡灵",
-      "brief": "登场时便获得 <span class=\"val-heal\">22% 生命偷取</span>。\n无头龟每损失 <span class=\"val-atk\">1%</span> 生命值，攻击力便提升 <span class=\"val-atk\">1%</span>，最高叠加至 <span class=\"val-atk\">+100%</span>。\n无头龟首次濒死时进入<span class=\"val-normal\">亡灵状态</span>，持续 5 秒。",
-      "desc": "拥有亡灵之力，登场时获得 <span class=\"val-heal\">22%</span> 生命偷取。\n每损失 1%生命值，攻击力 <span class=\"val-atk\">+1%</span>（最高 <span class=\"val-atk\">+100%</span>）。\n首次濒死时获得亡灵状态，持续 5 秒。\n<span style=\"color:#8a93a0\">亡灵：\n无法将生命值降至 1 以下。\n</span>"
+      "brief": "登场时便获得 <span class=\"val-heal\">{C:HeadlessSystem.UNDEAD_LIFESTEAL%}% 生命偷取</span>。\n无头龟每损失 <span class=\"val-atk\">1%</span> 生命值，攻击力便提升 <span class=\"val-atk\">{C:HeadlessSystem.UNDEAD_ATK_PER_LOST%}%</span>，最高叠加至 <span class=\"val-atk\">+{C:HeadlessSystem.UNDEAD_ATK_PER_LOST%}%</span>。\n无头龟首次濒死时进入<span class=\"val-normal\">亡灵状态</span>，持续 {C:HeadlessSystem.UNDEAD_DEATHFLOOR} 秒。",
+      "desc": "拥有亡灵之力，登场时获得 <span class=\"val-heal\">{C:HeadlessSystem.UNDEAD_LIFESTEAL%}%</span> 生命偷取。\n每损失 1%生命值，攻击力 <span class=\"val-atk\">+{C:HeadlessSystem.UNDEAD_ATK_PER_LOST%}%</span>（最高 <span class=\"val-atk\">+{C:HeadlessSystem.UNDEAD_ATK_PER_LOST%}%</span>）。\n首次濒死时获得亡灵状态，持续 {C:HeadlessSystem.UNDEAD_DEATHFLOOR} 秒。\n<span style=\"color:#8a93a0\">亡灵：\n无法将生命值降至 1 以下。\n</span>"
     },
     "skillPool": [
       {
@@ -2200,7 +2200,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "龟能充满后（约 6 秒），接下来 <b>{C:HeadlessSystem.SOUL_HITS} 次</b>普攻额外附带 {M:0.5*ATK} 魔法伤害和 <span class=\"val-magic\">{C:HeadlessSystem.SOUL_CURHP_PCT%}% 目标当前生命值</span> 的魔法伤害。\n第 {C:HeadlessSystem.SOUL_HITS} 下落地后挥出<span class=\"val-atk\">镰刀横扫</span>。\n<span style=\"color:#8a93a0\">强化窗口全程锁龟能，镰刀扫完才重新充能。\n</span>",
-        "detail": "无头龟蓄积灵魂之力（充能型）：\n龟能充满（80 龟能≈6 秒）后，接下来 <b>{C:HeadlessSystem.SOUL_HITS} 次</b>普攻额外附带（{C:HeadlessSystem.SOUL_ATK_COEF%}%×攻击力({ATK}) = {M:0.5*ATK}）<span class=\"val-magic\">魔法</span>伤害 + <span class=\"val-magic\">{C:HeadlessSystem.SOUL_CURHP_PCT%}%目标当前生命值</span> 魔法伤害（叠加在撕咬的 1×攻击力物理 + 3%最大生命值之上·单体），射程额外 +{C:HeadlessSystem.SOUL_RANGE_BONUS}。\n第 <b>{C:HeadlessSystem.SOUL_HITS}</b> 下命中落地后，无头龟挥出<span class=\"val-atk\">镰刀横扫</span>：\n正面 {C:HeadlessSystem.SCYTHE_ARC_DEG}° 锥形、{C:HeadlessSystem.SCYTHE_RANGE} 码内的敌人被<span class=\"val-atk\">击退 {C:HeadlessSystem.SCYTHE_KNOCK} 码</span>，并被施加 <span class=\"val-magic\">{C:HeadlessSystem.SCYTHE_CURSE_SEC} 秒诅咒</span>（每秒造成其最大生命值 5% 的真实伤害，无视双抗）。\n<span class=\"val-normal\">强化窗口全程锁龟能</span>，镰刀扫完才解锁并清零重新充能。\n<span style=\"color:#8a93a0\">\n</span>"
+        "detail": "无头龟蓄积灵魂之力（充能型）：\n龟能充满（80 龟能≈6 秒）后，接下来 <b>{C:HeadlessSystem.SOUL_HITS} 次</b>普攻额外附带（{C:HeadlessSystem.SOUL_ATK_COEF%}%×攻击力({ATK}) = {M:0.5*ATK}）<span class=\"val-magic\">魔法</span>伤害 + <span class=\"val-magic\">{C:HeadlessSystem.SOUL_CURHP_PCT%}%目标当前生命值</span> 魔法伤害（叠加在撕咬的 1×攻击力物理 + 3%最大生命值之上·单体），射程额外 +{C:HeadlessSystem.SOUL_RANGE_BONUS}。\n第 <b>{C:HeadlessSystem.SOUL_HITS}</b> 下命中落地后，无头龟挥出<span class=\"val-atk\">镰刀横扫</span>：\n正面 {C:HeadlessSystem.SCYTHE_ARC_DEG}° 锥形、{C:HeadlessSystem.SCYTHE_RANGE} 码内的敌人被<span class=\"val-atk\">击退 {C:HeadlessSystem.SCYTHE_KNOCK} 码</span>，并被施加 <span class=\"val-magic\">{C:HeadlessSystem.SCYTHE_CURSE_SEC} 秒诅咒</span>（每秒造成其最大生命值 {C:BattleDamage.CURSE_HP_PCT%}% 的真实伤害，无视双抗）。\n<span class=\"val-normal\">强化窗口全程锁龟能</span>，镰刀扫完才解锁并清零重新充能。\n<span style=\"color:#8a93a0\">\n</span>"
       }
     ],
     "defaultSkills": [

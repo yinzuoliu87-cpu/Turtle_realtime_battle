@@ -618,7 +618,7 @@
     "baseStats1": "+攻40/90/500·护穿15/24/50",
     "shopAvailable": 1,
     "emoji": "🔫",
-    "effectDesc1": "装备时拥有 6 发子弹（任何敌人阵亡时+1 发，上限 6 发；每场战斗重置）；\n每 4 秒向 1 名随机敌人射出 1 发，造成（150/310/1200+3/5/9×攻击力）物理伤害；\n子弹为 0 时停火（装备不消失）。",
+    "effectDesc1": "装备时拥有 {C:EquipSystem.REVOLVER_AMMO} 发子弹（任何敌人阵亡时+1 发，上限 {C:EquipSystem.REVOLVER_AMMO} 发；每场战斗重置）；\n每 {C:EquipSystem.REVOLVER_IV} 秒向 1 名随机敌人射出 1 发，造成（150/310/1200+3/5/9×攻击力）物理伤害；\n子弹为 0 时停火（装备不消失）。",
     "effectDesc3": "",
     "img": "equip/dungeon-revolver.png",
     "effectBrief": "每 4 秒射出 1 发子弹，造成 150/310/1200 点物理伤害。"

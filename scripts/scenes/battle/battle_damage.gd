@@ -311,7 +311,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 	_record_buckets(src, u, dmg, _bkt, was_crit)
 	# headless 亡灵: 首次濒死→5秒内HP不降到1以下(免死), 5秒后正常死
 	if u["id"] == "headless" and u["hp"] <= 0.0 and not u.get("undead_used", false):
-		u["undead_used"] = true; u["deathfloor_until"] = battle._t + 5.0
+		u["undead_used"] = true; u["deathfloor_until"] = battle._t + HeadlessSystem.UNDEAD_DEATHFLOOR
 		battle._vfx._float_text(u["pos"] + Vector2(0, -64), "亡灵!", Color("#9b6bff"))
 		battle._headless_sys._headless_undead_vfx(u)                                    # 免死金骨光环5秒(2026-07-17)
 	if battle._t < float(u.get("deathfloor_until", 0.0)):

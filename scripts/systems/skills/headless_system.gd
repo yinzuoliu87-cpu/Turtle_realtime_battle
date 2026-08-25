@@ -4,6 +4,13 @@ extends RefCounted
 ## 类内簇函数名不变→内部互调零改动;外部名加 battle. 前缀。
 
 ## 【灵魂打击】龟能充满后接下来 N 次普攻强化, 第 N 下落地挥镰刀。
+## 【亡灵(被动)】登场自带生命偷取 + 越残血攻击越高 + 首次濒死免死一段时间。
+## ★三处分别在: battle_spawn(生命偷取) / 主场景 _tick_unit(残血增攻) / battle_damage(免死)。
+const UNDEAD_LIFESTEAL := 0.22   # 登场即获得的生命偷取
+const UNDEAD_ATK_PER_LOST := 1.0 # 每损失 1 份生命 → 攻击力 +1 份(1:1)
+const UNDEAD_DEATHFLOOR := 5.0   # 首次濒死后免死多少秒(期间生命不会降到 1 以下)
+## ★"最高 +100%" **不是另一个常量** —— 它是 `clampf(lost_pct, 0, 1)` 的结构性上限
+##   (最多只能损失 100% 生命)。文案里那个 100% 指向 UNDEAD_ATK_PER_LOST 的百分比形式。
 const SOUL_HITS := 3             # 强化几次普攻
 const SOUL_ATK_COEF := 0.5       # 每次额外 ×ATK 魔法
 const SOUL_CURHP_PCT := 0.10     # 每次额外 + 目标【当前】生命 × 魔法
