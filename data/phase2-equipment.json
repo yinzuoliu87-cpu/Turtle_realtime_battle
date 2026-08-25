@@ -246,7 +246,7 @@
     "baseStats1": "+生命60/100/180·+20初始龟能",
     "shopAvailable": 1,
     "emoji": "🦪",
-    "effectDesc1": "每 5 秒向全队攻击力最高的友军连接绿色绑定光束（持续），为该友军提供 60/110/180 点护盾并将其受到的 25/40/60%伤害按原类型转移给携带者（携带者护盾可吸收）；\n同时为自己和该友军提供 10 龟能与+10%攻击速度（叠加，持续到本场战斗结束）。",
+    "effectDesc1": "每 {C:EquipTickSystem.BARNACLE_IV} 秒向全队攻击力最高的友军连接绿色绑定光束（持续），为该友军提供 60/110/180 点护盾并将其受到的 25/40/60%伤害按原类型转移给携带者（携带者护盾可吸收）；\n同时为自己和该友军提供 {C:EquipTickSystem.BARNACLE_ENERGY} 龟能与+{C:EquipTickSystem.BARNACLE_ASPD%}%攻击速度（叠加，持续到本场战斗结束）。",
     "effectDesc3": "",
     "img": "equip/pearl-guard.png",
     "effectBrief": "每 5 秒向攻击力最高的友军连上光束，替它承受 25/40/60% 伤害。"
@@ -330,10 +330,10 @@
     "baseStats1": "+生命30/40/60·魔穿5/9/14",
     "shopAvailable": 1,
     "emoji": "🔮",
-    "effectDesc1": "每 6 秒短暂蓄力，抛出一个冰瓶砸向最近的敌人，命中造成 40/60/100 魔法伤害并将其击退，同时施加冰寒 5 秒（移动速度-20%、攻击速度-10%）。",
+    "effectDesc1": "每 {C:IceSystem.VIAL_IV} 秒短暂蓄力，抛出一个冰瓶砸向最近的敌人，命中造成 40/60/100 魔法伤害并将其击退，同时施加冰寒 {C:IceSystem.VIAL_CHILL_SEC} 秒（移动速度-{C:IceSystem.VIAL_MOVE_DOWN%}%、攻击速度-{C:IceSystem.VIAL_ASPD_DOWN%}%）。",
     "effectDesc3": "",
     "img": "equip/frost-flask.png",
-    "effectBrief": "每 6 秒抛出冰瓶，造成 40/60/100 魔法伤害并施加冰寒 5 秒。"
+    "effectBrief": "每 {C:IceSystem.VIAL_IV} 秒抛出冰瓶，造成 40/60/100 魔法伤害并施加冰寒 {C:IceSystem.VIAL_CHILL_SEC} 秒。"
   },
   {
     "id": "p2eq_029",

@@ -120,7 +120,9 @@ def related(lines, idx, subject, _prefix):
             if ind < cur:
                 low = st.lower()
                 if OWNER_LINE.search(low):
-                    return subject in low
+                    # ★按【词】匹配, 不是子串: subject="ice" 会撞上 d**ice**_system,
+                    #   于是骰子的护盾时长被当成冰瓶的周期(2026-08-25 实测假红两条)。
+                    return re.search(r"(?<![a-z_])" + re.escape(subject) + r"(?![a-z_])", low) is not None
                 cur = ind
         k -= 1
     return False

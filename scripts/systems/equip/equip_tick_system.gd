@@ -153,6 +153,10 @@ func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016:
 ## 【017 不沉之锚】回血攒充能 → 充能期加攻速 → 普攻消耗充能击飞。
 const ANCHOR_ASPD := 1.00      # 持有充能期间普攻攻速 +(真值在 battle_damage.anchor_aspd)
 ## 那一击的眩晕走【通用 CTRL_SEC】(RealtimeBattle3DScene), 这里不存副本。
+## 【021 守护贝母】持续连全队最高攻友军, 周期性重连并给双方一串永久加成。
+const BARNACLE_IV := 5.0        # 每几秒重连一次并给 buff
+const BARNACLE_ENERGY := 10.0   # 每次给自己和该友军的龟能
+const BARNACLE_ASPD := 0.10     # 每次给自己和该友军的攻速 +(永久本场·可叠)
 const ANCHOR_IV := 0.25                # 不沉之锚回血节拍(秒) —— 用户 2026-08-01「恢复触发改为每0.25秒去回复生命值」
 const ANCHOR_ACC_PER_CHARGE := 250.0   # 累积治疗满这么多 → +1 沉锚充能(用户2026-07-19: 100→250)
 
@@ -345,8 +349,8 @@ func _tick_barnacle(u: Dictionary, delta: float) -> void:   # 守护贝母p2eq_0
 		if str(e["id"]) != "p2eq_021": continue
 		var stt: Dictionary = u["eq_state"].get("p2eq_021", {})
 		e["barnacle_t"] = float(e.get("barnacle_t", 0.0)) + delta
-		if stt.get("link_target", null) == null or float(e["barnacle_t"]) >= 5.0:   # 首次立即连 + 每5秒重连+给buff
-			if float(e["barnacle_t"]) >= 5.0: e["barnacle_t"] = 0.0
+		if stt.get("link_target", null) == null or float(e["barnacle_t"]) >= BARNACLE_IV:   # 首次立即连 + 每5秒重连+给buff
+			if float(e["barnacle_t"]) >= BARNACLE_IV: e["barnacle_t"] = 0.0
 			var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 			var prev = stt.get("link_target", null)   # 重连前清上个连接对象的伤害转移标记
 			if prev is Dictionary: prev.erase("dmg_redirect_to")
@@ -359,8 +363,8 @@ func _tick_barnacle(u: Dictionary, delta: float) -> void:   # 守护贝母p2eq_0
 			var benef: Array = [u]
 			if best != null: benef.append(best)
 			for o in benef:
-				if battle._has_energy_system(o): battle._equip_sys._eq_grant_energy(o, 10.0)   # +10龟能(减冷却)
-				o["aspd_perm"] = float(o.get("aspd_perm", 1.0)) + 0.10   # +10%攻速(永久本场,叠加)
+				if battle._has_energy_system(o): battle._equip_sys._eq_grant_energy(o, BARNACLE_ENERGY)   # +10龟能(减冷却)
+				o["aspd_perm"] = float(o.get("aspd_perm", 1.0)) + BARNACLE_ASPD   # +10%攻速(永久本场,叠加)
 				battle._skill_ring(o["pos"], Color(0.55, 1.0, 0.78, 0.5), 44.0)
 			if best != null:   # 连接友军: 盾 + 伤害转移(25/40/60%受伤转给携带者); 不净化(用户)
 				battle._damage._grant_shield(best, [60.0, 110.0, 180.0][si])   # 用户2026-07-19: 40/60/90→60/110/180

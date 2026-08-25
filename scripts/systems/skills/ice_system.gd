@@ -137,7 +137,7 @@ func _ice_bottle_hit(spr: Sprite3D, u: Dictionary, t: Dictionary, si: int) -> vo
 	if is_instance_valid(spr): spr.queue_free()
 	if not t.get("alive", false): return
 	battle._damage._apply_damage_from(u, t, battle._resolve_dmg(u, float([40, 60, 100][si]), t, true), Color("#bfe9ff"), 0.0, false, true)
-	t["spd_move_mult"] = 0.8; t["spd_aspd_mult"] = 0.9; t["spd_dbf_until"] = battle._t + 5.0
+	t["spd_move_mult"] = VIAL_MOVE_MULT; t["spd_aspd_mult"] = VIAL_ASPD_MULT; t["spd_dbf_until"] = battle._t + VIAL_CHILL_SEC
 	_ice_burst(t["pos"])
 	_frost_puff(t["pos"])
 	battle._shake(0.06)
@@ -201,6 +201,15 @@ const AURA_SLOW := 0.30         # 攻速 / 龟能充能 / 移速 各降低
 const AURA_MULT := 1.0 - AURA_SLOW   # 推导: 代码要的倍率
 const AURA_SEC := 12.0          # 减速持续(秒)·用户 2026-07-11 从永久改成 12 秒
 const AURA_VS_FIRE := 0.20      # 对熔岩/凤凰的额外增伤(选极寒技会覆盖成更高)
+## 【028 冰霜冻露瓶】抛冰瓶砸最近敌: 魔法伤 + 击退 + 冰寒减速减攻速。
+## ★"冰寒"这三个数原来是一行三连赋值里的裸字面量, 且移速/攻速存的是**倍率**,
+##   文案说的是"-20% / -10%" ⇒ 存语义值(降幅), 倍率现推。
+const VIAL_CHILL_SEC := 5.0     # 冰寒持续(秒)
+const VIAL_MOVE_DOWN := 0.20    # 移动速度 −
+const VIAL_ASPD_DOWN := 0.10    # 攻击速度 −
+const VIAL_MOVE_MULT := 1.0 - VIAL_MOVE_DOWN   # 推导
+const VIAL_ASPD_MULT := 1.0 - VIAL_ASPD_DOWN   # 推导
+const VIAL_IV := 6.0            # 每几秒抛一次(主场景 _EQ_CUSTOM_IV 引用本常量)
 const FROST_BASE_RADIUS := 150.0    # 基础半径(码)·每层冰柱再 +ICICLE_FROST_RADIUS
 const FROST_BASE_SEC := 5.0         # 基础持续(秒)·每层冰柱再 +ICICLE_FROST_SEC
 const FROST_TICK_SEC := 0.5         # 每几秒一跳(跳数 = 持续 ÷ 它)
