@@ -641,8 +641,8 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 			_spawn_hiding_minion(u)
 		"cyber":
 			if "cyberSmartAI" in battle._chosen_skill_types(u["id"], u["side"] == "left"):
-				u["move_spd"] = float(u.get("move_spd", 105.0)) * 1.2   # 智能AI(技三·选中): 登场+20%移速(常驻走位)
-				u["cyber_ai_charge"] = 3   # 用户2026-07-07逐字"赛博龟登场时拥有3层充能" (此前漏做, 从0起算)
+				u["move_spd"] = float(u.get("move_spd", 105.0)) * CyberSystem.AI_MOVE_MULT   # 智能AI(技三·选中): 登场+20%移速(常驻走位)
+				u["cyber_ai_charge"] = CyberSystem.AI_START_CHARGE   # 用户2026-07-07逐字"赛博龟登场时拥有3层充能" (此前漏做, 从0起算)
 				# ⚠ 充能的【消耗方式与收益】用户从未定义 → 现仅作计数(_cyber_sys._sk_cyber_smart 每次释放+1), 不猜、不自造。
 		"crystal":
 			if "crystalBall" in battle._chosen_skill_types(u["id"], u["side"] == "left"):   # 水晶球(技三·选中才召): 登场召唤实体水晶球(2026-07-16加大+特效)

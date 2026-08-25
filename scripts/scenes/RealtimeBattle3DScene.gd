@@ -2859,7 +2859,7 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		_hits.sort_custom(func(a, b): return (a["pos"] - u["pos"]).length() < (b["pos"] - u["pos"]).length())
 		for _i2 in range(_hits.size()):
 			var o: Dictionary = _hits[_i2]
-			var _sc: float = 1.0 if _i2 == 0 else CYBER_LASER_FALLOFF   # 首个满伤, 后续 50%
+			var _sc: float = CyberSystem.LASER_FIRST_COEF if _i2 == 0 else CYBER_LASER_FALLOFF   # 首个满伤, 后续 50%
 			_damage._apply_basic_hit_from(u, o, _atk_dmg(u, _sc, o), Color("#9bf0ff"))
 			_vfx._hit_spark(o)                                                       # 沿线每个命中点火花(2026-07-15提质)
 		_bolt_line(u["pos"], u["pos"] + _cdir * 1300.0, Color(0.85, 1.0, 1.0))     # 白青亮核心线

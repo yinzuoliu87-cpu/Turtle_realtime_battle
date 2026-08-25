@@ -39,7 +39,7 @@ const SKILL_COST := {
 	"chestCannon": 120.0, "fortuneAllIn": 210.0, "starWormhole": 100.0, "lineFinish": 120.0,
 	# ★与 pets.json 同步(2026-07-19): 侵入 120→135 是 08d2d41「侵入改制·用户2026-07-16过」定的,
 	# 当时只改了 pets.json+文案, 漏了这张兜底表 → verify_skill_energy 报冲突。
-	"cyberHijack": 135.0, "cyberSmartAI": 110.0, "bubbleBind": 70.0, "hidingShrink": 100.0, "hidingBuffSummon": 80.0, "shellCopy": 130.0, "shellShadow": 130.0, "diceFate": 80.0,
+	"cyberHijack": 135.0, "cyberSmartAI": CyberSystem.AI_ENERGY, "bubbleBind": 70.0, "hidingShrink": 100.0, "hidingBuffSummon": 80.0, "shellCopy": 130.0, "shellShadow": 130.0, "diceFate": 80.0,
 }
 
 ## 该技龟能花费 (缺省 95)

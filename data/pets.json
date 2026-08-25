@@ -1783,7 +1783,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "射出一道贯穿激光，穿透目标沿直线飞出场外：穿过的<span class=\"val-atk\">第一个敌人</span>受到 {N:ATK} 物理伤害，之后的每个敌人受到 <span class=\"val-normal\">{C:RealtimeBattle3DScene.CYBER_LASER_FALLOFF%}%</span> 伤害。",
-        "detail": "赛博龟的普攻·贯穿激光：\n进入 450 码射程后射出一道激光，激光穿透目标继续沿直线飞行（不受射程限制），打穿这条直线上（判定带宽 ±{C:CyberSystem.LASER_BAND} 码）的所有敌人：\n<span class=\"val-atk\">穿过的第一个敌人</span>受到（100%×攻击力({ATK}) = {N:ATK}）物理伤害，<span class=\"val-normal\">之后的每个敌人受到 {C:RealtimeBattle3DScene.CYBER_LASER_FALLOFF%}% 伤害</span>。"
+        "detail": "赛博龟的普攻·贯穿激光：\n进入射程后射出一道激光，激光穿透目标继续沿直线飞行（不受射程限制），打穿这条直线上（判定带宽 ±{C:CyberSystem.LASER_BAND} 码）的所有敌人：\n<span class=\"val-atk\">穿过的第一个敌人</span>受到（{C:CyberSystem.LASER_FIRST_COEF%}%×攻击力({ATK}) = {N:ATK}）物理伤害，<span class=\"val-normal\">之后的每个敌人受到 {C:RealtimeBattle3DScene.CYBER_LASER_FALLOFF%}% 伤害</span>。"
       },
       {
         "name": "能量大炮",
@@ -1818,8 +1818,8 @@
         "pierce": 0,
         "cd": 0,
         "selfCast": true,
-        "brief": "登场即获得 <span class=\"val-normal\">3 层充能</span> 和 <span class=\"val-atk\">20% 移动速度</span>，并常驻走位闪避。\n每次释放（110 龟能）再获得 <span class=\"val-normal\">1 层充能</span>，并立即冲刺重定位到理想输出距离。\n<span style=\"color:#8a93a0\">敌人贴近时，赛博龟消耗 1 层充能自动冲刺躲避。\n</span>",
-        "detail": "赛博龟的智能行动脑（充能型）：登场即拥有 <span class=\"val-atk\">3</span> 层充能，并获得 +20% 移动速度与常驻走位闪避（敌人贴近时消耗 1 层充能自动冲刺躲避）\n每次释放（110 龟能）积累 1 层充能，并立即冲刺重定位——拉开到理想输出距离（射程内不贴脸）、躲开贴身威胁。\n<span style=\"color:#8a93a0\">\n\n</span>",
+        "brief": "登场即获得 <span class=\"val-normal\">{C:CyberSystem.AI_START_CHARGE} 层充能</span> 和 <span class=\"val-atk\">{C:CyberSystem.AI_MOVE_UP%}% 移动速度</span>，并常驻走位闪避。\n每次释放（{C:CyberSystem.AI_ENERGY} 龟能）再获得 <span class=\"val-normal\">1 层充能</span>，并立即冲刺重定位到理想输出距离。\n<span style=\"color:#8a93a0\">敌人贴近时，赛博龟消耗 1 层充能自动冲刺躲避。\n</span>",
+        "detail": "赛博龟的智能行动脑（充能型）：登场即拥有 <span class=\"val-atk\">{C:CyberSystem.AI_START_CHARGE}</span> 层充能，并获得 +{C:CyberSystem.AI_MOVE_UP%}% 移动速度与常驻走位闪避（敌人贴近时消耗 1 层充能自动冲刺躲避）\n每次释放（{C:CyberSystem.AI_ENERGY} 龟能）积累 1 层充能，并立即冲刺重定位——拉开到理想输出距离（射程内不贴脸）、躲开贴身威胁。\n<span style=\"color:#8a93a0\">\n\n</span>",
         "energyCost": 110
       }
     ],

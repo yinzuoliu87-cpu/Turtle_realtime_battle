@@ -5,6 +5,12 @@ extends RefCounted
 
 ## ★赛博数值单一事实源(用户2026-07-28 第三轮削弱·侵入 94.0% 第5)。文案在 data/pets.json。
 const LASER_BAND := 55.0  # 贯穿激光判定带半宽(码)
+const LASER_FIRST_COEF := 1.0   # 穿过的第一个敌人 ×ATK 物理(之后的按 CYBER_LASER_FALLOFF 打折)
+## 【智能AI】登场给充能与移速, 每次释放再攒一层并冲刺重定位。
+const AI_START_CHARGE := 3      # 登场自带几层充能
+const AI_MOVE_UP := 0.20        # 登场 + 移动速度
+const AI_MOVE_MULT := 1.0 + AI_MOVE_UP   # 推导, 不另写 1.2
+const AI_ENERGY := 110.0        # 每次释放的龟能(★skill_energy 表引用本常量, 不存副本)
 const HIJACK_SEC := 4.0   # 侵入: 倒戈秒数(5→4), 同时也是赛博自身锁龟能的秒数
 ## 浮游炮弹伤 = 赛博龟攻击力 × 此系数(用户 2026-08-13 拍平)。
 ## ★原来是两层: "浮游炮攻击力 = 25%×本体" 再取 "12%×炮攻" = 3%×本体。
