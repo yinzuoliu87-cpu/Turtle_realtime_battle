@@ -21,6 +21,10 @@ const SHIELD_BURST_COEF := 2.0  # 爆裂对全体敌 ×ATK 魔法
 ## 【泡泡束缚】定身期间每受一段伤害就永久削甲/抗。
 const BIND_SEC := 3.0           # 定身(秒)·比通用 CTRL_SEC 长, 是用户单独定的
 const BIND_SHRED_CAP := 30.0    # 单次束缚累计削减上限(护甲与魔抗各)
+## 每受一段伤害削多少 —— 按泡泡龟【自己的等级】分两档。
+const BIND_LV_GATE := 5        # 等级 ≤ 它 → 低档, 之上 → 高档
+const BIND_SHRED_LOW := 1.0    # 低档每次削
+const BIND_SHRED_HIGH := 2.0   # 高档每次削    # 单次束缚累计削减上限(护甲与魔抗各)
 ## 【泡泡爆破】消耗当前泡泡值的一部分, 在目标两侧张泡沫门。
 const BURST_CONSUME := 0.40     # 消耗当前泡泡值的比例
 const BURST_MAGIC_MULT := 1.5   # 魔法伤害 = 消耗量 × (吃魔抗)
@@ -152,7 +156,7 @@ func _sk_bubble_bind(u: Dictionary, tgt) -> void:
 		return
 	battle._damage._stun(tgt, BIND_SEC, "_sk_bubble_bind")   # 泡泡束缚定身3秒(用户设计·原CTRL_SEC=1.5)
 	tgt["bind_until"] = battle._t + BIND_SEC
-	tgt["bind_shred"] = 1.0 if int(u.get("level", 1)) <= 5 else 2.0   # 减甲量按等级(detail: 1-5级=1/6-10级=2)
+	tgt["bind_shred"] = BIND_SHRED_LOW if int(u.get("level", 1)) <= BIND_LV_GATE else BIND_SHRED_HIGH   # 减甲量按等级(detail: 1-5级=1/6-10级=2)
 	tgt["bind_acc"] = 0.0
 	var btex = load("res://assets/sprites/skills/bubble-bind.png")   # 气泡牢笼: 罩住目标3秒·跟随(用户设计)
 	if btex != null:

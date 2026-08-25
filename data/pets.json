@@ -1387,8 +1387,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "将目标<span class=\"val-atk\">束缚 {C:BubbleSystem.BIND_SEC} 秒</span>，期间目标每受到一段伤害，其护甲与魔抗便各减少 <span class=\"val-atk\">X</span> 点。\n<span style=\"color:#8a93a0\">X 随等级提升：1~5 级为 1，6~10 级为 2；单次累计上限各为 {C:BubbleSystem.BIND_SHRED_CAP}。\n</span>",
-        "detail": "泡泡龟将目标束缚 {C:BubbleSystem.BIND_SEC} 秒，期间每受到一段伤害其护甲与魔抗各减少 <span class=\"val-atk\">X</span>（1~5 级 X=1，6~10 级 X=2），单次累计上限各 <span class=\"val-atk\">{C:BubbleSystem.BIND_SHRED_CAP}</span>。\n<span style=\"color:#8a93a0\">X 按泡泡龟自身等级取值；减益为永久衰减，不随束缚结束恢复。\n</span>"
+        "brief": "将目标<span class=\"val-atk\">束缚 {C:BubbleSystem.BIND_SEC} 秒</span>，期间目标每受到一段伤害，其护甲与魔抗便各减少 <span class=\"val-atk\">X</span> 点。\n<span style=\"color:#8a93a0\">X 随等级提升：1~{C:BubbleSystem.BIND_LV_GATE} 级为 {C:BubbleSystem.BIND_SHRED_LOW}，之上为 {C:BubbleSystem.BIND_SHRED_HIGH}；单次累计上限各为 {C:BubbleSystem.BIND_SHRED_CAP}。\n</span>",
+        "detail": "泡泡龟将目标束缚 {C:BubbleSystem.BIND_SEC} 秒，期间每受到一段伤害其护甲与魔抗各减少 <span class=\"val-atk\">X</span>（1~{C:BubbleSystem.BIND_LV_GATE} 级 X={C:BubbleSystem.BIND_SHRED_LOW}，之上 X={C:BubbleSystem.BIND_SHRED_HIGH}），单次累计上限各 <span class=\"val-atk\">{C:BubbleSystem.BIND_SHRED_CAP}</span>。\n<span style=\"color:#8a93a0\">X 按泡泡龟自身等级取值；减益为永久衰减，不随束缚结束恢复。\n</span>"
       },
       {
         "name": "泡泡爆破",

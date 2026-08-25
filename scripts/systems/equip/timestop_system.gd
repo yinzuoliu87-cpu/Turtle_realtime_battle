@@ -3,6 +3,12 @@ extends RefCounted
 ## 沙漏时停系统(从 RealtimeBattle3DScene 抽出·2026-07-25)。持 battle 引用回调场景。
 ## 类内 _ts_* 函数/成员名与原主场景一字不差 → 内部互调零改动;只外部名加 battle. 前缀。
 
+## 【059 沙漏】登场若干秒后蓄力, 然后全场定格。
+const TS_START_T := 10.0     # 登场第几秒开始(战斗时钟)
+const TS_CHARGE := 1.0       # 蓄力几秒才真的定格
+const TS_ECHARGE_MULT := 2.0 # 时停期间携带者的龟能充能速度倍率(= +100%)
+const TS_INSTANT_ENERGY := 15.0  # 定格瞬间立即给的龟能
+
 var battle
 var _ts_active: Array = []                # 当前能自由行动的active携带者(空=无时停; 可多个=全场最高星沙漏者敌我并存)
 var _ts_remaining := 0.0                  # 时停剩余真实秒
@@ -53,7 +59,7 @@ func _ts_update_trigger(delta: float) -> void:   # (仅正常态调)第10秒触�
 			_ts_charging = false
 			_ts_fire()
 		return
-	if _ts_fired or not _ts_active.is_empty() or battle._t < 10.0:
+	if _ts_fired or not _ts_active.is_empty() or battle._t < TS_START_T:
 		return
 	var maxstar := 0
 	for u in battle._units:
@@ -70,7 +76,7 @@ func _ts_update_trigger(delta: float) -> void:   # (仅正常态调)第10秒触�
 	_ts_fired = true
 	_ts_maxstar = maxstar
 	_ts_charging = true
-	_ts_charge_t = 1.0
+	_ts_charge_t = TS_CHARGE
 	_ts_charge_casters = casters
 	for c in casters:
 		_ts_charge_vfx(c)
@@ -83,9 +89,9 @@ func _ts_fire() -> void:
 	_ts_active = casters
 	_ts_remaining = [5.0, 10.0, 30.0][clampi(_ts_maxstar, 1, 3) - 1]   # 用户2026-07-19: 4→5秒
 	for _c in casters:   # 用户2026-07-19: 时停期间+100%龟能充能速度, 且开始瞬间立即+15龟能
-		_c["_ts_echarge"] = 2.0
+		_c["_ts_echarge"] = TS_ECHARGE_MULT
 		if battle._has_energy_system(_c):
-			battle._equip_sys._eq_grant_energy(_c, 15.0)
+			battle._equip_sys._eq_grant_energy(_c, TS_INSTANT_ENERGY)
 			battle._vfx._float_text(_c["pos"] + Vector2(0, -62), "+15龟能", Color("#8fd4ff"))
 	_ts_begin_freeze()
 	_ts_visual_start()
