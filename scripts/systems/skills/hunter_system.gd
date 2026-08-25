@@ -10,6 +10,13 @@ const SHOT_HEALCUT_PCT := 0.50   # 治疗削减比例
 const SHOT_HEALCUT_SEC := 5.0    # 治疗削减持续(秒)
 const MARK_SEC := 5.0            # 猎杀印记持续(秒)
 ## 【猎杀(被动)】低于斩杀线自动处决, 处决/击杀窃取属性。
+## 【射箭(普攻)】+ 残血追猎: 目标血量低于门槛就加攻速(真值在主场景 atk_cd 那处)。
+## ★普攻系数【不能】叫 SHOT_ATK_COEF —— 那个名字已被【蓄力狙】占用(2.0),
+##   两个不同的效果差点共用一个常量。名字撞车是同一个数存两份的反面陷阱。
+const BASIC_ATK_COEF := 1.0   # 普攻 ×ATK 物理
+const CHASE_HP_GATE := 0.5    # 目标生命低于此比例 → 追猎
+const CHASE_HASTE := 0.5      # 追猎时攻速 +
+const CHASE_MULT := 1.0 + CHASE_HASTE   # 推导, 不另写 1.5
 const EXEC_SCAN_IV := 0.1        # 每几秒扫描一次场上有没有到线的敌人
 const EXEC_STEAL := 0.14         # 窃取对方基础属性(攻/甲/抗/最大生命)的比例·与斩杀线同值
 const EXEC_LIFESTEAL := 0.08     # 每次处决/击杀叠加的生命偷取(永久累积)

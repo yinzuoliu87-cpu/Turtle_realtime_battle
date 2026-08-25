@@ -529,6 +529,13 @@ const FANG_EXEC_HEAL := 40.0    # 没有龟能系统的改回血
 const TIDE_DELAY := 5.0     # 登场几秒后涨潮
 const TIDE_SIZE_UP := 0.30  # 涨潮期体积 +
 const TIDE_RANGE_UP := 50.0 # 涨潮期射程 +(码)
+## 【013 炙烤海胆】受击叠硬化, 满层给一次会衰减的护盾。
+const URCHIN_CAP := 20        # 硬化层上限(014 是 25, 见 EquipTickSystem.FORTRESS_CAP)
+const URCHIN_DECAY := 10.0    # 海胆护盾在几秒内线性衰减完
+## 【071 炼乳罐】奶油盾破 → 范围魔法 + 给持有者一串永久加成。
+const CREAM_BURST_R := 300.0  # 盾破的伤害半径(码)
+const CREAM_RESIST := 10.0    # 之后 +双抗
+const CREAM_RANGE := 50.0     # 之后 +射程(码)
 const BLADE_FULL := 100.0        # 刃能满值
 const BLADE_AOE_FACTOR := 0.5    # 范围技能充能减半
 const BLADE_R_IN := 500.0        # 扇形带内半径(码)
@@ -1411,7 +1418,7 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 							battle._damage._grant_shield(u, [100.0, 170.0, 250.0][si] + u["maxHp"] * [0.05, 0.12, 0.20][si])
 							var _ugot: float = float(u.get("shield", 0.0)) - _usb   # 实际获盾(经shield_amp/上限后)
 							u["urchin_sh_left"] = _ugot
-							u["urchin_sh_rate"] = _ugot / 10.0   # 10秒内线性衰减完(用户2026-07-19"慢慢衰减")
+							u["urchin_sh_rate"] = _ugot / URCHIN_DECAY   # 10秒内线性衰减完(用户2026-07-19"慢慢衰减")
 							battle._urchin_shield_fx(u)   # 紫刺环+紫字, 与普通金盾区分
 						stt["harden_given"] = true
 			"p2eq_015":   # 荆棘海胆(用户2026-07-30 重做): 反伤真伤 + 【累计到阈值】→ 护盾 + 强化下一次普攻

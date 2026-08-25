@@ -150,7 +150,7 @@
     "baseStats1": "+生命60/110/200·反伤8/11/15%",
     "shopAvailable": 1,
     "emoji": "🦪",
-    "effectDesc1": "每次受到伤害获得 1 层硬化，每层提供+1/1.5/2 护甲和+1/1.5/2 魔抗（上限 20 层）；\n叠满 20 层时获得「海胆护盾」（100/170/250+5/12/20%最大生命值），该护盾在 10 秒内逐渐衰减。",
+    "effectDesc1": "每次受到伤害获得 1 层硬化，每层提供+1/1.5/2 护甲和+1/1.5/2 魔抗（上限 {C:EquipSystem.URCHIN_CAP} 层）；\n叠满 {C:EquipSystem.URCHIN_CAP} 层时获得「海胆护盾」（100/170/250+5/12/20%最大生命值），该护盾在 {C:EquipSystem.URCHIN_DECAY} 秒内逐渐衰减。",
     "effectDesc3": "",
     "img": "equip/urchin-shield.png",
     "effectBrief": "每次受伤叠 1 层硬化（各 +1/1.5/2 双抗，上限 20 层），满层给护盾。"
@@ -846,7 +846,7 @@
     "baseStats1": "+治疗与护盾14/26/45%·+双抗10/22/40",
     "shopAvailable": 1,
     "emoji": "🥛",
-    "effectDesc1": "战斗开始为所有友军（含自己）套上其最大生命 10/18/25%的【奶油护盾】，永久不衰减。\n奶油护盾被打破时，对持有者 300 码内的敌人造成 70/100/150 点魔法伤害，随后给持有者+10 双抗、+20/30/40%攻击速度与+50 射程，持续整路。\n携带者每累计损失 {C:EqFoodBatch.CREAM_LOSS_STEP%}%最大生命会再给全队上一次，每路共 {C:EqFoodBatch.CREAM_TIMES} 次。",
+    "effectDesc1": "战斗开始为所有友军（含自己）套上其最大生命 10/18/25%的【奶油护盾】，永久不衰减。\n奶油护盾被打破时，对持有者 {C:EquipSystem.CREAM_BURST_R} 码内的敌人造成 70/100/150 点魔法伤害，随后给持有者+{C:EquipSystem.CREAM_RESIST} 双抗、+20/30/40%攻击速度与+{C:EquipSystem.CREAM_RANGE} 射程，持续整路。\n携带者每累计损失 {C:EqFoodBatch.CREAM_LOSS_STEP%}%最大生命会再给全队上一次，每路共 {C:EqFoodBatch.CREAM_TIMES} 次。",
     "effectDesc3": "",
     "img": "equip/p2eq_071.png",
     "effectBrief": "战斗开始给全队套上 10/18/25% 最大生命的奶油护盾，破碎时炸伤敌人。"

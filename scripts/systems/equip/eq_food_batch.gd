@@ -426,15 +426,15 @@ func _cream_on_break(holder: Dictionary, si: int, reason: String) -> void:
 	for o in battle._targeting._enemies_of(holder):
 		if not o.get("alive", false):
 			continue
-		if (o["pos"] - holder["pos"]).length() > 300.0:
+		if (o["pos"] - holder["pos"]).length() > EquipSystem.CREAM_BURST_R:
 			continue
 		battle._damage._apply_damage_from(holder, o,
 			battle._resolve_dmg(holder, dmg, o, true), Color("#fff0c8"), 0.0, false, true)
 	# 三样加成【持续整路】: 双抗写 base_(不是 buff, buff 会到期), 攻速走 aspd_perm, 射程走 range_add
-	holder["base_def"] = float(holder.get("base_def", 0.0)) + 10.0
-	holder["base_mr"] = float(holder.get("base_mr", 0.0)) + 10.0
+	holder["base_def"] = float(holder.get("base_def", 0.0)) + EquipSystem.CREAM_RESIST
+	holder["base_mr"] = float(holder.get("base_mr", 0.0)) + EquipSystem.CREAM_RESIST
 	holder["aspd_perm"] = float(holder.get("aspd_perm", 1.0)) + [0.20, 0.30, 0.40][si]
-	holder["range_add"] = float(holder.get("range_add", 0.0)) + 50.0
+	holder["range_add"] = float(holder.get("range_add", 0.0)) + EquipSystem.CREAM_RANGE
 	battle._recalc_stats(holder)
 	_vfx.cream_burst(holder["pos"])
 

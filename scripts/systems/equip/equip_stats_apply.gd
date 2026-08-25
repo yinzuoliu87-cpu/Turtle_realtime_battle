@@ -173,7 +173,7 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 			u["eq_cannot_be_dodged"] = true
 		"p2eq_013", "p2eq_014":   # 炙烤海胆(cap20·+1/1.5/2) / 深海堡垒甲(cap25·+2/4/6·用户2026-07-19)
 			stt["harden_inc"] = ([2.0, 4.0, 6.0][si] if item_id == "p2eq_014" else [1.0, 1.5, 2.0][si])
-			stt["harden_cap"] = (EquipTickSystem.FORTRESS_CAP if item_id == "p2eq_014" else 20)
+			stt["harden_cap"] = (EquipTickSystem.FORTRESS_CAP if item_id == "p2eq_014" else EquipSystem.URCHIN_CAP)
 			stt["harden_stacks"] = 0
 			stt["harden_given"] = false
 		"p2eq_015":   # 荆棘海胆: 反伤转真伤+施流血
