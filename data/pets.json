@@ -601,7 +601,7 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "锁定当前形态不再切换，获得近战合体属性（生命值、双抗、护盾）。\n主动释放魔法波，每段在 {C:TwoHeadSystem.FUSION_WAVE_COEF%}% 物理与真实伤害之间交替，并造成<span class=\"val-atk\">击飞</span>。\n<span style=\"color:#8a93a0\">融合后获得双头坚韧：每受到一段伤害永久 +1{C:TwoHeadSystem.FUSION_WAVE_ENERGY}甲、+1 魔抗，上限 {C:TwoHeadSystem.FUSION_TOUGH_CAP}。\n魔法波每次消耗 85 龟能，波数每次释放 +1、累积至战斗结束。\n</span>",
+        "brief": "锁定当前形态不再切换，获得近战合体属性（生命值、双抗、护盾）。\n主动释放魔法波，每段在 {C:TwoHeadSystem.FUSION_WAVE_COEF%}% 物理与真实伤害之间交替，并造成<span class=\"val-atk\">击飞</span>。\n<span style=\"color:#8a93a0\">融合后获得双头坚韧：每受到一段伤害永久 +1 护甲、+1 魔抗，上限 {C:TwoHeadSystem.FUSION_TOUGH_CAP}。\n魔法波每次消耗 {C:TwoHeadSystem.FUSION_WAVE_ENERGY} 龟能，波数每次释放 +1、累积至战斗结束。\n</span>",
         "detail": "双头龟技能三【融合】：\n双头合体，登场即锁定形态不再自动切换，获得近战形态的额外（{C:TwoHeadSystem.MELEE_HP_COEF%}%×攻击力 = {H:ATK*TwoHeadSystem.MELEE_HP_COEF}）最大生命值、（{C:TwoHeadSystem.MELEE_DEF_COEF%}%×攻击力 = {D:ATK*TwoHeadSystem.MELEE_DEF_COEF}）护甲、（{C:TwoHeadSystem.MELEE_MR_COEF%}%×攻击力 = {M:ATK*TwoHeadSystem.MELEE_MR_COEF}）魔抗与（{C:TwoHeadSystem.MELEE_SHIELD_COEF%}%×攻击力 = {S:ATK*TwoHeadSystem.MELEE_SHIELD_COEF}）护盾，\n并获得【双头坚韧】被动：\n每受到一段攻击永久+1 护甲+1 魔抗（各上限 {C:TwoHeadSystem.FUSION_TOUGH_CAP}）。\n主动·魔法波（消耗 {C:TwoHeadSystem.FUSION_WAVE_ENERGY} 龟能）：发射数段弧形魔法波，交替造成每段（{C:TwoHeadSystem.FUSION_WAVE_COEF%}%×攻击力 = {N:TwoHeadSystem.FUSION_WAVE_COEF*ATK}）物理 /（{C:TwoHeadSystem.FUSION_WAVE_COEF%}%×攻击力 = {T:TwoHeadSystem.FUSION_WAVE_COEF*ATK}）真实伤害，并附带击飞。\n波的数量基础 {C:TwoHeadSystem.FUSION_WAVE_BASE} 段，之后每次释放+1，持续累积到战斗结束。"
       }
     ],
@@ -960,7 +960,7 @@
     "passive": {
       "type": "rainbowPrism",
       "name": "棱镜",
-      "brief": "棱镜每 <span class=\"val-atk\">{C:RainbowSystem.PRISM_COLOR_SEC} 秒</span> 随机获得一种颜色，为普攻附带对应效果：\n🔴 红色附加 <span class=\"val-atk\">{C:RainbowSystem.PRISM_RED_TRUE%}% 攻击力</span> 的真实伤害，🔵 蓝色使每次普攻获得 <span class=\"val-atk\">{C:RainbowSystem.PRISM_BLUE_SHIELD%}% 攻击力</span> 护盾，🟢 绿色使每次普攻回复 <span class=\"val-heal\">{C:RainbowSystem.PRISM_GREEN_HEAL%}% 已损生命值</span>。\n彩虹龟持续获得 <span class=\"val-hp\">2% 最大生命值</span> 的攻击力，以及<span class=\"val-atk\">({C:RainbowSystem.PRISM_ASPD_PER_ATK%}%×攻击力)%</span> 的攻击速度。",
+      "brief": "棱镜每 <span class=\"val-atk\">{C:RainbowSystem.PRISM_COLOR_SEC} 秒</span> 随机获得一种颜色，为普攻附带对应效果：\n🔴 红色附加 <span class=\"val-atk\">{C:RainbowSystem.PRISM_RED_TRUE%}% 攻击力</span> 的真实伤害，🔵 蓝色使每次普攻获得 <span class=\"val-atk\">{C:RainbowSystem.PRISM_BLUE_SHIELD%}% 攻击力</span> 护盾，🟢 绿色使每次普攻回复 <span class=\"val-heal\">{C:RainbowSystem.PRISM_GREEN_HEAL%}% 已损生命值</span>。\n彩虹龟持续获得 <span class=\"val-hp\">2% 最大生命值</span> 的攻击力，以及<span class=\"val-atk\">({C:RainbowSystem.PRISM_ASPD_PER_ATK%}×攻击力)%</span> 的攻击速度。",
       "desc": "每 {C:RainbowSystem.PRISM_COLOR_SEC} 秒随机获得一种颜色（🔴红/🔵蓝/🟢绿），普攻附带对应效果：🔴红光额外造成（{C:RainbowSystem.PRISM_RED_TRUE%}%×攻击力({ATK}) = {T:RainbowSystem.PRISM_RED_TRUE*ATK}）真实伤害。\n🔵蓝光每次普攻获得（{C:RainbowSystem.PRISM_BLUE_SHIELD%}%×攻击力({ATK}) = {S:RainbowSystem.PRISM_BLUE_SHIELD*ATK}）护盾（持续 {C:RainbowSystem.PRISM_BLUE_SEC} 秒）\n🟢绿光每次普攻回复 <span class=\"val-heal\">{C:RainbowSystem.PRISM_GREEN_HEAL%}% 已损生命值</span>。\n彩虹龟持续获得（2%×最大生命值）的攻击力和（0.3×攻击力）%的攻击速度。\n两者实时生效：\n中途提升最大生命值会同时抬高攻击力与攻速。"
     },
     "skillPool": [
@@ -1427,8 +1427,8 @@
     "passive": {
       "type": "inkMark",
       "name": "墨迹",
-      "brief": "普攻与技能都会为目标叠加<span class=\"val-normal\">墨迹</span>。\n目标每受到一次伤害，每层墨迹便使其在原伤害之外额外承受 <span class=\"val-atk\">{C:LineSystem.INK_TRUE_PER_STACK%}%</span> 真实伤害，且该真伤穿透减伤与护盾。\n<span style=\"color:#8a93a0\">墨迹上限为 {C:LineSystem.INK_CAP} 层，选择「墨水炸弹」时提升至 {C:LineSystem.INK_CAP_BOMB} 层；叠满 {C:LineSystem.INK_CAP_BOMB} 层即额外承受 {C:LineSystem.INK_TRUE_FULL_BOMB%}%。\n</span>\n线条龟自身实时获得<span class=\"val-atk\">({C:LineSystem.ASPD_PER_ATK%}%×攻击力)%</span> 的额外攻击速度。",
-      "desc": "普攻与技能为目标叠加墨迹（上限 {C:LineSystem.INK_CAP} 层；若选择「墨水炸弹」则上限提升至 {C:LineSystem.INK_CAP_BOMB} 层）。\n目标每受到一次伤害，在原伤害之外，每层墨迹使其额外承受 <span class=\"val-true\">{C:LineSystem.INK_TRUE_PER_STACK%}% 真实伤害</span>（穿透减伤与护盾；满 {C:LineSystem.INK_CAP_BOMB} 层 = 额外 +{C:LineSystem.INK_TRUE_FULL_BOMB%}%）。\n线条龟自身<span class=\"val-normal\">实时</span>获得<span class=\"val-atk\">({C:LineSystem.ASPD_PER_ATK%}%×攻击力)%</span> 的额外攻击速度（攻击力提升会同步抬高攻速）。"
+      "brief": "普攻与技能都会为目标叠加<span class=\"val-normal\">墨迹</span>。\n目标每受到一次伤害，每层墨迹便使其在原伤害之外额外承受 <span class=\"val-atk\">{C:LineSystem.INK_TRUE_PER_STACK%}%</span> 真实伤害，且该真伤穿透减伤与护盾。\n<span style=\"color:#8a93a0\">墨迹上限为 {C:LineSystem.INK_CAP} 层，选择「墨水炸弹」时提升至 {C:LineSystem.INK_CAP_BOMB} 层；叠满 {C:LineSystem.INK_CAP_BOMB} 层即额外承受 {C:LineSystem.INK_TRUE_FULL_BOMB%}%。\n</span>\n线条龟自身实时获得<span class=\"val-atk\">({C:LineSystem.ASPD_PER_ATK%}×攻击力)%</span> 的额外攻击速度。",
+      "desc": "普攻与技能为目标叠加墨迹（上限 {C:LineSystem.INK_CAP} 层；若选择「墨水炸弹」则上限提升至 {C:LineSystem.INK_CAP_BOMB} 层）。\n目标每受到一次伤害，在原伤害之外，每层墨迹使其额外承受 <span class=\"val-true\">{C:LineSystem.INK_TRUE_PER_STACK%}% 真实伤害</span>（穿透减伤与护盾；满 {C:LineSystem.INK_CAP_BOMB} 层 = 额外 +{C:LineSystem.INK_TRUE_FULL_BOMB%}%）。\n线条龟自身<span class=\"val-normal\">实时</span>获得<span class=\"val-atk\">({C:LineSystem.ASPD_PER_ATK%}×攻击力)%</span> 的额外攻击速度（攻击力提升会同步抬高攻速）。"
     },
     "skillPool": [
       {

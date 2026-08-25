@@ -445,6 +445,12 @@ run_audit "tools/text_value_golden.py"  "ALL OK" "text_value_golden (占位符�
 #   值一样 ⇒ 值快照绿; 那个常量确实有人读 ⇒ 孤儿审计绿; 渲染得出数 ⇒ 渲染门禁绿。
 #   2026-08-25 实测三例(无头→骰子 / 无头→彩虹 / 骰子→彩虹), 只有一例被平衡门禁碰巧抓到。
 run_audit "tools/text_const_owner_audit.py" "ALL OK" "text_const_owner (文案引用的常量必须属于这个主体)"
+# ★★第四条: 散文。前三条管【数】与【归属】, 都看不见"token 被插进文字中间" ——
+#   class="val-{C:X}ef"(本该 val-def) / 永久 +1{C:X}甲(本该 +1 护甲)。
+#   带中文时连 "} 后跟字母" 这种形状扫描也漏("甲"不是 ASCII 字母)。
+#   判据: 抹掉占位符与数字之后, 文字必须逐字不变。
+#   2026-08-25 它当场抓到一处我多写了百分号的语义错 —— 另外三条门禁全绿。
+run_audit "tools/text_prose_guard.py"   "ALL OK" "text_prose_guard (文案的文字部分逐字未动)"
 # ★装备属性展示串 ↔ EquipStats.STATS(CLAUDE.md 说的真事实源)。这条缝以前谁都没管:
 #   tooltip_number_audit 只查 effectDesc1 的**效果**三元组, 属性这块它明确不管。
 run_audit "tools/basestats_audit.py"    "ALL OK" "basestats (装备属性展示串 ↔ EquipStats.STATS·597 个数)"
