@@ -2953,8 +2953,8 @@ func _big_bear_charge_and_spawn(u: Dictionary, si: int) -> void:   # 满层: 携
 	var bear = _spawn._spawn_summon(u, "bear", [1600.0, 3000.0, 15000.0][si], [70.0, 120.0, 2000.0][si], {"label": "大熊", "spr_id": "doll-bear", "col_size": 48.0, "hp_w": 36.0, "melee": true, "atk_interval": 1.0 / EquipTickSystem.BEAR_ASPD, "atk_range": EquipTickSystem.BEAR_RANGE})
 	if bear != null:
 		bear["eq_state"] = {}; bear["equips"] = []
-		bear["base_def"] = 70.0; bear["def"] = 70.0
-		bear["base_mr"] = 70.0; bear["mr"] = 70.0        # 双抗 20 → 70(用户2026-07-30)
+		bear["base_def"] = EquipTickSystem.BEAR_RESIST; bear["def"] = EquipTickSystem.BEAR_RESIST
+		bear["base_mr"] = EquipTickSystem.BEAR_RESIST; bear["mr"] = EquipTickSystem.BEAR_RESIST        # 双抗 20 → 70(用户2026-07-30)
 		bear["is_big_bear"] = true; bear["bear_stacks"] = 0; bear["bear_star"] = si
 		if OS.has_environment("EQDEMO_FAST"): bear["atk_interval"] = 0.6   # FAST=快速攒层看波
 	_skill_ring(u["pos"], Color(1.0, 0.82, 0.4, 0.6), 90.0); _shake(JUICE_SHAKE_BIG)
@@ -6817,7 +6817,7 @@ func _tick_dot_stacks(u: Dictionary) -> void:
 		var new_val: int = 0
 		match type:
 			"burn":
-				dmg = stacks + roundi(max_hp * stacks * 0.001)
+				dmg = stacks + roundi(max_hp * stacks * CombatMath.STACK_DOT_MAXHP_PCT)
 				new_val = CombatMath.decay_stacks(stacks)   # 衰减80%(用户)
 				if _t < u.get("true_fire_until", 0.0):
 					_damage._apply_damage(u, dmg, Color("#ffffff"), u.get("dot_src", {}).get("burn", null), "tru", false, true)   # 真火: 灼烧转真伤(原走_raw_lose→无飘字无统计·用户2026-07-19)

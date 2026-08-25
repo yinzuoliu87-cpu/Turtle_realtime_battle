@@ -282,10 +282,10 @@
     "baseStats1": "+攻20/45/70·魔穿8/15/27·+20龟能",
     "shopAvailable": 1,
     "emoji": "🐲",
-    "effectDesc1": "装备时即拥有 3 层吐息，之后每 2.5 秒获得 1 层；\n满 3 层时清零并召唤喷火龙：龙从携带者位置朝最靠近敌方质心的那名敌人拉出一条直线，一直飞到最远敌人身后，对这条直线两侧各 {C:DragonSystem.BREATH_HALF_W} 码内的单位按火柱扫到的先后依次结算——敌人受到（45/80/120+1×攻击力）魔法伤害并被施加 20/35/50 层灼烧；\n友军回复（45/80/120+1×攻击力）生命。",
+    "effectDesc1": "装备时即拥有 3 层吐息，之后每 {C:RealtimeBattle3DScene.EQ_TICK} 秒获得 1 层；\n满 3 层时清零并召唤喷火龙：龙从携带者位置朝最靠近敌方质心的那名敌人拉出一条直线，一直飞到最远敌人身后，对这条直线两侧各 {C:DragonSystem.BREATH_HALF_W} 码内的单位按火柱扫到的先后依次结算——敌人受到（45/80/120+1×攻击力）魔法伤害并被施加 20/35/50 层灼烧；\n友军回复（45/80/120+1×攻击力）生命。",
     "effectDesc3": "",
     "img": "equip/dungeon-dragon-egg.png",
-    "effectBrief": "每 2.5 秒攒 1 层吐息，满 3 层召唤喷火龙贯穿全场并施加灼烧。"
+    "effectBrief": "每 {C:RealtimeBattle3DScene.EQ_TICK} 秒攒 1 层吐息，满 3 层召唤喷火龙贯穿全场并施加灼烧。"
   },
   {
     "id": "p2eq_025",
@@ -354,7 +354,7 @@
     "baseStats1": "+攻7/12/20·生命20/40/80·魔穿5/8/13",
     "shopAvailable": 1,
     "emoji": "🔮",
-    "effectDesc1": "该法器法力条集满时朝最近的敌人方向发射 2/2/3 段贯穿水晶光束（每段间隔 0.2 秒），每段对这条直线上（中线两侧各 55 码）的每名敌人造成 30/35/40 魔法伤害并施加 1 层迷你水晶；\n敌人叠满 3 层水晶时被引爆，受到 14/17/20%其最大生命值的魔法伤害并重置层数。",
+    "effectDesc1": "该法器法力条集满时朝最近的敌人方向发射 2/2/3 段贯穿水晶光束（每段间隔 {C:CrystalSystem.LINE_SEG_GAP} 秒），每段对这条直线上（中线两侧各 {C:CrystalSystem.LINE_HALF_W} 码）的每名敌人造成 30/35/40 魔法伤害并施加 1 层迷你水晶；\n敌人叠满 3 层水晶时被引爆，受到 14/17/20%其最大生命值的魔法伤害并重置层数。",
     "effectDesc3": "",
     "img": "equip/dungeon-mini-crystal.png",
     "effectBrief": "法力满时发射贯穿水晶光束；敌人叠满 3 层水晶即引爆。"
@@ -390,7 +390,7 @@
     "baseStats1": "+生命110/270/3000",
     "shopAvailable": 1,
     "emoji": "🐌",
-    "effectDesc1": "彻底阵亡（所有复活机会用尽）时，在原位变形为一只小虫（100/1500/10000 生命·50/80/200 攻击力，无护甲魔抗，只有星级无等级），自动攻击最近的敌人，攻击速度 {C:EquipSystem.WORM_ASPD}/秒，造成 1×攻击力的物理伤害；\n小虫诞生时随机携带 3 件 1/2/3 星的 4 费或 5 费装备。",
+    "effectDesc1": "彻底阵亡（所有复活机会用尽）时，在原位变形为一只小虫（100/1500/10000 生命·50/80/200 攻击力，无护甲魔抗，只有星级无等级），自动攻击最近的敌人，攻击速度 {C:EquipSystem.WORM_ASPD}/秒，造成 1×攻击力的物理伤害；\n小虫诞生时随机携带 3 件 1/2/3 星的 {C:EquipSystem.CONCH_COST_MIN} 费或 {C:EquipSystem.CONCH_COST_MAX} 费装备。",
     "effectDesc3": "3 星：变虫后每 {C:EquipSystem.WORM_SPLIT_IV} 秒在空位分裂出一只新小虫（上限 {C:EquipSystem.WORM_CAP} 只）。",
     "img": "equip/dungeon-conch.png",
     "effectBrief": "彻底阵亡时原地变成一只小虫继续战斗，并随机带上 3 件装备。"
@@ -402,7 +402,7 @@
     "baseStats1": "+攻20/50/300·生命120/250/1000",
     "shopAvailable": 1,
     "emoji": "🧸",
-    "effectDesc1": "每 {C:EquipTickSystem.DOLL_IV} 秒派出一只小熊走向最近的敌人，造成（1/2/5×攻击力+100/210/1000）物理伤害并将其击飞，同时携带者+1 大熊层；大熊层满 5/3/1 层时装备销毁，携带者蓄力 {C:EquipTickSystem.DOLL_CHARGE_SEC} 秒后在空位召唤一只大熊（生命 1600/3000/15000·攻击力 70/120/2000·护甲与魔抗各 70·攻击速度 {C:EquipTickSystem.BEAR_ASPD}/秒·近战）登场；若无空位则继续小熊攻击直到出现空位。\n大熊普攻为熊掌（1×攻击力物理）并每次累积 1 层，满 {C:EquipTickSystem.BEAR_PAW_STACKS} 层时下一击改为冲击波（射程临时扩至 {C:EquipTickSystem.BEAR_WAVE_RANGE} 码）：造成 {C:EquipTickSystem.BEAR_WAVE_COEF}×攻击力物理伤害，将命中的敌人击飞 {C:EquipTickSystem.BEAR_WAVE_KNOCK_SEC} 秒并拉回身前 {C:EquipTickSystem.BEAR_WAVE_PULL} 码，随后层数清零。",
+    "effectDesc1": "每 {C:EquipTickSystem.DOLL_IV} 秒派出一只小熊走向最近的敌人，造成（1/2/5×攻击力+100/210/1000）物理伤害并将其击飞，同时携带者+1 大熊层；大熊层满 5/3/1 层时装备销毁，携带者蓄力 {C:EquipTickSystem.DOLL_CHARGE_SEC} 秒后在空位召唤一只大熊（生命 1600/3000/15000·攻击力 70/120/2000·护甲与魔抗各 {C:EquipTickSystem.BEAR_RESIST}·攻击速度 {C:EquipTickSystem.BEAR_ASPD}/秒·近战）登场；若无空位则继续小熊攻击直到出现空位。\n大熊普攻为熊掌（1×攻击力物理）并每次累积 1 层，满 {C:EquipTickSystem.BEAR_PAW_STACKS} 层时下一击改为冲击波（射程临时扩至 {C:EquipTickSystem.BEAR_WAVE_RANGE} 码）：造成 {C:EquipTickSystem.BEAR_WAVE_COEF}×攻击力物理伤害，将命中的敌人击飞 {C:EquipTickSystem.BEAR_WAVE_KNOCK_SEC} 秒并拉回身前 {C:EquipTickSystem.BEAR_WAVE_PULL} 码，随后层数清零。",
     "effectDesc3": "",
     "img": "equip/dungeon-doll.png",
     "effectBrief": "每 {C:EquipTickSystem.DOLL_IV} 秒派出小熊撞击最近的敌人；攒满 5/3/1 层后召唤一只大熊。"
@@ -666,10 +666,10 @@
     "baseStats1": "+攻45/90/400",
     "shopAvailable": 1,
     "emoji": "🎯",
-    "effectDesc1": "任何敌人被己方击飞时即挂上「靶子」标记（不会自行消失）；\n携带者每 2.5 秒向所有带靶子的敌人各射 1 镖，造成（130/190/600+1.5/3.0/9.0×攻击力）物理伤害并施加 {C:EquipSystem.DART_BLEED_COEF%}%攻击力的流血层数，命中后移除该敌人的靶子；\n此外提供 40/80/150%攻击速度，且携带者每 {C:EquipSystem.DART_EVERY} 下普攻会强化下一次普攻，命中时将目标击飞 {C:EquipSystem.DART_KNOCKUP_SEC} 秒。",
+    "effectDesc1": "任何敌人被己方击飞时即挂上「靶子」标记（不会自行消失）；\n携带者每 {C:RealtimeBattle3DScene.EQ_TICK} 秒向所有带靶子的敌人各射 1 镖，造成（130/190/600+1.5/3.0/9.0×攻击力）物理伤害并施加 {C:EquipSystem.DART_BLEED_COEF%}%攻击力的流血层数，命中后移除该敌人的靶子；\n此外提供 40/80/150%攻击速度，且携带者每 {C:EquipSystem.DART_EVERY} 下普攻会强化下一次普攻，命中时将目标击飞 {C:EquipSystem.DART_KNOCKUP_SEC} 秒。",
     "effectDesc3": "",
     "img": "equip/dungeon-dart.png",
-    "effectBrief": "被击飞的敌人挂上靶子；每 2.5 秒向所有带靶子的敌人各射一镖。"
+    "effectBrief": "被击飞的敌人挂上靶子；每 {C:RealtimeBattle3DScene.EQ_TICK} 秒向所有带靶子的敌人各射一镖。"
   },
   {
     "id": "p2eq_057",
@@ -750,7 +750,7 @@
     "baseStats1": "+攻速8/15/25%·+暴击10/18/30%",
     "shopAvailable": 1,
     "emoji": "🌀",
-    "effectDesc1": "释放技能后获得 30/60/100%攻击速度，持续【本次技能消耗的龟能×{C:EqSpiritBatch.RING_SEC_PER_ENERGY}】秒（对所有龟折合恒定 40%覆盖率）。\n携带者的普攻会对敌人施加一个【环】，敌人身上有 3 个环时环被引爆，该敌人受到 25/40/70 点真实伤害。",
+    "effectDesc1": "释放技能后获得 30/60/100%攻击速度，持续【本次技能消耗的龟能×{C:EqSpiritBatch.RING_SEC_PER_ENERGY}】秒（对所有龟折合恒定 {C:EqSpiritBatch.RING_COVERAGE%}%覆盖率）。\n携带者的普攻会对敌人施加一个【环】，敌人身上有 3 个环时环被引爆，该敌人受到 25/40/70 点真实伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_063.png",
     "effectBrief": "释放技能后 +30/60/100% 攻击速度；普攻叠环，3 环引爆造成真实伤害。"
@@ -774,10 +774,10 @@
     "baseStats1": "+射程50·+攻速10/20/30%·+吸血3/6/10%",
     "shopAvailable": 1,
     "emoji": "🧴",
-    "effectDesc1": "每次普攻后获得 5 点龟能；每次普攻再获得 1/2/4%攻击速度，可无限叠加，换路重置。",
+    "effectDesc1": "每次普攻后获得 {C:EqPotionBatch.LIVER_ENERGY} 点龟能；每次普攻再获得 1/2/4%攻击速度，可无限叠加，换路重置。",
     "effectDesc3": "",
     "img": "equip/p2eq_065.png",
-    "effectBrief": "每次普攻获得 5 点龟能与 1/2/4% 攻击速度，可无限叠加。"
+    "effectBrief": "每次普攻获得 {C:EqPotionBatch.LIVER_ENERGY} 点龟能与 1/2/4% 攻击速度，可无限叠加。"
   },
   {
     "id": "p2eq_066",
@@ -786,7 +786,7 @@
     "baseStats1": "+龟能20/35/60·+移速6/11/18%",
     "shopAvailable": 1,
     "emoji": "⚗️",
-    "effectDesc1": "登场第 {C:EqPotionBatch.BREW_AT} 秒喝下药水：免疫控制效果直到战斗结束，并获得生命偷取 8/13/20%、最大生命 100/200/400、护甲与魔抗 12/17/25、攻击速度 10/17/25%、暴击率 10/17/25%、暴击伤害 7/13/18%、龟能充能 5/7/10%、攻击力 13/18/25、护甲穿透与魔法穿透 4/7/10，体型额外+40%。\n每路喝一次。",
+    "effectDesc1": "登场第 {C:EqPotionBatch.BREW_AT} 秒喝下药水：免疫控制效果直到战斗结束，并获得生命偷取 8/13/20%、最大生命 100/200/400、护甲与魔抗 12/17/25、攻击速度 10/17/25%、暴击率 10/17/25%、暴击伤害 7/13/18%、龟能充能 5/7/10%、攻击力 13/18/25、护甲穿透与魔法穿透 4/7/10，体型额外+{C:EqPotionBatch.BREW_SIZE_UP%}%。\n每路喝一次。",
     "effectDesc3": "",
     "img": "equip/p2eq_066.png",
     "effectBrief": "登场第 {C:EqPotionBatch.BREW_AT} 秒喝下药水：免疫控制直到战斗结束，并全面提升属性。"
@@ -906,7 +906,7 @@
     "baseStats1": "+攻20/50/115·+吸血6/11/18%·+暴伤15/28/50%",
     "shopAvailable": 1,
     "emoji": "🎯",
-    "effectDesc1": "被动（仅在弓箭羁绊激活时）：每第 {C:EqBowBatch.CORRODE_EVERY} 下普攻给目标施加 1 层【腐蚀】（与弓箭羁绊共用层数）。\n主动：释放技能后每 {C:EqBowBatch.VOLLEY_IV} 秒射出一支箭，发数=本次技能消耗龟能÷{C:EqBowBatch.ENERGY_PER_SHOT}；\n箭沿直线飞 {C:EqBowBatch.PIERCE_RANGE} 码贯穿沿途敌人，每支造成 0.05/0.06/0.08 倍攻击力的物理伤害加 9/13/16 点真实伤害，每穿过一个敌人伤害降低 25%（最低 25%），并从该敌人身上偷取 0.5/0.5/1 点龟能给自己。",
+    "effectDesc1": "被动（仅在弓箭羁绊激活时）：每第 {C:EqBowBatch.CORRODE_EVERY} 下普攻给目标施加 1 层【腐蚀】（与弓箭羁绊共用层数）。\n主动：释放技能后每 {C:EqBowBatch.VOLLEY_IV} 秒射出一支箭，发数=本次技能消耗龟能÷{C:EqBowBatch.ENERGY_PER_SHOT}；\n箭沿直线飞 {C:EqBowBatch.PIERCE_RANGE} 码贯穿沿途敌人，每支造成 0.05/0.06/0.08 倍攻击力的物理伤害加 9/13/16 点真实伤害，每穿过一个敌人伤害降低 {C:BowEqVfx.PIERCE_DECAY_DOWN%}%（最低 {C:BowEqVfx.PIERCE_FLOOR%}%），并从该敌人身上偷取 0.5/0.5/1 点龟能给自己。",
     "effectDesc3": "",
     "img": "equip/p2eq_076.png",
     "effectBrief": "释放技能后连射竹箭贯穿敌人，每穿过一个偷取 0.5/0.5/1 点龟能。"

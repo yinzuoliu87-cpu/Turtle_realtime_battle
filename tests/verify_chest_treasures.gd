@@ -54,6 +54,12 @@ func _ready() -> void:
 			_pool_all.append(str(tid))
 	_ok("★分母: 战利品池共 %d 件(基础6+进阶6+传说3)" % _pool_all.size(),
 		_pool_all.size() == 15, "实得 %d" % _pool_all.size())
+	## ★2026-08-25 文案根除: 图鉴文案现在写 `{C:ChestSystem.TREASURE_TOTAL}` 件。
+	##   那个常量不能是第二份手抄 —— 这条断言把它焊在【真实池子件数】上,
+	##   池子增删一件而常量没跟, 这里当场红。
+	_ok("★TREASURE_TOTAL(%d) == 真实池子件数(%d) —— 文案引用的就是它"
+		% [Chest.TREASURE_TOTAL, _pool_all.size()],
+		Chest.TREASURE_TOTAL == _pool_all.size())
 
 	# ── ① 每一件都【真的改变了产品状态】────────────────────────────────────
 	##   ★宽判据在这里是合适的: 我要抓的是"死件"(什么都没发生), 不是数值对不对。

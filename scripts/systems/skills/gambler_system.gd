@@ -22,6 +22,10 @@ const BET_LOWHP_HEAL := 0.08  # 低血模式: 改为回复最大生命 ×
 const WHEEL_SPADE_ATK := 3.0       # ♠ 攻击力 +
 const WHEEL_SPADE_HP := 10.0       # ♠ 最大生命 +
 const WHEEL_HEART_RESIST := 1.0    # ♥ 护甲与魔抗 各 +
+## 【命运之轮】转盘旋转与锁龟能。★文案说的 1.15 秒是**推导值**(转完 + 缓冲)。
+const WHEEL_SPIN_SEC := 1.0        # 转盘转多久(秒)·EASE_OUT 减速落定
+const WHEEL_LOCK_BUFFER := 0.15    # 转完之后再多锁一会儿(秒)
+const WHEEL_LOCK_SEC := WHEEL_SPIN_SEC + WHEEL_LOCK_BUFFER   # 推导: 抽取阶段一共锁多久
 const WHEEL_DIAMOND_CRIT := 0.02   # ♦ 暴击率 +
 const WHEEL_DIAMOND_PEN := 1.0     # ♦ 护甲穿透 +
 const WHEEL_CLUB_LIFESTEAL := 0.005  # ♣ 生命偷取 +
@@ -254,8 +258,8 @@ func _sk_gambler_fate_wheel(u: Dictionary) -> void:             # 赌神龟·命
 		var _sk: String = ["spade", "heart", "diamond", "club"][_suit]
 		GameState.gambler_wheel_stacks[_sk] = int(GameState.gambler_wheel_stacks.get(_sk, 0)) + 1
 	# ★流程优化(用户2026-07-14): 放技→抽取阶段锁龟能+转盘动画→花色落定后才跳文字+实装属性→龟能自动解锁
-	var SPIN = 1.0
-	u["energy_lock_until"] = battle._t + SPIN + 0.15   # 抽取阶段锁龟能(转盘转完+缓冲·到期自动解锁·_tick_skill_cd判)
+	var SPIN = WHEEL_SPIN_SEC
+	u["energy_lock_until"] = battle._t + WHEEL_LOCK_SEC   # 抽取阶段锁龟能(转完+缓冲·到期自动解锁·_tick_skill_cd判)
 	_gambler_wheel_vfx(u, _suit)                # 花色老虎机转盘spin(SPIN秒·EASE_OUT减速落定)
 	var uu: Dictionary = u
 	var suit: int = _suit

@@ -9,6 +9,7 @@ const DOLL_IV := 4.0            # 每几秒派一只小熊
 const DOLL_CHARGE_SEC := 1.2    # 大熊层满后, 携带者蓄力几秒才召大熊
 const BEAR_ASPD := 0.7          # 大熊攻速(次/秒) ⇒ atk_interval = 1/它
 const BEAR_RANGE := 70.0        # 大熊射程(码·近战)
+const BEAR_RESIST := 70.0       # 大熊护甲与魔抗(各·用户 2026-07-30: 20 → 70)
 const BEAR_PAW_STACKS := 2      # 熊掌累积几层后, 下一击改成冲击波
 const BEAR_WAVE_COEF := 1.5     # 冲击波 ×ATK 物理
 const BEAR_WAVE_RANGE := 600.0  # 冲击波那一击射程临时扩到(码)

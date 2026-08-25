@@ -156,6 +156,8 @@ const RAIN_SIGMA_DIV := 3.0
 ## ④ 076 贯穿: 每穿一人 ×0.75, 最低 25%
 const PIERCE_DECAY := 0.75
 const PIERCE_FLOOR := 0.25
+## 推导: 文案说的是"每穿过一个敌人伤害降低 25%", 代码存的是剩余倍率 0.75。
+const PIERCE_DECAY_DOWN := 1.0 - PIERCE_DECAY
 ## Beer–Lambert 吸收系数 μ = −ln(0.75)(字面量, 理由同上)
 const BL_MU := 0.2876820724517809
 ## 连射反冲的阻尼谐振子: ω(rad/s) 与阻尼比 ζ

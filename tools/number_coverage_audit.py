@@ -43,6 +43,9 @@ TRIPLE = re.compile(r'\d+(?:\.\d+)?/\d+(?:\.\d+)?/\d+(?:\.\d+)?')
 ##   「其中 00 与 01 的加成…」这种**直接当名字用**的。前导零在本项目的数值里从不出现,
 ##   所以  独立成 token 时一定是状态名。跳过条数照样打印, 涨了看得见。
 LABEL_NUM = re.compile(r'(?:00|01|10|11)=|(?:00|01)(?![0-9.])')
+## 【序数范围】「第 3-4 箱」这种 —— 本文件开头就写明序数不算数值, 但原判据只挡住了 0~3。
+##   卡在 `第 N-M ` 这个形状上(带连字符的范围), 普通数值不会长这样。跳过条数照样打印。
+ORDINAL_RANGE = re.compile(r'第\s*\d+\s*[-–]\s*\d+')
 ## ★同族的第二种【不是数值】的 token: **单位换算**。
 ##   `{transformHpScale*100}%×攻击力` 里的 100 是把"比例"换算成"百分比",
 ##   它跟着 `%` 走, 不是可调的数 —— 代码里没有、也不该有一个叫"100"的常量。
@@ -57,7 +60,7 @@ CONST_UNIT_CONV = re.compile(r'[A-Z][A-Za-z0-9_]*\.[A-Z][A-Z0-9_]{2,}\s*\*\s*100
 NOISE = {'0', '1', '2', '3'}
 
 # 只降不升。改动后如果这个数涨了, 说明又添了没人验的数字。
-BASELINE = 25   # 2026-08-25 第 68 批(1722→144)。台账见 docs/plans/20260820-文案数字根除.md。**只降不升**。
+BASELINE = 0     # ★★2026-08-25 归零。台账见 docs/plans/20260820-文案数字根除.md。**只降不升**(现在只剩"不许涨")。
 #   ★这个数从 1452 涨到 1734 不是退步, 是【量准了】: 原来把 {N:0.5*ATK} 这类占位符整体
 #   记进"不可能错", 而里面的 0.5 是手写在文案里的系数、照样会漂(幽灵龟就是这么漂的)。
 #   把这 282 个藏起来的系数摊出来之后, 基线才对得上真实风险。
@@ -123,6 +126,9 @@ def main():
             n_covered += sum(len(x.split('/')) for x in trips)
         body = TRIPLE.sub(' ', body)
         ## 先摘掉【状态名】(见 LABEL_NUM 的注释): 它们不是可调的数值。
+        for om in ORDINAL_RANGE.finditer(body):
+            n_label += 2                  # 序数范围里的两个数都不是可调值
+        body = ORDINAL_RANGE.sub(' ', body)
         n_label += len(LABEL_NUM.findall(body))
         body = LABEL_NUM.sub(' ', body)
         nums = [x for x in NUM.findall(body) if x not in NOISE]

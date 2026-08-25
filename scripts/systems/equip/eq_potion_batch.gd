@@ -96,7 +96,7 @@ func _eq_shark_oil(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false):
 		return
 	var stt: Dictionary = u["eq_state"].get("p2eq_065", {})
-	battle._equip_sys._eq_grant_energy(u, 5.0)
+	battle._equip_sys._eq_grant_energy(u, LIVER_ENERGY)
 	u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + [0.01, 0.02, 0.04][si]
 	stt["oil_stacks"] = int(stt.get("oil_stacks", 0)) + 1
 	u["eq_state"]["p2eq_065"] = stt
@@ -113,6 +113,10 @@ func _eq_shark_oil(u: Dictionary, si: int) -> void:
 const BREW_AT := 11.0
 ## 体型终值(倍)。用户规格「额外体型 +40%」, 三星同值。
 const BREW_SIZE := 1.40
+## 推导: 文案说的是"体型额外 +40%", 代码要的是最终倍率 1.40 —— 只存一份。
+const BREW_SIZE_UP := BREW_SIZE - 1.0
+## 【065 鲨肝油】每次普攻后额外获得的龟能。
+const LIVER_ENERGY := 5.0
 
 
 ## 每帧: 没喝就看时候到没到; 喝过了就维持免疫 + 推进过冲回稳的体型曲线。

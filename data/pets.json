@@ -493,7 +493,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "近战斩击，造成 {N:ATK} 物理伤害，并施加 2 层流血。\n<span style=\"color:#8a93a0\">若本次斩击暴击，则改为施加 3 层流血。\n</span>",
-        "detail": "忍者龟的普攻。\n近战挥刀斩击，造成 {N:NinjaSystem.SLASH_ATK_COEF*ATK} 物理伤害，并对目标施加固定 2 层流血（暴击时 3 层）。\n<span style=\"color:#8a93a0\">流血：\n身上每层每秒造成等于层数的物理伤害，层数每秒衰减×0.8，可叠加。\n</span>"
+        "detail": "忍者龟的普攻。\n近战挥刀斩击，造成 {N:NinjaSystem.SLASH_ATK_COEF*ATK} 物理伤害，并对目标施加固定 2 层流血（暴击时 3 层）。\n<span style=\"color:#8a93a0\">流血：\n身上每层每秒造成等于层数的物理伤害，层数每秒衰减×{C:CombatMath.STACK_DECAY}，可叠加。\n</span>"
       },
       {
         "name": "手里剑",
@@ -961,7 +961,7 @@
       "type": "rainbowPrism",
       "name": "棱镜",
       "brief": "棱镜每 <span class=\"val-atk\">{C:RainbowSystem.PRISM_COLOR_SEC} 秒</span> 随机获得一种颜色，为普攻附带对应效果：\n🔴 红色附加 <span class=\"val-atk\">{C:RainbowSystem.PRISM_RED_TRUE%}% 攻击力</span> 的真实伤害，🔵 蓝色使每次普攻获得 <span class=\"val-atk\">{C:RainbowSystem.PRISM_BLUE_SHIELD%}% 攻击力</span> 护盾，🟢 绿色使每次普攻回复 <span class=\"val-heal\">{C:RainbowSystem.PRISM_GREEN_HEAL%}% 已损生命值</span>。\n彩虹龟持续获得 <span class=\"val-hp\">2% 最大生命值</span> 的攻击力，以及<span class=\"val-atk\">({C:RainbowSystem.PRISM_ASPD_PER_ATK%}×攻击力)%</span> 的攻击速度。",
-      "desc": "每 {C:RainbowSystem.PRISM_COLOR_SEC} 秒随机获得一种颜色（🔴红/🔵蓝/🟢绿），普攻附带对应效果：🔴红光额外造成（{C:RainbowSystem.PRISM_RED_TRUE%}%×攻击力({ATK}) = {T:RainbowSystem.PRISM_RED_TRUE*ATK}）真实伤害。\n🔵蓝光每次普攻获得（{C:RainbowSystem.PRISM_BLUE_SHIELD%}%×攻击力({ATK}) = {S:RainbowSystem.PRISM_BLUE_SHIELD*ATK}）护盾（持续 {C:RainbowSystem.PRISM_BLUE_SEC} 秒）\n🟢绿光每次普攻回复 <span class=\"val-heal\">{C:RainbowSystem.PRISM_GREEN_HEAL%}% 已损生命值</span>。\n彩虹龟持续获得（2%×最大生命值）的攻击力和（0.3×攻击力）%的攻击速度。\n两者实时生效：\n中途提升最大生命值会同时抬高攻击力与攻速。"
+      "desc": "每 {C:RainbowSystem.PRISM_COLOR_SEC} 秒随机获得一种颜色（🔴红/🔵蓝/🟢绿），普攻附带对应效果：🔴红光额外造成（{C:RainbowSystem.PRISM_RED_TRUE%}%×攻击力({ATK}) = {T:RainbowSystem.PRISM_RED_TRUE*ATK}）真实伤害。\n🔵蓝光每次普攻获得（{C:RainbowSystem.PRISM_BLUE_SHIELD%}%×攻击力({ATK}) = {S:RainbowSystem.PRISM_BLUE_SHIELD*ATK}）护盾（持续 {C:RainbowSystem.PRISM_BLUE_SEC} 秒）\n🟢绿光每次普攻回复 <span class=\"val-heal\">{C:RainbowSystem.PRISM_GREEN_HEAL%}% 已损生命值</span>。\n彩虹龟持续获得（2%×最大生命值）的攻击力和（{C:RainbowSystem.PRISM_ASPD_PER_ATK%}×攻击力）%的攻击速度。\n两者实时生效：\n中途提升最大生命值会同时抬高攻击力与攻速。"
     },
     "skillPool": [
       {
@@ -1091,7 +1091,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "每次释放进入抽取阶段，花色转盘落定后永久提升一项属性：\n♠ 黑桃：\n攻击力 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_SPADE_ATK}</span>、最大生命值 <span class=\"val-heal\">+{C:GamblerSystem.WHEEL_SPADE_HP}</span>。\n♥ 红心：\n护甲 <span class=\"val-def\">+{C:GamblerSystem.WHEEL_HEART_RESIST}</span>、魔抗 <span class=\"val-magic\">+{C:GamblerSystem.WHEEL_HEART_RESIST}</span>。\n♦ 方块：\n暴击率 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_DIAMOND_CRIT%}%</span>、护甲穿透 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_DIAMOND_PEN}</span>。\n♣ 梅花：\n生命偷取 <span class=\"val-heal\">+{C:GamblerSystem.WHEEL_CLUB_LIFESTEAL%}%</span>、攻击速度 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_CLUB_ASPD%}%</span>。\n<span style=\"color:#8a93a0\">抽取阶段锁定龟能。\n选择本技能后，登场损失 {C:GamblerSystem.WHEEL_HP_COST%}% 最大生命值，换取基础多重打击概率由 {C:GamblerSystem.MULTI_BASE%}% 提升至 {C:GamblerSystem.MULTI_WHEEL%}%。\n</span>",
-        "detail": "<span class=\"val-normal\">选择本技能时</span>：赌神龟登场即<span class=\"val-true\">损失 {C:GamblerSystem.WHEEL_HP_COST%}% 最大生命值</span>，换取<span class=\"val-atk\">额外 +{C:GamblerSystem.MULTI_BET_BONUS%}% 多重打击概率</span>（基础 {C:GamblerSystem.MULTI_BASE%}% → {C:GamblerSystem.MULTI_WHEEL%}%）。\n<span class=\"val-normal\">主动</span>（龟能满自动释放）：随机抽取一个花色，永久提升一项属性：♠黑桃 攻击力 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_SPADE_ATK}</span>、最大生命值 <span class=\"val-heal\">+{C:GamblerSystem.WHEEL_SPADE_HP}</span>。\n♥红心 护甲 <span class=\"val-def\">+{C:GamblerSystem.WHEEL_HEART_RESIST}</span>、魔抗 <span class=\"val-magic\">+{C:GamblerSystem.WHEEL_HEART_RESIST}</span>。\n♦方块 暴击率 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_DIAMOND_CRIT%}%</span>、护甲穿透 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_DIAMOND_PEN}</span>。\n♣梅花 生命偷取 <span class=\"val-heal\">+{C:GamblerSystem.WHEEL_CLUB_LIFESTEAL%}%</span>、攻击速度 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_CLUB_ASPD%}%</span>。\n<span style=\"color:#8a93a0\">赌神龟抽到的花色会在【本大轮】跨场累积，下一场登场时自动套用；换大轮时重置。\n</span>\n<span style=\"color:#8a93a0\">抽取阶段（转盘旋转约 1.15 秒）内<b>锁龟能不充能</b>，花色落定后自动解锁。\n</span>。\n<span style=\"color:#8a93a0\">抽取阶段锁定龟能。</span>"
+        "detail": "<span class=\"val-normal\">选择本技能时</span>：赌神龟登场即<span class=\"val-true\">损失 {C:GamblerSystem.WHEEL_HP_COST%}% 最大生命值</span>，换取<span class=\"val-atk\">额外 +{C:GamblerSystem.MULTI_BET_BONUS%}% 多重打击概率</span>（基础 {C:GamblerSystem.MULTI_BASE%}% → {C:GamblerSystem.MULTI_WHEEL%}%）。\n<span class=\"val-normal\">主动</span>（龟能满自动释放）：随机抽取一个花色，永久提升一项属性：♠黑桃 攻击力 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_SPADE_ATK}</span>、最大生命值 <span class=\"val-heal\">+{C:GamblerSystem.WHEEL_SPADE_HP}</span>。\n♥红心 护甲 <span class=\"val-def\">+{C:GamblerSystem.WHEEL_HEART_RESIST}</span>、魔抗 <span class=\"val-magic\">+{C:GamblerSystem.WHEEL_HEART_RESIST}</span>。\n♦方块 暴击率 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_DIAMOND_CRIT%}%</span>、护甲穿透 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_DIAMOND_PEN}</span>。\n♣梅花 生命偷取 <span class=\"val-heal\">+{C:GamblerSystem.WHEEL_CLUB_LIFESTEAL%}%</span>、攻击速度 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_CLUB_ASPD%}%</span>。\n<span style=\"color:#8a93a0\">赌神龟抽到的花色会在【本大轮】跨场累积，下一场登场时自动套用；换大轮时重置。\n</span>\n<span style=\"color:#8a93a0\">抽取阶段（转盘旋转约 {C:GamblerSystem.WHEEL_LOCK_SEC} 秒）内<b>锁龟能不充能</b>，花色落定后自动解锁。\n</span>。\n<span style=\"color:#8a93a0\">抽取阶段锁定龟能。</span>"
       }
     ],
     "defaultSkills": [
@@ -1143,7 +1143,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "蓄力狙击，造成 {N:HunterSystem.SHOT_ATK_COEF*ATK} 物理伤害，并附加 <span class=\"val-atk\">中毒</span>（层数逐秒衰减至归零）、<span class=\"val-atk\">{C:HunterSystem.SHOT_HEALCUT_PCT%}% 治疗削减</span> {C:HunterSystem.SHOT_HEALCUT_SEC} 秒 与 <span class=\"val-normal\">猎杀印记</span>。\n<span style=\"color:#8a93a0\">猎杀印记持续 {C:HunterSystem.MARK_SEC} 秒，期间目标生命低于 {C:HunterSystem.EXEC_MARKED%}% 即被处决。\n</span>",
-        "detail": "猎人龟眯眼瞄准，蓄力狙击一发造成（{C:HunterSystem.SHOT_ATK_COEF%}%×攻击力({ATK}) = {N:HunterSystem.SHOT_ATK_COEF*ATK}）物理伤害。\n附加：\n中毒（每秒造成等于层数的魔法伤害，之后层数衰减到 80%，直到归零 —— 以常见攻击力计约持续 <b>11 秒</b>，伤害逐秒递减）\n治疗削减 {C:HunterSystem.SHOT_HEALCUT_PCT%}%（{C:HunterSystem.SHOT_HEALCUT_SEC} 秒）、猎杀印记（{C:HunterSystem.MARK_SEC} 秒内目标生命值低于 {C:HunterSystem.EXEC_MARKED%}%即被处决，斩杀线临时从 {C:HunterSystem.EXEC_BASE%}%抬到 {C:HunterSystem.EXEC_MARKED%}%）。\n<span style=\"color:#8a93a0\">射箭+毒箭+猎杀印记 三合一。\n冲刺追猎靠残血追猎普攻+被动处决。\n</span>"
+        "detail": "猎人龟眯眼瞄准，蓄力狙击一发造成（{C:HunterSystem.SHOT_ATK_COEF%}%×攻击力({ATK}) = {N:HunterSystem.SHOT_ATK_COEF*ATK}）物理伤害。\n附加：\n中毒（每秒造成等于层数的魔法伤害，之后层数衰减到 {C:CombatMath.STACK_DECAY%}%，直到归零，层数越多、持续越久，伤害逐秒递减）\n治疗削减 {C:HunterSystem.SHOT_HEALCUT_PCT%}%（{C:HunterSystem.SHOT_HEALCUT_SEC} 秒）、猎杀印记（{C:HunterSystem.MARK_SEC} 秒内目标生命值低于 {C:HunterSystem.EXEC_MARKED%}%即被处决，斩杀线临时从 {C:HunterSystem.EXEC_BASE%}%抬到 {C:HunterSystem.EXEC_MARKED%}%）。\n<span style=\"color:#8a93a0\">射箭+毒箭+猎杀印记 三合一。\n冲刺追猎靠残血追猎普攻+被动处决。\n</span>"
       },
       {
         "name": "隐蔽",
@@ -1585,7 +1585,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "持续喷射火焰，每 {C:PhoenixSystem.FLAME_TICK_SEC} 秒对身前的敌人造成（{C:RealtimeBattle3DScene.PHX_FLAME_MAG_COEF}×ATK×(1+攻击速度)）魔法伤害，并施加（{C:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF}×攻击力）层灼烧。\n<span style=\"color:#8a93a0\">喷火不随攻击速度停顿，凤凰龟可边喷边走位。\n</span>",
-        "detail": "凤凰龟持续喷吐烈焰（不随攻击速度停顿，边喷边走位；喷火时移动速度 ×{C:PhoenixSystem.FLAME_MOVE_MULT}）：\n每 {C:PhoenixSystem.FLAME_TICK_SEC} 秒对身前 {C:PhoenixSystem.FLAME_ARC_DEG}° 扇形、射程之内的所有敌人造成（{C:RealtimeBattle3DScene.PHX_FLAME_MAG_COEF}×攻击力×(1+攻击速度)）魔法伤害，并施加 <span style=\"color:#ff6600\">（{C:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF}×攻击力）层灼烧</span>。\n<span style=\"color:#8a93a0\">灼烧：\n每秒造成（层数 + 0.1%×<b>被灼烧者</b>最大生命值×层数）魔法伤害，结算后层数衰减到 80%。\n</span>",
+        "detail": "凤凰龟持续喷吐烈焰（不随攻击速度停顿，边喷边走位；喷火时移动速度 ×{C:PhoenixSystem.FLAME_MOVE_MULT}）：\n每 {C:PhoenixSystem.FLAME_TICK_SEC} 秒对身前 {C:PhoenixSystem.FLAME_ARC_DEG}° 扇形、射程之内的所有敌人造成（{C:RealtimeBattle3DScene.PHX_FLAME_MAG_COEF}×攻击力×(1+攻击速度)）魔法伤害，并施加 <span style=\"color:#ff6600\">（{C:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF}×攻击力）层灼烧</span>。\n<span style=\"color:#8a93a0\">灼烧：\n每秒造成（层数 + {C:CombatMath.STACK_DOT_MAXHP_PCT%}%×<b>被灼烧者</b>最大生命值×层数）魔法伤害，结算后层数衰减到 {C:CombatMath.STACK_DECAY%}%。\n</span>",
         "energyCost": 0
       },
       {
@@ -1732,7 +1732,7 @@
         "icon": "skills/lava-0.png",
         "type": "lavaBolt",
         "brief": "火山形态普攻变为烈焰重击：造成（{M:LavaSystem.MELEE_MAGIC*ATK} + {C:LavaSystem.MELEE_SELF_HP%}%自身最大生命值）魔法伤害，并施加 <span style=\"color:#ff6600\">（{C:LavaSystem.BOLT_BURN_COEF}×攻击力）层灼烧</span>。\n射程缩短为 {C:LavaSystem.VOLCANO_RANGE} 码（近战）",
-        "detail": "火山形态下普攻变为烈焰重击（单段近战重锤）：造成（{C:LavaSystem.MELEE_MAGIC%}%×攻击力({ATK}) = {M:LavaSystem.MELEE_MAGIC*ATK}）+ {C:LavaSystem.MELEE_SELF_HP%}%熔岩龟自身最大生命值 魔法伤害，并施加 <span style=\"color:#ff6600\">（{C:LavaSystem.BOLT_BURN_COEF}×攻击力）层灼烧</span>。\n变身后转为近战形态：射程 {C:LavaSystem.VOLCANO_RANGE} 码、移动速度 120；变身生命加成越高，重击越疼。"
+        "detail": "火山形态下普攻变为烈焰重击（单段近战重锤）：造成（{C:LavaSystem.MELEE_MAGIC%}%×攻击力({ATK}) = {M:LavaSystem.MELEE_MAGIC*ATK}）+ {C:LavaSystem.MELEE_SELF_HP%}%熔岩龟自身最大生命值 魔法伤害，并施加 <span style=\"color:#ff6600\">（{C:LavaSystem.BOLT_BURN_COEF}×攻击力）层灼烧</span>。\n变身后转为近战形态：射程 {C:LavaSystem.VOLCANO_RANGE} 码、移动速度为基础的 {C:LavaSystem.VOLCANO_SPD_MULT} 倍；变身生命加成越高，重击越疼。"
       },
       {
         "name": "火山爆发",
@@ -1925,7 +1925,7 @@
       "type": "chestTreasure",
       "name": "藏宝图",
       "brief": "根据造成的伤害积累<span class=\"val-normal\">财宝值</span>，每达到一个阈值便从战利品池中随机获得一件装备，并回复生命值。\n<span style=\"color:#8a93a0\"><b>一大轮</b>最多获得 {C:ChestSystem.CHEST_MAX_OPEN} 件装备（跨场累积，新大轮重置）。\n</span>",
-      "desc": "造成的伤害转化为财宝值，并<span class=\"val-atk\">随一大轮持续累积</span>。\n财宝值达到 {C:RealtimeBattle3DScene._CHEST_THRESH} 时开箱：\n第 1-2 箱开基础池、第 3-4 箱开进阶池、第 {C:ChestSystem.CHEST_MAX_OPEN} 箱开传说池（15 件专属战利品，不重复），并额外回复 {C:ChestSystem.CHEST_HEAL_PCT%}% 最大生命值。\n开出的战利品为<span class=\"val-atk\">一大轮常驻装备</span>，整轮每场战斗自动生效；新大轮重置。"
+      "desc": "造成的伤害转化为财宝值，并<span class=\"val-atk\">随一大轮持续累积</span>。\n财宝值达到 {C:RealtimeBattle3DScene._CHEST_THRESH} 时开箱：\n第 1-2 箱开基础池、第 3-4 箱开进阶池、第 {C:ChestSystem.CHEST_MAX_OPEN} 箱开传说池（{C:ChestSystem.TREASURE_TOTAL} 件专属战利品，不重复），并额外回复 {C:ChestSystem.CHEST_HEAL_PCT%}% 最大生命值。\n开出的战利品为<span class=\"val-atk\">一大轮常驻装备</span>，整轮每场战斗自动生效；新大轮重置。"
     },
     "skillPool": [
       {

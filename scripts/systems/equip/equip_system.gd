@@ -203,7 +203,7 @@ func _eq_crystal_line(u: Dictionary, si: int) -> void:   # 迷你水晶球A030: 
 	## ★2026-07-27 那条旧注释仍然成立: `_crystal_line_seg` 住在 CrystalSystem(2026-07-25 抽出),
 	##   写成 `battle._crystal_line_seg` 会每次触发刷 SCRIPT ERROR 且光束完全不结算。
 	for _seg in range([2, 2, 3][si]):
-		battle._pending_shots.append({"delay": float(_seg) * 0.2, "src": u, "fn":
+		battle._pending_shots.append({"delay": float(_seg) * CrystalSystem.LINE_SEG_GAP, "src": u, "fn":
 			battle._crystal_sys._crystal_line_seg.bind(u, si, dir2)})
 
 # 031: 水晶射线360度扫一圈(1.5s), 射线扫到敌人即结算魔法伤+叠层
@@ -541,6 +541,9 @@ const CREAM_RESIST := 10.0    # 之后 +双抗
 const CREAM_RANGE := 50.0     # 之后 +射程(码)
 ## 【023 灼热火珊瑚】命中攒法力, 法力满自动挥一道缓移的扇形火焰波。
 ## 【067 毒药瓶】每几秒朝敌人最密集处投一个瓶子(用户规格「每 6 秒」)。
+## 【033 复活海螺】小虫诞生时随机带装备的**费用池**。
+const CONCH_COST_MIN := 4         # 池子 = 这两个费用的装备
+const CONCH_COST_MAX := 5
 const VIAL_IV := 6.0              # 真值在 EQ_IV_BATCH1, 那里引用本常量
 const CORAL_MANA_PER_HIT := 10.0  # 每段攻击命中给自己多少法力
 const CORAL_ARC_DEG := 60.0       # 火焰波扇面全角(度)·判定用半角
@@ -996,7 +999,7 @@ func _conch_grant_equips(worm: Dictionary, si: int) -> void:
 	var pool: Array = []
 	for it in DataRegistry.phase2_equipment:
 		var c: int = int(it.get("cost", 0))
-		if c == 4 or c == 5:
+		if c == CONCH_COST_MIN or c == CONCH_COST_MAX:
 			pool.append(str(it.get("id", "")))
 	if pool.is_empty():
 		push_warning("[复活海螺] 4/5 费装备池为空 —— 小虫不带装备(不静默塞别的费用)")

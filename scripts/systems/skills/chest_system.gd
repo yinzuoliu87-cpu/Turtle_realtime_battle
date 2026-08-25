@@ -110,6 +110,9 @@ const STORM_TOTAL_COEF := STORM_ATK_COEF * STORM_TICKS   # 推导: 全部跳完�
 const CANNON_COEF := 3.0       # 线上每敌 ×ATK 物理
 const GREED_ATK_PER_EQ := 0.04 # 每件装备永久 + 攻击力 ×(基础值)
 const GREED_HP_PER_EQ := 0.07  # 每件装备永久 + 最大生命 ×
+## 专属战利品池的总件数。★不是手抄: `tests/verify_chest_treasures.gd` 逐件遍历
+##   `_CHEST_TREASURE_POOL` 并断言"件数 == 本常量", 池子增删一件那条测试立刻红。
+const TREASURE_TOTAL := 15
 const CHEST_MAX_OPEN := 5      # 一大轮最多开几件(第 1-2 基础 / 3-4 进阶 / 5 传说)
 const COUNT_HEAL_PCT := 0.05     # 回复 = 自身最大生命 ×
 const COUNT_SHIELD_COEF := 0.6   # 护盾 = ×ATK(不吃财宝加成)

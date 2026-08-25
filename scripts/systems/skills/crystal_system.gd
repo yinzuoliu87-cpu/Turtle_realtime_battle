@@ -40,7 +40,7 @@ func _crystal_line_seg(u: Dictionary, si: int, dir: Vector2) -> void:
 	_crystal_beam(origin, origin + dir * 1500.0, Color("#c9b0ff"))
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
-		if battle._on_line(origin, dir, o["pos"], 55.0):
+		if battle._on_line(origin, dir, o["pos"], LINE_HALF_W):
 			battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, float([30, 35, 40][si]), o, true), Color("#bfa8ff"), 0.0, false, true)
 			battle._equip_sys._eq_crystal_stack(u, o, si)
 
@@ -207,6 +207,9 @@ var _sweeps: Array = []
 const SWEEP_ARC_RAD := TAU
 const SWEEP_ARC_DEG := rad_to_deg(SWEEP_ARC_RAD)
 const SWEEP_REACH := 1000.0     # 射线半径(码)
+## 【030 迷你水晶球A】贯穿光束: 段与段的错峰、判定带半宽。
+const LINE_SEG_GAP := 0.2       # 每段间隔(秒)
+const LINE_HALF_W := 55.0       # 直线中线两侧各多宽算命中(码)
 const MINI_STACK_MAX := 3       # 迷你水晶叠满几层引爆
 const MINI_MR_STEAL := 0.10     # 每次扫到偷目标当前魔抗 ×(真偷取, 永久到战斗结束)
 const SWEEP_SEC := 1.5

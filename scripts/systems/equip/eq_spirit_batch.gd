@@ -300,6 +300,10 @@ func _eq_mantis_strike(src: Dictionary, tgt: Dictionary, dmg: int, si: int, basi
 
 ## 持续时间 = 本次技能消耗龟能 × 这个系数(用户原话)
 const RING_SEC_PER_ENERGY := 0.03
+## 推导: 覆盖率 = 加成持续 ÷ 充满龟能所需 = RING_SEC_PER_ENERGY ÷ CD_FACTOR。
+## ★与龟无关(消耗在分子分母里约掉了) —— 文案里那个"恒定 40%"说的就是它。
+const _SE := preload("res://scripts/systems/skill_energy.gd")
+const RING_COVERAGE := RING_SEC_PER_ENERGY / _SE.CD_FACTOR
 ## 引爆需要的环数
 const RING_TRIGGER := 3
 
