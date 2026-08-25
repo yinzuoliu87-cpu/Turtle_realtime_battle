@@ -6,7 +6,7 @@
     "baseStats1": "+攻5/12/20·暴击10/15/25%",
     "shopAvailable": 1,
     "emoji": "🗡️",
-    "effectDesc1": "每 {C:EquipTickSystem.RUST_IV} 秒甩出一道飞斩剑气，射向射程 2000 内最近的敌人，命中时造成（0.6/0.75/1.0×攻击力+40/60/100×暴击率）物理伤害。",
+    "effectDesc1": "每 {C:EquipTickSystem.RUST_IV} 秒甩出一道飞斩剑气，射向射程 {C:EquipTickSystem.RUST_RANGE} 内最近的敌人，命中时造成（0.6/0.75/1.0×攻击力+40/60/100×暴击率）物理伤害。",
     "effectDesc3": "",
     "img": "equip/equip-sword-icon.png",
     "effectBrief": "每 {C:EquipTickSystem.RUST_IV} 秒甩出一道剑气，造成 0.6/0.75/1.0×攻击力物理伤害。"
@@ -30,10 +30,10 @@
     "baseStats1": "+攻8/14/30·护穿5/7/10·暴击15/25/40%",
     "shopAvailable": 1,
     "emoji": "🦈",
-    "effectDesc1": "每段伤害命中后，向目标周围 200 码内的敌人各溅射 15/28/50%×本段伤害的物理伤害。",
+    "effectDesc1": "每段伤害命中后，向目标周围 {C:EquipSystem.SHARKTOOTH_SPLASH_R} 码内的敌人各溅射 15/28/50%×本段伤害的物理伤害。",
     "effectDesc3": "",
     "img": "equip/dungeon-tooth.png",
-    "effectBrief": "每段伤害命中后，向目标周围 200 码溅射 15/28/50% 本段伤害。"
+    "effectBrief": "每段伤害命中后，向目标周围 {C:EquipSystem.SHARKTOOTH_SPLASH_R} 码溅射 15/28/50% 本段伤害。"
   },
   {
     "id": "p2eq_004",
@@ -45,7 +45,7 @@
     "effectDesc1": "伤害可处决生命值低于斩杀线的敌人（斩杀线=4/6/12%最大生命值×（1+暴击率））；处决后回复 {C:EquipSystem.FANG_EXEC_ENERGY} 点龟能（无龟能的单位改为回复 {C:EquipSystem.FANG_EXEC_HEAL} 点生命）。\n此外携带者每 {C:EquipSystem.FANG_IV} 秒向最近的敌人射出一颗剧毒獠牙，造成 1/1.8/4×攻击力魔法伤害，并回复自身该伤害 {C:EquipSystem.FANG_LIFESTEAL%}%的生命。",
     "effectDesc3": "",
     "img": "equip/tyrant-fang.png",
-    "effectBrief": "伤害可处决生命低于 4/6/12% 最大生命的敌人；每 6 秒射出毒牙吸血。"
+    "effectBrief": "伤害可处决生命低于 4/6/12% 最大生命的敌人；每 {C:EquipSystem.FANG_IV} 秒射出毒牙吸血。"
   },
   {
     "id": "p2eq_005",
@@ -78,7 +78,7 @@
     "baseStats1": "+攻5/10/20·生命20/45/100",
     "shopAvailable": 1,
     "emoji": "⚔️",
-    "effectDesc1": "每 {C:EquipTickSystem.BROADSWORD_IV} 秒朝最近的敌人挥出一道剑气墙，沿途扫过 2000 码内一线的敌人，对每名敌人造成（20/35/60+0.5/0.8/1.1×攻击力）物理伤害；\n并为自己获得本次总伤害 50/75/100%的护盾。",
+    "effectDesc1": "每 {C:EquipTickSystem.BROADSWORD_IV} 秒朝最近的敌人挥出一道剑气墙，沿途扫过 {C:EquipSystem.BROADSWORD_REACH} 码内一线的敌人，对每名敌人造成（20/35/60+0.5/0.8/1.1×攻击力）物理伤害；\n并为自己获得本次总伤害 50/75/100%的护盾。",
     "effectDesc3": "",
     "img": "equip/rusty-broadsword.png",
     "effectBrief": "每 {C:EquipTickSystem.BROADSWORD_IV} 秒挥出剑气墙扫过一线敌人，并按总伤害 50/75/100% 获得护盾。"
@@ -138,7 +138,7 @@
     "baseStats1": "+生命40/70/100·护甲5/10/18",
     "shopAvailable": 1,
     "emoji": "🐢",
-    "effectDesc1": "每 {C:EquipTickSystem.JELLY_IV} 秒为自身获得（40/60/90+4%最大生命值）点护盾。",
+    "effectDesc1": "每 {C:EquipTickSystem.JELLY_IV} 秒为自身获得（40/60/90+{C:EquipTickSystem.JELLY_MAXHP_PCT%}%最大生命值）点护盾。",
     "effectDesc3": "",
     "img": "equip/turtle-jelly.png",
     "effectBrief": "每 {C:EquipTickSystem.JELLY_IV} 秒获得 40/60/90 点护盾。"
@@ -153,7 +153,7 @@
     "effectDesc1": "每次受到伤害获得 1 层硬化，每层提供+1/1.5/2 护甲和+1/1.5/2 魔抗（上限 {C:EquipSystem.URCHIN_CAP} 层）；\n叠满 {C:EquipSystem.URCHIN_CAP} 层时获得「海胆护盾」（100/170/250+5/12/20%最大生命值），该护盾在 {C:EquipSystem.URCHIN_DECAY} 秒内逐渐衰减。",
     "effectDesc3": "",
     "img": "equip/urchin-shield.png",
-    "effectBrief": "每次受伤叠 1 层硬化（各 +1/1.5/2 双抗，上限 20 层），满层给护盾。"
+    "effectBrief": "每次受伤叠 1 层硬化（各 +1/1.5/2 双抗，上限 {C:EquipSystem.URCHIN_CAP} 层），满层给护盾。"
   },
   {
     "id": "p2eq_014",
@@ -186,7 +186,7 @@
     "baseStats1": "+护甲6/13/21·魔抗6/13/21",
     "shopAvailable": 1,
     "emoji": "🛡️",
-    "effectDesc1": "每段受到的非真实伤害减少 3/6/10 点（固定值）；\n每 {C:EquipTickSystem.IRONWALL_IV} 秒产生一个（100/250/400+携带者 8%最大生命值）的护盾总量，由全队（含自己）平均分摊——分摊名单不含龟蛋与训龟大师。",
+    "effectDesc1": "每段受到的非真实伤害减少 3/6/10 点（固定值）；\n每 {C:EquipTickSystem.IRONWALL_IV} 秒产生一个（100/250/400+携带者 {C:EquipTickSystem.IRONWALL_MAXHP_PCT%}%最大生命值）的护盾总量，由全队（含自己）平均分摊——分摊名单不含龟蛋与训龟大师。",
     "effectDesc3": "",
     "img": "equip/equip-shield-icon.png",
     "effectBrief": "受到的非真实伤害各减 3/6/10 点；每 {C:EquipTickSystem.IRONWALL_IV} 秒生成一份护盾由全队分摊。"
@@ -282,7 +282,7 @@
     "baseStats1": "+攻20/45/70·魔穿8/15/27·+20龟能",
     "shopAvailable": 1,
     "emoji": "🐲",
-    "effectDesc1": "装备时即拥有 3 层吐息，之后每 2.5 秒获得 1 层；\n满 3 层时清零并召唤喷火龙：龙从携带者位置朝最靠近敌方质心的那名敌人拉出一条直线，一直飞到最远敌人身后，对这条直线两侧各 88 码内的单位按火柱扫到的先后依次结算——敌人受到（45/80/120+1×攻击力）魔法伤害并被施加 20/35/50 层灼烧；\n友军回复（45/80/120+1×攻击力）生命。",
+    "effectDesc1": "装备时即拥有 3 层吐息，之后每 2.5 秒获得 1 层；\n满 3 层时清零并召唤喷火龙：龙从携带者位置朝最靠近敌方质心的那名敌人拉出一条直线，一直飞到最远敌人身后，对这条直线两侧各 {C:DragonSystem.BREATH_HALF_W} 码内的单位按火柱扫到的先后依次结算——敌人受到（45/80/120+1×攻击力）魔法伤害并被施加 20/35/50 层灼烧；\n友军回复（45/80/120+1×攻击力）生命。",
     "effectDesc3": "",
     "img": "equip/dungeon-dragon-egg.png",
     "effectBrief": "每 2.5 秒攒 1 层吐息，满 3 层召唤喷火龙贯穿全场并施加灼烧。"
@@ -429,7 +429,7 @@
     "effectDesc1": "每秒回复 5/7/10 点生命；\n并持续获得孵化进度（每 {C:RealtimeBattle3DScene.EQ_TICK} 秒+{C:EquipTickSystem.EGG_PER_CYCLE}、敌方死亡+{C:EquipTickSystem.EGG_ON_FOE_DEATH}、己方死亡+{C:EquipTickSystem.EGG_ON_ALLY_DEATH}、造成伤害×{C:EquipTickSystem.EGG_DMG_RATIO}、承受伤害×{C:EquipTickSystem.EGG_DMG_RATIO}），进度满 {C:EquipTickSystem.EGG_FULL} 获得 1 点临时等级（上限+3/4/5，每级+{C:EquipTickSystem.EGG_LV_GROWTH%}%基础属性，同一局对局内跨战场保留、开新对局才重置）；\n孵满后为全队均摊 300/400/600 点护盾（一次）——分摊名单不含龟蛋与训龟大师。",
     "effectDesc3": "",
     "img": "equip/equip-incubator.png",
-    "effectBrief": "每秒回复 5/7/10 点生命；孵化进度满 100 得 1 点临时等级，上限 +3/4/5。"
+    "effectBrief": "每秒回复 5/7/10 点生命；孵化进度满 {C:EquipTickSystem.EGG_FULL} 得 1 点临时等级，上限 +3/4/5。"
   },
   {
     "id": "p2eq_037",
@@ -441,7 +441,7 @@
     "effectDesc1": "蜡烛在 {C:EquipSystem.CANDLE_PHASES} 个阶段间循环，每 {C:EquipSystem.CANDLE_IV} 秒切换并触发：熄灭阶段无效果；\n微弱阶段携带者在 {C:EquipSystem.CANDLE_IV} 秒内持续回复共（20/30/44+0.5/0.7/1.0×攻击力）生命，{C:EquipSystem.CANDLE_HEAL_R} 码内的友军各按半数持续回复；\n燃烧阶段蜡烛爆燃，对携带者 {C:EquipSystem.CANDLE_BURN_R} 码范围内的所有敌人各造成（20/30/44+0.5/0.7/1.0×攻击力）魔法伤害并施加 20/30/40 层灼烧。",
     "effectDesc3": "",
     "img": "equip/dungeon-candle-off.png",
-    "effectBrief": "蜡烛每 5 秒切换阶段：微弱阶段持续治疗，燃烧阶段爆燃并施加灼烧。"
+    "effectBrief": "蜡烛每 {C:EquipSystem.CANDLE_IV} 秒切换阶段：微弱阶段持续治疗，燃烧阶段爆燃并施加灼烧。"
   },
   {
     "id": "p2eq_038",
@@ -462,7 +462,7 @@
     "baseStats1": "+生命80/140/200",
     "shopAvailable": 1,
     "emoji": "🎋",
-    "effectDesc1": "获得 6/10/15 次生长充能（同一局对局内跨战场保留、开新对局才重置）；\n每第 3 段普攻消耗 1 次充能：射一发强化竹箭给最近的敌人，造成（25/30/35+6%自身最大生命值）魔法伤害，命中后冒出一颗绿色生命球飞回携带者——落到身上才结算：回复自身 6%最大生命值，并使自身最大生命值永久+50/70/90（持续到本局对局结束）。",
+    "effectDesc1": "获得 6/10/15 次生长充能（同一局对局内跨战场保留、开新对局才重置）；\n每第 3 段普攻消耗 1 次充能：射一发强化竹箭给最近的敌人，造成（25/30/35+{C:EquipSystem.BAMBOO_ARROW_MAXHP_PCT%}%自身最大生命值）魔法伤害，命中后冒出一颗绿色生命球飞回携带者——落到身上才结算：回复自身 {C:EquipSystem.BAMBOO_ARROW_MAXHP_PCT%}%最大生命值，并使自身最大生命值永久+50/70/90（持续到本局对局结束）。",
     "effectDesc3": "",
     "img": "equip/equip-bamboo-leaf.png",
     "effectBrief": "每第 3 段普攻射出竹箭，回收的生命球使最大生命永久 +50/70/90。"
@@ -477,7 +477,7 @@
     "effectDesc1": "每 {C:EquipSystem.FPGA_IV} 秒随机抽取 {C:EquipSystem.FPGA_PICKS} 个 2-bit状态（可重复抽中同一个）：00=回复 {C:EquipSystem.FPGA_00_HEAL_PCT%}%最大生命值，并累计+{C:EquipSystem.FPGA_00_RESIST} 护甲与魔抗；\n01=累计+{C:EquipSystem.FPGA_01_ATK} 攻击力与+{C:EquipSystem.FPGA_01_LIFESTEAL%}%生命偷取；\n10={C:EquipSystem.FPGA_BUFF_SEC} 秒内增伤+{C:EquipSystem.FPGA_10_AMP%}%（放大自身造成的所有伤害）；\n11={C:EquipSystem.FPGA_BUFF_SEC} 秒内受到的伤害-{C:EquipSystem.FPGA_11_DR%}%（真实伤害除外）。\n其中 00 与 01 的加成在本场战斗内持续累计，该场战斗结束后重置。",
     "effectDesc3": "",
     "img": "equip/dungeon-fpga.png",
-    "effectBrief": "每 6 秒随机抽 1/2/4 个状态，分别给双抗、攻击与吸血、增伤或减伤。"
+    "effectBrief": "每 {C:EquipSystem.FPGA_IV} 秒随机抽 1/2/4 个状态，分别给双抗、攻击与吸血、增伤或减伤。"
   },
   {
     "id": "p2eq_041",
@@ -522,10 +522,10 @@
     "baseStats1": "+生命40/60/90·护甲5/12/20",
     "shopAvailable": 1,
     "emoji": "🧿",
-    "effectDesc1": "生命值首次降至 50%以下时，在 6 秒内逐渐回复 20/40/80%最大生命值（每场战斗一次）。",
+    "effectDesc1": "生命值首次降至 {C:EquipSystem.LOWHP_GATE%}%以下时，在 {C:EquipSystem.NECKLACE_HOT_SEC} 秒内逐渐回复 20/40/80%最大生命值（每场战斗一次）。",
     "effectDesc3": "",
     "img": "equip/deepsea-necklace.png",
-    "effectBrief": "生命首次低于 50% 时，6 秒内回复 20/40/80% 最大生命值。"
+    "effectBrief": "生命首次低于 {C:EquipSystem.LOWHP_GATE%}% 时，{C:EquipSystem.NECKLACE_HOT_SEC} 秒内回复 20/40/80% 最大生命值。"
   },
   {
     "id": "p2eq_045",
@@ -534,10 +534,10 @@
     "baseStats1": "+生命90/170/300·护甲&魔抗4/8/15",
     "shopAvailable": 1,
     "emoji": "🦪",
-    "effectDesc1": "生命值首次降至 50%以下时，在 8 秒内逐渐回复 30/60/100%最大生命值，并向 1/1/2 名随机敌人发射火球，造成 8/17/30%目标最大生命值的魔法伤害并施加 30/70/150 层灼烧（每场战斗一次）。",
+    "effectDesc1": "生命值首次降至 {C:EquipSystem.LOWHP_GATE%}%以下时，在 {C:EquipSystem.EARRING_HOT_SEC} 秒内逐渐回复 30/60/100%最大生命值，并向 1/1/2 名随机敌人发射火球，造成 8/17/30%目标最大生命值的魔法伤害并施加 30/70/150 层灼烧（每场战斗一次）。",
     "effectDesc3": "",
     "img": "equip/dungeon-pearl.png",
-    "effectBrief": "生命首次低于 50% 时回复 30/60/100% 最大生命，并发射火球点燃敌人。"
+    "effectBrief": "生命首次低于 {C:EquipSystem.LOWHP_GATE%}% 时回复 30/60/100% 最大生命，并发射火球点燃敌人。"
   },
   {
     "id": "p2eq_046",
@@ -657,7 +657,7 @@
     "effectDesc1": "本场累计造成 {C:HookBombSystem.TRIGGER_DMG} 点伤害后，向最近的 1/1/2 名敌人发射钩索炸弹：炸弹附在敌人身上，每 {C:HookBombSystem.BOMB_TICK} 秒对其造成 2/4/4%其最大生命值的物理伤害，直到该敌人死亡。\n若带弹的敌人死亡，则朝所有敌方单位发射钩索，眩晕 {C:HookBombSystem.PULL_STUN} 秒后将其拉向携带者，聚拢后产生一次爆炸，造成（200/400/500+{C:HookBombSystem.BLAST_MAXHP_PCT%}%目标最大生命值）物理伤害（训龟大师、龟蛋与免控单位不受钩索影响）。",
     "effectDesc3": "",
     "img": "equip/targeter.png",
-    "effectBrief": "累计造成 400 点伤害后投出钩索炸弹，持续扣血直到目标死亡。"
+    "effectBrief": "累计造成 {C:HookBombSystem.TRIGGER_DMG} 点伤害后投出钩索炸弹，持续扣血直到目标死亡。"
   },
   {
     "id": "p2eq_056",
@@ -666,7 +666,7 @@
     "baseStats1": "+攻45/90/400",
     "shopAvailable": 1,
     "emoji": "🎯",
-    "effectDesc1": "任何敌人被己方击飞时即挂上「靶子」标记（不会自行消失）；\n携带者每 2.5 秒向所有带靶子的敌人各射 1 镖，造成（130/190/600+1.5/3.0/9.0×攻击力）物理伤害并施加 10%攻击力的流血层数，命中后移除该敌人的靶子；\n此外提供 40/80/150%攻击速度，且携带者每 {C:EquipSystem.DART_EVERY} 下普攻会强化下一次普攻，命中时将目标击飞 {C:EquipSystem.DART_KNOCKUP_SEC} 秒。",
+    "effectDesc1": "任何敌人被己方击飞时即挂上「靶子」标记（不会自行消失）；\n携带者每 2.5 秒向所有带靶子的敌人各射 1 镖，造成（130/190/600+1.5/3.0/9.0×攻击力）物理伤害并施加 {C:EquipSystem.DART_BLEED_COEF%}%攻击力的流血层数，命中后移除该敌人的靶子；\n此外提供 40/80/150%攻击速度，且携带者每 {C:EquipSystem.DART_EVERY} 下普攻会强化下一次普攻，命中时将目标击飞 {C:EquipSystem.DART_KNOCKUP_SEC} 秒。",
     "effectDesc3": "",
     "img": "equip/dungeon-dart.png",
     "effectBrief": "被击飞的敌人挂上靶子；每 2.5 秒向所有带靶子的敌人各射一镖。"
@@ -765,7 +765,7 @@
     "effectDesc1": "首次生命值降到 {C:EqSpiritBatch.GHOST_HP_LINE%}%以下时，获得 50/80/160%最大生命值的【幽灵护盾】，它会在 {C:EqSpiritBatch.GHOST_DECAY} 秒内线性衰减。\n持有该护盾期间获得 {C:EqSpiritBatch.GHOST_DODGE%}%闪避率与 30/60/120 点双抗。\n该护盾被打破时（被打光或自然衰减耗尽都算）会爆炸，使 {C:EqSpiritBatch.GHOST_BURST_R} 码内的敌人陷入 {C:EqSpiritBatch.GHOST_CURSE_SEC} 秒【诅咒】。\n每路一次。",
     "effectDesc3": "",
     "img": "equip/p2eq_064.png",
-    "effectBrief": "生命首次低于 35% 时获得 50/80/160% 最大生命的幽灵护盾，破碎时诅咒敌人。"
+    "effectBrief": "生命首次低于 {C:EqSpiritBatch.GHOST_HP_LINE%}% 时获得 50/80/160% 最大生命的幽灵护盾，破碎时诅咒敌人。"
   },
   {
     "id": "p2eq_065",
@@ -813,7 +813,7 @@
     "effectDesc1": "受到的伤害按 60/100/200%存进专属充能条（上限为最大生命的 20/40/100%）。\n登场第 {C:EqPotionBatch.CAN_PERIOD} 秒起每 {C:EqPotionBatch.CAN_PERIOD} 秒清空充能：获得充能值 100/120/300%的法力护盾（{C:EqPotionBatch.CAN_SHIELD_DECAY} 秒内衰减完），并朝最远敌人射出一道 {C:PotionEqVfx.BEAM_RANGE} 码法力激光，{C:PotionEqVfx.BEAM_SEC} 秒内共造成充能值 100/120/600%的魔法伤害；\n法力护盾存在期间充能条锁住。\n普攻额外获得 {C:EqPotionBatch.CAN_HIT_ENERGY} 龟能并回复 20/35/50 生命。",
     "effectDesc3": "",
     "img": "equip/p2eq_068.png",
-    "effectBrief": "把受到的伤害存成充能；每 12 秒清空换成法力护盾并射出激光。"
+    "effectBrief": "把受到的伤害存成充能；每 {C:EqPotionBatch.CAN_PERIOD} 秒清空换成法力护盾并射出激光。"
   },
   {
     "id": "p2eq_069",
@@ -897,7 +897,7 @@
     "effectDesc1": "每 {C:EqBowBatch.RAIN_IV} 秒放一轮箭雨：落点取敌人最密集处，半径 {C:EqBowBatch.RAIN_RADIUS} 码，持续 {C:EqBowBatch.RAIN_SEC} 秒，每 {C:EqBowBatch.RAIN_HOP_IV} 秒造成 0.25/0.35/0.5 倍攻击力的物理伤害并施加 3/4/5 层流血。\n被动：目标每距离携带者 {C:EqBowBatch.AMP_PER_PX} 码，携带者对它+3/4/5%增伤，不封顶（箭雨自己也吃这个增伤）。",
     "effectDesc3": "",
     "img": "equip/p2eq_075.png",
-    "effectBrief": "每 6 秒在敌人最密处落一轮箭雨；目标每远 100 码增伤 3/4/5%。"
+    "effectBrief": "每 {C:EqBowBatch.RAIN_IV} 秒在敌人最密处落一轮箭雨；目标每远 {C:EqBowBatch.AMP_PER_PX} 码增伤 3/4/5%。"
   },
   {
     "id": "p2eq_076",

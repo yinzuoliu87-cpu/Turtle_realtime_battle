@@ -312,7 +312,7 @@ const BASIC_ATK := {
 	"hiding":   {"phys": HidingSystem.BASIC_COEF, "hits": 1, "rider": "shrink"},                        # 缩壳: 1A物理+每击+1甲+1抗+0.1A盾(越打越硬)
 	# shell 走 _basic_attack 特判 _shell_sys._shell_basic (1ATK单段·物/真逐攻交替 + 120px范围溅射50%); 不进 _do_basic
 }
-const DEFAULT_BASIC := {"phys": 1.0, "hits": 1}
+const DEFAULT_BASIC := {"phys": BasicConsts.DEFAULT_BASIC_COEF, "hits": 1}   # 系数住 BasicConsts(纯常量表不进上帝文件)
 
 # ============================================================================
 #  2.5D 坐标 / 渲染常量
@@ -2381,7 +2381,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 			u["pos"] = (u["pos"] as Vector2).move_toward(_hp2, 220.0 * delta)
 	if u.get("id") == "candy" and not u.get("_sweet_drained", false):   # 甜蜜掠夺: 战斗第8秒触发一次甜蜜吸取(用户2026-07-15改·原登场触发)
 		u["_sweet_t"] = float(u.get("_sweet_t", 0.0)) + delta
-		if float(u["_sweet_t"]) >= 8.0:
+		if float(u["_sweet_t"]) >= CandySystem.DRAIN_AT:
 			u["_sweet_drained"] = true
 			_candy_sys._candy_sweet_drain(u)
 	if u.get("summon_kind", "") == "candybomb" and u.get("alive", false):   # 糖果炸弹: 随血量缩小(融化感)+持续糖泡(用户2026-07-14参照海盗船完整呈现)
@@ -4374,7 +4374,7 @@ func _resolve_dmg(u: Dictionary, base: float, tgt: Dictionary, magic: bool) -> i
 	if not magic and _t < float(tgt.get("phase_until", 0.0)):
 		base *= GhostSystem.PHASE_MULT                       # 虚化(幽灵): 受物理伤害-90% (真伤/魔法不减)
 	if magic and str(tgt.get("id", "")) == "crystal":
-		base *= 0.8                                          # 水晶共鸣: 受魔法额外-20%
+		base *= CrystalSystem.MAGIC_DR_MULT                   # 水晶共鸣: 受魔法额外减免
 	return maxi(1, int(round(base)))
 
 func _atk_dmg(u: Dictionary, scale: float, tgt: Dictionary, magic: bool = false) -> int:
@@ -5761,11 +5761,11 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 	# 蓄力时的智能位移冲刺 ≤300码 (用户2026-07-05"小龟可以选择一次300码内的位移冲刺·奔向能打到更多人的位置·但不是贴人家脸上·要考虑碰撞体积")
 	var _bp: Vector2 = u["pos"]
 	var _bn: int = _chiwave_hits_from(u, u["pos"], tgt)
-	for _a in range(12):                                        # 12方向 × 3档距离 采样
-		var _ad: Vector2 = Vector2(cos(float(_a) * TAU / 12.0), sin(float(_a) * TAU / 12.0))
+	for _a in range(BasicConsts.CHI_DASH_DIRS):                 # 多方向 × 3档距离 采样
+		var _ad: Vector2 = Vector2(cos(float(_a) * TAU / float(BasicConsts.CHI_DASH_DIRS)), sin(float(_a) * TAU / float(BasicConsts.CHI_DASH_DIRS)))
 		for _r in [BasicConsts.CHI_DASH_MAX * 0.4, BasicConsts.CHI_DASH_MAX * 0.7, BasicConsts.CHI_DASH_MAX]:
 			var _cand: Vector2 = u["pos"] + _ad * _r
-			if _too_close_to_enemy(u, _cand, 120.0): continue   # 不贴脸(碰撞体积)
+			if _too_close_to_enemy(u, _cand, BasicConsts.CHI_DASH_MIN_FOE): continue   # 不贴脸(碰撞体积)
 			var _cn: int = _chiwave_hits_from(u, _cand, tgt)
 			if _cn > _bn:
 				_bn = _cn; _bp = _cand

@@ -23,6 +23,8 @@ const STEALTH_IDLE_SEC := 6.0       # 潜影: 多少秒未受伤进入隐身
 const STEALTH_POISON_MULT := 0.5    # 破隐首发: 中毒层数 = ×ATK
 const STEALTH_HEALCUT_SEC := 3.0    # 破隐首发: 治疗削减持续秒
 const STEALTH_HEALCUT_PCT := 0.5    # 破隐首发: 治疗削减比例
+## 【暗影俯冲】主动的龟能消耗(理由同 TwoHeadSystem.FUSION_WAVE_ENERGY)。
+const SHADOW_ENERGY := 130.0
 const DIVE_RANGE := 600.0           # 暗影俯冲: 俯冲距离(码)
 const BURN_RADIUS := 150.0          # 暗影燃烧区: 半径(码)
 const BURN_TICK_SEC := 0.5          # 暗影燃烧区: 每几秒结算一次

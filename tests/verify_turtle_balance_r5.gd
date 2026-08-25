@@ -170,7 +170,13 @@ func _buffs() -> void:
 			and is_equal_approx(FortuneSystem.BUY_COST[0], 120.0)
 			and is_equal_approx(FortuneSystem.BUY_COST[1], 180.0)
 			and is_equal_approx(FortuneSystem.BUY_COST[2], 300.0))
-	_chk("④ 融合魔法波龟能 = %d" % int(WANT_FUSION_ENERGY), se.contains('"twoHeadFusion": %.1f' % WANT_FUSION_ENERGY))
+	## ★2026-08-25 文案根除: 这个龟能消耗抽成了 TwoHeadSystem.FUSION_WAVE_ENERGY,
+	##   SKILL_COST 表反过来引用它(同 `"cyberSmartAI": CyberSystem.AI_ENERGY` 的既有形状),
+	##   源码里已经没有 `"twoHeadFusion": 85.0` 这串字面量 —— 比【常量的值】+ 确认表确实指着它。
+	_chk("④ 融合魔法波龟能 = %d" % int(WANT_FUSION_ENERGY),
+		is_equal_approx(TwoHeadSystem.FUSION_WAVE_ENERGY, WANT_FUSION_ENERGY)
+			and (se.contains('"twoHeadFusion": TwoHeadSystem.FUSION_WAVE_ENERGY')
+				or se.contains('"twoHeadFusion": %.1f' % WANT_FUSION_ENERGY)))
 	_chk("④ 融合旧值 125 已消失", not se.contains('"twoHeadFusion": 125.0'))
 	_chk("④ 泡泡爆破魔法 = 消耗量 ×%.1f / 物理 = %.1fA" % [WANT_BUBBLE_MAGIC_MULT, WANT_BUBBLE_PHYS],
 		is_equal_approx(BubbleSystem.BURST_MAGIC_MULT, WANT_BUBBLE_MAGIC_MULT)

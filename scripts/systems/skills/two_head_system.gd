@@ -15,6 +15,9 @@ const MELEE_HP_COEF := 2.5       # 最大生命 +
 const MELEE_DEF_COEF := 0.25     # 护甲 +
 const MELEE_MR_COEF := 0.25      # 魔抗 +
 const MELEE_ATK_PENALTY := 0.30  # 攻击力 −
+## 【融合·魔法波】主动的龟能消耗。★真值放这里、由 SkillEnergy.SKILL_COST 反过来引用 ——
+##   那张表是 dict, `{C:}` 索引不了, 而 skill_energy.gd 故意没有 class_name。
+const FUSION_WAVE_ENERGY := 85.0
 const MELEE_SHIELD_COEF := 1.1   # 切近战时立即获得的护盾 = ATK ×
 ## 【两形态射程】
 const RANGED_RANGE := 400.0

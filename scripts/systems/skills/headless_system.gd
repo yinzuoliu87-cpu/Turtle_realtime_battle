@@ -18,6 +18,8 @@ const SOUL_RANGE_BONUS := 60.0   # 强化窗口期间射程 +
 const SCYTHE_ARC_DEG := 100.0    # 镰刀横扫: 正面锥角(半角 50°)
 const SCYTHE_RANGE := 300.0      # 镰刀横扫: 半径(码)
 const SCYTHE_KNOCK := 300.0      # 镰刀横扫: 击退(码·从龟朝外)
+## 【恐吓】咆哮范围。★三处共用(粒子铺满 / 扩散延迟归一 / 判定), 抽一个。
+const FEAR_RADIUS := 200.0       # 恐吓半径(码)
 const SCYTHE_CURSE_SEC := 3.0    # 镰刀横扫: 诅咒秒数(每秒 5% 目标最大生命 真伤)
 
 var battle
@@ -465,7 +467,7 @@ func _sk_headless_fear(u: Dictionary, _tgt = null) -> void:      # 无头·恐�
 	cot.chain().tween_callback(core.queue_free)
 	for pi in range(42):                                        # 42团黑紫雾铺满200码半径(加密加浓·用户2026-07-17"黑雾不够密集不够明显")
 		var pa: float = randf() * TAU
-		var pr: float = 200.0 * sqrt(randf())                   # sqrt=均匀铺满圆盘
+		var pr: float = FEAR_RADIUS * sqrt(randf())                   # sqrt=均匀铺满圆盘
 		var pp = cx + Vector2(cos(pa), sin(pa)) * pr
 		var puff = Sprite3D.new()
 		puff.texture = mtex
@@ -477,7 +479,7 @@ func _sk_headless_fear(u: Dictionary, _tgt = null) -> void:      # 无头·恐�
 		battle._world.add_child(puff)
 		var psz: float = randf_range(95.0, 155.0)   # 加大
 		puff.pixel_size = (psz * battle.WS) / 128.0
-		var dly: float = 0.02 + 0.28 * clampf(pr / 200.0, 0.0, 1.0)   # 由近及远扩散(爆开铺满感)
+		var dly: float = 0.02 + 0.28 * clampf(pr / FEAR_RADIUS, 0.0, 1.0)   # 由近及远扩散(爆开铺满感)
 		var ppt = battle._reg_tween()
 		ppt.tween_interval(dly)
 		ppt.tween_property(puff, "scale", Vector3.ONE, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
@@ -493,7 +495,7 @@ func _sk_headless_fear(u: Dictionary, _tgt = null) -> void:      # 无头·恐�
 	pt.tween_callback(pool.queue_free)
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
-		if o["pos"].distance_to(cx) > 200.0: continue
+		if o["pos"].distance_to(cx) > FEAR_RADIUS: continue
 		if o.get("_eggImmune", false): continue
 		battle._damage._stun(o, 3.0, "_sk_headless_fear")
 		_headless_fear_mark(o)

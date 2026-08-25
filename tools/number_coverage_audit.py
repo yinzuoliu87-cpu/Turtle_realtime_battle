@@ -40,10 +40,17 @@ TRIPLE = re.compile(r'\d+(?:\.\d+)?/\d+(?:\.\d+)?/\d+(?:\.\d+)?')
 ##   Python 把 `\b` 解释成了**退格符 0x08** 写进去 ⇒ 正则永远匹配不上,
 ##   而 grep 看不出来(退格符不显示)。不加 \b 也完全够用。
 LABEL_NUM = re.compile(r'(?:00|01|10|11)=')
+## ★同族的第二种【不是数值】的 token: **单位换算**。
+##   `{transformHpScale*100}%×攻击力` 里的 100 是把"比例"换算成"百分比",
+##   它跟着 `%` 走, 不是可调的数 —— 代码里没有、也不该有一个叫"100"的常量。
+##   判据卡得很紧: 占位符里 **小写开头的标识符**(= 运行时变量, 不是类名) 紧接 `*100`。
+##   `{C:某类.某常量%}` 那种走的是另一条路(展开时自己乘 100), 不经这里。
+##   ⚠ 这不是放宽基线: 下面会打印被跳过的条数, 涨了看得见。
+UNIT_CONV = re.compile(r'\{[a-z][A-Za-z0-9_]*\s*\*\s*100\}')
 NOISE = {'0', '1', '2', '3'}
 
 # 只降不升。改动后如果这个数涨了, 说明又添了没人验的数字。
-BASELINE = 132   # 2026-08-25 第 68 批(1722→144)。台账见 docs/plans/20260820-文案数字根除.md。**只降不升**。
+BASELINE = 78   # 2026-08-25 第 68 批(1722→144)。台账见 docs/plans/20260820-文案数字根除.md。**只降不升**。
 #   ★这个数从 1452 涨到 1734 不是退步, 是【量准了】: 原来把 {N:0.5*ATK} 这类占位符整体
 #   记进"不可能错", 而里面的 0.5 是手写在文案里的系数、照样会漂(幽灵龟就是这么漂的)。
 #   把这 282 个藏起来的系数摊出来之后, 基线才对得上真实风险。
@@ -77,6 +84,7 @@ def main():
     n_covered = 0
     n_unver = 0
     n_label = 0      # 被当成【名字】跳过的 token 数(FPGA 的 00/01/10/11), 见 LABEL_NUM
+    n_unit = 0       # 被当成【单位换算】跳过的占位符数(见 UNIT_CONV)
     worst = []
     for src, who, t in texts:
         ## ★2026-08-20 修一个【我自己的分类错误】: 原来把占位符整体记进「不可能错」。
@@ -90,6 +98,10 @@ def main():
         for ph in PLACEHOLDER.findall(t):
             if ph.startswith('{C:'):
                 n_ph += 1                     # 直接引用代码常量: 中间不经任何副本
+                continue
+            if UNIT_CONV.fullmatch(ph):
+                n_unit += 1                   # 单位换算(比例→百分比), 不是可调值
+                n_ph += 1
                 continue
             lits = [x for x in NUM.findall(ph) if x not in NOISE]
             if lits:
@@ -116,6 +128,7 @@ def main():
     print('  ① 占位符(不可能错)      %5d  %4.1f%%' % (n_ph, 100.0 * n_ph / max(1, total)))
     print('  ② 有审计器逐个对代码验   %5d  %4.1f%%' % (n_covered, 100.0 * n_covered / max(1, total)))
     print('  ③ ★没人验               %5d  %4.1f%%' % (n_unver, 100.0 * n_unver / max(1, total)))
+    print('  (跳过: 状态名 %d 个 · 单位换算占位符 %d 个 —— 这两类不是可调值)' % (n_label, n_unit))
     worst.sort(reverse=True)
     print('\n  没人验的数字最多的 8 段:')
     for n, who, ex in worst[:8]:

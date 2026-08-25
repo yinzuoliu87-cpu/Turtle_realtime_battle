@@ -5,6 +5,9 @@ extends RefCounted
 
 ## ★糖果数值单一事实源(用户2026-07-28 削弱·整只 81.5%)。文案在 data/pets.json。
 ## ★两条召唤路径共用它: 登场召(battle_spawn.gd) / 阵亡补召(本文件) —— 只改一处会造出"第一颗弱、第二颗强"的诡异行为。
+## 【甜蜜掠夺(被动)】战斗第几秒对最大生命最高的敌人吸一次血(用户 2026-07-15「第 8 秒生效」)。
+const DRAIN_AT := 8.0         # 战斗第几秒触发(一场一次)
+const DRAIN_MAXHP_PCT := 0.25 # 扣除目标最大生命 ×, 全额回复给自己(不杀·留 1)
 const BOMB_DEATH_AOE := 1.0   # 炸弹死亡爆炸: 总伤 = ×炸弹最大生命 (1.5→1.0)
 ## ★★2026-08-22 文案根除: 下面这些原来散在函数体里, 文案又各手写一遍。
 ## 【糖果锤】
@@ -188,7 +191,7 @@ func _candy_sweet_drain(u: Dictionary) -> void:   # 甜蜜掠夺·甜蜜吸取(�
 	var fat: Dictionary = ce[0]
 	for e in ce:
 		if float(e["maxHp"]) > float(fat["maxHp"]): fat = e
-	var steal: float = minf(fat["maxHp"] * 0.25, fat["hp"] - 1.0)
+	var steal: float = minf(fat["maxHp"] * DRAIN_MAXHP_PCT, fat["hp"] - 1.0)
 	if steal > 0:
 		battle._damage._apply_damage_from(u, fat, maxi(1, int(round(steal))), Color("#ff9ecb"), 0.0, true, false, true, true)   # 真伤·必中·不暴击
 		battle._damage._heal(u, steal)

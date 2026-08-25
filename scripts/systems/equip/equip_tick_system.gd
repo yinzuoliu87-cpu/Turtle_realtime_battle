@@ -144,7 +144,7 @@ func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016:
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		var mates: Array = battle._targeting._allies_share_pool(u)   # ★均分排除大师+龟蛋(都不占盾份额·稀释)·用户2026-07-23 点4 / 2026-08-01
 		if mates.is_empty(): continue
-		var pool: float = [100.0, 250.0, 400.0][si] + u["maxHp"] * 0.08   # 总池: 固定 + 携带者8%最大生命
+		var pool: float = [100.0, 250.0, 400.0][si] + u["maxHp"] * IRONWALL_MAXHP_PCT   # 总池: 固定 + 携带者最大生命×
 		var each: float = pool / float(mates.size())                      # 全队(含自己·除大师/龟蛋)均分
 		for o in mates:
 			battle._damage._grant_shield(o, each)
@@ -158,6 +158,9 @@ const ANCHOR_ASPD := 1.00      # 持有充能期间普攻攻速 +(真值在 batt
 ##   裸字面量, 而 json 的 effectDesc1 / effectBrief 又各手写了一遍 —— 同一个数存三份。
 ##   现在代码是唯一的那一份, 两处文案都用 `{C:EquipTickSystem.XXX_IV}` 指过来。
 const RUST_IV := 3.0            # 001 锈蚀短剑: 每几秒甩一道飞斩剑气
+const RUST_RANGE := 2000.0      # 001 剑气射程(码)·2000 = 全场覆盖(用户 2026-07-19 近战→远程)
+const JELLY_MAXHP_PCT := 0.04   # 012 龟苓膏块: 护盾 = 固定值 + 自身最大生命 ×
+const IRONWALL_MAXHP_PCT := 0.08  # 016 铁壁盾: 护盾总池 = 固定值 + 携带者最大生命 ×
 const SWORD_STORM_IV := 7.0     # 006 千刃风暴: 每几秒召一排剑穿过全体敌人
 const BROADSWORD_IV := 6.0      # 007 锈蚀阔剑: 每几秒挥一道剑气墙
 const CORAL_IV := 9.0           # 008 双穿珊瑚刺: 每几秒射一根尖刺(用户 2026-07-19: 6 → 9)
@@ -394,11 +397,11 @@ func _tick_jelly(u: Dictionary, delta: float) -> void:   # 龟苓膏块p2eq_012:
 		if float(e["jelly_t"]) < JELLY_IV: continue
 		e["jelly_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
-		battle._damage._grant_shield(u, [40.0, 60.0, 90.0][si] + u["maxHp"] * 0.04)   # 用户2026-07-19: 30/40/55 → 40/60/90 + 4%最大生命
+		battle._damage._grant_shield(u, [40.0, 60.0, 90.0][si] + u["maxHp"] * JELLY_MAXHP_PCT)   # 用户2026-07-19: 30/40/55 → 40/60/90 + 4%最大生命
 
 func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 锈蚀短剑p2eq_001: 每3s就绪, 射程2000(全场)内最近敌即甩飞斩剑气; 每件独立(多件各自触发)
 	if u.get("equips", []).is_empty(): return
-	var t = null; var got = false; var rng: float = 2000.0   # 射程2000(用户2026-07-19: 近战→远程「裂空飞斩」剑气全场覆盖)
+	var t = null; var got = false; var rng: float = RUST_RANGE   # 全场覆盖(用户2026-07-19: 近战→远程「裂空飞斩」)
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_001": continue
 		e["rust_t"] = float(e.get("rust_t", 0.0)) + delta   # 计时存装备条目→每副本独立就绪

@@ -3,6 +3,9 @@ extends RefCounted
 ## 龙·烈焰召唤系统(从 RealtimeBattle3DScene 抽出·2026-07-25)。持 battle 引用回调场景。
 ## 类内 _dragon_* 名字不变→内部互调零改动;外部名加 battle. 前缀。无状态成员。
 
+## 【024 龙蛋·喷火龙】火柱是一条直线, 两侧各多宽算命中。
+const BREATH_HALF_W := 88.0   # 半宽(码)
+
 var battle
 
 func _init(b) -> void:
@@ -17,13 +20,13 @@ func _dragon_unleash(u: Dictionary, si: int, start: Vector2, end: Vector2, dir: 
 	var burn_tex: Texture2D = load("res://assets/sprites/vfx/dragon-flame.png")
 	# 火柱扫到谁那一刻才对谁结算(非召唤即一次性算完): 延时=火柱沿线到达该单位的时间
 	for o in battle._targeting._enemies_of(u):
-		if battle._on_line(start, dir, o["pos"], 88.0):
+		if battle._on_line(start, dir, o["pos"], BREATH_HALF_W):
 			var d_e: float = clampf((o["pos"] - start).dot(dir) / total, 0.0, 1.0) * dur
 			var twe = battle._reg_tween()
 			twe.tween_interval(d_e)
 			twe.tween_callback(_dragon_hit_enemy.bind(u, o, si, expl, burn_tex))
 	for o in battle._targeting._allies_of(u):
-		if battle._on_line(start, dir, o["pos"], 88.0):
+		if battle._on_line(start, dir, o["pos"], BREATH_HALF_W):
 			var d_a: float = clampf((o["pos"] - start).dot(dir) / total, 0.0, 1.0) * dur
 			var twa = battle._reg_tween()
 			twa.tween_interval(d_a)

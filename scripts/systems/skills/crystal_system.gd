@@ -20,6 +20,11 @@ const SPIKE_KNOCK_SEC := 0.8    # 水晶刺: 击飞滞空(秒)
 const SPIKE_SLOW_PCT := 0.50    # 水晶刺: 减速比例(语义值)
 const SPIKE_SLOW_MULT := 1.0 - SPIKE_SLOW_PCT
 const SPIKE_SLOW_SEC := 3.0     # 水晶刺: 减速持续(秒)
+## 【结晶共鸣(被动)】水晶龟受魔法伤害额外减免。
+## ★存**语义值**(降幅), 代码要的剩余倍率由它推 —— 主场景原来写死 `base *= 0.8`,
+##   文案说的却是"减免 20%", 同一个数存两份且方向相反。本轮第六次遇到这个形状。
+const MAGIC_DR := 0.20          # 受魔法伤害额外减免
+const MAGIC_DR_MULT := 1.0 - MAGIC_DR   # 推导: 代码要的剩余倍率
 const BURST_SEGMENTS := 3       # 碎晶爆破: 分几段坠落(总量 ÷ 它 = 每段)
 const BURST_MAGIC := 1.2        # 碎晶爆破: 三段合计 ×ATK 魔法 (0.7→0.8→1.2·用户2026-07-29 第五轮: 每段 0.4)
 const BURST_TRUE := 1.2         # 碎晶爆破: 三段合计 ×ATK 真实 (0.1→0.3→1.2·用户2026-07-29 第五轮: 每段 0.4)

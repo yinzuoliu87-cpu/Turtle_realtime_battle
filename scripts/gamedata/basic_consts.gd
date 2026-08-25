@@ -24,6 +24,11 @@ const RARITY_AMP_SS := 0.32
 const RARITY_AMP_SSS := 0.34
 
 ## ── 龟盾(已融入被动): 每 N 秒蓄力一次, 强化下一发普攻 ──────────
+## 没在主场景 `BASIC_ATK` 表里登记的龟(宝箱/无头/…)走这条默认普攻的系数。
+## ★放这里而不是主场景: 纯常量表按 CLAUDE.md §5 归 `scripts/gamedata/`,
+##   而且它们的文案里那个「1.0×攻击力」指的正是它, 不该各编各的。
+const DEFAULT_BASIC_COEF := 1.0
+
 ## 【普攻】真值在主场景普攻表, 那里引用本常量。
 const ATTACK_ATK_COEF := 1.0     # 普攻 ×ATK 物理
 const SHIELD_CD := 6.0           # 每几秒蓄一次
@@ -46,6 +51,8 @@ const CHI_CRIT := 0.25           # 自增暴击率
 const CHI_LIFESTEAL := 0.20      # 自增生命偷取
 const CHI_ARMOR_PEN_COEF := 0.1  # 自增护甲穿透 = ×ATK
 const CHI_DASH_MAX := 300.0      # 发波前智能位移的最远距离(码)
+const CHI_DASH_DIRS := 12        # 智能位移采样几个方向(× 3 档距离)
+const CHI_DASH_MIN_FOE := 120.0  # 落点距任一敌人近于此就排除(不贴脸·考虑碰撞体积)
 
 ## ── 过肩摔(主动) ──────────────────────────────────────────
 const SLAM_LAND_BACK := 55.0     # 摔到龟背后多少码

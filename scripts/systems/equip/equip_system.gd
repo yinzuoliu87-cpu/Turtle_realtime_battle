@@ -132,7 +132,7 @@ func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不�
 					b39["bamboo_charges"] = int(b39["bamboo_charges"]) - 1
 					var si39: int = _eq_si(int(e.get("star", 1)))
 					# 回血+永久成长延到绿球落回自己身上才生效(竹叶龟同款)
-					battle._spawn_bamboo_arrow(u, t39, [25, 30, 35][si39] + int(u["maxHp"] / battle.HP_MULT * 0.06), [50.0, 70.0, 90.0][si39])
+					battle._spawn_bamboo_arrow(u, t39, [25, 30, 35][si39] + int(u["maxHp"] / battle.HP_MULT * BAMBOO_ARROW_MAXHP_PCT), [50.0, 70.0, 90.0][si39])
 			u["eq_state"]["p2eq_039"] = b39
 		if str(e["id"]) == "p2eq_027" and tgt != null and tgt is Dictionary and tgt.get("alive", false):   # 电棍: 就绪→本次普攻消耗1层附魔法伤+眩晕(用户2026-07-03)
 			var bst: Dictionary = u["eq_state"].get("p2eq_027", {})
@@ -515,6 +515,7 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 ## 【053 霰弹贝古】扇形弹珠, 每颗撞到第一个敌人才结算。
 ## 【009 宽刃弯刀】攒刃能 → 满值斩出环形扇区(不是整块扇形, 是 500~800 的**带**)。
 ## 【037 蛋糕蜡烛】三阶段循环: 熄灭 → 微弱(回血) → 燃烧(爆燃)。
+const BROADSWORD_REACH := 2000.0  # 007 锈蚀阔剑: 剑气墙扫多远(码)·有效与特效同距
 const CANDLE_PHASES := 3       # 几个阶段
 const CANDLE_IV := 5.0         # 每几秒切一次(主场景 _EQ_CUSTOM_IV 引用本常量)·也是回血铺开的秒数
 const CANDLE_HEAL_R := 250.0   # 微弱阶段: 友军回血光圈半径(码)
@@ -743,7 +744,7 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007(重做�
 		var sd: Vector2 = s1 - s0
 		if sd.length() > 0.5:
 			obasis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), atan2(-sd.y, sd.x) - PI / 2.0)
-	var reach := 2000.0
+	var reach := BROADSWORD_REACH
 	var traveled := 0.0
 	var trail_next := 0.0
 	var hit: Array = []
@@ -949,6 +950,12 @@ func _eq_charge(stt: Dictionary, key: String, amt: float, cap: float, on_full: C
 # ============================================================================
 ## ── 飞镖056(用户 2026-07-30 新效果) ──
 const DART_EVERY := 5              # 每 5 下普攻强化一次
+const DART_BLEED_COEF := 0.1       # 飞镖命中施加的流血层数 = ×ATK
+## 【003 锋利鲨齿】每段伤害命中后向目标周围溅射。
+const SHARKTOOTH_SPLASH_R := 200.0 # 溅射半径(码)·判定与冲击环同一个数
+## 【039 竹制弓箭】强化竹箭与它带回的生命球。
+## ★这个百分比乘的是 `maxHp / HP_MULT`(CLAUDE.md §3.1) —— 只抽百分比, 不动那个除法。
+const BAMBOO_ARROW_MAXHP_PCT := 0.06
 const DART_KNOCKUP_SEC := 1.0      # 强化那一击把目标击飞 1 秒(= 位移 + 同时长 stun)
 ## ⚠ 这个数【不产生位移】: 它传给 `_knockback` 的第三参, 而那个参数在 battle_damage.gd 里
 ##   叫 `_dist` 且从不被读 —— 真实位移由 battle.KNOCK_VY / KNOCK_PUSH 决定。留着只是占位。
@@ -1101,9 +1108,9 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false,
 				battle._damage._apply_dot_stacks(tgt, "bleed", battle._cyeq_n(bs), src)
 			"p2eq_003":   # 锋利鲨齿: 溅射200码内敌 + 醒目双层冲击环(no_depth_test防地板盖)+每敌立式火花(用户2026-07-19)
 				var frac: float = [0.15, 0.28, 0.50][si]
-				battle._splash_ring_bold(tgt["pos"], Color(1.0, 0.80, 0.36, 0.95), 200.0)   # 醒目双环从命中点扩到200码·恒画在地板之上
+				battle._splash_ring_bold(tgt["pos"], Color(1.0, 0.80, 0.36, 0.95), SHARKTOOTH_SPLASH_R)   # 醒目双环从命中点扩到200码·恒画在地板之上
 				for o in battle._targeting._enemies_of(src):
-					if not is_same(o, tgt) and (o["pos"] - tgt["pos"]).length() <= 200.0:
+					if not is_same(o, tgt) and (o["pos"] - tgt["pos"]).length() <= SHARKTOOTH_SPLASH_R:
 						battle._damage._apply_damage_from(src, o, maxi(1, int(dmg * frac)), Color("#ffd07a"), 0.0, false, true)
 						battle._vfx._hit_spark(o)   # 每个被溅射敌人身上一记立式火花(胸高billboard·地板高度盖不住)
 			"p2eq_005":   # 双生匕首: 命中概率追加一刀双生刺击
@@ -1737,6 +1744,8 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 # ============================================================================
 #  HP阈值 (首次<50%) — 深海项链 / 珍珠耳环
 # ============================================================================
+## 【半血救急】044 深海项链 / 045 珍珠耳环共用的触发线: 生命首次降到这个比例以下。
+const LOWHP_GATE := 0.5          # 首次 < 此比例 触发(两件共用同一条线)
 const NECKLACE_HOT_SEC := 6.0    # 深海项链 044: 回复摊在 6 秒内(用户2026-08-01)
 const EARRING_HOT_SEC := 8.0     # 珍珠耳环 045: 回复摊在 8 秒内(用户2026-08-01)
 
@@ -1757,7 +1766,7 @@ func _eq_start_hot(u: Dictionary, total: float, secs: float) -> void:
 
 
 func _eq_check_hp_threshold(u: Dictionary) -> void:
-	if u.get("hp50_fired", false) or u["hp"] > u["maxHp"] * 0.5 or not u["alive"]:
+	if u.get("hp50_fired", false) or u["hp"] > u["maxHp"] * LOWHP_GATE or not u["alive"]:
 		return
 	var fired := false
 	for e in u.get("equips", []):
@@ -1911,7 +1920,7 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 					if battle._t < o.get("eq_target_until", 0.0):
 						o["eq_target_until"] = 0.0
 						o["_mark_until"] = battle._t   # 靶子锁定框消失
-						battle._spawn_eq_bolt(u, o, battle._resolve_dmg(u, u["atk"] * [1.5, 3.0, 9.0][si] + [130.0, 190.0, 600.0][si], o, false), "res://assets/sprites/vfx/dart.png", Color("#ffe0b0"), true, maxi(1, roundi(u["atk"] * 0.1)))
+						battle._spawn_eq_bolt(u, o, battle._resolve_dmg(u, u["atk"] * [1.5, 3.0, 9.0][si] + [130.0, 190.0, 600.0][si], o, false), "res://assets/sprites/vfx/dart.png", Color("#ffe0b0"), true, maxi(1, roundi(u["atk"] * DART_BLEED_COEF)))
 		u["eq_state"][iid] = stt
 	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
 	                           #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)

@@ -103,6 +103,7 @@ const STORM_TICKS := 5          # 共几跳
 const STORM_TICK_SEC := 0.5     # 每几秒一跳
 const STORM_ATK_COEF := 0.2     # 每跳 ×ATK 物理
 const STORM_LIFE := STORM_TICKS * STORM_TICK_SEC   # 总时长(推导, 文案里那个 2.5 秒)
+const STORM_TOTAL_COEF := STORM_ATK_COEF * STORM_TICKS   # 推导: 全部跳完合计 ×ATK(文案那个 100%)
 ## 【藏宝图】开箱后额外回复的最大生命比例(逐箱)。阈值在主场景 `_CHEST_THRESH`。
 ## 【清点财宝】回血(吃财宝加成) + 护盾(不吃加成)。
 ## 【财宝炮击】一条直线的长激光; 打包被动【贪婪】按携带装备数永久涨属性。
