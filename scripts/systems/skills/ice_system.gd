@@ -232,6 +232,8 @@ const FROST_ATK_COEF := 0.25        # 每跳 ×ATK 魔法
 const TEAM_SHIELD_PCT := 0.05      # 护盾 = 施法者最大生命 ×
 const TEAM_SHIELD_SEC := 4.0       # 护盾持续(秒)
 const TEAM_SHIELD_SOLO_PCT := 0.20 # 独狼(场上无其他友军)时护盾 ×
+## 推导: 独狼是常态的几倍(文案里那个 "×4")。★不另写一个 4 —— 改任一端它自动跟。
+const TEAM_SHIELD_SOLO_MULT := TEAM_SHIELD_SOLO_PCT / TEAM_SHIELD_PCT
 const TEAM_BURST_RADIUS := 250.0   # 爆裂半径(码)
 const TEAM_BURST_COEF := 1.0       # 爆裂 ×ATK 魔法
 const TEAM_BURST_SOLO_COEF := 5.0  # 独狼时的爆裂系数

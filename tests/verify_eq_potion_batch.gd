@@ -185,8 +185,12 @@ func _t_dispatch() -> void:
 		miss.is_empty(), str(miss))
 
 	# ── 周期表: 067 的 6 秒写在 EQ_IV_BATCH1 里 ──
-	_ok("⓪ 067 的触发间隔 6 秒登记在 EQ_IV_BATCH1", code.contains("\"p2eq_067\": 6.0"),
-		"没有 \"p2eq_067\": 6.0 这一行")
+	## ★2026-08-25 文案根除: 这个 6.0 抽成了 EquipSystem.VIAL_IV(文案指着它),
+	##   源码里已经没有 `"p2eq_067": 6.0` 这串字面量 —— 比【常量的值】+ 确认表确实引用它。
+	_ok("⓪ 067 的触发间隔 6 秒登记在 EQ_IV_BATCH1",
+		is_equal_approx(EquipSystem.VIAL_IV, 6.0)
+			and (code.contains("\"p2eq_067\": VIAL_IV") or code.contains("\"p2eq_067\": 6.0")),
+		"VIAL_IV=%.1f, 表里没引用它" % EquipSystem.VIAL_IV)
 
 	# ── 常驻守卫: 四件都点亮 _potion_tick, 且 066/068 都预置了【本路】t0 ──
 	var fmiss: Array = []

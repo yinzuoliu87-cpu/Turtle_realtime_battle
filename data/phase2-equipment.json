@@ -750,7 +750,7 @@
     "baseStats1": "+攻速8/15/25%·+暴击10/18/30%",
     "shopAvailable": 1,
     "emoji": "🌀",
-    "effectDesc1": "释放技能后获得 30/60/100%攻击速度，持续【本次技能消耗的龟能×0.03】秒（对所有龟折合恒定 40%覆盖率）。\n携带者的普攻会对敌人施加一个【环】，敌人身上有 3 个环时环被引爆，该敌人受到 25/40/70 点真实伤害。",
+    "effectDesc1": "释放技能后获得 30/60/100%攻击速度，持续【本次技能消耗的龟能×{C:EqSpiritBatch.RING_SEC_PER_ENERGY}】秒（对所有龟折合恒定 40%覆盖率）。\n携带者的普攻会对敌人施加一个【环】，敌人身上有 3 个环时环被引爆，该敌人受到 25/40/70 点真实伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_063.png",
     "effectBrief": "释放技能后 +30/60/100% 攻击速度；普攻叠环，3 环引爆造成真实伤害。"
@@ -798,10 +798,10 @@
     "baseStats1": "+生命110/280/650·+攻15/38/90·+法穿10/20/38",
     "shopAvailable": 1,
     "emoji": "☠️",
-    "effectDesc1": "每 6 秒朝敌人最密集的地方投出一个药瓶，对落点 {C:EqPotionBatch.VIAL_RADIUS} 码内的敌人施加 40/70/110 层中毒；普攻额外施加 {C:VenomDroneSystem.POISON_STACKS} 层中毒。\n携带者存活时，中毒的敌人受到的治疗与获得的护盾都减半。",
+    "effectDesc1": "每 {C:EquipSystem.VIAL_IV} 秒朝敌人最密集的地方投出一个药瓶，对落点 {C:EqPotionBatch.VIAL_RADIUS} 码内的敌人施加 40/70/110 层中毒；普攻额外施加 {C:VenomDroneSystem.POISON_STACKS} 层中毒。\n携带者存活时，中毒的敌人受到的治疗与获得的护盾都减半。",
     "effectDesc3": "",
     "img": "equip/p2eq_067.png",
-    "effectBrief": "每 6 秒向敌人最密处投毒瓶，施加 40/70/110 层中毒并压制其治疗。"
+    "effectBrief": "每 {C:EquipSystem.VIAL_IV} 秒向敌人最密处投毒瓶，施加 40/70/110 层中毒并压制其治疗。"
   },
   {
     "id": "p2eq_068",

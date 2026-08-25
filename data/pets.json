@@ -407,7 +407,7 @@
         "selfCast": true,
         "shieldDuration": 3,
         "brief": "为全体友军（含自己）罩上冰霜护盾，护盾量等于自身 <span class=\"val-def\">{C:IceSystem.TEAM_SHIELD_PCT%}% 最大生命值</span>，持续 <span class=\"val-atk\">{C:IceSystem.TEAM_SHIELD_SEC} 秒</span>。\n<span style=\"color:#8a93a0\">护盾到期、被打破或持盾者阵亡时爆裂，对其 {C:IceSystem.TEAM_BURST_RADIUS} 码内的敌人造成 {C:IceSystem.TEAM_BURST_COEF}×攻击力魔法伤害。\n若场上没有其他友军，护盾改为 {C:IceSystem.TEAM_SHIELD_SOLO_PCT%}% 最大生命值、爆裂伤害改为 {C:IceSystem.TEAM_BURST_SOLO_COEF}×攻击力。\n</span>",
-        "detail": "寒冰龟为全体友军（含自己）施加等于【寒冰龟 <span class=\"val-def\">{C:IceSystem.TEAM_SHIELD_PCT%}% 最大生命值</span>】的冰霜护盾，持续 <span class=\"val-def\">{C:IceSystem.TEAM_SHIELD_SEC} 秒</span>。\n场上没有其他友军时护盾 ×4（{C:IceSystem.TEAM_SHIELD_SOLO_PCT%}% 最大生命值）。\n护盾<span class=\"val-atk\">到期、被打破、或持盾者阵亡</span>时都会爆裂，对持盾者周围 {C:IceSystem.TEAM_BURST_RADIUS} 码内的敌人造成 <span class=\"val-atk\">{C:IceSystem.TEAM_BURST_COEF%}%×攻击力</span> 魔法伤害（独狼时 {C:IceSystem.TEAM_BURST_SOLO_COEF%}%）。",
+        "detail": "寒冰龟为全体友军（含自己）施加等于【寒冰龟 <span class=\"val-def\">{C:IceSystem.TEAM_SHIELD_PCT%}% 最大生命值</span>】的冰霜护盾，持续 <span class=\"val-def\">{C:IceSystem.TEAM_SHIELD_SEC} 秒</span>。\n场上没有其他友军时护盾 ×{C:IceSystem.TEAM_SHIELD_SOLO_MULT}（{C:IceSystem.TEAM_SHIELD_SOLO_PCT%}% 最大生命值）。\n护盾<span class=\"val-atk\">到期、被打破、或持盾者阵亡</span>时都会爆裂，对持盾者周围 {C:IceSystem.TEAM_BURST_RADIUS} 码内的敌人造成 <span class=\"val-atk\">{C:IceSystem.TEAM_BURST_COEF%}%×攻击力</span> 魔法伤害（独狼时 {C:IceSystem.TEAM_BURST_SOLO_COEF%}%）。",
         "energyCost": 120
       }
     ],
