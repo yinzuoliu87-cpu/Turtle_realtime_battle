@@ -5420,7 +5420,7 @@ const _IMPL_SKILLS := {
 # 龟能花费表 已移到单一事实源 SkillEnergy (scripts/systems/skill_energy.gd) — 战斗/图鉴/选龟共用
 func _skill_cost(u: Dictionary, stype: String) -> float:
 	if stype == "lavaErupt" and u.get("volcano", false):
-		return 120.0   # 熔岩技三·火山形态版=暴走·龟能单独120(用户2026-07-09"要单独"·熔岩形态智能冲刺仍80)
+		return LavaSystem.RAMPAGE_ENERGY   # 熔岩技三·火山形态版=暴走·龟能单独120(用户2026-07-09"要单独"·熔岩形态智能冲刺仍80)
 	return float(u.get("energy_cost", {}).get(stype, SkillEnergy.cost_of(stype)))   # 数据驱动: 优先该龟该技energyCost, 缺则类型兜底
 
 # 该技充满龟能要多少秒 (= 龟能花费 × 0.075; 即所谓"冷却") — 龟盾~5s · 普通~7s · 弹幕~10s · 大招~13s

@@ -20,6 +20,18 @@ const ERUPT_HEAL_PCT := 0.08
 const SLAM_ATK_COEF := 1.0
 const SLAM_BURN_COEF := 0.3
 const VOLCANO_SPD_MULT := 1.2   # 火山形态相对提速(原 175/145≈1.21 的等效保留)
+## ★★2026-08-25 踩坑记录: 这里原本想把火山移速写成 `static var VOLCANO_SPD =
+##   LAVA_SPD * VOLCANO_SPD_MULT`(推导), 但 **`{C:}` 占位符只认 `const`,
+##   不认 `static var`** —— 渲染门禁当场报"占位符没渲染出来"。
+##   同理龟能也不能写成 `static var = SkillEnergy.cost_of(...)`。
+## ⇒ 能推导的推导不了时, **让文案直接指向已有常量**, 别新造一个副本:
+##   移速文案改成写「基础移速 ×VOLCANO_SPD_MULT」, 龟能文案指 SkillEnergy 那张表。
+## 技三的龟能: 火山形态在主场景单独返回本常量(普通形态走 SkillEnergy 表)。
+## 变身砸地的滞空(秒) —— 抛物线【输出】, 代码里没有这个量可引用(*_KNOCK_SEC 族豁免)。
+const SLAM_KNOCK_SEC := 0.86
+const RAMPAGE_ENERGY := 120.0
+const ERUPT_ENERGY := 80.0   # ★与 skill_energy.gd 的 "lavaErupt" 同值;
+                             #   两处都改才对得上(verify_lava_* 有断言守着)。
 ## ★怒气获取比例(2026-08-22 文案根除): 造成/承受伤害各按此比例转怒气。
 ##   原来是 `battle_damage.gd` 里两个裸 0.10, 文案又手写"10%" ⇒ 三份副本。
 const RAGE_GAIN_PCT := 0.10

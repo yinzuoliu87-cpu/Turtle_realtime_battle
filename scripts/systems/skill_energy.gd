@@ -33,7 +33,7 @@ const SKILL_COST := {
 	"rainbowStorm": 80.0, "gamblerDraw": 80.0, "gamblerFateWheel": 110.0,
 	"hunterShot": 90.0, "hunterBarrage": 100.0, "candyBarrage": 130.0, "candyHammer": 80.0, "candyBomb": 100.0, 
 	"lightningBarrage": 110.0, "lightningShield": 90.0, "phoenixScald": 100.0,
-	"lavaQuake": 115.0, "lavaErupt": 80.0, "crystalBurst": 100.0, "crystalBall": 70.0,
+	"lavaQuake": 115.0, "lavaErupt": LavaSystem.ERUPT_ENERGY, "crystalBurst": 100.0, "crystalBall": 70.0,
 	"chestStorm": 100.0, "headlessTendrils": 160.0, "headlessSoulStrike": 80.0, 
 	# Batch2 特殊
 	"chestCannon": 120.0, "fortuneAllIn": 210.0, "starWormhole": 100.0, "lineFinish": 120.0,
