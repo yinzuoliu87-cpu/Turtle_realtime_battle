@@ -287,7 +287,7 @@ const BASIC_ATK := {
 	"__trainer__": {"phys": 1.0, "hits": 1},                                       # 训龟大师扔石头: 1.0×ATK, 而它 ATK=1 → 恰好 1 点物理
 	"stone":    {"phys": StoneSystem.HIT_ATK_COEF, "def": StoneSystem.HIT_DEF_COEF, "mr": StoneSystem.HIT_MR_COEF, "hits": 1},                    # +护甲魔抗(坦克)
 	"bamboo":   {"phys": 0.4, "selfhp": 0.03, "hits": 1},                           # 单段 0.4ATK+3%自身HP(用户2026-06-29)
-	"angel":    {"phys": 1.0, "hits": 1},                                          # 远程平A 1.0ATK单段(用户)+审判被动
+	"angel":    {"phys": AngelSystem.VERDICT_COEF, "hits": 1},                                          # 远程平A 1.0ATK单段(用户)+审判被动
 	"ice":      {"phys": 1.0, "magic": 1.0, "hits": 1, "alt_each": true},           # 单段逐次交替物/魔 1.0ATK(用户2026-07-28: 0.8→1.0·配冰柱层加强)
 	"ninja":    {"phys": 1.0, "hits": 1, "rider": "bleed"},                         # 斩击(封板): 近战1A物理+2层流血; 冲击已转被动auto-dash
 	"ghost":    {"phys": GhostSystem.BASIC_PHYS, "true": GhostSystem.BASIC_TRUE, "hits": 1},                             # ★这一行【对幽灵不生效】: _basic_attack 在读本表之前就为 ghost 早退
@@ -4641,7 +4641,7 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 	if not is_self and u.get("_egg_final", false):
 		d *= 5.0                                     # 终极战场暴露蛋: ×5承伤(快速决胜)
 	if u["id"] == "diamond" and not raw:
-		d *= 0.82                                    # 钻石·结构减伤18%(真伤/穿透不减)
+		d *= DiamondSystem.STRUCT_DR_MULT             # 钻石·结构减伤18%(真伤/穿透不减)
 	if u["id"] == "stone" and u.get("stone_rockbody", false) and not raw:
 		d *= (1.0 - StoneSystem.ROCK_DR_PER_LAYER * float(mini(StoneSystem.ROCK_LAYER_CAP, int(u.get("rock_layers", 0)))))   # 岩石之躯: 每层-1%, 上限30%
 	if u["id"] == "stone" and _t < float(u.get("stone_dr_until", 0.0)) and not raw:
@@ -6907,7 +6907,7 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 			_damage._apply_damage_from(u, tgt, _mitigate(u, tgt["maxHp"] * CrystalSystem.BASIC_MAXHP_MAGIC, tgt, true), Color("#9bdcff"), 0.0, false)   # 水晶刺附1.5%目标最大生命魔法(吃魔抗·封板L559·原折进物理=类型错)
 			_crystal_sys._crystal_stack(u, tgt, CrystalSystem.BASIC_STACKS)   # 普攻叠1层结晶(满5引爆·封板)·与水晶球共享层数走同一helper(引爆改吃魔抗)
 		"angel":                                          # 审判: 每段攻击额外 +目标当前HP 8% 魔法(2026-07-22订正: 注释原写11%, 代码一直是 0.08)
-			_damage._apply_damage_from(u, tgt, _mitigate(u, tgt["hp"] * 0.08, tgt, true), Color("#9be7ff"), 0.0, false)   # 魔法(吃魔抗+蓝字), 原flat固定值绕魔抗+错色=bug
+			_damage._apply_damage_from(u, tgt, _mitigate(u, tgt["hp"] * AngelSystem.JUDGE_CURHP, tgt, true), Color("#9be7ff"), 0.0, false)   # 魔法(吃魔抗+蓝字), 原flat固定值绕魔抗+错色=bug
 			if u.get("_ascend_growth", false):
 				_angel_sys._ascend_growth_tick(u)   # 飞升打包被动(用户2026-07-28): 每次攻击 +5龟能 +1%攻击力·持续到战斗结束
 		# gambler 多重打击改云顶剑士式连击(见状态机 _gambler_sys._gambler_multi_cd), 不在这里追加

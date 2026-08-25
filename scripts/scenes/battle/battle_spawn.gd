@@ -663,8 +663,8 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 				battle._two_head_sys._two_head_fusion_onset(u)                      # 融合登场VFX(用户2026-07-11): 合体爆发+持续融合态光环
 		"diamond":                                    # 钻石结构(封板): 全队护甲/魔抗加成+50%(简化=开局全队+50%pct); 选钻石冲撞→强化结构(自身额外+100%·"受击再减20甲10抗"近似折进护甲留F5)
 			for o in battle._targeting._allies_of(u):
-				battle._damage._buff(o, "def", 0.5, true, 9999.0)
-				battle._damage._buff(o, "mr", 0.5, true, 9999.0)
+				battle._damage._buff(o, "def", DiamondSystem.STRUCT_RESIST_UP, true, 9999.0)
+				battle._damage._buff(o, "mr", DiamondSystem.STRUCT_RESIST_UP, true, 9999.0)
 			if "diamondSmash" in battle._chosen_skill_types(u["id"], u["side"] == "left"):   # 强化钻石结构(技三打包·选中才有): 自身护甲/魔抗额外+100%
 				battle._damage._buff(u, "def", DiamondSystem.SMASH_SELF_RESIST_BONUS, true, 9999.0)
 				battle._damage._buff(u, "mr", DiamondSystem.SMASH_SELF_RESIST_BONUS, true, 9999.0)

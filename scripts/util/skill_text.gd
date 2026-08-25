@@ -60,7 +60,36 @@ const KEYWORD_RULES := [
 
 
 ## 安全计算 expr: 用 Expression 把 ATK/atkScale… 替换成真值再算; 失败原样返回. PoC evalSkillExpr.
+## 表达式里出现的 `类名.常量名` —— 求值前先换成数值(见 _sub_consts 的说明)。
+static var _CONST_IN_EXPR := RegEx.create_from_string("[A-Z][A-Za-z0-9_]*\\.[A-Z][A-Z0-9_]{2,}")
+
+
+## 把表达式里的 `类名.常量名` 替换成它的数值。
+##
+## ★为什么要有这个: `{N:0.9*ATK}` 里的 0.9 是**手写的**, 跟代码没有任何绑定 ——
+##   代码系数改成 1.1, 文案照样显示 0.9。它和占位符外面那些裸数字是同一个毛病,
+##   只是藏在公式里更不容易被发现(实测这类有 289 个, 占"没人验"的 60%)。
+##   有了这个预处理, 文案可以写 `{N:StoneSystem.HIT_ATK_COEF*ATK}`, 真正跟着代码走。
+##
+## ★解析不出来时**故意不兜底**: 原样留着 → Expression.parse 失败 → eval_expr 返回原文
+##   → 渲染门禁报"占位符没渲染出来"。宁可当场红, 也不要静默显示一个错数。
+static func _sub_consts(expr: String) -> String:
+	if not _CONST_IN_EXPR.search(expr):
+		return expr
+	var out := ""
+	var last := 0
+	for m in _CONST_IN_EXPR.search_all(expr):
+		out += expr.substr(last, m.get_start() - last)
+		var raw := m.get_string(0)
+		var v := const_of(raw)
+		## const_of 解析不了会回 "{C:...}" —— 那种原样放回去, 让上面那条规矩生效。
+		out += (raw if v.begins_with("{C:") else v)
+		last = m.get_end()
+	return out + expr.substr(last)
+
+
 static func eval_expr(expr: String, vars: Dictionary) -> Variant:
+	expr = _sub_consts(expr)
 	var names := PackedStringArray(vars.keys())
 	var values: Array = []
 	for k in names:

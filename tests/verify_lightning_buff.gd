@@ -114,7 +114,12 @@ func _ready() -> void:
 	_chk("⑧ 普攻文案 = %.1f×ATK" % WANT_ATK_SCALE, pj.contains("{M:%.1f*ATK}" % WANT_ATK_SCALE))
 	_chk("⑧ 雷暴文案 = 单道 %.2f×ATK ×%d" % [WANT_BARRAGE_TOTAL / WANT_BARRAGE_BOLTS, WANT_BARRAGE_BOLTS],
 		pj.contains("{M:%.2f*ATK*%d}" % [WANT_BARRAGE_TOTAL / WANT_BARRAGE_BOLTS, WANT_BARRAGE_BOLTS]))
-	_chk("⑧ 雷盾文案 = %.1f×ATK" % WANT_COUNTER, pj.contains("{M:%.1f*ATK}" % WANT_COUNTER))
+	## ★2026-08-25: 公式占位符现在可以引用常量(`{M:LightningSystem.SHIELD_RETALIATE*ATK}`),
+	##   grep 字面量 `{M:0.3*ATK}` 会因为"文案变干净了"而假红 —— 认常量引用, 并比它的值。
+	_chk("⑧ 雷盾文案 = %.1f×ATK" % WANT_COUNTER,
+		is_equal_approx(LightningSystem.SHIELD_RETALIATE, WANT_COUNTER)
+			and (pj.contains("{M:LightningSystem.SHIELD_RETALIATE*ATK}")
+				or pj.contains("{M:%.1f*ATK}" % WANT_COUNTER)))
 	## ★文案里现在是占位符 {C:LightningSystem.SURGE_SEC} —— 要先渲染再比,
 	##   直接 grep 原文会因为"代码变干净了"而假红。
 	_chk("⑧ 涌动文案 = %d 秒" % int(WANT_SURGE_SEC),

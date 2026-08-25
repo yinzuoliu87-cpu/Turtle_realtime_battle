@@ -75,12 +75,36 @@ d = json.load(io.open('data/pets.json', encoding='utf-8'))
 pets = d if isinstance(d, list) else d['pets']
 # 「N%×攻击力」但后面不再接「×最大生命值」这种乘积
 PCT = re.compile(r'(\d+(?:\.\d+)?)%\s*[×x]\s*(攻击力|最大生命值|护甲|魔抗)(?!\s*[×x])')
+## 公式里的 `类名.常量名` —— 求系数前先换成数值(见 coef 的说明)。
+_CONST_REF = re.compile(r'[A-Z][A-Za-z0-9_]*\.[A-Z][A-Z0-9_]{2,}')
+
+
+def _const_num(ref):
+    """把 `类名.常量名` 解析成数字字符串; 解析不了返回 None(原样留着, 让它算不动而不是算错)。"""
+    v = expand_c('{C:%s}' % ref)
+    if v.startswith('{C:'):
+        return None
+    v = v.strip().rstrip('%')
+    try:
+        float(v)
+    except ValueError:
+        return None
+    return v
+
+
 PH = re.compile(r'\{[A-Z]:([^}]+)\}')
 KEY = {'攻击力': 'ATK', '最大生命值': 'HP', '护甲': 'DEF', '魔抗': 'MR'}
 
 
 def coef(expr, var):
-    """把表达式当线性式, 取 var 的系数: var=1 其余=0 算一次。算不动就返回 None。"""
+    """把表达式当线性式, 取 var 的系数: var=1 其余=0 算一次。算不动就返回 None。
+
+    ★2026-08-25: 公式里现在可以写 `类名.常量名`(见 SkillText.eval_expr 的预处理)。
+      不先展开的话, `HeadlessSystem.TENDRIL_DETACH_FOE*ATK` 会被当成两个标识符
+      各设 0 ⇒ 系数算成 0 ⇒ 报"文字 150% / 公式算出 0.5"的**假红**。
+      (实测当场撞上两条: 无头万千触须 1.5、双头融合 2.5 —— 转换都是对的)
+    """
+    expr = _CONST_REF.sub(lambda m: _const_num(m.group(0)) or m.group(0), expr)
     names = set(re.findall(r'[A-Za-z_][A-Za-z_0-9]*', expr))
     env = {n: 0.0 for n in names}
     if var not in env:

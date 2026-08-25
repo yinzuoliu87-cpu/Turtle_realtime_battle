@@ -6,12 +6,18 @@ extends RefCounted
 ## ★天使数值单一事实源(用户2026-07-28 第三轮加强·祝福 14.5% 第76)。文案在 data/pets.json。
 const BLESS_SHIELD := 2.5   # 祝福: 护盾 = ×ATK (1.2→2.5)
 ## 【祝福】给当前输出最高的友军: 盾 + 攻速, 同一时长; 打包被动是自身首死复活。
+## 【审判(被动)】每段攻击命中额外打一发按目标【当前】生命计的魔法。
+## ★这个系数在【两个文件各写一遍】: 主场景 _on_basic_hit + 本文件的技能路径。
+const JUDGE_CURHP := 0.08   # 额外魔法 = 目标当前生命 ×
+## 【裁决(普攻)】真值在主场景普攻表。
+const VERDICT_COEF := 1.0   # ×ATK 物理
 const BLESS_SEC := 5.0      # 盾与攻速的持续(秒)
 const BLESS_HASTE := 0.50   # 攻速 +
 const REVIVE_HP_PCT := 0.25 # 打包被动: 首次死亡以 ×最大生命 复活一次
 ## 【平等】多段圣光斩弧, 目标够稀有则追加一发真伤审判。
 const EQUAL_SEGMENTS := 4   # 几段
 const EQUAL_SEG_COEF := 0.5 # 每段 ×ATK 物理
+const EQUAL_TOTAL := EQUAL_SEGMENTS * EQUAL_SEG_COEF   # 推导: 四段合计, 文案原来手写 200%
 const EQUAL_SEG_GAP := 0.10 # 段间隔(秒)
 const EQUAL_LIFESTEAL := 0.10   # 本次施法附带生命偷取
 const EQUAL_JUDGE_COEF := 0.5   # 追加审判 ×ATK 真实
@@ -73,7 +79,7 @@ func _sk_angel_equality(u: Dictionary, tgt) -> void:
 			battle._bolt_line(u["pos"], tgt["pos"], Color(1.0, 0.92, 0.66))      # 金白斩弧曳光
 			battle._skill_ring(tgt["pos"], Color(1.0, 0.9, 0.6, 0.5), 44.0)
 			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, EQUAL_SEG_COEF, tgt, false), Color("#ffe9a8"), EQUAL_LIFESTEAL)   # 单道50%物理(4道合计200%)·10%吸血
-			battle._damage._apply_damage_from(u, tgt, battle._mitigate(u, tgt["hp"] * 0.08, tgt, true), Color("#9be7ff"), 0.0, false)   # 审判(每段攻击命中都吃·独立结算不触发其他被动·用户2026-07-10"每次攻击都要吃")
+			battle._damage._apply_damage_from(u, tgt, battle._mitigate(u, tgt["hp"] * JUDGE_CURHP, tgt, true), Color("#9be7ff"), 0.0, false)   # 审判(每段攻击命中都吃·独立结算不触发其他被动·用户2026-07-10"每次攻击都要吃")
 		})
 	# A级及以上→第3段从天而降审判光柱: (50%ATK + 目标已损生命10%)真伤·无视双抗·同10%吸血
 	if int(order.get(str(tgt.get("rarity", "C")), 0)) >= 2:
@@ -83,7 +89,7 @@ func _sk_angel_equality(u: Dictionary, tgt) -> void:
 			var lost: float = maxf(0.0, float(tgt["maxHp"]) - float(tgt["hp"]))
 			var tru: int = maxi(1, int(float(u["atk"]) * EQUAL_JUDGE_COEF + lost * EQUAL_JUDGE_LOST))
 			battle._damage._apply_damage_from(u, tgt, tru, Color(1.0, 0.96, 0.76), 0.10, true)   # 真伤无视双抗·10%吸血
-			battle._damage._apply_damage_from(u, tgt, battle._mitigate(u, tgt["hp"] * 0.08, tgt, true), Color("#9be7ff"), 0.0, false)   # 光柱也带审判(用户2026-07-11:附带被动·8%当前HP·与上面每段斩弧同一系数)
+			battle._damage._apply_damage_from(u, tgt, battle._mitigate(u, tgt["hp"] * JUDGE_CURHP, tgt, true), Color("#9be7ff"), 0.0, false)   # 光柱也带审判(用户2026-07-11:附带被动·8%当前HP·与上面每段斩弧同一系数)
 			battle._vfx._flash(tgt, Color(1.0, 0.96, 0.76))
 		})
 
