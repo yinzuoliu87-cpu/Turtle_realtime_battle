@@ -24,6 +24,8 @@ const RARITY_AMP_SS := 0.32
 const RARITY_AMP_SSS := 0.34
 
 ## ── 龟盾(已融入被动): 每 N 秒蓄力一次, 强化下一发普攻 ──────────
+## 【普攻】真值在主场景普攻表, 那里引用本常量。
+const ATTACK_ATK_COEF := 1.0     # 普攻 ×ATK 物理
 const SHIELD_CD := 6.0           # 每几秒蓄一次
 const SHIELD_ATK_COEF := 1.5     # 额外 ×ATK 物理 (2026-07-29 第四轮: 0.7 → 1.5)
 const SHIELD_LOST_PCT := 0.13    # 额外 + 目标【已损生命】× (第四轮: 0.20 → 0.13)

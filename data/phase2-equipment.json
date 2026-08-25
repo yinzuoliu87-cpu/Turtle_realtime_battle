@@ -6,10 +6,10 @@
     "baseStats1": "+攻5/12/20·暴击10/15/25%",
     "shopAvailable": 1,
     "emoji": "🗡️",
-    "effectDesc1": "每 3 秒甩出一道飞斩剑气，射向射程 2000 内最近的敌人，命中时造成（0.6/0.75/1.0×攻击力+40/60/100×暴击率）物理伤害。",
+    "effectDesc1": "每 {C:EquipTickSystem.RUST_IV} 秒甩出一道飞斩剑气，射向射程 2000 内最近的敌人，命中时造成（0.6/0.75/1.0×攻击力+40/60/100×暴击率）物理伤害。",
     "effectDesc3": "",
     "img": "equip/equip-sword-icon.png",
-    "effectBrief": "每 3 秒甩出一道剑气，造成 0.6/0.75/1.0×攻击力物理伤害。"
+    "effectBrief": "每 {C:EquipTickSystem.RUST_IV} 秒甩出一道剑气，造成 0.6/0.75/1.0×攻击力物理伤害。"
   },
   {
     "id": "p2eq_002",
@@ -66,10 +66,10 @@
     "baseStats1": "+攻18/40/90·护穿6/12/20",
     "shopAvailable": 1,
     "emoji": "🌪️",
-    "effectDesc1": "每 7 秒召出一排剑穿过全体敌人，对每名敌人造成（70/100/400+0.8/1.3/4.0×攻击力）物理伤害。",
+    "effectDesc1": "每 {C:EquipTickSystem.SWORD_STORM_IV} 秒召出一排剑穿过全体敌人，对每名敌人造成（70/100/400+0.8/1.3/4.0×攻击力）物理伤害。",
     "effectDesc3": "",
     "img": "equip/equip-blade-icon.png",
-    "effectBrief": "每 7 秒召出一排剑穿过全体敌人，各造成 70/100/400 点物理伤害。"
+    "effectBrief": "每 {C:EquipTickSystem.SWORD_STORM_IV} 秒召出一排剑穿过全体敌人，各造成 70/100/400 点物理伤害。"
   },
   {
     "id": "p2eq_007",
@@ -78,10 +78,10 @@
     "baseStats1": "+攻5/10/20·生命20/45/100",
     "shopAvailable": 1,
     "emoji": "⚔️",
-    "effectDesc1": "每 6 秒朝最近的敌人挥出一道剑气墙，沿途扫过 2000 码内一线的敌人，对每名敌人造成（20/35/60+0.5/0.8/1.1×攻击力）物理伤害；\n并为自己获得本次总伤害 50/75/100%的护盾。",
+    "effectDesc1": "每 {C:EquipTickSystem.BROADSWORD_IV} 秒朝最近的敌人挥出一道剑气墙，沿途扫过 2000 码内一线的敌人，对每名敌人造成（20/35/60+0.5/0.8/1.1×攻击力）物理伤害；\n并为自己获得本次总伤害 50/75/100%的护盾。",
     "effectDesc3": "",
     "img": "equip/rusty-broadsword.png",
-    "effectBrief": "每 6 秒挥出剑气墙扫过一线敌人，并按总伤害 50/75/100% 获得护盾。"
+    "effectBrief": "每 {C:EquipTickSystem.BROADSWORD_IV} 秒挥出剑气墙扫过一线敌人，并按总伤害 50/75/100% 获得护盾。"
   },
   {
     "id": "p2eq_008",
@@ -90,10 +90,10 @@
     "baseStats1": "+攻8/15/30·护穿4/8/12·魔穿4/8/12",
     "shopAvailable": 1,
     "emoji": "🪸",
-    "effectDesc1": "每 9 秒对距离自己最远的敌人发射一根珊瑚尖刺，命中造成（1/1.2/1.5×攻击力）物理伤害，外加 8/12/18%目标最大生命值的魔法伤害。",
+    "effectDesc1": "每 {C:EquipTickSystem.CORAL_IV} 秒对距离自己最远的敌人发射一根珊瑚尖刺，命中造成（1/1.2/1.5×攻击力）物理伤害，外加 8/12/18%目标最大生命值的魔法伤害。",
     "effectDesc3": "",
     "img": "equip/dungeon-spike.png",
-    "effectBrief": "每 9 秒向最远的敌人射出珊瑚刺，造成 1/1.2/1.5×攻击力物理伤害，外加 8/12/18% 目标最大生命值的魔法伤害。"
+    "effectBrief": "每 {C:EquipTickSystem.CORAL_IV} 秒向最远的敌人射出珊瑚刺，造成 1/1.2/1.5×攻击力物理伤害，外加 8/12/18% 目标最大生命值的魔法伤害。"
   },
   {
     "id": "p2eq_009",
@@ -138,10 +138,10 @@
     "baseStats1": "+生命40/70/100·护甲5/10/18",
     "shopAvailable": 1,
     "emoji": "🐢",
-    "effectDesc1": "每 4 秒为自身获得（40/60/90+4%最大生命值）点护盾。",
+    "effectDesc1": "每 {C:EquipTickSystem.JELLY_IV} 秒为自身获得（40/60/90+4%最大生命值）点护盾。",
     "effectDesc3": "",
     "img": "equip/turtle-jelly.png",
-    "effectBrief": "每 4 秒获得 40/60/90 点护盾。"
+    "effectBrief": "每 {C:EquipTickSystem.JELLY_IV} 秒获得 40/60/90 点护盾。"
   },
   {
     "id": "p2eq_013",
@@ -165,7 +165,7 @@
     "effectDesc1": "每次受到伤害获得 1 层硬化，每层提供+2/4/6 护甲和魔抗（上限 {C:EquipTickSystem.FORTRESS_CAP} 层，无满层护盾）；\n硬化叠满 {C:EquipTickSystem.FORTRESS_CAP} 层时立即汲取一次，此后每 {C:EquipTickSystem.FORTRESS_IV} 秒对全体敌人汲取生命，每名敌人受到 0.8/1/2.5×（护甲+魔抗）魔法伤害，每汲取 1 名敌人携带者回复（50/100/250+自身已损生命值 {C:EquipTickSystem.FORTRESS_HEAL_LOST%}%）生命；\n汲取不作用于训龟大师与屏障中的龟蛋。",
     "effectDesc3": "",
     "img": "equip/fortress-armor.png",
-    "effectBrief": "每次受伤叠 1 层硬化（各 +2/4/6 双抗）；满 25 层后每 8 秒全场汲取生命。"
+    "effectBrief": "每次受伤叠 1 层硬化（各 +2/4/6 双抗）；满 {C:EquipTickSystem.FORTRESS_CAP} 层后每 {C:EquipTickSystem.FORTRESS_IV} 秒全场汲取生命。"
   },
   {
     "id": "p2eq_015",
@@ -186,10 +186,10 @@
     "baseStats1": "+护甲6/13/21·魔抗6/13/21",
     "shopAvailable": 1,
     "emoji": "🛡️",
-    "effectDesc1": "每段受到的非真实伤害减少 3/6/10 点（固定值）；\n每 5 秒产生一个（100/250/400+携带者 8%最大生命值）的护盾总量，由全队（含自己）平均分摊——分摊名单不含龟蛋与训龟大师。",
+    "effectDesc1": "每段受到的非真实伤害减少 3/6/10 点（固定值）；\n每 {C:EquipTickSystem.IRONWALL_IV} 秒产生一个（100/250/400+携带者 8%最大生命值）的护盾总量，由全队（含自己）平均分摊——分摊名单不含龟蛋与训龟大师。",
     "effectDesc3": "",
     "img": "equip/equip-shield-icon.png",
-    "effectBrief": "受到的非真实伤害各减 3/6/10 点；每 5 秒生成一份护盾由全队分摊。"
+    "effectBrief": "受到的非真实伤害各减 3/6/10 点；每 {C:EquipTickSystem.IRONWALL_IV} 秒生成一份护盾由全队分摊。"
   },
   {
     "id": "p2eq_017",
@@ -210,10 +210,10 @@
     "baseStats1": "+生命70/140/300·魔抗8/13/18·治疗&盾增5/13/20%",
     "shopAvailable": 1,
     "emoji": "🐚",
-    "effectDesc1": "每 8 秒自回（30/45/60+5/9/15%最大生命值）生命（受治疗增幅影响）。",
+    "effectDesc1": "每 {C:EquipTickSystem.SHELL_IV} 秒自回（30/45/60+5/9/15%最大生命值）生命（受治疗增幅影响）。",
     "effectDesc3": "",
     "img": "equip/dungeon-shell.png",
-    "effectBrief": "每 8 秒回复 30/45/60 点 加 5/9/15% 最大生命值 的生命。"
+    "effectBrief": "每 {C:EquipTickSystem.SHELL_IV} 秒回复 30/45/60 点 加 5/9/15% 最大生命值 的生命。"
   },
   {
     "id": "p2eq_019",
@@ -222,10 +222,10 @@
     "baseStats1": "+护甲5/10/16·魔抗10/15/21",
     "shopAvailable": 1,
     "emoji": "🌺",
-    "effectDesc1": "每 7 秒为自己和生命百分比最低的友军回复（30/45/60+12/14/18%目标已损失生命）生命；\n每累计提供 200/180/150 点【实际】治疗获得 1 层海葵，每层使治疗与护盾强度+8/9/10%。",
+    "effectDesc1": "每 {C:EquipTickSystem.ANEMONE_IV} 秒为自己和生命百分比最低的友军回复（30/45/60+12/14/18%目标已损失生命）生命；\n每累计提供 200/180/150 点【实际】治疗获得 1 层海葵，每层使治疗与护盾强度+8/9/10%。",
     "effectDesc3": "",
     "img": "equip/dungeon-anemone.png",
-    "effectBrief": "每 7 秒治疗自己与最残的友军；每攒 200/180/150 点治疗叠一层增效。"
+    "effectBrief": "每 {C:EquipTickSystem.ANEMONE_IV} 秒治疗自己与最残的友军；每攒 200/180/150 点治疗叠一层增效。"
   },
   {
     "id": "p2eq_020",
@@ -234,10 +234,10 @@
     "baseStats1": "+生命100/140/210·护甲&魔抗3/4/6·+10%龟能充能速率",
     "shopAvailable": 1,
     "emoji": "🏋️",
-    "effectDesc1": "每 8 秒原地锻炼（期间不普攻不充能）获得 1 层锻炼（每层最大生命值与当前生命+40/75/110，同一局对局内跨战场保留、开新对局才重置），随后蓄力投掷哑铃砸向最前敌人，造成 5/7/10%自身最大生命值的物理伤害并将其击退。",
+    "effectDesc1": "每 {C:EquipTickSystem.DUMBBELL_IV} 秒原地锻炼（期间不普攻不充能）获得 1 层锻炼（每层最大生命值与当前生命+40/75/110，同一局对局内跨战场保留、开新对局才重置），随后蓄力投掷哑铃砸向最前敌人，造成 5/7/10%自身最大生命值的物理伤害并将其击退。",
     "effectDesc3": "",
     "img": "equip/dungeon-dumbbell.png",
-    "effectBrief": "每 8 秒锻炼一次（+40/75/110 最大生命），随后投掷哑铃击退最前敌人。"
+    "effectBrief": "每 {C:EquipTickSystem.DUMBBELL_IV} 秒锻炼一次（+40/75/110 最大生命），随后投掷哑铃击退最前敌人。"
   },
   {
     "id": "p2eq_021",
@@ -249,7 +249,7 @@
     "effectDesc1": "每 {C:EquipTickSystem.BARNACLE_IV} 秒向全队攻击力最高的友军连接绿色绑定光束（持续），为该友军提供 60/110/180 点护盾并将其受到的 25/40/60%伤害按原类型转移给携带者（携带者护盾可吸收）；\n同时为自己和该友军提供 {C:EquipTickSystem.BARNACLE_ENERGY} 龟能与+{C:EquipTickSystem.BARNACLE_ASPD%}%攻击速度（叠加，持续到本场战斗结束）。",
     "effectDesc3": "",
     "img": "equip/pearl-guard.png",
-    "effectBrief": "每 5 秒向攻击力最高的友军连上光束，替它承受 25/40/60% 伤害。"
+    "effectBrief": "每 {C:EquipTickSystem.BARNACLE_IV} 秒向攻击力最高的友军连上光束，替它承受 25/40/60% 伤害。"
   },
   {
     "id": "p2eq_022",
@@ -258,10 +258,10 @@
     "baseStats1": "+攻8/15/25·+10%龟能充能速率",
     "shopAvailable": 1,
     "emoji": "🔮",
-    "effectDesc1": "每 8 秒短暂蓄力，抛出一个火瓶砸向最近的敌人，命中造成 40/60/100 真实伤害，并施加（20/35/60+10/15/20%攻击力）灼烧层数+「真火」5 秒（其受到的灼烧改为真实伤害）。",
+    "effectDesc1": "每 {C:EquipSystem.EMBER_IV} 秒短暂蓄力，抛出一个火瓶砸向最近的敌人，命中造成 40/60/100 真实伤害，并施加（20/35/60+10/15/20%攻击力）灼烧层数+「真火」{C:EquipSystem.EMBER_TRUEFIRE_SEC} 秒（其受到的灼烧改为真实伤害）。",
     "effectDesc3": "",
     "img": "equip/ember-flask.png",
-    "effectBrief": "每 8 秒抛出火瓶，造成 40/60/100 真实伤害并点燃真火 5 秒。"
+    "effectBrief": "每 {C:EquipSystem.EMBER_IV} 秒抛出火瓶，造成 40/60/100 真实伤害并点燃真火 {C:EquipSystem.EMBER_TRUEFIRE_SEC} 秒。"
   },
   {
     "id": "p2eq_023",
@@ -294,10 +294,10 @@
     "baseStats1": "+攻25/35/55",
     "shopAvailable": 1,
     "emoji": "🐚",
-    "effectDesc1": "每 4 秒降下 1/2/3 道雷各电击 1 名随机敌人，每道造成 1×攻击力的真实伤害。",
+    "effectDesc1": "每 {C:EquipTickSystem.THUNDER_IV} 秒降下 1/2/3 道雷各电击 1 名随机敌人，每道造成 1×攻击力的真实伤害。",
     "effectDesc3": "",
     "img": "equip/dungeon-crystal.png",
-    "effectBrief": "每 4 秒降下 1/2/3 道雷，每道造成 1×攻击力真实伤害。"
+    "effectBrief": "每 {C:EquipTickSystem.THUNDER_IV} 秒降下 1/2/3 道雷，每道造成 1×攻击力真实伤害。"
   },
   {
     "id": "p2eq_026",
@@ -405,7 +405,7 @@
     "effectDesc1": "每 {C:EquipTickSystem.DOLL_IV} 秒派出一只小熊走向最近的敌人，造成（1/2/5×攻击力+100/210/1000）物理伤害并将其击飞，同时携带者+1 大熊层；大熊层满 5/3/1 层时装备销毁，携带者蓄力 {C:EquipTickSystem.DOLL_CHARGE_SEC} 秒后在空位召唤一只大熊（生命 1600/3000/15000·攻击力 70/120/2000·护甲与魔抗各 70·攻击速度 {C:EquipTickSystem.BEAR_ASPD}/秒·近战）登场；若无空位则继续小熊攻击直到出现空位。\n大熊普攻为熊掌（1×攻击力物理）并每次累积 1 层，满 {C:EquipTickSystem.BEAR_PAW_STACKS} 层时下一击改为冲击波（射程临时扩至 {C:EquipTickSystem.BEAR_WAVE_RANGE} 码）：造成 {C:EquipTickSystem.BEAR_WAVE_COEF}×攻击力物理伤害，将命中的敌人击飞 {C:EquipTickSystem.BEAR_WAVE_KNOCK_SEC} 秒并拉回身前 {C:EquipTickSystem.BEAR_WAVE_PULL} 码，随后层数清零。",
     "effectDesc3": "",
     "img": "equip/dungeon-doll.png",
-    "effectBrief": "每 4 秒派出小熊撞击最近的敌人；攒满 5/3/1 层后召唤一只大熊。"
+    "effectBrief": "每 {C:EquipTickSystem.DOLL_IV} 秒派出小熊撞击最近的敌人；攒满 5/3/1 层后召唤一只大熊。"
   },
   {
     "id": "p2eq_035",
@@ -414,10 +414,10 @@
     "baseStats1": "+生命100/130/180·攻5/13/22",
     "shopAvailable": 1,
     "emoji": "⚙️",
-    "effectDesc1": "每 6 秒获得 1/2/3 枚深海币。",
+    "effectDesc1": "每 {C:EquipTickSystem.GEAR_IV} 秒获得 1/2/3 枚深海币。",
     "effectDesc3": "",
     "img": "equip/brass-gear.png",
-    "effectBrief": "每 6 秒获得 1/2/3 枚深海币。"
+    "effectBrief": "每 {C:EquipTickSystem.GEAR_IV} 秒获得 1/2/3 枚深海币。"
   },
   {
     "id": "p2eq_036",
@@ -498,10 +498,10 @@
     "baseStats1": "+生命60/100/180·盾疗20/25/30%",
     "shopAvailable": 1,
     "emoji": "💧",
-    "effectDesc1": "每 8 秒为全队（含自己）各回复其已损失生命的 3/6/10%；3 星时，生命百分比最低的友军获得双倍回复。",
+    "effectDesc1": "每 {C:EquipSystem.RIPPLE_IV} 秒为全队（含自己）各回复其已损失生命的 3/6/10%；3 星时，生命百分比最低的友军获得双倍回复。",
     "effectDesc3": "",
     "img": "equip/ripple-potion.png",
-    "effectBrief": "每 8 秒为全队各回复其已损失生命的 3/6/10%。"
+    "effectBrief": "每 {C:EquipSystem.RIPPLE_IV} 秒为全队各回复其已损失生命的 3/6/10%。"
   },
   {
     "id": "p2eq_043",
@@ -570,10 +570,10 @@
     "baseStats1": "+攻12/25/41",
     "shopAvailable": 1,
     "emoji": "🔫",
-    "effectDesc1": "每 8 秒依次射出 4/5/6 发子弹，每发命中沿途第一个敌人（可被前排阻挡），各造成 0.5/0.54/0.6×攻击力的物理伤害。",
+    "effectDesc1": "每 {C:EquipSystem.HANDGUN_IV} 秒依次射出 4/5/6 发子弹，每发命中沿途第一个敌人（可被前排阻挡），各造成 0.5/0.54/0.6×攻击力的物理伤害。",
     "effectDesc3": "",
     "img": "equip/brass-pistol.png",
-    "effectBrief": "每 8 秒射出 4/5/6 发子弹，每发造成 0.5/0.54/0.6×攻击力物理伤害。"
+    "effectBrief": "每 {C:EquipSystem.HANDGUN_IV} 秒射出 4/5/6 发子弹，每发造成 0.5/0.54/0.6×攻击力物理伤害。"
   },
   {
     "id": "p2eq_049",
@@ -594,10 +594,10 @@
     "baseStats1": "+攻20/50/120·护穿5/11/18",
     "shopAvailable": 1,
     "emoji": "🐚",
-    "effectDesc1": "每 8 秒打出 20/30/60 发随机分布的子弹，每发对命中敌人造成 0.1/0.12/0.14×攻击力的物理伤害并使其永久-1/2/3 护甲（对单一目标累计减甲上限 15/25/40）。",
+    "effectDesc1": "每 {C:EquipSystem.GATLING_IV} 秒打出 20/30/60 发随机分布的子弹，每发对命中敌人造成 0.1/0.12/0.14×攻击力的物理伤害并使其永久-1/2/3 护甲（对单一目标累计减甲上限 15/25/40）。",
     "effectDesc3": "",
     "img": "equip/ghost-gatling.png",
-    "effectBrief": "每 8 秒打出 20/30/60 发子弹，命中使目标永久 -1/2/3 护甲。"
+    "effectBrief": "每 {C:EquipSystem.GATLING_IV} 秒打出 20/30/60 发子弹，命中使目标永久 -1/2/3 护甲。"
   },
   {
     "id": "p2eq_051",
@@ -606,10 +606,10 @@
     "baseStats1": "+攻16/28/42·护穿3/6/10·吸血4/6/9%",
     "shopAvailable": 1,
     "emoji": "🎰",
-    "effectDesc1": "每 8 秒朝最近的敌人打出一道无限穿透的激光，命中这条直线上（中线两侧各 {C:EquipSystem.PISTOL_LASER_BAND} 码）的所有敌人：第一个敌人受到 1.5/2.0/2.8×攻击力物理伤害并被施加 0.5/0.5/0.6×攻击力的流血层数，其身后的敌人各受到 {C:EquipSystem.PISTOL_LASER_FALLOFF%}%效果。",
+    "effectDesc1": "每 {C:EquipSystem.PISTOL_IV} 秒朝最近的敌人打出一道无限穿透的激光，命中这条直线上（中线两侧各 {C:EquipSystem.PISTOL_LASER_BAND} 码）的所有敌人：第一个敌人受到 1.5/2.0/2.8×攻击力物理伤害并被施加 0.5/0.5/0.6×攻击力的流血层数，其身后的敌人各受到 {C:EquipSystem.PISTOL_LASER_FALLOFF%}%效果。",
     "effectDesc3": "",
     "img": "equip/laser-pistol.png",
-    "effectBrief": "每 8 秒打出一道贯穿激光，首个敌人受 1.5/2.0/2.8×攻击力伤害并流血。"
+    "effectBrief": "每 {C:EquipSystem.PISTOL_IV} 秒打出一道贯穿激光，首个敌人受 1.5/2.0/2.8×攻击力伤害并流血。"
   },
   {
     "id": "p2eq_052",
@@ -621,7 +621,7 @@
     "effectDesc1": "装备时拥有 {C:EquipSystem.REVOLVER_AMMO} 发子弹（任何敌人阵亡时+1 发，上限 {C:EquipSystem.REVOLVER_AMMO} 发；每场战斗重置）；\n每 {C:EquipSystem.REVOLVER_IV} 秒向 1 名随机敌人射出 1 发，造成（150/310/1200+3/5/9×攻击力）物理伤害；\n子弹为 0 时停火（装备不消失）。",
     "effectDesc3": "",
     "img": "equip/dungeon-revolver.png",
-    "effectBrief": "每 4 秒射出 1 发子弹，造成 150/310/1200 点物理伤害。"
+    "effectBrief": "每 {C:EquipSystem.REVOLVER_IV} 秒射出 1 发子弹，造成 150/310/1200 点物理伤害。"
   },
   {
     "id": "p2eq_053",
@@ -678,10 +678,10 @@
     "baseStats1": "+攻18/30/70·护穿10/16/30",
     "shopAvailable": 1,
     "emoji": "🔭",
-    "effectDesc1": "每 8 秒锁定生命百分比最低的敌人并蓄力 1 秒，随后开枪：这条直线上的敌人各受到 2/3/7×攻击力的物理伤害；\n若这一枪造成击杀则重新选最低血目标再开一枪——每一枪都要重新蓄力 1 秒（可递归，上限 12 次）。",
+    "effectDesc1": "每 {C:EquipSystem.SNIPER_IV} 秒锁定生命百分比最低的敌人并蓄力 1 秒，随后开枪：这条直线上的敌人各受到 2/3/7×攻击力的物理伤害；\n若这一枪造成击杀则重新选最低血目标再开一枪——每一枪都要重新蓄力 1 秒（可递归，上限 {C:EquipSystem.SNIPER_MAX_CHAIN} 次）。",
     "effectDesc3": "",
     "img": "equip/sniper-barrel.png",
-    "effectBrief": "每 8 秒狙击最残的敌人；这一枪造成击杀就重新蓄力再来一枪。"
+    "effectBrief": "每 {C:EquipSystem.SNIPER_IV} 秒狙击最残的敌人；这一枪造成击杀就重新蓄力再来一枪。"
   },
   {
     "id": "p2eq_058",
@@ -705,7 +705,7 @@
     "effectDesc1": "登场第 {C:TimestopSystem.TS_START_T} 秒蓄力 {C:TimestopSystem.TS_CHARGE} 秒后释放「时间停止」：全场其他单位/弹道/特效全部定格，持续 5/10/30 秒；\n此期间只有【全场最高星级】沙漏的携带者（敌我皆可，同星并存）能自由攻击/施法/移动，伤害即时结算，并额外获得 {C:TimestopSystem.TS_ECHARGE_MULT} 倍龟能充能速度、且在时停开始瞬间立即获得 {C:TimestopSystem.TS_INSTANT_ENERGY} 点龟能；\n若场上存在更高星的沙漏，低星那件本场不会生效。\n一场战斗一次。",
     "effectDesc3": "",
     "img": "equip/dungeon-hourglass.png",
-    "effectBrief": "登场第 10 秒发动时间停止，全场定格 5/10/30 秒，一场一次。"
+    "effectBrief": "登场第 {C:TimestopSystem.TS_START_T} 秒发动时间停止，全场定格 5/10/30 秒，一场一次。"
   },
   {
     "id": "p2eq_060",
@@ -726,10 +726,10 @@
     "baseStats1": "+射程50·+攻速15/30/50%",
     "shopAvailable": 1,
     "emoji": "🐌",
-    "effectDesc1": "每次普攻命中额外造成目标最大生命 2/2.5/3%的魔法伤害，并施加 1/1/2 层【破损】（单个目标最多 20 层，不衰减）。\n打在已有 20 层破损的目标身上时，这段伤害转为真实伤害。",
+    "effectDesc1": "每次普攻命中额外造成目标最大生命 2/2.5/3%的魔法伤害，并施加 1/1/2 层【破损】（单个目标最多 {C:EqSpiritBatch.BREACH_CAP} 层，不衰减）。\n打在已有 {C:EqSpiritBatch.BREACH_CAP} 层破损的目标身上时，这段伤害转为真实伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_061.png",
-    "effectBrief": "普攻额外造成目标 2/2.5/3% 最大生命的魔法伤害并叠破损，满 20 层转真实伤害。"
+    "effectBrief": "普攻额外造成目标 2/2.5/3% 最大生命的魔法伤害并叠破损，满 {C:EqSpiritBatch.BREACH_CAP} 层转真实伤害。"
   },
   {
     "id": "p2eq_062",
@@ -786,10 +786,10 @@
     "baseStats1": "+龟能20/35/60·+移速6/11/18%",
     "shopAvailable": 1,
     "emoji": "⚗️",
-    "effectDesc1": "登场第 11 秒喝下药水：免疫控制效果直到战斗结束，并获得生命偷取 8/13/20%、最大生命 100/200/400、护甲与魔抗 12/17/25、攻击速度 10/17/25%、暴击率 10/17/25%、暴击伤害 7/13/18%、龟能充能 5/7/10%、攻击力 13/18/25、护甲穿透与魔法穿透 4/7/10，体型额外+40%。\n每路喝一次。",
+    "effectDesc1": "登场第 {C:EqPotionBatch.BREW_AT} 秒喝下药水：免疫控制效果直到战斗结束，并获得生命偷取 8/13/20%、最大生命 100/200/400、护甲与魔抗 12/17/25、攻击速度 10/17/25%、暴击率 10/17/25%、暴击伤害 7/13/18%、龟能充能 5/7/10%、攻击力 13/18/25、护甲穿透与魔法穿透 4/7/10，体型额外+40%。\n每路喝一次。",
     "effectDesc3": "",
     "img": "equip/p2eq_066.png",
-    "effectBrief": "登场第 11 秒喝下药水：免疫控制直到战斗结束，并全面提升属性。"
+    "effectBrief": "登场第 {C:EqPotionBatch.BREW_AT} 秒喝下药水：免疫控制直到战斗结束，并全面提升属性。"
   },
   {
     "id": "p2eq_067",
@@ -798,7 +798,7 @@
     "baseStats1": "+生命110/280/650·+攻15/38/90·+法穿10/20/38",
     "shopAvailable": 1,
     "emoji": "☠️",
-    "effectDesc1": "每 6 秒朝敌人最密集的地方投出一个药瓶，对落点 400 码内的敌人施加 40/70/110 层中毒；普攻额外施加 {C:VenomDroneSystem.POISON_STACKS} 层中毒。\n携带者存活时，中毒的敌人受到的治疗与获得的护盾都减半。",
+    "effectDesc1": "每 6 秒朝敌人最密集的地方投出一个药瓶，对落点 {C:EqPotionBatch.VIAL_RADIUS} 码内的敌人施加 40/70/110 层中毒；普攻额外施加 {C:VenomDroneSystem.POISON_STACKS} 层中毒。\n携带者存活时，中毒的敌人受到的治疗与获得的护盾都减半。",
     "effectDesc3": "",
     "img": "equip/p2eq_067.png",
     "effectBrief": "每 6 秒向敌人最密处投毒瓶，施加 40/70/110 层中毒并压制其治疗。"
@@ -894,7 +894,7 @@
     "baseStats1": "+攻12/30/68·+射程40/60/90",
     "shopAvailable": 1,
     "emoji": "📏",
-    "effectDesc1": "每 {C:EqBowBatch.RAIN_IV} 秒放一轮箭雨：落点取敌人最密集处，半径 {C:EqBowBatch.RAIN_RADIUS} 码，持续 1.5 秒，每 {C:EqBowBatch.RAIN_HOP_IV} 秒造成 0.25/0.35/0.5 倍攻击力的物理伤害并施加 3/4/5 层流血。\n被动：目标每距离携带者 {C:EqBowBatch.AMP_PER_PX} 码，携带者对它+3/4/5%增伤，不封顶（箭雨自己也吃这个增伤）。",
+    "effectDesc1": "每 {C:EqBowBatch.RAIN_IV} 秒放一轮箭雨：落点取敌人最密集处，半径 {C:EqBowBatch.RAIN_RADIUS} 码，持续 {C:EqBowBatch.RAIN_SEC} 秒，每 {C:EqBowBatch.RAIN_HOP_IV} 秒造成 0.25/0.35/0.5 倍攻击力的物理伤害并施加 3/4/5 层流血。\n被动：目标每距离携带者 {C:EqBowBatch.AMP_PER_PX} 码，携带者对它+3/4/5%增伤，不封顶（箭雨自己也吃这个增伤）。",
     "effectDesc3": "",
     "img": "equip/p2eq_075.png",
     "effectBrief": "每 6 秒在敌人最密处落一轮箭雨；目标每远 100 码增伤 3/4/5%。"
@@ -978,10 +978,10 @@
     "baseStats1": "+生命70/170/380·+魔抗8/17/30",
     "shopAvailable": 1,
     "emoji": "🐚",
-    "effectDesc1": "【护心反伤】携带者每受到一段攻击，反伤 3/5/8 点魔法伤害给攻击者（持续伤害不计，多段攻击每段独立计数，反伤不触发对方的反伤）。\n每反伤 15 次获得一层充能；携带者的普攻消耗一层充能，使自己回复 5/7/10%最大生命值，并附带自身 100%魔抗的魔法伤害。",
+    "effectDesc1": "【护心反伤】携带者每受到一段攻击，反伤 3/5/8 点魔法伤害给攻击者（持续伤害不计，多段攻击每段独立计数，反伤不触发对方的反伤）。\n每反伤 {C:EqBladeBatch.CLAM_PER_CHARGE} 次获得一层充能；携带者的普攻消耗一层充能，使自己回复 5/7/10%最大生命值，并附带自身 100%魔抗的魔法伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_082.png",
-    "effectBrief": "每受到一段攻击反伤 3/5/8 点；每反伤 15 次攒一层，普攻消耗后回血。"
+    "effectBrief": "每受到一段攻击反伤 3/5/8 点；每反伤 {C:EqBladeBatch.CLAM_PER_CHARGE} 次攒一层，普攻消耗后回血。"
   },
   {
     "id": "p2eq_083",
@@ -1050,10 +1050,10 @@
     "baseStats1": "+法穿5/11/20·+龟能12/22/40",
     "shopAvailable": 1,
     "emoji": "🌊",
-    "effectDesc1": "该法器法力条集满时，在自己脚下立一块潮汐碑，钉在地上不跟随，持续 5 秒，半径 250 码。\n碑内敌人每秒受到 15/25/40 魔法伤害；碑内友军每秒获得 20/35/55 护盾（可叠加）并获得 10/15/25%攻速（离开范围即失效）。\n碑存在期间该法器的法力条锁定不增长。",
+    "effectDesc1": "该法器法力条集满时，在自己脚下立一块潮汐碑，钉在地上不跟随，持续 {C:EqArcaneBatch.STELE_SEC} 秒，半径 {C:EqArcaneBatch.STELE_RADIUS} 码。\n碑内敌人每秒受到 15/25/40 魔法伤害；碑内友军每秒获得 20/35/55 护盾（可叠加）并获得 10/15/25%攻速（离开范围即失效）。\n碑存在期间该法器的法力条锁定不增长。",
     "effectDesc3": "",
     "img": "equip/p2eq_088.png",
-    "effectBrief": "法力满时立一块潮汐碑 5 秒：碑内敌人掉血，友军得护盾与攻速。"
+    "effectBrief": "法力满时立一块潮汐碑 {C:EqArcaneBatch.STELE_SEC} 秒：碑内敌人掉血，友军得护盾与攻速。"
   },
   {
     "id": "p2eq_089",
@@ -1062,10 +1062,10 @@
     "baseStats1": "+充能6/11/18%·+护甲6/13/22",
     "shopAvailable": 1,
     "emoji": "🌙",
-    "effectDesc1": "该法器法力条集满时，给一个敌人贴上符纸：15 秒内共造成 400/700/1000 魔法伤害，并每秒削减其 1 点魔抗（削掉的魔抗本路不恢复）。\n符纸可叠加。\n被贴符的敌人死亡时，带剩余时长的符纸转移到最近的敌人身上（只转移剩余时长）。",
+    "effectDesc1": "该法器法力条集满时，给一个敌人贴上符纸：{C:EqArcaneBatch.TALISMAN_SEC} 秒内共造成 400/700/1000 魔法伤害，并每秒削减其 1 点魔抗（削掉的魔抗本路不恢复）。\n符纸可叠加。\n被贴符的敌人死亡时，带剩余时长的符纸转移到最近的敌人身上（只转移剩余时长）。",
     "effectDesc3": "",
     "img": "equip/p2eq_089.png",
-    "effectBrief": "法力满时给敌人贴符：15 秒内造成 400/700/1000 魔法伤害并削魔抗。"
+    "effectBrief": "法力满时给敌人贴符：{C:EqArcaneBatch.TALISMAN_SEC} 秒内造成 400/700/1000 魔法伤害并削魔抗。"
   },
   {
     "id": "p2eq_090",
@@ -1074,7 +1074,7 @@
     "baseStats1": "+法穿18/42/110·+生命150/420/1200·+龟能45/80/150",
     "shopAvailable": 1,
     "emoji": "🔱",
-    "effectDesc1": "该法器法力条集满时，携带者跳跃到空中后向整个战场猛砸：对 500 码内的敌人造成 3 倍攻击力+200/300/5000 魔法伤害，并施加 2/3/8 秒眩晕与 1 秒击飞；\n造成伤害后才重新开始记录法力值。\n被动：携带者每第三次普攻发射一片浪潮，从携带者飞向目标后不断跳向最近的、未被本次浪潮飞过的友军或敌军，最多跳跃 4/5/8 次；\n打到敌人造成 40/70/140 魔法伤害，打到友军提供 20/40/80 治疗。",
+    "effectDesc1": "该法器法力条集满时，携带者跳跃到空中后向整个战场猛砸：对 {C:EqArcaneBatch.PESTLE_RADIUS} 码内的敌人造成 3 倍攻击力+200/300/5000 魔法伤害，并施加 2/3/8 秒眩晕与 1 秒击飞；\n造成伤害后才重新开始记录法力值。\n被动：携带者每第三次普攻发射一片浪潮，从携带者飞向目标后不断跳向最近的、未被本次浪潮飞过的友军或敌军，最多跳跃 4/5/8 次；\n打到敌人造成 40/70/140 魔法伤害，打到友军提供 20/40/80 治疗。",
     "effectDesc3": "",
     "img": "equip/p2eq_090.png",
     "effectBrief": "法力满时跃起猛砸全场，造成伤害并眩晕 2/3/8 秒。"
@@ -1134,9 +1134,9 @@
     "baseStats1": "+生命250",
     "shopAvailable": 0,
     "emoji": "✨",
-    "effectDesc1": "每 3 秒为携带者生成 55 点圣光护盾值；圣光护盾存在时，反击敌人的每段伤害造成 2 点真实伤害。",
+    "effectDesc1": "每 3 秒为携带者生成 {C:ShieldSynergySystem.HOLY_AMOUNT} 点圣光护盾值；圣光护盾存在时，反击敌人的每段伤害造成 2 点真实伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_095.png",
-    "effectBrief": "每 3 秒生成 55 点圣光护盾；护盾存在时反击各造成 2 点真实伤害。"
+    "effectBrief": "每 3 秒生成 {C:ShieldSynergySystem.HOLY_AMOUNT} 点圣光护盾；护盾存在时反击各造成 2 点真实伤害。"
   }
 ]

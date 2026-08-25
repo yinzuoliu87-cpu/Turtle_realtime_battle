@@ -283,10 +283,10 @@ const RIGHT_DEMO := ["diamond", "ninja", "ghost"]
 #   字段: phys/magic/true=×ATK 总倍率(物/魔/真); hits=视觉段; def/mr/hp/selfhp/tcurhp=加成项(进主类型);
 #   gold=×ATK×金币(财神); critflat=×暴击率flat(骰子); selfheal=×ATK每击自愈(海盗弯刀); rider=burn/atkdn/selfdef/bleed/shrink(附带); mech=ninja/splash(特殊); lightning 走专用函数.
 const BASIC_ATK := {
-	"basic":    {"phys": 1.0, "hits": 1},
+	"basic":    {"phys": BasicConsts.ATTACK_ATK_COEF, "hits": 1},
 	"__trainer__": {"phys": 1.0, "hits": 1},                                       # 训龟大师扔石头: 1.0×ATK, 而它 ATK=1 → 恰好 1 点物理
 	"stone":    {"phys": StoneSystem.HIT_ATK_COEF, "def": StoneSystem.HIT_DEF_COEF, "mr": StoneSystem.HIT_MR_COEF, "hits": 1},                    # +护甲魔抗(坦克)
-	"bamboo":   {"phys": 0.4, "selfhp": 0.03, "hits": 1},                           # 单段 0.4ATK+3%自身HP(用户2026-06-29)
+	"bamboo":   {"phys": BambooSystem.LEAF_ATK_COEF, "selfhp": BambooSystem.LEAF_MAXHP_PCT, "hits": 1},                           # 单段 0.4ATK+3%自身HP(用户2026-06-29)
 	"angel":    {"phys": AngelSystem.VERDICT_COEF, "hits": 1},                                          # 远程平A 1.0ATK单段(用户)+审判被动
 	"ice":      {"phys": 1.0, "magic": 1.0, "hits": 1, "alt_each": true},           # 单段逐次交替物/魔 1.0ATK(用户2026-07-28: 0.8→1.0·配冰柱层加强)
 	"ninja":    {"phys": 1.0, "hits": 1, "rider": "bleed"},                         # 斩击(封板): 近战1A物理+2层流血; 冲击已转被动auto-dash
@@ -3361,7 +3361,7 @@ func _conch_transform(pos2d: Vector2) -> void:
 ##   (用户:「只有法力条触发的主动效果, 可能有常驻的被动效果」)。030 迷你水晶球A(7秒)
 ##   与 031 迷你水晶球B(8秒)原来在这里, 那是第二个触发口, 已摘掉 —— **别补回来**,
 ##   补回来就是同一件装备两条路各放各的。verify_staff_synergy ⑭ 会红。
-const _EQ_CUSTOM_IV := {"p2eq_004": EquipSystem.FANG_IV, "p2eq_048": 8.0, "p2eq_049": EquipSystem.XBOW_IV, "p2eq_050": 8.0, "p2eq_051": 8.0, "p2eq_053": EquipSystem.SHOTGUN_IV, "p2eq_057": 8.0, "p2eq_022": 8.0, "p2eq_028": IceSystem.VIAL_IV, "p2eq_037": EquipSystem.CANDLE_IV, "p2eq_040": EquipSystem.FPGA_IV, "p2eq_042": 8.0, "p2eq_052": EquipSystem.REVOLVER_IV}
+const _EQ_CUSTOM_IV := {"p2eq_004": EquipSystem.FANG_IV, "p2eq_048": EquipSystem.HANDGUN_IV, "p2eq_049": EquipSystem.XBOW_IV, "p2eq_050": EquipSystem.GATLING_IV, "p2eq_051": EquipSystem.PISTOL_IV, "p2eq_053": EquipSystem.SHOTGUN_IV, "p2eq_057": EquipSystem.SNIPER_IV, "p2eq_022": EquipSystem.EMBER_IV, "p2eq_028": IceSystem.VIAL_IV, "p2eq_037": EquipSystem.CANDLE_IV, "p2eq_040": EquipSystem.FPGA_IV, "p2eq_042": EquipSystem.RIPPLE_IV, "p2eq_052": EquipSystem.REVOLVER_IV}
 func _ripple_heal_vfx(pos2d: Vector2, size_px: float) -> void:
 	var tex: Texture2D = load("res://assets/sprites/vfx/ripple-heal-anim.png")
 	var fh: int = maxi(1, tex.get_height())
@@ -3563,7 +3563,7 @@ func _fuel_bottle_hit(spr: Sprite3D, u: Dictionary, t: Dictionary, si: int) -> v
 	_damage._apply_damage_from(u, t, [40, 60, 100][si], Color("#ff7a3c"), 0.0, true, true)   # 火瓶直接火伤(命中即出伤+同帧跳数字, 照028同费档)
 	var tf: int = maxi(1, roundi([20, 35, 60][si] + [0.10, 0.15, 0.20][si] * u["atk"]))
 	_damage._apply_dot_stacks(t, "burn", tf, u)
-	t["true_fire_until"] = _t + 5.0
+	t["true_fire_until"] = _t + EquipSystem.EMBER_TRUEFIRE_SEC
 	_fuel_shatter_fx(t["pos"])
 
 func _fuel_shatter_fx(at2d: Vector2) -> void:   # 碎裂: 地面燃烧圈 + 火焰四溅(各自小抛物落地)

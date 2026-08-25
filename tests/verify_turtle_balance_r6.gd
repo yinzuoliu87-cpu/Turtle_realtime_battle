@@ -160,7 +160,12 @@ func _text() -> void:
 		and wave.length() > 80 and soul.length() > 80)
 
 	# 冰霜
-	_chk("② 文案·冰霜 = {M:0.25*ATK}", frost.contains("{M:0.25*ATK}"))
+	## ★2026-08-25 文案根除: 系数已改成常量引用 `{M:IceSystem.FROST_ATK_COEF*ATK}`。
+	##   判据 = 「常量值对」且「文案确实指着它(或还写着等值的字面量)」——
+	##   "文案变干净"不假红, 而"指错常量 / 数值漂了"照样当场红。
+	_chk("② 文案·冰霜 = 0.25×ATK",
+		is_equal_approx(IceSystem.FROST_ATK_COEF, 0.25)
+			and (frost.contains("{M:IceSystem.FROST_ATK_COEF*ATK}") or frost.contains("{M:0.25*ATK}")))
 	_chk("② 文案·冰霜旧值 {M:0.18*ATK} 已消失", not frost.contains("{M:0.18*ATK}"))
 	# 冰柱攻速(写在普攻【冰锥】的文案里)
 	_chk("② 文案·冰柱每层 +5% 攻速",
@@ -189,7 +194,9 @@ func _text() -> void:
 	_chk("② ★文案·龟派气波不再宣称暴击伤害 buff", not wave.contains("暴击伤害"))
 	# 无头·灵魂打击 —— 本轮文案是【整段重写】的, 所以正反两面都查
 	_chk("② 文案·灵魂打击 = 0.5A 魔法(不是 0.9A 物理)",
-		soul.contains("{M:0.5*ATK}") and not soul.contains("{N:0.9*ATK}"))
+		is_equal_approx(HeadlessSystem.SOUL_ATK_COEF, 0.5)
+			and (soul.contains("{M:HeadlessSystem.SOUL_ATK_COEF*ATK}") or soul.contains("{M:0.5*ATK}"))
+			and not soul.contains("{N:0.9*ATK}"))
 	_chk("② 文案·灵魂打击 = 10% 目标当前生命(不是 20%)",
 		soul.contains("10% 目标当前生命") or soul.contains("10%目标当前生命"))
 	_chk("② ★文案·补上了此前完全没写的镰刀横扫", soul.contains("镰刀横扫"))

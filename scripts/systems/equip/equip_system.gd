@@ -553,6 +553,20 @@ const BLADE_R_OUT := 800.0       # 扇形带外半径(码)
 const BLADE_ARC_DEG := 60.0      # 扇面全角(度)·判定用半角 = 它的一半
 const BLADE_SEEK := 2000.0       # 沿瞄准方向自选释放点的最大偏移(码)
 ## 【049 连发弩】朝最远敌连射, 按目标【已损】生命插值加伤。
+## 【022 余烬燃油瓶】定时抛火瓶, 命中点上「真火」。
+const EMBER_IV := 8.0            # 每几秒抛一个火瓶(主场景 _EQ_CUSTOM_IV 引用本常量)
+const EMBER_TRUEFIRE_SEC := 5.0  # 真火持续(秒)·期间该目标的灼烧改判真实伤害
+## 【042 涟漪药剂】定时给全队按【已损生命】回复。
+const RIPPLE_IV := 8.0           # 每几秒回一次(主场景 _EQ_CUSTOM_IV 引用本常量)
+## 【048 黄铜手铳】定时连射, 每发只打沿途第一个敌人。
+const HANDGUN_IV := 8.0          # 每几秒一轮(主场景 _EQ_CUSTOM_IV 引用本常量)
+## 【050 幽灵加特林】定时打一大把随机分布的子弹, 命中永久减甲。
+const GATLING_IV := 8.0          # 每几秒一轮(主场景 _EQ_CUSTOM_IV 引用本常量)
+## 【051 激光手枪】定时打一道无限穿透的直线激光。
+const PISTOL_IV := 8.0           # 每几秒一道(主场景 _EQ_CUSTOM_IV 引用本常量)
+## 【057 狙击长管】定时狙最残的敌人, 击杀就重新蓄力再来一枪。
+const SNIPER_IV := 8.0           # 每几秒一轮(主场景 _EQ_CUSTOM_IV 引用本常量)
+const SNIPER_MAX_CHAIN := 12     # 一轮内最多连狙几枪(防连狙无限递归)
 const XBOW_IV := 8.0             # 每几秒一轮(主场景 _EQ_CUSTOM_IV 引用本常量)
 const XBOW_GAP := 0.12           # 同轮两发的间隔(秒)
 const XBOW_MIN_COEF := 0.8       # 满血时 ×ATK
@@ -1602,7 +1616,7 @@ func _eq_sniper_windup(u: Dictionary, si: int) -> void:   # 狙击长管057: 每
 ##   看上去像"一枪扫掉半个队"。现在把蓄力包进这一层, 首枪与连狙走同一条路径, 不存在"某种枪不蓄力"。
 func _eq_sniper_charge_then_fire(u: Dictionary, si: int, depth: int) -> void:
 	if not u.get("alive", false): return
-	if depth >= 12: return                      # 与 _eq_sniper 同一上限, 防连狙无限递归
+	if depth >= SNIPER_MAX_CHAIN: return        # 与 _eq_sniper 同一上限, 防连狙无限递归
 	var low = null; var lv := INF
 	for o in battle._targeting._pick_enemies_of(u):
 		var p: float = CombatMath.hp_frac(o["hp"], o["maxHp"])
@@ -1612,7 +1626,7 @@ func _eq_sniper_charge_then_fire(u: Dictionary, si: int, depth: int) -> void:
 	battle._pending_shots.append({"delay": SNIPER_WINDUP, "fn": func(): _eq_sniper(u, si, depth), "src": u})
 
 func _eq_sniper(u: Dictionary, si: int, depth: int) -> void:
-	if depth >= 12:
+	if depth >= SNIPER_MAX_CHAIN:
 		return
 	var low = null; var lv := INF
 	for o in battle._targeting._pick_enemies_of(u):

@@ -18,6 +18,7 @@ extends Node
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const HSV := preload("res://scripts/scenes/battle/holy_shield_vfx.gd")
 const EquipStatsS := preload("res://scripts/gamedata/equip_stats.gd")
+const SkillTextS := preload("res://scripts/util/skill_text.gd")
 
 const HOLY := "p2eq_095"
 ## 盾羁绊 9 档给【所有圣盾值】的加成。★它是**羁绊**的数, 不是这件装备的数。
@@ -138,6 +139,11 @@ func _t_spec_numbers() -> void:
 		if str((e as Dictionary).get("id", "")) == HOLY:
 			desc = str((e as Dictionary).get("effectDesc1", ""))
 	_ok("★分母: 找得到 095 的 effectDesc1", desc != "", "「%s」" % desc)
+	## ★★2026-08-25 文案根除: 盾量 55 已从手写字面量改成 `{C:ShieldSynergySystem.HOLY_AMOUNT}`,
+	##   直接扫【原文】只能扫到 [3, 2] —— 那不是文案错了, 是这条断言在量原文而不是量玩家看到的字。
+	##   ⇒ 先按玩家实际看到的样子渲染再扫。这样断言的本意("文案漂了要红")不但保住,
+	##     还顺带守住"占位符必须解析得出数"(解析不出会原样留下 `{C:...}`, 扫出来的数就对不上)。
+	desc = SkillTextS.render_plain(desc, {}, {})
 	var nums: Array = []
 	var cur := ""
 	for ch in desc:

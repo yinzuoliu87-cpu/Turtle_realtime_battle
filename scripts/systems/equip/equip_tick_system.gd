@@ -139,7 +139,7 @@ func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016:
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_016": continue
 		e["ironwall_t"] = float(e.get("ironwall_t", 0.0)) + delta
-		if float(e["ironwall_t"]) < 5.0: continue
+		if float(e["ironwall_t"]) < IRONWALL_IV: continue
 		e["ironwall_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		var mates: Array = battle._targeting._allies_share_pool(u)   # ★均分排除大师+龟蛋(都不占盾份额·稀释)·用户2026-07-23 点4 / 2026-08-01
@@ -154,6 +154,20 @@ func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016:
 const ANCHOR_ASPD := 1.00      # 持有充能期间普攻攻速 +(真值在 battle_damage.anchor_aspd)
 ## 那一击的眩晕走【通用 CTRL_SEC】(RealtimeBattle3DScene), 这里不存副本。
 ## 【021 守护贝母】持续连全队最高攻友军, 周期性重连并给双方一串永久加成。
+## 【周期件的触发间隔(秒)】★2026-08-25 文案根除: 这些原来全是各自 `_tick_*` 函数体里的
+##   裸字面量, 而 json 的 effectDesc1 / effectBrief 又各手写了一遍 —— 同一个数存三份。
+##   现在代码是唯一的那一份, 两处文案都用 `{C:EquipTickSystem.XXX_IV}` 指过来。
+const RUST_IV := 3.0            # 001 锈蚀短剑: 每几秒甩一道飞斩剑气
+const SWORD_STORM_IV := 7.0     # 006 千刃风暴: 每几秒召一排剑穿过全体敌人
+const BROADSWORD_IV := 6.0      # 007 锈蚀阔剑: 每几秒挥一道剑气墙
+const CORAL_IV := 9.0           # 008 双穿珊瑚刺: 每几秒射一根尖刺(用户 2026-07-19: 6 → 9)
+const JELLY_IV := 4.0           # 012 龟苓膏块: 每几秒给自己套一次护盾
+const IRONWALL_IV := 5.0        # 016 铁壁盾: 每几秒产生一份由全队分摊的护盾
+const SHELL_IV := 8.0           # 018 守护贝壳: 每几秒自回一次
+const ANEMONE_IV := 7.0         # 019 海葵药膏: 每几秒治自己与最残友军
+const DUMBBELL_IV := 8.0        # 020 哑铃: 每几秒锻炼 + 投掷(用户 2026-07-19: 10 → 8)
+const THUNDER_IV := 4.0         # 025 雷鸣贝壳: 每几秒降一次雷
+const GEAR_IV := 6.0            # 035 黄铜齿轮: 每几秒进一次深海币
 const BARNACLE_IV := 5.0        # 每几秒重连一次并给 buff
 const BARNACLE_ENERGY := 10.0   # 每次给自己和该友军的龟能
 const BARNACLE_ASPD := 0.10     # 每次给自己和该友军的攻速 +(永久本场·可叠)
@@ -245,7 +259,7 @@ func _tick_thunder(u: Dictionary, delta: float) -> void:   # 雷鸣贝壳p2eq_02
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_025": continue
 		e["thunder_t"] = float(e.get("thunder_t", 0.0)) + delta
-		if float(e["thunder_t"]) < 4.0: continue
+		if float(e["thunder_t"]) < THUNDER_IV: continue
 		e["thunder_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		for d in range([1, 2, 3][si]):                # 道间错峰
@@ -266,7 +280,7 @@ func _tick_gear(u: Dictionary, delta: float) -> void:   # 黄铜齿轮035(用户
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		var stt: Dictionary = u["eq_state"].get("p2eq_035", {})
 		stt["gear_t"] = float(stt.get("gear_t", 0.0)) + delta
-		if float(stt["gear_t"]) >= 6.0:
+		if float(stt["gear_t"]) >= GEAR_IV:
 			stt["gear_t"] = float(stt["gear_t"]) - 6.0
 			var coins: int = [1, 2, 3][si]
 			var gs = battle.get_node_or_null("/root/GameState")
@@ -281,7 +295,7 @@ func _tick_shell(u: Dictionary, delta: float) -> void:   # 守护贝壳p2eq_018:
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_018": continue
 		e["shell_t"] = float(e.get("shell_t", 0.0)) + delta
-		if float(e["shell_t"]) < 8.0: continue
+		if float(e["shell_t"]) < SHELL_IV: continue
 		e["shell_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		battle._damage._heal(u, [30, 45, 60][si] + u["maxHp"] * [0.05, 0.09, 0.15][si])
@@ -292,7 +306,7 @@ func _tick_anemone(u: Dictionary, delta: float) -> void:   # 海葵药膏p2eq_01
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_019": continue
 		e["anemone_t"] = float(e.get("anemone_t", 0.0)) + delta
-		if float(e["anemone_t"]) < 7.0: continue
+		if float(e["anemone_t"]) < ANEMONE_IV: continue
 		e["anemone_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		var stt: Dictionary = u["eq_state"].get("p2eq_019", {})
@@ -319,7 +333,7 @@ func _tick_dumbbell(u: Dictionary, delta: float) -> void:   # 哑铃p2eq_020: �
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_020": continue
 		e["dumbbell_t"] = float(e.get("dumbbell_t", 0.0)) + delta
-		if float(e["dumbbell_t"]) < 8.0: continue   # 每10秒→每8秒(用户2026-07-19)
+		if float(e["dumbbell_t"]) < DUMBBELL_IV: continue   # 每10秒→每8秒(用户2026-07-19)
 		e["dumbbell_t"] = 0.0
 		if u.get("_slam", false): continue   # 正在别的channel中→跳过本次
 		battle._equip_sys._eq_dumbbell_routine(u, battle._equip_sys._eq_si(int(e.get("star", 1))))
@@ -377,7 +391,7 @@ func _tick_jelly(u: Dictionary, delta: float) -> void:   # 龟苓膏块p2eq_012:
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_012": continue
 		e["jelly_t"] = float(e.get("jelly_t", 0.0)) + delta
-		if float(e["jelly_t"]) < 4.0: continue
+		if float(e["jelly_t"]) < JELLY_IV: continue
 		e["jelly_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		battle._damage._grant_shield(u, [40.0, 60.0, 90.0][si] + u["maxHp"] * 0.04)   # 用户2026-07-19: 30/40/55 → 40/60/90 + 4%最大生命
@@ -388,7 +402,7 @@ func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 锈蚀短剑p2eq_
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_001": continue
 		e["rust_t"] = float(e.get("rust_t", 0.0)) + delta   # 计时存装备条目→每副本独立就绪
-		if float(e["rust_t"]) < 3.0: continue               # 该件未就绪(每3s就绪一次)
+		if float(e["rust_t"]) < RUST_IV: continue           # 该件未就绪(每3s就绪一次)
 		if not got:                                          # 目标懒求(多件共用同一最近敌)
 			t = battle._targeting._nearest_enemy(u); got = true
 		if t == null or (t["pos"] - u["pos"]).length() > rng: continue   # 射程内无敌→保持就绪等待
@@ -403,7 +417,7 @@ func _tick_coral(u: Dictionary, delta: float) -> void:   # 双穿珊瑚刺p2eq_0
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_008": continue
 		e["coral_t"] = float(e.get("coral_t", 0.0)) + delta
-		if float(e["coral_t"]) < 9.0: continue
+		if float(e["coral_t"]) < CORAL_IV: continue
 		var far = null; var fd = -1.0
 		for o in battle._targeting._pick_enemies_of(u):   # ★单体定向(挑最远一个)必须走 battle._targeting._pick_enemies_of: 排除训龟大师(场外监视者·永远最远)+不可选中; 见 §PICK-TARGET 铁律。原用 battle._targeting._enemies_of → 珊瑚刺永远锁大师(用户2026-07-24)
 			var dd2: float = (o["pos"] - u["pos"]).length_squared()
@@ -417,7 +431,7 @@ func _tick_broadsword(u: Dictionary, delta: float) -> void:   # 锈蚀阔剑p2eq
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_007": continue
 		e["bsw_t"] = float(e.get("bsw_t", 0.0)) + delta
-		if float(e["bsw_t"]) < 6.0: continue
+		if float(e["bsw_t"]) < BROADSWORD_IV: continue
 		if battle._targeting._nearest_enemy(u) == null: continue
 		e["bsw_t"] = 0.0
 		battle._equip_sys._eq_broadsword(u, battle._equip_sys._eq_si(int(e.get("star", 1))))
@@ -427,7 +441,7 @@ func _tick_sword_storm(u: Dictionary, delta: float) -> void:   # 千刃风暴p2e
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_006": continue
 		e["storm_t"] = float(e.get("storm_t", 0.0)) + delta
-		if float(e["storm_t"]) < 7.0: continue
+		if float(e["storm_t"]) < SWORD_STORM_IV: continue
 		if battle._targeting._nearest_enemy(u) == null: continue
 		e["storm_t"] = 0.0
 		battle._equip_sys._eq_sword_storm(u, battle._equip_sys._eq_si(int(e.get("star", 1))))

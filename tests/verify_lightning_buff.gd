@@ -111,7 +111,13 @@ func _ready() -> void:
 
 	# ── ⑧ 文案必须跟着数值走(否则玩家看到的是旧数字) ──
 	var pj := FileAccess.get_file_as_string("res://data/pets.json")
-	_chk("⑧ 普攻文案 = %.1f×ATK" % WANT_ATK_SCALE, pj.contains("{M:%.1f*ATK}" % WANT_ATK_SCALE))
+	## ★2026-08-25 同上: 普攻公式也换成了常量引用 `{M:LightningSystem.BOLT_ATK_COEF*ATK}`。
+	##   判据 = 「常量值对」且「文案确实指着它(或还写着等值的字面量)」——
+	##   这样"文案变干净"不会假红, 而"文案指错常量 / 数值漂了"仍然当场红。
+	_chk("⑧ 普攻文案 = %.1f×ATK" % WANT_ATK_SCALE,
+		is_equal_approx(LightningSystem.BOLT_ATK_COEF, WANT_ATK_SCALE)
+			and (pj.contains("{M:LightningSystem.BOLT_ATK_COEF*ATK}")
+				or pj.contains("{M:%.1f*ATK}" % WANT_ATK_SCALE)))
 	_chk("⑧ 雷暴文案 = 单道 %.2f×ATK ×%d" % [WANT_BARRAGE_TOTAL / WANT_BARRAGE_BOLTS, WANT_BARRAGE_BOLTS],
 		pj.contains("{M:%.2f*ATK*%d}" % [WANT_BARRAGE_TOTAL / WANT_BARRAGE_BOLTS, WANT_BARRAGE_BOLTS]))
 	## ★2026-08-25: 公式占位符现在可以引用常量(`{M:LightningSystem.SHIELD_RETALIATE*ATK}`),

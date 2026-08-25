@@ -434,6 +434,17 @@ run_audit "tools/number_coverage_audit.py" "ALL OK" "number_coverage (玩家文�
 #   改代码常量而不碰文案也会被抓到 —— {C:} 展开后玩家看到的数变了。
 #   确认改动是有意的: python tools/text_golden.py --update, 并把快照一起提交。
 run_audit "tools/text_golden.py"        "ALL OK" "text_golden (玩家文案快照对账·483 段)"
+# ★★上面那条存的是【原文】, 所以把 `{N:1.5*ATK}` 换成 `{N:某类.某常量*ATK}` 时
+#   它只能说"这行改了", **说不出那个数变没变**。2026-08-25 真出过事故: 无头龟的公式
+#   被接到骰子龟的常量上(1.5 → 0.5), 渲染门禁全绿、原文快照也只报"改了一行"。
+#   ⇒ 这条存的是每段文案里所有占位符**算出来的值**, 判据是"旧的值不许消失"
+#     (根除只会让值变多: 转引用值不变、把外面的裸数字转进来是新增)。
+#   确认是有意的平衡改动: python tools/text_value_golden.py --update, 快照一起提交。
+run_audit "tools/text_value_golden.py"  "ALL OK" "text_value_golden (占位符算出来的数·旧值不许消失)"
+# ★★第三条: 归属。上面两条【都拦不住】接到别的主体的同值常量——
+#   值一样 ⇒ 值快照绿; 那个常量确实有人读 ⇒ 孤儿审计绿; 渲染得出数 ⇒ 渲染门禁绿。
+#   2026-08-25 实测三例(无头→骰子 / 无头→彩虹 / 骰子→彩虹), 只有一例被平衡门禁碰巧抓到。
+run_audit "tools/text_const_owner_audit.py" "ALL OK" "text_const_owner (文案引用的常量必须属于这个主体)"
 # ★装备属性展示串 ↔ EquipStats.STATS(CLAUDE.md 说的真事实源)。这条缝以前谁都没管:
 #   tooltip_number_audit 只查 effectDesc1 的**效果**三元组, 属性这块它明确不管。
 run_audit "tools/basestats_audit.py"    "ALL OK" "basestats (装备属性展示串 ↔ EquipStats.STATS·597 个数)"

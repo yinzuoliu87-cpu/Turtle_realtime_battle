@@ -6,6 +6,9 @@ extends RefCounted
 ## ★★2026-08-22 文案根除: 生长(被动)这一组原来全在**主场景**的 `_tick_unit` 里,
 ##   一行三元表达式写着两套数(选没选「竹击」)。文案又各手写一遍。
 ## 【生长·蓄力强化下一发普攻】基础值 / 选了「竹击」后的强化值, 一一对应
+## 【一叶刃(普攻)】真值在主场景普攻表, 那里引用本常量。
+const LEAF_ATK_COEF := 0.4       # 普攻 ×ATK 物理
+const LEAF_MAXHP_PCT := 0.03     # + ×【自身】最大生命
 const GROW_CD := 6.0             # 每几秒蓄力一次
 const GROW_ATK_COEF := 0.75      # 追加魔法 = ×ATK + ×最大生命(下一行)
 const GROW_HP_PCT := 0.08
