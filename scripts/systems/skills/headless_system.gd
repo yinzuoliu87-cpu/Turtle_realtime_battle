@@ -11,6 +11,11 @@ const UNDEAD_ATK_PER_LOST := 1.0 # 每损失 1 份生命 → 攻击力 +1 份(1:
 const UNDEAD_DEATHFLOOR := 5.0   # 首次濒死后免死多少秒(期间生命不会降到 1 以下)
 ## ★"最高 +100%" **不是另一个常量** —— 它是 `clampf(lost_pct, 0, 1)` 的结构性上限
 ##   (最多只能损失 100% 生命)。文案里那个 100% 指向 UNDEAD_ATK_PER_LOST 的百分比形式。
+## 【灵魂打击】龟能消耗与「攒满要多久」。★后者是**推导**: 龟能 × 全局充能系数。
+##   SkillEnergy 没有 class_name(防 F5 未声明崩), 所以 preload 它再引用。
+const _SE := preload("res://scripts/systems/skill_energy.gd")
+const SOUL_ENERGY := 80.0        # 龟能消耗(真值由 SkillEnergy.SKILL_COST 反过来引用本常量)
+const SOUL_FULL_SEC := SOUL_ENERGY * _SE.CD_FACTOR   # 推导: 攒满约几秒(文案里那个 ≈6)
 const SOUL_HITS := 3             # 强化几次普攻
 const SOUL_ATK_COEF := 0.5       # 每次额外 ×ATK 魔法
 const SOUL_CURHP_PCT := 0.10     # 每次额外 + 目标【当前】生命 × 魔法

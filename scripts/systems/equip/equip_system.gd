@@ -236,7 +236,7 @@ func _eq_summon_turret(u: Dictionary, si: int) -> void:   # 穿甲遗弹058(重�
 	if not u.get("alive", false): return
 	var tr = battle._spawn._spawn_summon(u, "turret", [500.0, 1000.0, 1800.0][si], [20.0, 30.0, 45.0][si],
 		{"label": "炮台", "spr_id": "turret", "col_size": 44.0, "hp_w": 32.0,
-		 "atk_interval": 2.0, "atk_range": 2000.0, "move_spd": 0.0, "melee": false})
+		 "atk_interval": 1.0 / TURRET_ASPD, "atk_range": TURRET_RANGE, "move_spd": 0.0, "melee": false})
 	if tr == null: return
 	tr["eq_state"] = {}; tr["equips"] = []
 	tr["_eq_turret"] = true
@@ -266,7 +266,7 @@ func _tick_eq_turret(u: Dictionary, delta: float) -> void:   # 058: 炮台双抗
 	if absf(float(tr.get("base_def", -1.0)) - res) > 0.01:
 		tr["base_def"] = res; tr["base_mr"] = res
 		battle._recalc_stats(tr)
-	var near: bool = u.get("alive", false) and (u["pos"] - tr["pos"]).length() <= 400.0
+	var near: bool = u.get("alive", false) and (u["pos"] - tr["pos"]).length() <= TURRET_BUFF_R
 	u["_turret_aspd_mult"] = (1.0 + [0.20, 0.30, 0.40][si]) if near else 1.0   # 直接赋值(不累加·不会泄漏)
 	battle._update_turret_line(tr)
 
@@ -949,6 +949,15 @@ func _eq_charge(stt: Dictionary, key: String, amt: float, cap: float, on_full: C
 #  on-hit (每段命中后, attacker 视角)
 # ============================================================================
 ## ── 飞镖056(用户 2026-07-30 新效果) ──
+## 【058 穿甲遗弹】登场召唤的不可移动炮台。
+## ★攻速存**次/秒**(文案说的就是这个), 代码要的间隔由它现推 —— 别存间隔再让文案换算。
+const TURRET_ASPD := 0.5          # 攻速(次/秒) ⇒ atk_interval = 1 / 它
+const TURRET_RANGE := 2000.0      # 射程(码)·全场
+const TURRET_BUFF_R := 400.0      # 携带者在此范围内 → 自身获得攻速加成(码)
+## 【033 复活海螺】3★ 变虫之后的自我分裂(小虫自己的周期, 不走携带者的 eq_tick)。
+const WORM_SPLIT_IV := 2.5        # 每几秒在空位分裂一只
+const WORM_CAP := 4               # 场上小虫上限
+const WORM_ASPD := 0.65           # 小虫攻速(次/秒) ⇒ atk_interval = 1 / 它
 const DART_EVERY := 5              # 每 5 下普攻强化一次
 const DART_BLEED_COEF := 0.1       # 飞镖命中施加的流血层数 = ×ATK
 ## 【003 锋利鲨齿】每段伤害命中后向目标周围溅射。

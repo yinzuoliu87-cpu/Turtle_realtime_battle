@@ -25,6 +25,7 @@ const EXEC_BASE := 0.14          # 无印记时的斩杀线
 ## 【狩猎弹幕】连珠速射, 每根随机锁敌、慢速抛物线追踪。
 const BARRAGE_ARROWS := 10       # 共几根
 const BARRAGE_GAP := 0.2         # 每几秒发一根
+const BARRAGE_TOTAL := BARRAGE_ARROWS * BARRAGE_COEF   # 推导: 全中合计 ×ATK(文案那个 360%)
 const BARRAGE_COEF := 0.36       # 每根 ×ATK 真实
 
 ## ★★2026-08-24 文案根除: 【隐蔽】翻滚距离原在函数内 `const ROLL`, 强化普攻的系数

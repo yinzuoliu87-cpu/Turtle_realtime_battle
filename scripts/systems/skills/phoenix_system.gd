@@ -26,6 +26,8 @@ const LAVA_SHIELD_SEC := 4.0      # 持续(秒)·同时是反击窗口
 const LAVA_RETALIATE := 0.14      # 每受一段攻击反击 ×ATK 魔法(真值在 battle_damage)
 ## 【涅槃】首死复活 + 全体灼烧 + 治疗削减(时长走通用 BUFF_SEC)。
 const NIRVANA_HEALCUT := 0.5      # 治疗削减比例
+## 【强化涅槃】主动的龟能消耗(真值由 SkillEnergy.SKILL_COST 反过来引用本常量)。
+const NIRVANA_ENERGY := 120.0
 const NIRVANA_SHOW_SEC := 2.5
 const NIRVANA_ASH_SEC := 0.6      ## 第一拍: 灰烬定格
 const NIRVANA_GATHER_SEC := 1.3   ## 第二拍: 聚火升腾(0.6 → 1.9)

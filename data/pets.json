@@ -1043,8 +1043,8 @@
       "type": "gamblerMultiHit",
       "name": "多重打击",
       "dmgScale": 0.5,
-      "brief": "每次普攻命中后有 <span class=\"val-atk\">{C:GamblerSystem.MULTI_BASE%}%</span> 概率<span class=\"val-normal\">立刻以约 6 倍攻击速度再打一次普攻</span>。\n再次命中可继续触发，每连锁一次概率 ×{C:GamblerSystem.MULTI_DECAY}（<span class=\"val-atk\">{C:GamblerSystem.MULTI_BASE%}% → {C:GamblerSystem.MULTI_CHAIN2%}% → {C:GamblerSystem.MULTI_CHAIN3%}% → …</span>）。\n<span style=\"color:#8a93a0\">未触发时概率重置回基础值。\n</span>",
-      "desc": "每次普攻命中后有 <span class=\"val-atk\">{C:GamblerSystem.MULTI_BASE%}%</span> 概率<span class=\"val-normal\">立刻以约 6 倍攻击速度再打一次普攻</span>。\n再次命中可继续触发，每连锁一次概率 ×{C:GamblerSystem.MULTI_DECAY}（{C:GamblerSystem.MULTI_BASE%}% → {C:GamblerSystem.MULTI_CHAIN2%}% → {C:GamblerSystem.MULTI_CHAIN3%}% → …），没触发则重置回基础概率、等下一次普攻。\n<span style=\"color:#8a93a0\">基础概率 {C:GamblerSystem.MULTI_BASE%}%。\n出战选「命运之轮」→ 基础概率变 {C:GamblerSystem.MULTI_WHEEL%}%（代价是登场损失 {C:GamblerSystem.WHEEL_HP_COST%}% 最大生命值）\n释放「赌注」→ 之后 {C:GamblerSystem.BET_BONUS_SEC} 秒内再 +{C:GamblerSystem.MULTI_BET_BONUS%}%。\n</span>"
+      "brief": "每次普攻命中后有 <span class=\"val-atk\">{C:GamblerSystem.MULTI_BASE%}%</span> 概率<span class=\"val-normal\">立刻以约 {N:1/GamblerSystem.MULTI_ASPD} 倍攻击速度再打一次普攻</span>。\n再次命中可继续触发，每连锁一次概率 ×{C:GamblerSystem.MULTI_DECAY}（<span class=\"val-atk\">{C:GamblerSystem.MULTI_BASE%}% → {C:GamblerSystem.MULTI_CHAIN2%}% → {C:GamblerSystem.MULTI_CHAIN3%}% → …</span>）。\n<span style=\"color:#8a93a0\">未触发时概率重置回基础值。\n</span>",
+      "desc": "每次普攻命中后有 <span class=\"val-atk\">{C:GamblerSystem.MULTI_BASE%}%</span> 概率<span class=\"val-normal\">立刻以约 {N:1/GamblerSystem.MULTI_ASPD} 倍攻击速度再打一次普攻</span>。\n再次命中可继续触发，每连锁一次概率 ×{C:GamblerSystem.MULTI_DECAY}（{C:GamblerSystem.MULTI_BASE%}% → {C:GamblerSystem.MULTI_CHAIN2%}% → {C:GamblerSystem.MULTI_CHAIN3%}% → …），没触发则重置回基础概率、等下一次普攻。\n<span style=\"color:#8a93a0\">基础概率 {C:GamblerSystem.MULTI_BASE%}%。\n出战选「命运之轮」→ 基础概率变 {C:GamblerSystem.MULTI_WHEEL%}%（代价是登场损失 {C:GamblerSystem.WHEEL_HP_COST%}% 最大生命值）\n释放「赌注」→ 之后 {C:GamblerSystem.BET_BONUS_SEC} 秒内再 +{C:GamblerSystem.MULTI_BET_BONUS%}%。\n</span>"
     },
     "skillPool": [
       {
@@ -1169,7 +1169,7 @@
         "cd": 0,
         "arrowScale": 0.3,
         "brief": "每 <span class=\"val-atk\">{C:HunterSystem.BARRAGE_GAP} 秒</span> 发射 1 根、共 <span class=\"val-atk\">{C:HunterSystem.BARRAGE_ARROWS}</span> 根追踪箭，缓慢抛物线飞行追踪目标，每根造成 {T:HunterSystem.BARRAGE_COEF*ATK} 真实伤害（共 {T:HunterSystem.BARRAGE_COEF*ATK*HunterSystem.BARRAGE_ARROWS}）。\n<span style=\"color:#8a93a0\">追踪箭随机锁定敌人；每根命中生命低于 {C:HunterSystem.EXEC_BASE%}% 的敌人即将其处决。\n</span>",
-        "detail": "猎人龟连珠速射 {C:HunterSystem.BARRAGE_ARROWS} 根绿箭，每根都<span class=\"val-normal\">随机锁定一个敌人</span>并追踪飞行，造成（{C:HunterSystem.BARRAGE_COEF%}%×攻击力({ATK}) = {T:HunterSystem.BARRAGE_COEF*ATK}）真实伤害，{C:HunterSystem.BARRAGE_ARROWS} 根共（360%×攻击力({ATK}) = {T:HunterSystem.BARRAGE_COEF*ATK*HunterSystem.BARRAGE_ARROWS}）\n每根命中生命值低于 {C:HunterSystem.EXEC_BASE%}% 的敌人即处决。\n<span style=\"color:#8a93a0\">每 {C:HunterSystem.BARRAGE_GAP} 秒发射一根，共 {C:HunterSystem.BARRAGE_ARROWS} 根。\n箭走慢速抛物线追踪各自锁定的目标（不会被路径上的其它单位挡下），飞行中持续修正方向。\n</span>"
+        "detail": "猎人龟连珠速射 {C:HunterSystem.BARRAGE_ARROWS} 根绿箭，每根都<span class=\"val-normal\">随机锁定一个敌人</span>并追踪飞行，造成（{C:HunterSystem.BARRAGE_COEF%}%×攻击力({ATK}) = {T:HunterSystem.BARRAGE_COEF*ATK}）真实伤害，{C:HunterSystem.BARRAGE_ARROWS} 根共（{C:HunterSystem.BARRAGE_TOTAL%}%×攻击力({ATK}) = {T:HunterSystem.BARRAGE_COEF*ATK*HunterSystem.BARRAGE_ARROWS}）\n每根命中生命值低于 {C:HunterSystem.EXEC_BASE%}% 的敌人即处决。\n<span style=\"color:#8a93a0\">每 {C:HunterSystem.BARRAGE_GAP} 秒发射一根，共 {C:HunterSystem.BARRAGE_ARROWS} 根。\n箭走慢速抛物线追踪各自锁定的目标（不会被路径上的其它单位挡下），飞行中持续修正方向。\n</span>"
       }
     ],
     "defaultSkills": [
@@ -1636,7 +1636,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "获得 <span class=\"val-atk\">{C:PhoenixSystem.NIRVANA_ENH_ASPD%}% 攻击速度</span> 和 <span class=\"val-atk\">{C:PhoenixSystem.NIRVANA_ENH_SPD%}% 移动速度</span>，持续 <span class=\"val-atk\">{C:PhoenixSystem.NIRVANA_ENH_SEC} 秒</span>。\n强化涅槃被动，使其改为以 <span class=\"val-heal\">{C:PhoenixSystem.NIRVANA_ENH_HP_PCT%}% 最大生命值</span>复活并永久提升 <span class=\"val-atk\">{C:PhoenixSystem.NIRVANA_ENH_ATK%}%</span> 攻击力。",
-        "detail": "主动（120 龟能）：凤凰龟周身烈焰暴涨，自身获得 <span class=\"val-atk\">+{C:PhoenixSystem.NIRVANA_ENH_ASPD%}%</span> 攻击速度与 <span class=\"val-atk\">+{C:PhoenixSystem.NIRVANA_ENH_SPD%}%</span> 移动速度，持续 {C:PhoenixSystem.NIRVANA_ENH_SEC} 秒（配合喷火随攻击速度增伤）。\n被动强化涅槃：\n浴火重生时转而以 {C:PhoenixSystem.NIRVANA_ENH_HP_PCT%}%最大生命值复活，并永久获得 <span class=\"val-atk\">+{C:PhoenixSystem.NIRVANA_ENH_ATK%}%</span> 攻击力。",
+        "detail": "主动（{C:PhoenixSystem.NIRVANA_ENERGY} 龟能）：凤凰龟周身烈焰暴涨，自身获得 <span class=\"val-atk\">+{C:PhoenixSystem.NIRVANA_ENH_ASPD%}%</span> 攻击速度与 <span class=\"val-atk\">+{C:PhoenixSystem.NIRVANA_ENH_SPD%}%</span> 移动速度，持续 {C:PhoenixSystem.NIRVANA_ENH_SEC} 秒（配合喷火随攻击速度增伤）。\n被动强化涅槃：\n浴火重生时转而以 {C:PhoenixSystem.NIRVANA_ENH_HP_PCT%}%最大生命值复活，并永久获得 <span class=\"val-atk\">+{C:PhoenixSystem.NIRVANA_ENH_ATK%}%</span> 攻击力。",
         "energyCost": 120,
         "icon": "skills/phoenix-3.png"
       }
@@ -2199,8 +2199,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "龟能充满后（约 6 秒），接下来 <b>{C:HeadlessSystem.SOUL_HITS} 次</b>普攻额外附带 {M:HeadlessSystem.SOUL_ATK_COEF*ATK} 魔法伤害和 <span class=\"val-magic\">{C:HeadlessSystem.SOUL_CURHP_PCT%}% 目标当前生命值</span> 的魔法伤害。\n第 {C:HeadlessSystem.SOUL_HITS} 下落地后挥出<span class=\"val-atk\">镰刀横扫</span>。\n<span style=\"color:#8a93a0\">强化窗口全程锁龟能，镰刀扫完才重新充能。\n</span>",
-        "detail": "无头龟蓄积灵魂之力（充能型）：\n龟能充满（80 龟能≈6 秒）后，接下来 <b>{C:HeadlessSystem.SOUL_HITS} 次</b>普攻额外附带（{C:HeadlessSystem.SOUL_ATK_COEF%}%×攻击力({ATK}) = {M:HeadlessSystem.SOUL_ATK_COEF*ATK}）<span class=\"val-magic\">魔法</span>伤害 + <span class=\"val-magic\">{C:HeadlessSystem.SOUL_CURHP_PCT%}%目标当前生命值</span> 魔法伤害（叠加在撕咬的 1×攻击力物理 + 3%最大生命值之上·单体），射程额外 +{C:HeadlessSystem.SOUL_RANGE_BONUS}。\n第 <b>{C:HeadlessSystem.SOUL_HITS}</b> 下命中落地后，无头龟挥出<span class=\"val-atk\">镰刀横扫</span>：\n正面 {C:HeadlessSystem.SCYTHE_ARC_DEG}° 锥形、{C:HeadlessSystem.SCYTHE_RANGE} 码内的敌人被<span class=\"val-atk\">击退 {C:HeadlessSystem.SCYTHE_KNOCK} 码</span>，并被施加 <span class=\"val-magic\">{C:HeadlessSystem.SCYTHE_CURSE_SEC} 秒诅咒</span>（每秒造成其最大生命值 {C:BattleDamage.CURSE_HP_PCT%}% 的真实伤害，无视双抗）。\n<span class=\"val-normal\">强化窗口全程锁龟能</span>，镰刀扫完才解锁并清零重新充能。\n<span style=\"color:#8a93a0\">\n</span>"
+        "brief": "龟能充满后（约 {C:HeadlessSystem.SOUL_FULL_SEC} 秒），接下来 <b>{C:HeadlessSystem.SOUL_HITS} 次</b>普攻额外附带 {M:HeadlessSystem.SOUL_ATK_COEF*ATK} 魔法伤害和 <span class=\"val-magic\">{C:HeadlessSystem.SOUL_CURHP_PCT%}% 目标当前生命值</span> 的魔法伤害。\n第 {C:HeadlessSystem.SOUL_HITS} 下落地后挥出<span class=\"val-atk\">镰刀横扫</span>。\n<span style=\"color:#8a93a0\">强化窗口全程锁龟能，镰刀扫完才重新充能。\n</span>",
+        "detail": "无头龟蓄积灵魂之力（充能型）：\n龟能充满（{C:HeadlessSystem.SOUL_ENERGY} 龟能≈{C:HeadlessSystem.SOUL_FULL_SEC} 秒）后，接下来 <b>{C:HeadlessSystem.SOUL_HITS} 次</b>普攻额外附带（{C:HeadlessSystem.SOUL_ATK_COEF%}%×攻击力({ATK}) = {M:HeadlessSystem.SOUL_ATK_COEF*ATK}）<span class=\"val-magic\">魔法</span>伤害 + <span class=\"val-magic\">{C:HeadlessSystem.SOUL_CURHP_PCT%}%目标当前生命值</span> 魔法伤害（叠加在撕咬的 1×攻击力物理 + 3%最大生命值之上·单体），射程额外 +{C:HeadlessSystem.SOUL_RANGE_BONUS}。\n第 <b>{C:HeadlessSystem.SOUL_HITS}</b> 下命中落地后，无头龟挥出<span class=\"val-atk\">镰刀横扫</span>：\n正面 {C:HeadlessSystem.SCYTHE_ARC_DEG}° 锥形、{C:HeadlessSystem.SCYTHE_RANGE} 码内的敌人被<span class=\"val-atk\">击退 {C:HeadlessSystem.SCYTHE_KNOCK} 码</span>，并被施加 <span class=\"val-magic\">{C:HeadlessSystem.SCYTHE_CURSE_SEC} 秒诅咒</span>（每秒造成其最大生命值 {C:BattleDamage.CURSE_HP_PCT%}% 的真实伤害，无视双抗）。\n<span class=\"val-normal\">强化窗口全程锁龟能</span>，镰刀扫完才解锁并清零重新充能。\n<span style=\"color:#8a93a0\">\n</span>"
       }
     ],
     "defaultSkills": [
