@@ -6,6 +6,10 @@ extends RefCounted
 ## ★★2026-08-22 文案根除: 下面这些原来全是函数体里的裸字面量。
 ## 【钻石滚球】按撞击瞬间的移动速度在 0 速 ↔ 满速之间**线性插值**
 ## 【坚不可摧】护盾 + 双抗, 两者时长不同(护盾 4 秒 / 双抗 5 秒)。
+## 【切割(普攻)】三段相加, 真值在【主场景】的普攻表里(那里引用本组常量)。
+const CUT_ATK_COEF := 0.7    # ×ATK
+const CUT_DEF_COEF := 0.6    # + ×护甲
+const CUT_MR_COEF := 0.6     # + ×魔抗
 const FORTIFY_SHIELD_PCT := 0.20   # 护盾 = 自身最大生命 ×
 const FORTIFY_SHIELD_SEC := 4.0    # 护盾持续(秒)·持盾期锁龟能
 const FORTIFY_RESIST_COEF := 0.20  # 护甲与魔抗 各 += ATK ×

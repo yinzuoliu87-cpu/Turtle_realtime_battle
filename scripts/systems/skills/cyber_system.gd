@@ -14,6 +14,11 @@ const DRONE_SHOT_COEF := 0.04
 ## 阵亡齐射: 每道贯穿激光 = 赛博龟攻击力 × 此系数(用户 2026-08-13 确认, 本来就是 0.4)。
 ## ★满编 20 门炮若最近敌是同一个 ⇒ 该目标最多吃 20 × 0.4 = **8×ATK**;
 ##   多敌时各炮打各自最近的, 会分散(贯穿线上的其他人也吃)。
+## 【能量大炮】一条直线的长激光, 真伤按浮游炮数叠。
+const CANNON_RANGE := 900.0     # 射程上限(码)
+const CANNON_BAND := 70.0       # 判定带半宽(码)
+const CANNON_PHYS := 1.0        # 线上每敌 ×ATK 物理
+const CANNON_TRUE_PER_DRONE := 0.1  # 每门浮游炮再追加 ×ATK 真实
 const VOLLEY_COEF := 0.4
 ## ★★2026-08-22 文案根除: 下面这些原来散在主场景/本文件的函数体里, 文案又各手写一遍。
 ## 【浮游炮的节奏与规模】
@@ -71,11 +76,11 @@ func _sk_cyber_cannon(u: Dictionary, tgt) -> void:              # 赛博龟·能
 		if not uu.get("alive", false): return
 		for o in battle._targeting._enemies_of(uu):
 			if not o.get("alive", false): continue
-			if not battle._on_line(uu["pos"], dir, o["pos"], 70.0): continue    # 直线判定带宽±70码
-			if o["pos"].distance_to(uu["pos"]) > 900.0: continue
+			if not battle._on_line(uu["pos"], dir, o["pos"], CANNON_BAND): continue    # 直线判定带宽±70码
+			if o["pos"].distance_to(uu["pos"]) > CANNON_RANGE: continue
 			battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, 1.0, o), Color("#9bf0ff"))                          # 1A物理
 			if drones > 0:
-				battle._damage._apply_damage_from(uu, o, int(uu["atk"] * 0.1 * drones), Color("#d0ffff"), 0.0, true)  # 0.1A×浮游炮数真伤
+				battle._damage._apply_damage_from(uu, o, int(uu["atk"] * CANNON_TRUE_PER_DRONE * drones), Color("#d0ffff"), 0.0, true)  # 0.1A×浮游炮数真伤
 			battle._vfx._hit_spark(o)
 		var endp: Vector2 = uu["pos"] + dir * 1300.0
 		battle._beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", uu["pos"], endp, 90.0, Color(1.0, 1.0, 1.0, 1.0), 0.35)     # ①白热核心束

@@ -296,7 +296,7 @@ const BASIC_ATK := {
 	                                                                               #   2026-07-28 那次「0.4物+0.9真 → 0.5物+0.7真」的削弱**只改到了这张死表上**,
 	                                                                               #   玩家从来没吃到过, 文案却照抄了它。已把本行改回与活代码一致以免继续骗人;
 	                                                                               #   **那次削弱要不要真的落地, 待用户拍板**(动它=改平衡, 不是改文案)。
-	"diamond":  {"phys": 0.7, "def": 0.6, "mr": 0.6, "hits": 1},                    # +护甲魔抗
+	"diamond":  {"phys": DiamondSystem.CUT_ATK_COEF, "def": DiamondSystem.CUT_DEF_COEF, "mr": DiamondSystem.CUT_MR_COEF, "hits": 1},                    # +护甲魔抗
 	"fortune":  {"phys": 1.0, "gold": 0.02, "hits": 1},                            # 1下(用户; 回合制原2下)
 	"dice":     {"phys": 0.9, "critflat": 55.0, "hits": 1},                         # 90%物理+5500%暴击率flat·单段近战(对齐回合制 diceAttack critBonusMult=55·无实时原话)
 	"rainbow":  {"phys": RainbowSystem.BEAM_COEF, "hits": RainbowSystem.BEAM_HITS},                                          # 单段0.9物理(用户2026-07-02, 原魔法1.4×2)
@@ -2568,7 +2568,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 						u["skill_gcd_until"] = _t + SKILL_GCD
 						_equip_sys._eq_on_cast(u, tgt)
 						if u["id"] == "space" and float(u.get("star_energy", 0.0)) > 0.0:   # 星能: 施法后追加12%当前星能真伤(用户2026-07-16: 30%→12%)
-							_damage._apply_damage_from(u, tgt, int(u["star_energy"] * 0.12), Color("#ffffff"), 0.0, true)
+							_damage._apply_damage_from(u, tgt, int(u["star_energy"] * StarSystem.ENERGY_TRUE_PCT), Color("#ffffff"), 0.0, true)
 						if u["id"] == "shell":                   # 潜影: 自己放技能→破隐(下次普攻附破隐bonus)
 							_shell_sys._shell_break_stealth(u)
 					else:

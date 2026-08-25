@@ -525,6 +525,10 @@ const FANG_IV := 6.0            # 每几秒射一颗毒牙(主场景 _EQ_CUSTOM_
 const FANG_LIFESTEAL := 1.00    # 毒牙回复 = 造成伤害 ×
 const FANG_EXEC_ENERGY := 20.0  # 处决后回龟能(有龟能系统的单位)
 const FANG_EXEC_HEAL := 40.0    # 没有龟能系统的改回血
+## 【041 退潮浊液】登场若干秒后涨潮(临时加成), 到期退潮还原。
+const TIDE_DELAY := 5.0     # 登场几秒后涨潮
+const TIDE_SIZE_UP := 0.30  # 涨潮期体积 +
+const TIDE_RANGE_UP := 50.0 # 涨潮期射程 +(码)
 const BLADE_FULL := 100.0        # 刃能满值
 const BLADE_AOE_FACTOR := 0.5    # 范围技能充能减半
 const BLADE_R_IN := 500.0        # 扇形带内半径(码)
@@ -575,8 +579,8 @@ func _eq_ebb_surge(u: Dictionary, hp_add: float, atk_add: float, dur: float) -> 
 	u["_ebb_on"] = true
 	u["maxHp"] += hp_add; u["hp"] += hp_add
 	u["base_atk"] = float(u.get("base_atk", 0.0)) + atk_add
-	u["atk_range"] = float(u.get("atk_range", 70.0)) + 50.0
-	u["size_mult"] = float(u.get("size_mult", 1.0)) * 1.3      # 体积+30%(走size_mult, 每帧juice从base起算不会覆盖)
+	u["atk_range"] = float(u.get("atk_range", 70.0)) + TIDE_RANGE_UP
+	u["size_mult"] = float(u.get("size_mult", 1.0)) * (1.0 + TIDE_SIZE_UP)      # 体积+30%(走size_mult, 每帧juice从base起算不会覆盖)
 	battle._recalc_stats(u)
 	battle._ebb_tide_fx(u, true)
 	battle._vfx._float_text(u["pos"] + Vector2(0, -70), "涨潮", Color("#5fe0d0"))
@@ -588,8 +592,8 @@ func _eq_ebb_recede(u: Dictionary, hp_add: float, atk_add: float) -> void:   # �
 	u["maxHp"] = maxf(1.0, float(u["maxHp"]) - hp_add)
 	u["hp"] = minf(float(u["hp"]), float(u["maxHp"]))          # 退潮不致死, 只削到新上限
 	u["base_atk"] = maxf(0.0, float(u.get("base_atk", 0.0)) - atk_add)
-	u["atk_range"] = maxf(10.0, float(u.get("atk_range", 70.0)) - 50.0)
-	u["size_mult"] = maxf(0.01, float(u.get("size_mult", 1.0)) / 1.3)
+	u["atk_range"] = maxf(10.0, float(u.get("atk_range", 70.0)) - TIDE_RANGE_UP)
+	u["size_mult"] = maxf(0.01, float(u.get("size_mult", 1.0)) / (1.0 + TIDE_SIZE_UP))
 	battle._recalc_stats(u)
 	if u.get("alive", false):
 		battle._ebb_tide_fx(u, false)

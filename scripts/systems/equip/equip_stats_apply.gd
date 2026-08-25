@@ -224,7 +224,7 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 			var hp41: float = [250.0, 400.0, 650.0][si]   # 装备hp是最终值, 不乘HP_MULT
 			var atk41: float = [10.0, 16.0, 25.0][si]
 			var dur41: float = [8.0, 11.0, 15.0][si]
-			battle._pending_shots.append({"delay": 5.0, "fn": func(): battle._equip_sys._eq_ebb_surge(u, hp41, atk41, dur41), "src": u})
+			battle._pending_shots.append({"delay": EquipSystem.TIDE_DELAY, "fn": func(): battle._equip_sys._eq_ebb_surge(u, hp41, atk41, dur41), "src": u})
 		"p2eq_035":   # 黄铜齿轮: 本局累计产币数(显示用)
 			stt["coins_made"] = 0
 		"p2eq_034":   # 玩偶小熊: 大熊层 + 已销毁标记 + 每4s派小熊计时 + 蓄力标记

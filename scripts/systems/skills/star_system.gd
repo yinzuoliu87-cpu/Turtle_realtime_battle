@@ -4,6 +4,12 @@ extends RefCounted
 ## 类内 _sk_star_* 名字不变;外部名加 battle. 前缀。无状态成员。
 
 ## 【虫洞】蓄力 → 直线飞向地图边界 → 引力场吸 → 捕获 → 边界爆炸。
+## 【星能(被动)】把直接命中造成的伤害转成星能, 每次命中追加一发按星能计的真伤。
+## ★三个数原来散在【三个文件】: 转化率与上限在 battle_damage, 追伤系数在
+##   battle_ballistics 与主场景各一份(同一个 0.12 写了两遍)。
+const ENERGY_GAIN := 0.35       # 造成伤害的多少转成星能(持续伤害不计)
+const ENERGY_CAP_PCT := 0.40    # 星能上限 = 自身最大生命 ×
+const ENERGY_TRUE_PCT := 0.12   # 每次命中追加 = 当前星能 × 的真实伤害
 const WORM_SPD := 140.0          # 推进速度(码/秒)
 const WORM_GRAV_R := 150.0       # 引力场半径(码·此过程不造成伤害)
 const WORM_CAPTURE_R := 100.0    # 捕获半径(码)

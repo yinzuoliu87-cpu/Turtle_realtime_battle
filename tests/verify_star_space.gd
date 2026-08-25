@@ -81,7 +81,12 @@ func _ready() -> void:
 	# ── ③ 追加真伤 = 12% 当前星能(不是 30%) ────────────────────────────────
 	var src_bal := FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_ballistics.gd")
 	var src_rb := FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")
-	_ok("★★普攻弹道的追加真伤系数 = 0.12", src_bal.find('float(src["star_energy"]) * 0.12') >= 0)
+	## ★2026-08-25 这个系数抽成了 StarSystem.ENERGY_TRUE_PCT(原来在【两个文件各写一遍】)。
+	##   比【常量的值】+ 确认两处都在引用它 —— 断言源码字面量会随代码变干净而假红。
+	_ok("★★普攻弹道的追加真伤系数 = 0.12",
+		is_equal_approx(StarSystem.ENERGY_TRUE_PCT, 0.12)
+			and src_bal.find('StarSystem.ENERGY_TRUE_PCT') >= 0
+			and src_rb.find('StarSystem.ENERGY_TRUE_PCT') >= 0)
 	_ok("★★施法后的追加真伤系数 = 0.12", src_rb.find('star_energy", 0.0)) > 0.0') >= 0)
 	## 文案必须与代码一致 —— 2026-07-16 削过 30%→12% 但文案停在 30%, 玩家预期是实际 2.5 倍。
 	var pets := FileAccess.get_file_as_string("res://data/pets.json")

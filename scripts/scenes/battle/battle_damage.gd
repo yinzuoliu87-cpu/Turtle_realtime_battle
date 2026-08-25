@@ -388,7 +388,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 		battle._equip_tick_sys._egg_add_progress(u, float(dmg) * EquipTickSystem.EGG_DMG_RATIO)
 	# 星能 (星际造伤35%·用户2026-07-16: 62→35; 星波施法期锁定不涨)
 	if src["id"] == "space" and battle._t >= float(src.get("star_lock_until", 0.0)):
-		src["star_energy"] = minf(src["maxHp"] * 0.40, src["star_energy"] + float(dmg) * 0.35)
+		src["star_energy"] = minf(src["maxHp"] * StarSystem.ENERGY_CAP_PCT, src["star_energy"] + float(dmg) * StarSystem.ENERGY_GAIN)
 	# 储能 (龟壳受伤转储能, 上限50%最大HP) — 仅"store"相位累积 ("cd"相位不储)
 	if u["id"] == "shell" and u.get("shell_phase", "store") == "store":
 		u["store_energy"] = minf(u["maxHp"] * ShellSystem.STORE_CAP_PCT, u["store_energy"] + float(dmg))
