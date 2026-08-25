@@ -6,6 +6,14 @@ extends RefCounted
 ## ★★2026-08-22 文案根除: 下面这些原来是函数体里的裸字面量。
 ## 【防御】护盾 + 护甲, 两者时长不同; 护盾到期把剩余部分按比例转生命。
 ## 【喊龟(被动)】开局随机召唤一只 A/B/C 稀有度的龟当随从, 属性按原龟打折。
+## 【缩壳(普攻)】每击永久涨双抗 + 一小块盾, 真值在主场景普攻表与 rider。
+const BASIC_COEF := 1.0          # ×ATK 物理
+const HARDEN_RESIST := 1.0       # 每击 +护甲/+魔抗(永久累积)
+const HARDEN_SHIELD := 0.1       # 每击护盾 = ×ATK
+## 【缩头】给随从灌龟能 + 自身缩壳一段时间(高减伤但不能动)。
+const SHRINK_MINION_ENERGY := 0.5  # 给随从灌 = 该技龟能消耗 ×
+const SHRINK_SEC := 3.0            # 缩壳持续(秒)·期间定身且锁龟能
+const SHRINK_DR := 0.80            # 缩壳期间的伤害减免
 const MINION_HP_SCALE := 0.40    # 随从最大生命 = 原龟 ×
 const MINION_ATK_SCALE := 0.80   # 随从攻击力 = 原龟 ×
 const DEFEND_SHIELD_PCT := 0.20   # 护盾 = 自身最大生命 ×
@@ -580,15 +588,15 @@ func _sk_hiding_shrink(u: Dictionary) -> void:                  # 缩头(封板�
 		var cost: float = 95.0
 		var acts: Array = m.get("active_skills", [])
 		if not acts.is_empty(): cost = battle.SkillEnergy.cost_of(str(acts[0]))
-		m["energy"] = float(m.get("energy", 0.0)) + cost * 0.5   # 给随从+50%技能龟能(加速放技)
+		m["energy"] = float(m.get("energy", 0.0)) + cost * SHRINK_MINION_ENERGY   # 给随从+50%技能龟能(加速放技)
 		battle._beam_vfx("res://assets/sprites/vfx/fx-trail.png", u["pos"], m["pos"], 20.0, Color(0.5, 0.85, 1.0, 0.6), 0.4)   # 能量束射向随从(2026-07-17)
 		var mref: Dictionary = m
 		var mb = battle._reg_tween()
 		mb.tween_interval(0.35)
 		mb.tween_callback(func() -> void:
 			if mref.get("alive", false): battle._skill_ring(mref["pos"], Color(0.6, 0.9, 1.0, 0.6), 50.0))
-	battle._damage._stun(u, 3.0, "_sk_hiding_shrink", true)   # 缩头3秒: 不能攻击/移动(定身)
-	u["damage_reduction"] = 0.80                                # 80%减伤
+	battle._damage._stun(u, SHRINK_SEC, "_sk_hiding_shrink", true)   # 缩头3秒: 不能攻击/移动(定身)
+	u["damage_reduction"] = SHRINK_DR                                # 80%减伤
 	var uu: Dictionary = u
 	battle._pending_shots.append({"delay": 3.0, "fn": func(): uu["damage_reduction"] = 0.0, "src": u})
 	_hiding_dome(u, Color(0.78, 0.64, 0.4, 1.0), 3.0)          # 土棕硬壳护罩3秒(80%减伤可视·与技2壳绿区分)
@@ -622,10 +630,10 @@ func _sk_hiding_buff(u: Dictionary) -> void:                    # 强化随从(�
 		st.tween_callback(sp.queue_free)
 
 func _hiding_shell_harden(u: Dictionary) -> void:              # 缩壳(普攻rider): 每次普攻+1护甲+1魔抗(永久累积)+0.1A护盾
-	u["base_def"] = float(u["base_def"]) + 1.0
+	u["base_def"] = float(u["base_def"]) + HARDEN_RESIST
 	u["base_mr"] = float(u["base_mr"]) + 1.0
 	battle._recalc_stats(u)
-	battle._damage._grant_shield(u, u["atk"] * 0.1)
+	battle._damage._grant_shield(u, u["atk"] * HARDEN_SHIELD)
 	u["_harden_n"] = int(u.get("_harden_n", 0)) + 1             # 硬化反馈(2026-07-17·Q12轻量): 每击微光, 每5层一次甲片环
 	var gp = Sprite3D.new()
 	gp.texture = VfxTex._make_fire_glow_tex()

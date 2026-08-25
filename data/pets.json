@@ -2075,7 +2075,7 @@
       "name": "喊龟",
       "hpPct": 40,
       "brief": "在战斗开始时，从全部 A/B/C 稀有度的乌龟中随机召唤一只作为<span class=\"val-normal\">随从</span>。\n随从拥有原龟 <span class=\"val-atk\">{C:HidingSystem.MINION_HP_SCALE%}% 最大生命值</span> 和 <span class=\"val-atk\">{C:HidingSystem.MINION_ATK_SCALE%}% 攻击力</span>，并带着自己的整套技能与龟能自主作战。",
-      "desc": "在战斗开始时，从全部 A/B/C 稀有度乌龟（当前 19 只，随版本自动覆盖）中随机召唤一只作为随从。\n随从的属性取自那只龟本身：最大生命值 ×<span class=\"val-atk\">{C:HidingSystem.MINION_HP_SCALE%}%</span>、攻击力 ×<span class=\"val-atk\">{C:HidingSystem.MINION_ATK_SCALE%}%</span>，护甲 / 魔抗 / 暴击率照原值（均随等级缩放）\n它的被动照常生效，并带着<span class=\"val-atk\">自己的技能与龟能条</span>自主释放（不是固定节奏）。\n<span style=\"color:#8a93a0\">缩头乌龟阵亡时随从一同阵亡；随从阵亡会触发它自身的死亡被动，并把「强化随从」那套增益永久传给缩头乌龟。\n</span>"
+      "desc": "在战斗开始时，从全部 A/B/C 稀有度乌龟中随机召唤一只作为随从（名单随版本自动覆盖）。\n随从的属性取自那只龟本身：最大生命值 ×<span class=\"val-atk\">{C:HidingSystem.MINION_HP_SCALE%}%</span>、攻击力 ×<span class=\"val-atk\">{C:HidingSystem.MINION_ATK_SCALE%}%</span>，护甲 / 魔抗 / 暴击率照原值（均随等级缩放）\n它的被动照常生效，并带着<span class=\"val-atk\">自己的技能与龟能条</span>自主释放（不是固定节奏）。\n<span style=\"color:#8a93a0\">缩头乌龟阵亡时随从一同阵亡；随从阵亡会触发它自身的死亡被动，并把「强化随从」那套增益永久传给缩头乌龟。\n</span>"
     },
     "skillPool": [
       {
@@ -2086,7 +2086,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "缩着壳挥出普攻，造成 {N:ATK} 物理伤害。\n每次普攻还使自身<span class=\"val-atk\">永久</span>获得 <span class=\"val-atk\">1</span> 护甲和 <span class=\"val-atk\">1</span> 魔抗，并获得 {N:ATK*0.1} 护盾。",
-        "detail": "缩头乌龟的普攻·缩壳：\n对目标造成 {N:1.0*ATK} 物理伤害。\n每次普攻自身永久累积 +1 护甲 +1 魔抗，并获得（10%×攻击力 = {N:ATK*0.1}）护盾（缩壳越打越硬）。"
+        "detail": "缩头乌龟的普攻·缩壳：\n对目标造成 {N:1.0*ATK} 物理伤害。\n每次普攻自身永久累积 +{C:HidingSystem.HARDEN_RESIST} 护甲 +{C:HidingSystem.HARDEN_RESIST} 魔抗，并获得（{C:HidingSystem.HARDEN_SHIELD%}%×攻击力 = {N:ATK*0.1}）护盾（缩壳越打越硬）。"
       },
       {
         "name": "缩头",
@@ -2097,8 +2097,8 @@
         "pierce": 0,
         "cd": 0,
         "selfCast": true,
-        "brief": "立即为<span class=\"val-normal\">随从</span>灌注 <span class=\"val-atk\">50%</span> 技能龟能以加速其放招，随后自己缩进壳中 3 秒，期间获得 <span class=\"val-atk\">80% 减伤</span>。\n<span style=\"color:#8a93a0\">缩头期间缩头乌龟无法攻击或移动。\n</span>",
-        "detail": "缩头乌龟立即给随从 +50% 技能龟能（加速随从释放技能），随后自身缩入壳中 3 秒：受到伤害减少 <span class=\"val-atk\">80%</span>，期间不能攻击或移动。\n<span style=\"color:#8a93a0\">缩头期间龟能条锁定：不再充能，出壳后才继续攒。\n</span>"
+        "brief": "立即为<span class=\"val-normal\">随从</span>灌注 <span class=\"val-atk\">{C:HidingSystem.SHRINK_MINION_ENERGY%}%</span> 技能龟能以加速其放招，随后自己缩进壳中 {C:HidingSystem.SHRINK_SEC} 秒，期间获得 <span class=\"val-atk\">{C:HidingSystem.SHRINK_DR%}% 减伤</span>。\n<span style=\"color:#8a93a0\">缩头期间缩头乌龟无法攻击或移动。\n</span>",
+        "detail": "缩头乌龟立即给随从 +{C:HidingSystem.SHRINK_MINION_ENERGY%}% 技能龟能（加速随从释放技能），随后自身缩入壳中 {C:HidingSystem.SHRINK_SEC} 秒：受到伤害减少 <span class=\"val-atk\">{C:HidingSystem.SHRINK_DR%}%</span>，期间不能攻击或移动。\n<span style=\"color:#8a93a0\">缩头期间龟能条锁定：不再充能，出壳后才继续攒。\n</span>"
       },
       {
         "name": "防御",
@@ -2257,8 +2257,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "随机复制敌方两个可用技能，依次轮流释放，每个只发挥 <span class=\"val-atk\">60%</span> 效果。",
-        "detail": "龟壳随机复制敌方的两个可用技能（走可复制白名单·排除变身/召唤/自增益），轮流（依次·不同帧糊）释放，各以 <span class=\"val-atk\">60%</span> 效果。",
+        "brief": "随机复制敌方两个可用技能，依次轮流释放，每个只发挥 <span class=\"val-atk\">{C:ShellSystem.COPY_EFFECT%}%</span> 效果。",
+        "detail": "龟壳随机复制敌方的两个可用技能（走可复制白名单·排除变身/召唤/自增益），轮流（依次·不同帧糊）释放，各以 <span class=\"val-atk\">{C:ShellSystem.COPY_EFFECT%}%</span> 效果。",
         "energyCost": 130
       },
       {
@@ -2269,8 +2269,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "吸取单体目标的生命力，夺取其 <span class=\"val-heal\">10% 最大生命值</span> 的生命并转移给自己。",
-        "detail": "龟壳吸收单体目标的生命力，偷取其 <span class=\"val-atk\">10%</span> 最大生命值转移给自身：目标的最大生命值与当前生命同步减少，龟壳的最大生命值与当前生命同步增加。",
+        "brief": "吸取单体目标的生命力，夺取其 <span class=\"val-heal\">{C:ShellSystem.ABSORB_PCT%}% 最大生命值</span> 的生命并转移给自己。",
+        "detail": "龟壳吸收单体目标的生命力，偷取其 <span class=\"val-atk\">{C:ShellSystem.ABSORB_PCT%}%</span> 最大生命值转移给自身：目标的最大生命值与当前生命同步减少，龟壳的最大生命值与当前生命同步增加。",
         "energyCost": 90
       },
       {

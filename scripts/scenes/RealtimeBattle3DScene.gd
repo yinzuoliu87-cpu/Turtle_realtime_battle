@@ -309,7 +309,7 @@ const BASIC_ATK := {
 	"lava":     {"magic": LavaSystem.BOLT_MAGIC, "hp": LavaSystem.BOLT_TGT_HP, "hits": 1, "rider": "burn", "burnScale": LavaSystem.BOLT_BURN_COEF},   # 熔岩弹: 0.6魔+4%目标HP+0.07ATK灼烧层(burnScale) (用户2026-06-30)
 	"crystal":  {"phys": CrystalSystem.BASIC_ATK_COEF, "hits": 1},                                          # 水晶刺(封板L559):0.6A物理+1.5%目标maxHp魔法+叠1结晶(魔法段与结晶都走_on_basic_hit·原hp bonus折进物理=类型错)
 	"space":    {"magic": StarSystem.BOLT_MAGIC, "tcurhp": StarSystem.BOLT_CURHP, "hits": 1},                          # 星光弹: 单段0.9A魔法+5%目标当前HP (封板2026-07-07)
-	"hiding":   {"phys": 1.0, "hits": 1, "rider": "shrink"},                        # 缩壳: 1A物理+每击+1甲+1抗+0.1A盾(越打越硬)
+	"hiding":   {"phys": HidingSystem.BASIC_COEF, "hits": 1, "rider": "shrink"},                        # 缩壳: 1A物理+每击+1甲+1抗+0.1A盾(越打越硬)
 	# shell 走 _basic_attack 特判 _shell_sys._shell_basic (1ATK单段·物/真逐攻交替 + 120px范围溅射50%); 不进 _do_basic
 }
 const DEFAULT_BASIC := {"phys": 1.0, "hits": 1}

@@ -37,6 +37,10 @@ const BURN_LIFE := BURN_TICKS * BURN_TICK_SEC
 
 ## ★★2026-08-25 文案根除: 龟壳普攻的两个数原来一个在主场景(半径), 一个在本文件(溅射比例)。
 const BASIC_COEF := 1.0        # 主段 ×ATK(类型物理/真实逐发交替)
+## 【复制】抄两个敌方技能轮流放, 各打折。
+const COPY_EFFECT := 0.6       # 复制出来的技能只发挥这么多效果(伤害/护盾/治疗/DoT 共用)
+## 【吸收】偷目标最大生命并转给自己(双方 maxHp 与当前值同步变)。
+const ABSORB_PCT := 0.10       # 偷取 = 目标最大生命 ×
 const SPLASH_PCT := 0.5        # 溅射给周围其他敌人的比例(类型跟随主段)
 
 var battle
@@ -112,7 +116,7 @@ func _shell_basic(u: Dictionary, tgt: Dictionary) -> void:
 func _sk_shell_absorb(u: Dictionary, tgt) -> void:              # 龟壳·吸收(封板): 偷目标10%最大生命→转移(目标maxHp&当前同步减·龟壳maxHp&当前同步增)
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
-	var steal: float = tgt["maxHp"] * 0.10
+	var steal: float = tgt["maxHp"] * ABSORB_PCT
 	var _hp_before: float = float(tgt["hp"])
 	tgt["maxHp"] = maxf(1.0, float(tgt["maxHp"]) - steal)
 	tgt["hp"] = minf(float(tgt["hp"]), float(tgt["maxHp"]))     # 目标maxHp+当前同步减
@@ -310,8 +314,8 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:               # 龟壳·复制(
 			mt.tween_property(mg, "modulate:a", 0.0, 0.35)
 			mt.chain().tween_callback(mg.queue_free)
 		battle._skill_ring(u["pos"], Color(0.85, 0.7, 1.0, 0.6), 52.0)
-		u["dmg_out_mult"] = 0.6                                # 60%效果(封板)·即时伤害经_apply_damage_from乘数
-		battle._copy_fx_mult = 0.6                                    # 60%效果·护盾/治疗/DoT
+		u["dmg_out_mult"] = COPY_EFFECT                                # 60%效果(封板)·即时伤害经_apply_damage_from乘数
+		battle._copy_fx_mult = COPY_EFFECT                                    # 60%效果·护盾/治疗/DoT
 		battle._do_skill(u, tgt, str(pool[0]))                        # 第1个立即
 		battle._copy_fx_mult = 1.0
 		u["dmg_out_mult"] = 1.0
@@ -319,8 +323,8 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:               # 龟壳·复制(
 		var p1: String = str(pool[1])
 		var uu: Dictionary = u
 		var fn = func():
-			uu["dmg_out_mult"] = 0.6
-			battle._copy_fx_mult = 0.6
+			uu["dmg_out_mult"] = COPY_EFFECT
+			battle._copy_fx_mult = COPY_EFFECT
 			battle._do_skill(uu, battle._targeting._nearest_enemy(uu), p1)
 			battle._copy_fx_mult = 1.0
 			uu["dmg_out_mult"] = 1.0
