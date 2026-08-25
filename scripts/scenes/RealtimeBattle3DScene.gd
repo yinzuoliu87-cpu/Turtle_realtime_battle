@@ -302,7 +302,7 @@ const BASIC_ATK := {
 	"rainbow":  {"phys": RainbowSystem.BEAM_COEF, "hits": RainbowSystem.BEAM_HITS},                                          # 单段0.9物理(用户2026-07-02, 原魔法1.4×2)
 	"gambler":  {"phys": 1.0, "hits": 1},                                          # 甩扑克牌(封板L296·用户改): 1.0A物理单段(原3段1.35A=旧值)·多重打击被动复放整发普攻(_gambler_sys._gambler_multi_cd)
 	"hunter":   {"phys": HunterSystem.BASIC_ATK_COEF, "hits": 1},   # 封板: 普攻1.0A物理(残血追猎+50%攻速在atk_cd处)
-	"pirate":   {"phys": 1.0, "hits": 1, "selfheal": 0.2},                          # 弯刀(封板L382·近战): 1.0A物理+自愈0.2A(每击回0.2×ATK生命)·[段数1=单弯刀斩·手感留F5]
+	"pirate":   {"phys": PirateSystem.BLADE_COEF, "hits": 1, "selfheal": PirateSystem.BLADE_SELFHEAL},                          # 弯刀(封板L382·近战): 1.0A物理+自愈0.2A(每击回0.2×ATK生命)·[段数1=单弯刀斩·手感留F5]
 	"candy":    {"phys": CandySystem.PUNCH_ATK_COEF, "selfhp": CandySystem.PUNCH_SELF_HP, "hits": 1, "rider": "atkdn"},         # +自HP+减攻debuff (用户2026-07-28: 0.05→0.03)
 	"bubble":   {"phys": 1.5, "hits": 3},
 	"line":     {"magic": LineSystem.SKETCH_MAGIC, "hits": 1},                                          # 素描:1A魔法单段(叠1墨迹走_on_basic_hit·用户设计)

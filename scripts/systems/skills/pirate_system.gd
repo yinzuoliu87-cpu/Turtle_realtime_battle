@@ -19,9 +19,17 @@ const VOLLEY_RADIUS := 250.0         # 每发落点的 AOE 半径(码)
 const VOLLEY_ATK_COEF := 0.5         # 每发 ×ATK 物理
 const VOLLEY_MAXHP_PCT := 0.02       # 每发 + 目标最大生命 ×
 ## 【朗姆酒】
+## 【弯刀(普攻)】真值在【主场景普攻表】(那里引用本组常量)。
+const BLADE_COEF := 1.0              # ×ATK 物理
+const BLADE_SELFHEAL := 0.2          # 每击自愈 = ×ATK
+## 火炮齐射【六发全中】的合计 —— **推导, 不手写**(文案原来写死 300% / 12%)。
+const VOLLEY_TOTAL_ATK := VOLLEY_SHOTS * VOLLEY_ATK_COEF
+const VOLLEY_TOTAL_MAXHP := VOLLEY_SHOTS * VOLLEY_MAXHP_PCT
 const RUM_SEC := 6.0                 # 持续秒数(HoT 与双抗同长)
 const RUM_HOT_PCT := 0.04            # 每秒回复 = 最大生命 ×
 const RUM_MR_COEF := 0.15            # 魔抗 += ATK ×
+## 朗姆酒【整段合计回复】—— 推导(每秒 × 秒数), 文案原来写死 24%。
+const RUM_HOT_TOTAL := RUM_SEC * RUM_HOT_PCT
 const RUM_DEF_EXTRA := 0.5           # 护甲在双抗之外**再**加 ATK × (⇒ 护甲共 0.65A)
 const RUM_DEF_COEF := RUM_MR_COEF + RUM_DEF_EXTRA   # 护甲合计(推导, 不另写一份 0.65)
 ## 【海盗船】实体船的规格 —— 真值在 `battle_spawn._spawn_pirate_ship_entity`, 这里是它引用的常量
@@ -33,6 +41,7 @@ const SHIP_SHOT_COEF := 0.4          # 每发 ×ATK 物理
 ## 攻速是【每发间隔的倒数】—— **推导**, 文案原来手写 0.8。
 const SHIP_ASPD := 1.0 / SHIP_SHOT_CD
 const SHIP_CHARGE_RADIUS := 200.0    # 登场冲锋撞击半径(码)
+const SHIP_CHARGE_COEF := 1.0        # 登场冲锋撞击 ×ATK 魔法
 const SHIP_CHARGE_STUN := 2.0        # 击飞秒数
 ## 【霰弹】(选海盗船后每次充能满)
 const SHOT_PELLETS := 8              # 弹丸数
