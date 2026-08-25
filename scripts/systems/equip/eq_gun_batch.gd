@@ -165,6 +165,10 @@ const TOWER_RANGE := 700.0
 ## ★不写死米数: 立绘一换尺寸, 写死的米数就错了(零系数素材纪律的同一条)。
 const TOWER_MUZZLE_FRAC := 0.78
 ## 080 直升机: 机炮节拍 1.2 秒(规格原文) · 每命中一发 +4 龟能、上限 100(规格原文)
+## 【080 打捞旋翼机】每发机炮的 ×ATK 物理系数(发数是三元数组, 就近声明在开火处)。
+const HELI_SHOT_COEF := 0.35
+## 【077 铜管手铳】携带者阵亡后, 小手枪受到的所有伤害降为这个固定值。
+const PISTOL_DMG_CAP_DEAD := 5.0
 const HELI_FIRE_IV := 1.2
 const HELI_EN_PER_HIT := 4.0
 const HELI_EN_MAX := 100.0
@@ -271,7 +275,7 @@ func on_death(u: Dictionary, eid: String, _si: int) -> void:
 		"p2eq_077":
 			for e in _pistols:
 				if is_same(e["owner"], u):
-					(e["u"] as Dictionary)["_dmg_cap_val"] = 5.0
+					(e["u"] as Dictionary)["_dmg_cap_val"] = PISTOL_DMG_CAP_DEAD
 					vfx.pistol_uncovered(Vector2(e["u"]["pos"]))
 		"p2eq_080":
 			for h in _helis:
@@ -851,7 +855,7 @@ func _heli_patrol(h: Dictionary, delta: float) -> void:
 	var si: int = int(h["si"])
 	# ★三元数组就近声明(契约 §6): 发数 / 每发 ATK 倍率 —— 与下面的 "p2eq_080" 锚点同窗口。
 	var shots: int = [3, 4, 10][si]
-	var scale: float = 0.35
+	var scale: float = HELI_SHOT_COEF
 	# ★出膛点回调: 金弹从**机头**出去, 不再从地上那只龟身上。回调 ⇒ 直升机飞到哪就从哪出。
 	battle._queue_shots(shots, HELI_SHOT_GAP, func() -> void: _heli_bullet(h, scale), owner, "p2eq_080",
 		func() -> Vector2: return Vector2(h["pos"]) + Vector2(float(h.get("_muzzle_px", 0.0)), 0.0))

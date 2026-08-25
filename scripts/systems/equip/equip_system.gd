@@ -516,6 +516,8 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 ## 【009 宽刃弯刀】攒刃能 → 满值斩出环形扇区(不是整块扇形, 是 500~800 的**带**)。
 ## 【037 蛋糕蜡烛】三阶段循环: 熄灭 → 微弱(回血) → 燃烧(爆燃)。
 const BROADSWORD_REACH := 2000.0  # 007 锈蚀阔剑: 剑气墙扫多远(码)·有效与特效同距
+## 【043 海浪护符】浪墙从携带者【身后】多远处涌起(码)。
+const WAVE_BACK := 400.0
 const CANDLE_PHASES := 3       # 几个阶段
 const CANDLE_IV := 5.0         # 每几秒切一次(主场景 _EQ_CUSTOM_IV 引用本常量)·也是回血铺开的秒数
 const CANDLE_HEAL_R := 250.0   # 微弱阶段: 友军回血光圈半径(码)
@@ -876,7 +878,7 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 	var dvec: Vector2 = ec - u["pos"]
 	var dir: Vector2 = Vector2.RIGHT if dvec.length() < 1.0 else dvec.normalized()   # 浪行进方向=朝敌人(2D可对角)
 	var perp: Vector2 = Vector2(-dir.y, dir.x)          # 浪墙铺开方向(垂直于行进)
-	var startc: Vector2 = u["pos"] - dir * 400.0        # 敌人反方向(身后)400码涌起
+	var startc: Vector2 = u["pos"] - dir * WAVE_BACK    # 敌人反方向(身后)涌起
 	var maxfwd: float = 0.0; var pmin: float = INF; var pmax: float = -INF
 	for o in allies + enemies:
 		maxfwd = maxf(maxfwd, (o["pos"] - startc).dot(dir))       # 沿行进方向最远单位
@@ -1141,7 +1143,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false,
 				## ★2026-08-12 从它自己的 `thunder` 条改过来 —— 法器只有一条法力条,
 				##   主动(连锁闪电)由法力满触发, 见 fire_equip_effect 的 "p2eq_026" 分支。
 				##   文案原文就是「每段伤害充能25点;充能满100点时…」, 代码原来另开了一条条子。
-				battle._staff_syn.add_mana(src, 15.0)
+				battle._staff_syn.add_mana(src, THUNDER_MANA_PER_HIT)
 			"p2eq_029":   # 冰封水母: 概率额外魔伤+冻结, 冻结→自护盾
 					pass
 			"p2eq_054":   # 瞄准镜: 必中→命中时目标身上一瞬锁定框(表现无视闪避)
@@ -1221,6 +1223,12 @@ func _eq_chain_lightning(u: Dictionary, si: int) -> void:
 		tw.tween_callback(battle._chain_segment.bind(u, prev_pos, tgt, dmg))
 		prev_pos = tgt["pos"]
 
+## 【010 激光长刃】扇面全角。★代码里两处都用**半角**, 所以存全角、半角推导 ——
+##   否则改扇面要记得改两个 60.0, 而文案说的是 120°。
+const LASER_ARC_DEG := 120.0
+const LASER_HALF_DEG := LASER_ARC_DEG / 2.0
+## 【026 雷电法杖】每段伤害给【法器法力条】充多少(用户 2026-08-12 削弱: 原 25)。
+const THUNDER_MANA_PER_HIT := 15.0
 const LASER_MELEE_BONUS := 250.0   # 激光长刃 010: 近战携带者额外 +250 码半径(用户 2026-08-01)
 
 func _eq_laser_sweep(u: Dictionary, tgt: Dictionary, si: int) -> void:   # 扇形斩(120度/半径=射程,3★2×/朝目标·近战+250)+回血; 只命中1→蓄力→竖劈冲击波
@@ -1235,9 +1243,9 @@ func _eq_laser_sweep(u: Dictionary, tgt: Dictionary, si: int) -> void:   # 扇�
 	if bool(u.get("melee", false)):
 		rng += LASER_MELEE_BONUS
 	battle._anticipate(u)   # 预备
-	battle._laser_blade_sweep(u, u["pos"], dir, rng, 60.0)   # 笔直红激光长刃平滑扫过扇形(带拖尾)
+	battle._laser_blade_sweep(u, u["pos"], dir, rng, LASER_HALF_DEG)   # 笔直红激光长刃平滑扫过扇形(带拖尾)
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
-	var cos60: float = cos(deg_to_rad(60.0))
+	var cos60: float = cos(deg_to_rad(LASER_HALF_DEG))
 	var hits: Array = []
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue

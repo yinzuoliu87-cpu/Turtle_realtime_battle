@@ -3,7 +3,10 @@ eq|FPGA板|effectDesc1	3.5 3.5 5.0 6.0 7.0 12.0 15.0 15.0 25.0
 eq|不沉之锚|effectDesc1	0.25 1.5 100.0 250.0
 eq|余烬燃油瓶|effectBrief	5.0 8.0
 eq|余烬燃油瓶|effectDesc1	5.0 8.0
+eq|信号放大器|effectBrief	5.0
 eq|信号放大器|effectDesc1	2.5 5.0 5.0 20.0 30.0 90.0 90.0 360.0
+eq|六分仪浮游炮|effectBrief	6.0
+eq|六分仪浮游炮|effectDesc1	6.0
 eq|冰封水母|effectDesc1	0.6 90.0 500.0
 eq|冰霜冻露瓶|effectBrief	5.0 6.0
 eq|冰霜冻露瓶|effectDesc1	5.0 6.0 10.0 20.0
@@ -29,7 +32,7 @@ eq|左轮手枪|effectDesc1	4.0 6.0 6.0
 eq|幽灵加特林|effectBrief	8.0
 eq|幽灵加特林|effectDesc1	8.0
 eq|手半剑|effectDesc1	20.0 80.0 100.0 100.0 120.0 150.0 250.0 450.0
-eq|打捞旋翼机|effectDesc1	1.2 4.0 10.0 40.0 100.0 120.0 150.0 500.0 800.0
+eq|打捞旋翼机|effectDesc1	0.35 1.2 4.0 10.0 40.0 100.0 120.0 150.0 500.0 800.0
 eq|暴君之牙|effectBrief	6.0
 eq|暴君之牙|effectDesc1	6.0 20.0 40.0 100.0
 eq|毒药瓶|effectBrief	6.0
@@ -37,6 +40,7 @@ eq|毒药瓶|effectDesc1	6.0 400.0
 eq|毒蛾茧|effectDesc1	0.25 0.25 0.25 1.0 1.5 2.0 6.0 20.0
 eq|沙漏|effectBrief	10.0
 eq|沙漏|effectDesc1	1.0 2.0 10.0 15.0
+eq|海浪护符|effectDesc1	400.0
 eq|海葵药膏|effectBrief	7.0
 eq|海葵药膏|effectDesc1	7.0
 eq|涟漪药剂|effectBrief	8.0
@@ -56,6 +60,7 @@ eq|溺者的浮囊|effectDesc1	4.0 15.0 20.0 35.0 300.0
 eq|潮汐细剑|effectDesc1	0.5 20.0
 eq|激光手枪|effectBrief	8.0
 eq|激光手枪|effectDesc1	8.0 50.0 50.0
+eq|激光长刃|effectDesc1	120.0 250.0
 eq|灼热火珊瑚|effectDesc1	10.0 60.0 550.0
 eq|炙烤海胆|effectBrief	20.0
 eq|炙烤海胆|effectDesc1	10.0 20.0 20.0
@@ -64,6 +69,7 @@ eq|狙击长管|effectBrief	8.0
 eq|狙击长管|effectDesc1	8.0 12.0
 eq|玩偶小熊|effectBrief	4.0
 eq|玩偶小熊|effectDesc1	0.7 0.8 1.2 1.5 2.0 4.0 70.0 600.0
+eq|珊瑚急救塔|effectDesc1	150.0
 eq|珊瑚糖糕|effectDesc1	3.0 5.0 8.0 20.0 30.0 50.0
 eq|珍珠耳环|effectBrief	50.0
 eq|珍珠耳环|effectDesc1	8.0 50.0
@@ -96,7 +102,7 @@ eq|钻孔螺|effectDesc1	20.0 20.0
 eq|铁壁盾|effectBrief	5.0
 eq|铁壁盾|effectDesc1	5.0 8.0
 eq|铁皮蛋糕盒|effectDesc1	5.0 300.0 550.0
-eq|铜管手铳|effectDesc1	0.5 1.0 50.0 700.0
+eq|铜管手铳|effectDesc1	0.5 1.0 5.0 50.0 700.0
 eq|银色箭袋|effectBrief	6.0 100.0
 eq|银色箭袋|effectDesc1	0.25 1.5 6.0 100.0 400.0
 eq|锈蚀短剑|effectBrief	3.0
@@ -106,6 +112,7 @@ eq|锈蚀阔剑|effectDesc1	6.0 2000.0
 eq|锋利鲨齿|effectBrief	200.0
 eq|锋利鲨齿|effectDesc1	200.0
 eq|镇海杵|effectDesc1	500.0
+eq|雷电法杖|effectDesc1	15.0
 eq|雷鸣贝壳|effectBrief	4.0
 eq|雷鸣贝壳|effectDesc1	4.0
 eq|霰弹贝古|effectBrief	1.5 8.0 8.0
@@ -233,7 +240,7 @@ pet|星际龟/星波|detail	40.0 100.0 137.0 400.0
 pet|星际龟/星能|brief	12.0 35.0 40.0
 pet|星际龟/星能|desc	12.0 35.0 40.0 40.0 724.4
 pet|星际龟/虫洞|brief	5.0 205.5
-pet|星际龟/虫洞|detail	5.0 100.0 140.0 150.0 150.0 150.0 205.5
+pet|星际龟/虫洞|detail	0.3 5.0 100.0 140.0 150.0 150.0 150.0 205.5
 pet|水晶龟/水晶共鸣|brief	5.0 5.0 20.0 20.0 22.0
 pet|水晶龟/水晶共鸣|desc	5.0 5.0 20.0 20.0 22.0
 pet|水晶龟/水晶刺|brief	1.0 1.5 5.0 82.2
@@ -270,7 +277,7 @@ pet|熔岩龟/地裂|detail	0.2 0.5 1.2 5.0 6.0 8.0 8.22 10.0 30.0 35.0 180.0
 pet|熔岩龟/岩浆涌动|brief	109.6 205.5
 pet|熔岩龟/岩浆涌动|detail	0.82 8.0 20.0 80.0 109.6 130.0 150.0 205.5
 pet|熔岩龟/火山爆发|brief	8.0 164.4
-pet|熔岩龟/火山爆发|detail	0.2 8.0 164.4
+pet|熔岩龟/火山爆发|detail	0.2 8.0 120.0 164.4
 pet|熔岩龟/烈焰暴走|brief	5.0 20.0 30.0 30.0
 pet|熔岩龟/烈焰暴走|detail	5.0 20.0 30.0 30.0 120.0
 pet|熔岩龟/熔岩之心|brief	10.0 10.0
@@ -281,7 +288,7 @@ pet|熔岩龟/熔岩弹（火山形态）|brief	0.07 3.0 70.0 137.0
 pet|熔岩龟/熔岩弹（火山形态）|detail	0.07 3.0 70.0 100.0 137.0
 pet|熔岩龟/熔岩爆发|brief	0.6 4.0 5.0 20.0 30.0 30.0 80.0 120.0
 pet|熔岩龟/熔岩爆发|detail	0.07 0.6 4.0 4.0 5.0 20.0 30.0 30.0 60.0 80.0 80.0 82.2 120.0
-pet|熔岩龟/重击|brief	178.1
+pet|熔岩龟/重击|brief	8.0 20.0 178.1
 pet|熔岩龟/重击|detail	0.82 8.0 20.0 130.0 144.88 178.1
 pet|猎人龟/射箭|brief	50.0 50.0 137.0
 pet|猎人龟/射箭|detail	14.0 50.0 50.0 137.0

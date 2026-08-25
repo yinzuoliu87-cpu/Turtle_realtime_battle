@@ -114,7 +114,7 @@
     "baseStats1": "+攻30/75/200·护穿10/18/30·生命50/120/1300",
     "shopAvailable": 1,
     "emoji": "📏",
-    "effectDesc1": "每隔一次攻击间隔朝最近的敌人斩出一道 120°扇形红激光，半径等于自身攻击射程（3 星时×2）；若携带者为近战单位，半径再+250 码。\n对扇形内每名敌人造成（15/32/200+0.6/1.0/8.0×攻击力）物理伤害；\n若仅命中 1 名敌人则追加一道竖劈冲击波，沿直线推进对沿途每名敌人各造成一次全额伤害；\n携带者回复本次总伤害 35/80/100%的生命。",
+    "effectDesc1": "每隔一次攻击间隔朝最近的敌人斩出一道 {C:EquipSystem.LASER_ARC_DEG}°扇形红激光，半径等于自身攻击射程（3 星时×2）；若携带者为近战单位，半径再+{C:EquipSystem.LASER_MELEE_BONUS} 码。\n对扇形内每名敌人造成（15/32/200+0.6/1.0/8.0×攻击力）物理伤害；\n若仅命中 1 名敌人则追加一道竖劈冲击波，沿直线推进对沿途每名敌人各造成一次全额伤害；\n携带者回复本次总伤害 35/80/100%的生命。",
     "effectDesc3": "",
     "img": "equip/dungeon-laser-blade.png",
     "effectBrief": "每隔一次攻击斩出红激光；只命中 1 名敌人时追加一道竖劈冲击波。"
@@ -306,7 +306,7 @@
     "baseStats1": "+魔穿8/13/20",
     "shopAvailable": 1,
     "emoji": "🌩️",
-    "effectDesc1": "每段伤害为该法器法力条充能 15 点；法力条集满时朝随机目标发射连锁闪电，造成 40/60/90 魔法伤害，在不同敌人间跳跃，最多命中 4/5/6 个目标。",
+    "effectDesc1": "每段伤害为该法器法力条充能 {C:EquipSystem.THUNDER_MANA_PER_HIT} 点；法力条集满时朝随机目标发射连锁闪电，造成 40/60/90 魔法伤害，在不同敌人间跳跃，最多命中 4/5/6 个目标。",
     "effectDesc3": "",
     "img": "equip/equip-lightning-staff.png",
     "effectBrief": "每段伤害攒法力，满时发射连锁闪电，最多命中 4/5/6 个目标。"
@@ -453,7 +453,7 @@
     "effectDesc1": "提供 {C:SignalWaveSystem.ASPD_FLAT%}%攻击速度；\n携带者每次普攻获得 1 层放大，每层使自己获得 1/2/5%增伤和 {C:SignalWaveSystem.ASPD_PER_STACK%}%攻击速度，最多叠加 {C:SignalWaveSystem.MAX_STACKS} 层；\n每获得 {C:SignalWaveSystem.EVERY} 层，由携带者中心朝目标爆发一道张角 {C:SignalWaveSystem.ARC_STEP_DEG} 度、缓慢移动的弧形电磁波，命中造成 125/250/500 魔法伤害并眩晕 {C:SignalWaveSystem.WAVE_STUN} 秒；\n每释放一次张角增加 {C:SignalWaveSystem.ARC_STEP_DEG} 度（最多 {C:SignalWaveSystem.ARC_MAX_DEG} 度），并使自己永久获得 5/7/10 点魔抗穿透。",
     "effectDesc3": "",
     "img": "equip/dungeon-amplifier.png",
-    "effectBrief": "普攻叠放大层（每层 +1/2/5% 增伤）；每 5 层爆发一道弧形电磁波。"
+    "effectBrief": "普攻叠放大层（每层 +1/2/5% 增伤）；每 {C:SignalWaveSystem.EVERY} 层爆发一道弧形电磁波。"
   },
   {
     "id": "p2eq_039",
@@ -510,7 +510,7 @@
     "baseStats1": "+生命80/200/5000·盾疗10/20/30%",
     "shopAvailable": 1,
     "emoji": "🌊",
-    "effectDesc1": "该法器法力条集满时从身后 400 码涌起一道浪墙，朝敌方方向横扫全场（浪墙宽度自动覆盖到最远的单位），敌我双方都会被扫到：友军获得 40/95/120 点护盾并永久+2/3/5 护甲与魔抗，敌人受到 60/110/200 魔法伤害并永久-2/3/5 护甲与魔抗。\n负面被动：该法器的法力条上限提升 50/25/0%。",
+    "effectDesc1": "该法器法力条集满时从身后 {C:EquipSystem.WAVE_BACK} 码涌起一道浪墙，朝敌方方向横扫全场（浪墙宽度自动覆盖到最远的单位），敌我双方都会被扫到：友军获得 40/95/120 点护盾并永久+2/3/5 护甲与魔抗，敌人受到 60/110/200 魔法伤害并永久-2/3/5 护甲与魔抗。\n负面被动：该法器的法力条上限提升 50/25/0%。",
     "effectDesc3": "",
     "img": "equip/dungeon-wave.png",
     "effectBrief": "法力满时涌起浪墙横扫全场：友军得护盾与双抗，敌人掉双抗。"
@@ -918,7 +918,7 @@
     "baseStats1": "+暴击10/18/30%·+破甲4/9/18",
     "shopAvailable": 1,
     "emoji": "🔫",
-    "effectDesc1": "生成一把迷你小手枪：30/60/100 生命值、10/20/30 攻击力、{C:EqGunBatch.PISTOL_RANGE} 码射程、每 {C:EqGunBatch.PISTOL_IV} 秒攻击一次，普攻造成 1 倍攻击力物理伤害并拥有 {C:EqGunBatch.PISTOL_CRIT%}%暴击率；\n每次攻击使小手枪永久获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透（每路重置）。\n小手枪【没有护盾时】受到的所有伤害（含真实伤害）降为 2 点，携带者阵亡后降为 5 点；小手枪受到的所有治疗封顶 1 点。\n小手枪的攻击会触发枪羁绊【金弹】。",
+    "effectDesc1": "生成一把迷你小手枪：30/60/100 生命值、10/20/30 攻击力、{C:EqGunBatch.PISTOL_RANGE} 码射程、每 {C:EqGunBatch.PISTOL_IV} 秒攻击一次，普攻造成 1 倍攻击力物理伤害并拥有 {C:EqGunBatch.PISTOL_CRIT%}%暴击率；\n每次攻击使小手枪永久获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透（每路重置）。\n小手枪【没有护盾时】受到的所有伤害（含真实伤害）降为 2 点，携带者阵亡后降为 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点；小手枪受到的所有治疗封顶 1 点。\n小手枪的攻击会触发枪羁绊【金弹】。",
     "effectDesc3": "",
     "img": "equip/p2eq_077.png",
     "effectBrief": "生成一把迷你手枪协同开火，它受到的任何伤害都降为 2 点。"
@@ -942,7 +942,7 @@
     "baseStats1": "+生命90/200/420·+治疗与护盾10/18/30%·+攻速8/15/25%",
     "shopAvailable": 1,
     "emoji": "🏥",
-    "effectDesc1": "在携带者后方 150 码生成一座医疗炮台：700/1200/2500 生命值、15/20/30 攻击力、50/70/100 双抗，攻速实时等于携带者。\n炮台普攻造成 1 倍攻击力物理伤害+目标最大生命值 1/1.5/2%魔法伤害，并为生命百分比最低的友军回复 10/15/20 生命值。\n炮台自己维持金弹计数，每射满 4/3/2 发打出一发金弹，继承全部效果并附加 60/80/100%真实伤害，且金弹的回血量翻倍。",
+    "effectDesc1": "在携带者后方 {C:EqGunBatch.TOWER_BACK} 码生成一座医疗炮台：700/1200/2500 生命值、15/20/30 攻击力、50/70/100 双抗，攻速实时等于携带者。\n炮台普攻造成 1 倍攻击力物理伤害+目标最大生命值 1/1.5/2%魔法伤害，并为生命百分比最低的友军回复 10/15/20 生命值。\n炮台自己维持金弹计数，每射满 4/3/2 发打出一发金弹，继承全部效果并附加 60/80/100%真实伤害，且金弹的回血量翻倍。",
     "effectDesc3": "",
     "img": "equip/p2eq_079.png",
     "effectBrief": "在身后生成一座医疗炮台，普攻伤敌并为最残的友军回血。"
@@ -954,7 +954,7 @@
     "baseStats1": "+攻30/90/260·+双抗12/28/60",
     "shopAvailable": 1,
     "emoji": "🚁",
-    "effectDesc1": "登场时召唤一架无法选中、完全免疫的直升机在战场盘旋，它拥有独立龟能条。\n直升机每 {C:EqGunBatch.HELI_FIRE_IV} 秒朝正下方最近的敌人扫射 3/4/10 发机炮，每发造成 0.35 倍攻击力物理伤害；每命中一发获得 {C:EqGunBatch.HELI_EN_PER_HIT} 点龟能（上限 {C:EqGunBatch.HELI_EN_MAX}）。\n龟能满时发动【地毯轰炸】：沿一条覆盖敌人最多的 {C:EqGunBatch.BOMB_LANE_LEN} 码长、{C:EqGunBatch.BOMB_LANE_W} 码宽航线飞过，投下 8/10/14 枚炸弹，每枚在落点 {C:EqGunBatch.BOMB_R} 码内造成 0.8/1.1/1.5 倍攻击力物理伤害+40/70/120 魔法伤害。\n机炮与炸弹都计入枪羁绊【金弹】计数。\n携带者阵亡后直升机继续飞行 {C:EqGunBatch.DOOM_SEC} 秒然后坠向敌方随机单位，爆炸对 {C:EqGunBatch.CRASH_R} 码内敌人造成 200/300/500 物理伤害并施加 {C:EqGunBatch.CRASH_BURN} 层灼烧。",
+    "effectDesc1": "登场时召唤一架无法选中、完全免疫的直升机在战场盘旋，它拥有独立龟能条。\n直升机每 {C:EqGunBatch.HELI_FIRE_IV} 秒朝正下方最近的敌人扫射 3/4/10 发机炮，每发造成 {C:EqGunBatch.HELI_SHOT_COEF} 倍攻击力物理伤害；每命中一发获得 {C:EqGunBatch.HELI_EN_PER_HIT} 点龟能（上限 {C:EqGunBatch.HELI_EN_MAX}）。\n龟能满时发动【地毯轰炸】：沿一条覆盖敌人最多的 {C:EqGunBatch.BOMB_LANE_LEN} 码长、{C:EqGunBatch.BOMB_LANE_W} 码宽航线飞过，投下 8/10/14 枚炸弹，每枚在落点 {C:EqGunBatch.BOMB_R} 码内造成 0.8/1.1/1.5 倍攻击力物理伤害+40/70/120 魔法伤害。\n机炮与炸弹都计入枪羁绊【金弹】计数。\n携带者阵亡后直升机继续飞行 {C:EqGunBatch.DOOM_SEC} 秒然后坠向敌方随机单位，爆炸对 {C:EqGunBatch.CRASH_R} 码内敌人造成 200/300/500 物理伤害并施加 {C:EqGunBatch.CRASH_BURN} 层灼烧。",
     "effectDesc3": "",
     "img": "equip/p2eq_080.png",
     "effectBrief": "登场时召唤一架直升机扫射；它龟能满时沿航线地毯轰炸。"
@@ -1026,10 +1026,10 @@
     "baseStats1": "+攻30/90/260·+充能12/22/38%",
     "shopAvailable": 1,
     "emoji": "🧭",
-    "effectDesc1": "登场后每 3 秒生成一个浮游炮环绕自身，最多 6 个。\n浮游炮每 2 秒攻击一次随机敌人，造成携带者 0.3/0.4/0.5 倍攻击力物理伤害。\n每个浮游炮为携带者提供 10/15/20 魔抗。\n所有浮游炮累计发射 40/30/20 次攻击后，全部飞散到战场随机点并朝随机目标共同发射紫色终极射线，每条造成 200/350/1000 魔法伤害。",
+    "effectDesc1": "登场后每 3 秒生成一个浮游炮环绕自身，最多 {C:EqGadgetBatch.SEXT_CAP} 个。\n浮游炮每 2 秒攻击一次随机敌人，造成携带者 0.3/0.4/0.5 倍攻击力物理伤害。\n每个浮游炮为携带者提供 10/15/20 魔抗。\n所有浮游炮累计发射 40/30/20 次攻击后，全部飞散到战场随机点并朝随机目标共同发射紫色终极射线，每条造成 200/350/1000 魔法伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_086.png",
-    "effectBrief": "每 3 秒生成一个浮游炮（最多 6 个）；攒够攻击次数后齐射终极射线。"
+    "effectBrief": "每 3 秒生成一个浮游炮（最多 {C:EqGadgetBatch.SEXT_CAP} 个）；攒够攻击次数后齐射终极射线。"
   },
   {
     "id": "p2eq_087",

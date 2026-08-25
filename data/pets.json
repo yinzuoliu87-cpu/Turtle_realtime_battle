@@ -1738,14 +1738,14 @@
         "name": "火山爆发",
         "icon": "skills/volcano-2.png",
         "type": "volcanoErupt",
-        "brief": "火山龟指定一个方向，竞技场外涌来一道熔岩浪横扫全场，击退沿途敌人并造成（{M:1.2*ATK}）魔法伤害 + 灼烧层，每命中一名敌人回复 <span class=\"val-heal\">{C:LavaSystem.ERUPT_HEAL_PCT%}%</span> 最大生命值。",
-        "detail": "（对应小形态「地裂」）火山龟朝目标指定一个方向，出现一条超长矩形预警区。\n随后一道岩浆浪墙从场地远端推进到近端。\n波前每扫过一名敌人：将其击退，造成（120%×攻击力({ATK}) = {M:1.2*ATK}）魔法伤害，施加 <span style=\"color:#ff6600\">（{C:LavaSystem.ERUPT_BURN_COEF}×攻击力）层灼烧</span>，并使火山龟回复 <span class=\"val-heal\">{C:LavaSystem.ERUPT_HEAL_PCT%}%</span> 最大生命值。"
+        "brief": "火山龟指定一个方向，竞技场外涌来一道熔岩浪横扫全场，击退沿途敌人并造成（{M:LavaSystem.ERUPT_ATK_COEF*ATK}）魔法伤害 + 灼烧层，每命中一名敌人回复 <span class=\"val-heal\">{C:LavaSystem.ERUPT_HEAL_PCT%}%</span> 最大生命值。",
+        "detail": "（对应小形态「地裂」）火山龟朝目标指定一个方向，出现一条超长矩形预警区。\n随后一道岩浆浪墙从场地远端推进到近端。\n波前每扫过一名敌人：将其击退，造成（{C:LavaSystem.ERUPT_ATK_COEF%}%×攻击力({ATK}) = {M:LavaSystem.ERUPT_ATK_COEF*ATK}）魔法伤害，施加 <span style=\"color:#ff6600\">（{C:LavaSystem.ERUPT_BURN_COEF}×攻击力）层灼烧</span>，并使火山龟回复 <span class=\"val-heal\">{C:LavaSystem.ERUPT_HEAL_PCT%}%</span> 最大生命值。"
       },
       {
         "name": "重击",
         "icon": "skills/volcano-0.png",
         "type": "volcanoSmash",
-        "brief": "火山龟蓄力猛砸目标，将其击飞，造成（{N:LavaSystem.STRIKE_ATK_COEF*ATK} + 8%自身最大生命值）物理伤害，并附带 <span class=\"val-heal\">20%</span> 生命偷取。",
+        "brief": "火山龟蓄力猛砸目标，将其击飞，造成（{N:LavaSystem.STRIKE_ATK_COEF*ATK} + {C:LavaSystem.STRIKE_MAXHP_PCT%}%自身最大生命值）物理伤害，并附带 <span class=\"val-heal\">{C:LavaSystem.STRIKE_LIFESTEAL%}%</span> 生命偷取。",
         "detail": "（对应小形态「岩浆涌动」）火山龟蓄力后猛砸目标：\n将其击飞（约 {C:LavaSystem.SURGE_KNOCK_SEC} 秒滞空），造成（{C:LavaSystem.STRIKE_ATK_COEF%}%×攻击力({ATK}) = {N:LavaSystem.STRIKE_ATK_COEF*ATK}）+（{C:LavaSystem.STRIKE_MAXHP_PCT%}%×自身最大生命值({HP}) = {N:HP*LavaSystem.STRIKE_MAXHP_PCT}）物理伤害，并附带 <span class=\"val-heal\">{C:LavaSystem.STRIKE_LIFESTEAL%}%</span> 生命偷取。"
       },
       {
@@ -1794,7 +1794,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "蓄力后朝一条直线射出长激光射线，对线上所有敌人各造成 {N:ATK} 物理伤害，并按每个浮游炮追加 {T:CyberSystem.CANNON_TRUE_PER_DRONE*ATK} 真实伤害。\n<span style=\"color:#8a93a0\">浮游炮越多，真伤越高。\n</span>",
-        "detail": "赛博龟蓄力后朝一条直线（<b>射程上限 {C:CyberSystem.CANNON_RANGE} 码</b>）射出一道长激光能量射线，对这条线上（判定带宽 ±{C:CyberSystem.CANNON_BAND} 码）的所有敌人各造成 {N:1.0*ATK} 物理伤害 +（{C:CyberSystem.CANNON_TRUE_PER_DRONE%}%×攻击力 × 浮游炮数({B:droneCount}) = {T:CyberSystem.CANNON_TRUE_PER_DRONE*ATK*droneCount}）真实伤害（浮游炮越多真实伤害越猛）。"
+        "detail": "赛博龟蓄力后朝一条直线（<b>射程上限 {C:CyberSystem.CANNON_RANGE} 码</b>）射出一道长激光能量射线，对这条线上（判定带宽 ±{C:CyberSystem.CANNON_BAND} 码）的所有敌人各造成 {N:CyberSystem.CANNON_PHYS*ATK} 物理伤害 +（{C:CyberSystem.CANNON_TRUE_PER_DRONE%}%×攻击力 × 浮游炮数({B:droneCount}) = {T:CyberSystem.CANNON_TRUE_PER_DRONE*ATK*droneCount}）真实伤害（浮游炮越多真实伤害越猛）。"
       },
       {
         "name": "侵入",
@@ -2021,7 +2021,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "短暂蓄力后发射一个缓慢移动的虫洞，沿目标所在的直线推进。\n沿途的敌人会被吸向虫洞，靠得更近的敌人则被<span class=\"val-atk\">捕获</span>、被虫洞吸着一起移动。\n虫洞抵达地图边界时爆炸，对被捕获者与爆点附近的敌人造成 {M:StarSystem.WORM_BOOM_COEF*ATK} ×（1+{C:StarSystem.WORM_BOOM_PER_SEC%}%×本路已打秒数）魔法伤害。\n<span style=\"color:#8a93a0\">吸取与捕获过程本身不造成伤害；\n<span class=\"val-atk\">本路战斗打得越久</span>，爆炸伤害越高（按发射时刻定格）。\n</span>\n<span style=\"color:#8a93a0\">释放虫洞后<span class=\"val-atk\">锁定龟能</span>，直到虫洞消失才恢复充能。\n</span>",
-        "detail": "星际龟短暂蓄力（0.3 秒）后，朝目标所在的直线发射一个缓慢移动的虫洞。\n虫洞以 {C:StarSystem.WORM_SPD} 码/秒直线飞向<b>地图边界</b>：沿途 {C:StarSystem.WORM_GRAV_R} 码内的敌人被真重力吸引（弧线卷入，<b>此过程不造成伤害</b>），{C:StarSystem.WORM_CAPTURE_R} 码内被捕获吸着一起走。\n虫洞抵达边界时<b>爆炸</b>，对携带者与爆点 {C:StarSystem.WORM_GRAV_R} 码内的敌人造成（{C:StarSystem.WORM_BOOM_COEF%}%×攻击力({ATK}) = {M:StarSystem.WORM_BOOM_COEF*ATK}，再乘以（1 + {C:StarSystem.WORM_BOOM_PER_SEC%}%×战斗已过秒数））魔法伤害。\n<span style=\"color:#8a93a0\">伤害倍率在发射瞬间定格 —— 开战越久，虫洞越强。\n</span>。\n<span style=\"color:#8a93a0\">释放虫洞后<span class=\"val-atk\">锁定龟能</span>，直到虫洞消失才恢复充能。</span>"
+        "detail": "星际龟短暂蓄力（{C:StarSystem.WORM_WINDUP} 秒）后，朝目标所在的直线发射一个缓慢移动的虫洞。\n虫洞以 {C:StarSystem.WORM_SPD} 码/秒直线飞向<b>地图边界</b>：沿途 {C:StarSystem.WORM_GRAV_R} 码内的敌人被真重力吸引（弧线卷入，<b>此过程不造成伤害</b>），{C:StarSystem.WORM_CAPTURE_R} 码内被捕获吸着一起走。\n虫洞抵达边界时<b>爆炸</b>，对携带者与爆点 {C:StarSystem.WORM_GRAV_R} 码内的敌人造成（{C:StarSystem.WORM_BOOM_COEF%}%×攻击力({ATK}) = {M:StarSystem.WORM_BOOM_COEF*ATK}，再乘以（1 + {C:StarSystem.WORM_BOOM_PER_SEC%}%×战斗已过秒数））魔法伤害。\n<span style=\"color:#8a93a0\">伤害倍率在发射瞬间定格 —— 开战越久，虫洞越强。\n</span>。\n<span style=\"color:#8a93a0\">释放虫洞后<span class=\"val-atk\">锁定龟能</span>，直到虫洞消失才恢复充能。</span>"
       },
       {
         "name": "星波",
@@ -2086,7 +2086,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "缩着壳挥出普攻，造成 {N:ATK} 物理伤害。\n每次普攻还使自身<span class=\"val-atk\">永久</span>获得 <span class=\"val-atk\">1</span> 护甲和 <span class=\"val-atk\">1</span> 魔抗，并获得 {N:ATK*HidingSystem.HARDEN_SHIELD} 护盾。",
-        "detail": "缩头乌龟的普攻·缩壳：\n对目标造成 {N:1.0*ATK} 物理伤害。\n每次普攻自身永久累积 +{C:HidingSystem.HARDEN_RESIST} 护甲 +{C:HidingSystem.HARDEN_RESIST} 魔抗，并获得（{C:HidingSystem.HARDEN_SHIELD%}%×攻击力 = {N:ATK*HidingSystem.HARDEN_SHIELD}）护盾（缩壳越打越硬）。"
+        "detail": "缩头乌龟的普攻·缩壳：\n对目标造成 {N:HidingSystem.BASIC_COEF*ATK} 物理伤害。\n每次普攻自身永久累积 +{C:HidingSystem.HARDEN_RESIST} 护甲 +{C:HidingSystem.HARDEN_RESIST} 魔抗，并获得（{C:HidingSystem.HARDEN_SHIELD%}%×攻击力 = {N:ATK*HidingSystem.HARDEN_SHIELD}）护盾（缩壳越打越硬）。"
       },
       {
         "name": "缩头",

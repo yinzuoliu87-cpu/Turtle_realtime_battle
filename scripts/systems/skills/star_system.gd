@@ -19,6 +19,8 @@ const COMET_RADIUS := 400.0    # 彗星落点的冲击半径(码)
 const WORM_SPD := 140.0          # 推进速度(码/秒)
 const WORM_GRAV_R := 150.0       # 引力场半径(码·此过程不造成伤害)
 ## 【扭曲空间·奇点】敌阵中心的范围魔法(封板数值)。
+## 【虫洞】发射前的蓄力(秒)。
+const WORM_WINDUP := 0.3
 const WARP_RADIUS := 500.0       # 以敌阵中心为心, 多大范围内的敌人吃伤害(码)
 const WARP_ATK_COEF := 0.8       # ×ATK 魔法
 const WORM_CAPTURE_R := 100.0    # 捕获半径(码)
@@ -756,4 +758,4 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·
 		var tw = battle._reg_tween()
 		tw.tween_method(step, 0.0, end_d, end_d / 140.0).set_trans(Tween.TRANS_LINEAR)   # 140码/s推进到边界
 		tw.chain().tween_callback(boom)
-	battle._pending_shots.append({"delay": 0.3, "fn": fire, "src": u})     # 蓄力0.3s→发射
+	battle._pending_shots.append({"delay": WORM_WINDUP, "fn": fire, "src": u})   # 蓄力→发射

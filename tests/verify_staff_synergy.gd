@@ -303,7 +303,10 @@ func _ready() -> void:
 	_ok("⑬ ★023/026 的每段命中/每段伤害灌的是【法器法力】, 老条子已无人写",
 		src_eq2.find("battle._staff_syn.add_mana(src, CORAL_MANA_PER_HIT)") >= 0
 			and is_equal_approx(EquipSystem.CORAL_MANA_PER_HIT, 10.0)
-			and src_eq2.find("battle._staff_syn.add_mana(src, 15.0)") >= 0
+			## ★2026-08-25 第二次: 026 那 15.0 也抽成了 EquipSystem.THUNDER_MANA_PER_HIT。
+			##   同上 —— 查【调用 add_mana】+ 值对不对, 不查源码里的字面量。
+			and src_eq2.find("battle._staff_syn.add_mana(src, THUNDER_MANA_PER_HIT)") >= 0
+			and is_equal_approx(EquipSystem.THUNDER_MANA_PER_HIT, 15.0)
 			and src_eq2.find('_eq_charge(stt, "fire_mana"') < 0
 			and src_eq2.find('_eq_charge(stt, "thunder"') < 0)
 	var src_hud: String = FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_hud.gd")
