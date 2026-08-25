@@ -13,6 +13,9 @@ const FOAM_HEAL_PCT := 0.10     # 同时治疗自己泡泡值的多少
 const FOAM_KEEP := 1.0 - FOAM_DMG_PCT - FOAM_HEAL_PCT   # 推导: 触发后剩下的比例(共消耗 20%)
 ## 【泡泡攻击】连击三段。
 const HIT_SEGMENTS := 3         # 几段
+## 三段合计 ×ATK。★推导而不是再抄一个 1.5 —— 主场景普攻表的 `phys` 要的正是【总量】
+##   (消费点是 `raw_p / vh`), 改段数或每段系数时它自动跟。
+const HIT_TOTAL_COEF := HIT_SEG_COEF * HIT_SEGMENTS
 const HIT_SEG_COEF := 0.5       # 每段 ×ATK 物理
 ## 【泡泡盾】给最脆友军, 到期/被打破/挂盾对象阵亡 都会爆裂。
 const SHIELD_COEF := 1.8        # 盾量 = ×施法者 ATK

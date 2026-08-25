@@ -28,6 +28,8 @@ const WHEEL_CLUB_LIFESTEAL := 0.005  # ♣ 生命偷取 +
 const WHEEL_CLUB_ASPD := 0.02      # ♣ 攻击速度 +
 const WHEEL_HP_COST := 0.30        # 选本技 → 登场损失 × 最大生命
 const MULTI_ASPD := 0.1667   # 多重打击再打一次的攻击间隔倍率(0.30→0.1667 = ~3.3×→~6×攻速)
+## 【卡牌射击(普攻)】甩一张旋转扑克牌。真值在主场景普攻表, 那里引用本常量。
+const CARD_ATK_COEF := 1.0   # ×ATK 物理
 const JOKER_DMG := 2.0       # 万能牌: ×ATK 物理 (1.0→2.0)
 const JOKER_HEAL := 0.05     # 万能牌: 回复自身最大生命 ×
 const JOKER_ATK_DOWN := 0.15 # 万能牌: 目标攻击力 −

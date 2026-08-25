@@ -84,9 +84,16 @@ func _ready() -> void:
 	_chk("③ 连锁递减仍是 ×%.1f(本轮不动)" % WANT_CHAIN_DECAY,
 		is_equal_approx(LightningSystem.CHAIN_DECAY, WANT_CHAIN_DECAY))
 
+	## ★2026-08-25 文案根除: `3.0 / 20.0` 这个算式抽成了两个常量 + 一个推导的每道系数,
+	##   源码里已经没有那串字面量 —— 比【常量的值】, 并确认伤害那一行确实在引用推导常量。
 	_chk("④ 雷暴 = %.1f×ATK / %d 道" % [WANT_BARRAGE_TOTAL, WANT_BARRAGE_BOLTS],
-		rb.contains("_atk_dmg(u, %.1f / %d.0, e, true)" % [WANT_BARRAGE_TOTAL, WANT_BARRAGE_BOLTS]))
-	_chk("④ 雷暴旧值 2.2 已消失", not rb.contains("_atk_dmg(u, 2.2 / 20.0"))
+		is_equal_approx(LightningSystem.BARRAGE_TOTAL, WANT_BARRAGE_TOTAL)
+			and LightningSystem.BARRAGE_BOLTS == WANT_BARRAGE_BOLTS
+			and rb.contains("_atk_dmg(u, LightningSystem.BARRAGE_BOLT_COEF, e, true)"))
+	_chk("④ 雷暴每道 = 总量 ÷ 道数(推导, 不是第二份手写值)",
+		is_equal_approx(LightningSystem.BARRAGE_BOLT_COEF,
+			WANT_BARRAGE_TOTAL / float(WANT_BARRAGE_BOLTS)))
+	_chk("④ 雷暴旧值 2.2 已消失", not is_equal_approx(LightningSystem.BARRAGE_TOTAL, 2.2))
 
 	## ★比【常量的值】不比源码串: 2026-08-24 这个系数抽成了 LightningSystem.SHIELD_RETALIATE,
 	##   源码里已经没有 "0.3" 这个字面量了 —— 断言字面量的写法会随着代码变干净而假红。
@@ -118,8 +125,14 @@ func _ready() -> void:
 		is_equal_approx(LightningSystem.BOLT_ATK_COEF, WANT_ATK_SCALE)
 			and (pj.contains("{M:LightningSystem.BOLT_ATK_COEF*ATK}")
 				or pj.contains("{M:%.1f*ATK}" % WANT_ATK_SCALE)))
-	_chk("⑧ 雷暴文案 = 单道 %.2f×ATK ×%d" % [WANT_BARRAGE_TOTAL / WANT_BARRAGE_BOLTS, WANT_BARRAGE_BOLTS],
-		pj.contains("{M:%.2f*ATK*%d}" % [WANT_BARRAGE_TOTAL / WANT_BARRAGE_BOLTS, WANT_BARRAGE_BOLTS]))
+	## ★2026-08-25 文案根除: 雷暴不再手写「单道系数 × 道数」——
+	##   代码里本来就是 `BARRAGE_TOTAL / BARRAGE_BOLTS`, 文案现在直接引用总量常量。
+	##   判据 = 两个常量的值都对 + 文案确实指着总量(或还写着旧的乘积式)。
+	_chk("⑧ 雷暴文案 = 合计 %.1f×ATK(%d 道)" % [WANT_BARRAGE_TOTAL, WANT_BARRAGE_BOLTS],
+		is_equal_approx(LightningSystem.BARRAGE_TOTAL, WANT_BARRAGE_TOTAL)
+			and LightningSystem.BARRAGE_BOLTS == WANT_BARRAGE_BOLTS
+			and (pj.contains("{M:LightningSystem.BARRAGE_TOTAL*ATK}")
+				or pj.contains("{M:%.2f*ATK*%d}" % [WANT_BARRAGE_TOTAL / WANT_BARRAGE_BOLTS, WANT_BARRAGE_BOLTS])))
 	## ★2026-08-25: 公式占位符现在可以引用常量(`{M:LightningSystem.SHIELD_RETALIATE*ATK}`),
 	##   grep 字面量 `{M:0.3*ATK}` 会因为"文案变干净了"而假红 —— 认常量引用, 并比它的值。
 	_chk("⑧ 雷盾文案 = %.1f×ATK" % WANT_COUNTER,

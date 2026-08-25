@@ -58,6 +58,38 @@ def const_val(ref):
         return None
 
 
+## 反方向: 「<写死的百分比>%×攻击力({ATK}) = {X:<已经是常量引用的公式>}」
+##   —— 右边已经指着常量了, 左边那个百分比却还是手写的。它同样是"同一个数存两份",
+##   而且方向反过来: 常量改了, 公式跟着变, **左边的百分比不会变** ⇒ 文案自相矛盾。
+PCT_THEN_FORMULA = re.compile(
+    r'(\d+(?:\.\d+)?)%\s*[×x]\s*(自身最大生命值|最大生命值|攻击力|护甲|魔抗)'
+    r'(?:\(\{[A-Z]+\}\))?\s*=\s*(\{[A-Z][:：][^{}]+\})')
+
+
+def back_convert(text):
+    """把「写死的百分比」换成它右边公式里已经在用的那个常量。返回 (新文本, 替换数)。"""
+    n = 0
+    out = text
+    for m in PCT_THEN_FORMULA.finditer(text):
+        lit, cn, formula = float(m.group(1)), m.group(2), m.group(3)
+        var = VARMAP.get(cn)
+        if not var:
+            continue
+        # 公式里乘这个变量的那个常量
+        mm = re.search(r'([A-Z][A-Za-z0-9_]*\.[A-Z][A-Z0-9_]{2,})\s*\*\s*' + var + r'\b', formula) \
+            or re.search(var + r'\s*\*\s*([A-Z][A-Za-z0-9_]*\.[A-Z][A-Z0-9_]{2,})', formula)
+        if not mm:
+            continue
+        cv = const_val(mm.group(1))
+        if cv is None or abs(cv * 100.0 - lit) > 1e-6:
+            continue
+        old = m.group(0)
+        new = old.replace(m.group(1) + '%', '{C:%s%%}%%' % mm.group(1), 1)
+        out = out.replace(old, new, 1)
+        n += 1
+    return out, n
+
+
 def convert(text):
     """返回 (新文本, [(旧公式, 新公式)], [不一致的说明])。"""
     reps, warn = [], []
@@ -151,6 +183,18 @@ def main():
             seg = out[start:end]
             for t in walk(item):
                 total += 1
+                ## 第二遍(反方向): 右边已是常量引用, 左边的百分比还写死 ⇒ 从右边反推左边。
+                bt, bn = back_convert(t)
+                if bn:
+                    ja = json.dumps(t, ensure_ascii=False)[1:-1]
+                    jb = json.dumps(bt, ensure_ascii=False)[1:-1]
+                    if seg.count(ja):
+                        nrep += bn
+                        if write:
+                            seg = seg.replace(ja, jb)
+                        else:
+                            print('  %-9s [反推] %s' % (iid[:9], ('%s%%→常量' % '写死百分比')))
+                        t = bt
                 _new, reps, warn = convert(t)
                 warns += warn
                 for a, b in reps:

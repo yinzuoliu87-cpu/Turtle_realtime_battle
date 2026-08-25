@@ -186,6 +186,8 @@ func _frost_puff(pos2d: Vector2) -> void:
 ## 并让【冰霜】范围 +20%、持续 +0.5 秒。
 ## ★"每路战斗结束刷新"是白送的: 换路时 dual_lane_flow._dl_clear_units() 会清场再重 spawn,
 ##   单位字典整个重建 → icicle 字段天然归零, 不用另写重置(同 blood 天然每场重置的道理)。
+## 【冰锥(普攻)】单段, 物理/魔法逐次交替(两边同值)。真值在主场景普攻表, 那里引用本常量。
+const CONE_ATK_COEF := 1.0
 const ICICLE_MAX := 20
 const ICICLE_ASPD := 0.05      # 每层 +5% 攻速(3%→5%·用户2026-07-30 第六轮: 攒满20层 24.4→21.7 秒, 33秒内普攻 28→34 次)
 const ICICLE_DEFMR := 0.01     # 每层 +1% 护甲 & 魔抗

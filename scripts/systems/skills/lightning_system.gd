@@ -13,6 +13,11 @@ const SURGE_HIT_COEF := SHOCK_COEF * (1.0 + SURGE_BOOST)   # 推导: 立即那�
 const SHOCK_IV := 4.0         # 每几秒自动电击一名随机敌
 const SHOCK_COEF := 1.0       # 电击真伤 = ×ATK(自发与满层引爆共用)
 const SHOCK_STACK_MAX := 8    # 电击标记叠到几层引爆雷暴并清零
+## 【雷暴】天降落雷。★代码原来写的是 `3.0 / 20.0`(总量÷道数就在算式里),
+##   文案却手写成 `0.15*ATK*20` —— 同一个关系存两份。现在三处同源。
+const BARRAGE_BOLTS := 20     # 几道天降落雷
+const BARRAGE_TOTAL := 3.0    # 全部命中合计 ×ATK 魔法
+const BARRAGE_BOLT_COEF := BARRAGE_TOTAL / BARRAGE_BOLTS   # 推导: 每道 ×ATK
 ## 【雷盾】护盾 + 被打时反击。
 const SHIELD_ATK_COEF := 2.0  # 盾量 = ×ATK
 const SHIELD_MAXHP_PCT := 0.05  # + 自身最大生命 ×
@@ -135,7 +140,7 @@ func _sk_lightning_barrage(u: Dictionary) -> void:             # 闪电龟·雷�
 	var tin = battle._reg_tween()
 	tin.tween_property(cloud, "modulate:a", 0.96, 0.22)
 	var tw = battle._reg_tween()
-	for i in range(20):                            # 20道天降落雷(每0.075s·稍慢更可读)
+	for i in range(BARRAGE_BOLTS):                 # 天降落雷(每0.075s·稍慢更可读)
 		tw.tween_callback(battle._barrage_bolt.bind(u, cloud_h))
 		tw.tween_interval(0.075)
 	tw.tween_callback(battle._barrage_cloud_fade.bind(cloud))

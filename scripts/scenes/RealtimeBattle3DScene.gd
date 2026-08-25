@@ -288,8 +288,8 @@ const BASIC_ATK := {
 	"stone":    {"phys": StoneSystem.HIT_ATK_COEF, "def": StoneSystem.HIT_DEF_COEF, "mr": StoneSystem.HIT_MR_COEF, "hits": 1},                    # +护甲魔抗(坦克)
 	"bamboo":   {"phys": BambooSystem.LEAF_ATK_COEF, "selfhp": BambooSystem.LEAF_MAXHP_PCT, "hits": 1},                           # 单段 0.4ATK+3%自身HP(用户2026-06-29)
 	"angel":    {"phys": AngelSystem.VERDICT_COEF, "hits": 1},                                          # 远程平A 1.0ATK单段(用户)+审判被动
-	"ice":      {"phys": 1.0, "magic": 1.0, "hits": 1, "alt_each": true},           # 单段逐次交替物/魔 1.0ATK(用户2026-07-28: 0.8→1.0·配冰柱层加强)
-	"ninja":    {"phys": 1.0, "hits": 1, "rider": "bleed"},                         # 斩击(封板): 近战1A物理+2层流血; 冲击已转被动auto-dash
+	"ice":      {"phys": IceSystem.CONE_ATK_COEF, "magic": IceSystem.CONE_ATK_COEF, "hits": 1, "alt_each": true},           # 单段逐次交替物/魔 1.0ATK(用户2026-07-28: 0.8→1.0·配冰柱层加强)
+	"ninja":    {"phys": NinjaSystem.SLASH_ATK_COEF, "hits": 1, "rider": "bleed"},                         # 斩击(封板): 近战1A物理+2层流血; 冲击已转被动auto-dash
 	"ghost":    {"phys": GhostSystem.BASIC_PHYS, "true": GhostSystem.BASIC_TRUE, "hits": 1},                             # ★这一行【对幽灵不生效】: _basic_attack 在读本表之前就为 ghost 早退
 	                                                                               #   (见本文件 `if u["id"] == "ghost": _ballistics._fire_ghost_wisp(...); return`),
 	                                                                               #   真正结算的是 battle_ballistics.gd 的 gt_phys/gt_true = 0.4A物 + 0.9A真。
@@ -297,14 +297,14 @@ const BASIC_ATK := {
 	                                                                               #   玩家从来没吃到过, 文案却照抄了它。已把本行改回与活代码一致以免继续骗人;
 	                                                                               #   **那次削弱要不要真的落地, 待用户拍板**(动它=改平衡, 不是改文案)。
 	"diamond":  {"phys": DiamondSystem.CUT_ATK_COEF, "def": DiamondSystem.CUT_DEF_COEF, "mr": DiamondSystem.CUT_MR_COEF, "hits": 1},                    # +护甲魔抗
-	"fortune":  {"phys": 1.0, "gold": 0.02, "hits": 1},                            # 1下(用户; 回合制原2下)
+	"fortune":  {"phys": FortuneSystem.SWORD_ATK_COEF, "gold": FortuneSystem.SWORD_GOLD_COEF, "hits": 1},                            # 1下(用户; 回合制原2下)
 	"dice":     {"phys": DiceSystem.BASIC_ATK_COEF, "critflat": DiceSystem.BASIC_CRIT_FLAT, "hits": 1},                         # 90%物理+5500%暴击率flat·单段近战(对齐回合制 diceAttack critBonusMult=55·无实时原话)
 	"rainbow":  {"phys": RainbowSystem.BEAM_COEF, "hits": RainbowSystem.BEAM_HITS},                                          # 单段0.9物理(用户2026-07-02, 原魔法1.4×2)
-	"gambler":  {"phys": 1.0, "hits": 1},                                          # 甩扑克牌(封板L296·用户改): 1.0A物理单段(原3段1.35A=旧值)·多重打击被动复放整发普攻(_gambler_sys._gambler_multi_cd)
+	"gambler":  {"phys": GamblerSystem.CARD_ATK_COEF, "hits": 1},                                          # 甩扑克牌(封板L296·用户改): 1.0A物理单段(原3段1.35A=旧值)·多重打击被动复放整发普攻(_gambler_sys._gambler_multi_cd)
 	"hunter":   {"phys": HunterSystem.BASIC_ATK_COEF, "hits": 1},   # 封板: 普攻1.0A物理(残血追猎+50%攻速在atk_cd处)
 	"pirate":   {"phys": PirateSystem.BLADE_COEF, "hits": 1, "selfheal": PirateSystem.BLADE_SELFHEAL},                          # 弯刀(封板L382·近战): 1.0A物理+自愈0.2A(每击回0.2×ATK生命)·[段数1=单弯刀斩·手感留F5]
 	"candy":    {"phys": CandySystem.PUNCH_ATK_COEF, "selfhp": CandySystem.PUNCH_SELF_HP, "hits": 1, "rider": "atkdn"},         # +自HP+减攻debuff (用户2026-07-28: 0.05→0.03)
-	"bubble":   {"phys": 1.5, "hits": 3},
+	"bubble":   {"phys": BubbleSystem.HIT_TOTAL_COEF, "hits": BubbleSystem.HIT_SEGMENTS},
 	"line":     {"magic": LineSystem.SKETCH_MAGIC, "hits": 1},                                          # 素描:1A魔法单段(叠1墨迹走_on_basic_hit·用户设计)
 	"lava":     {"magic": LavaSystem.BOLT_MAGIC, "hp": LavaSystem.BOLT_TGT_HP, "hits": 1, "rider": "burn", "burnScale": LavaSystem.BOLT_BURN_COEF},   # 熔岩弹: 0.6魔+4%目标HP+0.07ATK灼烧层(burnScale) (用户2026-06-30)
 	"crystal":  {"phys": CrystalSystem.BASIC_ATK_COEF, "hits": 1},                                          # 水晶刺(封板L559):0.6A物理+1.5%目标maxHp魔法+叠1结晶(魔法段与结晶都走_on_basic_hit·原hp bonus折进物理=类型错)
@@ -4336,7 +4336,7 @@ func _barrage_bolt(u: Dictionary, cloud_h: float) -> void:   # 雷暴单道(用�
 	_barrage_strike(e["pos"])   # 闪电龟自有lightning-0落雷(非被动的common-lightning-strike)
 	_vfx._hit_spark(e)
 	_shake(0.028)
-	_damage._apply_damage_from(u, e, _atk_dmg(u, 3.0 / 20.0, e, true), Color("#7ee8ff"))
+	_damage._apply_damage_from(u, e, _atk_dmg(u, LightningSystem.BARRAGE_BOLT_COEF, e, true), Color("#7ee8ff"))
 	_add_stack(e, "electric", 1, LightningSystem.SHOCK_STACK_MAX)
 
 func _barrage_cloud_fade(cloud: Sprite3D) -> void:

@@ -34,6 +34,8 @@ func _ninja_mark_shatter(spr) -> void:
 
 ## ★★2026-08-22 文案根除: 忍术(被动)这一组原来散在本文件与主场景/battle_spawn 三处。
 ## 【开局永久属性】真正的落点是 `battle_spawn.gd` 的 spawn 分支(不在本文件, 极难 grep 到)
+## 【斩击(普攻)】近战单段 + 流血。真值在主场景普攻表, 那里引用本常量。
+const SLASH_ATK_COEF := 1.0       # ×ATK 物理
 const INSTINCT_CRIT := 0.20       # 暴击率 +
 const INSTINCT_CRIT_DMG := 0.15   # 暴击伤害 +
 const INSTINCT_ARMOR_PEN := 10.0  # 护甲穿透 +(flat)

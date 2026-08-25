@@ -4,6 +4,9 @@ extends RefCounted
 ## 类内名不变;外部名加 battle.
 
 ## ★财神数值单一事实源(用户2026-07-28 第三轮加强·梭哈 8.4% 第83)。文案在 data/pets.json。
+## 【金剑打击(普攻)】真值在主场景普攻表, 那里引用本常量。
+const SWORD_ATK_COEF := 1.0     # ×ATK 物理
+const SWORD_GOLD_COEF := 0.02   # 再 + ×ATK×当前金币数
 const ALLIN_SHIELD_SEC := 6.0   # 梭哈首发金盾持续秒数(不锁龟能·与变身后的金盾区分)
 const ALLIN_COIN_COEF := 0.30   # 梭哈每枚金币 ×ATK 物理 + 等量真实伤害
 ## 【招财进宝】首抽 1/2/3 费临时装备, 消耗随费用拉长; 升满后价格回落并附带回血。

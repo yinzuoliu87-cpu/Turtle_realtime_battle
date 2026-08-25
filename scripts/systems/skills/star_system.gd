@@ -18,6 +18,9 @@ const WAVE_COEF := 1.0         # 环形波 ×ATK 魔法
 const COMET_RADIUS := 400.0    # 彗星落点的冲击半径(码)
 const WORM_SPD := 140.0          # 推进速度(码/秒)
 const WORM_GRAV_R := 150.0       # 引力场半径(码·此过程不造成伤害)
+## 【扭曲空间·奇点】敌阵中心的范围魔法(封板数值)。
+const WARP_RADIUS := 500.0       # 以敌阵中心为心, 多大范围内的敌人吃伤害(码)
+const WARP_ATK_COEF := 0.8       # ×ATK 魔法
 const WORM_CAPTURE_R := 100.0    # 捕获半径(码)
 const WORM_BOOM_COEF := 1.5      # 爆炸 ×ATK 魔法
 const WORM_BOOM_PER_SEC := 0.05  # 每过一秒爆炸伤害再 +(发射时刻定格)
@@ -98,7 +101,7 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 		dkt.tween_property(disk, "modulate:a", 0.0, 0.43).set_delay(1.43)
 		dkt.chain().tween_callback(disk.queue_free)
 		for o in es:                                             # 强化锚点②前奏: 敌人脚下指向中心的紫色拉力短痕
-			if not o.get("alive", false) or (o["pos"] as Vector2).distance_to(center) > 500.0: continue
+			if not o.get("alive", false) or (o["pos"] as Vector2).distance_to(center) > WARP_RADIUS: continue
 			var pd: Vector2 = (center - (o["pos"] as Vector2)).normalized()
 			battle._beam_vfx("res://assets/sprites/vfx/fx-trail.png", o["pos"], (o["pos"] as Vector2) + pd * 46.0, 14.0, Color(0.62, 0.42, 1.0, 0.5), 0.86, 0.06)
 	# ── 吸入(0→1.03s): 白色烟圈螺旋内收拖彗尾(EASE_IN先慢后快·同时到达) + 紫星尘被吸向中心
@@ -172,8 +175,8 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 		var victims: Array = []
 		for o2 in battle._targeting._enemies_of(uu):                               # 爆发帧结算(同帧飘字·封板0.8A魔法)
 			if not o2.get("alive", false): continue
-			if (o2["pos"] as Vector2).distance_to(center) > 500.0: continue
-			battle._damage._apply_damage_from(uu, o2, battle._atk_dmg(uu, 0.8, o2, true), Color("#b09bff"))
+			if (o2["pos"] as Vector2).distance_to(center) > WARP_RADIUS: continue
+			battle._damage._apply_damage_from(uu, o2, battle._atk_dmg(uu, WARP_ATK_COEF, o2, true), Color("#b09bff"))
 			battle._vfx._hit_spark(o2)
 			victims.append(o2)
 		battle._shake(0.12 if charged else 0.08)

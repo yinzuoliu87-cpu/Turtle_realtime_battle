@@ -364,8 +364,8 @@
         "pierce": 0,
         "cd": 0,
         "totalScale": 1.4,
-        "brief": "普攻交替造成 {P:1.0*ATK} 物理与魔法伤害，每段使自己获得 1 层<span class=\"val-normal\">冰柱</span>。\n每层冰柱：\n+{C:IceSystem.ICICLE_ASPD%}% 攻速、+{C:IceSystem.ICICLE_DEFMR%}% 护甲、+{C:IceSystem.ICICLE_DEFMR%}% 魔抗，并使【冰霜】范围 +{C:IceSystem.ICICLE_FROST_RADIUS%}%、持续 +{C:IceSystem.ICICLE_FROST_SEC} 秒（上限 <span class=\"val-atk\">{C:IceSystem.ICICLE_MAX} 层</span>，每路战斗结束刷新）。",
-        "detail": "寒冰龟射出冰锥，单段造成（100%×攻击力({ATK}) = {P:1.0*ATK}）伤害，伤害类型逐次交替：本次物理、下次魔法。\n每段攻击使自己获得 1 层<span class=\"val-normal\">冰柱</span>，上限 <span class=\"val-atk\">{C:IceSystem.ICICLE_MAX} 层</span>，每路战斗结束刷新。\n每层冰柱：\n<span class=\"val-atk\">+{C:IceSystem.ICICLE_ASPD%}% 攻击速度</span>、<span class=\"val-def\">+{C:IceSystem.ICICLE_DEFMR%}% 护甲</span>、<span class=\"val-def\">+{C:IceSystem.ICICLE_DEFMR%}% 魔抗</span>，并使【冰霜】<span class=\"val-magic\">范围 +{C:IceSystem.ICICLE_FROST_RADIUS%}%</span>、<span class=\"val-magic\">持续 +{C:IceSystem.ICICLE_FROST_SEC} 秒</span>。\n+{C:IceSystem.ICICLE_ASPD%}% 攻速、+{C:IceSystem.ICICLE_DEFMR%}% 护甲、+{C:IceSystem.ICICLE_DEFMR%}% 魔抗，并使【冰霜】范围 +{C:IceSystem.ICICLE_FROST_RADIUS%}%、持续 +{C:IceSystem.ICICLE_FROST_SEC} 秒（上限 <span class=\"val-atk\">{C:IceSystem.ICICLE_MAX} 层</span>，每路战斗结束刷新）。",
+        "brief": "普攻交替造成 {P:IceSystem.CONE_ATK_COEF*ATK} 物理与魔法伤害，每段使自己获得 1 层<span class=\"val-normal\">冰柱</span>。\n每层冰柱：\n+{C:IceSystem.ICICLE_ASPD%}% 攻速、+{C:IceSystem.ICICLE_DEFMR%}% 护甲、+{C:IceSystem.ICICLE_DEFMR%}% 魔抗，并使【冰霜】范围 +{C:IceSystem.ICICLE_FROST_RADIUS%}%、持续 +{C:IceSystem.ICICLE_FROST_SEC} 秒（上限 <span class=\"val-atk\">{C:IceSystem.ICICLE_MAX} 层</span>，每路战斗结束刷新）。",
+        "detail": "寒冰龟射出冰锥，单段造成（{C:IceSystem.CONE_ATK_COEF%}%×攻击力({ATK}) = {P:IceSystem.CONE_ATK_COEF*ATK}）伤害，伤害类型逐次交替：本次物理、下次魔法。\n每段攻击使自己获得 1 层<span class=\"val-normal\">冰柱</span>，上限 <span class=\"val-atk\">{C:IceSystem.ICICLE_MAX} 层</span>，每路战斗结束刷新。\n每层冰柱：\n<span class=\"val-atk\">+{C:IceSystem.ICICLE_ASPD%}% 攻击速度</span>、<span class=\"val-def\">+{C:IceSystem.ICICLE_DEFMR%}% 护甲</span>、<span class=\"val-def\">+{C:IceSystem.ICICLE_DEFMR%}% 魔抗</span>，并使【冰霜】<span class=\"val-magic\">范围 +{C:IceSystem.ICICLE_FROST_RADIUS%}%</span>、<span class=\"val-magic\">持续 +{C:IceSystem.ICICLE_FROST_SEC} 秒</span>。\n+{C:IceSystem.ICICLE_ASPD%}% 攻速、+{C:IceSystem.ICICLE_DEFMR%}% 护甲、+{C:IceSystem.ICICLE_DEFMR%}% 魔抗，并使【冰霜】范围 +{C:IceSystem.ICICLE_FROST_RADIUS%}%、持续 +{C:IceSystem.ICICLE_FROST_SEC} 秒（上限 <span class=\"val-atk\">{C:IceSystem.ICICLE_MAX} 层</span>，每路战斗结束刷新）。",
         "energyCost": 0
       },
       {
@@ -493,7 +493,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "近战斩击，造成 {N:ATK} 物理伤害，并施加 2 层流血。\n<span style=\"color:#8a93a0\">若本次斩击暴击，则改为施加 3 层流血。\n</span>",
-        "detail": "忍者龟的普攻。\n近战挥刀斩击，造成 {N:1.0*ATK} 物理伤害，并对目标施加固定 2 层流血（暴击时 3 层）。\n<span style=\"color:#8a93a0\">流血：\n身上每层每秒造成等于层数的物理伤害，层数每秒衰减×0.8，可叠加。\n</span>"
+        "detail": "忍者龟的普攻。\n近战挥刀斩击，造成 {N:NinjaSystem.SLASH_ATK_COEF*ATK} 物理伤害，并对目标施加固定 2 层流血（暴击时 3 层）。\n<span style=\"color:#8a93a0\">流血：\n身上每层每秒造成等于层数的物理伤害，层数每秒衰减×0.8，可叠加。\n</span>"
       },
       {
         "name": "手里剑",
@@ -834,8 +834,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "挥动金剑打击目标，造成 {N:ATK + ATK*0.02*goldCoins} 物理伤害。",
-        "detail": "财神龟使用金剑打击目标一下，造成（100%×攻击力 + <span class=\"val-atk\">2%</span>×攻击力×当前金币数 = {N:ATK + ATK*0.02*goldCoins}）物理伤害。"
+        "brief": "挥动金剑打击目标，造成 {N:ATK*FortuneSystem.SWORD_ATK_COEF + ATK*FortuneSystem.SWORD_GOLD_COEF*goldCoins} 物理伤害。",
+        "detail": "财神龟使用金剑打击目标一下，造成（100%×攻击力 + <span class=\"val-atk\">2%</span>×攻击力×当前金币数 = {N:ATK*FortuneSystem.SWORD_ATK_COEF + ATK*FortuneSystem.SWORD_GOLD_COEF*goldCoins}）物理伤害。"
       },
       {
         "name": "骰子",
@@ -1057,7 +1057,7 @@
         "minScale": 0.3,
         "maxScale": 0.6,
         "brief": "甩出一张旋转的扑克牌飞向目标，造成 {N:ATK} 物理伤害。",
-        "detail": "赌神龟甩出一张旋转扑克牌飞向目标，造成 {N:1.0*ATK} 物理伤害。"
+        "detail": "赌神龟甩出一张旋转扑克牌飞向目标，造成 {N:GamblerSystem.CARD_ATK_COEF*ATK} 物理伤害。"
       },
       {
         "name": "万能牌",
@@ -1068,7 +1068,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "丢出一张万能牌，造成 <span class=\"val-normal\">1 段</span> {N:2*ATK} 物理伤害，自身获得 {S:1*ATK} 永久护盾并回复 <span class=\"val-heal\">{C:GamblerSystem.JOKER_HEAL%}% 最大生命值</span>，同时使目标攻击力 <span class=\"val-atk\">-{C:GamblerSystem.JOKER_ATK_DOWN%}%</span>。",
-        "detail": "赌神龟丢出一张万能牌，造成 <span class=\"val-normal\">1 段</span>（200%×攻击力({ATK}) = {N:2*ATK}）物理伤害。\n自身获得（100%×攻击力 = {S:1*ATK}）<span class=\"val-def\">永久护盾</span>，回复 <span class=\"val-heal\">{C:GamblerSystem.JOKER_HEAL%}% 最大生命值</span>，并使目标<span class=\"val-atk\">攻击力 -{C:GamblerSystem.JOKER_ATK_DOWN%}%</span>。"
+        "detail": "赌神龟丢出一张万能牌，造成 <span class=\"val-normal\">1 段</span>（{C:GamblerSystem.JOKER_DMG%}%×攻击力({ATK}) = {N:GamblerSystem.JOKER_DMG*ATK}）物理伤害。\n自身获得（100%×攻击力 = {S:1*ATK}）<span class=\"val-def\">永久护盾</span>，回复 <span class=\"val-heal\">{C:GamblerSystem.JOKER_HEAL%}% 最大生命值</span>，并使目标<span class=\"val-atk\">攻击力 -{C:GamblerSystem.JOKER_ATK_DOWN%}%</span>。"
       },
       {
         "name": "赌注",
@@ -1132,7 +1132,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "射出一箭，造成 {N:ATK} 物理伤害。\n当目标生命低于 <span class=\"val-atk\">{C:HunterSystem.CHASE_HP_GATE%}%</span> 时，猎人龟获得 <span class=\"val-atk\">+{C:HunterSystem.CHASE_HASTE%}% 攻击速度</span> 追猎残血目标。",
-        "detail": "猎人龟的普攻。\n远程射出一箭，造成 {N:1.0*ATK} 物理伤害。\n<span style=\"color:#8a93a0\">残血追猎：\n当前目标生命值低于 {C:HunterSystem.CHASE_HP_GATE%}%时，猎人龟攻击速度+{C:HunterSystem.CHASE_HASTE%}%。\n被动猎杀会处决生命低于 {C:HunterSystem.EXEC_BASE%}%的目标（见被动）。\n</span>"
+        "detail": "猎人龟的普攻。\n远程射出一箭，造成 {N:HunterSystem.BASIC_ATK_COEF*ATK} 物理伤害。\n<span style=\"color:#8a93a0\">残血追猎：\n当前目标生命值低于 {C:HunterSystem.CHASE_HP_GATE%}%时，猎人龟攻击速度+{C:HunterSystem.CHASE_HASTE%}%。\n被动猎杀会处决生命低于 {C:HunterSystem.EXEC_BASE%}%的目标（见被动）。\n</span>"
       },
       {
         "name": "精准射击",
@@ -1204,7 +1204,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "挥舞弯刀劈砍目标，造成 {N:ATK} 物理伤害，并自愈 {N:PirateSystem.BLADE_SELFHEAL*ATK} 生命值。",
-        "detail": "海盗龟挥舞弯刀劈砍目标，造成 {N:1.0*ATK} 物理伤害，同时每次普攻自愈（{C:PirateSystem.BLADE_SELFHEAL%}%×攻击力 = {N:PirateSystem.BLADE_SELFHEAL*ATK}）生命。"
+        "detail": "海盗龟挥舞弯刀劈砍目标，造成 {N:PirateSystem.BLADE_COEF*ATK} 物理伤害，同时每次普攻自愈（{C:PirateSystem.BLADE_SELFHEAL%}%×攻击力 = {N:PirateSystem.BLADE_SELFHEAL*ATK}）生命。"
       },
       {
         "name": "火炮齐射",
@@ -1377,7 +1377,7 @@
         "cd": 0,
         "burstScale": 2,
         "brief": "为最脆弱的友军套上 {S:BubbleSystem.SHIELD_COEF*ATK} 泡泡护盾，持续 <span class=\"val-atk\">{C:BubbleSystem.SHIELD_SEC} 秒</span>。\n护盾爆裂时，对全体敌人造成 {M:BubbleSystem.SHIELD_BURST_COEF*ATK} 魔法伤害。\n<span style=\"color:#8a93a0\">该盾在到期、被打破或挂盾目标阵亡时爆裂；持盾期间泡泡龟龟能锁定，盾破或到期时解锁。\n</span>",
-        "detail": "泡泡龟为最脆友方套上（180%×攻击力({ATK}) = {S:BubbleSystem.SHIELD_COEF*ATK}）泡泡护盾，持续 {C:BubbleSystem.SHIELD_SEC} 秒。\n护盾到期、被打破或挂盾对象阵亡时爆裂，对全体敌方造成（{C:BubbleSystem.SHIELD_BURST_COEF%}%×攻击力({ATK}) = {M:BubbleSystem.SHIELD_BURST_COEF*ATK}）魔法伤害。\n<span style=\"color:#8a93a0\">爆裂由挂盾对象驱动，施法泡泡龟阵亡也照常触发。\n</span>。\n<span style=\"color:#8a93a0\">该盾在到期、被打破或挂盾目标阵亡时爆裂；持盾期间泡泡龟龟能锁定，盾破或到期时解锁。</span>"
+        "detail": "泡泡龟为最脆友方套上（{C:BubbleSystem.SHIELD_COEF%}%×攻击力({ATK}) = {S:BubbleSystem.SHIELD_COEF*ATK}）泡泡护盾，持续 {C:BubbleSystem.SHIELD_SEC} 秒。\n护盾到期、被打破或挂盾对象阵亡时爆裂，对全体敌方造成（{C:BubbleSystem.SHIELD_BURST_COEF%}%×攻击力({ATK}) = {M:BubbleSystem.SHIELD_BURST_COEF*ATK}）魔法伤害。\n<span style=\"color:#8a93a0\">爆裂由挂盾对象驱动，施法泡泡龟阵亡也照常触发。\n</span>。\n<span style=\"color:#8a93a0\">该盾在到期、被打破或挂盾目标阵亡时爆裂；持盾期间泡泡龟龟能锁定，盾破或到期时解锁。</span>"
       },
       {
         "name": "泡泡束缚",
@@ -1398,8 +1398,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "消耗当前 <span class=\"val-atk\">{C:BubbleSystem.BURST_CONSUME%}%</span> 泡泡值，在目标两侧张开泡沫门，对目标周围的每个敌人造成所消耗泡泡值 {C:BubbleSystem.BURST_MAGIC_MULT%}% 的魔法伤害 加 {N:1.5*ATK} 物理伤害。",
-        "detail": "泡泡龟消耗当前泡泡值的 <span class=\"val-magic\">{C:BubbleSystem.BURST_CONSUME%}%</span>，在目标两侧张开泡沫门，对目标周围 {C:BubbleSystem.BURST_RADIUS} 码内每个敌人造成（所消耗泡泡值的 {C:BubbleSystem.BURST_MAGIC_MULT%}%，吃魔抗）<span class=\"val-magic\">魔法</span> +（150%×攻击力({ATK}) = {N:1.5*ATK}）物理伤害。\n<span style=\"color:#8a93a0\">消耗量按施放瞬间的泡泡值结算（施放后剩余 {C:BubbleSystem.FOAM_KEEP%}%）；魔法蓝 + 物理红两个数字独立跳出。\n</span>"
+        "brief": "消耗当前 <span class=\"val-atk\">{C:BubbleSystem.BURST_CONSUME%}%</span> 泡泡值，在目标两侧张开泡沫门，对目标周围的每个敌人造成所消耗泡泡值 {C:BubbleSystem.BURST_MAGIC_MULT%}% 的魔法伤害 加 {N:BubbleSystem.BURST_ATK_COEF*ATK} 物理伤害。",
+        "detail": "泡泡龟消耗当前泡泡值的 <span class=\"val-magic\">{C:BubbleSystem.BURST_CONSUME%}%</span>，在目标两侧张开泡沫门，对目标周围 {C:BubbleSystem.BURST_RADIUS} 码内每个敌人造成（所消耗泡泡值的 {C:BubbleSystem.BURST_MAGIC_MULT%}%，吃魔抗）<span class=\"val-magic\">魔法</span> +（{C:BubbleSystem.BURST_ATK_COEF%}%×攻击力({ATK}) = {N:BubbleSystem.BURST_ATK_COEF*ATK}）物理伤害。\n<span style=\"color:#8a93a0\">消耗量按施放瞬间的泡泡值结算（施放后剩余 {C:BubbleSystem.FOAM_KEEP%}%）；魔法蓝 + 物理红两个数字独立跳出。\n</span>"
       }
     ],
     "defaultSkills": [
@@ -1533,8 +1533,8 @@
         "pierce": 0,
         "cd": 0,
         "arrowScale": 0.15,
-        "brief": "释放 <span class=\"val-atk\">二十道</span>闪电随机轰击敌方，共造成 {M:0.15*ATK*20} 魔法伤害，每道命中各叠加 <span class=\"val-normal\">1 层电击</span>。",
-        "detail": "闪电龟释放二十道闪电随机轰击敌方，共造成（300%×攻击力({ATK}) = {M:0.15*ATK*20}）魔法伤害，每道命中叠加 1 层电击。",
+        "brief": "释放 <span class=\"val-atk\">二十道</span>闪电随机轰击敌方，共造成 {M:LightningSystem.BARRAGE_TOTAL*ATK} 魔法伤害，每道命中各叠加 <span class=\"val-normal\">1 层电击</span>。",
+        "detail": "闪电龟释放二十道闪电随机轰击敌方，共造成（{C:LightningSystem.BARRAGE_TOTAL%}%×攻击力({ATK}) = {M:LightningSystem.BARRAGE_TOTAL*ATK}）魔法伤害，每道命中叠加 1 层电击。",
         "energyCost": 110
       },
       {
@@ -2044,8 +2044,8 @@
         "pierce": 0,
         "cd": 0,
         "aoe": true,
-        "brief": "在敌阵中心扭出一个引力点，对周围全体敌方造成 {M:0.8*ATK} 魔法伤害。\n当<span class=\"val-normal\">星能</span>已满时，星际龟额外将范围内的所有敌人拖拽、拉向中心一点集火，并消耗全部星能。",
-        "detail": "星际龟在敌方阵中心（全体敌人位置的平均点）扭曲出一个引力点，对其 500 码范围内的全体敌方造成（80%×攻击力({ATK}) = {M:0.8*ATK}）魔法伤害。\n<span style=\"color:#8a93a0\">星能充满时：\n引力点额外把范围内所有敌人<b>沿真重力抛物线甩过中心点、落到对面一侧</b>（即换位；落地即恢复行动），并消耗全部星能。\n</span>"
+        "brief": "在敌阵中心扭出一个引力点，对周围全体敌方造成 {M:StarSystem.WARP_ATK_COEF*ATK} 魔法伤害。\n当<span class=\"val-normal\">星能</span>已满时，星际龟额外将范围内的所有敌人拖拽、拉向中心一点集火，并消耗全部星能。",
+        "detail": "星际龟在敌方阵中心（全体敌人位置的平均点）扭曲出一个引力点，对其 {C:StarSystem.WARP_RADIUS} 码范围内的全体敌方造成（{C:StarSystem.WARP_ATK_COEF%}%×攻击力({ATK}) = {M:StarSystem.WARP_ATK_COEF*ATK}）魔法伤害。\n<span style=\"color:#8a93a0\">星能充满时：\n引力点额外把范围内所有敌人<b>沿真重力抛物线甩过中心点、落到对面一侧</b>（即换位；落地即恢复行动），并消耗全部星能。\n</span>"
       }
     ],
     "defaultSkills": [
