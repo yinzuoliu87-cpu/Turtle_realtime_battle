@@ -634,8 +634,8 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 				u["_chest_ghost_value"] = float(_gh.get("chest_treasure_value", 0.0))
 			if "chestCannon" in battle._chosen_skill_types(u["id"], u["side"] == "left"):   # 贪婪(技三打包被动)选中才有
 				u["chest_greed"] = true
-				u["chest_greed_atk_unit"] = u["base_atk"] * 0.04
-				u["chest_greed_hp_unit"] = u["maxHp"] * 0.07
+				u["chest_greed_atk_unit"] = u["base_atk"] * ChestSystem.GREED_ATK_PER_EQ
+				u["chest_greed_hp_unit"] = u["maxHp"] * ChestSystem.GREED_HP_PER_EQ
 				battle._chest_sys._chest_greed_apply(u, (u.get("equips", []) as Array).size())   # 登场先按已带装备数结算
 		"hiding":
 			_spawn_hiding_minion(u)

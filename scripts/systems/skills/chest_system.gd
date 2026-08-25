@@ -105,6 +105,10 @@ const STORM_ATK_COEF := 0.2     # 每跳 ×ATK 物理
 const STORM_LIFE := STORM_TICKS * STORM_TICK_SEC   # 总时长(推导, 文案里那个 2.5 秒)
 ## 【藏宝图】开箱后额外回复的最大生命比例(逐箱)。阈值在主场景 `_CHEST_THRESH`。
 ## 【清点财宝】回血(吃财宝加成) + 护盾(不吃加成)。
+## 【财宝炮击】一条直线的长激光; 打包被动【贪婪】按携带装备数永久涨属性。
+const CANNON_COEF := 3.0       # 线上每敌 ×ATK 物理
+const GREED_ATK_PER_EQ := 0.04 # 每件装备永久 + 攻击力 ×(基础值)
+const GREED_HP_PER_EQ := 0.07  # 每件装备永久 + 最大生命 ×
 const COUNT_HEAL_PCT := 0.05     # 回复 = 自身最大生命 ×
 const COUNT_SHIELD_COEF := 0.6   # 护盾 = ×ATK(不吃财宝加成)
 const COUNT_PER_TREASURE := 1000.0  # 每这么多财宝值
@@ -307,7 +311,7 @@ func _sk_chest_cannon(u: Dictionary, tgt) -> void:              # 技三·财宝
 		for o in battle._targeting._enemies_of(uu):
 			if not o.get("alive", false): continue
 			if not battle._on_line(uu["pos"], dir, o["pos"], 58.0): continue
-			battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, 3.0, o), Color("#ffe066"))
+			battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, CANNON_COEF, o), Color("#ffe066"))
 			battle._damage._knockback(uu, o, 60.0, 1.2, 1.4)                       # 击飞+击退
 			battle._burst_vfx("res://assets/sprites/vfx/fortune-coin-burst.png", o["pos"], 130.0, 0.5)   # 命中金币爆
 		battle._beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", uu["pos"], uu["pos"] + dir * 1300.0, 110.0, Color(1.0, 0.85, 0.35, 0.5), 0.5)   # 金色气浪底

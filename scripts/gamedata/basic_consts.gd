@@ -31,6 +31,12 @@ const SHIELD_GAIN_PCT := 0.80    # 自己获得 (上面两段之和) × 的护�
 const SHIELD_KNOCK_SEC := 0.55   # 击飞滞空(秒)
 
 ## ── 龟派气波(主动) ────────────────────────────────────────
+## 【打击】全程定身, 连发若干道气波, 每道随机挑一个存活敌当方向。
+## ★定身时长是**推导**: 波数 × 间隔 —— 原来写死 1.65, 改波数就会对不上。
+const STRIKE_WAVES := 10          # 发几道
+const STRIKE_GAP := 0.15          # 每道间隔(秒)
+const STRIKE_COEF := 0.4          # 每道 ×ATK 物理(吃不屈稀有度增伤)
+const STRIKE_ROOT_SEC := STRIKE_WAVES * STRIKE_GAP   # 推导: 全程定身时长
 const CHI_ATK_COEF := 2.0        # 沿途每敌 ×ATK 物理 (3.5 → 3.0 → 2.0, 第五轮)
 const CHI_KNOCK_SEC := 1.5       # 击飞滞空(秒)
 const CHI_BUFF_SEC := 3.0        # 施法期自增 buff 的持续(秒)

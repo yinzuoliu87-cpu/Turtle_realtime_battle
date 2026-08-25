@@ -5700,8 +5700,8 @@ func _basic_first_blocker(u: Dictionary, dir: Vector2):          # 可被挡直�
 	return best
 
 func _sk_basic_strike(u: Dictionary, _tgt = null) -> void:      # 小龟·打击(封板·10波序列驱动·80龟能): 全程定身·10波每0.15s·每波随机挑1存活敌当方向·气波可被挡(命中路径第一敌/蛋)·每波0.4A(吃不屈)·[慢飞弹道视觉留F5]
-	_damage._stun(u, 1.65, "_sk_basic_strike", true)   # 全程定身(10波×0.15s)
-	for i in range(10):
+	_damage._stun(u, BasicConsts.STRIKE_ROOT_SEC, "_sk_basic_strike", true)   # 全程定身(10波×0.15s)
+	for i in range(BasicConsts.STRIKE_WAVES):
 		var fn := func():
 			var es: Array = _targeting._targetable_enemies(u)   # ★方向只从可主动锁的敌里挑(排围栏未破的蛋); 穿过打到蛋仍算(_basic_first_blocker)
 			var dir: Vector2 = Vector2.RIGHT
@@ -5719,9 +5719,9 @@ func _sk_basic_strike(u: Dictionary, _tgt = null) -> void:      # 小龟·打击
 				var _h: Dictionary = hit
 				_pending_shots.append({"delay": flight, "fn": func() -> void:
 					if _h.get("alive", false):
-						_damage._apply_damage_from(u, _h, _atk_dmg(u, 0.4, _h), Color("#ff4444"))
+						_damage._apply_damage_from(u, _h, _atk_dmg(u, BasicConsts.STRIKE_COEF, _h), Color("#ff4444"))
 					, "src": u})
-		_pending_shots.append({"delay": float(i) * 0.15, "fn": fn, "src": u})
+		_pending_shots.append({"delay": float(i) * BasicConsts.STRIKE_GAP, "fn": fn, "src": u})
 
 # 气波从 from2d 打向 tgt 时能命中几个敌 (带宽80·射程900) — 供智能位移冲刺评估
 func _chiwave_hits_from(u: Dictionary, from2d: Vector2, tgt: Dictionary) -> int:

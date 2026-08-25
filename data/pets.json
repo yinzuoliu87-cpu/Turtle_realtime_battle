@@ -59,8 +59,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "随机朝敌人发射 <span class=\"val-atk\">10</span> 道气波，每道气波对命中的第一个敌人造成 {N:0.4*ATK} 物理伤害。\n<span style=\"color:#8a93a0\">施法期间小龟定身，每 0.15 秒发射一道；气波可被拦截、穿过障碍、不阻挡友军。\n</span>",
-        "detail": "小龟举拳蓄力(全程定身)，连发 10 道气波，每 0.15 秒一道：\n每道随机挑 1 名存活敌人作为方向，气波沿直线缓慢飞行、命中路径上第一个敌人或龟蛋即结算（可被挡；障碍物穿过、我方不阻挡），造成（40%×攻击力({ATK}) = {N:0.4*ATK}）物理伤害(叠加不屈稀有度增伤)。\n末波发完解除定身、龟能开始充能。\n<span style=\"color:#8a93a0\">慢飞气波弹道视觉留美术。\n</span>",
+        "brief": "随机朝敌人发射 <span class=\"val-atk\">{C:BasicConsts.STRIKE_WAVES}</span> 道气波，每道气波对命中的第一个敌人造成 {N:0.4*ATK} 物理伤害。\n<span style=\"color:#8a93a0\">施法期间小龟定身，每 {C:BasicConsts.STRIKE_GAP} 秒发射一道；气波可被拦截、穿过障碍、不阻挡友军。\n</span>",
+        "detail": "小龟举拳蓄力(全程定身)，连发 {C:BasicConsts.STRIKE_WAVES} 道气波，每 {C:BasicConsts.STRIKE_GAP} 秒一道：\n每道随机挑 1 名存活敌人作为方向，气波沿直线缓慢飞行、命中路径上第一个敌人或龟蛋即结算（可被挡；障碍物穿过、我方不阻挡），造成（{C:BasicConsts.STRIKE_COEF%}%×攻击力({ATK}) = {N:0.4*ATK}）物理伤害(叠加不屈稀有度增伤)。\n末波发完解除定身、龟能开始充能。\n<span style=\"color:#8a93a0\">慢飞气波弹道视觉留美术。\n</span>",
         "energyCost": 80
       },
       {
@@ -392,8 +392,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "冰封目标，造成 {M:2.5*ATK} 魔法伤害，并回复自身（护甲+魔抗）的生命值。\n<span class=\"val-normal\">拥有 20 层冰柱后</span>额外<span class=\"val-atk\">眩晕 2.5 秒</span>。",
-        "detail": "寒冰龟使用极寒之力冰封目标，造成（250%×攻击力({ATK}) = {M:2.5*ATK}）魔法伤害，并<span class=\"val-heal\">回复自身（护甲+魔抗）的生命值</span>。\n<span class=\"val-normal\">拥有 20 层冰柱后</span>：命中额外<span class=\"val-atk\">眩晕目标 2.5 秒</span>。",
+        "brief": "冰封目标，造成 {M:2.5*ATK} 魔法伤害，并回复自身（护甲+魔抗）的生命值。\n<span class=\"val-normal\">拥有 {C:IceSystem.ICICLE_MAX} 层冰柱后</span>额外<span class=\"val-atk\">眩晕 {C:IceSystem.FREEZE_STUN_SEC} 秒</span>。",
+        "detail": "寒冰龟使用极寒之力冰封目标，造成（{C:IceSystem.FREEZE_DMG%}%×攻击力({ATK}) = {M:2.5*ATK}）魔法伤害，并<span class=\"val-heal\">回复自身（护甲+魔抗）的生命值</span>。\n<span class=\"val-normal\">拥有 {C:IceSystem.ICICLE_MAX} 层冰柱后</span>：命中额外<span class=\"val-atk\">眩晕目标 {C:IceSystem.FREEZE_STUN_SEC} 秒</span>。",
         "energyCost": 80
       },
       {
@@ -1968,8 +1968,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "蓄力后朝一条直线射出长能量射线，对直线上的所有敌人各造成 {N:3*ATK} 物理伤害，并将其<span class=\"val-atk\">击飞击退</span>。\n打包被动·<span class=\"val-normal\">贪婪</span>：\n宝箱龟每携带一件装备，便<span class=\"val-atk\">永久</span>获得 <span class=\"val-atk\">4% 攻击力</span> 和 <span class=\"val-atk\">7% 最大生命值</span>。",
-        "detail": "宝箱龟蓄力后朝一条直线发出一道长激光能量射线，对直线上所有敌人各造成（300%×攻击力({ATK}) = {N:3*ATK}）物理伤害，并将其击飞与击退。\n<span style=\"color:#8a93a0\">打包被动·贪婪：\n选择本技能后，宝箱龟每携带一件装备便永久获得攻击力 +4% 与最大生命值 +7%（含藏宝图开出的装备，实时累计）。\n</span>"
+        "brief": "蓄力后朝一条直线射出长能量射线，对直线上的所有敌人各造成 {N:3*ATK} 物理伤害，并将其<span class=\"val-atk\">击飞击退</span>。\n打包被动·<span class=\"val-normal\">贪婪</span>：\n宝箱龟每携带一件装备，便<span class=\"val-atk\">永久</span>获得 <span class=\"val-atk\">{C:ChestSystem.GREED_ATK_PER_EQ%}% 攻击力</span> 和 <span class=\"val-atk\">{C:ChestSystem.GREED_HP_PER_EQ%}% 最大生命值</span>。",
+        "detail": "宝箱龟蓄力后朝一条直线发出一道长激光能量射线，对直线上所有敌人各造成（{C:ChestSystem.CANNON_COEF%}%×攻击力({ATK}) = {N:3*ATK}）物理伤害，并将其击飞与击退。\n<span style=\"color:#8a93a0\">打包被动·贪婪：\n选择本技能后，宝箱龟每携带一件装备便永久获得攻击力 +{C:ChestSystem.GREED_ATK_PER_EQ%}% 与最大生命值 +{C:ChestSystem.GREED_HP_PER_EQ%}%（含藏宝图开出的装备，实时累计）。\n</span>"
       }
     ],
     "defaultSkills": [
