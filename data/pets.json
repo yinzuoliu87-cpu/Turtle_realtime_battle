@@ -129,7 +129,7 @@
         "defScale": 0.75,
         "mrScale": 0.4,
         "brief": "重击当前目标，造成 {N:0.7*ATK+1.5*DEF+0.8*MR} 物理伤害。",
-        "detail": "石头龟对目标打击，造成（70%×攻击力({ATK}) + 150%×护甲({DEF}) + 80%×魔抗({MR}) = {N:0.7*ATK+1.5*DEF+0.8*MR}）物理伤害。",
+        "detail": "石头龟对目标打击，造成（{C:StoneSystem.HIT_ATK_COEF%}%×攻击力({ATK}) + {C:StoneSystem.HIT_DEF_COEF%}%×护甲({DEF}) + {C:StoneSystem.HIT_MR_COEF%}%×魔抗({MR}) = {N:0.7*ATK+1.5*DEF+0.8*MR}）物理伤害。",
         "energyCost": 0
       },
       {
@@ -845,8 +845,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "掷出骰子，获得 <span class=\"val-atk\">5~8</span> 枚金币并回复 {H:HP*0.15} 生命值。",
-        "detail": "财神龟掷骰子获得 5~8 枚金币，回复（15%×最大生命值({HP}) = {H:HP*0.15}）生命值。\n<span style=\"color:#8a93a0\">\n</span>"
+        "brief": "掷出骰子，获得 <span class=\"val-atk\">{C:FortuneSystem.DICE_MIN}~{C:FortuneSystem.DICE_MAX}</span> 枚金币并回复 {H:HP*0.15} 生命值。",
+        "detail": "财神龟掷骰子获得 {C:FortuneSystem.DICE_MIN}~{C:FortuneSystem.DICE_MAX} 枚金币，回复（{C:FortuneSystem.DICE_HEAL_PCT%}%×最大生命值({HP}) = {H:HP*0.15}）生命值。\n<span style=\"color:#8a93a0\">\n</span>"
       },
       {
         "name": "梭哈",
@@ -1288,8 +1288,8 @@
           "pct": 15,
           "turns": 2
         },
-        "brief": "挥拳砸向目标，造成 {N:1.1*ATK} 加 {N:HP*0.03} 物理伤害，并使其攻击力降低 <span class=\"val-atk\">15%</span>，持续 <span class=\"val-atk\">5 秒</span>。",
-        "detail": "糖果龟的普攻。\n挥拳砸向目标，造成（110%×攻击力({ATK}) = {N:1.1*ATK}）+（3%×自身最大生命值({HP}) = {N:HP*0.03}）物理伤害，施加攻击力 <span class=\"val-atk\">-15%</span>(持续 5 秒)。"
+        "brief": "挥拳砸向目标，造成 {N:1.1*ATK} 加 {N:HP*0.03} 物理伤害，并使其攻击力降低 <span class=\"val-atk\">{C:CandySystem.PUNCH_ATK_DOWN%}%</span>，持续 <span class=\"val-atk\">{C:RealtimeBattle3DScene.BUFF_SEC} 秒</span>。",
+        "detail": "糖果龟的普攻。\n挥拳砸向目标，造成（{C:CandySystem.PUNCH_ATK_COEF%}%×攻击力({ATK}) = {N:1.1*ATK}）+（{C:CandySystem.PUNCH_SELF_HP%}%×自身最大生命值({HP}) = {N:HP*0.03}）物理伤害，施加攻击力 <span class=\"val-atk\">-{C:CandySystem.PUNCH_ATK_DOWN%}%</span>(持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒)。"
       },
       {
         "name": "糖果锤",
@@ -1450,8 +1450,8 @@
         "pierce": 0,
         "cd": 0,
         "transferPct": 30,
-        "brief": "画线连接最近的两个敌人，持续 <span class=\"val-atk\">3 秒</span>，对两个目标各造成 {N:0.8*ATK} 物理伤害并各叠加 <span class=\"val-normal\">1 层墨迹</span>。\n连接期间，一方所受伤害的 <span class=\"val-atk\">30%</span> 会以真实伤害传导给另一方，且一方获得墨迹时另一方同步获得。",
-        "detail": "线条龟画线连接<span class=\"val-normal\">最近的两个敌人</span>，持续 <span class=\"val-atk\">3 秒</span>，对两个目标各造成（80%×攻击力({ATK}) = {N:0.8*ATK}）物理伤害并各叠加 1 层墨迹。\n连接期间，一方受到伤害的 <span class=\"val-true\">30%</span> 以<span class=\"val-true\">真实伤害</span>传导给另一方。\n一方获得墨迹时另一方同步获得。\n<span style=\"color:#8a93a0\">速写已融入被动，墨迹系伤害恒为真实伤害；连接线跟随双方脚底，到期或一方死亡即断链。\n</span>。\n连接期间，一方所受伤害的 <span class=\"val-atk\">30%</span> 会以真实伤害传导给另一方，且一方获得墨迹时另一方同步获得。"
+        "brief": "画线连接最近的 {C:LineSystem.LINK_TARGETS} 个敌人，持续 <span class=\"val-atk\">{C:RealtimeBattle3DScene.INK_LINK_SEC} 秒</span>，对两个目标各造成 {N:0.8*ATK} 物理伤害并各叠加 <span class=\"val-normal\">1 层墨迹</span>。\n连接期间，一方所受伤害的 <span class=\"val-atk\">{C:RealtimeBattle3DScene.INK_LINK_TRANSFER%}%</span> 会以真实伤害传导给另一方，且一方获得墨迹时另一方同步获得。",
+        "detail": "线条龟画线连接<span class=\"val-normal\">最近的两个敌人</span>，持续 <span class=\"val-atk\">{C:RealtimeBattle3DScene.INK_LINK_SEC} 秒</span>，对两个目标各造成（{C:LineSystem.LINK_ATK_COEF%}%×攻击力({ATK}) = {N:0.8*ATK}）物理伤害并各叠加 1 层墨迹。\n连接期间，一方受到伤害的 <span class=\"val-true\">{C:RealtimeBattle3DScene.INK_LINK_TRANSFER%}%</span> 以<span class=\"val-true\">真实伤害</span>传导给另一方。\n一方获得墨迹时另一方同步获得。\n<span style=\"color:#8a93a0\">速写已融入被动，墨迹系伤害恒为真实伤害；连接线跟随双方脚底，到期或一方死亡即断链。\n</span>。\n连接期间，一方所受伤害的 <span class=\"val-atk\">{C:RealtimeBattle3DScene.INK_LINK_TRANSFER%}%</span> 会以真实伤害传导给另一方，且一方获得墨迹时另一方同步获得。"
       },
       {
         "name": "画龙点睛",
@@ -1805,8 +1805,8 @@
         "pierce": 0,
         "cd": 0,
         "selfCast": true,
-        "brief": "黑掉一个随机敌方单位，使其倒戈、加入赛博龟一方战斗 <span class=\"val-atk\">4 秒</span>，期满后变回。\n<span style=\"color:#8a93a0\">被控期间，该单位会用它自己的普攻与技能攻击原来的队友。\n</span>\n侵入期间赛博龟自身<span class=\"val-normal\">锁龟能不充能</span>。",
-        "detail": "赛博龟射出黑客数据流，黑掉一个随机敌方单位，使其倒戈为赛博龟一方战斗 <span class=\"val-atk\">4 秒</span>：用它自己的普攻与技能攻击原队友，4 秒后数据链断开变回原队。\n<span style=\"color:#8a93a0\">被黑单位不算赛博方友军(不能被治疗/护盾·不算存活数)，仍会被原队友攻击。\n被黑单位的击杀归赛博龟方。\n蛋/免控免疫。\n可同时黑多个(每次黑 1 随机·可叠)。\n召唤物也可黑。\n</span>\n<span class=\"val-normal\">侵入期间（4 秒）赛博龟自身锁龟能不充能。\n</span>",
+        "brief": "黑掉一个随机敌方单位，使其倒戈、加入赛博龟一方战斗 <span class=\"val-atk\">{C:CyberSystem.HIJACK_SEC} 秒</span>，期满后变回。\n<span style=\"color:#8a93a0\">被控期间，该单位会用它自己的普攻与技能攻击原来的队友。\n</span>\n侵入期间赛博龟自身<span class=\"val-normal\">锁龟能不充能</span>。",
+        "detail": "赛博龟射出黑客数据流，黑掉一个随机敌方单位，使其倒戈为赛博龟一方战斗 <span class=\"val-atk\">{C:CyberSystem.HIJACK_SEC} 秒</span>：用它自己的普攻与技能攻击原队友，{C:CyberSystem.HIJACK_SEC} 秒后数据链断开变回原队。\n<span style=\"color:#8a93a0\">被黑单位不算赛博方友军(不能被治疗/护盾·不算存活数)，仍会被原队友攻击。\n被黑单位的击杀归赛博龟方。\n蛋/免控免疫。\n可同时黑多个(每次黑 1 随机·可叠)。\n召唤物也可黑。\n</span>\n<span class=\"val-normal\">侵入期间（{C:CyberSystem.HIJACK_SEC} 秒）赛博龟自身锁龟能不充能。\n</span>",
         "energyCost": 135
       },
       {
@@ -2245,8 +2245,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "打击目标，造成 1 倍攻击力的伤害，伤害类型在物理与真实之间逐次交替，并向主目标周围的其他敌人溅射 <span class=\"val-atk\">50%</span> 伤害。\n<span style=\"color:#8a93a0\">溅射伤害的类型跟随本次主段。\n</span>",
-        "detail": "龟壳的普攻是<span class=\"val-atk\">单段</span>打击，造成（100%×攻击力({ATK}) = {N:ATK}）伤害。\n伤害类型<span class=\"val-atk\">逐次交替</span>——这一发物理，下一发<span class=\"val-true\">真实</span>（真实伤害穿减伤）。\n每一发都会对主目标 <span class=\"val-atk\">120 码</span>内的其他敌人溅射 <span class=\"val-atk\">50%</span> 伤害（类型跟随主段）。",
+        "brief": "打击目标，造成 1 倍攻击力的伤害，伤害类型在物理与真实之间逐次交替，并向主目标周围的其他敌人溅射 <span class=\"val-atk\">{C:ShellSystem.SPLASH_PCT%}%</span> 伤害。\n<span style=\"color:#8a93a0\">溅射伤害的类型跟随本次主段。\n</span>",
+        "detail": "龟壳的普攻是<span class=\"val-atk\">单段</span>打击，造成（{C:ShellSystem.BASIC_COEF%}%×攻击力({ATK}) = {N:ATK}）伤害。\n伤害类型<span class=\"val-atk\">逐次交替</span>——这一发物理，下一发<span class=\"val-true\">真实</span>（真实伤害穿减伤）。\n每一发都会对主目标 <span class=\"val-atk\">{C:RealtimeBattle3DScene.SHELL_SPLASH_RADIUS} 码</span>内的其他敌人溅射 <span class=\"val-atk\">{C:ShellSystem.SPLASH_PCT%}%</span> 伤害（类型跟随主段）。",
         "energyCost": 0
       },
       {

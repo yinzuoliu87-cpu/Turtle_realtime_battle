@@ -717,7 +717,7 @@
     "effectDesc1": "每 {C:EqSpiritBatch.PARASOL_IDLE} 秒打开一次伞：自身与 {C:EqSpiritBatch.PARASOL_RADIUS} 码内的队友获得 11/22/35%伤害减免与 {C:EqSpiritBatch.PARASOL_DODGE%}%闪避率（固定值），持续 {C:EqSpiritBatch.PARASOL_OPEN} 秒；\n效果结束时携带者回复 50/80/130 生命，然后才重新开始 {C:EqSpiritBatch.PARASOL_IDLE} 秒计时。",
     "effectDesc3": "",
     "img": "equip/p2eq_060.png",
-    "effectBrief": "每 7 秒撑伞 2.5 秒，自己与 200 码内队友获得 11/22/35% 伤害减免。"
+    "effectBrief": "每 {C:EqSpiritBatch.PARASOL_IDLE} 秒撑伞 {C:EqSpiritBatch.PARASOL_OPEN} 秒，自己与 {C:EqSpiritBatch.PARASOL_RADIUS} 码内队友获得 11/22/35% 伤害减免。"
   },
   {
     "id": "p2eq_061",
@@ -930,7 +930,7 @@
     "baseStats1": "+攻12/30/68·+破甲5/11/22",
     "shopAvailable": 1,
     "emoji": "⚡",
-    "effectDesc1": "左右管共享计数，每 {C:EqGunBatch.EEL_IV} 秒交替从一管射出子弹。\n左管打出 {C:EqGunBatch.EEL_CONE_RANGE} 码 {C:EqGunBatch.EEL_CONE_DEG} 度锥形霰弹，造成 15+0.3/25+0.6/40+1 倍攻击力物理伤害；\n右管打出电击弹，对首目标造成 {C:EqGunBatch.EEL_BOLT_ATK} 倍攻击力物理伤害+50/100/180 魔法伤害，该魔法伤害以电流按最近顺序连锁到场上所有未被击中的敌人，每跳后续伤害降低 20/15/10%。\n金弹从轮到的那一管打出并完整继承其效果，另加 60/80/100%真实伤害（电击的首目标与每一跳都吃）。",
+    "effectDesc1": "左右管共享计数，每 {C:EqGunBatch.EEL_IV} 秒交替从一管射出子弹。\n左管打出 {C:EqGunBatch.EEL_CONE_RANGE} 码 {C:EqGunBatch.EEL_CONE_DEG} 度锥形霰弹，造成 15/25/40 + 0.3/0.6/1.0 倍攻击力物理伤害；\n右管打出电击弹，对首目标造成 {C:EqGunBatch.EEL_BOLT_ATK} 倍攻击力物理伤害+50/100/180 魔法伤害，该魔法伤害以电流按最近顺序连锁到场上所有未被击中的敌人，每跳后续伤害降低 20/15/10%。\n金弹从轮到的那一管打出并完整继承其效果，另加 60/80/100%真实伤害（电击的首目标与每一跳都吃）。",
     "effectDesc3": "",
     "img": "equip/p2eq_078.png",
     "effectBrief": "每 2 秒左右管交替开火：左管锥形霰弹，右管电击弹连锁全场。"
@@ -1038,7 +1038,7 @@
     "baseStats1": "+护甲25/60/150·+生命150/420/1200",
     "shopAvailable": 1,
     "emoji": "🔔",
-    "effectDesc1": "效果一：每 15/10/4 秒从训龟大师的主动技能中随机偷取一个释放，每一路不会偷到重复的技能，全部偷取并释放过后不再偷取。\n效果二：压载舱容量为自身最大生命的 60/90/150%，受到的伤害先灌进舱里，舱满后才真的掉血；\n每 2 秒把舱内 10%抽出还成生命，并朝最远的敌人喷出等量的水柱伤害；\n舱内每存有 10%最大生命，携带者获得 3%移速与 3 点护甲（最多 15 层）。",
+    "effectDesc1": "效果一：每 15/10/4 秒从训龟大师的主动技能中随机偷取一个释放，每一路不会偷到重复的技能，全部偷取并释放过后不再偷取。\n效果二：压载舱容量为自身最大生命的 60/90/150%，受到的伤害先灌进舱里，舱满后才真的掉血；\n每 {C:EqGadgetBatch.DIVE_PUMP_IV} 秒把舱内 {C:EqGadgetBatch.DIVE_PUMP_FRAC%}%抽出还成生命，并朝最远的敌人喷出等量的水柱伤害；\n舱内每存有 {C:EqGadgetBatch.DIVE_STACK_FRAC%}%最大生命，携带者获得 {C:EqGadgetBatch.DIVE_MOVE_PER%}%移速与 {C:EqGadgetBatch.DIVE_DEF_PER} 点护甲（最多 {C:EqGadgetBatch.DIVE_STACK_CAP} 层）。",
     "effectDesc3": "",
     "img": "equip/p2eq_087.png",
     "effectBrief": "每 15/10/4 秒偷放一个训龟大师的技能；受到的伤害先灌进压载舱。"

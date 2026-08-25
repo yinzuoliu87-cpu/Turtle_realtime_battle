@@ -285,7 +285,7 @@ const RIGHT_DEMO := ["diamond", "ninja", "ghost"]
 const BASIC_ATK := {
 	"basic":    {"phys": 1.0, "hits": 1},
 	"__trainer__": {"phys": 1.0, "hits": 1},                                       # 训龟大师扔石头: 1.0×ATK, 而它 ATK=1 → 恰好 1 点物理
-	"stone":    {"phys": 0.7, "def": 1.5, "mr": 0.8, "hits": 1},                    # +护甲魔抗(坦克)
+	"stone":    {"phys": StoneSystem.HIT_ATK_COEF, "def": StoneSystem.HIT_DEF_COEF, "mr": StoneSystem.HIT_MR_COEF, "hits": 1},                    # +护甲魔抗(坦克)
 	"bamboo":   {"phys": 0.4, "selfhp": 0.03, "hits": 1},                           # 单段 0.4ATK+3%自身HP(用户2026-06-29)
 	"angel":    {"phys": 1.0, "hits": 1},                                          # 远程平A 1.0ATK单段(用户)+审判被动
 	"ice":      {"phys": 1.0, "magic": 1.0, "hits": 1, "alt_each": true},           # 单段逐次交替物/魔 1.0ATK(用户2026-07-28: 0.8→1.0·配冰柱层加强)
@@ -303,7 +303,7 @@ const BASIC_ATK := {
 	"gambler":  {"phys": 1.0, "hits": 1},                                          # 甩扑克牌(封板L296·用户改): 1.0A物理单段(原3段1.35A=旧值)·多重打击被动复放整发普攻(_gambler_sys._gambler_multi_cd)
 	"hunter":   {"phys": 1.0, "hits": 1},   # 封板: 普攻1.0A物理(残血追猎+50%攻速在atk_cd处)
 	"pirate":   {"phys": 1.0, "hits": 1, "selfheal": 0.2},                          # 弯刀(封板L382·近战): 1.0A物理+自愈0.2A(每击回0.2×ATK生命)·[段数1=单弯刀斩·手感留F5]
-	"candy":    {"phys": 1.1, "selfhp": 0.03, "hits": 1, "rider": "atkdn"},         # +自HP+减攻debuff (用户2026-07-28: 0.05→0.03)
+	"candy":    {"phys": CandySystem.PUNCH_ATK_COEF, "selfhp": CandySystem.PUNCH_SELF_HP, "hits": 1, "rider": "atkdn"},         # +自HP+减攻debuff (用户2026-07-28: 0.05→0.03)
 	"bubble":   {"phys": 1.5, "hits": 3},
 	"line":     {"magic": 1.0, "hits": 1},                                          # 素描:1A魔法单段(叠1墨迹走_on_basic_hit·用户设计)
 	"lava":     {"magic": LavaSystem.BOLT_MAGIC, "hp": LavaSystem.BOLT_TGT_HP, "hits": 1, "rider": "burn", "burnScale": LavaSystem.BOLT_BURN_COEF},   # 熔岩弹: 0.6魔+4%目标HP+0.07ATK灼烧层(burnScale) (用户2026-06-30)
@@ -4160,7 +4160,7 @@ func _do_basic(u: Dictionary, tgt: Dictionary, spec: Dictionary) -> void:
 	# 附带效果
 	match str(spec.get("rider", "")):
 		"burn":    _damage._apply_dot_stacks(tgt, "burn", (maxi(1, int(round(float(u["atk"]) * float(spec.get("burnScale", 0.0))))) if spec.has("burnScale") else _default_burn_stacks(u)), u)
-		"atkdn":   _damage._buff(tgt, "atk", -0.15, true)
+		"atkdn":   _damage._buff(tgt, "atk", -CandySystem.PUNCH_ATK_DOWN, true)
 		"selfdef": _damage._buff(u, "def", 0.20, true)
 		"bleed":   _damage._apply_dot_stacks(tgt, "bleed", (3 if _last_atk_crit else 2), u)   # 忍者斩击: 2层流血(本次暴击→3层·封板·读_resolve_dmg设的_last_atk_crit)
 		"shrink":  _hiding_sys._hiding_shell_harden(u)                             # 缩头缩壳: 每击+1甲+1抗(永久)+0.1A盾
@@ -6608,7 +6608,7 @@ func _apply_rider(u: Dictionary, e: Dictionary, rider: String) -> void:
 		"stun":  _damage._stun(e, CTRL_SEC, "_cc_apply")
 		"slow":  e["slow_until"] = maxf(float(e.get("slow_until", 0.0)), _t + _cc_dur(e, BUFF_SEC)); e["slow_mag"] = 0.6
 		"curse": _damage._add_curse(e, BUFF_SEC, u)
-		"atkdn": _damage._buff(e, "atk", -0.15, true)
+		"atkdn": _damage._buff(e, "atk", -CandySystem.PUNCH_ATK_DOWN, true)
 		"mrdn":  _damage._buff(e, "mr", -0.20, true)
 
 

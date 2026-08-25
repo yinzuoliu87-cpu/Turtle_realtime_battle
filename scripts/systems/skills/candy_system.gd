@@ -31,6 +31,11 @@ const BOMB_FEED_MAXHP_PCT := 0.25  # 每次充能满: 上限 +
 const BOMB_FEED_HEAL_PCT := 0.10   # 每次充能满: 治疗
 const BOMB_DECAY_PCT := 0.08     # 每秒自衰减比例
 
+## ★★2026-08-25 文案根除: 糖果拳的数在【主场景普攻表】, 减攻在 `atkdn` 通用 rider 里。
+const PUNCH_ATK_COEF := 1.1     # ×ATK 物理
+const PUNCH_SELF_HP := 0.03     # + 【自身】最大生命 ×
+const PUNCH_ATK_DOWN := 0.15    # 目标攻击力 −(走通用 atkdn·时长吃 BUFF_SEC)
+
 var battle
 
 func _init(b) -> void:

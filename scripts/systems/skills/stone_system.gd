@@ -21,6 +21,10 @@ const ROCK_WAVE_DEF_COEF := 0.5  # 冲击波 = ×护甲
 const ROCK_WAVE_MR_COEF := 0.5   # + ×魔抗
 const ROCK_WAVE_PER_LAYER := 0.04  # 再 ×(1 + 此值 × 岩层数)
 const ROCK_WAVE_STUN := 2.0      # 必定眩晕(秒)
+## 【打击(普攻)】三段相加, 真值在【主场景】的普攻表里(那里引用本组常量)。
+const HIT_ATK_COEF := 0.7    # ×ATK
+const HIT_DEF_COEF := 1.5    # + ×护甲
+const HIT_MR_COEF := 0.8     # + ×魔抗
 const RS_ATK_COEF := 1.0         # 全队盾 = ×【石头龟】ATK
 const RS_MAXHP_PCT := 0.06       # + ×【石头龟】最大生命
 const RS_SHIELD_SEC := 4.0       # 盾持续(秒)·持盾期锁龟能

@@ -147,11 +147,14 @@ func _buffs() -> void:
 	var bu: String = _S["bubble_system.gd"]
 	var cr: String = _S["crystal_system.gd"]
 	var rb: String = _S["RealtimeBattle3DScene.gd"]
-	_chk("④ 财神骰子金币 = %d~8" % WANT_DICE_MIN, fo.contains("randi_range(%d, 8)" % WANT_DICE_MIN))
+	## ★2026-08-25 抽成了 FortuneSystem.DICE_* —— 比【常量的值】不比源码串。
+	_chk("④ 财神骰子金币 = %d~8" % WANT_DICE_MIN,
+		FortuneSystem.DICE_MIN == WANT_DICE_MIN and FortuneSystem.DICE_MAX == 8)
 	_chk("④ 财神骰子回血 = %d%%" % int(WANT_DICE_HEAL * 100.0),
-		fo.contains('u["maxHp"] * %.2f' % WANT_DICE_HEAL))
+		is_equal_approx(FortuneSystem.DICE_HEAL_PCT, WANT_DICE_HEAL))
 	_chk("④ 财神骰子旧值 (3,8)/0.10 已消失",
-		not fo.contains("randi_range(3, 8)") and not fo.contains('u["maxHp"] * 0.10'))
+		not (FortuneSystem.DICE_MIN == 3 and FortuneSystem.DICE_MAX == 8)
+			and not is_equal_approx(FortuneSystem.DICE_HEAL_PCT, 0.10))
 	_chk("④ 梭哈每枚物理 = %.2fA" % WANT_ALLIN_COIN, rb.contains("_atk_dmg(src, %.2f, tgt, false)" % WANT_ALLIN_COIN))
 	_chk("④ 梭哈每枚真伤 = %.2fA" % WANT_ALLIN_COIN,
 		is_equal_approx(FortuneSystem.ALLIN_COIN_COEF, WANT_ALLIN_COIN)

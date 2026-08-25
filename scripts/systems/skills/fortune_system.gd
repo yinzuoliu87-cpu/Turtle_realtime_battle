@@ -15,6 +15,10 @@ const BUY_MAX_STAR := 3         # 升到几星算满
 const BUY_FULL_HEAL_COEF := 1.0 # 满星后每次释放回复 ×ATK 生命
 const LOWHP_PCT := 0.20          # 【通用被动·聚宝盆】: 首次跌破该血量比例触发(不论带哪个技能)
 ## 【聚宝盆】局内金币产出 + 低血一次性龟能。
+## 【骰子】掷出金币 + 回血。
+const DICE_MIN := 5           # 金币下限
+const DICE_MAX := 8           # 金币上限
+const DICE_HEAL_PCT := 0.15   # 回复 = 自身最大生命 ×
 const COIN_IV := 3.0             # 每几秒产一次金币
 const COIN_MIN := 4              # 每次产出下限
 const COIN_MAX := 7              # 每次产出上限
@@ -79,9 +83,9 @@ func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招�
 	battle._refresh_panel_equips(u)   # ★抽到/升星的临时装备图标即时显进左右信息框(用户2026-07-12)
 
 func _sk_fortune_dice(u: Dictionary) -> void:                    # 财神龟·骰子(用户2026-07-12补特效): 掷骰5~8金币+回15%maxHP
-	var g: int = randi_range(5, 8)   # 2~6→3~8→5~8 (用户2026-07-29 第五轮)
+	var g: int = randi_range(DICE_MIN, DICE_MAX)   # 2~6→3~8→5~8 (用户2026-07-29 第五轮)
 	u["gold"] += g
-	battle._damage._heal(u, u["maxHp"] * 0.15)   # 骰子回血 8%→10%→15% 最大生命(用户2026-07-29 第五轮·财神实测33秒就死, 回血=活久点)
+	battle._damage._heal(u, u["maxHp"] * DICE_HEAL_PCT)   # 骰子回血 8%→10%→15% 最大生命(用户2026-07-29 第五轮·财神实测33秒就死, 回血=活久点)
 	battle._burst_vfx("res://assets/sprites/vfx/fortune-coin-burst.png", u["pos"], 120.0, 0.75)   # 金币爆
 	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.55), 52.0)
 	battle._vfx._float_text(u["pos"] + Vector2(0, -66), "掷骰 +%d金币" % g, Color("#ffd93d"))

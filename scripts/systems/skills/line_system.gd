@@ -14,6 +14,10 @@ const BOMB_SEGMENTS := 4           # 溅射几段
 const BOMB_SEG_COEF := 0.25        # 每段 ×ATK 魔法
 ## 满层时的总系数 —— **推导, 不手写**(文案原来写死 385% / 520%)。
 ## 放在 DOT_* 之后声明会前向引用, 所以这两行在下面(见 DOT_FULL_*)。
+## 【连笔】连接最近两敌: 各吃一段物理 + 各叠墨迹, 期间伤害互相传导。
+## 时长与传导比例的事实源在【主场景】(INK_LINK_SEC / INK_LINK_TRANSFER)。
+const LINK_TARGETS := 2       # 连几个敌人
+const LINK_ATK_COEF := 0.8    # 每个目标 ×ATK 物理
 const DOT_BASE_COEF := 0.7    # 基础系数
 const DOT_PER_INK := 0.45     # 每层墨迹再加
 const DOT_FULL_COEF := DOT_BASE_COEF + DOT_PER_INK * INK_CAP           # 推导: 满 7 层
@@ -51,11 +55,11 @@ func _sk_line_link(u: Dictionary) -> void:                       # 线条龟·�
 		if o.get("alive", false): foes.append(o)
 	if foes.is_empty(): return
 	foes.sort_custom(func(x, y): return u["pos"].distance_squared_to(x["pos"]) < u["pos"].distance_squared_to(y["pos"]))
-	var picks: Array = foes.slice(0, mini(2, foes.size()))
+	var picks: Array = foes.slice(0, mini(LINK_TARGETS, foes.size()))
 	for o in picks:
-		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 0.8, o), Color("#dddddd"))
+		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, LINK_ATK_COEF, o), Color("#dddddd"))
 		battle._add_stack(o, "ink", 1, _ink_cap(u))
-	if picks.size() < 2: return                                  # 只有1个敌人 → 无链路可连
+	if picks.size() < LINK_TARGETS: return                                  # 只有1个敌人 → 无链路可连
 	battle._make_ink_link(picks[0], picks[1], u)
 
 # 返回 u 所在的有效链路 {a,b,caster,until,spr}; 无 → 空字典 (不返 null: GDScript静态分析对"可能为null再下标"报Parse Error)
