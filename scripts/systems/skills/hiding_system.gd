@@ -5,6 +5,9 @@ extends RefCounted
 
 ## ★★2026-08-22 文案根除: 下面这些原来是函数体里的裸字面量。
 ## 【防御】护盾 + 护甲, 两者时长不同; 护盾到期把剩余部分按比例转生命。
+## 【喊龟(被动)】开局随机召唤一只 A/B/C 稀有度的龟当随从, 属性按原龟打折。
+const MINION_HP_SCALE := 0.40    # 随从最大生命 = 原龟 ×
+const MINION_ATK_SCALE := 0.80   # 随从攻击力 = 原龟 ×
 const DEFEND_SHIELD_PCT := 0.20   # 护盾 = 自身最大生命 ×
 const DEFEND_SHIELD_SEC := 4.0    # 护盾持续(秒)·持盾期锁龟能
 const DEFEND_DEF_UP := 0.20       # 护甲提升

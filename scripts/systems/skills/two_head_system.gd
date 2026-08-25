@@ -8,6 +8,9 @@ const DISRUPT_TRUE := 2.0   # 精神干扰(远程形态): ×ATK 真实伤害 (�
 ## ★★2026-08-22 文案根除: 双生(被动)的这一组原来散在 `_two_head_after_cast` /
 ##   `_two_head_enhanced_basic` / `_two_head_retreat` 的函数体里, 文案又各手写一遍。
 ## 【切近战时的属性变化】(基准都是 ATK)
+## 【双头攻击(普攻)】随形态两套系数, 真值在【主场景】(那里引用本组常量)。
+const BASIC_RANGED_COEF := 1.2   # 远程形态: 灵能弹 ×ATK 物理
+const BASIC_MELEE_COEF := 0.9    # 近战形态: 挥砍 ×ATK 物理
 const MELEE_HP_COEF := 2.5       # 最大生命 +
 const MELEE_DEF_COEF := 0.25     # 护甲 +
 const MELEE_MR_COEF := 0.25      # 魔抗 +

@@ -2836,7 +2836,7 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		_on_basic_hit(u, tgt)
 		return
 	if u["id"] == "two_head":       # 双头(封板): 普攻随形态 — 远程1.2A物理(灵能弹)/近战0.9A物理(挥砍)
-		var _thsc: float = 0.9 if u["melee"] else 1.2
+		var _thsc: float = TwoHeadSystem.BASIC_MELEE_COEF if u["melee"] else TwoHeadSystem.BASIC_RANGED_COEF
 		_emit_basic(u, tgt, _atk_dmg(u, _thsc, tgt), Color("#c0a0ff"), 0)
 		if str(u.get("_th_enh", "")) != "":                      # 双生强化普攻: 搬旧切形态那一下的伤害+效果(就这1下·用户2026-07-11 B案)
 			_two_head_sys._two_head_enhanced_basic(u, tgt, str(u["_th_enh"]))

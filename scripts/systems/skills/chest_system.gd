@@ -28,7 +28,7 @@ func _chest_treasure_tick(u: Dictionary) -> void:
 			GameState.chest_treasure_value += cur - synced
 			u["_ttl_synced"] = cur
 		opened = (GameState.chest_treasures_won as Array).size()
-		if opened >= 5:
+		if opened >= CHEST_MAX_OPEN:
 			return
 		if float(GameState.chest_treasure_value) < float(battle._CHEST_THRESH[opened]):
 			return
@@ -36,7 +36,7 @@ func _chest_treasure_tick(u: Dictionary) -> void:
 		## 敌方: 起点 = 快照里对手的累积财宝值, 再加上本场打出的伤害。
 		## 已开出的那几件在登场时就装上了(battle_spawn), 这里只管【还能不能再开】。
 		opened = int(u.get("chest_opened", 0))
-		if opened >= 5:
+		if opened >= CHEST_MAX_OPEN:
 			return
 		var base: float = float(u.get("_chest_ghost_value", 0.0))
 		if base + float(u.get("dmg_dealt", 0.0)) < float(battle._CHEST_THRESH[opened]):
@@ -45,7 +45,7 @@ func _chest_treasure_tick(u: Dictionary) -> void:
 		## 评审台 / demo / 召唤物: 没有大轮进度可言, 用本场伤害走同一套阈值。
 		## ★不再有第二套低阈值 —— 一套数就是一套数。
 		opened = int(u.get("chest_opened", 0))
-		if opened >= 5:
+		if opened >= CHEST_MAX_OPEN:
 			return
 		if float(u.get("dmg_dealt", 0.0)) < float(battle._CHEST_THRESH[opened]):
 			return
@@ -109,6 +109,7 @@ const STORM_LIFE := STORM_TICKS * STORM_TICK_SEC   # 总时长(推导, 文案里
 const CANNON_COEF := 3.0       # 线上每敌 ×ATK 物理
 const GREED_ATK_PER_EQ := 0.04 # 每件装备永久 + 攻击力 ×(基础值)
 const GREED_HP_PER_EQ := 0.07  # 每件装备永久 + 最大生命 ×
+const CHEST_MAX_OPEN := 5      # 一大轮最多开几件(第 1-2 基础 / 3-4 进阶 / 5 传说)
 const COUNT_HEAL_PCT := 0.05     # 回复 = 自身最大生命 ×
 const COUNT_SHIELD_COEF := 0.6   # 护盾 = ×ATK(不吃财宝加成)
 const COUNT_PER_TREASURE := 1000.0  # 每这么多财宝值

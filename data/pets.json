@@ -568,8 +568,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "普攻随形态变化：远程形态射出灵能弹，造成 1.2×攻击力 物理伤害。\n近战形态挥砍，造成 0.9×攻击力 物理伤害。",
-        "detail": "双头龟普攻随形态变化：远程形态发射灵能弹造成（120%×攻击力({ATK}) = {N:1.2*ATK}）物理伤害。\n近战形态挥砍造成（90%×攻击力 = {N:0.9*ATK}）物理伤害。\n近战形态挥砍，造成 0.9×攻击力 物理伤害。"
+        "brief": "普攻随形态变化：远程形态射出灵能弹，造成 {C:TwoHeadSystem.BASIC_RANGED_COEF}×攻击力 物理伤害。\n近战形态挥砍，造成 {C:TwoHeadSystem.BASIC_MELEE_COEF}×攻击力 物理伤害。",
+        "detail": "双头龟普攻随形态变化：远程形态发射灵能弹造成（{C:TwoHeadSystem.BASIC_RANGED_COEF%}%×攻击力({ATK}) = {N:1.2*ATK}）物理伤害。\n近战形态挥砍造成（{C:TwoHeadSystem.BASIC_MELEE_COEF%}%×攻击力 = {N:0.9*ATK}）物理伤害。\n近战形态挥砍，造成 {C:TwoHeadSystem.BASIC_MELEE_COEF}×攻击力 物理伤害。"
       },
       {
         "name": "灵能冲击/锤击",
@@ -1924,8 +1924,8 @@
     "passive": {
       "type": "chestTreasure",
       "name": "藏宝图",
-      "brief": "根据造成的伤害积累<span class=\"val-normal\">财宝值</span>，每达到一个阈值便从战利品池中随机获得一件装备，并回复生命值。\n<span style=\"color:#8a93a0\"><b>一大轮</b>最多获得 5 件装备（跨场累积，新大轮重置）。\n</span>",
-      "desc": "造成的伤害转化为财宝值，并<span class=\"val-atk\">随一大轮持续累积</span>。\n财宝值达到 {C:RealtimeBattle3DScene._CHEST_THRESH} 时开箱：\n第 1-2 箱开基础池、第 3-4 箱开进阶池、第 5 箱开传说池（15 件专属战利品，不重复），并额外回复 {C:ChestSystem.CHEST_HEAL_PCT%}% 最大生命值。\n开出的战利品为<span class=\"val-atk\">一大轮常驻装备</span>，整轮每场战斗自动生效；新大轮重置。"
+      "brief": "根据造成的伤害积累<span class=\"val-normal\">财宝值</span>，每达到一个阈值便从战利品池中随机获得一件装备，并回复生命值。\n<span style=\"color:#8a93a0\"><b>一大轮</b>最多获得 {C:ChestSystem.CHEST_MAX_OPEN} 件装备（跨场累积，新大轮重置）。\n</span>",
+      "desc": "造成的伤害转化为财宝值，并<span class=\"val-atk\">随一大轮持续累积</span>。\n财宝值达到 {C:RealtimeBattle3DScene._CHEST_THRESH} 时开箱：\n第 1-2 箱开基础池、第 3-4 箱开进阶池、第 {C:ChestSystem.CHEST_MAX_OPEN} 箱开传说池（15 件专属战利品，不重复），并额外回复 {C:ChestSystem.CHEST_HEAL_PCT%}% 最大生命值。\n开出的战利品为<span class=\"val-atk\">一大轮常驻装备</span>，整轮每场战斗自动生效；新大轮重置。"
     },
     "skillPool": [
       {
@@ -2074,8 +2074,8 @@
       "type": "summonAlly",
       "name": "喊龟",
       "hpPct": 40,
-      "brief": "在战斗开始时，从全部 A/B/C 稀有度的乌龟中随机召唤一只作为<span class=\"val-normal\">随从</span>。\n随从拥有原龟 <span class=\"val-atk\">40% 最大生命值</span> 和 <span class=\"val-atk\">80% 攻击力</span>，并带着自己的整套技能与龟能自主作战。",
-      "desc": "在战斗开始时，从全部 A/B/C 稀有度乌龟（当前 19 只，随版本自动覆盖）中随机召唤一只作为随从。\n随从的属性取自那只龟本身：最大生命值 ×<span class=\"val-atk\">40%</span>、攻击力 ×<span class=\"val-atk\">80%</span>，护甲 / 魔抗 / 暴击率照原值（均随等级缩放）\n它的被动照常生效，并带着<span class=\"val-atk\">自己的技能与龟能条</span>自主释放（不是固定节奏）。\n<span style=\"color:#8a93a0\">缩头乌龟阵亡时随从一同阵亡；随从阵亡会触发它自身的死亡被动，并把「强化随从」那套增益永久传给缩头乌龟。\n</span>"
+      "brief": "在战斗开始时，从全部 A/B/C 稀有度的乌龟中随机召唤一只作为<span class=\"val-normal\">随从</span>。\n随从拥有原龟 <span class=\"val-atk\">{C:HidingSystem.MINION_HP_SCALE%}% 最大生命值</span> 和 <span class=\"val-atk\">{C:HidingSystem.MINION_ATK_SCALE%}% 攻击力</span>，并带着自己的整套技能与龟能自主作战。",
+      "desc": "在战斗开始时，从全部 A/B/C 稀有度乌龟（当前 19 只，随版本自动覆盖）中随机召唤一只作为随从。\n随从的属性取自那只龟本身：最大生命值 ×<span class=\"val-atk\">{C:HidingSystem.MINION_HP_SCALE%}%</span>、攻击力 ×<span class=\"val-atk\">{C:HidingSystem.MINION_ATK_SCALE%}%</span>，护甲 / 魔抗 / 暴击率照原值（均随等级缩放）\n它的被动照常生效，并带着<span class=\"val-atk\">自己的技能与龟能条</span>自主释放（不是固定节奏）。\n<span style=\"color:#8a93a0\">缩头乌龟阵亡时随从一同阵亡；随从阵亡会触发它自身的死亡被动，并把「强化随从」那套增益永久传给缩头乌龟。\n</span>"
     },
     "skillPool": [
       {

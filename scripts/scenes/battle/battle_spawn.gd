@@ -677,8 +677,8 @@ func _spawn_hiding_minion(u: Dictionary) -> void:
 	var _lm: float = battle._lvl_mult_for(u)                # 固定值召唤吃等级
 	# ★2026-07-10订正: 旧注释写"召唤=主人最终hp×40%"是错的。d = 【被召唤那只龟】的数据 → HP/ATK 都按【它自己】的基础值算。
 	#   HP = 该龟 hp × 40% (×等级);  ATK = 该龟 atk × 80% (×等级);  def/mr/crit 照该龟原值 (见下)。
-	var hp: float = float(d.get("hp", 1350)) * 0.40 * _lm
-	var minion = _spawn_summon(u, "minion", hp, float(d.get("atk", 40)) * 0.8 * _lm, {
+	var hp: float = float(d.get("hp", 1350)) * HidingSystem.MINION_HP_SCALE * _lm
+	var minion = _spawn_summon(u, "minion", hp, float(d.get("atk", 40)) * HidingSystem.MINION_ATK_SCALE * _lm, {
 		"label": "随从", "spr_id": pick, "col_size": 36.0, "hp_w": 30.0,
 		"melee": bool(st[0]), "move_spd": float(st[1]), "atk_interval": float(st[2]), "atk_range": float(st[3]),
 		"crit": float(d.get("crit", 0.2)),
