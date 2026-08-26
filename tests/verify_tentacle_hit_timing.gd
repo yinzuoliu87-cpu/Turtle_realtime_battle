@@ -221,6 +221,26 @@ func _ready() -> void:
 		syn.stack_of("left", 0) == 1, "剩 %d 层" % syn.stack_of("left", 0))
 	_ok("④ ★★也不算作\"射程内有敌人\"(否则触手永远不会搬家去够得着的地方)",
 		not syn._foe_in_range("left", 0))
+
+	## ★★④c 反过来的【正面】断言(2026-08-25 补): 空闲 + 射程内有**打得着**的敌人
+	##   ⇒ 真的消费 1 层并拍下去。
+	##   在此之前这条只有**反面**在守(上面那两条"不许扣层"), 以及人工验收场景
+	##   `demo_spirit_stacks.tscn`。缺正面的后果: 把消费整段删掉, ④ 那两条**照样全绿**
+	##   (层数不掉本来就是它们要的), 于是"触手再也不拍了"没有任何门禁会红。
+	var live := _dummy("right", origin + Vector2(180.0, 0.0))    # 普通敌人: 打得着
+	var pick2 := false
+	for f2 in _s._targeting._pick_enemies_of_side("left"):
+		if is_same(f2, live):
+			pick2 = true
+	_ok("④c ★分母: 这个敌人【打得着】(与上面那颗蛋的唯一区别)", pick2)
+	syn._stacks[syn._sk("left", 0)] = 1
+	_stand_up("left", 0)
+	_ok("④c ★分母: 喂之前手上确实有 1 层", syn.stack_of("left", 0) == 1)
+	syn.tick(0.05)
+	_ok("★④c ★★空闲 + 射程内有打得着的敌人 ⇒ 真的消费了那 1 层",
+		syn.stack_of("left", 0) == 0, "剩 %d 层" % syn.stack_of("left", 0))
+	_ok("★④c 消费的同时触手真的动了(不是只把层数吞掉)",
+		tv.state_of("left", 0) != 1, "状态 %d(1=ST_IDLE)" % tv.state_of("left", 0))
 	## ★★④b 搬家挑的目标也必须是【打得着的】。
 	##   我第一版只修了 `_foe_in_range`, 漏了 `_reloc_tick` 里那份手写名单 ⇒
 	##   触手会搬到蛋旁边、到了发现打不着、再搬 —— **反复搬家却永远不打**。
