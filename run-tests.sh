@@ -72,6 +72,7 @@ frames_for () {
     verify_pk_bar_continuity) echo 3000 ;;
     # 常驻修正跨路: 建战斗场 + 走【清场+重建】两次真换路(每次都要 spawn 整条阵容)
     verify_b4_persist_across_lane) echo 4000 ;;
+    verify_accum_lane_scope) echo 4000 ;;   # 同上: 两次真换路(清场+重建)
     verify_pirate_hook)  echo 8000 ;;
     # 十件法器逐件验主动: 每件都要跑【对照组 90 帧 + 正式 90 帧】并等真实帧
     #   (023 走 await 协程, 纯同步 _sim_step 推不动它)⇒ 10 × 180 帧起步。
