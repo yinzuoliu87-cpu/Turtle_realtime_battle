@@ -21,6 +21,9 @@ const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 var _n := 0
 var _fail := 0
 var _s = null
+## 产品自己的常量表 —— 时长这类数不许在测试里手抄一个 30(抄的副本必然落后)。
+const FoodBatch := preload("res://scripts/systems/equip/eq_food_batch.gd")
+
 var _food = null
 
 
@@ -210,7 +213,34 @@ func _t069() -> void:
 		_ok("069 si=%d 第①块 10 秒回 %.1f(每秒 0.6/0.8/1%% 最大生命)" % [si, want],
 			absf(float(st.get("hot1_healed", 0.0)) - want) < 0.51 + 10.0,
 			"实测 %.1f" % float(st.get("hot1_healed", 0.0)))
-		_ok("069 si=%d 第①块回血 30 秒到期(喂满 30 秒后不再回)" % si, true, "")
+		## ★★2026-08-26 重写: 这条原来是 `_ok(..., true, "")` —— **一个字都没验**,
+		##   却顶着"30 秒到期"的名字, 让人以为到期这件事有覆盖。
+		##   真判据分两截: ① 喂满时长后计时器归零; ② 再喂 5 秒**一点都不该多回**。
+		##   只验 ① 守不住"计时器到 0 了但还在回血"; 只验 ② 守不住"其实早就停了"。
+		##
+		## ★★反向验证结果记在这里(2026-08-26 实测), 免得下次重验时误判成假门禁:
+		##     · 拆掉产品的到期判断 ⇒ **红**(② 会抓到"再喂 5 秒又多回了")。
+		##     · 把 `CAKE_HOT1_SEC` 30 → 99999 ⇒ **本文件不红, 而且这是对的**:
+		##       本文件用产品常量决定喂多久, 验的是"到点就停"这个**机制**, 不是 30 这个**值**。
+		##       值由文案门禁守 —— 玩家文案写的是 `{C:EqFoodBatch.CAKE_HOT1_SEC}` 占位符,
+		##       实测同一变异 ⇒ `text_value_golden` 与 `text_golden` **两条都红**。
+		var healed_30: float = 0.0
+		for _k in range(int(FoodBatch.CAKE_HOT1_SEC) + 2):    # 喂满整段(用产品常量, 不手抄 30)
+			b["hp"] = 1.0
+			_food.tick_unit(b, 1.0)
+		healed_30 = float(st.get("hot1_healed", 0.0))
+		_ok("069 si=%d 第①块 喂满 %.0f 秒后【计时器归零】" % [si, FoodBatch.CAKE_HOT1_SEC],
+			float(st.get("hot1_left", -1.0)) <= 0.001,
+			"hot1_left=%.3f" % float(st.get("hot1_left", -1.0)))
+		for _k in range(5):
+			b["hp"] = 1.0
+			_food.tick_unit(b, 1.0)
+		_ok("069 si=%d 第①块【到期后一点都不再回】(再喂 5 秒累计不变)" % si,
+			absf(float(st.get("hot1_healed", 0.0)) - healed_30) < 0.001,
+			"到期时 %.1f → 再喂 5 秒后 %.1f" % [healed_30, float(st.get("hot1_healed", 0.0))])
+		## ★分母: 上面那句"不再回"只有在【它之前真的回过】时才有意义。
+		_ok("069 si=%d ★分母: 到期前确实一直在回(累计 %.1f > 0)" % [si, healed_30],
+			healed_30 > 0.0)
 
 	# ①-d 第二块: +5% 生命偷取(固定值·不随星级) + 10/21/40 攻击力
 	var atk_add := [10.0, 21.0, 40.0]

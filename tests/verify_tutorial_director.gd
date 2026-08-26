@@ -27,7 +27,9 @@ func _ready() -> void:
 	td._econ_snapshot = {}          # 清残留快照, 保证 begin_sandbox 真快照
 	td.begin_sandbox()
 	_ok("★沙盒发教学币(=TUT_COINS %d)" % td.TUT_COINS, GameState.meta_deepsea_coins == td.TUT_COINS, "实际 %d" % GameState.meta_deepsea_coins)
-	_ok("★begin_sandbox 幂等(再调不覆盖快照)", true)
+	## ★2026-08-26 删掉了这里一行 `_ok("★begin_sandbox 幂等(再调不覆盖快照)", true)` ——
+	##   它什么都没验, 而**真的幂等检查就在下面三行**(二次调用后比币)。
+	##   一个"看着已验、其实是 true"的标签比没有更糟: 它让人以为这块有覆盖。
 	var coins_during: int = GameState.meta_deepsea_coins
 	td.begin_sandbox()              # 幂等: 第二次不该把"教学币"当真余额存进快照
 	_ok("★begin_sandbox 二次调用不改币", GameState.meta_deepsea_coins == coins_during)
