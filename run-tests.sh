@@ -47,6 +47,10 @@ frames_for () {
     #   墙钟不是帧数 —— CI 无头帧率极高, 帧给少了会在还没打够伤害时被掐断
     #   ⇒ 没打 ALL PASS, 看着像断言失败(CLAUDE.md §2 那个坑)。
     verify_dmg_type_sentinel) echo 60000 ;;
+    # 阵容后端: 要**真发一次 HTTPRequest 并等它被拒**(打 127.0.0.1:9)。
+    #   实测 791 帧才回调 —— 网络回调走的是 HTTPRequest 自己的轮询, 与游戏帧率无关,
+    #   帧给少了就是"等不到回调 → 循环没退出 → 没打 ALL PASS", 看着像断言失败(CLAUDE.md §2 那个坑)。
+    verify_remote_pool)       echo 4000 ;;
     verify_click_targets_alive) echo 12000 ;;
     verify_info_panel_fits)   echo 20000 ;;
     verify_mainmenu_layout)   echo 6000 ;;
@@ -415,6 +419,10 @@ run_audit "tools/arch_budget.py"          "ALL OK" "arch_budget (架构预算·�
 run_audit "tools/style_lint.py"           "ALL OK" "style_lint (代码风格·全tab/snake_case/PascalCase 焊死)"
 run_audit "tools/rng_discipline.py"        "ALL OK" "rng_discipline (裸随机冻结·护确定性不回退)"
 run_audit "tools/docs_authority_lint.py"  "ALL OK" "docs_authority_lint (单一事实源纪律·三权威在位/消费链活/README无漂移/无冒名)"
+# 服务端(Node)【手抄】的客户端规则 —— 四个常量 + 龟/装备白名单逐条对账。
+#   服务端读不了 .gd, 只能抄; 而抄的副本落后时是**静默的**: 它会把合法快照判成伪造,
+#   玩家只看到"我的阵容传不上去", 没人会去翻那份 JS。新增一只龟就会踩。
+run_audit "tools/server_rule_sync.py"     "ALL OK" "server_rule_sync (服务端规则↔客户端事实源·常量/白名单)"
 # 文案【声称的事】↔ 代码【实际做的事】—— 数值之外的三类(触发周期/选靶对象/作用范围)。
 #   由来: 用户 2026-08-19 读一眼就发现「小龟被动的增伤只适用于普通攻击吗」——
 #   文案写「普攻伤害」而代码挂在伤害总闸上(普攻/技能/真伤全覆盖), 而当时 211 项全绿:

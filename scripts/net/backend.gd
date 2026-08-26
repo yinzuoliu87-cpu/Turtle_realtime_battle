@@ -75,13 +75,36 @@ static func pool_add(pool: Dictionary, snapshot: Dictionary) -> void:
 	while bucket.size() > BUCKET_CAP:
 		bucket.pop_back()
 
-## 玩家自己上传的快照? 本地池里 profile 名恒为"玩家阵容"(单机没别的真人)→匹配一律跳过, 防撞自己阵容(用户2026-07-18: 只按id排除挡不住修复前遗留的旧volatile id自传·按名一网打尽).
+## 快照的【来源】—— 判"是不是我自己那份"只能靠它, 不能靠名字。见 _is_self_ghost 的长注释。
+const ORIGIN_KEY := "origin"
+const ORIGIN_LOCAL := "local"      # 本机打完一局自己传的
+const ORIGIN_REMOTE := "remote"    # 从服务器拉回来的别人的(RemotePool.ingest_remote 盖章)
+
+## 玩家自己上传的快照? 匹配一律跳过, 防撞自己阵容。
+##
+## ★★2026-08-26 改判据: 从【按 profile 名】改成【按来源】。
+##   原来这么写(用户 2026-07-18「按名一网打尽」)在**单机本地池**里是对的 ——
+##   池里名叫"玩家阵容"的条目确实全都是我自己。
+##   但 `build_ghost_snapshot` 把 `profile.name` **写死**成 "玩家阵容"
+##   (RealtimeBattle3DScene.gd:7814, 不是玩家输入) ⇒ 一旦接上服务器,
+##   **别人传上来的快照名字也全是"玩家阵容"** ⇒ 我拉回来之后一条都匹配不到,
+##   而且是**静默的**: 池子看着满的, 打的却永远是 bot。
+##   这正是方案书 V2「A 手机打完 → B 手机能匹配到 A」的需求原话会失败的地方,
+##   写 `verify_remote_pool.gd` 时才发现 —— 服务器还没开就先踩到了。
+##   ⇒ 判据换成"这份是不是**本机产的**", 与名字脱钩。
+## ★老池子向后兼容: 2026-08-26 之前存的条目没有 origin 字段, 而它们**确实全是本机产的**
+##   (那时没有任何远端来源) ⇒ 无 origin + 名为"玩家阵容" 仍判自己。内置策划队两条都不满足, 照旧可匹配。
 static func _is_self_ghost(g) -> bool:
 	## ★SELF_GHOST=1: 允许匹配到自己录的阵容(2026-08-15 用户要手打录入多套, 得能自测)。
 	##   默认仍然跳过 —— 单机下撞上自己那套是明显的穿帮。这是个**开发/自测开关**, 不是玩法。
 	if OS.has_environment("SELF_GHOST"):
 		return false
-	return g is Dictionary and str(((g as Dictionary).get("profile", {}) as Dictionary).get("name", "")) == "玩家阵容"
+	if not (g is Dictionary):
+		return false
+	var d: Dictionary = g
+	if d.has(ORIGIN_KEY):
+		return str(d[ORIGIN_KEY]) == ORIGIN_LOCAL
+	return str((d.get("profile", {}) as Dictionary).get("name", "")) == "玩家阵容"
 
 ## 从池抽一个同档对手 (排除 exclude_ids). 桶空/全排除 → null (调用方 make_bot 兜底).
 static func pool_find(pool: Dictionary, bracket: int, exclude_ids: Array, rng: RandomNumberGenerator):
@@ -326,6 +349,13 @@ static func make_match_rng() -> RandomNumberGenerator:
 ##   ★不许往上回落是硬约束: "档N 的玩家绝不该遇到 >N 档的对手"(verify_bracket_gear 新增断言守这条)。
 static func find_opponent(bracket: int, exclude_ids: Array, rng: RandomNumberGenerator) -> Dictionary:
 	var pool := load_pool()
+	## ★远端同步(方案书 §落地步骤 3): 顺手发一次拉取, 但**它给的是【下一局】的池子** ——
+	##   本局的对手就在下面几行用现在这个 pool 算出来, 一步都不等网络。
+	##   这是"离线不退化"这条硬指标的落点: 断网时这一行是 no-op, 下面照常跑。
+	##   (verify_remote_pool 用真 HTTPRequest 打不可达地址量过: 匹配耗时 8ms ≪ 超时 6000ms。)
+	var RP = load("res://scripts/net/remote_pool.gd")
+	if RP != null:
+		RP.pull_async(bracket)
 	for b in range(bracket, -1, -1):                # 本档优先; 本档空/全排除 → 就近【低】档回落, 全空才 bot
 		var g = pool_find(pool, b, exclude_ids, rng)
 		if g != null: return g
@@ -350,10 +380,21 @@ static func player_ghost_id(season_id: int, leaders) -> String:
 
 
 ## 上传自己阵容快照进池 (玩家配好 build / 赢一场后).
+## ★进本地池的这一份盖 origin=local 章 —— 匹配时靠它认出"这是我自己"(见 _is_self_ghost)。
+##   ⚠ 盖在**副本**上: 调用方那份快照还要原样发给服务端, 不该带本机的来源标记。
 static func upload_ghost(snapshot: Dictionary) -> void:
+	var mine := snapshot.duplicate(true)
+	mine[ORIGIN_KEY] = ORIGIN_LOCAL
 	var pool := load_pool()
-	pool_add(pool, snapshot)
+	pool_add(pool, mine)
 	save_pool(pool)
+	## ★远端同步(方案书 20260820 §落地步骤 2): 本地那步**先做完且一定成功**, 远端是追加的一次 POST,
+	##   失败静默、不回滚、不碰存档 —— 网络是锦上添花, 不是开局的依赖。
+	## ★用 load 不用 preload: remote_pool.gd 反过来 preload 本文件, **循环 preload 会编译失败**。
+	##   (未配置后端时 `push_async` 直接 return, 连节点都不建 ⇒ 当前行为与接网前逐字节相同。)
+	var RP = load("res://scripts/net/remote_pool.gd")
+	if RP != null:
+		RP.push_async(snapshot)
 
 ## 从玩家刚打的这局 (left 侧) 序列化成 ghost 快照 (上传自己用). ghost_id/profile 调用方给.
 static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dictionary:
