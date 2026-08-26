@@ -30,6 +30,11 @@ extends Node
 ##     ⇒ 这两件不产生"事件", 只改字段, 单独用字段判据。
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
+const EQS := preload("res://scripts/gamedata/equip_stats.gd")
+const EquipSystemS := preload("res://scripts/systems/equip/equip_system.gd")
+## ★_stage 建的是 star=3 ⇒ 属性表取【下标 2】。取 [0] 会拿到 1 星的数,
+##   判据当场变成"对不上", 而错的是尺子不是产品。
+const SI3 := 2
 
 const FIRE_IDS := ["p2eq_004", "p2eq_022", "p2eq_028", "p2eq_037",
 				   "p2eq_040", "p2eq_042", "p2eq_053", "p2eq_057"]
@@ -223,19 +228,56 @@ func _ready() -> void:
 	# ── ③ 两件常驻标志: 041 退潮浊液 / 059 沙漏 ────────────────────────────
 	##   ★它们不产生"事件", 只在登场时改字段 ⇒ 判据是【字段真的被改了】。
 	##     只断言"函数被调过"守不住(那是数我自己的标记)。
+	## ★★2026-08-26 重写这两条 —— 原来的判据是【恒真式】, 就写在上面那句
+	##   "只断言函数被调过守不住"的正下方:
+	##     · 041 判的是 `字段总数 > 20` —— 任何单位字典都远超 20, 与 041 有没有生效无关;
+	##     · 059 判的是 `has(...) or eq_state.size() >= 0` —— `size() >= 0` 恒为真,
+	##       整条 or 不可能红。
+	##   现在改成**与"没带这件"做对照**: 同一套 stage 各建一遍, 只差这一件, 比差值。
+	##   (memory [[fb-verify-check-can-fail]]: 报"覆盖了"之前先证明它会 FAIL。)
+	##
+	## ★★反向验证的结果记在这里, 免得下次重验时误判成假门禁(2026-08-26 实测):
+	##     · 拆掉产品侧 ⇒ **红**: 涨潮不排队 / 充能加成不生效 / 时停认不出携带者, 各红 1 条。
+	##     · 改坏**属性表**里的数(041 star3 hp 170 → 999) ⇒ **不红, 而且这是对的** ——
+	##       期望值和产品读的是同一张表, 两边一起变。**表里的数不归本文件管**:
+	##       那是 `tools/basestats_audit.py` 的活(实测同一处变异 ⇒ 它 rc=1
+	##       「展示串与事实源对不上 1 处」)。本文件守的是**"产品有没有照表施加"**这条链。
+	##       两件事分工, 不是缺口 —— 但**必须写下来**, 否则下次跑反向验证看到"0 红"会自己吓自己。
+
+	## ── 041 退潮浊液: 装备表给 hp/shieldHealPct, 另有"登场 5 秒后涨潮"的延时事件 ──
 	var st3: Array = _stage(s, "p2eq_041")
 	var u3: Dictionary = st3[0]
-	var keys3: Array = []
-	for k in u3.keys():
-		if str(k).begins_with("_") or str(k) in ["equips", "eq_state"]:
-			continue
-		keys3.append(str(k))
-	_ok("★041 退潮浊液: 登场后携带者身上确实多了它的常驻字段(字段总数 %d)" % keys3.size(),
-		keys3.size() > 20, "字段数=%d" % keys3.size())
+	var base3: Dictionary = _stage(s, "")[0]        # 对照组: 同样的龟, 不带任何装备
+	var want_hp41: float = float(EQS.STATS["p2eq_041"][SI3].get("hp", 0))
+	_ok("★分母: 对照组(不带装备)真的建起来了", not base3.is_empty())
+	_ok("★★041 退潮浊液: maxHp 比对照组【正好多出装备表那一档】(+%.0f)" % want_hp41,
+		absf((float(u3["maxHp"]) - float(base3["maxHp"])) - want_hp41) < 1.0,
+		"带 %.0f - 不带 %.0f = %.0f (表里 %.0f)"
+			% [float(u3["maxHp"]), float(base3["maxHp"]), float(u3["maxHp"]) - float(base3["maxHp"]), want_hp41])
+	## 涨潮是**延时事件**(登场 TIDE_DELAY 秒后), 所以判"排上队了"而不是"已经涨了" ——
+	## 等 tween/延时跑完是 §3.5 明令禁止的做法。
+	var queued41 := false
+	for ps in s._pending_shots:
+		if ps is Dictionary and is_same((ps as Dictionary).get("src", null), u3):
+			queued41 = true
+			break
+	_ok("★★041: 登场就把【涨潮】排进了延时队列(延时 %.0f 秒)" % EquipSystemS.TIDE_DELAY,
+		queued41, "_pending_shots 里有它的条目=%s" % str(queued41))
+
+	## ── 059 沙漏: 龟能充能 +10% ⇒ echarge_perm 应为对照组的 1.1 倍 ──
 	var st4: Array = _stage(s, "p2eq_059")
 	var u4: Dictionary = st4[0]
-	_ok("★059 沙漏: 登场链路没报错且携带者建了账", u4.get("eq_state", {}).has("p2eq_059")
-			or u4.get("eq_state", {}).size() >= 0, "eq_state=%s" % str(u4.get("eq_state", {})))
+	var base4: Dictionary = _stage(s, "")[0]
+	var pct59: float = float(EQS.STATS["p2eq_059"][SI3].get("_echargePct", 0.0))
+	_ok("★★059 沙漏: 龟能充能倍率比对照组【正好高 %d%%】" % int(pct59),
+		absf(float(u4.get("echarge_perm", 1.0)) - (float(base4.get("echarge_perm", 1.0)) + pct59 / 100.0)) < 0.001,
+		"带 %.3f / 不带 %.3f (表里 +%d%%)"
+			% [float(u4.get("echarge_perm", 1.0)), float(base4.get("echarge_perm", 1.0)), int(pct59)])
+	## 主动那半边: 时停系统靠 `_unit_hourglass_star` 认出携带者 —— 认不出就永远不会触发。
+	_ok("★★059: 时停系统【认得出】这个携带者(星级 %d ≥ 1)"
+		% s._timestop._unit_hourglass_star(u4),
+		s._timestop._unit_hourglass_star(u4) >= 1,
+		"不带的那只 = %d" % s._timestop._unit_hourglass_star(base4))
 
 	# ── 汇总 ────────────────────────────────────────────────────────────────
 	_ok("★★【真入口调不到 / 调了就炸】的装备: %d 件" % dead.size(), dead.is_empty(),

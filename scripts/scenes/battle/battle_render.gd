@@ -106,6 +106,14 @@ func _advance_anim(u: Dictionary, delta: float) -> void:
 #   与 28 龟(billboard + flip_h 两向)隔离: 大师用真4方向(S/E/N/W 各一套帧)。
 #   帧表 trainer-<形象>-{idle(4x1),walk(4x6),throw(4x7)}.png: 行=方向(S0/E1/N2/W3)·列=帧。
 #   方向: 扔石头→朝目标 / 走路→朝移动 / 待机→保持(默认朝敌)。 状态优先级: 扔(一次)>走(循环)>待机(定态)。
+## 海盗朗姆酒·暖色酒气护光(见文件末尾 `_rum_glow`)。
+## RUM_GLOW_SEC 必须与 `PirateSystem.RUM_SEC` 一致 —— 门禁 verify_rum_glow 逐条对账。
+const RUM_GLOW_SEC := 6.0        # 护光时长(秒)
+const RUM_GLOW_COLOR := Color(1.0, 0.72, 0.38)   # 琥珀暖色(与饮酒爆点/环同色系)
+const RUM_GLOW_AMT := 0.55       # 最亮时往暖色靠多少(1.0 = 完全变成暖色, 那样就看不清龟了)
+const RUM_GLOW_FADE := 0.30      # 最后这一段比例才开始收(前 70% 满亮·防淡出病)
+const RUM_GLOW_PULSE := 0.08     # 脉动幅度
+
 const _TRAINER_ROW := {"south": 0, "east": 1, "north": 2, "west": 3}
 const _TRAINER_ANIM_DIR := "res://assets/sprites/trainer/anim/"
 var _trainer_sheet_cache: Dictionary = {}
@@ -385,6 +393,7 @@ func _update_world_transforms() -> void:
 		#   原来写死 Color.WHITE, 任何效果直接改 spr.modulate 都会被这行每帧盖掉(066 踩的)。
 		var fl: float = clampf(u.get("flash_t", 0.0) / battle.JUICE_FLASH_SEC, 0.0, 1.0)
 		var _base_tint: Color = u.get("_body_tint", Color.WHITE)
+		_base_tint = _rum_glow(u, _base_tint)
 		spr.modulate = _base_tint.lerp(u.get("flash_col", battle.JUICE_FLASH_COLOR), fl)
 		if str(u.get("id","")) == "ghost" and battle._t < float(u.get("phase_until", 0.0)):   # 虚化态本体(用户2026-07-11): 半透明+忽隐忽现幽紫 + 残影拖尾
 			spr.modulate = Color(0.78, 0.62, 1.0, 0.34 + 0.14 * sin(battle._t * 9.0))
@@ -512,3 +521,26 @@ func _render_skill_text(tpl: String, u: Dictionary, sk: Dictionary) -> String:
 ##
 ## ★核心 7 项恒显示; 其余"有值才显示"(0 的不占位, 免得面板一片 0)。
 ## ★不要用 emoji 当图标 —— 本项目已「全去emoji(根治绿块+跨平台一致)」, 没图标就留空占位。
+
+
+## 海盗·朗姆酒的【暖色酒气护光】。
+##
+## ★2026-08-26 之前这个效果**根本不存在**: `pirate_system.gd:60` 写了 `rum_glow_until`,
+##   而全仓**零处读它** —— 一个写了没人消费的标记(memory [[fb-write-without-reader-and-fake-gates]])。
+##   两处评审台注释却都写着"看到暖色酒气护光", 于是"看不见"会被当成配置没配对, 而不是效果没做。
+##
+## ★接法: **渲染层直接读那个旗子**, 不新开状态、不写 `_body_tint`。
+##   这样就没有"谁负责清掉"的问题 —— 时间一到自然就没了, 也不会在换路/死亡时残留。
+##   (`_body_tint` 那条通道留给需要跨帧累积的效果, 比如喝药金红体光。)
+##
+## ★不做"一出生就线性淡出"(memory [[fb-vfx-defect-families]] 的淡出病):
+##   前 70% 满亮、后 30% 才收 —— 否则 6 秒的效果实拍出来是一路发灰。
+func _rum_glow(u: Dictionary, base: Color) -> Color:
+	var until: float = float(u.get("rum_glow_until", 0.0))
+	if battle._t >= until:
+		return base
+	var left: float = until - battle._t
+	var k: float = clampf(left / (RUM_GLOW_SEC * RUM_GLOW_FADE), 0.0, 1.0)   # 只在最后 30% 里收
+	## 轻微脉动 —— 酒气是"暖"不是"闪", 幅度压到 8%, 别做成告警灯。
+	var puls: float = 1.0 + RUM_GLOW_PULSE * sin(battle._t * 4.0)
+	return base.lerp(RUM_GLOW_COLOR, clampf(RUM_GLOW_AMT * k * puls, 0.0, 1.0))

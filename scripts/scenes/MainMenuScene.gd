@@ -4,6 +4,13 @@ extends Control
 ## 设计台 1280×720. 标题menu-title图@(240,130) / 左栏btn-frame按钮(360×87)中心x=240 /
 ## 右墙 frame-coin龟币框 + 4个frame-square磁贴(图鉴/教程/排行榜/战绩, 仅图标).
 
+## 商店按钮的文字。★它同时是【商店锁的判别式】(下面 `str(s[0]) == SHOP_LABEL`) ——
+##   所以必须是一个常量, 不能两处各写一遍字面量: 改了按钮名字而漏改判别式,
+##   锁会【静默失效】(没打过第一场的玩家直接进得去商店), 不报错、没人看得出来。
+##   同一形状 2026-08-26 在 `Backend._is_self_ghost` 上踩过一次真的, 那次的代价是
+##   "接上服务器后永远匹配不到别人"。
+const SHOP_LABEL := "商店"
+
 const W := 1280
 const H := 720
 const LEFT_CX := 240        # LEFT_PAD60 + BTN_W360/2
@@ -221,7 +228,7 @@ func _build_page_buttons() -> void:
 	var mic := "res://assets/sprites/menu/"
 	var subs: Array = [
 		["背包", func(): _go("Inventory"), mic + "ic-bag.png"],
-		["商店", func(): _open_shop(), mic + "ic-shop.png"],
+		[SHOP_LABEL, func(): _open_shop(), mic + "ic-shop.png"],
 		["图鉴", func(): _go("Codex"), mic + "ic-codex.png"],
 		["排行榜", func(): _go("Leaderboard"), mic + "ic-trophy.png"],
 	]
@@ -231,7 +238,7 @@ func _build_page_buttons() -> void:
 		var r := i / 2                                       # 行 0,0,1,1
 		var c := i % 2                                       # 列 0,1,0,1
 		var center := Vector2(LEFT_CX - col_dx + float(c) * (gsz.x + gap_x), grid_cy0 + float(r) * (gsz.y + gap_y))
-		var locked := (str(s[0]) == "商店") and shop_locked   # 商店锁 → 灰显+🔒角标, 但仍可点→toast提示为啥锁
+		var locked := (str(s[0]) == SHOP_LABEL) and shop_locked   # 商店锁 → 灰显+🔒角标, 但仍可点→toast提示为啥锁
 		var b := _frame_button(s[0], s[1], false, gsz, FONT_BTN, str(s[2]), locked)
 		b.position = center - gsz / 2.0
 		page_box.add_child(b)
