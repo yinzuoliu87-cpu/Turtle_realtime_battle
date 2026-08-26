@@ -67,6 +67,9 @@ frames_for () {
     #   等的是 sim 时钟 `_t`, 而无头下每帧 dt 很小 ⇒ 3.6 秒 sim 时间要跑上万帧。
     #   ★帧不够会在半路被掐断 = 没打 ALL PASS, 看着像断言失败(CLAUDE.md §2 那个坑)。
     verify_equip_balance_20260730d) echo 30000 ;;
+    # PK 条三事件: 建一次战斗场 + 18 条【同步】断言(直调 _pk_refresh, 不等任何演出),
+    #   但建场本身就吃几百帧。
+    verify_pk_bar_continuity) echo 3000 ;;
     verify_pirate_hook)  echo 8000 ;;
     # 十件法器逐件验主动: 每件都要跑【对照组 90 帧 + 正式 90 帧】并等真实帧
     #   (023 走 await 协程, 纯同步 _sim_step 推不动它)⇒ 10 × 180 帧起步。
