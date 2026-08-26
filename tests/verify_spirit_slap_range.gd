@@ -190,6 +190,32 @@ func _ready() -> void:
 		absf(warn_len - dmg_len) <= 25.0,
 		"差了 %.0f 码。打得到却不画 = 骗玩家; 画了打不到 = 白吓唬" % absf(warn_len - dmg_len))
 
+	# ── ⑥ ★预警带【敌我异色】（用户 2026-08-20:「蓝色…如果对方则红色」）──
+	# ★此前只有人工验收场景 `demo_spirit_warn.tscn` 覆盖它, `verify_*` 里
+	#   `warn_color_of` 出现 **0 次** ⇒ 改坏了没有任何自动门禁会红。
+	# ★判据照抄那个 demo 里已经想清楚的那条: **从建好的网格读顶点色**,
+	#   不回读 `WARN_COL_ALLY` 常量 —— 回读常量只能证明"我写了个蓝常量",
+	#   证明不了屏幕上那条是蓝的。
+	tv.ensure_forced("right", 1)
+	await get_tree().process_frame
+	var tr0 = tv._tents.get("right|0", null)
+	if tr0 != null:
+		tr0["aim"] = origin + Vector2(-200.0, 0.0)
+		tv._telegraph_tick(tr0, 1.0)
+		await get_tree().process_frame
+	var cl: Color = tv.warn_color_of("left", 0)
+	var cr: Color = tv.warn_color_of("right", 0)
+	_ok("⑥ ★分母: 两侧预警带都建出来了(alpha > 0)", cl.a > 0.001 and cr.a > 0.001,
+		"左 a=%.2f 右 a=%.2f" % [cl.a, cr.a])
+	_ok("⑥ 我方(左)预警带偏【蓝】(b %.2f > r %.2f)" % [cl.b, cl.r], cl.b > cl.r + 0.2,
+		"r%.2f g%.2f b%.2f" % [cl.r, cl.g, cl.b])
+	_ok("⑥ 敌方(右)预警带偏【红】(r %.2f > b %.2f)" % [cr.r, cr.b], cr.r > cr.b + 0.2,
+		"r%.2f g%.2f b%.2f" % [cr.r, cr.g, cr.b])
+	## ★★这一条才是"异色"本身: 上面两条各自成立、但如果哪天两边被写成同一个色,
+	##   它们仍可能同时为真(比如都偏蓝时第二条红的会红)——留这条把"必须不同"钉死。
+	_ok("⑥ ★★两侧颜色确实【不一样】(色差 %.2f)" % (absf(cl.r - cr.r) + absf(cl.b - cr.b)),
+		absf(cl.r - cr.r) + absf(cl.b - cr.b) > 0.5)
+
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 灵物拍击命中带" if _fail == 0 else "FAIL x%d" % _fail)
