@@ -28,6 +28,7 @@ const WANT_FORTRESS_CAP := 25
 const WANT_WORM_HP := [100.0, 1500.0, 10000.0]
 const WANT_WORM_ATK := [50.0, 80.0, 200.0]
 const WANT_DART_EVERY := 5                               # ★验计数是 5 不是 4/6
+const WANT_DART_ASPD := [0.40, 0.80, 1.50]               # 40/80/150% 攻速(加算进 aspd_perm)
 const WANT_CONCH_EQUIPS := 3
 const WANT_CONCH_COSTS := [4, 5]
 
@@ -92,8 +93,8 @@ func _ready() -> void:
 	await get_tree().process_frame
 	print("")
 	print("  (共 %d 条断言)" % _n)
-	if _n < 20:
-		print("  [FAIL] ★分母: 断言只有 %d 条(<20) —— 有用例没跑到" % _n)
+	if _n < 24:
+		print("  [FAIL] ★分母: 断言只有 %d 条(<24) —— 有用例没跑到" % _n)
 		_fail += 1
 	print("ALL PASS — 20260730d 缺门禁补齐" if _fail == 0 else "FAIL x%d — 20260730d 缺门禁补齐" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
@@ -268,3 +269,16 @@ func _t_dart_every() -> void:
 		_s._equip_sys._eq_on_hit(u, foe, 10, true)
 	_ok("★④ 再打 %d 下 ⇒ 累计击飞 2 次(周期是稳定的, 不是只触发一次)" % WANT_DART_EVERY,
 		int(foe.get("_dart_kb_n", 0)) == 2, "实得 %d" % int(foe.get("_dart_kb_n", 0)))
+
+	## ★★飞镖的「40/80/150% 攻速」——【我第一版把它当成"过期需求"漏掉了】。
+	##   查 `equip_stats.gd`(属性表)里 056 只有 atk, 就断定"这件没有攻速项"。
+	##   真值在 `equip_stats_apply.gd` 的逐件落地钩里: `aspd_perm += [0.40,0.80,1.50][si]`。
+	##   ⇒ **只查一处就断定"不存在"** 是今晚第三次同形状(088 未决点 / 温泉蛋不在间隔表)。
+	##   走真入口 `_eq_apply_one_stats`, 量的是产品自己的 `aspd_perm`。
+	for si in range(3):
+		var w := _mk("left", -260.0)
+		var base: float = float(w.get("aspd_perm", 1.0))
+		_s._equip_sys._stats._eq_apply_one_stats(w, "p2eq_056", si + 1)
+		var got: float = float(w.get("aspd_perm", 1.0)) - base
+		_ok("★④ si=%d 飞镖给 +%d%% 攻速(加算进 aspd_perm)" % [si, int(WANT_DART_ASPD[si] * 100.0)],
+			absf(got - float(WANT_DART_ASPD[si])) < 0.0001, "实得 +%.4f" % got)

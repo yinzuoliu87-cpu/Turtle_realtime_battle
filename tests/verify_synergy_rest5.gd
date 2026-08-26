@@ -323,6 +323,26 @@ func _ready() -> void:
 	_ok("★每根触手各自一份(第1根也拿到 8 层)",
 		_s._spirit_syn.stack_of("left", 1) == 8,
 		"第1根 %d 层" % _s._spirit_syn.stack_of("left", 1))
+	## ★★【每 SLAP_PERIOD 秒 +1 层】—— 2026-08-25 补。
+	##   此前只有 `demo_spirit_stacks.tscn`(人工验收场景) 与
+	##   `verify_tentacle_hit_timing:220`(打不着时不许扣层) 覆盖到它的**一半**,
+	##   "每 5 秒真的 +1" 这条**没有任何自动断言**。
+	##   走真入口 `tick(delta)`(主循环每帧调的就是它), 量的是产品自己的层数账。
+	_s._spirit_syn._stacks.clear()
+	_s._spirit_syn._t_slap = 0.0
+	var per: float = _s._spirit_syn.SLAP_PERIOD
+	_s._spirit_syn.tick(per * 0.9)                     # 差一点点 —— 不该给
+	var sp_g0: int = _s._spirit_syn.stack_of("left", 0)
+	_s._spirit_syn.tick(per * 0.2)                     # 越过整周期 —— 该 +1
+	var sp_g1: int = _s._spirit_syn.stack_of("left", 0)
+	_ok("★【产层】%.0f 秒差一点点时【还没】+层(证明周期是 %.0f 不是更短)" % [per, per],
+		sp_g0 == 0, "实得 %d 层" % sp_g0)
+	_ok("★【产层】越过 %.0f 秒 → 正好 +1 层" % per, sp_g1 == 1, "实得 %d 层" % sp_g1)
+	_s._spirit_syn.tick(per + 0.01)
+	_ok("★【产层】再过一个周期 → 2 层(周期稳定, 不是只给一次)",
+		_s._spirit_syn.stack_of("left", 0) == 2,
+		"实得 %d 层" % _s._spirit_syn.stack_of("left", 0))
+
 	# 档1(2 件) 闪避不给层
 	var s3 := _run([_mk("left", sp.slice(0, 2)), _mk("right", [])])
 	_s._spirit_syn._stacks.clear()
