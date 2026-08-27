@@ -26,7 +26,9 @@ try:
 except Exception:
     pass
 
-JS = 'server/cloudbase/index.js'
+## ★常量已从 index.js 移到【两个宿主共用的】rules.mjs(2026-08-27 加 Deno 版时抽的)。
+## 对账对的是这一份 ⇒ 两个服务端不可能各漂各的。
+JS = 'server/rules.mjs'
 WL = 'server/cloudbase/whitelist.json'
 
 # JS 常量名 → (GDScript 文件, 常量名)
@@ -48,7 +50,8 @@ def gd_const(path, name):
 
 
 def js_const(s, name):
-    m = re.search(r'^const %s\s*=\s*(-?\d+)' % re.escape(name), s, re.M)
+    ## rules.mjs 里是 `export const X = N`
+    m = re.search(r'^export const %s\s*=\s*(-?\d+)' % re.escape(name), s, re.M)
     return int(m.group(1)) if m else None
 
 
