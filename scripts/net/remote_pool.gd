@@ -23,6 +23,10 @@ const _ES = preload("res://scripts/gamedata/equip_stats.gd")
 
 ## 服务端地址。**空 = 本层整体停用**(当前就是空 —— 服务端还没开, 见方案书 §未决点)。
 ## 配置方式: ProjectSettings `turtle/backend_url`, 或环境变量 `TURTLE_BACKEND` (调试用)。
+## 冒烟测试快照的 ghost_id 前缀 —— 见 snapshot_valid() 里那条拒绝规则。
+## 必须与 `tools/backend_smoke.py` 的 GID 前缀一致。
+const SMOKE_PREFIX := "__smoke__"
+
 const SETTING_KEY := "turtle/backend_url"
 const ENV_KEY := "TURTLE_BACKEND"
 
@@ -49,8 +53,15 @@ static func snapshot_valid(snap) -> Dictionary:
 	var d: Dictionary = snap
 	if int(d.get("schema_ver", 0)) != Backend.SCHEMA_VER:
 		return {"ok": false, "reason": "schema_ver=%s ≠ %d" % [str(d.get("schema_ver", "缺")), Backend.SCHEMA_VER]}
-	if str(d.get("ghost_id", "")) == "":
+	var gid := str(d.get("ghost_id", ""))
+	if gid == "":
 		return {"ok": false, "reason": "缺 ghost_id"}
+	## ★冒烟测试(`tools/backend_smoke.py`)会往【真的生产池】里传一条快照来验 V2 往返,
+	##   而它验完是删不掉的(服务端故意没有公开的删除接口)。
+	##   ⇒ 客户端认这个前缀并**拒绝入池**: 测试数据永远不会变成谁的对手。
+	##   放在客户端而不是服务端: 服务端一旦拒收, V2「传上去能拉回来」就没法验了。
+	if gid.begins_with(SMOKE_PREFIX):
+		return {"ok": false, "reason": "冒烟测试数据(%s…), 不入池" % SMOKE_PREFIX}
 	var br := int(d.get("bracket", -1))
 	if br < 0 or br > 8:
 		return {"ok": false, "reason": "bracket=%d 越界" % br}
@@ -173,6 +184,16 @@ func _bye() -> void:
 func _http(method: String, url: String, body: String, cb: Callable) -> void:
 	if _transport.is_valid():
 		_transport.call(method, url, body, cb)
+		return
+	## ★★宿主节点不在场景树上就【不许发】—— HTTPRequest 必须在树里才能工作。
+	##   会走到这里是因为: 调用方可能在场景正在建树/正在拆的时刻触发上传或拉取,
+	##   此时 `add_child` 被推迟, 而 `request()` 立刻就调 ⇒ 引擎刷
+	##   `Condition "!is_inside_tree()" is true` 报错(实测 verify_match_seed 一次三条)。
+	##   网络层的第一原则是**永远不能把游戏搞坏**, 所以这里当成一次普通失败静默处理。
+	if not is_inside_tree():
+		if cb.is_valid():
+			cb.call({"ok": false, "code": 0, "body": ""})
+		_bye()
 		return
 	var req := HTTPRequest.new()
 	req.timeout = TIMEOUT_SEC

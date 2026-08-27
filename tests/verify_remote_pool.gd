@@ -142,8 +142,29 @@ func _ready() -> void:
 		Backend.pool_find(poolO, 3, [], RandomNumberGenerator.new()) == null)
 
 	# ────────── V1 / V5: 断网 ──────────
-	_ok("★分母: 当前【未配置后端】⇒ 本层停用, 行为与接网前相同",
+	## ★★2026-08-27 起 `project.godot` 里【真的填了地址】(Deno Deploy 已部署),
+	##   所以这条不能再断言"未配置"。要守的东西变了 ——
+	##   守的是【空 URL 时整层停用】这条硬保证本身, 而不是"现在恰好是空的"。
+	##   ⇒ 用环境变量临时清空来验它。(env 优先级高于 ProjectSettings, 见 base_url()。)
+	## ⚠ 要**删掉**环境变量而不是设成空串: `base_url()` 用 `has_environment` 判优先级,
+	##   设成空串 = "env 里配了个空地址" ⇒ 仍然走 env 那条, 回不到 ProjectSettings。
+	##   (顺带记下这个行为: 环境里若残留一个空的 TURTLE_BACKEND, 会**静默停用整层**。
+	##    这是有意的 —— 空地址就该停用 —— 但排查时值得第一个想到。)
+	OS.set_environment(RemotePool.ENV_KEY, " ")     # 空白串 = 停用
+	_ok("★★分母: 【URL 为空时整层停用】—— 这条保证在, 断网/没配后端才不会退化",
 		not RemotePool.enabled(), "base_url=[%s]" % RemotePool.base_url())
+	OS.unset_environment(RemotePool.ENV_KEY)
+	## 反过来: 配置里那个真地址必须让它启用, 否则出包了也是死的。
+	_ok("★★分母: 配置里的地址【真的让本层启用了】(不是填了个假的)",
+		RemotePool.enabled() and RemotePool.base_url().begins_with("http"),
+		"base_url=[%s]" % RemotePool.base_url())
+
+	## ★冒烟测试数据不许入池 —— 它躺在【真的生产池】里, 客户端认前缀挡住。
+	var smoke := _good()
+	smoke["ghost_id"] = RemotePool.SMOKE_PREFIX + "A"
+	_ok("★★冒烟测试快照(%s…)被拒, 永远不会变成谁的对手" % RemotePool.SMOKE_PREFIX,
+		not bool(RemotePool.snapshot_valid(smoke)["ok"]),
+		str(RemotePool.snapshot_valid(smoke)["reason"]))
 
 	## 真装上一个**打不通**的地址, 走真 HTTPRequest。
 	OS.set_environment(RemotePool.ENV_KEY, DEAD_URL)
@@ -182,8 +203,12 @@ func _ready() -> void:
 	_ok("★★V5 失败不影响【本地池文件】(逐字节比对)", _read(Backend.POOL_PATH) == pool_before)
 
 	## ★收尾还原: 不许把环境变量留给同进程后面的用例(CLAUDE.md 测试纪律)。
-	OS.set_environment(RemotePool.ENV_KEY, "")
-	_ok("★收尾: 环境变量已还原, 本层回到停用", not RemotePool.enabled())
+	## ★收尾还原: 删掉环境变量, 让本层回到【配置文件里那个真地址】。
+	##   不能设成空串 —— 那会把本层停用状态留给同进程后面的用例。
+	OS.unset_environment(RemotePool.ENV_KEY)
+	_ok("★收尾: 环境变量已删除, 本层回到配置里的真地址",
+		RemotePool.enabled() and RemotePool.base_url().begins_with("http"),
+		"base_url=[%s]" % RemotePool.base_url())
 	rp.queue_free()
 	_done()
 
@@ -198,8 +223,8 @@ func _read(p: String) -> String:
 func _done() -> void:
 	print("")
 	print("  (共 %d 条断言)" % _n)
-	if _n < 20:
-		print("  [FAIL] ★分母: 断言只有 %d 条(<20) —— 有用例没跑到" % _n)
+	if _n < 23:
+		print("  [FAIL] ★分母: 断言只有 %d 条(<23) —— 有用例没跑到" % _n)
 		_fail += 1
 	print("ALL PASS — 阵容上传后端客户端层" if _fail == 0 else "FAIL x%d — 阵容上传后端客户端层" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

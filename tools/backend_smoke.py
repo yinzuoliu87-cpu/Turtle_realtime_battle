@@ -42,12 +42,19 @@ n_check = 0
 _NOPROXY = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
+## ★★默认【一律绕开代理】, 不只是本机地址(2026-08-27 改)。
+##   起因: 打真实云地址时也会走系统代理, 而这台机器上那个代理**会改写 POST 的 body** ——
+##   于是服务端把所有快照(包括合法的)判成非法, 而报文长得像"服务端逻辑坏了"。
+##   本工具是【验收器】: 它要量的是**服务端按不按规则办事**, 不是"你的代理链路通不通"。
+##   中间多一个会改写请求的东西, 量到的就不是服务端了。
+##   ⇒ 真需要经代理才能出网的环境, 显式设 `USE_PROXY=1`。
+_WANT_PROXY = os.environ.get('USE_PROXY', '') == '1'
+
+
 def _open(req_or_url, base):
-    from urllib.parse import urlparse
-    host = urlparse(base).hostname or ''
-    if host in ('127.0.0.1', 'localhost', '::1'):
-        return _NOPROXY.open(req_or_url, timeout=TIMEOUT)
-    return urllib.request.urlopen(req_or_url, timeout=TIMEOUT)
+    if _WANT_PROXY:
+        return urllib.request.urlopen(req_or_url, timeout=TIMEOUT)
+    return _NOPROXY.open(req_or_url, timeout=TIMEOUT)
 
 
 def post(base, path, obj):
@@ -133,6 +140,8 @@ def main():
     GID = '__smoke__A'
 
     print('=== 阵容后端真机冒烟 · %s ===' % base)
+    print('  (%s系统代理; 设 USE_PROXY=1 可改为走代理)'
+          % ('走' if _WANT_PROXY else '绕开'))
     print('')
 
     # ── 分母 0: 服务端活着 ──────────────────────────────

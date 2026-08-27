@@ -240,7 +240,15 @@ JOBS="${JOBS:-2}"
 run_one () {  # $1 = 测试名
   local t="$1"
   [ -f "$DIR/tests/$t.tscn" ] || return 0
-  "$GODOT" --headless --path "$DIR" "res://tests/$t.tscn" \
+  # ★★门禁进程一律【停用阵容同步层】(2026-08-27)。
+  #   `project.godot` 里现在填着真的后端地址 ⇒ 任何调 `find_opponent` 的测试都会真发一次拉取,
+  #   而拉取成功后会 `save_pool()` **写本地池文件** —— 门禁跑 250 项, 中途改写共享状态
+  #   就是不确定性的来源(这条比"会不会报错"更要紧: 报错看得见, 数据被改看不见)。
+  #   顺带也省掉对生产服务器的无谓请求(免费额度按请求数算)。
+  #   环境变量优先级高于 ProjectSettings(见 remote_pool.base_url), 空白串 = 停用。
+  #   ★专门验这一层的 `verify_remote_pool` 自己 `OS.unset_environment` 打开它,
+  #     所以"配置里的真地址能启用本层"那条断言照样验得到。
+  TURTLE_BACKEND=" " "$GODOT" --headless --path "$DIR" "res://tests/$t.tscn" \
       --quit-after "$(frames_for "$t")" > "$RAW/$t.log" 2>&1
   echo $? > "$RAW/$t.rc"
 }
