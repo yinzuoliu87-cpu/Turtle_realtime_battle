@@ -1,0 +1,9 @@
+{
+  "name": "turtle-ghost-exchange",
+  "version": "1.0.0",
+  "description": "斗龟场·实时版 —— ghost 阵容快照交换所(腾讯云开发云函数)",
+  "main": "index.js",
+  "dependencies": {
+    "@cloudbase/node-sdk": "^2.9.0"
+  }
+}

@@ -423,6 +423,10 @@ run_audit "tools/docs_authority_lint.py"  "ALL OK" "docs_authority_lint (单一�
 #   服务端读不了 .gd, 只能抄; 而抄的副本落后时是**静默的**: 它会把合法快照判成伪造,
 #   玩家只看到"我的阵容传不上去", 没人会去翻那份 JS。新增一只龟就会踩。
 run_audit "tools/server_rule_sync.py"     "ALL OK" "server_rule_sync (服务端规则↔客户端事实源·常量/白名单)"
+# 服务端云函数的【逻辑】—— 起本地宿主跑真 index.js(SDK 换成内存库), 六类伪造 + V2 往返逐条验。
+#   "没部署"挡住的只是部署, 挡不住逻辑。仍然没验的只剩"云上真部署"(要腾讯云账号+实名)。
+#   没有 node 会 SKIP 但**大声打出来**; CI 的 ubuntu runner 自带 node, 线上必跑。
+run_audit "tools/server_logic_gate.py"    "ALL OK" "server_logic_gate (云函数逻辑·V2往返/V3六类伪造/去重)"
 # 文案【声称的事】↔ 代码【实际做的事】—— 数值之外的三类(触发周期/选靶对象/作用范围)。
 #   由来: 用户 2026-08-19 读一眼就发现「小龟被动的增伤只适用于普通攻击吗」——
 #   文案写「普攻伤害」而代码挂在伤害总闸上(普攻/技能/真伤全覆盖), 而当时 211 项全绿:

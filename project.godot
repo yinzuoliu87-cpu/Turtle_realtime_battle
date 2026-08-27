@@ -49,6 +49,14 @@ window/handheld/orientation="sensor_landscape"
 common/default_scroll_deadzone=18
 theme/custom="res://assets/themes/default_theme.tres"
 
+[turtle]
+
+; 阵容交换所的服务端地址(方案书 docs/plans/20260820-阵容上传后端.md)。
+; **空 = 整层停用**, 游戏行为与接网络前逐字节相同 —— 这是"离线不退化"那条硬指标的开关。
+; 填法: 腾讯云开发 HTTP 访问服务给的 https://<环境>.service.tcloudbase.com/<路径>
+; 也可以用环境变量 TURTLE_BACKEND 临时覆盖(调试/门禁用), 见 scripts/net/remote_pool.gd。
+backend_url=""
+
 [rendering]
 
 textures/canvas_textures/default_texture_filter=0
