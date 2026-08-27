@@ -142,6 +142,26 @@ var _transport: Callable = Callable()
 ## 请求回来就自我销毁(给 push_async / pull_async 用的一次性实例)。
 var _autofree := false
 
+## ★★上传成功的【一次性回执】—— 结算屏拿它显示「阵容已上传」(用户 2026-08-27 要的正反馈)。
+##
+## ★只在【成功】时置位, 失败什么都不做 —— 这是这条反馈的全部设计:
+##   成功了才吱一声, 失败时玩家的体验与"这个功能不存在"完全一样。
+##   做成常驻的"在线/离线"状态灯是**反的**: 根本不存在两种模式(只有一个对手池,
+##   联网时更丰富), 一个"离线"角标等于告诉玩家"你是残缺状态, 去修" ——
+##   而服务器在海外, 国内玩家多半修不了 ⇒ 制造焦虑但给不出行动。
+##
+## ★用静态 bool 而不是静态持 Node/信号: 静态引用 Node 会在场景释放后变野指针
+##   (memory [[fb-write-without-reader-and-fake-gates]] 同族)。消费方自己轮询、自己取走。
+static var _upload_flash := false
+
+
+## 取走"上传成功"这面小旗(取一次就没了, 所以不会重复弹)。
+static func consume_upload_flash() -> bool:
+	if not _upload_flash:
+		return false
+	_upload_flash = false
+	return true
+
 
 ## 挂到场景树根上跑一次请求, 完成后自己走。
 ##
@@ -226,7 +246,9 @@ func upload(snapshot: Dictionary) -> void:
 		return
 	_http("POST", base_url().rstrip("/") + "/ghost", JSON.stringify(snapshot),
 		func(r: Dictionary) -> void:
-			if not bool(r.get("ok", false)):
+			if bool(r.get("ok", false)):
+				_upload_flash = true      # 结算屏会取走它显示「阵容已上传」
+			else:
 				print("[RemotePool] 上传失败(code=%d), 忽略 —— 本地池不受影响" % int(r.get("code", 0)))
 			_bye()
 	)

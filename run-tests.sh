@@ -51,6 +51,9 @@ frames_for () {
     #   实测 791 帧才回调 —— 网络回调走的是 HTTPRequest 自己的轮询, 与游戏帧率无关,
     #   帧给少了就是"等不到回调 → 循环没退出 → 没打 ALL PASS", 看着像断言失败(CLAUDE.md §2 那个坑)。
     verify_remote_pool)       echo 4000 ;;
+    # 结算屏上传正反馈: ②等轮询回执(0.4 秒一拍·墙钟 3 秒)、④真发一次到不可达地址等回调(最多 900 帧)。
+    #   默认 500 帧会在半路被掐断 —— 表现是 rc=0/致命 0 但**没打 ALL PASS**, 极像断言失败。
+    verify_upload_flash)      echo 4000 ;;
     verify_click_targets_alive) echo 12000 ;;
     verify_info_panel_fits)   echo 20000 ;;
     verify_mainmenu_layout)   echo 6000 ;;

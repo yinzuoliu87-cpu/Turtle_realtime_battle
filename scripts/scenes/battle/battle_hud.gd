@@ -1,6 +1,13 @@
 class_name BattleHud
 extends RefCounted
 
+const RemotePoolS = preload("res://scripts/net/remote_pool.gd")
+
+## 结算屏等"阵容已上传"回执的轮询节奏。总等待 = 0.4 × 20 = 8 秒,
+## 比 RemotePool.TIMEOUT_SEC(6 秒) 略长 —— 请求要么在这之前回来, 要么已经放弃了。
+const UPLOAD_FLASH_POLL := 0.4
+const UPLOAD_FLASH_TRIES := 20
+
 const _P2T_HUD := preload("res://scripts/gamedata/phase2_types.gd")   # 羁绊 chips 的 emoji
 ## 战斗HUD/面板构建与显示: UI层/暂停/日志/统计/编辑笔刷/队伍头像框/胜负横幅/点龟详情面板/触控盘·纯UI
 ## 类内名不变;外部名加 battle.
@@ -1313,7 +1320,16 @@ func _show_banner(won: bool) -> void:
 	card.add_child(sub)
 	_banner_fade_in(sub, 0.26)
 
+	# ── ②b 阵容上传成功的【一次性正反馈】(用户 2026-08-27:「正反馈可以」)
+	#   只在成功时出现; 失败/断网什么都不显示 —— 玩家的体验与"没有这个功能"一模一样。
+	#   ★为什么要轮询而不是直接判: 上传是异步的, 响应往往【晚于结算屏建好】才回来。
+	#   ★为什么用 Timer 【子节点】而不是 `get_tree().create_timer()`:
+	#     后者是 SceneTreeTimer, **本场景释放了它照样会响**, 接闭包就是野捕获
+	#     (tools/tree_timer_audit.py 专门管这条)。挂成子节点则随场景一起没。
+	_attach_upload_flash(card)
+
 	# ── ③ 战果比分(双路才有)
+
 	if battle._is_dual_lane_mode() and gs != null and gs.get("lane_results") is Dictionary and not (gs.get("lane_results") as Dictionary).is_empty():
 		var score = Label.new()
 		score.text = battle._dl_sys._dl_record_line()
@@ -2352,3 +2368,36 @@ func sweep_ui_vfx() -> int:
 			(n as Node).queue_free()
 			freed += 1
 	return freed
+
+
+## 结算屏上「阵容已上传」那一行 —— 挂一个自轮询的隐藏 Label。
+## 取到旗子就显示、然后把计时器停掉(旗子是一次性的, 见 RemotePool.consume_upload_flash)。
+func _attach_upload_flash(card: Control) -> void:
+	var lb := Label.new()
+	lb.text = "阵容已上传 · 别人可能会打到你"
+	lb.add_theme_font_size_override("font_size", 14)
+	lb.add_theme_color_override("font_color", Color("#7fd8a0"))
+	lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lb.visible = false
+	card.add_child(lb)
+
+	var t := Timer.new()
+	t.wait_time = UPLOAD_FLASH_POLL
+	t.autostart = true
+	lb.add_child(t)                       # ★挂在 Label 上 ⇒ 场景没了它跟着没
+	t.timeout.connect(_upload_flash_tick.bind(lb, t))
+
+
+## 每 UPLOAD_FLASH_POLL 秒问一次"传成功了吗"。★上限 UPLOAD_FLASH_TRIES 次就收摊 ——
+## 没有上限的话, 一个一直连不上的玩家会让这个计时器空转到结算屏关掉为止。
+func _upload_flash_tick(lb: Label, t: Timer) -> void:
+	if not is_instance_valid(lb) or not is_instance_valid(t):
+		return
+	t.set_meta("n", int(t.get_meta("n", 0)) + 1)
+	if RemotePoolS.consume_upload_flash():
+		lb.visible = true
+		_banner_fade_in(lb, 0.24)
+		t.stop()
+		return
+	if int(t.get_meta("n", 0)) >= UPLOAD_FLASH_TRIES:
+		t.stop()                          # 没等到就安静收摊, 不显示任何东西
