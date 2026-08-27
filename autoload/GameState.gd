@@ -21,6 +21,33 @@ var foe_loadouts: Dictionary = {}
 ## 最近匹配过的对手ghost_id(保留3个·防连续遇到同一快照·用户2026-07-15真机纠错); 不落盘
 var recent_ghost_ids: Array = []
 
+## 本机的随机安装标识 —— **首次启动生成一次, 之后永不变**(换赛季/清档都保留, 换机器才换)。
+##
+## ★为什么非有不可(2026-08-27, 接上后端之后暴露的):
+##   `ghost_id` 原本是 `g_<赛季>_<三只龟>`, **完全不带"是谁"**。单机本地池里够用
+##   (池里只有我自己), 变成共享池之后立刻出两个问题:
+##     · **两个玩家用同样三只龟 = 同一个 id** ⇒ 在服务端互相覆盖, 后传的把先传的**抹掉**;
+##       而且拉回来时谁也分不清那份是自己的还是撞了 id 的陌生人。
+##     · 自己那份从服务器绕一圈回来(带 origin=remote), 会把本地 origin=local 那份顶掉
+##       (pool_add 按 ghost_id 去重) ⇒ **打到自己**。
+##   ⇒ 把"谁"这一维补进 id。见 `Backend.player_ghost_id`。
+##
+## ★隐私: 这是【本地生成的随机串】, 不是设备号(IDFV/IDFA), 反查不到人。
+##   但方案书原来写"上传内容零个人信息"—— 准确说法现在是"零个人信息 + 一个随机不透明标识"。
+var install_uid: String = ""
+
+
+## 取本机安装标识, 没有就现生成一个并落盘。
+## ★用 crypto 随机而不是 randi(): 后者受 `TURTLE_SEED` 之类的播种影响,
+##   播了种的两台机器会生成**同一个 uid** —— 那就等于没加这一维。
+func get_install_uid() -> String:
+	if install_uid != "":
+		return install_uid
+	var c := Crypto.new()
+	install_uid = c.generate_random_bytes(6).hex_encode()   # 12 个十六进制字符
+	save()
+	return install_uid
+
 # 训龟大师 装配(局外持久·用户2026-07-26 更正): 形象 + 【全部技能五选一·单个】。主菜单 TrainerConfig 里配, 战斗读。
 # ★设计: {magic_stone(被动), hook, fury_potion, whistle, glacier, hunt_order, tame} 里【只选 1 个】。
 # 选被动=没有主动Q; 选主动=没有被动。(2026-07-28 加了 猎龟令/驯服, 五选一 → 七选一)
@@ -1029,6 +1056,7 @@ func save() -> void:
 		"meta_deepsea_coins": meta_deepsea_coins,
 		"meta_shop_offer": meta_shop_offer,
 		"meta_shop_battles": meta_shop_battles,
+		"install_uid": install_uid,      # 本机随机安装标识(见 get_install_uid 的长注释)
 		"season_id": season_id,
 		"season_start_ts": season_start_ts,
 		"hearts": hearts,
@@ -1094,6 +1122,7 @@ func _load() -> void:
 	meta_deepsea_coins = int(data.get("meta_deepsea_coins", 0))
 	meta_shop_offer = data.get("meta_shop_offer", [])
 	meta_shop_battles = int(data.get("meta_shop_battles", -1))
+	install_uid = str(data.get("install_uid", ""))
 	season_id = int(data.get("season_id", 1))
 	season_start_ts = int(data.get("season_start_ts", 0))
 	hearts = int(data.get("hearts", 8))
@@ -1142,6 +1171,9 @@ func _load() -> void:
 ## 重置所有进度。**不清设置项**(bgm/sfx 音量 · fullscreen · perf_lite) — 那是偏好不是进度。
 ## ⚠ 破坏性: 调用方必须先做二次确认 (SettingsScene 已加确认弹窗)。
 func reset_save() -> void:
+	## ★清档【不清 install_uid】—— 它是"这台机器"不是"这局游戏"。
+	##   清掉的话, 服务器上你之前传的快照就再也认不出是自己的了 ⇒ 打到自己。
+	var _keep_uid := install_uid
 	best_dungeon_stage = 0
 	coins = 0
 	battles_won = 0
@@ -1179,6 +1211,7 @@ func reset_save() -> void:
 
 # ─── V2 赛季 / 命 逻辑 (阶段4核心) ───────────────────────────
 ## 启动时确保赛季已初始化: season_start_ts=0 → 设当前; 已过 5 天 → 滚下一赛季.
+	install_uid = _keep_uid
 func ensure_season() -> void:
 	if season_start_ts == 0:
 		season_start_ts = int(Time.get_unix_time_from_system())

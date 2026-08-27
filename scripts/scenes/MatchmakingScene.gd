@@ -60,7 +60,13 @@ func _ready() -> void:
 	# V2 异步匹配: 后端抽同档对手快照 (ghost/池空→bot 兜底); 战斗右队读 dual_ghost.leaders (RealtimeBattle3DScene._resolve_right).
 	#   排除自己上传的ghost(防匹到自己阵容) + 最近3场对手; vs 卡头像/名取自抽到的对手 profile.
 	var _rng := Backend.make_match_rng()   # 单一受控PRNG(切片1): 默认randomize()与线上一致; TURTLE_SEED设时确定→同种子同对手(测试/复现)
-	var exclude: Array = ["g_%d" % int(GameState.season_id)]   # ★排除自己ghost(按稳定id·2026-07-18): 原塞season_leaders(宠物id)与ghost_id口径不符=死代码防不住; 玩家自己upload的id=g_<大轮id>
+	## ★★这一行 2026-08-27 之前是【死的】: 它塞的是 `"g_3"`, 而真 ghost_id 是
+	##   `"g_3_angel-basic-stone"` —— `pool_find` 用 `exclude_ids.has()` 精确比串, 永远不相等。
+	##   (注释里还写着"原塞 season_leaders 是死代码防不住", 结果这个替代品也是死的:
+	##    2026-08-15 `player_ghost_id` 改了格式, 这边没跟着改。同一个病换了个形状。)
+	##   ⇒ 现在真正挡"自己"的是 `Backend._is_self_ghost`(按 uid 前缀判, 见那里的长注释);
+	##     这里保留精确 id 只是【第二道锁】, 且必须用同一个生成函数算, 不许手拼字符串。
+	var exclude: Array = [Backend.player_ghost_id(int(GameState.season_id), GameState.season_leaders)]
 	exclude.append_array(GameState.recent_ghost_ids)   # 排除最近3场对手(防连续同一快照·用户2026-07-15)
 	GameState.dual_ghost = Backend.find_opponent(Backend.bracket_for_battles(int(GameState.season_total_battles)), exclude, _rng)
 	var _gid := str((GameState.dual_ghost as Dictionary).get("ghost_id", "")) if GameState.dual_ghost is Dictionary else ""

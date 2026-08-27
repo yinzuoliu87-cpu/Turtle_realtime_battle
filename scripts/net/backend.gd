@@ -102,8 +102,21 @@ static func _is_self_ghost(g) -> bool:
 	if not (g is Dictionary):
 		return false
 	var d: Dictionary = g
+	## ★★第一判据: ghost_id 是不是【本机这个赛季】产的。
+	##   这条必须排在 origin 前面 —— 因为自己那份从服务器绕一圈回来时 origin 会被盖成
+	##   `remote`(服务端存的是上传原样, 不带 origin), 而 `pool_add` 按 ghost_id 去重
+	##   会把本地那份 `local` 顶掉 ⇒ **只看 origin 就会打到自己**(2026-08-27 探针实测)。
+	##   id 是确定性的、绕多少圈都不变, 所以它才是可靠的那一维。
+	var gid := str(d.get("ghost_id", ""))
+	var gs = Engine.get_main_loop().root.get_node_or_null("/root/GameState") if Engine.get_main_loop() != null else null
+	if gid != "" and gs != null:
+		var pre := self_season_prefix(int(gs.get("season_id")))
+		if pre != "g_" and gid.begins_with(pre):
+			return true
+	## 第二判据: 本机刚上传、还没绕过服务器的那份。
 	if d.has(ORIGIN_KEY):
 		return str(d[ORIGIN_KEY]) == ORIGIN_LOCAL
+	## 第三判据(老池子兼容): 2026-08-26 前存的没有 origin 字段, 而它们确实全是本机产的。
 	return str((d.get("profile", {}) as Dictionary).get("name", "")) == "玩家阵容"
 
 ## 从池抽一个同档对手 (排除 exclude_ids). 桶空/全排除 → null (调用方 make_bot 兜底).
@@ -373,10 +386,36 @@ static func find_opponent(bracket: int, exclude_ids: Array, rng: RandomNumberGen
 ##     这条是用户 2026-08-15 要「我手打」录入多套阵容时才暴露出来的。
 ## ⇒ 粒度从"一个赛季"细到"一套阵容": 同一套重打仍是同一条(更新, 不堆), 换一套龟就是另一条(并存)。
 ## ★三龟【先排序】再拼 —— 同样三只龟换个上场顺序不该算两套阵容。
+## ★★2026-08-27 加了【uid】这一维: `g_<uid>_<赛季>_<三龟>`。
+##   原来是 `g_<赛季>_<三龟>`, **不带"是谁"** —— 单机本地池够用, 共享池立刻出两个洞:
+##     · 两个玩家用同样三只龟 ⇒ **同一个 id** ⇒ 服务端互相覆盖, 后传的抹掉先传的
+##     · 自己那份从服务器绕回来会顶掉本地那份(pool_add 按 id 去重) ⇒ **打到自己**
+##   (28 只选 3 = 3276 种组合, 人少时不常撞, 但**热门组合会天天撞**, 而且是静默的。)
 static func player_ghost_id(season_id: int, leaders) -> String:
 	var arr: Array = (leaders as Array).slice(0, 3) if leaders is Array else []
 	arr.sort()
-	return "g_%d_%s" % [season_id, "-".join(PackedStringArray(arr))]
+	return "%s%d_%s" % [self_prefix(season_id), season_id, "-".join(PackedStringArray(arr))]
+
+
+## 本机在【某个赛季】产出的所有 ghost_id 的公共前缀 —— `g_<uid>_`。
+##
+## ★用它做前缀匹配就能一次挡住两种"自己":
+##   · 自己当前这套(id 完全相同)
+##   · **自己同赛季换过龟之后的旧阵容**(uid 同、赛季同、三龟不同)
+## ★而【上个赛季的自己】故意不挡 —— 用户 2026-08-27 拍板「先不排除」:
+##   赛季 5 天一轮、切轮全重置, 上赛季的你阵容等级都不一样了, 当对手是合理的;
+##   而且池子越空越不该自己往外剔。
+static func self_prefix(_season_id: int) -> String:
+	var uid := ""
+	var gs = Engine.get_main_loop().root.get_node_or_null("/root/GameState") if Engine.get_main_loop() != null else null
+	if gs != null and gs.has_method("get_install_uid"):
+		uid = str(gs.get_install_uid())
+	return "g_%s_" % uid if uid != "" else "g_"
+
+
+## 本机在【当前赛季】产出的 id 前缀 `g_<uid>_<赛季>_` —— 挡"这个赛季的自己"用。
+static func self_season_prefix(season_id: int) -> String:
+	return "%s%d_" % [self_prefix(season_id), season_id]
 
 
 ## 上传自己阵容快照进池 (玩家配好 build / 赢一场后).
