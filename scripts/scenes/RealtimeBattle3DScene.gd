@@ -5448,15 +5448,14 @@ func _apply_energy_bank(u: Dictionary) -> void:   # 龟能银行用于减冷却(
 	u["energy_bank"] = bank_sec / 0.075   # 剩余溢出留着
 
 # shellCopy 可复制的技 = 纯敌方向伤害技 (数据驱动那批; 排除变身/召唤/自增益, 否则从龟壳放会污染自身状态)
+# ★2026-08-28 清理(移除13个永不执行的普攻位+1幽灵·补小将3技·可抄42→29是改真不是退步): 见 tools/copy_chain_audit.py
 const _COPYABLE_SKILLS := {
-	"basicBarrage": true, "basicChiWave": true, "basicSlam": true, "bambooLeaf": true, "bambooSmack": true, "bambooSpikes": true, "angelEquality": true,
-	"iceSpike": true, "ninjaShuriken": true, "ninjaBomb": true, "twoHeadMagicWave": true,
-	"ghostTouch": true, "ghostPhantom": true, "diamondPowerball": true, "diamondSmash": true, "fortuneStrike": true,
-	"diceAttack": true, "rainbowStorm": true, "gamblerCards": true, "gamblerDraw": true, "gamblerFateWheel": true,
-	"hunterShot": true, "hunterBarrage": true, "candyBarrage": true, "candyHammer": true, "candyBomb": true, "lineSketch": true,
-	"lightningStrike": true, "lightningBarrage": true, "phoenixBurn": true, "phoenixScald": true,
-	"lavaBolt": true, "lavaQuake": true, "lavaErupt": true, "crystalSpike": true, "crystalBurst": true, "crystalBall": true,
-	"chestStorm": true, "starBeam": true, "headlessTendrils": true, "headlessSoulStrike": true, "shellStrike": true, "chestCannon": true,
+	"basicBarrage": true, "basicChiWave": true, "basicSlam": true, "bambooSmack": true, "bambooSpikes": true, "angelEquality": true,
+	"ninjaShuriken": true, "ninjaBomb": true, "ghostPhantom": true, "diamondPowerball": true, "diamondSmash": true, "rainbowStorm": true,
+	"gamblerDraw": true, "gamblerFateWheel": true, "hunterShot": true, "hunterBarrage": true, "candyBarrage": true, "candyHammer": true,
+	"candyBomb": true, "lightningBarrage": true, "phoenixScald": true, "lavaQuake": true, "lavaErupt": true, "crystalBurst": true,
+	"crystalBall": true, "chestStorm": true, "headlessTendrils": true, "headlessSoulStrike": true, "chestCannon": true, "eliteHammer": true,
+	"minionBodysurf": true, "minionRocket": true,
 }
 
 # 逐技独立冷却: 放【冷却好了的、可放的、强度最高的】那个 (大招好了优先放, 小技填空档) — 各技各自节奏.

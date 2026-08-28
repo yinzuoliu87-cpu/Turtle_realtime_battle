@@ -107,6 +107,19 @@ func _ready() -> void:
 	for _i in range(6):
 		await get_tree().process_frame
 
+	## 临时探针: 描述浮层 Box 的【真实内容边距】—— 代码里兜底写 12/12/10/10,
+	## 但九宫格接手后 StyleBoxTexture 的 content_margin 默认取纹理边距。量一下到底是多少。
+	if OS.has_environment("SHOT_BOXPAD"):
+		var _ovp = s._info_panel.get_node_or_null("DetailOverlay")
+		var _bx = null if _ovp == null else _ovp.get_node_or_null("Box")
+		if _bx != null:
+			var _sbx = (_bx as Control).get_theme_stylebox("panel")
+			print("[BOXPAD] 类型=%s  左%.0f 右%.0f 上%.0f 下%.0f" % [_sbx.get_class(),
+				_sbx.get_margin(SIDE_LEFT), _sbx.get_margin(SIDE_RIGHT),
+				_sbx.get_margin(SIDE_TOP), _sbx.get_margin(SIDE_BOTTOM)])
+		else:
+			print("[BOXPAD] 浮层没开")
+
 	if OS.has_environment("SHOT_TEXT"):
 		print("--- 面板里所有可见文本 ---")
 		var q3: Array = [s._info_panel]

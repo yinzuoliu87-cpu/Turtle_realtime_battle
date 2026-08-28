@@ -438,6 +438,11 @@ run_audit "tools/server_rule_sync.py"     "ALL OK" "server_rule_sync (服务端�
 #   "没部署"挡住的只是部署, 挡不住逻辑。仍然没验的只剩"云上真部署"(要腾讯云账号+实名)。
 #   没有 node 会 SKIP 但**大声打出来**; CI 的 ubuntu runner 自带 node, 线上必跑。
 run_audit "tools/server_logic_gate.py"    "ALL OK" "server_logic_gate (云函数逻辑·V2往返/V3六类伪造/去重)"
+# 龟壳「复制」链路的四方对账(pets.json / _do_skill 分派 / _IMPL / 白名单 / 小将技)。
+#   2026-08-28 首跑报出 17 处: 白名单里 13 个**普攻位技能永远不会被执行**(占名额虚报可抄数)、
+#   1 个幽灵条目、3 个小将技漏掉。★判据落在 `_do_skill` 的 **match 块 case 标签**,
+#   不是正则找 `"x": _sk_` —— 后者认不出三元分派, 我为此判错过一次。
+run_audit "tools/copy_chain_audit.py"     "ALL OK" "copy_chain_audit (龟壳复制链路四方一致·可抄数棘轮)"
 # 文案【声称的事】↔ 代码【实际做的事】—— 数值之外的三类(触发周期/选靶对象/作用范围)。
 #   由来: 用户 2026-08-19 读一眼就发现「小龟被动的增伤只适用于普通攻击吗」——
 #   文案写「普攻伤害」而代码挂在伤害总闸上(普攻/技能/真伤全覆盖), 而当时 211 项全绿:
