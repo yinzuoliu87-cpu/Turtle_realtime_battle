@@ -3,6 +3,7 @@ extends RefCounted
 ## 点龟详情面板 + 左右队头像框栏(等级/属性/状态/技能/装备/宝箱)
 ## 类内名不变;外部名加 battle.
 
+const SkillForms = preload("res://scripts/gamedata/skill_forms.gd")
 var battle
 
 ## 装备区那几行【局内读数】的 Label 引用(每帧刷 —— 充能/层数一直在动)。
@@ -1123,8 +1124,10 @@ func _skill_bar_entries(u: Dictionary) -> Array:
 		for t in u.get("active_skills", []):
 			var md = MinionCodex.skill_desc(str(t))
 			if md != null:
+				## ★带上 stype: 小将这条分支 sk 是空字典, 而 _apply_forms 要靠 type 认多形态技
+				##   (精英铁锤就走这条路 —— 它没有 pets.json 技能池)。
 				out.append({"name": str(md["name"]), "cost": battle._skill_cost(u, str(t)), "icon": "",
-					"desc": str(md["desc"]), "tpl": "", "sk": {}})
+					"desc": str(md["desc"]), "tpl": "", "sk": {}, "stype": str(t)})
 	else:
 		for t in battle._chosen_skill_types(id, str(u.get("side", "")) == "left"):
 			for sk in pool:
@@ -1135,7 +1138,40 @@ func _skill_bar_entries(u: Dictionary) -> Array:
 						"desc": battle._render._render_skill_text(stpl, u, sk), "tpl": stpl, "sk": sk,
 						"two_level": _has_two_levels(sk)})
 					break
+	## ★【多形态技能】按当前形态改写名字与图标 —— 见 SkillForms 头注。
+	##   放在最后统一套一次: 上面两条分支(龟走 pool / 小将走 MinionCodex)都要覆盖,
+	##   分头改就变成"同一件事记在两处"(用户 2026-08-28:「我需要根除任何分歧」)。
+	_apply_forms(u, out)
 	return out
+
+
+## 把 entries 里【多形态技能】那几条换成"当前形态"的名字/图标/简述。
+##
+## ★为什么改的是 entries 而不是各分支内部: 两条分支产出的字段一模一样,
+##   在这里统一套 = 只有一处认识形态这件事。以后再加多形态技能, 只改 SkillForms 表。
+func _apply_forms(u: Dictionary, entries: Array) -> void:
+	for e in entries:
+		if not (e is Dictionary):
+			continue
+		var ed: Dictionary = e
+		var sk = ed.get("sk", {})
+		## type 优先从技能字典取; 小将那条分支 sk 是空的, 回落到用名字反查行不通,
+		## 所以小将分支自己把 type 塞进 "stype"(下面那处改动)。
+		var stype := str((sk as Dictionary).get("type", "")) if sk is Dictionary else ""
+		if stype == "":
+			stype = str(ed.get("stype", ""))
+		if stype == "" or not SkillForms.is_multi(stype):
+			continue
+		var f: Dictionary = SkillForms.current_form(u, stype)
+		if f.is_empty():
+			continue
+		ed["name"] = str(f.get("name", ed.get("name", "")))
+		var ip := "res://assets/sprites/" + str(f.get("icon", ""))
+		## ★贴图没导入时 ResourceLoader.exists 是 false —— 保留原图标别换成空白
+		##   (新 PNG 没 .import 文件读不到, 而且一句报错都没有; 同一坑见 _skill_icon_path 头注)。
+		if ResourceLoader.exists(ip):
+			ed["icon"] = ip
+		ed["form_brief"] = str(f.get("brief", ""))
 
 
 ## 把技能栏画出来: 一行一条 + 点行撑开【有边框的描述框】(手风琴, 一次只开一个)。

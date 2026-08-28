@@ -1,5 +1,6 @@
 class_name PirateSystem
 extends RefCounted
+const SkillForms = preload("res://scripts/gamedata/skill_forms.gd")
 ## 海盗龟技能系统
 ## 类内名不变;外部名加 battle.
 
@@ -208,11 +209,18 @@ func _pirate_cannonball(from2d: Vector2, from_h: float, to2d: Vector2, on_land: 
 
 # 海盗船·技能三(封板L379): 首次充能满召唤实体船→冲锋撞目标(第一敌200码1.0A魔法+击飞2秒)→留场; 船=HP1.5×/ATK1.0×/无双抗/攻速0.8射程110(近战·battle_spawn._spawn_pirate_ship_entity)/普攻射最近敌0.4A
 func _sk_pirate_ship(u: Dictionary, tgt) -> void:
-	if not u.get("ship_summoned", false):
-		u["ship_summoned"] = true
-		battle._spawn._spawn_pirate_ship(u, tgt)                          # 首次: 召唤船+冲锋撞
+	## ★"现在是哪一态"【只由 SkillForms 说了算】(2026-08-28) —— 原来这里直接读
+	##   `u["ship_summoned"]`, 而技能栏图标那边也要判同一件事 ⇒ 同一个判据记在两处,
+	##   迟早漂(用户 2026-08-28:「我需要根除任何分歧, 不允许之后再出任何分歧」)。
+	##   顺带这样龟壳复制就能【钉住被偷者当时的形态】, 不看龟壳自己召没召过船。
+	if SkillForms.current_index(u, "pirateShipPassive") == 0:
+		## ★钉住时不改自己的状态 —— 龟壳是"照着放一次", 不该把自己变成召过船的状态。
+		##   (这正是白名单头注说的"从龟壳放会污染自身状态", 这里显式挡掉。)
+		if not SkillForms.is_pinned(u, "pirateShipPassive"):
+			u["ship_summoned"] = true
+		battle._spawn._spawn_pirate_ship(u, tgt)                          # 形态0: 召唤船+冲锋撞
 	else:
-		_pirate_shotgun(u, tgt)                             # 后续: 海盗龟放霰弹
+		_pirate_shotgun(u, tgt)                             # 形态1: 海盗龟放霰弹
 
 # 海盗龟·霰弹(封板L361·选海盗船后续充能满): 朝目标60度扇面喷8颗弹丸·每颗命中方向第一敌0.5A物理+40码击退·射程400
 # 海盗龟·霰弹(封板L361·选海盗船后续充能满): 朝目标60度扇面喷8颗弹丸·每颗命中方向第一敌0.5A物理+40码击退·射程400

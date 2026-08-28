@@ -1,5 +1,6 @@
 class_name ShellSystem
 extends RefCounted
+const SkillForms = preload("res://scripts/gamedata/skill_forms.gd")
 ## 龟壳龟技能系统
 ## 类内名不变;外部名加 battle.
 
@@ -294,11 +295,19 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影�
 #     半径=用户指定(回合制原"对全体敌方"无半径·用户2026-07-11「400码半径」)。放技射程2000码(远程扔·见 _SKILL_CAST_RANGE)。
 func _sk_shell_copy(u: Dictionary, tgt) -> void:               # 龟壳·复制(封板·130龟能): 复制2敌方可用技(_COPYABLE白名单)·轮流依次释放(不同帧糊); 60%效果=伤害(dmg_out_mult)+护盾/治疗/DoT(battle._copy_fx_mult)
 	var pool: Array = []
+	## ★同时记下【这个技能是从谁身上偷的】—— 多形态技能(海盗船/精英铁锤)要按
+	##   **被偷者当时的形态**释放, 而不是按龟壳自己的状态(用户 2026-08-28:
+	##   「龟壳在偷技能就可以看海盗龟当前携带的是第一技能还是第二技能从而释放哪个」)。
+	##   ★存的是【形态下标】不是单位引用 —— 单位字典互相引用成环, 存进别的字典会递归哈希卡死
+	##     (CLAUDE.md §3.2); 而且被偷者可能在 0.6 秒错峰之前就死了。
+	var forms: Dictionary = {}
 	for o in battle._targeting._enemies_of(u):
 		for st in o.get("active_skills", []):
 			var s = str(st)
 			if battle._COPYABLE_SKILLS.has(s) and not pool.has(s):
 				pool.append(s)
+				if SkillForms.is_multi(s):
+					forms[s] = SkillForms.current_index(o, s)
 	pool.shuffle()
 	if pool.size() >= 1:                                       # 2026-07-17镜像签名: 施放前两侧紫白残影错位闪现0.35s+白紫环(复制感)
 		var glow = VfxTex._make_fire_glow_tex()
@@ -318,16 +327,43 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:               # 龟壳·复制(
 		battle._skill_ring(u["pos"], Color(0.85, 0.7, 1.0, 0.6), 52.0)
 		u["dmg_out_mult"] = COPY_EFFECT                                # 60%效果(封板)·即时伤害经_apply_damage_from乘数
 		battle._copy_fx_mult = COPY_EFFECT                                    # 60%效果·护盾/治疗/DoT
-		battle._do_skill(u, tgt, str(pool[0]))                        # 第1个立即
+		var s0: String = str(pool[0])
+		## ★同一个坑的第一发: `_sk_shell_copy(u, tgt)` 的 tgt 无类型标注, 上游可能给 null。
+		var t0 = tgt if (tgt is Dictionary and (tgt as Dictionary).get("alive", false)) else battle._targeting._nearest_enemy(u)
+		if t0 == null:
+			battle._copy_fx_mult = 1.0
+			u["dmg_out_mult"] = 1.0
+			return
+		if forms.has(s0):
+			SkillForms.pin_form(u, s0, int(forms[s0]))            # 按被偷者当时的形态放
+		battle._do_skill(u, t0, s0)                                   # 第1个立即
+		SkillForms.unpin_form(u, s0)                                  # ★成对解钉, 否则形态卡住
 		battle._copy_fx_mult = 1.0
 		u["dmg_out_mult"] = 1.0
 	if pool.size() >= 2:                                       # 第2个错峰0.6s(轮流依次·不同时糊帧)
 		var p1: String = str(pool[1])
 		var uu: Dictionary = u
+		## ★形态下标在【偷的那一刻】就取好了带进闭包 —— 0.6 秒后被偷者可能已经死了
+		##   或者自己又放过一次改了形态; 用户要的是"偷的时候是哪个"。
+		var f1: int = int(forms.get(p1, -1))
 		var fn = func():
 			uu["dmg_out_mult"] = COPY_EFFECT
 			battle._copy_fx_mult = COPY_EFFECT
-			battle._do_skill(uu, battle._targeting._nearest_enemy(uu), p1)
+			## ★★2026-08-28 修一个【一直存在的运行时错】: 这里原本把
+			##   `_nearest_enemy(uu)` 直接塞进 `_do_skill(u, tgt: Dictionary, ...)`,
+			##   而 `_nearest_enemy` **会返回 null**(全场敌人都死了 / 本路已结束)。
+			##   0.6 秒错峰恰好是"第一发刚把最后一个敌人打死"的高发窗口 ⇒
+			##   `Cannot convert argument 2 from Nil to Dictionary`, 第二发静默不放,
+			##   而且 130 龟能已经扣了。表现是"复制有时候只放一个技能", 不报玩家可见的错。
+			var t2 = battle._targeting._nearest_enemy(uu)
+			if t2 == null:
+				battle._copy_fx_mult = 1.0
+				uu["dmg_out_mult"] = 1.0
+				return
+			if f1 >= 0:
+				SkillForms.pin_form(uu, p1, f1)
+			battle._do_skill(uu, t2, p1)
+			SkillForms.unpin_form(uu, p1)
 			battle._copy_fx_mult = 1.0
 			uu["dmg_out_mult"] = 1.0
 		battle._pending_shots.append({"delay": 0.6, "fn": fn, "src": u})

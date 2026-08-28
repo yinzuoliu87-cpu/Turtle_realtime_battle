@@ -1,5 +1,6 @@
 class_name EliteSystem
 extends RefCounted
+const SkillForms = preload("res://scripts/gamedata/skill_forms.gd")
 ## 精英龟技能系统
 ## 类内名不变;外部名加 battle.
 
@@ -329,8 +330,14 @@ func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁�
 	if tgt == null: return
 	if _elite_try_consume(u, tgt):   # 用户2026-07-19: 铁拳也能触发吞噬(目标<15%血时优先吞)
 		return
-	u["_hammer_n"] = int(u.get("_hammer_n", 0)) + 1
-	var big: bool = int(u["_hammer_n"]) % 3 == 0
+	## ★"这一发是普通还是强化"【只由 SkillForms 说了算】(2026-08-28)。
+	##   原来是 `+1` 之后判 `% 3 == 0`; 现在改成【放之前】问 SkillForms(判据 `% 3 == 2`),
+	##   两者对同一串计数【逐值等价】(门禁 verify_skill_forms 拿产品真实序列逐发对过),
+	##   但好处是: 技能栏图标与这里读的是**同一个判据**, 而且龟壳复制能钉住形态。
+	var big: bool = SkillForms.current_index(u, "eliteHammer") == 1
+	## 钉住时不推进自己的计数器 —— 龟壳是"照着放一次", 不该改自己的节奏。
+	if not SkillForms.is_pinned(u, "eliteHammer"):
+		u["_hammer_n"] = int(u.get("_hammer_n", 0)) + 1
 	_elite_anim(u, "hammer_big" if big else "hammer")   # 每第3次=跃起强化版, 换另一套帧
 	var uu = u
 	var dirv: Vector2 = (tgt["pos"] as Vector2) - (u["pos"] as Vector2)
