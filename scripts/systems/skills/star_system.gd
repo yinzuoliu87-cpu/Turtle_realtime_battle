@@ -24,6 +24,20 @@ const WORM_WINDUP := 0.3
 const WARP_RADIUS := 500.0       # 以敌阵中心为心, 多大范围内的敌人吃伤害(码)
 const WARP_ATK_COEF := 0.8       # ×ATK 魔法
 const WORM_CAPTURE_R := 100.0    # 捕获半径(码)
+## ★★方案 C(用户 2026-08-28 从三个方案里选的): 虫洞不是无解的 ——
+##   ① **免控免疫的单位不会被捕获**(免控窗口期内)
+##   ② **被捕获的单位用位移技能能脱离**
+##
+## 用户的原问题:「别人如果有位移技能从虫洞跳出来了为什么又会被闪现回去?」
+## 病根: 捕获期每一帧都无条件 `oc["pos"] = 洞心 + 轨道偏移` —— 那是**直接写坐标**,
+## 谁在这一帧把它移走都会被下一帧覆盖回来。位移技能看着"生效了"其实白放。
+##
+## ★脱离判据【不认技能名单】: 记下我们上一帧把它放在哪(`set`), 下一帧看它离那儿多远。
+##   超过 WORM_ESCAPE_DIST = **有别的东西把它挪走了** ⇒ 放它走。
+##   这样任何位移(现有的 / 以后新加的 / 装备给的 / 击退)都自动算数,
+##   不用维护一份"哪些技能算位移"的名单 —— 那种名单天生会漏(memory
+##   [[fb-hand-rolled-copies-drift]]: 手抄的副本必然落后)。
+const WORM_ESCAPE_DIST := 130.0  # 一帧内被【别的东西】挪走这么远 ⇒ 脱离捕获(码)
 const WORM_BOOM_COEF := 1.5      # 爆炸 ×ATK 魔法
 const WORM_BOOM_PER_SEC := 0.05  # 每过一秒爆炸伤害再 +(发射时刻定格)
 
@@ -677,8 +691,16 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·
 				var r: float = (o["pos"] as Vector2).distance_to(c)
 				if r > WORM_GRAV_R: continue
 				if r <= WORM_CAPTURE_R:                                       # ② 捕获(100码·用户定): 吸着走·绕洞打转
+					## ★方案 C-①: 免控免疫窗口内【不被捕获】。
+					##   用 `battle._damage._is_cc_immune` —— 那是全仓**唯一**的免控闸门
+					##   (`cc_immune_until`)。在这里另发明一个判据 = 下一个加免控来源的人
+					##   不会知道要同步这里(hookbomb_system:112 头注记的就是这条)。
+					##   ★引力场仍然吸它(那是位移不是控制), 只是抓不住 —— 它能自己走出去。
+					if battle._damage._is_cc_immune(o):
+						continue
 					var rel: Vector2 = (o["pos"] as Vector2) - c
-					caught.append({"o": o, "ang": atan2(rel.y, rel.x), "rr": maxf(50.0, r)})
+					caught.append({"o": o, "ang": atan2(rel.y, rel.x), "rr": maxf(50.0, r),
+						"set": o["pos"] as Vector2})
 					battle._skill_ring(o["pos"], Color(0.75, 0.6, 1.0, 0.6), 44.0)
 					continue
 				var gi := -1
@@ -690,12 +712,29 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·
 				var g2: Dictionary = grav[gi]
 				g2["vel"] = (g2["vel"] as Vector2) * 0.985 + (c - (o["pos"] as Vector2)).normalized() * acc * dt
 				o["pos"] = (o["pos"] as Vector2) + (g2["vel"] as Vector2) * dt
-			for cg2 in caught:                                       # ③ 携带: 跟虫洞走+绕洞缓转·半径缓收(事件视界打转)
+			## ③ 携带: 跟虫洞走+绕洞缓转·半径缓收(事件视界打转)
+			## ★方案 C-②: 每帧先看它【有没有被别的东西挪走】, 有就放它走(见 WORM_ESCAPE_DIST 头注)。
+			var freed: Array = []
+			for cg2 in caught:
 				var oc: Dictionary = cg2["o"]
 				if not oc.get("alive", false): continue
+				## 上一帧我们把它放在 `set`; 它现在离那儿很远 = 有别的东西(位移技能/击退/闪现)
+				## 把它挪走了 ⇒ 脱离。**不认技能名单**, 任何位移都自动算数。
+				if (oc["pos"] as Vector2).distance_to(cg2["set"] as Vector2) > WORM_ESCAPE_DIST:
+					freed.append(cg2)
+					battle._skill_ring(oc["pos"], Color(1.0, 0.95, 0.6, 0.75), 56.0)   # 挣脱闪一下
+					continue
+				## 中途拿到免控(比如吃了药水)也放走 —— 与捕获时同一个闸门, 口径一致。
+				if battle._damage._is_cc_immune(oc):
+					freed.append(cg2)
+					battle._skill_ring(oc["pos"], Color(1.0, 0.95, 0.6, 0.75), 56.0)
+					continue
 				cg2["ang"] = float(cg2["ang"]) + dt * 2.2
 				cg2["rr"] = maxf(52.0, float(cg2["rr"]) - 26.0 * dt)
 				oc["pos"] = c + Vector2(cos(float(cg2["ang"])), sin(float(cg2["ang"]))) * float(cg2["rr"])
+				cg2["set"] = oc["pos"] as Vector2               # ★记下"我们把它放哪了", 下一帧靠它判脱离
+			for fr in freed:
+				caught.erase(fr)
 			suck[0] += 1.0
 			if int(suck[0]) % 5 == 0 and is_instance_valid(hole):    # 星尘吸入粒子
 				var pa: float = randf() * TAU
