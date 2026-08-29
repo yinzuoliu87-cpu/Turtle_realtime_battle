@@ -162,6 +162,14 @@ const HH_RANGED_DR := [0.03, 0.06, 0.10]    # 远程携带: 减伤 damage_reduct
 const HH_RANGED_HP := [300.0, 700.0, 3000.0]  # 远程携带给的生命值基数(★还要再乘 _b84_mult)
 
 ## 084 十字斩四段的节拍(秒): ①横斩+②横波 → ③竖斩+④竖波
+## 后撤【真的滑过去】用多久(秒)。
+## ★★2026-08-29 用户追问「你还是瞬移吗」—— 是。原来 `u["pos"] = dest` 一步到位,
+##   演出只是在旁边补影子。我当时的顾虑是"位置滑动会让斩击的圆心漂",
+##   **但那个顾虑是算错的**: 斩击在 CROSS_T1(0.25 秒)之后才结算, 只要后撤在那之前走完,
+##   圆心就还是落点, 几何一点不变。⇒ 取 0.18 < 0.25, 留 0.07 秒余量。
+## ★用【每帧驱动】不用 tween —— 无头 CI 下场景树 tween 推进不稳(CLAUDE.md §3.5 海盗钩索),
+##   而这是**会影响伤害几何**的位移, 不能赌它跑不跑得完。
+const RETREAT_SEC := 0.18
 const CROSS_T1 := 0.25
 const CROSS_T3 := 0.60
 ## 剑波: 推进速度(码/秒) / 最远行程(码) / 波前带半厚(码)
@@ -200,6 +208,7 @@ func _nth_copy(u: Dictionary, eid: String, st: Dictionary) -> bool:
 
 ## 每帧全局推进: 084 的十字斩分段时刻表 + 在途剑波 + 演出
 func tick(delta: float) -> void:
+	_step_retreat(delta)
 	_step_pending()
 	_step_waves(delta)
 	vfx.tick(delta)
@@ -691,14 +700,23 @@ func cast_cross_slash(u: Dictionary, tgt) -> void:
 		return
 	var sx: int = int(u.get("_b84_si", 0))
 	var dest: Vector2 = cross_retreat_dest(u, tgt)
-	u["pos"] = dest
+	var from2d: Vector2 = u["pos"]                # ★起跳点
+	## ★★真的滑过去(不再瞬移) —— 见 RETREAT_SEC 头注。
+	##   `_slam` 是本仓"施法期锁住 AI 移动"的通用标记(精英站桩/赛博组装都用它),
+	##   不设的话移动系统会在滑行途中把它往目标那边拉回去。
+	u["_b84_retreat"] = {"from": from2d, "to": dest, "t": 0.0}
+	u["_slam"] = true
 	if u.has("_home_pos"):
 		u["_home_pos"] = dest                    # ★只在【本来就有】时才写, 绝不凭空创建(评审假人归位坑)
 	var dir: Vector2 = (tgt as Dictionary)["pos"] - dest
 	dir = dir.normalized() if dir.length() > 0.01 else Vector2.RIGHT
 	u["_b84_casts"] = int(u.get("_b84_casts", 0)) + 1   # 同步触发证据
 	u["face_right"] = dir.x > 0.0
-	vfx.cross_retreat(u, dest, dir)
+	vfx.cross_retreat(u, dest, dir, from2d)
+	## ★★2026-08-29 补【蓄力】(用户点名:「然后是蓄力, 你做了吗」—— 没有)。
+	##   后撤落地到第一刀之间的 CROSS_T1(0.25 秒)原来是**全空的**, 屏幕上什么都不发生,
+	##   于是整招读起来是"退了一下, 然后弧凭空出现"。这一拍补上剑气收拢 + 龟身预备形变。
+	vfx.cross_windup(u, dir, CROSS_T1)
 	_pending.append({"u": u, "dir": dir, "si": sx, "t": battle._t + CROSS_T1, "seg": 1})
 	_pending.append({"u": u, "dir": dir, "si": sx, "t": battle._t + CROSS_T3, "seg": 3})
 
@@ -711,6 +729,32 @@ func cross_retreat_dest(u: Dictionary, tgt: Dictionary) -> Vector2:
 	p.x = clampf(p.x, battle.ARENA.position.x, battle.ARENA.end.x)
 	p.y = clampf(p.y, battle.ARENA.position.y, battle.ARENA.end.y)
 	return p
+
+
+## 后撤滑行推进: 把 `u["pos"]` 从起跳点匀减速滑到落点, RETREAT_SEC 秒走完。
+##
+## ★为什么不是 tween: 这是**会影响伤害几何**的位移(斩击以 `u["pos"]` 为圆心),
+##   而无头 CI 下场景树 tween 推进不稳 —— 赌它跑完 = 赌伤害打在哪(CLAUDE.md §3.5)。
+## ★走完【精确落到 dest】(不是停在 lerp 的最后一帧) —— 差几码就够让门禁的
+##   "退了正好 150 码"红一次, 而那不是真问题。
+func _step_retreat(delta: float) -> void:
+	for u in battle._units:
+		if not (u is Dictionary) or not (u as Dictionary).has("_b84_retreat"):
+			continue
+		var r: Dictionary = (u as Dictionary)["_b84_retreat"]
+		if not (u as Dictionary).get("alive", false):
+			(u as Dictionary).erase("_b84_retreat")
+			(u as Dictionary)["_slam"] = false
+			continue
+		r["t"] = float(r["t"]) + delta
+		var x: float = clampf(float(r["t"]) / RETREAT_SEC, 0.0, 1.0)
+		## 后跃是"蹬地出去、到位收住" ⇒ ease-out(1-(1-x)²), 不是匀速
+		var e: float = 1.0 - (1.0 - x) * (1.0 - x)
+		u["pos"] = (r["from"] as Vector2).lerp(r["to"] as Vector2, e)
+		if x >= 1.0:
+			u["pos"] = r["to"]                     # ★精确落位
+			(u as Dictionary).erase("_b84_retreat")
+			(u as Dictionary)["_slam"] = false
 
 
 ## 分段时刻表推进(用 battle._t —— 顿帧/时停时演出与结算一起停)。

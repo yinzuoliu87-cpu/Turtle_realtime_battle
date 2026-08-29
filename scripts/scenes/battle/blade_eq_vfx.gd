@@ -768,13 +768,64 @@ func rapier_stack(u: Dictionary, stacks: int) -> void:
 
 # ── 084 后撤十字斩 ──────────────────────────────────────────────────
 
-## 后撤: 起点留一道残影 + 落点扬尘。
-func cross_retreat(u: Dictionary, dest: Vector2, _dir: Vector2) -> void:
+## 后撤: 起点残影 + 沿路拖影 + 落点扬尘。
+##
+## ★★2026-08-29 用户点名核对:「释放技能首先是向后退对吧？**这个你怎么实现**」——
+##   查下来: 位置是 `u["pos"] = dest` **瞬移**, 演出只有落点一个尘环;
+##   而这段函数的头注写着「起点留一道残影」—— **代码里根本没有残影**。
+##   注释在替一个不存在的实现背书(memory [[fb-registered-todos-rot]] 同族)。
+##
+## ★为什么不改成"真的用位移动画退回去": `u["pos"]` 是**结算用的位置** ——
+##   横斩/竖斩的扇形都以它为圆心, 后撤 150 码正是这一招的射程设计。
+##   让它在 0.25 秒里滑动, 两刀的圆心就变成"退到一半的地方", 伤害几何跟着漂。
+##   ⇒ **结算位置照旧瞬移(几何确定), 视觉上补出后跃的过程** —— 起点一道残影、
+##     中途几道拖影, 眼睛看到的就是"往后一跃"。
+##
+## `from2d` = 起跳点(退之前站的地方)。
+func cross_retreat(u: Dictionary, dest: Vector2, _dir: Vector2, from2d = null) -> void:
 	if not _has_world():
 		return
+	## ① 起点残影 + 沿路拖影: 从起跳点到落点均匀铺几道, 越靠起点越淡、越先消失
+	##    ⇒ 读出来是"人往后拉出一串影子", 而不是凭空出现在后面。
+	var src: Vector2 = from2d if from2d is Vector2 else dest
+	if (src - dest).length() > 8.0:
+		for gi in range(RETREAT_GHOSTS):
+			var f: float = float(gi) / float(RETREAT_GHOSTS - 1)     # 0=起点 … 1=落点
+			var gp: Vector2 = src.lerp(dest, f)
+			var g := _board(VfxTex._make_fire_glow_tex(), gp, GunEqVfx.body_mid_h(u),
+				52.0, Color(0.80, 0.88, 1.0, 0.10 + 0.34 * f), 6)
+			_adopt(g, "retreat")
+			## 越靠起点活得越短 ⇒ 影子是"从后往前"依次消失的, 方向感来自这个时序
+			_fx.append({"node": g, "t": 0.0, "life": 0.12 + 0.16 * f, "kind": "fade"})
+	## ② 落点扬尘
 	var dust := _ground(VfxTex._make_thin_ring_tex(), dest, 70.0, Color(0.85, 0.88, 0.95, 0.8), 5)
 	_adopt(dust, "retreat")
 	_fx.append({"node": dust, "t": 0.0, "life": 0.26, "kind": "grow", "d0": 70.0, "d1": 130.0})
+
+
+## 蓄力: 后撤落地 → 第一刀之间那 0.25 秒。
+##
+## ★★2026-08-29 用户点名:「然后是蓄力, **你做了吗**」—— 没有。那 0.25 秒是**全空的**:
+##   `cast_cross_slash` 排完两个待结算段就没别的了, 落地到出刀之间屏幕上什么都不发生。
+##   一招"后撤 → 蓄力 → 斩"少了中间那一拍, 读起来就是"退了一下, 然后弧凭空出现"。
+##
+## 做法: 一圈剑气从外向内**收拢**到龟身前(收拢 = 蓄力的通用语言, 与"爆开"相反),
+##   同时龟身做一次 `_anticipate` 预备形变(缩一下再挥出去, 引擎现成的)。
+func cross_windup(u: Dictionary, dir: Vector2, sec: float) -> void:
+	if not _has_world() or not (u is Dictionary):
+		return
+	battle._anticipate(u)                                    # 龟身预备形变(引擎现成)
+	var org: Vector2 = (u["pos"] as Vector2) + dir * 26.0     # 聚在身前一点点, 朝着要砍的方向
+	for i in range(WINDUP_MOTES):
+		var a: float = TAU * float(i) / float(WINDUP_MOTES) + 0.4
+		var far: Vector2 = org + Vector2(cos(a), sin(a)) * WINDUP_R
+		var m := _board(VfxTex._make_fire_glow_tex(), far, GunEqVfx.body_mid_h(u),
+			22.0, Color(0.86, 0.94, 1.0, 0.0), 6)
+		_adopt(m, "windup")
+		## kind="suck": 从 far 收到 org, 亮度**先升后收**(不是一出生就淡出 ——
+		## 那个病今天记过四次)。收拢比整段稍快一点, 让最后一小段是"攒住了"的静止。
+		_fx.append({"node": m, "t": 0.0, "life": maxf(0.08, sec * 0.86), "kind": "suck",
+			"org": org, "from": far, "h": GunEqVfx.body_mid_h(u)})
 
 
 ## 斩击: 一道新月剑弧, 张角与结算侧同一个数(见 slash_half_rad)。
@@ -786,6 +837,9 @@ func cross_retreat(u: Dictionary, dest: Vector2, _dir: Vector2) -> void:
 ## ★为什么要压一下纵深: 本作是 2.5D 斜视, 横向 0.6755 屏幕像素/码、贴地纵深只有 0.5267 px/码
 ##   ⇒ 场地上的 45° 在屏幕上不是 45°。不压这一下, 斜着劈的刀会指偏。
 ## ★屏幕 y 向下为正, 而场地 y 向"远处"为正 ⇒ 取负号。
+const RETREAT_GHOSTS := 5     # 后撤沿路铺几道拖影(含起点那道)
+const WINDUP_MOTES := 7       # 蓄力收拢的剑气点数
+const WINDUP_R := 78.0        # 剑气从多远收进来(码)
 const SCREEN_DEPTH_K := 0.5267 / 0.6755
 static func dir_to_roll(dir: Vector2) -> float:
 	if dir.length_squared() < 1e-12:
@@ -883,6 +937,14 @@ func tick(delta: float) -> void:
 				var p: Vector2 = wave_pos(f["org"], f["dir"], float(f["t"]))
 				(n as Sprite3D).position = battle._world_pos(p, float(f["h"]))
 				_set_a(n, 1.0 - x * x)
+			"suck":
+				## 蓄力: 剑气点从 `from` 收到 `org`。
+				## ★位置用 ease-in(x²) —— 匀速收看着像"飘过去", 加速收才像"被吸住";
+				##   亮度**先升后收**(0→满在前 35%, 之后维持到最后一小段才灭),
+				##   不做"一出生就线性淡出"(那个病本文件已记过四次)。
+				var sp2: Vector2 = (f["from"] as Vector2).lerp(f["org"] as Vector2, x * x)
+				(n as Sprite3D).position = battle._world_pos(sp2, float(f["h"]))
+				_set_a(n, clampf(x / 0.35, 0.0, 1.0) * clampf((1.0 - x) / 0.22, 0.0, 1.0))
 			"holdfade":
 				# ★前 70% 满亮, 最后 30% 才收 —— 线性淡出会让效果大半辈子处在半亮以下,
 				#   实拍量到贝壳弧主体只有 RGB(42,53,55) 而地板是 (9,10,16)。
