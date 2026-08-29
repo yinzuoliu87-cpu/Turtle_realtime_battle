@@ -402,8 +402,15 @@ def main():
     ##   绕这个点量, 横斩/竖斩两张的张角必须**等于各自的判定锥**(120 / 60)。
     ## ★期望值写死在这里, 不读生成器的常量 —— 否则改生成器时两边一起变, 永远绿。
     ##   (本会话已经因为"判据迭代产品自己的常量"翻过两次。)
-    PIVOT = (0.664, 0.728)
-    for fn, want in (("eq084-slash-wide.png", 120.0), ("eq084-slash-narrow.png", 60.0)):
+    ## ★★两张图的圆心**不在同一个位置** —— 竖斩那张生成时已经旋转+挪到了左下角,
+    ##   好让它的直边水平贴地。拿错圆心量出来的张角是别人的(实测会报 90°)。
+    ## ★两张都是 120°: 横斩的 120° = 地面判定锥; 竖斩的 120° = 竖直平面里的挥剑弧
+    ##   (从举过头顶砍到地面), 不是地面锥 —— 两者本来不是同一个东西。
+    ## ★只量横斩那张的张角 —— 它是地面扇形, 张角就是判定锥。
+    ## ★竖斩换成了 2026-08-29 **新生成**的 eq084-chop.png: 它是【新月形刀光】,
+    ##   没有"从圆心张开多少度"这回事 ⇒ 拿张角去量它是拿错尺子。
+    ##   它自己的判据在下面单独一段(落地点稳不稳 + 真的会消散)。
+    for fn, want, PIVOT in (("eq084-slash-wide.png", 120.0, (0.664, 0.728)),):
         fp = os.path.join(VFX, fn)
         if not os.path.exists(fp):
             fails.append("%s 不存在" % fn)
@@ -442,6 +449,50 @@ def main():
         if abs(got - want) > 10.0:
             fails.append("%s 张角 %.0f 度 ≠ 判定锥 %.0f 度 —— 演出承诺的和打得到的不一样"
                          % (fn, got, want))
+
+    ## ══ 竖斩新素材 eq084-chop.png 的判据 ═════════════════════
+    ## ★它是一张【下劈到地】的新月刀光。两条它真正承诺的事:
+    ##   ① 落地点逐帧不漂 —— 漂了就是"刀在地上滑"
+    ##   ② 真的会消散 —— 末帧实心度必须远小于首帧(否则刀光挂在那不动)
+    fp = os.path.join(VFX, "eq084-chop.png")
+    if not os.path.exists(fp):
+        fails.append("eq084-chop.png 不存在")
+    else:
+        im = Image.open(fp).convert("RGBA")
+        px2 = im.load()
+        Hf = im.height
+        nf = max(1, im.width // Hf)
+        cont = []
+        fill = []
+        for k in range(nf):
+            pts = [(x - k * Hf, y) for y in range(Hf)
+                   for x in range(k * Hf, (k + 1) * Hf) if px2[x, y][3] > 40]
+            fill.append(len(pts) / float(Hf * Hf))
+            if len(pts) < 80:
+                continue
+            ymax = max(p[1] for p in pts)
+            lo = [p[0] for p in pts if p[1] >= ymax - 2]
+            cont.append((sum(lo) / float(len(lo)) / Hf, ymax / float(Hf)))
+        if len(cont) < 5:
+            fails.append("eq084-chop.png 有内容的帧只有 %d(N=0 是空检查)" % len(cont))
+        else:
+            sx = max(c[0] for c in cont) - min(c[0] for c in cont)
+            sy = max(c[1] for c in cont) - min(c[1] for c in cont)
+            print("  %-26s 落地点漂移 x %.3f / y %.3f · 实心度 首%.0f%% → 末%.0f%% · 量了 %d 帧"
+                  % ("eq084-chop.png", sx, sy, 100 * fill[0], 100 * fill[-1], len(cont)))
+            ## ★★只管【纵向】。横向漂移是刀扫过去、拖影往前散 —— 本来就该有。
+            ##   用户 2026-08-29 拿 Aseprite 改完说"竖劈就这样", 实测横向 0.204,
+            ##   而我原来拍的上限是 0.10 ⇒ 按那个数就得把他定稿的刀改回去。
+            ##   阈值错不是"判据太松", 是**主动把好的推向坏的**(memory
+            ##   [[fb-my-thresholds-degrade-good-assets]])。横向只留一个兵底(整张滑过去才管)。
+            if sy > 0.04:
+                fails.append("eq084-chop.png 刀尖【纵向】在漂 y %.3f > 0.04 —— 刀会浮离地面"
+                             % sy)
+            if sx > 0.45:
+                fails.append("eq084-chop.png 刀尖横向滑了半张图 x %.3f > 0.45" % sx)
+            if fill[-1] > fill[0] * 0.25:
+                fails.append("eq084-chop.png 没消散: 末帧实心度 %.0f%% 不到首帧 %.0f%% 的四分之一"
+                             % (100 * fill[-1], 100 * fill[0]))
 
     print("  [分母] 真的量了 %d 张(N=0 是空检查不是通过)" % n_checked)
     if n_checked < 4:

@@ -866,7 +866,12 @@ func cross_windup(u: Dictionary, dir: Vector2, sec: float) -> void:
 ## 张角就是 SLASH_DEG_WIDE / SLASH_DEG_NARROW 本尊。
 const TEX_SLASH_V2 := "res://assets/sprites/vfx/eq084-slash.png"
 const TEX_SLASH_WIDE := "res://assets/sprites/vfx/eq084-slash-wide.png"
-const TEX_SLASH_NARROW := "res://assets/sprites/vfx/eq084-slash-narrow.png"
+## ★★竖斩改用**真正新生成的**素材(2026-08-29, PixelLab 9 帧)。
+##   之前那张是把横斩的源帧角向重映射+旋转出来的 —— 是变换不是新画。
+##   用户三次点名要"新生成", 我三次退回改老图。
+## ★前两板失败是因为提示词写的是**几何**("占整圆三分之一的扇形、圆心在右下角"),
+##   模型直译成了扇子/车轮。第三板只描述**东西本身**(斜劈下来的刀光拖影)就对了。
+const TEX_SLASH_NARROW := "res://assets/sprites/vfx/eq084-chop.png"
 const TEX_WAVE_V2 := "res://assets/sprites/vfx/eq084-wave.png"
 const TEX_BURST_V2 := "res://assets/sprites/vfx/eq084-burst.png"
 ## 普攻激光束(6 帧横排)。★新素材, 不复用 fx-energy-beam.png
@@ -902,12 +907,49 @@ const SLASH_PIVOT := Vector2(0.664, 0.728)
 const SLASH_ASSET_RAD := deg_to_rad(131.0)
 const SLASH_R_FRAC := 0.55
 const SLASH_ART_DEG := 116.0
-## 竖斩专用: 圆心(握剑的手)抬到头顶上方多少码 + 扇面向下压多少度。
-## ★用户 2026-08-29:「这个还分为横斩和竖斩」—— 旧做法两段共用同一张图、
-##   同一个摆法, 只差一个 tint ⇒ 屏上就是同一刀砍两次, 读不出"十字"。
-##   竖斩要读成**从上砍下来**: 起手点在头顶上、扇面朝目标压下去。
-const CHOP_RAISE := 64.0
-const CHOP_TILT := deg_to_rad(38.0)
+const SLASH_LIFE := 0.90   # 斩击动画时长(秒)。用户 2026-08-29: 0.26 → 0.52 → 0.90
+## ══ 竖斩: 120° 扇形、**下缘贴地**、扇面向上张开 ═════════════
+##
+## 用户 2026-08-29:「素材要不得, 得搞 120 度的, 120 扇形的一边得贴地」。
+##
+## ★为什么不再是 60° + 往下压: 竖斩的扇面是**竖直平面里的挥剑弧**
+##   —— 从举过头顶砍到地面, 这道弧就是 120°; 而 60° 是**地面上的判定锥**,
+##   两者本来不是同一个东西。我之前把它们当成一个, 才搞出"把扇面往下压几度"
+##   这种凑数 —— 压 38° 时中线还整个掉到判定锥外面去了。
+##
+## ★怎么实现"贴地": 把扇形的**下缘**对齐到目标方向(屏幕平面内水平),
+##   扇面从那条线往**上**张开 120° ⇒ 读成"从头顶砍到地上"。
+##   素材的下缘在贴图平面里 = 弧中线(SLASH_ASSET_RAD) 减半个张角。
+## ★圆心也跟着落到**脚下**(不再抬 64 码) —— 下缘要真的贴在地上,
+##   扇尖就得在地面高度上。
+const CHOP_ART_DEG := 120.0
+## ★★竖斩那张的圆心**不是** SLASH_PIVOT —— 生成时已经把它旋转+挪到了左下角。
+##   两张图的圆心不同位置, 拿错一个就把转轴钉到了别处。
+## 竖斩新素材的锚点 = 【刀落地的那一点】(归一, 图像系)。
+## ★为什么锚"落地点"而不是"曲率中心": 这张是**新月形刀光**不是扇形,
+##   它与地面只有一个接触点; 把那一点钉在龟脚下, 弧自然就在地面之上。
+## ★实测(逐帧取刀身最低那一排的中点), 帧 0~7 几乎不动: (0.588, 0.896)。
+## ★用户 2026-08-29 拿 Aseprite 逐帧改过竖斩(并删掉了多余的 f6, 9⇒8 帧),
+##   重量后落地点从 (0.588, 0.896) 移到 (0.468, 0.893)。
+##   数是 `vfx_edit.py done` 量出来的, 不是我拍的 —— 它发现对不上就拒绝收工。
+const CHOP_PIVOT := Vector2(0.468, 0.893)
+## 刀身重心相对落地点的横向偏移(归一、图像系、负 = 刀在左边)。
+## ★逐帧实测平均 -0.138 —— 素材里刀身在落地点的**左边**。
+## ★它是"朝哪边砍"的唯一依据: 镜像条件必须让刀身落在**目标那一侧**。
+##   我第一版把条件写反了(目标在右时不镜像) ⇒ 刀砍在龟的左后方、背对目标。
+##   而当时那条"偏向目标一侧"的断言照样绿 —— 因为它量的是**板子的 +x 轴**,
+##   不是刀身实际在哪边。尺子需要匹配被测的概念。
+const CHOP_MASS_DX := -0.095
+## 竖斩的尺寸相对横斩缩多少。
+## ★用户 2026-08-29 实拍后:「要缩小」—— 原来两段共用一个板宽(455 码),
+##   实拍量到那道新月跨约 250px 而龟只有 40px —— **6 倍龟身**, 把施法的龟整个罩住,
+##   读起来是"一片东西飘在那", 不是"这只龟劈了一刀"。
+## ★横斩不能缩 —— 它铺在地上、外缘就是 250 码判定范围。竖斩是竖直平面里的挥剑弧,
+##   与地面锥无关, 所以可以单独缩。
+const CHOP_SIZE := 0.5
+## ★★旋转已经**焊进素材文件**了: 贴地的那条直边在图里就是水平指右(0度)。
+##   所以 roll **不能再减一遍素材角** —— 减了就是转两次。
+const CHOP_ASSET_RAD := 0.0
 const BURST_SIZE := 190.0     # 命中爆点的世界尺寸(码)
 const RETREAT_GHOSTS := 5     # 后撤沿路铺几道拖影(含起点那道)
 const WINDUP_MOTES := 7       # 蓄力收拢的剑气点数
@@ -926,9 +968,37 @@ static func dir_to_roll(dir: Vector2) -> float:
 ##   它所在的平面是斜的; 偏移必须沿着**板子自己的 x/y 轴**走,
 ##   在场地平面里算会偏。
 ## ★图像 y 向下、贴图平面 y 向上 ⇒ ly 取负。
-static func slash_pivot_off3(bas: Basis, frame_m: float) -> Vector3:
-	var lx: float = (SLASH_PIVOT.x - 0.5) * frame_m
-	var ly: float = -(SLASH_PIVOT.y - 0.5) * frame_m
+## 【铺在地面平面】的基。用户 2026-08-29:「画在地面平面上」。
+##
+## ★为什么要改: 旧做法是 `face_basis` —— 板子**正对镜头**, 于是玩家看到的
+##   120° 张角是**屏幕平面**的, 而伤害判定的 120° 锥是**地面平面**的 —— 两个不同的空间。
+##   只有某些方向上它们才重合; `dir_to_roll` 里那个 SCREEN_DEPTH_K 只补中线方向,
+##   补不了整个张角。铺到地面上之后 "看到多宽 = 打到多宽" 才是真的。
+##
+## ★参数 `aim_rad`: 素材里"要对准目标的那条线"在贴图平面的角度(y 向上)。
+##   本函数保证: 那条线映到世界后正好沿着 `dir`(场地方向)。
+## ★符号不靠推理 —— `_t084_ground_plane` 那几条断言直接量它落在哪儿。
+static func ground_basis(dir: Vector2, aim_rad: float) -> Basis:
+	var d: Vector2 = dir.normalized() if dir.length() > 0.001 else Vector2.RIGHT
+	## 场地 (x, y) → 世界 (x, h, y)。把 d 在地面平面内旋转 -aim, 当作本地 +x。
+	## ★★符号由探针定, 不由推理定。推导:
+	##   本地 +y = z × x (z = 世界上) ⇒ 本地 +y 对应场地方向转 **-90°**,
+	##   所以贴图平面角 A 的特征映到场地后的角 = angle(本地+x) - A。
+	##   要让它等于 θ(目标方向) ⇒ angle(本地+x) = θ + A ⇒ 把 d 转 **+aim**。
+	## ★我第一版写的是 -aim ⇒ 特征落在 θ - 2×aim, 探针实测三个方向**恒偏 +98°**
+	##   (= -2×131° 模 360), 数字对得上 ⇒ 一眼就知道是旋转方向反了。
+	var c: float = cos(aim_rad)
+	var s2: float = sin(aim_rad)
+	var fx: Vector2 = Vector2(d.x * c - d.y * s2, d.x * s2 + d.y * c)
+	var bx: Vector3 = Vector3(fx.x, 0.0, fx.y).normalized()
+	var bz: Vector3 = Vector3.UP
+	var by: Vector3 = bz.cross(bx).normalized()
+	return Basis(bx, by, bz)
+
+
+static func slash_pivot_off3(bas: Basis, frame_m: float, piv: Vector2 = SLASH_PIVOT) -> Vector3:
+	var lx: float = (piv.x - 0.5) * frame_m
+	var ly: float = -(piv.y - 0.5) * frame_m
 	return bas.x * lx + bas.y * ly
 
 
@@ -955,7 +1025,8 @@ func cross_slash(u: Dictionary, _dir: Vector2, seg: int) -> void:
 	##   —— 而那个前移是【补歪的】: 真正的毛病是圆心没钉在手上(见上面 SLASH_PIVOT),
 	##   圆心钉对了龟就自然坐在扇尖上, 不需要再推开半个身位。
 	## 竖斩的握剑手抬到头顶上方。
-	var _h: float = GunEqVfx.body_mid_h(u) + (0.0 if seg == 1 else CHOP_RAISE * battle.WS)
+	## 竖斩的扇尖落在脚下(地面高度), 下缘才贴得住地。
+	var _h: float = GunEqVfx.body_mid_h(u) if seg == 1 else 0.0
 	var s := _board(_tex, u["pos"] as Vector2, _h,
 		SLASH_REACH / BLADE_R_FRAC, Color(col.r, col.g, col.b, 0.95), 7)
 	if _anim:
@@ -975,7 +1046,8 @@ func cross_slash(u: Dictionary, _dir: Vector2, seg: int) -> void:
 		##   新素材直接按 SLASH_REACH 给板宽。
 		## ★再除 SLASH_R_FRAC: 扇子的最远半径只占帧宽 92%, 不除的话外缘停在 230 码,
 		##   而"扫过多远"是这一笔唯一的视觉承诺 —— 承诺 250 就得画到 250。
-		s.pixel_size = (SLASH_REACH / SLASH_R_FRAC * battle.WS) / float(_fh)
+		var _scale: float = 1.0 if seg == 1 else CHOP_SIZE
+		s.pixel_size = (SLASH_REACH / SLASH_R_FRAC * _scale * battle.WS) / float(_fh)
 	## ★★2026-08-09 补上"指方向"这个缺口。旧注释写着「`_dir` 没被用上 —— 弧是 billboard,
 	##   billboard 会吃掉 roll」。解法不是放弃 billboard 的**朝向**, 而是自己算基:
 	##   `face_basis(视轴, roll)` = **正对镜头**(所以不会被 52° 俯视压扁) + **面内旋转**(所以指得出方向)。
@@ -985,18 +1057,52 @@ func cross_slash(u: Dictionary, _dir: Vector2, seg: int) -> void:
 	##   直接当 roll 用等于假设素材本来朝正右; 而这张素材本来朝**右上 34 度**
 	##   ⇒ 每一刀固定偏 34 度。用户:「方向都调不准」就是这个。
 	## 竖斩再往下压 CHOP_TILT(贴图平面 y 向上 ⇒ 往下是**减**)。
-	var _roll: float = dir_to_roll(_dir) - SLASH_ASSET_RAD - (0.0 if seg == 1 else CHOP_TILT)
-	s.basis = ArcaneEqVfx.face_basis(ArcaneEqVfx.cam_forward_of(battle), _roll)
+	## 横斩: 中线对准目标。竖斩: **下缘**对准目标(= 贴地), 扇面往上张。
+	## ══ 横斩跟着方向转; 竖斩【不转】, 只左右镜像 ═══════════════
+	##
+	## ★★探针抓到的真因(2026-08-29): `face_basis` 是把**整个平面**按目标方向转。
+	##   目标在左边时 roll≈180° ⇒ 板子**上下颠倒**(实测 basis.y.y = -0.626);
+	##   目标在上/下时板子被转 90° ⇒ 扇面躺倒(basis.y.y = 0)。
+	##   横斩无所谓(扇面本来就绕着转), 但**竖斩要求扇面永远在地面之上** ——
+	##   颠倒过来就成了"从地底下往上劈"。
+	## ⇒ 竖斩 roll 恒为 0(贴地边水平), 靠 flip_h 决定朝左还是朝右。
+	## ★镜像条件由 CHOP_MASS_DX 的符号定: 刀身在左(负) ⇒ 目标在右时才要镜像。
+	##   写成表达式而不是写死方向, 换素材时只要量一下 CHOP_MASS_DX 就跟着对。
+	## ★★横斩**不镜像**。
+	##   我曾按用户一句"横斩也左右反了"猜测性地给它加了恒镜像,
+	##   铺地之后实拍直接看出来是错的: 扇面指向左下方、背对目标。
+	## ★原因(可推导也可量): flip_h 把平面角 A 的特征翻到 180°-A ⇒
+	##   铺地后中线的场地角 = θ + 2A - 180 = θ + 82°。
+	## ★而当时那条"中线正对目标"的断言照样报 0.0° —— 因为它算的是
+	##   **未翻转时**的特征方向。已把 flip_h 算进去, 否则它是假绿灯。
+	var _mirror: bool = false
+	if seg != 1:
+		_mirror = (_dir.x * CHOP_MASS_DX < 0.0)
+	var _roll: float = (dir_to_roll(_dir) - SLASH_ASSET_RAD) if seg == 1 else 0.0
+	## ★横斩铺在地面平面(看到多宽 = 打到多宽); 竖斩仍然立着正对镜头
+	##   —— 竖砍躺平了就不成立了。
+	if seg == 1:
+		s.basis = ground_basis(_dir, SLASH_ASSET_RAD)
+	else:
+		s.basis = ArcaneEqVfx.face_basis(ArcaneEqVfx.cam_forward_of(battle), _roll)
 	## ★★把【圆心】钉到龟身上(而不是把图心摆过去)。`_board` 己经把**图心**
 	##   放在了龟的位置 ⇒ 这里减去"圆心相对图心的偏移", 图心退开, 圆心就落到龟手上。
+	if _mirror:
+		s.flip_h = true
 	if _anim:
-		s.position -= slash_pivot_off3(s.basis, s.pixel_size * float(maxi(1, _tex.get_height())))
+		## ★镜像了的话圆心的 x 也要镜像, 否则转轴钉到对称的那一边去了。
+		var _piv: Vector2 = SLASH_PIVOT if seg == 1 else CHOP_PIVOT
+		if _mirror:
+			_piv = Vector2(1.0 - _piv.x, _piv.y)
+		s.position -= slash_pivot_off3(s.basis, s.pixel_size * float(maxi(1, _tex.get_height())), _piv)
 	s.set_meta("slash_roll", _roll)
 	_adopt(s, "slash")
 	# ★★"一出生就线性淡出" —— 今天第四次同一个病(078 霰弹 / 079 治疗束 / 082 贝壳弧 / 这里)。
 	#   一刀只活 0.22 秒, 线性淡出让它**大半辈子处在半亮以下** ⇒ 实拍里读成一道灰弧,
 	#   而不是"一刀劈过去"。⇒ holdfade: 前 70% 满亮, 最后一段才收。
-	_fx.append({"node": s, "t": 0.0, "life": 0.26, "kind": "holdfade", "a0": 0.95})
+	## ★用户 2026-08-29:「斩击动画时间给我翻倍」—— 0.26 → 0.52。
+	##   配合 CROSS_T1 0.25→0.40 / CROSS_T3 0.60→1.00, 两刀才看得清。
+	_fx.append({"node": s, "t": 0.0, "life": SLASH_LIFE, "kind": "holdfade", "a0": 0.95})
 
 
 ## 命中爆点: 两刀交叉那一下的棱刺爆开 + 火星。

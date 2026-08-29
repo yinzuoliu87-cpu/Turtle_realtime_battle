@@ -98,6 +98,19 @@ func _adv(n: int, dt: float) -> void:
 		_blade().tick(dt)
 
 
+## 推到指定的**游戏时刻**(0.02 秒小步)。
+## ★为什么不写死步数: 2026-08-29 用户把 CROSS_T1 0.25→0.40、CROSS_T3 0.60→1.00,
+##   写死的 `_adv(3)` / `_adv(6)` 全部错位 ⇒ 四段伤害全读乱。从常量推就不会漂。
+## ★小步长是故意的: 步长太大时剑波会在生成的【同一步】就飞完 230 码撞上目标,
+##   于是"横斩"和"横波"两段的伤害叠在一次读数里。
+func _adv_to(t_target: float) -> void:
+	var guard: int = 0
+	while _s._t < t_target and guard < 400:
+		_s._t += 0.02
+		_blade().tick(0.02)
+		guard += 1
+
+
 ## 取【已剥注释】源码里某个函数的函数体(到下一个顶格 func 为止)。
 func _fn_body(code: String, header: String) -> String:
 	var i: int = code.find(header)
@@ -148,6 +161,7 @@ func _ready() -> void:
 	_t084_melee_wiring()
 	_t084_cross_slash()
 	_t084_slash_geometry()
+	_t084_move_lock()
 	_t084_ranged()
 	_t084_realtime()
 	_t_vfx()
@@ -721,6 +735,9 @@ func _t084_cross_slash() -> void:
 	##   这是主会话加的那两行是否真被用上的**唯一证据** —— 注释掉 `_do_skill` 那一行, 这条立刻红。
 	(u["skill_cd"] as Dictionary)[EqBladeBatch.HH_SKILL] = 0.0
 	u["skill_gcd_until"] = 0.0
+	## ★记下施放时刻: 下面所有"推到第几刀"都从 **CROSS_T1/T3 常量推导**,
+	##   不再写死步数 —— 2026-08-29 把两刀的拍子拉长一倍时, 写死的步数全错位了。
+	var _t0: float = _s._t
 	var fired: bool = _s._cast_skill(u, tgt, EqBladeBatch.HH_SKILL)
 	_ok("④ ★★经引擎真入口 _cast_skill → _do_skill 施放了一次十字斩(= `_do_skill` 那一行被走到)",
 		fired and int(u.get("_b84_casts", 0)) == 1,
@@ -761,9 +778,8 @@ func _t084_cross_slash() -> void:
 	_ok("④ ★分母: 3★ 近战增伤真的挂上了(×%.2f)" % _amp3,
 		absf(float(u.get("damage_amp", 0.0)) - float(EqBladeBatch.HH_MELEE_AMP[2])) < 0.0001,
 		"damage_amp=%.3f" % float(u.get("damage_amp", 0.0)))
-	## ★上面为了等后撤滑完已经推了 10 步(0.20 秒), 这里只需再补到第一刀落地 ⇒ 13-10=3。
-	##   不扣的话整组采样点全往后错一格(实测: 横斩读到 490 = 横斩+横波两段叠在一起)。
-	_adv(3, 0.02)
+	## ★推到第一刀落地(t0 + CROSS_T1)。多走一小格避开浮点恰好卡在边界。
+	_adv_to(_t0 + EqBladeBatch.CROSS_T1 + 0.01)
 	var d1: int = int(tgt.get("_st_taken", 0))
 	_ok("④ ① 横斩(250 码 120° 扇形) = (130 + 1.4×ATK) × 增伤 = %d" % _e1,
 		absf(float(d1 - _e1)) <= 1.0, "实得 %d" % d1)
@@ -772,8 +788,8 @@ func _t084_cross_slash() -> void:
 	var d2: int = int(tgt.get("_st_taken", 0)) - d1
 	_ok("④ ② 横波(直线贯穿) = (85 + 0.9×ATK) × 增伤 = %d" % _e2,
 		absf(float(d2 - _e2)) <= 1.0, "实得 %d" % d2)
-	## 推进到第 ③ 段(0.60 秒)
-	_adv(6, 0.02)
+	## 推进到第 ③ 段(t0 + CROSS_T3)
+	_adv_to(_t0 + EqBladeBatch.CROSS_T3 + 0.01)
 	var d3: int = int(tgt.get("_st_taken", 0)) - d1 - d2
 	_ok("④ ③ 竖斩(250 码) = (160 + 1.7×ATK) × 增伤 = %d" % _e3,
 		absf(float(d3 - _e3)) <= 1.0, "实得 %d" % d3)
@@ -1058,6 +1074,10 @@ func _t084_slash_geometry() -> void:
 
 	## 四个正轴方向各画一刀。★只取正轴: 斜方向上 `dir_to_roll` 会按 2.5D 纵深压一下
 	##   (SCREEN_DEPTH_K), 场地系与屏幕系本来就不该相等; 正轴上压缩是恒等, 比得干净。
+	## ★★四个方向 × 【两段】。第一版这个循环写死 `seg=1`,
+	##   于是竖斩的圆心落在哪、扇面指着哪 **没有任何断言在管** ——
+	##   实际它被我压了 38°, 而判定锥半角只有 30°, 中线整个在锥外。
+	##   (用户 2026-08-29:「竖斩你咋弄的, 方向圆心都对了吗」)
 	var dirs: Array = [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]
 	var names: Array = ["+x", "-x", "+y(远离镜头)", "-y(靠近镜头)"]
 	var worst_ang: float = 0.0
@@ -1065,15 +1085,62 @@ func _t084_slash_geometry() -> void:
 	var min_center: float = 1e9
 	var n_seen: int = 0
 	var reach_yd: float = 0.0
-	for i in range(dirs.size()):
-		var d: Vector2 = dirs[i]
-		var s3 = _last_slash(vfx, u, d, 1)
+	var worst_ang2: float = 0.0
+	var worst_pivot2: float = 0.0
+	var n_seen2: int = 0
+	var up_ok: bool = true
+	var side_ok: bool = true
+	for i in range(dirs.size() * 2):
+		var d: Vector2 = dirs[i % dirs.size()]
+		var _seg: int = 1 if i < dirs.size() else 2
+		var s3 = _last_slash(vfx, u, d, _seg)
 		if s3 == null:
+			continue
+		if _seg == 2:
+			n_seen2 += 1
+			var fm2: float = float(s3.pixel_size) * float(maxi(1, s3.texture.get_height()))
+			## ★竖斩那张的圆心在 CHOP_PIVOT(左下角), 不是 SLASH_PIVOT ——
+			##   生成时已把它旋转+挪过去了。拿错一个就测的是别人的转轴。
+			## ★镜像了的话圆心 x 也镜像 —— 不跟着镜像会差整整 400 码
+			##   (= 2×(0.5-0.06)×帧宽455), 而那不是产品的错。
+			var pc2: Vector2 = BladeEqVfx.CHOP_PIVOT
+			if bool(s3.flip_h):
+				pc2 = Vector2(1.0 - pc2.x, pc2.y)
+			var pv2: Vector3 = s3.position + BladeEqVfx.slash_pivot_off3(s3.basis, fm2, pc2)
+			## ★竖斩的圆心在龟【正上方】: 水平方向必须仍然对齐龟身
+			var hand2: Vector3 = _s._world_pos(u["pos"] as Vector2, GunEqVfx.body_mid_h(u))
+			worst_pivot2 = maxf(worst_pivot2,
+				Vector2(pv2.x - hand2.x, pv2.z - hand2.z).length() / _s.WS)
+			## ★量的是【下缘】而不是中线: 用户要求"120 扇形的一边得贴地",
+			##   即**下缘沿着目标方向躺在地上**, 扇面从那条线往上张 120°。
+			## ══ 新素材是【新月形刀光】, 不是楼形扇面 ══════════════
+			## ★它没有"直边", 与地面只有一个接触点 ⇒ "下缘水平"那条判据对它不成立。
+			##   改成量三件它真正承诺的事:
+			##     ① 落地点钉在龟脚下(上面 worst_pivot2 已经在管)
+			##     ② 板子【不翻转】—— 屏幕上永远是正的(basis.y 的世界 Y > 0)
+			##     ③ 刀身偏向目标那一侧(靠 flip_h)
+			var mx: float = -1.0 if bool(s3.flip_h) else 1.0
+			## ② 不翻转: 板子的"上"必须真的向上
+			if s3.basis.y.y <= 0.05:
+				up_ok = false
+			## ③ 刀身偏向目标侧: 取素材里"刀身重心相对落地点"的横向偏移方向
+			## ★★要量【刀身实际在哪一侧】, 不是量板子的轴。
+			##   第一版量的是 basis.x ⇒ 无论刀身在哪边都绿, 于是镜像条件写反了它也没抦住
+			##   (用户一眼就看出"左右反了")。尺子要匹配被测的概念。
+			if absf(d.x) > 0.5:
+				var off: Vector3 = s3.basis.x * (BladeEqVfx.CHOP_MASS_DX * mx)
+				if Vector2(off.x, off.z).dot(d) <= 0.0:
+					side_ok = false
+			worst_ang2 = maxf(worst_ang2, rad_to_deg(asin(clampf(absf(s3.basis.x.y), 0.0, 1.0))))
 			continue
 		n_seen += 1
 		## ① 圆心落在哪: position 是【图心】, 加上圆心偏移才是圆心。
 		var fm: float = float(s3.pixel_size) * float(maxi(1, s3.texture.get_height()))
-		var pivot: Vector3 = s3.position + BladeEqVfx.slash_pivot_off3(s3.basis, fm)
+		## ★横斩现在也镜像(翻弧的旋向) ⇒ 圆心 x 同样要镜像, 否则量的是对称那一边。
+		var pw: Vector2 = BladeEqVfx.SLASH_PIVOT
+		if bool(s3.flip_h):
+			pw = Vector2(1.0 - pw.x, pw.y)
+		var pivot: Vector3 = s3.position + BladeEqVfx.slash_pivot_off3(s3.basis, fm, pw)
 		var hand: Vector3 = _s._world_pos(u["pos"] as Vector2, GunEqVfx.body_mid_h(u))
 		worst_pivot = maxf(worst_pivot, (pivot - hand).length() / _s.WS)
 		## ★分母(这条是判据的"刚好卡住"处): 图心【不】在手上。
@@ -1089,6 +1156,51 @@ func _t084_slash_geometry() -> void:
 		print("     %s  圆心偏 %.1f 码 · 图心偏 %.1f 码 · 扇面偏 %.1f 度"
 			% [names[i], (pivot - hand).length() / _s.WS,
 			   (s3.position - hand).length() / _s.WS, ang])
+	## ══ 横斩铺在【地面平面】: 看到多宽 = 打到多宽 ═════════════
+	##
+	## 用户 2026-08-29:「画在地面平面上」。旧做法是正对镜头的板 ⇒
+	## 玩家看到的 120° 是**屏幕平面**的, 而判定锥是**地面平面**的, 两个空间对不上。
+	##
+	## ★三条都量节点自己的 basis, 不数标记:
+	##   ① 板面真的躺平(法线朝天)
+	##   ② 中线在**场地坐标**里正对目标
+	##   ③ 两条边落在 ±60° = SLASH_DEG_WIDE/2 —— 这才是"演出即判定"
+	var flat_ok: bool = true
+	var aim_err: float = 0.0
+	var edge_err: float = 0.0
+	var n_gp: int = 0
+	for pd in [Vector2(1, 0), Vector2(0, 1), Vector2(-1, 0), Vector2(0, -1)]:
+		var pn = _last_slash(vfx, u, pd, 1)
+		if pn == null:
+			continue
+		n_gp += 1
+		if pn.basis.z.y < 0.99:
+			flat_ok = false
+		var want: float = rad_to_deg(atan2(pd.y, pd.x))
+		## ★★必须把 flip_h 算进去。翻转把平面角 A 的特征挪到 180°-A,
+		##   不算的话"中线对准目标"会在实际偏 82° 的情况下报 0.0° ——
+		##   2026-08-29 就是这样放过一个背对目标的横斩, 用户一眼看出来的。
+		var _a1: float = BladeEqVfx.SLASH_ASSET_RAD
+		if bool(pn.flip_h):
+			_a1 = PI - _a1
+		var mid_v: Vector3 = pn.basis.x * cos(_a1) + pn.basis.y * sin(_a1)
+		aim_err = maxf(aim_err, absf(rad_to_deg(
+			Vector2(cos(deg_to_rad(want)), sin(deg_to_rad(want))).angle_to(
+				Vector2(mid_v.x, mid_v.z)))))
+		## 两条边相对中线应该各差 60°(写死, 不读产品常量)
+		for sgn in [-1.0, 1.0]:
+			var _ae: float = BladeEqVfx.SLASH_ASSET_RAD + sgn * deg_to_rad(60.0)
+			if bool(pn.flip_h):
+				_ae = PI - _ae
+			var ev: Vector3 = pn.basis.x * cos(_ae) + pn.basis.y * sin(_ae)
+			var got: float = rad_to_deg(Vector2(mid_v.x, mid_v.z).angle_to(Vector2(ev.x, ev.z)))
+			edge_err = maxf(edge_err, absf(absf(got) - 60.0))
+	_ok("④g ★分母: 四个方向都量到了铺地基", n_gp == 4, "n=%d" % n_gp)
+	_ok("④g ★★横斩的板【躺平在地面上】(法线朝天) —— 不再是正对镜头的牌子", n_gp == 4 and flat_ok)
+	_ok("④g ★★中线在【场地坐标】里正对目标: 最大偏 %.1f° < 3°" % aim_err,
+		n_gp == 4 and aim_err < 3.0)
+	_ok("④g ★★两条边落在 ±60°(= 判定锥 120° 的一半): 最大偏 %.1f° < 3°" % edge_err,
+		n_gp == 4 and edge_err < 3.0)
 	_ok("④g ★分母: 四个方向都真的建出了斩击节点(N=0 是空检查不是通过)", n_seen == 4,
 		"n=%d" % n_seen)
 	_ok("④g ★★【圆心】钉在握剑的手上: 最大偏差 %.1f 码 < 8" % worst_pivot,
@@ -1113,8 +1225,7 @@ func _t084_slash_geometry() -> void:
 		tw != "" and tn != "" and tw != tn, "wide=%s narrow=%s" % [tw.get_file(), tn.get_file()])
 	_ok("④g 横斩拿的是宽那张(张角 = SLASH_DEG_WIDE)",
 		tw.ends_with("eq084-slash-wide.png"), tw)
-	_ok("④g 竖斩拿的是窄那张(张角 = SLASH_DEG_NARROW)",
-		tn.ends_with("eq084-slash-narrow.png"), tn)
+	_ok("④g 竖斩拿的是新生成的下劈刀光", tn.ends_with("eq084-chop.png"), tn)
 	## ④ 竖斩要读成【从上往下砍】: 起手点更高 + 扇面更往下压。
 	## ★比的是【圆心】的高度, 不是节点位置 ——
 	##   节点位置里含着"圆心相对图心的偏移", 而那个偏移随 roll 转
@@ -1130,35 +1241,34 @@ func _t084_slash_geometry() -> void:
 	##   第一版写的是 `absf(dh - BladeEqVfx.CHOP_RAISE) < 6` —— 把产品里的 CHOP_RAISE
 	##   改成 0, 这条**照样绿**(两边一起变)。反向验证当场抓到的。
 	##   同族: 本会话早些时候复制黑名单的门禁也是迭代产品自己的表。
-	_ok("④g ★竖斩的握剑手抬到头顶上方: 比横斩高 %.0f 码(写死期望 64)" % dh,
-		absf(dh - 64.0) < 6.0)
-	## ★剑波也必须按行进方向转 —— 旧代码一行 roll 都没有(纯 billboard)。
-	## 素材弯成扇面之后"尖端在后、弧在前"有了方向, 不转 = 往左飞的波把弧指向右。
-	var wv_ok: bool = true
-	var wv_seen: int = 0
-	for wd in [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1)]:
-		vfx.cross_wave(u, u["pos"] as Vector2, wd, 2)
-		var wn = null
-		for c in _s._world.get_children():
-			if c is Sprite3D and (c as Node).has_meta("wave_roll"):
-				wn = c
-		if wn == null:
-			continue
-		wv_seen += 1
-		var wa: Vector3 = (wn as Sprite3D).basis.x
-		var wf: Vector2 = Vector2(wa.x, wa.z).normalized()
-		if rad_to_deg(absf(wf.angle_to(wd))) > 8.0:
-			wv_ok = false
-		if (wn as Sprite3D).billboard != BaseMaterial3D.BILLBOARD_DISABLED:
-			wv_ok = false
-	_ok("④g ★分母: 三个方向都建出了剑波节点", wv_seen == 3, "n=%d" % wv_seen)
-	_ok("④g ★★剑波按行进方向转(且关掉 billboard) —— 弧形前缘才朝行进方向",
-		wv_seen == 3 and wv_ok)
+	## ══ 竖斩: 120° 扇形 · 下缘贴地 · 扇面往上张 ═════════════════
+	## 用户 2026-08-29:「素材要不得, 得搞 120 度的, 120 扇形的一边得贴地」。
+	_ok("④g ★分母: 竖斩也四个方向都建出了节点", n_seen2 == 4, "n=%d" % n_seen2)
+	_ok("④g ★★竖斩的【圆心】水平上仍对齐龟身: 最大偏 %.1f 码 < 8" % worst_pivot2,
+		n_seen2 == 4 and worst_pivot2 < 8.0)
+	_ok("④g ★★竖斩的板子【不被转歪】: 横轴偏离水平 %.1f° < 8°(转了刀就不是竖砍了)" % worst_ang2,
+		n_seen2 == 4 and worst_ang2 < 8.0)
+	_ok("④g ★★扇面从那条线往【上】张(不是往地下) —— 中线的世界 Y > 0", up_ok)
+	_ok("④g ★★扇面斜向【目标那一侧】(往左劈就往左) —— 靠 flip_h, 不是靠转板子", side_ok)
+	## ★写死 120: 不读产品的 CHOP_ART_DEG, 否则改它时两边一起变
+	_ok("④g ★焊死: 竖斩用的是**新生成**的 eq084-chop.png(不是拿横斩变形出来的)",
+		BladeEqVfx.TEX_SLASH_NARROW.ends_with("eq084-chop.png"), BladeEqVfx.TEX_SLASH_NARROW)
+	## 竖斩的扇尖落在地面高度(不再抬手) —— 下缘要真贴得住地
+	var pw3: Vector3 = Vector3.ZERO
+	var pn3: Vector3 = Vector3.ZERO
+	if sw != null and sn != null:
+		## ★同样要镜像(上面那一处已经踩过一次) —— 横斩现在也翻弧旋向。
+		var pw2: Vector2 = BladeEqVfx.SLASH_PIVOT
+		if bool(sw.flip_h):
+			pw2 = Vector2(1.0 - pw2.x, pw2.y)
+		pw3 = sw.position + BladeEqVfx.slash_pivot_off3(
+			sw.basis, float(sw.pixel_size) * float(maxi(1, sw.texture.get_height())), pw2)
+		pn3 = sn.position + BladeEqVfx.slash_pivot_off3(
+			sn.basis, float(sn.pixel_size) * float(maxi(1, sn.texture.get_height())),
+			BladeEqVfx.CHOP_PIVOT)
+	_ok("④g ★竖斩的扇尖落在【地面高度】(比横斩低 %.2f 米; 旧做法是往上抬 64 码)"
+		% (pw3.y - pn3.y), sw != null and sn != null and pn3.y < pw3.y and absf(pn3.y) < 0.35)
 
-	var rw: float = 0.0 if sw == null else float(sw.get_meta("slash_roll", 0.0))
-	var rn: float = 0.0 if sn == null else float(sn.get_meta("slash_roll", 0.0))
-	_ok("④g ★竖斩的扇面比横斩多往下压 %.1f 度(写死期望 38)" % rad_to_deg(rw - rn),
-		absf(rad_to_deg(rw - rn) - 38.0) < 1.0)
 
 
 ## 画一刀, 返回刚建出来的那个 Sprite3D(按 _adopt 打的 meta 找, 取最后一个)。
@@ -1169,3 +1279,43 @@ func _last_slash(vfx, u: Dictionary, d: Vector2, seg: int):
 		if c is Sprite3D and (c as Node).has_meta(BladeEqVfx.META_KEY) 				and str((c as Node).get_meta(BladeEqVfx.META_KEY)) == "slash":
 			got = c
 	return got
+
+
+## ══ ④m 整招演完之前不允许移动 ════════════════════════
+##
+## 用户 2026-08-29:「角色应该在竖斩动画结束后才开始移动」。
+##
+## ★量的是产品自己的定身标记 `_slam` —— 全仓通用的"锁 AI/移动"闸,
+##   `RealtimeBattle3DScene._tick_unit` 看到它就直接 return。不是我插的标记。
+## ★四个时刻都要验, 少一个就守不住:
+##   后撤刚滑完(旧代码正是在这一刻解锁的) / 最后一刀刚落地 /
+##   刀光放完前一瞬 / 放完之后
+func _t084_move_lock() -> void:
+	print("── ④m 整招演完之前不允许移动 ──")
+	_s._units.clear()
+	var u: Dictionary = _mk("fortune", "left", Vector2(-100.0, 0.0))
+	var tgt: Dictionary = _mk("fortune", "right", Vector2(-20.0, 0.0), 1000000.0)
+	_equip(u, "p2eq_084", 3)
+	_spawn_all()
+	_ok("④m ★分母: 施放前没被定身", not bool(u.get("_slam", false)))
+	var t0: float = _s._t
+	(u["skill_cd"] as Dictionary)[EqBladeBatch.HH_SKILL] = 0.0
+	u["skill_gcd_until"] = 0.0
+	var fired: bool = _s._cast_skill(u, tgt, EqBladeBatch.HH_SKILL)
+	_ok("④m ★分母: 真的施放了一次", fired)
+	_adv_to(t0 + EqBladeBatch.RETREAT_SEC + 0.02)
+	_ok("④m ① 后撤刚滑完(%.2f 秒)仍被定身 —— 旧代码正是在这一刻解锁的"
+		% EqBladeBatch.RETREAT_SEC, bool(u.get("_slam", false)))
+	_adv_to(t0 + EqBladeBatch.CROSS_T3 + 0.02)
+	_ok("④m ② 最后一刀刚落地(%.2f 秒)仍被定身(刀光还在放)"
+		% EqBladeBatch.CROSS_T3, bool(u.get("_slam", false)))
+	var done: float = EqBladeBatch.CROSS_T3 + BladeEqVfx.SLASH_LIFE
+	_adv_to(t0 + done - 0.08)
+	_ok("④m ③ 刀光放完前一瞬(%.2f 秒)还锁着" % (done - 0.08),
+		bool(u.get("_slam", false)))
+	_adv_to(t0 + done + 0.08)
+	_ok("④m ④ 刀光放完(%.2f 秒 = CROSS_T3 + SLASH_LIFE)之后解锁, 可以动了" % done,
+		not bool(u.get("_slam", false)))
+	_ok("④m ★收尾: 锁计时字段已清(不残留到下一招)", not u.has("_b84_lock_until"))
+	_blade().clear_all()
+	_s._units.clear()

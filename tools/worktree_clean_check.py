@@ -35,6 +35,26 @@ WATCH = ('scripts/', 'autoload/', 'data/', 'server/')
 CONST_LINE = re.compile(r'^[+-]\s*(?:const\s+)?([A-Z][A-Z0-9_]{2,})\s*:?=\s*(-?[\d.]+)')
 
 
+## 把一个 hunk 里的 -/+ 配对, 找"新行是旧行前缀"的。
+def _flush_trunc(cur, minus, plus, out):
+    if cur is None or not cur.startswith(WATCH):
+        return
+    for a in minus:
+        sa = a.strip()
+        ## ★只看【代码行】。注释行天天在改, 把它们算进来就是满屏误报,
+        ##   而满屏误报的门禁等于没有门禁(本文件头注里已经记过一次)。
+        if len(sa) < 12 or sa.startswith('#'):
+            continue
+        for b in plus:
+            sb = b.strip()
+            if sb.startswith('#'):
+                continue
+            ## 新行严格短于旧行、且是它的前缀 ⇒ 尾巴被砍了
+            if sb and sb != sa and sa.startswith(sb) and len(sa) - len(sb) >= 4:
+                out.append((cur, a, b))
+                break
+
+
 def main():
     try:
         r = subprocess.run(['git', 'diff', '-U0'], capture_output=True, text=True,
@@ -48,6 +68,9 @@ def main():
 
     cur = None
     pairs = {}          # (file, CONST) -> [旧值, 新值]
+    trunc = []          # 【被截短的表达式】: 新行是旧行的前缀
+    hunk_minus = []
+    hunk_plus = []
     n_files = 0
     for ln in (r.stdout or '').split(chr(10)):
         if ln.startswith('+++ b/'):
@@ -56,6 +79,28 @@ def main():
             continue
         if cur is None or not cur.startswith(WATCH):
             continue
+        ## ══ 第二只眼: 【表达式尾巴被砍掉】════════════════════
+        ##
+        ## ★★ 2026-08-29 又漏一次, 而且上面那只眼看不见:
+        ##   反向验证把
+        ##       u["_b84_lock_until"] = battle._t + CROSS_T3 + BladeEqVfx.SLASH_LIFE
+        ##   改成了
+        ##       u["_b84_lock_until"] = battle._t + CROSS_T3
+        ##   还原失手后, 它**不是单行常量改数值**, 于是滑过去了 ——
+        ##   直到全套门禁报三条红才发现。我那轮只跑了 `git diff --numstat`
+        ##   看行数、没看内容。
+        ##
+        ## ★形状: 新行是旧行的**前缀**(末尾被砍掉一段)。
+        ##   这正是"去掉一项看门禁会不会红"最常用的手法,
+        ##   而正常开发很少只把一行的尾巴砍掉而完全不动别处。
+        if ln.startswith('@@'):
+            _flush_trunc(cur, hunk_minus, hunk_plus, trunc)
+            hunk_minus = []
+            hunk_plus = []
+        elif ln.startswith('-') and not ln.startswith('---'):
+            hunk_minus.append(ln[1:])
+        elif ln.startswith('+') and not ln.startswith('+++'):
+            hunk_plus.append(ln[1:])
         m = CONST_LINE.match(ln)
         if not m:
             continue
@@ -63,11 +108,22 @@ def main():
         pairs.setdefault(key, [None, None])
         pairs[key][0 if ln[0] == '-' else 1] = m.group(2)
 
+    _flush_trunc(cur, hunk_minus, hunk_plus, trunc)
+
     ## 一改一(有旧有新)才算"数值被换掉" —— 纯新增常量不算。
     hits = [(f, k, v[0], v[1]) for (f, k), v in sorted(pairs.items())
             if v[0] is not None and v[1] is not None and v[0] != v[1]]
 
-    print('  [分母] 扫了 %d 个改动文件 · 命中【单行常量数值被改】%d 处' % (n_files, len(hits)))
+    print('  [分母] 扫了 %d 个改动文件 · 命中【单行常量数值被改】%d 处 · 【表达式尾巴被砍】%d 处'
+          % (n_files, len(hits), len(trunc)))
+    for f, a, b in trunc:
+        print('  [FAIL] %s 有一行的**尾巴被砍掉**(像反向验证没还原):' % f)
+        print('         旧: %s' % a.strip()[:100])
+        print('         新: %s' % b.strip()[:100])
+    if trunc and '--ack' not in sys.argv:
+        print('')
+        print('FAILED: %d 处表达式被砍短 —— 确认是有意的就加 --ack' % len(trunc))
+        return 1
     if not hits:
         print('')
         print('ALL OK — 工作区没有像反向验证残留的改动')

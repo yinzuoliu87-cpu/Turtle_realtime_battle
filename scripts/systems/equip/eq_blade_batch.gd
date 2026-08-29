@@ -165,7 +165,7 @@ const HH_RANGED_HP := [300.0, 700.0, 3000.0]  # 远程携带给的生命值基�
 ## 后撤【真的滑过去】用多久(秒)。
 ## ★★2026-08-29 用户追问「你还是瞬移吗」—— 是。原来 `u["pos"] = dest` 一步到位,
 ##   演出只是在旁边补影子。我当时的顾虑是"位置滑动会让斩击的圆心漂",
-##   **但那个顾虑是算错的**: 斩击在 CROSS_T1(0.25 秒)之后才结算, 只要后撤在那之前走完,
+##   **但那个顾虑是算错的**: 斩击在 CROSS_T1(0.40 秒)之后才结算, 只要后撤在那之前走完,
 ##   圆心就还是落点, 几何一点不变。⇒ 取 0.18 < 0.25, 留 0.07 秒余量。
 ## ★用【每帧驱动】不用 tween —— 无头 CI 下场景树 tween 推进不稳(CLAUDE.md §3.5 海盗钩索),
 ##   而这是**会影响伤害几何**的位移, 不能赌它跑不跑得完。
@@ -173,8 +173,11 @@ const HH_RANGED_HP := [300.0, 700.0, 3000.0]  # 远程携带给的生命值基�
 ## ★不存单位字典 —— 单位之间互相引用成环, 存进别的容器会递归哈希卡死(CLAUDE.md §3.2)。
 var _last_hit_pos: Array = []
 const RETREAT_SEC := 0.18
-const CROSS_T1 := 0.25
-const CROSS_T3 := 0.60
+## ★用户 2026-08-29: 两刀的拍子全部拉长一倍——
+##   0.25 → 0.40(第一刀) · 0.60 → 1.00(第二刀), 斩击动画时长也翻倍。
+##   原来整段只有 ~0.8 秒, 四段伤害挤在一块看不清。
+const CROSS_T1 := 0.40
+const CROSS_T3 := 1.00
 ## 剑波: 推进速度(码/秒) / 最远行程(码) / 波前带半厚(码)
 const WAVE_SPD := 900.0
 const WAVE_RANGE := 700.0
@@ -210,7 +213,23 @@ func _nth_copy(u: Dictionary, eid: String, st: Dictionary) -> bool:
 # ══════════════════════════════════════════════════════════════════════
 
 ## 每帧全局推进: 084 的十字斩分段时刻表 + 在途剑波 + 演出
+## 整招演完才解开定身。返回还锁着的人数(同步证据, 门禁直接调)。
+func b84_locked() -> int:
+	var n: int = 0
+	for u in battle._units:
+		if not (u is Dictionary) or not (u as Dictionary).has("_b84_lock_until"):
+			continue
+		var ud: Dictionary = u
+		if battle._t >= float(ud["_b84_lock_until"]):
+			ud.erase("_b84_lock_until")
+			ud["_slam"] = false
+		else:
+			n += 1
+	return n
+
+
 func tick(delta: float) -> void:
+	b84_locked()
 	_step_retreat(delta)
 	_step_pending()
 	_step_waves(delta)
@@ -729,6 +748,13 @@ func cast_cross_slash(u: Dictionary, tgt) -> void:
 	##   不设的话移动系统会在滑行途中把它往目标那边拉回去。
 	u["_b84_retreat"] = {"from": from2d, "to": dest, "t": 0.0}
 	u["_slam"] = true
+	## ★★用户 2026-08-29:「角色应该在竖斩动画结束后才开始移动」。
+	##   旧行为: `_slam` 在**后撤滑完那一刻**(0.18 秒)就解开了,
+	##   于是龟在蓄力/两刀演出还在放的时候就已经跑起来了 ——
+	##   刀光留在原地、人跑了, 两个对不上。
+	##   现在锁到**最后一刀的动画放完**: CROSS_T3 + 刀光时长。
+	## ★从常量推, 不写死 —— 拍子改了它自动跟上。
+	u["_b84_lock_until"] = battle._t + CROSS_T3 + BladeEqVfx.SLASH_LIFE
 	if u.has("_home_pos"):
 		u["_home_pos"] = dest                    # ★只在【本来就有】时才写, 绝不凭空创建(评审假人归位坑)
 	var dir: Vector2 = (tgt as Dictionary)["pos"] - dest
@@ -737,7 +763,7 @@ func cast_cross_slash(u: Dictionary, tgt) -> void:
 	u["face_right"] = dir.x > 0.0
 	vfx.cross_retreat(u, dest, dir, from2d)
 	## ★★2026-08-29 补【蓄力】(用户点名:「然后是蓄力, 你做了吗」—— 没有)。
-	##   后撤落地到第一刀之间的 CROSS_T1(0.25 秒)原来是**全空的**, 屏幕上什么都不发生,
+	##   后撤落地到第一刀之间的 CROSS_T1(0.40 秒)原来是**全空的**, 屏幕上什么都不发生,
 	##   于是整招读起来是"退了一下, 然后弧凭空出现"。这一拍补上剑气收拢 + 龟身预备形变。
 	vfx.cross_windup(u, dir, CROSS_T1)
 	_pending.append({"u": u, "dir": dir, "si": sx, "t": battle._t + CROSS_T1, "seg": 1})
@@ -777,7 +803,8 @@ func _step_retreat(delta: float) -> void:
 		if x >= 1.0:
 			u["pos"] = r["to"]                     # ★精确落位
 			(u as Dictionary).erase("_b84_retreat")
-			(u as Dictionary)["_slam"] = false
+			## ★滑完【不】解锁 —— 要等整招演完(见 _b84_lock_until)。
+			##   旧代码在这里 `_slam = false`, 人在蓄力阶段就跑了。
 
 
 ## 分段时刻表推进(用 battle._t —— 顿帧/时停时演出与结算一起停)。

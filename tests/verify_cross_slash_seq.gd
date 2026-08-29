@@ -68,10 +68,10 @@ func _ready() -> void:
 		await get_tree().process_frame
 
 	# ── 分母：时序常量还是那三个数 ──
-	_ok("★分母: 后撤 150 码 / 第一刀 0.25 秒 / 第二刀 0.60 秒",
+	_ok("★分母: 后撤 150 码 / 第一刀 0.40 秒 / 第二刀 1.00 秒",
 		absf(EqBladeBatch.HH_BACKSTEP - 150.0) < 0.001
-			and absf(EqBladeBatch.CROSS_T1 - 0.25) < 0.001
-			and absf(EqBladeBatch.CROSS_T3 - 0.60) < 0.001,
+			and absf(EqBladeBatch.CROSS_T1 - 0.40) < 0.001
+			and absf(EqBladeBatch.CROSS_T3 - 1.00) < 0.001,
 		"退%.0f 码 / T1=%.2f / T3=%.2f"
 			% [EqBladeBatch.HH_BACKSTEP, EqBladeBatch.CROSS_T1, EqBladeBatch.CROSS_T3])
 
@@ -146,7 +146,12 @@ func _ready() -> void:
 	_ok("★★① 分母: 滑行(%.2f 秒)早于第一刀(%.2f 秒) ⇒ 斩击圆心仍是落点"
 			% [EqBladeBatch.RETREAT_SEC, EqBladeBatch.CROSS_T1],
 		EqBladeBatch.RETREAT_SEC < EqBladeBatch.CROSS_T1)
-	_ok("★① 滑完解掉了施法锁(_slam), 不会卡住不动", not bool(u.get("_slam", false)))
+	## ★★这条原来写的是【旧行为】: "滑完就解锁"。
+	##   用户 2026-08-29:「角色应该在竖斩动画结束后才开始移动」——
+	##   旧行为让人在蓄力阶段就跑了, 刀光留在原地、人在别处。
+	##   现在反过来: 滑完之后**必须还锁着**。完整时序见 verify_eq_blade_batch ④m。
+	_ok("★① 滑完【仍然锁着】—— 要等整招演完(CROSS_T3 + SLASH_LIFE)才能动",
+		bool(u.get("_slam", false)))
 	## ★★后撤【演出】: 沿路的拖影。修前这里是 0(注释说有残影, 代码里没有)。
 	var ghosts: int = _fx_count("fade")
 	_ok("★★① 后撤演出: 沿路铺了拖影(修前是 0 —— 注释说有残影而代码里没有)",

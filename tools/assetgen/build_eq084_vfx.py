@@ -60,7 +60,12 @@ SLASH_PIVOT = (0.664, 0.728)
 SLASH_MID_DEG = -131.0
 SLASH_ART_DEG = 116.0
 WIDE_DEG = 120.0                 # = BladeEqVfx.SLASH_DEG_WIDE
-NARROW_DEG = 60.0                # = BladeEqVfx.SLASH_DEG_NARROW
+## ★★竖斩那张也是 **120 度**, 不是判定锥的 60 度。
+##   用户 2026-08-29:「素材要不得, 得搞 120 度的, 120 扇形的一边得贴地」。
+##   因为竖斩的扇面是**竖直平面里的挥剑弧**(从举过头顶砍到地面),
+##   不是地面上的扭定锥 —— 两者本来就不是同一个东西。
+##   横斩那张才是地面锥(120° = SLASH_DEG_WIDE)。
+NARROW_DEG = 120.0
 
 ## ★用户 2026-08-29:「横斩素材我希望把 D6 移到第一位, D4 放到第二位」。
 ##   (他看的是桌面那张逐帧图, 标签“帧0…帧8”的中文在他那边没渲出来、成了方框
@@ -108,9 +113,43 @@ print('横斩 %.0f度 · 帧序 %s  %dx%d'
       % ((WIDE_DEG, WIDE_ORDER)
          + sheet([warp_span(fs[i], WIDE_DEG) for i in WIDE_ORDER],
                  'assets/sprites/vfx/eq084-slash-wide.png')))
-print('竖斩 %.0f度 · 原帧序          %dx%d'
-      % ((NARROW_DEG,)
-         + sheet([warp_span(f, NARROW_DEG) for f in fs],
+## ══ 竖斩: 把【直边】转成水平、圆心挪到左下角 ════════════════
+##
+## 用户 2026-08-29:「120 扇形的一边得贴地」。
+##
+## ★不需要重画。实测: 这张 120° 图**本来就有一条够直的边** ——
+##   +284° 那侧的半径覆盖率 85~90%(从扇尖一直连到外缘),
+##   另一条只有 25~75%(毛边)。所以把那条直边转成水平就行。
+## ★而且要把旋转**焊进素材文件本身** —— 这样打开图看到的就是
+##   "120° 扇形、下缘贴地", 而不是"要在游戏里转一下才贴地"。
+## ★只旋转+平移, **不缩放不拉伸** —— 不把好素材改坏。
+CHOP_EDGE_DEG = 284.0            # 那条真直的边(图像系度, 绕 SLASH_PIVOT 量出来的)
+CHOP_PIVOT = (0.06, 0.94)        # 转完之后圆心放在哪(左下角), 扇面往右上张
+
+
+def to_ground(im):
+    """绕圆心转到【直边水平指右】, 再把圆心挪到左下角。逆向采样+最近邻。"""
+    W, H = im.size
+    src = im.load()
+    out = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    dst = out.load()
+    ox, oy = SLASH_PIVOT[0] * W, SLASH_PIVOT[1] * H       # 源图里的圆心
+    nx, ny = CHOP_PIVOT[0] * W, CHOP_PIVOT[1] * H         # 目标图里的圆心
+    th = math.radians(CHOP_EDGE_DEG)                      # 把 +284° 转到 0° ⇒ 逆变换转回 +284°
+    c, s2 = math.cos(th), math.sin(th)
+    for y in range(H):
+        for x in range(W):
+            dx, dy = x - nx, y - ny
+            sx = int(round(ox + dx * c - dy * s2))
+            sy = int(round(oy + dx * s2 + dy * c))
+            if 0 <= sx < W and 0 <= sy < H:
+                dst[x, y] = src[sx, sy]
+    return out
+
+
+print('竖斩 %.0f度 · 直边转成水平贴地 · 圆心(%.2f,%.2f)  %dx%d'
+      % ((NARROW_DEG, CHOP_PIVOT[0], CHOP_PIVOT[1])
+         + sheet([to_ground(warp_span(f, NARROW_DEG)) for f in fs],
                  'assets/sprites/vfx/eq084-slash-narrow.png')))
 
 # ── 剑气波: 把整片辐射条【弯成弧】─────────────────────────
