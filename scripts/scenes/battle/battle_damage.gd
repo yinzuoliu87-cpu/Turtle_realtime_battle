@@ -28,6 +28,17 @@ var _dt_total := 0                      # 分母: 一共取用了几次类型(N=
 ##   ⇒ `_resolve_dmg` 顺手记下"这份类型是算给谁的"; 取用时目标对不上 = 捡了别人的。
 var _dt_owner = null
 var _dt_wrongowner: Dictionary = {}     # 归属不符(比 fresh 更严)的记账
+## ★哨兵的第三只眼(2026-08-29): 前两只都只管【飘字颜色对不对】,
+##   管不了**这一发到底吃没吃护甲/魔抗**。
+##   `_resolve_dmg` 才是算护甲的地方(effective_resist / resist_multiplier);
+##   `_mitigate_incoming` 只算【减伤类】(damage_reduction / flat_dr / 护盾 / 嘲讽),
+##   **它没有护甲公式** —— 所以 `raw=false` 只保证"吃减伤", 不保证"吃护甲"。
+##   ⇒ 一发伤害只要没经过 `_resolve_dmg`, 它就是【无视护甲与魔抗】的定额伤害,
+##     而文案很可能写着"物理伤害"。用户 2026-08-27:「物理伤害为啥不吃护甲啊」。
+##   ⇒ 记账点仍在产品自己取用类型的那一行, 不是我插的标记: 新写的伤害代码
+##     只要绕开 `_resolve_dmg` 就会被记上, 我不需要预先知道它存在。
+var _dt_resolved := false               # 这份类型是 _resolve_dmg 算出来的(吃护甲), 还是 set_dtype 声明的(不吃)
+var _dt_unmitigated: Dictionary = {}     # "来源标签" → 没走 _resolve_dmg 的次数
 
 
 ## 取用伤害类型。★返回值就是飘字要用的类型; 顺带把 fresh 消费掉。
@@ -45,6 +56,11 @@ func sentinel_wrongowner() -> Dictionary:
 	return _dt_wrongowner.duplicate()
 
 
+## 【没走 `_resolve_dmg`】的记账 —— 这些伤害**不吃护甲也不吃魔抗**, 哪怕文案写着物理。
+func sentinel_unmitigated() -> Dictionary:
+	return _dt_unmitigated.duplicate()
+
+
 ## ★★不走 `_resolve_dmg` 但类型是确定的那些伤害, **一律用这个**声明类型, 别手写
 ##   `battle._last_dmg_type = ...`。手写会漏掉 fresh / owner 两个记账位, 于是
 ##   哨兵既看不出问题、也统计不准(2026-08-22 实测: 我自己修的几处就是这样进的"归属不符"名单)。
@@ -54,12 +70,18 @@ func sentinel_wrongowner() -> Dictionary:
 ##   在同一行写的, 病也一样: 弹道飞行途中被别人的伤害改掉, 命中时捡到别人的暴击。
 ##   实测(2026-08-22 探针): 51 发弹道命中里 12 发(24%)的暴击标记是捡来的。
 ##   后果不止显示 —— 忍者斩击的流血层数就读它(暴击 3 层/否则 2 层), 是玩法。
-func set_dtype(t: String, victim, crit = null) -> void:
+## `resolved`: 这一发【已经算过护甲/魔抗】了吗。默认 false ——
+##   "声明类型" ≠ "算过护甲"。但有两类场合它确实算过, 必须显式传 true, 否则第三只眼误报:
+##   ① `_phys_after_armor()` 算的段(手里剑物理段 / 幽魂触碰物理段) —— 它就是护甲公式本身
+##   ② 弹道: 伤害在【发射时】用 `_atk_dmg` 算好, 命中时只是还原类型
+##      (`_push_proj` 顺手把发射那一刻的 `_dt_resolved` 一起存进 `dtype_resolved`)
+func set_dtype(t: String, victim, crit = null, resolved: bool = false) -> void:
 	battle._last_dmg_type = t
 	if crit != null:
 		battle._last_atk_crit = bool(crit)
 	_dt_fresh = true
 	_dt_owner = victim
+	_dt_resolved = resolved         # ★声明类型 ≠ 算过护甲 —— 见 `_dt_resolved` 头注
 
 ## `is_raw` 的那些**不算**捡类型: 真伤飘字恒为白, 与 `_last_dmg_type` 无关(下面 `_dt` 里
 ## 直接写死 "true")。不排掉的话哨兵会把海盗钩索/训龟大师这类纯真伤记成问题, 淹掉真的。
@@ -68,6 +90,18 @@ func _take_dtype(who: String, is_raw: bool = false, victim = null) -> String:
 		_dt_total += 1
 		if not is_raw and victim != null and not is_same(_dt_owner, victim):
 			_dt_wrongowner[who] = int(_dt_wrongowner.get(who, 0)) + 1
+		## ★第三只眼: 这一发没走 `_resolve_dmg` ⇒ 不吃护甲/魔抗。标签取法与 `_dt_stale` 同款
+		##   (get_stack 拿 文件:行号, 一轮就定位到那一行, 不靠反复跑去凑随机阵容)。
+		if not is_raw and not _dt_resolved:
+			var _su: Array = get_stack()
+			var _utag: String = who
+			if _su.size() >= 3:
+				var _up := PackedStringArray()
+				for _j in range(2, mini(4, _su.size())):
+					var _uf: Dictionary = _su[_j]
+					_up.append("%s:%d" % [str(_uf.get("source", "?")).get_file(), int(_uf.get("line", 0))])
+				_utag = "%s  (%s)" % [" ← ".join(_up), who]
+			_dt_unmitigated[_utag] = int(_dt_unmitigated.get(_utag, 0)) + 1
 	if not _dt_fresh and not is_raw and OS.has_environment("DMGSENTINEL"):
 		## ★标签要能【直接定位到那一行】。原来只记 "来源龟→目标龟", 结果每跑一轮
 		##   随机出来的阵容不同 ⇒ 名单每轮都变, 靠反复跑去凑齐是在赌。
@@ -93,6 +127,7 @@ func _take_dtype(who: String, is_raw: bool = false, victim = null) -> String:
 	##   ⚠ 这道保险**不能替代**哨兵 —— 它只保证确定性, 不保证正确性。
 	var _stale_now: bool = not _dt_fresh and not is_raw
 	_dt_fresh = false
+	_dt_resolved = false
 	return "physical" if _stale_now else battle._last_dmg_type
 
 ## 伤害统计的分桶归属: 输出归攻击者、承受归目标, 按【真实伤害类型】分桶(不是按 col ——
@@ -756,6 +791,7 @@ func _dot_after_resist(u: Dictionary, dmg: float, magic: bool, src = null) -> in
 	var out = dmg * mult
 	if src is Dictionary:
 		out *= (1.0 + float(src.get("damage_amp", 0.0)))   # 攻击者增伤(信号放大器038 等)
+	_dt_resolved = true                                    # 哨兵第三只眼: 这一段真算过抗性
 	return maxi(1, int(round(out)))
 
 # 层数 DoT 每秒结算 (1:1 dot.gd tick). 固定顺序 burn→poison→bleed; 出伤后层数衰减, ≤0 移除.

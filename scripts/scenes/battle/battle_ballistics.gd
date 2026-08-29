@@ -29,6 +29,10 @@ func _init(b) -> void:
 func _push_proj(d: Dictionary) -> void:
 	if not d.has("dtype"):
 		d["dtype"] = battle._last_dmg_type
+	## ★与 dtype 同一个道理: 弹道的伤害是【发射时】算好的, 命中时才落地。
+	##   "这一发算没算过护甲"也必须在发射那一刻捕获, 否则命中时问的是"最近一次别人的伤害"。
+	if not d.has("dtype_resolved"):
+		d["dtype_resolved"] = battle._damage._dt_resolved
 	## 暴击态同理(见 battle_damage.set_dtype 的长注释)。`is_crit` 这个键手里剑早就在用,
 	## 所以只在【没人写过】时才盖 —— 显式指定的优先。
 	if not d.has("is_crit"):
@@ -56,7 +60,7 @@ func _fire_trainer_rock(u: Dictionary, tgt: Dictionary, ms_onhit: bool = false) 
 	var dist: float = start2d.distance_to(tgt["pos"])
 	var pdur = clampf(dist / 650.0, 0.25, 0.9)
 	_push_proj({
-		"node": p, "from": world_from, "tgt": tgt, "dmg": 1, "col": Color("#d9d2c4"),
+		"node": p, "from": world_from, "tgt": tgt, "dmg": 1, "col": Color("#d9d2c4"),   # ★伤害写死 1(象征性): 不走 _resolve_dmg 是有意的 —— 吃了护甲也还是 1(maxi(1,…) 兜底)
 		"src": u, "t": 0.0, "dur": pdur, "basic_onhit": false,
 		"arc": clampf(dist * 0.010, 0.8, 3.2),    # ★抛物线拱高(用户2026-07-23:「弹道是抛物线的」): 远则拱高
 		"dtype": "physical", "spin": true, "ms_onhit": ms_onhit,
@@ -224,7 +228,7 @@ func _step_projectiles(delta: float) -> void:
 					if OS.has_environment("DMGSENTINEL"):
 						if bool(pr.get("_crit_rolled", false)) != bool(battle._last_atk_crit):
 							_crit_drift += 1
-					battle._damage.set_dtype(str(pr["dtype"]), tgt, bool(pr.get("is_crit", false)))
+					battle._damage.set_dtype(str(pr["dtype"]), tgt, bool(pr.get("is_crit", false)), bool(pr.get("dtype_resolved", false)))
 					if OS.has_environment("DMGSENTINEL"):
 						if bool(pr.get("_crit_rolled", false)) != bool(battle._last_atk_crit):
 							_crit_applied_wrong += 1   # ★弹道命中: 还原发射时捕获的类型(飞行期全局会被别的伤害覆写→飘字色错·用户2026-07-11)
@@ -252,13 +256,13 @@ func _step_projectiles(delta: float) -> void:
 						battle._vfx._flash(_bsrc, Color(0.5, 1.7, 0.65)))                      # 吸收瞬间携带者绿闪
 				elif pr.get("shuriken_hit", false):   # 手里剑: 物理段(红·减甲)+暴击时真伤段(白·穿甲)→同发跳两数字(飘字系统按类型自动错开行·不合并)
 					battle._last_atk_crit = bool(pr.get("is_crit", false))   # 两段都按暴击显示(大字+暴击图标)
-					battle._damage.set_dtype("physical", tgt)
+					battle._damage.set_dtype("physical", tgt, null, true)   # ★下一行走 _phys_after_armor = 真算护甲
 					battle._damage._apply_damage_from(pr["src"], tgt, battle._phys_after_armor(pr["src"], float(pr["nj_phys"]), tgt), Color("#ff4444"), 0.0, false, false, false, false, false, true)   # 物理段(红·basic=普攻)
 					if float(pr.get("nj_true", 0.0)) >= 1.0 and tgt.get("alive", false):
 						battle._last_atk_crit = bool(pr.get("is_crit", false))   # 物理段hook可能改写→真伤段前重置
 						battle._damage._apply_damage_from(pr["src"], tgt, int(round(float(pr["nj_true"]))), Color("#ffffff"), 0.0, true, false, true, false, false, true)   # 真伤段(白·pre_crit=已含暴击不再二次掷·basic=普攻)
 				elif pr.get("ghost_touch", false):   # 幽魂触碰: 物理(红·减甲)+真实(白·穿甲) 命中同发跳两数字
-					battle._damage.set_dtype("physical", tgt)
+					battle._damage.set_dtype("physical", tgt, null, true)   # ★下一行走 _phys_after_armor = 真算护甲
 					battle._damage._apply_damage_from(pr["src"], tgt, battle._phys_after_armor(pr["src"], float(pr["gt_phys"]), tgt), Color("#ff4444"), 0.0, false, false, false, false, false, true)
 					if tgt.get("alive", false):
 						battle._damage._apply_damage_from(pr["src"], tgt, int(round(float(pr["gt_true"]))), Color("#ffffff"), 0.0, true, false, false, false, false, true)

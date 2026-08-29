@@ -16,6 +16,12 @@ extends RefCounted
 ## 覆盖普攻/技能/真实伤害/固定伤害, 每次只算一次。
 ## ★六个稀有度各一个常量而不是一张字典: `{C:}` 占位符读的是**常量**, 读不了字典的某一项,
 ##   而文案要逐档写出来(C +20%　B +23%　…)。主场景的 `_BASIC_RARITY_BONUS` 引用这六个。
+## 无头龟撕咬第二段: 目标最大生命的百分比【魔法】伤害。
+## ★2026-08-29 3% → 4.5%: 同时把这一段从"不吃魔抗的定额"改成**真吃魔抗**
+##   (`_dot_after_resist`)。实测一场真实对局 387 次挨打的平均魔抗倍率 0.6745
+##   ⇒ 0.03 / 0.6745 = 0.0445 ≈ 0.045, **平均强度不变**但从此魔抗能挡它。
+##   推导与探针见 `tests/_probe_armor_dist.gd` 与 shell_system.RELEASE_DMG_PCT 头注。
+const HEADLESS_BITE_MAXHP := 0.045
 const RARITY_AMP_C := 0.20
 const RARITY_AMP_B := 0.23
 const RARITY_AMP_A := 0.26

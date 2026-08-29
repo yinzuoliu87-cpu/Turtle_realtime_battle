@@ -273,13 +273,30 @@ func _t5_hookbomb() -> void:
 	_ok("⑤ 大师/龟蛋/免控身上没有被挂弹",
 		float(tr.get("hookbomb_pct", 0.0)) <= 0.0 and float(eg.get("hookbomb_pct", 0.0)) <= 0.0 and float(im.get("hookbomb_pct", 0.0)) <= 0.0)
 
-	# 每秒 2% 宿主 maxHp 物理伤害(1★; 用户 2026-08-02 从 1/2/2% 提到 2/4/4%)
+	# 每秒 3% 宿主 maxHp 物理伤害(1★)
+	# ★2026-08-29 从 2% 改成 3%: 同一轮把这一段从"不吃护甲的定额"改成**真物理**
+	#   (`_phys_after_armor`)。实测一场真实对局 387 次挨打的平均护甲倍率 0.6685
+	#   ⇒ 0.02/0.6685 = 0.0299 ≈ 0.03, **平均强度不变**但从此护甲能挡它。
+	#   口径见 docs/design/实时版-系统机制权威.md §7.5(铁律·没有例外)。
 	e1["hp"] = 1000.0
+	e1["def"] = 0.0                          # ★这一格先验"系数对不对" ⇒ 护甲清零隔离出纯系数
 	_s._hookbomb_sys._hb_tick(e1, 0.5)
 	_ok("⑤ 不满 1 秒不跳伤", absf(float(e1["hp"]) - 1000.0) < 0.01, "hp=%.1f" % float(e1["hp"]))
 	_s._hookbomb_sys._hb_tick(e1, 0.6)
-	_ok("⑤ ★满 1 秒 → 掉 2% maxHp = 20 点(1★需求字面值)",
-		absf(1000.0 - float(e1["hp"]) - 20.0) < 1.01, "掉了 %.1f" % (1000.0 - float(e1["hp"])))
+	_ok("⑤ ★满 1 秒·零护甲 → 掉 3% maxHp = 30 点",
+		absf(1000.0 - float(e1["hp"]) - 30.0) < 1.01, "掉了 %.1f" % (1000.0 - float(e1["hp"])))
+	## ★★这次改造的【重点】: 护甲要真的起作用。
+	##   判据 = 同一颗炸弹、同一个宿主, **只把护甲拉上去**, 掉血必须变少,
+	##   而且要落在护甲公式 `1 - def/(def+40)` 上(±8% 容量化取整)。
+	##   只断言"系数是 3%"守不住 —— 撤掉 `_phys_after_armor` 那条照样全绿(那正是本轮修的病)。
+	e1["hp"] = 1000.0
+	e1["def"] = 40.0                         # 40 护甲 ⇒ 倍率 1-40/80 = 0.5, 应掉 15 点
+	_s._hookbomb_sys._hb_tick(e1, 1.1)
+	var _armored: float = 1000.0 - float(e1["hp"])
+	_ok("⑤ ★★护甲真的起作用: 40 护甲(倍率 0.500) → 掉 30×0.5 = 15 点",
+		absf(_armored - 15.0) / 15.0 < 0.08,
+		"实掉 %.1f (零护甲时是 30) —— 若仍是 30 说明没走 _phys_after_armor" % _armored)
+	e1["def"] = 0.0
 	# ★★节奏常量也焊进来 —— 用户 2026-08-02 逐条定的, 不写门禁就会被下一次"顺手调一下"改掉
 	_ok("⑤ ★抽搐 2.0 秒(用户指定「抖动得2秒钟」)",
 		absf(float(_s._hookbomb_sys.CONVULSE_SEC) - 2.0) < 0.001, "CONVULSE_SEC=%.2f" % float(_s._hookbomb_sys.CONVULSE_SEC))
@@ -311,10 +328,12 @@ func _t5_hookbomb() -> void:
 				str((csp as Node3D).visible) if is_instance_valid(csp) else "-",
 				(csp as Sprite3D).modulate.a if is_instance_valid(csp) else -1.0])
 
-	_ok("⑤ ★DoT 三档 = 2/4/4% maxHp",
-		absf(float(_s._hookbomb_sys.BOMB_DPS_PCT[0]) - 0.02) < 0.0001
-		and absf(float(_s._hookbomb_sys.BOMB_DPS_PCT[1]) - 0.04) < 0.0001
-		and absf(float(_s._hookbomb_sys.BOMB_DPS_PCT[2]) - 0.04) < 0.0001,
+	## ★2026-08-29 2/4/4% → 3/6/6%（真物理改造的 ×1.5 补偿, 见上面 _hb_tick 那段头注）。
+	##   "平均强度不变"这条口径另有专门门禁 `verify_armor_compensation` 逐值对账。
+	_ok("⑤ ★DoT 三档 = 3/6/6% maxHp",
+		absf(float(_s._hookbomb_sys.BOMB_DPS_PCT[0]) - 0.03) < 0.0001
+		and absf(float(_s._hookbomb_sys.BOMB_DPS_PCT[1]) - 0.06) < 0.0001
+		and absf(float(_s._hookbomb_sys.BOMB_DPS_PCT[2]) - 0.06) < 0.0001,
 		"%s" % str(_s._hookbomb_sys.BOMB_DPS_PCT))
 
 	# 3★ 挂 2 个
@@ -406,8 +425,11 @@ func _t5_hookbomb() -> void:
 	var blast_list: Array = [v1]
 	var nb: int = _s._hookbomb_sys._hb_blast(car2, blast_list, 0, epi)
 	_ok("⑤ ★分母: 爆炸真的结算到了 %d 个目标" % nb, nb > 0)
-	_ok("⑤ ★爆炸伤害 = 200 + 10%%maxHp = 300(1★需求字面值)",
-		absf(hp_v1 - float(v1["hp"]) - 300.0) < 1.01, "实掉 %.1f" % (hp_v1 - float(v1["hp"])))
+	## ★2026-08-29 300 + 15%maxHp（真物理改造的 ×1.5 补偿）。v1 的护甲在 _mk 里是 0,
+	##   所以这一格量的是纯系数; "护甲真的起作用"由上面 _hb_tick 那条与
+	##   `verify_dmg_type_sentinel` ①d 各守一半。
+	_ok("⑤ ★爆炸伤害·零护甲 = 300 + 15%%maxHp = 450",
+		absf(hp_v1 - float(v1["hp"]) - 450.0) < 1.51, "实掉 %.1f" % (hp_v1 - float(v1["hp"])))
 	_ok("⑤ ★大师没被卷入(不掉血/不被拉)", absf(float(vtr["hp"]) - trhp) < 0.01,
 		"大师掉了 %.1f" % (trhp - float(vtr["hp"])))
 	# ★挂弹【不看免控】(用户:「挂炸弹不包括免控的因为这不是控制技能」), 但拉拽仍排除免控

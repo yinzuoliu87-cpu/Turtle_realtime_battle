@@ -57,6 +57,7 @@ frames_for () {
     # 多形态技能: 每态各建一次干净战斗场 + 走真复制入口 + 墙钟等 0.9 秒结算 ×2 轮。
     #   默认 500 帧会在半路被掐断 —— 表现是 rc=0/致命 0 但**没打 ALL PASS**, 极像断言失败。
     verify_skill_forms)       echo 4000 ;;
+    verify_armor_compensation) echo 1500 ;;
     verify_click_targets_alive) echo 12000 ;;
     verify_info_panel_fits)   echo 20000 ;;
     verify_mainmenu_layout)   echo 6000 ;;

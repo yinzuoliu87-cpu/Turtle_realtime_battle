@@ -2868,7 +2868,7 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		return
 	if u["id"] == "headless":       # 撕咬: 1A物理(红) + 3%目标最大生命魔法(蓝·按UI规则); 灵魂强化窗口(用户2026-07-17机制大改): 下3次攻击各额外0.5A魔法+10%当前生命魔法(蓝)+牙齿闭合, 第3下→镰刀横扫
 		_damage._apply_damage_from(u, tgt, _atk_dmg(u, 1.0, tgt), Color("#ff4444"))
-		if tgt.get("alive", false): _damage.set_dtype("magic", tgt); _damage._apply_damage_from(u, tgt, int(tgt["maxHp"] * 0.03), Color("#9bdcff"))   # 3%maxHp魔法(蓝)·★只设类型不走_resolve_dmg: 数值(不吃魔抗)由 verify_turtle_balance_r6 焊着, 这里只修"继承上一行物理红"的颜色bug(2026-08-22哨兵抓出)
+		if tgt.get("alive", false): _damage.set_dtype("magic", tgt, null, true); _damage._apply_damage_from(u, tgt, _damage._dot_after_resist(tgt, float(tgt["maxHp"]) * BasicConsts.HEADLESS_BITE_MAXHP, true, u), Color("#9bdcff"))   # 3%maxHp魔法(蓝)·★2026-08-29 改成真吃魔抗: 原来只设类型不走抗性公式=一发画成蓝色的真实伤害(老注释说"由 verify_turtle_balance_r6 焊着"是过期的, 那门禁焊的是冰/糖/龟派, 没碰这条)
 		if int(u.get("headless_soul_stacks", 0)) > 0:              # 灵魂强化: 下3次攻击各附加(用户2026-07-17)
 			u["headless_soul_stacks"] = int(u["headless_soul_stacks"]) - 1
 			if tgt.get("alive", false):
@@ -4356,7 +4356,7 @@ func _lstrike_frame(spr: Sprite3D, f: int) -> void:
 		spr.frame = clampi(f, 0, maxi(0, int(spr.hframes) * int(spr.vframes) - 1))
 
 func _resolve_dmg(u: Dictionary, base: float, tgt: Dictionary, magic: bool) -> int:
-	_last_dmg_type = "magic" if magic else "physical"; _damage._dt_fresh = true; _damage._dt_owner = tgt   # 记类型供飘字取色(+哨兵置新鲜/记归属: 这份类型是算给谁的)
+	_last_dmg_type = "magic" if magic else "physical"; _damage._dt_fresh = true; _damage._dt_owner = tgt; _damage._dt_resolved = true   # 记类型供飘字取色(+哨兵置新鲜/记归属/记"这一发真算过护甲")
 	var eff_crit: float = minf(float(u["crit"]), 1.0)
 	_last_atk_crit = _battle_rng.randf() < eff_crit
 	if _last_atk_crit:
@@ -4385,10 +4385,11 @@ func _atk_dmg(u: Dictionary, scale: float, tgt: Dictionary, magic: bool = false)
 
 # 只做物理减免(减甲/增伤/减伤/虚化), 不掷暴击 — 供已在上游算过暴击的伤害段(手里剑物理段)复用 _resolve_dmg 的减甲公式而不二次暴击
 func _phys_after_armor(u: Dictionary, raw: float, tgt: Dictionary) -> int:
-	var resist: float = DamageMath.effective_resist(float(tgt["def"]), float(u.get("armor_pen_pct", 0.0)), float(u.get("armor_pen", 0.0)))
+	var resist: float = DamageMath.effective_resist(float(tgt["def"]), float(u.get("armor_pen_pct", 0.0)), float(u.get("armor_pen", 0.0)))   # ★这里就是护甲公式本身
 	var mult: float = DamageMath.resist_multiplier(resist)
 	var d: float = raw * mult
 	d *= 1.0 + float(u.get("damage_amp", 0.0))
+	_damage._dt_resolved = true                                     # 哨兵第三只眼: 这一段真算过护甲
 	d *= 1.0 - float(tgt.get("damage_reduction", 0.0))
 	if _t < float(tgt.get("phase_until", 0.0)):
 		d *= GhostSystem.PHASE_MULT                 # 虚化(幽灵): 受物理-90%

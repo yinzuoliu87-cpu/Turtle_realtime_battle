@@ -151,6 +151,60 @@ func _ready() -> void:
 			print("      ★归属不符 %d 次: %s" % [int(r[0]), str(r[1])])
 	_ok(wo_n == 0, "①b 归属校验: 用了【算给别人的】类型 %d 发（必须 0）" % wo_n)
 
+	# ── ①d ★【吃没吃护甲】盘点 —— 只报不判红(2026-08-29) ──────────
+	## 用户 2026-08-27:「肯定是要真物理啊, **物理伤害为啥不吃护甲啊**」/
+	##                 「靶向器…伤害怎么过护甲减伤?」
+	##
+	## ★前面三条守的都是【飘字颜色】。颜色对不代表**伤害算法**对:
+	##   护甲/魔抗只在 `_resolve_dmg` 里算(effective_resist / resist_multiplier),
+	##   而 `_mitigate_incoming` 只算减伤类(damage_reduction / flat_dr / 护盾 / 嘲讽),
+	##   **它没有护甲公式**。⇒ `raw=false` 只保证吃减伤, 不保证吃护甲。
+	##   于是会出现"文案写着物理伤害、实际 500 点护甲几乎不减"的情况。
+	##
+	## ★收敛过程(2026-08-29, 一轮之内)：
+	##   **165 发 → 17 发 → 2 发**。前两跳是【判据自己不准】、第三跳才是真修:
+	##   · 165→17: 弹道与 `_phys_after_armor` 段是**误报** —— 伤害在【发射时】就用
+	##     `_atk_dmg`(→`_resolve_dmg`)算过护甲了, 命中时只是还原类型, 而 `set_dtype`
+	##     会把标志清掉。⇒ `_push_proj` 顺手存 `dtype_resolved`、命中时一起还原;
+	##     `_phys_after_armor` / `_dot_after_resist` 自己置位(它们就是抗性公式本身)。
+	##   · 17→2: **三处真 bug**, 都是"文案写着物理/魔法, 实际不吃护甲/魔抗":
+	##       ① 龟壳被动·冲击波(`shell_system.gd`) —— 实测 0/200/500 护甲**全都扣 500**
+	##       ② 无头龟撕咬第二段 3%最大生命【魔法】(`RealtimeBattle3DScene.gd:2871`)
+	##       ③ 靶向器 p2eq_055 两段(每秒 %宿主生命 / 爆炸 定额+%目标生命)
+	##     用户 2026-08-29 讲清了口径:「你选物理, 就是在说这一发应该被护甲挡、被虚化躲」
+	##     —— 写"物理"不是描述它长什么样, 是**指定它该被什么克制**。
+	##     "红字 + 不吃护甲" = 它已经是真实伤害了, 只是画成红的; 坏掉的不是一个数字,
+	##     是**堆护甲**和**幽灵虚化**两套对抗系统。
+	##
+	## ★已收敛 ⇒ 升成判据(与 ①b 归属校验走过的同一条路)。豁免只有一条, 写死在下面。
+	var um: Dictionary = scn._damage.sentinel_unmitigated()
+	var um_n := 0
+	for k in um:
+		um_n += int(um[k])
+	print("  ★护甲盘点: 没走 _resolve_dmg(=不吃护甲/魔抗) %d 发 / 共 %d 次取用" % [um_n, total])
+	if um_n > 0:
+		var umrows: Array = []
+		for k in um:
+			umrows.append([int(um[k]), str(k)])
+		umrows.sort_custom(func(a, b): return int(a[0]) > int(b[0]))
+		## ★不许截断 —— 用户 2026-08-28:「扫一遍都记录好, 不许漏或简写」。
+		for r in umrows:
+			print("      ·不吃护甲 %4d 发: %s" % [int(r[0]), str(r[1])])
+		print("      (以上共 %d 个来源)" % umrows.size())
+	_ok(total > 0, "分母·护甲盘点建立在 %d 次取用之上(N=0 是空检查不是通过)" % total)
+	## ★唯一豁免: 训龟大师扔的石头, 伤害**写死 1**(`battle_ballistics.gd` `_fire_trainer_rock`)。
+	##   它是象征性的一点点掉血, 走不走护甲公式结果都是 1(`maxi(1, …)` 兜底) ——
+	##   不是"我懒得改", 是**改了没有任何可观测差别**。
+	##   ⚠ 豁免按【文件:行号】匹配会随代码移动失效, 所以按**文件名 + 来源标签**匹配。
+	var um_real := 0
+	for k in um:
+		if str(k).contains("__trainer__") and str(k).contains("battle_ballistics.gd"):
+			continue
+		um_real += int(um[k])
+	_ok(um_real == 0,
+		"①d 护甲盘点: 有 %d 发【文案说物理/魔法、实际不吃护甲/魔抗】(必须 0; 非 0 时上面列了 文件:行号)"
+			% um_real)
+
 	# ── ①c 暴击态: 同一个病的双胞胎 ──────────────────────────────
 	## `_last_atk_crit` 与 `_last_dmg_type` 是**同一行**由 `_resolve_dmg` 写的(主文件
 	## 829/830 两行), 病也一样: 弹在飞, 全局被别人改掉, 命中时捡到别人的暴击。

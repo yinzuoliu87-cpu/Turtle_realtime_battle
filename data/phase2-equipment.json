@@ -654,7 +654,7 @@
     "baseStats1": "+攻9/15/21·+20龟能",
     "shopAvailable": 1,
     "emoji": "🎯",
-    "effectDesc1": "本场累计造成 {C:HookBombSystem.TRIGGER_DMG} 点伤害后，向最近的 1/1/2 名敌人发射钩索炸弹：炸弹附在敌人身上，每 {C:HookBombSystem.BOMB_TICK} 秒对其造成 2/4/4%其最大生命值的物理伤害，直到该敌人死亡。\n若带弹的敌人死亡，则朝所有敌方单位发射钩索，眩晕 {C:HookBombSystem.PULL_STUN} 秒后将其拉向携带者，聚拢后产生一次爆炸，造成（200/400/500+{C:HookBombSystem.BLAST_MAXHP_PCT%}%目标最大生命值）物理伤害（训龟大师、龟蛋与免控单位不受钩索影响）。",
+    "effectDesc1": "本场累计造成 {C:HookBombSystem.TRIGGER_DMG} 点伤害后，向最近的 1/1/2 名敌人发射钩索炸弹：炸弹附在敌人身上，每 {C:HookBombSystem.BOMB_TICK} 秒对其造成 3/6/6%其最大生命值的物理伤害，直到该敌人死亡。\n若带弹的敌人死亡，则朝所有敌方单位发射钩索，眩晕 {C:HookBombSystem.PULL_STUN} 秒后将其拉向携带者，聚拢后产生一次爆炸，造成（300/600/750+{C:HookBombSystem.BLAST_MAXHP_PCT%}%目标最大生命值）物理伤害（训龟大师、龟蛋与免控单位不受钩索影响）。",
     "effectDesc3": "",
     "img": "equip/targeter.png",
     "effectBrief": "累计造成 {C:HookBombSystem.TRIGGER_DMG} 点伤害后投出钩索炸弹，持续扣血直到目标死亡。"

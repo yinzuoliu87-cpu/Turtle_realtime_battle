@@ -77,8 +77,8 @@ VERIFIED_FAR = {
     ('p2eq_032', '16/31/55'):    '_eq_summon_skeleton 骷髅最大生命 [16.0,31.0,55.0](equip_system.gd·id 在 stats_apply 侧→远)',
     ('p2eq_032', '13/17/23'):    '_eq_summon_skeleton 骷髅存活时长 [13.0,17.0,23.0]',
     ('p2eq_055', '1/1/2'):       'HookBombSystem.BOMB_COUNT [1,1,2] 挂弹敌人数(独立文件→远)',
-    ('p2eq_055', '2/4/4'):       'HookBombSystem.BOMB_DPS_PCT [0.02,0.04,0.04] 每秒%maxHp (2026-08-02 用户上调, 原 1/2/2)',
-    ('p2eq_055', '200/400/500'): 'HookBombSystem.BLAST_FLAT [200.0,400.0,500.0] 聚爆固定段',
+    ('p2eq_055', '3/6/6'):       'HookBombSystem.BOMB_DPS_PCT [0.03,0.06,0.06] 每秒%maxHp (2026-08-29 ×1.5 补偿: 同轮改成真物理吃护甲, 实测平均护甲倍率 0.6685; 原 2/4/4, 更早 1/2/2)',
+    ('p2eq_055', '300/600/750'): 'HookBombSystem.BLAST_FLAT [300.0,600.0,750.0] 聚爆固定段 (2026-08-29 ×1.5 补偿, 同上; 原 200/400/500)',
     # ── 2026-08-05 食物批实装时发现的一处【一直靠巧合过关】的条目(人工核过才加白名单) ──
     # 023 灼热火珊瑚的 40/60/90 真身在 `_eq_fire_coral_active` 的
     #   `_apply_dot_stacks(o, "burn", [40, 60, 90][si], src)` —— 离 "p2eq_023" 锚点约 13k 字符。

@@ -31,7 +31,18 @@ extends RefCounted
 ##   · 每秒 2/4/4% 物理伤害 → 按【宿主自身 maxHp】的百分比。与骷髅爆炸(032)同口径:
 ##     那条也是"200码内敌各受【其自身】%最大生命"。
 ##   · 爆炸 200/400/500 + 10% 最大生命值 → 同样按【被炸目标自身 maxHp】。
-##   · 两者都是【物理伤害】= 走 raw=false 的常规路径, 吃护甲。
+##   · 两者都是【物理伤害】—— ★2026-08-29 起是**真的**物理: 走 `_phys_after_armor`,
+##     吃护甲 / 吃穿甲 / 吃削甲 / 吃幽灵虚化。
+##     ⚠ 这行原本写的是「走 raw=false 的常规路径, 吃护甲」—— **写反了**。
+##       `raw=false` 只保证吃【减伤类】(damage_reduction / flat_dr / 护盾 / 嘲讽);
+##       护甲只在 `_resolve_dmg` / `_phys_after_armor` 里算, `_mitigate_incoming` 没有护甲公式。
+##       ⇒ 修之前这两段是"画成红色的真实伤害": 堆护甲的坦克、开虚化的幽灵, 对它都毫无收益。
+##       用户 2026-08-29 讲清了口径:「你选物理, 就是在说这一发应该被护甲挡、被虚化躲」——
+##       写"物理"不是描述它长什么样, 是指定它该被什么克制。
+##   ★★这一条【没有例外, 不逐件商量】(用户 2026-08-29 两次重申)。
+##     "这是 %最大生命的反坦克伤害, 通常不吃护甲"——**不成立**:
+##     要么吃护甲、叫物理; 要么不吃、就不许叫物理, 老实走真实伤害。
+##     权威口径见 docs/design/实时版-系统机制权威.md §7.5。
 
 var battle
 
@@ -60,10 +71,14 @@ const TRIGGER_DMG := 400                      # 首次累计造成这么多伤�
 const BOMB_COUNT := [1, 1, 2]                 # 挂弹敌人数(1/1/2)
 ## 每秒对宿主造成其 maxHp 的 2/4/4%(用户 2026-08-02:「每秒损失2%生命值改为损失4%最大生命值」)。
 ## ★整条翻倍而不是只改 2★/3★ —— 用户报的是文案上那个 2%(=2★/3★ 档), 星级曲线保持原样。
-const BOMB_DPS_PCT := [0.02, 0.04, 0.04]
+## ★2026-08-29 ×1.5 补偿: [0.02,0.04,0.04] → [0.03,0.06,0.06]。
+##   同一轮把这两段从"不吃护甲的定额"改成**真物理**(`_phys_after_armor`);
+##   实测平均护甲倍率 0.6685 ⇒ 0.02/0.6685=0.0299≈0.03, 0.04/0.6685=0.0598≈0.06。
+##   推导与探针见 `tests/_probe_armor_dist.gd` 与 ShellSystem.RELEASE_DMG_PCT 头注。
+const BOMB_DPS_PCT := [0.03, 0.06, 0.06]
 const BOMB_TICK := 1.0                        # "每秒"
-const BLAST_FLAT := [200.0, 400.0, 500.0]     # 聚爆固定段
-const BLAST_MAXHP_PCT := 0.10                 # 聚爆额外 10% 最大生命
+const BLAST_FLAT := [300.0, 600.0, 750.0]     # 聚爆固定段 ★2026-08-29 ×1.5 补偿(见 BOMB_DPS_PCT 头注)
+const BLAST_MAXHP_PCT := 0.15                 # 聚爆额外 15% 最大生命 ★2026-08-29 ×1.5 补偿(见 BOMB_DPS_PCT 头注)
 ## 触须抓住后【定住】多久才开始拖。★0.5 → 1.1(用户 2026-08-02:「触手伸出去定住的时间还要久点」)。
 ## 这段是"缠住了但还没拉"的僵持, 拖拽本身另算(恒速, 见 PULL_SPEED)。
 const PULL_STUN := 1.1
@@ -161,7 +176,13 @@ func _hb_tick(o: Dictionary, delta: float) -> void:
 	o["hookbomb_t"] = float(o["hookbomb_t"]) - BOMB_TICK
 	var hp0: float = float(o["hp"])
 	# no_popup=true → 不跳通用红字, 伤害只体现在宿主头上那个【累加滚动数字】里(用户指定的显示方式)
-	battle._damage._apply_damage_from(src, o, maxi(1, int(round(float(o["maxHp"]) * pct))), Color("#ff8a3c"), 0.0, false, true, false, false, true)
+	## ★真物理: 先过护甲公式再进伤害管线(见文件头注)。`_phys_after_armor` 只做
+	##   减甲/增伤/减伤/虚化, **不掷暴击** —— 这两段本来就没有暴击, 用 `_resolve_dmg`
+	##   会平白多出一层随机。
+	battle._damage.set_dtype("physical", o, null, true)
+	battle._damage._apply_damage_from(src, o,
+		maxi(1, battle._phys_after_armor(src, float(o["maxHp"]) * pct, o)),
+		Color("#ff8a3c"), 0.0, false, true, false, false, true)
 	# ★累计【实际扣掉的血】而不是名义伤害 —— 有护盾/减伤时两者不等, 显示实际的才不骗人。
 	o["hookbomb_total"] = float(o.get("hookbomb_total", 0.0)) + maxf(0.0, hp0 - float(o["hp"]))
 	_hb_counter_refresh(o)
@@ -234,12 +255,15 @@ func _hb_blast(carrier: Dictionary, list: Array, si: int, epi: Vector2) -> int:
 		var o = list[oi]
 		if not (o is Dictionary) or not o.get("alive", false):
 			continue
-		var dmg: int = maxi(1, int(round(BLAST_FLAT[si] + float(o["maxHp"]) * BLAST_MAXHP_PCT)))
+		## ★真物理: 定额 + %目标最大生命 先过护甲公式(见文件头注)。
+		var dmg: int = maxi(1, battle._phys_after_armor(carrier,
+			BLAST_FLAT[si] + float(o["maxHp"]) * BLAST_MAXHP_PCT, o))
 		# ★no_popup: 聚拢后所有人挤在同一小片区域, 同帧四个 "800" 会精确叠成一团糊字
 		#   (用户 2026-08-01 截图指出)。改成自己发飘字: 按序号【放射状错开 + 错峰半拍】。
 		# 位置参数顺序: extra_ls, raw, from_equip, pre_crit, no_dodge, no_popup —— ★最后一个才是 no_popup。
 		#   我少写一个 false, no_popup 落到了 no_dodge 上 ⇒ 通用红字根本没关, 和自发飘字【双份】
 		#   (实拍: 4 个目标出了 5 个数字、大小还不一样)。
+		battle._damage.set_dtype("physical", o, null, true)
 		battle._damage._apply_damage_from(carrier, o, dmg, Color("#ff5a2a"), 0.0, false, true, false, false, true)
 		var ang: float = TAU * float(oi) / maxf(1.0, float(list.size())) - PI * 0.5
 		var off := Vector2(cos(ang), sin(ang)) * 108.0 + Vector2(0.0, -30.0)   # ★108: 62 挡不住大字号的 800 互相压

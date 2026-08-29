@@ -13,7 +13,19 @@ const AWAKEN_AT_1 := 10.0
 const AWAKEN_AT_2 := 20.0
 ## 气场储能三件套(原来散在三个文件里的字面量, 文案又各抄一遍):
 const STORE_CAP_PCT := 0.50         # 储能上限 = 最大生命 × 此值 (battle_damage.gd 里那条 minf)
-const RELEASE_DMG_PCT := 0.40       # 释放: 冲击波对每名敌人 = 储能 × 此值 (物理)
+## ★★2026-08-29 补偿系数 ×1.5 的来历(用户「要修」——「这三处都是削弱」)。
+##   本轮把这一段从"不吃护甲的定额伤害"改成了**真物理**(走 `_phys_after_armor`)。
+##   ★补偿倍率不是拍脑袋, 是量出来的: `tests/_probe_armor_dist.gd` 挂在产品自己的
+##     伤害管线上, 记下**一场真实对局里每一次挨打时目标此刻的护甲**(387 次):
+##       护甲 p10=10 · p25=10 · 中位=14 · p75=34 · p90=52 · 最大=85
+##       (建表值只有 9~21 —— 局内被装备/岩层/铁壁/护盾 buff 抬上去了, 所以必须量运行时)
+##     对**每一次**挨打各算一次倍率再平均 = **0.6685** ⇒ 打回原平均强度需 ×1.496。
+##     ★是"逐次算倍率再平均", 不是"拿中位护甲算一次倍率" —— 倍率对护甲是凸函数,
+##       代入中位数会低估平均倍率(中位 14 给出 0.741, 真平均是 0.669, 差 7 个百分点)。
+##   ⇒ 结果: **平均强度不变**, 但从此【护甲能挡它、幽灵虚化能躲它】——
+##     低护甲目标挨得更多、高护甲目标挨得更少, 这正是"物理伤害"该有的样子。
+const RELEASE_DMG_PCT := 0.60       # 释放: 冲击波对每名敌人 = 储能 × 此值 (真物理·吃护甲)
+## ↑ 0.40 → 0.60: 0.40 / 0.6685 = 0.598 ≈ 0.60。修前 0/200/500 护甲**全扣 500**(探针实测)。
 const RELEASE_SHIELD_PCT := 0.80    # 释放: 气场护盾 = 储能 × 此值
 const STEALTH_BREAK_MAGIC := 0.5    # 暗影·破隐首发: 额外 ×ATK 魔法 (1.0→0.5)
 const DIVE_MAGIC := 2.0             # 暗影俯冲: 落地 ×ATK 魔法 (2.5→2.0)
@@ -538,10 +550,13 @@ func _shell_spawn_shockwave(u: Dictionary, dmg: int) -> void:
 		"radius": 0.0,
 		"hit": {},          # 用 get_instance_id() 当键, 每敌只算一次
 		"dmg": dmg,
-		## ★冲击波是【创建时算伤害、扩张途中才逐敌命中】—— 与弹道同一个形状:
-		##   飞行期间全局 `_last_dmg_type` 会被场上别的伤害覆写 ⇒ 命中时飘字捡别人的颜色。
-		##   捕获创建那一刻的类型, 命中前还原(哨兵 DMGSENTINEL 实测抓到这一条)。
-		"dtype": battle._last_dmg_type,
+		## ★★2026-08-29 这里【原来存的是 `battle._last_dmg_type`】—— 也就是
+		##   "场上最后一次伤害是什么类型", 不是"这一发是什么类型"。
+		##   前一发恰好是魔法 ⇒ 冲击波飘蓝字。(2026-08-22 那次"修复"只解决了
+		##   飞行途中被覆写, **起点本身还是捡来的**, 同一个病只挪了位置。)
+		##   现在命中时走 `_phys_after_armor` = 物理公式本身, 类型由构造保证是 physical,
+		##   这个字段不再需要"捕获再还原"。留一个死值只为兼容旧存档里的进行中冲击波。
+		"dtype": "physical",
 	}
 
 # 冲击波每帧推进: 半径 0→520 / 1.8s; ring 直径=2×radius; 距中心被环刚扫过的敌人吃一次伤害
@@ -581,8 +596,17 @@ func _shell_shockwave_tick(u: Dictionary, delta: float) -> void:
 				continue
 			if (e["pos"] - center).length() <= r:
 				hit[eid] = true
-				battle._damage.set_dtype(str(sw.get("dtype", battle._last_dmg_type)), e)   # 还原发射时的类型(见上面 "dtype")
-				battle._damage._apply_damage_from(u, e, dmg, Color("#b0ffe0"))
+				## ★★2026-08-29 真物理(用户 2026-08-27 拍板:「肯定是要真物理啊,
+				##   物理伤害为啥不吃护甲啊」)。
+				##   原来是"算好一个定额 → 直接进 `_apply_damage_from`" ⇒ 吃减伤但
+				##   **不吃护甲/魔抗**(护甲只在 `_resolve_dmg` / `_phys_after_armor` 里算,
+				##   `_mitigate_incoming` 没有护甲公式)。文案写着"物理伤害", 实际是
+				##   一发画成红色的真实伤害 —— 堆护甲的坦克与幽灵虚化对它都毫无收益。
+				##   ⇒ 走 `_phys_after_armor`: 减甲 / 增伤 / 减伤 / 虚化全吃, **不掷暴击**
+				##     (冲击波本来就没有暴击, 用 `_resolve_dmg` 会平白多出一层随机)。
+				##   ⇒ 类型由构造保证是 physical, 不再需要"捕获创建那一刻的类型"那套 hack。
+				battle._damage.set_dtype("physical", e, null, true)
+				battle._damage._apply_damage_from(u, e, battle._phys_after_armor(u, float(dmg), e), Color("#b0ffe0"))
 	# 结束: 清理节点+状态(node2/stars一并清·不瞬删=波前已淡到0.65alpha自然收)
 	if frac >= 1.0:
 		if spr != null and is_instance_valid(spr):

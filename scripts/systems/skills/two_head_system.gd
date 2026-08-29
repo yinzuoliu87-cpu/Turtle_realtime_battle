@@ -162,7 +162,10 @@ func _two_head_hammer_land(u: Dictionary, tgt: Dictionary, at2d: Vector2, dmg: i
 	_two_head_slam_impact(at2d)                                # 高质量砸地冲击(AI星爆+三层环+尘+岩屑+顿帧+大震屏·用户2026-07-11)
 	if tgt.get("alive", false):
 		if dt != "":
-			battle._damage.set_dtype(dt, tgt)
+			## ★resolved=true: 伤害是【举锤那一刻】`_atk_dmg`(→`_resolve_dmg`)算好的,
+			##   护甲已经吃过了; 落地这里只是把类型还原。不传 true 的话哨兵第三只眼
+			##   会把它误报成"不吃护甲"(它只看落地那一刻)。
+			battle._damage.set_dtype(dt, tgt, null, true)
 		battle._damage._apply_damage_from(u, tgt, dmg, Color("#ffb05c"))
 		battle._damage._grant_shield(u, dmg * STRIKE_SHIELD_PCT, STRIKE_SHIELD_SEC)                        # 获造成伤害50%护盾(4秒)
 		battle._vfx._flash(tgt)
