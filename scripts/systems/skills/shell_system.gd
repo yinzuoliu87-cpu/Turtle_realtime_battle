@@ -1,6 +1,7 @@
 class_name ShellSystem
 extends RefCounted
 const SkillForms = preload("res://scripts/gamedata/skill_forms.gd")
+const CopyRules = preload("res://scripts/gamedata/copy_rules.gd")
 ## 龟壳龟技能系统
 ## 类内名不变;外部名加 battle.
 
@@ -316,7 +317,11 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:               # 龟壳·复制(
 	for o in battle._targeting._enemies_of(u):
 		for st in o.get("active_skills", []):
 			var s = str(st)
-			if battle._COPYABLE_SKILLS.has(s) and not pool.has(s):
+			## ★2026-08-29 白名单 → 黑名单(用户:「那个规则是有问题的啊」)。
+			##   `can_copy` 同时管两件事: 不在黑名单 + **真的能被 `_do_skill` 执行**。
+			##   后半必须有 —— 抄一个分派不到的 type = 130 龟能白花、屏幕上什么都不发生,
+			##   而且不报错(原白名单里就躺过 13 个普攻位技能, 全是这个下场)。
+			if CopyRules.can_copy(s, battle._IMPL_SKILLS) and not pool.has(s):
 				pool.append(s)
 				if SkillForms.is_multi(s):
 					forms[s] = SkillForms.current_index(o, s)

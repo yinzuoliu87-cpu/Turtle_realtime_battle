@@ -8,7 +8,7 @@
   A. `data/pets.json` 的 skillPool[].type   —— 玩家真能选到的技能(权威)
   B. `_do_skill` 的 match 块                —— 真能被执行的
   C. `_IMPL_SKILLS`                         —— 声明"已实现"的
-  D. `_COPYABLE_SKILLS`                     —— 龟壳能抄的
+  D. `CopyRules.UNCOPYABLE`                 —— 龟壳【不】能抄的(2026-08-29 白名单倒成黑名单)
   E. `battle_spawn` 里小将/精英的 active_skills —— 战斗里真会出现的非龟技
 
 ★★判据必须落在【match 块里的 case 标签】, 不能用 `"xxx": _sk_...` 这种正则 ——
@@ -33,6 +33,7 @@ except Exception:
     pass
 
 RB = 'scripts/scenes/RealtimeBattle3DScene.gd'
+RULES = 'scripts/gamedata/copy_rules.gd'
 SPAWN = 'scripts/scenes/battle/battle_spawn.gd'
 PETS = 'data/pets.json'
 
@@ -69,13 +70,18 @@ def main():
             print('  [FAIL] 缺 %s' % p)
             return 1
     src = io.open(RB, encoding='utf-8').read()
+    rules = io.open(RULES, encoding='utf-8').read()
     spawn = io.open(SPAWN, encoding='utf-8').read()
     d = json.loads(io.open(PETS, encoding='utf-8').read())
     pets = d if isinstance(d, list) else d.get('pets', d.get('items', []))
 
     DISPATCH = dispatched(src)
-    COPYABLE = const_keys(src, '_COPYABLE_SKILLS')
     IMPL = const_keys(src, '_IMPL_SKILLS')
+    ## ★2026-08-29 黑名单模型: 能抄的 = _IMPL 里【不在黑名单】的
+    ##   (运行时判据 `CopyRules.can_copy` 就是这两条, 这里逐字照它算)
+    BLOCK = set(re.findall(r'^\t"([a-zA-Z]+)":',
+        re.search(r'const UNCOPYABLE\s*:?=\s*\{(.*?)\n\}', rules, re.S).group(1), re.M))
+    COPYABLE = IMPL - BLOCK
     BASIC = basic_slot_types(pets)
     MINION = set(re.findall(r'active_skills"\]\s*=\s*\["([a-zA-Z]+)"\]', spawn))
 
@@ -86,10 +92,10 @@ def main():
             if t:
                 petskill[t] = (str(p.get('id')), str(sk.get('name', '')))
 
-    print('  [分母] pets 技能 %d(其中普攻位 %d) · 分派 %d · _IMPL %d · 白名单 %d · 小将技 %d'
-          % (len(petskill), len(BASIC), len(DISPATCH), len(IMPL), len(COPYABLE), len(MINION)))
+    print('  [分母] pets 技能 %d(其中普攻位 %d) · 分派 %d · _IMPL %d · 黑名单 %d · 可抄 %d · 小将技 %d'
+          % (len(petskill), len(BASIC), len(DISPATCH), len(IMPL), len(BLOCK), len(COPYABLE), len(MINION)))
     ## 分母守卫: 任何一项解析成 0 = 判据坏了, 不是"没问题"。
-    for nm, v in (('分派表', DISPATCH), ('_IMPL', IMPL), ('白名单', COPYABLE),
+    for nm, v in (('分派表', DISPATCH), ('_IMPL', IMPL), ('黑名单', BLOCK), ('可抄集', COPYABLE),
                   ('pets 技能', petskill), ('小将技', MINION), ('普攻位', BASIC)):
         if len(v) == 0:
             print('  [FAIL] ★分母: %s 解析出 0 项 —— 判据坏了(空检查不是通过)' % nm)
@@ -97,16 +103,20 @@ def main():
 
     fails = []
 
-    # ① 白名单里【_do_skill 执行不到】的(普攻位不算豁免 —— 它们放这里就是错的)
-    bad = sorted(COPYABLE - DISPATCH)
-    for x in bad:
-        why = '普攻位技能(走普攻分派, 放白名单永远不执行)' if x in BASIC \
-            else ('pets 里有(%s·%s)但没分派' % petskill[x] if x in petskill else '哪都不存在')
-        fails.append('①白名单 `%s` 抄不到 —— %s' % (x, why))
+    # ① 黑名单里指向【根本不存在】的技能 = 挡了个寂寞(打错字/技能改名后没跟)
+    for x in sorted(BLOCK - IMPL):
+        fails.append('①黑名单 `%s` 在 _IMPL 里根本不存在 —— 挡了个寂寞(打错字? 技能改名了?)' % x)
 
-    # ② 战斗里真会出现的小将/精英技, 不在白名单
-    for x in sorted(MINION - COPYABLE):
-        fails.append('②小将/精英技 `%s` 战斗里真会挂, 却不在白名单' % x)
+    # ①b 黑名单每条都要有【探针量到的具体残留】当理由, 不许写"感觉会出问题"
+    for x in sorted(BLOCK):
+        m = re.search(r'"%s":\s*"([^"]*)"' % re.escape(x), rules)
+        why = m.group(1) if m else ''
+        if len(why) < 12 or not re.search(r'[a-z_]{4,}', why):
+            fails.append('①b黑名单 `%s` 的理由不合格 —— 必须写探针量到的具体字段名, 现在是 %r' % (x, why))
+
+    # ② 战斗里真会出现的小将/精英技, 被黑名单挡了(得有理由)
+    for x in sorted(MINION & BLOCK):
+        fails.append('②小将/精英技 `%s` 战斗里真会挂, 却在黑名单里' % x)
 
     # ③ 声明已实现(_IMPL) 但 match 块里没有
     for x in sorted(IMPL - DISPATCH - BASIC):

@@ -58,6 +58,7 @@ frames_for () {
     #   默认 500 帧会在半路被掐断 —— 表现是 rc=0/致命 0 但**没打 ALL PASS**, 极像断言失败。
     verify_skill_forms)       echo 4000 ;;
     verify_armor_compensation) echo 1500 ;;
+    verify_copy_rules)        echo 6000 ;;
     verify_click_targets_alive) echo 12000 ;;
     verify_info_panel_fits)   echo 20000 ;;
     verify_mainmenu_layout)   echo 6000 ;;

@@ -15,6 +15,7 @@ extends Node
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/_probe_copy_pollution.tscn --quit-after 60000
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
+const CopyRules := preload("res://scripts/gamedata/copy_rules.gd")
 
 var _s = null
 
@@ -57,7 +58,7 @@ func _ready() -> void:
 	var todo: Array = []
 	for k in _s._IMPL_SKILLS.keys():
 		var t := str(k)
-		if not _s._COPYABLE_SKILLS.has(t):
+		if not CopyRules.can_copy(t, _s._IMPL_SKILLS):
 			todo.append(t)
 	todo.sort()
 	print("PROBE_TOTAL %d" % todo.size())
