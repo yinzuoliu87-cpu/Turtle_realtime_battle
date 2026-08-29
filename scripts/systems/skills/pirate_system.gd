@@ -28,7 +28,7 @@ const VOLLEY_TOTAL_ATK := VOLLEY_SHOTS * VOLLEY_ATK_COEF
 const VOLLEY_TOTAL_MAXHP := VOLLEY_SHOTS * VOLLEY_MAXHP_PCT
 const RUM_SEC := 6.0                 # 持续秒数(HoT 与双抗同长)
 const RUM_HOT_PCT := 0.04            # 每秒回复 = 最大生命 ×
-const RUM_MR_COEF := 0.15            # 魔抗 += ATK ×
+const RUM_MR_COEF := 0.20            # 魔抗 += ATK ×  ★2026-08-29 用户: 0.15 → 0.2(护甲同步 0.65 → 0.7)
 ## 朗姆酒【整段合计回复】—— 推导(每秒 × 秒数), 文案原来写死 24%。
 const RUM_HOT_TOTAL := RUM_SEC * RUM_HOT_PCT
 const RUM_DEF_EXTRA := 0.5           # 护甲在双抗之外**再**加 ATK × (⇒ 护甲共 0.65A)
@@ -56,12 +56,12 @@ var battle
 func _init(b) -> void:
 	battle = b
 
-func _sk_pirate_rum(u: Dictionary) -> void:                     # 海盗龟·朗姆酒(120龟能): 海盗船扔酒瓶→每秒回4%maxHP×6秒(HoT绿回血) + 护甲+0.65A/魔抗+0.15A×6秒(0.15A双抗 + 另给护甲 0.5A·见下方两行·暖色酒气护光)
+func _sk_pirate_rum(u: Dictionary) -> void:                     # 海盗龟·朗姆酒(120龟能): 海盗船扔酒瓶→每秒回4%maxHP×6秒(HoT绿回血) + 护甲+0.7A/魔抗+0.2A×6秒(0.2A双抗 + 另给护甲 0.5A·见下方两行·暖色酒气护光)
 	u["rum_until"] = battle._t + RUM_SEC; u["rum_dps"] = u["maxHp"] * RUM_HOT_PCT   # 每秒回4%maxHP×6秒(分秒HoT·per-frame _heal结算)
 	u["rum_glow_until"] = battle._t + RUM_SEC                               # 暖色酒气护光标记
-	var _rum_dr: float = u["atk"] * RUM_MR_COEF                          # 回合制 pirate·heal defUpAtkPct{pct:15} → +15%×ATK 双抗·6秒
+	var _rum_dr: float = u["atk"] * RUM_MR_COEF                          # 双抗 += ATK × RUM_MR_COEF (原回合制 defUpAtkPct{pct:15}; 2026-08-29 用户调到 20%)
 	battle._damage._buff(u, "def", _rum_dr, false, RUM_SEC); battle._damage._buff(u, "mr", _rum_dr, false, RUM_SEC)
-	battle._damage._buff(u, "def", u["atk"] * RUM_DEF_EXTRA, false, RUM_SEC)                  # +0.5A护甲(用户2026-07-14确认保留·连同上方0.15A=护甲共+0.65A/魔抗+0.15A)
+	battle._damage._buff(u, "def", u["atk"] * RUM_DEF_EXTRA, false, RUM_SEC)                  # +0.5A护甲(用户2026-07-14确认保留·连同上方 RUM_MR_COEF=0.2 ⇒ 护甲共 +0.7A / 魔抗 +0.2A)
 	var ship = _pirate_get_ship(u)                             # 海盗船扔酒瓶(从持久船抛向海盗)
 	var ship2d: Vector2 = (ship.get_meta("ship2d") if ship != null else u["pos"] + Vector2(0.0, -220.0))
 	var ship_h: float = (ship.get_meta("ship_h") if ship != null else 5.0)

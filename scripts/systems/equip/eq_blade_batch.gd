@@ -151,6 +151,15 @@ const HH_BACKSTEP := 150.0        # 后撤十字斩的后撤距离(码)
 const HH_RANGED_RANGE := 100.0    # 远程携带 → 有效射程固定为
 const HH_CONV_PER := 100.0        # 每转化这么多码射程
 const HH_CONV_BONUS := 0.20       # 就让那几项属性提升
+## ★2026-08-29 用户新加的三条:
+##   「近战携带还会获得 3/6/10% 增伤，远程携带还会获得 3/6/10% 减伤，
+##     远程提供的生命值加强为 300/700/3000」
+## ★增伤/减伤**按字面取, 不乘射程换算倍率** `_b84_mult` —— 用户给的是"3/6/10%"这个
+##   确定数; 乘上去会变成 3.6%~10%+ 的浮动值, 和他说的对不上。
+##   (生命/攻击那两项本来就乘倍率, 那是老口径, 不动。)
+const HH_MELEE_AMP := [0.03, 0.06, 0.10]    # 近战携带: 增伤 damage_amp +
+const HH_RANGED_DR := [0.03, 0.06, 0.10]    # 远程携带: 减伤 damage_reduction +
+const HH_RANGED_HP := [300.0, 700.0, 3000.0]  # 远程携带给的生命值基数(★还要再乘 _b84_mult)
 
 ## 084 十字斩四段的节拍(秒): ①横斩+②横波 → ③竖斩+④竖波
 const CROSS_T1 := 0.25
@@ -544,6 +553,10 @@ func _spawn084(u: Dictionary, si: int) -> void:
 		return
 	if bool(u.get("melee", false)):
 		u["_b84_mode"] = "melee"
+		## ★2026-08-29 用户新加: 近战携带 +3/6/10% 增伤。
+		##   与远程那半的三项属性同一套写法 —— **差量施加**(记住给过多少, 再给只补差),
+		##   这样"先 1★ 后 3★"重算时不会叠成两份(见 `_spawn084` 顶部那段注释)。
+		_b84_set_amp(u, HH_MELEE_AMP[sx])
 		# ★只改射程【数值】, 不改 melee 标记(用户拍板: 改标记会连"近战最小射程钳制"等规则一起变)
 		u["atk_range"] = HH_MELEE_RANGE
 		if not u.has("_b84_o_skills"):
@@ -572,6 +585,28 @@ func _spawn084(u: Dictionary, si: int) -> void:
 		_b84_refresh(u, sx)
 
 
+## 【差量施加】增伤/减伤 —— 记住"我给过多少", 再给只补差额。
+##
+## ★为什么不能直接 `u["damage_amp"] += x`:
+##   ① 星级会变(先捡 1★ 再捡 3★), 直接加会叠成两份;
+##   ② 这两个字段是**全局共用**的(别的装备/技能也在用), 不能整段覆盖成我的值 ——
+##      只能加减我自己那一份。这是本文件里三项属性(hp/atk/吸血)已有的写法, 照抄它。
+static func _b84_delta(u: Dictionary, key: String, given_key: String, want: float) -> void:
+	var d: float = want - float(u.get(given_key, 0.0))
+	if absf(d) <= 0.000001:
+		return
+	u[key] = maxf(0.0, float(u.get(key, 0.0)) + d)
+	u[given_key] = want
+
+
+static func _b84_set_amp(u: Dictionary, want: float) -> void:
+	_b84_delta(u, "damage_amp", "_b84_amp_given", want)
+
+
+static func _b84_set_dr(u: Dictionary, want: float) -> void:
+	_b84_delta(u, "damage_reduction", "_b84_dr_given", want)
+
+
 ## ★远程侧的【实时】射程转化(装备 "p2eq_084" 的就近锚点)。
 ## 用户原话:「如果携带者在战斗中获得了射程, 也要被及时转化掉并获得属性」⇒ 不能登场快照。
 ## 每帧跑: 把任何新到的射程折进影子字段 → 有效射程回到 100 → 按转化量重算三项属性(差量施加)。
@@ -590,9 +625,12 @@ func _b84_refresh(u: Dictionary, sx: int) -> void:
 	u["_b84_mult"] = 1.0 + HH_CONV_BONUS * (conv / HH_CONV_PER)
 	var mult: float = float(u["_b84_mult"])
 	# ③ 三项属性按差量施加(镜像撤旧, 不在旧值上叠)。★装备 hp 已是最终值, 不乘 HP_MULT(§3.1)
-	var want_hp: float = [200.0, 400.0, 1000.0][sx] * mult
+	var want_hp: float = HH_RANGED_HP[sx] * mult          # ★2026-08-29 用户: 200/400/1000 → 300/700/3000
 	var want_atk: float = float(u.get("_b84_atk0", 0.0)) * [0.10, 0.15, 0.20][sx] * mult
 	var want_ls: float = [0.10, 0.125, 0.15][sx] * mult
+	## ★2026-08-29 用户新加: 远程携带 +3/6/10% 减伤。
+	##   ★**不乘 `mult`** —— 用户给的是"3/6/10%"这个确定数(见 HH_RANGED_DR 头注)。
+	_b84_set_dr(u, HH_RANGED_DR[sx])
 	var dirty: bool = false
 	var dhp: float = want_hp - float(u.get("_b84_hp_given", 0.0))
 	if absf(dhp) > 0.001:

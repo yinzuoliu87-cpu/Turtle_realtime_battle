@@ -21,6 +21,7 @@ extends Node
 ## 跑法: <godot> --headless --path . res://tests/verify_eq_blade_batch.tscn --quit-after 3000
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
+const EqBladeBatch := preload("res://scripts/systems/equip/eq_blade_batch.gd")
 
 var _n := 0
 var _fail := 0
@@ -740,24 +741,43 @@ func _t084_cross_slash() -> void:
 	## ★用 0.02 秒的小步推进(不是一次跳 0.26 秒) —— 步长太大时剑波会在生成的【同一步】就飞完
 	##   230 码撞上目标, 于是"横斩"和"横波"两段的伤害叠在一次读数里, 分不开。
 	##   (第一版就是这么写的, 量到 445 = 270+175。这行注释留着, 别再退回去。)
+	## ★★2026-08-29 起近战携带 084 还带 **{C:HH_MELEE_AMP} 增伤**(用户新加), 所以四段的实得
+	##   都是【底伤 × (1 + 增伤)】。★期望值**从常量推导**, 不写死新数字 ——
+	##   写死的话下次调增伤系数, 这里就又漂了(memory [[fb-refactor-creates-the-drift-it-removes]])。
+	var _amp3: float = 1.0 + float(EqBladeBatch.HH_MELEE_AMP[2])       # 3★
+	var _amp1: float = 1.0 + float(EqBladeBatch.HH_MELEE_AMP[0])       # 1★
+	var _e1: int = int(round(270.0 * _amp3))
+	var _e2: int = int(round(175.0 * _amp3))
+	var _e3: int = int(round(330.0 * _amp3))
+	var _e4: int = int(round(210.0 * _amp3))
+	_ok("④ ★分母: 3★ 近战增伤真的挂上了(×%.2f)" % _amp3,
+		absf(float(u.get("damage_amp", 0.0)) - float(EqBladeBatch.HH_MELEE_AMP[2])) < 0.0001,
+		"damage_amp=%.3f" % float(u.get("damage_amp", 0.0)))
 	_adv(13, 0.02)
 	var d1: int = int(tgt.get("_st_taken", 0))
-	_ok("④ ① 横斩(250 码 120° 扇形) = 130 + 1.4×ATK = 270", d1 == 270, "实得 %d" % d1)
+	_ok("④ ① 横斩(250 码 120° 扇形) = (130 + 1.4×ATK) × 增伤 = %d" % _e1,
+		absf(float(d1 - _e1)) <= 1.0, "实得 %d" % d1)
 	## 横波: 900 码/秒推进, 目标在 230 码处, 波前带 ±60 → 再过 0.19~0.32 秒命中
 	_adv(12, 0.02)
 	var d2: int = int(tgt.get("_st_taken", 0)) - d1
-	_ok("④ ② 横波(直线贯穿) = 85 + 0.9×ATK = 175", d2 == 175, "实得 %d" % d2)
+	_ok("④ ② 横波(直线贯穿) = (85 + 0.9×ATK) × 增伤 = %d" % _e2,
+		absf(float(d2 - _e2)) <= 1.0, "实得 %d" % d2)
 	## 推进到第 ③ 段(0.60 秒)
 	_adv(6, 0.02)
 	var d3: int = int(tgt.get("_st_taken", 0)) - d1 - d2
-	_ok("④ ③ 竖斩(250 码) = 160 + 1.7×ATK = 330", d3 == 330, "实得 %d" % d3)
+	_ok("④ ③ 竖斩(250 码) = (160 + 1.7×ATK) × 增伤 = %d" % _e3,
+		absf(float(d3 - _e3)) <= 1.0, "实得 %d" % d3)
 	## 竖波
 	_adv(14, 0.02)
 	var d4: int = int(tgt.get("_st_taken", 0)) - d1 - d2 - d3
-	_ok("④ ④ 竖波(竖向贯穿) = 100 + 1.1×ATK = 210", d4 == 210, "实得 %d" % d4)
+	_ok("④ ④ 竖波(竖向贯穿) = (100 + 1.1×ATK) × 增伤 = %d" % _e4,
+		absf(float(d4 - _e4)) <= 1.0, "实得 %d" % d4)
 	## ★★这条同时是"没有双发"的硬证据: 引擎放一次 + 自驱也放一次的话合计会是 1970。
-	_ok("④ ★四段全中合计 = 985 且【只结算一遍】(§0.5: 3★ 475 + 5.1×ATK, ATK=100; 双发会是 1970)",
-		int(tgt.get("_st_taken", 0)) == 985, "合计 %d" % int(tgt.get("_st_taken", 0)))
+	## ★★这条同时是"没有双发"的硬证据: 引擎放一次 + 自驱也放一次的话合计会翻倍。
+	var _eall: int = _e1 + _e2 + _e3 + _e4
+	_ok("④ ★四段全中合计 = %d 且【只结算一遍】(底伤 985 × 增伤; 双发会是两倍)" % _eall,
+		absf(float(int(tgt.get("_st_taken", 0)) - _eall)) <= 2.0,
+		"合计 %d" % int(tgt.get("_st_taken", 0)))
 	## 波飞完要收干净(不然会带进下一路)
 	_adv(20, 0.06)
 	_ok("④ 剑波飞满 700 码后自动收掉(在途表清空)", _blade().b84_waves() == 0,
@@ -771,13 +791,14 @@ func _t084_cross_slash() -> void:
 	u1["base_atk"] = 100.0
 	_s._recalc_stats(u1)
 	var hit1: int = _blade().cross_slash_hit(u1, Vector2.RIGHT, 0, 1)
-	_ok("④ 1★ ① 横斩 = 40 + 0.6×100 = 100(且真的命中 1 个目标)",
-		hit1 == 1 and int(g1.get("_st_taken", 0)) == 100,
+	_ok("④ 1★ ① 横斩 = (40 + 0.6×100) × 增伤 = %d(且真的命中 1 个目标)" % int(round(100.0 * _amp1)),
+		hit1 == 1 and absf(float(int(g1.get("_st_taken", 0)) - int(round(100.0 * _amp1)))) <= 1.0,
 		"hit=%d dmg=%d" % [hit1, int(g1.get("_st_taken", 0))])
 	var before3: int = int(g1.get("_st_taken", 0))
 	_blade().cross_slash_hit(u1, Vector2.RIGHT, 0, 3)
-	_ok("④ 1★ ③ 竖斩 = 50 + 0.7×100 = 120",
-		int(g1.get("_st_taken", 0)) - before3 == 120, "实得 %d" % (int(g1.get("_st_taken", 0)) - before3))
+	_ok("④ 1★ ③ 竖斩 = (50 + 0.7×100) × 增伤 = %d" % int(round(120.0 * _amp1)),
+		absf(float(int(g1.get("_st_taken", 0)) - before3 - int(round(120.0 * _amp1)))) <= 1.0,
+		"实得 %d" % (int(g1.get("_st_taken", 0)) - before3))
 	## 扇形是真的有角度(背后的敌人打不到)
 	_s._units.clear()
 	var u2: Dictionary = _mk("fortune", "left", Vector2(0.0, 0.0))
@@ -808,8 +829,10 @@ func _t084_ranged() -> void:
 		"conv=%.1f" % float(u.get("_b84_conv", -1.0)))
 	_ok("④ 倍率 = 1 + 20% × (350/100) = ×1.70(§0.5 表)",
 		absf(float(u.get("_b84_mult", 0.0)) - 1.70) < 1e-4, "mult=%.4f" % float(u.get("_b84_mult", 0.0)))
-	_ok("④ 3★ 最大生命 +1000 × 1.70 = +1700(§0.5 表)",
-		absf(float(u["maxHp"]) - hp0 - 1700.0) < 0.51, "maxHp %.0f → %.0f" % [hp0, float(u["maxHp"])])
+	_ok("④ 3★ 最大生命 +%d × 1.70 = +%d(基数由 HH_RANGED_HP 推导)"
+			% [int(EqBladeBatch.HH_RANGED_HP[2]), int(round(float(EqBladeBatch.HH_RANGED_HP[2]) * 1.70))],
+		absf(float(u["maxHp"]) - hp0 - float(EqBladeBatch.HH_RANGED_HP[2]) * 1.70) < 1.51,
+		"maxHp %.0f → %.0f" % [hp0, float(u["maxHp"])])
 	_ok("④ 3★ 生命偷取 = 15% × 1.70 = 25.5%(§0.5 表)",
 		absf(float(u["lifesteal"]) - 0.255) < 1e-4, "ls=%.4f" % float(u["lifesteal"]))
 	_ok("④ 3★ 额外攻击力 = 登场攻击力 200 × 20% × 1.70 = +68",
@@ -817,14 +840,17 @@ func _t084_ranged() -> void:
 	_ok("④ ★远程侧【不】替换主动技能(规格明写)", not (u["active_skills"] as Array).has(EqBladeBatch.HH_SKILL),
 		str(u["active_skills"]))
 	## 1★ / 2★
-	for pair in [[1, 200.0, 0.10], [2, 400.0, 0.125]]:
+	## ★基数从 HH_RANGED_HP 取, 不写死 —— 2026-08-29 用户把它从 200/400/1000 提到
+	##   300/700/3000, 写死的话这里就漂了。
+	for pair in [[1, float(EqBladeBatch.HH_RANGED_HP[0]), 0.10],
+			[2, float(EqBladeBatch.HH_RANGED_HP[1]), 0.125]]:
 		_s._units.clear()
 		var c: Dictionary = _mk("cyber", "left", Vector2(-200.0, 0.0), 3000.0)
 		var h0: float = float(c["maxHp"])
 		_equip(c, "p2eq_084", int(pair[0]))
 		_spawn_all()
 		_ok("④ %d★ 最大生命 +%.0f × 1.70" % [int(pair[0]), float(pair[1])],
-			absf(float(c["maxHp"]) - h0 - float(pair[1]) * 1.7) < 0.51,
+			absf(float(c["maxHp"]) - h0 - float(pair[1]) * 1.7) < 1.51,
 			"实得 +%.0f" % (float(c["maxHp"]) - h0))
 		_ok("④ %d★ 生命偷取 = %.1f%% × 1.70" % [int(pair[0]), float(pair[2]) * 100.0],
 			absf(float(c["lifesteal"]) - float(pair[2]) * 1.7) < 1e-4, "ls=%.4f" % float(c["lifesteal"]))
@@ -837,8 +863,9 @@ func _t084_realtime() -> void:
 	var hp0: float = float(u["maxHp"])
 	_equip(u, "p2eq_084", 3)
 	_spawn_all()
-	_ok("④ ★分母: 登场时倍率 ×1.70 / 生命 +1700 / 吸血 25.5%",
-		absf(float(u["_b84_mult"]) - 1.70) < 1e-4 and absf(float(u["maxHp"]) - hp0 - 1700.0) < 0.51,
+	_ok("④ ★分母: 登场时倍率 ×1.70 / 生命 +%d / 吸血 25.5%%" % int(round(float(EqBladeBatch.HH_RANGED_HP[2]) * 1.70)),
+		absf(float(u["_b84_mult"]) - 1.70) < 1e-4
+			and absf(float(u["maxHp"]) - hp0 - float(EqBladeBatch.HH_RANGED_HP[2]) * 1.70) < 1.51,
 		"mult=%.4f maxHp+%.0f" % [float(u["_b84_mult"]), float(u["maxHp"]) - hp0])
 	## 战斗中拿到 +100 码 flat 射程(073 藤蔓弓弦口径) → 走每帧真入口 _eq_tick 重算
 	u["range_add"] = float(u.get("range_add", 0.0)) + 100.0
@@ -846,8 +873,9 @@ func _t084_realtime() -> void:
 	_ok("④ ★★战斗中 +100 码射程 → 转化量 450, 倍率 ×1.90(§0.5 「+073」那一行)",
 		absf(float(u["_b84_conv"]) - 450.0) < 0.01 and absf(float(u["_b84_mult"]) - 1.90) < 1e-4,
 		"conv=%.1f mult=%.4f" % [float(u["_b84_conv"]), float(u["_b84_mult"])])
-	_ok("④ ★★属性跟着实时长: 最大生命 +1900 / 吸血 28.5%(§0.5 表)",
-		absf(float(u["maxHp"]) - hp0 - 1900.0) < 0.51 and absf(float(u["lifesteal"]) - 0.285) < 1e-4,
+	_ok("④ ★★属性跟着实时长: 最大生命 +%d / 吸血 28.5%%" % int(round(float(EqBladeBatch.HH_RANGED_HP[2]) * 1.90)),
+		absf(float(u["maxHp"]) - hp0 - float(EqBladeBatch.HH_RANGED_HP[2]) * 1.90) < 1.51
+			and absf(float(u["lifesteal"]) - 0.285) < 1e-4,
 		"maxHp+%.0f ls=%.4f" % [float(u["maxHp"]) - hp0, float(u["lifesteal"])])
 	_ok("④ ★有效射程仍然恰好是 100(新拿到的射程被【卖掉】了, 不是加上去)",
 		absf(_s._eff_range(u) - 100.0) < 0.01, "_eff_range=%.2f" % _s._eff_range(u))
@@ -872,8 +900,9 @@ func _t084_realtime() -> void:
 	um["equips"] = [{"id": "p2eq_084", "star": 1}, {"id": "p2eq_084", "star": 3}]
 	um["eq_state"] = {}
 	_spawn_all()
-	_ok("④ ★带两把 084(1★+3★): 按 3★ 给一份(+1700), 不是两份相加",
-		absf(float(um["maxHp"]) - h0m - 1700.0) < 0.51, "maxHp+%.0f" % (float(um["maxHp"]) - h0m))
+	_ok("④ ★带两把 084(1★+3★): 按 3★ 给一份, 不是两份相加",
+		absf(float(um["maxHp"]) - h0m - float(EqBladeBatch.HH_RANGED_HP[2]) * 1.70) < 1.51,
+		"maxHp+%.0f" % (float(um["maxHp"]) - h0m))
 
 
 # ═════════════════════════════════════════════════════════════

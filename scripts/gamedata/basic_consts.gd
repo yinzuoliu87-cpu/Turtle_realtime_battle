@@ -22,6 +22,13 @@ extends RefCounted
 ##   ⇒ 0.03 / 0.6745 = 0.0445 ≈ 0.045, **平均强度不变**但从此魔抗能挡它。
 ##   推导与探针见 `tests/_probe_armor_dist.gd` 与 shell_system.RELEASE_DMG_PCT 头注。
 const HEADLESS_BITE_MAXHP := 0.045
+## 近战单位的射程被装备拉到这个值以上时, 普攻【改走弹道】(不再瞬发)。
+## ★2026-08-29 由来: 手半剑 084 把近战携带者射程改成 450 码却不改 `melee` 标记
+##   ⇒ 450 码外挥空气。判据落在"打得这么远就该有飞行物", 与 `melee` 标记解耦 ——
+##   不动近战钳制/突进/命中时机那一串老规则, 以后别的装备把近战拉远也自动有弹道。
+## ★取 200: 正常近战龟的射程都在 110 以下(turtle_stats ROLE_SPEC 近战最远 ~100),
+##   留足余量不误伤; 而 084 的 450 远在其上。
+const LONG_MELEE_RANGE := 200.0
 const RARITY_AMP_C := 0.20
 const RARITY_AMP_B := 0.23
 const RARITY_AMP_A := 0.26

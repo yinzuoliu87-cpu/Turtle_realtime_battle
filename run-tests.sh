@@ -61,6 +61,8 @@ frames_for () {
     verify_copy_rules)        echo 6000 ;;
     verify_copy_perform)      echo 6000 ;;
     verify_wormhole_escape)   echo 12000 ;;
+    verify_rum_numbers)       echo 12000 ;;
+    verify_sword_084)        echo 6000 ;;
     verify_click_targets_alive) echo 12000 ;;
     verify_info_panel_fits)   echo 20000 ;;
     verify_mainmenu_layout)   echo 6000 ;;

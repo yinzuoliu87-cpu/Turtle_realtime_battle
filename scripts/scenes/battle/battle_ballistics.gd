@@ -26,6 +26,12 @@ func _init(b) -> void:
 ## 但**15 个创建点里只有 3 个真的写了 dtype**, 其余全部落空 ⇒ 那行等于没有。
 ## ⇒ 不去补 15 处(手抄的副本必然漏一个), 改成【唯一入口】在这里兜底。
 ## 哨兵 `DMGSENTINEL=1` 量的就是这条路: 修前一场对局 30 发捡类型, 全部出自弹道。
+## 手半剑 084 近战携带时的普攻弹体(红色闪电激光·逐帧横排 sheet)。
+## ★贴图不在时静默回退到默认弹体 —— 没导入的 PNG `ResourceLoader.exists` 是 false,
+##   直接 load 会返回 null 而一句报错都没有。
+const BOLT_084 := "res://assets/sprites/vfx/bolt-084-lightning.png"
+
+
 func _push_proj(d: Dictionary) -> void:
 	if not d.has("dtype"):
 		d["dtype"] = battle._last_dmg_type
@@ -113,6 +119,20 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 		p.pixel_size = (72.0 * battle.WS) / 128.0   # 箭512×128 4帧·每帧128 → ~1.7m箭
 		p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		oriented = true
+	elif src is Dictionary and str(src.get("_b84_mode", "")) == "melee" and ResourceLoader.exists(BOLT_084):
+		## ★手半剑 084(近战携带)的普攻弹体: 红色闪电激光(用户 2026-08-29 点名"云顶 S4 速射火炮"那种)。
+		##   ★外观绑死在**装备形态**上, 不是绑在"射程够远"上 —— 射程判据是**机制**(不再挥空气,
+		##     见 `_emit_basic`), 外观是**这件装备的身份**。以后别的东西把近战拉远, 该有弹道但
+		##     不该射红闪电。
+		##   ★逐帧序列(横排 sheet, 帧宽=图高), 不是一张静图拉伸。
+		var _bt: Texture2D = load(BOLT_084)
+		p.texture = _bt
+		var _bh: int = maxi(1, _bt.get_height())
+		p.hframes = maxi(1, int(_bt.get_width() / _bh))
+		p.frame = 0
+		p.pixel_size = (86.0 * battle.WS) / float(_bh)
+		p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素画, LINEAR 会糊
+		oriented = true                                            # 有朝向: 贴 XZ 绕 Y 转向行进方向
 	elif src is Dictionary and battle._PROJ_WAVE.get(str(src.get("id", "")), false):
 		p.texture = VfxTex._make_wave_texture(col)
 		p.pixel_size = 0.045   # 尖尖波 52×20 → ~2.3×0.9m
@@ -215,8 +235,13 @@ func _step_projectiles(delta: float) -> void:
 			var ctf: Transform3D = node.global_transform
 			ctf.basis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), pr["t"] * 13.0)
 			node.global_transform = ctf
-		if pr.get("shuriken_anim", false):                         # 手里剑: 4帧忍者飞镖旋转动画
-			node.frame = int(pr["t"] * 18.0) % 4
+		## ★★2026-08-29 改成通用: **只要弹体是多帧贴图就逐帧播**。
+		##   原来这个闸只对手里剑开(`shuriken_anim`), 所以猎人的 4 帧箭矢
+		##   (`p.hframes = 4` 在 :112)其实**一帧都没动过** —— 挂了帧数却没人推。
+		##   用户 2026-08-29:「不要拿图片贴图敷衍我, **我要动画像素特效**」⇒ 这条得是通用的,
+		##   否则每加一个动画弹体都要回来开一次闸, 而漏开是静默的(看着就是"贴图不动")。
+		if int(node.hframes) > 1:
+			node.frame = int(float(pr["t"]) * float(pr.get("anim_fps", 18.0))) % int(node.hframes)
 		if frac >= 1.0:
 			node.queue_free()
 			if tgt["alive"]:

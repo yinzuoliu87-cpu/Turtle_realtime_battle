@@ -1002,10 +1002,10 @@
     "baseStats1": "+攻速10/18/30%·+移速7/13/22%",
     "shopAvailable": 1,
     "emoji": "🗡️",
-    "effectDesc1": "效果随携带者是近战或远程而改变。\n近战携带：获得 {C:EqBladeBatch.HH_MELEE_RANGE} 码射程，技能被替换为 {C:EqBladeBatch.HH_ENERGY} 龟能的【后撤十字斩】——后撤 {C:EqBladeBatch.HH_BACKSTEP} 码，横斩以 {C:BladeEqVfx.SLASH_REACH} 码 {C:BladeEqVfx.SLASH_DEG_WIDE} 度扫过造成 40/70/130+0.6/0.9/1.4 倍攻击力物理伤害并生成一道横波造成 25/45/85+0.4/0.6/0.9 倍攻击力物理伤害，随后竖斩造成 50/85/160+0.7/1.1/1.7 倍攻击力物理伤害并生成一道竖波造成 30/55/100+0.5/0.7/1.1 倍攻击力物理伤害。\n远程携带：射程固定为 {C:EqBladeBatch.HH_RANGED_RANGE} 码，获得 200/400/1000 最大生命值、登场时攻击力的 10/15/20%作为额外攻击力、10/12.5/15%生命偷取，且每转化 {C:EqBladeBatch.HH_CONV_PER} 码射程使这些属性提升 {C:EqBladeBatch.HH_CONV_BONUS%}%（射程变化实时重算），主动技能不替换。",
+    "effectDesc1": "效果随携带者是近战或远程而改变。\n近战携带：获得 {C:EqBladeBatch.HH_MELEE_RANGE} 码射程（普攻改为射出红色闪电激光），并获得 {C:EqBladeBatch.HH_MELEE_AMP%}% 增伤，技能被替换为 {C:EqBladeBatch.HH_ENERGY} 龟能的【后撤十字斩】——后撤 {C:EqBladeBatch.HH_BACKSTEP} 码，横斩以 {C:BladeEqVfx.SLASH_REACH} 码 {C:BladeEqVfx.SLASH_DEG_WIDE} 度扫过造成 40/70/130+0.6/0.9/1.4 倍攻击力物理伤害并生成一道横波造成 25/45/85+0.4/0.6/0.9 倍攻击力物理伤害，随后竖斩造成 50/85/160+0.7/1.1/1.7 倍攻击力物理伤害并生成一道竖波造成 30/55/100+0.5/0.7/1.1 倍攻击力物理伤害。\n远程携带：射程固定为 {C:EqBladeBatch.HH_RANGED_RANGE} 码，获得 {C:EqBladeBatch.HH_RANGED_DR%}% 减伤、{C:EqBladeBatch.HH_RANGED_HP} 最大生命值、登场时攻击力的 10/15/20%作为额外攻击力、10/12.5/15%生命偷取，且每转化 {C:EqBladeBatch.HH_CONV_PER} 码射程使这些属性提升 {C:EqBladeBatch.HH_CONV_BONUS%}%（射程变化实时重算），主动技能不替换。",
     "effectDesc3": "",
     "img": "equip/p2eq_084.png",
-    "effectBrief": "近战携带换成后撤十字斩；远程携带则把射程换成生命、攻击与吸血。"
+    "effectBrief": "近战携带换成后撤十字斩、普攻射出红色闪电激光并获得增伤；远程携带则把射程换成生命、攻击与吸血，并获得减伤。"
   },
   {
     "id": "p2eq_085",

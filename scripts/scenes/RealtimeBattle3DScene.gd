@@ -2408,17 +2408,18 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	if float(u.get("hookbomb_pct", 0.0)) > 0.0:
 		_hookbomb_sys._hb_tick(u, delta)
 	if _t < float(u.get("rum_until", 0.0)):   # 海盗朗姆酒: 每秒回4%maxHP(分秒HoT·rum_dps=每秒速率)
-		var _rhpb: float = float(u["hp"])
+		## ★★2026-08-29 用户实拍:「朗姆酒我为什么会看到两种绿色数字?」—— 同一份回血被显示了两遍。
+		##   写这段的人以为 `_heal(..., silent=true)` 的 silent 会关掉数字, **它只关音效**:
+		##   `_heal` 照样把回血喂进标准累加器 `_heal_acc`, 0.15 秒静默或 0.6 秒上限就弹一个
+		##   青绿 #06d6a0 的 "+N"; 而这里又自己另存了一份 `_rum_heal_acc`, 每 0.55 秒再弹一个
+		##   黄绿 #7fe39a 的 "+N"。两条通道各弹各的、间隔还差不多(0.55 vs 0.6) ⇒ 双份绿字。
+		##   ⇒ 删掉朗姆酒自造的那一份, 只留全局统一的治疗数字(所有回血都走它, 颜色口径一致)。
+		##     暖酒气泡保留 —— 那是朗姆酒独有的演出, 不是数字。
 		_damage._heal(u, float(u.get("rum_dps", 0.0)) * delta, true)
-		u["_rum_heal_acc"] = float(u.get("_rum_heal_acc", 0.0)) + maxf(0.0, float(u["hp"]) - _rhpb)   # 累积实际回血(满血则0)
 		u["_rum_vfx_t"] = float(u.get("_rum_vfx_t", 0.0)) + delta
-		while u["_rum_vfx_t"] >= 0.55:   # 每0.55s: 暖酒气泡 + 实际回血绿字(真回了才显·符合数字规矩)
+		while u["_rum_vfx_t"] >= 0.55:   # 每 0.55s 冒一颗暖酒气泡(数字由标准治疗累加器负责)
 			u["_rum_vfx_t"] -= 0.55
 			_pirate_sys._pirate_rum_bubble(u)
-			var _rhd: int = int(u.get("_rum_heal_acc", 0.0))
-			u["_rum_heal_acc"] = 0.0
-			if u.get("alive", false) and _rhd >= 1:
-				_vfx._float_text(u["pos"] + Vector2(randf_range(-18.0, 18.0), -48.0), "+" + str(_rhd), Color("#7fe39a"))
 	if not u["alive"]:
 		return
 	if u.get("_skele_pending", false):                    # 032: 登场召唤亡灵骷髅(首帧)
@@ -4181,7 +4182,8 @@ func _emit_basic(u: Dictionary, tgt: Dictionary, dmg: int, col: Color, i: int) -
 		_ls = DiceSystem.FATE_LIFESTEAL
 		u["dice_fate_ls"] = false
 		_vfx._float_text(u["pos"] + Vector2(0, -58), "命运吸血!", Color("#ff6b6b"))
-	if u["melee"]:
+	# 近战但射程被拉很远的(手半剑084) 也走弹道 —— 由来与取值见 BasicConsts.LONG_MELEE_RANGE
+	if u["melee"] and _eff_range(u) < BasicConsts.LONG_MELEE_RANGE:
 		_damage._apply_basic_hit_from(u, tgt, dmg, col, _ls)
 		if i == 0:
 			_vfx._flash(tgt); _melee_lunge(u, tgt)
