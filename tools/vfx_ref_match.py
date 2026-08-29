@@ -36,6 +36,7 @@ except Exception:
     sys.exit(1)
 
 import colorsys
+import math
 
 VFX = "assets/sprites/vfx"
 
@@ -49,52 +50,57 @@ SOFT_MAX = 0.14     # alpha 处在 40~215 之间的占比上限 —— 羽化软
 #   hot       白热像素占比(低饱和 + 高亮) —— 刀锋那一层
 #   strands   横向扫描线上"亮-暗-亮"的交替次数中位数 —— 多缕分层 / 丝丝分开的直接量
 SPEC = {
+    ## ★★2026-08-29 大改一次判据, 记下来免得再犯:
+    ##   用户要看素材, 一并排就看出来 —— **PixelLab 原始帧比我加工后的好**:
+    ##   斩击的紫色分层刀光被我洗白切碎, 剑波漂亮的辐射细丝被我剁成横向碎条。
+    ##   根因是**这几条阈值是我拍脑袋定的, 而且拍错了**:
+    ##     · `fill_max 0.30~0.34`(填充率上限) —— 参考里的剑气波本来就是**密集**的
+    ##       辐射细丝(丝间只有细黑缝), 填充率本来就高。这条逼着我去削材质。
+    ##     · `strands_min 6` —— 细丝一密就会连成片, 扫描线计数天然偏低。
+    ##       这条逼着我把丝拉开、拉出黑缝, 结果成了纱窗。
+    ##     · `taper_max` / `cv_min` 同理, 都是我按"看着应该这样"折算的数。
+    ##   ⇒ **撤掉这几条**。判据错比判据松更危险: 松只是漏, 错是**主动把好的推向坏的**。
+    ##
+    ##   留下的都是"能指出具体缺陷"的:
+    ##     · 白热要有(参考的强反差) · 前缘不许是实心板(那是真缺陷, 屏上读成方块)
+    ##     · 像素风两条(有限色板 / 硬边) · 亮度下限(太暗读成一条暗线)
+    ##
+    ##   ⚠ 真正的解法是**拿用户的参考图做逐像素比对** —— 图只在对话里, 我没有文件。
+    ##     用户把它们存到 `docs/ref/084/` 之后就该换成真比对, 而不是我折算的数。
     "eq084-slash.png": {
         "label": "斩击弧",
-        "taper_max": 0.16,          # 厚身→针尖
-        "fill_max": 0.34,           # 大量留空
-        "hot_min": 0.06, "hot_max": 0.30,   # 白热刀锋要有, 但不能糊成一片白
-        "strands_min": 2,           # 一笔里多缕重叠
+        "hot_min": 0.04, "hot_max": 0.45,   # 白热刀锋要有, 但不能糊成一片白
     },
+    ## ★★撤掉 slab_max: 我把原图最亮的**白芯**当成"过曝白板"压成了一块灰绿死板,
+    ##   并排一看明显比原图差。那是波的亮芯, 不是缺陷。今天第三次同一类错误。
     "eq084-wave.png": {
         "label": "剑气波",
-        "taper_max": 0.85,          # 波是扇面, 不要求收尖(但前缘不能是最厚处 → 见 front_max)
-        "fill_max": 0.30,           # ★最关键: 丝丝分开、完全通透
-        "hot_min": 0.03, "hot_max": 0.25,
-        "strands_min": 6,           # ★由大量分开的细丝组成
-        "front_max": 0.75,          # 末端厚度 / 最厚处 —— 前缘不许是实心板
-        "thick_min": 2.0,           # ★丝要有厚度 —— 逐行处理只能出 1px 横线
-        "fill_min": 0.18,           # ★不许太稀 —— 参考整体仍是一片, 只是丝间有缝
-        "gap_cv_min": 0.45,         # ★丝的【间距】也要参差 —— 等距 = 扫描线
-        "cv_min": 0.55,             # ★段长要参差 —— 等长点阵看着像纱窗
-        "seg_mu_min": 9.0,          # ★丝要沿流向连续, 不是被剁成一截截
+        "hot_min": 0.02,
+        "bulge_min": 0.045,         # ★前缘必须是【弯的】(用户点名「前部分是弯的」)
+        "wedge_max": 0.45,          # ★必须是【扇形】而不是圆坨 —— 尾部要收成尖
+        "thick_min": 2.0,           # 丝要有厚度 —— 逐行处理只能出 1px 横线
     },
     "eq084-beam.png": {
         "label": "激光束",
         # 参考 = 云顶 S4 速射火炮 + 用户发的四张实拍图: **一条细的亮电弧线**
-        "taper_max": 0.95,          # 束是通长的, 不要求收尖
-        "fill_max": 0.85,
-        "hot_min": 0.06, "hot_max": 0.32,   # ★白热芯要有(实拍第一版整条暗红, 读成一条暗线)
-        "strands_min": 1,
+        "hot_min": 0.04, "hot_max": 0.40,   # ★白热芯要有(第一版整条暗红, 读成一条暗线)
         "bright_min": 0.55,         # ★中位亮度 —— 激光是发光体, 不能是暗线
     },
     "eq084-burst.png": {
         "label": "命中爆点",
-        "taper_max": 0.30,          # 角状棱刺
-        "fill_max": 0.40,
-        "hot_min": 0.05, "hot_max": 0.35,
-        "strands_min": 2,
+        "hot_min": 0.03, "hot_max": 0.40,
         "warm_min": 0.01,           # 橙色火星碎屑
     },
 }
 
 
 def mid_frame(im):
-    """横排 sheet 取中间一帧; 单帧原样返回。"""
-    if im.width > im.height and im.width % im.height == 0:
-        n = im.width // im.height
-        k = n // 2
-        return im.crop((im.height * k, 0, im.height * (k + 1), im.height))
+    """★★2026-08-29 改成【整张 sheet 一起量】, 不再只取中间一帧。
+
+    只量中间一帧会被那一帧的偶然性质带偏 —— 斩击弧的动画是"起手亮 → 中段紫 → 末尾散",
+    第 4 帧正好是最暗的一帧, 判据于是报"白热 0%", 而实际上前三帧全是白热刀锋。
+    我照着那个假读数把整条弧洗白了一遍, 反而毁了原本对的紫色分层。
+    """
     return im
 
 
@@ -139,16 +145,28 @@ def profile(path):
     # ── 像素风指标(用户 2026-08-29:「和我给你的参考图做到一模一样**加像素风**」)──
     #   ① 调色板要收敛(像素画是有限色, 不是连续渐变)
     #   ② alpha 要硬(基本只有全透/全不透, 中间值少 ⇒ 没有羽化软边)
-    pal = set()
+    ## ★★色数要【逐帧】数再取最大, 不能数整张 sheet。
+    ##   2026-08-29 我把量法从"中间一帧"改成"整张 sheet"之后, 色数自然从
+    ##   ~60 涨到 ~105(九帧的色并集), 而阈值 PAL_MAX 还是按**单帧**定的
+    ##   ⇒ PixelLab 原图被判"不像素风"。判据自己造出来的假问题,
+    ##   而我上一次就是照着这种假问题把好素材改坏的。
+    _nfr = max(1, W // H) if W > H and W % H == 0 else 1
+    _fw = W // _nfr
+    pal_max_fr = set()
     soft_a = 0
-    for x in range(W):
-        for y in range(H):
-            r, g, bl, al = px[x, y]
-            if al == 0:
-                continue
-            pal.add((r >> 3, g >> 3, bl >> 3))     # 量化到 5bit/通道再数
-            if 40 < al < 215:
-                soft_a += 1
+    for k in range(_nfr):
+        pal_k = set()
+        for x in range(k * _fw, (k + 1) * _fw):
+            for y in range(H):
+                r, g, bl, al = px[x, y]
+                if al == 0:
+                    continue
+                pal_k.add((r >> 3, g >> 3, bl >> 3))   # 量化到 5bit/通道再数
+                if 40 < al < 215:
+                    soft_a += 1
+        if len(pal_k) > len(pal_max_fr):
+            pal_max_fr = pal_k
+    pal = pal_max_fr
 
     # 丝股数: 数"透明→不透明"的上升沿。
     # ★★【两个方向都数、取大的】—— 只沿横向数是**方向相关**的:
@@ -239,6 +257,50 @@ def profile(path):
     else:
         mu, cv = 0.0, 0.0
 
+    # ★★"前缘必须是弯的"(用户 2026-08-29 点名:「剑气…前部分是弯的」)。
+    #   量法: 逐行取最右的不透明像素 = 前缘轮廓; 看**中间比上下两端凸出多少**。
+    #   直边 ≈ 0, 外凸弧 > 0。我第一版实测只凸 5px(128px 宽的图里约等于直的)。
+    ## ★★必须【逐帧】量。横排 sheet 上按整张取"每行最右"只会拿到**最后一帧**的
+    ##   轮廓(前面八帧全被遮住) ⇒ 读数没意义。我第一版就是这么写的, 报回 -1%。
+    nfr = max(1, W // H) if W > H and W % H == 0 else 1
+    fwid = W // nfr
+    bl_acc, wd_acc = [], []
+    for k in range(nfr):
+        x0 = k * fwid
+        prof_r, wid = [], []
+        for y in range(H):
+            xs2 = [x for x in range(x0, x0 + fwid) if px[x, y][3] > 40]
+            if xs2:
+                prof_r.append(max(xs2) - x0)
+        if len(prof_r) < 9:
+            continue
+        q = max(1, len(prof_r) // 5)
+        mid_i = len(prof_r) // 2
+        bl_acc.append(sum(prof_r[mid_i - 2:mid_i + 3]) / 5.0
+                      - (sum(prof_r[:q]) / q + sum(prof_r[-q:]) / q) / 2.0)
+        ## ★“扇形”指标: 后五分之一的高度 / 前五分之一的高度。
+        ##   扇面 ≈ 0.2以下(尾部收成尖); 圆坨/矩形 ≈ 1。
+        for a, b in ((0, fwid // 5), (fwid - fwid // 5, fwid)):
+            ys2 = [y for y in range(H) for x in range(x0 + a, x0 + b) if px[x, y][3] > 40]
+            wid.append((max(ys2) - min(ys2)) if len(ys2) > 4 else 0)
+        if wid[1] > 4:
+            wd_acc.append(wid[0] / float(wid[1]))
+    bulge = sum(bl_acc) / len(bl_acc) if bl_acc else 0.0
+    wedge = sum(wd_acc) / len(wd_acc) if wd_acc else 1.0
+
+    # ★"过曝白板"指标: 极低饱和 + 极亮 的像素占比。
+    #   剑气波第一版右边那块就是它 —— 一整片纯白, 屏上读成一块方板。
+    #   这是**能指出具体缺陷**的判据; 而"填充率上限"那种是我拍脑袋的, 已撤。
+    slab = 0
+    for x in range(W):
+        for y in range(H):
+            r, g, bl, al = px[x, y]
+            if al < 40:
+                continue
+            h, s2, v2 = colorsys.rgb_to_hsv(r / 255.0, g / 255.0, bl / 255.0)
+            if s2 < 0.16 and v2 > 0.90:
+                slab += 1
+
     vlist = []
     for x in range(W):
         for y in range(H):
@@ -250,7 +312,8 @@ def profile(path):
     bright = vlist[len(vlist) // 2] if vlist else 0.0
 
     return {
-        "bright": bright,
+        "bright": bright, "slab": slab / float(max(1, tot)),
+        "bulge": bulge / float(max(1, H)), "wedge": wedge,
         "span": span, "max": mx, "tip": tip,
         "taper": tip / float(mx), "front": front / float(mx),
         "fill": fill, "hot": hot / float(max(1, tot)),
@@ -274,22 +337,22 @@ def main():
             fails.append("%s 整张全透明" % fn)
             continue
         n_checked += 1
-        print("  %-12s 收尖 %.2f · 填充 %.0f%% · 白热 %.0f%% · 丝股 %d · 前缘 %.2f · 暖屑 %.1f%% · 色数 %d · 软边 %.0f%% · 段长 %.1f±cv%.2f · 缝cv%.2f · 丝厚%.1f"
+        print("  %-12s 收尖 %.2f · 填充 %.0f%% · 白热 %.0f%% · 丝股 %d · 前缘 %.2f · 暖屑 %.1f%% · 色数 %d · 软边 %.0f%% · 段长 %.1f±cv%.2f · 缝cv%.2f · 丝厚%.1f · 白板%.0f%% · 前缘凸%.0f%% · 尾/前%.2f"
               % (spec["label"], pr["taper"], 100 * pr["fill"], 100 * pr["hot"],
-                 pr["strands"], pr["front"], 100 * pr["warm"], pr["pal"], 100 * pr["soft"], pr["seg_mu"], pr["seg_cv"], pr["gap_cv"], pr["thick"]))
-        if pr["taper"] > spec["taper_max"]:
+                 pr["strands"], pr["front"], 100 * pr["warm"], pr["pal"], 100 * pr["soft"], pr["seg_mu"], pr["seg_cv"], pr["gap_cv"], pr["thick"], 100 * pr["slab"], 100 * pr["bulge"], pr["wedge"]))
+        if "taper_max" in spec and pr["taper"] > spec["taper_max"]:
             fails.append("%s 收尖不够: %.2f > %.2f(参考是厚身急剧收成针尖)"
                          % (spec["label"], pr["taper"], spec["taper_max"]))
-        if pr["fill"] > spec["fill_max"]:
+        if "fill_max" in spec and pr["fill"] > spec["fill_max"]:
             fails.append("%s 太实心: 填充 %.0f%% > %.0f%%(参考是丝丝分开、大量留空)"
                          % (spec["label"], 100 * pr["fill"], 100 * spec["fill_max"]))
-        if pr["hot"] < spec["hot_min"]:
+        if "hot_min" in spec and pr["hot"] < spec["hot_min"]:
             fails.append("%s 没有白热刀锋: %.0f%% < %.0f%%(参考是白热核心与高饱和身强反差)"
                          % (spec["label"], 100 * pr["hot"], 100 * spec["hot_min"]))
-        if pr["hot"] > spec["hot_max"]:
+        if "hot_max" in spec and pr["hot"] > spec["hot_max"]:
             fails.append("%s 白热糊成一片: %.0f%% > %.0f%%"
                          % (spec["label"], 100 * pr["hot"], 100 * spec["hot_max"]))
-        if pr["strands"] < spec["strands_min"]:
+        if "strands_min" in spec and pr["strands"] < spec["strands_min"]:
             fails.append("%s 丝股不够: %d < %d(参考是一笔里多缕重叠 / 大量分开的细丝)"
                          % (spec["label"], pr["strands"], spec["strands_min"]))
         if "front_max" in spec and pr["front"] > spec["front_max"]:
@@ -297,7 +360,7 @@ def main():
                          % (spec["label"], pr["front"], spec["front_max"]))
         # ★像素风: 全仓通用判据(不分张)
         if pr["pal"] > PAL_MAX:
-            fails.append("%s 不像素风: 色数 %d > %d(像素画是有限色板, 不是连续渐变)"
+            fails.append("%s 不像素风: 单帧最大色数 %d > %d(像素画是有限色板, 不是连续渐变)"
                          % (spec["label"], pr["pal"], PAL_MAX))
         if pr["soft"] > SOFT_MAX:
             fails.append("%s 不像素风: 软边 %.0f%% > %.0f%%(像素画硬边, alpha 基本只有全透/全不透)"
@@ -317,12 +380,68 @@ def main():
         if "seg_mu_min" in spec and pr["seg_mu"] < spec["seg_mu_min"]:
             fails.append("%s 丝被剁碎了: 平均段长 %.1f < %.1f px(丝应沿流向连续)"
                          % (spec["label"], pr["seg_mu"], spec["seg_mu_min"]))
+        if "bulge_min" in spec and pr["bulge"] < spec["bulge_min"]:
+            fails.append("%s 前缘是【直的】: 中间只比两端凸出 %.0f%% 图宽 < %.0f%%(参考里前缘是一道外凸的弧)"
+                         % (spec["label"], 100 * pr["bulge"], 100 * spec["bulge_min"]))
+        if "wedge_max" in spec and pr["wedge"] > spec["wedge_max"]:
+            fails.append("%s 不是【扇形】: 尾宽/前宽 %.2f > %.2f(圆坨是 1, 扇面从一点张开应 ≪1)"
+                         % (spec["label"], pr["wedge"], spec["wedge_max"]))
+        if "slab_max" in spec and pr["slab"] > spec["slab_max"]:
+            fails.append("%s 有大片过曝白板: %.0f%% > %.0f%%(屏上读成一块方板)"
+                         % (spec["label"], 100 * pr["slab"], 100 * spec["slab_max"]))
         if "bright_min" in spec and pr["bright"] < spec["bright_min"]:
             fails.append("%s 太暗(读成一条暗线): 中位亮度 %.2f < %.2f(激光是发光体)"
                          % (spec["label"], pr["bright"], spec["bright_min"]))
         if "warm_min" in spec and pr["warm"] < spec["warm_min"]:
             fails.append("%s 没有橙色火星: %.1f%% < %.1f%%"
                          % (spec["label"], 100 * pr["warm"], 100 * spec["warm_min"]))
+
+    ## ══ 斩击的【张角 = 判定锥】: 演出即判定 ═════════════════
+    ##
+    ## ★用户 2026-08-29 在图上标蓝点定下了圆心 = **弧所在圆的圆心**(挥剑的转轴)。
+    ##   绕这个点量, 横斩/竖斩两张的张角必须**等于各自的判定锥**(120 / 60)。
+    ## ★期望值写死在这里, 不读生成器的常量 —— 否则改生成器时两边一起变, 永远绿。
+    ##   (本会话已经因为"判据迭代产品自己的常量"翻过两次。)
+    PIVOT = (0.664, 0.728)
+    for fn, want in (("eq084-slash-wide.png", 120.0), ("eq084-slash-narrow.png", 60.0)):
+        fp = os.path.join(VFX, fn)
+        if not os.path.exists(fp):
+            fails.append("%s 不存在" % fn)
+            continue
+        im = Image.open(fp).convert("RGBA")
+        px2 = im.load()
+        Hf = im.height
+        nf = max(1, im.width // Hf)
+        spans = []
+        for k in range(nf):
+            gx, gy = PIVOT[0] * Hf, PIVOT[1] * Hf
+            ## ★角度要用【帧内坐标】算。我第一版直接拿了 sheet 的绝对 x,
+            ##   于是第 k 帧的 x 大出一大截, 所有角度全塌到 0 附近 ⇒ 报 26 度。
+            a = sorted(math.degrees(math.atan2(y - gy, (x - k * Hf) - gx))
+                       for y in range(Hf)
+                       for x in range(k * Hf, (k + 1) * Hf)
+                       if px2[x, y][3] > 40)
+            if len(a) < 200:
+                continue
+            ## 量【几何全张】(含所有质量的最小弧), 不是 90% 分位 ——
+            ## 楞形是被硬裁过的, 全张就该正好等于判定锥。
+            N = len(a)
+            best = None
+            for i in range(N):
+                j = (i + N - 1) % N
+                w = a[j] - a[i] if j > i else a[j] + 360.0 - a[i]
+                if best is None or w < best:
+                    best = w
+            spans.append(best)
+        if not spans:
+            fails.append("%s 一帧有效内容都没有(N=0 是空检查)" % fn)
+            continue
+        got = sum(spans) / len(spans)
+        print("  %-26s 绕圆心张角 %.0f 度 (写死期望 %.0f) · 量了 %d 帧"
+              % (fn, got, want, len(spans)))
+        if abs(got - want) > 10.0:
+            fails.append("%s 张角 %.0f 度 ≠ 判定锥 %.0f 度 —— 演出承诺的和打得到的不一样"
+                         % (fn, got, want))
 
     print("  [分母] 真的量了 %d 张(N=0 是空检查不是通过)" % n_checked)
     if n_checked < 4:

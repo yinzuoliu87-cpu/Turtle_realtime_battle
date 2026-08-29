@@ -147,6 +147,7 @@ func _ready() -> void:
 	await _t083_swordsman()
 	_t084_melee_wiring()
 	_t084_cross_slash()
+	_t084_slash_geometry()
 	_t084_ranged()
 	_t084_realtime()
 	_t_vfx()
@@ -952,8 +953,13 @@ func _t_slash_direction() -> void:
 	if sn != null:
 		_ok("④D ★★必须关掉 billboard(开着就吃掉 roll, 方向永远指不出来)",
 			sn.billboard == BaseMaterial3D.BILLBOARD_DISABLED, "billboard=%d" % int(sn.billboard))
-		_ok("④D 节点记的 roll 与方向算出来的一致",
-			absf(float(sn.get_meta("slash_roll", 0.0)) - BV.dir_to_roll(Vector2(-1, 0))) < 1e-6)
+		## ★★roll 的定义 2026-08-29 变了: **要扣掉素材自己的朝向**。
+		##   旧式子 `roll == dir_to_roll(dir)` 隐含"素材本来朝正右", 而实测这张
+		##   本来朝右上 34 度 ⇒ 每一刀固定偏 34 度(用户:「方向都调不准」)。
+		_ok("④D 节点记的 roll = 方向角 - 素材自己的朝向(横斩不再加下压)",
+			absf(float(sn.get_meta("slash_roll", 0.0))
+				- (BV.dir_to_roll(Vector2(-1, 0)) - BV.SLASH_ASSET_RAD)) < 1e-6,
+			"roll=%.4f" % float(sn.get_meta("slash_roll", 0.0)))
 	_blade().vfx.clear()
 	_s._units.clear()
 
@@ -1031,3 +1037,135 @@ func _t_vfx() -> void:
 			and _blade().b84_waves() == 0 and _blade().b84_pending() == 0,
 		"owned=%d guards=%d waves=%d pending=%d" % [_blade().vfx.owned_count(),
 			_blade().vfx.guard_count(), _blade().b84_waves(), _blade().b84_pending()])
+
+
+## ── ④g 斩击的【几何】: 圆心 / 朝向 / 横竖分家 ──────────────────────
+##
+## 用户 2026-08-29:「这个像个扇子, 那圆心不是在右下一个点吗」+「这个还分为横斩和竖斩, 你咋做」。
+##
+## ★这几条**必须量节点自己的变换**, 不许数我插的标记 ——
+##   旧代码把**整张图的几何中心**摆在 `pos + dir*105`, 而扇子的圆心在帧的左下角
+##   ⇒ 圆心被甩到龟斜后方半个板宽外。"圆心在不在手上"只能由 `position + 圆心偏移`
+##   与龟的世界坐标之差来回答, 任何"我调用了摆位函数"式的标记都答不了。
+func _t084_slash_geometry() -> void:
+	print("── ④g 斩击是一把【扇子】: 圆心钉手 · 朝向指目标 · 横竖分家 ──")
+	_s._units.clear()
+	var u: Dictionary = _mk("fortune", "left", Vector2(0.0, 0.0))
+	_spawn_all()
+	var vfx = _blade().vfx
+	_ok("④g ★分母: 演出层在位且世界节点存在",
+		vfx != null and vfx is BladeEqVfx and _s._world != null)
+
+	## 四个正轴方向各画一刀。★只取正轴: 斜方向上 `dir_to_roll` 会按 2.5D 纵深压一下
+	##   (SCREEN_DEPTH_K), 场地系与屏幕系本来就不该相等; 正轴上压缩是恒等, 比得干净。
+	var dirs: Array = [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]
+	var names: Array = ["+x", "-x", "+y(远离镜头)", "-y(靠近镜头)"]
+	var worst_ang: float = 0.0
+	var worst_pivot: float = 0.0
+	var min_center: float = 1e9
+	var n_seen: int = 0
+	var reach_yd: float = 0.0
+	for i in range(dirs.size()):
+		var d: Vector2 = dirs[i]
+		var s3 = _last_slash(vfx, u, d, 1)
+		if s3 == null:
+			continue
+		n_seen += 1
+		## ① 圆心落在哪: position 是【图心】, 加上圆心偏移才是圆心。
+		var fm: float = float(s3.pixel_size) * float(maxi(1, s3.texture.get_height()))
+		var pivot: Vector3 = s3.position + BladeEqVfx.slash_pivot_off3(s3.basis, fm)
+		var hand: Vector3 = _s._world_pos(u["pos"] as Vector2, GunEqVfx.body_mid_h(u))
+		worst_pivot = maxf(worst_pivot, (pivot - hand).length() / _s.WS)
+		## ★分母(这条是判据的"刚好卡住"处): 图心【不】在手上。
+		##   少了它, 一个"整张图就是以龟为中心"的实现也会让上一条绿。
+		min_center = minf(min_center, (s3.position - hand).length() / _s.WS)
+		## ② 扇面朝哪: 素材自己的张开方向经 basis 映到世界, 再投回场地平面。
+		var a: float = BladeEqVfx.SLASH_ASSET_RAD
+		var w: Vector3 = s3.basis.x * cos(a) + s3.basis.y * sin(a)
+		var fld: Vector2 = Vector2(w.x, w.z).normalized()
+		var ang: float = rad_to_deg(absf(fld.angle_to(d)))
+		worst_ang = maxf(worst_ang, ang)
+		reach_yd = fm * BladeEqVfx.SLASH_R_FRAC / _s.WS
+		print("     %s  圆心偏 %.1f 码 · 图心偏 %.1f 码 · 扇面偏 %.1f 度"
+			% [names[i], (pivot - hand).length() / _s.WS,
+			   (s3.position - hand).length() / _s.WS, ang])
+	_ok("④g ★分母: 四个方向都真的建出了斩击节点(N=0 是空检查不是通过)", n_seen == 4,
+		"n=%d" % n_seen)
+	_ok("④g ★★【圆心】钉在握剑的手上: 最大偏差 %.1f 码 < 8" % worst_pivot,
+		n_seen == 4 and worst_pivot < 8.0)
+	_ok("④g ★分母: 而【图心】离手很远(≥40 码) —— 否则上一条会被「整张图以龟为中心」蒙混过去",
+		n_seen == 4 and min_center >= 40.0, "min=%.1f 码" % min_center)
+	_ok("④g ★★扇面指向目标: 四个正轴上最大偏差 %.1f 度 < 12" % worst_ang,
+		n_seen == 4 and worst_ang < 12.0)
+	## 同理写死 250: 它是【扫过多远】的规格数, 同时被伤害结算用。
+	_ok("④g 扇子外缘正好落在 250 码: 实测 %.0f" % reach_yd,
+		absf(reach_yd - 250.0) < 6.0)
+	_ok("④g ★焊死: 产品的 SLASH_REACH 就是 250(上一条写死了, 这条管产品别漂)",
+		absf(BladeEqVfx.SLASH_REACH - 250.0) < 0.01, "%.1f" % BladeEqVfx.SLASH_REACH)
+
+	## ③ 横斩 / 竖斩必须是两张不同的素材, 张角 = 各自的判定锥。
+	var sw = _last_slash(vfx, u, Vector2(1, 0), 1)
+	var sn = _last_slash(vfx, u, Vector2(1, 0), 2)
+	var tw: String = "" if sw == null else str(sw.texture.resource_path)
+	var tn: String = "" if sn == null else str(sn.texture.resource_path)
+	_ok("④g ★分母: 两段都建出了节点", sw != null and sn != null)
+	_ok("④g ★★横斩与竖斩【不是同一张图】(旧做法两段共用一张、只换 tint ⇒ 读不出十字)",
+		tw != "" and tn != "" and tw != tn, "wide=%s narrow=%s" % [tw.get_file(), tn.get_file()])
+	_ok("④g 横斩拿的是宽那张(张角 = SLASH_DEG_WIDE)",
+		tw.ends_with("eq084-slash-wide.png"), tw)
+	_ok("④g 竖斩拿的是窄那张(张角 = SLASH_DEG_NARROW)",
+		tn.ends_with("eq084-slash-narrow.png"), tn)
+	## ④ 竖斩要读成【从上往下砍】: 起手点更高 + 扇面更往下压。
+	## ★比的是【圆心】的高度, 不是节点位置 ——
+	##   节点位置里含着"圆心相对图心的偏移", 而那个偏移随 roll 转
+	##   ⇒ 竖斩多压了 38 度, 两者的图心高差并不等于抬手高度(实测 13 ≠ 64)。
+	var dh: float = 0.0
+	if sw != null and sn != null:
+		var pw: Vector3 = sw.position + BladeEqVfx.slash_pivot_off3(
+			sw.basis, float(sw.pixel_size) * float(maxi(1, sw.texture.get_height())))
+		var pn: Vector3 = sn.position + BladeEqVfx.slash_pivot_off3(
+			sn.basis, float(sn.pixel_size) * float(maxi(1, sn.texture.get_height())))
+		dh = (pn.y - pw.y) / _s.WS
+	## ★★期望值**写死在门禁里**, 不读产品的 CHOP_RAISE。
+	##   第一版写的是 `absf(dh - BladeEqVfx.CHOP_RAISE) < 6` —— 把产品里的 CHOP_RAISE
+	##   改成 0, 这条**照样绿**(两边一起变)。反向验证当场抓到的。
+	##   同族: 本会话早些时候复制黑名单的门禁也是迭代产品自己的表。
+	_ok("④g ★竖斩的握剑手抬到头顶上方: 比横斩高 %.0f 码(写死期望 64)" % dh,
+		absf(dh - 64.0) < 6.0)
+	## ★剑波也必须按行进方向转 —— 旧代码一行 roll 都没有(纯 billboard)。
+	## 素材弯成扇面之后"尖端在后、弧在前"有了方向, 不转 = 往左飞的波把弧指向右。
+	var wv_ok: bool = true
+	var wv_seen: int = 0
+	for wd in [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1)]:
+		vfx.cross_wave(u, u["pos"] as Vector2, wd, 2)
+		var wn = null
+		for c in _s._world.get_children():
+			if c is Sprite3D and (c as Node).has_meta("wave_roll"):
+				wn = c
+		if wn == null:
+			continue
+		wv_seen += 1
+		var wa: Vector3 = (wn as Sprite3D).basis.x
+		var wf: Vector2 = Vector2(wa.x, wa.z).normalized()
+		if rad_to_deg(absf(wf.angle_to(wd))) > 8.0:
+			wv_ok = false
+		if (wn as Sprite3D).billboard != BaseMaterial3D.BILLBOARD_DISABLED:
+			wv_ok = false
+	_ok("④g ★分母: 三个方向都建出了剑波节点", wv_seen == 3, "n=%d" % wv_seen)
+	_ok("④g ★★剑波按行进方向转(且关掉 billboard) —— 弧形前缘才朝行进方向",
+		wv_seen == 3 and wv_ok)
+
+	var rw: float = 0.0 if sw == null else float(sw.get_meta("slash_roll", 0.0))
+	var rn: float = 0.0 if sn == null else float(sn.get_meta("slash_roll", 0.0))
+	_ok("④g ★竖斩的扇面比横斩多往下压 %.1f 度(写死期望 38)" % rad_to_deg(rw - rn),
+		absf(rad_to_deg(rw - rn) - 38.0) < 1.0)
+
+
+## 画一刀, 返回刚建出来的那个 Sprite3D(按 _adopt 打的 meta 找, 取最后一个)。
+func _last_slash(vfx, u: Dictionary, d: Vector2, seg: int):
+	vfx.cross_slash(u, d, seg)
+	var got = null
+	for c in _s._world.get_children():
+		if c is Sprite3D and (c as Node).has_meta(BladeEqVfx.META_KEY) 				and str((c as Node).get_meta(BladeEqVfx.META_KEY)) == "slash":
+			got = c
+	return got

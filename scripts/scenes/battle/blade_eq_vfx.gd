@@ -859,7 +859,14 @@ func cross_windup(u: Dictionary, dir: Vector2, sec: float) -> void:
 ##
 ## ★贴图不在时回退到原来的程序生成贴图 —— 没导入的 PNG `ResourceLoader.exists` 是 false,
 ##   直接 load 返回 null 而一句报错都没有。
+## 横斩/竖斩**各用一张**。旧做法两段共用同一张、只换个 tint ⇒
+## “十字”根本读不出来; 而且素材就 80 度张角, 两边各错一头
+## (横斩少画 40 度、竖斩多画 20 度) ⇒ 演出与判定对不上。
+## 现在由 build_eq084_vfx.py 绕圆心做**角向重映射**各出一张,
+## 张角就是 SLASH_DEG_WIDE / SLASH_DEG_NARROW 本尊。
 const TEX_SLASH_V2 := "res://assets/sprites/vfx/eq084-slash.png"
+const TEX_SLASH_WIDE := "res://assets/sprites/vfx/eq084-slash-wide.png"
+const TEX_SLASH_NARROW := "res://assets/sprites/vfx/eq084-slash-narrow.png"
 const TEX_WAVE_V2 := "res://assets/sprites/vfx/eq084-wave.png"
 const TEX_BURST_V2 := "res://assets/sprites/vfx/eq084-burst.png"
 ## 普攻激光束(6 帧横排)。★新素材, 不复用 fx-energy-beam.png
@@ -869,7 +876,38 @@ const BEAM_HALF_W := 13.0     # 光束半宽(码)。细 —— 参考里是一�
 const BEAM_SEC := 0.24        # 光束存在多久(秒)。0.16 太短 —— 实拍四个采样点只撞上一次,
                               # 玩家也容易整场看漏。仍然是"闪一下"的量级(holdfade 前 70% 满亮)
 const BEAM_ASPECT := 6.0      # 单帧宽高比(384/64), 用来算帧数
-const SLASH_FWD := 105.0      # 刀光往挥砍方向前移多少(码)。★不前移会把施法的龟整个盖住
+## ═════════════════════════════════
+##  ★★斩击是一把【扇子】: 圆心 = 握剑的手
+## ═════════════════════════════════
+## 用户 2026-08-29:「这个像个扇子, 那圆心不是在右下一个点吗」——
+## 对。扇子有转轴, 转轴就是握剑的手; 扇面从那一点朝挥砍方向张开。
+##
+## 旧做法错在**摆的是整张图的几何中心**:
+##     _board(tex, u.pos + dir * 105, ...)      # ← _board 摆的是图心, 不是圆心
+##   而圆心在帧的**左下角**(实测归一 0.083, 0.766) ⇒ 圆心被甩到龟斜后方半个板宽外。
+##   转轴不在手上, 于是"方向怎么调都不对"(用户原话)。那句 `+ dir * 105` 也正是
+##   为了补这个偏移才加的 —— 补歪了, 现在圆心钉对了就不需要它了。
+##
+## 实测(逐帧拟合"所有射线的出发点", 帧 0~5 一致 —— 帧 6~8 是消散段没有相干形状,
+## 我第一版的拟合器在那里抓到残渣, 差点让我去"修"一个不存在的圆心跳变):
+##   · 圆心归一        (0.664, 0.728)   ← 图像系, 0,0=左上
+##   · 弧中线          图像系 -131 度 ⇒ 贴图平面 +131 度(平面 y 向上, 图像 y 向下)
+##   · 含 90% 质量的最小弧  116 度 ← 几乎正好 = 横斩判定锥 120 度
+##   · r95            0.55 帧宽 ⇒ 帧宽除 0.55 才让弧的外缘落在 SLASH_REACH
+##
+## ★★前一版我把圆心拟合成了**笔触收束的那一点**(左下 0.083,0.766)。
+##   用户在图上标蓝点纠正: 圆心是**这道弧所在圆的圆心**(弧的凹侧、右下)。
+##   剑绕着人转 ⇒ 人站在圆心, 不是站在笔触的尾巴上。
+const SLASH_PIVOT := Vector2(0.664, 0.728)
+const SLASH_ASSET_RAD := deg_to_rad(131.0)
+const SLASH_R_FRAC := 0.55
+const SLASH_ART_DEG := 116.0
+## 竖斩专用: 圆心(握剑的手)抬到头顶上方多少码 + 扇面向下压多少度。
+## ★用户 2026-08-29:「这个还分为横斩和竖斩」—— 旧做法两段共用同一张图、
+##   同一个摆法, 只差一个 tint ⇒ 屏上就是同一刀砍两次, 读不出"十字"。
+##   竖斩要读成**从上砍下来**: 起手点在头顶上、扇面朝目标压下去。
+const CHOP_RAISE := 64.0
+const CHOP_TILT := deg_to_rad(38.0)
 const BURST_SIZE := 190.0     # 命中爆点的世界尺寸(码)
 const RETREAT_GHOSTS := 5     # 后撤沿路铺几道拖影(含起点那道)
 const WINDUP_MOTES := 7       # 蓄力收拢的剑气点数
@@ -880,6 +918,18 @@ static func dir_to_roll(dir: Vector2) -> float:
 	if dir.length_squared() < 1e-12:
 		return 0.0
 	return atan2(-dir.y * SCREEN_DEPTH_K, dir.x)
+
+
+## 扇子的【圆心】相对图心的三维偏移(米)。摆位时用 `图心 = 目标点 - 本函数`。
+##
+## ★为什么要走 `Basis` 而不是在场地二维里算: 刀光板是**正对镜头**的(face_basis),
+##   它所在的平面是斜的; 偏移必须沿着**板子自己的 x/y 轴**走,
+##   在场地平面里算会偏。
+## ★图像 y 向下、贴图平面 y 向上 ⇒ ly 取负。
+static func slash_pivot_off3(bas: Basis, frame_m: float) -> Vector3:
+	var lx: float = (SLASH_PIVOT.x - 0.5) * frame_m
+	var ly: float = -(SLASH_PIVOT.y - 0.5) * frame_m
+	return bas.x * lx + bas.y * ly
 
 
 func cross_slash(u: Dictionary, _dir: Vector2, seg: int) -> void:
@@ -894,13 +944,19 @@ func cross_slash(u: Dictionary, _dir: Vector2, seg: int) -> void:
 	## ★★2026-08-29 换成【逐帧动画素材】。旧的是 `cross_blade_tex()` —— 代码算出来的
 	##   一张静止半圆环, 拉到 250 码 ⇒ 实拍是一弯灰白月亮挂在半空(饱和度 0.09、跨 712px)。
 	##   用户:「不要拿图片贴图敷衍我, **我要动画像素特效**」。
-	var _anim: bool = ResourceLoader.exists(TEX_SLASH_V2)
-	var _tex: Texture2D = load(TEX_SLASH_V2) if _anim else cross_blade_tex()
+	## ★横斩(seg 1)拿宽那张、竖斩(seg 2)拿窄那张 —— 张角 = 各自的判定锥。
+	var _path: String = TEX_SLASH_WIDE if seg == 1 else TEX_SLASH_NARROW
+	if not ResourceLoader.exists(_path):
+		_path = TEX_SLASH_V2
+	var _anim: bool = ResourceLoader.exists(_path)
+	var _tex: Texture2D = load(_path) if _anim else cross_blade_tex()
 	## ★★摆位: 旧的程序贴图是**半圆环**(中间是空的), 以龟为中心画正好把龟框在弧里;
 	##   新素材是**铺满整帧的实心刀光**, 同样摆法会**把龟整个盖住**(实拍只剩一点壳露出来)。
-	##   ⇒ 往挥砍方向前移半个身位, 让刀光落在龟【身前】而不是罩在身上。
-	var _org: Vector2 = (u["pos"] as Vector2) + (_dir * SLASH_FWD if _anim else Vector2.ZERO)
-	var s := _board(_tex, _org, GunEqVfx.body_mid_h(u),
+	##   —— 而那个前移是【补歪的】: 真正的毛病是圆心没钉在手上(见上面 SLASH_PIVOT),
+	##   圆心钉对了龟就自然坐在扇尖上, 不需要再推开半个身位。
+	## 竖斩的握剑手抬到头顶上方。
+	var _h: float = GunEqVfx.body_mid_h(u) + (0.0 if seg == 1 else CHOP_RAISE * battle.WS)
+	var s := _board(_tex, u["pos"] as Vector2, _h,
 		SLASH_REACH / BLADE_R_FRAC, Color(col.r, col.g, col.b, 0.95), 7)
 	if _anim:
 		## 横排 sheet: 帧宽 = 图高。新素材自带白热刀锋与紫弧身, 不再靠 modulate 上色
@@ -917,14 +973,25 @@ func cross_slash(u: Dictionary, _dir: Vector2, seg: int) -> void:
 		##   所以要除回去把它放大到 250 码。新素材的弧**铺满整帧** ⇒ 再除 0.455
 		##   等于白白放大 2.2 倍(实拍: 弧 400px 宽而龟只有 54px, **7.4 倍龟身**)。
 		##   新素材直接按 SLASH_REACH 给板宽。
-		s.pixel_size = (SLASH_REACH * battle.WS) / float(_fh)
+		## ★再除 SLASH_R_FRAC: 扇子的最远半径只占帧宽 92%, 不除的话外缘停在 230 码,
+		##   而"扫过多远"是这一笔唯一的视觉承诺 —— 承诺 250 就得画到 250。
+		s.pixel_size = (SLASH_REACH / SLASH_R_FRAC * battle.WS) / float(_fh)
 	## ★★2026-08-09 补上"指方向"这个缺口。旧注释写着「`_dir` 没被用上 —— 弧是 billboard,
 	##   billboard 会吃掉 roll」。解法不是放弃 billboard 的**朝向**, 而是自己算基:
 	##   `face_basis(视轴, roll)` = **正对镜头**(所以不会被 52° 俯视压扁) + **面内旋转**(所以指得出方向)。
 	##   这与 094 闪电那条同族: billboard 的"完全对齐相机"包含 roll, 想自己控制 roll 就不能用它。
 	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-	s.basis = ArcaneEqVfx.face_basis(ArcaneEqVfx.cam_forward_of(battle), dir_to_roll(_dir))
-	s.set_meta("slash_roll", dir_to_roll(_dir))
+	## ★★roll 要**扣掉素材自己的朝向**。`dir_to_roll(dir)` 给的是"目标在屏幕平面的角度",
+	##   直接当 roll 用等于假设素材本来朝正右; 而这张素材本来朝**右上 34 度**
+	##   ⇒ 每一刀固定偏 34 度。用户:「方向都调不准」就是这个。
+	## 竖斩再往下压 CHOP_TILT(贴图平面 y 向上 ⇒ 往下是**减**)。
+	var _roll: float = dir_to_roll(_dir) - SLASH_ASSET_RAD - (0.0 if seg == 1 else CHOP_TILT)
+	s.basis = ArcaneEqVfx.face_basis(ArcaneEqVfx.cam_forward_of(battle), _roll)
+	## ★★把【圆心】钉到龟身上(而不是把图心摆过去)。`_board` 己经把**图心**
+	##   放在了龟的位置 ⇒ 这里减去"圆心相对图心的偏移", 图心退开, 圆心就落到龟手上。
+	if _anim:
+		s.position -= slash_pivot_off3(s.basis, s.pixel_size * float(maxi(1, _tex.get_height())))
+	s.set_meta("slash_roll", _roll)
 	_adopt(s, "slash")
 	# ★★"一出生就线性淡出" —— 今天第四次同一个病(078 霰弹 / 079 治疗束 / 082 贝壳弧 / 这里)。
 	#   一刀只活 0.22 秒, 线性淡出让它**大半辈子处在半亮以下** ⇒ 实拍里读成一道灰弧,
@@ -1019,6 +1086,16 @@ func cross_wave(u: Dictionary, org: Vector2, dir: Vector2, seg: int) -> void:
 		s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		s.modulate = Color(1, 1, 1, 0.9)
 		s.pixel_size = (_wsize * battle.WS) / float(_wfh)
+	## ★★剑波必须【按行进方向转】。旧代码一行 roll 都没有 —— 纯 billboard。
+	##   旧素材是块近似对称的圆坨, 转不转看不出来; 2026-08-29 把它弯成了
+	##   **尖端在后、弧形前缘在前**的扇面(用户:「前部分是弯的」)之后,
+	##   方向就成了硬需求: 往左飞的波会把弧指向右。
+	## ★素材自己的朝向就是 +x(弯弧时圆心放在 -x 侧、前缘落在最大 x),
+	##   所以不像斩击那张需要再扣一个素材角。
+	if _wanim:
+		s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+		s.basis = ArcaneEqVfx.face_basis(ArcaneEqVfx.cam_forward_of(battle), dir_to_roll(dir))
+		s.set_meta("wave_roll", dir_to_roll(dir))
 	_adopt(s, "wave")
 	_fx.append({"node": s, "t": 0.0, "life": 0.78, "kind": "wave", "org": org, "dir": dir,
 		"h": GunEqVfx.body_mid_h(u)})
