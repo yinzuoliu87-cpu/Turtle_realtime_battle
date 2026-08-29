@@ -435,6 +435,8 @@ run_audit "tools/passive_number_audit.py" "ALL OK" "passive_number_audit (龟被
 #   战场内不能有 void(单位被 clamp 进去=站黑洞)、站位格不能是水、接战区不能是水(亮度98压深色龟)。
 #   改前的老图恰好三条全踩(亮青池子铺满接战区)。第 4 条守"地图必须与生成器一致", 防手刷脱钩。
 run_audit "tools/map_composition_audit.py" "ALL OK" "map_composition_audit (地图构图·战场无void/站位不在水/接战区不亮/与生成器一致)"
+run_audit "tools/vfx_ref_match.py"     "ALL OK" "vfx_ref_match (084 三张特效 ↔ 用户参考图的形态指标 + 像素风)"
+run_audit "tools/vfx_ingame_check.py"  "ALL OK" "vfx_ingame_check (084 十字斩实拍: 斩击是主角/两者都画得出来)"
 run_audit "tools/workflow_lint.py"        "ALL OK" "workflow_lint (CI 工作流 YAML 语法)"
 run_audit "tools/arch_budget.py"          "ALL OK" "arch_budget (架构预算·不许上帝对象·欠债只减不增)"
 run_audit "tools/style_lint.py"           "ALL OK" "style_lint (代码风格·全tab/snake_case/PascalCase 焊死)"

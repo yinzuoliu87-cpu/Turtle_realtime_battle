@@ -732,6 +732,13 @@ func _t084_cross_slash() -> void:
 	_ok("④ ★★★引擎接管后自驱让位: 连喂 5 帧 _eq_tick(且冷却仍是 0)也没有第二次施放",
 		int(u.get("_b84_casts", 0)) == 1 and _blade().b84_pending() == 2,
 		"casts=%d pending=%d(双发会是 2 / 4)" % [int(u.get("_b84_casts", 0)), _blade().b84_pending()])
+	## ★★2026-08-29 后撤从【瞬移】改成【0.18 秒真滑行】(用户:「你还是瞬移吗」),
+	##   所以这条不能在放完技能的下一行就量 —— 那时候才滑了不到一半。
+	##   ★而且推进要走**全局** `tick()`: `_step_retreat` 挂在那里, 只喂 `_eq_tick`
+	##     (逐单位)的话后撤一步都不动(第一次改完就是这么红的, dist 停在 80)。
+	##   ★推进 0.20 秒: 大于 RETREAT_SEC(0.18) 才滑得完, 小于 CROSS_T1(0.25)
+	##     才不会提前触发第一刀 —— 下一条断言正是"此刻还没有伤害"。
+	_adv(10, 0.02)
 	_ok("④ 后撤已发生: 携带者与目标的距离变成 230 码(80 + 150)",
 		absf((tgt["pos"] - u["pos"]).length() - 230.0) < 0.51,
 		"dist=%.1f" % (tgt["pos"] - u["pos"]).length())
@@ -753,7 +760,9 @@ func _t084_cross_slash() -> void:
 	_ok("④ ★分母: 3★ 近战增伤真的挂上了(×%.2f)" % _amp3,
 		absf(float(u.get("damage_amp", 0.0)) - float(EqBladeBatch.HH_MELEE_AMP[2])) < 0.0001,
 		"damage_amp=%.3f" % float(u.get("damage_amp", 0.0)))
-	_adv(13, 0.02)
+	## ★上面为了等后撤滑完已经推了 10 步(0.20 秒), 这里只需再补到第一刀落地 ⇒ 13-10=3。
+	##   不扣的话整组采样点全往后错一格(实测: 横斩读到 490 = 横斩+横波两段叠在一起)。
+	_adv(3, 0.02)
 	var d1: int = int(tgt.get("_st_taken", 0))
 	_ok("④ ① 横斩(250 码 120° 扇形) = (130 + 1.4×ATK) × 增伤 = %d" % _e1,
 		absf(float(d1 - _e1)) <= 1.0, "实得 %d" % d1)

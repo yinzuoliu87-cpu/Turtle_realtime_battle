@@ -169,6 +169,9 @@ const HH_RANGED_HP := [300.0, 700.0, 3000.0]  # 远程携带给的生命值基�
 ##   圆心就还是落点, 几何一点不变。⇒ 取 0.18 < 0.25, 留 0.07 秒余量。
 ## ★用【每帧驱动】不用 tween —— 无头 CI 下场景树 tween 推进不稳(CLAUDE.md §3.5 海盗钩索),
 ##   而这是**会影响伤害几何**的位移, 不能赌它跑不跑得完。
+## `cross_slash_hit` 每次填: 这一刀**真的打中了谁**(位置)。爆点靠它定位。
+## ★不存单位字典 —— 单位之间互相引用成环, 存进别的容器会递归哈希卡死(CLAUDE.md §3.2)。
+var _last_hit_pos: Array = []
 const RETREAT_SEC := 0.18
 const CROSS_T1 := 0.25
 const CROSS_T3 := 0.60
@@ -779,6 +782,14 @@ func _step_pending() -> void:
 			"trav": 0.0, "hit": [],
 		})
 		vfx.cross_wave(u, u["pos"], dir, seg + 1)
+		## ★★2026-08-29 新增【命中爆点】: 参考里有、旧实现压根没有 ——
+		##   两刀各画一道弧就完了, 交叉点什么都不炸, 所以"十字"没有落点、没有重量。
+		##   放在**竖斩**(seg==3)那一下, 也就是十字真正合拢的时刻; 位置取斩击落点方向。
+		## ★★爆点炸在【真的被打中的敌人】身上(可能不止一个)。
+		##   一个都没打中就不炸 —— 空气里炸一朵花是假信息。
+		if seg == 3:
+			for hp2 in _last_hit_pos:
+				vfx.cross_burst(u, hp2 as Vector2)
 	_pending = keep
 
 
@@ -794,6 +805,7 @@ func cross_slash_hit(u: Dictionary, dir: Vector2, sx: int, seg: int) -> int:
 	var flat: float = ([40.0, 70.0, 130.0][sx] if seg == 1 else [50.0, 85.0, 160.0][sx])
 	var sc: float = ([0.6, 0.9, 1.4][sx] if seg == 1 else [0.7, 1.1, 1.7][sx])
 	var n: int = 0
+	_last_hit_pos.clear()
 	for o in battle._targeting._enemies_of(u):
 		if not (o is Dictionary) or not (o as Dictionary).get("alive", false):
 			continue
@@ -804,6 +816,9 @@ func cross_slash_hit(u: Dictionary, dir: Vector2, sx: int, seg: int) -> int:
 			continue
 		var d: int = battle._resolve_dmg(u, flat + float(u.get("atk", 0.0)) * sc, o, false)
 		battle._damage._apply_damage_from(u, o, d, Color("#dbe9ff"), 0.0, false, true)
+		## ★★记下【真的被打中的】敌人位置 —— 爆点要炸在他们身上, 不是炸在挥剑的龟身上。
+		##   实拍看到旧写法(龟身前 90 码)在近战距离下正好盖住施法者, 读成"自己炸了"。
+		_last_hit_pos.append((o as Dictionary)["pos"] as Vector2)
 		n += 1
 	vfx.cross_slash(u, dir, seg)
 	return n

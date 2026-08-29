@@ -819,13 +819,24 @@ func cross_windup(u: Dictionary, dir: Vector2, sec: float) -> void:
 	for i in range(WINDUP_MOTES):
 		var a: float = TAU * float(i) / float(WINDUP_MOTES) + 0.4
 		var far: Vector2 = org + Vector2(cos(a), sin(a)) * WINDUP_R
-		var m := _board(VfxTex._make_fire_glow_tex(), far, GunEqVfx.body_mid_h(u),
-			22.0, Color(0.86, 0.94, 1.0, 0.0), 6)
+		## ★★2026-08-29 实拍修: 原来 22 码的暖橙微光, 在暗场里**根本看不见** ——
+		##   门禁只验了"节点存在"(7 个 suck 条目), 守不住"看得见"。
+		##   加大到 WINDUP_MOTE_PX、换成白青高亮。
+		## ★用【实心亮点】而不是软光斑: `_make_fire_glow_tex` 是很软的径向渐变,
+		##   46 码时中心也只有半亮, 暗场里读不出来(2026-08-29 连拍两轮都看不见)。
+		##   换成细环贴图 —— 它有硬边, 小尺寸也看得清。
+		var m := _board(VfxTex._make_thin_ring_tex(), far, GunEqVfx.body_mid_h(u),
+			WINDUP_MOTE_PX, Color(0.72, 0.95, 1.0, 0.0), 7)
 		_adopt(m, "windup")
 		## kind="suck": 从 far 收到 org, 亮度**先升后收**(不是一出生就淡出 ——
 		## 那个病今天记过四次)。收拢比整段稍快一点, 让最后一小段是"攒住了"的静止。
 		_fx.append({"node": m, "t": 0.0, "life": maxf(0.08, sec * 0.86), "kind": "suck",
 			"org": org, "from": far, "h": GunEqVfx.body_mid_h(u)})
+	## ★再补一圈【向内收缩的预警环】—— 点太小时环是主读物,
+	##   "环在收" 是全项目通用的"要来了"语言(_skill_ring 到处在用)。
+	## ★预警环用 `battle._skill_ring` —— 全项目标准的"要来了"环, 到处在用、一定看得见,
+	##   不自己再造一个(自造那版实拍只剩一个针尖大的暗圈)。
+	battle._skill_ring(org, Color(0.72, 0.95, 1.0, 0.85), WINDUP_R * 1.6)
 
 
 ## 斩击: 一道新月剑弧, 张角与结算侧同一个数(见 slash_half_rad)。
@@ -837,9 +848,27 @@ func cross_windup(u: Dictionary, dir: Vector2, sec: float) -> void:
 ## ★为什么要压一下纵深: 本作是 2.5D 斜视, 横向 0.6755 屏幕像素/码、贴地纵深只有 0.5267 px/码
 ##   ⇒ 场地上的 45° 在屏幕上不是 45°。不压这一下, 斜着劈的刀会指偏。
 ## ★屏幕 y 向下为正, 而场地 y 向"远处"为正 ⇒ 取负号。
+## 084 十字斩的三张新素材(2026-08-29·PixelLab 新生成的**逐帧动画**, 横排 sheet·帧宽=图高)。
+##
+## ★★用户 2026-08-29 拿专业 AE 素材当参考, 逐条指出旧做法差在哪:
+##   · **收放**: 弧身厚 → 急剧收成针尖(旧: 粗细均匀的月牙)
+##   · **明暗**: 刀锋白热 + 弧身高饱和紫, 反差极强(旧: 通体浅青, 实拍饱和度只有 0.09)
+##   · **分层**: 一笔里好几缕重叠的丝带(旧: 单层实心)
+##   · **剑气波**: **扇形的一堵墙**, 由大量平行细丝组成、前缘散开成须状(旧: 一条细直波)
+##   · **命中**: 紫色尖锐棱刺炸开 + 橙色火星(旧: **压根没有**)
+##
+## ★贴图不在时回退到原来的程序生成贴图 —— 没导入的 PNG `ResourceLoader.exists` 是 false,
+##   直接 load 返回 null 而一句报错都没有。
+const TEX_SLASH_V2 := "res://assets/sprites/vfx/eq084-slash.png"
+const TEX_WAVE_V2 := "res://assets/sprites/vfx/eq084-wave.png"
+const TEX_BURST_V2 := "res://assets/sprites/vfx/eq084-burst.png"
+
+const SLASH_FWD := 105.0      # 刀光往挥砍方向前移多少(码)。★不前移会把施法的龟整个盖住
+const BURST_SIZE := 190.0     # 命中爆点的世界尺寸(码)
 const RETREAT_GHOSTS := 5     # 后撤沿路铺几道拖影(含起点那道)
 const WINDUP_MOTES := 7       # 蓄力收拢的剑气点数
 const WINDUP_R := 78.0        # 剑气从多远收进来(码)
+const WINDUP_MOTE_PX := 34.0  # 单颗剑气的世界尺寸(码)。★22 太小, 暗场里看不见(2026-08-29 实拍)
 const SCREEN_DEPTH_K := 0.5267 / 0.6755
 static func dir_to_roll(dir: Vector2) -> float:
 	if dir.length_squared() < 1e-12:
@@ -856,8 +885,33 @@ func cross_slash(u: Dictionary, _dir: Vector2, seg: int) -> void:
 	#   比规格的 250 码大了一半, 而这一笔正是"扫过多远"的唯一视觉承诺(演出即判定)。
 	#   贴图里弧的半径占帧宽 BLADE_R_FRAC ⇒ 要让弧的**外缘**正好落在 250 码上,
 	#   帧宽必须是 250 / BLADE_R_FRAC; 中心也就回到携带者身上(不再往前挪半个身位)。
-	var s := _board(cross_blade_tex(), u["pos"], GunEqVfx.body_mid_h(u),
+	## ★★2026-08-29 换成【逐帧动画素材】。旧的是 `cross_blade_tex()` —— 代码算出来的
+	##   一张静止半圆环, 拉到 250 码 ⇒ 实拍是一弯灰白月亮挂在半空(饱和度 0.09、跨 712px)。
+	##   用户:「不要拿图片贴图敷衍我, **我要动画像素特效**」。
+	var _anim: bool = ResourceLoader.exists(TEX_SLASH_V2)
+	var _tex: Texture2D = load(TEX_SLASH_V2) if _anim else cross_blade_tex()
+	## ★★摆位: 旧的程序贴图是**半圆环**(中间是空的), 以龟为中心画正好把龟框在弧里;
+	##   新素材是**铺满整帧的实心刀光**, 同样摆法会**把龟整个盖住**(实拍只剩一点壳露出来)。
+	##   ⇒ 往挥砍方向前移半个身位, 让刀光落在龟【身前】而不是罩在身上。
+	var _org: Vector2 = (u["pos"] as Vector2) + (_dir * SLASH_FWD if _anim else Vector2.ZERO)
+	var s := _board(_tex, _org, GunEqVfx.body_mid_h(u),
 		SLASH_REACH / BLADE_R_FRAC, Color(col.r, col.g, col.b, 0.95), 7)
+	if _anim:
+		## 横排 sheet: 帧宽 = 图高。新素材自带白热刀锋与紫弧身, 不再靠 modulate 上色
+		## ⇒ modulate 收成白色, 否则把它的紫再乘一遍会脏。
+		var _fh: int = maxi(1, _tex.get_height())
+		s.hframes = maxi(1, int(_tex.get_width() / _fh))
+		s.frame = 0
+		s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		s.modulate = Color(1, 1, 1, 0.95)
+		## ★板宽按【单帧】算, 不是整张 sheet —— `_board` 是按整张图宽归一的,
+		##   9 帧的 sheet 直接用会让弧只有该有的 1/9 大(挂多帧贴图最常见的翻车)。
+		## ★★尺寸【不能沿用 `SLASH_REACH / BLADE_R_FRAC`】——
+		##   那个除法是给**旧的程序生成贴图**算的: 那张图里弧的半径只占帧宽 45.5%,
+		##   所以要除回去把它放大到 250 码。新素材的弧**铺满整帧** ⇒ 再除 0.455
+		##   等于白白放大 2.2 倍(实拍: 弧 400px 宽而龟只有 54px, **7.4 倍龟身**)。
+		##   新素材直接按 SLASH_REACH 给板宽。
+		s.pixel_size = (SLASH_REACH * battle.WS) / float(_fh)
 	## ★★2026-08-09 补上"指方向"这个缺口。旧注释写着「`_dir` 没被用上 —— 弧是 billboard,
 	##   billboard 会吃掉 roll」。解法不是放弃 billboard 的**朝向**, 而是自己算基:
 	##   `face_basis(视轴, roll)` = **正对镜头**(所以不会被 52° 俯视压扁) + **面内旋转**(所以指得出方向)。
@@ -872,14 +926,45 @@ func cross_slash(u: Dictionary, _dir: Vector2, seg: int) -> void:
 	_fx.append({"node": s, "t": 0.0, "life": 0.26, "kind": "holdfade", "a0": 0.95})
 
 
+## 命中爆点: 两刀交叉那一下的棱刺爆开 + 火星。
+##
+## ★★用户 2026-08-29 的参考里有、而旧实现**压根没有**这一段 ——
+##   横斩与竖斩各画一道弧就完了, 交叉点什么都不炸, 所以"十字"没有落点、没有重量。
+## 贴图不在就静默跳过(不画退化的圆环白球 —— memory [[fb-vfx-defect-families]])。
+func cross_burst(u: Dictionary, at2d: Vector2) -> void:
+	if not _has_world() or not ResourceLoader.exists(TEX_BURST_V2):
+		return
+	var t: Texture2D = load(TEX_BURST_V2)
+	if t == null:
+		return
+	var fh: int = maxi(1, t.get_height())
+	var s := _board(t, at2d, GunEqVfx.body_mid_h(u), BURST_SIZE, Color(1, 1, 1, 1.0), 8)
+	s.hframes = maxi(1, int(t.get_width() / fh))
+	s.frame = 0
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.pixel_size = (BURST_SIZE * battle.WS) / float(fh)
+	_adopt(s, "burst")
+	_fx.append({"node": s, "t": 0.0, "life": 0.34, "kind": "holdfade", "a0": 1.0})
+
+
 ## 剑波: 沿 dir 匀速推进, 位置由 wave_pos() 给出(与结算侧同一个 WAVE_SPD)。
 func cross_wave(u: Dictionary, org: Vector2, dir: Vector2, seg: int) -> void:
 	if not _has_world():
 		return
 	var col: Color = Color(0.74, 0.86, 1.0) if seg == 2 else Color(1.0, 0.9, 0.7)
 	var wide: bool = seg == 2
-	var s := _board(cross_wave_tex(), org, GunEqVfx.body_mid_h(u),
-		(250.0 if wide else 110.0), Color(col.r, col.g, col.b, 0.9), 7)
+	var _wanim: bool = ResourceLoader.exists(TEX_WAVE_V2)
+	var _wtex: Texture2D = load(TEX_WAVE_V2) if _wanim else cross_wave_tex()
+	var _wsize: float = 250.0 if wide else 110.0
+	var s := _board(_wtex, org, GunEqVfx.body_mid_h(u),
+		_wsize, Color(col.r, col.g, col.b, 0.9), 7)
+	if _wanim:
+		var _wfh: int = maxi(1, _wtex.get_height())
+		s.hframes = maxi(1, int(_wtex.get_width() / _wfh))
+		s.frame = 0
+		s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		s.modulate = Color(1, 1, 1, 0.9)
+		s.pixel_size = (_wsize * battle.WS) / float(_wfh)
 	_adopt(s, "wave")
 	_fx.append({"node": s, "t": 0.0, "life": 0.78, "kind": "wave", "org": org, "dir": dir,
 		"h": GunEqVfx.body_mid_h(u)})
@@ -925,6 +1010,12 @@ func tick(delta: float) -> void:
 			continue
 		f["t"] = float(f["t"]) + delta
 		var x: float = clampf(float(f["t"]) / maxf(0.001, float(f["life"])), 0.0, 1.0)
+		## ★多帧贴图: 按 x 把整段动画播一遍(不循环) —— 一刀就该只挥一次。
+		##   放在 kind 分支【之外】: 任何一类特效换成动画素材都自动逐帧播,
+		##   不用每次回来开一次闸(猎人箭矢就是漏开闸, 挂了 4 帧一帧没动过)。
+		if n is Sprite3D and int((n as Sprite3D).hframes) > 1:
+			var _nf: int = int((n as Sprite3D).hframes)
+			(n as Sprite3D).frame = clampi(int(x * float(_nf)), 0, _nf - 1)
 		match str(f.get("kind", "fade")):
 			"grow":
 				# ★尺寸与 alpha 走【两条】曲线(见 GROW_KNEE): 先扩张、长满之后才淡出。

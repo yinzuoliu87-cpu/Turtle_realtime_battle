@@ -35,7 +35,7 @@ extends Node
 ## | `VFXLAB_SPEED=<倍>` | `Engine.time_scale`。0.25 = 慢动作细看 |
 ## | `VFXLAB_SHOTS=t1,t2,…` | 覆盖拍摄时刻(**游戏秒**) |
 ## | `VFXLAB_OUT=<前缀>` | 截图路径前缀(默认 `res://_vfxlab_<case>`) |
-## | `VFXLAB_HOLD=1` | 不拍不退, 挂着让人自己看(窗口摆到屏幕右侧垂直居中) |
+## | `VFXLAB_HOLD=1` | 不拍不退, 挂着让人自己看(窗口摆到**副屏幕正中**·用户 2026-08-29; 只有一块屏时退回左下角) |
 ## | `VFXLAB_GLOW=1` | 黑场里把泛光开回来(真机桌面端参数) —— 给用户【验收观看】用, 看到的=玩家看到的。⚠ 量测(染色/差分)一律不开: 黑场无 bloom 是基线 (battle_world_builder §env) |
 ##
 ## ★★★跑法铁律(用户 2026-08-07 明令):【命令行必须加 `--position 5000,5000`】把窗口挪到屏幕外。
@@ -267,7 +267,7 @@ func post_spawn() -> void:
 	_armed = true
 	_apply_camera()
 	if _hold:
-		_place_window_right_middle()
+		_place_window_show()
 		print("[VFXLAB] HOLD 模式: 不拍不退。Ctrl+C / 关窗口结束。")
 	else:
 		_shot_loop()
@@ -664,8 +664,25 @@ func _shot_loop() -> void:
 
 
 ## HOLD 模式把窗口摆到屏幕右侧垂直居中(给人看的时候不挡别的东西)。
-func _place_window_right_middle() -> void:
-	var scr: Vector2i = DisplayServer.screen_get_size()
+## 展示窗口的位置。★口径变过两次, 按最新的来:
+##   · 2026-08-07 用户:「只能用整个屏幕左下角展示」
+##   · **2026-08-29 用户:「现在展示窗口放在我的副屏幕上。局中不用缩小」** ← 现行
+## ⇒ 有副屏就放副屏正中、原尺寸不缩; 只有一块屏时退回左下角(旧口径当兜底)。
+func _place_window_show() -> void:
 	var win: Vector2i = DisplayServer.window_get_size()
-	DisplayServer.window_set_position(Vector2i(
-		maxi(0, scr.x - win.x - 40), maxi(0, int((scr.y - win.y) * 0.5))))
+	var n: int = DisplayServer.get_screen_count()
+	if n >= 2:
+		## ★副屏 = 主屏之外的第一块。`screen_get_position` 给的是**虚拟桌面绝对坐标**,
+		##   所以居中要在那块屏自己的原点上加偏移, 不能只用尺寸算。
+		var pri: int = DisplayServer.window_get_current_screen()
+		var sec: int = 1 if pri == 0 else 0
+		var org: Vector2i = DisplayServer.screen_get_position(sec)
+		var siz: Vector2i = DisplayServer.screen_get_size(sec)
+		DisplayServer.window_set_current_screen(sec)
+		DisplayServer.window_set_position(org + Vector2i(
+			maxi(0, int((siz.x - win.x) * 0.5)), maxi(0, int((siz.y - win.y) * 0.5))))
+		print("[VFXLAB] 窗口 → 副屏(第 %d 块) %dx%d 居中, 未缩放" % [sec, win.x, win.y])
+		return
+	var scr: Vector2i = DisplayServer.screen_get_usable_rect().size
+	DisplayServer.window_set_position(Vector2i(20, maxi(0, scr.y - win.y - 20)))
+	print("[VFXLAB] 只检测到 1 块屏 ⇒ 退回左下角")
