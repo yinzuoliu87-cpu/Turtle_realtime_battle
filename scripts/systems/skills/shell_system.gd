@@ -55,6 +55,12 @@ const BURN_LIFE := BURN_TICKS * BURN_TICK_SEC
 const BASIC_COEF := 1.0        # 主段 ×ATK(类型物理/真实逐发交替)
 ## 【复制】抄两个敌方技能轮流放, 各打折。
 const COPY_EFFECT := 0.6       # 复制出来的技能只发挥这么多效果(伤害/护盾/治疗/DoT 共用)
+## 「抄袭图标」的尺寸与高度(用户 2026-08-27 要的头顶图标演出)。
+## ★放这里不放主文件 —— 主文件行数是冻结的(arch_budget 8958/8958 零余量),
+##   而且 CLAUDE.md §5:「不在 _sim_step 调用链上的, 不进主文件」。
+const COPY_ICON_H := 46.0          # 图标的世界高(码)。按图高归一, 因为这些图 186~923px 不等
+const COPY_ICON_HEIGHT := 2.35     # 浮在头顶多高。血条在 ~2.0, 再高一点免得压住
+const COPY_ICON_HOLD := 0.55       # 满亮保持多久(弹入 0.16 / 淡出 0.22 另算)
 ## 【吸收】偷目标最大生命并转给自己(双方 maxHp 与当前值同步变)。
 const ABSORB_PCT := 0.10       # 偷取 = 目标最大生命 ×
 const SPLASH_PCT := 0.5        # 溅射给周围其他敌人的比例(类型跟随主段)
@@ -353,6 +359,10 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:               # 龟壳·复制(
 			return
 		if forms.has(s0):
 			SkillForms.pin_form(u, s0, int(forms[s0]))            # 按被偷者当时的形态放
+		## ★★头顶浮出【这一发要放的技能的图标】(用户 2026-08-27 的演出设计)。
+		##   在 `_do_skill` 之前调 —— 玩家先看见"抄到了什么", 再看见技能打出来。
+		##   ★形态钉已经打好了, 所以多形态技能这里取到的就是【被偷者当时那一态】的图标。
+		battle._vfx.copy_steal_icon(u, s0, COPY_ICON_HOLD)
 		battle._do_skill(u, t0, s0)                                   # 第1个立即
 		SkillForms.unpin_form(u, s0)                                  # ★成对解钉, 否则形态卡住
 		battle._copy_fx_mult = 1.0
@@ -379,6 +389,9 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:               # 龟壳·复制(
 				return
 			if f1 >= 0:
 				SkillForms.pin_form(uu, p1, f1)
+			## ★第二发同样先出图标 —— 它隔了 0.6 秒才发, 原来是**凭空出现**的,
+			##   玩家看不出这一段是哪来的(①-E 记的三个硬伤之一)。
+			battle._vfx.copy_steal_icon(uu, p1, COPY_ICON_HOLD)
 			battle._do_skill(uu, t2, p1)
 			SkillForms.unpin_form(uu, p1)
 			battle._copy_fx_mult = 1.0

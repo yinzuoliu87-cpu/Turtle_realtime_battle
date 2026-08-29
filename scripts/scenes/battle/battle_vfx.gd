@@ -10,6 +10,10 @@ var battle
 ##   批 B/C 的每条羁绊只写一行 `battle._vfx._syn.xxx(...)`。
 var _syn: SynergyVfx = null
 
+const SkillIcons = preload("res://scripts/gamedata/skill_icons.gd")
+const ShellSystem = preload("res://scripts/systems/skills/shell_system.gd")
+
+
 func _init(b) -> void:
 	battle = b
 	_syn = SynergyVfx.new(b)
@@ -357,6 +361,55 @@ func _play_skill_vfx(skill_key: String, pos2d: Vector2, height: float = 1.2) -> 
 	tw.tween_interval(battle.SKILL_VFX_HOLD_SEC)
 	tw.tween_property(spr, "modulate:a", 0.0, battle.SKILL_VFX_FADE_SEC)
 	tw.tween_callback(spr.queue_free)
+
+## 龟壳「复制」的抄袭图标: 在龟壳头顶浮出【它这一发要放的技能的图标】。
+##
+## 用户 2026-08-27 描述的演出:
+##   龟壳聚起复制光 → 头顶浮出【技能1 图标】→ 释放技能1
+##   → 图标1 收 → 头顶浮出【技能2 图标】→ 释放技能2
+##
+## ★为什么非做不可: 复制之前是【什么提示都没有】的 —— 屏幕上突然多出两段别人的技能,
+##   玩家既不知道抄到了什么, 也看不出第二发是哪来的(它还隔了 0.6 秒凭空出现)。
+##
+## ★跟随用 `battle._follow_vfx` —— 那是全项目"贴着单位走"的既有机制(`_aura_vfx` 也用它),
+##   不自己每帧算位置(memory [[fb-hand-rolled-copies-drift]])。
+##
+## ★不做"一出生就线性淡出"(memory [[fb-vfx-defect-families]] 的淡出病, 一天踩过四次):
+##   短命特效那样做, 实拍读到的永远是半透明的脏色。这里是 **弹入 → 满亮保持 → 才淡出**。
+##
+## `stype` 查不到图标时(小将技就没有)**静默不画** —— 但复制光圈仍然有, 调用点不受影响。
+func copy_steal_icon(u: Dictionary, stype: String, hold: float = 0.55) -> void:
+	if battle._world == null or u == null or not u.get("alive", false):
+		return
+	var path: String = SkillIcons.path_of(stype, u)
+	if path == "":
+		return                                    # 没图标(小将技): 静默跳过, 不画空框
+	var tex: Texture2D = load(path)
+	if tex == null:
+		return
+	var s := Sprite3D.new()
+	s.texture = tex
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	s.shaded = false
+	s.transparent = true
+	## ★NEAREST: 技能图标是像素画, LINEAR 会糊成一团(memory 里"贴图糊=没设 NEAREST")
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	## 目标世界高 = COPY_ICON_H 码。按图高归一 —— 这些图 186~923px 不等, 写死 pixel_size 会大小乱跳。
+	s.pixel_size = (ShellSystem.COPY_ICON_H * battle.WS) / float(maxi(1, tex.get_height()))
+	s.position = battle._world_pos(u["pos"] as Vector2, ShellSystem.COPY_ICON_HEIGHT)
+	s.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	battle._world.add_child(s)
+	battle._follow_vfx.append({"spr": s, "unit": u, "h": ShellSystem.COPY_ICON_HEIGHT})
+	## 弹入(0.16) → **满亮保持** → 淡出(0.22)。保持段占大头, 拍出来才是它本来的颜色。
+	var tw = battle._reg_tween()
+	tw.set_parallel(true)
+	tw.tween_property(s, "modulate:a", 1.0, 0.16)
+	tw.tween_property(s, "scale", Vector3.ONE, 0.16).from(Vector3.ONE * 0.35) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_interval(maxf(0.05, hold))
+	tw.chain().tween_property(s, "modulate:a", 0.0, 0.22)
+	tw.chain().tween_callback(s.queue_free)
+
 
 # 通用命中爆发VFX: 单帧burst贴图在pos放大入场→保持→淡出→自销 (A组爆发/溅射类共用)
 # 一次性帧动画VFX(横排sheet·帧宽=图高·逐帧播一遍→自销) — 1:1 回合制 BattleScene._play_vfx(横排帧sheet)
