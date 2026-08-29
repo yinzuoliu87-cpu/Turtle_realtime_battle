@@ -698,6 +698,26 @@ func _hh_self_drive(u: Dictionary, _delta: float) -> void:
 
 ## ★★【后撤十字斩】唯一入口 —— 自驱与(将来的)`_do_skill` 分支都调它, 只有这一份实现。
 ## 后撤 150 码 → 0.25 秒后横斩 + 横波 → 0.60 秒后竖斩 + 竖波。
+## 手半剑 084 近战携带时的普攻 = **瞬发激光束**(云顶 S4 速射火炮那种)。
+##
+## ★整段放这里不放主文件: 它只跟这件装备有关, 不在 `_sim_step` 的通用链上
+##   (CLAUDE.md §5「不在 _sim_step 调用链上的, 不进主文件」)。
+##   主文件那边只留一行 `if _blade_sys.beam_basic(...)`。
+##
+## ★形态是**束**不是弹体: 用户指定参考"云顶之弈 S4 射程翻倍那个"(速射火炮),
+##   官方 wiki 与他发的四张实拍图都表明那是一条从攻击者连到目标的束、瞬间出现。
+##   ⇒ 伤害**当场结算**(激光不需要飞行时间), 演出画一条束。
+##
+## 返回 true = 这一发我接管了, 调用方不要再走别的分支。
+func beam_basic(u: Dictionary, tgt: Dictionary, dmg: int, col: Color, ls: float, i: int) -> bool:
+	if str(u.get("_b84_mode", "")) != "melee":
+		return false
+	battle._damage._apply_basic_hit_from(u, tgt, dmg, col, ls)
+	if i == 0:
+		vfx.cross_beam(u, tgt)
+	return true
+
+
 func cast_cross_slash(u: Dictionary, tgt) -> void:
 	if not (tgt is Dictionary) or not (tgt as Dictionary).get("alive", false):
 		return

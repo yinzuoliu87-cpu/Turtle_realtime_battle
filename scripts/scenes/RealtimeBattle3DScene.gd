@@ -4182,13 +4182,13 @@ func _emit_basic(u: Dictionary, tgt: Dictionary, dmg: int, col: Color, i: int) -
 		_ls = DiceSystem.FATE_LIFESTEAL
 		u["dice_fate_ls"] = false
 		_vfx._float_text(u["pos"] + Vector2(0, -58), "命运吸血!", Color("#ff6b6b"))
-	# 近战但射程被拉很远的(手半剑084) 也走弹道 —— 由来与取值见 BasicConsts.LONG_MELEE_RANGE
-	if u["melee"] and _eff_range(u) < BasicConsts.LONG_MELEE_RANGE:
-		_damage._apply_basic_hit_from(u, tgt, dmg, col, _ls)
-		if i == 0:
-			_vfx._flash(tgt); _melee_lunge(u, tgt)
-	else:
-		_ballistics._fire_bolt_from(u, tgt, dmg, col, null, true)   # 普攻弹道: 命中时触发on_basic_hit
+	# 手半剑084近战携带→瞬发激光束(整段在 eq_blade_batch.beam_basic); 近战但射程被拉远的→弹道(见 BasicConsts.LONG_MELEE_RANGE); 其余近战→瞬发
+	if not _equip_sys._blade_sys.beam_basic(u, tgt, dmg, col, _ls, i):
+		if u["melee"] and _eff_range(u) < BasicConsts.LONG_MELEE_RANGE:
+			_damage._apply_basic_hit_from(u, tgt, dmg, col, _ls)
+			if i == 0: _vfx._flash(tgt); _melee_lunge(u, tgt)
+		else:
+			_ballistics._fire_bolt_from(u, tgt, dmg, col, null, true)   # 命中时触发 on_basic_hit
 
 # 伤害减免+暴击 (与 _atk_dmg 同口径, 但吃"已算好的原始伤害"而非 scale)
 func _mitigate(u: Dictionary, raw: float, tgt: Dictionary, magic: bool) -> int:

@@ -69,6 +69,15 @@ SPEC = {
         "cv_min": 0.55,             # ★段长要参差 —— 等长点阵看着像纱窗
         "seg_mu_min": 9.0,          # ★丝要沿流向连续, 不是被剁成一截截
     },
+    "eq084-beam.png": {
+        "label": "激光束",
+        # 参考 = 云顶 S4 速射火炮 + 用户发的四张实拍图: **一条细的亮电弧线**
+        "taper_max": 0.95,          # 束是通长的, 不要求收尖
+        "fill_max": 0.85,
+        "hot_min": 0.06, "hot_max": 0.32,   # ★白热芯要有(实拍第一版整条暗红, 读成一条暗线)
+        "strands_min": 1,
+        "bright_min": 0.55,         # ★中位亮度 —— 激光是发光体, 不能是暗线
+    },
     "eq084-burst.png": {
         "label": "命中爆点",
         "taper_max": 0.30,          # 角状棱刺
@@ -230,7 +239,18 @@ def profile(path):
     else:
         mu, cv = 0.0, 0.0
 
+    vlist = []
+    for x in range(W):
+        for y in range(H):
+            r, g, bl, al = px[x, y]
+            if al < 40:
+                continue
+            vlist.append(colorsys.rgb_to_hsv(r / 255.0, g / 255.0, bl / 255.0)[2])
+    vlist.sort()
+    bright = vlist[len(vlist) // 2] if vlist else 0.0
+
     return {
+        "bright": bright,
         "span": span, "max": mx, "tip": tip,
         "taper": tip / float(mx), "front": front / float(mx),
         "fill": fill, "hot": hot / float(max(1, tot)),
@@ -297,13 +317,16 @@ def main():
         if "seg_mu_min" in spec and pr["seg_mu"] < spec["seg_mu_min"]:
             fails.append("%s 丝被剁碎了: 平均段长 %.1f < %.1f px(丝应沿流向连续)"
                          % (spec["label"], pr["seg_mu"], spec["seg_mu_min"]))
+        if "bright_min" in spec and pr["bright"] < spec["bright_min"]:
+            fails.append("%s 太暗(读成一条暗线): 中位亮度 %.2f < %.2f(激光是发光体)"
+                         % (spec["label"], pr["bright"], spec["bright_min"]))
         if "warm_min" in spec and pr["warm"] < spec["warm_min"]:
             fails.append("%s 没有橙色火星: %.1f%% < %.1f%%"
                          % (spec["label"], 100 * pr["warm"], 100 * spec["warm_min"]))
 
     print("  [分母] 真的量了 %d 张(N=0 是空检查不是通过)" % n_checked)
-    if n_checked < 3:
-        fails.append("只量到 %d 张, 应该是 3 张" % n_checked)
+    if n_checked < 4:
+        fails.append("只量到 %d 张, 应该是 4 张" % n_checked)
     for f in fails:
         print("  [FAIL] " + f)
     if fails:
@@ -311,7 +334,7 @@ def main():
         print("FAILED: %d 条没达到参考" % len(fails))
         return 1
     print("")
-    print("ALL OK — 三张素材都达到参考图的形态指标")
+    print("ALL OK — 四张素材都达到参考图的形态指标")
     return 0
 
 

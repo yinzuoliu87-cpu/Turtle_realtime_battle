@@ -862,7 +862,13 @@ func cross_windup(u: Dictionary, dir: Vector2, sec: float) -> void:
 const TEX_SLASH_V2 := "res://assets/sprites/vfx/eq084-slash.png"
 const TEX_WAVE_V2 := "res://assets/sprites/vfx/eq084-wave.png"
 const TEX_BURST_V2 := "res://assets/sprites/vfx/eq084-burst.png"
+## 普攻激光束(6 帧横排)。★新素材, 不复用 fx-energy-beam.png
+const TEX_BEAM := "res://assets/sprites/vfx/eq084-beam.png"
 
+const BEAM_HALF_W := 13.0     # 光束半宽(码)。细 —— 参考里是一条细电弧线
+const BEAM_SEC := 0.24        # 光束存在多久(秒)。0.16 太短 —— 实拍四个采样点只撞上一次,
+                              # 玩家也容易整场看漏。仍然是"闪一下"的量级(holdfade 前 70% 满亮)
+const BEAM_ASPECT := 6.0      # 单帧宽高比(384/64), 用来算帧数
 const SLASH_FWD := 105.0      # 刀光往挥砍方向前移多少(码)。★不前移会把施法的龟整个盖住
 const BURST_SIZE := 190.0     # 命中爆点的世界尺寸(码)
 const RETREAT_GHOSTS := 5     # 后撤沿路铺几道拖影(含起点那道)
@@ -931,6 +937,54 @@ func cross_slash(u: Dictionary, _dir: Vector2, seg: int) -> void:
 ## ★★用户 2026-08-29 的参考里有、而旧实现**压根没有**这一段 ——
 ##   横斩与竖斩各画一道弧就完了, 交叉点什么都不炸, 所以"十字"没有落点、没有重量。
 ## 贴图不在就静默跳过(不画退化的圆环白球 —— memory [[fb-vfx-defect-families]])。
+## 【瞬发激光束】—— 手半剑 084 近战携带时的普攻。
+##
+## ══════════════════════════════════════════════════════════════════════
+##  ★★为什么是【光束】不是【飞行弹体】
+## ══════════════════════════════════════════════════════════════════════
+## 用户 2026-08-29 指定的参考是**云顶之弈 S4 的速射火炮**(他原话"就是 S4 版本
+## 射程翻倍那个"), 要"红色闪电**激光**"。
+##
+## 我第一版做成了**会飞的弹体**(飞 0.2~0.7 秒才到) —— 形态就是错的:
+##   · 官方 wiki: "Rapid Firecannon **displays a visual beam on attack**"
+##   · 用户后来发的四张实拍图: **一条细的亮电弧线**, 从攻击者直接连到目标, 瞬间出现
+##   · "激光"这个词本身就是"一条线", 不是"一颗子弹"
+##
+## ⇒ 一条从龟连到目标的束, 出现即到位, 短促闪一下就收。
+##
+## ★素材是**新做的**(`eq084-beam.png`, 6 帧逐帧) —— 不复用现成的 `fx-energy-beam.png`。
+##   用户 2026-08-03 的铁律: 新内容一律新素材。我差点又破一次, 被他当场拦下。
+##
+## ★逐帧: 每帧整条束上下抖 + 亮度沿程流动 ⇒ 读成"电在束里跑", 不是一张静图。
+func cross_beam(u: Dictionary, tgt: Dictionary) -> void:
+	if not _has_world() or not ResourceLoader.exists(TEX_BEAM):
+		return
+	var t: Texture2D = load(TEX_BEAM)
+	if t == null:
+		return
+	var a2: Vector2 = u["pos"]
+	var b2: Vector2 = tgt["pos"]
+	var seg: Vector2 = b2 - a2
+	if seg.length() < 1.0:
+		return
+	## 束贴在龟胸口高度, 顺着连线铺开(世界坐标顶点, 与斩击同一条路 —— 方向不可能不准)
+	var mi := _quad_along(a2, b2, BEAM_HALF_W, GunEqVfx.body_mid_h(u), t,
+		Color(1, 1, 1, 1))
+	if mi == null:
+		return
+	## 多帧: `_quad_along` 建的是 MeshInstance3D, 帧靠改材质的 UV 偏移走
+	var mat := mi.material_override as StandardMaterial3D
+	if mat != null:
+		mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD      # 激光是发光体
+		var nf: int = maxi(1, int(t.get_width() / maxi(1, t.get_height() * BEAM_ASPECT)))
+		mat.uv1_scale = Vector3(1.0 / float(nf), 1.0, 1.0)
+	_adopt(mi, "beam")
+	## 短促: 弹入即满亮, 最后一小段收 —— 激光是"闪一下", 不是慢慢淡
+	_fx.append({"node": mi, "t": 0.0, "life": BEAM_SEC, "kind": "beamframe",
+		"tex": t, "mat": mat})
+
+
 func cross_burst(u: Dictionary, at2d: Vector2) -> void:
 	if not _has_world() or not ResourceLoader.exists(TEX_BURST_V2):
 		return
@@ -1028,6 +1082,16 @@ func tick(delta: float) -> void:
 				var p: Vector2 = wave_pos(f["org"], f["dir"], float(f["t"]))
 				(n as Sprite3D).position = battle._world_pos(p, float(f["h"]))
 				_set_a(n, 1.0 - x * x)
+			"beamframe":
+				## 光束逐帧: 改材质 UV 偏移切帧(MeshInstance3D 没有 hframes)。
+				## 亮度: 前 70% 满亮, 最后收 —— 与刀光同一条 holdfade 口径。
+				var _m = f.get("mat", null)
+				if _m is StandardMaterial3D:
+					var _tt: Texture2D = f["tex"]
+					var _nf: int = maxi(1, int(_tt.get_width() / maxi(1, _tt.get_height() * BEAM_ASPECT)))
+					var _fi: int = clampi(int(x * float(_nf)), 0, _nf - 1)
+					(_m as StandardMaterial3D).uv1_offset = Vector3(float(_fi) / float(_nf), 0, 0)
+				_set_a(n, clampf((1.0 - x) / 0.30, 0.0, 1.0))
 			"suck":
 				## 蓄力: 剑气点从 `from` 收到 `org`。
 				## ★位置用 ease-in(x²) —— 匀速收看着像"飘过去", 加速收才像"被吸住";

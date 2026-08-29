@@ -107,35 +107,53 @@ func _ready() -> void:
 	_s._units.append(foe)
 	_s._over = false
 
-	var n0: int = _s._projectiles.size()
+	## ★★2026-08-29 形态改了: 从【飞行弹体】改成【瞬发激光束】。
+	##   用户指定的参考是**云顶之弈 S4 速射火炮**("就是 S4 版本射程翻倍那个"),
+	##   官方 wiki 与他发的四张实拍图都表明那是**一条从攻击者连到目标的束**, 瞬间出现;
+	##   而我第一版做成了飞 0.2~0.7 秒的弹体 —— 形态本身错了。
+	##   ⇒ 判据跟着换: 数的不再是 `_projectiles`, 而是演出层建出来的**光束节点**。
+	var fx0: int = _s._equip_sys._blade_sys.vfx._fx.size()
+	var hp_b: float = float(foe["hp"])
 	_s._emit_basic(u, foe, 100, Color("#ff4444"), 0)
-	var made: int = _s._projectiles.size() - n0
-	_ok("★★② 近战携带普攻【射出了弹体】(修前是 0 = 挥空气)", made >= 1,
-		"新增弹体 %d 个" % made)
+	var beams: int = 0
+	for f in _s._equip_sys._blade_sys.vfx._fx:
+		if str((f as Dictionary).get("kind", "")) == "beamframe":
+			beams += 1
+	_ok("★★② 近战携带普攻【打出了激光束】(修前是 0 = 挥空气)", beams >= 1,
+		"光束 %d 条(_fx 从 %d 变 %d)" % [beams, fx0, _s._equip_sys._blade_sys.vfx._fx.size()])
+	## ★★瞬发: 伤害必须**当场**就到, 不是等弹体飞过去。这是"激光"与"弹体"的分水岭。
+	_ok("★★② 瞬发: 伤害当场结算(激光不需要飞行时间)",
+		float(foe["hp"]) < hp_b - 1.0,
+		"目标掉了 %.0f" % (hp_b - float(foe["hp"])))
 
-	# ── ③ ★★弹体是【红色】的【多帧动画】──
-	var node = null
-	if made >= 1:
-		node = (_s._projectiles[_s._projectiles.size() - 1] as Dictionary).get("node", null)
-	_ok("★分母: 拿到弹体节点", node != null and node is Sprite3D)
-	if node is Sprite3D:
-		var sp: Sprite3D = node
-		var tp := str(sp.texture.resource_path) if sp.texture != null else ""
-		_ok("★★③ 弹体用的是红闪电那张图", tp.contains("bolt-084-lightning"), tp)
+	# ── ③ ★★光束是【红色】的【多帧动画】──
+	var bm = null
+	for f in _s._equip_sys._blade_sys.vfx._fx:
+		if str((f as Dictionary).get("kind", "")) == "beamframe":
+			bm = f
+			break
+	_ok("★分母: 拿到光束条目", bm != null)
+	if bm != null:
+		var bt: Texture2D = (bm as Dictionary)["tex"]
+		var bmat = (bm as Dictionary).get("mat", null)
+		_ok("★★③ 光束用的是新做的那张(不复用 fx-energy-beam)",
+			str(bt.resource_path).contains("eq084-beam"), str(bt.resource_path))
+		var nf: int = int(bt.get_width() / maxi(1, bt.get_height() * 6))
 		_ok("★★③ 它是【多帧】的(用户: 我要动画像素特效, 不是一张静图)",
-			int(sp.hframes) > 1, "hframes=%d" % int(sp.hframes))
+			nf > 1, "%d 帧" % nf)
 		_ok("★③ 像素画要 NEAREST(LINEAR 会糊)",
-			sp.texture_filter == BaseMaterial3D.TEXTURE_FILTER_NEAREST)
-		## ★★帧号要**真的在变** —— 只断言"挂了多帧"守不住:
-		##   猎人箭矢就是 `hframes=4` 却一帧没动过(闸只对手里剑开), 静默了很久。
-		var f0: int = int(sp.frame)
+			bmat is StandardMaterial3D
+				and (bmat as StandardMaterial3D).texture_filter == BaseMaterial3D.TEXTURE_FILTER_NEAREST)
+		## ★★帧要**真的在切** —— 只断言"是多帧的"守不住(猎人箭矢挂 4 帧却一帧没动过)。
+		##   光束走 MeshInstance3D, 帧靠材质 uv1_offset 走 ⇒ 量那个偏移变没变。
 		var seen: Dictionary = {}
 		var t0 := Time.get_ticks_msec()
-		while Time.get_ticks_msec() - t0 < 700 and is_instance_valid(sp):
-			seen[int(sp.frame)] = true
+		while Time.get_ticks_msec() - t0 < 700:
+			if bmat is StandardMaterial3D:
+				seen[str((bmat as StandardMaterial3D).uv1_offset.x)] = true
 			await get_tree().process_frame
-		_ok("★★③ 帧号真的在变(见过 %d 个不同帧号)" % seen.size(), seen.size() >= 2,
-			"起始帧 %d · 见过 %s" % [f0, str(seen.keys())])
+		_ok("★★③ 帧真的在切(见过 %d 个不同 UV 偏移)" % seen.size(), seen.size() >= 2,
+			str(seen.keys()))
 
 	# ── ④ 远程携带: 减伤 + 生命值 ──
 	var r: Dictionary = _s._spawn._make_unit("hunter", "left", c + Vector2(-300, 120))

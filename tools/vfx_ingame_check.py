@@ -32,12 +32,18 @@ from PIL import Image
 
 GODOT = os.environ.get("GODOT", "C:/Users/Louis/Desktop/Godot_v4.6.3-stable_win64.exe")
 OUT = "C:/tmp/shots/ingame084"
-SHOTS = "3.14,3.22,3.30,3.40,3.50,3.60"
+# ★采样要密: 光束只存在 BEAM_SEC(0.24 秒), 稀疏采样撞不上 ——
+#   第一版四个点只撞到一次(5 个像素), 那条判据等于形同虚设。
+#   普攻段(1.6~2.8 秒, 技能还没放)密排 12 个点抓光束; 3.1~3.7 抓十字斩。
+SHOTS = ("1.60,1.70,1.80,1.90,2.00,2.10,2.20,2.30,2.40,2.50,2.60,2.70,"
+         "3.14,3.22,3.30,3.40,3.50,3.60")
 
 # 斩击弧 = 紫/蓝紫(色相 0.70~0.82) 或近白; 剑气波 = 青(0.45~0.55)
 SLASH_HUE = (0.66, 0.86)
 WAVE_HUE = (0.42, 0.58)
 SLASH_MIN_RATIO = 0.60      # 斩击面积 / 剑波面积 的下限 —— 斩击是主角
+BEAM_HUE = (0.93, 1.01)     # 激光束 = 红(色相绕回 0)
+BEAM_MIN_PX = 60            # 整组里至少要看到这么多红像素 —— 否则等于没画出来
 
 
 def shoot():
@@ -62,6 +68,7 @@ def measure(path):
     bg = px[5, 5]
     slash = 0
     wave = 0
+    beam = 0
     turtles = 0
     for y in range(0, H, 2):
         for x in range(0, W, 2):
@@ -69,7 +76,9 @@ def measure(path):
             if abs(r - bg[0]) + abs(g - bg[1]) + abs(b - bg[2]) < 26:
                 continue
             h, s, v = colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
-            if s < 0.22 and v > 0.78:
+            if (h > 0.93 or h < 0.06) and s > 0.35:
+                beam += 1                       # 红 = 激光束
+            elif s < 0.22 and v > 0.78:
                 slash += 1                      # 白热也算斩击(它的刀锋)
             elif SLASH_HUE[0] <= h <= SLASH_HUE[1] and s > 0.25:
                 slash += 1
@@ -79,7 +88,7 @@ def measure(path):
                     wave += 1
                 else:
                     turtles += 1
-    return slash, wave, turtles
+    return slash, wave, beam, turtles
 
 
 def main():
@@ -88,12 +97,13 @@ def main():
         print("  [FAIL] 一张都没拍到 —— VFXLAB 没跑起来")
         return 1
     best = None
-    tot_s = tot_w = 0
+    tot_s = tot_w = tot_b = 0
     for p in shots:
-        sl, wv, tu = measure(p)
+        sl, wv, bm, tu = measure(p)
         tot_s += sl
         tot_w += wv
-        print("  %-22s 斩击 %5d · 剑波 %5d px" % (os.path.basename(p), sl, wv))
+        tot_b += bm
+        print("  %-22s 斩击 %5d · 剑波 %5d · 激光 %5d px" % (os.path.basename(p), sl, wv, bm))
         if best is None or (sl + wv) > best[0]:
             best = (sl + wv, sl, wv)
     fails = []
@@ -102,6 +112,10 @@ def main():
         fails.append("整组都没看到斩击弧(N=0 是空检查不是通过)")
     if tot_w == 0:
         fails.append("整组都没看到剑气波")
+    print("  激光束合计 %d px(下限 %d)" % (tot_b, BEAM_MIN_PX))
+    if tot_b < BEAM_MIN_PX:
+        fails.append("激光束几乎没画出来: %d px < %d —— 普攻是速射火炮那种【一条束】, 不能看不见"
+                     % (tot_b, BEAM_MIN_PX))
     if tot_s and tot_w:
         ratio = tot_s / float(tot_w)
         print("  斩击/剑波 面积比 = %.2f (下限 %.2f)" % (ratio, SLASH_MIN_RATIO))
