@@ -312,7 +312,8 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影�
 #   引信到 0.8s 引爆(震屏+伤害·此刻帧正好走到爆炸帧8)→蘑菇云再0.4s播完销毁(1.2s)。
 #   ★爆炸 = 落点 NINJA_BOMB_RADIUS(400码) 半径内敌人 1.1×ATK 物理 + -25%护甲(5秒·BUFF_SEC)。
 #     半径=用户指定(回合制原"对全体敌方"无半径·用户2026-07-11「400码半径」)。放技射程2000码(远程扔·见 _SKILL_CAST_RANGE)。
-func _sk_shell_copy(u: Dictionary, tgt) -> void:               # 龟壳·复制(封板·130龟能): 复制2敌方可用技(_COPYABLE白名单)·轮流依次释放(不同帧糊); 60%效果=伤害(dmg_out_mult)+护盾/治疗/DoT(battle._copy_fx_mult)
+func _sk_shell_copy(u: Dictionary, tgt) -> void:
+	print("[CP] CAST copy")               # 龟壳·复制(封板·130龟能): 复制2敌方可用技(_COPYABLE白名单)·轮流依次释放(不同帧糊); 60%效果=伤害(dmg_out_mult)+护盾/治疗/DoT(battle._copy_fx_mult)
 	var pool: Array = []
 	## ★同时记下【这个技能是从谁身上偷的】—— 多形态技能(海盗船/精英铁锤)要按
 	##   **被偷者当时的形态**释放, 而不是按龟壳自己的状态(用户 2026-08-28:

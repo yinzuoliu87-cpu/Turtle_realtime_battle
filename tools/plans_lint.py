@@ -143,26 +143,23 @@ def check_version_trace():
         fails.append('版本留痕: 找不到 CHANGELOG.md')
         return
     files = sorted(f for f in os.listdir(PLANS) if f.endswith('.md') and f != 'README.md')
-    active = []
-    for f in files:
-        if not f[:8].isdigit():
-            continue
-        body = io.open(os.path.join(PLANS, f), encoding='utf-8').read()
-        st = re.search(r'状态[:：]\s*\**([^\*\n（(]+)', body)
-        if st and st.group(1).strip() in ('草稿', '已拍板', '实施中'):
-            active.append(f)
-    if not active:
-        print('  [版本留痕] 没有活跃方案书 —— 跳过')
+    ## ★★锚点 = 【最新的那份方案书】, 不论状态 —— 2026-08-31 修。
+    ##   第一版锚在"最新的**活跃**方案书"上, 结果一把它标成【已完成】,
+    ##   锚点就**倒退**到更早的那份, 凭空要求覆盖 25 个老版本。
+    ##   语义应该是"自最近一次开工以来派的版本都得有记录", 完工不该让门槛后退。
+    dated = [f for f in files if f[:8].isdigit()]
+    if not dated:
+        print('  [版本留痕] 没有带日期的方案书 —— 跳过')
         return
-    newest = max(active)
+    newest = max(dated)
     since = '%s-%s-%s' % (newest[:4], newest[4:6], newest[6:8])
     cl = io.open('CHANGELOG.md', encoding='utf-8').read()
     vers = re.findall(r'^## (\d+\.\d+\.\d+[a-z]?) — (\d{4}-\d{2}-\d{2})', cl, re.M)
     want = [v for v, d in vers if d >= since]
     blob = ''.join(io.open(os.path.join(PLANS, f), encoding='utf-8').read() for f in files)
     miss = [v for v in want if v not in blob]
-    print('  [版本留痕] 活跃方案书 %d 份, 最新 %s(%s 起); 待覆盖版本 %d 个, 缺 %d 个'
-          % (len(active), newest, since, len(want), len(miss)))
+    print('  [版本留痕] 最新方案书 %s(%s 起); 待覆盖版本 %d 个, 缺 %d 个'
+          % (newest, since, len(want), len(miss)))
     ## ★分母断言: 一个版本都没扫到 = 正则挂了 / CHANGELOG 改格式了, 不是通过。
     if not want:
         fails.append('版本留痕: %s 起一个版本都没扫到(CHANGELOG 共 %d 个版本行) —— 空检查不是通过'

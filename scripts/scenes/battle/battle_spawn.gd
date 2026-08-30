@@ -121,6 +121,7 @@ func _spawn_teams() -> void:
 			else:   # === 友方假人(EQDEMO_ALLIES; 团队增益/治疗类看队友受益) ===
 				_lu["no_move"] = true; _lu["no_basic"] = true; _lu["active_skills"] = []; _lu["move_spd"] = 0.0
 				_lu["maxHp"] = 4000.0; _lu["hp"] = 1600.0   # 起手40%血→看治疗/护盾刷到队友
+		print("[CP] 我方: ",_lu.get("name","?")," 技能=",_lu.get("active_skills",[])," 龟能=",_lu.get("energy",0),"/",_lu.get("maxEnergy",0)," cost=",_lu.get("energy_cost",{}))
 		battle._units.append(_lu)
 	var _rlay = battle._review_dummy_layout()   # 专属演示布局(相对受审龟 _cx-150)
 	## ★布阵表非空时, 假人个数【以表为准】(取 min, 只减不增 —— 老用例行为不变)。

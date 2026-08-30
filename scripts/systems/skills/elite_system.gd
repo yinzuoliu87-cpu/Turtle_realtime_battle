@@ -1,5 +1,6 @@
 class_name EliteSystem
 extends RefCounted
+const CopyRules := preload("res://scripts/gamedata/copy_rules.gd")   # 偷技/抄技共用同一道闸
 const SkillForms = preload("res://scripts/gamedata/skill_forms.gd")
 ## 精英龟技能系统
 ## 类内名不变;外部名加 battle.
@@ -283,7 +284,15 @@ func _elite_steal_skill_type(tref: Dictionary) -> String:        # 吞噬偷技:
 		var stype = str(a)
 		if stype == "": continue
 		if bool((battle._skill_meta.get(stype, {}) as Dictionary).get("passiveSkill", false)): continue
-		if battle._IMPL_SKILLS.has(stype): return stype
+		## ★★2026-08-31: 走【和龟壳复制同一道闸】。
+		##   由来: 吞噬和龟壳复制是同一个机制(偷敌人的主动技再放出来), 但这里
+		##   **只过滤了被动技与未实装**, 黑名单一个都不看 ⇒ 实测 8 个黑名单技能全偷得到:
+		##     · headlessSoulStrike → 龟能锁还剩 998 秒 + 射程 +60(小将被废掉一整场)
+		##     · angelAscend        → 射程永久 +25
+		##   病根与龟壳那三个完全一样: **技能"上效果"通用, "卸载"只对原主生效**。
+		##   `can_copy` 同时管"不在黑名单"与"真能被 _do_skill 执行", 正是这里要的两件事。
+		if not CopyRules.can_copy(stype, battle._IMPL_SKILLS): continue
+		return stype
 	return ""
 
 func _elite_spike(pos2d: Vector2, big: bool) -> void:            # 单根黑刺(Groundspike): 地底BACK弹出→定格→缩回·3变体随机
