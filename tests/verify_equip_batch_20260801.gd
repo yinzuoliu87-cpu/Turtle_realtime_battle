@@ -12,6 +12,7 @@ extends Node
 ##
 ## 跑法: SHIP=1 <godot> --headless --audio-driver Dummy --path . res://tests/verify_equip_batch_20260801.tscn
 
+const VC := preload("res://scripts/systems/visual_constants.gd")
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const ES := preload("res://scripts/gamedata/equip_stats.gd")
 
@@ -62,6 +63,7 @@ func _ready() -> void:
 	#   _ready 就直接跑到末尾打总结, 后面的断言全被甩掉且【不报错】:
 	#   表现是断言总数悄悄从 110 掉到 97、"ALL PASS" 照打。这种缺口比 FAIL 危险。
 	await _t5_hookbomb()
+	_t5_hookbomb_numcolor()
 	_t6_sniper()
 	_t7_laser()
 	_t89_carry()
@@ -728,3 +730,37 @@ func _t12_anchor() -> void:
 	_ok("⑫ ★on-hurt 路径不再回血(不双份触发)", absf(float(u["hp"]) - 500.0) < 0.01,
 		"hp=%.1f" % float(u["hp"]))
 	_s._units.clear()
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑤-色 靶向器的伤害数字必须按【通用规矩】取色, 不许写死
+#
+#   ★由来(2026-08-30): 用户「靶向器是跳的数字没按规矩」→ 拍板「颜色按通用取」。
+#     全项目的规矩是 VisualConstants.cls_for("damage", 类型, 暴击) —— 按伤害类型
+#     统一取色(物红/魔蓝/真白), 见 battle_damage.gd:355。
+#     本件原来把两处显示都写死成橙色(聚爆 #ff8a3a · 头顶累加读数 NUM_COL)。
+#
+#   ★靶向器两段是【真物理】(实测 500 护甲把伤害砍到 7.4%), 所以必须取物理色。
+# ─────────────────────────────────────────────────────────────
+func _t5_hookbomb_numcolor() -> void:
+	print("── ⑤-色 伤害数字按通用规矩取色 ──")
+	var hb = _s._hookbomb_sys
+	var want: Color = VC.color_of(VC.cls_for("damage", "physical", false))
+	var got: Color = hb._num_col()
+	## ★分母: 通用物理色不能恰好等于那个退役橙色 —— 否则下面那条是和自己比, 恒真。
+	_ok("⑤-色 ★分母: 通用物理色 ≠ 退役的写死橙色(否则下面恒真)",
+		not got.is_equal_approx(hb.NUM_COL),
+		"通用 %s / 旧橙 %s" % [str(got), str(hb.NUM_COL)])
+	_ok("⑤-色 取色走 VisualConstants(物理)", got.is_equal_approx(want),
+		"got %s / want %s" % [str(got), str(want)])
+
+	## ★真正守得住的那条: 两处【显示】不许再出现写死的颜色字面量。
+	##   只断言 _num_col() 对是不够的 —— 谁在渲染那行换回 Color("#...") 照样绿。
+	var src := FileAccess.get_file_as_string("res://scripts/systems/equip/hookbomb_system.gd")
+	var blast_ok := src.contains('_float_text(pp, str(dd), _num_col()')
+	var label_ok := src.contains("lbl.modulate = _num_col()")
+	_ok("⑤-色 ★分母: 源码读得到", src.length() > 5000, "%d 字" % src.length())
+	_ok("⑤-色 聚爆飘字那行用 _num_col() 而不是颜色字面量", blast_ok)
+	_ok("⑤-色 头顶累加读数那行用 _num_col() 而不是颜色字面量", label_ok)
+	## NUM_COL 只许当门禁对照, 不许再接进渲染。
+	_ok("⑤-色 退役常量 NUM_COL 没有被接回渲染", not src.contains("modulate = NUM_COL"))

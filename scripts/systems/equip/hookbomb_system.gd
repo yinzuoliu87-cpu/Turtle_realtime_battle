@@ -67,6 +67,7 @@ func tick_pending(delta: float) -> void:
 	_pending = keep
 
 
+const VC := preload("res://scripts/systems/visual_constants.gd")   # 飘字配色单一事实源
 const TRIGGER_DMG := 400                      # 首次累计造成这么多伤害后触发(用户原文"首次造成了400点伤害")
 const BOMB_COUNT := [1, 1, 2]                 # 挂弹敌人数(1/1/2)
 ## 每秒对宿主造成其 maxHp 的 2/4/4%(用户 2026-08-02:「每秒损失2%生命值改为损失4%最大生命值」)。
@@ -270,7 +271,7 @@ func _hb_blast(carrier: Dictionary, list: Array, si: int, epi: Vector2) -> int:
 		var pp: Vector2 = (o["pos"] as Vector2) + off
 		var dd: int = dmg
 		_pending.append({"t": 0.035 * float(oi), "fn": func():
-			battle._vfx._float_text(pp, str(dd), Color("#ff8a3a"), false, "damage", "physical", ang)})
+			battle._vfx._float_text(pp, str(dd), _num_col(), false, "damage", "physical", ang)})
 		hit += 1
 	# ★真爆炸演出(用户 2026-08-01:「炸的特效？你啥都不做吗」——之前只有一个圆环+震屏+粒子)。
 	#   三层叠: ①主爆火球(大·快胀快消) ②滞后半拍的第二团(错位=有体积) ③冲击环+震屏。
@@ -913,7 +914,19 @@ func _virus_nest(epi: Vector2, life: float) -> void:
 ## ★不用 _float_text: 那是一次性弹出就消失的飘字, 语义是"这一下多少"; 这里要"到现在一共多少"。
 ## ★用 Label3D: 挂在宿主 sprite 之下【自动跟随】, 宿主没了它一起没, 不留孤儿。
 const NUM_ROLL_SEC := 0.32
-const NUM_COL := Color(1.0, 0.62, 0.24)
+## ★★2026-08-30 用户:「靶向器是跳的数字没按规矩」「颜色按通用取」。
+##   本件原来把数字颜色**写死成橙色**(聚爆 #ff8a3a · 头顶读数 NUM_COL)，
+##   而全项目的规矩是 `VisualConstants.cls_for("damage", 类型, 暴击)` →
+##   **按伤害类型统一取色(物红 / 魔蓝 / 真白)**，见 battle_damage.gd:355 那一行注释。
+##   靶向器两段都是**真物理**(实测 500 护甲砍到 7.4%，见方案书 §⑩)，所以取物理色。
+## ★为什么留着 NUM_COL 不删: 它是这条改动的**对照物** —— 门禁断言"取到的色 ≠ 这个旧橙色",
+##   删了那条断言就只能和自己比(恒真)。别把它接回渲染。
+const NUM_COL := Color(1.0, 0.62, 0.24)   # ⛔ 退役: 只作门禁对照, 不许再接进渲染
+
+
+## 伤害数字的颜色 —— 唯一取色口径, 两处显示(聚爆飘字 / 头顶累加读数)共用。
+func _num_col() -> Color:
+	return VC.color_of(VC.cls_for("damage", "physical", false))
 
 ## ★★2026-08-02 修(用户:「你这个数字怎么没放头顶上呢，和现有dot一样的规则」):
 ##   原来把 Label3D 挂在【宿主立绘之下】、局部偏移只有 44 码(≈1.06 米) ⇒ 数字贴在身上不在头顶,
@@ -938,7 +951,7 @@ func _hb_counter_refresh(o: Dictionary) -> void:
 		lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		lbl.no_depth_test = true
 		lbl.render_priority = 9
-		lbl.modulate = NUM_COL
+		lbl.modulate = _num_col()
 		lbl.outline_modulate = Color(0.10, 0.03, 0.0, 0.95)
 		lbl.outline_size = 8
 		lbl.font_size = 64

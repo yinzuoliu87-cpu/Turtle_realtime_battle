@@ -98,7 +98,36 @@ def measure(path):
     return slash, wave, beam, turtles
 
 
+## ★★这条审计【开真窗口截图】(见 shoot(): --position 5000,5000, 不是 --headless),
+##   所以它在【没有显示设备的机器上跑不了】—— GitHub runner 就是。
+##   2026-08-30: CI 因此红了一次(「一张都没拍到 —— VFXLAB 没跑起来」)。
+##
+## ★处理方式不是"悄悄让它过", 而是【显式登记成一条本地专属审计】(CLAUDE.md 铁律⑤:
+##   缺口显式登记, 不许静默截断)。判据由 tools/ci_deps_audit.py 的规则② 守着:
+##   · 名单必须写在那里、每条带理由
+##   · 被登记的工具必须真的能打出下面这行 SKIP_MARK, 否则那条登记是假的
+##   ⇒ "在 CI 上跳过"这件事本身有门禁盯着, 不会悄悄扩散到别的审计上。
+SKIP_MARK = "本条为【本地专属审计】: 它开真窗口截图, 无显示设备的机器跑不了"
+
+
+def _no_display():
+    """没有显示设备? Windows/macOS 一律当有; Linux 看 DISPLAY / WAYLAND_DISPLAY。"""
+    ## ★门禁要能在【任何系统上】真跑一遍这条路 —— 判据必须落在行为, 不能落在
+    ##   "源码里有没有 SKIP_MARK 这个词"(2026-08-30 反向验证抓到: 我的说明注释里也有
+    ##   这个词, 拿掉真实现门禁照样绿。和一小时前 _b4_all() 那次是同一个错)。
+    if os.environ.get("TURTLE_FORCE_NO_DISPLAY") == "1":
+        return True
+    if os.name == "nt" or sys.platform == "darwin":
+        return False
+    return not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+
+
 def main():
+    if _no_display():
+        print("  [SKIP] " + SKIP_MARK)
+        print("  ⚠ 本机没跑到它 —— **推之前必须在本地跑过一次全套门禁**, 这条只有本地能验。")
+        print("ALL OK — (已登记跳过)")
+        return 0
     shots = shoot()
     if not shots:
         print("  [FAIL] 一张都没拍到 —— VFXLAB 没跑起来")

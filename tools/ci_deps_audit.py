@@ -19,6 +19,7 @@
 import io
 import os
 import re
+import subprocess
 import sys
 
 try:
@@ -31,6 +32,19 @@ YML = ".github/workflows/tests.yml"
 
 ## import 名 → pip 包名(不一致的才登记)
 PIP_NAME = {"PIL": "pillow", "yaml": "pyyaml", "cv2": "opencv-python", "np": "numpy"}
+
+## ★★规则②【本地专属审计】的白名单 —— 2026-08-30 新增。
+##   有的审计**在无显示设备的机器上根本跑不了**(开真窗口截图), CI 就是这种机器。
+##   处理方式不是"悄悄让它过", 而是显式登记在这里, 并由本审计守住三条:
+##     ① 每条必须写理由(空理由 = 没人想过)
+##     ② 名单里的工具必须真的存在
+##     ③ 它必须真的能打出 SKIP_MARK —— 否则这条登记是【假的】(工具其实照跑照红)
+##   ⇒ "在 CI 上跳过"不会悄悄扩散到别的审计上。名单长了一眼看得见。
+LOCAL_ONLY = {
+    "tools/vfx_ingame_check.py":
+        "它开真窗口截图(--position 5000,5000, 不是 --headless)量游戏内像素; "
+        "GitHub runner 没有显示设备 ⇒ 一张都拍不到。只有本地能验, 推前必须本地跑全套。",
+}
 
 fails = []
 
@@ -87,6 +101,32 @@ def main():
         if not ok:
             fails.append("门禁审计器 import %s, 但 %s 里没有 `pip install %s` "
                          "—— 本机装着就永远本地绿、CI 必红 (用它的: %s)" % (mod, YML, pip, who))
+
+    ## ───── 规则② 本地专属审计的登记必须是真的 ─────
+    print("  [本地专属] 登记 %d 条(它们在无显示设备的机器上跳过)" % len(LOCAL_ONLY))
+    for tp, why in sorted(LOCAL_ONLY.items()):
+        if len(why.strip()) < 20:
+            fails.append("本地专属审计 %s 的理由太短(<20 字) —— 没写清为什么就是没人想过" % tp)
+        if not os.path.exists(tp):
+            fails.append("本地专属审计 %s 登记了但文件不在盘上 —— 这条登记已经烂了" % tp)
+            continue
+        ## ★★判据落在【行为】: 真把它跑一遍(强制"无显示设备"), 看它是不是
+        ##   干净地跳过并返回 0。
+        ##   第一版查的是源码里有没有 "SKIP_MARK" 这个词 —— 反向验证当场抓到:
+        ##   **我写在那个文件里的说明注释也含这个词**, 把真实现拿掉门禁照样绿。
+        ##   (同一天里第二次踩"判据查的文本在注释里也有", 见 verify_lane_clear_wired ③。)
+        r = subprocess.run([sys.executable, tp], capture_output=True, timeout=120,
+                           env=dict(os.environ, TURTLE_FORCE_NO_DISPLAY="1"))
+        out = (r.stdout + r.stderr).decode("utf-8", "replace")
+        if r.returncode != 0 or "[SKIP]" not in out:
+            fails.append("本地专属审计 %s 在【无显示设备】下没有干净跳过(rc=%d, 有没有打 [SKIP]: %s)"
+                         " —— 这条登记是假的, 它在 CI 上其实照跑照红"
+                         % (tp, r.returncode, "[SKIP]" in out))
+        else:
+            print("      %s → 真跑过一遍, 干净跳过 ✓" % tp)
+    ## ★分母: 名单空了也要说话 —— 空名单 + 上面全跳过 = 这段是空检查。
+    if not LOCAL_ONLY:
+        print("      (名单为空 —— 若 CI 仍因'跑不了'而红, 说明该登记而没登记)")
 
     for x in fails:
         print("  [FAIL] " + x)

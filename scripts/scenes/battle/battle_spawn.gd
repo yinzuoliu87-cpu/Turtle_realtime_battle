@@ -457,7 +457,8 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		if _nk != null and tex != null:
 			u["idle_offy"] = float(_nk[1]) - float(frame_h) * 0.5
 			spr.offset = Vector2(0.0, float(u["idle_offy"]))
-		if u["is_elite"]:                              # 精英小将(虐杀原形改造2026-07-16): 唯一技能铁锤100龟能+被动计数器
+		# 精英小将: 主动技只有铁锤(100龟能·每第3次跃起强化), 另有三个被动(长手刃/吞噬/铁锁) —— 权威 minion_codex.gd "elite"; 详见方案书 20260827 §⑪
+		if u["is_elite"]:
 			u["active_skills"] = ["eliteHammer"]
 			u["energy_cost"]["eliteHammer"] = 100.0
 			u["_eb_n"] = 0

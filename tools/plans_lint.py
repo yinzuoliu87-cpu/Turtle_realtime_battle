@@ -173,6 +173,69 @@ def check_version_trace():
                      % (v, len(files)))
 
 
+
+def check_number_source():
+    """⑦ 未勾项里的【具体数字】必须注明它从哪个活事实源读出来 (2026-08-30)。
+
+    ★由来: 用户 2026-08-30「究竟还有多少任务没做完」。我照方案书的复选框念了一遍,
+      逐条核实后发现 **6 条 ❌ 里 5 条是烂账** —— 其中最典型的一条写着
+      「87 个可抄分母 · 现 32 个 37% · 上限 87」, 而实测是 **可抄 83 / 技能 103 / 77%**。
+      那三个数是几周前手抄进去的, 从此再没跟着代码走。
+
+    ★这是同一个病今天第三次(前两次: 版本留痕漏 12 个 / 靶向器"要跳数字"其实一直在跳)。
+      根子不是"我忘了更新", 是**方案书里存了一份会漂的副本**
+      —— 和本仓库花一整夜根除的「文案手抄代码数字」完全同构。
+
+    判据: 未勾的验收项里如果出现【具体数字】(百分比 / N/M / 三位以上整数),
+          同一条目里必须出现一个**活事实源**的引用 —— `tools/*.py`、`tests/*.gd`、
+          `scripts/**.gd`、或 `.json`。给不出来源的数字 = 一笔将来必烂的账。
+    ★不管已勾的: 已勾条目是历史记录, 数字定格在当时是对的。
+    """
+    import glob as _glob
+    files = sorted(f for f in os.listdir(PLANS) if f.endswith('.md') and f != 'README.md')
+    n_open = 0
+    n_num = 0
+    src_re = re.compile(r'(tools/[A-Za-z0-9_]+\.py|tests/[A-Za-z0-9_]+\.gd'
+                        r'|[A-Za-z0-9_/]+\.gd|[A-Za-z0-9_/]+\.json)')
+    ## ★数字形态必须【刚好卡住会烂的那种】。
+    ##   第一版写成"百分比 / N分之M / 三位以上整数", 当场造了两个假 bug:
+    ##     · 「2026-08-30」里的 2026 被当成数字(那是日期)
+    ##     · 「手半剑 084」里的 084 被当成数字(那是装备号)
+    ##   ⇒ 收紧到真正会漂的三类: **百分比 / 比率 N/M / 带量词的计数**,
+    ##     外加"现在是/共/合计/总数"后面跟的数(那是明摆着的快照)。
+    ##   宽一格造假 bug、窄一格放过真 bug —— 这条宁可窄, 因为误报会把门禁掏空。
+    num_re = re.compile(
+        r'(\d+\s*%'
+        r'|\d+\s*/\s*\d+'
+        r'|\d+\s*(?:个|条|处|件|项|次|张|份|只|发|支|套)'
+        r'|(?:现在是|现|共|合计|总数|总共)\s*\d{2,})')
+    for f in files:
+        body = io.open(os.path.join(PLANS, f), encoding='utf-8').read()
+        lines = body.split(chr(10))
+        for i, ln in enumerate(lines):
+            if not re.match(r'^\s*-\s*\[\s\]', ln):
+                continue
+            n_open += 1
+            ## 条目可能跨行(续行缩进) —— 连同后面的缩进续行一起看。
+            block = [ln]
+            for nxt in lines[i + 1:]:
+                if nxt.strip() == '' or re.match(r'^\s*-\s*\[', nxt) or not nxt.startswith(' '):
+                    break
+                block.append(nxt)
+            txt = chr(10).join(block)
+            if not num_re.search(txt):
+                continue
+            n_num += 1
+            if not src_re.search(txt):
+                fails.append('%s: 未勾项里写了具体数字却没注明活事实源 → 「%s」'
+                             ' —— 手抄的数字必然落后, 要么写清从哪个工具/文件读, 要么别写数'
+                             % (f, ln.strip()[:70]))
+    print('  [数字来源] 未勾项 %d 条, 其中带具体数字 %d 条' % (n_open, n_num))
+    ## ★分母: 一条未勾项都没扫到 = 正则挂了 / 方案书改写法了, 不是通过。
+    if n_open == 0:
+        fails.append('数字来源: 一条未勾项都没扫到 —— 空检查不是通过, 先看复选框写法变了没')
+
+
 def main():
     if not os.path.isdir(PLANS):
         print('缺 %s' % PLANS)
@@ -185,6 +248,7 @@ def main():
     for f in files:
         check_boxes(os.path.join(PLANS, f), f)
     check_version_trace()
+    check_number_source()
     print('  [分母] 骨架检查 %d 份 · 复选框纪律检查 %d 份 (放过的引用: 已删/草稿 %d 处)'
           % (checked, boxed, skipped_refs))
     if boxed < 40:
