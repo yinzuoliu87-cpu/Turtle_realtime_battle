@@ -438,6 +438,7 @@ run_audit "tools/map_composition_audit.py" "ALL OK" "map_composition_audit (地�
 run_audit "tools/vfx_ref_match.py"     "ALL OK" "vfx_ref_match (084 三张特效 ↔ 用户参考图的形态指标 + 像素风)"
 run_audit "tools/vfx_ingame_check.py"  "ALL OK" "vfx_ingame_check (084 十字斩实拍: 斩击是主角/两者都画得出来)"
 run_audit "tools/workflow_lint.py"        "ALL OK" "workflow_lint (CI 工作流 YAML 语法)"
+run_audit "tools/ci_deps_audit.py"        "ALL OK" "ci_deps_audit (门禁审计器的第三方依赖 ↔ CI 安装清单)"
 run_audit "tools/arch_budget.py"          "ALL OK" "arch_budget (架构预算·不许上帝对象·欠债只减不增)"
 run_audit "tools/style_lint.py"           "ALL OK" "style_lint (代码风格·全tab/snake_case/PascalCase 焊死)"
 run_audit "tools/rng_discipline.py"        "ALL OK" "rng_discipline (裸随机冻结·护确定性不回退)"

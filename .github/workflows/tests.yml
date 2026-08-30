@@ -31,6 +31,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ★Pillow 是审计器的硬依赖, 不是可选项。
+      #   vfx_ref_match / vfx_ingame_check 要读图(PIL), workflow_lint 要解析 YAML(yaml)。
+      #   runner 上没有 PIL ⇒ 两条直接 FAIL。而本机装着, 所以**本地永远绿**。
+#   ★pyyaml 在 runner 上碰巧预装着 —— 那是运气不是保证, 一并显式装上。
+      #   2026-08-29 e023f09e 加这两条审计时漏了这一步, CI 从那天起连红四个提交
+      #   而我没查 —— CLAUDE.md §7「本地绿 ≠ CI 绿, 报绿前用 API 亲自看 CI」。
+      - name: 装门禁审计器的第三方依赖
+        run: |
+          python3 -m pip install --quiet --upgrade pip
+          python3 -m pip install --quiet pillow pyyaml
+          python3 -c "import PIL, yaml; print('Pillow', PIL.__version__, '| PyYAML', yaml.__version__)"
+
       - name: 装 Godot (linux headless)
         run: |
           curl -fL -o godot.zip \
