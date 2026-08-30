@@ -60,6 +60,7 @@ func _ready() -> void:
 	_t_summons_cleared()
 	_t_aura_cleared()
 	_t_clear_all_not_empty()
+	_t_new_lane_summons_alive()
 	_t_ui_residue()
 
 	_s.queue_free()
@@ -244,3 +245,65 @@ func _t_ui_residue() -> void:
 			pk_alive = true
 	_ok("③ ★★HUD 不许被误伤(PkBar 还在) —— 第一版用快照判常驻就把整个 HUD 扫没了",
 		pk_alive, "清场前 UI 层 %d 个子节点" % hud_before)
+
+
+# ─────────────────────────────────────────────────────────────
+# ④ ★★换路之后, 新一路【该长出来的召唤物要真的活着】
+#
+#   ★由来(2026-08-30): 用户实测「5 费直升机有 bug, 无法召唤」「上路/下路/决胜都不行」。
+#     根因: `_dl_build_lane_field()` 里清了两次 —— `_b4_all()` 那一轮在登场钩【之前】(对的),
+#     但 08-20 补的 `for _sysref` 名单又把同样五个系统列进去, 而它在登场钩【之后】
+#     ⇒ 直升机刚生成就被 `vfx.heli_free()` 拔掉整个节点。
+#
+#   ★本文件上面 ① 那条为什么全绿: 它只问"换路后旧的清光没有"—— 而这个 bug
+#     让结果【更干净】, 恰好满足它的期望。判据只卡住了需求的一半。
+#     缺的这一半就是本条: **新一路的携带者必须重新拥有它的召唤物。**
+#     (同族: memory [[fb-judge-must-fit-the-shape]]、[[fb-gate-subject-never-constructed]])
+# ─────────────────────────────────────────────────────────────
+func _t_new_lane_summons_alive() -> void:
+	print("── ④ 换路后新一路的召唤物 ──")
+	_s._units.clear()
+	var saved: Dictionary = GameState.dual_lineup.duplicate(true)
+	var saved_lane = GameState.current_lane
+	var saved_active = GameState.get("dual_active")
+	## ★必须打开双路标记 —— 否则 `_inject_equipment` 走 `use_demo` 分支,
+	##   会拿 DEMO_EQUIP 把我们配的 080 整个覆盖掉(分母断言第一次就是被它抓出来的)。
+	GameState.set("dual_active", true)
+	## ★阵容必须【结构合法】—— `get_dual_lineup()` 要求 top+bottom 都在、恰好 3 个统领
+	##   且 slot 覆盖 0/1/2, 否则它**整个重置成默认阵容**, 我们配的 080 当场被扔掉
+	##   (第一版就是栽在这里: 分母断言报"携带者 0 个", 而不是静默放过)。
+	## ★`_resolve_leader_slots` 会拿 season_leaders[slot] 覆盖 id ⇒ 也得一起摆好再还原。
+	var saved_leaders: Array = (GameState.season_leaders as Array).duplicate(true)
+	GameState.season_leaders = ["basic", "basic", "basic"]
+	GameState.dual_lineup = {
+		"top": [
+			{"kind": "leader", "id": "basic", "slot": 0,
+				"equips": [{"id": "p2eq_080", "star": 3}, {"id": "p2eq_077", "star": 3}]},
+			{"kind": "leader", "id": "basic", "slot": 1},
+			{"kind": "minion", "role": "front"}],
+		"bottom": [
+			{"kind": "leader", "id": "basic", "slot": 2},
+			{"kind": "minion", "role": "front"},
+			{"kind": "minion", "role": "back"}],
+	}
+	GameState.current_lane = "top"
+	_s._dl_sys._dl_build_lane_field()
+	var live: Dictionary = _b4_live()
+	var carrier_n: int = 0
+	for u in _s._units:
+		if u is Dictionary and str(_s._eff_side(u)) == "left":
+			for e in u.get("equips", []):
+				if e is Dictionary and str(e.get("id", "")) == "p2eq_080":
+					carrier_n += 1
+	_ok("④ ★分母: 新一路真的建出了一个带 080 的携带者(没有他, 下面那条恒真)",
+		carrier_n >= 1, "携带者 %d 个 / 场上 %d 单位" % [carrier_n, _s._units.size()])
+	_ok("④ ★★换路之后直升机【活着】—— 生成完不许再被清一次",
+		int(live.get("heli", -1)) >= 1, "heli=%d  全表 %s" % [int(live.get("heli", -1)), str(live)])
+	_ok("④ 同管线的小手枪也活着(它是真单位, 只会丢驱动登记表 ⇒ 另一副面孔)",
+		int(live.get("pistol", -1)) >= 1, "pistol=%d" % int(live.get("pistol", -1)))
+	## ★收尾还原(CLAUDE.md §7 铁律④: 测试不许污染真存档)
+	GameState.dual_lineup = saved
+	GameState.current_lane = saved_lane
+	GameState.set("dual_active", saved_active)
+	GameState.season_leaders = saved_leaders
+	_s._units.clear()

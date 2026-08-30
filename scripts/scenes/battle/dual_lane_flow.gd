@@ -513,10 +513,20 @@ func _dl_build_lane_field() -> void:
 	##   ⚠ **香火石 `_incense` 故意不在这里** —— 它是跨对局养成、要落存档的, 清了就把玩家的进度抹了。
 	##   (这张手写名单会漂, 已由 tests/verify_lane_clear_wired.gd 焊住: 有 clear_all 的系统
 	##    要么在这张名单里, 要么在那份测试的"故意不清"清单里带理由。)
+	## ★★2026-08-30 从这张名单里【移出】批④的五个: _gun_sys / _blade_sys / _gadget_sys
+	##   / _arcane_sys / _relic_sys。它们**上面 30 行的 `_b4_all()` 循环已经清过了**,
+	##   而那一轮的位置是对的(在 `_eq_apply_all_stats()` 之【前】)。留在这张名单里 =
+	##   **在登场钩生成完召唤物之后再清一次** ⇒ 刚生成的东西当场被抹掉。
+	##   这正是 08-13 那次修好的 bug 原样回来了 —— 08-20 补这张名单时没看见上面那一轮,
+	##   两张名单做同一件事, 抄的那张永远落后(memory [[fb-hand-rolled-copies-drift]])。
+	##   用户实测复现: 「5 费直升机有 bug, 无法召唤」「(上路/下路/决胜)都不行」——
+	##   三场全走本函数, 所以三场全灭。直升机**不是单位**, `vfx.heli_free(h)` 直接拔节点 ⇒
+	##   整架消失; 077 小手枪/079 炮台是真单位, 只丢驱动登记表 ⇒ 人在、不动。
+	## ⚠ 别再把它们加回来。要验"清干净了"请看 tests/verify_b4_lane_leak.gd,
+	##   要验"清的位置对不对"请看 tests/verify_lane_clear_wired.gd 的 ③④ 两条。
 	for _sysref in [battle._equip_sys._spirit_sys, battle._equip_sys._potion_sys,
 			battle._equip_sys._food_sys, battle._equip_sys._bow_sys, battle._equip_sys._venom,
-			battle._equip_sys._arcane_sys, battle._equip_sys._blade_sys, battle._equip_sys._gadget_sys,
-			battle._equip_sys._gun_sys, battle._equip_sys._relic_sys, battle._crystal_sys]:
+			battle._crystal_sys]:
 		if _sysref == null:
 			continue
 		if _sysref.has_method("clear_all"):

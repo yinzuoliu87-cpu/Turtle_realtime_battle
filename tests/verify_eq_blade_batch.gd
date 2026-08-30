@@ -162,6 +162,7 @@ func _ready() -> void:
 	_t084_cross_slash()
 	_t084_slash_geometry()
 	_t084_move_lock()
+	_t084_sword()
 	_t084_ranged()
 	_t084_realtime()
 	_t_vfx()
@@ -1090,6 +1091,7 @@ func _t084_slash_geometry() -> void:
 	var n_seen2: int = 0
 	var up_ok: bool = true
 	var side_ok: bool = true
+	var worst_fwd2: float = 0.0
 	for i in range(dirs.size() * 2):
 		var d: Vector2 = dirs[i % dirs.size()]
 		var _seg: int = 1 if i < dirs.size() else 2
@@ -1109,8 +1111,13 @@ func _t084_slash_geometry() -> void:
 			var pv2: Vector3 = s3.position + BladeEqVfx.slash_pivot_off3(s3.basis, fm2, pc2)
 			## ★竖斩的圆心在龟【正上方】: 水平方向必须仍然对齐龟身
 			var hand2: Vector3 = _s._world_pos(u["pos"] as Vector2, GunEqVfx.body_mid_h(u))
-			worst_pivot2 = maxf(worst_pivot2,
-				Vector2(pv2.x - hand2.x, pv2.z - hand2.z).length() / _s.WS)
+			## ★★竖斩的落点现在故意往前推 CHOP_FWD(用户: “离释放者远一点点”)。
+			##   所以不能再断言"就在龟脚下"。真正的不变量是:
+			##     ① 偏移必须**沿攻击方向** —— 侧向分量为零(不能砍到旁边去)
+			##     ② 前推量 = CHOP_FWD(产品常量, 可调) —— 另用一条焊死它的合理区间
+			var off2: Vector2 = Vector2(pv2.x - hand2.x, pv2.z - hand2.z) / _s.WS
+			worst_pivot2 = maxf(worst_pivot2, absf(off2.dot(Vector2(-d.y, d.x))))
+			worst_fwd2 = maxf(worst_fwd2, absf(off2.dot(d) - BladeEqVfx.CHOP_FWD))
 			## ★量的是【下缘】而不是中线: 用户要求"120 扇形的一边得贴地",
 			##   即**下缘沿着目标方向躺在地上**, 扇面从那条线往上张 120°。
 			## ══ 新素材是【新月形刀光】, 不是楼形扇面 ══════════════
@@ -1244,8 +1251,14 @@ func _t084_slash_geometry() -> void:
 	## ══ 竖斩: 120° 扇形 · 下缘贴地 · 扇面往上张 ═════════════════
 	## 用户 2026-08-29:「素材要不得, 得搞 120 度的, 120 扇形的一边得贴地」。
 	_ok("④g ★分母: 竖斩也四个方向都建出了节点", n_seen2 == 4, "n=%d" % n_seen2)
-	_ok("④g ★★竖斩的【圆心】水平上仍对齐龟身: 最大偏 %.1f 码 < 8" % worst_pivot2,
+	_ok("④g ★★竖斩的落点【不偏向侧方】: 侧向分量 %.1f 码 < 8(只允许沿攻击方向前推)" % worst_pivot2,
 		n_seen2 == 4 and worst_pivot2 < 8.0)
+	_ok("④g ★竖斩往前推的量 = CHOP_FWD(%.0f 码), 实测偏 %.1f < 3" % [BladeEqVfx.CHOP_FWD, worst_fwd2],
+		n_seen2 == 4 and worst_fwd2 < 3.0)
+	## ★焊死合理区间(不读常量就是数字): 往前推但不能推到判定范围外去
+	_ok("④g ★焊死: CHOP_FWD 在 0~150 码之间(现 %.0f) —— 推过头就砍到判定范围外了"
+		% BladeEqVfx.CHOP_FWD,
+		BladeEqVfx.CHOP_FWD > 0.0 and BladeEqVfx.CHOP_FWD < 150.0)
 	_ok("④g ★★竖斩的板子【不被转歪】: 横轴偏离水平 %.1f° < 8°(转了刀就不是竖砍了)" % worst_ang2,
 		n_seen2 == 4 and worst_ang2 < 8.0)
 	_ok("④g ★★扇面从那条线往【上】张(不是往地下) —— 中线的世界 Y > 0", up_ok)
@@ -1266,12 +1279,61 @@ func _t084_slash_geometry() -> void:
 		pn3 = sn.position + BladeEqVfx.slash_pivot_off3(
 			sn.basis, float(sn.pixel_size) * float(maxi(1, sn.texture.get_height())),
 			BladeEqVfx.CHOP_PIVOT)
+	## ══ 气波姿态: 横波躺平 / 竖波站着 ═════════════════════
+	##
+	## 用户 2026-08-30:「气波是无限飞行的啊, 而且横波得水平放, 竖波怎么放, 考虑等距」。
+	## ★波要飞 700 码 ⇒ 朝向错会**一路错到底**。旧做法两种波都是正对镜头的牌子,
+	##   等距投影根本没吃到。
+	## ★量的是节点自己的法线(basis.z), 不是数标记。
+	var flat_n: float = -1.0
+	var wall_n: float = -1.0
+	for wseg in [2, 4]:
+		vfx.cross_wave(u, u["pos"] as Vector2, Vector2(1, 0), wseg)
+		var wn2 = null
+		for c in _s._world.get_children():
+			if c is Sprite3D and (c as Node).has_meta("wave_seg") 					and int((c as Node).get_meta("wave_seg")) == wseg:
+				wn2 = c
+		if wn2 == null:
+			continue
+		if wseg == 2:
+			flat_n = absf((wn2 as Sprite3D).basis.z.y)      # 躺平 ⇒ 法线朝天 ⇒ |y| ≈ 1
+		else:
+			wall_n = absf((wn2 as Sprite3D).basis.z.y)      # 立墙 ⇒ 法线水平 ⇒ |y| ≈ 0
+	## ★★波的【看到多宽 = 打到多宽】。
+	##   用户 2026-08-30:「感觉要更宽一倍」—— 量下来他是对的:
+	##   素材内容只占帧高 0.68 ⇒ 帧宽 250 时视觉半宽只有 85 码,
+	##   而判定半宽是 125 —— **画得比打得到的窄**。
+	##   现在帧宽从 WAVE_HALF_W 反推, 两边共用同一个数。
+	var wsp = _last_wave(vfx, u, Vector2(1, 0), 2)
+	if wsp != null:
+		var _fh3: float = float(maxi(1, wsp.texture.get_height()))
+		## ★★必须乘 scale.y —— 宽度现在靠非等比缩放拉(长度不动),
+		##   只按 pixel_size × 帧高 算会报 85 码 —— 尺子漏了一项。
+		var vis_half: float = float(wsp.pixel_size) * _fh3 * 0.68 * float(wsp.scale.y) / 2.0 / _s.WS
+		_ok("④g ★★波的视觉半宽 = 判定半宽: 视觉 %.0f 码 vs 判定 %.0f 码(差 < 15)"
+			% [vis_half, EqBladeBatch.WAVE_HALF_W],
+			absf(vis_half - EqBladeBatch.WAVE_HALF_W) < 15.0)
+	_ok("④g ★焊死: 波的判定半宽就是 300 码(用户 2026-08-30 点名)",
+		absf(EqBladeBatch.WAVE_HALF_W - 300.0) < 0.01, "%.1f" % EqBladeBatch.WAVE_HALF_W)
+	_ok("④g ★★【横波躺平在地面上】: 法线的世界 Y = %.2f, 要 > 0.98" % flat_n, flat_n > 0.98)
+	_ok("④g ★★【竖波立成一堵墙】: 法线的世界 Y = %.2f, 要 < 0.05" % wall_n,
+		wall_n >= 0.0 and wall_n < 0.05)
 	_ok("④g ★竖斩的扇尖落在【地面高度】(比横斩低 %.2f 米; 旧做法是往上抬 64 码)"
 		% (pw3.y - pn3.y), sw != null and sn != null and pn3.y < pw3.y and absf(pn3.y) < 0.35)
 
 
 
 ## 画一刀, 返回刚建出来的那个 Sprite3D(按 _adopt 打的 meta 找, 取最后一个)。
+## 放一道波, 返回刚建出来的那个 Sprite3D。
+func _last_wave(vfx, u: Dictionary, d: Vector2, seg: int):
+	vfx.cross_wave(u, u["pos"] as Vector2, d, seg)
+	var got = null
+	for c in _s._world.get_children():
+		if c is Sprite3D and (c as Node).has_meta("wave_seg"):
+			got = c
+	return got
+
+
 func _last_slash(vfx, u: Dictionary, d: Vector2, seg: int):
 	vfx.cross_slash(u, d, seg)
 	var got = null
@@ -1318,4 +1380,134 @@ func _t084_move_lock() -> void:
 		not bool(u.get("_slam", false)))
 	_ok("④m ★收尾: 锁计时字段已清(不残留到下一招)", not u.has("_b84_lock_until"))
 	_blade().clear_all()
+	_s._units.clear()
+
+
+## ══ ④s 挥剑: 非匀速 · 横斩左→右 · 竖斩上→下 ═══════════════
+##
+## 用户 2026-08-30:「不是平滑运动」「十字斩是先左到右再上到下」。
+##
+## ★为什么不用截图量: 我拿截图量了两轮, 两次都被颜色污染 ——
+##   把剑染绿→龟壳本来就是绿的; 染红→普攻激光束也是红的。
+##   引擎内直接读节点变换没有这个问题。
+func _t084_sword() -> void:
+	print("── ④s 挥剑: 非匀速 / 横斩左→右 / 竖斩上→下 ──")
+	## ① 曲线本身(纯函数, 不需场景)
+	var N: int = 240
+	var v: Array = []
+	for i in range(N + 1):
+		v.append(Sword3D.swing_angle(float(i) / float(N)))
+	var d: Array = []
+	for i in range(N):
+		d.append(absf(float(v[i + 1]) - float(v[i])) * float(N))
+	var mx: float = 0.0
+	var sum_d: float = 0.0
+	for q in d:
+		mx = maxf(mx, float(q))
+		sum_d += float(q)
+	var mean: float = sum_d / float(d.size())
+	var lo: float = 1e9
+	var hi: float = -1e9
+	for q in v:
+		lo = minf(lo, float(q))
+		hi = maxf(hi, float(q))
+	_ok("④s ★★【不是平滑运动】: 角速度峰值/均值 = %.1f 倍 ≥ 4(匀速恒为 1.0)" % (mx / maxf(1e-6, mean)),
+		mx / maxf(1e-6, mean) >= 4.0)
+	_ok("④s ★蓄力回拉: 曲线最小值 %.3f < -0.04(先往反方向带一点)" % lo, lo < -0.04)
+	_ok("④s ★冲过头: 曲线最大值 %.3f > 1.02(剑有重量, 停不住)" % hi, hi > 1.02)
+	_ok("④s ★收势回到终点: 末值 %.3f ≈ 1" % float(v[N]), absf(float(v[N]) - 1.0) < 0.02)
+
+	## ② 剑尖轨迹(引擎内真建节点, 量变换)
+	_s._units.clear()
+	var u: Dictionary = _mk("fortune", "left", Vector2(-100.0, 0.0))
+	var tgt: Dictionary = _mk("fortune", "right", Vector2(-20.0, 0.0), 1000000.0)
+	_equip(u, "p2eq_084", 3)
+	_spawn_all()
+	var vfx = _blade().vfx
+	for seg in [1, 2]:
+		vfx.clear()
+		vfx.sword_swing(u, Vector2(1, 0), seg)
+		var sw = null
+		for c in _s._world.get_children():
+			if c is Node3D and (c as Node).has_meta(BladeEqVfx.META_KEY) 					and str((c as Node).get_meta(BladeEqVfx.META_KEY)) == "sword":
+				sw = c
+		if sw == null:
+			_ok("④s ★分母: seg %d 建出了剑节点" % seg, false)
+			continue
+		_ok("④s ★分母: seg %d 建出了剑节点" % seg, true)
+		## 逐步推进, 量剑尖的世界位置
+		var pts: Array = []
+		for k in range(30):
+			vfx.tick(BladeEqVfx.SLASH_LIFE / 30.0)
+			if not is_instance_valid(sw):
+				break
+			pts.append(sw.position + sw.basis.y * (Sword3D.total_len() * sw.scale.y))
+		_ok("④s ★分母: seg %d 量到 %d 个剑尖位置(N=0 是空检查)" % [seg, pts.size()],
+			pts.size() >= 20)
+		if pts.size() < 20:
+			continue
+		## ★★量在【镜头平面】里, 不是世界坐标 —— 玩家看到的是屏幕。
+		##   我第一版量世界 x/y: 镜头 52° 俯视把竖直位移压到 0.63 倍,
+		##   而剑尖走半圆时横向必然先外扩再收回 ⇒ 世界坐标里横向路程天生更大,
+		##   于是一个【屏幕上确实在竖砍】的动作被判成"不够竖"。
+		##   尺子要匹配被测的概念(memory [[fb-3d-quality-bar-tentacle]])。
+		var _cb: Basis = ArcaneEqVfx.face_basis(ArcaneEqVfx.cam_forward_of(_s), 0.0)
+		var dx: float = 0.0
+		var dy: float = 0.0
+		for k in range(pts.size() - 1):
+			var dv: Vector3 = (pts[k + 1] as Vector3) - (pts[k] as Vector3)
+			dx += absf(dv.dot(_cb.x))
+			dy += absf(dv.dot(_cb.y))
+		if seg == 1:
+			## 横斩: 剑尖走的【横向路程】必须明显大于纵向
+			## ══ 横斩: 量【在场地平面里】, 不在镜头平面 ══════════════
+			##
+			## ★★横斩是在**地面平面**里扫的 ⇒ 地面上水平的剑, 从 52° 俯视看
+			##   会随着扫动在屏幕上倾斜(实测离镜头垂直 38°~57°)。
+			##   拿"屏幕上看着平不平"当判据是**拿错了空间** —— 今天第二次犯。
+			## ★真正要管的两件(用户 2026-08-30 点名的):
+			##   ① 剑身在**世界**里接近水平(平扫, 不是竖砍)
+			##   ② 扫动的**中心线对着目标** —— 我曾少减一个 90°, 整个扫动偏到了 82°
+			var wa: Array = []
+			for k in range(pts.size()):
+				var bv: Vector3 = ((pts[k] as Vector3) - sw.position).normalized()
+				wa.append(bv)
+			var horiz_ok: bool = true
+			for bv2 in wa:
+				if rad_to_deg(acos(clampf(absf((bv2 as Vector3).dot(Vector3.UP)), 0.0, 1.0))) < 60.0:
+					horiz_ok = false
+			_ok("④s ★★横斩的剑身在【世界】里接近水平(平扫, 全程离竖直 > 60°)", horiz_ok)
+			## 中心线: 取扫动两端的场地角, 中点必须对准目标方向
+			var fa0: float = rad_to_deg(atan2((wa[0] as Vector3).z, (wa[0] as Vector3).x))
+			var fa1: float = rad_to_deg(atan2((wa[wa.size() - 1] as Vector3).z, (wa[wa.size() - 1] as Vector3).x))
+			var mid_fa: float = (fa0 + fa1) * 0.5
+			var want_fa: float = rad_to_deg(atan2(0.0, 1.0))     # dir = (1,0) ⇒ 0°
+			_ok("④s ★★扫动的【中心线对着目标】: 两端 %.0f°/%.0f° 中点 %.0f°, 离目标 %.0f° < 12°"
+				% [fa0, fa1, mid_fa, absf(mid_fa - want_fa)], absf(mid_fa - want_fa) < 12.0)
+			_ok("④s ★扫动跨度 ≈ 判定锥 %.0f°: 实测 %.0f°" % [BladeEqVfx.SLASH_DEG_WIDE, absf(fa0 - fa1)],
+				absf(absf(fa0 - fa1) - BladeEqVfx.SLASH_DEG_WIDE) < 25.0)
+			_ok("④s ★横斩剑尖真的从左扫到右(终点 x > 起点 x)",
+				(pts[pts.size() - 1] as Vector3).x > (pts[0] as Vector3).x,
+				"%.2f → %.2f" % [(pts[0] as Vector3).x, (pts[pts.size() - 1] as Vector3).x])
+		else:
+			## ★★【剑身姿态】—— 用户看的是这个, 不是剑尖走了多少路。
+			##   上一版路程比 1.95 倍达标, 但剑身全程离竖直 50°~90°, 用户一眼:「就是斜的」。
+			##   尺子没问到点子上 ⇒ 直接量**起手与落点时剑身与竖直的夹角**。
+			var v0: Vector3 = (pts[0] as Vector3) - sw.position
+			var v1: Vector3 = (pts[pts.size() - 1] as Vector3) - sw.position
+			var up2: Vector3 = _cb.y
+			var t0: float = rad_to_deg(acos(clampf(absf(v0.normalized().dot(up2)), 0.0, 1.0)))
+			var t1: float = rad_to_deg(acos(clampf(absf(v1.normalized().dot(up2)), 0.0, 1.0)))
+			_ok("④s ★★竖斩的【剑身真的竖着】: 起手离竖直 %.0f° · 落点 %.0f°, 都要 < 30°" % [t0, t1],
+				t0 < 30.0 and t1 < 30.0)
+			## ★★【撤掉路程比那条】—— 它与"剑身要竖"**互相矛盾**, 而且是我拍的。
+			##   近 180° 的挥剑, 剑尖必然向侧面鼓到满半径 ⇒ 横向路程天然大。
+			##   上一版为了让它达标, 我把弧收成 -50°→-130°, 结果剑身全程离竖直 50°~90°,
+			##   用户一眼就看出来:「就是斜的啊」。判据错不是判据松 ——
+			##   它把对的推向了错的(memory [[fb-my-thresholds-degrade-good-assets]])。
+			##   留下的两条才是真需求: 剑身竖 + 剑尖真的从上落到下。
+			_ok("④s ★竖斩剑尖真的从上落到下(终点 y < 起点 y)",
+				(pts[pts.size() - 1] as Vector3).y < (pts[0] as Vector3).y,
+				"%.2f → %.2f" % [(pts[0] as Vector3).y, (pts[pts.size() - 1] as Vector3).y])
+	_blade().vfx.clear()
 	_s._units.clear()

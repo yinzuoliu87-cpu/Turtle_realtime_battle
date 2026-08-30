@@ -109,9 +109,14 @@ def warp_span(im, target_deg):
 
 fs = [Image.open('C:/tmp/v2/s%d.png' % i).convert('RGBA') for i in range(9)]
 print('斩击弧 还原原始帧 %dx%d' % sheet(fs, 'assets/sprites/vfx/eq084-slash.png'))
-print('横斩 %.0f度 · 帧序 %s  %dx%d'
+## ★用户 2026-08-30:「横扫特效我希望左右再镜像」。
+##   镜像直接焊进**文件**, 不在游戏里用 flip_h ——
+##   flip_h 会把平面角 A 的特征挪到 180°-A, 上一轮我就因此让扇面背对目标偏了 82°。
+##   焊进文件后只需把圆心 x 和弧中线跟着镜像一次, 游戏侧一行不用改。
+print('横斩 %.0f度 · 帧序 %s · 已左右镜像  %dx%d'
       % ((WIDE_DEG, WIDE_ORDER)
-         + sheet([warp_span(fs[i], WIDE_DEG) for i in WIDE_ORDER],
+         + sheet([warp_span(fs[i], WIDE_DEG).transpose(Image.FLIP_LEFT_RIGHT)
+                  for i in WIDE_ORDER],
                  'assets/sprites/vfx/eq084-slash-wide.png')))
 ## ══ 竖斩: 把【直边】转成水平、圆心挪到左下角 ════════════════
 ##
@@ -173,7 +178,51 @@ print('竖斩 %.0f度 · 直边转成水平贴地 · 圆心(%.2f,%.2f)  %dx%d'
 #   —— 今天第三次同一类错误: 把自己拍的阈值当缺陷, 然后把好东西改坏。
 
 ## 前缘凸出多少 px(弦高=图高时)。20px / 128px 宽 ≈ 16% 图宽, 看得出是弧又不至于成球。
-WAVE_BULGE = 20.0
+## ══ 剑气波: 照用户参考图量出来的三个数改 ═══════════════
+##
+## ★参考图 2026-08-30 从会话记录里挖回来了(存在 docs/ref/084/)。
+##   同一套尺子量参考 vs 我做的, 差距最大的三项:
+##
+##     项目          参考A   参考B   我的(旧)
+##     前缘外凸      17%     25%     **8%**   ← 弧度只有一半
+##     亮度前/后比   2.06    1.29    **1.03** ← 我通体一样亮, 没有"亮芯在前"
+##     亮段长        76      96      **33**   ← 丝被切得太碎
+##
+##   色相都是 0.55(青蓝)、长宽比 1.20 vs 1.26 —— 这两项本来就对。
+##   ★最致命的是**亮度比 1.03**: 参考是"前缘白热 → 往后过渡到深蓝紫"的**流体**,
+##     我做成了通体均匀的一片 ⇒ 读起来是几何图形不是气浪。
+##     加上前缘弧只有参考的一半, 就成了用户说的"跟三角形一样"。
+WAVE_BULGE = 46.0          # 前缘弦高(px)。128px 宽 ⇒ 约 20%, 向参考的 17~25% 看齐
+WAVE_FRONT_V = 1.00        # 前缘明度乘数(白热)
+WAVE_BACK_V = 0.52         # 尾部明度乘数 ⇒ 前/后 ≈ 1.9, 向参考的 1.3~2.1 看齐
+WAVE_BACK_HUE = 0.70       # 尾部向深蓝紫偏(参考里后缘是紫的)
+
+
+def shade_flow(im):
+    """沿流向做亮度/色相梯度: 前缘白热 → 尾部深蓝紫。
+
+    ★这是参考图与我的版本差距最大的一项(亮度比 2.06/1.29 vs 我的 1.03)。
+    ★只改明度与色相, **不动结构** —— 上一次我去削丝结构, 把好素材改坏了。
+    """
+    px = im.load()
+    W, H = im.size
+    xs = [x for y in range(H) for x in range(W) if px[x, y][3] > 40]
+    if not xs:
+        return im
+    x0, x1 = min(xs), max(xs)
+    span = max(1, x1 - x0)
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = px[x, y]
+            if a < 8:
+                continue
+            t = (x - x0) / float(span)          # 0 = 尾部, 1 = 前缘
+            h, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+            k = WAVE_BACK_V + (WAVE_FRONT_V - WAVE_BACK_V) * (t ** 1.35)
+            h2 = WAVE_BACK_HUE + (h - WAVE_BACK_HUE) * (0.35 + 0.65 * t)
+            nr, ng, nb = colorsys.hsv_to_rgb(h2, min(1.0, s * (1.0 - 0.20 * t)), min(1.0, v * k))
+            px[x, y] = (int(nr * 255), int(ng * 255), int(nb * 255), a)
+    return im
 
 
 def bend_arc(im):
@@ -197,6 +246,15 @@ def bend_arc(im):
     return out
 
 
-fw = [bend_arc(Image.open('C:/tmp/v2/w%d.png' % i).convert('RGBA')) for i in range(9)]
-print('剑气波 原帧 + 前缘弯成弧(弦高 %.0fpx)  %dx%d'
-      % ((WAVE_BULGE,) + sheet(fw, 'assets/sprites/vfx/eq084-wave.png')))
+## ══ 剑气波: 已换成【重新生成】的素材 ════════════════════
+##
+## ★★ 2026-08-30: 用户四次点名要重做气波, 我四次退回去改老图(弯弧/加渐变)。
+##   现在用 PixelLab 重新生成的 `eq084-wave.png`(9 帧), 不再从 C:/tmp/v2/w*.png 加工。
+##
+## ★参考图已存 `docs/ref/084/剑气波-参考A/B.png`(从会话记录里挖回来的)。
+##   同一套尺子量出来的三项目标 —— 新素材逐帧都达标:
+##     前缘外凸  参考 17~25%   新素材 17~23%
+##     亮度前/后  参考 1.29~2.06 新素材 1.86~2.02(前三帧)
+##     亮段长    参考 15~31% 宽  新素材 17% 宽
+##   ★段长必须**归一到包围宽**再比 —— 参考图 494px 宽、候选 128px 宽,
+##     按绝对像素比会把全部候选判死(我第一遍就是这么错的)。

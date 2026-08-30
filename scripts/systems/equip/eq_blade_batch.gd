@@ -182,6 +182,10 @@ const CROSS_T3 := 1.00
 const WAVE_SPD := 900.0
 const WAVE_RANGE := 700.0
 const WAVE_BAND := 60.0
+## 剑波的判定半宽(码)。★用户 2026-08-30:「伤害判定带和视觉都加大到 300 码」。
+##   旧值横波 125 / 竖波 45 —— 两种波现在同一个数。
+## ★演出侧 `BladeEqVfx.cross_wave` **引用这个常量反推帧宽**, 不另写一份。
+const WAVE_HALF_W := 300.0
 
 ## 084 在途剑波 [{u, from, dir, half_w, seg, si, trav, hit:[]}]
 var _waves: Array = []
@@ -825,7 +829,7 @@ func _step_pending() -> void:
 		cross_slash_hit(u, dir, sx, seg)
 		_waves.append({
 			"u": u, "from": u["pos"], "dir": dir, "si": sx,
-			"seg": seg + 1, "half_w": (125.0 if seg == 1 else 45.0),
+			"seg": seg + 1, "half_w": WAVE_HALF_W,
 			"trav": 0.0, "hit": [],
 		})
 		vfx.cross_wave(u, u["pos"], dir, seg + 1)
@@ -868,6 +872,9 @@ func cross_slash_hit(u: Dictionary, dir: Vector2, sx: int, seg: int) -> int:
 		_last_hit_pos.append((o as Dictionary)["pos"] as Vector2)
 		n += 1
 	vfx.cross_slash(u, dir, seg)
+	## ★挥剑与刀光在**同一行**发起 ⇒ 同一条时钟、同一个圆心。
+	##   分开发起就是两条时间线, 本仓踩过"两条时钟必然丢事件"。
+	vfx.sword_swing(u, dir, seg)
 	return n
 
 

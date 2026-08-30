@@ -903,8 +903,11 @@ const BEAM_ASPECT := 6.0      # 单帧宽高比(384/64), 用来算帧数
 ## ★★前一版我把圆心拟合成了**笔触收束的那一点**(左下 0.083,0.766)。
 ##   用户在图上标蓝点纠正: 圆心是**这道弧所在圆的圆心**(弧的凹侧、右下)。
 ##   剑绕着人转 ⇒ 人站在圆心, 不是站在笔触的尾巴上。
-const SLASH_PIVOT := Vector2(0.664, 0.728)
-const SLASH_ASSET_RAD := deg_to_rad(131.0)
+## ★横斩素材 2026-08-30 已左右镜像(用户要求) ⇒ 圆心 x 跟着镜像: 0.664 → 0.336
+const SLASH_PIVOT := Vector2(0.336, 0.728)
+## ★镜像把平面角 A 挪到 180°-A: 131° → 49°。
+##   不改这一条的话扇面会整体偏 82°(今日已栓过一次)。
+const SLASH_ASSET_RAD := deg_to_rad(49.0)
 const SLASH_R_FRAC := 0.55
 const SLASH_ART_DEG := 116.0
 const SLASH_LIFE := 0.90   # 斩击动画时长(秒)。用户 2026-08-29: 0.26 → 0.52 → 0.90
@@ -946,7 +949,19 @@ const CHOP_MASS_DX := -0.095
 ##   读起来是"一片东西飘在那", 不是"这只龟劈了一刀"。
 ## ★横斩不能缩 —— 它铺在地上、外缘就是 250 码判定范围。竖斩是竖直平面里的挥剑弧,
 ##   与地面锥无关, 所以可以单独缩。
-const CHOP_SIZE := 0.5
+const CHOP_SIZE := 0.72
+## 竖斩的落点沿攻击方向往前推多少码。
+## ★用户 2026-08-29:「竖劈的位置还要离释放者远一点点」——
+##   刀尖原本正好落在龟脚下, 读起来像砍在自己身上。
+const CHOP_FWD := 70.0
+
+## ══ 3D 紫剑 ═══════════════════════════════════════
+## 用户 2026-08-30:「做一把紫色的长剑, 在放这两个特效的时候有剑在挥动」、「3d 最好」。
+## ★实拍后放大: 62 码时剑被 250 码的刀光完全压住, 根本看不见。
+const SWORD_M := 165.0         # 剑在场上多长(码)。约 3 倍龟身(又细又长)
+const SWORD_TRAIL := 34        # 爆发段沿剑尖播几颗拖尾
+## ★实拍: 46 码的圆球读成"泡泡"。缩小 + 下面沿运动方向拉长成短亮条。
+const SWORD_TRAIL_PX := 22.0   # 单颗拖尾的世界尺寸(码)
 ## ★★旋转已经**焊进素材文件**了: 贴地的那条直边在图里就是水平指右(0度)。
 ##   所以 roll **不能再减一遍素材角** —— 减了就是转两次。
 const CHOP_ASSET_RAD := 0.0
@@ -956,6 +971,12 @@ const WINDUP_MOTES := 7       # 蓄力收拢的剑气点数
 const WINDUP_R := 78.0        # 剑气从多远收进来(码)
 const WINDUP_MOTE_PX := 34.0  # 单颗剑气的世界尺寸(码)。★22 太小, 暗场里看不见(2026-08-29 实拍)
 const SCREEN_DEPTH_K := 0.5267 / 0.6755
+## 场地方向 → 场地平面角(弧度)。与 dir_to_roll 不同: 这个不压纵深,
+## 因为它用于**地面平面内**的旋转(挥剑), 不是屏幕平面内的。
+static func dir_field_angle(dir: Vector2) -> float:
+	return atan2(dir.y, dir.x)
+
+
 static func dir_to_roll(dir: Vector2) -> float:
 	if dir.length_squared() < 1e-12:
 		return 0.0
@@ -1002,6 +1023,28 @@ static func slash_pivot_off3(bas: Basis, frame_m: float, piv: Vector2 = SLASH_PI
 	return bas.x * lx + bas.y * ly
 
 
+## 【挥剑】—— 真 3D 紫剑绕握把扫过去, 与刀光同一条时钟、同一个圆心。
+##
+## ★角度两端全部从刀光那套常量推, 不另写一套数:
+##   横斩: 绕地面法线扫 SLASH_DEG_WIDE(120°), 中线对准目标
+##   竖斩: 绕侧轴从举过头顶扫到贴地, 跨度 CHOP_ART_DEG(120°)
+## ★时间轴走 Sword3D.swing_angle() —— 回拉 → 爆发 → 冲过头 → 回弹,
+##   角速度峰值是均值的 8 倍。匀速插值读起来像"剑被拖着走"。
+func sword_swing(u: Dictionary, dir: Vector2, seg: int) -> void:
+	if not _has_world():
+		return
+	var sw := Sword3D.build(SWORD_M * battle.WS / Sword3D.total_len())
+	## 握把钉在龟手上(竖斩跟着刀光往前推 CHOP_FWD)
+	var org: Vector2 = (u["pos"] as Vector2) + (Vector2.ZERO if seg == 1 else dir.normalized() * CHOP_FWD)
+	## ★竖斩的剑要抬高一点: 实拍 t=1.90~2.40 那段几乎看不到剑,
+	##   因为握把跟横斩一样压在腰高, 而竖砍是从头顶过来的。
+	var _hy: float = GunEqVfx.body_mid_h(u) * (0.6 if seg == 1 else 1.35)
+	sw.position = battle._world_pos(org, _hy)
+	_adopt(sw, "sword")
+	_fx.append({"node": sw, "t": 0.0, "life": SLASH_LIFE, "kind": "sword",
+		"dir": dir, "seg": seg, "org": org, "u": u, "spawned": 0})
+
+
 func cross_slash(u: Dictionary, _dir: Vector2, seg: int) -> void:
 	if not _has_world():
 		return
@@ -1027,7 +1070,9 @@ func cross_slash(u: Dictionary, _dir: Vector2, seg: int) -> void:
 	## 竖斩的握剑手抬到头顶上方。
 	## 竖斩的扇尖落在脚下(地面高度), 下缘才贴得住地。
 	var _h: float = GunEqVfx.body_mid_h(u) if seg == 1 else 0.0
-	var s := _board(_tex, u["pos"] as Vector2, _h,
+	## 竖斩往前推 CHOP_FWD; 横斩不推(它的圆心就是挥剑转轴, 必须在龟身上)。
+	var _org: Vector2 = (u["pos"] as Vector2) + (Vector2.ZERO if seg == 1 else _dir.normalized() * CHOP_FWD)
+	var s := _board(_tex, _org, _h,
 		SLASH_REACH / BLADE_R_FRAC, Color(col.r, col.g, col.b, 0.95), 7)
 	if _anim:
 		## 横排 sheet: 帧宽 = 图高。新素材自带白热刀锋与紫弧身, 不再靠 modulate 上色
@@ -1129,6 +1174,31 @@ func cross_slash(u: Dictionary, _dir: Vector2, seg: int) -> void:
 ##   用户 2026-08-03 的铁律: 新内容一律新素材。我差点又破一次, 被他当场拦下。
 ##
 ## ★逐帧: 每帧整条束上下抖 + 亮度沿程流动 ⇒ 读成"电在束里跑", 不是一张静图。
+## 剑尖火花: 在剑尖当前位置播一颗短命亮点。
+## ★位置从剑自己的变换里取(basis.y × 剑长), 不另算一遍 ——
+##   另算就是手抄副本, 剑一改它就漂(memory [[fb-hand-rolled-copies-drift]])。
+func _sword_spark(sw: Node3D) -> void:
+	if not _has_world():
+		return
+	var tip: Vector3 = sw.position + sw.basis.y * (Sword3D.total_len() * sw.scale.y)
+	var q := Sprite3D.new()
+	q.texture = VfxTex._make_fire_glow_tex()   # 全仓在用的软发光球; 颜色靠 modulate 上
+	q.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	q.shaded = false
+	q.transparent = true
+	q.no_depth_test = true
+	q.render_priority = 11   # 比剑(10)再高一级, 火花不被剑身遮住
+	q.position = tip
+	q.pixel_size = (SWORD_TRAIL_PX * battle.WS) / maxf(1.0, float(q.texture.get_width()))
+	q.modulate = Color(0.97, 0.93, 1.0, 0.95)
+	## ★沿剑身方向拉长 3.4 倍 ⇒ 读成被刃带出的短亮条, 而不是一颗泡泡。
+	q.scale = Vector3(3.4, 0.55, 1.0)
+	_adopt(q, "spark")
+	## ★命短(0.22 → 0.13): 之前火花活得太久, 剑已经扫过去了它还留在原地,
+	##   看起来像"另外撒出来的东西", 不是被刃带出来的。
+	_fx.append({"node": q, "t": 0.0, "life": 0.13, "kind": "fade"})
+
+
 func cross_beam(u: Dictionary, tgt: Dictionary) -> void:
 	if not _has_world() or not ResourceLoader.exists(TEX_BEAM):
 		return
@@ -1182,7 +1252,25 @@ func cross_wave(u: Dictionary, org: Vector2, dir: Vector2, seg: int) -> void:
 	var wide: bool = seg == 2
 	var _wanim: bool = ResourceLoader.exists(TEX_WAVE_V2)
 	var _wtex: Texture2D = load(TEX_WAVE_V2) if _wanim else cross_wave_tex()
-	var _wsize: float = 250.0 if wide else 110.0
+	## ══ 波的尺寸: 从【伤害判定带】反推, 不是随手拍 ═════════════
+	##
+	## ★用户 2026-08-30:「感觉要更宽一倍」。量了一下他是对的, 而且有硬依据:
+	##   素材里内容只占帧高的 **0.68** ⇒ 帧宽 250 码时视觉半宽只有 **85 码**,
+	##   而横波的伤害判定半宽是 **125 码**(eq_blade_batch 的 half_w) ——
+	##   **画得比打得到的窄**, 正是他看着不对的原因。
+	## ★所以帧宽从判定半宽反推: size = half_w * 2 / 0.68。
+	##   这样"看到多宽 = 打到多宽"是几何上成立的, 不是我调出来的。
+	const WAVE_CONTENT_FRAC := 0.68     # 素材内容高 / 帧高(逐帧实测 0.66~0.69)
+	## ★★长度不动, 只在【垂直于行进方向】上放宽。
+	##   用户 2026-08-30:「我只说改变宽度为啥要改长啊」——
+	##   `_wsize` 是**等比缩放**, 我把半宽提到 300 的同时把长度也拉长了同样倍数。
+	##   ⇒ 帧宽(≈行进方向的长度)维持原样, 宽度靠 scale 单独拉。
+	## ★本地轴: ground_basis(dir, 0) / 立墙基 都是 **+x = 行进方向**,
+	##   所以垂直方向就是本地 +y ⇒ 只改 scale.y。
+	var _wsize: float = 250.0
+	var _hw: float = EqBladeBatch.WAVE_HALF_W
+	## 帧宽 250 码、内容占 0.68 ⇒ 原本视觉半宽 85 码; 拉到 _hw 需要这个倍数
+	var _wstretch: float = _hw / (_wsize * WAVE_CONTENT_FRAC * 0.5)
 	var s := _board(_wtex, org, GunEqVfx.body_mid_h(u),
 		_wsize, Color(col.r, col.g, col.b, 0.9), 7)
 	if _wanim:
@@ -1200,8 +1288,29 @@ func cross_wave(u: Dictionary, org: Vector2, dir: Vector2, seg: int) -> void:
 	##   所以不像斩击那张需要再扣一个素材角。
 	if _wanim:
 		s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-		s.basis = ArcaneEqVfx.face_basis(ArcaneEqVfx.cam_forward_of(battle), dir_to_roll(dir))
+		## ══ 气波的姿态: 横波躺平、竖波站着 ═══════════════════
+		##
+		## ★★用户 2026-08-30:「气波是无限飞行的啊, 而且横波得水平放,
+		##   竖波怎么放, 考虑等距」。
+		##   旧做法两种波都是 `face_basis` = **正对镜头的牌子** ⇒
+		##   等距投影根本没吃到; 而波要飞 700 码, **朝向错会一路错到底**。
+		##
+		## 横波(seg 2): 跟横斩同一个平面 —— **躺平在地面上**, 法线朝天。
+		##   素材自己的前进方向是 +x(亮芯在右) ⇒ aim_rad = 0。
+		## 竖波(seg 4): 立成**含行进方向的竖直平面** —— 一堵向前推的墙,
+		##   被 52° 俯视自然压扁(这才是“吃到等距”), 而不是永远正对镜头。
+		if seg == 2:
+			s.basis = ground_basis(dir, 0.0)
+		else:
+			var _bx: Vector3 = Vector3(dir.x, 0.0, dir.y).normalized()
+			s.basis = Basis(_bx, Vector3.UP, _bx.cross(Vector3.UP).normalized())
+		## ★★scale 必须在 basis 【之后】设 —— Node3D 的 basis 本身就含缩放,
+		##   赋一个纯旋转的 basis 会把 scale 抹掉。我第一版写在前面, 宽度根本没生效
+		##   (判据报 85 码而不是 300)。
+		## 只宽不长: 两种基都是 +x = 行进方向 ⇒ 垂直方向就是本地 +y。
+		s.scale = Vector3(1.0, _wstretch, 1.0)
 		s.set_meta("wave_roll", dir_to_roll(dir))
+		s.set_meta("wave_seg", seg)
 	_adopt(s, "wave")
 	_fx.append({"node": s, "t": 0.0, "life": 0.78, "kind": "wave", "org": org, "dir": dir,
 		"h": GunEqVfx.body_mid_h(u)})
@@ -1283,6 +1392,54 @@ func tick(delta: float) -> void:
 				var sp2: Vector2 = (f["from"] as Vector2).lerp(f["org"] as Vector2, x * x)
 				(n as Sprite3D).position = battle._world_pos(sp2, float(f["h"]))
 				_set_a(n, clampf(x / 0.35, 0.0, 1.0) * clampf((1.0 - x) / 0.22, 0.0, 1.0))
+			"sword":
+				## ★挥剑: 角度走 swing_angle(非线性), 并在爆发段沿剑尖播拖尾。
+				var _sd: Vector2 = f["dir"]
+				var _sg: int = int(f["seg"])
+				var _q: float = Sword3D.swing_angle(x)
+				var _n3: Node3D = n
+				## ══ 方向: 十字斩 = 先【左→右】再【上→下】 ══════════════
+				##
+				## ★★用户 2026-08-30:「十字斩是先左到右再上到下」。
+				##   我上一版把剑放在**地面平面**里绕攻击方向扫 ±60° —— 方向错。
+				##   目标在右时, 那两个端点的**屏幕 x 相同**(cos(+60°)=cos(-60°)),
+				##   几何上就出不来左右横移 —— 屏幕上读成"下→上"。
+				##   ★剑是**角色动作**, 它该在【屏幕平面】里扫(玩家看得懂);
+				##     刀光才负责地面判定锥, 两者分工不同。
+				## ★★两段用**不同的平面** —— 逐帧量出来的结论。
+				##   在同一个平面里扫 180°, 剑尖必然走半圆 ⇒ 横纵路程天然相等
+				##   (实测横斩 dx=7.64/dy=6.75、竖斩 dx=6.40/dy=3.97 —— 竖斩反而更横)。
+				##   所以"横斩要横、竖斩要竖"用同一种扫法做不到。
+				if _sg == 1:
+					## 横斩: 在【地面平面】扫 —— 地面上的圆弧被 52° 俯视压扁,
+					##   屏幕上横向路程远大于纵向。先把剑放到接近水平(78°)再绕 UP 转,
+					##   顺序不能反(只掉 32° 时剑身还基本竖着, 绕 UP 转 = 剑绕自己转圈)。
+					var _a: float = lerpf(
+						dir_field_angle(_sd) + deg_to_rad(SLASH_DEG_WIDE * 0.5),
+						dir_field_angle(_sd) - deg_to_rad(SLASH_DEG_WIDE * 0.5), _q)
+					## ★★必须再减 90°。推导+实测都对得上:
+					##   剑身是局部 +y; 先绕 X 转 78° → 几乎变成 +z; 再绕 Y 转 -_a 之后,
+					##   场地角 = **_a + 90°**。所以不减这一下, 整个扫动会偏 90° ——
+					##   实测剑身场地角 150°→14°(中心 82°), 而目标在 0°。
+					##   用户: 「这个挥动角度的中心线没有对着目标啊」。
+					_n3.basis = Basis(Vector3.UP, -(_a - PI * 0.5)) * Basis(Vector3(1, 0, 0), deg_to_rad(78.0))
+				else:
+					## 竖斩: 在【屏幕平面】从右上(-30°)扫到右下(-150°)。
+					##   剑尖的横向分量恒为 0.5R, 纵向从 +0.87R 到 -0.87R ⇒ **纯竖直位移**。
+					## ★★从**近乎直上**(-15°)扫到**近乎直下**(-165°)。
+					##   用户 2026-08-30:「就是斜的啊, 不是竖着的」—— 他看的是**剑身姿态**,
+					##   而我量的是**剑尖路程**。两者不是一回事:
+					##   上一版 -50°→-130° 路程比 1.95 倍达标, 但剑身**全程离竖直 50°~90°**,
+					##   一次都没竖起来过 ⇒ 读起来就是斜砍。
+					##   现在起手/落点都离竖直只有 15°, 中间那段水平被爆发段一闪而过。
+					_n3.basis = ArcaneEqVfx.face_basis(ArcaneEqVfx.cam_forward_of(battle),
+						lerpf(deg_to_rad(-15.0), deg_to_rad(-165.0), _q))
+				## 剑尖拖尾: 只在爆发段播(那才是刀真正划过的一瞬)
+				var hit_x: float = Sword3D.swing_hit_x()
+				if absf(x - hit_x) < 0.10 and int(f["spawned"]) < SWORD_TRAIL:
+					f["spawned"] = int(f["spawned"]) + 1
+					_sword_spark(_n3)
+				_set_a(n, 1.0 if x < 0.86 else (1.0 - x) / 0.14)
 			"holdfade":
 				# ★前 70% 满亮, 最后 30% 才收 —— 线性淡出会让效果大半辈子处在半亮以下,
 				#   实拍量到贝壳弧主体只有 RGB(42,53,55) 而地板是 (9,10,16)。

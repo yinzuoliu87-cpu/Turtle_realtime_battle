@@ -57,7 +57,12 @@ def main():
     path, scene = a[0], a[1]
     muts = [(a[i], a[i + 1], a[i + 2]) for i in range(2, len(a), 3)]
 
-    orig = io.open(path, encoding="utf-8").read()
+    ## ★读也必须 newline="" —— 默认的通用换行模式会在**读的那一刻**
+    ##   把 CRLF 翻译成 \n, 写回去就变成了 LF —— 而下面那句核对的两边
+    ##   又被同样翻译一遍 ⇒ **它对行尾变化是瞎的**。
+    ##   本仓库行尾是混的(equip_system.gd 是 CRLF、battle_hud.gd 是 LF),
+    ##   一旦变异到 CRLF 文件就会把整份文件重写一遍而没人发现(2026-08-30 差点踩上)。
+    orig = io.open(path, encoding="utf-8", newline="").read()
     n_bad = 0
     try:
         for name, old, new in muts:
@@ -82,7 +87,7 @@ def main():
         ## ★★无论上面发生什么都写回, 然后【再读一遍逐字节核对】。
         ##   只写不核对正是 2026-08-29 那次翻车的形状(脚本还打印了"已还原")。
         io.open(path, "w", encoding="utf-8", newline="").write(orig)
-        restored = (io.open(path, encoding="utf-8").read() == orig)
+        restored = (io.open(path, encoding="utf-8", newline="").read() == orig)
         if restored:
             print("")
             print("  [还原核对] %s 与变异前逐字节一致 (%d 字符)" % (path, len(orig)))

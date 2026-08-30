@@ -64,6 +64,20 @@ func _ready() -> void:
 			if not member.has(m.get_string(3)):
 				member[m.get_string(3)] = m.get_string(1)
 
+	## ★批④成员名: 从 equip_system.gd 的 `_b4_all()` 返回数组里抠
+	var b4mem: Dictionary = {}
+	var es_src := FileAccess.get_file_as_string("res://scripts/systems/equip/equip_system.gd")
+	var _bi := es_src.find("func _b4_all()")
+	if _bi >= 0:
+		var _bs := es_src.find("[", _bi)
+		var _be := es_src.find("]", _bs)
+		for _piece in es_src.substr(_bs + 1, maxi(0, _be - _bs - 1)).split(","):
+			var _nm := str(_piece).strip_edges()
+			if _nm.begins_with("_"):
+				b4mem[_nm] = true
+	_ok("★分母: 从 _b4_all() 抠到批④成员 (N=%d)" % b4mem.size(), b4mem.size() >= 5,
+		str(b4mem.keys()))
+
 	## 抠出 `for _sysref in [ ... ]:` 那段数组文本 —— 判据只在它里面找
 	var list_txt := ""
 	var _li := dl.find("for _sysref in [")
@@ -94,11 +108,58 @@ func _ready() -> void:
 		var mem: String = str(member.get(cls, ""))
 		if mem != "" and (list_txt.contains(mem) or dl.contains(mem + ".clear")):
 			continue
+		## ★批④的六个由 `for _b4ref in battle._equip_sys._b4_all(): _b4ref.clear_all()`
+		##   统一清 —— 它们【故意】不在 `for _sysref` 名单里(见下面 ③④ 两条)。
+		if mem != "" and b4mem.has(mem) and dl.contains("_b4_all()"):
+			continue
 		unwired.append("%s(%s)" % [cls, mem if mem != "" else "找不到成员名"])
 
 	_ok("★分母: 扫到带 clear_all 的系统 (N=%d)" % scanned, scanned >= 8,
 		"太少 = 扫描失效, 不是真的没有")
 	_ok("★有换路撤场函数的系统都接进了换路清场", unwired.is_empty(), str(unwired))
+	## ═══════════════════════════════════════════════════════════════
+	## ③④ ★★清场的【位置】—— 2026-08-30 用户实测「5 费直升机无法召唤·三场都不行」
+	##
+	##   批④的登场钩(`_eq_apply_all_stats()` 末尾的 `_b4_on_spawn_all`)会**生成召唤物**:
+	##   077 小手枪 / 079 医疗炮台 / 080 直升机 / 086 浮游炮 / 094 祖龟碑 …
+	##   ⇒ 批④的 clear_all 必须跑在它【之前】。跑在之后 = 刚生成就被抹掉。
+	##
+	##   08-13 修过一次(把 _b4_all 那轮提到前面), 08-20 补 `for _sysref` 名单时
+	##   **又把同样五个加了回去** —— 而那张名单在生成之后 ⇒ bug 原样复活, 且
+	##   `verify_b4_lane_leak` 全绿(它只问"旧的清光没", 而这个 bug 让结果【更干净】)。
+	##
+	##   ★所以判据必须落在【顺序】和【不重复】上, 不是落在"清了没"。
+	## ═══════════════════════════════════════════════════════════════
+	## ★★判据只许看【代码行】—— 第一版拿 dl.find("_b4_all()") 定位, 而**我自己写在
+	##   产品文件里的那段说明注释也含这个词**, 于是反向验证「把整轮 b4 清场删掉」
+	##   门禁照样绿(注释顶上了)。先把注释行剔掉再找位置。
+	var code_lines: PackedStringArray = []
+	for _ln in dl.split("
+"):
+		if str(_ln).strip_edges().begins_with("#"):
+			code_lines.append("")
+		else:
+			code_lines.append(str(_ln))
+	var dlc := "
+".join(code_lines)
+	_ok("★分母: 剔注释后代码仍占大头(剔过头 = 后面全是空检查)",
+		float(dlc.strip_edges().length()) > float(dl.length()) * 0.35,
+		"%d / %d 字" % [dlc.strip_edges().length(), dl.length()])
+	var i_b4 := dlc.find("_b4ref.clear_all()")
+	var i_apply := dlc.find("_eq_apply_all_stats()")
+	var i_sweep := dlc.find("for _sysref in [")
+	_ok("★分母: 三个锚点都找得到(b4轮/登场钩/通用扫荡)",
+		i_b4 >= 0 and i_apply > 0 and i_sweep > 0,
+		"b4=%d apply=%d sweep=%d" % [i_b4, i_apply, i_sweep])
+	_ok("③ ★批④的 clear_all 跑在【登场钩之前】(否则刚生成的召唤物当场被抹)",
+		i_b4 >= 0 and i_apply > i_b4, "b4=%d apply=%d" % [i_b4, i_apply])
+	var dup: PackedStringArray = []
+	for _m in b4mem.keys():
+		if list_txt.contains(str(_m)):
+			dup.append(str(_m))
+	_ok("④ ★★批④成员不许出现在【登场钩之后】的通用扫荡名单里(重复清 = 清掉新生成的)",
+		dup.is_empty(), "名单里混进了 %s" % str(dup))
+
 	var _why_ok := true
 	for _v in EXEMPT.values():
 		if str(_v).length() <= 10:

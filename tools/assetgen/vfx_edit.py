@@ -45,6 +45,7 @@ DESK = os.path.join(os.path.expanduser("~"), "Desktop", "084素材_改这里")
 EDIT = DESK
 
 ## 一次摆上桌面的整套(084 十字斩)。
+## ★ desk 默认摆整套; 也可以只摆指定的几张: `vfx_edit.py desk eq084-slash-wide`
 BATCH_084 = ["eq084-chop", "eq084-slash-wide", "eq084-wave", "eq084-burst", "eq084-beam"]
 GODOT = os.environ.get("GODOT", "C:/Users/Louis/Desktop/Godot_v4.6.3-stable_win64.exe")
 
@@ -240,11 +241,11 @@ def cmd_in(name, do_import=True):
     return 0
 
 
-def cmd_desk():
+def cmd_desk(only=None):
     """把整套 084 素材拆到桌面一个文件夹里。"""
     os.makedirs(DESK, exist_ok=True)
     n = 0
-    for name in BATCH_084:
+    for name in (only or BATCH_084):
         src = os.path.join(VFX, name + ".png")
         if not os.path.exists(src):
             print("  [跳过] 没有 %s" % src)
@@ -330,7 +331,7 @@ def main():
     if a[0] == "list":
         return cmd_list()
     if a[0] == "desk":
-        return cmd_desk()
+        return cmd_desk(a[1:] or None)
     if a[0] == "done":
         return cmd_done()
     if len(a) < 2:

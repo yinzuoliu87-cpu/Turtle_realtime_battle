@@ -124,6 +124,55 @@ def check_boxes(path, name):
             fails.append('%s: 引用了不存在的文件 `%s`(测试被删/改名了, 这条账已经烂了)' % (name, ref))
 
 
+
+def check_version_trace():
+    """⑥ 版本留痕 —— 发出去的每个版本都得能在某份方案书里找到 (2026-08-30)。
+
+    ★由来: 用户 2026-08-30「我觉得就很奇怪啊, 方案书应该是标准进度啊, 不可以不管啊」。
+      当时实测: 08-27 起发出的 17 个版本里, **12 个在全部 50 份方案书里一个字都查不到**。
+      方案书事实上已经不是进度了 —— 而没人会发现, 因为原来的 ①~⑤ 全是
+      "已写入的内容格式对不对", 没有一条问"**该写的写了没**"。
+
+    判据: 最新的**活跃**方案书(草稿/已拍板/实施中)日期之后,
+          CHANGELOG 里的每个版本号必须在**某份**方案书里出现。
+    ★为什么是"某份"而不是"那份": 同一段时间可能并行着两件事
+      (这四天就是后端上线 + 六件复查), 逼着写进同一份反而造假账。
+      规则只守一条线: **不允许派了版本却哪里都没记**。
+    """
+    if not os.path.exists('CHANGELOG.md'):
+        fails.append('版本留痕: 找不到 CHANGELOG.md')
+        return
+    files = sorted(f for f in os.listdir(PLANS) if f.endswith('.md') and f != 'README.md')
+    active = []
+    for f in files:
+        if not f[:8].isdigit():
+            continue
+        body = io.open(os.path.join(PLANS, f), encoding='utf-8').read()
+        st = re.search(r'状态[:：]\s*\**([^\*\n（(]+)', body)
+        if st and st.group(1).strip() in ('草稿', '已拍板', '实施中'):
+            active.append(f)
+    if not active:
+        print('  [版本留痕] 没有活跃方案书 —— 跳过')
+        return
+    newest = max(active)
+    since = '%s-%s-%s' % (newest[:4], newest[4:6], newest[6:8])
+    cl = io.open('CHANGELOG.md', encoding='utf-8').read()
+    vers = re.findall(r'^## (\d+\.\d+\.\d+[a-z]?) — (\d{4}-\d{2}-\d{2})', cl, re.M)
+    want = [v for v, d in vers if d >= since]
+    blob = ''.join(io.open(os.path.join(PLANS, f), encoding='utf-8').read() for f in files)
+    miss = [v for v in want if v not in blob]
+    print('  [版本留痕] 活跃方案书 %d 份, 最新 %s(%s 起); 待覆盖版本 %d 个, 缺 %d 个'
+          % (len(active), newest, since, len(want), len(miss)))
+    ## ★分母断言: 一个版本都没扫到 = 正则挂了 / CHANGELOG 改格式了, 不是通过。
+    if not want:
+        fails.append('版本留痕: %s 起一个版本都没扫到(CHANGELOG 共 %d 个版本行) —— 空检查不是通过'
+                     % (since, len(vers)))
+        return
+    for v in miss:
+        fails.append('版本留痕: %s 发出去了, 但全部 %d 份方案书里一个字都没提 —— 方案书不是进度了'
+                     % (v, len(files)))
+
+
 def main():
     if not os.path.isdir(PLANS):
         print('缺 %s' % PLANS)
@@ -135,6 +184,7 @@ def main():
         check(os.path.join(PLANS, f), f)
     for f in files:
         check_boxes(os.path.join(PLANS, f), f)
+    check_version_trace()
     print('  [分母] 骨架检查 %d 份 · 复选框纪律检查 %d 份 (放过的引用: 已删/草稿 %d 处)'
           % (checked, boxed, skipped_refs))
     if boxed < 40:
