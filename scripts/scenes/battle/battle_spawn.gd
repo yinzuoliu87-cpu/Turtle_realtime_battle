@@ -94,6 +94,10 @@ func _spawn_teams() -> void:
 			_lu["_cydeath_demo"] = true
 			_lu["no_move"] = true
 			_lu["move_spd"] = 0.0
+		if battle._review_demo() and str(left[i]) == "space" and battle._review_skill_idx() == 1:
+			## 虫洞演示(用户 2026-08-30 点名「无敌的星际龟」): 敌方会还手, 不锁血看不完一轮。
+			_lu["_review_dummy"] = true            # 受击回满 = 无敌
+			_lu["no_move"] = true; _lu["move_spd"] = 0.0   # 站桩放洞, 别追着人跑出画面
 		if battle._review_demo() and str(left[i]) == "bubble" and battle._review_skill_idx() == 3:   # 泡泡爆破: 预置满泡泡值(不用挨打攒·每帧回满)+站桩→反复放爆破看两门+泡沫墙清晰展开
 			_lu["bubble_store"] = float(_lu["maxHp"])
 			_lu["_bubble_burst_demo"] = true
@@ -119,7 +123,10 @@ func _spawn_teams() -> void:
 				_lu["maxHp"] = 4000.0; _lu["hp"] = 1600.0   # 起手40%血→看治疗/护盾刷到队友
 		battle._units.append(_lu)
 	var _rlay = battle._review_dummy_layout()   # 专属演示布局(相对受审龟 _cx-150)
-	for i in range(right.size()):
+	## ★布阵表非空时, 假人个数【以表为准】(取 min, 只减不增 —— 老用例行为不变)。
+	##   由来: 用户 2026-08-30 虫洞演示明确「只要两个单位」, 而 RIGHT_DEMO 恒为 3 只。
+	var _n_right: int = mini(_rlay.size(), right.size()) if not _rlay.is_empty() else right.size()
+	for i in range(_n_right):
 		var pos = Vector2(battle.ARENA.end.x - battle.spawn_edge_margin, battle.ARENA.position.y + battle.spawn_front_margin + i * battle.spawn_row_spacing)
 		if not _rlay.is_empty() and i < _rlay.size():
 			var _d: Dictionary = _rlay[i]
@@ -132,7 +139,18 @@ func _spawn_teams() -> void:
 			var _d1: float = float(OS.get_environment("EQDEMO_ENEMY1")) if OS.has_environment("EQDEMO_ENEMY1") else 210.0
 			var _gap: float = float(OS.get_environment("EQDEMO_GAP")) if OS.has_environment("EQDEMO_GAP") else 500.0
 			pos = Vector2(_cx - 150.0 + _d1 + float(i) * _gap, _cy + (float(OS.get_environment("EQDEMO_ENEMY_Y")) if OS.has_environment("EQDEMO_ENEMY_Y") else 0.0))   # 装备演示: 敌1距携带者_d1码, 两敌相距_gap; ENEMY_Y=深度偏移(测浪覆盖)
-		var ru = _make_unit(str(right[i]), "right", pos)
+		## ★演示专属(2026-08-30): 布阵表可以指定【这个假人是谁】。
+		##   由来: 用户要看「被虫洞抓住的人用位移技能逃出去」, 而默认假人是
+		##   diamond/ninja/ghost 且 `active_skills` 被清空 ⇒ 永远演不出挣脱。
+		##   `id` = 换成别的龟; `minion_role` = 换成小将(front/back/elite)。
+		var _lay: Dictionary = (_rlay[i] as Dictionary) if (not _rlay.is_empty() and i < _rlay.size()) else {}
+		var ru: Dictionary
+		if _lay.has("minion_role"):
+			ru = _make_unit("__minion__", "right", pos, {"minion": true,
+				"role": str(_lay["minion_role"]), "elite": str(_lay["minion_role"]) == "elite",
+				"level": int(_lay.get("level", 5))})
+		else:
+			ru = _make_unit(str(_lay.get("id", right[i])), "right", pos)
 		if battle._review_demo():                          # 假人: 不放技/永不死训练靶; ATTACKS时会还手(动+普攻)
 			if not battle.REVIEW_DUMMY_ATTACKS:
 				ru["no_basic"] = true
@@ -162,11 +180,26 @@ func _spawn_teams() -> void:
 			ru["maxHp"] = _dhp; ru["hp"] = _dhp
 			ru["base_def"] = 30.0; ru["base_mr"] = 30.0; battle._recalc_stats(ru)
 			ru.erase("_review_dummy")
-		if not _rlay.is_empty() and i < _rlay.size() and bool((_rlay[i] as Dictionary).get("fixed", false)):
+		## ★演示专属: 放开"会动/会打/留技能" —— 默认假人是 no_move + 无技能的木桩,
+		##   要演"自己走进去被抓" 和 "用位移技能挣脱" 就必须逐条放开。
+		if bool(_lay.get("move", false)):
+			ru["no_move"] = false; ru["no_basic"] = false
+		if _lay.has("skills") or bool(_lay.get("keep_skills", false)):
+			## ★`skills` = 指定技能 id(默认技里没有的也能给, 如忍者【背刺】是 skillPool[3]);
+			##   `keep_skills` = 用它的默认技。两者都把龟能灌满, 不用干等。
+			ru["active_skills"] = (_lay["skills"] as Array).duplicate() if _lay.has("skills") 				else battle._resolve_active_skills(str(ru.get("id", "")), false)
+			## ★龟能要灌到【够放第一个技】—— 小将的人体浪板是 120, 而 maxEnergy 常是 100,
+			##   只灌 maxEnergy 它永远放不出来(看着像"小将没技能")。
+			var _c0: float = 100.0
+			if not (ru["active_skills"] as Array).is_empty():
+				_c0 = float((ru.get("energy_cost", {}) as Dictionary).get(str(ru["active_skills"][0]), 100.0))
+			ru["maxEnergy"] = maxf(float(ru.get("maxEnergy", 100.0)), _c0)
+			ru["energy"] = ru["maxEnergy"]
+		if bool(_lay.get("fixed", false)):
 			ru["no_move"] = true; ru["no_basic"] = true   # 演示专属: 该假人固定不动(如龟派气波远处靶)
 			ru["_home_pos"] = ru["pos"]                   # 被击飞后缓步归位(评审板稳定·防连续击退推出画面)
-		if not _rlay.is_empty() and i < _rlay.size() and (_rlay[i] as Dictionary).has("rarity"):
-			ru["rarity"] = str((_rlay[i] as Dictionary)["rarity"])   # 演示专属: 指定假人稀有度(如平等审判光柱需A+目标)
+		if _lay.has("rarity"):
+			ru["rarity"] = str(_lay["rarity"])   # 演示专属: 指定假人稀有度(如平等审判光柱需A+目标)
 		battle._units.append(ru)
 	battle._inject_equipment()       # 装备注入 (玩家队读 persistent_equipped; demo队塞测试装备) — 须在被动之前
 	_apply_spawn_passives()   # 登场被动 (开战即生效: 忍术暴击/怨灵诅咒/冰寒减攻/召唤等)

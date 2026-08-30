@@ -76,9 +76,14 @@ func _ready() -> void:
 	_ok("★分母: WORM_ESCAPE_DIST 在合理区间(50~400 码)",
 		StarSystem.WORM_ESCAPE_DIST >= 50.0 and StarSystem.WORM_ESCAPE_DIST <= 400.0,
 		"%.0f 码" % StarSystem.WORM_ESCAPE_DIST)
-	_ok("★分母: 脱离阈值要大于轨道半径(否则正常绕转就会误判成脱离)",
-		StarSystem.WORM_ESCAPE_DIST > 52.0 * 2.0,
-		"阈值 %.0f vs 轨道直径 ~104" % StarSystem.WORM_ESCAPE_DIST)
+	## ★2026-08-30 语义从【单帧】改成【累计】后, 这条分母也得跟着换问题:
+	##   旧问的是"单帧阈值 > 轨道直径", 理由是"正常绕转不许被误判成脱离"。
+	##   累计语义下这个理由不成立 —— 实测捕获期 1971 帧里 **1433 帧漂移恰好 0.000 码**
+	##   (虫洞每帧写死坐标, 没人动它就是 0), 绕转一分都不贡献。
+	##   现在该问的是: 阈值不能小到【一两帧噪声就攒满】。
+	_ok("★分母: 累计阈值 ≥ 单帧最大观测漂移的 10 倍(不然噪声就能攒满)",
+		StarSystem.WORM_ESCAPE_DIST >= 1.8 * 10.0,
+		"阈值 %.0f vs 实测单帧最大 1.8 码" % StarSystem.WORM_ESCAPE_DIST)
 
 	# ══ 造场：星际龟朝右放虫洞，三个敌人并排站在虫洞必经之路上 ══
 	## A = 对照组（什么都不做，必须被抓）
@@ -170,6 +175,7 @@ func _ready() -> void:
 		"moved=%s escaped=%s  跳到 y=%.0f, 最终 y=%.0f(洞心一带 y≈%.0f)"
 			% [str(moved_c), str(c_escaped), move_y, (ec["pos"] as Vector2).y, c0.y])
 
+	await _t_smooth_escape(c0)
 	_done()
 
 
@@ -183,3 +189,67 @@ func _done() -> void:
 		_fail += 1
 	print("ALL PASS — 虫洞方案 C" if _fail == 0 else "FAIL x%d — 虫洞方案 C" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+# ─────────────────────────────────────────────────────────────
+# ④ ★★【平滑位移】也必须能脱离 —— 2026-08-30 用户实测抓到的真 bug
+#
+#   ★上面 ③ 用的是"直接把 pos 挪 300 码" = **瞬移**。而游戏里绝大多数位移技是
+#     **平滑**的(近战小将【人体浪板】拉己滑行 / 猎人翻滚 / 熔岩跃击),
+#     实测每帧只把单位挪 **1.7 码**。
+#     旧判据"一帧内被挪走 >130 码"对它们**一次都不成立** ⇒ 有位移技也逃不掉,
+#     而 ③ 全绿 —— **判据只测了容易的那一半**。
+#     (同族 memory [[fb-judge-must-fit-the-shape]]: 判据要刚好卡住那个形状。)
+#
+#   ★本条就照真实形态喂: 每帧只挪一点点, 累计到阈值就该放人。
+# ─────────────────────────────────────────────────────────────
+const SMOOTH_STEP := 1.7      # 码/帧 —— 实测人体浪板的真实速率
+
+
+func _t_smooth_escape(c0: Vector2) -> void:
+	print("── ④ 平滑位移(每帧 %.1f 码)也要能脱离 ──" % SMOOTH_STEP)
+	var star: Dictionary = _s._units[0]
+	var e: Dictionary = _s._spawn._make_unit("basic", "right", c0 + Vector2(420.0, 0.0))
+	e["maxHp"] = 1.0e8
+	e["hp"] = 1.0e8
+	e["no_basic"] = true
+	e["no_move"] = true
+	_s._units.clear()
+	_s._units.append(star)
+	_s._units.append(e)
+	_s._over = false
+	_s._star_sys._sk_star_wormhole(star, e)
+
+	var base_x: float = c0.x + 420.0
+	var maxdx := 0.0
+	var pushing := false
+	var pushed := 0.0
+	var freed := false
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 6000:
+		maxdx = maxf(maxdx, (e["pos"] as Vector2).x - base_x)
+		if maxdx > CAUGHT_DX:
+			pushing = true
+		if pushing and not freed:
+			## ★每帧只挪一点点 —— 这就是平滑位移技的真实形态
+			e["pos"] = (e["pos"] as Vector2) + Vector2(0.0, SMOOTH_STEP)
+			pushed += SMOOTH_STEP
+			## ★判据 = 【净位移留下来了多少】。
+			##   捕获期虫洞每帧把坐标写回轨道 ⇒ 我推的那 1.7 码当帧就被抹掉, 净位移 ≈ 0。
+			##   只有**真被放走**的那些帧, 推的位移才留得下来。
+			##   (放走之后它还在 100 码捕获半径内会被再抓, 所以净位移不会很大 ——
+			##    判据要卡的是"留下没留下", 不是"跑多远"。)
+			if pushed > 300.0:
+				break
+		await get_tree().process_frame
+
+	_ok("④ ★分母: 它真的先被虫洞抓住并往前拖了(不然'脱离'无从谈起)",
+		pushing, "被拖了 %.0f 码" % maxdx)
+	## ★判据量【产品自己记的账】: 虫洞放走它几次。
+	##   第一版量的是"最终净位移", 反向验证当场抓到它是假的 —— 虫洞飞到边界会自己结束,
+	##   之后单位当然自由, 于是【退回旧判据门禁照样绿】。净位移被"洞没了"满足了。
+	var n_freed: int = int(e.get("_worm_freed_n", 0))
+	freed = n_freed > 0
+	_ok("④ ★★平滑位移(每帧 %.1f 码)累计够了就必须放人 —— 不是只有瞬移才算" % SMOOTH_STEP,
+		freed, "虫洞放走它 %d 次(累计推了 %.0f 码); 旧的【单帧】判据下这里恒为 0"
+			% [n_freed, pushed])
