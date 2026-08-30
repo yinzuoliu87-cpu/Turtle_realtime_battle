@@ -94,6 +94,26 @@ def main():
         else:
             print("")
             print("  [FAIL] ★★还原失败: 写回后与原文【不一致】—— 立刻手工检查 %s" % path)
+        ## ★★第二只眼: 除了"我写回的字符串 == 我读到的", 还要问 **git** 这个文件动没动。
+        ##   由来(2026-08-31, 第三次踩同一个坑): 上一轮反向验证之后
+        ##   `_diceFate_OFF` 留在了产品文件里, 而本工具照样打印了"逐字节一致" ——
+        ##   因为它比的是【它自己读进来的 orig】, 如果 orig 在读的时候就已经脏了,
+        ##   这个比对就是【和脏的自己比】, 恒真。
+        ##   git 的工作区状态是**独立的第二个来源**, 它不知道 orig 是什么。
+        ##   (同族 memory [[fb-verify-check-can-fail]]: 判据不能和自己比。)
+        try:
+            g = subprocess.run(["git", "diff", "--numstat", "--", path],
+                               capture_output=True, timeout=60)
+            gd = g.stdout.decode("utf-8", "replace").strip()
+            if gd:
+                print("  [FAIL] ★★git 说 %s 相对 HEAD 还有改动: %s" % (path, gd.replace(chr(10), " | ")))
+                print("         —— 如果这次变异之前它本来就是干净的, 那就是【没还原干净】。")
+                print("         逐字节核对挡不住这个: 它只和自己读到的比。")
+                restored = False
+            else:
+                print("  [git 第二只眼] %s 相对 HEAD 无改动 ✓" % path)
+        except Exception as _e:
+            print("  [git 第二只眼] 跑不起来(%s) —— 只剩逐字节核对这一只眼" % _e)
 
     if not restored:
         return 1
