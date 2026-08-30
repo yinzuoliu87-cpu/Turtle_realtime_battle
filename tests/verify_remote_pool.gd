@@ -209,6 +209,7 @@ func _ready() -> void:
 	_ok("★收尾: 环境变量已删除, 本层回到配置里的真地址",
 		RemotePool.enabled() and RemotePool.base_url().begins_with("http"),
 		"base_url=[%s]" % RemotePool.base_url())
+	await _t_v6_5xx(rp)
 	rp.queue_free()
 	_done()
 
@@ -223,8 +224,74 @@ func _read(p: String) -> String:
 func _done() -> void:
 	print("")
 	print("  (共 %d 条断言)" % _n)
-	if _n < 23:
-		print("  [FAIL] ★分母: 断言只有 %d 条(<23) —— 有用例没跑到" % _n)
+	if _n < 34:
+		print("  [FAIL] ★分母: 断言只有 %d 条(<34) —— 有用例没跑到" % _n)
 		_fail += 1
 	print("ALL PASS — 阵容上传后端客户端层" if _fail == 0 else "FAIL x%d — 阵容上传后端客户端层" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+# ─────────────────────────────────────────────────────────────
+# V6 ★★后端【连得上但返 5xx】也必须静默降级
+#
+#   ★由来(2026-08-30): 我去实测现用后端, 发现它**整个挂了** ——
+#     GET / 、/health 、/ghost?bracket=3 **全部 503**,
+#     正文是 "Deno Deploy encountered an error while processing this request."
+#     而上面 V1/V5 验的是【连不上】(指向不可达地址), **没有一条验过"连得上但 5xx"**。
+#     这两条是不同的代码路径: 连不上走 `RESULT_SUCCESS != result`,
+#     5xx 走的是 `code` 分支, 而且**回调里带着一段 HTML 正文**(不是 JSON)。
+#
+#   ★用 `_transport` 注入(它就是为这个留的缝), 不需要真服务器。
+# ─────────────────────────────────────────────────────────────
+const DENO_503_BODY := "Deno Deploy encountered an error while processing this request."
+
+
+func _t_v6_5xx(rp) -> void:
+	print("── V6 后端 5xx(不是连不上) ──")
+	var calls := {"n": 0}
+	## 注入: 每次请求都回 503 + 一段【HTML 正文】(照实测的真实形态)
+	rp._transport = func(_m: String, _u: String, _b: String, cb: Callable) -> void:
+		calls["n"] += 1
+		if cb.is_valid():
+			cb.call({"ok": false, "code": 503, "body": DENO_503_BODY})
+
+	var save_before := _read("user://save.json")
+	var pool_before := _read(Backend.POOL_PATH)
+	rp._upload_flash = false
+	var got := {"done": false, "st": {}}
+	rp.fetch_bracket(3, func(st: Dictionary) -> void:
+		got["done"] = true
+		got["st"] = st
+	)
+	rp.upload(_good())
+	var w2 := 0
+	while w2 < 300 and not bool(got["done"]):
+		await get_tree().process_frame
+		w2 += 1
+
+	## ★分母: 注入真的被走到了(否则下面全是恒真式 —— 没发请求当然什么都没坏)
+	_ok("V6 ★分母: 注入的传输层真的被调用了(上传+拉取共 %d 次)" % int(calls["n"]),
+		int(calls["n"]) >= 2, "只有 %d 次" % int(calls["n"]))
+	_ok("V6 ★分母: 拉取真的回调了", bool(got["done"]), "等了 %d 帧" % w2)
+	_ok("V6 ★★5xx ⇒ 一份都没入池", int((got["st"] as Dictionary).get("added", -1)) == 0,
+		str(got["st"]))
+	_ok("V6 ★★5xx ⇒ 不许显示「阵容已上传」(它是成功才亮的)",
+		not bool(rp._upload_flash), "_upload_flash=%s" % str(rp._upload_flash))
+	_ok("V6 ★★5xx 不影响【存档】(逐字节比对)", _read("user://save.json") == save_before)
+	_ok("V6 ★★5xx 不影响【本地池文件】(逐字节比对)", _read(Backend.POOL_PATH) == pool_before)
+	rp._transport = Callable()
+
+	## ★★V6-b 直接量【"算不算成功"那句判断】本身 —— 上面注入 `_transport` 会绕过它。
+	##   反向验证抓到过: 把它改成不看状态码, 上面六条照样全绿。
+	var OKR: int = HTTPRequest.RESULT_SUCCESS
+	var BADR: int = HTTPRequest.RESULT_CANT_CONNECT
+	_ok("V6-b ★分母: 200 必须算成功(不然下面全是恒真式)", RemotePool.resp_ok(OKR, 200))
+	_ok("V6-b ★★503 不算成功(实测现用后端就是全线 503)", not RemotePool.resp_ok(OKR, 503))
+	_ok("V6-b ★★500 / 502 / 429 / 404 / 301 都不算成功",
+		not RemotePool.resp_ok(OKR, 500) and not RemotePool.resp_ok(OKR, 502)
+		and not RemotePool.resp_ok(OKR, 429) and not RemotePool.resp_ok(OKR, 404)
+		and not RemotePool.resp_ok(OKR, 301))
+	_ok("V6-b 边界: 299 算成功 / 300 不算(挡 off-by-one)",
+		RemotePool.resp_ok(OKR, 299) and not RemotePool.resp_ok(OKR, 300))
+	_ok("V6-b 连不上时即使 code=200 也不算成功(两条路都要挡)",
+		not RemotePool.resp_ok(BADR, 200))

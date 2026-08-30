@@ -219,7 +219,7 @@ func _http(method: String, url: String, body: String, cb: Callable) -> void:
 	req.timeout = TIMEOUT_SEC
 	add_child(req)
 	req.request_completed.connect(func(result: int, code: int, _h: PackedStringArray, data: PackedByteArray) -> void:
-		var ok := (result == HTTPRequest.RESULT_SUCCESS and code >= 200 and code < 300)
+		var ok := resp_ok(result, code)
 		if cb.is_valid():
 			cb.call({"ok": ok, "code": code, "body": data.get_string_from_utf8()})
 		req.queue_free()
@@ -280,3 +280,18 @@ func fetch_bracket(bracket: int, done: Callable = Callable()) -> void:
 			done.call(st)
 		_bye()
 	)
+
+
+## 一次响应算不算成功 —— **唯一口径**, 抽出来是为了能被门禁直接量。
+##
+## ★由来(2026-08-30): 我给"后端返 5xx 也要静默降级"补门禁时, 用 `_transport` 注入了
+##   一个假的 503 响应 —— 那测的是**消费侧**(拿到 ok=false 之后有没有乱来),
+##   而**"503 到底算不算成功"这句判断本身被绕过了**。
+##   反向验证当场抓到: 把这句改成不看状态码, 门禁照样全绿。
+##   抽成纯函数后, 门禁能逐个状态码直接问它, 不需要网络也不需要注入。
+##
+## ★实测背景: 现用的 Deno 后端 2026-08-30 全线 503(正文还是一段 HTML 不是 JSON),
+##   而此前只验过"连不上"。连不上走 `result != RESULT_SUCCESS`, 5xx 走的是 `code`,
+##   是两条不同的路。
+static func resp_ok(result: int, code: int) -> bool:
+	return result == HTTPRequest.RESULT_SUCCESS and code >= 200 and code < 300

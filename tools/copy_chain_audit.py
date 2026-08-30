@@ -133,12 +133,41 @@ def main():
     base = json.loads(io.open(base_path, encoding='utf-8').read()) if os.path.exists(base_path) else None
     print('  [分母] 可抄率 %d/%d = %.0f%%' % (len(cop), len(petskill), 100.0 * len(cop) / len(petskill)))
     if base is not None:
-        if len(cop) < int(base.get('copyable', 0)):
-            fails.append('⑤覆盖率退步: 可抄 %d < 基线 %d —— 只许增不许减'
-                         % (len(cop), int(base['copyable'])))
+        ## ★★下线要【带理由】才允许 —— 2026-08-30 新增。
+        ##   棘轮的本意是"别偷偷把可抄面缩回去", 但有时候下线是【对的】:
+        ##   批量台(82 个逐个抄一遍)量出 3 个技能抄了会崩 / 会把龟壳锁死一整场。
+        ##   直接改基线 = 无声降标准; 所以改成: 下线必须在 UNCOPYABLE 里
+        ##   **带一句写明白的理由**(≥20 字)。该下线的过得去, 偷偷缩水的照样红。
+        rules_src = io.open('scripts/gamedata/copy_rules.gd', encoding='utf-8').read()
+        why = {}
+        for ln in rules_src.split(chr(10)):
+            t = ln.strip()
+            if not t.startswith('"'):
+                continue
+            a = t.find('"')
+            b = t.find('"', a + 1)
+            c = t.find('"', b + 1)
+            d = t.rfind('"')
+            if a < 0 or b <= a or c <= b or d <= c:
+                continue
+            why[t[a + 1:b]] = t[c + 1:d]
         lost = sorted(set(base.get('list', [])) - set(cop))
         for x in lost:
-            fails.append('⑤原本能抄的 `%s` 现在抄不到了' % x)
+            r = why.get(x, '')
+            if len(r) < 20:
+                fails.append('⑤原本能抄的 `%s` 现在抄不到了, 而 UNCOPYABLE 里没有(或只有一句空话的)'
+                             '理由 —— 下线可以, 但必须写清为什么' % x)
+            else:
+                print('  [已下线·有理由] %-20s %s' % (x, r[:74]))
+        ## ★计数那条要【扣掉有理由的下线】—— 否则每次正当下线都得手改基线,
+        ##   而手改基线正是"无声降标准"本身。有理由的不算退步, 没理由的照样红。
+        ok_lost = 0
+        for x in sorted(set(base.get('list', [])) - set(cop)):
+            if len(str(why.get(x, ''))) >= 20:
+                ok_lost += 1
+        if len(cop) < int(base.get('copyable', 0)) - ok_lost:
+            fails.append('⑤覆盖率退步: 可抄 %d < 基线 %d - 有理由下线 %d —— 只许增不许减'
+                         % (len(cop), int(base['copyable']), ok_lost))
 
     # ⑥ 逐龟: 整只龟一个都抄不到(只报, 不判红 —— 那是设计问题不是漂移)
     per = defaultdict(lambda: [0, 0])
