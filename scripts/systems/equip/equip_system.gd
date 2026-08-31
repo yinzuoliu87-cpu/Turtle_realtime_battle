@@ -1779,6 +1779,11 @@ func _eq_on_kill(killer: Dictionary, victim: Dictionary) -> void:
 #  on-death (阵亡者视角) — 复活海螺 / 黄铜齿轮 (+ 左轮052 敌亡补弹)
 # ============================================================================
 func _eq_on_death(u: Dictionary, _killer) -> void:
+	## 096 小木斧: 斧头击杀 / 3 秒内助攻 → +2 砍伐经验。
+	## ★挂在 on-death 而不是 on-kill —— on-kill 遍历"击杀者的 equips", 而斧头是召唤物,
+	##   身上一件装备都没有, 那条路上永远轮不到它(它还额外要求击杀者 alive,
+	##   斧头与目标同归于尽时整条跳过)。
+	_axe.on_death(u, _killer)
 	for e in u.get("equips", []):
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
 		battle._cur_eq_item = iid   # 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)

@@ -269,7 +269,7 @@ func _ready() -> void:
 	var e96: Dictionary = DataRegistry.phase2_equipment_by_id.get("p2eq_096", {})
 	_ok("096 名字 = 小木斧 · 1 费", str(e96.get("name", "")) == "小木斧" and int(e96.get("cost", 0)) == 1,
 		"%s / %s 费" % [str(e96.get("name", "")), str(e96.get("cost", ""))])
-	_ok("096 图标在盘上", ResourceLoader.exists("res://assets/sprites/equip/wood-axe.png"),
+	_ok("096 图标在盘上", ResourceLoader.exists("res://assets/sprites/equip/axe-wood.png"),
 		str(e96.get("img", "")))
 
 	if _n < 31:

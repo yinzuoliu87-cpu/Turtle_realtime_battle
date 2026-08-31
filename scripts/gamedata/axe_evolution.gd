@@ -31,6 +31,12 @@ const STAGES := [
 	{"key": "gold",    "name": "金斧",   "need": 130, "cost": 4},
 	{"key": "diamond", "name": "钻石斧", "need": 160, "cost": 5},
 ]
+## 四个进化阈值的【扁平投影】—— **只为图鉴文案的数组占位符而存在**
+## (`{C:AxeEvolution.STAGE_NEEDS}` 会渲染成 "80/110/130/160"; 占位符没法索引 STAGES 里的字典)。
+## ★这是一份镜像, 天生有漂的风险 ⇒ 门禁 verify_axe 逐项比对它与 STAGES[i+1]["need"],
+##   改了 STAGES 忘了改这里**当场红**。别把它当第二个事实源用, 代码里一律读 STAGES。
+const STAGE_NEEDS := [80, 110, 130, 160]
+
 ## 钻石斧之后再攒这么多, 才能做最终进化(四选一)。
 const FINAL_NEED := 400
 
@@ -134,3 +140,59 @@ static func minion_atk(exp_total: int, passives_unlocked: int = 0) -> float:
 ## ⇒ 木斧 0 条、石斧 1 条、铁斧 2 条、金斧 3 条、钻石斧 4 条。
 static func passives_at(i: int) -> int:
 	return clampi(i, 0, STAGES.size() - 1)
+
+
+## ── 四期: 进化推进(纯函数) ────────────────────────────────────
+## 攒 `n` 点经验之后的新状态。**不碰 GameState** —— 门禁直接调它验数, 不必打一场真对局。
+##
+## ★两个字段【同源写入】(方案书风险 5): 一次加经验同时算出进度条与历史累计。
+##   分成两处各写各的那一刻, 就埋下了"一个数存两份"的坑。
+##     · bar   进化时**清空**(需求原话「每次清空进度条」—— 溢出部分丢弃, 不结转)
+##     · total **只增不减**, 进化不动它 —— 召唤物的血/攻公式读的是它
+## ★一次 add 最多进化一档: 清空之后 bar=0, 再判一次也过不了阈值。
+##   (经验单笔最大 +15 而最小阈值 80 ⇒ 实战里根本够不到"一次跨两档")
+static func advance(bar: int, total: int, stage_i: int, n: int) -> Dictionary:
+	var b: int = maxi(0, bar) + maxi(0, n)
+	var t: int = maxi(0, total) + maxi(0, n)
+	var s: int = clampi(stage_i, 0, STAGES.size() - 1)
+	var ev := false
+	if s + 1 < STAGES.size() and b >= int(STAGES[s + 1]["need"]):
+		s += 1
+		b = 0
+		ev = true
+	return {"bar": b, "total": t, "stage": s, "evolved": ev}
+
+
+## 钻石斧之后攒够 400 ⇒ 该弹「四选一」了(未决点 ⑦)。
+## `final_key` 非空 = 已经选过, 本大轮锁定 ⇒ 不再 ready。
+static func final_ready(bar: int, stage_i: int, final_key: String) -> bool:
+	return final_key == "" and stage_i >= STAGES.size() - 1 and bar >= FINAL_NEED
+
+
+## 当前该显示成什么。商店的【形态与售价随进化变】读的就是它。
+## 选完最终造物 ⇒ 显示最终造物(它不再随档位走)。
+static func display(stage_i: int, final_key: String) -> Dictionary:
+	for f in FINALS:
+		if str((f as Dictionary)["key"]) == final_key:
+			return {"key": str(f["key"]), "name": str(f["name"]), "cost": int(f["cost"])}
+	var st: Dictionary = stage(stage_i)
+	return {"key": str(st["key"]), "name": str(st["name"]), "cost": int(st["cost"])}
+
+
+## 九档九张图标(木/石/铁/金/钻 + 四个最终造物), 与 `display` 的 key 一一对应。
+static func icon_path(stage_i: int, final_key: String) -> String:
+	## ★返回的是 `img` 字段的**相对形式**(`equip/xxx.png`) —— EquipIcon.make 自己拼
+	##   "res://assets/sprites/" 前缀。写成绝对路径会走进 emoji 兜底分支而不是报错,
+	##   表现成"图标变成 📦", 看着像缺图。
+	return "equip/axe-%s.png" % str(display(stage_i, final_key)["key"])
+
+
+## ── 四期: 货架策略 ────────────────────────────────────────────
+## 返回本次掷货该怎么对待 096:
+##   ""      未激活羁绊 → **什么都不做**, 它本来就是 1 费装备, 走常规 1 费档(需求原话)
+##   "off"   已选完最终造物 → 彻底不出货(需求原话「经验封顶后不再出货」)
+##   "indep" 已激活羁绊 → 从常规池里**剔除**, 改走独立概率(否则两条路会叠加)
+static func shelf_mode(syn_active: bool, final_key: String) -> String:
+	if final_key != "":
+		return "off"
+	return "indep" if syn_active else ""

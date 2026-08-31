@@ -9,6 +9,7 @@ const H := 720.0
 const EquipStats = preload("res://scripts/gamedata/equip_stats.gd")
 ## 类型羁绊: 阈值/档位/类型映射 —— 与背包羁绊面板/战斗侧同一份(2026-08-11 商店信息栏显示羁绊)
 const Phase2Types = preload("res://scripts/gamedata/phase2_types.gd")
+const AxeEvo = preload("res://scripts/gamedata/axe_evolution.gd")   # 096 小木斧: 形态/售价/出货概率
 ## 深海币图标 —— 复用主菜单那张(MainMenuScene:564 `mic + "ic-deepsea.png"`)。
 ## ★用户 2026-07-28「深海币可以复用吧」: 商店原先 6 处全在打 emoji 💠(方片), 而主菜单/局内
 ##   是这枚螺旋贝币 —— 同一种货币两套视觉。emoji 还随系统字体变, 换机器就换样。
@@ -191,7 +192,29 @@ func _roll() -> void:
 	#   两者在正常流程下同时发生, 但存档损坏/调试快进时可能只有一边成立, 各守各的。
 	GameState.ensure_equip_pool()
 	pool = EquipPool.available(GameState.equip_pool, pool)
+	## ★096 小木斧的出货是【独立的一条通路】(方案书四期 / 未决点 ⑫)。三种模式:
+	##   ""      没激活斧头羁绊 → 什么都不做, 走常规 1 费档(它本来就是 1 费, 天然成立)
+	##   "off"   已选完最终造物 → 从池里剔掉, 彻底不再出货
+	##   "indep" 已激活羁绊 → 先从常规池剔掉, 再按每格独立概率铺回去
+	##           (不剔就是**两条路叠加**, 实际概率比标称的高)
+	var _axe_mode: String = AxeEvo.shelf_mode(GameState.axe_synergy_active(), GameState.axe_final)
+	var _axe_def = null
+	if _axe_mode != "":
+		var _kept: Array = []
+		for e2 in pool:
+			if e2 is Dictionary and str((e2 as Dictionary).get("id", "")) == "p2eq_096":
+				_axe_def = e2
+			else:
+				_kept.append(e2)
+		pool = _kept
 	_offer = Phase2Equip.roll_shop(pool, _shop_level(), 10, _rng)
+	## ★每格概率由【整货架至少出一个】反解而来(AxeEvo.slot_prob), 不是把 3% 直接当每格用。
+	##   槽数必须与上面 roll_shop 的 count 是**同一个数** —— 分头写死两个 10 就会漂。
+	if _axe_mode == "indep" and _axe_def != null:
+		var _q: float = AxeEvo.slot_prob(GameState.axe_syn_matches, _offer.size())
+		for _i in range(_offer.size()):
+			if _rng.randf() < _q:
+				_offer[_i] = _axe_def
 	_persist_offer()   # 掷完立刻落盘, 否则退出重进又变了
 
 # 玩家已有 3 星(满星)的装备 id 集合(背包+统领已装+小将已装)→ 商店 roll 时排除
@@ -211,6 +234,24 @@ func _maxed_item_ids() -> Dictionary:
 					for it3 in u["equips"]:
 						if it3 is Dictionary and int(it3.get("star", 1)) >= 3: s[str(it3.get("id", ""))] = true
 	return s
+
+## ★096 小木斧的【形态与售价随进化变】(方案书四期)。返回**浅拷贝**, 原 edef 一个字段不碰。
+##   为什么不直接改 `_offer` 里那份: 货架是**落盘持久化**的(_persist_offer), 写脏了就等于
+##   把形态冻在掷货那一刻 —— 进化之后要等下一次刷新才更新, 而刷新要花钱。
+##   `id` 保持不变 ⇒ 拿装饰后的 edef 去 pool_take / 进背包 / _price 全都对。
+##   其余 95 件**原样返回**(连 duplicate 都不做), 免得每次重绘白拷 95 个字典。
+func _deco(edef) -> Dictionary:
+	if not (edef is Dictionary):
+		return {}
+	if str((edef as Dictionary).get("id", "")) != "p2eq_096":
+		return edef
+	var d: Dictionary = (edef as Dictionary).duplicate()
+	var disp: Dictionary = AxeEvo.display(GameState.axe_stage, GameState.axe_final)
+	d["name"] = str(disp["name"])
+	d["cost"] = int(disp["cost"])
+	d["img"] = AxeEvo.icon_path(GameState.axe_stage, GameState.axe_final)
+	return d
+
 
 func _price(edef: Dictionary) -> int:
 	return maxi(1, int(edef.get("cost", 1))) * PRICE_MULT
@@ -560,7 +601,7 @@ func _card(idx: int, pos: Vector2) -> Control:
 		#   modulate 是乘法, 深色贴图乘什么都提不亮: 实测染色版"选中 vs 普通"色差只有 26
 		#   (人眼要 >60), 肉眼分不出。两张独立贴图的边框色差是 135。
 		#   费用档也不再压在框上, 改由【名字颜色】承担。
-		var _c: int = clampi(int((_offer[idx] as Dictionary).get("cost", 1)), 1, 5)
+		var _c: int = clampi(int(_deco(_offer[idx]).get("cost", 1)), 1, 5)
 		_nine(box, CARD_TEX_SEL if sel else CARD_TEX_TIER[_c - 1], CARD_MARGIN, Vector2.ZERO, Vector2(SLOT_W, SLOT_H), 1)
 	if bought:
 		var sold := Label.new(); sold.text = "已购"
@@ -569,7 +610,7 @@ func _card(idx: int, pos: Vector2) -> Control:
 		sold.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; sold.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		sold.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(sold)
 		return box
-	var edef: Dictionary = _offer[idx]
+	var edef: Dictionary = _deco(_offer[idx])
 	# ★卡上【不再写「N 费」】(用户 2026-07-29:「1费和1图标都存在」)。
 	#   实测 PRICE_MULT = 1 → 售价恒等于费用。★分母是 **95** 不是 59(59 是加 060~095 那批之前的数):
 	#     95 件里 94 件 cost≥1 ⇒ 售价 == 费用; 只有 p2eq_095 的 cost = 0,
@@ -804,7 +845,7 @@ func _build_detail_panel() -> void:
 		return
 
 	if not own_mode:
-		edef = _offer[_sel]
+		edef = _deco(_offer[_sel])
 	var cost := int(edef.get("cost", 1))
 	var price := _price(edef)
 	var owned := _owned_count(str(edef.get("id", "")), own_star if own_mode else 1)
@@ -1050,7 +1091,7 @@ func _rich_desc(edef: Dictionary, star: int = 1) -> String:
 func _on_buy(idx: int) -> void:
 	if idx < 0 or idx >= _offer.size() or _offer[idx] == null:
 		return
-	var edef: Dictionary = _offer[idx]
+	var edef: Dictionary = _deco(_offer[idx])
 	var price := _price(edef)
 	if int(GameState.meta_deepsea_coins) < price:
 		return   # 买不起
@@ -1060,7 +1101,17 @@ func _on_buy(idx: int) -> void:
 	if not GameState.pool_take(_eid, 1):
 		return
 	GameState.meta_deepsea_coins -= price
-	GameState.persistent_bench.append({"id": _eid, "star": 1})
+	## ★096 小木斧(方案书未决点 ⑧, 用户 2026-08-31 亲自纠正过我): **只能拥有一把**。
+	##   已经有了还买 ⇒ 这一次购买【整笔化成 +15 砍伐经验】, 不进背包。
+	##   钱照扣 —— 这就是它的"用钱换经验"通路, 也是需求原话「购买该装备会使经验条+15」。
+	##   ⚠ 第一把也 +15(需求没有"第一把不算"的例外), 差别只在进不进背包。
+	if _eid == "p2eq_096":
+		var _dup: bool = GameState.axe_owned()
+		GameState.axe_add_exp(AxeEvo.EXP_ON_BUY)
+		if not _dup:
+			GameState.persistent_bench.append({"id": _eid, "star": 1})
+	else:
+		GameState.persistent_bench.append({"id": _eid, "star": 1})
 	GameState.auto_merge_all()   # 买后自动 3 合 1 (背包+龟身一起算)
 	_offer[idx] = null
 	_persist_offer()   # 买走的位子要留空, 不能退出重进又长回来

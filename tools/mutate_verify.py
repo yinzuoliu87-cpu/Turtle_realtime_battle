@@ -86,12 +86,27 @@ def main():
     n_bad = 0
     try:
         for name, old, new in muts:
+            ## ★名称写成 "说明#2" ⇒ 改【第 2 处】出现。
+            ##   由来(2026-09-01): GameState 的 reset_save 与 start_new_season 两段重置
+            ##   代码**逐字相同**, 上下文往外扩十几行仍然一样(一个以 EOF 收口, 表达不出来)。
+            ##   没有这个开关就只能手写临时脚本去改第二处 —— 而手写脚本正是
+            ##   [[fb-restore-mutations-after-reverse-verify]] 那次没还原的来源。
+            ##   ⇒ 宁可给工具加一个显式的序号, 也不要绕开工具。
+            which = 1
+            if "#" in name and name.rsplit("#", 1)[1].isdigit():
+                which = int(name.rsplit("#", 1)[1])
             cnt = orig.count(old)
-            if cnt != 1:
-                print("  [FAIL] 变异「%s」的旧串在原文里出现 %d 次(必须正好 1 次)" % (name, cnt))
+            if cnt < which or (which == 1 and cnt != 1):
+                print("  [FAIL] 变异「%s」的旧串在原文里出现 %d 次(要第 %d 处; 不写 #N 时必须正好 1 次)"
+                      % (name, cnt, which))
                 n_bad += 1
                 continue
-            io.open(path, "w", encoding="utf-8", newline="").write(orig.replace(old, new, 1))
+            ## 定位到第 which 处再替换(前 which-1 处原样留着)
+            head, tail = "", orig
+            for _k in range(which - 1):
+                i = tail.index(old) + len(old)
+                head, tail = head + tail[:i], tail[i:]
+            io.open(path, "w", encoding="utf-8", newline="").write(head + tail.replace(old, new, 1))
             fails, broke = run_scene(scene)
             print("▶ 变异: %s" % name)
             if broke:

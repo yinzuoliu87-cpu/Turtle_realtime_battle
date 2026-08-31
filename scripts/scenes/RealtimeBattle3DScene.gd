@@ -7776,8 +7776,7 @@ func _check_end() -> void:
 # 赛季结算 (1:1 搬自 2D RealtimeBattleScene._settle_season): 闭环把胜负喂回 GameState 养成
 func _settle_season(won: bool) -> void:
 	var gs = get_node_or_null("/root/GameState")
-	# ★新手教程沙盒(用户2026-07-23:「不获得任何奖励」): 直接不喂赛季。
-	#   放最前面 —— 下方所有 season_total_battles++/coins+= 都在这行之后, 一个都到不了。
+	# ★新手教程沙盒(用户2026-07-23「不获得任何奖励」): 不喂赛季。放最前面 —— 下方 season_total_battles++/coins+= 全在这行之后, 一个都到不了。
 	if gs != null and bool(gs.get("tutorial_active")):
 		_had_season = false
 		return
@@ -7797,6 +7796,7 @@ func _settle_season(won: bool) -> void:
 		_last_reward = 8 + int(gs.hearts) + 2 * lost_hearts + (6 if won else 0)   # ★深海币砍到约1/3(用户2026-07-18"太多要减"): 原25+2命+5失命+15胜≈胜60/负45→一场买20件毫无取舍; 新≈满命胜22/负17·残命胜29·一场买5-7件(逆风补偿保留·糖果罐大奖不动)
 		gs.season_total_battles += 1
 		gs.add_season_xp(2)                          # 每场 +2 大轮经验
+		gs.axe_on_match_end()                        # 096 小木斧: 打完一整场 +10 砍伐经验 + 羁绊局数
 		gs.candy_jar_add(1 if won else 4)            # 糖果罐(选糖果龟当统领才有): 赢+1输+4封顶30(封板L392·逆风快攒)
 		if won:
 			gs.season_wins += 1

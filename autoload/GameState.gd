@@ -605,6 +605,10 @@ var axe_exp_bar: int = 0
 var axe_exp_total: int = 0
 var axe_stage: int = 0                                # 档位下标(0=木斧, 见 AxeEvolution.STAGES)
 var axe_final: String = ""                            # 最终造物 key(空=还没选; 选完本大轮锁定)
+## 本大轮内【斧头羁绊处于激活状态】时打完的局数 → 出货概率的「局数×0.1%」那一项。
+## ★不是 season_total_battles: 那是本赛季**所有**场次, 而需求说的是"激活羁绊【后】"的局数
+##   (2026-08-31 用户原话「玩家激活斧头羁绊时在这大轮游戏的局数」)。拿总场次当它 = 白送概率。
+var axe_syn_matches: int = 0
 var season_level: int = 1                             # 大轮等级 1-10 (每场+2经验累积, 可买经验; 驱动商店出货档 + 装备槽; 用户 2026-06-27)
 # ★装备私人池 (2026-08-03 批2, 方案书 §4.6·D6/D20~D23): {装备id: 剩余张数}, -1 = 已满3★冻结。
 #   在此之前商店是【无限张有放回】—— 想要几件同款就有几件, 3★ 只受钱和运气限制。
@@ -613,6 +617,7 @@ var season_level: int = 1                             # 大轮等级 1-10 (每�
 var equip_pool: Dictionary = {}
 const _EquipPool := preload("res://scripts/gamedata/equip_pool.gd")
 const _P2T := preload("res://scripts/gamedata/phase2_types.gd")   # 类型映射(圣光护盾按盾件数发)
+const _AxeEvo := preload("res://scripts/gamedata/axe_evolution.gd")  # 096 小木斧: 档位/阈值/出货概率的唯一事实源
 var debug_level: int = 0                              # 调试器: >0 强制全体战斗单位等级(测试用, 正式版用外部快照); 0=用真实等级
 var season_xp: int = 0                                # 大轮等级当前经验 (满 xp_to_next(level) 升级)
 var chest_treasure_value: float = 0.0                 # 宝箱藏宝图·财宝值(随一大轮累积·用户2026-07-16)
@@ -1089,6 +1094,7 @@ func save() -> void:
 		"equip_pool": equip_pool,
 		"axe_exp_bar": axe_exp_bar, "axe_exp_total": axe_exp_total,
 		"axe_stage": axe_stage, "axe_final": axe_final,
+		"axe_syn_matches": axe_syn_matches,
 		"persistent_bench": persistent_bench,
 		"persistent_equipped": persistent_equipped,
 		"candy_jar_count": candy_jar_count,
@@ -1155,6 +1161,7 @@ func _load() -> void:
 	axe_exp_total = int(data.get("axe_exp_total", 0))
 	axe_stage = int(data.get("axe_stage", 0))
 	axe_final = str(data.get("axe_final", ""))
+	axe_syn_matches = int(data.get("axe_syn_matches", 0))
 	season_xp = int(data.get("season_xp", 0))
 	chest_treasure_value = float(data.get("chest_treasure_value", 0.0))
 	chest_treasures_won = data.get("chest_treasures_won", [])
@@ -1191,6 +1198,59 @@ func _load() -> void:
 
 ## 重置所有进度。**不清设置项**(bgm/sfx 音量 · fullscreen · perf_lite) — 那是偏好不是进度。
 ## ⚠ 破坏性: 调用方必须先做二次确认 (SettingsScene 已加确认弹窗)。
+# ════════════════════════════════════════════════════════════════════════
+#  096 小木斧【砍伐经验】—— 四期(2026-09-01)
+#
+#  ★`axe_exp_bar` / `axe_exp_total` / `axe_stage` 三个字段【只能经 axe_add_exp 改】。
+#    它们是"同一次加经验的三个侧面", 分头写就必漂(方案书风险 5)。
+#    门禁 verify_axe 有一条扫描: 产品代码里除了本函数, 不许再有第二处 `axe_exp_bar =`。
+# ════════════════════════════════════════════════════════════════════════
+
+## 攒 n 点砍伐经验。返回**本次是否发生了进化**(调用方要放演出就看这个返回值)。
+func axe_add_exp(n: int) -> bool:
+	if n <= 0:
+		return false
+	var r: Dictionary = _AxeEvo.advance(axe_exp_bar, axe_exp_total, axe_stage, n)
+	axe_exp_bar = int(r["bar"])
+	axe_exp_total = int(r["total"])
+	axe_stage = int(r["stage"])
+	return bool(r["evolved"])
+
+
+## 打完一整场对局的记账(未决点 ②: 不论有没有走到决胜)。**战斗侧只调这一个函数** ——
+## "+10 经验"与"羁绊局数 +1"是同一件事的两面, 拆到两处调用就会有人只加了一半。
+## ★调用点必须在 `_settle_season` 的【有赛季】分支里 —— demo / 新手教程不喂赛季,
+##   也就不该白送经验(那两条路上面已经 return 了)。
+func axe_on_match_end() -> void:
+	axe_add_exp(_AxeEvo.EXP_ON_MATCH)
+	if axe_synergy_active():
+		axe_syn_matches += 1
+
+
+## 斧头羁绊激活了没有。★口径与羁绊面板【完全一致】—— 直接问 synergy_rows(),
+## 不自己再数一遍装备(手抄的副本必然落后; 面板改了去重口径这里会自动跟上)。
+func axe_synergy_active() -> bool:
+	for row in synergy_rows():
+		if row is Dictionary and str((row as Dictionary).get("t", "")) == "斧头" 				and int((row as Dictionary).get("tier", 0)) >= 1:
+			return true
+	return false
+
+
+## 已经拥有一把了没有(背包 + 装在身上)。未决点 ⑧「只能拥有一把」的判据。
+## ⚠ 与 axe_synergy_active 口径【故意不同】: 那个只数装在身上的(羁绊要装上才算),
+##   这个连背包也数 —— 买第二把时"背包里躺着一把"同样算已拥有。
+func axe_owned() -> bool:
+	for it in persistent_bench:
+		if it is Dictionary and str((it as Dictionary).get("id", "")) == "p2eq_096":
+			return true
+	if persistent_equipped is Dictionary:
+		for pid in persistent_equipped:
+			for it2 in persistent_equipped[pid]:
+				if it2 is Dictionary and str((it2 as Dictionary).get("id", "")) == "p2eq_096":
+					return true
+	return false
+
+
 func reset_save() -> void:
 	## ★清档【不清 install_uid】—— 它是"这台机器"不是"这局游戏"。
 	##   清掉的话, 服务器上你之前传的快照就再也认不出是自己的了 ⇒ 打到自己。
@@ -1225,6 +1285,7 @@ func reset_save() -> void:
 	axe_exp_total = 0
 	axe_stage = 0
 	axe_final = ""
+	axe_syn_matches = 0
 	candy_jar_count = 0
 	candy_jar_broken = false
 	candy_temp_levels = {}
@@ -1572,6 +1633,7 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	axe_exp_total = 0
 	axe_stage = 0
 	axe_final = ""
+	axe_syn_matches = 0
 	candy_jar_count = 0
 	candy_jar_broken = false
 	candy_temp_levels = {}

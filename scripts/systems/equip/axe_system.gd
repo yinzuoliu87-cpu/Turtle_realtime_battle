@@ -134,8 +134,35 @@ func steal_shield(ax: Dictionary, tgt: Dictionary) -> float:
 
 ## 斧头的 on-hit(只有普攻算)。
 func on_hit(src: Dictionary, tgt: Dictionary, basic: bool) -> void:
-	if not basic:
-		return
 	if not (src is Dictionary) or not src.get("_eq_axe", false):
 		return
-	steal_shield(src, tgt)
+	if tgt is Dictionary:
+		## 助攻窗的起点(四期)。★记在**被打的那个**身上, 而不是在斧头身上记一份名单 ——
+		##   名单要拿单位字典当元素比对, 而单位字典之间互相引用成环(CLAUDE.md §3.2)。
+		tgt["_axe_touch_t"] = float(battle._t)
+	if basic:
+		steal_shield(src, tgt)
+
+
+## ── 四期: 击杀 / 助攻 +2 砍伐经验 ────────────────────────────
+## ★为什么不挂 `_eq_on_kill`: 那条钩子遍历**击杀者的 equips**, 而斧头是召唤物、
+##   身上一件装备都没有, 永远轮不到它。而且它还要求击杀者 `alive` ——
+##   斧头与目标同归于尽时就整条跳过了。
+## ★为什么不靠 `on_hit` 认击杀: on-hit 那一整块被 `u["alive"]` 挡着,
+##   **致命的那一下根本走不到** ⇒ 只用触碰时间戳会漏掉"斧头自己打死的"这一半。
+##   所以分两路: 击杀看 killer 是不是斧头, 助攻看死者身上的触碰时间戳。
+## 返回是否发生了进化(调用方将来放演出用)。
+func on_death(victim: Dictionary, killer) -> bool:
+	if not (victim is Dictionary):
+		return false
+	var gs = battle.get_node_or_null("/root/GameState")
+	if gs == null or not gs.has_method("axe_add_exp"):
+		return false
+	var hit := false
+	if killer is Dictionary and (killer as Dictionary).get("_eq_axe", false):
+		hit = true                                   # 斧头亲手打死
+	elif float(battle._t) - float(victim.get("_axe_touch_t", -9999.0)) <= AE.ASSIST_WINDOW:
+		hit = true                                   # 3 秒内被斧头碰过 = 参与击杀
+	if not hit:
+		return false
+	return bool(gs.axe_add_exp(AE.EXP_ON_KILL))
