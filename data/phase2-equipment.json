@@ -649,14 +649,14 @@
   },
   {
     "id": "p2eq_055",
-    "name": "靶向器",
+    "name": "病毒箭头",
     "cost": 3,
     "baseStats1": "+攻9/15/21·+20龟能",
     "shopAvailable": 1,
     "emoji": "🎯",
     "effectDesc1": "本场累计造成 {C:HookBombSystem.TRIGGER_DMG} 点伤害后，向最近的 1/1/2 名敌人发射钩索炸弹：炸弹附在敌人身上，每 {C:HookBombSystem.BOMB_TICK} 秒对其造成 3/6/6%其最大生命值的物理伤害，直到该敌人死亡。\n若带弹的敌人死亡，则朝所有敌方单位发射钩索，眩晕 {C:HookBombSystem.PULL_STUN} 秒后将其拉向携带者，聚拢后产生一次爆炸，造成（300/600/750+{C:HookBombSystem.BLAST_MAXHP_PCT%}%目标最大生命值）物理伤害（训龟大师、龟蛋与免控单位不受钩索影响）。",
     "effectDesc3": "",
-    "img": "equip/targeter.png",
+    "img": "equip/virus-arrow.png",
     "effectBrief": "累计造成 {C:HookBombSystem.TRIGGER_DMG} 点伤害后投出钩索炸弹，持续扣血直到目标死亡。"
   },
   {
@@ -750,10 +750,10 @@
     "baseStats1": "+攻速8/15/25%·+暴击10/18/30%",
     "shopAvailable": 1,
     "emoji": "🌀",
-    "effectDesc1": "释放技能后获得 30/60/100%攻击速度，持续【本次技能消耗的龟能×{C:EqSpiritBatch.RING_SEC_PER_ENERGY}】秒（对所有龟折合恒定 {C:EqSpiritBatch.RING_COVERAGE%}%覆盖率）。\n携带者的普攻会对敌人施加一个【环】，敌人身上有 3 个环时环被引爆，该敌人受到 25/40/70 点真实伤害。",
+    "effectDesc1": "释放技能后获得 30/60/100%攻击速度，持续【本次技能消耗的龟能×{C:EqSpiritBatch.RING_SEC_PER_ENERGY}】秒（对所有龟折合恒定 {C:EqSpiritBatch.RING_COVERAGE%}%覆盖率）。\n携带者的普攻会对敌人施加一个【环】，敌人身上有 3 个环时环被引爆，该敌人受到（25/40/70+2/3/5%该敌人最大生命值）真实伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_063.png",
-    "effectBrief": "释放技能后 +30/60/100% 攻击速度；普攻叠环，3 环引爆造成真实伤害。"
+    "effectBrief": "释放技能后 +30/60/100% 攻击速度；普攻叠环，3 环引爆造成真实伤害（含 %目标最大生命）。"
   },
   {
     "id": "p2eq_064",

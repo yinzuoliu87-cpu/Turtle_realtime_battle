@@ -73,6 +73,8 @@ eq|玩偶小熊|effectBrief	4.0
 eq|玩偶小熊|effectDesc1	0.7 0.8 1.2 1.5 2.0 4.0 70.0 70.0 600.0
 eq|珊瑚急救塔|effectDesc1	150.0
 eq|电鳗双管铳|effectDesc1	0.5 2.0 60.0 400.0
+eq|病毒箭头|effectBrief	400.0
+eq|病毒箭头|effectDesc1	1.0 1.1 15.0 400.0
 eq|白鲸气环|effectDesc1	0.03
 eq|盗令潜水钟|effectDesc1	2.0 3.0 3.0 10.0 10.0 15.0
 eq|砗磲护心甲|effectBrief	15.0
@@ -118,8 +120,6 @@ eq|雷鸣贝壳|effectBrief	4.0
 eq|雷鸣贝壳|effectDesc1	4.0
 eq|霰弹贝古|effectBrief	1.5 8.0 8.0
 eq|霰弹贝古|effectDesc1	0.22 1.5 2.5 8.0 8.0
-eq|靶向器|effectBrief	400.0
-eq|靶向器|effectDesc1	1.0 1.1 15.0 400.0
 eq|飞镖|effectBrief	2.5
 eq|飞镖|effectDesc1	1.0 2.5 5.0 10.0
 eq|香火石|effectBrief	4.0 10.0 12.0 100.0

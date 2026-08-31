@@ -476,7 +476,8 @@ func _t062_mantis() -> void:
 
 # ─────────────────────────────────────────────────────────────
 # 063 白鲸气环: on-cast +30/60/100% 攻速(持续=消耗龟能×0.03);
-#               普攻挂【环】, 3 个环引爆 25/40/70 真伤
+#               普攻挂【环】, 3 个环引爆【25/40/70 + 2/3/5%目标最大生命】真伤
+#               (2026-08-31 用户改的公式; 原为纯定额 25/40/70)
 # ─────────────────────────────────────────────────────────────
 func _t063_whale() -> void:
 	print("── 063 白鲸气环 ──")
@@ -512,14 +513,17 @@ func _t063_whale() -> void:
 		if absf(dur / maxf(cd, 1e-6) - 0.40) > 0.002:
 			cov_bad.append("cost=%.0f 覆盖率 %.3f" % [cost, dur / maxf(cd, 1e-6)])
 	_ok("063 ★覆盖率对 5 种龟能消耗恒为 40%(0.03 ÷ 0.075, 与龟无关)", cov_bad.is_empty(), str(cov_bad))
-	# ★环: 前两次不炸, 第三次炸 25/40/70 真伤且清零
+	# ★环: 前两次不炸, 第三次炸【定额 + %目标最大生命】真伤且清零
 	for si in range(3):
-		var boom: float = [25.0, 40.0, 70.0][si]
 		_s._units.clear()
 		var u2: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, 180.0), 3000.0), "p2eq_063", si + 1)
 		var o: Dictionary = _mk("fortune", "right", Vector2(-150.0, 180.0), 5000.0)
 		o["mr"] = 200.0
 		o["def"] = 200.0                     # 真伤不吃这两条 —— 是不是真伤在这里就分得出来
+		## ★★`boom` 要拿【o 真实的 maxHp】现算, 不许写死 —— 036 那轮我把 maxHp 当 1000
+		##   写死, 而装备自带的生命加成早把它抬到 1070/1120/1180, 判据当场红。
+		##   系数 25/40/70 与 0.02/0.03/0.05 仍是硬编码的需求字面值 ⇒ 不是自证循环。
+		var boom: float = [25.0, 40.0, 70.0][si] + float(o["maxHp"]) * [0.02, 0.03, 0.05][si]
 		var s0: float = float(o["hp"])
 		_s._equip_sys._eq_on_hit(u2, o, 0, true)
 		_s._equip_sys._eq_on_hit(u2, o, 0, true)
@@ -527,7 +531,8 @@ func _t063_whale() -> void:
 			absf(s0 - float(o["hp"])) < 0.01 and int(o["whale_rings"]) == 2,
 			"掉 %.1f 环 %d" % [s0 - float(o["hp"]), int(o["whale_rings"])])
 		_s._equip_sys._eq_on_hit(u2, o, 0, true)
-		_ok("063 si=%d 第 3 个环引爆 = %.0f 点【真实】伤害(200 双抗一点不减)" % [si, boom],
+		_ok("063 si=%d 第 3 个环引爆 = %.0f 点【真实】伤害(定额+%.0f%%×%.0f生命·200 双抗一点不减)"
+				% [si, boom, [2.0, 3.0, 5.0][si], float(o["maxHp"])],
 			absf(s0 - float(o["hp"]) - boom) < 0.51, "实掉 %.1f" % (s0 - float(o["hp"])))
 		_ok("063 si=%d 引爆后环数清零(重新攒)" % si,
 			int(o["whale_rings"]) == 0, "环 %d" % int(o["whale_rings"]))

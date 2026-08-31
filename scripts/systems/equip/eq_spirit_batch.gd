@@ -306,6 +306,13 @@ const _SE := preload("res://scripts/systems/skill_energy.gd")
 const RING_COVERAGE := RING_SEC_PER_ENERGY / _SE.CD_FACTOR
 ## 引爆需要的环数
 const RING_TRIGGER := 3
+## 引爆伤害 = 定额 + 百分比×【目标】最大生命 (用户 2026-08-31:
+##   「白鲸气环的三环伤害改为 25/40/70+目标 2/3/5%最大生命值真实伤害」, 原为纯定额 25/40/70)。
+## ★两个常量放【一处】—— 036 温泉蛋刚踩过"同一个数存两份必漂"的坑(它有两个写入点)。
+##   这里只有一个写入点, 但门禁会拿这两个表当分母, 所以仍然只许存在这一份。
+## ★百分比读的是【目标】的 maxHp 不是携带者的 —— 需求原话是"目标2/3/5%最大生命值"。
+const RING_FLAT := [25.0, 40.0, 70.0]
+const RING_MAXHP_PCT := [0.02, 0.03, 0.05]
 
 
 ## 从 `u["pending"]` 取本次施放的技能类型。
@@ -337,7 +344,14 @@ func _eq_whale_haste(u: Dictionary, si: int) -> void:
 	_vfx.whale_haste(u, sec)   # 攻速期读数: 升泡流冒够 buff 全程
 
 
-## 普攻命中 → 挂一个环; 满 3 个引爆 25/40/70 真伤并清零。
+## 三环引爆的伤害 = 定额 + 百分比×【目标】最大生命 (纯函数, 门禁直接调它验数)。
+## ★★抽成独立函数而不是写在调用处, 是因为 CLAUDE.md §3.5 的教训:
+##   要验的数值不许只存在于"演出/结算链的中间某一行" —— 那样门禁只能靠打一场真战斗去撞它。
+func _ring_boom_dmg(tgt: Dictionary, si: int) -> float:
+	return RING_FLAT[si] + float(tgt.get("maxHp", 0.0)) * RING_MAXHP_PCT[si]
+
+
+## 普攻命中 → 挂一个环; 满 3 个引爆【定额 + %目标最大生命】真伤并清零。
 ## ★(2026-08-11 已根治)旧注释「技能伤害也会挂环」—— v0.19.100 的 basic 管线标已闸住。
 ##   原因同上(管线没有"这一段是普攻"的标记), 且与 061 破损、083 潮汐细剑同口径。
 func _eq_whale_ring(src: Dictionary, tgt: Dictionary, si: int, basic: bool = false) -> void:
@@ -349,7 +363,7 @@ func _eq_whale_ring(src: Dictionary, tgt: Dictionary, si: int, basic: bool = fal
 	var n: int = int(tgt.get("whale_rings", 0)) + 1
 	if n >= RING_TRIGGER:
 		tgt["whale_rings"] = 0
-		battle._damage._apply_damage_from(src, tgt, maxi(1, int(round([25.0, 40.0, 70.0][si]))),
+		battle._damage._apply_damage_from(src, tgt, maxi(1, int(round(_ring_boom_dmg(tgt, si)))),
 			Color("#ffffff"), 0.0, true, true)
 		tgt["_ring_boom_n"] = int(tgt.get("_ring_boom_n", 0)) + 1
 		_vfx.whale_detonate(tgt)   # 叠环归心收缩 + 星形爆闪(旧通用 skill_ring 圆已废)
