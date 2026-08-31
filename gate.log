@@ -1,0 +1,284 @@
+=== 自证测试 (自动发现 tests/verify_*.gd) ===
+  PASS  verify_accum_lane_scope
+  PASS  verify_arcane_crystal_mr
+  PASS  verify_armor_compensation
+  PASS  verify_aspd_panel_live
+  PASS  verify_attack_commit
+  PASS  verify_axe
+  PASS  verify_b4_lane_leak
+  PASS  verify_b4_persist_across_lane
+  PASS  verify_b4_wiring
+  PASS  verify_battle_determinism
+  PASS  verify_battle_hud_r1
+  PASS  verify_battle_rng_seed
+  PASS  verify_battle_ui
+  PASS  verify_bot_buy_synergy
+  PASS  verify_bow_synergy
+  PASS  verify_bracket_gear
+  PASS  verify_brief_dedup
+  PASS  verify_cake_box_form
+  PASS  verify_cake_orbit_cleanup
+  PASS  verify_cam_pan
+  PASS  verify_candy_jar
+  PASS  verify_chest_treasures
+  PASS  verify_click_targets_alive
+  PASS  verify_code_const_token
+  PASS  verify_codex
+  PASS  verify_codex_browse
+  PASS  verify_codex_desc
+  PASS  verify_codex_layout
+  PASS  verify_codex_stats
+  PASS  verify_codex_text
+  PASS  verify_combat_math
+  PASS  verify_combat_sanity
+  PASS  verify_copy_no_lock
+  PASS  verify_copy_perform
+  FAIL  verify_copy_rules  (rc=1, 致命报错=0)
+          [FAIL] ★★③ 黑名单 `fortuneBuyEquip`: 走真复制入口后【没被放出来】  cast=true 伤害-50 回血0 盾0 召唤1
+        ↳ 完整日志已留在 .gate-fail-verify_copy_rules.log
+  PASS  verify_cream_shell_all
+  PASS  verify_cross_slash_seq
+  PASS  verify_crystal_death_sync
+  PASS  verify_crystal_sweep_031
+  PASS  verify_cursor_pause
+  PASS  verify_cyber_charge
+  PASS  verify_cyber_drone_passive
+  PASS  verify_cyber_hijack
+  PASS  verify_damage_math
+  PASS  verify_debug_arena
+  PASS  verify_desc_icons
+  PASS  verify_dice_dash
+        WARN 扣掉 495 条已登记的 Lambda capture(拆除时序·见上)
+  PASS  verify_dmg_type_sentinel
+  PASS  verify_dodge_cap
+  PASS  verify_dot_float
+  PASS  verify_dot_mitigation
+  PASS  verify_dot_stacks
+  PASS  verify_dual_egg_decider
+  PASS  verify_elite_anim
+  PASS  verify_elite_haste
+  PASS  verify_eq002_chili
+  PASS  verify_eq023_026_basic
+  PASS  verify_eq055_063
+  PASS  verify_eq058_036_045
+  PASS  verify_eq_arcane_batch
+  PASS  verify_eq_blade_batch
+  PASS  verify_eq_body_sprites
+  PASS  verify_eq_bow_batch
+  PASS  verify_eq_food_batch
+  PASS  verify_eq_gadget_batch
+  PASS  verify_eq_gun_batch
+  PASS  verify_eq_hp_grants
+  PASS  verify_eq_potion_batch
+  PASS  verify_eq_readouts
+  PASS  verify_eq_relic_batch
+  PASS  verify_eq_spirit_batch
+  PASS  verify_eq_venom_drone
+  PASS  verify_eq_vfx_visibility
+  PASS  verify_eq_zero_gate
+  PASS  verify_equip_balance_20260730d
+  PASS  verify_equip_batch3
+  PASS  verify_equip_batch_20260730d
+  PASS  verify_equip_batch_20260801
+  PASS  verify_equip_cap
+  PASS  verify_equip_nerf
+  PASS  verify_equip_new_stats
+  PASS  verify_equip_onhit_batch2
+  PASS  verify_equip_pool
+  PASS  verify_equip_star_highlight
+  PASS  verify_equip_stats_source
+  PASS  verify_equip_types
+  PASS  verify_execution_vfx
+  PASS  verify_expr_consts
+  PASS  verify_far_terrain
+  PASS  verify_fire_equips_exact
+  PASS  verify_fish_dir
+  PASS  verify_fonts
+  PASS  verify_fortune_goldshield
+  PASS  verify_ghost_chest
+  PASS  verify_ghost_seed
+  PASS  verify_gold_shield
+  PASS  verify_gremlin_gun
+  PASS  verify_gun_synergy
+  PASS  verify_head_badges
+  PASS  verify_headless_rage
+  PASS  verify_heli_approach
+  PASS  verify_hiding_pool
+  PASS  verify_holy_shield_grant
+  PASS  verify_holy_shield_vfx
+  PASS  verify_hook
+  PASS  verify_hp_lines
+  PASS  verify_incense_stone
+  PASS  verify_incense_stone_real
+  PASS  verify_incense_vfx
+  PASS  verify_info_panel
+  PASS  verify_info_panel_fits
+  PASS  verify_info_panel_live
+  PASS  verify_info_panel_stats
+  PASS  verify_interaction_matrix
+  PASS  verify_interactive_determinism
+  PASS  verify_inventory_layout
+  PASS  verify_inventory_stats
+  PASS  verify_inventory_text_fit
+  PASS  verify_ios_ui
+  PASS  verify_lane_clear_wired
+  PASS  verify_lava_forms
+  PASS  verify_lightning_buff
+  PASS  verify_mainmenu_layout
+  PASS  verify_mana_beam_steer
+  PASS  verify_map_field
+  PASS  verify_map_geometry
+  PASS  verify_match_seed
+  PASS  verify_menu
+  PASS  verify_midground
+  PASS  verify_minion_abort_fall
+  PASS  verify_minion_idle_align
+  PASS  verify_minion_text_single_source
+  PASS  verify_minion_unstoppable
+  PASS  verify_misc_guards
+  PASS  verify_ms_tier_vfx
+  PASS  verify_nav_paths
+  PASS  verify_nerf_pistol_anchor
+  PASS  verify_ninja_backstab
+  PASS  verify_ninja_bomb
+  PASS  verify_ninja_shuriken
+  PASS  verify_onboarding
+  PASS  verify_orientation_lock
+  PASS  verify_palette
+  PASS  verify_panel_stats_onscreen
+  PASS  verify_phoenix_flame_onhit
+  PASS  verify_pirate_hook
+  PASS  verify_pk_bar_continuity
+  PASS  verify_remote_pool
+  PASS  verify_result_reachable
+  PASS  verify_rum_glow
+  PASS  verify_rum_numbers
+  PASS  verify_salvo_trainer
+  PASS  verify_season_elim
+  PASS  verify_season_flow
+  PASS  verify_self_match
+  PASS  verify_settings
+  PASS  verify_shield_absorb
+  PASS  verify_shield_synergy
+  PASS  verify_shockwave_vfx
+  PASS  verify_shop_card_tiers
+  PASS  verify_shop_layout
+  PASS  verify_shop_merge_pips
+  PASS  verify_shop_persist
+  PASS  verify_signal_amplifier
+  PASS  verify_skill_energy
+  PASS  verify_skill_forms
+  PASS  verify_skill_pick
+  PASS  verify_skill_ring_curve
+  PASS  verify_skill_text_color
+  PASS  verify_skill_text_leak
+  PASS  verify_special_balance
+  PASS  verify_spirit_dmg_color
+  PASS  verify_spirit_slap_range
+  PASS  verify_sprite_sheets
+  PASS  verify_staff_active_isolated
+  PASS  verify_staff_actives_fire
+  PASS  verify_staff_synergy
+  PASS  verify_star_space
+  PASS  verify_steal_gate
+  PASS  verify_sudden_death
+  PASS  verify_sword_084
+  PASS  verify_swordsman
+  PASS  verify_synergy_display
+  PASS  verify_synergy_live
+  PASS  verify_synergy_magnitude
+  PASS  verify_synergy_popup
+  PASS  verify_synergy_rest5
+  PASS  verify_synergy_text
+  PASS  verify_synergy_vfx
+  PASS  verify_synergy_vfx_types
+  PASS  verify_talisman_089
+  PASS  verify_tame_defection
+  PASS  verify_tentacle_continuity
+  PASS  verify_tentacle_hit_timing
+  PASS  verify_tentacle_relocate
+  PASS  verify_tentacle_rhythm
+  PASS  verify_tentacle_soft
+  PASS  verify_tentacle_vfx
+  PASS  verify_text_render
+  PASS  verify_thorn_reflect
+  PASS  verify_tick_equips_exact
+  PASS  verify_tile_texture
+  PASS  verify_touch_scroll
+  PASS  verify_trainer
+  PASS  verify_trainer_audit
+  PASS  verify_trainer_config
+  PASS  verify_trainer_desc
+  PASS  verify_trainer_hunt_tame
+  PASS  verify_trainer_magicstone
+  PASS  verify_trainer_move
+  PASS  verify_trainer_place
+  PASS  verify_trainer_skills
+  PASS  verify_trainer_target
+  PASS  verify_true_dmg_shield
+  PASS  verify_turtle_balance_r4
+  PASS  verify_turtle_balance_r5
+  PASS  verify_turtle_balance_r6
+  PASS  verify_turtle_roles
+  PASS  verify_tutorial
+  PASS  verify_tutorial_anchors
+  PASS  verify_tutorial_director
+  PASS  verify_tutorial_highlight
+  PASS  verify_two_head_enhanced
+  PASS  verify_two_head_fusion
+  PASS  verify_two_head_strike
+  PASS  verify_two_level_desc
+  PASS  verify_ui_consistency
+  PASS  verify_ui_layout
+  PASS  verify_uncovered_equips
+  PASS  verify_unit_scaling
+  PASS  verify_untargetable
+  PASS  verify_upload_flash
+  PASS  verify_version
+  PASS  verify_vfx_frames
+  PASS  verify_vfx_readability
+  PASS  verify_whistle_no_aim
+  PASS  verify_whistle_wave
+  PASS  verify_wormhole_escape
+  (发现 238 个测试, 并行度 2)
+=== 全流程闪退冒烟 (SHIP=1 真实对局) ===
+  PASS  smoke_scenes (9场景进出×4 + 战斗中途硬释放×3 + 60秒完整战斗)
+=== 三方一致性对账 ===
+  PASS  tri_audit (差异 0 处)
+=== 只读数据审计 ===
+  PASS  data_integrity (json交叉引用/资源路径/孤儿字段)
+  PASS  tooltip_number_audit (装备文案数值 ↔ 代码)
+  PASS  pet_number_audit (龟技能文案数值 ↔ 代码)
+  PASS  brief_detail_audit (龟技能 brief ↔ detail 数值)
+  PASS  passive_number_audit (龟被动文案数值 ↔ 代码)
+  PASS  map_composition_audit (地图构图·战场无void/站位不在水/接战区不亮/与生成器一致)
+  PASS  vfx_ref_match (084 三张特效 ↔ 用户参考图的形态指标 + 像素风)
+  PASS  vfx_ingame_check (084 十字斩实拍: 斩击是主角/两者都画得出来)
+  PASS  workflow_lint (CI 工作流 YAML 语法)
+  PASS  ci_deps_audit (门禁审计器的第三方依赖 ↔ CI 安装清单)
+  PASS  arch_budget (架构预算·不许上帝对象·欠债只减不增)
+  PASS  style_lint (代码风格·全tab/snake_case/PascalCase 焊死)
+  PASS  rng_discipline (裸随机冻结·护确定性不回退)
+  PASS  docs_authority_lint (单一事实源纪律·三权威在位/消费链活/README无漂移/无冒名)
+  PASS  server_rule_sync (服务端规则↔客户端事实源·常量/白名单)
+  PASS  server_logic_gate (云函数逻辑·V2往返/V3六类伪造/去重)
+  PASS  copy_chain_audit (龟壳复制链路四方一致·可抄数棘轮)
+  PASS  text_formula_audit (文案文字↔它自己的占位符公式)
+  PASS  text_claim_audit (文案声称↔代码实际·触发周期/选靶/作用范围)
+  PASS  plans_lint (方案书生命周期·状态/骨架/实施回填)
+  PASS  dead_preload (preload 了却没人用的常量)
+  PASS  text_const_orphan_audit (文案指的常量有没有产品代码在读)
+  PASS  const_leftover_audit (抽了常量却还有别处留着裸数字·跨文件判红)
+  PASS  codex_text_lint (图鉴文案: 教学味/自夸/开发备注/别家黑话/数字贴字)
+  PASS  twin_const (同功能的逻辑侧↔演出侧同名常量取值打架)
+  PASS  type_tables (装备类型四张平行表键集一致)
+  PASS  number_coverage (玩家文案里没人验的数字·只降不升)
+  PASS  text_golden (玩家文案快照对账·483 段)
+  PASS  text_value_golden (占位符算出来的数·旧值不许消失)
+  PASS  text_const_owner (文案引用的常量必须属于这个主体)
+  PASS  text_prose_guard (文案的文字部分逐字未动)
+  PASS  basestats (装备属性展示串 ↔ EquipStats.STATS·597 个数)
+  PASS  await_guard (协程 await 回来先确认 battle 还活着)
+  PASS  tree_timer (树级计时器不许接闭包·会活过场景释放)
+
+FAIL x1  (PASS 273)

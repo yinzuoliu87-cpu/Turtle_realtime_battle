@@ -1,0 +1,3 @@
+36:  FAIL  verify_copy_rules  (rc=1, 致命报错=0)
+37:          [FAIL] ★★③ 黑名单 `fortuneBuyEquip`: 走真复制入口后【没被放出来】  cast=true 伤害-50 回血0 盾0 召唤1
+284:FAIL x1  (PASS 273)
