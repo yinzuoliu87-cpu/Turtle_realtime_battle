@@ -19,6 +19,8 @@ eq|哑铃|effectBrief	8.0
 eq|哑铃|effectDesc1	8.0
 eq|圣光护盾|effectBrief	55.0
 eq|圣光护盾|effectDesc1	55.0
+eq|地狱护盾|effectBrief	50.0
+eq|地狱护盾|effectDesc1	8.0 50.0
 eq|复活海螺|effectDesc1	0.65 4.0 5.0
 eq|复活海螺|effectDesc3	2.5 4.0
 eq|守护贝壳|effectBrief	8.0
@@ -70,9 +72,6 @@ eq|狙击长管|effectDesc1	8.0 12.0
 eq|玩偶小熊|effectBrief	4.0
 eq|玩偶小熊|effectDesc1	0.7 0.8 1.2 1.5 2.0 4.0 70.0 70.0 600.0
 eq|珊瑚急救塔|effectDesc1	150.0
-eq|珊瑚糖糕|effectDesc1	3.0 5.0 8.0 20.0 30.0 50.0
-eq|珍珠耳环|effectBrief	50.0
-eq|珍珠耳环|effectDesc1	8.0 50.0
 eq|电鳗双管铳|effectDesc1	0.5 2.0 60.0 400.0
 eq|白鲸气环|effectDesc1	0.03
 eq|盗令潜水钟|effectDesc1	2.0 3.0 3.0 10.0 10.0 15.0
@@ -80,14 +79,15 @@ eq|砗磲护心甲|effectBrief	15.0
 eq|砗磲护心甲|effectDesc1	15.0
 eq|磷光水母伞|effectBrief	2.5 7.0 200.0
 eq|磷光水母伞|effectDesc1	2.5 7.0 7.0 15.0 200.0
-eq|穿甲遗弹|effectDesc1	0.5 400.0 2000.0
 eq|竹制弓箭|effectDesc1	6.0 6.0
+eq|草莓蛋糕|effectDesc1	3.0 5.0 8.0 20.0 30.0 50.0
 eq|蚀月符纸|effectBrief	15.0
 eq|蚀月符纸|effectDesc1	15.0
 eq|蛋糕蜡烛|effectBrief	5.0
 eq|蛋糕蜡烛|effectDesc1	3.0 5.0 5.0 250.0 500.0
 eq|螳螂虾钳|effectBrief	40.0
 eq|螳螂虾钳|effectDesc1	40.0
+eq|远古炮台|effectDesc1	0.5 400.0 2000.0
 eq|远古龟甲片|effectBrief	0.25 6.0 25.0
 eq|远古龟甲片|effectDesc1	0.25 6.0 25.0
 eq|连发弩|effectBrief	8.0

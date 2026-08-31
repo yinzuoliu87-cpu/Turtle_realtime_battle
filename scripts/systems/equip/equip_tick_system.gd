@@ -215,6 +215,12 @@ func _tick_anchor(u: Dictionary, delta: float) -> void:
 
 
 const HOTSPRING_IV := 1.0    # 温泉蛋回血节拍(秒) —— 用户 2026-08-01「携带者每秒回复 5/7/10 生命值」
+## 温泉蛋每秒回血 = 定额 + 百分比×最大生命 (用户 2026-08-31:
+##   「温泉蛋的生命恢复改为每秒回复 2/5/10+0.3/0.8/1.2%最大生命值」, 原为纯定额 5/7/10)。
+## ★★两个常量放【一处】—— `heal_ps` 有两个写入点(equip_stats_apply 正常路径 +
+##   本文件 tick 里的兜底现算), 各写一份数就必然漂; 现在两处都引这里。
+const HOTSPRING_FLAT := [2.0, 5.0, 10.0]        # 定额
+const HOTSPRING_PCT := [0.003, 0.008, 0.012]    # ×最大生命
 
 ## 温泉蛋 p2eq_036: 携带者每秒回血 5/7/10(用户 2026-08-01 新效果)。
 ## ★只回【携带者自己】—— 用户同批的 11b「温泉蛋也是(排龟蛋和大师)」指的是它【孵满时的全队均摊护盾】,
@@ -229,10 +235,14 @@ func _tick_hotspring(u: Dictionary, delta: float) -> void:
 		if float(e["hotspring_t"]) < HOTSPRING_IV: continue
 		e["hotspring_t"] = 0.0
 		var stt: Dictionary = u["eq_state"].get("p2eq_036", {})
+		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		var ps: float = float(stt.get("heal_ps", 0.0))
 		if ps <= 0.0:
 			# 缺省兜底: 老存档/合成单位没走 apply → 按星级现算, 免得这条效果静默不生效
-			ps = [5.0, 7.0, 10.0][battle._equip_sys._eq_si(int(e.get("star", 1)))]
+			ps = HOTSPRING_FLAT[si]
+		## ★百分比那一半【只能在这里算】—— 它跟着当前最大生命走(装备/羁绊会改 maxHp),
+		##   而 `heal_ps` 是登场时算一次的定额。放进 heal_ps 会把它冻在开局那个血量上。
+		ps += float(u.get("maxHp", 0.0)) * HOTSPRING_PCT[si]
 		battle._damage._heal(u, ps)
 
 

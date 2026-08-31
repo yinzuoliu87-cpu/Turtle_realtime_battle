@@ -1142,6 +1142,15 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false,
 				if battle._battle_rng.randf() < [0.5, 0.75, 1.0][si]:
 					battle._damage._apply_damage_from(src, tgt, battle._atk_dmg(src, [0.7, 0.8, 1.0][si], tgt), Color("#ff4444"), 0.0, false, true)
 			"p2eq_023":   # 灼热火珊瑚(被动): 每段额外灼烧 + 充能
+				## ★★2026-08-31 用户:「炽热火珊瑚改为每段普攻施加灼烧和获得法力而不是每段伤害」
+				##   拍板【灼烧与法力两个都收】⇒ 闸放最前, 非普攻两样都不给。
+				## ★`basic` 是 `_eq_on_hit` 本来就带的参数(battle_damage.gd:447 传进来), 不用换钩子。
+				## ★系数原样不动(用户「不要补」) —— 特意没沿用上一轮辣椒的答案、单独问过一遍。
+				## ⚠ 这【不等于】"技能不再涨法力": 法器法力还有另外三路(每 2.5 秒回充 /
+				##   造成伤害 ×0.1 / 受伤 ×0.1), 其中"造成伤害"那一路不分普攻技能。
+				##   本次收掉的只是 023 这份【定额】。
+				if not basic:
+					return
 				var burn: int = maxi(1, roundi([2.0, 5.0, 8.0][si] + [0.07, 0.11, 0.15][si] * src["atk"]))
 				battle._damage._apply_dot_stacks(tgt, "burn", battle._cyeq_n(burn), src)
 				## 被动的第二半: 每段命中 +10 **法器法力**(文案逐字:「并获得10点法力」)。
@@ -1152,6 +1161,11 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false,
 			"p2eq_009":   # 宽刃弯刀: 充刃能, 满100→直线伤害
 				_eq_charge(stt, "blade_energy", [20.0, 20.0, 25.0][si] * (BLADE_AOE_FACTOR if is_aoe else 1.0), BLADE_FULL, func(): _eq_wide_blade(src, tgt, si))
 			"p2eq_026":   # 雷电法杖(被动): 每段伤害为【法器法力条】充能 15(用户 2026-08-12 削弱: 原 25)
+				## ★★2026-08-31 用户:「雷电法杖也是改为普攻获得法力」—— 同 023 一道闸。
+				##   充能量原样不动(用户「不要补」)。技能伤害仍会经"造成伤害×0.1"那一路涨法力,
+				##   本次收掉的只是本件的【定额】。
+				if not basic:
+					return
 				## ★2026-08-12 从它自己的 `thunder` 条改过来 —— 法器只有一条法力条,
 				##   主动(连锁闪电)由法力满触发, 见 fire_equip_effect 的 "p2eq_026" 分支。
 				##   文案原文就是「每段伤害充能25点;充能满100点时…」, 代码原来另开了一条条子。

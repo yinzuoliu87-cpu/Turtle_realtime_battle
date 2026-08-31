@@ -38,6 +38,18 @@ GODOT = os.environ.get("GODOT", "C:/Users/Louis/Desktop/Godot_v4.6.3-stable_win6
 FRAMES = os.environ.get("FRAMES", "4000")
 
 
+def _git_diff(path):
+    """这个文件相对 HEAD 的完整 diff 正文; git 跑不起来时返回 None(而不是空串 ——
+    空串的含义是'干净', 拿不到结果不能冒充干净)。"""
+    try:
+        g = subprocess.run(["git", "diff", "--", path], capture_output=True, timeout=60)
+        if g.returncode != 0:
+            return None
+        return g.stdout.decode("utf-8", "replace")
+    except Exception:
+        return None
+
+
 def run_scene(scene):
     r = subprocess.run([GODOT, "--headless", "--path", ".", "res://" + scene.lstrip("./"),
                         "--quit-after", FRAMES],
@@ -63,6 +75,14 @@ def main():
     ##   本仓库行尾是混的(equip_system.gd 是 CRLF、battle_hud.gd 是 LF),
     ##   一旦变异到 CRLF 文件就会把整份文件重写一遍而没人发现(2026-08-30 差点踩上)。
     orig = io.open(path, encoding="utf-8", newline="").read()
+    ## ★★变异开始【前】先拍一张 git diff 快照当基准。
+    ##   为什么不是"跑完之后问 git 这个文件干不干净": 被反向验证的文件通常
+    ##   【本来就有本轮要交付的改动】, 那种问法必然报 FAIL ⇒ 变成人尽皆知的假警报,
+    ##   而真的残留就藏在这条假警报里(2026-08-31 我就是这么把 0.015 放过去的:
+    ##   它打印了 "git 说还有改动: 11 1", 我判成"这是预期改动"、于是漏了没还原的那一档)。
+    ##   基准取"变异前的 diff"就同时管住两种情况: 干净文件 → 基准是空串;
+    ##   带着预期改动的文件 → 基准是那些预期改动本身。**还原之后必须一模一样。**
+    base_diff = _git_diff(path)
     n_bad = 0
     try:
         for name, old, new in muts:
@@ -94,26 +114,29 @@ def main():
         else:
             print("")
             print("  [FAIL] ★★还原失败: 写回后与原文【不一致】—— 立刻手工检查 %s" % path)
-        ## ★★第二只眼: 除了"我写回的字符串 == 我读到的", 还要问 **git** 这个文件动没动。
-        ##   由来(2026-08-31, 第三次踩同一个坑): 上一轮反向验证之后
-        ##   `_diceFate_OFF` 留在了产品文件里, 而本工具照样打印了"逐字节一致" ——
-        ##   因为它比的是【它自己读进来的 orig】, 如果 orig 在读的时候就已经脏了,
-        ##   这个比对就是【和脏的自己比】, 恒真。
-        ##   git 的工作区状态是**独立的第二个来源**, 它不知道 orig 是什么。
-        ##   (同族 memory [[fb-verify-check-can-fail]]: 判据不能和自己比。)
-        try:
-            g = subprocess.run(["git", "diff", "--numstat", "--", path],
-                               capture_output=True, timeout=60)
-            gd = g.stdout.decode("utf-8", "replace").strip()
-            if gd:
-                print("  [FAIL] ★★git 说 %s 相对 HEAD 还有改动: %s" % (path, gd.replace(chr(10), " | ")))
-                print("         —— 如果这次变异之前它本来就是干净的, 那就是【没还原干净】。")
-                print("         逐字节核对挡不住这个: 它只和自己读到的比。")
-                restored = False
-            else:
-                print("  [git 第二只眼] %s 相对 HEAD 无改动 ✓" % path)
-        except Exception as _e:
-            print("  [git 第二只眼] 跑不起来(%s) —— 只剩逐字节核对这一只眼" % _e)
+        ## ★★第二只眼: 除了"我写回的字符串 == 我读到的", 还要问 **git**。
+        ##   由来(2026-08-31, 同一个坑第四次): 上一轮反向验证之后
+        ##   `HOTSPRING_PCT` 的第三档留在了 0.015(用户给的是 1.2%), 而本工具
+        ##   照样打印了"逐字节一致" —— 因为它比的是【它自己读进来的 orig】,
+        ##   orig 读进来时就已经脏了的话, 这个比对是【和脏的自己比】, 恒真。
+        ##   git 是**独立的第二个来源**, 它不知道 orig 是什么。
+        ##   ★但判据必须是"和变异前的 diff 一致", 不是"相对 HEAD 无改动" ——
+        ##   后者对任何带着未提交改动的文件恒 FAIL, 于是没人再看它。
+        ##   (同族 memory [[fb-verify-check-can-fail]] / [[fb-judge-must-fit-the-shape]]:
+        ##    判据不能和自己比, 也不能宽一格造出人人忽略的假警报。)
+        now_diff = _git_diff(path)
+        if now_diff is None or base_diff is None:
+            print("  [git 第二只眼] 跑不起来 —— 只剩逐字节核对这一只眼")
+        elif now_diff == base_diff:
+            print("  [git 第二只眼] %s 的 git diff 与变异前完全一致 ✓ (基准 %d 字符)"
+                  % (path, len(base_diff)))
+        else:
+            print("  [FAIL] ★★git 说 %s 的改动与【变异前】不一样 —— 没还原干净!" % path)
+            import difflib
+            for ln in list(difflib.unified_diff(base_diff.splitlines(), now_diff.splitlines(),
+                                                "变异前", "还原后", lineterm=""))[:14]:
+                print("         " + ln)
+            restored = False
 
     if not restored:
         return 1

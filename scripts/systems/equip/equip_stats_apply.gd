@@ -301,7 +301,9 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 			#   升星只多给护盾数字, 玩家感受不到"这颗蛋更强"。上限存进 eq_state 而不是每次现算,
 			#   因为 _egg_add_progress(u, amt) 拿不到 si(它只有单位和增量)。
 			stt["egg_cap"] = [3, 4, 5][si]
-			stt["heal_ps"] = [5.0, 7.0, 10.0][si]   # 携带者每秒回血(用户 2026-08-01 新效果)
+			## ★只写【定额】那一半 —— 百分比那半跟着当前 maxHp 走, 在 tick 里现算
+			##   (见 EquipTickSystem._tick_hotspring)。两处共用同一份常量, 免得各写一份数就漂。
+			stt["heal_ps"] = EquipTickSystem.HOTSPRING_FLAT[si]   # 定额(2026-08-31: 5/7/10 → 2/5/10)
 			u["has_egg"] = true
 		# ══ 药水四件(2026-08-05 用户逐件重做·§0.5 定稿) ═══════════════════
 		#    效果本体在 scripts/systems/equip/eq_potion_batch.gd。这里只做两件事:

@@ -2786,7 +2786,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 		_equip_tick_sys._tick_barnacle(u, delta)
 		_equip_tick_sys._tick_anchor(u, delta)      # 017沉锚: 每0.25秒回血(用户2026-08-01, 原挂 on-hurt)
 		_equip_tick_sys._tick_targeter(u, delta)    # 055靶向器: 首次累计400伤害→挂钩索炸弹(用户2026-08-01)
-		_equip_tick_sys._tick_hotspring(u, delta)   # 036温泉蛋: 携带者每秒回血 5/7/10(用户2026-08-01)
+		_equip_tick_sys._tick_hotspring(u, delta)   # 036温泉蛋: 每秒回血 = 定额 + %最大生命(用户2026-08-31)
 
 func _separation(u: Dictionary) -> Vector2:
 	var push := Vector2.ZERO

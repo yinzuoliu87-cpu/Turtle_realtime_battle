@@ -270,10 +270,10 @@
     "baseStats1": "+生命40/60/80·攻10/25/40·魔穿5/8/13",
     "shopAvailable": 1,
     "emoji": "🔥",
-    "effectDesc1": "被动：携带者每段攻击命中额外施加（2/5/8+7/11/15%攻击力）层灼烧，并获得 {C:EquipSystem.CORAL_MANA_PER_HIT} 点法力（法力进度显示在图标下方）。\n主动（法力条集满时自动释放）：蓄力后朝敌方挥出一道火焰波，在 {C:EquipSystem.CORAL_ARC_DEG} 度扇形内缓慢移动 {C:EquipSystem.CORAL_TRAVEL} 码，对扫过的敌人各施加 40/60/90 层灼烧（主动施加的灼烧不获得法力）。",
+    "effectDesc1": "被动：携带者的普攻命中额外施加（2/5/8+7/11/15%攻击力）层灼烧，并获得 {C:EquipSystem.CORAL_MANA_PER_HIT} 点法力（法力进度显示在图标下方）。\n主动（法力条集满时自动释放）：蓄力后朝敌方挥出一道火焰波，在 {C:EquipSystem.CORAL_ARC_DEG} 度扇形内缓慢移动 {C:EquipSystem.CORAL_TRAVEL} 码，对扫过的敌人各施加 40/60/90 层灼烧（主动施加的灼烧不获得法力）。",
     "effectDesc3": "",
     "img": "equip/dungeon-fire-coral.png",
-    "effectBrief": "每段攻击额外施加灼烧并攒法力；法力满时挥出火焰波扩散灼烧。"
+    "effectBrief": "普攻额外施加灼烧并攒法力；法力满时挥出火焰波扩散灼烧。"
   },
   {
     "id": "p2eq_024",
@@ -306,10 +306,10 @@
     "baseStats1": "+魔穿8/13/20",
     "shopAvailable": 1,
     "emoji": "🌩️",
-    "effectDesc1": "每段伤害为该法器法力条充能 {C:EquipSystem.THUNDER_MANA_PER_HIT} 点；法力条集满时朝随机目标发射连锁闪电，造成 40/60/90 魔法伤害，在不同敌人间跳跃，最多命中 4/5/6 个目标。",
+    "effectDesc1": "携带者的普攻为该法器法力条充能 {C:EquipSystem.THUNDER_MANA_PER_HIT} 点；法力条集满时朝随机目标发射连锁闪电，造成 40/60/90 魔法伤害，在不同敌人间跳跃，最多命中 4/5/6 个目标。",
     "effectDesc3": "",
     "img": "equip/equip-lightning-staff.png",
-    "effectBrief": "每段伤害攒法力，满时发射连锁闪电，最多命中 4/5/6 个目标。"
+    "effectBrief": "普攻攒法力，满时发射连锁闪电，最多命中 4/5/6 个目标。"
   },
   {
     "id": "p2eq_027",
@@ -426,10 +426,10 @@
     "baseStats1": "+生命70/120/180",
     "shopAvailable": 1,
     "emoji": "🥚",
-    "effectDesc1": "每秒回复 5/7/10 点生命；\n并持续获得孵化进度（每 {C:RealtimeBattle3DScene.EQ_TICK} 秒+{C:EquipTickSystem.EGG_PER_CYCLE}、敌方死亡+{C:EquipTickSystem.EGG_ON_FOE_DEATH}、己方死亡+{C:EquipTickSystem.EGG_ON_ALLY_DEATH}、造成伤害×{C:EquipTickSystem.EGG_DMG_RATIO}、承受伤害×{C:EquipTickSystem.EGG_DMG_RATIO}），进度满 {C:EquipTickSystem.EGG_FULL} 获得 1 点临时等级（上限+3/4/5，每级+{C:EquipTickSystem.EGG_LV_GROWTH%}%基础属性，同一局对局内跨战场保留、开新对局才重置）；\n孵满后为全队均摊 300/400/600 点护盾（一次）——分摊名单不含龟蛋与训龟大师。",
+    "effectDesc1": "每秒回复 2/5/10+0.3/0.8/1.2%最大生命值；\n并持续获得孵化进度（每 {C:RealtimeBattle3DScene.EQ_TICK} 秒+{C:EquipTickSystem.EGG_PER_CYCLE}、敌方死亡+{C:EquipTickSystem.EGG_ON_FOE_DEATH}、己方死亡+{C:EquipTickSystem.EGG_ON_ALLY_DEATH}、造成伤害×{C:EquipTickSystem.EGG_DMG_RATIO}、承受伤害×{C:EquipTickSystem.EGG_DMG_RATIO}），进度满 {C:EquipTickSystem.EGG_FULL} 获得 1 点临时等级（上限+3/4/5，每级+{C:EquipTickSystem.EGG_LV_GROWTH%}%基础属性，同一局对局内跨战场保留、开新对局才重置）；\n孵满后为全队均摊 300/400/600 点护盾（一次）——分摊名单不含龟蛋与训龟大师。",
     "effectDesc3": "",
     "img": "equip/equip-incubator.png",
-    "effectBrief": "每秒回复 5/7/10 点生命；孵化进度满 {C:EquipTickSystem.EGG_FULL} 得 1 点临时等级，上限 +3/4/5。"
+    "effectBrief": "每秒回复 2/5/10+0.3/0.8/1.2%最大生命值；孵化进度满 {C:EquipTickSystem.EGG_FULL} 得 1 点临时等级，上限 +3/4/5。"
   },
   {
     "id": "p2eq_037",
@@ -529,14 +529,14 @@
   },
   {
     "id": "p2eq_045",
-    "name": "珍珠耳环",
+    "name": "地狱护盾",
     "cost": 3,
     "baseStats1": "+生命90/170/300·护甲&魔抗4/8/15",
     "shopAvailable": 1,
     "emoji": "🦪",
     "effectDesc1": "生命值首次降至 {C:EquipSystem.LOWHP_GATE%}%以下时，在 {C:EquipSystem.EARRING_HOT_SEC} 秒内逐渐回复 30/60/100%最大生命值，并向 1/1/2 名随机敌人发射火球，造成 8/17/30%目标最大生命值的魔法伤害并施加 30/70/150 层灼烧（每场战斗一次）。",
     "effectDesc3": "",
-    "img": "equip/dungeon-pearl.png",
+    "img": "equip/hell-shield.png",
     "effectBrief": "生命首次低于 {C:EquipSystem.LOWHP_GATE%}% 时回复 30/60/100% 最大生命，并发射火球点燃敌人。"
   },
   {
@@ -685,14 +685,14 @@
   },
   {
     "id": "p2eq_058",
-    "name": "穿甲遗弹",
+    "name": "远古炮台",
     "cost": 3,
     "baseStats1": "+攻17/29/41·+20龟能",
     "shopAvailable": 1,
     "emoji": "🔩",
     "effectDesc1": "登场时召唤一座不可移动的炮台：500/1000/1800 最大生命值、20/30/45 攻击力、每秒 {C:EquipSystem.TURRET_ASPD} 次攻击速度、{C:EquipSystem.TURRET_RANGE} 码射程；\n普攻锁定目标（一条红色细线连向它），造成 1×攻击力物理伤害，并使炮台自身永久获得 2/2/3 护甲穿透与 2%暴击率（持续到本场战斗结束）。\n携带者存活时炮台获得 70/85/100 护甲与魔抗；携带者位于炮台 {C:EquipSystem.TURRET_BUFF_R} 码范围内时自身获得 20/30/40%攻击速度。",
     "effectDesc3": "",
-    "img": "equip/pierce-shell.png",
+    "img": "equip/ancient-turret.png",
     "effectBrief": "登场时召唤一座炮台，普攻锁定目标并永久累积护甲穿透。"
   },
   {
@@ -817,15 +817,15 @@
   },
   {
     "id": "p2eq_069",
-    "name": "珊瑚糖糕",
+    "name": "草莓蛋糕",
     "cost": 3,
     "baseStats1": "+生命偷取5/9/15%·+龟能充能8/14/24%",
     "shopAvailable": 1,
     "emoji": "🍥",
-    "effectDesc1": "带着 {C:EqFoodBatch.CAKE_COUNT} 块糖糕，生命首次低于 80/55/30%时各吃一块。\n①+200/400/600 最大生命，并在 {C:EqFoodBatch.CAKE_HOT1_SEC} 秒内每秒回复 0.6/0.8/1%最大生命；\n②+{C:EqFoodBatch.CAKE_LIFESTEAL%}%生命偷取与+10/21/40 攻击力；\n③+150/250/400 护盾、+{C:EqFoodBatch.CAKE_ENERGY} 龟能、{C:EqFoodBatch.CAKE_ASPD_SEC} 秒内+40/60/80%攻击速度，并在 {C:EqFoodBatch.CAKE_HOT3_SEC} 秒内每秒回复 1.3/1.6/2%最大生命。\n属性加成本路永久，换路重置。",
+    "effectDesc1": "带着 {C:EqFoodBatch.CAKE_COUNT} 块蛋糕，生命首次低于 80/55/30%时各吃一块。\n①+200/400/600 最大生命，并在 {C:EqFoodBatch.CAKE_HOT1_SEC} 秒内每秒回复 0.6/0.8/1%最大生命；\n②+{C:EqFoodBatch.CAKE_LIFESTEAL%}%生命偷取与+10/21/40 攻击力；\n③+150/250/400 护盾、+{C:EqFoodBatch.CAKE_ENERGY} 龟能、{C:EqFoodBatch.CAKE_ASPD_SEC} 秒内+40/60/80%攻击速度，并在 {C:EqFoodBatch.CAKE_HOT3_SEC} 秒内每秒回复 1.3/1.6/2%最大生命。\n属性加成本路永久，换路重置。",
     "effectDesc3": "",
     "img": "equip/p2eq_069.png",
-    "effectBrief": "生命首次低于 80/55/30% 时各吃一块糖糕，分别给生命、攻击与护盾。"
+    "effectBrief": "生命首次低于 80/55/30% 时各吃一块蛋糕，分别给生命、攻击与护盾。"
   },
   {
     "id": "p2eq_070",
