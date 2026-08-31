@@ -214,6 +214,8 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 		"p2eq_058":   # 穿甲遗弹(重做·用户2026-07-19): 登场召唤炮台 (延到首帧spawn, 同032)
 			u["_turret_pending"] = true
 			u["_turret_si"] = si
+		"p2eq_096":   # 小木斧: 登场召唤斧头 (延到首帧spawn, 同 058/032)
+			u["_axe_pending"] = true
 		"p2eq_040":   # FPGA板: 登场给【对方】随机 1/2/3 个敌人各一把古灵精怪枪(用户2026-08-31 新增的一条效果)
 			## ★延到首帧 —— 与 058/032 同样的理由: 开战 setup 期间敌方单位还没全进
 			##   `battle._units`, 这里挑不出人来。("登场时"每条路各触发一次。)

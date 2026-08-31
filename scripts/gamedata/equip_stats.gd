@@ -139,6 +139,9 @@ const STATS := {
 	"p2eq_047": [{"hp": 100}, {"hp": 200}, {"hp": 400}],
 	"p2eq_055": [{"atk": 9, "_maxEnergy": 20}, {"atk": 15, "_maxEnergy": 20}, {"atk": 21, "_maxEnergy": 20}],
 	"p2eq_058": [{"atk": 17, "_maxEnergy": 20}, {"atk": 29, "_maxEnergy": 20}, {"atk": 41, "_maxEnergy": 20}],
+	## 096 小木斧: 三档**同值** —— 它不升星(EquipPool.NO_STAR), 永远只有 1★。
+	##   数值住在 AxeEvolution.OWNER_* 一份, 这里只是它的镜像(门禁 verify_axe 焊死两边相等)。
+	"p2eq_096": [{"hp": 20, "atk": 10, "def": 2, "mr": 2}, {"hp": 20, "atk": 10, "def": 2, "mr": 2}, {"hp": 20, "atk": 10, "def": 2, "mr": 2}],
 	# ── 召唤系 037/038/040 + 潮汐 045 (批7) ──
 	"p2eq_037": [{"atk": 10, "hp": 80}, {"atk": 25, "hp": 130}, {"atk": 40, "hp": 180}],
 	"p2eq_038": [{"hp": 80}, {"hp": 140}, {"hp": 200}],

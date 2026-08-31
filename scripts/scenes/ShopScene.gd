@@ -1248,6 +1248,8 @@ func _glint_star(parent: Control, pos: Vector2, sz: float, phase: float) -> void
 func _purchase_merge_star(eid: String) -> int:
 	if eid == "":
 		return 0
+	if EquipPool.NO_STAR.has(eid):
+		return 0          # 【不升星】的件: 卡上不预告"这一买会合成到几星"(用户2026-08-31 小木斧)
 	# 下标 = 星级; [1] 已含这次购买的那一件
 	var n := [0, _owned_count(eid, 1) + 1, _owned_count(eid, 2), _owned_count(eid, 3)]
 	var top := 0

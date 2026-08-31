@@ -450,6 +450,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 			battle._gadget_syn.on_hit(src, u)                # 奇械【冰封】掷骰冻结 + 【僵硬】叠 1 层
 			battle._staff_syn.add_mana(src, float(dmg) * StaffSynergySystem.MANA_FROM_DMG)   # 法器: 造成伤害 ×0.1 涨法力
 			battle._equip_sys._gremlin.on_hit(src, basic)                # 古灵精怪枪: 携带者每次【普攻】自伤 1%最大生命(真实·能打死自己)
+			battle._equip_sys._axe.on_hit(src, u, basic)      # 096 小木斧·被动2: 斧头普攻窃取目标 10% 护盾转普通护盾给自己
 		if u["alive"]:
 			battle._equip_sys._eq_on_target(u, src, dmg)     # on-target: 防守者装备 (硬化层/冰封反制 等)
 			# 批④(2026-08-06) 后 17 件里吃【法术伤害】的那几件走这条钩。

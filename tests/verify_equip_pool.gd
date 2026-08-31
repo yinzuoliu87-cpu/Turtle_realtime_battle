@@ -144,6 +144,11 @@ func _ready() -> void:
 	var drained_ids: Array = []
 	for e in eqs:
 		var eid: String = str((e as Dictionary).get("id", ""))
+		## ★【无限件】(096 小木斧)不参与"抽空"这条 —— 它按设计就抽不空(用户 2026-08-31
+		##   「在卡池没有数量限制」)。把它算进来的话这条断言必红, 而红的是需求不是 bug。
+		##   ⇒ 下面单独给它一条**反向**断言: 抽 0 之后它必须**仍在**可掷货列表里。
+		if EquipPoolS.UNLIMITED.has(eid):
+			continue
 		if int((e as Dictionary).get("cost", 0)) == 1 and drained.has(eid):
 			drained[eid] = 0
 			drained_ids.append(eid)
@@ -154,6 +159,21 @@ func _ready() -> void:
 		if str((e as Dictionary).get("id", "")) in drained_ids:
 			leaked.append(str((e as Dictionary).get("id", "")))
 	_ok("⑥ 抽空的件不再进可掷货列表", leaked.is_empty(), str(leaked))
+	## ★★无限件的反面: 把它的张数按到 0, 它**仍然**要在可掷货列表里。
+	##   只写上面那条"抽空的不出"是不够的 —— 那样把 096 从 UNLIMITED 里删掉也照样绿。
+	var un_ok := true
+	var un_n := 0
+	for eid2 in EquipPoolS.UNLIMITED.keys():
+		drained[eid2] = 0
+		un_n += 1
+		var still := false
+		for e2 in EquipPoolS.available(drained, eqs):
+			if str((e2 as Dictionary).get("id", "")) == str(eid2):
+				still = true
+		if not still:
+			un_ok = false
+	_ok("⑥ ★★无限件张数按到 0 后【仍在】可掷货列表(卡池无数量限制)", un_ok and un_n > 0,
+		"无限件 %d 个" % un_n)
 
 	# D23 的配套: 同一次掷货不出重复
 	var offer: Array = Phase2Equip.roll_shop(eqs, 10, 10, rng)

@@ -28,7 +28,7 @@ const EquipPoolS := preload("res://scripts/gamedata/equip_pool.gd")
 const Phase2Config := preload("res://scripts/gamedata/phase2_config.gd")
 
 ## 上架 94 件(不含羁绊赠送的 p2eq_095, 它 shopAvailable=0)
-const WANT_TOTAL := 94
+const WANT_TOTAL := 95   # 2026-08-31: +1 = 096 小木斧(1费·遗物·用户新需求, 方案书 20260831-小木斧进化系统与三件改动.md 三期)
 ## 方案书 §4.4.2 最终态（写字面值，不引用被测数据）
 const WANT_BY_TYPE := {
 	"奇械": [2, 2, 2, 2, 2], "法器": [2, 2, 3, 2, 1], "灵物": [2, 2, 2, 2, 2],
@@ -36,7 +36,9 @@ const WANT_BY_TYPE := {
 	"枪": [2, 2, 1, 2, 2], "盾": [2, 1, 3, 2, 1], "药水": [3, 2, 1, 2, 1],
 	"食物": [2, 2, 2, 2, 1],
 }
-const WANT_BY_COST := [22, 20, 20, 19, 13]
+const WANT_BY_COST := [23, 20, 20, 19, 13]   # 2026-08-31: +1 = 096 小木斧(1费·遗物·用户新需求, 方案书 20260831-小木斧进化系统与三件改动.md 三期)
+const EquipPoolB := preload("res://scripts/gamedata/equip_pool.gd")   # NO_STAR: 不升星的件没有逐星数值
+const EquipStatsB := preload("res://scripts/gamedata/equip_stats.gd")
 const NEW_FIRST := 60      # p2eq_060 起是批3 新增
 ## 改前（59 件态）的曝光标准差，来自方案书 §4.4.3 —— ★这是"改善了没有"的基准线，
 ## 不是随手填的阈值：Lv5 0.331 / Lv8 0.203 / Lv10 0.289。
@@ -116,7 +118,7 @@ func _ready() -> void:
 			incomplete.append("%s 缺 emoji/名字/类型" % eid)
 		if str(d.get("baseStats1", "")).strip_edges() == "":
 			incomplete.append("%s baseStats1 空" % eid)
-	_ok("② ★分母: 新增 %d 件(p2eq_%03d 起)" % [new_n, NEW_FIRST], new_n == 35, "实得 %d" % new_n)
+	_ok("② ★分母: 新增 %d 件(p2eq_%03d 起)" % [new_n, NEW_FIRST], new_n == 36, "实得 %d" % new_n)   # 2026-08-31: 35→36(096 小木斧)
 	_ok("② 新件三档属性 / emoji / 名字 / 类型 / 属性串 全都齐", incomplete.is_empty(),
 		str(incomplete.slice(0, 5)))
 	_ok("② 上架 %d 件名字不重复" % eqs.size(), dup.is_empty(), str(dup))
@@ -191,6 +193,10 @@ func _ready() -> void:
 			continue
 		if not _has_effect_impl(eid3):
 			continue
+		## ★【不升星】的件天然没有"逐星数值"(096 小木斧: 用户「这个装备不会进行升星」),
+		##   要求它在文案里写 x/y/z 是要求它说谎。⇒ 豁免, 并在下面单独断言"它确实没有三档"。
+		if EquipPoolB.NO_STAR.has(eid3):
+			continue
 		impl += 1
 		var txt3: String = SkillText.render_consts(str(d3.get("effectDesc1", "")) + str(d3.get("effectDesc3", "")))
 		if trip.search(txt3) == null:
@@ -199,6 +205,19 @@ func _ready() -> void:
 		"impl=%d" % impl)
 	_ok("⑤ ★★已实装的件必须把逐星数值写进文案(反过来的那一半)", silent.is_empty(),
 		str(silent.slice(0, 5)))
+	## ★★豁免不能是白给的: 被豁免的件必须**真的**没有三档数值 ——
+	##   否则"我把它加进 NO_STAR 就不用写文案了"会变成绕过这条门禁的后门。
+	var no_star_but_tiered: Array = []
+	for eid4 in EquipPoolB.NO_STAR.keys():
+		var d4: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(eid4), {})
+		if d4.is_empty():
+			continue
+		var st4: Array = EquipStatsB.STATS.get(str(eid4), [])
+		if st4.size() == 3 and st4[0] != st4[2]:
+			no_star_but_tiered.append(str(eid4))
+	_ok("⑤ ★被豁免的【不升星】件必须真的三档同值(豁免不是后门)",
+		no_star_but_tiered.is_empty() and EquipPoolB.NO_STAR.size() > 0,
+		"名单 %d 件 · 违规 %s" % [EquipPoolB.NO_STAR.size(), str(no_star_but_tiered)])
 
 	print("")
 	print("  (共 %d 条断言)" % _n)

@@ -34,6 +34,19 @@ extends RefCounted
 class_name EquipPool
 
 ## 费用 → 每件张数（云顶值 +1）。★改这张表 = 改整个赛季的抽卡手感，动之前先读上面那段。
+## 【不受张数限制】的件(用户 2026-08-31 小木斧:「这个装备不会进行升星, 在卡池没有数量限制」)。
+## ★为什么需要这张名单: 商店出货有两层 —— `phase2_equip.roll_shop` 那层确实是无限有放回,
+##   但 ShopScene 先用 `available()` 按**私人池剩余张数**过滤过一遍。
+##   我在方案书里一度写成"无数量限制现在就成立", 那是只看了第一层就下的结论, 错的。
+## ★口径: 无限件**不扣张、不退张、永远可掷货**, 也不占 `available()` 的名额判断。
+const UNLIMITED := {"p2eq_096": true}
+## 【不参与三合一升星】的件(同一条被动的另一半: 用户「这个装备不会进行升星」)。
+## ★与 UNLIMITED 放在一起是刻意的 —— 它俩是同一句需求拆出来的两半, 分开放必然漏一半。
+##   消费者: GameState.try_merge_all(真合成) + ShopScene._purchase_merge_star(卡上的预告)。
+const NO_STAR := {"p2eq_096": true}
+## 无限件在 `left()` 里回报的张数 —— 只要远大于任何一次购买量即可, 不参与守恒律。
+const UNLIMITED_LEFT := 999999
+
 const DEPTH := {1: 31, 2: 26, 3: 19, 4: 11, 5: 10}
 const DEPTH_FALLBACK := 19          # 费用字段异常时的兜底（按 3 费）
 
@@ -63,11 +76,15 @@ static func full_pool(equipment: Array) -> Dictionary:
 
 ## 还剩几张。池里没有这个键 = 该件不参与池（不上商店），返回 0。
 static func left(pool: Dictionary, eid: String) -> int:
+	if UNLIMITED.has(eid):
+		return UNLIMITED_LEFT
 	return int(pool.get(eid, 0))
 
 
 ## 买走 n 张。返回是否真的扣到了（张数不够就不扣，整笔失败）。
 static func take(pool: Dictionary, eid: String, n: int = 1) -> bool:
+	if UNLIMITED.has(eid):
+		return n > 0          # 无限件: 买得到, 但不扣张
 	if n <= 0 or not pool.has(eid):
 		return false
 	if int(pool[eid]) < n:
@@ -79,6 +96,8 @@ static func take(pool: Dictionary, eid: String, n: int = 1) -> bool:
 ## 卖出退回 n 张。★不设上限钳制 —— 退多了说明调用侧算错了份数，
 ## 与其静默吃掉（池子凭空少张、玩家永远发现不了），不如让门禁的守恒律断言当场红。
 static func give_back(pool: Dictionary, eid: String, n: int) -> void:
+	if UNLIMITED.has(eid):
+		return                # 无限件: 卖了也不退张(它本来就没扣过)
 	if n <= 0 or not pool.has(eid):
 		return
 	pool[eid] = int(pool[eid]) + n

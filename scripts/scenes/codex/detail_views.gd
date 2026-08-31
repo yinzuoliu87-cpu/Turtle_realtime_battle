@@ -1,6 +1,7 @@
 class_name CodexDetail
 extends RefCounted
 const SkillTextRef := preload("res://scripts/util/skill_text.gd")   # 三档数值按★1高亮(与商店/背包同一份)
+const _EquipPoolRef := preload("res://scripts/gamedata/equip_pool.gd")   # NO_STAR: 不升星的件不显示星级图例
 ## 图鉴·右栏详情视图(龟/装备/羁绊(类型)/状态/规则/小将 13渲染函数)
 ## 类内名不变;外部名加 battle.
 
@@ -731,7 +732,11 @@ func _show_p2eq(eq: Dictionary) -> void:
 	## ── 羁绊(类型阈值) ────────────────────────────────────────────────
 	## ★图鉴原来【一个字都不提羁绊】, 而羁绊是这件装备最重要的搭配信息。
 	##   商店详情里有(右上角小签), 图鉴反而没有 —— 同一份信息两个界面不一致。
-	if has_tiers:
+	## ★【不升星】的装备不显示"数值分档 ★1/★2/★3" —— 它永远只有 1★,
+	##   摆着三档图例等于对玩家说谎(用户 2026-08-31 小木斧: 「这个装备不会进行升星」)。
+	##   判据走 EquipPool.NO_STAR 这一份名单, 不在这里另抄一份 id。
+	var _no_star: bool = _EquipPoolRef.NO_STAR.has(str(eq.get("id", "")))
+	if has_tiers and not _no_star:
 		var lg := RichTextLabel.new()
 		lg.bbcode_enabled = true; lg.fit_content = true; lg.scroll_active = false
 		lg.position = Vector2(20, _next_y)

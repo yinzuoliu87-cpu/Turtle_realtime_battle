@@ -363,6 +363,10 @@ func try_merge_all(side: String = "left") -> Array:
 			var it: Dictionary = flat[fi]
 			if int(it["star"]) >= _Equip.MAX_STAR:
 				continue
+			## ★【不升星】的件直接跳过分组(用户 2026-08-31 小木斧「这个装备不会进行升星」)。
+			##   名单在 EquipPool.NO_STAR —— 与"无限张"放同一个文件, 因为它们是同一条被动的两半。
+			if _EquipPool.NO_STAR.has(str(it["id"])):
+				continue
 			var k: String = "%s|%d" % [str(it["id"]), int(it["star"])]
 			if not groups.has(k):
 				groups[k] = []
@@ -590,6 +594,17 @@ var incense_marks: int = 0                            # 093 香火石: 本赛季
 ##   (用户 2026-08-13:「羁绊里有多少刻痕和充能都是重新激活状态…就接着激活啊」)。
 ##   ★这里【曾经】存在装备实例的 `chg` 字段里 ⇒ 卖掉再买充能归零、刻痕却还在, 两半各走各的。
 var incense_charge: int = 0
+## 096 小木斧【砍伐经验】—— 照 093 香火石的先例做成**赛季级**(用户 2026-08-31「随大轮重置」;
+##   代码里「一大轮」就是赛季, 见上面 season_id 的注释)。
+## ★★这里是**两个**字段, 不是一个 —— 未决点 ⑥ 拍板「历史累计」之后必然如此:
+##   · `axe_exp_bar`   进度条: 攒到阈值就**清零**(进化), 大轮也清零 → 只有进化判定读它
+##   · `axe_exp_total` 历史累计: **只增不减**, 大轮才清零 → 召唤物的血/攻公式读它
+##   一次加经验必须**同时写两边**。只验其中一个等于没验(门禁 verify_axe 有专门一条)。
+## ★四期才接上"怎么攒"(买+15/打完一场+10/击杀+2); 三期只是让读的一侧有东西可读。
+var axe_exp_bar: int = 0
+var axe_exp_total: int = 0
+var axe_stage: int = 0                                # 档位下标(0=木斧, 见 AxeEvolution.STAGES)
+var axe_final: String = ""                            # 最终造物 key(空=还没选; 选完本大轮锁定)
 var season_level: int = 1                             # 大轮等级 1-10 (每场+2经验累积, 可买经验; 驱动商店出货档 + 装备槽; 用户 2026-06-27)
 # ★装备私人池 (2026-08-03 批2, 方案书 §4.6·D6/D20~D23): {装备id: 剩余张数}, -1 = 已满3★冻结。
 #   在此之前商店是【无限张有放回】—— 想要几件同款就有几件, 3★ 只受钱和运气限制。
@@ -1072,6 +1087,8 @@ func save() -> void:
 		"season_leaders": season_leaders,
 		"loadouts": loadouts,                 # 大轮内各龟 3选1 技能选择, 随赛季持久(跨场景/重启不丢)
 		"equip_pool": equip_pool,
+		"axe_exp_bar": axe_exp_bar, "axe_exp_total": axe_exp_total,
+		"axe_stage": axe_stage, "axe_final": axe_final,
 		"persistent_bench": persistent_bench,
 		"persistent_equipped": persistent_equipped,
 		"candy_jar_count": candy_jar_count,
@@ -1134,6 +1151,10 @@ func _load() -> void:
 	season_level = int(data.get("season_level", 1))
 	# ★老存档没有这个键 → 空字典, 由 ensure_equip_pool() 在下次用到时补满(D12: 不做旧档兜底)。
 	equip_pool = data.get("equip_pool", {})
+	axe_exp_bar = int(data.get("axe_exp_bar", 0))
+	axe_exp_total = int(data.get("axe_exp_total", 0))
+	axe_stage = int(data.get("axe_stage", 0))
+	axe_final = str(data.get("axe_final", ""))
 	season_xp = int(data.get("season_xp", 0))
 	chest_treasure_value = float(data.get("chest_treasure_value", 0.0))
 	chest_treasures_won = data.get("chest_treasures_won", [])
@@ -1198,6 +1219,12 @@ func reset_save() -> void:
 	persistent_bench = []
 	persistent_equipped = {}
 	equip_pool = {}                   # 池随之清空, 下次用到时补满(D6: 赛季重置)
+	## 096 小木斧: 砍伐经验【随大轮重置】(用户 2026-08-31) —— 进度条与累计值**都**清,
+	##   档位退回木斧、最终造物的选择也作废(未决点 ⑩「本大轮锁定」的另一半)。
+	axe_exp_bar = 0
+	axe_exp_total = 0
+	axe_stage = 0
+	axe_final = ""
 	candy_jar_count = 0
 	candy_jar_broken = false
 	candy_temp_levels = {}
@@ -1539,6 +1566,12 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	persistent_bench = []
 	persistent_equipped = {}
 	equip_pool = {}                   # 池随之清空, 下次用到时补满(D6: 赛季重置)
+	## 096 小木斧: 砍伐经验【随大轮重置】(用户 2026-08-31) —— 进度条与累计值**都**清,
+	##   档位退回木斧、最终造物的选择也作废(未决点 ⑩「本大轮锁定」的另一半)。
+	axe_exp_bar = 0
+	axe_exp_total = 0
+	axe_stage = 0
+	axe_final = ""
 	candy_jar_count = 0
 	candy_jar_broken = false
 	candy_temp_levels = {}

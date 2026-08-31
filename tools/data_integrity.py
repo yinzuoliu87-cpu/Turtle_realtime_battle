@@ -35,9 +35,24 @@ SHOP_EQ = [e for e in eq if int(e.get('shopAvailable', 0)) == 1]
 GRANT_EQ = [e for e in eq if int(e.get('shopAvailable', 0)) != 1]
 eqids = {e['id'] for e in SHOP_EQ}
 chk('p2eq-types 键 == 装备id', sorted(set(types)^eqids))
-TYPESET = {'香火', '剑','奇械','食物','盾','药水','枪','弓箭','法器','灵物','遗物'}
-chk('p2eq-types 的值恰好落在这 10 个类型里(学派已删·护符/饰品已解散)', sorted({t for v in types.values() for t in (v if isinstance(v, list) else [v])} - TYPESET))
-chk('10 个类型每个都至少有 1 件装备(分母, 防打错字造出空类型)', sorted(TYPESET - {t for v in types.values() for t in (v if isinstance(v, list) else [v])}))
+## ★★类型名单【从事实源现读】, 不在这里手抄一份。
+##   由来(2026-08-31): 这里原本写死 `{'香火','剑',...}` 11 个, 而**标签还写着"10 个类型"**
+##   —— 手抄的副本已经漂了没人发现; 加「斧头」类型时它又把一个正当的新类型判成了错。
+##   事实源是 scripts/gamedata/phase2_types.gd 的 `TYPES` 键集(羁绊阈值也在那儿)。
+def _typeset():
+    import re
+    src = io.open('scripts/gamedata/phase2_types.gd', encoding='utf-8').read()
+    m = re.search(r'const TYPES\s*:=\s*\{(.*?)\n\}', src, re.S)
+    if not m:
+        return set()
+    return set(re.findall(r'"([^"]+)"\s*:\s*\{"tiers"', m.group(1)))
+
+TYPESET = _typeset()
+## ★分母: 一个类型都没读到 = 正则挂了/表改写法了, 不是"通过"。
+chk('★分母: 从 phase2_types.gd 读到类型 %d 个(<8 就是解析失效)' % len(TYPESET),
+    [] if len(TYPESET) >= 8 else ['只读到 %d 个: %s' % (len(TYPESET), sorted(TYPESET))])
+chk('p2eq-types 的值都在 phase2_types.TYPES 里(学派已删·护符/饰品已解散)', sorted({t for v in types.values() for t in (v if isinstance(v, list) else [v])} - TYPESET))
+chk('每个类型都至少有 1 件装备(分母, 防打错字造出空类型)', sorted(TYPESET - {t for v in types.values() for t in (v if isinstance(v, list) else [v])}))
 ptypes = {str(p.get('passive',{}).get('type','')) for p in pets}
 chk('每只龟的被动都有图标', sorted(ptypes - set(picons)))
 chk('被动图标无孤儿键', sorted(set(picons) - ptypes))

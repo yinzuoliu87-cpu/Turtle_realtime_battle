@@ -35,6 +35,8 @@ var _eq_drone_halve: bool = false   # 无人机减半标记(随本系统)
 ## ★归【装备层】所有而不是主场景 —— 它是装备效果, 按 CLAUDE.md「新代码放哪」该进 systems/equip;
 ##   而且主文件有架构预算(只减不增), 我第一版加在那里当场把预算撑红了。
 var _gremlin: GremlinGun
+## 096 小木斧(2026-08-31·三期): 斧头召唤物 + 通用主动 + 被动2 窃盾。
+var _axe: AxeSystem
 
 func _init(b) -> void:
 	battle = b
@@ -46,6 +48,7 @@ func _init(b) -> void:
 	_bow_sys = EqBowBatch.new(b)
 	_venom = VENOM_DRONE.new(b)
 	_gremlin = GremlinGun.new(b)
+	_axe = AxeSystem.new(b)
 	_gun_sys = EqGunBatch.new(b)
 	_blade_sys = EqBladeBatch.new(b)
 	_gadget_sys = EqGadgetBatch.new(b)
@@ -343,6 +346,13 @@ func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 	if u.get("_gremlin_pending", false):
 		u["_gremlin_pending"] = false
 		_eq_fpga_hand_out_guns(u, int(u.get("_gremlin_si", 0)))
+	## 096 小木斧【登场】: 首帧召唤斧头(同 058/032/040 的 pending 模式)。
+	if u.get("_axe_pending", false):
+		u["_axe_pending"] = false
+		_axe.summon(u)
+	## 096: 斧头攒满龟能就放主动(回血+护盾)。放这儿同理 —— 借每帧的车, 不给上帝文件加行。
+	if u.has("_axe_ref"):
+		_axe.tick(u, delta)
 	for e in u["equips"]:
 		var iid: String = str(e["id"])
 		var iv: float = float(battle._EQ_CUSTOM_IV.get(iid, 0.0))

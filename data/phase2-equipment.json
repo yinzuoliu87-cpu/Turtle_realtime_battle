@@ -1138,5 +1138,17 @@
     "effectDesc3": "",
     "img": "equip/p2eq_095.png",
     "effectBrief": "每 3 秒生成 {C:ShieldSynergySystem.HOLY_AMOUNT} 点圣光护盾；护盾存在时反击各造成 2 点真实伤害。"
+  },
+  {
+    "id": "p2eq_096",
+    "name": "小木斧",
+    "cost": 1,
+    "baseStats1": "+生命20·+攻10·+护甲2·+魔抗2",
+    "shopAvailable": 1,
+    "emoji": "🪓",
+    "effectDesc1": "登场时召唤一把【斧头】（近战·1×攻击力物理伤害·每秒 {C:AxeEvolution.MINION_ASPD} 次攻击速度·{C:AxeEvolution.MINION_DEF} 护甲与魔抗）：它的最大生命 = {C:AxeEvolution.MINION_HP_BASE}＋已收集的砍伐经验，攻击力 = {C:AxeEvolution.MINION_ATK_BASE}＋{C:AxeEvolution.MINION_ATK_PER_EXP}×已收集的砍伐经验。\n斧头攒满 {C:AxeEvolution.ACTIVE_ENERGY} 龟能时自动回复 {C:AxeEvolution.ACTIVE_HEAL_PCT%}%最大生命值，并为自己获得 {C:AxeEvolution.ACTIVE_SHIELD_PCT%}%最大生命值的护盾。\n斧头的普攻会窃取目标 {C:AxeEvolution.SHIELD_STEAL_PCT%}%的护盾值，转成普通护盾给自己（特殊护盾也照转）。\n这件装备不会升星，在卡池里也没有数量限制。",
+    "effectDesc3": "",
+    "img": "equip/wood-axe.png",
+    "effectBrief": "登场时召唤一把斧头：近战、会自己回血挡伤，普攻还偷走目标的护盾。"
   }
 ]
