@@ -701,9 +701,13 @@ func _show_p2eq(eq: Dictionary) -> void:
 	##   现在: 简述(粗体, 一句话) → 空行 → 完整机制。
 	var _eb := SkillText.equip_brief(eq)
 	var _ef := SkillText.equip_full(eq)
-	var bb = ("[b]%s[/b]
+	## ★★2026-08-31: 判据从「一字不差才算重复」放宽到
+	##   「既没更短、也没说新东西」—— 见 SkillText.brief_is_redundant 的头注。
+	##   原来只挡一字不差的, 于是"差几个字"的重复(辣椒/黄铜齿轮等 4 件)全漏过去,
+	##   玩家在图鉴里看到同一件事写两遍。
+	var bb = _ef if SkillText.brief_is_redundant(_eb, _ef) else ("[b]%s[/b]
 
-%s" % [_eb, _ef]) if _eb != _ef else _ef
+%s" % [_eb, _ef])
 	var d3: String = str(eq.get("effectDesc3", ""))
 	if d3.strip_edges() != "":
 		bb += "\n\n[color=%s][b]%s[/b][/color]" % [rcol, d3]

@@ -60,6 +60,10 @@ func _ready() -> void:
 	var bad: Array = []
 	var checked := 0
 	for st in all:
+		## ★上一轮的延时回调还抓着【已经被清掉的单位】—— 不清空的话下一轮触发时
+		##   引擎报 `Lambda capture at index 0 was freed`, 而门禁的致命正则会把它判红。
+		##   实测 3 次里偶发 1 次: **是我这个台子留的悬空引用, 不是产品的问题**。
+		_s._pending_shots.clear()
 		_s._units.clear()
 		var u: Dictionary = _s._spawn._make_unit("shell", "left", c + Vector2(-200.0, 0.0))
 		u["maxHp"] = 1.0e6

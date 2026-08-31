@@ -364,6 +364,70 @@ static func equip_full(edef: Dictionary) -> String:
 	return render_consts(str(edef.get("effectDesc1", "")))
 
 
+## 这件装备的【简述】值不值得单独显示一遍。
+##
+## ★由来(2026-08-31): 用户在图鉴里看到「同一件事写了两遍」—— 简述一行 + 全文一段,
+##   而两者几乎是同一句话。渲染层本来就有防重(`_eb != _ef`), 但它只挡【一字不差】,
+##   而这些是"差几个字"的, 全都漏过去了。
+##
+## ★判据用两个【有人话含义】的条件, 不用相似度分数(那个没有干净的分界线):
+##     ① 简述**没更短** —— 长度 ≥ 全文的 75%
+##     ② 简述**没说新东西** —— 它的内容被全文覆盖 ≥ 90%
+##   两个都成立 ⇒ 它不是简述, 是重复。
+##   实测(95 件装备的全量剖面): 命中 4 件 —— 黄铜齿轮(15字 vs 15字·完全一样)、
+##   幽灵墨鱼、双穿珊瑚刺、辣椒。其余 91 件的简述是真·简述
+##   (如霰弹贝古 32 字 vs 108 字), 照常显示两段。
+## ★不改数据只改判据: 以后再加装备自动纳入, 不用有人记得去改文案。
+static func brief_is_redundant(brief: String, full: String) -> bool:
+	var b := _strip_for_cmp(brief)
+	var f := _strip_for_cmp(full)
+	if b == "" or f == "":
+		return true
+	if b == f:
+		return true
+	if float(b.length()) < float(f.length()) * 0.75:
+		return false                      # 真的更短 ⇒ 是个有用的简述
+	return _covered_frac(b, f) >= 0.90    # 没更短, 那就看它有没有说新东西
+
+
+## 比较用的规范化: 去掉标记/占位符/空白, 只留可读内容。
+static func _strip_for_cmp(t: String) -> String:
+	var out := ""
+	var skip := 0
+	for ch in t:
+		if ch == "<" or ch == "{" or ch == "[":
+			skip += 1
+		elif ch == ">" or ch == "}" or ch == "]":
+			skip = maxi(0, skip - 1)
+		elif skip == 0 and ch != " " and ch != "
+" and ch != "	":
+			out += ch
+	return out
+
+
+## b 里有多少内容能在 f 里按顺序找到(最长公共子序列 / b 的长度)。
+## ★用子序列而不是子串: 全文常在简述中间插字("普攻" → "携带者的普攻"),
+##   子串匹配会因为插了几个字就判成"完全不同"。
+static func _covered_frac(b: String, f: String) -> float:
+	if b.length() == 0:
+		return 1.0
+	var prev: PackedInt32Array = PackedInt32Array()
+	prev.resize(f.length() + 1)
+	var cur: PackedInt32Array = PackedInt32Array()
+	cur.resize(f.length() + 1)
+	for i in range(b.length()):
+		cur[0] = 0
+		for j in range(f.length()):
+			if b[i] == f[j]:
+				cur[j + 1] = prev[j] + 1
+			else:
+				cur[j + 1] = maxi(prev[j + 1], cur[j])
+		var tmp := prev
+		prev = cur
+		cur = tmp
+	return float(prev[f.length()]) / float(b.length())
+
+
 static func render_plain(template: String, f: Dictionary, s: Dictionary) -> String:
 	_ensure_re()
 	var html := render_html(template, f, s)

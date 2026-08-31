@@ -1119,8 +1119,17 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false,
 					src["eq_state"][iid] = stt
 					battle._damage._apply_dot_stacks(tgt, "bleed", THORN_BLEED[si], src)
 					battle._skill_ring(tgt["pos"], Color(0.9, 0.35, 0.35, 0.75), 46.0)
-			"p2eq_002":   # 海带卷刀: 命中→施加流血层 (范围技能触发减半; 3★流血层数天然可叠)
-				var bs: int = maxi(1, roundi([0.075, 0.1, 0.15][si] * src["atk"] * (0.5 if is_aoe else 1.0)))
+			"p2eq_002":   # 辣椒: **只有携带者的普攻**命中才施加流血层 (3★流血层数天然可叠)
+				## ★★2026-08-31 用户改需求:「效果变为携带者的普攻施加流血而不是每段伤害了」。
+				##   `basic` 这个闸是 `_eq_on_hit` **本来就带的**(battle_damage.gd:447 传进来),
+				##   所以不用换钩子, 加一句判断即可。
+				## ★同时【删掉】原来那支 `(0.5 if is_aoe else 1.0)` 减半 —— 用户拍板 (a):
+				##   只吃普攻之后"范围技能触发的流血"根本不再发生, 那句就是死条款。
+				## ★系数**原样不动**(用户:「不用补」) —— 这是一次明知的净削弱:
+				##   技能段 / DoT 段 / 追击段从此都不再叠流血。别顺手往上调。
+				if not basic:
+					return
+				var bs: int = maxi(1, roundi([0.075, 0.1, 0.15][si] * src["atk"]))
 				battle._damage._apply_dot_stacks(tgt, "bleed", battle._cyeq_n(bs), src)
 			"p2eq_003":   # 锋利鲨齿: 溅射200码内敌 + 醒目双层冲击环(no_depth_test防地板盖)+每敌立式火花(用户2026-07-19)
 				var frac: float = [0.15, 0.28, 0.50][si]

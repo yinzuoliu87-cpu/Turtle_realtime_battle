@@ -13,15 +13,15 @@
   },
   {
     "id": "p2eq_002",
-    "name": "海带卷刀",
+    "name": "辣椒",
     "cost": 1,
     "baseStats1": "+攻12/24/40",
     "shopAvailable": 1,
     "emoji": "⚔️",
-    "effectDesc1": "每段伤害命中后，对目标施加 0.075/0.1/0.15×攻击力的流血层数（范围技能触发的流血减半）。",
+    "effectDesc1": "携带者的普攻命中后，对目标施加 0.075/0.1/0.15×攻击力的流血层数。",
     "effectDesc3": "3 星：流血可叠加至 3 层。",
-    "img": "equip/dungeon-blade.png",
-    "effectBrief": "每段伤害命中后，施加 0.075/0.1/0.15×攻击力的流血层数。"
+    "img": "equip/chili-pepper.png",
+    "effectBrief": "普攻命中后，施加 0.075/0.1/0.15×攻击力的流血层数。"
   },
   {
     "id": "p2eq_003",
@@ -44,7 +44,7 @@
     "emoji": "😈",
     "effectDesc1": "伤害可处决生命值低于斩杀线的敌人（斩杀线=4/6/12%最大生命值×（1+暴击率））；处决后回复 {C:EquipSystem.FANG_EXEC_ENERGY} 点龟能（无龟能的单位改为回复 {C:EquipSystem.FANG_EXEC_HEAL} 点生命）。\n此外携带者每 {C:EquipSystem.FANG_IV} 秒向最近的敌人射出一颗剧毒獠牙，造成 1/1.8/4×攻击力魔法伤害，并回复自身该伤害 {C:EquipSystem.FANG_LIFESTEAL%}%的生命。",
     "effectDesc3": "",
-    "img": "equip/tyrant-fang.png",
+    "img": "equip/tyrant-fang-new.png",
     "effectBrief": "伤害可处决生命低于 4/6/12% 最大生命的敌人；每 {C:EquipSystem.FANG_IV} 秒射出毒牙吸血。"
   },
   {
