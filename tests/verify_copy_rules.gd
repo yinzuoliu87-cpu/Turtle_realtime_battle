@@ -64,7 +64,7 @@ func _ok(name: String, cond: bool, detail: String = "") -> void:
 ##     并用**墙钟**等 1.2 秒让延时与弹道结算(不用帧数、不用游戏时钟 —— CLAUDE.md §3.5)。
 ##
 ## 返回 {cast: bool, dmg: float, heal: float, shield: float, spawned: int}
-func _copy_once(stype: String):
+func _copy_once(stype: String, inject_foreign: bool = false):
 	var c: Vector2 = _s.ARENA.position + _s.ARENA.size * 0.5
 	var sh: Dictionary = _s._spawn._make_unit("shell", "left", c + Vector2(-140, 0))
 	sh["no_basic"] = true
@@ -84,23 +84,62 @@ func _copy_once(stype: String):
 	_s._units.append(foe)
 	_s._over = false
 
-	var hp0: float = float(foe["hp"])
+	## ★★量【累计承伤】不量血量差(2026-09-01):
+	##   `hp0 - foe.hp` 是**净变化**, 被目标自身的回血抵消。实测这一窗里敌人会回 20~60 血,
+	##   而 ④ 组里 ghostPhase 只打 32、lineInkBomb 只打 40 —— **噪声比信号大**,
+	##   够把"抄到了"读成"没抄到"。`_st_taken` 是引擎自己的累计计数器, 只增不减, 回血盖不住。
+	##   (与上面 `spawned` 的归属校验同一个根因: 判据量的是世界的净变化, 不是被测那件事。)
+	var hp0: float = float(foe.get("_st_taken", 0))
 	var shp0: float = float(sh["hp"])
 	var ssh0: float = float(sh.get("shield", 0.0)) + float(sh.get("_auraShieldVal", 0.0))
-	var n0: int = _s._units.size()
+	## ★★记下【开窗前就在场的每一只】, 不是只记个数 —— 见下方 `spawned` 的注释。
+	var before: Array = []
+	for _u0 in _s._units:
+		before.append(_u0)
 	_s._shell_sys._sk_shell_copy(sh, foe)
+	## ★★`inject_foreign`: 在观察窗里**故意**放一只【别人的】召唤物进场。
+	##   由来(2026-09-01): 原判据 `_units.size() - n0` 会把它算到被测技能头上,
+	##   CI 上偶发红过一次。但那个噪声是**偶发的** —— 单跑一次复现不了,
+	##   于是"我修好了"这句话没法证明(反向验证里那个变异一条都不红)。
+	##   ⇒ 把噪声造成**确定性的**: 注入一只 owner 是 foe 的召唤物, 归属校验必须把它排除。
+	##   这样"归属校验有没有在工作"就变成一条能红能绿的断言, 而不是一句自称。
+	if inject_foreign:
+		_s._spawn._spawn_summon(foe, "skeleton", 100.0, 10.0, {"label": "噪声", "col_size": 20.0})
 	## ★墙钟等结算 —— 帧数在无头 CI 下每帧只推进 1ms, 游戏时钟在 _kill 后会冻结
 	var t0 := Time.get_ticks_msec()
 	while Time.get_ticks_msec() - t0 < 1200:
 		await get_tree().process_frame
 
-	var dmg: float = hp0 - float(foe["hp"])
+	var dmg: float = float(foe.get("_st_taken", 0)) - hp0
 	var heal: float = float(sh["hp"]) - shp0
 	var shd: float = (float(sh.get("shield", 0.0)) + float(sh.get("_auraShieldVal", 0.0))) - ssh0
-	var spawned: int = _s._units.size() - n0
+	## ★★判据从「场上多了几个单位」收紧成「**这只龟壳召出来的**有几个」。
+	##   由来(2026-09-01, CI 偶发红): 原判据是 `_s._units.size() - n0`, 数的是**整个战场**
+	##   在这 1200ms 里的净增量 —— 场上任何别的单位在这一窗里召点什么, 都会被算到
+	##   被测技能头上。CI 实测红过一次: `伤害-50 回血0 盾0 召唤1`(伤害是负的 = 敌人在回血,
+	##   说明场上本来就在活动), `cast=true` 完全来自那个不相干的 +1。
+	##   ⇒ 归属校验: 只认 `summon_owner` 是这只龟壳的。判据宽一格就会造出假 bug
+	##   (memory [[fb-judge-must-fit-the-shape]] / [[fb-runtime-sentinel-beats-static-sweep]])。
+	##   ★用 is_same 比对单位字典, 不用 == / in —— 单位字典互相引用成环, Godot 会递归哈希
+	##   直到卡死(CLAUDE.md §3.2)。
+	var spawned := 0
+	var foreign_in := 0        # 新进场但【不是龟壳召的】—— ③b 拿它当分母
+	for _u1 in _s._units:
+		var _was := false
+		for _u2 in before:
+			if is_same(_u1, _u2):
+				_was = true
+				break
+		if _was:
+			continue
+		var _own = (_u1 as Dictionary).get("summon_owner", null)
+		if _own is Dictionary and is_same(_own, sh):
+			spawned += 1
+		else:
+			foreign_in += 1
 	return {
 		"cast": dmg > 0.5 or heal > 0.5 or shd > 0.5 or spawned > 0,
-		"dmg": dmg, "heal": heal, "shield": shd, "spawned": spawned,
+		"dmg": dmg, "heal": heal, "shield": shd, "spawned": spawned, "foreign_in": foreign_in,
 	}
 
 
@@ -163,6 +202,14 @@ func _ready() -> void:
 			not bool(r["cast"]), "cast=%s 伤害%.0f 回血%.0f 盾%.0f 召唤%d" % [str(r["cast"]), float(r["dmg"]), float(r["heal"]), float(r["shield"]), int(r["spawned"])])
 	_ok("★分母: 真的试了 %d 个黑名单技能(N=0 是空检查)" % blocked_tested,
 		blocked_tested >= 3)
+	## ── ③b ★★归属校验自证: 窗里塞一只【别人的】召唤物, 不许算到被测技能头上 ──
+	var noisy: Dictionary = await _copy_once("angelAscend", true)
+	_ok("★★③b 窗里进来一只【别人的】召唤物时, 仍判「没被放出来」(归属校验在工作)",
+		not bool(noisy["cast"]) and int(noisy["spawned"]) == 0,
+		"cast=%s 归属到龟壳的召唤=%d" % [str(noisy["cast"]), int(noisy["spawned"])])
+	_ok("★★分母: 那只噪声召唤物**真的进场了**(没进场的话上一条是空检查)",
+		noisy.has("foreign_in") and int(noisy["foreign_in"]) >= 1,
+		"场上非龟壳的新单位 = %d" % int(noisy.get("foreign_in", -1)))
 
 	# ── ④ ★★走真复制入口: 用户点名的那几个【现在抄得到】 ──
 	## 用户原话举的两个例子: 双头融合(twoHeadFusion) / 虚化(ghostPhase)。
