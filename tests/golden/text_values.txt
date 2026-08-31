@@ -1,5 +1,5 @@
 eq|FPGA板|effectBrief	6.0
-eq|FPGA板|effectDesc1	3.5 3.5 5.0 6.0 7.0 12.0 15.0 15.0 25.0
+eq|FPGA板|effectDesc1	1.0 1.0 1.0 1.0 3.5 3.5 5.0 6.0 7.0 12.0 15.0 15.0 25.0
 eq|不沉之锚|effectDesc1	0.25 1.5 100.0 250.0
 eq|余烬燃油瓶|effectBrief	5.0 8.0
 eq|余烬燃油瓶|effectDesc1	5.0 8.0

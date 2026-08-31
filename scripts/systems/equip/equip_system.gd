@@ -31,6 +31,10 @@ var _incense: IncenseStoneSystem # 093 香火石(跨对局养成·要落存档)�
 const VENOM_DRONE := preload("res://scripts/systems/equip/eq_venom_drone.gd")
 var _venom
 var _eq_drone_halve: bool = false   # 无人机减半标记(随本系统)
+## 古灵精怪枪(2026-08-31): FPGA板登场塞给敌人的"毒苹果"。
+## ★归【装备层】所有而不是主场景 —— 它是装备效果, 按 CLAUDE.md「新代码放哪」该进 systems/equip;
+##   而且主文件有架构预算(只减不增), 我第一版加在那里当场把预算撑红了。
+var _gremlin: GremlinGun
 
 func _init(b) -> void:
 	battle = b
@@ -41,6 +45,7 @@ func _init(b) -> void:
 	_food_sys = EqFoodBatch.new(b, self)
 	_bow_sys = EqBowBatch.new(b)
 	_venom = VENOM_DRONE.new(b)
+	_gremlin = GremlinGun.new(b)
 	_gun_sys = EqGunBatch.new(b)
 	_blade_sys = EqBladeBatch.new(b)
 	_gadget_sys = EqGadgetBatch.new(b)
@@ -332,6 +337,12 @@ const EQ_IV_BATCH1 := {
 # 亡灵爆: 绿冲击环 + 绿辉爆闪 + 骨渣四射 (骷髅自灭/被杀 + 海螺变形共用基元)
 func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 	if u.get("equips", []).is_empty(): return
+	## 040 FPGA板【登场】: 首帧把枪塞给对方 1/2/3 个敌人(照 058/032 的 pending 模式)。
+	## ★放这儿而不是主场景的 `_tick_unit` —— 这个函数本来就是每单位每帧调的,
+	##   借它的车不用给上帝文件加行(架构预算只减不增, 我第一版加在那边当场红)。
+	if u.get("_gremlin_pending", false):
+		u["_gremlin_pending"] = false
+		_eq_fpga_hand_out_guns(u, int(u.get("_gremlin_si", 0)))
 	for e in u["equips"]:
 		var iid: String = str(e["id"])
 		var iv: float = float(battle._EQ_CUSTOM_IV.get(iid, 0.0))
@@ -584,6 +595,8 @@ const SHOTGUN_IV := 8.0           # 每几秒一次齐射(主场景 _EQ_CUSTOM_I
 const SHOTGUN_COEF := 0.22        # 每颗弹珠 ×ATK 物理
 const SHOTGUN_STUN_HITS := 8      # 同一次齐射被这么多颗及以上命中 → 眩晕
 const FPGA_IV := 6.0             # 每几秒抽一次(真值在主场景 _EQ_CUSTOM_IV, 那里引用本常量)
+## FPGA板登场塞给敌人的枪数(逐星·用户 2026-08-31「随机1/2/3个敌人」)
+const FPGA_GUNS := [1, 2, 3]
 const FPGA_PICKS := [1, 2, 4]    # 逐星: 每次抽几个 2-bit 状态(可重复)
 const FPGA_00_HEAL_PCT := 0.05   # 00: 回复最大生命 ×
 const FPGA_00_RESIST := 12       # 00: 累计 + 护甲与魔抗
@@ -592,6 +605,29 @@ const FPGA_01_LIFESTEAL := 0.07  # 01: 累计 + 生命偷取
 const FPGA_BUFF_SEC := 3.5       # 10/11 的持续秒数
 const FPGA_10_AMP := 0.15        # 10: 增伤(放大自身造成的所有伤害)
 const FPGA_11_DR := 0.25         # 11: 受到伤害减免(真实伤害除外)
+
+## FPGA板【登场】: 给**对方**随机 1/2/3 个敌人各一把古灵精怪枪(用户 2026-08-31 新增)。
+## ★这是【新增】的一条效果, 原来那条"每 N 秒抽 2-bit 状态给自己上 buff"一条没动。
+## ★挑人是**不重复**的 —— 需求说"1/2/3 个敌人", 同一个人塞两把不算两个敌人。
+##   (敌人不够时有几个给几个; 返回真给出去的把数, 门禁拿它当分母。)
+## ★用 `battle._battle_rng` 而不是裸 randi —— 确定性门禁(rng_discipline)守着这条。
+func _eq_fpga_hand_out_guns(u: Dictionary, si: int) -> int:
+	var want: int = FPGA_GUNS[si]
+	var foes: Array = []
+	var my_side: String = str(u.get("side", ""))
+	for o in battle._units:
+		if o is Dictionary and o.get("alive", false) and str(o.get("side", "")) != my_side 				and not o.get("_isEgg", false):
+			foes.append(o)
+	if foes.is_empty():
+		return 0
+	var given: int = 0
+	while given < want and not foes.is_empty():
+		var k: int = battle._battle_rng.randi() % foes.size()
+		_gremlin.give(foes[k])
+		foes.remove_at(k)          # ★不重复: 挑过就拿掉
+		given += 1
+	return given
+
 
 func _eq_fpga_tick(u: Dictionary, si: int) -> void:
 	battle._skill_ring(u["pos"], Color(0.4, 0.9, 1.0, 0.42), 46.0)
