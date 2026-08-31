@@ -411,8 +411,7 @@ const PIXEL_SIZE := 0.012                 # (旧) 头像兜底像素→米; 全�
 # 动作动画表 (1:1 复用回合制 BattleScene _ACTION_ATTACK/_ACTION_HURT/_ACTION_DEATH).
 #   只有 basic/ghost/ninja 有真动作帧 (其余龟靠 idle + juice 形变).
 #   ⚠ 这行原来还写着 treasure_golem —— **是假的**(2026-08-20 核实): 它在下面三张 ACTION_* 表里
-#     出现 0 次, 磁盘上的 attack/death/hurt/knockup 四张帧从没接过线; 而且全项目没有任何地方
-#     把 spr_id 设成 "treasure-golem"(召唤物用的是龟 id), 所以连 :1894 那个 idle 分支也走不到。
+#     出现 0 次, 四张帧从没接过线; 且全项目没有一处把 spr_id 设成 "treasure-golem"(召唤物用龟 id), 连 idle 分支也走不到。
 #     没有顺手"接上" —— 没有消费者的接线等于凭空发明玩法, 该由用户决定这套美术要不要用。
 #   值 = [相对路径, 每秒帧率] (帧尺寸 = 图高=方帧; hframes = 宽/帧高). 播一次后回 idle.
 const ACTION_ATTACK := {
@@ -423,6 +422,7 @@ const ACTION_ATTACK := {
 	"__minion_front__": ["pets/animations/melee/attack.png", 12.0],
 	"__minion_back__": ["pets/animations/ranged/attack.png", 12.0],
 	"_summon_wraith": ["pets/animations/wraith/attack.png", 10.0],   # 亡魂(2026-08-21·灵物羁绊召唤)
+	"_summon_axe": ["vfx/eq-axe-attack.png", 12.0],   # 096 斧头召唤物(2026-09-01)
 }
 # 精英小将的 5 个非标准动作 (2026-07-21 PixelLab pro 生成, south-west 朝向 = 原图朝左口径)。
 #   不走 _vfx._play_action —— 那个只认 attack/hurt/death 三种; 这些照忍者 dash/backstab 的做法,
@@ -1893,11 +1893,11 @@ func _resolve_summon_sprite(spr_id: String) -> Dictionary:
 	# ★帧表是【乒乓】排的(0..8 再 7..1 = 16 帧): PixelLab 出的 idle 末帧与首帧差 323/1600 像素,
 	#   直接首尾相接会每轮跳一下; 乒乓让循环天然闭合, 且"悬浮上下"这个动作本来就该来回。
 	# ★装备召唤物的本体立绘(「白球家族」)。没有这几条就会掉进最下面的**兜底队色发光球** ——
-	#   干净台花名册会打 `spr=✗`, 玩家看到的是"场上多了个不明白点"。
-	#   一律 16 帧乒乓排帧(0..8 再 7..1), 见 tests/verify_eq_body_sprites.gd 的 ②。
+	#   干净台花名册会打 `spr=✗`, 玩家看到"不明白点"。一律**纯乒乓**排帧(0..n 再 n-1..1), 帧数由素材定(手枪/塔 9→16, 斧头 4→6), 见 verify_eq_body_sprites ②。
 	const _EQ_BODY_SPR := {
 		"pistol": ["vfx/eq-pistol-idle.png", 40],       # 077 铜管手铳
 		"coraltower": ["vfx/eq-coraltower-idle.png", 64],  # 079 珊瑚急救塔
+		"axe": ["vfx/eq-axe-idle.png", 80],           # 096 小木斧的斧头召唤物(2026-08-31; 角色64px→画布80px)
 	}
 	if _EQ_BODY_SPR.has(spr_id):
 		var _row: Array = _EQ_BODY_SPR[spr_id]

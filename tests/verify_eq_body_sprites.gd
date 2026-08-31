@@ -34,6 +34,15 @@ extends Node
 const PISTOL := "res://assets/sprites/vfx/eq-pistol-idle.png"
 const HELI := "res://assets/sprites/vfx/eq-heli-idle.png"
 const CORAL := "res://assets/sprites/vfx/eq-coraltower-idle.png"
+## 096 小木斧的斧头召唤物(2026-08-31)。★它是全表第一个有【四套动作】的装备召唤物,
+##   而不是只有一套 idle ⇒ 四张都要过 ①②③(尺寸/首尾闭合/朝向)。
+## ★帧数是 **6** 不是 16 —— pro 模式在 80px 画布固定出 4 帧, 纯乒乓 0,1,2,3,2,1 就是 6 帧。
+##   我第一版照抄手枪/直升机填了 16(它们素材本来 9 帧 ⇒ 乒乓正好 16), 凑出来的表首尾接不上,
+##   门禁当场红。**帧数由素材决定, 不是照抄一个数。**
+const AXE_IDLE := "res://assets/sprites/vfx/eq-axe-idle.png"
+const AXE_WALK := "res://assets/sprites/vfx/eq-axe-walk.png"
+const AXE_ATK := "res://assets/sprites/vfx/eq-axe-attack.png"
+const AXE_CAST := "res://assets/sprites/vfx/eq-axe-cast.png"
 const DRONE := "res://assets/sprites/vfx/eq-orbdrone-idle.png"
 
 var _n := 0
@@ -49,6 +58,15 @@ func _ready() -> void:
 	_check_strip("079 珊瑚急救塔", CORAL, 64, 16, 0)
 	# 086 浮游炮绕着龟转, **没有朝向**这回事; 这条纯粹守"表没被人镜像/换掉"。
 	_check_strip("086 六分仪浮游炮", DRONE, 40, 16, -1)
+
+	## 096 小木斧的斧头召唤物 —— 全表第一个有【四套动作】的装备召唤物。
+	## ★bias 填 -1(重心偏左)是**量出来的**不是猜的: 四张第 0 帧重心 x=38.6/33.8, 中线 40.0。
+	##   与仓库约定一致(battle_render.gd:373「立绘默认朝左, 靠 flip_h 镜像」)。
+	##   ⚠ 这条守的是"谁把表镜像回去了", 守不住"一张全新的、朝向本来就错的表"(见文件头 ③)。
+	_check_strip("096 斧头·待机", AXE_IDLE, 80, 6, -1)
+	_check_strip("096 斧头·走路", AXE_WALK, 80, 6, -1)
+	_check_strip("096 斧头·攻击", AXE_ATK, 80, 6, -1)
+	_check_strip("096 斧头·技能", AXE_CAST, 80, 6, -1)
 
 	# ── 089 蚀月符纸: 单帧立绘(不是帧表), 判据是**它不是一张空白板**。
 	#    由来: v0.19.37 之前它是 `talisman_tex_image()` 拼的几个矩形, 干净台一拍是

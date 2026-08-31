@@ -220,6 +220,51 @@ func _ready() -> void:
 		ok58 and int(pool["p2eq_058"]) == 0 and not EP.take(pool, "p2eq_058", 1),
 		"058 剩 %d" % int(pool["p2eq_058"]))
 
+	# ── ⑧ 【大轮开始】必须把砍伐经验清干净 ──
+	##   ★用户 2026-09-01 问「一大轮开始时有多少用例与斧头有关」—— 当时是 **0 条**。
+	##     四个字段在 GameState 里加了、重置也写了, 却**一条都没验** ——
+	##     这正是"写进去了没人读/没人验"那类账: 代码在, 但没人证明它真会被清。
+	##   ★判据分三段: 先塞非零值 → 跑真入口 start_new_season() → 四个字段全归零。
+	##     只验其中一个等于没验(进度条与累计值是**两个**字段, 见未决点 ⑥)。
+	var bak_ss := {"bar": gs.axe_exp_bar, "tot": gs.axe_exp_total,
+			"st": gs.axe_stage, "fin": gs.axe_final, "sid": gs.season_id}
+	gs.axe_exp_bar = 77
+	gs.axe_exp_total = 888
+	gs.axe_stage = 3
+	gs.axe_final = "ember"
+	_ok("★分母: 大轮重置【前】四个字段确实是非零的(否则下面那条恒真)",
+		gs.axe_exp_bar == 77 and gs.axe_exp_total == 888 and gs.axe_stage == 3
+			and gs.axe_final == "ember")
+	gs.start_new_season()
+	_ok("★★大轮开始 → 砍伐经验四个字段全部归零(进度条/累计/档位/最终造物)",
+		gs.axe_exp_bar == 0 and gs.axe_exp_total == 0 and gs.axe_stage == 0
+			and gs.axe_final == "",
+		"bar=%d total=%d stage=%d final=%s" % [gs.axe_exp_bar, gs.axe_exp_total,
+			gs.axe_stage, str(gs.axe_final)])
+	## ★存档往返【不能靠真的存盘验】—— `GameState.save()` 在 `test_mode` 下直接 return
+	##   (那是对的设计: 测试不许污染真存档)。我第一版就是这么写的, 当场红, 差点当成产品 bug。
+	##   ⇒ 判据落在**源码的两侧键**: 存的字典里有这四个键, 读的那侧也各读一次。
+	##     少一侧就是"存了没人读"或"读了没人存", 那才是真会漂的地方。
+	var gs_src: String = FileAccess.get_file_as_string("res://autoload/GameState.gd")
+	var miss_save: Array = []
+	var miss_load: Array = []
+	for k in ["axe_exp_bar", "axe_exp_total", "axe_stage", "axe_final"]:
+		if gs_src.find("\"" + k + "\": " + k) < 0:
+			miss_save.append(k)
+		if gs_src.find(k + " = " + "int(data.get(") < 0 and gs_src.find(k + " = " + "str(data.get(") < 0:
+			miss_load.append(k)
+	_ok("★分母: 读得到 GameState 源码(读不到=下面两条是空检查)", gs_src.length() > 5000,
+		"%d 字符" % gs_src.length())
+	_ok("★★四个字段都写进了存档字典", miss_save.is_empty(), str(miss_save))
+	_ok("★★四个字段都从存档里读回来(存了没人读 = 重启就丢)", miss_load.is_empty(), str(miss_load))
+	## ★收尾还原(测试不许污染真存档)
+	gs.axe_exp_bar = int(bak_ss["bar"])
+	gs.axe_exp_total = int(bak_ss["tot"])
+	gs.axe_stage = int(bak_ss["st"])
+	gs.axe_final = str(bak_ss["fin"])
+	gs.season_id = int(bak_ss["sid"])
+	gs.save()
+
 	# ── ⑧ 装备本体登记齐了 ──
 	var e96: Dictionary = DataRegistry.phase2_equipment_by_id.get("p2eq_096", {})
 	_ok("096 名字 = 小木斧 · 1 费", str(e96.get("name", "")) == "小木斧" and int(e96.get("cost", 0)) == 1,
@@ -227,8 +272,8 @@ func _ready() -> void:
 	_ok("096 图标在盘上", ResourceLoader.exists("res://assets/sprites/equip/wood-axe.png"),
 		str(e96.get("img", "")))
 
-	if _n < 28:
-		print("  [FAIL] ★分母: 断言只有 %d 条(<28)" % _n)
+	if _n < 31:
+		print("  [FAIL] ★分母: 断言只有 %d 条(<31)" % _n)
 		_fail += 1
 	print("ALL PASS — 096 小木斧三期" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
