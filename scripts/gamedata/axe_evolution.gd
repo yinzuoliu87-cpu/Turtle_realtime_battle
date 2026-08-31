@@ -75,6 +75,33 @@ const ACTIVE_ENERGY := 140.0     # 龟能消耗
 const ACTIVE_HEAL_PCT := 0.05    # 回复 5% 最大生命
 const ACTIVE_SHIELD_PCT := 0.05  # 并给自己 5% 最大生命的护盾
 
+## ── 出货概率(四期实现·用户 2026-08-31 拍板) ────────────────────
+## 需求原话:「买了木斧并装备木斧, 激活斧头羁绊后, 概率将为 3% 加玩家激活斧头羁绊时
+##   在这大轮游戏的局数×0.1%, 最终概率最高为 10%」。
+## ★★这三个数是【整个货架至少出一个】的概率(未决点 ⑫, 用户拍板), **不是每一格**。
+##   商店 10 格 ⇒ 每格概率要由 `1-(1-q)^格数 = P` 反解: q = 1-(1-P)^(1/格数)。
+##   把 3% 直接当每格用是 **10 倍** 的差(封顶时"每次刷新至少见到一把"会从 10% 变成 65%)。
+## ★未激活羁绊时**不走这条** —— 仍按 1 费档出货(它本来就是 1 费装备, 天然成立),
+##   等级起来后 1 费概率自然衰减, 正是"不玩这流派就越来越少见"。
+const SHELF_P_BASE := 0.03        # 刚激活羁绊
+const SHELF_P_PER_MATCH := 0.001  # 每多打一局
+const SHELF_P_CAP := 0.10         # 封顶
+
+
+## 激活羁绊后打了 `matches` 局时, **整个货架**至少出一把的概率。
+static func shelf_prob(matches: int) -> float:
+	return minf(SHELF_P_CAP, SHELF_P_BASE + SHELF_P_PER_MATCH * float(maxi(0, matches)))
+
+
+## 把"整货架 P"反解成"每格 q": 1-(1-q)^n = P  ⇒  q = 1-(1-P)^(1/n)。
+## ★门禁会拿 `1-(1-q)^n` 回代验它等于 P —— 反解写反了(比如直接 P/n)当场红。
+static func slot_prob(matches: int, slots: int) -> float:
+	var p: float = shelf_prob(matches)
+	if slots <= 0:
+		return 0.0
+	return 1.0 - pow(1.0 - p, 1.0 / float(slots))
+
+
 ## ── 被动 2(木斧就解锁): 普攻窃取目标护盾 ──────────────────────
 const SHIELD_STEAL_PCT := 0.10   # 偷 10%, **转成普通护盾**给自己(特殊护盾也转)
 

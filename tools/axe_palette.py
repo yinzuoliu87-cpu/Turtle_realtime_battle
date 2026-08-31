@@ -32,6 +32,12 @@ STEEL_RAMP = [(92, 99, 103), (105, 111, 123), (106, 122, 122), (125, 135, 141),
               (208, 212, 211)]
 
 ## 斧柄/木质部分用到的颜色 —— 换色时**不许碰**, 也不许有任何档位的刃色与它们相撞。
+## ★★2026-08-31 追加的结论(做召唤物立绘时量出来的): **按颜色换色靠不住。**
+##   召唤物本体(小将)有 **2144 种颜色**(带抗锯齿), 而九档刃色阶共 81 个 RGB ——
+##   撞上只是时间问题, 一撞就是"换成金斧连龟身也跟着变金"。
+##   ⇒ 正解是**按区域(掩膜)换**: 把"哪些像素属于斧刃"存成一张掩膜, 只重绘掩膜内的像素,
+##     本体用什么颜色就完全无关了。下面 `recolor_masked()` 就是这条路;
+##     `SHAFT_COLORS` 这条检查**保留**给"装备图标"那张单体素材用(它色数少, 颜色法够用)。
 SHAFT_COLORS = {(64, 34, 29), (118, 69, 52), (162, 112, 80), (47, 27, 26), (65, 43, 39)}
 
 ## 9 个档位的刃色阶。两端色给出, 中间线性插 —— 保证每档都是 9 级、一一对应(未决点 ⑪ 的第二条约束)。
@@ -80,6 +86,101 @@ def recolor(src_img, key):
                 n += 1
             else:
                 o[x, y] = (r, g, b, a)
+    return out, n
+
+
+def build_mask(img, ramp_colors):
+    """哪些像素属于斧刃 —— 返回 {(x,y)} 集合。
+    ★只在**单体斧头素材**上建一次(它的刃色就是 STEEL_RAMP 那 9 个), 之后把掩膜存下来,
+      贴到召唤物身上时连掩膜一起平移 ⇒ 换档只重绘掩膜内的像素, 与本体颜色无关。"""
+    W, H = img.size
+    px = img.load()
+    want = set(ramp_colors)
+    return {(x, y) for y in range(H) for x in range(W)
+            if px[x, y][3] >= 10 and px[x, y][:3] in want}
+
+
+def blade_mask_cc(img, grey_pred=None):
+    """从**合成好的立绘**里抠出斧刃 —— 取【最大连通块】, 不是"所有灰像素"。
+    ★★为什么必须连通: 2026-08-31 实测, 按"冷灰"选出来的 71 个像素里
+      **有 24 个是甲片高光**(x=16/25/39~47/57~60), 只有 47 个在斧刃上。
+      我当时还报了一句"掩膜外改动 = 0" —— 那是**恒真式**: 掩膜是我按颜色定义的,
+      按定义当然没有东西在它外面。真正该问的是"**斧头以外的地方有没有变**"。
+      ⇒ 判据改成量【斧刃连通块的包围盒之外】, 掩膜改成取最大连通块。"""
+    W, H = img.size
+    px = img.load()
+    if grey_pred is None:
+        def grey_pred(c):
+            r, g, b = c
+            return max(r, g, b) >= 70 and abs(r - g) < 18 and abs(g - b) < 18
+    grey = {(x, y) for y in range(H) for x in range(W)
+            if px[x, y][3] >= 10 and grey_pred(px[x, y][:3])}
+    seen, best = set(), set()
+    for s0 in grey:
+        if s0 in seen:
+            continue
+        comp, stack = set(), [s0]
+        while stack:
+            c = stack.pop()
+            if c in seen:
+                continue
+            seen.add(c)
+            comp.add(c)
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    n = (c[0] + dx, c[1] + dy)
+                    if n in grey and n not in seen:
+                        stack.append(n)
+        if len(comp) > len(best):
+            best = comp
+    return best
+
+
+def outside_blade_changed(before, after, mask):
+    """换色之后, **斧刃包围盒以外**有多少像素变了。必须是 0。
+    ★这条才是真判据 —— "掩膜外有没有变"是恒真的, "斧头外有没有变"才不是。"""
+    if not mask:
+        return -1
+    xs = [p[0] for p in mask]
+    ys = [p[1] for p in mask]
+    x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+    W, H = before.size
+    a, b = before.load(), after.load()
+    n = 0
+    for y in range(H):
+        for x in range(W):
+            if x0 <= x <= x1 and y0 <= y <= y1:
+                continue
+            if a[x, y] != b[x, y]:
+                n += 1
+    return n
+
+
+def recolor_masked(img, mask, key):
+    """按【掩膜】换刃色: 掩膜内的像素按明度映到该档色阶, 掩膜外一个都不碰。
+    ★这条不看颜色 ⇒ 本体有多少种颜色、撞不撞都无所谓。"""
+    from PIL import Image
+    ramp = tier_ramp(key)
+    ## ★★映射必须与 `recolor()` **一模一样**(按色阶序位一一对应), 掩膜只负责决定
+    ##   "改哪些像素", 不负责"改成什么色"。
+    ##   第一版我给掩膜版另写了一套"按明度分桶"的映射 ⇒ 九档结果与颜色版**全部不一致** ——
+    ##   掩膜版应当是颜色版的**超集**(多处理了那些被合成/抗锯齿糊掉的像素), 不是另一套算法。
+    m = dict(zip(sorted(STEEL_RAMP, key=sum), ramp))
+    out = img.copy()
+    o = out.load()
+    px = img.load()
+    n = 0
+    for (x, y) in mask:
+        r, g, b, a = px[x, y]
+        c = (r, g, b)
+        if c in m:
+            o[x, y] = m[c] + (a,)
+        else:
+            ## 贴到召唤物身上之后, 边缘会被抗锯齿糊出不在色阶里的颜色 ——
+            ## 这些像素按明度就近落到色阶上(颜色版对它们无能为力, 这正是掩膜版的价值)。
+            lv = (r * 299 + g * 587 + b * 114) // 1000
+            o[x, y] = ramp[min(len(ramp) - 1, lv * len(ramp) // 256)] + (a,)
+        n += 1
     return out, n
 
 
