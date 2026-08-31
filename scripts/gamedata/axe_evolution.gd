@@ -66,6 +66,15 @@ const MINION_HP_BASE := 500.0
 const MINION_HP_PER_EXP := 1.0
 const MINION_ATK_BASE := 30.0
 const MINION_ATK_PER_EXP := 0.05
+## 立绘的【视觉】尺寸参数(battle_spawn 只拿它算 pixel_size, **不管碰撞**, 已核实无第二个消费者)。
+## ★由来(2026-09-01 用户抓「方向」时连带量出来的): 原来给的 26 让斧头小将的
+##   世界身高只有 0.708 m, 而 28 只龟的中位是 1.40 m ⇒ **它只有龟的一半高**。
+##   它是个"拿斧头的小将", 不该比龟矮一半。
+##   反解: pixel_size = (TARGET_BODY_H × col/56) / 帧高, 身高 = 内容高 × pixel_size
+##   ⇒ 内容 61px / 帧 80px 时, col=48 给出 1.31 m ≈ 龟中位的 94%。
+## ★门禁 verify_axe_art 拿【龟身高的真实分布】卡它, 不是拿我拍的数字卡。
+const MINION_COL_SIZE := 48.0
+
 const MINION_DEF := 5.0
 const MINION_MR := 5.0
 const MINION_ASPD := 0.8
@@ -196,3 +205,85 @@ static func shelf_mode(syn_active: bool, final_key: String) -> String:
 	if final_key != "":
 		return "off"
 	return "indep" if syn_active else ""
+
+
+# ════════════════════════════════════════════════════════════════
+#  五期: 被动 3~6 的数值(2026-09-01)
+#
+#  ★解锁档位与 `passives_at()` 一一对应: 石斧(1)开被动3 / 铁斧(2)开4 /
+#    金斧(3)开5 / 钻石斧(4)开6。属性(50血/5攻/3甲/3抗)**每条各给一份、可叠加**,
+#    已经由 minion_hp/minion_atk 的 `passives_unlocked` 参数算进去了。
+# ════════════════════════════════════════════════════════════════
+
+## ── 被动 3(石斧): 每 9 秒一次强化 on-hit ──
+const SMASH_IV := 9.0            # 每过这么久, 下一次普攻获得强化
+const SMASH_ATK := 0.5           # 额外物理伤害 = 0.5×ATK
+const SMASH_KNOCK_VY := 1.0      # 击飞的竖直倍率(走 _knockback 的既有参数)
+const SMASH_KNOCK_PUSH := 0.6    # "短暂击退" ⇒ 推力给得比标准击飞小
+
+## ── 被动 4(铁斧): 每第 2 次普攻竖劈 ──
+const CLEAVE_MAXHP_PCT := 0.05   # 额外 5% 目标最大生命【真实伤害】
+const CLEAVE_BLEED := 10         # 并施加 10 层流血
+
+## ── 被动 5(金斧): 每第 1 次普攻 180° 横扫 + 效率层 ──
+## ★被动4「每第二次竖劈」+ 被动5「每第一次横扫」合起来 = 横扫/竖劈**交替**
+##   (方案书出入第 8 条)。所以两条共用一个"第几次普攻"的计数器, 奇数横扫偶数竖劈。
+const SWEEP_ARC_DEG := 180.0     # 横扫的扇形角度
+const EFF_DUR := 5.0             # 效率层持续 5 秒, 每次叠加**刷新**整条时长
+const EFF_ASPD := 0.04           # 一层 +4% 攻击速度
+const EFF_MOVE := 0.02           # 一层 +2% 移动速度
+
+## ── 被动 6(钻石斧): 治疗时进入 4 秒蓄力, 完毕猛砸 ──
+const CHARGE_TIME := 4.0         # 共蓄力 4 秒
+const CHARGE_STEP := 0.5         # 每 0.5 秒
+const CHARGE_H_PER_STEP := 100.0 # 梯形的【高】增加 100 码 ⇒ 满蓄 800 码
+const CHARGE_DR := 0.70          # 蓄力期间 70% 减伤
+const SLAM_ATK := 4.0            # 砸下时每个敌人吃 4×ATK 物理
+const SLAM_STUN := 3.0           # 并眩晕 3 秒(外加高高击飞)
+## ★梯形的两条底边宽度**需求没给**, 由我自拍(方案书未决点 ⑬):
+##   近边取召唤物碰撞直径的两倍(它就站在梯形的窄头), 远边取近边的 3 倍
+##   ⇒ 满蓄时是一个 300 宽、800 长、张口 900 的扇形块, 与 180° 横扫的观感连得上。
+const TRAPEZOID_NEAR_W := 300.0
+const TRAPEZOID_FAR_W := 900.0
+
+
+## 蓄了 `elapsed` 秒时梯形的【高】。★按 0.5 秒一格【向下取整】——
+## 需求写的是"每蓄力 0.5 秒使高增加 100 码", 是阶梯不是连续增长;
+## 写成 `elapsed/0.5*100` 的连续版在 0.4 秒时就有 80 码, 那是另一条曲线。
+static func charge_height(elapsed: float) -> float:
+	var e: float = clampf(elapsed, 0.0, CHARGE_TIME)
+	return floorf(e / CHARGE_STEP) * CHARGE_H_PER_STEP
+
+
+## 点 `p` 在不在以 `origin` 为窄头、朝 `dir` 展开、高 `h` 的等腰梯形里。
+##
+## ★这是本作**没有过**的形状(现有范围判定只有圆与直线带), 所以写成纯几何函数
+##   让门禁直接喂坐标验 —— 不必打一场真战斗去撞(CLAUDE.md §3.5)。
+## 判据: 把 p 投到 dir 上得到纵深 t(必须落在 [0,h]), 再看它到中轴的横向距离
+##   是否小于该纵深处的半宽(近半宽到远半宽之间线性插值)。
+static func in_trapezoid(origin: Vector2, dir: Vector2, h: float, p: Vector2) -> bool:
+	if h <= 0.0:
+		return false
+	var d: Vector2 = dir.normalized()
+	if d == Vector2.ZERO:
+		return false
+	var rel: Vector2 = p - origin
+	var t: float = rel.dot(d)                     # 纵深
+	if t < 0.0 or t > h:
+		return false
+	var lat: float = absf(rel.dot(Vector2(-d.y, d.x)))   # 到中轴的横向距离
+	## ★半宽按【满蓄高】插值, 不是按当前高 —— 否则梯形长大的时候会跟着"变胖",
+	##   而需求只说高在长、没说宽在长。
+	var full_h: float = CHARGE_TIME / CHARGE_STEP * CHARGE_H_PER_STEP
+	var k: float = clampf(t / maxf(1.0, full_h), 0.0, 1.0)
+	var half_w: float = lerpf(TRAPEZOID_NEAR_W, TRAPEZOID_FAR_W, k) * 0.5
+	return lat <= half_w
+
+
+## 效率层给的攻速 / 移速倍率(纯函数, 门禁直接喂层数验)。
+static func eff_aspd_mult(stacks: int) -> float:
+	return 1.0 + EFF_ASPD * float(maxi(0, stacks))
+
+
+static func eff_move_mult(stacks: int) -> float:
+	return 1.0 + EFF_MOVE * float(maxi(0, stacks))

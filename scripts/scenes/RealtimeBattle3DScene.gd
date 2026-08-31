@@ -131,11 +131,9 @@ static func _review_demo() -> bool:
 ## __trainer__ 2026-07-23: PixelLab 的 south-east 面就是朝右, 而训龟大师后续的走路/扔石头
 ##   动作图也全是同一套朝向 —— 与其每张都逐帧镜像(小将那 7 张就是这么交的税), 不如登记例外。
 ##   ★探针实测(修之前): 我方 face_right=true / art_faces_right=false → flip_h=true → 背对战场。
-const ART_FACES_RIGHT := ["hiding", "headless", "mech", "__trainer__"]   # 缩头2026-07-17用户抓 / 无头预检自查颈残端在右 / 机甲2026-07-19用户抓「建模也反了」 / 训龟大师2026-07-23
+const ART_FACES_RIGHT := ["hiding", "headless", "mech", "__trainer__", "axe"]   # 缩头2026-07-17用户抓 / 无头预检自查颈残端在右 / 机甲2026-07-19用户抓「建模也反了」 / 训龟大师2026-07-23 / 斧头2026-09-01用户抓「方向」(四套动画护目镜全在身体中心右侧+2.3~4.0px, 量出来的)
 const REVIEW_TURTLE := "headless"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
-## ⚠ 用的时候一律走 `_review_skill_idx()`, 别直接引用本常量 ——
-## 那个函数才会读【调试面板覆盖】和【env REVIEW_SKILL】; 直接用常量的话环境变量对该处失效。
-## (2026-07-19 修: 原有 10 处 demo 分支直接用常量, 导致 REVIEW_SKILL=-1 对它们一律无效, 评审场景开不出来。)
+## ⚠ 用的时候一律走 `_review_skill_idx()`, 别直接引用本常量 —— 那个函数才会读【调试面板覆盖】和【env REVIEW_SKILL】; 直接用常量的话环境变量对该处失效。(2026-07-19 修: 原有 10 处 demo 分支直接用常量, 导致 REVIEW_SKILL=-1 对它们一律无效, 评审场景开不出来。)
 const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (26缩头全✅封板2026-07-17→27无头预检中: 0普攻起)
 const REVIEW_EQUIP := []   # 调试场给受审龟装这些测试装备(空[]=裸装看纯技能; 非空=看装备显示/效果·用户2026-07-11 #2)
 const REVIEW_EQUIP_STAR := 2   # 调试场装备星级(1-3·用户2026-07-11: 装备星级可调)
@@ -424,8 +422,7 @@ const ACTION_ATTACK := {
 	"_summon_wraith": ["pets/animations/wraith/attack.png", 10.0],   # 亡魂(2026-08-21·灵物羁绊召唤)
 	"_summon_axe": ["vfx/eq-axe-attack.png", 12.0],   # 096 斧头召唤物(2026-09-01)
 }
-# 精英小将的 5 个非标准动作 (2026-07-21 PixelLab pro 生成, south-west 朝向 = 原图朝左口径)。
-#   不走 _vfx._play_action —— 那个只认 attack/hurt/death 三种; 这些照忍者 dash/backstab 的做法,
+# 精英小将的 5 个非标准动作 (2026-07-21 PixelLab pro 生成, south-west 朝向 = 原图朝左口径)。不走 _vfx._play_action —— 那个只认 attack/hurt/death 三种; 这些照忍者 dash/backstab 的做法,
 #   在技能代码里直接 _elite_sys._elite_anim() 调。action 名会写进 u["anim_action"], 由 _vfx._play_action 顶部的
 #   白名单挡住, 播完前不被普攻/受击换掉。
 # 近战小将·人体浪板的分段动作(2026-07-22)。时间轴由代码量出, 见 docs/plans/20260722-五需求方案书.md §4:
@@ -1906,7 +1903,10 @@ func _resolve_summon_sprite(spr_id: String) -> Dictionary:
 		if ResourceLoader.exists(pp):
 			var pt: Texture2D = load(pp)
 			if pt != null:
-				return _sprite_dict_from(pt, {"frames": 16, "frameW": _fw, "frameH": _fw, "duration": 1280}, true)
+				## ★帧数【由贴图算】不写死 + drop_last 关掉(2026-09-01 用户抓"方向"时连带量出来的): 原来三行共用写死的 16, 手铳/急救塔恰好 16 帧没露馅, 斧头是 6 帧乒乓表却被当 16;
+				##   且实测三张表**末帧都有内容**(577/2090/2506 个不透明像素) ⇒ drop_last 一直在丢真帧, 乒乓表少一帧就首尾接不上。门禁 verify_axe_art 焊死这两条。
+				return _sprite_dict_from(pt, {"frames": maxi(1, pt.get_width() / maxi(1, _fw)),
+					"frameW": _fw, "frameH": _fw, "duration": 1280}, false)
 	# treasure_golem idle 动画 (宝箱怪有专属帧, frameW/H=74/73, 7帧)
 	if spr_id == "treasure-golem" or spr_id == "treasure_golem":
 		var anim := SPRITE_DIR + "pets/animations/treasure_golem/idle.png"
