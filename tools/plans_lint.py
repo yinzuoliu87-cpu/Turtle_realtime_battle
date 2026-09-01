@@ -27,6 +27,7 @@ except Exception:
   (它们的价值在当时的决策记录, 不在格式)。新账不欠、旧账不追。
 """
 import io
+import json
 import os
 import re
 import sys
@@ -233,6 +234,126 @@ def check_number_source():
         fails.append('数字来源: 一条未勾项都没扫到 —— 空检查不是通过, 先看复选框写法变了没')
 
 
+# ════════════════════════════════════════════════════════════════════════
+#  ⑦ 打了勾的验收项必须【点名门禁】(2026-09-01)
+#
+#  ★由来: 用户连问八遍「为什么这些教训明明发生过, 也记录了, 你还是做不到」。
+#    我给的第一个答案("memory 不会自己跑")只解释了机制, 没答到点子上。
+#    真正的原因是 —— **我按"我干了多少"打勾, 不按"有什么证据"打勾**。
+#
+#    2026-09-01 的实例: 方案书里写着
+#        - [x] 召唤物动画: 待机／走路／攻击／技能释放 四条
+#    我打这个勾是因为我生成了四张精灵表, 不是因为我验过它们在场上是对的。
+#    而那四张表同时有三个错(朝向反了 / 只有龟一半高 / 六帧只播五帧),
+#    全在这个勾底下躺着, 直到用户喊了一声「方向」。
+#
+#    ⇒ 这条规则守的不是"有没有门禁", 是**我凭什么打那个勾**。
+#      打勾就得点名: `verify_xxx` / `tools/xxx.py` / `run-tests`。
+#      给不出来的, 只能写成未勾 + ⏳ 标记(那是"我量不到"的诚实写法, 规则④管它)。
+#
+#  ★为什么是【每份文件各自只减不增】而不是一刀切:
+#    实测 22 份方案书 310 条勾里 268 条没点名(86%) —— 一刀切会把整个门禁变成噪音,
+#    而噪音门禁等于没门禁。所以照 arch_budget 的老规矩记台账、只减不增。
+#    ★★**没在台账里的文件按 0 算** —— 否则新开一份方案书就能无限打空勾,
+#      而"新方案书"恰恰是最需要管的地方(今天这次就是)。
+# ════════════════════════════════════════════════════════════════════════
+GATE_TOKEN = re.compile(r'verify_[A-Za-z0-9_]+|tools/[A-Za-z0-9_]+\.py|run-tests')
+DEBT_FILE = os.path.join('tools', 'plans_gate_debt.json')
+
+
+def _acceptance_lines(lines):
+    """只取【验收清单】那一节的行。
+
+    ★判据要刚好卡住那个形状(memory [[fb-judge-must-fit-the-shape]]):
+      第一版我扫的是全文的 `- [x]`, 结果把**决策记录**里的勾也算进来了 ——
+      「- [x] 未决 ① —— 用户 2026-08-31 定: 两个都收」这种条目本来就不该有门禁,
+      判它烂账是**造假 bug**。收窄到验收节: 从含"验收"的标题起, 到下一个同级或更高级标题止。
+    """
+    out = []
+    depth = 0
+    on = False
+    for ln in lines:
+        m = re.match(r'^(#+)\s*(.*)$', ln)
+        if m:
+            d = len(m.group(1))
+            if '验收' in m.group(2):
+                on = True
+                depth = d
+                continue
+            if on and d <= depth:
+                on = False
+        if on:
+            out.append(ln)
+    return out
+
+
+def _checked_blocks(lines):
+    """产出每个 `- [x]` 条目的【完整文本】(条目行 + 它下面的续行)。
+
+    ★必须带续行: 我写的验收项经常是"结论一行 + 下面缩进几行讲判据",
+      而门禁名字往往在续行里。只看条目行会把好账判成烂账(判据窄一格)。
+    """
+    i = 0
+    while i < len(lines):
+        if re.match(r'^\s*-\s*\[[xX]\]', lines[i]):
+            blk = [lines[i]]
+            j = i + 1
+            while (j < len(lines) and lines[j].strip()
+                   and not re.match(r'^\s*-\s*\[', lines[j])
+                   and (lines[j].startswith('  ') or lines[j].startswith('	'))):
+                blk.append(lines[j])
+                j += 1
+            yield lines[i], chr(10).join(blk)
+            i = j
+        else:
+            i += 1
+
+
+def check_gate_named():
+    """⑦ 每份方案书里"没点名门禁的勾"只减不增。"""
+    base = {}
+    if os.path.exists(DEBT_FILE):
+        try:
+            base = json.load(io.open(DEBT_FILE, encoding='utf-8'))
+        except Exception:
+            base = {}
+    files = sorted(f for f in os.listdir(PLANS) if f.endswith('.md') and f != 'README.md')
+    tot_checked = 0
+    tot_bad = 0
+    grew = []
+    cur = {}
+    for f in files:
+        lines = _acceptance_lines(
+            io.open(os.path.join(PLANS, f), encoding='utf-8').read().split(chr(10)))
+        n = 0
+        bad = 0
+        first_bad = ''
+        for head, blk in _checked_blocks(lines):
+            n += 1
+            if not GATE_TOKEN.search(blk):
+                bad += 1
+                if not first_bad:
+                    first_bad = head.strip()[:70]
+        tot_checked += n
+        tot_bad += bad
+        if bad:
+            cur[f] = bad
+        allow = int(base.get(f, 0))
+        if bad > allow:
+            grew.append('%s: 没点名门禁的勾 %d 条 > 台账 %d 条 —— 新打的勾必须写清"哪条门禁证明了它"'
+                        '(给不出来就写成未勾 + ⏳)。例: 「%s」' % (f, bad, allow, first_bad))
+    print('  [分母] ⑦ 打勾的验收项共 %d 条, 其中没点名门禁的 %d 条(台账 %d 份文件)'
+          % (tot_checked, tot_bad, len(base)))
+    if tot_checked < 100:
+        fails.append('⑦ 分母过小: 只扫到 %d 条验收勾(<100) —— 空检查不是通过' % tot_checked)
+    for g in grew:
+        fails.append(g)
+    if os.environ.get('PLANS_GATE_DEBT_UPDATE') == '1':
+        io.open(DEBT_FILE, 'w', encoding='utf-8').write(
+            json.dumps(cur, ensure_ascii=False, indent=1, sort_keys=True) + chr(10))
+        print('  [台账已重写] %s (%d 份文件)' % (DEBT_FILE, len(cur)))
+
+
 def main():
     if not os.path.isdir(PLANS):
         print('缺 %s' % PLANS)
@@ -246,6 +367,7 @@ def main():
         check_boxes(os.path.join(PLANS, f), f)
     check_version_trace()
     check_number_source()
+    check_gate_named()
     print('  [分母] 骨架检查 %d 份 · 复选框纪律检查 %d 份 (放过的引用: 已删/草稿 %d 处)'
           % (checked, boxed, skipped_refs))
     if boxed < 40:
