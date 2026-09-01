@@ -63,6 +63,10 @@ frames_for () {
     verify_skill_forms)       echo 4000 ;;
     verify_armor_compensation) echo 1500 ;;
     verify_copy_rules)        echo 6000 ;;
+    # 斧头动作运行时验证: 要**真推着它跑 2.5 秒墙钟**等换表 + 等施法播完回 idle(3 秒)。
+    #   墙钟不是帧数 —— CI 无头帧率极高, 帧给少了会在还没等到换表时被掐断
+    #   ⇒ 没打 ALL PASS, 看着像断言失败(CLAUDE.md §2 那个坑)。
+    verify_axe_anim_runtime)  echo 12000 ;;
     verify_copy_perform)      echo 6000 ;;
     verify_wormhole_escape)   echo 12000 ;;
     verify_rum_numbers)       echo 12000 ;;
