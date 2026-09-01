@@ -99,9 +99,13 @@ func _ready() -> void:
 	_ok("★★② 走路: 真的跑起来之后, 引擎换成了 %s" % WALK, seen_walk,
 		"实测 %s（跑了 %d 毫秒墙钟）" % [_cur_tex(ax), Time.get_ticks_msec() - t0])
 	## ★分母: 停下来必须换回 idle —— 只验"切到走路"会漏掉"再也回不去"
+	## ★等窗放到 9 秒: `_update_run_anim` 是按【0.1 秒时间窗累计位移】测速的,
+	##   而 run-tests.sh 并行跑时这个进程被饿着 —— 2.5 秒墙钟里可能只推进十几帧,
+	##   凑不够几个完整的测速窗 ⇒ 单跑绿、全套红(2026-09-01 实测)。
+	##   等条件成立的循环, 上限给宽一点不花钱(成立就立刻 break)。
 	var t1 := Time.get_ticks_msec()
 	var back_idle := false
-	while Time.get_ticks_msec() - t1 < 2500:
+	while Time.get_ticks_msec() - t1 < 9000:
 		await get_tree().process_frame
 		if _cur_tex(ax) == IDLE:
 			back_idle = true

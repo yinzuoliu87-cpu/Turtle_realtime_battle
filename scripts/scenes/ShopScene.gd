@@ -10,6 +10,7 @@ const EquipStats = preload("res://scripts/gamedata/equip_stats.gd")
 ## 类型羁绊: 阈值/档位/类型映射 —— 与背包羁绊面板/战斗侧同一份(2026-08-11 商店信息栏显示羁绊)
 const Phase2Types = preload("res://scripts/gamedata/phase2_types.gd")
 const AxeEvo = preload("res://scripts/gamedata/axe_evolution.gd")   # 096 小木斧: 形态/售价/出货概率
+const AxePanel = preload("res://scripts/scenes/shop/axe_panel.gd")   # 096: 砍伐进度条 + 最终造物四选一
 ## 深海币图标 —— 复用主菜单那张(MainMenuScene:564 `mic + "ic-deepsea.png"`)。
 ## ★用户 2026-07-28「深海币可以复用吧」: 商店原先 6 处全在打 emoji 💠(方片), 而主菜单/局内
 ##   是这枚螺旋贝币 —— 同一种货币两套视觉。emoji 还随系统字体变, 换机器就换样。
@@ -251,6 +252,9 @@ func _deco(edef) -> Dictionary:
 	d["cost"] = int(disp["cost"])
 	d["img"] = AxeEvo.icon_path(GameState.axe_stage, GameState.axe_final)
 	return d
+
+
+var _axe_panel = AxePanel.new(self)   # 096 砍伐进度 + 四选一(照 dmg_stats_panel 的拆分模板)
 
 
 func _price(edef: Dictionary) -> int:
@@ -659,7 +663,10 @@ func _card(idx: int, pos: Vector2) -> Control:
 		glow.size = Vector2(SLOT_W, SLOT_H)
 		glow.mouse_filter = Control.MOUSE_FILTER_IGNORE      # 别挡住点击买入
 		box.add_child(glow)
-		var bt := create_tween().set_loops()                  # 呼吸: 让它活着, 不是一块死贴片
+		## ★`bind_node` 不能省(2026-09-01 门禁抓到): 不绑的话 `_rebuild()` 把卡片释放之后
+		##   这条**循环** tween 还活着, 目标没了 ⇒ 一圈瞬间跑完 ⇒ 引擎狂刷
+		##   `Infinite loop detected (tween.cpp:406)`。真实游戏里**每次买入/刷新货架都会触发**。
+		var bt := create_tween().bind_node(glow).set_loops()   # 呼吸: 让它活着, 不是一块死贴片
 		bt.tween_property(glow, "modulate:a", 0.45, 0.9).set_trans(Tween.TRANS_SINE)
 		bt.tween_property(glow, "modulate:a", 1.0, 0.9).set_trans(Tween.TRANS_SINE)
 		var shine := ColorRect.new()                          # 斜掠高光: 从左下扫到右上
@@ -669,7 +676,7 @@ func _card(idx: int, pos: Vector2) -> Control:
 		shine.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		shine.position = Vector2(-40, -20)
 		glow.add_child(shine)
-		var st2 := create_tween().set_loops()
+		var st2 := create_tween().bind_node(shine).set_loops()   # 同上: 必须绑节点
 		st2.tween_property(shine, "position:x", float(SLOT_W) + 40.0, 1.4).set_trans(Tween.TRANS_SINE)
 		st2.tween_interval(1.6)
 		st2.tween_callback(func() -> void:
@@ -897,6 +904,19 @@ func _build_detail_panel() -> void:
 	desc.position = Vector2(34, 112); desc.size = Vector2(PANEL_W - 68, DESC_BOX_H)
 	desc.text = _rich_desc(edef, own_star if own_mode else 1)
 	box.add_child(desc)
+	## ★096 小木斧的【砍伐进度条 + 最终造物四选一】(用户 2026-09-01:
+	##   「用户难道就这么玩吗，则怎么选择最终造物呢，进度条呢」)。
+	##   到 v0.19.311 为止机制全做完了、门禁也全绿, 但玩家一样都看不见 ——
+	##   经验在涨屏幕上没地方显示、final_ready 变 true 却没有任何入口能选。
+	## ★两个显示条件:
+	##   · 选中的就是小木斧 ⇒ 在它自己的详情里看进度, 最自然
+	##   · **攒够 400 待选最终造物 ⇒ 不管选中的是什么都画出来** —— 这一步错过就
+	##     再也做不了最终进化了, 不能让它藏在"得先在货架上找到小木斧"后面
+	if AxePanel.should_show(GameState):
+		var _ready4: bool = AxeEvo.final_ready(int(GameState.axe_exp_bar),
+			int(GameState.axe_stage), str(GameState.axe_final))
+		if str(edef.get("id", "")) == "p2eq_096" or _ready4:
+			_axe_panel.build(box, 34.0, 112.0 + DESC_BOX_H + 14.0, PANEL_W - 68.0)
 	# ★装备从 59 件涨到 95 件后, 探针实测 **13 件(14%)** 放不下 —— 而这行注释一直写着"只剩 1 件"。
 	#   先自动缩字号让它放下(20→18→16→15), 真放不下才挂提示; 提示落在框【外】的留白区。
 	_fit_desc_font(desc, box)

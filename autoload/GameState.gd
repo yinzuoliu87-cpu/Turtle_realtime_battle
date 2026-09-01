@@ -1210,6 +1210,12 @@ func _load() -> void:
 func axe_add_exp(n: int) -> bool:
 	if n <= 0:
 		return false
+	## ★需求原文:「在到达钻石斧后玩家攒满了400经验值后选择最终造物后**经验值封顶**」。
+	##   选完之后经验不再涨 —— 连历史累计也不涨(它是召唤物血/攻的分母, 再涨就没有上限了)。
+	##   ⇒ 这条 2026-09-01 才补上: 反向验证时发现"锁定"那条变异杀不死,
+	##   顺着查才发现**封顶压根没实现**(选完还在涨), 是需求缺口不是判据问题。
+	if axe_final != "":
+		return false
 	var r: Dictionary = _AxeEvo.advance(axe_exp_bar, axe_exp_total, axe_stage, n)
 	axe_exp_bar = int(r["bar"])
 	axe_exp_total = int(r["total"])
@@ -1225,6 +1231,32 @@ func axe_on_match_end() -> void:
 	axe_add_exp(_AxeEvo.EXP_ON_MATCH)
 	if axe_synergy_active():
 		axe_syn_matches += 1
+
+
+## 选定最终造物。返回是否真的选上了。
+## ★★**唯一**能写 `axe_final` 与在进化外清 `axe_exp_bar` 的产品入口 ——
+##   UI 侧(AxePanel)不许自己动这两个字段。我第一版就是在面板里直接写的,
+##   被自己的门禁「scripts/ 下没有文件直接赋值这三个字段」当场抓住。
+## 规则: 没攒够 400 不给选 / 已经选过本大轮锁定(未决点 ⑩) / key 必须是四个之一。
+## 选上之后进度条清零(它已经花掉了), **历史累计不动**(召唤物的血/攻靠它)。
+func axe_pick_final(key: String) -> bool:
+	## ★这里原本还有一句 `if axe_final != "": return false` —— **反向验证证明它是死代码**:
+	##   把它改成 `if false` 门禁一条都不红, 因为 `final_ready()` 自己第一件事就是查
+	##   `final_key == ""`。两道闸查同一件事, 留着只会让人以为"锁定"是靠它守的。
+	##   ⇒ 删掉, 锁定这件事**只由 final_ready 一处负责**。
+	if not _AxeEvo.final_ready(axe_exp_bar, axe_stage, axe_final):
+		return false
+	var ok := false
+	for f in _AxeEvo.FINALS:
+		if str((f as Dictionary)["key"]) == key:
+			ok = true
+			break
+	if not ok:
+		return false
+	axe_final = key
+	axe_exp_bar = 0
+	save()
+	return true
 
 
 ## 斧头羁绊激活了没有。★口径与羁绊面板【完全一致】—— 直接问 synergy_rows(),

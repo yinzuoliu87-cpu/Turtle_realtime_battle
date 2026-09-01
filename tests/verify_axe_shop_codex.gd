@@ -97,6 +97,7 @@ func _ready() -> void:
 		"bench": gs.persistent_bench.duplicate(true)}
 
 	await _t_shop(gs)
+	await _t_panel(gs)
 	await _t_codex(gs)
 	_t_name_consistency(gs)
 
@@ -104,8 +105,8 @@ func _ready() -> void:
 	gs.axe_final = str(bak["fin"])
 	gs.persistent_bench = (bak["bench"] as Array).duplicate(true)
 
-	if _n < 15:
-		print("  [FAIL] ★分母: 断言只有 %d 条(<15) —— 有整段被跳过了" % _n)
+	if _n < 28:
+		print("  [FAIL] ★分母: 断言只有 %d 条(<28) —— 有整段被跳过了" % _n)
 		_fail += 1
 	print("ALL PASS — 096 商店/图鉴渲染(%d 条)" % _n if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
@@ -239,3 +240,126 @@ func _t_name_consistency(gs) -> void:
 	_ok("★分母: 进化后的档位与原名不同才对(石斧「%s」≠「%s」)"
 		% [str(AE.display(1, "")["name"]), codex_name],
 		str(AE.display(1, "")["name"]) != codex_name)
+
+
+# ══════════════════════════════════════════════════════════════
+#  ④ ★★玩家看得见进度条吗 / 选得到最终造物吗
+# ══════════════════════════════════════════════════════════════
+## 用户 2026-09-01:「用户难道就这么玩吗，则怎么选择最终造物呢，进度条呢」。
+## 到 v0.19.311 为止, 机制全做完了、门禁也全绿, **但玩家一样都看不见** ——
+## 经验在涨屏幕上没地方显示、`final_ready()` 变 true 却没有任何入口能选。
+## ⇒ 这一节的判据全部落在【屏幕上有没有】和【点下去有没有用】, 不是"函数返回对不对"。
+func _t_panel(gs) -> void:
+	print("--- ④ 进度条 / 四选一 ---")
+	var shop = load("res://scripts/scenes/ShopScene.gd").new()
+	add_child(shop)
+	for _i in range(6):
+		await get_tree().process_frame
+	var raw: Dictionary = DataRegistry.phase2_equipment_by_id.get(EID, {})
+	var bak_bench: Array = gs.persistent_bench.duplicate(true)
+	gs.persistent_bench = [{"id": EID, "star": 1}]      # 拥有一把 ⇒ 该看得见进度
+
+	# ── 情形 A: 攒了一半, 只该看到进度条, 不该有四选一 ──
+	gs.axe_stage = 0
+	gs.axe_final = ""
+	gs.axe_exp_bar = 40
+	gs.axe_exp_total = 40
+	shop._offer = [raw, null, null, null, null, null, null, null, null, null]
+	shop._sel = 0
+	shop._rebuild()
+	for _i in range(3):
+		await get_tree().process_frame
+	var txts: Array = _texts(shop, [])
+	_ok("★★进度条真的画在屏幕上了(「砍伐经验 40/%d」)" % AE.need_for_next(0),
+		_has(txts, "砍伐经验 40/%d" % AE.need_for_next(0)),
+		"分母: 抓到 %d 个文本节点" % txts.size())
+	_ok("★屏幕上写了当前形态与历史累计", _has(txts, "小木斧") and _has(txts, "累计 40"))
+	## ★★没攒够时**点也点不动** —— 我第一版只验了"按钮不出现",
+	##   而"按钮不出现"守不住"用别的路径调进来会不会生效"(反向验证当场证明:
+	##   把 axe_pick_final 里的 final_ready 检查改成 if false, 一条都不红)。
+	var before_fin: String = str(gs.axe_final)
+	var got: bool = gs.axe_pick_final(str((AE.FINALS[0] as Dictionary)["key"]))
+	_ok("★★没攒够(40/%d)时 axe_pick_final 直接拒绝, 最终造物没被写进去"
+		% AE.need_for_next(0),
+		not got and str(gs.axe_final) == before_fin,
+		"返回 %s, axe_final=「%s」" % [str(got), str(gs.axe_final)])
+	var btns_a: Array = _buttons(shop, [])
+	_ok("★★没攒够时【不该】出现四选一按钮(分母: 屏幕上共 %d 个按钮)" % btns_a.size(),
+		not _has(btns_a, "亡灵之斧") and not _has(btns_a, "余烬"), str(btns_a.slice(0, 6)))
+
+	# ── 情形 B: 钻石斧攒满 400 ⇒ 四选一必须出现, 且点得动 ──
+	gs.axe_stage = AE.STAGES.size() - 1
+	gs.axe_final = ""
+	gs.axe_exp_bar = AE.FINAL_NEED
+	shop._rebuild()
+	for _i in range(3):
+		await get_tree().process_frame
+	var btns: Array = _buttons(shop, [])
+	var missing: Array = []
+	for f in AE.FINALS:
+		if not _has(btns, str((f as Dictionary)["name"])):
+			missing.append(str((f as Dictionary)["name"]))
+	_ok("★★攒够 %d ⇒ 四个最终造物按钮全在屏幕上(分母: 共 %d 个按钮)"
+		% [AE.FINAL_NEED, btns.size()], missing.is_empty(), str(missing))
+	## ★★真按下去 —— 只验"按钮画出来了"守不住"按了没用"
+	var target := ""
+	var pressed := false
+	for b in _button_nodes(shop, []):
+		if str((b as Button).text) == str((AE.FINALS[2] as Dictionary)["name"]):
+			target = str((AE.FINALS[2] as Dictionary)["key"])
+			(b as Button).emit_signal("pressed")
+			pressed = true
+			break
+	_ok("★分母: 真的找到了那个按钮并按了下去", pressed and target != "")
+	for _i in range(3):
+		await get_tree().process_frame
+	_ok("★★按下去之后最终造物真的定了(axe_final == 「%s」)" % target,
+		str(gs.axe_final) == target, "实测 %s" % str(gs.axe_final))
+	_ok("★选完进度条清零, 但【历史累计不动】(未决点 ⑥)",
+		int(gs.axe_exp_bar) == 0 and int(gs.axe_exp_total) == 40,
+		"bar=%d tot=%d" % [int(gs.axe_exp_bar), int(gs.axe_exp_total)])
+	## ★★选完本大轮锁定(未决点 ⑩)。判据必须摆在**只有这条闸挡得住**的场景里:
+	##   第一版我选完就直接再点一次, 那时 `axe_exp_bar` 已经清零 ⇒ 是"没攒够"把它挡下的,
+	##   反向验证当场证明(把 final_ready 里的 `final_key == ""` 删掉, 一条都不红)。
+	##   ⇒ 把进度条**灌回 400** 再点, 这时只剩"已经选过"这一条理由能拒绝它。
+	gs.axe_exp_bar = AE.FINAL_NEED
+	var again: bool = gs.axe_pick_final(str((AE.FINALS[0] as Dictionary)["key"]))
+	_ok("★★本大轮锁定: 就算再攒满 %d, 选过了也改不了" % AE.FINAL_NEED,
+		not again and str(gs.axe_final) == target, "实测 %s" % str(gs.axe_final))
+	## ★需求「选择最终造物后经验值封顶」—— 选完之后经验不许再涨
+	gs.axe_exp_bar = 0
+	var tot_before: int = int(gs.axe_exp_total)
+	gs.axe_add_exp(AE.EXP_ON_MATCH)
+	_ok("★★选完最终造物后【经验封顶】: 再打一场也不涨(%d → %d)"
+		% [tot_before, int(gs.axe_exp_total)],
+		int(gs.axe_exp_total) == tot_before and int(gs.axe_exp_bar) == 0)
+	## ★分母: 没选最终造物时同样的调用**确实**会涨 —— 否则上一条是恒真式
+	var bak_fin: String = str(gs.axe_final)
+	gs.axe_final = ""
+	gs.axe_add_exp(AE.EXP_ON_MATCH)
+	_ok("★★分母: 没选最终造物时同一个调用确实会涨(%d → %d)"
+		% [tot_before, int(gs.axe_exp_total)], int(gs.axe_exp_total) > tot_before)
+	gs.axe_final = bak_fin
+	## ★选完之后屏幕上该显示最终造物的名字, 四选一按钮消失
+	shop._rebuild()
+	for _i in range(3):
+		await get_tree().process_frame
+	var btns2: Array = _buttons(shop, [])
+	_ok("★选完之后四选一按钮消失(分母: 仍有 %d 个按钮)" % btns2.size(),
+		not _has(btns2, str((AE.FINALS[0] as Dictionary)["name"])))
+	gs.persistent_bench = bak_bench
+	shop.queue_free()
+
+
+func _buttons(n: Node, out: Array) -> Array:
+	for b in _button_nodes(n, []):
+		out.append(str((b as Button).text))
+	return out
+
+
+func _button_nodes(n: Node, out: Array) -> Array:
+	if n is Button:
+		out.append(n)
+	for c in n.get_children():
+		_button_nodes(c, out)
+	return out
