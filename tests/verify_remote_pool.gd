@@ -154,10 +154,21 @@ func _ready() -> void:
 	_ok("★★分母: 【URL 为空时整层停用】—— 这条保证在, 断网/没配后端才不会退化",
 		not RemotePool.enabled(), "base_url=[%s]" % RemotePool.base_url())
 	OS.unset_environment(RemotePool.ENV_KEY)
-	## 反过来: 配置里那个真地址必须让它启用, 否则出包了也是死的。
-	_ok("★★分母: 配置里的地址【真的让本层启用了】(不是填了个假的)",
-		RemotePool.enabled() and RemotePool.base_url().begins_with("http"),
+	## ★★2026-09-01 改口径: 配置里的地址现在**是空的, 而且是有意的**。
+	##   原因: Deno Deploy 那个部署没了(根路径回 404 DEPLOYMENT_NOT_FOUND), 而用户
+	##   2026-09-01 明确「别deno了」; 腾讯云那套(server/cloudbase/)代码现成但要实名+备案,
+	##   也被否掉 ⇒ 异步 PvP 先关。游戏本来就是"可选同步"设计, 离线完整可玩、对手用 bot。
+	##   ⇒ 这条从"配置里必须有真地址"改成**"配置里就该是空的"**。
+	##   ⚠ 但不能只改成"是空的就算过" —— 那样"启用路径"就没人验了, 哪天接上新后端
+	##      发现根本启不起来。所以下面**紧接着**用 env 塞一个地址验它真能启用。
+	_ok("★★配置里的后端地址是空的(2026-09-01 主动清空 —— 见 verify_backend_not_silent)",
+		str(ProjectSettings.get_setting("turtle/backend_url", "")).strip_edges() == "",
 		"base_url=[%s]" % RemotePool.base_url())
+	OS.set_environment(RemotePool.ENV_KEY, "https://example.invalid")
+	var _can_enable: bool = RemotePool.enabled() and RemotePool.base_url().begins_with("http")
+	OS.unset_environment(RemotePool.ENV_KEY)
+	_ok("★★分母: 塞一个地址进去本层**真的能启用** —— 否则将来接新后端会发现它是死的",
+		_can_enable, "启用路径本身必须还活着")
 
 	## ★冒烟测试数据不许入池 —— 它躺在【真的生产池】里, 客户端认前缀挡住。
 	var smoke := _good()
@@ -203,11 +214,12 @@ func _ready() -> void:
 	_ok("★★V5 失败不影响【本地池文件】(逐字节比对)", _read(Backend.POOL_PATH) == pool_before)
 
 	## ★收尾还原: 不许把环境变量留给同进程后面的用例(CLAUDE.md 测试纪律)。
-	## ★收尾还原: 删掉环境变量, 让本层回到【配置文件里那个真地址】。
-	##   不能设成空串 —— 那会把本层停用状态留给同进程后面的用例。
+	## ★2026-09-01: 配置里的地址已清空(后端主动关掉), 所以删掉 env 之后本层是
+	##   **停用**的 —— 这正是预期。判据从"回到真地址"改成"回到配置说了算"。
 	OS.unset_environment(RemotePool.ENV_KEY)
-	_ok("★收尾: 环境变量已删除, 本层回到配置里的真地址",
-		RemotePool.enabled() and RemotePool.base_url().begins_with("http"),
+	_ok("★收尾: 环境变量已删除, 本层回到【配置说了算】(配置为空 ⇒ 停用, 这是有意的)",
+		not OS.has_environment(RemotePool.ENV_KEY)
+		and RemotePool.base_url() == str(ProjectSettings.get_setting("turtle/backend_url", "")),
 		"base_url=[%s]" % RemotePool.base_url())
 	await _t_v6_5xx(rp)
 	rp.queue_free()
@@ -250,6 +262,10 @@ func _t_v6_5xx(rp) -> void:
 	print("── V6 后端 5xx(不是连不上) ──")
 	var calls := {"n": 0}
 	## 注入: 每次请求都回 503 + 一段【HTML 正文】(照实测的真实形态)
+	## ★V6 要走到 `_transport`, 本层必须【是启用的】—— `upload()` 开头
+	##   `if not enabled(): return`。配置清空之后这里得自己塞个地址进来,
+	##   否则注入的传输层一次都不会被调到(2026-09-01 实测: 0 次)。
+	OS.set_environment(RemotePool.ENV_KEY, "https://example.invalid")
 	rp._transport = func(_m: String, _u: String, _b: String, cb: Callable) -> void:
 		calls["n"] += 1
 		if cb.is_valid():
@@ -280,6 +296,7 @@ func _t_v6_5xx(rp) -> void:
 	_ok("V6 ★★5xx 不影响【存档】(逐字节比对)", _read("user://save.json") == save_before)
 	_ok("V6 ★★5xx 不影响【本地池文件】(逐字节比对)", _read(Backend.POOL_PATH) == pool_before)
 	rp._transport = Callable()
+	OS.unset_environment(RemotePool.ENV_KEY)   # ★收尾: 不许留给后面的用例
 
 	## ★★V6-b 直接量【"算不算成功"那句判断】本身 —— 上面注入 `_transport` 会绕过它。
 	##   反向验证抓到过: 把它改成不看状态码, 上面六条照样全绿。

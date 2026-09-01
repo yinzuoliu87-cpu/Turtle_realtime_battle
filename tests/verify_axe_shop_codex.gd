@@ -105,8 +105,8 @@ func _ready() -> void:
 	gs.axe_final = str(bak["fin"])
 	gs.persistent_bench = (bak["bench"] as Array).duplicate(true)
 
-	if _n < 28:
-		print("  [FAIL] ★分母: 断言只有 %d 条(<28) —— 有整段被跳过了" % _n)
+	if _n < 32:
+		print("  [FAIL] ★分母: 断言只有 %d 条(<32) —— 有整段被跳过了" % _n)
 		_fail += 1
 	print("ALL PASS — 096 商店/图鉴渲染(%d 条)" % _n if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
@@ -347,6 +347,71 @@ func _t_panel(gs) -> void:
 	var btns2: Array = _buttons(shop, [])
 	_ok("★选完之后四选一按钮消失(分母: 仍有 %d 个按钮)" % btns2.size(),
 		not _has(btns2, str((AE.FINALS[0] as Dictionary)["name"])))
+	# ── ★三条"玩家在哪看得到"的补充(用户 2026-09-01 逐条点名) ──
+	## ①「应该是在羁绊里显示最好啊，这是跟着羁绊走的」⇒ 羁绊 chip 上要带进度
+	gs.axe_final = ""
+	gs.axe_stage = 0
+	gs.axe_exp_bar = 35
+	var bak_eq = gs.persistent_equipped.duplicate(true)
+	var bak_ld = gs.season_leaders.duplicate(true)
+	gs.season_leaders = ["basic"]
+	gs.persistent_equipped = {"basic": [{"id": EID, "star": 1}]}   # 装上 ⇒ 羁绊激活
+	shop._rebuild()
+	for _i in range(3):
+		await get_tree().process_frame
+	var t_syn: Array = _texts(shop, [])
+	_ok("★★羁绊那一行上直接带砍伐进度(「斧头 … 小木斧 35/%d」)"
+		% AE.need_for_next(0),
+		_has(t_syn, "斧头") and _has(t_syn, "小木斧 35/%d" % AE.need_for_next(0)),
+		"分母: 抓到 %d 个文本节点" % t_syn.size())
+	## ② 什么都没选中时, 攒够 400 也要能选造物(错过就再也做不了最终进化)
+	gs.axe_stage = AE.STAGES.size() - 1
+	gs.axe_exp_bar = AE.FINAL_NEED
+	gs.axe_final = ""
+	shop._sel = -1
+	shop._sel_own = ""
+	shop._rebuild()
+	for _i in range(3):
+		await get_tree().process_frame
+	var b_nosel: Array = _buttons(shop, [])
+	_ok("★★什么都没选中时, 攒够 %d 照样能看到四选一(分母: 共 %d 个按钮)"
+		% [AE.FINAL_NEED, b_nosel.size()],
+		_has(b_nosel, str((AE.FINALS[0] as Dictionary)["name"])), str(b_nosel.slice(0, 6)))
+	## ③ 背包里那件也要显示【进化后】的形态(原来它不走 _deco)
+	## ★★先把装备**摘下来** —— 否则羁绊 chip 上也写着「铁斧 10/130」,
+	##   `_has(txts,"铁斧")` 会从那儿读到, 判据就穿帮了(反向验证当场证明: 把
+	##   背包那处的 _deco 拆掉, 门禁一条都不红)。摘掉之后羁绊不激活、chip 消失,
+	##   屏幕上"铁斧"这三个字**只可能**来自背包详情面板。
+	gs.persistent_equipped = {"basic": []}
+	gs.axe_final = ""
+	gs.axe_stage = 2                                  # 铁斧
+	gs.axe_exp_bar = 10
+	shop._sel = -1
+	shop._sel_own = EID
+	shop._sel_own_star = 1
+	shop._rebuild()
+	for _i in range(3):
+		await get_tree().process_frame
+	## ★★判据落在**图标像素**上, 不落在"屏幕上有没有『铁斧』这三个字" ——
+	##   我连试两版都穿帮: 第一版被羁绊 chip 读到、第二版被**我自己那块进度面板的标题**
+	##   读到(它也写着「🪓 铁斧」)。反向验证两次都是"一条都没红"。
+	##   而**图标只有详情面板画** ⇒ 屏幕上出现 axe-iron 的像素, 只可能是 `_deco` 生效了。
+	var t_own_tex: Array = _texs(shop, [])
+	var fp_iron: String = _want_fp("equip/axe-iron.png")
+	var fp_wood: String = _want_fp("equip/axe-wood.png")
+	var has_iron := false
+	var has_wood := false
+	for fp in t_own_tex:
+		if str(fp) == fp_iron and fp_iron != "":
+			has_iron = true
+		if str(fp) == fp_wood and fp_wood != "":
+			has_wood = true
+	_ok("★★背包里选中它时画的是【铁斧图标】而不是木斧(原来不走 _deco)",
+		has_iron and not has_wood,
+		"铁斧=%s 木斧=%s · 分母: 抓到 %d 张贴图" % [str(has_iron), str(has_wood), t_own_tex.size()])
+	shop._sel_own = ""
+	gs.persistent_equipped = bak_eq
+	gs.season_leaders = bak_ld
 	gs.persistent_bench = bak_bench
 	shop.queue_free()
 

@@ -6,6 +6,13 @@
 # 找不到 Godot 时改 GODOT 变量。--import 首次或新增 class_name 后需先跑 (注册全局 class)。
 
 GODOT="${GODOT:-/c/Users/Louis/Desktop/Godot_v4.6.3-stable_win64.exe}"
+
+## 门禁专用的隔离存档目录 —— 见 run_one 里那段长注释。
+## 每轮开跑前清空: 上一轮留下的存档同样会污染这一轮(那就成了"门禁污染门禁")。
+GATE_APPDATA="${GATE_APPDATA:-/c/tmp/gate_appdata}"
+rm -rf "$GATE_APPDATA" 2>/dev/null
+mkdir -p "$GATE_APPDATA" 2>/dev/null
+export GATE_APPDATA
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
 if [ ! -f "$GODOT" ]; then
@@ -269,7 +276,17 @@ run_one () {  # $1 = 测试名
   #   环境变量优先级高于 ProjectSettings(见 remote_pool.base_url), 空白串 = 停用。
   #   ★专门验这一层的 `verify_remote_pool` 自己 `OS.unset_environment` 打开它,
   #     所以"配置里的真地址能启用本层"那条断言照样验得到。
-  TURTLE_BACKEND=" " "$GODOT" --headless --path "$DIR" "res://tests/$t.tscn" \
+  # ★★门禁进程一律【用隔离的存档目录】(2026-09-01)。
+  #   由来: 用户玩了两把之后跑门禁, **21 条测试同时红** —— 而它们跟本轮改动毫无关系。
+  #   根因是测试读的是 `user://savegame.json`, 也就是**玩家的真存档**: 他玩过之后
+  #   队伍/羁绊/装备全变了 ⇒ 依赖默认队的测试全部量到别的数(verify_axe 量到斧头
+  #   535 血而不是 500 —— 载入的队伍给了它加成)。把存档挪开再跑, 同一份代码立刻全绿。
+  #   ★CLAUDE.md 早记过这条的一半(「CI默认队 vs 本地存档队」), 但只当成"CI 偶发红"的
+  #     解释、没人焊住它 ⇒ 每次都要重新查一遍。
+  #   ★做法: Windows 上 Godot 的 `user://` 解析到 `%APPDATA%`, 换掉它就完全隔离。
+  #     实测: 测试全绿 / 只在隔离目录生成文件 / 真存档逐字节没动。
+  #     **这同时堵死了"测试污染真存档"的反向路径。**
+  TURTLE_BACKEND=" " APPDATA="$GATE_APPDATA" "$GODOT" --headless --path "$DIR" "res://tests/$t.tscn" \
       --quit-after "$(frames_for "$t")" > "$RAW/$t.log" 2>&1
   echo $? > "$RAW/$t.rc"
 }
@@ -346,12 +363,12 @@ trap 'rm -rf "$RAW"' EXIT
 
 # ★先单独导入一次: `.godot/` 导入缓存是并行下唯一的共享可写状态,
 #   让 N 个进程同时冷启动去建它会打架。这一步之后缓存是热的, 后面只读。
-"$GODOT" --headless --path "$DIR" --import > /dev/null 2>&1
+APPDATA="$GATE_APPDATA" "$GODOT" --headless --path "$DIR" --import > /dev/null 2>&1
 
 # ★冒烟(80 秒)与测试池【同时】跑 —— 它是完全独立的进程, 与自证测试零共享状态,
 #   排在后面串行等 = 白白多花 80 秒。判定逻辑在下面的冒烟段, 一个字没改。
 #   必须用 SHIP=1: 否则 _review_demo() 为真 → 假人永不死 → 战斗永不结束 → 结算路径根本没测到。
-( SHIP=1 "$GODOT" --headless --path "$DIR" res://tests/smoke_scenes.tscn \
+( SHIP=1 APPDATA="$GATE_APPDATA" "$GODOT" --headless --path "$DIR" res://tests/smoke_scenes.tscn \
     --quit-after 40000 > "$RAW/smoke.log" 2>&1; echo $? > "$RAW/smoke.rc" ) &
 SMOKE_PID=$!
 

@@ -810,6 +810,19 @@ func _build_synergy_bar() -> void:
 		else:
 			chip.text = "%s%s %d %s" % [str(Phase2Types.emoji_of(str(r["t"]))), str(r["t"]),
 				n_now, stars]
+		## ★★斧头羁绊的 chip 上【直接带砍伐进度】(用户 2026-09-01:
+		##   「应该是在羁绊里显示最好啊，这是跟着羁绊走的」)。
+		##   砍伐经验确实是跟着这条羁绊走的东西 —— 它不该藏在某件装备的详情面板里,
+		##   要在主页面一眼看到。四选一按钮太大放不进这一行, 仍在详情面板。
+		if str(r["t"]) == "斧头" and AxePanel.should_show(GameState):
+			var _d4: Dictionary = AxeEvo.display(int(GameState.axe_stage), str(GameState.axe_final))
+			var _nd: int = AxeEvo.need_for_next(int(GameState.axe_stage))
+			var _rd: bool = AxeEvo.final_ready(int(GameState.axe_exp_bar),
+				int(GameState.axe_stage), str(GameState.axe_final))
+			chip.text += "  ·  %s %d/%d%s" % [str(_d4["name"]), int(GameState.axe_exp_bar),
+				_nd, "  可进化!" if _rd else ""]
+			chip.size = Vector2(SYN_CHIP_W * 2.0, 20)   # 这一条比别的长, 给双倍宽
+			x += SYN_CHIP_W
 		chip.add_theme_font_size_override("font_size", 14)
 		chip.add_theme_color_override("font_color",
 			Color("#ffd93d") if tier > 0 else Color("#7a92a8"))
@@ -837,10 +850,19 @@ func _build_detail_panel() -> void:
 	var own_star := 1
 	var edef: Dictionary = {}
 	if _sel_own != "":
-		edef = DataRegistry.phase2_equipment_by_id.get(_sel_own, {})
+		## ★背包那条路**也要走 `_deco`**(2026-09-01 补): 原来它直接拿 DataRegistry 的原件,
+		##   于是进化到石斧之后, 货架上画的是石斧、而背包里那件还画「小木斧」+ 木斧图标
+		##   —— 同一件东西在同一个界面上两个样子。
+		edef = _deco(DataRegistry.phase2_equipment_by_id.get(_sel_own, {}))
 		own_mode = not edef.is_empty()
 		own_star = _sel_own_star
 	if not own_mode and (_sel < 0 or _sel >= _offer.size() or _offer[_sel] == null):
+		## ★★攒够 400 待选最终造物时, **就算什么都没选中也要把四选一画出来** ——
+		##   否则这一步会被"得先在货架上找到小木斧"挡住, 而错过就再也做不了最终进化。
+		if AxePanel.should_show(GameState) and AxeEvo.final_ready(
+				int(GameState.axe_exp_bar), int(GameState.axe_stage), str(GameState.axe_final)):
+			_axe_panel.build(box, 34.0, 40.0, PANEL_W - 68.0)
+			return
 		var hint := Label.new()
 		hint.text = "← 点货架卡片看详情\n点下面的格子看已有装备"
 		hint.add_theme_font_size_override("font_size", 18)

@@ -27,6 +27,34 @@ const _ES = preload("res://scripts/gamedata/equip_stats.gd")
 ## 必须与 `tools/backend_smoke.py` 的 GID 前缀一致。
 const SMOKE_PREFIX := "__smoke__"
 
+## ── 失败留痕(2026-09-01) ──────────────────────────────────────
+## ★由来: 用户问「我刚刚打了1把赢的上传了吗」, 一查 —— **后端整个不在了**
+##   (Deno Deploy 回 `DEPLOYMENT_NOT_FOUND`), 而 `upload()` 是"发完就忘",
+##   游戏里**一点提示都没有**。他不问我就永远不知道。
+## ★这不是"要把网络错误弹给玩家"(网络层第一原则仍是永远不能把游戏搞坏),
+##   而是**留一条能被看见的痕迹** —— 结算屏一行小字 + 门禁能断言到。
+##   静默失败比失败本身危险: 失败会被修, 静默不会。
+static var last_fail_reason: String = ""      # 最近一次失败的人话原因("" = 没失败过)
+static var fail_count: int = 0                # 本次进程累计失败次数
+static var ok_count: int = 0                  # ★分母: 成功过几次(0 成功 0 失败 = 压根没发过)
+
+
+## 后端**配了地址但一次都没成功**过 —— 结算屏据此显示提示。
+## ★注意与"没配地址"分开: 没配是**有意关掉**(当前状态), 不该提示。
+static func looks_broken() -> bool:
+	return fail_count > 0 and ok_count == 0
+
+
+static func note_result(ok: bool, code: int) -> void:
+	if ok:
+		ok_count += 1
+		last_fail_reason = ""
+		return
+	fail_count += 1
+	last_fail_reason = ("服务端无响应" if code == 0 else "服务端返回 %d%s"
+		% [code, "（部署不存在）" if code == 404 else ""])
+
+
 const SETTING_KEY := "turtle/backend_url"
 const ENV_KEY := "TURTLE_BACKEND"
 
@@ -211,6 +239,7 @@ func _http(method: String, url: String, body: String, cb: Callable) -> void:
 	##   `Condition "!is_inside_tree()" is true` 报错(实测 verify_match_seed 一次三条)。
 	##   网络层的第一原则是**永远不能把游戏搞坏**, 所以这里当成一次普通失败静默处理。
 	if not is_inside_tree():
+		note_result(false, 0)
 		if cb.is_valid():
 			cb.call({"ok": false, "code": 0, "body": ""})
 		_bye()
@@ -220,6 +249,7 @@ func _http(method: String, url: String, body: String, cb: Callable) -> void:
 	add_child(req)
 	req.request_completed.connect(func(result: int, code: int, _h: PackedStringArray, data: PackedByteArray) -> void:
 		var ok := resp_ok(result, code)
+		note_result(ok, code)              # ★留痕: 成功/失败都记, 别让失败静默
 		if cb.is_valid():
 			cb.call({"ok": ok, "code": code, "body": data.get_string_from_utf8()})
 		req.queue_free()
@@ -228,6 +258,7 @@ func _http(method: String, url: String, body: String, cb: Callable) -> void:
 	var err := req.request(url, headers, HTTPClient.METHOD_POST if method == "POST" else HTTPClient.METHOD_GET, body)
 	if err != OK:
 		## ★立刻回调失败, 不能静默 —— 否则调用方永远等不到回调, 看着像"卡住了"。
+		note_result(false, 0)
 		if cb.is_valid():
 			cb.call({"ok": false, "code": 0, "body": ""})
 		req.queue_free()

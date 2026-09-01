@@ -19,7 +19,7 @@ config/description="斗龟场 实时自走棋版 (Botworld 式实时战斗) — 
 
 2026-05-30 从 Phaser 3 PoC 迁移而来,
 为了上 App Store / Steam / 工业级编辑体验。"
-config/version="0.19.312"
+config/version="0.19.313"
 run/main_scene="res://scenes/MainMenu.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 boot_splash/bg_color=Color(0.0392, 0.0549, 0.0941, 1)
@@ -49,14 +49,6 @@ window/handheld/orientation="sensor_landscape"
 common/default_scroll_deadzone=18
 theme/custom="res://assets/themes/default_theme.tres"
 
-[turtle]
-
-; 阵容交换所的服务端地址(方案书 docs/plans/20260820-阵容上传后端.md)。
-; **空 = 整层停用**, 游戏行为与接网络前逐字节相同 —— 这是"离线不退化"那条硬指标的开关。
-; 填法: 腾讯云开发 HTTP 访问服务给的 https://<环境>.service.tcloudbase.com/<路径>
-; 也可以用环境变量 TURTLE_BACKEND 临时覆盖(调试/门禁用), 见 scripts/net/remote_pool.gd。
-backend_url="https://turtle-ghost.yinzuoliu87-cpu.deno.net"
-
 [rendering]
 
 textures/canvas_textures/default_texture_filter=0
@@ -64,3 +56,7 @@ renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/vram_compression/import_etc2_astc=true
 environment/defaults/default_clear_color=Color(0.0235, 0.0353, 0.051, 1)
+
+[turtle]
+
+backend_url=""

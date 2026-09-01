@@ -1,5 +1,6 @@
 class_name BattleHud
 extends RefCounted
+const RemotePoolRef := preload("res://scripts/net/remote_pool.gd")   # 阵容同步的失败留痕(结算屏一行)
 
 const RemotePoolS = preload("res://scripts/net/remote_pool.gd")
 
@@ -1407,6 +1408,14 @@ func _build_reward_chips(gs) -> Control:
 		items.append(["剩余生命", "%d / 8" % int(gs.hearts), Color("#ff8a8a") if int(gs.hearts) <= 2 else Color("#e8f0f6")])
 	items.append(["赛季胜场", "%d" % int(gs.season_wins), Color("#e8f0f6")])
 	items.append(["赛季等级", "Lv.%d" % lv, Color("#e8f0f6")])
+	## ★阵容同步坏了要**看得见**(2026-09-01)。
+	##   由来: 用户问「我刚刚打了1把赢的上传了吗」, 一查后端整个不在了
+	##   (Deno Deploy 回 DEPLOYMENT_NOT_FOUND), 而上传是"发完就忘" ⇒ 游戏里零提示,
+	##   他不问我就永远不知道。**静默失败比失败本身危险: 失败会被修, 静默不会。**
+	## ★只在"配了地址但一次都没成功"时出现 —— 没配地址是【有意关掉】(当前就是),
+	##   那种情况不该报警, 否则天天见到就没人看了。
+	if RemotePoolRef.looks_broken():
+		items.append(["阵容同步", "失败", Color("#ff8a8a")])
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 30)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
