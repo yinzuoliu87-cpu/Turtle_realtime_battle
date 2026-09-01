@@ -1040,3 +1040,41 @@ func _vfx_preview_trainer(origin: Vector2, dir: Vector2, idx: int) -> void:
 		#   (实测 18 条 SCRIPT ERROR)。我在上面注释里写了"只跑演出不跑判定",
 		#   结果自己在这一行违背了。预览要的是弹道的样子, 不是伤害。
 		6: battle._ballistics._fire_trainer_rock(tr, tgt, false)
+
+## ★★2026-09-01 从主场景搬过来(CLAUDE.md §5 落位表: 特效演出 → battle_vfx.gd)。
+##   搬的直接原因: 修它那两个 `!is_inside_tree` bug 时给上帝文件加了 10 行, arch_budget 当场红。
+##   台账是"只减不增"的 —— 正确做法是把它放对地方, 不是把台账抬上去。
+##   它本来就不在 `_sim_step` 调用链上, 只被 battle_render 的渲染步调用。
+## 虚化残影: 复制本体当前帧→渐隐(青紫)·移动时成拖尾(用户 2026-07-11)。
+func phase_afterimage(spr) -> void:
+	if not is_instance_valid(spr):
+		return
+	## ★★`is_instance_valid` 只保证"没被 free", **不保证"在场景树里"** ——
+	##   不在树里读 `global_position` 会走 `get_global_transform` 的 `!is_inside_tree()` 分支:
+	##   引擎打一条 ERROR 并**返回单位矩阵**, 于是残影被画到世界原点。
+	##   2026-09-01: 这条被"从没跑过的死技能门禁"(tests/verify_skills_not_dead.gd)翻出来 ——
+	##   它逐个放 84 个技能, 走到幽灵龟虚化态时刷了 13 条。
+	if not spr.is_inside_tree():
+		return
+	var ai := Sprite3D.new()
+	ai.texture = spr.texture
+	ai.frame = 0                      # ★先归零再改帧网格(同族)
+	ai.hframes = spr.hframes
+	ai.vframes = spr.vframes
+	ai.frame = clampi(int(spr.frame), 0, maxi(0, int(ai.hframes) * int(ai.vframes) - 1))
+	ai.pixel_size = spr.pixel_size
+	ai.billboard = spr.billboard
+	ai.flip_h = spr.flip_h
+	ai.shaded = false
+	ai.transparent = true
+	ai.texture_filter = spr.texture_filter
+	ai.scale = spr.scale
+	ai.modulate = Color(0.55, 0.45, 1.0, 0.5)
+	## ★★先进树【再】设 global_position —— 不在树里设它, 引擎拿不到父节点的全局变换,
+	##   会把"全局坐标"当"相对 _world 的局部坐标"存下来; `_world` 一旦不是单位变换,
+	##   残影就偏了。原来这两行是反的。
+	battle._world.add_child(ai)
+	ai.global_position = spr.global_position
+	var tw: Tween = battle._reg_tween()
+	tw.tween_property(ai, "modulate:a", 0.0, 0.35)
+	tw.tween_callback(ai.queue_free)

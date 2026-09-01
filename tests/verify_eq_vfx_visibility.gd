@@ -86,6 +86,7 @@ func _ready() -> void:
 	_g4_089_texture()
 	_g5_091_scutes()
 	_g6_094_glyphs()
+	_g7_phase_afterimage()
 	_done()
 
 
@@ -428,3 +429,72 @@ func _done() -> void:
 	else:
 		print("FAIL x%d (共 %d 条)" % [_fail, _n])
 		get_tree().quit(1)
+
+
+# ══════════════════════════════════════════════════════════════
+#  ⑦ 幽灵龟虚化残影: 建得出来, 而且【不在树里时不画也不报错】
+# ══════════════════════════════════════════════════════════════
+## ★由来(2026-09-01): `_spawn_phase_afterimage` 里有两个 bug, 是被一份
+##   **从没跑过的门禁**(tests/verify_skills_not_dead.gd, 原名 `_wip_...`)翻出来的 ——
+##   它逐个放 84 个技能, 走到幽灵龟虚化态时刷了 13 条 `!is_inside_tree`:
+##   ① `is_instance_valid(spr)` 只保证"没被 free", 不保证"在树里";
+##      不在树里读 `global_position` 引擎返回**单位矩阵** ⇒ 残影画到世界原点。
+##   ② `ai.global_position` 设在 `add_child` **之前** —— 两行是反的。
+## ★★这一节必须有【两侧】: 只验"不报错"会被"整条路径根本没走到"蒙混过去
+##   (修完那次我一开始就只看了报错数, 分母是塌的)。
+func _g7_phase_afterimage() -> void:
+	var c: Vector2 = _s.ARENA.position + _s.ARENA.size * 0.5
+	## ★★★**必须挪开中心** —— 放在 ARENA 正中时世界坐标就是 (0, 0.06, 0),
+	##   那么"残影落在本体身上"和"残影画到世界原点"**是同一个点**, 判据分不开两者,
+	##   而 bug ② 毁掉的恰恰就是这个区别。第一版我就是这么写的, 恒真。
+	var u: Dictionary = _s._spawn._make_unit("ghost", "left", c + Vector2(320.0, 240.0))
+	_s._units.append(u)
+	var spr = u.get("sprite", null)   # ★键名是 "sprite"(battle_render 就是这么取的), 不是 "spr"
+	_ok("★分母: 幽灵龟建出来了且它的立绘【在场景树里】",
+		spr != null and is_instance_valid(spr) and (spr as Node).is_inside_tree(),
+		"spr=%s" % str(spr))
+	if spr == null or not is_instance_valid(spr):
+		return
+	## ① 正常情况: 残影真的建出来
+	var n0: int = _s._world.get_child_count()
+	_s._vfx.phase_afterimage(spr)
+	var n1: int = _s._world.get_child_count()
+	_ok("★★★残影真的建进了 _world(子节点 %d → %d)" % [n0, n1], n1 > n0,
+		"没增量 = 这条路径根本没走到, 那句「0 条报错」就是假的")
+	## ★位置对不对 —— 这正是 bug ② 会毁掉的东西(设在 add_child 之前会存成局部坐标)
+	var made: Node = _s._world.get_child(_s._world.get_child_count() - 1)
+	_ok("★★残影落在本体身上(而不是世界原点)",
+		made is Node3D and (made as Node3D).global_position.distance_to(
+			(spr as Node3D).global_position) < 0.01,
+		"残影 %s vs 本体 %s(本体必须【远离世界原点】否则这条恒真)"
+		% [str((made as Node3D).global_position) if made is Node3D else "?",
+			str((spr as Node3D).global_position)])
+	_ok("★分母: 本体确实远离世界原点(否则上一条分不开【落在本体】与【落在原点】)",
+		(spr as Node3D).global_position.length() > 1.0,
+		"离原点 %.2f 米" % (spr as Node3D).global_position.length())
+	## ★★★把 `_world` 挪开再验一次 —— 「先设 global_position 再 add_child」这个顺序错
+	##   在 `_world` 是单位变换时**观察不到**(实测: 反向验证把两行调回去, 门禁一条都没红)。
+	##   只有父节点带位移时, 那种写法才会把「全局坐标」当「局部坐标」存下去、残影整体偏掉。
+	##   ⇒ 判据要问的是**不变量**: 不管 _world 在哪, 残影都落在本体身上。
+	var w_bak: Transform3D = _s._world.transform
+	_s._world.position += Vector3(5.0, 0.0, 3.0)
+	var n_w: int = _s._world.get_child_count()
+	_s._vfx.phase_afterimage(spr)
+	var off := 999.0
+	if _s._world.get_child_count() > n_w:
+		var made2: Node = _s._world.get_child(_s._world.get_child_count() - 1)
+		if made2 is Node3D:
+			off = (made2 as Node3D).global_position.distance_to((spr as Node3D).global_position)
+	_ok("★★★_world 带位移时残影**仍然**落在本体身上(偏差 %.3f 米)" % off, off < 0.01,
+		"顺序写反了就会整体偏掉 —— 这是 add_child 必须在设坐标【之前】的唯一可证伪判据")
+	_s._world.transform = w_bak
+
+	## ② 立绘【不在树里】时: 不画, 也不许报错(报错会被门禁的致命正则抓成红)
+	var orphan := Sprite3D.new()
+	orphan.texture = (spr as Sprite3D).texture
+	var n2: int = _s._world.get_child_count()
+	_s._vfx.phase_afterimage(orphan)
+	_ok("★★★立绘不在场景树里时【不画】(而不是画到世界原点)",
+		_s._world.get_child_count() == n2,
+		"凭空多了 %d 个" % (_s._world.get_child_count() - n2))
+	orphan.free()

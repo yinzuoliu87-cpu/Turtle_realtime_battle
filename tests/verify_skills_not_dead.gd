@@ -1,6 +1,13 @@
 extends Node
 ## verify_skills_not_dead.gd — 每个技能【由它自己的龟放】必须真的干活 (2026-08-31)
 ##
+## ★★★2026-09-01: 这份门禁**从 2026-08-31 写好那天起就没跑过一次** ——
+##   文件名带 `_wip_` 前缀, 而 `run-tests.sh` 只自动发现 `tests/verify_*.gd`。
+##   一份"防以后加进来的死技能"的棘轮, 自己先当了三十多个小时的死代码。
+##   真跑起来当场发现它跑不完: 三处 `str(单位字典)` 触发 Godot 递归 stringify,
+##   刷 12 万条 `Maximum dictionary recursion reached`、10 分钟还没结束(见 `_vsig` 头注)。
+##   修完 91 秒跑完、84 个技能零空转。**"写好了"和"在跑"是两件事。**
+##
 ## ★由来: 2026-08-31 核实"69 个技能没门禁"这个数, 发现它是**假缺口** ——
 ##   按【名字】搜出来的缺口不算数: `verify_copy_no_lock` 其实已经逐个放过 80 个,
 ##   只是测试里没写它们的名字。(同族: 今晚照旧账念了三次, 三次全是烂账。)
@@ -34,6 +41,27 @@ func _ok(t: String, c: bool, ex: String = "") -> void:
 		_fail += 1
 	print("  [%s] %s  %s" % ["PASS" if c else "FAIL", t, ex])
 
+
+
+## 一个值的【签名】—— 用来比"这个字段变了没有"。
+##
+## ★★绝不 `str()` 一个可能含【单位字典】的值(CLAUDE.md §3.2 的同一颗雷):
+##   单位字典之间互相引用成环(`summon_owner` / `_axe_ref` / `dot_src` …),
+##   Godot 会递归 stringify 直到报 `Maximum dictionary recursion reached`。
+##   实测(2026-09-01): 原来那三行 `str(dict)` 刷了 **12 万条**这个错误,
+##   并把整个测试拖到 10 分钟还没跑完 —— 这正是它一直挂着 `_wip_` 前缀、
+##   **从来没进过门禁**的原因(门禁只自动发现 `verify_*.gd`)。
+## ⇒ 复合值只取【形状】(类型 + 尺寸), 对象取实例 id, 标量才原样比。
+##   代价: "已有的数组内容变了但长度没变"这一种变化量不到 —— 诚实记在这里,
+##   新增键那条分支仍然抓得到绝大多数(buff 类全是标量)。
+static func _vsig(v) -> String:
+	if v is Dictionary:
+		return "D%d" % (v as Dictionary).size()
+	if v is Array:
+		return "A%d" % (v as Array).size()
+	if v is Object:
+		return "O%d" % ((v as Object).get_instance_id() if is_instance_valid(v) else 0)
+	return str(v)
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -76,10 +104,10 @@ func _ready() -> void:
 	_s._units.append(ce)
 	var cu_pre := {}
 	for k in cu.keys():
-		cu_pre[str(k)] = str(cu[k])
+		cu_pre[str(k)] = _vsig(cu[k])
 	var ce_pre := {}
 	for k in ce.keys():
-		ce_pre[str(k)] = str(ce[k])
+		ce_pre[str(k)] = _vsig(ce[k])
 	_s._do_skill(cu, ce, "___nonexistent_skill___")
 	for _fc in range(150):
 		await get_tree().process_frame
@@ -151,7 +179,7 @@ func _ready() -> void:
 		for o in _s._units:
 			var kk := {}
 			for k in (o as Dictionary).keys():
-				kk[str(k)] = str((o as Dictionary)[k])
+				kk[str(k)] = _vsig((o as Dictionary)[k])
 			pre.append(kk)
 		var born := {"n": 0}
 		var cb := func(_nd: Node) -> void: born["n"] += 1
@@ -181,7 +209,7 @@ func _ready() -> void:
 					continue          # 每帧自己会动的记账字段, 不算技能干的
 				if not kk.has(ks):
 					newk += 1         # 新键
-				elif str(kk[ks]) != str(o[k]):
+				elif str(kk[ks]) != _vsig(o[k]):
 					newk += 1         # 已有键但【值变了】—— 纯 buff 类全靠这条
 		var flag := ""
 		if dmg <= 0.0 and gain <= 0.0 and newk <= 0:

@@ -7424,31 +7424,6 @@ func _add_hitstop(sec: float) -> void:
 	if sec > _hitstop:
 		_hitstop = sec
 
-# 受击闪白 + 轻压扁 (Phase4 替代旧 _vfx._flash; 状态驱动, 不叠 tween)
-# 虚化残影: 复制本体当前帧→渐隐(青紫)·移动时成拖尾(用户2026-07-11)
-func _spawn_phase_afterimage(spr) -> void:
-	if not is_instance_valid(spr):
-		return
-	var ai := Sprite3D.new()
-	ai.texture = spr.texture
-	ai.frame = 0                      # ★先归零再改帧网格(同族)
-	ai.hframes = spr.hframes
-	ai.vframes = spr.vframes
-	ai.frame = clampi(int(spr.frame), 0, maxi(0, int(ai.hframes) * int(ai.vframes) - 1))
-	ai.pixel_size = spr.pixel_size
-	ai.billboard = spr.billboard
-	ai.flip_h = spr.flip_h
-	ai.shaded = false
-	ai.transparent = true
-	ai.texture_filter = spr.texture_filter
-	ai.global_position = spr.global_position
-	ai.scale = spr.scale
-	ai.modulate = Color(0.55, 0.45, 1.0, 0.5)
-	_world.add_child(ai)
-	var tw := _reg_tween()
-	tw.tween_property(ai, "modulate:a", 0.0, 0.35)
-	tw.tween_callback(ai.queue_free)
-
 var _hitring_tex: ImageTexture = null
 var _hitspark_tex: ImageTexture = null   # ★命中星芒【专用】: 不与 _spark_tex 共用(那个另一处会懒创建成发光球, 谁先跑谁定)
 var _spark_tex: ImageTexture = null   # #6修: 命中辉光改 Image 真圆(原 GradientTexture2D 露方角)

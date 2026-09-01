@@ -399,7 +399,7 @@ func _update_world_transforms() -> void:
 			spr.modulate = Color(0.78, 0.62, 1.0, 0.34 + 0.14 * sin(battle._t * 9.0))
 			if battle._t - float(u.get("_phase_ai_t", -1.0)) >= 0.08:
 				u["_phase_ai_t"] = battle._t
-				battle._spawn_phase_afterimage(spr)
+				battle._vfx.phase_afterimage(spr)
 		# 影/环: 跟 XZ 不跟 Y (贴地), 随高度缩小变淡 (从各自基准 scale 起算, 召唤体影更小)
 		var s: float = 1.0 - clampf(_rh / 3.0, 0.0, 0.7)
 		if is_instance_valid(shadow):

@@ -1,18 +1,18 @@
 {
-  "_doc": "架构预算欠债台账。规则见 tools/arch_budget.py 顶部。数字只许改小(还债), 改大=增债需评审。",
-  "max_file_lines": 3000,
-  "max_func_lines": 250,
-  "scan_roots": [
-    "scripts",
-    "autoload"
-  ],
-  "file_ratchet": {
-    "scripts/scenes/RealtimeBattle3DScene.gd": 8953
-  },
-  "_debt_note": "8476→8629→8461(2026-07-26·已还债): 训龟大师返工先把瞄准指示器+施法分派+光环加进主文件(8629·超档), 同日把【瞄准指示器整块】(_on_spell_aim/_disc_off_to_field/_draw_aim_indicator/_aim_band/_ring/_arrow/_free/_clear/_begin/_end/_update_q_aim ~168行)抽到 scripts/scenes/battle/battle_aim.gd(RefCounted+battle注入·状态仍挂场景)→档降到8461(反而低于原8476)。仍留主文件的施法分派(_cast_fury/whistle/glacier)+_buff_aura/_body_glow 属sim-adjacent薄封装, 暂不动。见 memory project-god-file-decomposition。",
-  "func_ratchet": {
-    "scripts/systems/skills/star_system.gd::_sk_star_wave": 330,
-    "scripts/systems/skills/star_system.gd::_sk_star_gravity_warp": 260
-  },
-  "_ratchet_note": "2026-08-02 用户拍板「可以涨行数, 但不能乱, 要规范」→ 8600 提到 9000(实际 8555, 余量 445 行)。★这不是放开约束, 是把约束从\"行数\"移到\"放对位置\"。 【放置规范·判据只有一条】: 新函数如果不在 _sim_step 的调用链上(= 不是每帧跑的模拟逻辑), 就不该进主文件。对照表: UI/面板→scripts/scenes/battle/battle_hud.gd 或对应 Scene; 特效演出→battle_vfx.gd; 单龟技能→scripts/systems/skills/<x>_system.gd; 装备效果→scripts/systems/equip/; 纯数据/常量表→scripts/gamedata/; 通用工具→scripts/util/。 主文件只留【每帧耦合、拆出去要来回传一堆状态】的核心 sim 循环(process/sim_step/tick_unit/移动/状态机/伤害分派)。 ★行数余量的作用是\"正常改动不必绕路\", 不是\"可以随便往主文件加\"—— 历史上零余量时差点为了不涨行数把跨龟的诅咒效果塞进 ghost_system(放错地方), 这才是真正要防的。 其余文件仍受 max_file_lines=3000 通用上限管(当前最大 battle_hud.gd 1960, 离顶还远)。 (前情: 8476→8629→8461 2026-07-26 拆瞄准指示器还债; 8462→8600 2026-07-28 从\"硬顶\"改\"警戒线\"。)"
+ "_doc": "架构预算欠债台账。规则见 tools/arch_budget.py 顶部。数字只许改小(还债), 改大=增债需评审。",
+ "max_file_lines": 3000,
+ "max_func_lines": 250,
+ "scan_roots": [
+  "scripts",
+  "autoload"
+ ],
+ "file_ratchet": {
+  "scripts/scenes/RealtimeBattle3DScene.gd": 8928
+ },
+ "_debt_note": "8476→8629→8461(2026-07-26·已还债): 训龟大师返工先把瞄准指示器+施法分派+光环加进主文件(8629·超档), 同日把【瞄准指示器整块】(_on_spell_aim/_disc_off_to_field/_draw_aim_indicator/_aim_band/_ring/_arrow/_free/_clear/_begin/_end/_update_q_aim ~168行)抽到 scripts/scenes/battle/battle_aim.gd(RefCounted+battle注入·状态仍挂场景)→档降到8461(反而低于原8476)。仍留主文件的施法分派(_cast_fury/whistle/glacier)+_buff_aura/_body_glow 属sim-adjacent薄封装, 暂不动。见 memory project-god-file-decomposition。",
+ "func_ratchet": {
+  "scripts/systems/skills/star_system.gd::_sk_star_wave": 330,
+  "scripts/systems/skills/star_system.gd::_sk_star_gravity_warp": 260
+ },
+ "_ratchet_note": "2026-08-02 用户拍板「可以涨行数, 但不能乱, 要规范」→ 8600 提到 9000(实际 8555, 余量 445 行)。★这不是放开约束, 是把约束从\"行数\"移到\"放对位置\"。 【放置规范·判据只有一条】: 新函数如果不在 _sim_step 的调用链上(= 不是每帧跑的模拟逻辑), 就不该进主文件。对照表: UI/面板→scripts/scenes/battle/battle_hud.gd 或对应 Scene; 特效演出→battle_vfx.gd; 单龟技能→scripts/systems/skills/<x>_system.gd; 装备效果→scripts/systems/equip/; 纯数据/常量表→scripts/gamedata/; 通用工具→scripts/util/。 主文件只留【每帧耦合、拆出去要来回传一堆状态】的核心 sim 循环(process/sim_step/tick_unit/移动/状态机/伤害分派)。 ★行数余量的作用是\"正常改动不必绕路\", 不是\"可以随便往主文件加\"—— 历史上零余量时差点为了不涨行数把跨龟的诅咒效果塞进 ghost_system(放错地方), 这才是真正要防的。 其余文件仍受 max_file_lines=3000 通用上限管(当前最大 battle_hud.gd 1960, 离顶还远)。 (前情: 8476→8629→8461 2026-07-26 拆瞄准指示器还债; 8462→8600 2026-07-28 从\"硬顶\"改\"警戒线\"。)"
 }
