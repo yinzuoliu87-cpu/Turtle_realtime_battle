@@ -16,14 +16,18 @@ extends RefCounted
 ##   读的地方只有一个 `_exp_total()`, 四期把它接到 GameState 上即可。
 const AE := preload("res://scripts/gamedata/axe_evolution.gd")
 const AP := preload("res://scripts/systems/equip/axe_passives.gd")
+const AFF := preload("res://scripts/systems/equip/axe_final_forms.gd")
+const AFS := preload("res://scripts/gamedata/axe_final_stats.gd")
 
 var battle = null
 var _pas = null                          # 被动 3~6(五期), 见 axe_passives.gd
+var _fin = null                          # 四个最终造物(六期), 见 axe_final_forms.gd
 
 
 func _init(b) -> void:
 	battle = b
 	_pas = AP.new(b)
+	_fin = AFF.new(b)
 
 
 ## 历史累计经验。★四期之前恒为 0 —— 但**必须现在就走这个函数**,
@@ -42,6 +46,15 @@ func _stage_idx() -> int:
 ##   `Node.get("不存在的属性")` 返回 **null**, 而 `int(null)` 是运行时错误 ——
 ##   它会让**调用它的那个函数当场中止**, 剩下的断言一条都不跑, 而门禁照样打 ALL PASS
 ##   (唯一线索是断言总数悄悄变少)。所以这里显式判 null 再转。
+## 从 GameState 读一个字符串, **null 安全**(同 _gs_int 那条注释)。
+func _gs_str(prop: String, dflt: String) -> String:
+	var gs = battle.get_node_or_null("/root/GameState")
+	if gs == null:
+		return dflt
+	var v = gs.get(prop)
+	return dflt if v == null else str(v)
+
+
 func _gs_int(prop: String, dflt: int) -> int:
 	var gs = battle.get_node_or_null("/root/GameState")
 	if gs == null:
@@ -76,6 +89,9 @@ func summon(u: Dictionary) -> Variant:
 	##   而且最终造物 4 明写"处决一个单位会使召唤物获得150点龟能" ⇒ 龟能确实在召唤物身上)。
 	ax["maxEnergy"] = AE.ACTIVE_ENERGY
 	ax["energy"] = 0.0
+	## ★最终造物的属性要在 `_recalc_stats` **之前**折进去(它改的是 base_*)。
+	##   ★钉在召唤物身上: 一路打到一半玩家在别处选了造物, 场上这只不该中途变身。
+	_fin.apply_stats(ax, _gs_str("axe_final", ""))
 	battle._recalc_stats(ax)
 	ax["hp"] = float(ax["maxHp"])
 	u["_axe_ref"] = ax                       # ★只用 is_same 比较, 绝不当 Dictionary 的键(CLAUDE.md §3.2)
@@ -105,6 +121,20 @@ func cast_heal(ax: Dictionary) -> bool:
 	battle._damage._heal(ax, mh * AE.ACTIVE_HEAL_PCT)
 	battle._damage._grant_shield(ax, mh * AE.ACTIVE_SHIELD_PCT)
 	return true
+
+
+## 亡灵环的节拍器。★存"下一跳的时刻"而不是累加 delta —— 后者漏一帧就永远差一点,
+##   而这类漏拍在游戏里看不出来(同 tick_smash 那条)。
+func _tick_undead_ring(ax: Dictionary, _delta: float) -> void:
+	if not ax.get("alive", false):
+		return
+	if not ax.has("_undead_ring_at"):
+		ax["_undead_ring_at"] = float(battle._t) + AFS.UNDEAD_RING_TICK
+		return
+	if float(battle._t) < float(ax["_undead_ring_at"]):
+		return
+	ax["_undead_ring_at"] = float(battle._t) + AFS.UNDEAD_RING_TICK
+	_fin.undead_ring_tick(ax)
 
 
 ## 播【技能释放】动画。
@@ -138,6 +168,9 @@ func tick(u: Dictionary, _delta: float) -> void:
 	if not (ax is Dictionary) or not ax.get("alive", false):
 		return
 	_pas.tick_smash(ax, _delta)
+	_fin.ember_light_tick(ax)          # 余烬之光: 清过期的(多层只延长在线时间, 不叠强度)
+	_fin.undead_tick_revive(ax)        # 亡灵: 到点站起来(不播死亡动画, 用户两次点名)
+	_tick_undead_ring(ax, _delta)
 	## ★蓄力中不再放主动 —— 否则 140 龟能一满就把蓄力重开, 永远砸不下去。
 	if _pas.tick_charge(ax, _delta) >= 0:
 		return
@@ -190,6 +223,10 @@ func on_hit(src: Dictionary, tgt: Dictionary, basic: bool) -> void:
 				Color("#cfd8dc"), 0.0, false, true)
 	_pas.smash_on_hit(src, tgt)                            # 被动3: 每 9 秒一次强化
 	_pas.add_eff(src)                                      # 被动5: 效率层 +1
+	## ── 六期: 最终造物的 on-hit ──
+	_fin.seraph_on_hit(src, tgt)                           # 炽天使: 8 层灼烧
+	_fin.holo_on_hit(src)                                  # 全息斧: 最低血友军 +盾+龟能
+	_fin.ember_on_hit(src, tgt)                            # 余烬: 种子层 + 处决
 
 
 ## ── 四期: 击杀 / 助攻 +2 砍伐经验 ────────────────────────────
