@@ -169,13 +169,20 @@ func tick(u: Dictionary, _delta: float) -> void:
 		return
 	_pas.tick_smash(ax, _delta)
 	_fin.ember_light_tick(ax)          # 余烬之光: 清过期的(多层只延长在线时间, 不叠强度)
+	_fin.tick_active(ax, _delta)       # 造物主动: 甩回旋镖 / 法阵脉冲 / 到期还原减伤
 	_fin.undead_tick_revive(ax)        # 亡灵: 到点站起来(不播死亡动画, 用户两次点名)
 	_tick_undead_ring(ax, _delta)
 	## ★蓄力中不再放主动 —— 否则 140 龟能一满就把蓄力重开, 永远砸不下去。
 	if _pas.tick_charge(ax, _delta) >= 0:
 		return
+	## ★★造物主动【替换】被动6的猛砸(2026-09-01 补 —— 零调用者扫描抓到之前一个都没接):
+	##   炽天使→10 把回旋镖 / 全息→插地开法阵 / 余烬→余烬之光 / 亡灵与无造物→仍走猛砸。
+	##   ⚠ 造物主动正在进行中时**不许重开** —— 否则龟能一满就打断自己, 10 把永远甩不完。
+	if _fin.active_busy(ax):
+		return
 	if cast_heal(ax):
-		_pas.begin_charge(ax)            # 被动 6: 释放治疗时进入蓄力
+		if _fin.begin_active(ax) == "":
+			_pas.begin_charge(ax)        # 没有造物(或亡灵): 走被动 6 的梯形蓄力猛砸
 
 
 ## 被动 2(木斧解锁): 斧头**普攻**命中带护盾的目标 → 偷走 10% 护盾, **转成普通护盾**给自己。

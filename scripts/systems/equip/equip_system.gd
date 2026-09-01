@@ -1784,6 +1784,10 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 	##   身上一件装备都没有, 那条路上永远轮不到它(它还额外要求击杀者 alive,
 	##   斧头与目标同归于尽时整条跳过)。
 	_axe.on_death(u, _killer)
+	## ★亡灵之斧: 斧头自己倒下时安排 2.5 秒后重生(2026-09-01 补 —— 之前 undead_on_death 零调用者,
+	##   也就是说亡灵之斧**死了根本不会重生**, 而门禁全绿因为它直接调那个函数)。
+	if u.get("_eq_axe", false):
+		_axe._fin.undead_on_death(u)
 	for e in u.get("equips", []):
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
 		battle._cur_eq_item = iid   # 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)

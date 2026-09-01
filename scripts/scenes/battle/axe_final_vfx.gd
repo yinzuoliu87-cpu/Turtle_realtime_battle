@@ -331,6 +331,13 @@ func ember_light(ax: Dictionary) -> Node3D:
 	return n
 
 
+## 公开的淡出释放 —— 给"常驻但要按拍重建"的东西用(亡灵环 / 余烬之光环)。
+## ★它就是 `_fade_out` 的对外名字: 有了它, 调用方不必碰下划线私有函数。
+func fade_and_free(n, sec: float) -> void:
+	if n is Node3D and is_instance_valid(n):
+		_fade_out(n, sec)
+
+
 ## 统一淡出并释放。★走 `hold_fade`：前 70% 满亮，最后 30% 才淡。
 func _fade_out(n: Node3D, sec: float) -> void:
 	## ★显式标注类型: `battle` 是无类型的注入宿主, `:=` 推不出 Tween(Parse Error)。

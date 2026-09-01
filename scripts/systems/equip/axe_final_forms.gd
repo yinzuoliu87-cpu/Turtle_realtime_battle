@@ -78,6 +78,13 @@ func undead_ring_tick(ax: Dictionary) -> int:
 		##   这也是本作 DoT 的标准做法(灼烧/中毒吃魔抗、流血吃护甲)。
 		var after: int = battle._damage._dot_after_resist(o, d, true, ax)
 		battle._damage._apply_damage(o, maxi(1, after), Color("#7ee081"), ax, "mag", false)
+	## ★环的**视觉**要跟着斧头走。它是常驻场, 但斧头在移动 ⇒ 每跳重建一次最省事
+	##   (每秒一次, 开销可忽略), 比自己维护一个跟随节点少一整类"没跟上/没释放"的 bug。
+	##   ⚠ 之前 `undead_ring` 是**零调用者** —— 环写好了但场上根本看不见, 是
+	##   tools/zero_caller_audit.py 抓到的。
+	var _rn = vfx.undead_ring(ax, AF.UNDEAD_RING_R)
+	if _rn != null:
+		vfx.fade_and_free(_rn, AF.UNDEAD_RING_TICK)
 	if not hit.is_empty():
 		battle._damage._heal(ax, AF.undead_leech(float(ax.get("maxHp", 0.0)), hit.size()))
 		## ★演出**接在结算之后**(§3.5): 上面那行数值已经落定, 演出掉了也不影响正确性。
@@ -268,5 +275,103 @@ func _ember_apply(ax: Dictionary) -> void:
 	ax["haste_mult"] = (1.0 + AF.EMBER_LIGHT_ASPD) if on else 1.0
 	ax["haste_until"] = (float(battle._t) + 0.2) if on else 0.0
 	ax["cc_immune"] = on                   # 「免疫控制」
+	## ★余烬之光的**视觉**(之前 `ember_light` 也是零调用者)。多层不叠强度,
+	##   所以视觉也只画一圈 —— 与结算口径一致。
+	if on and not ax.has("_ember_light_node"):
+		ax["_ember_light_node"] = vfx.ember_light(ax)
+	elif not on and ax.has("_ember_light_node"):
+		vfx.fade_and_free(ax.get("_ember_light_node", null), 0.3)
+		ax.erase("_ember_light_node")
 	if on:
 		ax["stun_until"] = 0.0
+
+
+# ══════════════════════════════════════════════════════════════
+#  ★★主动技能的【替换】—— 2026-09-01 补
+#
+#  由来: 零调用者扫描抓到 —— `undead_on_death` / `seraph_boomerang_settle` /
+#  `holo_aura_tick` / `ember_light_cast` **产品代码里一个调用者都没有**。
+#  也就是说四个造物的主动**一个都放不出来**, 而门禁全绿 ——
+#  因为门禁直接调这些函数, 从没证明"游戏里真的会走到它们"。
+#  (memory [[fb-verify-must-run-the-real-path]]: 断言函数存在 ≠ 还有没有人调)
+#
+#  需求原文里的替换规则:
+#    · 炽天使「主动效果4秒里的猛砸将被替换为4秒内投掷10把斧头回旋镖，**不再获得减伤**」
+#    · 全息斧「主动4秒内的猛砸将被替换为将斧头插入地下4秒，转而获得30%减伤，期间释放全息法阵」
+#    · 余烬  「主动技能的4秒猛砸将被替换为余烬之光」(不是蓄力, 是立刻起 4 秒 buff)
+#    · 亡灵之斧**没说替换** ⇒ 保持被动6的梯形蓄力猛砸
+# ══════════════════════════════════════════════════════════════
+
+## 主动触发时按造物分派。返回走了哪条路(""=没有造物, 交给被动6的猛砸)。
+## ★纯状态机, 不建节点也不结算伤害 —— 门禁直接调它验分派对不对。
+func begin_active(ax: Dictionary) -> String:
+	var fk: String = _fk(ax)
+	match fk:
+		"seraph":
+			ax["_seraph_until"] = float(battle._t) + AF.SERAPH_CAST_TIME
+			ax["_seraph_left"] = AF.SERAPH_BOOMERANGS
+			ax["_seraph_next"] = float(battle._t)
+			## ★「不再获得减伤」—— 需求明确取消, 所以这里**什么都不做**(不是漏写)
+			return "seraph"
+		"holo":
+			ax["_holo_until"] = float(battle._t) + AF.HOLO_PLANT_TIME
+			ax["_holo_next"] = float(battle._t)
+			ax["_holo_dr_bak"] = float(ax.get("damage_reduction", 0.0))
+			ax["damage_reduction"] = maxf(float(ax.get("damage_reduction", 0.0)), AF.HOLO_PLANT_DR)
+			ax["_holo_root"] = vfx.holo_field(ax.get("pos", Vector2.ZERO),
+				AF.HOLO_AURA_R, AF.HOLO_PLANT_TIME)
+			return "holo"
+		"ember":
+			ember_light_cast(ax)
+			return "ember"
+	return ""
+
+
+## 每帧推进造物主动。返回这一帧做了几件事(门禁拿它当分母)。
+func tick_active(ax: Dictionary, _delta: float) -> int:
+	var n := 0
+	# ── 炽天使: 4 秒内均匀甩 10 把 ──
+	if ax.has("_seraph_until"):
+		if float(battle._t) >= float(ax["_seraph_until"]) or int(ax.get("_seraph_left", 0)) <= 0:
+			ax.erase("_seraph_until")
+			ax.erase("_seraph_left")
+			ax.erase("_seraph_next")
+		elif float(battle._t) >= float(ax.get("_seraph_next", 0.0)):
+			var t2 = battle._targeting._nearest_enemy(ax)
+			var dir: Vector2 = Vector2.RIGHT
+			if t2 is Dictionary:
+				var rel: Vector2 = (t2.get("pos", Vector2.ZERO) as Vector2) - (ax.get("pos", Vector2.ZERO) as Vector2)
+				if rel != Vector2.ZERO:
+					dir = rel.normalized()
+			seraph_boomerang_settle(ax, dir)
+			ax["_seraph_left"] = int(ax.get("_seraph_left", 0)) - 1
+			## ★间隔 = 4 秒 / 10 把, 与 AxeFinalVfx.boomerang_launch_t 同一个口径
+			ax["_seraph_next"] = float(battle._t) + AF.SERAPH_CAST_TIME / float(AF.SERAPH_BOOMERANGS)
+			n += 1
+	# ── 全息斧: 插地 4 秒, 每 0.5 秒法阵一跳 ──
+	if ax.has("_holo_until"):
+		if float(battle._t) >= float(ax["_holo_until"]):
+			ax.erase("_holo_until")
+			ax.erase("_holo_next")
+			## ★减伤**必须还原** —— 不还原就是个永久 30% 减伤的怪物(被动6踩过同一个坑)
+			if ax.has("_holo_dr_bak"):
+				ax["damage_reduction"] = float(ax["_holo_dr_bak"])
+				ax.erase("_holo_dr_bak")
+			ax.erase("_holo_root")
+		elif float(battle._t) >= float(ax.get("_holo_next", 0.0)):
+			holo_aura_tick(ax)
+			vfx.holo_pulse(ax.get("_holo_root", null))
+			ax["_holo_next"] = float(battle._t) + AF.HOLO_AURA_TICK
+			n += 1
+	return n
+
+
+## 造物主动**正在进行中**吗（正在甩回旋镖 / 正在插地）。
+## ★调用方据此决定"这一帧还要不要放新的主动" —— 不判的话龟能一满就重开, 永远做不完。
+func active_busy(ax: Dictionary) -> bool:
+	return ax.has("_seraph_until") or ax.has("_holo_until")
+
+
+# zero-caller-ok: 自检用, 故意没人调
+func zzz_exempt() -> int:
+	return 1

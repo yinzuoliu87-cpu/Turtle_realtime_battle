@@ -493,6 +493,12 @@ run_audit "tools/text_formula_audit.py"  "ALL OK" "text_formula_audit (文案文
 run_audit "tools/text_claim_audit.py"    "ALL OK" "text_claim_audit (文案声称↔代码实际·触发周期/选靶/作用范围)"
 run_audit "tools/plans_lint.py"          "ALL OK" "plans_lint (方案书生命周期·状态/骨架/实施回填)"
 run_audit "tools/dead_preload_audit.py"  "ALL OK" "dead_preload (preload 了却没人用的常量)"
+# ★★「写进去了没人读」的通用探测器(2026-09-01)。dead_preload 只管 preload 的常量,
+#   deadcode_audit 只管 _do_skill 的 match 分支 —— 都管不到"新写的类里有没有人调它的方法"。
+#   由来: 四个最终造物的主动**一个都放不出来**(undead_on_death / seraph_boomerang_settle /
+#   holo_aura_tick / ember_light_cast 全是零调用者), 而 64 条门禁全绿 —— 因为门禁直接调它们。
+#   存量 10 个记台账只减不增; 新增的当场红。
+run_audit "tools/zero_caller_audit.py"   "ALL OK" "zero_caller (写了却没有任何人调的函数)"
 # ★2026-08-20 补挂: 这个脚本 2026-08-19 就写了, 我还多次在提交信息里声称把检查"焊进门禁",
 #   但它**从来没进过 run-tests.sh** —— 改动史词/别家游戏黑话/数字间距 一条都没被强制执行过。
 #   (它原本也不打 ALL OK、恒返回 0, 一并补了判定行。)

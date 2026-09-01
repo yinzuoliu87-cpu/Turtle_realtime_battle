@@ -94,9 +94,10 @@ func _ready() -> void:
 	_t_holo()
 	_t_ember()
 	_t_vfx_curves()
+	_t_real_path()
 
-	if _n < 48:
-		print("  [FAIL] ★分母: 断言只有 %d 条(<48) —— 有整段被跳过了" % _n)
+	if _n < 58:
+		print("  [FAIL] ★分母: 断言只有 %d 条(<58) —— 有整段被跳过了" % _n)
 		_fail += 1
 	print("ALL PASS — 四个最终造物(%d 条)" % _n if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
@@ -458,3 +459,107 @@ func _t_vfx_curves() -> void:
 		"分母: 源码 %d 字" % src.length())
 	_ok("★分母: 结算文件确实调了演出(vfx.xxx), 否则上面那条是空检查",
 		src.contains("vfx."))
+
+
+# ══════════════════════════════════════════════════════════════
+#  ⑦ ★★走【真入口】—— 造物的主动到底放不放得出来
+# ══════════════════════════════════════════════════════════════
+## 由来(2026-09-01): 零调用者扫描抓到 —— `undead_on_death` / `seraph_boomerang_settle` /
+## `holo_aura_tick` / `ember_light_cast` **产品代码里一个调用者都没有**。
+## 也就是说四个造物的主动**一个都放不出来**, 而上面 64 条门禁全绿 ——
+## 因为它们直接调那些函数, 从没证明"游戏里真的会走到"。
+## (memory [[fb-verify-must-run-the-real-path]]: 断言函数存在 ≠ 还有没有人调)
+##
+## ⇒ 这一节**只从 `AxeSystem.tick` 进去**, 不碰 `_fin.*`。
+func _t_real_path() -> void:
+	print("--- ⑦ 走真入口 ---")
+	var axs = _s._equip_sys._axe
+	## 造一个"携带者 + 斧头"的最小场: tick 的入口参数是**携带者**, 不是斧头
+	for cs in [["seraph", "_seraph_until"], ["holo", "_holo_until"]]:
+		var fk: String = str(cs[0])
+		var flag: String = str(cs[1])
+		var ax: Dictionary = _mk_axe(fk)
+		ax["maxEnergy"] = AE.ACTIVE_ENERGY
+		ax["energy"] = AE.ACTIVE_ENERGY          # 龟能满 ⇒ 主动该放了
+		ax["hp"] = 3000.0
+		var owner: Dictionary = _mk_axe("")
+		owner["_axe_ref"] = ax
+		_mk_foe(Vector2(200, 0))
+		axs.tick(owner, 0.016)                   # ★真入口
+		_ok("★★%s: 从 AxeSystem.tick 进去, 主动**真的起来了**(标记 %s)" % [fk, flag],
+			ax.has(flag), "龟能 %.0f" % float(ax.get("energy", -1)))
+	## 余烬: 主动 = 立刻起一个 4 秒 buff(不是蓄力)
+	var ex: Dictionary = _mk_axe("ember")
+	ex["maxEnergy"] = AE.ACTIVE_ENERGY
+	ex["energy"] = AE.ACTIVE_ENERGY
+	ex["hp"] = 3000.0
+	var eo: Dictionary = _mk_axe("")
+	eo["_axe_ref"] = ex
+	axs.tick(eo, 0.016)
+	_ok("★★余烬: 从真入口进去后余烬之光**真的挂上了**(层数 %d · 免控 %s)"
+		% [_s._equip_sys._axe._fin.ember_light_stacks(ex), str(ex.get("cc_immune", false))],
+		_s._equip_sys._axe._fin.ember_light_stacks(ex) >= 1 and bool(ex.get("cc_immune", false)))
+	## ★分母: 没有造物时仍然走**被动6的猛砸**(不能因为加了造物就把原路径弄丢)
+	var nx: Dictionary = _mk_axe("")
+	nx["_axe_pv"] = 4
+	nx["maxEnergy"] = AE.ACTIVE_ENERGY
+	nx["energy"] = AE.ACTIVE_ENERGY
+	nx["hp"] = 3000.0
+	var no: Dictionary = _mk_axe("")
+	no["_axe_ref"] = nx
+	axs.tick(no, 0.016)
+	_ok("★★★分母: 没有造物时仍走被动6的梯形蓄力(原路径没被造物挤掉)",
+		_s._equip_sys._axe._pas.is_charging(nx), "在蓄力=%s" % str(_s._equip_sys._axe._pas.is_charging(nx)))
+	## ★炽天使真的会**一把一把甩** —— 推时间, 数它甩了几把
+	var sx: Dictionary = _mk_axe("seraph")
+	sx["maxEnergy"] = AE.ACTIVE_ENERGY
+	sx["energy"] = AE.ACTIVE_ENERGY
+	sx["hp"] = 3000.0
+	var so: Dictionary = _mk_axe("")
+	so["_axe_ref"] = sx
+	var tgt: Dictionary = _mk_foe(Vector2(260, 0), 1.0e9)
+	axs.tick(so, 0.016)
+	var hp0: float = float(tgt["hp"])
+	var thrown := 0
+	for i in range(60):
+		sx["_seraph_next"] = _s._t - 0.001       # 把"下一把"的时刻拨到过去 = 该甩了
+		var before: int = int(sx.get("_seraph_left", 0))
+		axs.tick(so, 0.016)
+		if int(sx.get("_seraph_left", 0)) < before:
+			thrown += 1
+		if not sx.has("_seraph_until"):
+			break
+	_ok("★★炽天使从真入口一共甩了 %d 把(需求是 %d 把, 甩完自己收工)"
+		% [thrown, AF.SERAPH_BOOMERANGS], thrown == AF.SERAPH_BOOMERANGS)
+	_ok("★★这 %d 把真的打到人了(目标掉血 %.0f)" % [thrown, hp0 - float(tgt["hp"])],
+		float(tgt["hp"]) < hp0)
+	## ★全息斧: 插地期间有 30% 减伤, **到期必须还原**
+	var hx: Dictionary = _mk_axe("holo")
+	hx["maxEnergy"] = AE.ACTIVE_ENERGY
+	hx["energy"] = AE.ACTIVE_ENERGY
+	hx["hp"] = 3000.0
+	var ho: Dictionary = _mk_axe("")
+	ho["_axe_ref"] = hx
+	axs.tick(ho, 0.016)
+	_ok("★全息插地期间拿到 %.0f%% 减伤" % (AF.HOLO_PLANT_DR * 100.0),
+		is_equal_approx(float(hx.get("damage_reduction", 0.0)), AF.HOLO_PLANT_DR))
+	hx["_holo_until"] = _s._t - 0.01            # 拨到过期
+	axs.tick(ho, 0.016)
+	_ok("★★★插地到期后减伤**还原**(不还原就是个永久 30%% 减伤的怪物)",
+		is_equal_approx(float(hx.get("damage_reduction", 0.0)), 0.0),
+		"实测 %.2f" % float(hx.get("damage_reduction", 0.0)))
+	## ★零调用者守卫: 四个曾经"写了没人读"的函数, 现在必须在产品里可达
+	var src: String = FileAccess.get_file_as_string("res://scripts/systems/equip/axe_final_forms.gd")
+	var sys_src: String = FileAccess.get_file_as_string("res://scripts/systems/equip/axe_system.gd")
+	var eq_src: String = FileAccess.get_file_as_string("res://scripts/systems/equip/equip_system.gd")
+	_ok("★★造物主动的分派器被 AxeSystem 真的调了(begin_active / tick_active / active_busy)",
+		sys_src.contains("_fin.begin_active(") and sys_src.contains("_fin.tick_active(")
+		and sys_src.contains("_fin.active_busy("))
+	_ok("★★亡灵重生挂在 on-death 上(之前 undead_on_death 零调用者 = 死了根本不会重生)",
+		eq_src.contains("undead_on_death("))
+	var dead: Array = []
+	for fn in ["seraph_boomerang_settle", "holo_aura_tick", "ember_light_cast"]:
+		if src.count(fn) < 2:                     # 定义 1 次 + 至少被调 1 次
+			dead.append(fn)
+	_ok("★★这三个曾经零调用者的函数现在**在文件内被分派器调到**(分母: 每个至少出现 2 次)",
+		dead.is_empty(), str(dead))

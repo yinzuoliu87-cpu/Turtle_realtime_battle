@@ -1,0 +1,14 @@
+{
+ "known": [
+  "_build_rain_arrow",
+  "_energy_bar_text",
+  "_holy_of",
+  "_pierce_hits",
+  "drop_stele",
+  "expected_atk",
+  "expected_hp",
+  "mint_extra",
+  "shots_marked",
+  "strike_serial"
+ ]
+}

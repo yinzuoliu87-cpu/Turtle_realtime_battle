@@ -74,8 +74,8 @@ func _ready() -> void:
 	gs.persistent_bench = (bak["bench"] as Array).duplicate(true)
 	gs.meta_deepsea_coins = int(bak["coins"])
 
-	if _n < 47:
-		print("  [FAIL] ★分母: 断言只有 %d 条(<47) —— 有整段被跳过了" % _n)
+	if _n < 50:
+		print("  [FAIL] ★分母: 断言只有 %d 条(<50) —— 有整段被跳过了" % _n)
 		_fail += 1
 	print("ALL PASS — 096 四期(%d 条)" % _n if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
@@ -201,6 +201,27 @@ func _t_single_writer(gs) -> void:
 	gs.axe_add_exp(7)
 	_ok("★axe_add_exp(7) 一次把两个字段都推到 7", gs.axe_exp_bar == 7 and gs.axe_exp_total == 7,
 		"bar=%d tot=%d" % [gs.axe_exp_bar, gs.axe_exp_total])
+	## ★★「召唤物属性随**历史累计** exp 变」+「进化后进度条归零而累计值不变」
+	##   这条方案书里挂了很久的 ⏳ —— 三期写的时候还没有攒经验的通路, 验不了。
+	##   四期接上之后**现在能走真链路验了**: 真调 axe_add_exp 攒到进化, 然后量三件事。
+	gs.axe_exp_bar = 0; gs.axe_exp_total = 0; gs.axe_stage = 0; gs.axe_final = ""
+	var need0: int = AE.need_for_next(0)
+	var adds := 0
+	while gs.axe_stage == 0 and adds < 200:
+		gs.axe_add_exp(AE.EXP_ON_MATCH)      # 走**真入口**一场一场攒, 不手写字段
+		adds += 1
+	_ok("★★真攒到进化了(攒了 %d 场 · 阈值 %d)" % [adds, need0],
+		gs.axe_stage == 1 and adds > 1, "档位 %d" % gs.axe_stage)
+	_ok("★★★进化之后【进度条归零】而【历史累计不变】(bar=%d · total=%d)"
+		% [gs.axe_exp_bar, gs.axe_exp_total],
+		gs.axe_exp_bar == 0 and gs.axe_exp_total == adds * AE.EXP_ON_MATCH,
+		"累计应是 %d ——「只验其中一个等于没验」" % (adds * AE.EXP_ON_MATCH))
+	## 召唤物的血/攻读的是**历史累计**, 所以进化之后它不该变弱
+	var hp_after: float = AE.minion_hp(gs.axe_exp_total, AE.passives_at(gs.axe_stage))
+	var hp_zero: float = AE.minion_hp(0, AE.passives_at(gs.axe_stage))
+	_ok("★★召唤物最大生命随历史累计涨(%.0f > 经验归零时的 %.0f) —— 进化不该让它变弱"
+		% [hp_after, hp_zero], hp_after > hp_zero)
+
 	## 打完一场的记账: +10 经验 + (羁绊在线时)局数 +1
 	gs.axe_exp_bar = 0; gs.axe_exp_total = 0; gs.axe_syn_matches = 0
 	gs.axe_on_match_end()
