@@ -237,7 +237,7 @@ func _t_shop(gs) -> void:
 		"name=%s" % str(raw.get("name", "?")))
 
 	## ── 形态随档位变 ──
-	var cases := [[0, "", "木斧", 1, "axe-wood"], [4, "", "钻石斧", 5, "axe-diamond"],
+	var cases := [[0, "", "小木斧", 1, "axe-wood"], [4, "", "钻石斧", 5, "axe-diamond"],
 		[4, "ember", "余烬", 5, "axe-ember"]]
 	for c in cases:
 		gs.axe_stage = int(c[0]); gs.axe_final = str(c[1])
