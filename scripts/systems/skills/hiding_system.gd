@@ -588,7 +588,12 @@ func _sk_hiding_shrink(u: Dictionary) -> void:                  # 缩头(封板�
 		var cost: float = 95.0
 		var acts: Array = m.get("active_skills", [])
 		if not acts.is_empty(): cost = battle.SkillEnergy.cost_of(str(acts[0]))
-		m["energy"] = float(m.get("energy", 0.0)) + cost * SHRINK_MINION_ENERGY   # 给随从+50%技能龟能(加速放技)
+		## ★★这里原来写的是 `m["energy"] += cost * 0.5` —— **随从的 `energy` 字段全引擎零读者**,
+		##   随从跟真龟一样走技能冷却(`skill_cd`), 龟能的唯一入口是 `_eq_grant_energy`(龟能银行)。
+		##   探针实测(2026-09-01): 随从 bamboo/bambooHeal 冷却剩 8.050 秒, 放完缩头**仍是 8.050** ——
+		##   这个 100 龟能大招「立即给随从 +50% 技能龟能」那一半**完全是空的**。
+		##   (与同日抓到的斧头 `ax["energy"]` 是同一个形状: 读/写了一个没人配对的字段)
+		battle._equip_sys._eq_grant_energy(m, cost * SHRINK_MINION_ENERGY)   # 给随从+50%技能龟能(加速放技)
 		battle._beam_vfx("res://assets/sprites/vfx/fx-trail.png", u["pos"], m["pos"], 20.0, Color(0.5, 0.85, 1.0, 0.6), 0.4)   # 能量束射向随从(2026-07-17)
 		var mref: Dictionary = m
 		var mb = battle._reg_tween()

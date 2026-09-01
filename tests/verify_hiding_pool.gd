@@ -6,6 +6,7 @@ extends Node
 ##     且逐只 _make_unit 当随从不崩(捕过去只测了固定 12 只名单)。
 
 const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
+const HidingSystem := preload("res://scripts/systems/skills/hiding_system.gd")
 
 var _fail := 0
 
@@ -68,6 +69,48 @@ func _ready() -> void:
 		if m.is_empty() or not m.has("hp"):
 			crashed.append(str(pid))
 	_ok("每只 A/B/C 龟都能 _make_unit 当随从", crashed.is_empty(), str(crashed))
+
+	# ── 3. ★★★缩头大招的另一半:「立即给随从 +50% 技能龟能」真的加速了随从 ──
+	## ★由来(2026-09-01): 原来写的是 `m["energy"] += cost * 0.5`, 而**随从的 `energy`
+	##   全引擎零读者** —— 随从跟真龟一样走技能冷却 `skill_cd`。
+	##   探针实测: 随从 bamboo/bambooHeal 冷却剩 8.050 秒, 放完缩头**仍是 8.050**,
+	##   这个 100 龟能大招有一半是空的。与同日抓到的斧头 `ax["energy"]` 同一个形状。
+	## ★★判据落在**冷却真的被推进**(产品自己的账), 不是"我插了个标记"。
+	var owner_u: Dictionary = scene._spawn._make_unit("hiding", "left",
+		scene.ARENA.position + scene.ARENA.size * 0.5)
+	scene._units.append(owner_u)
+	scene._spawn._spawn_hiding_minion(owner_u)
+	await get_tree().process_frame
+	var mi = scene._hiding_sys._hiding_minion_of(owner_u)
+	_ok("★分母: 缩头随从真的召出来了(没召出来 = 下面是空检查)", mi != null,
+		"id=%s" % str(mi.get("id", "?") if mi != null else "null"))
+	if mi != null:
+		for _w in range(20):
+			await get_tree().process_frame
+		var cds: Dictionary = mi.get("skill_cd", {})
+		_ok("★分母: 随从带着自己的技能冷却表(%d 项)" % cds.size(), not cds.is_empty(),
+			"active_skills=%s" % str(mi.get("active_skills", [])))
+		var cd0 := 1e9
+		for k in cds:
+			cd0 = minf(cd0, float(cds[k]))
+		_ok("★分母: 放技前冷却是【非零】的(为 0 就推不动, 这条会恒绿)", cd0 > 0.05,
+			"实测 %.3f 秒" % cd0)
+		## ★★★【不许跨帧】—— 第一版我在前后各 await 了一帧, 而冷却**自己也在走**,
+		##   于是 `cd1 < cd0` 恒真: 反向验证时把那行改回没人读的 energy, 门禁照样全绿。
+		##   量的是"时间过去了"而不是"技能给了龟能"。同步调用同步量, 中间一帧都不许过。
+		scene._hiding_sys._sk_hiding_shrink(owner_u)
+		var cd1 := 1e9
+		for k in cds:
+			cd1 = minf(cd1, float(cds[k]))
+		## ★判据还要卡住【推进了多少】: 1 点龟能 = 0.075 秒(全局换算),
+		##   给的是该技花费的 50% ⇒ 推进量 = cost × 0.5 × 0.075。只判">0"会被自然冷却蒙混。
+		var acts: Array = mi.get("active_skills", [])
+		var cost: float = scene.SkillEnergy.cost_of(str(acts[0])) if not acts.is_empty() else 95.0
+		var want_drop: float = cost * HidingSystem.SHRINK_MINION_ENERGY * 0.075
+		_ok("★★★缩头把随从冷却推进了 %.3f 秒(应 %.3f = %.0f龟能×50%%×0.075)"
+			% [cd0 - cd1, want_drop, cost],
+			absf((cd0 - cd1) - want_drop) <= 0.05,
+			"一点没动/对不上 = 那 +50% 龟能又进了没人读的字段")
 
 	print("")
 	if _fail == 0:
