@@ -94,6 +94,26 @@ const ACTIVE_ENERGY := 140.0     # 龟能消耗
 const ACTIVE_HEAL_PCT := 0.05    # 回复 5% 最大生命
 const ACTIVE_SHIELD_PCT := 0.05  # 并给自己 5% 最大生命的护盾
 
+## ★★龟能的【充能速率】—— 2026-09-01 补。
+##   由来: 探针实测「真跑 13.78 游戏秒, 斧头 energy 纹丝不动 0.00」⇒ 主动一次都放不出来,
+##   而门禁全绿(它们自己把 energy 设成 140 再调 cast_heal)。
+##   ★根因不是漏了一行 —— 是**引擎里根本没有 `u["energy"]` 这个字段**:
+##     实时版的龟能 = 技能冷却充能(`cds[]` 每帧倒数), 见 `EquipSystem._eq_grant_energy`
+##     与 `eq_bow_batch.drain_energy` 头注(两处都白纸黑字警告过"别写 u['energy']")。
+##     `_make_unit` 确实建了 `"energy": 0.0` 这个键, 但**全引擎没有一处读它** ——
+##     这正是"读了没人写"的形状: 我读的字段没人写, 于是永远是 0。
+##   ★斧头是召唤物、身上没有技能冷却表, 所以给它一条自己的充能条,
+##     但**换算沿用全局那一个**(1 点 = 0.075 秒), 不另立公式。
+##     140 点 ⇒ 10.5 秒放一次; 全息斧的 +50% 充能速率走 `echarge_perm` 乘进来 ⇒ 7 秒。
+const SEC_PER_ENERGY := 0.075    # 全局换算: 1 点龟能 = 0.075 秒(EquipSystem._eq_grant_energy)
+
+
+## 这一帧该涨多少龟能。★纯函数, 门禁直接调它验数。
+static func energy_gain(delta: float, echarge_perm: float) -> float:
+	if delta <= 0.0:
+		return 0.0
+	return delta / SEC_PER_ENERGY * maxf(0.0, echarge_perm)
+
 ## ── 出货概率(四期实现·用户 2026-08-31 拍板) ────────────────────
 ## 需求原话:「买了木斧并装备木斧, 激活斧头羁绊后, 概率将为 3% 加玩家激活斧头羁绊时
 ##   在这大轮游戏的局数×0.1%, 最终概率最高为 10%」。
@@ -151,6 +171,19 @@ static func minion_atk(exp_total: int, passives_unlocked: int = 0) -> float:
 
 ## 第 `i` 档解锁了几条【带属性的】被动。被动 2(木斧)不给属性, 被动 3~6 各给一份
 ## ⇒ 木斧 0 条、石斧 1 条、铁斧 2 条、金斧 3 条、钻石斧 4 条。
+## 召唤物在解锁了 `passives_unlocked` 条被动时的护甲 / 魔抗。
+## ★★2026-09-01 补: 之前**只有血和攻有这两个函数**, 护甲魔抗在 axe_system 里
+##   直接写成 `MINION_DEF` / `MINION_MR`, 被动的 +3/+3 **一条都没加上去** ——
+##   于是不管进化到哪一档, 场上量到的永远是 5/5。用户在游戏里看见了:「我看到的魔抗只有5？」
+##   ⇒ 血/攻/甲/抗**四样都走同一个形状的纯函数**, 少一个就会漏一个。
+static func minion_def(passives_unlocked: int = 0) -> float:
+	return MINION_DEF + PASSIVE_DEF * float(maxi(0, passives_unlocked))
+
+
+static func minion_mr(passives_unlocked: int = 0) -> float:
+	return MINION_MR + PASSIVE_MR * float(maxi(0, passives_unlocked))
+
+
 static func passives_at(i: int) -> int:
 	return clampi(i, 0, STAGES.size() - 1)
 

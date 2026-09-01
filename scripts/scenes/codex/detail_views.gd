@@ -709,7 +709,11 @@ func _show_p2eq(eq: Dictionary) -> void:
 	var bb = _ef if SkillText.brief_is_redundant(_eb, _ef) else ("[b]%s[/b]
 
 %s" % [_eb, _ef])
-	var d3: String = str(eq.get("effectDesc3", ""))
+	## ★★这里原来是**裸取** `effectDesc3` —— 不走 `render_consts` ⇒ 里面的
+	##   `{C:类.常量}` 会**原样显示给玩家**。2026-09-01 给 096 写四个最终造物那一段时
+	##   被门禁当场抓到(「图鉴渲染后没有 {C: 占位符残留」)。desc1 一直走的是
+	##   `SkillText.equip_full`(内部展开), 只有 desc3 这一路漏了。
+	var d3: String = SkillText.render_consts(str(eq.get("effectDesc3", "")))
 	if d3.strip_edges() != "":
 		bb += "\n\n[color=%s][b]%s[/b][/color]" % [rcol, d3]
 	var rt = RichTextLabel.new()

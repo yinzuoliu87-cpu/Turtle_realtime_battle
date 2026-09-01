@@ -83,8 +83,10 @@ func summon(u: Dictionary) -> Variant:
 	## ★把档位解锁的被动条数**钉在召唤物身上**, 而不是每次用的时候回头问 GameState:
 	##   一路打到一半玩家在别处进化了, 场上这只不该中途变身(它的血/攻也是登场那一刻算的)。
 	ax["_axe_pv"] = pv
-	ax["base_def"] = AE.MINION_DEF
-	ax["base_mr"] = AE.MINION_MR
+	## ★被动的 +3 护甲 / +3 魔抗**必须算进来** —— 之前这里写死 MINION_DEF/MINION_MR,
+	##   于是进化到钻石斧护甲魔抗还是 5/5(用户在游戏里看到的就是这个)。
+	ax["base_def"] = AE.minion_def(pv)
+	ax["base_mr"] = AE.minion_mr(pv)
 	## ★主动是**召唤物自己**攒龟能(需求「主动治疗140龟能：斧头召唤物回复…并为自己提供…」,
 	##   而且最终造物 4 明写"处决一个单位会使召唤物获得150点龟能" ⇒ 龟能确实在召唤物身上)。
 	ax["maxEnergy"] = AE.ACTIVE_ENERGY
@@ -167,6 +169,13 @@ func tick(u: Dictionary, _delta: float) -> void:
 	var ax = u.get("_axe_ref", null)
 	if not (ax is Dictionary) or not ax.get("alive", false):
 		return
+	## ★★龟能充能 —— 2026-09-01 补。之前这条**根本不存在**: 探针实测真跑 13.78 秒
+	##   energy 一直是 0, 于是「攒满 140 龟能」的主动、被动6的蓄力猛砸、
+	##   四个最终造物的主动**在真实对局里一个都放不出来**(而门禁全绿, 因为门禁自己喂 140)。
+	##   ★充能速率沿用全局换算(1 点 = 0.075 秒)并乘 `echarge_perm` ——
+	##     全息斧的「50% 龟能充能速率」这才真的有了消费者。
+	ax["energy"] = minf(float(ax.get("maxEnergy", AE.ACTIVE_ENERGY)),
+		float(ax.get("energy", 0.0)) + AE.energy_gain(_delta, float(ax.get("echarge_perm", 1.0))))
 	_pas.tick_smash(ax, _delta)
 	_fin.ember_light_tick(ax)          # 余烬之光: 清过期的(多层只延长在线时间, 不叠强度)
 	_fin.tick_active(ax, _delta)       # 造物主动: 甩回旋镖 / 法阵脉冲 / 到期还原减伤

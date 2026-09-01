@@ -74,6 +74,13 @@ frames_for () {
     #   墙钟不是帧数 —— CI 无头帧率极高, 帧给少了会在还没等到换表时被掐断
     #   ⇒ 没打 ALL PASS, 看着像断言失败(CLAUDE.md §2 那个坑)。
     verify_axe_anim_runtime)  echo 12000 ;;
+    # 斧头被动: ⑧「龟能真的会涨」**只推时间不喂数** —— 要真跑到 140 龟能攒满(10.5 游戏秒),
+    #   实测 ~2300 帧。默认 500 帧会在这一节半路被掐断 ⇒ 没打 ALL PASS, 看着像断言失败。
+    #   ★这一节的全部价值就在"不喂数"上, 所以它天生慢, 只能给帧。
+    verify_axe_passives)      echo 16000 ;;
+    verify_axe_finals)        echo 12000 ;;
+    verify_axe_evolution)     echo 8000 ;;
+    verify_axe_shop_codex)    echo 12000 ;;
     verify_copy_perform)      echo 6000 ;;
     verify_wormhole_escape)   echo 12000 ;;
     verify_rum_numbers)       echo 12000 ;;

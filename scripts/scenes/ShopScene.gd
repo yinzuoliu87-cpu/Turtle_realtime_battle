@@ -250,7 +250,8 @@ func _deco(edef) -> Dictionary:
 	var disp: Dictionary = AxeEvo.display(GameState.axe_stage, GameState.axe_final)
 	d["name"] = str(disp["name"])
 	d["cost"] = int(disp["cost"])
-	d["img"] = AxeEvo.icon_path(GameState.axe_stage, GameState.axe_final)
+	## ★图**不在这里改** —— 换形态已收口到 `EquipIcon.stage_img()`(唯一出口)。
+	##   曾经在这儿覆盖 `img`, 结果**只有商店这一屏是对的**, 背包/对局内/图鉴五处全画木斧。
 	return d
 
 
@@ -1120,7 +1121,7 @@ func _rich_desc(edef: Dictionary, star: int = 1) -> String:
 	## ★2026-08-20: 加一道 `render_consts` —— 文案里现在可能有 {C:类名.常量名}(直接引用代码常量,
 	##   见 skill_text.gd)。不展开就会把 `{C:...}` 原样显示给玩家。
 	##   ⚠ 上面那句"全是纯文本"从此不再成立, 别再据此省掉渲染。
-	var raw := SkillText.render_consts(str(edef.get("effectDesc1", "")))
+	var raw := SkillText.equip_full(edef)   # ★走唯一取值口, 别再手抄 effectDesc1(手抄的副本必然落后)
 	if raw == "":
 		return "[color=#5b7a92](这件装备还没有效果描述)[/color]"
 	# ★按星级高亮(用户 2026-07-29「上面的效果能按照描述规则渲染吗」)。

@@ -360,8 +360,36 @@ static func equip_brief(edef: Dictionary) -> String:
 
 
 ## 完整机制说明(图鉴详情 / 点开看全部 用)。
+##
+## ★★096 小木斧是全库唯一【九种形态】的装备, 它的说明按档位增长 —— 2026-09-01 补。
+##   由来: 我一次把四条被动 + 四个最终造物全塞进 effectDesc1, 排版门禁当场红:
+##   商店的说明框只有 246 px, 而这段要 520 px ⇒ **又一次静默截断**(而且
+##   已经有 3 件在超, 门禁的额度就是 3 —— 我不去放宽它)。
+##   ⇒ 改成"只讲你现在这把斧头已经解锁的": `effectDesc2` 一行一档, 按已解锁条数取前 N 行。
+##   ★**按行切, 不解析文字** —— 认关键词那种写法一改文案就散。
+##   ★四个最终造物留在 `effectDesc3`(图鉴那一段), 那里的框放得下。
 static func equip_full(edef: Dictionary) -> String:
-	return render_consts(str(edef.get("effectDesc1", "")))
+	var base := render_consts(str(edef.get("effectDesc1", "")))
+	var per_stage: String = str(edef.get("effectDesc2", "")).strip_edges()
+	if per_stage == "" or str(edef.get("id", "")) != "p2eq_096":
+		return base
+	var gs = Engine.get_main_loop().root.get_node_or_null("/root/GameState") if Engine.get_main_loop() != null else null
+	var AE = load("res://scripts/gamedata/axe_evolution.gd")
+	if gs == null or AE == null:
+		return base
+	var n: int = int(AE.passives_at(int(gs.get("axe_stage"))))
+	if n <= 0:
+		return base
+	var lines: PackedStringArray = per_stage.split("
+", false)
+	var take: PackedStringArray = []
+	for i in range(mini(n, lines.size())):
+		take.append(str(lines[i]))
+	if take.is_empty():
+		return base
+	return base + "
+" + render_consts("
+".join(take))
 
 
 ## 这件装备的【简述】值不值得单独显示一遍。

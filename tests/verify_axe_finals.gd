@@ -11,6 +11,9 @@ extends Node
 ##      要**先让第一层过期**，看第二层还在不在。
 ##   ④ 「魔法伤害」：伤害类型是接线不是颜色。给靶子堆魔抗，量它**真的被削**。
 ##   ⑤ 「600码内」：只验范围内吃到，不验范围外**没吃到** ⇒ 全场加血也算过。
+##   ⑦ 「免疫控制」: 断言**引擎真的会读的那个字段**(`cc_immune_until` 时间戳),
+##      不是我自己顺手插的 `cc_immune` 布尔 —— 后者全引擎零读者, 断言它必绿而免控是假的。
+##      (2026-09-01 删掉了那个假字段; memory: 门禁要量需求不是量我的钩子)
 ##   ⑥ 「不再获得减伤」(炽天使)：这是需求**明确取消**的东西，要验它确实是 0，
 ##      不能当成"漏掉了没写"。
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
@@ -246,6 +249,22 @@ func _t_seraph() -> void:
 		is_equal_approx(float(behind["hp"]), b0))
 	_ok("★★★横向超出半宽 %.0f 的那个也没掉" % AF.SERAPH_BOOM_R,
 		is_equal_approx(float(far_side["hp"]), s0))
+	## ★★★「1ATK**魔法**伤害」必须吃魔抗(memory: 伤害类型是接线不是颜色)。
+	##   同一个文件里亡灵环踩过这坑并修了, 回旋镖漏了 —— 而**当时没有任何一条断言问过它**,
+	##   因为上面几条只问"掉没掉血/身后掉没掉", 对"削了多少"完全不敏感。
+	var mr_foe: Dictionary = _mk_foe(Vector2(300, 0))
+	mr_foe["mr"] = 200.0
+	mr_foe["base_mr"] = 200.0
+	var raw_foe: Dictionary = _mk_foe(Vector2(300, 30))
+	raw_foe["mr"] = 0.0
+	raw_foe["base_mr"] = 0.0
+	var m0: float = float(mr_foe["hp"])
+	var r0: float = float(raw_foe["hp"])
+	fin.seraph_boomerang_settle(ax, Vector2.RIGHT)
+	var d_mr: float = m0 - float(mr_foe["hp"])
+	var d_raw: float = r0 - float(raw_foe["hp"])
+	_ok("★★★回旋镖是【魔法伤害】: 200 魔抗那个掉得更少(%.0f vs %.0f)" % [d_mr, d_raw],
+		d_raw > 0.0 and d_mr < d_raw, "分母: 零魔抗那个掉了 %.0f(为 0 就是压根没打到)" % d_raw)
 	var fb: int = int((front.get("dot_stacks", {}) as Dictionary).get("burn", 0))
 	_ok("★回旋镖命中也加 %d 层灼烧(实测 %d)" % [AF.SERAPH_BOOM_BURN, fb], fb >= AF.SERAPH_BOOM_BURN)
 	## ★分母: 换成别的造物, 同一个调用什么都不该发生
@@ -274,14 +293,26 @@ func _t_holo() -> void:
 	low["hp"] = 100.0
 	var high: Dictionary = _mk_ally(Vector2(-80, 0))
 	high["hp"] = 4900.0
+	## ★量"冷却有没有被推进"要在调用【前】记基线
+	var cd_before: float = _min_cd(low)
 	var got = fin.holo_on_hit(ax)
+	var cd_after: float = _min_cd(low)
 	_ok("★★挑中的是【血量最低】那个(不是最近的/第一个)", is_same(got, low),
 		"低血 %.0f/%.0f vs 高血 %.0f/%.0f" % [low["hp"], low["maxHp"], high["hp"], high["maxHp"]])
 	_ok("★给了 %.0f 护盾 + %.0f 龟能(实测 盾%.0f 能%.0f)"
 		% [AF.HOLO_ONHIT_SHIELD, AF.HOLO_ONHIT_ENERGY, float(low.get("shield", 0.0)),
 		   float(low.get("energy", 0.0))],
-		float(low.get("shield", 0.0)) >= AF.HOLO_ONHIT_SHIELD
-		and is_equal_approx(float(low.get("energy", 0.0)), AF.HOLO_ONHIT_ENERGY))
+		float(low.get("shield", 0.0)) >= AF.HOLO_ONHIT_SHIELD)
+	## ★★★龟能必须进**引擎真的会读**的那条路。
+	##   原来写的是 `low["energy"] += 5` —— 实时版**没有龟的 `energy` 字段**
+	##   (龟能 = 技能冷却充能, 入口是 `EquipSystem._eq_grant_energy` → 龟能银行)。
+	##   `_make_unit` 确实建了这个键, 所以断言 `energy == 5` **恒绿而功能是死的** ——
+	##   这正是"量我自己插的标记"那一类假判据。2026-09-01 改成量冷却真的被推进。
+	_ok("★★★友军的 %.0f 龟能进了【冷却充能】而不是那个没人读的 energy 字段"
+		% AF.HOLO_ONHIT_ENERGY,
+		cd_after < cd_before - 0.001 or float(low.get("energy_bank", 0.0)) > 0.0,
+		"分母: 最快就绪的技冷却 %.3f → %.3f · 银行 %.2f"
+		% [cd_before, cd_after, float(low.get("energy_bank", 0.0))])
 
 	## 法阵: 范围内吃到、范围外没吃到
 	var near: Dictionary = _mk_ally(Vector2(200, 0))
@@ -351,7 +382,7 @@ func _t_ember() -> void:
 		% (AF.EMBER_LIGHT_DR * 100.0),
 		fin.ember_light_stacks(bx) == 1
 		and is_equal_approx(float(bx.get("damage_reduction", 0.0)), AF.EMBER_LIGHT_DR)
-		and bool(bx.get("cc_immune", false)))
+		and float(bx.get("cc_immune_until", 0.0)) > float(_s._t))
 	fin.ember_light_cast(bx)
 	_ok("★★再放一次 = 2 层(是**叠加**不是刷新)", fin.ember_light_stacks(bx) == 2)
 	## ★★★关键: 让第一层过期, 第二层必须还在 —— "刷新"的实现在这里会掉到 0
@@ -360,7 +391,7 @@ func _t_ember() -> void:
 	bx["_ember_lights"] = arr
 	fin.ember_light_tick(bx)
 	_ok("★★★第一层过期后第二层**还在**(刷新式实现在这里会变 0)",
-		fin.ember_light_stacks(bx) == 1 and bool(bx.get("cc_immune", false)),
+		fin.ember_light_stacks(bx) == 1 and float(bx.get("cc_immune_until", 0.0)) > float(_s._t),
 		"实测 %d 层" % fin.ember_light_stacks(bx))
 	## ★多层【只延长在线时间, 不叠强度】—— 这条最容易做反
 	_ok("★★两层时减伤仍是 %.0f%% 而不是翻倍(需求说的是「独立的4秒」, 不是效果叠乘)"
@@ -375,7 +406,7 @@ func _t_ember() -> void:
 	_ok("★★全部过期后减伤/免控【还原】(不许留一个永久无敌的怪物)",
 		fin.ember_light_stacks(bx) == 0
 		and is_equal_approx(float(bx.get("damage_reduction", 0.0)), 0.0)
-		and not bool(bx.get("cc_immune", true)))
+		and float(bx.get("cc_immune_until", 0.0)) <= float(_s._t))
 
 
 # ══════════════════════════════════════════════════════════════
@@ -497,8 +528,9 @@ func _t_real_path() -> void:
 	eo["_axe_ref"] = ex
 	axs.tick(eo, 0.016)
 	_ok("★★余烬: 从真入口进去后余烬之光**真的挂上了**(层数 %d · 免控 %s)"
-		% [_s._equip_sys._axe._fin.ember_light_stacks(ex), str(ex.get("cc_immune", false))],
-		_s._equip_sys._axe._fin.ember_light_stacks(ex) >= 1 and bool(ex.get("cc_immune", false)))
+		% [_s._equip_sys._axe._fin.ember_light_stacks(ex), str(float(ex.get("cc_immune_until", 0.0)) > float(_s._t))],
+		_s._equip_sys._axe._fin.ember_light_stacks(ex) >= 1
+		and float(ex.get("cc_immune_until", 0.0)) > float(_s._t))
 	## ★分母: 没有造物时仍然走**被动6的猛砸**(不能因为加了造物就把原路径弄丢)
 	var nx: Dictionary = _mk_axe("")
 	nx["_axe_pv"] = 4
@@ -563,3 +595,15 @@ func _t_real_path() -> void:
 			dead.append(fn)
 	_ok("★★这三个曾经零调用者的函数现在**在文件内被分派器调到**(分母: 每个至少出现 2 次)",
 		dead.is_empty(), str(dead))
+
+
+## 这只龟【最快就绪】的那个技能还剩多少冷却 —— `_eq_grant_energy` 就是从它开始扣的,
+## 所以"给了龟能"在引擎里的可观测后果就是这个数变小。
+func _min_cd(u: Dictionary) -> float:
+	var cds = u.get("cds", null)
+	if not (cds is Dictionary) or (cds as Dictionary).is_empty():
+		return -1.0
+	var m: float = 1e9
+	for k in cds:
+		m = minf(m, float(cds[k]))
+	return m

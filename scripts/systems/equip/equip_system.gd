@@ -634,6 +634,11 @@ func _eq_fpga_hand_out_guns(u: Dictionary, si: int) -> int:
 	while given < want and not foes.is_empty():
 		var k: int = battle._battle_rng.randi() % foes.size()
 		_gremlin.give(foes[k])
+		## ★★「**扔**给目标一把古灵精怪枪」—— 需求原话里的动作。
+		##   之前这条路径**一个 vfx 调用都没有**: 属性静悄悄加上去, 玩家看不到发生过什么
+		##   (2026-09-01 逐句核对原话时抓到, 第 2 句)。
+		##   ★演出在结算【之后】—— give() 已经同步做完, 这条 tween 推不动也不影响数值。
+		battle._vfx._throw_item(u, foes[k], "gremlin-gun.png", "古灵精怪枪", Color("#8ae06a"))
 		foes.remove_at(k)          # ★不重复: 挑过就拿掉
 		given += 1
 	return given

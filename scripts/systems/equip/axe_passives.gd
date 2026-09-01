@@ -125,6 +125,12 @@ func add_eff(ax: Dictionary) -> int:
 	var n: int = eff_stacks(ax) + 1
 	ax["_axe_eff_n"] = n
 	ax["_axe_eff_until"] = float(battle._t) + AE.EFF_DUR   # 每叠**刷新整条**时长
+	## ★★需求原话:「一层效率提供4%攻击速度和**2%移动速度**」。
+	##   攻速接了、**移速一直没接**(常量 EFF_MOVE 躺在表里零消费者) —— 2026-09-01 对原话逐条核对时抓到。
+	##   走既有的 `move_buff_mult` / `move_buff_until` 通道(主场景移动公式已经在乘它),
+	##   比自己再开一条通道少一整类"加了没人读"的坑。
+	ax["move_buff_mult"] = AE.eff_move_mult(n)
+	ax["move_buff_until"] = float(battle._t) + AE.EFF_DUR
 	return n
 
 
@@ -142,6 +148,12 @@ func eff_stacks(ax: Dictionary) -> int:
 func hold_eff(ax: Dictionary, delta: float) -> void:
 	if ax.has("_axe_eff_until") and eff_stacks(ax) > 0:
 		ax["_axe_eff_until"] = float(ax["_axe_eff_until"]) + delta
+		## ★★移速那一半**也要暂停** —— 2026-09-01 补。效率层现在同时驱动
+		##   攻速(`_axe_eff_until`)与移速(`move_buff_until`)两条计时, 只推一条 ⇒
+		##   4 秒蓄力结束时移速加成已经过期、攻速还在, 而需求说的是"效率计时器中断"(一条)。
+		##   老判据只盯 `_axe_eff_until`, 窄了一格 ⇒ 抓不到。
+		if float(ax.get("move_buff_until", 0.0)) > float(battle._t):
+			ax["move_buff_until"] = float(ax["move_buff_until"]) + delta
 
 
 # ════════════════════════════════════════════════════════════════

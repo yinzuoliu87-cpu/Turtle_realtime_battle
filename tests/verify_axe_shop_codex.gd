@@ -19,6 +19,7 @@ extends Node
 ##   图鉴渲染 `eq["name"]`(json 里的「小木斧」), 而商店 `_deco` 在木斧档把它改成「木斧」。
 ##   玩家在图鉴里记住「小木斧」, 到商店找不到它。
 const AE := preload("res://scripts/gamedata/axe_evolution.gd")
+const SkillText := preload("res://scripts/util/skill_text.gd")
 const EquipIcon := preload("res://scripts/util/equip_icon.gd")
 const CODEX_SCN := preload("res://scenes/Codex.tscn")
 const EquipStatsRef := preload("res://scripts/gamedata/equip_stats.gd")
@@ -99,14 +100,16 @@ func _ready() -> void:
 	await _t_shop(gs)
 	await _t_panel(gs)
 	await _t_codex(gs)
+	await _t_icon_single_exit(gs)
+	_t_desc_complete(gs)
 	_t_name_consistency(gs)
 
 	gs.axe_stage = int(bak["st"])
 	gs.axe_final = str(bak["fin"])
 	gs.persistent_bench = (bak["bench"] as Array).duplicate(true)
 
-	if _n < 32:
-		print("  [FAIL] ★分母: 断言只有 %d 条(<32) —— 有整段被跳过了" % _n)
+	if _n < 47:
+		print("  [FAIL] ★分母: 断言只有 %d 条(<47) —— 有整段被跳过了" % _n)
 		_fail += 1
 	print("ALL PASS — 096 商店/图鉴渲染(%d 条)" % _n if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
@@ -428,3 +431,165 @@ func _button_nodes(n: Node, out: Array) -> Array:
 	for c in n.get_children():
 		_button_nodes(c, out)
 	return out
+
+
+# ══════════════════════════════════════════════════════════════
+#  ⑤ ★★图标的【唯一出口】—— 换形态只许在 EquipIcon 里做
+# ══════════════════════════════════════════════════════════════
+## 用户 2026-09-01:「图标我在对局内和背包里看有问题啊」。
+## 我原来把「随进化换形态」做成了 `ShopScene._deco()` —— **商店自己的私有方法**,
+## 于是六处画图标的地方**只有商店那一屏是对的**:
+##   背包 / 对局内龟身装备格 / 换路展示 / 图鉴详情 / 图鉴列表 —— 五处全画着小木斧。
+## ★而 `equip_icon.gd` 的头注早就写着这条教训(「同一件事在 7 处各写了一遍」),
+##   我却又抄了一份。⇒ 收口到 `EquipIcon.stage_img()`, 六处一起好。
+## ★★这一节焊死的是**纪律**: 换形态只许在唯一出口做, 别处不许另抄一份。
+func _t_icon_single_exit(gs) -> void:
+	print("--- ⑤ 图标唯一出口 ---")
+	var eq: Dictionary = DataRegistry.phase2_equipment_by_id.get(EID, {})
+	var bak_st: int = int(gs.axe_stage)
+	var bak_fin: String = str(gs.axe_final)
+	## 唯一出口随档位变(六种形态各不相同)
+	var seen: Dictionary = {}
+	for i in range(AE.STAGES.size()):
+		gs.axe_stage = i
+		gs.axe_final = ""
+		seen[EquipIcon.stage_img(eq)] = true
+	gs.axe_stage = AE.STAGES.size() - 1
+	gs.axe_final = "ember"
+	seen[EquipIcon.stage_img(eq)] = true
+	_ok("★★EquipIcon.stage_img 六种形态给出**六张不同的图**(实测 %d 种)" % seen.size(),
+		seen.size() == 6, str(seen.keys()))
+	## ★分母: 别的装备不许被斧头逻辑污染
+	gs.axe_stage = 3
+	gs.axe_final = ""
+	var other: Dictionary = DataRegistry.phase2_equipment_by_id.get("p2eq_058", {})
+	_ok("★★分母: 别的装备(058)的图纹丝不动 —— 唯一出口不许把所有件都改了",
+		EquipIcon.stage_img(other) == str(other.get("img", "")),
+		"实测 %s" % EquipIcon.stage_img(other))
+	## ★★纪律: 画图标的地方**不许自己另算一份**形态
+	##   判据: 除了 EquipIcon 与 AxeEvolution 本身, 没有别的文件同时碰
+	##   `EquipIcon.make` 和 `axe_stage` —— 碰了就是又抄了一份。
+	var dirs: Array = ["res://scripts/scenes/InventoryScene.gd",
+		"res://scripts/scenes/battle/info_panel.gd",
+		"res://scripts/scenes/battle/dual_lane_flow.gd",
+		"res://scripts/scenes/codex/detail_views.gd",
+		"res://scripts/scenes/codex/list_builder.gd"]
+	var copies: Array = []
+	var scanned := 0
+	for f in dirs:
+		var s: String = FileAccess.get_file_as_string(f)
+		if s == "":
+			continue
+		scanned += 1
+		if s.contains("axe_stage") or s.contains("AxeEvolution"):
+			copies.append(f.get_file())
+	_ok("★★五个消费方都**不自己算形态**(分母: 扫了 %d 个文件)" % scanned,
+		copies.is_empty() and scanned == 5, str(copies))
+	## 真建背包场景, 从屏幕像素验它真的画了进化后的图
+	gs.axe_stage = 2
+	gs.axe_final = ""
+	var bak_bench: Array = gs.persistent_bench.duplicate(true)
+	gs.persistent_bench = [{"id": EID, "star": 1}]
+	var inv = load("res://scripts/scenes/InventoryScene.gd").new()
+	add_child(inv)
+	for _i in range(8):
+		await get_tree().process_frame
+	var fps: Array = _texs(inv, [])
+	var w_iron: String = _want_fp("equip/axe-iron.png")
+	var w_wood: String = _want_fp("equip/axe-wood.png")
+	var iron := false
+	var wood := false
+	for f in fps:
+		if str(f) == w_iron and w_iron != "":
+			iron = true
+		if str(f) == w_wood and w_wood != "":
+			wood = true
+	_ok("★★★背包屏幕(档=铁斧)画的是**铁斧图**且不再画木斧(分母: 抓到 %d 张贴图)" % fps.size(),
+		iron and not wood, "铁斧=%s 木斧=%s" % [str(iron), str(wood)])
+	inv.queue_free()
+	gs.persistent_bench = bak_bench
+	gs.axe_stage = bak_st
+	gs.axe_final = bak_fin
+
+
+# ══════════════════════════════════════════════════════════════
+#  ⑥ ★★描述【玩家读得到】—— 被动3~6 与四个最终造物
+# ══════════════════════════════════════════════════════════════
+## ★由来(2026-09-01 逐句核对原话): 商店与图鉴的描述**停在被动2** ——
+##   被动3(强化砍)/4(竖劈)/5(横扫+效率)/6(蓄力猛砸) 与四个最终造物, 玩家在游戏里
+##   **一个字都读不到**。而机制全都做了、64 条门禁全绿。
+##   (用户此前已经为同一形状说过一次:「用户难道就这么玩吗，则怎么选择最终造物呢」)
+## ★判据落在**渲染后的文本**上, 不落在 json 字段里 —— json 里写了但占位符没展开、
+##   或者消费方压根不读这个字段, 都是"写了没人读"。
+## ★完整性是硬指标、长度是软指标(memory [[fb-style-reference-not-length-target]]):
+##   判据问的是"每一类机制在不在", 不是字数。
+func _t_desc_complete(gs) -> void:
+	print("--- ⑥ 描述完整性 ---")
+	var eq: Dictionary = DataRegistry.phase2_equipment_by_id.get(EID, {})
+	## ★★图鉴看到的是【当前档位的全文 + 四个造物那一段】。
+	##   商店/对局内只给 desc1(按档位生长) —— 因为那两个框小得多(商店 246 px),
+	##   一次把八条全塞进去会**静默截断**(排版门禁当场抓到: 要 520 px)。
+	var bak_st: int = int(gs.axe_stage)
+	gs.axe_stage = AE.STAGES.size() - 1        # 钻石斧: 四条被动全解锁
+	var full: String = SkillText.equip_full(eq) + "
+" + str(eq.get("effectDesc3", ""))
+	full = SkillText.render_consts(full)
+	_ok("★分母: 渲染后拿到 %d 字(为 0 就是消费方压根没读到)" % full.length(),
+		full.length() > 200, full.substr(0, 40))
+	## ★★占位符必须**全部展开** —— 展不开会把 {C:AxeFinalStats.XXX} 原样显示给玩家
+	var re := RegEx.create_from_string("[{]C:([^}]+)[}]")
+	var leftover: Array = []
+	for m in re.search_all(full):
+		leftover.append(m.get_string(1))
+	_ok("★★没有一个占位符漏展开(漏了会把 {C:...} 原样显示给玩家)",
+		leftover.is_empty(), str(leftover))
+	## ★★逐条: 每一类机制都要在渲染后的文本里
+	var need := {
+		"被动3 强化砍(每 9 秒)": ["%d 秒" % int(AE.SMASH_IV), "击退"],
+		"被动4 竖劈(流血)": ["竖劈", "%d 层流血" % AE.CLEAVE_BLEED],
+		"被动5 横扫 + 效率层": ["横扫", "效率"],
+		"被动6 蓄力猛砸(眩晕)": ["蓄力", "眩晕"],
+		"最终造物·亡灵之斧": ["亡灵之斧", "重生"],
+		"最终造物·炽天使": ["炽天使", "回旋镖"],
+		"最终造物·全息斧": ["全息斧", "友军"],
+		"最终造物·余烬": ["余烬", "处决线"],
+	}
+	for k in need:
+		var miss: Array = []
+		for kw in (need[k] as Array):
+			if not full.contains(str(kw)):
+				miss.append(str(kw))
+		_ok("★★玩家读得到【%s】" % k, miss.is_empty(), "缺: %s" % str(miss))
+	## ★分母: 别的装备没被这段文案污染
+	var other: Dictionary = DataRegistry.phase2_equipment_by_id.get("p2eq_058", {})
+	_ok("★分母: 别的装备(058)的描述里没有斧头的字",
+		not SkillText.equip_full(other).contains("亡灵之斧"),
+		SkillText.equip_full(other).substr(0, 30))
+
+	## ★★★说明【随档位生长】—— 木斧那一屏不该背着钻石斧的说明
+	var lens: Array = []
+	for i in range(AE.STAGES.size()):
+		gs.axe_stage = i
+		lens.append(SkillText.equip_full(eq).length())
+	var mono := true
+	for i in range(1, lens.size()):
+		if int(lens[i]) < int(lens[i - 1]):
+			mono = false
+	_ok("★★说明随档位【只增不减】(五档字数 %s)" % str(lens), mono)
+	_ok("★★木斧那一屏【不】含钻石斧的蓄力说明(否则商店框放不下→静默截断)",
+		int(lens[0]) < int(lens[lens.size() - 1]) and not _stage_text(gs, eq, 0).contains("蓄力"),
+		"木斧 %d 字 vs 钻石斧 %d 字" % [int(lens[0]), int(lens[lens.size() - 1])])
+	_ok("★★钻石斧那一屏【含】四条被动各自的关键词(分母: 逐条查)",
+		_stage_text(gs, eq, 4).contains("击退") and _stage_text(gs, eq, 4).contains("竖劈")
+		and _stage_text(gs, eq, 4).contains("横扫") and _stage_text(gs, eq, 4).contains("蓄力"))
+	gs.axe_stage = bak_st
+
+
+## 某一档位下, 说明渲染成什么。★换档位要**真的走 GameState**(消费方就是从那儿读的),
+## 不许自己拼字符串 —— 那样测的是我的拼法, 不是玩家会看到的东西。
+func _stage_text(gs, eq: Dictionary, stage_i: int) -> String:
+	var bak: int = int(gs.axe_stage)
+	gs.axe_stage = stage_i
+	var s: String = SkillText.equip_full(eq)
+	gs.axe_stage = bak
+	return s

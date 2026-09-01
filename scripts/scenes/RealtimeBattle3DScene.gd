@@ -8898,7 +8898,7 @@ func _add_equip_row(parent: VBoxContainer, eid: String, star: int) -> void:
 	title.add_theme_font_size_override("font_size", 13)
 	title.add_theme_color_override("font_color", _equip_cost_color(int(edef.get("cost", 1))))
 	tcol.add_child(title)
-	var eff := _strip_html(SkillText.render_consts(str(edef.get("effectDesc1", ""))))
+	var eff := _strip_html(SkillText.equip_full(edef))   # ★走唯一取值口, 别再手抄 effectDesc1
 	if eff != "":
 		var el := Label.new()
 		el.text = eff

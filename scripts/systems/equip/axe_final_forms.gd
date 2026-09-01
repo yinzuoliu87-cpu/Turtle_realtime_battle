@@ -49,6 +49,12 @@ func apply_stats(ax: Dictionary, final_key: String) -> void:
 	var aspd: float = AF.stat(final_key, "aspd_pct")
 	if aspd > 0.0:
 		ax["aspd_perm"] = float(ax.get("aspd_perm", 1.0)) * (1.0 + aspd)
+	## ★★全息斧「**50%龟能充能速率**」—— 数值表里躺了一天、**零消费者**,
+	##   2026-09-01 逐条对用户原话时抓到。引擎里充能速率的字段是 `echarge_perm`
+	##   (主场景龟能 tick: `cds[k] -= delta * _ecm * echarge_perm * _ts_echarge`)。
+	var er: float = AF.stat(final_key, "energy_rate_pct")
+	if er > 0.0:
+		ax["echarge_perm"] = float(ax.get("echarge_perm", 1.0)) * (1.0 + er)
 	var mv: float = AF.stat(final_key, "move_pct")
 	if mv > 0.0:
 		ax["move_perm"] = float(ax.get("move_perm", 1.0)) * (1.0 + mv)
@@ -148,7 +154,11 @@ func seraph_boomerang_settle(ax: Dictionary, dir: Vector2) -> int:
 		## 到飞行中线的横向距离 ——「半径大小为300码」当作这条线的作用半宽
 		if absf(rel.dot(Vector2(-d.y, d.x))) > AF.SERAPH_BOOM_R:
 			continue
-		battle._damage._apply_damage(o, dmg, Color("#ffb347"), ax, "mag", false)
+		## ★★「1ATK**魔法**伤害」必须吃魔抗(memory: 伤害类型是接线不是颜色, 没有例外)。
+		##   `_apply_damage` 这条路**不算抗性** —— 同一个文件上面亡灵环已经踩过并修了,
+		##   回旋镖这处漏了(全仓 4 个 "mag" 调用点里唯一没预削的那个)。2026-09-01 补。
+		var after: int = battle._damage._dot_after_resist(o, float(dmg), true, ax)
+		battle._damage._apply_damage(o, maxi(1, after), Color("#ffb347"), ax, "mag", false)
 		if o.get("alive", false):
 			battle._damage._apply_dot_stacks(o, "burn", AF.SERAPH_BOOM_BURN, ax)
 		n += 1
@@ -176,9 +186,24 @@ func holo_on_hit(ax: Dictionary):
 	if best == null:
 		return null
 	battle._damage._grant_shield(best, AF.HOLO_ONHIT_SHIELD)
-	best["energy"] = minf(float(best.get("maxEnergy", 999999.0)),
-		float(best.get("energy", 0.0)) + AF.HOLO_ONHIT_ENERGY)
+	_give_energy(best, AF.HOLO_ONHIT_ENERGY)
 	return best
+
+
+## ★★给一个单位加龟能 —— **分两条路**, 2026-09-01 补。
+##   由来: 全息斧的「普攻给友军 5 龟能」和「法阵每 0.5 秒 5 龟能」原来都写成
+##   `u["energy"] += 5`。而**引擎里没有任何一处读龟的 `energy`** ——
+##   实时版的龟能 = 技能冷却充能, 正确入口是 `EquipSystem._eq_grant_energy`(龟能银行)。
+##   (`eq_bow_batch.gd:440` 与 `angel_system.gd:52` 都白纸黑字警告过, 我还是踩了。)
+##   ⇒ 龟走冷却充能; 斧头召唤物没有技能冷却表, 走它自己那条充能条。
+func _give_energy(u: Dictionary, amount: float) -> void:
+	if not (u is Dictionary) or amount <= 0.0:
+		return
+	if u.get("_eq_axe", false):
+		u["energy"] = minf(float(u.get("maxEnergy", 999999.0)),
+			float(u.get("energy", 0.0)) + amount)
+		return
+	battle._equip_sys._eq_grant_energy(u, amount)
 
 
 ## 法阵这一跳的**纯结算**：600 码内友军回血 + 给龟能 + 挂攻速。返回受益人数。
@@ -193,8 +218,7 @@ func holo_aura_tick(ax: Dictionary) -> int:
 		if (a.get("pos", Vector2.ZERO) as Vector2).distance_to(org) > AF.HOLO_AURA_R:
 			continue                       # ★范围外的一律不许吃到（门禁专门量这条）
 		battle._damage._heal(a, AF.HOLO_AURA_HEAL)
-		a["energy"] = minf(float(a.get("maxEnergy", 999999.0)),
-			float(a.get("energy", 0.0)) + AF.HOLO_AURA_ENERGY)
+		_give_energy(a, AF.HOLO_AURA_ENERGY)
 		## 攻速走既有的 haste 通道，到期自己失效（比自己再造一条通道稳）
 		a["haste_mult"] = 1.0 + AF.HOLO_AURA_ASPD
 		a["haste_until"] = float(battle._t) + AF.HOLO_AURA_TICK * 1.5
@@ -221,8 +245,7 @@ func ember_on_hit(ax: Dictionary, tgt: Dictionary) -> Dictionary:
 		vfx.ember_execute(tgt.get("pos", Vector2.ZERO))
 		if not tgt.get("alive", true):
 			## 「处决一个单位会使召唤物获得150点龟能」
-			ax["energy"] = minf(float(ax.get("maxEnergy", 999999.0)),
-				float(ax.get("energy", 0.0)) + AF.EMBER_EXEC_ENERGY)
+			_give_energy(ax, AF.EMBER_EXEC_ENERGY)
 	return {"stacks": n, "executed": done}
 
 
@@ -274,7 +297,25 @@ func _ember_apply(ax: Dictionary) -> void:
 	ax["damage_reduction"] = AF.EMBER_LIGHT_DR if on else 0.0
 	ax["haste_mult"] = (1.0 + AF.EMBER_LIGHT_ASPD) if on else 1.0
 	ax["haste_until"] = (float(battle._t) + 0.2) if on else 0.0
-	ax["cc_immune"] = on                   # 「免疫控制」
+	## ★★「免疫控制」的字段名**我原来写错了**: 我写的是 `cc_immune`(布尔), 而引擎读的是
+	##   `cc_immune_until`(时间戳, 见 battle_damage._is_cc_immune / _stun)。
+	##   `cc_immune` 全仓**没有任何代码读它** ⇒ 余烬之光的免控**根本不生效**。
+	##   2026-09-01 逐条对用户原话时抓到 —— 这是"读了没人写"的镜像:"写了没人读"。
+	var _lights: Array = ax.get("_ember_lights", [])
+	var _last: float = 0.0
+	for _x in _lights:
+		_last = maxf(_last, float(_x))
+	ax["cc_immune_until"] = _last if on else 0.0
+	## ★★这里原来还写了一个 `ax["cc_immune"] = on`。**删掉** ——
+	##   引擎一处都不读它, 而门禁读了 5 次: 那 5 条断言量的是**我自己插的标记**,
+	##   不是"免控真的生效了"(memory: 门禁要量需求不是量我的钩子)。
+	##   判据已改成读引擎真的会看的 `cc_immune_until`。
+	## ★★需求原话:「**这期间不会锁龟能**」—— 2026-09-01 对原话逐条核对时抓到我完全没做。
+	##   本作的"锁龟能"是 `energy_lock_until`(主场景龟能 tick 开头那道闸)。
+	##   余烬之光期间要**主动清掉**它: 否则被眩晕/击飞/风暴挂上锁之后, 免控让斧头动得了、
+	##   龟能却还在锁着 —— 那正是"免疫控制"该解决而没解决的另一半。
+	if on:
+		ax["energy_lock_until"] = 0.0
 	## ★余烬之光的**视觉**(之前 `ember_light` 也是零调用者)。多层不叠强度,
 	##   所以视觉也只画一圈 —— 与结算口径一致。
 	if on and not ax.has("_ember_light_node"):

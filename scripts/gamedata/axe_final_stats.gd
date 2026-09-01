@@ -32,11 +32,33 @@ extends RefCounted
 
 ## 每个造物给召唤物的**属性**。缺省的键 = 这个造物不给这一项。
 ##   hp/atk/def/mr 是加算; aspd_pct/move_pct/energy_rate_pct 是百分比。
+## ★★这九个数原来只以字面量存在 STATS 里, 于是**文案引用不到它们** ——
+##   商店/图鉴里想写"亡灵之斧 +1200 生命"就只能手抄一遍, 那就是"同一个数存两份"。
+##   ⇒ 抽成常量, 且 **STATS 必须真的读这些常量**(只加常量不改 STATS = 白抽,
+##   memory [[fb-refactor-creates-the-drift-it-removes]]: 60 个常量只为文案而活)。
+const UNDEAD_HP := 1200.0
+const UNDEAD_ATK := 5.0
+const UNDEAD_DEF := 10.0
+const SERAPH_HP := 50.0
+const SERAPH_ATK := 20.0
+const SERAPH_DEF := 3.0
+const SERAPH_RANGE := 300.0
+const HOLO_HP := 400.0
+const HOLO_ATK := 5.0
+const HOLO_DEF := 3.0
+const HOLO_ENERGY_RATE := 0.50
+const EMBER_HP := 150.0
+const EMBER_ATK := 80.0
+const EMBER_ASPD := 0.80
+const EMBER_MOVE := 0.20
+
 const STATS := {
-	"undead": {"hp": 1200.0, "atk": 5.0, "def": 10.0, "mr": 10.0},
-	"seraph": {"hp": 50.0, "atk": 20.0, "def": 3.0, "mr": 3.0, "range": 300.0},
-	"holo":   {"hp": 400.0, "atk": 5.0, "def": 3.0, "mr": 3.0, "energy_rate_pct": 0.50},
-	"ember":  {"hp": 150.0, "atk": 80.0, "aspd_pct": 0.80, "move_pct": 0.20},
+	"undead": {"hp": UNDEAD_HP, "atk": UNDEAD_ATK, "def": UNDEAD_DEF, "mr": UNDEAD_DEF},
+	"seraph": {"hp": SERAPH_HP, "atk": SERAPH_ATK, "def": SERAPH_DEF, "mr": SERAPH_DEF,
+		"range": SERAPH_RANGE},
+	"holo":   {"hp": HOLO_HP, "atk": HOLO_ATK, "def": HOLO_DEF, "mr": HOLO_DEF,
+		"energy_rate_pct": HOLO_ENERGY_RATE},
+	"ember":  {"hp": EMBER_HP, "atk": EMBER_ATK, "aspd_pct": EMBER_ASPD, "move_pct": EMBER_MOVE},
 }
 
 # ── 亡灵之斧 ──────────────────────────────────────────────────

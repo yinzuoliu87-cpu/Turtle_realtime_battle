@@ -24,6 +24,7 @@ extends Node
 ##      `u["alive"]` 挡着, **致命的那一下根本走不到**。三种情形各量一次。
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const AE := preload("res://scripts/gamedata/axe_evolution.gd")
+const EquipIcon := preload("res://scripts/util/equip_icon.gd")
 const P2T := preload("res://scripts/gamedata/phase2_types.gd")
 
 var _s = null
@@ -264,13 +265,16 @@ func _t_shop(gs) -> void:
 		[4, "ember", "余烬", 5, "axe-ember"]]
 	for c in cases:
 		gs.axe_stage = int(c[0]); gs.axe_final = str(c[1])
+		## ★图**不再由 `_deco` 决定** —— 换形态已收口到 `EquipIcon.stage_img()`(唯一出口),
+		##   因为原来那份私有实现让**只有商店一屏是对的**、另外五处全画小木斧。
+		##   判据跟着搬: 名/费仍看 `_deco`, 图看真正决定它的那个函数。
 		var d: Dictionary = shop._deco(raw)
 		_ok("_deco 档%d/最终「%s」→ 名「%s」· %d 费 · 图 %s"
 			% [int(c[0]), str(c[1]), str(c[2]), int(c[3]), str(c[4])],
 			str(d.get("name", "")) == str(c[2]) and int(d.get("cost", 0)) == int(c[3])
-			and str(d.get("img", "")).contains(str(c[4])),
+			and EquipIcon.stage_img(d).contains(str(c[4])),
 			"实测 %s / %d 费 / %s" % [str(d.get("name", "")), int(d.get("cost", 0)),
-			str(d.get("img", ""))])
+			EquipIcon.stage_img(d)])
 	## ★★关键的那条: 装饰**不许弄脏原件**。改原件的实现上面三条照样全绿,
 	##   但会把落盘的货架冻在掷货那一刻 —— 只有这条抓得到。
 	_ok("★★_deco 没弄脏 DataRegistry 里的原件(它仍是「小木斧」· 1 费)",

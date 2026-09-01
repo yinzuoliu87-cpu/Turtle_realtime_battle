@@ -38,10 +38,30 @@ const EMOJI_K := 0.72
 const EMOJI_FALLBACK := "📦"
 
 
+## ★★096 小木斧会**随进化换形态**(木/石/铁/金/钻 + 四个最终造物, 共 9 张图)。
+##   由来(2026-09-01 用户:「图标我在对局内和背包里看有问题啊」): 我原来把换形态做成了
+##   `ShopScene._deco()` —— **商店自己的私有方法**, 于是只有商店那一屏是对的,
+##   背包 / 对局内龟身装备格 / 换路展示 / 图鉴详情 / 图鉴列表**五处全画着小木斧**。
+##   而这个文件的头注早就写着「同一件事在 7 处各写了一遍」这条教训 —— 我却又抄了一份。
+##   ⇒ 收口在这里: 图标只有这一个出口, 换形态就该在这个出口做, 六处一起好,
+##     以后新增的第七处也自动是对的。
+static func stage_img(edef: Dictionary) -> String:
+	var raw_img: String = str(edef.get("img", ""))
+	if str(edef.get("id", "")) != "p2eq_096":
+		return raw_img
+	var gs = Engine.get_main_loop().root.get_node_or_null("/root/GameState") if Engine.get_main_loop() != null else null
+	if gs == null:
+		return raw_img
+	var AE = load("res://scripts/gamedata/axe_evolution.gd")
+	if AE == null:
+		return raw_img
+	return str(AE.icon_path(int(gs.get("axe_stage")), str(gs.get("axe_final"))))
+
+
 ## 装备定义 → 一个可直接 add_child 的图标节点。
 ## `edef` = `DataRegistry.phase2_equipment_by_id[id]`(缺字段也不会崩)。
 static func make(edef: Dictionary, size: Vector2, ignore_mouse: bool = false) -> Control:
-	var img: String = str(edef.get("img", ""))
+	var img: String = stage_img(edef)
 	var node: Control
 	if img != "" and ResourceLoader.exists("res://assets/sprites/" + img):
 		var ic := TextureRect.new()

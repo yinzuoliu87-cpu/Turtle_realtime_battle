@@ -191,8 +191,43 @@ func _ready() -> void:
 		d40.find("00=") >= 0 and d40.find("01=") >= 0 and d40.find("10=") >= 0 and d40.find("11=") >= 0,
 		"len=%d" % d40.length())
 
-	if _n < 20:
-		print("  [FAIL] ★分母: 断言只有 %d 条(<20)" % _n)
+	# ── ⑨ ★★「**扔**」这个动作真的演出来了 ──
+	## ★需求原话是「会**扔**给目标一把古灵精怪枪」。原来整条发枪路径
+	##   (`_eq_fpga_hand_out_guns`)**一个 vfx 调用都没有** —— 属性静悄悄加上去,
+	##   玩家看不到发生过什么。2026-09-01 逐句核对原话时抓到(第 2 句)。
+	## ★★判据落在**世界里真的多出了一个会飞的节点**, 不是"我插了个标记":
+	##   数 `battle._world` 的子节点增量 —— 那是产品自己的账。
+	##   (memory [[fb-gate-must-measure-requirement-not-my-hook]])
+	var thrower: Dictionary = _s._spawn._make_unit("basic", "left",
+		_s.ARENA.position + _s.ARENA.size * 0.5)
+	_s._units.append(thrower)
+	var victim: Dictionary = _s._spawn._make_unit("basic", "right",
+		_s.ARENA.position + _s.ARENA.size * 0.5 + Vector2(260, 0))
+	_s._units.append(victim)
+	var n_before: int = _s._world.get_child_count()
+	_s._vfx._throw_item(thrower, victim, "gremlin-gun.png", "古灵精怪枪", Color("#8ae06a"))
+	var n_after: int = _s._world.get_child_count()
+	_ok("★★★扔出去的东西**真的在世界里建出来了**(子节点 %d → %d)" % [n_before, n_after],
+		n_after > n_before, "没有增量 = 又是一次'写了没人看见'")
+	## ★分母: 缺图时**不画**, 而不是拿别的图顶替(素材不复用铁律)
+	var n2: int = _s._world.get_child_count()
+	_s._vfx._throw_item(thrower, victim, "__不存在的图__.png", "x", Color.WHITE)
+	_ok("★分母: 图不存在时不画(也不拿别的图顶替)",
+		_s._world.get_child_count() == n2, "凭空多了节点")
+	## ★素材真的在盘上, 且**不是**复用别件装备的图
+	_ok("★★古灵精怪枪有自己的新素材(不复用 eq-pistol-idle / conch-shotgun)",
+		ResourceLoader.exists("res://assets/sprites/vfx/gremlin-gun.png"))
+	## ★发枪的产品入口真的调了它 —— 不是只有门禁在调(零调用者那一整类)
+	var src40: String = FileAccess.get_file_as_string("res://scripts/systems/equip/equip_system.gd")
+	var seg: int = src40.find("func _eq_fpga_hand_out_guns")
+	var seg_end: int = src40.find("func ", seg + 10)
+	_ok("★★★发枪的产品入口里真的调了 _throw_item(分母: 函数体 %d 字)"
+		% maxi(0, seg_end - seg),
+		seg >= 0 and seg_end > seg
+		and src40.substr(seg, seg_end - seg).contains("_throw_item("))
+
+	if _n < 24:
+		print("  [FAIL] ★分母: 断言只有 %d 条(<24)" % _n)
 		_fail += 1
 	print("ALL PASS — 古灵精怪枪/FPGA" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

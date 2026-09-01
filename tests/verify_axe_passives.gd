@@ -81,9 +81,10 @@ func _ready() -> void:
 	_t_eff()
 	_t_charge()
 	_t_trapezoid()
+	await _t_energy_real()
 
-	if _n < 30:
-		print("  [FAIL] ★分母: 断言只有 %d 条(<30) —— 有整段被跳过了" % _n)
+	if _n < 38:
+		print("  [FAIL] ★分母: 断言只有 %d 条(<38) —— 有整段被跳过了" % _n)
 		_fail += 1
 	print("ALL PASS — 096 五期(%d 条)" % _n if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
@@ -282,6 +283,7 @@ func _t_charge() -> void:
 	## ★★效率计时【中断】: 先叠一层(5 秒), 再让蓄力跨过它原本的到期时刻
 	pas.add_eff(ax)
 	var until0: float = float(ax["_axe_eff_until"])
+	var mv_until0: float = float(ax.get("move_buff_until", 0.0))
 	## ★★驱动【真 tick_charge】, 不直接调 hold_eff ——
 	##   第一版我直接调 hold_eff 循环 300 次, 反向验证当场证明它是假的:
 	##   把 tick_charge 里那句 hold_eff 删掉, 门禁**一条都没红**, 因为它根本没走那条路。
@@ -291,6 +293,14 @@ func _t_charge() -> void:
 	_ok("★★蓄力中效率计时【中断】: 到期时刻被往后推了 %.1f 秒(跨过了原 5 秒)"
 		% (float(ax["_axe_eff_until"]) - until0),
 		float(ax["_axe_eff_until"]) - until0 > 5.0)
+	## ★★★效率层现在同时驱动**两条**计时: 攻速走 `_axe_eff_until`、移速走 `move_buff_until`。
+	##   只暂停一条 ⇒ 4 秒蓄力结束时移速加成已过期而攻速还在, 而需求说的是"效率计时器中断"(一条)。
+	##   老判据只盯 `_axe_eff_until` —— **窄了一格, 抓不到**(2026-09-01 逐句核对时读出来的)。
+	_ok("★★★移速那一半【也】被暂停(move_buff_until 推了 %.1f 秒)"
+		% (float(ax.get("move_buff_until", 0.0)) - mv_until0),
+		float(ax.get("move_buff_until", 0.0)) - mv_until0 > 5.0,
+		"分母: 原到期 %.2f · 现在 %.2f · 当前 t=%.2f"
+		% [mv_until0, float(ax.get("move_buff_until", 0.0)), float(_s._t)])
 	## 阶梯高度
 	var bad: Array = []
 	for pair in [[0.0, 0.0], [0.4, 0.0], [0.5, 100.0], [0.9, 100.0], [2.0, 400.0], [4.0, 800.0], [9.0, 800.0]]:
@@ -340,3 +350,104 @@ func _t_trapezoid() -> void:
 	_ok("★★朝向跟着 dir 转: dir 朝上时, 正上方在内、正右方出界",
 		AE.in_trapezoid(o, Vector2.UP, 800.0, Vector2(0, -400))
 		and not AE.in_trapezoid(o, Vector2.UP, 800.0, Vector2(400, 0)))
+
+
+# ══════════════════════════════════════════════════════════════
+#  ⑧ ★★★龟能【真的会涨】—— 不喂数, 真跑 sim
+# ══════════════════════════════════════════════════════════════
+## ★由来(2026-09-01): 探针实测「真跑 13.78 游戏秒, 斧头 energy 纹丝不动 0.00」——
+##   「攒满 140 龟能」的通用主动、被动6 的蓄力猛砸、四个最终造物的主动,
+##   **在真实对局里一个都放不出来**。而当时 125 条门禁全绿:
+##   它们都**自己先把 energy 设成 140** 再调 cast_heal —— 证明的是"函数对不对",
+##   从没证明"游戏里攒得满"。(memory [[fb-verify-must-run-the-real-path]])
+## ★根因: 引擎里**没有 `u["energy"]` 这个字段** —— 实时版龟能 = 技能冷却充能。
+##   `_make_unit` 建了这个键但全引擎零读者 ⇒ 我读的字段没人写, 永远是 0。
+## ★★所以这一节的判据只有一条硬规矩: **一个字都不许喂**, 只推时间。
+func _t_energy_real() -> void:
+	print("--- ⑧ 龟能真的会涨(不喂数) ---")
+	var c: Vector2 = _s.ARENA.position + _s.ARENA.size * 0.5
+	var owner_u: Dictionary = _s._spawn._make_unit("basic", "left", c)
+	_s._units.append(owner_u)
+	owner_u["equips"] = [{"id": "p2eq_096", "star": 1}]
+	var axsys = _s._equip_sys._axe
+	var ax = axsys.summon(owner_u)
+	_ok("★分母: 斧头建出来了且 maxEnergy = %.0f" % AE.ACTIVE_ENERGY,
+		ax is Dictionary and float(ax.get("maxEnergy", -1.0)) == AE.ACTIVE_ENERGY,
+		"maxEnergy=%s" % str(ax.get("maxEnergy", "缺") if ax is Dictionary else "null"))
+	if not (ax is Dictionary):
+		return
+	_ok("★分母: 起手就是 0 龟能(没人偷偷喂)", float(ax.get("energy", -1.0)) == 0.0,
+		"实测 %.1f" % float(ax.get("energy", -1.0)))
+	## ★★只推时间, 一个字段都不写
+	var t0: float = float(_s._t)
+	var w := 0
+	while w < 1200 and float(_s._t) - t0 < 2.0:
+		await get_tree().process_frame
+		w += 1
+	var e2: float = float(ax.get("energy", 0.0))
+	_ok("★★★真跑 %.2f 游戏秒后龟能【涨了】(实测 %.1f) —— 这条红过: 之前恒为 0"
+		% [float(_s._t) - t0, e2], e2 > 0.0, "分母: 推了 %d 帧" % w)
+	## 速率对不对: 1 点 = 0.075 秒 ⇒ 每秒 13.33 点
+	var want: float = (float(_s._t) - t0) / AE.SEC_PER_ENERGY
+	_ok("★速率 = 全局换算(1 点 %.3f 秒): 期望 %.1f 实测 %.1f(±8%%)"
+		% [AE.SEC_PER_ENERGY, want, e2], want > 0.0 and absf(e2 - want) <= want * 0.08,
+		"差 %.1f" % absf(e2 - want))
+	## ★★全息斧的「50% 龟能充能速率」这才有了消费者
+	_ok("★★全息斧 +50%% 充能: 同样 1 秒多涨一半(%.1f vs %.1f)"
+		% [AE.energy_gain(1.0, 1.5), AE.energy_gain(1.0, 1.0)],
+		is_equal_approx(AE.energy_gain(1.0, 1.5), AE.energy_gain(1.0, 1.0) * 1.5),
+		"echarge_perm 没乘进去 = 造物4的属性又是死的")
+	## ★★★真的攒满并**把主动放出来** —— 全程不喂 energy
+	## ★★探针实测: 木斧召唤物(500 血)在默认战斗场里**2.5 秒就被打死**, 而主动要 10.5 秒攒满
+	##   ⇒ 直接等会等到一具尸体, 那量的是"活不活得下来"、不是"攒不攒得满"。
+	##   ⇒ 每帧把血补满(**只碰 hp, 一个字都不碰 energy**), 判据才刚好卡住这一节要问的事。
+	##   (memory: 判据要刚好卡住那个形状 / 拿干净合成单位隔离)
+	## ★★把龟能【归零】再计时 —— 归零不是"喂", 是把基线对齐到需求那句话:
+	##   「攒满 140 龟能」⇒ 从 0 到放出来应该正好是 140 × 0.075 = 10.5 秒。
+	##   不归零的话前面几节耗掉的游戏时间会混进来, 量出来的"2.6 秒"根本不是满条时间。
+	ax["energy"] = 0.0
+	ax["shield"] = 0.0
+	var t1: float = float(_s._t)
+	var w2 := 0
+	var fired := false
+	var fill_t := -1.0
+	var prev_e := 0.0
+	var sh_before := 0.0
+	var sh_gain := -1.0
+	## ★上限要让【失败路径】也跑得完: 修坏了(龟能恒 0)时这个循环会跑满,
+	##   跑满还超预算就会被 --quit-after 掐断 ⇒ 反向验证时那条断言"没红"
+	##   其实是"根本没执行到"。2026-09-01 反向验证第一次就栽在这。
+	while w2 < 3600 and float(_s._t) - t1 < 13.0:
+		await get_tree().process_frame
+		w2 += 1
+		## ★★携带者**也**要保命 —— 龟能是在 `AxeSystem.tick` 里涨的, 而那是从
+		##   **携带者的装备 tick** 分派下来的: 携带者一死, 斧头整条 tick 就停了。
+		##   第二版只保了斧头, 结果 13 秒只涨到 106(= 8 秒的量), 正是携带者 8 秒时死了。
+		ax["hp"] = float(ax.get("maxHp", 1.0))      # 只保命, 不喂龟能
+		ax["alive"] = true
+		owner_u["hp"] = float(owner_u.get("maxHp", 1.0))
+		owner_u["alive"] = true
+		## ★★判据不能是「护盾 > 0」—— **被动2 偷护盾也会让盾 >0**,
+		##   第一版就是这么写的, 结果 2.62 秒就"过了"(那是偷来的盾, 主动根本没放)。
+		##   ⇒ 量产品自己的账: 龟能【攒到满→归零】这个跃迁, 只有 cast_heal 会造成。
+		var e_now: float = float(ax.get("energy", 0.0))
+		if prev_e >= AE.ACTIVE_ENERGY - 1.0 and e_now < 1.0:
+			fired = true
+			fill_t = float(_s._t) - t1
+			sh_gain = float(ax.get("shield", 0.0)) - sh_before
+			break
+		prev_e = e_now
+		sh_before = float(ax.get("shield", 0.0))
+	var want_t: float = AE.ACTIVE_ENERGY * AE.SEC_PER_ENERGY
+	_ok("★★★龟能从 0 攒满并**真的放出了主动**(实测 %.2f 秒, 应 %.2f 秒 ±15%%)"
+		% [fill_t, want_t], fired and absf(fill_t - want_t) <= want_t * 0.15,
+		"分母: 推了 %d 帧 · 当前龟能 %.1f · 护盾 %.1f"
+		% [w2, float(ax.get("energy", 0.0)), float(ax.get("shield", 0.0))])
+	## ★★量的是**那一帧的增量**, 不是护盾总量 —— 总量里混着被动2 偷来的。
+	_ok("★主动那一帧加的护盾 = %.0f%% 最大生命(实测 +%.1f / 应 %.1f)"
+		% [AE.ACTIVE_SHIELD_PCT * 100.0, sh_gain,
+		   float(ax.get("maxHp", 0.0)) * AE.ACTIVE_SHIELD_PCT],
+		fired and absf(sh_gain - float(ax.get("maxHp", 0.0)) * AE.ACTIVE_SHIELD_PCT) <= 1.5)
+	_ok("★★放完龟能【清零】重新攒(不是一直满着每帧放)",
+		fired and float(ax.get("energy", 999.0)) < AE.ACTIVE_ENERGY * 0.5,
+		"实测 %.1f" % float(ax.get("energy", -1.0)))
