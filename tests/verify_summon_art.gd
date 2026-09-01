@@ -59,8 +59,9 @@ func _ready() -> void:
 	_t_facing()
 	_t_frames()
 	_t_size()
-	if _n < 13:
-		print("  [FAIL] ★分母: 断言只有 %d 条(<13) —— 有整段被跳过了" % _n)
+	_t_channels()
+	if _n < 19:
+		print("  [FAIL] ★分母: 断言只有 %d 条(<19) —— 有整段被跳过了" % _n)
 		_fail += 1
 	print("ALL PASS — 召唤物立绘(%d 条)" % _n if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
@@ -259,3 +260,50 @@ func _t_size() -> void:
 		% [body_m, med, 100.0 * body_m / maxf(0.01, med)],
 		body_m >= med * 0.70 and body_m <= med * 1.30,
 		"col_size=%.0f · 内容 %dpx / 帧 %dpx" % [AE.MINION_COL_SIZE, content, fh])
+
+
+# ══════════════════════════════════════════════════════════════
+#  ④ 四条动作真的接线了 —— 而且**只有**四条(没有 death / 没有 hurt)
+# ══════════════════════════════════════════════════════════════
+## ★这一节是在还一笔账。方案书里曾经写着
+##     - [x] 召唤物动画: 待机／走路／攻击／技能释放 四条
+##   我打这个勾是因为**生成了四张精灵表**, 不是因为它们真的被引擎读到了 ——
+##   实际上 walk 与 cast 两张**在盘上躺着、引擎里零引用**, 而我还写下了
+##   「引擎没有 walk 通道」这句**错的**结论(ACTION_RUN 一直都在, 只是斧头没登记)。
+##   用户 2026-09-01:「怎么可以没通道啊, 小将动画就有攻击待机走路等」。
+## ★所以判据必须是「**这四张表各自被哪张表引用了**」, 不是「文件在不在盘上」。
+func _t_channels() -> void:
+	print("--- ④ 动作通道 ---")
+	var src: String = FileAccess.get_file_as_string(RBSRC)
+	## 四条各自的落点(表名 → 这张表里该出现的素材)
+	var want := [
+		["待机", "_EQ_BODY_SPR", "eq-axe-idle.png"],
+		["走路", "ACTION_RUN", "eq-axe-walk.png"],
+		["攻击", "ACTION_ATTACK", "eq-axe-attack.png"],
+		["技能释放", "ACTION_ELITE", "eq-axe-cast.png"],
+	]
+	for row in want:
+		var tbl: String = str(row[1])
+		var i: int = src.find("const %s := {" % tbl)
+		if i < 0:
+			i = src.find("const %s := {" % tbl)
+		if tbl == "_EQ_BODY_SPR":
+			i = src.find("_EQ_BODY_SPR := {")
+		var j: int = src.find("}", i) if i >= 0 else -1
+		var body: String = src.substr(i, j - i) if (i >= 0 and j > i) else ""
+		_ok("★%s 真的登记在 %s 里(素材在盘上 ≠ 引擎读得到)" % [str(row[0]), tbl],
+			body != "" and body.contains(str(row[2])),
+			"表解析到 %d 字" % body.length())
+	## ★★没有 death / 没有 hurt —— 用户两次点名。两张表里一个 axe 键都不许有。
+	for tbl2 in ["ACTION_HURT", "ACTION_DEATH"]:
+		var i2: int = src.find("const %s := {" % tbl2)
+		var j2: int = src.find("}", i2) if i2 >= 0 else -1
+		var body2: String = src.substr(i2, j2 - i2) if (i2 >= 0 and j2 > i2) else ""
+		_ok("★★%s 里【没有】斧头(用户点名: 不要死亡、不要受伤)" % tbl2,
+			body2 != "" and not body2.contains("axe"),
+			"分母: 表解析到 %d 字(0 就是空检查)" % body2.length())
+	## 施法动画要能"播到一半不被普攻打断" —— 靠的是键在 ACTION_ELITE 里
+	## (`_play_action` 的 committed 闸认的就是那张表)。
+	var vfx: String = FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_vfx.gd")
+	_ok("★施法动画不被普攻打断(committed 闸认 ACTION_ELITE, 而 axe_cast 就登记在那)",
+		vfx.contains("battle.ACTION_ELITE.has(_cur_act)"))

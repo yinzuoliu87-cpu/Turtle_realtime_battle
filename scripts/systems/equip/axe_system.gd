@@ -100,9 +100,34 @@ func cast_heal(ax: Dictionary) -> bool:
 	if float(ax.get("energy", 0.0)) < AE.ACTIVE_ENERGY:
 		return false
 	ax["energy"] = 0.0
+	play_cast(ax)                    # 技能释放动画(用户点名的四条之一)
 	var mh: float = float(ax.get("maxHp", 0.0))
 	battle._damage._heal(ax, mh * AE.ACTIVE_HEAL_PCT)
 	battle._damage._grant_shield(ax, mh * AE.ACTIVE_SHIELD_PCT)
+	return true
+
+
+## 播【技能释放】动画。
+## ★为什么不复用 `_elite_anim`: 它开头就 `if not u.get("is_elite")` 直接 return ——
+##   斧头是召唤物不是精英龟, 走那条永远播不出来(而且不会报错, 只是静默什么都不发生)。
+## ★为什么把键放进 `ACTION_ELITE`: `_play_action` 的"committed 动作"闸认的就是这张表
+##   (`battle.ACTION_ELITE.has(_cur_act)`) ⇒ 登记进去, 施法动画播到一半不会被普攻打断。
+##   那张表的名字叫 ELITE 只是历史包袱, 它实际是"非标准一次性动作"的总表。
+## ★★**没有 death / 没有 hurt**(用户 2026-08-31、09-01 两次点名): 四条就是
+##   待机 / 走路 / 攻击 / 技能释放。ACTION_HURT 与 ACTION_DEATH 里一个 axe 键都没有,
+##   门禁 verify_summon_art 会把这条焊死。
+func play_cast(ax: Dictionary) -> bool:
+	if not (ax is Dictionary) or not ax.get("alive", false):
+		return false
+	if not is_instance_valid(ax.get("sprite", null)):
+		return false                 # 无头测试里没有立绘节点, 不是错误
+	var e = battle.ACTION_ELITE.get("axe_cast", null)
+	if e == null:
+		return false
+	var asd: Dictionary = battle._resolve_action(str(e[0]), float(e[1]))
+	if asd.is_empty():
+		return false
+	battle._set_anim_sheet(ax, asd, "axe_cast", false)
 	return true
 
 

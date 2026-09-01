@@ -457,6 +457,7 @@ const ACTION_MELEE := {
 #     两头是快动作、中间是 1 秒【悬停】。改成按节拍排帧序 0,0,1,1,[2]×12,3,3 = 18帧,
 #     即给"空中蓄力"那一帧做 hold —— 这是动画标准手法, 与"重复凑循环"不是一回事。
 const ACTION_ELITE := {
+	"axe_cast": ["vfx/eq-axe-cast.png", 12.0],   # 096 斧头召唤物·技能释放(2026-09-01)
 	"whirl":      ["pets/animations/elite/whirl.png", 9.52],      # 4帧 / 0.42s
 	"hammer":     ["pets/animations/elite/hammer.png", 9.30],     # 4帧 / 0.43s
 	"hammer_big": ["pets/animations/elite/hammer_big.png", 12.24],# 18帧 / 1.47s(含1s hold)
@@ -477,8 +478,7 @@ const ACTION_DEATH := {
 const ACTION_RUN := {
 	"ninja": ["pets/animations/ninja/run.png", 12.0],
 	"ghost": ["pets/animations/ghost/run.png", 12.0],
-	# ★精英小将(2026-07-21 PixelLab 生成)。键是 __minion_elite__ 不是 __minion__ ——
-	#   三种小将共用 id, 用 id 会让普通小将也套精英的帧, 见 _anim_key()。
+	# ★精英小将(2026-07-21 PixelLab 生成)。键是 __minion_elite__ 不是 __minion__ —— 三种小将共用 id, 用 id 会让普通小将也套精英的帧, 见 _anim_key()。
 	"__minion_elite__": ["pets/animations/elite/run.png", 12.0],
 	"__minion_front__": ["pets/animations/melee/run.png", 12.0],
 	"__minion_back__": ["pets/animations/ranged/run.png", 12.0],
@@ -487,9 +487,9 @@ const ACTION_RUN := {
 	#   移动由玩家 _trainer_sys._trainer_move_by 驱动, 但立绘照样流经 _render._update_run_anim(在 for u in _units 里),
 	#   靠"帧间位移>0.8"自动切走路/停回 idle —— 不用另写触发。
 	"__trainer__": ["pets/animations/trainer/run.png", 8.0],
+	"_summon_axe": ["vfx/eq-axe-walk.png", 10.0],   # 096 斧头召唤物(2026-09-01: 素材早在盘上, 只是从没登记 ⇒ 它走路时一直是站姿)
 }
-# GROUND_LIFT: 立绘落地基线 — 现在配合"底部 alpha 软渐隐 shader"故意略低(让软淡的脚部轻插进地面盖住交界),
-#   不再靠抬高去躲硬切. 见 §GROUNDING.
+# GROUND_LIFT: 立绘落地基线 — 现在配合"底部 alpha 软渐隐 shader"故意略低(让软淡的脚部轻插进地面盖住交界), 不再靠抬高去躲硬切. 见 §GROUNDING.
 const GROUND_LIFT := 0.06                  # 略沉 → 软淡脚部融进地面 (原 0.35 是为躲硬切的权宜, 已被 shader 根治)
 const SHADOW_BASE := Vector3(2.05, 1.0, 1.0)
 const SHADOW_BASE_A := 0.62
