@@ -32,6 +32,11 @@
 """
 import io, os, re, sys, json, glob, collections
 
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 ASSET_DIR = "assets"
 # 语料: 会真正影响运行时的文件。**排除 .import/.uid** —— 它们是 Godot 自动生成的伴生文件,
 # 里面 source_file="res://assets/..." 会让每个素材都"看起来被引用", 判据直接失效。
@@ -49,6 +54,13 @@ def load_corpus():
         dn[:] = [d for d in dn if d not in SKIP_DIRS]
         for f in fn:
             if f.endswith((".import", ".uid")):
+                continue
+            ## ★★★本审计器【自己的台账】不许进语料 —— 2026-09-02 实测踩到:
+            ##   台账里记着 `assets/fonts/NotoEmoji-OFL.txt`, 而这一句 walk 会把
+            ##   `tools/*.json` 也读进语料 ⇒ 那条路径"在语料里出现过" ⇒ 被判成 STATIC(活)
+            ##   ⇒ **记进台账的孤儿就此不再被报出来**。A/B 实测: 台账里写上那条 ORPHAN=0,
+            ##   拿掉 ORPHAN=1 —— 一个自己屏蔽自己发现的假绿灯。
+            if f == "asset_orphan_debt.json":
                 continue
             if not f.endswith(CORPUS_EXT):
                 continue
@@ -561,6 +573,57 @@ def main():
         print(s)
     print("report -> " + out)
 
+    ## ══════════════════════════════════════════════════════════════
+    ##  ★★棘轮 (2026-09-02 加): 存量记台账【只减不增】, 新增当场红
+    ## ══════════════════════════════════════════════════════════════
+    ## 由来: 这份脚本一直**只打印不判决**(恒 exit 0), 于是它从没进过门禁 ——
+    ##   报告里一直躺着 12 个"没有任何消费者的 json 字段" + 4 张"永远加载不到的素材",
+    ##   而这正是同一天在代码侧抓到两个真 bug 的那个形状(读/写了一个没人配对的东西)。
+    ## ★为什么是台账而不是要求清零: 报告自己写明 ③ 段是**待人工确认不是判决书**
+    ##   (可能被 `for k in d:` 这类遍历消费, 没有字面量痕迹)。一刀切要求 0 会让它第一天就红,
+    ##   而第一天就红的门禁只会被 `|| true` 掉(zero_caller_audit 的同一条经验)。
+    ##   ⇒ 冻结现状, **新增的必须当场红**; 清掉存量就把台账减一个。
+    if only != "":
+        return 0                      # 只跑半边(--assets/--json)时不判决: 分母不全
+    ledger_path = os.path.join("tools", "asset_orphan_debt.json")
+    cur = {
+        "orphan_assets": sorted(x for x, _ in buckets["ORPHAN"]),
+        "json_no_consumer": sorted(k for k, _, _ in unread),
+        "cross_dead_assets": sorted(f for f, _ in cross),
+    }
+    if os.environ.get("ASSET_ORPHAN_UPDATE") == "1":
+        io.open(ledger_path, "w", encoding="utf-8").write(
+            json.dumps(cur, ensure_ascii=False, indent=1) + chr(10))
+        print("  [台账已重写] %s" % ledger_path)
+        return 0
+    if not os.path.exists(ledger_path):
+        print("  [FAIL] 台账 %s 不存在 —— 这是空检查不是通过" % ledger_path)
+        return 1
+    old = json.load(io.open(ledger_path, encoding="utf-8"))
+    bad = 0
+    for k, label in (("orphan_assets", "无任何引用的素材"),
+                     ("json_no_consumer", "没有任何消费者的 json 字段"),
+                     ("cross_dead_assets", "只靠死字段活着·运行时永远加载不到的素材")):
+        was = set(old.get(k, []))
+        now = set(cur.get(k, []))
+        fresh = sorted(now - was)
+        gone = sorted(was - now)
+        tail = ("  已清 %d 个(跑 ASSET_ORPHAN_UPDATE=1 更新台账)" % len(gone)) if gone else ""
+        print("  [%s] 台账 %d → 现在 %d%s" % (label, len(was), len(now), tail))
+        if fresh:
+            bad += 1
+            print("  [FAIL] **新增** %d 个:" % len(fresh))
+            for x in fresh:
+                print("     " + str(x))
+    if bad:
+        print("")
+        print("  (新写的数据字段没人读 / 新素材没人引用 —— 与代码侧的 zero_caller 是同一类。")
+        print("   确实该留着的, 跑 ASSET_ORPHAN_UPDATE=1 记进台账, 并在提交信息里写清理由。)")
+        return 1
+    print("")
+    print("ALL OK — 没有【新增】的孤儿素材 / 无消费者字段")
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main() or 0)

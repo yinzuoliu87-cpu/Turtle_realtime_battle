@@ -451,32 +451,12 @@
       "frameW": 64,
       "frameH": 64
     },
-    "knockupAnim": {
-      "src": "pets/animations/ninja/knockup.png",
-      "frames": 2,
-      "frameW": 64,
-      "frameH": 64
-    },
     "runAnim": {
       "src": "pets/animations/ninja/run.png",
       "frames": 4,
       "frameW": 64,
       "frameH": 64
     },
-    "extraSprites": [
-      {
-        "src": "pets/animations/ninja/dash.png",
-        "frames": 18,
-        "frameW": 64,
-        "frameH": 64
-      },
-      {
-        "src": "pets/animations/ninja/backstab.png",
-        "frames": 18,
-        "frameW": 64,
-        "frameH": 64
-      }
-    ],
     "passive": {
       "type": "ninjaInstinct",
       "name": "忍术",
@@ -651,20 +631,6 @@
       "frameW": 64,
       "frameH": 64
     },
-    "knockupAnim": {
-      "src": "pets/animations/ghost/knockup.png",
-      "frames": 2,
-      "frameW": 64,
-      "frameH": 64
-    },
-    "extraSprites": [
-      {
-        "src": "pets/animations/ghost/phase.png",
-        "frames": 13,
-        "frameW": 64,
-        "frameH": 64
-      }
-    ],
     "passive": {
       "type": "ghostCurse",
       "name": "怨灵",

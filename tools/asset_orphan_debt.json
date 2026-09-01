@@ -1,0 +1,18 @@
+{
+ "orphan_assets": [
+  "assets/fonts/NotoEmoji-OFL.txt"
+ ],
+ "json_no_consumer": [
+  "_anchors",
+  "_schema",
+  "attackAnim",
+  "deathAnim",
+  "descMelee",
+  "hurtAnim",
+  "pctMaxHp",
+  "runAnim",
+  "selfCast",
+  "types"
+ ],
+ "cross_dead_assets": []
+}

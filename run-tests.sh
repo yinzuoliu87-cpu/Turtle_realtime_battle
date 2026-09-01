@@ -509,6 +509,10 @@ run_audit "tools/dead_preload_audit.py"  "ALL OK" "dead_preload (preload 了却�
 #   holo_aura_tick / ember_light_cast 全是零调用者), 而 64 条门禁全绿 —— 因为门禁直接调它们。
 #   存量 10 个记台账只减不增; 新增的当场红。
 run_audit "tools/zero_caller_audit.py"   "ALL OK" "zero_caller (写了却没有任何人调的函数)"
+## ★数据侧的同一类:「写了没人读」——「读了没人写」在代码侧由 zero_caller 管,
+##   json 字段与素材这一侧一直只有一份**只打印不判决**的报告(恒 exit 0, 从没进过门禁),
+##   里面躺着 12 个无消费者字段 + 4 张永远加载不到的素材。2026-09-02 改成台账棘轮。
+run_audit "tools/asset_orphan_audit.py"  "ALL OK" "asset_orphan (孤儿素材/无消费者json字段·只减不增)"
 # ★2026-08-20 补挂: 这个脚本 2026-08-19 就写了, 我还多次在提交信息里声称把检查"焊进门禁",
 #   但它**从来没进过 run-tests.sh** —— 改动史词/别家游戏黑话/数字间距 一条都没被强制执行过。
 #   (它原本也不打 ALL OK、恒返回 0, 一并补了判定行。)
