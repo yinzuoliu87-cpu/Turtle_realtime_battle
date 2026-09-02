@@ -41,7 +41,17 @@ const BladeVfx := preload("res://scripts/scenes/battle/blade_eq_vfx.gd")
 const SWEEP_AIM_DEG := -20.9
 
 ## ── 配色: 跟着档位材质走, 不是随便挑的颜色 ──
-const COL_CLEAVE := Color(0.85, 0.90, 0.96)     # 铁斧竖劈: 冷铁白
+## ★★竖劈是**唯一一张要提亮**的 —— 这个 1.28 不是拍的, 是量出来的:
+##   逐张量五张素材的亮度分布(只统计不透明像素)——
+##     cleave 中位数 **65** / P25 46 / **23.1% 暗于 40**
+##     sweep 108 · smash 104 · slam 105 · heal 184
+##   它比别的四张暗一档(我选帧时挑了"黑红裂纹"那版, 材质最足但整体压得很低),
+##   在黑场里整个沉下去 —— 实拍时**伤害数字 45000 照常跳、刀光一点都看不见**。
+##   ⇒ 提亮到 1.28(memory [[fb-texture-has-usable-size-range]]: modulate 别过 1.3)。
+## ★为什么不改素材本身: PixelLab 的**原始帧比我加工的好** —— build_eq084_vfx.py 的头注
+##   记着 2026-08-29 那次我照自己拍的阈值把分层刀光洗白、把辐射细丝剁成碎条。
+##   提亮放在渲染侧, 素材一个像素不动。
+const COL_CLEAVE := Color(1.28, 1.28, 1.30)     # 铁斧竖劈: 冷铁白(已提亮, 见上)
 const COL_SWEEP := Color(1.00, 0.82, 0.35)      # 金斧横扫: 金
 const COL_SMASH := Color(0.78, 0.60, 0.34)      # 石斧强化砸: 土石棕
 const COL_SLAM := Color(0.94, 0.72, 0.28)       # 钻石斧猛砸: 琥珀金

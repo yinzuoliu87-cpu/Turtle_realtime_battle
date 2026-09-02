@@ -848,9 +848,13 @@ const CASES := {
 	"enemy_hp": 900000.0,
 	"eq": "p2eq_096", "axe_stage": 1,
 	"star": 3, "carrier": "basic", "enemies": 2, "carrier_silent": true,
-	"enemy_dist": 220.0, "enemy_gap": 200.0, "bars": true,
+	## ★enemy_dist 220 → 90: 斧头 atk_range 只有 70 码, 走过去要好几秒 ——
+	##   强化砸是「攒够 9 秒的**下一拳**」, 人都没走到就没有那一拳(2026-09-03 实拍空场)。
+	"enemy_dist": 90.0, "enemy_gap": 110.0, "bars": true,
 	"dur": 24.0, "zoom": 2.4, "focus": "summon", "focus_h": 1.2,
-	"shots": [8.80, 9.10, 9.30, 9.60, 10.20, 17.80, 18.10, 18.30, 18.60, 19.20],
+	## ★拍点从 9.0 起密排到 11.0: 强化砸不是准点发生, 是 9 秒之后的第一拳,
+	##   而普攻间隔 1.25 秒 ⇒ 它可能落在 9.0~10.25 之间任何一处, 必须整段兜住。
+	"shots": [9.05, 9.30, 9.55, 9.80, 10.05, 10.30, 10.55, 10.80, 11.05, 11.30],
 	"note": "【石斧·1 档】新增被动3: 每 SMASH_IV=9 秒下一次普攻强化(+0.5×ATK 物理 + 短暂击退击飞)。★拍点压在 9 秒与 18 秒两个整数倍前后 —— 强化是**攒够 9 秒的下一拳**, 不是准点发生, 所以每个时刻要连拍几张兜住普攻落点。",
 },
 "p2eq_096_iron": {
@@ -860,9 +864,20 @@ const CASES := {
 	"enemy_hp": 900000.0,
 	"eq": "p2eq_096", "axe_stage": 2,
 	"star": 3, "carrier": "basic", "enemies": 2, "carrier_silent": true,
-	"enemy_dist": 220.0, "enemy_gap": 200.0, "bars": true,
+	## ★enemy_dist 220 → 90(2026-09-03): 斧头 atk_range 只有 70 码, 220 码要走好几秒
+	##   ——竖劈是【每第 2 拳】、发生在开局那几秒, 拍点会整段落在"走路"上拍到空场。
+	##   金斧那一档已经栽过一次(memory [[fb-gate-subject-never-constructed]])。
+	"enemy_dist": 90.0, "enemy_gap": 110.0, "bars": true,
+	## ★★`aspd` 拉高到 4.0 —— 抄 `p2eq_090_wave` 那一行已验证的办法。
+	##   由来(2026-09-03 连栽三次): 竖劈是【每第 2 拳】, 原速下每 2.5 秒才一次、演出只活
+	##   0.75 秒 ⇒ 拍点必须**正好**落在那 0.75 秒里。我先按理论节奏算(错)、再按探针实测的
+	##   t=2.62 排(还是空) —— 因为**每次跑的时序都不一样**(走位/索敌带随机),
+	##   "对准上次实测的时刻"本身就是在跟随机较劲(memory [[fb-make-the-noise-deterministic]])。
+	##   ⇒ 正确解法是把判据变成对随机不敏感: 攻速 4.0 ⇒ 每 0.25 秒一拳、每 0.5 秒一次竖劈,
+	##     而演出活 0.75 秒 ⇒ **任何时刻都有竖劈在演**, 拍点怎么排都拍得到。
+	"aspd": 4.0,
 	"dur": 14.0, "zoom": 2.8, "focus": "summon", "focus_h": 1.2,
-	"shots": [1.20, 1.60, 2.00, 2.40, 2.80, 3.20, 3.60, 4.00, 4.40, 4.80],
+	"shots": [2.20, 2.40, 2.60, 2.80, 3.00, 3.20, 3.40, 3.60, 3.80, 4.00],
 	"note": "【铁斧·2 档】新增被动4: 每第 2 次普攻竖劈(额外 5% 目标最大生命【真伤】+ 10 层流血)。★普攻间隔 1/MINION_ASPD ⇒ 拍点用 0.4 秒一档密排, 才能兜住'第 2/4/6 次'那几拳。",
 },
 "p2eq_096_gold": {
@@ -907,7 +922,7 @@ const CASES := {
 	"enemy_hp": 900000.0,
 	"eq": "p2eq_096", "axe_final": "undead",
 	"star": 3, "carrier": "basic", "enemies": 3, "carrier_silent": true,
-	"enemy_dist": 240.0, "enemy_gap": 160.0, "bars": true,
+	"enemy_dist": 100.0, "enemy_gap": 120.0, "bars": true,   # ★拉近: 240 码斧头要走好几秒, 前几个拍点全在走路
 	"dur": 26.0, "zoom": 2.2, "focus": "summon", "focus_h": 1.2,
 	"shots": [2.00, 5.00, 8.00, 10.40, 11.00, 12.00, 14.00, 14.60, 15.20, 16.40],
 	"note": "【亡灵之斧】看两样: ①常驻的亡灵环(`_tick_undead_ring`, 不用等龟能) ②主动替换后的演出。前三个拍点看环、后面看主动。",
@@ -919,7 +934,7 @@ const CASES := {
 	"enemy_hp": 900000.0,
 	"eq": "p2eq_096", "axe_final": "seraph",
 	"star": 3, "carrier": "basic", "allies": 2, "enemies": 3, "carrier_silent": true,
-	"enemy_dist": 240.0, "enemy_gap": 160.0, "bars": true,
+	"enemy_dist": 100.0, "enemy_gap": 120.0, "bars": true,   # ★拉近: 240 码斧头要走好几秒, 前几个拍点全在走路
 	"dur": 26.0, "zoom": 2.2, "focus": "summon", "focus_h": 1.2,
 	"shots": [2.00, 5.00, 8.00, 10.40, 11.00, 12.00, 14.00, 14.60, 15.20, 16.40],
 	"note": "【炽天使之斧】★allies=2 是必须的 —— 它给友方单位加护盾/龟能, 没有友军就只能看到半个效果(同 090 浪潮那次的教训)。",
@@ -931,7 +946,7 @@ const CASES := {
 	"enemy_hp": 900000.0,
 	"eq": "p2eq_096", "axe_final": "holo",
 	"star": 3, "carrier": "basic", "allies": 2, "enemies": 3, "carrier_silent": true,
-	"enemy_dist": 240.0, "enemy_gap": 160.0, "bars": true,
+	"enemy_dist": 100.0, "enemy_gap": 120.0, "bars": true,   # ★拉近: 240 码斧头要走好几秒, 前几个拍点全在走路
 	"dur": 26.0, "zoom": 2.2, "focus": "summon", "focus_h": 1.2,
 	"shots": [2.00, 5.00, 8.00, 10.40, 11.00, 12.00, 14.00, 14.60, 15.20, 16.40],
 	"note": "【全息斧】每次普攻给血量最低的友军 60 护盾 + 5 龟能; 主动 4 秒内猛砸被替换。★allies=2 且要有人掉血才看得到 on-hit 那一半。",
@@ -943,7 +958,7 @@ const CASES := {
 	"enemy_hp": 900000.0,
 	"eq": "p2eq_096", "axe_final": "ember",
 	"star": 3, "carrier": "basic", "enemies": 3, "carrier_silent": true,
-	"enemy_dist": 240.0, "enemy_gap": 160.0, "bars": true,
+	"enemy_dist": 100.0, "enemy_gap": 120.0, "bars": true,   # ★拉近: 240 码斧头要走好几秒, 前几个拍点全在走路
 	"dur": 26.0, "zoom": 2.2, "focus": "summon", "focus_h": 1.2,
 	"shots": [2.00, 5.00, 8.00, 10.40, 11.00, 12.00, 14.00, 14.60, 15.20, 16.40],
 	"note": "【余烬之斧】处决一个单位 ⇒ 召唤物 +150 龟能; 主动 4 秒猛砸被替换为余烬之光。★enemies=3 是为了有得处决(单敌人打死就没目标了)。",
