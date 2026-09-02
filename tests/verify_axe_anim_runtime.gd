@@ -78,9 +78,19 @@ func _ready() -> void:
 		is_instance_valid(ax.get("sprite", null)))
 
 	# ── ① 待机 ──
-	for _i in range(6):
+	## ★★2026-09-03 修不稳定: 原来是"等 6 帧再断言待机", 实测 3 次里红 2 次
+	##   (「实测 eq-axe-walk.png」)。根因不是动画坏了 —— 斧头是召唤物, **一出生就朝敌人走**,
+	##   6 帧够不够它起步纯看那一跑的时序。这是判据在赌时序, 不是产品的问题
+	##   (memory [[fb-make-the-noise-deterministic]]: 别跟随机较劲, 把判据改成对它不敏感)。
+	## ⇒ 先把它钉住(no_move), 再**轮询等它回到 idle**(上限防死循环), 拿到确定态才断言。
+	##   ★用墙钟不用帧数(CLAUDE.md §3.5): 无头 CI 帧率极高, 固定帧数在那边等于没等。
+	ax["no_move"] = true
+	var _t_idle := Time.get_ticks_msec()
+	while _cur_tex(ax) != IDLE and Time.get_ticks_msec() - _t_idle < 3000:
 		await get_tree().process_frame
-	_ok("① 待机: 引擎正拿 %s 画它" % IDLE, _cur_tex(ax) == IDLE, "实测 %s" % _cur_tex(ax))
+	_ok("① 待机: 引擎正拿 %s 画它" % IDLE, _cur_tex(ax) == IDLE,
+		"实测 %s (已钉住 no_move 并等到 %d ms)" % [_cur_tex(ax), Time.get_ticks_msec() - _t_idle])
+	ax["no_move"] = false      # ★还原 —— 下面 ② 要真的让它跑起来
 
 	# ── ② 走路: 真让它跑起来, 等换表 ──
 	## ★不能靠"设一次 pos" —— `_update_run_anim` 是按【0.1 秒时间窗累计位移】测速的,

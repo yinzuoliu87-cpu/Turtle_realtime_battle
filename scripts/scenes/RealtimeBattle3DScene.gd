@@ -456,14 +456,10 @@ const ACTION_MELEE := {
 #   ★hammer_big 单靠 fps 摊不平(4帧/1.47s = 每帧368ms, 远超项目 62-208ms 区间), 因为它
 #     两头是快动作、中间是 1 秒【悬停】。改成按节拍排帧序 0,0,1,1,[2]×12,3,3 = 18帧,
 #     即给"空中蓄力"那一帧做 hold —— 这是动画标准手法, 与"重复凑循环"不是一回事。
-const ACTION_ELITE := {
-	"axe_cast": ["vfx/eq-axe-cast.png", 12.0],   # 096 斧头召唤物·技能释放(2026-09-01)
-	"whirl":      ["pets/animations/elite/whirl.png", 9.52],      # 4帧 / 0.42s
-	"hammer":     ["pets/animations/elite/hammer.png", 9.30],     # 4帧 / 0.43s
-	"hammer_big": ["pets/animations/elite/hammer_big.png", 12.24],# 18帧 / 1.47s(含1s hold)
-	"whip":       ["pets/animations/elite/whip.png", 14.0],       # 7帧 / 0.50s ≈ 节拍 0.48s
-	"consume":    ["pets/animations/elite/consume.png", 6.0],     # 9帧 / 1.50s
-}
+const ActionElite := preload("res://scripts/gamedata/action_elite.gd")
+## ★整表已搬到 gamedata(CLAUDE.md §5「纯数据/常量表」)。同名 const 指向同一个字典,
+##   所有 `battle.ACTION_ELITE.xxx` 的调用方一字不用改。
+const ACTION_ELITE := ActionElite.TABLE
 const ACTION_HURT := {
 	"basic":  ["pets/animations/basic/hurt.png", 16.0],
 	"ghost":  ["pets/animations/ghost/hurt.png", 16.0],

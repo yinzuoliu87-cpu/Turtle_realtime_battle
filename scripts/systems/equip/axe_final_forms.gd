@@ -163,6 +163,9 @@ func seraph_boomerang_settle(ax: Dictionary, dir: Vector2) -> int:
 			battle._damage._apply_dot_stacks(o, "burn", AF.SERAPH_BOOM_BURN, ax)
 		n += 1
 	vfx.seraph_boomerang(org, d, AF.SERAPH_BOOM_R * 2.5, 0.45)   # 演出: 一把飞过去
+	## ★斧头本体的【甩】动作帧 —— 每把一次(4 秒 10 把 ⇒ 每 0.4 秒), fps 就是按这个定的。
+	##   在此之前斧头是站着不动把 10 把镖变出来的(素材 eq-axe-throw.png 零调用者)。
+	_play(ax, "axe_throw")
 	return n
 
 
@@ -243,6 +246,7 @@ func ember_on_hit(ax: Dictionary, tgt: Dictionary) -> Dictionary:
 			Color("#ff7043"), ax, "tru", false)
 		done = true
 		vfx.ember_execute(tgt.get("pos", Vector2.ZERO))
+		_play(ax, "axe_execute")       # 斧头本体的处决动作(素材早在盘上, 之前零调用者)
 		if not tgt.get("alive", true):
 			## 「处决一个单位会使召唤物获得150点龟能」
 			_give_energy(ax, AF.EMBER_EXEC_ENERGY)
@@ -345,6 +349,20 @@ func _ember_apply(ax: Dictionary) -> void:
 
 ## 主动触发时按造物分派。返回走了哪条路(""=没有造物, 交给被动6的猛砸)。
 ## ★纯状态机, 不建节点也不结算伤害 —— 门禁直接调它验分派对不对。
+
+## 播斧头本体的一张招式帧。**只是转调** `axe_system.play_action` ——
+## 造物这边不另起一套播放逻辑(memory [[fb-hand-rolled-copies-drift]]:
+## 手抄的副本必然落后)。拿不到 axe_system 就静默跳过(无头测试里正常)。
+func _play(ax: Dictionary, key: String, loop: bool = false) -> bool:
+	var es = battle.get("_equip_sys") if battle != null else null
+	if es == null:
+		return false
+	var axs = es.get("_axe")
+	if axs == null:
+		return false
+	return bool(axs.play_action(ax, key, loop))
+
+
 func begin_active(ax: Dictionary) -> String:
 	var fk: String = _fk(ax)
 	match fk:
@@ -361,6 +379,7 @@ func begin_active(ax: Dictionary) -> String:
 			ax["damage_reduction"] = maxf(float(ax.get("damage_reduction", 0.0)), AF.HOLO_PLANT_DR)
 			ax["_holo_root"] = vfx.holo_field(ax.get("pos", Vector2.ZERO),
 				AF.HOLO_AURA_R, AF.HOLO_PLANT_TIME)
+			_play(ax, "axe_plant", true)   # 插地是【持续 4 秒的状态】⇒ 循环帧表
 			return "holo"
 		"ember":
 			ember_light_cast(ax)

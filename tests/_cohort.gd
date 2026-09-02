@@ -54,22 +54,82 @@ const STRATEGIES := ["merge_first", "greedy_cost", "random", "synergy"]
 ##   refresh     int     刷新上限(原写死 MAX_REFRESH=2)
 ##   eager       0..1    **主动**刷新的概率(原来只有"买不到才刷")
 ##   minion_first 0/1    装备先给小将还是先给统领(原写死: 先统领)
+## ★★★`xp` 的下限是 2 —— 这不是"把流派拉平", 是修一个**结构性自杀参数**。
+##
+## 2026-09-03 探针实测(12732 条快照 / 800 只机器人跑满 6366 场):
+##
+##     xp≤1 的 6 个流派   最高只升到 5~7 级  ⇒ 装备槽 8~12   达档8率均值 0.40%
+##     xp≥2 的 8 个流派   能升到 10 级       ⇒ 装备槽 18     达档8率均值 1.61%
+##
+## 根因是 `phase2_config.team_equip_cap(level) = (level-1) × 2` ——
+## **不买经验就没有装备容量**, 跟"策略偏好"无关, 是必死。旧参数下的后果:
+##   · `hi_cost` 达档8率 **0%**, 全场平均只持有 10.7 件, 4~5 费占比 7.8%
+##     ——【比随机组的 24.7% 还低 17 个点】, 一个"高费流"买的高费比乱买的还少;
+##   · `snowball`(xp:0) 最高 5 级 / 装备槽 8 / 平均持有 6.9 件, 全池垫底;
+##   · `line_top`(单线顶档流) 达档8率 0.13% ⇒ **全池没有一支队打到 3 档顶档**。
+##
+## 用户 2026-09-02 原话:「别让蠢 AI 来行吗」。给流派配一个必死参数正是蠢 AI ——
+## 真人玩家不会一局不升级。流派差异改由 `reserve` / `refresh` / `eager` 承担,
+## 那几条是**真的策略取舍**(存钱 vs 铺货 / 刷不刷新), 不是自杀开关。
+##
+## ★这个下限不靠"我记得要写 ≥2"守 —— 见文件末尾的 `_assert_no_suicide_weights()`,
+##   它在每次跑之前逐条查, xp<2 直接 push_error 并中止(反向验证: 把任意一条改回 1 会当场红)。
+const MIN_XP_BUYS := 2
+
 const ARCHETYPES := {
-	"hi_cost":     {"cost_hi": 1.0,  "reserve": 24, "xp": 1, "refresh": 3, "eager": 0.3},
-	"line_top":    {"focus": 1.0,    "reserve": 8,  "xp": 1, "refresh": 4, "eager": 0.6, "lines": 1},
+	## 高费流: reserve 24→14。24 意味着**两三轮不买任何装备**去等一件 4~5 费,
+	## 而低档商店根本不出 4~5 费 ⇒ 钱白存、装备空窗、被打死。14 仍显著高于均值。
+	"hi_cost":     {"cost_hi": 1.0,  "reserve": 14, "xp": 3, "refresh": 3, "eager": 0.3},
+	## 单线顶档流(要凑 9 件同类型开 3 档): xp 1→3。它是唯一可能打出顶档的流派,
+	## 却因为升不了级只有 12 个槽 —— 9 件同类型放不进去, 顶档【结构上不可能】。
+	"line_top":    {"focus": 1.0,    "reserve": 10, "xp": 3, "refresh": 4, "eager": 0.6, "lines": 1},
 	"dual_mid":    {"focus": 0.8,    "reserve": 10, "xp": 2, "refresh": 3, "eager": 0.4, "lines": 2},
 	"wide_syn":    {"wide": 1.0,     "reserve": 6,  "xp": 2, "refresh": 2, "eager": 0.2},
-	"low_flood":   {"cost_hi": -1.0, "reserve": 4,  "xp": 1, "refresh": 1},
-	"star_rush":   {"merge": 1.0,    "reserve": 6,  "xp": 1, "refresh": 2, "eager": 0.3},
+	"low_flood":   {"cost_hi": -1.0, "reserve": 6,  "xp": 2, "refresh": 1},
+	"star_rush":   {"merge": 1.0,    "reserve": 8,  "xp": 3, "refresh": 2, "eager": 0.3},
 	"fast_level":  {"xp": 6,         "reserve": 30, "refresh": 1},
-	"snowball":    {"xp": 0,         "reserve": 0,  "refresh": 2},
+	## 滚雪球: xp 0→2, reserve 0→4。原意是"攒利息"，但 xp:0 让它锁死在 5 级(槽位 8)。
+	## 低 reserve 保住"钱不留着、见货就买"的雪球感, 升级那一份是活下去的门票。
+	"snowball":    {"xp": 2,         "reserve": 4,  "refresh": 2},
 	"reroll_mad":  {"refresh": 6,    "eager": 0.9,  "reserve": 10, "xp": 2},
 	"no_reroll":   {"refresh": 0,    "eager": 0.0,  "reserve": 12, "xp": 3},
 	"leader_all":  {"minion_first": 0, "cost_hi": 0.5, "reserve": 14, "xp": 2, "refresh": 2},
-	"minion_up":   {"minion_first": 1, "reserve": 10, "xp": 2, "refresh": 2},
+	## 小将流: xp 2→3。装备先给小将本身就吃亏(小将属性低), 再叠上槽位少就是双重劣势,
+	## 达档8率 0%。给足槽位后它才是一条"能玩但偏门"的路, 而不是一条死路。
+	"minion_up":   {"minion_first": 1, "reserve": 10, "xp": 3, "refresh": 2},
 	"mix":         {"merge": 0.5, "wide": 0.5, "cost_hi": 0.2, "reserve": 12, "xp": 3, "refresh": 2},
-	"random":      {},                          # ★下界对照组: 全零 ⇒ 打分全平 ⇒ 退化成随机顺序
+	## ★下界对照组: 全零 ⇒ 打分全平 ⇒ 退化成随机顺序。
+	## ⚠ 它**不设 xp 键**, 走的是产品默认 `AI_MAX_XP_BUYS_PER_VISIT=3`(不是 0) ——
+	##   所以它能升到 10 级, 不是上面那条"xp=0 必死"的反例。`_assert_no_suicide_weights`
+	##   只查**显式写了 xp 的**, 别把它也算进去。
+	"random":      {},
 }
+
+
+## 逐条查【自杀权重】—— 跑之前就拦, 不要跑满 5 小时再从快照里发现。
+##
+## ★为什么要有这个函数: 2026-09-02 那一轮就是**参数配错了才跑**, 5 小时跑完
+##   才在验收报告里看出 hi_cost 的 4~5 费占比比随机组还低 17 个点。
+##   这类错误【跑之前 0.1 秒就能查出来】, 代价却是整轮重跑。
+##
+## ★判据落在**产品的真实约束**上, 不是我拍的数字:
+##   `team_equip_cap(level) = (level-1) × 2` ⇒ 升不了级就没有装备容量。
+##   所以"显式配了 xp 且 < MIN_XP_BUYS"就是自杀, 与流派意图无关。
+##
+## ★反向验证: 把 ARCHETYPES 里任意一条的 xp 改回 1(或 0), 跑 `tests/verify_bot_archetypes.gd`
+##   当场 FAIL 并打印是哪一条 —— 我改完亲自验过, 不是"应该会红"。
+static func check_suicide_weights() -> Array:
+	var bad: Array = []
+	for k in ARCHETYPES:
+		var w: Dictionary = ARCHETYPES[k]
+		## ⚠ 只查**显式写了 xp 的**。没写 xp 的(如 `random`)走产品默认
+		## `AI_MAX_XP_BUYS_PER_VISIT=3`, 不是 0 —— 把它算进来会造出一条假失败。
+		if not w.has("xp"):
+			continue
+		if int(w["xp"]) < MIN_XP_BUYS:
+			bad.append("%s: xp=%d < 下限 %d —— team_equip_cap=(等级-1)×2, 不买经验就没有装备容量(2026-09-03 实测: xp≤1 的流派最高只到 5~7 级/槽位 8~12, 达档8率 0.40%%)"
+				% [str(k), int(w["xp"]), MIN_XP_BUYS])
+	return bad
 
 
 ## 货架上这一件的出价分(越大越先买)。**纯函数** ⇒ 门禁直接调, 不跑整场模拟。
@@ -121,6 +181,17 @@ func _ready() -> void:
 	if gs == null or dr == null:
 		print("  [FAIL] 缺 autoload"); get_tree().quit(1); return
 	gs.test_mode = true
+
+	## ★★【跑之前】拦自杀权重 —— 用户 2026-09-03:「你这太失败了啊, 也就是说快照全部要
+	##   重新跑因为你装了蠢 ai」。上一轮就是配错参数才开跑, **5 小时跑完**才从结果里
+	##   看出 hi_cost 的 4~5 费占比比随机组还低 17 个点。这类错在这里 0.1 秒就查得出。
+	##   放在 `_ready` 最前面而不是收尾, 是因为收尾时那 5 小时已经花掉了。
+	var _bad: Array = check_suicide_weights()
+	if not _bad.is_empty():
+		print("  [FAIL] ARCHETYPES 里有 %d 条自杀权重, 拒绝开跑(免得白跑几小时):" % _bad.size())
+		for _b in _bad:
+			print("     · " + str(_b))
+		get_tree().quit(1); return
 
 	var n := int(OS.get_environment("COHORT_BOTS")) if OS.get_environment("COHORT_BOTS").is_valid_int() else 32
 	var max_rounds := int(OS.get_environment("COHORT_MAX_ROUNDS")) if OS.get_environment("COHORT_MAX_ROUNDS").is_valid_int() else 120

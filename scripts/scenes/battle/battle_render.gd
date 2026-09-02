@@ -478,21 +478,44 @@ func _update_overlay() -> void:
 			var lvb = u.get("level_badge", null)   # 036温泉蛋临时升级→等级框数字实时跳
 			if lvb != null and is_instance_valid(lvb) and lvb.get_child_count() > 0:
 				(lvb.get_child(0) as Label).text = str(battle._effective_level(u))
-		# 龟能条 (实时资源; 召唤体的 en_fill 已 hide)
+		# 龟能条 (实时资源; 召唤体的 en_fill 默认 hide, 自带龟能的除外 —— 见下)
 		var enf = u.get("en_fill", null)
-		if enf != null and is_instance_valid(enf) and enf.visible:
-			# 进度 = 最快要冷却好的那个技的进度 (1 - 剩余/总; 即"下一招"的充能条)
-			var prog = 0.0
-			var cds3: Dictionary = u.get("skill_cd", {})
-			for s in u.get("active_skills", []):
-				var st = str(s)
-				if not battle._IMPL_SKILLS.has(st):
-					continue
-				var base = battle._skill_cd(u, st)
-				var p = 1.0 - clampf(float(cds3.get(st, base)) / maxf(0.1, base), 0.0, 1.0)
-				if p > prog:
-					prog = p
-			enf.size.x = battle.BAR_W * prog
+		if enf != null and is_instance_valid(enf):
+			## ★★【自带龟能的召唤物】走自己那条账, 不走技能冷却。
+			##   由来(用户 2026-09-03:「为什么我没看到龟能条」): 斧头 096 是召唤物,
+			##   自带一条 140 点的 `energy`/`maxEnergy`(`axe_system.summon`), 攒满放主动。
+			##   而这里原来**只认 `active_skills` + `skill_cd`** ⇒ 斧头的 prog 恒 0;
+			##   `battle_spawn:853` 又把通用召唤体的 en_fill 直接 `visible=false`,
+			##   `axe_system` 里**零处** unhide ⇒ 既没条、也没人画。两个 bug 叠在一起。
+			##
+			## ★为什么把"显不显示"和"填多少"合到同一个条件里:
+			##   这个 bug 的形状就是二者分裂(一处 hide、另一处不填, 各自看都"没错")。
+			##   让**同一个事实**(自带龟能)同时决定两件事, 就不会再分裂出第三种状态。
+			##   同族: 2026-07-17 用户「随从我都没看到技能龟能」也是这条路, 当时只在
+			##   `battle_spawn:736` 对随从点对点 unhide 了一次 —— 手抄的副本必然落后
+			##   (memory [[fb-hand-rolled-copies-drift]]), 斧头是后加的就又漏了。
+			##
+			## ★判据用 `is_summon` 把【演示假人】挡在外面: `battle_spawn:197` 给带技能的
+			##   demo 假人也写 `maxEnergy` 并直接灌满, 只判 `maxEnergy > 0` 会让它们的
+			##   龟能条恒满(那是真龟, 该走下面的技能冷却那条)。
+			var own_max := float(u.get("maxEnergy", 0.0))
+			if u.get("is_summon", false) and own_max > 0.0:
+				if not enf.visible:
+					enf.visible = true
+				enf.size.x = battle.BAR_W * clampf(float(u.get("energy", 0.0)) / own_max, 0.0, 1.0)
+			elif enf.visible:
+				# 进度 = 最快要冷却好的那个技的进度 (1 - 剩余/总; 即"下一招"的充能条)
+				var prog = 0.0
+				var cds3: Dictionary = u.get("skill_cd", {})
+				for s in u.get("active_skills", []):
+					var st = str(s)
+					if not battle._IMPL_SKILLS.has(st):
+						continue
+					var base = battle._skill_cd(u, st)
+					var p = 1.0 - clampf(float(cds3.get(st, base)) / maxf(0.1, base), 0.0, 1.0)
+					if p > prog:
+						prog = p
+				enf.size.x = battle.BAR_W * prog
 		# 头顶世界坐标 → 屏幕 (bar_head_h 可按单位覆写·大单位如海盗船抬高)
 		var head = battle._world_pos(u["pos"], u["height"] + float(u.get("bar_head_h", 2.4)))
 		if battle._cam.is_position_behind(head):

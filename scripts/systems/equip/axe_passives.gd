@@ -16,12 +16,15 @@ extends RefCounted
 ##   `slam_settle()` / `cleave_settle()` / `sweep_targets()` 都是**纯结算/纯选靶**，
 ##   门禁直接调它们喂坐标验数，不必等任何 tween 跑完。
 const AE := preload("res://scripts/gamedata/axe_evolution.gd")
+const APV := preload("res://scripts/scenes/battle/axe_passive_vfx.gd")
 
 var battle = null
+var vfx = null                            # 演出(axe_passive_vfx.gd) —— **只画, 不结算**
 
 
 func _init(b) -> void:
 	battle = b
+	vfx = APV.new(b)
 
 
 ## 这只斧头解锁了几条【带行为的】被动。0=木斧(只有被动2)。
@@ -73,10 +76,30 @@ func bump_swing(ax: Dictionary) -> int:
 	return n
 
 
+## 这一下普攻**是哪一招**: "cleave"(竖劈) / "sweep"(横扫) / ""(都不是, 档位没解锁)。
+##
+## ★★为什么要有它 —— 演出接线时才暴露的问题(2026-09-03):
+##   `cleave_settle` 的闸是 `_pv < 2 or swing % 2 != 0`,
+##   `sweep_targets` 的闸是 `_pv < 3 or swing % 2 != 1`。
+##   演出侧要知道"这一下播哪张帧表", 如果在 `axe_system` 里再写一遍 `swing % 2`,
+##   就是第三份副本 —— 抄一次永远落后一次(memory [[fb-hand-rolled-copies-drift]])。
+##   ⇒ 判断收在这里, 结算侧与演出侧读同一个答案。
+##
+## ★不能拿 `sweep_targets` 的返回名单当"是不是横扫": 横扫**扫空**(附近没别的敌人)
+##   照样是横扫, 招式发生了、动画就该播。拿名单判会让"单挑时横扫永远不播",
+##   而那正是最容易被当成"横扫没做"的情形。
+func swing_kind(ax: Dictionary, swing: int) -> String:
+	var pv: int = _pv(ax)
+	if swing % 2 == 0:
+		return "cleave" if pv >= 2 else ""
+	return "sweep" if pv >= 3 else ""
+
+
 ## 竖劈(被动 4·偶数次普攻): 额外 5% 目标最大生命【真实伤害】+ 10 层流血。
 ## 返回真伤数值(0 = 这一下不是竖劈)。
 func cleave_settle(ax: Dictionary, tgt: Dictionary, swing: int) -> float:
-	if _pv(ax) < 2 or swing % 2 != 0:
+	## ★闸走 swing_kind() —— 与演出侧读同一个答案, 不各写一遍 swing % 2
+	if swing_kind(ax, swing) != "cleave":
 		return 0.0
 	if not (tgt is Dictionary) or not tgt.get("alive", false):
 		return 0.0
@@ -93,7 +116,8 @@ func cleave_settle(ax: Dictionary, tgt: Dictionary, swing: int) -> float:
 ## 横扫(被动 5·奇数次普攻): 以斧头为心、朝目标方向的 180° 扇形内的敌人。
 ## ★纯选靶 —— 返回名单, 伤害由调用方按普攻伤害施加。门禁直接摆位置验名单。
 func sweep_targets(ax: Dictionary, tgt: Dictionary, swing: int) -> Array:
-	if _pv(ax) < 3 or swing % 2 != 1:
+	## ★闸走 swing_kind() —— 同上
+	if swing_kind(ax, swing) != "sweep":
 		return []
 	if not (tgt is Dictionary):
 		return []
@@ -172,6 +196,9 @@ func begin_charge(ax: Dictionary) -> bool:
 	## 70% 减伤 —— 走既有的 damage_reduction 通道(_mitigate_incoming 读它)
 	ax["_axe_dr_bak"] = float(ax.get("damage_reduction", 0.0))
 	ax["damage_reduction"] = maxf(float(ax.get("damage_reduction", 0.0)), AE.CHARGE_DR)
+	## ★演出: 地面梯形预警。**它就是判定区**(见 axe_passive_vfx.charge_field 的头注),
+	##   不是一个"大概那么大"的圆。起手 h=CHARGE_H_PER_STEP(第一格), 之后由 tick_charge 长。
+	ax["_axe_field"] = vfx.charge_field(ax, ax["_axe_charge_dir"], AE.CHARGE_H_PER_STEP)
 	return true
 
 
@@ -194,6 +221,10 @@ func tick_charge(ax: Dictionary, delta: float) -> int:
 		_end_charge(ax)
 		return -1
 	hold_eff(ax, delta)                   # 蓄力期间效率计时中断
+	## ★演出跟着判定长: 高度取 `AE.charge_height()` —— 与 slam_settle 里用的**同一个函数**,
+	##   所以亮区边界永远等于伤害边界。各算各的必然漂(memory [[fb-hand-rolled-copies-drift]])。
+	vfx.charge_update(ax.get("_axe_field", null), ax,
+		ax.get("_axe_charge_dir", Vector2.RIGHT), AE.charge_height(charge_elapsed(ax)))
 	if charge_elapsed(ax) < AE.CHARGE_TIME:
 		return 0
 	return slam_settle(ax)
@@ -206,6 +237,10 @@ func slam_settle(ax: Dictionary) -> int:
 	var org: Vector2 = ax.get("pos", Vector2.ZERO)
 	var dir: Vector2 = ax.get("_axe_charge_dir", Vector2.RIGHT)
 	var dmg: int = maxi(1, int(round(float(ax.get("atk", 0.0)) * AE.SLAM_ATK)))
+	## ★演出画在【结算用的同一组 org/dir/h】上 —— 三个量都在手边, 不必再算一遍。
+	##   各算各的必然漂(memory [[fb-hand-rolled-copies-drift]]), 而这一漂就是"演出≠判定"。
+	vfx.slam(ax, dir, h)
+	ax["_axe_slam_flash"] = true      # ★告诉 _end_charge: 这次是【砸下】, 梯形要闪一下再消失
 	var n := 0
 	for o in battle._targeting._targetable_enemies(ax):
 		if not AE.in_trapezoid(org, dir, h, o.get("pos", Vector2.ZERO)):
@@ -220,6 +255,12 @@ func slam_settle(ax: Dictionary) -> int:
 
 
 func _end_charge(ax: Dictionary) -> void:
+	## ★梯形在**所有**退出路径上都要收 —— 砸下 / 斧头死 / 被打断都走这里。
+	##   只在 slam_settle 里收会漏掉"斧头蓄力中被打死", 留一块亮区永远挂在地上。
+	## ★砸下 → 闪一下再消失(让范围与冲击同框出现一次); 其它退出路径(死/打断) → 直接抹掉。
+	vfx.charge_clear(ax.get("_axe_field", null), bool(ax.get("_axe_slam_flash", false)))
+	ax.erase("_axe_slam_flash")
+	ax.erase("_axe_field")
 	ax.erase("_axe_charge_t0")
 	if ax.has("_axe_dr_bak"):
 		ax["damage_reduction"] = float(ax["_axe_dr_bak"])       # 还原, 不许把 70% 留下

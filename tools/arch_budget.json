@@ -7,7 +7,7 @@
   "autoload"
  ],
  "file_ratchet": {
-  "scripts/scenes/RealtimeBattle3DScene.gd": 8928
+  "scripts/scenes/RealtimeBattle3DScene.gd": 8925
  },
  "_debt_note": "8476→8629→8461(2026-07-26·已还债): 训龟大师返工先把瞄准指示器+施法分派+光环加进主文件(8629·超档), 同日把【瞄准指示器整块】(_on_spell_aim/_disc_off_to_field/_draw_aim_indicator/_aim_band/_ring/_arrow/_free/_clear/_begin/_end/_update_q_aim ~168行)抽到 scripts/scenes/battle/battle_aim.gd(RefCounted+battle注入·状态仍挂场景)→档降到8461(反而低于原8476)。仍留主文件的施法分派(_cast_fury/whistle/glacier)+_buff_aura/_body_glow 属sim-adjacent薄封装, 暂不动。见 memory project-god-file-decomposition。",
  "func_ratchet": {

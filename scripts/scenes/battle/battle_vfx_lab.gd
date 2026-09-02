@@ -79,6 +79,10 @@ extends Node
 ##    让配置表里的 `enemy_dist` 真的等于"隔多少码"。
 
 const VfxLabCases := preload("res://scripts/gamedata/vfxlab_cases.gd")
+## ★斧头档位/造物: 台子要按 case 摆档, 阈值一律从 AxeEvolution 现读(别手抄一份镜像)。
+const AxeEvo := preload("res://scripts/gamedata/axe_evolution.gd")
+const AE_STAGES := AxeEvo.STAGES
+const AE_FINAL_NEED := AxeEvo.FINAL_NEED
 
 ## 相机 fov 下限。Godot 允许到 1°, 留一点余量防浮点抖。
 const FOV_MIN := 1.2
@@ -190,6 +194,45 @@ func pre_build() -> bool:
 		OS.set_environment("EQDEMO_EQUIP2", str(cfg["eq2"]))   # ★第二件【不同】装备: 凑羁绊档位
 	OS.set_environment("BLACKMAP", "1")     # 环境背景纯黑(复用已有 env)
 	OS.set_environment("NO_TRAINER", "1")   # 场外监视者是干扰项, 不要
+
+	## ★斧头(096)专用: 它的档位/造物不是装备星级, 而是 `GameState.axe_stage` / `axe_final`
+	##   (`axe_system._gs_int/_gs_str` 从那里现读)。用户 2026-09-03:「斧头不是随着被动
+	##   有各种技能呢？都开窗口看看」—— 九阶各解锁不同被动(石斧开被动3/铁斧4/金斧5/钻石斧6),
+	##   台子必须能逐阶摆, 否则永远只看得到木斧那一档。
+	## ★写在 pre_spawn: 召唤是在建场时发生的(`axe_system.summon` 把 pv 钉在召唤物身上),
+	##   建完场再改 GameState 对**已在场的那只**毫无作用(它登场那一刻就定死了)。
+	## ★★★台子一律【不写玩家存档】—— 2026-09-03 血泪, 而且是门禁替我抓到的。
+	##   `GameState.save()` 的守卫是 `if test_mode: return`, 而 `test_mode` 只在
+	##   **headless** 时自动置位(GameState.gd:959「headless(测试/仿真/导出) → 绝不写盘」)。
+	##   VFXLAB **必须渲染 ⇒ 不是 headless ⇒ test_mode 是 false** ——
+	##   我给台子加了写 `axe_stage` 的能力, 开了九个窗口, 于是把真存档改成了
+	##   `axe_stage:4 / axe_final:"holo" / axe_exp_total:400`。
+	##   表现是 `verify_axe` 当场红:「斧头最大生命 = 500 期望 · 实测 1500」——
+	##   那是钻石斧的身板, 测试读的是被污染的存档。
+	## ⇒ 在**任何**写 GameState 之前置位。放在这里(而不是只包住 axe 那几行)是因为
+	##   台子将来还会加别的"摆状态"能力, 每加一处再想起来一次 = 迟早漏。
+	var _gs_all = battle.get_node_or_null("/root/GameState")
+	if _gs_all != null and not bool(_gs_all.get("test_mode")):
+		_gs_all.set("test_mode", true)
+		print("[VFXLAB] GameState.test_mode = true (台子绝不写玩家存档)")
+
+	if cfg.has("axe_stage") or cfg.has("axe_final"):
+		var _gs = battle.get_node_or_null("/root/GameState")
+		if _gs != null:
+			if cfg.has("axe_stage"):
+				_gs.set("axe_stage", int(cfg["axe_stage"]))
+				## 经验值也要给够 —— 召唤物的血/攻走 `minion_hp(exp_total, pv)`,
+				## 只改档位不给经验, 出来的是"钻石斧的被动 + 木斧的身板"。
+				var _need: int = 0
+				for _i in range(1, mini(int(cfg["axe_stage"]) + 1, AE_STAGES.size())):
+					_need = maxi(_need, int(AE_STAGES[_i]["need"]))
+				_gs.set("axe_exp_total", maxi(int(_gs.get("axe_exp_total") if _gs.get("axe_exp_total") != null else 0), _need))
+			if cfg.has("axe_final"):
+				_gs.set("axe_final", str(cfg["axe_final"]))
+				_gs.set("axe_stage", AE_STAGES.size() - 1)   # 造物必然在钻石斧之后
+				_gs.set("axe_exp_total", int(AE_FINAL_NEED))
+			print("[VFXLAB] 斧头档位: stage=%s final=%s exp=%s"
+				% [str(_gs.get("axe_stage")), str(_gs.get("axe_final")), str(_gs.get("axe_exp_total"))])
 
 	if OS.has_environment("VFXLAB_SPEED"):
 		Engine.time_scale = maxf(0.02, float(OS.get_environment("VFXLAB_SPEED")))

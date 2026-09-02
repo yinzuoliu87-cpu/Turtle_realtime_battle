@@ -12,6 +12,36 @@ extends Node
 #   用 id 查表会让普通小将也套上精英的帧。见 _anim_key()。
 
 const SCENE_PATH := "res://scripts/scenes/RealtimeBattle3DScene.gd"
+## ★★2026-09-03: 动作表的判据从【源码正则】改成【读真常量】。
+##   由来: `ACTION_ELITE` 整表从上帝文件搬到 `scripts/gamedata/action_elite.gd`
+##   (主文件超 arch_budget, 按 CLAUDE.md §5 落位表挪走), 正则当场全部落空 ——
+##   本测试自己的分母断言「节拍校对一个都没跑到 — 空检查不是通过」把它抓住了。
+##   CLAUDE.md §2 早写过这个坑:「审计器读战斗源码找数值, 函数外迁到新文件后
+##   它找不到 = 误报」。⇒ 读常量跟着引擎实际读到的那份走, 表放哪个文件都不影响。
+const RBS := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
+
+
+## 按名字取动作表。★`Script.get(名字)` 读的是属性, const 不在其中 ⇒ 走 constant_map。
+##
+## ★★三张表**住在三个不同的文件**里 —— 这也是"读常量比读源码可靠"的直接证据:
+##     ACTION_MELEE  → RealtimeBattle3DScene.gd
+##     ACTION_ELITE  → scripts/gamedata/action_elite.gd(2026-09-03 搬走)
+##     ACTION_RANGED → scripts/gamedata/minion_codex.gd
+##   原来的 `_fps_in_table` 对**主文件源码**跑正则 `"<act>": ["...", fps]`,
+##   **完全不检查表名** ⇒ 它在整份源码里瞎找, ACTION_RANGED 明明不在主文件里
+##   却"解析到 1 个"。那是宽一格的假判据(memory [[fb-judge-must-fit-the-shape]]),
+##   换成读常量之后才暴露出来。
+const MinionCodexRef := preload("res://scripts/gamedata/minion_codex.gd")
+const ActionEliteRef := preload("res://scripts/gamedata/action_elite.gd")
+
+static func _consts() -> Dictionary:
+	var out: Dictionary = (RBS as Script).get_script_constant_map().duplicate()
+	## 后并入的不覆盖主文件已有的同名键(主文件的 ACTION_ELITE 就是 ActionElite.TABLE 本身)
+	for src2 in [(MinionCodexRef as Script), (ActionEliteRef as Script)]:
+		for k in src2.get_script_constant_map():
+			if not out.has(k):
+				out[k] = src2.get_script_constant_map()[k]
+	return out
 
 # 触发点函数名 → 期望在函数体里出现的 _elite_anim 动作名
 const HOOKS := {
@@ -108,11 +138,15 @@ func _check_timing_group(src: String, dir_name: String, table: String, beats: Di
 
 
 ## 从指定动作表里抠某动作的 fps
-func _fps_in_table(src: String, table: String, act: String) -> float:
-	var re := RegEx.new()
-	re.compile("\"" + act + "\"\\s*:\\s*\\[\\s*\"[^\"]+\"\\s*,\\s*([0-9.]+)")
-	var m := re.search(src.substr(maxi(0, src.find("const " + table))))
-	return float(m.get_string(1)) if m != null else 0.0
+func _fps_in_table(_src: String, table: String, act: String) -> float:
+	## ★读真常量, 不解析源码(见文件头 RBS 那段注释)。
+	var d = _consts().get(table, null)
+	if not (d is Dictionary):
+		return -1.0
+	var e = (d as Dictionary).get(act, null)
+	if not (e is Array) or (e as Array).size() < 2:
+		return -1.0
+	return float((e as Array)[1])
 
 
 ## ⑤ 动作图的朝向必须与 idle 一致 (2026-07-22 用户「方向是否正确」抓到)
@@ -397,14 +431,22 @@ func _check_sheets_exist(src: String) -> void:
 
 
 ## 从两张表里抠出 pets/animations/elite/*.png
-func _sheet_paths(src: String) -> Array[String]:
+func _sheet_paths(_src: String) -> Array[String]:
+	## ★读真常量: 把 ACTION_ELITE / ACTION_ATTACK 两张表里的 elite 动作图路径掏出来。
+	##   原来是对主文件源码跑正则 `pets/animations/elite/*.png`, 表一搬家就全落空。
 	var out: Array[String] = []
-	var re := RegEx.new()
-	re.compile("pets/animations/elite/[A-Za-z0-9_]+\\.png")
-	for m in re.search_all(src):
-		var s := m.get_string()
-		if not out.has(s):
-			out.append(s)
+	var cs := _consts()
+	for tbl in ["ACTION_ELITE", "ACTION_ATTACK"]:
+		var d = cs.get(tbl, null)
+		if not (d is Dictionary):
+			continue
+		for k in (d as Dictionary):
+			var e = (d as Dictionary)[k]
+			if not (e is Array) or (e as Array).is_empty():
+				continue
+			var pth := str((e as Array)[0])
+			if pth.contains("pets/animations/elite/") and not out.has(pth):
+				out.append(pth)
 	return out
 
 

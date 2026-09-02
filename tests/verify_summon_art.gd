@@ -282,18 +282,37 @@ func _t_channels() -> void:
 		["攻击", "ACTION_ATTACK", "eq-axe-attack.png"],
 		["技能释放", "ACTION_ELITE", "eq-axe-cast.png"],
 	]
+	## ★★2026-09-03 改判法: 原来是**从主文件源码里 grep `const XXX := {`**,
+	##   于是 `ACTION_ELITE` 一搬到 `scripts/gamedata/action_elite.gd`(主文件超预算,
+	##   按 CLAUDE.md §5 落位表挪走), 这条就报「表解析到 0 字」—— **误报**。
+	##   CLAUDE.md §2 早写过同一个坑:「审计器读战斗源码找装备数值, 函数外迁到新文件后
+	##   它找不到 = 误报」。
+	## ⇒ 改成**读真实的常量字典**(`RBS.ACTION_ELITE` 等)。它跟着引擎实际读到的那份走,
+	##   表放在哪个文件都不影响; 而且这才是 memory [[fb-weld-visual-lessons-into-gate]]
+	##   说的「源码子串匹配是假判据, 要走真函数」。
+	## ★按名字取 const 要走 `get_script_constant_map()` —— `Script.get(名字)` 读的是
+	##   **属性**, const 不在其中(第一版这么写, 测试直接崩)。
+	var consts: Dictionary = (RBS as Script).get_script_constant_map()
 	for row in want:
 		var tbl: String = str(row[1])
-		var i: int = src.find("const %s := {" % tbl)
-		if i < 0:
-			i = src.find("const %s := {" % tbl)
-		if tbl == "_EQ_BODY_SPR":
-			i = src.find("_EQ_BODY_SPR := {")
-		var j: int = src.find("}", i) if i >= 0 else -1
-		var body: String = src.substr(i, j - i) if (i >= 0 and j > i) else ""
+		var d = consts.get(tbl, null)
+		var body := ""
+		var n_items := 0
+		if d is Dictionary:
+			n_items = (d as Dictionary).size()
+			for k in (d as Dictionary):
+				body += "%s=%s;" % [str(k), str((d as Dictionary)[k])]
+		else:
+			## `_EQ_BODY_SPR` 是 **var** 不是 const ⇒ 不在 constant_map 里,
+			## 只能回退到源码解析。★这条回退**只对 var 生效**: const 一律走上面那条,
+			## 表搬到哪个文件都不影响(这正是本次改判法的目的)。
+			var i: int = src.find("%s := {" % tbl)
+			var j: int = src.find("}", i) if i >= 0 else -1
+			body = src.substr(i, j - i) if (i >= 0 and j > i) else ""
+			n_items = body.length()
 		_ok("★%s 真的登记在 %s 里(素材在盘上 ≠ 引擎读得到)" % [str(row[0]), tbl],
 			body != "" and body.contains(str(row[2])),
-			"表解析到 %d 字" % body.length())
+			"表拿到 %d 项/字(0 = 取不到, 空检查)" % n_items)
 	## ★★没有 death / 没有 hurt —— 用户两次点名。两张表里一个 axe 键都不许有。
 	for tbl2 in ["ACTION_HURT", "ACTION_DEATH"]:
 		var i2: int = src.find("const %s := {" % tbl2)
