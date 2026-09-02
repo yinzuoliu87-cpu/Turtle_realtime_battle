@@ -28,7 +28,77 @@ const SKILLS := ["magic_stone", "hook", "fury_potion", "whistle", "glacier"]
 ## ★"synergy"(羁绊流) 2026-08-12 加入: 原三种买法**一件都不看羁绊** ——
 ##   机器人于是永远凑不出类型档位, 而羁绊是 2026-08-03 起【唯一】的构筑维度。
 ##   快照池里全是"无羁绊队" ⇒ 玩家打到的鬼影不体现这套系统。补上第四种玩家原型。
+## ★★旧的四种(保留常量只为老日志能读懂), 实际已被下面的【策略向量】取代。
+##   旧四种的问题(用户 2026-09-02:「别弄蠢ai」「只有6种流派也少了」):
+##   它们**只作用在「货架 10 格按什么顺序买」一个决策点**, 而商店回合里另外四个决策点
+##   (买多少经验 / 留多少币 / 刷不刷新 / 装备给统领还是小将)**全是写死的** ——
+##   于是"策略"其实只是排序偏好, 造不出真正不同的流派。
 const STRATEGIES := ["merge_first", "greedy_cost", "random", "synergy"]
+
+## ══════════════════════════════════════════════════════════════
+##  策略向量 —— 800 支要是 800 个样子, 不是 14 个
+## ══════════════════════════════════════════════════════════════
+## 每只机器人抽一个【命名锚点】再加**随机扰动** ⇒ 同一锚点下的几十支也各不相同。
+##
+## ★核心张力(这游戏里真实存在的分流, 不是我编的):
+##   羁绊按 **id 去重**(`Phase2Types.calc_active`) ⇒ 买第 2、3 张同 id 对羁绊**零贡献**
+##   ⇒ **「追三合一★3」与「追羁绊档位」是直接冲突的两条路**。`merge` 与 `focus/wide` 就是这条轴。
+##
+## 权重字段:
+##   cost_hi     −1..+1  费用取向(+1 只买 4~5 费 / −1 只买 1~2 费)
+##   focus       0..1    单线专注: 只补 focus_types 里那几类缺的 id
+##   wide        0..1    铺开: 优先推"离下一档最近"的类型(靠 syn_key)
+##   merge       0..1    追三合一(与 focus/wide 冲突, 见上)
+##   reserve     int     买经验前先留给装备的币线(原写死 P2.AI_GEAR_RESERVE=12)
+##   xp          int     每次逛店最多买几次经验(原写死 P2.AI_MAX_XP_BUYS_PER_VISIT=3)
+##   refresh     int     刷新上限(原写死 MAX_REFRESH=2)
+##   eager       0..1    **主动**刷新的概率(原来只有"买不到才刷")
+##   minion_first 0/1    装备先给小将还是先给统领(原写死: 先统领)
+const ARCHETYPES := {
+	"hi_cost":     {"cost_hi": 1.0,  "reserve": 24, "xp": 1, "refresh": 3, "eager": 0.3},
+	"line_top":    {"focus": 1.0,    "reserve": 8,  "xp": 1, "refresh": 4, "eager": 0.6, "lines": 1},
+	"dual_mid":    {"focus": 0.8,    "reserve": 10, "xp": 2, "refresh": 3, "eager": 0.4, "lines": 2},
+	"wide_syn":    {"wide": 1.0,     "reserve": 6,  "xp": 2, "refresh": 2, "eager": 0.2},
+	"low_flood":   {"cost_hi": -1.0, "reserve": 4,  "xp": 1, "refresh": 1},
+	"star_rush":   {"merge": 1.0,    "reserve": 6,  "xp": 1, "refresh": 2, "eager": 0.3},
+	"fast_level":  {"xp": 6,         "reserve": 30, "refresh": 1},
+	"snowball":    {"xp": 0,         "reserve": 0,  "refresh": 2},
+	"reroll_mad":  {"refresh": 6,    "eager": 0.9,  "reserve": 10, "xp": 2},
+	"no_reroll":   {"refresh": 0,    "eager": 0.0,  "reserve": 12, "xp": 3},
+	"leader_all":  {"minion_first": 0, "cost_hi": 0.5, "reserve": 14, "xp": 2, "refresh": 2},
+	"minion_up":   {"minion_first": 1, "reserve": 10, "xp": 2, "refresh": 2},
+	"mix":         {"merge": 0.5, "wide": 0.5, "cost_hi": 0.2, "reserve": 12, "xp": 3, "refresh": 2},
+	"random":      {},                          # ★下界对照组: 全零 ⇒ 打分全平 ⇒ 退化成随机顺序
+}
+
+
+## 货架上这一件的出价分(越大越先买)。**纯函数** ⇒ 门禁直接调, 不跑整场模拟。
+## `own` = id → 已有张数; `tcount` = 类型 → 已有【不同 id】件数; `lines` = 该机器人锁定的类型。
+static func buy_score(edef, w: Dictionary, own: Dictionary, tcount: Dictionary, lines: Array) -> float:
+	if not (edef is Dictionary):
+		return 0.0
+	var eid := str((edef as Dictionary).get("id", ""))
+	var cost := float((edef as Dictionary).get("cost", 1))
+	var seen := {}
+	for k in own:
+		seen[k] = true
+	var s := 0.0
+	## 费用取向: cost 1~5 映射到 −1..+1, 乘权重(正=偏高费, 负=偏低费)
+	s += float(w.get("cost_hi", 0.0)) * ((cost - 3.0) / 2.0) * 6.0
+	## 追三合一: 已有 1~2 张的同 id 最值钱(第 3 张直接成 ★2/★3)
+	var have := int(own.get(eid, 0))
+	if have == 2:
+		s += float(w.get("merge", 0.0)) * 12.0
+	elif have == 1:
+		s += float(w.get("merge", 0.0)) * 7.0
+	## 单线专注: 只有"锁定类型里还缺的 id"才加分(已有的同 id 对羁绊零贡献)
+	var typ := str(Phase2Types.type_of(eid))
+	if float(w.get("focus", 0.0)) > 0.0 and typ != "" and lines.has(typ) and not seen.has(eid):
+		s += float(w.get("focus", 0.0)) * 15.0
+	## 铺开: 直接用既有的 syn_key(离下一档越近越高), 它自己已经处理了"重复 id 无收益"
+	if float(w.get("wide", 0.0)) > 0.0:
+		s += float(w.get("wide", 0.0)) * syn_key(edef, seen, tcount) * 0.12
+	return s
 const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")
 const FRAME_CAP := 60000
 const SHELF := 10
@@ -39,6 +109,7 @@ var _bots: Array = []
 var _snapshots: Array = []      # 产出的真实快照(新池原料)
 var _battle_log: Array = []
 var _round := 0
+var _shard := -1                # 分片号(-1 = 非分片模式, 行为与从前逐字一致)
 
 
 # ════════════════════ 入口 ════════════════════
@@ -54,7 +125,15 @@ func _ready() -> void:
 	var n := int(OS.get_environment("COHORT_BOTS")) if OS.get_environment("COHORT_BOTS").is_valid_int() else 32
 	var max_rounds := int(OS.get_environment("COHORT_MAX_ROUNDS")) if OS.get_environment("COHORT_MAX_ROUNDS").is_valid_int() else 120
 	var st := OS.get_environment("TURTLE_SEED")
-	_rng.seed = int(st) if st.is_valid_int() else 20260727
+	## ★★分片(COHORT_SHARD): 多进程并行跑同一批机器人时用。
+	##   两件事必须一起做, 少一件整批就废:
+	##   ① **每片种子必须不同** —— 否则各片造出一模一样的机器人、打一模一样的场,
+	##      跑 16 片只是把同一份结果复制 16 遍。
+	##   ② **ghost_id 必须带片号** —— 原来是 `coh_<bot>_b<battles>`, 而 bot 编号每片都从 0 开始,
+	##      合并时必然撞 id(memory [[fb-id-without-owner-dimension]]: 单机够用的 id 一接共享就塌)。
+	_shard = int(OS.get_environment("COHORT_SHARD")) if OS.get_environment("COHORT_SHARD").is_valid_int() else -1
+	var base_seed: int = int(st) if st.is_valid_int() else 20260727
+	_rng.seed = base_seed if _shard < 0 else (base_seed + _shard * 1000003)   # 大质数错开, 不是 +1(相邻种子的前几个数会相近)
 
 	var all_ids: Array = []
 	for p in dr.launch_pets:
@@ -66,7 +145,7 @@ func _ready() -> void:
 		_bots.append(_make_bot(i, all_ids))
 
 	print("=== 队列模拟: %d 只机器人, 全部 0 场 8 命起步, 输光即出局 ===" % n)
-	print("  龟池 %d 只 | 技能五选一 | 策略 %s | 种子 %d" % [all_ids.size(), str(STRATEGIES), int(_rng.seed)])
+	print("  龟池 %d 只 | 技能五选一 | 策略 %s | 种子 %d" % [all_ids.size(), str(ARCHETYPES.keys()), int(_rng.seed)])
 	var sc := {}
 	var lm := {}
 	var sk := {}
@@ -133,12 +212,34 @@ func _make_bot(i: int, all_ids: Array) -> Dictionary:
 			var front_bias: float = 0.75 if mi == 0 else 0.35
 			arr.append({"kind": "minion", "role": ("front" if _rng.randf() < front_bias else "back")})
 		lineup[lane] = arr
+	## ★抽一个命名锚点, 再**加扰动** —— 不加的话 800 支只有 14 个样子。
+	##   扰动只动数值项(±35%), 不动 minion_first 这种开关(那是二选一, 抖了就没意义)。
+	var names: Array = ARCHETYPES.keys()
+	var arch := str(names[_rng.randi() % names.size()])
+	var w: Dictionary = (ARCHETYPES[arch] as Dictionary).duplicate()
+	for k in ["cost_hi", "focus", "wide", "merge", "eager"]:
+		if w.has(k):
+			w[k] = float(w[k]) * (0.65 + 0.70 * _rng.randf())
+	for k in ["reserve", "xp", "refresh"]:
+		if w.has(k):
+			w[k] = maxi(0, int(round(float(w[k]) * (0.65 + 0.70 * _rng.randf()))))
+	## 单线/双线: 从真实类型表里抽 lines 个锁定类型(不写死, 表变了它跟着变)
+	var lines: Array = []
+	var nl: int = int(w.get("lines", 0))
+	if nl > 0:
+		var tys: Array = Phase2Types.TYPES.keys()
+		for _q in range(nl):
+			var lt := str(tys[_rng.randi() % tys.size()])
+			if not lines.has(lt):
+				lines.append(lt)
 	return {
 		"id": i,
 		"name": "机器人%02d" % i,
 		"team": team,
 		"skill": SKILLS[_rng.randi() % SKILLS.size()],
-		"strategy": STRATEGIES[_rng.randi() % STRATEGIES.size()],
+		"strategy": arch,                 # 锚点名(进快照的 _strategy, 便于按流派对账)
+		"w": w,                           # 策略向量(锚点 + 扰动)
+		"lines": lines,                   # 单线/双线锁定的羁绊类型
 		"lineup": lineup,
 		"battles": 0, "hearts": 8, "coins": 0, "level": 1, "xp": 0, "wins": 0,
 		"bench": [], "equipped": {},
@@ -246,7 +347,7 @@ func _fight(gs, a: Dictionary, b: Dictionary) -> void:
 	for who in [a, b]:
 		_load(gs, who)
 		_shop(gs, who)
-		_equip(gs)
+		_equip(gs, who)
 		_save(gs, who)
 		if int(who["hearts"]) <= 0 and who["alive"]:
 			who["alive"] = false
@@ -330,10 +431,13 @@ func _snapshot_of(bot: Dictionary, label: String) -> Dictionary:
 		levels[str(pid)] = 1 + int((bot["candy_levels"] as Dictionary).get(str(pid), 0))
 	return {
 		"schema_ver": 1,
-		"ghost_id": "coh_%d_b%d" % [int(bot["id"]), int(bot["battles"])],
+		## ★片号进 id: 非分片模式(片号 -1)保持原样 `coh_<bot>_b<n>`, 老数据不受影响。
+		"ghost_id": ("coh_%d_b%d" % [int(bot["id"]), int(bot["battles"])]) if _shard < 0
+			else ("coh_s%d_%d_b%d" % [_shard, int(bot["id"]), int(bot["battles"])]),
 		"is_bot": false,
 		"bracket": Backend.bracket_for_battles(int(bot["battles"])),
-		"profile": {"name": label, "avatar": str((bot["team"] as Array)[0]), "id": "COH%02d" % int(bot["id"])},
+		"profile": {"name": label, "avatar": str((bot["team"] as Array)[0]),
+			"id": ("COH%02d" % int(bot["id"])) if _shard < 0 else ("COH%d-%02d" % [_shard, int(bot["id"])])},
 		"leaders": (bot["team"] as Array).duplicate(),
 		"lane_assign": lane_assign,
 		"minions": minions,
@@ -413,26 +517,36 @@ func _shop(gs, bot: Dictionary) -> void:
 				gs.consume_temp_leveler(i)
 
 	# ③ 买经验(照抄项目自己的"像玩家"口径 phase2_config.gd:53)
+	## ★★这两个上限原来读的是写死的 P2.AI_MAX_XP_BUYS_PER_VISIT / P2.AI_GEAR_RESERVE ——
+	##   于是「速升级流」和「滚雪球流」在旧实现里**根本不可能存在**(所有机器人升级节奏一模一样)。
+	##   现在由策略向量给; 向量里没有这两项时**缺省仍是项目原口径**(行为不变)。
+	var w_s: Dictionary = bot.get("w", {})
+	var xp_cap: int = int(w_s.get("xp", P2.AI_MAX_XP_BUYS_PER_VISIT))
+	var reserve: int = int(w_s.get("reserve", P2.AI_GEAR_RESERVE))
 	var xp_buys := 0
-	while xp_buys < P2.AI_MAX_XP_BUYS_PER_VISIT and int(gs.season_level) < P2.MAX_LEVEL \
-			and int(gs.meta_deepsea_coins) >= P2.AI_GEAR_RESERVE + P2.BUY_XP_COST:
+	while xp_buys < xp_cap and int(gs.season_level) < P2.MAX_LEVEL \
+			and int(gs.meta_deepsea_coins) >= reserve + P2.BUY_XP_COST:
 		if not gs.buy_season_xp():
 			break
 		xp_buys += 1
 
 	# ④ 买装备 (买不到东西就刷新, 最多 MAX_REFRESH 次 —— 真玩家会刷)
+	## ★★刷新原来是"买不到东西才刷、最多 2 次"⇒「疯狂刷新流」在旧实现里不存在。
+	##   现在上限由向量给; `eager` 让它**买到了也可能继续刷**(真玩家会为了凑羁绊硬刷)。
+	var rf_cap: int = int(w_s.get("refresh", MAX_REFRESH))
+	var eager: float = float(w_s.get("eager", 0.0))
 	var refreshed := 0
 	while true:
-		var bought := _buy_once(gs, str(bot["strategy"]))
-		if bought > 0:
+		var bought := _buy_once(gs, bot.get("w", {}), bot.get("lines", []))
+		if bought > 0 and _rng.randf() >= eager:
 			break
-		if refreshed >= MAX_REFRESH or int(gs.meta_deepsea_coins) < 2 + 1:
+		if refreshed >= rf_cap or int(gs.meta_deepsea_coins) < 2 + 1:
 			break
 		gs.meta_deepsea_coins -= 2      # REFRESH_COST(ShopScene.gd:9)
 		refreshed += 1
 
 
-func _buy_once(gs, strategy: String) -> int:
+func _buy_once(gs, w: Dictionary, lines: Array) -> int:
 	var maxed := {}
 	for it in _all_items(gs):
 		if int((it as Dictionary).get("star", 1)) >= 3:
@@ -448,47 +562,28 @@ func _buy_once(gs, strategy: String) -> int:
 	for i in range(offer.size()):
 		if offer[i] != null:
 			idxs.append(i)
-	match strategy:
-		"random":
-			for i in range(idxs.size() - 1, 0, -1):
-				var j: int = _rng.randi() % (i + 1)
-				var t = idxs[i]; idxs[i] = idxs[j]; idxs[j] = t
-		"greedy_cost":
-			idxs.sort_custom(func(a, b): return int(offer[a].get("cost", 1)) > int(offer[b].get("cost", 1)))
-		"synergy":
-			## 羁绊流: 优先买【能把某个类型推过下一档阈值】的件, 其次是离阈值最近的类型。
-			## 计数口径与 Phase2Types.calc_active 一致(按 id 去重) ⇒ 重复 id 不涨羁绊数。
-			var seen_ids := {}
-			var tcount := {}
-			for it in _all_items(gs):
-				var iid := str((it as Dictionary).get("id", ""))
-				if iid == "" or seen_ids.has(iid):
-					continue
-				seen_ids[iid] = true
-				var ty := str(Phase2Types.type_of(iid))
-				if ty != "":
-					tcount[ty] = int(tcount.get(ty, 0)) + 1
-			idxs.sort_custom(func(a, b):
-				var ka: float = syn_key(offer[a], seen_ids, tcount)
-				var kb: float = syn_key(offer[b], seen_ids, tcount)
-				if absf(ka - kb) > 1e-6:
-					return ka > kb
-				return int(offer[a].get("cost", 1)) > int(offer[b].get("cost", 1)))
-		_:
-			var owned := {}
-			for it in _all_items(gs):
-				if int((it as Dictionary).get("star", 1)) == 1:
-					var kk := str((it as Dictionary).get("id", ""))
-					owned[kk] = int(owned.get(kk, 0)) + 1
-			idxs.sort_custom(func(a, b):
-				var ka: int = int(owned.get(str(offer[a].get("id", "")), 0))
-				var kb: int = int(owned.get(str(offer[b].get("id", "")), 0))
-				var pa: int = (2 if ka == 2 else (1 if ka == 1 else 0))
-				var pb: int = (2 if kb == 2 else (1 if kb == 1 else 0))
-				if pa != pb:
-					return pa > pb
-				return int(offer[a].get("cost", 1)) > int(offer[b].get("cost", 1)))
-
+	## ★★统一打分排序(取代原来的 match) —— 四种旧策略只改这一个决策点,
+	##   而"高费流"若不能攒钱、不能刷新, 就只是排序偏好, 攒不出钱也买不到高费件。
+	##   现在这里只管"同样买得起时先买哪件", 攒钱/刷新在 `_shop` 里由同一个向量驱动。
+	var own := {}
+	var tcount := {}
+	var seen_ids := {}
+	for it in _all_items(gs):
+		var iid := str((it as Dictionary).get("id", ""))
+		if iid == "":
+			continue
+		own[iid] = int(own.get(iid, 0)) + 1
+		if not seen_ids.has(iid):
+			seen_ids[iid] = true
+			var ty := str(Phase2Types.type_of(iid))
+			if ty != "":
+				tcount[ty] = int(tcount.get(ty, 0)) + 1
+	## 先随机打散 —— 打分相同时(如 random 锚点全零)就是纯随机顺序, 不会退化成"永远按货架下标"
+	for i in range(idxs.size() - 1, 0, -1):
+		var j: int = _rng.randi() % (i + 1)
+		var tmp = idxs[i]; idxs[i] = idxs[j]; idxs[j] = tmp
+	idxs.sort_custom(func(a, b):
+		return buy_score(offer[a], w, own, tcount, lines) > buy_score(offer[b], w, own, tcount, lines))
 	var n := 0
 	for i in idxs:
 		var e = offer[i]
@@ -502,7 +597,21 @@ func _buy_once(gs, strategy: String) -> int:
 	return n
 
 
-func _equip(gs) -> void:
+## ★★`minion_first`: 原实现**写死**"先把统领填满, 溢出的才给小将" ⇒「小将优先流」
+##   在旧实现里根本不存在。队伍装备总量有上限(`team_equip_cap`), 所以**先给谁是真的会改变结果**。
+func _equip(gs, bot: Dictionary = {}) -> void:
+	var minion_first: bool = int((bot.get("w", {}) as Dictionary).get("minion_first", 0)) == 1
+	if minion_first:
+		_fill_minions(gs)
+		_fill_leaders(gs)
+	else:
+		_fill_leaders(gs)
+		_fill_minions(gs)
+	gs.auto_merge_all()
+	_sell_junk(gs)
+
+
+func _fill_leaders(gs) -> void:
 	# ★装备容量统一规则(2026-07-27): 单只 ≤ UNIT_EQUIP_CAP(3) 且 全队 6 只合计 ≤ team_equip_cap(赛季等级)。
 	#   完全自由分配 → 机器人的策略: 先把统领填满(统领有技能, 装备收益更高), 溢出的才给小将。
 	var slots: int = P2.UNIT_EQUIP_CAP
@@ -533,7 +642,10 @@ func _equip(gs) -> void:
 			if _item_strength(cand) <= _item_strength(eqs[wi]): break
 			var old = eqs[wi]; eqs[wi] = cand; (gs.persistent_bench as Array)[bi] = old
 		(gs.persistent_equipped as Dictionary)[p] = eqs
-	# 小将
+
+
+func _fill_minions(gs) -> void:
+	var slots: int = P2.UNIT_EQUIP_CAP
 	var dl: Dictionary = gs.get_dual_lineup()
 	for lane in ["top", "bottom"]:
 		var arr: Array = dl.get(lane, [])
@@ -551,8 +663,6 @@ func _equip(gs) -> void:
 			arr[i] = u
 		dl[lane] = arr
 	gs.dual_lineup = dl
-	gs.auto_merge_all()
-	_sell_junk(gs)
 
 
 ## 卖废品: 只卖【背包里没有同款可凑合成】且【弱于身上最弱一件】的, 且背包 >8 时才卖。
@@ -716,17 +826,18 @@ func _report(elapsed: float) -> void:
 		if not (pool["brackets"] as Dictionary).has(bk):
 			(pool["brackets"] as Dictionary)[bk] = []
 		((pool["brackets"] as Dictionary)[bk] as Array).append(sn)
-	var pf := FileAccess.open("%s/cohort-snapshots.json" % dir, FileAccess.WRITE)
+	var suffix := "" if _shard < 0 else ("-s%d" % _shard)
+	var pf := FileAccess.open("%s/cohort-snapshots%s.json" % [dir, suffix], FileAccess.WRITE)
 	if pf != null:
 		pf.store_string(JSON.stringify(pool, " ")); pf.close()
 		print("")
-		print("  快照池: %s/cohort-snapshots.json" % dir)
+		print("  快照池: %s/cohort-snapshots%s.json" % [dir, suffix])
 
 	var csv := "轮,档,A,B,A胜,A场次,B场次,A命,B命,帧\n"
 	for r in _battle_log:
 		csv += "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n" % [r["round"], r["bracket"], r["a"], r["b"],
 			(1 if r["a_won"] else 0), r["a_battles"], r["b_battles"], r["a_hearts"], r["b_hearts"], r["frames"]]
-	var cf := FileAccess.open("%s/cohort-battles.csv" % dir, FileAccess.WRITE)
+	var cf := FileAccess.open("%s/cohort-battles%s.csv" % [dir, suffix], FileAccess.WRITE)
 	if cf != null:
 		cf.store_string(csv); cf.close()
-		print("  逐场 CSV: %s/cohort-battles.csv" % dir)
+		print("  逐场 CSV: %s/cohort-battles%s.csv" % [dir, suffix])
