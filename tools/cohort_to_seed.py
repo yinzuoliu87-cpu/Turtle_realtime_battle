@@ -176,16 +176,43 @@ def make_namer():
 
 
 def select(cands):
-    """每档挑一批: 先按"每只机器人各出一条"轮转, 保证阵容散开; 不够再放宽到 SAME_BOT_CAP。"""
-    by_bot = collections.OrderedDict()
+    """每档挑一批。两层轮转:
+
+    ① **按流派(`_strategy`)轮转** —— 2026-09-02 加(方案书 20260902 的前置 P-B)。
+       不加这一层的话, 某一档可能**整档都是同一个流派**: 强势流派活得久 ⇒ 它在那一档的
+       候选条数压倒性多 ⇒ 按机器人轮转也救不回来(那些机器人全是同一个流派)。
+       玩家在那一档就会连撞同一种打法, 而这次重跑的全部意义就是"对手各不相同"。
+    ② 层内再按**机器人**轮转(原有逻辑), 保证同一流派里的阵容/技能也散开。
+
+    ★老数据没有 `_strategy` 字段时, 全部落进 "(无)" 这一组 ⇒ 退化成原来的单层轮转,
+      **行为与从前逐字一致**。
+    """
+    by_arch = collections.OrderedDict()
     for sn in cands:
-        by_bot.setdefault(sn.get("_bot_key") or (sn.get("profile") or {}).get("id", "?"), []).append(sn)
+        by_arch.setdefault(str(sn.get("_strategy", "(无)")), []).append(sn)
+    # 每个流派内部: 按机器人分组
+    arch_bots = collections.OrderedDict()
+    for arch, lst in by_arch.items():
+        by_bot = collections.OrderedDict()
+        for sn in lst:
+            by_bot.setdefault(sn.get("_bot_key") or (sn.get("profile") or {}).get("id", "?"),
+                              []).append(sn)
+        arch_bots[arch] = by_bot
     picked = []
-    for rnd in range(SAME_BOT_CAP):
-        for _bot, lst in by_bot.items():
-            if rnd < len(lst) and len(picked) < PER_BRACKET:
-                picked.append(lst[rnd])
-        if len(picked) >= PER_BRACKET:
+    # 轮转: 第 rnd 轮里, 每个流派各出一条(该流派内部也换一只机器人)
+    for rnd in range(SAME_BOT_CAP * 8):          # 上限给够, 由 PER_BRACKET 收口
+        progressed = False
+        for _arch, by_bot in arch_bots.items():
+            bots = list(by_bot.keys())
+            if not bots:
+                continue
+            bi = rnd % len(bots)
+            lst = by_bot[bots[bi]]
+            k = rnd // len(bots)
+            if k < min(len(lst), SAME_BOT_CAP) and len(picked) < PER_BRACKET:
+                picked.append(lst[k])
+                progressed = True
+        if len(picked) >= PER_BRACKET or not progressed:
             break
     return picked
 
