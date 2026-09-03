@@ -272,7 +272,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 			battle._adf_warned = true
 			printerr("[GUARD] _apply_damage_from 一帧调用超2万→截断防卡死 (last=%s src=%s)" % [str(u.get("id", "?")), str(src.get("id", "?"))])
 		return
-	if battle._stress: battle._dbg_op2 = str(u.get("id", "?"))   # 卡死猎手诊断: 最后经手的受伤单位
+	if battle._stress or battle._wd_on: battle._dbg_op2 = str(u.get("id", "?"))   # 卡死猎手诊断: 最后经手的受伤单位
 	# pre_crit=true: 该 raw 段的暴击已在上游算进 dmg(如手里剑真伤段=暴击总伤的一部分)→ 此处不再掷真伤暴击(防二次暴击)
 	if u.get("_assembling", false):   # 机甲组装期免疫一切攻击(用户2026-07-16)
 		return

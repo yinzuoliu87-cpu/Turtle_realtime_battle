@@ -1259,7 +1259,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false,
 			"p2eq_070": _food_sys._eq_ballast_brick(src, tgt, si, basic)   # ★普攻规格·闸在函数内(v0.19.100 六件漏了它, 070 补验收时抓到)
 		src["eq_state"][iid] = stt
 	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
-	                           #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
+							   #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
 
 # 雷电法杖 026: 连锁闪电
 # 雷电法杖 026: 连锁闪电
@@ -1585,7 +1585,7 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 			"p2eq_068": _potion_sys._eq_pressure_store(u, dmg, si)
 		u["eq_state"][iid] = stt
 	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
-	                           #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
+							   #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
 
 # ============================================================================
 #  on-dodge (闪避后)
@@ -1638,7 +1638,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 	for e in u["equips"]:
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
 		battle._cur_eq_item = iid   # 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
-		if battle._stress: battle._dbg_op = "eqcast:" + iid   # 卡死猎手: 定位是哪件装备on-cast卡住(用户2026-07-19)
+		if battle._stress or battle._wd_on: battle._dbg_op = "eqcast:" + iid   # 卡死猎手: 定位是哪件装备on-cast卡住(用户2026-07-19)
 		match iid:
 			"p2eq_027":   # 电棍: 电击已移到 _eq_on_basic_attack(普攻命中消耗1层, 用户2026-07-03); on_cast不处理
 				pass
@@ -1692,7 +1692,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 			#    ★消耗查 `battle._skill_cost(u, stype)`, 不在任何地方抄一份消耗表。
 			"p2eq_076": _bow_sys.on_cast_076(u, si)
 	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
-	                           #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
+							   #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
 
 # 水晶叠层 (A/B共用); splash=true(B 3★): 引爆范围扩大50%波及邻格敌
 # 水晶叠层 (A/B共用); splash=true(B 3★): 引爆范围扩大50%波及邻格敌
@@ -1765,7 +1765,7 @@ func _eq_sniper(u: Dictionary, si: int, depth: int) -> void:
 func _eq_on_kill(killer: Dictionary, victim: Dictionary) -> void:
 	for e in killer.get("equips", []):
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
-		if battle._stress: battle._dbg_op = "eqkill:%s:%d:%d" % [iid, si, 1 if victim.get("alive", false) else 0]   # 卡死猎手: 定位是哪件装备on-kill卡住(同 _eq_on_cast)
+		if battle._stress or battle._wd_on: battle._dbg_op = "eqkill:%s:%d:%d" % [iid, si, 1 if victim.get("alive", false) else 0]   # 卡死猎手: 定位是哪件装备on-kill卡住(同 _eq_on_cast)
 		match iid:
 			"p2eq_004":   # 暴君之牙: 处决后回20龟能 (无龟能单位改回40血)
 				if battle._has_energy_system(killer):
@@ -1841,7 +1841,7 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 	#   整条重做成【溺者的浮囊】(残血幽灵护盾 + 破盾诅咒爆炸), 新设计里**没有亡魂** ——
 	#   用户原话「064 亡魂立绘到时候再重做」那条待办也随之作废。效果本体见 eq_spirit_batch.gd。
 	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
-	                           #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
+							   #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
 
 # ============================================================================
 #  HP阈值 (首次<50%) — 深海项链 / 珍珠耳环
@@ -1895,7 +1895,7 @@ func _eq_check_hp_threshold(u: Dictionary) -> void:
 	if fired:
 		u["hp50_fired"] = true
 	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
-	                           #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
+							   #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
 
 # ============================================================================
 #  周期 tick (每 2.5 秒) — A类回合节拍效果
@@ -2028,7 +2028,7 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 						battle._spawn_eq_bolt(u, o, battle._resolve_dmg(u, u["atk"] * [1.5, 3.0, 9.0][si] + [130.0, 190.0, 600.0][si], o, false), "res://assets/sprites/vfx/dart.png", Color("#ffe0b0"), true, maxi(1, roundi(u["atk"] * DART_BLEED_COEF)))
 		u["eq_state"][iid] = stt
 	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
-	                           #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
+							   #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
 
 # 龙蛋喷火龙: 沿随机有敌的朝向直线扫射 (同列友回血/敌魔伤+灼烧)
 # 024 喷火龙(定稿场景): 龙低空沿"敌方质心方向的线"掠射, 边飞边点燃 burn-loop 真像素火燃烧带, 命中敌=fx_explosion金爆+着火+魔伤, 掠过友=绿治疗环

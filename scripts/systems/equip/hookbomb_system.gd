@@ -944,8 +944,16 @@ const NUM_HEAD_H := 2.95
 func _hb_counter_refresh(o: Dictionary) -> void:
 	if battle._world == null:
 		return
-	var lbl: Label3D = o.get("_hb_num", null)
-	if not is_instance_valid(lbl):
+	## ★2026-09-03: 与 signal_wave_system._place_nodes 同一个 bug ——
+	##   字典里可能存着**已释放**的节点(换路清场 free 了它, 字典引用没清),
+	##   直接赋给【带类型标注】的变量时, Godot 在类型检查那一刻就报
+	##   `Trying to assign invalid previously freed instance`,
+	##   下一行的 is_instance_valid() 已经晚了一步。
+	##   那边每帧调 ⇒ 压测里刷了 113 条; 这边没在那次压测触发, 只是因为没带这件装备。
+	## ⇒ 先用无类型变量接住, 验过再进带类型的。
+	var _raw_lbl = o.get("_hb_num", null)
+	var lbl: Label3D = _raw_lbl if (is_instance_valid(_raw_lbl) and _raw_lbl is Label3D) else null
+	if lbl == null:
 		lbl = Label3D.new()
 		lbl.name = "HookBombNum"
 		lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED

@@ -289,11 +289,11 @@ const BASIC_ATK := {
 	"ice":      {"phys": IceSystem.CONE_ATK_COEF, "magic": IceSystem.CONE_ATK_COEF, "hits": 1, "alt_each": true},           # 单段逐次交替物/魔 1.0ATK(用户2026-07-28: 0.8→1.0·配冰柱层加强)
 	"ninja":    {"phys": NinjaSystem.SLASH_ATK_COEF, "hits": 1, "rider": "bleed"},                         # 斩击(封板): 近战1A物理+2层流血; 冲击已转被动auto-dash
 	"ghost":    {"phys": GhostSystem.BASIC_PHYS, "true": GhostSystem.BASIC_TRUE, "hits": 1},                             # ★这一行【对幽灵不生效】: _basic_attack 在读本表之前就为 ghost 早退
-	                                                                               #   (见本文件 `if u["id"] == "ghost": _ballistics._fire_ghost_wisp(...); return`),
-	                                                                               #   真正结算的是 battle_ballistics.gd 的 gt_phys/gt_true = 0.4A物 + 0.9A真。
-	                                                                               #   2026-07-28 那次「0.4物+0.9真 → 0.5物+0.7真」的削弱**只改到了这张死表上**,
-	                                                                               #   玩家从来没吃到过, 文案却照抄了它。已把本行改回与活代码一致以免继续骗人;
-	                                                                               #   **那次削弱要不要真的落地, 待用户拍板**(动它=改平衡, 不是改文案)。
+																				   #   (见本文件 `if u["id"] == "ghost": _ballistics._fire_ghost_wisp(...); return`),
+																				   #   真正结算的是 battle_ballistics.gd 的 gt_phys/gt_true = 0.4A物 + 0.9A真。
+																				   #   2026-07-28 那次「0.4物+0.9真 → 0.5物+0.7真」的削弱**只改到了这张死表上**,
+																				   #   玩家从来没吃到过, 文案却照抄了它。已把本行改回与活代码一致以免继续骗人;
+																				   #   **那次削弱要不要真的落地, 待用户拍板**(动它=改平衡, 不是改文案)。
 	"diamond":  {"phys": DiamondSystem.CUT_ATK_COEF, "def": DiamondSystem.CUT_DEF_COEF, "mr": DiamondSystem.CUT_MR_COEF, "hits": 1},                    # +护甲魔抗
 	"fortune":  {"phys": FortuneSystem.SWORD_ATK_COEF, "gold": FortuneSystem.SWORD_GOLD_COEF, "hits": 1},                            # 1下(用户; 回合制原2下)
 	"dice":     {"phys": DiceSystem.BASIC_ATK_COEF, "critflat": DiceSystem.BASIC_CRIT_FLAT, "hits": 1},                         # 90%物理+5500%暴击率flat·单段近战(对齐回合制 diceAttack critBonusMult=55·无实时原话)
@@ -788,13 +788,15 @@ var _mech_incoming := {}                  # {side: 到期_t} 赛博机甲组装�
 # ── 卡死猎手(STRESS env·用户2026-07-18「几十把发生一把·你自己找」): 看门狗线程+操作追踪, 主循环冻结时报出最后操作 ──
 var _stress := false
 var _hb := 0                              # 主循环心跳(每帧+1); 看门狗线程监测, 长时间不变=主线程冻死
+## `WATCHDOG=1`: 正常游戏里也开卡死看门狗(做法/坑见 battle_watchdog.gd 头注)。
+var _wd_on := false
+var _wd = null                            # BattleWatchdog(STRESS/WATCHDOG 下才建)
 var _dbg_op := "-"                        # 最后进入的重操作(冻死时看门狗打出来定位)
 var _burst_depth := 0                     # 泡泡/冰霜盾爆裂级联递归深度(死亡链burst→伤害→死→再burst); 超上限截断防卡死(用户2026-07-19卡死猎手抓 bubbleShield)
 static var _burst_cap_warned := false     # 深度上限只报一次(避免刷屏)
 var _adf_ct := 0                          # 本帧 _damage._apply_damage_from 调用数(每帧重置); 爆炸=死亡链无限级联→截断防卡死
 var _dbg_op2 := "-"                        # 更细粒度定位: 最后经手的伤害/死亡单位(冻死时打出)
 static var _adf_warned := false
-var _wd_thread: Thread = null
 static var _stress_n := 0                 # 已跑对局数(跨reload累计)
 var _juice_rng := RandomNumberGenerator.new()   # 震屏/粒子专用 rng (演出·永不种子化, 否则回放看着卡)
 var _battle_rng := RandomNumberGenerator.new()  # ★sim 专用受控 PRNG (Phase1·大厂做法): 决定战斗结果的随机走它。默认 randomize()=手感与线上一致; TURTLE_SEED 设时确定→可复现/回放
@@ -942,6 +944,11 @@ func _ready() -> void:
 	_audit = OS.has_environment("AUDIT")
 	if OS.has_environment("STRESS"):   # 卡死猎手: 高速无头循环对局 + 看门狗线程(主循环冻结→打最后操作)
 		_stress_start()
+	elif OS.has_environment("WATCHDOG"):   # ★只要看门狗, 不要 STRESS 那套自动循环对局
+		_wd_on = true
+		_wd = WatchdogMod.new(self)
+		_wd.start(false)   # false = 冻结时写报告不崩溃(正常游戏)
+		print("[WATCHDOG] 已开启 → user://freeze_report.txt")
 	# §AUDIO: 战斗 BGM (淡入, autoload Audio 单例处理循环/音量)
 	var _audio := get_node_or_null("/root/Audio")
 	if _audio != null:
@@ -1031,6 +1038,9 @@ var _map_ed = null              # MapEditor 实例; 不写成 : MapEditor 是因
 ## ★它是 Node(不是 RefCounted) —— 相机跟随/压 UI 要每帧做, 让它自己有 _process,
 ##   这样主文件的 _process 一行都不用加。未开 VFXLAB 时恒为 null, 连实例都不建。
 const VfxLabMod := preload("res://scripts/scenes/battle/battle_vfx_lab.gd")
+## ★用 preload 而不是靠 class_name —— 新增 class_name 要先跑一次 --import 才注册全局,
+##   preload 立刻可用, 与本文件引 VfxLabMod 的做法一致。
+const WatchdogMod := preload("res://scripts/scenes/battle/battle_watchdog.gd")
 var _vfxlab = null
 
 ## 刷格入口: 模块没建好时安全跳过(编辑器未开时 _unhandled_input 也可能走到)
@@ -2164,8 +2174,10 @@ func _process(delta: float) -> void:
 	if _audit and _t >= _audit_next:
 		_audit_next = _t + 1.0
 		_audit_tick()
-	if _stress:                # 卡死猎手: 心跳 + 自动开打(跳摆位) + 一局结束/超时→重开
+	## ★心跳两种模式都要涨 —— 漏接会让看门狗恒报 FROZEN(踩过, 见 battle_watchdog.gd 头注)。
+	if _stress or _wd_on:
 		_hb += 1
+	if _stress:                # 卡死猎手: 自动开打(跳摆位) + 一局结束/超时→重开
 		if _dl_state == "place":
 			_dl_sys._dl_start_fight()          # 无头无玩家→自动开打(present阶段自己计时推进)
 		if _over or _dl_state == "done" or _t > 240.0:   # 上限 240: 一场三路合法时长可超120s(上路含破蛋窗口+呈现就要60s+)
@@ -2335,7 +2347,7 @@ func _reg_tween() -> Tween:
 	return t
 
 func _tick_unit(u: Dictionary, delta: float) -> void:
-	if _stress: _dbg_op = "tick:" + str(u.get("id", "?"))   # 卡死猎手: 追踪当前tick的单位(冻死时定位)
+	if _stress or _wd_on: _dbg_op = "tick:" + str(u.get("id", "?"))   # 卡死猎手: 追踪当前tick的单位(冻死时定位)
 	if _vfxiso and u.has("sprite") and is_instance_valid(u["sprite"]): u["sprite"].visible = false   # 纯特效隔离: 藏单位立绘(只留特效)
 	# DoT/buff到期/累积条/周期被动 (1:1 2D _tick_effects)
 	_tick_effects(u, delta)
@@ -3209,11 +3221,11 @@ func _stress_start() -> void:
 	Engine.max_fps = 0          # 无头解帧率上限→尽快跑; delta仍钳制0.1s(逻辑不炸)
 	Engine.time_scale = 5.0     # 5×加速(delta≈0.08·未撞0.1钳制·保持较细粒度)
 	print("[STRESS] battle #%d begin  left=%s" % [_stress_n, str(GameState.season_leaders) if GameState != null else "?"])
-	_wd_thread = Thread.new()
-	_wd_thread.start(_stress_watchdog)
+	_wd = WatchdogMod.new(self)
+	_wd.start(true)   # true = 冻结时 OS.crash(外层脚本读日志 FROZEN 行定位)
 
 ## ★节点被销毁时收掉看门狗线程。
-## 原来 `_wd_thread` **只在 `_stress_reload()` 里 join**（一局打完才收），
+## 原来看门狗线程**只在 `_stress_reload()` 里 join**（一局打完才收），
 ## 而 `--quit-after` 如果落在【一局中途】，线程从没被 join → `Thread` 析构时它还在跑
 ## → "A Thread object is being destroyed without its completion having been realized"
 ## → 退出时 **Segmentation fault**。
@@ -3221,36 +3233,21 @@ func _stress_start() -> void:
 ## ⚠ 这条只影响 STRESS 无头压测的【退出阶段】，不影响对局逻辑 —— 但它会让人误判成
 ##   "我刚改的东西把压测跑崩了"，所以补掉。
 func _exit_tree() -> void:
-	if _wd_thread != null:
-		_stress = false                      # 让 while 循环自己退出(它每秒醒一次)
-		if _wd_thread.is_started():
-			_wd_thread.wait_to_finish()
-		_wd_thread = null
+	if _wd != null:
+		_stress = false
+		_wd_on = false                       # 让看门狗的 while 自己退出(它每秒醒一次)
+		_wd.stop()
+		_wd = null
 
-
-func _stress_watchdog() -> void:   # 独立线程: 主循环>4s无心跳=冻死→打最后操作+崩溃退出(外层读日志FROZEN行定位)
-	var last_hb := -1
-	var stall := 0
-	while _stress:
-		OS.delay_msec(1000)
-		if _hb == last_hb:
-			stall += 1
-			if stall >= 4:
-				printerr("[STRESS] ★★★ MAIN LOOP FROZEN ★★★ battle#%d  battle_t=%.2f  last_op=%s  op2=%s  adf_ct=%d  burst_depth=%d  units=%d" % [_stress_n, _t, _dbg_op, _dbg_op2, _adf_ct, _burst_depth, _units.size()])
-				OS.crash("STRESS frozen op=%s op2=%s adf=%d" % [_dbg_op, _dbg_op2, _adf_ct])
-				return
-		else:
-			stall = 0
-			last_hb = _hb
 
 func _stress_reload() -> void:   # 一局结束(或超时)→停看门狗→重开下一局
 	if not _stress: return
 	_stress = false
 	print("[STRESS] battle #%d done  t=%.1f  (over=%s)" % [_stress_n, _t, str(_over)])
 	_audit_report("battle#%d" % _stress_n)
-	if _wd_thread != null and _wd_thread.is_alive():
-		_wd_thread.wait_to_finish()
-	_wd_thread = null
+	if _wd != null:
+		_wd.stop()
+		_wd = null
 	Engine.time_scale = 1.0
 	get_tree().reload_current_scene()
 
@@ -5558,7 +5555,7 @@ func _cast_skill(u: Dictionary, tgt: Dictionary, stype: String) -> bool:
 
 
 func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
-	if _stress: _dbg_op = "skill:" + stype + ":" + str(u.get("id", "?"))   # 卡死猎手: 追踪当前放的技(冻死时定位)
+	if _stress or _wd_on: _dbg_op = "skill:" + stype + ":" + str(u.get("id", "?"))   # 卡死猎手: 追踪当前放的技(冻死时定位)
 	match stype:
 		# ★装备换来的技能(084 手半剑·近战携带)。与 `_IMPL_SKILLS` 里那一行成对, 见那边的注释。
 		"eqCrossSlash":         _equip_sys._blade_sys.cast_cross_slash(u, tgt)

@@ -179,9 +179,22 @@ func _apply(src: Dictionary, o: Dictionary, dmg: float) -> void:
 func _place_nodes(w: Dictionary, r: float) -> void:
 	if battle._world == null:
 		return
-	var im: MeshInstance3D = w.get("mesh", null)
-	var imesh: ImmediateMesh = w.get("imesh", null)
-	if not is_instance_valid(im):
+	## ★★★2026-09-03 修: 这两行原来是
+	##     var im: MeshInstance3D = w.get("mesh", null)
+	##     var imesh: ImmediateMesh = w.get("imesh", null)
+	##   字典里存的可能是**已被释放**的节点(换路清场 free 掉 `_world` 下的东西,
+	##   而 `w` 里的引用没跟着清)。直接赋给【带类型标注】的变量时,
+	##   Godot 在类型检查那一刻就报 `Trying to assign invalid previously freed instance`,
+	##   下一行的 is_instance_valid() **已经晚了一步**。
+	##   而 `tick_global` 每帧调这里 ⇒ **每帧刷一条错误**。
+	##   压测实测: 420 秒里 137 条错误, 其中 **113 条**是这一行(占 82%),
+	##   报错输出本身把帧率拖到像卡死(用户 2026-09-03:「在 godot 打游戏有的时候直接卡住」)。
+	## ⇒ 先用**无类型**变量接住, is_instance_valid 过了再进带类型的变量。
+	var _raw_im = w.get("mesh", null)
+	var _raw_ime = w.get("imesh", null)
+	var im: MeshInstance3D = _raw_im if (is_instance_valid(_raw_im) and _raw_im is MeshInstance3D) else null
+	var imesh: ImmediateMesh = _raw_ime if (_raw_ime is ImmediateMesh) else null
+	if im == null:
 		im = MeshInstance3D.new()
 		imesh = ImmediateMesh.new()
 		im.mesh = imesh
