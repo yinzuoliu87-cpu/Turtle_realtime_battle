@@ -62,8 +62,9 @@ func _ready() -> void:
 	_ok("★分母: 召唤物 %.0f+经验 血 / %.0f+%.2f×经验 攻 / %.0f双抗 / %.1f攻速"
 			% [AE.MINION_HP_BASE, AE.MINION_ATK_BASE, AE.MINION_ATK_PER_EXP, AE.MINION_DEF, AE.MINION_ASPD],
 		AE.MINION_HP_BASE == 500.0 and AE.MINION_ATK_BASE == 30.0
-			and absf(AE.MINION_ATK_PER_EXP - 0.05) < 1e-9 and AE.MINION_DEF == 5.0
-			and AE.MINION_MR == 5.0 and absf(AE.MINION_ASPD - 0.8) < 1e-9)
+			and absf(AE.MINION_ATK_PER_EXP - 0.3) < 1e-9 and AE.MINION_DEF == 12.0
+			and AE.MINION_MR == 12.0 and absf(AE.MINION_ASPD - 0.8) < 1e-9
+			and absf(AE.MINION_HP_PER_EXP - 5.0) < 1e-9)
 	_ok("★分母: 进化阈值 80/110/130/160 + 最终 %d" % AE.FINAL_NEED,
 		[int(AE.STAGES[1]["need"]), int(AE.STAGES[2]["need"]),
 		 int(AE.STAGES[3]["need"]), int(AE.STAGES[4]["need"])] == [80, 110, 130, 160]
@@ -108,7 +109,7 @@ func _ready() -> void:
 			absf(float(ax["maxHp"]) - want_hp) < 0.51, "%.1f" % float(ax["maxHp"]))
 		_ok("斧头攻击力 = %.0f(经验 0 → 30+0)" % want_atk,
 			absf(float(ax["atk"]) - want_atk) < 0.51, "%.1f" % float(ax["atk"]))
-		_ok("斧头双抗 = 5/5", absf(float(ax["def"]) - 5.0) < 0.51 and absf(float(ax["mr"]) - 5.0) < 0.51,
+		_ok("斧头双抗 = 12/12", absf(float(ax["def"]) - 12.0) < 0.51 and absf(float(ax["mr"]) - 12.0) < 0.51,
 			"def=%.1f mr=%.1f" % [float(ax["def"]), float(ax["mr"])])
 		_ok("斧头攻速 = 0.8 次/秒(atk_interval = 1.25 秒)",
 			absf(float(ax["atk_interval"]) - 1.25) < 0.01, "%.3f" % float(ax["atk_interval"]))
@@ -120,9 +121,14 @@ func _ready() -> void:
 	var hp0: float = AE.minion_hp(0, 0)
 	var hp200: float = AE.minion_hp(200, 0)
 	var atk200: float = AE.minion_atk(200, 0)
+	## ★期望值由常量现算, 不写死 —— 2026-09-03 用户调参(每经验 1→5 血 / 0.05→0.3 攻)
+	##   把写死的 700/40 打红了。这条要守的是**吃的是历史累计**与**随经验单调增**,
+	##   不是那两个具体数字; 具体数字由 ★分母 那条(常量 == 需求值)负责。
+	var want_hp: float = AE.MINION_HP_BASE + AE.MINION_HP_PER_EXP * 200.0
+	var want_atk: float = AE.MINION_ATK_BASE + AE.MINION_ATK_PER_EXP * 200.0
 	_ok("★★公式吃的是【历史累计】: 200 点经验 → 血 %.0f / 攻 %.0f" % [hp200, atk200],
-		absf(hp200 - 700.0) < 0.01 and absf(atk200 - 40.0) < 0.01
-			and hp200 > hp0, "500+200=%.0f · 30+0.05×200=%.0f" % [hp200, atk200])
+		absf(hp200 - want_hp) < 0.01 and absf(atk200 - want_atk) < 0.01
+			and hp200 > hp0, "期望 %.0f/%.0f  实测 %.0f/%.0f" % [want_hp, want_atk, hp200, atk200])
 
 	# ── ④ 主动: 攒满 140 → 回血 + 给自己盾, 然后清空 ──
 	if ax is Dictionary:

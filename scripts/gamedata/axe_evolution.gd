@@ -53,9 +53,9 @@ const FINALS := [
 ]
 
 ## ── 经验来源(需求字面值) ──────────────────────────────────────
-const EXP_ON_BUY := 15          # 在商店里买这件装备
-const EXP_ON_MATCH := 10        # 打完一整场对局(未决点 ②: 不论有没有走到决胜)
-const EXP_ON_KILL := 2          # 斧头击杀, 或 3 秒内参与击杀
+const EXP_ON_BUY := 20          # 在商店里买这件装备
+const EXP_ON_MATCH := 15        # 打完一整场对局(未决点 ②: 不论有没有走到决胜)
+const EXP_ON_KILL := 5          # 斧头击杀, 或 3 秒内参与击杀
 const ASSIST_WINDOW := 3.0      # "参与击杀"的时间窗(秒)
 
 ## ── 装备给携带者的属性(需求字面值·不随进化变) ────────────────
@@ -65,11 +65,14 @@ const OWNER_DEF := 2.0
 const OWNER_MR := 2.0
 
 ## ── 斧头召唤物 ────────────────────────────────────────────────
-## 基础(木斧): 血 500 + 累计经验; 攻 30 + 0.05×累计经验; 双抗 5; 近战 1ATK 0.8 攻速
+## 基础(木斧): 血 500 + 5×累计经验; 攻 30 + 0.3×累计经验; 双抗 12; 近战 1ATK 0.8 攻速
+## ★★2026-09-03 用户调参: 成长系数与双抗一起上调, 经验来源也同步提高
+##   (买 15→20 / 打完 10→15 / 参与击杀 2→5)。
+##   量级: 造物门槛 400 经验时 血 900→**2500**(2.8x) · 攻 50→**150**(3.0x)。
 const MINION_HP_BASE := 500.0
-const MINION_HP_PER_EXP := 1.0
+const MINION_HP_PER_EXP := 5.0
 const MINION_ATK_BASE := 30.0
-const MINION_ATK_PER_EXP := 0.05
+const MINION_ATK_PER_EXP := 0.3
 ## 立绘的【视觉】尺寸参数(battle_spawn 只拿它算 pixel_size, **不管碰撞**, 已核实无第二个消费者)。
 ## ★由来(2026-09-01 用户抓「方向」时连带量出来的): 原来给的 26 让斧头小将的
 ##   世界身高只有 0.708 m, 而 28 只龟的中位是 1.40 m ⇒ **它只有龟的一半高**。
@@ -79,8 +82,8 @@ const MINION_ATK_PER_EXP := 0.05
 ## ★门禁 verify_axe_art 拿【龟身高的真实分布】卡它, 不是拿我拍的数字卡。
 const MINION_COL_SIZE := 48.0
 
-const MINION_DEF := 5.0
-const MINION_MR := 5.0
+const MINION_DEF := 12.0
+const MINION_MR := 12.0
 const MINION_ASPD := 0.8
 
 ## 被动 3/4/5/6 每解锁一条给召唤物的加成(需求: 每条都是同样这四个数)。
@@ -122,9 +125,9 @@ static func energy_gain(delta: float, echarge_perm: float) -> float:
 ##   把 3% 直接当每格用是 **10 倍** 的差(封顶时"每次刷新至少见到一把"会从 10% 变成 65%)。
 ## ★未激活羁绊时**不走这条** —— 仍按 1 费档出货(它本来就是 1 费装备, 天然成立),
 ##   等级起来后 1 费概率自然衰减, 正是"不玩这流派就越来越少见"。
-const SHELF_P_BASE := 0.03        # 刚激活羁绊
-const SHELF_P_PER_MATCH := 0.001  # 每多打一局
-const SHELF_P_CAP := 0.10         # 封顶
+const SHELF_P_BASE := 0.06        # 刚激活羁绊
+const SHELF_P_PER_MATCH := 0.005  # 每多打一局
+const SHELF_P_CAP := 0.18         # 封顶
 
 
 ## 激活羁绊后打了 `matches` 局时, **整个货架**至少出一把的概率。

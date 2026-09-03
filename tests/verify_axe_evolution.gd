@@ -89,7 +89,7 @@ func _t_consts() -> void:
 	print("--- ① 分母: 常量 ---")
 	_ok("★分母: 经验来源 买%d / 场%d / 击杀%d · 助攻窗 %.0f 秒"
 		% [AE.EXP_ON_BUY, AE.EXP_ON_MATCH, AE.EXP_ON_KILL, AE.ASSIST_WINDOW],
-		AE.EXP_ON_BUY == 15 and AE.EXP_ON_MATCH == 10 and AE.EXP_ON_KILL == 2
+		AE.EXP_ON_BUY == 20 and AE.EXP_ON_MATCH == 15 and AE.EXP_ON_KILL == 5
 		and is_equal_approx(AE.ASSIST_WINDOW, 3.0))
 	## STAGE_NEEDS 是给文案占位符用的扁平镜像 —— 逐项焊在 STAGES 上, 改一边忘另一边当场红。
 	var mirror_ok: bool = AE.STAGE_NEEDS.size() == AE.STAGES.size() - 1
@@ -103,8 +103,8 @@ func _t_consts() -> void:
 		AE.STAGE_NEEDS == [80, 110, 130, 160] and AE.FINAL_NEED == 400)
 	_ok("★分母: 出货 基础%.0f%% + 每局%.1f%% 封顶%.0f%%"
 		% [AE.SHELF_P_BASE * 100.0, AE.SHELF_P_PER_MATCH * 100.0, AE.SHELF_P_CAP * 100.0],
-		is_equal_approx(AE.SHELF_P_BASE, 0.03) and is_equal_approx(AE.SHELF_P_PER_MATCH, 0.001)
-		and is_equal_approx(AE.SHELF_P_CAP, 0.10))
+		is_equal_approx(AE.SHELF_P_BASE, 0.06) and is_equal_approx(AE.SHELF_P_PER_MATCH, 0.005)
+		and is_equal_approx(AE.SHELF_P_CAP, 0.18))
 
 
 # ══════════════════════════════════════════════════════════════
@@ -113,8 +113,8 @@ func _t_consts() -> void:
 func _t_advance() -> void:
 	print("--- ② 进化: 进度条清零 / 累计只增 ---")
 	var r: Dictionary = AE.advance(0, 0, 0, AE.EXP_ON_BUY)
-	_ok("买一把 +15: 进度条与累计【同步】都涨 15, 没进化",
-		int(r["bar"]) == 15 and int(r["total"]) == 15 and int(r["stage"]) == 0
+	_ok("买一把 +%d: 进度条与累计【同步】都涨 %d, 没进化" % [AE.EXP_ON_BUY, AE.EXP_ON_BUY],
+		int(r["bar"]) == AE.EXP_ON_BUY and int(r["total"]) == AE.EXP_ON_BUY and int(r["stage"]) == 0
 		and not bool(r["evolved"]),
 		"bar=%d tot=%d st=%d" % [int(r["bar"]), int(r["total"]), int(r["stage"])])
 	var r2: Dictionary = AE.advance(75, 75, 0, 10)
@@ -339,14 +339,17 @@ func _t_shop(gs) -> void:
 # ══════════════════════════════════════════════════════════════
 func _t_prob() -> void:
 	print("--- ⑥ 出货概率 ---")
-	_ok("shelf_prob(0) == 3%%", is_equal_approx(AE.shelf_prob(0), 0.03),
+	## ★★2026-09-03 用户调参: 6% 起 / 每局 +0.5pp / 封顶 18%(旧: 3% / +0.1pp / 10%)。
+	##   ⚠ 取样局数**跟着换了**: 新参数 24 局就到顶((18−6)/0.5), 旧的"第 60 局还没到顶"
+	##     在新参数下恒真不了 —— 那条分母改用第 12 局(6+6=12%)。
+	_ok("shelf_prob(0) == 6%%", is_equal_approx(AE.shelf_prob(0), 0.06),
 		"%.4f" % AE.shelf_prob(0))
-	_ok("每多打一局 +0.1pp: shelf_prob(10) == 4%%",
-		is_equal_approx(AE.shelf_prob(10), 0.04), "%.4f" % AE.shelf_prob(10))
-	_ok("★封顶 10%%: 打了 999 局也还是 10%%", is_equal_approx(AE.shelf_prob(999), 0.10),
+	_ok("每多打一局 +0.5pp: shelf_prob(10) == 11%%",
+		is_equal_approx(AE.shelf_prob(10), 0.11), "%.4f" % AE.shelf_prob(10))
+	_ok("★封顶 18%%: 打了 999 局也还是 18%%", is_equal_approx(AE.shelf_prob(999), 0.18),
 		"%.4f" % AE.shelf_prob(999))
-	_ok("★分母: 封顶前(第 60 局)确实还没到顶(9%%)", is_equal_approx(AE.shelf_prob(60), 0.09),
-		"%.4f" % AE.shelf_prob(60))
+	_ok("★分母: 封顶前(第 12 局)确实还没到顶(12%%)", is_equal_approx(AE.shelf_prob(12), 0.12),
+		"%.4f" % AE.shelf_prob(12))
 	## ★★反解回代 —— 把 3% 直接当每格用(或写成 P/n)的实现在这里当场红
 	var bad: Array = []
 	for m in [0, 30, 999]:

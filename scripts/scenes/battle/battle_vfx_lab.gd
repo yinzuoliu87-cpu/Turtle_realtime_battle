@@ -36,6 +36,7 @@ extends Node
 ## | `VFXLAB_SHOTS=t1,t2,…` | 覆盖拍摄时刻(**游戏秒**) |
 ## | `VFXLAB_OUT=<前缀>` | 截图路径前缀(默认 `res://_vfxlab_<case>`) |
 ## | `VFXLAB_HOLD=1` | 不拍不退, 挂着让人自己看(窗口摆到**副屏幕正中**·用户 2026-08-29; 只有一块屏时退回左下角) |
+## | `VFXLAB_REALMAP=1` | **在真实地图上看**(不黑场/不铺暗地板) —— 判断"特效与地面的关系"时必须用它, 黑场会把 103% 的叠加读成 364% |
 ## | `VFXLAB_GLOW=1` | 黑场里把泛光开回来(真机桌面端参数) —— 给用户【验收观看】用, 看到的=玩家看到的。⚠ 量测(染色/差分)一律不开: 黑场无 bloom 是基线 (battle_world_builder §env) |
 ##
 ## ★★★跑法铁律(用户 2026-08-07 明令):【命令行必须加 `--position 5000,5000`】把窗口挪到屏幕外。
@@ -192,7 +193,13 @@ func pre_build() -> bool:
 		OS.set_environment("EQDEMO_ATTACKER", "1")
 	if str(cfg.get("eq2", "")) != "":
 		OS.set_environment("EQDEMO_EQUIP2", str(cfg["eq2"]))   # ★第二件【不同】装备: 凑羁绊档位
-	OS.set_environment("BLACKMAP", "1")     # 环境背景纯黑(复用已有 env)
+	## ★★`VFXLAB_REALMAP=1` = **在真实地图上看**(不黑场、不铺暗地板)。
+	##   2026-09-03 加。由来: 判断"预警区把地面**纹理化**"这类效果时, 黑场是错的场地 ——
+	##   参考里区内亮度只有 103%(几乎不变), 靠的是纹理对比度 +46%;
+	##   而黑场地面亮度只有 ~10, 同样的叠加算下来是 **364%**, 读成"一块板"。
+	##   **黑场适合看"特效自己长什么样", 不适合看"特效与地面的关系"。**
+	if not OS.has_environment("VFXLAB_REALMAP"):
+		OS.set_environment("BLACKMAP", "1")     # 环境背景纯黑(复用已有 env)
 	OS.set_environment("NO_TRAINER", "1")   # 场外监视者是干扰项, 不要
 
 	## ★斧头(096)专用: 它的档位/造物不是装备星级, 而是 `GameState.axe_stage` / `axe_final`
@@ -294,7 +301,8 @@ func _apply_tier() -> void:
 func post_spawn() -> void:
 	if cfg.is_empty():
 		return
-	_build_dark_floor()
+	if not OS.has_environment("VFXLAB_REALMAP"):
+		_build_dark_floor()
 	if OS.has_environment("VFXLAB_GRID"):
 		_build_grid()
 	_hide_ui_once()
@@ -706,14 +714,29 @@ func _shot_loop() -> void:
 	battle.get_tree().quit()
 
 
-## HOLD 模式把窗口摆到屏幕右侧垂直居中(给人看的时候不挡别的东西)。
-## 展示窗口的位置。★口径变过两次, 按最新的来:
+## 展示窗口的位置。★口径变过**三次**, 按最新的来:
 ##   · 2026-08-07 用户:「只能用整个屏幕左下角展示」
-##   · **2026-08-29 用户:「现在展示窗口放在我的副屏幕上。局中不用缩小」** ← 现行
-## ⇒ 有副屏就放副屏正中、原尺寸不缩; 只有一块屏时退回左下角(旧口径当兜底)。
+##   · 2026-08-29 用户:「现在展示窗口放在我的副屏幕上。局中不用缩小」
+##   · **2026-09-03 用户:「现在可以用当前这个屏幕了，到时候做好了就直接开窗口」** ← 现行
+## ⇒ 默认放**当前这块屏**(VS Code 所在的那块)正中、原尺寸不缩。
+## ⇒ `VFXLAB_SECOND_SCREEN=1` 可以退回副屏(旧口径, 留着以防又要换回去)。
 func _place_window_show() -> void:
+	## ★`VFXLAB_NO_PLACE=1` = 别自己摆, 听命令行 `--position`(2026-09-03 加)。
+	##   由来: 要**同时开四个窗口对比**四个最终造物时, 每个都摆到"当前屏正中"会全叠在一起。
+	if OS.has_environment("VFXLAB_NO_PLACE"):
+		return
 	var win: Vector2i = DisplayServer.window_get_size()
 	var n: int = DisplayServer.get_screen_count()
+	if not OS.has_environment("VFXLAB_SECOND_SCREEN"):
+		## 当前屏正中。`screen_get_position` 给的是**虚拟桌面绝对坐标**,
+		## 所以居中要在这块屏自己的原点上加偏移, 不能只用尺寸算。
+		var cur: int = DisplayServer.window_get_current_screen()
+		var o2: Vector2i = DisplayServer.screen_get_position(cur)
+		var s2: Vector2i = DisplayServer.screen_get_size(cur)
+		DisplayServer.window_set_position(o2 + Vector2i(
+			maxi(0, int((s2.x - win.x) * 0.5)), maxi(0, int((s2.y - win.y) * 0.5))))
+		print("[VFXLAB] 窗口 → 当前屏(第 %d 块) %dx%d 居中, 未缩放" % [cur, win.x, win.y])
+		return
 	if n >= 2:
 		## ★副屏 = 主屏之外的第一块。`screen_get_position` 给的是**虚拟桌面绝对坐标**,
 		##   所以居中要在那块屏自己的原点上加偏移, 不能只用尺寸算。

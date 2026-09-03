@@ -70,16 +70,62 @@ const COL_HEAL := Color(0.45, 0.92, 0.55)       # 主动治疗: 生命绿
 ##     芯(最亮 10%) #b7fdf8  亮度 232
 ##     晕(其余)     #50afbb  亮度 148
 ##   ⇒ 边线做**三层**: 内芯亮白青(细) / 中层青(中) / 外晕暗青半透(宽), 模拟辉光散开。
-const COL_EDGE_CORE := Color(0.72, 0.99, 0.97, 1.00)    # #b7fdf8 芯
+## ══════════════════════════════════════════════════════════════════════
+##  【蓄力边线的颜色 = 蓄力进度】—— 2026-09-03 第四轮, 照**正确的**参考段落重做
+## ══════════════════════════════════════════════════════════════════════
+## ★★★前三轮我拿错了参考段落, 用户指出真正那次在 **1:59~2:02**(机甲皮肤 spotlight
+##   `C:/tmp/sionref/sion.mp4` 的 120.00~121.94 秒), 108 张原生帧在 `C:/tmp/sionref/m2/`。
+##   之前量的两处都不是它: ① `sion.mp4` 115.9 秒那次(只有 0.40 秒, 是半蓄)
+##   ② `q_only.mp4` **原版塞恩**(红色 Q, 根本不是机甲皮肤) —— 我还照它加了"起手闪"和纯色填充。
+##
+## ★这一次是**满蓄**: 120.00s 线出现 → 121.94s 释放 = **1.94 秒**(塞恩 Q 上限 2 秒)。
+##
+## 逐帧分群计数(青 150~215° / 黄橙 12~70° / 红 <12°∪>340°, 亮度>0.42 且 饱和>0.34):
+##
+##   进度      青占比   黄橙占比   画面
+##   0~46%     16→37%   63→54%    线**向外延伸**, 黄橙火花沿线跑
+##   **48%**   **66%**  27%       **轮廓合拢**, 青色接管(占比从 37% 突跳到 66%)
+##   48~76%    62→89%   27→6%     **纯青**, 越来越纯
+##   **84%**   48%      **48%**   **黄橙杀回来, 与青各半** ← "快满了"
+##   84~98%    43~51%   46~52%    青黄并存
+##   **100%**  —        —         **红群从 ~300 突增到 2199** ← 释放
+##
+## ⇒ **参考用【颜色】表达蓄力进度, 不是用闪烁频率。**
+##   我前三轮做的是 2Hz 呼吸 + 最后 1 秒 6Hz 闪 —— 方向就不对。
+##
+## ★量法上踩的坑(记下来免得再犯): 第一版判据取"色相的环形向量平均",
+##   在 84~98% 那段报出 99~123°(黄绿), 而我明明排除了 70~150° —— 那是
+##   **黄群(50°)和青群(180°)平均到中间**的假值。双峰分布不能取平均, 要分群计数。
+##   memory [[fb-judge-must-fit-the-shape]] / 「量色要量分布不量极值」。
+const COL_EDGE_CORE := Color(0.72, 0.99, 0.97, 1.00)    # #b7fdf8 芯 (= 色相 180° 时 edge_color_at(0,2))
 const COL_EDGE_MID := Color(0.31, 0.69, 0.73, 0.85)     # #50afbb 中
 const COL_EDGE_HALO := Color(0.31, 0.69, 0.73, 0.30)    # 外晕(同色低 alpha)
+
+## 蓄力到 `p`(0~1) 时, 第 `layer` 层边线该是什么颜色。**纯函数, 给门禁逐点验。**
+##
+## ★色相曲线直接来自上面那张实测表, 不是手调:
+##   p < 0.76 → 180°(纯青); p ≥ 0.76 → 180° **线性降到** 0°(红)。
+##   ⚠ 这条线**故意经过绿区(120°)** —— 参考 121.50s 是青绿、121.60s 是黄绿,
+##     确实是这么走的。绕开绿区反而不像。
+## ★S/V/A 三层沿用实测的那套(没动): 反算 `edge_color_at(0.0, 2)` = from_hsv(180°,0.27,0.99)
+##   ≈ #b7fdfd, 与实测的芯色 #b7fdf8 几乎重合 ⇒ 这组 HSV 参数是对的。
+## `layer`: 0=外晕 / 1=中 / 2=芯
+static func edge_color_at(p: float, layer: int) -> Color:
+	var hue: float = 180.0
+	if p >= 0.76:
+		hue = lerpf(180.0, 0.0, clampf((p - 0.76) / 0.24, 0.0, 1.0))
+	var li: int = clampi(layer, 0, 2)
+	var c := Color.from_hsv(hue / 360.0,
+		[0.57, 0.57, 0.27][li],
+		[0.73, 0.73, 0.99][li])
+	c.a = [0.30, 0.85, 1.00][li]
+	return c
 const COL_FIELD_EDGE := COL_EDGE_CORE                    # 兼容旧引用
 ## 预警区【填充】—— 数值由参考实测反推, 推导过程见 `charge_field` 里那段注释。
 ## 参考: 暗红 @0.35 把亮草地压到 75% 亮度; 我们: 同等对比度的青 @0.20(地板偏暗 ⇒ 加亮而非压暗)。
-const COL_FIELD_FILL := Color(0.24, 0.72, 0.78, 0.20)
-## 起手闪。★**超白**(>1.0)而不是直接用 COL_EDGE_CORE —— 参考 f90 是整段蓄力里
-##   最亮的一帧, 与边线同色会被边线淹没, 实拍时和"没做"分不出来。
-const COL_ONSET := Color(1.35, 1.45, 1.42, 1.00)
+## 蓄力期铺在地面的**六边形网格**颜色。★alpha 低 —— 参考里它几乎不改亮度(103%),
+##   全部作用是把地面**纹理化**(对比度 +46%)。调高会变回"一块板", 那是错方向。
+const COL_FIELD_GRID := Color(0.62, 0.86, 0.88, 0.15)
 
 ## 蓄力梯形的地面标记高度(米) —— 略高于地面, 免得被地板 z-fight 吃掉。
 ## ★不是 0: memory [[fb-axis-y-plus-rotation-cancels]] 那次量过, 环 y=0.05 > 顶面 y=0 才稳。
@@ -230,7 +276,18 @@ func charge_field(ax: Dictionary, dir: Vector2, h: float) -> Node3D:
 	## ⚠ 上一版说"alpha 从 0.22 降到 0.03 画面毫无变化"—— 那个现象的**根因后来查明**是
 	##   `charge_update` 每步重设 `Fill.mesh`, 把这里设的东西整个覆盖掉了(已修)。
 	##   不是"alpha 在这条路上不生效"。删填充是拿错误根因做的错误决定。
-	mi.material_override = _mat_solid(COL_FIELD_FILL, 2, true)
+	## ★★★【第四轮改: 纯色填充 → 六边形网格纹理】照**正确的**参考段落
+	##   (机甲皮肤 1:59~2:02, 见文件头 `edge_color_at` 那段实测表)。
+	##   量出来的结论把"填充"这个思路本身推翻了:
+	##     区内亮度 52.3 → 53.8 = **103%**(几乎没变)
+	##     区内纹理对比度(标准差) 17.6 → 25.7 = **146%**
+	##     ★分母: 区外同两帧也在变(+4.4/−0.3/+12.6), 所以上面取的是净值
+	##   ⇒ **参考是往地面「加纹理」, 不是「改亮度」。** 纯色填充改亮度但**不改对比度**,
+	##     方向从根上就不对 —— 我前两轮在"要不要填充/填多浓"上来回改, 问的是错问题。
+	##   ⇒ 改用**铺满梯形的六边形网格**(`_hex_mesh(h, true)`), 六边形之间留 14% 的缝
+	##     (`R * 0.86`), 缝里露出地面 ⇒ 这才是"加纹理"。
+	mi.mesh = _hex_mesh(h, true)
+	mi.material_override = _mat_vcol(COL_FIELD_GRID, 2)
 	mi.name = "Fill"
 	root.add_child(mi)
 	## ★★加一圈亮边 —— 2026-09-03 实拍后补。
@@ -265,64 +322,7 @@ func charge_field(ax: Dictionary, dir: Vector2, h: float) -> Node3D:
 	_adopt(root)
 	_place_field(root, ax, dir)
 	root.set_meta("h", h)
-	_charge_onset_flash(root)
 	return root
-
-
-## 【起手闪】—— 2026-09-03 逐帧对比原版塞恩 Q 专门演示视频后补上的一项。
-## 参考实测(`C:/tmp/sionref/qonly/`, 30fps, 那一次 Q 是 f90→f120 整 1.000 秒):
-##   f90 (0.000s) 脚下炸出一个**亮点 + 一圈外环**, 最亮
-##   f92 (0.067s) 亮点被**横向拉成一道条**(顺着 Q 的方向), 亮度略降
-##   f94 (0.133s) 收缩回小亮点, 更暗
-##   f96 (0.200s) 没了 —— 预警区这才开始显形
-## ⇒ 总时长 0.20 秒, 三段: 圆 → 横拉 3.2 倍 → 收回 0.8 倍。
-## ★这一下是"技能开始了"的**唯一即时反馈**。之前我们只有梯形慢慢长出来,
-##   前 0.2 秒画面上什么都没有 —— 并排比时这是最刺眼的一处差。
-## ★沿 dir 拉伸靠 scale.x: root 已经绕 Y 转到 dir 了, 所以局部 +X 就是斧头指向。
-func _charge_onset_flash(root: Node3D) -> void:
-	if not is_instance_valid(root):
-		return
-	var mi := MeshInstance3D.new()
-	mi.name = "OnsetFlash"
-	mi.mesh = _ring_disc_mesh()
-	mi.position = Vector3(AE.TRAPEZOID_NEAR_W * 0.10, 0.035, 0.0)   # 贴着斧头那一端
-	mi.material_override = _mat_solid(COL_ONSET, 8, true)
-	root.add_child(mi)
-	## 基准半径(码)。★30 → 55(2026-09-03 首次实拍后改): zoom 2.0 下 30 码的亮点
-	##   在画面上只有几个像素, 接触印相里**完全找不到**, 与"根本没做"无法区分。
-	##   定 55 的依据是横拉那一段: 55 × 2 × 3.2 = 352 码 ≈ 梯形近端宽 300 码
-	##   ⇒ 观感正是参考 f92 的"一道横条横跨预警区近端", 不是随手往大调。
-	var R := 55.0
-	var tw := mi.create_tween()
-	tw.tween_method(func(v: float) -> void:
-			if not is_instance_valid(mi):
-				return
-			## 逐段照参考: 0→1/3 圆(1.0倍) · 1/3→2/3 横拉(x 3.2 · z 0.42) · 2/3→1 收回
-			var sx: float
-			var sz: float
-			var a: float
-			if v < 0.34:
-				var u: float = v / 0.34
-				sx = lerpf(0.55, 1.30, u)
-				sz = lerpf(0.55, 1.00, u)
-				a = 1.0
-			elif v < 0.67:
-				var u2: float = (v - 0.34) / 0.33
-				sx = lerpf(1.30, 3.20, u2)
-				sz = lerpf(1.00, 0.42, u2)
-				a = lerpf(1.0, 0.80, u2)
-			else:
-				var u3: float = (v - 0.67) / 0.33
-				sx = lerpf(3.20, 0.80, u3)
-				sz = lerpf(0.42, 0.30, u3)
-				a = lerpf(0.80, 0.0, u3)
-			mi.scale = Vector3(R * sx, 1.0, R * sz)
-			var c := COL_ONSET
-			mi.material_override = _mat_solid(Color(c.r, c.g, c.b, a), 8, true),
-		0.0, 1.0, 0.20)
-	tw.chain().tween_callback(func() -> void:
-		if is_instance_valid(mi):
-			mi.queue_free())
 
 
 ## 摆位 + 定向。★朝向由 `dir` 决定(几何), 不靠 billboard 猜 ——
@@ -336,11 +336,6 @@ func _place_field(root: Node3D, ax: Dictionary, dir: Vector2) -> void:
 	var d: Vector2 = dir.normalized() if dir != Vector2.ZERO else Vector2.RIGHT
 	## 场地 2D 的 +X/+Y 到世界 3D 的映射由 `_world_pos` 定; 这里只需要绕 Y 转到 dir。
 	root.rotation = Vector3(0.0, -atan2(d.y, d.x), 0.0)
-
-
-## 梯形的**边框** mesh(四条细带)。★宽度用码而不是像素 —— 它跟填充在同一个局部坐标系里。
-func _edge_mesh(h: float) -> ArrayMesh:
-	return _edge_mesh_w(h, 1.0)
 
 
 ## 边线 mesh, `wmul` = 宽度倍数(三层辉光用: 外晕 3.4 / 中 1.9 / 芯 1.0)。
@@ -416,7 +411,8 @@ func charge_update(root: Node3D, ax: Dictionary, dir: Vector2, h: float) -> bool
 	##   memory [[fb-probe-before-claiming-rootcause]]: 改了五次没反应, 就该停下来定位而不是继续调数。
 	var _fill = root.get_node_or_null("Fill")
 	if _fill is MeshInstance3D:
-		(_fill as MeshInstance3D).mesh = mesh
+		## ★网格要跟着梯形长(第四轮: 这里原来喂的是 `mesh` = 纯色梯形面, 已改成六边形网格)
+		(_fill as MeshInstance3D).mesh = _hex_mesh(h, true)
 	for li in range(3):
 		var nm2: String = ["EdgeHalo", "EdgeMid", "Edge"][li]
 		var nd2 = root.get_node_or_null(nm2)
@@ -439,8 +435,11 @@ func charge_update(root: Node3D, ax: Dictionary, dir: Vector2, h: float) -> bool
 ##   —— 这比贴一张图更贴合"演出即判定"。
 ##
 ## `h` = 当前梯形高。返回一个 ArrayMesh(每个六边形一个面片)。
-func _hex_mesh(h: float) -> ArrayMesh:
-	var key: int = 20000 + int(round(h / AE.CHARGE_H_PER_STEP))
+## `full=true` = **铺满整个梯形**(蓄力期的地面网格纹理);
+## `full=false` = 只铺中心圆内(命中爆发, 从中心扩散)。
+func _hex_mesh(h: float, full: bool = false) -> ArrayMesh:
+	## ★缓存 key 必须带 `full` —— 两种铺法的 mesh 完全不同, 共用一个 key 会串。
+	var key: int = (30000 if full else 20000) + int(round(h / AE.CHARGE_H_PER_STEP))
 	if _mesh_cache.has(key):
 		return _mesh_cache[key]
 	var st := SurfaceTool.new()
@@ -488,7 +487,7 @@ func _hex_mesh(h: float) -> ArrayMesh:
 				##   ⇒ 要像参考那样"局部闪现", 半径得再收一半。
 				## ★我在这条上判断错了三次(每次都是"改个写法再看"), 直到打探针才知道
 				##   裁剪根本没问题 —— memory [[fb-probe-before-claiming-rootcause]]。
-				if d2 > maxf(60.0, h * 0.11):
+				if not full and d2 > maxf(60.0, h * 0.11):
 					z += dz
 					continue
 				var vc := Color(1.0, 1.0, 1.0, 1.0)
@@ -639,10 +638,15 @@ func _tick_field_pulse(root: Node3D, ax: Dictionary) -> void:
 	if left < 1.0:
 		urge = (1.0 - left) * (0.5 + 0.5 * sin(t * TAU * 6.0))
 	var k: float = clampf(breathe + sf * 0.9 + urge * 0.8, 0.0, 2.0)
-	## 三层辉光一起跟着 k 呼吸
+	## ★★★【边线颜色 = 蓄力进度】—— 第四轮改, 照**正确的**参考段落(见文件头 edge_color_at)。
+	##   参考 121.50→121.94s 的边线是 青绿 → 黄绿 → 黄 → 橙 → 红 的**连续色相渐变**,
+	##   它才是"还剩多久"的主要信息载体。前三轮我用的是**闪烁频率**(2Hz 呼吸 + 末秒 6Hz),
+	##   方向就不对 —— 频率变化远不如颜色变化读得出来。
+	##   ⚠ 呼吸/步进闪/末秒闪**保留**, 但降为副歌: 它们只调 alpha, 色相交给 edge_color_at。
+	var prog: float = clampf(el / maxf(0.001, AE.CHARGE_TIME), 0.0, 1.0)
 	for li in range(_layers.size()):
 		var nm: String = str(_layers[li][0])
-		var bc: Color = _layers[li][1]
+		var bc: Color = edge_color_at(prog, li)
 		var nd = root.get_node_or_null(nm)
 		if nd is MeshInstance3D:
 			(nd as MeshInstance3D).material_override = _mat_solid(
@@ -661,8 +665,10 @@ func _tick_field_pulse(root: Node3D, ax: Dictionary) -> void:
 				var side: float = -1.0 if i == 0 else 1.0
 				(rn as MeshInstance3D).position = Vector3(depth, 0.03, half * side)
 				## 越跑到远端越淡(参考里光点到头就散了)
+				## ★光点跟边线同色(它就长在边线上) —— 用同一条曲线, 不另存一份
+				var rc: Color = edge_color_at(prog, 2)
 				(rn as MeshInstance3D).material_override = _mat_solid(
-					Color(COL_FIELD_EDGE.r, COL_FIELD_EDGE.g, COL_FIELD_EDGE.b,
+					Color(rc.r, rc.g, rc.b,
 						clampf((1.0 - ph * 0.75) * (0.6 + 0.4 * k), 0.0, 1.0)), 6, true)
 	## 填充只吃一半的 k —— 它是背景, 太跳会盖住站在里面的单位
 	## ★★★填充几乎不要 —— 2026-09-03 **照 LOL 塞恩 Q(Decimating Smash)逐帧量出来的**。
@@ -681,14 +687,20 @@ func _tick_field_pulse(root: Node3D, ax: Dictionary) -> void:
 	##   **填充不但存在, 而且是参考里区分内外的主力**, 边线反倒很弱。
 	##
 	## ★★★这一行还是第二次踩同一个坑: 我在 `charge_field` 里把填充设成
-	##   COL_FIELD_FILL(0.20 青), 而**这里每帧又把它覆盖成 0.02~0.07 的琥珀** ⇒
+	##   一个青色填充, 而**这里每帧又把它覆盖成 0.02~0.07 的琥珀** ⇒
 	##   实拍里只有梯形刚建出来那一帧是青的, 之后全被压回近乎透明, 看着像"填充没生效"。
 	##   与之前那次(`charge_update` 覆盖 mesh)是同一形状: **写了没人读 / 被下游覆盖**。
-	##   ⇒ 这里改成在 COL_FIELD_FILL 的基准 alpha 上呼吸, 颜色也跟边线同一套青,
-	##     不再换成 COL_SLAM 琥珀(换色会让蓄力期出现两种互不相干的颜色)。
-	(fill as MeshInstance3D).material_override = _mat_solid(
-		Color(COL_FIELD_FILL.r, COL_FIELD_FILL.g, COL_FIELD_FILL.b,
-			clampf(COL_FIELD_FILL.a * (0.55 + 0.45 * k), 0.05, 0.42)), 2, true)
+	##   ⇒ 修法是让这里跟 charge_field 用**同一个来源**, 不再各设各的。
+	##   ★第四轮又把"纯色填充"整个换掉了(改成六边形网格纹理), 但这个坑本身仍然成立:
+	##     **凡是 charge_field 设、这里每帧也设的东西, 两边必须同源**。
+	## ★★第四轮: 网格**随进度淡入** —— 参考里它到 ~62% 才清晰, 之前很淡。
+	##   颜色跟边线走同一条曲线(网格是"区域"的一部分, 不该自成一色),
+	##   但 alpha 压得很低: 参考量到区内亮度只有 103%, 网格靠**纹理**不靠亮度。
+	var gp: float = clampf((prog - 0.10) / 0.55, 0.0, 1.0)          # 10%→65% 淡入到满
+	var gc: Color = edge_color_at(prog, 1)
+	(fill as MeshInstance3D).material_override = _mat_vcol(
+		Color(gc.r, gc.g, gc.b,
+			clampf(COL_FIELD_GRID.a * gp * (0.7 + 0.3 * k), 0.0, 0.30)), 2)
 
 
 ## 收梯形。`flash` = 砸下时的收法: **先闪一下再消失**, 不是直接抹掉。
@@ -737,8 +749,9 @@ func charge_clear(root, flash: bool = false) -> void:
 	##   ⚠ `two_sided` 必须传 —— 边带的绕向问题同样存在于填充面(染色法查过),
 	##     漏了这个参数填充会被 CULL_BACK 整个剔掉, 表现为"砸下瞬间填充消失"。
 	if fill is MeshInstance3D:
-		(fill as MeshInstance3D).material_override = _mat_solid(
-			Color(COL_FIELD_FILL.r, COL_FIELD_FILL.g, COL_FIELD_FILL.b, 0.34), 2, true)
+		## ★砸下瞬间网格提亮一档(参考 121.94s 边线变红、整片开始发亮), 但仍是网格不是实心板
+		(fill as MeshInstance3D).material_override = _mat_vcol(
+			Color(1.0, 0.62, 0.30, 0.30), 2)
 	var tw := n.create_tween()
 	## ★hold 0.55: 前 55% 保持满亮 —— 闪光的意义就是"被看见", 一出生就淡等于没闪。
 	tw.tween_method(func(v: float) -> void:
@@ -752,8 +765,8 @@ func charge_clear(root, flash: bool = false) -> void:
 					(_e4 as MeshInstance3D).material_override = _mat_solid(
 						Color(COL_EDGE_CORE.r, COL_EDGE_CORE.g, COL_EDGE_CORE.b, a), 4, true)
 			if f2 is MeshInstance3D:
-				(f2 as MeshInstance3D).material_override = _mat_solid(
-					Color(COL_FIELD_FILL.r, COL_FIELD_FILL.g, COL_FIELD_FILL.b, 0.34 * a), 2, true),
+				(f2 as MeshInstance3D).material_override = _mat_vcol(
+					Color(1.0, 0.62, 0.30, 0.30 * a), 2),
 		0.0, 1.0, 0.75)   # ★0.25→0.45→0.58→0.75: 网格渐隐 0.62 + 光晕 0.55, 梯形得等整个爆发演完
 	tw.tween_callback(func() -> void:
 		if is_instance_valid(n):

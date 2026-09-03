@@ -195,49 +195,71 @@ func _ready() -> void:
 	_ok("★分母: 真进了蓄力", began and ax.has("_axe_charge_t0"))
 	_ok("⑤ 蓄力一开始就有梯形场", ax.get("_axe_field", null) != null)
 	var fld = ax.get("_axe_field", null)
-	## ★★【起手闪】—— 2026-09-03 逐帧对比原版塞恩 Q 后补的。参考实测(qonly/ 30fps):
-	##   f90 脚下炸出亮点+外环 → f92 横拉成条 → f94 收回 → f96 没了(共 0.20 秒),
-	##   然后预警区才开始显形。我们之前**前 0.2 秒画面上什么都没有**, 并排比时最刺眼。
-	## 判据落在**真实节点**上(不是"函数被调过"): 蓄力一开始梯形根下必须有 OnsetFlash,
-	##   而且它得是个真的 MeshInstance3D 且**有 mesh**(建了个空节点不算数)。
-	## 反向验证: 把 charge_field 末尾那行 `_charge_onset_flash(root)` 注掉 ⇒ 这两条当场红。
+	## ★★★【边线颜色 = 蓄力进度】—— 第四轮判据。**前三轮守的是错参考, 整块删了。**
+	##   用户 2026-09-03 指出真正的参考段落在机甲皮肤 spotlight 的 **1:59~2:02**
+	##   (`C:/tmp/sionref/m2/` 108 张原生帧 @29.97fps; 120.00s 线出现 → 121.94s 释放
+	##    = **1.94 秒满蓄**, 塞恩 Q 上限就是 2 秒)。逐帧分群量出来:
+	##     边线是 **青(180°) → 青绿 → 黄绿 → 黄 → 橙 → 红(0°) 的连续色相渐变**,
+	##     它才是"还剩多久"的主要信息载体。
+	##   ★前三轮我做的是**闪烁频率**(2Hz 呼吸 + 末秒 6Hz), 方向就不对; 而且照**原版塞恩**
+	##     (红色 Q, 根本不是机甲皮肤)加了"起手闪"和纯色填充 ——
+	##     那两条门禁(旧 ⑤c/⑤d)守的是错东西, 已随实现一起删。
+	##
+	## 判据分两层: **纯函数逐点验**(便宜、精确) + **真实节点验**(证明它真的接上了)。
 	if fld != null and is_instance_valid(fld):
-		var _of = (fld as Node).get_node_or_null("OnsetFlash")
-		_ok("⑤c 蓄力起手有【起手闪】节点(参考 f90~f96 那 0.2 秒)", _of != null,
-			"没有 = 蓄力前 0.2 秒画面上什么都没发生")
-		_ok("⑤d 起手闪是真的画得出来的(MeshInstance3D 且 mesh 非空)",
-			_of is MeshInstance3D and (_of as MeshInstance3D).mesh != null,
-			"空节点 = 建了但玩家看不见")
-		## ★★★【预警区填充】—— 这条守的是**已经踩过两次**的坑, 不是新功能的例行断言。
-		##   两次都是"我在 charge_field 里把填充设好, 下游每帧又把它覆盖掉":
-		##     ① `charge_update` 重设 `Fill.mesh`(我据此调了五次 alpha 毫无反应)
-		##     ② `_tick_field_pulse` 每帧重设 Fill 材质成 COL_SLAM 琥珀 α0.02~0.07
-		##   ⇒ 判据必须落在**推进过若干帧之后**读到的真实材质上, 不能只读刚建出来那一帧
-		##     (只读第一帧的话, 上面两个覆盖点都测不出来 —— 那才是恒真式)。
-		##   参考实测: 预警区填充是区分内外的主力(原版塞恩 Q 把地面压暗到 75%),
-		##   我们取同等对比度的青色 α0.20。
-		##   反向验证: 把 `_tick_field_pulse` 里那行改回 COL_SLAM α0.02~0.07 ⇒ 两条都红。
-		## ⚠ **必须自己推 `battle._t`** —— `tick_charge(ax, delta)` 的 delta 只用于效率计时,
+		var _h0: float = APV.edge_color_at(0.0, 2).h * 360.0
+		var _h5: float = APV.edge_color_at(0.50, 2).h * 360.0
+		var _h9: float = APV.edge_color_at(0.92, 2).h * 360.0
+		var _h1: float = APV.edge_color_at(1.0, 2).h * 360.0
+		_ok("⑤c 蓄力前半是青色(p=0.00 → %.0f° · p=0.50 → %.0f°)" % [_h0, _h5],
+			absf(_h0 - 180.0) < 12.0 and absf(_h5 - 180.0) < 12.0,
+			"不是青 = 与参考 48~76% 那段对不上")
+		_ok("⑤d 满蓄瞬间是红色(p=1.00 → %.0f°)" % _h1,
+			_h1 < 12.0 or _h1 > 348.0,
+			"不是红 = 与参考 121.94s 那一帧对不上")
+		## ★这条卡的是"**真的在渐变**"而不是"两端刚好对" ——
+		##   一个 `return 青 if p < 0.99 else 红` 的阶跃实现会通过上面两条, 在这条红。
+		_ok("⑤e 中间是连续渐变: p=0.92 落在青红之间(%.0f°), 与两端都拉开 > 25°" % _h9,
+			_h9 > 12.0 and _h9 < 168.0 and absf(_h9 - _h1) > 25.0 and absf(_h9 - _h5) > 25.0,
+			"卡在某一端 = 是阶跃不是渐变")
+		## ── 真实节点: 证明这条曲线**接上了**, 不是只有纯函数好看 ──
+		##   memory [[fb-zero-caller-is-a-whole-class]]: 门禁直接调函数不能证明游戏里会走到。
+		## ⚠ **必须自己推 `battle._t`** —— `tick_charge(ax, delta)` 的 delta 只管效率计时,
 		##   蓄力进度走的是 `charge_elapsed() = battle._t − _axe_charge_t0`。不推 `_t` 的话
 		##   `charge_height()` 恒为 0 ⇒ `charge_update` 第一行 `h <= 0.0` 就 return ⇒
-		##   `_tick_field_pulse` **一次都跑不到**, 下面两条只读到 charge_field 的初值 = 恒真式。
-		##   ★这不是假设: 第一版就是这么写的, 反向验证(把那行改回 COL_SLAM 琥珀)**没红**才发现。
+		##   `_tick_field_pulse` **一次都跑不到**, 读到的全是建场那一刻的初值 = 恒真式。
+		##   ★这不是假设: 上一版就是这么写的, 反向验证**没红**才发现。
 		for _fk in range(6):
 			_s._t += 0.1
 			_s._equip_sys._axe._pas.tick_charge(ax, 0.1)
+		var _eg = (fld as Node).get_node_or_null("Edge")
+		var _em: BaseMaterial3D = null
+		if _eg is MeshInstance3D:
+			_em = (_eg as MeshInstance3D).material_override as BaseMaterial3D
+		_ok("★分母: 推进 6 帧后 Edge 节点仍在且有材质", _em != null, "拿不到 = 下面那条是空检查")
+		var _hue_early: float = (_em.albedo_color.h * 360.0) if _em != null else -1.0
+		## 再推到接近满蓄
+		var _guard: int = 0
+		while _s._equip_sys._axe._pas.charge_elapsed(ax) < AE.CHARGE_TIME * 0.95 and _guard < 400:
+			_s._t += 0.1
+			_s._equip_sys._axe._pas.tick_charge(ax, 0.1)
+			_guard += 1
+		var _eg2 = (fld as Node).get_node_or_null("Edge")
+		var _em2: BaseMaterial3D = null
+		if _eg2 is MeshInstance3D:
+			_em2 = (_eg2 as MeshInstance3D).material_override as BaseMaterial3D
+		var _hue_late: float = (_em2.albedo_color.h * 360.0) if _em2 != null else -1.0
+		_ok("⑤f 真实节点上色相随蓄力**变了**(早 %.0f° → 晚 %.0f°, 差 %.0f°)"
+			% [_hue_early, _hue_late, absf(_hue_early - _hue_late)],
+			_em2 != null and absf(_hue_early - _hue_late) > 60.0,
+			"没变 = 曲线写了但没接到边线上")
+		## ── 地面网格(第四轮: "纯色填充" → 六边形网格纹理) ──
+		##   参考实测: 区内亮度只有 **103%**(几乎没变), 而纹理对比度 **+46%**
+		##   ⇒ 是"加纹理"不是"改亮度"。纯色填充改亮度但不改对比度, 方向从根上就不对。
 		var _fl = (fld as Node).get_node_or_null("Fill")
-		var _fm: BaseMaterial3D = null
-		if _fl is MeshInstance3D:
-			_fm = (_fl as MeshInstance3D).material_override as BaseMaterial3D
-		_ok("★分母: 推了 6 帧后 Fill 仍在、且有 mesh 与材质",
-			_fl is MeshInstance3D and (_fl as MeshInstance3D).mesh != null and _fm != null,
-			"拿不到 = 下面两条是空检查")
-		if _fm != null:
-			var _fc: Color = _fm.albedo_color
-			_ok("⑤e 预警区【填充】推进后仍然看得见(alpha %.3f ≥ 0.10)" % _fc.a, _fc.a >= 0.10,
-				"被下游覆盖成近乎透明 ⇒ 梯形只剩线框, 站里站外看不出区别")
-			_ok("⑤f 填充是青系(G %.2f > R %.2f), 不是琥珀" % [_fc.g, _fc.r], _fc.g > _fc.r + 0.15,
-				"变成琥珀 = 又被 COL_SLAM 那条路覆盖了")
+		_ok("⑤g 地面有六边形网格 mesh(不是纯色面)",
+			_fl is MeshInstance3D and (_fl as MeshInstance3D).mesh != null,
+			"没 mesh = 区内什么纹理都没有")
 	## 模拟"蓄力中被打死": 产品走 tick_charge → not alive → _end_charge
 	ax["alive"] = false
 	_s._equip_sys._axe._pas.tick_charge(ax, 0.1)

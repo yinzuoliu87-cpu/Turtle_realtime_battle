@@ -473,7 +473,11 @@ func _build_ground() -> void:
 	# ★"关的方式要可靠"= 真的不建, 不是调暗/移出屏幕。上一轮把地图上的绿色海草
 	#   误判成 091 的甲片, 根因就是场上有太多和特效同色同尺度的东西。
 	#   台子自己会铺一张暗地板(battle_vfx_lab._build_dark_floor)当参照面。
-	if OS.has_environment("VFXLAB"): return
+	## ★★例外: `VFXLAB_REALMAP=1` 要**真实地图**(2026-09-03 加)。
+	##   判断"预警区把地面纹理化"这类效果时黑场是错的场地 —— 参考里区内亮度只有 103%,
+	##   靠的是纹理对比度 +46%; 黑场地面亮度 ~10, 同样叠加算出来 364%, 读成"一块板"。
+	##   **黑场适合看"特效自己长什么样", 不适合看"特效与地面的关系"。**
+	if OS.has_environment("VFXLAB") and not OS.has_environment("VFXLAB_REALMAP"): return
 	# ★远景背景层("天空")在所有模式都建 —— 不像障碍物那样只在双路(用户 2026-07-21)
 	if not OS.has_environment("MAPEDIT"):
 		_build_far_backdrop(battle._world)

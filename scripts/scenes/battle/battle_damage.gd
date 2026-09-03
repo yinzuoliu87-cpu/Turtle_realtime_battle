@@ -204,7 +204,16 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: Stri
 		##   把这条也统一意味着 20 多处主题色当场失效 —— 那是全局收口, 用户 2026-09-03 明确
 		##   「别, 记录好到下一个方案里去做」⇒ 见 docs/plans/ 的伤害飘字统一方案。
 		var _fdt: String = {"tru": "true", "mag": "magic", "phy": "physical"}.get(bucket, "true")
-		battle._vfx._float_text(u["pos"] + Vector2(randf_range(-26.0, 26.0), -40.0 + randf_range(-10.0, 6.0)), str(dmg), col, false, "damage", _fdt)   # 抖开: 多段/AOE 出伤飘字不重叠成糊团
+		## ★★【真实伤害统一白色】—— 用户 2026-09-03 逐字:「我现在告诉你真实伤害统一白色」。
+		##   隔壁 `_apply_damage_from` 早就按类型统一取色(`_ncol`, 调用点传的 col 被忽略),
+		##   这条路却直接用调用点传的 `col` ⇒ **同一种真伤, 两条路跳出来颜色不一样**
+		##   (CLAUDE.md §3.3「改伤害必须两条都改」在这里又漏了一条)。
+		##   ⇒ 只收口真伤这一类; 物理/魔法用户没点, 留在方案书
+		##     `docs/plans/20260903b-伤害飘字统一收口.md` §5 未决① 里, 不擅自扩大。
+		##   ⚠ 这会让走这条路、传主题色的真伤调用点当场变白(古灵精怪枪自伤紫、
+		##     训龟大师暗红等)。那正是用户要的"按规矩", 不逐处商量豁免。
+		var _fcol: Color = Color(UIPalette.TRUE_DMG) if bucket == "tru" else col
+		battle._vfx._float_text(u["pos"] + Vector2(randf_range(-26.0, 26.0), -40.0 + randf_range(-10.0, 6.0)), str(dmg), _fcol, false, "damage", _fdt)   # 抖开: 多段/AOE 出伤飘字不重叠成糊团
 	# §AUDIO: 无来源伤害也出命中音 (非暴击); 护盾破→shield-break。mute_sfx=诅咒 tick 静音(用户2026-07-23)
 	if not mute_sfx:
 		if shield_before > 0.0 and u["shield"] <= 0.0:
