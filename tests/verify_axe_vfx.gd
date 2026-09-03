@@ -195,6 +195,49 @@ func _ready() -> void:
 	_ok("★分母: 真进了蓄力", began and ax.has("_axe_charge_t0"))
 	_ok("⑤ 蓄力一开始就有梯形场", ax.get("_axe_field", null) != null)
 	var fld = ax.get("_axe_field", null)
+	## ★★【起手闪】—— 2026-09-03 逐帧对比原版塞恩 Q 后补的。参考实测(qonly/ 30fps):
+	##   f90 脚下炸出亮点+外环 → f92 横拉成条 → f94 收回 → f96 没了(共 0.20 秒),
+	##   然后预警区才开始显形。我们之前**前 0.2 秒画面上什么都没有**, 并排比时最刺眼。
+	## 判据落在**真实节点**上(不是"函数被调过"): 蓄力一开始梯形根下必须有 OnsetFlash,
+	##   而且它得是个真的 MeshInstance3D 且**有 mesh**(建了个空节点不算数)。
+	## 反向验证: 把 charge_field 末尾那行 `_charge_onset_flash(root)` 注掉 ⇒ 这两条当场红。
+	if fld != null and is_instance_valid(fld):
+		var _of = (fld as Node).get_node_or_null("OnsetFlash")
+		_ok("⑤c 蓄力起手有【起手闪】节点(参考 f90~f96 那 0.2 秒)", _of != null,
+			"没有 = 蓄力前 0.2 秒画面上什么都没发生")
+		_ok("⑤d 起手闪是真的画得出来的(MeshInstance3D 且 mesh 非空)",
+			_of is MeshInstance3D and (_of as MeshInstance3D).mesh != null,
+			"空节点 = 建了但玩家看不见")
+		## ★★★【预警区填充】—— 这条守的是**已经踩过两次**的坑, 不是新功能的例行断言。
+		##   两次都是"我在 charge_field 里把填充设好, 下游每帧又把它覆盖掉":
+		##     ① `charge_update` 重设 `Fill.mesh`(我据此调了五次 alpha 毫无反应)
+		##     ② `_tick_field_pulse` 每帧重设 Fill 材质成 COL_SLAM 琥珀 α0.02~0.07
+		##   ⇒ 判据必须落在**推进过若干帧之后**读到的真实材质上, 不能只读刚建出来那一帧
+		##     (只读第一帧的话, 上面两个覆盖点都测不出来 —— 那才是恒真式)。
+		##   参考实测: 预警区填充是区分内外的主力(原版塞恩 Q 把地面压暗到 75%),
+		##   我们取同等对比度的青色 α0.20。
+		##   反向验证: 把 `_tick_field_pulse` 里那行改回 COL_SLAM α0.02~0.07 ⇒ 两条都红。
+		## ⚠ **必须自己推 `battle._t`** —— `tick_charge(ax, delta)` 的 delta 只用于效率计时,
+		##   蓄力进度走的是 `charge_elapsed() = battle._t − _axe_charge_t0`。不推 `_t` 的话
+		##   `charge_height()` 恒为 0 ⇒ `charge_update` 第一行 `h <= 0.0` 就 return ⇒
+		##   `_tick_field_pulse` **一次都跑不到**, 下面两条只读到 charge_field 的初值 = 恒真式。
+		##   ★这不是假设: 第一版就是这么写的, 反向验证(把那行改回 COL_SLAM 琥珀)**没红**才发现。
+		for _fk in range(6):
+			_s._t += 0.1
+			_s._equip_sys._axe._pas.tick_charge(ax, 0.1)
+		var _fl = (fld as Node).get_node_or_null("Fill")
+		var _fm: BaseMaterial3D = null
+		if _fl is MeshInstance3D:
+			_fm = (_fl as MeshInstance3D).material_override as BaseMaterial3D
+		_ok("★分母: 推了 6 帧后 Fill 仍在、且有 mesh 与材质",
+			_fl is MeshInstance3D and (_fl as MeshInstance3D).mesh != null and _fm != null,
+			"拿不到 = 下面两条是空检查")
+		if _fm != null:
+			var _fc: Color = _fm.albedo_color
+			_ok("⑤e 预警区【填充】推进后仍然看得见(alpha %.3f ≥ 0.10)" % _fc.a, _fc.a >= 0.10,
+				"被下游覆盖成近乎透明 ⇒ 梯形只剩线框, 站里站外看不出区别")
+			_ok("⑤f 填充是青系(G %.2f > R %.2f), 不是琥珀" % [_fc.g, _fc.r], _fc.g > _fc.r + 0.15,
+				"变成琥珀 = 又被 COL_SLAM 那条路覆盖了")
 	## 模拟"蓄力中被打死": 产品走 tick_charge → not alive → _end_charge
 	ax["alive"] = false
 	_s._equip_sys._axe._pas.tick_charge(ax, 0.1)
@@ -204,6 +247,29 @@ func _ready() -> void:
 	## ★这不会把判据放松成恒真: 如果根本没调 queue_free, 等多少帧它都还活着。
 	await get_tree().process_frame
 	await get_tree().process_frame
+	## ★★蓄力期间【不攒龟能】(用户 2026-09-03:「蓄力的时候不能攒龟能」)。
+	##   反向验证: 把 axe_system.tick 里那个 `if not _pas.is_charging(ax)` 去掉 ⇒ 这条当场红。
+	ax["alive"] = true
+	ax.erase("_axe_charge_t0")
+	ax["_axe_pv"] = 4
+	ax["energy"] = 0.0
+	_s._equip_sys._axe._pas.begin_charge(ax)
+	var _e0: float = float(ax.get("energy", 0.0))
+	for _k in range(12):
+		_s._equip_sys._axe.tick(owner_u, 0.1)      # 走真入口 tick(), 不直接调充能
+	var _e1: float = float(ax.get("energy", 0.0))
+	_ok("⑧ 蓄力中【不攒龟能】(推了 1.2 秒, 龟能 %.1f → %.1f)" % [_e0, _e1],
+		is_equal_approx(_e0, _e1), "涨了 %.2f —— 蓄力期间不该攒" % (_e1 - _e0))
+	## ★分母: 同样推 1.2 秒, **不在蓄力**时必须真的涨(否则上面那条是恒真式)
+	_s._equip_sys._axe._pas._end_charge(ax)
+	ax["alive"] = true
+	var _e2: float = float(ax.get("energy", 0.0))
+	for _k2 in range(12):
+		_s._equip_sys._axe.tick(owner_u, 0.1)
+	var _e3: float = float(ax.get("energy", 0.0))
+	_ok("★分母: 不蓄力时龟能确实在涨(%.1f → %.1f)" % [_e2, _e3], _e3 > _e2 + 0.01,
+		"没涨 = 上面那条是空检查")
+
 	_ok("⑦ 梯形节点真的被 free 了(不是只清了字段)",
 		fld == null or not is_instance_valid(fld),
 		"节点还活着 = 地上留了一块永久亮区")

@@ -191,7 +191,20 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: Stri
 	if dot_accum:
 		_dot_accumulate(u, bucket, dmg)
 	else:
-		battle._vfx._float_text(u["pos"] + Vector2(randf_range(-26.0, 26.0), -40.0 + randf_range(-10.0, 6.0)), str(dmg), col)   # 抖开: 多段/AOE 出伤飘字不重叠成糊团
+		## ★★跳法必须是【伤害】那一套 —— 用户 2026-09-03:「跳出方法不应该是向上淡出, 必须按规矩」。
+		##   规矩(本文件 `_float_text` 头注, 1:1 回合制 `_spawn_float_text`):
+		##     kind="damage" → 爆大 pop(1.6~2.5) + **抛物弹射**(重力 200, 朝屏边跳)
+		##     其它(label/heal/shield) → pop 1.2 + 缓升 50px + 淡出
+		##   这一行原来**一个 kind 都没传** ⇒ 吃默认值 "label" ⇒ 走的是缓升淡出那条,
+		##   而隔壁 `_apply_damage_from` 传的是 "damage"。
+		##   ⇒ **两条伤害路的飘字跳法不一样**(CLAUDE.md §3.3: 改伤害必须两条都改, 这里就漏了一条)。
+		## ★同时补 `dmg_type` —— `_float_row_offset` 靠它排行(红0/蓝1/白2, 真伤跳最上面),
+		##   不传就全挤在第 0 行。
+		## ⚠ 颜色仍用调用点传的 `col`(**没改**): `_apply_damage_from` 那条路是按类型统一取色的,
+		##   把这条也统一意味着 20 多处主题色当场失效 —— 那是全局收口, 用户 2026-09-03 明确
+		##   「别, 记录好到下一个方案里去做」⇒ 见 docs/plans/ 的伤害飘字统一方案。
+		var _fdt: String = {"tru": "true", "mag": "magic", "phy": "physical"}.get(bucket, "true")
+		battle._vfx._float_text(u["pos"] + Vector2(randf_range(-26.0, 26.0), -40.0 + randf_range(-10.0, 6.0)), str(dmg), col, false, "damage", _fdt)   # 抖开: 多段/AOE 出伤飘字不重叠成糊团
 	# §AUDIO: 无来源伤害也出命中音 (非暴击); 护盾破→shield-break。mute_sfx=诅咒 tick 静音(用户2026-07-23)
 	if not mute_sfx:
 		if shield_before > 0.0 and u["shield"] <= 0.0:

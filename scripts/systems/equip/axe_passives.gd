@@ -16,6 +16,16 @@ extends RefCounted
 ##   `slam_settle()` / `cleave_settle()` / `sweep_targets()` 都是**纯结算/纯选靶**，
 ##   门禁直接调它们喂坐标验数，不必等任何 tween 跑完。
 const AE := preload("res://scripts/gamedata/axe_evolution.gd")
+
+## ★★★伤害飘字的颜色**必须走 UIPalette 单一色表**(用户 2026-07-22「全统一」):
+##     物理 UIPalette.PHYS #ff4444 · 法术 UIPalette.MAGIC #4dabf7 · 真实 UIPalette.TRUE_DMG #ffffff
+##   由来(用户 2026-09-03:「什么叫真实伤害, 颜色等等规矩, **你在害用户**」):
+##   我这四处全是自己随手挑的色, 而且**头两条正好把玩家的判断调反**:
+##     · 竖劈的 5%%最大生命【真伤】我给了红 #d9534f ⇒ 玩家读成物理 ⇒
+##       **以为堆护甲能挡, 实际一点用都没有**(权威 §7.5 第 3 条点名的就是这个形态:
+##       「红字 + 不吃护甲 = 一发画成红色的真实伤害, 坏掉的是堆护甲和幽灵虚化两套对抗系统」)
+##     · 横扫的【物理】我给了灰白 #cfd8dc ⇒ 玩家读成真伤 ⇒ 以为护甲没用, 实际有用
+##   ⇒ 伤害类型是接线不是颜色(权威 §7.5), 但**玩家只能靠颜色判断**, 所以颜色必须诚实。
 const APV := preload("res://scripts/scenes/battle/axe_passive_vfx.gd")
 
 var battle = null
@@ -58,7 +68,7 @@ func smash_on_hit(ax: Dictionary, tgt: Dictionary) -> float:
 	ax["_axe_smash_at"] = float(battle._t) + AE.SMASH_IV
 	var extra: float = float(ax.get("atk", 0.0)) * AE.SMASH_ATK
 	battle._damage._apply_damage_from(ax, tgt, maxi(1, int(round(extra))),
-		Color("#c08a4a"), 0.0, false, true)
+		Color(UIPalette.PHYS), 0.0, false, true)
 	## 击飞 + 短暂击退 —— 走既有的唯一入口, 不自己写位移
 	battle._damage._knockback(ax, tgt, 0.0, AE.SMASH_KNOCK_VY, AE.SMASH_KNOCK_PUSH)
 	return extra
@@ -108,7 +118,7 @@ func cleave_settle(ax: Dictionary, tgt: Dictionary, swing: int) -> float:
 		return 0.0
 	## ★真实伤害走 _apply_damage(bucket="tru", is_self=false) —— 不吃护甲/魔抗。
 	##   两条伤害路各自扣盾扣血(CLAUDE.md §3.3), 真伤是这一条。
-	battle._damage._apply_damage(tgt, maxi(1, int(round(d))), Color("#d9534f"), ax, "tru", false)
+	battle._damage._apply_damage(tgt, maxi(1, int(round(d))), Color(UIPalette.TRUE_DMG), ax, "tru", false)
 	battle._damage._apply_dot_stacks(tgt, "bleed", AE.CLEAVE_BLEED, ax)
 	return d
 
@@ -196,6 +206,16 @@ func begin_charge(ax: Dictionary) -> bool:
 	## 70% 减伤 —— 走既有的 damage_reduction 通道(_mitigate_incoming 读它)
 	ax["_axe_dr_bak"] = float(ax.get("damage_reduction", 0.0))
 	ax["damage_reduction"] = maxf(float(ax.get("damage_reduction", 0.0)), AE.CHARGE_DR)
+	## ★★蓄力期间【不许普攻、不许移动】—— 用户 2026-09-03 当场指出「蓄力的时候为什么能攻击」。
+	##   需求原话没有明写这一条, 但「**效率计时器中断**」这句是决定性的:
+	##   效率层是"每次普攻命中 +1 层、5 秒过期", 如果蓄力期间照常普攻, 层数一直在刷新,
+	##   "中断计时器"就毫无意义 ⇒ 需求的意图就是**站着蓄力**。
+	##   旁证: 同期的全息斧写的是「将斧头**插入地下** 4 秒」, 是同一类不动的招。
+	## ★走既有的 `no_basic` / `no_move` 通道(主循环已经在读它们), 不自己写第二套闸。
+	ax["_axe_nb_bak"] = bool(ax.get("no_basic", false))
+	ax["_axe_nm_bak"] = bool(ax.get("no_move", false))
+	ax["no_basic"] = true
+	ax["no_move"] = true
 	## ★演出: 地面梯形预警。**它就是判定区**(见 axe_passive_vfx.charge_field 的头注),
 	##   不是一个"大概那么大"的圆。起手 h=CHARGE_H_PER_STEP(第一格), 之后由 tick_charge 长。
 	ax["_axe_field"] = vfx.charge_field(ax, ax["_axe_charge_dir"], AE.CHARGE_H_PER_STEP)
@@ -239,13 +259,17 @@ func slam_settle(ax: Dictionary) -> int:
 	var dmg: int = maxi(1, int(round(float(ax.get("atk", 0.0)) * AE.SLAM_ATK)))
 	## ★演出画在【结算用的同一组 org/dir/h】上 —— 三个量都在手边, 不必再算一遍。
 	##   各算各的必然漂(memory [[fb-hand-rolled-copies-drift]]), 而这一漂就是"演出≠判定"。
-	vfx.slam(ax, dir, h)
+	## ★★不再用那张贴地陨石坑素材 —— 它内容铺满整张 128x128, 贴地后有明显**方块边缘**
+	##   (memory [[fb-vfx-defect-families]]「贴图内容别铺满整张」)。
+	##   命中改成**六边形蜂窝网格**(照塞恩 Q), 在  里铺,
+	##   只覆盖梯形判定区 ⇒ 天然没有方块边, 而且亮到哪打到哪。
+	##   ⚠ 那张 eq096-slam.png 暂时留在盘上(门禁 ②b 还在验它是多帧素材), 但产品不再调它。
 	ax["_axe_slam_flash"] = true      # ★告诉 _end_charge: 这次是【砸下】, 梯形要闪一下再消失
 	var n := 0
 	for o in battle._targeting._targetable_enemies(ax):
 		if not AE.in_trapezoid(org, dir, h, o.get("pos", Vector2.ZERO)):
 			continue
-		battle._damage._apply_damage_from(ax, o, dmg, Color("#e8b04b"), 0.0, false, true)
+		battle._damage._apply_damage_from(ax, o, dmg, Color(UIPalette.PHYS), 0.0, false, true)
 		if o.get("alive", false):
 			battle._damage._knockback(ax, o, 0.0, 1.6, 1.0)     # "高高击飞"
 			battle._damage._stun(o, AE.SLAM_STUN, "axe_slam")
@@ -255,6 +279,12 @@ func slam_settle(ax: Dictionary) -> int:
 
 
 func _end_charge(ax: Dictionary) -> void:
+	## ★★还原普攻/移动 —— **必须和梯形在同一处还原**。
+	##   漏了这一步 = 斧头砸完就永远不动了(而且只在"砸过一次"之后才发作, 极难发现)。
+	if ax.has("_axe_nb_bak"):
+		ax["no_basic"] = bool(ax["_axe_nb_bak"]); ax.erase("_axe_nb_bak")
+	if ax.has("_axe_nm_bak"):
+		ax["no_move"] = bool(ax["_axe_nm_bak"]); ax.erase("_axe_nm_bak")
 	## ★梯形在**所有**退出路径上都要收 —— 砸下 / 斧头死 / 被打断都走这里。
 	##   只在 slam_settle 里收会漏掉"斧头蓄力中被打死", 留一块亮区永远挂在地上。
 	## ★砸下 → 闪一下再消失(让范围与冲击同框出现一次); 其它退出路径(死/打断) → 直接抹掉。

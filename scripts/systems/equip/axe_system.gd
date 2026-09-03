@@ -197,8 +197,14 @@ func tick(u: Dictionary, _delta: float) -> void:
 	##   四个最终造物的主动**在真实对局里一个都放不出来**(而门禁全绿, 因为门禁自己喂 140)。
 	##   ★充能速率沿用全局换算(1 点 = 0.075 秒)并乘 `echarge_perm` ——
 	##     全息斧的「50% 龟能充能速率」这才真的有了消费者。
-	ax["energy"] = minf(float(ax.get("maxEnergy", AE.ACTIVE_ENERGY)),
-		float(ax.get("energy", 0.0)) + AE.energy_gain(_delta, float(ax.get("echarge_perm", 1.0))))
+	## ★★★**蓄力期间不攒龟能**(用户 2026-09-03:「蓄力的时候不能攒龟能」)。
+	##   原来这一行无条件执行 ⇒ 那 4 秒照常充能 ⇒ 蓄力一结束龟能往往已经满了,
+	##   立刻又放主动 → 又进蓄力, 形成"砸完马上再蓄"的连锁, 斧头几乎一直站着不动。
+	##   ★与"蓄力期间不许普攻/不许移动"(begin_charge 里那两行)是同一条设计:
+	##     蓄力就是**什么都不做地在蓄**, 包括不攒资源。
+	if not _pas.is_charging(ax):
+		ax["energy"] = minf(float(ax.get("maxEnergy", AE.ACTIVE_ENERGY)),
+			float(ax.get("energy", 0.0)) + AE.energy_gain(_delta, float(ax.get("echarge_perm", 1.0))))
 	_pas.tick_smash(ax, _delta)
 	_fin.ember_light_tick(ax)          # 余烬之光: 清过期的(多层只延长在线时间, 不叠强度)
 	_fin.tick_active(ax, _delta)       # 造物主动: 甩回旋镖 / 法阵脉冲 / 到期还原减伤
@@ -279,7 +285,7 @@ func on_hit(src: Dictionary, tgt: Dictionary, basic: bool) -> void:
 	for o in _pas.sweep_targets(src, tgt, sw):             # 被动5: 奇数次 → 180° 横扫
 		if not is_same(o, tgt) and o.get("alive", false):
 			battle._damage._apply_damage_from(src, o, maxi(1, int(round(float(src.get("atk", 0.0))))),
-				Color("#cfd8dc"), 0.0, false, true)
+				Color(UIPalette.PHYS), 0.0, false, true)   # ★横扫是【物理】⇒ 红; 原来的灰白会被读成真伤
 	var smashed: float = _pas.smash_on_hit(src, tgt)       # 被动3: 每 9 秒一次强化
 	_pas.add_eff(src)                                      # 被动5: 效率层 +1
 	## ── 演出: 这一下普攻播哪张招式帧 ──────────────────────────────
