@@ -8,6 +8,13 @@ var battle
 func _init(b) -> void:
 	battle = b
 
+## ★★★【唯一收口】凡"不可被主动选中"的判断一律走 `battle._is_untargetable(o)` ——
+##   2026-09-04 用户「彻查…真实伤害数字是一团乱，应该统一规则的」那一轮查出来的:
+##   本文件有 **六个**函数在回答同一个问题「哪些敌人能被主动选中」, 而它们各写一遍排除条件。
+##   `_pick_enemies_of` 走 `_is_untargetable()`(查 `untargetable_until` **或** `_assembling`),
+##   其余几个只查 `untargetable_until` ⇒ **赛博龟组装机甲的 5 秒里**,
+##   `_pick_enemies_of` 排除它, 而普攻主线走的 `_nearest_enemy`(被调 80 次)**照样锁它**。
+##   ⇒ 全部改走同一个函数。门禁 `verify_target_paths_agree` 守这条(修之前它是红的)。
 func _nearest_enemy_for_trainer(u: Dictionary):
 	var best = null
 	var best_d = battle.TRAINER_RANGE * battle.TRAINER_RANGE
@@ -16,7 +23,7 @@ func _nearest_enemy_for_trainer(u: Dictionary):
 			continue
 		if o.get("is_trainer", false):
 			continue   # 训龟大师之间不互殴(都是场外监视者)
-		if battle._t < float(o.get("untargetable_until", 0.0)):
+		if battle._is_untargetable(o):
 			continue
 		var dd: float = (o["pos"] - u["pos"]).length_squared()
 		if dd < best_d:
@@ -39,7 +46,7 @@ func _farthest_enemy(u: Dictionary):
 	for o in battle._units:
 		if not battle._is_hostile(u, o) or not o["alive"]:
 			continue
-		if battle._t < o["untargetable_until"]:   # 黑洞 → 不可被选
+		if battle._is_untargetable(o):   # 黑洞 → 不可被选
 			continue
 		if o.get("_egg_fence", false):            # 龟蛋围栏未破 → 不可被主动索敌
 			continue
@@ -90,7 +97,7 @@ func _nearest_enemy(u: Dictionary):
 	for o in battle._units:
 		if not battle._is_hostile(u, o) or not o["alive"]:   # ★原为 o["side"] == u["side"], 见 §HOSTILE
 			continue
-		if battle._t < o["untargetable_until"]:   # 黑洞 → 不可被选
+		if battle._is_untargetable(o):   # 黑洞 → 不可被选
 			continue
 		if o.get("_egg_fence", false):   # 龟蛋围栏未破 → 不可被主动索敌(但AoE/增益穿栏, 走_enemies_of不受此限)
 			continue
@@ -117,7 +124,7 @@ func _nearest_enemy_from(u: Dictionary, from_pos: Vector2):
 	for o in battle._units:
 		if not battle._is_hostile(u, o) or not o.get("alive", false):
 			continue
-		if battle._t < float(o.get("untargetable_until", 0.0)):
+		if battle._is_untargetable(o):
 			continue
 		if o.get("_egg_fence", false):
 			continue
@@ -196,7 +203,7 @@ func _targetable_enemies(u: Dictionary) -> Array:
 	for o in _enemies_of(u):
 		if not o.get("alive", false): continue
 		if o.get("_egg_fence", false): continue
-		if battle._t < float(o.get("untargetable_until", 0.0)): continue
+		if battle._is_untargetable(o): continue
 		if o.get("is_trainer", false): continue   # ★大师不可主动锁(用户2026-07-23 点4: 只吃AOE波及)
 		out.append(o)
 	return out

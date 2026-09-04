@@ -395,7 +395,15 @@ func _t_dispatch() -> void:
 		"far=%d near=%d" % [fb.length(), nb.length()])
 	# ★"两边一致"单独一条会【空过】—— 两边【都】漏掉某个闸门时它也成立。
 	#   所以先各自查"这个闸门在不在"(分母), 再查"两边一不一致"。
-	var gates: Array = ["untargetable_until", "is_trainer", "_is_hostile"]
+	## ★2026-09-04 更新闸门名: `untargetable_until` → `_is_untargetable`。
+	##   那一轮把六个主动索敌函数**全部收口到 `battle._is_untargetable(o)`**
+	##   (它查 `untargetable_until` **或** `_assembling` —— 而这几个函数原来只查前者,
+	##    导致赛博龟组装机甲的 5 秒里普攻照样锁得住它)。
+	## ⚠ 本条是**源码子串匹配**, 收口之后字符串变了它就红 ——
+	##   这恰好说明它是个弱判据: **行为变好了, 判据却红**。
+	##   真正验行为的是 `tests/verify_target_paths_agree.gd`(走真函数, 造一个该被排除的
+	##   单位, 问六条路各自选不选得中)。本条保留只是当"别退回手抄副本"的廉价哨兵。
+	var gates: Array = ["_is_untargetable", "is_trainer", "_is_hostile"]
 	var miss_far: Array = []
 	var miss_near: Array = []
 	var diff_g: Array = []
