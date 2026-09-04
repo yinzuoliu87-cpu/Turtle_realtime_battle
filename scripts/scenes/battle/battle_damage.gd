@@ -516,6 +516,13 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, ex
 ##   这比没有参数更坑。保留形参是为了不动那 25 处(GDScript 参数个数不匹配是**运行时**才炸, 批量改风险大),
 ##   但名字改成自说明的, 并且删掉了那个假装能调距离的 `DART_KNOCKUP_DIST` 常量。
 func _knockback(by: Dictionary, tgt: Dictionary, _ignored_dist: float, vy_mult: float = 1.0, push_mult: float = 1.0) -> void:
+	## ★★三道守卫必须与 `_knock_up` 完全一致 —— 它们是同一件事(让单位飞起来)的两条路。
+	##   2026-09-04 彻查发现这里**少了 `alive`**: 调用点普遍是「先 `_apply_damage_from`
+	##   再 `_knockback`」, 那一发要是打死了目标, 就会作用在**尸体**上(尸体飞天)。
+	##   `_knock_up` 一直查着 alive, 这条路没查 ⇒ 同一件事两套标准。
+	##   门禁 `verify_knock_paths_agree` ② 守这条(修之前它是红的)。
+	if not tgt.get("alive", false):
+		return
 	if tgt["airborne"]:
 		return
 	if tgt.get("_knock_immune", false):   # 不沉之锚017免击飞(原flag只写不读=死标记, 用户2026-07-19"说好的免疫呢"补)
