@@ -289,7 +289,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	# 闪避 (目标 dodge_bonus); 瞄准镜054: 攻击者伤害无视闪避 (必中)
 	# no_dodge: 吸取类必中(用户2026-07-22「吸取不可以被闪避或暴击」)
 	if not no_dodge and u.get("dodge_bonus", 0.0) > 0.0 and not src.get("eq_cannot_be_dodged", false) and battle._battle_rng.randf() < u["dodge_bonus"]:
-		battle._vfx._float_text(u["pos"] + Vector2(0, -40), "闪避", Color("#a0e8ff"))
+		battle._vfx._float_text(u["pos"] + Vector2(0, -40), "闪避", battle._VC.color_of("dodge-num"))   # 走飘字色表, 不再手抄 #a0e8ff
 		battle._equip_sys._eq_on_dodge(u)          # on-dodge 钩子 (幽灵墨鱼046: 闪避→永久护盾)
 		battle._spirit_syn.on_dodge(u)             # 灵物【闪避追击】: 触手立即追击 1 次(25% 伤害, 每周期上限队伍共用)
 		return
@@ -639,7 +639,7 @@ func _grant_shield(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 	var got = int(u["shield"] - sb)
 	u["_st_shield"] = int(u.get("_st_shield", 0)) + got   # §STATS: 实际获盾
 	if got >= 8:                             # #1 护盾飘字 "+N 盾" (浅蓝); 门槛过滤每帧微盾被动防刷屏
-		battle._vfx._float_text(u["pos"] + Vector2(0, -52), "+%d 盾" % got, Color("#ffffff"), false, "shield")
+		battle._vfx._float_text(u["pos"] + Vector2(0, -52), "+%d 盾" % got, battle._VC.color_of("shield-num"), false, "shield")   # 走飘字色表, 不再手抄 #ffffff
 	## ★★2026-08-09 用户看到 095 的画面:「又是程序生成的环？哪个商业游戏是你这么做啊」。
 	##   这一行就是那个环 —— `_skill_ring` 是**代码现画的一个圆**, 而它封着全游戏 44 个给盾点,
 	##   于是任何来源给盾, 脚下都糊同一个金圈。程序化圆环是占位素材的水平, 这条不辩解。
@@ -725,7 +725,7 @@ func _heal_flush(u: Dictionary) -> void:   # LoL式: 治疗累加器→静默0.1
 		return
 	if battle._t - float(u.get("_heal_acc_t", 0.0)) >= 0.15 or battle._t - float(u.get("_heal_acc_start", 0.0)) >= 0.6:
 		if int(round(acc)) >= 1:
-			battle._vfx._float_text(u["pos"] + Vector2(0, -40), "+" + str(int(round(acc))), Color("#06d6a0"), false, "heal")
+			battle._vfx._float_text(u["pos"] + Vector2(0, -40), "+" + str(int(round(acc))), battle._VC.color_of("heal-num"), false, "heal")   # 走飘字色表(→UIPalette.HEAL), 不再手抄 #06d6a0
 		u["_heal_acc"] = 0.0
 		u["_heal_acc_start"] = 0.0
 

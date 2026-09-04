@@ -31,6 +31,33 @@
 
 ★留了 `# zero-caller-ok: 原因` 的豁免注释 —— 但**必须写原因**，且会被打印出来，
   数量涨了看得见。（不写原因不给过：无声豁免等于没有规则。）
+
+════════════════════════════════════════════════════════════════════════
+ ★★★已知盲区：同名方法互相掩护（2026-09-05 量的，别以为这条门禁是全覆盖的）
+════════════════════════════════════════════════════════════════════════
+主判据是「名字 `\bfn\b` 在全仓出现过就算有人调」。**同一个名字被多个类定义时，
+它们互相掩护**：只要任意一个被调过，全部定义处都算活的。
+
+实测（受检目录 106 文件 / 1658 个函数名）：
+  · **44 个名字**被 ≥2 个文件定义，共 **246 个定义处**
+  · `clear_all` 16 处 · `tick` 36 处 · `on_hit` 11 处 · `_ring_mesh` 5 处 …
+
+这不是假想。**`IncenseStoneSystem.clear_all()` 就是这么漏过去的** ——
+它写着完整的换路撤场（写回存档 → `_revoke()` → 复位加载闸 → 清香台），
+**全仓零调用者**，而这条门禁一直报绿，因为另外 15 个 `clear_all` 有人调。
+（那一条实测**无功能后果**，见它自己的 `zero-caller-ok` 注释。）
+
+⇒ 下面加了**第二道网**（`same_name_dead`）：对同名方法的**每个定义处**单独判 ——
+   ① 同文件内有裸调 `fn(`，或 ② 全仓/tests 有限定调用 `X.fn(`；两者皆无 = 死。
+   实测它在 246 个定义处里恰好抓到 **1 个真死函数**（`potion_eq_vfx._ring_mesh`，
+   2026-08-11 用户批"程序生成的圆环"后换了真瓶子立绘，函数留着 23 行没人调），
+   **零误报**，所以直接当红灯用，不留台账。
+
+★第二道网**仍不完备**：它的 ② 是「全仓任何地方有 `X.fn(`」，
+  所以 `clear_all` 这种"有别的持有者在调"的情况照样漏。要真收口得做
+  class → 持有字段 的类型映射，而那条路实测会漏四类
+  （`:=` 声明 / preload 别名 / 跨文件赋值 / 只看 `clear_all` 不看 `clear`），
+  成本远大于收益。**写在这里是为了下一个人不会以为这条门禁已经全覆盖。**
 """
 import io
 import json
@@ -135,8 +162,48 @@ def main():
                 else:
                     dead.append("%s:%d  %s" % (path, i + 1, fn))
 
+    ## ══════════════════════════════════════════════════════════════
+    ##  第二道网：同名方法互相掩护（见文件头「已知盲区」）
+    ## ══════════════════════════════════════════════════════════════
+    ## 主判据按名字数，同名方法只要有一个被调，全部定义处都算活的。
+    ## 这里对**每个定义处**单独判：① 同文件内有裸调 `fn(`，或
+    ## ② 全仓/tests 有限定调用 `X.fn(`；两者皆无 = 死。
+    defs_by_name = {}
+    for path in files:
+        src = allsrc.get(path, "")
+        for i, ln in enumerate(src.split("\n")):
+            m = re.match(r"^(?:static\s+)?func\s+([A-Za-z_][A-Za-z0-9_]*)", ln)
+            if not m or m.group(1) in ENGINE:
+                continue
+            ex = EXEMPT_RE.search(ln)
+            if ex:
+                continue
+            defs_by_name.setdefault(m.group(1), []).append((path, i + 1))
+    multi = {k: v for k, v in defs_by_name.items() if len(v) >= 2}
+    whole = "\n".join(allsrc.values())
+    wtests = "\n".join(testsrc.values())
+    same_name_dead = []
+    n_multi_sites = 0
+    for fn, sites in multi.items():
+        qual = re.compile(r"[A-Za-z_0-9\]\"]\." + re.escape(fn) + r"\s*\(")
+        bare = re.compile(r"(?<![\w\.])" + re.escape(fn) + r"\s*\(")
+        has_qual = bool(qual.search(whole)) or bool(qual.search(wtests))
+        for p, ln in sites:
+            n_multi_sites += 1
+            body = re.sub(r"^(?:static\s+)?func\s+" + re.escape(fn) + r"\b.*$", "",
+                          allsrc[p], flags=re.M)
+            if not bare.search(body) and not has_qual:
+                same_name_dead.append("%s:%d  %s" % (p, ln, fn))
+
     print("  [分母] 扫描 %d 个文件 · %d 个函数 (受检目录: %s)"
           % (len(files), n_fun, " ".join(ROOTS)))
+    print("  [分母] 第二道网: %d 个名字被 ≥2 文件定义 · 共 %d 个定义处"
+          % (len(multi), n_multi_sites))
+    if len(multi) < 10 or n_multi_sites < 50:
+        print("")
+        print("[FAIL] 同名方法只找到 %d 个名字 / %d 个定义处 —— 分母过小, 第二道网是空检查"
+              % (len(multi), n_multi_sites))
+        return 1
     if exempt:
         print("  [豁免] %d 个（每个都写了原因）:" % len(exempt))
         for e in exempt[:10]:
@@ -178,6 +245,19 @@ def main():
         print("  （四个最终造物的主动就是这么漏掉的：函数写好、门禁全绿、游戏里放不出来。")
         print("    确实不该有调用者的，加注释 `# zero-caller-ok: 原因`，原因会被打印出来。）")
         return 1
+    ## 第二道网**不留台账**（实测存量为 0，零误报）—— 新增当场红。
+    if same_name_dead:
+        print("")
+        print("[FAIL] **同名掩护**下的死函数 %d 个（主判据按名字数，抓不到这一类）:"
+              % len(same_name_dead))
+        for d in same_name_dead:
+            print("   " + d)
+        print("")
+        print("  （同一个名字被多个类定义时会互相掩护：只要任意一个被调过，主判据就全部报绿。")
+        print("    这一列是对**每个定义处**单独判的 —— 同文件裸调 或 任意处 `X.fn(` 限定调用，")
+        print("    两者皆无。确实不该有调用者的，加 `# zero-caller-ok: 原因`。）")
+        return 1
+
     print("")
     print("ALL OK — 没有「写了没人读」的函数")
     return 0

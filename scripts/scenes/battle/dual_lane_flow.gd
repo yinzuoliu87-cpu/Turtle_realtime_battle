@@ -510,7 +510,11 @@ func _dl_build_lane_field() -> void:
 	##   · _relic_sys  「漏了就会把上一路的碑(和它的 +35% 增伤 / +50 双抗)带进下一路」
 	##   · _gun_sys / _blade_sys 「留着就是**悬空引用**, 下一路会对着上一路的字典结算」
 	##   · _gadget_sys 演出节点与自扫名册; · battle._crystal_sys 结晶扫描的网格节点
-	##   ⚠ **香火石 `_incense` 故意不在这里** —— 它是跨对局养成、要落存档的, 清了就把玩家的进度抹了。
+	##   ⚠ **香火石 `_incense` 故意不在这里**。★2026-09-05 订正: 原来这里写的理由是
+	##     「清了就把玩家的进度抹了」—— **和代码事实相反**, `IncenseStoneSystem.clear_all()`
+	##     第一件事就是 `_persist_chg` **把余额写回存档**。真实情况是**不调它没有后果**,
+	##     三条已逐个实测(香台靠 `_world` 兜底不残留 / buff 写在单位字典自己身上、换路整批离场 /
+	##     存档在 `incense_stone_system.gd:200` 刻痕当时就写回) —— 详见该函数的 `zero-caller-ok` 注释。
 	##   (这张手写名单会漂, 已由 tests/verify_lane_clear_wired.gd 焊住: 有 clear_all 的系统
 	##    要么在这张名单里, 要么在那份测试的"故意不清"清单里带理由。)
 	## ★★2026-08-30 从这张名单里【移出】批④的五个: _gun_sys / _blade_sys / _gadget_sys

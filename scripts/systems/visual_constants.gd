@@ -14,28 +14,39 @@ class_name VisualConstants extends RefCounted
 ## Godot 端唯一不同: 渲染引擎 (Freetype + outline 比 Phaser CSS text-shadow 干净一点)
 
 
+const UIPalette = preload("res://scripts/util/ui_palette.gd")
+
 ## FLOAT_STYLE — 飘字 class → {color, base_size}
 ## Phaser visual_dispatcher.ts:42-71 1:1
+##
+## ★**伤害语义色一律引用 `UIPalette`，不许在这里写十六进制字面量**（2026-09-05 收口）。
+##   `UIPalette` 是 2026-07-22 建的语义色单一事实源，当时要收的正是三张表：
+##     `skill_text.VAL_HEX` ✅ 已接 · `dmg_stats_panel.COL_*` ✅ 已接 · **本表 ❌ 漏了**
+##   于是「单一事实源」建好后，这张表又自己抄了一份字面量抄了一年半。
+##   实测四表 9 对语义色**今天数值全一致**（0 处漂移）—— 但那是手工维持的，
+##   而 `UIPalette` 的文件头正是为了终结这种维持才写的。
+##   门禁 `verify_float_style_uses_palette` 焊住这条（源码级 + 数值级双判据）。
+##   ⇒ 非语义色（灰/白的护盾、穿透、金色暴击标签…）保留字面量，见下方各行。
 const FLOAT_STYLE: Dictionary = {
 	# ── 三色伤害 (物理红 / 魔法蓝 / 真伤白) ──
-	"direct-dmg":   {"color": "#ff4444", "size": 22},
-	"phys-dmg":     {"color": "#ff4444", "size": 22},   # alias
-	"magic-dmg":    {"color": "#4dabf7", "size": 22},
-	"true-dmg":     {"color": "#ffffff", "size": 22},
-	"pierce-dmg":   {"color": "#ffffff", "size": 20},
+	"direct-dmg":   {"color": UIPalette.PHYS, "size": 22},
+	"phys-dmg":     {"color": UIPalette.PHYS, "size": 22},   # alias
+	"magic-dmg":    {"color": UIPalette.MAGIC, "size": 22},
+	"true-dmg":     {"color": UIPalette.TRUE_DMG, "size": 22},
+	"pierce-dmg":   {"color": "#ffffff", "size": 20},        # 穿透≠真伤, 只是恰好也白
 	"shield-dmg":   {"color": "#aaaaaa", "size": 16},
 
 	# ── 暴击 (同色, 大字号) ──
-	"crit-dmg":     {"color": "#ff4444", "size": 26},
-	"crit-magic":   {"color": "#4dabf7", "size": 26},
-	"crit-true":    {"color": "#ffffff", "size": 26},
-	"crit-pierce":  {"color": "#ffffff", "size": 24},
-	"crit":         {"color": "#ff4444", "size": 26},
+	"crit-dmg":     {"color": UIPalette.PHYS, "size": 26},
+	"crit-magic":   {"color": UIPalette.MAGIC, "size": 26},
+	"crit-true":    {"color": UIPalette.TRUE_DMG, "size": 26},
+	"crit-pierce":  {"color": "#ffffff", "size": 24},        # 同 pierce-dmg
+	"crit":         {"color": UIPalette.PHYS, "size": 26},
 
 	# ── 治疗 / 护盾 ──
-	"heal-num":     {"color": "#06d6a0", "size": 24},
-	"heal":         {"color": "#06d6a0", "size": 24},   # alias
-	"shield-num":   {"color": "#ffffff", "size": 22},
+	"heal-num":     {"color": UIPalette.HEAL, "size": 24},
+	"heal":         {"color": UIPalette.HEAL, "size": 24},   # alias
+	"shield-num":   {"color": "#ffffff", "size": 22},        # 「+N 盾」飘字是纯白, 不是 SHIELD_VALUE(#58d3ff 是统计面板的蓝条)
 	"shield-gain":  {"color": "#ffffff", "size": 22},   # alias
 
 	# ── 标签 / 触发 ──
@@ -44,10 +55,10 @@ const FLOAT_STYLE: Dictionary = {
 	"debuff-label": {"color": "#ff9f43", "size": 14},
 
 	# ── DoT (按伤害类型上色) ──
-	"dot-dmg":      {"color": "#4dabf7", "size": 18},   # 灼烧 = 魔蓝
-	"dot-poison":   {"color": "#4dabf7", "size": 18},
-	"dot-bleed":    {"color": "#ff4444", "size": 18},   # 流血 = 物红
-	"dot-curse":    {"color": "#ffffff", "size": 18},   # 诅咒 = 真白
+	"dot-dmg":      {"color": UIPalette.MAGIC, "size": 18},      # 灼烧 = 魔蓝
+	"dot-poison":   {"color": UIPalette.MAGIC, "size": 18},
+	"dot-bleed":    {"color": UIPalette.PHYS, "size": 18},       # 流血 = 物红
+	"dot-curse":    {"color": UIPalette.TRUE_DMG, "size": 18},   # 诅咒 = 真白
 
 	# ── 特殊 ──
 	"counter-dmg":  {"color": "#ffd93d", "size": 20},

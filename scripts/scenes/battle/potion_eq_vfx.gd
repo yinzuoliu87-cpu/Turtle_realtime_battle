@@ -256,7 +256,6 @@ var battle
 ## 网格缓存: 全是【单位尺寸】的, 每一发只差 scale 与材质 ⇒ 整局各建一次。
 ## ★挂实例上而不是 static var: static 的话进程退出时还挂着 ArrayMesh,
 ##   Godot 会报 "resources still in use at exit"(shockwave_vfx 实测过)。
-var _m_ring: ArrayMesh = null
 var _m_cloud: ArrayMesh = null
 var _m_beam: ArrayMesh = null
 var _m_quad: ArrayMesh = null
@@ -277,28 +276,6 @@ static func _tri(st: SurfaceTool, a: Array, b: Array, c: Array) -> void:
 
 static func _flat(r: float, th: float, a: float) -> Array:
 	return [Vector3(r * cos(th), GROUND_Y, r * sin(th)), Color(1, 1, 1, a)]
-
-
-## 单位半径的贴地细环(065 光晕用): 内沿软、外沿软, 中间一圈最亮。
-func _ring_mesh() -> ArrayMesh:
-	if _m_ring != null:
-		return _m_ring
-	var mesh := ArrayMesh.new()
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for j in range(RING_LON):
-		var t0: float = float(j) / float(RING_LON) * TAU
-		var t1: float = float(j + 1) / float(RING_LON) * TAU
-		for q in [[0.80, 0.0, 0.92, 1.0], [0.92, 1.0, 1.0, 0.0]]:
-			var a := _flat(float(q[0]), t0, float(q[1]))
-			var b := _flat(float(q[2]), t0, float(q[3]))
-			var c := _flat(float(q[2]), t1, float(q[3]))
-			var d := _flat(float(q[0]), t1, float(q[1]))
-			_tri(st, a, b, c)
-			_tri(st, a, c, d)
-	st.commit(mesh)
-	_m_ring = mesh
-	return mesh
 
 
 ## 单位半径的毒云盘。★顶点 alpha **就是**自相似剖面 e^(−ρ²) ——
