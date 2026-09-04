@@ -180,13 +180,16 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: Stri
 	if u.get("_review_dummy", false): u["hp"] = u["maxHp"]   # 训练靶: 受击即回满, 打不死不结算(看完整)
 	if battle._audit and dmg > 100000:
 		battle._audit_flag("huge_hit", "%s 单次承伤 %d (%s)" % [str(u.get("name", "?")), dmg, bucket])
-	u["_st_taken"] = int(u.get("_st_taken", 0)) + dmg
-	battle._st_add_type(u, "_st_taken_by_type", bucket, dmg)
 	# §STATS 修(用户2026-07-19"统计面板感觉很多伤害没统计"): DoT(灼烧/中毒/流血)此前【只计承受方】,
-	#   施加者的"造成"完全没算 —— 而 dot_src 一直有记来源, 只是结算时没用。这里补上施加者归属。
-	if src is Dictionary and src.get("alive", false) and not is_same(src, u):
-		src["_st_dealt"] = int(src.get("_st_dealt", 0)) + dmg
-		battle._st_add_type(src, "_st_dealt_by_type", bucket, dmg)
+	#   施加者的"造成"完全没算 —— 而 dot_src 一直有记来源, 只是结算时没用。
+	## ★★★2026-09-04: 这里原来是**自己抄了一遍**记账(而不是调 `_record_buckets`),
+	##   条件还写成 `src.get("alive")` —— 而共用函数用的是 `src.has("side")`。
+	##   ⇒ **施加者阵亡后**, DoT 继续跳的那些伤害走这条路就**不算给他**,
+	##     而走 `_apply_damage_from` 的同类伤害照算。同一份伤害算不算数, 取决于走哪条路。
+	##   2026-07-19 那次修只修了一半(补了 `_st_dealt`, 但条件用了 alive)。
+	##   ⇒ 改调共用函数, 与另一条路同源。was_crit 恒 false: 这条路是 DoT/真伤, 本就不暴击。
+	##   门禁 `verify_dmg_paths_agree` ① 守这条(修之前它是红的)。
+	_record_buckets(src, u, dmg, bucket, false)
 	# ★DOT 累积模式(点1): 不跳小飘字, 累加进头顶【按伤害类型桶】的常驻数字(灼烧+中毒同 mag 桶)。
 	if dot_accum:
 		_dot_accumulate(u, bucket, dmg)
