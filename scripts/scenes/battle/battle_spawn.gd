@@ -281,6 +281,21 @@ func _spawn_lane_side(units: Array, side: String, lvl: int, base: Vector2) -> vo
 			made["_tame_decay_next"] = -1.0                      # 掉血节拍重新起算(进场后整 1 秒才掉第一次)
 		battle._units.append(made)
 
+## 数据驱动龟能表: 该龟各技 type → energyCost。
+## ★**真龟(`_make_unit`)与缩头随从(`_spawn_hiding_minion`)共用这一个函数**，不许各抄一份。
+##   随从 = 实体完整龟(用户 2026-07-17「除了血量以外其他东西应该和该龟一模一样」)，
+##   而它此前**根本没有 `energy_cost`** ⇒ 放技花的是 `SkillEnergy.cost_of()` 的类型兜底，
+##   不是该龟自己的数据值。今天 19 只恰好两者相等所以看不出来，但那是巧合不是设计。
+##   门禁 `verify_minion_is_full_turtle` 焊住这条。
+static func energy_cost_table(d: Dictionary) -> Dictionary:
+	var ec: Dictionary = {}
+	for sk in d.get("skillPool", []):
+		var e = sk.get("energyCost", null)
+		if e != null:
+			ec[str(sk.get("type", ""))] = float(e)
+	return ec
+
+
 func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -> Dictionary:
 	var is_minion: bool = bool(spec.get("minion", false))
 	var is_egg: bool = bool(spec.get("egg", false))
@@ -469,12 +484,7 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		u["def"] *= _m; u["base_def"] *= _m
 		u["mr"] *= _m; u["base_mr"] *= _m
 		u["atk_interval"] /= (1.0 + 0.02 * float(_lvl - 1))   # 攻速+2%/级 → 间隔变短
-	var _ec = {}                                    # 数据驱动龟能: 该龟各技 type→energyCost
-	for _sk in d.get("skillPool", []):
-		var _e = _sk.get("energyCost", null)
-		if _e != null:
-			_ec[str(_sk.get("type", ""))] = float(_e)
-	u["energy_cost"] = _ec
+	u["energy_cost"] = energy_cost_table(d)         # 数据驱动龟能(与缩头随从共用同一函数, 见其注释)
 	u["level"] = _lvl
 	if is_minion:
 		u["_isMinion"] = true
@@ -731,6 +741,8 @@ func _spawn_hiding_minion(u: Dictionary) -> void:
 		minion["active_skills"] = battle._resolve_active_skills(pick, false)   # 带自己技能(默认3选1·resolve为1个active)
 		minion["skill_cd"] = {}                                         # 施法需(防u["skill_cd"][stype]崩)
 		minion["skill_gcd_until"] = 0.0
+		minion["skill_idx"] = 0
+		minion["energy_cost"] = energy_cost_table(d)                    # ★与真龟同源(见 energy_cost_table 注释): 缺它则该龟数据值被类型兜底顶掉
 		battle._recalc_stats(minion)
 		var _enf = minion.get("en_fill", null)                          # A方案随从带自己技能→龟能条恢复显示(通用召唤体在_spawn_summon里hide·用户2026-07-17"随从我都没看到技能龟能")
 		if _enf != null and is_instance_valid(_enf): _enf.visible = true
