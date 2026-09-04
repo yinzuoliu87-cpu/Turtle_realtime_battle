@@ -267,7 +267,14 @@ func _apply_basic_hit_from(src: Dictionary, u: Dictionary, dmg: int, col: Color,
 ##   全局 `_last_dmg_type` 早被改了 ⇒ 这一发的飘字捡到别人的颜色。
 ##   2026-08-22 哨兵实测: 弹道那批修掉后剩的最后几发就是这个形状(连笔龟 line 在名单里)。
 ##   取在第一行 = 拿到的就是【产生 dmg 那次 _resolve_dmg 写的类型】, 嵌套再多也偷不走。
-func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, col: Color, extra_ls: float = 0.0, raw: bool = false, from_equip: bool = false, pre_crit: bool = false, no_dodge: bool = false, no_popup: bool = false, basic: bool = false) -> void:
+## ★★★`_col` 前缀 = **这个参数不生效**，别再传主题色进来（2026-09-04 改名）。
+##   颜色由 `_ncol` 按【伤害类型】统一取（物红 `#ff4444` / 法蓝 `#4dabf7` / 真白 `#ffffff`），
+##   调用点传什么都会被覆盖 —— **227 个调用点一直在白传**，而没人知道，
+##   直到用户 2026-09-04 发现真伤颜色乱才查出来。
+##   历史: 早先真的按 col 判类型，2026-07-11 用户抓出「大量物理攻击传偏蓝色
+##   (忍者冲击 #9fe8ff) → 按 col.b>col.r 误判成法术 = 统计条+飘字全蓝」后改成按类型判，
+##   **参数却没跟着删**。删它要改 227 处调用点，风险大于收益 ⇒ 加 `_` 前缀显式声明不用。
+func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, extra_ls: float = 0.0, raw: bool = false, from_equip: bool = false, pre_crit: bool = false, no_dodge: bool = false, no_popup: bool = false, basic: bool = false) -> void:
 	var _dtv: String = _take_dtype(("%s→%s" % [str(src.get("id", "?")) if src is Dictionary else "-", str(u.get("id", "?"))]), raw, u)
 	battle._adf_ct += 1
 	if battle._adf_ct > 20000:                        # 防御: 一帧伤害调用爆炸(死亡链无限级联)→本帧后续伤害丢弃防卡死(用户2026-07-19卡死猎手)

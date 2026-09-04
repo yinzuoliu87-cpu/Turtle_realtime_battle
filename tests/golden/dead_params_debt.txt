@@ -1,0 +1,28 @@
+# 死参数台账 —— 只减不增（verify_dead_params.gd 守）
+# 生成方式: 引擎 get_script_method_list() 报的真参数名, 不是正则扫源码
+# 消掉一条: 给参数加 `_` 前缀(显式声明不用) 或删掉它(要改所有调用点)
+# 冻结于 2026-09-04 · 共 24 条(2026-09-04: _apply_damage_from 的 col 改名 _col, 从 25 缩到 24)
+res://scripts/scenes/CodexScene.gd	_make_row	fill_a
+res://scripts/scenes/CodexScene.gd	_skill_role	pet_id
+res://scripts/scenes/InventoryScene.gd	_item_cell	it
+res://scripts/scenes/RealtimeBattle3DScene.gd	_anchor_aspd	u
+res://scripts/scenes/RealtimeBattle3DScene.gd	_apply_skill_extras	u
+res://scripts/scenes/RealtimeBattle3DScene.gd	_audit_flag	detail
+res://scripts/scenes/RealtimeBattle3DScene.gd	_barrage_bolt	cloud_h
+res://scripts/scenes/RealtimeBattle3DScene.gd	_blood_slash	from2d
+res://scripts/scenes/RealtimeBattle3DScene.gd	_laser_blade_sweep	half_deg
+res://scripts/scenes/RealtimeBattle3DScene.gd	_laser_blade_sweep	u
+res://scripts/scenes/RealtimeBattle3DScene.gd	_log_side_hex	u
+res://scripts/scenes/RealtimeBattle3DScene.gd	aspd_mult	u
+res://scripts/scenes/battle/axe_passive_vfx.gd	slam	h
+res://scripts/scenes/battle/battle_vfx.gd	_vfx_preview_sigwave	dir
+res://scripts/scenes/battle/bow_eq_vfx.gd	_plant_arrow	yaw
+res://scripts/systems/equip/equip_system.gd	_eq_on_cast	tgt
+res://scripts/systems/equip/equip_system.gd	_tick_eq_turret	delta
+res://scripts/systems/equip/tentacle_vfx.gd	_curvature	ts_now
+res://scripts/systems/skills/bamboo_system.gd	_sk_bamboo_smack	tgt
+res://scripts/systems/skills/diamond_system.gd	_sk_diamond_powerball	tgt
+res://scripts/systems/skills/dice_system.gd	_dice_scythe_sweep	u
+res://scripts/systems/skills/phoenix_system.gd	_phoenix_sector_indicator	tgt
+res://scripts/systems/skills/smolder_system.gd	_smolder_fire_wave	si
+res://scripts/systems/skills/two_head_system.gd	_two_head_disrupt_vfx	u
