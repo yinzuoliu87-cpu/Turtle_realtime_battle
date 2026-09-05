@@ -44,7 +44,7 @@ eq|毒药瓶|effectBrief	6.0
 eq|毒药瓶|effectDesc1	6.0 400.0
 eq|毒蛾茧|effectDesc1	0.25 0.25 0.25 1.0 1.5 2.0 6.0 20.0
 eq|沙漏|effectBrief	10.0
-eq|沙漏|effectDesc1	1.0 2.0 10.0 15.0
+eq|沙漏|effectDesc1	1.0 10.0
 eq|海浪护符|effectDesc1	400.0
 eq|海葵药膏|effectBrief	7.0
 eq|海葵药膏|effectDesc1	7.0
@@ -77,7 +77,7 @@ eq|玩偶小熊|effectDesc1	0.7 0.8 1.2 1.5 2.0 4.0 70.0 70.0 600.0
 eq|珊瑚急救塔|effectDesc1	150.0
 eq|电鳗双管铳|effectDesc1	0.5 2.0 60.0 400.0
 eq|病毒箭头|effectBrief	400.0
-eq|病毒箭头|effectDesc1	1.0 1.1 15.0 400.0
+eq|病毒箭头|effectDesc1	1.0 1.1 10.0 400.0
 eq|白鲸气环|effectDesc1	0.03
 eq|盗令潜水钟|effectDesc1	2.0 3.0 3.0 10.0 10.0 15.0
 eq|砗磲护心甲|effectBrief	15.0

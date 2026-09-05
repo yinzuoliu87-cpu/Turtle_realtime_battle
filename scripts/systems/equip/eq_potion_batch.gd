@@ -89,6 +89,12 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 #    每次普攻后 +5 龟能; 每次普攻再 +1/2/4% 攻速, **不设上限**, 换路重置。
 # ══════════════════════════════════════════════════════════════════
 
+## 【065 鲨肝油】每次普攻叠的攻速增量(逐星)。★2026-09-06 用户:
+##   「鲨肝油加强为每次攻击提供3/5/7%攻击速度」⇒ 原 1/2/4% → **3/5/7%**。
+##   ★抽成常量是为了让文案能引它 —— 原来这三个数是**行内字面量**, 文案里另写一份 `1/2/4%`,
+##     改代码不改文案就会漂(同族 memory [[fb-system-coefficient-1-hides-missing-placeholder]])。
+const OIL_ASPD_PER_HIT := [0.03, 0.05, 0.07]
+
 ## 每次普攻。★攻速走 `aspd_perm`(累加通道, 不会被 `_recalc_stats` 重算冲掉);
 ##   换路时单位字典整体重建 ⇒ `aspd_perm` 回到 1.0 ⇒ **换路重置是天然的**, 不用自己清。
 ## ★用户拍板「滚雪球类叠层不设上限」(2026-08-05 原话「没上限」) —— 这里**没有 cap**, 别加。
@@ -97,7 +103,7 @@ func _eq_shark_oil(u: Dictionary, si: int) -> void:
 		return
 	var stt: Dictionary = u["eq_state"].get("p2eq_065", {})
 	battle._equip_sys._eq_grant_energy(u, LIVER_ENERGY)
-	u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + [0.01, 0.02, 0.04][si]
+	u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + OIL_ASPD_PER_HIT[si]
 	stt["oil_stacks"] = int(stt.get("oil_stacks", 0)) + 1
 	u["eq_state"]["p2eq_065"] = stt
 	# ★读数只走装备格右下角层数徽章(PANEL_COUNT 的 oil_stacks) —— 用户 2026-08-11:
@@ -345,9 +351,13 @@ const CAN_PERIOD := 12.0
 const CAN_MANA_KEY := "p2eq_068_mana"
 
 
-## 充能上限 = 最大生命 × 20/40/100%
+## 【068 深海气压罐】充能上限 = 最大生命 × 30/50/100%。
+## ★2026-09-06 用户:「加强深海气压罐, 储存的上线为最大生命值的30/50/100%」⇒ 原 20/40/100%。
+##   ⚠ **★3 本来就是 100%, 该档无变化** —— 只有 ★1(+10pp) 与 ★2(+10pp) 真的加强了。
+## ★抽成常量供文案引用(原来是行内字面量, 文案另写一份会漂)。
+const CAN_CAP_PCT := [0.30, 0.50, 1.00]
 func _can_cap(u: Dictionary, si: int) -> float:
-	return float(u.get("maxHp", 0.0)) * [0.20, 0.40, 1.00][si]
+	return float(u.get("maxHp", 0.0)) * CAN_CAP_PCT[si]
 
 
 ## 【受到伤害】→ 存进充能条。挂 `_eq_on_target`。

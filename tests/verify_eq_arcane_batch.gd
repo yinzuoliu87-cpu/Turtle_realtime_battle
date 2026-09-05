@@ -733,7 +733,7 @@ func _t089_stack_and_transfer() -> void:
 # ③ 090 镇海杵
 # ═════════════════════════════════════════════════════════════
 func _t090_slam() -> void:
-	print("── ③ 090 主动: 跳起猛砸(3ATK + 200/300/5000 · 眩晕 2/3/8 · 击飞 1 秒) ──")
+	print("── ③ 090 主动: 跳起猛砸(1ATK + 150/300/4000 · 眩晕 2/3/8 · 击飞 1 秒) ──")
 	_fresh()
 	var u := _mk("fortune", "left", Vector2(0, 0))
 	_equip(u, "p2eq_090", 3)
@@ -748,9 +748,14 @@ func _t090_slam() -> void:
 	_ok("③ 起跳: _slams 里出现 1 条在途记录", _arc()._slams.size() == 1,
 		"n=%d" % _arc()._slams.size())
 	_ok("③ 起跳: 携带者进入滞空态(airborne)", bool(u.get("airborne", false)))
-	## ★★3★ 的两个极端值必须原样保留(用户 2026-08-06:「5000，8秒，就要8」)
-	_ok("③ ★★3★ 猛砸固定魔伤 = 5000(不许调低)",
-		absf(float(_arc()._slams[0]["flat"]) - 5000.0) < 1e-6,
+	## ★★★2026-09-06 更新: 伤害那一段被用户本人削了
+	##   原来这里写「3★ 猛砸固定魔伤 = 5000(不许调低)」, 依据是用户 2026-08-06「5000，8秒，就要8」。
+	##   2026-09-06 用户改主意:「500妈伤害改为1倍攻击力加150/300/4000」⇒ 5000 → 4000。
+	##   ★但**眩晕 8 秒那一半仍然作数**(用户这次没提眩晕) ⇒ 下面那条 `= 8.0 秒(不许调低)` 原样保留。
+	##   ★用户 2026-09-06 逐字:「我给你报的数值你为什么要质疑我, 实战里就是不平衡啊」
+	##     ⇒ 数值由实战定。别再拿"星级曲线是否均匀"去劝, 也别把这条改回去。
+	_ok("③ ★★3★ 猛砸固定魔伤 = 4000(2026-09-06 用户拍板, 原 5000)",
+		absf(float(_arc()._slams[0]["flat"]) - 4000.0) < 1e-6,
 		"实测 %.0f" % float(_arc()._slams[0]["flat"]))
 	_ok("③ ★★3★ 眩晕 = 8.0 秒(不许调低)",
 		absf(float(_arc()._slams[0]["stun"]) - 8.0) < 1e-6,
@@ -774,9 +779,10 @@ func _t090_slam() -> void:
 		kg += 1
 	_ok("③ %.2f 秒落地 → 砸落结算" % T, _arc()._slams.is_empty(),
 		"n=%d" % _arc()._slams.size())
-	## 3 ATK(=300) + 5000 = 5300, 干净目标 mr=0 ⇒ 倍率 1.0
+	## 2026-09-06: 1 ATK(=100) + 4000 = 4100, 干净目标 mr=0 ⇒ 倍率 1.0
+	##   (原 3 ATK + 5000 = 5300; 系数 3→1 与固定段 5000→4000 都是用户 09-06 拍板)
 	var took: float = h_in - float(inr["hp"])
-	_ok("③ 500 码内敌人吃 5300(3×100 ATK + 5000)", int(took) == 5300, "实测 %d" % int(took))
+	_ok("③ 500 码内敌人吃 4100(1×100 ATK + 4000)", int(took) == 4100, "实测 %d" % int(took))
 	_ok("③ 500 码外敌人一点没吃", absf(float(outr["hp"]) - h_out) < 0.001,
 		"实测 %.0f" % (h_out - float(outr["hp"])))
 	_ok("③ 眩晕 8 秒(韧性 0 ⇒ 原值)",
@@ -803,8 +809,8 @@ func _t090_slam() -> void:
 		int(_st(u, "p2eq_090").get("pestle_slam_hit", -1)) == 1,
 		"hit=%d" % int(_st(u, "p2eq_090").get("pestle_slam_hit", -1)))
 
-	## 1★ / 2★ 逐星: 3ATK + 200 / 300, 眩晕 2 / 3
-	for cse in [[1, 200.0, 2.0], [2, 300.0, 3.0]]:
+	## 1★ / 2★ 逐星: 1ATK + 150 / 300, 眩晕 2 / 3  ★2026-09-06 用户拍板(原 3ATK + 200/300)
+	for cse in [[1, 150.0, 2.0], [2, 300.0, 3.0]]:
 		_fresh()
 		var u2 := _mk("fortune", "left", Vector2(0, 0))
 		_equip(u2, "p2eq_090", int(cse[0]))
@@ -814,8 +820,8 @@ func _t090_slam() -> void:
 		_s._equip_sys.fire_equip_effect(u2, "p2eq_090", int(cse[0]))
 		_feed(EqArcaneBatch.pestle_jump_sec() + 0.1)   # ★等滞空走完(不写死)
 		var g2: int = int(h0 - float(e2["hp"]))
-		_ok("③ %d★ 猛砸 = 300 + %.0f" % [int(cse[0]), float(cse[1])],
-			g2 == int(300.0 + float(cse[1])), "实测 %d" % g2)
+		_ok("③ %d★ 猛砸 = 100(1×ATK) + %.0f" % [int(cse[0]), float(cse[1])],
+			g2 == int(100.0 + float(cse[1])), "实测 %d" % g2)
 		_ok("③ %d★ 眩晕 %.0f 秒" % [int(cse[0]), float(cse[2])],
 			absf((float(e2["stun_until"]) - float(_s._t)) - float(cse[2])) < 0.05,
 			"实测 %.2f" % (float(e2["stun_until"]) - float(_s._t)))

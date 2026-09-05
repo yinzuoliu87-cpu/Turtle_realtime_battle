@@ -654,7 +654,7 @@
     "baseStats1": "+攻9/15/21·+20龟能",
     "shopAvailable": 1,
     "emoji": "🎯",
-    "effectDesc1": "本场累计造成 {C:HookBombSystem.TRIGGER_DMG} 点伤害后，向最近的 1/1/2 名敌人发射钩索炸弹：炸弹附在敌人身上，每 {C:HookBombSystem.BOMB_TICK} 秒对其造成 3/6/6%其最大生命值的物理伤害，直到该敌人死亡。\n若带弹的敌人死亡，则朝所有敌方单位发射钩索，眩晕 {C:HookBombSystem.PULL_STUN} 秒后将其拉向携带者，聚拢后产生一次爆炸，造成（300/600/750+{C:HookBombSystem.BLAST_MAXHP_PCT%}%目标最大生命值）物理伤害（训龟大师、龟蛋与免控单位不受钩索影响）。",
+    "effectDesc1": "本场累计造成 {C:HookBombSystem.TRIGGER_DMG} 点伤害后，向最近的 1/1/2 名敌人发射钩索炸弹：炸弹附在敌人身上，每 {C:HookBombSystem.BOMB_TICK} 秒对其造成 3/6/6%其最大生命值的物理伤害，直到该敌人死亡。\n若带弹的敌人死亡，则朝所有敌方单位发射钩索，眩晕 {C:HookBombSystem.PULL_STUN} 秒后将其拉向携带者，聚拢后产生一次爆炸，造成（120/250/400+{C:HookBombSystem.BLAST_MAXHP_PCT%}%目标最大生命值）物理伤害（训龟大师、龟蛋与免控单位不受钩索影响）。",
     "effectDesc3": "",
     "img": "equip/virus-arrow.png",
     "effectBrief": "累计造成 {C:HookBombSystem.TRIGGER_DMG} 点伤害后投出钩索炸弹，持续扣血直到目标死亡。"
@@ -702,10 +702,10 @@
     "baseStats1": "+生命100/210/1000·龟能充能+10%",
     "shopAvailable": 1,
     "emoji": "⏳",
-    "effectDesc1": "登场第 {C:TimestopSystem.TS_START_T} 秒蓄力 {C:TimestopSystem.TS_CHARGE} 秒后释放「时间停止」：全场其他单位/弹道/特效全部定格，持续 5/10/30 秒；\n此期间只有【全场最高星级】沙漏的携带者（敌我皆可，同星并存）能自由攻击/施法/移动，伤害即时结算，并额外获得 {C:TimestopSystem.TS_ECHARGE_MULT} 倍龟能充能速度、且在时停开始瞬间立即获得 {C:TimestopSystem.TS_INSTANT_ENERGY} 点龟能；\n若场上存在更高星的沙漏，低星那件本场不会生效。\n一场战斗一次。",
+    "effectDesc1": "登场第 {C:TimestopSystem.TS_START_T} 秒蓄力 {C:TimestopSystem.TS_CHARGE} 秒后释放「时间停止」：全场其他单位/弹道/特效全部定格，持续 4/7/20 秒；\n此期间只有【全场最高星级】沙漏的携带者（敌我皆可，同星并存）能自由攻击/施法/移动，伤害即时结算，并额外获得 1.5/2/3 倍龟能充能速度、且在时停开始瞬间立即获得 40/150/300 点龟能；\n若场上存在更高星的沙漏，低星那件本场不会生效。\n一场战斗一次。",
     "effectDesc3": "",
     "img": "equip/dungeon-hourglass.png",
-    "effectBrief": "登场第 {C:TimestopSystem.TS_START_T} 秒发动时间停止，全场定格 5/10/30 秒，一场一次。"
+    "effectBrief": "登场第 {C:TimestopSystem.TS_START_T} 秒发动时间停止，全场定格 4/7/20 秒，一场一次。"
   },
   {
     "id": "p2eq_060",
@@ -774,10 +774,10 @@
     "baseStats1": "+射程50·+攻速10/20/30%·+吸血3/6/10%",
     "shopAvailable": 1,
     "emoji": "🧴",
-    "effectDesc1": "每次普攻后获得 {C:EqPotionBatch.LIVER_ENERGY} 点龟能；每次普攻再获得 1/2/4%攻击速度，可无限叠加，换路重置。",
+    "effectDesc1": "每次普攻后获得 {C:EqPotionBatch.LIVER_ENERGY} 点龟能；每次普攻再获得 3/5/7%攻击速度，可无限叠加，换路重置。",
     "effectDesc3": "",
     "img": "equip/p2eq_065.png",
-    "effectBrief": "每次普攻获得 {C:EqPotionBatch.LIVER_ENERGY} 点龟能与 1/2/4% 攻击速度，可无限叠加。"
+    "effectBrief": "每次普攻获得 {C:EqPotionBatch.LIVER_ENERGY} 点龟能与 3/5/7% 攻击速度，可无限叠加。"
   },
   {
     "id": "p2eq_066",
@@ -810,7 +810,7 @@
     "baseStats1": "+生命180/460/1100·+攻速10/18/30%·+治疗与护盾15/25/40%",
     "shopAvailable": 1,
     "emoji": "🧪",
-    "effectDesc1": "受到的伤害按 60/100/200%存进专属充能条（上限为最大生命的 20/40/100%）。\n登场第 {C:EqPotionBatch.CAN_PERIOD} 秒起每 {C:EqPotionBatch.CAN_PERIOD} 秒清空充能：获得充能值 100/120/300%的法力护盾（{C:EqPotionBatch.CAN_SHIELD_DECAY} 秒内衰减完），并朝最远敌人射出一道 {C:PotionEqVfx.BEAM_RANGE} 码法力激光，{C:PotionEqVfx.BEAM_SEC} 秒内共造成充能值 100/120/600%的魔法伤害；\n法力护盾存在期间充能条锁住。\n普攻额外获得 {C:EqPotionBatch.CAN_HIT_ENERGY} 龟能并回复 20/35/50 生命。",
+    "effectDesc1": "受到的伤害按 60/100/200%存进专属充能条（上限为最大生命的 30/50/100%）。\n登场第 {C:EqPotionBatch.CAN_PERIOD} 秒起每 {C:EqPotionBatch.CAN_PERIOD} 秒清空充能：获得充能值 100/120/300%的法力护盾（{C:EqPotionBatch.CAN_SHIELD_DECAY} 秒内衰减完），并朝最远敌人射出一道 {C:PotionEqVfx.BEAM_RANGE} 码法力激光，{C:PotionEqVfx.BEAM_SEC} 秒内共造成充能值 100/120/600%的魔法伤害；\n法力护盾存在期间充能条锁住。\n普攻额外获得 {C:EqPotionBatch.CAN_HIT_ENERGY} 龟能并回复 20/35/50 生命。",
     "effectDesc3": "",
     "img": "equip/p2eq_068.png",
     "effectBrief": "把受到的伤害存成充能；每 {C:EqPotionBatch.CAN_PERIOD} 秒清空换成法力护盾并射出激光。"
@@ -1074,7 +1074,7 @@
     "baseStats1": "+法穿18/42/110·+生命150/420/1200·+龟能45/80/150",
     "shopAvailable": 1,
     "emoji": "🔱",
-    "effectDesc1": "该法器法力条集满时，携带者跳跃到空中后向整个战场猛砸：对 {C:EqArcaneBatch.PESTLE_RADIUS} 码内的敌人造成 3 倍攻击力+200/300/5000 魔法伤害，并施加 2/3/8 秒眩晕与 1 秒击飞；\n造成伤害后才重新开始记录法力值。\n被动：携带者每第三次普攻发射一片浪潮，从携带者飞向目标后不断跳向最近的、未被本次浪潮飞过的友军或敌军，最多跳跃 4/5/8 次；\n打到敌人造成 40/70/140 魔法伤害，打到友军提供 20/40/80 治疗。",
+    "effectDesc1": "该法器法力条集满时，携带者跳跃到空中后向整个战场猛砸：对 {C:EqArcaneBatch.PESTLE_RADIUS} 码内的敌人造成 1 倍攻击力+150/300/4000 魔法伤害，并施加 2/3/8 秒眩晕与 1 秒击飞；\n造成伤害后才重新开始记录法力值。\n被动：携带者每第三次普攻发射一片浪潮，从携带者飞向目标后不断跳向最近的、未被本次浪潮飞过的友军或敌军，最多跳跃 4/5/8 次；\n打到敌人造成 40/70/140 魔法伤害，打到友军提供 20/40/80 治疗。",
     "effectDesc3": "",
     "img": "equip/p2eq_090.png",
     "effectBrief": "法力满时跃起猛砸全场，造成伤害并眩晕 2/3/8 秒。"

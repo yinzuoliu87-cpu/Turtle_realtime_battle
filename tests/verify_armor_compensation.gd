@@ -96,11 +96,42 @@ func _ready() -> void:
 	for i in range(3):
 		_comp("③钩弹每秒 BOMB_DPS_PCT[%d]" % i,
 			float((HookBombSystem.BOMB_DPS_PCT as Array)[i]), float(old_dps[i]), ARMOR_AVG_MULT)
-	var old_flat := [200.0, 400.0, 500.0]
+	## ══════════════════════════════════════════════════════════════
+	##  ★★★③b 聚爆两段：补偿口径 2026-09-06 被**用户主动削弱**覆盖了
+	## ══════════════════════════════════════════════════════════════
+	## 原来这里是 `_comp(..., old_flat=[200,400,500], 0.10)`，守的是
+	## 「改成吃护甲之后**平均强度不许变**」——那条口径的前提是"这次只改伤害类型、不改强度"。
+	##
+	## 2026-09-06 用户：「病毒箭头爆炸伤害削弱为120/250/400+目标10%最大生命值」
+	## ⇒ 这是**主动改强度**，那个锚（改造前的定额）不再是"应该保持的值"，
+	##   继续拿它对账只会永远红。**但也不能改成拿新值反推 —— 那就成恒真式了。**
+	##
+	## ⇒ 判据换成两条仍然有意义的：
+	##   ③b-1 这两个数 == **用户 2026-09-06 拍板的那几个**（谁再动谁红，走正常改数流程）
+	##   ③b-2 **算出实际到手**并打印（面板 × 平均护甲倍率）——
+	##        因为它们仍走 `_phys_after_armor`（由下面 ④ 守），面板 ≠ 玩家看到的掉血。
+	##        留这个数是为了下次有人调它时**知道自己在调什么**。
+	##
+	## ★`BOMB_DPS_PCT`（附身 DoT）这次**没动** ⇒ 它上面那三条补偿对账**原样保留**，
+	##   那条口径对它仍然成立。别顺手一起改。
+	const USER_FLAT_20260906 := [120.0, 250.0, 400.0]
+	const USER_PCT_20260906 := 0.10
 	for i in range(3):
-		_comp("③聚爆定额 BLAST_FLAT[%d]" % i,
-			float((HookBombSystem.BLAST_FLAT as Array)[i]), float(old_flat[i]), ARMOR_AVG_MULT)
-	_comp("③聚爆 BLAST_MAXHP_PCT", HookBombSystem.BLAST_MAXHP_PCT, 0.10, ARMOR_AVG_MULT)
+		var cur: float = float((HookBombSystem.BLAST_FLAT as Array)[i])
+		_ok("③b-1 聚爆定额 BLAST_FLAT[%d] == 用户 2026-09-06 拍板的 %.0f（实际到手约 %.1f = 面板 × %.4f）"
+				% [i, USER_FLAT_20260906[i], cur * ARMOR_AVG_MULT, ARMOR_AVG_MULT],
+			is_equal_approx(cur, USER_FLAT_20260906[i]),
+			"现值 %.1f ≠ %.1f —— 改数要连同本断言一起改" % [cur, USER_FLAT_20260906[i]])
+	_ok("③b-1 聚爆 BLAST_MAXHP_PCT == 用户 2026-09-06 拍板的 %.0f%%（实际到手约 %.2f%%）"
+			% [USER_PCT_20260906 * 100.0, HookBombSystem.BLAST_MAXHP_PCT * ARMOR_AVG_MULT * 100.0],
+		is_equal_approx(HookBombSystem.BLAST_MAXHP_PCT, USER_PCT_20260906),
+		"现值 %.4f ≠ %.4f" % [HookBombSystem.BLAST_MAXHP_PCT, USER_PCT_20260906])
+	## ★分母：证明上面那两条不是拿常量比自己 —— 面板值必须真的**不等于**实际到手值，
+	##   否则说明 ARMOR_AVG_MULT 被写成了 1.0，整条对账退化成恒真。
+	_ok("③b-2 ★分母: 面板值 ≠ 实际到手（护甲倍率没被写成 1.0）",
+		not is_equal_approx(float((HookBombSystem.BLAST_FLAT as Array)[0]),
+			float((HookBombSystem.BLAST_FLAT as Array)[0]) * ARMOR_AVG_MULT),
+		"两者相等 ⇒ ARMOR_AVG_MULT 失效，上面的『实际到手』全是假数")
 
 	# ── ④ 系数配套的另一半：那三处【真的】还在走抗性公式 ──
 	## ★只对账系数守不住"有人把 `_phys_after_armor` 撤了但留着 ×1.5" —— 那是白给 50%。

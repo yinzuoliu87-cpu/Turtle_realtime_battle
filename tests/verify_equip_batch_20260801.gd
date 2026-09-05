@@ -438,11 +438,13 @@ func _t5_hookbomb() -> void:
 	var blast_list: Array = [v1]
 	var nb: int = _s._hookbomb_sys._hb_blast(car2, blast_list, 0, epi)
 	_ok("⑤ ★分母: 爆炸真的结算到了 %d 个目标" % nb, nb > 0)
-	## ★2026-08-29 300 + 15%maxHp（真物理改造的 ×1.5 补偿）。v1 的护甲在 _mk 里是 0,
-	##   所以这一格量的是纯系数; "护甲真的起作用"由上面 _hb_tick 那条与
+	## ★2026-09-06 用户「病毒箭头爆炸伤害削弱为120/250/400+目标10%最大生命值」
+	##   ⇒ 120 + 10%maxHp（原 2026-08-29 的 300 + 15%，那是真物理改造的 ×1.5 补偿值）。
+	##   v1 的护甲在 _mk 里是 0, 所以这一格量的是纯系数; "护甲真的起作用"由上面 _hb_tick 那条与
 	##   `verify_dmg_type_sentinel` ①d 各守一半。
-	_ok("⑤ ★爆炸伤害·零护甲 = 300 + 15%%maxHp = 450",
-		absf(hp_v1 - float(v1["hp"]) - 450.0) < 1.51, "实掉 %.1f" % (hp_v1 - float(v1["hp"])))
+	##   ★带护甲时实际到手约 ×0.6685（见 verify_armor_compensation ③b-1 打印的数）。
+	_ok("⑤ ★爆炸伤害·零护甲 = 120 + 10%%maxHp = 220",
+		absf(hp_v1 - float(v1["hp"]) - 220.0) < 1.51, "实掉 %.1f" % (hp_v1 - float(v1["hp"])))
 	_ok("⑤ ★大师没被卷入(不掉血/不被拉)", absf(float(vtr["hp"]) - trhp) < 0.01,
 		"大师掉了 %.1f" % (trhp - float(vtr["hp"])))
 	# ★挂弹【不看免控】(用户:「挂炸弹不包括免控的因为这不是控制技能」), 但拉拽仍排除免控

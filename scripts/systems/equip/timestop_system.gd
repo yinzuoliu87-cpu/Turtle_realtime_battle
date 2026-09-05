@@ -6,8 +6,16 @@ extends RefCounted
 ## 【059 沙漏】登场若干秒后蓄力, 然后全场定格。
 const TS_START_T := 10.0     # 登场第几秒开始(战斗时钟)
 const TS_CHARGE := 1.0       # 蓄力几秒才真的定格
-const TS_ECHARGE_MULT := 2.0 # 时停期间携带者的龟能充能速度倍率(= +100%)
-const TS_INSTANT_ENERGY := 15.0  # 定格瞬间立即给的龟能
+## ★2026-09-06 用户:「沙漏的定格时间调整为4/7/20秒, 在开始时停时立刻获得40/150/300龟能,
+##   额外龟能充能速率改为1.5/2/3倍」⇒ 下面三项**从标量改成三档**。
+##   改之前 `TS_ECHARGE_MULT`/`TS_INSTANT_ENERGY` 是不分星的标量(2.0 / 15.0),
+##   而文案**直接用占位符引它们** —— 变数组后占位符会渲染成 `[1.5, 2, 3]` 这种字面量,
+##   所以文案同步改成手写三档(见 data/phase2-equipment.json p2eq_059)。
+## ★三项都跟 `_ts_maxstar`(全场最高星)走 —— 因为只有最高星的携带者才进 `casters`
+##   (低星本场不生效), 所以"最高星"就是"能动那批人自己的星", 不会错位。
+const TS_DUR := [4.0, 7.0, 20.0]                  # 定格时长(秒) ★原 5/10/30
+const TS_ECHARGE_MULT := [1.5, 2.0, 3.0]          # 时停期间携带者的龟能充能倍率 ★原 2.0 全星同值
+const TS_INSTANT_ENERGY := [40.0, 150.0, 300.0]   # 定格瞬间立即给的龟能 ★原 15.0 全星同值
 
 var battle
 var _ts_active: Array = []                # 当前能自由行动的active携带者(空=无时停; 可多个=全场最高星沙漏者敌我并存)
@@ -87,12 +95,18 @@ func _ts_fire() -> void:
 	if casters.is_empty():
 		return
 	_ts_active = casters
-	_ts_remaining = [5.0, 10.0, 30.0][clampi(_ts_maxstar, 1, 3) - 1]   # 用户2026-07-19: 4→5秒
-	for _c in casters:   # 用户2026-07-19: 时停期间+100%龟能充能速度, 且开始瞬间立即+15龟能
-		_c["_ts_echarge"] = TS_ECHARGE_MULT
+	## ★三档下标：只有最高星的沙漏携带者才进 `casters`，所以 `_ts_maxstar` 就是他们自己的星。
+	##   时长/倍率/瞬间龟能**必须跟同一个 star**，否则会出现「定格按最高星、龟能按自己星」的错位。
+	var _si: int = clampi(_ts_maxstar, 1, 3) - 1
+	_ts_remaining = TS_DUR[_si]                        # 2026-09-06: 5/10/30 → 4/7/20
+	for _c in casters:
+		_c["_ts_echarge"] = TS_ECHARGE_MULT[_si]       # 2026-09-06: 2.0 全星同值 → 1.5/2/3
 		if battle._has_energy_system(_c):
-			battle._equip_sys._eq_grant_energy(_c, TS_INSTANT_ENERGY)
-			battle._vfx._float_text(_c["pos"] + Vector2(0, -62), "+15龟能", Color("#8fd4ff"))
+			var _ie: float = TS_INSTANT_ENERGY[_si]    # 2026-09-06: 15 全星同值 → 40/150/300
+			battle._equip_sys._eq_grant_energy(_c, _ie)
+			## ★飘字**不许写死数字** —— 原来这里是硬编码的 "+15龟能"，
+			##   常量改成三档后它会漂（同族 memory [[fb-system-coefficient-1-hides-missing-placeholder]]）。
+			battle._vfx._float_text(_c["pos"] + Vector2(0, -62), "+%d龟能" % int(_ie), Color("#8fd4ff"))
 	_ts_begin_freeze()
 	_ts_visual_start()
 
