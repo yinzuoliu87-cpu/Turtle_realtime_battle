@@ -78,7 +78,7 @@ func _ready() -> void:
 	##   (同 pos + 同 dmg_type + 同帧 ⇒ 累加进已在跳的那个数字, 不新建节点),
 	##   挤在一处会让后两发读不到自己的 Label。
 	var targets: Array = []
-	for i in range(3):
+	for i in range(4):     # 4 个: ①真伤 ②另一条路 ③物理 ④魔法(2026-09-05 收口后各占一个, 免得飘字合并)
 		var t: Dictionary = scn._spawn._make_unit("basic", "right", Vector2(cx + 60.0 * float(i), cy - 90.0 * float(i)))
 		t["no_move"] = true
 		t["no_basic"] = true
@@ -127,21 +127,47 @@ func _ready() -> void:
 			% [c1b.to_html(false), c2.to_html(false)], c1b.is_equal_approx(c2),
 			"两条路不一致 —— 这正是 CLAUDE.md §3.3 说的『只改了一条』")
 
-	print("── ③ ★反向分母: 物理伤害**没有**被我一起收口(用户只点了真伤) ──")
-	## 这条守的是"我别擅自扩大范围"。方案书 §5 未决①: 用户 2026-09-03 只说了真伤,
-	## 物理/魔法要不要统一还没拍板 ⇒ 现在传什么色就该是什么色。
-	## ★它同时是 ① 的**分母**: 如果取色逻辑对所有 bucket 都返回白, ① 会恒真;
-	##   有了这条, "全都变白"会当场红。
-	var b2: Array = _labels(scn)
-	scn._damage._apply_damage(targets[2], 137, Color("#39d353"), src, "phy")
-	await get_tree().process_frame
-	var l3 = _new_label(scn, b2)
-	_ok("★分母: 物理那一发也建出了飘字 Label", l3 != null, "没建出来 = 下面那条是空检查")
-	if l3 != null:
-		var c3: Color = (l3 as Label).get_theme_color("font_color")
-		_ok("③ 物理伤害仍用调用点的色(实读 #%s, 应为 #39d353)" % c3.to_html(false),
-			c3.is_equal_approx(Color("#39d353")),
-			"变白了 = 我把收口范围擅自扩大到了用户没点的类型")
+	## ══════════════════════════════════════════════════════════════════
+	##  ③④ 物理红 / 魔法蓝 —— 2026-09-05 收口（用户「修吧」）
+	## ══════════════════════════════════════════════════════════════════
+	## ★这两条原本是**反过来**写的（断言「物理仍用调用点的色」），因为 2026-09-03
+	##   用户只点了真伤、说物理/魔法「别，记录好到下一个方案里去做」。
+	##   09-05 我拿探针把三种 bucket 的飘字颜色**读回来**给他看：
+	##     tru 传紫→实读白 ✅ / mag 传橙→实读橙 ❌ / phy 传绿→实读绿 ❌
+	##   最能说明问题的是 `axe_final_forms.gd:161` 炽天使回旋镖——**已经吃了魔抗**
+	##   却跳橙色数字；同一发魔法伤害走另一条路是蓝的。用户看完拍板「修吧」。
+	##
+	## ★★**分母换了个形状**：原来 ③ 兼任 ① 的分母（"不是所有 bucket 都返回白"）。
+	##   现在三种都被强制了，那个分母失效 ⇒ 改成断言**三个颜色互不相同**。
+	##   如果取色逻辑退化成"永远返回白"，⑤ 会当场红。
+	print("── ③④ 物理必红 · 魔法必蓝(与真伤同一张表) ──")
+	var got_cols: Dictionary = {}
+	var idx := 2
+	for row in [["phy", "#39d353", UIPalette.PHYS, "③ 物理"], ["mag", "#ffb347", UIPalette.MAGIC, "④ 魔法"]]:
+		var bN: Array = _labels(scn)
+		scn._damage._apply_damage(targets[idx], 137 + idx, Color(str(row[1])), src, str(row[0]))
+		await get_tree().process_frame
+		var lN = _new_label(scn, bN)
+		_ok("★分母: %s 那一发也建出了飘字 Label" % str(row[3]), lN != null,
+			"没建出来 = 下面那条是空检查")
+		if lN != null:
+			var cN: Color = (lN as Label).get_theme_color("font_color")
+			got_cols[str(row[0])] = cN
+			_ok("%s伤害被强制成规矩色(传进去 %s, 实读 #%s, 应为 %s)"
+					% [str(row[3]), str(row[1]), cN.to_html(false), str(row[2])],
+				cN.is_equal_approx(Color(str(row[2]))),
+				"还是调用点传的色 —— 收口没生效")
+		idx += 1
+
+	## ⑤ 新分母：三色互不相同（顶替原 ③ 的分母角色）
+	got_cols["tru"] = Color(UIPalette.TRUE_DMG)
+	var distinct: Dictionary = {}
+	for k in got_cols:
+		distinct[(got_cols[k] as Color).to_html(false)] = true
+	_ok("⑤ ★分母: 三种伤害类型读回来的颜色**互不相同**(%d 种) —— 否则上面全是恒真式"
+			% distinct.size(),
+		distinct.size() == 3 and got_cols.size() == 3,
+		"只有 %d 种不同色 ⇒ 取色逻辑可能退化成了'永远返回同一个色'" % distinct.size())
 
 	print("")
 	if _fail == 0:

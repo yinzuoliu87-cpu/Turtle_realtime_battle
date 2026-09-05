@@ -144,7 +144,13 @@ func _record_buckets(src, u: Dictionary, dmg: int, bkt: String, was_crit: bool) 
 	battle._st_add_type(u, "_st_taken_by_type", bkt, dmg)
 
 
-func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: String = "dot", is_self: bool = false, dot_accum: bool = false, mute_sfx: bool = false) -> void:
+## ★`_col` 的下划线 = **它不生效**，2026-09-05 起。
+##   飘字颜色只由 `bucket` 决定（见下方 `_fcol` 那段长注释）；这个参数留着只是为了
+##   不动 27 个调用点。**同 `_apply_damage_from` 的 `_col`（227 处白传，v0.19.328）**——
+##   那次的教训是「参数没删、注释解释着为什么不用它，于是白传了三年没人知道」，
+##   所以这次一改完就加下划线，让 `verify_dead_params` 棘轮不再把它当新增欠债。
+##   （那条棘轮当场就抓到了这次新增，本注释是照它的规矩处置的。）
+func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: String = "dot", is_self: bool = false, dot_accum: bool = false, mute_sfx: bool = false) -> void:
 	if u.get("_assembling", false):
 		return   # 机甲组装期免疫一切伤害。★这条路径(DoT/真伤)原先没有这个闸, 只有 _apply_damage_from 有 → DoT 能打穿组装免疫(2026-07-19)
 	if battle._sd_stacks > 0:
@@ -203,19 +209,32 @@ func _apply_damage(u: Dictionary, dmg: int, col: Color, src = null, bucket: Stri
 		##   ⇒ **两条伤害路的飘字跳法不一样**(CLAUDE.md §3.3: 改伤害必须两条都改, 这里就漏了一条)。
 		## ★同时补 `dmg_type` —— `_float_row_offset` 靠它排行(红0/蓝1/白2, 真伤跳最上面),
 		##   不传就全挤在第 0 行。
-		## ⚠ 颜色仍用调用点传的 `col`(**没改**): `_apply_damage_from` 那条路是按类型统一取色的,
-		##   把这条也统一意味着 20 多处主题色当场失效 —— 那是全局收口, 用户 2026-09-03 明确
-		##   「别, 记录好到下一个方案里去做」⇒ 见 docs/plans/ 的伤害飘字统一方案。
 		var _fdt: String = {"tru": "true", "mag": "magic", "phy": "physical"}.get(bucket, "true")
-		## ★★【真实伤害统一白色】—— 用户 2026-09-03 逐字:「我现在告诉你真实伤害统一白色」。
-		##   隔壁 `_apply_damage_from` 早就按类型统一取色(`_ncol`, 调用点传的 col 被忽略),
-		##   这条路却直接用调用点传的 `col` ⇒ **同一种真伤, 两条路跳出来颜色不一样**
-		##   (CLAUDE.md §3.3「改伤害必须两条都改」在这里又漏了一条)。
-		##   ⇒ 只收口真伤这一类; 物理/魔法用户没点, 留在方案书
-		##     `docs/plans/20260903b-伤害飘字统一收口.md` §5 未决① 里, 不擅自扩大。
-		##   ⚠ 这会让走这条路、传主题色的真伤调用点当场变白(古灵精怪枪自伤紫、
-		##     训龟大师暗红等)。那正是用户要的"按规矩", 不逐处商量豁免。
-		var _fcol: Color = Color(UIPalette.TRUE_DMG) if bucket == "tru" else col
+		## ══════════════════════════════════════════════════════════════
+		##  ★★【伤害飘字的颜色只由伤害类型决定】—— 收口完成 2026-09-05
+		## ══════════════════════════════════════════════════════════════
+		## 2026-09-03 用户只点了真伤（「我现在告诉你真实伤害统一白色」），物理/魔法
+		## 他当时说「别，记录好到下一个方案里去做」⇒ 记在方案书 §5 未决①。
+		## 2026-09-05 拿探针把飘字颜色**读回来**给他看之后拍板「修吧」：
+		##
+		##   bucket=tru  传紫 #a06cd5 → 实读 #ffffff  ✅ 早已强制
+		##   bucket=mag  传橙 #ffb347 → 实读 #ffb347  ❌ 原样跳出来
+		##   bucket=phy  传绿 #7ee87e → 实读 #7ee87e  ❌ 原样跳出来
+		##
+		## 最能说明问题的例子：`axe_final_forms.gd:161` 炽天使回旋镖 ——
+		## 它**已经吃了魔抗**（上一行 `_dot_after_resist(..., true, ...)`，注释写着
+		## 「魔法伤害必须吃魔抗，没有例外」），跳出来的数字却是**橙色**。
+		## 同一发魔法伤害走 `_apply_damage_from` 是蓝的 ⇒ **走哪条路决定它什么颜色**。
+		##
+		## ⇒ 与另一条路共用同一张表 `_dot_bucket_col`（物红 / 魔蓝 / 真白）。
+		##   调用点传的 `col` 从此对飘字**完全不生效**（`_col` 那 227 处的同族问题，
+		##   见 v0.19.328），主题色不逐处商量豁免 —— 这正是「按规矩」。
+		##
+		## ★顺带修掉一处**自相矛盾**：上面 `_fdt` 对**没写 bucket** 的调用点返回 `"true"`
+		##   （排行按真伤跳最上面一行），而颜色却是调用点传的任意色。现在两者都走
+		##   `bucket` ⇒ 排行与颜色永远一致。
+		## 门禁 `verify_true_dmg_white`（②③④ + 三色互不相同的分母）焊住这条。
+		var _fcol: Color = _dot_bucket_col(bucket)
 		battle._vfx._float_text(u["pos"] + Vector2(randf_range(-26.0, 26.0), -40.0 + randf_range(-10.0, 6.0)), str(dmg), _fcol, false, "damage", _fdt)   # 抖开: 多段/AOE 出伤飘字不重叠成糊团
 	# §AUDIO: 无来源伤害也出命中音 (非暴击); 护盾破→shield-break。mute_sfx=诅咒 tick 静音(用户2026-07-23)
 	if not mute_sfx:
