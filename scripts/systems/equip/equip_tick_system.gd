@@ -158,7 +158,7 @@ const ANCHOR_ASPD := 1.00      # 持有充能期间普攻攻速 +(真值在 batt
 ## 【周期件的触发间隔(秒)】★2026-08-25 文案根除: 这些原来全是各自 `_tick_*` 函数体里的
 ##   裸字面量, 而 json 的 effectDesc1 / effectBrief 又各手写了一遍 —— 同一个数存三份。
 ##   现在代码是唯一的那一份, 两处文案都用 `{C:EquipTickSystem.XXX_IV}` 指过来。
-const RUST_IV := 3.0            # 001 锈蚀短剑: 每几秒甩一道飞斩剑气
+const RUST_IV := 3.0            # 001 木制长剑: 每几秒甩一道飞斩剑气
 const RUST_RANGE := 2000.0      # 001 剑气射程(码)·2000 = 全场覆盖(用户 2026-07-19 近战→远程)
 const JELLY_MAXHP_PCT := 0.04   # 012 龟苓膏块: 护盾 = 固定值 + 自身最大生命 ×
 const IRONWALL_MAXHP_PCT := 0.08  # 016 铁壁盾: 护盾总池 = 固定值 + 携带者最大生命 ×
@@ -410,7 +410,7 @@ func _tick_jelly(u: Dictionary, delta: float) -> void:   # 龟苓膏块p2eq_012:
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		battle._damage._grant_shield(u, [40.0, 60.0, 90.0][si] + u["maxHp"] * JELLY_MAXHP_PCT)   # 用户2026-07-19: 30/40/55 → 40/60/90 + 4%最大生命
 
-func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 锈蚀短剑p2eq_001: 每3s就绪, 射程2000(全场)内最近敌即甩飞斩剑气; 每件独立(多件各自触发)
+func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 木制长剑p2eq_001: 每3s就绪, 射程2000(全场)内最近敌即甩飞斩剑气; 每件独立(多件各自触发)
 	if u.get("equips", []).is_empty(): return
 	var t = null; var got = false; var rng: float = RUST_RANGE   # 全场覆盖(用户2026-07-19: 近战→远程「裂空飞斩」)
 	for e in u["equips"]:
@@ -423,7 +423,7 @@ func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 锈蚀短剑p2eq_
 		e["rust_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		var dmg01: int = battle._resolve_dmg(u, u["atk"] * [0.6, 0.75, 1.0][si] + [40.0, 60.0, 100.0][si] * u["crit"], t, false)
-		battle._weapon_flyslash(u, t, dmg01, Color("#ffd27a"))   # 剑气飞到目标才结算伤(命中判定在_projectiles arrival)
+		battle._ballistics.fire_flyslash(u, t, dmg01, Color("#ffd27a"))   # 剑气飞到目标才结算伤(命中判定在_projectiles arrival)
 
 
 func _tick_coral(u: Dictionary, delta: float) -> void:   # 双穿珊瑚刺p2eq_008: 每9秒对最远敌射珊瑚尖刺(用户2026-07-19: 6→9); 命中才结算; 每件独立

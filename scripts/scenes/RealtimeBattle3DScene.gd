@@ -3878,28 +3878,6 @@ func _weapon_slash(from2d: Vector2, to2d: Vector2, col: Color) -> void:   # 面�
 	_skill_ring(to2d, Color(col.r, col.g, col.b, 0.6), 42.0)
 
 var _flyslash_tex: ImageTexture = null
-
-func _weapon_flyslash(src: Dictionary, tgt: Dictionary, dmg: int, col: Color) -> void:   # 锈蚀短剑p2eq_001(射程2000): 朝目标飞的新月剑气→wisp_dir令尖朝目标屏幕方向·命中(frac>=1)才结算伤(用户2026-07-19)
-	if tgt == null: return
-	if _flyslash_tex == null: _flyslash_tex = VfxTex._make_flyslash_texture(col)
-	var start2d: Vector2 = src["pos"]
-	_skill_ring(start2d, Color(col.r, col.g, col.b, 0.5), 24.0)   # 起手: 携带者剑处一抹白亮(蓄势)
-	var p := Sprite3D.new()
-	p.texture = _flyslash_tex
-	p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
-	p.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # wisp_dir: 弹道循环每帧手动 camera_basis×roll → 尖朝目标屏幕方向(billboard会覆盖手动basis, 必须关)
-	p.shaded = false; p.transparent = true
-	p.modulate = col
-	p.pixel_size = 0.055
-	p.position = _world_pos(start2d, 1.0)
-	_world.add_child(p)
-	_ballistics._push_proj({
-		"node": p, "from": _world_pos(start2d, 1.0), "tgt": tgt, "dmg": dmg, "col": col,
-		"src": src, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 520.0, 0.8, 2.6),   # 飞行速度: 降60%后再减半(用户2026-07-19: /2600→/1040→/520)
-		"flyslash": true, "wisp_dir": true, "o2d": start2d,
-	})
-
-
 func _blood_slash(from2d: Vector2, to2d: Vector2, delay: float) -> void:   # 饮血连斩: Undertale式红像素斩击(5帧×100ms)落敌身, 纯视觉
 	var off := Vector2(randf_range(-12.0, 12.0), randf_range(-10.0, 10.0))
 	var spr := Sprite3D.new()

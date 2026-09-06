@@ -200,7 +200,7 @@ func _ready() -> void:
 	_ok("9档【圣光·强化】: 盾类装备给 100 护盾 → 实得 120(额外 20%%)",
 		absf(float(me["shield"]) - 120.0) < 1.0, "实得 %.0f" % float(me["shield"]))
 	me["shield"] = 0.0
-	s._cur_eq_item = "p2eq_001"          # 锈蚀短剑(剑类)
+	s._cur_eq_item = "p2eq_001"          # 木制长剑(剑类)
 	s._damage._grant_shield(me, 100.0)
 	_ok("★对照: 【非盾类】装备给的护盾不转化(100 就是 100)",
 		absf(float(me["shield"]) - 100.0) < 1.0, "实得 %.0f" % float(me["shield"]))

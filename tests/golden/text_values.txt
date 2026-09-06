@@ -40,6 +40,8 @@ eq|手半剑|effectDesc1	20.0 80.0 100.0 100.0 120.0 150.0 250.0 450.0
 eq|打捞旋翼机|effectDesc1	0.35 1.2 4.0 10.0 40.0 100.0 120.0 150.0 500.0 800.0
 eq|暴君之牙|effectBrief	6.0
 eq|暴君之牙|effectDesc1	6.0 20.0 40.0 100.0
+eq|木制长剑|effectBrief	3.0
+eq|木制长剑|effectDesc1	3.0
 eq|毒药瓶|effectBrief	6.0
 eq|毒药瓶|effectDesc1	6.0 400.0
 eq|毒蛾茧|effectDesc1	0.25 0.25 0.25 1.0 1.5 2.0 6.0 20.0
@@ -111,8 +113,6 @@ eq|铁皮蛋糕盒|effectDesc1	5.0 300.0 550.0
 eq|铜管手铳|effectDesc1	0.5 1.0 5.0 50.0 700.0
 eq|银色箭袋|effectBrief	6.0 100.0
 eq|银色箭袋|effectDesc1	0.25 1.5 6.0 100.0 400.0
-eq|锈蚀短剑|effectBrief	3.0
-eq|锈蚀短剑|effectDesc1	3.0 2000.0
 eq|锈蚀阔剑|effectBrief	6.0
 eq|锈蚀阔剑|effectDesc1	6.0 2000.0
 eq|锋利鲨齿|effectBrief	200.0

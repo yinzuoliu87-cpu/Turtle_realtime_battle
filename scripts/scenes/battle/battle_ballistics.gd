@@ -182,7 +182,11 @@ func _step_projectiles(delta: float) -> void:
 	var ts_on: bool = not battle._timestop._ts_active.is_empty()
 	var keep: Array = []
 	for pr in battle._projectiles:
-		var node: Sprite3D = pr["node"]
+		## ★2026-09-06 从 `Sprite3D` 放宽到 `Node3D`：001 飞斩剑气改成 LoL 式束身后
+		##   是 `MeshInstance3D`(quad + 滚动 shader)，不再是 Sprite3D。
+		##   本循环里用到的全是 `Node3D` 的东西(position / global_transform / queue_free)，
+		##   只有少数分支要 Sprite3D 的属性(frame/flip_h)，那几处各自就地转型。
+		var node: Node3D = pr["node"]
 		if not is_instance_valid(node):
 			continue
 		if ts_on and not battle._arr_has_unit(battle._timestop._ts_active, pr.get("src")):   # 同7595: Array.has对单位字典是深比较, 改引用比较
@@ -196,6 +200,45 @@ func _step_projectiles(delta: float) -> void:
 		var to = battle._world_pos(tgt["pos"], 1.0)
 		var frac: float = clampf(pr["t"] / pr["dur"], 0.0, 1.0)
 		node.position = pr["from"].lerp(to, frac)
+
+		## ══════════════════════════════════════════════════════════════
+		##  ★★★像素风弹体的两件事(2026-09-06, 001 飞斩剑气重做时加的通用件)
+		## ══════════════════════════════════════════════════════════════
+		## 用户「我要完全对齐 lol 的」「不要考虑成本，不可以省事」。
+		## LoL 的**意图**要搬(弹体一直在动 / 拖尾跟速度走 / 五段分离)，
+		## 它的**手段**不能搬(3D mesh + 滚动 UV) —— 像素风里那样会把像素拉成长方形。
+		##
+		## ① `dirsel`: **按飞行角度选方向帧，贴图永不旋转**。
+		##    旋转会让像素落在非网格位置 ⇒ 边缘锯齿、飞行中抖动。
+		##    全仓此前所有弹体都靠 `wisp_dir` 旋转贴图，这是第一个不旋转的。
+		## ★格数由贴图自己的 `hframes` 决定, 不写死 —— 001 一开始做成 8 方向, 实测发现
+		##   【8 格里只有 1 格被用过】(探针量飞行全程 di 恒 0), 而另外 7 格贡献了全部素材缺陷,
+		##   改成 4 方向(见 tools/build_dir_sheet.py 头注)。写死格数的话这里就得跟着改两处。
+		if pr.get("dirsel", false) and node is Sprite3D and battle._cam != null:
+			var spd: Sprite3D = node as Sprite3D
+			var nd: int = maxi(1, int(spd.hframes))
+			## ★方向由【整条航线】(from→to)算, 不由"当前位置→目标"算: 后者在快命中时
+			##   delta 缩到几个像素, 2.5D 相机的俯角会让 y 分量占主导, 下标有末段翻格的风险。
+			##   航线是常量, 全程只有一个下标。
+			## ★★这是**防御性**改动, 不是修了一个已复现的 bug —— 说清楚免得下一个人误会:
+			##   我看实拍觉得"t=3.10 竖的、t=3.30 变横的", 量下来两帧轴向 179.3 vs 179.6(差 0.3°),
+			##   **根本没翻**; 3.30 那个横着的东西是【拖尾残影】不是弹体。
+			##   (同一天第三次"目视报了个不存在的 bug"。判断朝向一律先量再说。)
+			var a2: Vector2 = battle._cam.unproject_position(to) 				- battle._cam.unproject_position(pr["from"] if pr.has("from") else node.global_position)
+			if a2.length() > 0.5:
+				## 屏幕空间角度 → 方向下标。-a2.y 是因为屏幕 Y 向下。
+				var ang: float = atan2(-a2.y, a2.x)
+				var di: int = int(round(ang / (TAU / float(nd)))) % nd
+				if di < 0: di += nd
+				spd.frame = int(float(pr["t"]) * 14.0) % int(spd.vframes) * nd + di
+		## ② `afterimage`: 每隔 N 秒留一个当前帧的半透明副本, **原地淡出**。
+		##    这就是"拖尾"—— 数量跟飞行速度走(飞得快 ⇒ 同样时间跨的距离长 ⇒ 残影铺得开),
+		##    所以**绝不能把拖尾画进贴图**(画死了就是"飞快飞慢都那么长")。
+		if pr.has("afterimage") and node is Sprite3D:
+			pr["_ai_t"] = float(pr.get("_ai_t", 0.0)) + delta
+			if float(pr["_ai_t"]) >= float(pr["afterimage"]) and frac < 0.94:
+				pr["_ai_t"] = 0.0
+				_spawn_afterimage(node as Sprite3D)
 		if pr.has("arc"):
 			node.position.y += float(pr["arc"]) * sin(PI * frac)   # 抛物线拱起(火球等)
 		if pr.get("oriented", false):                              # 尖尖波: 绕Y转向行进方向(尖端领着飞)
@@ -220,8 +263,12 @@ func _step_projectiles(delta: float) -> void:
 		##   (`p.hframes = 4` 在 :112)其实**一帧都没动过** —— 挂了帧数却没人推。
 		##   用户 2026-08-29:「不要拿图片贴图敷衍我, **我要动画像素特效**」⇒ 这条得是通用的,
 		##   否则每加一个动画弹体都要回来开一次闸, 而漏开是静默的(看着就是"贴图不动")。
-		if int(node.hframes) > 1:
-			node.frame = int(float(pr["t"]) * float(pr.get("anim_fps", 18.0))) % int(node.hframes)
+		##   ★2026-09-06 补 `is Sprite3D` 守卫: 001 改成 LoL 式束身后弹体是 `MeshInstance3D`,
+		##     它没有 `hframes` ⇒ 无条件读会每帧刷 `Invalid access to property or key 'hframes'`
+		##     (实测一次台子跑出 379 条)。逐帧播只对 Sprite3D 有意义。
+		if node is Sprite3D and int((node as Sprite3D).hframes) > 1:
+			var sp3: Sprite3D = node as Sprite3D
+			sp3.frame = int(float(pr["t"]) * float(pr.get("anim_fps", 18.0))) % int(sp3.hframes)
 		if frac >= 1.0:
 			node.queue_free()
 			if tgt["alive"]:
@@ -277,9 +324,12 @@ func _step_projectiles(delta: float) -> void:
 					if pr.get("eq_bleed", 0) > 0:
 						battle._damage._apply_dot_stacks(tgt, "bleed", int(pr["eq_bleed"]), pr["src"])
 					battle._vfx._hit_spark(tgt)
-				elif pr.get("flyslash", false):   # 锈蚀短剑001飞斩: 命中才结算装备物理伤(红字)+落点炸斩弧+命中环
+				elif pr.get("flyslash", false):   # 木制长剑001飞斩: 命中才结算装备物理伤(红字)
 					battle._damage._apply_damage_from(pr["src"], tgt, pr["dmg"], Color("#ff4444"), 0.0, false, true)
-					battle._weapon_slash(pr.get("o2d", tgt["pos"]), tgt["pos"], pr["col"])
+					## ★2026-09-06: 命中原来【只有伤害数字 + 一条程序生成的斩弧】。
+					##   LoL 式五段结构里 ⑤impact 是独立的一次性特效，锚在命中点 ——
+					##   现在接上真素材(`eq001-flyslash-impact.png` 8 帧)。
+					battle._vfx.flyslash_impact(tgt["pos"], pr["col"])
 				elif pr.get("venom_fang", false):   # 暴君之牙004毒牙: 命中魔法伤(紫)+毒液飞溅+回复携带者100%造成伤害
 					var vd: int = battle._resolve_dmg(pr["src"], float(pr.get("fang_base", 0.0)), tgt, true)
 					battle._damage._apply_damage_from(pr["src"], tgt, vd, Color("#c96bff"), 0.0, false, true)
@@ -435,6 +485,38 @@ func _fire_hunter_arrow(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   # �
 		"arc": 4.6, "raw": true,
 	})
 
+## 弹体残影(afterimage) —— 复制当前这一帧，**原地不动**地淡出。
+## ★这是像素风做拖尾的正确手段：拖尾长度由「残影间隔 × 飞行速度」自然给出，
+##   不是画在贴图里的一条固定长度的尾巴(那样飞快飞慢都一样长 = 穿帮)。
+## ★残影不参与任何结算，纯视觉；`_reg_tween` 保证场景释放时一起收掉。
+func _spawn_afterimage(src: Sprite3D) -> void:
+	## ★`_scene_live()` 在**本类**身上, 不在 battle 上 —— 写 `battle._scene_live()` 会每帧刷
+	##   "Nonexistent function ... in base Node3D"(实测一次跑 35 条), 而残影静默不出。
+	if not _scene_live() or battle._world == null:
+		return
+	var g := Sprite3D.new()
+	g.texture = src.texture
+	g.hframes = src.hframes
+	g.vframes = src.vframes
+	g.frame = src.frame
+	g.billboard = src.billboard
+	g.shaded = false
+	g.transparent = true
+	g.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	g.pixel_size = src.pixel_size
+	g.global_transform = src.global_transform
+	var c: Color = src.modulate
+	g.modulate = Color(c.r, c.g, c.b, 0.42)
+	battle._world.add_child(g)
+	## ★不能写 `var tw := battle._reg_tween()` —— `battle` 无类型, `:=` 推不出返回类型,
+	##   GDScript 会报 Parse Error 让【整个脚本编译失败】⇒ 所有子系统变 Nil,
+	##   表现是每帧刷 "Nonexistent function ... in base 'Nil'"(实测一次跑出 8.7 万条),
+	##   而真正的 Parse Error 只在日志最上面出现一次, 极易被淹掉。
+	var tw: Tween = battle._reg_tween()
+	tw.tween_property(g, "modulate:a", 0.0, 0.20)
+	tw.tween_callback(g.queue_free)
+
+
 func _step_homing_arrow(pr: Dictionary, node: Sprite3D, delta: float) -> bool:   # 追踪抛物箭逐帧: 追踪移动+抛物高度+箭头随角度; 命中/目标消失→自销返false, 否则返true续飞
 	var tgt = pr.get("tgt", null)
 	if tgt == null or not tgt.get("alive", false) or float(pr["t"]) > 3.5:   # 目标没了/超时→箭消失(不乱跳伤害)
@@ -510,3 +592,66 @@ func _fire_explosion(pos2d: Vector2) -> void:
 	tw.chain().tween_callback(sp.queue_free)
 
 # 抛物线火球(珍珠耳环045): 火辉光从 src 抛向 tgt, 落点火爆+灼烧+真伤(橙). burn=灼烧层
+
+
+## ══════════════════════════════════════════════════════════════════
+##  001 木制长剑·飞斩 —— ③ 弹体(travel)
+## ══════════════════════════════════════════════════════════════════
+## ★2026-09-06 从上帝文件搬过来。判据(CLAUDE.md §5)是【不在 _sim_step 调用链上的不进主文件】,
+##   而"发一发弹体"本来就是弹道自己的事: `_push_proj` / 方向选帧 / afterimage 都在本文件。
+##   ⇒ 001 的五段现在分居两处: ②发射 ⑤命中在 battle_vfx.gd, ③弹体在这里。
+## ── 001 飞斩剑气·五段结构的素材与规格(2026-09-06 重做) ──
+## 表布局: 横 4 格 = 方向(E/N/W/S), 纵 4 格 = 4 帧循环。
+## ★四格由 1 张基准帧经 **水平镜像 + 90° 旋转** 推出 —— 只有这两种变换对像素无损。
+## ★4 不是 8。改的理由与三条实测证据见 tools/build_dir_sheet.py 头注
+## (8 格里只有 1 格被用过 / 45° 旋转对像素有损 / 第二张基准帧两条路都拿不到)。
+const FLYSLASH_DIRS := 4
+## ★3 帧不是 5 —— animate_image 返回 5 帧, 后两帧白边散掉(LoL 剖面的 white_ratio 当场不合格),
+## 第 5 帧还长出了黑描边。弹体是**循环**播放的, 循环里混一帧不合格的 = 每圈闪一下。
+const FLYSLASH_FRAMES := 3
+## 本体的像素高度(不是格子高度)。龟立绘按帧高归一到 TARGET_BODY_H, 32 就是"一个贴图像素 = 龟的一个像素"。
+const FLYSLASH_ART_PX := 32.0
+## ★出生点要偏出携带者身体, 别盖在它脸上。
+##   实拍(vfxlab p2eq_001)改造前: 剑气与发射闪光都生在 src["pos"] 正中心, 把龟整个糊住 ——
+##   LoL 的剑气是从手上【扫出去】、从角色身侧掠过的, 不是贴在角色脸上。
+##   56 = 半个龟身(33) + 一点余量。龟宽实测 66 场地单位
+##   (标定法: 两个假人场地间距 140 ↔ 屏幕 93px ⇒ 1px=1.51 单位; 龟 44px = 66 单位)。
+const FLYSLASH_SPAWN_OFF := 56.0
+var _flyslash_sheet: Texture2D = null          # ③ 弹体: 8 方向 × 4 帧
+
+func fire_flyslash(src: Dictionary, tgt: Dictionary, dmg: int, col: Color) -> void:   # 木制长剑p2eq_001(射程2000): 朝目标飞的剑气(8方向预渲染帧·不旋转)·命中(frac>=1)才结算伤
+	if tgt == null: return
+	## ★做法与三条像素风硬约束(整数倍缩放 / 不许自由旋转 / NEAREST 不 blend_add)
+	##   见 docs/specs/装备特效制作流程.md —— 那份是 96 件逐件重做的样板, 别在这里复述。
+	if _flyslash_sheet == null:
+		_flyslash_sheet = load("res://assets/sprites/vfx/eq001-flyslash-dir4.png")
+	var aim: Vector2 = (tgt["pos"] - src["pos"])
+	var start2d: Vector2 = src["pos"] + (aim.normalized() * FLYSLASH_SPAWN_OFF if aim.length() > 1.0 else Vector2.ZERO)
+	battle._vfx.flyslash_muzzle(start2d, col)                    # ② 发射: 一次性，锚在出手点(已偏出身体)，不跟飞
+	var p := Sprite3D.new()
+	p.texture = _flyslash_sheet
+	## 表布局: 横 4 格 = 方向(E, N, W, S), 纵 4 格 = 4 帧循环
+	p.hframes = FLYSLASH_DIRS
+	p.vframes = FLYSLASH_FRAMES
+	p.frame = 0
+	p.billboard = BaseMaterial3D.BILLBOARD_ENABLED    # ★正对相机, **不旋转** —— 方向靠选帧
+	p.shaded = false; p.transparent = true
+	p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	p.modulate = col
+	## ★★像素口径**只能由 ART_PX 定, 不能由格子高度定**。
+	##   通用规则 `pixel_size = TARGET_BODY_H / 帧高` 的前提是【本体填满整帧】(见主文件 2018 行注)。
+	##   剑气不填满: 它是一道又长又扁的弧, 要放进【方形格】才能做 90° 旋转推方向,
+	##   格子一撑大(64) 而本体还是 32 高 ⇒ 用格高算的话像素当场缩一半, 和龟脱钩。
+	##   2026-09-06 实测 LoL 参考: 剑气长宽比 2.37, 而 32×32 方格里画不出来(实测最好 1.55),
+	##   所以素材改成 64×24 的宽画布、再垫进 64 方格 —— 那一垫正好会踩上面这个坑。
+	p.pixel_size = battle.TARGET_BODY_H / FLYSLASH_ART_PX
+	p.position = battle._world_pos(start2d, 1.0)
+	battle._world.add_child(p)
+	_push_proj({
+		"node": p, "from": battle._world_pos(start2d, 1.0), "tgt": tgt, "dmg": dmg, "col": col,
+		"src": src, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 520.0, 0.8, 2.6),   # 飞行速度: 降60%后再减半(用户2026-07-19: /2600→/1040→/520)
+		"flyslash": true, "o2d": start2d,
+		"dirsel": true,                # ③ 按飞行角度选方向帧(不旋转) —— 见本文件 _step_projectiles
+		"afterimage": 0.045,           # ④ 拖尾: 每 45ms 留一个半透明残影, 原地淡出(不画进贴图)
+		"_ai_t": 0.0,
+	})

@@ -124,7 +124,7 @@ func _ready() -> void:
 	var s1: String = P2RT.stat_line_compact("p2eq_001", 1)
 	var s3: String = P2RT.stat_line_compact("p2eq_001", 3)
 	_ok("★不同星级给出不同属性(按 star 取表)", s1 != s3, "1★=%s | 3★=%s" % [s1, s3])
-	_ok("1★ 含攻击力+5(锈蚀短剑)", s1.contains("+5"), s1)
+	_ok("1★ 含攻击力+5(木制长剑)", s1.contains("+5"), s1)
 	_ok("3★ 含攻击力+20", s3.contains("+20"), s3)
 
 	print("ALL PASS — 背包装备属性完整显示" if _fail == 0 else "FAILED: %d" % _fail)

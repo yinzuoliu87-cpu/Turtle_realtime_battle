@@ -1078,3 +1078,88 @@ func phase_afterimage(spr) -> void:
 	var tw: Tween = battle._reg_tween()
 	tw.tween_property(ai, "modulate:a", 0.0, 0.35)
 	tw.tween_callback(ai.queue_free)
+
+
+## ══════════════════════════════════════════════════════════════════
+##  001 木制长剑·飞斩剑气 —— 发射 muzzle / 命中 impact
+## ══════════════════════════════════════════════════════════════════
+## ★2026-09-06 从上帝文件搬过来: 判据只有一条 ——【不在 `_sim_step` 调用链上的不进主文件】,
+##   特效演出属于 `battle_vfx.gd`(CLAUDE.md §5 那张表)。
+##   我一开始直接写进 RealtimeBattle3DScene.gd, `arch_budget` 当场红:
+##   「现 9013 行 > 台账冻结的 8925 行 —— 往上帝文件里加代码=违规」。
+## ★4 不是 5 —— animate_image 的最后一帧是【整幅 960/1024 像素不透明】的垃圾帧,
+## 播到它就是屏幕上闪一个灰方块。门禁 ① 抓的就是这个。
+const MUZZLE_FRAMES := 4
+## ★3 不是 8 —— 第 4 帧起星爆糊成【实心奶油盘】且开始发褐。只取爆开的那三帧,
+## 收尾靠 tween 拉 alpha(演出该holdfade, 不该让素材自己变黑)。
+const IMPACT_FRAMES := 3
+var _fs_muzzle_tex: Texture2D = null
+var _fs_impact_tex: Texture2D = null
+
+## 001 飞斩·②发射 muzzle —— 一次性，锚在出手点，**不跟着飞**(LoL 的 cast VFX 就是分离的)。
+func flyslash_muzzle(at2d: Vector2, col: Color) -> void:
+	if _fs_muzzle_tex == null:
+		_fs_muzzle_tex = load("res://assets/sprites/vfx/eq001-flyslash-muzzle.png")
+	if _fs_muzzle_tex == null:
+		return
+	var s := Sprite3D.new()
+	s.texture = _fs_muzzle_tex
+	s.hframes = MUZZLE_FRAMES
+	s.frame = 0
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	s.shaded = false; s.transparent = true
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.modulate = col
+	s.pixel_size = battle.TARGET_BODY_H / float(_fs_muzzle_tex.get_height())
+	s.position = battle._world_pos(at2d, 1.1)
+	battle._world.add_child(s)
+	var tw: Tween = battle._reg_tween()   # ★不能用 `:=` —— `battle` 无类型, 推不出返回类型 ⇒ Parse Error ⇒ 整个脚本编译失败
+	tw.tween_method(func(f: float) -> void:
+		## ★闭包里必须先判存活: 节点可能先被 queue_free / 换路清场,
+		##   否则每帧刷 "Lambda capture at index 0 was freed"(实测一轮 23 条,
+		##   而 run-tests 的致命正则会当场判红)。
+		if not is_instance_valid(s):
+			return
+		s.frame = clampi(int(f), 0, MUZZLE_FRAMES - 1),
+		0.0, float(MUZZLE_FRAMES), 0.22)
+	tw.tween_callback(func() -> void:
+		if is_instance_valid(s): s.queue_free())
+
+
+## 001 飞斩·⑤命中 impact —— 一次性，锚在命中点。改造前【命中完全没有特效】，只有伤害数字。
+func flyslash_impact(at2d: Vector2, col: Color) -> void:
+	if _fs_impact_tex == null:
+		_fs_impact_tex = load("res://assets/sprites/vfx/eq001-flyslash-impact.png")
+	if _fs_impact_tex == null:
+		return
+	var s := Sprite3D.new()
+	s.texture = _fs_impact_tex
+	s.hframes = IMPACT_FRAMES
+	s.frame = 0
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	s.shaded = false; s.transparent = true
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.modulate = col
+	s.pixel_size = battle.TARGET_BODY_H / float(_fs_impact_tex.get_height())
+	s.position = battle._world_pos(at2d, 1.0)
+	battle._world.add_child(s)
+	var tw: Tween = battle._reg_tween()   # ★不能用 `:=` —— `battle` 无类型, 推不出返回类型 ⇒ Parse Error ⇒ 整个脚本编译失败
+	tw.tween_method(func(f: float) -> void:
+		## ★闭包里必须先判存活: 节点可能先被 queue_free / 换路清场,
+		##   否则每帧刷 "Lambda capture at index 0 was freed"(实测一轮 23 条,
+		##   而 run-tests 的致命正则会当场判红)。
+		if not is_instance_valid(s):
+			return
+		s.frame = clampi(int(f), 0, IMPACT_FRAMES - 1),
+		0.0, float(IMPACT_FRAMES), 0.16)
+	## ★收尾靠拉 alpha, 不靠素材自己变黑(门禁 ② 量的就是这条)。
+	##   而且**先满亮 hold 完 3 帧再淡**, 不是一出生就线性淡出 ——
+	##   短命特效一出生就淡, 实拍读出来是土棕色的一团(见 memory fb-vfx-defect-families "淡出病")。
+	var c0: Color = col
+	tw.tween_method(func(a: float) -> void:
+		if not is_instance_valid(s):
+			return
+		s.modulate = Color(c0.r, c0.g, c0.b, a),
+		1.0, 0.0, 0.14)
+	tw.tween_callback(func() -> void:
+		if is_instance_valid(s): s.queue_free())

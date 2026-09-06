@@ -1,14 +1,14 @@
 [
   {
     "id": "p2eq_001",
-    "name": "锈蚀短剑",
+    "name": "木制长剑",
     "cost": 1,
     "baseStats1": "+攻5/12/20·暴击10/15/25%",
     "shopAvailable": 1,
     "emoji": "🗡️",
-    "effectDesc1": "每 {C:EquipTickSystem.RUST_IV} 秒甩出一道飞斩剑气，射向射程 {C:EquipTickSystem.RUST_RANGE} 内最近的敌人，命中时造成（0.6/0.75/1.0×攻击力+40/60/100×暴击率）物理伤害。",
+    "effectDesc1": "每 {C:EquipTickSystem.RUST_IV} 秒朝最近的敌人甩出一道飞斩剑气，命中时造成（0.6/0.75/1.0×攻击力+40/60/100×暴击率）物理伤害。",
     "effectDesc3": "",
-    "img": "equip/equip-sword-icon.png",
+    "img": "equip/p2eq_001.png",
     "effectBrief": "每 {C:EquipTickSystem.RUST_IV} 秒甩出一道剑气，造成 0.6/0.75/1.0×攻击力物理伤害。"
   },
   {
