@@ -32,7 +32,7 @@
     "emoji": "🦈",
     "effectDesc1": "每段伤害命中后，向目标周围 {C:EquipSystem.SHARKTOOTH_SPLASH_R} 码内的敌人各溅射 15/28/50%×本段伤害的物理伤害。",
     "effectDesc3": "",
-    "img": "equip/dungeon-tooth.png",
+    "img": "equip/p2eq_003.png",
     "effectBrief": "每段伤害命中后，向目标周围 {C:EquipSystem.SHARKTOOTH_SPLASH_R} 码溅射 15/28/50% 本段伤害。"
   },
   {

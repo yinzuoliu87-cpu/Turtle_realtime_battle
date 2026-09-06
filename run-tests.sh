@@ -459,6 +459,7 @@ run_audit () {   # $1=脚本 $2=判定通过的关键字 $3=显示名
 
 echo "=== 只读数据审计 ==="
 run_audit "tools/data_integrity.py"       "ALL OK" "data_integrity (json交叉引用/资源路径/孤儿字段)"
+run_audit "tools/pixel_art_audit.py"     "ALL OK" "pixel_art_audit (装备图标必须是真像素画·台账只减不增)"
 run_audit "tools/tooltip_number_audit.py" "ALL OK" "tooltip_number_audit (装备文案数值 ↔ 代码)"
 # ★龟技能文案 ↔ 代码 (2026-07-30 新增)。由来: 用户「不只是无头龟有这问题啊，所有龟、装备、
 #   训龟大师技能都有问题怎么办呢」—— 装备有 tooltip_number_audit、大师有 verify_trainer_desc,

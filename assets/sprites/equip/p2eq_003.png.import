@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://lqcjlc87o0v4"
-path="res://.godot/imported/dungeon-tooth.png-3ef51ac52e2bd1538faedc79e0f084d9.ctex"
+uid="uid://bf6k5ftjhjyho"
+path="res://.godot/imported/p2eq_003.png-8832579e22455ba7a429e4372d8cbe27.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/equip/dungeon-tooth.png"
-dest_files=["res://.godot/imported/dungeon-tooth.png-3ef51ac52e2bd1538faedc79e0f084d9.ctex"]
+source_file="res://assets/sprites/equip/p2eq_003.png"
+dest_files=["res://.godot/imported/p2eq_003.png-8832579e22455ba7a429e4372d8cbe27.ctex"]
 
 [params]
 
