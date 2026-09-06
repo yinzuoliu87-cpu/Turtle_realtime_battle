@@ -266,7 +266,15 @@ func _step_projectiles(delta: float) -> void:
 		##   ★2026-09-06 补 `is Sprite3D` 守卫: 001 改成 LoL 式束身后弹体是 `MeshInstance3D`,
 		##     它没有 `hframes` ⇒ 无条件读会每帧刷 `Invalid access to property or key 'hframes'`
 		##     (实测一次台子跑出 379 条)。逐帧播只对 Sprite3D 有意义。
-		if node is Sprite3D and int((node as Sprite3D).hframes) > 1:
+		## ★★`dirsel` 的弹体**必须跳过这段**。
+		##   这段是给普通弹体做逐帧动画的: 拿 `hframes` 当"动画帧数"取模。
+		##   而方向表里 **`hframes` 是"方向数"不是"帧数"** ⇒ 它每秒 18 次在
+		##   东→北→西→南 之间循环, **看上去就是剑气在自转**;
+		##   而且它在这一行(晚于上面 dirsel 的赋值), 每帧把算好的方向覆盖掉。
+		##   用户连问四次「为什么弹道在旋转」, 根因就是这里。
+		##   ⇒ 我的探针打在 dirsel 那行, 打出来 di 恒为 0 —— **打的是被覆盖之前的值**,
+		##     所以查了很久没查到。逐帧截 400 张图才看见它在横竖之间跳。
+		if node is Sprite3D and int((node as Sprite3D).hframes) > 1 and not pr.get("dirsel", false):
 			var sp3: Sprite3D = node as Sprite3D
 			sp3.frame = int(float(pr["t"]) * float(pr.get("anim_fps", 18.0))) % int(sp3.hframes)
 		if frac >= 1.0:
