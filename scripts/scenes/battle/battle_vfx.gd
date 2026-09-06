@@ -1192,7 +1192,7 @@ func spawn_bleed_drop(u: Dictionary) -> void:
 	s.shaded = false
 	s.transparent = true
 	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素风: 不许线性糊
-	s.pixel_size = 0.011
+	s.pixel_size = 0.0176   # ★用户 2026-09-06: 先「大4倍」(0.011→0.044), 再「缩小60%」⇒ 0.044×0.4
 	s.scale = Vector3(0.85, 0.85, 0.85)
 	var h0: float = 0.62 + rng.randf_range(-0.10, 0.16)
 	s.position = battle._world_pos(pos2d, h0)
