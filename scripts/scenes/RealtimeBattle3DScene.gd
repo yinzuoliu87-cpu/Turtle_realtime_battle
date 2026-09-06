@@ -402,6 +402,8 @@ const HOOK_ICON := "res://assets/sprites/vfx/hook-skill-icon.png"   # 圆盘技�
 const TRAINER_SPRITE := "res://assets/sprites/pets/trainer.png"
 
 const SPRITE_DIR := "res://assets/sprites/"           # pets.json img 相对此根
+const RING_FRAMES := 8   # 冲击环烤好的扩散帧数(tools/blender_ring.py 渲)
+var _ring_sheet: Texture2D = null
 const TARGET_BODY_H := 2.0                 # 立绘目标世界高度 (米) — 龟 ≈ 2.0m (用户2026-06-29: 原2.3大了点)
 const WS := 0.024                         # 像素 → 米 比例 (ARENA 1140×520 px → ≈27×12.5 米地面)
 const PIXEL_SIZE := 0.012                 # (旧) 头像兜底像素→米; 全身图改按帧高归一到 TARGET_BODY_H
@@ -4936,25 +4938,42 @@ func _skill_ring(pos2d: Vector2, col: Color, radius: float) -> Sprite3D:
 	r.set_meta("ring_tw", tw)                 # 门禁 custom_step 手推这条 tween(无头 CI 下 tween 自走不稳)
 	return r
 
-func _splash_ring_bold(pos2d: Vector2, col: Color, radius: float) -> void:   # 醒目冲击环: 双层贴地环 + no_depth_test(恒画在地板/地形/立绘之上·不被高度吞·用户2026-07-19)
-	var target_ps: float = (radius * 2.0 * WS) / 96.0
-	for k in range(2):   # k0=主环(实) k1=外环(虚·略慢略大) → 双层更醒目
+func _splash_ring_bold(pos2d: Vector2, col: Color, radius: float) -> void:
+	## 醒目冲击环: 贴地 + no_depth_test(恒在地板/立绘之上·用户2026-07-19)。
+	## ★2026-09-06 重做(用户:「最好不要程序弄吧，blender呢」): 程序软辉光 + 连续缩放像素贴图
+	##   ⇒ 改成 Blender 逐帧烤好的 8 帧扩散、**pixel_size 固定只切帧**。理由见 tools/blender_ring.py 头注。
+	if _ring_sheet == null:
+		_ring_sheet = load("res://assets/sprites/vfx/eq003-splash-ring.png")
+	if _ring_sheet == null: return
+	## 末帧外径 31px / 画布 64px ⇒ 贴图要覆盖 2×radius 的话, pixel_size 按这个比例定
+	## ★环外径 = 真实判定半径。核对法【只能算不能量像素】, 推导与我栽的坑见 tools/blender_ring.py。
+	var ps: float = (radius * 2.0 * WS) / (64.0 * (31.0 / 32.0))
+	for k in range(2):   # k0=主环(实) k1=外环(虚·略慢略大) → 双层更醒目(与改造前同)
 		var r := Sprite3D.new()
-		r.texture = VfxTex._make_ring_texture(col)
+		r.texture = _ring_sheet
+		r.hframes = RING_FRAMES
+		r.frame = 0
 		r.billboard = BaseMaterial3D.BILLBOARD_DISABLED
 		r.axis = Vector3.AXIS_Y          # 躺平贴地
 		r.shaded = false; r.transparent = true
-		r.no_depth_test = true           # ★关深度测试: 贴地环恒在最上层, 地板/珊瑚高度盖不住
+		r.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素风: 不许线性糊
+		r.no_depth_test = true           # ★关深度测试: 贴地环恒在最上层
 		r.render_priority = 6 + k
 		r.modulate = Color(col.r, col.g, col.b, 1.0 if k == 0 else 0.5)
 		r.position = _world_pos(pos2d, 0.12)
-		r.pixel_size = target_ps * (0.28 if k == 0 else 0.14)
+		r.pixel_size = ps * (1.0 if k == 0 else 1.18)   # ★固定, 不再 tween
 		_world.add_child(r)
 		var dur: float = 0.4 + 0.12 * float(k)
+		var rr := r
 		var tw := _reg_tween(); tw.set_parallel(true)
-		tw.tween_property(r, "pixel_size", target_ps * (1.0 if k == 0 else 1.18), dur)
+		tw.tween_method(func(f: float) -> void:
+			if not is_instance_valid(rr):
+				return
+			rr.frame = clampi(int(f), 0, RING_FRAMES - 1),
+			0.0, float(RING_FRAMES), dur)
 		tw.tween_property(r, "modulate:a", 0.0, dur)
-		tw.chain().tween_callback(r.queue_free)
+		tw.chain().tween_callback(func() -> void:
+			if is_instance_valid(rr): rr.queue_free())
 
 var _venomfang_tex: ImageTexture = null
 
