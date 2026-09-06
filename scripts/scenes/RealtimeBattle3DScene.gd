@@ -2736,6 +2736,13 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 		while u["poison_vfx_t"] >= 0.2:
 			u["poison_vfx_t"] -= 0.2
 			_spawn_poison_bubble(u)
+	# 流血特效: 往下滴的血滴(照灼烧余烬/中毒毒泡补齐第三种·2026-09-06)
+	#   补之前三种层数式 DoT 里只有流血没有任何持续视觉 —— 实拍 002 的台子整屏空白。
+	if u["alive"] and int(u.get("dot_stacks", {}).get("bleed", 0)) > 0:
+		u["bleed_vfx_t"] = float(u.get("bleed_vfx_t", 0.0)) + delta
+		while u["bleed_vfx_t"] >= 0.28:
+			u["bleed_vfx_t"] -= 0.28
+			_vfx.spawn_bleed_drop(u)
 	if u["id"] == "phoenix" and u.get("flame_sector", null) != null and is_instance_valid(u.get("flame_sector")) and _t > float(u.get("flame_sector_t", 0.0)):
 		var _fs = u["flame_sector"]   # 停喷≠瞬灭(用户2026-07-15"完整运动"): 追加关样本继续回放→残焰飞到目的地才灭
 		if _fs.visible:

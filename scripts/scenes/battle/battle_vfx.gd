@@ -1163,3 +1163,46 @@ func flyslash_impact(at2d: Vector2, col: Color) -> void:
 		1.0, 0.0, 0.14)
 	tw.tween_callback(func() -> void:
 		if is_instance_valid(s): s.queue_free())
+
+
+## ══════════════════════════════════════════════════════════════════
+##  流血持续视觉 —— 往下滴的血滴
+## ══════════════════════════════════════════════════════════════════
+## ★由来(2026-09-06 审 002 辣椒时发现, 但这是**全局**缺口不是 002 一件的事):
+##   三种层数式 DoT 里, 灼烧每 0.15 秒窜一个小火苗、中毒每 0.2 秒冒一个毒绿泡,
+##   **流血一个像素都没有** —— 实拍 002 的台子, 施加流血后整个画面空白。
+##   ⇒ 补上同族的第三个, 让"这单位在流血"一眼可辨。
+## ★方向刻意与另外两个相反: 火苗和毒泡【上升】, 血滴【下坠】—— 物理上对, 也帮玩家区分。
+## ★频率低于另两个(每 0.28 秒一滴): 流血叠层常年挂着, 太密会糊住单位(LoL 的可读性原则:
+##   高频状态特效必须克制, 否则把玩家的注意力从"谁在打谁"上吃掉)。
+const BLEED_DROP_SEC := 0.55
+var _bleed_drop_tex: Texture2D = null
+
+
+func spawn_bleed_drop(u: Dictionary) -> void:
+	if _bleed_drop_tex == null:
+		_bleed_drop_tex = load("res://assets/sprites/vfx/dot-bleed-drop.png")
+	if _bleed_drop_tex == null:
+		return
+	var rng = battle._juice_rng
+	var pos2d: Vector2 = u["pos"] + Vector2(rng.randf_range(-14.0, 14.0), rng.randf_range(-2.0, 8.0))
+	var s := Sprite3D.new()
+	s.texture = _bleed_drop_tex
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	s.shaded = false
+	s.transparent = true
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素风: 不许线性糊
+	s.pixel_size = 0.011
+	s.scale = Vector3(0.85, 0.85, 0.85)
+	var h0: float = 0.62 + rng.randf_range(-0.10, 0.16)
+	s.position = battle._world_pos(pos2d, h0)
+	battle._world.add_child(s)
+	var tw: Tween = battle._reg_tween()   # ★不能用 `:=` —— `battle` 无类型, 推不出返回类型
+	tw.set_parallel(true)
+	tw.tween_property(s, "position", battle._world_pos(pos2d, 0.06), BLEED_DROP_SEC)   # 下坠
+	tw.tween_property(s, "scale", Vector3(0.62, 0.62, 0.62), BLEED_DROP_SEC)
+	## ★先满亮 hold 再淡: 一出生就线性淡出的话, 实拍读出来是一团土褐色
+	##   (memory fb-vfx-defect-families "淡出病", 一天踩过四次)。
+	tw.chain().tween_property(s, "modulate:a", 0.0, 0.16)
+	tw.chain().tween_callback(func() -> void:
+		if is_instance_valid(s): s.queue_free())

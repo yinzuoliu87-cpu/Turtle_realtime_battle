@@ -278,6 +278,15 @@ const CASES := {
 	"note": "★收割要【敌人真的死】才触发 ⇒ enemy_hp 压到 60 让它们很快被打死; attacker 必开。",
 },
 
+## 002 辣椒 —— 携带者普攻命中 → 施加流血层。
+"p2eq_002": {
+	"eq": "p2eq_002", "star": 3, "carrier": "basic", "enemies": 1, "enemy_dist": 150.0,
+	"attacker": true, "enemy_hp": 900.0, "carrier_hp": 1.0, "ui": true,
+	"dur": 8.0, "zoom": 1.0, "focus": "mid", "focus_h": 0.7,
+	"shots": [0.80, 0.95, 1.10, 1.30, 1.60, 2.10, 2.90, 4.00],
+	"note": "★审查用: 002 只在【携带者普攻命中】时施加流血层。拍点铺满前 3.4 秒(每 50ms 一张)。",
+},
+
 ## 食物羁绊 —— 盛宴(每 2.5 秒回复) + 学院。
 "syn_food": {
 	"eq": "p2eq_002", "star": 3, "carrier": "basic", "allies": 2, "enemies": 2,
