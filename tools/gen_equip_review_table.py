@@ -60,6 +60,44 @@ def main():
     types = load_types()
     src = io.open(DOC, encoding='utf-8').read()
     lines = src.split('\n')
+
+    ## ══════════════════════════════════════════════════════════════
+    ##  ★★★2026-09-06 先把【裸换行截断的逻辑行】合回来，否则残留永远清不掉
+    ## ══════════════════════════════════════════════════════════════
+    ## 用户 2026-09-06:「这些旧东西不弄标志和日期吗，这怎么乱搞呢这些文件？」
+    ## 实测：96 行装备里 **37 行**行尾不是 `|` —— 它们的内容被裸换行截成了两个物理行，
+    ## 第二个物理行装着**写死数字的旧版文案**（例：004 表里挂着「每6秒…回复相当于该伤害100%的生命」，
+    ## 而 json 里那句是带占位符的新版）。
+    ##
+    ## 旧逻辑逐【物理行】走：残留行既不以 `|` 开头、也不含 `p2eq_` ⇒ 走 `out.append(L)` 原样留下，
+    ## **每次重生成都把它们再抄一遍**。这就是这张表"自称由 json 直接生成"却烂掉的机制。
+    ##
+    ## ⇒ 先做一次合并：装备行若不以 `|` 结尾，就把后续物理行一直吞到某行以 `|` 结尾为止，
+    ##   合成一条逻辑行再交给下面重写（重写会把【属性】【效果】两列整列换成 json 值，
+    ##   于是那些旧残留自然被覆盖掉）。
+    merged = []
+    _i = 0
+    _joined = 0
+    while _i < len(lines):
+        L = lines[_i]
+        is_eq_row = L.strip().startswith('|') and '| p2eq_' in L
+        if is_eq_row and not L.rstrip().endswith('|'):
+            buf = [L]
+            _i += 1
+            while _i < len(lines):
+                buf.append(lines[_i])
+                if lines[_i].rstrip().endswith('|'):
+                    break
+                _i += 1
+            merged.append(' '.join(x.strip() for x in buf))
+            _joined += 1
+        else:
+            merged.append(L)
+        _i += 1
+    if _joined:
+        print('  [合并] %d 条被裸换行截断的表格行已并回一行(它们带着旧版写死数字的残留)' % _joined)
+    lines = merged
+
     out = []
     changed = []
     seen = 0

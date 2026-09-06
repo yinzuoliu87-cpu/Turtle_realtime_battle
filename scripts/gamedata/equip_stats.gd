@@ -34,7 +34,11 @@ static func lines_of(st: Dictionary) -> Array:
 	var out: Array = []
 	# 顺序 = 玩家最关心的在前(攻→生命→双抗→暴击→穿透→吸血→增幅→龟能)
 	if st.has("atk"):            out.append(["攻击力", "+%d" % int(st["atk"])])
-	if st.has("hp"):             out.append(["最大生命", "+%d" % int(st["hp"])])
+	## ★2026-09-06 用户「攻击速度，最大生命值，肯定要是官方的啊」⇒「最大生命」→「最大生命值」。
+	##   本行是**唯一**一处简写: 这张表其余全是官方全称(攻击力/护甲穿透/魔法穿透/治疗增幅/
+	##   龟能充能速率/攻击速度/移动速度)。而龟的属性面板(`detail_views.gd:27/106`)一直叫
+	##   「最大生命值」⇒ 同一个概念**装备屏与龟屏两种叫法**, 现统一。
+	if st.has("hp"):             out.append(["最大生命值", "+%d" % int(st["hp"])])
 	if st.has("def"):            out.append(["护甲", "+%d" % int(st["def"])])
 	if st.has("mr"):             out.append(["魔抗", "+%d" % int(st["mr"])])
 	if st.has("crit"):           out.append(["暴击率", "+%d%%" % int(round(float(st["crit"]) * 100.0))])

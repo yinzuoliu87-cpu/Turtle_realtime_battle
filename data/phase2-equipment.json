@@ -45,7 +45,7 @@
     "effectDesc1": "伤害可处决生命值低于斩杀线的敌人（斩杀线=4/6/12%最大生命值×（1+暴击率））；处决后回复 {C:EquipSystem.FANG_EXEC_ENERGY} 点龟能（无龟能的单位改为回复 {C:EquipSystem.FANG_EXEC_HEAL} 点生命）。\n此外携带者每 {C:EquipSystem.FANG_IV} 秒向最近的敌人射出一颗剧毒獠牙，造成 1/1.8/4×攻击力魔法伤害，并回复自身该伤害 {C:EquipSystem.FANG_LIFESTEAL%}%的生命。",
     "effectDesc3": "",
     "img": "equip/tyrant-fang-new.png",
-    "effectBrief": "伤害可处决生命低于 4/6/12% 最大生命的敌人；每 {C:EquipSystem.FANG_IV} 秒射出毒牙吸血。"
+    "effectBrief": "伤害可处决生命低于 4/6/12% 最大生命值的敌人；每 {C:EquipSystem.FANG_IV} 秒射出毒牙吸血。"
   },
   {
     "id": "p2eq_005",
@@ -237,7 +237,7 @@
     "effectDesc1": "每 {C:EquipTickSystem.DUMBBELL_IV} 秒原地锻炼（期间不普攻不充能）获得 1 层锻炼（每层最大生命值与当前生命+40/75/110，同一局对局内跨战场保留、开新对局才重置），随后蓄力投掷哑铃砸向最前敌人，造成 5/7/10%自身最大生命值的物理伤害并将其击退。",
     "effectDesc3": "",
     "img": "equip/dungeon-dumbbell.png",
-    "effectBrief": "每 {C:EquipTickSystem.DUMBBELL_IV} 秒锻炼一次（+40/75/110 最大生命），随后投掷哑铃击退最前敌人。"
+    "effectBrief": "每 {C:EquipTickSystem.DUMBBELL_IV} 秒锻炼一次（+40/75/110 最大生命值），随后投掷哑铃击退最前敌人。"
   },
   {
     "id": "p2eq_021",
@@ -378,7 +378,7 @@
     "baseStats1": "+生命50/60/70",
     "shopAvailable": 1,
     "emoji": "🐌",
-    "effectDesc1": "开战时召唤一只亡灵骷髅（最大生命 16/31/55·攻击力 3/5/8·护甲魔抗为 0，但受到的任何攻击（含真实伤害）都降为 1 点；死亡或存活 13/17/23 秒后爆炸，对周围 200 码内敌人造成 8/13/20%其最大生命值的真实伤害）。",
+    "effectDesc1": "开战时召唤一只亡灵骷髅（最大生命值 16/31/55·攻击力 3/5/8·护甲魔抗为 0，但受到的任何攻击（含真实伤害）都降为 1 点；死亡或存活 13/17/23 秒后爆炸，对周围 200 码内敌人造成 8/13/20%其最大生命值的真实伤害）。",
     "effectDesc3": "",
     "img": "equip/bone-talisman.png",
     "effectBrief": "开战时召唤一只亡灵骷髅，它受到的任何攻击都降为 1 点。"
@@ -465,7 +465,7 @@
     "effectDesc1": "获得 6/10/15 次生长充能（同一局对局内跨战场保留、开新对局才重置）；\n每第 3 段普攻消耗 1 次充能：射一发强化竹箭给最近的敌人，造成（25/30/35+{C:EquipSystem.BAMBOO_ARROW_MAXHP_PCT%}%自身最大生命值）魔法伤害，命中后冒出一颗绿色生命球飞回携带者——落到身上才结算：回复自身 {C:EquipSystem.BAMBOO_ARROW_MAXHP_PCT%}%最大生命值，并使自身最大生命值永久+50/70/90（持续到本局对局结束）。",
     "effectDesc3": "",
     "img": "equip/equip-bamboo-leaf.png",
-    "effectBrief": "每第 3 段普攻射出竹箭，回收的生命球使最大生命永久 +50/70/90。"
+    "effectBrief": "每第 3 段普攻射出竹箭，回收的生命球使最大生命值永久 +50/70/90。"
   },
   {
     "id": "p2eq_040",
@@ -474,7 +474,7 @@
     "baseStats1": "+生命100/200/500",
     "shopAvailable": 1,
     "emoji": "🔧",
-    "effectDesc1": "每 {C:EquipSystem.FPGA_IV} 秒随机抽取 {C:EquipSystem.FPGA_PICKS} 个 2-bit状态（可重复抽中同一个）：00=回复 {C:EquipSystem.FPGA_00_HEAL_PCT%}%最大生命值，并累计+{C:EquipSystem.FPGA_00_RESIST} 护甲与魔抗；\n01=累计+{C:EquipSystem.FPGA_01_ATK} 攻击力与+{C:EquipSystem.FPGA_01_LIFESTEAL%}%生命偷取；\n10={C:EquipSystem.FPGA_BUFF_SEC} 秒内增伤+{C:EquipSystem.FPGA_10_AMP%}%（放大自身造成的所有伤害）；\n11={C:EquipSystem.FPGA_BUFF_SEC} 秒内受到的伤害-{C:EquipSystem.FPGA_11_DR%}%（真实伤害除外）。\n其中 00 与 01 的加成在本场战斗内持续累计，该场战斗结束后重置。\n登场时另向随机 1/2/3 名敌人各塞一把【古灵精怪枪】：持枪者 +{C:GremlinGun.ATK_PER_GUN}攻击力、+{C:GremlinGun.HP_PER_GUN}最大生命、+{C:GremlinGun.ASPD_PCT_PER_GUN%}%攻速，但每次普攻自受 {C:GremlinGun.SELF_TRUE_PCT%}%最大生命值真实伤害，可致死。",
+    "effectDesc1": "每 {C:EquipSystem.FPGA_IV} 秒随机抽取 {C:EquipSystem.FPGA_PICKS} 个 2-bit状态（可重复抽中同一个）：00=回复 {C:EquipSystem.FPGA_00_HEAL_PCT%}%最大生命值，并累计+{C:EquipSystem.FPGA_00_RESIST} 护甲与魔抗；\n01=累计+{C:EquipSystem.FPGA_01_ATK} 攻击力与+{C:EquipSystem.FPGA_01_LIFESTEAL%}%生命偷取；\n10={C:EquipSystem.FPGA_BUFF_SEC} 秒内增伤+{C:EquipSystem.FPGA_10_AMP%}%（放大自身造成的所有伤害）；\n11={C:EquipSystem.FPGA_BUFF_SEC} 秒内受到的伤害-{C:EquipSystem.FPGA_11_DR%}%（真实伤害除外）。\n其中 00 与 01 的加成在本场战斗内持续累计，该场战斗结束后重置。\n登场时另向随机 1/2/3 名敌人各塞一把【古灵精怪枪】：持枪者 +{C:GremlinGun.ATK_PER_GUN}攻击力、+{C:GremlinGun.HP_PER_GUN}最大生命值、+{C:GremlinGun.ASPD_PCT_PER_GUN%}%攻击速度，但每次普攻自受 {C:GremlinGun.SELF_TRUE_PCT%}%最大生命值真实伤害，可致死。",
     "effectDesc3": "",
     "img": "equip/dungeon-fpga.png",
     "effectBrief": "登场时塞给 1/2/3 名敌人一把古灵精怪枪；之后每 {C:EquipSystem.FPGA_IV} 秒随机抽 1/2/4 个状态。"
@@ -489,7 +489,7 @@
     "effectDesc1": "登场 {C:EquipSystem.TIDE_DELAY} 秒后进入涨潮：获得 250/400/650 最大生命值与 10/16/25 攻击力，体积增大 {C:EquipSystem.TIDE_SIZE_UP%}%、攻击射程+{C:EquipSystem.TIDE_RANGE_UP} 码，持续 8/11/15 秒；\n到期退潮，上述临时加成全部还原（退潮不会致死，只把生命削到新上限）。",
     "effectDesc3": "",
     "img": "equip/ebb-vial.png",
-    "effectBrief": "登场 {C:EquipSystem.TIDE_DELAY} 秒后涨潮：+250/400/650 最大生命与 10/16/25 攻击力，到期还原。"
+    "effectBrief": "登场 {C:EquipSystem.TIDE_DELAY} 秒后涨潮：+250/400/650 最大生命值与 10/16/25 攻击力，到期还原。"
   },
   {
     "id": "p2eq_042",
@@ -537,7 +537,7 @@
     "effectDesc1": "生命值首次降至 {C:EquipSystem.LOWHP_GATE%}%以下时，在 {C:EquipSystem.EARRING_HOT_SEC} 秒内逐渐回复 30/60/100%最大生命值，并向 1/1/2 名随机敌人发射火球，造成 8/17/30%目标最大生命值的魔法伤害并施加 30/70/150 层灼烧（每场战斗一次）。",
     "effectDesc3": "",
     "img": "equip/hell-shield.png",
-    "effectBrief": "生命首次低于 {C:EquipSystem.LOWHP_GATE%}% 时回复 30/60/100% 最大生命，并发射火球点燃敌人。"
+    "effectBrief": "生命首次低于 {C:EquipSystem.LOWHP_GATE%}% 时回复 30/60/100% 最大生命值，并发射火球点燃敌人。"
   },
   {
     "id": "p2eq_046",
@@ -561,7 +561,7 @@
     "effectDesc1": "获得 4/6/15%自身最大生命值的攻击力（随最大生命值动态成长）。",
     "effectDesc3": "",
     "img": "equip/dungeon-hammer.png",
-    "effectBrief": "获得自身 4/6/15% 最大生命值的攻击力，随最大生命成长。"
+    "effectBrief": "获得自身 4/6/15% 最大生命值的攻击力，随最大生命值成长。"
   },
   {
     "id": "p2eq_048",
@@ -726,10 +726,10 @@
     "baseStats1": "+射程50·+攻速15/30/50%",
     "shopAvailable": 1,
     "emoji": "🐌",
-    "effectDesc1": "每次普攻命中额外造成目标最大生命 2/2.5/3%的魔法伤害，并施加 1/1/2 层【破损】（单个目标最多 {C:EqSpiritBatch.BREACH_CAP} 层，不衰减）。\n打在已有 {C:EqSpiritBatch.BREACH_CAP} 层破损的目标身上时，这段伤害转为真实伤害。",
+    "effectDesc1": "每次普攻命中额外造成目标最大生命值 2/2.5/3%的魔法伤害，并施加 1/1/2 层【破损】（单个目标最多 {C:EqSpiritBatch.BREACH_CAP} 层，不衰减）。\n打在已有 {C:EqSpiritBatch.BREACH_CAP} 层破损的目标身上时，这段伤害转为真实伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_061.png",
-    "effectBrief": "普攻额外造成目标 2/2.5/3% 最大生命的魔法伤害并叠破损，满 {C:EqSpiritBatch.BREACH_CAP} 层转真实伤害。"
+    "effectBrief": "普攻额外造成目标 2/2.5/3% 最大生命值的魔法伤害并叠破损，满 {C:EqSpiritBatch.BREACH_CAP} 层转真实伤害。"
   },
   {
     "id": "p2eq_062",
@@ -738,7 +738,7 @@
     "baseStats1": "+攻12/30/66·+移速5/9/15%",
     "shopAvailable": 1,
     "emoji": "🦐",
-    "effectDesc1": "闪避掉一次攻击后，强化自己的下一次普攻：额外造成 0.7/1/1.5 倍攻击力+目标最大生命 6/8/13%的物理伤害，并回复这次普攻造成总伤害的 {C:EqSpiritBatch.MANTIS_LEECH%}%生命。\n强化普攻有 2 秒冷却（冷却中闪避不再蓄力）。",
+    "effectDesc1": "闪避掉一次攻击后，强化自己的下一次普攻：额外造成 0.7/1/1.5 倍攻击力+目标最大生命值 6/8/13%的物理伤害，并回复这次普攻造成总伤害的 {C:EqSpiritBatch.MANTIS_LEECH%}%生命。\n强化普攻有 2 秒冷却（冷却中闪避不再蓄力）。",
     "effectDesc3": "",
     "img": "equip/p2eq_062.png",
     "effectBrief": "闪避后强化下一次普攻：额外造成伤害并回复其中 {C:EqSpiritBatch.MANTIS_LEECH%}% 的生命。"
@@ -753,7 +753,7 @@
     "effectDesc1": "释放技能后获得 30/60/100%攻击速度，持续【本次技能消耗的龟能×{C:EqSpiritBatch.RING_SEC_PER_ENERGY}】秒（对所有龟折合恒定 {C:EqSpiritBatch.RING_COVERAGE%}%覆盖率）。\n携带者的普攻会对敌人施加一个【环】，敌人身上有 3 个环时环被引爆，该敌人受到（25/40/70+2/3/5%该敌人最大生命值）真实伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_063.png",
-    "effectBrief": "释放技能后 +30/60/100% 攻击速度；普攻叠环，3 环引爆造成真实伤害（含 %目标最大生命）。"
+    "effectBrief": "释放技能后 +30/60/100% 攻击速度；普攻叠环，3 环引爆造成真实伤害（含 %目标最大生命值）。"
   },
   {
     "id": "p2eq_064",
@@ -765,7 +765,7 @@
     "effectDesc1": "首次生命值降到 {C:EqSpiritBatch.GHOST_HP_LINE%}%以下时，获得 50/80/160%最大生命值的【幽灵护盾】，它会在 {C:EqSpiritBatch.GHOST_DECAY} 秒内线性衰减。\n持有该护盾期间获得 {C:EqSpiritBatch.GHOST_DODGE%}%闪避率与 30/60/120 点双抗。\n该护盾被打破时（被打光或自然衰减耗尽都算）会爆炸，使 {C:EqSpiritBatch.GHOST_BURST_R} 码内的敌人陷入 {C:EqSpiritBatch.GHOST_CURSE_SEC} 秒【诅咒】。\n每路一次。",
     "effectDesc3": "",
     "img": "equip/p2eq_064.png",
-    "effectBrief": "生命首次低于 {C:EqSpiritBatch.GHOST_HP_LINE%}% 时获得 50/80/160% 最大生命的幽灵护盾，破碎时诅咒敌人。"
+    "effectBrief": "生命首次低于 {C:EqSpiritBatch.GHOST_HP_LINE%}% 时获得 50/80/160% 最大生命值的幽灵护盾，破碎时诅咒敌人。"
   },
   {
     "id": "p2eq_065",
@@ -786,7 +786,7 @@
     "baseStats1": "+龟能20/35/60·+移速6/11/18%",
     "shopAvailable": 1,
     "emoji": "⚗️",
-    "effectDesc1": "登场第 {C:EqPotionBatch.BREW_AT} 秒喝下药水：免疫控制效果直到战斗结束，并获得生命偷取 8/13/20%、最大生命 100/200/400、护甲与魔抗 12/17/25、攻击速度 10/17/25%、暴击率 10/17/25%、暴击伤害 7/13/18%、龟能充能 5/7/10%、攻击力 13/18/25、护甲穿透与魔法穿透 4/7/10，体型额外+{C:EqPotionBatch.BREW_SIZE_UP%}%。\n每路喝一次。",
+    "effectDesc1": "登场第 {C:EqPotionBatch.BREW_AT} 秒喝下药水：免疫控制效果直到战斗结束，并获得生命偷取 8/13/20%、最大生命值 100/200/400、护甲与魔抗 12/17/25、攻击速度 10/17/25%、暴击率 10/17/25%、暴击伤害 7/13/18%、龟能充能 5/7/10%、攻击力 13/18/25、护甲穿透与魔法穿透 4/7/10，体型额外+{C:EqPotionBatch.BREW_SIZE_UP%}%。\n每路喝一次。",
     "effectDesc3": "",
     "img": "equip/p2eq_066.png",
     "effectBrief": "登场第 {C:EqPotionBatch.BREW_AT} 秒喝下药水：免疫控制直到战斗结束，并全面提升属性。"
@@ -810,7 +810,7 @@
     "baseStats1": "+生命180/460/1100·+攻速10/18/30%·+治疗与护盾15/25/40%",
     "shopAvailable": 1,
     "emoji": "🧪",
-    "effectDesc1": "受到的伤害按 60/100/200%存进专属充能条（上限为最大生命的 30/50/100%）。\n登场第 {C:EqPotionBatch.CAN_PERIOD} 秒起每 {C:EqPotionBatch.CAN_PERIOD} 秒清空充能：获得充能值 100/120/300%的法力护盾（{C:EqPotionBatch.CAN_SHIELD_DECAY} 秒内衰减完），并朝最远敌人射出一道 {C:PotionEqVfx.BEAM_RANGE} 码法力激光，{C:PotionEqVfx.BEAM_SEC} 秒内共造成充能值 100/120/600%的魔法伤害；\n法力护盾存在期间充能条锁住。\n普攻额外获得 {C:EqPotionBatch.CAN_HIT_ENERGY} 龟能并回复 20/35/50 生命。",
+    "effectDesc1": "受到的伤害按 60/100/200%存进专属充能条（上限为最大生命值的 30/50/100%）。\n登场第 {C:EqPotionBatch.CAN_PERIOD} 秒起每 {C:EqPotionBatch.CAN_PERIOD} 秒清空充能：获得充能值 100/120/300%的法力护盾（{C:EqPotionBatch.CAN_SHIELD_DECAY} 秒内衰减完），并朝最远敌人射出一道 {C:PotionEqVfx.BEAM_RANGE} 码法力激光，{C:PotionEqVfx.BEAM_SEC} 秒内共造成充能值 100/120/600%的魔法伤害；\n法力护盾存在期间充能条锁住。\n普攻额外获得 {C:EqPotionBatch.CAN_HIT_ENERGY} 龟能并回复 20/35/50 生命。",
     "effectDesc3": "",
     "img": "equip/p2eq_068.png",
     "effectBrief": "把受到的伤害存成充能；每 {C:EqPotionBatch.CAN_PERIOD} 秒清空换成法力护盾并射出激光。"
@@ -822,7 +822,7 @@
     "baseStats1": "+生命偷取5/9/15%·+龟能充能8/14/24%",
     "shopAvailable": 1,
     "emoji": "🍥",
-    "effectDesc1": "带着 {C:EqFoodBatch.CAKE_COUNT} 块蛋糕，生命首次低于 80/55/30%时各吃一块。\n①+200/400/600 最大生命，并在 {C:EqFoodBatch.CAKE_HOT1_SEC} 秒内每秒回复 0.6/0.8/1%最大生命；\n②+{C:EqFoodBatch.CAKE_LIFESTEAL%}%生命偷取与+10/21/40 攻击力；\n③+150/250/400 护盾、+{C:EqFoodBatch.CAKE_ENERGY} 龟能、{C:EqFoodBatch.CAKE_ASPD_SEC} 秒内+40/60/80%攻击速度，并在 {C:EqFoodBatch.CAKE_HOT3_SEC} 秒内每秒回复 1.3/1.6/2%最大生命。\n属性加成本路永久，换路重置。",
+    "effectDesc1": "带着 {C:EqFoodBatch.CAKE_COUNT} 块蛋糕，生命首次低于 80/55/30%时各吃一块。\n①+200/400/600 最大生命值，并在 {C:EqFoodBatch.CAKE_HOT1_SEC} 秒内每秒回复 0.6/0.8/1%最大生命值；\n②+{C:EqFoodBatch.CAKE_LIFESTEAL%}%生命偷取与+10/21/40 攻击力；\n③+150/250/400 护盾、+{C:EqFoodBatch.CAKE_ENERGY} 龟能、{C:EqFoodBatch.CAKE_ASPD_SEC} 秒内+40/60/80%攻击速度，并在 {C:EqFoodBatch.CAKE_HOT3_SEC} 秒内每秒回复 1.3/1.6/2%最大生命值。\n属性加成本路永久，换路重置。",
     "effectDesc3": "",
     "img": "equip/p2eq_069.png",
     "effectBrief": "生命首次低于 80/55/30% 时各吃一块蛋糕，分别给生命、攻击与护盾。"
@@ -834,10 +834,10 @@
     "baseStats1": "+生命120/300/700·+攻击18/45/100",
     "shopAvailable": 1,
     "emoji": "🐟",
-    "effectDesc1": "每次普攻附带自身 3/4.5/7%最大生命的物理伤害，并以目标为中心溅射 {C:EqFoodBatch.BRICK_SPLASH_R} 码内的敌人，各造成 1/1.5/2%自身最大生命的物理伤害。\n被动：把受到伤害的 30/40/50%存进灰色血条，每秒把灰条的 {C:EqFoodBatch.GREY_CONVERT%}%转化为生命回复；并获得等于最大生命×0.01 的%额外攻击速度。",
+    "effectDesc1": "每次普攻附带自身 3/4.5/7%最大生命值的物理伤害，并以目标为中心溅射 {C:EqFoodBatch.BRICK_SPLASH_R} 码内的敌人，各造成 1/1.5/2%自身最大生命值的物理伤害。\n被动：把受到伤害的 30/40/50%存进灰色血条，每秒把灰条的 {C:EqFoodBatch.GREY_CONVERT%}%转化为生命回复；并获得等于最大生命值×0.01 的%额外攻击速度。",
     "effectDesc3": "",
     "img": "equip/p2eq_070.png",
-    "effectBrief": "普攻附带自身 3/4.5/7% 最大生命的伤害并溅射；受伤转成灰条回血。"
+    "effectBrief": "普攻附带自身 3/4.5/7% 最大生命值的伤害并溅射；受伤转成灰条回血。"
   },
   {
     "id": "p2eq_071",
@@ -846,10 +846,10 @@
     "baseStats1": "+治疗与护盾14/26/45%·+双抗10/22/40",
     "shopAvailable": 1,
     "emoji": "🥛",
-    "effectDesc1": "战斗开始为所有友军（含自己）套上其最大生命 10/18/25%的【奶油护盾】，永久不衰减。\n奶油护盾被打破时，对持有者 {C:EquipSystem.CREAM_BURST_R} 码内的敌人造成 70/100/150 点魔法伤害，随后给持有者+{C:EquipSystem.CREAM_RESIST} 双抗、+20/30/40%攻击速度与+{C:EquipSystem.CREAM_RANGE} 射程，持续整路。\n携带者每累计损失 {C:EqFoodBatch.CREAM_LOSS_STEP%}%最大生命会再给全队上一次，每路共 {C:EqFoodBatch.CREAM_TIMES} 次。",
+    "effectDesc1": "战斗开始为所有友军（含自己）套上其最大生命值 10/18/25%的【奶油护盾】，永久不衰减。\n奶油护盾被打破时，对持有者 {C:EquipSystem.CREAM_BURST_R} 码内的敌人造成 70/100/150 点魔法伤害，随后给持有者+{C:EquipSystem.CREAM_RESIST} 双抗、+20/30/40%攻击速度与+{C:EquipSystem.CREAM_RANGE} 射程，持续整路。\n携带者每累计损失 {C:EqFoodBatch.CREAM_LOSS_STEP%}%最大生命值会再给全队上一次，每路共 {C:EqFoodBatch.CREAM_TIMES} 次。",
     "effectDesc3": "",
     "img": "equip/p2eq_071.png",
-    "effectBrief": "战斗开始给全队套上 10/18/25% 最大生命的奶油护盾，破碎时炸伤敌人。"
+    "effectBrief": "战斗开始给全队套上 10/18/25% 最大生命值的奶油护盾，破碎时炸伤敌人。"
   },
   {
     "id": "p2eq_072",
@@ -858,10 +858,10 @@
     "baseStats1": "+生命200/550/1400·+双抗10/24/55",
     "shopAvailable": 1,
     "emoji": "🎂",
-    "effectDesc1": "被动获得最大生命 50/80/120%的【终极护盾】，永久。\n护盾存在时携带者化身蛋糕礼盒：属性不变但射程变为近战，普攻与技能替换为礼盒专属。\n礼盒嘲讽 {C:EqFoodBatch.BOX_TAUNT_PX} 码内所有敌人，每有一个敌人以自己为目标就实时+20/30/60 双抗；礼盒普攻造成 1 倍攻击力物理伤害；礼盒技能召唤 {C:EqFoodBatch.BOX_FIELD_PX} 码蛋糕法阵 {C:EqFoodBatch.BOX_FIELD_SEC} 秒，每秒为其中友军回复 50/70/120 生命与 2/4/6 龟能。\n终极护盾被打破时携带者出盒参战。\n携带者阵亡时分裂出两个蛋糕礼盒，拥有携带者 20/40/100%最大生命、携带者的攻击力与双抗，其余为 0 与默认值，同样嘲讽并施放礼盒技能。",
+    "effectDesc1": "被动获得最大生命值 50/80/120%的【终极护盾】，永久。\n护盾存在时携带者化身蛋糕礼盒：属性不变但射程变为近战，普攻与技能替换为礼盒专属。\n礼盒嘲讽 {C:EqFoodBatch.BOX_TAUNT_PX} 码内所有敌人，每有一个敌人以自己为目标就实时+20/30/60 双抗；礼盒普攻造成 1 倍攻击力物理伤害；礼盒技能召唤 {C:EqFoodBatch.BOX_FIELD_PX} 码蛋糕法阵 {C:EqFoodBatch.BOX_FIELD_SEC} 秒，每秒为其中友军回复 50/70/120 生命与 2/4/6 龟能。\n终极护盾被打破时携带者出盒参战。\n携带者阵亡时分裂出两个蛋糕礼盒，拥有携带者 20/40/100%最大生命值、携带者的攻击力与双抗，其余为 0 与默认值，同样嘲讽并施放礼盒技能。",
     "effectDesc3": "",
     "img": "equip/p2eq_072.png",
-    "effectBrief": "获得 50/80/120% 最大生命的终极护盾，期间化身蛋糕礼盒嘲讽敌人。"
+    "effectBrief": "获得 50/80/120% 最大生命值的终极护盾，期间化身蛋糕礼盒嘲讽敌人。"
   },
   {
     "id": "p2eq_073",
@@ -942,7 +942,7 @@
     "baseStats1": "+生命90/200/420·+治疗与护盾10/18/30%·+攻速8/15/25%",
     "shopAvailable": 1,
     "emoji": "🏥",
-    "effectDesc1": "在携带者后方 {C:EqGunBatch.TOWER_BACK} 码生成一座医疗炮台：700/1200/2500 生命值、15/20/30 攻击力、50/70/100 双抗，攻速实时等于携带者。\n炮台普攻造成 1 倍攻击力物理伤害+目标最大生命值 1/1.5/2%魔法伤害，并为生命百分比最低的友军回复 10/15/20 生命值。\n炮台自己维持金弹计数，每射满 4/3/2 发打出一发金弹，继承全部效果并附加 60/80/100%真实伤害，且金弹的回血量翻倍。",
+    "effectDesc1": "在携带者后方 {C:EqGunBatch.TOWER_BACK} 码生成一座医疗炮台：700/1200/2500 生命值、15/20/30 攻击力、50/70/100 双抗，攻击速度实时等于携带者。\n炮台普攻造成 1 倍攻击力物理伤害+目标最大生命值 1/1.5/2%魔法伤害，并为生命百分比最低的友军回复 10/15/20 生命值。\n炮台自己维持金弹计数，每射满 4/3/2 发打出一发金弹，继承全部效果并附加 60/80/100%真实伤害，且金弹的回血量翻倍。",
     "effectDesc3": "",
     "img": "equip/p2eq_079.png",
     "effectBrief": "在身后生成一座医疗炮台，普攻伤敌并为最残的友军回血。"
@@ -969,7 +969,7 @@
     "effectDesc1": "充能条：每累计受到自身 40/35/30%最大生命值的伤害后举盾 2.5/3/3.5 秒，期间获得 60/100/160 护盾值与 50/80/140 双抗，且举盾期间受到的伤害不计入充能条；\n举盾结束后重新开始计数。",
     "effectDesc3": "",
     "img": "equip/p2eq_081.png",
-    "effectBrief": "每受到 40/35/30% 最大生命的伤害就举盾 2.5/3/3.5 秒，期间加护盾与双抗。"
+    "effectBrief": "每受到 40/35/30% 最大生命值的伤害就举盾 2.5/3/3.5 秒，期间加护盾与双抗。"
   },
   {
     "id": "p2eq_082",
@@ -1038,7 +1038,7 @@
     "baseStats1": "+护甲25/60/150·+生命150/420/1200",
     "shopAvailable": 1,
     "emoji": "🔔",
-    "effectDesc1": "效果一：每 15/10/4 秒从训龟大师的主动技能中随机偷取一个释放，每一路不会偷到重复的技能，全部偷取并释放过后不再偷取。\n效果二：压载舱容量为自身最大生命的 60/90/150%，受到的伤害先灌进舱里，舱满后才真的掉血；\n每 {C:EqGadgetBatch.DIVE_PUMP_IV} 秒把舱内 {C:EqGadgetBatch.DIVE_PUMP_FRAC%}%抽出还成生命，并朝最远的敌人喷出等量的水柱伤害；\n舱内每存有 {C:EqGadgetBatch.DIVE_STACK_FRAC%}%最大生命，携带者获得 {C:EqGadgetBatch.DIVE_MOVE_PER%}%移速与 {C:EqGadgetBatch.DIVE_DEF_PER} 点护甲（最多 {C:EqGadgetBatch.DIVE_STACK_CAP} 层）。",
+    "effectDesc1": "效果一：每 15/10/4 秒从训龟大师的主动技能中随机偷取一个释放，每一路不会偷到重复的技能，全部偷取并释放过后不再偷取。\n效果二：压载舱容量为自身最大生命值的 60/90/150%，受到的伤害先灌进舱里，舱满后才真的掉血；\n每 {C:EqGadgetBatch.DIVE_PUMP_IV} 秒把舱内 {C:EqGadgetBatch.DIVE_PUMP_FRAC%}%抽出还成生命，并朝最远的敌人喷出等量的水柱伤害；\n舱内每存有 {C:EqGadgetBatch.DIVE_STACK_FRAC%}%最大生命值，携带者获得 {C:EqGadgetBatch.DIVE_MOVE_PER%}%移速与 {C:EqGadgetBatch.DIVE_DEF_PER} 点护甲（最多 {C:EqGadgetBatch.DIVE_STACK_CAP} 层）。",
     "effectDesc3": "",
     "img": "equip/p2eq_087.png",
     "effectBrief": "每 15/10/4 秒偷放一个训龟大师的技能；受到的伤害先灌进压载舱。"
@@ -1050,10 +1050,10 @@
     "baseStats1": "+法穿5/11/20·+龟能12/22/40",
     "shopAvailable": 1,
     "emoji": "🌊",
-    "effectDesc1": "该法器法力条集满时，在自己脚下立一块潮汐碑，钉在地上不跟随，持续 {C:EqArcaneBatch.STELE_SEC} 秒，半径 {C:EqArcaneBatch.STELE_RADIUS} 码。\n碑内敌人每秒受到 15/25/40 魔法伤害；碑内友军每秒获得 20/35/55 护盾（可叠加）并获得 10/15/25%攻速（离开范围即失效）。\n碑存在期间该法器的法力条锁定不增长。",
+    "effectDesc1": "该法器法力条集满时，在自己脚下立一块潮汐碑，钉在地上不跟随，持续 {C:EqArcaneBatch.STELE_SEC} 秒，半径 {C:EqArcaneBatch.STELE_RADIUS} 码。\n碑内敌人每秒受到 15/25/40 魔法伤害；碑内友军每秒获得 20/35/55 护盾（可叠加）并获得 10/15/25%攻击速度（离开范围即失效）。\n碑存在期间该法器的法力条锁定不增长。",
     "effectDesc3": "",
     "img": "equip/p2eq_088.png",
-    "effectBrief": "法力满时立一块潮汐碑 {C:EqArcaneBatch.STELE_SEC} 秒：碑内敌人掉血，友军得护盾与攻速。"
+    "effectBrief": "法力满时立一块潮汐碑 {C:EqArcaneBatch.STELE_SEC} 秒：碑内敌人掉血，友军得护盾与攻击速度。"
   },
   {
     "id": "p2eq_089",
@@ -1110,10 +1110,10 @@
     "baseStats1": "+攻10/20/36·+破甲3/7/11·+法穿3/7/11",
     "shopAvailable": 1,
     "emoji": "🪔",
-    "effectDesc1": "主动：每 {C:IncenseStoneSystem.EMP_IV} 秒强化下 {C:IncenseStoneSystem.EMP_SHOTS} 次普攻，这 {C:IncenseStoneSystem.EMP_SHOTS} 次获得 {C:IncenseStoneSystem.EMP_ASPD%}%攻速、{C:IncenseStoneSystem.EMP_LS%}%生命偷取，并附带 30/50/80+目标最大生命值 1/1.5/2%的物理伤害。",
+    "effectDesc1": "主动：每 {C:IncenseStoneSystem.EMP_IV} 秒强化下 {C:IncenseStoneSystem.EMP_SHOTS} 次普攻，这 {C:IncenseStoneSystem.EMP_SHOTS} 次获得 {C:IncenseStoneSystem.EMP_ASPD%}%攻击速度、{C:IncenseStoneSystem.EMP_LS%}%生命偷取，并附带 30/50/80+目标最大生命值 1/1.5/2%的物理伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_093.png",
-    "effectBrief": "每 {C:IncenseStoneSystem.EMP_IV} 秒强化下 {C:IncenseStoneSystem.EMP_SHOTS} 次普攻：+{C:IncenseStoneSystem.EMP_ASPD%}% 攻速、{C:IncenseStoneSystem.EMP_LS%}% 生命偷取并附带额外伤害。"
+    "effectBrief": "每 {C:IncenseStoneSystem.EMP_IV} 秒强化下 {C:IncenseStoneSystem.EMP_SHOTS} 次普攻：+{C:IncenseStoneSystem.EMP_ASPD%}% 攻击速度、{C:IncenseStoneSystem.EMP_LS%}% 生命偷取并附带额外伤害。"
   },
   {
     "id": "p2eq_094",
@@ -1146,10 +1146,10 @@
     "baseStats1": "+生命20·+攻10·+护甲2·+魔抗2",
     "shopAvailable": 1,
     "emoji": "🪓",
-    "effectDesc1": "登场召唤【斧头】（近战·1×攻击力物理·{C:AxeEvolution.MINION_ASPD} 攻速·{C:AxeEvolution.MINION_DEF} 双抗）：生命 {C:AxeEvolution.MINION_HP_BASE}＋{C:AxeEvolution.MINION_HP_PER_EXP}×经验，攻击 {C:AxeEvolution.MINION_ATK_BASE}＋{C:AxeEvolution.MINION_ATK_PER_EXP}×经验。\n斧头攒满 {C:AxeEvolution.ACTIVE_ENERGY} 龟能：按最大生命回复 {C:AxeEvolution.ACTIVE_HEAL_PCT%}%、获护盾 {C:AxeEvolution.ACTIVE_SHIELD_PCT%}%；普攻窃取目标 {C:AxeEvolution.SHIELD_STEAL_PCT%}%护盾转普通护盾（含特殊护盾）。\n砍伐经验：购买 +{C:AxeEvolution.EXP_ON_BUY}／每场 +{C:AxeEvolution.EXP_ON_MATCH}／斧头击杀或 {C:AxeEvolution.ASSIST_WINDOW} 秒内助攻 +{C:AxeEvolution.EXP_ON_KILL}；攒够 {C:AxeEvolution.STAGE_NEEDS} 依次进化石/铁/金/钻石斧，商店形态售价随之变。进化清进度条，经验只增不减。\n只能拥有一把（再买化成经验）；不升星、卡池无限；进度每大轮重置。",
-    "effectDesc3": "【最终造物】钻石斧后再攒 {C:AxeEvolution.FINAL_NEED} 经验，四选一，选定本大轮锁定且经验封顶。\n亡灵之斧（+{C:AxeFinalStats.UNDEAD_HP} 生命／+{C:AxeFinalStats.UNDEAD_DEF} 双抗）：{C:AxeFinalStats.UNDEAD_RING_R} 码环内敌人每秒损失 {C:AxeFinalStats.UNDEAD_RING_MAXHP_PCT%}% 最大生命魔法伤害；每秒每有一个环内敌人回复 {C:AxeFinalStats.UNDEAD_LEECH_PCT%}% 最大生命；阵亡 {C:AxeFinalStats.UNDEAD_REVIVE_DELAY} 秒后带 {C:AxeFinalStats.UNDEAD_REVIVE_HP_PCT%}% 最大生命重生。\n炽天使（+{C:AxeFinalStats.SERAPH_ATK} 攻击、射程 {C:AxeFinalStats.SERAPH_RANGE} 码）：普攻附带 {C:AxeFinalStats.SERAPH_BURN_ON_HIT} 层灼烧；主动改为 {C:AxeFinalStats.SERAPH_CAST_TIME} 秒内投掷 {C:AxeFinalStats.SERAPH_BOOMERANGS} 把回旋镖（不再获得减伤），沿直线飞过、半宽 {C:AxeFinalStats.SERAPH_BOOM_R} 码，命中造成 {C:AxeFinalStats.SERAPH_BOOM_ATK}×攻击力魔法伤害与 {C:AxeFinalStats.SERAPH_BOOM_BURN} 层灼烧。\n全息斧（+{C:AxeFinalStats.HOLO_HP} 生命、+{C:AxeFinalStats.HOLO_ENERGY_RATE%}% 龟能充能速率）：普攻为血量最低的友军提供 {C:AxeFinalStats.HOLO_ONHIT_SHIELD} 护盾与 {C:AxeFinalStats.HOLO_ONHIT_ENERGY} 龟能；主动改为插地 {C:AxeFinalStats.HOLO_PLANT_TIME} 秒（{C:AxeFinalStats.HOLO_PLANT_DR%}% 减伤），{C:AxeFinalStats.HOLO_AURA_R} 码内友军每 {C:AxeFinalStats.HOLO_AURA_TICK} 秒回复 {C:AxeFinalStats.HOLO_AURA_HEAL} 生命与 {C:AxeFinalStats.HOLO_AURA_ENERGY} 龟能，并获得 +{C:AxeFinalStats.HOLO_AURA_ASPD%}% 攻击速度。\n余烬（+{C:AxeFinalStats.EMBER_ATK} 攻击、+{C:AxeFinalStats.EMBER_ASPD%}% 攻速、+{C:AxeFinalStats.EMBER_MOVE%}% 移速）：普攻命中挂 1 层余烬种子，每层 +{C:AxeFinalStats.EMBER_SEED_EXEC_PCT%}% 处决线（无上限），处决一个单位回 {C:AxeFinalStats.EMBER_EXEC_ENERGY} 龟能；主动改为余烬之光 {C:AxeFinalStats.EMBER_LIGHT_TIME} 秒：{C:AxeFinalStats.EMBER_LIGHT_LIFESTEAL%}% 生命偷取／{C:AxeFinalStats.EMBER_LIGHT_DR%}% 减伤／{C:AxeFinalStats.EMBER_LIGHT_ASPD%}% 攻速，免疫控制且不锁龟能，再次释放独立叠加。",
+    "effectDesc1": "登场召唤【斧头】（近战·1×攻击力物理·{C:AxeEvolution.MINION_ASPD} 攻击速度·{C:AxeEvolution.MINION_DEF} 双抗）：生命 {C:AxeEvolution.MINION_HP_BASE}＋{C:AxeEvolution.MINION_HP_PER_EXP}×经验，攻击 {C:AxeEvolution.MINION_ATK_BASE}＋{C:AxeEvolution.MINION_ATK_PER_EXP}×经验。\n斧头攒满 {C:AxeEvolution.ACTIVE_ENERGY} 龟能：按最大生命值回复 {C:AxeEvolution.ACTIVE_HEAL_PCT%}%、获护盾 {C:AxeEvolution.ACTIVE_SHIELD_PCT%}%；普攻窃取目标 {C:AxeEvolution.SHIELD_STEAL_PCT%}%护盾转普通护盾（含特殊护盾）。\n砍伐经验：购买 +{C:AxeEvolution.EXP_ON_BUY}／每场 +{C:AxeEvolution.EXP_ON_MATCH}／斧头击杀或 {C:AxeEvolution.ASSIST_WINDOW} 秒内助攻 +{C:AxeEvolution.EXP_ON_KILL}；攒够 {C:AxeEvolution.STAGE_NEEDS} 依次进化石/铁/金/钻石斧，商店形态售价随之变。进化清进度条，经验只增不减。\n只能拥有一把（再买化成经验）；不升星、卡池无限；进度每大轮重置。",
+    "effectDesc3": "【最终造物】钻石斧后再攒 {C:AxeEvolution.FINAL_NEED} 经验，四选一，选定本大轮锁定且经验封顶。\n亡灵之斧（+{C:AxeFinalStats.UNDEAD_HP} 生命／+{C:AxeFinalStats.UNDEAD_DEF} 双抗）：{C:AxeFinalStats.UNDEAD_RING_R} 码环内敌人每秒损失 {C:AxeFinalStats.UNDEAD_RING_MAXHP_PCT%}% 最大生命值魔法伤害；每秒每有一个环内敌人回复 {C:AxeFinalStats.UNDEAD_LEECH_PCT%}% 最大生命值；阵亡 {C:AxeFinalStats.UNDEAD_REVIVE_DELAY} 秒后带 {C:AxeFinalStats.UNDEAD_REVIVE_HP_PCT%}% 最大生命值重生。\n炽天使（+{C:AxeFinalStats.SERAPH_ATK} 攻击、射程 {C:AxeFinalStats.SERAPH_RANGE} 码）：普攻附带 {C:AxeFinalStats.SERAPH_BURN_ON_HIT} 层灼烧；主动改为 {C:AxeFinalStats.SERAPH_CAST_TIME} 秒内投掷 {C:AxeFinalStats.SERAPH_BOOMERANGS} 把回旋镖（不再获得减伤），沿直线飞过、半宽 {C:AxeFinalStats.SERAPH_BOOM_R} 码，命中造成 {C:AxeFinalStats.SERAPH_BOOM_ATK}×攻击力魔法伤害与 {C:AxeFinalStats.SERAPH_BOOM_BURN} 层灼烧。\n全息斧（+{C:AxeFinalStats.HOLO_HP} 生命、+{C:AxeFinalStats.HOLO_ENERGY_RATE%}% 龟能充能速率）：普攻为血量最低的友军提供 {C:AxeFinalStats.HOLO_ONHIT_SHIELD} 护盾与 {C:AxeFinalStats.HOLO_ONHIT_ENERGY} 龟能；主动改为插地 {C:AxeFinalStats.HOLO_PLANT_TIME} 秒（{C:AxeFinalStats.HOLO_PLANT_DR%}% 减伤），{C:AxeFinalStats.HOLO_AURA_R} 码内友军每 {C:AxeFinalStats.HOLO_AURA_TICK} 秒回复 {C:AxeFinalStats.HOLO_AURA_HEAL} 生命与 {C:AxeFinalStats.HOLO_AURA_ENERGY} 龟能，并获得 +{C:AxeFinalStats.HOLO_AURA_ASPD%}% 攻击速度。\n余烬（+{C:AxeFinalStats.EMBER_ATK} 攻击、+{C:AxeFinalStats.EMBER_ASPD%}% 攻击速度、+{C:AxeFinalStats.EMBER_MOVE%}% 移速）：普攻命中挂 1 层余烬种子，每层 +{C:AxeFinalStats.EMBER_SEED_EXEC_PCT%}% 处决线（无上限），处决一个单位回 {C:AxeFinalStats.EMBER_EXEC_ENERGY} 龟能；主动改为余烬之光 {C:AxeFinalStats.EMBER_LIGHT_TIME} 秒：{C:AxeFinalStats.EMBER_LIGHT_LIFESTEAL%}% 生命偷取／{C:AxeFinalStats.EMBER_LIGHT_DR%}% 减伤／{C:AxeFinalStats.EMBER_LIGHT_ASPD%}% 攻击速度，免疫控制且不锁龟能，再次释放独立叠加。",
     "img": "equip/axe-wood.png",
     "effectBrief": "登场时召唤一把斧头：近战、会自己回血挡伤，普攻还偷走目标的护盾。",
-    "effectDesc2": "【进化被动】每档另加 {C:AxeEvolution.PASSIVE_HP} 生命／{C:AxeEvolution.PASSIVE_ATK} 攻击／{C:AxeEvolution.PASSIVE_DEF} 护甲／{C:AxeEvolution.PASSIVE_MR} 魔抗，售价 +1 费。石斧：每 {C:AxeEvolution.SMASH_IV} 秒下一次普攻强化 —— 击飞并短暂击退，额外 {C:AxeEvolution.SMASH_ATK}×攻击力物理伤害。\n铁斧：每第 2 次普攻改为竖劈 —— 额外 {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% 目标最大生命真实伤害，并施加 {C:AxeEvolution.CLEAVE_BLEED} 层流血。\n金斧：每第 1 次普攻改为 {C:AxeEvolution.SWEEP_ARC_DEG}° 横扫，与竖劈交替。每次命中叠 1 层效率（{C:AxeEvolution.EFF_DUR} 秒，无上限，叠加刷新时长），一层 +{C:AxeEvolution.EFF_ASPD%}% 攻击速度、+{C:AxeEvolution.EFF_MOVE%}% 移动速度。\n钻石斧：释放治疗时改为蓄力 —— 梯形预警每 {C:AxeEvolution.CHARGE_STEP} 秒增高 {C:AxeEvolution.CHARGE_H_PER_STEP} 码，共 {C:AxeEvolution.CHARGE_TIME} 秒；期间 {C:AxeEvolution.CHARGE_DR%}% 减伤且效率计时中断。砸下时梯形内每个敌人吃 {C:AxeEvolution.SLAM_ATK}×攻击力物理伤害，被高高击飞并眩晕 {C:AxeEvolution.SLAM_STUN} 秒。"
+    "effectDesc2": "【进化被动】每档另加 {C:AxeEvolution.PASSIVE_HP} 生命／{C:AxeEvolution.PASSIVE_ATK} 攻击／{C:AxeEvolution.PASSIVE_DEF} 护甲／{C:AxeEvolution.PASSIVE_MR} 魔抗，售价 +1 费。石斧：每 {C:AxeEvolution.SMASH_IV} 秒下一次普攻强化 —— 击飞并短暂击退，额外 {C:AxeEvolution.SMASH_ATK}×攻击力物理伤害。\n铁斧：每第 2 次普攻改为竖劈 —— 额外 {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% 目标最大生命值真实伤害，并施加 {C:AxeEvolution.CLEAVE_BLEED} 层流血。\n金斧：每第 1 次普攻改为 {C:AxeEvolution.SWEEP_ARC_DEG}° 横扫，与竖劈交替。每次命中叠 1 层效率（{C:AxeEvolution.EFF_DUR} 秒，无上限，叠加刷新时长），一层 +{C:AxeEvolution.EFF_ASPD%}% 攻击速度、+{C:AxeEvolution.EFF_MOVE%}% 移动速度。\n钻石斧：释放治疗时改为蓄力 —— 梯形预警每 {C:AxeEvolution.CHARGE_STEP} 秒增高 {C:AxeEvolution.CHARGE_H_PER_STEP} 码，共 {C:AxeEvolution.CHARGE_TIME} 秒；期间 {C:AxeEvolution.CHARGE_DR%}% 减伤且效率计时中断。砸下时梯形内每个敌人吃 {C:AxeEvolution.SLAM_ATK}×攻击力物理伤害，被高高击飞并眩晕 {C:AxeEvolution.SLAM_STUN} 秒。"
   }
 ]
