@@ -121,6 +121,35 @@ func _ready() -> void:
 	## 用户 2026-08-29:「不要拿图片贴图敷衍我, 我要动画像素特效」⇒ 地缝必须是逐帧裂开
 	_ok("地缝是 %d 帧逐帧动画(单帧 = 敷衍)" % slit_frames, slit_frames >= 4)
 
+	## ★★【缝是一条线, 不是一个块】—— 这条是实拍换来的, 所以焊在这里而不是只写进注释。
+	##   第一版宽 0.40 时末帧是 42x24 像素、长宽比只有 1.75:1, 在真实地图上
+	##   七道缝一起**读成七只黑蝙蝠**(实心暗块 + 上缘一道白 = 一只鸟的剪影)。
+	##   暗地面上实心暗块永远读作物体; 缝只能靠受光的边读出来, 而"边"要成立就得细。
+	##   现在 42x11 = 3.8:1。反向: 把 SLIT_W 改回 0.40 重烤 ⇒ 1.75 当场红。
+	var last_img: Image = slit_tex.get_image()
+	if last_img != null:
+		if last_img.is_compressed():
+			last_img.decompress()
+		var cw: int = int(float(last_img.get_width()) / float(slit_frames))
+		var x0: int = cw * (slit_frames - 1)
+		var mnx := 99999
+		var mxx := -1
+		var mny := 99999
+		var mxy := -1
+		for y in range(last_img.get_height()):
+			for x in range(x0, x0 + cw):
+				if last_img.get_pixel(x, y).a > 0.06:
+					mnx = mini(mnx, x); mxx = maxi(mxx, x)
+					mny = mini(mny, y); mxy = maxi(mxy, y)
+		var bw: int = mxx - mnx + 1
+		var bh: int = mxy - mny + 1
+		_ok("★分母: 末帧真的量到了内容(%dx%d 像素)" % [bw, bh], mxx >= 0 and bw > 1 and bh > 0,
+			"量到空的 = 下面那条是空检查")
+		if mxx >= 0 and bh > 0:
+			_ok("地缝末帧长宽比 %.2f:1 >= 3(是一条线不是一个块)" % (float(bw) / float(bh)),
+				float(bw) / float(bh) >= 3.0,
+				"%dx%d —— 1.75:1 那版实拍读成七只黑蝙蝠" % [bw, bh])
+
 	# ══════════════════════════════════════════════════════════════
 	#  建场 (③ 与 ①②⑤ 都要用真的 _equip_sys)
 	# ══════════════════════════════════════════════════════════════
