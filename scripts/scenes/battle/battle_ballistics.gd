@@ -238,7 +238,7 @@ func _step_projectiles(delta: float) -> void:
 			pr["_ai_t"] = float(pr.get("_ai_t", 0.0)) + delta
 			if float(pr["_ai_t"]) >= float(pr["afterimage"]) and frac < 0.94:
 				pr["_ai_t"] = 0.0
-				_spawn_afterimage(node as Sprite3D)
+				_spawn_afterimage(node as Sprite3D, float(pr.get("ai_life", 0.20)))
 		if pr.has("arc"):
 			node.position.y += float(pr["arc"]) * sin(PI * frac)   # 抛物线拱起(火球等)
 		if pr.get("oriented", false):                              # 尖尖波: 绕Y转向行进方向(尖端领着飞)
@@ -434,12 +434,18 @@ func _fire_venom_fang(src: Dictionary, tgt: Dictionary, base: float) -> void:
 	p.billboard = BaseMaterial3D.BILLBOARD_ENABLED   # 正对相机, **不旋转** —— 方向靠选帧
 	p.shaded = false; p.transparent = true
 	p.pixel_size = TARGET_BODY_H_FANG / 32.0         # 与龟同口径
+	## ★整体染成旧那版的毒紫 #c96bff —— 硬边与内部明暗层级由素材保留, modulate 只换色相。
+	##   用户实拍对比后指出新版"不如之前": 旧的强在**饱和亮紫 + 拖得长**, 素材换硬边不该丢掉这两点。
+	p.modulate = Color("#c96bff")
 	p.position = battle._world_pos(start2d, 1.0)
 	battle._world.add_child(p)
 	_push_proj({
 		"node": p, "from": battle._world_pos(start2d, 1.0), "tgt": tgt, "dmg": 0, "col": Color("#c96bff"),
 		"src": src, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 700.0, 0.28, 0.84),
 		"venom_fang": true, "fang_base": base,
+		"afterimage": 0.016,     # 拖尾很密(毒牙飞得快, 要拉出旧版那种"一条带"的速度感)
+		"ai_life": 0.34,         # 残影活久一点 ⇒ 尾更长(实测 0.20 只有约 2 个龟身, 旧版跨 3 个)
+		"_ai_t": 0.0,
 		"dirsel": true,          # 按飞行角度选方向帧(不旋转) —— 见本文件 _step_projectiles
 	})
 
@@ -509,7 +515,9 @@ func _fire_hunter_arrow(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   # �
 ## ★这是像素风做拖尾的正确手段：拖尾长度由「残影间隔 × 飞行速度」自然给出，
 ##   不是画在贴图里的一条固定长度的尾巴(那样飞快飞慢都一样长 = 穿帮)。
 ## ★残影不参与任何结算，纯视觉；`_reg_tween` 保证场景释放时一起收掉。
-func _spawn_afterimage(src: Sprite3D) -> void:
+func _spawn_afterimage(src: Sprite3D, life: float = 0.20) -> void:
+	## ★`life` 决定拖尾有多长: 残影存活越久, 同一时刻在场的副本越多 ⇒ 尾越长。
+	##   默认 0.20(001 剑气用); 毒牙给 0.34 —— 用户实拍指出新版拖尾不如旧版长。
 	## ★`_scene_live()` 在**本类**身上, 不在 battle 上 —— 写 `battle._scene_live()` 会每帧刷
 	##   "Nonexistent function ... in base Node3D"(实测一次跑 35 条), 而残影静默不出。
 	if not _scene_live() or battle._world == null:
@@ -533,8 +541,12 @@ func _spawn_afterimage(src: Sprite3D) -> void:
 	##   表现是每帧刷 "Nonexistent function ... in base 'Nil'"(实测一次跑出 8.7 万条),
 	##   而真正的 Parse Error 只在日志最上面出现一次, 极易被淹掉。
 	var tw: Tween = battle._reg_tween()
-	tw.tween_property(g, "modulate:a", 0.0, 0.20)
-	tw.tween_callback(g.queue_free)
+	tw.set_parallel(true)
+	## ★残影随寿命【收细】—— 不收的话尾巴是一串等大的块, 读成"一坨"而不是"一条带"。
+	##   旧版毒牙那条紫光带强在**细而长**, 换硬边素材后要靠这个把"细"补回来。
+	tw.tween_property(g, "scale", g.scale * 0.35, life)
+	tw.tween_property(g, "modulate:a", 0.0, life)
+	tw.chain().tween_callback(g.queue_free)
 
 
 func _step_homing_arrow(pr: Dictionary, node: Sprite3D, delta: float) -> bool:   # 追踪抛物箭逐帧: 追踪移动+抛物高度+箭头随角度; 命中/目标消失→自销返false, 否则返true续飞
@@ -625,7 +637,12 @@ func _fire_explosion(pos2d: Vector2) -> void:
 ## ★四格由 1 张基准帧经 **水平镜像 + 90° 旋转** 推出 —— 只有这两种变换对像素无损。
 ## ★4 不是 8。改的理由与三条实测证据见 tools/build_dir_sheet.py 头注
 ## (8 格里只有 1 格被用过 / 45° 旋转对像素有损 / 第二张基准帧两条路都拿不到)。
-const TARGET_BODY_H_FANG := 1.15   # 毒牙比龟小(它是一颗牙不是一道剑气)
+const TARGET_BODY_H_FANG := 1.55   # ★2.35 太大: 残影是等大复制, 叠起来是一坨粗块不是一条细带
+## ★★不能只换素材不管可读性(2026-09-07 用户实拍:「这个感觉不如之前的射一颗毒牙」)。
+##   并排比才看清: 旧的是**一条扫过半个屏幕的亮紫光带**, 新的是贴在龟身上一个几乎看不见的小白点。
+##   三因: ①牙本体太小(1.15m) ②**没有拖尾**——旧那条"带"其实就是速度感 ③骨白在深背景上不如亮紫醒目。
+##   ⇒ 放大到 2.35m + 密集拖尾(每 25ms 一个残影, 比 001 的 45ms 密, 毒牙飞得快) + 残影染毒紫。
+## ★教训: 把糊的软条换成硬边像素素材是对的, 但**"可读性"是另一件事, 不会自己跟过来**。
 var _venomfang_sheet: Texture2D = null
 const FLYSLASH_DIRS := 4
 ## ★3 帧不是 5 —— animate_image 返回 5 帧, 后两帧白边散掉(LoL 剖面的 white_ratio 当场不合格),
