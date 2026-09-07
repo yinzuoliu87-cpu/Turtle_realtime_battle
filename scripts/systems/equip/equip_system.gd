@@ -833,6 +833,63 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007(重做�
 		var ft = battle._reg_tween(); ft.tween_property(qi, "modulate:a", 0.0, 0.2); ft.tween_callback(qi.queue_free)
 
 
+## ── 006 千刃风暴的两个素材件(2026-09-07 从程序生成换成 Blender 真素材) ──
+var _sword_up: Texture2D = null
+var _ground_slit: Texture2D = null
+const SWORD_TEX_PATH := "res://assets/sprites/vfx/eq006-sword.png"
+const SLIT_TEX_PATH := "res://assets/sprites/vfx/eq006-groundslit.png"
+const GROUND_SLIT_FRAMES := 6   # 地缝裂开的帧数(tools/blender_groundslit.py 渲)
+const SWORD_CELL := 48          # 剑贴图单元格边长(像素) —— 遮罩式"升起"要按它算
+const SWORD_TIP_ROW := 2        # 剑尖所在行(上面两行是空白余量) —— 遮罩高度不能小于它
+## ★★这两个 pixel_size 是**成对**的, 别单独调其中一个:
+##   缝是预兆、剑是正主, 预兆一旦比正主大就抢镜(0.075 那版缝长 3.1 米 vs 剑 1.7 米,
+##   实拍里七个大灰盘子把剑完全盖住)。verify_sword_storm_chain 焊着 缝长 ≤ 剑高×1.2。
+const SLIT_PIXEL_SIZE := 0.045    # 缝: 42 像素 × 0.045 = 1.89 米长
+const SWORD_PIXEL_SIZE := 0.040   # 剑: 44 像素 × 0.040 = 1.76 米高(龟立绘 2.0 米)
+const SWORD_RANK_N := 7           # 剑阵把数 = 地缝道数(预兆自带信息量: 数量与位置都是真的)
+const SWORD_RANK_GAP := 85.0      # 相邻两把的横向间距(码)
+const SWORD_SPAWN_BACK := 130.0   # 剑阵在携带者【身后】多远出生(码)
+## 冲之前整排先往后收一步的落点。★冲刺循环的起点必须**也**用它, 两处写死同一个数
+##   就会漂(我第一版写了两个 -175, 改一个另一个不动 ⇒ 冲刺第一帧瞬移)。
+const SWORD_BRACE_BACK := 175.0
+
+func _sword_up_tex() -> Texture2D:
+	if _sword_up == null:
+		_sword_up = load(SWORD_TEX_PATH)
+	return _sword_up
+
+func _ground_slit_tex() -> Texture2D:
+	if _ground_slit == null:
+		_ground_slit = load(SLIT_TEX_PATH)
+	return _ground_slit
+
+## 剑"从地里长出来"的一步: 只画贴图最上 rows 行, 并把这段的【下沿钉在地面】。
+## ★★按 CLAUDE.md §3.5(海盗钩索)从 tween 里抽出来: 无头 CI 推不动 tween,
+##   逻辑埋在 tween 末尾就等于门禁永远验不到 —— 演出调它, 门禁也直接调它。
+## ★不变量: `offset.y * 2 == region_rect.size.y`。它就是"下沿钉地"这句话本身;
+##   一旦有人改回"整把剑从 y=-0.25 平移上来", 这条当场红。
+func sword_reveal(spr: Sprite3D, rows: float) -> void:
+	if not is_instance_valid(spr):
+		return
+	var hi: int = clampi(int(round(rows)), SWORD_TIP_ROW + 1, SWORD_CELL)
+	spr.region_rect = Rect2(0.0, 0.0, float(SWORD_CELL), float(hi))
+	spr.offset = Vector2(0.0, float(hi) * 0.5)
+
+## 地缝收尾: 淡出交给 tween(纯观感), **真正的 free 走 `_wait_sim` 主链**。
+## ★同上一条: 把 queue_free 埋在 tween 末尾, "有开就有合"这条就没法验。
+func _close_slits(slits: Array) -> void:
+	for sl in slits:
+		if is_instance_valid(sl):
+			var t: Tween = battle._reg_tween()
+			t.tween_interval(0.30)
+			t.tween_property(sl, "modulate:a", 0.0, 0.22)
+	await battle._wait_sim(0.62)
+	if not is_instance_valid(battle):
+		return
+	for sl2 in slits:
+		if is_instance_valid(sl2):
+			(sl2 as Node).queue_free()
+
 func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改造): 蓄力→身后召一排剑→剑阵前移穿过全体敌
 	var flat: int = [70, 100, 400][si]
 	var sc: float = [0.8, 1.3, 4.0][si]
@@ -841,43 +898,99 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 	if dir.length() < 0.1: dir = Vector2.RIGHT
 	var perp: Vector2 = Vector2(-dir.y, dir.x)
 	var ang: float = -atan2(dir.y, dir.x)
+	## ★★【锚点在施法那一刻定死】。整套演出跨 3 秒, 而携带者这期间是在走路的:
+	##   原来每一段都现读 `u["pos"]`, 于是地缝开在 A 点、0.45 秒后剑从 B 点冒出来
+	##   —— 实测差 1.19 米(≈50 码), **剑根本不是从我裂开的那道缝里出来的**。
+	##   这正是"不能凭空出现"要防的那件事: 因和果对不上位置, 因果链就断了。
+	##   (verify_sword_storm_chain 的第 ② 条就是逐把量这个距离, 阈值 0.06 米。)
+	var anchor: Vector2 = u["pos"]
 	battle._anticipate(u); battle._shake(battle.JUICE_SHAKE_HEAVY)
-	var glow := Sprite3D.new()
-	glow.texture = VfxTex._make_fire_glow_tex()
-	glow.billboard = BaseMaterial3D.BILLBOARD_ENABLED; glow.shaded = false; glow.transparent = true
-	glow.modulate = Color(0.7, 0.82, 1.0, 0.0); glow.pixel_size = 0.02
-	glow.position = battle._world_pos(u["pos"] - dir * 100.0, 1.0)
-	battle._world.add_child(glow)
-	var gt = battle._reg_tween()
-	gt.tween_property(glow, "modulate:a", 0.85, 0.4)
-	gt.parallel().tween_property(glow, "scale", Vector3(2.8, 2.8, 2.8), 0.45)
+	## ★★★蓄力 = 【地面在剑的出生点上裂开 7 道口子】(2026-09-07 用户:「你不能凭空没有逻辑出现」)
+	##   改造前两版都错: 原版是 `_make_fire_glow_tex()` 的纯软球(模糊灰云),
+	##   我第一次改成一颗八向星 —— 用户直接指出**没解决问题**: 星和球一样是"通用闪光",
+	##   既不说明技能要干什么, 自己也照样是凭空出现的。
+	##   ⇒ 要的是【因果链】: 地面裂开 → 剑从缝里升起来 → 剑阵前推。
+	##     缝的位置与数量**就是**剑阵的位置与数量 ⇒ 预兆自带信息量(对手能读出"会被扫到哪")。
+	var n := SWORD_RANK_N
+	var slits: Array = []
+	for k in range(n):
+		var soff: float = (float(k) - float(n - 1) / 2.0) * SWORD_RANK_GAP
+		var sl := Sprite3D.new()
+		sl.texture = _ground_slit_tex()
+		sl.hframes = GROUND_SLIT_FRAMES
+		sl.frame = 0
+		sl.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+		sl.axis = Vector3.AXIS_Y          # 贴地
+		sl.no_depth_test = true           # 恒画在地板之上(同 _splash_ring_bold)
+		sl.render_priority = 5
+		sl.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		sl.shaded = false; sl.transparent = true
+		## ★★缝的世界长度必须≈剑高, 不能比剑还大。0.075 那版单元格 3.6 米、缝长 3.1 米,
+		##   而剑只有 1.7 米 —— **预兆比正主还大一倍**, 实拍里七个大灰盘子把剑完全盖过去。
+		##   0.045 ⇒ 缝长 42px × 0.045 = 1.89 米, 与剑高 1.76 米配对。
+		sl.pixel_size = SLIT_PIXEL_SIZE
+		## 缝【沿剑的行进方向】开 —— 剑从缝里冲出来, 缝当然顺着它冲的方向。
+		sl.rotation = Vector3(0.0, ang, 0.0)
+		sl.position = battle._world_pos(anchor - dir * SWORD_SPAWN_BACK + perp * soff, 0.06)
+		battle._world.add_child(sl)
+		slits.append(sl)
+		var slr := sl
+		var slt: Tween = battle._reg_tween()
+		## 逐帧"裂开", 错峰 0.03 秒 —— 与后面剑的错峰同一个节奏
+		slt.tween_method(func(f: float) -> void:
+			if not is_instance_valid(slr):
+				return
+			slr.frame = clampi(int(f), 0, GROUND_SLIT_FRAMES - 1),
+			0.0, float(GROUND_SLIT_FRAMES), 0.40)
 	await battle._wait_sim(0.45)
 	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
-	if is_instance_valid(glow): glow.queue_free()
 	if not u.get("alive", false): return
-	var n := 7
 	var swords: Array = []
-	for k in range(n):   # 生成剑: 身后错峰淡入+放大(先横排, 垂直行进)
-		var off: float = (float(k) - float(n - 1) / 2.0) * 85.0
+	for k in range(n):   # 从每道地缝里【长出来】一把剑: 剑尖先冒头, 逐步露出整把
+		var off: float = (float(k) - float(n - 1) / 2.0) * SWORD_RANK_GAP
 		var sp := Sprite3D.new()
-		sp.texture = VfxTex._make_sword_texture(Color(0.85, 0.9, 1.0))
-		sp.billboard = BaseMaterial3D.BILLBOARD_DISABLED; sp.axis = Vector3.AXIS_Y
-		sp.shaded = false; sp.transparent = true; sp.pixel_size = 0.07
-		sp.rotation = Vector3(0.0, ang + PI / 2.0, 0.0)
-		sp.position = battle._world_pos(u["pos"] - dir * 130.0 + perp * off, 0.4)
-		sp.modulate = Color(0.85, 0.9, 1.0, 0.0)
-		sp.scale = Vector3(0.3, 0.3, 0.3)
+		## ★★剑【立起来】, 不再贴地(2026-09-07 实拍 48 帧后改)。
+		##   贴地(`axis = AXIS_Y`)那版在俯角 51° 的相机下被压掉 37%, 七把剑读成七条斜杠;
+		##   而且四方向表的剑尖**四个方向全被画布平切**(逐行量: 刃恒宽 6px 直到护手)。
+		##   立起来之后正对相机 ⇒ 方向由"剑阵往哪推"表达, 贴图只要一帧, 也不再需要方向表。
+		##   (见 tools/blender_sword.py 头注)
+		sp.texture = _sword_up_tex()
+		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED   # 与全项目单位立绘同一套
+		sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		sp.shaded = false; sp.transparent = true; sp.pixel_size = SWORD_PIXEL_SIZE
+		## ★★"从地里升起来"用【遮罩】不用位移, 也不用缩放:
+		##   `region_rect` 只画贴图最上 h 行, `offset = h/2` 把这段的**下沿钉在地面**。
+		##   于是剑尖高度 = (h - 剑尖行) × pixel_size, h 从 3 涨到 48 就是剑从地里顶出来。
+		##   为什么不位移: 展示台没有地板遮挡, 埋在地下的部分照样画得出来 ⇒ 看着是"整把剑往上飘"。
+		##   为什么不缩放: 像素风只能整数倍缩放, 非整数缩放会把像素网格打烂(001/004 同一条)。
+		sp.region_enabled = true
+		sword_reveal(sp, float(SWORD_TIP_ROW + 1))          # 出生: 只露剑尖
+		sp.position = battle._world_pos(anchor - dir * SWORD_SPAWN_BACK + perp * off, 0.0)
+		sp.modulate = Color(0.85, 0.9, 1.0, 1.0)
 		battle._world.add_child(sp)
-		var st = battle._reg_tween(); st.set_parallel(true)
-		st.tween_property(sp, "modulate:a", 0.95, 0.2).set_delay(float(k) * 0.03)
-		st.tween_property(sp, "scale", Vector3.ONE, 0.25).set_delay(float(k) * 0.03)
+		var spr0: Sprite3D = sp
+		var st: Tween = battle._reg_tween()
+		st.tween_interval(float(k) * 0.03)   # 错峰: 从中间往两边依次顶出来
+		st.tween_method(func(h: float) -> void:
+			sword_reveal(spr0, h),
+			float(SWORD_TIP_ROW + 1), float(SWORD_CELL), 0.30)
 		swords.append(sp)
+	_close_slits(slits)   # 缝在剑升起来之后合上 —— 有开就要有合, 不能一直裂着
 	await battle._wait_sim(0.42)   # 等一排剑生成完
 	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 	if not u.get("alive", false): return
-	for spr in swords:   # 调转方向: 一排剑同时旋转对准行进方向(带回弹)
+	## ★★"预备"改成【整排往后收一步再冲】 —— 位移, 不是缩放。
+	##   改造前是 tween `rotation:y` 转向(自由旋转打烂像素网格), 我上一版换成 scale 弹一下,
+	##   1.18 倍**同样是非整数缩放**, 同一条禁忌只是换了个属性。
+	##   往后收一步既是纯平移(像素安全), 本身也有因果: 冲之前先蓄一下。
+	for bi in range(swords.size()):
+		var spr = swords[bi]
 		if is_instance_valid(spr):
-			battle._reg_tween().tween_property(spr, "rotation:y", ang, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			var boff: float = (float(bi) - float(n - 1) / 2.0) * SWORD_RANK_GAP
+			var tw2: Tween = battle._reg_tween()
+			tw2.tween_property(spr, "position",
+				battle._world_pos(anchor - dir * SWORD_BRACE_BACK + perp * boff, 0.0), 0.16
+				).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await battle._wait_sim(0.34)
 	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 	if not u.get("alive", false): return
@@ -885,22 +998,27 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 	var reach := 1050.0
 	var traveled := 0.0
 	var hit: Array = []
+	## ★起点跟着上面"往后收一步"走, 不能还写 -SWORD_SPAWN_BACK —— 否则冲刺第一帧会瞬移回去一格。
+	var start_along := -SWORD_BRACE_BACK
 	while is_instance_valid(battle) and traveled < reach and is_instance_valid(self):
 		await battle.get_tree().process_frame
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		traveled += 650.0 * battle.get_process_delta_time()   # 剑速(用户:慢点)
-		var front_along: float = -130.0 + traveled
+		var front_along: float = start_along + traveled
 		for i in range(swords.size()):
 			var sp = swords[i]
 			if is_instance_valid(sp):
-				var off2: float = (float(i) - float(n - 1) / 2.0) * 85.0
-				sp.position = battle._world_pos(u["pos"] + dir * front_along + perp * off2, 0.4)
+				var off2: float = (float(i) - float(n - 1) / 2.0) * SWORD_RANK_GAP
+				sp.position = battle._world_pos(anchor + dir * front_along + perp * off2, 0.0)
 		for o in battle._targeting._enemies_of(u):
 			if battle._arr_has_unit(hit, o) or not o.get("alive", false): continue
-			if (o["pos"] - u["pos"]).dot(dir) <= front_along:
+			if (o["pos"] - anchor).dot(dir) <= front_along:
 				hit.append(o)
 				battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, u["atk"] * sc + float(flat), o, false), Color("#dfe8ff"), 0.0, false, true)
-				battle._skill_ring(o["pos"], Color(0.82, 0.9, 1.0, 0.5), 44.0)
+				## ★命中反馈从"白圆环"换成【钢碰壳的火花】(2026-09-07)。
+				##   圆环是我记过的通病之一("无含义圆环与白球"): 一把立着的剑扫过去,
+				##   地上凭空冒一个圈说明不了任何事; 火花才是这件事本身的结果。
+				battle._vfx._hit_spark(o)
 	for sp2 in swords:
 		if is_instance_valid(sp2):
 			var ft = battle._reg_tween()

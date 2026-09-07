@@ -68,7 +68,7 @@
     "emoji": "🌪️",
     "effectDesc1": "每 {C:EquipTickSystem.SWORD_STORM_IV} 秒召出一排剑穿过全体敌人，对每名敌人造成（70/100/400+0.8/1.3/4.0×攻击力）物理伤害。",
     "effectDesc3": "",
-    "img": "equip/equip-blade-icon.png",
+    "img": "equip/p2eq_006.png",
     "effectBrief": "每 {C:EquipTickSystem.SWORD_STORM_IV} 秒召出一排剑穿过全体敌人，各造成 70/100/400 点物理伤害。"
   },
   {

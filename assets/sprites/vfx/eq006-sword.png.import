@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://vgwgafk2crag"
-path="res://.godot/imported/equip-blade-icon.png-ecff6a0b63f051914b0dd660ffe556cd.ctex"
+uid="uid://7emdyfvfu1d"
+path="res://.godot/imported/eq006-sword.png-be2ef92259a23627b95791f7db75bf56.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/equip/equip-blade-icon.png"
-dest_files=["res://.godot/imported/equip-blade-icon.png-ecff6a0b63f051914b0dd660ffe556cd.ctex"]
+source_file="res://assets/sprites/vfx/eq006-sword.png"
+dest_files=["res://.godot/imported/eq006-sword.png-be2ef92259a23627b95791f7db75bf56.ctex"]
 
 [params]
 
