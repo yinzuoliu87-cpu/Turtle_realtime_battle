@@ -19,6 +19,9 @@ extends Node
 ##   ④ 预兆不许比正主大(0.075 那版缝长 3.1 米 vs 剑 1.7 米, 实拍读成七个大灰盘子)
 ##   ⑤ 有开就有合: 地缝最后一定被收掉
 ##   ⑥ 两张素材是真像素画(硬边 + 锁定调色板), 不是又换回程序生成的软球
+##   ⑦ **飞出去的时候剑尖朝着它飞的方向** —— 用户 2026-09-08 看完实拍问
+##      「剑飞的时候是竖着的？」。是的, 上一版整段冲刺剑都立着平移。
+##      一把在空中平移的剑没有任何理由保持刃朝上, 与"凭空出现"是同一类问题。
 ##
 ## ★★为什么不断言 tween: 无头 CI 推不动场景树 tween(CLAUDE.md §3.5 海盗钩索)。
 ##   所以 `sword_reveal` / `_close_slits` 都已经从 tween 里**抽成了具名函数** ——
@@ -188,6 +191,62 @@ func _ready() -> void:
 	probe.queue_free()
 
 	# ══════════════════════════════════════════════════════════════
+	#  ⑦ 飞行姿态方向表: 每一格的剑尖真的指着那个方向
+	# ══════════════════════════════════════════════════════════════
+	print("-- 7 飞行姿态: 逐格量剑尖朝向 --")
+	var fly_tex: Texture2D = load(EQ.SWORD_FLY_TEX_PATH)
+	_ok("★分母: 飞行姿态表在盘上", fly_tex != null, EQ.SWORD_FLY_TEX_PATH)
+	if fly_tex != null:
+		var fimg: Image = fly_tex.get_image()
+		if fimg != null and fimg.is_compressed():
+			fimg.decompress()
+		var nd: int = EQ.SWORD_FLY_DIRS
+		var cellw: int = int(float(fimg.get_width()) / float(nd))
+		## ★★先拿【已知答案】的立姿图自证这把尺子 —— 它第一版是错的:
+		##   用"离质心最远的点"当剑尖, 立姿图量出 268.7°(实际 90°), **整整反了 180°**,
+		##   因为刃长而重、质心落在刃身里, 最远的其实是柄头。
+		##   改成: 最远点先定长轴(方向未定), 再比两端粗细, 细的那端才是剑尖。
+		var up_ang: float = _tip_angle(sword_tex.get_image(), 0, sword_tex.get_width())
+		_ok("★尺子自证: 立姿图(已知剑尖朝上 90°)量出 %.1f°" % up_ang,
+			_ang_err(up_ang, 90.0) < 15.0, "尺子本身就是错的, 下面 8 条都不作数")
+		var worst_a := 0.0
+		var checked := 0
+		for k in range(nd):
+			var got: float = _tip_angle(fimg, k * cellw, cellw)
+			var want: float = 360.0 * float(k) / float(nd)
+			var e: float = _ang_err(got, want)
+			worst_a = maxf(worst_a, e)
+			checked += 1
+			_ok("帧%d 期望 %3.0f° 实测 %6.1f°(差 %.1f°)" % [k, want, got, e], e < 22.0,
+				"偏出半格 = 选帧公式或渲染角度错了")
+		_ok("★分母: 逐格验了 %d 个方向(应 = %d)" % [checked, nd], checked == nd, "为 0 = 空检查")
+		## 反过来卡"八格其实是同一张图": 最大偏差为 0 且各格像素完全相同就是没转
+		var same := true
+		for k in range(1, nd):
+			if _cell_hash(fimg, k * cellw, cellw) != _cell_hash(fimg, 0, cellw):
+				same = false
+				break
+		_ok("八格两两不同(不是同一张图复制 8 遍)", not same, "全一样 = 方向表是假的")
+
+	## ⑦b 选帧公式的分档表。★最容易错的是**符号**: 场地 y 向下 = 屏幕向下,
+	##   数学角要取负; 写反了"往下飞"会选到"朝上"那一格, 而画面上很难一眼看出。
+	var buckets := [
+		[Vector2(1, 0), 0, "向右(东)"],
+		[Vector2(0, -1), 2, "向上(场地 -y)"],
+		[Vector2(-1, 0), 4, "向左(西)"],
+		[Vector2(0, 1), 6, "向下(场地 +y)"],
+		[Vector2(1, -1).normalized(), 1, "右上斜"],
+		[Vector2(-1, 1).normalized(), 5, "左下斜"],
+	]
+	var bn := 0
+	for b in buckets:
+		var gotf: int = _s._equip_sys._sword_fly_frame(b[0])
+		bn += 1
+		_ok("选帧 %s → 帧%d" % [str(b[2]), int(b[1])], gotf == int(b[1]),
+			"实得 帧%d —— 符号或压缩系数写反了" % gotf)
+	_ok("★分母: 逐档验了 %d 个方向(应 = 6)" % bn, bn == 6, "为 0 = 空检查")
+
+	# ══════════════════════════════════════════════════════════════
 	#  ①②⑤ 跑真入口: 顺序 / 重合 / 收尾
 	# ══════════════════════════════════════════════════════════════
 	print("-- 1/2/5 真入口 _eq_sword_storm: 顺序/重合/收尾 --")
@@ -210,6 +269,11 @@ func _ready() -> void:
 	var slit_pos: Array = []
 	var born_rows: Array = []
 	var slit_gone := -1
+	var first_fly := -1
+	var max_fly := 0
+	var upright_at_fly := -1
+	var fly_frames: Array = []
+	var fly_h: Array = []
 	## ★墙钟兜底 + 帧上限: 不拿游戏时钟当尺子(结算结束后 `_t` 会冻结, CLAUDE.md §3.5)
 	var t0: int = Time.get_ticks_msec()
 	var f := 0
@@ -227,13 +291,29 @@ func _ready() -> void:
 				born_rows.append((x as Sprite3D).region_rect.size.y)
 			for q in sl:
 				slit_pos.append((q as Node3D).global_position)
+		var fl: Array = _collect(EQ.SWORD_FLY_TEX_PATH)
+		if fl.size() > 0 and first_fly < 0:
+			first_fly = f
+			for x2 in fl:
+				fly_frames.append((x2 as Sprite3D).frame)
+			upright_at_fly = sw.size()
+		## ★飞行高度要在【冲刺过程中】量, 不能在换装那一帧量:
+		##   抬升是 tween 做的(无头推不动), 而冲刺循环是**每帧**把 y 钉在 SWORD_FLY_H 上。
+		##   在换装帧量到的必然是 0.00 —— 那量的是 tween 有没有跑, 不是"剑飞的时候在不在空中"。
+		##   (CLAUDE.md §3.5 海盗钩索: 数值判据不许依赖任何动画 tween 跑完。)
+		if first_fly > 0 and fl.size() > 0:
+			var lo := 999.0
+			for x3 in fl:
+				lo = minf(lo, (x3 as Node3D).position.y)
+			fly_h.append(lo)
 		max_slit = maxi(max_slit, sl.size())
 		max_sword = maxi(max_sword, sw.size())
+		max_fly = maxi(max_fly, fl.size())
 		if first_sword > 0 and sl.size() == 0 and slit_gone < 0:
 			slit_gone = f
-		## ★到"缝已收掉"就够了 —— 再往后等剑淡出是 tween 的事, 无头推不动,
-		##   等它只会白烧几千帧然后被 --quit-after 掐断(表现成"没打 ALL PASS")。
-		if slit_gone > 0 and first_sword > 0:
+		## ★等到"缝已收掉 + 已经转成飞行姿态"就够了 —— 再往后等剑淡出是 tween 的事,
+		##   无头推不动, 等它只会白烧几千帧然后被 --quit-after 掐断(表现成"没打 ALL PASS")。
+		if slit_gone > 0 and first_sword > 0 and first_fly > 0 and f > first_fly + 400:
 			break
 
 	_ok("★分母: 地缝真的建出来了(最多同时 %d 道)" % max_slit, max_slit == EQ.SWORD_RANK_N,
@@ -269,8 +349,88 @@ func _ready() -> void:
 	## ⑤ 有开就有合
 	_ok("5 地缝在第 %d 帧被收掉(有开就有合)" % slit_gone, slit_gone > 0,
 		"缝一直裂着 = 场上留垃圾")
+	## ⑦c 冲刺段**真的**换成了飞行姿态 —— 方向表在盘上证明不了游戏里会用它
+	##    (memory fb-zero-caller-is-a-whole-class: 64 条门禁全绿而节点从没被创建过)。
+	_ok("7 冲刺前真的换成了飞行姿态(第 %d 帧, %d 把)" % [first_fly, max_fly],
+		first_fly > 0 and max_fly == EQ.SWORD_RANK_N,
+		"没换 = 剑还是立着平移过去的(用户 2026-09-08 指出的就是这个)")
+	_ok("7 换完之后立姿贴图归零(实测同帧还剩 %d 把立着的)" % upright_at_fly,
+		upright_at_fly == 0, "两种姿态同时在场 = 只换了一部分")
+	_ok("7 换的是【朝敌人】那一格: 帧%s(敌人在右 ⇒ 应为 %d)"
+		% [str(fly_frames), _s._equip_sys._sword_fly_frame(Vector2.RIGHT)],
+		fly_frames.size() == EQ.SWORD_RANK_N
+		and fly_frames.min() == _s._equip_sys._sword_fly_frame(Vector2.RIGHT)
+		and fly_frames.max() == _s._equip_sys._sword_fly_frame(Vector2.RIGHT),
+		"选帧没跟行进方向走")
+	## 冲刺途中的高度: 取最后一半采样(前一半覆盖"抬升中"), 全都必须已在空中
+	var lo_late := 999.0
+	var n_late := 0
+	for i2 in range(fly_h.size() / 2, fly_h.size()):
+		lo_late = minf(lo_late, float(fly_h[i2]))
+		n_late += 1
+	_ok("★分母: 冲刺途中采到 %d 个高度样本(后半 %d 个入判)" % [fly_h.size(), n_late],
+		n_late >= 50, "样本太少 = 下面那条是空检查")
+	_ok("7 剑在空中飞(冲刺途中最低 y=%.2f 米 > 0.3, 不再贴地)" % lo_late,
+		n_late > 0 and lo_late > 0.3, "还贴在地上 = 只换了贴图没抬起来")
 
 	_done()
+
+
+## 剑尖朝向(度, 数学角: 0=右 90=上)。
+## ★不能用"离质心最远的点"当剑尖 —— 见调用处的长注释, 那样量立姿图会反 180°。
+func _tip_angle(img: Image, x0: int, w: int) -> float:
+	var px: Array = []
+	var cx := 0.0
+	var cy := 0.0
+	for y in range(img.get_height()):
+		for x in range(x0, x0 + w):
+			if img.get_pixel(x, y).a > 0.06:
+				px.append(Vector2(float(x - x0), float(y)))
+				cx += float(x - x0)
+				cy += float(y)
+	if px.size() < 8:
+		return -999.0
+	var c := Vector2(cx / float(px.size()), cy / float(px.size()))
+	var far := Vector2.ZERO
+	var fd := -1.0
+	for p in px:
+		var d: float = (p - c).length_squared()
+		if d > fd:
+			fd = d
+			far = p
+	var ax: Vector2 = (far - c).normalized()
+	var perp := Vector2(-ax.y, ax.x)
+	var tp := 0.0
+	var np_ := 0.0
+	var ntp := 0
+	var nnp := 0
+	for p in px:
+		var pr: float = (p - c).dot(ax)
+		var pe: float = absf((p - c).dot(perp))
+		if pr > 0.0:
+			tp += pe
+			ntp += 1
+		elif pr < 0.0:
+			np_ += pe
+			nnp += 1
+	if ntp == 0 or nnp == 0:
+		return -999.0
+	## 细的那一端才是剑尖(护手+柄头那端粗)
+	var tip: Vector2 = ax if (tp / float(ntp)) < (np_ / float(nnp)) else -ax
+	return fposmod(rad_to_deg(atan2(-tip.y, tip.x)), 360.0)
+
+
+func _ang_err(a: float, b: float) -> float:
+	return absf(fposmod(a - b + 180.0, 360.0) - 180.0)
+
+
+func _cell_hash(img: Image, x0: int, w: int) -> int:
+	var h := 0
+	for y in range(img.get_height()):
+		for x in range(x0, x0 + w):
+			var c: Color = img.get_pixel(x, y)
+			h = (h * 31 + int(c.a * 255.0) + int(c.r8) * 7) % 1000000007
+	return h
 
 
 func _done() -> void:

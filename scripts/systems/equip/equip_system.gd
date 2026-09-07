@@ -835,8 +835,21 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007(重做�
 
 ## ── 006 千刃风暴的两个素材件(2026-09-07 从程序生成换成 Blender 真素材) ──
 var _sword_up: Texture2D = null
+var _sword_fly: Texture2D = null
 var _ground_slit: Texture2D = null
 const SWORD_TEX_PATH := "res://assets/sprites/vfx/eq006-sword.png"
+## 飞行姿态方向表(8 向)。★用户 2026-09-08 实拍后问「剑飞的时候是竖着的？」——
+##   第一版整段冲刺剑都是**立着平移**过去的。一把在空中平移的剑没有任何理由保持刃朝上,
+##   这与「不能凭空没有逻辑出现」是同一类问题。⇒ 立起来那一下改成蓄力, 发射瞬间转成刃朝前。
+## ★为什么是方向表: 像素风只能 90° 无损旋转, 45° 一转就糊(001 飞斩 / 004 毒牙同一条)。
+##   角度由 Blender 在渲染时转好(tools/blender_sword.py --dirs 8), 运行时只选帧。
+const SWORD_FLY_TEX_PATH := "res://assets/sprites/vfx/eq006-sword-fly.png"
+const SWORD_FLY_DIRS := 8
+const SWORD_FLY_H := 1.0          # 飞行高度(米) —— 龟立绘 2.0 米, 所以是胸高
+## 场地 y 轴投到屏幕的压缩系数。战斗相机 pos(0,28,22) look_at(0,0.6,0) ⇒ 俯角 ≈51°。
+## ★8 个方向每格 45°, 对这个系数**很不敏感**(0.78 与 1.0 算出来的角落在同一格),
+##   但仍焊了一条门禁量真实投影比 —— 相机哪天改了要有人知道。
+const SWORD_SCREEN_SQUASH := 0.78
 const SLIT_TEX_PATH := "res://assets/sprites/vfx/eq006-groundslit.png"
 const GROUND_SLIT_FRAMES := 6   # 地缝裂开的帧数(tools/blender_groundslit.py 渲)
 const SWORD_CELL := 48          # 剑贴图单元格边长(像素) —— 遮罩式"升起"要按它算
@@ -862,6 +875,21 @@ func _ground_slit_tex() -> Texture2D:
 	if _ground_slit == null:
 		_ground_slit = load(SLIT_TEX_PATH)
 	return _ground_slit
+
+func _sword_fly_tex() -> Texture2D:
+	if _sword_fly == null:
+		_sword_fly = load(SWORD_FLY_TEX_PATH)
+	return _sword_fly
+
+## 行进方向 → 飞行姿态帧下标。★量的是【屏幕投影角】不是场地角:
+##   场地 y 轴被相机俯角压掉一截, 直接拿场地角选帧, 斜着飞时剑的朝向会偏。
+##   屏幕 y 向下、场地 y 也向下 ⇒ 数学角要取负。
+func _sword_fly_frame(dir: Vector2) -> int:
+	if dir.length() < 0.001:
+		return 0
+	var ang: float = atan2(-dir.y * SWORD_SCREEN_SQUASH, dir.x)
+	var idx: int = int(round(ang / (TAU / float(SWORD_FLY_DIRS))))
+	return posmod(idx, SWORD_FLY_DIRS)
 
 ## 剑"从地里长出来"的一步: 只画贴图最上 rows 行, 并把这段的【下沿钉在地面】。
 ## ★★按 CLAUDE.md §3.5(海盗钩索)从 tween 里抽出来: 无头 CI 推不动 tween,
@@ -994,6 +1022,26 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 	await battle._wait_sim(0.34)
 	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 	if not u.get("alive", false): return
+	## ★★【转平 = 发射】(2026-09-08 用户拍板)。用户看完上一版实拍问「剑飞的时候是竖着的？」
+	##   —— 是的, 整段冲刺剑都立着平移。一把在空中平移的剑没有任何理由保持刃朝上。
+	##   ⇒ 立起来那一下变成蓄力, 这里**唰地转成刃朝前**并抬到胸高, 然后才射出去。
+	##   转向靠【选帧】不靠转 node: 像素风 45° 旋转会把网格打烂(001/004 同一条)。
+	var fly_frame: int = _sword_fly_frame(dir)
+	for spr3 in swords:
+		if is_instance_valid(spr3):
+			var sf: Sprite3D = spr3
+			sf.texture = _sword_fly_tex()
+			sf.region_enabled = false        # 结束"从地里长出来"的遮罩, 回到整张贴图
+			sf.frame = 0                     # ★改 hframes 前先归零: setter 会拿新乘积校验当前 frame
+			sf.hframes = SWORD_FLY_DIRS
+			sf.vframes = 1
+			sf.frame = fly_frame
+			sf.offset = Vector2.ZERO         # 飞行姿态以自身为中心, 不再把下沿钉地
+			var lt: Tween = battle._reg_tween()
+			lt.tween_property(sf, "position:y", SWORD_FLY_H, 0.10).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	await battle._wait_sim(0.12)   # 让"转平抬起"这一下看得见, 再冲
+	if not is_instance_valid(battle): return
+	if not u.get("alive", false): return
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
 	var reach := 1050.0
 	var traveled := 0.0
@@ -1009,7 +1057,7 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 			var sp = swords[i]
 			if is_instance_valid(sp):
 				var off2: float = (float(i) - float(n - 1) / 2.0) * SWORD_RANK_GAP
-				sp.position = battle._world_pos(anchor + dir * front_along + perp * off2, 0.0)
+				sp.position = battle._world_pos(anchor + dir * front_along + perp * off2, SWORD_FLY_H)
 		for o in battle._targeting._enemies_of(u):
 			if battle._arr_has_unit(hit, o) or not o.get("alive", false): continue
 			if (o["pos"] - anchor).dot(dir) <= front_along:

@@ -72,7 +72,7 @@ frames_for () {
     # 006 因果链: 要真跑完【地缝裂开 0.45 秒 + 剑升起 + 地缝收掉 0.62 秒】≈1.1 游戏秒。
     #   CI 无头一帧只推 ~1ms ⇒ 1100+ 帧起步; 默认 500 帧会在缝还没收掉时被掐断
     #   ⇒ 没打 ALL PASS(rc=0/致命 0), 看着像断言失败(CLAUDE.md §2 那个坑)。
-    verify_sword_storm_chain) echo 9000 ;;
+    verify_sword_storm_chain) echo 14000 ;;
     verify_copy_rules)        echo 6000 ;;
     # 斧头动作运行时验证: 要**真推着它跑 2.5 秒墙钟**等换表 + 等施法播完回 idle(3 秒)。
     #   墙钟不是帧数 —— CI 无头帧率极高, 帧给少了会在还没等到换表时被掐断
