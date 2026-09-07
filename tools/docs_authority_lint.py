@@ -135,15 +135,27 @@ if _m is None:
 else:
 	cur = tuple(int(x) for x in _m.groups())
 	txt = io.open(ROADMAP, encoding='utf-8', errors='replace').read()
-	vers = [tuple(int(x) for x in t) for t in re.findall(r'v?([0-9]+)\.([0-9]+)\.([0-9]+)', txt)]
-	print('  [分母] 路线图里解析到 %d 个版本号' % len(vers))
+	## ★★【不要把章节号当版本号】(2026-09-08 踩过): 我在路线图里引用了 `CLAUDE.md §3.5.1`,
+	##   它被当成 v3.5.1 抓走, 而判据取的是**全文最大值**(3 > 0) ⇒ 当场报
+	##   "路线图最新版本 v3.5.1 ≠ v0.19.345"。报错文字完全看不出真因, 我查了才明白。
+	##   ⇒ 排除 `§`/`章节`/`第` 紧跟着的那种。**只排掉这一种**, 别把判据放松成"取第一个"
+	##     —— 取最大值正是为了对付倒序记账里引用旧版本的情况。
+	vers = []
+	skipped = 0
+	for m2 in re.finditer(r'(.{0,2})v?([0-9]+)\.([0-9]+)\.([0-9]+)', txt):
+		if '§' in m2.group(1) or '节' in m2.group(1):
+			skipped += 1
+			continue
+		vers.append(tuple(int(x) for x in m2.groups()[1:]))
+	print('  [分母] 路线图里解析到 %d 个版本号(跳过 %d 个章节号)' % (len(vers), skipped))
 	if not vers:
 		fail('路线图里一个版本号都没解析到 —— 空检查不是通过')
 	else:
 		top = max(vers)
 		if top != cur:
 			fail('路线图最新版本 v%d.%d.%d ≠ project.godot 的 v%d.%d.%d —— '
-				'又漂了。记账跟不上就等于"三份权威"里有一份在骗人。' % (top + cur))
+				'又漂了。记账跟不上就等于"三份权威"里有一份在骗人。'
+				'(若这个数看着像章节号, 见本行上方注释: 路线图里别写 §x.y.z)' % (top + cur))
 
 print()
 print('ALL OK — 事实源纪律通过(三权威在位·消费链活·README 无漂移·无冒名·路线图不漂)' if bad == 0 else 'NEEDS FIX: %d 项' % bad)

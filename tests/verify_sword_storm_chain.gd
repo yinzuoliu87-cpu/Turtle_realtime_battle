@@ -23,9 +23,22 @@ extends Node
 ##      「剑飞的时候是竖着的？」。是的, 上一版整段冲刺剑都立着平移。
 ##      一把在空中平移的剑没有任何理由保持刃朝上, 与"凭空出现"是同一类问题。
 ##
-## ★★为什么不断言 tween: 无头 CI 推不动场景树 tween(CLAUDE.md §3.5 海盗钩索)。
-##   所以 `sword_reveal` / `_close_slits` 都已经从 tween 里**抽成了具名函数** ——
-##   演出调它们, 这里也直接调它们; 节点的创建则走 `_wait_sim` 主链, 与 tween 无关。
+## ★★判据一律落在【具名函数 + 主链创建的节点】上, 不落在 tween 的中间态:
+##   `sword_reveal` / `sword_turn` / `_close_slits` 都已从 tween 里抽成具名函数 ——
+##   演出调它们, 这里也直接调它们; 节点的创建走 `_wait_sim` 主链, 与 tween 无关。
+##
+## ★★★一处**我先前写错、2026-09-08 用变异实测纠正**的说法:
+##   我原本在这里写"无头 CI 推不动 tween"。**不对**。
+##   把冲刺循环里那行"每帧钉朝向"变异掉之后, 朝向照样到位 ⇒ **转平的 tween 确实推进了**。
+##   真相是: 在"刚换装那一帧"读 tween 的结果读到的是初值(它还没来得及走), 那是"还没到",
+##   不是"永远不动"。CLAUDE.md §3.5 海盗钩索那条讲的是**链式** tween(甩钩→拉回→callback)
+##   在无头下跑不完, 与单条 tween_method 不是一回事。
+##   ⇒ 结论没变(判据仍然不该读 tween 中间态), 但**理由要写对**。
+##
+## ⚠【已知缺口·显式登记】冲刺循环里 `(sp as Sprite3D).frame = fly_frame` 那一行是兜底,
+##   **没有任何断言单独守着它**: 变异掉它, 转平的 tween 也会落到同一格 ⇒ 门禁不红。
+##   保留它是因为 tween 万一被打断(场景释放/tween 被 kill)剑就会朝上飞 —— 正是用户报的那个问题。
+##   要守住它得造一个"tween 跑不完"的场景, 目前没做。
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const EQ := preload("res://scripts/systems/equip/equip_system.gd")
 
@@ -228,6 +241,49 @@ func _ready() -> void:
 				break
 		_ok("八格两两不同(不是同一张图复制 8 遍)", not same, "全一样 = 方向表是假的")
 
+	## ⑦d 【转平不是瞬间】。用户 2026-09-08 第二问:「怎么转，你是瞬间吗」——
+	##   第一版就是瞬间: `sf.frame = fly_frame` 一次赋值, 90° 一帧跳到 0°,
+	##   而方向表里本来就有 45° 那一格, 白跳的。
+	## ★判据卡的是"中间真的经过了别的格", 不是"变了" —— 只判"变了"的话
+	##   一帧跳过去照样算变(memory fb-gate-tautological-when-it-spans-a-frame)。
+	print("-- 7d 转平要逐格转, 不许一帧跳过去 --")
+	var turn_probe := Sprite3D.new()
+	turn_probe.texture = fly_tex
+	turn_probe.hframes = EQ.SWORD_FLY_DIRS
+	add_child(turn_probe)
+	var turn_bad := 0
+	var turn_n := 0
+	for tgt in [0, 4, 6, 1]:
+		var arc: int = _s._equip_sys._frame_arc(EQ.SWORD_UP_FRAME, tgt)
+		var seen := {}
+		var seq: Array = []
+		for st in range(0, 21):
+			_s._equip_sys.sword_turn(turn_probe, EQ.SWORD_UP_FRAME, arc, float(st) / 20.0)
+			if not seen.has(turn_probe.frame):
+				seen[turn_probe.frame] = true
+				seq.append(turn_probe.frame)
+		turn_n += 1
+		## 起手是立姿那一格 / 落点是目标格 / **弧上每一格都要经过**。
+		## ★判据不能写成"中间至少还有一格": 目标就在隔壁(45°)时弧只有 1 步,
+		##   45° 已经是方向表最细的一格, 再细也没有 —— 那样会把正确行为判成错
+		##   (memory fb-judge-must-fit-the-shape: 判据要刚好卡住那个形状)。
+		##   写成 |arc|+1 对长弧反而更严: 一帧跳过去时 seq 只有 2 而 |arc| 是 2 或 4。
+		var ok_start: bool = int(seq[0]) == EQ.SWORD_UP_FRAME
+		var ok_end: bool = int(seq[seq.size() - 1]) == tgt
+		var ok_all: bool = seq.size() == absi(arc) + 1
+		if not (ok_start and ok_end and ok_all):
+			turn_bad += 1
+		_ok("转到帧%d(弧 %d 步): 经过 %s" % [tgt, absi(arc), str(seq)],
+			ok_start and ok_end and ok_all,
+			"经过 %d 格, 应为 %d 格 —— 少了就是跳过去了" % [seq.size(), absi(arc) + 1])
+	_ok("★分母: 逐个验了 %d 个目标朝向" % turn_n, turn_n == 4, "为 0 = 空检查")
+	_ok("★弧长走最短的一边(朝下 4 格 / 朝右 2 格 / 朝左 2 格)",
+		absi(_s._equip_sys._frame_arc(EQ.SWORD_UP_FRAME, 0)) == 2
+		and absi(_s._equip_sys._frame_arc(EQ.SWORD_UP_FRAME, 4)) == 2
+		and absi(_s._equip_sys._frame_arc(EQ.SWORD_UP_FRAME, 6)) == 4,
+		"绕了远路 = 转平会看着像倒着甩")
+	turn_probe.queue_free()
+
 	## ⑦b 选帧公式的分档表。★最容易错的是**符号**: 场地 y 向下 = 屏幕向下,
 	##   数学角要取负; 写反了"往下飞"会选到"朝上"那一格, 而画面上很难一眼看出。
 	var buckets := [
@@ -274,6 +330,8 @@ func _ready() -> void:
 	var upright_at_fly := -1
 	var fly_frames: Array = []
 	var fly_h: Array = []
+	var sweep_frames: Array = []
+	var fly_x0 := 999.0
 	## ★墙钟兜底 + 帧上限: 不拿游戏时钟当尺子(结算结束后 `_t` 会冻结, CLAUDE.md §3.5)
 	var t0: int = Time.get_ticks_msec()
 	var f := 0
@@ -298,14 +356,22 @@ func _ready() -> void:
 				fly_frames.append((x2 as Sprite3D).frame)
 			upright_at_fly = sw.size()
 		## ★飞行高度要在【冲刺过程中】量, 不能在换装那一帧量:
-		##   抬升是 tween 做的(无头推不动), 而冲刺循环是**每帧**把 y 钉在 SWORD_FLY_H 上。
-		##   在换装帧量到的必然是 0.00 —— 那量的是 tween 有没有跑, 不是"剑飞的时候在不在空中"。
-		##   (CLAUDE.md §3.5 海盗钩索: 数值判据不许依赖任何动画 tween 跑完。)
+		##   换装那一帧 tween 才刚建出来、一步都还没走, 读到的必然是初值 ——
+		##   那量的是"tween 走到哪了", 不是"剑飞的时候在不在空中"。
+		##   冲刺循环则是**每帧**把 y 钉在 SWORD_FLY_H 上, 与 tween 进度无关。
 		if first_fly > 0 and fl.size() > 0:
 			var lo := 999.0
 			for x3 in fl:
 				lo = minf(lo, (x3 as Node3D).position.y)
 			fly_h.append(lo)
+			## ★只在【真的飞起来之后】记朝向: 换装后还有一段"转平 + 等这一拍走完",
+			##   那段剑还停在原地, 朝向本来就该停在起手那一格。
+			##   拿"是否已经推进 >0.3 米"当闸门, 而不是拿帧序号硬切。
+			var x_now: float = (fl[0] as Node3D).global_position.x
+			if fly_x0 > 998.0:
+				fly_x0 = x_now
+			if absf(x_now - fly_x0) > 0.3:
+				sweep_frames.append((fl[0] as Sprite3D).frame)
 		max_slit = maxi(max_slit, sl.size())
 		max_sword = maxi(max_sword, sw.size())
 		max_fly = maxi(max_fly, fl.size())
@@ -356,12 +422,23 @@ func _ready() -> void:
 		"没换 = 剑还是立着平移过去的(用户 2026-09-08 指出的就是这个)")
 	_ok("7 换完之后立姿贴图归零(实测同帧还剩 %d 把立着的)" % upright_at_fly,
 		upright_at_fly == 0, "两种姿态同时在场 = 只换了一部分")
-	_ok("7 换的是【朝敌人】那一格: 帧%s(敌人在右 ⇒ 应为 %d)"
-		% [str(fly_frames), _s._equip_sys._sword_fly_frame(Vector2.RIGHT)],
+	## ★换装那一帧应当是**立姿那一格**(逐格转的起手), 不是目标格 ——
+	##   一换装就已经是目标格, 说明又变回一帧跳过去了。
+	_ok("7 换装起手是立姿那一格: 帧%s(应为 %d)" % [str(fly_frames), EQ.SWORD_UP_FRAME],
 		fly_frames.size() == EQ.SWORD_RANK_N
-		and fly_frames.min() == _s._equip_sys._sword_fly_frame(Vector2.RIGHT)
-		and fly_frames.max() == _s._equip_sys._sword_fly_frame(Vector2.RIGHT),
-		"选帧没跟行进方向走")
+		and fly_frames.min() == EQ.SWORD_UP_FRAME and fly_frames.max() == EQ.SWORD_UP_FRAME,
+		"一换装就是目标格 = 转平又成瞬间的了")
+	## ★最终朝向在【冲刺途中】验 —— 转平的过程是 tween 演的, 但"飞的时候刃朝前"
+	##   这个结果是冲刺循环每帧钉的, 与 tween 无关。
+	var want_f: int = _s._equip_sys._sword_fly_frame(Vector2.RIGHT)
+	var bad_f := 0
+	for ff in sweep_frames:
+		if int(ff) != want_f:
+			bad_f += 1
+	_ok("★分母: 冲刺途中采到 %d 个朝向样本" % sweep_frames.size(), sweep_frames.size() >= 50,
+		"样本太少 = 下面那条是空检查")
+	_ok("7 冲刺途中刃始终朝敌人(帧%d, 不合 %d 个)" % [want_f, bad_f],
+		sweep_frames.size() > 0 and bad_f == 0, "选帧没跟行进方向走")
 	## 冲刺途中的高度: 取最后一半采样(前一半覆盖"抬升中"), 全都必须已在空中
 	var lo_late := 999.0
 	var n_late := 0

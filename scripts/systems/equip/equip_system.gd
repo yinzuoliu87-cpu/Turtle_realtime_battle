@@ -845,6 +845,16 @@ const SWORD_TEX_PATH := "res://assets/sprites/vfx/eq006-sword.png"
 ##   角度由 Blender 在渲染时转好(tools/blender_sword.py --dirs 8), 运行时只选帧。
 const SWORD_FLY_TEX_PATH := "res://assets/sprites/vfx/eq006-sword-fly.png"
 const SWORD_FLY_DIRS := 8
+## 飞行姿态表里"朝上"那一格 = 立姿的同一个朝向(90°)。转平就是从它开始逐格转过去。
+const SWORD_UP_FRAME := 2
+## 转平【每格停多久】(游戏秒)。3 个姿态 ⇒ 立→斜→横共约 0.10 秒 ≈ 60fps 下 6 帧。
+## ★★为什么按"每格"而不是"总时长": 弧长不一样(朝左右 2 步、朝上下 4 步),
+##   按总时长分的话朝上下时每格只剩一半, 会快到看不出转过。
+## ★★★为什么**不用 tween**: tween 走【未钳制的真实 delta】, 而战斗时钟 `_t` 走钳制后的
+##   (CLAUDE.md §3.5.1)。截图时一帧的真实耗时远大于游戏时钟推进量 ⇒ tween 跑飞:
+##   实拍(12ms 一档)量到整个转平只占 ~24ms 游戏时间, 而我设的是 0.15 秒。
+##   改走 `_wait_sim` 之后, **演出的口径和量它的口径是同一条时钟**, 实拍量到多少就是多少。
+const SWORD_TURN_STEP := 0.05
 const SWORD_FLY_H := 1.0          # 飞行高度(米) —— 龟立绘 2.0 米, 所以是胸高
 ## 场地 y 轴投到屏幕的压缩系数。战斗相机 pos(0,28,22) look_at(0,0.6,0) ⇒ 俯角 ≈51°。
 ## ★8 个方向每格 45°, 对这个系数**很不敏感**(0.78 与 1.0 算出来的角落在同一格),
@@ -890,6 +900,20 @@ func _sword_fly_frame(dir: Vector2) -> int:
 	var ang: float = atan2(-dir.y * SWORD_SCREEN_SQUASH, dir.x)
 	var idx: int = int(round(ang / (TAU / float(SWORD_FLY_DIRS))))
 	return posmod(idx, SWORD_FLY_DIRS)
+
+## a → b 的【最短有向步数】(可负)。平局(正好半圈)取负 = 顺时针,
+## 因为立姿朝上、目标多半在左右, 顺时针那半圈更像"把剑压下来"。
+func _frame_arc(a: int, b: int) -> int:
+	var d: int = posmod(b - a, SWORD_FLY_DIRS)
+	return d if d < SWORD_FLY_DIRS / 2 else d - SWORD_FLY_DIRS
+
+## 转平的一步: t ∈ [0,1] → 沿 arc 逐格转。
+## ★★从 tween 里抽成具名函数(CLAUDE.md §3.5 海盗钩索): 无头 CI 推不动 tween,
+##   埋在 tween 里就没法验"转平到底是不是瞬间的"。演出调它, 门禁也直接调它。
+func sword_turn(spr: Sprite3D, from_f: int, arc: int, t: float) -> void:
+	if not is_instance_valid(spr):
+		return
+	spr.frame = posmod(from_f + int(round(float(arc) * clampf(t, 0.0, 1.0))), SWORD_FLY_DIRS)
 
 ## 剑"从地里长出来"的一步: 只画贴图最上 rows 行, 并把这段的【下沿钉在地面】。
 ## ★★按 CLAUDE.md §3.5(海盗钩索)从 tween 里抽出来: 无头 CI 推不动 tween,
@@ -1027,6 +1051,13 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 	##   ⇒ 立起来那一下变成蓄力, 这里**唰地转成刃朝前**并抬到胸高, 然后才射出去。
 	##   转向靠【选帧】不靠转 node: 像素风 45° 旋转会把网格打烂(001/004 同一条)。
 	var fly_frame: int = _sword_fly_frame(dir)
+	## ★★【逐格转, 不是一帧跳过去】(2026-09-08 用户第二问:「怎么转，你是瞬间吗」)。
+	##   第一版这里是 `sf.frame = fly_frame` 一次赋值 —— 立姿 90° 到水平 0° 一帧跳完。
+	##   而方向表里**本来就有 45° 那一格**, 白跳的。现在从"朝上"那格出发逐格转到目标格。
+	var arc: int = _frame_arc(SWORD_UP_FRAME, fly_frame)
+	## 出生高度: 立姿是"下沿钉地"(offset=半格), 飞行姿态以自身为中心 ⇒
+	## 换算过来中心要在半格高, 才不会在换装那一瞬间往下掉半把剑。
+	var swap_h: float = float(SWORD_CELL) * SWORD_PIXEL_SIZE * 0.5
 	for spr3 in swords:
 		if is_instance_valid(spr3):
 			var sf: Sprite3D = spr3
@@ -1035,11 +1066,22 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 			sf.frame = 0                     # ★改 hframes 前先归零: setter 会拿新乘积校验当前 frame
 			sf.hframes = SWORD_FLY_DIRS
 			sf.vframes = 1
-			sf.frame = fly_frame
 			sf.offset = Vector2.ZERO         # 飞行姿态以自身为中心, 不再把下沿钉地
+			sf.position.y = swap_h           # 同上: 抵掉 offset 变化, 视觉上原地不动
+			sword_turn(sf, SWORD_UP_FRAME, arc, 0.0)   # 起手 = 立姿那一格, 与上一拍无缝
 			var lt: Tween = battle._reg_tween()
-			lt.tween_property(sf, "position:y", SWORD_FLY_H, 0.10).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	await battle._wait_sim(0.12)   # 让"转平抬起"这一下看得见, 再冲
+			lt.tween_property(sf, "position:y", SWORD_FLY_H,
+				SWORD_TURN_STEP * float(maxi(1, absi(arc)))
+				).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	## 逐格转, **走游戏时钟**(见 SWORD_TURN_STEP 头注)。第 0 格上面已经摆好了。
+	for step in range(1, absi(arc) + 1):
+		await battle._wait_sim(SWORD_TURN_STEP)
+		if not is_instance_valid(battle): return
+		if not u.get("alive", false): return
+		for spr4 in swords:
+			if is_instance_valid(spr4):
+				sword_turn(spr4, SWORD_UP_FRAME, arc, float(step) / float(maxi(1, absi(arc))))
+	await battle._wait_sim(SWORD_TURN_STEP)   # 转到位再停一格, 让"刃朝前"这一下看得见
 	if not is_instance_valid(battle): return
 	if not u.get("alive", false): return
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
@@ -1058,6 +1100,12 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 			if is_instance_valid(sp):
 				var off2: float = (float(i) - float(n - 1) / 2.0) * SWORD_RANK_GAP
 				sp.position = battle._world_pos(anchor + dir * front_along + perp * off2, SWORD_FLY_H)
+				## ★最终朝向【不留在 tween 里】: 冲刺每帧钉一次。
+				##   转平的过程是 tween 演的, 但"飞的时候刃朝前"这个**结果**不该依赖它跑完
+				##   (tween 被打断 ⇒ 剑朝上飞 = 用户 2026-09-08 报的那个问题)。
+				## ⚠ 这一行**没有断言单独守着**: 变异掉它, 转平的 tween 也会落到同一格 ⇒ 门禁不红。
+				##   已在 verify_sword_storm_chain 头注按"显式登记缺口"记在案。
+				(sp as Sprite3D).frame = fly_frame
 		for o in battle._targeting._enemies_of(u):
 			if battle._arr_has_unit(hit, o) or not o.get("alive", false): continue
 			if (o["pos"] - anchor).dot(dir) <= front_along:
