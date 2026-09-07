@@ -413,22 +413,34 @@ func _shotgun_pellet(from2d: Vector2, to2d: Vector2, col: Color, dur: float = 0.
 	tw.tween_callback(sp.queue_free)
 
 # 装备弹道(弩矢/飞镖等真实贴图投射物): 朝向随飞行方向(2.5D近似 z-roll), 命中记装备物理伤. eq_bleed=命中附加流血层
-func _fire_venom_fang(src: Dictionary, tgt: Dictionary, base: float) -> void:   # 毒牙弹: 双生獠牙飞向目标(wisp_dir尖朝目标)·命中(arrival)魔法伤+毒液飞溅+回100%
+func _fire_venom_fang(src: Dictionary, tgt: Dictionary, base: float) -> void:
+	## 毒牙弹(004 暴君之牙): 飞向目标, 命中(arrival)结算魔法伤 + 毒液飞溅 + 回复。
+	## ★2026-09-07 重做 —— 改造前三个毛病与 001 改造前一模一样(实拍确认):
+	##   ① 贴图是 `VfxTex._make_venomfang_texture()` 程序生成的软条
+	##   ② `TEXTURE_FILTER_LINEAR` ⇒ 糊成一条紫光带, 读起来像激光不像獠牙
+	##   ③ `wisp_dir` 旋转贴图 ⇒ 像素落在非网格位置(像素风不许自由旋转)
+	## ⇒ 换真素材 + NEAREST + **按飞行角度选方向帧**(4 格, 牙尖朝向已逐格自证)。
 	if tgt == null: return
-	if battle._venomfang_tex == null: battle._venomfang_tex = VfxTex._make_venomfang_texture()
+	if _venomfang_sheet == null:
+		_venomfang_sheet = load("res://assets/sprites/vfx/eq004-venomfang-dir4.png")
+	if _venomfang_sheet == null: return
 	var start2d: Vector2 = src["pos"]
-	var p = Sprite3D.new()
-	p.texture = battle._venomfang_tex
-	p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
-	p.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # wisp_dir手动basis(尖朝目标屏幕方向)
+	var p := Sprite3D.new()
+	p.texture = _venomfang_sheet
+	p.hframes = 4          # 4 个方向(东/北/西/南) —— 不是 4 帧动画
+	p.vframes = 1
+	p.frame = 0
+	p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	p.billboard = BaseMaterial3D.BILLBOARD_ENABLED   # 正对相机, **不旋转** —— 方向靠选帧
 	p.shaded = false; p.transparent = true
-	p.pixel_size = 0.052
+	p.pixel_size = TARGET_BODY_H_FANG / 32.0         # 与龟同口径
 	p.position = battle._world_pos(start2d, 1.0)
 	battle._world.add_child(p)
 	_push_proj({
 		"node": p, "from": battle._world_pos(start2d, 1.0), "tgt": tgt, "dmg": 0, "col": Color("#c96bff"),
-		"src": src, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 700.0, 0.28, 0.84),   # 飞行速度减慢50%(用户2026-07-19: /1400→/700)
-		"venom_fang": true, "wisp_dir": true, "fang_base": base,
+		"src": src, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 700.0, 0.28, 0.84),
+		"venom_fang": true, "fang_base": base,
+		"dirsel": true,          # 按飞行角度选方向帧(不旋转) —— 见本文件 _step_projectiles
 	})
 
 func _fire_ice_shard(src: Dictionary, tgt: Dictionary, dmg: int, freeze_sec: float = 1.5) -> void:   # 冰锥弹道(命中魔伤+冻结; 时长传参·2026-07-28 寒冰改2.5s, 默认值保持旧行为)
@@ -613,6 +625,8 @@ func _fire_explosion(pos2d: Vector2) -> void:
 ## ★四格由 1 张基准帧经 **水平镜像 + 90° 旋转** 推出 —— 只有这两种变换对像素无损。
 ## ★4 不是 8。改的理由与三条实测证据见 tools/build_dir_sheet.py 头注
 ## (8 格里只有 1 格被用过 / 45° 旋转对像素有损 / 第二张基准帧两条路都拿不到)。
+const TARGET_BODY_H_FANG := 1.15   # 毒牙比龟小(它是一颗牙不是一道剑气)
+var _venomfang_sheet: Texture2D = null
 const FLYSLASH_DIRS := 4
 ## ★3 帧不是 5 —— animate_image 返回 5 帧, 后两帧白边散掉(LoL 剖面的 white_ratio 当场不合格),
 ## 第 5 帧还长出了黑描边。弹体是**循环**播放的, 循环里混一帧不合格的 = 每圈闪一下。
