@@ -1206,3 +1206,38 @@ func spawn_bleed_drop(u: Dictionary) -> void:
 	tw.chain().tween_property(s, "modulate:a", 0.0, 0.16)
 	tw.chain().tween_callback(func() -> void:
 		if is_instance_valid(s): s.queue_free())
+
+
+## ══════════════════════════════════════════════════════════════════
+##  005 双生匕首·追加刺击 —— 目标身上一记交叉斩
+## ══════════════════════════════════════════════════════════════════
+## ★由来(2026-09-07 审 005): 实拍确认这件装备的追加刺击**一行演出都没有**,
+##   ★3 是 100% 触发, 但玩家只看到一个红色伤害数字, 一把"双生匕首"完全看不见。
+##   (全仓扫过: 105 个装备分支里"造成伤害但零演出"只剩 3 个, 002 已补、023 走灼烧自己的视觉。)
+## ★做成一记短促的交叉斩: 素材是硬边像素 X(steel 锁定板), 0.16 秒拉 alpha 收掉,
+##   尺寸只有龟的一半 —— 它是"补了一刀"不是大招, 排场要和威胁度匹配(LoL 的可读性原则)。
+var _twinstrike_tex: Texture2D = null
+
+func twin_strike(at2d: Vector2) -> void:
+	if _twinstrike_tex == null:
+		_twinstrike_tex = load("res://assets/sprites/vfx/eq005-twinstrike.png")
+	if _twinstrike_tex == null:
+		return
+	var s := Sprite3D.new()
+	s.texture = _twinstrike_tex
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	s.shaded = false
+	s.transparent = true
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素风: 不许线性糊
+	s.pixel_size = battle.TARGET_BODY_H * 0.5 / 32.0           # 半个龟高
+	s.position = battle._world_pos(at2d, 1.05)
+	battle._world.add_child(s)
+	var sr := s
+	var tw: Tween = battle._reg_tween()   # ★不能用 `:=`: battle 无类型, 推不出返回类型 ⇒ Parse Error
+	tw.set_parallel(true)
+	## ★先满亮再收 —— 短命特效一出生就淡, 实拍读出来是灰的(memory fb-vfx-defect-families "淡出病")。
+	tw.tween_property(s, "modulate:a", 1.0, 0.06)
+	tw.tween_property(s, "scale", s.scale * 1.25, 0.16)
+	tw.chain().tween_property(s, "modulate:a", 0.0, 0.10)
+	tw.chain().tween_callback(func() -> void:
+		if is_instance_valid(sr): sr.queue_free())

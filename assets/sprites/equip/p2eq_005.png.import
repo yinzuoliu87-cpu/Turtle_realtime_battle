@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bdkeia4orr6h"
-path="res://.godot/imported/twin-daggers.png-57f166c801d5cd5a15fc5842115009f0.ctex"
+uid="uid://cpiay88iukp6k"
+path="res://.godot/imported/p2eq_005.png-1b815dedc2373523abf466a09b246930.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/equip/twin-daggers.png"
-dest_files=["res://.godot/imported/twin-daggers.png-57f166c801d5cd5a15fc5842115009f0.ctex"]
+source_file="res://assets/sprites/equip/p2eq_005.png"
+dest_files=["res://.godot/imported/p2eq_005.png-1b815dedc2373523abf466a09b246930.ctex"]
 
 [params]
 

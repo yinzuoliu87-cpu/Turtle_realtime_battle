@@ -1192,6 +1192,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false,
 			"p2eq_005":   # 双生匕首: 命中概率追加一刀双生刺击
 				if battle._battle_rng.randf() < [0.5, 0.75, 1.0][si]:
 					battle._damage._apply_damage_from(src, tgt, battle._atk_dmg(src, [0.7, 0.8, 1.0][si], tgt), Color("#ff4444"), 0.0, false, true)
+					battle._vfx.twin_strike(tgt["pos"])   # ★追加刺击要看得见(2026-09-07: 实拍确认原本零演出)
 			"p2eq_023":   # 灼热火珊瑚(被动): 每段额外灼烧 + 充能
 				## ★★2026-08-31 用户:「炽热火珊瑚改为每段普攻施加灼烧和获得法力而不是每段伤害」
 				##   拍板【灼烧与法力两个都收】⇒ 闸放最前, 非普攻两样都不给。
