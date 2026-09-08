@@ -1719,18 +1719,68 @@ func _eq_laser_chop(u: Dictionary, tgt: Dictionary, si: int, base_range: float) 
 	if is_instance_valid(wave):
 		var wf = battle._reg_tween(); wf.tween_property(wave, "modulate:a", 0.0, 0.15); wf.tween_callback(wave.queue_free)
 
+## ★以下两个函数是 009 的【可量部分】, 从演出里抽出来 —— 演出调它们, 门禁也直接调它们。
+##   (CLAUDE.md §3.5: 一个测"数值对不对"的用例, 不该依赖任何演出 tween 跑完。)
+func blade_alive_enemies(src: Dictionary) -> Array:
+	var out: Array = []
+	for o in battle._targeting._enemies_of(src):
+		if o.get("alive", false): out.append(o)
+	return out
+
+
+## 谁被 500~800 码 / BLADE_ARC_DEG 度的扇形带罩住。判定与演出共用同一个 org ⇒ 画到哪就打到哪。
+func blade_hit_test(org: Vector2, dir: Vector2, enemies: Array) -> Array:
+	var cos_half: float = cos(deg_to_rad(BLADE_ARC_DEG * 0.5))
+	var out: Array = []
+	for o in enemies:
+		var rel: Vector2 = o["pos"] - org
+		var dist: float = rel.length()
+		if dist < BLADE_R_IN or dist > BLADE_R_OUT: continue
+		if dir.dot(rel / maxf(1.0, dist)) < cos_half: continue
+		out.append(o)
+	return out
+
+
+## 沿 aim 方向在 ±BLADE_SEEK 内自选释放点, 使扇形带**罩住尽可能多的敌人** ——
+## 这是把文案原话「自动选定释放点, 使其 500~800 码扇形带罩住敌群」真的实现出来。
+##
+## ★为什么不再是"带心 650 码对准敌群质心"(2026-07-19 那版): 带宽只有 300 码,
+##   而三个 160 码等距排开的敌人跨度就有 320 码 —— 对准质心时外侧两个各差 10 码落在带外。
+##   2026-09-08 实拍量到的原话: 携带者 (398,474) / 敌人 (1018,474)(1178,474)(1338,474),
+##   质心 1178 ⇒ org=(528,474) ⇒ 三敌距 org 490/650/810 ⇒ **三打三只命中中间一个**,
+##   还会误触发"仅命中 1 名敌人 ⇒ 伤害 x2/2.5/3"这条本该只在单挑时给的补偿。
+##   带的形状与大小一点没动(用户当年的约束), 动的只是"放在哪"——那本来就是文案说要自动选的。
+##
+## ★候选点只取【某个敌人正好压在内圈/外圈上】那几个 offset: 这类区间覆盖问题的最优解必在边界,
+##   所以不需要扫描步长(扫描会带来"步长多大才够"这种没有答案的参数)。
+func blade_release_point(src: Dictionary, dir: Vector2, enemies: Array, aim_dist: float) -> Vector2:
+	var base: float = clampf(aim_dist - (BLADE_R_IN + BLADE_R_OUT) * 0.5, -BLADE_SEEK, BLADE_SEEK)
+	var cands: Array = [base]
+	for o in enemies:
+		var d: float = (o["pos"] - src["pos"]).dot(dir)
+		cands.append(clampf(d - BLADE_R_IN - 1.0, -BLADE_SEEK, BLADE_SEEK))
+		cands.append(clampf(d - BLADE_R_OUT + 1.0, -BLADE_SEEK, BLADE_SEEK))
+	var best: float = base
+	var best_n: int = -1
+	for c in cands:
+		var n: int = blade_hit_test(src["pos"] + dir * float(c), dir, enemies).size()
+		## 命中数相同时取离"对准质心"最近的那个 ⇒ 罩不罩得住不受影响时, 观感与老版一致
+		if n > best_n or (n == best_n and absf(float(c) - base) < absf(best - base)):
+			best_n = n
+			best = float(c)
+	return src["pos"] + dir * best
+
+
 func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽刃弯刀(用户改造·剑魔Q式): 预警环形扇区(500~800码60度)→黄色月光斩→伤害
-	var cen := Vector2.ZERO; var ec := 0   # 方向朝敌方整体(质心), 角度对携带者稳定(用户)
-	for _o in battle._targeting._enemies_of(src):
-		if _o.get("alive", false): cen += _o["pos"]; ec += 1
-	if ec > 0: cen /= float(ec)
-	var aimpt: Vector2 = cen if ec > 0 else tgt["pos"]
+	var foes: Array = blade_alive_enemies(src)
+	var cen := Vector2.ZERO   # 方向朝敌方整体(质心), 角度对携带者稳定(用户)
+	for _o in foes: cen += _o["pos"]
+	if not foes.is_empty(): cen /= float(foes.size())
+	var aimpt: Vector2 = cen if not foes.is_empty() else tgt["pos"]
 	var dir: Vector2 = (aimpt - src["pos"]).normalized()
 	if dir.length() < 0.1: dir = Vector2.RIGHT
 	var ang: float = -atan2(dir.y, dir.x)
-	# 释放点位: 沿aim在±2000码内自选, 令band中心(650码=500~800中点)落在敌群质心 → band形状大小不动但罩住近敌(用户2026-07-19)
-	var offset: float = clampf((aimpt - src["pos"]).length() - (BLADE_R_IN + BLADE_R_OUT) * 0.5, -BLADE_SEEK, BLADE_SEEK)
-	var org: Vector2 = src["pos"] + dir * offset
+	var org: Vector2 = blade_release_point(src, dir, foes, (aimpt - src["pos"]).length())
 	var tel := Sprite3D.new()   # 1) 预警扇区(脉动黄)
 	tel.texture = VfxTex._make_sector_tex(Color(1.0, 0.78, 0.2, 1.0))
 	tel.billboard = BaseMaterial3D.BILLBOARD_DISABLED; tel.axis = Vector3.AXIS_Y
@@ -1767,15 +1817,8 @@ func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽�
 		mf.tween_callback(battle._set_sprite_frame.bind(moon, _fi))
 		mf.tween_interval(0.11)   # 放慢帧速(用户)
 	mf.tween_callback(moon.queue_free)
-	var cos30: float = cos(deg_to_rad(BLADE_ARC_DEG * 0.5))   # 3) 伤害(斩击命中扇区内敌)
-	var hits: Array = []
-	for o in battle._targeting._enemies_of(src):
-		if not o.get("alive", false): continue
-		var rel: Vector2 = o["pos"] - org   # 相对释放点org判定(band中心已对齐敌群→近敌进band)
-		var dist: float = rel.length()
-		if dist < BLADE_R_IN or dist > BLADE_R_OUT: continue
-		if dir.dot(rel / maxf(1.0, dist)) < cos30: continue
-		hits.append(o)
+	## 3) 伤害: 用**和演出同一个** org 与同一个谓词(手写一份就等于抄一次永远落后一次)
+	var hits: Array = blade_hit_test(org, dir, blade_alive_enemies(src))
 	var mult: float = ([2.0, 2.5, 3.0][si]) if hits.size() <= 1 else 1.0
 	for o in hits:   # 同帧两段同时结算: 物理(红)+真实(白); 飘字各自随机抛物散开(不叠, 无延时)
 		battle._damage._apply_damage_from(src, o, int(battle._atk_dmg(src, [0.5, 0.7, 0.9][si], o) * mult), Color("#ff5a5a"), 0.0, false, true)
