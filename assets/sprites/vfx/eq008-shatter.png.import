@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cokkm2f7yfn17"
-path="res://.godot/imported/dungeon-spike.png-8a939e7c607774082d0b02058301f82c.ctex"
+uid="uid://cvn8vjcl0lb7p"
+path="res://.godot/imported/eq008-shatter.png-57e132b5474d3e13d90d4a9cf5eb006d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/equip/dungeon-spike.png"
-dest_files=["res://.godot/imported/dungeon-spike.png-8a939e7c607774082d0b02058301f82c.ctex"]
+source_file="res://assets/sprites/vfx/eq008-shatter.png"
+dest_files=["res://.godot/imported/eq008-shatter.png-57e132b5474d3e13d90d4a9cf5eb006d.ctex"]
 
 [params]
 

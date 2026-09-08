@@ -3931,36 +3931,7 @@ var _bladewall_tex: ImageTexture = null
 var _shellhalf_tex: ImageTexture = null
 
 
-var _coralspike_tex: ImageTexture = null
-
-func _coral_burst(pos2d: Vector2) -> void:   # 珊瑚碎裂: 珊瑚橙中心闪 + 碎屑四溅
-	if _spark_tex == null: _spark_tex = VfxTex._make_glow_texture()
-	var h := 0.7
-	var core := Sprite3D.new()
-	core.texture = _spark_tex
-	core.billboard = BaseMaterial3D.BILLBOARD_ENABLED; core.shaded = false; core.transparent = true
-	core.modulate = Color(1.0, 0.56, 0.4, 0.95)
-	core.position = _world_pos(pos2d, h)
-	core.pixel_size = 0.02; core.scale = Vector3.ONE * 0.5
-	_world.add_child(core)
-	var twc := _reg_tween(); twc.set_parallel(true)
-	twc.tween_property(core, "scale", Vector3.ONE * 1.5, 0.16)
-	twc.tween_property(core, "modulate:a", 0.0, 0.2)
-	twc.chain().tween_callback(core.queue_free)
-	for i in range(6):
-		var ang: float = TAU * float(i) / 6.0 + randf_range(-0.2, 0.2)
-		var drop := Sprite3D.new()
-		drop.texture = _spark_tex
-		drop.billboard = BaseMaterial3D.BILLBOARD_ENABLED; drop.shaded = false; drop.transparent = true
-		drop.modulate = Color(1.0, 0.5 + 0.2 * float(i % 2), 0.36, 0.95)
-		drop.position = _world_pos(pos2d, h)
-		drop.pixel_size = 0.011; drop.scale = Vector3.ONE * 0.5
-		_world.add_child(drop)
-		var to: Vector2 = pos2d + Vector2(cos(ang), sin(ang)) * randf_range(22.0, 46.0)
-		var twd := _reg_tween(); twd.set_parallel(true)
-		twd.tween_property(drop, "position", _world_pos(to, h * 0.4), 0.26).set_ease(Tween.EASE_OUT)
-		twd.tween_property(drop, "modulate:a", 0.0, 0.26)
-		twd.chain().tween_callback(drop.queue_free)
+var _coralspike_tex: Texture2D = null   # 008 珊瑚刺(真素材·CompressedTexture2D, 别写死 ImageTexture)
 
 func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大熊冲击波(小菊式): 蓄力→直线移动波, 1.5ATK物理+击飞0.8s+拉回70码
 	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()

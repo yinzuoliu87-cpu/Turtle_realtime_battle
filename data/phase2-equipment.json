@@ -92,7 +92,7 @@
     "emoji": "🪸",
     "effectDesc1": "每 {C:EquipTickSystem.CORAL_IV} 秒对距离自己最远的敌人发射一根珊瑚尖刺，命中造成（1/1.2/1.5×攻击力）物理伤害，外加 8/12/18%目标最大生命值的魔法伤害。",
     "effectDesc3": "",
-    "img": "equip/dungeon-spike.png",
+    "img": "equip/p2eq_008.png",
     "effectBrief": "每 {C:EquipTickSystem.CORAL_IV} 秒向最远的敌人射出珊瑚刺，造成 1/1.2/1.5×攻击力物理伤害，外加 8/12/18% 目标最大生命值的魔法伤害。"
   },
   {

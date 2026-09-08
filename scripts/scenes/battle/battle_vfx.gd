@@ -1241,3 +1241,40 @@ func twin_strike(at2d: Vector2) -> void:
 	tw.chain().tween_property(s, "modulate:a", 0.0, 0.10)
 	tw.chain().tween_callback(func() -> void:
 		if is_instance_valid(sr): sr.queue_free())
+
+## 008 双穿珊瑚刺【命中碎裂】。
+## ★★2026-09-08 从上帝文件 `_coral_burst` 搬来 + 重做。改前是
+##   `VfxTex._make_glow_texture()` 的**软光球中心 + 6 个软光点四溅** ——
+##   通病「无含义圆环与白球」的另一张脸: 那是通用爆炸, 说明不了"珊瑚碎了"。
+##   ⇒ 换 Blender 烤的 5 帧碎块(tools/blender_coralspike.py --mode shatter),
+##     碎块**大小不一、角度不匀、飞得不一样远** —— 第一版 9 片等长等角均匀发散,
+##     我自己看实拍读成【烟花】, 规律的放射就是通用爆炸。
+## ★逐帧展开走 `_wait_sim` 不走 tween(v0.19.345 学到的: tween 走真实时钟, 与实拍口径对不上)。
+const CORAL_SHATTER_TEX := "res://assets/sprites/vfx/eq008-shatter.png"
+const CORAL_SHATTER_FRAMES := 5
+const CORAL_SHATTER_PX := 0.048   # 48px 格 x 0.048 = 2.3 米, 与刺(1.6 米)成比例
+
+var _coral_shatter_tex: Texture2D = null
+
+func coral_burst(pos2d: Vector2) -> void:
+	if _coral_shatter_tex == null:
+		_coral_shatter_tex = load(CORAL_SHATTER_TEX)
+	var sp := Sprite3D.new()
+	sp.texture = _coral_shatter_tex
+	sp.frame = 0
+	sp.hframes = CORAL_SHATTER_FRAMES; sp.vframes = 1
+	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sp.shaded = false; sp.transparent = true
+	sp.pixel_size = CORAL_SHATTER_PX
+	sp.position = battle._world_pos(pos2d, 0.9)
+	battle._world.add_child(sp)
+	for f in range(1, CORAL_SHATTER_FRAMES):
+		await battle._wait_sim(0.045)
+		if not is_instance_valid(battle) or not is_instance_valid(sp):
+			return
+		sp.frame = f
+	## ★先满亮再收 —— 不许一出生就淡(memory fb-vfx-defect-families 的"淡出病")
+	var ft: Tween = battle._reg_tween()
+	ft.tween_property(sp, "modulate:a", 0.0, 0.14)
+	ft.tween_callback(sp.queue_free)

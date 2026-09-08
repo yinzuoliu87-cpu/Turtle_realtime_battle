@@ -69,22 +69,34 @@ func _fire_trainer_rock(u: Dictionary, tgt: Dictionary, ms_onhit: bool = false) 
 
 ## ★魔法石(被动·用户2026-07-23): 大师普攻命中→附带 2% 目标最大生命 魔法伤害 + 自己 +5% 攻速(可叠·本场结束重置)。
 ## ★可测纯函数(不依赖演出): 石头是归巢弹→火时即视作命中, 直接结算(数值稳)。攻速叠层是【计数】(_ms_stacks), 换场清零。
-func _fire_coral_spike(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 珊瑚尖刺弹→最远敌(wisp_dir尖朝目标·方向等距不歪)·命中(arrival)物理+%maxHP魔法+珊瑚碎裂
+## 008 双穿珊瑚刺的弹体。
+## ★★2026-09-08 重做: 改前是 `VfxTex._make_coralspike_texture()` **程序生成** +
+##   `TEXTURE_FILTER_LINEAR` + `wisp_dir` 手动 basis 自由旋转 —— 实拍是**一团模糊的粉红雾**
+##   飞过去, 完全读不出是"刺"(与 001/003/004/007 完全同族的三件病)。
+##   ⇒ 换 Blender 烤的 8 向真素材 + NEAREST + **接现成的 `dirsel` 通道**
+##     (按飞行角度选方向帧、贴图永不旋转), 不再手抄一份朝向逻辑。
+const CORAL_SPIKE_TEX := "res://assets/sprites/vfx/eq008-coralspike.png"
+const CORAL_SPIKE_DIRS := 8
+const CORAL_SPIKE_PX := 0.040     # 40px 长的刺 x 0.040 = 1.6 米(龟 2.0 米), 是"一根刺"不是"一根柱子"
+
+func _fire_coral_spike(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 珊瑚尖刺弹→最远敌(dirsel 选帧不旋转)·命中(arrival)物理+%maxHP魔法+珊瑚碎裂
 	if tgt == null: return
-	if battle._coralspike_tex == null: battle._coralspike_tex = VfxTex._make_coralspike_texture()
+	if battle._coralspike_tex == null: battle._coralspike_tex = load(CORAL_SPIKE_TEX)
 	var start2d: Vector2 = src["pos"]
 	var p = Sprite3D.new()
 	p.texture = battle._coralspike_tex
-	p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
-	p.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # wisp_dir手动basis(尖朝目标屏幕方向)
+	p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	p.billboard = BaseMaterial3D.BILLBOARD_ENABLED    # 正对相机, 方向靠选帧
 	p.shaded = false; p.transparent = true
-	p.pixel_size = 0.05
+	p.pixel_size = CORAL_SPIKE_PX
+	p.frame = 0
+	p.hframes = CORAL_SPIKE_DIRS; p.vframes = 1       # ★改 hframes 前先归零(setter 会校验当前 frame)
 	p.position = battle._world_pos(start2d, 1.0)
 	battle._world.add_child(p)
 	_push_proj({
 		"node": p, "from": battle._world_pos(start2d, 1.0), "tgt": tgt, "dmg": 0, "col": Color(1.0, 0.5, 0.36),
 		"src": src, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 900.0, 0.22, 0.8),
-		"coral_spike": true, "wisp_dir": true, "co_si": si,
+		"coral_spike": true, "dirsel": true, "co_si": si,
 	})
 
 func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, basic_onhit: bool = false) -> void:
@@ -348,7 +360,7 @@ func _step_projectiles(delta: float) -> void:
 					var cs: int = int(pr.get("co_si", 2))
 					battle._damage._apply_damage_from(pr["src"], tgt, battle._atk_dmg(pr["src"], [1.0, 1.2, 1.5][cs], tgt), Color("#ff4444"), 0.0, false, true)
 					battle._damage._apply_damage_from(pr["src"], tgt, battle._resolve_dmg(pr["src"], float(tgt["maxHp"]) * [0.08, 0.12, 0.18][cs], tgt, true), Color("#bfe9ff"), 0.0, false, true)
-					battle._coral_burst(tgt["pos"])
+					battle._vfx.coral_burst(tgt["pos"])
 				elif pr.get("drone_shot", false):   # 赛博浮游炮弹: 命中→本弹触发的装备充能/叠层减半(只减浮游炮触发·本体不减·用户2026-07-19)
 					battle._equip_sys._eq_drone_halve = true
 					battle._damage._apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], 0.0, false)
