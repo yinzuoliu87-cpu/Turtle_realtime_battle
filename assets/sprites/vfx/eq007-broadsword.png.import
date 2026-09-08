@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bgdaigxar6nst"
-path="res://.godot/imported/rusty-broadsword.png-4b9cbb84552ebb85b6269fd54fd5422e.ctex"
+uid="uid://dlvwrqoo2qf85"
+path="res://.godot/imported/eq007-broadsword.png-175ece691ba45d951924a6f06e2a316d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/equip/rusty-broadsword.png"
-dest_files=["res://.godot/imported/rusty-broadsword.png-4b9cbb84552ebb85b6269fd54fd5422e.ctex"]
+source_file="res://assets/sprites/vfx/eq007-broadsword.png"
+dest_files=["res://.godot/imported/eq007-broadsword.png-175ece691ba45d951924a6f06e2a316d.ctex"]
 
 [params]
 

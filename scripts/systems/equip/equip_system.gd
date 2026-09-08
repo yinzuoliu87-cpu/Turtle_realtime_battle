@@ -537,6 +537,27 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 ## 【009 宽刃弯刀】攒刃能 → 满值斩出环形扇区(不是整块扇形, 是 500~800 的**带**)。
 ## 【037 蛋糕蜡烛】三阶段循环: 熄灭 → 微弱(回血) → 燃烧(爆燃)。
 const BROADSWORD_REACH := 2000.0  # 007 锈蚀阔剑: 剑气墙扫多远(码)·有效与特效同距
+## ── 007 锈蚀阔剑的三件真素材(2026-09-08 从程序生成换成 Blender 烤·rust 锁定板) ──
+## ★★换掉的三样都是 001/003/004 同族的老毛病, 实拍确认:
+##   ① `VfxTex._make_vblade_texture()` 的起手剑 = 贴在龟身上一道**白划痕**
+##   ② `VfxTex._make_bladewall_texture()` + LINEAR 的剑气墙 = 一道**模糊的橙褐弧**
+##   ③ 沿途 `_splash_ring_bold` 撒的**一串橙色圆环** = 通病「无含义圆环」
+## ★外加一条新的:【名实不符】—— 它叫「锈蚀阔剑」而演出是炽焰赤金。全部改走 rust 板。
+const BSW_SWORD_TEX := "res://assets/sprites/vfx/eq007-broadsword.png"   # 8 向阔剑(劈砍靠选帧)
+const BSW_WALL_TEX := "res://assets/sprites/vfx/eq007-bladewall.png"     # 8 向 x 4 帧 剑气墙
+const BSW_SCRAPE_TEX := "res://assets/sprites/vfx/eq007-scrape.png"      # 5 帧 地面刮痕
+const BSW_DIRS := 8
+const BSW_WALL_FRAMES := 4
+const BSW_SCRAPE_FRAMES := 5
+const BSW_SWORD_PX := 0.052       # 阔剑: 44px x 0.052 = 2.3 米(比 006 那把 1.76 米更有分量)
+const BSW_WALL_PX := 0.095        # 剑气墙: 42px x 0.095 = 4.0 米高 = 龟(2.0m)的两倍, 才像一堵墙不像一根木头
+const BSW_SCRAPE_PX := 0.055      # 刮痕: 43px x 0.055 = 2.4 米长
+const BSW_CHOP_STEP := 0.045      # 劈砍每格停多久(游戏秒) —— 与 006 同一条: 走 _wait_sim 不走 tween
+## 劈砍的弧: 从"高举"(左上 135°)扫到"下劈"(右下 315°), 经 90/45/0 共 5 格。
+## ★方向表的角度是**屏幕角**, 与 _sword_fly_frame 同一套。
+const BSW_CHOP_FROM_R := 3        # 敌在右: 从左上 135° 抡到右下 315°
+const BSW_CHOP_FROM_L := 1        # 敌在左: 镜像, 从右上 45° 抡到左下 225°
+const BSW_CHOP_ARC := 4           # 抡过 4 格(半圈)
 ## 【043 海浪护符】浪墙从携带者【身后】多远处涌起(码)。
 const WAVE_BACK := 400.0
 const CANDLE_PHASES := 3       # 几个阶段
@@ -748,74 +769,96 @@ func _eq_ice_throw(u: Dictionary, si: int) -> void:
 	tw.tween_interval(0.32)
 	tw.tween_callback(battle._ice_sys._ice_throw_go.bind(u, si))
 
-func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007(重做·用户2026-07-19): 朝方向高举斩→宽刃剑气墙沿dir扫2000码(wisp_dir朝向·等距不歪)+贴地冲击带(no_depth_test)·命中给盾
+func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007: 高举→下劈→剑气墙沿dir扫2000码·命中给盾
 	var flat: int = [20, 35, 60][si]
 	var sc: float = [0.5, 0.8, 1.1][si]
 	var shp: float = [0.5, 0.75, 1.0][si]
 	var t = battle._targeting._nearest_enemy(u)
 	var dir: Vector2 = ((t["pos"] - u["pos"]).normalized() if t != null else Vector2.RIGHT)
 	if dir.length() < 0.1: dir = Vector2.RIGHT
+	## ★锚点在施法那一刻定死(同 006): 整套演出跨 3 秒而携带者一直在走,
+	##   每段现读 u["pos"] 会让"劈下去的地方"和"剑气出发的地方"对不上。
+	var anchor: Vector2 = u["pos"]
+	var front: Vector2 = anchor + dir * 55.0
 	battle._anticipate(u); battle._shake(battle.JUICE_SHAKE_HEAVY)
-	var front: Vector2 = u["pos"] + dir * 55.0
-	var zsgn: float = 1.0 if dir.x >= 0.0 else -1.0   # 挥砍方向: 敌在左则镜像上扬/下劈
-	# ① 起手: 阔剑高举(朝挥击侧)→下劈 (保留节奏/动作)
+
+	# ① 起手: 阔剑高举。★换真素材 + **抡砍靠选帧, 贴图不旋转**
+	#    (改造前是 `_make_vblade_texture()` 程序生成 + `rotation.z` 自由旋转,
+	#     实拍是贴在龟身上的一道白划痕; 像素风只能 90° 无损旋转)。
+	var right: bool = dir.x >= 0.0
+	var chop_from: int = BSW_CHOP_FROM_R if right else BSW_CHOP_FROM_L
+	var chop_arc: int = (-BSW_CHOP_ARC) if right else BSW_CHOP_ARC
 	var sword := Sprite3D.new()
-	sword.texture = VfxTex._make_vblade_texture(Color(0.92, 0.94, 1.0))
-	sword.billboard = BaseMaterial3D.BILLBOARD_DISABLED; sword.shaded = false; sword.transparent = true
-	sword.pixel_size = 0.015
-	sword.offset = Vector2(0, 38)
-	sword.flip_h = dir.x < 0.0                        # 朝挥击方向那侧
-	sword.modulate = Color(0.92, 0.94, 1.0, 0.0)
-	sword.position = battle._world_pos(front, 0.6)
-	sword.rotation = Vector3(-0.6, 0.0, 1.15 * zsgn)  # x=面镜头, z=上扬蓄势(随方向镜像)
-	sword.scale = Vector3(0.5, 0.5, 0.5)
+	sword.texture = _bsw_sword_tex()
+	sword.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sword.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sword.shaded = false; sword.transparent = true
+	sword.pixel_size = BSW_SWORD_PX
+	sword.frame = 0
+	sword.hframes = BSW_DIRS; sword.vframes = 1     # ★改 hframes 前先归零(setter 会校验当前 frame)
+	sword.frame = chop_from
+	sword.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	sword.position = battle._world_pos(front, 2.4)  # 举过头顶
 	battle._world.add_child(sword)
-	var gt = battle._reg_tween(); gt.set_parallel(true)
-	gt.tween_property(sword, "modulate:a", 1.0, 0.28)
-	gt.tween_property(sword, "scale", Vector3(1.5, 1.5, 1.5), 0.4)
-	await battle._wait_sim(0.6)
+	var gt: Tween = battle._reg_tween()
+	gt.tween_property(sword, "modulate:a", 1.0, 0.22)
+	await battle._wait_sim(0.55)
 	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 	if not u.get("alive", false):
 		if is_instance_valid(sword): sword.queue_free()
 		return
-	var dt = battle._reg_tween()   # 下劈: z从上扬挥到下劈(随方向镜像)
-	dt.tween_property(sword, "rotation:z", -1.35 * zsgn, 0.2).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
-	await dt.finished
+
+	# ② 下劈: 逐格抡过半圈, 同时落到地面高度。
+	#    ★走 `_wait_sim` 不走 tween —— tween 走未钳制真实 delta, 与实拍的游戏时钟对不上
+	#    (v0.19.345 在 006 上量出来过: 0.15 秒的转向实拍只占 24ms)。
+	for step in range(1, BSW_CHOP_ARC + 1):
+		await battle._wait_sim(BSW_CHOP_STEP)
+		if not is_instance_valid(battle): return
+		if not is_instance_valid(sword): break
+		var k: float = float(step) / float(BSW_CHOP_ARC)
+		sword.frame = posmod(chop_from + int(round(float(chop_arc) * k)), BSW_DIRS)
+		sword.position = battle._world_pos(front, lerpf(2.4, 0.8, k))
+	if not u.get("alive", false):
+		if is_instance_valid(sword): sword.queue_free()
+		return
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
-	battle._splash_ring_bold(front, Color(1.0, 0.5, 0.24, 0.92), 130.0)   # 劈地冲击环(赤金·no_depth_test·不被地板盖)
+	battle._splash_ring_bold(front, Color(0.80, 0.52, 0.28, 0.92), 130.0)   # 劈地冲击环(硬边像素环·锈色)
 	if is_instance_valid(sword):
-		var sf = battle._reg_tween(); sf.tween_property(sword, "modulate:a", 0.0, 0.16); sf.tween_callback(sword.queue_free)
-	# ② 宽刃剑气墙沿dir扫2000码 (wisp_dir朝向: 凸刃立起·尖朝行进方向·等距不歪) — 有效+特效距离均2000(用户)
-	if battle._bladewall_tex == null: battle._bladewall_tex = VfxTex._make_bladewall_texture(Color(1.0, 0.36, 0.18))   # 炽焰赤金: 白热前刃→橙红刃身(对比青地板·破甲灼刃)
+		var sf: Tween = battle._reg_tween()
+		sf.tween_property(sword, "modulate:a", 0.0, 0.16); sf.tween_callback(sword.queue_free)
+
+	# ③ 剑气墙沿 dir 扫 BROADSWORD_REACH 码。
+	#    ★换真素材 + NEAREST + **8 向选帧**, 不再用 `camera_basis × roll` 手动转 basis。
+	var dirf: int = _screen_dir_frame(dir, BSW_DIRS)
 	var qi := Sprite3D.new()
-	qi.texture = battle._bladewall_tex
-	qi.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
-	qi.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # 手动basis: camera_basis×roll(尖朝dir屏幕方向)
+	qi.texture = _bsw_wall_tex()
+	qi.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	qi.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	qi.shaded = false; qi.transparent = true
-	qi.pixel_size = 0.058
-	qi.modulate = Color(1.0, 0.96, 0.9, 0.98)   # 近白暖调, 让贴图赤金本色出来(不二次染色)
+	qi.pixel_size = BSW_WALL_PX
+	qi.frame = 0
+	qi.hframes = BSW_DIRS; qi.vframes = BSW_WALL_FRAMES
+	qi.frame = dirf
 	battle._world.add_child(qi)
-	var obasis: Basis = (battle._vfx.cam_basis() if battle._cam != null else Basis.IDENTITY)   # dir恒定→朝向算一次
-	if battle._cam != null:
-		var s0: Vector2 = battle._cam.unproject_position(battle._world_pos(front, 0.9))
-		var s1: Vector2 = battle._cam.unproject_position(battle._world_pos(front + dir * 60.0, 0.9))
-		var sd: Vector2 = s1 - s0
-		if sd.length() > 0.5:
-			obasis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), atan2(-sd.y, sd.x) - PI / 2.0)
 	var reach := BROADSWORD_REACH
 	var traveled := 0.0
 	var trail_next := 0.0
+	var anim := 0.0
 	var hit: Array = []
 	while is_instance_valid(battle) and traveled < reach and is_instance_valid(qi) and is_instance_valid(self):
 		await battle.get_tree().process_frame
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		if not u.get("alive", false): break
-		traveled += 820.0 * battle.get_process_delta_time()
-		var pos: Vector2 = front + dir * traveled
-		qi.global_transform = Transform3D(obasis, battle._world_pos(pos, 0.9))
-		if traveled >= trail_next:                    # 贴地冲击带: 沿途撒no_depth_test小环(floor-proof)
+		var dt: float = battle.get_process_delta_time()
+		traveled += 820.0 * dt
+		var pos: Vector2 = anchor + dir * (55.0 + traveled)
+		qi.position = battle._world_pos(pos, 1.6)
+		## 翻涌: 4 帧循环。★行数 = 动画帧, 列 = 方向 ⇒ frame = 行*列数 + 列。
+		anim += dt * 14.0
+		qi.frame = int(posmod(anim, float(BSW_WALL_FRAMES))) * BSW_DIRS + dirf
+		if traveled >= trail_next:   # 沿途留【被犁开的刮痕】, 不再是一串圆环
 			trail_next += 240.0
-			battle._splash_ring_bold(pos, Color(1.0, 0.46, 0.2, 0.55), 85.0)   # 赤金贴地拖痕
+			_bsw_scrape(pos, dir)
 		for o in battle._targeting._enemies_of(u):
 			if not o.get("alive", false): continue
 			var seen := false
@@ -827,11 +870,39 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007(重做�
 				var dd: int = battle._resolve_dmg(u, u["atk"] * sc + float(flat), o, false)
 				battle._damage._apply_damage_from(u, o, dd, Color("#dfe8ff"), 0.0, false, true)
 				battle._damage._grant_shield(u, dd * shp)             # 命中一个即给盾(用户)
-				battle._weapon_slash(u["pos"], o["pos"], Color(1.0, 0.62, 0.34))   # 命中破甲斩弧(赤金)
 				battle._vfx._hit_spark(o)
 	if is_instance_valid(qi):
-		var ft = battle._reg_tween(); ft.tween_property(qi, "modulate:a", 0.0, 0.2); ft.tween_callback(qi.queue_free)
+		var ft: Tween = battle._reg_tween()
+		ft.tween_property(qi, "modulate:a", 0.0, 0.2); ft.tween_callback(qi.queue_free)
 
+
+## 地面刮痕: 剑气墙擦过留下的一道沟。逐帧展开再淡掉。
+## ★★这是替掉「沿途撒一串 `_splash_ring_bold` 圆环」的 —— 圆环说明不了任何事
+##   (memory fb-vfx-defect-families 的"无含义圆环与白球")。沟说明"这里被扫过了"。
+## ★贴地放, 沿行进方向。展开走 `_wait_sim` 不走 tween(同 006 转平那条)。
+func _bsw_scrape(at: Vector2, dir: Vector2) -> void:
+	var sp := Sprite3D.new()
+	sp.texture = _bsw_scrape_tex()
+	sp.frame = 0
+	sp.hframes = BSW_SCRAPE_FRAMES; sp.vframes = 1
+	sp.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	sp.axis = Vector3.AXIS_Y                       # 贴地
+	sp.no_depth_test = true                        # 恒画在地板之上(同 _splash_ring_bold)
+	sp.render_priority = 5
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sp.shaded = false; sp.transparent = true
+	sp.pixel_size = BSW_SCRAPE_PX
+	sp.rotation = Vector3(0.0, -atan2(dir.y, dir.x), 0.0)
+	sp.position = battle._world_pos(at, 0.06)
+	battle._world.add_child(sp)
+	for f in range(1, BSW_SCRAPE_FRAMES):
+		await battle._wait_sim(0.035)
+		if not is_instance_valid(battle) or not is_instance_valid(sp): return
+		sp.frame = f
+	var ft: Tween = battle._reg_tween()
+	ft.tween_interval(0.5)
+	ft.tween_property(sp, "modulate:a", 0.0, 0.45)
+	ft.tween_callback(sp.queue_free)
 
 ## ── 006 千刃风暴的两个素材件(2026-09-07 从程序生成换成 Blender 真素材) ──
 var _sword_up: Texture2D = null
@@ -886,6 +957,26 @@ func _ground_slit_tex() -> Texture2D:
 		_ground_slit = load(SLIT_TEX_PATH)
 	return _ground_slit
 
+
+var _bsw_sword: Texture2D = null
+var _bsw_wall: Texture2D = null
+var _bsw_scrape_t: Texture2D = null
+
+func _bsw_sword_tex() -> Texture2D:
+	if _bsw_sword == null:
+		_bsw_sword = load(BSW_SWORD_TEX)
+	return _bsw_sword
+
+func _bsw_wall_tex() -> Texture2D:
+	if _bsw_wall == null:
+		_bsw_wall = load(BSW_WALL_TEX)
+	return _bsw_wall
+
+func _bsw_scrape_tex() -> Texture2D:
+	if _bsw_scrape_t == null:
+		_bsw_scrape_t = load(BSW_SCRAPE_TEX)
+	return _bsw_scrape_t
+
 func _sword_fly_tex() -> Texture2D:
 	if _sword_fly == null:
 		_sword_fly = load(SWORD_FLY_TEX_PATH)
@@ -895,11 +986,18 @@ func _sword_fly_tex() -> Texture2D:
 ##   场地 y 轴被相机俯角压掉一截, 直接拿场地角选帧, 斜着飞时剑的朝向会偏。
 ##   屏幕 y 向下、场地 y 也向下 ⇒ 数学角要取负。
 func _sword_fly_frame(dir: Vector2) -> int:
-	if dir.length() < 0.001:
+	return _screen_dir_frame(dir, SWORD_FLY_DIRS)
+
+## 场地方向 → 【屏幕投影角】的第几格。006 与 007 共用这一份, 别各抄一份
+## (memory fb-hand-rolled-copies-drift: 手抄的副本必然落后)。
+## ★量的是屏幕投影角不是场地角: 相机俯角 ≈51°, 场地 y 投到屏幕要乘 SWORD_SCREEN_SQUASH。
+##   屏幕 y 向下、场地 y 也向下 ⇒ 数学角取负。
+func _screen_dir_frame(dir: Vector2, n: int) -> int:
+	if dir.length() < 0.001 or n <= 0:
 		return 0
 	var ang: float = atan2(-dir.y * SWORD_SCREEN_SQUASH, dir.x)
-	var idx: int = int(round(ang / (TAU / float(SWORD_FLY_DIRS))))
-	return posmod(idx, SWORD_FLY_DIRS)
+	var idx: int = int(round(ang / (TAU / float(n))))
+	return posmod(idx, n)
 
 ## a → b 的【最短有向步数】(可负)。平局(正好半圈)取负 = 顺时针,
 ## 因为立姿朝上、目标多半在左右, 顺时针那半圈更像"把剑压下来"。

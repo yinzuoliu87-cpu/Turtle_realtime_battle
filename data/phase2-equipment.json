@@ -80,7 +80,7 @@
     "emoji": "⚔️",
     "effectDesc1": "每 {C:EquipTickSystem.BROADSWORD_IV} 秒朝最近的敌人挥出一道剑气墙，沿途扫过 {C:EquipSystem.BROADSWORD_REACH} 码内一线的敌人，对每名敌人造成（20/35/60+0.5/0.8/1.1×攻击力）物理伤害；\n并为自己获得本次总伤害 50/75/100%的护盾。",
     "effectDesc3": "",
-    "img": "equip/rusty-broadsword.png",
+    "img": "equip/p2eq_007.png",
     "effectBrief": "每 {C:EquipTickSystem.BROADSWORD_IV} 秒挥出剑气墙扫过一线敌人，并按总伤害 50/75/100% 获得护盾。"
   },
   {
