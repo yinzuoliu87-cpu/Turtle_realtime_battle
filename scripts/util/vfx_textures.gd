@@ -774,55 +774,7 @@ static func _make_target_bracket_texture(col: Color) -> ImageTexture:
 				img.set_pixel(x, y, Color(col.r, col.g, col.b, 1.0))
 	return ImageTexture.create_from_image(img)
 
-static func _make_moon_sheet(col: Color) -> ImageTexture:   # 弯月黄色闪电斩 5帧(与预警扇区同几何: 顶点左中/环650码带/±30度; 锯齿闪电; 生成→峰值→消散)
-	var FW := 128; var FN := 5
-	var img := Image.create(FW * FN, FW, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	var cy := float(FW) * 0.5
-	var half := deg_to_rad(30.0)
-	var midr := 0.81   # 650/800 环中心
-	for f in range(FN):
-		var t := float(f) / float(FN - 1)
-		var bright: float = (minf(t / 0.32, 1.0)) if t <= 0.5 else (maxf(0.0, 1.0 - (t - 0.5) / 0.5))
-		var ht := 0.03 + 0.075 * sin(PI * clampf(t, 0.0, 1.0))   # 带半厚(fraction)
-		var ox := f * FW
-		for y in range(FW):
-			for x in range(FW):
-				var dx := float(x); var dy := float(y) - cy
-				var dist := sqrt(dx * dx + dy * dy) / float(FW - 1)
-				var a := atan2(dy, dx)
-				if absf(a) > half: continue
-				var jag := sin(a * 10.0 + t * 6.0) * 0.02 + sin(a * 27.0 + float(f)) * 0.012   # 闪电锯齿
-				var dd := absf(dist - (midr + jag))
-				if dd > ht: continue
-				if t > 0.55 and sin(a * 16.0 + float(f) * 2.3) > lerpf(1.1, -0.3, (t - 0.55) / 0.45): continue
-				var e := (1.0 - dd / ht) * bright
-				if e <= 0.02: continue
-				var c := col.lerp(Color(1, 1, 1), clampf(e * 1.4, 0.0, 1.0) * 0.78)
-				c.a = clampf(e * e + 0.08 * bright, 0.0, 1.0)
-				img.set_pixel(ox + x, y, c)
-	return ImageTexture.create_from_image(img)
 
-static func _make_sector_tex(col: Color) -> ImageTexture:   # 环形扇区(顶点在左中, 沿+X扇开; 环500~800=inner0.625, 60度): 预警用
-	var S := 128
-	var img := Image.create(S, S, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	var cy := float(S) / 2.0
-	var half := deg_to_rad(30.0)
-	for y in range(S):
-		for x in range(S):
-			var dx := float(x)
-			var dy := float(y) - cy
-			var dist := sqrt(dx * dx + dy * dy) / float(S - 1)
-			if dist < 0.625 or dist > 1.0: continue
-			var a := atan2(dy, dx)
-			if absf(a) > half: continue
-			var er := minf((dist - 0.625) / 0.09, (1.0 - dist) / 0.09)
-			var ea := (half - absf(a)) / deg_to_rad(9.0)
-			var e := clampf(minf(minf(er, ea), 1.0), 0.0, 1.0)
-			var c := col; c.a = col.a * (0.3 + 0.7 * e)
-			img.set_pixel(x, y, c)
-	return ImageTexture.create_from_image(img)
 
 static func _make_laser_beam_tex(col: Color) -> ImageTexture:   # 激光束(白热核+色光晕/两端尖), 沿+X
 	var W := 100; var H := 16

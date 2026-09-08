@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bm58lmchf10ku"
-path="res://.godot/imported/wide-saber.png-209a69a98971bb47db34c0863ee1989a.ctex"
+uid="uid://pogdueljwe60"
+path="res://.godot/imported/eq009-slash.png-d15e37bdb28ad549b53fc4bab079ab8d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/equip/wide-saber.png"
-dest_files=["res://.godot/imported/wide-saber.png-209a69a98971bb47db34c0863ee1989a.ctex"]
+source_file="res://assets/sprites/vfx/eq009-slash.png"
+dest_files=["res://.godot/imported/eq009-slash.png-d15e37bdb28ad549b53fc4bab079ab8d.ctex"]
 
 [params]
 

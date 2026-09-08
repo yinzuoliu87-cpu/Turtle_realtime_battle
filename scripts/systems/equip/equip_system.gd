@@ -602,6 +602,44 @@ const BLADE_R_IN := 500.0        # 扇形带内半径(码)
 const BLADE_R_OUT := 800.0       # 扇形带外半径(码)
 const BLADE_ARC_DEG := 60.0      # 扇面全角(度)·判定用半角 = 它的一半
 const BLADE_SEEK := 2000.0       # 沿瞄准方向自选释放点的最大偏移(码)
+## 009「月之刃」的两张素材: `tools/gen_moonslash.py` 烤 → `tools/pixelize_sheet.py` 的 `steel` 锁定板。
+##
+## ★★这一版是**照着上一代实拍 100 帧逐帧重写的**(docs/studies/20260909-009旧特效逐帧.md)。
+##   我上一版(三条同心弧 + 一弯月牙)被用户否掉, 原因不是"不好看", 是我**把结构删了**。
+##   逐帧看完才发现上一代好在四件事, 我一件没留 ——
+##     ① 预警是**一片区域**(半透/脉动/不遮挡单位), 一眼说清"这一整片要挨打";
+##        三条细弧只说了边界在哪, 面积感为零, 而且三条同心弧是标准的**声波图形**。
+##     ② 斩痕**叠在还亮着的预警上**沿带心劈开 ⇒ 读作"在这片区域里劈了一刀";
+##        我做成"预警收掉 → 月牙出现", 因果链当场断掉。
+##     ③ 白光是**热核 + 冷边**(有温度层次), 不是一块纯白。
+##     ④ 0.56 秒里 alpha 脉动两个来回, 有呼吸感。
+##   ⇒ 本版**结构与节奏原样保留**, 只换表面。上一代真正该修的只有五条, 全是表面:
+##     消散变灰块 / 软边无 NEAREST / 靠 rotation 转贴图 / 芥末黄名实不符 / 图标是直剑。
+const MOON_BAND_TEX := "res://assets/sprites/vfx/eq009-band.png"     # 16 向 × 1 帧 预警区(填充)
+const MOON_SLASH_TEX := "res://assets/sprites/vfx/eq009-slash.png"   # 16 向 × 5 帧 斩痕
+const MOON_DIRS := 16
+const MOON_SLASH_FRAMES := 5
+const MOON_CELL := 192           # 每格边长(像素)
+## 画布中心 = 释放点 + 瞄准方向 × 带心半径。扇区对称于瞄准轴, 跟着轴平移之后
+## ±420 码就框得下(整圆盘要 ±800) ⇒ 同样的格子数换来 3.8 倍的像素密度。
+const MOON_ANCHOR := (BLADE_R_IN + BLADE_R_OUT) * 0.5
+## 每格覆盖 2 × 0.525 × BLADE_R_OUT = 840 码; 840 × WS(0.024) = 20.16 米 / 192 px = 0.105。
+## ★这个数不是"看着合适"挑的, 是被【像素密度】逼出来的: 渲整圆盘那版是 0.40 米/像素,
+##   而 006 地缝 0.045、007 剑气墙 0.095 —— 009 会比它们粗一个数量级, 上屏是大色块。
+##   门禁 verify_eq_wide_blade 把这条关系焊死(改 CELL 或 R_OUT 不同步改这里就红)。
+const MOON_PIXEL_SIZE := 0.105
+## 画布半宽(码)。生成器里是 `VIEW = 0.525` 占 R_OUT 的比例 ⇒ 0.525 × 800 = 420。
+## ★门禁要靠它反算「释放点落在格内哪个像素」来量方向, 所以必须和生成器是同一个数,
+##   不能两边各写各的(手抄的副本必然落后)。
+const MOON_VIEW := 0.525 * BLADE_R_OUT
+## 预警总时长与上一代一致(0.56 秒), 但**逐格走游戏时钟**而不是 tween ——
+## tween 走未钳制的真实 delta, 与量它的时刻戳不是同一条时钟, 实拍会量出假时长(v0.19.345 那一课)。
+const MOON_TEL_STEPS := 14       # 14 格 × 0.04 = 0.56 秒
+const MOON_TEL_STEP := 0.04
+const MOON_TEL_A := 0.44         # 预警 alpha 中位; 峰 0.58 / 谷 0.30, 在 0.56 秒里走两个来回
+const MOON_TEL_SWING := 0.14
+const MOON_TEL_RISE := 0.12      # 前 12% 从 0 淡入(上一代就是从 alpha 0 淡入的, 不是一出生就满)
+const MOON_SLASH_STEP := 0.11    # 斩痕 5 帧 × 0.11 = 0.55 秒(与上一代一致)
 ## 【049 连发弩】朝最远敌连射, 按目标【已损】生命插值加伤。
 ## 【022 余烬燃油瓶】定时抛火瓶, 命中点上「真火」。
 const EMBER_IV := 8.0            # 每几秒抛一个火瓶(主场景 _EQ_CUSTOM_IV 引用本常量)
@@ -998,6 +1036,19 @@ func _screen_dir_frame(dir: Vector2, n: int) -> int:
 	var ang: float = atan2(-dir.y * SWORD_SCREEN_SQUASH, dir.x)
 	var idx: int = int(round(ang / (TAU / float(n))))
 	return posmod(idx, n)
+
+## 场地方向 → 【贴地素材】的第几格。给 `axis = AXIS_Y`(躺在地上)的 Sprite3D 用。
+## ★★别和上面那个 `_screen_dir_frame` 搞混, 两者的口径是**相反**的:
+##   · 立着的 billboard(006 飞剑 / 007 剑气墙): 贴图始终正对相机, 所以要按**屏幕投影角**选帧,
+##     场地 y 得乘俯角压缩系数、还要取负(屏幕 y 向下而数学角向上)。
+##   · 躺在地上的贴图(009 的预警刻痕与月刃): 它跟地面一起被相机投影, **贴图的 u/v 就是场地的 x/y**,
+##     所以直接拿场地角、而且 y **不取负**(素材是按"场地 y 向下"烤的, 见 gen_moonslash.py 的注释)。
+##   抄错任何一处都会让八格整体偏, 而且肉眼看不出来 —— 007 的剑气墙就一致偏了 175°,
+##   是逐格量才发现的(memory fb-verify-check-can-fail 第 6 条)。
+func _ground_dir_frame(dir: Vector2, n: int) -> int:
+	if dir.length() < 0.001 or n <= 0:
+		return 0
+	return posmod(int(round(atan2(dir.y, dir.x) / (TAU / float(n)))), n)
 
 ## a → b 的【最短有向步数】(可负)。平局(正好半圈)取负 = 顺时针,
 ## 因为立姿朝上、目标多半在左右, 顺时针那半圈更像"把剑压下来"。
@@ -1777,52 +1828,92 @@ func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽�
 	for _o in foes: cen += _o["pos"]
 	if not foes.is_empty(): cen /= float(foes.size())
 	var aimpt: Vector2 = cen if not foes.is_empty() else tgt["pos"]
-	var dir: Vector2 = (aimpt - src["pos"]).normalized()
-	if dir.length() < 0.1: dir = Vector2.RIGHT
-	var ang: float = -atan2(dir.y, dir.x)
+	var raw: Vector2 = (aimpt - src["pos"]).normalized()
+	if raw.length() < 0.1: raw = Vector2.RIGHT
+	## ★★把瞄准轴**吸附到素材的 16 档**, 然后**选释放点和判定都用吸附后的轴**。
+	##   贴图只有 16 档而判定用真实角 ⇒ 画出来的扇区边和真判定边最多差 11.25°,
+	##   在带心 650 码处两端错开约 127 码 —— 敌人明明画在带里却不掉血, 就是通病「演出与判定不一致」。
+	##   不靠加档位解决(32 档贴图会翻倍), 靠**让判定也用同一个角** ⇒ 差值恒为 0。
+	##   代价只是瞄准轴落在 22.5° 网格上, 而释放点搜索本来就会沿该轴重新找最优覆盖。
+	var dirf: int = _ground_dir_frame(raw, MOON_DIRS)
+	var dir: Vector2 = _moon_dir_of(dirf)
 	var org: Vector2 = blade_release_point(src, dir, foes, (aimpt - src["pos"]).length())
-	var tel := Sprite3D.new()   # 1) 预警扇区(脉动黄)
-	tel.texture = VfxTex._make_sector_tex(Color(1.0, 0.78, 0.2, 1.0))
-	tel.billboard = BaseMaterial3D.BILLBOARD_DISABLED; tel.axis = Vector3.AXIS_Y
-	tel.shaded = false; tel.transparent = true
-	tel.pixel_size = 0.15   # 128px=800码
-	tel.rotation = Vector3(0.0, ang, 0.0)
-	tel.position = battle._world_pos(org + dir * 400.0, 0.08)   # 扇区apex在释放点org
-	tel.modulate = Color(1.0, 0.78, 0.2, 0.0)
+	## 1) 预警: **一片填充的区域**(不是几条线) —— 上一代最重要的那一样, 我上一版把它删了。
+	##    从 alpha 0 淡入, 0.56 秒里脉动两个来回; 峰值只到 0.58 ⇒ 半透, 单位照样画在它上面。
+	var tel := _moon_sprite(MOON_BAND_TEX, 1, dirf, org, dir, 0.08)
+	tel.modulate.a = 0.0
 	battle._world.add_child(tel)
-	var tt = battle._reg_tween()
-	tt.tween_property(tel, "modulate:a", 0.5, 0.12)
-	for _p in range(2):
-		tt.tween_property(tel, "modulate:a", 0.28, 0.14)
-		tt.tween_property(tel, "modulate:a", 0.6, 0.14)
-	await battle._wait_sim(0.56)
-	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
+	## ★逐格走 `_wait_sim`(游戏时钟)而不是 tween: tween 走未钳制的真实 delta,
+	##   与量它的时刻戳不是同一条时钟, 实拍会量出假时长(v0.19.345 那一课)。
+	##   alpha 也在**同一个循环里**直接写 ⇒ 演出与量它的尺子共用一条时钟。
+	for gi in range(MOON_TEL_STEPS):
+		if is_instance_valid(tel):
+			tel.modulate.a = _moon_tel_alpha(float(gi) / float(MOON_TEL_STEPS))
+		await battle._wait_sim(MOON_TEL_STEP)
+		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 	if not src.get("alive", false):
 		if is_instance_valid(tel): tel.queue_free()
 		return
-	if is_instance_valid(tel):
-		var tf = battle._reg_tween(); tf.tween_property(tel, "modulate:a", 0.0, 0.12); tf.tween_callback(tel.queue_free)
-	battle._shake(battle.JUICE_SHAKE_HEAVY)   # 2) 黄色月光斩(弯月闪电 5帧逐帧, 放大, 用户)
-	var moon := Sprite3D.new()
-	moon.texture = VfxTex._make_moon_sheet(Color(1.0, 0.88, 0.25))
-	moon.hframes = 5; moon.frame = 0
-	moon.billboard = BaseMaterial3D.BILLBOARD_DISABLED; moon.axis = Vector3.AXIS_Y
-	moon.shaded = false; moon.transparent = true
-	moon.pixel_size = 0.15   # 128px=800码, 与预警扇区同尺寸
-	moon.rotation = Vector3(0.0, ang, 0.0)
-	moon.position = battle._world_pos(org + dir * 400.0, 0.12)   # apex在释放点org, 与预警扇区同位置→斩击必在区内
+	battle._shake(battle.JUICE_SHAKE_HEAVY)   # 2) 斩痕: **叠在还亮着的预警上**, 不是"预警收掉再出现"
+	var moon := _moon_sprite(MOON_SLASH_TEX, MOON_SLASH_FRAMES, dirf, org, dir, 0.12)
 	battle._world.add_child(moon)
-	var mf = battle._reg_tween()   # 逐帧播 5帧
-	for _fi in range(5):
-		mf.tween_callback(battle._set_sprite_frame.bind(moon, _fi))
-		mf.tween_interval(0.11)   # 放慢帧速(用户)
-	mf.tween_callback(moon.queue_free)
-	## 3) 伤害: 用**和演出同一个** org 与同一个谓词(手写一份就等于抄一次永远落后一次)
+	## 3) 伤害: 用**和演出同一个** org / dir 与同一个谓词(手写一份就等于抄一次永远落后一次)
 	var hits: Array = blade_hit_test(org, dir, blade_alive_enemies(src))
 	var mult: float = ([2.0, 2.5, 3.0][si]) if hits.size() <= 1 else 1.0
 	for o in hits:   # 同帧两段同时结算: 物理(红)+真实(白); 飘字各自随机抛物散开(不叠, 无延时)
 		battle._damage._apply_damage_from(src, o, int(battle._atk_dmg(src, [0.5, 0.7, 0.9][si], o) * mult), Color("#ff5a5a"), 0.0, false, true)
 		battle._damage._apply_damage_from(src, o, int([30, 45, 60][si] * mult), Color("#ffffff"), 0.0, true, true)
+	## 4) 斩痕逐帧: 细亮线 → 张开 → 满(热核+冷边) → 碎 → 残片。同样走游戏时钟。
+	##    伤害在第 0 帧就结完 —— 斩击本来就是瞬间的, 后面几帧是它留下的痕迹, 不是"还在飞"。
+	## ★★消散**只靠碎开 + alpha**, 素材本身全程满亮(逐帧实测平均亮度 194~202)。
+	##   上一代是把颜色压暗成灰(实拍 #44-46 / #84-86), 黑场上读成"地上飘着几块灰板" ——
+	##   这是 `fb-vfx-defect-families` 的「淡出病」, 也是上一代唯一一个真正的演出缺陷。
+	## ★预警**不在斩痕出现时立刻收掉**: 上一代实拍 #24-26 里黄区还亮着, 白光叠在它上面,
+	##   读作"在这片区域里劈了一刀"。前两帧原样保持, 之后才淡出。
+	for mfi in range(MOON_SLASH_FRAMES):
+		if is_instance_valid(moon):
+			moon.frame = mfi * MOON_DIRS + dirf
+			moon.modulate.a = 1.0 if mfi < MOON_SLASH_FRAMES - 1 else 0.55
+		if is_instance_valid(tel):
+			var hold: float = clampf(float(mfi - 1) / float(MOON_SLASH_FRAMES - 2), 0.0, 1.0)
+			tel.modulate.a = (MOON_TEL_A + MOON_TEL_SWING) * (1.0 - hold)
+		await battle._wait_sim(MOON_SLASH_STEP)
+		if not is_instance_valid(battle): return
+	if is_instance_valid(moon): moon.queue_free()
+	if is_instance_valid(tel): tel.queue_free()   # 有开就有合: 预警一定收掉
+
+
+## 预警的 alpha 包络: 前 MOON_TEL_RISE 从 0 淡入, 全程在 0.56 秒里脉动**两个来回**。
+## ★抽成纯函数是为了让门禁能直接量它(而不是等演出跑完再截图猜), 也是为了
+##   「演出与量它的尺子共用一条时钟」—— 调用点在 `_wait_sim` 循环里逐格写。
+func _moon_tel_alpha(u: float) -> float:
+	var rise: float = clampf(u / MOON_TEL_RISE, 0.0, 1.0)
+	return rise * (MOON_TEL_A + MOON_TEL_SWING * sin(u * TAU * 2.0 - PI * 0.5))
+
+
+## 第 k 档方向对应的**单位向量** —— 与 `_ground_dir_frame` 严格互逆。
+## ★两者必须是同一套口径: 判定用它返回的向量, 贴图用 k 号格, 于是"画的"和"打的"永远同一个方向。
+func _moon_dir_of(k: int) -> Vector2:
+	var a: float = TAU * float(posmod(k, MOON_DIRS)) / float(MOON_DIRS)
+	return Vector2(cos(a), sin(a))
+
+
+## 009 的两张贴地素材共用这一份摆放(别各抄一份: 两处的口径必须完全一致, 否则预警和刃会错位)。
+func _moon_sprite(tex_path: String, vframes: int, dirf: int, org: Vector2, dir: Vector2, h: float) -> Sprite3D:
+	var sp := Sprite3D.new()
+	sp.texture = load(tex_path)
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素画必须 NEAREST, 否则缩放糊成一团
+	sp.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	sp.axis = Vector3.AXIS_Y                                    # ★AXIS_Y 本身就是平铺, 不要再加 rotation.x
+	sp.shaded = false
+	sp.transparent = true
+	sp.pixel_size = MOON_PIXEL_SIZE
+	sp.hframes = MOON_DIRS
+	sp.vframes = vframes
+	sp.frame = dirf
+	## 画布中心 = 释放点 + 瞄准方向 × 带心半径(素材就是这么烤的, 见 tools/gen_moonslash.py)
+	sp.position = battle._world_pos(org + dir * MOON_ANCHOR, h)
+	return sp
 # 灼热火珊瑚 023(主动满法力)
 # 灼热火珊瑚 023(主动满法力)
 func _eq_fire_coral_active(src: Dictionary, si: int) -> void:   # 灼热火珊瑚023主动: 蓄力→挥出60°扇形火焰波(缓移550码,边挥边扩)→接触敌施 40/60/90 层灼烧(用户2026-07-19: 原固定60不吃星级)

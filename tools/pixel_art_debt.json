@@ -1,7 +1,6 @@
 {
   "_note": "不是真像素画的装备图标·只减不增。判据见 tools/pixel_art_audit.py",
   "bad_ids": [
-    "p2eq_009",
     "p2eq_010",
     "p2eq_011",
     "p2eq_013",
