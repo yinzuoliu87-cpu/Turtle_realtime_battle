@@ -357,13 +357,18 @@ func _ready() -> void:
 	##   新斩痕的最亮档是**热核, 在正中**, 那把尺子当场失效。换尺子必须重新自证。
 	## ★分母要够: 末帧只剩两百来个碎块, 拿它量方向会读出 +9.82°(实测) —— 不是素材偏了,
 	##   是样本太散。所以只在**峰值帧**上量, 并断言分母。
-	print("-- 13 方向表逐格(新尺子, 先自证) --")
+	## ★★2026-09-09 换过一次口径, 记住为什么: 斩痕改成【扫过式】之后, 单帧是**故意不对称的**
+	##   (刀刃在扫到的那一头、拖痕往回拖) ⇒ 拿单帧量"全部像素的平均角"会读出 +10.4° 而不是 0°,
+	##   而素材一点没错。这是**尺子没跟着被测概念一起改**, 不是方向表烤反了。
+	##   ⇒ 改量【五帧的并集】: 扫完之后覆盖的是整个对称扇区, 平均角必须回到 0°,
+	##     既是能自证的已知答案, 又确实量的是斩痕这张表本身。
+	##   (memory fb-verify-check-can-fail: 「能红」不证明它读的是那个量。)
+	print("-- 13 方向表逐格(量五帧并集, 先自证) --")
 	if slash_img != null:
-		var peak_row: int = 2
 		var angs: Array = []
 		var cnts: Array = []
 		for d in range(EQ.MOON_DIRS):
-			var rv: Vector2 = _cell_dir(slash_img, d, peak_row)
+			var rv: Vector2 = _cell_dir(slash_img, d, -1)
 			angs.append(rv.x)
 			cnts.append(int(rv.y))
 		_ok("★尺子自证: d0 量得 %.2f°(已知答案 0°)" % float(angs[0]), absf(float(angs[0])) < 3.0,
@@ -371,7 +376,7 @@ func _ready() -> void:
 		var mincnt: int = 999999
 		for cv in cnts:
 			mincnt = mini(mincnt, int(cv))
-		_ok("★分母: 峰值帧每格至少 800 个像素(最少 %d)" % mincnt, mincnt >= 800,
+		_ok("★分母: 并集每格至少 3000 个像素(最少 %d)" % mincnt, mincnt >= 3000,
 			"样本太散时方向重心不稳, 量出来的角不可信")
 		var bad := 0
 		for d in range(EQ.MOON_DIRS):
@@ -384,18 +389,29 @@ func _ready() -> void:
 			"哪一格偏了就是那一格烤反了 —— 007 的剑气墙曾八格一致偏 175°, 肉眼看不出来")
 
 	# ══════════════════════════════════════════════════════════════
-	#  ⑭ ★消散靠【碎开】不靠【变暗】
+	#  ⑭ ★斩痕必须【扫过去】且【盖满整条判定带】
 	# ══════════════════════════════════════════════════════════════
-	## 上一代实拍 #44-46 / #84-86: 白光消散时把颜色压暗成灰, 黑场上读成"地上飘着几块灰板"。
-	## 这是 memory fb-vfx-defect-families 的「淡出病」, 也是上一代唯一一个真正的演出缺陷。
-	## ⇒ 判据: 像素数必须真的在减少(碎), 而平均亮度**不许掉**(不暗)。
-	print("-- 14 消散靠碎不靠暗 --")
+	## ★★这一整节是照着用户 2026-09-09 的三句话立的, 每条对应一个当时真存在的缺陷:
+	##   ①「更亮的线你这没有从一边到另一边的感觉啊」
+	##      ⇒ 当时斩痕**每一帧都跨满 60 度**(实测 f0~f3 全是 -30.1~30.0), 是原地张开不是扫。
+	##   ②「更亮的线根本比预警区小太多啊, 预警是告诉玩家要实际产生伤害的地区啊」
+	##      ⇒ 当时斩痕最宽 166 码而判定带宽 304 码, 只盖 55% —— 看见细细一道却整片掉血,
+	##        正是通病「画出来的和打到的不是一回事」。
+	##   ③ 消散不许靠变暗(旧版实拍 #44-46 把颜色压暗成灰板)。
+	print("-- 14 斩痕: 扫过去 + 盖满判定带 + 消散靠碎不靠暗 --")
 	if slash_img != null:
 		var fpx: Array = []
 		var flum: Array = []
+		var lead: Array = []
+		var rmin: Array = []
+		var rmax: Array = []
+		var union := {}
 		for f in range(EQ.MOON_SLASH_FRAMES):
 			var n2 := 0
 			var s2 := 0.0
+			var la := -999.0
+			var r0 := 9999.0
+			var r1 := 0.0
 			for y in range(EQ.MOON_CELL):
 				for x in range(EQ.MOON_CELL):
 					var cc: Color = slash_img.get_pixel(x, f * EQ.MOON_CELL + y)
@@ -403,9 +419,79 @@ func _ready() -> void:
 						continue
 					n2 += 1
 					s2 += cc.r * 0.299 + cc.g * 0.587 + cc.b * 0.114
+					var fx: float = (float(x) + 0.5) / float(EQ.MOON_CELL) * 2.0 * EQ.MOON_VIEW - EQ.MOON_VIEW + EQ.MOON_ANCHOR
+					var fy: float = (float(y) + 0.5) / float(EQ.MOON_CELL) * 2.0 * EQ.MOON_VIEW - EQ.MOON_VIEW
+					var rr: float = Vector2(fx, fy).length()
+					var aa: float = rad_to_deg(atan2(fy, fx))
+					la = maxf(la, aa)
+					r0 = minf(r0, rr)
+					r1 = maxf(r1, rr)
+					union[Vector2i(x, y)] = true
 			fpx.append(n2)
 			flum.append(0.0 if n2 == 0 else s2 / float(n2))
-			print("     f%d 像素 %5d  平均亮度 %.3f" % [f, n2, float(flum[f])])
+			lead.append(la)
+			rmin.append(r0)
+			rmax.append(r1)
+			print("     f%d 像素%5d 亮度%.3f 领先边%+6.1f° 径向 %.0f~%.0f 码(宽 %.0f)"
+				% [f, n2, float(flum[f]), la, r0, r1, r1 - r0])
+
+		## ── ①「从一边到另一边」: 领先边必须逐帧单调右移, 且真的扫完全程 ──
+		## ★★判据的**时间范围**要卡对: 碎开之后根本没有"领先边"这个东西 ——
+		##   碎裂会随机去掉最外侧那块, 于是"剩余碎片的最大角"会回退(实测 +30.1 → +28.2),
+		##   而素材一点没错。第一版对全部 5 帧判单调, 当场误报。
+		##   ⇒ 用【领先边到达峰值的那一帧】自动定界(不写死帧号), 只在扫的那几帧上判单调;
+		##     并要求峰值**不在最后一帧** —— 扫完之后必须还留有帧用来碎开。
+		##   (与 ⑬ 那把尺子同族: 判据没跟着被测概念一起改。)
+		var lead_peak := 0
+		for f in range(EQ.MOON_SLASH_FRAMES):
+			if float(lead[f]) > float(lead[lead_peak]):
+				lead_peak = f
+		var mono := true
+		for f in range(1, lead_peak + 1):
+			if float(lead[f]) < float(lead[f - 1]) - 0.5:
+				mono = false
+		_ok("⑭ ★领先边在扫的那几帧里单调右移, 峰值在 f%d (%s)"
+			% [lead_peak, " → ".join(lead.map(func(v): return "%+.1f" % float(v)))],
+			mono and lead_peak > 0,
+			"每帧都跨满全角 = 原地张开不是扫; 用户说的『没有从一边到另一边的感觉』就是这个")
+		_ok("⑭ ★扫在最后一帧之前完成(峰值 f%d < 末帧 f%d), 之后才是碎开"
+			% [lead_peak, EQ.MOON_SLASH_FRAMES - 1], lead_peak < EQ.MOON_SLASH_FRAMES - 1,
+			"扫到最后一帧才完 = 没有留给碎开的时间")
+		var swept: float = float(lead[lead_peak]) - float(lead[0])
+		_ok("⑭ ★真的扫过了 %.1f°(须 >= 全角 %.0f° 的一半)" % [swept, EQ.BLADE_ARC_DEG],
+			swept >= EQ.BLADE_ARC_DEG * 0.5,
+			"扫的幅度太小 = 看不出是一刀扫过去")
+
+		## ── ②「画的不能比打的小」: 每一帧的径向宽度都要盖满判定带 ──
+		var hitband_w: float = EQ.BLADE_R_OUT - EQ.BLADE_R_IN
+		var thin := 0
+		for f in range(EQ.MOON_SLASH_FRAMES):
+			if float(rmax[f]) - float(rmin[f]) < hitband_w * 0.95:
+				thin += 1
+		_ok("⑭ ★每帧都盖满判定带(%.0f 码), 偏窄的帧 %d 个" % [hitband_w, thin], thin == 0,
+			"斩痕比伤害区窄 = 玩家看见细细一道却整片掉血 = 画出来的和打到的不是一回事")
+		## 扫完之后整片都要被切过 —— 与预警的铺展检查同一把尺子
+		var g2 := []
+		for gi in range(48):
+			g2.append(0)
+		for k in union.keys():
+			var ux: float = (float(k.x) + 0.5) / float(EQ.MOON_CELL) * 2.0 * EQ.MOON_VIEW - EQ.MOON_VIEW + EQ.MOON_ANCHOR
+			var uy: float = (float(k.y) + 0.5) / float(EQ.MOON_CELL) * 2.0 * EQ.MOON_VIEW - EQ.MOON_VIEW
+			var ur: float = Vector2(ux, uy).length()
+			var ua: float = atan2(uy, ux)
+			if ur < EQ.BLADE_R_IN or ur > EQ.BLADE_R_OUT or absf(ua) > deg_to_rad(EQ.BLADE_ARC_DEG * 0.5):
+				continue
+			var ri2: int = mini(5, int((ur - EQ.BLADE_R_IN) / (EQ.BLADE_R_OUT - EQ.BLADE_R_IN) * 6.0))
+			var ai2: int = mini(7, int((ua + deg_to_rad(EQ.BLADE_ARC_DEG * 0.5)) / deg_to_rad(EQ.BLADE_ARC_DEG) * 8.0))
+			g2[ri2 * 8 + ai2] += 1
+		var e2 := 0
+		for v in g2:
+			if int(v) == 0:
+				e2 += 1
+		_ok("⑭ ★五帧并集铺展: 48 子格空 %d 个(须 0 —— 扫完整片都被切过)" % e2, e2 == 0,
+			"有子格从没被切过 = 那块地会掉血但从头到尾没画东西")
+
+		## ── ③ 消散靠碎不靠暗 ──
 		var peak_i := 0
 		for f in range(EQ.MOON_SLASH_FRAMES):
 			if int(fpx[f]) > int(fpx[peak_i]):
@@ -416,16 +502,17 @@ func _ready() -> void:
 				shrink = false
 		_ok("⑭ 峰值在 f%d, 之后逐帧变少(碎开)" % peak_i, shrink and peak_i < EQ.MOON_SLASH_FRAMES - 1,
 			"末尾不减少 = 没有在碎")
-		var lum_drop: float = float(flum[0]) - float(flum[EQ.MOON_SLASH_FRAMES - 1])
-		_ok("⑭ 末帧平均亮度 %.3f vs 首帧 %.3f, 掉 %.3f(须 <0.08)" % [float(flum[EQ.MOON_SLASH_FRAMES - 1]), float(flum[0]), lum_drop],
-			lum_drop < 0.08,
+		## ★判据从「首帧 vs 末帧」改成「满帧 vs 末帧」: 扫过式下首帧只是一小片刀刃(几乎全是热核),
+		##   平均亮度天然最高, 拿它当基线会把正常的扫判成变暗。要卡的是**消散那一段**有没有被压暗。
+		var drop: float = float(flum[peak_i]) - float(flum[EQ.MOON_SLASH_FRAMES - 1])
+		_ok("⑭ 末帧亮度 %.3f vs 满帧(f%d) %.3f, 掉 %.3f(须 <0.05)"
+			% [float(flum[EQ.MOON_SLASH_FRAMES - 1]), peak_i, float(flum[peak_i]), drop], drop < 0.05,
 			"颜色被压暗 = 淡出病 = 黑场上读成灰板; 消散该交给代码侧 alpha")
-		## 逐帧不许重样(上一版 f1 与 f2 逐像素完全相同, 5 帧只演了 4 帧)
 		var dup := 0
 		for f in range(1, EQ.MOON_SLASH_FRAMES):
 			if int(fpx[f]) == int(fpx[f - 1]):
 				dup += 1
-		_ok("⑭ 5 帧没有重样的(重复 %d 对)" % dup, dup == 0, "两帧一模一样 = 白演一帧")
+		_ok("⑭ %d 帧没有重样的(重复 %d 对)" % [EQ.MOON_SLASH_FRAMES, dup], dup == 0, "两帧一模一样 = 白演一帧")
 
 	# ══════════════════════════════════════════════════════════════
 	#  ⑮ ★「画的方向」与「打的方向」必须是同一个
@@ -549,18 +636,30 @@ func _ready() -> void:
 ##   释放点在格内的像素坐标 = 格心 − dir × (ANCHOR / VIEW) × (CELL/2)。
 ## ★返回像素数是为了让调用方**断言分母**: 末帧只剩两百来个碎块时重心不稳,
 ##   实测会读出 +9.82° —— 那不是素材偏了, 是样本太散(2026-09-09 差点据此去"修"没坏的素材)。
+## `row = -1` ⇒ 量**所有帧的并集**(见下面的说明)。
 func _cell_dir(img: Image, d: int, row: int) -> Vector2:
 	var cell: int = EQ.MOON_CELL
 	var th: float = TAU * float(d) / float(EQ.MOON_DIRS)
 	var k: float = EQ.MOON_ANCHOR / EQ.MOON_VIEW * (float(cell) * 0.5)
 	var cx: float = float(cell) * 0.5 - cos(th) * k
 	var cy: float = float(cell) * 0.5 - sin(th) * k
+	var rows: int = int(img.get_height() / cell)
+	var r0: int = row
+	var r1: int = row
+	if row < 0:
+		r0 = 0
+		r1 = rows - 1
 	var sx := 0.0
 	var sy := 0.0
 	var n := 0
 	for y in range(cell):
 		for x in range(cell):
-			if img.get_pixel(d * cell + x, row * cell + y).a <= 0.0:
+			var on := false
+			for rr in range(r0, r1 + 1):
+				if img.get_pixel(d * cell + x, rr * cell + y).a > 0.0:
+					on = true
+					break
+			if not on:
 				continue
 			var a: float = atan2((float(y) + 0.5) - cy, (float(x) + 0.5) - cx)
 			sx += cos(a)

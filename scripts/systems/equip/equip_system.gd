@@ -1874,9 +1874,16 @@ func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽�
 		if is_instance_valid(moon):
 			moon.frame = mfi * MOON_DIRS + dirf
 			moon.modulate.a = 1.0 if mfi < MOON_SLASH_FRAMES - 1 else 0.55
+		## ★★预警**一起手就退场**, 两帧内退完(用户 2026-09-09:「斩击后为什么还有预警？」)。
+		##   预警的活在伤害落地那一刻就干完了 —— 它的唯一职责是"提前告诉你这片地要挨打",
+		##   刀已经砍下去了还挂在那儿, 就变成了没有含义的底色。
+		##   上一版让它拖到斩痕后期才淡出, 是把"叠在预警上"这条读法用过头了:
+		##   叠只需要**斩痕出现的那一瞬**, 之后就该让位给斩痕自己。
 		if is_instance_valid(tel):
-			var hold: float = clampf(float(mfi - 1) / float(MOON_SLASH_FRAMES - 2), 0.0, 1.0)
-			tel.modulate.a = (MOON_TEL_A + MOON_TEL_SWING) * (1.0 - hold)
+			var fade: float = clampf(1.0 - float(mfi) * 0.5, 0.0, 1.0)
+			tel.modulate.a = (MOON_TEL_A + MOON_TEL_SWING) * fade
+			if fade <= 0.0:
+				tel.queue_free()
 		await battle._wait_sim(MOON_SLASH_STEP)
 		if not is_instance_valid(battle): return
 	if is_instance_valid(moon): moon.queue_free()
