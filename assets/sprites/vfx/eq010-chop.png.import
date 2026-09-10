@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bq7i5khfcvmk2"
-path="res://.godot/imported/eq010-tel.png-ca5b33f3fd366b63645cd72c62f9a553.ctex"
+uid="uid://dqo50jt2srjie"
+path="res://.godot/imported/eq010-chop.png-900227a2de92e5760e82f92125bd165f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/eq010-tel.png"
-dest_files=["res://.godot/imported/eq010-tel.png-ca5b33f3fd366b63645cd72c62f9a553.ctex"]
+source_file="res://assets/sprites/vfx/eq010-chop.png"
+dest_files=["res://.godot/imported/eq010-chop.png-900227a2de92e5760e82f92125bd165f.ctex"]
 
 [params]
 

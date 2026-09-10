@@ -57,6 +57,70 @@ func _run_chunked(chunks: Array, seed_val: int) -> String:
 	await get_tree().process_frame
 	return fp
 
+
+## ═══════════════════════════════════════════════════════════════════════════
+##  `_wait_sim(k × SIM_DT)` 必须**正好**等 k 个 sim 步
+## ═══════════════════════════════════════════════════════════════════════════
+## ★★2026-09-10 逐帧看 010 时抓到的真缺陷, 而且它**不是 010 的**, 是这条核心助手的:
+##   `_t` 是一步一步加出来的(每步 SIM_DT = 1/60), 而 1/60 在浮点里不精确 ——
+##   3 步加起来是 0.049999999999999996, 而 `t_end = _t + 0.05` 里的 0.05 是 0.050000000000000003。
+##   于是 `while _t < t_end` **多等一步**: 想等 0.05 实际等 0.0667(+33%)。
+##   ★而且看运气: 探针实测 010 斩击第一次施放五帧全是 4 步、第二次施放全是 3 步 ——
+##   同一段演出两次施放长度差 33%, 而这条路上**几乎所有演出**都在用 `_wait_sim`。
+## ★量法: 每帧恰喂 1 个 SIM_DT 步, 让真的 `_wait_sim` 自己跑完, 量 `_t` 走了多远
+##   —— 不重写它的算法(手抄的副本必然落后, memory `fb-hand-rolled-copies-drift`)。
+func _do_wait(s, secs: float, fin: Array) -> void:
+	await s._wait_sim(secs)
+	fin[0] = true
+
+func _measure_wait(s, secs: float) -> float:
+	var t0: float = s._t
+	var fin: Array = [false]
+	_do_wait(s, secs, fin)          # 不 await: 让它作为协程在旁边跑
+	var guard := 0
+	while not fin[0] and guard < 4000:
+		s._advance_sim_accum(1.0 / 60.0)   # 每帧恰 1 步 → "等了多久"= _t 走了多远
+		await get_tree().process_frame
+		guard += 1
+	return s._t - t0
+
+
+func _check_wait_sim() -> void:
+	var SIM_DT: float = 1.0 / 60.0
+	RB.DEBUG_EDIT = true
+	var s = RB.new()
+	add_child(s)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	s.set_process(false)   # 只由 _measure_wait 手动喂 → 与真实帧率无关
+	s._debug._edit_clear()
+	s._edit_dummy_killable = false
+	s._debug._edit_place_unit("dice", "left", Vector2(320, 300))
+	s._debug._edit_place_unit("basic", "right", Vector2(400, 300))
+	s._debug._edit_start_battle()
+	s._deterministic = false
+	s._sim_accum = 0.0
+	## 多种步数 × 多轮 ⇒ 每次起跑时 `_t` 的浮点相位都不同, 才踩得到那条刀锋
+	## (只试一次会碰运气地全对 —— 实测第一次施放 4 步、第二次 3 步)。
+	var ks: Array = [1, 2, 3, 6, 18, 3, 2, 3, 6, 3]
+	var bad := 0
+	var worst := 0.0
+	var got_list: Array = []
+	for k in ks:
+		var want: float = float(k) * SIM_DT
+		var got: float = await _measure_wait(s, want)
+		got_list.append(roundf(got / SIM_DT * 100.0) / 100.0)
+		var err: float = absf(got - want)
+		worst = maxf(worst, err / SIM_DT)
+		if err > 1.0e-9:
+			bad += 1
+	_ok("分母: 量了 %d 次 _wait_sim(k×SIM_DT), 实际步数 %s" % [ks.size(), str(got_list)],
+		ks.size() == 10 and s._t > 0.0)
+	_ok("★_wait_sim(k×SIM_DT) 正好等 k 步(超出 %.3f 步; 须 < 0.001)" % worst, bad == 0,
+		"多等一步 = 那段演出凭浮点相位随机慢 33%%; 想等 k 步却等了 k+1 步的有 %d 次" % bad)
+	s.queue_free()
+	await get_tree().process_frame
+
 func _ready() -> void:
 	var SIM_DT: float = 1.0 / 60.0
 	var N := 150   # 整步数(2.5 秒模拟)——够骰子龟移动+普攻+放技+DoT, 指纹随战斗推进
@@ -106,6 +170,8 @@ func _ready() -> void:
 
 	# 分母: 指纹非空 + 战斗真推进了(假人掉了血 / 龟移动了 → 不是静止空局)。
 	_ok("分母: 指纹含单位状态且战斗有推进", fp60.length() > 10 and fp60.find("dice:") >= 0 and float(N) * SIM_DT > 0.0, fp60.substr(0, 60))
+
+	await _check_wait_sim()
 
 	print("ALL PASS — 交互累加器帧率无关(任意分帧同总时长→同结果·Phase4切片2 生效)" if _fail == 0 else "FAILED: %d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

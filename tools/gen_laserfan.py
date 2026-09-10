@@ -59,11 +59,16 @@ CELL = 224                      # 最终格边长; 顶点在格心 ⇒ 半格 11
 VIEW = (CELL * 0.5) / R_TEX     # 画布半宽(占 R 的比例) = 1.037
 SS = 6                          # 超采样倍数
 
-## 竖劈行波条: 世界尺寸**固定**(与射程无关) ⇒ 密度恒定。
-BAR_HW_TEX = 19.0               # 条半宽在纹理里的像素数(= LASER_CHOP_HALF_W 码)
-BAR_CELL = 44                   # 半格 22 > 19, 转到任意方向都装得下
+## 竖劈冲击波: 世界尺寸**固定**(与射程无关) ⇒ 密度恒定。
+## ★★这是**一道会动的波**, 不是一排铺好的条(用户 2026-09-10:
+##   「我实际的效果就是波在移动, 碰到人造成伤害, 你这样没有遵从装备效果啊」)。
+##   上一版我把它做成沿路径铺 N 条、逐条点亮 —— 几何对了(每条正是 160 码判定带),
+##   但那不是「波在移动」, 是把效果换个说法重新编码了一遍。演出必须**就是**那个效果。
+BAR_HW_TEX = 19.0               # 波前半宽在纹理里的像素数(= LASER_CHOP_HALF_W 码)
+BAR_CELL = 48                   # 半格 24 > 1.14×19, 转到任意方向都装得下
 BAR_VIEW = (BAR_CELL * 0.5) / BAR_HW_TEX
-BAR_THICK = 0.30                # 条半厚(占半宽的比例) ⇒ 80×0.30 = 24 码半厚 = 48 码厚
+WAVE_BOW = 0.34                 # 波前外凸(占半宽的比例) —— 弧形, 中间比两端靠前
+WAVE_TRAIL = 0.30               # 拖尾长度(占半宽的比例)
 
 ## laser 板(与 tools/pixelize_sheet.py 的 PALETTES["laser"] 一致, 索引 0 最亮)
 P = [
@@ -84,42 +89,14 @@ BAYER4 = [
 ]
 
 
+def clamp01(x):
+    return 0.0 if x < 0.0 else (1.0 if x > 1.0 else x)
+
+
 def _frac(x):
     """确定性伪随机 0..1 —— 同一个 x 永远给同一个值(可复现, 不用 random)。"""
     v = math.sin(x * 12.9898) * 43758.5453
     return v - math.floor(v)
-
-
-## ─────────────────────────────────────────────────────────────
-## 预警扇形 tel —— 一整片**填充**的 120° 扇区
-## ─────────────────────────────────────────────────────────────
-def _shade_tel(r, a, half, t, pxq):
-    """预警区的唯一职责: 说清【这一整片会挨伤害】。
-
-    ★009 那一轮用户否掉的东西, 这里一开始就不许出现:
-      · 不许在里面画任何**宣称更小范围**的东西(那一轮是"带心一条更亮的线")。
-        伤害打的是整个 120°×R 的扇面, 不是一条线、不是一个环。
-      · 不许只画边界线 —— 三条细线只说了边界在哪, **面积感为零**。
-    ⇒ 里面是**均匀偏满**的半调网点(覆盖率处处 ≥ 0.55), 边界另外三条实心亮轮廓。
-      顶点附近略密一点是**有因的**(刀从那里出), 而且不构成"更小的范围":
-      外围仍然是密网点, 不是稀到看不见。
-    """
-    qx, qy = pxq
-    th = float(BAYER4[qy & 3][qx & 3]) / 16.0
-    ua = abs(a) / half
-    ## ① 三条边界(外弧 + 两条直边), 只画在扇内侧 ⇒ 画出来的范围 == 打得到的范围
-    if r > 0.986 or (ua > 0.978 and r > 0.06):
-        return P[2]
-    ## ② 填充。★★这里第一版渲出来并排一看就毙了: 我把亮档写成 `cov > 0.86 + th*0.34`,
-    ##    抖动幅度只有 0.34 ⇒ 顶点附近那片亮色是一块**有硬边界的楔形**(实测 275 px)。
-    ##    那正是 009 被用户否掉的那句「预警里不许有任何东西宣称一个更小的范围」——
-    ##    玩家会读成"这块小的才真打"。⇒ 改成两条独立的判据:
-    ##      · **密度恒定 0.90**(处处一样满, 不存在"外面更稀" ⇒ 面积感均匀)
-    ##      · **色调**在 P3/P4 之间按 cov **全幅抖动**过渡(没有任何硬边界, 只有明暗倾向)
-    if th >= 0.90:
-        return None                                  # 恒定 10% 的洞: 透出地面 ⇒ 读作光不是漆
-    cov = (1.0 - 0.38 * r) * (1.0 - 0.12 * ua * ua)  # 1.00(顶点/轴) → 0.55(外弧/两边)
-    return P[3] if cov > 0.55 + 0.45 * th else P[4]
 
 
 ## ─────────────────────────────────────────────────────────────
@@ -174,52 +151,97 @@ def _shade_slash(r, a, half, t, pxq):
 
 
 ## ─────────────────────────────────────────────────────────────
-## 竖劈行波条 bar —— **世界尺寸固定**的一条, 宽度就是判定宽度
+## 竖劈冲击波 wave —— **一道会动的弧形波前**, 世界尺寸固定
 ## ─────────────────────────────────────────────────────────────
-def _shade_bar(u, v, t, pxq, nframes):
-    """u = 沿推进方向(半宽为 1 的口径下), v = 横向 -1..1(条宽方向)。
+def _shade_wave(u, v, t, pxq, nframes):
+    """u = 沿推进方向(半宽为 1 的口径), v = 横向 -1..1(= 判定的 ±LASER_CHOP_HALF_W)。
 
-    四帧一格: 0 预警(暗网点) / 1 波前(白热) / 2 刚过(亮但稀) / 3 碎裂。
-    ★条宽 = `LASER_CHOP_HALF_W × 2`, 与 `_on_line` 用**同一个常量** ⇒ 画多宽就打多宽。
-      旧版画 125 码、打 160 码, 差 22%。
+    ★形状: 中间外凸的弧(WAVE_BOW), 领先边烫白, 往后按距离衰减成拖尾 —— 这才读作「波」。
+    ★两端**硬切**在 |v| = 1: 那是判定边界本身, 软掉等于告诉玩家"这里大概打得到"。
+    ★消散靠**碎开**不靠变暗(旧版 laser-wave 末帧压暗成褐色, 黑地上读成脏影)。
     """
     qx, qy = pxq
     th = float(BAYER4[qy & 3][qx & 3]) / 16.0
     av = abs(v)
-    if av > 1.0 or abs(u) > BAR_THICK:
+    if av > 1.0:
         return None
-    ## ★★两端**不做**淡出收尾。第一版我照 009 的带端抄了个 tip 抖动, 渲出来是一排城垛,
-    ##    而且更要命的是**方向错了**: 009 的带端是"光化开的地方", 这里的条端
-    ##    是**判定边界本身**(`_on_line` 的 ±80 码)。边界就该是硬的 ——
-    ##    软掉等于告诉玩家"这里大概打得到", 与「画多宽就打多宽」直接冲突。
-    edge = abs(u) / BAR_THICK                        # 0=条心 1=条的前后缘
+    uf = WAVE_BOW * (1.0 - v * v)            # 波前那条弧
+    d = uf - u                               # >0 = 在波前后面(拖尾侧)
+    if d < -0.02:
+        return None                          # 波前之前什么都没有
     f = int(round(t * (nframes - 1)))
-    if f == 0:                                       # 预警: 暗网点 + 两条边缘线
-        if edge > 0.80:
-            return P[4]
-        return P[5] if 0.42 > th else None
-    if f == 1:                                       # 波前: 白热核 + 热边
-        if edge < 0.30:
-            return P[0]
-        if edge < 0.62:
-            return P[1]
-        return P[2]
-    if f == 2:                                       # 刚过: 还满亮, 开始稀
-        if edge < 0.24:
-            return P[1]
-        lv = (1.0 - edge) * 3.4 + th
-        bi = int(math.floor(lv))
-        return P[max(1, 4 - bi)] if bi > 0 else None
-    ## 碎裂: 横向开洞, 颜色仍满亮(不靠变暗消散)。
-    ## ★★第一版用 `floor(v*11)` 当格号 —— v 是 **-1..1 的对称量**, floor 对称 ⇒
-    ##    左右两半拿到成对的格号、`_frac` 又是偶函数式的哈希 ⇒ 渲出来是一张**镜像对称的花纹**
-    ##    (实测像城垛 + 一张脸), 读成"刻意做的装饰"而不是"碎掉的东西"。
-    ##    ⇒ 格号先平移到全正区间再哈希, 两个方向用互质的系数错开。
-    cg = math.floor((v + 1.0) * 11.0)                # 0..21, 不对称
-    ce = math.floor((u / BAR_THICK + 1.0) * 1.5)     # ★用**带符号**的 u: edge 是 |u| ⇒ 沿厚度方向也会镜像
-    if _frac(cg * 3.77 + ce * 9.13 + 0.31) < 0.60:
+    trail = WAVE_TRAIL * (0.45 if f == 0 else (1.0 if f < 3 else 0.75))
+    if d > trail:
         return None
-    return P[2] if edge < 0.5 else P[3]
+    k = clamp01(d / max(1e-6, trail))        # 0 = 贴着波前, 1 = 拖尾末端
+    if f == 3:                               # 碎裂: 横向开洞, 颜色仍满亮
+        cg = math.floor((v + 1.0) * 13.0)
+        ce = math.floor(k * 3.0)
+        if _frac(cg * 3.77 + ce * 9.13 + 0.31) < 0.58:
+            return None
+        return P[2] if k < 0.5 else P[3]
+    if k < 0.16:
+        return P[0]                          # 白热波前(领先那一条)
+    lv = (1.0 - k) * 4.6 + th
+    bi = int(math.floor(lv))
+    if bi <= 0:
+        return None
+    return P[max(0, 5 - bi)]
+
+
+## ─────────────────────────────────────────────────────────────
+## 竖劈落刃 chop —— 携带者头上落下的那一刀(公告板, 单方向)
+## ─────────────────────────────────────────────────────────────
+def _shade_chop(x01, y01, t, pxq, nframes):
+    """旧版这一段用户认可(斜刃下落 → 劈地红爆), 所以形状原样保留, 只换成像素画。
+    ★但落点从**目标身上**改到**携带者身上** —— 旧版把刀画在目标头上、伤害却靠波飞 0.30 秒
+      才到, 玩家看到的「劈」和真正掉血的「波」不是同一件事。
+      竖劈是携带者劈出来的, 波才是打人的那一下。
+    """
+    qx, qy = pxq
+    th = float(BAYER4[qy & 3][qx & 3]) / 16.0
+    f = int(round(t * (nframes - 1)))
+    if f <= 2:
+        ## 刃: 从右上斜着压下来, 每帧更低。
+        ## ★★两个数是**算出来的不是拍的**(第一版两条都错, 渲出来一眼就看见):
+        ##   ① 刀尖的终点必须**正好落在劈地红爆的中心**(0.42, 0.80) —— 第一版刀尖停在 y=0.52,
+        ##      而红爆画在 y=0.80, 刀根本没碰到地就炸了。
+        ##   ② 起始帧整把刀要在格子里 —— 第一版刀根伸到 y=-0.36, 第 0 帧被切掉大半。
+        ##   ⇒ 刀尖 (0.62,0.34) → (0.42,0.80); 刃长 0.34 ⇒ 起始帧刀根 (0.754,0.028) 仍在格内。
+        drop = [0.00, 0.50, 1.00][f]
+        bx, by = 0.62 - drop * 0.20, 0.34 + drop * 0.46
+        dx, dy = x01 - bx, y01 - by
+        along = (dx * -0.3987 + dy * 0.9170)         # 沿下落方向(左下); <0 = 刀尖之后的刃身
+        perp = abs(-dx * 0.9170 + dy * -0.3987)
+        blen = 0.34
+        if -blen < along < 0.04:
+            s01 = (-along) / blen
+            w = 0.046 * (1.0 - s01) ** 0.5
+            if perp < w:
+                return P[0] if perp < w * 0.40 else (P[2] if perp < w * 0.75 else P[3])
+            if perp < w * 1.8 and (1.0 - (perp - w) / max(1e-6, w * 0.8)) > 0.34 + th * 0.6:
+                return P[4]
+        return None
+    ## 后两帧: 劈地红爆 —— 地面一道横向裂光, 中间白热
+    cy = 0.80
+    dy2 = abs(y01 - cy)
+    halfw = [0.0, 0.0, 0.0, 0.40, 0.52][f]
+    dxc = abs(x01 - 0.42)   # 与刀尖终点同一个 x
+    if dxc > halfw:
+        return None
+    prof = 1.0 - (dxc / halfw) ** 2
+    thick = 0.055 * prof
+    if dy2 > thick:
+        return None
+    if f == 4:                                # 末帧碎开, 不压暗
+        if _frac(math.floor(x01 * 34.0) * 5.7 + math.floor(y01 * 34.0) * 2.3) < 0.55:
+            return None
+    e = 1.0 - dy2 / max(1e-6, thick)
+    lv = e * prof * 4.8 + th
+    bi = int(math.floor(lv))
+    if bi <= 0:
+        return None
+    return P[max(0, 5 - bi)]
 
 
 def render_cell(mode, d_ang, f, nframes, px):
@@ -229,7 +251,7 @@ def render_cell(mode, d_ang, f, nframes, px):
     ld = img.load()
     t = f / float(max(1, nframes - 1))
     ca, sa = math.cos(d_ang), math.sin(d_ang)
-    if mode == "bar":
+    if mode == "wave":
         for y in range(n):
             # 画布 y 向下, 场地 y 向下(与 ARENA 同口径) ⇒ 不翻转
             fy = (y + 0.5) / n * 2.0 * BAR_VIEW - BAR_VIEW
@@ -237,13 +259,21 @@ def render_cell(mode, d_ang, f, nframes, px):
             for x in range(n):
                 fx = (x + 0.5) / n * 2.0 * BAR_VIEW - BAR_VIEW
                 u = fx * ca + fy * sa                # 沿推进方向
-                v = -fx * sa + fy * ca               # 横向(条宽方向)
-                col = _shade_bar(u, v, t, (x // SS, qy), nframes)
+                v = -fx * sa + fy * ca               # 横向(= 判定的 ±HALF_W)
+                col = _shade_wave(u, v, t, (x // SS, qy), nframes)
+                if col is not None:
+                    ld[x, y] = col + (255,)
+        return img
+    if mode == "chop":
+        for y in range(n):
+            qy = y // SS
+            for x in range(n):
+                col = _shade_chop((x + 0.5) / n, (y + 0.5) / n, t, (x // SS, qy), nframes)
                 if col is not None:
                     ld[x, y] = col + (255,)
         return img
     half = math.radians(HALF_DEG)
-    shade = _shade_tel if mode == "tel" else _shade_slash
+    shade = _shade_slash
     for y in range(n):
         fy = (y + 0.5) / n * 2.0 * VIEW - VIEW
         qy = y // SS
@@ -336,7 +366,7 @@ def render_icon(px):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True, help="大图输出目录(d{i}_f{j}.png)")
-    ap.add_argument("--mode", choices=["tel", "slash", "bar", "icon"], required=True)
+    ap.add_argument("--mode", choices=["slash", "wave", "chop", "icon"], required=True)
     ap.add_argument("--dirs", type=int, default=16)
     ap.add_argument("--frames", type=int, default=1)
     ap.add_argument("--px", type=int, default=CELL,

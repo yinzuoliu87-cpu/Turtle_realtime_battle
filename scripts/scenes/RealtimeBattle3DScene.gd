@@ -1698,8 +1698,17 @@ func _snapshot_render_prev() -> void:
 ## 按【战斗时钟 _t】等待 secs 秒(Phase2·§3.5): 替 create_timer(走未钳制真实时间·CI/慢机偏)。
 ## _t 走钳制后 delta → 效果跟随 sim 时间·暂停时正确停;帧上限防 _t 冻结(_kill 后)时死循环。
 ## 正常 60fps 下 _t≈真实时间 → 手感不变;慢机/CI 下按 sim 时间(这才对)。
+## 等 `secs` 游戏秒。★★判据是 `t_end - EPS` 而不是 `t_end` ——
+##   `_t` 是**一步一步加出来**的(每步 SIM_DT = 1/60), 而 1/60 在浮点里不是精确值:
+##   3 步加起来 = 0.049999999999999996, 而 `t_end = _t + 0.05` 里的 0.05 是 0.050000000000000003。
+##   差了几个 ulp, 于是循环**多等一步**: 想等 0.05 实际等 0.0667(+33%)。
+##   而且它是**看运气的** —— 2026-09-10 探针实测 010 斩击: 第一次施放五帧全是 4 步、
+##   第二次施放变成 3 步, 同一段演出两次施放长度差 33%。
+##   ⇒ 拿一个远小于 SIM_DT(0.0167)、又远大于浮点噪声(~1e-13)的 EPS 把这条刀锋抹掉。
+##   凡是【等 N 个 sim 步】的演出(几乎全部)都吃这个亏, 不止 010。
 func _wait_sim(secs: float) -> void:
-	var t_end: float = _t + secs
+	const _WAIT_EPS := 1.0e-6
+	var t_end: float = _t + secs - _WAIT_EPS
 	var guard: int = 0
 	while _t < t_end and guard < 6000 and is_instance_valid(self):
 		await get_tree().process_frame

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dm7xil07iqdyc"
-path="res://.godot/imported/eq010-bar.png-dcc3783bbb056a6cc5cad9eab3710a6d.ctex"
+uid="uid://i1gupsi6kvlc"
+path="res://.godot/imported/eq010-wave.png-168169ee928490f901e3f862b090d5bb.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/eq010-bar.png"
-dest_files=["res://.godot/imported/eq010-bar.png-dcc3783bbb056a6cc5cad9eab3710a6d.ctex"]
+source_file="res://assets/sprites/vfx/eq010-wave.png"
+dest_files=["res://.godot/imported/eq010-wave.png-168169ee928490f901e3f862b090d5bb.ctex"]
 
 [params]
 
