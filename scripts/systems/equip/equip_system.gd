@@ -1780,9 +1780,14 @@ func laser_chop_slab(org: Vector2, dir: Vector2, d0: float, d1: float, enemies: 
 	return out
 
 
-## 竖劈能推多远(码): 射程 ×2。
-func laser_chop_reach(u: Dictionary) -> float:
-	return battle._eff_range(u) * 2.0
+## 竖劈能推多远(码)。★★**就是扇形半径本身**(用户 2026-09-10 拍板:「让竖劈跟上扇形」)。
+##   改之前这里是 `_eff_range(u) * 2.0` —— 不吃 3★ 的 ×2、也不吃近战 +250,
+##   于是小龟 3★ 扇形罩 450 码而波只推 200 码: **打 200 码开外那个孤零零的敌人时波够不着他**。
+##   (这个落差是重做前就有的, 旧代码同样是 `base_range * 2.0`, 不是这一轮引入的。)
+##   ⇒ 现在直接**调 `laser_fan_range` 本人**, 不再各算一份 —— 画到哪、扇到哪、波就推到哪,
+##   三个数只有一个来源(手抄的副本必然落后, memory `fb-hand-rolled-copies-drift`)。
+func laser_chop_reach(u: Dictionary, si: int) -> float:
+	return laser_fan_range(u, si)
 
 
 ## 第 k 档方向对应的**单位向量** —— 与 `_ground_dir_frame` 严格互逆。
@@ -1869,7 +1874,7 @@ func _eq_laser_sweep(u: Dictionary, tgt: Dictionary, si: int) -> void:
 		var cd: Vector2 = (hits[0]["pos"] - u["pos"]).normalized()
 		if cd.length() < 0.1: cd = dir
 		var cdf: int = _ground_dir_frame(cd, LASER_DIRS)
-		await _eq_laser_chop(u, si, u["pos"], _laser_dir_of(cdf), cdf, laser_chop_reach(u))
+		await _eq_laser_chop(u, si, u["pos"], _laser_dir_of(cdf), cdf, laser_chop_reach(u, si))
 
 
 func _eq_laser_chop(u: Dictionary, si: int, org: Vector2, dir: Vector2, dirf: int, reach: float) -> void:

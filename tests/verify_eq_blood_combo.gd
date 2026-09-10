@@ -325,23 +325,24 @@ func _ready() -> void:
 			gap_hi - gap_lo <= _s.SIM_DT * 1.2 and gap_lo > 0.0,
 			"节拍不齐 = 连斩读不成「一刀接一刀」")
 
-	# ⑨ 画多大 == 打多重(两边都是跑出来的, 非循环)
+	# ⑨ 斩痕**八刀等宽** —— 尺寸不随衰减缩
+	## ★★这条判据 2026-09-10 **翻过一次向**, 原因记在这里免得下一轮又改回去:
+	##   第一版写的是「宽度比 == 实测伤害比」(把文案那句「后续每发逐渐衰减」画进尺寸里),
+	##   实拍末两刀只剩 49/42 码(第一刀 130), 用户看完当场否掉:
+	##   「为什么后续的斩击弧越来越小, **我不要这个东西**」。
+	##   ⇒ 现在钉的是**恒定**: 八刀宽度必须两两相等。衰减只由伤害飘字体现。
 	if hit_w.size() == want_n and hit_d.size() == want_n and int(hit_d[0]) > 0:
-		var worst_err := 0.0
-		var worst_k := -1
-		for k in range(1, want_n):
-			var wr: float = float(hit_w[k]) / maxf(0.001, float(hit_w[0]))
-			var dr: float = float(hit_d[k]) / maxf(1.0, float(hit_d[0]))
-			var e: float = absf(wr - dr)
-			if e > worst_err:
-				worst_err = e
-				worst_k = k
-		_ok("⑨ 画多大就是打多重: 宽度比 vs 伤害比 最大偏差 %.3f(第 %d 刀; 须 ≤ 0.05)" % [worst_err, worst_k],
-			worst_err <= 0.05,
-			"文案写着「后续每发逐渐衰减」而画面上八刀一样大 = 演出没有遵从效果")
-		_ok("★分母: 第 0 刀宽 %.1f 码 / 打 %d, 末刀宽 %.1f 码 / 打 %d(必须真的在缩小)"
-			% [hit_w[0], hit_d[0], hit_w[want_n - 1], hit_d[want_n - 1]],
-			float(hit_w[want_n - 1]) < float(hit_w[0]) * 0.6 and int(hit_d[want_n - 1]) < int(hit_d[0]))
+		var w_lo := 9.0e9
+		var w_hi := -9.0e9
+		for w in hit_w:
+			w_lo = minf(w_lo, float(w))
+			w_hi = maxf(w_hi, float(w))
+		_ok("⑨ 八刀斩痕等宽: %.1f~%.1f 码(极差 %.2f, 须 ≤ 0.5)" % [w_lo, w_hi, w_hi - w_lo],
+			w_hi - w_lo <= 0.5,
+			"尺寸又跟着衰减缩了 —— 用户 2026-09-10 明确不要这个")
+		_ok("★分母: 八刀宽度都 = BLOOD_SLASH_W %.0f 码(±1), 而伤害确实在衰减(%d → %d)"
+			% [BC.BLOOD_SLASH_W, int(hit_d[0]), int(hit_d[want_n - 1])],
+			absf(w_lo - BC.BLOOD_SLASH_W) <= 1.0 and int(hit_d[want_n - 1]) < int(hit_d[0]))
 
 	# ⑩ 一条钟: 斩痕换帧的间隔恒为 BLOOD_SLASH_STEP
 	if frame_t.size() >= 3:

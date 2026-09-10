@@ -337,6 +337,18 @@ func _ready() -> void:
 	_ok("⑨ 只推到 96 码时命中 %d 个(应 0 —— 波前没到就不许结算)" % slab_near.size(),
 		slab_near.size() == 0, "推进与结算不是同一条时钟")
 
+	## ⑨b **竖劈推多远 == 扇形罩多远**(用户 2026-09-10 拍板:「让竖劈跟上扇形」)。
+	##   改之前是两个各算一份的公式: 扇形 `射程×2 + 250`、竖劈 `射程×2` ——
+	##   小龟 3★ 扇形 450 而波只推 200, 打 200 码开外的孤立敌人波够不着。
+	##   ⇒ 判据落在【两个数相等】, 谁再各算一份当场红。
+	##   ★这里用**本地合成单位**: ⑨ 跑在 ⑩ 建携带者之前, 而且这条本来就只跟射程/近战有关。
+	var probe_u := {"atk_range": 100.0, "melee": true, "alive": true}
+	for star_i in [0, 1, 2]:
+		var fr: float = _s._equip_sys.laser_fan_range(probe_u, star_i)
+		var cr: float = _s._equip_sys.laser_chop_reach(probe_u, star_i)
+		_ok("⑨b %d★ 竖劈 reach %.0f == 扇形半径 %.0f" % [star_i + 1, cr, fr], absf(cr - fr) < 0.01,
+			"两个数各算一份 = 画到 450 却只推 200, 远处那一刀白斩")
+
 	# ══════════════════════════════════════════════════════════════
 	#  ⑩ 真入口 + ⑩b「触发就斩, 不许有预警」+ ⑩c「追加竖劈也走真入口」
 	# ══════════════════════════════════════════════════════════════
@@ -384,9 +396,9 @@ func _ready() -> void:
 	var foe_d: float = (foe["pos"] as Vector2).distance_to(carrier["pos"])
 	_ok("★分母: 场上 %d 个单位(应 2), 敌人在 %.0f 码处(须 < 扇形半径 %.0f **且** < 竖劈 reach %.0f)"
 		% [_s._units.size(), foe_d, _s._equip_sys.laser_fan_range(carrier, 2),
-			_s._equip_sys.laser_chop_reach(carrier)],
+			_s._equip_sys.laser_chop_reach(carrier, 2)],
 		_s._units.size() == 2 and foe_d < _s._equip_sys.laser_fan_range(carrier, 2)
-			and foe_d < _s._equip_sys.laser_chop_reach(carrier))
+			and foe_d < _s._equip_sys.laser_chop_reach(carrier, 2))
 	## ★★对照组: 同一个平台**不带 010**, 推同样长的窗口 —— 它必须一点伤害都打不出来。
 	##   没有这一条就证明不了"上面那条量的是 010", 只能证明"有东西打了它"。
 	## ★★**不手喂 `_tick_laser`**: 它本来就挂在 `_tick_unit` 里(RealtimeBattle3DScene.gd:2791),

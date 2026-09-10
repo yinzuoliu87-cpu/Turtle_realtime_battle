@@ -42,7 +42,7 @@ const BLOOD_SLASH_TEX := "res://assets/sprites/vfx/eq011-slash.png"  # 4 变体 
 const BLOOD_SLASH_VARIANTS := 4
 const BLOOD_SLASH_FRAMES := 5
 const BLOOD_SLASH_CELL := 64.0     # 素材一格的边长(像素) —— 必须与 gen_bloodslash.py 的 CELL 一致
-const BLOOD_SLASH_W := 130.0       # 第 0 刀斩痕在世界里的宽度(码)
+const BLOOD_SLASH_W := 130.0       # 斩痕在世界里的宽度(码) —— 八刀都是这个数
 ## 每帧的游戏时长。★必须是 SIM_DT(1/60) 的整数倍 —— `_wait_sim` 只停在 sim 步边界上
 ##   (与 010 的 LASER_CHOP_STEP 同一条; 那一条上我踩过: 写 0.035 实际等 0.05)。
 const BLOOD_SLASH_STEP := 2.0 / 60.0
@@ -85,7 +85,7 @@ func blood_slash_at(from2d: Vector2, to2d: Vector2) -> Vector2:
 	return to2d + d.normalized() * BLOOD_ENTER
 
 
-## 一刀的斩痕精灵。宽度由调用方给(= BLOOD_SLASH_W × 衰减系数)。
+## 一刀的斩痕精灵。宽度由调用方给(现在恒为 BLOOD_SLASH_W)。
 func _blood_slash_sprite(vi: int, at: Vector2, w: float) -> Sprite3D:
 	var sp := Sprite3D.new()
 	sp.texture = load(BLOOD_SLASH_TEX)
@@ -131,10 +131,14 @@ func _eq_blood_combo(u: Dictionary, si: int) -> void:
 		if es.is_empty(): break
 		var o = es[battle._battle_rng.randi() % es.size()]
 		var decay: float = blood_decay(k)
-		## 这一刀: 斩痕落在【目标朝携带者那一侧】, 宽度 = 基准 × 衰减 ⇒ 画多大就是打多重;
+		## 这一刀: 斩痕落在【目标朝携带者那一侧】, **八刀一样大**;
 		## 变体按刀序轮换 ⇒ 读起来是「一刀接一刀」而不是同一张图闪八次。
+		## ★★尺寸**不随衰减缩**(用户 2026-09-10:「为什么后续的斩击弧越来越小, 我不要这个东西」)。
+		##   我原本把 `BLOOD_SLASH_W × 0.85^k` 画进尺寸里, 想让文案那句「后续每发逐渐衰减」
+		##   在画面上读得出来 —— 末两刀只剩 49/42 码, 用户看完当场否掉。
+		##   ⇒ 衰减只由伤害飘字体现, 斩痕本身恒定大小。门禁 ⑨ 钉的就是【八刀等宽】。
 		_blood_slash_play(k % BLOOD_SLASH_VARIANTS, blood_slash_at(u["pos"], o["pos"]),
-			BLOOD_SLASH_W * decay)
+			BLOOD_SLASH_W)
 		battle._damage._apply_damage_from(u, o, blood_hit_dmg(u, si, o, k),
 			Color("#ff8aa0"), 0.33, false, true)
 		await battle._wait_sim(BLOOD_BEAT)   # 一段一段: 每 0.3s 一刀
