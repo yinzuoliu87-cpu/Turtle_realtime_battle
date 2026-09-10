@@ -113,10 +113,10 @@
     "cost": 5,
     "baseStats1": "+攻30/75/200·护穿10/18/30·生命50/120/1300",
     "shopAvailable": 1,
-    "emoji": "📏",
+    "emoji": "☄️",
     "effectDesc1": "每隔一次攻击间隔朝最近的敌人斩出一道 {C:EquipSystem.LASER_ARC_DEG}°扇形红激光，半径等于自身攻击射程（3 星时×2）；若携带者为近战单位，半径再+{C:EquipSystem.LASER_MELEE_BONUS} 码。\n对扇形内每名敌人造成（15/32/200+0.6/1.0/8.0×攻击力）物理伤害；\n若仅命中 1 名敌人则追加一道竖劈冲击波，沿直线推进对沿途每名敌人各造成一次全额伤害；\n携带者回复本次总伤害 35/80/100%的生命。",
     "effectDesc3": "",
-    "img": "equip/dungeon-laser-blade.png",
+    "img": "equip/eq010-icon.png",
     "effectBrief": "每隔一次攻击斩出红激光；只命中 1 名敌人时追加一道竖劈冲击波。"
   },
   {

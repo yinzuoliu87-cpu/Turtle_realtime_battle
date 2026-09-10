@@ -76,6 +76,11 @@ frames_for () {
     # 009 宽刃弯刀: ⑧ 要真跑 _eq_wide_blade, 里面有 0.56 游戏秒的预警 await。
     #   CI 无头一帧只推 ~1ms ⇒ 光这一段就上千帧, 再留出结算与轮询的余量。
     verify_eq_wide_blade)     echo 14000 ;;
+    # 010 激光长刃: ⑩ 要真跑 _tick_laser → _eq_laser_sweep, 里面有 0.30 游戏秒的预警 await
+    #   + 0.25 秒斩击; 而 ①②④⑤⑥⑦ 还要**逐像素扫**四张贴图(斩击表 3584×1120)。
+    #   CI 无头一帧只推 ~1ms ⇒ 默认 500 帧会在贴图还没扫完时被掐断
+    #   ⇒ 没打 ALL PASS(rc=0/致命 0), 看着像断言失败(CLAUDE.md §2 那个坑)。
+    verify_eq_laser_blade)    echo 20000 ;;
     verify_copy_rules)        echo 6000 ;;
     # 斧头动作运行时验证: 要**真推着它跑 2.5 秒墙钟**等换表 + 等施法播完回 idle(3 秒)。
     #   墙钟不是帧数 —— CI 无头帧率极高, 帧给少了会在还没等到换表时被掐断

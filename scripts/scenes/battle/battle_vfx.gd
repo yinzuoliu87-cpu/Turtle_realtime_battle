@@ -738,8 +738,8 @@ func _vfx_preview_loop() -> void:
 			dir = Vector2(cos(_ang), sin(_ang))
 		var fu: Dictionary = {"pos": origin, "alive": true, "id": "basic", "side": "left", "atk_range": 350.0, "equips": [], "def": 30.0, "mr": 30.0, "atk": 100.0, "crit": 0.25, "crit_dmg": 1.5, "lifesteal": 0.0, "armor_pen": 0.0, "energy_cost": {}}
 		match eff:
-			"laser_sweep": battle._laser_blade_sweep(fu, origin, dir, 350.0, 60.0)
-			"laser_chop": battle._equip_sys._eq_laser_chop(fu, {"pos": origin + dir * 300.0, "alive": true}, si, 180.0)
+			"laser_sweep": battle._equip_sys._eq_laser_sweep(fu, {"pos": origin + dir * 350.0, "alive": true}, si)
+			"laser_chop": battle._equip_sys._eq_laser_chop(fu, si, origin, dir, battle._equip_sys._ground_dir_frame(dir, 16), 360.0)
 			"moon": battle._equip_sys._eq_wide_blade(fu, {"pos": origin + dir * 650.0, "alive": true}, si)
 			"slash": battle._blood_slash(origin - dir * 60.0, origin, 0.0)
 			"smolder": _vfx_smolder(origin, dir, si)
@@ -769,7 +769,7 @@ func _vfx_preview_loop() -> void:
 			"tr_hunt": _vfx_preview_trainer(origin, dir, 4)
 			"tr_tame": _vfx_preview_trainer(origin, dir, 5)
 			"tr_stone": _vfx_preview_trainer(origin, dir, 6)
-			_: battle._laser_blade_sweep(fu, origin, dir, 350.0, 60.0)
+			_: battle._equip_sys._eq_laser_sweep(fu, {"pos": origin + dir * 350.0, "alive": true}, si)
 		await battle.get_tree().create_timer(period).timeout
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 

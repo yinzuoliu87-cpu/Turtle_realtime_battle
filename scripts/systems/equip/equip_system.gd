@@ -1664,111 +1664,292 @@ func _eq_chain_lightning(u: Dictionary, si: int) -> void:
 		tw.tween_callback(battle._chain_segment.bind(u, prev_pos, tgt, dmg))
 		prev_pos = tgt["pos"]
 
-## 【010 激光长刃】扇面全角。★代码里两处都用**半角**, 所以存全角、半角推导 ——
-##   否则改扇面要记得改两个 60.0, 而文案说的是 120°。
+## ═══════════════════════════════════════════════════════════════════════════
+##  【010 激光长刃】整套 —— 2026-09-10 照着现状实拍 100 帧重做
+##  (逐帧凭据: docs/studies/20260910-010激光长刃现状逐帧.md; 方案书: docs/plans/20260910-010激光长刃整套重做.md)
+##
+##  ★重做前逐帧看出来的六条真毛病, 每条对应下面一处:
+##    ① 零预兆(帧 0-3 全黑, 帧 4 直接满屏红) ⇒ 新增预警扇形, 与判定同 org/dir/rng。
+##    ② 素材不是像素画(595/2623/2762/21296 色) ⇒ 四张全部重做(tools/gen_laserfan.py)。
+##    ③ 像素密度随射程漂到 0.408 米/像素 ⇒ R_TEX 53 → 108, 一律细一倍。
+##    ④ 后两帧平均 alpha 只有 56/255, 黑地上读成暗棕爪痕 ⇒ 消散靠碎开, 颜色全程满亮。
+##    ⑤ `rotation = Vector3(0, -base_ang, 0)` 自由角旋转 ⇒ 16 向烤进素材, 运行时 rotation 恒 0。
+##    ⑥ 气波画 125 码、判定 160 码 ⇒ 条宽由 LASER_CHOP_HALF_W 一个常量同时喂绘制与判定。
+## ═══════════════════════════════════════════════════════════════════════════
+## 扇面全角。★代码里多处都用**半角**, 所以存全角、半角推导 ——
+##   否则改扇面要记得改好几个 60.0, 而文案说的是 120°。
 const LASER_ARC_DEG := 120.0
 const LASER_HALF_DEG := LASER_ARC_DEG / 2.0
 ## 【026 雷电法杖】每段伤害给【法器法力条】充多少(用户 2026-08-12 削弱: 原 25)。
 const THUNDER_MANA_PER_HIT := 15.0
 const LASER_MELEE_BONUS := 250.0   # 激光长刃 010: 近战携带者额外 +250 码半径(用户 2026-08-01)
 
-func _eq_laser_sweep(u: Dictionary, tgt: Dictionary, si: int) -> void:   # 扇形斩(120度/半径=射程,3★2×/朝目标·近战+250)+回血; 只命中1→蓄力→竖劈冲击波
-	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
-	if dir.length() < 0.1: dir = Vector2.RIGHT
-	var ang: float = -atan2(dir.y, dir.x)
-	var base_rng: float = battle._eff_range(u)
-	var rng: float = base_rng * (2.0 if si == 2 else 1.0)
-	# ★近战携带者 +250 码半径(用户 2026-08-01)。由来: 半径 = 携带者射程, 而近战射程只有 ~70~95,
-	#   于是这把"长刃"在近战手里的扇形还没龟自己身位大 —— 远程龟拿它反而横扫全场, 定位完全反了。
-	#   ★加在 ×2 之后 = 对最终半径的加法, 不被 3★ 倍率放大(否则近战 3★ 会变成 +500)。
-	if bool(u.get("melee", false)):
-		rng += LASER_MELEE_BONUS
-	battle._anticipate(u)   # 预备
-	battle._laser_blade_sweep(u, u["pos"], dir, rng, LASER_HALF_DEG)   # 笔直红激光长刃平滑扫过扇形(带拖尾)
-	battle._shake(battle.JUICE_SHAKE_HEAVY)
-	var cos60: float = cos(deg_to_rad(LASER_HALF_DEG))
-	var hits: Array = []
-	for o in battle._targeting._enemies_of(u):
-		if not o.get("alive", false): continue
-		var rel: Vector2 = o["pos"] - u["pos"]
+const LASER_TEL_TEX := "res://assets/sprites/vfx/eq010-tel.png"      # 预警扇形: 16 向 × 1 帧
+const LASER_SLASH_TEX := "res://assets/sprites/vfx/eq010-slash.png"  # 斩击:     16 向 × 5 帧
+const LASER_BAR_TEX := "res://assets/sprites/vfx/eq010-bar.png"      # 竖劈行波条: 16 向 × 4 帧
+const LASER_DIRS := 16
+const LASER_SLASH_FRAMES := 5
+const LASER_BAR_FRAMES := 4
+## 扇形半径在纹理里占多少像素(必须与 tools/gen_laserfan.py 的 R_TEX 一致)。
+## `pixel_size = rng × WS / LASER_R_TEX` ⇒ 半径画多远就打多远。
+const LASER_R_TEX := 108.0
+## 行波条的半宽在纹理里占多少像素(必须与 tools/gen_laserfan.py 的 BAR_HW_TEX 一致)。
+const LASER_BAR_HW_TEX := 19.0
+## ★★竖劈判定半宽(码) —— **同一个常量**同时喂 `_on_line` 与贴图缩放。
+##   旧版这里是写死的 `80.0` 传给 `_on_line`(半宽 ⇒ 判定 160 码宽), 而贴图是 3.0 米 = 125 码,
+##   画 125 打 160、差 22%: 通病「画出来的和打到的不是一回事」。
+const LASER_CHOP_HALF_W := 80.0
+const LASER_BAR_STEP := 48.0       # 行波条铺设间距(码) = 条厚 ⇒ 首尾相接不留缝
+const LASER_TEL_STEPS := 10        # 预警 10 × 0.03 = 0.30 游戏秒
+const LASER_TEL_STEP := 0.03
+const LASER_TEL_A := 0.46
+const LASER_TEL_SWING := 0.16
+const LASER_TEL_RISE := 0.12
+const LASER_SLASH_STEP := 0.05     # 斩击 5 帧 × 0.05 = 0.25 游戏秒
+const LASER_CHOP_STEP := 0.035     # 行波每步 0.035 游戏秒(最长 19 条 ⇒ 0.66 秒)
+
+
+## ═══ 可量部分: 纯几何 + 同步结算, **不依赖任何演出 tween** ═══
+## (CLAUDE.md §3.5: 一个测"数值对不对"的用例, 不该依赖任何演出 tween 跑完。
+##  演出调它们, 门禁也直接调它们 —— 与 009 的 blade_hit_test / blade_release_point 同一套。)
+
+func laser_alive_enemies(src: Dictionary) -> Array:
+	var out: Array = []
+	for o in battle._targeting._enemies_of(src):
+		if o.get("alive", false): out.append(o)
+	return out
+
+
+## 谁被【顶点 org / 朝向 dir / 半径 rng / 全角 LASER_ARC_DEG】的扇形罩住。
+## 判定与演出共用同一个 org/dir/rng ⇒ 画到哪就打到哪。
+func laser_fan_hits(org: Vector2, dir: Vector2, rng: float, enemies: Array) -> Array:
+	var cos_half: float = cos(deg_to_rad(LASER_HALF_DEG))
+	var out: Array = []
+	for o in enemies:
+		var rel: Vector2 = o["pos"] - org
 		var d: float = rel.length()
 		if d > rng: continue
-		if dir.dot(rel / maxf(1.0, d)) < cos60: continue
-		hits.append(o)
+		if dir.dot(rel / maxf(1.0, d)) < cos_half: continue
+		out.append(o)
+	return out
+
+
+## 3★ 半径: 射程 ×2, 近战再 +250。
+## ★加在 ×2 **之后** = 对最终半径的加法, 不被 3★ 倍率放大(否则近战 3★ 会变成 +500)。
+## 由来: 半径 = 携带者射程, 而近战射程只有 70~100, 于是这把"长刃"在近战手里的扇形
+##       还没龟自己身位大 —— 远程龟拿它反而横扫全场, 定位完全反了(用户 2026-08-01)。
+func laser_fan_range(u: Dictionary, si: int) -> float:
+	var rng: float = battle._eff_range(u) * (2.0 if si == 2 else 1.0)
+	if bool(u.get("melee", false)):
+		rng += LASER_MELEE_BONUS
+	return rng
+
+
+## 扇形斩的**同步结算**: 判定 → 伤害 → 按总伤回血。返回被打到的敌人。
+## ★门禁直接调它验数值; 演出在斩击第 0 帧调它 ⇒ 两边永远是同一份账。
+func laser_fan_strike(u: Dictionary, si: int, org: Vector2, dir: Vector2, rng: float) -> Array:
+	var hits: Array = laser_fan_hits(org, dir, rng, laser_alive_enemies(u))
 	var tot: int = 0
 	for o in hits:
 		var dd: int = battle._resolve_dmg(u, u["atk"] * [0.6, 1.0, 8.0][si] + [15.0, 32.0, 200.0][si], o, false)
 		battle._damage._apply_damage_from(u, o, dd, Color("#9bf0ff"), 0.0, false, true)
 		tot += dd
 	if tot > 0: battle._damage._heal(u, tot * [0.35, 0.8, 1.0][si])
-	if hits.size() == 1:
-		var glow := Sprite3D.new()
-		glow.texture = VfxTex._make_fire_glow_tex()
-		glow.billboard = BaseMaterial3D.BILLBOARD_ENABLED; glow.shaded = false; glow.transparent = true
-		glow.modulate = Color(1.0, 0.28, 0.3, 0.0); glow.pixel_size = 0.02
-		glow.position = battle._world_pos(u["pos"], 1.0)
-		battle._world.add_child(glow)
-		var gt = battle._reg_tween(); gt.tween_property(glow, "modulate:a", 0.9, 0.2); gt.parallel().tween_property(glow, "scale", Vector3(2.2, 2.2, 2.2), 0.2)
-		var tele := Sprite3D.new()   # 蓄力预警线(细红激光, 指示竖劈路径)
-		tele.texture = VfxTex._make_laser_beam_tex(Color(1.0, 0.25, 0.28))
-		tele.billboard = BaseMaterial3D.BILLBOARD_DISABLED; tele.axis = Vector3.AXIS_Y
-		tele.shaded = false; tele.transparent = true
-		tele.pixel_size = (base_rng * 2.0) * battle.WS / 100.0
-		tele.rotation = Vector3(0.0, ang, 0.0)
-		tele.position = battle._world_pos(u["pos"] + dir * base_rng, 0.1)
-		tele.scale = Vector3(1.0, 0.35, 1.0); tele.modulate = Color(1.0, 0.3, 0.3, 0.0)
-		battle._reg_tween().tween_property(tele, "modulate:a", 0.5, 0.18)
-		await battle._wait_sim(0.2)
-		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
-		if is_instance_valid(tele):
-			var telf = battle._reg_tween()
-			telf.tween_property(tele, "modulate:a", 0.0, 0.1)
-			telf.tween_callback(tele.queue_free)
-		if is_instance_valid(glow): glow.queue_free()
-		if not u.get("alive", false): return
-		_eq_laser_chop(u, hits[0], si, base_rng)
+	return hits
 
-func _eq_laser_chop(u: Dictionary, tgt: Dictionary, si: int, base_range: float) -> void:   # 竖劈冲击波(同斩击伤害/宽80/移动2×射程/短暂击飞0.1s)
-	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
-	if dir.length() < 0.1: dir = Vector2.RIGHT
-	var origin: Vector2 = u["pos"]
-	var reach: float = base_range * 2.0
+
+## 竖劈走廊里, 沿推进方向落在 [d0, d1) 这一格的敌人。
+## ★半宽用 LASER_CHOP_HALF_W(与贴图同一个常量), 不再写死 80.0。
+func laser_chop_slab(org: Vector2, dir: Vector2, d0: float, d1: float, enemies: Array) -> Array:
+	var out: Array = []
+	for o in enemies:
+		var rel: Vector2 = o["pos"] - org
+		var along: float = rel.dot(dir)
+		if along < d0 or along >= d1: continue
+		if (rel - dir * along).length() > LASER_CHOP_HALF_W: continue
+		out.append(o)
+	return out
+
+
+## 竖劈能推多远(码): 射程 ×2。
+func laser_chop_reach(u: Dictionary) -> float:
+	return battle._eff_range(u) * 2.0
+
+
+## 行波条落在哪几个距离上(沿推进方向, 单位码)。**演出与门禁共用这一份**。
+##
+## ★★为什么不是简单的 `(i+0.5) × LASER_BAR_STEP`: 那样最后一条会**越过 reach**。
+##   reach=200 时 n=ceil(200/48)=5, 第 5 条的中心落在 216 码、外缘 240 码,
+##   而判定只到 200 —— 画出来比打得到的长 40 码(20%), 正是这一版要修的那类毛病。
+##   ⇒ 把间距改成 `reach / n`(≤ LASER_BAR_STEP, 所以条与条只会重叠不会留缝),
+##     整排正好铺满 [0, reach], 两端各只溢出半个条厚。
+func laser_bar_positions(reach: float) -> Array:
+	var n: int = maxi(1, int(ceil(reach / LASER_BAR_STEP)))
+	var step: float = reach / float(n)
+	var out: Array = []
+	for i in range(n):
+		out.append(step * (float(i) + 0.5))
+	return out
+
+
+## 第 k 档方向对应的**单位向量** —— 与 `_ground_dir_frame` 严格互逆。
+## ★两者必须是同一套口径: 判定用它返回的向量, 贴图用 k 号格, 于是"画的"和"打的"永远同一个方向。
+func _laser_dir_of(k: int) -> Vector2:
+	var a: float = TAU * float(posmod(k, LASER_DIRS)) / float(LASER_DIRS)
+	return Vector2(cos(a), sin(a))
+
+
+## 预警的 alpha 包络: 前 LASER_TEL_RISE 从 0 淡入, 全程在 0.30 秒里脉动**两个来回**。
+## ★抽成纯函数是为了让门禁能直接量它(而不是等演出跑完再截图猜), 也是为了
+##   「演出与量它的尺子共用一条时钟」—— 调用点在 `_wait_sim` 循环里逐格写。
+func _laser_tel_alpha(u: float) -> float:
+	var rise: float = clampf(u / LASER_TEL_RISE, 0.0, 1.0)
+	return rise * (LASER_TEL_A + LASER_TEL_SWING * sin(u * TAU * 2.0 - PI * 0.5))
+
+
+## 010 的扇形素材共用这一份摆放(别各抄一份: 预警与斩击的口径必须完全一致, 否则会错位)。
+## ★顶点就在格心 ⇒ `position` 直接是释放点, **没有任何锚点偏移**(见 gen_laserfan.py 画布口径)。
+## ★`rotation` 恒 0: 方向是烤进素材的第 dirf 格, 不是转贴图 —— 贴地精灵被任意角旋转会重采样,
+##   像素网格当场碎(旧版 `rotation = Vector3(0, -base_ang, 0)` 就是这个毛病)。
+func _laser_sprite(tex_path: String, vframes: int, dirf: int, f: int, org: Vector2, rng: float, h: float) -> Sprite3D:
+	var sp := Sprite3D.new()
+	sp.texture = load(tex_path)
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素画必须 NEAREST, 否则缩放糊成一团
+	sp.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	sp.axis = Vector3.AXIS_Y                                    # ★AXIS_Y 本身就是平铺, 不要再加 rotation.x
+	sp.shaded = false
+	sp.transparent = true
+	sp.pixel_size = rng * battle.WS / LASER_R_TEX               # 半径画多远就打多远
+	sp.hframes = LASER_DIRS
+	sp.vframes = vframes
+	sp.frame = f * LASER_DIRS + dirf
+	sp.position = battle._world_pos(org, h)
+	return sp
+
+
+## 竖劈行波条: **世界尺寸固定**(与射程无关) ⇒ 像素密度恒定, 而且宽度就是判定宽度。
+func _laser_bar_sprite(dirf: int, f: int, at: Vector2, h: float) -> Sprite3D:
+	var sp := Sprite3D.new()
+	sp.texture = load(LASER_BAR_TEX)
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sp.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	sp.axis = Vector3.AXIS_Y
+	sp.shaded = false
+	sp.transparent = true
+	sp.pixel_size = LASER_CHOP_HALF_W * battle.WS / LASER_BAR_HW_TEX
+	sp.hframes = LASER_DIRS
+	sp.vframes = LASER_BAR_FRAMES
+	sp.frame = f * LASER_DIRS + dirf
+	sp.position = battle._world_pos(at, h)
+	return sp
+
+
+## ═══ 演出编排(有 await, 走游戏时钟) ═══
+
+func _eq_laser_sweep(u: Dictionary, tgt: Dictionary, si: int) -> void:   # 预警扇形 → 斩击扫过去 → 只命中1人再追加竖劈
+	if not u.get("alive", false): return
+	var raw: Vector2 = (tgt["pos"] - u["pos"]).normalized()
+	if raw.length() < 0.1: raw = Vector2.RIGHT
+	## ★★把瞄准轴**吸附到素材的 16 档**, 然后判定也用吸附后的轴(与 009 同一条)。
+	##   贴图只有 16 档而判定用真实角 ⇒ 画出来的扇边和真判定边最多差 11.25°,
+	##   在 450 码处两端错开约 88 码 —— 敌人明明画在扇里却不掉血。
+	##   不靠加档位解决(32 档贴图会翻倍), 靠**让判定也用同一个角** ⇒ 差值恒为 0(门禁焊死)。
+	var dirf: int = _ground_dir_frame(raw, LASER_DIRS)
+	var dir: Vector2 = _laser_dir_of(dirf)
+	## ★★org 在**预警起手那一刻**钉死, 之后 0.30 游戏秒里携带者会走位 ——
+	##   预警画在 A 点、伤害结在 B 点 = 因果链当场断掉
+	##   (memory `fb-telegraph-needs-a-cause-not-a-flash`: 链最容易断在位置上)。
+	var org: Vector2 = u["pos"]
+	var rng: float = laser_fan_range(u, si)
+	battle._anticipate(u)   # 预备
+	## ① 预警: **整片** 120° × rng 的扇形, 与判定同一个 org/dir/rng。
+	##    半透 ⇒ 单位照样画在它上面; 里面**没有任何东西宣称一个更小的范围**(009 那条老账)。
+	var tel := _laser_sprite(LASER_TEL_TEX, 1, dirf, 0, org, rng, 0.08)
+	tel.modulate.a = 0.0
+	battle._world.add_child(tel)
+	## ★逐格走 `_wait_sim`(游戏时钟)而不是 tween: tween 走未钳制的真实 delta,
+	##   与量它的时刻戳不是同一条时钟, 实拍会量出假时长(v0.19.345 那一课)。
+	for gi in range(LASER_TEL_STEPS):
+		if is_instance_valid(tel):
+			tel.modulate.a = _laser_tel_alpha(float(gi) / float(LASER_TEL_STEPS))
+		await battle._wait_sim(LASER_TEL_STEP)
+		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
+	if not u.get("alive", false):
+		if is_instance_valid(tel): tel.queue_free()
+		return
+	## ② 斩击 + 伤害**同一帧**落地。旧版是伤害先落、画面第 0 帧只画了 120° 里的 33°。
+	battle._shake(battle.JUICE_SHAKE_HEAVY)
+	var slash := _laser_sprite(LASER_SLASH_TEX, LASER_SLASH_FRAMES, dirf, 0, org, rng, 0.12)
+	battle._world.add_child(slash)
+	var hits: Array = laser_fan_strike(u, si, org, dir, rng)
+	## ③ 斩击逐帧: 领先边从 -60° 扫到 +60°, 扫过之处径向盖满; 尾段靠碎开消散(不靠变暗)。
+	##    预警**一起手就退场**, 两帧内退完(用户 2026-09-09:「斩击后为什么还有预警？」)。
+	for fi in range(LASER_SLASH_FRAMES):
+		if is_instance_valid(slash):
+			slash.frame = fi * LASER_DIRS + dirf
+		if is_instance_valid(tel):
+			var fade: float = clampf(1.0 - float(fi) * 0.5, 0.0, 1.0)
+			tel.modulate.a = (LASER_TEL_A + LASER_TEL_SWING) * fade
+			if fade <= 0.0: tel.queue_free()
+		await battle._wait_sim(LASER_SLASH_STEP)
+		if not is_instance_valid(battle): return
+	if is_instance_valid(slash): slash.queue_free()
+	if is_instance_valid(tel): tel.queue_free()   # 有开就有合: 预警一定收掉
+	## ④ 只命中 1 人 ⇒ 追加竖劈冲击波(文案原话)。
+	if hits.size() == 1 and u.get("alive", false):
+		var cd: Vector2 = (hits[0]["pos"] - u["pos"]).normalized()
+		if cd.length() < 0.1: cd = dir
+		var cdf: int = _ground_dir_frame(cd, LASER_DIRS)
+		await _eq_laser_chop(u, si, u["pos"], _laser_dir_of(cdf), cdf, laser_chop_reach(u))
+
+
+func _eq_laser_chop(u: Dictionary, si: int, org: Vector2, dir: Vector2, dirf: int, reach: float) -> void:
+	## 竖劈冲击波: 沿路径先铺一排**暗**行波条(这就是预警, 每条就是 160 码宽的真判定带),
+	## 然后逐条点亮往前推, 推到哪结算到哪, 推过的条碎裂消失。
+	##
+	## ★★旧版的两个真毛病, 这里一起修掉:
+	##   ① 预警线是 `VfxTex._make_laser_beam_tex` 贴地平铺 + scale(1,0.35,1) ——
+	##      实拍是一块**棕橙色梯形糊斑**(帧 12/62), 读不出"路径"。
+	##   ② 劈的动画打在 `tgt.pos`(帧 12-19 就演完了), 而伤害靠气波 550 码/秒飞过去(帧 24 才命中),
+	##      差 **0.30 秒** —— 玩家看到的「劈」和真正掉血的「波」不是同一件事。
+	##      ⇒ 现在推进与结算在**同一个 `_wait_sim` 循环**里, 同一条时钟, 差值恒为 0
+	##      (memory `fb-second-clock-drops-events`)。
 	battle._shake(battle.JUICE_SHAKE_BIG)
-	battle._vfx._play_anim_vfx("res://assets/sprites/vfx/laser-cleave-anim.png", tgt["pos"], 155.0, 20.0, 1.5, false)   # 竖劈5帧砸向目标(用户素材·斜刃下落→劈地红爆)
-	var wave := Sprite3D.new()
-	wave.texture = load("res://assets/sprites/vfx/laser-wave.png")   # 气波·弧形红光墙(用户2026-07-12·横扫新月转90°凸面朝前)
-	wave.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	wave.billboard = BaseMaterial3D.BILLBOARD_ENABLED; wave.shaded = false; wave.transparent = true
-	var _wwh: float = 3.0   # 气波墙世界高
-	wave.pixel_size = _wwh / float(maxi(1, int(wave.texture.get_height())))
-	wave.modulate = Color(1.0, 0.85, 0.85, 0.98)
-	battle._world.add_child(wave)
-	var traveled: float = 0.0
-	var last_tr: float = -100.0
+	var pos: Array = laser_bar_positions(reach)
+	var n: int = pos.size()
+	var step: float = reach / float(maxi(1, n))
+	var bars: Array = []
+	for i in range(n):
+		var at: Vector2 = org + dir * float(pos[i])
+		var b := _laser_bar_sprite(dirf, 0, at, 0.10)
+		b.modulate.a = 0.55
+		battle._world.add_child(b)
+		bars.append(b)
 	var hit: Array = []
-	while is_instance_valid(battle) and traveled < reach and is_instance_valid(wave) and is_instance_valid(self):
-		await battle.get_tree().process_frame
-		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
-		traveled += 550.0 * battle.get_process_delta_time()
-		wave.position = battle._world_pos(origin + dir * traveled, _wwh * 0.5)   # 底边贴地不入地(用户2026-07-12)
-		if traveled - last_tr >= 80.0:   # 气波拖尾: 每隔80码一道淡残影(减少·不糊成雾·用户2026-07-12)
-			last_tr = traveled
-			var tr := Sprite3D.new()
-			tr.texture = wave.texture
-			tr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-			tr.billboard = BaseMaterial3D.BILLBOARD_ENABLED; tr.shaded = false; tr.transparent = true
-			tr.pixel_size = wave.pixel_size; tr.scale = wave.scale * 0.9
-			tr.position = wave.position; tr.modulate = Color(1.0, 0.55, 0.55, 0.18)
-			battle._world.add_child(tr)
-			var tt = battle._reg_tween(); tt.tween_property(tr, "modulate:a", 0.0, 0.22); tt.tween_callback(tr.queue_free)
-		for o in battle._targeting._enemies_of(u):
-			if battle._arr_has_unit(hit, o) or not o.get("alive", false): continue
-			if (o["pos"] - origin).dot(dir) <= traveled and battle._on_line(origin, dir, o["pos"], 80.0):
-				hit.append(o)
-				battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, u["atk"] * [0.6, 1.0, 8.0][si] + [15.0, 32.0, 200.0][si], o, false), Color("#9bf0ff"), 0.0, false, true)
-				battle._damage._knockback(u, o, 0.0, 0.2, 0.0)
-	if is_instance_valid(wave):
-		var wf = battle._reg_tween(); wf.tween_property(wave, "modulate:a", 0.0, 0.15); wf.tween_callback(wave.queue_free)
+	for i in range(n):
+		var d0: float = step * float(i)
+		var d1: float = minf(reach, step * float(i + 1))
+		## 波前 = 第 i 条(白热); 上一条转"刚过"; 再上一条碎裂并撤掉
+		if i < bars.size() and is_instance_valid(bars[i]):
+			bars[i].frame = 1 * LASER_DIRS + dirf
+			bars[i].modulate.a = 1.0
+		if i >= 1 and is_instance_valid(bars[i - 1]):
+			bars[i - 1].frame = 2 * LASER_DIRS + dirf
+		if i >= 2 and is_instance_valid(bars[i - 2]):
+			bars[i - 2].frame = 3 * LASER_DIRS + dirf
+		if i >= 3 and is_instance_valid(bars[i - 3]):
+			bars[i - 3].queue_free()
+		for o in laser_chop_slab(org, dir, d0, d1, laser_alive_enemies(u)):
+			if battle._arr_has_unit(hit, o): continue
+			hit.append(o)
+			battle._damage._apply_damage_from(u, o,
+				battle._resolve_dmg(u, u["atk"] * [0.6, 1.0, 8.0][si] + [15.0, 32.0, 200.0][si], o, false),
+				Color("#9bf0ff"), 0.0, false, true)
+			battle._damage._knockback(u, o, 0.0, 0.2, 0.0)
+		await battle._wait_sim(LASER_CHOP_STEP)
+		if not is_instance_valid(battle): return
+	for b in bars:
+		if is_instance_valid(b): b.queue_free()   # 有开就有合: 一条都不许留在场上
 
 ## ★以下两个函数是 009 的【可量部分】, 从演出里抽出来 —— 演出调它们, 门禁也直接调它们。
 ##   (CLAUDE.md §3.5: 一个测"数值对不对"的用例, 不该依赖任何演出 tween 跑完。)

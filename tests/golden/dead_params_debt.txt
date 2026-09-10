@@ -10,8 +10,6 @@ res://scripts/scenes/RealtimeBattle3DScene.gd	_apply_skill_extras	u
 res://scripts/scenes/RealtimeBattle3DScene.gd	_audit_flag	detail
 res://scripts/scenes/RealtimeBattle3DScene.gd	_barrage_bolt	cloud_h
 res://scripts/scenes/RealtimeBattle3DScene.gd	_blood_slash	from2d
-res://scripts/scenes/RealtimeBattle3DScene.gd	_laser_blade_sweep	half_deg
-res://scripts/scenes/RealtimeBattle3DScene.gd	_laser_blade_sweep	u
 res://scripts/scenes/RealtimeBattle3DScene.gd	_log_side_hex	u
 res://scripts/scenes/RealtimeBattle3DScene.gd	aspd_mult	u
 res://scripts/scenes/battle/axe_passive_vfx.gd	slam	h

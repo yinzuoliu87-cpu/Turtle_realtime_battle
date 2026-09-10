@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://n2btgqvumtl5"
-path="res://.godot/imported/laser-slash-anim.png-ac8caf977b8c63d97f4135dd5a274b1c.ctex"
+uid="uid://7kjlyn2nm162"
+path="res://.godot/imported/eq010-slash.png-66e7de5dacf4ee25e140cf6eda9e6e6e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/laser-slash-anim.png"
-dest_files=["res://.godot/imported/laser-slash-anim.png-ac8caf977b8c63d97f4135dd5a274b1c.ctex"]
+source_file="res://assets/sprites/vfx/eq010-slash.png"
+dest_files=["res://.godot/imported/eq010-slash.png-66e7de5dacf4ee25e140cf6eda9e6e6e.ctex"]
 
 [params]
 

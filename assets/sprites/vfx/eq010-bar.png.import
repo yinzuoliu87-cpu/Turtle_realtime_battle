@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cfpew5alrmxx2"
-path="res://.godot/imported/laser-wave.png-010d4358daf6c874579c3ef39b24322e.ctex"
+uid="uid://dm7xil07iqdyc"
+path="res://.godot/imported/eq010-bar.png-dcc3783bbb056a6cc5cad9eab3710a6d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/laser-wave.png"
-dest_files=["res://.godot/imported/laser-wave.png-010d4358daf6c874579c3ef39b24322e.ctex"]
+source_file="res://assets/sprites/vfx/eq010-bar.png"
+dest_files=["res://.godot/imported/eq010-bar.png-dcc3783bbb056a6cc5cad9eab3710a6d.ctex"]
 
 [params]
 

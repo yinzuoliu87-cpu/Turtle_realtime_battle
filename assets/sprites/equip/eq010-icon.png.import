@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c1nia1385ampk"
-path="res://.godot/imported/laser-cleave-anim.png-7f452c9a61174897e4c257e0ccf3f970.ctex"
+uid="uid://cd55xs6mlaeua"
+path="res://.godot/imported/eq010-icon.png-6db05207cd58587cf2ac559bc1e2a148.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/laser-cleave-anim.png"
-dest_files=["res://.godot/imported/laser-cleave-anim.png-7f452c9a61174897e4c257e0ccf3f970.ctex"]
+source_file="res://assets/sprites/equip/eq010-icon.png"
+dest_files=["res://.godot/imported/eq010-icon.png-6db05207cd58587cf2ac559bc1e2a148.ctex"]
 
 [params]
 

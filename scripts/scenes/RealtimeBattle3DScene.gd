@@ -8373,32 +8373,6 @@ func _set_sprite_frame(spr: Sprite3D, f: int) -> void:
 
 
 
-func _laser_blade_sweep(u: Dictionary, origin: Vector2, dir: Vector2, rng: float, half_deg: float) -> void:   # 120°扇形扫过·贴地(用户2026-07-12: 顶点在攻击者/朝目标/半径=射程, 正好盖120°伤害区)
-	var base_ang: float = atan2(dir.y, dir.x)
-	var tex: Texture2D = load("res://assets/sprites/vfx/laser-slash-anim.png")
-	if tex == null: return
-	var fh: int = maxi(1, int(tex.get_height()))          # 96 (方帧)
-	var nfr: int = maxi(1, int(tex.get_width() / fh))     # 5
-	var MAXR: float = 53.0                                 # 扇半径在纹理里的像素(顶点x≈1→maxR)
-	var spr := Sprite3D.new()
-	spr.texture = tex; spr.hframes = nfr; spr.frame = 0
-	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	spr.billboard = BaseMaterial3D.BILLBOARD_DISABLED; spr.axis = Vector3.AXIS_Y   # 贴地
-	spr.shaded = false; spr.transparent = true
-	spr.pixel_size = (rng * WS) / MAXR                     # maxR像素 = rng码(半径随射程)
-	spr.rotation = Vector3(0.0, -base_ang, 0.0)            # 朝目标
-	var center_off: float = (float(fh) * 0.5 - 1.0) / MAXR * rng   # 精灵中心相对顶点的码偏移
-	spr.position = _world_pos(origin + dir * center_off, 0.1)
-	_world.add_child(spr)
-	var tw := _reg_tween()
-	tw.tween_method(_laser_fan_frame.bind(spr, nfr), 0.0, float(nfr), float(nfr) / 24.0)
-	tw.tween_callback(spr.queue_free)
-
-func _laser_fan_frame(fr: float, spr: Sprite3D, nfr: int) -> void:
-	# ★同族钳制: nfr 来自调用方, 与贴图真实帧数无关
-	if is_instance_valid(spr):
-		spr.frame = clampi(int(fr), 0, mini(nfr, maxi(1, int(spr.hframes) * int(spr.vframes))) - 1)
-
 func _sniper_charge_fx(u: Dictionary, tgt: Dictionary) -> void:   # 蓄力1秒: 细红瞄准线由暗渐亮 + 枪口聚能球胀大 + 目标身上三道收缩锁定环
 	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
 	if dir == Vector2.ZERO: dir = Vector2.RIGHT

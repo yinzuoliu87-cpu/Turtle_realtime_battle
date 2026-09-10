@@ -519,14 +519,18 @@ func _t7_laser() -> void:
 	m["melee"] = true; m["atk_range"] = base_rng; m["atk"] = 50.0
 	var mt: Dictionary = _mk("basic", "right", Vector2(-380.0 + probe, 260.0), 5000.0)
 	var mh: float = float(mt["hp"])
-	_s._equip_sys._eq_laser_sweep(m, mt, 0)
+	## ★★2026-09-10 起 `_eq_laser_sweep` 是**协程**(预警 0.30 游戏秒之后伤害才落地),
+	##   直接调它再读血量只会读到"还没打"。伤害那一段已按 CLAUDE.md §3.5 抽成
+	##   同步的 `laser_fan_strike`(演出调它, 门禁也调它) —— 这里量的还是同一份账。
+	##   「有没有人调它」由 tests/verify_eq_laser_blade.gd 的真入口那条守(断言函数存在守不住接线)。
+	_s._equip_sys.laser_fan_strike(m, 0, m["pos"], Vector2.RIGHT, _s._equip_sys.laser_fan_range(m, 0))
 	var m_dealt: float = mh - float(mt["hp"])
 	# 远程携带者: 同样的距离、同样的星级
 	var r: Dictionary = _mk("basic", "left", Vector2(-380.0, 330.0), 2000.0)
 	r["melee"] = false; r["atk_range"] = base_rng; r["atk"] = 50.0
 	var rt: Dictionary = _mk("basic", "right", Vector2(-380.0 + probe, 330.0), 5000.0)
 	var rh: float = float(rt["hp"])
-	_s._equip_sys._eq_laser_sweep(r, rt, 0)
+	_s._equip_sys.laser_fan_strike(r, 0, r["pos"], Vector2.RIGHT, _s._equip_sys.laser_fan_range(r, 0))
 	var r_dealt: float = rh - float(rt["hp"])
 	_ok("⑦ ★近战携带者: %.0f 码外(>射程70)的敌【打得到】" % probe, m_dealt > 0.0, "掉血 %.1f" % m_dealt)
 	_ok("⑦ ★远程携带者: 同一距离【打不到】(证明不是所有人都 +250)", r_dealt <= 0.01, "掉血 %.1f" % r_dealt)
