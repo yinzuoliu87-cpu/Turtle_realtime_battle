@@ -37,6 +37,8 @@ var _eq_drone_halve: bool = false   # 无人机减半标记(随本系统)
 var _gremlin: GremlinGun
 ## 096 小木斧(2026-08-31·三期): 斧头召唤物 + 通用主动 + 被动2 窃盾。
 var _axe: AxeSystem
+## 011 饮血护符坠(2026-09-10 重做): 连斩本体 + 斩痕演出。单独成文件 —— 见 eq_blood_combo.gd 文件头。
+var _blood_sys: EqBloodCombo
 
 func _init(b) -> void:
 	battle = b
@@ -53,6 +55,7 @@ func _init(b) -> void:
 	_blade_sys = EqBladeBatch.new(b)
 	_gadget_sys = EqGadgetBatch.new(b)
 	_arcane_sys = EqArcaneBatch.new(b)
+	_blood_sys = EqBloodCombo.new(b)
 	_relic_sys = EqRelicBatch.new(b)
 	_incense = IncenseStoneSystem.new(b)
 
@@ -2226,23 +2229,6 @@ func _eq_on_dodge(u: Dictionary) -> void:
 # ============================================================================
 #  on-cast (放主动技后)
 # ============================================================================
-func _eq_bloodletting(u: Dictionary, si: int) -> void:   # 饮血护符坠(011): 一段一段连斩(每刀 0.3s 顺序打出,各命中随机敌,衰减0.85^k); 吸血溢出转盾结尾汇总
-	var n: int = [5, 6, 8][si]
-	var sh0: float = u["shield"]
-	for k in range(n):
-		if not u.get("alive", false): break
-		var es = battle._targeting._pick_enemies_of(u)
-		if es.is_empty(): break
-		var o = es[battle._battle_rng.randi() % es.size()]
-		var decay: float = pow(0.85, k)
-		battle._blood_slash(u["pos"], o["pos"], 0.0)   # 这一刀立即砍
-		battle._damage._apply_damage_from(u, o, int((battle._resolve_dmg(u, u["atk"] * [0.5, 0.7, 1.0][si] + [40.0, 50.0, 70.0][si], o, false)) * decay), Color("#ff8aa0"), 0.33, false, true)
-		await battle._wait_sim(0.3)   # 一段一段: 每0.3s一刀
-		if not is_instance_valid(battle): return   ## await 回来 battle 可能已被 queue_free(战斗结束)
-	if not is_instance_valid(self): return
-	var shg: int = int(u["shield"] - sh0)   # 连斩吸血溢出转的盾, 结尾汇总一次
-	if shg > 0: battle._vfx._float_text(u["pos"] + Vector2(28, -46), "护盾+" + str(shg), Color("#8ad7ff"), false, "shield")
-
 func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 	if u.get("equips", []).is_empty():
 		return
@@ -2776,7 +2762,7 @@ func fire_equip_effect(u: Dictionary, iid: String, star: int, stt = null) -> voi
 		#       026 连锁闪电   → battle._chain_windup (原生: 自己的 thunder 满 100)
 		#       029 冰道       → _eq_ice_fissure      (原生: 每 12 秒 _tick_ice_fissure)
 		#       043 巨浪       → +1 层, 满层才涌浪    (原生: 每周期 +1 层 —— 同一分支, 见下)
-		"p2eq_011": _eq_bloodletting(u, si)
+		"p2eq_011": _blood_sys._eq_blood_combo(u, si)
 		"p2eq_023": _eq_fire_coral_active(u, si)
 		"p2eq_026": battle._chain_windup(u, si)
 		"p2eq_029": _eq_ice_fissure(u, si)

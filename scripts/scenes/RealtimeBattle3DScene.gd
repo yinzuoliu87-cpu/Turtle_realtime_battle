@@ -3896,25 +3896,6 @@ func _weapon_slash(from2d: Vector2, to2d: Vector2, col: Color) -> void:   # 面�
 	_skill_ring(to2d, Color(col.r, col.g, col.b, 0.6), 42.0)
 
 var _flyslash_tex: ImageTexture = null
-func _blood_slash(from2d: Vector2, to2d: Vector2, delay: float) -> void:   # 饮血连斩: Undertale式红像素斩击(5帧×100ms)落敌身, 纯视觉
-	var off := Vector2(randf_range(-12.0, 12.0), randf_range(-10.0, 10.0))
-	var spr := Sprite3D.new()
-	spr.texture = VfxTex._make_slash_sheet(Color("#ff2233"))
-	spr.hframes = 5; spr.frame = 0
-	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED; spr.shaded = false; spr.transparent = true
-	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素感(不做线性模糊)
-	spr.flip_h = (randf() < 0.5); spr.flip_v = (randf() < 0.4)   # 翻转=乱斩不同向
-	var fw: float = float(spr.texture.get_width()) / 5.0
-	spr.pixel_size = (95.0 * WS) / fw   # 斩击约95px宽
-	spr.position = _world_pos(to2d + off, 1.0)
-	spr.modulate = Color(1, 1, 1, 0)   # delay前隐藏
-	_world.add_child(spr)
-	var tw := _reg_tween()
-	if delay > 0.0: tw.tween_interval(delay)
-	tw.tween_callback(spr.set_modulate.bind(Color(1, 1, 1, 1)))
-	tw.tween_method(func(fr): spr.frame = clampi(int(fr), 0, 4), 0.0, 5.0, 0.5)   # 5帧×100ms=0.5s
-	tw.tween_callback(spr.queue_free)
-
 func _pull_airborne(o: Dictionary, origin: Vector2, dist: float, dur: float) -> void:   # 击飞态平滑拉向origin(拉dist码, 留24px不重叠); vx/vz须为0(靠此改pos, 非物理横滑)
 	if not o.get("alive", false): return
 	var to_o: Vector2 = origin - o["pos"]

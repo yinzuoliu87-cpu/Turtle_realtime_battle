@@ -117,10 +117,20 @@ func _t011_cap() -> void:
 	_ok("011 ★★逐星血护盾上限 = 200/350/500(文案数)", got == want, str(got))
 
 	## 连斩刀数: 5/6/8 —— 从产品常量读不出来(是字面量), 所以拿源码对
-	var src := FileAccess.get_file_as_string("res://scripts/systems/equip/equip_system.gd")
-	_ok("011 ★分母: 源码读得到", src.length() > 10000, "%d 字" % src.length())
-	_ok("011 连斩刀数写着 [5, 6, 8]", src.contains("var n: int = [5, 6, 8][si]"))
-	_ok("011 每刀衰减 0.85^k", src.contains("pow(0.85, k)"))
+	## ★这两条原本是拿【源码子串】对字面量的。子串判据证明的是"源码里有这串字",
+	##   不是"跑起来真是这样"; 而且代码一搬家就红(2026-09-10 011 搬进 eq_blood_combo.gd 就红了一次)。
+	##   ⇒ 两个量都抽成了纯函数, 这里**真调它们**(memory `fb-weld-visual-lessons-into-gate`)。
+	var bd = _s._equip_sys._blood_sys
+	_ok("011 ★分母: 连斩子系统在位", bd != null)
+	_ok("011 连斩刀数 = 5/6/8: [%d, %d, %d]" % [bd.combo_hits(0), bd.combo_hits(1), bd.combo_hits(2)],
+		bd.combo_hits(0) == 5 and bd.combo_hits(1) == 6 and bd.combo_hits(2) == 8)
+	## ★这条原本是 `src.contains("pow(0.85, k)")` —— 源码子串是**假判据**
+	##   (memory `fb-weld-visual-lessons-into-gate`: 要走真函数)。2026-09-10 那个表达式被抽成了
+	##   `EqBloodCombo.blood_decay(k)`(伤害与斩痕宽度**共用**它), 于是这条当场红了 ——
+	##   而产品其实是对的。⇒ 改成**真调它**, 顺带把 0 刀/末刀两端也钉住。
+	_ok("011 每刀衰减 0.85^k: [0]=%.3f [1]=%.3f [7]=%.4f" % [bd.blood_decay(0), bd.blood_decay(1), bd.blood_decay(7)],
+		is_equal_approx(bd.blood_decay(0), 1.0) and is_equal_approx(bd.blood_decay(1), 0.85)
+			and absf(bd.blood_decay(7) - pow(0.85, 7)) < 1e-6)
 	## ★多件取最大上限(注释承诺的行为), 拿两件不同星级验
 	_s._units.clear()
 	var m: Dictionary = _mk("left", Vector2(-120.0, 0.0))

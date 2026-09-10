@@ -81,6 +81,7 @@ frames_for () {
     #   CI 无头一帧只推 ~1ms ⇒ 默认 500 帧会在贴图还没扫完时被掐断
     #   ⇒ 没打 ALL PASS(rc=0/致命 0), 看着像断言失败(CLAUDE.md §2 那个坑)。
     verify_eq_laser_blade)    echo 20000 ;;
+    verify_eq_blood_combo)    echo 20000 ;;
     verify_copy_rules)        echo 6000 ;;
     # 斧头动作运行时验证: 要**真推着它跑 2.5 秒墙钟**等换表 + 等施法播完回 idle(3 秒)。
     #   墙钟不是帧数 —— CI 无头帧率极高, 帧给少了会在还没等到换表时被掐断

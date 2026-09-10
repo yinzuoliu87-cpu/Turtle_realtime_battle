@@ -741,7 +741,7 @@ func _vfx_preview_loop() -> void:
 			"laser_sweep": battle._equip_sys._eq_laser_sweep(fu, {"pos": origin + dir * 350.0, "alive": true}, si)
 			"laser_chop": battle._equip_sys._eq_laser_chop(fu, si, origin, dir, battle._equip_sys._ground_dir_frame(dir, 16), 360.0)
 			"moon": battle._equip_sys._eq_wide_blade(fu, {"pos": origin + dir * 650.0, "alive": true}, si)
-			"slash": battle._blood_slash(origin - dir * 60.0, origin, 0.0)
+			"slash": battle._equip_sys._blood_sys._blood_slash_play(0, battle._equip_sys._blood_sys.blood_slash_at(origin - dir * 60.0, origin), EqBloodCombo.BLOOD_SLASH_W)
 			"smolder": _vfx_smolder(origin, dir, si)
 			"qibo": battle._sk_basic_chiwave(fu, {"pos": origin + dir * 600.0, "alive": true, "id": "dummy", "def": 30.0, "mr": 30.0, "maxHp": 5000.0, "hp": 5000.0})
 			"stone_slam": battle._burst_vfx("res://assets/sprites/vfx/stone-slam-impact.png", origin, 220.0)

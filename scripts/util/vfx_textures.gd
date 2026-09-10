@@ -249,38 +249,6 @@ static func _make_flyslash_texture(col: Color) -> ImageTexture:   # 飞斩剑气
 				img.set_pixel(x, y, acc)
 	return ImageTexture.create_from_image(img)
 
-static var _slash_sheet_cache: ImageTexture = null
-static func _make_slash_sheet(col: Color) -> ImageTexture:   # Undertale式红色像素斩击 5帧(斜向弧: 白热芯+红光, 生成→峰值→断裂消散); NEAREST放大=像素感; 缓存
-	if _slash_sheet_cache != null:
-		return _slash_sheet_cache
-	var FN := 5; var FW := 44
-	var img := Image.create(FW * FN, FW, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	var env := [0.6, 1.0, 1.0, 0.6, 0.28]   # 每帧亮度包络(生成→峰→消散)
-	for f in range(FN):
-		var ox := f * FW
-		var tt := float(f) / float(FN - 1)
-		var br: float = env[f]
-		for y in range(FW):
-			for x in range(FW):
-				var nx := float(x) / float(FW - 1)
-				var ny := float(y) / float(FW - 1)
-				var along := clampf((nx - ny + 1.0) * 0.5, 0.0, 1.0)   # 沿反对角线位置
-				if along < 0.07 or along > 0.93: continue   # 两端截断
-				if f == 0 and along > 0.72: continue   # 第0帧: 斩弧刚划入前段
-				if tt > 0.5 and sin(along * 33.0 + float(f) * 3.1) > lerpf(1.2, -0.15, (tt - 0.5) / 0.5): continue   # 后段断裂缺口
-				var bow := 0.17 * sin(PI * along)   # sabre弧弯
-				var d := (nx + ny - 1.0) * 0.70710678 - bow   # 到斩弧带状距离
-				var taper := pow(sin(PI * along), 0.5)   # 中间段更饱满(broader plateau)
-				var th := 0.092 * (0.34 + 1.05 * taper)   # 中间更粗两端尖(叶形斩弧)
-				var ad := absf(d)
-				if ad > th: continue
-				var e := (1.0 - ad / th) * br
-				var core := 1.0 - clampf(ad / (th * 0.42), 0.0, 1.0)   # 白热芯(放大)
-				img.set_pixel(ox + x, y, Color(lerpf(col.r, 1.0, core), lerpf(col.g, 1.0, core), lerpf(col.b, 1.0, core), clampf(e, 0.0, 1.0)))
-	_slash_sheet_cache = ImageTexture.create_from_image(img)
-	return _slash_sheet_cache
-
 static func _make_sword_texture(col: Color) -> ImageTexture:   # 剑刃(尖指+X): 柄→刃身→尖
 	var W := 56; var H := 14
 	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
@@ -338,7 +306,8 @@ static func _make_vblade_texture(col: Color) -> ImageTexture:   # 竖剑刃(尖�
 ##   「素材不复用除非点名」): 剑刃是【细长对称】的兵器轮廓, 处决要的是**铡刀** ——
 ##   刀背厚、刃口在下、整体压迫感朝下。翻转剑刃会得到一个"倒插的剑", 语义不对。
 ## ★也不是"程序生成的圆敷衍"(用户 2026-08-06 的原话针对的是无含义圆环与白球):
-##   这里画的是有明确形状语义的刀身轮廓, 与 `_make_slash_sheet` 同一类做法。
+##   这里画的是有明确形状语义的刀身轮廓。(旧的 `_make_slash_sheet` 已于 v0.19.353 删除 ——
+##    011 的斩痕改成烤好的像素表 `assets/sprites/vfx/eq011-slash.png`。)
 static func _make_cleaver_texture(col: Color) -> ImageTexture:
 	var W := 40; var H := 64
 	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
