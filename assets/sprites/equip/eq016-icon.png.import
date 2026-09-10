@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c8i0xol8fc5ya"
-path="res://.godot/imported/turtle-jelly.png-e77cba42fd13507aff0a68a4c069ff7f.ctex"
+uid="uid://dupxuv1y6qb17"
+path="res://.godot/imported/eq016-icon.png-1e787e2de8d31bcaa2e957b8000fe133.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/equip/turtle-jelly.png"
-dest_files=["res://.godot/imported/turtle-jelly.png-e77cba42fd13507aff0a68a4c069ff7f.ctex"]
+source_file="res://assets/sprites/equip/eq016-icon.png"
+dest_files=["res://.godot/imported/eq016-icon.png-1e787e2de8d31bcaa2e957b8000fe133.ctex"]
 
 [params]
 

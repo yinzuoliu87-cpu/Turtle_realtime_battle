@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://lfs2xyey0uq6"
-path="res://.godot/imported/equip-shield-icon.png-e29eadd5b585ac6e38055921d1c8134c.ctex"
+uid="uid://cfko4mooas5ng"
+path="res://.godot/imported/shell-guard.png-29434f77fd763e7a91ed91c2327f065a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/equip/equip-shield-icon.png"
-dest_files=["res://.godot/imported/equip-shield-icon.png-e29eadd5b585ac6e38055921d1c8134c.ctex"]
+source_file="res://assets/sprites/vfx/shell-guard.png"
+dest_files=["res://.godot/imported/shell-guard.png-29434f77fd763e7a91ed91c2327f065a.ctex"]
 
 [params]
 

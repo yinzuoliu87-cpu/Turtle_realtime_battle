@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://kov5b7qanwun"
-path="res://.godot/imported/pearl-guard.png-35f6fe3062e8bac88565c939cee4459b.ctex"
+uid="uid://2qsitl5isv5p"
+path="res://.godot/imported/eq014-icon.png-225528ada2fbe577306d7f8f5976073f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/equip/pearl-guard.png"
-dest_files=["res://.godot/imported/pearl-guard.png-35f6fe3062e8bac88565c939cee4459b.ctex"]
+source_file="res://assets/sprites/equip/eq014-icon.png"
+dest_files=["res://.godot/imported/eq014-icon.png-225528ada2fbe577306d7f8f5976073f.ctex"]
 
 [params]
 

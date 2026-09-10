@@ -151,19 +151,18 @@ static func _make_contact_texture() -> GradientTexture2D:
 # 队伍环贴图: 队色 radial 软环 (占位; 商业版换贴图)
 static var _ring_tex_cache: ImageTexture = null
 static var _bolt_tex_cache: Dictionary = {}   # #6修: 子弹贴图按颜色缓存(Image 真圆, 避免每发 CPU 逐像素)
-static func _make_ring_texture(_col: Color) -> ImageTexture:   # Image逐像素真圆环(角alpha=0不显方块); 白底,_skill_ring用modulate上色; 缓存(每次画太费)
+static func _make_ring_texture(_col: Color) -> ImageTexture:   # 共享技能环: **烤好的像素图**(白灰阶梯·硬 alpha), 由调用方 modulate 上色; 缓存
+## ★★2026-09-11 换掉了原来的【逐像素现算软圆】。用户 2026-08-09 原话:
+##   「**又是程序生成的环？哪个商业游戏是你这么做啊**」。
+##   旧实现按公式复算的规格: RGB 1 色 / **半透明 4184 像素 / 全不透明 0 像素** /
+##   alpha **148 种连续斜坡** / 峰值只有 **153/255** —— 同时踩「不是像素画」和「淡出病」,
+##   而它封着全游戏 **187 处调用**。⇒ 换成 `tools/gen_skillring.py` 烤的 96×96:
+##   **4 色纯灰(R=G=B)/ 0 半透 / 六段能量弧带断口**, 几何(带心 0.82、半宽 0.18)一字未动。
+##   ★峰值亮度由 `RealtimeBattle3DScene.RING_PEAK_A` 承接(1.0 → 0.6), 感知亮度与换前等价 ——
+##     这一轮**不顺手把全游戏调亮**, 那是另一个决定。
 	if _ring_tex_cache != null:
 		return _ring_tex_cache
-	var N := 96
-	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
-	var c := float(N - 1) / 2.0
-	for y in range(N):
-		for x in range(N):
-			var d := Vector2(float(x) - c, float(y) - c).length() / c
-			var a := 0.0
-			if d < 1.0:
-				a = clampf(1.0 - absf(d - 0.82) / 0.18, 0.0, 1.0) * 0.6
-			img.set_pixel(x, y, Color(1, 1, 1, a))
+	var img: Image = (load("res://assets/sprites/vfx/skill-ring.png") as Texture2D).get_image()
 	_ring_tex_cache = ImageTexture.create_from_image(img)
 	return _ring_tex_cache
 
@@ -442,36 +441,12 @@ static func _make_bladewall_texture(col: Color) -> ImageTexture:   # 阔剑007�
 				img.set_pixel(x, y, acc)
 	return ImageTexture.create_from_image(img)
 
-static func _make_shellhalf_texture() -> ImageTexture:   # 守护贝壳018: 扇贝半壳(铰链在下缘·穹顶朝上)·玉青壳身+暗壳沟+奶金壳缘+深描边(实心物体感·非光效)
-	var W := 76; var H := 42
-	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	var jade := Color(0.13, 0.60, 0.57)      # 壳身玉青(暗部)
-	var jade2 := Color(0.44, 0.88, 0.79)     # 壳身亮部
-	var rim := Color(1.00, 0.92, 0.68)       # 壳缘奶金
-	var line := Color(0.05, 0.19, 0.23)      # 描边/壳沟深色
-	var cx := float(W) * 0.5
-	var hy := float(H) - 1.0                 # 铰链=底边中点
-	var rad := float(H) - 2.0
-	for y in range(H):
-		for x in range(W):
-			var dx := float(x) - cx
-			var dy := hy - float(y)                       # 向上为正
-			if dy < 0.0: continue
-			var d := sqrt(dx * dx * 0.30 + dy * dy)       # 横向压扁=扇贝更宽
-			if d > rad: continue
-			var ang := atan2(dy, dx * 0.55)               # 0..PI 扇面角
-			var t := d / rad                              # 0=铰链 1=外缘
-			var edge := clampf(sin(ang) * 2.6, 0.0, 1.0)  # 两个铰链角收成尖
-			if edge <= 0.02: continue
-			var rib := 0.5 + 0.5 * sin(ang * 11.0)        # 放射壳肋(沟=暗)
-			var c := jade.lerp(jade2, clampf(0.30 + 0.55 * rib - 0.25 * t, 0.0, 1.0))
-			c = c.lerp(line, 0.30 * (1.0 - rib))          # 壳沟压暗(不是发白射线)
-			if t > 0.80 and t <= 0.94:
-				c = c.lerp(rim, (t - 0.80) / 0.14 * 0.85)  # 外圈奶金壳缘
-			if t > 0.94 or edge < 0.30:
-				c = c.lerp(line, 0.75)                     # 外缘+两侧尖角深描边
-			img.set_pixel(x, y, Color(c.r, c.g, c.b, clampf(edge * 1.6, 0.0, 1.0)))
+static func _make_shellhalf_texture() -> ImageTexture:   # 守护贝壳018: **烤好的像素半壳**(玉青壳身+壳沟+奶金壳缘+深描边)
+## ★★2026-09-11 换掉逐像素现算。从 Godot 导出真产物量过: 原来是 76×42 / **706 色** / 159 半透 ——
+##   形状是认真画的(半穹顶/放射壳沟/奶金缘/描边, 全部保留), 坏在**颜色是连续插值**出来的。
+##   现在由 `tools/gen_shell_and_spike.py` 烤成 **7 色 / 0 半透**, 尺寸 76×42 一字未动
+##   ⇒ 调用点的 pixel_size 换算不用改。
+	var img: Image = (load("res://assets/sprites/vfx/shell-guard.png") as Texture2D).get_image()
 	return ImageTexture.create_from_image(img)
 
 static func _make_coralspike_texture() -> ImageTexture:   # 珊瑚尖刺: 锯齿珊瑚橙尖刺(尖朝上=纹理+Y=行进方向·配wisp_dir)·浅珊瑚白尖

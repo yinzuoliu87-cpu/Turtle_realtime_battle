@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://pa4hnikrw83w"
-path="res://.godot/imported/anchor-shield.png-e01df9fba40d92eada409d489e4a1629.ctex"
+uid="uid://dc7an64kq7hyp"
+path="res://.godot/imported/eq013-icon.png-8a06fa704d0771f8fe0094c21c276aad.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/equip/anchor-shield.png"
-dest_files=["res://.godot/imported/anchor-shield.png-e01df9fba40d92eada409d489e4a1629.ctex"]
+source_file="res://assets/sprites/equip/eq013-icon.png"
+dest_files=["res://.godot/imported/eq013-icon.png-8a06fa704d0771f8fe0094c21c276aad.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dmd7yow01wpfv"
-path="res://.godot/imported/dungeon-shell.png-0aebe04cf581fd2137868994c7431c21.ctex"
+uid="uid://id5ni4oqu7r5"
+path="res://.godot/imported/eq015-icon.png-0f3ff04fdc5d037b5626c6de06eca730.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/equip/dungeon-shell.png"
-dest_files=["res://.godot/imported/dungeon-shell.png-0aebe04cf581fd2137868994c7431c21.ctex"]
+source_file="res://assets/sprites/equip/eq015-icon.png"
+dest_files=["res://.godot/imported/eq015-icon.png-0f3ff04fdc5d037b5626c6de06eca730.ctex"]
 
 [params]
 

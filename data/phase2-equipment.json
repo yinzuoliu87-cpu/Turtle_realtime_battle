@@ -140,7 +140,7 @@
     "emoji": "🐢",
     "effectDesc1": "每 {C:EquipTickSystem.JELLY_IV} 秒为自身获得（40/60/90+{C:EquipTickSystem.JELLY_MAXHP_PCT%}%最大生命值）点护盾。",
     "effectDesc3": "",
-    "img": "equip/turtle-jelly.png",
+    "img": "equip/eq012-icon.png",
     "effectBrief": "每 {C:EquipTickSystem.JELLY_IV} 秒获得 40/60/90 点护盾。"
   },
   {
@@ -152,7 +152,7 @@
     "emoji": "🦪",
     "effectDesc1": "每次受到伤害获得 1 层硬化，每层提供+1/1.5/2 护甲和+1/1.5/2 魔抗（上限 {C:EquipSystem.URCHIN_CAP} 层）；\n叠满 {C:EquipSystem.URCHIN_CAP} 层时获得「海胆护盾」（100/170/250+5/12/20%最大生命值），该护盾在 {C:EquipSystem.URCHIN_DECAY} 秒内逐渐衰减。",
     "effectDesc3": "",
-    "img": "equip/urchin-shield.png",
+    "img": "equip/eq013-icon.png",
     "effectBrief": "每次受伤叠 1 层硬化（各 +1/1.5/2 双抗，上限 {C:EquipSystem.URCHIN_CAP} 层），满层给护盾。"
   },
   {
@@ -164,7 +164,7 @@
     "emoji": "🏰",
     "effectDesc1": "每次受到伤害获得 1 层硬化，每层提供+2/4/6 护甲和魔抗（上限 {C:EquipTickSystem.FORTRESS_CAP} 层，无满层护盾）；\n硬化叠满 {C:EquipTickSystem.FORTRESS_CAP} 层时立即汲取一次，此后每 {C:EquipTickSystem.FORTRESS_IV} 秒对全体敌人汲取生命，每名敌人受到 0.8/1/2.5×（护甲+魔抗）魔法伤害，每汲取 1 名敌人携带者回复（50/100/250+自身已损生命值 {C:EquipTickSystem.FORTRESS_HEAL_LOST%}%）生命；\n汲取不作用于训龟大师与屏障中的龟蛋。",
     "effectDesc3": "",
-    "img": "equip/fortress-armor.png",
+    "img": "equip/eq014-icon.png",
     "effectBrief": "每次受伤叠 1 层硬化（各 +2/4/6 双抗）；满 {C:EquipTickSystem.FORTRESS_CAP} 层后每 {C:EquipTickSystem.FORTRESS_IV} 秒全场汲取生命。"
   },
   {
@@ -176,7 +176,7 @@
     "emoji": "🦔",
     "effectDesc1": "每累计反伤 300/270/230 点伤害，便获得 50/70/200 点护盾，并强化下一次普攻：命中时对目标施加 30/50/90 层流血。",
     "effectDesc3": "",
-    "img": "equip/dungeon-urchin.png",
+    "img": "equip/eq015-icon.png",
     "effectBrief": "每反伤 300/270/230 点获得护盾，下一次普攻施加 30/50/90 层流血。"
   },
   {
@@ -188,7 +188,7 @@
     "emoji": "🛡️",
     "effectDesc1": "每段受到的非真实伤害减少 3/6/10 点（固定值）；\n每 {C:EquipTickSystem.IRONWALL_IV} 秒产生一个（100/250/400+携带者 {C:EquipTickSystem.IRONWALL_MAXHP_PCT%}%最大生命值）的护盾总量，由全队（含自己）平均分摊——分摊名单不含龟蛋与训龟大师。",
     "effectDesc3": "",
-    "img": "equip/equip-shield-icon.png",
+    "img": "equip/eq016-icon.png",
     "effectBrief": "受到的非真实伤害各减 3/6/10 点；每 {C:EquipTickSystem.IRONWALL_IV} 秒生成一份护盾由全队分摊。"
   },
   {
@@ -200,7 +200,7 @@
     "emoji": "⚓",
     "effectDesc1": "免疫击飞与斩杀；\n每 {C:EquipTickSystem.ANCHOR_IV} 秒为生命百分比最低的友军回复自身 0.1/0.2/3%最大生命值的生命，累积治疗满 {C:EquipTickSystem.ANCHOR_ACC_PER_CHARGE} 点获得 1 点沉锚充能；\n持有沉锚充能期间普攻攻击速度+{C:EquipTickSystem.ANCHOR_ASPD%}%；\n普攻时消耗 1 点充能击飞最前敌人，造成（0.4/0.6/3.0×（护甲+魔抗）+6/15/70%目标最大生命值）物理伤害并眩晕其 {C:RealtimeBattle3DScene.CTRL_SEC} 秒。",
     "effectDesc3": "",
-    "img": "equip/anchor-shield.png",
+    "img": "equip/eq017-icon.png",
     "effectBrief": "免疫击飞与斩杀；治疗友军攒充能，普攻消耗充能击飞并眩晕最前敌人。"
   },
   {
@@ -212,7 +212,7 @@
     "emoji": "🐚",
     "effectDesc1": "每 {C:EquipTickSystem.SHELL_IV} 秒自回（30/45/60+5/9/15%最大生命值）生命（受治疗增幅影响）。",
     "effectDesc3": "",
-    "img": "equip/dungeon-shell.png",
+    "img": "equip/eq018-icon.png",
     "effectBrief": "每 {C:EquipTickSystem.SHELL_IV} 秒回复 30/45/60 点 加 5/9/15% 最大生命值 的生命。"
   },
   {
@@ -224,7 +224,7 @@
     "emoji": "🌺",
     "effectDesc1": "每 {C:EquipTickSystem.ANEMONE_IV} 秒为自己和生命百分比最低的友军回复（30/45/60+12/14/18%目标已损失生命）生命；\n每累计提供 200/180/150 点【实际】治疗获得 1 层海葵，每层使治疗与护盾强度+8/9/10%。",
     "effectDesc3": "",
-    "img": "equip/dungeon-anemone.png",
+    "img": "equip/eq019-icon.png",
     "effectBrief": "每 {C:EquipTickSystem.ANEMONE_IV} 秒治疗自己与最残的友军；每攒 200/180/150 点治疗叠一层增效。"
   },
   {
@@ -236,7 +236,7 @@
     "emoji": "🏋️",
     "effectDesc1": "每 {C:EquipTickSystem.DUMBBELL_IV} 秒原地锻炼（期间不普攻不充能）获得 1 层锻炼（每层最大生命值与当前生命+40/75/110，同一局对局内跨战场保留、开新对局才重置），随后蓄力投掷哑铃砸向最前敌人，造成 5/7/10%自身最大生命值的物理伤害并将其击退。",
     "effectDesc3": "",
-    "img": "equip/dungeon-dumbbell.png",
+    "img": "equip/eq020-icon.png",
     "effectBrief": "每 {C:EquipTickSystem.DUMBBELL_IV} 秒锻炼一次（+40/75/110 最大生命值），随后投掷哑铃击退最前敌人。"
   },
   {
@@ -248,7 +248,7 @@
     "emoji": "🦪",
     "effectDesc1": "每 {C:EquipTickSystem.BARNACLE_IV} 秒向全队攻击力最高的友军连接绿色绑定光束（持续），为该友军提供 60/110/180 点护盾并将其受到的 25/40/60%伤害按原类型转移给携带者（携带者护盾可吸收）；\n同时为自己和该友军提供 {C:EquipTickSystem.BARNACLE_ENERGY} 龟能与+{C:EquipTickSystem.BARNACLE_ASPD%}%攻击速度（叠加，持续到本场战斗结束）。",
     "effectDesc3": "",
-    "img": "equip/pearl-guard.png",
+    "img": "equip/eq021-icon.png",
     "effectBrief": "每 {C:EquipTickSystem.BARNACLE_IV} 秒向攻击力最高的友军连上光束，替它承受 25/40/60% 伤害。"
   },
   {

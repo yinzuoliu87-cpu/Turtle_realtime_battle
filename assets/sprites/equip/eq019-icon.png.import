@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://di271lmhebdda"
-path="res://.godot/imported/dungeon-dumbbell.png-9bd192e3931e0686d02dfbd98179a55c.ctex"
+uid="uid://bug1y34mc5h6l"
+path="res://.godot/imported/eq019-icon.png-b6079b0f2c54d32a90ee6f9f0ffa221b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/equip/dungeon-dumbbell.png"
-dest_files=["res://.godot/imported/dungeon-dumbbell.png-9bd192e3931e0686d02dfbd98179a55c.ctex"]
+source_file="res://assets/sprites/equip/eq019-icon.png"
+dest_files=["res://.godot/imported/eq019-icon.png-b6079b0f2c54d32a90ee6f9f0ffa221b.ctex"]
 
 [params]
 

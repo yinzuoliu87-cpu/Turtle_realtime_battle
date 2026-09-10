@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cw88khl5sxf15"
-path="res://.godot/imported/dungeon-anemone.png-68d732ad01f3e366de33182315825e2e.ctex"
+uid="uid://d273m00djbavx"
+path="res://.godot/imported/urchin-spike.png-9a3566cb3872f286a1bebef7b08eed8a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/equip/dungeon-anemone.png"
-dest_files=["res://.godot/imported/dungeon-anemone.png-68d732ad01f3e366de33182315825e2e.ctex"]
+source_file="res://assets/sprites/vfx/urchin-spike.png"
+dest_files=["res://.godot/imported/urchin-spike.png-9a3566cb3872f286a1bebef7b08eed8a.ctex"]
 
 [params]
 

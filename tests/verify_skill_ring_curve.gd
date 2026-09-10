@@ -53,6 +53,7 @@ func _ready() -> void:
 	await _g2_curve()
 	await _g3_geometry_unchanged()
 	await _g4_other_callers_ok()
+	await _g5_ring_is_pixel_art()
 	await _done()
 
 
@@ -138,7 +139,13 @@ func _g2_curve() -> void:
 		min_a_while_growing, RB.RING_PEAK_A - 0.01])
 
 	_ok("② ★分母: 环真的长到了 100%(不是 tween 没推动)", a_at_full >= 0.0)
-	_ok("② ★★环长到最大那一刻 alpha 仍 ≥ 0.9(这就是修的那个 bug)", a_at_full >= 0.9)
+	## ★这条原本写死 `>= 0.9`, 而它守的性质是【长满那一帧还看得见, 不是正好透明】。
+	##   2026-09-11 把 RING_PEAK_A 从 1.0 改成 0.6(换像素环时承接旧贴图自带的峰值)
+	##   ⇒ 长满时是 0.6, 性质没破而判据当场红 —— 判据钉在了旧常量上。
+	##   紧挨着的下一条(min_a_while_growing)早就写对了: 拿 RING_PEAK_A 当基准。这里跟上。
+	##   顺带比原来**更严**: 原来允许从峰值掉 10%, 现在只允许 1%。
+	_ok("② ★★环长到最大那一刻 alpha 仍 ≥ 峰值 %.2f(这就是修的那个 bug)" % RB.RING_PEAK_A,
+		a_at_full >= RB.RING_PEAK_A - 0.01)
 	_ok("② ★★可见度峰值出现在【环已经长大之后】(尺寸 ≥ 0.95×)", f_at_best >= 0.95)
 	_ok("② ★扩张全程 alpha 都保持峰值(没有边长边淡)",
 		min_a_while_growing >= RB.RING_PEAK_A - 0.01)
@@ -230,3 +237,59 @@ func _done() -> void:
 	print("  分母: 共 %d 条断言" % _n)
 	print("ALL PASS — _skill_ring 两条曲线" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+## ══════════════════════════════════════════════════════════════════════
+##  ⑤ 环的**素材本身**必须是像素画 —— 不是软边现算圆
+## ══════════════════════════════════════════════════════════════════════
+## ★★为什么补这一段(用户 2026-08-09 原话):
+##   「**又是程序生成的环？哪个商业游戏是你这么做啊**」
+##   被否的那个东西是 `VfxTex._make_ring_texture` 里 96×96 的逐像素现算
+##   (`a = clamp(1-|d-0.82|/0.18)*0.6`), 规格是 **半透 4184 / 全不透明 0 /
+##   alpha 148 档连续斜坡 / 峰值只有 153**。它封着全游戏 187 处调用。
+##   2026-09-11 换成烤好的像素图, 但**换掉不等于回不来** —— 上面那 26 条断言
+##   全是量【曲线】的, 软边圆照样能全绿。⇒ 这一段量【贴图本身】。
+##
+## ★判据走**真函数返回的那张贴图**, 不读源码子串
+##   (memory `fb-weld-visual-lessons-into-gate`: 源码子串匹配是假判据要走真函数) ——
+##   所以不论是把现算逻辑加回来、还是换成另一张软边 PNG, 这里都会红。
+func _g5_ring_is_pixel_art() -> void:
+	print("")
+	print("  ⑤ 环的素材本身: 必须是像素画(硬 alpha / 锁定色阶 / 纯灰)")
+	var tex: Texture2D = VfxTex._make_ring_texture(Color.WHITE)
+	_ok("⑤ ★分母: _make_ring_texture 真的返回了贴图", tex != null)
+	if tex == null:
+		return
+	var img: Image = tex.get_image()
+	var cols := {}
+	var semi := 0
+	var opaque := 0
+	var tinted := 0
+	for y in range(img.get_height()):
+		for x in range(img.get_width()):
+			var c: Color = img.get_pixel(x, y)
+			var a: int = int(round(c.a * 255.0))
+			if a <= 0:
+				continue
+			if a < 255:
+				semi += 1
+			else:
+				opaque += 1
+			var r: int = int(round(c.r * 255.0))
+			var g: int = int(round(c.g * 255.0))
+			var b: int = int(round(c.b * 255.0))
+			if r != g or g != b:
+				tinted += 1
+			cols["%d_%d_%d" % [r, g, b]] = true
+	print("     %dx%d  色数 %d  半透 %d  不透明 %d  带色相 %d"
+		% [img.get_width(), img.get_height(), cols.size(), semi, opaque, tinted])
+	_ok("⑤ 尺寸 %dx%d(须 96x96 —— 几何/pixel_size 换算依赖它)" % [img.get_width(), img.get_height()],
+		img.get_width() == 96 and img.get_height() == 96)
+	_ok("⑤ 色数 %d(须 1~8 —— 锁定色阶, 不是连续渐变)" % cols.size(),
+		cols.size() >= 1 and cols.size() <= 8,
+		"旧的现算环是 1 色但 148 档连续 alpha —— 软的那一面由下一条抓")
+	_ok("⑤ ★★半透明像素 %d(须 0 —— 反锯齿软边正是被否掉的那个观感)" % semi, semi == 0,
+		"旧的现算环这里是 4184, 且全不透明像素 0 个")
+	_ok("⑤ 全不透明像素 %d(须 > 1000 —— 只有【没有半透】还不够, 整张空的也满足)" % opaque,
+		opaque > 1000)
+	_ok("⑤ ★必须是纯灰 R=G=B(带色相的像素 %d 个, 须 0)" % tinted, tinted == 0,
+		"环的颜色由 187 个调用点各自 modulate 决定; 素材带色相会串到每一处")

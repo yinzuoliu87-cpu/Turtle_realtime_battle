@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://clr50o66ljlan"
-path="res://.godot/imported/fortress-armor.png-7ff3e1c4fa66ed920a538d0fc68235e3.ctex"
+uid="uid://4rih8xq8ni0m"
+path="res://.godot/imported/eq020-icon.png-d9ad4bb97e054f4a2c8ec74836483aca.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/equip/fortress-armor.png"
-dest_files=["res://.godot/imported/fortress-armor.png-7ff3e1c4fa66ed920a538d0fc68235e3.ctex"]
+source_file="res://assets/sprites/equip/eq020-icon.png"
+dest_files=["res://.godot/imported/eq020-icon.png-d9ad4bb97e054f4a2c8ec74836483aca.ctex"]
 
 [params]
 

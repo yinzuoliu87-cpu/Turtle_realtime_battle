@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://kaah2jclrw02"
-path="res://.godot/imported/urchin-shield.png-a65197f031e7bb9e33f528a251166169.ctex"
+uid="uid://dgq0ixhp7bgg4"
+path="res://.godot/imported/skill-ring.png-0041d402e220cc0083fca7bf3995db30.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/equip/urchin-shield.png"
-dest_files=["res://.godot/imported/urchin-shield.png-a65197f031e7bb9e33f528a251166169.ctex"]
+source_file="res://assets/sprites/vfx/skill-ring.png"
+dest_files=["res://.godot/imported/skill-ring.png-0041d402e220cc0083fca7bf3995db30.ctex"]
 
 [params]
 

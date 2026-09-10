@@ -3526,16 +3526,38 @@ func _ebb_tide_fx(u: Dictionary, rising: bool) -> void:   # 041: 涨潮=水纹�
 		tw.chain().tween_callback(m.queue_free)
 
 func _throw_dumbbell(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   # 钢灰哑铃飞向目标→砸中伤害+击退
+## ★★2026-09-11 把飞行从 `_reg_tween` 改成 `_wait_sim` 逐格推。
+##   原来是: tween 把精灵从 A 移到 B(0.3 秒), 然后 `tw.tween_callback(_dumbbell_hit)` ——
+##   **伤害埋在 tween 链的末尾**, 正是 CLAUDE.md §3.5 用海盗钩索那一课明令禁止的写法:
+##   tween 走**未钳制**的真实 delta, 而战斗时钟走钳制后的 ⇒ 两条钟;
+##   无头 CI 下那条链推不动, 伤害永远不结算(等多久都是 0), 而本地永远复现不出来。
+##   ⇒ 现在飞行与结算在**同一个 `_wait_sim` 循环**里, 一条钟。
+## ★落点在开火那一刻就定死(与 tween 版逐字相同的行为) —— 不追着目标走。
 	var spr := Sprite3D.new()
-	spr.texture = load("res://assets/sprites/equip/dungeon-dumbbell.png")   # 真哑铃图(020图标)作弹道
+## ★★2026-09-11 换图: 原来这里加载的是 **712×712 的 AI 渲染图**, 再用 pixel_size 压到 48 码宽,
+##   而 texture_filter 是 NEAREST —— **缩小时用 NEAREST 是最糟的组合**, 712→约 40 屏幕像素
+##   等于每 18 个纹素里只取 1 个, 屏幕上是一团随镜头抖动的噪点(不是"像素感")。
+##   换成新的 32×32 像素图标后, 一个纹素约占 1.25 屏幕像素, NEAREST 才真的给出像素感。
+	spr.texture = load("res://assets/sprites/equip/eq020-icon.png")   # 020 的像素图标即弹道本体
 	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素感
 	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED; spr.shaded = false; spr.transparent = true
 	spr.pixel_size = (48.0 * WS) / float(maxi(1, spr.texture.get_width()))   # 场地约48px宽
-	spr.position = _world_pos(u["pos"], 1.1)
+	var from2d: Vector2 = u["pos"]
+	var to2d: Vector2 = tgt["pos"]
+	spr.position = _world_pos(from2d, 1.1)
 	_world.add_child(spr)
-	var tw := _reg_tween()
-	tw.tween_property(spr, "position", _world_pos(tgt["pos"], 1.0), 0.3)
-	tw.tween_callback(_dumbbell_hit.bind(spr, u, tgt, dmg))
+	const FLY_T := 0.3             # 飞行时长(游戏秒) = 18 × SIM_DT
+	const FLY_STEP := 2.0 / 60.0   # ★必须是 SIM_DT 整数倍, 否则 _wait_sim 向上取整
+	var el := 0.0
+	while el < FLY_T:
+		el = minf(FLY_T, el + FLY_STEP)
+		var pf: float = el / FLY_T
+		if is_instance_valid(spr):
+			spr.position = _world_pos(from2d.lerp(to2d, pf), lerpf(1.1, 1.0, pf))
+		await _wait_sim(FLY_STEP)
+		if not is_instance_valid(self):
+			return   ## await 期间战斗可能已结束(场景 free)
+	_dumbbell_hit(spr, u, tgt, dmg)
 
 func _dumbbell_hit(spr: Sprite3D, u: Dictionary, tgt: Dictionary, dmg: int) -> void:
 	if is_instance_valid(spr): spr.queue_free()
@@ -4868,7 +4890,12 @@ const RING_GROW_T := 0.26      # ①扩张段: 这一整段 alpha 保持峰值 �
 const RING_FADE_T := 0.22      # ②淡出段: 长满之后才开始淡出(总时长 0.48s, 原来是 0.35s)
 ## 峰值 modulate alpha。★贴图 `_make_ring_texture` 自带 0.6 的 alpha 剖面且【被缓存、忽略入参】,
 ##   所以屏幕上的峰值 = 0.6 × 这个数; 入参 `col.a` 一直是没人读的 —— 这次不动它(动了就是全仓变暗)。
-const RING_PEAK_A := 1.0
+## 环的峰值 alpha。★★2026-09-11 从 1.0 改成 0.6 —— **这不是调暗, 是保持不变**:
+##   换贴图前, 环的软 alpha 斜坡自己封顶在 153/255 = 0.6, 而 modulate.a 是 1.0
+##   ⇒ 屏幕上的峰值就是 0.6。换成硬 alpha(255)的像素环后, 那个 0.6 没人承接了,
+##   不接住的话全游戏 187 处环会**一起变亮 67%** —— 用户要的是"别用程序生成的环",
+##   没说要更亮, 顺手调亮是夹带。要调亮度就改这一个数, 别回头去给贴图加半透。
+const RING_PEAK_A := 0.6
 
 # 技能光圈: 地面上一个躺平的环, 扩散淡出 (2D 接口对齐 _skill_ring(pos, col, radius))
 func _skill_ring(pos2d: Vector2, col: Color, radius: float) -> Sprite3D:
@@ -6598,24 +6625,49 @@ func _throw_gold_coin(src: Dictionary, tgt: Dictionary) -> void:
 const INK_BOMB_RADIUS := 300.0                                  # 墨水炸弹AOE半径(用户2026-07-15: 原全体→落点300码范围内)
 var _copy_fx_mult: float = 1.0
 
-func _urchin_shield_fx(u: Dictionary) -> void:   # 海胆护盾(013满层): 紫刺放射+紫环+紫字, 与普通金盾区分(用户2026-07-19"特殊颜色")
+func _urchin_shield_fx(u: Dictionary) -> void:   # 海胆护盾(013满层): 放射紫刺 + 紫环 + 紫字, 与普通金盾区分(用户2026-07-19"特殊颜色")
+## ★★2026-09-11 重做。原来这一段有两个真缺陷(都是量出来的, 不是印象):
+##   ① 刺用的是 `VfxTex._make_glow_texture()` —— 从 Godot 导出真产物量过:
+##      96×96 / **1 色 / 半透 7004 / 全不透明 0**, 就是一颗**软白球**。
+##      而 013 的效果是「放射海胆**刺**」, 拿圆球当刺, **形状本身就不对**。
+##   ② `tween_property(sp, "modulate:a", 0.0, 0.30)` 从**出生**就开始淡,
+##      而刺只飞 0.26 秒 —— 全程都在变暗, 黑地上读成一抹紫烟。
+##      (memory `fb-vfx-defect-families` 的「淡出病」: 短命特效要**前段满亮**再淡。)
+## ⇒ 改成 `assets/sprites/vfx/urchin-spike.png`: 16 向预烤的锥形刺(5 色 / 0 半透),
+##   **贴地** `axis=AXIS_Y` + `rotation` 恒 0 —— 方向烤进素材, 不做任意角旋转
+##   (010 那一轮的教训: 贴地精灵被任意角转会重采样, 像素网格当场碎)。
+##   刺数从 12 改成 **16**, 正好一根对一个预烤方向 ⇒ 每根的朝向都是精确的。
 	var col := Color(0.80, 0.32, 0.94)   # 海胆紫
 	_splash_ring_bold(u["pos"], Color(col.r, col.g, col.b, 0.9), 130.0)
 	_vfx._float_text(u["pos"] + Vector2(0, -72), "海胆盾", col, false, "shield")
-	if _spark_tex == null: _spark_tex = VfxTex._make_glow_texture()
-	for i in range(12):   # 放射紫刺(海胆感)
-		var ang: float = TAU * float(i) / 12.0
+	if _urchin_spike_tex == null:
+		_urchin_spike_tex = load("res://assets/sprites/vfx/urchin-spike.png")
+	const SPIKE_DIRS := 16
+	const SPIKE_FLY := 64.0        # 飞出去多远(码) —— 与原实现相同
+	const SPIKE_HOLD := 0.20       # 满亮保持多久(占了飞行的前 77%)
+	const SPIKE_FADE := 0.10       # 之后才开始淡
+	for i in range(SPIKE_DIRS):
+		var ang: float = TAU * float(i) / float(SPIKE_DIRS)
 		var sp := Sprite3D.new()
-		sp.texture = _spark_tex
-		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; sp.shaded = false; sp.transparent = true
-		sp.modulate = Color(col.r, col.g, col.b, 0.95)
-		sp.position = _world_pos(u["pos"], 0.9)
-		sp.pixel_size = 0.011
+		sp.texture = _urchin_spike_tex
+		sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		sp.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+		sp.axis = Vector3.AXIS_Y       # 贴地(与同一刻放出来的环同一个平面)
+		sp.shaded = false
+		sp.transparent = true
+		sp.hframes = SPIKE_DIRS
+		sp.frame = i                   # 方向烤在素材里, 只选帧
+		sp.pixel_size = (68.0 * WS) / 32.0   # 一格 32 纹素代表 68 码 ⇒ 刺长约 29 码
+		sp.position = _world_pos(u["pos"], 0.06)
 		_world.add_child(sp)
-		var to: Vector2 = u["pos"] + Vector2(cos(ang), sin(ang)) * 64.0
+		var to: Vector2 = u["pos"] + Vector2(cos(ang), sin(ang)) * SPIKE_FLY
 		var tw := _reg_tween(); tw.set_parallel(true)
-		tw.tween_property(sp, "position", _world_pos(to, 0.9), 0.26).set_ease(Tween.EASE_OUT)
-		tw.tween_property(sp, "modulate:a", 0.0, 0.30)
+		tw.tween_property(sp, "position", _world_pos(to, 0.06), SPIKE_HOLD + SPIKE_FADE).set_ease(Tween.EASE_OUT)
+		## ★先占住 SPIKE_HOLD 这一段(等值 tween), 淡出才真的排在它后面 ——
+		##   少了这一条, chain() 会紧跟着位移那条一起排, 又变回"一出生就淡"。
+		##   (与 `_skill_ring` 修那个公共 bug 时用的是同一手法。)
+		tw.tween_property(sp, "modulate:a", 1.0, SPIKE_HOLD)
+		tw.chain().tween_property(sp, "modulate:a", 0.0, SPIKE_FADE)
 		tw.chain().tween_callback(sp.queue_free)
 
 func _egg_level_up_vfx(u: Dictionary, total_lvl: int) -> void:   # 温泉蛋升级: 金光柱升腾 + 脚下金块 + "LV UP LvN"
@@ -7383,6 +7435,7 @@ func _add_hitstop(sec: float) -> void:
 		_hitstop = sec
 
 var _hitring_tex: ImageTexture = null
+var _urchin_spike_tex: Texture2D = null   # 013 海胆刺: 16 向预烤(2026-09-11 换掉软白球)
 var _hitspark_tex: ImageTexture = null   # ★命中星芒【专用】: 不与 _spark_tex 共用(那个另一处会懒创建成发光球, 谁先跑谁定)
 var _spark_tex: ImageTexture = null   # #6修: 命中辉光改 Image 真圆(原 GradientTexture2D 露方角)
 var _reticle_tex: ImageTexture = null     # 瞄准准星(圆环+四刻线) — 瞄准镜054一瞬瞄准闪专用
