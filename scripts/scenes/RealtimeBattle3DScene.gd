@@ -6631,17 +6631,10 @@ const INK_BOMB_RADIUS := 300.0                                  # 墨水炸弹AO
 var _copy_fx_mult: float = 1.0
 
 func _urchin_shield_fx(u: Dictionary) -> void:   # 海胆护盾(013满层): 放射紫刺 + 紫环 + 紫字, 与普通金盾区分(用户2026-07-19"特殊颜色")
-## ★★2026-09-11 重做。原来这一段有两个真缺陷(都是量出来的, 不是印象):
-##   ① 刺用的是 `VfxTex._make_glow_texture()` —— 从 Godot 导出真产物量过:
-##      96×96 / **1 色 / 半透 7004 / 全不透明 0**, 就是一颗**软白球**。
-##      而 013 的效果是「放射海胆**刺**」, 拿圆球当刺, **形状本身就不对**。
-##   ② `tween_property(sp, "modulate:a", 0.0, 0.30)` 从**出生**就开始淡,
-##      而刺只飞 0.26 秒 —— 全程都在变暗, 黑地上读成一抹紫烟。
-##      (memory `fb-vfx-defect-families` 的「淡出病」: 短命特效要**前段满亮**再淡。)
-## ⇒ 改成 `assets/sprites/vfx/urchin-spike.png`: 16 向预烤的锥形刺(5 色 / 0 半透),
-##   **贴地** `axis=AXIS_Y` + `rotation` 恒 0 —— 方向烤进素材, 不做任意角旋转
-##   (010 那一轮的教训: 贴地精灵被任意角转会重采样, 像素网格当场碎)。
-##   刺数从 12 改成 **16**, 正好一根对一个预烤方向 ⇒ 每根的朝向都是精确的。
+## ★刺: `urchin-spike.png` 16 向预烤(4 色/0 半透), 贴地 axis=AXIS_Y + rotation 恒 0
+##   —— 方向烤进素材, 不做任意角旋转(转了像素网格当场碎)。
+## ★ 2026-09-12 改走 Blender(`tools/blender_urchinspike.py`): 上一版手写 PIL 生成器
+##   画出来是 14×6 = 2.3:1 的**楞子**, 现在是 25×4 = 6.2:1 针形。逐帧研究见 docs/studies/。
 	var col := Color(0.80, 0.32, 0.94)   # 海胆紫
 	_splash_ring_bold(u["pos"], Color(col.r, col.g, col.b, 0.9), 130.0)
 	_vfx._float_text(u["pos"] + Vector2(0, -72), "海胆盾", col, false, "shield")
@@ -6662,7 +6655,9 @@ func _urchin_shield_fx(u: Dictionary) -> void:   # 海胆护盾(013满层): 放�
 		sp.transparent = true
 		sp.hframes = SPIKE_DIRS
 		sp.frame = i                   # 方向烤在素材里, 只选帧
-		sp.pixel_size = (68.0 * WS) / 32.0   # 一格 32 纹素代表 68 码 ⇒ 刺长约 29 码
+		## ★按比例收回: 新刺占格子 25/32(旧 14/32)。还用 68 码/格 则屏幕长 20→37px,
+		##   而龟才 40px 高 ⇒ 16 根会把龟埋了。38×25/32 = 29.7 码, 与旧版可见长度一致。
+		sp.pixel_size = (38.0 * WS) / 32.0
 		sp.position = _world_pos(u["pos"], 0.06)
 		_world.add_child(sp)
 		var to: Vector2 = u["pos"] + Vector2(cos(ang), sin(ang)) * SPIKE_FLY

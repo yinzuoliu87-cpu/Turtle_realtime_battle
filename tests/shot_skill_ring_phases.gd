@@ -59,15 +59,13 @@ func _ready() -> void:
 		var r: Sprite3D = _s._skill_ring(p, Color(1.0, 0.86, 0.42, 0.8), 105.0)
 		if r == null:
 			continue
-		var tw: Tween = r.get_meta("ring_tw", null)
-		var t: float = grow * float(PHASES[i])
-		if tw != null:
-			tw.pause()
-			if t > 0.0:
-				tw.custom_step(t)
+		## ★2026-09-11: 环不再走 tween —— 改成直接指定帧号, 每格定格在不同阶段。
+		var fi: int = mini(RB.RING_ANIM_FRAMES - 1,
+			int(round(float(PHASES[i]) * float(RB.RING_ANIM_FRAMES - 1) / 1.9)))
+		r.frame = fi
 		var tps: float = float(r.get_meta("ring_target_ps", 1.0))
-		print("[RINGPHASE] 第%d格  t=%.3fs  尺寸 %.3f×  alpha %.3f" % [
-			i, t, r.pixel_size / maxf(0.0001, tps), r.modulate.a])
+		print("[RINGPHASE] 第%d格  帧 %d/%d  pixel_size %.5f(目标 %.5f)  modulate.a %.3f" % [
+			i, fi, RB.RING_ANIM_FRAMES - 1, r.pixel_size, tps, r.modulate.a])
 
 	await RenderingServer.frame_post_draw
 	await RenderingServer.frame_post_draw

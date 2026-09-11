@@ -525,6 +525,17 @@ const CASES := {
 	"note": "★gap 收到 110 码 —— 溅射半径 250 码, 敌人散开就打不到第二个, 会读成'没有溅射'。这是把判据焊在几何上: 三个敌人挤进一个溅射圈里, 怎么随机都不影响结论(memory [[fb-make-assertions-rng-insensitive]])。",
 },
 
+## 013 炙烤海胆 —— 每次受伤叠 1 层硬化, 满 20 层放【海胆护盾】+ 16 根放射紫刺。
+"p2eq_013": {
+	"star": 3, "carrier": "basic", "enemies": 3, "enemy_dist": 150.0, "enemy_gap": 90.0,
+	"enemy_attacks": true, "carrier_hp": 1.0, "attacker": true,   # ★attacker 也要 true: `enemy_attacks` 是「还不还手」, 没人先动手假人就不还手
+	"dur": 20.0, "zoom": 1.0, "focus": "carrier",
+	## ★拍点压在满层前后。**空 shots 会让台子进 HOLD 永不退出**(我踩过两次),
+	##   要自动拍就必须给拍点; 给用户验收时才用 VFXLAB_HOLD=1。
+	"shots": [8.0, 9.0, 9.5, 10.0, 10.5, 11.0, 12.0, 13.0, 15.0, 17.0],
+	"note": "★触发靠**挨打**不靠出手: 硬化层是 `_eq_on_target` 里叠的, 所以 enemy_attacks=true 而 attacker=false。 三个敌人才攻得够快(满 URCHIN_CAP=20 层); carrier_hp 拉满防死在满层之前。 刺是贴地放射的 ⇒ zoom 1.0 实战镜头(拉近看不算, 真实尺寸下才知道会不会把龟埋了)。",
+},
+
 ## 071 炼乳罐 —— 战斗开始给全体友军套【奶油护盾】, 破碎时对 300 码内造成效果。
 ## ★**必须有友军**(它是全队护盾); 且要看到"破碎"就得让友军挨打。
 "p2eq_071": {

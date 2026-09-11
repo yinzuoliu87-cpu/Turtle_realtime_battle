@@ -30,7 +30,6 @@
   "gen_laserfan.py -> assets/sprites/vfx/eq010-tel.png",
   "gen_moonslash.py -> assets/sprites/vfx/eq009-band.png",
   "gen_shell_and_spike.py -> assets/sprites/vfx/shell-guard.png",
-  "gen_shell_and_spike.py -> assets/sprites/vfx/urchin-spike.png",
   "gen_shield_shell.py -> assets/sprites/vfx/shield-shell.png",
   "gen_shop_card_frames.py -> assets/sprites/shop/card-frame-n.png",
   "gen_skillring.py -> assets/sprites/vfx/skill-ring.png"
@@ -253,7 +252,6 @@
   "treasure-slam.png",
   "ts-clock.png",
   "ts-hourglass.png",
-  "urchin-spike.png",
   "whistle-icon.png"
  ]
 }

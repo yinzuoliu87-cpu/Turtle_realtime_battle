@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
-"""gen_shell_and_spike.py —— 018 守护贝壳的半壳 / 013 炙烤海胆的放射刺。
+"""gen_shell_and_spike.py —— 018 守护贝壳的半壳。
+
+★ 2026-09-12: 【013 的放射刺已从这里删掉】 —— 改走 `tools/blender_urchinspike.py`。
+  用户:「**你不是接了blender吗**」; 而且手写生成器画出来的是 2.3:1 的楞子不是刺。
+  半壳还留在这里(尚未重烤, 仍在 vfx_discipline B 条台账里)。
 
 跑法(本文件自带下采样+锁板, 不经 pixelize_sheet —— 这两张都**不是方的**,
 而 pixelize_sheet 的格子必须是方的(它要支持 90° 旋转)):
   python tools/gen_shell_and_spike.py --what shell -o assets/sprites/vfx/shell-guard.png
-  python tools/gen_shell_and_spike.py --what spike -o assets/sprites/vfx/urchin-spike.png
+  (013 的刺已移走: blender --background --python tools/blender_urchinspike.py -- --dirs 16)
 
 ★为什么重烤这两张(2026-09-11 从 Godot 里**导出真产物**逐像素量的, 不是读源码猜):
 
@@ -39,8 +43,6 @@ SS = 6
 ## 玉青板(与 pixelize_sheet.PALETTES["jade"] 一致) + 奶金壳缘
 JADE = [(238, 250, 240), (184, 232, 200), (110, 200, 148), (58, 150, 104), (32, 96, 72), (16, 54, 44)]
 RIM = (255, 235, 174)      # 奶金壳缘 —— 原实现的 rim 色, 保留
-## 海胆紫(与 013 的 Color(0.80,0.32,0.94) 同色系; 刺自己带色, 不靠 modulate)
-VIOLET = [(245, 232, 255), (214, 170, 250), (176, 108, 232), (128, 60, 190), (74, 28, 118)]
 
 BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
 
@@ -126,66 +128,13 @@ def shell(W, H):
     return _finish(img, W, H, JADE + [RIM])
 
 
-# ── 013 炙烤海胆: 放射刺(预烤 16 个方向, 尖朝外) ────────────────────
-## ★原来这里用的是 `_make_glow_texture` —— 一颗**圆光球**。
-##   013 的效果是「满层时放射 12 根海胆刺」, 拿圆球当刺, 形状本身就不对。
-## ★★为什么要**预烤方向**而不是运行时转: 刺是贴地精灵(axis=AXIS_Y),
-##   被任意角旋转会重采样, 像素网格当场碎 —— 010 激光长刃那一轮就是栽在
-##   `rotation = Vector3(0, -ang, 0)` 上。⇒ 16 向烤进素材, 运行时 `rotation` 恒 0,
-##   只选帧。方向由 `_ground_dir_frame(dir, 16)` 决定, 与判定/移动方向同一套口径。
-SPIKE_LEN = 0.86      # 刺长(占半格)
-SPIKE_HALF = 0.17     # 根部半宽(占半格)
-
-
-def spike_cell(px_final, ang):
-    n = px_final * SS
-    img = Image.new("RGBA", (n, n), (0, 0, 0, 0))
-    ld = img.load()
-    ca, sa = math.cos(ang), math.sin(ang)
-    for y in range(n):
-        for x in range(n):
-            ux = (x + 0.5) / n * 2.0 - 1.0
-            vy = (y + 0.5) / n * 2.0 - 1.0
-            ## 转到刺的局部坐标: s 沿刺(0=根 1=尖), p 垂直于刺
-            s_ = (ux * ca + vy * sa) / SPIKE_LEN
-            p_ = (-ux * sa + vy * ca)
-            if s_ < 0.0 or s_ > 1.0:
-                continue
-            half = SPIKE_HALF * (1.0 - s_) ** 0.72
-            if half <= 0.0 or abs(p_) > half:
-                continue
-            qx, qy = x // SS, y // SS
-            t = abs(p_) / max(1e-6, half)
-            if s_ > 0.90:
-                col = VIOLET[0]
-            elif t < 0.28:
-                col = VIOLET[1]
-            elif t < 0.66:
-                col = VIOLET[2]
-            elif t < 0.90:
-                col = VIOLET[3]
-            else:
-                if not _dither(qx, qy, (1.0 - t) / 0.10):
-                    continue
-                col = VIOLET[4]
-            ld[x, y] = col + (255,)
-    return _finish(img, px_final, px_final, VIOLET)
-
-
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--what", choices=["shell", "spike"], required=True)
+    ap.add_argument("--what", choices=["shell"], default="shell")
     ap.add_argument("-o", "--out", required=True)
     a = ap.parse_args()
-    if a.what == "shell":
-        W, H = 76, 42          # ★与原 _make_shellhalf_texture 逐字相同, 调用点换算不用改
-        im = shell(W, H)
-    else:
-        CELL, DIRS = 32, 16
-        W, H = CELL * DIRS, CELL
-        im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        for k in range(DIRS):
-            im.paste(spike_cell(CELL, math.tau * k / DIRS), (k * CELL, 0))
+    W, H = 76, 42          # ★与原 _make_shellhalf_texture 逐字相同, 调用点换算不用改
+    im = shell(W, H)
     os.makedirs(os.path.dirname(os.path.abspath(a.out)) or ".", exist_ok=True)
     im.save(a.out)
     px = im.load()
