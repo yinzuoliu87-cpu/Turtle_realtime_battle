@@ -5,7 +5,6 @@
   "scripts/scenes/RealtimeBattle3DScene.gd::_shield_dome::scale",
   "scripts/scenes/RealtimeBattle3DScene.gd::_signal_pulse::pixel_size",
   "scripts/scenes/RealtimeBattle3DScene.gd::_signal_pulse::pixel_size",
-  "scripts/scenes/RealtimeBattle3DScene.gd::_skill_ring::pixel_size",
   "scripts/scenes/RealtimeBattle3DScene.gd::_storm_shred::scale",
   "scripts/scenes/battle/synergy_vfx.gd::ground_ring::pixel_size",
   "scripts/systems/skills/crystal_system.gd::_crystal_detonate::pixel_size",

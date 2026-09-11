@@ -49,10 +49,11 @@ func _ready() -> void:
 					n.visible = false
 
 	var c: Vector2 = _s._arena_center
-	var grow: float = RB.RING_GROW_T
-	var fade: float = RB.RING_FADE_T
-	print("[RINGPHASE] 扩张 %.3fs / 淡出 %.3fs / 起始尺寸 %.2f / 峰值 alpha %.2f" % [
-		grow, fade, RB.RING_PS0, RB.RING_PEAK_A])
+	## ★2026-09-11: 环换成「10 帧烤好的扩散 + pixel_size 固定只切帧」,
+	##   RING_PS0 / RING_GROW_T / RING_FADE_T 三个常量随那套 tween 一起删了。
+	var dur: float = float(RB.RING_ANIM_FRAMES) / RB.RING_ANIM_FPS
+	print("[RINGPHASE] %d 帧 @%.0ffps = %.3fs / 峰值 alpha %.2f" % [
+		RB.RING_ANIM_FRAMES, RB.RING_ANIM_FPS, dur, RB.RING_PEAK_A])
 	for i in range(PHASES.size()):
 		var p: Vector2 = c + Vector2((float(i) - 2.0) * 250.0, 0.0)
 		var r: Sprite3D = _s._skill_ring(p, Color(1.0, 0.86, 0.42, 0.8), 105.0)

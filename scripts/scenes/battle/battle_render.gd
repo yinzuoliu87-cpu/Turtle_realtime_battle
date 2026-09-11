@@ -221,6 +221,7 @@ func _render_step(rd: float, frozen: bool, in_ts: bool) -> void:
 	_update_camera_shake(rd)    # 震屏始终推进 (含冻结期)
 	_update_world_transforms()
 	_tick_follow_vfx()             # 跟随特效(冰块等)贴目标最新世界坐标(含击飞height)
+	_tick_anim_fx()                # 位置固定的帧动画(技能环)按游戏时钟切帧·放完自销
 	_update_ninja_marks()          # 忍者冲击标记(纯视觉·用户2026-07-12)
 	_tick_ink_links()              # 线条·连笔连接线跟随双方脚底(到期/死亡断链)
 	_update_overlay()
@@ -232,6 +233,27 @@ func _render_step(rd: float, frozen: bool, in_ts: bool) -> void:
 #  沙漏059 JoJo时停 — 触发/蓄力/冻结/恢复/视觉 (登场10s → 蓄力1s → 时停 5/10/30s, 一场一次)
 #  ★"4/10/30" 是旧数: timestop_system.gd:84 现在是 [5.0, 10.0, 30.0](用户 2026-07-19 把 1★ 4→5)
 # ═══════════════════════════════════════════════════════════════════
+## 位置固定的帧动画(不跟单位走) —— 共享技能环 `_skill_ring` 在用。
+## ★为什么不走 tween: tween 走**未钳制** delta, 而开场/卡顿时游戏钟是钳制的 ⇒ 两条钟
+##   (memory [[fb-second-clock-drops-events]])。这里只用游戏钟 `battle._t`。
+## ★为什么不合进 `_follow_vfx`: 那张表每一条都必须有 `unit`(要贴单位坐标),
+##   而环是打在**场地坐标**上的, 没有宿主单位。
+func _tick_anim_fx() -> void:
+	for i in range(battle._anim_fx.size() - 1, -1, -1):
+		var f: Dictionary = battle._anim_fx[i]
+		var spr = f["spr"]
+		if not is_instance_valid(spr):
+			battle._anim_fx.remove_at(i)
+			continue
+		var n: int = int(f.get("n", 1))
+		var fr: int = int((battle._t - float(f.get("t0", 0.0))) * float(f.get("fps", 20.0)))
+		if fr >= n:
+			spr.queue_free()
+			battle._anim_fx.remove_at(i)
+			continue
+		spr.frame = maxi(0, fr)
+
+
 func _tick_follow_vfx() -> void:
 	for i in range(battle._follow_vfx.size() - 1, -1, -1):
 		var f: Dictionary = battle._follow_vfx[i]

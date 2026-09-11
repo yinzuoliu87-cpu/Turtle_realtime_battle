@@ -692,6 +692,10 @@ var _edit_btn_edit: Button = null
 
 # --- Phase 4 juice 全局态 ---
 var _hitstop := 0.0                       # 剩余顿帧秒 (>0 时 _process 跳过逻辑推进, 每帧自减 → 精确恢复)
+var _skill_ring_sheet: Texture2D = null   # 共享技能环的 10 帧扩散表(懒加载)
+## 位置固定的帧动画(不跟单位走): [{spr,t0,fps,n}] —— 每帧按游戏时钟算到第几帧, 放完自销。
+## ★与 `_follow_vfx` 分开是因为那张表的每一条都必须有 `unit`, 而环是打在场地坐标上的。
+var _anim_fx: Array = []
 var _follow_vfx: Array = []               # 跟随单位的特效sprite [{spr,unit,h}] — 每帧贴 _world_pos(unit.pos, unit.height+h); sprite被free则自动剔除
 var _pending_shots: Array = []            # 依次射出的子弹队列 [{delay, fn:Callable, src}] — 每帧减delay, 到点call(错峰射击: 手铳/加特林/狙击链); src=归属(时停只推进active携带者)
 # ═══ 沙漏059 JoJo时停 ═══ 冻结全局_t + 只tick active携带者; 其他单位/弹道/依次射击/tween/粒子 全定格
@@ -4885,50 +4889,46 @@ func play_sheet_vfx(pos2d: Vector2, sheet: Texture2D, frames: int, world_px: flo
 ##   ⇒ 拆成两条曲线: 【先长大(这一整段 alpha 保持峰值) → 长满【之后】才淡出】。
 ##   ⚠ 它是公共原语, 全仓 60+ 个调用点共用 —— 改的只有【时间轴】,
 ##     半径/颜色/峰值亮度一个都没动, 所以别的调用者只会"看得见了", 不会变形变色。
-const RING_PS0 := 0.4          # 起始尺寸(占目标的比例)。环从这里扩到 100%
-const RING_GROW_T := 0.26      # ①扩张段: 这一整段 alpha 保持峰值 ⇒ 长到最大那一帧【最亮】
-const RING_FADE_T := 0.22      # ②淡出段: 长满之后才开始淡出(总时长 0.48s, 原来是 0.35s)
-## 峰值 modulate alpha。★贴图 `_make_ring_texture` 自带 0.6 的 alpha 剖面且【被缓存、忽略入参】,
-##   所以屏幕上的峰值 = 0.6 × 这个数; 入参 `col.a` 一直是没人读的 —— 这次不动它(动了就是全仓变暗)。
-## 环的峰值 alpha。★★2026-09-11 从 1.0 改成 0.6 —— **这不是调暗, 是保持不变**:
-##   换贴图前, 环的软 alpha 斜坡自己封顶在 153/255 = 0.6, 而 modulate.a 是 1.0
-##   ⇒ 屏幕上的峰值就是 0.6。换成硬 alpha(255)的像素环后, 那个 0.6 没人承接了,
-##   不接住的话全游戏 187 处环会**一起变亮 67%** —— 用户要的是"别用程序生成的环",
-##   没说要更亮, 顺手调亮是夹带。要调亮度就改这一个数, 别回头去给贴图加半透。
+## ★2026-09-11: RING_PS0 / RING_GROW_T / RING_FADE_T 三个常量随那套 tween 一起删了 ——
+##   现在是「10 帧烤好的扩散 + pixel_size 固定只切帧」, 没有「起始尺寸」也没有两段时间轴。
+const RING_ANIM_FRAMES := 10   # skill-ring-10f.png 的帧数(tools/blender_ring.py 渲 + pixelize)
+const RING_ANIM_FPS := 21.0    # 10 帧 / 21fps ≈ 0.48 秒 —— 与改造前的 0.26+0.22 总时长一致
+const RING_CELL_PX := 64.0     # 每帧画布边长
+const RING_LAST_R_PX := 31.1   # 末帧外径(实测, 见提交信息里的逐帧量表)
+## ★环的峰值 alpha。2026-09-11 从 1.0 改成 0.6 是**保持不变**, 不是调暗:
+##   旧软边贴图的 alpha 斜坡自己封顶在 153/255 = 0.6, 而 modulate.a 是 1.0。
+##   换成硬 alpha 像素环后那个 0.6 没人承接 ⇒ 不接住则 187 处一起变亮 67%(顺手调亮是夹带)。
 const RING_PEAK_A := 0.6
 
 # 技能光圈: 地面上一个躺平的环, 扩散淡出 (2D 接口对齐 _skill_ring(pos, col, radius))
 func _skill_ring(pos2d: Vector2, col: Color, radius: float) -> Sprite3D:
+	## ★共享环(187 处)。用户否过两次(2026-08-09 看 095 / 2026-09-11 看 012
+	##   「为什么那个地面的东西糊弄啊」)。根因不是贴图是**放大方式**:
+	##   tween 连续缩放像素贴图 = 非整数倍 = 网格被打烂(tools/blender_ring.py:13)。
+	##   → Blender 烤 10 帧扩散, pixel_size **恒定只切帧**(同 003)。详见方案书 20260911b §10。
+	if _skill_ring_sheet == null:
+		_skill_ring_sheet = load("res://assets/sprites/vfx/skill-ring-10f.png")
 	var r := Sprite3D.new()
-	r.texture = VfxTex._make_ring_texture(col)
-	## 2026-09-11 显式写出 NEAREST。★**不是修 bug**: 反向验证证明把这行拿掉门禁照样绿 ——
-	##   Sprite3D.texture_filter 本来就默认 NEAREST(=0)。我当时看实拍觉得环"边缘还是糊的",
-	##   诊断成"没设 NEAREST", **是错的**; 真实原因是素材自己的 4 档明度阶梯铺在 17 纹素宽的
-	##   带上, 1:1 缩放下读起来像渐变。这行留着只是【显式好过依赖默认】, 不声称修好了什么。
-	r.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	r.texture = _skill_ring_sheet
+	r.hframes = RING_ANIM_FRAMES
+	r.frame = 0
 	r.billboard = BaseMaterial3D.BILLBOARD_DISABLED
 	r.axis = Vector3.AXIS_Y          # 躺平贴地
 	r.shaded = false
 	r.transparent = true
+	r.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	r.modulate = Color(col.r, col.g, col.b, RING_PEAK_A)
 	r.position = _world_pos(pos2d, 0.05)
-	# pixel_size 让环直径 ≈ radius(px) × WS(米/px); ring 贴图 96px 宽
-	var target_ps: float = (radius * 2.0 * WS) / 96.0
-	r.pixel_size = target_ps * RING_PS0
-	r.set_meta("ring_target_ps", target_ps)   # 门禁/量尺拿它当分母(不重算一遍曲线)
+	## ★环外径 = 调用点给的 radius。末帧外径实测 31.1px / 半画布 32px ⇒ 按这个比例定 pixel_size,
+	##   **算出来的, 不是量屏幕量出来的**(量屏幕会把飘字/火花/重叠的环一起框进去, 见 blender_ring.py 头注)。
+	var target_ps: float = (radius * 2.0 * WS) / (float(RING_CELL_PX) * (RING_LAST_R_PX / (RING_CELL_PX * 0.5)))
+	r.pixel_size = target_ps        # ★固定。不再 tween —— 连续缩放像素贴图就是被否掉的那个糊
+	r.set_meta("ring_target_ps", target_ps)   # 门禁/量尺拿它当分母(不重算一遍公式)
 	_world.add_child(r)
-	var tw := _reg_tween()
-	tw.set_parallel(true)
-	# ①扩张段(0 → RING_GROW_T): 尺寸 40%→100%, 【alpha 同时保持在峰值】。
-	#   那条等值的 alpha tween 不是废话 —— 它占住这一段时间, 让下面 chain() 的淡出
-	#   真的排在"长满之后"; 少了它, chain() 会紧跟着尺寸那条一起排, 又变回同步淡出。
-	tw.tween_property(r, "pixel_size", target_ps, RING_GROW_T) \
-		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.tween_property(r, "modulate:a", RING_PEAK_A, RING_GROW_T)
-	# ②淡出段: 长满【之后】才开始, 所以"最大的那一帧"是最亮的一帧。
-	tw.chain().tween_property(r, "modulate:a", 0.0, RING_FADE_T)
-	tw.chain().tween_callback(r.queue_free)
-	r.set_meta("ring_tw", tw)                 # 门禁 custom_step 手推这条 tween(无头 CI 下 tween 自走不稳)
+	## 帧推进挂在 `_anim_fx` 上走**游戏时钟**(不用 tween: tween 走未钳制 delta = 第二条钟)
+	_anim_fx.append({
+		"spr": r, "t0": _t, "fps": RING_ANIM_FPS, "n": RING_ANIM_FRAMES,
+	})
 	return r
 
 func _splash_ring_bold(pos2d: Vector2, col: Color, radius: float) -> void:
