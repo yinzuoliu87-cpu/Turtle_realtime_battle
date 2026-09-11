@@ -11,7 +11,10 @@
   两个问题:
     ① 贴图是程序画的软辉光, 与项目的硬边像素风不是一路(用户:「最好不要程序弄吧」)
     ② **连续缩放像素贴图 = 非整数倍缩放 = 像素网格被打烂**, 这是像素风的头号禁忌
-       (与 CLAUDE.md 记的"像素风只能整数倍缩放"同一条)
+       ★这条的真出处(2026-09-11 核过: **CLAUDE.md 里没有这句话**, 原引用是错的):
+         · scripts/systems/equip/equip_system.gd:1169「像素风只能整数倍缩放」
+         · scripts/scenes/battle/battle_ballistics.gd:675「三条像素风硬约束」
+         · 现已焊进门禁: tools/vfx_discipline_audit.py 的 A 条(量贴图本身, 不看调用点字眼)
   ⇒ 正确做法: **把扩散烤成 N 帧**, 画布尺寸恒定, 游戏里 pixel_size 固定不动、只切帧。
 
 ★为什么用 Blender 而不是生成器: 环要【几何精确】——

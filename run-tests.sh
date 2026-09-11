@@ -583,6 +583,12 @@ run_audit "tools/tree_timer_audit.py" "ALL OK" "tree_timer (树级计时器不�
 #   他拍「先只修4件，把这个问题记录下来」⇒ 存量进台账冻结、新增当场红。
 run_audit "tools/shield_duration_audit.py" "ALL OK" "shield_duration (通用护盾=4秒·永久给盾点台账只减不增)"
 
+# ★ 2026-09-11 用户一路问下来抓到三件事, **每一件都已经写在这个仓库里了**:
+#   「为什么那个地面的东西糊弄啊」/「你不是接了blender吗」/「这是012？」
+#   他当时那句:「**我问一句你才意识到一个漏洞？那我怎么敢开工**」
+#   ⇒ memory 靠我想起来, 门禁自己会红。三条全是只减不增的棘轮。
+run_audit "tools/vfx_discipline_audit.py" "ALL OK" "vfx_discipline (像素贴图不许连续缩放 / 不许新增手写生成器 / 新素材要有逐帧研究)"
+
 echo ""
 if [ "$FAIL" -eq 0 ]; then
   echo "ALL PASS ($PASS/$PASS)"
