@@ -684,7 +684,7 @@ func _grant_shield(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 	## ★`_own_grant_vfx`: 某件装备自己画了护盾演出时置 true ⇒ 跳过通用罩(不叠两层);
 	##   由自绘方在调 _grant_shield 前置, 本函数用完即清。
 	if not bool(u.get("_own_grant_vfx", false)):
-		battle._vfx.shield_shell(u, Color(1.0, 0.85, 0.2))   # ★罩在**单位身上**的六棱护罩(原先是地上一个金圈·用户2026-09-11 否)
+		battle._vfx.shield_shell(u, Color(1.0, 0.93, 0.62))   # ★淡金不是深金: 深金蓝通道只有 0.2, 低 alpha 叠在近黑背景上会发浑褐(1:1 实拍量出来的)   # ★罩在**单位身上**的六棱护罩(原先是地上一个金圈·用户2026-09-11 否)
 	u.erase("_own_grant_vfx")
 	battle._audio_sys._sfx_shield_gain()                       # §AUDIO: 得盾音 (节流; 群体上盾不刷屏)
 

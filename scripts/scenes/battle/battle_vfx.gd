@@ -1295,9 +1295,10 @@ func coral_burst(pos2d: Vector2) -> void:
 ## ★一条钟: 帧推进挂在 `_follow_vfx` 的 `anim_fps` 上(走游戏时钟), 不用 tween。
 ##   没有 alpha 渐变 —— 明暗变化烤在素材的 8 帧里(防【淡出病】)。
 const SHELL_TEX := "res://assets/sprites/vfx/shield-shell.png"
-const SHELL_FRAMES := 8
-const SHELL_FPS := 20.0        # 8 帧 / 20fps = 0.40 秒
-const SHELL_YARDS := 108.0     # 罩子直径(码) —— 比龟身略大, 罩得住又不糊满屏
+const SHELL_FRAMES := 12
+const SHELL_FPS := 24.0        # 12 帧 / 24fps = 0.50 秒(参考实测: 满态 0.33 + 消散 ≈ 0.55 秒)
+const SHELL_YARDS := 132.0     # 整格直径(码)。★盘面只占格子 78%(剩下留给碎屑飞出去)
+                               #   ⇒ 可见盘径 ≈ 103 码, 与上一版的 108 码基本持平
 const SHELL_H := 0.92          # 挂在单位身上的高度(米·跟着 height 走, 击飞时一起抬)
 
 func shield_shell(u: Dictionary, col: Color) -> void:
@@ -1316,7 +1317,26 @@ func shield_shell(u: Dictionary, col: Color) -> void:
 	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素画, LINEAR 会糊
 	## 一帧的边长 = 图宽 / 帧数; 按它归一, 换素材尺寸不用回来改这里
 	s.pixel_size = (SHELL_YARDS * battle.WS) / float(maxi(1, int(tex.get_width()) / SHELL_FRAMES))
-	s.modulate = Color(col.r, col.g, col.b, 1.0)   # ★不降 alpha: 素材本身就是镂空的, 靠半透明"显得透"是被否掉的那种观感
+	s.modulate = Color(col.r, col.g, col.b, 1.0)
+	## ★★叠加混合(用户 2026-09-11 拍板:「开」) —— **只给这一层罩子开**。
+	##   为什么非开不可: 1:1 实拍量过 —— 不用 additive 时, 任何浅色以低 alpha 叠在
+	##   近黑地图上都会变成**灰褐薄雾**(深金→浅金只减轻一点), 读不成"发光的罩"。
+	## ★ docs/specs/装备特效制作流程.md 阶段 4 写着「不用 blend_add(会洗白, 颜色该由美术定)」——
+	##   那条是给**不透明的手绘素材**定的(additive 会洗掉美术定的颜色);
+	##   护盾罩是**刻意的半透叠加层**, additive 正是它该用的工具。例外范围就这一个函数。
+	## ★为什么要自己搭材质: Sprite3D 的 billboard/modulate/texture_filter 都是喂给它
+	##   **内部材质**的, 而 material_override 会把内部材质整个替掉 ⇒ 这几样得在材质上再设一遍。
+	##   帧选择不受影响: hframes 改的是**网格 UV**, 覆盖材质照样采到对的那一格。
+	var mat := StandardMaterial3D.new()
+	mat.albedo_texture = tex
+	mat.albedo_color = Color(col.r, col.g, col.b, 1.0)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	s.material_override = mat
 	s.position = battle._world_pos(u["pos"] as Vector2, SHELL_H)
 	battle._world.add_child(s)
 	battle._follow_vfx.append({

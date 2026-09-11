@@ -169,7 +169,22 @@ func _g2_asset_is_pixel_art() -> void:
 				opaque += 1
 				cols[Vector3i(int(c.r8), int(c.g8), int(c.b8))] = true
 	_ok("② ★色数 ≤ 8(像素画判据·实得 %d)" % cols.size(), cols.size() <= 8)
-	_ok("② ★半透明像素必须是 0(靠半透明【显得透】是被否掉的观感·实得 %d)" % semi, semi == 0)
+	## ★判据换过形状(2026-09-11): 原来是「半透明像素必须是 0」。
+	##   那条规矩是**我自己定的**(pixelize_sheet.py:171「像素画不要羽化」), 用户从没定过;
+	##   它把两件不同的事混成一条 —— **羽化的边缘**(该禁) 与 **刻意的半透填充**(护盾罩
+	##   能"罩住但不遮住"的唯一手段)。混在一起的后果: 罩子只能做成空心格线,
+	##   而空心格线正是用户说「完全不够商业游戏」的那个东西。
+	## ⇒ 改成卡【alpha 只能有少数几档】: 硬阶梯放行, 连续羽化照红 —— **收得更准, 不是放松**。
+	var alphas := {}
+	for y in range(h):
+		for x in range(w):
+			var ca: float = img.get_pixel(x, y).a
+			if ca > 0.001:
+				alphas[int(round(ca * 255.0))] = true
+	_ok("② ★alpha 只能是硬阶梯(档数 %d, 需 ≤ 16); 连续羽化会几十上百档" % alphas.size(),
+		alphas.size() <= 16, "实得 %d 档" % alphas.size())
+	_ok("② ★分母: 确实用了半透明(全不透明 = 又变回遮住龟的那种·实得 %d 个)" % semi,
+		semi > 200, "半透像素 %d" % semi)
 	_ok("② ★分母: 真的画了东西(不透明 %d 个)" % opaque, opaque > 1000)
 	## 纯灰度: 罩子的颜色由调用点 modulate 决定, 素材带色相会串到全部 44 处
 	var tinted := 0
@@ -177,19 +192,21 @@ func _g2_asset_is_pixel_art() -> void:
 		if (k as Vector3i).x != (k as Vector3i).y or (k as Vector3i).y != (k as Vector3i).z:
 			tinted += 1
 	_ok("② ★必须纯灰 R=G=B(带色相的 %d 种, 须 0)" % tinted, tinted == 0)
-	## 中间镂空: 中心那一块必须基本是空的, 否则罩子把龟盖住了
+	## ★需求是【看得见里面的龟】, 不是【中心必须是空的】。
+	##   v1 靠镂空满足它, v2 靠半透满足它 —— 判据要卡**需求**不是卡某一种实现。
+	##   卡实现的判据会把正确的做法也判成错的。
+	var core_block := 0
+	var core_total := 0
 	var cx: int = int(h / 2)
 	var cy: int = int(h / 2)
-	var core_filled := 0
-	var core_total := 0
 	for y in range(cy - 8, cy + 9):
 		for x in range(cx - 8, cx + 9):
 			core_total += 1
-			## 取"满格帧"(第 2 帧)来数 —— 第 0 帧还没合拢, 数它等于放水
-			if img.get_pixel(x + 2 * h, y).a > 0.001:
-				core_filled += 1
-	_ok("② ★★罩子中心是空的(看得见里面的龟): 满格帧中心 17×17 里只填了 %d/%d"
-		% [core_filled, core_total], core_filled == 0)
+			## 取满格帧(第 2 帧) —— 数第 0 帧等于放水
+			if img.get_pixel(x + 2 * h, y).a > 0.62:
+				core_block += 1
+	_ok("③ ★★罩中心看得见里面的龟: 满格帧中心 17×17 里不该有不透明像素(实得 %d/%d)"
+		% [core_block, core_total], core_block == 0)
 
 
 # ── ③ 帧动画真的在推进, 且放完自销 ─────────────────────────────────────
