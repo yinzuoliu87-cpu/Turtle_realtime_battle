@@ -14,6 +14,11 @@ static func absorb(u: Dictionary, d: float) -> float:
 	if u["shield"] > 0.0:
 		var ab := minf(u["shield"], d)
 		u["shield"] -= ab; d -= ab
+		## ★限时盾先被吃掉(它本来就要过期, 先花它对玩家有利)。
+		##   `shield_timed` 与 `shield` 是**包含**关系(timed ⊆ shield), 不是另一个盘子;
+		##   它存在的唯一目的是让到期时能只清这一份、不把永久盾一起抹掉。
+		if float(u.get("shield_timed", 0.0)) > 0.0:
+			u["shield_timed"] = maxf(0.0, float(u["shield_timed"]) - ab)
 	if d > 0.0 and float(u.get("_auraShieldVal", 0.0)) > 0.0:
 		var ab2 := minf(float(u["_auraShieldVal"]), d)
 		u["_auraShieldVal"] = float(u["_auraShieldVal"]) - ab2

@@ -82,6 +82,7 @@ func _sk_stone_taunt(u: Dictionary) -> void:                    # 石头龟·嘲
 		if o.get("alive", false) and o["pos"].distance_to(u["pos"]) <= TAUNT_RADIUS:
 			victims.append(o)
 	battle._taunt(u, victims, TAUNT_SEC)
+	# shield-perm-ok: 封板文档点名的特例 —— 「所有"通用护盾"持续=4秒(嘲讽的"永久护盾"是特例除外)」
 	battle._damage._grant_shield(u, u["atk"] * TAUNT_SHIELD_COEF)          # 1A永久盾(dur=0·不随嘲讽消失)
 	u["stone_dr_until"] = battle._t + TAUNT_SEC            # 0.5×护甲%减伤4秒
 	u["energy_lock_until"] = battle._t + SLAM_DELAY        # 砸击(3.5s)之后龟能才重新充能(用户#8"砸击后龟能才重新充能")

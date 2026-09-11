@@ -639,9 +639,17 @@ func _dot_float_flyaway(u: Dictionary, bucket: String, st: Dictionary) -> void:
 		battle._vfx._float_text(u["pos"], str(total), _dot_bucket_col(bucket), false, "damage", dt)
 
 ## 每帧: 常驻 DOT 数字跟随头顶 + 左右错开; 桶结束(或单位死)→弹射跳走。在 _process 里 _render._update_overlay 之后调。
+## ★通用护盾时长(封板 2026-07-06 · docs/design/技能改制设计决策.md 石龟封板补全):
+##   「所有"通用护盾"持续=4秒」。特殊护盾要在装备/技能的**文案里写明**自己的时长
+##   (013 炙烤海胆写了「10 秒内逐渐衰减」、嘲讽写了「永久」), 文案没写时长的一律吃这个默认值。
+## ★为什么是一个共用常量而不是各处再写一个 4.0: 这个数原本在 bamboo/bubble/diamond
+##   三个技能系统里各存了一份 `*_SHIELD_SEC := 4.0`, 而装备层**一处都没有** ——
+##   2026-08 那轮只扫了技能, 装备的 `_grant_shield` 全部吾着 dur=0(永久)。
+const COMMON_SHIELD_SEC := 4.0
+
 func _grant_shield(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 	if amt <= 0.0: return
-	_holy_convert(u, amt)      # 盾羁绊9档: 盾类装备给的护盾, 额外 20% 转成圣光护盾
+	_holy_convert(u, amt, dur)      # 盾羁绊9档: 盾类装备给的护盾, 额外 20% 转成圣光护盾(★时长跟随母次)
 	amt *= battle._copy_fx_mult                          # 龟壳复制期: 护盾也按60%(封板"以60%效果释放")
 	amt *= 1.0 + float(u.get("shield_amp", 0.0))   # 护盾加成(受到方,所有来源)
 	var sb: float = u["shield"]
@@ -655,18 +663,28 @@ func _grant_shield(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 	u["shield"] = u["shield"] + amt
 	if dur > 0.0:
 		u["shield_until"] = maxf(float(u.get("shield_until", 0.0)), battle._t + dur)   # 限时盾原语(封板通用护盾=4秒): 记到期(多源取更晚); dur=0=永久(不设→_tick不过期·shell/嘲讽/既有盾全默认永久不变)
+		## ★记下【这一份】是限时的。原来没这一行 ⇒ 到期时 `u["shield"] = 0.0` 把整池抹平,
+		##   连别人给的**永久盾**一起杀(石龟嘲讽的 1A 永久盾 与 队友 016 铁壁盾的 4 秒团队盾
+		##   同时在身, 4 秒一到两份都没)。这个坑原本就在, 四件装备改成限时后变得常见。
+		## ⚠ 已知近似: 破盾%(双头龟)/偷盾(斧头)/海胆衰减 这类**直接改 shield** 的路径
+		##   不走 ShieldMath.absorb, 不会同步减 timed ⇒ 那几条下的损失会记在永久那份头上。
+		##   到期处用 minf(timed, shield) 兑齐, 不会扣超; 没把每个写点都钩上是故意的(改动面不值)。
+		u["shield_timed"] = minf(float(u.get("shield_timed", 0.0)) + amt, float(u["shield"]))
 	var got = int(u["shield"] - sb)
 	u["_st_shield"] = int(u.get("_st_shield", 0)) + got   # §STATS: 实际获盾
 	if got >= 8:                             # #1 护盾飘字 "+N 盾" (浅蓝); 门槛过滤每帧微盾被动防刷屏
 		battle._vfx._float_text(u["pos"] + Vector2(0, -52), "+%d 盾" % got, battle._VC.color_of("shield-num"), false, "shield")   # 走飘字色表, 不再手抄 #ffffff
-	## ★★2026-08-09 用户看到 095 的画面:「又是程序生成的环？哪个商业游戏是你这么做啊」。
-	##   这一行就是那个环 —— `_skill_ring` 是**代码现画的一个圆**, 而它封着全游戏 44 个给盾点,
-	##   于是任何来源给盾, 脚下都糊同一个金圈。程序化圆环是占位素材的水平, 这条不辩解。
-	## ⚠ 但它是**共享**的: 直接删会波及所有装备/羁绊/技能 ⇒ 那是单独一轮的事(已记路线图)。
-	##   这里只开一个口子: **本装备自绘时跳过通用环**, 由那件装备的演出层负责这一下。
-	##   `_own_grant_vfx` 由自绘方在调 `_grant_shield` 前置 true, 本函数用完即清。
+	## ★★两轮用户意见否的是同一个东西:
+	##   2026-08-09 看 095:「又是程序生成的环？哪个商业游戏是你这么做啊」
+	##   2026-09-11 看 012:「我不明白 lol 里获得护盾都是你这样在地上搞一下的吗」
+	##   原写法 `_skill_ring(u["pos"], 金色, 44.0)` 是在**地上**画个圈, 而它封着全游戏 44 个
+	##   给盾点 ⇒ 任何来源给盾都是"脚底下闪一下"。现换成 `_vfx.shield_shell`:
+	##   罩在**单位身上**的六棱护罩(专用新素材 shield-shell.png · 8 帧像素动画 ·
+	##   格子是镂空的所以看得见里面的龟)。改这一处 = 44 处全换了。
+	## ★`_own_grant_vfx`: 某件装备自己画了护盾演出时置 true ⇒ 跳过通用罩(不叠两层);
+	##   由自绘方在调 _grant_shield 前置, 本函数用完即清。
 	if not bool(u.get("_own_grant_vfx", false)):
-		battle._skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.4), 44.0)
+		battle._vfx.shield_shell(u, Color(1.0, 0.85, 0.2))   # ★罩在**单位身上**的六棱护罩(原先是地上一个金圈·用户2026-09-11 否)
 	u.erase("_own_grant_vfx")
 	battle._audio_sys._sfx_shield_gain()                       # §AUDIO: 得盾音 (节流; 群体上盾不刷屏)
 
@@ -677,7 +695,7 @@ func _grant_shield(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 ##   ★为什么用 _cur_eq_item 而不是给管线加"来源"参数: 护盾/治疗的调用点有几十处,
 ##     加参数要全改一遍; 而装备效果的分发本来就在几个 for 循环里, 在那里标一下最省。
 var _holy_busy := false
-func _holy_convert(u: Dictionary, amt: float) -> void:
+func _holy_convert(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 	if _holy_busy or amt <= 0.0:
 		return
 	var iid: String = str(battle._cur_eq_item)
@@ -687,7 +705,10 @@ func _holy_convert(u: Dictionary, amt: float) -> void:
 		return                                  # 9 档才有
 	_holy_busy = true
 	var conv: float = amt * battle._shield_syn.T3_CONVERT
-	_grant_shield(u, conv)
+	## ★★dur 必须跟随母次护盾: 015/016/021 三件都是**盾类**装备, 9 档时它们每次给盾
+	##   都会额外走这里一跃。不传 dur = 主盾 4 秒过期而转出来的 20% 圣光盾**永久留着**,
+	##   等于把刚修掉的那个漏又开回来(只是从"全漏"变成"每次漏 20%")。
+	_grant_shield(u, conv, dur)
 	## ★这份也记进圣盾账(2026-08-12 用户:「9 档时自己获得普通护盾也会获得罩子」)——
 	##   血条白黄段与持有球罩读的都是 `_holyShieldVal`, 不记这里就只有 095 那条路算数。
 	u["_holyShieldVal"] = minf(float(u.get("_holyShieldVal", 0.0)) + conv,

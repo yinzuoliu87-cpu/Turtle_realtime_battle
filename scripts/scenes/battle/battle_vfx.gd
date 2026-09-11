@@ -1278,3 +1278,99 @@ func coral_burst(pos2d: Vector2) -> void:
 	var ft: Tween = battle._reg_tween()
 	ft.tween_property(sp, "modulate:a", 0.0, 0.14)
 	ft.tween_callback(sp.queue_free)
+
+
+## ════════════════════════════════════════════════════════════════════════
+##  通用【获得护盾】演出 —— 罩在单位身上的六棱护罩
+## ════════════════════════════════════════════════════════════════════════
+## ★由来(用户 2026-09-11 看 012 的护盾演出):
+##     「**我不明白lol里获得护盾都是你这样在地上搞一下的吗**」
+##   被否的是 `battle_damage._grant_shield` 末尾那行 `_skill_ring(...)` ——
+##   在**地上**画个金圈, 而它封着全游戏 44 个给盾点。LoL 的 Barrier/护盾一律在角色身上。
+##
+## ★素材是这条专用的新图 `shield-shell.png`(8 帧·64×64·4 色·0 半透),
+##   不借 046 的 `shield-dome.png` 也不借石龟的 `fx-hex-bubble.png`
+##   (铁律 [[fb-no-asset-reuse-unless-told]]:「别拿别的顶替」)。
+##
+## ★一条钟: 帧推进挂在 `_follow_vfx` 的 `anim_fps` 上(走游戏时钟), 不用 tween。
+##   没有 alpha 渐变 —— 明暗变化烤在素材的 8 帧里(防【淡出病】)。
+const SHELL_TEX := "res://assets/sprites/vfx/shield-shell.png"
+const SHELL_FRAMES := 8
+const SHELL_FPS := 20.0        # 8 帧 / 20fps = 0.40 秒
+const SHELL_YARDS := 108.0     # 罩子直径(码) —— 比龟身略大, 罩得住又不糊满屏
+const SHELL_H := 0.92          # 挂在单位身上的高度(米·跟着 height 走, 击飞时一起抬)
+
+func shield_shell(u: Dictionary, col: Color) -> void:
+	if battle._world == null or u == null or not u.get("alive", false):
+		return
+	var tex: Texture2D = load(SHELL_TEX)
+	if tex == null:
+		return                                  # 素材没 import 就静默跳过, 不崩战斗
+	var s := Sprite3D.new()
+	s.texture = tex
+	s.hframes = SHELL_FRAMES
+	s.frame = 0
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	s.shaded = false
+	s.transparent = true
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素画, LINEAR 会糊
+	## 一帧的边长 = 图宽 / 帧数; 按它归一, 换素材尺寸不用回来改这里
+	s.pixel_size = (SHELL_YARDS * battle.WS) / float(maxi(1, int(tex.get_width()) / SHELL_FRAMES))
+	s.modulate = Color(col.r, col.g, col.b, 1.0)   # ★不降 alpha: 素材本身就是镂空的, 靠半透明"显得透"是被否掉的那种观感
+	s.position = battle._world_pos(u["pos"] as Vector2, SHELL_H)
+	battle._world.add_child(s)
+	battle._follow_vfx.append({
+		"spr": s, "unit": u, "h": SHELL_H,
+		"anim_fps": SHELL_FPS, "anim_n": SHELL_FRAMES, "anim_t0": battle._t,
+	})
+
+
+## ════════════════════════════════════════════════════════════════════════
+##  012【海藻】的来源标识 —— 脚下长出一丛海藻
+## ════════════════════════════════════════════════════════════════════════
+## ★用户 2026-09-11:「我觉得特效完全不够商业游戏，**名称也不好，改为海藻**，重做图标」
+##   ⇒ 012 改名【海藻】; 它每 4 秒给自己一次护盾, 演出就该是海藻从脚下长起来
+##   ([[fb-effect-text-is-the-spec]]: 演出必须就是效果本身)。
+##
+## ★与通用六棱护罩是**两层**不是二选一: 护罩是全游戏"我有盾了"的统一语言,
+##   这丛海藻说的是"这次的盾是谁给的"。所以 012 不置 `_own_grant_vfx`。
+##
+## ★四丛错开 KELP_STAGGER 秒起跳 —— 齐刷刷同时冒出来像一个印章盖下去。
+const KELP_TEX := "res://assets/sprites/vfx/kelp-frond.png"
+const KELP_FRAMES := 6
+const KELP_FPS := 18.0          # 6 帧 / 18fps = 0.333 秒; 加上错开 0.09 秒 = 0.42 秒 ≈ 六棱罩的 0.40 秒
+const KELP_YARDS := 34.0        # 海藻高度(码)。★实拍改过: 50 码时海藻把龟的头和壳全埋了(读成"龟站在灌木丛里")
+const KELP_N := 4               # 一次长几丛
+const KELP_R := 0.46            # 绕身半径(米)。★实拍改过: 0.30 时四丛全堆在正中间, 散开才读得出"绕一圈"
+const KELP_STAGGER := 0.030     # 每丛错开几秒起跳(总时长要收在六棱罩之内, 否则罩没了还剩一丛孤零零的草)
+
+func kelp_burst(u: Dictionary) -> void:
+	if battle._world == null or u == null or not u.get("alive", false):
+		return
+	var tex: Texture2D = load(KELP_TEX)
+	if tex == null:
+		return
+	var fh: float = float(maxi(1, int(tex.get_height())))
+	var ps: float = (KELP_YARDS * battle.WS) / fh          # 按**帧高**归一: 目标是"多高", 不是"多宽"
+	for i in range(KELP_N):
+		var s := Sprite3D.new()
+		s.texture = tex
+		s.hframes = KELP_FRAMES
+		s.frame = 0
+		s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		s.shaded = false
+		s.transparent = true
+		s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		s.pixel_size = ps
+		## Sprite3D 以图心为锚 ⇒ 抬高半个身位, 根部才落在地面上而不是悬空
+		var h: float = fh * ps * 0.5
+		var ang: float = TAU * (float(i) + 0.5) / float(KELP_N)
+		s.position = battle._world_pos(u["pos"] as Vector2, h) \
+			+ Vector3(cos(ang) * KELP_R, 0.0, sin(ang) * KELP_R)
+		battle._world.add_child(s)
+		battle._follow_vfx.append({
+			"spr": s, "unit": u, "h": h,
+			"orbit_r": KELP_R, "orbit_a": ang, "orbit_spd": 0.0,   # 静态绕身偏移(复用既有机制)
+			"anim_fps": KELP_FPS, "anim_n": KELP_FRAMES,
+			"anim_t0": battle._t + float(i) * KELP_STAGGER,
+		})

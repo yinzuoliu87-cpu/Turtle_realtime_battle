@@ -50,6 +50,8 @@ eq|沙漏|effectDesc1	1.0 10.0
 eq|海浪护符|effectDesc1	400.0
 eq|海葵药膏|effectBrief	7.0
 eq|海葵药膏|effectDesc1	7.0
+eq|海藻|effectBrief	4.0
+eq|海藻|effectDesc1	4.0 4.0
 eq|涟漪药剂|effectBrief	8.0
 eq|涟漪药剂|effectDesc1	8.0
 eq|涨潮碑|effectBrief	5.0
@@ -137,8 +139,6 @@ eq|黄铜齿轮|effectBrief	6.0
 eq|黄铜齿轮|effectDesc1	6.0
 eq|龙蛋|effectBrief	2.5
 eq|龙蛋|effectDesc1	2.5 88.0
-eq|龟苓膏块|effectBrief	4.0
-eq|龟苓膏块|effectDesc1	4.0 4.0
 pet|凤凰龟/强化涅槃|brief	4.0 20.0 50.0 50.0 60.0
 pet|凤凰龟/强化涅槃|detail	4.0 20.0 50.0 50.0 60.0 120.0
 pet|凤凰龟/涅槃|brief	0.3 5.0 25.0 50.0

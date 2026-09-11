@@ -58,7 +58,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	var tk = s._equip_tick_sys
 
-	# ── 012 龟苓膏块: 每 4 秒自护盾 [40,60,90][si] + 4%最大生命 ──────────────
+	# ── 012 海藻: 每 4 秒自护盾 [40,60,90][si] + 4%最大生命 ──────────────
 	var u12: Dictionary = _stage(s, "p2eq_012", 3)
 	u12["shield"] = 0.0
 	var sh0: float = float(u12.get("shield", 0.0))

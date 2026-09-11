@@ -578,6 +578,11 @@ run_audit "tools/await_guard_audit.py" "ALL OK" "await_guard (协程 await 回�
 #   ()。手工找只找到 1 处, 审计器一扫又抓出 3 处。
 run_audit "tools/tree_timer_audit.py" "ALL OK" "tree_timer (树级计时器不许接闭包·会活过场景释放)"
 
+# ★封板规则「所有"通用护盾"持续=4秒」当年只扫进了**技能**, 装备层一处都没扫 ——
+#   2026-09-11 用户看 012 演示时当场问「盾不过期是什么东西」。当时实测 49 个给盾点 31 个永久。
+#   他拍「先只修4件，把这个问题记录下来」⇒ 存量进台账冻结、新增当场红。
+run_audit "tools/shield_duration_audit.py" "ALL OK" "shield_duration (通用护盾=4秒·永久给盾点台账只减不增)"
+
 echo ""
 if [ "$FAIL" -eq 0 ]; then
   echo "ALL PASS ($PASS/$PASS)"

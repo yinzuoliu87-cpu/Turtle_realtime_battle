@@ -148,7 +148,7 @@ func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016:
 		var pool: float = [100.0, 250.0, 400.0][si] + u["maxHp"] * IRONWALL_MAXHP_PCT   # 总池: 固定 + 携带者最大生命×
 		var each: float = pool / float(mates.size())                      # 全队(含自己·除大师/龟蛋)均分
 		for o in mates:
-			battle._damage._grant_shield(o, each)
+			battle._damage._grant_shield(o, each, BattleDamage.COMMON_SHIELD_SEC)   # 通用护盾=4秒(文案没写时长); 周期 IRONWALL_IV=5s 大于它 ⇒ 每轮中间有 1 秒空窗
 
 
 ## 【017 不沉之锚】回血攒充能 → 充能期加攻速 → 普攻消耗充能击飞。
@@ -160,12 +160,12 @@ const ANCHOR_ASPD := 1.00      # 持有充能期间普攻攻速 +(真值在 batt
 ##   现在代码是唯一的那一份, 两处文案都用 `{C:EquipTickSystem.XXX_IV}` 指过来。
 const RUST_IV := 3.0            # 001 木制长剑: 每几秒甩一道飞斩剑气
 const RUST_RANGE := 2000.0      # 001 剑气射程(码)·2000 = 全场覆盖(用户 2026-07-19 近战→远程)
-const JELLY_MAXHP_PCT := 0.04   # 012 龟苓膏块: 护盾 = 固定值 + 自身最大生命 ×
+const JELLY_MAXHP_PCT := 0.04   # 012 海藻: 护盾 = 固定值 + 自身最大生命 ×
 const IRONWALL_MAXHP_PCT := 0.08  # 016 铁壁盾: 护盾总池 = 固定值 + 携带者最大生命 ×
 const SWORD_STORM_IV := 7.0     # 006 千刃风暴: 每几秒召一排剑穿过全体敌人
 const BROADSWORD_IV := 6.0      # 007 锈蚀阔剑: 每几秒挥一道剑气墙
 const CORAL_IV := 9.0           # 008 双穿珊瑚刺: 每几秒射一根尖刺(用户 2026-07-19: 6 → 9)
-const JELLY_IV := 4.0           # 012 龟苓膏块: 每几秒给自己套一次护盾
+const JELLY_IV := 4.0           # 012 海藻: 每几秒给自己套一次护盾
 const IRONWALL_IV := 5.0        # 016 铁壁盾: 每几秒产生一份由全队分摊的护盾
 const SHELL_IV := 8.0           # 018 守护贝壳: 每几秒自回一次
 const ANEMONE_IV := 7.0         # 019 海葵药膏: 每几秒治自己与最残友军
@@ -395,12 +395,12 @@ func _tick_barnacle(u: Dictionary, delta: float) -> void:   # 守护贝母p2eq_0
 				o["aspd_perm"] = float(o.get("aspd_perm", 1.0)) + BARNACLE_ASPD   # +10%攻速(永久本场,叠加)
 				battle._skill_ring(o["pos"], Color(0.55, 1.0, 0.78, 0.5), 44.0)
 			if best != null:   # 连接友军: 盾 + 伤害转移(25/40/60%受伤转给携带者); 不净化(用户)
-				battle._damage._grant_shield(best, [60.0, 110.0, 180.0][si])   # 用户2026-07-19: 40/60/90→60/110/180
+				battle._damage._grant_shield(best, [60.0, 110.0, 180.0][si], BattleDamage.COMMON_SHIELD_SEC)   # 用户2026-07-19: 40/60/90→60/110/180; 通用护盾=4秒
 				best["dmg_redirect_to"] = {"carrier": u, "pct": [0.25, 0.40, 0.60][si], "until": battle._t + 5.5}
 		battle._update_barnacle_line(u, stt.get("link_target", null))   # 每帧: 持续绿色绑定线(跟随移动/能量脉动)
 		break   # 只处理一件(共享绑定线)
 
-func _tick_jelly(u: Dictionary, delta: float) -> void:   # 龟苓膏块p2eq_012: 每4s自护盾(用户2026-07-02, 原走2.5s周期); 每件独立计时
+func _tick_jelly(u: Dictionary, delta: float) -> void:   # 海藻p2eq_012: 每4s自护盾(用户2026-07-02, 原走2.5s周期); 每件独立计时
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_012": continue
@@ -408,7 +408,8 @@ func _tick_jelly(u: Dictionary, delta: float) -> void:   # 龟苓膏块p2eq_012:
 		if float(e["jelly_t"]) < JELLY_IV: continue
 		e["jelly_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
-		battle._damage._grant_shield(u, [40.0, 60.0, 90.0][si] + u["maxHp"] * JELLY_MAXHP_PCT)   # 用户2026-07-19: 30/40/55 → 40/60/90 + 4%最大生命
+		battle._vfx.kelp_burst(u)   # ★来源标识: 脚下长一丛海藻(通用六棱护罩由 _grant_shield 另罩一层)
+		battle._damage._grant_shield(u, [40.0, 60.0, 90.0][si] + u["maxHp"] * JELLY_MAXHP_PCT, BattleDamage.COMMON_SHIELD_SEC)   # 用户2026-07-19: 30/40/55 → 40/60/90 + 4%最大生命; 通用护盾=4秒(恰好接上下一轮 JELLY_IV=4s·不断层也不无限叠)
 
 func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 木制长剑p2eq_001: 每3s就绪, 射程2000(全场)内最近敌即甩飞斩剑气; 每件独立(多件各自触发)
 	if u.get("equips", []).is_empty(): return

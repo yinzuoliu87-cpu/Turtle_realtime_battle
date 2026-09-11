@@ -2161,6 +2161,7 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 					if cur >= hcap and not bool(stt.get("harden_given", false)):
 						if iid == "p2eq_013":   # 013满层: 海胆护盾(特殊紫色) 100/170/250 + 5/12/20%最大生命(用户2026-07-19; 原50/60/80金盾)
 							var _usb: float = float(u.get("shield", 0.0))
+							# shield-perm-ok: 013 是【特殊护盾】—— 文案写了「该护盾在 10 秒内逐渐衰减」, 下一行的 urchin_sh_rate 就是它自己的衰减机制; 走通用 4 秒过期会变成"第4秒直接归零"与文案不符
 							battle._damage._grant_shield(u, [100.0, 170.0, 250.0][si] + u["maxHp"] * [0.05, 0.12, 0.20][si])
 							var _ugot: float = float(u.get("shield", 0.0)) - _usb   # 实际获盾(经shield_amp/上限后)
 							u["urchin_sh_left"] = _ugot
@@ -2185,7 +2186,7 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 						acc -= thr
 						fired += 1
 					if fired > 0:
-						battle._damage._grant_shield(u, THORN_SHIELD[si] * float(fired))
+						battle._damage._grant_shield(u, THORN_SHIELD[si] * float(fired), BattleDamage.COMMON_SHIELD_SEC)   # 通用护盾=4秒(文案没写时长)
 						stt["thorn_empower"] = int(stt.get("thorn_empower", 0)) + fired   # 攒着的强化次数
 						battle._skill_ring(u["pos"], Color(0.86, 0.72, 0.45, 0.7), 54.0)
 					stt["thorn_accum"] = acc
@@ -2577,7 +2578,7 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 		match iid:
 			"p2eq_001":   # 木制长剑: 移到每帧 _tick_rustblade (每3s就绪 + 2000码(全场)射程内有敌即劈·用户2026-07-19 近战→远程剑气); 周期tick不处理
 				pass
-			"p2eq_012":   # 龟苓膏块: 移到 _tick_jelly (每4s, 用户2026-07-02); 周期tick不处理
+			"p2eq_012":   # 海藻: 移到 _tick_jelly (每4s, 用户2026-07-02); 周期tick不处理
 				pass
 			"p2eq_016":   # 铁壁盾: 全队盾移到 _tick_ironwall(每5秒, 用户2026-07-02); 周期tick不处理
 				pass

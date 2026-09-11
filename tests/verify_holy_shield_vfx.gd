@@ -528,8 +528,10 @@ func _t_clear() -> void:
 ##   ② 独立: 每块自己的中心方向烘在 NORMAL, 一块内 7 顶点共享同一个 delay ⇒ 不撕裂
 ##   ③ **不同时**: delay 跨度必须够大 —— 全一样就退化成"一张图整体缩放"了, 那正是被点名的东西
 ##
-## ⚠ 另一条同样重要: 通用金环(`battle_damage._grant_shield` 里那个 `_skill_ring`)封着
-##   全游戏 44 个给盾点, 095 必须**声明自绘跳过它**, 否则脚下又糊一个程序化圆。
+## ⚠ 另一条同样重要: `battle_damage._grant_shield` 的通用护盾演出封着全游戏 44 个给盾点,
+##   095 必须**声明自绘跳过它**, 否则自己的罩子上面再叠一层通用罩。
+##   (v0.19.356 起那一行是 `_vfx.shield_shell` 身上六棱罩; 在那之前是 `_skill_ring` 脚下金圈,
+##    两次被用户否的都是它 —— 见 battle_damage.gd 那段注释。)
 func _t_build_is_real_assembly() -> void:
 	print("── ⑩ 护盾合拢: 真的 26 块在飞, 不是一张图缩放 ──")
 	_ok("⑩ 板子 shader 在位: " + HSV.PANEL_SHADER_PATH,
@@ -634,10 +636,10 @@ func _t_build_is_real_assembly() -> void:
 		"visible %s / build_t %.2f" % [str(mi.visible), _vfx.build_t_of(me)])
 	## ★★声明自绘 ⇒ 跳过全游戏共用的程序化金环
 	var src := FileAccess.get_file_as_string("res://scripts/systems/equip/shield_synergy_system.gd")
-	_ok("⑩ ★★095 声明了自绘(跳过 _grant_shield 里那个通用程序化金环)",
+	_ok("⑩ ★★095 声明了自绘(跳过 _grant_shield 里的通用护盾罩)",
 		src.find("_own_grant_vfx") >= 0)
 	var dsrc := FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_damage.gd")
-	_ok("⑩ ★通用金环那行确实被 _own_grant_vfx 闸住了(不是白声明)",
+	_ok("⑩ ★通用护盾演出那行确实被 _own_grant_vfx 闸住了(不是白声明)",
 		dsrc.find("if not bool(u.get(\"_own_grant_vfx\", false)):") >= 0)
 
 func _t_wiring() -> void:

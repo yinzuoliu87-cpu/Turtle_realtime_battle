@@ -133,11 +133,11 @@
   },
   {
     "id": "p2eq_012",
-    "name": "龟苓膏块",
+    "name": "海藻",
     "cost": 1,
     "baseStats1": "+生命40/70/100·护甲5/10/18",
     "shopAvailable": 1,
-    "emoji": "🐢",
+    "emoji": "🌱",
     "effectDesc1": "每 {C:EquipTickSystem.JELLY_IV} 秒为自身获得（40/60/90+{C:EquipTickSystem.JELLY_MAXHP_PCT%}%最大生命值）点护盾。",
     "effectDesc3": "",
     "img": "equip/eq012-icon.png",

@@ -271,7 +271,7 @@ func on_enemy_died(victim: Dictionary) -> void:
 					return
 				battle._damage._grant_shield(taker, reap_amt)
 				taker["_reap_taken_n"] = int(taker.get("_reap_taken_n", 0)) + 1})
-		# ★演出(批 B3): 现状只有 _grant_shield 的通用金环 —— **看不出是从那具尸体收来的**,
+		# ★演出(批 B3): _grant_shield 的通用护盾演出(v0.19.356 起是身上的六棱护罩)**看不出是从那具尸体收来的**,
 		#   而"从哪来"正是收殓这条唯一要传达的信息。⇒ 尸体 → 受益者的一道灵魂流。
 		#   ⚠ 护盾上面已经结算完了, 这一行只画不算。
 		## (旧的"灵魂流"能量带已由上面的金球转移取代 —— 两条一起放会糊成一团)

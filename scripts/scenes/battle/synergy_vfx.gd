@@ -1582,7 +1582,7 @@ func gun_turret_one(origin2d: Vector2, hits: Array) -> Node3D:
 
 ## 枪·第二座炮台的相位(每 5 秒)。shield_phase=true → 蓝色能量辐射给全队; false → 橙色弹幕射向敌方全体。
 ##
-## ★这条唯一要传达的信息就是**相位可辨** —— 现状护盾靠通用金环、弹幕靠伤害数字,
+## ★这条唯一要传达的信息就是**相位可辨** —— 现状护盾靠通用护盾演出(v0.19.356 起是身上的六棱护罩, 之前是脚下金环)、弹幕靠伤害数字,
 ##   "这次是给盾还是打人"完全看不出。⇒ 颜色 + 辐射对象 两条一起分。
 func gun_turret_two(origin2d: Vector2, targets: Array, shield_phase: bool) -> int:
 	if not _has_world():
@@ -1723,7 +1723,7 @@ func potion_prey_mark(pos2d: Vector2) -> Node3D:
 # ── 盾 ───────────────────────────────────────────────────────────────────────
 
 ## 盾·收殓(敌方阵亡 → 最近的携带盾者得该单位 30% 最大生命的护盾)。
-## ★现状只有一个通用金环, **看不出是从那具尸体收来的** ⇒ 尸体 → 受益者的一道灵魂流。
+## ★通用护盾演出(v0.19.356 起是身上的六棱护罩)**看不出是从那具尸体收来的** ⇒ 尸体 → 受益者的一道灵魂流。
 func shield_reap(from2d: Vector2, to2d: Vector2) -> Node3D:
 	if not _has_world():
 		return null

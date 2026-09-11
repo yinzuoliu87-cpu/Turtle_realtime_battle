@@ -255,6 +255,17 @@ func _tick_follow_vfx() -> void:
 			var ang: float = float(f["orbit_a"]) + battle._t * float(f["orbit_spd"])
 			base += Vector3(cos(ang) * float(f["orbit_r"]), 0.0, sin(ang) * float(f["orbit_r"]))
 		spr.position = base
+		## ★自推进帧动画(护盾六棱罩用的): 按**游戏时钟**算到第几帧, 放完自销。
+		##   不用 tween 是因为 tween 走未钳制 delta(另一条钟), 跟随位置却是游戏钟 ——
+		##   两条钟混着用正是 memory [[fb-second-clock-drops-events]] 那一类。这里只用一条。
+		if f.has("anim_fps"):
+			var _an: int = int(f.get("anim_n", 1))
+			var _fr: int = int((battle._t - float(f.get("anim_t0", 0.0))) * float(f["anim_fps"]))
+			if _fr >= _an:
+				spr.queue_free()
+				battle._follow_vfx.remove_at(i)
+				continue
+			spr.frame = maxi(0, _fr)
 		if f.get("pulse", false):
 			spr.modulate.a = 0.32 + 0.16 * sin(battle._t * 3.2)   # 融合态光环呼吸脉冲
 

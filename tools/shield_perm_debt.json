@@ -1,0 +1,30 @@
+{
+ "_": "永久给盾点存量台账(只减不增)。新增当场红; 还了债要跑 SHIELD_PERM_UPDATE=1 重写这里。判据见 tools/shield_duration_audit.py",
+ "known": [
+  "scripts/scenes/RealtimeBattle3DScene.gd::_basic_shield_impact_hit",
+  "scripts/scenes/battle/battle_damage.gd::_heal",
+  "scripts/systems/equip/axe_final_forms.gd::holo_on_hit",
+  "scripts/systems/equip/axe_system.gd::cast_heal",
+  "scripts/systems/equip/axe_system.gd::steal_shield",
+  "scripts/systems/equip/eq_arcane_batch.gd::_stele_settle",
+  "scripts/systems/equip/eq_blade_batch.gd::_b81_raise",
+  "scripts/systems/equip/eq_bow_batch.gd::on_basic_074",
+  "scripts/systems/equip/eq_food_batch.gd::_cake_eat",
+  "scripts/systems/equip/equip_system.gd::_eq_broadsword",
+  "scripts/systems/equip/equip_system.gd::_eq_ice_fissure",
+  "scripts/systems/equip/equip_system.gd::_eq_on_dodge",
+  "scripts/systems/equip/equip_system.gd::_eq_water_wave",
+  "scripts/systems/equip/equip_tick_system.gd::_egg_add_progress",
+  "scripts/systems/equip/gun_synergy_system.gd::_turret_two",
+  "scripts/systems/equip/shield_synergy_system.gd::_shockwave",
+  "scripts/systems/equip/shield_synergy_system.gd::on_enemy_died",
+  "scripts/systems/equip/shield_synergy_system.gd::tick",
+  "scripts/systems/equip/staff_synergy_system.gd::on_healed",
+  "scripts/systems/skills/chest_system.gd::_sk_chest_inventory",
+  "scripts/systems/skills/gambler_system.gd::_sk_gambler_wild",
+  "scripts/systems/skills/hiding_system.gd::_hiding_shell_harden",
+  "scripts/systems/skills/hunter_system.gd::_sk_hunter_hide",
+  "scripts/systems/skills/lava_system.gd::_lava_magma_surge",
+  "scripts/systems/skills/two_head_system.gd::_two_head_apply_melee"
+ ]
+}

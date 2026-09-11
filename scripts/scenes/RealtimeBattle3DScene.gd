@@ -4901,6 +4901,11 @@ const RING_PEAK_A := 0.6
 func _skill_ring(pos2d: Vector2, col: Color, radius: float) -> Sprite3D:
 	var r := Sprite3D.new()
 	r.texture = VfxTex._make_ring_texture(col)
+	## 2026-09-11 显式写出 NEAREST。★**不是修 bug**: 反向验证证明把这行拿掉门禁照样绿 ——
+	##   Sprite3D.texture_filter 本来就默认 NEAREST(=0)。我当时看实拍觉得环"边缘还是糊的",
+	##   诊断成"没设 NEAREST", **是错的**; 真实原因是素材自己的 4 档明度阶梯铺在 17 纹素宽的
+	##   带上, 1:1 缩放下读起来像渐变。这行留着只是【显式好过依赖默认】, 不声称修好了什么。
+	r.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	r.billboard = BaseMaterial3D.BILLBOARD_DISABLED
 	r.axis = Vector3.AXIS_Y          # 躺平贴地
 	r.shaded = false
@@ -6966,7 +6971,11 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	# --- 限时护盾原语: 到期清盾 (dur>0的盾; shield_until=0=永久不过期) ---
 	var _shu: float = float(u.get("shield_until", 0.0))
 	if _shu > 0.0 and _t >= _shu:
-		if float(u.get("shield", 0.0)) > 0.0: u["shield"] = 0.0
+		## ★只清【限时的那一份】。原写法是 `u["shield"] = 0.0` —— 一份 4 秒盾到期
+		##   会把身上所有护盾(含石龟嘲讽的永久盾)一起清掉。minf 兑齐防扣超。
+		var _std: float = minf(float(u.get("shield_timed", 0.0)), float(u.get("shield", 0.0)))
+		if _std > 0.0: u["shield"] = maxf(0.0, float(u["shield"]) - _std)
+		u["shield_timed"] = 0.0
 		u["shield_until"] = 0.0
 	# --- 泡泡盾: 到期 或 被打破(盾清零) → 爆裂对施法者全体敌2.0A魔法 (封板L435·防静默过期丢爆裂) ---
 	var _bbu: float = float(u.get("bubble_shield_until", 0.0))
