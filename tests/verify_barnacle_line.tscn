@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/verify_barnacle_line.gd" id="1_bl2"]
+
+[node name="VerifyBarnacleLine" type="Node"]
+script = ExtResource("1_bl2")

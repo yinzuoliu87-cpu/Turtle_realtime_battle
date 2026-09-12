@@ -3871,38 +3871,11 @@ func _mud_mark(pos2d: Vector2) -> void:
 	t.tween_callback(spr.queue_free)
 
 
-func _update_barnacle_line(u: Dictionary, target) -> void:   # 守护贝母021: 携带者↔连接友军的持续绿色绑定线(每帧重绘跟随, 能量脉动α)
-	var im = u.get("barnacle_line", null)
-	if not (target is Dictionary) or not target.get("alive", false) or is_same(target, u) or not u.get("alive", false):   # is_same: 同上
-		if is_instance_valid(im): im.visible = false
-		return
-	if not is_instance_valid(im):
-		im = MeshInstance3D.new()
-		im.mesh = ImmediateMesh.new()
-		var mat := StandardMaterial3D.new()
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-		mat.no_depth_test = true   # 绑定线画在最上层(不被龟立绘遮挡)
-		mat.vertex_color_use_as_albedo = true   # 顶点色驱动(照可显的_bolt_line)
-		im.material_override = mat
-		_world.add_child(im)
-		u["barnacle_line"] = im
-	im.visible = true
-	var imesh: ImmediateMesh = im.mesh
-	var col := Color(0.5, 1.0, 0.7, 0.82 + 0.18 * sin(_t * 6.0))   # 能量脉动
-	var a := _world_pos(u["pos"], 2.05)
-	var b := _world_pos(target["pos"], 2.05)
-	var d: Vector3 = b - a
-	if d.length() < 0.01: return
-	var perp: Vector3 = Vector3(-d.z, 0.0, d.x).normalized() * 0.11   # 飘带横向半宽
-	imesh.clear_surfaces()
-	imesh.surface_begin(Mesh.PRIMITIVE_LINES, im.material_override)   # 绑定飘带(5平行线, 用能显的LINES)
-	var pu: Vector3 = perp.normalized()
-	for _off in [-0.1, -0.05, 0.0, 0.05, 0.1]:   # 5条平行绿线=粗绑定飘带(用能显的PRIMITIVE_LINES)
-		imesh.surface_set_color(col); imesh.surface_add_vertex(a + pu * _off)
-		imesh.surface_set_color(col); imesh.surface_add_vertex(b + pu * _off)
-	imesh.surface_end()
+## 021 守护贝母的绑定绳 —— 实现搬进 `battle_vfx.barnacle_line()`。
+## ★CLAUDE.md §5:「不在 `_sim_step` 调用链上的代码不进主文件」—— 这一段是**纯演出**
+##   (不挂任何结算), 主文件只留这一行转发。同 v0.19.361 `_bolt_line` 的处置。
+func _update_barnacle_line(u: Dictionary, target) -> void:
+	_vfx.barnacle_line(u, target)
 
 func _weapon_slash(from2d: Vector2, to2d: Vector2, col: Color) -> void:   # 面向镜头的斜砍斩弧(用户选)+命中环
 	var arc := Sprite3D.new()

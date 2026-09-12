@@ -181,6 +181,10 @@ func _spawn_teams() -> void:
 			ru["maxHp"] = _dhp; ru["hp"] = _dhp
 			ru["base_def"] = 30.0; ru["base_mr"] = 30.0; battle._recalc_stats(ru)
 			ru.erase("_review_dummy")
+			## ★VFXLAB 的 HOLD(开给用户看)模式: 假人锁成不死 ⇒ 战斗不会打完 ⇒ 不掉回主菜单。
+			##   拍片那条路不置这个开关(有些台子要敌人真的死)。见 battle_vfx_lab 同名注释。
+			if OS.has_environment("EQDEMO_IMMORTAL"):
+				ru["deathfloor_until"] = 999999.0
 		## ★演示专属: 放开"会动/会打/留技能" —— 默认假人是 no_move + 无技能的木桩,
 		##   要演"自己走进去被抓" 和 "用位移技能挣脱" 就必须逐条放开。
 		if bool(_lay.get("move", false)):

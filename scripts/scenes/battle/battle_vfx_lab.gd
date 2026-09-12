@@ -183,6 +183,13 @@ func pre_build() -> bool:
 	OS.set_environment("EQDEMO_CARRIER", str(cfg["carrier"]))
 	OS.set_environment("EQDEMO_ENEMIES", str(maxi(1, int(cfg["enemies"]))))
 	OS.set_environment("EQDEMO_DUMMYHP", str(float(cfg["enemy_hp"])))
+	## ★★HOLD(开给用户看)模式: 假人锁成不死 ⇒ 战斗永远不结束 ⇒ 窗口不会掉回主菜单。
+	##   由来(用户 2026-09-12):「你对着主菜单背景在看什么」—— 021 的台子 attacker=true
+	##   且只有 2 个敌人, 携带者把它们杀光就战斗结束, 场景掉回主菜单, 而我叫他看的正是那个。
+	##   ★只在 HOLD 生效: 拍片(VFXLAB_SHOTS)那条路**不能**锁 —— 有些台子需要敌人真的死
+	##   (019 的收割羁绊台 `syn_potion` 就靠敌人阵亡触发)。
+	if _hold:
+		OS.set_environment("EQDEMO_IMMORTAL", "1")
 	OS.set_environment("EQDEMO_ENEMY1", str(float(cfg["enemy_dist"])))
 	OS.set_environment("EQDEMO_GAP", str(float(cfg["enemy_gap"])))
 	if int(cfg["allies"]) > 0:

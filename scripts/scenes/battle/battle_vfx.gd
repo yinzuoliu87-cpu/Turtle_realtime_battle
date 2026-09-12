@@ -1720,3 +1720,124 @@ func _heal_drops(u: Dictionary) -> void:
 		var tf: Tween = battle._reg_tween().bind_node(sp)
 		tf.tween_interval(d + HEAL_DROP_T * 0.62)      # ★前 62% 满亮, 之后才淡
 		tf.tween_property(sp, "modulate", Color(1, 1, 1, 0), HEAL_DROP_T * 0.38)
+
+## 021 绑定绳的珠子。尺寸按**屏幕像素**反算: 实测 1 屏幕像素 = 0.0426 m
+## ⇒ 8 texel 一格 × 0.0426 = 0.341 m, pixel_size 恰好 1 texel : 1 屏幕像素。
+const BIND_BEAD_TEX := "res://assets/sprites/vfx/bind-bead.png"
+const BIND_BEAD_FRAMES := 4
+## ★★按【2026 现版】重定(第一次量的是 2013 那版, 粗了 5 倍 —— 见 blender_bindbead 头注):
+##   现版线粗只占角色高 **约 8%**; 我们的龟 ≈45 屏幕像素高 ⇒ 目标 **≈4 屏幕像素**。
+const BIND_BEAD_M := 0.170      # 一片的边长(米) = 4 屏幕像素; 加泛光后屏上约 5px, 对上参考
+## ★片距只有片径的 1/3 ⇒ 片与片**大幅重叠** ⇒ 读成一条**连续的粗光带**, 不是一串珠子。
+##   用户原话:「不要用什么规则图案敷衍我」—— 等距可辨的小珠子就是规则图案。
+## ★★片距再减半的理由(1:1 实拍看出来的): 0.28 时**白热芯被相邻片遮住**, 只剩零星亮点,
+##   整条带读成一片平的绿。芯直径 = 0.42 × 0.852 = 0.358 m ⇒ 片距要小于它的一半,
+##   芯才连成**一条连续的亮线** —— 那正是实测横截面里的白热芯(亮度 186)。
+const BIND_GAP_M := 0.038       # 片距(米) —— 仍是片径的 ~1/4.5, 芯连成一条连续亮线
+## ★★垂坠 = 0: **实测 LoL 那条线是直的**(峰值行离首尾直线最大偏离 6.6px / 132px = 5.0%)。
+##   垂坠与摆动是我自己加的, 参考里根本没有 —— 「生硬」不是因为它直,
+##   是因为它**细、没厚度、没层次**(我那版粗细只有龟高的 2%, 实测应是 47%)。
+const BIND_SAG := 0.0           # 保留这个常量是为了让门禁能把它改坏来反向验证
+
+const BIND_FLOW := 0.62         # 珠子沿绳流动速度(米/秒) ⇒ 看得出能量往被连的友军走
+const BIND_H := 1.15            # 绳挂在单位身上的高度(米) —— 原来钉死 2.05 = 飘在头顶上方
+var _bind_bead_tex: Texture2D = null
+
+func barnacle_line(u: Dictionary, target) -> void:   # 守护贝母021: 携带者↔连接友军的持续绿色绑定线(每帧重绘跟随, 能量脉动α)
+	var im = u.get("barnacle_line", null)
+	if not (target is Dictionary) or not target.get("alive", false) or is_same(target, u) or not u.get("alive", false):   # is_same: 同上
+		if is_instance_valid(im): im.visible = false
+		return
+	if not is_instance_valid(im):
+		im = MeshInstance3D.new()
+		im.mesh = ImmediateMesh.new()
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		mat.no_depth_test = true   # 绑定线画在最上层(不被龟立绘遮挡)
+		mat.vertex_color_use_as_albedo = true   # 顶点色驱动(照可显的_bolt_line)
+		im.material_override = mat
+		battle._world.add_child(im)
+		u["barnacle_line"] = im
+	im.visible = true
+	_barnacle_rope(im, u, target)
+
+
+## 021 的绑定绳: **一条粗光带**(密排的三层圆片), 沿带从携带者流向被连的友军。
+## ★★2026-09-12 用户:「**这个线感觉生硬啊**」—— 他是对的, 根因在代码里一眼可见:
+##   原来是 `PRIMITIVE_LINES` 画 **5 条平行的 1 像素裸 GPU 线**(无贴图)、**完全笔直**、
+##   两端钉死在 2.05 m、除了 alpha 脉动之外**一帧都不动**。那是一根绷直的杆, 不是「绑定」。
+## ★这与 v0.19.361 修过的 `_bolt_line`(1px 裸线)是**同一个毛病** —— 021 这一处是它自己的
+##   一份手抄实现, 不走 bolt_line, 所以当时没被扫到。(memory fb-hand-rolled-copies-drift)
+## ★★做法**照 LoL 卡尔玛【灵魂链接】的逐帧实测**, 不是我拿手感猜:
+##     直不直 : 峰值行离首尾直线最大偏离 6.6px / 132px = **5.0%** ⇒ 直的
+##     粗细   : 半高全宽 11px(芯) / 四分之一高全宽 19px(含晕) ⇒ 长:粗 = 7.4:1
+##     横截面 : 白热芯(亮度 186) → 主体(173) → 外晕(105~130)
+##     相对角色: 角色高 ~40px ⇒ **线粗 ≈ 角色高的 47%**
+##   我第一版(被用户当场否的那个)是 8px 小珠子 + 我自己加的垂坠与摆动:
+##   **粗细只有龟高的 2% —— 差 20 倍**, 而垂坠/摆动参考里根本没有。
+##   ⇒ 现版: 20px 三层圆片(白芯/主体/外晕)、片距只有片径 1/3 **密排成一条连续的带**、
+##     **不垂不摆**、沿带流动。
+##   用户:「不要用什么规则图案敷衍我」—— 等距可辨的小珠子就是规则图案。
+## ★珠子为什么是**圆**的: 像素风不许自由旋转(battle_ballistics.gd:675), 而绳的角度每帧都变;
+##   **圆是旋转不变的** —— 形状是被约束逼出来的, 不是随手挑的。
+func _barnacle_rope(im: MeshInstance3D, u: Dictionary, target: Dictionary) -> void:
+	if _bind_bead_tex == null:
+		_bind_bead_tex = load(BIND_BEAD_TEX)
+	if _bind_bead_tex == null:
+		return                                  # 素材没 import 就静默跳过, 不崩战斗
+	var mat: StandardMaterial3D = im.material_override as StandardMaterial3D
+	if mat != null and mat.albedo_texture != _bind_bead_tex:
+		mat.albedo_texture = _bind_bead_tex
+		mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素画, LINEAR 会糊
+	var a: Vector3 = battle._world_pos(u["pos"] as Vector2, float(u.get("height", 0.0)) + BIND_H)
+	var b: Vector3 = battle._world_pos(target["pos"] as Vector2, float(target.get("height", 0.0)) + BIND_H)
+	var span: float = a.distance_to(b)
+	if span < 0.05:
+		return
+	## 垂坠量随跨度走: 短绳几乎不垂, 长绳垂得多(真绳子就是这样)
+	var sag: float = BIND_SAG * clampf(span / 3.0, 0.35, 1.8)
+	var n: int = clampi(int(span / BIND_GAP_M), 3, 220)   # 片更小更密 ⇒ 上限再放宽
+	## 流动相位走【游戏钟】(不是 tween: tween 走未钳制 delta = 第二条钟)
+	var ph: float = fposmod(battle._t * BIND_FLOW / BIND_GAP_M, 1.0)
+	var cam_r: Vector3 = Vector3.RIGHT
+	var cam_u: Vector3 = Vector3.UP
+	if is_instance_valid(battle._cam):
+		var gx: Basis = battle._cam.global_transform.basis
+		cam_r = gx.x
+		cam_u = gx.y
+	var h: float = BIND_BEAD_M * 0.5
+	var pulse: float = 0.86 + 0.14 * sin(battle._t * 5.0)
+	var col := Color(1.0, 1.0, 1.0, pulse)
+	var imesh: ImmediateMesh = im.mesh
+	imesh.clear_surfaces()
+	imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, im.material_override)
+	for i in range(n + 1):
+		var tt: float = (float(i) + ph) / float(n)
+		if tt > 1.0:
+			continue
+		## 抛物线近似的悬链: 两端贴着单位, 中间往下垂
+		var p: Vector3 = a.lerp(b, tt)
+		p.y -= sag * 4.0 * tt * (1.0 - tt)
+		## ★★摆动那两行**删了**(2026-09-12 反向验证抓到的): 它是沿【相机右向】偏的,
+		##   而这条线本身就是横的 ⇒ 摆动把片沿着线自己的方向推, **根本不产生位移**。
+		##   把 BIND_SWAY 改成 0.20 再跑门禁, **一条都不红** —— 不是判据松, 是那段代码本来就是死的。
+		##   (参考实测里也没有摆动, 那是我凭手感加的。)
+		## 4 帧里挑一格(珠子呼吸) —— 用序号挑, 相邻珠子不同帧 ⇒ 一串珠子不是死的
+		var fr: int = i % BIND_BEAD_FRAMES
+		var u0: float = float(fr) / float(BIND_BEAD_FRAMES)
+		var u1: float = float(fr + 1) / float(BIND_BEAD_FRAMES)
+		## 面朝相机的正方形(所以任意角度都不重采样 —— 同 bolt_line 的做法)
+		var p0: Vector3 = p - cam_r * h - cam_u * h
+		var p1: Vector3 = p + cam_r * h - cam_u * h
+		var p2: Vector3 = p + cam_r * h + cam_u * h
+		var p3: Vector3 = p - cam_r * h + cam_u * h
+		imesh.surface_set_color(col); imesh.surface_set_uv(Vector2(u0, 1.0)); imesh.surface_add_vertex(p0)
+		imesh.surface_set_color(col); imesh.surface_set_uv(Vector2(u1, 1.0)); imesh.surface_add_vertex(p1)
+		imesh.surface_set_color(col); imesh.surface_set_uv(Vector2(u1, 0.0)); imesh.surface_add_vertex(p2)
+		imesh.surface_set_color(col); imesh.surface_set_uv(Vector2(u0, 1.0)); imesh.surface_add_vertex(p0)
+		imesh.surface_set_color(col); imesh.surface_set_uv(Vector2(u1, 0.0)); imesh.surface_add_vertex(p2)
+		imesh.surface_set_color(col); imesh.surface_set_uv(Vector2(u0, 0.0)); imesh.surface_add_vertex(p3)
+	imesh.surface_end()
+
