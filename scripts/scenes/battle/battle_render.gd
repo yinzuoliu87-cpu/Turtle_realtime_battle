@@ -220,6 +220,7 @@ func _render_step(rd: float, frozen: bool, in_ts: bool) -> void:
 					_advance_anim(u, rd)
 	_update_camera_shake(rd)    # 震屏始终推进 (含冻结期)
 	_update_world_transforms()
+	_tick_true_fire()              # 022 真火: 谁把 true_fire_until 写上去, 身上就自动烧起来
 	_tick_follow_vfx()             # 跟随特效(冰块等)贴目标最新世界坐标(含击飞height)
 	_tick_anim_fx()                # 位置固定的帧动画(技能环)按游戏时钟切帧·放完自销
 	_update_ninja_marks()          # 忍者冲击标记(纯视觉·用户2026-07-12)
@@ -253,6 +254,23 @@ func _tick_anim_fx() -> void:
 			continue
 		spr.frame = maxi(0, fr)
 
+
+
+## ★★022【真火】的演出是**状态的函数** —— 只要 `true_fire_until` 还没过, 身上就该烧。
+##   创建点放在这里逐帧扫, **不**放在 `_fuel_bottle_hit` 里, 两个理由:
+##   ① CLAUDE.md §5「纯演出不进主文件」, 而且 arch_budget 台账是只减不增的
+##      (第一版我把 4 行接线写进了主文件, 门禁当场红「8879 > 8875」);
+##   ② 以后**任何**把 `true_fire_until` 写上去的路径都自动带火, 不用再接一次线 ——
+##      memory [[fb-zero-caller-is-a-whole-class]]:「写了没人读」是一整类, 不是偶发。
+func _tick_true_fire() -> void:
+	for u in battle._units:
+		if not u.get("alive", false):
+			continue
+		if battle._t >= float(u.get("true_fire_until", 0.0)):
+			continue
+		if is_instance_valid(u.get("_truefire_spr", null)):
+			continue          # 已经在烧 ⇒ 续时间由 true_fire_until 自己管
+		battle._vfx.true_fire_aura(u)
 
 func _tick_follow_vfx() -> void:
 	for i in range(battle._follow_vfx.size() - 1, -1, -1):
@@ -288,6 +306,21 @@ func _tick_follow_vfx() -> void:
 				battle._follow_vfx.remove_at(i)
 				continue
 			spr.frame = maxi(0, _fr)
+		## ★★【循环帧 + 到期自销】: 给「持续状态」用(022 的真火)。
+		##   与上面 `anim_fps` 的区别: 那个是**放完一遍就销**, 这个是**循环播到状态结束**。
+		##   到期判据读单位身上那个时间字段(`until_key`), 不另起第二条计时 ——
+		##   memory [[fb-second-clock-drops-events]]: 两条钟必然丢事件。
+		if f.has("loop_fps"):
+			var _uk: String = str(f.get("until_key", ""))
+			if _uk != "" and battle._t >= float(u.get(_uk, 0.0)):
+				spr.queue_free()
+				battle._follow_vfx.remove_at(i)
+				var _ck: String = str(f.get("clear_key", ""))
+				if _ck != "":
+					u.erase(_ck)
+				continue
+			var _lf: int = int((battle._t - float(f.get("loop_t0", 0.0))) * float(f["loop_fps"]))
+			spr.frame = _lf % maxi(1, int(f.get("loop_n", 1)))
 		if f.get("pulse", false):
 			spr.modulate.a = 0.32 + 0.16 * sin(battle._t * 3.2)   # 融合态光环呼吸脉冲
 

@@ -1841,3 +1841,57 @@ func _barnacle_rope(im: MeshInstance3D, u: Dictionary, target: Dictionary) -> vo
 		imesh.surface_set_color(col); imesh.surface_set_uv(Vector2(u0, 0.0)); imesh.surface_add_vertex(p3)
 	imesh.surface_end()
 
+
+
+## ══════════════════════════════════════════════════════════════════════
+##  022 余烬燃油瓶【真火】—— 挂在目标身上的持续燃烧状态
+## ══════════════════════════════════════════════════════════════════════
+## 用户 2026-09-12:「**022只需要做一个真火的特效**」「**真火是个buff你明白吗**」
+## ⇒ 它是**状态**(EMBER_TRUEFIRE_SEC = 5 秒), 期间目标受到的灼烧改判真实伤害。
+##   在此之前画面上**完全没有表现** —— 只有飘字从蓝变白。
+##
+## ★形态照实测参考做(「Burning knight - Real time VFX」, 上传 **2026-02-20**):
+##   火高/角色高 = 1.5~1.7 · 火宽/角色高 = 1.6~2.1(火把人整个吞掉)
+##   面积剖面下宽上尖 · 亮度最亮在中上部 · 橙白
+##   ⇒ 素材 80×80 一格 = 3.41 m ≈ **1.7 个龟高**, pixel_size 0.0426 = 1 texel : 1 屏幕像素。
+## ★★先看上传日期: 上一轮我拿了 2013 年的参考, 被用户当场抓。
+const TRUEFIRE_TEX := "res://assets/sprites/vfx/true-fire.png"
+const TRUEFIRE_FRAMES := 8
+const TRUEFIRE_FPS := 12.0        # 8 帧 / 12fps = 0.67 秒一轮, 5 秒烧 7.5 轮
+const TRUEFIRE_YARDS := 142.0     # 80 texel × 0.0426 m ÷ WS = 3.41 m ≈ 1.7 龟高
+const TRUEFIRE_H := 1.30          # 贴图中心高度 ⇒ 火底落在脚下
+var _truefire_tex: Texture2D = null
+
+
+## 给 `u` 挂上真火(持续到 `u["true_fire_until"]`)。已经挂着就不重复挂, 只续时间。
+func true_fire_aura(u: Dictionary) -> void:
+	if battle._world == null or u == null or not u.get("alive", false):
+		return
+	if is_instance_valid(u.get("_truefire_spr", null)):
+		return                              # 已在烧 ⇒ 续时间由 true_fire_until 自己管
+	if _truefire_tex == null:
+		_truefire_tex = load(TRUEFIRE_TEX)
+	if _truefire_tex == null:
+		return                              # 素材没 import 就静默跳过, 不崩战斗
+	var cell: int = maxi(1, int(_truefire_tex.get_width()) / TRUEFIRE_FRAMES)
+	var sp := Sprite3D.new()
+	sp.texture = _truefire_tex
+	sp.hframes = TRUEFIRE_FRAMES
+	sp.frame = 0
+	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sp.shaded = false
+	sp.transparent = true
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sp.no_depth_test = true          # 火要压在立绘上, 被挡住就读不出「这只在烧」
+	sp.render_priority = 6
+	sp.pixel_size = (TRUEFIRE_YARDS * battle.WS) / float(cell)
+	sp.position = battle._world_pos(u["pos"] as Vector2, float(u.get("height", 0.0)) + TRUEFIRE_H)
+	battle._world.add_child(sp)
+	u["_truefire_spr"] = sp
+	## 跟着单位走 + 按【游戏钟】循环切帧, 到期自销(不用 tween: tween 走未钳制 delta = 第二条钟)
+	battle._follow_vfx.append({
+		"spr": sp, "unit": u, "h": TRUEFIRE_H,
+		"loop_fps": TRUEFIRE_FPS, "loop_n": TRUEFIRE_FRAMES,
+		"loop_t0": battle._t, "until_key": "true_fire_until",
+		"clear_key": "_truefire_spr",
+	})
