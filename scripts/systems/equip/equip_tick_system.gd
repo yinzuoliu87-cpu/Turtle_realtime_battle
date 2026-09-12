@@ -331,10 +331,19 @@ func _tick_anemone(u: Dictionary, delta: float) -> void:   # 海葵药膏p2eq_01
 		# 海葵层的+治疗/护盾强度已经在获得层时真的加进 u.heal_amp/shield_amp (见下), battle._damage._heal 会自己乘, 这里不能再乘一遍
 		var h1: float = [30, 45, 60][si] + (u["maxHp"] - u["hp"]) * [0.12, 0.14, 0.18][si]
 		var prov19: float = battle._damage._heal(u, h1)                     # 按【实际】回血计数(同017口径·用户2026-07-19)
+		## ★★2026-09-12 用户看 019 的窗口后定的:「应该要身上冒绿光和绿粒子，但不要复用」。
+		##   被否的是原来那圈「脚下淡绿地环 + 一个飘字」—— 治疗这个动作画面上读不出来。
+		##   ⇒ 被治的那只身上冒一束绿光(加色, 从脚下升起裹住它) + 几粒圆药滴往上飘。
+		##   素材是**新烤的**(heal-plume / heal-drop), 没复用 014 汲取那颗四芒星:
+		##     抽取是「夺」⇒ 尖的正绿; 治疗是「给」⇒ 圆的薄荷青。形状与色相都拉开。
+		##   ★范围**只有 019**: 我一度挂在 `battle_damage._heal_flush()`(全仓 80 个治疗点的
+		##     中央收口), 被用户当场否 —— 「我只让你对019做」。别再往外推。
+		battle._vfx.heal_burst(u)
 		var low = battle._lowest_hp_pct_ally(u)                     # 文案是"生命百分比最低"
 		if low != null and not is_same(low, u):              # is_same: 单位字典深比较有卡死风险(同053)
 			var h2: float = [30, 45, 60][si] + (low["maxHp"] - low["hp"]) * [0.12, 0.14, 0.18][si]
 			prov19 += battle._damage._heal(low, h2)
+			battle._vfx.heal_burst(low)   # 被奶的友军身上同样冒 —— 「谁治了谁」要看得出来
 		stt["anemone_heal"] = float(stt.get("anemone_heal", 0.0)) + prov19
 		var thr19: float = [200.0, 180.0, 150.0][si]
 		while float(stt["anemone_heal"]) >= thr19:

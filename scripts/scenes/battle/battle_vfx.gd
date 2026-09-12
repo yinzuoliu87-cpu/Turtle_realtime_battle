@@ -1588,3 +1588,135 @@ func _drain_burst(at2d: Vector2) -> void:
 		var tf: Tween = battle._reg_tween().bind_node(sp)
 		tf.tween_interval(BURST_T * 0.62)        # ★前 62% 满亮, 之后才淡
 		tf.tween_property(sp, "modulate", Color(1, 1, 1, 0), BURST_T * 0.38)
+
+
+## ══════════════════════════════════════════════════════════════════════
+##  【治疗】身上冒绿光 + 绿粒子 —— 用户 2026-09-12 看 019 海葵药膏之后定的
+## ══════════════════════════════════════════════════════════════════════
+## 他的原话:「**应该要身上冒绿光和绿粒子，但不要复用**」
+##
+## 被否的是「治疗只有脚下一圈淡绿地环 + 一个飘字」——
+## **治疗这个动作在画面上读不出来**(和 015 的反伤同类: 文案写了、画面读不出)。
+##
+## ★★挂在哪: **只有 019**(`equip_tick_system._tick_anemone`), 携带者自己 + 被奶的那只友军。
+##   我一度挂在 `battle_damage._heal_flush()` —— 那是 `_heal` 全仓 **80 个调用点**的中央收口,
+##   等于全游戏所有治疗(装备/技能/羁绊/食物/温泉蛋/不沉之锚…)一起换了演出。用户当场否:
+##     「**我只让你对019做这次的绿光和绿粒子，你不对把其他的也全用了吧**」
+##   ⇒ 已收回。**范围由需求定, 不由我推广。**
+##   ★这条和 memory [[fb-fix-the-shared-primitive-not-one-instance]] 不矛盾:
+##     那条说的是「用户**否掉**某个共享原语时别只改一件」; 这次他没有否原语,
+##     他是给 019 **加了一个新演出**。两种情形的范围判断刚好相反, 别混。
+##
+## ★「不要复用」是铁律([[fb-no-asset-reuse-unless-told]]) ⇒ 两张都是新烤的,
+##   而且和 014 汲取的粒子**形状与色相都拉开**:
+##     · 014 汲取 = 四芒星(尖) · `life` 板正绿    —— 「夺」
+##     · 019 治疗 = 圆药滴(圆) · `jade` 板薄荷青  —— 「给」
+##
+## ★尺寸按【屏幕像素】反算(实测 1 屏幕像素 = 0.0426 m, 染色法量的):
+##     光束 48px 一格 ⇒ 2.045 m ≈ 一个龟高 ⇒ pixel_size 0.0426 = 1 texel : 1 屏幕像素
+##     药滴 10px 一格 ⇒ 0.426 m ≈ 1/5 个龟高 ⇒ 同样 1:1
+const HEAL_PLUME_TEX := "res://assets/sprites/vfx/heal-plume.png"
+const HEAL_PLUME_FRAMES := 6
+const HEAL_PLUME_FPS := 15.0          # 6 帧 / 15fps = 0.40 秒
+const HEAL_PLUME_YARDS := 85.2        # 48 texel × 0.0426 m ÷ WS
+const HEAL_PLUME_H := 1.02            # 贴图中心抬到这个高度 ⇒ 光束底边正好落在脚下
+const HEAL_PLUME_HOLD := 0.30         # ★先满亮再淡(治「淡出病」: 一出生就淡会读成一团灰)
+const HEAL_PLUME_FADE := 0.10
+const HEAL_DROP_TEX := "res://assets/sprites/vfx/heal-drop.png"
+const HEAL_DROP_FRAMES := 4
+const HEAL_DROP_YARDS := 17.75        # 10 texel × 0.0426 m ÷ WS
+const HEAL_DROP_N := 5                # 一次冒几粒
+const HEAL_DROP_RISE := 46.0          # 往上飘多少码
+const HEAL_DROP_SPREAD := 22.0        # 左右散开(码)
+const HEAL_DROP_T := 0.50
+var _heal_plume_tex: Texture2D = null
+var _heal_drop_tex: Texture2D = null
+
+
+## 被治疗的单位身上冒绿光 + 绿粒子。由 `battle_damage._heal_flush()` 在弹绿字时调。
+func heal_burst(u: Dictionary) -> void:
+	if battle._world == null or u == null or not u.get("alive", false):
+		return
+	if _heal_plume_tex == null:
+		_heal_plume_tex = load(HEAL_PLUME_TEX)
+	if _heal_drop_tex == null:
+		_heal_drop_tex = load(HEAL_DROP_TEX)
+	if _heal_plume_tex == null or _heal_drop_tex == null:
+		return                              # 素材没 import 就静默跳过, 不崩战斗
+	_heal_plume(u)
+	_heal_drops(u)
+
+
+## ① 绿光: 从脚下升起、裹住单位的一束光。**加色混合** —— 暗像素不贡献,
+##   所以它叠在龟身上 = 龟被照亮, 黑背景仍是黑的, 这才是「身上冒绿光」的物理读法。
+func _heal_plume(u: Dictionary) -> void:
+	var cell: int = maxi(1, int(_heal_plume_tex.get_width()) / HEAL_PLUME_FRAMES)
+	var sp := Sprite3D.new()
+	sp.texture = _heal_plume_tex
+	sp.hframes = HEAL_PLUME_FRAMES
+	sp.frame = 0
+	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sp.shaded = false
+	sp.transparent = true
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sp.pixel_size = (HEAL_PLUME_YARDS * battle.WS) / float(cell)
+	sp.render_priority = 5
+	## ★自己搭材质才设得上 BLEND_MODE_ADD: Sprite3D 的 billboard/modulate/filter 都是喂给
+	##   **内部材质**的, material_override 会把内部材质整个替掉 ⇒ 这几样要在材质上再设一遍。
+	##   帧选择不受影响(hframes 改的是网格 UV, 覆盖材质照样采到对的那一格)。
+	var mat := StandardMaterial3D.new()
+	mat.albedo_texture = _heal_plume_tex
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	sp.material_override = mat
+	sp.position = battle._world_pos(u["pos"] as Vector2, float(u.get("height", 0.0)) + HEAL_PLUME_H)
+	battle._world.add_child(sp)
+	## 跟着单位走 + 按【游戏钟】切帧, 放完自销(不用 tween: tween 走未钳制 delta = 第二条钟)
+	battle._follow_vfx.append({
+		"spr": sp, "unit": u, "h": HEAL_PLUME_H,
+		"anim_fps": HEAL_PLUME_FPS, "anim_n": HEAL_PLUME_FRAMES, "anim_t0": battle._t,
+	})
+	## ★alpha 单独一条: **先满亮 hold 再淡** —— memory [[fb-vfx-defect-families]] 头一条
+	##   「淡出病」: 短命特效一出生就线性淡出, 实拍读成一团灰。
+	var tf: Tween = battle._reg_tween().bind_node(sp)
+	tf.tween_interval(HEAL_PLUME_HOLD)
+	tf.tween_property(sp, "modulate", Color(1, 1, 1, 0), HEAL_PLUME_FADE)
+
+
+## ② 绿粒子: 几粒圆药滴从脚下往上飘。
+func _heal_drops(u: Dictionary) -> void:
+	var cell: int = maxi(1, int(_heal_drop_tex.get_width()) / HEAL_DROP_FRAMES)
+	var ps: float = (HEAL_DROP_YARDS * battle.WS) / float(cell)
+	var base: Vector2 = u["pos"] as Vector2
+	var h0: float = float(u.get("height", 0.0))
+	for i in range(HEAL_DROP_N):
+		var t01: float = float(i) / float(maxi(1, HEAL_DROP_N - 1))
+		var sp := Sprite3D.new()
+		sp.texture = _heal_drop_tex
+		sp.hframes = HEAL_DROP_FRAMES
+		sp.frame = i % HEAL_DROP_FRAMES
+		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sp.shaded = false
+		sp.transparent = true
+		sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		sp.no_depth_test = true          # 被立绘挡住就读不出来了
+		sp.render_priority = 8
+		sp.pixel_size = ps
+		var dx: float = (t01 - 0.5) * 2.0 * HEAL_DROP_SPREAD
+		var p0: Vector2 = base + Vector2(dx, 0.0)
+		sp.position = battle._world_pos(p0, h0 + 0.10)
+		battle._world.add_child(sp)
+		var d: float = t01 * 0.10          # 错开出发 ⇒ 读成「一串往上冒」而不是同时一坨
+		var rise: float = (HEAL_DROP_RISE * (0.7 + 0.6 * t01)) * battle.WS
+		var tw: Tween = battle._reg_tween().bind_node(sp)
+		tw.tween_interval(d)
+		var dst: Vector3 = battle._world_pos(p0 + Vector2(dx * 0.35, 0.0), h0 + 0.10 + rise)
+		tw.tween_property(sp, "position", dst, HEAL_DROP_T).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw.tween_callback(sp.queue_free)
+		var tf: Tween = battle._reg_tween().bind_node(sp)
+		tf.tween_interval(d + HEAL_DROP_T * 0.62)      # ★前 62% 满亮, 之后才淡
+		tf.tween_property(sp, "modulate", Color(1, 1, 1, 0), HEAL_DROP_T * 0.38)

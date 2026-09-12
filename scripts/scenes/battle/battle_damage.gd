@@ -766,6 +766,11 @@ func _heal_flush(u: Dictionary) -> void:   # LoL式: 治疗累加器→静默0.1
 	if battle._t - float(u.get("_heal_acc_t", 0.0)) >= 0.15 or battle._t - float(u.get("_heal_acc_start", 0.0)) >= 0.6:
 		if int(round(acc)) >= 1:
 			battle._vfx._float_text(u["pos"] + Vector2(0, -40), "+" + str(int(round(acc))), battle._VC.color_of("heal-num"), false, "heal")   # 走飘字色表(→UIPalette.HEAL), 不再手抄 #06d6a0
+			## ★★这里【不】挂绿光绿粒子。2026-09-12 我一度把 `heal_burst` 挂在这一行下面,
+			##   那等于**全游戏 80 个治疗调用点一起换演出**。用户当场否:
+			##   「我只让你对019做这次的绿光和绿粒子，你不对把其他的也全用了吧」
+			##   ⇒ 绿光绿粒子只接在 `equip_tick_system._tick_anemone`(019 自己)里。
+			##   **范围由需求定, 不由我推广。**
 		u["_heal_acc"] = 0.0
 		u["_heal_acc_start"] = 0.0
 
