@@ -234,10 +234,10 @@
     "baseStats1": "+生命100/140/210·护甲&魔抗3/4/6·+10%龟能充能速率",
     "shopAvailable": 1,
     "emoji": "🏋️",
-    "effectDesc1": "每 {C:EquipTickSystem.DUMBBELL_IV} 秒原地锻炼（期间不普攻不充能）获得 1 层锻炼（每层最大生命值与当前生命+40/75/110，同一局对局内跨战场保留、开新对局才重置），随后蓄力投掷哑铃砸向最前敌人，造成 5/7/10%自身最大生命值的物理伤害并将其击退。",
+    "effectDesc1": "每 {C:EquipTickSystem.DUMBBELL_IV} 秒获得 1 层锻炼（每层最大生命值与当前生命+40/75/110，同一局对局内跨战场保留、开新对局才重置），并立即投掷哑铃砸向最前敌人，造成 5/7/10%自身最大生命值的物理伤害并将其击退。",
     "effectDesc3": "",
     "img": "equip/eq020-icon.png",
-    "effectBrief": "每 {C:EquipTickSystem.DUMBBELL_IV} 秒锻炼一次（+40/75/110 最大生命值），随后投掷哑铃击退最前敌人。"
+    "effectBrief": "每 {C:EquipTickSystem.DUMBBELL_IV} 秒获得 1 层锻炼（+40/75/110 最大生命值），并投掷哑铃击退最前敌人。"
   },
   {
     "id": "p2eq_021",

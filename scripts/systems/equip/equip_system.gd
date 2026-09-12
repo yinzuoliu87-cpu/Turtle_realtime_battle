@@ -751,28 +751,27 @@ func _eq_ebb_recede(u: Dictionary, hp_add: float, atk_add: float) -> void:   # �
 		battle._ebb_tide_fx(u, false)
 		battle._vfx._float_text(u["pos"] + Vector2(0, -70), "退潮", Color("#8fb8c8"))
 
-func _eq_dumbbell_routine(u: Dictionary, si: int) -> void:   # 原地锻炼(锁攻+锁充能)→+锻炼层(maxHp,局内每场重置)→蓄力→掷哑铃击退
+## 020 哑铃: 【瞬间】+1 锻炼层(maxHp, 局内每场重置) → 当场掷哑铃击退。
+## ★★2026-09-12 用户:「**020现在不要有锻炼阶段，直接投掷哑铃了**」
+##   原来这里是: 置 `_slam`(锁 AI/普攻/移动/龟能充能) → 3 下蹲起(3×0.3s) → 加层 →
+##   蓄力 0.35s → 投掷, 一共 **1.25 秒**。1:1 逐帧量过: 从触发到哑铃出现整整
+##   **1.03 秒八帧完全没有画面**, 龟只是站着不动 —— 文案写「原地锻炼」, 画面读成「卡住了」。
+## ★他同时拍板「**留数值, 只删那段站桩**」⇒ 锻炼层与 +40/75/110 最大生命**原样保留**,
+##   只是改成瞬间生效。哑铃伤害 = 5/7/10% 自身最大生命值, 吃的就是这个生命 ⇒ 动它就是动数值。
+## ★副作用(已知并接受): 不再锁普攻/移动/充能 ⇒ 携带者在这 1.25 秒里照常输出, 这是净加强。
+## ★另一个收益: 这条路径**不再有 await** —— 结算不再挂在演出上
+##   (CLAUDE.md §3.5: 一个测数值的用例不该依赖任何动画跑完)。
+func _eq_dumbbell_routine(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false): return
-	u["_slam"] = true   # 锁AI/普攻/移动/龟能充能(都在_tick_unit早返回前)
-	for _b in range(3):   # 锻炼动作: 3下蹲起形变
-		if not u.get("alive", false): u["_slam"] = false; return
-		battle._anticipate(u)
-		await battle._wait_sim(0.3)
-		if not is_instance_valid(battle): return   ## await 回来 battle 可能已被 queue_free(战斗结束)
-	if not is_instance_valid(self): return
 	var stt: Dictionary = u["eq_state"].get("p2eq_020", {})   # 锻炼层(eq_state局内计数, 每场战斗重置)
 	stt["exercise"] = int(stt.get("exercise", 0)) + 1
 	u["eq_state"]["p2eq_020"] = stt
 	var gain: float = [40.0, 75.0, 110.0][si]   # 锻炼层+maxHp&当前生命(用户2026-07-19: 20/25/30→40/75/110)。★不乘HP_MULT: 装备hp已是最终值(见L45规则), 原来乘了→实发120/225/330=文案的3倍
 	u["maxHp"] += gain; u["hp"] += gain
-	battle._skill_ring(u["pos"], Color(0.8, 0.9, 1.0, 0.42), 48.0)   # 锻炼强化光
-	battle._anticipate(u); battle._shake(battle.JUICE_SHAKE_HEAVY)   # 蓄力
-	await battle._wait_sim(0.35)
-	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
-	u["_slam"] = false
-	if not u.get("alive", false): return
+	battle._skill_ring(u["pos"], Color(0.8, 0.9, 1.0, 0.42), 48.0)   # 锻炼强化光(瞬间, 不再有站桩)
 	var t = battle._targeting._nearest_enemy(u)
 	if t == null: return
+	battle._anticipate(u); battle._shake(battle.JUICE_SHAKE_HEAVY)   # 投掷起手(瞬间形变, 不再是 1.25 秒站桩)
 	var dmg: int = maxi(1, int(u["maxHp"] / battle.HP_MULT * [0.05, 0.07, 0.10][si]))
 	battle._throw_dumbbell(u, t, dmg)
 
