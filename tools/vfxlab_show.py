@@ -68,6 +68,32 @@ def window_rect(pid):
     return found[0] if found else None
 
 
+def raise_window(pid):
+    """把窗口抬到最上层 —— **不抬就会截到盖在它上面的别的窗口**。
+
+    ★2026-09-12 实拍抓到: 022 那次截出来整幅是 **VS Code**, 游戏窗口被压在下面,
+      只露出左上角一条标题栏。两条机检还全绿(见下面 ② 的注释)。
+    ★`SetForegroundWindow` 在这里**没用**: Windows 的前台锁不让后台进程抢焦点,
+      调了返回 false、窗口纹丝不动。有效的是 `SetWindowPos(HWND_TOPMOST)`。
+    """
+    user32 = ctypes.windll.user32
+    found = []
+
+    @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+    def cb(hwnd, _lp):
+        p = ctypes.c_ulong()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(p))
+        if p.value == pid and user32.IsWindowVisible(hwnd):
+            found.append(hwnd)
+        return True
+
+    user32.EnumWindows(cb, 0)
+    for h in found:
+        ## HWND_TOPMOST = -1; SWP_NOSIZE|SWP_NOMOVE|SWP_SHOWWINDOW = 0x0001|0x0002|0x0040
+        user32.SetWindowPos(ctypes.c_void_p(h), ctypes.c_void_p(-1), 0, 0, 0, 0, 0x0043)
+    return len(found)
+
+
 def grab(box):
     ## ★DPI 感知: 不加这一句只截得到左上 2/3
     ctypes.windll.user32.SetProcessDPIAware()
@@ -101,6 +127,9 @@ def main():
         print("[FAIL] ★找不到这个进程的可见窗口")
         return 1
     print("窗口 %s  (%dx%d)" % (box, box[2] - box[0], box[3] - box[1]))
+    nraise = raise_window(p.pid)
+    print("  置顶了 %d 个窗口(不置顶会截到盖在上面的别的窗口)" % nraise)
+    time.sleep(1.2)
 
     import numpy as np
     frames = []
@@ -123,12 +152,30 @@ def main():
     if diff < tot * 0.002:
         print("  [FAIL] ★画面几乎静止 —— 可能是主菜单/结算屏, 不是在跑的战斗")
         ok = False
-    ## 主菜单是**亮底满屏 UI**, 台子是**黑场 + 几只龟** ⇒ 用暗像素占比分开
-    dark = int(np.count_nonzero(frames[-1].sum(axis=2) < 120))
-    print("  ② 暗像素占比 %.1f%% (台子黑场应 > 70%%; 主菜单满屏 UI 远低于此)"
-          % (100.0 * dark / tot))
-    if dark < tot * 0.70:
-        print("  [FAIL] ★暗像素太少 —— 画面里多半是 UI(主菜单/结算屏), 不是黑场台子")
+    ## ★这一条**单独用会被骗**: 截到 VS Code 时它也在动(我自己的对话在刷新),
+    ##   实测 1.71% 照样过。所以它必须和 ② 一起看 —— ② 才管「截的是不是游戏」。
+    ## ★★判据换过一次, 原因写清楚: 第一版判的是「亮度 < 70 的像素占比 > 70%」,
+    ##   而 **VS Code 的深色主题是 #1f1f1f(亮度 31)**, 一样满足 —— 实测:
+    ##       被 VS Code 挡住那张  亮度<70 占 96.0%   ← 第一版判它「通过」
+    ##       真·台子那张          亮度<70 占 95.2%
+    ##   **两边都是 95%, 这条等于没判。** 换成**近纯黑(亮度 ≤10)**才分得开:
+    ##       被 VS Code 挡住      近纯黑 19.4%
+    ##       真·台子(有火)        近纯黑 93.1%
+    ##       真·台子(火熄灭)      近纯黑 93.7%
+    ##   阈值 70% 两边留着极大余量。台子是真·黑场(0,0,0), 任何 IDE/浏览器的
+    ##   「深色主题」都到不了纯黑 —— 这才是能把「截错窗口」判红的那个量。
+    ## ★★量的必须是**亮度**, 不是「三通道都 ≤10」—— 台子背景是 (2,4,11):
+    ##   亮度 3.8(合格) 但**最大通道 11**(不合格) ⇒ 写成 max(axis=2) 的那一版
+    ##   把真台子判成 0.4%, 当场误红。标定用哪个量, 实现就得用哪个量
+    ##   (memory [[fb-verify-check-can-fail]]: 新尺子先拿已知答案的样本量一遍)。
+    _lum = (frames[-1][..., 0] * 299 + frames[-1][..., 1] * 587
+            + frames[-1][..., 2] * 114) // 1000
+    black = int(np.count_nonzero(_lum <= 10))
+    print("  ② 近纯黑(亮度≤10)占比 %.1f%% (台子黑场 >90%%; VS Code 深色主题只有 ~19%%)"
+          % (100.0 * black / tot))
+    if black < tot * 0.70:
+        print("  [FAIL] ★不是黑场台子 —— 多半截到了**盖在游戏上面的别的窗口**,"
+              " 或者掉回了主菜单/结算屏")
         ok = False
     print("")
     print("窗口可看" if ok else "[FAIL] ★别报给用户 —— 先弄清楚窗口里在放什么")

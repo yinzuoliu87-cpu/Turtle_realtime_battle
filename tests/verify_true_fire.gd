@@ -108,10 +108,33 @@ func _ready() -> void:
 	if tex == null:
 		_done(); return
 	var cell: int = int(tex.get_width()) / maxi(1, int(spr.hframes))
-	var world_h: float = float(cell) * spr.pixel_size
-	_ok("④ ★★火高 = %.2f 龟高(参考实测 1.5~1.7)" % (world_h / TURTLE_H),
-		world_h / TURTLE_H >= 1.4 and world_h / TURTLE_H <= 2.0,
-		"世界高 %.2f m / 龟高 %.1f m" % [world_h, TURTLE_H])
+	## ★★量的必须是**露出地面的火**, 不是【贴图格子有多高】。
+	##   第一版量 cell × pixel_size = 3.41 m 恒定 —— 贴图整个沉到地下它也一样绿。
+	##   实际就出过这个事: TRUEFIRE_H 拍成 1.30 ⇒ 火底在脚下 -0.404 m,
+	##   露出地面的只有 1.33~1.42 龟高(低于参考 1.5~1.7), 而这条判据全程绿。
+	##   现在从**真实 Sprite3D 的 AABB** 取底/顶, 底被地面切掉的部分不算数。
+	var _ab: AABB = spr.get_aabb()
+	var _foot: float = _s._world_pos(u["pos"] as Vector2, 0.0).y
+	var _bot: float = spr.position.y + _ab.position.y - _foot
+	var _top: float = _bot + _ab.size.y
+	var _vis: float = _top - maxf(_bot, 0.0)
+	_ok("④ ★★火底齐脚: 离脚 %+.3f m(容差 ±0.06)" % _bot, absf(_bot) <= 0.06,
+		"负数=埋进地里(黑场台子上看不出来, 真实地图/被击飞时会穿地)")
+	## ★AABB 是**整个贴图方片**(3.41 m), 不是画到的火 —— 拿它报「火多高」是虚的。
+	##   用贴图里**真的画到的行**把方片顶往下切, 才是火本身。
+	var _img0: Image = tex.get_image()
+	var _rowtop: int = 1 << 30
+	var _rowbot: int = -1
+	for _y in range(_img0.get_height()):
+		for _x in range(_img0.get_width()):
+			if _img0.get_pixel(_x, _y).a >= 0.5:
+				_rowtop = mini(_rowtop, _y); _rowbot = maxi(_rowbot, _y); break
+	var _ftop: float = _top - float(_rowtop) * spr.pixel_size
+	var _fbot: float = _top - float(_rowbot + 1) * spr.pixel_size
+	var _fvis: float = _ftop - maxf(_fbot, 0.0)
+	_ok("④ ★★露出地面的火 = %.2f 龟高(参考实测 1.5~1.7)" % (_fvis / TURTLE_H),
+		_fvis / TURTLE_H >= 1.45 and _fvis / TURTLE_H <= 1.80,
+		"火 %.2f~%.2f m(露出 %.2f m) / 龟高 %.1f m —— 沉下去多少这条就掉多少" % [_fbot, _ftop, _fvis, TURTLE_H])
 	_ok("④ 1 texel : 1 屏幕像素(像素画不许非整数缩放)",
 		absf(spr.pixel_size - M_PER_SCREEN_PX) < 0.004,
 		"pixel_size %.4f / 应 %.4f" % [spr.pixel_size, M_PER_SCREEN_PX])
@@ -248,8 +271,8 @@ func _done() -> void:
 	await get_tree().process_frame
 	print("")
 	print("  分母: 共 %d 条断言" % _n)
-	if _n < 23:
-		print("  [FAIL] ★断言只有 %d 条(<23) —— 有用例中途中止了" % _n)
+	if _n < 24:
+		print("  [FAIL] ★断言只有 %d 条(<24) —— 有用例中途中止了" % _n)
 		_fail += 1
 	print("ALL PASS — 022 真火" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

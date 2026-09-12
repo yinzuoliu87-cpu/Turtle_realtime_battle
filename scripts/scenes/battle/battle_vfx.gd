@@ -1859,7 +1859,14 @@ const TRUEFIRE_TEX := "res://assets/sprites/vfx/true-fire.png"
 const TRUEFIRE_FRAMES := 8
 const TRUEFIRE_FPS := 12.0        # 8 帧 / 12fps = 0.67 秒一轮, 5 秒烧 7.5 轮
 const TRUEFIRE_YARDS := 142.0     # 80 texel × 0.0426 m ÷ WS = 3.41 m ≈ 1.7 龟高
-const TRUEFIRE_H := 1.30          # 贴图中心高度 ⇒ 火底落在脚下
+## ★★贴图中心高度 = **半格**(80 texel / 2 × 0.0426 = 1.704) ⇒ 火底正好齐脚。
+##   原值 1.30 是我拍的, 探针读真实 AABB 量出来**火底在脚下 -0.404 m** ——
+##   黑场台子上看不出来(地面是纯黑), 但到真实地图、或单位被击飞抬高时火根会穿地。
+##   ★连带的真缺陷: 沉下去 0.40 m 之后**露出地面的火只有 1.33~1.42 龟高**,
+##     低于参考实测的 1.5~1.7 —— 而门禁 ④ 量的是【贴图高】不是【露出地面的高】,
+##     所以它一直绿着(判据量的不是需求, memory [[fb-judge-must-fit-the-shape]])。
+##   素材画到了格子最底行, 所以「格底齐脚」= 「火底齐脚」。
+const TRUEFIRE_H := 1.704
 var _truefire_tex: Texture2D = null
 
 
