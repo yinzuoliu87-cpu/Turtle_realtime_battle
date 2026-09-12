@@ -104,8 +104,13 @@ func _ready() -> void:
 	var want_m: float = 600.0 * _s.WS
 	_ok("③ ★包围盒长度 ≈ 路径长度(实得 %.2f m / 应 %.2f m)" % [aabb.size.x, want_m],
 		absf(aabb.size.x - want_m) < want_m * 0.25)
-	_ok("③ 每个方点是正方形(厚度 ≈ 边长 %.3f m)" % BattleVfx.BOLT_DOT_M,
-		absf(aabb.size.z - BattleVfx.BOLT_DOT_M) < 0.02, "实得 %.3f m" % aabb.size.z)
+	## ★判据换过形状(2026-09-12): 方点改成**面朝相机**后,
+	##   世界 Z 方向的厚度 = 边长 × 相机上向量的 Z 分量(实测 ≈0.78), 不再等于边长。
+	##   不能拿产品的相机公式再算一遍去验(那就又是恒真式) ⇒ 卡区间:
+	##   只要方点没退化成线/点, 厚度就应在边长的 50%~120% 之间。
+	_ok("③ 方点没退化(世界厚度 %.3f m, 应在边长 %.3f 的 50%%~120%%)"
+		% [aabb.size.z, BattleVfx.BOLT_DOT_M],
+		aabb.size.z > BattleVfx.BOLT_DOT_M * 0.5 and aabb.size.z < BattleVfx.BOLT_DOT_M * 1.2)
 
 	# ── ④ ★★治淡出病: 满亮段 alpha 不降 ───────────────────────────────
 	## 手推它自己的 tween(无头 CI 下 tween 自走不稳, CLAUDE.md §3.5)

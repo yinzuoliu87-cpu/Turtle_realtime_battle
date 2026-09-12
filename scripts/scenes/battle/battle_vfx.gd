@@ -1439,14 +1439,25 @@ func bolt_line(a2d: Vector2, b2d: Vector2, col: Color) -> void:
 	im.sorting_offset = 2.0
 	## 点朝相机: 场景是固定俯视角, 用 XZ 平面上的方块即可(与贴地演出同一个平面),
 	## 不做 billboard —— billboard 要每点一个节点, 24 处共用的原语开不起那个销。
+	## ★★方点必须**面朝相机**。用户 2026-09-12 一句话点出来的:「点串是在地上吗」——
+	##   第一版我建的是 `Vector3(±h, 0, ±h)`, 即**水平面上的正方形**(只是抬到 1m 高)。
+	##   俯视角下水平面会被压扁 ⇒ 5px 的方块竖向只剩 2~3px, 难怪看不见。
+	## ⇒ 拿相机的右/上向量建方块。相机是固定视角, **算一次就行**,
+	##   不用给每个点开一个 billboard 节点(24 处共用的原语开不起那个销)。
+	var cam: Camera3D = battle._cam
+	var rgt: Vector3 = Vector3.RIGHT
+	var upv: Vector3 = Vector3.BACK
+	if is_instance_valid(cam):
+		rgt = cam.global_transform.basis.x.normalized()
+		upv = cam.global_transform.basis.y.normalized()
 	var n: int = maxi(2, int(span / BOLT_GAP_M))
 	var h: float = BOLT_DOT_M * 0.5
 	imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat)
 	for k in range(n + 1):
 		var c: Vector3 = pa.lerp(pb, float(k) / float(n))
 		## ★两端各留半个点: 端点压在单位身上会被立绘盖住, 读起来像线没连上
-		var q := [c + Vector3(-h, 0.0, -h), c + Vector3(h, 0.0, -h),
-			c + Vector3(h, 0.0, h), c + Vector3(-h, 0.0, h)]
+		var q := [c - rgt * h - upv * h, c + rgt * h - upv * h,
+			c + rgt * h + upv * h, c - rgt * h + upv * h]
 		for tri in [[0, 1, 2], [0, 2, 3]]:
 			for vi in tri:
 				imesh.surface_set_color(col)
@@ -1461,3 +1472,119 @@ func bolt_line(a2d: Vector2, b2d: Vector2, col: Color) -> void:
 	tw.tween_property(mat, "albedo_color:a", 0.0, BOLT_FADE_T)
 	tw.tween_callback(im.queue_free)
 
+
+
+## ══════════════════════════════════════════════════════════════════════
+##  014 深海堡垒甲【汲取生命】—— 用户 2026-09-12 逐字定的四拍
+## ══════════════════════════════════════════════════════════════════════
+## 他否掉的是我拿 `bolt_line`(一条直线排一串方块)当汲取用:
+##   「**为什么又用什么长方形来敷衍**」「**你怎么能这样敷衍我呢**」
+## **一串静止的方块不是特效, 是几何占位** —— 与他先前否掉的「程序生成的圆环白球」同一类。
+##
+## 四拍(钉住不许漂):
+##   ① 一道**绿色粒子波纹**从**目标身上抽取出来**
+##   ② 在**空中飘舞**(飘动的曲线, 不是直线)
+##   ③ **飞到携带者身上**
+##   ④ 携带者身上**绿色粒子爆发**
+##
+## ★为什么用 tween 而不是 `_wait_sim`: 这一段**纯观感, 不挂任何结算** ——
+##   伤害与回血在 `_tick_fortress` 里已经当场算完了, 演出到不到位都不影响账。
+##   (memory [[fb-second-clock-drops-events]]: tween 只适合纯观感; 一旦有结算必须走游戏钟。)
+## ★★尺寸的判据是【一个贴图像素落在一个屏幕像素上】, 不是「世界里多少米」。
+##   2026-09-12 染色实测(把 `_mote` 整体 modulate 成品红 + 关泛光, 再数连通域):
+##     · 一粒在屏幕上 **7×7 像素**, 而当时贴图一格是 **24×24** ⇒ 被压 3.4 倍
+##     · 像素画非整数倍缩放 = 像素网格被打烂(像素风三条硬约束之首,
+##       battle_ballistics.gd:675) ⇒ 菱形糊成一坨亮点, 连「是绿的」都读不出来
+##   同一帧量到的标尺: 一只龟 ≈45 屏幕像素高, 立绘帧高 = TARGET_BODY_H = 2.0 m
+##   ⇒ 台子(1280×720 · zoom=1.0)下 **≈23.5 屏幕像素/米**。
+##   ⚠ 这个数**随视口高度变**(别处文件里的 28.148 px/m 是另一档视口量的, 两边都不算错);
+##     真正与分辨率无关的说法是下面这条 ——
+##   ⇒ **一粒 = 0.511 m ≈ 四分之一个龟高**, 贴图一格 12px ⇒ pixel_size 0.0426 ≈ 1:1。
+const MOTE_TEX := "res://assets/sprites/vfx/life-mote.png"
+const MOTE_FRAMES := 4
+## ★配色也踩过一次: 素材原先重索引到 `pixelize_sheet` 的 jade 板 —— **jade 是薄荷青**,
+##   而场上龟本身就是青身+暗绿壳, 同色系 + 泛光 ⇒ 1:1 实拍读成**白色亮片**。
+##   已另立 'life' 板(正绿/高彩度), 素材主色 55.6% 是 (104,244,112)。
+const MOTE_YARDS := 21.3        # 一粒的边长(码) = 0.511 m ≈ 1/4 龟高; 配 12px 一格 ⇒ 1 texel : 1 屏幕像素
+const DRAIN_N := 14             # 一个目标抽几粒(9 太稀, 连不成一道波纹)
+const DRAIN_T := 0.52           # 单粒飞行时长(秒)
+const DRAIN_STAGGER := 0.028    # 粒与粒的出发间隔 ⇒ 读成「一道波纹」而不是同时一坨
+const DRAIN_PULL := 0.16        # ①抽取: 先从目标身上往外挣出这么久
+const DRAIN_WAVE := 26.0        # ②飘舞: 垂直于路径的最大摆幅(码)
+const BURST_N := 10             # ④到达时携带者身上爆开几粒
+const BURST_T := 0.30
+const BURST_R := 34.0           # 爆发半径(码)
+var _mote_tex: Texture2D = null
+
+
+func _mote(pos2d: Vector2, h: float, k: int) -> Sprite3D:
+	if _mote_tex == null:
+		_mote_tex = load(MOTE_TEX)
+	var sp := Sprite3D.new()
+	sp.texture = _mote_tex
+	sp.hframes = MOTE_FRAMES
+	sp.frame = k % MOTE_FRAMES
+	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sp.shaded = false
+	sp.transparent = true
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sp.no_depth_test = true          # 粒子是「两个单位之间」的关系, 被立绘挡住就读不出来了
+	sp.render_priority = 7
+	sp.pixel_size = (MOTE_YARDS * battle.WS) / float(maxi(1, int(_mote_tex.get_width()) / MOTE_FRAMES))
+	sp.position = battle._world_pos(pos2d, h)
+	battle._world.add_child(sp)
+	return sp
+
+
+## 从 `from2d`(被汲取的目标) 抽一道绿色粒子波纹, 飘舞着飞到 `to2d`(携带者), 到达时爆发。
+func drain_stream(from2d: Vector2, to2d: Vector2) -> void:
+	var dir: Vector2 = (to2d - from2d)
+	if dir.length() < 1.0:
+		dir = Vector2(1.0, 0.0)
+	var perp: Vector2 = dir.orthogonal().normalized()
+	for i in range(DRAIN_N):
+		var t01: float = float(i) / float(maxi(1, DRAIN_N - 1))
+		var sp: Sprite3D = _mote(from2d, 0.55 + 0.5 * t01, i)
+		sp.modulate = Color(1, 1, 1, 0)
+		## ① 抽取: 先从目标身上「挣」出来一点(朝外, 带一点随机散开)
+		var out2: Vector2 = from2d - dir.normalized() * 16.0 + perp * (t01 - 0.5) * 34.0
+		## ② 飘舞: 路径中点往垂直方向甩开, 左右交替 ⇒ 一串粒子读成波纹而不是直线
+		var swing: float = DRAIN_WAVE * (1.0 if i % 2 == 0 else -1.0) * (0.55 + 0.45 * t01)
+		var mid2: Vector2 = from2d.lerp(to2d, 0.5) + perp * swing
+		var d: float = float(i) * DRAIN_STAGGER
+		var tw: Tween = battle._reg_tween().bind_node(sp)
+		tw.tween_interval(d)
+		tw.tween_property(sp, "position", battle._world_pos(out2, 0.75), DRAIN_PULL)
+		tw.tween_property(sp, "position", battle._world_pos(mid2, 1.15), DRAIN_T * 0.5) \
+			.set_trans(Tween.TRANS_SINE)
+		tw.tween_property(sp, "position", battle._world_pos(to2d, 0.85), DRAIN_T * 0.5) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		tw.tween_callback(sp.queue_free)
+		## alpha 单独一条链: 淡入 → **满亮占住整个飞行段** → 到达才收
+		##   (memory [[fb-vfx-defect-families]] 头一条「淡出病」: 不许一出生就淡)
+		var tf: Tween = battle._reg_tween().bind_node(sp)
+		tf.tween_interval(d)
+		tf.tween_property(sp, "modulate", Color(1, 1, 1, 1), 0.04)   # ★淡入越短越亮: 0.07 时大半路程还在半透
+		tf.tween_interval(DRAIN_PULL + DRAIN_T - 0.04)
+		tf.tween_property(sp, "modulate", Color(1, 1, 1, 0), 0.06)
+	## ④ 到达: 携带者身上绿色粒子爆发(等最后一粒飞到才开)
+	var bt: Tween = battle._reg_tween()
+	bt.tween_interval(float(DRAIN_N - 1) * DRAIN_STAGGER + DRAIN_PULL + DRAIN_T * 0.82)
+	bt.tween_callback(func() -> void: _drain_burst(to2d))
+
+
+## ④ 携带者身上的绿色粒子爆发。
+func _drain_burst(at2d: Vector2) -> void:
+	if not is_instance_valid(battle) or not is_instance_valid(battle._world):
+		return
+	for i in range(BURST_N):
+		var ang: float = TAU * float(i) / float(BURST_N) + 0.3
+		var sp: Sprite3D = _mote(at2d, 0.8, i)
+		var to2: Vector2 = at2d + Vector2(cos(ang), sin(ang)) * BURST_R
+		var tw: Tween = battle._reg_tween().bind_node(sp)
+		tw.tween_property(sp, "position", battle._world_pos(to2, 1.05), BURST_T) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_callback(sp.queue_free)
+		var tf: Tween = battle._reg_tween().bind_node(sp)
+		tf.tween_interval(BURST_T * 0.62)        # ★前 62% 满亮, 之后才淡
+		tf.tween_property(sp, "modulate", Color(1, 1, 1, 0), BURST_T * 0.38)

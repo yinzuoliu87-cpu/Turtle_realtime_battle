@@ -131,7 +131,11 @@ func _tick_fortress(u: Dictionary, delta: float) -> void:   # 深海堡垒甲p2e
 				continue
 			if o.get("_isEgg", false) or o.get("_eggImmune", false):
 				continue
-			battle._bolt_line(o["pos"], u["pos"], Color("#bfe9ff"))
+			## ★★014 的汲取不再用 `_bolt_line`(直线光束) —— 用户 2026-09-12:
+			##   「为什么又用什么长方形来敷衍」。他定的是四拍:
+			##   绿色粒子从目标抽出 → 空中飘舞 → 飞到携带者 → 携带者绿色粒子爆发。
+			##   `_bolt_line` 留给真正是「一道光束」的地方(闪电链/凤凰喷火)。
+			battle._vfx.drain_stream(o["pos"], u["pos"])
 			battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, k2 * (u["def"] + u["mr"]), o, true), Color("#bfe9ff"), 0.0, false, true)   # 真·魔法伤害(走魔抗); 原 raw=true 是白字真伤·与文案"魔法伤害"不符(用户2026-07-19指出)
 			battle._damage._heal(u, heal_flat + maxf(0.0, u["maxHp"] - u["hp"]) * FORTRESS_HEAL_LOST)   # 已损生命 6% → 5%
 
