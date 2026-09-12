@@ -95,7 +95,7 @@ func _rainbow_prism_shield_vfx(u: Dictionary) -> void:
 			r.texture = VfxTex._make_ring_texture(col)
 			r.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 			r.shaded = false; r.transparent = true
-			r.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+			r.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # ★像素贴图: LINEAR 会把它糊成渐变(spec 阶段 4 第一条)
 			r.modulate = Color(col.r, col.g, col.b, 0.95)
 			r.pixel_size = (66.0 * battle.WS) / 96.0
 			r.position = battle._world_pos(u["pos"], 0.9)
@@ -184,7 +184,7 @@ func _sk_rainbow_storm(u: Dictionary) -> void:                  # 彩虹龟·全
 		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD          # 加性发光(黑底自然透明)
 		m.cull_mode = BaseMaterial3D.CULL_DISABLED
-		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # ★像素贴图: LINEAR 会把它糊成渐变(spec 阶段 4 第一条)
 		mi.material_override = m
 		mi.rotation_degrees = Vector3(-90, 0, 0)              # 躺平贴地
 		pivot.add_child(mi)

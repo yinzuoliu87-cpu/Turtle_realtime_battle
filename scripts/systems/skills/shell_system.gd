@@ -78,7 +78,7 @@ func _shell_guard_fx(u: Dictionary) -> void:   # 守护贝壳018: 双半壳张�
 	for k in [1.0, -1.0]:   # +1=上半壳(穹顶朝上), -1=下半壳(翻转·穹顶朝下)
 		var sh = Sprite3D.new()
 		sh.texture = battle._shellhalf_tex
-		sh.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+		sh.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # ★像素贴图: LINEAR 会把它糊成渐变(spec 阶段 4 第一条)
 		sh.billboard = BaseMaterial3D.BILLBOARD_ENABLED   # 自身护罩=非方向性, billboard即可(不是弹道)
 		sh.shaded = false; sh.transparent = true
 		sh.no_depth_test = true; sh.render_priority = 6   # 防被地板/身体盖住

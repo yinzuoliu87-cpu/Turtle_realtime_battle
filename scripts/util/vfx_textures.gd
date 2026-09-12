@@ -444,7 +444,7 @@ static func _make_bladewall_texture(col: Color) -> ImageTexture:   # 阔剑007�
 static func _make_shellhalf_texture() -> ImageTexture:   # 守护贝壳018: **烤好的像素半壳**(玉青壳身+壳沟+奶金壳缘+深描边)
 ## ★★2026-09-11 换掉逐像素现算。从 Godot 导出真产物量过: 原来是 76×42 / **706 色** / 159 半透 ——
 ##   形状是认真画的(半穹顶/放射壳沟/奶金缘/描边, 全部保留), 坏在**颜色是连续插值**出来的。
-##   现在由 `tools/gen_shell_and_spike.py` 烤成 **7 色 / 0 半透**, 尺寸 76×42 一字未动
+##   现在由 `tools/blender_shellguard.py` 烤成 **6 色 / 0 半透**, 尺寸 76×42 一字未动
 ##   ⇒ 调用点的 pixel_size 换算不用改。
 	var img: Image = (load("res://assets/sprites/vfx/shell-guard.png") as Texture2D).get_image()
 	return ImageTexture.create_from_image(img)

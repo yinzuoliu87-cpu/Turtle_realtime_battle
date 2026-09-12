@@ -112,7 +112,7 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 	elif src is Dictionary and str(src.get("id", "")) == "space":   # 星际: 星形星光弹(紫白星星·2026-07-15)
 		p.texture = VfxTex._make_star_texture()
 		p.pixel_size = 0.016
-		p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+		p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # ★像素贴图: LINEAR 会把它糊成渐变(spec 阶段 4 第一条)
 		p.modulate = Color(0.9, 0.8, 1.0)
 	elif src is Dictionary and str(src.get("id", "")) == "crystal":   # 水晶: 射冰蓝碎晶(尖端朝前·2026-07-15)
 		p.texture = load("res://assets/sprites/vfx/crystal-shard.png")
@@ -128,7 +128,7 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 	elif src is Dictionary and battle._PROJ_WAVE.get(str(src.get("id", "")), false):
 		p.texture = VfxTex._make_wave_texture(col)
 		p.pixel_size = 0.045   # 尖尖波 52×20 → ~2.3×0.9m
-		p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+		p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # ★像素贴图: LINEAR 会把它糊成渐变(spec 阶段 4 第一条)
 		oriented = true        # 尖尖波有朝向→贴XZ绕Y转向行进方向(否则billboard永远面镜头指右, 斜射/上下射方向错)
 	else:
 		p.texture = VfxTex._make_bolt_texture(col)

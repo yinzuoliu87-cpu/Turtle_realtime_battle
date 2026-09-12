@@ -78,9 +78,15 @@ FUNC = re.compile(r'^func\s+([A-Za-z_][A-Za-z0-9_]*)')
 LOAD_ASSET = re.compile(r'(?:load|preload)\s*\(\s*"(res://assets/[^"]+)"')
 VFXTEX_CALL = re.compile(r'VfxTex\.(_make_[A-Za-z0-9_]+)\s*\(')
 EXEMPT = re.compile(r'#\s*vfx-scale-ok:\s*(.+?)\s*$')
+LINEAR = re.compile(r'([A-Za-z_][A-Za-z0-9_]*)\.texture_filter\s*=\s*\w+\.TEXTURE_FILTER_LINEAR')
+EXEMPT_LIN = re.compile(r'#\s*vfx-linear-ok:\s*(.+?)\s*$')
 
 ## 分母下界: 扫到的 tween 缩放点少于这个数 = 扫描口径坏了(实测 174 处)
 MIN_TWEENS = 120
+## 同理: D 条的分母下界(实测 28 处)。★反向验证抳出来的 ——
+##   第一版 D 条**没有分母断言**: 把 LINEAR 正则改坏扫到 0 处, 审计照样绿。
+##   memory `fb-verify-check-can-fail`: **N=0 是空检查不是通过**。
+MIN_LINEAR = 18
 
 
 # ───────────────────────────────────────────────────────────────────────
@@ -155,6 +161,16 @@ def _resolve_expr(expr, body, filesrc, depth=0):
         if cv:
             return cv.group(1)
         return None
+    ## 带点的成员(`battle._shellhalf_tex` 这类) —— 回查本函数里对它的赋值。
+    ## ★ 018 守护贝壳就落在这个盲区里: `sh.texture = battle._shellhalf_tex`,
+    ##   而上一行才是 `battle._shellhalf_tex = VfxTex._make_shellhalf_texture()`。
+    ##   不补这一层, D 条正好放过了它 —— 而它正是我要查的那一件。
+    dotted = re.fullmatch(r'([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+)'
+                          r'(?:\s+as\s+\w+)?', expr)
+    if dotted:
+        am = re.search(re.escape(dotted.group(1)) + r'\s*=\s*(?!=)(.+)', body)
+        if am:
+            return _resolve_expr(am.group(1), body, filesrc, depth + 1)
     ## 裸变量(允许 `x as Texture2D`) —— 回查本函数里它是怎么来的
     bare = re.fullmatch(r'([A-Za-z_][A-Za-z0-9_]*)(?:\s+as\s+\w+)?', expr)
     if bare:
@@ -222,6 +238,48 @@ def check_a():
 ASSET_IN_PY = re.compile(r'assets/sprites/[A-Za-z0-9_]+/[A-Za-z0-9_.-]+\.png')
 
 
+## ★D: 硬边像素贴图不许用 TEXTURE_FILTER_LINEAR。
+##   由来: 018 守护贝壳的半壳写着 LINEAR —— **素材再好也是糊的**。
+##   spec《装备特效制作流程》阶段 4 三条渲染纪律第一条就是这个;
+##   memory `fb-vfx-defect-families` 也列了「贴图糊 = 没设 NEAREST」。
+## ★判据与 A 条同形: **量贴图本身**(半透==0 ⇒ 硬边像素画)。
+##   程序软辉光用 LINEAR 是对的, 不能一刀切; 解析不出来的不判(计入盲区)。
+def check_d():
+    bad, unknown, total, exempt = [], 0, 0, []
+    for d in SCAN_DIRS:
+        for root, _dirs, files in os.walk(os.path.join(ROOT, d)):
+            for f in sorted(files):
+                if not f.endswith('.gd'):
+                    continue
+                p = os.path.join(root, f)
+                rel = os.path.relpath(p, ROOT).replace(os.sep, '/')
+                filesrc = io.open(p, encoding='utf-8', newline='').read()
+                L = filesrc.split(chr(10))
+                starts = [i for i, ln in enumerate(L) if FUNC.match(ln)]
+                for i, ln in enumerate(L):
+                    m = LINEAR.search(ln)
+                    if not m:
+                        continue
+                    total += 1
+                    var = m.group(1)
+                    s0 = max([k for k in starts if k <= i], default=0)
+                    s1 = min([k for k in starts if k > i], default=len(L))
+                    mf = FUNC.match(L[s0])
+                    fn2 = mf.group(1) if mf else '(顶层)'
+                    res = _resolve_texture(chr(10).join(L[s0:s1]), var, filesrc)
+                    if res is None:
+                        unknown += 1
+                        continue
+                    if _is_hard_pixel_art(res) is not True:
+                        continue
+                    ex = EXEMPT_LIN.search(ln) or (EXEMPT_LIN.search(L[i - 1]) if i > 0 else None)
+                    if ex:
+                        exempt.append('%s:%d  %s' % (rel, i + 1, ex.group(1)))
+                        continue
+                    bad.append('%s::%s' % (rel, fn2))
+    return bad, unknown, total, exempt
+
+
 def check_b():
     pairs = []
     tdir = os.path.join(ROOT, "tools")
@@ -260,6 +318,7 @@ def check_c():
 # ───────────────────────────────────────────────────────────────────────
 def main():
     bad_a, unknown_a, total_a, exempt_a = check_a()
+    bad_d, unknown_d, total_d, exempt_d = check_d()
     pairs_b = check_b()
     missing_c, total_c = check_c()
 
@@ -268,11 +327,22 @@ def main():
           % (total_a, total_a - unknown_a, unknown_a))
     print("  B 手写生成器: %d 对(生成器 → 素材)" % len(pairs_b))
     print("  C 逐帧研究: vfx 素材 %d 张 · 其中无研究 %d 张" % (total_c, len(missing_c)))
+    print("  D LINEAR: 扫到 %d 处 · 解析并判定 %d 处 · 未判定 %d 处(盲区)"
+          % (total_d, total_d - unknown_d, unknown_d))
+    if exempt_d:
+        print("  [豁免] D 有 %d 处写了理由:" % len(exempt_d))
+        for e in exempt_d:
+            print("     " + e)
     if exempt_a:
         print("  [豁免] A 有 %d 处写了理由:" % len(exempt_a))
         for e in exempt_a:
             print("     " + e)
 
+    if total_d < MIN_LINEAR:
+        print("")
+        print("[FAIL] ★分母: 只扫到 %d 处 texture_filter=LINEAR(<%d) —— 扫描口径坏了"
+              % (total_d, MIN_LINEAR))
+        return 1
     if total_a < MIN_TWEENS:
         print("")
         print("[FAIL] ★分母: 只扫到 %d 处 tween 缩放(<%d) —— 扫描口径坏了, 这是空检查不是通过"
@@ -290,6 +360,7 @@ def main():
         "a_scale": sorted(x["key"] for x in bad_a),
         "b_generators": sorted(pairs_b),
         "c_no_study": sorted(missing_c),
+        "d_linear": sorted(set(bad_d)),
     }
 
     if os.environ.get("VFX_DISCIPLINE_UPDATE") == "1":
@@ -310,13 +381,16 @@ def main():
         "b_generators": ("**手写生成器**画素材(公式算像素只适合占位)",
                          "改走 tools/blender_*.py 那条(真 3D 几何 + 真光照);"
                          "\n    要质感就走 PixelLab。"),
+        "d_linear": ("**硬边像素贴图用了 TEXTURE_FILTER_LINEAR**(素材再好也是糊的)",
+                     "改成 TEXTURE_FILTER_NEAREST;"
+                     "\n    确实该用线性的(程序软辉光)加 `# vfx-linear-ok: 原因`。"),
         "c_no_study": ("新增 vfx 素材**没有逐帧研究**(docs/studies/ 里没提到它)",
                        "逐帧研究是唯一会逼人在 1:1 下逐帧看的东西 ——"
                        "\n    2026-09-11 那两张就是没有它才漏的(我拿 4 倍放大图自我验收)。"),
     }
 
     rc = 0
-    for k in ("a_scale", "b_generators", "c_no_study"):
+    for k in ("a_scale", "b_generators", "c_no_study", "d_linear"):
         known = set(ledger.get(k, []))
         fresh = [x for x in cur[k] if x not in known]
         stale = sorted(known - set(cur[k]))
