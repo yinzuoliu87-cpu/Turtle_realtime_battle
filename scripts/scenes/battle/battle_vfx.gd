@@ -1394,3 +1394,70 @@ func kelp_burst(u: Dictionary) -> void:
 			"anim_fps": KELP_FPS, "anim_n": KELP_FRAMES,
 			"anim_t0": battle._t + float(i) * KELP_STAGGER,
 		})
+
+## ★★2026-09-12 重做。`_bolt_line` 是**全仓 24 处共用**的连线原语
+##   (闪电链/凤凰喷火/竹弓/水晶/忍者/火箭/星星/双头/天使/赛博/熔岩/触手/014 汲取…)。
+## 被换掉的两个毛病, 都是 1:1 实拍量出来的(014 汲取线在画面上**完全找不到**):
+##   ① **1 像素宽的裸 GPU 线**(`PRIMITIVE_LINES`, 无贴图) —— 像素风里几乎不可见,
+##      而且线宽在多数驱动上根本不可调。
+##   ② `albedo_color:a` **从出生就开始淡** —— memory `fb-vfx-defect-families` 的头一条
+##      「淡出病」: 短命特效一出生就线性淡出, 实拍读成一抹灰。
+## ⇒ 改成**沿路径排一串方点**(每点是一个正方形 quad, 世界尺寸固定 ⇒ 屏幕上恒是方块),
+##   **先满亮 hold 再淡出**。方块=像素, 不需要旋转贴图, 任意角度都不会重采样
+##   —— 这是像素游戏画光束/锁链的标准做法。
+## ★签名一个字没动 ⇒ 24 个调用点全部不用改。
+## ★★尺寸必须按**屏幕像素**反算, 不能拍一个"米"就完事。
+##   换算: 1 码 = WS = 0.024 m; 实战镜头下约 **0.69 屏幕像素/码**。
+##   第一版写 0.085 m 并注“≈4px” —— **算错了**: 0.085/0.024 = 3.5 码 ≈ **2.4 px**,
+##   再被俯视角压扁就剩 1~2 px ⇒ 1:1 实拍里根本看不见。
+##   这是 2026-09-12 同一天第五次犯同一条(海藻/护罩三段/013 刺/018 壳沟/这里):
+##   **尺寸与层次要按它在屏幕上占多少像素定, 不是按世界单位拍脑袋。**
+const BOLT_DOT_M := 0.175      # 方点边长(米) = 7.3 码 ≈ **5 屏幕像素**
+const BOLT_GAP_M := 0.34       # 点间距(米) ≈ 10 px —— 疏一点才读成「一串」而不是实线
+const BOLT_HOLD_T := 0.14      # ①满亮段: 这一整段 alpha 不降(治淡出病)
+const BOLT_FADE_T := 0.13      # ②淡出段(总时长 0.27s, 与改造前的 0.25 基本持平)
+func bolt_line(a2d: Vector2, b2d: Vector2, col: Color) -> void:
+	var pa: Vector3 = battle._world_pos(a2d, 1.0)
+	var pb: Vector3 = battle._world_pos(b2d, 1.0)
+	var span: float = pa.distance_to(pb)
+	if span <= 0.001:
+		return
+	var im := MeshInstance3D.new()
+	var imesh := ImmediateMesh.new()
+	im.mesh = imesh
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = col
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.vertex_color_use_as_albedo = true
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	## ★★关深度测试 + 抬排序偏移: 连线是【两个单位之间】的关系,
+	##   而近战时两单位贴在一起 ⇒ 线被立绘挡得一点不剩。
+	##   014 汲取“实拍里完全找不到”的真因之一就是这个:
+	##   整帧实拍一看, 四只龟挤在 60px 内。同族做法见 `_splash_ring_bold`。
+	mat.no_depth_test = true
+	im.sorting_offset = 2.0
+	## 点朝相机: 场景是固定俯视角, 用 XZ 平面上的方块即可(与贴地演出同一个平面),
+	## 不做 billboard —— billboard 要每点一个节点, 24 处共用的原语开不起那个销。
+	var n: int = maxi(2, int(span / BOLT_GAP_M))
+	var h: float = BOLT_DOT_M * 0.5
+	imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat)
+	for k in range(n + 1):
+		var c: Vector3 = pa.lerp(pb, float(k) / float(n))
+		## ★两端各留半个点: 端点压在单位身上会被立绘盖住, 读起来像线没连上
+		var q := [c + Vector3(-h, 0.0, -h), c + Vector3(h, 0.0, -h),
+			c + Vector3(h, 0.0, h), c + Vector3(-h, 0.0, h)]
+		for tri in [[0, 1, 2], [0, 2, 3]]:
+			for vi in tri:
+				imesh.surface_set_color(col)
+				imesh.surface_add_vertex(q[vi])
+	imesh.surface_end()
+	battle._world.add_child(im)
+	## ①满亮 hold(等值 tween 占住这一段) → ②才淡出。少了第一段, chain 会紧跟着排 ⇒ 又变回一出生就淡。
+	## ★写显式类型: `battle` 无类型, `:=` 推不出来 ⇒ Parse Error
+	##   (spec《装备特效制作流程》001 那轮就栏在这一行上)
+	var tw: Tween = battle._reg_tween()
+	tw.tween_property(mat, "albedo_color:a", col.a, BOLT_HOLD_T)
+	tw.tween_property(mat, "albedo_color:a", 0.0, BOLT_FADE_T)
+	tw.tween_callback(im.queue_free)
+

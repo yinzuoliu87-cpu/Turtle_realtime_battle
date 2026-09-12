@@ -536,6 +536,72 @@ const CASES := {
 	"note": "★贝壳是 **billboard 罩在龟身上**的, 不是贴地 ⇒ zoom 1.0 实战镜头看它会不会把龟遮死。",
 },
 
+## 014 深海堡垒甲 —— 每次受伤叠 1 层硬化(上限 25), 叠满有额外表现。靠挨打, 不靠出手。
+"p2eq_014": {
+	"star": 3, "carrier": "basic", "enemies": 3, "enemy_dist": 150.0, "enemy_gap": 90.0,
+	"enemy_attacks": true, "attacker": true, "carrier_hp": 1.0,
+	"dur": 60.0, "zoom": 1.0, "focus": "carrier",
+	## ★拍点必须盖住一个完整周期: 汲取每 FORTRESS_IV=8s 一次、连线只活 0.27s
+	##   ⇒ 4 秒一发的拍点几乎必然错过(我先前就是这么把它误判成"没渲染")。
+	"shots": [38.0, 38.3, 38.6, 38.9, 39.2, 39.5, 39.8, 40.1, 40.4, 40.7, 41.0, 41.3, 41.6, 41.9, 42.2, 42.5, 42.8, 43.1, 43.4, 43.7],
+	"note": "★FORTRESS_CAP=25 层, 三个假人才叠得够快; carrier_hp 拉满防死在满层之前。 ★两个已踩过的坑: `shots: []` 会让台子进 HOLD 永不退出; `enemy_attacks` 是「假人还不还手」, 没人先动手它们就不还手。",
+},
+
+## 015 荆棘海胆 —— 每累计反伤满阈值给盾 + 强化下一次普攻(流血)。反伤要挨打才有。
+"p2eq_015": {
+	"star": 1, "carrier": "basic", "enemies": 3, "enemy_dist": 150.0, "enemy_gap": 90.0,
+	"enemy_attacks": true, "attacker": true, "carrier_hp": 1.0,
+	"dur": 20.0, "zoom": 1.0, "focus": "carrier",
+	"shots": [5.0, 7.0, 9.0, 10.0, 11.0, 12.0, 13.0, 15.0, 17.0, 19.0],
+	"note": "★用 ★1(阈值 300 最低)才在这个时长里触发得到; 盾是 4 秒限时(v0.19.356)。 ★两个已踩过的坑: `shots: []` 会让台子进 HOLD 永不退出; `enemy_attacks` 是「假人还不还手」, 没人先动手它们就不还手。",
+},
+
+## 016 铁壁盾 —— 每 5 秒产生一份护盾由全队均分。要有友军才看得出「分摊」。
+"p2eq_016": {
+	"star": 3, "carrier": "basic", "allies": 2, "enemies": 2, "enemy_dist": 240.0,
+	"enemy_attacks": true, "attacker": true, "carrier_hp": 0.6,
+	"dur": 18.0, "zoom": 1.0, "focus": "mid",
+	"shots": [5.05, 5.3, 5.6, 10.05, 10.3, 10.6, 15.05, 15.3, 15.6, 16.5],
+	"note": "★必须有友军: 它是全队分摊盾, 独龟看不出分摊; focus=mid 才框得住三只。 ★两个已踩过的坑: `shots: []` 会让台子进 HOLD 永不退出; `enemy_attacks` 是「假人还不还手」, 没人先动手它们就不还手。",
+},
+
+## 017 不沉之锚 —— 每 0.25 秒给最残友军回血, 攒满充能后普攻击飞。要有残血友军。
+"p2eq_017": {
+	"star": 3, "carrier": "basic", "allies": 2, "enemies": 2, "enemy_dist": 240.0,
+	"enemy_attacks": true, "attacker": true, "carrier_hp": 0.5,
+	"dur": 18.0, "zoom": 1.0, "focus": "mid",
+	"shots": [3.0, 5.0, 7.0, 9.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0],
+	"note": "★ANCHOR_IV=0.25 很密, 看的是攒满之后那一次击飞普攻; 要有残血友军当回血目标。 ★两个已踩过的坑: `shots: []` 会让台子进 HOLD 永不退出; `enemy_attacks` 是「假人还不还手」, 没人先动手它们就不还手。",
+},
+
+## 019 海葵药膏 —— 每 7 秒治自己与最残友军, 累计治疗攒海葵层。
+"p2eq_019": {
+	"star": 3, "carrier": "basic", "allies": 2, "enemies": 2, "enemy_dist": 240.0,
+	"enemy_attacks": true, "attacker": true, "carrier_hp": 0.45,
+	"dur": 24.0, "zoom": 1.0, "focus": "mid",
+	"shots": [7.05, 7.3, 7.6, 14.05, 14.3, 14.6, 21.05, 21.3, 21.6, 22.5],
+	"note": "★carrier_hp 压到 0.45: 满血看不出回血。ANEMONE_IV=7 ⇒ 拍点压在 7/14/21 秒。 ★两个已踩过的坑: `shots: []` 会让台子进 HOLD 永不退出; `enemy_attacks` 是「假人还不还手」, 没人先动手它们就不还手。",
+},
+
+## 020 哑铃 —— 每 8 秒原地锻炼(不普攻)然后投掷哑铃砸最前敌人。
+"p2eq_020": {
+	"star": 3, "carrier": "basic", "enemies": 2, "enemy_dist": 320.0,
+	"enemy_attacks": false, "attacker": true, "enemy_hp": 90000.0,
+	"dur": 20.0, "zoom": 1.0, "focus": "mid",
+	## ★拍点调过一次: 原来到 9.2 就停, 而【锅炼(几段 0.3s) + 蓄力 0.35s】
+	##   使投掷落在 t≈9.5~10 ⇒ 飞行段整个没拍到, 差点把它报成"哑铃看不见"。
+	"shots": [9.0, 9.4, 9.7, 9.9, 10.1, 10.3, 10.6, 17.4, 17.7, 18.0],
+	"note": "★enemy_dist 拉到 320: 哑铃是飞行物, 敌人贴脸的话飞行段只有几帧看不出它长什么样。 ★两个已踩过的坑: `shots: []` 会让台子进 HOLD 永不退出; `enemy_attacks` 是「假人还不还手」, 没人先动手它们就不还手。",
+},
+
+## 021 守护贝母 —— 每 5 秒连全队最高攻友军(绿色绑定光束) + 给盾 + 伤害转移。
+"p2eq_021": {
+	"star": 3, "carrier": "basic", "allies": 2, "enemies": 2, "enemy_dist": 240.0,
+	"enemy_attacks": true, "attacker": true, "carrier_hp": 0.7,
+	"dur": 18.0, "zoom": 1.0, "focus": "mid",
+	"shots": [2.0, 5.05, 5.3, 5.6, 10.05, 10.3, 10.6, 15.05, 15.3, 16.0],
+	"note": "★必须有友军(它连的是友军); 绑定光束是**持续**的, 所以每一刻都该看得到线。 ★两个已踩过的坑: `shots: []` 会让台子进 HOLD 永不退出; `enemy_attacks` 是「假人还不还手」, 没人先动手它们就不还手。",
+},
 ## 013 炙烤海胆 —— 每次受伤叠 1 层硬化, 满 20 层放【海胆护盾】+ 16 根放射紫刺。
 "p2eq_013": {
 	"star": 3, "carrier": "basic", "enemies": 3, "enemy_dist": 150.0, "enemy_gap": 90.0,

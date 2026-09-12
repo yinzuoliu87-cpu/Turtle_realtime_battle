@@ -5000,25 +5000,10 @@ func _venom_splat(pos2d: Vector2) -> void:   # 蛇女毒液飞溅: 毒绿中心�
 		twd.chain().tween_callback(drop.queue_free)
 
 # 射线: 两点间一条 3D 直线 (水晶球/机甲激光), 快速淡出 (tween 整体 modulate alpha)
+## 连线原语。**实现在 battle_vfx.bolt_line** —— 纯演出不进主文件(CLAUDE.md §5);
+##   这里只留转发, 24 个调用点(battle._bolt_line)一个都不用改。
 func _bolt_line(a2d: Vector2, b2d: Vector2, col: Color) -> void:
-	var im := MeshInstance3D.new()
-	var imesh := ImmediateMesh.new()
-	im.mesh = imesh
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = col
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.vertex_color_use_as_albedo = true
-	imesh.surface_begin(Mesh.PRIMITIVE_LINES, mat)
-	imesh.surface_set_color(col)
-	imesh.surface_add_vertex(_world_pos(a2d, 1.0))
-	imesh.surface_set_color(col)
-	imesh.surface_add_vertex(_world_pos(b2d, 1.0))
-	imesh.surface_end()
-	_world.add_child(im)
-	var tw := _reg_tween()
-	tw.tween_property(mat, "albedo_color:a", 0.0, 0.25)
-	tw.tween_callback(im.queue_free)
+	_vfx.bolt_line(a2d, b2d, col)
 
 func _surf_chain_shoot(from2d: Vector2, fromh: float, to2d: Vector2, col: Color) -> void:   # 从小将(空中)射铁链向目标: 端点快速伸长(射出感)→保持→淡出(用户2026-07-18"绳子从小将射向目标")
 	var im := MeshInstance3D.new()
