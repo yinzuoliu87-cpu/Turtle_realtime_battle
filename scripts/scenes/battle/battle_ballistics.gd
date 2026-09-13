@@ -321,7 +321,8 @@ func _step_projectiles(delta: float) -> void:
 					battle._spawn_bamboo_orb(tgt["pos"], _bsrc["pos"], func() -> void:    # 绿球飞回携带者, 落到身上才吸收
 						if not _bsrc.get("alive", false):
 							return
-						battle._damage._heal(_bsrc, _bsrc["maxHp"] * 0.06)
+						## ★读常量不写死: 文案用的是 {C:EquipSystem.BAMBOO_ARROW_MAXHP_PCT%}, 写死 0.06 就是两份
+						battle._damage._heal(_bsrc, _bsrc["maxHp"] * EquipSystem.BAMBOO_ARROW_MAXHP_PCT)
 						if _bgrow > 0.0:
 							_bsrc["maxHp"] += _bgrow; _bsrc["hp"] += _bgrow
 							battle._recalc_stats(_bsrc)
@@ -419,8 +420,11 @@ func _shotgun_pellet(from2d: Vector2, to2d: Vector2, col: Color, dur: float = 0.
 	battle._world.add_child(sp)
 	var tw = battle._reg_tween()   # 顺序: 全程满alpha飞行 → 命中处才快速淡出(修"路中间淡化"用户2026-07-04)
 	tw.tween_property(sp, "position", battle._world_pos(to2d, 1.0), dur).set_ease(Tween.EASE_OUT)
+	## ★★2026-09-13: 结算从 tween 末尾挪到游戏钟。飞行本身是纯观感, 留在 tween;
+	##   但 `on_land` 里是 053 散弹枪的**伤害**, 挂在 tween 上等于无头下一发都不结算(§3.5)。
+	##   节拍一个数没动: 仍是弹珠飞完 `dur` 秒那一刻。与 024~029/034/039 同一个共享原语。
 	if on_land.is_valid():
-		tw.tween_callback(on_land)          # 弹珠飞到才结算(用户2026-07-19: 原来开火瞬间就结算, 数字比弹珠先到)
+		battle._equip_tick_sys.schedule(dur, on_land)   # 弹珠飞到才结算(用户2026-07-19)
 	tw.tween_property(sp, "modulate:a", 0.0, 0.1)
 	tw.tween_callback(sp.queue_free)
 

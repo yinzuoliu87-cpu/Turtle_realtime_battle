@@ -156,10 +156,42 @@ def bake_strike(path, size=56, frames=8, seed=1027):
 	return sheet
 
 
+def bake_shock(path, size=24, frames=6, seed=27027):
+	"""027 眩晕期间【挂在被电中的目标身上】的持续电击。
+
+	★用户 2026-09-13:「027 在命中敌人的时候会有一段时间眩晕对吧, 这一段时间内我希望
+	  持续目标的电击特效, 直到这个电击眩晕结束」。
+	★与 `baton-arc`(携带者就绪时棍身上跳的弧)**刻意做成两个样子**:
+	  就绪是「零星几道短弧」, 中电是「顺着身体上下窜的两三道长弧 + 溅出的火星」——
+	  一眼要能分出「他蓄好了」和「它被电住了」。
+	★循环播放, 所以首尾要接得上: 弧的位置固定在三条竖轨上, 只有长短与亮暗在变。
+	"""
+	rnd = random.Random(seed)
+	rails = [0.28, 0.52, 0.76]                  # 三条竖轨(身体左/中/右)
+	sheet = Image.new("RGBA", (size * frames, size), (0, 0, 0, 0))
+	for f in range(frames):
+		im = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+		px = im.load()
+		for i, rx in enumerate(rails):
+			phase = ((f + i * 2) % frames) / float(frames)
+			## ★第一版 half 只有 0.20~0.36 个格 ⇒ 弧长 10~17px 而描边就占 3px 宽,
+			##   渲出来是几坨深蓝疙瘩。弧要**更长更细**才读得成"电流顺着身体窜"。
+			half = size * (0.30 + 0.12 * math.sin(phase * math.tau))
+			cy = size * (0.46 + 0.08 * math.cos(phase * math.tau))
+			p0 = (size * rx, cy - half)
+			p1 = (size * rx + rnd.uniform(-2.0, 2.0), cy + half)
+			_bolt(px, size, p0, p1, rnd, amp=size * 0.09, depth=3,
+				core=True, forks=(1 if phase < 0.5 else 0), fork_scale=0.20)
+		sheet.paste(im, (f * size, 0))
+	sheet.save(path)
+
+
 if __name__ == "__main__":
 	root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 	a = os.path.join(root, "assets", "sprites", "vfx", "baton-arc.png")
 	b = os.path.join(root, "assets", "sprites", "vfx", "baton-strike.png")
-	bake_arc(a); bake_strike(b)
+	c = os.path.join(root, "assets", "sprites", "vfx", "baton-shock.png")
+	bake_arc(a); bake_strike(b); bake_shock(c)
 	print("baked:", a)
 	print("baked:", b)
+	print("baked:", c)

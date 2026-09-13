@@ -153,7 +153,12 @@ func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不�
 				bst["baton_ready"] = false; bst["baton_cd"] = 0.0
 				u["eq_state"]["p2eq_027"] = bst
 				battle._damage._apply_damage_from(u, tgt, battle._resolve_dmg(u, float([30, 40, 50][si27]), tgt, true), Color("#7ecbff"), 0.0, false, true)
-				battle._freeze(tgt, [2.5, 2.5, 3.0][si27])   # 眩晕 1.5s(CTRL_SEC默认) → 2.5/2.5/3 按星级(用户2026-07-19)
+				var _zsec: float = [2.5, 2.5, 3.0][si27]
+				battle._freeze(tgt, _zsec)   # 眩晕 1.5s(CTRL_SEC默认) → 2.5/2.5/3 按星级(用户2026-07-19)
+				## ★用户 2026-09-13 点名「眩晕这一段时间内持续目标的电击特效」。记一个**只属于 027**
+				##   的时间戳(不挂通用 stun_until, 否则全游戏任何眩晕都会带电弧); 演出由
+				##   `battle_render._tick_baton_zap_mark` 逐帧按它决定。
+				tgt["baton_zap_until"] = battle._t + _zsec
 				battle._vfx.baton_strike(tgt)   # 落雷劈在被打中的那一个身上(原来是一颗对称白色星爆, 读不出「电」)
 		# ── 批④(2026-08-06) 后 17 件: 统一路由到各自的批系统 ──────────────────
 		#    ★这里原来是 078「双管贝壳枪·普攻概率追加一发」。078 已被用户整条重做成

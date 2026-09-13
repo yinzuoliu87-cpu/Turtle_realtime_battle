@@ -1885,8 +1885,13 @@ func _barnacle_rope(im: MeshInstance3D, u: Dictionary, target: Dictionary) -> vo
 const CHILL_TEX := "res://assets/sprites/vfx/frost-chill.png"
 const CHILL_FRAMES := 6
 const CHILL_FPS := 8.0            # 6 帧 / 8fps = 0.75 秒一轮呼吸
-const CHILL_YARDS := 35.5         # 20 texel × 0.0426 m ÷ WS = 0.85 m ≈ 0.43 个龟高
-const CHILL_H := 1.05             # 挂在身子中上部, 不盖脸也不落地
+## ★用户 2026-09-13 两句: 先说「挂着霜需要大 2 倍」, 看过之后改口
+##   「感觉不是这样放大, 而是**加更多粒子**」。
+##   ⇒ 覆盖面保持放大后的那么大, 但**不是把单粒放大** —— 贴图格子从 20 扩到 40 texel、
+##     里面塞 9 粒小冰晶(原来 3 粒), 仍按 **1× 整数倍**摆(1 texel = 1 屏幕像素, 不糊)。
+##   40 texel × 0.0426 m ÷ WS = 1.70 m ≈ 0.85 个龟高。
+const CHILL_YARDS := 71.0
+const CHILL_H := 1.15             # 放大 2 倍后同步抬高一点, 免得下缘扎进地里
 var _chill_tex: Texture2D = null
 
 
@@ -1919,6 +1924,41 @@ func chill_mark(u: Dictionary) -> void:
 		"loop_fps": CHILL_FPS, "loop_n": CHILL_FRAMES,
 		"loop_t0": battle._t, "until_key": "spd_dbf_until",
 		"clear_key": "_chill_spr",
+	})
+
+
+## 【027 眩晕期间挂在被电中目标身上的持续电击】(用户 2026-09-13 点名)
+## ★与就绪跳弧 `baton-arc` 刻意做成两个样子: 就绪是零星短弧, 中电是顺着身体上下窜的长弧 ——
+##   一眼要能分出「他蓄好了」和「它被电住了」。
+## ★判据挂在 `baton_zap_until` 这个**只属于 027** 的时间戳上(不挂通用 `stun_until`,
+##   否则全游戏任何来源的眩晕都会带电弧)。与 022 真火 / 028 冰寒同一个原语。
+const ZAP_TEX := "res://assets/sprites/vfx/baton-shock.png"
+const ZAP_FRAMES := 6
+const ZAP_FPS := 14.0             # 6 帧 / 14fps = 0.43 秒一轮, 3 秒眩晕转 7 轮
+const ZAP_YARDS := 42.6           # 24 texel × 0.0426 m ÷ WS = 1.02 m ≈ 0.51 个龟高
+const ZAP_H := 0.95
+var _zap_tex: Texture2D = null
+
+
+func baton_zap_mark(u: Dictionary) -> void:
+	if battle._world == null or u == null or not u.get("alive", false):
+		return
+	if is_instance_valid(u.get("_baton_zap_spr", null)):
+		return                          # 已经挂着 ⇒ 续时间由 baton_zap_until 自己管
+	if _zap_tex == null:
+		_zap_tex = load(ZAP_TEX)
+	if _zap_tex == null:
+		return
+	var sp := _baton_sprite(_zap_tex, ZAP_FRAMES, ZAP_YARDS)
+	sp.render_priority = 8
+	sp.position = battle._world_pos(u["pos"] as Vector2, float(u.get("height", 0.0)) + ZAP_H)
+	battle._world.add_child(sp)
+	u["_baton_zap_spr"] = sp
+	battle._follow_vfx.append({
+		"spr": sp, "unit": u, "h": ZAP_H,
+		"loop_fps": ZAP_FPS, "loop_n": ZAP_FRAMES,
+		"loop_t0": battle._t, "until_key": "baton_zap_until",
+		"clear_key": "_baton_zap_spr",
 	})
 
 
@@ -2037,3 +2077,25 @@ func true_fire_aura(u: Dictionary) -> void:
 		"loop_t0": battle._t, "until_key": "true_fire_until",
 		"clear_key": "_truefire_spr",
 	})
+
+## 竹叶生命球落点的爆散(从主文件搬来 —— 纯演出, CLAUDE.md §5 该住这儿)
+func bamboo_burst(pos2d: Vector2) -> void:
+	var bpath := "res://assets/sprites/vfx/bamboo-charge-burst.png"
+	if not ResourceLoader.exists(bpath):
+		return
+	var tex: Texture2D = load(bpath)
+	var fh: int = maxi(1, tex.get_height())
+	var nframes: int = maxi(1, int(tex.get_width() / fh))
+	var b := Sprite3D.new()
+	b.texture = tex
+	b.hframes = nframes
+	b.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	b.shaded = false
+	b.transparent = true
+	b.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	b.pixel_size = 1.3 / float(fh)
+	b.position = battle._world_pos(pos2d, 1.0)
+	battle._world.add_child(b)
+	var tw = battle._reg_tween()   # battle 无类型 ⇒ := 推不出来
+	tw.tween_method(battle._bamboo_sys._bamboo_burst_step.bind(b, nframes), 0.0, 1.0, 0.35)
+	tw.tween_callback(b.queue_free)

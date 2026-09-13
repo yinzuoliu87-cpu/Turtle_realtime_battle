@@ -222,6 +222,7 @@ func _render_step(rd: float, frozen: bool, in_ts: bool) -> void:
 	_update_world_transforms()
 	_tick_true_fire()              # 022 真火: 谁把 true_fire_until 写上去, 身上就自动烧起来
 	_tick_chill_mark()             # 冰寒标记: 谁的 spd_dbf_until 还没过就挂霜(状态的函数)
+	_tick_baton_zap_mark()         # 027 电击眩晕: 谁的 baton_zap_until 还没过就一直冒电弧
 	_tick_follow_vfx()             # 跟随特效(冰块等)贴目标最新世界坐标(含击飞height)
 	_tick_anim_fx()                # 位置固定的帧动画(技能环)按游戏时钟切帧·放完自销
 	_update_ninja_marks()          # 忍者冲击标记(纯视觉·用户2026-07-12)
@@ -275,6 +276,19 @@ func _tick_true_fire() -> void:
 
 ## 【冰寒】的标记也是**状态的函数** —— 照 `_tick_true_fire` 的先例逐帧扫,
 ## 这样任何把 `spd_dbf_until` 写上去的路径都自动带标记, 不用逐件接线。
+## 【027 电击眩晕】期间身上持续冒电弧 —— 与 `_tick_chill_mark` 同一个做法:
+## 演出是**状态的函数**, 判据落在 `baton_zap_until` 上, 到点自己收。
+func _tick_baton_zap_mark() -> void:
+	for u in battle._units:
+		if not u.get("alive", false):
+			continue
+		if battle._t >= float(u.get("baton_zap_until", 0.0)):
+			continue
+		if is_instance_valid(u.get("_baton_zap_spr", null)):
+			continue
+		battle._vfx.baton_zap_mark(u)
+
+
 func _tick_chill_mark() -> void:
 	for u in battle._units:
 		if not u.get("alive", false):

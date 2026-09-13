@@ -82,18 +82,32 @@ def bake_mist(path, size=32, frames=6, seed=280913):
     sheet.save(path)
 
 
-def bake_chill(path, size=20, frames=6, seed=1128):
-    """冰寒持续期挂在身上的霜: 三粒冰晶, 位置固定, 靠明暗呼吸(不乱跳, 免得像噪点)。"""
+def bake_chill(path, size=40, frames=6, seed=1128):
+    """冰寒持续期挂在身上的霜。
+
+    ★用户 2026-09-13 看过第一版之后:「感觉不是这样放大, 而是**加更多例子**」——
+      第一版是 20 格 3 粒, 我按他前一句「大 2 倍」把整张贴图放到 2×,
+      结果变成**三粒巨大的冰晶**, 不是他要的。
+      现在改成: 格子扩到 40 texel(覆盖面与 2× 时一样大), 里面塞 **9 粒小冰晶**铺开 ——
+      单粒还是原来那么小, 但数量多、散在整个身子上, 读成"结了一层霜"而不是"贴了三块冰"。
+    ★位置固定、只有明暗与大小在呼吸(不乱跳, 免得像噪点); 相位错开让它看着在此起彼伏。
+    """
     rnd = random.Random(seed)
-    spots = [(size * 0.28, size * 0.34), (size * 0.68, size * 0.46), (size * 0.46, size * 0.72)]
+    # 九个点铺满身子(躲开正中心, 免得糊住脸), 相对坐标
+    spots = [
+        (0.20, 0.24), (0.52, 0.16), (0.80, 0.28),
+        (0.14, 0.52), (0.86, 0.56), (0.36, 0.46),
+        (0.26, 0.80), (0.60, 0.74), (0.88, 0.84),
+    ]
     sheet = Image.new("RGBA", (size * frames, size), (0, 0, 0, 0))
     for f in range(frames):
         im = Image.new("RGBA", (size, size), (0, 0, 0, 0))
         px = _px(im)
         for i, (sx, sy) in enumerate(spots):
-            phase = (f + i * 2) % frames / float(frames)
-            r = 1.6 + 0.8 * math.sin(phase * math.tau)
-            _crystal(px, size, int(round(sx)), int(round(sy)), r, bright=(phase < 0.5))
+            phase = ((f + i * 3) % frames) / float(frames)
+            r = 1.3 + 0.6 * math.sin(phase * math.tau)     # 单粒保持小: 半径 0.7~1.9
+            _crystal(px, size, int(round(sx * size)), int(round(sy * size)), r,
+                bright=(phase < 0.5))
         sheet.paste(im, (f * size, 0))
     sheet.save(path)
 

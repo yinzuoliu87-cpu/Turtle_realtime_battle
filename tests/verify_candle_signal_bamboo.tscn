@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/verify_candle_signal_bamboo.gd" id="1_bt"]
+
+[node name="VerifyCandleSignalBamboo" type="Node"]
+script = ExtResource("1_bt")

@@ -266,6 +266,72 @@ func _ready() -> void:
 	_ok("⑦ ★★贴图过滤是 NEAREST(%d 个不是)" % wrong_filter, wrong_filter == 0,
 		"Sprite3D 默认 texture_filter=3(LINEAR_WITH_MIPMAPS), 不显式写就糊")
 
+	# ── ⑧ ★★★眩晕期间目标身上【持续】冒电弧, 到眩晕结束才收 ──────────
+	## 用户 2026-09-13:「命中敌人的时候会有一段时间眩晕对吧, 这一段时间内我希望
+	##   **持续目标的电击特效, 直到这个电击眩晕结束**」。
+	## ★判据挂在 `baton_zap_until`(只属于 027 的时间戳), 不挂通用 `stun_until` ——
+	##   否则全游戏任何来源的眩晕都会带电弧。
+	_s._units.clear()
+	_s._follow_vfx.clear()
+	var c8: Dictionary = _mk(500.0, 400.0, "left")
+	c8["equips"] = [{"id": "p2eq_027", "star": 3}]
+	c8["eq_state"] = {}
+	_s._units.append(c8)
+	_s._equip_sys._stats._eq_apply_one_stats(c8, "p2eq_027", 3)
+	var t8: Dictionary = _mk(700.0, 400.0, "right")
+	t8["mr"] = 0.0
+	var by8: Dictionary = _mk(760.0, 400.0, "right")   # 旁边没被电的那个不该有
+	_s._units.append(t8)
+	_s._units.append(by8)
+	for _f8 in range(200):
+		ets._tick_baton(c8, 1.0 / 60.0)
+	_s._follow_vfx.clear()
+	_s._equip_sys._eq_on_basic_attack(c8, t8)
+	var zap_left: float = float(t8.get("baton_zap_until", 0.0)) - _s._t
+	_ok("⑧ ★分母: 命中后记下了电击时长 %.1f 秒(应 ≈ 眩晕的 %.1f 秒)" % [zap_left, STUN[2]],
+		absf(zap_left - STUN[2]) < 0.2,
+		"演出的时长必须跟着眩晕走, 不是另起一个自己的计时")
+	## ★★★走真入口 `_render_step`(不是直调 `_tick_baton_zap_mark`) —— 直调守不住
+	##   「游戏里走得到」(028 那轮反向验证当场抓到过)。
+	_s._render._render_step(1.0 / 60.0, false, false)
+	var VX8 = load("res://scripts/scenes/battle/battle_vfx.gd")
+	var zaps := 0
+	var on_stunned := 0
+	for f in _s._follow_vfx:
+		var sp = f["spr"]
+		if not is_instance_valid(sp) or sp.texture == null:
+			continue
+		if str(sp.texture.resource_path) == VX8.ZAP_TEX:
+			zaps += 1
+			if is_same(f["unit"], t8):
+				on_stunned += 1
+	_ok("⑧ ★★★眩晕期间身上挂着持续电击(%d 个, 其中 %d 个在被电中的那个身上)" % [zaps, on_stunned],
+		zaps == 1 and on_stunned == 1,
+		"旁边没被电的那个不该有")
+	## ★★它是【循环播放 + 到期自收】而不是放一遍就完: 判据落在登记项的字段上
+	var looping := false
+	var until_key_ok := false
+	for f in _s._follow_vfx:
+		if is_same(f["unit"], t8) and f.has("loop_fps"):
+			looping = true
+			until_key_ok = str(f.get("until_key", "")) == "baton_zap_until"
+	_ok("⑧ ★★是【循环播放】不是放一遍就完(loop_fps 在案)", looping,
+		"放一遍就完的话 3 秒眩晕里只有 0.43 秒有电")
+	_ok("⑧ ★★★到期判据挂在 `baton_zap_until` 上 ⇒ 眩晕一结束它自己就收", until_key_ok,
+		"挂在通用 stun_until 上会让全游戏任何眩晕都带电弧; 另起计时会两条钟")
+	## ★★眩晕过完之后: 推过时长, 标记必须自己消失
+	var need: int = int((STUN[2] + 0.3) * 60.0)
+	for _k in range(need):
+		_s._sim_step(_s.SIM_DT, false, false)
+		_s._render._render_step(_s.SIM_DT, false, false)
+	var left_after := 0
+	for f in _s._follow_vfx:
+		var sp2 = f["spr"]
+		if is_instance_valid(sp2) and sp2.texture != null 				and str(sp2.texture.resource_path) == VX8.ZAP_TEX:
+			left_after += 1
+	_ok("⑧ ★★★眩晕结束后电击自己收掉(还剩 %d 个, 应 0)" % left_after, left_after == 0,
+		"用户要的是「持续到眩晕结束」—— 早收或不收都不对")
+
 	_done()
 
 
@@ -275,8 +341,8 @@ func _done() -> void:
 	await get_tree().process_frame
 	print("")
 	print("  分母: 共 %d 条断言" % _n)
-	if _n < 23:
-		print("  [FAIL] ★断言只有 %d 条(<23) —— 有用例中途中止了" % _n)
+	if _n < 28:
+		print("  [FAIL] ★断言只有 %d 条(<28) —— 有用例中途中止了" % _n)
 		_fail += 1
 	print("ALL PASS — 027 电棍" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

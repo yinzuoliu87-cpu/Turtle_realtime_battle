@@ -5,10 +5,19 @@ extends RefCounted
 
 ## ★★2026-08-22 文案根除: 034/036 的标量原来散在本文件与主场景里。
 ## 【034 玩偶小熊】
+## 大熊熊掌的【命中时刻】: 整套挥击 0.07×7 秒的 45% 处(挥击接触帧, 不是攻击一开始)。
+## ★抽成常量不是为了文案, 是**门禁要拿它推 sim** —— 推少了量到 0 会被误判成「伤害没落」。
+const BEAR_PAW_HIT_AT := 0.07 * 7.0 * 0.45
 const DOLL_IV := 4.0            # 每几秒派一只小熊
 const DOLL_CHARGE_SEC := 1.2    # 大熊层满后, 携带者蓄力几秒才召大熊
 const BEAR_ASPD := 0.7          # 大熊攻速(次/秒) ⇒ atk_interval = 1/它
 const BEAR_RANGE := 70.0        # 大熊射程(码·近战)
+## 大熊立绘的世界高度 = TARGET_BODY_H(2.0m) × BEAR_COL_SIZE / 56。
+## ★★2026-09-13 从 48 提到 88。实拍量过: 48 那版大熊只有 **36 屏幕像素高, 比基础龟(~42px)还矮** ——
+##   一件 5 费装备攒一整局才召出来的、15000 血 2000 攻的「**大**熊」, 读起来比小龟还小。
+##   88 ⇒ 3.14 m ≈ 1.57 个龟高, 场上最大的那个。
+## ★`col_size` 只喂 `spr.pixel_size`(纯立绘缩放), **不碰碰撞也不碰任何数值** —— 全仓只有两处读它。
+const BEAR_COL_SIZE := 88.0
 const BEAR_RESIST := 70.0       # 大熊护甲与魔抗(各·用户 2026-07-30: 20 → 70)
 const BEAR_PAW_STACKS := 2      # 熊掌累积几层后, 下一击改成冲击波
 const BEAR_WAVE_COEF := 1.5     # 冲击波 ×ATK 物理
@@ -28,6 +37,10 @@ const EGG_ON_FOE_DEATH := 10.0  # 敌方死亡 +
 const EGG_ON_ALLY_DEATH := 15.0 # 己方死亡 +
 const EGG_DMG_RATIO := 0.1      # 造成/承受伤害 × 此比例计入进度
 const EGG_LV_GROWTH := 0.05     # 每级 + 基础属性(线性, 非复利)
+## 每级 + 攻速。★原来这个 0.02 **连常量都没有**, 直接写死在两处公式里 ——
+##   文案只写了 `{C:EquipTickSystem.EGG_LV_GROWTH%}` 那一档, 这一档是"写了代码没写文案"的哑数。
+##   抽出来至少让它可被搜到、可被门禁量到(数值一个没动)。
+const EGG_LV_ASPD := 0.02
 
 var battle
 
@@ -319,7 +332,7 @@ func _tick_gear(u: Dictionary, delta: float) -> void:   # 黄铜齿轮035(用户
 		var stt: Dictionary = u["eq_state"].get("p2eq_035", {})
 		stt["gear_t"] = float(stt.get("gear_t", 0.0)) + delta
 		if float(stt["gear_t"]) >= GEAR_IV:
-			stt["gear_t"] = float(stt["gear_t"]) - 6.0
+			stt["gear_t"] = float(stt["gear_t"]) - GEAR_IV   # ★读常量不写死(原来是 6.0, 与 GEAR_IV 两份)
 			var coins: int = [1, 2, 3][si]
 			var gs = battle.get_node_or_null("/root/GameState")
 			if gs != null and gs.get("meta_deepsea_coins") != null:
@@ -523,9 +536,9 @@ func _egg_replay_levels(u: Dictionary, n: int) -> void:
 	u["base_atk"] += float(stt["ref_atk"]) * EGG_LV_GROWTH * float(n)
 	u["base_def"] += float(stt["ref_def"]) * EGG_LV_GROWTH * float(n)
 	u["base_mr"] += float(stt["ref_mr"]) * EGG_LV_GROWTH * float(n)
-	var hpg: float = float(stt["ref_hp"]) * 0.05 * float(n)
+	var hpg: float = float(stt["ref_hp"]) * EGG_LV_GROWTH * float(n)   # ★原来写死 0.05
 	u["maxHp"] += hpg; u["hp"] += hpg
-	u["atk_interval"] = maxf(0.1, float(stt["ref_iv"]) / (1.0 + 0.02 * float(n)))
+	u["atk_interval"] = maxf(0.1, float(stt["ref_iv"]) / (1.0 + EGG_LV_ASPD * float(n)))
 	stt["egg_levels"] = n
 	u["eq_state"]["p2eq_036"] = stt
 	battle._recalc_stats(u)
@@ -547,8 +560,8 @@ func _egg_add_progress(u: Dictionary, amt: float) -> void:   # 温泉蛋(036): �
 		u["base_atk"] += float(stt["ref_atk"]) * EGG_LV_GROWTH          # 线性+5%基础属性/级
 		u["base_def"] += float(stt["ref_def"]) * EGG_LV_GROWTH
 		u["base_mr"] += float(stt["ref_mr"]) * EGG_LV_GROWTH
-		var hpg: float = float(stt["ref_hp"]) * 0.05; u["maxHp"] += hpg; u["hp"] += hpg
-		u["atk_interval"] = maxf(0.1, float(stt["ref_iv"]) / (1.0 + 0.02 * float(el)))   # 攻速+2%/级(同统领)
+		var hpg: float = float(stt["ref_hp"]) * EGG_LV_GROWTH; u["maxHp"] += hpg; u["hp"] += hpg   # ★同上, 原来写死 0.05
+		u["atk_interval"] = maxf(0.1, float(stt["ref_iv"]) / (1.0 + EGG_LV_ASPD * float(el)))   # 攻速/级(同统领)
 		battle._recalc_stats(u)
 		battle._egg_level_up_vfx(u, int(u.get("level", 1)) + el)      # 升级特效(金光柱+LV UP)
 		if int(stt["egg_levels"]) >= cap and not bool(stt.get("incub_given", false)):
@@ -557,7 +570,7 @@ func _egg_add_progress(u: Dictionary, amt: float) -> void:   # 温泉蛋(036): �
 			var per: float = float(stt.get("incub_shield", 300.0)) / maxf(1.0, float(allies.size()))
 			for o in allies: battle._damage._grant_shield(o, per)
 			battle._particle_burst(u["pos"])
-	if int(stt.get("egg_levels", 0)) >= cap: stt["incub"] = minf(float(stt["incub"]), 100.0)
+	if int(stt.get("egg_levels", 0)) >= cap: stt["incub"] = minf(float(stt["incub"]), EGG_FULL)   # ★原来写死 100.0
 	u["eq_state"]["p2eq_036"] = stt
 
 ## ── 025 雷鸣贝壳: 从主文件搬来(CLAUDE.md §5「装备效果去 scripts/systems/equip/」) ──
@@ -614,3 +627,17 @@ func schedule(delay: float, fn: Callable) -> void:
 func tick_delayed(_dt: float) -> void:
 	_drain_bolts()
 
+## 大熊熊掌挥击接触那一瞬: 此刻才结算伤害 + 跳数字 + 金爪痕。
+## ★★2026-09-13 从主文件搬过来, 同时把延时从 tween 换成共享原语 `schedule`:
+##   原来是 `_reg_tween().tween_interval(0.315)` + `tween_callback` —— tween 走**未钳制的
+##   真实 delta, 无头下推不动**(CLAUDE.md §3.5) ⇒ **大熊的普攻一下都不结算**。
+##   而大熊是 034 的主要输出(★3 攻击力 2000), 等于这件 5 费装备召出来的东西在打空气。
+##   与 024/025/026/028/029 同一条病, 走同一个原语。命中时刻一个数没动。
+## ★函数名带 `_tick_` 前缀: `text_claim_audit` 靠前缀才跟得到函数体(026 那轮的教训)。
+func _tick_bear_paw_hit(u: Dictionary, tgt) -> void:
+	if not u.get("alive", false) or tgt == null or not tgt.get("alive", false):
+		return
+	battle._do_basic(u, tgt, {"phys": 1.0, "hits": 1})  # 熊掌: 1×ATK 物理
+	if u.get("melee", false):
+		battle._on_basic_hit(u, tgt)
+	battle._bear_claw_fx(tgt["pos"])                    # 金爪三痕+尘

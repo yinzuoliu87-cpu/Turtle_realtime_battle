@@ -2982,7 +2982,7 @@ func _big_bear_charge_and_spawn(u: Dictionary, si: int) -> void:   # 满层: 携
 	#   · 最大生命 650/1100/10000 → 1600/3000/15000
 	#   · 双抗 20 → 70(护甲与魔抗各 70)
 	#   ★攻击力用户没提 → 不动(70/120/2000)。
-	var bear = _spawn._spawn_summon(u, "bear", [1600.0, 3000.0, 15000.0][si], [70.0, 120.0, 2000.0][si], {"label": "大熊", "spr_id": "doll-bear", "col_size": 48.0, "hp_w": 36.0, "melee": true, "atk_interval": 1.0 / EquipTickSystem.BEAR_ASPD, "atk_range": EquipTickSystem.BEAR_RANGE})
+	var bear = _spawn._spawn_summon(u, "bear", [1600.0, 3000.0, 15000.0][si], [70.0, 120.0, 2000.0][si], {"label": "大熊", "spr_id": "doll-bear", "col_size": EquipTickSystem.BEAR_COL_SIZE, "hp_w": 52.0, "melee": true, "atk_interval": 1.0 / EquipTickSystem.BEAR_ASPD, "atk_range": EquipTickSystem.BEAR_RANGE})
 	if bear != null:
 		bear["eq_state"] = {}; bear["equips"] = []
 		bear["base_def"] = EquipTickSystem.BEAR_RESIST; bear["def"] = EquipTickSystem.BEAR_RESIST
@@ -3033,19 +3033,12 @@ func _big_bear_attack(u: Dictionary, tgt: Dictionary) -> void:   # 大熊: <2层
 		u["atk_range"] = 70.0                       # 冲击波后回近战射程
 	else:
 		u["bear_anim"] = "attack"; u["bear_anim_t"] = 0.0   # 前摇抬爪→挥击→后摇收手(voff驱动)
-		var total: float = 0.07 * 7.0
-		var tw := _reg_tween()
-		tw.tween_interval(total * 0.45)             # 命中延到挥击接触帧(非攻击一开始)
-		tw.tween_callback(_bear_paw_hit.bind(u, tgt))
+		## ★2026-09-13 从 tween 挪到游戏钟(§3.5): 原来大熊的普攻一下都不结算。结算体搬进 EquipTickSystem。
+		_equip_tick_sys.schedule(EquipTickSystem.BEAR_PAW_HIT_AT,
+			_equip_tick_sys._tick_bear_paw_hit.bind(u, tgt))
 		u["bear_stacks"] = int(u.get("bear_stacks", 0)) + 1
 		if int(u["bear_stacks"]) >= 2:
 			u["atk_range"] = EquipTickSystem.BEAR_WAVE_RANGE                   # 下次冲击波: 射程600码(进程即放,不贴脸)
-
-func _bear_paw_hit(u: Dictionary, tgt) -> void:   # 熊掌挥击接触瞬间: 此刻才伤害+跳数字+金爪痕
-	if not u.get("alive", false) or tgt == null or not tgt.get("alive", false): return
-	_do_basic(u, tgt, {"phys": 1.0, "hits": 1})  # 熊掌: 1×ATK 物理
-	if u.get("melee", false): _on_basic_hit(u, tgt)
-	_bear_claw_fx(tgt["pos"])                    # 金爪三痕+尘
 
 func _spawn_ice_spike(pos2d: Vector2, hscale: float, linger: float) -> void:
 	var tex: Texture2D = load("res://assets/sprites/vfx/ice-spike-vfx.png")
@@ -4730,6 +4723,8 @@ func _dmg_float_step(el: float, node_fl: Control, base: Vector2, jump_x: float, 
 	node_fl.position = base + Vector2(px, py)
 	node_fl.modulate.a = 1.0 if el < fade_start else maxf(0.0, 1.0 - (el - fade_start) / (total_dur - fade_start))
 
+const BAMBOO_ORB_FLY := 0.65   # 竹叶生命球飞行时长(秒)·抽常量是为了门禁能拿它推 sim
+
 func _spawn_bamboo_orb(from_pos: Vector2, to_pos: Vector2, on_land: Callable = Callable()) -> void:
 	var orb_path := "res://assets/sprites/vfx/bamboo-charge-orb.png"
 	if not ResourceLoader.exists(orb_path):
@@ -4747,34 +4742,16 @@ func _spawn_bamboo_orb(from_pos: Vector2, to_pos: Vector2, on_land: Callable = C
 	orb.pixel_size = 0.85 / float(fh)
 	orb.position = _world_pos(from_pos, 1.0)
 	_world.add_child(orb)
+	## ★抛物线是纯观感(留 tween), 但**落点结算不许挂它末尾**: tween 无头下推不动(§3.5)
+	##   ⇒ 039 文案那句「落到身上才结算(回血+永久 +50/70/90 最大生命)」一次都不会发生。
 	var tw := create_tween()
-	tw.tween_method(_bamboo_sys._bamboo_orb_step.bind(orb, from_pos, to_pos, nframes, [0]), 0.0, 1.0, 0.65)
+	tw.tween_method(_bamboo_sys._bamboo_orb_step.bind(orb, from_pos, to_pos, nframes, [0]), 0.0, 1.0, BAMBOO_ORB_FLY)
 	tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tw.tween_callback(func() -> void:
 		if is_instance_valid(orb): orb.queue_free()
-		_spawn_bamboo_burst(to_pos)
-		if on_land.is_valid(): on_land.call())   # 绿球落到身上 → 回血+成长(用户: 到自己身上才吸收)
-
-func _spawn_bamboo_burst(pos2d: Vector2) -> void:
-	var bpath := "res://assets/sprites/vfx/bamboo-charge-burst.png"
-	if not ResourceLoader.exists(bpath):
-		return
-	var tex: Texture2D = load(bpath)
-	var fh: int = maxi(1, tex.get_height())
-	var nframes: int = maxi(1, int(tex.get_width() / fh))
-	var b := Sprite3D.new()
-	b.texture = tex
-	b.hframes = nframes
-	b.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	b.shaded = false
-	b.transparent = true
-	b.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	b.pixel_size = 1.3 / float(fh)
-	b.position = _world_pos(pos2d, 1.0)
-	_world.add_child(b)
-	var tw := _reg_tween()
-	tw.tween_method(_bamboo_sys._bamboo_burst_step.bind(b, nframes), 0.0, 1.0, 0.35)
-	tw.tween_callback(b.queue_free)
+		_vfx.bamboo_burst(to_pos))
+	if on_land.is_valid():
+		_equip_tick_sys.schedule(BAMBOO_ORB_FLY, on_land)   # 落到身上才结算 —— 走游戏钟
 
 var _sheet_cache := {}
 func _sheet(path: String) -> Texture2D:
