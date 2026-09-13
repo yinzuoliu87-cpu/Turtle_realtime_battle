@@ -1872,6 +1872,56 @@ func _barnacle_rope(im: MeshInstance3D, u: Dictionary, target: Dictionary) -> vo
 ##   · 落雷 56 texel = 2.39 m ≈ 1.2 个龟高 —— 单体判定, 演出就只罩住被打的那一个。
 ## ★两个都挂 `_follow_vfx`(游戏钟自推进帧 + 跟着单位走), **不用 tween** ——
 ##   tween 走未钳制真实 delta, 与游戏钟是两条钟(memory [[fb-second-clock-drops-events]])。
+## ══════════════════════════════════════════════════════════════════════
+##  【冰寒】持续期的身上标记 (2026-09-13)
+## ══════════════════════════════════════════════════════════════════════
+## ★为什么要有: 028 的文案写「施加冰寒 5 秒(移速 -20% / 攻速 -10%)」——
+##   这是个**持续 5 秒的状态**, 而逐帧看下来画面上**零提示**: 砸中之后目标身上什么都没有,
+##   玩家读不出"它被冻慢了"。文案写了画面读不出, 也是缺陷(memory [[fb-effect-text-is-the-spec]])。
+## ★★挂在**状态字段**上而不是挂在 028 里 —— 与 022 真火同一个做法:
+##   判据是 `battle._t < u["spd_dbf_until"]`, 于是**以后任何**写这个字段的来源
+##   (冰龟登场光环、别的减速件…)都自动带上标记, 不用再接一次线
+##   (memory [[fb-zero-caller-is-a-whole-class]]: 「写了没人读」是一整类)。
+const CHILL_TEX := "res://assets/sprites/vfx/frost-chill.png"
+const CHILL_FRAMES := 6
+const CHILL_FPS := 8.0            # 6 帧 / 8fps = 0.75 秒一轮呼吸
+const CHILL_YARDS := 35.5         # 20 texel × 0.0426 m ÷ WS = 0.85 m ≈ 0.43 个龟高
+const CHILL_H := 1.05             # 挂在身子中上部, 不盖脸也不落地
+var _chill_tex: Texture2D = null
+
+
+func chill_mark(u: Dictionary) -> void:
+	if battle._world == null or u == null or not u.get("alive", false):
+		return
+	if is_instance_valid(u.get("_chill_spr", null)):
+		return                          # 已经挂着 ⇒ 续时间由 spd_dbf_until 自己管
+	if _chill_tex == null:
+		_chill_tex = load(CHILL_TEX)
+	if _chill_tex == null:
+		return
+	var cell: int = maxi(1, int(_chill_tex.get_width()) / CHILL_FRAMES)
+	var sp := Sprite3D.new()
+	sp.texture = _chill_tex
+	sp.hframes = CHILL_FRAMES
+	sp.frame = 0
+	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sp.shaded = false
+	sp.transparent = true
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sp.no_depth_test = true
+	sp.render_priority = 5
+	sp.pixel_size = (CHILL_YARDS * battle.WS) / float(cell)
+	sp.position = battle._world_pos(u["pos"] as Vector2, float(u.get("height", 0.0)) + CHILL_H)
+	battle._world.add_child(sp)
+	u["_chill_spr"] = sp
+	battle._follow_vfx.append({
+		"spr": sp, "unit": u, "h": CHILL_H,
+		"loop_fps": CHILL_FPS, "loop_n": CHILL_FRAMES,
+		"loop_t0": battle._t, "until_key": "spd_dbf_until",
+		"clear_key": "_chill_spr",
+	})
+
+
 const BATON_ARC_TEX := "res://assets/sprites/vfx/baton-arc.png"
 const BATON_ARC_FRAMES := 8
 const BATON_ARC_YARDS := 42.6     # 24 texel × 0.0426 m ÷ WS = 1.02 m ≈ 0.51 个龟高

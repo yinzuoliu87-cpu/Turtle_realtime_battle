@@ -3637,24 +3637,6 @@ func _frozen_encase(o: Dictionary, dur: float = 1.5) -> void:
 	t.tween_property(spr, "modulate:a", 0.0, 0.25)
 	t.tween_callback(spr.queue_free)
 
-func _shield_bubble(u: Dictionary) -> void:
-	var tex := VfxTex._make_fire_glow_tex()
-	var tw_w: float = float(maxi(1, int(tex.get_width())))
-	var spr := Sprite3D.new()
-	spr.texture = tex
-	spr.modulate = Color(0.55, 0.82, 1.0, 0.55)
-	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	spr.shaded = false
-	spr.transparent = true
-	spr.pixel_size = (55.0 * WS) / tw_w
-	spr.position = _world_pos(u["pos"], 0.7)
-	_world.add_child(spr)
-	var t := _reg_tween()
-	t.set_parallel(true)
-	t.tween_property(spr, "pixel_size", (105.0 * WS) / tw_w, 0.35)
-	t.tween_property(spr, "modulate:a", 0.0, 0.35)
-	t.chain().tween_callback(spr.queue_free)
-
 # 石头岩石护盾: 持盾期间常驻 LoL Barrier 式金色六棱护罩(跟随单位), 盾破/到期→碎裂淡出.
 # 每帧从 _tick_unit 调; 靠 rock_shield_until + shield>0 判活(与锁龟能同一判据).
 func _update_shield_barrier(u: Dictionary) -> void:

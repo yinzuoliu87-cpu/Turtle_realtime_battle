@@ -184,8 +184,16 @@ func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不�
 
 func _eq_ice_fissure(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false): return
-	battle._damage._grant_shield(u, [100.0, 160.0, 250.0][si])   # 释放即上盾一次
-	battle._shield_bubble(u)
+	## ★2026-09-13 删掉这里原有的 `battle._shield_bubble(u)`:
+	##   它是 029 **自绘的一个护盾泡** —— 而 `_grant_shield` 里早就有【通用护盾罩】
+	##   `_vfx.shield_shell`(2026-09-11 用户否掉地上金圈之后做的, 罩在单位身上)。
+	##   两个叠着放 ⇒ 通用罩被自绘的球盖住。而那个球还同时违反两条硬约束:
+	##     · 贴图是 `VfxTex._make_fire_glow_tex()` **程序生成的光球**(实拍是一个把龟整个
+	##       吞掉的不透明米色实心球)
+	##     · 靠 `tween_property(spr, "pixel_size", …)` **连续缩放像素贴图**(被否过的那个糊)
+	##   memory [[fb-fix-the-shared-primitive-not-one-instance]] / [[fb-hand-rolled-copies-drift]]:
+	##   共享原语到位之后, 单件的手抄副本就是【永远落后一次】的那一份, 该删不该留。
+	battle._damage._grant_shield(u, [100.0, 160.0, 250.0][si])   # 释放即上盾一次(通用罩由 _grant_shield 自己画)
 	var t = battle._targeting._nearest_enemy(u)
 	if t == null:
 		return
@@ -193,9 +201,9 @@ func _eq_ice_fissure(u: Dictionary, si: int) -> void:
 	if dir == Vector2.ZERO:
 		dir = Vector2.RIGHT
 	battle._anticipate(u)                                 # 蓄力砸地
-	var tw = battle._reg_tween()
-	tw.tween_interval(0.3)
-	tw.tween_callback(battle._ice_sys._ice_fissure_go.bind(u, si, u["pos"], dir))
+	## ★蓄力从 tween 挪到游戏钟(2026-09-13): 同 028, 不挪的话**冰道根本不推出去**。
+	battle._equip_tick_sys.schedule(IceSystem.FISSURE_WINDUP,
+		battle._ice_sys._ice_fissure_go.bind(u, si, u["pos"], dir))
 
 # 水晶碎片火花: 弹出+缓旋+淡出 (光束/引爆/扫射点缀)
 # 030 单段水晶光束结算: 从携带者当前位置沿 dir 无限直线, 全线敌魔法伤+1层水晶
@@ -830,9 +838,11 @@ func _eq_ice_throw(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false): return
 	if battle._targeting._nearest_enemy(u) == null: return
 	battle._anticipate(u)
-	var tw = battle._reg_tween()
-	tw.tween_interval(0.32)
-	tw.tween_callback(battle._ice_sys._ice_throw_go.bind(u, si))
+	## ★前摇从 tween 挪到游戏钟(2026-09-13): tween 走**未钳制的真实 delta, 无头下推不动**
+	##   (§3.5) ⇒ 前摇永远走不完, **瓶子根本不出手**。与 024/025/026/029 同一条病,
+	##   走同一个共享原语(memory [[fb-fix-the-shared-primitive-not-one-instance]])。
+	battle._equip_tick_sys.schedule(IceSystem.VIAL_WINDUP,
+		battle._ice_sys._ice_throw_go.bind(u, si))
 
 func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007: 高举→下劈→剑气墙沿dir扫2000码·命中给盾
 	var flat: int = [20, 35, 60][si]
@@ -2311,7 +2321,7 @@ func _eq_on_dodge(u: Dictionary) -> void:
 		if str(e["id"]) == "p2eq_046":   # 幽灵墨鱼: 闪避→永久护盾
 			var stt: Dictionary = u["eq_state"].get("p2eq_046", {})
 			battle._damage._grant_shield(u, float(stt.get("ghost_shield", 30.0)))
-			battle._shield_dome(u)   # 专属护盾罩(不复用faint battle._shield_bubble)
+			battle._shield_dome(u)   # 专属护盾罩(原注释说的 `_shield_bubble` 已于 2026-09-13 删除)
 		# ── 灵物 5 件(2026-08-05 用户逐件重做·§0.5 定稿) ──────────────────
 		#    ★060/061 原来挂在这个钩子上的旧效果(闪避→魔法伤 / 闪避→移速)
 		#      已整条作废: 060 改成 7 秒周期开伞、061 改成 on-hit 破损。

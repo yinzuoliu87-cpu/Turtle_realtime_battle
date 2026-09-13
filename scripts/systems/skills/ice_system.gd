@@ -13,7 +13,7 @@ func _ice_fissure_go(u: Dictionary, si: int, start: Vector2, dir: Vector2) -> vo
 	_ice_burst(start)                              # 砸地冰爆
 	var reach: float = FISSURE_REACH
 	var width: float = FISSURE_HALF_W
-	var fdur: float = 0.9
+	var fdur: float = FISSURE_SWEEP_SEC
 	_ice_fissure_vfx(start, dir, reach, fdur)      # 冰道: 一排冰刺racing forward
 	for o in battle._targeting._enemies_of(u):
 		var along: float = (o["pos"] - start).dot(dir)
@@ -21,10 +21,12 @@ func _ice_fissure_go(u: Dictionary, si: int, start: Vector2, dir: Vector2) -> vo
 			continue
 		if not battle._on_line(start, dir, o["pos"], width):
 			continue
+		## ★「冰道推进到谁才结算谁」这条**文案写死的节拍**从 tween 挪到游戏钟(2026-09-13)。
+		##   原来是 `tween_interval(d)` + `tween_callback` —— tween 走未钳制真实 delta,
+		##   无头下推不动(§3.5) ⇒ **整条冰道一个人都不结算**: 伤害 / 击飞 / 冰封全不落。
+		##   节拍一个数没动: 仍是 (沿线距离 ÷ 冰道长) × FISSURE_SWEEP_SEC。
 		var d: float = clampf(along / reach, 0.0, 1.0) * fdur
-		var tw = battle._reg_tween()
-		tw.tween_interval(d)                       # 冰道推进到该敌才结算
-		tw.tween_callback(_ice_fissure_hit.bind(u, o, si))
+		battle._equip_tick_sys.schedule(d, _ice_fissure_hit.bind(u, o, si))
 
 func _ice_fissure_hit(u: Dictionary, o: Dictionary, si: int) -> void:
 	if not o.get("alive", false):
@@ -125,9 +127,11 @@ func _ice_throw_go(u: Dictionary, si: int) -> void:
 	var from2d: Vector2 = u["pos"]
 	spr.position = battle._world_pos(from2d, 1.1)
 	battle._world.add_child(spr)
+	## 瓶子的抛物线是**纯观感**, 留在 tween 没关系; 但**结算不许挂在它末尾** ——
+	## tween 无头下推不动(§3.5) ⇒ 伤害 / 冰寒 / 击退会整个不落。落点判定改走游戏钟。
 	var tw = battle._reg_tween()
-	tw.tween_method(_ice_bottle_arc.bind(spr, from2d, t["pos"]), 0.0, 1.0, 0.6)
-	tw.tween_callback(_ice_bottle_hit.bind(spr, u, t, si))
+	tw.tween_method(_ice_bottle_arc.bind(spr, from2d, t["pos"]), 0.0, 1.0, VIAL_FLY_SEC)
+	battle._equip_tick_sys.schedule(VIAL_FLY_SEC, _ice_bottle_hit.bind(spr, u, t, si))
 
 func _ice_bottle_arc(pf: float, spr: Sprite3D, from2d: Vector2, to2d: Vector2) -> void:
 	if is_instance_valid(spr):
@@ -164,21 +168,38 @@ func _ice_burst(pos2d: Vector2) -> void:
 	t.tween_method(battle._zap_frame.bind(spr), 0.0, 5.0, 0.34)
 	t.tween_callback(spr.queue_free)
 
+## 028 冰瓶砸中那一下炸开的霜雾。
+## ★★2026-09-13 重做。原来这里是 `VfxTex._make_fire_glow_tex()` —— **程序生成的光球**,
+##   实拍(7.40 秒那帧)量出来是一团 **144×100 屏幕像素、亮度中位 41** 的暗斑,
+##   而龟只有 45 像素高 ⇒ **3.2 个龟宽的一坨暗色油污糊在地上**, 读不出"霜"。
+##   CLAUDE.md 明令不许拿程序生成的圆环白球敷衍(memory [[fb-vfx-defect-families]])。
+## ★换成真像素冰晶表 `frost-mist.png`(tools/bake_frost.py), 帧推进挂 `_anim_fx` 走**游戏钟**
+##   —— 不用 tween(tween 走未钳制 delta = 第二条钟)。
+const FROST_MIST_TEX := "res://assets/sprites/vfx/frost-mist.png"
+const FROST_MIST_FRAMES := 6
+const FROST_MIST_FPS := 14.0
+const FROST_MIST_YARDS := 56.8    # 32 texel × 0.0426 m ÷ WS = 1.36 m ≈ 0.68 个龟高
+
 func _frost_puff(pos2d: Vector2) -> void:
-	var tex = VfxTex._make_fire_glow_tex()
+	var tex: Texture2D = load(FROST_MIST_TEX)
+	if tex == null:
+		return
+	var cell: int = maxi(1, int(tex.get_width()) / FROST_MIST_FRAMES)
 	var spr = Sprite3D.new()
 	spr.texture = tex
-	spr.modulate = Color(0.62, 0.82, 1.0, 0.5)
+	spr.hframes = FROST_MIST_FRAMES
+	spr.frame = 0
 	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	spr.shaded = false
 	spr.transparent = true
-	spr.pixel_size = (78.0 * battle.WS) / float(maxi(1, int(tex.get_width())))
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	spr.no_depth_test = true
+	spr.pixel_size = (FROST_MIST_YARDS * battle.WS) / float(cell)
 	spr.position = battle._world_pos(pos2d, 0.72)
 	battle._world.add_child(spr)
-	var t = battle._reg_tween()
-	t.tween_interval(0.35)
-	t.tween_property(spr, "modulate:a", 0.0, 0.5)
-	t.tween_callback(spr.queue_free)
+	battle._anim_fx.append({
+		"spr": spr, "t0": battle._t, "fps": FROST_MIST_FPS, "n": FROST_MIST_FRAMES,
+	})
 
 # 029 冰封水母: 冰封目标 + 护盾泡
 ## ═══ 冰柱层 (用户 2026-07-28 加强) ═══
@@ -212,10 +233,16 @@ const VIAL_ASPD_DOWN := 0.10    # 攻击速度 −
 const VIAL_MOVE_MULT := 1.0 - VIAL_MOVE_DOWN   # 推导
 const VIAL_ASPD_MULT := 1.0 - VIAL_ASPD_DOWN   # 推导
 const VIAL_IV := 6.0            # 每几秒抛一次(主场景 _EQ_CUSTOM_IV 引用本常量)
+## ★下面两个节拍原来写死在函数里(0.32 / 0.6)。抽成常量不是"为了文案" ——
+##   是**门禁要拿它推 sim**(推少了量到 0 会被误判成"效果没落"), 两边必须读同一个数。
+const VIAL_WINDUP := 0.32      # 蓄力(秒) —— 抛出前的前摇
+const VIAL_FLY_SEC := 0.6      # 瓶子在空中的飞行时间(秒)
 ## 【029 冰封水母】法力满 → 自身上盾 + 朝最近敌推一条冰道, 推到谁才结算谁。
 const FISSURE_REACH := 500.0    # 冰道长度(码)
 const FISSURE_HALF_W := 90.0    # 冰道中线两侧各多宽(码)
 const FISSURE_KNOCK_SEC := 0.6  # 竖直击飞滞空(秒)·抛物线输出, 代码里没有这个量
+const FISSURE_WINDUP := 0.3     # 砸地前摇(秒)
+const FISSURE_SWEEP_SEC := 0.9  # 冰道从起点推到最远端要多久(秒) —— 决定每个敌人几时结算
 const FROST_BASE_RADIUS := 150.0    # 基础半径(码)·每层冰柱再 +ICICLE_FROST_RADIUS
 const FROST_BASE_SEC := 5.0         # 基础持续(秒)·每层冰柱再 +ICICLE_FROST_SEC
 const FROST_TICK_SEC := 0.5         # 每几秒一跳(跳数 = 持续 ÷ 它)
